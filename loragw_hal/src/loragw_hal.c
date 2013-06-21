@@ -812,10 +812,9 @@ void wait_ms(long a) {
     
     DEBUG_PRINTF("NOTE dly: %ld sec %ld ns\n", dly.tv_sec, dly.tv_nsec);
     
-    while((dly.tv_sec > 0) || ((dly.tv_sec == 0) && (dly.tv_nsec > 100000))) {
+    if((dly.tv_sec > 0) || ((dly.tv_sec == 0) && (dly.tv_nsec > 100000))) {
         clock_nanosleep(CLOCK_MONOTONIC, 0, &dly, &rem);
         DEBUG_PRINTF("NOTE remain: %ld sec %ld ns\n", rem.tv_sec, rem.tv_nsec);
-        dly = rem;
     }
     return;
 }
