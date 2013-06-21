@@ -22,12 +22,14 @@ Description:
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
+#define BURST_TEST_LENGTH   8192
+
 int main(int argc, char **argv)
 {
     int32_t read_value, test_value;
     uint16_t lfsr;
-    uint8_t burst_buffin[4096];
-    uint8_t burst_buffout[4096];
+    uint8_t burst_buffout[BURST_TEST_LENGTH];
+    uint8_t burst_buffin[BURST_TEST_LENGTH];
     int i;
     
     printf("Beginning of test for loragw_reg.c\n");
@@ -46,10 +48,10 @@ int main(int argc, char **argv)
     /* --- READ/WRITE COHERENCY TEST --- */
     
     /* 8b unsigned */
-    // test_value = 197; /* 11000101b */
-    // lgw_reg_w(LGW_CORR4_CHAN, test_value);
-    // lgw_reg_r(LGW_CORR4_CHAN, &read_value);
-    // printf("CORR4_CHAN = %d (should be %d)\n", read_value, test_value);
+    test_value = 197; /* 11000101b */
+    lgw_reg_w(LGW_CORR4_CHAN, test_value);
+    lgw_reg_r(LGW_CORR4_CHAN, &read_value);
+    printf("CORR4_CHAN = %d (should be %d)\n", read_value, test_value);
     
     /* 8b signed */
     /* NO SUCH REG AVAILABLE */
@@ -60,10 +62,10 @@ int main(int argc, char **argv)
     // printf("RADIO_SELECT = %d (should be %d)\n", read_value, test_value);
     
     /* less than 8b, with offset, unsigned */
-    // test_value = 11; /* 1011b */
-    // lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS, test_value);
-    // lgw_reg_r(LGW_FRAME_SYNCH_PEAK2_POS, &read_value);
-    // printf("FRAME_SYNCH_PEAK2_POS = %d (should be %d)\n", read_value, test_value);
+    test_value = 11; /* 1011b */
+    lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS, test_value);
+    lgw_reg_r(LGW_FRAME_SYNCH_PEAK2_POS, &read_value);
+    printf("FRAME_SYNCH_PEAK2_POS = %d (should be %d)\n", read_value, test_value);
     
     /* less than 8b, with offset, signed */
     /* NO SUCH REG AVAILABLE */
@@ -74,10 +76,10 @@ int main(int argc, char **argv)
     // printf("MBWSSF_FRAME_SYNCH_PEAK2_POS = %d (should be %d)\n", read_value, test_value);
     
     /* 16b unsigned */
-    // test_value = 49253; /* 11000000 01100101b */
-    // lgw_reg_w(LGW_PREAMBLE_SYMB1_NB, test_value);
-    // lgw_reg_r(LGW_PREAMBLE_SYMB1_NB, &read_value);
-    // printf("PREAMBLE_SYMB1_NB = %d (should be %d)\n", read_value, test_value);
+    test_value = 49253; /* 11000000 01100101b */
+    lgw_reg_w(LGW_PREAMBLE_SYMB1_NB, test_value);
+    lgw_reg_r(LGW_PREAMBLE_SYMB1_NB, &read_value);
+    printf("PREAMBLE_SYMB1_NB = %d (should be %d)\n", read_value, test_value);
     
     /* 16b signed */
     /* NO SUCH REG AVAILABLE */
@@ -88,28 +90,34 @@ int main(int argc, char **argv)
     // printf("CAPTURE_PERIOD = %d (should be %d)\n", read_value, test_value);
     
     /* between 8b and 16b, unsigned */
-    // test_value = 3173; /* 1100 01100101b */
-    // lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_SF12_RDX4, test_value);
-    // lgw_reg_r(LGW_ADJUST_MODEM_START_OFFSET_SF12_RDX4, &read_value);
-    // printf("ADJUST_MODEM_START_OFFSET_SF12_RDX4 = %d (should be %d)\n", read_value, test_value);
+    test_value = 3173; /* 1100 01100101b */
+    lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_SF12_RDX4, test_value);
+    lgw_reg_r(LGW_ADJUST_MODEM_START_OFFSET_SF12_RDX4, &read_value);
+    printf("ADJUST_MODEM_START_OFFSET_SF12_RDX4 = %d (should be %d)\n", read_value, test_value);
     
     /* between 8b and 16b, signed */
-    // test_value = -1947; /* 11000 01100101b */
-    // lgw_reg_w(LGW_IF_FREQ_1, test_value);
-    // lgw_reg_r(LGW_IF_FREQ_1, &read_value);
-    // printf("IF_FREQ_1 = %d (should be %d)\n", read_value, test_value);
+    test_value = -1947; /* 11000 01100101b */
+    lgw_reg_w(LGW_IF_FREQ_1, test_value);
+    lgw_reg_r(LGW_IF_FREQ_1, &read_value);
+    printf("IF_FREQ_1 = %d (should be %d)\n", read_value, test_value);
     
     /* --- BURST WRITE AND READ TEST --- */
     
     /* initialize data for SPI test */
     lfsr = 0xFFFF;
-    for(i=0; i<4096; ++i) {
-        burst_buffin[i] = (uint8_t)(lfsr ^ (lfsr >> 4));
-        /* printf("%05d # 0x%04x 0x%02x\n", i, lfsr, burst_buffin[i]); */
+    for(i=0; i<BURST_TEST_LENGTH; ++i) {
+        burst_buffout[i] = (uint8_t)(lfsr ^ (lfsr >> 4));
+        /* printf("%05d # 0x%04x 0x%02x\n", i, lfsr, burst_buffout[i]); */
         lfsr = (lfsr & 1) ? ((lfsr >> 1) ^ 0x8679) : (lfsr >> 1);
     }
     
+    lgw_reg_wb(LGW_TX_DATA_BUF_DATA, burst_buffout, 256);
+    lgw_reg_rb(LGW_RX_DATA_BUF_DATA, burst_buffin, 256);
     
+    /* impossible to check in software,
+    RX_DATA_BUF_DATA is read-only,
+    TX_DATA_BUF_DATA is write only,
+    use a logic analyser */
     
     /* --- END OF TEST --- */
     

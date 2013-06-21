@@ -46,38 +46,38 @@ int main(int argc, char **argv)
     
     printf("Beginning of test for loragw_hal.c\n");
     
+    // /* set configuration for RF chain */
+    // memset(&rfconf, 0, sizeof(rfconf));
+    // rfconf.enable = true;
+    // rfconf.freq_hz = 867000000;
+    // lgw_rxrf_setconf(0, rfconf);
+    
+    // /* set configuration Lora multi-SF channels (bandwidth cannot be set) */
+    // memset(&ifconf, 0, sizeof(ifconf));
+    // ifconf.enable = true;
+    // ifconf.rf_chain = 0;
+    // ifconf.datarate = DR_LORA_MULTI;
+    // ifconf.freq_hz = -187500;
+    // for (i=0; i<=3; ++i) {
+        // lgw_rxif_setconf(i, ifconf);
+        // ifconf.freq_hz += 125000;
+    // }
+    
     lgw_start();
     
-    /* configure RF chain */
-    memset(&rfconf, 0, sizeof(rfconf));
-    rfconf.enable = true;
-    rfconf.freq_hz = 867*10^6;
-    lgw_rxrf_setconf(0, rfconf);
-    
-    /* configure Lora multi-SF channels (bandwidth cannot be set) */
-    memset(&ifconf, 0, sizeof(ifconf));
-    ifconf.enable = true;
-    ifconf.rf_chain = 0;
-    ifconf.datarate = DR_LORA_MULTI;
-    ifconf.freq_hz = -187.5e3;
-    for(i=0; i<=3; ++i) {
-        lgw_rxif_setconf(i, ifconf);
-        ifconf.freq_hz += 125e3;
-    }
-    
-    loop_var = 1;
-    while(loop_var == 1) {
-        /* fetch all available packets */
-        nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
+    // loop_var = 0;
+    // while(loop_var == 1) {
+        // /* fetch all available packets */
+        // nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
         
-        /* filter/process the received packets */
-        /* forward/store the received packets */
+        // /* filter/process the received packets */
+        // /* forward/store the received packets */
         
-        /* free the memory used for RX payload(s) */
-        for(i=0; i < nb_pkt; ++i) {
-            free(rxpkt[i].payload);
-        }
-    }
+        // /* free the memory used for RX payload(s) */
+        // for(i=0; i < nb_pkt; ++i) {
+            // free(rxpkt[i].payload);
+        // }
+    // }
     
     lgw_stop();
     

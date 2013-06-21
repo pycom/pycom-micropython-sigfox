@@ -32,14 +32,14 @@ Description:
 #define LGW_IF_CHAIN_NB     10
 
 #define LGW_PKT_FIFO_SIZE   8
-#define LGW_DATABUFF_SIZE   2^10
-#define LGW_RF_BANDWIDTH    800e3
+#define LGW_DATABUFF_SIZE   1024
+#define LGW_RF_BANDWIDTH    800000
 
 /* to use those parameters, declare a local constant, and use 'rf_chain' as index */
-#define LGW_RF_RX_LOWFREQ   {863e6, 863e6}
-#define LGW_RF_RX_UPFREQ    {870e6, 870e6}
-#define LGW_RF_TX_LOWFREQ   {863e6, 863e6}
-#define LGW_RF_TX_UPFREQ    {870e6, 870e6}
+#define LGW_RF_RX_LOWFREQ   {863000000, 863000000}
+#define LGW_RF_RX_UPFREQ    {870000000, 870000000}
+#define LGW_RF_TX_LOWFREQ   {863000000, 863000000}
+#define LGW_RF_TX_UPFREQ    {870000000, 870000000}
 
 /* type of if_chain */
 #define UNDEFINED           0
@@ -192,7 +192,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf);
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf);
 
 /**
-@brief Connect to the Lora gateway, reset and configure it
+@brief Connect to the Lora gateway, reset it and configure it according to previously set parameters
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_start(void);
