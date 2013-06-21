@@ -726,19 +726,19 @@ Parameters validity and coherency is verified by the _setconf functions and
 the _start function assumes 
 */
 
-static bool rf_enable[LGW_RF_CHAIN_NB] = {1, 1};
-static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {869500000, 868500000};
+static bool rf_enable[LGW_RF_CHAIN_NB] = {0, 0};
+static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {0, 0};
 
-static uint8_t if_rf_switch = 0x0F; /* each IF from 0 to 7 has 1 bit associated to it, 0 -> radio A, 1 -> radio B */
+static uint8_t if_rf_switch = 0x00; /* each IF from 0 to 7 has 1 bit associated to it, 0 -> radio A, 1 -> radio B */
 /* IF 8 and 9 are on radio A */
 
 static bool if_enable[LGW_IF_CHAIN_NB] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static int16_t if_freq[LGW_IF_CHAIN_NB] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-static uint8_t lora_rx_bw = BW_250KHZ; /* for the Lora standalone modem(s) */
-static uint8_t lora_rx_sf = DR_LORA_SF7; /* for the Lora standalone modem(s) */
-// static uint8_t fsk_rx_bw = ; /* for the FSK standalone modem(s) */
-// static uint8_t fsk_rx_sf = ; /* for the FSK standalone modem(s) */
+static uint8_t lora_rx_bw = 0; /* for the Lora standalone modem(s) */
+static uint8_t lora_rx_sf = 0; /* for the Lora standalone modem(s) */
+static uint8_t fsk_rx_bw = 0; /* for the FSK standalone modem(s) */
+static uint8_t fsk_rx_sf = 0; /* for the FSK standalone modem(s) */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -1047,25 +1047,24 @@ int lgw_start(void) {
     /* switch on and reset the radios (also starts the 32 MHz XTAL */
     /* radio A *MUST* be switched on to get a 32 MHz clock */
     lgw_reg_w(LGW_RADIO_EN_A,1);
-    lgw_reg_w(LGW_RADIO_EN_B,1); /* TODO enable only if config says so */
+    if (rf_enable[1] == 1)
+        lgw_reg_w(LGW_RADIO_EN_B,1);
     wait_ms(10);
+    
     lgw_reg_w(LGW_RADIO_RST_A,1);
-    lgw_reg_w(LGW_RADIO_RST_B,1);
+    if (rf_enable[1] == 1)
+        lgw_reg_w(LGW_RADIO_RST_B,1);
     wait_ms(10);
+    
     lgw_reg_w(LGW_RADIO_RST_A,0);
-    lgw_reg_w(LGW_RADIO_RST_B,0);
+    if (rf_enable[1] == 1)
+        lgw_reg_w(LGW_RADIO_RST_B,0);
     
     /* setup the radios */
-    printf("version for radio 0 : %x\n", sx125x_read(0, 0x07));
-    printf("version for radio 1 : %x\n", sx125x_read(1, 0x07));
-    
-    printf("reg 0x0F radio 0 : %x\n", sx125x_read(0, 0x0F));
-    sx125x_write(0, 0x0F, 0x35);
-    printf("reg 0x0F radio 0 after write : %x\n", sx125x_read(0, 0x0F));
-    
-    printf("reg 0x0F radio 1 : %x\n", sx125x_read(1, 0x0F));
-    sx125x_write(1, 0x0F, 0x35);
-    printf("reg 0x0F radio 1 after write : %x\n", sx125x_read(1, 0x0F));
+    if (rf_enable[0] == 1)
+        setup_sx1257(0, rf_freq[0]);
+    if (rf_enable[1] == 1)
+        setup_sx1257(1, rf_freq[1]);
     
     /* give control of the radios to the AGC uC */
     // lgw_reg_w(LGW_FORCE_HOST_SPI_MASTER_CTRL,0);
