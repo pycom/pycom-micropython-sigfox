@@ -50,10 +50,28 @@ Description:
 #define     PIC_AGC         0
 #define     PIC_ARBITER     1
 
-#define     PIC_AGC_FW_SIZE     4096
-#define     PIC_ARB_FW_SIZE     1024
+const uint8_t if_list[LGW_IF_CHAIN_NB] = LGW_IF_CONFIG; /* define hardware capability */
 
-const uint8_t agc_firmware[PIC_AGC_FW_SIZE * 2] = {
+#define     PIC_AGC_FW_BYTE     8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
+#define     PIC_ARB_FW_BYTE     2048 /* size of the firmware IN BYTES (= twice the number of 14b words) */
+
+#define     SX1257_CLK_OUT          1   
+#define     SX1257_TX_DAC_CLK_SEL   1   /* 0:int, 1:ext */
+#define     SX1257_TX_DAC_GAIN      2   /* 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2) */
+#define     SX1257_TX_MIX_GAIN      14  /* -38 + 2*TxMixGain dB (default 14) */
+#define     SX1257_TX_PLL_BW        3   /* 0:75, 1:150, 2:225, 3:300 kHz (default 3) */
+#define     SX1257_TX_ANA_BW        0   /* 17.5 / 2*(41-TxAnaBw) MHz (default 0) */
+#define     SX1257_TX_DAC_BW        7   /* 24 + 8*TxDacBw Nb FIR taps (default 2) */
+#define     SX1257_RX_LNA_GAIN      1   /* 1 to 6, 1 highest gain */
+#define     SX1257_RX_BB_GAIN       12  /* 0 to 15 , 15 highest gain */
+#define     SX1257_RX_ADC_BW        7   /* 0 to 7, 2:100<BW<200, 5:200<BW<400,7:400<BW (kHz) */
+#define     SX1257_RX_ADC_TRIM      7   /* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
+#define     SX1257_RXBB_BW          2
+
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE VARIABLES ---------------------------------------------------- */
+
+static uint8_t agc_firmware[PIC_AGC_FW_BYTE] = {
     0x8A, 0x51, 0x11, 0x28, 0xFF, 0xBF, 0xFF, 0xBF, 0x80, 0x40, 0x03, 0x4E, 0x83, 0x52, 0x03, 0x53,
     0xA1, 0xC0, 0x04, 0x88, 0xA2, 0xC0, 0x0A, 0xC8, 0xA3, 0x00, 0x01, 0x88, 0xA4, 0xC0, 0x8A, 0x51,
     0x10, 0x2C, 0x8A, 0x51, 0x55, 0x2D, 0x83, 0x96, 0x03, 0x53, 0x2F, 0x88, 0xB5, 0x40, 0x2E, 0x48,
@@ -568,7 +586,7 @@ const uint8_t agc_firmware[PIC_AGC_FW_SIZE * 2] = {
     0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF
 };
 
-const uint8_t arb_firmware[PIC_ARB_FW_SIZE * 2] = {
+static uint8_t arb_firmware[PIC_ARB_FW_BYTE] = {
     0x31, 0xAA, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF,
     0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF,
     0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF, 0xFF, 0xBF,
@@ -699,24 +717,6 @@ const uint8_t arb_firmware[PIC_ARB_FW_SIZE * 2] = {
     0x62, 0x02, 0x03, 0x5C, 0xFC, 0xAB, 0xFD, 0xEB, 0xA3, 0x2B, 0xFF, 0x2B, 0xFF, 0x2B, 0x08, 0x40
 };
 
-#define     SX1257_CLK_OUT          1   
-#define     SX1257_TX_DAC_CLK_SEL   1   /* 0:int, 1:ext */
-#define     SX1257_TX_DAC_GAIN      2   /* 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2) */
-#define     SX1257_TX_MIX_GAIN      14  /* -38 + 2*TxMixGain dB (default 14) */
-#define     SX1257_TX_PLL_BW        3   /* 0:75, 1:150, 2:225, 3:300 kHz (default 3) */
-#define     SX1257_TX_ANA_BW        0   /* 17.5 / 2*(41-TxAnaBw) MHz (default 0) */
-#define     SX1257_TX_DAC_BW        7   /* 24 + 8*TxDacBw Nb FIR taps (default 2) */
-#define     SX1257_RX_LNA_GAIN      1   /* 1 to 6, 1 highest gain */
-#define     SX1257_RX_BB_GAIN       12  /* 0 to 15 , 15 highest gain */
-#define     SX1257_RX_ADC_BW        7   /* 0 to 7, 2:100<BW<200, 5:200<BW<400,7:400<BW (kHz) */
-#define     SX1257_RX_ADC_TRIM      7   /* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
-#define     SX1257_RXBB_BW          2
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE VARIABLES ---------------------------------------------------- */
-
-const uint8_t if_list[LGW_IF_CHAIN_NB] = LGW_IF_CONFIG; /* define hardware capability */
-
 /*
 The following static variables are the configuration set that the user can
 modify using rxrf_setconf and rxif_setconf functions.
@@ -745,7 +745,7 @@ static uint8_t fsk_rx_sf = 0; /* for the FSK standalone modem(s) */
 
 int count_ones_16(uint16_t a);
 
-int load_firmware(uint8_t target, uint16_t *blob, uint16_t size);
+int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size);
 
 void wait_ms(long t);
 
@@ -770,19 +770,20 @@ int count_ones_16(uint16_t a) {
     return count;
 }
 
-int load_firmware(uint8_t target, uint16_t *firmware, uint16_t size) {
+/* size id the firmware size in bytes (not 14b words) */
+int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
     int i;
     int32_t read_value;
     
     /* check parameters */
     CHECK_NULL(firmware);
     if (target == PIC_AGC) {
-        if (size != PIC_AGC_FW_SIZE) {
+        if (size != PIC_AGC_FW_BYTE) {
             DEBUG_MSG("ERROR: NOT A VALID SIZE FOR FIRMWARE");
             return -1;
         }
     } else if (target == PIC_ARBITER) {
-        if (size != PIC_ARB_FW_SIZE) {
+        if (size != PIC_ARB_FW_BYTE) {
             DEBUG_MSG("ERROR: NOT A VALID SIZE FOR FIRMWARE");
             return -1;
         }
@@ -798,6 +799,12 @@ int load_firmware(uint8_t target, uint16_t *firmware, uint16_t size) {
     /* set mux to access PIC program RAM and set address to 0 */
     lgw_reg_w(LGW_PIC16F84_SELECT_MUX, 1 << target);
     lgw_reg_w(LGW_PIC_PROM_ADDR, 0);
+    
+    /* write the program in one burst */
+    lgw_reg_wb(LGW_PIC_PROM_DATA, firmware, size);
+    
+    /* give back control of the uC program ram to the uC */
+    lgw_reg_w(LGW_PIC16F84_SELECT_MUX, 0);
     
     return 0;
 }
@@ -906,7 +913,8 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
 }
 
 void setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
-    uint32_t freq_bin;
+    uint32_t part_int;
+    uint32_t part_frac;
     int i = 0;
     
     if (rf_chain >= LGW_RF_CHAIN_NB) {
@@ -927,18 +935,19 @@ void setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
     sx125x_write(rf_chain, 0x0D, SX1257_RXBB_BW + SX1257_RX_ADC_TRIM*4 + SX1257_RX_ADC_BW*32);
     
     /* set RX PLL frequency */
-    freq_bin = freq_hz; /* TODO: correct frequency transformation formula */
-    sx125x_write(rf_chain, 0x01,0xFF & (freq_bin >> 16)); /* Most Significant Byte */
-    sx125x_write(rf_chain, 0x02,0xFF & (freq_bin >> 8));
-    sx125x_write(rf_chain, 0x03,0xFF & freq_bin); /* Least Significant Byte */
+    part_int = freq_hz / LGW_SW1257_DENUM; /* integer part, gives the MSB and the middle byte */
+    part_frac = ((freq_hz % LGW_SW1257_DENUM) << 8) / LGW_SW1257_DENUM; /* fractional part, gives LSB */
+    sx125x_write(rf_chain, 0x01,0xFF & (part_int >> 8)); /* Most Significant Byte */
+    sx125x_write(rf_chain, 0x02,0xFF & part_int); /* middle byte */
+    sx125x_write(rf_chain, 0x03,0xFF & part_frac); /* Least Significant Byte */
     
     /* start and PLL lock */
     do {
-    sx125x_write(rf_chain, 0x00, 1); /* enable Xtal oscillator */
-    sx125x_write(rf_chain, 0x00, 3); /* Enable RX (PLL+FE) */
-    ++i;
-    DEBUG_PRINTF("SX1257 #%d PLL start (attempt %d)\n", rf_chain, i);
-    wait_ms(1);
+        sx125x_write(rf_chain, 0x00, 1); /* enable Xtal oscillator */
+        sx125x_write(rf_chain, 0x00, 3); /* Enable RX (PLL+FE) */
+        ++i;
+        DEBUG_PRINTF("SX1257 #%d PLL start (attempt %d)\n", rf_chain, i);
+        wait_ms(1);
     } while(sx125x_read(rf_chain, 0x11) & 0x02 == 0);
     
     return;
@@ -1047,29 +1056,34 @@ int lgw_start(void) {
     /* switch on and reset the radios (also starts the 32 MHz XTAL */
     /* radio A *MUST* be switched on to get a 32 MHz clock */
     lgw_reg_w(LGW_RADIO_EN_A,1);
-    if (rf_enable[1] == 1)
+    if (rf_enable[1] == 1) {
         lgw_reg_w(LGW_RADIO_EN_B,1);
+    }
     wait_ms(10);
     
     lgw_reg_w(LGW_RADIO_RST_A,1);
-    if (rf_enable[1] == 1)
+    if (rf_enable[1] == 1) {
         lgw_reg_w(LGW_RADIO_RST_B,1);
+    }
     wait_ms(10);
     
     lgw_reg_w(LGW_RADIO_RST_A,0);
-    if (rf_enable[1] == 1)
+    if (rf_enable[1] == 1) {
         lgw_reg_w(LGW_RADIO_RST_B,0);
+    }
     
     /* setup the radios */
-    if (rf_enable[0] == 1)
+    if (rf_enable[0] == 1) {
         setup_sx1257(0, rf_freq[0]);
-    if (rf_enable[1] == 1)
+    }
+    if (rf_enable[1] == 1) {
         setup_sx1257(1, rf_freq[1]);
+    }
     
     /* give control of the radios to the AGC uC */
-    // lgw_reg_w(LGW_FORCE_HOST_SPI_MASTER_CTRL,0);
-    // lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0);
-    // lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN,0);
+    lgw_reg_w(LGW_FORCE_HOST_SPI_MASTER_CTRL,0);
+    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0);
+    lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN,0);
     
     // /* TODO load the calibration firmware and wait for calibration to end */
     // load_firmware(PIC_AGC, cal_firmware, ARRAY_SIZE(cal_firmware));
@@ -1078,18 +1092,57 @@ int lgw_start(void) {
     // do {
         // lgw_reg_r(LGW_VERSION, &read_value);
     // } while (read_value == 0);
+    // lgw_reg_w(LGW_PIC16F84_RST, 3); /* reset all uC */
     
     /* in the absence of calibration firmware, do a "manual" calibration */
-    // lgw_reg_w(LGW_TX_OFFSET_I,10);
-    // lgw_reg_w(LGW_TX_OFFSET_Q,5);
-    // lgw_reg_w(LGW_IQ_MISMATCH_A_AMP_COEFF,63);
-    // lgw_reg_w(LGW_IQ_MISMATCH_A_PHI_COEFF,9);
-    // lgw_reg_w(LGW_IQ_MISMATCH_B_AMP_COEFF,0);
-    // lgw_reg_w(LGW_IQ_MISMATCH_B_PHI_COEFF,0);
+    lgw_reg_w(LGW_TX_OFFSET_I,10);
+    lgw_reg_w(LGW_TX_OFFSET_Q,5);
+    lgw_reg_w(LGW_IQ_MISMATCH_A_AMP_COEFF,63);
+    lgw_reg_w(LGW_IQ_MISMATCH_A_PHI_COEFF,9);
+    lgw_reg_w(LGW_IQ_MISMATCH_B_AMP_COEFF,0);
+    lgw_reg_w(LGW_IQ_MISMATCH_B_PHI_COEFF,0);
     
-    /* */
+    /* load adjusted parameters */
+    lgw_constant_adjust();
     
-    
+    /* configure Lora 'multi' (aka. Lora 'sensor' channels */
+    /* IF: 256 = 125 kHz */
+    lgw_reg_w(LGW_IF_FREQ_0,-384);
+    lgw_reg_w(LGW_IF_FREQ_1,-128);
+    lgw_reg_w(LGW_IF_FREQ_2, 128);
+    lgw_reg_w(LGW_IF_FREQ_3, 384);
+    lgw_reg_w(LGW_IF_FREQ_4,-384);
+    lgw_reg_w(LGW_IF_FREQ_5,-128);
+    lgw_reg_w(LGW_IF_FREQ_6, 128);
+    lgw_reg_w(LGW_IF_FREQ_7, 384);
+    lgw_reg_w(LGW_IF_FREQ_8,   0); /* MBWSSF modem */
+    lgw_reg_w(LGW_IF_FREQ_9,   0); /* FSK modem */
+
+    /* IF mapping to radio A/B (per bit, 0=A, 1=B) */
+    lgw_reg_w(LGW_RADIO_SELECT, 0xF0);
+
+    /* Correlator mapping to IF */
+    lgw_reg_w(LGW_CORR0_CHAN,0);
+    lgw_reg_w(LGW_CORR1_CHAN,1);
+    lgw_reg_w(LGW_CORR2_CHAN,2);
+    lgw_reg_w(LGW_CORR3_CHAN,3);
+    // lgw_reg_w(LGW_CORR4_CHAN,4); /* Do not exist in nanoC */
+    // lgw_reg_w(LGW_CORR5_CHAN,5); /* Do not exist in nanoC */
+    // lgw_reg_w(LGW_CORR6_CHAN,6); /* Do not exist in nanoC */
+    // lgw_reg_w(LGW_CORR7_CHAN,7); /* Do not exist in nanoC */
+
+    /* Sensor modem */
+    // lgw_reg_w(LGW_PPM_OFFSET,0); /* default 0 */
+
+    /* Back-haul MBWSSF modem */
+    lgw_reg_w(LGW_MBWSSF_MODEM_BW,0); /* 0=125, 1=250, 2=500 kHz */
+    lgw_reg_w(LGW_MBWSSF_RATE_SF,7);
+    // lgw_reg_w(LGW_MBWSSF_PPM_OFFSET,0); /* default 0 */
+
+    /* Load firmware */
+    load_firmware(PIC_ARBITER, arb_firmware, PIC_ARB_FW_BYTE);
+    //load_firmware(PIC_AGC, agc_firmware, PIC_AGC_FW_BYTE);
+    // lgw_reg_w(LGW_PIC16F84_RST,3); /* still in reset at the end of load_arb_firmware (default 3) */
     
     
     return LGW_HAL_SUCCESS;

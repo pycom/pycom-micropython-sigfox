@@ -79,7 +79,7 @@ int main(int argc, char **argv)
         // }
     // }
     
-    lgw_stop();
+    //lgw_stop();
     
     printf("End of test for loragw_hal.c\n");
     return 0;
