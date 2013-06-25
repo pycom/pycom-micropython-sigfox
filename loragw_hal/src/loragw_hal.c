@@ -76,8 +76,9 @@ Parameters validity and coherency is verified by the _setconf functions and
 the _start function assumes 
 */
 
-static bool rf_enable[LGW_RF_CHAIN_NB] = {0, 0};
-static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {0, 0};
+static bool rf_enable[LGW_RF_CHAIN_NB] = {1, 1};
+//static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {0, 0};
+static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {866000000, 867000000};
 
 static uint8_t if_rf_switch = 0x00; /* each IF from 0 to 7 has 1 bit associated to it, 0 -> radio A, 1 -> radio B */
 /* IF 8 and 9 are on radio A */
@@ -131,20 +132,20 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
     CHECK_NULL(firmware);
     if (target == MCU_ARB) {
         if (size != MCU_ARB_FW_BYTE) {
-            DEBUG_MSG("ERROR: NOT A VALID SIZE FOR MCU ARG FIRMWARE");
+            DEBUG_MSG("ERROR: NOT A VALID SIZE FOR MCU ARG FIRMWARE\n");
             return -1;
         }
         reg_rst = LGW_MCU_RST_0;
         reg_sel = LGW_MCU_SELECT_MUX_0;
     }else if (target == MCU_AGC) {
         if (size != MCU_AGC_FW_BYTE) {
-            DEBUG_MSG("ERROR: NOT A VALID SIZE FOR MCU AGC FIRMWARE");
+            DEBUG_MSG("ERROR: NOT A VALID SIZE FOR MCU AGC FIRMWARE\n");
             return -1;
         }
         reg_rst = LGW_MCU_RST_1;
         reg_sel = LGW_MCU_SELECT_MUX_1;
     } else {
-        DEBUG_MSG("ERROR: NOT A VALID TARGET FOR LOADING FIRMWARE");
+        DEBUG_MSG("ERROR: NOT A VALID TARGET FOR LOADING FIRMWARE\n");
         return -1;
     }
     
@@ -152,14 +153,14 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
     lgw_reg_w(reg_rst, 1);
     
     /* set mux to access MCU program RAM and set address to 0 */
-    lgw_reg_w(reg_sel, 1);
+    lgw_reg_w(reg_sel, 0);
     lgw_reg_w(LGW_MCU_PROM_ADDR, 0);
     
     /* write the program in one burst */
     lgw_reg_wb(LGW_MCU_PROM_DATA, firmware, size);
     
     /* give back control of the MCU program ram to the MCU */
-    lgw_reg_w(reg_sel, 0);
+    lgw_reg_w(reg_sel, 1);
     
     return 0;
 }
@@ -356,7 +357,7 @@ void lgw_constant_adjust(void) {
     // lgw_reg_w(LGW_MAX_PAYLOAD_LEN,255); /* default 255 */
     
     /* MBWSSF Modem */
-    lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE,1); /* default 0 */
+    // lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE,1); /* default 0 */
     // lgw_reg_w(LGW_MBWSSF_PREAMBLE_SYMB1_NB,10); /* default 10 */
     // lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_DRIFT,36); /* default 36 */
     // lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_INVERT,29); /* default 29 */
@@ -397,24 +398,27 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 int lgw_start(void) {
     int reg_stat;
     int32_t read_value;
+    int i, j;
     
     reg_stat = lgw_connect();
     if (reg_stat == LGW_REG_ERROR) {
-        DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD");
+        DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;
     }
     
     /* reset the registers (also shuts the radios down) */
     lgw_soft_reset();
     
+    /* Ungate clock (gated by default), needed for SPI master to SX1257 */
+    lgw_reg_w(LGW_CLK32M_EN, 1);
+    lgw_reg_w(LGW_CLKHS_EN, 1);
+    
     /* switch on and reset the radios (also starts the 32 MHz XTAL) */
     lgw_reg_w(LGW_RADIO_A_EN,1); /* radio A *must* be started to get 32 MHz clk */
-    if (rf_enable[1] == 1) {
-        lgw_reg_w(LGW_RADIO_B_EN,1);
-    }
-    wait_ms(10);
+    lgw_reg_w(LGW_RADIO_B_EN,1); /* radio B *must* be started because ?????? */
+    wait_ms(500);
     lgw_reg_w(LGW_RADIO_RST,1);
-    wait_ms(10);
+    wait_ms(5);
     lgw_reg_w(LGW_RADIO_RST,0);
     
     /* setup the radios */
@@ -426,9 +430,9 @@ int lgw_start(void) {
     }
     
     /* gives the AGC MCU control over radio, RF front-end and filter gain */
-    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0);
-    lgw_reg_w(LGW_FORCE_HOST_FE_CTRL,0);
-    lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN,0);
+    // lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0);
+    // lgw_reg_w(LGW_FORCE_HOST_FE_CTRL,0);
+    // lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN,0);
     
     // /* TODO load the calibration firmware and wait for calibration to end */
     // load_firmware(MCU_AGC, cal_firmware, ARRAY_SIZE(cal_firmware));
@@ -440,20 +444,20 @@ int lgw_start(void) {
     // lgw_reg_w(LGW_MCU_RST, 3); /* reset all MCU */
     
     /* in the absence of calibration firmware, do a "manual" calibration */
-    lgw_reg_w(LGW_TX_OFFSET_I,10);
-    lgw_reg_w(LGW_TX_OFFSET_Q,5);
-    lgw_reg_w(LGW_IQ_MISMATCH_A_AMP_COEFF,63);
-    lgw_reg_w(LGW_IQ_MISMATCH_A_PHI_COEFF,9);
-    lgw_reg_w(LGW_IQ_MISMATCH_B_AMP_COEFF,0);
-    lgw_reg_w(LGW_IQ_MISMATCH_B_PHI_COEFF,0);
+    // lgw_reg_w(LGW_TX_OFFSET_I,10);
+    // lgw_reg_w(LGW_TX_OFFSET_Q,5);
+    // lgw_reg_w(LGW_IQ_MISMATCH_A_AMP_COEFF,63);
+    // lgw_reg_w(LGW_IQ_MISMATCH_A_PHI_COEFF,9);
+    // lgw_reg_w(LGW_IQ_MISMATCH_B_AMP_COEFF,0);
+    // lgw_reg_w(LGW_IQ_MISMATCH_B_PHI_COEFF,0);
     
     /* load adjusted parameters */
-    lgw_constant_adjust();
+    // lgw_constant_adjust();
     // lgw_reg_w(LGW_PPM_OFFSET,0); /* default 0 */
     
     /* configure Lora 'multi' (aka. Lora 'sensor' channels */
     /* IF: 256 = 125 kHz */
-    // lgw_reg_w(LGW_IF_FREQ_0,-384); /* default -384 */
+    // lgw_reg_w(LGW_IF_FREQ_0, -384); /* default -384 */
     // lgw_reg_w(LGW_IF_FREQ_1,-128); /* default -128 */
     // lgw_reg_w(LGW_IF_FREQ_2, 128); /* default 128 */
     // lgw_reg_w(LGW_IF_FREQ_3, 384); /* default 384 */
@@ -465,10 +469,10 @@ int lgw_start(void) {
     // lgw_reg_w(LGW_IF_FREQ_9,   0); /* FSK modem  (default 0) */
     
     /* IF mapping to radio A/B (per bit, 0=A, 1=B) */
-    //lgw_reg_w(LGW_RADIO_SELECT, 0xF0);
+    // lgw_reg_w(LGW_RADIO_SELECT, 0xF0);
 
     /* Correlator mapping to IF */
-    lgw_reg_w(LGW_CORR0_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
+    // lgw_reg_w(LGW_CORR0_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
     // lgw_reg_w(LGW_CORR1_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
     // lgw_reg_w(LGW_CORR2_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
     // lgw_reg_w(LGW_CORR3_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
@@ -483,12 +487,23 @@ int lgw_start(void) {
     // lgw_reg_w(LGW_MBWSSF_PPM_OFFSET,0); /* default 0 */
     
     /* Load firmware */
-    load_firmware(MCU_ARB, arb_firmware, MCU_ARB_FW_BYTE);
+    // load_firmware(MCU_ARB, arb_firmware, MCU_ARB_FW_BYTE);
     load_firmware(MCU_AGC, agc_firmware, MCU_AGC_FW_BYTE);
     
-    /* Ungate clock (gated by default), needed for SPI master to SX1257 */
-    lgw_reg_w(LGW_CLK32M_EN, 1);
-    lgw_reg_w(LGW_CLKHS_EN, 1);
+    /* readback */
+    uint8_t plop[MCU_AGC_FW_BYTE];
+    
+    lgw_reg_w(LGW_MCU_SELECT_MUX_1,0);
+    lgw_reg_w(LGW_MCU_PROM_ADDR,0);
+    lgw_reg_r(LGW_MCU_PROM_DATA, &read_value); /* dummy read */
+    lgw_reg_rb(LGW_MCU_PROM_DATA, plop, MCU_AGC_FW_BYTE);
+    lgw_reg_w(LGW_MCU_SELECT_MUX_1,1);
+    
+    j = 0;
+    for (i = 0; i < MCU_AGC_FW_BYTE; ++i) {
+        j+= (plop[i] == agc_firmware[i]) ? 0 : 1;
+    }
+    DEBUG_PRINTF("Firmware readback, %d mismatch\n", j);
     
     /* Get MCUs out of reset */
     lgw_reg_w(LGW_MCU_RST_0, 0);
@@ -513,7 +528,7 @@ int lgw_stop(void) {
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int nb_pkt_fetch; /* loop variable and return value */
     struct lgw_pkt_rx_s *current_pkt; /* pointer to the current structure in the struct array */
-    uint8_t tmp_buff[300]; /* buffer to store the result of SPI read bursts */
+    uint8_t buff[300]; /* buffer to store the result of SPI read bursts */
     uint16_t data_addr; /* address read from the FIFO and programmed before the data buffer read operation */
     int s; /* size of the payload, uses to address metadata */
     int j;
@@ -521,64 +536,70 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     /* check input variables */
     if (max_pkt == 0) {
     } else if (max_pkt <= 0) {
-        DEBUG_MSG("ERROR: INVALID MAX NUMBER OF PACKETS TO FETCH");
+        DEBUG_MSG("ERROR: INVALID MAX NUMBER OF PACKETS TO FETCH\n");
         return LGW_HAL_ERROR;
     }
     CHECK_NULL(pkt_data);
     
     /* iterate max_pkt times at most */
-    for (nb_pkt_fetch = 0; nb_pkt_fetch <= max_pkt; ++nb_pkt_fetch) {
+    for (nb_pkt_fetch = 0; nb_pkt_fetch < max_pkt; ++nb_pkt_fetch) {
         
         /* point to the proper struct in the struct array */
         current_pkt = &pkt_data[nb_pkt_fetch];
         
         /* fetch all the RX FIFO data */
-        lgw_reg_rb(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, tmp_buff, 5);
+        lgw_reg_rb(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, buff, 5);
         
         /* how many packets are in the RX buffer ? Break if zero */
-        if (tmp_buff[0] = 0) {
+        if (buff[0] == 0) {
+            DEBUG_MSG("NOTE: PACKET BUFFER EMPTY\n");
             break; /* no more packets to fetch, exit out of FOR loop */
         }
         
-        current_pkt->status = tmp_buff[3];
-        current_pkt->size = tmp_buff[4];
+        DEBUG_PRINTF("FIFO content: %x %x %x %x %x\n",buff[0],buff[1],buff[2],buff[3],buff[4]);
+        
+        current_pkt->status = buff[3];
+        current_pkt->size = buff[4];
         s = current_pkt->size;
         
         /* required or automated? */
-        data_addr = (uint16_t)tmp_buff[1] + ((uint16_t)tmp_buff[2] << 8);
+        data_addr = (uint16_t)buff[1] + ((uint16_t)buff[2] << 8);
         lgw_reg_w(LGW_RX_DATA_BUF_ADDR, data_addr);
         
         /* dynamically allocate memory to store payload */
         current_pkt->payload = (uint8_t *)malloc(s);
         if (current_pkt->payload == NULL) {
             /* not enough memory to allocate for payload, abort with error */
-            DEBUG_MSG("ERROR: IMPOSSIBLE TO ALLOCATE MEMORY TO FETCH PAYLOAD");
+            DEBUG_MSG("ERROR: IMPOSSIBLE TO ALLOCATE MEMORY TO FETCH PAYLOAD\n");
             return LGW_HAL_ERROR;
         }
         
         /* get payload + metedata */
-        lgw_reg_rb(LGW_RX_DATA_BUF_DATA, tmp_buff, s+16); /* 16 is for metadata */
+        lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, s+16); /* 16 is for metadata */
         
         /* copy payload */
         for (j = 0; j < s; ++j) {
-            current_pkt->payload[j] = tmp_buff[j];
+            current_pkt->payload[j] = buff[j];
         }
         
         /* process metadata */
         // TODO: actually process them!
-        current_pkt->if_chain = tmp_buff[s+0];
+        current_pkt->if_chain = buff[s+0];
         current_pkt->modulation = 0; // TODO
-        current_pkt->datarate = (tmp_buff[s+1] >> 4) & 0x0F;
-        current_pkt->coderate = (tmp_buff[s+1] >> 1) & 0x07;
+        current_pkt->datarate = (buff[s+1] >> 4) & 0x0F;
+        current_pkt->coderate = (buff[s+1] >> 1) & 0x07;
         
-        current_pkt->snr = tmp_buff[s+2]; //TODO: need to rescale
-        current_pkt->snr_min = tmp_buff[s+3]; //TODO: need to rescale
-        current_pkt->snr_max = tmp_buff[s+4]; //TODO: need to rescale
-        current_pkt->rssi = tmp_buff[s+5]; //TODO: need to rescale
+        current_pkt->snr = buff[s+2]; //TODO: need to rescale
+        current_pkt->snr_min = buff[s+3]; //TODO: need to rescale
+        current_pkt->snr_max = buff[s+4]; //TODO: need to rescale
+        current_pkt->rssi = buff[s+5]; //TODO: need to rescale
         
-        current_pkt->count_us = (uint32_t)tmp_buff[s+6] + ((uint32_t)tmp_buff[s+7] << 8) + ((uint32_t)tmp_buff[s+8] << 16) + ((uint32_t)tmp_buff[s+9] << 24);
+        current_pkt->count_us = (uint32_t)buff[s+6] + ((uint32_t)buff[s+7] << 8) + ((uint32_t)buff[s+8] << 16) + ((uint32_t)buff[s+9] << 24);
         
-        current_pkt->crc = (uint16_t)tmp_buff[s+10] + ((uint16_t)tmp_buff[s+11] << 8);
+        current_pkt->crc = (uint16_t)buff[s+10] + ((uint16_t)buff[s+11] << 8);
+        
+        /* advance packet FIFO */
+        lgw_reg_w(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, 0);
     }
     
     return nb_pkt_fetch;

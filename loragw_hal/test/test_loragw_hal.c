@@ -67,25 +67,26 @@ int main(int argc, char **argv)
     
     lgw_start();
     
-    loop_var = 1;
-    while(loop_var == 1) {
-        /* fetch one packet */
-        nb_pkt = lgw_receive(1, &rxpkt);
-        printf("Nb packets: %d\n", nb_pkt);
+    // loop_var = 1;
+    // while(loop_var == 1) {
+        // /* fetch one packet */
+        // nb_pkt = lgw_receive(1, &rxpkt);
+        // printf("Nb packets: %d\n", nb_pkt);
         
-        if (nb_pkt == 1) {
-            printf("packet received !\n");
-        } else {
-            wait_ms(2000);
-        }
+        // if (nb_pkt == 1) {
+            // printf("packet received !\n");
+            // loop_var = 0;
+        // } else {
+            // wait_ms(2000);
+        // }
         
         // /* free the memory used for RX payload(s) */
         // for(i=0; i < nb_pkt; ++i) {
             // free(rxpkt[i].payload);
         // }
-    }
+    // }
     
-    lgw_stop();
+    // lgw_stop();
     
     printf("End of test for loragw_hal.c\n");
     return 0;
