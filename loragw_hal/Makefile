@@ -19,7 +19,7 @@ obj/loragw_spi.o: src/loragw_spi.c inc/loragw_spi.h
 obj/loragw_reg.o: src/loragw_reg.c inc/loragw_reg.h inc/loragw_spi.h
 	gcc -c -std=c99 -Iinc src/loragw_reg.c -o obj/loragw_reg.o
 
-obj/loragw_hal.o: src/loragw_hal.c inc/loragw_hal.h inc/loragw_reg.h inc/loragw_spi.h
+obj/loragw_hal.o: src/loragw_hal.c src/arb_fw.var src/agc_fw.var inc/loragw_hal.h inc/loragw_reg.h inc/loragw_spi.h
 	gcc -c -std=c99 -DDEBUG -Iinc src/loragw_hal.c -o obj/loragw_hal.o
 
 obj/test_loragw_spi.o: test/test_loragw_spi.c inc/loragw_spi.h
