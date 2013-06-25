@@ -414,6 +414,8 @@ int lgw_connect(void) {
     return LGW_REG_SUCCESS;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 /* Gateway disconnect */
 int lgw_disconnect(void) {
     if (lgw_spidesc >= 0) {
@@ -428,6 +430,8 @@ int lgw_disconnect(void) {
     }
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 /* soft-reset function */
 int lgw_soft_reset(void) {
     int32_t read_value;
@@ -440,6 +444,8 @@ int lgw_soft_reset(void) {
     lgw_regpage = 0; /* reset the paging static variable */
     return LGW_REG_SUCCESS;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* register verification */
 int lgw_reg_check(FILE *f) {
@@ -471,6 +477,8 @@ int lgw_reg_check(FILE *f) {
     
     return LGW_REG_SUCCESS;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Write to a register addressed by name */
 int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
@@ -550,6 +558,8 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
     }
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 /* Read to a register addressed by name */
 int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
     int spi_stat = LGW_SPI_SUCCESS;
@@ -618,6 +628,8 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
     }
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 /* Point to a register by name and do a burst write */
 int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
     int spi_stat;
@@ -664,6 +676,8 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
         return LGW_REG_SUCCESS;
     }
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Point to a register by name and do a burst read */
 int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {

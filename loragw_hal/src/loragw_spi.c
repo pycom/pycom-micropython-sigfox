@@ -111,6 +111,8 @@ int lgw_spi_open(int *spi_device) {
     return LGW_SPI_SUCCESS;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 /* SPI release */
 int lgw_spi_close(int spi_device) {
     int i;
@@ -124,6 +126,8 @@ int lgw_spi_close(int spi_device) {
         return LGW_SPI_SUCCESS;
     }
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Simple write */
 int lgw_spi_w(int spi_device, uint8_t address, uint8_t data) {
@@ -151,6 +155,8 @@ int lgw_spi_w(int spi_device, uint8_t address, uint8_t data) {
         return LGW_SPI_SUCCESS;
     }
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Simple read */
 int lgw_spi_r(int spi_device, uint8_t address, uint8_t *data) {
@@ -181,6 +187,8 @@ int lgw_spi_r(int spi_device, uint8_t address, uint8_t *data) {
         return LGW_SPI_SUCCESS;
     }
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) write */
 int lgw_spi_wb(int spi_device, uint8_t address, uint8_t *data, uint16_t size) {
@@ -217,6 +225,8 @@ int lgw_spi_wb(int spi_device, uint8_t address, uint8_t *data, uint16_t size) {
         return LGW_SPI_SUCCESS;
     }
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) read */
 int lgw_spi_rb(int spi_device, uint8_t address, uint8_t *data, uint16_t size) {

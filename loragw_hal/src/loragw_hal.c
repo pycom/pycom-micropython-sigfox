@@ -127,6 +127,8 @@ int count_ones_16(uint16_t a) {
     return count;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 /* size id the firmware size in bytes (not 14b words) */
 int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
     int i;
@@ -171,6 +173,8 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
     return 0;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 /* This implementation is POSIX-pecific and require a fix to be compatible with C99 */
 void wait_ms(long a) {
     struct timespec dly;
@@ -187,6 +191,8 @@ void wait_ms(long a) {
     }
     return;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
     int reg_add, reg_dat, reg_cs;
@@ -228,6 +234,8 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
     
     return;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
     int reg_add, reg_dat, reg_cs, reg_rb;
@@ -274,6 +282,8 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
     return (uint8_t)read_value;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 void setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
     uint32_t part_int;
     uint32_t part_frac;
@@ -314,6 +324,8 @@ void setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
     
     return;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 void lgw_constant_adjust(void) {
     
@@ -402,9 +414,13 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     return LGW_HAL_SUCCESS;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     return LGW_HAL_SUCCESS;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_start(void) {
     int reg_stat;
@@ -512,11 +528,15 @@ int lgw_start(void) {
     return LGW_HAL_SUCCESS;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int lgw_stop(void) {
     lgw_soft_reset();
     lgw_disconnect();
     return LGW_HAL_SUCCESS;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int nb_pkt_fetch; /* loop variable and return value */
@@ -527,7 +547,12 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int j;
     
     /* check input variables */
-    // TODO
+    if (max_pkt == 0) {
+    } else if (max_pkt <= 0) {
+        DEBUG_MSG("ERROR: INVALID MAX NUMBER OF PACKETS TO FETCH");
+        return LGW_HAL_ERROR;
+    }
+    CHECK_NULL(pkt_data);
     
     /* iterate max_pkt times at most */
     for (nb_pkt_fetch = 0; nb_pkt_fetch <= max_pkt; ++nb_pkt_fetch) {
@@ -586,6 +611,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     
     return nb_pkt_fetch;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     return LGW_HAL_SUCCESS;
