@@ -49,9 +49,9 @@ int main(int argc, char **argv)
     
     /* 8b unsigned */
     test_value = 197; /* 11000101b */
-    lgw_reg_w(LGW_CORR4_CHAN, test_value);
-    lgw_reg_r(LGW_CORR4_CHAN, &read_value);
-    printf("CORR4_CHAN = %d (should be %d)\n", read_value, test_value);
+    lgw_reg_w(LGW_IMPLICIT_PAYLOAD_LENGHT, test_value);
+    lgw_reg_r(LGW_IMPLICIT_PAYLOAD_LENGHT, &read_value);
+    printf("IMPLICIT_PAYLOAD_LENGHT = %d (should be %d)\n", read_value, test_value);
     
     /* 8b signed */
     /* NO SUCH REG AVAILABLE */
