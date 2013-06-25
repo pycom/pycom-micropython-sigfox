@@ -14,21 +14,14 @@ Description:
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-/* fix an issue between POSIX and C99 to access the timespec struct */
-#if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
-#else
-    #define _XOPEN_SOURCE 500
-#endif
-
 #include <stdint.h>     /* C99 types */
 #include <stdlib.h>     /* malloc & free */
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
-#include <time.h>       /* clock_nanosleep */
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
+#include "loragw_aux.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -104,8 +97,6 @@ int count_ones_16(uint16_t a);
 
 int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size);
 
-void wait_ms(long t);
-
 void sx125x_write(uint8_t rf_chain, uint8_t addr, uint8_t data);
 
 uint8_t sx125x_read(uint8_t rf_chain, uint8_t addr);
@@ -171,25 +162,6 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
     lgw_reg_w(reg_sel, 0);
     
     return 0;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-/* This implementation is POSIX-pecific and require a fix to be compatible with C99 */
-void wait_ms(long a) {
-    struct timespec dly;
-    struct timespec rem;
-    
-    dly.tv_sec = a / 1000;
-    dly.tv_nsec = ((long)a % 1000) * 1000000;
-    
-    DEBUG_PRINTF("NOTE dly: %ld sec %ld ns\n", dly.tv_sec, dly.tv_nsec);
-    
-    if((dly.tv_sec > 0) || ((dly.tv_sec == 0) && (dly.tv_nsec > 100000))) {
-        clock_nanosleep(CLOCK_MONOTONIC, 0, &dly, &rem);
-        DEBUG_PRINTF("NOTE remain: %ld sec %ld ns\n", rem.tv_sec, rem.tv_nsec);
-    }
-    return;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

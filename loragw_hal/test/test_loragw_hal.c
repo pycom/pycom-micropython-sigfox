@@ -21,6 +21,7 @@ Description:
 #include <string.h>     /* memset */
 
 #include "loragw_hal.h"
+#include "loragw_aux.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -40,7 +41,8 @@ int main(int argc, char **argv)
     
     static struct lgw_conf_rxrf_s rfconf;
     static struct lgw_conf_rxif_s ifconf;
-    static struct lgw_pkt_rx_s rxpkt[4]; /* array containing up to 4 inbound packets metadata */
+//    static struct lgw_pkt_rx_s rxpkt[4]; /* array containing up to 4 inbound packets metadata */
+    static struct lgw_pkt_rx_s rxpkt; /* array containing up to 4 inbound packets metadata */
     static struct lgw_pkt_tx_s txpkt; /* configuration and metadata for an outbound packet */
     static uint8_t txbuf[256]; /* buffer for the TX payload */
     
@@ -65,21 +67,25 @@ int main(int argc, char **argv)
     
     lgw_start();
     
-    // loop_var = 0;
-    // while(loop_var == 1) {
-        // /* fetch all available packets */
-        // nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
+    loop_var = 1;
+    while(loop_var == 1) {
+        /* fetch one packet */
+        nb_pkt = lgw_receive(1, &rxpkt);
+        printf("Nb packets: %d\n", nb_pkt);
         
-        // /* filter/process the received packets */
-        // /* forward/store the received packets */
+        if (nb_pkt == 1) {
+            printf("packet received !\n");
+        } else {
+            wait_ms(2000);
+        }
         
         // /* free the memory used for RX payload(s) */
         // for(i=0; i < nb_pkt; ++i) {
             // free(rxpkt[i].payload);
         // }
-    // }
+    }
     
-    //lgw_stop();
+    lgw_stop();
     
     printf("End of test for loragw_hal.c\n");
     return 0;
