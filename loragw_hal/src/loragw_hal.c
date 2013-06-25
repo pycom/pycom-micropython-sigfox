@@ -78,7 +78,7 @@ the _start function assumes
 
 static bool rf_enable[LGW_RF_CHAIN_NB] = {1, 1};
 //static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {0, 0};
-static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {866000000, 867000000};
+static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {866187500, 867187500};
 
 static uint8_t if_rf_switch = 0x00; /* each IF from 0 to 7 has 1 bit associated to it, 0 -> radio A, 1 -> radio B */
 /* IF 8 and 9 are on radio A */
@@ -336,7 +336,6 @@ void lgw_constant_adjust(void) {
     // lgw_reg_w(LGW_CORR_SIG_NOISE_RATIO_SF12,4); /* default 4 */
     
     /* Lora 'multi' modems setup */
-    lgw_reg_w(LGW_CONCENTRATOR_MODEM_ENABLE,1); /* default 0 */
     lgw_reg_w(LGW_PREAMBLE_SYMB1_NB,4); /* default 10 */
     // lgw_reg_w(LGW_FREQ_TO_TIME_DRIFT,9); /* default 9 */
     // lgw_reg_w(LGW_FREQ_TO_TIME_INVERT,29); /* default 29 */
@@ -430,9 +429,9 @@ int lgw_start(void) {
     }
     
     /* gives the AGC MCU control over radio, RF front-end and filter gain */
-    // lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0);
-    // lgw_reg_w(LGW_FORCE_HOST_FE_CTRL,0);
-    // lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN,0);
+    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0);
+    lgw_reg_w(LGW_FORCE_HOST_FE_CTRL,0);
+    lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN,0);
     
     // /* TODO load the calibration firmware and wait for calibration to end */
     // load_firmware(MCU_AGC, cal_firmware, ARRAY_SIZE(cal_firmware));
@@ -444,42 +443,42 @@ int lgw_start(void) {
     // lgw_reg_w(LGW_MCU_RST, 3); /* reset all MCU */
     
     /* in the absence of calibration firmware, do a "manual" calibration */
-    // lgw_reg_w(LGW_TX_OFFSET_I,10);
-    // lgw_reg_w(LGW_TX_OFFSET_Q,5);
-    // lgw_reg_w(LGW_IQ_MISMATCH_A_AMP_COEFF,63);
-    // lgw_reg_w(LGW_IQ_MISMATCH_A_PHI_COEFF,9);
-    // lgw_reg_w(LGW_IQ_MISMATCH_B_AMP_COEFF,0);
-    // lgw_reg_w(LGW_IQ_MISMATCH_B_PHI_COEFF,0);
+    lgw_reg_w(LGW_TX_OFFSET_I,10);
+    lgw_reg_w(LGW_TX_OFFSET_Q,5);
+    lgw_reg_w(LGW_IQ_MISMATCH_A_AMP_COEFF,63);
+    lgw_reg_w(LGW_IQ_MISMATCH_A_PHI_COEFF,9);
+    lgw_reg_w(LGW_IQ_MISMATCH_B_AMP_COEFF,0);
+    lgw_reg_w(LGW_IQ_MISMATCH_B_PHI_COEFF,0);
     
     /* load adjusted parameters */
-    // lgw_constant_adjust();
+    lgw_constant_adjust();
     // lgw_reg_w(LGW_PPM_OFFSET,0); /* default 0 */
     
     /* configure Lora 'multi' (aka. Lora 'sensor' channels */
     /* IF: 256 = 125 kHz */
-    // lgw_reg_w(LGW_IF_FREQ_0, -384); /* default -384 */
-    // lgw_reg_w(LGW_IF_FREQ_1,-128); /* default -128 */
-    // lgw_reg_w(LGW_IF_FREQ_2, 128); /* default 128 */
-    // lgw_reg_w(LGW_IF_FREQ_3, 384); /* default 384 */
-    // lgw_reg_w(LGW_IF_FREQ_4,-384); /* default -384 */
-    // lgw_reg_w(LGW_IF_FREQ_5,-128); /* default -128 */
-    // lgw_reg_w(LGW_IF_FREQ_6, 128); /* default 128 */
-    // lgw_reg_w(LGW_IF_FREQ_7, 384); /* default 384 */
-    // lgw_reg_w(LGW_IF_FREQ_8,   0); /* MBWSSF modem (default 0) */
-    // lgw_reg_w(LGW_IF_FREQ_9,   0); /* FSK modem  (default 0) */
+    lgw_reg_w(LGW_IF_FREQ_0,-384); /* default -384 */
+    lgw_reg_w(LGW_IF_FREQ_1,-128); /* default -128 */
+    lgw_reg_w(LGW_IF_FREQ_2, 128); /* default 128 */
+    lgw_reg_w(LGW_IF_FREQ_3, 384); /* default 384 */
+    lgw_reg_w(LGW_IF_FREQ_4,-384); /* default -384 */
+    lgw_reg_w(LGW_IF_FREQ_5,-128); /* default -128 */
+    lgw_reg_w(LGW_IF_FREQ_6, 128); /* default 128 */
+    lgw_reg_w(LGW_IF_FREQ_7, 384); /* default 384 */
+    lgw_reg_w(LGW_IF_FREQ_8,   0); /* MBWSSF modem (default 0) */
+    lgw_reg_w(LGW_IF_FREQ_9,   0); /* FSK modem  (default 0) */
     
     /* IF mapping to radio A/B (per bit, 0=A, 1=B) */
-    // lgw_reg_w(LGW_RADIO_SELECT, 0xF0);
+    lgw_reg_w(LGW_RADIO_SELECT, 0xF0);
 
     /* Correlator mapping to IF */
-    // lgw_reg_w(LGW_CORR0_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
-    // lgw_reg_w(LGW_CORR1_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
-    // lgw_reg_w(LGW_CORR2_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
-    // lgw_reg_w(LGW_CORR3_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
-    // lgw_reg_w(LGW_CORR4_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
-    // lgw_reg_w(LGW_CORR5_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
-    // lgw_reg_w(LGW_CORR6_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
-    // lgw_reg_w(LGW_CORR7_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
+    lgw_reg_w(LGW_CORR0_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
+    lgw_reg_w(LGW_CORR1_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
+    lgw_reg_w(LGW_CORR2_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
+    lgw_reg_w(LGW_CORR3_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
+    lgw_reg_w(LGW_CORR4_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
+    lgw_reg_w(LGW_CORR5_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
+    lgw_reg_w(LGW_CORR6_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
+    lgw_reg_w(LGW_CORR7_DETECT_EN, 0x7E); /* all SF except 6, default 0 */
     
     /* Back-haul MBWSSF modem */
     // lgw_reg_w(LGW_MBWSSF_MODEM_BW,0); /* 0=125, 1=250, 2=500 kHz */
@@ -487,27 +486,16 @@ int lgw_start(void) {
     // lgw_reg_w(LGW_MBWSSF_PPM_OFFSET,0); /* default 0 */
     
     /* Load firmware */
-    // load_firmware(MCU_ARB, arb_firmware, MCU_ARB_FW_BYTE);
+    load_firmware(MCU_ARB, arb_firmware, MCU_ARB_FW_BYTE);
     load_firmware(MCU_AGC, agc_firmware, MCU_AGC_FW_BYTE);
-    
-    /* readback */
-    uint8_t plop[MCU_AGC_FW_BYTE];
-    
-    lgw_reg_w(LGW_MCU_SELECT_MUX_1,0);
-    lgw_reg_w(LGW_MCU_PROM_ADDR,0);
-    lgw_reg_r(LGW_MCU_PROM_DATA, &read_value); /* dummy read */
-    lgw_reg_rb(LGW_MCU_PROM_DATA, plop, MCU_AGC_FW_BYTE);
-    lgw_reg_w(LGW_MCU_SELECT_MUX_1,1);
-    
-    j = 0;
-    for (i = 0; i < MCU_AGC_FW_BYTE; ++i) {
-        j+= (plop[i] == agc_firmware[i]) ? 0 : 1;
-    }
-    DEBUG_PRINTF("Firmware readback, %d mismatch\n", j);
     
     /* Get MCUs out of reset */
     lgw_reg_w(LGW_MCU_RST_0, 0);
     lgw_reg_w(LGW_MCU_RST_1, 0);
+    
+    
+    lgw_reg_w(LGW_CONCENTRATOR_MODEM_ENABLE,1); /* default 0 */
+    lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE,1); /* default 0 */
     
     /* Show that nanoC is configured */
     lgw_reg_w(LGW_LED_REG, 5);
@@ -562,7 +550,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         current_pkt->size = buff[4];
         s = current_pkt->size;
         
-        /* required or automated? */
+        /* STILL required */
         data_addr = (uint16_t)buff[1] + ((uint16_t)buff[2] << 8);
         lgw_reg_w(LGW_RX_DATA_BUF_ADDR, data_addr);
         
