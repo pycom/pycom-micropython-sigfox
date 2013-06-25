@@ -14,14 +14,6 @@ Description:
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-/* fix an issue between POSIX and C99 to access the timespec struct */
-#if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
-#else
-    #define _XOPEN_SOURCE 500
-#endif
-
-#include <stdint.h>     /* C99 types */
 #include <time.h>       /* clock_nanosleep */
 
 /* -------------------------------------------------------------------------- */

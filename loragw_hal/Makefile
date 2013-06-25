@@ -14,7 +14,7 @@ test_loragw_hal: obj/test_loragw_hal.o obj/loragw_hal.o obj/loragw_reg.o obj/lor
 	gcc obj/test_loragw_hal.o obj/loragw_hal.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o -lrt -o test_loragw_hal
 
 obj/loragw_aux.o: src/loragw_aux.c inc/loragw_aux.h
-	gcc -c -std=c99 -Iinc src/loragw_aux.c -o obj/loragw_aux.o
+	gcc -c -Iinc src/loragw_aux.c -o obj/loragw_aux.o
 
 obj/loragw_spi.o: src/loragw_spi.c inc/loragw_spi.h
 	gcc -c -std=c99 -Iinc src/loragw_spi.c -o obj/loragw_spi.o
