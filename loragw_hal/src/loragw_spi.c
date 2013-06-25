@@ -194,7 +194,10 @@ int lgw_spi_r(int spi_device, uint8_t address, uint8_t *data) {
 int lgw_spi_wb(int spi_device, uint8_t address, uint8_t *data, uint16_t size) {
     uint8_t command;
     struct spi_ioc_transfer k[2];
-    int i;
+    int byte_to_trans;
+    int chunk_size;
+    int offset = 0;
+    int byte_transfered = 0;
     
     /* check input parameters */
     CHECK_NULL(data);
@@ -212,12 +215,22 @@ int lgw_spi_wb(int spi_device, uint8_t address, uint8_t *data, uint16_t size) {
     k[0].tx_buf = (unsigned long) &command;
     k[0].len = 1;
     k[0].cs_change = 0;
-    k[1].tx_buf = (unsigned long) data;
-    k[1].len = size;
     k[1].cs_change = 1;
-    i = ioctl(spi_device, SPI_IOC_MESSAGE(2), &k);
     
-    if (i != size+1) {
+    byte_to_trans = size;
+    while (byte_to_trans > 0) {
+        chunk_size = (byte_to_trans < LGW_BURST_CHUNK) ? byte_to_trans : LGW_BURST_CHUNK;
+        k[1].tx_buf = (unsigned long)(data + offset);
+        k[1].len = chunk_size;
+        
+        byte_transfered += (ioctl(spi_device, SPI_IOC_MESSAGE(2), &k) - 1 );
+        DEBUG_PRINTF("BURST WRITE: to trans %d # chunk %d # transferred %d \n", byte_to_trans, chunk_size, byte_transfered);
+        
+        byte_to_trans -= chunk_size;
+        offset += chunk_size;
+    } 
+    
+    if (byte_transfered != size) {
         DEBUG_MSG("SPI burst write failure\n");
         return LGW_SPI_ERROR;
     } else {
@@ -232,7 +245,10 @@ int lgw_spi_wb(int spi_device, uint8_t address, uint8_t *data, uint16_t size) {
 int lgw_spi_rb(int spi_device, uint8_t address, uint8_t *data, uint16_t size) {
     uint8_t command;
     struct spi_ioc_transfer k[2];
-    int i;
+    int byte_to_trans;
+    int chunk_size;
+    int offset = 0;
+    int byte_transfered = 0;
     
     /* check input parameters */
     CHECK_NULL(data);
@@ -250,12 +266,22 @@ int lgw_spi_rb(int spi_device, uint8_t address, uint8_t *data, uint16_t size) {
     k[0].tx_buf = (unsigned long) &command;
     k[0].len = 1;
     k[0].cs_change = 0;
-    k[1].rx_buf = (unsigned long) data;
-    k[1].len = size;
     k[1].cs_change = 1;
-    i = ioctl(spi_device, SPI_IOC_MESSAGE(2), &k);
     
-    if (i != size+1) {
+    byte_to_trans = size;
+    while (byte_to_trans > 0) {
+        chunk_size = (byte_to_trans < LGW_BURST_CHUNK) ? byte_to_trans : LGW_BURST_CHUNK;
+        k[1].rx_buf = (unsigned long)(data + offset);
+        k[1].len = chunk_size;
+        
+        byte_transfered += (ioctl(spi_device, SPI_IOC_MESSAGE(2), &k) - 1 );
+        DEBUG_PRINTF("BURST READ: to trans %d # chunk %d # transferred %d \n", byte_to_trans, chunk_size, byte_transfered);
+        
+        byte_to_trans -= chunk_size;
+        offset += chunk_size;
+    } 
+    
+    if (byte_transfered != size) {
         DEBUG_MSG("SPI burst read failure\n");
         return LGW_SPI_ERROR;
     } else {

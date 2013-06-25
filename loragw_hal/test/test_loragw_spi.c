@@ -26,14 +26,25 @@ Description:
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 /* -------------------------------------------------------------------------- */
+/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
+
+#define BURST_TEST_SIZE 2500 /* >> LGW_BURST_CHUNK */
+
+/* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
 int main(int argc, char **argv)
 {
+    int i;
     int spi_device;
     uint8_t data;
-    uint8_t dataout[33] = "01234567012345670123456701234567";
-    uint8_t datain[33] = "+-*$&!?;+-*$&!?;+-*$&!?;+-*$&!?;"; /* garbage data, should be overwritten */
+    uint8_t dataout[BURST_TEST_SIZE];
+    uint8_t datain[BURST_TEST_SIZE];
+    
+    for (i = 0; i < BURST_TEST_SIZE; ++i) {
+        dataout[i] = 0x30 + (i % 10); /* ASCCI code for 0 -> 9 */
+        datain[i] = 0x23; /* garbage data, to be overwritten by received data */
+    }
     
     printf("Beginning of test for loragw_spi.c\n");
     lgw_spi_open(&spi_device);
@@ -43,12 +54,11 @@ int main(int argc, char **argv)
     lgw_spi_r(spi_device, 0x55, &data);
     
     /* burst R/W test */
-    lgw_spi_wb(spi_device, 0x55, dataout, ARRAY_SIZE(dataout)-1);
-    lgw_spi_rb(spi_device, 0x55, datain, ARRAY_SIZE(datain)-1);
+    lgw_spi_wb(spi_device, 0x55, dataout, ARRAY_SIZE(dataout));
+    lgw_spi_rb(spi_device, 0x55, datain, ARRAY_SIZE(datain));
     
     /* display results */
     printf("data received: %d\n",data);
-    printf("burst received: %s\n", datain);
     
     lgw_spi_close(spi_device);
     printf("End of test for loragw_spi.c\n");

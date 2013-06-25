@@ -28,6 +28,7 @@ Description:
 
 #define LGW_SPI_SUCCESS  0
 #define LGW_SPI_ERROR   -1
+#define LGW_BURST_CHUNK  1024
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
