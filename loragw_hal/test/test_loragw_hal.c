@@ -14,11 +14,19 @@ Description:
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
+/* fix an issue between POSIX and C99 */
+#if __STDC_VERSION__ >= 199901L
+    #define _XOPEN_SOURCE 600
+#else
+    #define _XOPEN_SOURCE 500
+#endif
+
 #include <stdint.h>     /* C99 types */
 #include <stdlib.h>     /* malloc & free */
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf */
 #include <string.h>     /* memset */
+#include <signal.h>     /* sigaction */
 
 #include "loragw_hal.h"
 #include "loragw_aux.h"
@@ -29,64 +37,140 @@ Description:
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 /* -------------------------------------------------------------------------- */
+/* --- PRIVATE VARIABLES ---------------------------------------------------- */
+
+static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
+static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
+
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
+
+static void sig_handler(int sigio);
+
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+static void sig_handler(int sigio) {
+    if (sigio == SIGQUIT) {
+        quit_sig = 1;;
+    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
+        exit_sig = 1;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
 int main(int argc, char **argv)
 {
-    int i;
-    int loop_var;
+    struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
+    
+    struct lgw_conf_rxrf_s rfconf;
+    struct lgw_conf_rxif_s ifconf;
+    
+    struct lgw_pkt_rx_s rxpkt[4]; /* array containing up to 4 inbound packets metadata */
+    struct lgw_pkt_tx_s txpkt; /* configuration and metadata for an outbound packet */
+    uint8_t txbuf[256]; /* buffer for the TX payload */
+    struct lgw_pkt_rx_s *p; /* pointer on a RX packet */
+    
+    int i, j;
     int nb_pkt;
+    uint8_t x;
     
-    const int iftype[] = LGW_IF_CONFIG; /* example to use the #define arrays */
+    /* configure signal handling */
+    sigemptyset(&sigact.sa_mask);
+    sigact.sa_flags = 0;
+    sigact.sa_handler = sig_handler;
+    sigaction(SIGQUIT, &sigact, NULL);
+    sigaction(SIGINT, &sigact, NULL);
+    sigaction(SIGTERM, &sigact, NULL);
     
-    static struct lgw_conf_rxrf_s rfconf;
-    static struct lgw_conf_rxif_s ifconf;
-//    static struct lgw_pkt_rx_s rxpkt[4]; /* array containing up to 4 inbound packets metadata */
-    static struct lgw_pkt_rx_s rxpkt; /* array containing up to 4 inbound packets metadata */
-    static struct lgw_pkt_tx_s txpkt; /* configuration and metadata for an outbound packet */
-    static uint8_t txbuf[256]; /* buffer for the TX payload */
-    
+    /* beginning of Lora gateway-specific code */
     printf("Beginning of test for loragw_hal.c\n");
     
-    // /* set configuration for RF chain */
-    // memset(&rfconf, 0, sizeof(rfconf));
-    // rfconf.enable = true;
-    // rfconf.freq_hz = 867000000;
-    // lgw_rxrf_setconf(0, rfconf);
+    /* set configuration for RF chain */
+    memset(&rfconf, 0, sizeof(rfconf));
+    rfconf.enable = true;
+    rfconf.freq_hz = 866187500;
+    lgw_rxrf_setconf(0, rfconf);
     
-    // /* set configuration Lora multi-SF channels (bandwidth cannot be set) */
-    // memset(&ifconf, 0, sizeof(ifconf));
-    // ifconf.enable = true;
-    // ifconf.rf_chain = 0;
-    // ifconf.datarate = DR_LORA_MULTI;
-    // ifconf.freq_hz = -187500;
-    // for (i=0; i<=3; ++i) {
-        // lgw_rxif_setconf(i, ifconf);
-        // ifconf.freq_hz += 125000;
-    // }
+    /* set configuration Lora multi-SF channels (bandwidth cannot be set) */
+    memset(&ifconf, 0, sizeof(ifconf));
+    ifconf.enable = true;
+    ifconf.rf_chain = 0;
+    ifconf.datarate = DR_LORA_MULTI;
+    ifconf.freq_hz = -187500;
+    for (i=0; i<=3; ++i) {
+        lgw_rxif_setconf(i, ifconf);
+        ifconf.freq_hz += 125000;
+    }
     
     lgw_start();
     
-    // loop_var = 1;
-    // while(loop_var == 1) {
-        // /* fetch one packet */
-        // nb_pkt = lgw_receive(1, &rxpkt);
-        // printf("Nb packets: %d\n", nb_pkt);
+    while ((quit_sig != 1) && (exit_sig != 1)) {
+        /* fetch N packets */
+        nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
         
-        // if (nb_pkt == 1) {
-            // printf("packet received !\n");
-            // loop_var = 0;
-        // } else {
-            // wait_ms(2000);
-        // }
-        
-        // /* free the memory used for RX payload(s) */
-        // for(i=0; i < nb_pkt; ++i) {
-            // free(rxpkt[i].payload);
-        // }
-    // }
+        if (nb_pkt == 0) {
+            wait_ms(300);
+        } else {
+            // printf("\nLora gateway, %d packets received:\n\n", nb_pkt);
+            /* display received packets */
+            for(i=0; i < nb_pkt; ++i) {
+                p = &rxpkt[i];
+                printf("---\nPkt #%d >>", i+1);
+                if (p->status == STAT_CRC_OK) {
+                    printf(" if_chain:%2d", p->if_chain);
+                    printf(" tstamp:%010u", p->count_us);
+                    printf(" size:%3u", p->size);
+                    switch (p-> modulation) {
+                        case MOD_LORA: printf(" Lora"); break;
+                        case MOD_FSK: printf(" FSK"); break;
+                        case MOD_GFSK: printf(" GFSK"); break;
+                        default: printf(" modulation?");
+                    }
+                    switch (p->datarate) {
+                        case DR_LORA_SF7: printf(" SF7"); break;
+                        case DR_LORA_SF8: printf(" SF8"); break;
+                        case DR_LORA_SF9: printf(" SF9"); break;
+                        case DR_LORA_SF10: printf(" SF10"); break;
+                        case DR_LORA_SF11: printf(" SF11"); break;
+                        case DR_LORA_SF12: printf(" SF12"); break;
+                        default: printf(" datarate?");
+                    }
+                    switch (p->coderate) {
+                        case CR_LORA_4_5: printf(" CR1(4/5)"); break;
+                        case CR_LORA_4_6: printf(" CR2(2/3)"); break;
+                        case CR_LORA_4_7: printf(" CR3(4/7)"); break;
+                        case CR_LORA_4_8: printf(" CR4(1/2)"); break;
+                        default: printf(" coderate?");
+                    }
+                    printf("\n");
+                    printf(" RSSI:%+6.1f SNR:%+5.1f (min:%+5.1f, max:%+5.1f) payload:\n", p->rssi, p->snr, p->snr_min, p->snr_max);
+                    for (j = 0; j < p->size; ++j) {
+                        printf(" %02X", p->payload[j]);
+                    }
+                    printf(" #\n");
+                } else if (p->status == STAT_CRC_BAD) {
+                    printf("\n CRC error, damaged packet\n\n");
+                } else if (p->status == STAT_NO_CRC){
+                    printf("\n no CRC\n\n");
+                } else {
+                    printf("\n invalid status ?!?\n\n");
+                }
+            }
+            
+            /* free the memory used for RX payload(s) */
+            for(i=0; i < nb_pkt; ++i) {
+                free(rxpkt[i].payload);
+            }
+        }
+    }
     
-    // lgw_stop();
+    if (exit_sig == 1) {
+        /* clean up before leaving */
+        lgw_stop();
+    }
     
     printf("End of test for loragw_hal.c\n");
     return 0;
