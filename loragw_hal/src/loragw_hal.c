@@ -18,6 +18,7 @@ Description:
 #include <stdlib.h>     /* malloc & free */
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
+#include <math.h>       /* NaN */
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -43,7 +44,12 @@ Description:
 #define     MCU_ARB     0
 #define     MCU_AGC     1
 
-const uint8_t if_list[LGW_IF_CHAIN_NB] = LGW_IF_CONFIG; /* define hardware capability */
+const uint8_t mod_config[LGW_IF_CHAIN_NB] = LGW_MODEM_CONFIG; /* define hardware capability */
+
+const uint32_t rf_rx_lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_RX_LOWFREQ;
+const uint32_t rf_rx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_RX_UPFREQ;
+const uint32_t rf_tx_lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_LOWFREQ;
+const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 
 #define     MCU_ARB_FW_BYTE     2048 /* size of the firmware IN BYTES (= twice the number of 14b words) */
 #define     MCU_AGC_FW_BYTE     8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
@@ -61,6 +67,9 @@ const uint8_t if_list[LGW_IF_CHAIN_NB] = LGW_IF_CONFIG; /* define hardware capab
 #define     SX1257_RX_ADC_TRIM      7   /* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
 #define     SX1257_RXBB_BW          2
 
+#define     RSSI_OFFSET_LORA_MULTI  -100.0 // TODO
+#define     RSSI_OFFSET_LORA_STD    -100.0 // TODO
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
@@ -76,9 +85,8 @@ Parameters validity and coherency is verified by the _setconf functions and
 the _start function assumes 
 */
 
-static bool rf_enable[LGW_RF_CHAIN_NB] = {1, 1};
-//static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {0, 0};
-static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {866187500, 867187500};
+static bool rf_enable[LGW_RF_CHAIN_NB] = {0, 0};
+static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {0, 0};
 
 static uint8_t if_rf_switch = 0x00; /* each IF from 0 to 7 has 1 bit associated to it, 0 -> radio A, 1 -> radio B */
 /* IF 8 and 9 are on radio A */
@@ -383,6 +391,24 @@ void lgw_constant_adjust(void) {
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
+    
+    /* check input parameters */
+    if (rf_chain >= LGW_RF_CHAIN_NB) {
+        DEBUG_MSG("ERROR, NOT A VALID RF_CHAIN NUMBER\n");
+        return LGW_HAL_ERROR;
+    }
+    if (conf.freq_hz > rf_rx_upfreq[rf_chain]) {
+        DEBUG_MSG("ERROR, FREQUENCY TOO HIGH FOR THAT RF_CHAIN\n");
+        return LGW_HAL_ERROR;
+    } else if (conf.freq_hz < rf_rx_lowfreq[rf_chain]) {
+        DEBUG_MSG("ERROR, FREQUENCY TOO LOW FOR THAT RF_CHAIN\n");
+        return LGW_HAL_ERROR;
+    }
+    
+    /* set internal config according to parameters */
+    rf_enable[rf_chain] = conf.enable;
+    rf_freq[rf_chain] = conf.freq_hz;
+    
     return LGW_HAL_SUCCESS;
 }
 
@@ -515,10 +541,12 @@ int lgw_stop(void) {
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int nb_pkt_fetch; /* loop variable and return value */
-    struct lgw_pkt_rx_s *current_pkt; /* pointer to the current structure in the struct array */
+    struct lgw_pkt_rx_s *p; /* pointer to the current structure in the struct array */
     uint8_t buff[300]; /* buffer to store the result of SPI read bursts */
     uint16_t data_addr; /* address read from the FIFO and programmed before the data buffer read operation */
     int s; /* size of the payload, uses to address metadata */
+    int mod; /* type of if_chain/modem a packet was received by */
+    int stat_fifo; /* the packet status as indicated in the FIFO */
     int j;
     
     /* check input variables */
@@ -533,7 +561,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     for (nb_pkt_fetch = 0; nb_pkt_fetch < max_pkt; ++nb_pkt_fetch) {
         
         /* point to the proper struct in the struct array */
-        current_pkt = &pkt_data[nb_pkt_fetch];
+        p = &pkt_data[nb_pkt_fetch];
         
         /* fetch all the RX FIFO data */
         lgw_reg_rb(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, buff, 5);
@@ -546,45 +574,102 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         
         DEBUG_PRINTF("FIFO content: %x %x %x %x %x\n",buff[0],buff[1],buff[2],buff[3],buff[4]);
         
-        current_pkt->status = buff[3];
-        current_pkt->size = buff[4];
-        s = current_pkt->size;
+        
+        p->size = buff[4];
+        s = p->size;
+        stat_fifo = buff[3]; /* will be used later, need to save it before overwriting buff */
         
         /* STILL required */
         data_addr = (uint16_t)buff[1] + ((uint16_t)buff[2] << 8);
         lgw_reg_w(LGW_RX_DATA_BUF_ADDR, data_addr);
         
         /* dynamically allocate memory to store payload */
-        current_pkt->payload = (uint8_t *)malloc(s);
-        if (current_pkt->payload == NULL) {
+        p->payload = (uint8_t *)malloc(s);
+        if (p->payload == NULL) {
             /* not enough memory to allocate for payload, abort with error */
             DEBUG_MSG("ERROR: IMPOSSIBLE TO ALLOCATE MEMORY TO FETCH PAYLOAD\n");
             return LGW_HAL_ERROR;
         }
         
-        /* get payload + metedata */
+        /* get payload + metadata */
         lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, s+16); /* 16 is for metadata */
         
         /* copy payload */
         for (j = 0; j < s; ++j) {
-            current_pkt->payload[j] = buff[j];
+            p->payload[j] = buff[j];
         }
         
         /* process metadata */
-        // TODO: actually process them!
-        current_pkt->if_chain = buff[s+0];
-        current_pkt->modulation = 0; // TODO
-        current_pkt->datarate = (buff[s+1] >> 4) & 0x0F;
-        current_pkt->coderate = (buff[s+1] >> 1) & 0x07;
+        p->if_chain = buff[s+0];
+        mod = mod_config[p->if_chain];
+        DEBUG_PRINTF("[%d %d]\n", p->if_chain, mod);
         
-        current_pkt->snr = buff[s+2]; //TODO: need to rescale
-        current_pkt->snr_min = buff[s+3]; //TODO: need to rescale
-        current_pkt->snr_max = buff[s+4]; //TODO: need to rescale
-        current_pkt->rssi = buff[s+5]; //TODO: need to rescale
+        if ((mod == MOD_LORA_MULTI) || (mod == MOD_LORA_STD)) {
+            DEBUG_MSG("Note: Lora packet\n");
+            if ((buff[s+1] & 0x01) == 1) { /* CRC enabled */
+                if (stat_fifo == 1) {
+                    p->status = STAT_CRC_OK;
+                } else if (stat_fifo == 3){
+                    p->status = STAT_CRC_BAD;
+                } else {
+                    p->status = STAT_UNDEFINED;
+                }
+            } else {
+                p->status = STAT_NO_CRC;
+            }
+            p->modulation = MOD_LORA;
+            p->snr = ((double)((int8_t)buff[s+2]))/4;
+            p->snr_min = ((double)((int8_t)buff[s+3]))/4;
+            p->snr_max = ((double)((int8_t)buff[s+4]))/4;
+            if (mod == MOD_LORA_MULTI) {
+                p->rssi = RSSI_OFFSET_LORA_MULTI + (double)buff[s+5]; //TODO: check formula
+                p->bandwidth = BW_125KHZ; /* fixed in hardware */
+            } else {
+                p->rssi = RSSI_OFFSET_LORA_STD + (double)buff[s+5]; //TODO: check formula, might depend on bandwidth
+                p->bandwidth = BW_UNDEFINED; // TODO: get parameter from config
+            }
+            switch ((buff[s+1] >> 4) & 0x0F) {
+                case 7: p->datarate = DR_LORA_SF7; break;
+                case 8: p->datarate = DR_LORA_SF8; break;
+                case 9: p->datarate = DR_LORA_SF9; break;
+                case 10: p->datarate = DR_LORA_SF10; break;
+                case 11: p->datarate = DR_LORA_SF11; break;
+                case 12: p->datarate = DR_LORA_SF12; break;
+                default: p->datarate = DR_UNDEFINED;
+            }
+            switch ((buff[s+1] >> 1) & 0x07) {
+                case 1: p->coderate = CR_LORA_4_5; break;
+                case 2: p->coderate = CR_LORA_4_6; break;
+                case 3: p->coderate = CR_LORA_4_7; break;
+                case 4: p->coderate = CR_LORA_4_8; break;
+                default: p->coderate = CR_UNDEFINED;
+            }
+        } else if (mod == MOD_FSK_STD) {
+            DEBUG_MSG("Note: FSK packet\n");
+            p->status = STAT_UNDEFINED; // TODO
+            p->modulation = MOD_FSK;
+            p->rssi = NAN; // TODO
+            p->snr = NAN;
+            p->snr_min = NAN;
+            p->snr_max = NAN;
+            p->bandwidth = BW_UNDEFINED; // TODO
+            p->datarate = DR_UNDEFINED; // TODO
+            p->coderate = CR_UNDEFINED; // TODO
+        } else {
+            DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");
+            p->status = STAT_UNDEFINED;
+            p->modulation = MOD_UNDEFINED;
+            p->rssi = NAN;
+            p->snr = NAN;
+            p->snr_min = NAN;
+            p->snr_max = NAN;
+            p->bandwidth = BW_UNDEFINED;
+            p->datarate = DR_UNDEFINED;
+            p->coderate = CR_UNDEFINED;
+        }
         
-        current_pkt->count_us = (uint32_t)buff[s+6] + ((uint32_t)buff[s+7] << 8) + ((uint32_t)buff[s+8] << 16) + ((uint32_t)buff[s+9] << 24);
-        
-        current_pkt->crc = (uint16_t)buff[s+10] + ((uint16_t)buff[s+11] << 8);
+        p->count_us = (uint32_t)buff[s+6] + ((uint32_t)buff[s+7] << 8) + ((uint32_t)buff[s+8] << 16) + ((uint32_t)buff[s+9] << 24);
+        p->crc = (uint16_t)buff[s+10] + ((uint16_t)buff[s+11] << 8);
         
         /* advance packet FIFO */
         lgw_reg_w(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, 0);
