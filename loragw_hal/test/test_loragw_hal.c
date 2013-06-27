@@ -96,15 +96,37 @@ int main(int argc, char **argv)
     
     /* set configuration Lora multi-SF channels (bandwidth cannot be set) */
     memset(&ifconf, 0, sizeof(ifconf));
+    
+    
+    /* chain 0: bleeper channel 1, all SF */
     ifconf.enable = true;
     ifconf.rf_chain = 0;
-    ifconf.datarate = DR_LORA_MULTI;
     ifconf.freq_hz = -187500;
-    for (i=0; i<=3; ++i) {
-        lgw_rxif_setconf(i, ifconf);
-        ifconf.freq_hz += 125000;
-    }
+    ifconf.bandwidth = BW_125KHZ;
+    ifconf.datarate = DR_LORA_MULTI;
+    lgw_rxif_setconf(0, ifconf);
     
+    /* chain 1: bleeper channel 2, SF8 only */
+    ifconf.enable = true;
+    ifconf.rf_chain = 0;
+    ifconf.freq_hz = -62500;
+    ifconf.bandwidth = BW_125KHZ;
+    ifconf.datarate = DR_LORA_SF8;
+    lgw_rxif_setconf(1, ifconf);
+    
+    /* chain 2: bleeper channel 3, disabled */
+    ifconf.enable = false;
+    lgw_rxif_setconf(2, ifconf);
+    
+    /* chain 3: 2nd radio, central channel, all SF */
+    ifconf.enable = true;
+    ifconf.rf_chain = 1;
+    ifconf.freq_hz = 0;
+    ifconf.bandwidth = BW_125KHZ;
+    ifconf.datarate = DR_LORA_MULTI;
+    lgw_rxif_setconf(3, ifconf);
+    
+    /* connect, configure and start the Lora gateway */
     lgw_start();
     
     while ((quit_sig != 1) && (exit_sig != 1)) {
@@ -114,7 +136,7 @@ int main(int argc, char **argv)
         if (nb_pkt == 0) {
             wait_ms(300);
         } else {
-            // printf("\nLora gateway, %d packets received:\n\n", nb_pkt);
+            printf("\nLora gateway, %d packets received:\n\n", nb_pkt);
             /* display received packets */
             for(i=0; i < nb_pkt; ++i) {
                 p = &rxpkt[i];
@@ -152,11 +174,20 @@ int main(int argc, char **argv)
                     }
                     printf(" #\n");
                 } else if (p->status == STAT_CRC_BAD) {
-                    printf("\n CRC error, damaged packet\n\n");
+                    printf(" if_chain:%2d", p->if_chain);
+                    printf(" tstamp:%010u", p->count_us);
+                    printf(" size:%3u\n", p->size);
+                    printf(" CRC error, damaged packet\n\n");
                 } else if (p->status == STAT_NO_CRC){
-                    printf("\n no CRC\n\n");
+                    printf(" if_chain:%2d", p->if_chain);
+                    printf(" tstamp:%010u", p->count_us);
+                    printf(" size:%3u\n", p->size);
+                    printf(" no CRC\n\n");
                 } else {
-                    printf("\n invalid status ?!?\n\n");
+                    printf(" if_chain:%2d", p->if_chain);
+                    printf(" tstamp:%010u", p->count_us);
+                    printf(" size:%3u\n", p->size);
+                    printf(" invalid status ?!?\n\n");
                 }
             }
             

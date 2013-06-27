@@ -28,8 +28,9 @@ Description:
 #define LGW_HAL_ERROR       -1
 
 /* hardware characteristics */
-#define LGW_RF_CHAIN_NB     2
-#define LGW_IF_CHAIN_NB     10
+#define LGW_RF_CHAIN_NB     2   /* number of RF chains */
+#define LGW_IF_CHAIN_NB     10  /* number of IF+modem RX chains */
+#define LGW_MULTI_NB        4   /* number of Lora 'multi SF' chains */
 
 #define LGW_PKT_FIFO_SIZE   8
 #define LGW_DATABUFF_SIZE   1024
@@ -50,26 +51,25 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define LGW_RF_TX_LOWFREQ   {863000000, 863000000}
 #define LGW_RF_TX_UPFREQ    {870000000, 870000000}
 
-/* type of if_chain/ modem */
-#define MOD_UNDEFINED       0
-#define MOD_DUMMY           0x01
-#define MOD_LORA_STD        0x10    /* standard single-SF Lora modem */
-#define MOD_LORA_MULTI      0x11    /* Lora receiver with multi-SF capability */
-#define MOD_FSK_STD         0x20    /* standard FSK modem */
+/* type of if_chain + modem */
+#define IF_UNDEFINED        0
+#define IF_LORA_STD         0x10    /* if + standard single-SF Lora modem */
+#define IF_LORA_MULTI       0x11    /* if + Lora receiver with multi-SF capability */
+#define IF_FSK_STD          0x20    /* if + standard FSK modem */
 
 /* configuration of available IF chains and modems on the hardware */
 /* to use, declare a local constant, and use 'if_chain' as index */
-#define LGW_MODEM_CONFIG {\
-    MOD_LORA_MULTI, \
-    MOD_LORA_MULTI, \
-    MOD_LORA_MULTI, \
-    MOD_LORA_MULTI, \
-    MOD_DUMMY, \
-    MOD_DUMMY, \
-    MOD_DUMMY, \
-    MOD_DUMMY, \
-    MOD_LORA_STD, \
-    MOD_FSK_STD }
+#define LGW_IFMODEM_CONFIG {\
+    IF_LORA_MULTI, \
+    IF_LORA_MULTI, \
+    IF_LORA_MULTI, \
+    IF_LORA_MULTI, \
+    IF_UNDEFINED, \
+    IF_UNDEFINED, \
+    IF_UNDEFINED, \
+    IF_UNDEFINED, \
+    IF_LORA_STD, \
+    IF_FSK_STD }
 
 /* values available for the 'modulation' parameters */
 #define MOD_UNDEFINED   0
@@ -86,13 +86,13 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 
 /* values available for the 'datarate' parameters */
 #define DR_UNDEFINED    0
-#define DR_LORA_SF7     0x02
-#define DR_LORA_SF8     0x04
-#define DR_LORA_SF9     0x08
-#define DR_LORA_SF10    0x10
-#define DR_LORA_SF11    0x20
-#define DR_LORA_SF12    0x40
-#define DR_LORA_MULTI   0x7E
+#define DR_LORA_SF7     0x1002
+#define DR_LORA_SF8     0x1004
+#define DR_LORA_SF9     0x1008
+#define DR_LORA_SF10    0x1010
+#define DR_LORA_SF11    0x1020
+#define DR_LORA_SF12    0x1040
+#define DR_LORA_MULTI   0x107E
 // TODO: add FSK datarates
 
 /* values available for the 'coderate' parameters */
@@ -137,7 +137,7 @@ struct lgw_conf_rxif_s {
     uint8_t     rf_chain;   /*!> to which RF chain is that IF chain associated */
     int32_t     freq_hz;    /*!> center frequ of the IF chain, relative to RF chain frequency */
     uint8_t     bandwidth;  /*!> RX bandwidth, 0 for default */
-    uint8_t     datarate;   /*!> RX datarate, 0 for default */
+    uint16_t    datarate;   /*!> RX datarate, 0 for default */
 };
 
 /**
@@ -149,7 +149,7 @@ struct lgw_pkt_rx_s {
     uint8_t     status;     /*!> status of the received packet */
     uint8_t     modulation; /*!> modulation used by the packet */
     uint8_t     bandwidth;  /*!> modulation bandwidth (LORA only) */
-    uint8_t     datarate;   /*!> RX datarate of the packet */
+    uint16_t    datarate;   /*!> RX datarate of the packet */
     uint8_t     coderate;   /*!> error-correcting code of the packet */
     uint32_t    count_us;   /*!> internal gateway counter for timestamping, 1 microsecond resolution */
     float       rssi;       /*!> average packet RSSI in dB */
@@ -174,7 +174,7 @@ struct lgw_pkt_tx_s {
     uint8_t     modulation; /*!> modulation to use for the packet */
     uint8_t     bandwidth;  /*!> modulation bandwidth (LORA only) */
     uint16_t    f_dev;      /*!> frequency deviation (FSK only) */
-    uint8_t     datarate;   /*!> TX datarate */
+    uint16_t    datarate;   /*!> TX datarate */
     uint8_t     coderate;   /*!> error-correcting code of the packet */
     uint16_t    preamble;   /*!> set the preamble length, 0 for default */
     bool        no_crc;     /*!> if true, do not send a CRC in the packet */
@@ -196,7 +196,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf);
 
 /**
 @brief Configure an IF chain + modem (must configure before start)
-@param if_chain number of the IF chain to configure [0, LGW_IF_CHAIN_NB - 1]
+@param if_chain number of the IF chain + modem to configure [0, LGW_IF_CHAIN_NB - 1]
 @param conf structure containing the configuration parameters
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
