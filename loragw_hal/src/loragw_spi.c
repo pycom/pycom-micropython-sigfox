@@ -19,7 +19,7 @@ Description:
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>     /* C99 types */
-#include <stdio.h>      /* printf */
+#include <stdio.h>      /* printf fprintf */
 #include <unistd.h>     /* lseek, close */
 #include <fcntl.h>      /* open */
 #include <string.h>     /* memset */
