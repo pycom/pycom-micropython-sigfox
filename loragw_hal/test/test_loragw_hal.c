@@ -88,43 +88,55 @@ int main(int argc, char **argv)
     /* beginning of Lora gateway-specific code */
     printf("Beginning of test for loragw_hal.c\n");
     
-    /* set configuration for RF chain */
+    /* set configuration for RF chains */
     memset(&rfconf, 0, sizeof(rfconf));
+    
     rfconf.enable = true;
     rfconf.freq_hz = 866187500;
-    lgw_rxrf_setconf(0, rfconf);
+    lgw_rxrf_setconf(0, rfconf); /* radio A */
     
-    /* set configuration Lora multi-SF channels (bandwidth cannot be set) */
+    rfconf.enable = true;
+    rfconf.freq_hz = 866437500;
+    lgw_rxrf_setconf(1, rfconf); /* radio B */
+    
+    /* set configuration for Lora multi-SF channels (bandwidth cannot be set) */
     memset(&ifconf, 0, sizeof(ifconf));
     
-    
-    /* chain 0: bleeper channel 1, all SF */
     ifconf.enable = true;
     ifconf.rf_chain = 0;
     ifconf.freq_hz = -187500;
     ifconf.bandwidth = BW_125KHZ;
     ifconf.datarate = DR_LORA_MULTI;
-    lgw_rxif_setconf(0, ifconf);
+    lgw_rxif_setconf(0, ifconf); /* chain 0: 1st radio, bleeper channel 1, all SF */
     
-    /* chain 1: bleeper channel 2, SF8 only */
     ifconf.enable = true;
     ifconf.rf_chain = 0;
     ifconf.freq_hz = -62500;
     ifconf.bandwidth = BW_125KHZ;
-    ifconf.datarate = DR_LORA_SF8;
-    lgw_rxif_setconf(1, ifconf);
+    ifconf.datarate = DR_LORA_SF8 | DR_LORA_SF10;
+    lgw_rxif_setconf(1, ifconf); /* chain 1: 1st radio, bleeper channel 2, SF8 & SF10 only */
     
-    /* chain 2: bleeper channel 3, disabled */
     ifconf.enable = false;
-    lgw_rxif_setconf(2, ifconf);
+    ifconf.rf_chain = 0;
+    ifconf.freq_hz = 0;
+    ifconf.bandwidth = 0;
+    ifconf.datarate = 0;
+    lgw_rxif_setconf(2, ifconf); /* chain 2: 1st radio, disabled */
     
-    /* chain 3: 2nd radio, central channel, all SF */
     ifconf.enable = true;
     ifconf.rf_chain = 1;
-    ifconf.freq_hz = 0;
+    ifconf.freq_hz = -187500;
     ifconf.bandwidth = BW_125KHZ;
     ifconf.datarate = DR_LORA_MULTI;
-    lgw_rxif_setconf(3, ifconf);
+    lgw_rxif_setconf(3, ifconf); /* chain 3: 2nd radio, bleeper channel 3, all SF */
+    
+    /* set configuration for Lora 'stand alone' channel */
+    ifconf.enable = true;
+    ifconf.rf_chain = 0;
+    ifconf.freq_hz = 187500;
+    ifconf.bandwidth = BW_125KHZ;
+    ifconf.datarate = DR_LORA_SF10;
+    lgw_rxif_setconf(8, ifconf); /* chain 8: bleeper channel 4, SF9 only */
     
     /* connect, configure and start the Lora gateway */
     lgw_start();

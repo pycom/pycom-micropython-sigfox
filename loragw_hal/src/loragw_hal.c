@@ -98,7 +98,7 @@ static int32_t if_freq[LGW_IF_CHAIN_NB] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; /* rel
 
 static uint8_t lora_multi_sfmask[LGW_MULTI_NB] = {0, 0, 0, 0}; /* enables SF for Lora 'multi' modems */
 static uint8_t lora_rx_bw = 0; /* for the Lora standalone modem(s) */
-static uint8_t lora_rx_sf = 0; /* for the Lora standalone modem(s) */
+static uint16_t lora_rx_sf = 0; /* for the Lora standalone modem(s) */
 static uint8_t fsk_rx_bw = 0; /* for the FSK standalone modem(s) */
 static uint8_t fsk_rx_sf = 0; /* for the FSK standalone modem(s) */
 
@@ -443,7 +443,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             i = (conf.bandwidth == 0) ? BW_250KHZ : conf.bandwidth;
             j = (conf.datarate == 0) ? DR_LORA_SF9 : conf.datarate;
             /* check BW & DR */
-            if ((i!=BW_125KHZ) && (i!=BW_250KHZ) && (i!=BW_500KHZ)) {
+            if ((i != BW_125KHZ) && (i != BW_250KHZ) && (i != BW_500KHZ)) {
                 DEBUG_MSG("ERROR, BANDWIDTH NOT SUPPORTED BY LORA_STD IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
@@ -575,17 +575,36 @@ int lgw_start(void) {
     lgw_reg_w(LGW_CORR2_DETECT_EN, (if_enable[2] == true) ? lora_multi_sfmask[2] : 0); /* default 0 */
     lgw_reg_w(LGW_CORR3_DETECT_EN, (if_enable[3] == true) ? lora_multi_sfmask[3] : 0); /* default 0 */
     
+    lgw_reg_w(LGW_PPM_OFFSET, 0x00); /* if the threshold is 16ms, use 0x60 to enable ppm_offset for SF12 and SF11 */
+    
     lgw_reg_w(LGW_CONCENTRATOR_MODEM_ENABLE,1); /* default 0 */
     
     /* configure Lora 'stand-alone' modem */
-    // lgw_reg_w(LGW_IF_FREQ_8, IF_HZ_TO_REG(if_freq[8])); /* MBWSSF modem (default 0) */
-    // lgw_reg_w(LGW_MBWSSF_MODEM_BW,0); /* 0=125, 1=250, 2=500 kHz */
-    // lgw_reg_w(LGW_MBWSSF_RATE_SF,7);
-    // lgw_reg_w(LGW_MBWSSF_PPM_OFFSET,0); /* default 0 */
-    // lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE, if_enable[8]); /* default 0 */
+    lgw_reg_w(LGW_IF_FREQ_8, IF_HZ_TO_REG(if_freq[8])); /* MBWSSF modem (default 0) */
+    if (if_enable[8] == true) {
+        switch(lora_rx_bw) {
+            case BW_125KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,0); break;
+            case BW_250KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,1); break;
+            case BW_500KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,2); break;
+            default: DEBUG_MSG("WARNING, invalid lora_rx_bw\n");
+        }
+        switch(lora_rx_sf) {
+            case DR_LORA_SF7: lgw_reg_w(LGW_MBWSSF_RATE_SF,7); break;
+            case DR_LORA_SF8: lgw_reg_w(LGW_MBWSSF_RATE_SF,8); break;
+            case DR_LORA_SF9: lgw_reg_w(LGW_MBWSSF_RATE_SF,9); break;
+            case DR_LORA_SF10: lgw_reg_w(LGW_MBWSSF_RATE_SF,10); break;
+            case DR_LORA_SF11: lgw_reg_w(LGW_MBWSSF_RATE_SF,11); break;
+            case DR_LORA_SF12: lgw_reg_w(LGW_MBWSSF_RATE_SF,12); break;
+            default: DEBUG_MSG("WARNING, invalid lora_rx_sf\n");
+        }
+        lgw_reg_w(LGW_MBWSSF_PPM_OFFSET,0); /* default 0 */
+        lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE, 1); /* default 0 */
+    } else {
+        lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE, 0);
+    }
     
     /* configure FSK modem */
-    lgw_reg_w(LGW_IF_FREQ_9, IF_HZ_TO_REG(if_freq[9])); /* FSK modem  (default 0) */
+    //lgw_reg_w(LGW_IF_FREQ_9, IF_HZ_TO_REG(if_freq[9])); /* FSK modem  (default 0) */
 
     /* Load firmware */
     load_firmware(MCU_ARB, arb_firmware, MCU_ARB_FW_BYTE);
@@ -645,7 +664,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         }
         
         DEBUG_PRINTF("FIFO content: %x %x %x %x %x\n",buff[0],buff[1],buff[2],buff[3],buff[4]);
-        
         
         p->size = buff[4];
         s = p->size;
