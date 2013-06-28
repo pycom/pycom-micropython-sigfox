@@ -633,7 +633,7 @@ int lgw_stop(void) {
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int nb_pkt_fetch; /* loop variable and return value */
     struct lgw_pkt_rx_s *p; /* pointer to the current structure in the struct array */
-    uint8_t buff[300]; /* buffer to store the result of SPI read bursts */
+    uint8_t buff[255+16]; /* buffer to store the result of SPI read bursts */
     uint16_t data_addr; /* address read from the FIFO and programmed before the data buffer read operation */
     int s; /* size of the payload, uses to address metadata */
     int ifmod; /* type of if_chain/modem a packet was received by */
@@ -771,6 +771,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
+    uint8_t buff[255+16]; /* buffer to prepare the packet to send + metadata before SPI write burst */
     return LGW_HAL_SUCCESS;
 }
 
