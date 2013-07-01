@@ -136,7 +136,7 @@ int main(int argc, char **argv)
     ifconf.freq_hz = 187500;
     ifconf.bandwidth = BW_125KHZ;
     ifconf.datarate = DR_LORA_SF10;
-    lgw_rxif_setconf(8, ifconf); /* chain 8: bleeper channel 4, SF9 only */
+    lgw_rxif_setconf(8, ifconf); /* chain 8: bleeper channel 4, SF10 only */
     
     /* connect, configure and start the Lora gateway */
     lgw_start();
