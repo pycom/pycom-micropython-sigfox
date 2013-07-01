@@ -42,8 +42,8 @@ int main(int argc, char **argv)
     
     /* --- READ TEST --- */
     
-    // lgw_reg_w(LGW_SOFT_RESET, 1);
-    // lgw_reg_check(stdout);
+    lgw_reg_w(LGW_SOFT_RESET, 1);
+    lgw_reg_check(stdout);
     
     /* --- READ/WRITE COHERENCY TEST --- */
     
