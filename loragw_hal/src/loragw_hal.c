@@ -31,10 +31,12 @@ Description:
 #ifdef DEBUG
     #define DEBUG_MSG(str)              fprintf(stderr, str)
     #define DEBUG_PRINTF(fmt, args...)  fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
-    #define CHECK_NULL(a)               if(a==NULL){fprintf(stderr,"%s:%d: ERROR, NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_HAL_ERROR;}
+    #define DEBUG_ARRAY(a,b,c)          for(a=0;a<b;++a) fprintf(stderr,"%x.",c[a]);fprintf(stderr,"end\n")
+    #define CHECK_NULL(a)               if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_HAL_ERROR;}
 #else
     #define DEBUG_MSG(str)
     #define DEBUG_PRINTF(fmt, args...)
+    #define DEBUG_ARRAY(a,b,c)
     #define CHECK_NULL(a)               if(a==NULL){return LGW_HAL_ERROR;}
 #endif
 
@@ -72,6 +74,11 @@ const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 #define     RSSI_OFFSET_LORA_MULTI  -100.0 // TODO
 #define     RSSI_OFFSET_LORA_STD    -100.0 // TODO
 
+#define     TX_METADATA_NB      16
+#define     RX_METADATA_NB      16
+
+#define     MIN_LORA_PREAMBLE   4
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
@@ -87,8 +94,10 @@ Parameters validity and coherency is verified by the _setconf functions and
 the _start function assumes 
 */
 
+static bool lgw_is_started = false;
+
 static bool rf_enable[LGW_RF_CHAIN_NB] = {0, 0};
-static uint32_t rf_freq[LGW_IF_CHAIN_NB] = {0, 0}; /* absolute, in Hz */
+static uint32_t rf_rx_freq[LGW_IF_CHAIN_NB] = {0, 0}; /* absolute, in Hz */
 
 static uint8_t if_rf_switch = 0x00; /* each IF from 0 to 7 has 1 bit associated to it, 0 -> radio A, 1 -> radio B */
 /* IF 8 and 9 are on radio A */
@@ -192,7 +201,7 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
             break;
             
         default:
-            DEBUG_MSG("ERROR: DEFAULT CASE THAT SHOULD BE IMPOSSIBLE\n");
+            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", channel);
             return;
     }
     
@@ -224,22 +233,22 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
     /* selecting the target radio */
     switch (channel) {
         case 0:
-        reg_add = LGW_SPI_RADIO_A__ADDR;
-        reg_dat = LGW_SPI_RADIO_A__DATA;
-        reg_cs  = LGW_SPI_RADIO_A__CS;
-        reg_rb  = LGW_SPI_RADIO_A__DATA_READBACK;
-        break;
-        
+            reg_add = LGW_SPI_RADIO_A__ADDR;
+            reg_dat = LGW_SPI_RADIO_A__DATA;
+            reg_cs  = LGW_SPI_RADIO_A__CS;
+            reg_rb  = LGW_SPI_RADIO_A__DATA_READBACK;
+            break;
+            
         case 1:
-        reg_add = LGW_SPI_RADIO_B__ADDR;
-        reg_dat = LGW_SPI_RADIO_B__DATA;
-        reg_cs  = LGW_SPI_RADIO_B__CS;
-        reg_rb  = LGW_SPI_RADIO_B__DATA_READBACK;
-        break;
-        
+            reg_add = LGW_SPI_RADIO_B__ADDR;
+            reg_dat = LGW_SPI_RADIO_B__DATA;
+            reg_cs  = LGW_SPI_RADIO_B__CS;
+            reg_rb  = LGW_SPI_RADIO_B__DATA_READBACK;
+            break;
+            
         default:
-        DEBUG_MSG("ERROR: DEFAULT CASE THAT SHOULD BE IMPOSSIBLE\n");
-        return 0;
+            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", channel);
+            return 0;
     }
     
     /* SPI master data read procedure */
@@ -288,7 +297,7 @@ void setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
         sx125x_write(rf_chain, 0x00, 1); /* enable Xtal oscillator */
         sx125x_write(rf_chain, 0x00, 3); /* Enable RX (PLL+FE) */
         ++i;
-        DEBUG_PRINTF("SX1257 #%d PLL start (attempt %d)\n", rf_chain, i);
+        DEBUG_PRINTF("Note: SX1257 #%d PLL start (attempt %d)\n", rf_chain, i);
         wait_ms(1);
     } while(sx125x_read(rf_chain, 0x11) & 0x02 == 0);
     
@@ -383,20 +392,20 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     
     /* check input parameters */
     if (rf_chain > LGW_RF_CHAIN_NB) {
-        DEBUG_MSG("ERROR, NOT A VALID RF_CHAIN NUMBER\n");
+        DEBUG_MSG("ERROR: NOT A VALID RF_CHAIN NUMBER\n");
         return LGW_HAL_ERROR;
     }
     if (conf.freq_hz > rf_rx_upfreq[rf_chain]) {
-        DEBUG_MSG("ERROR, FREQUENCY TOO HIGH FOR THAT RF_CHAIN\n");
+        DEBUG_MSG("ERROR: FREQUENCY TOO HIGH FOR THAT RF_CHAIN\n");
         return LGW_HAL_ERROR;
     } else if (conf.freq_hz < rf_rx_lowfreq[rf_chain]) {
-        DEBUG_MSG("ERROR, FREQUENCY TOO LOW FOR THAT RF_CHAIN\n");
+        DEBUG_MSG("ERROR: FREQUENCY TOO LOW FOR THAT RF_CHAIN\n");
         return LGW_HAL_ERROR;
     }
     
     /* set internal config according to parameters */
     rf_enable[rf_chain] = conf.enable;
-    rf_freq[rf_chain] = conf.freq_hz;
+    rf_rx_freq[rf_chain] = conf.freq_hz;
     
     return LGW_HAL_SUCCESS;
 }
@@ -417,17 +426,17 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     /* check 'general' parameters */
     /* ? add checks to stay in band (ie. radio_freq+if+BW/2 < fmax) ? */
     if (if_chain > LGW_IF_CHAIN_NB) {
-        DEBUG_PRINTF("ERROR, %d NOT A VALID IF_CHAIN NUMBER\n", if_chain);
+        DEBUG_PRINTF("ERROR: %d NOT A VALID IF_CHAIN NUMBER\n", if_chain);
         return LGW_HAL_ERROR;
     }
     if (ifmod_config[if_chain] == IF_UNDEFINED) {
-        DEBUG_PRINTF("ERROR, IF CHAIN %d NOT CONFIGURABLE\n", if_chain);
+        DEBUG_PRINTF("ERROR: IF CHAIN %d NOT CONFIGURABLE\n", if_chain);
     }
     if (conf.freq_hz > LGW_RF_BANDWIDTH/2) {
-        DEBUG_PRINTF("ERROR, IF FREQUENCY %d TOO HIGH\n", conf.freq_hz);
+        DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO HIGH\n", conf.freq_hz);
         return LGW_HAL_ERROR;
     } else if (conf.freq_hz < -LGW_RF_BANDWIDTH/2) {
-        DEBUG_PRINTF("ERROR, IF FREQUENCY %d TOO LOW\n", conf.freq_hz);
+        DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO LOW\n", conf.freq_hz);
         return LGW_HAL_ERROR;
     }
     
@@ -436,7 +445,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     switch (ifmod_config[if_chain]) {
         case IF_LORA_STD:
             if (conf.rf_chain != 0) {
-                DEBUG_MSG("ERROR, LORA_STD IF CHAIN CAN ONLY BE ASSOCIATED TO RF_CHAIN 0\n");
+                DEBUG_MSG("ERROR: LORA_STD IF CHAIN CAN ONLY BE ASSOCIATED TO RF_CHAIN 0\n");
                 return LGW_HAL_ERROR;
             }
             /* fill default parameters if needed */
@@ -444,11 +453,11 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             j = (conf.datarate == 0) ? DR_LORA_SF9 : conf.datarate;
             /* check BW & DR */
             if ((i != BW_125KHZ) && (i != BW_250KHZ) && (i != BW_500KHZ)) {
-                DEBUG_MSG("ERROR, BANDWIDTH NOT SUPPORTED BY LORA_STD IF CHAIN\n");
+                DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_STD IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
             if ((j!=DR_LORA_SF7)&&(j!=DR_LORA_SF8)&&(j!=DR_LORA_SF9)&&(j!=DR_LORA_SF10)&&(j!=DR_LORA_SF11)&&(j!=DR_LORA_SF12)) {
-                DEBUG_MSG("ERROR, DATARATE NOT SUPPORTED BY LORA_STD IF CHAIN\n");
+                DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY LORA_STD IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
             /* set internal configuration  */
@@ -461,7 +470,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
         
         case IF_LORA_MULTI:
             if (conf.rf_chain >= LGW_RF_CHAIN_NB) {
-                DEBUG_MSG("ERROR, INVALID RF_CHAIN TO ASSOCIATE WITH A LORA_STD IF CHAIN\n");
+                DEBUG_MSG("ERROR: INVALID RF_CHAIN TO ASSOCIATE WITH A LORA_STD IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
             /* fill default parameters if needed */
@@ -469,11 +478,11 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             j = (conf.datarate == 0) ? DR_LORA_MULTI : conf.datarate;
             /* check BW & DR */
             if (i != BW_125KHZ) {
-                DEBUG_MSG("ERROR, BANDWIDTH NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
+                DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
             if ((j & DR_LORA_MULTI) == 0) { /* supports any combination of SF between 7 and 12 */
-                DEBUG_MSG("ERROR, DATARATE(S) NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
+                DEBUG_MSG("ERROR: DATARATE(S) NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
             /* set internal configuration  */
@@ -481,7 +490,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             switch (conf.rf_chain) {
                 case 0: if_rf_switch &= ~((uint8_t)1 << if_chain); break; /* force a 0 at the if_chain-th position */
                 case 1: if_rf_switch |= ((uint8_t)1 << if_chain); break; /* force a 1 at the if_chain-th position */
-                default: DEBUG_MSG("ERROR IN SELECTING PROPRER IF_CHAIN/RF_CHAIN ASSOCIATION");
+                default: DEBUG_MSG("ERROR: IMPROPRER IF_CHAIN/RF_CHAIN ASSOCIATION\n");
             }
             if_freq[if_chain] = conf.freq_hz;
             lora_multi_sfmask[if_chain] = (uint8_t)j;
@@ -493,7 +502,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             // TODO
         
         default:
-            DEBUG_PRINTF("ERROR, IF CHAIN %d TYPE NOT SUPPORTED\n", if_chain);
+            DEBUG_PRINTF("ERROR: IF CHAIN %d TYPE NOT SUPPORTED\n", if_chain);
             return LGW_HAL_ERROR;
     }
     
@@ -506,6 +515,10 @@ int lgw_start(void) {
     int reg_stat;
     int32_t read_value;
     int i, j;
+    
+    if (lgw_is_started == true) {
+        DEBUG_MSG("Note: Lora Gateway already started, restarting it now\n");
+    }
     
     reg_stat = lgw_connect();
     if (reg_stat == LGW_REG_ERROR) {
@@ -530,10 +543,10 @@ int lgw_start(void) {
     
     /* setup the radios */
     if (rf_enable[0] == 1) {
-        setup_sx1257(0, rf_freq[0]);
+        setup_sx1257(0, rf_rx_freq[0]);
     }
     if (rf_enable[1] == 1) {
-        setup_sx1257(1, rf_freq[1]);
+        setup_sx1257(1, rf_rx_freq[1]);
     }
     
     /* gives the AGC MCU control over radio, RF front-end and filter gain */
@@ -586,7 +599,7 @@ int lgw_start(void) {
             case BW_125KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,0); break;
             case BW_250KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,1); break;
             case BW_500KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,2); break;
-            default: DEBUG_MSG("WARNING, invalid lora_rx_bw\n");
+            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_bw);
         }
         switch(lora_rx_sf) {
             case DR_LORA_SF7: lgw_reg_w(LGW_MBWSSF_RATE_SF,7); break;
@@ -595,7 +608,7 @@ int lgw_start(void) {
             case DR_LORA_SF10: lgw_reg_w(LGW_MBWSSF_RATE_SF,10); break;
             case DR_LORA_SF11: lgw_reg_w(LGW_MBWSSF_RATE_SF,11); break;
             case DR_LORA_SF12: lgw_reg_w(LGW_MBWSSF_RATE_SF,12); break;
-            default: DEBUG_MSG("WARNING, invalid lora_rx_sf\n");
+            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_sf);
         }
         lgw_reg_w(LGW_MBWSSF_PPM_OFFSET,0); /* default 0 */
         lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE, 1); /* default 0 */
@@ -617,6 +630,7 @@ int lgw_start(void) {
     /* Show that nanoC is configured (LED 602 green, blue at reset)*/
     lgw_reg_w(LGW_LED_REG, 5);
     
+    lgw_is_started = true;
     return LGW_HAL_SUCCESS;
 }
 
@@ -625,6 +639,8 @@ int lgw_start(void) {
 int lgw_stop(void) {
     lgw_soft_reset();
     lgw_disconnect();
+    
+    lgw_is_started = false;
     return LGW_HAL_SUCCESS;
 }
 
@@ -633,17 +649,22 @@ int lgw_stop(void) {
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int nb_pkt_fetch; /* loop variable and return value */
     struct lgw_pkt_rx_s *p; /* pointer to the current structure in the struct array */
-    uint8_t buff[255+16]; /* buffer to store the result of SPI read bursts */
+    uint8_t buff[255+RX_METADATA_NB]; /* buffer to store the result of SPI read bursts */
     uint16_t data_addr; /* address read from the FIFO and programmed before the data buffer read operation */
     int s; /* size of the payload, uses to address metadata */
     int ifmod; /* type of if_chain/modem a packet was received by */
     int stat_fifo; /* the packet status as indicated in the FIFO */
     int j;
     
+    /* check if the gateway is running */
+    if (lgw_is_started == false) {
+        DEBUG_MSG("ERROR: GATEWAY IS NOT RUNNING, START IT BEFORE RECEIVING\n");
+        return LGW_HAL_ERROR;
+    }
+    
     /* check input variables */
-    if (max_pkt == 0) {
-    } else if (max_pkt <= 0) {
-        DEBUG_MSG("ERROR: INVALID MAX NUMBER OF PACKETS TO FETCH\n");
+    if (max_pkt <= 0) {
+        DEBUG_PRINTF("ERROR: %d = INVALID MAX NUMBER OF PACKETS TO FETCH\n", max_pkt);
         return LGW_HAL_ERROR;
     }
     CHECK_NULL(pkt_data);
@@ -659,7 +680,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         
         /* how many packets are in the RX buffer ? Break if zero */
         if (buff[0] == 0) {
-            DEBUG_MSG("NOTE: PACKET BUFFER EMPTY\n");
+            DEBUG_MSG("Note: RX packet buffer empty, receive function returning nothing\n");
             break; /* no more packets to fetch, exit out of FOR loop */
         }
         
@@ -682,7 +703,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         }
         
         /* get payload + metadata */
-        lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, s+16); /* 16 is for metadata */
+        lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, s+RX_METADATA_NB);
         
         /* copy payload */
         for (j = 0; j < s; ++j) {
@@ -771,7 +792,170 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
-    uint8_t buff[255+16]; /* buffer to prepare the packet to send + metadata before SPI write burst */
+    uint8_t buff[255+TX_METADATA_NB]; /* buffer to prepare the packet to send + metadata before SPI write burst */
+    uint32_t part_int; /* integer part for PLL register value calculation */
+    uint32_t part_frac; /* fractional part for PLL register value calculation */
+    int i;
+    
+    /* check if the gateway is running */
+    if (lgw_is_started == false) {
+        DEBUG_MSG("ERROR: GATEWAY IS NOT RUNNING, START IT BEFORE SENDING\n");
+        return LGW_HAL_ERROR;
+    }
+    
+    /* check input variables */
+    CHECK_NULL(pkt_data.payload);
+    if (pkt_data.rf_chain >= LGW_RF_CHAIN_NB) {
+        DEBUG_MSG("ERROR: INVALID RF_CHAIN TO SEND PACKETS\n");
+        return LGW_HAL_ERROR;
+    }
+    if (rf_enable[pkt_data.rf_chain] == false) {
+        DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED\n");
+        return LGW_HAL_ERROR;
+    }
+    if (pkt_data.freq_hz > rf_tx_upfreq[pkt_data.rf_chain]) {
+        DEBUG_PRINTF("ERROR: FREQUENCY %d HIGHER THAN UPPER LIMIT %d OF RF_CHAIN %d\n", pkt_data.freq_hz, rf_tx_upfreq[pkt_data.rf_chain], pkt_data.rf_chain);
+        return LGW_HAL_ERROR;
+    } else if (pkt_data.freq_hz < rf_tx_lowfreq[pkt_data.rf_chain]) {
+        DEBUG_PRINTF("ERROR: FREQUENCY %d LOWER THAN LOWER LIMIT %d OF RF_CHAIN %d\n", pkt_data.freq_hz, rf_tx_lowfreq[pkt_data.rf_chain], pkt_data.rf_chain);
+        return LGW_HAL_ERROR;
+    }
+    i = pkt_data.tx_mode;
+    if ((i != IMMEDIATE) && (i != TIMESTAMPED) && (i != ON_GPS)) {
+        DEBUG_MSG("ERROR: TX_MODE NOT SUPPORTED\n");
+        return LGW_HAL_ERROR;
+    }
+    if (pkt_data.modulation == MOD_LORA) {
+        i = pkt_data.bandwidth;
+        if ((i != BW_125KHZ) && (i != BW_250KHZ) && (i != BW_500KHZ)) {
+            DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA TX\n");
+            return LGW_HAL_ERROR;
+        }
+        i = pkt_data.datarate;
+        if ((i!=DR_LORA_SF7)&&(i!=DR_LORA_SF8)&&(i!=DR_LORA_SF9)&&(i!=DR_LORA_SF10)&&(i!=DR_LORA_SF11)&&(i!=DR_LORA_SF12)) {
+            DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY LORA TX\n");
+            return LGW_HAL_ERROR;
+        }
+        i = pkt_data.coderate;
+        if ((i != CR_LORA_4_5) && (i != CR_LORA_4_6) && (i != CR_LORA_4_7) && (i != CR_LORA_4_8)) {
+            DEBUG_MSG("ERROR: CODERATE NOT SUPPORTED BY LORA TX\n");
+            return LGW_HAL_ERROR;
+        }
+        if (pkt_data.size > 255) {
+            DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR LORA TX\n");
+            return LGW_HAL_ERROR;
+        }
+    }else if ((pkt_data.modulation == MOD_FSK) || (pkt_data.modulation == MOD_GFSK)) {
+        DEBUG_MSG("ERROR: (G)FSK TX MODULATION NOT SUPPORTED YET\n");
+        return LGW_HAL_ERROR;
+    } else {
+        DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
+        return LGW_HAL_ERROR;
+    }
+    
+    /* metadata 0 to 2, TX PLL frequency */
+    part_int = pkt_data.freq_hz / LGW_SW1257_DENUM; /* integer part, gives the MSB and the middle byte */
+    part_frac = ((pkt_data.freq_hz % LGW_SW1257_DENUM) << 8) / LGW_SW1257_DENUM; /* fractional part, gives LSB */
+    buff[0] = 0xFF & (part_int >> 8); /* Most Significant Byte */
+    buff[1] = 0xFF & part_int; /* middle byte */
+    buff[2] = 0xFF & part_frac; /* Least Significant Byte */
+    
+    /* metadata 3 to 6, timestamp trigger value */
+    buff[3] = 0xFF & (pkt_data.count_us >> 24);
+    buff[4] = 0xFF & (pkt_data.count_us >> 16);
+    buff[5] = 0xFF & (pkt_data.count_us >> 8);
+    buff[6] = 0xFF &  pkt_data.count_us;
+    
+    /* parameters depending on modulation  */
+    if (pkt_data.modulation == MOD_LORA) {
+        /* metadata 7, modulation type, radio chain selection and TX power */
+        buff[7] = (0x20 & (pkt_data.rf_chain << 5)) | (0x0F & pkt_data.rf_power); /* bit 4 is 0 -> Lora modulation */
+        /* fine control over TX power not supported yet, any value other than 8 is 14 dBm */
+        
+        buff[8] = 0; /* metadata 8, not used */
+        
+        /* metadata 9, CRC, Lora CR & SF */
+        switch (pkt_data.datarate) {
+            case DR_LORA_SF7: buff[9] |= 7; break;
+            case DR_LORA_SF8: buff[9] |= 8; break;
+            case DR_LORA_SF9: buff[9] |= 9; break;
+            case DR_LORA_SF10: buff[9] |= 10; break;
+            case DR_LORA_SF11: buff[9] |= 11; break;
+            case DR_LORA_SF12: buff[9] |= 12; break;
+            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", pkt_data.datarate);
+        }
+        switch (pkt_data.coderate) {
+            case CR_LORA_4_5: buff[9] |= 1 << 4; break;
+            case CR_LORA_4_6: buff[9] |= 2 << 4; break;
+            case CR_LORA_4_7: buff[9] |= 3 << 4; break;
+            case CR_LORA_4_8: buff[9] |= 4 << 4; break;
+            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", pkt_data.coderate);
+        }
+        if (pkt_data.no_crc == false) {
+            buff[9] |= 0x80; /* set 'CRC enable' bit */
+        }
+        
+        /* metadata 10, payload size */
+        buff[10] = pkt_data.size;
+        
+        /* metadata 11, implicit header & modulation bandwidth */
+        switch (pkt_data.bandwidth) {
+            case BW_125KHZ: buff[11] |= 0; break;
+            case BW_250KHZ: buff[11] |= 1; break;
+            case BW_500KHZ: buff[11] |= 2; break;
+            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", pkt_data.bandwidth);
+        }
+        if (pkt_data.no_header == true) {
+            buff[11] |= 0x04; /* set 'implicit header' bit */
+        }
+        
+        /* metadata 12 & 13, Lora preamble size */
+        if (pkt_data.preamble < MIN_LORA_PREAMBLE) { /* enforce minimum preamble size */
+            pkt_data.preamble = MIN_LORA_PREAMBLE;
+            DEBUG_MSG("Note: preamble length adjusted to respect minimum Lora preamble size\n");
+        }
+        buff[12] = 0xFF & (pkt_data.preamble >> 8);
+        buff[13] = 0xFF & pkt_data.preamble;
+        
+        /* metadata 14 & 15, not used */
+        buff[14] = 0;
+        buff[15] = 0;
+        
+    } else {
+        DEBUG_MSG("ERROR: ONLY LORA TX SUPPORTED FOR NOW\n");
+        return LGW_HAL_ERROR;
+    }
+    
+    /* copy payload */
+    for (i = 0; i < pkt_data.size; ++i) {
+        buff[i+TX_METADATA_NB] = pkt_data.payload[i];
+    }
+    
+    /* put metadata + payload in the TX data buffer */
+    lgw_reg_w(LGW_TX_DATA_BUF_ADDR, 0);
+    lgw_reg_wb(LGW_TX_DATA_BUF_DATA, buff, (pkt_data.size + TX_METADATA_NB));
+    DEBUG_ARRAY(i, pkt_data.size+TX_METADATA_NB, buff);
+    
+    /* send data */
+    switch(pkt_data.tx_mode) {
+        case IMMEDIATE:
+            lgw_reg_w(LGW_TX_TRIG_IMMEDIATE, 0);
+            lgw_reg_w(LGW_TX_TRIG_IMMEDIATE, 1);
+            break;
+            
+        case TIMESTAMPED:
+            lgw_reg_w(LGW_TX_TRIG_DELAYED, 0);
+            lgw_reg_w(LGW_TX_TRIG_DELAYED, 1);
+            break;
+            
+        case ON_GPS:
+            lgw_reg_w(LGW_TX_TRIG_GPS, 0);
+            lgw_reg_w(LGW_TX_TRIG_GPS, 1);
+            break;
+            
+        default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", pkt_data.tx_mode);
+    }
+    
     return LGW_HAL_SUCCESS;
 }
 
