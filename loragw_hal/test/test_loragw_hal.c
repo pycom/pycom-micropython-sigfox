@@ -77,6 +77,10 @@ int main(int argc, char **argv)
     int nb_pkt;
     uint8_t x;
     
+    int tx_cnt = 0;
+    int tx_path = 0;
+    struct lgw_pkt_tx_s txs;
+    
     /* configure signal handling */
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
@@ -137,6 +141,17 @@ int main(int argc, char **argv)
     ifconf.bandwidth = BW_125KHZ;
     ifconf.datarate = DR_LORA_SF10;
     lgw_rxif_setconf(8, ifconf); /* chain 8: bleeper channel 4, SF10 only */
+    
+    /* set configuration for TX packet */
+    memset(&txs, 0, sizeof(txs));
+    txs.freq_hz = 866250000;
+    txs.tx_mode = IMMEDIATE;
+    txs.modulation = MOD_LORA;
+    txs.bandwidth = BW_250KHZ;
+    txs.datarate = DR_LORA_SF10;
+    txs.coderate = CR_LORA_4_5;
+    txs.payload = "TX.TEST.LORA.GATEWAY";
+    txs.size = 20;
     
     /* connect, configure and start the Lora gateway */
     lgw_start();
@@ -207,6 +222,19 @@ int main(int argc, char **argv)
             for(i=0; i < nb_pkt; ++i) {
                 free(rxpkt[i].payload);
             }
+        }
+        
+        /* send a packet every X loop */
+        if (tx_cnt >= 5) {
+            tx_cnt = 0;
+            
+            txs.rf_chain = tx_path; /* alternate between path A and B */
+            i = lgw_send(txs);
+            printf("Packet sent, rf path %d, status %d\n", txs.rf_chain, i);
+            
+            tx_path = (tx_path+1) % 2;
+        } else {
+            ++tx_cnt;
         }
     }
     
