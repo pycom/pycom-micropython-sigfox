@@ -390,6 +390,12 @@ void lgw_constant_adjust(void) {
 
 int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     
+    /* check if the gateway is running */
+    if (lgw_is_started == true) {
+        DEBUG_MSG("ERROR: GATEWAY IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
+        return LGW_HAL_ERROR;
+    }
+    
     /* check input parameters */
     if (rf_chain > LGW_RF_CHAIN_NB) {
         DEBUG_MSG("ERROR: NOT A VALID RF_CHAIN NUMBER\n");
@@ -414,6 +420,12 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     int i, j; /* tmp variables, to shorten long 'if' lines */
+    
+    /* check if the gateway is running */
+    if (lgw_is_started == true) {
+        DEBUG_MSG("ERROR: GATEWAY IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
+        return LGW_HAL_ERROR;
+    }
     
     /* if chain is disabled, don't care about most parameters */
     if (conf.enable == false) {
