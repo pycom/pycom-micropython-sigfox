@@ -152,6 +152,7 @@ int main(int argc, char **argv)
 	txs.coderate = CR_LORA_4_5;
 	txs.payload = "TX.TEST.LORA.GATEWAY";
 	txs.size = 20;
+	txs.invert_pol = false;
 	
 	/* connect, configure and start the Lora gateway */
 	lgw_start();
