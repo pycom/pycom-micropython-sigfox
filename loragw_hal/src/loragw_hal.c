@@ -19,6 +19,7 @@ Description:
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
 #include <math.h>       /* NaN */
+#include <string.h>		/* memcpy */
 
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -499,6 +500,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
                 DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
                 return LGW_HAL_ERROR;
             }
+// TODO : fix the logical expression
             if ((j & DR_LORA_MULTI) == 0) { /* supports any combination of SF between 7 and 12 */
                 DEBUG_MSG("ERROR: DATARATE(S) NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
                 return LGW_HAL_ERROR;
@@ -617,7 +619,7 @@ int lgw_start(void) {
             case BW_125KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,0); break;
             case BW_250KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,1); break;
             case BW_500KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,2); break;
-            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_bw);
+            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_bw); return LGW_HAL_ERROR;
         }
         switch(lora_rx_sf) {
             case DR_LORA_SF7: lgw_reg_w(LGW_MBWSSF_RATE_SF,7); break;
@@ -626,7 +628,7 @@ int lgw_start(void) {
             case DR_LORA_SF10: lgw_reg_w(LGW_MBWSSF_RATE_SF,10); break;
             case DR_LORA_SF11: lgw_reg_w(LGW_MBWSSF_RATE_SF,11); break;
             case DR_LORA_SF12: lgw_reg_w(LGW_MBWSSF_RATE_SF,12); break;
-            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_sf);
+            default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_sf); return LGW_HAL_ERROR;
         }
         lgw_reg_w(LGW_MBWSSF_PPM_OFFSET,0); /* default 0 */
         lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE, 1); /* default 0 */
@@ -724,9 +726,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, s+RX_METADATA_NB);
         
         /* copy payload */
-        for (j = 0; j < s; ++j) {
-            p->payload[j] = buff[j];
-        }
+		memcpy(p->payload, buff, s);
         
         /* process metadata */
         p->if_chain = buff[s+0];
@@ -747,14 +747,14 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 p->status = STAT_NO_CRC;
             }
             p->modulation = MOD_LORA;
-            p->snr = ((double)((int8_t)buff[s+2]))/4;
-            p->snr_min = ((double)((int8_t)buff[s+3]))/4;
-            p->snr_max = ((double)((int8_t)buff[s+4]))/4;
+            p->snr = ((float)((int8_t)buff[s+2]))/4;
+            p->snr_min = ((float)((int8_t)buff[s+3]))/4;
+            p->snr_max = ((float)((int8_t)buff[s+4]))/4;
             if (ifmod == IF_LORA_MULTI) {
-                p->rssi = RSSI_OFFSET_LORA_MULTI + (double)buff[s+5]; //TODO: check formula
+                p->rssi = RSSI_OFFSET_LORA_MULTI + (float)buff[s+5]; //TODO: check formula
                 p->bandwidth = BW_125KHZ; /* fixed in hardware */
             } else {
-                p->rssi = RSSI_OFFSET_LORA_STD + (double)buff[s+5]; //TODO: check formula, might depend on bandwidth
+                p->rssi = RSSI_OFFSET_LORA_STD + (float)buff[s+5]; //TODO: check formula, might depend on bandwidth
                 p->bandwidth = BW_UNDEFINED; // TODO: get parameter from config
             }
             switch ((buff[s+1] >> 4) & 0x0F) {
@@ -945,9 +945,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     }
     
     /* copy payload */
-    for (i = 0; i < pkt_data.size; ++i) {
-        buff[i+TX_METADATA_NB] = pkt_data.payload[i];
-    }
+	memcpy((void *)(buff + TX_METADATA_NB), pkt_data.payload, pkt_data.size);
     
     /* put metadata + payload in the TX data buffer */
     lgw_reg_w(LGW_TX_DATA_BUF_ADDR, 0);

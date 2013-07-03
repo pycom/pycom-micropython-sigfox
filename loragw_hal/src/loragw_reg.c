@@ -505,7 +505,7 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
         return LGW_REG_SUCCESS;
     } else if (register_id == LGW_SOFT_RESET) {
         /* only reset if lsb is 1 */
-        if (reg_value%2 != 0)
+        if ((reg_value & 0x01) != 0)
             lgw_soft_reset();
         return LGW_REG_SUCCESS;
     }
@@ -595,7 +595,7 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
         spi_stat += lgw_spi_r(lgw_spidesc, r.addr, &bufu[0]);
         bufu[1] = bufu[0] << (8 - r.leng - r.offs); /* left-align the data */
         if (r.sign == true) {
-            bufs[2] = bufs[1] >> (8 - r.leng); /* right align the data with sign extension */
+            bufs[2] = bufs[1] >> (8 - r.leng); /* right align the data with sign extension (ARITHMETIC right shift) */
             *reg_value = (int32_t)bufs[2]; /* signed pointer -> 32b sign extension */
         } else {
             bufu[2] = bufu[1] >> (8 - r.leng); /* right align the data, no sign extension */
@@ -610,7 +610,7 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
         }
         if (r.sign == true) {
             u = u << (32 - r.leng); /* left-align the data */
-            *reg_value = (int32_t)u >> (32 - r.leng); /* right-align the data with sign extension */
+            *reg_value = (int32_t)u >> (32 - r.leng); /* right-align the data with sign extension (ARITHMETIC right shift) */
         } else {
             *reg_value = (int32_t)u; /* unsigned value -> return 'as is' */
         }
