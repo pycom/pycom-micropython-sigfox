@@ -286,8 +286,8 @@ void setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
     sx125x_write(rf_chain, 0x0D, SX1257_RXBB_BW + SX1257_RX_ADC_TRIM*4 + SX1257_RX_ADC_BW*32);
     
     /* set RX PLL frequency */
-    part_int = freq_hz / LGW_SW1257_DENUM; /* integer part, gives the MSB and the middle byte */
-    part_frac = ((freq_hz % LGW_SW1257_DENUM) << 8) / LGW_SW1257_DENUM; /* fractional part, gives LSB */
+    part_int = freq_hz / LGW_SX1257_DENUM; /* integer part, gives the MSB and the middle byte */
+    part_frac = ((freq_hz % LGW_SX1257_DENUM) << 8) / LGW_SX1257_DENUM; /* fractional part, gives LSB */
     sx125x_write(rf_chain, 0x01,0xFF & (part_int >> 8)); /* Most Significant Byte */
     sx125x_write(rf_chain, 0x02,0xFF & part_int); /* middle byte */
     sx125x_write(rf_chain, 0x03,0xFF & part_frac); /* Least Significant Byte */
@@ -866,8 +866,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     }
     
     /* metadata 0 to 2, TX PLL frequency */
-    part_int = pkt_data.freq_hz / LGW_SW1257_DENUM; /* integer part, gives the MSB and the middle byte */
-    part_frac = ((pkt_data.freq_hz % LGW_SW1257_DENUM) << 8) / LGW_SW1257_DENUM; /* fractional part, gives LSB */
+    part_int = pkt_data.freq_hz / LGW_SX1257_DENUM; /* integer part, gives the MSB and the middle byte */
+    part_frac = ((pkt_data.freq_hz % LGW_SX1257_DENUM) << 8) / LGW_SX1257_DENUM; /* fractional part, gives LSB */
     buff[0] = 0xFF & (part_int >> 8); /* Most Significant Byte */
     buff[1] = 0xFF & part_int; /* middle byte */
     buff[2] = 0xFF & part_frac; /* Least Significant Byte */

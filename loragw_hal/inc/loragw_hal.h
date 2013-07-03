@@ -43,7 +43,7 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
                   = F_rf (Hz) * 256/15625
 */
 #define LGW_XTAL_FREQU      32000000
-#define LGW_SW1257_DENUM    15625 /* pll settings denominator when the numerator is 2^8 */
+#define LGW_SX1257_DENUM    15625 /* pll settings denominator when the numerator is 2^8 */
 
 /* to use those parameters, declare a local constant, and use 'rf_chain' as index */
 #define LGW_RF_RX_LOWFREQ   {863000000, 863000000}
