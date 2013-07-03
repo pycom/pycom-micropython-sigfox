@@ -388,6 +388,7 @@ void lgw_constant_adjust(void) {
 	/* TX */
 	// lgw_reg_w(LGW_TX_MODE,0); /* default 0 */
 	lgw_reg_w(LGW_TX_START_DELAY,5000); /* default 0 */
+	lgw_reg_w(LGW_TX_SWAP_IQ,1); /* "normal" polarity; default 0 */
 	
 	return;
 }
@@ -500,8 +501,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 				DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
 				return LGW_HAL_ERROR;
 			}
-// TODO : fix the logical expression
-			if ((j & DR_LORA_MULTI) == 0) { /* supports any combination of SF between 7 and 12 */
+			if ((j & ~DR_LORA_MULTI) != 0) { /* ones outside of DR_LORA_MULTI bitmask -> not a combination of Lora datarates */
 				DEBUG_MSG("ERROR: DATARATE(S) NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
 				return LGW_HAL_ERROR;
 			}
@@ -755,7 +755,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 				p->bandwidth = BW_125KHZ; /* fixed in hardware */
 			} else {
 				p->rssi = RSSI_OFFSET_LORA_STD + (float)buff[s+5]; //TODO: check formula, might depend on bandwidth
-				p->bandwidth = BW_UNDEFINED; // TODO: get parameter from config
+				p->bandwidth = lora_rx_bw; /* get the parameter from the config variable */
 			}
 			switch ((buff[s+1] >> 4) & 0x0F) {
 				case 7: p->datarate = DR_LORA_SF7; break;
@@ -939,6 +939,13 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		/* metadata 14 & 15, not used */
 		buff[14] = 0;
 		buff[15] = 0;
+		
+		/* setting TX polarity */
+		if (pkt_data.invert_pol == false) {
+			lgw_reg_w(LGW_TX_SWAP_IQ,1); /* configure TX in "normal" polarity */
+		} else {
+			lgw_reg_w(LGW_TX_SWAP_IQ,0); /* configure TX in "orthogonal" polarity */
+		}
 	} else {
 		DEBUG_MSG("ERROR: ONLY LORA TX SUPPORTED FOR NOW\n");
 		return LGW_HAL_ERROR;

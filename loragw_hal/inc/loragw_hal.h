@@ -173,6 +173,7 @@ struct lgw_pkt_tx_s {
 	int8_t		rf_power;	/*!> TX power, in dBm */
 	uint8_t		modulation; /*!> modulation to use for the packet */
 	uint8_t		bandwidth;	/*!> modulation bandwidth (Lora only) */
+	bool		invert_pol;	/*!> invert signal polarity, for orthogonal downlinks (Lora only) */
 	uint16_t	f_dev;		/*!> frequency deviation (FSK only) */
 	uint16_t	datarate;	/*!> TX datarate */
 	uint8_t		coderate;	/*!> error-correcting code of the packet */
