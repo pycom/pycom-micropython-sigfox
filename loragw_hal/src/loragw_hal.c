@@ -77,7 +77,8 @@ const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 #define     TX_METADATA_NB      16
 #define     RX_METADATA_NB      16
 
-#define     MIN_LORA_PREAMBLE   4
+#define     MIN_LORA_PREAMBLE   	4
+#define		PLL_LOCK_MAX_ATTEMPTS	6
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -120,7 +121,7 @@ void sx125x_write(uint8_t rf_chain, uint8_t addr, uint8_t data);
 
 uint8_t sx125x_read(uint8_t rf_chain, uint8_t addr);
 
-void setup_sx1257(uint8_t rf_chain, uint32_t freq_hz);
+int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz);
 
 void lgw_constant_adjust(void);
 
@@ -129,7 +130,6 @@ void lgw_constant_adjust(void);
 
 /* size is the firmware size in bytes (not 14b words) */
 int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
-    int i;
     int32_t read_value;
     int reg_rst;
     int reg_sel;
@@ -206,6 +206,7 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
     }
     
     /* SPI master data write procedure */
+    lgw_reg_w(reg_cs, 0);
     lgw_reg_w(reg_add, 0x80 | addr); /* MSB at 1 for write operation */
     lgw_reg_w(reg_dat, data);
     lgw_reg_w(reg_cs, 1);
@@ -252,6 +253,7 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
     }
     
     /* SPI master data read procedure */
+    lgw_reg_w(reg_cs, 0);
     lgw_reg_w(reg_add, addr); /* MSB at 0 for read operation */
     lgw_reg_w(reg_dat, 0);
     lgw_reg_w(reg_cs, 1);
@@ -263,14 +265,14 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-void setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
+int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
     uint32_t part_int;
     uint32_t part_frac;
     int i = 0;
     
     if (rf_chain >= LGW_RF_CHAIN_NB) {
         DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
-        return;
+        return -1;
     }
     
     /* misc */
@@ -294,6 +296,10 @@ void setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
     
     /* start and PLL lock */
     do {
+		if (i >= PLL_LOCK_MAX_ATTEMPTS) {
+			DEBUG_MSG("ERROR: FAIL TO LOCK PLL\n");
+			return -1;
+		}
         sx125x_write(rf_chain, 0x00, 1); /* enable Xtal oscillator */
         sx125x_write(rf_chain, 0x00, 3); /* Enable RX (PLL+FE) */
         ++i;
@@ -301,7 +307,7 @@ void setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
         wait_ms(1);
     } while(sx125x_read(rf_chain, 0x11) & 0x02 == 0);
     
-    return;
+    return 0;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
