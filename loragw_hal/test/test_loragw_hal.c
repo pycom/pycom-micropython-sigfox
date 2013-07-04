@@ -225,7 +225,7 @@ int main(int argc, char **argv)
 		}
 		
 		/* send a packet every X loop */
-		if (tx_cnt >= 5) {
+		if (tx_cnt >= 32) {
 			tx_cnt = 0;
 			
 			txs.rf_chain = tx_path; /* alternate between path A and B */
