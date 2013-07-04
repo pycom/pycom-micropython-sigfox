@@ -41,7 +41,8 @@ Description:
 	#define CHECK_NULL(a)				if(a==NULL){return LGW_HAL_ERROR;}
 #endif
 
-#define IF_HZ_TO_REG(f) (f << 5)/15625
+#define IF_HZ_TO_REG(f)		(f << 5)/15625
+#define	SET_PPM_ON(bw,dr)	(((bw == BW_125KHZ) && ((dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))) || ((bw == BW_250KHZ) && (dr == DR_LORA_SF12)))
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -110,8 +111,7 @@ static int32_t if_freq[LGW_IF_CHAIN_NB] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; /* rel
 static uint8_t lora_multi_sfmask[LGW_MULTI_NB] = {0, 0, 0, 0}; /* enables SF for Lora 'multi' modems */
 static uint8_t lora_rx_bw = 0; /* for the Lora standalone modem(s) */
 static uint16_t lora_rx_sf = 0; /* for the Lora standalone modem(s) */
-static uint8_t fsk_rx_bw = 0; /* for the FSK standalone modem(s) */
-static uint8_t fsk_rx_sf = 0; /* for the FSK standalone modem(s) */
+static uint8_t lora_rx_ppm_offset = 0;  /* for the Lora standalone modem(s) */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -356,7 +356,6 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_SYNCH_DETECT_TH,1); /* default 1 */
 	// lgw_reg_w(LGW_ZERO_PAD,0); /* default 0 */
 	lgw_reg_w(LGW_SNR_AVG_CST,3); /* default 2 */
-	// lgw_reg_w(LGW_PPM_OFFSET,0); /* default 0 */
 	// lgw_reg_w(LGW_FRAME_SYNCH_PEAK1_POS,1); /* default 1 */
 	// lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS,2); /* default 2 */
 	// lgw_reg_w(LGW_PREAMBLE_FINE_TIMING_GAIN,1); /* default 1 */
@@ -376,7 +375,6 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_GAIN,1); /* default 1 */
 	// lgw_reg_w(LGW_MBWSSF_SYNCH_DETECT_TH,1); /* default 1 */
 	// lgw_reg_w(LGW_MBWSSF_ZERO_PAD,0); /* default 0 */
-	// lgw_reg_w(LGW_MBWSSF_PPM_OFFSET,0); /* default 0 */
 	// lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS,1); /* default 1 */
 	// lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS,2); /* default 2 */
 	// lgw_reg_w(LGW_MBWSSF_ONLY_CRC_EN,1); /* default 1 */
@@ -487,6 +485,12 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 			if_freq[if_chain] = conf.freq_hz;
 			lora_rx_bw = conf.bandwidth;
 			lora_rx_sf = conf.datarate;
+			if (SET_PPM_ON(conf.bandwidth, conf.datarate)) {
+				lora_rx_ppm_offset = 1;
+			} else {
+				lora_rx_ppm_offset = 0;
+			}
+			
 			DEBUG_PRINTF("Note: Lora 'std' if_chain %d configured; en:%d freq:%d bw:%d dr:%d\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_rx_bw, lora_rx_sf);
 			break;
 		
@@ -595,7 +599,6 @@ int lgw_start(void) {
 	
 	/* load adjusted parameters */
 	lgw_constant_adjust();
-	// lgw_reg_w(LGW_PPM_OFFSET,0); /* default 0 */
 	
 	/* configure Lora 'multi' (aka. Lora 'sensor' channels */
 	lgw_reg_w(LGW_RADIO_SELECT, if_rf_switch); /* IF mapping to radio A/B (per bit, 0=A, 1=B) */
@@ -610,7 +613,7 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_CORR2_DETECT_EN, (if_enable[2] == true) ? lora_multi_sfmask[2] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR3_DETECT_EN, (if_enable[3] == true) ? lora_multi_sfmask[3] : 0); /* default 0 */
 	
-	lgw_reg_w(LGW_PPM_OFFSET, 0x00); /* if the threshold is 16ms, use 0x60 to enable ppm_offset for SF12 and SF11 */
+	lgw_reg_w(LGW_PPM_OFFSET, 0x60); /* if the threshold is 16ms, use 0x60 to enable ppm_offset for SF12 and SF11 @125kHz*/
 	
 	lgw_reg_w(LGW_CONCENTRATOR_MODEM_ENABLE,1); /* default 0 */
 	
@@ -632,7 +635,7 @@ int lgw_start(void) {
 			case DR_LORA_SF12: lgw_reg_w(LGW_MBWSSF_RATE_SF,12); break;
 			default: DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_sf); return LGW_HAL_ERROR;
 		}
-		lgw_reg_w(LGW_MBWSSF_PPM_OFFSET,0); /* default 0 */
+		lgw_reg_w(LGW_MBWSSF_PPM_OFFSET, lora_rx_ppm_offset); /* default 0 */
 		lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE, 1); /* default 0 */
 	} else {
 		lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE, 0);
@@ -936,6 +939,14 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		/* metadata 14 & 15, not used */
 		buff[14] = 0;
 		buff[15] = 0;
+		
+		/* TODO: need a metadata for PPM offset */
+		if (SET_PPM_ON(pkt_data.bandwidth,pkt_data.datarate)) {
+			lgw_reg_w(LGW_TX_PPM_OFFSET, 1);
+		} else {
+			lgw_reg_w(LGW_TX_PPM_OFFSET, 0);
+		}
+		
 	} else {
 		DEBUG_MSG("ERROR: ONLY LORA TX SUPPORTED FOR NOW\n");
 		return LGW_HAL_ERROR;
