@@ -269,7 +269,7 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
 int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
 	uint32_t part_int;
 	uint32_t part_frac;
-	int i = 0;
+	int cpt_attempts = 0;
 	
 	if (rf_chain >= LGW_RF_CHAIN_NB) {
 		DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
@@ -297,14 +297,14 @@ int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
 	
 	/* start and PLL lock */
 	do {
-		if (i >= PLL_LOCK_MAX_ATTEMPTS) {
+		if (cpt_attempts >= PLL_LOCK_MAX_ATTEMPTS) {
 			DEBUG_MSG("ERROR: FAIL TO LOCK PLL\n");
 			return -1;
 		}
 		sx125x_write(rf_chain, 0x00, 1); /* enable Xtal oscillator */
 		sx125x_write(rf_chain, 0x00, 3); /* Enable RX (PLL+FE) */
-		++i;
-		DEBUG_PRINTF("Note: SX1257 #%d PLL start (attempt %d)\n", rf_chain, i);
+		++cpt_attempts;
+		DEBUG_PRINTF("Note: SX1257 #%d PLL start (attempt %d)\n", rf_chain, cpt_attempts);
 		wait_ms(1);
 	} while(sx125x_read(rf_chain, 0x11) & 0x02 == 0);
 	
@@ -427,8 +427,6 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
-	int i, j; /* tmp variables, to shorten long 'if' lines */
-	
 	/* check if the gateway is running */
 	if (lgw_is_started == true) {
 		DEBUG_MSG("ERROR: GATEWAY IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
@@ -539,7 +537,6 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 int lgw_start(void) {
 	int reg_stat;
 	int32_t read_value;
-	int i, j;
 	
 	if (lgw_is_started == true) {
 		DEBUG_MSG("Note: Lora Gateway already started, restarting it now\n");
@@ -679,7 +676,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 	int s; /* size of the payload, uses to address metadata */
 	int ifmod; /* type of if_chain/modem a packet was received by */
 	int stat_fifo; /* the packet status as indicated in the FIFO */
-	int j;
 	
 	/* check if the gateway is running */
 	if (lgw_is_started == false) {
