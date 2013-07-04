@@ -518,7 +518,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 				default: DEBUG_MSG("ERROR: IMPROPRER IF_CHAIN/RF_CHAIN ASSOCIATION\n");
 			}
 			if_freq[if_chain] = conf.freq_hz;
-			lora_multi_sfmask[if_chain] = (uint8_t)j;
+			lora_multi_sfmask[if_chain] = (uint8_t)(0x007F & conf.datarate);
 			DEBUG_PRINTF("Note: Lora 'multi' if_chain %d configured; en:%d freq:%d SF_mask:0x%02x\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_multi_sfmask[if_chain]);
 			DEBUG_PRINTF("Note: rf/if switch state 0x%02x\n", if_rf_switch);
 			break;
