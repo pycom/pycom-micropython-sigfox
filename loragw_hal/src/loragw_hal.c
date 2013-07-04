@@ -469,22 +469,26 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 				return LGW_HAL_ERROR;
 			}
 			/* fill default parameters if needed */
-			i = (conf.bandwidth == 0) ? BW_250KHZ : conf.bandwidth;
-			j = (conf.datarate == 0) ? DR_LORA_SF9 : conf.datarate;
+			if (conf.bandwidth == 0) {
+				conf.bandwidth = BW_250KHZ;
+			}
+			if (conf.datarate == 0) {
+				conf.datarate = DR_LORA_SF9;
+			}
 			/* check BW & DR */
-			if ((i != BW_125KHZ) && (i != BW_250KHZ) && (i != BW_500KHZ)) {
+			if (!IS_LORA_BW(conf.bandwidth)) {
 				DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_STD IF CHAIN\n");
 				return LGW_HAL_ERROR;
 			}
-			if ((j!=DR_LORA_SF7)&&(j!=DR_LORA_SF8)&&(j!=DR_LORA_SF9)&&(j!=DR_LORA_SF10)&&(j!=DR_LORA_SF11)&&(j!=DR_LORA_SF12)) {
+			if (!IS_LORA_STD_DR(conf.datarate)) {
 				DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY LORA_STD IF CHAIN\n");
 				return LGW_HAL_ERROR;
 			}
 			/* set internal configuration  */
 			if_enable[if_chain] = conf.enable;
 			if_freq[if_chain] = conf.freq_hz;
-			lora_rx_bw = i;
-			lora_rx_sf = j;
+			lora_rx_bw = conf.bandwidth;
+			lora_rx_sf = conf.datarate;
 			DEBUG_PRINTF("Note: Lora 'std' if_chain %d configured; en:%d freq:%d bw:%d dr:%d\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_rx_bw, lora_rx_sf);
 			break;
 		
@@ -494,14 +498,15 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 				return LGW_HAL_ERROR;
 			}
 			/* fill default parameters if needed */
-			i = (conf.bandwidth == 0) ? BW_125KHZ : conf.bandwidth;
-			j = (conf.datarate == 0) ? DR_LORA_MULTI : conf.datarate;
+			if (conf.datarate == 0) {
+				conf.datarate = DR_LORA_MULTI;
+			}
 			/* check BW & DR */
-			if (i != BW_125KHZ) {
+			if ((conf.bandwidth != BW_125KHZ) && (conf.bandwidth != 0)) { /* 0 is for default */
 				DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
 				return LGW_HAL_ERROR;
 			}
-			if ((j & ~DR_LORA_MULTI) != 0) { /* ones outside of DR_LORA_MULTI bitmask -> not a combination of Lora datarates */
+			if (!IS_LORA_MULTI_DR(conf.datarate)) {
 				DEBUG_MSG("ERROR: DATARATE(S) NOT SUPPORTED BY LORA_MULTI IF CHAIN\n");
 				return LGW_HAL_ERROR;
 			}
@@ -839,24 +844,20 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		DEBUG_PRINTF("ERROR: FREQUENCY %d LOWER THAN LOWER LIMIT %d OF RF_CHAIN %d\n", pkt_data.freq_hz, rf_tx_lowfreq[pkt_data.rf_chain], pkt_data.rf_chain);
 		return LGW_HAL_ERROR;
 	}
-	i = pkt_data.tx_mode;
-	if ((i != IMMEDIATE) && (i != TIMESTAMPED) && (i != ON_GPS)) {
+	if (!IS_TX_MODE(pkt_data.tx_mode)) {
 		DEBUG_MSG("ERROR: TX_MODE NOT SUPPORTED\n");
 		return LGW_HAL_ERROR;
 	}
 	if (pkt_data.modulation == MOD_LORA) {
-		i = pkt_data.bandwidth;
-		if ((i != BW_125KHZ) && (i != BW_250KHZ) && (i != BW_500KHZ)) {
+		if (!IS_LORA_BW(pkt_data.bandwidth)) {
 			DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA TX\n");
 			return LGW_HAL_ERROR;
 		}
-		i = pkt_data.datarate;
-		if ((i!=DR_LORA_SF7)&&(i!=DR_LORA_SF8)&&(i!=DR_LORA_SF9)&&(i!=DR_LORA_SF10)&&(i!=DR_LORA_SF11)&&(i!=DR_LORA_SF12)) {
+		if (!IS_LORA_STD_DR(pkt_data.datarate)) {
 			DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY LORA TX\n");
 			return LGW_HAL_ERROR;
 		}
-		i = pkt_data.coderate;
-		if ((i != CR_LORA_4_5) && (i != CR_LORA_4_6) && (i != CR_LORA_4_7) && (i != CR_LORA_4_8)) {
+		if (!IS_LORA_CR(pkt_data.coderate)) {
 			DEBUG_MSG("ERROR: CODERATE NOT SUPPORTED BY LORA TX\n");
 			return LGW_HAL_ERROR;
 		}
