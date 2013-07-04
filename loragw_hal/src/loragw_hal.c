@@ -940,13 +940,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		/* metadata 14 & 15, not used */
 		buff[14] = 0;
 		buff[15] = 0;
-		
-		/* setting TX polarity */
-		if (pkt_data.invert_pol == false) {
-			lgw_reg_w(LGW_TX_SWAP_IQ,1); /* configure TX in "normal" polarity */
-		} else {
-			lgw_reg_w(LGW_TX_SWAP_IQ,0); /* configure TX in "orthogonal" polarity */
-		}
 	} else {
 		DEBUG_MSG("ERROR: ONLY LORA TX SUPPORTED FOR NOW\n");
 		return LGW_HAL_ERROR;

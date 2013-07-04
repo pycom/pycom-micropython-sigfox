@@ -23,11 +23,11 @@ Description:
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC MACROS -------------------------------------------------------- */
 
-#define IS_LORA_BW(a)		((a == BW_125KHZ) || (a == BW_250KHZ) || (a == BW_500KHZ))
-#define IS_LORA_STD_DR(a)	((a == DR_LORA_SF7) || (a == DR_LORA_SF8) || (a == DR_LORA_SF9) || (a == DR_LORA_SF10) || (a == DR_LORA_SF11) || (a == DR_LORA_SF12))
-#define IS_LORA_MULTI_DR(a)	((a & ~DR_LORA_MULTI) == 0) /* ones outside of DR_LORA_MULTI bitmask -> not a combination of Lora datarates */
-#define IS_LORA_CR(a)		((a == CR_LORA_4_5) && (a == CR_LORA_4_6) && (a == CR_LORA_4_7) && (a == CR_LORA_4_8))
-#define	IS_TX_MODE(a)		((a == IMMEDIATE) || (a == TIMESTAMPED) || (a == ON_GPS))
+#define IS_LORA_BW(bw)			((bw == BW_125KHZ) || (bw == BW_250KHZ) || (bw == BW_500KHZ))
+#define IS_LORA_STD_DR(dr)		((dr == DR_LORA_SF7) || (dr == DR_LORA_SF8) || (dr == DR_LORA_SF9) || (dr == DR_LORA_SF10) || (dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))
+#define IS_LORA_MULTI_DR(dr)	((dr & ~DR_LORA_MULTI) == 0) /* ones outside of DR_LORA_MULTI bitmask -> not a combination of Lora datarates */
+#define IS_LORA_CR(cr)			((cr == CR_LORA_4_5) && (cr == CR_LORA_4_6) && (cr == CR_LORA_4_7) && (cr == CR_LORA_4_8))
+#define	IS_TX_MODE(mode)		((mode == IMMEDIATE) || (mode == TIMESTAMPED) || (mode == ON_GPS))
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
@@ -182,7 +182,6 @@ struct lgw_pkt_tx_s {
 	int8_t		rf_power;	/*!> TX power, in dBm */
 	uint8_t		modulation; /*!> modulation to use for the packet */
 	uint8_t		bandwidth;	/*!> modulation bandwidth (Lora only) */
-	bool		invert_pol;	/*!> invert signal polarity, for orthogonal downlinks (Lora only) */
 	uint16_t	f_dev;		/*!> frequency deviation (FSK only) */
 	uint16_t	datarate;	/*!> TX datarate */
 	uint8_t		coderate;	/*!> error-correcting code of the packet */
