@@ -3,11 +3,11 @@ CFLAGS=-O2 -Iinc
 C99FLAGS=-O2 -std=c99 -Iinc
 LDFLAGS=-lrt
 
+all: test_loragw_spi test_loragw_reg test_loragw_hal
+
 clean:
 	rm -f test_*
 	rm -f obj/*.o
-
-all: test_loragw_spi test_loragw_reg test_loragw_hal
 
 test_loragw_spi: obj/test_loragw_spi.o obj/loragw_spi.o
 	$(CC) obj/test_loragw_spi.o obj/loragw_spi.o -o test_loragw_spi $(LDFLAGS)
