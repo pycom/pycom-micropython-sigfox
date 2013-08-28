@@ -38,8 +38,10 @@ endif
 obj/loragw_aux.o: .conf_ok src/loragw_aux.c inc/loragw_aux.h
 	$(CC) -c $(CFLAGS) src/loragw_aux.c -o obj/loragw_aux.o $(FLAG_AUX)
 
-obj/loragw_spi.o: .conf_ok src/loragw_spi.c inc/loragw_spi.h
-	$(CC) -c $(C99FLAGS) src/loragw_spi.c -o obj/loragw_spi.o $(FLAG_SPI)
+obj/loragw_spi.o: .conf_ok src/loragw_spi.native.c inc/loragw_spi.h
+ifeq ($(LGW_PHY),native)
+	$(CC) -c $(C99FLAGS) src/loragw_spi.native.c -o obj/loragw_spi.o $(FLAG_SPI)
+endif
 
 obj/loragw_reg.o: .conf_ok src/loragw_reg.c inc/loragw_reg.h inc/loragw_spi.h
 	$(CC) -c $(C99FLAGS) src/loragw_reg.c -o obj/loragw_reg.o $(FLAG_REG)
