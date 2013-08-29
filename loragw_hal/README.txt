@@ -121,6 +121,13 @@ For embedded platforms, the function could be rewritten using hardware times.
 All modules use the fprintf(stderr,...) function to display debug diagnostic
 messages if the DEBUG flag is defined (eg. for GCC, add the -DDEBUG flag).
 
+Depending on config, SPI module needs LibMPSSE to access the FTDI SPI-over-USB
+bridge. Please go to that URL to download that library:
+http://code.google.com/p/libmpsse/
+The code was tested with version 1.3 of LibMPSSE
+That library has some dependencies itself, please read the installation
+instructions.
+
 
 4. Hardware dependencies
 ------------------------
@@ -137,7 +144,7 @@ are platform-dependant.
 The functions must be rewritten depending on the SPI bridge you use:
 
 * SPI master matched to the Linux SPI device driver (provided)
-* SPI over USB using FTDI components (not provided)
+* SPI over USB using FTDI components (provided)
 * native SPI using a microcontroller peripheral (not provided)
 
 You can use the test program test_loragw_spi to check with a logic analyser

@@ -10,6 +10,9 @@ C99FLAGS=-O2 -std=c99 -Iinc
 ifeq ($(LGW_PHY),native)
 LDFLAGS=-lrt
 endif
+ifeq ($(LGW_PHY),ftdi)
+LDFLAGS=-lrt -lmpsse
+endif
 
 
 # general build targets
@@ -27,7 +30,11 @@ clean:
 ifeq ($(LGW_PHY),native)
 	@echo "Selected SPI interface type: Linux native driver"
 else
+ifeq ($(LGW_PHY),ftdi)
+	@echo "Selected SPI interface type: FTDI SPI-over-USB bridge"
+else
 	$(error No SPI physical layer selected)
+endif
 endif
 	@echo "*** Config seems ok ***"
 	@touch .conf_ok
@@ -38,9 +45,12 @@ endif
 obj/loragw_aux.o: .conf_ok src/loragw_aux.c inc/loragw_aux.h
 	$(CC) -c $(CFLAGS) src/loragw_aux.c -o obj/loragw_aux.o $(FLAG_AUX)
 
-obj/loragw_spi.o: .conf_ok src/loragw_spi.native.c inc/loragw_spi.h
+obj/loragw_spi.o: .conf_ok src/loragw_spi.native.c src/loragw_spi.ftdi.c inc/loragw_spi.h
 ifeq ($(LGW_PHY),native)
 	$(CC) -c $(C99FLAGS) src/loragw_spi.native.c -o obj/loragw_spi.o $(FLAG_SPI)
+endif
+ifeq ($(LGW_PHY),ftdi)
+	$(CC) -c $(C99FLAGS) src/loragw_spi.ftdi.c -o obj/loragw_spi.o $(FLAG_SPI)
 endif
 
 obj/loragw_reg.o: .conf_ok src/loragw_reg.c inc/loragw_reg.h inc/loragw_spi.h

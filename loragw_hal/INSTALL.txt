@@ -1,0 +1,39 @@
+# install libftdi
+sudo apt-get install libftdi-dev
+
+# this should install :
+# - libftdi-dev 0.19-4 (armhf)
+# - libftdil 0.19-4 (armhf)
+# - libusb-dev 2:0.1.12-20 (armhf)
+
+# download and unpack the libMPSSE 1.3
+# go to the src directory and install the library
+./configure --disable-python
+make
+sudo make install
+# static and dynamic libraries compiled code is put into /usr/local/lib
+# header file is put into /usr/local/include
+
+# on the Pcduino, you must regenerate the library cache (might take few seconds)
+sudo ldconfig
+
+### to allow non-root applications to access the FTDI device on USB
+### create a file named 99-libftdi.rules in /etc/udev/rules.d
+# --- start of the file ---
+# FTDI Devices: FT232BM/L/Q, FT245BM/L/Q, FT232RL/Q, FT245RL/Q, VNC1L with VDPS Firmware
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", MODE="0664", GROUP="plugdev"
+
+# FTDI Devices: FT2232C/D/L, FT2232HL/Q
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6010", MODE="0664", GROUP="plugdev"
+
+# FTDI Devices: FT4232HL/Q
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6011", MODE="0664", GROUP="plugdev"
+# --- end of the file ---
+### for the nano board, only the FT2232H line is required
+
+# unpack the Lora Gateway HAL and go to its directory
+# build the library and examples
+make all
+
+# connect a nanoconcentrator and run test_loragw_reg to test that you have access to Lora registers
+# less than 50 registers of the ~300 registers should return a mismatch
