@@ -74,8 +74,9 @@ const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 #define		SX1257_RX_ADC_TRIM		6	/* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
 #define		SX1257_RXBB_BW			2
 
-#define		RSSI_OFFSET_LORA_MULTI	-127.0	/* calibrated value */
-#define		RSSI_OFFSET_LORA_STD	0.0	/* RSSI not working properly on that IF channel */
+#define		RSSI_OFFSET_LORA_MULTI	-130.0	/* calibrated value */
+#define		RSSI_OFFSET_LORA_STD	-168.0	/* calibrated for all bandwidth */
+#define		RSSI_OFFSET_FSK			0.0	/* TODO */
 
 #define		TX_METADATA_NB		16
 #define		RX_METADATA_NB		16
@@ -323,7 +324,7 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_RX_EDGE_SELECT,0); /* default 0 */
 	// lgw_reg_w(LGW_MBWSSF_MODEM_INVERT_IQ,0); /* default 0 */
 	// lgw_reg_w(LGW_DC_NOTCH_EN,1); /* default 1 */
-	// lgw_reg_w(LGW_RSSI_BB_FILTER_ALPHA,7); /* default 7 */
+	lgw_reg_w(LGW_RSSI_BB_FILTER_ALPHA,9); /* default 7 */
 	lgw_reg_w(LGW_RSSI_DEC_FILTER_ALPHA,7); /* default 5 */
 	lgw_reg_w(LGW_RSSI_CHANN_FILTER_ALPHA,7); /* default 8 */
 	// lgw_reg_w(LGW_RSSI_BB_DEFAULT_VALUE,32); /* default 32 */
@@ -385,8 +386,31 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_MBWSSF_TRACKING_INTEGRAL,0); /* default 0 */
 	// lgw_reg_w(LGW_MBWSSF_AGC_FREEZE_ON_DETECT,1); /* default 1 */
 	
-	/* FSK modem setup */
+	/* FSK datapath */
+	lgw_reg_w(LGW_FSK_RX_INVERT,1); /* default 0 */
 	lgw_reg_w(LGW_FSK_MODEM_INVERT_IQ,1); /* default 0 */
+	
+	/* FSK demod */
+	// lgw_reg_w(LGW_FSK_AUTO_AFC_ON,0); /* default 0 */
+	// lgw_reg_w(LGW_FSK_BROADCAST,0); /* default 0 */
+	lgw_reg_w(LGW_FSK_CRC_EN,1); /* default 0 */
+	// lgw_reg_w(LGW_FSK_CRC_IBM,0); /* default 0 */
+	// lgw_reg_w(LGW_FSK_DCFREE_ENC,0); /* default 0 */
+	lgw_reg_w(LGW_FSK_ERROR_OSR_TOL,10); /* default 0 */
+	lgw_reg_w(LGW_FSK_MODEM_INVERT_IQ,1); /* default 0 */
+	// lgw_reg_w(LGW_FSK_NODE_ADRS,0); /* default 0 */
+	lgw_reg_w(LGW_FSK_PATTERN_TIMEOUT_CFG,64); /* default 0 */
+	lgw_reg_w(LGW_FSK_PKT_LENGTH,64); /* default 0 */
+	lgw_reg_w(LGW_FSK_PKT_MODE,1); /* default 0 */
+	lgw_reg_w(LGW_FSK_PSIZE,3); /* default 0 */
+	lgw_reg_w(LGW_FSK_REF_PATTERN_LSB,0x55); /* default 0 */
+	lgw_reg_w(LGW_FSK_REF_PATTERN_MSB,0x55); /* default 0 */
+	lgw_reg_w(LGW_FSK_RSSI_LENGTH,4); /* default 0 */
+	lgw_reg_w(LGW_FSK_CH_BW_EXPO,2); /* 125kHz (default 0, 500kHz) */
+	
+	/* FSK mod */
+	lgw_reg_w(LGW_FSK_TX_PSIZE,3); /* default 0 */
+	lgw_reg_w(LGW_FSK_TX_GAUSSIAN_SELECT_BT,1); /* default 0 */
 	
 	/* TX */
 	// lgw_reg_w(LGW_TX_MODE,0); /* default 0 */
@@ -469,10 +493,6 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 	fill default if necessary, and commit configuration if everything is OK */
 	switch (ifmod_config[if_chain]) {
 		case IF_LORA_STD:
-			if (conf.rf_chain != 0) {
-				DEBUG_MSG("ERROR: LORA_STD IF CHAIN CAN ONLY BE ASSOCIATED TO RF_CHAIN 0\n");
-				return LGW_HAL_ERROR;
-			}
 			/* fill default parameters if needed */
 			if (conf.bandwidth == 0) {
 				conf.bandwidth = BW_250KHZ;
