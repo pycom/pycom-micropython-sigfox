@@ -144,10 +144,17 @@ int main(int argc, char **argv)
 	ifconf.datarate = DR_LORA_SF10;
 	lgw_rxif_setconf(8, ifconf); /* chain 8: bleeper channel 4, SF10 only */
 	
+	/* set configuration for FSK channel */
+	ifconf.enable = true;
+	ifconf.rf_chain = 0;
+	ifconf.freq_hz = 0;
+	ifconf.bandwidth = BW_250KHZ;
+	ifconf.datarate = DR_FSK_64K;
+	lgw_rxif_setconf(9, ifconf);
 	
 	/* load the TX payload */
 	strcpy((char *)txbuf, "TX.TEST.LORA.GW.????" );
-		
+	
 	/* set configuration for TX packet */
 	memset(&txs, 0, sizeof(txs));
 	txs.freq_hz = 866250000;

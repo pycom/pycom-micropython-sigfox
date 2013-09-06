@@ -27,6 +27,10 @@ Description:
 #define IS_LORA_STD_DR(dr)		((dr == DR_LORA_SF7) || (dr == DR_LORA_SF8) || (dr == DR_LORA_SF9) || (dr == DR_LORA_SF10) || (dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))
 #define IS_LORA_MULTI_DR(dr)	((dr & ~DR_LORA_MULTI) == 0) /* ones outside of DR_LORA_MULTI bitmask -> not a combination of Lora datarates */
 #define IS_LORA_CR(cr)			((cr == CR_LORA_4_5) || (cr == CR_LORA_4_6) || (cr == CR_LORA_4_7) || (cr == CR_LORA_4_8))
+
+#define IS_FSK_BW(bw)			((bw >= 1) && (bw <= 7))
+#define IS_FSK_DR(dr)			((dr >= 128) && (dr <= 64000)) /* 500bauds to 250kbauds */
+
 #define	IS_TX_MODE(mode)		((mode == IMMEDIATE) || (mode == TIMESTAMPED) || (mode == ON_GPS))
 
 /* -------------------------------------------------------------------------- */
@@ -82,37 +86,73 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 	IF_FSK_STD }
 
 /* values available for the 'modulation' parameters */
+/* NOTE: arbitrary values */
 #define MOD_UNDEFINED	0
 #define MOD_LORA		0x10
 #define MOD_FSK			0x20
 #define MOD_GFSK		0x21
 
-/* values available for the 'bandwidth' parameters */
+/* values available for the 'bandwidth' parameters (Lora & FSK) */
+/* NOTE: directly encode FSK RX bandwidth, do not change */
 #define BW_UNDEFINED	0
-#define BW_500KHZ		0x04
-#define BW_250KHZ		0x08
-#define BW_125KHZ		0x0C
-// TODO: add all the supported FSK bandwidth
+#define BW_500KHZ		0x01
+#define BW_250KHZ		0x02
+#define BW_125KHZ		0x03
+#define BW_62K5HZ		0x04
+#define BW_31K2HZ		0x05
+#define BW_15K6HZ		0x06
+#define BW_7K8HZ		0x07
 
 /* values available for the 'datarate' parameters */
+/* NOTE: Lora values used directly to code SF bitmask in 'multi' modem, do not change */
+/* NOTE: FSK values encode the clock divider for a 32MHz XTAL, do not change */
 #define DR_UNDEFINED	0
-#define DR_LORA_SF7		0x1002
-#define DR_LORA_SF8		0x1004
-#define DR_LORA_SF9		0x1008
-#define DR_LORA_SF10	0x1010
-#define DR_LORA_SF11	0x1020
-#define DR_LORA_SF12	0x1040
-#define DR_LORA_MULTI	0x107E
-// TODO: add FSK data rates
+#define DR_LORA_SF7		0x02
+#define DR_LORA_SF8		0x04
+#define DR_LORA_SF9		0x08
+#define DR_LORA_SF10	0x10
+#define DR_LORA_SF11	0x20
+#define DR_LORA_SF12	0x40
+#define DR_LORA_MULTI	0x7E
 
-/* values available for the 'coderate' parameters */
+#define DR_FSK_1K2		26667	/* 1200 bauds */
+#define DR_FSK_2K4		13333	/* 2400 bauds */
+#define DR_FSK_3K6		8889	/* 3600 bauds */
+#define DR_FSK_4K8		6667	/* 4800 bauds */
+#define DR_FSK_9K6		3333	/* 9600 bauds */
+#define DR_FSK_14K4		2222	/* 14400 bauds */
+#define DR_FSK_19K2		1667	/* 19200 bauds */
+#define DR_FSK_28K8		1111	/* 28800 bauds */
+#define DR_FSK_38K4		833		/* 38400 bauds */
+#define DR_FSK_56K		571		/* 56000 bauds */
+#define DR_FSK_57K6		556		/* 57600 bauds */
+#define DR_FSK_115K2	278		/* 115200 bauds */
+
+#define DR_FSK_2EXP10	31250	/* 1024 bauds */
+#define DR_FSK_2EXP11	15625	/* 2048 bauds */
+#define DR_FSK_2EXP12	7813	/* 4096 bauds */
+#define DR_FSK_2EXP13	3906	/* 8192 bauds */
+#define DR_FSK_2EXP14	1953	/* 16384 bauds */
+#define DR_FSK_2EXP15	977		/* 32768 bauds */
+#define DR_FSK_2EXP16	488		/* 65536 bauds */
+#define DR_FSK_2EXP17	244		/* 131072 bauds */
+
+#define DR_FSK_1K		32000	/* 1000 bauds */
+#define DR_FSK_6K4		5000	/* 6400 bauds */
+#define DR_FSK_10K		3200	/* 10000 bauds */
+#define DR_FSK_64K		500		/* 64000 bauds */
+#define DR_FSK_100K		320		/* 100000 bauds */
+
+/* values available for the 'coderate' parameters (Lora only) */
+/* NOTE: arbitrary values */
 #define CR_UNDEFINED	0
-#define CR_LORA_4_5		0x11
-#define CR_LORA_4_6		0x12
-#define CR_LORA_4_7		0x13
-#define CR_LORA_4_8		0x14
+#define CR_LORA_4_5		0x01
+#define CR_LORA_4_6		0x02
+#define CR_LORA_4_7		0x03
+#define CR_LORA_4_8		0x04
 
 /* values available for the 'status' parameter */
+/* NOTE: values according to hardware specification */
 #define STAT_UNDEFINED	0x00
 #define STAT_NO_CRC		0x01
 #define STAT_CRC_BAD	0x11
@@ -131,6 +171,7 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define	RX_STATUS		2
 
 /* status code for TX_STATUS */
+/* NOTE: arbitrary values */
 #define TX_STATUS_UNKNOWN	0
 #define	TX_OFF				1	/* TX modem disabled, it will ignore commands */
 #define TX_FREE				2	/* TX modem is free, ready to receive a command */
@@ -138,6 +179,7 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define TX_EMITTING			4	/* TX modem is emitting */
 
 /* status code for RX_STATUS */
+/* NOTE: arbitrary values */
 #define RX_STATUS_UNKNOWN	0
 #define RX_OFF				1	/* RX modem is disabled, it will ignore commands  */
 #define RX_ON				2	/* RX modem is receiving */
