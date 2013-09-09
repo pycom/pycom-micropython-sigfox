@@ -115,7 +115,7 @@ static uint8_t lora_rx_sf = 0; /* spreading factor setting for Lora standalone m
 static bool lora_rx_ppm_offset = 0;
 
 static uint8_t fsk_rx_bw = 0; /* bandwidth setting of FSK modem */
-static uint16_t fsk_dr_div = 0; /* divider ratio so set FSK modem datarate */
+static uint32_t fsk_rx_dr = 0; /* FSK modem datarate in bauds */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -402,7 +402,7 @@ void lgw_constant_adjust(void) {
 	lgw_reg_w(LGW_FSK_ERROR_OSR_TOL,10); /* default 0 */
 	lgw_reg_w(LGW_FSK_REF_PATTERN_LSB,0x01010101); /* default 0 */
 	lgw_reg_w(LGW_FSK_REF_PATTERN_MSB,0x01010101); /* default 0 */
-	lgw_reg_w(LGW_FSK_PKT_LENGTH,256); /* max packet length in variable length mode */
+	lgw_reg_w(LGW_FSK_PKT_LENGTH,255); /* max packet length in variable length mode */
 	
 	// lgw_reg_w(LGW_FSK_NODE_ADRS,0); /* default 0 */
 	// lgw_reg_w(LGW_FSK_BROADCAST,0); /* default 0 */
@@ -422,7 +422,6 @@ void lgw_constant_adjust(void) {
 	lgw_reg_w(LGW_FSK_TX_PSIZE,3); /* default 0 */
 	// lgw_reg_w(LGW_FSK_TX_PATTERN_EN, 1); /* default 1 */
 	// lgw_reg_w(LGW_FSK_TX_PREAMBLE_SEQ,0); /* default 0 */
-	// lgw_reg_w(LGW_FSK_TX_PSIZE,0); /* default 0 */
 	
 	return;
 }
@@ -521,7 +520,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 			if_rf_chain[if_chain] = conf.rf_chain;
 			if_freq[if_chain] = conf.freq_hz;
 			lora_rx_bw = conf.bandwidth;
-			lora_rx_sf = conf.datarate;
+			lora_rx_sf = (uint8_t)(DR_LORA_MULTI & conf.datarate); /* filter SF out of the 7-12 range */
 			if (SET_PPM_ON(conf.bandwidth, conf.datarate)) {
 				lora_rx_ppm_offset = 1;
 			} else {
@@ -552,7 +551,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 			if_enable[if_chain] = conf.enable;
 			if_rf_chain[if_chain] = conf.rf_chain;
 			if_freq[if_chain] = conf.freq_hz;
-			lora_multi_sfmask[if_chain] = (uint8_t)(0x007F & conf.datarate);
+			lora_multi_sfmask[if_chain] = (uint8_t)(DR_LORA_MULTI & conf.datarate); /* filter SF out of the 7-12 range */
 			
 			DEBUG_PRINTF("Note: Lora 'multi' if_chain %d configured; en:%d freq:%d SF_mask:0x%02x\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_multi_sfmask[if_chain]);
 			break;
@@ -563,7 +562,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 				conf.bandwidth = BW_250KHZ;
 			}
 			if (conf.datarate == DR_UNDEFINED) {
-				conf.datarate = DR_FSK_64K;
+				conf.datarate = 64000; /* default datarate */
 			}
 			/* check BW & DR */
 			if(!IS_FSK_BW(conf.bandwidth)) {
@@ -578,6 +577,9 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 			if_enable[if_chain] = conf.enable;
 			if_rf_chain[if_chain] = conf.rf_chain;
 			if_freq[if_chain] = conf.freq_hz;
+			fsk_rx_bw = conf.bandwidth;
+			fsk_rx_dr = conf.datarate;
+			DEBUG_PRINTF("Note: FSK if_chain %d configured; en:%d freq:%d bw:%d dr:%d (%d real dr)\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU/(LGW_XTAL_FREQU/fsk_rx_dr));
 			break;
 		
 		default:
@@ -693,7 +695,7 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_IF_FREQ_9, IF_HZ_TO_REG(if_freq[9])); /* FSK modem, default 0 */
 	if (if_enable[9] == true) {
 		lgw_reg_w(LGW_FSK_RADIO_SELECT, if_rf_chain[9]);
-		lgw_reg_w(LGW_FSK_BR_RATIO,fsk_dr_div);
+		lgw_reg_w(LGW_FSK_BR_RATIO,LGW_XTAL_FREQU/fsk_rx_dr); /* setting the dividing ratio for datarate */
 		lgw_reg_w(LGW_FSK_CH_BW_EXPO,fsk_rx_bw);
 		lgw_reg_w(LGW_FSK_MODEM_ENABLE,1); /* default 0 */
 	} else {
@@ -843,7 +845,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 			p->snr_min = NAN;
 			p->snr_max = NAN;
 			p->bandwidth = fsk_rx_bw;
-			p->datarate = fsk_dr_div;
+			p->datarate = fsk_rx_dr;
 			p->coderate = CR_UNDEFINED;
 		} else {
 			DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");

@@ -29,7 +29,7 @@ Description:
 #define IS_LORA_CR(cr)			((cr == CR_LORA_4_5) || (cr == CR_LORA_4_6) || (cr == CR_LORA_4_7) || (cr == CR_LORA_4_8))
 
 #define IS_FSK_BW(bw)			((bw >= 1) && (bw <= 7))
-#define IS_FSK_DR(dr)			((dr >= 128) && (dr <= 64000)) /* 500bauds to 250kbauds */
+#define IS_FSK_DR(dr)			((dr >= DR_FSK_MIN) && (dr <= DR_FSK_MAX))
 
 #define	IS_TX_MODE(mode)		((mode == IMMEDIATE) || (mode == TIMESTAMPED) || (mode == ON_GPS))
 
@@ -105,7 +105,6 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 
 /* values available for the 'datarate' parameters */
 /* NOTE: Lora values used directly to code SF bitmask in 'multi' modem, do not change */
-/* NOTE: FSK values encode the clock divider for a 32MHz XTAL, do not change */
 #define DR_UNDEFINED	0
 #define DR_LORA_SF7		0x02
 #define DR_LORA_SF8		0x04
@@ -114,34 +113,9 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define DR_LORA_SF11	0x20
 #define DR_LORA_SF12	0x40
 #define DR_LORA_MULTI	0x7E
-
-#define DR_FSK_1K2		26667	/* 1200 bauds */
-#define DR_FSK_2K4		13333	/* 2400 bauds */
-#define DR_FSK_3K6		8889	/* 3600 bauds */
-#define DR_FSK_4K8		6667	/* 4800 bauds */
-#define DR_FSK_9K6		3333	/* 9600 bauds */
-#define DR_FSK_14K4		2222	/* 14400 bauds */
-#define DR_FSK_19K2		1667	/* 19200 bauds */
-#define DR_FSK_28K8		1111	/* 28800 bauds */
-#define DR_FSK_38K4		833		/* 38400 bauds */
-#define DR_FSK_56K		571		/* 56000 bauds */
-#define DR_FSK_57K6		556		/* 57600 bauds */
-#define DR_FSK_115K2	278		/* 115200 bauds */
-
-#define DR_FSK_2EXP10	31250	/* 1024 bauds */
-#define DR_FSK_2EXP11	15625	/* 2048 bauds */
-#define DR_FSK_2EXP12	7813	/* 4096 bauds */
-#define DR_FSK_2EXP13	3906	/* 8192 bauds */
-#define DR_FSK_2EXP14	1953	/* 16384 bauds */
-#define DR_FSK_2EXP15	977		/* 32768 bauds */
-#define DR_FSK_2EXP16	488		/* 65536 bauds */
-#define DR_FSK_2EXP17	244		/* 131072 bauds */
-
-#define DR_FSK_1K		32000	/* 1000 bauds */
-#define DR_FSK_6K4		5000	/* 6400 bauds */
-#define DR_FSK_10K		3200	/* 10000 bauds */
-#define DR_FSK_64K		500		/* 64000 bauds */
-#define DR_FSK_100K		320		/* 100000 bauds */
+/* NOTE: for FSK directly use baudrate between 300 bauds and 250 kbauds */
+#define DR_FSK_MIN		300
+#define DR_FSK_MAX		250000
 
 /* values available for the 'coderate' parameters (Lora only) */
 /* NOTE: arbitrary values */
@@ -206,7 +180,7 @@ struct lgw_conf_rxif_s {
 	uint8_t		rf_chain;	/*!> to which RF chain is that IF chain associated */
 	int32_t		freq_hz;	/*!> center frequ of the IF chain, relative to RF chain frequency */
 	uint8_t		bandwidth;	/*!> RX bandwidth, 0 for default */
-	uint16_t	datarate;	/*!> RX datarate, 0 for default */
+	uint32_t	datarate;	/*!> RX datarate, 0 for default */
 };
 
 /**

@@ -149,7 +149,7 @@ int main(int argc, char **argv)
 	ifconf.rf_chain = 0;
 	ifconf.freq_hz = 0;
 	ifconf.bandwidth = BW_250KHZ;
-	ifconf.datarate = DR_FSK_64K;
+	ifconf.datarate = 64000;
 	lgw_rxif_setconf(9, ifconf);
 	
 	/* load the TX payload */
@@ -212,6 +212,7 @@ int main(int argc, char **argv)
 					}
 					printf("\n");
 					printf(" RSSI:%+6.1f SNR:%+5.1f (min:%+5.1f, max:%+5.1f) payload:\n", p->rssi, p->snr, p->snr_min, p->snr_max);
+					
 					for (j = 0; j < p->size; ++j) {
 						printf(" %02X", p->payload[j]);
 					}
