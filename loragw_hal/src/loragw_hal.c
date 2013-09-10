@@ -76,7 +76,8 @@ const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 
 #define		RSSI_OFFSET_LORA_MULTI	-130.0	/* calibrated value */
 #define		RSSI_OFFSET_LORA_STD	-168.0	/* calibrated for all bandwidth */
-#define		RSSI_OFFSET_FSK			0.0	/* TODO */
+#define		RSSI_OFFSET_FSK			-147.0	/* calibrated value */
+#define		RSSI_SLOPE_FSK			1.2		/* calibrated value */
 
 #define		TX_METADATA_NB		16
 #define		RX_METADATA_NB		16
@@ -840,7 +841,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 				default: p->status = STAT_UNDEFINED;
 			}
 			p->modulation = MOD_FSK;
-			p->rssi = RSSI_OFFSET_FSK + (float)buff[s+5];
+			p->rssi = (RSSI_OFFSET_FSK + (float)buff[s+5])/RSSI_SLOPE_FSK;
 			p->snr = NAN;
 			p->snr_min = NAN;
 			p->snr_max = NAN;
