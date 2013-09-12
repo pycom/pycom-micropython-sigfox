@@ -90,7 +90,6 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define MOD_UNDEFINED	0
 #define MOD_LORA		0x10
 #define MOD_FSK			0x20
-#define MOD_GFSK		0x21
 
 /* values available for the 'bandwidth' parameters (Lora & FSK) */
 /* NOTE: directly encode FSK RX bandwidth, do not change */
@@ -217,12 +216,12 @@ struct lgw_pkt_tx_s {
 	uint8_t		modulation; /*!> modulation to use for the packet */
 	uint8_t		bandwidth;	/*!> modulation bandwidth (Lora only) */
 	bool		invert_pol;	/*!> invert signal polarity, for orthogonal downlinks (Lora only) */
-	uint16_t	f_dev;		/*!> frequency deviation (FSK only) */
-	uint16_t	datarate;	/*!> TX datarate */
-	uint8_t		coderate;	/*!> error-correcting code of the packet */
+	uint8_t		f_dev;		/*!> frequency deviation, in kHz (FSK only) */
+	uint16_t	datarate;	/*!> TX datarate (baudrate for FSK) */
+	uint8_t		coderate;	/*!> error-correcting code of the packet (Lora only) */
 	uint16_t	preamble;	/*!> set the preamble length, 0 for default */
 	bool		no_crc;		/*!> if true, do not send a CRC in the packet */
-	bool		no_header;	/*!> if true, enable implicit header mode */
+	bool		no_header;	/*!> if true, enable implicit header mode (Lora), fixed length (FSK) */
 	uint16_t	size;		/*!> payload size in bytes */
 	uint8_t		*payload;	/*!> pointer to the payload */
 };

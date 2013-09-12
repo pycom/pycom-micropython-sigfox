@@ -83,6 +83,7 @@ const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 #define		RX_METADATA_NB		16
 
 #define		MIN_LORA_PREAMBLE		4
+#define		MIN_FSK_PREAMBLE		8
 #define		PLL_LOCK_MAX_ATTEMPTS	6
 
 /* -------------------------------------------------------------------------- */
@@ -419,7 +420,7 @@ void lgw_constant_adjust(void) {
 	
 	/* TX FSK */
 	// lgw_reg_w(LGW_FSK_TX_GAUSSIAN_EN,1); /* default 1 */
-	lgw_reg_w(LGW_FSK_TX_GAUSSIAN_SELECT_BT,1); /* default 0 */
+	lgw_reg_w(LGW_FSK_TX_GAUSSIAN_SELECT_BT,1); /* Gaussian filter always on TX, default 0 */
 	lgw_reg_w(LGW_FSK_TX_PSIZE,3); /* default 0 */
 	// lgw_reg_w(LGW_FSK_TX_PATTERN_EN, 1); /* default 1 */
 	// lgw_reg_w(LGW_FSK_TX_PREAMBLE_SEQ,0); /* default 0 */
@@ -874,9 +875,12 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
-	uint8_t buff[255+TX_METADATA_NB]; /* buffer to prepare the packet to send + metadata before SPI write burst */
+	uint8_t buff[256+TX_METADATA_NB]; /* buffer to prepare the packet to send + metadata before SPI write burst */
 	uint32_t part_int; /* integer part for PLL register value calculation */
 	uint32_t part_frac; /* fractional part for PLL register value calculation */
+	uint16_t fsk_dr_div; /* divider to configure for target datarate */
+	int transfer_size = 0; /* data to transfer from host to TX databuffer */
+	int payload_offset = 0; /* start of the payload content in the databuffer */
 	int i;
 	
 	/* check if the gateway is running */
@@ -923,9 +927,19 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 			DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR LORA TX\n");
 			return LGW_HAL_ERROR;
 		}
-	}else if ((pkt_data.modulation == MOD_FSK) || (pkt_data.modulation == MOD_GFSK)) {
-		DEBUG_MSG("ERROR: (G)FSK TX MODULATION NOT SUPPORTED YET\n");
-		return LGW_HAL_ERROR;
+	} else if (pkt_data.modulation == MOD_FSK) {
+		if((pkt_data.f_dev < 1) || (pkt_data.f_dev > 200)) {
+			DEBUG_MSG("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
+			return LGW_HAL_ERROR;
+		}
+		if(!IS_FSK_DR(pkt_data.datarate)) {
+			DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
+			return LGW_HAL_ERROR;
+		}
+		if (pkt_data.size > 255) {
+			DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR FSK TX\n");
+			return LGW_HAL_ERROR;
+		}
 	} else {
 		DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
 		return LGW_HAL_ERROR;
@@ -935,6 +949,10 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	lgw_reg_w(LGW_TX_TRIG_IMMEDIATE, 0);
 	lgw_reg_w(LGW_TX_TRIG_DELAYED, 0);
 	lgw_reg_w(LGW_TX_TRIG_GPS, 0);
+	
+	/* fixed metadata, useful payload and misc metadata compositing */
+	transfer_size = TX_METADATA_NB + pkt_data.size; /*  */
+	payload_offset = TX_METADATA_NB; /* start the payload just after the metadata */
 	
 	/* metadata 0 to 2, TX PLL frequency */
 	part_int = pkt_data.freq_hz / LGW_SX1257_DENOMINATOR; /* integer part, gives the MSB and the middle byte */
@@ -1010,18 +1028,54 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		buff[14] = 0;
 		buff[15] = 0;
 		
+	} else if (pkt_data.modulation == MOD_FSK) {
+		/* metadata 7, modulation type, radio chain selection and TX power */
+		buff[7] = (0x20 & (pkt_data.rf_chain << 5)) | 0x10 | (0x0F & pkt_data.rf_power); /* bit 4 is 1 -> FSK modulation */
+		/* fine control over TX power not supported yet, any value other than 8 is 14 dBm */
+		
+		buff[8] = 0; /* metadata 8, not used */
+		
+		/* metadata 9, frequency deviation */
+		buff[9] = pkt_data.f_dev;
+		
+		/* metadata 10, payload size */
+		buff[10] = pkt_data.size + 1; /* add a byte to encode payload length in the packet */
+		/* TODO: handle fixed packet length */
+		/* TODO: how to handle 255 bytes packets ?!? */
+		
+		/* metadata 11, packet mode, CRC, encoding */
+		buff[11] = (pkt_data.no_crc?0:0x02); /* always in fixed length packet mode, no DC-free encoding, CCITT CRC if CRC is not disabled  */
+		
+		/* metadata 12 & 13, FSK preamble size */
+		if (pkt_data.preamble < MIN_FSK_PREAMBLE) { /* enforce minimum preamble size */
+			pkt_data.preamble = MIN_FSK_PREAMBLE;
+			DEBUG_MSG("Note: preamble length adjusted to respect minimum FSK preamble size\n");
+		}
+		buff[12] = 0xFF & (pkt_data.preamble >> 8);
+		buff[13] = 0xFF & pkt_data.preamble;
+		
+		/* metadata 14 & 15, FSK baudrate */
+		fsk_dr_div = LGW_XTAL_FREQU / pkt_data.datarate;
+		buff[14] = 0xFF & (fsk_dr_div >> 8);
+		buff[15] = 0xFF & fsk_dr_div;
+		
+		/* insert payload size in the packet for variable mode */
+		buff[16] = pkt_data.size;
+		++transfer_size; /* one more byte to transfer to the TX modem */
+		++payload_offset; /* start the payload with one more byte of offset */
+		
 	} else {
-		DEBUG_MSG("ERROR: ONLY LORA TX SUPPORTED FOR NOW\n");
+		DEBUG_MSG("ERROR: INVALID TX MODULATION..\n");
 		return LGW_HAL_ERROR;
 	}
 	
 	/* copy payload */
-	memcpy((void *)(buff + TX_METADATA_NB), pkt_data.payload, pkt_data.size);
+	memcpy((void *)(buff + payload_offset), pkt_data.payload, pkt_data.size);
 	
 	/* put metadata + payload in the TX data buffer */
 	lgw_reg_w(LGW_TX_DATA_BUF_ADDR, 0);
-	lgw_reg_wb(LGW_TX_DATA_BUF_DATA, buff, (pkt_data.size + TX_METADATA_NB));
-	DEBUG_ARRAY(i, pkt_data.size+TX_METADATA_NB, buff);
+	lgw_reg_wb(LGW_TX_DATA_BUF_DATA, buff, transfer_size);
+	DEBUG_ARRAY(i, transfer_size, buff);
 	
 	/* send data */
 	switch(pkt_data.tx_mode) {
