@@ -200,7 +200,7 @@ struct lgw_pkt_rx_s {
 	float		snr_max;	/*!> maximum packet SNR, in dB (Lora only) */
 	uint16_t	crc;		/*!> CRC that was received in the payload */
 	uint16_t	size;		/*!> payload size in bytes */
-	uint8_t		*payload;	/*!> pointer to the payload */
+	uint8_t		payload[256]; /*!> buffer containing the payload */
 };
 
 /**
@@ -223,7 +223,7 @@ struct lgw_pkt_tx_s {
 	bool		no_crc;		/*!> if true, do not send a CRC in the packet */
 	bool		no_header;	/*!> if true, enable implicit header mode (Lora), fixed length (FSK) */
 	uint16_t	size;		/*!> payload size in bytes */
-	uint8_t		*payload;	/*!> pointer to the payload */
+	uint8_t		payload[256]; /*!> buffer containing the payload */
 };
 
 /* -------------------------------------------------------------------------- */

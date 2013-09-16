@@ -22,7 +22,6 @@ Description:
 #endif
 
 #include <stdint.h>		/* C99 types */
-#include <stdlib.h>		/* malloc & free */
 #include <stdbool.h>	/* bool type */
 #include <stdio.h>		/* printf */
 #include <string.h>		/* memset */
@@ -70,7 +69,6 @@ int main(int argc, char **argv)
 	
 	struct lgw_pkt_rx_s rxpkt[4]; /* array containing up to 4 inbound packets metadata */
 	struct lgw_pkt_tx_s txpkt; /* configuration and metadata for an outbound packet */
-	uint8_t txbuf[256]; /* buffer for the TX payload */
 	struct lgw_pkt_rx_s *p; /* pointer on a RX packet */
 	
 	int i, j;
@@ -152,9 +150,6 @@ int main(int argc, char **argv)
 	ifconf.datarate = 64000;
 	lgw_rxif_setconf(9, ifconf);
 	
-	/* load the TX payload */
-	strcpy((char *)txbuf, "TX.TEST.LORA.GW.????" );
-	
 	/* set configuration for TX packet */
 	memset(&txs, 0, sizeof(txs));
 	txs.freq_hz = 866250000;
@@ -163,7 +158,7 @@ int main(int argc, char **argv)
 	txs.bandwidth = BW_250KHZ;
 	txs.datarate = DR_LORA_SF10;
 	txs.coderate = CR_LORA_4_5;
-	txs.payload = txbuf;
+	strcpy((char *)txs.payload, "TX.TEST.LORA.GW.????" ); /* load the TX payload */
 	txs.size = 20;
 	txs.rf_chain = 1;
 	
@@ -191,7 +186,6 @@ int main(int argc, char **argv)
 					switch (p-> modulation) {
 						case MOD_LORA: printf(" Lora"); break;
 						case MOD_FSK: printf(" FSK"); break;
-						case MOD_GFSK: printf(" GFSK"); break;
 						default: printf(" modulation?");
 					}
 					switch (p->datarate) {
@@ -234,20 +228,15 @@ int main(int argc, char **argv)
 					printf(" invalid status ?!?\n\n");
 				}
 			}
-			
-			/* free the memory used for RX payload(s) */
-			for(i=0; i < nb_pkt; ++i) {
-				free(rxpkt[i].payload);
-			}
 		}
 		
 		/* send a packet every X loop */
 		if (loop_cnt%16 == 0) {
 			/* 32b counter in the payload, big endian */
-			txbuf[16] = 0xff & (tx_cnt >> 24);
-			txbuf[17] = 0xff & (tx_cnt >> 16);
-			txbuf[18] = 0xff & (tx_cnt >> 8);
-			txbuf[19] = 0xff & tx_cnt;
+			txs.payload[16] = 0xff & (tx_cnt >> 24);
+			txs.payload[17] = 0xff & (tx_cnt >> 16);
+			txs.payload[18] = 0xff & (tx_cnt >> 8);
+			txs.payload[19] = 0xff & tx_cnt;
 			i = lgw_send(txs); /* non-blocking scheduling of TX packet */
 			j = 0;
 			printf("Sending packet #%d, rf path %d, return %d\nstatus -> ", tx_cnt, txs.rf_chain, i);

@@ -15,7 +15,6 @@ Description:
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>		/* C99 types */
-#include <stdlib.h>		/* malloc & free */
 #include <stdbool.h>	/* bool type */
 #include <stdio.h>		/* printf fprintf */
 #include <math.h>		/* NaN */
@@ -779,19 +778,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 		data_addr = (uint16_t)buff[1] + ((uint16_t)buff[2] << 8);
 		lgw_reg_w(LGW_RX_DATA_BUF_ADDR, data_addr);
 		
-		/* dynamically allocate memory to store payload */
-		p->payload = (uint8_t *)malloc(s);
-		if (p->payload == NULL) {
-			/* not enough memory to allocate for payload, abort with error */
-			DEBUG_MSG("ERROR: IMPOSSIBLE TO ALLOCATE MEMORY TO FETCH PAYLOAD\n");
-			return LGW_HAL_ERROR;
-		}
-		
 		/* get payload + metadata */
 		lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, s+RX_METADATA_NB);
 		
-		/* copy payload */
-		memcpy(p->payload, buff, s);
+		/* copy payload to result struct */
+		memcpy((void *)p->payload, (void *)buff, s);
 		
 		/* process metadata */
 		p->if_chain = buff[s+0];
@@ -890,7 +881,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	}
 	
 	/* check input variables */
-	CHECK_NULL(pkt_data.payload);
 	if (pkt_data.rf_chain >= LGW_RF_CHAIN_NB) {
 		DEBUG_MSG("ERROR: INVALID RF_CHAIN TO SEND PACKETS\n");
 		return LGW_HAL_ERROR;
@@ -1069,8 +1059,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		return LGW_HAL_ERROR;
 	}
 	
-	/* copy payload */
-	memcpy((void *)(buff + payload_offset), pkt_data.payload, pkt_data.size);
+	/* copy payload from user struct to buffer containing metadata */
+	memcpy((void *)(buff + payload_offset), (void *)(pkt_data.payload), pkt_data.size);
 	
 	/* put metadata + payload in the TX data buffer */
 	lgw_reg_w(LGW_TX_DATA_BUF_ADDR, 0);
