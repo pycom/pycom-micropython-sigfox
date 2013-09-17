@@ -14,7 +14,6 @@ ifeq ($(LGW_PHY),ftdi)
 LDFLAGS=-lrt -lmpsse
 endif
 
-
 # general build targets
 
 all: test_loragw_spi test_loragw_reg test_loragw_hal
@@ -39,6 +38,9 @@ endif
 	@echo "*** Config seems ok ***"
 	@touch .conf_ok
 
+# static library
+libloragw.a: obj/loragw_hal.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o
+	ar rcs libloragw.a obj/loragw_hal.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o
 
 # library module target
 
