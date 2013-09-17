@@ -16,9 +16,10 @@ endif
 
 # general build targets
 
-all: test_loragw_spi test_loragw_reg test_loragw_hal
+all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_hal
 
 clean:
+	rm -f *.a
 	rm -f test_*
 	rm -f obj/*.o
 	rm -f .conf_ok
@@ -36,9 +37,11 @@ else
 endif
 endif
 	@echo "*** Config seems ok ***"
+	@echo ""
 	@touch .conf_ok
 
 # static library
+
 libloragw.a: obj/loragw_hal.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o
 	ar rcs libloragw.a obj/loragw_hal.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o
 
@@ -61,24 +64,14 @@ obj/loragw_reg.o: .conf_ok src/loragw_reg.c inc/loragw_reg.h inc/loragw_spi.h
 obj/loragw_hal.o: .conf_ok src/loragw_hal.c src/arb_fw.var src/agc_fw.var inc/loragw_hal.h inc/loragw_reg.h inc/loragw_spi.h inc/loragw_aux.h
 	$(CC) -c $(C99FLAGS) src/loragw_hal.c -o obj/loragw_hal.o $(FLAG_HAL)
 
-
 # test programs
 
-obj/test_loragw_spi.o: test/test_loragw_spi.c inc/loragw_spi.h
-	$(CC) -c $(C99FLAGS) -Iinc test/test_loragw_spi.c -o obj/test_loragw_spi.o
+test_loragw_spi: tst/test_loragw_spi.c obj/loragw_spi.o
+	$(CC) $(C99FLAGS) tst/test_loragw_spi.c obj/loragw_spi.o -o test_loragw_spi $(LDFLAGS)
 
-obj/test_loragw_reg.o: test/test_loragw_reg.c inc/loragw_reg.h
-	$(CC) -c $(C99FLAGS) -Iinc test/test_loragw_reg.c -o obj/test_loragw_reg.o
-
-obj/test_loragw_hal.o: test/test_loragw_hal.c inc/loragw_hal.h inc/loragw_aux.h
-	$(CC) -c $(C99FLAGS) test/test_loragw_hal.c -o obj/test_loragw_hal.o
-
-test_loragw_spi: .conf_ok obj/test_loragw_spi.o obj/loragw_spi.o
-	$(CC) obj/test_loragw_spi.o obj/loragw_spi.o -o test_loragw_spi $(LDFLAGS)
-
-test_loragw_reg: .conf_ok obj/test_loragw_reg.o obj/loragw_reg.o obj/loragw_spi.o
-	$(CC) obj/test_loragw_reg.o obj/loragw_reg.o obj/loragw_spi.o -o test_loragw_reg $(LDFLAGS)
+test_loragw_reg: tst/test_loragw_reg.c obj/loragw_reg.o obj/loragw_spi.o
+	$(CC) $(C99FLAGS) tst/test_loragw_reg.c obj/loragw_reg.o obj/loragw_spi.o -o test_loragw_reg $(LDFLAGS)
 	
-test_loragw_hal: .conf_ok obj/test_loragw_hal.o obj/loragw_hal.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o
-	$(CC) obj/test_loragw_hal.o obj/loragw_hal.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o -o test_loragw_hal $(LDFLAGS)
+test_loragw_hal: tst/test_loragw_hal.c obj/loragw_hal.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o
+	$(CC) $(C99FLAGS) tst/test_loragw_hal.c obj/loragw_hal.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o -o test_loragw_hal $(LDFLAGS)
 
