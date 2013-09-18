@@ -73,9 +73,9 @@ const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 #define		SX1257_RX_ADC_TRIM		6	/* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
 #define		SX1257_RXBB_BW			2
 
-#define		RSSI_OFFSET_LORA_MULTI	-130.0	/* calibrated value */
-#define		RSSI_OFFSET_LORA_STD	-168.0	/* calibrated for all bandwidth */
-#define		RSSI_OFFSET_FSK			-147.0	/* calibrated value */
+#define		RSSI_OFFSET_LORA_MULTI	-128.3	/* calibrated value */
+#define		RSSI_OFFSET_LORA_STD	-166.8	/* calibrated for all bandwidth */
+#define		RSSI_OFFSET_FSK			-146.5	/* calibrated value */
 #define		RSSI_SLOPE_FSK			1.2		/* calibrated value */
 
 #define		TX_METADATA_NB		16
