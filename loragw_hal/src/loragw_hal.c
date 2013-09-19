@@ -786,10 +786,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 		s = p->size;
 		stat_fifo = buff[3]; /* will be used later, need to save it before overwriting buff */
 		
-		/* STILL required */
-		data_addr = (uint16_t)buff[1] + ((uint16_t)buff[2] << 8);
-		lgw_reg_w(LGW_RX_DATA_BUF_ADDR, data_addr);
-		
 		/* get payload + metadata */
 		lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, s+RX_METADATA_NB);
 		
