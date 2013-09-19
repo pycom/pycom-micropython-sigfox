@@ -3,8 +3,8 @@ include library.cfg
 
 # constant symbols
 CC=gcc
-CFLAGS=-O2 -Iinc
-C99FLAGS=-O2 -std=c99 -Iinc
+CFLAGS=-O2 -Iinc -I.
+C99FLAGS=-O2 -std=c99 -Iinc -I.
 
 # configuration-dependant symbols
 ifeq ($(LGW_PHY),native)
@@ -62,7 +62,7 @@ obj/loragw_reg.o: .conf_ok src/loragw_reg.c inc/loragw_reg.h inc/loragw_spi.h
 	$(CC) -c $(C99FLAGS) src/loragw_reg.c -o obj/loragw_reg.o $(FLAG_REG)
 
 obj/loragw_hal.o: .conf_ok src/loragw_hal.c src/arb_fw.var src/agc_fw.var inc/loragw_hal.h inc/loragw_reg.h inc/loragw_spi.h inc/loragw_aux.h
-	$(CC) -c $(C99FLAGS) src/loragw_hal.c -o obj/loragw_hal.o $(FLAG_HAL)
+	$(CC) -c $(C99FLAGS) src/loragw_hal.c -o obj/loragw_hal.o -D LGW_PHY="\"$(LGW_PHY)\"" $(FLAG_HAL)
 
 # test programs
 

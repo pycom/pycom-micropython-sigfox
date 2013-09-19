@@ -60,6 +60,14 @@ const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 #define		MCU_ARB_FW_BYTE		8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
 #define		MCU_AGC_FW_BYTE		8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
 
+/*
+SX1275 frequency setting :
+F_register(24bit) = F_rf (Hz) / F_step(Hz)
+                  = F_rf (Hz) * 2^19 / F_xtal(Hz)
+                  = F_rf (Hz) * 256/15625
+*/
+#define 	SX1257_DENOM	15625	/* pll settings denominator when the numerator is 2^8 */
+
 #define		SX1257_CLK_OUT			1	
 #define		SX1257_TX_DAC_CLK_SEL	1	/* 0:int, 1:ext */
 #define		SX1257_TX_DAC_GAIN		2	/* 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2) */
@@ -90,6 +98,10 @@ const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 
 #include "arb_fw.var" /* external definition of the variable */
 #include "agc_fw.var" /* external definition of the variable */
+
+/* Version string, used to identify the library version/options once compiled */
+#include "VERSION"
+const char lgw_version_string[] = "Library: " VERSION_LIBRARY "; API: " VERSION_API "; SPI layer: " LGW_PHY "; Chip id: " ACCEPT_CHIP_ID "; SPI reg: " ACCEPT_VERSION_REG "; Radio(s): " INFO_RADIO_CHIP "; Usable band: " INFO_RF_PARAM "; Reference plateform: " INFO_REF_HARDWARE ";";
 
 /*
 The following static variables are the configuration set that the user can
@@ -294,8 +306,8 @@ int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
 	sx125x_write(rf_chain, 0x0D, SX1257_RXBB_BW + SX1257_RX_ADC_TRIM*4 + SX1257_RX_ADC_BW*32);
 	
 	/* set RX PLL frequency */
-	part_int = freq_hz / LGW_SX1257_DENOMINATOR; /* integer part, gives the MSB and the middle byte */
-	part_frac = ((freq_hz % LGW_SX1257_DENOMINATOR) << 8) / LGW_SX1257_DENOMINATOR; /* fractional part, gives LSB */
+	part_int = freq_hz / SX1257_DENOM; /* integer part, gives the MSB and the middle byte */
+	part_frac = ((freq_hz % SX1257_DENOM) << 8) / SX1257_DENOM; /* fractional part, gives LSB */
 	sx125x_write(rf_chain, 0x01,0xFF & (part_int >> 8)); /* Most Significant Byte */
 	sx125x_write(rf_chain, 0x02,0xFF & part_int); /* middle byte */
 	sx125x_write(rf_chain, 0x03,0xFF & part_frac); /* Least Significant Byte */
@@ -945,8 +957,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	payload_offset = TX_METADATA_NB; /* start the payload just after the metadata */
 	
 	/* metadata 0 to 2, TX PLL frequency */
-	part_int = pkt_data.freq_hz / LGW_SX1257_DENOMINATOR; /* integer part, gives the MSB and the middle byte */
-	part_frac = ((pkt_data.freq_hz % LGW_SX1257_DENOMINATOR) << 8) / LGW_SX1257_DENOMINATOR; /* fractional part, gives LSB */
+	part_int = pkt_data.freq_hz / SX1257_DENOM; /* integer part, gives the MSB and the middle byte */
+	part_frac = ((pkt_data.freq_hz % SX1257_DENOM) << 8) / SX1257_DENOM; /* fractional part, gives LSB */
 	buff[0] = 0xFF & (part_int >> 8); /* Most Significant Byte */
 	buff[1] = 0xFF & part_int; /* middle byte */
 	buff[2] = 0xFF & part_frac; /* Least Significant Byte */
@@ -1119,6 +1131,12 @@ int lgw_status(uint8_t select, uint8_t *code) {
 		return LGW_HAL_ERROR;
 	}
 	
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+const char* lgw_version_info() {
+	return lgw_version_string;
 }
 
 

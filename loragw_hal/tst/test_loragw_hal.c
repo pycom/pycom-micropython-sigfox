@@ -163,7 +163,7 @@ int main(int argc, char **argv)
 	txs.size = 20;
 	txs.preamble = 6;
 	txs.rf_chain = 0;
-/*
+/*	
 	memset(&txs, 0, sizeof(txs));
 	txs.freq_hz = 867000000;
 	txs.tx_mode = IMMEDIATE;
@@ -174,7 +174,10 @@ int main(int argc, char **argv)
 	txs.size = 20;
 	txs.preamble = 4;
 	txs.rf_chain = 0;
-*/
+*/	
+	
+//	printf("***\n%s\n***\n", lgw_version_info());
+	
 	/* connect, configure and start the Lora gateway */
 	lgw_start();
 	

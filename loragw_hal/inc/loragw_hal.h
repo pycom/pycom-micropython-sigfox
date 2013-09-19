@@ -45,25 +45,17 @@ Description:
 #define LGW_IF_CHAIN_NB		10	/* number of IF+modem RX chains */
 #define LGW_MULTI_NB		4	/* number of Lora 'multi SF' chains */
 
-#define LGW_PKT_FIFO_SIZE	8
-#define LGW_DATABUFF_SIZE	1024
-#define LGW_REF_BW			125000	/* typical bandwidth of data channel */
-
-/*
-SX1275 frequency setting :
-F_register(24bit) = F_rf (Hz) / F_step(Hz)
-                  = F_rf (Hz) * 2^19 / F_xtal(Hz)
-                  = F_rf (Hz) * 256/15625
-*/
-#define LGW_XTAL_FREQU	32000000
-#define LGW_SX1257_DENOMINATOR	15625 /* pll settings denominator when the numerator is 2^8 */
+#define LGW_PKT_FIFO_SIZE	8			/* depth of the RX packet FIFO */
+#define LGW_DATABUFF_SIZE	1024		/* size in bytes of the RX data buffer (contains payload & metadata) */
+#define LGW_REF_BW			125000		/* typical bandwidth of data channel */
+#define LGW_XTAL_FREQU		32000000	/* frequency of the RF reference oscillator */
 
 /* to use those parameters, declare a local constant, and use 'rf_chain' as index */
-#define LGW_RF_RX_LOWFREQ	{863000000, 863000000}
-#define LGW_RF_RX_UPFREQ	{870000000, 870000000}
-#define LGW_RF_RX_BANDWIDTH	{800000, 	800000}	/* bandwidth of the radios */
-#define LGW_RF_TX_LOWFREQ	{863000000, 863000000}
-#define LGW_RF_TX_UPFREQ	{870000000, 870000000}
+#define LGW_RF_RX_LOWFREQ	{863000000, 863000000}	/* lower limit of the usable band in RX for each radio */
+#define LGW_RF_RX_UPFREQ	{870000000, 870000000}	/* upper limit of the usable band in RX for each radio */
+#define LGW_RF_RX_BANDWIDTH	{800000, 	800000}		/* bandwidth of the radios */
+#define LGW_RF_TX_LOWFREQ	{863000000, 863000000}	/* lower limit of the usable band in TX for each radio */
+#define LGW_RF_TX_UPFREQ	{870000000, 870000000}	/* upper limit of the usable band in TX for each radio */
 
 /* type of if_chain + modem */
 #define IF_UNDEFINED		0
@@ -279,6 +271,12 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data);
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_status(uint8_t select, uint8_t *code);
+
+/**
+@brief Allow user to check the version/options of the library once compiled
+@return pointer on a human-readable null terminated string
+*/
+const char* lgw_version_info(void);
 
 #endif
 
