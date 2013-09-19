@@ -1,5 +1,5 @@
 Software library version:
-beta6
+beta7
 
 API version:
 beta

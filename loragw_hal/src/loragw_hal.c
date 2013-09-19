@@ -73,8 +73,8 @@ const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 #define		SX1257_RX_ADC_TRIM		6	/* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
 #define		SX1257_RXBB_BW			2
 
-#define		RSSI_OFFSET_LORA_MULTI	-128.3	/* calibrated value */
-#define		RSSI_OFFSET_LORA_STD	-166.8	/* calibrated for all bandwidth */
+#define		RSSI_OFFSET_LORA_MULTI	-128.0	/* calibrated value */
+#define		RSSI_OFFSET_LORA_STD	-167.0	/* calibrated for all bandwidth */
 #define		RSSI_OFFSET_FSK			-146.5	/* calibrated value */
 #define		RSSI_SLOPE_FSK			1.2		/* calibrated value */
 
@@ -82,7 +82,7 @@ const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 #define		RX_METADATA_NB		16
 
 #define		MIN_LORA_PREAMBLE		4
-#define		MIN_FSK_PREAMBLE		8
+#define		MIN_FSK_PREAMBLE		3
 #define		PLL_LOCK_MAX_ATTEMPTS	6
 
 /* -------------------------------------------------------------------------- */
@@ -408,7 +408,7 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_FSK_NODE_ADRS,0); /* default 0 */
 	// lgw_reg_w(LGW_FSK_BROADCAST,0); /* default 0 */
 	// lgw_reg_w(LGW_FSK_AUTO_AFC_ON,0); /* default 0 */
-	lgw_reg_w(LGW_FSK_PATTERN_TIMEOUT_CFG,64); /* default 0 */
+	lgw_reg_w(LGW_FSK_PATTERN_TIMEOUT_CFG,128); /* sync timeout (allow 8 bytes preamble + 8 bytes sync word, default 0 */
 	
 	/* TX general parameters */
 	lgw_reg_w(LGW_TX_START_DELAY,1000); /* default 0 */
