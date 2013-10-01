@@ -61,25 +61,26 @@ const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 #define		MCU_AGC_FW_BYTE		8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
 
 /*
-SX1275 frequency setting :
+SX1257 frequency setting :
 F_register(24bit) = F_rf (Hz) / F_step(Hz)
                   = F_rf (Hz) * 2^19 / F_xtal(Hz)
+                  = F_rf (Hz) * 2^19 / 32e6
                   = F_rf (Hz) * 256/15625
 */
-#define 	SX1257_DENOM	15625	/* pll settings denominator when the numerator is 2^8 */
+#define 	SX125x_32MHz_FRAC	15625	/* irreductible fraction for PLL register caculation */
 
-#define		SX1257_CLK_OUT			1	
-#define		SX1257_TX_DAC_CLK_SEL	1	/* 0:int, 1:ext */
-#define		SX1257_TX_DAC_GAIN		2	/* 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2) */
-#define		SX1257_TX_MIX_GAIN		14	/* -38 + 2*TxMixGain dB (default 14) */
-#define		SX1257_TX_PLL_BW		3	/* 0:75, 1:150, 2:225, 3:300 kHz (default 3) */
-#define		SX1257_TX_ANA_BW		0	/* 17.5 / 2*(41-TxAnaBw) MHz (default 0) */
-#define		SX1257_TX_DAC_BW		7	/* 24 + 8*TxDacBw Nb FIR taps (default 2) */
-#define		SX1257_RX_LNA_GAIN		1	/* 1 to 6, 1 highest gain */
-#define		SX1257_RX_BB_GAIN		12	/* 0 to 15 , 15 highest gain */
-#define		SX1257_RX_ADC_BW		7	/* 0 to 7, 2:100<BW<200, 5:200<BW<400,7:400<BW (kHz) */
-#define		SX1257_RX_ADC_TRIM		6	/* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
-#define		SX1257_RXBB_BW			2
+#define		SX125x_CLK_OUT			1	
+#define		SX125x_TX_DAC_CLK_SEL	1	/* 0:int, 1:ext */
+#define		SX125x_TX_DAC_GAIN		2	/* 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2) */
+#define		SX125x_TX_MIX_GAIN		14	/* -38 + 2*TxMixGain dB (default 14) */
+#define		SX125x_TX_PLL_BW		3	/* 0:75, 1:150, 2:225, 3:300 kHz (default 3) */
+#define		SX125x_TX_ANA_BW		0	/* 17.5 / 2*(41-TxAnaBw) MHz (default 0) */
+#define		SX125x_TX_DAC_BW		7	/* 24 + 8*TxDacBw Nb FIR taps (default 2) */
+#define		SX125x_RX_LNA_GAIN		1	/* 1 to 6, 1 highest gain */
+#define		SX125x_RX_BB_GAIN		12	/* 0 to 15 , 15 highest gain */
+#define		SX125x_RX_ADC_BW		7	/* 0 to 7, 2:100<BW<200, 5:200<BW<400,7:400<BW (kHz) */
+#define		SX125x_RX_ADC_TRIM		6	/* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
+#define		SX125x_RXBB_BW			2
 
 #define		RSSI_OFFSET_LORA_MULTI	-128.0	/* calibrated value */
 #define		RSSI_OFFSET_LORA_STD	-167.0	/* calibrated for all bandwidth */
@@ -294,22 +295,22 @@ int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
 	}
 	
 	/* misc */
-	sx125x_write(rf_chain, 0x10, SX1257_TX_DAC_CLK_SEL + SX1257_CLK_OUT*2);
+	sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + SX125x_CLK_OUT*2);
 	
 	/* Tx gain and trim */
-	sx125x_write(rf_chain, 0x08, SX1257_TX_MIX_GAIN + SX1257_TX_DAC_GAIN*16);
-	sx125x_write(rf_chain, 0x0A, SX1257_TX_ANA_BW + SX1257_TX_PLL_BW*32);
-	sx125x_write(rf_chain, 0x0B, SX1257_TX_DAC_BW);
+	sx125x_write(rf_chain, 0x08, SX125x_TX_MIX_GAIN + SX125x_TX_DAC_GAIN*16);
+	sx125x_write(rf_chain, 0x0A, SX125x_TX_ANA_BW + SX125x_TX_PLL_BW*32);
+	sx125x_write(rf_chain, 0x0B, SX125x_TX_DAC_BW);
 	
 	/* Rx gain and trim */
-	sx125x_write(rf_chain, 0x0C, 0 + SX1257_RX_BB_GAIN*2 + SX1257_RX_LNA_GAIN*32);
-	sx125x_write(rf_chain, 0x0D, SX1257_RXBB_BW + SX1257_RX_ADC_TRIM*4 + SX1257_RX_ADC_BW*32);
+	sx125x_write(rf_chain, 0x0C, 0 + SX125x_RX_BB_GAIN*2 + SX125x_RX_LNA_GAIN*32);
+	sx125x_write(rf_chain, 0x0D, SX125x_RXBB_BW + SX125x_RX_ADC_TRIM*4 + SX125x_RX_ADC_BW*32);
 	
 	/* set RX PLL frequency */
-	part_int = freq_hz / SX1257_DENOM; /* integer part, gives the MSB and the middle byte */
-	part_frac = ((freq_hz % SX1257_DENOM) << 8) / SX1257_DENOM; /* fractional part, gives LSB */
-	sx125x_write(rf_chain, 0x01,0xFF & (part_int >> 8)); /* Most Significant Byte */
-	sx125x_write(rf_chain, 0x02,0xFF & part_int); /* middle byte */
+	part_int = freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
+	part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+	sx125x_write(rf_chain, 0x01,0xFF & part_int); /* Most Significant Byte */
+	sx125x_write(rf_chain, 0x02,0xFF & (part_frac >> 8)); /* middle byte */
 	sx125x_write(rf_chain, 0x03,0xFF & part_frac); /* Least Significant Byte */
 	
 	/* start and PLL lock */
@@ -321,7 +322,7 @@ int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
 		sx125x_write(rf_chain, 0x00, 1); /* enable Xtal oscillator */
 		sx125x_write(rf_chain, 0x00, 3); /* Enable RX (PLL+FE) */
 		++cpt_attempts;
-		DEBUG_PRINTF("Note: SX1257 #%d PLL start (attempt %d)\n", rf_chain, cpt_attempts);
+		DEBUG_PRINTF("Note: SX125x #%d PLL start (attempt %d)\n", rf_chain, cpt_attempts);
 		wait_ms(1);
 	} while(sx125x_read(rf_chain, 0x11) & 0x02 == 0);
 	
@@ -953,10 +954,10 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	payload_offset = TX_METADATA_NB; /* start the payload just after the metadata */
 	
 	/* metadata 0 to 2, TX PLL frequency */
-	part_int = pkt_data.freq_hz / SX1257_DENOM; /* integer part, gives the MSB and the middle byte */
-	part_frac = ((pkt_data.freq_hz % SX1257_DENOM) << 8) / SX1257_DENOM; /* fractional part, gives LSB */
-	buff[0] = 0xFF & (part_int >> 8); /* Most Significant Byte */
-	buff[1] = 0xFF & part_int; /* middle byte */
+	part_int = pkt_data.freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
+	part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+	buff[0] = 0xFF & part_int; /* Most Significant Byte */
+	buff[1] = 0xFF & (part_frac >> 8); /* middle byte */
 	buff[2] = 0xFF & part_frac; /* Least Significant Byte */
 	
 	/* metadata 3 to 6, timestamp trigger value */
