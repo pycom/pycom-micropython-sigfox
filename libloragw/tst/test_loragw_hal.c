@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 	txs.rf_chain = 0;
 */	
 	
-//	printf("***\n%s\n***\n", lgw_version_info());
+	printf("*** Library version information ***\n%s\n***\n", lgw_version_info());
 	
 	/* connect, configure and start the Lora gateway */
 	lgw_start();
