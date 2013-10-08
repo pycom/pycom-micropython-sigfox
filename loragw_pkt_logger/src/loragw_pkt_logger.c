@@ -160,7 +160,7 @@ void set_loragw_default_conf(void) {
 	
 	ifconf.enable = true;
 	ifconf.rf_chain = 1;
-	ifconf.freq_hz = -187500;
+	ifconf.freq_hz = -62500;
 	ifconf.datarate = DR_LORA_MULTI;
 	i = lgw_rxif_setconf(3, ifconf); /* chain 3: Lora 125kHz, all SF, on 868.3 MHz */
 	if (i != LGW_HAL_SUCCESS) {
