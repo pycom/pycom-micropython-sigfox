@@ -23,14 +23,13 @@ Description:
 
 #include <stdint.h>		/* C99 types */
 #include <stdbool.h>	/* bool type */
-#include <stdio.h>		/* printf fprintf*/
+#include <stdio.h>		/* printf fprintf sprintf fopen fputs */
 
 #include <string.h>		/* memset */
 #include <signal.h>		/* sigaction */
-#include <time.h>		/* time */
+#include <time.h>		/* time clock_gettime strftime gmtime clock_nanosleep*/
 #include <unistd.h>		/* getopt */
 #include <stdlib.h>		/* atoi */
-#include <ctype.h>		/* isprint */
 
 #include "loragw_hal.h"
 
@@ -50,6 +49,7 @@ Description:
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 char str_buf[256]; /* temporary buffer to build and manipulate strings */
+struct timespec sleep_time = {0, 3000000}; /* 3 ms */
 
 /* signal handling variables */
 struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
@@ -71,7 +71,7 @@ FILE * log_file = NULL;
 int log_rotate_interval = 3600; /* by default, rotation every hour */
 int time_check = 0; /* variable used to limit the number of calls to time() function */
 char log_file_name[64];
-unsigned long pkt_in_log;
+unsigned long pkt_in_log; /* count the number of packet written in each log file */
 
 /* allocate memory for packet fetching and processing */
 struct lgw_pkt_rx_s rxpkt[16]; /* array containing up to 16 inbound packets metadata */
@@ -306,7 +306,7 @@ int main(int argc, char **argv)
 			MSG("ERROR: failed packet fetch, exiting\n");
 			exit(EXIT_FAILURE);
 		} else if (nb_pkt == 0) {
-			usleep(1000); /* wait 1 ms if no packets */
+			clock_nanosleep(CLOCK_MONOTONIC, 0, &sleep_time, NULL); /* wait a short time if no packets */
 		} else {
 			/* local timestamp generation until we get accurate GPS time */
 			clock_gettime(CLOCK_REALTIME, &fetch_time);
