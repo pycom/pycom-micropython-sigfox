@@ -198,9 +198,9 @@ void set_loragw_default_conf(void) {
 
 void open_log(void) {
 	int i;
-	char iso_date[16];
+	char iso_date[20];
 	
-	strftime(iso_date,ARRAY_SIZE(iso_date),"%Y%m%dT%H%M%S.csv",localtime(&now_time)); /* format yyyymmddThhmmss */
+	strftime(iso_date,ARRAY_SIZE(iso_date),"%Y%m%dT%H%M%SZ",gmtime(&now_time)); /* format yyyymmddThhmmssZ */
 	log_start_time = now_time; /* keep track of when the log was started, for log rotation */
 	
 	sprintf(log_file_name, "pktlog_%s_%s.csv", lgwm_str, iso_date);
@@ -210,7 +210,7 @@ void open_log(void) {
 		exit(EXIT_FAILURE);
 	}
 	
-	i = fprintf(log_file, "\"gateway ID\",\"node MAC\",\"timestamp\",\"status\",\"size\",\"frequency\",\"RX chain\",\"modulation\",\"RF chain\",\"bandwidth\",\"datarate\",\"coderate\",\"RSSI\",\"SNR\",\"payload\"\n");
+	i = fprintf(log_file, "\"gateway ID\",\"node MAC\",\"UTC timestamp\",\"us count\",\"frequency\",\"RF chain\",\"RX chain\",\"status\",\"size\",\"modulation\",\"bandwidth\",\"datarate\",\"coderate\",\"RSSI\",\"SNR\",\"payload\"\n");
 	if (i < 0) {
 		MSG("ERROR: impossible to write to log file %s\n", log_file_name);
 		exit(EXIT_FAILURE);
@@ -228,6 +228,11 @@ void open_log(void) {
 int main(int argc, char **argv)
 {
 	int i, j, k; /* loop and temporary variables */
+	
+	/* local timestamp variables until we get accurate GPS time */
+	struct timespec fetch_time;
+	struct tm * x;
+	char fetch_timestamp[30];
 	
 	/* parse command line options */
 	while ((i = getopt (argc, argv, "hr:c:")) != -1) {
@@ -302,6 +307,11 @@ int main(int argc, char **argv)
 			exit(EXIT_FAILURE);
 		} else if (nb_pkt == 0) {
 			usleep(1000); /* wait 1 ms if no packets */
+		} else {
+			/* local timestamp generation until we get accurate GPS time */
+			clock_gettime(CLOCK_REALTIME, &fetch_time);
+			x = gmtime(&(fetch_time.tv_sec));
+			sprintf(fetch_timestamp,"%04i-%02i-%02i %02i:%02i:%02i.%03liZ",(x->tm_year)+1900,(x->tm_mon)+1,x->tm_mday,x->tm_hour,x->tm_min,x->tm_sec,(fetch_time.tv_nsec)/1000000); /* ISO 8601 format */
 		}
 		
 		/* log packets */
@@ -314,8 +324,21 @@ int main(int argc, char **argv)
 			/* writing node MAC address */
 			fputs("\"\",", log_file); // TODO: need to parse payload
 			
-			/* writing timestamp */
+			/* writing UTC timestamp*/
+			fprintf(log_file, "\"%s\",", fetch_timestamp);
+			// TODO: repalce with GPS time when available
+			
+			/* writing internal clock */
 			fprintf(log_file, "%010u,", p->count_us);
+			
+			/* writing RX frequency */
+			fputs("\"\",", log_file); // TODO: need updated HAL
+			
+			/* writing RF chain */
+			fputs("\"\",", log_file); // TODO: need updated HAL
+			
+			/* writing RX modem/IF chain */
+			fprintf(log_file, "%2d,", p->if_chain);
 			
 			/* writing status */
 			switch(p->status) {
@@ -328,15 +351,6 @@ int main(int argc, char **argv)
 			
 			/* writing payload size */
 			fprintf(log_file, "%3u,", p->size);
-			
-			/* writing RX frequency */
-			fputs("\"\",", log_file); // TODO: need updated HAL
-			
-			/* writing RX modem/IF chain */
-			fprintf(log_file, "%2d,", p->if_chain);
-			
-			/* writing RF chain */
-			fputs("\"\",", log_file); // TODO: need updated HAL
 			
 			/* writing modulation */
 			switch(p->modulation) {
