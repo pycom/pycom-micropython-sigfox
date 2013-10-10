@@ -7,6 +7,7 @@ APP_NAME=loragw_pkt_logger
 CC=gcc
 CFLAGS=-O2 -Iinc
 C99FLAGS=-O2 -std=c99 -Iinc
+FLAG_AUX=
 
 ### constants for Lora Gateway HAL library
 
@@ -26,10 +27,13 @@ clean:
 
 ### sub-modules compilation
 
+obj/parson.o: src/parson.c 
+	$(CC) -c $(C99FLAGS) -o obj/parson.o $(LGW_INC) src/parson.c $(FLAG_AUX)
+
 ### main program compilation and assembly
 
 obj/$(APP_NAME).o: src/$(APP_NAME).c 
-	$(CC) -c $(C99FLAGS) $(LGW_INC) src/$(APP_NAME).c -o obj/$(APP_NAME).o $(FLAG_AUX)
+	$(CC) -c $(C99FLAGS) -o obj/$(APP_NAME).o $(LGW_INC) src/$(APP_NAME).c $(FLAG_AUX)
 
-$(APP_NAME): $(LGW_PATH)/libloragw.a obj/$(APP_NAME).o
-	$(CC) -o $(APP_NAME) obj/$(APP_NAME).o -L$(LGW_PATH) $(LGW_LNK)
+$(APP_NAME): $(LGW_PATH)/libloragw.a obj/$(APP_NAME).o obj/parson.o
+	$(CC) -o $(APP_NAME) obj/$(APP_NAME).o obj/parson.o -L$(LGW_PATH) $(LGW_LNK)
