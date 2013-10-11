@@ -41,16 +41,7 @@ Description:
 #define MSG(args...)	fprintf(stderr,"loragw_pkt_logger: " args) /* message that is destined to the user */
 
 /* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
-
-#define	LORANET_MIN_PKT_SIZE	16
-#define	LORANET_MAC_OFFSET		4
-
-/* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
-
-char str_buf[256]; /* temporary buffer to build and manipulate strings */
-struct timespec sleep_time = {0, 3000000}; /* 3 ms */
 
 /* signal handling variables */
 struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
@@ -61,14 +52,11 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 uint64_t lgwm = 0; /* Lora gateway MAC address */
 char lgwm_str[17];
 
-/* clock, log file and log rotation management */
+/* clock and log file management */
 time_t now_time;
 time_t log_start_time;
 FILE * log_file = NULL;
-int log_rotate_interval = 3600; /* by default, rotation every hour */
-int time_check = 0; /* variable used to limit the number of calls to time() function */
 char log_file_name[64];
-unsigned long pkt_in_log; /* count the number of packet written in each log file */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -102,10 +90,7 @@ int parse_SX1301_configuration(const char * conf_file) {
 	JSON_Object *root = NULL;
 	JSON_Object *conf = NULL;
 	JSON_Value *val;
-	char * tmp_string;
 	uint32_t sf, bw;
-	double tmp_int;
-	int tmp_bool;
 	
 	/* try to parse JSON */
 	root_val = json_parse_file(conf_file);
@@ -258,8 +243,6 @@ int parse_gateway_configuration(const char * conf_file) {
 	JSON_Value *root_val;
 	JSON_Object *root = NULL;
 	JSON_Object *conf = NULL;
-	JSON_Value *val;
-	const char * tmp_string;
 	unsigned long long ull = 0;
 	
 	/* try to parse JSON */
@@ -307,8 +290,6 @@ void open_log(void) {
 	}
 	
 	MSG("INFO: Now writing to log file %s\n", log_file_name);
-	pkt_in_log = 0;
-	
 	return;
 }
 
@@ -318,6 +299,12 @@ void open_log(void) {
 int main(int argc, char **argv)
 {
 	int i, j, k; /* loop and temporary variables */
+	struct timespec sleep_time = {0, 3000000}; /* 3 ms */
+	
+	/* clock and log rotation management */
+	int log_rotate_interval = 3600; /* by default, rotation every hour */
+	int time_check = 0; /* variable used to limit the number of calls to time() function */
+	unsigned long pkt_in_log = 0; /* count the number of packet written in each log file */
 	
 	/* configuration file related */
 	const char global_conf_fname[] = "global_conf.json"; /* contain global (typ. network-wide) configuration */
@@ -331,8 +318,8 @@ int main(int argc, char **argv)
 	
 	/* local timestamp variables until we get accurate GPS time */
 	struct timespec fetch_time;
-	struct tm * x;
 	char fetch_timestamp[30];
+	struct tm * x;
 	
 	/* parse command line options */
 	while ((i = getopt (argc, argv, "hr:")) != -1) {
@@ -531,6 +518,7 @@ int main(int argc, char **argv)
 			if (difftime(now_time, log_start_time) > log_rotate_interval) {
 				fclose(log_file);
 				MSG("INFO: log file %s closed, %lu packet(s) recorded\n", log_file_name, pkt_in_log);
+				pkt_in_log = 0;
 				open_log();
 			}
 		}
