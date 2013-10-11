@@ -199,7 +199,7 @@ int parse_SX1301_configuration(const char * conf_file) {
 		MSG("INFO: Lora standard channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
 	}
 	if (lgw_rxif_setconf(8, ifconf) != LGW_HAL_SUCCESS) {
-		MSG("WARNING: invalid configuration for Lora standard channel\n", i);
+		MSG("WARNING: invalid configuration for Lora standard channel\n");
 	}
 	
 	/* set configuration for FSK channel */
@@ -231,7 +231,7 @@ int parse_SX1301_configuration(const char * conf_file) {
 		MSG("INFO: FSK channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
 	}
 	if (lgw_rxif_setconf(9, ifconf) != LGW_HAL_SUCCESS) {
-		MSG("WARNING: invalid configuration for FSK channel\n", i);
+		MSG("WARNING: invalid configuration for FSK channel\n");
 	}
 	
 	json_value_free(root_val);
@@ -298,7 +298,7 @@ void open_log(void) {
 
 int main(int argc, char **argv)
 {
-	int i, j, k; /* loop and temporary variables */
+	int i, j; /* loop and temporary variables */
 	struct timespec sleep_time = {0, 3000000}; /* 3 ms */
 	
 	/* clock and log rotation management */

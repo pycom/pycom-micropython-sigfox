@@ -5,8 +5,8 @@ APP_NAME=loragw_pkt_logger
 ### constant symbols
 
 CC=gcc
-CFLAGS=-O2 -Iinc
-C99FLAGS=-O2 -std=c99 -Iinc
+CFLAGS=-O2 -Wall -Wextra -Iinc
+C99FLAGS=-O2 -Wall -Wextra -std=c99 -Iinc
 FLAG_AUX=
 
 ### constants for Lora Gateway HAL library
