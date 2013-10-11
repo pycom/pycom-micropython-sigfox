@@ -60,7 +60,7 @@ static void sig_handler(int sigio) {
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
+int main()
 {
 	struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 	
@@ -73,12 +73,9 @@ int main(int argc, char **argv)
 	
 	int i, j;
 	int nb_pkt;
-	uint8_t x;
 	
 	uint32_t tx_cnt = 0;
 	unsigned long loop_cnt = 0;
-	int tx_path = 0;
-	struct lgw_pkt_tx_s txs;
 	uint8_t status_var = 0;
 	
 	/* configure signal handling */
@@ -152,28 +149,28 @@ int main(int argc, char **argv)
 	
 	/* set configuration for TX packet */
 	
-	memset(&txs, 0, sizeof(txs));
-	txs.freq_hz = 867000000;
-	txs.tx_mode = IMMEDIATE;
-	txs.modulation = MOD_LORA;
-	txs.bandwidth = BW_250KHZ;
-	txs.datarate = DR_LORA_SF10;
-	txs.coderate = CR_LORA_4_5;
-	strcpy((char *)txs.payload, "TX.TEST.LORA.GW.????" );
-	txs.size = 20;
-	txs.preamble = 6;
-	txs.rf_chain = 0;
+	memset(&txpkt, 0, sizeof(txpkt));
+	txpkt.freq_hz = 867000000;
+	txpkt.tx_mode = IMMEDIATE;
+	txpkt.modulation = MOD_LORA;
+	txpkt.bandwidth = BW_250KHZ;
+	txpkt.datarate = DR_LORA_SF10;
+	txpkt.coderate = CR_LORA_4_5;
+	strcpy((char *)txpkt.payload, "TX.TEST.LORA.GW.????" );
+	txpkt.size = 20;
+	txpkt.preamble = 6;
+	txpkt.rf_chain = 0;
 /*	
-	memset(&txs, 0, sizeof(txs));
-	txs.freq_hz = 867000000;
-	txs.tx_mode = IMMEDIATE;
-	txs.modulation = MOD_FSK;
-	txs.f_dev = 50;
-	txs.datarate = 64000;
-	strcpy((char *)txs.payload, "TX.TEST.LORA.GW.????" );
-	txs.size = 20;
-	txs.preamble = 4;
-	txs.rf_chain = 0;
+	memset(&txpkt, 0, sizeof(txpkt));
+	txpkt.freq_hz = 867000000;
+	txpkt.tx_mode = IMMEDIATE;
+	txpkt.modulation = MOD_FSK;
+	txpkt.f_dev = 50;
+	txpkt.datarate = 64000;
+	strcpy((char *)txpkt.payload, "TX.TEST.LORA.GW.????" );
+	txpkt.size = 20;
+	txpkt.preamble = 4;
+	txpkt.rf_chain = 0;
 */	
 	
 	printf("*** Library version information ***\n%s\n***\n", lgw_version_info());
@@ -248,13 +245,13 @@ int main(int argc, char **argv)
 		/* send a packet every X loop */
 		if (loop_cnt%16 == 0) {
 			/* 32b counter in the payload, big endian */
-			txs.payload[16] = 0xff & (tx_cnt >> 24);
-			txs.payload[17] = 0xff & (tx_cnt >> 16);
-			txs.payload[18] = 0xff & (tx_cnt >> 8);
-			txs.payload[19] = 0xff & tx_cnt;
-			i = lgw_send(txs); /* non-blocking scheduling of TX packet */
+			txpkt.payload[16] = 0xff & (tx_cnt >> 24);
+			txpkt.payload[17] = 0xff & (tx_cnt >> 16);
+			txpkt.payload[18] = 0xff & (tx_cnt >> 8);
+			txpkt.payload[19] = 0xff & tx_cnt;
+			i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
 			j = 0;
-			printf("+++\nSending packet #%d, rf path %d, return %d\nstatus -> ", tx_cnt, txs.rf_chain, i);
+			printf("+++\nSending packet #%d, rf path %d, return %d\nstatus -> ", tx_cnt, txpkt.rf_chain, i);
 			do {
 				++j;
 				wait_ms(100);

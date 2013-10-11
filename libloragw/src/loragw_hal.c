@@ -149,7 +149,6 @@ void lgw_constant_adjust(void);
 
 /* size is the firmware size in bytes (not 14b words) */
 int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
-	int32_t read_value;
 	int reg_rst;
 	int reg_sel;
 	
@@ -324,7 +323,7 @@ int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
 		++cpt_attempts;
 		DEBUG_PRINTF("Note: SX125x #%d PLL start (attempt %d)\n", rf_chain, cpt_attempts);
 		wait_ms(1);
-	} while(sx125x_read(rf_chain, 0x11) & 0x02 == 0);
+	} while((sx125x_read(rf_chain, 0x11) & 0x02) == 0);
 	
 	return 0;
 }
@@ -609,7 +608,6 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 int lgw_start(void) {
 	int i, j;
 	int reg_stat;
-	int32_t read_value;
 	
 	if (lgw_is_started == true) {
 		DEBUG_MSG("Note: Lora Gateway already started, restarting it now\n");
@@ -748,7 +746,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 	int nb_pkt_fetch; /* loop variable and return value */
 	struct lgw_pkt_rx_s *p; /* pointer to the current structure in the struct array */
 	uint8_t buff[255+RX_METADATA_NB]; /* buffer to store the result of SPI read bursts */
-	uint16_t data_addr; /* address read from the FIFO and programmed before the data buffer read operation */
 	int s; /* size of the payload, uses to address metadata */
 	int ifmod; /* type of if_chain/modem a packet was received by */
 	int stat_fifo; /* the packet status as indicated in the FIFO */
@@ -881,7 +878,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	uint16_t fsk_dr_div; /* divider to configure for target datarate */
 	int transfer_size = 0; /* data to transfer from host to TX databuffer */
 	int payload_offset = 0; /* start of the payload content in the databuffer */
-	int i;
 	
 	/* check if the gateway is running */
 	if (lgw_is_started == false) {
@@ -931,7 +927,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 			DEBUG_MSG("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
 			return LGW_HAL_ERROR;
 		}
-		if(!IS_FSK_DR(pkt_data.datarate)) {
+		if(!IS_FSK_DR(pkt_data.datarate)) { // TOFIX: warning
 			DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
 			return LGW_HAL_ERROR;
 		}
