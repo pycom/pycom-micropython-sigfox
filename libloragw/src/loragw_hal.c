@@ -136,9 +136,9 @@ static uint32_t fsk_rx_dr = 0; /* FSK modem datarate in bauds */
 
 int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size);
 
-void sx125x_write(uint8_t rf_chain, uint8_t addr, uint8_t data);
+void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data);
 
-uint8_t sx125x_read(uint8_t rf_chain, uint8_t addr);
+uint8_t sx125x_read(uint8_t channel, uint8_t addr);
 
 int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz);
 
