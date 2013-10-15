@@ -862,6 +862,10 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 		p->count_us = (uint32_t)buff[s+6] + ((uint32_t)buff[s+7] << 8) + ((uint32_t)buff[s+8] << 16) + ((uint32_t)buff[s+9] << 24);
 		p->crc = (uint16_t)buff[s+10] + ((uint16_t)buff[s+11] << 8);
 		
+		/* get back info from configuration so that application doesn't have to keep track of it */
+		p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
+		p->freq_hz = (uint32_t)((int32_t)rf_rx_freq[p->rf_chain] + if_freq[p->if_chain]);
+		
 		/* advance packet FIFO */
 		lgw_reg_w(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, 0);
 	}

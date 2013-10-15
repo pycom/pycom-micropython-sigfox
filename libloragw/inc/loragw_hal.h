@@ -179,13 +179,15 @@ struct lgw_conf_rxif_s {
 @brief Structure containing the metadata of a packet that was received and a pointer to the payload
 */
 struct lgw_pkt_rx_s {
+	uint32_t	freq_hz;	/*!> central frequency of the IF chain */
 	uint8_t		if_chain;	/*!> by which IF chain was packet received */
 	uint8_t		status;		/*!> status of the received packet */
+	uint32_t	count_us;	/*!> internal gateway counter for timestamping, 1 microsecond resolution */
+	uint8_t		rf_chain;	/*!> through which RF chain the packet was received */
 	uint8_t		modulation; /*!> modulation used by the packet */
 	uint8_t		bandwidth;	/*!> modulation bandwidth (Lora only) */
-	uint16_t	datarate;	/*!> RX datarate of the packet */
-	uint8_t		coderate;	/*!> error-correcting code of the packet */
-	uint32_t	count_us;	/*!> internal gateway counter for timestamping, 1 microsecond resolution */
+	uint16_t	datarate;	/*!> RX datarate of the packet (SF for Lora) */
+	uint8_t		coderate;	/*!> error-correcting code of the packet (Lora only) */
 	float		rssi;		/*!> average packet RSSI in dB */
 	float		snr;		/*!> average packet SNR, in dB (Lora only) */
 	float		snr_min;	/*!> minimum packet SNR, in dB (Lora only) */
@@ -207,10 +209,10 @@ struct lgw_pkt_tx_s {
 	int8_t		rf_power;	/*!> TX power, in dBm */
 	uint8_t		modulation; /*!> modulation to use for the packet */
 	uint8_t		bandwidth;	/*!> modulation bandwidth (Lora only) */
+	uint16_t	datarate;	/*!> TX datarate (baudrate for FSK, SF for Lora) */
+	uint8_t		coderate;	/*!> error-correcting code of the packet (Lora only) */
 	bool		invert_pol;	/*!> invert signal polarity, for orthogonal downlinks (Lora only) */
 	uint8_t		f_dev;		/*!> frequency deviation, in kHz (FSK only) */
-	uint16_t	datarate;	/*!> TX datarate (baudrate for FSK) */
-	uint8_t		coderate;	/*!> error-correcting code of the packet (Lora only) */
 	uint16_t	preamble;	/*!> set the preamble length, 0 for default */
 	bool		no_crc;		/*!> if true, do not send a CRC in the packet */
 	bool		no_header;	/*!> if true, enable implicit header mode (Lora), fixed length (FSK) */
