@@ -116,7 +116,7 @@ the _start function assumes
 static bool lgw_is_started = false;
 
 static bool rf_enable[LGW_RF_CHAIN_NB] = {0, 0};
-static uint32_t rf_rx_freq[LGW_IF_CHAIN_NB] = {0, 0}; /* absolute, in Hz */
+static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB] = {0, 0}; /* absolute, in Hz */
 
 static bool if_enable[LGW_IF_CHAIN_NB] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 static bool if_rf_chain[LGW_IF_CHAIN_NB] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; /* for each IF, 0 -> radio A, 1 -> radio B */
