@@ -139,7 +139,8 @@ int parse_SX1301_configuration(const char * conf_file) {
 	for (i = 0; i < LGW_MULTI_NB; ++i) {
 		memset(&ifconf, 0, sizeof(ifconf)); /* initialize configuration structure */
 		sprintf(param_name, "chan_multiSF_%i", i); /* compose parameter path inside JSON structure */
-		if (json_value_get_type(json_object_get_value(conf, param_name)) != JSONObject) {/* fetch value (if possible) */
+		val = json_object_get_value(conf, param_name); /* fetch value (if possible) */
+		if (json_value_get_type(val) != JSONObject) {
 			MSG("INFO: no configuration for Lora multi-SF channel %i\n", i);
 			continue;
 		}
@@ -167,73 +168,76 @@ int parse_SX1301_configuration(const char * conf_file) {
 	
 	/* set configuration for Lora standard channel */
 	memset(&ifconf, 0, sizeof(ifconf)); /* initialize configuration structure */
-	if (json_value_get_type(json_object_get_value(conf, "chan_Lora_std")) != JSONObject) { /* fetch value (if possible) */
+	val = json_object_get_value(conf, "chan_Lora_std"); /* fetch value (if possible) */
+	if (json_value_get_type(val) != JSONObject) {
 		MSG("INFO: no configuration for Lora standard channel\n");
-	}
-	val = json_object_dotget_value(conf, "chan_Lora_std.enable");
-	if (json_value_get_type(val) == JSONBoolean) {
-		ifconf.enable = (bool)json_value_get_boolean(val);
-	}
-	if (ifconf.enable == false) {
-		MSG("INFO: Lora standard channel %i disabled\n", i);
-	} else  {
-		ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf, "chan_Lora_std.radio");
-		ifconf.freq_hz = (int32_t)json_object_dotget_number(conf, "chan_Lora_std.if");
-		bw = (uint32_t)json_object_dotget_number(conf, "chan_Lora_std.bandwidth");
-		switch(bw) {
-			case 500000: ifconf.bandwidth = BW_500KHZ; break;
-			case 250000: ifconf.bandwidth = BW_250KHZ; break;
-			case 125000: ifconf.bandwidth = BW_125KHZ; break;
-			default: ifconf.bandwidth = BW_UNDEFINED;
+	} else {
+		val = json_object_dotget_value(conf, "chan_Lora_std.enable");
+		if (json_value_get_type(val) == JSONBoolean) {
+			ifconf.enable = (bool)json_value_get_boolean(val);
 		}
-		sf = (uint32_t)json_object_dotget_number(conf, "chan_Lora_std.spread_factor");
-		switch(sf) {
-			case  7: ifconf.datarate = DR_LORA_SF7;  break;
-			case  8: ifconf.datarate = DR_LORA_SF8;  break;
-			case  9: ifconf.datarate = DR_LORA_SF9;  break;
-			case 10: ifconf.datarate = DR_LORA_SF10; break;
-			case 11: ifconf.datarate = DR_LORA_SF11; break;
-			case 12: ifconf.datarate = DR_LORA_SF12; break;
-			default: ifconf.datarate = DR_UNDEFINED;
+		if (ifconf.enable == false) {
+			MSG("INFO: Lora standard channel %i disabled\n", i);
+		} else  {
+			ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf, "chan_Lora_std.radio");
+			ifconf.freq_hz = (int32_t)json_object_dotget_number(conf, "chan_Lora_std.if");
+			bw = (uint32_t)json_object_dotget_number(conf, "chan_Lora_std.bandwidth");
+			switch(bw) {
+				case 500000: ifconf.bandwidth = BW_500KHZ; break;
+				case 250000: ifconf.bandwidth = BW_250KHZ; break;
+				case 125000: ifconf.bandwidth = BW_125KHZ; break;
+				default: ifconf.bandwidth = BW_UNDEFINED;
+			}
+			sf = (uint32_t)json_object_dotget_number(conf, "chan_Lora_std.spread_factor");
+			switch(sf) {
+				case  7: ifconf.datarate = DR_LORA_SF7;  break;
+				case  8: ifconf.datarate = DR_LORA_SF8;  break;
+				case  9: ifconf.datarate = DR_LORA_SF9;  break;
+				case 10: ifconf.datarate = DR_LORA_SF10; break;
+				case 11: ifconf.datarate = DR_LORA_SF11; break;
+				case 12: ifconf.datarate = DR_LORA_SF12; break;
+				default: ifconf.datarate = DR_UNDEFINED;
+			}
+			MSG("INFO: Lora standard channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
 		}
-		MSG("INFO: Lora standard channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
-	}
-	if (lgw_rxif_setconf(8, ifconf) != LGW_HAL_SUCCESS) {
-		MSG("WARNING: invalid configuration for Lora standard channel\n");
+		if (lgw_rxif_setconf(8, ifconf) != LGW_HAL_SUCCESS) {
+			MSG("WARNING: invalid configuration for Lora standard channel\n");
+		}
 	}
 	
 	/* set configuration for FSK channel */
 	memset(&ifconf, 0, sizeof(ifconf)); /* initialize configuration structure */
-	if (json_value_get_type(json_object_get_value(conf, "chan_FSK")) != JSONObject) { /* fetch value (if possible) */
+	val = json_object_get_value(conf, "chan_FSK"); /* fetch value (if possible) */
+	if (json_value_get_type(val) != JSONObject) {
 		MSG("INFO: no configuration for FSK channel\n");
-	}
-	val = json_object_dotget_value(conf, "chan_FSK.enable");
-	if (json_value_get_type(val) == JSONBoolean) {
-		ifconf.enable = (bool)json_value_get_boolean(val);
-	}
-	if (ifconf.enable == false) {
-		MSG("INFO: FSK channel %i disabled\n", i);
-	} else  {
-		ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf, "chan_FSK.radio");
-		ifconf.freq_hz = (int32_t)json_object_dotget_number(conf, "chan_FSK.if");
-		bw = (uint32_t)json_object_dotget_number(conf, "chan_FSK.bandwidth");
-		switch(bw) {
-			case 500000: ifconf.bandwidth = BW_500KHZ; break;
-			case 250000: ifconf.bandwidth = BW_250KHZ; break;
-			case 125000: ifconf.bandwidth = BW_125KHZ; break;
-			case  62500: ifconf.bandwidth = BW_62K5HZ; break;
-			case  31200: ifconf.bandwidth = BW_31K2HZ; break;
-			case  15600: ifconf.bandwidth = BW_15K6HZ; break;
-			case   7800: ifconf.bandwidth = BW_7K8HZ;  break;
-			default: ifconf.bandwidth = BW_UNDEFINED;
+	} else {
+		val = json_object_dotget_value(conf, "chan_FSK.enable");
+		if (json_value_get_type(val) == JSONBoolean) {
+			ifconf.enable = (bool)json_value_get_boolean(val);
 		}
-		ifconf.datarate = (uint32_t)json_object_dotget_number(conf, "chan_FSK.datarate");
-		MSG("INFO: FSK channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
+		if (ifconf.enable == false) {
+			MSG("INFO: FSK channel %i disabled\n", i);
+		} else  {
+			ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf, "chan_FSK.radio");
+			ifconf.freq_hz = (int32_t)json_object_dotget_number(conf, "chan_FSK.if");
+			bw = (uint32_t)json_object_dotget_number(conf, "chan_FSK.bandwidth");
+			switch(bw) {
+				case 500000: ifconf.bandwidth = BW_500KHZ; break;
+				case 250000: ifconf.bandwidth = BW_250KHZ; break;
+				case 125000: ifconf.bandwidth = BW_125KHZ; break;
+				case  62500: ifconf.bandwidth = BW_62K5HZ; break;
+				case  31200: ifconf.bandwidth = BW_31K2HZ; break;
+				case  15600: ifconf.bandwidth = BW_15K6HZ; break;
+				case   7800: ifconf.bandwidth = BW_7K8HZ;  break;
+				default: ifconf.bandwidth = BW_UNDEFINED;
+			}
+			ifconf.datarate = (uint32_t)json_object_dotget_number(conf, "chan_FSK.datarate");
+			MSG("INFO: FSK channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
+		}
+		if (lgw_rxif_setconf(9, ifconf) != LGW_HAL_SUCCESS) {
+			MSG("WARNING: invalid configuration for FSK channel\n");
+		}
 	}
-	if (lgw_rxif_setconf(9, ifconf) != LGW_HAL_SUCCESS) {
-		MSG("WARNING: invalid configuration for FSK channel\n");
-	}
-	
 	json_value_free(root_val);
 	return 0;
 }
@@ -328,18 +332,19 @@ int main(int argc, char **argv)
 				MSG( "Available options:\n");
 				MSG( "-h print this help\n");
 				MSG( "-r <int> rotate log file every N seconds (-1 disable log rotation)\n");
-				exit(EXIT_FAILURE);
+				return EXIT_FAILURE;
 			
 			case 'r':
 				log_rotate_interval = atoi(optarg);
 				if ((log_rotate_interval == 0) || (log_rotate_interval < -1)) {
 					MSG( "ERROR: Invalid argument for -r option\n");
-					exit(EXIT_FAILURE);
+					return EXIT_FAILURE;
 				}
 				break;
 			
 			default:
-				MSG("ERROR: argument parsing\n");
+				MSG("ERROR: argument parsing use -h option for help\n");
+				return EXIT_FAILURE;
 		}
 	}
 	
@@ -374,7 +379,7 @@ int main(int argc, char **argv)
 		parse_gateway_configuration(local_conf_fname);
 	} else {
 		MSG("ERROR: failed to find any configuration file named %s, %s or %s\n", global_conf_fname, local_conf_fname, debug_conf_fname);
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	
 	/* starting the gateway */
@@ -383,7 +388,7 @@ int main(int argc, char **argv)
 		MSG("INFO: gateway started, packet can now be received\n");
 	} else {
 		MSG("ERROR: failed to start the gateway\n");
-		exit(EXIT_FAILURE);
+		return EXIT_FAILURE;
 	}
 	
 	/* transform the MAC address into a string */
@@ -399,7 +404,7 @@ int main(int argc, char **argv)
 		nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
 		if (nb_pkt == LGW_HAL_ERROR) {
 			MSG("ERROR: failed packet fetch, exiting\n");
-			exit(EXIT_FAILURE);
+			return EXIT_FAILURE;
 		} else if (nb_pkt == 0) {
 			clock_nanosleep(CLOCK_MONOTONIC, 0, &sleep_time, NULL); /* wait a short time if no packets */
 		} else {
@@ -536,8 +541,7 @@ int main(int argc, char **argv)
 		MSG("INFO: log file %s closed, %lu packet(s) recorded\n", log_file_name, pkt_in_log);
 	}
 	
-	printf("\nEnd of test for loragw_hal.c\n");
-	
+	MSG("INFO: Exiting packet logger program\n");
 	return EXIT_SUCCESS;
 }
 
