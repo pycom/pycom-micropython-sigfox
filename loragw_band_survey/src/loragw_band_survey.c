@@ -288,11 +288,11 @@ int main(int argc, char **argv)
 					MSG("ERROR: stop frequency must be bigger than start frequency\n");
 					return EXIT_FAILURE;
 				}
-				if ((f1 < 30) || (f1 > 3000)) {
+				if ((f1 < 30.0) || (f1 > 3000.0)) {
 					MSG("ERROR: invalid start frequency %f MHz\n", f1);
 					return EXIT_FAILURE;
 				}
-				if ((f2 < 30) || (f2 > 3000)) {
+				if ((f2 < 30.0) || (f2 > 3000.0)) {
 					MSG("ERROR: invalid stop frequency %f MHz\n", f2);
 					return EXIT_FAILURE;
 				}
@@ -304,7 +304,7 @@ int main(int argc, char **argv)
 				break;
 			
 			default:
-				MSG("ERROR: argument parsing\n");
+				MSG("ERROR: argument parsing use -h option for help\n");
 				return EXIT_FAILURE;
 		}
 	}
@@ -434,11 +434,11 @@ int main(int argc, char **argv)
 		f_target += f_step;
 	}
 	
-	MSG("INFO: Exiting band survey program\n");
 	fclose(log_file);
 	lgw_soft_reset();
 	lgw_disconnect();
 	
+	MSG("INFO: Exiting band survey program\n");
 	return EXIT_SUCCESS;
 }
 
