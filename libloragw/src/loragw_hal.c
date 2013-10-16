@@ -36,7 +36,7 @@ Description:
 #else
 	#define DEBUG_MSG(str)
 	#define DEBUG_PRINTF(fmt, args...)
-	#define DEBUG_ARRAY(a,b,c)
+	#define DEBUG_ARRAY(a,b,c)			for(a=0;a!=0;){}
 	#define CHECK_NULL(a)				if(a==NULL){return LGW_HAL_ERROR;}
 #endif
 
@@ -876,6 +876,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
+	int i;
 	uint8_t buff[256+TX_METADATA_NB]; /* buffer to prepare the packet to send + metadata before SPI write burst */
 	uint32_t part_int; /* integer part for PLL register value calculation */
 	uint32_t part_frac; /* fractional part for PLL register value calculation */
