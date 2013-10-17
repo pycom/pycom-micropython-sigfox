@@ -43,7 +43,6 @@ Description:
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #define		RF_CHAIN				0	/* we'll use radio A only */
-#define		CHAN_WIDTH			125000
 
 const uint32_t lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_LOWFREQ;
 const uint32_t upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
@@ -77,16 +76,15 @@ int main(int argc, char **argv)
 	uint8_t status_var;
 	
 	/* user entry parameters */
-	int x = 0;
-	double f1 = 0.0;
-	double f2 = 0.0;
-	double fs = 0.0;
+	int xi = 0;
+	double xd = 0.0;
+	uint32_t f_min;
+	uint32_t f_max;
 	
 	/* application parameters */
-	uint32_t f_start = lowfreq[RF_CHAIN] + (CHAN_WIDTH/2); /* in Hz */
-	uint32_t f_stop = upfreq[RF_CHAIN] - (CHAN_WIDTH/2); /* in Hz */
-	uint32_t f_step = CHAN_WIDTH; /* 125 kHz step by default */
-	int sf = 7; /* SF10 by default */
+	uint32_t f_target = lowfreq[RF_CHAIN]/2 + upfreq[RF_CHAIN]/2; /* target frequency */
+	int sf = 10; /* SF10 by default */
+	int bw = 125; /* 125kHz bandwidth by default */
 	int pow = 14; /* 14 dBm by default */
 	int delay = 1000; /* 1 second between packets by default */
 	int repeat = 1; /* sweep only once by default */
@@ -99,17 +97,16 @@ int main(int argc, char **argv)
 	
 	/* loop variables (also use as counters in the packet payload) */
 	uint16_t cycle_count = 0;
-	uint16_t freq_count = 0;
-	uint32_t f_target = 0;
 	
 	/* parse command line options */
-	while ((i = getopt (argc, argv, "hf:s:p:t:x:")) != -1) {
+	while ((i = getopt (argc, argv, "hf:s:b:p:t:x:")) != -1) { /* process bandwidth first */
 		switch (i) {
 			case 'h':
 				MSG( "Available options:\n");
 				MSG( "-h print this help\n");
-				MSG( "-f Fstart:Fstop or Fstart:Fstop:Fstep in MHz (scientific notation accepted)\n");
+				MSG( "-f target frequency in MHz\n");
 				MSG( "-s Spreading Factor\n");
+				MSG( "-b Modulation bandwidth in kHz\n");
 				MSG( "-p RF power (dBm)\n");
 				MSG( "-t pause between packets (ms)\n");
 				MSG( "-x numbers of times the sequence is repeated\n");
@@ -117,63 +114,62 @@ int main(int argc, char **argv)
 				break;
 			
 			case 'f':
-				sscanf(optarg, "%lf:%lf:%lf", &f1, &f2, &fs);
-				if (f2 < f1) {
-					MSG("ERROR: stop frequency must be bigger than start frequency\n");
+				i = sscanf(optarg, "%lf", &xd);
+				if ((i != 1) || (xd < 30.0) || (xd > 3000.0)) {
+					MSG("ERROR: invalid TX frequency\n");
 					return EXIT_FAILURE;
-				}
-				if ((f1 < 30) || (f1 > 3000)) {
-					MSG("ERROR: invalid start frequency %f MHz\n", f1);
-					return EXIT_FAILURE;
-				}
-				if ((f2 < 30) || (f2 > 3000)) {
-					MSG("ERROR: invalid stop frequency %f MHz\n", f2);
-					return EXIT_FAILURE;
-				}
-				f_start = (uint32_t)((f1*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
-				f_stop = (uint32_t)((f2*1e6) + 0.5);
-				if (fs > 0.01) {
-					f_step = (uint32_t)((fs*1e6) + 0.5);
+				} else {
+					f_target = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
 				}
 				break;
 			
 			case 's':
-				i = sscanf(optarg, "%i", &x);
-				if ((i != 1) || (x < 7) || (x > 12)) {
+				i = sscanf(optarg, "%i", &xi);
+				if ((i != 1) || (xi < 7) || (xi > 12)) {
 					MSG("ERROR: invalid spreading factor\n");
 					return EXIT_FAILURE;
 				} else {
-					sf = x;
+					sf = xi;
+				}
+				break;
+			
+			case 'b':
+				i = sscanf(optarg, "%i", &xi);
+				if ((i != 1) || ((xi != 125)&&(xi != 250)&&(xi != 500))) {
+					MSG("ERROR: invalid Lora bandwidth\n");
+					return EXIT_FAILURE;
+				} else {
+					bw = xi;
 				}
 				break;
 			
 			case 'p':
-				i = sscanf(optarg, "%i", &x);
-				if ((i != 1) || (x < 0) || (x > 20)) {
+				i = sscanf(optarg, "%i", &xi);
+				if ((i != 1) || (xi < 0) || (xi > 20)) {
 					MSG("ERROR: invalid RF power\n");
 					return EXIT_FAILURE;
 				} else {
-					pow = x;
+					pow = xi;
 				}
 				break;
 			
 			case 't':
-				i = sscanf(optarg, "%i", &x);
-				if ((i != 1) || (x < 0)) {
+				i = sscanf(optarg, "%i", &xi);
+				if ((i != 1) || (xi < 0)) {
 					MSG("ERROR: invalid time between packets\n");
 					return EXIT_FAILURE;
 				} else {
-					delay = x;
+					delay = xi;
 				}
 				break;
 			
 			case 'x':
-				i = sscanf(optarg, "%i", &x);
-				if ((i != 1) || (x < 1)) {
+				i = sscanf(optarg, "%i", &xi);
+				if ((i != 1) || (xi < 1)) {
 					MSG("ERROR: invalid number of repeats\n");
 					return EXIT_FAILURE;
 				} else {
-					repeat = x;
+					repeat = xi;
 				}
 				break;
 			
@@ -191,6 +187,14 @@ int main(int argc, char **argv)
 	sigaction(SIGINT, &sigact, NULL);
 	sigaction(SIGTERM, &sigact, NULL);
 	
+	/* check parameter sanity */
+	f_min = lowfreq[RF_CHAIN] + (500 * bw);
+	f_max = upfreq[RF_CHAIN] - (500 * bw);
+	if ((f_target < f_min) || (f_target > f_max)) {
+		MSG("ERROR: frequency out of authorized band (accounting for modulation bandwidth)\n");
+		return EXIT_FAILURE;
+	}
+	
 	/* starting the gateway */
 	lgw_rxrf_setconf(RF_CHAIN, rfconf);
 	i = lgw_start();
@@ -201,14 +205,21 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 	
-	/* fill-up payload and static parameters */
+	/* fill-up payload and parameters */
 	memset(&txpkt, 0, sizeof(txpkt));
-	
+	txpkt.freq_hz = f_target;
 	txpkt.tx_mode = IMMEDIATE;
 	txpkt.rf_chain = RF_CHAIN;
 	txpkt.rf_power = pow;
 	txpkt.modulation = MOD_LORA;
-	txpkt.bandwidth = BW_125KHZ;
+	switch (bw) {
+		case 125: txpkt.bandwidth = BW_125KHZ; break;
+		case 250: txpkt.bandwidth = BW_250KHZ; break;
+		case 500: txpkt.bandwidth = BW_500KHZ; break;
+		default:
+			MSG("ERROR: invalid 'bw' variable\n");
+			return EXIT_FAILURE;
+	}
 	switch (sf) {
 		case  7: txpkt.datarate = DR_LORA_SF7;  break;
 		case  8: txpkt.datarate = DR_LORA_SF8;  break;
@@ -224,37 +235,27 @@ int main(int argc, char **argv)
 	// txpkt.invert_pol // TODO
 	txpkt.preamble = 8;
 	txpkt.size = 20; /* should be close to typical payload length */
-	strcpy((char *)txpkt.payload, "TEST****abcdefghijkl" ); /* abc.. is for padding */
+	strcpy((char *)txpkt.payload, "TEST**abcdefghijklmn" ); /* abc.. is for padding */
+	
+	MSG("INFO: Sending %u packets on %u Hz (BW %u kHz, SF %u, 20 bytes payload) at %i dBm, with %u ms between each.\n", repeat, f_target, bw, sf, pow, delay);
 	
 	/* main loop */
 	for (cycle_count = 0; cycle_count < repeat; ++cycle_count) {
-		freq_count = 0;
-		f_target = f_start;
-		while (f_target <= f_stop) {
-			/* set frequency */
-			txpkt.freq_hz = f_target;
-			
-			/* refresh counters in payload (big endian, for readability) */
-			txpkt.payload[4] = (uint8_t)(cycle_count >> 8); /* MSB */
-			txpkt.payload[5] = (uint8_t)(cycle_count & 0x00FF); /* LSB */
-			txpkt.payload[6] = (uint8_t)(freq_count >> 8); /* MSB */
-			txpkt.payload[7] = (uint8_t)(freq_count & 0x00FF); /* LSB */
-			
-			/* send packet */
-			printf("Cycle %u, TX on %u Hz\n", cycle_count, f_target);
-			i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
-			do {
-				wait_ms(5);
-				lgw_status(TX_STATUS, &status_var); /* get TX status */
-			} while (status_var != TX_FREE);
-			
-			/* wait inter-packet delay */
-			wait_ms(delay);
-			
-			/* iterate */
-			f_target += f_step;
-			++freq_count;
-		}
+		/* refresh counters in payload (big endian, for readability) */
+		txpkt.payload[4] = (uint8_t)(cycle_count >> 8); /* MSB */
+		txpkt.payload[5] = (uint8_t)(cycle_count & 0x00FF); /* LSB */
+		
+		/* send packet */
+		printf("Sending packet number %u ...", cycle_count);
+		i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
+		do {
+			wait_ms(5);
+			lgw_status(TX_STATUS, &status_var); /* get TX status */
+		} while (status_var != TX_FREE);
+		printf("OK\n");
+		
+		/* wait inter-packet delay */
+		wait_ms(delay);
 	}
 	
 	/* clean up before leaving */
