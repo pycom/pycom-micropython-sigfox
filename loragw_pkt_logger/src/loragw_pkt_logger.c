@@ -7,7 +7,7 @@
     ©2013 Semtech-Cycleo
 
 Description:
-	Configure Lora gateway and record received packets in a log file
+	Configure Lora concentrator and record received packets in a log file
 */
 
 
@@ -69,6 +69,8 @@ int parse_gateway_configuration(const char * conf_file);
 
 void open_log(void);
 
+void usage (void);
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
@@ -119,8 +121,10 @@ int parse_SX1301_configuration(const char * conf_file) {
 		/* there is an object to configure that radio, let's parse it */
 		sprintf(param_name, "radio_%i.enable", i);
 		val = json_object_dotget_value(conf, param_name);
-		if (json_value_get_type(val) != JSONBoolean) {
+		if (json_value_get_type(val) == JSONBoolean) {
 			rfconf.enable = (bool)json_value_get_boolean(val);
+		} else {
+			rfconf.enable = false;
 		}
 		if (rfconf.enable == false) { /* radio disabled, nothing else to parse */
 			MSG("INFO: radio %i disabled\n", i);
@@ -149,6 +153,8 @@ int parse_SX1301_configuration(const char * conf_file) {
 		val = json_object_dotget_value(conf, param_name);
 		if (json_value_get_type(val) == JSONBoolean) {
 			ifconf.enable = (bool)json_value_get_boolean(val);
+		} else {
+			ifconf.enable = false;
 		}
 		if (ifconf.enable == false) { /* Lora multi-SF channel disabled, nothing else to parse */
 			MSG("INFO: Lora multi-SF channel %i disabled\n", i);
@@ -175,6 +181,8 @@ int parse_SX1301_configuration(const char * conf_file) {
 		val = json_object_dotget_value(conf, "chan_Lora_std.enable");
 		if (json_value_get_type(val) == JSONBoolean) {
 			ifconf.enable = (bool)json_value_get_boolean(val);
+		} else {
+			ifconf.enable = false;
 		}
 		if (ifconf.enable == false) {
 			MSG("INFO: Lora standard channel %i disabled\n", i);
@@ -214,6 +222,8 @@ int parse_SX1301_configuration(const char * conf_file) {
 		val = json_object_dotget_value(conf, "chan_FSK.enable");
 		if (json_value_get_type(val) == JSONBoolean) {
 			ifconf.enable = (bool)json_value_get_boolean(val);
+		} else {
+			ifconf.enable = false;
 		}
 		if (ifconf.enable == false) {
 			MSG("INFO: FSK channel %i disabled\n", i);
@@ -297,6 +307,13 @@ void open_log(void) {
 	return;
 }
 
+/* describe command line options */
+void usage(void) {
+	MSG( "Available options:\n");
+	MSG( " -h print this help\n");
+	MSG( " -r <int> rotate log file every N seconds (-1 disable log rotation)\n");
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
@@ -329,10 +346,9 @@ int main(int argc, char **argv)
 	while ((i = getopt (argc, argv, "hr:")) != -1) {
 		switch (i) {
 			case 'h':
-				MSG( "Available options:\n");
-				MSG( "-h print this help\n");
-				MSG( "-r <int> rotate log file every N seconds (-1 disable log rotation)\n");
+				usage();
 				return EXIT_FAILURE;
+				break;
 			
 			case 'r':
 				log_rotate_interval = atoi(optarg);
@@ -344,6 +360,7 @@ int main(int argc, char **argv)
 			
 			default:
 				MSG("ERROR: argument parsing use -h option for help\n");
+				usage();
 				return EXIT_FAILURE;
 		}
 	}
@@ -382,12 +399,12 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 	
-	/* starting the gateway */
+	/* starting the concentrator */
 	i = lgw_start();
 	if (i == LGW_HAL_SUCCESS) {
-		MSG("INFO: gateway started, packet can now be received\n");
+		MSG("INFO: concentrator started, packet can now be received\n");
 	} else {
-		MSG("ERROR: failed to start the gateway\n");
+		MSG("ERROR: failed to start the concentrator\n");
 		return EXIT_FAILURE;
 	}
 	
@@ -533,9 +550,9 @@ int main(int argc, char **argv)
 		/* clean up before leaving */
 		i = lgw_stop();
 		if (i == LGW_HAL_SUCCESS) {
-			MSG("INFO: gateway stopped successfully\n");
+			MSG("INFO: concentrator stopped successfully\n");
 		} else {
-			MSG("WARNING: failed to stop gateway successfully\n");
+			MSG("WARNING: failed to stop concentrator successfully\n");
 		}
 		fclose(log_file);
 		MSG("INFO: log file %s closed, %lu packet(s) recorded\n", log_file_name, pkt_in_log);
