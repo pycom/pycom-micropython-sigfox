@@ -41,8 +41,8 @@ Description:
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #define		VERS				103
-#define		READS_WHEN_ERROR	8 /* number of times a read is repeated if there is a read error */
-#define		BUFF_SIZE			64
+#define		READS_WHEN_ERROR	16 /* number of times a read is repeated if there is a read error */
+#define		BUFF_SIZE			1600
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
@@ -243,15 +243,24 @@ int main(int argc, char **argv)
 			if (i != BUFF_SIZE) {
 				printf("error during the buffer comparison\n");
 				printf("Written values:\n");
-				for (i=0; i<BUFF_SIZE; ++i) printf(" %02Xh", test_buff[i]);
+				for (i=0; i<BUFF_SIZE; ++i) {
+					printf(" %02X ", test_buff[i]);
+					if (i%16 == 15) printf("\n");
+				}
 				printf("\n");
 				printf("Read values:\n");
-				for (i=0; i<BUFF_SIZE; ++i) printf(" %02Xh", read_buff[i]);
+				for (i=0; i<BUFF_SIZE; ++i) {
+					printf(" %02X ", read_buff[i]);
+					if (i%16 == 15) printf("\n");
+				}
 				printf("\n");
 				lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
 				lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, BUFF_SIZE);
 				printf("Re-read values:\n");
-				for (i=0; i<BUFF_SIZE; ++i) printf(" %02Xh", read_buff[i]);
+				for (i=0; i<BUFF_SIZE; ++i) {
+					printf(" %02X ", read_buff[i]);
+					if (i%16 == 15) printf("\n");
+				}
 				printf("\n");
 				return EXIT_FAILURE;
 			} else {
