@@ -35,6 +35,7 @@ Description:
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a)	(sizeof(a) / sizeof((a)[0]))
+#define MSG(args...)	fprintf(stderr, args) /* message that is destined to the user */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -56,6 +57,8 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 
 static void sig_handler(int sigio);
 
+void usage (void);
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
@@ -65,6 +68,13 @@ static void sig_handler(int sigio) {
 	} else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
 		exit_sig = 1;
 	}
+}
+
+/* describe command line options */
+void usage(void) {
+	MSG( "Available options:\n");
+	MSG( " -h print this help\n");
+	MSG( " -t <int> specify which test you want to run (1-4)\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -95,16 +105,14 @@ int main(int argc, char **argv)
 	while ((i = getopt (argc, argv, "ht:")) != -1) {
 		switch (i) {
 			case 'h':
-				printf( "Available options:\n");
-				printf( "-h print this help\n");
-				printf( "-t <number> specify which test you want to run\n");
+				usage();
 				return EXIT_FAILURE;
 				break;
 			
 			case 't':
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || (xi < 1) || (xi > 4)) {
-					printf("ERROR: invalid test number\n");
+					MSG("ERROR: invalid test number\n");
 					return EXIT_FAILURE;
 				} else {
 					test_number = xi;
@@ -112,11 +120,12 @@ int main(int argc, char **argv)
 				break;
 			
 			default:
-				printf("ERROR: argument parsing use -h option for help\n");
+				MSG("ERROR: argument parsing use -h option for help\n");
+				usage();
 				return EXIT_FAILURE;
 		}
 	}
-	printf("Starting Lora concentrator SPI stress-test number %i\n", test_number);
+	MSG("INFO: Starting Lora concentrator SPI stress-test number %i\n", test_number);
 	
 	/* configure signal handling */
 	sigemptyset(&sigact.sa_mask);
@@ -129,7 +138,7 @@ int main(int argc, char **argv)
 	/* start SPI link */
 	i = lgw_connect();
 	if (i != LGW_REG_SUCCESS) {
-		printf("ERROR: lgw_connect() did not return SUCCESS");
+		MSG("ERROR: lgw_connect() did not return SUCCESS");
 		return EXIT_FAILURE;
 	}
 	
@@ -251,17 +260,18 @@ int main(int argc, char **argv)
 			}
 		}
 	} else {
-		printf("ERROR: invalid test number");
+		MSG("ERROR: invalid test number");
+		usage();
 	}
 	
 	/* close SPI link */
 	i = lgw_disconnect();
 	if (i != LGW_REG_SUCCESS) {
-		printf("ERROR: lgw_disconnect() did not return SUCCESS");
+		MSG("ERROR: lgw_disconnect() did not return SUCCESS");
 		return EXIT_FAILURE;
 	}
 	
-	printf("INFO: Exiting Lora concentrator SPI stress-test program\n");
+	MSG("INFO: Exiting Lora concentrator SPI stress-test program\n");
 	return EXIT_SUCCESS;
 }
 
