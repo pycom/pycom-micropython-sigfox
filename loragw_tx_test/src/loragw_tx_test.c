@@ -28,7 +28,7 @@ Description:
 #include <string.h>		/* memset */
 #include <signal.h>		/* sigaction */
 #include <unistd.h>		/* getopt access */
-#include <stdlib.h>		/* atoi */
+#include <stdlib.h>		/* exit codes */
 
 #include "loragw_hal.h"
 #include "loragw_aux.h"
@@ -37,7 +37,7 @@ Description:
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a)	(sizeof(a) / sizeof((a)[0]))
-#define MSG(args...)	fprintf(stderr,"loragw_pkt_logger: " args) /* message that is destined to the user */
+#define MSG(args...)	fprintf(stderr, args) /* message that is destined to the user */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
 	uint16_t cycle_count = 0;
 	
 	/* parse command line options */
-	while ((i = getopt (argc, argv, "hf:s:b:p:t:x:")) != -1) { /* process bandwidth first */
+	while ((i = getopt (argc, argv, "hf:s:b:p:t:x:")) != -1) {
 		switch (i) {
 			case 'h':
 				MSG( "Available options:\n");
@@ -179,14 +179,6 @@ int main(int argc, char **argv)
 		}
 	}
 	
-	/* configure signal handling */
-	sigemptyset(&sigact.sa_mask);
-	sigact.sa_flags = 0;
-	sigact.sa_handler = sig_handler;
-	sigaction(SIGQUIT, &sigact, NULL);
-	sigaction(SIGINT, &sigact, NULL);
-	sigaction(SIGTERM, &sigact, NULL);
-	
 	/* check parameter sanity */
 	f_min = lowfreq[RF_CHAIN] + (500 * bw);
 	f_max = upfreq[RF_CHAIN] - (500 * bw);
@@ -194,6 +186,15 @@ int main(int argc, char **argv)
 		MSG("ERROR: frequency out of authorized band (accounting for modulation bandwidth)\n");
 		return EXIT_FAILURE;
 	}
+	printf("Sending %u packets on %u Hz (BW %u kHz, SF %u, 20 bytes payload) at %i dBm, with %u ms between each.\n", repeat, f_target, bw, sf, pow, delay);
+	
+	/* configure signal handling */
+	sigemptyset(&sigact.sa_mask);
+	sigact.sa_flags = 0;
+	sigact.sa_handler = sig_handler;
+	sigaction(SIGQUIT, &sigact, NULL);
+	sigaction(SIGINT, &sigact, NULL);
+	sigaction(SIGTERM, &sigact, NULL);
 	
 	/* starting the gateway */
 	lgw_rxrf_setconf(RF_CHAIN, rfconf);
@@ -237,8 +238,6 @@ int main(int argc, char **argv)
 	txpkt.size = 20; /* should be close to typical payload length */
 	strcpy((char *)txpkt.payload, "TEST**abcdefghijklmn" ); /* abc.. is for padding */
 	
-	MSG("INFO: Sending %u packets on %u Hz (BW %u kHz, SF %u, 20 bytes payload) at %i dBm, with %u ms between each.\n", repeat, f_target, bw, sf, pow, delay);
-	
 	/* main loop */
 	for (cycle_count = 0; cycle_count < repeat; ++cycle_count) {
 		/* refresh counters in payload (big endian, for readability) */
@@ -261,7 +260,7 @@ int main(int argc, char **argv)
 	/* clean up before leaving */
 	lgw_stop();
 	
-	MSG("INFO: Exiting TX test program\n");
+	printf("Exiting TX test program\n");
 	return EXIT_SUCCESS;
 }
 
