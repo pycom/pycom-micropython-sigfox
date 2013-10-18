@@ -7,7 +7,7 @@
     ©2013 Semtech-Cycleo
 
 Description:
-	Send a bunch of packets
+	Send a bunch of packets on a settable frequency
 */
 
 
@@ -52,19 +52,37 @@ const uint32_t upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 
 /* signal handling variables */
 struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
+static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
+static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
 static void sig_handler(int sigio);
 
+void usage (void);
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
 static void sig_handler(int sigio) {
-	if ((sigio == SIGQUIT) || (sigio == SIGINT) || (sigio == SIGTERM)) {
-		exit(EXIT_FAILURE);
+	if (sigio == SIGQUIT) {
+		quit_sig = 1;;
+	} else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
+		exit_sig = 1;
 	}
+}
+
+/* describe command line options */
+void usage(void) {
+	MSG( "Available options:\n");
+	MSG( " -h print this help\n");
+	MSG( " -f <float> target frequency in MHz\n");
+	MSG( " -s <int> Spreading Factor\n");
+	MSG( " -b <int> Modulation bandwidth in kHz\n");
+	MSG( " -p <int> RF power (dBm)\n");
+	MSG( " -t <int> pause between packets (ms)\n");
+	MSG( " -x <int> numbers of times the sequence is repeated\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -102,14 +120,7 @@ int main(int argc, char **argv)
 	while ((i = getopt (argc, argv, "hf:s:b:p:t:x:")) != -1) {
 		switch (i) {
 			case 'h':
-				MSG( "Available options:\n");
-				MSG( "-h print this help\n");
-				MSG( "-f target frequency in MHz\n");
-				MSG( "-s Spreading Factor\n");
-				MSG( "-b Modulation bandwidth in kHz\n");
-				MSG( "-p RF power (dBm)\n");
-				MSG( "-t pause between packets (ms)\n");
-				MSG( "-x numbers of times the sequence is repeated\n");
+				usage();
 				return EXIT_FAILURE;
 				break;
 			
@@ -175,6 +186,7 @@ int main(int argc, char **argv)
 			
 			default:
 				MSG("ERROR: argument parsing use -h option for help\n");
+				usage();
 				return EXIT_FAILURE;
 		}
 	}
@@ -186,7 +198,7 @@ int main(int argc, char **argv)
 		MSG("ERROR: frequency out of authorized band (accounting for modulation bandwidth)\n");
 		return EXIT_FAILURE;
 	}
-	printf("Sending %u packets on %u Hz (BW %u kHz, SF %u, 20 bytes payload) at %i dBm, with %u ms between each.\n", repeat, f_target, bw, sf, pow, delay);
+	printf("Sending %u packets on %u Hz (BW %u kHz, SF %u, 20 bytes payload) at %i dBm, with %u ms between each\n", repeat, f_target, bw, sf, pow, delay);
 	
 	/* configure signal handling */
 	sigemptyset(&sigact.sa_mask);
@@ -196,13 +208,13 @@ int main(int argc, char **argv)
 	sigaction(SIGINT, &sigact, NULL);
 	sigaction(SIGTERM, &sigact, NULL);
 	
-	/* starting the gateway */
+	/* starting the concentrator */
 	lgw_rxrf_setconf(RF_CHAIN, rfconf);
 	i = lgw_start();
 	if (i == LGW_HAL_SUCCESS) {
-		MSG("INFO: gateway started, packet can be sent\n");
+		MSG("INFO: concentrator started, packet can be sent\n");
 	} else {
-		MSG("ERROR: failed to start the gateway\n");
+		MSG("ERROR: failed to start the concentrator\n");
 		return EXIT_FAILURE;
 	}
 	
@@ -255,12 +267,17 @@ int main(int argc, char **argv)
 		
 		/* wait inter-packet delay */
 		wait_ms(delay);
+		
+		/* exit loop on user signals */
+		if ((quit_sig == 1) || (exit_sig == 1)) {
+			break;
+		}
 	}
 	
 	/* clean up before leaving */
 	lgw_stop();
 	
-	printf("Exiting TX test program\n");
+	printf("Exiting Lora concentrator TX test program\n");
 	return EXIT_SUCCESS;
 }
 
