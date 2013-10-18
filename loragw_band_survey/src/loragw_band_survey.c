@@ -7,7 +7,7 @@
     ©2013 Semtech-Cycleo
 
 Description:
-	Configure Lora gateway and record received packets in a log file
+	Configure Lora concentrator board and record received packets in a log file
 */
 
 
@@ -25,7 +25,6 @@ Description:
 #include <stdbool.h>	/* bool type */
 #include <stdio.h>		/* fprintf sprintf fopen */
 
-#include <string.h>		/* memset */
 #include <signal.h>		/* sigaction */
 #include <time.h>		/* time strftime gmtime */
 #include <unistd.h>		/* getopt */
@@ -39,7 +38,7 @@ Description:
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a)	(sizeof(a) / sizeof((a)[0]))
-#define MSG(args...)	fprintf(stderr,"loragw_pkt_logger: " args)
+#define MSG(args...)	fprintf(stderr, args)
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -89,16 +88,26 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
+static void sig_handler(int sigio);
+
 int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size);
 
 void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data);
 
 uint8_t sx125x_read(uint8_t channel, uint8_t addr);
 
-static void sig_handler(int sigio);
+void usage (void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+static void sig_handler(int sigio) {
+	if (sigio == SIGQUIT) {
+		quit_sig = 1;;
+	} else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
+		exit_sig = 1;
+	}
+}
 
 /* size is the firmware size in bytes (not 14b words) */
 int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
@@ -229,12 +238,11 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
 	return (uint8_t)read_value;
 }
 
-static void sig_handler(int sigio) {
-	if (sigio == SIGQUIT) {
-		quit_sig = 1;;
-	} else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
-		exit_sig = 1;
-	}
+/* describe command line options */
+void usage(void) {
+	MSG( "Available options:\n");
+	MSG( "-h print this help\n");
+	MSG( "-f <Fstart>:<Fstop> or <Fstart>:<Fstop>:<Fstep> in MHz (scient. nota. OK)\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -276,9 +284,7 @@ int main(int argc, char **argv)
 	while ((i = getopt (argc, argv, "hf:")) != -1) {
 		switch (i) {
 			case 'h':
-				MSG( "Available options:\n");
-				MSG( "-h print this help\n");
-				MSG( "-f Fstart:Fstop or Fstart:Fstop:Fstep in MHz (scientific notation accepted)\n");
+				usage();
 				return EXIT_SUCCESS;
 			
 			case 'f':
@@ -305,11 +311,11 @@ int main(int argc, char **argv)
 			
 			default:
 				MSG("ERROR: argument parsing use -h option for help\n");
+				usage();
 				return EXIT_FAILURE;
 		}
 	}
-	
-	MSG("INFO: scanning from %u Hz to %u Hz with a %u Hz frequency step\n", f_start, f_stop, f_step);
+	printf("Scanning from %u Hz to %u Hz with a %u Hz frequency step\n", f_start, f_stop, f_step);
 	
 	/* configure signal handling */
 	sigemptyset(&sigact.sa_mask);
@@ -319,7 +325,7 @@ int main(int argc, char **argv)
 	sigaction(SIGINT, &sigact, NULL);
 	sigaction(SIGTERM, &sigact, NULL);
 	
-	/* establish connection with gateway and reset it */
+	/* establish connection with concentrator and reset it */
 	if (lgw_connect() == LGW_REG_ERROR) {
 		MSG("ERROR: fail to connect to concentrator board\n");
 		return EXIT_FAILURE;
@@ -341,7 +347,7 @@ int main(int argc, char **argv)
 	sx125x_write(RF_CHAIN, 0x0C, 0 + SX125x_RX_BB_GAIN*2 + SX125x_RX_LNA_GAIN*32); /* not required, firmware should take care of that */
 	sx125x_write(RF_CHAIN, 0x0D, SX125x_RXBB_BW + SX125x_RX_ADC_TRIM*4 + SX125x_RX_ADC_BW*32);
 	
-	/* configure the IF and gateway parameters */
+	/* configure the IF and concentrator parameters */
 	lgw_reg_w(LGW_IF_FREQ_0, -282); /* default -384 */
 	lgw_reg_w(LGW_IF_FREQ_1, -128); /* default -128 */
 	
@@ -438,7 +444,7 @@ int main(int argc, char **argv)
 	lgw_soft_reset();
 	lgw_disconnect();
 	
-	MSG("INFO: Exiting band survey program\n");
+	printf("Exiting Lora concentrator band survey program\n");
 	return EXIT_SUCCESS;
 }
 
