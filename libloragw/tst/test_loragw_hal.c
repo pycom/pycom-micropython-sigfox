@@ -106,32 +106,29 @@ int main()
 	ifconf.enable = true;
 	ifconf.rf_chain = 0;
 	ifconf.freq_hz = -300000;
-	ifconf.bandwidth = BW_125KHZ;
 	ifconf.datarate = DR_LORA_MULTI;
 	lgw_rxif_setconf(0, ifconf); /* chain 0: Lora 125kHz, all SF, on 865.7 MHz */
 	
 	ifconf.enable = true;
 	ifconf.rf_chain = 0;
 	ifconf.freq_hz = 300000;
-	ifconf.bandwidth = BW_125KHZ;
 	ifconf.datarate = DR_LORA_MULTI;
 	lgw_rxif_setconf(1, ifconf); /* chain 1: Lora 125kHz, all SF, on 866.3 MHz */
 	
 	ifconf.enable = true;
 	ifconf.rf_chain = 1;
 	ifconf.freq_hz = -300000;
-	ifconf.bandwidth = BW_125KHZ;
 	ifconf.datarate = DR_LORA_MULTI;
 	lgw_rxif_setconf(2, ifconf); /* chain 2: Lora 125kHz, all SF, on 867.7 MHz */
 	
 	ifconf.enable = true;
 	ifconf.rf_chain = 1;
 	ifconf.freq_hz = 300000;
-	ifconf.bandwidth = BW_125KHZ;
 	ifconf.datarate = DR_LORA_MULTI;
 	lgw_rxif_setconf(3, ifconf); /* chain 3: Lora 125kHz, all SF, on 868.3 MHz */
 	
 	/* set configuration for Lora 'stand alone' channel */
+	memset(&ifconf, 0, sizeof(ifconf));
 	ifconf.enable = true;
 	ifconf.rf_chain = 0;
 	ifconf.freq_hz = 0;
@@ -140,12 +137,13 @@ int main()
 	lgw_rxif_setconf(8, ifconf); /* chain 8: Lora 250kHz, SF10, on 866.0 MHz */
 	
 	/* set configuration for FSK channel */
+	memset(&ifconf, 0, sizeof(ifconf));
 	ifconf.enable = true;
 	ifconf.rf_chain = 1;
 	ifconf.freq_hz = 0;
 	ifconf.bandwidth = BW_250KHZ;
 	ifconf.datarate = 64000;
-	lgw_rxif_setconf(9, ifconf); /* chain 9: FSK 64kbps, fdev 32kHz, variable payload, on 868.0 MHz */
+	lgw_rxif_setconf(9, ifconf); /* chain 9: FSK 64kbps, on 868.0 MHz */
 	
 	/* set configuration for TX packet */
 	
