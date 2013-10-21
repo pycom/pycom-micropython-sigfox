@@ -104,8 +104,8 @@ Description:
 #define DR_LORA_SF11	0x20
 #define DR_LORA_SF12	0x40
 #define DR_LORA_MULTI	0x7E
-/* NOTE: for FSK directly use baudrate between 300 bauds and 250 kbauds */
-#define DR_FSK_MIN		300
+/* NOTE: for FSK directly use baudrate between 500 bauds and 250 kbauds */
+#define DR_FSK_MIN		500
 #define DR_FSK_MAX		250000
 
 /* values available for the 'coderate' parameters (Lora only) */
@@ -186,7 +186,7 @@ struct lgw_pkt_rx_s {
 	uint8_t		rf_chain;	/*!> through which RF chain the packet was received */
 	uint8_t		modulation; /*!> modulation used by the packet */
 	uint8_t		bandwidth;	/*!> modulation bandwidth (Lora only) */
-	uint16_t	datarate;	/*!> RX datarate of the packet (SF for Lora) */
+	uint32_t	datarate;	/*!> RX datarate of the packet (SF for Lora) */
 	uint8_t		coderate;	/*!> error-correcting code of the packet (Lora only) */
 	float		rssi;		/*!> average packet RSSI in dB */
 	float		snr;		/*!> average packet SNR, in dB (Lora only) */
@@ -209,7 +209,7 @@ struct lgw_pkt_tx_s {
 	int8_t		rf_power;	/*!> TX power, in dBm */
 	uint8_t		modulation; /*!> modulation to use for the packet */
 	uint8_t		bandwidth;	/*!> modulation bandwidth (Lora only) */
-	uint16_t	datarate;	/*!> TX datarate (baudrate for FSK, SF for Lora) */
+	uint32_t	datarate;	/*!> TX datarate (baudrate for FSK, SF for Lora) */
 	uint8_t		coderate;	/*!> error-correcting code of the packet (Lora only) */
 	bool		invert_pol;	/*!> invert signal polarity, for orthogonal downlinks (Lora only) */
 	uint8_t		f_dev;		/*!> frequency deviation, in kHz (FSK only) */

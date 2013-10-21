@@ -932,7 +932,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 			DEBUG_MSG("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
 			return LGW_HAL_ERROR;
 		}
-		if(!IS_FSK_DR(pkt_data.datarate)) { // TOFIX: warning
+		if(!IS_FSK_DR(pkt_data.datarate)) {
 			DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
 			return LGW_HAL_ERROR;
 		}
@@ -1055,7 +1055,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		buff[13] = 0xFF & pkt_data.preamble;
 		
 		/* metadata 14 & 15, FSK baudrate */
-		fsk_dr_div = LGW_XTAL_FREQU / pkt_data.datarate;
+		fsk_dr_div = (uint16_t)((uint32_t)LGW_XTAL_FREQU / pkt_data.datarate); /* Ok for datarate between 500bps and 250kbps */
 		buff[14] = 0xFF & (fsk_dr_div >> 8);
 		buff[15] = 0xFF & fsk_dr_div;
 		
