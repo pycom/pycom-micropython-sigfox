@@ -69,7 +69,6 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 */
 #define 	SX125x_32MHz_FRAC	15625	/* irreductible fraction for PLL register caculation */
 
-#define		SX125x_CLK_OUT			1	
 #define		SX125x_TX_DAC_CLK_SEL	1	/* 0:int, 1:ext */
 #define		SX125x_TX_DAC_GAIN		2	/* 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2) */
 #define		SX125x_TX_MIX_GAIN		14	/* -38 + 2*TxMixGain dB (default 14) */
@@ -292,9 +291,13 @@ int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
 		DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
 		return -1;
 	}
-	
-	/* misc */
-	sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + SX125x_CLK_OUT*2);
+		
+	if (rf_chain == 0) { /* Enable 'clock out' for radio A only */
+		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + 2);
+	} else {
+		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL);
+	}
+	sx125x_write(rf_chain, 0x26, 0X2D); /* Disable gm of oscillator block */
 	
 	/* Tx gain and trim */
 	sx125x_write(rf_chain, 0x08, SX125x_TX_MIX_GAIN + SX125x_TX_DAC_GAIN*16);
