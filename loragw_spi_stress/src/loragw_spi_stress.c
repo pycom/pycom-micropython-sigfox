@@ -42,7 +42,7 @@ Description:
 
 #define		VERS				103
 #define		READS_WHEN_ERROR	16 /* number of times a read is repeated if there is a read error */
-#define		BUFF_SIZE			1600
+#define		BUFF_SIZE			1024
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
