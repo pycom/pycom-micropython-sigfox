@@ -28,6 +28,7 @@ Description:
 #include <signal.h>		/* sigaction */
 
 #include "loragw_hal.h"
+#include "loragw_reg.h"
 #include "loragw_aux.h"
 
 /* -------------------------------------------------------------------------- */
@@ -77,6 +78,8 @@ int main()
 	uint32_t tx_cnt = 0;
 	unsigned long loop_cnt = 0;
 	uint8_t status_var = 0;
+	
+	FILE * reg_dump = NULL;
 	
 	/* configure signal handling */
 	sigemptyset(&sigact.sa_mask);
@@ -175,6 +178,13 @@ int main()
 	
 	/* connect, configure and start the Lora gateway */
 	lgw_start();
+	
+	/* once configured, dump content of registers to a file, for reference */
+	reg_dump = fopen("reg_dump.log", "w");
+	if (reg_dump != NULL) {
+		lgw_reg_check(reg_dump);
+		fclose(reg_dump);
+	}
 	
 	while ((quit_sig != 1) && (exit_sig != 1)) {
 		loop_cnt++;
