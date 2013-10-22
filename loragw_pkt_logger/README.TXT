@@ -34,7 +34,7 @@ Data structures of the received packets are accessed by name (ie. not at a
 binary level) so new functionalities can be added to the API without affecting
 that program at all.
 
-It was tested with beta7 of the libloragw library, and should be compatible
+It was tested with beta8 of the libloragw library, and should be compatible
 with any later version of the library assuming the API is downward-compatible.
 
 3. Usage

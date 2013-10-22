@@ -22,7 +22,7 @@ happens.
 This program only access the Lora gateway HAL library through its loragw_reg
 "named registers" access sub-module.
 
-It was tested with beta7 of the libloragw library, and should be compatible
+It was tested with beta8 of the libloragw library, and should be compatible
 with any later version of the library and the hardware, assuming the registers
 used for the tests are still present.
 
