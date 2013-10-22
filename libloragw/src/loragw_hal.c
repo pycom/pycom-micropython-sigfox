@@ -343,7 +343,7 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_MBWSSF_MODEM_INVERT_IQ,0); /* default 0 */
 	// lgw_reg_w(LGW_DC_NOTCH_EN,1); /* default 1 */
 	lgw_reg_w(LGW_RSSI_BB_FILTER_ALPHA,9); /* default 7 */
-	lgw_reg_w(LGW_RSSI_DEC_FILTER_ALPHA,7); /* default 5 */
+	lgw_reg_w(LGW_RSSI_DEC_FILTER_ALPHA,9); /* default 5 */
 	lgw_reg_w(LGW_RSSI_CHANN_FILTER_ALPHA,7); /* default 8 */
 	// lgw_reg_w(LGW_RSSI_BB_DEFAULT_VALUE,32); /* default 32 */
 	lgw_reg_w(LGW_RSSI_CHANN_DEFAULT_VALUE,90); /* default 100 */
