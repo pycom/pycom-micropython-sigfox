@@ -443,16 +443,16 @@ int main(int argc, char **argv)
 			
 			/* writing UTC timestamp*/
 			fprintf(log_file, "\"%s\",", fetch_timestamp);
-			// TODO: repalce with GPS time when available
+			// TODO: replace with GPS time when available
 			
 			/* writing internal clock */
 			fprintf(log_file, "%010u,", p->count_us);
 			
 			/* writing RX frequency */
-			fputs("\"\",", log_file); // TODO: need updated HAL
+			fprintf(log_file, "%10u,", p->freq_hz);
 			
 			/* writing RF chain */
-			fputs("\"\",", log_file); // TODO: need updated HAL
+			fprintf(log_file, "%u,", p->rf_chain);
 			
 			/* writing RX modem/IF chain */
 			fprintf(log_file, "%2d,", p->if_chain);
