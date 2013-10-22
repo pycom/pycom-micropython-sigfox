@@ -83,6 +83,7 @@ void usage(void) {
 	MSG( " -p <int> RF power (dBm)\n");
 	MSG( " -t <int> pause between packets (ms)\n");
 	MSG( " -x <int> numbers of times the sequence is repeated\n");
+	MSG( " -i send packet using inverted modulation polarity \n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -106,6 +107,7 @@ int main(int argc, char **argv)
 	int pow = 14; /* 14 dBm by default */
 	int delay = 1000; /* 1 second between packets by default */
 	int repeat = 1; /* sweep only once by default */
+	bool invert = false;
 	
 	/* RF configuration (TX fail if RF chain is not enabled) */
 	const struct lgw_conf_rxrf_s rfconf = {true, lowfreq[RF_CHAIN]};
@@ -117,14 +119,14 @@ int main(int argc, char **argv)
 	uint16_t cycle_count = 0;
 	
 	/* parse command line options */
-	while ((i = getopt (argc, argv, "hf:s:b:p:t:x:")) != -1) {
+	while ((i = getopt (argc, argv, "hf:s:b:p:t:x:i")) != -1) {
 		switch (i) {
 			case 'h':
 				usage();
 				return EXIT_FAILURE;
 				break;
 			
-			case 'f':
+			case 'f': /* -f <float> target frequency in MHz */
 				i = sscanf(optarg, "%lf", &xd);
 				if ((i != 1) || (xd < 30.0) || (xd > 3000.0)) {
 					MSG("ERROR: invalid TX frequency\n");
@@ -134,7 +136,7 @@ int main(int argc, char **argv)
 				}
 				break;
 			
-			case 's':
+			case 's': /* -s <int> Spreading Factor */
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || (xi < 7) || (xi > 12)) {
 					MSG("ERROR: invalid spreading factor\n");
@@ -144,7 +146,7 @@ int main(int argc, char **argv)
 				}
 				break;
 			
-			case 'b':
+			case 'b': /* -b <int> Modulation bandwidth in kHz */
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || ((xi != 125)&&(xi != 250)&&(xi != 500))) {
 					MSG("ERROR: invalid Lora bandwidth\n");
@@ -154,7 +156,7 @@ int main(int argc, char **argv)
 				}
 				break;
 			
-			case 'p':
+			case 'p': /* -p <int> RF power */
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || (xi < 0) || (xi > 20)) {
 					MSG("ERROR: invalid RF power\n");
@@ -164,7 +166,7 @@ int main(int argc, char **argv)
 				}
 				break;
 			
-			case 't':
+			case 't': /* -t <int> pause between packets (ms) */
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || (xi < 0)) {
 					MSG("ERROR: invalid time between packets\n");
@@ -174,7 +176,7 @@ int main(int argc, char **argv)
 				}
 				break;
 			
-			case 'x':
+			case 'x': /* -x <int> numbers of times the sequence is repeated */
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || (xi < 1)) {
 					MSG("ERROR: invalid number of repeats\n");
@@ -182,6 +184,10 @@ int main(int argc, char **argv)
 				} else {
 					repeat = xi;
 				}
+				break;
+			
+			case 'i': /* -i send packet using inverted modulation polarity */
+				invert = true;
 				break;
 			
 			default:
@@ -245,7 +251,7 @@ int main(int argc, char **argv)
 			return EXIT_FAILURE;
 	}
 	txpkt.coderate = CR_LORA_4_5;
-	// txpkt.invert_pol // TODO
+	txpkt.invert_pol = invert;
 	txpkt.preamble = 8;
 	txpkt.size = 20; /* should be close to typical payload length */
 	strcpy((char *)txpkt.payload, "TEST**abcdefghijklmn" ); /* abc.. is for padding */
