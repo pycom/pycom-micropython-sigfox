@@ -7,7 +7,7 @@
     ©2013 Semtech-Cycleo
 
 Description:
-	Lora gateway Hardware Abstraction Layer
+	Lora gateway auxiliary functions
 */
 
 
