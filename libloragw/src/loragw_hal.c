@@ -295,11 +295,7 @@ int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
 		return -1;
 	}
 		
-	if (rf_chain == 0) { /* Enable 'clock out' for radio A only */
-		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + 2);
-	} else {
-		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL);
-	}
+	sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + 2); /* Enable 'clock out' for both radios */
 	sx125x_write(rf_chain, 0x26, 0X2D); /* Disable gm of oscillator block */
 	
 	/* Tx gain and trim */
