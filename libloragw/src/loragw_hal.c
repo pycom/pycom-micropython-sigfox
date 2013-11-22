@@ -886,6 +886,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	int transfer_size = 0; /* data to transfer from host to TX databuffer */
 	int payload_offset = 0; /* start of the payload content in the databuffer */
 	uint8_t power_nibble = 0; /* 4-bit value to set the firmware TX power */
+	uint32_t current_tstamp; /* current timestamp, to check for missed TX deadlines */
 	
 	/* check if the gateway is running */
 	if (lgw_is_started == false) {
@@ -1094,6 +1095,12 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 			
 		case TIMESTAMPED:
 			lgw_reg_w(LGW_TX_TRIG_DELAYED, 1);
+			lgw_reg_r(LGW_TIMESTAMP, (int32_t *)&current_tstamp); /* unusable value if GPS is enabled */
+			if (( pkt_data.count_us - current_tstamp) > 0x7FFFFFFF) {
+				lgw_reg_w(LGW_TX_TRIG_DELAYED, 0); /* cancel TX if deadline was missed */
+				DEBUG_MSG("ERROR: MISSED TX DEADLINE\n");
+			    return LGW_HAL_ERROR; // should return a specific error message
+			}
 			break;
 			
 		case ON_GPS:
