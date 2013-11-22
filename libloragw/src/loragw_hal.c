@@ -96,6 +96,8 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define		MIN_FSK_PREAMBLE		3
 #define		PLL_LOCK_MAX_ATTEMPTS	6
 
+#define		TX_START_DELAY		1000
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
@@ -425,7 +427,7 @@ void lgw_constant_adjust(void) {
 	lgw_reg_w(LGW_FSK_PATTERN_TIMEOUT_CFG,128); /* sync timeout (allow 8 bytes preamble + 8 bytes sync word, default 0 */
 	
 	/* TX general parameters */
-	lgw_reg_w(LGW_TX_START_DELAY,1000); /* default 0 */
+	lgw_reg_w(LGW_TX_START_DELAY, TX_START_DELAY); /* default 0 */
 	
 	/* TX Lora */
 	// lgw_reg_w(LGW_TX_MODE,0); /* default 0 */
@@ -887,6 +889,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	int payload_offset = 0; /* start of the payload content in the databuffer */
 	uint8_t power_nibble = 0; /* 4-bit value to set the firmware TX power */
 	uint32_t current_tstamp; /* current timestamp, to check for missed TX deadlines */
+	uint32_t deadline_tstamp; /* packet must be scheduled before that timestamp value is reached */
 	
 	/* check if the gateway is running */
 	if (lgw_is_started == false) {
@@ -1096,7 +1099,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		case TIMESTAMPED:
 			lgw_reg_w(LGW_TX_TRIG_DELAYED, 1);
 			lgw_reg_r(LGW_TIMESTAMP, (int32_t *)&current_tstamp); /* unusable value if GPS is enabled */
-			if (( pkt_data.count_us - current_tstamp) > 0x7FFFFFFF) {
+			deadline_tstamp = pkt_data.count_us - TX_START_DELAY; /* time at which the controller with start TX sequence */
+			if ((deadline_tstamp - current_tstamp) > 0x7FFFFFFF) {
 				lgw_reg_w(LGW_TX_TRIG_DELAYED, 0); /* cancel TX if deadline was missed */
 				DEBUG_MSG("ERROR: MISSED TX DEADLINE\n");
 			    return LGW_HAL_ERROR; // should return a specific error message
