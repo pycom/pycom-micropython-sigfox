@@ -1,11 +1,14 @@
-Lora Gateway HAL library - Content of subdirectories
-====================================================
+Lora Gateway HAL library 
+=========================
 
-## 1. doc ##
+1. Content of subdirectories
+-----------------------------
+
+### 1.1. doc ###
 
 Contains the user manual, licensing informations, udev rules, etc.
 
-## 2. inc ##
+### 1.2. inc ###
 
 Contain C header files for the different sub-modules of the library.
 
@@ -13,15 +16,15 @@ You *MUST* include loragw_hal.h in your application.
 You *MAY* include loragw_reg.h in your application if you need direct registers 
 access.
 
-## 3. obj ##
+### 1.3. obj ###
 
 Contained the compiled intermediary objects.
 
-## 4. src ##
+### 1.4. src ###
 
 Contain library C sources.
 
-## 5. tst ##
+### 1.5. tst ###
 
 Contain the C sources for test programs to validate SPI link, register access 
 and hardware functionality.
