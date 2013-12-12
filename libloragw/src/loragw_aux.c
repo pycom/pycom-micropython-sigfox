@@ -17,8 +17,16 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
+/* fix an issue between POSIX and C99 */
+#if __STDC_VERSION__ >= 199901L
+	#define _XOPEN_SOURCE 600
+#else
+	#define _XOPEN_SOURCE 500
+#endif
+
 #include <stdio.h>		/* printf fprintf */
 #include <time.h>		/* clock_nanosleep */
+#include <stdbool.h>	/* bool type */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -30,6 +38,21 @@ Maintainer: Sylvain Miermont
 	#define DEBUG_MSG(str)
 	#define DEBUG_PRINTF(fmt, args...)
 #endif
+
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE VARIABLES ---------------------------------------------------- */
+
+/**
+Pointer to a user-defined function used to protect access to the concentrator
+Should be set when the library is used in a multi-threaded application
+*/
+int (*lock_func_ptr)(void) = NULL;
+
+/**
+Pointer to a user-defined function used to unprotect access to the concentrator
+Should be set when the library is used in a multi-threaded application
+*/
+int (*unlock_func_ptr)(void) = NULL;
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
@@ -49,6 +72,50 @@ void wait_ms(unsigned long a) {
 		DEBUG_PRINTF("NOTE remain: %ld sec %ld ns\n", rem.tv_sec, rem.tv_nsec);
 	}
 	return;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void set_lock_func(int (*lock_func)(void)) {
+	lock_func_ptr = lock_func;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void set_unlock_func(int (*unlock_func)(void)) {
+	unlock_func_ptr = unlock_func;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_lock(void) {
+	static bool disp_warning = true; /* to display the warning only once */
+	
+	if (lock_func_ptr == NULL) {
+		if (disp_warning) {
+			fprintf(stderr, "WARNING: lock callback disabled (message displayed only once)\n");
+			disp_warning = false;
+		}
+		return 0;
+	} else {
+		return (*lock_func_ptr)();
+	}
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_unlock(void) {
+	static bool disp_warning = true; /* to display the warning only once */
+	
+	if (unlock_func_ptr == NULL) {
+		if (disp_warning) {
+			fprintf(stderr, "WARNING: unlock callback disabled (message displayed only once)\n");
+			disp_warning = false;
+		}
+		return 0;
+	} else {
+		return (*unlock_func_ptr)();
+	}
 }
 
 /* --- EOF ------------------------------------------------------------------ */

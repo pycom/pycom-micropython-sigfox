@@ -283,6 +283,22 @@ int lgw_status(uint8_t select, uint8_t *code);
 */
 const char* lgw_version_info(void);
 
+/**
+@brief Define function callback to protect access to the concentrator
+@param lock_func pointer to BLOCKING lock function, must return 0 for success, <0 for error
+@param unlock_func pointer to unlock function, must return 0 for success, <0 for error
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+
+If defined, the callback functions will be called to ensure thread safety in:
+* lgw_start
+* lgw_stop
+* lgw_receive
+* lgw_send
+* lgw_gps_thread
+
+*/
+int lgw_set_mutex_callbacks(int (*lock_func)(void), int (*unlock_func)(void));
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
