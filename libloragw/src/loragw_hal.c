@@ -628,15 +628,9 @@ int lgw_start(void) {
 		DEBUG_MSG("Note: Lora Gateway already started, restarting it now\n");
 	}
 	
-	if (lgw_lock() != 0) {
-		DEBUG_MSG("ERROR: FAILED TO ACQUIRE MUTEX\n");
-		return LGW_HAL_ERROR;
-	}
-	
 	reg_stat = lgw_connect();
 	if (reg_stat == LGW_REG_ERROR) {
 		DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
-		lgw_unlock();
 		return LGW_HAL_ERROR;
 	}
 	
@@ -711,7 +705,6 @@ int lgw_start(void) {
 			case BW_500KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,2); break;
 			default:
 				DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_bw);
-				lgw_unlock();
 				return LGW_HAL_ERROR;
 		}
 		switch(lora_rx_sf) {
@@ -723,7 +716,6 @@ int lgw_start(void) {
 			case DR_LORA_SF12: lgw_reg_w(LGW_MBWSSF_RATE_SF,12); break;
 			default:
 				DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_sf);
-				lgw_unlock();
 				return LGW_HAL_ERROR;
 		}
 		lgw_reg_w(LGW_MBWSSF_PPM_OFFSET, lora_rx_ppm_offset); /* default 0 */
@@ -751,14 +743,12 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_MCU_RST_0, 0);
 	lgw_reg_w(LGW_MCU_RST_1, 0);
 	
+	/* enable GPS event capture */
+	lgw_reg_w(LGW_GPS_EN,1);
+	
 	/* enable LEDs */
 	lgw_reg_w(LGW_GPIO_MODE,31);
 	// lgw_reg_w(LGW_GPIO_SELECT_OUTPUT,0); /* default 0 */
-	
-	if (lgw_unlock() != 0) {
-		DEBUG_MSG("ERROR: FAILED TO RELEASE MUTEX\n");
-		return LGW_HAL_ERROR;
-	}
 	
 	lgw_is_started = true;
 	return LGW_HAL_SUCCESS;
@@ -767,20 +757,8 @@ int lgw_start(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_stop(void) {
-	/* acquire exclusive lock (if function is enabled)*/
-	if (lgw_lock() != 0) {
-		DEBUG_MSG("ERROR: FAILED TO ACQUIRE MUTEX\n");
-		return LGW_HAL_ERROR;
-	}
-	
 	lgw_soft_reset();
 	lgw_disconnect();
-	
-	/* release exclusive lock (if function is enabled)*/
-	if (lgw_unlock() != 0) {
-		DEBUG_MSG("ERROR: FAILED TO RELEASE MUTEX\n");
-		return LGW_HAL_ERROR;
-	}
 	
 	lgw_is_started = false;
 	return LGW_HAL_SUCCESS;
@@ -812,12 +790,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 		return LGW_HAL_ERROR;
 	}
 	CHECK_NULL(pkt_data);
-	
-	/* acquire exclusive lock (if function is enabled)*/
-	if (lgw_lock() != 0) {
-		DEBUG_MSG("ERROR: FAILED TO ACQUIRE MUTEX\n");
-		return LGW_HAL_ERROR;
-	}
 	
 	/* iterate max_pkt times at most */
 	for (nb_pkt_fetch = 0; nb_pkt_fetch < max_pkt; ++nb_pkt_fetch) {
@@ -978,12 +950,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 		lgw_reg_w(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, 0);
 	}
 	
-	/* release exclusive lock (if function is enabled)*/
-	if (lgw_unlock() != 0) {
-		DEBUG_MSG("ERROR: FAILED TO RELEASE MUTEX\n");
-		return LGW_HAL_ERROR;
-	}
-	
 	return nb_pkt_fetch;
 }
 
@@ -998,8 +964,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	int transfer_size = 0; /* data to transfer from host to TX databuffer */
 	int payload_offset = 0; /* start of the payload content in the databuffer */
 	uint8_t power_nibble = 0; /* 4-bit value to set the firmware TX power */
-	uint32_t current_tstamp; /* current timestamp, to check for missed TX deadlines */
-	uint32_t deadline_tstamp; /* packet must be scheduled before that timestamp value is reached */
 	
 	/* check if the gateway is running */
 	if (lgw_is_started == false) {
@@ -1192,12 +1156,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	/* copy payload from user struct to buffer containing metadata */
 	memcpy((void *)(buff + payload_offset), (void *)(pkt_data.payload), pkt_data.size);
 	
-	/* acquire exclusive lock (if function is enabled)*/
-	if (lgw_lock() != 0) {
-		DEBUG_MSG("ERROR: FAILED TO ACQUIRE MUTEX\n");
-		return LGW_HAL_ERROR;
-	}
-	
 	/* reset TX command flags */
 	lgw_reg_w(LGW_TX_TRIG_IMMEDIATE, 0);
 	lgw_reg_w(LGW_TX_TRIG_DELAYED, 0);
@@ -1216,14 +1174,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 			
 		case TIMESTAMPED:
 			lgw_reg_w(LGW_TX_TRIG_DELAYED, 1);
-			lgw_reg_r(LGW_TIMESTAMP, (int32_t *)&current_tstamp); /* unusable value if GPS is enabled */
-			deadline_tstamp = pkt_data.count_us - TX_START_DELAY; /* time at which the controller with start TX sequence */
-			if ((deadline_tstamp - current_tstamp) > 0x7FFFFFFF) {
-				lgw_reg_w(LGW_TX_TRIG_DELAYED, 0); /* cancel TX if deadline was missed */
-				DEBUG_MSG("ERROR: MISSED TX DEADLINE\n");
-				lgw_unlock();
-			    return LGW_HAL_ERROR; // should return a specific error message
-			}
 			break;
 			
 		case ON_GPS:
@@ -1232,15 +1182,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 			
 		default:
 			DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", pkt_data.tx_mode);
-			lgw_unlock();
 			return LGW_HAL_ERROR;
-	}
-	
-	/* release exclusive lock (if function is enabled)*/
-	i = lgw_unlock();
-	if (i != 0) {
-		DEBUG_MSG("ERROR: FAILED TO RELEASE MUTEX\n");
-		return LGW_HAL_ERROR;
 	}
 	
 	return LGW_HAL_SUCCESS;
@@ -1254,12 +1196,6 @@ int lgw_status(uint8_t select, uint8_t *code) {
 	/* check input variables */
 	CHECK_NULL(code);
 	
-	/* acquire exclusive lock (if function is enabled)*/
-	if (lgw_lock() != 0) {
-		DEBUG_MSG("ERROR: FAILED TO ACQUIRE MUTEX\n");
-		return LGW_HAL_ERROR;
-	}
-	
 	if (select == TX_STATUS) {
 		lgw_reg_r(LGW_TX_STATUS, &read_value);
 		if (lgw_is_started == false) {
@@ -1271,21 +1207,32 @@ int lgw_status(uint8_t select, uint8_t *code) {
 		} else {
 			*code = TX_SCHEDULED;
 		}
-		
-		lgw_unlock(); /* release exclusive lock (if function is enabled)*/
 		return LGW_HAL_SUCCESS;
 		
 	} else if (select == RX_STATUS) {
 		*code = RX_STATUS_UNKNOWN; /* todo */
-		lgw_unlock(); /* release exclusive lock (if function is enabled)*/
 		return LGW_HAL_SUCCESS;
 		
 	} else {
 		DEBUG_MSG("ERROR: SELECTION INVALID, NO STATUS TO RETURN\n");
-		lgw_unlock(); /* release exclusive lock (if function is enabled)*/
 		return LGW_HAL_ERROR;
 	}
 	
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
+	int i;
+	int32_t val;
+	
+	i = lgw_reg_r(LGW_TIMESTAMP, &val);
+	if (i == LGW_REG_SUCCESS) {
+		*trig_cnt_us = (uint32_t)val;
+		return LGW_HAL_SUCCESS;
+	} else {
+		return LGW_HAL_ERROR;
+	}
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -1294,16 +1241,5 @@ const char* lgw_version_info() {
 	return lgw_version_string;
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_set_mutex_callbacks(int (*lock_func)(void), int (*unlock_func)(void)) {
-	if ((lock_func != NULL) && (unlock_func != NULL)) {
-		set_lock_func(lock_func);
-		set_unlock_func(unlock_func);
-		return LGW_HAL_SUCCESS;
-	} else {
-		return LGW_HAL_ERROR;
-	}
-}
 
 /* --- EOF ------------------------------------------------------------------ */

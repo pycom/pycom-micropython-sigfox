@@ -26,30 +26,6 @@ Maintainer: Sylvain Miermont
 */
 void wait_ms(unsigned long t);
 
-/**
-@brief Set function pointer to lock function
-@param lock_func pointer to lock function
-*/
-void set_lock_func(int (*lock_func)(void));
-
-/**
-@brief Set function pointer to unlock function
-@param lock_func pointer to unlock function
-*/
-void set_unlock_func(int (*unlock_func)(void));
-
-/**
-@brief Lock exclusive access to the concentrator
-@return 0 if success or callbacks disabled, error number otherwise
-*/
-int lgw_lock(void);
-
-/**
-@brief Unlock exclusive access to the concentrator
-@return 0 if success or callbacks disabled, error number otherwise
-*/
-int lgw_unlock(void);
-
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
