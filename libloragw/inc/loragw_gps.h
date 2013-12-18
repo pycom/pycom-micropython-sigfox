@@ -38,12 +38,50 @@ Maintainer: Sylvain Miermont
 
 /**
 @struct coord_s
+@brief Time solution required for timestamp to absolute time conversion
+*/
+struct tref {
+	time_t		systime; 	/*!> system time when solution was calculated */
+	uint32_t	count_us; 	/*!> reference concentrator internal timestamp */
+	struct timespec utc; 	/*!> reference UTC time (from GPS) */
+	double		xtal_err;	/*!> clock error estimation (eg. <1 'slow' XTAL) */
+};
+
+/**
+@struct coord_s
 @brief Geodesic coordinates
 */
 struct coord_s {
 	double		lat;	/*!> latitude [-90,90] (North +, South -) */
 	double		lon;	/*!> longitude [-180,180] (East +, West -)*/
-	float		alt;	/*!> altitude in meters (WGS 84 geoid ref.) */
+	short		alt;	/*!> altitude in meters (WGS 84 geoid ref.) */
+};
+
+/**
+@enum gps_msg
+@brief Type of GPS (and other GNSS) sentences
+*/
+enum gps_msg {
+	UNKNOWN, 		/*!> neutral value */
+	IGNORED, 		/*!> frame was not parsed by the system */
+	INVALID, 		/*!> system try to parse frame but failed */
+	/* NMEA messages of interest */
+	NMEA_RMC,		/*!> Recommended Minimum data (time + date) */
+	NMEA_GGA,		/*!> Global positioning system fix data (pos + alt) */
+	NMEA_GNS,		/*!> GNSS fix data (pos + alt, sat number) */
+	NMEA_ZDA,		/*!> Time and Date */
+	/* NMEA message useful for time reference quality assessment */
+	NMEA_GBS,		/*!> GNSS Satellite Fault Detection */
+	NMEA_GST,		/*!> GNSS Pseudo Range Error Statistics */
+	NMEA_GSA,		/*!> GNSS DOP and Active Satellites (sat number) */
+	NMEA_GSV,		/*!> GNSS Satellites in View (sat SNR) */
+	/* Misc. NMEA messages */
+	NMEA_GLL,		/*!> Latitude and longitude, with time fix and status */
+	NMEA_TXT,		/*!> Text Transmission */
+	NMEA_VTG,		/*!> Course over ground and Ground speed */
+	/* uBlox proprietary NMEA messages of interest */
+	UBX_POSITION,	/*!>  */
+	UBX_TIME		/*!>  */
 };
 
 /* -------------------------------------------------------------------------- */
@@ -56,10 +94,11 @@ struct coord_s {
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
-@brief Configure a GPS module, and enable GPS functions in concentrator (must be started)
+@brief Configure a GPS module
+
 @param tty_path path to the TTY connected to the GPS
 @param gps_familly parameter (eg. ubx6 for uBlox gen.6)
-@param brate target baudrate for communication (-1 to keep default target baudrate)
+@param brate target baudrate for communication (-1 keep default target baudrate)
 @param fd_ptr pointer to a variable to receive file descriptor on GPS tty
 @return success if the function was able to connect and configure a GPS module
 */
@@ -67,51 +106,73 @@ int lgw_gps_enable(char* tty_path, char* gps_familly, speed_t target_brate, int*
 
 /**
 @brief Parse messages coming from the GPS system (or other GNSS)
+
 @param serial_buff pointer to the string to be parsed
-@param max_str_len maximum sting lengths for NMEA parsing
-@return success if the frame was parsed successfully
-*/
-int lgw_parse_nmea(char* serial_buff, unsigned max_str_len);
+@param buff_size maximum string lengths for NMEA parsing (incl. null char)
+@return type of frame parsed
 
-/**
-@brief Take a timestamp and matched UTC time and refresh parameters for UTC <-> timestamp conversion
-@param counter internal timestamp counter of a Lora gateway
-@param utc UTC time, with ns precision (leap seconds are ignored)
-@return success if timestamp was read and parameters could be refreshed
+The RAW NMEA sentences are parsed to a global set of variables shared with the 
+lgw_gps_get function.
+If the lgw_parse_nmea and lgw_gps_get are used in different threads, a mutex 
+lock must be acquired before calling either function.
 */
-int lgw_gps_sync(uint32_t counter, struct timespec utc);
-
-/**
-@brief Thread that do blocking serial read, NMEA parsing and estimation
-You *MUST* use lgw_set_lock_function and lgw_set_lock_unfunction for thread safety.
-This thread never return, but you can kill it safely (do no write on hardware, just read).
-*/
-void lgw_gps_thread(void);
-
-/**
-@brief Convert concentrator timestamp counter value to UTC time (ns precision) after RX
-@param counter internal timestamp counter of a Lora gateway
-@param utc pointer to store UTC time, with ns precision (leap seconds are ignored)
-@return success if the function was able to convert timestamp to UTC
-*/
-int lgw_cnt2utc(uint32_t counter, struct timespec* utc);
-
-/**
-@brief Convert UTC time (ns precision) to concentrator timestamp counter value for TX
-@param utc UTC time, with ns precision (leap seconds are ignored)
-@param counter pointer to store internal timestamp counter of a Lora gateway
-@return success if the function was able to convert UTC to timestamp
-*/
-int lgw_utc2cnt(struct timespec utc, uint32_t* counter);
+enum gps_msg lgw_parse_nmea(char* serial_buff, int buff_size);
 
 /**
 @brief Get the GPS solution (space & time) for the gateway
+
+@param utc pointer to store UTC time, with ns precision (NULL to ignore)
 @param loc pointer to store coordinates (NULL to ignore)
 @param err pointer to store coordinates standard deviation (NULL to ignore)
-@param utc pointer to store UTC time, with ns precision (NULL to ignore)
 @return success if the chosen elements could be returned
+
+This function read the global variables generated by the NMEA parsing function 
+lgw_parse_nmea. It returns time and location data in a format that is 
+exploitable by other functions in that library sub-module.
+If the lgw_parse_nmea and lgw_gps_get are used in different threads, a mutex 
+lock must be acquired before calling either function.
 */
-int lgw_get_coord(struct coord_s* loc, struct coord_s* err,  struct timespec* utc);
+int lgw_gps_get(struct timespec* utc, struct coord_s* loc, struct coord_s* err);
+
+/**
+@brief Take a timestamp and UTC time and refresh reference for time conversion
+
+@param ref pointer to time reference structure
+@param old_ref previous time reference (NULL for initial fix)
+@param utc UTC time, with ns precision (leap seconds are ignored)
+@return success if timestamp was read and time reference could be refreshed
+
+Set systime to 0 in ref to trigger initial synchronization.
+*/
+int lgw_gps_sync(struct tref* ref, uint32_t count_us, struct timespec utc);
+
+/**
+@brief Convert concentrator timestamp counter value to UTC time
+
+@param ref time reference structure required for time conversion
+@param count_us internal timestamp counter of a Lora gateway
+@param utc pointer to store UTC time, with ns precision (leap seconds ignored)
+@return success if the function was able to convert timestamp to UTC
+
+This function is typically used when a packet is received to transform the 
+internal counter-based timestamp in an absolute timestamp with an accuracy in 
+the order of a couple microseconds (ns resolution).
+*/
+int lgw_cnt2utc(struct tref ref, uint32_t count_us, struct timespec* utc);
+
+/**
+@brief Convert UTC time to concentrator timestamp counter value
+
+@param ref time reference structure required for time conversion
+@param utc UTC time, with ns precision (leap seconds are ignored)
+@param count_us pointer to store internal timestamp counter of a Lora gateway
+@return success if the function was able to convert UTC to timestamp
+
+This function is typically used when a packet must be sent at an accurate time 
+(eg. to send a piggy-back response after receiving a packet from a node) to 
+transform an absolute UTC time into a matching internal concentrator timestamp.
+*/
+int lgw_utc2cnt(struct tref ref,struct timespec utc, uint32_t* count_us);
 
 #endif
 
