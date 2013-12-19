@@ -106,9 +106,11 @@ int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
-/* Calculate the checksum for a NMEA string
-Skip the first '$' if necessary and calculate checksum until '*' character is reached (or buff_size exceeded)
-checksum must point to a 2-byte (or more) char array
+/*
+Calculate the checksum for a NMEA string
+Skip the first '$' if necessary and calculate checksum until '*' character is
+reached (or buff_size exceeded).
+Checksum must point to a 2-byte (or more) char array.
 Return position of the checksum in the string
 */
 int nmea_checksum(char *nmea_string, int buff_size, char *checksum) {
@@ -158,6 +160,11 @@ char nibble_to_hexchar(uint8_t a) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+/*
+Calculate the checksum of a NMEA frame and compare it to the checksum that is
+present at the end of it.
+Return true if it matches
+*/
 bool validate_nmea_checksum(char *serial_buff, int buff_size) {
 	int checksum_index;
 	char checksum[2]; /* 2 characters to calculate NMEA checksum */
@@ -187,6 +194,10 @@ bool validate_nmea_checksum(char *serial_buff, int buff_size) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+/*
+Return true if the "label" string (can contain wildcard characters) matches
+the begining of the "s" string
+*/
 bool match_label(char *s, char *label, int size, char wildcard) {
 	int i;
 	
@@ -199,11 +210,14 @@ bool match_label(char *s, char *label, int size, char wildcard) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* Chop a string into smaller strings
-Replace every separator in the input character buffer by a null character so that all s[index] are valid strings
-Populate an array of integer 'idx_ary' representing indexes of token in the string
-buff_size and max_idx are there to prevent segfaults
-Return the number of token found (number of idx_ary filled)
+/*
+Chop a string into smaller strings
+Replace every separator in the input character buffer by a null character so
+that all s[index] are valid strings.
+Populate an array of integer 'idx_ary' representing indexes of token in the
+string.
+buff_size and max_idx are there to prevent segfaults.
+Return the number of token found (number of idx_ary filled).
 */
 int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx) {
 	int i = 0; /* index in the string */
@@ -454,52 +468,51 @@ int lgw_gps_sync(struct tref *ref, uint32_t count_us, struct timespec utc) {
 	
 	CHECK_NULL(ref);
 	
-	if (ref->systime == 0) { /* initial synchronization */
+	/* calculate the slope */
+	cnt_diff = (count_us - ref->count_us) / TS_CPS; /* uncorrected by xtal_err */
+	utc_diff = (utc.tv_sec - (ref->utc).tv_sec) + 1E-9 * (utc.tv_nsec - (ref->utc).tv_nsec);
+	if (utc_diff == 0.0) { // prevent divide by zero
+		DEBUG_MSG("ERROR: ATTEMPT TO DIVIDE BY ZERO\n");
+		return LGW_GPS_ERROR;
+	}
+	
+	/* detect aberrant points by measuring if slope limits are exceeded */
+	slope = cnt_diff/utc_diff;
+	if ((slope > PLUS_10PPM) || (slope < MINUS_10PPM)) {
+		DEBUG_MSG("Warning: correction range exceeded\n");
+		aber_n0 = true;
+	} else {
+		aber_n0 = false;
+	}
+	
+	/* watch if the 3 latest sync point were aberrant or not */
+	if (aber_n0 == false) {
+		/* value no aberrant -> sync with smoothed slope */
 		ref->systime = time(NULL);
 		ref->count_us = count_us;
 		ref->utc = utc;
-		ref->xtal_err = 1.0; /* need several points to estimate clock correction */
-	} else { /* synchronization adjustment */
-		/* calculate the slope */
-		cnt_diff = (count_us - ref->count_us) / TS_CPS; /* uncorrected by xtal_err */
-		utc_diff = (utc.tv_sec - (ref->utc).tv_sec) + 1E-9 * (utc.tv_nsec - (ref->utc).tv_nsec);
-		if (utc_diff == 0.0) { // prevent divide by zero
-			DEBUG_MSG("ERROR: ATTEMPT TO DIVIDE BY ZERO\n");
-			return LGW_GPS_ERROR;
+		ref->xtal_err = (0.9 * ref->xtal_err) + (0.1 *  slope); /* 10% smoothing factor */
+		aber_min2 = aber_min1;
+		aber_min1 = aber_n0;
+		return LGW_GPS_SUCCESS;
+	} else if (aber_n0 && aber_min1 && aber_min2) {
+		/* 3 successive aberrant values -> sync reset (keep xtal_err) */
+		ref->systime = time(NULL);
+		ref->count_us = count_us;
+		ref->utc = utc;
+		/* reset xtal_err only if the present value is out of range */
+		if ((ref->xtal_err > PLUS_10PPM) || (ref->xtal_err < MINUS_10PPM)) {
+			ref->xtal_err = 1.0;
 		}
-		/* detect aberrant points by measuring if slope limits are exceeded */
-		slope = cnt_diff/utc_diff;
-		if ((slope > PLUS_10PPM) || (slope < MINUS_10PPM)) {
-			DEBUG_MSG("Warning: correction range exceeded\n");
-			aber_n0 = true;
-		} else {
-			aber_n0 = false;
-		}
-		/* watch if the 3 latest sync point were aberrant or not */
-		if (aber_n0 == false) {
-			/* value no aberrant -> sync with smoothed slope */
-			ref->systime = time(NULL);
-			ref->count_us = count_us;
-			ref->utc = utc;
-			ref->xtal_err = (0.9 * ref->xtal_err) + (0.1 *  slope); /* 10% smoothing factor */
-			aber_min2 = aber_min1;
-			aber_min1 = aber_n0;
-			return LGW_GPS_SUCCESS;
-		} else if (aber_n0 && aber_min1 && aber_min2) {
-			/* 3 successive aberrant values -> sync reset (keep xtal_err) */
-			ref->systime = time(NULL);
-			ref->count_us = count_us;
-			ref->utc = utc;
-			DEBUG_MSG("Warning: 3 successive aberrant sync attempts, sync reset\n");
-			aber_min2 = aber_min1;
-			aber_min1 = aber_n0;
-			return LGW_GPS_SUCCESS;
-		} else {
-			/* only 1 or 2 successive aberrant values -> ignore and return an error */
-			aber_min2 = aber_min1;
-			aber_min1 = aber_n0;
-			return LGW_GPS_ERROR;
-		}
+		DEBUG_MSG("Warning: 3 successive aberrant sync attempts, sync reset\n");
+		aber_min2 = aber_min1;
+		aber_min1 = aber_n0;
+		return LGW_GPS_SUCCESS;
+	} else {
+		/* only 1 or 2 successive aberrant values -> ignore and return an error */
+		aber_min2 = aber_min1;
+		aber_min1 = aber_n0;
+		return LGW_GPS_ERROR;
 	}
 	
 	return LGW_GPS_SUCCESS;
@@ -513,7 +526,10 @@ int lgw_cnt2utc(struct tref ref, uint32_t count_us, struct timespec *utc) {
 	long tmp;
 	
 	CHECK_NULL(utc);
-	// TODO: sanity checks on ref and count_us?
+	if ((ref.systime == 0) || (ref.xtal_err > PLUS_10PPM) || (ref.xtal_err < MINUS_10PPM)) {
+		DEBUG_MSG("ERROR: INVALID REFERENCE FOR CNT -> UTC CONVERSION\n");
+		return LGW_GPS_ERROR;
+	}
 	
 	/* calculate delta in seconds between reference count_us and target count_us */
 	delta_sec = (double)(count_us - ref.count_us) / (TS_CPS * ref.xtal_err);
@@ -538,7 +554,10 @@ int lgw_utc2cnt(struct tref ref, struct timespec utc, uint32_t *count_us) {
 	double delta_sec;
 	
 	CHECK_NULL(count_us);
-	// TODO: sanity checks on ref and utc?
+	if ((ref.systime == 0) || (ref.xtal_err > PLUS_10PPM) || (ref.xtal_err < MINUS_10PPM)) {
+		DEBUG_MSG("ERROR: INVALID REFERENCE FOR UTC -> CNT CONVERSION\n");
+		return LGW_GPS_ERROR;
+	}
 	
 	/* calculate delta in seconds between reference utc and target utc */
 	delta_sec = (double)(utc.tv_sec - ref.utc.tv_sec);

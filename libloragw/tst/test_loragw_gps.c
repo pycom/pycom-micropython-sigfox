@@ -107,7 +107,6 @@ int main()
 	
 	/* start concentrator */
 	lgw_start();
-	wait_ms(1200); /* wait for first clean pps capture if GPS is already running */
 	
 	/* initialize some variables before loop */
 	memset(serial_buff, 0, sizeof serial_buff);
