@@ -296,7 +296,7 @@ int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
 		DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
 		return -1;
 	}
-		
+	
 	sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + 2); /* Enable 'clock out' for both radios */
 	sx125x_write(rf_chain, 0x26, 0X2D); /* Disable gm of oscillator block */
 	
