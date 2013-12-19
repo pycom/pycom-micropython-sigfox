@@ -65,7 +65,7 @@ int main()
 {
 	struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 	
-	int i, j;
+	int i;
 	char tmp_str[80];
 	
 	/* serial variables */
@@ -75,10 +75,9 @@ int main()
 	
 	/* NMEA variables */
 	enum gps_msg latest_msg; /* keep track of latest NMEA message parsed */
-	char checksum[2]; /* 2 characters to calculate NMEA checksum */
 	
 	/* variables for PPM pulse GPS synchronization */
-	uint32_t ppm_tstamp, old_tstamp, delta;
+	uint32_t ppm_tstamp;
 	struct timespec ppm_utc;
 	struct tref ppm_ref;
 	
@@ -99,7 +98,7 @@ int main()
 	printf("*** Library version information ***\n%s\n***\n", lgw_version_info());
 	
 	/* Open and configure GPS */
-	i = lgw_gps_enable("/dev/ttyACM0", NULL, -1, &gps_tty_dev);
+	i = lgw_gps_enable("/dev/ttyACM0", NULL, 0, &gps_tty_dev);
 	if (i != LGW_GPS_SUCCESS) {
 		printf("ERROR: IMPOSSIBLE TO ENABLE GPS\n");
 		exit(EXIT_FAILURE);

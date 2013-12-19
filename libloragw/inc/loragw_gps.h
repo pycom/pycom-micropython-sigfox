@@ -98,7 +98,7 @@ enum gps_msg {
 
 @param tty_path path to the TTY connected to the GPS
 @param gps_familly parameter (eg. ubx6 for uBlox gen.6)
-@param brate target baudrate for communication (-1 keep default target baudrate)
+@param target_brate target baudrate for communication (0 keeps default target baudrate)
 @param fd_ptr pointer to a variable to receive file descriptor on GPS tty
 @return success if the function was able to connect and configure a GPS module
 */

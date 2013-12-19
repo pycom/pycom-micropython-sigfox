@@ -116,7 +116,6 @@ Return position of the checksum in the string
 int nmea_checksum(char *nmea_string, int buff_size, char *checksum) {
 	int i = 0;
 	uint8_t check_num = 0;
-	uint8_t nibble = 0;
 	
 	/* check input parameters */
 	if ((nmea_string == NULL) ||  (checksum == NULL) || (buff_size <= 1)) {
@@ -254,7 +253,6 @@ int str_chop(char *s, int buff_size, char separator, int *idx_ary, int max_idx) 
 
 int lgw_gps_enable(char *tty_path, char *gps_familly, speed_t target_brate, int *fd_ptr) {
 	int i;
-	uint8_t tstbuf[8];
 	struct termios ttyopt; /* serial port options */
 	int gps_tty_dev; /* file descriptor to the serial port of the GNSS module */
 	
@@ -273,6 +271,11 @@ int lgw_gps_enable(char *tty_path, char *gps_familly, speed_t target_brate, int 
 	/* manage the different GPS modules families */
 	if (gps_familly != NULL) {
 		DEBUG_MSG("WARNING: gps_familly parameter ignored for now\n"); // TODO
+	}
+	
+	/* manage the target bitrate */
+	if (target_brate != 0) {
+		DEBUG_MSG("WARNING: target_brate parameter ignored for now\n"); // TODO
 	}
 	
 	/* get actual serial port configuration */
