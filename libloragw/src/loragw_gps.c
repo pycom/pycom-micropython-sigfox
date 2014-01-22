@@ -307,6 +307,9 @@ int lgw_gps_enable(char *tty_path, char *gps_familly, speed_t target_brate, int 
 	}
 	tcflush(gps_tty_dev, TCIOFLUSH);
 	
+	/* get timezone info */
+	tzset();
+	
 	/* initialize global variables */
 	gps_time_ok = false;
 	gps_pos_ok = false;
@@ -430,7 +433,7 @@ int lgw_gps_get(struct timespec *utc, struct coord_s *loc, struct coord_s *err) 
 		x.tm_hour = gps_hou;
 		x.tm_min = gps_min;
 		x.tm_sec = gps_sec;
-		y = mktime(&x);
+		y = mktime(&x) - timezone; /* need to substract timezone bc mktime assumes time vector is local time */
 		if (y == (time_t)(-1)) {
 			DEBUG_MSG("ERROR: FAILED TO CONVERT BROKEN-DOWN TIME\n");
 			return LGW_GPS_ERROR;
