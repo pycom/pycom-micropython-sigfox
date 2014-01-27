@@ -478,7 +478,7 @@ int lgw_gps_sync(struct tref *ref, uint32_t count_us, struct timespec utc) {
 	utc_diff = (double)(utc.tv_sec - (ref->utc).tv_sec) + (1E-9 * (double)(utc.tv_nsec - (ref->utc).tv_nsec));
 	
 	/* detect aberrant points by measuring if slope limits are exceeded */
-	if (utc_diff < .1) { // prevent divide by zero
+	if (utc_diff != 0) { // prevent divide by zero
 		slope = cnt_diff/utc_diff;
 		if ((slope > PLUS_10PPM) || (slope < MINUS_10PPM)) {
 			DEBUG_MSG("Warning: correction range exceeded\n");
