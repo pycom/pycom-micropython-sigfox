@@ -93,8 +93,9 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define		RX_METADATA_NB		16
 
 #define		MIN_LORA_PREAMBLE		4
+#define		STD_LORA_PREAMBLE		6
 #define		MIN_FSK_PREAMBLE		3
-#define		PLL_LOCK_MAX_ATTEMPTS	6
+#define		PLL_LOCK_MAX_ATTEMPTS	5
 
 #define		TX_START_DELAY		1000
 
@@ -1082,6 +1083,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		}
 		if (pkt_data.no_crc == false) {
 			buff[9] |= 0x80; /* set 'CRC enable' bit */
+		} else {
+			DEBUG_MSG("Info: packet will be sent without CRC\n");
 		}
 		
 		/* metadata 10, payload size */
@@ -1105,7 +1108,9 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		}
 		
 		/* metadata 12 & 13, Lora preamble size */
-		if (pkt_data.preamble < MIN_LORA_PREAMBLE) { /* enforce minimum preamble size */
+		if (pkt_data.preamble == 0) { /* if not explicit, use recommended Lora preamble size */
+			pkt_data.preamble = STD_LORA_PREAMBLE;
+		} else if (pkt_data.preamble < MIN_LORA_PREAMBLE) { /* enforce minimum preamble size */
 			pkt_data.preamble = MIN_LORA_PREAMBLE;
 			DEBUG_MSG("Note: preamble length adjusted to respect minimum Lora preamble size\n");
 		}
