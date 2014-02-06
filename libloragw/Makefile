@@ -1,10 +1,10 @@
-# get external defined data
+### get external defined data
 
 RELEASE_VERSION= `cat ../VERSION`
 include ../target.cfg
 include debug.cfg
 
-# constant symbols
+### constant symbols
 
 CROSS_COMPILE=
 CC=$(CROSS_COMPILE)gcc
@@ -12,7 +12,7 @@ AR=$(CROSS_COMPILE)ar
 
 CFLAGS=-O2 -Wall -Wextra -std=c99 -Iinc -I.
 
-# configuration file processing
+### configuration file processing
 
 CFGFLAGS=
 
@@ -82,7 +82,7 @@ else
   CFG_CAL_MSG= None
 endif
 
-# propagate some constants to C code
+### propagate some constants to C code
 
 CONST_AUX= -DDEBUG_AUX=$(DEBUG_AUX)
 CONST_SPI= -DDEBUG_SPI=$(DEBUG_SPI)
@@ -90,15 +90,15 @@ CONST_REG= -DDEBUG_REG=$(DEBUG_REG)
 CONST_GPS= -DDEBUG_GPS=$(DEBUG_GPS)
 CONST_HAL= -DDEBUG_HAL=$(DEBUG_HAL) -DRELEASE_VERSION="\"$(RELEASE_VERSION)\"" $(CFGFLAGS)
 
-# linking options
+### linking options
 
 ifeq ($(CFG_SPIPHY),native)
-  LDFLAGS=-lrt
+  LIBS=-lrt
 else ifeq ($(CFG_SPIPHY),ftdi)
-  LDFLAGS=-lrt -lmpsse
+  LIBS=-lrt -lmpsse
 endif
 
-# general build targets
+### general build targets
 
 all: libloragw.a test_loragw_spi test_loragw_reg test_loragw_hal test_loragw_gps
 
@@ -121,7 +121,7 @@ clean:
 	@echo ""
 	@touch .cfg_ok
 
-# library module target
+### library module target
 
 obj/loragw_aux.o: src/loragw_aux.c inc/loragw_aux.h debug.cfg
 	$(CC) -c $(CFLAGS) $(CONST_AUX) $< -o $@
@@ -143,22 +143,23 @@ obj/loragw_hal.o: src/loragw_hal.c inc/loragw_hal.h inc/loragw_reg.h inc/loragw_
 obj/loragw_gps.o: src/loragw_gps.c inc/loragw_gps.h debug.cfg
 	$(CC) -c $(CFLAGS) $(CONST_GPS) $< -o $@
 
-# static library
+### static library
 
 libloragw.a: obj/loragw_hal.o obj/loragw_gps.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o
 	$(AR) rcs $@ $^
 
-# test programs
+### test programs
 
 test_loragw_spi: tst/test_loragw_spi.c obj/loragw_spi.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ -o $@
 
 test_loragw_reg: tst/test_loragw_reg.c obj/loragw_spi.o obj/loragw_reg.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ -o $@
 
-test_loragw_hal: tst/test_loragw_hal.c obj/loragw_spi.o obj/loragw_reg.o obj/loragw_hal.o obj/loragw_aux.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+test_loragw_hal: tst/test_loragw_hal.c obj/loragw_spi.o obj/loragw_reg.o obj/loragw_hal.o obj/loragw_aux.o .cfg_ok
+	$(CC) $(CFLAGS) $< obj/loragw_spi.o obj/loragw_reg.o obj/loragw_hal.o obj/loragw_aux.o -o $@ $(LIBS)
 
-test_loragw_gps: tst/test_loragw_gps.c obj/loragw_spi.o obj/loragw_reg.o obj/loragw_hal.o obj/loragw_aux.o obj/loragw_gps.o
-	$(CC) $(CFLAGS) $^ -o $@ $(LDFLAGS)
+test_loragw_gps: tst/test_loragw_gps.c obj/loragw_spi.o obj/loragw_reg.o obj/loragw_hal.o obj/loragw_aux.o obj/loragw_gps.o .cfg_ok
+	$(CC) $(CFLAGS) $< obj/loragw_spi.o obj/loragw_reg.o obj/loragw_hal.o obj/loragw_aux.o obj/loragw_gps.o -o $@ $(LIBS)
 
+### EOF

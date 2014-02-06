@@ -2,21 +2,40 @@
 
 APP_NAME=loragw_band_survey
 
+### get external defined data
+
+include ../target.cfg
+
 ### constant symbols
+
 CROSS_COMPILE=
-CC=gcc
-CFLAGS=-O2 -Wall -Wextra -Iinc
-C99FLAGS=-O2 -Wall -Wextra -std=c99 -Iinc
-FLAG_AUX=
+CC=$(CROSS_COMPILE)gcc
+AR=$(CROSS_COMPILE)ar
+
+CFLAGS=-O2 -Wall -Wextra -std=c99 -Iinc -I.
 
 ### constants for Lora Gateway HAL library
 
 LGW_PATH=../libloragw
 LGW_INC=-I$(LGW_PATH)/inc
 
-LGW_LNK=-lloragw -lrt -lmpsse
-#LGW_LNK=-lloragw -lrt
-# add libmpsse or not, depending on what option you compiled the libloragw with
+### configuration file processing
+
+ifeq ($(CFG_RADIO),sx1257)
+  CFGFLAGS= -DCFG_RAD_1257
+else ifeq ($(CFG_RADIO),sx1255)
+  CFGFLAGS= -DCFG_RAD_1255
+else
+  $(error No radio chip(s) selected, check ../target.cfg file)
+endif
+
+### linking options
+
+ifeq ($(CFG_SPIPHY),native)
+  LIBS=-lloragw -lrt
+else ifeq ($(CFG_SPIPHY),ftdi)
+  LIBS=-lloragw -lrt -lmpsse
+endif
 
 ### general build targets
 
@@ -26,12 +45,15 @@ clean:
 	rm -f obj/*.o
 	rm -f $(APP_NAME)
 
-### sub-modules compilation
+.cfg_ok: ../target.cfg
+	@touch .cfg_ok
 
 ### main program compilation and assembly
 
 obj/$(APP_NAME).o: src/$(APP_NAME).c src/rssi_fw.var
-	$(CROSS_COMPILE)$(CC) -c $(C99FLAGS) -o obj/$(APP_NAME).o $(LGW_INC) src/$(APP_NAME).c $(FLAG_AUX)
+	$(CC) -c $(CFLAGS) $(LGW_INC) $(CFGFLAGS) src/$(APP_NAME).c -o $@
 
-$(APP_NAME): $(LGW_PATH)/libloragw.a obj/$(APP_NAME).o
-	$(CROSS_COMPILE)$(CC) -o $(APP_NAME) obj/$(APP_NAME).o -L$(LGW_PATH) $(LGW_LNK)
+$(APP_NAME): obj/$(APP_NAME).o $(LGW_PATH)/libloragw.a .cfg_ok
+	$(CC) -L$(LGW_PATH) $< -o $@ $(LIBS)
+
+### EOF
