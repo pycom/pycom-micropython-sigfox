@@ -105,8 +105,7 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #include "agc_fw.var" /* external definition of the variable */
 
 /* Version string, used to identify the library version/options once compiled */
-#include "VERSION"
-const char lgw_version_string[] = "Library: " VERSION_LIBRARY "; API: " VERSION_API "; SPI layer: " LGW_PHY "; Chip id: " ACCEPT_CHIP_ID "; SPI reg: " ACCEPT_VERSION_REG "; Radio(s): " INFO_RADIO_CHIP "; Usable band: " INFO_RF_PARAM "; Reference plateform: " INFO_REF_HARDWARE ";";
+const char lgw_version_string[] = "Release version: " RELEASE_VERSION ";";
 
 /*
 The following static variables are the configuration set that the user can
