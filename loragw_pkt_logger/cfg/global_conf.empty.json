@@ -19,6 +19,31 @@
 			"radio": 0,
 			"if": 0
 		},
+		"chan_multiSF_3": {
+			"enable": false,
+			"radio": 0,
+			"if": 0
+		},
+		"chan_multiSF_4": {
+			"enable": false,
+			"radio": 0,
+			"if": 0
+		},
+		"chan_multiSF_5": {
+			"enable": false,
+			"radio": 0,
+			"if": 0
+		},
+		"chan_multiSF_6": {
+			"enable": false,
+			"radio": 0,
+			"if": 0
+		},
+		"chan_multiSF_7": {
+			"enable": false,
+			"radio": 0,
+			"if": 0
+		},
 		"chan_Lora_std": {
 			"enable": false,
 			"radio": 0,

@@ -47,13 +47,16 @@ obj/parson.o: src/parson.c inc/parson.h
 ### select the proper configuration JSON for the program
 
 ifeq ($(CFG_BAND),eu868)
-global_conf.json: global_conf.eu868.json
+global_conf.json: cfg/global_conf.eu868.json
 	ln -s $< $@
 else ifeq ($(CFG_BAND),us915)
-global_conf.json: global_conf.us915.json
+global_conf.json: cfg/global_conf.us915.json
+	ln -s $< $@
+else ifeq ($(CFG_BAND),cn470)
+global_conf.json: cfg/global_conf.cn470.json
 	ln -s $< $@
 else
-global_conf.json: global_conf.empty.json
+global_conf.json: cfg/global_conf.empty.json
 	ln -s $< $@
 endif
 
