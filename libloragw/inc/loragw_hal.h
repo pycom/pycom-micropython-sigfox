@@ -56,7 +56,7 @@ Maintainer: Sylvain Miermont
 /* to use those parameters, declare a local constant, and use 'rf_chain' as index */
 #define LGW_RF_RX_LOWFREQ	{863000000, 863000000}	/* lower limit of the usable band in RX for each radio */
 #define LGW_RF_RX_UPFREQ	{870000000, 870000000}	/* upper limit of the usable band in RX for each radio */
-#define LGW_RF_RX_BANDWIDTH	{800000, 	800000}		/* bandwidth of the radios */
+#define LGW_RF_RX_BANDWIDTH	{1000000, 	1000000}	/* bandwidth of the radios */
 #define LGW_RF_TX_LOWFREQ	{863000000, 863000000}	/* lower limit of the usable band in TX for each radio */
 #define LGW_RF_TX_UPFREQ	{870000000, 870000000}	/* upper limit of the usable band in TX for each radio */
 
