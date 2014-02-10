@@ -47,23 +47,28 @@ else
 endif
 
 ifeq ($(CFG_BAND),full)
-  CFGFLAGS += -DCFG_BAND_FULL
-  CFG_BAND_MSG= Full range supported by the radio(s)
+  ifeq ($(CFG_RADIO),sx1257)
+    CFGFLAGS += -DCFG_BAND_1257
+    CFG_BAND_MSG= Full range supported by the SX1257
+  else ifeq ($(CFG_RADIO),sx1255)
+    CFGFLAGS += -DCFG_BAND_1255
+    CFG_BAND_MSG= Full range supported by the SX1255
+  endif
 else ifeq ($(CFG_BAND),eu868)
   CFGFLAGS += -DCFG_BAND_868
   CFG_BAND_MSG= ETSI 868 (866) MHz band
 else ifeq ($(CFG_BAND),us915)
   CFGFLAGS += -DCFG_BAND_915
   CFG_BAND_MSG= FCC 915 MHz band
-else ifeq ($(CFG_BAND),jp920)
-  CFGFLAGS += -DCFG_BAND_920
-  CFG_BAND_MSG= Japan 920 MHz band
 else ifeq ($(CFG_BAND),cn470)
   CFGFLAGS += -DCFG_BAND_470
   CFG_BAND_MSG= China 470 MHz band
-else ifeq ($(CFG_BAND),eu433)
-  CFGFLAGS += -DCFG_BAND_433
-  CFG_BAND_MSG= ETSI 433 MHz band
+#else ifeq ($(CFG_BAND),jp920)
+#  CFGFLAGS += -DCFG_BAND_920
+#  CFG_BAND_MSG= Japan 920 MHz band
+#else ifeq ($(CFG_BAND),eu433)
+#  CFGFLAGS += -DCFG_BAND_433
+#  CFG_BAND_MSG= ETSI 433 MHz band
 else
   $(warning No frequency band selected, full radio capability assumed)
   CFGFLAGS += -DCFG_BAND_FULL
