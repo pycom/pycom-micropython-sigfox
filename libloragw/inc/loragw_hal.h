@@ -43,22 +43,47 @@ Maintainer: Sylvain Miermont
 #define LGW_HAL_SUCCESS		0
 #define LGW_HAL_ERROR		-1
 
-/* hardware characteristics */
-#define LGW_RF_CHAIN_NB		2	/* number of RF chains */
-#define LGW_IF_CHAIN_NB		10	/* number of IF+modem RX chains */
-#define LGW_MULTI_NB		4	/* number of Lora 'multi SF' chains */
+/* radio-specific parameters */
+#if ((CFG_RADIO_1257 == 1) || (CFG_RADIO_1255 == 1))
+	#define LGW_XTAL_FREQU		32000000	/* frequency of the RF reference oscillator */
+	#define LGW_RF_CHAIN_NB		2	/* number of RF chains */
+	#define LGW_RF_RX_BANDWIDTH	{   1000000,   1000000}	/* bandwidth of the radios */
+#endif
 
-#define LGW_PKT_FIFO_SIZE	8			/* depth of the RX packet FIFO */
-#define LGW_DATABUFF_SIZE	1024		/* size in bytes of the RX data buffer (contains payload & metadata) */
-#define LGW_REF_BW			125000		/* typical bandwidth of data channel */
-#define LGW_XTAL_FREQU		32000000	/* frequency of the RF reference oscillator */
-
-/* to use those parameters, declare a local constant, and use 'rf_chain' as index */
-#define LGW_RF_RX_LOWFREQ	{863000000, 863000000}	/* lower limit of the usable band in RX for each radio */
-#define LGW_RF_RX_UPFREQ	{870000000, 870000000}	/* upper limit of the usable band in RX for each radio */
-#define LGW_RF_RX_BANDWIDTH	{1000000, 	1000000}	/* bandwidth of the radios */
-#define LGW_RF_TX_LOWFREQ	{863000000, 863000000}	/* lower limit of the usable band in TX for each radio */
-#define LGW_RF_TX_UPFREQ	{870000000, 870000000}	/* upper limit of the usable band in TX for each radio */
+/* band-specific parameters */
+/* to use array parameters, declare a local const and use 'rf_chain' as index */
+#if (CFG_BAND_FULL == 1)
+	#if (CFG_RADIO_1257 == 1)
+		#define LGW_RF_RX_LOWFREQ	{ 862000000, 862000000}	/* lower limit of the usable band in RX for each radio */
+		#define LGW_RF_RX_UPFREQ	{1020000000,1020000000}	/* upper limit of the usable band in RX for each radio */
+		#define LGW_RF_TX_LOWFREQ	{ 862000000, 862000000}	/* lower limit of the usable band in TX for each radio */
+		#define LGW_RF_TX_UPFREQ	{1020000000,1020000000}	/* upper limit of the usable band in TX for each radio */
+	#elif (CFG_RADIO_1255 == 1)
+		#define LGW_RF_RX_LOWFREQ	{ 400000000, 400000000}
+		#define LGW_RF_RX_UPFREQ	{ 510000000, 510000000}
+		#define LGW_RF_RX_BANDWIDTH	{   1000000,   1000000}
+		#define LGW_RF_TX_LOWFREQ	{ 400000000, 400000000}
+		#define LGW_RF_TX_UPFREQ	{ 510000000, 510000000}
+	#endif
+#elif (CFG_BAND_868 == 1)
+	#define LGW_RF_RX_LOWFREQ	{ 863000000, 863000000}
+	#define LGW_RF_RX_UPFREQ	{ 870000000, 870000000}
+	#define LGW_RF_RX_BANDWIDTH	{   1000000,   1000000}
+	#define LGW_RF_TX_LOWFREQ	{ 863000000, 863000000}
+	#define LGW_RF_TX_UPFREQ	{ 870000000, 870000000}
+#elif (CFG_BAND_915 == 1)
+	#define LGW_RF_RX_LOWFREQ	{ 902000000, 902000000}
+	#define LGW_RF_RX_UPFREQ	{ 928000000, 928000000}
+	#define LGW_RF_RX_BANDWIDTH	{   1000000,   1000000}
+	#define LGW_RF_TX_LOWFREQ	{ 902000000, 902000000}
+	#define LGW_RF_TX_UPFREQ	{ 928000000, 928000000}
+#elif (CFG_BAND_470 == 1)
+	#define LGW_RF_RX_LOWFREQ	{ 470000000, 470000000}
+	#define LGW_RF_RX_UPFREQ	{ 510000000, 510000000}
+	#define LGW_RF_RX_BANDWIDTH	{   1000000,   1000000}
+	#define LGW_RF_TX_LOWFREQ	{ 470000000, 470000000}
+	#define LGW_RF_TX_UPFREQ	{ 510000000, 510000000}
+#endif
 
 /* type of if_chain + modem */
 #define IF_UNDEFINED		0
@@ -66,19 +91,42 @@ Maintainer: Sylvain Miermont
 #define IF_LORA_MULTI		0x11	/* if + Lora receiver with multi-SF capability */
 #define IF_FSK_STD			0x20	/* if + standard FSK modem */
 
-/* configuration of available IF chains and modems on the hardware */
-/* to use, declare a local constant, and use 'if_chain' as index */
-#define LGW_IFMODEM_CONFIG {\
-	IF_LORA_MULTI, \
-	IF_LORA_MULTI, \
-	IF_LORA_MULTI, \
-	IF_LORA_MULTI, \
-	IF_UNDEFINED, \
-	IF_UNDEFINED, \
-	IF_UNDEFINED, \
-	IF_UNDEFINED, \
-	IF_LORA_STD, \
-	IF_FSK_STD }
+/* concentrator chipset-specific parameters */
+/* to use array parameters, declare a local const and use 'if_chain' as index */
+#if ((CFG_CHIP_1301 == 1) || (CFG_CHIP_FPGA == 1))
+	#define LGW_IF_CHAIN_NB		10	/* number of IF+modem RX chains */
+	#define LGW_PKT_FIFO_SIZE	8			/* depth of the RX packet FIFO */
+	#define LGW_DATABUFF_SIZE	1024		/* size in bytes of the RX data buffer (contains payload & metadata) */
+	#define LGW_REF_BW			125000		/* typical bandwidth of data channel */
+#endif
+
+#if (CFG_CHIP_1301 == 1)
+	#define LGW_MULTI_NB		8	/* number of Lora 'multi SF' chains */
+	#define LGW_IFMODEM_CONFIG {\
+		IF_LORA_MULTI, \
+		IF_LORA_MULTI, \
+		IF_LORA_MULTI, \
+		IF_LORA_MULTI, \
+		IF_LORA_MULTI, \
+		IF_LORA_MULTI, \
+		IF_LORA_MULTI, \
+		IF_LORA_MULTI, \
+		IF_LORA_STD, \
+		IF_FSK_STD } /* configuration of available IF chains and modems on the hardware */
+#elif (CFG_CHIP_FPGA == 1)
+	#define LGW_MULTI_NB		4	/* number of Lora 'multi SF' chains */
+	#define LGW_IFMODEM_CONFIG {\
+		IF_LORA_MULTI, \
+		IF_LORA_MULTI, \
+		IF_LORA_MULTI, \
+		IF_LORA_MULTI, \
+		IF_UNDEFINED, \
+		IF_UNDEFINED, \
+		IF_UNDEFINED, \
+		IF_UNDEFINED, \
+		IF_LORA_STD, \
+		IF_FSK_STD } /* configuration of available IF chains and modems on the hardware */
+#endif
 
 /* values available for the 'modulation' parameters */
 /* NOTE: arbitrary values */
