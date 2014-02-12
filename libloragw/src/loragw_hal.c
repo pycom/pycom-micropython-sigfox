@@ -474,6 +474,8 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 	rf_enable[rf_chain] = conf.enable;
 	rf_rx_freq[rf_chain] = conf.freq_hz;
 	
+	DEBUG_PRINTF("Note: rf_chain %d configured; en:%d freq:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain]);
+	
 	return LGW_HAL_SUCCESS;
 }
 
