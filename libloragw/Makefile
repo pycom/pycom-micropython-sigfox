@@ -77,7 +77,7 @@ else ifeq ($(CFG_BAND),cn470)
 #  OPT_CFG += -DCFG_BAND_433
 #  CFG_BAND_MSG= ETSI 433 MHz band
 else
-  $(warning No frequency band selected, full radio capability assumed.)
+  $(warning Warning: No frequency band selected, full radio capability assumed.)
   OPT_CFG += -DCFG_BAND_FULL
   CFG_BAND_MSG= Full range supported by the radio(s)
 endif
@@ -89,7 +89,7 @@ else ifeq ($(CFG_CAL),ref_1301_57nf)
   OPT_CFG += -DCFG_CAL_REF1301
   CFG_CAL_MSG= SX1301 reference board with SX1257 radios, no filters
 else
-  $(warning No calibration selected, check ../target.cfg file.)
+  $(warning Warning: No calibration selected.)
   OPT_CFG += -DCFG_CAL_NONE
   CFG_CAL_MSG= None
 endif
@@ -105,9 +105,9 @@ OPT_HAL= -DDEBUG_HAL=$(DEBUG_HAL)
 ### linking options
 
 ifeq ($(CFG_SPI),native)
-  LIBS=-lrt
+  LIBS=-lloragw -lrt
 else ifeq ($(CFG_SPI),ftdi)
-  LIBS=-lrt -lmpsse
+  LIBS=-lloragw -lrt -lmpsse
 endif
 
 ### general build targets
@@ -163,15 +163,15 @@ libloragw.a: obj/loragw_hal.o obj/loragw_gps.o obj/loragw_reg.o obj/loragw_spi.o
 ### test programs
 
 test_loragw_spi: tst/test_loragw_spi.c libloragw.a .cfg_ok
-	$(CC) $(CFLAGS) $< libloragw.a -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
 
 test_loragw_reg: tst/test_loragw_reg.c libloragw.a .cfg_ok
-	$(CC) $(CFLAGS) $< libloragw.a -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
 
 test_loragw_hal: tst/test_loragw_hal.c libloragw.a .cfg_ok
-	$(CC) $(CFLAGS) $(OPT_CFG) $< libloragw.a -o $@ $(LIBS)
+	$(CC) $(CFLAGS) $(OPT_CFG) -L. $< -o $@ $(LIBS)
 
 test_loragw_gps: tst/test_loragw_gps.c libloragw.a .cfg_ok
-	$(CC) $(CFLAGS) $< libloragw.a -o $@ $(LIBS)
+	$(CC) $(CFLAGS) -L. $< -o $@ $(LIBS)
 
 ### EOF
