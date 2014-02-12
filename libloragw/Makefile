@@ -23,7 +23,7 @@ else ifeq ($(CFG_SPI),ftdi)
   OPT_CFG += -DCFG_SPI_FTDI
   CFG_SPI_MSG= FTDI SPI-over-USB bridge using libmpsse/libftdi/libusb
 else
-  $(error No SPI physical layer selected, check ../target.cfg file)
+  $(error No SPI physical layer selected, check ../target.cfg file.)
 endif
 
 ifeq ($(CFG_CHIP),sx1301)
@@ -33,7 +33,7 @@ else ifeq ($(CFG_CHIP),fpga1301)
   OPT_CFG += -DCFG_CHIP_FPGA
   CFG_CHIP_MSG= FPGA containing the SX1301 IP
 else
-  $(error No concentrator chip selected, check ../target.cfg file)
+  $(error No concentrator chip selected, check ../target.cfg file.)
 endif
 
 ifeq ($(CFG_RADIO),sx1257)
@@ -43,21 +43,33 @@ else ifeq ($(CFG_RADIO),sx1255)
   OPT_CFG += -DCFG_RADIO_1255
   CFG_RADIO_MSG= Dual SX1255 transceivers, covering 400-510 MHz
 else
-  $(error No radio chip(s) selected, check ../target.cfg file)
+  $(error No radio chip(s) selected, check ../target.cfg file.)
 endif
 
 ifeq ($(CFG_BAND),full)
   OPT_CFG += -DCFG_BAND_FULL
   CFG_BAND_MSG= Full range supported by the radio(s)
 else ifeq ($(CFG_BAND),eu868)
-  OPT_CFG += -DCFG_BAND_868
-  CFG_BAND_MSG= ETSI 868 (866) MHz band
+  ifeq ($(CFG_RADIO),sx1257)
+    OPT_CFG += -DCFG_BAND_868
+    CFG_BAND_MSG= ETSI 868 (866) MHz band
+  else
+    $(error The selected radio(s) cannot work in the selected band.)
+  endif
 else ifeq ($(CFG_BAND),us915)
-  OPT_CFG += -DCFG_BAND_915
-  CFG_BAND_MSG= FCC 915 MHz band
+  ifeq ($(CFG_RADIO),sx1257)
+    OPT_CFG += -DCFG_BAND_915
+    CFG_BAND_MSG= FCC 915 MHz band
+  else
+    $(error The selected radio(s) cannot work in the selected band.)
+  endif
 else ifeq ($(CFG_BAND),cn470)
-  OPT_CFG += -DCFG_BAND_470
-  CFG_BAND_MSG= China 470 MHz band
+  ifeq ($(CFG_RADIO),sx1255)
+    OPT_CFG += -DCFG_BAND_470
+    CFG_BAND_MSG= China 470 MHz band
+  else
+    $(error The selected radio(s) cannot work in the selected band.)
+  endif
 #else ifeq ($(CFG_BAND),jp920)
 #  OPT_CFG += -DCFG_BAND_920
 #  CFG_BAND_MSG= Japan 920 MHz band
@@ -65,7 +77,7 @@ else ifeq ($(CFG_BAND),cn470)
 #  OPT_CFG += -DCFG_BAND_433
 #  CFG_BAND_MSG= ETSI 433 MHz band
 else
-  $(warning No frequency band selected, full radio capability assumed)
+  $(warning No frequency band selected, full radio capability assumed.)
   OPT_CFG += -DCFG_BAND_FULL
   CFG_BAND_MSG= Full range supported by the radio(s)
 endif
@@ -77,7 +89,7 @@ else ifeq ($(CFG_CAL),ref_1301_57nf)
   OPT_CFG += -DCFG_CAL_REF1301
   CFG_CAL_MSG= SX1301 reference board with SX1257 radios, no filters
 else
-  $(warning No calibration selected, check ../target.cfg file)
+  $(warning No calibration selected, check ../target.cfg file.)
   OPT_CFG += -DCFG_CAL_NONE
   CFG_CAL_MSG= None
 endif
