@@ -22,18 +22,18 @@ LGW_INC=-I$(LGW_PATH)/inc
 ### configuration file processing
 
 ifeq ($(CFG_RADIO),sx1257)
-  CFGFLAGS= -DCFG_RAD_1257
+  OPT_CFG= -DCFG_RADIO_1257
 else ifeq ($(CFG_RADIO),sx1255)
-  CFGFLAGS= -DCFG_RAD_1255
+  OPT_CFG= -DCFG_RADIO_1255
 else
   $(error No radio chip(s) selected, check ../target.cfg file)
 endif
 
 ### linking options
 
-ifeq ($(CFG_SPIPHY),native)
+ifeq ($(CFG_SPI),native)
   LIBS=-lloragw -lrt
-else ifeq ($(CFG_SPIPHY),ftdi)
+else ifeq ($(CFG_SPI),ftdi)
   LIBS=-lloragw -lrt -lmpsse
 endif
 
@@ -51,7 +51,7 @@ clean:
 ### main program compilation and assembly
 
 obj/$(APP_NAME).o: src/$(APP_NAME).c src/rssi_fw.var
-	$(CC) -c $(CFLAGS) $(LGW_INC) $(CFGFLAGS) src/$(APP_NAME).c -o $@
+	$(CC) -c $(CFLAGS) $(LGW_INC) $(OPT_CFG) src/$(APP_NAME).c -o $@
 
 $(APP_NAME): obj/$(APP_NAME).o $(LGW_PATH)/libloragw.a .cfg_ok
 	$(CC) -L$(LGW_PATH) $< -o $@ $(LIBS)

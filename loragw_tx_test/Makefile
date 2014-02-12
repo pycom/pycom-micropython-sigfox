@@ -21,9 +21,9 @@ LGW_INC=-I$(LGW_PATH)/inc
 
 ### linking options
 
-ifeq ($(CFG_SPIPHY),native)
+ifeq ($(CFG_SPI),native)
   LIBS=-lloragw -lrt
-else ifeq ($(CFG_SPIPHY),ftdi)
+else ifeq ($(CFG_SPI),ftdi)
   LIBS=-lloragw -lrt -lmpsse
 endif
 
