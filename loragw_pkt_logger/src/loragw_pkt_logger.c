@@ -98,7 +98,7 @@ int parse_SX1301_configuration(const char * conf_file) {
 	uint32_t sf, bw;
 	
 	/* try to parse JSON */
-	root_val = json_parse_file(conf_file);
+	root_val = json_parse_file_with_comments(conf_file);
 	root = json_value_get_object(root_val);
 	if (root == NULL) {
 		MSG("ERROR: %s id not a valid JSON file\n", conf_file);
@@ -261,7 +261,7 @@ int parse_gateway_configuration(const char * conf_file) {
 	unsigned long long ull = 0;
 	
 	/* try to parse JSON */
-	root_val = json_parse_file(conf_file);
+	root_val = json_parse_file_with_comments(conf_file);
 	root = json_value_get_object(root_val);
 	if (root == NULL) {
 		MSG("ERROR: %s id not a valid JSON file\n", conf_file);
