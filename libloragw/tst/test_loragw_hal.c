@@ -93,6 +93,8 @@ int main()
 	/* beginning of Lora gateway-specific code */
 	printf("Beginning of test for loragw_hal.c\n");
 	
+	printf("*** Library version information ***\n%s\n\n", lgw_version_info());
+	
 	/* set configuration for RF chains */
 	memset(&rfconf, 0, sizeof(rfconf));
 	
@@ -174,8 +176,6 @@ int main()
 	txpkt.preamble = 4;
 	txpkt.rf_chain = 0;
 */	
-	
-	printf("*** Library version information ***\n%s\n***\n", lgw_version_info());
 	
 	/* connect, configure and start the Lora gateway */
 	i = lgw_start();

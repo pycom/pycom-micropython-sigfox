@@ -310,9 +310,10 @@ void open_log(void) {
 
 /* describe command line options */
 void usage(void) {
-	MSG( "Available options:\n");
-	MSG( " -h print this help\n");
-	MSG( " -r <int> rotate log file every N seconds (-1 disable log rotation)\n");
+	printf("*** Library version information ***\n%s\n\n", lgw_version_info());
+	printf( "Available options:\n");
+	printf( " -h print this help\n");
+	printf( " -r <int> rotate log file every N seconds (-1 disable log rotation)\n");
 }
 
 /* -------------------------------------------------------------------------- */

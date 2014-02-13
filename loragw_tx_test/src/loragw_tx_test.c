@@ -78,15 +78,16 @@ static void sig_handler(int sigio) {
 
 /* describe command line options */
 void usage(void) {
-	MSG( "Available options:\n");
-	MSG( " -h print this help\n");
-	MSG( " -f <float> target frequency in MHz\n");
-	MSG( " -s <int> Spreading Factor\n");
-	MSG( " -b <int> Modulation bandwidth in kHz\n");
-	MSG( " -p <int> RF power (dBm)\n");
-	MSG( " -t <int> pause between packets (ms)\n");
-	MSG( " -x <int> numbers of times the sequence is repeated\n");
-	MSG( " -i send packet using inverted modulation polarity \n");
+	printf("*** Library version information ***\n%s\n\n", lgw_version_info());
+	printf( "Available options:\n");
+	printf( " -h print this help\n");
+	printf( " -f <float> target frequency in MHz\n");
+	printf( " -s <int> Spreading Factor\n");
+	printf( " -b <int> Modulation bandwidth in kHz\n");
+	printf( " -p <int> RF power (dBm)\n");
+	printf( " -t <int> pause between packets (ms)\n");
+	printf( " -x <int> numbers of times the sequence is repeated\n");
+	printf( " -i send packet using inverted modulation polarity \n");
 }
 
 /* -------------------------------------------------------------------------- */
