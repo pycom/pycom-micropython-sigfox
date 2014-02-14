@@ -67,6 +67,7 @@ else ifeq ($(CFG_BAND),cn470)
   else
     $(error The selected radio(s) cannot work in the selected band.)
   endif
+else
   $(warning [Warning] No frequency band selected, full radio capability assumed.)
   CFG_BAND_MSG= Full range supported by the radio(s)
   CFG_BAND_OPT= CFG_BAND_FULL
@@ -100,7 +101,6 @@ clean:
 	rm -f libloragw.a
 	rm -f test_loragw_*
 	rm -f obj/*.o
-	rm -f .cfg_ok
 
 ### transpose library.cfg into a C header file : config.h
 
