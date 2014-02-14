@@ -49,8 +49,8 @@ Maintainer: Sylvain Miermont
 #define		MCU_ARB		0
 #define		MCU_AGC		1
 
-const uint32_t rf_rx_lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_RX_LOWFREQ;
-const uint32_t rf_rx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_RX_UPFREQ;
+const uint32_t rf_rx_lowfreq_[LGW_RF_CHAIN_NB] = LGW_RF_RX_LOWFREQ;
+const uint32_t rf_rx_upfreq_[LGW_RF_CHAIN_NB] = LGW_RF_RX_UPFREQ;
 
 #define		MCU_ARB_FW_BYTE		8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
 #define		MCU_AGC_FW_BYTE		8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
@@ -99,11 +99,11 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 
 static void sig_handler(int sigio);
 
-int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size);
+int load_firmware_(uint8_t target, uint8_t *firmware, uint16_t size);
 
-void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data);
+void sx125x_write_(uint8_t channel, uint8_t addr, uint8_t data);
 
-uint8_t sx125x_read(uint8_t channel, uint8_t addr);
+uint8_t sx125x_read_(uint8_t channel, uint8_t addr);
 
 void usage (void);
 
@@ -119,7 +119,7 @@ static void sig_handler(int sigio) {
 }
 
 /* size is the firmware size in bytes (not 14b words) */
-int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
+int load_firmware_(uint8_t target, uint8_t *firmware, uint16_t size) {
 	int reg_rst;
 	int reg_sel;
 	
@@ -159,7 +159,7 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
 	return 0;
 }
 
-void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
+void sx125x_write_(uint8_t channel, uint8_t addr, uint8_t data) {
 	int reg_add, reg_dat, reg_cs;
 	
 	/* checking input parameters */
@@ -201,7 +201,7 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
 	return;
 }
 
-uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
+uint8_t sx125x_read_(uint8_t channel, uint8_t addr) {
 	int reg_add, reg_dat, reg_cs, reg_rb;
 	int32_t read_value;
 	
@@ -249,9 +249,10 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
 
 /* describe command line options */
 void usage(void) {
-	MSG( "Available options:\n");
-	MSG( "-h print this help\n");
-	MSG( "-f <Fstart>:<Fstop> or <Fstart>:<Fstop>:<Fstep> in MHz (scient. nota. OK)\n");
+	printf("*** Library version information ***\n%s\n\n", lgw_version_info());
+	printf( "Available options:\n");
+	printf( "-h print this help\n");
+	printf( "-f <Fstart>:<Fstop> or <Fstart>:<Fstop>:<Fstep> in MHz (scient. nota. OK)\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -268,8 +269,8 @@ int main(int argc, char **argv)
 	double fs = 0.0;
 	
 	/* frequency scan parameters (default values) */
-	uint32_t f_start = rf_rx_lowfreq[RF_CHAIN]; /* in Hz */
-	uint32_t f_stop = rf_rx_upfreq[RF_CHAIN]; /* in Hz */
+	uint32_t f_start = rf_rx_lowfreq_[RF_CHAIN]; /* in Hz */
+	uint32_t f_stop = rf_rx_upfreq_[RF_CHAIN]; /* in Hz */
 	uint32_t f_step = 200000; /* 200 kHz step by default */
 	
 	/* RSSI measurement results */
@@ -352,9 +353,9 @@ int main(int argc, char **argv)
 	wait_ms(5);
 	
 	/* enter basic parameters for the radio */
-	sx125x_write(RF_CHAIN, 0x10, SX125x_TX_DAC_CLK_SEL + SX125x_CLK_OUT*2);
-	sx125x_write(RF_CHAIN, 0x0C, 0 + SX125x_RX_BB_GAIN*2 + SX125x_RX_LNA_GAIN*32); /* not required, firmware should take care of that */
-	sx125x_write(RF_CHAIN, 0x0D, SX125x_RXBB_BW + SX125x_RX_ADC_TRIM*4 + SX125x_RX_ADC_BW*32);
+	sx125x_write_(RF_CHAIN, 0x10, SX125x_TX_DAC_CLK_SEL + SX125x_CLK_OUT*2);
+	sx125x_write_(RF_CHAIN, 0x0C, 0 + SX125x_RX_BB_GAIN*2 + SX125x_RX_LNA_GAIN*32); /* not required, firmware should take care of that */
+	sx125x_write_(RF_CHAIN, 0x0D, SX125x_RXBB_BW + SX125x_RX_ADC_TRIM*4 + SX125x_RX_ADC_BW*32);
 	
 	/* configure the IF and concentrator parameters */
 	lgw_reg_w(LGW_IF_FREQ_0, -282); /* default -384 */
@@ -367,7 +368,7 @@ int main(int argc, char **argv)
 	lgw_reg_w(LGW_RSSI_DEC_DEFAULT_VALUE,90); /* default 100 */
 	
 	/* Load firmware */
-	load_firmware(MCU_AGC, rssi_firmware, MCU_AGC_FW_BYTE);
+	load_firmware_(MCU_AGC, rssi_firmware, MCU_AGC_FW_BYTE);
 	lgw_reg_w(LGW_FORCE_HOST_FE_CTRL,0);
 	lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN,0);
 	
@@ -402,9 +403,9 @@ int main(int argc, char **argv)
 		part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
 		#endif
 		
-		sx125x_write(RF_CHAIN, 0x01,0xFF & part_int); /* Most Significant Byte */
-		sx125x_write(RF_CHAIN, 0x02,0xFF & (part_frac >> 8)); /* middle byte */
-		sx125x_write(RF_CHAIN, 0x03,0xFF & part_frac); /* Least Significant Byte */
+		sx125x_write_(RF_CHAIN, 0x01,0xFF & part_int); /* Most Significant Byte */
+		sx125x_write_(RF_CHAIN, 0x02,0xFF & (part_frac >> 8)); /* middle byte */
+		sx125x_write_(RF_CHAIN, 0x03,0xFF & part_frac); /* Least Significant Byte */
 		
 		/* start and PLL lock */
 		cpt_attempts = 0;
@@ -413,11 +414,11 @@ int main(int argc, char **argv)
 				MSG("ERROR: fail to lock PLL\n");
 				return -1;
 			}
-			sx125x_write(RF_CHAIN, 0x00, 1); /* enable Xtal oscillator */
-			sx125x_write(RF_CHAIN, 0x00, 3); /* Enable RX (PLL+FE) */
+			sx125x_write_(RF_CHAIN, 0x00, 1); /* enable Xtal oscillator */
+			sx125x_write_(RF_CHAIN, 0x00, 3); /* Enable RX (PLL+FE) */
 			++cpt_attempts;
 			wait_ms(1);
-		} while((sx125x_read(RF_CHAIN, 0x11) & 0x02) == 0);
+		} while((sx125x_read_(RF_CHAIN, 0x11) & 0x02) == 0);
 		
 		/* give control of the radio to the MCU and get it out of reset */
 		lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0);
