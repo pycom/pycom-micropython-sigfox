@@ -43,9 +43,6 @@ clean:
 
 ### HAL library
 
-$(LGW_INC):
-	$(MAKE) all -C $(LGW_PATH)
-
 $(LGW_PATH)/libloragw.a: $(LGW_INC)
 	$(MAKE) all -C $(LGW_PATH)
 
