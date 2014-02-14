@@ -23,6 +23,8 @@ Maintainer: Sylvain Miermont
 #include <stdint.h>		/* C99 types */
 #include <stdbool.h>	/* bool type */
 
+#include "config.h"	/* library configuration options (dynamically generated) */
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC MACROS -------------------------------------------------------- */
 

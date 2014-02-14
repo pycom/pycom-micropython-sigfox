@@ -33,6 +33,8 @@ Maintainer: Sylvain Miermont
 #include <time.h>		/* time library */
 #include <termios.h>	/* speed_t */
 
+#include "config.h"	/* library configuration options (dynamically generated) */
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
