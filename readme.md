@@ -16,6 +16,9 @@ a Semtech Lora multi-channel RF receiver.
 Once compiled all the code is contained in the libloragw.a file that will be 
 statically linked (ie. integrated in the final executable).
 
+The library must be configured by editing the library.cfg file to set target
+chip, radio, SPI interface, etc.
+
 The library also comes with a bunch of basic tests programs that are used to 
 test the different sub-modules of the library.
 
@@ -55,8 +58,8 @@ gateways as receivers.
 
 ### v1.3.0 ###
 
-* Improved TX power management.
-* New build system with root configuration for multiple chip/radio/band support.
+* Improved TX power management. (TODO)
+* New build system with configuration for multiple chip/radio/band support.
 * SX125x bandwidth set to 1MHz by default (was 800 kHz).
 
 ### v1.2.1 ###

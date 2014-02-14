@@ -18,7 +18,6 @@ functions to configure the hardware, send and receive packets.
 The Semtech Lora gateway is a digital multi-channel multi-standard packet radio
 used to send and receive packets wirelessly using Lora or FSK modulations.
 
-
 2. Components of the library
 ----------------------------
 
@@ -108,7 +107,7 @@ switched on.
 An accuracy of 1 ms or less is ideal.
 If your system doesn't allow that level of accuracy, make sure that the actual
 delay is *longer* that the time specified when the function is called (ie.
-wait_ms(X) *MUST NOT* before X milliseconds under any circumstance).
+wait_ms(X) **MUST NOT** before X milliseconds under any circumstance).
 
 If the minimum delays are not guaranteed during the configuration and start
 procedure, the hardware might not work at nominal performance.
@@ -132,6 +131,7 @@ following things after opening the serial port:
 * parse NMEA sentences (using lgw_parse_nmea)
 
 And each time an RMC sentence has been received:
+
 * get the concentrator timestamp (using lgw_get_trigcnt, mutex needed to 
   protect access to the concentrator)
 * get the UTC time contained in the NMEA sentence (using lgw_gps_get)
@@ -142,30 +142,90 @@ Then, in other threads, you can simply used that continuously adjusted time
 reference to convert internal timestamps to UTC time (using lgw_cnt2utc) or 
 the other way around (using lgw_utc2cnt).
 
-3. Software dependencies
-------------------------
+3. Software build process
+--------------------------
+
+### 3.1. Details of the software ###
 
 The library is written following ANSI C conventions but using C99 explicit
 length data type for all data exchanges with hardware and for parameters.
 
 The loragw_aux module contains POSIX dependant functions for millisecond
 accuracy pause.
-For embedded platforms, the function could be rewritten using hardware times.
+For embedded platforms, the function could be rewritten using hardware timers.
 
-All modules use the fprintf(stderr,...) function to display debug diagnostic
+### 3.2. Building options ###
+
+All modules use a fprintf(stderr,...) function to display debug diagnostic
 messages if the DEBUG_xxx is set to 1 in library.cfg
 
+The other settings available in library.cfg are:
+
+* CFG_SPI configures how the link between the host and the concentrator chip 
+ is done.
+
+* CFG_CHIP configures what the exact model of chip is, because there are small 
+  differences in capabilities between the 'normal' SX1301 production chip, and 
+  the FPGA-based version.
+
+* CFG_RADIO configures what chips are used for radios. Only the SX125x are 
+  supported for now, but other radios could be supported if drivers are added.
+
+* CFG_BAND configures frequency band limits. If you plan to use you system in 
+  a specific band, the library can be used to enforced minimum & maximum 
+  frequencies for RX and TX, preventing illegal 'out of band' emissions even in 
+  case of bug in your program.
+  Other band-specific rules (eg. TX power, channel spacing, dwell time, hopping 
+  rules) are *NOT* enforced by the libloragw library and must be enforced in 
+  your program.
+  To disable band-specific limits, use the 'full' setting that will allow all 
+  frequencies supported by the radio.
+
+* CFG_CAL configures which set of calibration parameters will be used.
+  The RSSI reported by the library when a packet is received, and the TX power 
+  specified when is packet is sent, very significantly with the board and 
+  components use around the radios (eg. external PA and LNA, filters, RF 
+  switches, etc). A limited number of specific board designs have been 
+  calibrated by Semtech, if you don't find the board you used, ask Semtech 
+  which available setting will give the most accurate results. If you use 
+  elements such as external filters, long cables and antennas with gain, you 
+  will have to offset their effect in your application.
+
+### 3.3. Building procedures ###
+
+For cross-compilation set the CROSS_COMPILE variable in the Makefile with the
+correct toolchain name.
+
+The Makefile in the libloragw directory will parse the library.cfg file and 
+generate a config.h C header file containing #define options.
+Those options enables and disables sections of code in the loragw_xxx.h files 
+and the *.c source files.
+
+The library.cfg is also used directly to select the proper set of dynamic 
+libraries to be linked with.
+
+### 3.4. Dynamic libraries requirements ###
+
 Depending on config, SPI module needs LibMPSSE to access the FTDI SPI-over-USB
-bridge. Please go to that URL to download that library:
-http://code.google.com/p/libmpsse/
+bridge. Please read install_ftdi.txt for installation instructions.
 
 The code was tested with version 1.3 of LibMPSSE:
 http://libmpsse.googlecode.com/files/libmpsse-1.3.tar.gz
 SHA1 Checksum: 	1b994a23b118f83144261e3e786c43df74a81cd5
 
-That library has some dependencies itself, please read the installation
-instructions.
+### 3.5. Export ###
 
+Once build, to use that library on another system, you need to export the
+following files :
+
+* libloragw/library.cfg  -> root configuration file
+* libloragw/libloragw.a  -> static library, to be linked with a program
+* libloragw/readme.md  -> required for license compliance
+* libloragw/inc/config.h  -> C configuration flags, derived from library.cfg
+* libloragw/inc/loragw_*.h  -> take only the ones you need (eg. _hal and _gps)
+
+After statically linking the library to your application, only the license 
+is required to be kept or copied inside your program documentation.
 
 4. Hardware dependencies
 ------------------------
@@ -174,7 +234,11 @@ instructions.
 
 The loragw_reg and loragw_hal are written for a specific version on the Semtech
 hardware (IP and/or silicon revision).
-All relevant details are contained in the VERSION.TXT file.
+
+This code has been written for:
+
+* Semtech SX1301 chip (or FPGA equivalent)
+* Semtech SX1257 or SX1255 I/Q transceivers
 
 The library will not work if there is a mismatch between the hardware version 
 and the library version. You can use the test program test_loragw_reg to check 
@@ -210,7 +274,7 @@ In the current revision, the library only reads data from the serial port,
 expecting to receive NMEA frames that are generally sent by GPS receivers as 
 soon as they are powered up.
 
-The GPS receiver __MUST__ send RMC NMEA sentences (starting with "$G<any 
+The GPS receiver **MUST** send RMC NMEA sentences (starting with "$G<any 
 character>RMC") shortly after sending a PPS pulse on to allow internal 
 concentrator timestamps to be converted to absolute UTC time.
 If the GPS receiver sends a GGA sentence, the gateway 3D position will also be 
@@ -246,11 +310,11 @@ To use the HAL in your application, you must follow some basic rules:
 
 * configure the radios path and IF+modem path before starting the radio
 * the configuration is only transferred to hardware when you call the *start*
-function
+  function
 * you cannot receive packets until one (or +) radio is enabled AND one (or +)
-IF+modem part is enabled AND the gateway is started
+  IF+modem part is enabled AND the gateway is started
 * you cannot send packets until one (or +) radio is enabled AND the gateway is
-started
+  started
 * you must stop the gateway before changing the configuration
 
 A typical application flow for using the HAL is the following:
