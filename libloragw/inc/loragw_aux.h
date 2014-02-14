@@ -18,6 +18,11 @@ Maintainer: Sylvain Miermont
 #define _LORAGW_AUX_H
 
 /* -------------------------------------------------------------------------- */
+/* --- DEPENDANCIES --------------------------------------------------------- */
+
+#include "config.h"	/* library configuration options (dynamically generated) */
+
+/* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**

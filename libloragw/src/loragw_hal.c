@@ -69,6 +69,12 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
                   = F_rf (Hz) * 2^19 / F_xtal(Hz)
                   = F_rf (Hz) * 2^19 / 32e6
                   = F_rf (Hz) * 256/15625
+
+SX1255 frequency setting :
+F_register(24bit) = F_rf (Hz) / F_step(Hz)
+                  = F_rf (Hz) * 2^20 / F_xtal(Hz)
+                  = F_rf (Hz) * 2^20 / 32e6
+                  = F_rf (Hz) * 512/15625
 */
 #define 	SX125x_32MHz_FRAC	15625	/* irreductible fraction for PLL register caculation */
 
@@ -84,10 +90,22 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define		SX125x_RX_ADC_TRIM		6	/* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
 #define		SX125x_RXBB_BW			2
 
-#define		RSSI_OFFSET_LORA_MULTI	-128.0	/* calibrated value */
-#define		RSSI_OFFSET_LORA_STD	-167.0	/* calibrated for all bandwidth */
-#define		RSSI_OFFSET_FSK			-146.5	/* calibrated value */
-#define		RSSI_SLOPE_FSK			1.2		/* calibrated value */
+#if (CFG_CAL_NANO868 == 1)
+	#define		RSSI_OFFSET_LORA_MULTI	-128.0	/* calibrated value */
+	#define		RSSI_OFFSET_LORA_STD	-167.0	/* calibrated for all bandwidth */
+	#define		RSSI_OFFSET_FSK			-146.5	/* calibrated value */
+	#define		RSSI_SLOPE_FSK			1.2		/* calibrated value */
+#elif (CFG_CAL_REF1301 == 1)
+	#define		RSSI_OFFSET_LORA_MULTI	-128.0	/* todo */
+	#define		RSSI_OFFSET_LORA_STD	-167.0	/* todo */
+	#define		RSSI_OFFSET_FSK			-146.5	/* todo */
+	#define		RSSI_SLOPE_FSK			1.2		/* todo */
+#elif (CFG_CAL_NONE == 1)
+	#define		RSSI_OFFSET_LORA_MULTI	0.0
+	#define		RSSI_OFFSET_LORA_STD	0.0
+	#define		RSSI_OFFSET_FSK			0.0
+	#define		RSSI_SLOPE_FSK			1.0
+#endif
 
 #define		TX_METADATA_NB		16
 #define		RX_METADATA_NB		16
@@ -99,15 +117,62 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 
 #define		TX_START_DELAY		1000
 
+/* Strings for version (and options) identification */
+
+#if (CFG_SPI_NATIVE == 1)
+	#define		CFG_SPI_STR		"native"
+#elif (CFG_SPI_FTDI == 1)
+	#define		CFG_SPI_STR		"ftdi"
+#else
+	#define		CFG_SPI_STR		"spi?"
+#endif
+
+#if (CFG_CHIP_1301 == 1)
+	#define		CFG_CHIP_STR	"sx1301"
+#elif (CFG_CHIP_FPGA == 1)
+	#define		CFG_CHIP_STR	"fpga1301"
+#else
+	#define		CFG_CHIP_STR	"chip?"
+#endif
+
+#if (CFG_RADIO_1257 == 1)
+	#define		CFG_RADIO_STR	"sx1257"
+#elif (CFG_RADIO_1255 == 1)
+	#define		CFG_RADIO_STR	"sx1255"
+#else
+	#define		CFG_RADIO_STR	"radio?"
+#endif
+
+#if (CFG_BAND_FULL == 1)
+	#define		CFG_BAND_STR	"full"
+#elif (CFG_BAND_868 == 1)
+	#define		CFG_BAND_STR	"eu868"
+#elif (CFG_BAND_915 == 1)
+	#define		CFG_BAND_STR	"us915"
+#elif (CFG_BAND_470 == 1)
+	#define		CFG_BAND_STR	"cn470"
+#else
+	#define		CFG_BAND_STR	"band?"
+#endif
+
+#if (CFG_CAL_NANO868 == 1)
+	#define		CFG_CAL_STR		"dev_nano_868"
+#elif (CFG_CAL_REF1301 == 1)
+	#define		CFG_CAL_STR		"ref_1301_57nf"
+#elif (CFG_CAL_NONE == 1)
+	#define		CFG_CAL_STR		"no_cal"
+#else
+	#define		CFG_CAL_STR		"cal?"
+#endif
+
+/* Version string, used to identify the library version/options once compiled */
+const char lgw_version_string[] = "Version: " RELEASE_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_RADIO_STR " " CFG_BAND_STR " " CFG_CAL_STR ";";
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 #include "arb_fw.var" /* external definition of the variable */
 #include "agc_fw.var" /* external definition of the variable */
-
-/* Version string, used to identify the library version/options once compiled */
-#include "VERSION"
-const char lgw_version_string[] = "Library: " VERSION_LIBRARY "; API: " VERSION_API "; SPI layer: " LGW_PHY "; Chip id: " ACCEPT_CHIP_ID "; SPI reg: " ACCEPT_VERSION_REG "; Radio(s): " INFO_RADIO_CHIP "; Usable band: " INFO_RF_PARAM "; Reference plateform: " INFO_REF_HARDWARE ";";
 
 /*
 The following static variables are the configuration set that the user can
@@ -145,7 +210,11 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data);
 
 uint8_t sx125x_read(uint8_t channel, uint8_t addr);
 
-int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz);
+#if (CFG_RADIO_1257 == 1)
+	int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz);
+#elif (CFG_RADIO_1255 == 1)
+	int setup_sx1255(uint8_t rf_chain, uint32_t freq_hz);
+#endif
 
 void lgw_constant_adjust(void);
 
@@ -288,7 +357,11 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+#if (CFG_RADIO_1257 == 1)
 int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
+#elif (CFG_RADIO_1255 == 1)
+int setup_sx1255(uint8_t rf_chain, uint32_t freq_hz) {
+#endif
 	uint32_t part_int;
 	uint32_t part_frac;
 	int cpt_attempts = 0;
@@ -311,8 +384,13 @@ int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
 	sx125x_write(rf_chain, 0x0D, SX125x_RXBB_BW + SX125x_RX_ADC_TRIM*4 + SX125x_RX_ADC_BW*32);
 	
 	/* set RX PLL frequency */
+	#if (CFG_RADIO_1257 == 1)
 	part_int = freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
 	part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+	#elif (CFG_RADIO_1255 == 1)
+	part_int = freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
+	part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+	#endif
 	sx125x_write(rf_chain, 0x01,0xFF & part_int); /* Most Significant Byte */
 	sx125x_write(rf_chain, 0x02,0xFF & (part_frac >> 8)); /* middle byte */
 	sx125x_write(rf_chain, 0x03,0xFF & part_frac); /* Least Significant Byte */
@@ -374,7 +452,11 @@ void lgw_constant_adjust(void) {
 	
 	/* Lora 'multi' demodulators setup */
 	lgw_reg_w(LGW_PREAMBLE_SYMB1_NB,4); /* default 10 */
+	#if (CFG_RADIO_1257 == 1)
 	// lgw_reg_w(LGW_FREQ_TO_TIME_DRIFT,9); /* default 9 */
+	#elif (CFG_RADIO_1255 == 1)
+	lgw_reg_w(LGW_FREQ_TO_TIME_DRIFT,17); /* default 9 */
+	#endif
 	// lgw_reg_w(LGW_FREQ_TO_TIME_INVERT,29); /* default 29 */
 	// lgw_reg_w(LGW_FRAME_SYNCH_GAIN,1); /* default 1 */
 	// lgw_reg_w(LGW_SYNCH_DETECT_TH,1); /* default 1 */
@@ -645,12 +727,21 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_RADIO_RST,0);
 	
 	/* setup the radios */
+	#if (CFG_RADIO_1257 == 1)
 	if (rf_enable[0] == 1) {
 		setup_sx1257(0, rf_rx_freq[0]);
 	}
 	if (rf_enable[1] == 1) {
 		setup_sx1257(1, rf_rx_freq[1]);
 	}
+	#elif (CFG_RADIO_1255 == 1)
+	if (rf_enable[0] == 1) {
+		setup_sx1255(0, rf_rx_freq[0]);
+	}
+	if (rf_enable[1] == 1) {
+		setup_sx1255(1, rf_rx_freq[1]);
+	}
+	#endif
 	
 	/* gives the AGC MCU control over radio, RF front-end and filter gain */
 	lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0);
@@ -1047,8 +1138,14 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	payload_offset = TX_METADATA_NB; /* start the payload just after the metadata */
 	
 	/* metadata 0 to 2, TX PLL frequency */
+	#if (CFG_RADIO_1257 == 1)
 	part_int = pkt_data.freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
 	part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+	#elif (CFG_RADIO_1255 == 1)
+	part_int = pkt_data.freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
+	part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+	#endif
+	
 	buff[0] = 0xFF & part_int; /* Most Significant Byte */
 	buff[1] = 0xFF & (part_frac >> 8); /* middle byte */
 	buff[2] = 0xFF & part_frac; /* Least Significant Byte */

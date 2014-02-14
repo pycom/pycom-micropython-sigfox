@@ -61,6 +61,12 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
                   = F_rf (Hz) * 2^19 / F_xtal(Hz)
                   = F_rf (Hz) * 2^19 / 32e6
                   = F_rf (Hz) * 256/15625
+
+SX1255 frequency setting :
+F_register(24bit) = F_rf (Hz) / F_step(Hz)
+                  = F_rf (Hz) * 2^20 / F_xtal(Hz)
+                  = F_rf (Hz) * 2^20 / 32e6
+                  = F_rf (Hz) * 512/15625
 */
 #define 	SX125x_32MHz_FRAC	15625	/* irreductible fraction for PLL register caculation */
 
@@ -387,8 +393,15 @@ int main(int argc, char **argv)
 		
 		/* set PLL to target frequency */
 		freq_hz = f_target - MEAS_IF;
+		
+		#if (CFG_RADIO_1257 == 1)
 		part_int = freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
 		part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+		#elif (CFG_RADIO_1255 == 1)
+		part_int = freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
+		part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+		#endif
+		
 		sx125x_write(RF_CHAIN, 0x01,0xFF & part_int); /* Most Significant Byte */
 		sx125x_write(RF_CHAIN, 0x02,0xFF & (part_frac >> 8)); /* middle byte */
 		sx125x_write(RF_CHAIN, 0x03,0xFF & part_frac); /* Least Significant Byte */

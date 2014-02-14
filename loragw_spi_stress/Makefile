@@ -2,23 +2,38 @@
 
 APP_NAME=loragw_spi_stress
 
-### constant symbols
-CROSS_COMPILE=
-CC=gcc
-CFLAGS=-O2 -Wall -Wextra -Iinc
-C99FLAGS=-O2 -Wall -Wextra -std=c99 -Iinc
-FLAG_AUX=
-
-### constants for Lora Gateway HAL library
+### Environment constants 
 
 LGW_PATH=../libloragw
-LGW_INC=-I$(LGW_PATH)/inc
+CROSS_COMPILE=
 
-LGW_LNK=-lloragw -lrt -lmpsse
-#LGW_LNK=-lloragw -lrt
-# add libmpsse or not, depending on what option you compiled the libloragw with
+### External constant definitions
+# must get library build option to know if mpsse must be linked or not
 
-### general build targets
+include $(LGW_PATH)/library.cfg
+
+### Constant symbols
+
+CC=$(CROSS_COMPILE)gcc
+AR=$(CROSS_COMPILE)ar
+
+CFLAGS=-O2 -Wall -Wextra -std=c99 -Iinc -I.
+
+### Constants for Lora Gateway HAL library
+# List the library sub-modules that are used by the application
+
+LGW_INC= $(LGW_PATH)/inc/config.h
+LGW_INC += $(LGW_PATH)/inc/loragw_reg.h
+
+### Linking options
+
+ifeq ($(CFG_SPI),native)
+  LIBS=-lloragw -lrt
+else ifeq ($(CFG_SPI),ftdi)
+  LIBS=-lloragw -lrt -lmpsse
+endif
+
+### General build targets
 
 all: $(APP_NAME)
 
@@ -26,10 +41,20 @@ clean:
 	rm -f obj/*.o
 	rm -f $(APP_NAME)
 
-### main program compilation and assembly
+### HAL library
 
-obj/$(APP_NAME).o: src/$(APP_NAME).c 
-	$(CROSS_COMPILE)$(CC) -c $(C99FLAGS) -o obj/$(APP_NAME).o $(LGW_INC) src/$(APP_NAME).c $(FLAG_AUX)
+$(LGW_INC):
+	$(MAKE) all -C $(LGW_PATH)
 
-$(APP_NAME): $(LGW_PATH)/libloragw.a obj/$(APP_NAME).o
-	$(CROSS_COMPILE)$(CC) -o $(APP_NAME) obj/$(APP_NAME).o -L$(LGW_PATH) $(LGW_LNK)
+$(LGW_PATH)/libloragw.a: $(LGW_INC)
+	$(MAKE) all -C $(LGW_PATH)
+
+### Main program compilation and assembly
+
+obj/$(APP_NAME).o: src/$(APP_NAME).c $(LGW_INC)
+	$(CC) -c $(CFLAGS) -I$(LGW_PATH)/inc $< -o $@
+
+$(APP_NAME): obj/$(APP_NAME).o $(LGW_PATH)/libloragw.a
+	$(CC) -L$(LGW_PATH) $< -o $@ $(LIBS)
+
+### EOF
