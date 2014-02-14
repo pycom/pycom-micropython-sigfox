@@ -5,39 +5,39 @@
 			"freq": 927000000
 		},
 		"chan_multiSF_0": {
+			/* Lora MAC channel, 125kHz, all SF, 926.7 MHz */
 			"enable": true,
 			"radio": 0,
-			"if": -300000,
-			"note": "Lora MAC channel, 125kHz, all SF, 926.7 MHz"
+			"if": -300000
 		},
 		"chan_multiSF_1": {
+			/* Lora MAC channel, 125kHz, all SF, 926.9 MHz */
 			"enable": true,
 			"radio": 0,
-			"if": -100000,
-			"note": "Lora MAC channel, 125kHz, all SF, 926.9 MHz"
+			"if": -100000
 		},
 		"chan_multiSF_2": {
+			/* Lora MAC channel, 125kHz, all SF, 927.1 MHz */
 			"enable": true,
 			"radio": 0,
-			"if": 100000,
-			"note": "Lora MAC channel, 125kHz, all SF, 927.1 MHz"
+			"if": 100000
 		},
 		"chan_Lora_std": {
+			/* Lora MAC channel, 250kHz, SF7, 927.3 MHz */
 			"enable": true,
 			"radio": 0,
 			"if": 300000,
 			"bandwidth": 250000,
-			"spread_factor": 7,
-			"note": "Lora MAC channel, 250kHz, SF7, 927.3 MHz"
+			"spread_factor": 7
 		},
 		
 		"chan_FSK": {
+			/* FSK 100kbps channel, 927.3 MHz */
 			"enable": true,
 			"radio": 0,
 			"if": 300000,
 			"bandwidth": 250000,
-			"datarate": 100000,
-			"note": "FSK 100kbps channel, 927.3 MHz"
+			"datarate": 100000
 		}
 	},
 	"gateway_conf": {
