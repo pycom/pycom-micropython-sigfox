@@ -1,6 +1,6 @@
 ### get external defined data
 
-RELEASE_VERSION= `cat ../VERSION`
+LIBLORAGW_VERSION= `cat ../VERSION`
 include library.cfg
 
 ### constant symbols
@@ -101,6 +101,7 @@ clean:
 	rm -f libloragw.a
 	rm -f test_loragw_*
 	rm -f obj/*.o
+	rm -f inc/config.h
 
 ### transpose library.cfg into a C header file : config.h
 
@@ -111,8 +112,8 @@ inc/config.h: ../VERSION library.cfg
 	@echo "#ifndef _LORAGW_CONFIGURATION_H" >> $@
 	@echo "#define _LORAGW_CONFIGURATION_H" >> $@
   # Release version
-	@echo "Release version   : $(RELEASE_VERSION)"
-	@echo "	#define RELEASE_VERSION	"\"$(RELEASE_VERSION)\""" >> $@
+	@echo "Release version   : $(LIBLORAGW_VERSION)"
+	@echo "	#define LIBLORAGW_VERSION	"\"$(LIBLORAGW_VERSION)\""" >> $@
   # SPI interface
 	@echo "SPI interface     : $(CFG_SPI_MSG)"
 	@echo "	#define $(CFG_SPI_OPT)	1" >> $@

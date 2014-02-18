@@ -166,7 +166,7 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #endif
 
 /* Version string, used to identify the library version/options once compiled */
-const char lgw_version_string[] = "Version: " RELEASE_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_RADIO_STR " " CFG_BAND_STR " " CFG_CAL_STR ";";
+const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_RADIO_STR " " CFG_BAND_STR " " CFG_CAL_STR ";";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
