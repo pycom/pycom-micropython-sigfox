@@ -50,7 +50,7 @@ $(LGW_PATH)/libloragw.a: $(LGW_INC)
 ### Sub-modules compilation
 
 obj/parson.o: src/parson.c inc/parson.h
-	$(CC) -c $(CFLAGS) -I$(LGW_PATH)/inc $< -o $@
+	$(CC) -c $(CFLAGS) $< -o $@
 
 ### Select the proper configuration JSON for the program
 

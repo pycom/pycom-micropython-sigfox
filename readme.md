@@ -3,7 +3,7 @@
 	 \____ \| ___ |    (_   _) ___ |/ ___)  _ \ 
 	 _____) ) ____| | | || |_| ____( (___| | | |
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
-		©2013 Semtech-Cycleo
+	  (C)2013 Semtech-Cycleo
 
 Lora Gateway HAL project
 =========================
@@ -64,15 +64,15 @@ gateways as receivers.
 
 ### v1.2.1 ###
 
- * Fixed 'floating point exception' crash when concentrator returned a packet with SF=0 (CRC error on Lora header).
- * Fixed buggy timezone handling.
+* Fixed 'floating point exception' crash when concentrator returned a packet with SF=0 (CRC error on Lora header).
+* Fixed buggy timezone handling.
 
 ### v1.2.0 ###
 
- * Added feature: new GPS module in the library for synchronization.
- * Removed feature: no more missed deadline detection in TX because of incompatibility with GPS.
- * Added documentation for GPS and legal notice.
- * Added flags in Makefiles for easier cross-compilation.
+* Added feature: new GPS module in the library for synchronization.
+* Removed feature: no more missed deadline detection in TX because of incompatibility with GPS.
+* Added documentation for GPS and legal notice.
+* Added flags in Makefiles for easier cross-compilation.
 
 ### v1.1.0 ###
 
