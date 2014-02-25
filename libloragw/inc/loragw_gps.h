@@ -46,7 +46,7 @@ struct tref {
 	time_t		systime; 	/*!> system time when solution was calculated */
 	uint32_t	count_us; 	/*!> reference concentrator internal timestamp */
 	struct timespec utc; 	/*!> reference UTC time (from GPS) */
-	double		xtal_err;	/*!> clock error estimation (eg. <1 'slow' XTAL) */
+	double		xtal_err;	/*!> raw clock error (eg. <1 'slow' XTAL) */
 };
 
 /**
