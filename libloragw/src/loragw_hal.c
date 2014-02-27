@@ -78,6 +78,8 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 */
 #define 	SX125x_32MHz_FRAC	15625	/* irreductible fraction for PLL register caculation */
 
+#define 	SX125x_RF_LOOP_BACK_EN	0
+#define 	SX125x_DIG_LOOP_BACK_EN	0
 #define		SX125x_TX_DAC_CLK_SEL	1	/* 0:int, 1:ext */
 #define		SX125x_TX_DAC_GAIN		2	/* 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2) */
 #define		SX125x_TX_MIX_GAIN		14	/* -38 + 2*TxMixGain dB (default 14) */
@@ -86,9 +88,15 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define		SX125x_TX_DAC_BW		7	/* 24 + 8*TxDacBw Nb FIR taps (default 2) */
 #define		SX125x_RX_LNA_GAIN		1	/* 1 to 6, 1 highest gain */
 #define		SX125x_RX_BB_GAIN		12	/* 0 to 15 , 15 highest gain */
-#define		SX125x_RX_ADC_BW		7	/* 0 to 7, 2:100<BW<200, 5:200<BW<400,7:400<BW (kHz) */
+#define 	SX125x_LNA_ZIN			1	/* 0:50, 1:200 Ohms (default 1) */
+#define		SX125x_RX_ADC_BW		7	/* 0 to 7, 2:100<BW<200, 5:200<BW<400,7:400<BW kHz SSB (default 7) */
 #define		SX125x_RX_ADC_TRIM		6	/* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
-#define		SX125x_RXBB_BW			2
+#define 	SX125x_RX_BB_BW			0	/* 0:750, 1:500, 2:375; 3:250 kHz SSB (default 1, max 3) */
+#define 	SX125x_RX_PLL_BW		0	/* 0:75, 1:150, 2:225, 3:300 kHz (default 3, max 3) */
+#define 	SX125x_ADC_TEMP			0	/* ADC temperature measurement mode (default 0) */
+#define 	SX125x_XOSC_GM_STARTUP	13	/* (default 13) */
+#define 	SX125x_XOSC_DISABLE		2	/* Disable of Xtal Oscillator blocks bit0:regulator, bit1:core(gm), bit2:amplifier */
+#define 	SX125x_CLK_OUT_EN		1
 
 #if (CFG_CAL_NANO868 == 1)
 	#define		RSSI_OFFSET_LORA_MULTI	-128.0	/* calibrated value */
@@ -183,23 +191,23 @@ Parameters validity and coherency is verified by the _setconf functions and
 the _start function assumes 
 */
 
-static bool lgw_is_started = false;
+static bool lgw_is_started;
 
-static bool rf_enable[LGW_RF_CHAIN_NB] = {0, 0};
-static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB] = {0, 0}; /* absolute, in Hz */
+static bool rf_enable[LGW_RF_CHAIN_NB];
+static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
 
-static bool if_enable[LGW_IF_CHAIN_NB] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-static bool if_rf_chain[LGW_IF_CHAIN_NB] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; /* for each IF, 0 -> radio A, 1 -> radio B */
-static int32_t if_freq[LGW_IF_CHAIN_NB] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; /* relative to radio frequency, +/- in Hz */
+static bool if_enable[LGW_IF_CHAIN_NB];
+static bool if_rf_chain[LGW_IF_CHAIN_NB]; /* for each IF, 0 -> radio A, 1 -> radio B */
+static int32_t if_freq[LGW_IF_CHAIN_NB]; /* relative to radio frequency, +/- in Hz */
 
-static uint8_t lora_multi_sfmask[LGW_MULTI_NB] = {0, 0, 0, 0}; /* enables SF for Lora 'multi' modems */
+static uint8_t lora_multi_sfmask[LGW_MULTI_NB]; /* enables SF for Lora 'multi' modems */
 
-static uint8_t lora_rx_bw = 0; /* bandwidth setting for Lora standalone modem */
-static uint8_t lora_rx_sf = 0; /* spreading factor setting for Lora standalone modem */
-static bool lora_rx_ppm_offset = 0;
+static uint8_t lora_rx_bw; /* bandwidth setting for Lora standalone modem */
+static uint8_t lora_rx_sf; /* spreading factor setting for Lora standalone modem */
+static bool lora_rx_ppm_offset;
 
-static uint8_t fsk_rx_bw = 0; /* bandwidth setting of FSK modem */
-static uint32_t fsk_rx_dr = 0; /* FSK modem datarate in bauds */
+static uint8_t fsk_rx_bw; /* bandwidth setting of FSK modem */
+static uint32_t fsk_rx_dr; /* FSK modem datarate in bauds */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -210,11 +218,7 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data);
 
 uint8_t sx125x_read(uint8_t channel, uint8_t addr);
 
-#if (CFG_RADIO_1257 == 1)
-	int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz);
-#elif (CFG_RADIO_1255 == 1)
-	int setup_sx1255(uint8_t rf_chain, uint32_t freq_hz);
-#endif
+int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz);
 
 void lgw_constant_adjust(void);
 
@@ -357,11 +361,7 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-#if (CFG_RADIO_1257 == 1)
-int setup_sx1257(uint8_t rf_chain, uint32_t freq_hz) {
-#elif (CFG_RADIO_1255 == 1)
-int setup_sx1255(uint8_t rf_chain, uint32_t freq_hz) {
-#endif
+int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz) {
 	uint32_t part_int;
 	uint32_t part_frac;
 	int cpt_attempts = 0;
@@ -371,42 +371,55 @@ int setup_sx1255(uint8_t rf_chain, uint32_t freq_hz) {
 		return -1;
 	}
 	
-	sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + 2); /* Enable 'clock out' for both radios */
-	sx125x_write(rf_chain, 0x26, 0X2D); /* Disable gm of oscillator block */
+	/* Get version to identify SX1255/57 silicon revision */
+	DEBUG_PRINTF("Note: SX125x #%d version register returned 0x%02x\n", rf_chain, sx125x_read(rf_chain, 0x07));
 	
-	/* Tx gain and trim */
-	sx125x_write(rf_chain, 0x08, SX125x_TX_MIX_GAIN + SX125x_TX_DAC_GAIN*16);
-	sx125x_write(rf_chain, 0x0A, SX125x_TX_ANA_BW + SX125x_TX_PLL_BW*32);
-	sx125x_write(rf_chain, 0x0B, SX125x_TX_DAC_BW);
-	
-	/* Rx gain and trim */
-	sx125x_write(rf_chain, 0x0C, 0 + SX125x_RX_BB_GAIN*2 + SX125x_RX_LNA_GAIN*32);
-	sx125x_write(rf_chain, 0x0D, SX125x_RXBB_BW + SX125x_RX_ADC_TRIM*4 + SX125x_RX_ADC_BW*32);
-	
-	/* set RX PLL frequency */
+	/* General radio setup */
+	sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + SX125x_CLK_OUT_EN*2 + SX125x_RF_LOOP_BACK_EN*4 + SX125x_DIG_LOOP_BACK_EN*8);
 	#if (CFG_RADIO_1257 == 1)
-	part_int = freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
-	part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+	sx125x_write(rf_chain, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
 	#elif (CFG_RADIO_1255 == 1)
-	part_int = freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
-	part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+	sx125x_write(rf_chain, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
 	#endif
-	sx125x_write(rf_chain, 0x01,0xFF & part_int); /* Most Significant Byte */
-	sx125x_write(rf_chain, 0x02,0xFF & (part_frac >> 8)); /* middle byte */
-	sx125x_write(rf_chain, 0x03,0xFF & part_frac); /* Least Significant Byte */
 	
-	/* start and PLL lock */
-	do {
-		if (cpt_attempts >= PLL_LOCK_MAX_ATTEMPTS) {
-			DEBUG_MSG("ERROR: FAIL TO LOCK PLL\n");
-			return -1;
-		}
-		sx125x_write(rf_chain, 0x00, 1); /* enable Xtal oscillator */
-		sx125x_write(rf_chain, 0x00, 3); /* Enable RX (PLL+FE) */
-		++cpt_attempts;
-		DEBUG_PRINTF("Note: SX125x #%d PLL start (attempt %d)\n", rf_chain, cpt_attempts);
-		wait_ms(1);
-	} while((sx125x_read(rf_chain, 0x11) & 0x02) == 0);
+	if (rf_enable[rf_chain] == true) {
+		/* Tx gain and trim */
+		sx125x_write(rf_chain, 0x08, SX125x_TX_MIX_GAIN + SX125x_TX_DAC_GAIN*16);
+		sx125x_write(rf_chain, 0x0A, SX125x_TX_ANA_BW + SX125x_TX_PLL_BW*32);
+		sx125x_write(rf_chain, 0x0B, SX125x_TX_DAC_BW);
+		
+		/* Rx gain and trim */
+		sx125x_write(rf_chain, 0x0C, SX125x_LNA_ZIN + SX125x_RX_BB_GAIN*2 + SX125x_RX_LNA_GAIN*32);
+		sx125x_write(rf_chain, 0x0D, SX125x_RX_BB_BW + SX125x_RX_ADC_TRIM*4 + SX125x_RX_ADC_BW*32);
+		sx125x_write(rf_chain, 0x0E, SX125x_ADC_TEMP + SX125x_RX_PLL_BW*2);
+		
+		/* set RX PLL frequency */
+		#if (CFG_RADIO_1257 == 1)
+		part_int = freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
+		part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+		#elif (CFG_RADIO_1255 == 1)
+		part_int = freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
+		part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+		#endif
+		sx125x_write(rf_chain, 0x01,0xFF & part_int); /* Most Significant Byte */
+		sx125x_write(rf_chain, 0x02,0xFF & (part_frac >> 8)); /* middle byte */
+		sx125x_write(rf_chain, 0x03,0xFF & part_frac); /* Least Significant Byte */
+		
+		/* start and PLL lock */
+		do {
+			if (cpt_attempts >= PLL_LOCK_MAX_ATTEMPTS) {
+				DEBUG_MSG("ERROR: FAIL TO LOCK PLL\n");
+				return -1;
+			}
+			sx125x_write(rf_chain, 0x00, 1); /* enable Xtal oscillator */
+			sx125x_write(rf_chain, 0x00, 3); /* Enable RX (PLL+FE) */
+			++cpt_attempts;
+			DEBUG_PRINTF("Note: SX125x #%d PLL start (attempt %d)\n", rf_chain, cpt_attempts);
+			wait_ms(1);
+		} while((sx125x_read(rf_chain, 0x11) & 0x02) == 0);
+	} else {
+		DEBUG_PRINTF("Note: SX125x #%d kept in standby mode\n", rf_chain);
+	}
 	
 	return 0;
 }
@@ -422,14 +435,14 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_RX_EDGE_SELECT,0); /* default 0 */
 	// lgw_reg_w(LGW_MBWSSF_MODEM_INVERT_IQ,0); /* default 0 */
 	// lgw_reg_w(LGW_DC_NOTCH_EN,1); /* default 1 */
-	lgw_reg_w(LGW_RSSI_BB_FILTER_ALPHA,9); /* default 7 */
-	lgw_reg_w(LGW_RSSI_DEC_FILTER_ALPHA,9); /* default 5 */
+	lgw_reg_w(LGW_RSSI_BB_FILTER_ALPHA,6); /* default 7 */
+	lgw_reg_w(LGW_RSSI_DEC_FILTER_ALPHA,7); /* default 5 */
 	lgw_reg_w(LGW_RSSI_CHANN_FILTER_ALPHA,7); /* default 8 */
-	// lgw_reg_w(LGW_RSSI_BB_DEFAULT_VALUE,32); /* default 32 */
-	lgw_reg_w(LGW_RSSI_CHANN_DEFAULT_VALUE,90); /* default 100 */
-	lgw_reg_w(LGW_RSSI_DEC_DEFAULT_VALUE,90); /* default 100 */
-	// lgw_reg_w(LGW_DEC_GAIN_OFFSET, 8); /* default 8 */
-	// lgw_reg_w(LGW_CHAN_GAIN_OFFSET, 7); /* default 7 */
+	lgw_reg_w(LGW_RSSI_BB_DEFAULT_VALUE,23); /* default 32 */
+	lgw_reg_w(LGW_RSSI_CHANN_DEFAULT_VALUE,85); /* default 100 */
+	lgw_reg_w(LGW_RSSI_DEC_DEFAULT_VALUE,66); /* default 100 */
+	lgw_reg_w(LGW_DEC_GAIN_OFFSET,7); /* default 8 */
+	lgw_reg_w(LGW_CHAN_GAIN_OFFSET,6); /* default 7 */
 	
 	/* Correlator setup */
 	// lgw_reg_w(LGW_CORR_DETECT_EN,126); /* default 126 */
@@ -451,7 +464,7 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_CORR_SIG_NOISE_RATIO_SF12,4); /* default 4 */
 	
 	/* Lora 'multi' demodulators setup */
-	lgw_reg_w(LGW_PREAMBLE_SYMB1_NB,4); /* default 10 */
+	// lgw_reg_w(LGW_PREAMBLE_SYMB1_NB,10); /* default 10 */
 	#if (CFG_RADIO_1257 == 1)
 	// lgw_reg_w(LGW_FREQ_TO_TIME_DRIFT,9); /* default 9 */
 	#elif (CFG_RADIO_1255 == 1)
@@ -473,7 +486,6 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_MAX_PAYLOAD_LEN,255); /* default 255 */
 	
 	/* Lora standalone 'MBWSSF' demodulator setup */
-	// lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE,1); /* default 0 */
 	// lgw_reg_w(LGW_MBWSSF_PREAMBLE_SYMB1_NB,10); /* default 10 */
 	// lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_DRIFT,36); /* default 36 */
 	// lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_INVERT,29); /* default 29 */
@@ -556,7 +568,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 	rf_enable[rf_chain] = conf.enable;
 	rf_rx_freq[rf_chain] = conf.freq_hz;
 	
-	DEBUG_PRINTF("Note: rf_chain %d configured; en:%d freq:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain]);
+	DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain]);
 	
 	return LGW_HAL_SUCCESS;
 }
@@ -628,12 +640,12 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 			lora_rx_bw = conf.bandwidth;
 			lora_rx_sf = (uint8_t)(DR_LORA_MULTI & conf.datarate); /* filter SF out of the 7-12 range */
 			if (SET_PPM_ON(conf.bandwidth, conf.datarate)) {
-				lora_rx_ppm_offset = 1;
+				lora_rx_ppm_offset = true;
 			} else {
-				lora_rx_ppm_offset = 0;
+				lora_rx_ppm_offset = false;
 			}
 			
-			DEBUG_PRINTF("Note: Lora 'std' if_chain %d configured; en:%d freq:%d bw:%d dr:%d\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_rx_bw, lora_rx_sf);
+			DEBUG_PRINTF("Note: Lora 'std' if_chain %d configuration; en:%d freq:%d bw:%d dr:%d\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_rx_bw, lora_rx_sf);
 			break;
 		
 		case IF_LORA_MULTI:
@@ -659,7 +671,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 			if_freq[if_chain] = conf.freq_hz;
 			lora_multi_sfmask[if_chain] = (uint8_t)(DR_LORA_MULTI & conf.datarate); /* filter SF out of the 7-12 range */
 			
-			DEBUG_PRINTF("Note: Lora 'multi' if_chain %d configured; en:%d freq:%d SF_mask:0x%02x\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_multi_sfmask[if_chain]);
+			DEBUG_PRINTF("Note: Lora 'multi' if_chain %d configuration; en:%d freq:%d SF_mask:0x%02x\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_multi_sfmask[if_chain]);
 			break;
 		
 		case IF_FSK_STD:
@@ -685,7 +697,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 			if_freq[if_chain] = conf.freq_hz;
 			fsk_rx_bw = conf.bandwidth;
 			fsk_rx_dr = conf.datarate;
-			DEBUG_PRINTF("Note: FSK if_chain %d configured; en:%d freq:%d bw:%d dr:%d (%d real dr)\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU/(LGW_XTAL_FREQU/fsk_rx_dr));
+			DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr)\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU/(LGW_XTAL_FREQU/fsk_rx_dr));
 			break;
 		
 		default:
@@ -727,26 +739,8 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_RADIO_RST,0);
 	
 	/* setup the radios */
-	#if (CFG_RADIO_1257 == 1)
-	if (rf_enable[0] == 1) {
-		setup_sx1257(0, rf_rx_freq[0]);
-	}
-	if (rf_enable[1] == 1) {
-		setup_sx1257(1, rf_rx_freq[1]);
-	}
-	#elif (CFG_RADIO_1255 == 1)
-	if (rf_enable[0] == 1) {
-		setup_sx1255(0, rf_rx_freq[0]);
-	}
-	if (rf_enable[1] == 1) {
-		setup_sx1255(1, rf_rx_freq[1]);
-	}
-	#endif
-	
-	/* gives the AGC MCU control over radio, RF front-end and filter gain */
-	lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0);
-	lgw_reg_w(LGW_FORCE_HOST_FE_CTRL,0);
-	lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN,0);
+	setup_sx125x(0, rf_rx_freq[0]);
+	setup_sx125x(1, rf_rx_freq[1]);
 	
 	/* TODO load the calibration firmware and wait for calibration to end */
 	
@@ -763,7 +757,7 @@ int lgw_start(void) {
 	
 	/* configure Lora 'multi' demodulators aka. Lora 'sensor' channels (IF0-3) */
 	j = 0;
-	for(i=0; i<=7; ++i) {
+	for(i=0; i<LGW_MULTI_NB; ++i) {
 		j += (if_rf_chain[i] == 1 ? 1 << i : 0); /* transform bool array into binary word */
 	}
 	lgw_reg_w(LGW_RADIO_SELECT, j); /* IF mapping to radio A/B (per bit, 0=A, 1=B) */
@@ -772,11 +766,23 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_IF_FREQ_1, IF_HZ_TO_REG(if_freq[1])); /* default -128 */
 	lgw_reg_w(LGW_IF_FREQ_2, IF_HZ_TO_REG(if_freq[2])); /* default 128 */
 	lgw_reg_w(LGW_IF_FREQ_3, IF_HZ_TO_REG(if_freq[3])); /* default 384 */
+	#if (CFG_CHIP_1301 == 1)
+	lgw_reg_w(LGW_IF_FREQ_4, IF_HZ_TO_REG(if_freq[4])); /* default -384 */
+	lgw_reg_w(LGW_IF_FREQ_5, IF_HZ_TO_REG(if_freq[5])); /* default -128 */
+	lgw_reg_w(LGW_IF_FREQ_6, IF_HZ_TO_REG(if_freq[6])); /* default 128 */
+	lgw_reg_w(LGW_IF_FREQ_7, IF_HZ_TO_REG(if_freq[7])); /* default 384 */
+	#endif
 	
 	lgw_reg_w(LGW_CORR0_DETECT_EN, (if_enable[0] == true) ? lora_multi_sfmask[0] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR1_DETECT_EN, (if_enable[1] == true) ? lora_multi_sfmask[1] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR2_DETECT_EN, (if_enable[2] == true) ? lora_multi_sfmask[2] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR3_DETECT_EN, (if_enable[3] == true) ? lora_multi_sfmask[3] : 0); /* default 0 */
+	#if (CFG_CHIP_1301 == 1)
+	lgw_reg_w(LGW_CORR4_DETECT_EN, (if_enable[4] == true) ? lora_multi_sfmask[4] : 0); /* default 0 */
+	lgw_reg_w(LGW_CORR5_DETECT_EN, (if_enable[5] == true) ? lora_multi_sfmask[5] : 0); /* default 0 */
+	lgw_reg_w(LGW_CORR6_DETECT_EN, (if_enable[6] == true) ? lora_multi_sfmask[6] : 0); /* default 0 */
+	lgw_reg_w(LGW_CORR7_DETECT_EN, (if_enable[7] == true) ? lora_multi_sfmask[7] : 0); /* default 0 */
+	#endif
 	
 	lgw_reg_w(LGW_PPM_OFFSET, 0x60); /* as the threshold is 16ms, use 0x60 to enable ppm_offset for SF12 and SF11 @125kHz*/
 	
@@ -825,6 +831,11 @@ int lgw_start(void) {
 	/* Load firmware */
 	load_firmware(MCU_ARB, arb_firmware, MCU_ARB_FW_BYTE);
 	load_firmware(MCU_AGC, agc_firmware, MCU_AGC_FW_BYTE);
+	
+	/* gives the AGC MCU control over radio, RF front-end and filter gain */
+	lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0);
+	lgw_reg_w(LGW_FORCE_HOST_FE_CTRL,0);
+	lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN,0);
 	
 	/* Get MCUs out of reset */
 	lgw_reg_w(LGW_MCU_RST_0, 0);
