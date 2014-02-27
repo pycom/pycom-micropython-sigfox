@@ -465,11 +465,6 @@ void lgw_constant_adjust(void) {
 	
 	/* Lora 'multi' demodulators setup */
 	// lgw_reg_w(LGW_PREAMBLE_SYMB1_NB,10); /* default 10 */
-	#if (CFG_RADIO_1257 == 1)
-	// lgw_reg_w(LGW_FREQ_TO_TIME_DRIFT,9); /* default 9 */
-	#elif (CFG_RADIO_1255 == 1)
-	lgw_reg_w(LGW_FREQ_TO_TIME_DRIFT,17); /* default 9 */
-	#endif
 	// lgw_reg_w(LGW_FREQ_TO_TIME_INVERT,29); /* default 29 */
 	// lgw_reg_w(LGW_FRAME_SYNCH_GAIN,1); /* default 1 */
 	// lgw_reg_w(LGW_SYNCH_DETECT_TH,1); /* default 1 */
@@ -487,7 +482,6 @@ void lgw_constant_adjust(void) {
 	
 	/* Lora standalone 'MBWSSF' demodulator setup */
 	// lgw_reg_w(LGW_MBWSSF_PREAMBLE_SYMB1_NB,10); /* default 10 */
-	// lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_DRIFT,36); /* default 36 */
 	// lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_INVERT,29); /* default 29 */
 	// lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_GAIN,1); /* default 1 */
 	// lgw_reg_w(LGW_MBWSSF_SYNCH_DETECT_TH,1); /* default 1 */
@@ -713,6 +707,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 int lgw_start(void) {
 	int i, j;
 	int reg_stat;
+	unsigned x;
 	
 	if (lgw_is_started == true) {
 		DEBUG_MSG("Note: Lora Gateway already started, restarting it now\n");
@@ -754,6 +749,18 @@ int lgw_start(void) {
 	
 	/* load adjusted parameters */
 	lgw_constant_adjust();
+	
+	/* Freq-to-time-drift calculation */
+	x = (2 * 8192000000) / (uint64_t)(rf_rx_lowfreq[0] + rf_rx_upfreq[0]); /* 64b calculation */
+	if (x > 63) {
+		x = 63;
+	}
+	lgw_reg_w(LGW_FREQ_TO_TIME_DRIFT, x); /* default 9 */
+	x = (2 * 32768000000) / (uint64_t)(rf_rx_lowfreq[0] + rf_rx_upfreq[0]); /* 64b calculation */
+	if (x > 63) {
+		x = 63;
+	}
+	lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_DRIFT, x); /* default 36 */
 	
 	/* configure Lora 'multi' demodulators aka. Lora 'sensor' channels (IF0-3) */
 	j = 0;
