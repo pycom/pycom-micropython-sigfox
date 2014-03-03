@@ -181,7 +181,7 @@ The other settings available in library.cfg are:
   To disable band-specific limits, use the 'full' setting that will allow all 
   frequencies supported by the radio.
 
-* CFG_CAL configures which set of calibration parameters will be used.
+* CFG_BRD configures board misc parameters and calibration values.
   The RSSI reported by the library when a packet is received, and the TX power 
   specified when is packet is sent, very significantly with the board and 
   components use around the radios (eg. external PA and LNA, filters, RF 

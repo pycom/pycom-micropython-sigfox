@@ -126,6 +126,19 @@ Maintainer: Sylvain Miermont
 		IF_FSK_STD } /* configuration of available IF chains and modems on the hardware */
 #endif
 
+/* board-specific parameters */
+/* to use array parameters, declare a local const and use 'rf_chain' as index */
+#if (CFG_BRD_NANO868 == 1)
+	#define LGW_RF_TX_ENABLE	{ true, true}	/* both radio A and B are usable in TX */
+	#define LGW_RF_CLKOUT		{ true, true}	/* both radios have clkout enabled */
+#elif (CFG_BRD_REF1301 == 1)
+	#define LGW_RF_TX_ENABLE	{ true,false}	/* radio B TX output is disconnected */
+	#define LGW_RF_CLKOUT		{false, true}	/* radio A clkout disabled for spur optimization */
+#elif (CFG_BRD_NONE == 1)
+	#define LGW_RF_TX_ENABLE	{ true, true}	/* both radio A and B are usable in TX */
+	#define LGW_RF_CLKOUT		{ true, true}	/* both radios have clkout enabled */
+#endif
+
 /* values available for the 'modulation' parameters */
 /* NOTE: arbitrary values */
 #define MOD_UNDEFINED	0

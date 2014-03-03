@@ -59,6 +59,8 @@ const uint32_t rf_rx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_RX_UPFREQ;
 const uint32_t rf_rx_bandwidth[LGW_RF_CHAIN_NB] = LGW_RF_RX_BANDWIDTH;
 const uint32_t rf_tx_lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_LOWFREQ;
 const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
+const bool rf_tx_enable[LGW_RF_CHAIN_NB] = LGW_RF_TX_ENABLE;
+const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 
 #define		MCU_ARB_FW_BYTE		8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
 #define		MCU_AGC_FW_BYTE		8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
@@ -78,8 +80,6 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 */
 #define 	SX125x_32MHz_FRAC	15625	/* irreductible fraction for PLL register caculation */
 
-#define 	SX125x_RF_LOOP_BACK_EN	0
-#define 	SX125x_DIG_LOOP_BACK_EN	0
 #define		SX125x_TX_DAC_CLK_SEL	1	/* 0:int, 1:ext */
 #define		SX125x_TX_DAC_GAIN		2	/* 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2) */
 #define		SX125x_TX_MIX_GAIN		14	/* -38 + 2*TxMixGain dB (default 14) */
@@ -96,19 +96,19 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define 	SX125x_ADC_TEMP			0	/* ADC temperature measurement mode (default 0) */
 #define 	SX125x_XOSC_GM_STARTUP	13	/* (default 13) */
 #define 	SX125x_XOSC_DISABLE		2	/* Disable of Xtal Oscillator blocks bit0:regulator, bit1:core(gm), bit2:amplifier */
-#define 	SX125x_CLK_OUT_EN		1
 
-#if (CFG_CAL_NANO868 == 1)
+/* Board-specific RSSI calibration constants */
+#if (CFG_BRD_NANO868 == 1)
 	#define		RSSI_OFFSET_LORA_MULTI	-128.0	/* calibrated value */
 	#define		RSSI_OFFSET_LORA_STD	-167.0	/* calibrated for all bandwidth */
 	#define		RSSI_OFFSET_FSK			-146.5	/* calibrated value */
 	#define		RSSI_SLOPE_FSK			1.2		/* calibrated value */
-#elif (CFG_CAL_REF1301 == 1)
+#elif (CFG_BRD_REF1301 == 1)
 	#define		RSSI_OFFSET_LORA_MULTI	-128.0	/* todo */
 	#define		RSSI_OFFSET_LORA_STD	-167.0	/* todo */
 	#define		RSSI_OFFSET_FSK			-146.5	/* todo */
 	#define		RSSI_SLOPE_FSK			1.2		/* todo */
-#elif (CFG_CAL_NONE == 1)
+#elif (CFG_BRD_NONE == 1)
 	#define		RSSI_OFFSET_LORA_MULTI	0.0
 	#define		RSSI_OFFSET_LORA_STD	0.0
 	#define		RSSI_OFFSET_FSK			0.0
@@ -163,18 +163,18 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 	#define		CFG_BAND_STR	"band?"
 #endif
 
-#if (CFG_CAL_NANO868 == 1)
-	#define		CFG_CAL_STR		"dev_nano_868"
-#elif (CFG_CAL_REF1301 == 1)
-	#define		CFG_CAL_STR		"ref_1301_57nf"
-#elif (CFG_CAL_NONE == 1)
-	#define		CFG_CAL_STR		"no_cal"
+#if (CFG_BRD_NANO868 == 1)
+	#define		CFG_BRD_STR		"dev_nano_868"
+#elif (CFG_BRD_REF1301 == 1)
+	#define		CFG_BRD_STR		"ref_1301_57nf"
+#elif (CFG_BRD_NONE == 1)
+	#define		CFG_BRD_STR		"no_brd"
 #else
-	#define		CFG_CAL_STR		"cal?"
+	#define		CFG_BRD_STR		"brd?"
 #endif
 
 /* Version string, used to identify the library version/options once compiled */
-const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_RADIO_STR " " CFG_BAND_STR " " CFG_CAL_STR ";";
+const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_RADIO_STR " " CFG_BAND_STR " " CFG_BRD_STR ";";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -375,7 +375,13 @@ int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz) {
 	DEBUG_PRINTF("Note: SX125x #%d version register returned 0x%02x\n", rf_chain, sx125x_read(rf_chain, 0x07));
 	
 	/* General radio setup */
-	sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + SX125x_CLK_OUT_EN*2 + SX125x_RF_LOOP_BACK_EN*4 + SX125x_DIG_LOOP_BACK_EN*8);
+	if (rf_clkout[rf_chain] == true) {
+		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + 2);
+		DEBUG_PRINTF("Note: SX125x #%d clock output enabled\n", rf_chain);
+	} else {
+		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL);
+		DEBUG_PRINTF("Note: SX125x #%d clock output disabled\n", rf_chain);
+	}
 	#if (CFG_RADIO_1257 == 1)
 	sx125x_write(rf_chain, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
 	#elif (CFG_RADIO_1255 == 1)
@@ -726,8 +732,8 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_GLOBAL_EN, 1);
 	
 	/* switch on and reset the radios (also starts the 32 MHz XTAL) */
-	lgw_reg_w(LGW_RADIO_A_EN,1); /* radio A *must* be started to get 32 MHz clk */
-	lgw_reg_w(LGW_RADIO_B_EN,1); /* radio B *must* be started because they share the same XTAL I/O is clamped to ground when off */
+	lgw_reg_w(LGW_RADIO_A_EN,1);
+	lgw_reg_w(LGW_RADIO_B_EN,1);
 	wait_ms(500);
 	lgw_reg_w(LGW_RADIO_RST,1);
 	wait_ms(5);
@@ -1093,6 +1099,10 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	}
 	
 	/* check input variables */
+	if (rf_tx_enable[pkt_data.rf_chain] == false) {
+		DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED FOR TX ON SELECTED BOARD\n");
+		return LGW_HAL_ERROR;
+	}
 	if (rf_enable[pkt_data.rf_chain] == false) {
 		DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED\n");
 		return LGW_HAL_ERROR;

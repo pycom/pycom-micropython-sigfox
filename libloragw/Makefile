@@ -73,16 +73,16 @@ else
   CFG_BAND_OPT= CFG_BAND_FULL
 endif
 
-ifeq ($(CFG_CAL),dev_nano_868)
-  CFG_CAL_MSG= FPGA-based nano-concentrator, with 868 MHz SAW filter
-  CFG_CAL_OPT= CFG_CAL_NANO868
-else ifeq ($(CFG_CAL),ref_1301_57nf)
-  CFG_CAL_MSG= SX1301 reference board with SX1257 radios, no filters
-  CFG_CAL_OPT= CFG_CAL_REF1301
+ifeq ($(CFG_BRD),dev_nano_868)
+  CFG_BRD_MSG= FPGA-based nano-concentrator, with 868 MHz SAW filter
+  CFG_BRD_OPT= CFG_BRD_NANO868
+else ifeq ($(CFG_BRD),ref_1301_57nf)
+  CFG_BRD_MSG= SX1301 reference board with SX1257 radios, no filters
+  CFG_BRD_OPT= CFG_BRD_REF1301
 else
-  $(warning [Warning] No calibration selected.)
-  CFG_CAL_MSG= None
-  CFG_CAL_OPT= CFG_CAL_NONE
+  $(info [Info] No specific board selected.)
+  CFG_BRD_MSG= None
+  CFG_BRD_OPT= CFG_BRD_NONE
 endif
 
 ### linking options
@@ -126,9 +126,9 @@ inc/config.h: ../VERSION library.cfg
   # Frequency band
 	@echo "Frequency band    : $(CFG_BAND_MSG)"
 	@echo "	#define $(CFG_BAND_OPT)	1" >> $@
-  # Calibration parameters
-	@echo "Calibration param : $(CFG_CAL_MSG)"
-	@echo "	#define $(CFG_CAL_OPT)	1" >> $@
+  # Board misc. parameters
+	@echo "Board misc. param : $(CFG_BRD_MSG)"
+	@echo "	#define $(CFG_BRD_OPT)	1" >> $@
   # Debug options
 	@echo "	#define DEBUG_AUX	$(DEBUG_AUX)" >> $@
 	@echo "	#define DEBUG_SPI	$(DEBUG_SPI)" >> $@
