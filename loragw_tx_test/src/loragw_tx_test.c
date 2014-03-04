@@ -162,7 +162,7 @@ int main(int argc, char **argv)
 			
 			case 'p': /* -p <int> RF power */
 				i = sscanf(optarg, "%i", &xi);
-				if ((i != 1) || (xi < 0) || (xi > 30)) {
+				if ((i != 1) || (xi < -60) || (xi > 60)) {
 					MSG("ERROR: invalid RF power\n");
 					return EXIT_FAILURE;
 				} else {
