@@ -47,23 +47,23 @@ Maintainer: Sylvain Miermont
 #define TRACE() 		fprintf(stderr, "@ %s %d\n", __FUNCTION__, __LINE__);
 
 /* -------------------------------------------------------------------------- */
-/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
+/* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
 
 #define		MCU_ARB		0
 #define		MCU_AGC		1
 
-const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG; /* define hardware capability */
-
-const uint32_t rf_rx_lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_RX_LOWFREQ;
-const uint32_t rf_rx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_RX_UPFREQ;
-const uint32_t rf_rx_bandwidth[LGW_RF_CHAIN_NB] = LGW_RF_RX_BANDWIDTH;
-const uint32_t rf_tx_lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_LOWFREQ;
-const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
-const bool rf_tx_enable[LGW_RF_CHAIN_NB] = LGW_RF_TX_ENABLE;
-const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
-
 #define		MCU_ARB_FW_BYTE		8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
 #define		MCU_AGC_FW_BYTE		8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
+
+#define		TX_METADATA_NB		16
+#define		RX_METADATA_NB		16
+
+#define		MIN_LORA_PREAMBLE		4
+#define		STD_LORA_PREAMBLE		6
+#define		MIN_FSK_PREAMBLE		3
+#define		PLL_LOCK_MAX_ATTEMPTS	5
+
+#define		TX_START_DELAY		1500
 
 /*
 SX1257 frequency setting :
@@ -108,6 +108,9 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 	#define		RSSI_OFFSET_LORA_STD	-167.0	/* todo */
 	#define		RSSI_OFFSET_FSK			-146.5	/* todo */
 	#define		RSSI_SLOPE_FSK			1.2		/* todo */
+/* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
+#elif (CFG_BRD_MYBOARD == 1)
+*/
 #elif (CFG_BRD_NONE == 1)
 	#define		RSSI_OFFSET_LORA_MULTI	0.0
 	#define		RSSI_OFFSET_LORA_STD	0.0
@@ -115,15 +118,117 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 	#define		RSSI_SLOPE_FSK			1.0
 #endif
 
-#define		TX_METADATA_NB		16
-#define		RX_METADATA_NB		16
+/* constant arrays defining hardware capability */
 
-#define		MIN_LORA_PREAMBLE		4
-#define		STD_LORA_PREAMBLE		6
-#define		MIN_FSK_PREAMBLE		3
-#define		PLL_LOCK_MAX_ATTEMPTS	5
+const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 
-#define		TX_START_DELAY		1000
+const uint32_t rf_rx_lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_RX_LOWFREQ;
+const uint32_t rf_rx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_RX_UPFREQ;
+const uint32_t rf_rx_bandwidth[LGW_RF_CHAIN_NB] = LGW_RF_RX_BANDWIDTH;
+const uint32_t rf_tx_lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_LOWFREQ;
+const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
+const bool rf_tx_enable[LGW_RF_CHAIN_NB] = LGW_RF_TX_ENABLE;
+const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
+
+/* TX power management */
+
+#define	TX_POW_LUT_SIZE	16
+
+typedef struct {
+	uint8_t	pa_gain;	/* 2 bits, control of the external PA (SX1301 I/O) */
+	uint8_t	dac_gain;	/* 2 bits, control of the radio DAC */
+	uint8_t	mix_gain;	/* 4 bits, control of the radio mixer */
+	int8_t	rf_power;	/* measured TX power at the board connector, in dBm */
+} tx_pow_t;
+
+/* Default table (TX power associated to each value is board-dependant)
+	+-------+------+------+------+------+
+	|       |  PA  | DAC  | mix. | ctrl |
+	| index | ctrl | ctrl | ctrl | byte |
+	+-------+--------------------+------+
+	|    0  |   0      3      8  | 0x38 |
+	|    1  |   0      3     10  | 0x3A |
+	|    2  |   0      3     12  | 0x3C |
+	|    3  |   1      3      8  | 0x78 |
+	|    4  |   1      3     10  | 0x7A |
+	|    5  |   1      3     12  | 0x7C |
+	|    6  |   1      3     13  | 0x7D |
+	|    7  |   1      3     15  | 0x7F |
+	|    8  |   2      3      9  | 0xB9 |
+	|    9  |   2      3     10  | 0xBA |
+	|   10  |   2      3     11  | 0xBB |
+	|   11  |   3      3     10  | 0xFA |
+	|   12  |   3      3     11  | 0xFB |
+	|   13  |   3      3     12  | 0xFC |
+	|   14  |   3      3     13  | 0xFD |
+	|   15  |   3      3     15  | 0xFF |
+	+-------+--------------------+------+
+*/
+
+#if (CFG_BRD_NANO868 == 1)
+	#define	CUSTOM_TX_POW_TABLE		1 /* is custom table loading sequence needed ? */
+	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
+		{	0,	3,	8,	2},\
+		{	0,	3,	9,	3},\
+		{	0,	3,	10,	5},\
+		{	0,	3,	12,	7},\
+		{	0,	3,	14,	9},\
+		{	0,	3,	15,	10},\
+		{	1,	3,	8,	12},\
+		{	1,	3,	9,	14},\
+		{	1,	3,	10,	15},\
+		{	1,	3,	11,	17},\
+		{	1,	3,	12,	18},\
+		{	1,	3,	13,	20},\
+		{	2,	3,	8,	21},\
+		{	2,	3,	9,	23},\
+		{	2,	3,	11,	25},\
+		{	2,	3,	13,	27},\
+	}; /* calibrated */
+#elif (CFG_BRD_REF1301 == 1)
+	#define	CUSTOM_TX_POW_TABLE		1
+	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
+		{	0,	3,	8,	-9},\
+		{	0,	3,	10,	-6},\
+		{	0,	3,	12,	-3},\
+		{	1,	3,	8,	0},\
+		{	1,	3,	10,	4},\
+		{	1,	3,	12,	7},\
+		{	1,	3,	13,	8},\
+		{	1,	3,	15,	9},\
+		{	2,	3,	9,	10},\
+		{	2,	3,	10,	12},\
+		{	2,	3,	11,	13},\
+		{	3,	3,	10,	21},\
+		{	3,	3,	12,	23},\
+		{	3,	3,	12,	24},\
+		{	3,	3,	13,	25},\
+		{	3,	3,	15,	26},\
+	}; /* calibrated */
+/* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
+#elif (CFG_BRD_MYBOARD == 1)
+*/
+#elif (CFG_BRD_NONE == 1)
+	#define	CUSTOM_TX_POW_TABLE		0
+	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
+		{	0,	3,	8,	0},\
+		{	0,	3,	10,	1},\
+		{	0,	3,	12,	2},\
+		{	1,	3,	8,	3},\
+		{	1,	3,	10,	4},\
+		{	1,	3,	12,	5},\
+		{	1,	3,	13,	6},\
+		{	1,	3,	15,	7},\
+		{	2,	3,	9,	8},\
+		{	2,	3,	10,	9},\
+		{	2,	3,	11,	10},\
+		{	3,	3,	10,	11},\
+		{	3,	3,	12,	12},\
+		{	3,	3,	12,	13},\
+		{	3,	3,	13,	14},\
+		{	3,	3,	15,	15},\
+	}; // uncalibrated table, lgw_pkt_tx_s.rf_power selects table index */
+#endif
 
 /* Strings for version (and options) identification */
 
@@ -167,6 +272,9 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 	#define		CFG_BRD_STR		"dev_nano_868"
 #elif (CFG_BRD_REF1301 == 1)
 	#define		CFG_BRD_STR		"ref_1301_57nf"
+/* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
+#elif (CFG_BRD_MYBOARD == 1)
+*/
 #elif (CFG_BRD_NONE == 1)
 	#define		CFG_BRD_STR		"no_brd"
 #else
@@ -711,9 +819,12 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_start(void) {
-	int i, j;
+	int i;
 	int reg_stat;
 	unsigned x;
+	uint8_t radio_select;
+	int32_t read_val;
+	uint8_t load_val;
 	
 	if (lgw_is_started == true) {
 		DEBUG_MSG("Note: Lora Gateway already started, restarting it now\n");
@@ -769,11 +880,17 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_DRIFT, x); /* default 36 */
 	
 	/* configure Lora 'multi' demodulators aka. Lora 'sensor' channels (IF0-3) */
-	j = 0;
+	
+	radio_select = 0; /* IF mapping to radio A/B (per bit, 0=A, 1=B) */
 	for(i=0; i<LGW_MULTI_NB; ++i) {
-		j += (if_rf_chain[i] == 1 ? 1 << i : 0); /* transform bool array into binary word */
+		radio_select += (if_rf_chain[i] == 1 ? 1 << i : 0); /* transform bool array into binary word */
 	}
-	lgw_reg_w(LGW_RADIO_SELECT, j); /* IF mapping to radio A/B (per bit, 0=A, 1=B) */
+	/*
+	lgw_reg_w(LGW_RADIO_SELECT, radio_select);
+	
+	LGW_RADIO_SELECT is used for communication with the firmware, "radio_select"
+	will be loaded in LGW_RADIO_SELECT at the end of start procedure.
+	*/
 	
 	lgw_reg_w(LGW_IF_FREQ_0, IF_HZ_TO_REG(if_freq[0])); /* default -384 */
 	lgw_reg_w(LGW_IF_FREQ_1, IF_HZ_TO_REG(if_freq[1])); /* default -128 */
@@ -851,8 +968,57 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN,0);
 	
 	/* Get MCUs out of reset */
+	lgw_reg_w(LGW_RADIO_SELECT, 0); /* MUST not be = to 1 or 2 at firmware init */
 	lgw_reg_w(LGW_MCU_RST_0, 0);
 	lgw_reg_w(LGW_MCU_RST_1, 0);
+	
+	/* Update Tx gain LUT and start AGC */
+	
+	DEBUG_MSG("Info: Initialising AGC...\n");
+	lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+	if (read_val != 0x20) {
+		DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
+		return LGW_HAL_ERROR;
+	}
+	
+	#if (CUSTOM_TX_POW_TABLE == 1)
+		DEBUG_MSG("Info: loading custom TX gain table\n");
+		for(i=0; i<TX_POW_LUT_SIZE; ++i) {
+			load_val = tx_pow_table[i].mix_gain + (16 * tx_pow_table[i].dac_gain) + (64 * tx_pow_table[i].pa_gain);
+			lgw_reg_w(LGW_RADIO_SELECT,1); /* 1 = start a transaction */
+			wait_ms(1);
+			lgw_reg_w(LGW_RADIO_SELECT, load_val);
+			wait_ms(1);
+			lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+			if (read_val != (0x30 + i)) {
+				DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
+				return LGW_HAL_ERROR;
+			}
+		}
+	#else
+		load_val = 2; /* 2 = abort LUT update */
+		lgw_reg_w(LGW_RADIO_SELECT,1); /* 1 = start a transaction */
+		wait_ms(1);
+		lgw_reg_w(LGW_RADIO_SELECT, load_val); 
+		wait_ms(1);
+		DEBUG_MSG("Info: TX gain LUT update skipped, using default LUT\n");
+		lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+		if (read_val != 0x30) {
+			DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
+			return LGW_HAL_ERROR;
+		}
+	#endif
+	
+	lgw_reg_w(LGW_RADIO_SELECT,1);
+	wait_ms(1);
+	lgw_reg_w(LGW_RADIO_SELECT, radio_select); /* Load intended value of RADIO_SELECT */
+	wait_ms(1);
+	DEBUG_MSG("Info: putting back original RADIO_SELECT value\n");
+	lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+	if (read_val != 0x40) {
+		DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
+		return LGW_HAL_ERROR;
+	}
 	
 	/* enable GPS event capture */
 	lgw_reg_w(LGW_GPS_EN,1);
@@ -1084,7 +1250,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	uint16_t fsk_dr_div; /* divider to configure for target datarate */
 	int transfer_size = 0; /* data to transfer from host to TX databuffer */
 	int payload_offset = 0; /* start of the payload content in the databuffer */
-	uint8_t power_nibble = 0; /* 4-bit value to set the firmware TX power */
+	uint8_t pow_index = 0; /* 4-bit value to set the firmware TX power */
 	
 	/* check if the gateway is running */
 	if (lgw_is_started == false) {
@@ -1154,12 +1320,11 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	}
 	
 	/* interpretation of TX power */
-	if (pkt_data.rf_power < 24) {
-		power_nibble = 0x0; /* ~15.5 dBm, so 14 after cavity filter + cables */
-	} else {
-		power_nibble = 0xF; /* maximum power ~25.5 dBm, 24 after filter */
+	for (pow_index = TX_POW_LUT_SIZE-1; pow_index > 0; pow_index--) {
+		if (tx_pow_table[pow_index].rf_power <= pkt_data.rf_power) {
+			break;
+		}
 	}
-	// TODO: implement LUT in the firmware and matched value in the HAL
 	
 	/* fixed metadata, useful payload and misc metadata compositing */
 	transfer_size = TX_METADATA_NB + pkt_data.size; /*  */
@@ -1187,7 +1352,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	/* parameters depending on modulation  */
 	if (pkt_data.modulation == MOD_LORA) {
 		/* metadata 7, modulation type, radio chain selection and TX power */
-		buff[7] = (0x20 & (pkt_data.rf_chain << 5)) | (0x0F & power_nibble); /* bit 4 is 0 -> Lora modulation */
+		buff[7] = (0x20 & (pkt_data.rf_chain << 5)) | (0x0F & pow_index); /* bit 4 is 0 -> Lora modulation */
 		
 		buff[8] = 0; /* metadata 8, not used */
 		
@@ -1250,7 +1415,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		
 	} else if (pkt_data.modulation == MOD_FSK) {
 		/* metadata 7, modulation type, radio chain selection and TX power */
-		buff[7] = (0x20 & (pkt_data.rf_chain << 5)) | 0x10 | (0x0F & power_nibble); /* bit 4 is 1 -> FSK modulation */
+		buff[7] = (0x20 & (pkt_data.rf_chain << 5)) | 0x10 | (0x0F & pow_index); /* bit 4 is 1 -> FSK modulation */
 		
 		buff[8] = 0; /* metadata 8, not used */
 		
