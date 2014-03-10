@@ -19,7 +19,7 @@ AR=$(CROSS_COMPILE)ar
 
 CFLAGS=-O2 -Wall -Wextra -std=c99 -Iinc -I.
 
-### Constants for Lora Gateway HAL library
+### Constants for LoRa concentrator HAL library
 # List the library sub-modules that are used by the application
 
 LGW_INC= $(LGW_PATH)/inc/config.h

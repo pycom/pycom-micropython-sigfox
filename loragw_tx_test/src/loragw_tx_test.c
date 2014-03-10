@@ -153,7 +153,7 @@ int main(int argc, char **argv)
 			case 'b': /* -b <int> Modulation bandwidth in kHz */
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || ((xi != 125)&&(xi != 250)&&(xi != 500))) {
-					MSG("ERROR: invalid Lora bandwidth\n");
+					MSG("ERROR: invalid LoRa bandwidth\n");
 					return EXIT_FAILURE;
 				} else {
 					bw = xi;
@@ -287,7 +287,7 @@ int main(int argc, char **argv)
 	/* clean up before leaving */
 	lgw_stop();
 	
-	printf("Exiting Lora concentrator TX test program\n");
+	printf("Exiting LoRa concentrator TX test program\n");
 	return EXIT_SUCCESS;
 }
 

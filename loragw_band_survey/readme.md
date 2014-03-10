@@ -5,8 +5,8 @@
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
 	  (C)2013 Semtech-Cycleo
 
-Lora Gateway RF band survey application
-========================================
+Gateway RF band survey application
+===================================
 
 1. Introduction
 ----------------
@@ -25,13 +25,13 @@ This software call functions in the loragw_reg and loragw_reg sub-modules of
 loragwlib. loragw_spi is used indirectly, and the loragw_hal sub-module is not
 used at all, except for constants define at the top level.
 
-It has been qualified with the Lora Getway HAL library version 1.3.0, and should
-be compatible with any compatible later version that use the same API, or a
-downward-compatible one.
+It has been qualified with the LoRa concentrator HAL library version 1.3.0, and
+should be compatible with any compatible later version that use the same API, or
+a downward-compatible one.
 
 Because some non-public functions from loragw_hal had to be re-implemented, any
-change in the IP might affect this program even if an updated Lora Getway HAL
-library is provided.
+change in the IP might affect this program even if an updated LoRa concentrator
+HAL library is provided.
 Connecting an incompatible concentrator board should give you the error:
 "ERROR: fail to connect to concentrator board"
 
@@ -40,8 +40,8 @@ Connecting an incompatible concentrator board should give you the error:
 
 To stop the application before the end of the measurement, press Ctrl+C.
 
-By default, the program scans the whole band (start and stop frequency defined in
-the loragw_hal.h file) with a 200 kHz measurement step.
+By default, the program scans the whole band (start and stop frequency defined
+in the loragw_hal.h file) with a 200 kHz measurement step.
 Use -f option to change start and stop frequency, and measurement step.
 
 The resolution bandwidth of the scan is 200 kHz and cannot be set by the user.

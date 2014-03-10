@@ -7,7 +7,7 @@
   (C)2013 Semtech-Cycleo
 
 Description:
-	Configure Lora concentrator and record received packets in a log file
+	Configure LoRa concentrator and record received packets in a log file
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
@@ -52,7 +52,7 @@ static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardw
 static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
 /* configuration variables needed by the application  */
-uint64_t lgwm = 0; /* Lora gateway MAC address */
+uint64_t lgwm = 0; /* LoRa gateway MAC address */
 char lgwm_str[17];
 
 /* clock and log file management */
@@ -142,16 +142,16 @@ int parse_SX1301_configuration(const char * conf_file) {
 		}
 	}
 	
-	/* set configuration for Lora multi-SF channels (bandwidth cannot be set) */
+	/* set configuration for LoRa multi-SF channels (bandwidth cannot be set) */
 	for (i = 0; i < LGW_MULTI_NB; ++i) {
 		memset(&ifconf, 0, sizeof(ifconf)); /* initialize configuration structure */
 		sprintf(param_name, "chan_multiSF_%i", i); /* compose parameter path inside JSON structure */
 		val = json_object_get_value(conf, param_name); /* fetch value (if possible) */
 		if (json_value_get_type(val) != JSONObject) {
-			MSG("INFO: no configuration for Lora multi-SF channel %i\n", i);
+			MSG("INFO: no configuration for LoRa multi-SF channel %i\n", i);
 			continue;
 		}
-		/* there is an object to configure that Lora multi-SF channel, let's parse it */
+		/* there is an object to configure that LoRa multi-SF channel, let's parse it */
 		sprintf(param_name, "chan_multiSF_%i.enable", i);
 		val = json_object_dotget_value(conf, param_name);
 		if (json_value_get_type(val) == JSONBoolean) {
@@ -159,27 +159,27 @@ int parse_SX1301_configuration(const char * conf_file) {
 		} else {
 			ifconf.enable = false;
 		}
-		if (ifconf.enable == false) { /* Lora multi-SF channel disabled, nothing else to parse */
-			MSG("INFO: Lora multi-SF channel %i disabled\n", i);
-		} else  { /* Lora multi-SF channel enabled, will parse the other parameters */
+		if (ifconf.enable == false) { /* LoRa multi-SF channel disabled, nothing else to parse */
+			MSG("INFO: LoRa multi-SF channel %i disabled\n", i);
+		} else  { /* LoRa multi-SF channel enabled, will parse the other parameters */
 			sprintf(param_name, "chan_multiSF_%i.radio", i);
 			ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf, param_name);
 			sprintf(param_name, "chan_multiSF_%i.if", i);
 			ifconf.freq_hz = (int32_t)json_object_dotget_number(conf, param_name);
 			// TODO: handle individual SF enabling and disabling (spread_factor)
-			MSG("INFO: Lora multi-SF channel %i enabled, radio %i selected, IF %i Hz, 125 kHz bandwidth, SF 7 to 12\n", i, ifconf.rf_chain, ifconf.freq_hz);
+			MSG("INFO: LoRa multi-SF channel %i enabled, radio %i selected, IF %i Hz, 125 kHz bandwidth, SF 7 to 12\n", i, ifconf.rf_chain, ifconf.freq_hz);
 		}
 		/* all parameters parsed, submitting configuration to the HAL */
 		if (lgw_rxif_setconf(i, ifconf) != LGW_HAL_SUCCESS) {
-			MSG("WARNING: invalid configuration for Lora multi-SF channel %i\n", i);
+			MSG("WARNING: invalid configuration for LoRa multi-SF channel %i\n", i);
 		}
 	}
 	
-	/* set configuration for Lora standard channel */
+	/* set configuration for LoRa standard channel */
 	memset(&ifconf, 0, sizeof(ifconf)); /* initialize configuration structure */
 	val = json_object_get_value(conf, "chan_Lora_std"); /* fetch value (if possible) */
 	if (json_value_get_type(val) != JSONObject) {
-		MSG("INFO: no configuration for Lora standard channel\n");
+		MSG("INFO: no configuration for LoRa standard channel\n");
 	} else {
 		val = json_object_dotget_value(conf, "chan_Lora_std.enable");
 		if (json_value_get_type(val) == JSONBoolean) {
@@ -188,7 +188,7 @@ int parse_SX1301_configuration(const char * conf_file) {
 			ifconf.enable = false;
 		}
 		if (ifconf.enable == false) {
-			MSG("INFO: Lora standard channel %i disabled\n", i);
+			MSG("INFO: LoRa standard channel %i disabled\n", i);
 		} else  {
 			ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf, "chan_Lora_std.radio");
 			ifconf.freq_hz = (int32_t)json_object_dotget_number(conf, "chan_Lora_std.if");
@@ -209,10 +209,10 @@ int parse_SX1301_configuration(const char * conf_file) {
 				case 12: ifconf.datarate = DR_LORA_SF12; break;
 				default: ifconf.datarate = DR_UNDEFINED;
 			}
-			MSG("INFO: Lora standard channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
+			MSG("INFO: LoRa standard channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
 		}
 		if (lgw_rxif_setconf(8, ifconf) != LGW_HAL_SUCCESS) {
-			MSG("WARNING: invalid configuration for Lora standard channel\n");
+			MSG("WARNING: invalid configuration for LoRa standard channel\n");
 		}
 	}
 	

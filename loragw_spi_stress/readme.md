@@ -5,22 +5,22 @@
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
 	  (C)2013 Semtech-Cycleo
 
-Lora Gateway SPI stress test
-=============================
+LoRa concentrator SPI stress test
+==================================
 
 1. Introduction
 ----------------
 
 This software is used to check the reliability of the link between the host
-platform (on which the program is run) and the Lora concentrator register file
-that is the interface through which all interaction with the Lora concentrator
+platform (on which the program is run) and the LoRa concentrator register file
+that is the interface through which all interaction with the LoRa concentrator
 happens.
 
 2. Dependencies
 ----------------
 
-This program only access the Lora gateway HAL library through its loragw_reg
-"named registers" access sub-module.
+This program only access the LoRa concentrator HAL library through its
+loragw_reg "named registers" access sub-module.
 
 It was tested with v1.3.0 of the libloragw library, and should be compatible
 with any later version of the library and the hardware, assuming the registers

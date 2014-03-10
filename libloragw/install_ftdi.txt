@@ -37,10 +37,10 @@ sudo ldconfig
 # For the nano board, only the FT2232H line is required.
 # Non-root users members of plugdev group will be able to access the device.
 
-# [STEP 4] Unpack the Lora Gateway HAL and go to its directory.
+# [STEP 4] Unpack the LoRa Gateway project and go to its directory.
 # Configure build options in library.cfg, then build the library and examples.
 make all
 
 # [STEP 5] Connect a nanoconcentrator and run test_loragw_reg to test that
-# you have access to Lora registers.
+# you have access to LoRa registers.
 # Less than 50 registers of the ~300 registers should return a mismatch.

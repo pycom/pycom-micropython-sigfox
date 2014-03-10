@@ -5,18 +5,18 @@
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
 	  (C)2013 Semtech-Cycleo
 
-Lora Gateway HAL user manual
+LoRa concentrator HAL user manual
 ============================
 
 1. Introduction
 ---------------
 
-The Lora Gateway Hardware Abstraction Layer is a C library that allow you to
-use a Semtech Lora gateway hardware through a reduced number of high level C
+The LoRa concentrator Hardware Abstraction Layer is a C library that allow you
+to use a Semtech concentrator chip through a reduced number of high level C
 functions to configure the hardware, send and receive packets.
 
-The Semtech Lora gateway is a digital multi-channel multi-standard packet radio
-used to send and receive packets wirelessly using Lora or FSK modulations.
+The Semtech LoRa concentrator is a digital multi-channel multi-standard packet
+radio used to send and receive packets wirelessly using LoRa or FSK modulations.
 
 2. Components of the library
 ----------------------------
@@ -35,7 +35,7 @@ functionality.
 ### 2.1. loragw_hal ###
 
 This is the main module and contains the high level functions to configure and
-use the Lora gateway:
+use the LoRa concentrator:
 
 * lgw_rxrf_setconf, to set the configuration of the radio channels
 * lgw_rxif_setconf, to set the configuration of the IF+modem channels
@@ -50,8 +50,8 @@ The use of this module is detailed on the usage section.
 
 ### 2.2. loragw_reg ###
 
-This module is used to access to the Lora gateway registers by name instead of
-by address:
+This module is used to access to the LoRa concentrator registers by name instead
+of by address:
 
 * lgw_connect, to initialise and check the connection with the hardware
 * lgw_disconnect, to disconnect the hardware
@@ -76,13 +76,13 @@ is".
 If you need access to all the registers, include this module in your
 application.
 
-**/!\ Warning** please be sure to have a good understanding of the Lora gateway
-inner working before accessing the internal registers directly.
+**/!\ Warning** please be sure to have a good understanding of the LoRa
+concentrator inner working before accessing the internal registers directly.
 
 ### 2.3. loragw_spi ###
 
-This module contains the functions to access the Lora gateway register array
-through the SPI interface:
+This module contains the functions to access the LoRa concentrator register
+array through the SPI interface:
 
 * lgw_spi_r to read one byte
 * lgw_spi_w to write one byte
@@ -91,17 +91,17 @@ through the SPI interface:
 
 Please *do not* include that module directly into your application.
 
-**/!\ Warning** Accessing the Lora gateway register array without the checks
-and safety provided by the functions in loragw_reg is not recommended.
+**/!\ Warning** Accessing the LoRa concentrator register array without the
+checks and safety provided by the functions in loragw_reg is not recommended.
 
 ### 2.4. loragw_aux ###
 
 This module contains a single host-dependant function wait_ms to pause for a
 defined amount of milliseconds.
 
-The procedure to start and configure the Lora gateway hardware contained in the
-loragw_hal module requires to wait for several milliseconds at certain steps,
-typically to allow for supply voltages or clocks to stabilize after been
+The procedure to start and configure the LoRa concentrator hardware contained in
+the loragw_hal module requires to wait for several milliseconds at certain
+steps, typically to allow for supply voltages or clocks to stabilize after been
 switched on.
 
 An accuracy of 1 ms or less is ideal.
@@ -312,25 +312,25 @@ To use the HAL in your application, you must follow some basic rules:
 * the configuration is only transferred to hardware when you call the *start*
   function
 * you cannot receive packets until one (or +) radio is enabled AND one (or +)
-  IF+modem part is enabled AND the gateway is started
-* you cannot send packets until one (or +) radio is enabled AND the gateway is
-  started
-* you must stop the gateway before changing the configuration
+  IF+modem part is enabled AND the concentrator is started
+* you cannot send packets until one (or +) radio is enabled AND the concentrator
+  is started
+* you must stop the concentrator before changing the configuration
 
 A typical application flow for using the HAL is the following:
 
 	<configure the radios and IF+modems>
-	<start the Lora gateway>
+	<start the LoRa concentrator>
 	loop {
-		<fetch packets that were received by the gateway>
+		<fetch packets that were received by the concentrator>
 		<process, store and/or forward received packets>
-		<send packets through the gateway>
+		<send packets through the concentrator>
 	}
-	<stop the gateway>
+	<stop the concentrator>
 
 **/!\ Warning** The lgw_send function is non-blocking and returns while the
-Lora gateway is still sending the packet, or even before the packet has started
-to be transmitted if the packet is triggered on a future event.
+LoRa concentrator is still sending the packet, or even before the packet has
+started to be transmitted if the packet is triggered on a future event.
 While a packet is emitted, no packet can be received (limitation intrinsic to
 most radio frequency systems).
 

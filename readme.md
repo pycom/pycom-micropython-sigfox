@@ -5,14 +5,14 @@
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
 	  (C)2013 Semtech-Cycleo
 
-Lora Gateway HAL project
-=========================
+LoRa Gateway project
+=====================
 
 1. Core library: libloragw
 ---------------------------
 
 This directory contains the sources of the library to build a gateway based on 
-a Semtech Lora multi-channel RF receiver.
+a Semtech LoRa multi-channel RF receiver (a.k.a. concentrator).
 Once compiled all the code is contained in the libloragw.a file that will be 
 statically linked (ie. integrated in the final executable).
 
@@ -35,20 +35,20 @@ measurement of interferer pattern.
 
 ### 2.2. loragw_pkt_logger ###
 
-This software is used to set up a Lora concentrator using a JSON configuration
+This software is used to set up a LoRa concentrator using a JSON configuration
 file and then record all the packets received in a log file, indefinitely, until
 the user stops the application.
 
 ### 2.3. loragw_spi_stress ###
 
 This software is used to check the reliability of the link between the host
-platform (on which the program is run) and the Lora concentrator register file
-that is the interface through which all interaction with the Lora concentrator
+platform (on which the program is run) and the LoRa concentrator register file
+that is the interface through which all interaction with the LoRa concentrator
 happens.
 
 ### 2.4. loragw_tx_test ###
 
-This software is used to send test packets with a Lora concentrator. The packets
+This software is used to send test packets with a LoRa concentrator. The packets
 contain little information, on no protocol (ie. MAC address) information but
 can be used to assess the functionality of a gateway downlink using other
 gateways as receivers.
@@ -58,8 +58,9 @@ gateways as receivers.
 
 ### v1.3.0 ###
 
-* Improved TX power management. (TODO)
-* New build system with configuration for multiple chip/radio/band support.
+* Added TX power management.
+* Added full support for SX1301 reference board.
+* Changed build system with configuration for multiple chip/radio/band support.
 * SX125x bandwidth set to 1MHz by default (was 800 kHz).
 
 ### v1.2.2 ###
@@ -68,7 +69,7 @@ gateways as receivers.
 
 ### v1.2.1 ###
 
-* Fixed 'floating point exception' crash when concentrator returned a packet with SF=0 (CRC error on Lora header).
+* Fixed 'floating point exception' crash when concentrator returned a packet with SF=0 (CRC error on LoRa header).
 * Fixed buggy timezone handling.
 
 ### v1.2.0 ###
@@ -99,11 +100,11 @@ gateways as receivers.
 * Improved AGC and ARB firmwares.
 * Adding -Wall -Wextra for compilation, fixing all the new warnings for cleaner code.
 * Fixed bugs in handling of FSK datarate.
-* test_loragw_hal now dumps the content of all Lora registers after configuration in reg_dump.log.
+* test_loragw_hal now dumps the content of all LoRa registers after configuration in reg_dump.log.
 
 ### Beta 7 (from beta 5) ###
 
-* Reduced number of SPI transactions to fetch a packet (improved number a packets par second that can be downloaded from gateway).
+* Reduced number of SPI transactions to fetch a packet (improved number a packets par second that can be downloaded from concentrator).
 * Streamlined build process, main target is now a static library: libloragw.a.
 * Change memory allocation for payload: they are now part of the struct for TX/RX, no need to malloc/free.
 * All RX chains can use any of the two radios now.
@@ -120,7 +121,7 @@ Private release, not taken into account in that changelog.
 ### Beta 5 (from beta 4) ###
 
 * Updated registers, firmware and configuration to align with r986 bitstream revision.
-* Calibrated RSSI for Lora "multi" and Lora "stand alone" modems.
+* Calibrated RSSI for LoRa "multi" and LoRa "stand alone" modems.
 * Renamed some confusing TX status code.
 * Added preliminary FSK support.
 

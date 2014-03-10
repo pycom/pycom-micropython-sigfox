@@ -7,7 +7,7 @@
   (C)2013 Semtech-Cycleo
 
 Description:
-	Lora gateway Hardware Abstraction Layer
+	LoRa concentrator Hardware Abstraction Layer
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
@@ -308,10 +308,10 @@ static bool if_enable[LGW_IF_CHAIN_NB];
 static bool if_rf_chain[LGW_IF_CHAIN_NB]; /* for each IF, 0 -> radio A, 1 -> radio B */
 static int32_t if_freq[LGW_IF_CHAIN_NB]; /* relative to radio frequency, +/- in Hz */
 
-static uint8_t lora_multi_sfmask[LGW_MULTI_NB]; /* enables SF for Lora 'multi' modems */
+static uint8_t lora_multi_sfmask[LGW_MULTI_NB]; /* enables SF for LoRa 'multi' modems */
 
-static uint8_t lora_rx_bw; /* bandwidth setting for Lora standalone modem */
-static uint8_t lora_rx_sf; /* spreading factor setting for Lora standalone modem */
+static uint8_t lora_rx_bw; /* bandwidth setting for LoRa standalone modem */
+static uint8_t lora_rx_sf; /* spreading factor setting for LoRa standalone modem */
 static bool lora_rx_ppm_offset;
 
 static uint8_t fsk_rx_bw; /* bandwidth setting of FSK modem */
@@ -577,7 +577,7 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_CORR_SIG_NOISE_RATIO_SF11,4); /* default 4 */
 	// lgw_reg_w(LGW_CORR_SIG_NOISE_RATIO_SF12,4); /* default 4 */
 	
-	/* Lora 'multi' demodulators setup */
+	/* LoRa 'multi' demodulators setup */
 	// lgw_reg_w(LGW_PREAMBLE_SYMB1_NB,10); /* default 10 */
 	// lgw_reg_w(LGW_FREQ_TO_TIME_INVERT,29); /* default 29 */
 	// lgw_reg_w(LGW_FRAME_SYNCH_GAIN,1); /* default 1 */
@@ -594,7 +594,7 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_SF12_RDX4,4092); /* default 4092 */
 	// lgw_reg_w(LGW_MAX_PAYLOAD_LEN,255); /* default 255 */
 	
-	/* Lora standalone 'MBWSSF' demodulator setup */
+	/* LoRa standalone 'MBWSSF' demodulator setup */
 	// lgw_reg_w(LGW_MBWSSF_PREAMBLE_SYMB1_NB,10); /* default 10 */
 	// lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_INVERT,29); /* default 29 */
 	// lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_GAIN,1); /* default 1 */
@@ -632,7 +632,7 @@ void lgw_constant_adjust(void) {
 	/* TX general parameters */
 	lgw_reg_w(LGW_TX_START_DELAY, TX_START_DELAY); /* default 0 */
 	
-	/* TX Lora */
+	/* TX LoRa */
 	// lgw_reg_w(LGW_TX_MODE,0); /* default 0 */
 	lgw_reg_w(LGW_TX_SWAP_IQ,1); /* "normal" polarity; default 0 */
 	
@@ -651,9 +651,9 @@ void lgw_constant_adjust(void) {
 
 int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 	
-	/* check if the gateway is running */
+	/* check if the concentrator is running */
 	if (lgw_is_started == true) {
-		DEBUG_MSG("ERROR: GATEWAY IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
+		DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
 		return LGW_HAL_ERROR;
 	}
 	
@@ -684,9 +684,9 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
-	/* check if the gateway is running */
+	/* check if the concentrator is running */
 	if (lgw_is_started == true) {
-		DEBUG_MSG("ERROR: GATEWAY IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
+		DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
 		return LGW_HAL_ERROR;
 	}
 	
@@ -753,7 +753,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 				lora_rx_ppm_offset = false;
 			}
 			
-			DEBUG_PRINTF("Note: Lora 'std' if_chain %d configuration; en:%d freq:%d bw:%d dr:%d\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_rx_bw, lora_rx_sf);
+			DEBUG_PRINTF("Note: LoRa 'std' if_chain %d configuration; en:%d freq:%d bw:%d dr:%d\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_rx_bw, lora_rx_sf);
 			break;
 		
 		case IF_LORA_MULTI:
@@ -779,7 +779,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 			if_freq[if_chain] = conf.freq_hz;
 			lora_multi_sfmask[if_chain] = (uint8_t)(DR_LORA_MULTI & conf.datarate); /* filter SF out of the 7-12 range */
 			
-			DEBUG_PRINTF("Note: Lora 'multi' if_chain %d configuration; en:%d freq:%d SF_mask:0x%02x\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_multi_sfmask[if_chain]);
+			DEBUG_PRINTF("Note: LoRa 'multi' if_chain %d configuration; en:%d freq:%d SF_mask:0x%02x\n", if_chain, if_enable[if_chain], if_freq[if_chain], lora_multi_sfmask[if_chain]);
 			break;
 		
 		case IF_FSK_STD:
@@ -827,7 +827,7 @@ int lgw_start(void) {
 	uint8_t load_val;
 	
 	if (lgw_is_started == true) {
-		DEBUG_MSG("Note: Lora Gateway already started, restarting it now\n");
+		DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
 	}
 	
 	reg_stat = lgw_connect();
@@ -879,7 +879,7 @@ int lgw_start(void) {
 	}
 	lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_DRIFT, x); /* default 36 */
 	
-	/* configure Lora 'multi' demodulators aka. Lora 'sensor' channels (IF0-3) */
+	/* configure LoRa 'multi' demodulators aka. LoRa 'sensor' channels (IF0-3) */
 	
 	radio_select = 0; /* IF mapping to radio A/B (per bit, 0=A, 1=B) */
 	for(i=0; i<LGW_MULTI_NB; ++i) {
@@ -918,7 +918,7 @@ int lgw_start(void) {
 	
 	lgw_reg_w(LGW_CONCENTRATOR_MODEM_ENABLE,1); /* default 0 */
 	
-	/* configure Lora 'stand-alone' modem (IF8) */
+	/* configure LoRa 'stand-alone' modem (IF8) */
 	lgw_reg_w(LGW_IF_FREQ_8, IF_HZ_TO_REG(if_freq[8])); /* MBWSSF modem (default 0) */
 	if (if_enable[8] == true) {
 		lgw_reg_w(LGW_MBWSSF_RADIO_SELECT, if_rf_chain[8]);
@@ -1057,9 +1057,9 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 	uint32_t timestamp_correction; /* correction to account for processing delay */
 	uint32_t sf, cr, bw_pow, crc_en, ppm; /* used to calculate timestamp correction */
 	
-	/* check if the gateway is running */
+	/* check if the concentrator is running */
 	if (lgw_is_started == false) {
-		DEBUG_MSG("ERROR: GATEWAY IS NOT RUNNING, START IT BEFORE RECEIVING\n");
+		DEBUG_MSG("ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE RECEIVING\n");
 		return LGW_HAL_ERROR;
 	}
 	
@@ -1102,7 +1102,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 		DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
 		
 		if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
-			DEBUG_MSG("Note: Lora packet\n");
+			DEBUG_MSG("Note: LoRa packet\n");
 			switch(stat_fifo & 0x07) {
 				case 5:
 					p->status = STAT_CRC_OK;
@@ -1158,7 +1158,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 			}
 			
 			/* timestamp correction code, base delay */
-			if (ifmod == IF_LORA_STD) { /* if packet was received on the stand-alone lora modem */
+			if (ifmod == IF_LORA_STD) { /* if packet was received on the stand-alone LoRa modem */
 				switch (lora_rx_bw) {
 					case BW_125KHZ:
 						delay_x = 64;
@@ -1254,9 +1254,9 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	int payload_offset = 0; /* start of the payload content in the databuffer */
 	uint8_t pow_index = 0; /* 4-bit value to set the firmware TX power */
 	
-	/* check if the gateway is running */
+	/* check if the concentrator is running */
 	if (lgw_is_started == false) {
-		DEBUG_MSG("ERROR: GATEWAY IS NOT RUNNING, START IT BEFORE SENDING\n");
+		DEBUG_MSG("ERROR: CONCENTRATOR IS NOT RUNNING, START IT BEFORE SENDING\n");
 		return LGW_HAL_ERROR;
 	}
 	
@@ -1354,11 +1354,11 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	/* parameters depending on modulation  */
 	if (pkt_data.modulation == MOD_LORA) {
 		/* metadata 7, modulation type, radio chain selection and TX power */
-		buff[7] = (0x20 & (pkt_data.rf_chain << 5)) | (0x0F & pow_index); /* bit 4 is 0 -> Lora modulation */
+		buff[7] = (0x20 & (pkt_data.rf_chain << 5)) | (0x0F & pow_index); /* bit 4 is 0 -> LoRa modulation */
 		
 		buff[8] = 0; /* metadata 8, not used */
 		
-		/* metadata 9, CRC, Lora CR & SF */
+		/* metadata 9, CRC, LoRa CR & SF */
 		switch (pkt_data.datarate) {
 			case DR_LORA_SF7: buff[9] = 7; break;
 			case DR_LORA_SF8: buff[9] = 8; break;
@@ -1401,12 +1401,12 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 			buff[11] |= 0x10; /* set 'TX polarity' bit at 1 */
 		}
 		
-		/* metadata 12 & 13, Lora preamble size */
-		if (pkt_data.preamble == 0) { /* if not explicit, use recommended Lora preamble size */
+		/* metadata 12 & 13, LoRa preamble size */
+		if (pkt_data.preamble == 0) { /* if not explicit, use recommended LoRa preamble size */
 			pkt_data.preamble = STD_LORA_PREAMBLE;
 		} else if (pkt_data.preamble < MIN_LORA_PREAMBLE) { /* enforce minimum preamble size */
 			pkt_data.preamble = MIN_LORA_PREAMBLE;
-			DEBUG_MSG("Note: preamble length adjusted to respect minimum Lora preamble size\n");
+			DEBUG_MSG("Note: preamble length adjusted to respect minimum LoRa preamble size\n");
 		}
 		buff[12] = 0xFF & (pkt_data.preamble >> 8);
 		buff[13] = 0xFF & pkt_data.preamble;

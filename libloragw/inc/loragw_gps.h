@@ -121,7 +121,7 @@ lock must be acquired before calling either function.
 enum gps_msg lgw_parse_nmea(char* serial_buff, int buff_size);
 
 /**
-@brief Get the GPS solution (space & time) for the gateway
+@brief Get the GPS solution (space & time) for the concentrator
 
 @param utc pointer to store UTC time, with ns precision (NULL to ignore)
 @param loc pointer to store coordinates (NULL to ignore)
@@ -152,7 +152,7 @@ int lgw_gps_sync(struct tref* ref, uint32_t count_us, struct timespec utc);
 @brief Convert concentrator timestamp counter value to UTC time
 
 @param ref time reference structure required for time conversion
-@param count_us internal timestamp counter of a Lora gateway
+@param count_us internal timestamp counter of the LoRa concentrator
 @param utc pointer to store UTC time, with ns precision (leap seconds ignored)
 @return success if the function was able to convert timestamp to UTC
 
@@ -167,7 +167,7 @@ int lgw_cnt2utc(struct tref ref, uint32_t count_us, struct timespec* utc);
 
 @param ref time reference structure required for time conversion
 @param utc UTC time, with ns precision (leap seconds are ignored)
-@param count_us pointer to store internal timestamp counter of a Lora gateway
+@param count_us pointer to store internal timestamp counter of LoRa concentrator
 @return success if the function was able to convert UTC to timestamp
 
 This function is typically used when a packet must be sent at an accurate time 

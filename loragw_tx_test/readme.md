@@ -5,13 +5,13 @@
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
 	  (C)2013 Semtech-Cycleo
 
-Lora Gateway packet sender
-===========================
+LoRa concentrator packet sender
+================================
 
 1. Introduction
 ----------------
 
-This software is used to send test packets with a Lora concentrator. The packets
+This software is used to send test packets with a LoRa concentrator. The packets
 contain little information, on no protocol (ie. MAC address) information but
 can be used to assess the functionality of a gateway downlink using other
 gateways as receivers.
@@ -19,7 +19,8 @@ gateways as receivers.
 2. Dependencies
 ----------------
 
-This program is a typical example of Lora Gateway HAL usage for sending packets.
+This program is a typical example of LoRa concentrator HAL usage for sending
+packets.
 
 Only high-level functions are used (the ones contained in loragw_hal) so there
 is no hardware dependencies assuming the HAL is matched with the proper version
@@ -40,10 +41,10 @@ Press Ctrl+C to stop the application before that.
 Use the -f option followed by a real number (decimal point and scientific
 'E notation' are OK) to specify the modulation central frequency.
 
-Use the -s option to specify the Spreading Factor of Lora modulation (values 7
+Use the -s option to specify the Spreading Factor of LoRa modulation (values 7
 to 12 are valid).
 
-Use the -b option to set Lora modulation bandwidth in kHz (accepted values: 125,
+Use the -b option to set LoRa modulation bandwidth in kHz (accepted values: 125,
 250 or 500).
 
 Use the -p option to set the concentrator TX power in dBm. Not all values are
@@ -56,13 +57,13 @@ packets. Using zero will result in a quasi-continuous emission.
 
 Use the -x option to specify how many packets should be sent.
 
-Use the -i option to invert the Lora modulation polarity.
+Use the -i option to invert the LoRa modulation polarity.
 
 The packets are 20 bytes long, and protected by the smallest supported ECC.
 
 The payload content is:
 [T][E][S][T][packet counter MSB][packet counter LSB] followed by ASCII padding.
-All Lora data is whitened, so the padding has no influence whatsoever on the
+All LoRa data is whitened, so the padding has no influence whatsoever on the
 packet error rate.
 
 4. License

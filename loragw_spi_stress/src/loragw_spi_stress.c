@@ -128,7 +128,7 @@ int main(int argc, char **argv)
 				return EXIT_FAILURE;
 		}
 	}
-	MSG("INFO: Starting Lora concentrator SPI stress-test number %i\n", test_number);
+	MSG("INFO: Starting LoRa concentrator SPI stress-test number %i\n", test_number);
 	
 	/* configure signal handling */
 	sigemptyset(&sigact.sa_mask);
@@ -283,7 +283,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 	
-	MSG("INFO: Exiting Lora concentrator SPI stress-test program\n");
+	MSG("INFO: Exiting LoRa concentrator SPI stress-test program\n");
 	return EXIT_SUCCESS;
 }
 

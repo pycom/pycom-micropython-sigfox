@@ -107,7 +107,7 @@ int main()
 	sigaction(SIGINT, &sigact, NULL);
 	sigaction(SIGTERM, &sigact, NULL);
 	
-	/* beginning of Lora gateway-specific code */
+	/* beginning of LoRa concentrator-specific code */
 	printf("Beginning of test for loragw_hal.c\n");
 	
 	printf("*** Library version information ***\n%s\n\n", lgw_version_info());
@@ -123,67 +123,67 @@ int main()
 	rfconf.freq_hz = F_RX_1;
 	lgw_rxrf_setconf(1, rfconf); /* radio B, f1 */
 	
-	/* set configuration for Lora multi-SF channels (bandwidth cannot be set) */
+	/* set configuration for LoRa multi-SF channels (bandwidth cannot be set) */
 	memset(&ifconf, 0, sizeof(ifconf));
 	
 	ifconf.enable = true;
 	ifconf.rf_chain = 0;
 	ifconf.freq_hz = -300000;
 	ifconf.datarate = DR_LORA_MULTI;
-	lgw_rxif_setconf(0, ifconf); /* chain 0: Lora 125kHz, all SF, on f0 - 0.3 MHz */
+	lgw_rxif_setconf(0, ifconf); /* chain 0: LoRa 125kHz, all SF, on f0 - 0.3 MHz */
 	
 	ifconf.enable = true;
 	ifconf.rf_chain = 0;
 	ifconf.freq_hz = 300000;
 	ifconf.datarate = DR_LORA_MULTI;
-	lgw_rxif_setconf(1, ifconf); /* chain 1: Lora 125kHz, all SF, on f0 + 0.3 MHz */
+	lgw_rxif_setconf(1, ifconf); /* chain 1: LoRa 125kHz, all SF, on f0 + 0.3 MHz */
 	
 	ifconf.enable = true;
 	ifconf.rf_chain = 1;
 	ifconf.freq_hz = -300000;
 	ifconf.datarate = DR_LORA_MULTI;
-	lgw_rxif_setconf(2, ifconf); /* chain 2: Lora 125kHz, all SF, on f1 - 0.3 MHz */
+	lgw_rxif_setconf(2, ifconf); /* chain 2: LoRa 125kHz, all SF, on f1 - 0.3 MHz */
 	
 	ifconf.enable = true;
 	ifconf.rf_chain = 1;
 	ifconf.freq_hz = 300000;
 	ifconf.datarate = DR_LORA_MULTI;
-	lgw_rxif_setconf(3, ifconf); /* chain 3: Lora 125kHz, all SF, on f1 + 0.3 MHz */
+	lgw_rxif_setconf(3, ifconf); /* chain 3: LoRa 125kHz, all SF, on f1 + 0.3 MHz */
 	
 	#if (LGW_MULTI_NB >= 8)
 	ifconf.enable = true;
 	ifconf.rf_chain = 0;
 	ifconf.freq_hz = -100000;
 	ifconf.datarate = DR_LORA_MULTI;
-	lgw_rxif_setconf(4, ifconf); /* chain 4: Lora 125kHz, all SF, on f0 - 0.1 MHz */
+	lgw_rxif_setconf(4, ifconf); /* chain 4: LoRa 125kHz, all SF, on f0 - 0.1 MHz */
 	
 	ifconf.enable = true;
 	ifconf.rf_chain = 0;
 	ifconf.freq_hz = 100000;
 	ifconf.datarate = DR_LORA_MULTI;
-	lgw_rxif_setconf(5, ifconf); /* chain 5: Lora 125kHz, all SF, on f0 + 0.1 MHz */
+	lgw_rxif_setconf(5, ifconf); /* chain 5: LoRa 125kHz, all SF, on f0 + 0.1 MHz */
 	
 	ifconf.enable = true;
 	ifconf.rf_chain = 1;
 	ifconf.freq_hz = -100000;
 	ifconf.datarate = DR_LORA_MULTI;
-	lgw_rxif_setconf(6, ifconf); /* chain 6: Lora 125kHz, all SF, on f1 - 0.1 MHz */
+	lgw_rxif_setconf(6, ifconf); /* chain 6: LoRa 125kHz, all SF, on f1 - 0.1 MHz */
 	
 	ifconf.enable = true;
 	ifconf.rf_chain = 1;
 	ifconf.freq_hz = 100000;
 	ifconf.datarate = DR_LORA_MULTI;
-	lgw_rxif_setconf(7, ifconf); /* chain 7: Lora 125kHz, all SF, on f1 + 0.1 MHz */
+	lgw_rxif_setconf(7, ifconf); /* chain 7: LoRa 125kHz, all SF, on f1 + 0.1 MHz */
 	#endif
 	
-	/* set configuration for Lora 'stand alone' channel */
+	/* set configuration for LoRa 'stand alone' channel */
 	memset(&ifconf, 0, sizeof(ifconf));
 	ifconf.enable = true;
 	ifconf.rf_chain = 0;
 	ifconf.freq_hz = 0;
 	ifconf.bandwidth = BW_250KHZ;
 	ifconf.datarate = DR_LORA_SF10;
-	lgw_rxif_setconf(8, ifconf); /* chain 8: Lora 250kHz, SF10, on f0 MHz */
+	lgw_rxif_setconf(8, ifconf); /* chain 8: LoRa 250kHz, SF10, on f0 MHz */
 	
 	/* set configuration for FSK channel */
 	memset(&ifconf, 0, sizeof(ifconf));
@@ -220,7 +220,7 @@ int main()
 	txpkt.rf_chain = 0;
 */	
 	
-	/* connect, configure and start the Lora gateway */
+	/* connect, configure and start the LoRa concentrator */
 	i = lgw_start();
 	if (i == LGW_HAL_SUCCESS) {
 		printf("*** Concentrator started ***\n");
@@ -255,7 +255,7 @@ int main()
 					printf(" tstamp:%010u", p->count_us);
 					printf(" size:%3u", p->size);
 					switch (p-> modulation) {
-						case MOD_LORA: printf(" Lora"); break;
+						case MOD_LORA: printf(" LoRa"); break;
 						case MOD_FSK: printf(" FSK"); break;
 						default: printf(" modulation?");
 					}

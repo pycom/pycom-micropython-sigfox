@@ -106,7 +106,7 @@ clean:
 ### transpose library.cfg into a C header file : config.h
 
 inc/config.h: ../VERSION library.cfg
-	@echo "*** Checking Lora gateway HAL library configuration ***"
+	@echo "*** Checking libloragw library configuration ***"
 	@rm -f $@
   # File initialization
 	@echo "#ifndef _LORAGW_CONFIGURATION_H" >> $@

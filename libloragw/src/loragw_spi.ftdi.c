@@ -7,8 +7,8 @@
   (C)2013 Semtech-Cycleo
 
 Description:
-	Host specific functions to address the LoRa™ gateway registers through a
-	SPI interface.
+	Host specific functions to address the LoRa concentrator registers through
+	a SPI interface.
 	Single-byte read/write and burst read/write.
 	Does not handle pagination.
 	Could be used with multiple SPI ports in parallel (explicit file descriptor)

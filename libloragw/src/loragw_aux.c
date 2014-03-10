@@ -7,7 +7,7 @@
   (C)2013 Semtech-Cycleo
 
 Description:
-	Lora gateway auxiliary functions
+	LoRa concentrator HAL auxiliary functions
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont

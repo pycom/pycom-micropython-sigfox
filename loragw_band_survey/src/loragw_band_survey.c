@@ -7,7 +7,7 @@
   (C)2013 Semtech-Cycleo
 
 Description:
-	Configure Lora concentrator board and record received packets in a log file
+	Configure LoRa concentrator board and record received packets in a log file
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
@@ -461,7 +461,7 @@ int main(int argc, char **argv)
 	lgw_soft_reset();
 	lgw_disconnect();
 	
-	printf("Exiting Lora concentrator band survey program\n");
+	printf("Exiting band survey program\n");
 	return EXIT_SUCCESS;
 }
 
