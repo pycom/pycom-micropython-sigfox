@@ -62,6 +62,10 @@ gateways as receivers.
 * New build system with configuration for multiple chip/radio/band support.
 * SX125x bandwidth set to 1MHz by default (was 800 kHz).
 
+### v1.2.2 ###
+
+* Added a GPIO toggle on the FTDI SPI module to reset the SX1301 board.
+
 ### v1.2.1 ###
 
 * Fixed 'floating point exception' crash when concentrator returned a packet with SF=0 (CRC error on Lora header).
