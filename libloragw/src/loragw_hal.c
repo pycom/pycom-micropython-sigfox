@@ -972,14 +972,16 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_MCU_RST_0, 0);
 	lgw_reg_w(LGW_MCU_RST_1, 0);
 	
-	/* Update Tx gain LUT and start AGC */
+	DEBUG_MSG("Info: Initialising AGC firmware...\n");
+	wait_ms(1);
 	
-	DEBUG_MSG("Info: Initialising AGC...\n");
 	lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
 	if (read_val != 0x20) {
 		DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
 		return LGW_HAL_ERROR;
 	}
+	
+	/* Update Tx gain LUT and start AGC */
 	
 	#if (CUSTOM_TX_POW_TABLE == 1)
 		DEBUG_MSG("Info: loading custom TX gain table\n");
