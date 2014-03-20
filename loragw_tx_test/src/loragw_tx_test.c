@@ -86,7 +86,7 @@ void usage(void) {
 	printf( " -b <int> Modulation bandwidth in kHz\n");
 	printf( " -p <int> RF power (dBm)\n");
 	printf( " -t <int> pause between packets (ms)\n");
-	printf( " -x <int> numbers of times the sequence is repeated\n");
+	printf( " -x <int> numbers of times the sequence is repeated (-1 for continuous)\n");
 	printf( " -i send packet using inverted modulation polarity \n");
 }
 
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
 	int bw = 125; /* 125kHz bandwidth by default */
 	int pow = 14; /* 14 dBm by default */
 	int delay = 1000; /* 1 second between packets by default */
-	int repeat = 1; /* sweep only once by default */
+	int repeat = -1; /* by default, repeat until stopped */
 	bool invert = false;
 	
 	/* RF configuration (TX fail if RF chain is not enabled) */
@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 			
 			case 'x': /* -x <int> numbers of times the sequence is repeated */
 				i = sscanf(optarg, "%i", &xi);
-				if ((i != 1) || (xi < 1)) {
+				if ((i != 1) || (xi < -1)) {
 					MSG("ERROR: invalid number of repeats\n");
 					return EXIT_FAILURE;
 				} else {
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
 		MSG("ERROR: frequency out of authorized band (accounting for modulation bandwidth)\n");
 		return EXIT_FAILURE;
 	}
-	printf("Sending %u packets on %u Hz (BW %u kHz, SF %u, 20 bytes payload) at %i dBm, with %u ms between each\n", repeat, f_target, bw, sf, pow, delay);
+	printf("Sending %i packets on %u Hz (BW %u kHz, SF %u, 20 bytes payload) at %i dBm, with %u ms between each\n", repeat, f_target, bw, sf, pow, delay);
 	
 	/* configure signal handling */
 	sigemptyset(&sigact.sa_mask);
@@ -261,7 +261,10 @@ int main(int argc, char **argv)
 	strcpy((char *)txpkt.payload, "TEST**abcdefghijklmn" ); /* abc.. is for padding */
 	
 	/* main loop */
-	for (cycle_count = 0; cycle_count < repeat; ++cycle_count) {
+	cycle_count = 0;
+	while ((repeat == -1) || (cycle_count < repeat)) {
+		++cycle_count;
+		
 		/* refresh counters in payload (big endian, for readability) */
 		txpkt.payload[4] = (uint8_t)(cycle_count >> 8); /* MSB */
 		txpkt.payload[5] = (uint8_t)(cycle_count & 0x00FF); /* LSB */
@@ -269,6 +272,12 @@ int main(int argc, char **argv)
 		/* send packet */
 		printf("Sending packet number %u ...", cycle_count);
 		i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
+		if (i != LGW_HAL_SUCCESS) {
+			printf("ERROR\n");
+			return EXIT_FAILURE;
+		}
+		
+		/* wait for packet to finish sending */
 		do {
 			wait_ms(5);
 			lgw_status(TX_STATUS, &status_var); /* get TX status */
