@@ -82,10 +82,12 @@ void usage(void) {
 	printf( "Available options:\n");
 	printf( " -h print this help\n");
 	printf( " -f <float> target frequency in MHz\n");
-	printf( " -s <int> Spreading Factor\n");
-	printf( " -b <int> Modulation bandwidth in kHz\n");
+	printf( " -s <uint> Spreading Factor\n");
+	printf( " -b <uint> Modulation bandwidth in kHz\n");
 	printf( " -p <int> RF power (dBm)\n");
-	printf( " -t <int> pause between packets (ms)\n");
+	printf( " -r <uint> LoRa preamble length (symbols)\n");
+	printf( " -z <uint> payload size (bytes)\n");
+	printf( " -t <uint> pause between packets (ms)\n");
 	printf( " -x <int> numbers of times the sequence is repeated (-1 for continuous)\n");
 	printf( " -i send packet using inverted modulation polarity \n");
 }
@@ -109,6 +111,8 @@ int main(int argc, char **argv)
 	int sf = 10; /* SF10 by default */
 	int bw = 125; /* 125kHz bandwidth by default */
 	int pow = 14; /* 14 dBm by default */
+	int preamb = 8; /* 8 symbol preamble by default */
+	int pl_size = 16; /* 16 bytes payload by default */
 	int delay = 1000; /* 1 second between packets by default */
 	int repeat = -1; /* by default, repeat until stopped */
 	bool invert = false;
@@ -123,7 +127,7 @@ int main(int argc, char **argv)
 	uint16_t cycle_count = 0;
 	
 	/* parse command line options */
-	while ((i = getopt (argc, argv, "hf:s:b:p:t:x:i")) != -1) {
+	while ((i = getopt (argc, argv, "hf:s:b:p:r:z:t:x:i")) != -1) {
 		switch (i) {
 			case 'h':
 				usage();
@@ -134,6 +138,7 @@ int main(int argc, char **argv)
 				i = sscanf(optarg, "%lf", &xd);
 				if ((i != 1) || (xd < 30.0) || (xd > 3000.0)) {
 					MSG("ERROR: invalid TX frequency\n");
+					usage();
 					return EXIT_FAILURE;
 				} else {
 					f_target = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
@@ -144,6 +149,7 @@ int main(int argc, char **argv)
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || (xi < 7) || (xi > 12)) {
 					MSG("ERROR: invalid spreading factor\n");
+					usage();
 					return EXIT_FAILURE;
 				} else {
 					sf = xi;
@@ -154,6 +160,7 @@ int main(int argc, char **argv)
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || ((xi != 125)&&(xi != 250)&&(xi != 500))) {
 					MSG("ERROR: invalid LoRa bandwidth\n");
+					usage();
 					return EXIT_FAILURE;
 				} else {
 					bw = xi;
@@ -164,9 +171,32 @@ int main(int argc, char **argv)
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || (xi < -60) || (xi > 60)) {
 					MSG("ERROR: invalid RF power\n");
+					usage();
 					return EXIT_FAILURE;
 				} else {
 					pow = xi;
+				}
+				break;
+			
+			case 'r': /* -r <uint> preamble length (symbols) */
+				i = sscanf(optarg, "%i", &xi);
+				if ((i != 1) || (xi < 6)) {
+					MSG("ERROR: preamble length must be >6 symbols \n");
+					usage();
+					return EXIT_FAILURE;
+				} else {
+					preamb = xi;
+				}
+				break;
+			
+			case 'z': /* -z <uint> payload length (bytes) */
+				i = sscanf(optarg, "%i", &xi);
+				if ((i != 1) || (xi <= 0)) {
+					MSG("ERROR: invalid payload size\n");
+					usage();
+					return EXIT_FAILURE;
+				} else {
+					pl_size = xi;
 				}
 				break;
 			
@@ -174,6 +204,7 @@ int main(int argc, char **argv)
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || (xi < 0)) {
 					MSG("ERROR: invalid time between packets\n");
+					usage();
 					return EXIT_FAILURE;
 				} else {
 					delay = xi;
@@ -184,6 +215,7 @@ int main(int argc, char **argv)
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || (xi < -1)) {
 					MSG("ERROR: invalid number of repeats\n");
+					usage();
 					return EXIT_FAILURE;
 				} else {
 					repeat = xi;
@@ -195,7 +227,7 @@ int main(int argc, char **argv)
 				break;
 			
 			default:
-				MSG("ERROR: argument parsing use -h option for help\n");
+				MSG("ERROR: argument parsing\n");
 				usage();
 				return EXIT_FAILURE;
 		}
@@ -208,7 +240,7 @@ int main(int argc, char **argv)
 		MSG("ERROR: frequency out of authorized band (accounting for modulation bandwidth)\n");
 		return EXIT_FAILURE;
 	}
-	printf("Sending %i packets on %u Hz (BW %u kHz, SF %u, 20 bytes payload) at %i dBm, with %u ms between each\n", repeat, f_target, bw, sf, pow, delay);
+	printf("Sending %i packets on %u Hz (BW %i kHz, SF %i, %i bytes payload, %i symbols preamble) at %i dBm, with %i ms between each\n", repeat, f_target, bw, sf, pl_size, preamb, pow, delay);
 	
 	/* configure signal handling */
 	sigemptyset(&sigact.sa_mask);
@@ -256,9 +288,9 @@ int main(int argc, char **argv)
 	}
 	txpkt.coderate = CR_LORA_4_5;
 	txpkt.invert_pol = invert;
-	txpkt.preamble = 8;
-	txpkt.size = 20; /* should be close to typical payload length */
-	strcpy((char *)txpkt.payload, "TEST**abcdefghijklmn" ); /* abc.. is for padding */
+	txpkt.preamble = preamb;
+	txpkt.size = pl_size;
+	strcpy((char *)txpkt.payload, "TEST**abcdefghijklmnopqrstuvwxyz0123456789" ); /* abc.. is for padding */
 	
 	/* main loop */
 	cycle_count = 0;
