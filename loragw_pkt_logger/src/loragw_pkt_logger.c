@@ -411,7 +411,7 @@ int main(int argc, char **argv)
 	}
 	
 	/* transform the MAC address into a string */
-	sprintf(lgwm_str, "%016llX", lgwm);
+	sprintf(lgwm_str, "%08X%08X", (uint32_t)(lgwm >> 32), (uint32_t)(lgwm & 0xFFFFFFFF));
 	
 	/* opening log file and writing CSV header*/
 	time(&now_time);
@@ -438,7 +438,7 @@ int main(int argc, char **argv)
 			p = &rxpkt[i];
 			
 			/* writing gateway ID */
-			fprintf(log_file, "%016llX,", lgwm);
+			fprintf(log_file, "\"%08X%08X\",", (uint32_t)(lgwm >> 32), (uint32_t)(lgwm & 0xFFFFFFFF));
 			
 			/* writing node MAC address */
 			fputs("\"\",", log_file); // TODO: need to parse payload
@@ -448,7 +448,7 @@ int main(int argc, char **argv)
 			// TODO: replace with GPS time when available
 			
 			/* writing internal clock */
-			fprintf(log_file, "%010u,", p->count_us);
+			fprintf(log_file, "%10u,", p->count_us);
 			
 			/* writing RX frequency */
 			fprintf(log_file, "%10u,", p->freq_hz);
