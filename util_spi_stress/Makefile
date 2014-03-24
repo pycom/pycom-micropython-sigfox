@@ -1,6 +1,6 @@
 ### Application-specific constants
 
-APP_NAME=loragw_tx_test
+APP_NAME=util_spi_stress
 
 ### Environment constants 
 
@@ -23,8 +23,7 @@ CFLAGS=-O2 -Wall -Wextra -std=c99 -Iinc -I.
 # List the library sub-modules that are used by the application
 
 LGW_INC= $(LGW_PATH)/inc/config.h
-LGW_INC += $(LGW_PATH)/inc/loragw_hal.h
-LGW_INC += $(LGW_PATH)/inc/loragw_aux.h
+LGW_INC += $(LGW_PATH)/inc/loragw_reg.h
 
 ### Linking options
 
