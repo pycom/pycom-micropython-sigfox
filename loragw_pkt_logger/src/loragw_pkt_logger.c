@@ -530,7 +530,10 @@ int main(int argc, char **argv)
 				if ((j > 0) && (j%4 == 0)) fputs("-", log_file);
 				fprintf(log_file, "%02X", p->payload[j]);
 			}
+			
+			/* end of log file line */
 			fputs("\"\n", log_file);
+			fflush(log_file);
 			++pkt_in_log;
 		}
 		
