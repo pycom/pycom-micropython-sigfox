@@ -264,6 +264,8 @@ typedef struct {
 	#define		CFG_BAND_STR	"us915"
 #elif (CFG_BAND_470 == 1)
 	#define		CFG_BAND_STR	"cn470"
+#elif (CFG_BAND_433 == 1)
+	#define		CFG_BAND_STR	"eu433"
 #else
 	#define		CFG_BAND_STR	"band?"
 #endif

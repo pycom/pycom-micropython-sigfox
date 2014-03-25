@@ -63,6 +63,9 @@ global_conf.json: cfg/global_conf.us915.json
 else ifeq ($(CFG_BAND),cn470)
 global_conf.json: cfg/global_conf.cn470.json
 	cp $< $@
+else ifeq ($(CFG_BAND),eu433)
+global_conf.json: cfg/global_conf.eu433.json
+	cp $< $@
 else
 global_conf.json: cfg/global_conf.empty.json
 	cp $< $@

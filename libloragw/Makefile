@@ -67,6 +67,13 @@ else ifeq ($(CFG_BAND),cn470)
   else
     $(error The selected radio(s) cannot work in the selected band.)
   endif
+else ifeq ($(CFG_BAND),eu433)
+  ifeq ($(CFG_RADIO),sx1255)
+    CFG_BAND_MSG= ETSI 433 MHz band
+    CFG_BAND_OPT= CFG_BAND_433
+  else
+    $(error The selected radio(s) cannot work in the selected band.)
+  endif
 else
   $(warning [Warning] No frequency band selected, full radio capability assumed.)
   CFG_BAND_MSG= Full range supported by the radio(s)
