@@ -203,6 +203,7 @@ int main()
 	memset(&txpkt, 0, sizeof(txpkt));
 	txpkt.freq_hz = F_TX;
 	txpkt.tx_mode = IMMEDIATE;
+	txpkt.rf_power = 10;
 	txpkt.modulation = MOD_LORA;
 	txpkt.bandwidth = BW_250KHZ;
 	txpkt.datarate = DR_LORA_SF10;
@@ -215,6 +216,7 @@ int main()
 	memset(&txpkt, 0, sizeof(txpkt));
 	txpkt.freq_hz = F_TX;
 	txpkt.tx_mode = IMMEDIATE;
+	txpkt.rf_power = 10;
 	txpkt.modulation = MOD_FSK;
 	txpkt.f_dev = 50;
 	txpkt.datarate = 64000;
