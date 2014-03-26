@@ -62,6 +62,8 @@ gateways as receivers.
 * Added full support for SX1301 reference board.
 * Changed build system with configuration for multiple chip/radio/band support.
 * SX125x bandwidth set to 1MHz by default (was 800 kHz).
+* Solved warnings with 64b integer printf when compiling on x86_64.
+* Renamed helper programs to reduce the concentrator vs. gateway confusion.
 
 ### v1.2.2 ###
 

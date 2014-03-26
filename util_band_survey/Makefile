@@ -1,11 +1,11 @@
 ### Application-specific constants
 
-APP_NAME=util_band_survey
+APP_NAME := util_band_survey
 
 ### Environment constants 
 
-LGW_PATH=../libloragw
-CROSS_COMPILE=
+LGW_PATH := ../libloragw
+CROSS_COMPILE :=
 
 ### External constant definitions
 # must get library build option to know if mpsse must be linked or not
@@ -14,15 +14,15 @@ include $(LGW_PATH)/library.cfg
 
 ### Constant symbols
 
-CC=$(CROSS_COMPILE)gcc
-AR=$(CROSS_COMPILE)ar
+CC := $(CROSS_COMPILE)gcc
+AR := $(CROSS_COMPILE)ar
 
 CFLAGS=-O2 -Wall -Wextra -std=c99 -Iinc -I.
 
 ### Constants for LoRa concentrator HAL library
 # List the library sub-modules that are used by the application
 
-LGW_INC= $(LGW_PATH)/inc/config.h
+LGW_INC = $(LGW_PATH)/inc/config.h
 LGW_INC += $(LGW_PATH)/inc/loragw_hal.h
 LGW_INC += $(LGW_PATH)/inc/loragw_reg.h
 LGW_INC += $(LGW_PATH)/inc/loragw_aux.h
@@ -30,9 +30,9 @@ LGW_INC += $(LGW_PATH)/inc/loragw_aux.h
 ### Linking options
 
 ifeq ($(CFG_SPI),native)
-  LIBS=-lloragw -lrt
+  LIBS := -lloragw -lrt
 else ifeq ($(CFG_SPI),ftdi)
-  LIBS=-lloragw -lrt -lmpsse
+  LIBS := -lloragw -lrt -lmpsse
 endif
 
 ### General build targets
