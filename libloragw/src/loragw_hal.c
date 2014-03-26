@@ -104,8 +104,8 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 	#define		RSSI_OFFSET_FSK			-146.5	/* calibrated value */
 	#define		RSSI_SLOPE_FSK			1.2		/* calibrated value */
 #elif (CFG_BRD_REF1301 == 1)
-	#define		RSSI_OFFSET_LORA_MULTI	-128.0	/* todo */
-	#define		RSSI_OFFSET_LORA_STD	-167.0	/* todo */
+	#define		RSSI_OFFSET_LORA_MULTI	-129.0	/* calibrated value */
+	#define		RSSI_OFFSET_LORA_STD	-164.0	/* calibrated for all bandwidth */
 	#define		RSSI_OFFSET_FSK			-146.5	/* todo */
 	#define		RSSI_SLOPE_FSK			1.2		/* todo */
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
