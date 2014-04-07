@@ -103,10 +103,15 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 	#define		RSSI_OFFSET_LORA_STD	-167.0	/* calibrated for all bandwidth */
 	#define		RSSI_OFFSET_FSK			-146.5	/* calibrated value */
 	#define		RSSI_SLOPE_FSK			1.2		/* calibrated value */
-#elif (CFG_BRD_REF1301 == 1)
+#elif (CFG_BRD_1301REF868 == 1)
 	#define		RSSI_OFFSET_LORA_MULTI	-129.0	/* calibrated value */
 	#define		RSSI_OFFSET_LORA_STD	-164.0	/* calibrated for all bandwidth */
-	#define		RSSI_OFFSET_FSK			-146.5	/* todo */
+	#define		RSSI_OFFSET_FSK			-145.0	/* todo */
+	#define		RSSI_SLOPE_FSK			1.2		/* todo */
+#elif (CFG_BRD_1301REF433 == 1)
+	#define		RSSI_OFFSET_LORA_MULTI	-139.0	/* calibrated value */
+	#define		RSSI_OFFSET_LORA_STD	-177.0	/* calibrated for all bandwidth */
+	#define		RSSI_OFFSET_FSK			-155.0	/* todo */
 	#define		RSSI_SLOPE_FSK			1.2		/* todo */
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
@@ -168,35 +173,35 @@ typedef struct {
 #if (CFG_BRD_NANO868 == 1)
 	#define	CUSTOM_TX_POW_TABLE		1 /* is custom table loading sequence needed ? */
 	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
-		{	0,	3,	8,	2},\
-		{	0,	3,	9,	3},\
-		{	0,	3,	10,	5},\
-		{	0,	3,	12,	7},\
-		{	0,	3,	14,	9},\
+		{	0,	3,	 8,	 2},\
+		{	0,	3,	 9,	 3},\
+		{	0,	3,	10,	 5},\
+		{	0,	3,	12,	 7},\
+		{	0,	3,	14,	 9},\
 		{	0,	3,	15,	10},\
-		{	1,	3,	8,	12},\
-		{	1,	3,	9,	14},\
+		{	1,	3,	 8,	12},\
+		{	1,	3,	 9,	14},\
 		{	1,	3,	10,	15},\
 		{	1,	3,	11,	17},\
 		{	1,	3,	12,	18},\
 		{	1,	3,	13,	20},\
-		{	2,	3,	8,	21},\
-		{	2,	3,	9,	23},\
+		{	2,	3,	 8,	21},\
+		{	2,	3,	 9,	23},\
 		{	2,	3,	11,	25},\
 		{	2,	3,	13,	27},\
 	}; /* calibrated */
-#elif (CFG_BRD_REF1301 == 1)
+#elif (CFG_BRD_1301REF868 == 1)
 	#define	CUSTOM_TX_POW_TABLE		1
 	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
-		{	0,	3,	8,	-9},\
+		{	0,	3,	 8,	-9},\
 		{	0,	3,	10,	-6},\
 		{	0,	3,	12,	-3},\
-		{	1,	3,	8,	0},\
-		{	1,	3,	10,	4},\
-		{	1,	3,	12,	7},\
-		{	1,	3,	13,	8},\
-		{	1,	3,	15,	9},\
-		{	2,	3,	9,	10},\
+		{	1,	3,	 8,	 0},\
+		{	1,	3,	10,	 4},\
+		{	1,	3,	12,	 7},\
+		{	1,	3,	13,	 8},\
+		{	1,	3,	15,	 9},\
+		{	2,	3,	 9,	10},\
 		{	2,	3,	10,	12},\
 		{	2,	3,	11,	13},\
 		{	3,	3,	10,	21},\
@@ -205,6 +210,27 @@ typedef struct {
 		{	3,	3,	13,	25},\
 		{	3,	3,	15,	26},\
 	}; /* calibrated */
+#elif (CFG_BRD_1301REF433 == 1)
+	#define	CUSTOM_TX_POW_TABLE		1
+	// WARNING: TABLE NO CALIBRATED
+	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
+		{	0,	3,	 8,	-9},\
+		{	0,	3,	10,	-6},\
+		{	0,	3,	12,	-3},\
+		{	1,	3,	 8,	 0},\
+		{	1,	3,	10,	 4},\
+		{	1,	3,	12,	 7},\
+		{	1,	3,	13,	 8},\
+		{	1,	3,	15,	 9},\
+		{	2,	3,	 9,	10},\
+		{	2,	3,	10,	12},\
+		{	2,	3,	11,	13},\
+		{	3,	3,	10,	21},\
+		{	3,	3,	12,	23},\
+		{	3,	3,	12,	24},\
+		{	3,	3,	13,	25},\
+		{	3,	3,	15,	26},\
+	}; /* TODO: calibration */
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
 */
@@ -272,8 +298,10 @@ typedef struct {
 
 #if (CFG_BRD_NANO868 == 1)
 	#define		CFG_BRD_STR		"dev_nano_868"
-#elif (CFG_BRD_REF1301 == 1)
-	#define		CFG_BRD_STR		"ref_1301_57nf"
+#elif (CFG_BRD_1301REF868 == 1)
+	#define		CFG_BRD_STR		"ref_1301_868"
+#elif (CFG_BRD_1301REF433 == 1)
+	#define		CFG_BRD_STR		"ref_1301_433"
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
 */

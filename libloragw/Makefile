@@ -83,9 +83,12 @@ endif
 ifeq ($(CFG_BRD),dev_nano_868)
   CFG_BRD_MSG := FPGA-based nano-concentrator, with 868 MHz SAW filter
   CFG_BRD_OPT := CFG_BRD_NANO868
-else ifeq ($(CFG_BRD),ref_1301_57nf)
-  CFG_BRD_MSG := SX1301 reference board with SX1257 radios, no filters
-  CFG_BRD_OPT := CFG_BRD_REF1301
+else ifeq ($(CFG_BRD),ref_1301_868)
+  CFG_BRD_MSG := SX1301 reference board with SX1257 radios, 868 MHz filters
+  CFG_BRD_OPT := CFG_BRD_1301REF868
+else ifeq ($(CFG_BRD),ref_1301_433)
+  CFG_BRD_MSG := SX1301 reference board with SX1255 radios, 433 MHz filters
+  CFG_BRD_OPT := CFG_BRD_1301REF433
 else
   $(info [Info] No specific board selected.)
   CFG_BRD_MSG := None
