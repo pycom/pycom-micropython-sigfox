@@ -165,7 +165,7 @@ endif
 obj/loragw_reg.o: src/loragw_reg.c inc/loragw_reg.h inc/loragw_spi.h inc/config.h
 	$(CC) -c $(CFLAGS) $< -o $@
 
-obj/loragw_hal.o: src/loragw_hal.c inc/loragw_hal.h inc/loragw_reg.h inc/loragw_aux.h src/arb_fw.var src/agc_fw.var inc/config.h
+obj/loragw_hal.o: src/loragw_hal.c inc/loragw_hal.h inc/loragw_reg.h inc/loragw_aux.h src/arb_fw.var src/agc_fw.var src/cal_fw.var inc/config.h
 	$(CC) -c $(CFLAGS) $< -o $@
 
 obj/loragw_gps.o: src/loragw_gps.c inc/loragw_gps.h inc/config.h

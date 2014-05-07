@@ -58,6 +58,9 @@ Maintainer: Sylvain Miermont
 #define		TX_METADATA_NB		16
 #define		RX_METADATA_NB		16
 
+#define     AGC_CMD_WAIT        16
+#define     AGC_CMD_ABORT       17
+
 #define		MIN_LORA_PREAMBLE		4
 #define		STD_LORA_PREAMBLE		6
 #define		MIN_FSK_PREAMBLE		3
@@ -212,7 +215,7 @@ typedef struct {
 	}; /* calibrated */
 #elif (CFG_BRD_1301REF433 == 1)
 	#define	CUSTOM_TX_POW_TABLE		1
-	// WARNING: TABLE NO CALIBRATED
+	// WARNING: TABLE NO CALIBRATED, COPIED FOR 868
 	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
 		{	0,	3,	 8,	-9},\
 		{	0,	3,	10,	-6},\
@@ -319,6 +322,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CF
 
 #include "arb_fw.var" /* external definition of the variable */
 #include "agc_fw.var" /* external definition of the variable */
+#include "cal_fw.var" /* external definition of the variable */
 
 /*
 The following static variables are the configuration set that the user can
@@ -346,6 +350,12 @@ static bool lora_rx_ppm_offset;
 
 static uint8_t fsk_rx_bw; /* bandwidth setting of FSK modem */
 static uint32_t fsk_rx_dr; /* FSK modem datarate in bauds */
+
+/* TX I/Q imbalance coefficients for mixer gain = 8 to 15 */
+static int8_t cal_offset_a_i[8]; /* TX I offset for radio A */
+static int8_t cal_offset_a_q[8]; /* TX Q offset for radio A */
+static int8_t cal_offset_b_i[8]; /* TX I offset for radio B */
+static int8_t cal_offset_b_q[8]; /* TX Q offset for radio B */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -856,6 +866,10 @@ int lgw_start(void) {
 	int32_t read_val;
 	uint8_t load_val;
 	
+	uint8_t cal_cmd;
+	uint16_t cal_time;
+	uint8_t cal_status;
+	
 	if (lgw_is_started == true) {
 		DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
 	}
@@ -869,13 +883,13 @@ int lgw_start(void) {
 	/* reset the registers (also shuts the radios down) */
 	lgw_soft_reset();
 	
-	/* Ungate clocks (gated by default) */
+	/* ungate clocks (gated by default) */
 	lgw_reg_w(LGW_GLOBAL_EN, 1);
 	
 	/* switch on and reset the radios (also starts the 32 MHz XTAL) */
 	lgw_reg_w(LGW_RADIO_A_EN,1);
 	lgw_reg_w(LGW_RADIO_B_EN,1);
-	wait_ms(500);
+	wait_ms(500); /* TODO: optimize */
 	lgw_reg_w(LGW_RADIO_RST,1);
 	wait_ms(5);
 	lgw_reg_w(LGW_RADIO_RST,0);
@@ -884,15 +898,132 @@ int lgw_start(void) {
 	setup_sx125x(0, rf_rx_freq[0]);
 	setup_sx125x(1, rf_rx_freq[1]);
 	
-	/* TODO load the calibration firmware and wait for calibration to end */
+	/* select calibration command */
+	cal_cmd = 0;
+	cal_cmd |= rf_enable[0] ? 0x01 : 0x00; /* Bit 0: Calibrate Rx IQ mismatch compensation on radio A */
+	cal_cmd |= rf_enable[1] ? 0x02 : 0x00; /* Bit 1: Calibrate Rx IQ mismatch compensation on radio B */
+	cal_cmd |= (rf_enable[0] && rf_tx_enable[0]) ? 0x04 : 0x00; /* Bit 2: Calibrate Tx DC offset on radio A */
+	cal_cmd |= (rf_enable[1] && rf_tx_enable[1]) ? 0x08 : 0x00; /* Bit 3: Calibrate Tx DC offset on radio B */
+	cal_cmd |= 0x10; /* Bit 4: 0: calibrate with DAC gain=2, 1: with DAC gain=3 (use 3) */
 	
-	/* in the absence of calibration firmware, do a "manual" calibration */
-	lgw_reg_w(LGW_TX_OFFSET_I,10);
-	lgw_reg_w(LGW_TX_OFFSET_Q,5);
-	lgw_reg_w(LGW_IQ_MISMATCH_A_AMP_COEFF,63);
-	lgw_reg_w(LGW_IQ_MISMATCH_A_PHI_COEFF,9);
-	lgw_reg_w(LGW_IQ_MISMATCH_B_AMP_COEFF,0);
-	lgw_reg_w(LGW_IQ_MISMATCH_B_PHI_COEFF,0);
+	#if (CFG_RADIO_1257 == 1)
+	cal_cmd |= 0x00; /* Bit 5: 0: SX1257, 1: SX1255 */
+	#elif (CFG_RADIO_1255 == 1)
+	cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
+	#endif
+	
+	#if ((CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1))
+	cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
+	cal_time = 2300; /* measured between 2.1 and 2.2 sec, because 1 TX only */
+	#elif (CFG_BRD_NANO868 == 1)
+	cal_cmd |= 0x40; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
+	cal_time = 5200; /* measured between 5.0 and 5.1 sec */
+	#else
+	cal_cmd |= 0xC0; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
+	cal_time = 4200; /* measured between 4.0 and 4.1 sec */
+	#endif
+	
+	/* Load the calibration firmware  */
+	load_firmware(MCU_AGC, cal_firmware, MCU_AGC_FW_BYTE);
+	lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0); /* gives to AGC MCU the control of the radios */
+	lgw_reg_w(LGW_RADIO_SELECT,cal_cmd); /* send calibration configuration word */
+	lgw_reg_w(LGW_MCU_RST_1,0);
+	lgw_reg_w(LGW_PAGE_REG,3); /* Calibration will start on this condition as soon as MCU can talk to concentrator registers */
+	lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL,0); /* Give control of concentrator registers to MCU */
+	
+	/* Wait for calibration to end */
+	DEBUG_PRINTF("Note: calibration started (time: %u ms)\n", cal_time);
+	wait_ms(cal_time); /* Wait for end of calibration */
+	lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL,1); /* Take back control */
+	
+	/* Get calibration status */
+	lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+	cal_status = (uint8_t)read_val;
+	/*
+		bit 7: calibration finished
+		bit 0: could access SX1301 registers
+		bit 1: could access radio A registers
+		bit 2: could access radio B registers
+		bit 3: radio A RX image rejection successful
+		bit 4: radio B RX image rejection successful
+		bit 5: radio A TX imbalance correction successful
+		bit 6: radio B TX imbalance correction successful
+	*/
+	if ((cal_status & 0x81) != 0x81) {
+		DEBUG_PRINTF("ERROR: CALIBRATION FAILURE (STATUS = %u)\n", cal_status);
+		return LGW_HAL_ERROR;
+	} else {
+		DEBUG_PRINTF("Note: calibration finished (status = %u)\n", cal_status);
+	}
+	if (rf_enable[0] && ((cal_status & 0x02) == 0)) {
+		DEBUG_MSG("WARNING: calibration could not access radio A\n");
+	}
+	if (rf_enable[1] && ((cal_status & 0x04) == 0)) {
+		DEBUG_MSG("WARNING: calibration could not access radio B\n");
+	}
+	if (rf_enable[0] && ((cal_status & 0x08) == 0)) {
+		DEBUG_MSG("WARNING: problem in calibration of radio A for image rejection\n");
+	}
+	if (rf_enable[1] && ((cal_status & 0x10) == 0)) {
+		DEBUG_MSG("WARNING: problem in calibration of radio B for image rejection\n");
+	}
+	if (rf_enable[0] && rf_tx_enable[0] && ((cal_status & 0x20) == 0)) {
+		DEBUG_MSG("WARNING: problem in calibration of radio A for TX imbalance\n");
+	}
+	if (rf_enable[1] && rf_tx_enable[1] && ((cal_status & 0x40) == 0)) {
+		DEBUG_MSG("WARNING: problem in calibration of radio B for TX imbalance\n");
+	}
+	
+	/* Get TX DC offset values */
+	for(i=0; i<=7; ++i) {
+		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0+i);
+		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		cal_offset_a_i[i] = (int8_t)read_val;
+		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8+i);
+		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		cal_offset_a_q[i] = (int8_t)read_val;
+		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0+i);
+		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		cal_offset_b_i[i] = (int8_t)read_val;
+		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8+i);
+		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		cal_offset_b_q[i] = (int8_t)read_val;
+	}
+	
+	/* Print calibration results */
+	/* TODO: remove, kept only for debug */
+	printf("Calibration status %u\n", cal_status);
+	printf("Image residual:\n");
+	lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xD0);
+	lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+	printf(" - A: %u\n", (uint8_t)read_val);
+	lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xD1);
+	lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+	printf(" - B: %u\n", (uint8_t)read_val);
+	
+	printf("Image correction:\n");
+	lgw_reg_r(LGW_IQ_MISMATCH_A_AMP_COEFF, &read_val);
+	printf(" - Amp A: %u\n", (uint8_t)read_val);
+	lgw_reg_r(LGW_IQ_MISMATCH_A_PHI_COEFF, &read_val);
+	printf(" - Phi A: %u\n", (uint8_t)read_val);
+	lgw_reg_r(LGW_IQ_MISMATCH_B_AMP_COEFF, &read_val);
+	printf(" - Amp B: %u\n", (uint8_t)read_val);
+	lgw_reg_r(LGW_IQ_MISMATCH_B_PHI_COEFF, &read_val);
+	printf(" - Phi B: %u\n", (uint8_t)read_val);
+	
+	printf("DC offset residual (radio A & B)):\n");
+	for(i=0; i<=7; ++i) {
+		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xC0+i);
+		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		printf(" %u", (uint8_t)read_val);
+	}
+	printf("\n");
+	for(i=0; i<=7; ++i) {
+		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xC8+i);
+		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		printf(" %u", (uint8_t)read_val);
+	}
+	printf("\n");
 	
 	/* load adjusted parameters */
 	lgw_constant_adjust();
@@ -1016,9 +1147,9 @@ int lgw_start(void) {
 	#if (CUSTOM_TX_POW_TABLE == 1)
 		DEBUG_MSG("Info: loading custom TX gain table\n");
 		for(i=0; i<TX_POW_LUT_SIZE; ++i) {
-			load_val = tx_pow_table[i].mix_gain + (16 * tx_pow_table[i].dac_gain) + (64 * tx_pow_table[i].pa_gain);
-			lgw_reg_w(LGW_RADIO_SELECT,1); /* 1 = start a transaction */
+			lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT); /* start a transaction */
 			wait_ms(1);
+			load_val = tx_pow_table[i].mix_gain + (16 * tx_pow_table[i].dac_gain) + (64 * tx_pow_table[i].pa_gain);
 			lgw_reg_w(LGW_RADIO_SELECT, load_val);
 			wait_ms(1);
 			lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
@@ -1028,9 +1159,9 @@ int lgw_start(void) {
 			}
 		}
 	#else
-		load_val = 2; /* 2 = abort LUT update */
-		lgw_reg_w(LGW_RADIO_SELECT,1); /* 1 = start a transaction */
+		lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT); /* start a transaction */
 		wait_ms(1);
+		load_val = AGC_CMD_ABORT;
 		lgw_reg_w(LGW_RADIO_SELECT, load_val); 
 		wait_ms(1);
 		DEBUG_MSG("Info: TX gain LUT update skipped, using default LUT\n");
@@ -1041,7 +1172,14 @@ int lgw_start(void) {
 		}
 	#endif
 	
-	lgw_reg_w(LGW_RADIO_SELECT,1);
+	/* Load chan_select firmware option */
+	lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
+	wait_ms(1);
+	lgw_reg_w(LGW_RADIO_SELECT, 0);
+	wait_ms(1);
+	
+	/* End AGC firmware init and check status */
+	lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
 	wait_ms(1);
 	lgw_reg_w(LGW_RADIO_SELECT, radio_select); /* Load intended value of RADIO_SELECT */
 	wait_ms(1);
@@ -1283,6 +1421,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	int transfer_size = 0; /* data to transfer from host to TX databuffer */
 	int payload_offset = 0; /* start of the payload content in the databuffer */
 	uint8_t pow_index = 0; /* 4-bit value to set the firmware TX power */
+	uint8_t target_mix_gain = 0; /* used to select the proper I/Q offset correction */
 	
 	/* check if the concentrator is running */
 	if (lgw_is_started == false) {
@@ -1356,6 +1495,18 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		if (tx_pow_table[pow_index].rf_power <= pkt_data.rf_power) {
 			break;
 		}
+	}
+	
+	/* loading TX imbalance correction */
+	target_mix_gain = tx_pow_table[pow_index].mix_gain;
+	target_mix_gain = (target_mix_gain <  8)?  8 : target_mix_gain;
+	target_mix_gain = (target_mix_gain > 15)? 15 : target_mix_gain;
+	if (pkt_data.rf_chain == 0) { /* use radio A calibration table */
+		lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_a_i[target_mix_gain - 8]);
+		lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_a_q[target_mix_gain - 8]);
+	} else { /* use radio B calibration table */
+		lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_b_i[target_mix_gain - 8]);
+		lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_b_q[target_mix_gain - 8]);
 	}
 	
 	/* fixed metadata, useful payload and misc metadata compositing */
