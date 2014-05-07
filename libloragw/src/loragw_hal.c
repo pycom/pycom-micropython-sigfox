@@ -1469,8 +1469,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	if (pkt_data.rf_chain == 0) { /* use radio A calibration table */
 		lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_a_i[target_mix_gain - 8]);
 		lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_a_q[target_mix_gain - 8]);
-		printf("Pow (rounded)): %i, index: %u\n", tx_pow_table[pow_index].rf_power, pow_index);
-		printf("Mix gain: %u, offset I: %i Q: %i\n", target_mix_gain, cal_offset_a_i[target_mix_gain-8], cal_offset_a_q[target_mix_gain-8]);
 	} else { /* use radio B calibration table */
 		lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_b_i[target_mix_gain - 8]);
 		lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_b_q[target_mix_gain - 8]);
