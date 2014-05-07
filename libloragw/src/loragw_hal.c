@@ -990,41 +990,6 @@ int lgw_start(void) {
 		cal_offset_b_q[i] = (int8_t)read_val;
 	}
 	
-	/* Print calibration results */
-	/* TODO: remove, kept only for debug */
-	printf("Calibration status %u\n", cal_status);
-	printf("Image residual:\n");
-	lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xD0);
-	lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-	printf(" - A: %u\n", (uint8_t)read_val);
-	lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xD1);
-	lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-	printf(" - B: %u\n", (uint8_t)read_val);
-	
-	printf("Image correction:\n");
-	lgw_reg_r(LGW_IQ_MISMATCH_A_AMP_COEFF, &read_val);
-	printf(" - Amp A: %u\n", (uint8_t)read_val);
-	lgw_reg_r(LGW_IQ_MISMATCH_A_PHI_COEFF, &read_val);
-	printf(" - Phi A: %u\n", (uint8_t)read_val);
-	lgw_reg_r(LGW_IQ_MISMATCH_B_AMP_COEFF, &read_val);
-	printf(" - Amp B: %u\n", (uint8_t)read_val);
-	lgw_reg_r(LGW_IQ_MISMATCH_B_PHI_COEFF, &read_val);
-	printf(" - Phi B: %u\n", (uint8_t)read_val);
-	
-	printf("DC offset residual (radio A & B)):\n");
-	for(i=0; i<=7; ++i) {
-		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xC0+i);
-		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-		printf(" %u", (uint8_t)read_val);
-	}
-	printf("\n");
-	for(i=0; i<=7; ++i) {
-		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xC8+i);
-		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-		printf(" %u", (uint8_t)read_val);
-	}
-	printf("\n");
-	
 	/* load adjusted parameters */
 	lgw_constant_adjust();
 	
@@ -1504,6 +1469,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	if (pkt_data.rf_chain == 0) { /* use radio A calibration table */
 		lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_a_i[target_mix_gain - 8]);
 		lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_a_q[target_mix_gain - 8]);
+		printf("Pow (rounded)): %i, index: %u\n", tx_pow_table[pow_index].rf_power, pow_index);
+		printf("Mix gain: %u, offset I: %i Q: %i\n", target_mix_gain, cal_offset_a_i[target_mix_gain-8], cal_offset_a_q[target_mix_gain-8]);
 	} else { /* use radio B calibration table */
 		lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_b_i[target_mix_gain - 8]);
 		lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_b_q[target_mix_gain - 8]);
