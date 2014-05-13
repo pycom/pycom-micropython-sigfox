@@ -1161,6 +1161,13 @@ int lgw_start(void) {
 	/* enable LEDs */
 	lgw_reg_w(LGW_GPIO_MODE,31);
 	// lgw_reg_w(LGW_GPIO_SELECT_OUTPUT,0); /* default 0 */
+	/* LED table :
+	DGPIO0 -> packets waiting in the RX FIFO, ready to be fetched
+	DGPIO1 -> multi-SF RX LoRa modems activity (channels 0 to 7)
+	DGPIO2 -> stand-alone RX LoRa modem activity (channel 8))
+	DGPIO3 -> FSK RX modem activity (channel 9)
+	DGPIO4 -> TX modem active (either LoRa or FSK)
+	*/
 	
 	lgw_is_started = true;
 	return LGW_HAL_SUCCESS;
