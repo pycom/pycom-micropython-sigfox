@@ -100,30 +100,23 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define 	SX125x_XOSC_GM_STARTUP	13	/* (default 13) */
 #define 	SX125x_XOSC_DISABLE		2	/* Disable of Xtal Oscillator blocks bit0:regulator, bit1:core(gm), bit2:amplifier */
 
+#define     RSSI_MULTI_BIAS         -34.5   /* difference between "multi" modem RSSI offset and "stand-alone" modem RSSI offset */
+#define     RSSI_FSK_BIAS           -37.0   /* difference between FSK modem RSSI offset and "stand-alone" modem RSSI offset */
+#define     RSSI_FSK_REF            -70.0   /* linearize FSK RSSI curve around -70 dBm */
+#define     RSSI_FSK_SLOPE          0.8
+
 /* Board-specific RSSI calibration constants */
 #if (CFG_BRD_NANO868 == 1)
-	#define		RSSI_OFFSET_LORA_MULTI	-128.0	/* calibrated value */
-	#define		RSSI_OFFSET_LORA_STD	-167.0	/* calibrated for all bandwidth */
-	#define		RSSI_OFFSET_FSK			-146.5	/* calibrated value */
-	#define		RSSI_SLOPE_FSK			1.2		/* calibrated value */
+	#define		RSSI_BOARD_OFFSET       176
 #elif (CFG_BRD_1301REF868 == 1)
-	#define		RSSI_OFFSET_LORA_MULTI	-129.0	/* calibrated value */
-	#define		RSSI_OFFSET_LORA_STD	-164.0	/* calibrated for all bandwidth */
-	#define		RSSI_OFFSET_FSK			-145.0	/* todo */
-	#define		RSSI_SLOPE_FSK			1.2		/* todo */
+	#define		RSSI_BOARD_OFFSET       166
 #elif (CFG_BRD_1301REF433 == 1)
-	#define		RSSI_OFFSET_LORA_MULTI	-139.0	/* calibrated value */
-	#define		RSSI_OFFSET_LORA_STD	-177.0	/* calibrated for all bandwidth */
-	#define		RSSI_OFFSET_FSK			-155.0	/* todo */
-	#define		RSSI_SLOPE_FSK			1.2		/* todo */
+	#define		RSSI_BOARD_OFFSET       176
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
 */
 #elif (CFG_BRD_NONE == 1)
-	#define		RSSI_OFFSET_LORA_MULTI	0.0
-	#define		RSSI_OFFSET_LORA_STD	0.0
-	#define		RSSI_OFFSET_FSK			0.0
-	#define		RSSI_SLOPE_FSK			1.0
+	#define		RSSI_BOARD_OFFSET       0
 #endif
 
 /* constant arrays defining hardware capability */
@@ -1240,6 +1233,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 		p->if_chain = buff[sz+0];
 		ifmod = ifmod_config[p->if_chain];
 		DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
+		p->rssi = (float)buff[sz+5] - RSSI_BOARD_OFFSET;
 		
 		if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
 			DEBUG_MSG("Note: LoRa packet\n");
@@ -1265,10 +1259,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 			p->snr_min = ((float)((int8_t)buff[sz+3]))/4;
 			p->snr_max = ((float)((int8_t)buff[sz+4]))/4;
 			if (ifmod == IF_LORA_MULTI) {
-				p->rssi = RSSI_OFFSET_LORA_MULTI + (float)buff[sz+5];
 				p->bandwidth = BW_125KHZ; /* fixed in hardware */
 			} else {
-				p->rssi = RSSI_OFFSET_LORA_STD + (float)buff[sz+5];
 				p->bandwidth = lora_rx_bw; /* get the parameter from the config variable */
 			}
 			sf = (buff[sz+1] >> 4) & 0x0F;
@@ -1336,6 +1328,12 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 				timestamp_correction = 0;
 				DEBUG_MSG("WARNING: invalid packet, no timestamp correction\n");
 			}
+			
+			/* RSSI correction */
+			if (ifmod == IF_LORA_MULTI) {
+				p->rssi -= RSSI_MULTI_BIAS;
+			}
+			
 		} else if (ifmod == IF_FSK_STD) {
 			DEBUG_MSG("Note: FSK packet\n");
 			switch(stat_fifo & 0x07) {
@@ -1345,7 +1343,6 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 				default: p->status = STAT_UNDEFINED;
 			}
 			p->modulation = MOD_FSK;
-			p->rssi = (RSSI_OFFSET_FSK + (float)buff[sz+5])/RSSI_SLOPE_FSK;
 			p->snr = -128.0;
 			p->snr_min = -128.0;
 			p->snr_max = -128.0;
@@ -1353,6 +1350,10 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 			p->datarate = fsk_rx_dr;
 			p->coderate = CR_UNDEFINED;
 			timestamp_correction = 0; // TODO: implement FSK timestamp correction
+			
+			/* RSSI correction */
+			p->rssi -= RSSI_FSK_BIAS;
+			p->rssi = ((p->rssi - RSSI_FSK_REF) * RSSI_FSK_SLOPE) + RSSI_FSK_REF;
 		} else {
 			DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");
 			p->status = STAT_UNDEFINED;
