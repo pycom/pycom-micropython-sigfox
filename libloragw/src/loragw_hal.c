@@ -111,6 +111,8 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 	#define		RSSI_BOARD_OFFSET		176
 #elif (CFG_BRD_1301REF868 == 1)
 	#define		RSSI_BOARD_OFFSET		169.5
+#elif (CFG_BRD_KERLINK868 == 1)
+	#define		RSSI_BOARD_OFFSET		167
 #elif (CFG_BRD_1301REF433 == 1)
 	#define		RSSI_BOARD_OFFSET		176
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
@@ -227,7 +229,27 @@ typedef struct {
 		{	3,	3,	12,	24},\
 		{	3,	3,	13,	25},\
 		{	3,	3,	15,	26},\
-	}; /* TODO: calibration */
+	}; /* TODO: approximative calibration, needs to be adjusted */
+#elif (CFG_BRD_KERLINK868 == 1)
+	#define	CUSTOM_TX_POW_TABLE		1
+	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
+		{	0,	3,	 9,-10},\
+		{	0,	3,	12,	-6},\
+		{	0,	3,	15,	-3},\
+		{	1,	3,	 9,	 0},\
+		{	1,	3,	12,	 5},\
+		{	1,	3,	14,	 7},\
+		{	1,	3,	15,	 8},\
+		{	2,	3,	10,	10},\
+		{	2,	3,	11,	12},\
+		{	2,	3,	13,	15},\
+		{	3,	3,	 9,	17},\
+		{	3,	3,	10,	19},\
+		{	3,	3,	11,	21},\
+		{	3,	3,	12,	22},\
+		{	3,	3,	13,	23},\
+		{	3,	3,	15,	24},\
+	}; /* calibrated */
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
 */
@@ -299,6 +321,8 @@ typedef struct {
 	#define		CFG_BRD_STR		"ref_1301_868"
 #elif (CFG_BRD_1301REF433 == 1)
 	#define		CFG_BRD_STR		"ref_1301_433"
+#elif (CFG_BRD_KERLINK868 == 1)
+	#define		CFG_BRD_STR		"kerlink_868"
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
 */
@@ -905,7 +929,7 @@ int lgw_start(void) {
 	cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
 	#endif
 	
-	#if ((CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1))
+	#if ((CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1))
 	cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
 	cal_time = 2300; /* measured between 2.1 and 2.2 sec, because 1 TX only */
 	#elif (CFG_BRD_NANO868 == 1)
