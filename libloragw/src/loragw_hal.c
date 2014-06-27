@@ -332,8 +332,16 @@ typedef struct {
 	#define		CFG_BRD_STR		"brd?"
 #endif
 
+#if (CFG_NET_PRIVATE == 1)
+	#define		CFG_NET_STR		"private"
+#elif (CFG_NET_LORAMAC == 1)
+	#define		CFG_NET_STR		"lora_mac"
+#else
+	#define		CFG_NET_STR		"network?"
+#endif
+
 /* Version string, used to identify the library version/options once compiled */
-const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_RADIO_STR " " CFG_BAND_STR " " CFG_BRD_STR ";";
+const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_RADIO_STR " " CFG_BAND_STR " " CFG_BRD_STR " " CFG_NET_STR ";";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
