@@ -115,6 +115,14 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 	#define		RSSI_BOARD_OFFSET		167
 #elif (CFG_BRD_1301REF433 == 1)
 	#define		RSSI_BOARD_OFFSET		176
+#elif (CFG_BRD_KERLINK433 == 1)
+	#define		RSSI_BOARD_OFFSET		0
+#elif (CFG_BRD_CISCO433 == 1)
+	#define		RSSI_BOARD_OFFSET		0
+#elif (CFG_BRD_CISCO470 == 1)
+	#define		RSSI_BOARD_OFFSET		0
+#elif (CFG_BRD_CISCO780 == 1)
+	#define		RSSI_BOARD_OFFSET		0
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
 */
@@ -250,6 +258,85 @@ typedef struct {
 		{	3,	3,	13,	23},\
 		{	3,	3,	15,	24},\
 	}; /* calibrated */
+#elif (CFG_BRD_KERLINK433 == 1)
+	#define	CUSTOM_TX_POW_TABLE		1
+	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
+		{	0,	3,	 8, -6},\
+		{	0,	3,	11,	 0},\
+		{	0,	3,	14,	 3},\
+		{	1,	3,	 9,	 6},\
+		{	1,	3,	10,	 8},\
+		{	1,	3,	11,	10},\
+		{	1,	3,	12,	11},\
+		{	1,	3,	13,	12},\
+		{	1,	3,	14,	13},\
+		{	1,	3,	15,	14},\
+		{	2,	3,	11,	20},\
+		{	2,	3,	12,	21},\
+		{	3,	3,	 8,	22},\
+		{	3,	3,	 9,	24},\
+		{	3,	3,	10,	25},\
+		{	3,	3,	12,	26},\
+	}; /* calibrated */
+#elif (CFG_BRD_CISCO433 == 1)
+	#define	CUSTOM_TX_POW_TABLE		1
+	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
+		{	0,	3,	 8,	-7},\
+		{	0,	3,	10,	-3},\
+		{	0,	3,	12,	 0},\
+		{	1,	3,	 8,	 4},\
+		{	1,	3,	10,	 7},\
+		{	1,	3,	11,	 8},\
+		{	1,	3,	12,	 9},\
+		{	2,	3,	 8,	11},\
+		{	2,	3,	 9,	14},\
+		{	2,	3,	10,	15},\
+		{	2,	3,	11,	17},\
+		{	3,	3,	 8,	20},\
+		{	3,	3,	 9,	22},\
+		{	3,	3,	10,	23},\
+		{	3,	3,	11,	24},\
+	}; /* calibrated */
+#elif (CFG_BRD_CISCO470 == 1)
+	#define	CUSTOM_TX_POW_TABLE		1
+	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
+		{	0,	3,	 9,	 0},\
+		{	0,	3,	13,	 4},\
+		{	1,	3,	 8,	 8},\
+		{	1,	3,	 9,	10},\
+		{	1,	3,	10,	11},\
+		{	1,	3,	11,	12},\
+		{	1,	3,	12,	13},\
+		{	1,	3,	13,	14},\
+		{	1,	3,	14,	15},\
+		{	2,	3,	 8,	16},\
+		{	2,	3,	 9,	18},\
+		{	2,	3,	10,	20},\
+		{	2,	3,	11,	21},\
+		{	2,	3,	13,	22},\
+		{	3,	3,	 9,	23},\
+		{	3,	3,	11,	24},\
+	}; /* calibrated */
+#elif (CFG_BRD_CISCO780 == 1)
+	#define	CUSTOM_TX_POW_TABLE		1
+	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
+		{	0,	3,	 8,	-12},\
+		{	0,	3,	11,	 -6},\
+		{	0,	3,	14,	 -3},\
+		{	1,	3,	 9,	  0},\
+		{	1,	3,	11,	  3},\
+		{	1,	3,	13,	  6},\
+		{	2,	3,	10,	  8},\
+		{	2,	3,	11,	 10},\
+		{	2,	3,	12,	 12},\
+		{	2,	3,	13,	 14},\
+		{	2,	3,	15,	 16},\
+		{	3,	3,	10,	 18},\
+		{	3,	3,	11,	 20},\
+		{	3,	3,	12,	 22},\
+		{	3,	3,	14,	 24},\
+		{	3,	3,	15,	 25},\
+	}; /* calibrated */
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
 */
@@ -311,6 +398,8 @@ typedef struct {
 	#define		CFG_BAND_STR	"cn470"
 #elif (CFG_BAND_433 == 1)
 	#define		CFG_BAND_STR	"eu433"
+#elif (CFG_BAND_780 == 1)
+	#define		CFG_BAND_STR	"cn780"
 #else
 	#define		CFG_BAND_STR	"band?"
 #endif
@@ -323,6 +412,14 @@ typedef struct {
 	#define		CFG_BRD_STR		"ref_1301_433"
 #elif (CFG_BRD_KERLINK868 == 1)
 	#define		CFG_BRD_STR		"kerlink_868"
+#elif (CFG_BRD_KERLINK433 == 1)
+	#define		CFG_BRD_STR		"kerlink_433"
+#elif (CFG_BRD_CISCO433 == 1)
+	#define		CFG_BRD_STR		"cisco_433"
+#elif (CFG_BRD_CISCO470 == 1)
+	#define		CFG_BRD_STR		"cisco_470"
+#elif (CFG_BRD_CISCO780 == 1)
+	#define		CFG_BRD_STR		"cisco_780"
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
 */
@@ -954,7 +1051,7 @@ int lgw_start(void) {
 	cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
 	#endif
 	
-	#if ((CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1))
+	#if ((CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1) || (CFG_BRD_KERLINK433 == 1) || (CFG_BRD_CISCO433 == 1) || (CFG_BRD_CISCO470 == 1) || (CFG_BRD_CISCO780 == 1))
 	cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
 	cal_time = 2300; /* measured between 2.1 and 2.2 sec, because 1 TX only */
 	#elif (CFG_BRD_NANO868 == 1)
