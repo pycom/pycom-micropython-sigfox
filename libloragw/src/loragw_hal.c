@@ -89,7 +89,7 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 #define		SX125x_TX_MIX_GAIN		14	/* -38 + 2*TxMixGain dB (default 14) */
 #define		SX125x_TX_PLL_BW		3	/* 0:75, 1:150, 2:225, 3:300 kHz (default 3) */
 #define		SX125x_TX_ANA_BW		0	/* 17.5 / 2*(41-TxAnaBw) MHz (default 0) */
-#define		SX125x_TX_DAC_BW		7	/* 24 + 8*TxDacBw Nb FIR taps (default 2) */
+#define		SX125x_TX_DAC_BW		5	/* 24 + 8*TxDacBw Nb FIR taps (default 2) */
 #define		SX125x_RX_LNA_GAIN		1	/* 1 to 6, 1 highest gain */
 #define		SX125x_RX_BB_GAIN		12	/* 0 to 15 , 15 highest gain */
 #define 	SX125x_LNA_ZIN			1	/* 0:50, 1:200 Ohms (default 1) */
@@ -863,6 +863,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
+	
 	/* check if the concentrator is running */
 	if (lgw_is_started == true) {
 		DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
@@ -1715,6 +1716,13 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		buff[14] = 0;
 		buff[15] = 0;
 		
+		/* LSB of RF frequency is now used in AGC firmware to implement large/narrow filtering in SX1257/55 */
+		if (pkt_data.bandwidth == BW_500KHZ) {
+			buff[2] |= 0x01; /* Enlarge filter for 500kHz BW */
+		} else {
+			buff[2] &= 0xFE;
+		}
+		
 	} else if (pkt_data.modulation == MOD_FSK) {
 		/* metadata 7, modulation type, radio chain selection and TX power */
 		buff[7] = (0x20 & (pkt_data.rf_chain << 5)) | 0x10 | (0x0F & pow_index); /* bit 4 is 1 -> FSK modulation */
@@ -1751,6 +1759,9 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		buff[16] = pkt_data.size;
 		++transfer_size; /* one more byte to transfer to the TX modem */
 		++payload_offset; /* start the payload with one more byte of offset */
+		
+		/* LSB of RF frequency is now used in AGC firmware to implement large/narrow filtering in SX1257/55*/
+		buff[2] &= 0xFE; /* Always use narrow band for FSK (force LSB to 0) */
 		
 	} else {
 		DEBUG_MSG("ERROR: INVALID TX MODULATION..\n");
