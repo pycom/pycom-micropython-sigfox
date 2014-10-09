@@ -245,11 +245,13 @@ struct lgw_conf_rxrf_s {
 @brief Configuration structure for an IF chain
 */
 struct lgw_conf_rxif_s {
-	bool		enable;		/*!> enable or disable that IF chain */
-	uint8_t		rf_chain;	/*!> to which RF chain is that IF chain associated */
-	int32_t		freq_hz;	/*!> center frequ of the IF chain, relative to RF chain frequency */
-	uint8_t		bandwidth;	/*!> RX bandwidth, 0 for default */
-	uint32_t	datarate;	/*!> RX datarate, 0 for default */
+	bool		enable;			/*!> enable or disable that IF chain */
+	uint8_t		rf_chain;		/*!> to which RF chain is that IF chain associated */
+	int32_t		freq_hz;		/*!> center frequ of the IF chain, relative to RF chain frequency */
+	uint8_t		bandwidth;		/*!> RX bandwidth, 0 for default */
+	uint32_t	datarate;		/*!> RX datarate, 0 for default */
+	uint8_t		sync_word_size;	/*!> size of FSK sync word (number of bytes, 0 for default) */
+	uint64_t	sync_word;		/*!> FSK sync word (keep default if sync_word_size = 0) */
 };
 
 /**

@@ -473,6 +473,8 @@ static bool lora_rx_ppm_offset;
 
 static uint8_t fsk_rx_bw; /* bandwidth setting of FSK modem */
 static uint32_t fsk_rx_dr; /* FSK modem datarate in bauds */
+static uint8_t fsk_sync_word_size = 3; /* default number of bytes for FSK sync word */
+static uint64_t fsk_sync_word= 0xC194C10101010101; /* default FSK sync word (big endian, MSbit first) */
 
 /* TX I/Q imbalance coefficients for mixer gain = 8 to 15 */
 static int8_t cal_offset_a_i[8]; /* TX I offset for radio A */
@@ -788,13 +790,10 @@ void lgw_constant_adjust(void) {
 	/* FSK demodulator setup */
 	lgw_reg_w(LGW_FSK_RSSI_LENGTH,4); /* default 0 */
 	lgw_reg_w(LGW_FSK_PKT_MODE,1); /* variable length, default 0 */
-	lgw_reg_w(LGW_FSK_PSIZE,2); /* pattern size-1, default 0 */
 	lgw_reg_w(LGW_FSK_CRC_EN,1); /* default 0 */
 	lgw_reg_w(LGW_FSK_DCFREE_ENC,2); /* default 0 */
 	// lgw_reg_w(LGW_FSK_CRC_IBM,0); /* default 0 */
 	lgw_reg_w(LGW_FSK_ERROR_OSR_TOL,10); /* default 0 */
-	lgw_reg_w(LGW_FSK_REF_PATTERN_LSB,0x01010101); /* default 0 */
-	lgw_reg_w(LGW_FSK_REF_PATTERN_MSB,0xC194C101); /* default 0 */
 	lgw_reg_w(LGW_FSK_PKT_LENGTH,255); /* max packet length in variable length mode */
 	// lgw_reg_w(LGW_FSK_NODE_ADRS,0); /* default 0 */
 	// lgw_reg_w(LGW_FSK_BROADCAST,0); /* default 0 */
@@ -818,7 +817,6 @@ void lgw_constant_adjust(void) {
 	/* TX FSK */
 	// lgw_reg_w(LGW_FSK_TX_GAUSSIAN_EN,1); /* default 1 */
 	lgw_reg_w(LGW_FSK_TX_GAUSSIAN_SELECT_BT,2); /* Gaussian filter always on TX, default 0 */
-	lgw_reg_w(LGW_FSK_TX_PSIZE,2); /* default 0 */
 	// lgw_reg_w(LGW_FSK_TX_PATTERN_EN,1); /* default 1 */
 	// lgw_reg_w(LGW_FSK_TX_PREAMBLE_SEQ,0); /* default 0 */
 	
@@ -985,7 +983,11 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 			if_freq[if_chain] = conf.freq_hz;
 			fsk_rx_bw = conf.bandwidth;
 			fsk_rx_dr = conf.datarate;
-			DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr)\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU/(LGW_XTAL_FREQU/fsk_rx_dr));
+			if (conf.sync_word > 0) {
+				fsk_sync_word_size = conf.sync_word_size;
+				fsk_sync_word = conf.sync_word;
+			}	
+			DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:%016llX\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU/(LGW_XTAL_FREQU/fsk_rx_dr), fsk_sync_word);
 			break;
 		
 		default:
@@ -1215,6 +1217,10 @@ int lgw_start(void) {
 	
 	/* configure FSK modem (IF9) */
 	lgw_reg_w(LGW_IF_FREQ_9, IF_HZ_TO_REG(if_freq[9])); /* FSK modem, default 0 */
+	lgw_reg_w(LGW_FSK_PSIZE, fsk_sync_word_size-1);
+	lgw_reg_w(LGW_FSK_TX_PSIZE, fsk_sync_word_size-1);
+	lgw_reg_w(LGW_FSK_REF_PATTERN_LSB, (uint32_t)(0xFFFFFFFF & fsk_sync_word));
+	lgw_reg_w(LGW_FSK_REF_PATTERN_MSB, (uint32_t)(0xFFFFFFFF & (fsk_sync_word>>32)));
 	if (if_enable[9] == true) {
 		lgw_reg_w(LGW_FSK_RADIO_SELECT, if_rf_chain[9]);
 		lgw_reg_w(LGW_FSK_BR_RATIO,LGW_XTAL_FREQU/fsk_rx_dr); /* setting the dividing ratio for datarate */
@@ -1733,12 +1739,11 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 		buff[9] = pkt_data.f_dev;
 		
 		/* metadata 10, payload size */
-		buff[10] = pkt_data.size + 1; /* add a byte to encode payload length in the packet */
-		/* TODO: handle fixed packet length */
+		buff[10] = pkt_data.size; 
 		/* TODO: how to handle 255 bytes packets ?!? */
 		
 		/* metadata 11, packet mode, CRC, encoding */
-		buff[11] = (pkt_data.no_crc?0:0x02); /* always in fixed length packet mode, no DC-free encoding, CCITT CRC if CRC is not disabled  */
+		buff[11] = 0x01 | (pkt_data.no_crc?0:0x02) | (0x02 << 2); /* always in variable length packet mode, whitening, and CCITT CRC if CRC is not disabled  */
 		
 		/* metadata 12 & 13, FSK preamble size */
 		if (pkt_data.preamble == 0) { /* if not explicit, use LoRa MAC preamble size */
