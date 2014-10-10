@@ -1502,7 +1502,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 			p->bandwidth = fsk_rx_bw;
 			p->datarate = fsk_rx_dr;
 			p->coderate = CR_UNDEFINED;
-			timestamp_correction = 0; // TODO: implement FSK timestamp correction
+			timestamp_correction = ((uint32_t)680000 / fsk_rx_dr) - 20;
 			
 			/* RSSI correction */
 			p->rssi -= RSSI_FSK_BIAS;
