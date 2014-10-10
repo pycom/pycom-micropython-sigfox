@@ -1777,9 +1777,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	memcpy((void *)(buff + payload_offset), (void *)(pkt_data.payload), pkt_data.size);
 	
 	/* reset TX command flags */
-	lgw_reg_w(LGW_TX_TRIG_IMMEDIATE, 0);
-	lgw_reg_w(LGW_TX_TRIG_DELAYED, 0);
-	lgw_reg_w(LGW_TX_TRIG_GPS, 0);
+	lgw_abort_tx();
 	
 	/* put metadata + payload in the TX data buffer */
 	lgw_reg_w(LGW_TX_DATA_BUF_ADDR, 0);
@@ -1838,6 +1836,17 @@ int lgw_status(uint8_t select, uint8_t *code) {
 		return LGW_HAL_ERROR;
 	}
 	
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_abort_tx(void) {
+	int i;
+	
+	i = lgw_reg_w(LGW_TX_TRIG_ALL, 0);
+	
+	if (i == LGW_REG_SUCCESS) return LGW_HAL_SUCCESS;
+	else return LGW_HAL_ERROR;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

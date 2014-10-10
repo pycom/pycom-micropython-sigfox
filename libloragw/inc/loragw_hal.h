@@ -355,6 +355,12 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data);
 int lgw_status(uint8_t select, uint8_t *code);
 
 /**
+@brief Abort a currently scheduled or ongoing TX
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_abort_tx(void);
+
+/**
 @brief Return value of internal counter when latest event (eg GPS pulse) was captured
 @param trig_cnt_us pointer to receive timestamp value
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
