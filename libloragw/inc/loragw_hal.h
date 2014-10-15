@@ -251,7 +251,7 @@ struct lgw_conf_rxif_s {
 	uint8_t		bandwidth;		/*!> RX bandwidth, 0 for default */
 	uint32_t	datarate;		/*!> RX datarate, 0 for default */
 	uint8_t		sync_word_size;	/*!> size of FSK sync word (number of bytes, 0 for default) */
-	uint64_t	sync_word;		/*!> FSK sync word (keep default if sync_word_size = 0) */
+	uint64_t	sync_word;		/*!> FSK sync word (ALIGN RIGHT, eg. 0xC194C1) */
 };
 
 /**

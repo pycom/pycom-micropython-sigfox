@@ -475,7 +475,7 @@ static bool lora_rx_ppm_offset;
 static uint8_t fsk_rx_bw; /* bandwidth setting of FSK modem */
 static uint32_t fsk_rx_dr; /* FSK modem datarate in bauds */
 static uint8_t fsk_sync_word_size = 3; /* default number of bytes for FSK sync word */
-static uint64_t fsk_sync_word= 0xC194C10101010101; /* default FSK sync word (big endian, MSbit first) */
+static uint64_t fsk_sync_word= 0xC194C1; /* default FSK sync word (ALIGNED RIGHT, MSbit first) */
 
 /* TX I/Q imbalance coefficients for mixer gain = 8 to 15 */
 static int8_t cal_offset_a_i[8]; /* TX I offset for radio A */
@@ -988,7 +988,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 				fsk_sync_word_size = conf.sync_word_size;
 				fsk_sync_word = conf.sync_word;
 			}	
-			DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:%016llX\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU/(LGW_XTAL_FREQU/fsk_rx_dr), fsk_sync_word);
+			DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:0x%0*llX\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU/(LGW_XTAL_FREQU/fsk_rx_dr), 2*fsk_sync_word_size, fsk_sync_word);
 			break;
 		
 		default:
@@ -1012,6 +1012,8 @@ int lgw_start(void) {
 	uint8_t cal_cmd;
 	uint16_t cal_time;
 	uint8_t cal_status;
+	
+	uint64_t fsk_sync_word_reg;
 	
 	if (lgw_is_started == true) {
 		DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
@@ -1220,8 +1222,9 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_IF_FREQ_9, IF_HZ_TO_REG(if_freq[9])); /* FSK modem, default 0 */
 	lgw_reg_w(LGW_FSK_PSIZE, fsk_sync_word_size-1);
 	lgw_reg_w(LGW_FSK_TX_PSIZE, fsk_sync_word_size-1);
-	lgw_reg_w(LGW_FSK_REF_PATTERN_LSB, (uint32_t)(0xFFFFFFFF & fsk_sync_word));
-	lgw_reg_w(LGW_FSK_REF_PATTERN_MSB, (uint32_t)(0xFFFFFFFF & (fsk_sync_word>>32)));
+	fsk_sync_word_reg = fsk_sync_word << (8 * (8 - fsk_sync_word_size));
+	lgw_reg_w(LGW_FSK_REF_PATTERN_LSB, (uint32_t)(0xFFFFFFFF & fsk_sync_word_reg));
+	lgw_reg_w(LGW_FSK_REF_PATTERN_MSB, (uint32_t)(0xFFFFFFFF & (fsk_sync_word_reg >> 32)));
 	if (if_enable[9] == true) {
 		lgw_reg_w(LGW_FSK_RADIO_SELECT, if_rf_chain[9]);
 		lgw_reg_w(LGW_FSK_BR_RATIO,LGW_XTAL_FREQU/fsk_rx_dr); /* setting the dividing ratio for datarate */
