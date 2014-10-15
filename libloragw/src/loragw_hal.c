@@ -108,21 +108,21 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 
 /* Board-specific RSSI calibration constants */
 #if (CFG_BRD_NANO868 == 1)
-	#define		RSSI_BOARD_OFFSET		176
+	#define		RSSI_BOARD_OFFSET		176.0
 #elif (CFG_BRD_1301REF868 == 1)
-	#define		RSSI_BOARD_OFFSET		169.5
+	#define		RSSI_BOARD_OFFSET		166.0
 #elif (CFG_BRD_KERLINK868 == 1)
-	#define		RSSI_BOARD_OFFSET		167
+	#define		RSSI_BOARD_OFFSET		165.0
 #elif (CFG_BRD_1301REF433 == 1)
-	#define		RSSI_BOARD_OFFSET		176
+	#define		RSSI_BOARD_OFFSET		176.5
 #elif (CFG_BRD_KERLINK433 == 1)
-	#define		RSSI_BOARD_OFFSET		0
+	#define		RSSI_BOARD_OFFSET		178.0
 #elif (CFG_BRD_CISCO433 == 1)
-	#define		RSSI_BOARD_OFFSET		0
+	#define		RSSI_BOARD_OFFSET		175.5
 #elif (CFG_BRD_CISCO470 == 1)
-	#define		RSSI_BOARD_OFFSET		0
+	#define		RSSI_BOARD_OFFSET		173.5
 #elif (CFG_BRD_CISCO780 == 1)
-	#define		RSSI_BOARD_OFFSET		0
+	#define		RSSI_BOARD_OFFSET		168.0
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
 */
@@ -292,6 +292,7 @@ typedef struct {
 		{	2,	3,	 9,	14},\
 		{	2,	3,	10,	15},\
 		{	2,	3,	11,	17},\
+		{	2,	3,	12,	18},\
 		{	3,	3,	 8,	20},\
 		{	3,	3,	 9,	22},\
 		{	3,	3,	10,	23},\
