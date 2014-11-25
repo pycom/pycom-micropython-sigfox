@@ -1552,6 +1552,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	int payload_offset = 0; /* start of the payload content in the databuffer */
 	uint8_t pow_index = 0; /* 4-bit value to set the firmware TX power */
 	uint8_t target_mix_gain = 0; /* used to select the proper I/Q offset correction */
+	uint32_t count_trig; /* timestamp value in trigger mode corrected for TX start delay */
 	
 	/* check if the concentrator is running */
 	if (lgw_is_started == false) {
@@ -1657,10 +1658,15 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	buff[2] = 0xFF & part_frac; /* Least Significant Byte */
 	
 	/* metadata 3 to 6, timestamp trigger value */
-	buff[3] = 0xFF & (pkt_data.count_us >> 24);
-	buff[4] = 0xFF & (pkt_data.count_us >> 16);
-	buff[5] = 0xFF & (pkt_data.count_us >> 8);
-	buff[6] = 0xFF &  pkt_data.count_us;
+	/* TX state machine must be triggered at T0 - TX_START_DELAY for packet to start being emitted at T0 */
+	if (pkt_data.tx_mode == TIMESTAMPED)
+	{
+		count_trig = pkt_data.count_us - TX_START_DELAY;
+		buff[3] = 0xFF & (count_trig >> 24);
+		buff[4] = 0xFF & (count_trig >> 16);
+		buff[5] = 0xFF & (count_trig >> 8);
+		buff[6] = 0xFF &  count_trig;
+	}
 	
 	/* parameters depending on modulation  */
 	if (pkt_data.modulation == MOD_LORA) {
