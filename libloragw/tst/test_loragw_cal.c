@@ -126,7 +126,7 @@ int main(int argc, char **argv)
 {	
 	int i, j, x;
 	int32_t read_val;
-	const struct lgw_conf_rxrf_s rfconf = {true, F_RX_0};
+	const struct lgw_conf_rxrf_s rfconf = {true, F_RX_0, 0};
 	uint8_t fw_version;
 	uint8_t cal_cmd;
 	uint8_t cal_status;

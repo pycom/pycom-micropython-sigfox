@@ -228,6 +228,9 @@ Maintainer: Sylvain Miermont
 #define RX_ON				2	/* RX modem is receiving */
 #define RX_SUSPENDED		3	/* RX is suspended while a TX is ongoing */
 
+/* Maximum size of Tx gain LUT */
+#define TX_GAIN_LUT_SIZE_MAX 16
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
@@ -236,8 +239,9 @@ Maintainer: Sylvain Miermont
 @brief Configuration structure for a RF chain
 */
 struct lgw_conf_rxrf_s {
-	bool		enable;		/*!> enable or disable that RF chain */
-	uint32_t	freq_hz;	/*!> center frequency of the radio in Hz */
+	bool		enable;			/*!> enable or disable that RF chain */
+	uint32_t	freq_hz;		/*!> center frequency of the radio in Hz */
+	int8_t		rssi_offset;		/*!> RSSI offset in dB */
 };
 
 /**
@@ -300,6 +304,28 @@ struct lgw_pkt_tx_s {
 	uint8_t		payload[256]; /*!> buffer containing the payload */
 };
 
+/**
+@struct lgw_tx_gain_s
+@brief Structure containing all gains of Tx chain
+*/
+struct lgw_tx_gain_s {
+	uint8_t		dig_gain;	/*!> 2 bits, control of the digital gain of SX1301 */
+	uint8_t		pa_gain;	/*!> 2 bits, control of the external PA (SX1301 I/O) */
+	uint8_t		dac_gain;	/*!> 2 bits, control of the radio DAC */
+	uint8_t		mix_gain;	/*!> 4 bits, control of the radio mixer */
+	int8_t		rf_power;	/*!> measured TX power at the board connector, in dBm */
+};
+
+/**
+@struct lgw_tx_gain_lut_s
+@brief Structure defining the Tx gain LUT
+*/
+struct lgw_tx_gain_lut_s {
+	struct lgw_tx_gain_s	lut[TX_GAIN_LUT_SIZE_MAX];	/*!> Array of Tx gain struct */
+	uint8_t			size;				/*!> Number of LUT indexes */
+};
+
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
@@ -318,6 +344,13 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf);
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf);
+
+/**
+@brief Configure the Tx gain LUT
+@param pointer to structure defining the LUT
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf);
 
 /**
 @brief Connect to the LoRa concentrator, reset it and configure it according to previously set parameters

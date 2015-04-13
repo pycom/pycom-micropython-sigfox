@@ -120,7 +120,7 @@ int main(int argc, char **argv)
 	bool invert = false;
 	
 	/* RF configuration (TX fail if RF chain is not enabled) */
-	const struct lgw_conf_rxrf_s rfconf = {true, lowfreq[RF_CHAIN]};
+	const struct lgw_conf_rxrf_s rfconf = {true, lowfreq[RF_CHAIN], 0};
 	
 	/* allocate memory for packet sending */
 	struct lgw_pkt_tx_s txpkt; /* array containing 1 outbound packet + metadata */
