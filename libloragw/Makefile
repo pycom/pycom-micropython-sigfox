@@ -164,6 +164,7 @@ inc/config.h: ../VERSION library.cfg
   # SPI interface
 	@echo "SPI interface     : $(CFG_SPI_MSG)"
 	@echo "	#define $(CFG_SPI_OPT)	1" >> $@
+	@echo "	#define SX1301_RESET_PIN	$(CFG_RESET_PIN)" >> $@
   # Concentrator chip
 	@echo "Concentrator chip : $(CFG_CHIP_MSG)"
 	@echo "	#define $(CFG_CHIP_OPT)	1" >> $@
@@ -185,6 +186,7 @@ inc/config.h: ../VERSION library.cfg
 	@echo "	#define DEBUG_REG	$(DEBUG_REG)" >> $@
 	@echo "	#define DEBUG_HAL	$(DEBUG_HAL)" >> $@
 	@echo "	#define DEBUG_GPS	$(DEBUG_GPS)" >> $@
+	@echo "	#define DEBUG_GPIO	$(DEBUG_GPIO)" >> $@
   # end of file
 	@echo "#endif" >> $@
 	@echo "*** Configuration seems ok ***"
@@ -196,6 +198,9 @@ obj/loragw_aux.o: src/loragw_aux.c inc/loragw_aux.h inc/config.h
 
 ifeq ($(CFG_SPI),native)
 obj/loragw_spi.o: src/loragw_spi.native.c inc/loragw_spi.h inc/config.h
+	$(CC) -c $(CFLAGS) $< -o $@
+
+obj/loragw_gpio.o: src/loragw_gpio.native.c inc/loragw_gpio.h inc/config.h
 	$(CC) -c $(CFLAGS) $< -o $@
 else ifeq ($(CFG_SPI),ftdi)
 obj/loragw_spi.o: src/loragw_spi.ftdi.c inc/loragw_spi.h inc/config.h
@@ -213,7 +218,7 @@ obj/loragw_gps.o: src/loragw_gps.c inc/loragw_gps.h inc/config.h
 
 ### static library
 
-libloragw.a: obj/loragw_hal.o obj/loragw_gps.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o
+libloragw.a: obj/loragw_hal.o obj/loragw_gps.o obj/loragw_reg.o obj/loragw_spi.o obj/loragw_aux.o obj/loragw_gpio.o
 	$(AR) rcs $@ $^
 
 ### test programs

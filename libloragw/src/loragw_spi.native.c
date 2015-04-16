@@ -31,6 +31,7 @@ Maintainer: Sylvain Miermont
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
 
+#include "loragw_gpio.h"
 #include "loragw_spi.h"
 
 /* -------------------------------------------------------------------------- */
@@ -53,8 +54,8 @@ Maintainer: Sylvain Miermont
 #define READ_ACCESS		0x00
 #define WRITE_ACCESS	0x80
 #define SPI_SPEED		8000000
-//#define SPI_DEV_PATH	"/dev/spidev0.0"
-#define SPI_DEV_PATH	"/dev/spidev32766.0"
+#define SPI_DEV_PATH	"/dev/spidev0.0"
+//#define SPI_DEV_PATH	"/dev/spidev32766.0"
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
@@ -126,6 +127,28 @@ int lgw_spi_open(void **spi_target_ptr) {
 		return LGW_SPI_ERROR;
 	}
 	
+	/* On the Semtech reference board, it resets the SX1301 */
+	if( lgw_gpio_export(SX1301_RESET_PIN) < 0 ){
+		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
+		return LGW_SPI_ERROR;
+	}
+	if( lgw_gpio_direction(SX1301_RESET_PIN, LGW_GPIO_OUT) < 0 ){
+		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
+		return LGW_SPI_ERROR;
+	}
+	if( lgw_gpio_write(SX1301_RESET_PIN, LGW_GPIO_HIGH) < 0 ){
+		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
+		return LGW_SPI_ERROR;
+	}
+	if( lgw_gpio_write(SX1301_RESET_PIN, LGW_GPIO_LOW) < 0 ){
+		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
+		return LGW_SPI_ERROR;
+	}
+	if( lgw_gpio_direction(SX1301_RESET_PIN, LGW_GPIO_IN) < 0 ){
+		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
+		return LGW_SPI_ERROR;
+	}
+	
 	*spi_device = dev;
 	*spi_target_ptr = (void *)spi_device;
 	DEBUG_MSG("Note: SPI port opened and configured ok\n");	
@@ -146,6 +169,11 @@ int lgw_spi_close(void *spi_target) {
 	spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
 	a = close(spi_device);
 	free(spi_target);
+	
+	if( lgw_gpio_unexport(SX1301_RESET_PIN) < 0 ){
+		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
+		return LGW_SPI_ERROR;
+	}
 	
 	/* determine return code */
 	if (a < 0) {
