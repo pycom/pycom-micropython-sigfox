@@ -141,6 +141,14 @@ Maintainer: Sylvain Miermont
 #if (CFG_BRD_NANO868 == 1)
 	#define LGW_RF_TX_ENABLE	{ true, true}	/* both radio A and B are usable in TX */
 	#define LGW_RF_CLKOUT		{ true, true}	/* both radios have clkout enabled */
+#elif (CFG_BRD_1301IOTSK868 == 1)
+	#define LGW_RF_TX_ENABLE	{ true,false}	/* radio B TX output is disconnected */
+	#define LGW_RF_CLKOUT		{false, true}	/* radio A clkout disabled for spur optimization */
+#if (CFG_SPI_NATIVE == 1)
+	#define LGW_SX1301_RESET_PIN	7		/* reset pin for SX1301 (GPIO7 <-> pin 26 on RPi connector) */
+#else
+	/* NOT SUPPORTED */
+#endif
 #elif ((CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1) || (CFG_BRD_KERLINK868_27DBM == 1) || (CFG_BRD_KERLINK433 == 1))
 	#define LGW_RF_TX_ENABLE	{ true,false}	/* radio B TX output is disconnected */
 	#define LGW_RF_CLKOUT		{false, true}	/* radio A clkout disabled for spur optimization */

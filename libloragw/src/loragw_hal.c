@@ -112,6 +112,8 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 /* Board-specific RSSI calibration constants */
 #if (CFG_BRD_NANO868 == 1)
 	#define		RSSI_BOARD_OFFSET		176.0
+#elif (CFG_BRD_1301IOTSK868 == 1)
+	#define		RSSI_BOARD_OFFSET		166.0
 #elif (CFG_BRD_1301REF868 == 1)
 	#define		RSSI_BOARD_OFFSET		166.0
 #elif (CFG_BRD_KERLINK868 == 1)
@@ -202,7 +204,7 @@ typedef struct {
 		{	2,	3,	11,	25},\
 		{	2,	3,	13,	27},\
 	}; /* calibrated */
-#elif (CFG_BRD_1301REF868 == 1)
+#elif ((CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301IOTSK868 == 1))
 	#define	CUSTOM_TX_POW_TABLE		1
 	const tx_pow_t tx_pow_table[TX_POW_LUT_SIZE] = {\
 		{	0,	3,	 8,	-6},\
@@ -432,6 +434,8 @@ typedef struct {
 
 #if (CFG_BRD_NANO868 == 1)
 	#define		CFG_BRD_STR		"dev_nano_868"
+#elif (CFG_BRD_1301IOTSK868 == 1)
+	#define		CFG_BRD_STR		"iot_sk_1301_868"
 #elif (CFG_BRD_1301REF868 == 1)
 	#define		CFG_BRD_STR		"ref_1301_868"
 #elif (CFG_BRD_1301REF433 == 1)
@@ -1096,7 +1100,7 @@ int lgw_start(void) {
 	cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
 	#endif
 	
-	#if ((CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1) || (CFG_BRD_KERLINK868_27DBM == 1) || (CFG_BRD_KERLINK433 == 1) || (CFG_BRD_CISCO433 == 1) || (CFG_BRD_CISCO470 == 1) || (CFG_BRD_CISCO780 == 1))
+	#if ((CFG_BRD_1301IOTSK868 == 1) || (CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1) || (CFG_BRD_KERLINK868_27DBM == 1) || (CFG_BRD_KERLINK433 == 1) || (CFG_BRD_CISCO433 == 1) || (CFG_BRD_CISCO470 == 1) || (CFG_BRD_CISCO780 == 1))
 	cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
 	cal_time = 2300; /* measured between 2.1 and 2.2 sec, because 1 TX only */
 	#elif (CFG_BRD_NANO868 == 1)

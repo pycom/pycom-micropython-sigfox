@@ -33,6 +33,7 @@ Maintainer: Sylvain Miermont
 
 #include "loragw_gpio.h"
 #include "loragw_spi.h"
+#include "loragw_hal.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -127,27 +128,29 @@ int lgw_spi_open(void **spi_target_ptr) {
 		return LGW_SPI_ERROR;
 	}
 	
-	/* On the Semtech reference board, it resets the SX1301 */
-	if( lgw_gpio_export(SX1301_RESET_PIN) < 0 ){
+	/*  If a RESET PIN has been defined, we reset the SX1301 */
+#ifdef LGX_SX1301_RESET_PIN
+	if( lgw_gpio_export(LGW_SX1301_RESET_PIN) < 0 ){
 		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
 		return LGW_SPI_ERROR;
 	}
-	if( lgw_gpio_direction(SX1301_RESET_PIN, LGW_GPIO_OUT) < 0 ){
+	if( lgw_gpio_direction(LGW_SX1301_RESET_PIN, LGW_GPIO_OUT) < 0 ){
 		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
 		return LGW_SPI_ERROR;
 	}
-	if( lgw_gpio_write(SX1301_RESET_PIN, LGW_GPIO_HIGH) < 0 ){
+	if( lgw_gpio_write(LGW_SX1301_RESET_PIN, LGW_GPIO_HIGH) < 0 ){
 		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
 		return LGW_SPI_ERROR;
 	}
-	if( lgw_gpio_write(SX1301_RESET_PIN, LGW_GPIO_LOW) < 0 ){
+	if( lgw_gpio_write(LGW_SX1301_RESET_PIN, LGW_GPIO_LOW) < 0 ){
 		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
 		return LGW_SPI_ERROR;
 	}
-	if( lgw_gpio_direction(SX1301_RESET_PIN, LGW_GPIO_IN) < 0 ){
+	if( lgw_gpio_direction(LGW_SX1301_RESET_PIN, LGW_GPIO_IN) < 0 ){
 		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
 		return LGW_SPI_ERROR;
 	}
+#endif
 	
 	*spi_device = dev;
 	*spi_target_ptr = (void *)spi_device;
@@ -170,10 +173,12 @@ int lgw_spi_close(void *spi_target) {
 	a = close(spi_device);
 	free(spi_target);
 	
-	if( lgw_gpio_unexport(SX1301_RESET_PIN) < 0 ){
+#ifdef LGX_SX1301_RESET_PIN
+	if( lgw_gpio_unexport(LGW_SX1301_RESET_PIN) < 0 ){
 		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
 		return LGW_SPI_ERROR;
 	}
+#endif
 	
 	/* determine return code */
 	if (a < 0) {

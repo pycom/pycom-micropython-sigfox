@@ -90,6 +90,9 @@ endif
 ifeq ($(CFG_BRD),dev_nano_868)
   CFG_BRD_MSG := FPGA-based nano-concentrator, with 868 MHz SAW filter
   CFG_BRD_OPT := CFG_BRD_NANO868
+else ifeq ($(CFG_BRD),iot_sk_1301_868)
+  CFG_BRD_MSG := SX1301 IoT Starter Kit board with SX1257 radios, 868 MHz filters
+  CFG_BRD_OPT := CFG_BRD_1301IOTSK868
 else ifeq ($(CFG_BRD),ref_1301_868)
   CFG_BRD_MSG := SX1301 reference board with SX1257 radios, 868 MHz filters
   CFG_BRD_OPT := CFG_BRD_1301REF868
@@ -164,7 +167,6 @@ inc/config.h: ../VERSION library.cfg
   # SPI interface
 	@echo "SPI interface     : $(CFG_SPI_MSG)"
 	@echo "	#define $(CFG_SPI_OPT)	1" >> $@
-	@echo "	#define SX1301_RESET_PIN	$(CFG_RESET_PIN)" >> $@
   # Concentrator chip
 	@echo "Concentrator chip : $(CFG_CHIP_MSG)"
 	@echo "	#define $(CFG_CHIP_OPT)	1" >> $@
@@ -199,7 +201,6 @@ obj/loragw_aux.o: src/loragw_aux.c inc/loragw_aux.h inc/config.h
 ifeq ($(CFG_SPI),native)
 obj/loragw_spi.o: src/loragw_spi.native.c inc/loragw_spi.h inc/config.h
 	$(CC) -c $(CFLAGS) $< -o $@
-
 obj/loragw_gpio.o: src/loragw_gpio.native.c inc/loragw_gpio.h inc/config.h
 	$(CC) -c $(CFLAGS) $< -o $@
 else ifeq ($(CFG_SPI),ftdi)
