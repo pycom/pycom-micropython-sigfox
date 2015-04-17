@@ -165,6 +165,8 @@ const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 
 #if (CFG_BRD_NANO868 == 1)
 	#define		CFG_BRD_STR		"dev_nano_868"
+#elif (CFG_BRD_1301IOTSK868 == 1)
+	#define		CFG_BRD_STR		"iot_sk_1301_868"
 #elif (CFG_BRD_1301REF868 == 1)
 	#define		CFG_BRD_STR		"ref_1301_868"
 #elif (CFG_BRD_1301REF433 == 1)
@@ -894,16 +896,16 @@ int lgw_start(void) {
 	cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
 	#endif
 
-	#if ((CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1) || (CFG_BRD_KERLINK868_27DBM == 1) || (CFG_BRD_KERLINK433 == 1) || (CFG_BRD_CISCO433 == 1) || (CFG_BRD_CISCO470 == 1) || (CFG_BRD_CISCO780 == 1))
+#if ((CFG_BRD_1301IOTSK868 == 1) || (CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1) || (CFG_BRD_KERLINK868_27DBM == 1) || (CFG_BRD_KERLINK433 == 1) || (CFG_BRD_CISCO433 == 1) || (CFG_BRD_CISCO470 == 1) || (CFG_BRD_CISCO780 == 1))
 	cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
 	cal_time = 2300; /* measured between 2.1 and 2.2 sec, because 1 TX only */
-	#elif (CFG_BRD_NANO868 == 1)
+#elif (CFG_BRD_NANO868 == 1)
 	cal_cmd |= 0x40; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
 	cal_time = 5200; /* measured between 5.0 and 5.1 sec */
-	#else
+#else
 	cal_cmd |= 0xC0; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
 	cal_time = 4200; /* measured between 4.0 and 4.1 sec */
-	#endif
+#endif
 
 	/* Load the calibration firmware  */
 	load_firmware(MCU_AGC, cal_firmware, MCU_AGC_FW_BYTE);
