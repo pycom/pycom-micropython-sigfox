@@ -129,7 +129,8 @@ int lgw_spi_open(void **spi_target_ptr) {
 	}
 	
 	/*  If a RESET PIN has been defined, we reset the SX1301 */
-#ifdef LGX_SX1301_RESET_PIN
+#ifdef LGW_SX1301_RESET_PIN
+	printf("-----> hello!\n");
 	if( lgw_gpio_export(LGW_SX1301_RESET_PIN) < 0 ){
 		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
 		return LGW_SPI_ERROR;
@@ -173,7 +174,7 @@ int lgw_spi_close(void *spi_target) {
 	a = close(spi_device);
 	free(spi_target);
 	
-#ifdef LGX_SX1301_RESET_PIN
+#ifdef LGW_SX1301_RESET_PIN
 	if( lgw_gpio_unexport(LGW_SX1301_RESET_PIN) < 0 ){
 		DEBUG_MSG("ERROR: FAILED TO RESET SX1301\n");
 		return LGW_SPI_ERROR;
