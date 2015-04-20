@@ -1,6 +1,7 @@
 ### Environment constants 
 
-CROSS_COMPILE :=
+ARCH ?=
+CROSS_COMPILE ?=
 export
 
 ### general build targets
