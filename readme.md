@@ -48,6 +48,11 @@ contain little information, on no protocol (ie. MAC address) information but
 can be used to assess the functionality of a gateway downlink using other
 gateways as receivers.
 
+### 2.4. util_tx_continuous ###
+
+This software is used to set LoRa concentrator in Tx continuous mode,
+for spectral measurement.
+
 3. Changelog
 -------------
 
