@@ -20,71 +20,14 @@ the Tx chain.
 The program runs indefinitely, until the user stops the application.
 
 
-2. Command line options
------------------------
-`-u`
-use the FT2232 SPI-over-USB bridge for communication with the concentrator.
-This is the default option.
+2. Usage
+--------
 
-`-d`
-use the Linux SPI device driver located in /dev/spidev0.0 by default.
-
-`-d filename`
-use the Linux SPI device driver, but with an explicit path, for systems with 
-several SPI device drivers, or uncommon numbering scheme.
-
-### 2.3. Tx options ###
-
-`-f`
-Tx RF frequency in MHz.
-Valid range: [800:1000]
-
-`--dig`
-Digital gain trim.
-0:1, 1:7/8, 2:3/4, 3:1/2 
-
-`--dac`
-SX1257 Tx DAC gain trim.
-0:-9dB, 1:-6dB, 2:-3dB, 3:0dB 
-
-`--mix`
-SX1257 Tx mixer gain trim.
-Valid range: [0:15]
-15 corresponds to maximum gain, 1 LSB corresponds to 2dB step
-
-`--vpa`
-External PA gain trim
-Valid range: [0:3]
-
-`--mod`
-Modulation type, {'LORA','FSK','CW'}, 'CW':unmodulated carrier
-
-`--sf`
-LoRa Spreading Factor
-Valid range: [7:12]
-
-`--bw`
-LoRa bandwidth in kHz
-Valid range: [125,250,500]
-
-`--br`
-FSK bitrate in kbps.
-Valid Range: [0.5:250]
-
-`--fdev`
-FSK frequency deviation in kHz.
-Valid Range: [1:250]
-
-`--bt`
-FSK BT coefficient of gaussion filter.
-Valid Range: [0:3]
-
-
-3. Use
--------
+See command line help to get the list of all available options:
+./util_tx_continuous -h
 
 Example:
-./tx_continuous -d -f 902.3 --dac 2 --mix 14 --vpa 2.0 --mod "CW"
+./util_tx_continuous -f 868 -r 1 --dig 0 --dac 3 --mix 11 --pa 2 --mod "LORA" --sf 7 --bw 125
 
 
 4. License
