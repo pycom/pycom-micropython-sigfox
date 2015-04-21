@@ -47,9 +47,6 @@ Maintainer: Sylvain Miermont
 
 #define		RF_CHAIN				0	/* we'll use radio A only */
 
-const uint32_t lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_LOWFREQ;
-const uint32_t upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
@@ -104,11 +101,9 @@ int main(int argc, char **argv)
 	/* user entry parameters */
 	int xi = 0;
 	double xd = 0.0;
-	uint32_t f_min;
-	uint32_t f_max;
 	
 	/* application parameters */
-	uint32_t f_target = lowfreq[RF_CHAIN]/2 + upfreq[RF_CHAIN]/2; /* target frequency */
+	uint32_t f_target = 0; /* target frequency - invalid default value, has to be specified by user */
 	int sf = 10; /* SF10 by default */
 	int cr = 1; /* CR1 aka 4/5 by default */
 	int bw = 125; /* 125kHz bandwidth by default */
@@ -120,7 +115,7 @@ int main(int argc, char **argv)
 	bool invert = false;
 	
 	/* RF configuration (TX fail if RF chain is not enabled) */
-	const struct lgw_conf_rxrf_s rfconf = {true, lowfreq[RF_CHAIN], 0};
+	struct lgw_conf_rxrf_s rfconf = {true, 0, 0};
 	
 	/* allocate memory for packet sending */
 	struct lgw_pkt_tx_s txpkt; /* array containing 1 outbound packet + metadata */
@@ -247,10 +242,8 @@ int main(int argc, char **argv)
 	}
 	
 	/* check parameter sanity */
-	f_min = lowfreq[RF_CHAIN] + (500 * bw);
-	f_max = upfreq[RF_CHAIN] - (500 * bw);
-	if ((f_target < f_min) || (f_target > f_max)) {
-		MSG("ERROR: frequency out of authorized band (accounting for modulation bandwidth)\n");
+	if (f_target == 0) {
+		MSG("ERROR: frequency parameter not set, please use -f option to specify it.\n");
 		return EXIT_FAILURE;
 	}
 	printf("Sending %i packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble) at %i dBm, with %i ms between each\n", repeat, f_target, bw, sf, cr, pl_size, preamb, pow, delay);
@@ -264,6 +257,7 @@ int main(int argc, char **argv)
 	sigaction(SIGTERM, &sigact, NULL);
 	
 	/* starting the concentrator */
+	rfconf.freq_hz = f_target;
 	lgw_rxrf_setconf(RF_CHAIN, rfconf);
 	i = lgw_start();
 	if (i == LGW_HAL_SUCCESS) {
