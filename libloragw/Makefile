@@ -44,50 +44,6 @@ else
   $(error No radio chip selected, check library.cfg file.)
 endif
 
-ifeq ($(CFG_BAND),full)
-  CFG_BAND_MSG := Full range supported by the radio(s)
-  CFG_BAND_OPT := CFG_BAND_FULL
-else ifeq ($(CFG_BAND),eu868)
-  ifeq ($(CFG_RADIO),sx1257)
-    CFG_BAND_MSG := ETSI 868 (866) MHz band
-    CFG_BAND_OPT := CFG_BAND_868
-  else
-    $(error The selected radio(s) cannot work in the selected band.)
-  endif
-else ifeq ($(CFG_BAND),us915)
-  ifeq ($(CFG_RADIO),sx1257)
-    CFG_BAND_MSG := FCC 915 MHz band
-    CFG_BAND_OPT := CFG_BAND_915
-  else
-    $(error The selected radio(s) cannot work in the selected band.)
-  endif
-else ifeq ($(CFG_BAND),cn470)
-  ifeq ($(CFG_RADIO),sx1255)
-    CFG_BAND_MSG := China 470 MHz band
-    CFG_BAND_OPT := CFG_BAND_470
-  else
-    $(error The selected radio(s) cannot work in the selected band.)
-  endif
-else ifeq ($(CFG_BAND),eu433)
-  ifeq ($(CFG_RADIO),sx1255)
-    CFG_BAND_MSG := ETSI 433 MHz band
-    CFG_BAND_OPT := CFG_BAND_433
-  else
-    $(error The selected radio(s) cannot work in the selected band.)
-  endif
-else ifeq ($(CFG_BAND),cn780)
-  ifeq ($(CFG_RADIO),sx1257)
-    CFG_BAND_MSG := China 780 MHz band
-    CFG_BAND_OPT := CFG_BAND_780
-  else
-    $(error The selected radio(s) cannot work in the selected band.)
-  endif
-else
-  $(warning [Warning] No frequency band selected, full radio capability assumed.)
-  CFG_BAND_MSG := Full range supported by the radio(s)
-  CFG_BAND_OPT := CFG_BAND_FULL
-endif
-
 ifeq ($(CFG_BRD),dev_nano_868)
   CFG_BRD_MSG := FPGA-based nano-concentrator, with 868 MHz SAW filter
   CFG_BRD_OPT := CFG_BRD_NANO868
@@ -174,9 +130,6 @@ inc/config.h: ../VERSION library.cfg
   # Radio chip(s)
 	@echo "Radio chip(s)     : $(CFG_RADIO_MSG)"
 	@echo "	#define $(CFG_RADIO_OPT)	1" >> $@
-  # Frequency band
-	@echo "Frequency band    : $(CFG_BAND_MSG)"
-	@echo "	#define $(CFG_BAND_OPT)	1" >> $@
   # Board misc. parameters
 	@echo "Board misc. param : $(CFG_BRD_MSG)"
 	@echo "	#define $(CFG_BRD_OPT)	1" >> $@

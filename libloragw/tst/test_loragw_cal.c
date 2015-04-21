@@ -44,16 +44,10 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#if ((CFG_BAND_868 == 1) || ((CFG_BAND_FULL == 1) && (CFG_RADIO_1257 == 1)))
+#if (CFG_RADIO_1257 == 1)
 	#define	F_RX_0	868500000
-#elif (CFG_BAND_915 == 1)
-	#define	F_RX_0	915500000
-#elif ((CFG_BAND_470 == 1) || ((CFG_BAND_FULL == 1) && (CFG_RADIO_1255 == 1)))
+#elif (CFG_RADIO_1255 == 1)
 	#define	F_RX_0	470500000
-#elif (CFG_BAND_433 == 1)
-	#define	F_RX_0	433500000
-#elif (CFG_BAND_780 == 1)
-	#define	F_RX_0	780500000
 #endif
 #define		NB_CAL_MAX			100
 #define		MCU_AGC				1

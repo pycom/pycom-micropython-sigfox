@@ -28,25 +28,20 @@ test the different sub-modules of the library.
 Those programs are included in the project to provide examples on how to use 
 the HAL library, and to help the system builder test different parts of it.
 
-### 2.1. util_band_survey ###
-
-This software is used to scan the RF band and measure background RSSI and some
-measurement of interferer pattern.
-
-### 2.2. util_pkt_logger ###
+### 2.1. util_pkt_logger ###
 
 This software is used to set up a LoRa concentrator using a JSON configuration
 file and then record all the packets received in a log file, indefinitely, until
 the user stops the application.
 
-### 2.3. util_spi_stress ###
+### 2.2. util_spi_stress ###
 
 This software is used to check the reliability of the link between the host
 platform (on which the program is run) and the LoRa concentrator register file
 that is the interface through which all interaction with the LoRa concentrator
 happens.
 
-### 2.4. util_tx_test ###
+### 2.3. util_tx_test ###
 
 This software is used to send test packets with a LoRa concentrator. The packets
 contain little information, on no protocol (ie. MAC address) information but

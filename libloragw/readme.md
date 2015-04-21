@@ -187,16 +187,6 @@ The other settings available in library.cfg are:
 * CFG_RADIO configures what chips are used for radios. Only the SX125x are 
   supported for now, but other radios could be supported if drivers are added.
 
-* CFG_BAND configures frequency band limits. If you plan to use you system in 
-  a specific band, the library can be used to enforced minimum & maximum 
-  frequencies for RX and TX, preventing illegal 'out of band' emissions even in 
-  case of bug in your program.
-  Other band-specific rules (eg. TX power, channel spacing, dwell time, hopping 
-  rules) are *NOT* enforced by the libloragw library and must be enforced in 
-  your program.
-  To disable band-specific limits, use the 'full' setting that will allow all 
-  frequencies supported by the radio.
-
 * CFG_BRD configures board misc parameters and calibration values.
   The RSSI reported by the library when a packet is received, and the TX power 
   specified when is packet is sent, very significantly with the board and 

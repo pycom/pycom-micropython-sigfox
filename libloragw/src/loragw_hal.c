@@ -113,11 +113,7 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 
 const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 
-const uint32_t rf_rx_lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_RX_LOWFREQ;
-const uint32_t rf_rx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_RX_UPFREQ;
 const uint32_t rf_rx_bandwidth[LGW_RF_CHAIN_NB] = LGW_RF_RX_BANDWIDTH;
-const uint32_t rf_tx_lowfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_LOWFREQ;
-const uint32_t rf_tx_upfreq[LGW_RF_CHAIN_NB] = LGW_RF_TX_UPFREQ;
 const bool rf_tx_enable[LGW_RF_CHAIN_NB] = LGW_RF_TX_ENABLE;
 const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 
@@ -145,22 +141,6 @@ const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 	#define		CFG_RADIO_STR	"sx1255"
 #else
 	#define		CFG_RADIO_STR	"radio?"
-#endif
-
-#if (CFG_BAND_FULL == 1)
-	#define		CFG_BAND_STR	"full"
-#elif (CFG_BAND_868 == 1)
-	#define		CFG_BAND_STR	"eu868"
-#elif (CFG_BAND_915 == 1)
-	#define		CFG_BAND_STR	"us915"
-#elif (CFG_BAND_470 == 1)
-	#define		CFG_BAND_STR	"cn470"
-#elif (CFG_BAND_433 == 1)
-	#define		CFG_BAND_STR	"eu433"
-#elif (CFG_BAND_780 == 1)
-	#define		CFG_BAND_STR	"cn780"
-#else
-	#define		CFG_BAND_STR	"band?"
 #endif
 
 #if (CFG_BRD_NANO868 == 1)
@@ -201,7 +181,7 @@ const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 #endif
 
 /* Version string, used to identify the library version/options once compiled */
-const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_RADIO_STR " " CFG_BAND_STR " " CFG_BRD_STR " " CFG_NET_STR ";";
+const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_RADIO_STR " " CFG_BRD_STR " " CFG_NET_STR ";";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -621,15 +601,6 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 		return LGW_HAL_ERROR;
 	}
 
-	/* check input parameters */
-	if (conf.freq_hz > rf_rx_upfreq[rf_chain]) {
-		DEBUG_MSG("ERROR: FREQUENCY TOO HIGH FOR THAT RF_CHAIN\n");
-		return LGW_HAL_ERROR;
-	} else if (conf.freq_hz < rf_rx_lowfreq[rf_chain]) {
-		DEBUG_MSG("ERROR: FREQUENCY TOO LOW FOR THAT RF_CHAIN\n");
-		return LGW_HAL_ERROR;
-	}
-
 	/* set internal config according to parameters */
 	rf_enable[rf_chain] = conf.enable;
 	rf_rx_freq[rf_chain] = conf.freq_hz;
@@ -988,19 +959,15 @@ int lgw_start(void) {
 	lgw_constant_adjust();
 
 	/* Freq-to-time-drift calculation */
-	x = (2 * 8192000000) / (uint64_t)(rf_rx_lowfreq[0] + rf_rx_upfreq[0]); /* 64b calculation */
-	if (x > 63) {
-		x = 63;
-	}
+	x = 4096000000 / (rf_rx_freq[0] >> 1); /* dividend: (4*2048*1000000) >> 1, rescaled to avoid 32b overflow */
+	x = ( x > 63 ) ? 63 : x; /* saturation */
 	lgw_reg_w(LGW_FREQ_TO_TIME_DRIFT, x); /* default 9 */
-	x = (2 * 32768000000) / (uint64_t)(rf_rx_lowfreq[0] + rf_rx_upfreq[0]); /* 64b calculation */
-	if (x > 63) {
-		x = 63;
-	}
+
+	x = 4096000000 / (rf_rx_freq[0] >> 3); /* dividend: (16*2048*1000000) >> 3, rescaled to avoid 32b overflow */
+	x = ( x > 63 ) ? 63 : x; /* saturation */
 	lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_DRIFT, x); /* default 36 */
 
 	/* configure LoRa 'multi' demodulators aka. LoRa 'sensor' channels (IF0-3) */
-
 	radio_select = 0; /* IF mapping to radio A/B (per bit, 0=A, 1=B) */
 	for(i=0; i<LGW_MULTI_NB; ++i) {
 		radio_select += (if_rf_chain[i] == 1 ? 1 << i : 0); /* transform bool array into binary word */
@@ -1016,23 +983,23 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_IF_FREQ_1, IF_HZ_TO_REG(if_freq[1])); /* default -128 */
 	lgw_reg_w(LGW_IF_FREQ_2, IF_HZ_TO_REG(if_freq[2])); /* default 128 */
 	lgw_reg_w(LGW_IF_FREQ_3, IF_HZ_TO_REG(if_freq[3])); /* default 384 */
-	#if (CFG_CHIP_1301 == 1)
+#if (CFG_CHIP_1301 == 1)
 	lgw_reg_w(LGW_IF_FREQ_4, IF_HZ_TO_REG(if_freq[4])); /* default -384 */
 	lgw_reg_w(LGW_IF_FREQ_5, IF_HZ_TO_REG(if_freq[5])); /* default -128 */
 	lgw_reg_w(LGW_IF_FREQ_6, IF_HZ_TO_REG(if_freq[6])); /* default 128 */
 	lgw_reg_w(LGW_IF_FREQ_7, IF_HZ_TO_REG(if_freq[7])); /* default 384 */
-	#endif
+#endif
 
 	lgw_reg_w(LGW_CORR0_DETECT_EN, (if_enable[0] == true) ? lora_multi_sfmask[0] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR1_DETECT_EN, (if_enable[1] == true) ? lora_multi_sfmask[1] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR2_DETECT_EN, (if_enable[2] == true) ? lora_multi_sfmask[2] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR3_DETECT_EN, (if_enable[3] == true) ? lora_multi_sfmask[3] : 0); /* default 0 */
-	#if (CFG_CHIP_1301 == 1)
+#if (CFG_CHIP_1301 == 1)
 	lgw_reg_w(LGW_CORR4_DETECT_EN, (if_enable[4] == true) ? lora_multi_sfmask[4] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR5_DETECT_EN, (if_enable[5] == true) ? lora_multi_sfmask[5] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR6_DETECT_EN, (if_enable[6] == true) ? lora_multi_sfmask[6] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR7_DETECT_EN, (if_enable[7] == true) ? lora_multi_sfmask[7] : 0); /* default 0 */
-	#endif
+#endif
 
 	lgw_reg_w(LGW_PPM_OFFSET, 0x60); /* as the threshold is 16ms, use 0x60 to enable ppm_offset for SF12 and SF11 @125kHz*/
 
@@ -1440,13 +1407,6 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	}
 	if (rf_enable[pkt_data.rf_chain] == false) {
 		DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED\n");
-		return LGW_HAL_ERROR;
-	}
-	if (pkt_data.freq_hz > rf_tx_upfreq[pkt_data.rf_chain]) {
-		DEBUG_PRINTF("ERROR: FREQUENCY %d HIGHER THAN UPPER LIMIT %d OF RF_CHAIN %d\n", pkt_data.freq_hz, rf_tx_upfreq[pkt_data.rf_chain], pkt_data.rf_chain);
-		return LGW_HAL_ERROR;
-	} else if (pkt_data.freq_hz < rf_tx_lowfreq[pkt_data.rf_chain]) {
-		DEBUG_PRINTF("ERROR: FREQUENCY %d LOWER THAN LOWER LIMIT %d OF RF_CHAIN %d\n", pkt_data.freq_hz, rf_tx_lowfreq[pkt_data.rf_chain], pkt_data.rf_chain);
 		return LGW_HAL_ERROR;
 	}
 	if (!IS_TX_MODE(pkt_data.tx_mode)) {

@@ -52,47 +52,6 @@ Maintainer: Sylvain Miermont
 	#define LGW_RF_RX_BANDWIDTH	{   1000000,   1000000}	/* bandwidth of the radios */
 #endif
 
-/* band-specific parameters */
-/* to use array parameters, declare a local const and use 'rf_chain' as index */
-#if (CFG_BAND_FULL == 1)
-	#if (CFG_RADIO_1257 == 1)
-		#define LGW_RF_RX_LOWFREQ	{ 778000000, 778000000}	/* lower limit of the usable band in RX for each radio */
-		#define LGW_RF_RX_UPFREQ	{1020000000,1020000000}	/* upper limit of the usable band in RX for each radio */
-		#define LGW_RF_TX_LOWFREQ	{ 778000000, 778000000}	/* lower limit of the usable band in TX for each radio */
-		#define LGW_RF_TX_UPFREQ	{1020000000,1020000000}	/* upper limit of the usable band in TX for each radio */
-	#elif (CFG_RADIO_1255 == 1)
-		#define LGW_RF_RX_LOWFREQ	{ 400000000, 400000000}
-		#define LGW_RF_RX_UPFREQ	{ 510000000, 510000000}
-		#define LGW_RF_TX_LOWFREQ	{ 400000000, 400000000}
-		#define LGW_RF_TX_UPFREQ	{ 510000000, 510000000}
-	#endif
-#elif (CFG_BAND_868 == 1)
-	#define LGW_RF_RX_LOWFREQ	{ 863000000, 863000000}
-	#define LGW_RF_RX_UPFREQ	{ 870000000, 870000000}
-	#define LGW_RF_TX_LOWFREQ	{ 863000000, 863000000}
-	#define LGW_RF_TX_UPFREQ	{ 870000000, 870000000}
-#elif (CFG_BAND_915 == 1)
-	#define LGW_RF_RX_LOWFREQ	{ 902000000, 902000000}
-	#define LGW_RF_RX_UPFREQ	{ 928000000, 928000000}
-	#define LGW_RF_TX_LOWFREQ	{ 902000000, 902000000}
-	#define LGW_RF_TX_UPFREQ	{ 928000000, 928000000}
-#elif (CFG_BAND_470 == 1)
-	#define LGW_RF_RX_LOWFREQ	{ 470000000, 470000000}
-	#define LGW_RF_RX_UPFREQ	{ 510000000, 510000000}
-	#define LGW_RF_TX_LOWFREQ	{ 470000000, 470000000}
-	#define LGW_RF_TX_UPFREQ	{ 510000000, 510000000}
-#elif (CFG_BAND_433 == 1)
-	#define LGW_RF_RX_LOWFREQ	{ 433050000, 433050000}
-	#define LGW_RF_RX_UPFREQ	{ 434790000, 434790000}
-	#define LGW_RF_TX_LOWFREQ	{ 433050000, 433050000}
-	#define LGW_RF_TX_UPFREQ	{ 434790000, 434790000}
-#elif (CFG_BAND_780 == 1)
-	#define LGW_RF_RX_LOWFREQ	{ 779000000, 779000000}
-	#define LGW_RF_RX_UPFREQ	{ 787000000, 787000000}
-	#define LGW_RF_TX_LOWFREQ	{ 779000000, 779000000}
-	#define LGW_RF_TX_UPFREQ	{ 787000000, 787000000}
-#endif
-
 /* type of if_chain + modem */
 #define IF_UNDEFINED		0
 #define IF_LORA_STD			0x10	/* if + standard single-SF LoRa modem */

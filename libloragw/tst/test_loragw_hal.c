@@ -42,26 +42,14 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#if ((CFG_BAND_868 == 1) || ((CFG_BAND_FULL == 1) && (CFG_RADIO_1257 == 1)))
+#if (CFG_RADIO_1257 == 1)
 	#define	F_RX_0	868500000
 	#define	F_RX_1	869500000
 	#define	F_TX	869000000
-#elif (CFG_BAND_915 == 1)
-	#define	F_RX_0	914500000
-	#define	F_RX_1	915500000
-	#define	F_TX	915000000
-#elif ((CFG_BAND_470 == 1) || ((CFG_BAND_FULL == 1) && (CFG_RADIO_1255 == 1)))
+#elif (CFG_RADIO_1255 == 1)
 	#define	F_RX_0	471500000
 	#define	F_RX_1	472500000
 	#define	F_TX	472000000
-#elif (CFG_BAND_433 == 1)
-	#define	F_RX_0	433500000
-	#define	F_RX_1	434500000
-	#define	F_TX	434000000
-#elif (CFG_BAND_780 == 1)
-	#define	F_RX_0	780500000
-	#define	F_RX_1	781500000
-	#define	F_TX	781000000
 #endif
 
 /* -------------------------------------------------------------------------- */
