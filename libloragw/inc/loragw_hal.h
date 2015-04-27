@@ -202,6 +202,14 @@ Maintainer: Sylvain Miermont
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
 /**
+@struct lgw_conf_board_s
+@brief Configuration structure for board specificities
+*/
+struct lgw_conf_board_s {
+	bool		lorawan_public;		/*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
+};
+
+/**
 @struct lgw_conf_rxrf_s
 @brief Configuration structure for a RF chain
 */
@@ -295,6 +303,13 @@ struct lgw_tx_gain_lut_s {
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
+
+/**
+@brief Configure the gateway board
+@param conf structure containing the configuration parameters
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_board_setconf(struct lgw_conf_board_s conf);
 
 /**
 @brief Configure an RF chain (must configure before start)
