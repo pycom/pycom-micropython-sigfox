@@ -2,13 +2,15 @@
 	"SX1301_conf": {
 		"radio_0": {
 			"enable": true,
+			"type": "SX1257",
 			"freq": 868200000,
-			"rssi_offset": 166.0
+			"rssi_offset": -166.0
 		},
 		"radio_1": {
 			"enable": true,
+			"type": "SX1257",
 			"freq": 869200000,
-			"rssi_offset": 166.0
+			"rssi_offset": -166.0
 		},
 		"chan_multiSF_0": {
 			/* Lora MAC channel, 125kHz, all SF, 868.1 MHz */

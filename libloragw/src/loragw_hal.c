@@ -187,7 +187,7 @@ static bool lgw_is_started;
 
 static bool rf_enable[LGW_RF_CHAIN_NB];
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
-static int8_t rf_rssi_offset[LGW_RF_CHAIN_NB];
+static float rf_rssi_offset[LGW_RF_CHAIN_NB];
 static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB];
 
 static bool if_enable[LGW_IF_CHAIN_NB];
@@ -631,7 +631,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 	rf_rssi_offset[rf_chain] = conf.rssi_offset;
 	rf_radio_type[rf_chain] = conf.type;
 
-	DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%d radio_type:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain]);
+	DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain]);
 
 	return LGW_HAL_SUCCESS;
 }
@@ -1259,7 +1259,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 		p->if_chain = buff[sz+0];
 		ifmod = ifmod_config[p->if_chain];
 		DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
-		p->rssi = (int8_t)buff[sz+5] + rf_rssi_offset[p->rf_chain];
+		p->rssi = (float)buff[sz+5] + rf_rssi_offset[p->rf_chain];
 
 		if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
 			DEBUG_MSG("Note: LoRa packet\n");

@@ -220,7 +220,7 @@ struct lgw_conf_board_s {
 struct lgw_conf_rxrf_s {
 	bool			enable;			/*!> enable or disable that RF chain */
 	uint32_t		freq_hz;		/*!> center frequency of the radio in Hz */
-	int8_t			rssi_offset;		/*!> RSSI offset in dB */
+	float			rssi_offset;		/*!> Board-specific RSSI correction factor */
 	enum lgw_radio_type_e	type;			/*!> Radio type for that RF chain (SX1255, SX1257....) */
 };
 

@@ -46,7 +46,7 @@ Maintainer: Sylvain Miermont
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 #define		RF_CHAIN		0	/* we'll use radio A only */
-#define		DEFAULT_RSSI_OFFSET 	0
+#define		DEFAULT_RSSI_OFFSET 	0.0
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */

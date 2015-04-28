@@ -44,7 +44,7 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define		DEFAULT_RSSI_OFFSET 	0
+#define		DEFAULT_RSSI_OFFSET 	0.0
 #define		NB_CAL_MAX		100
 #define		MCU_AGC			1
 #define		MCU_AGC_FW_BYTE		8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */

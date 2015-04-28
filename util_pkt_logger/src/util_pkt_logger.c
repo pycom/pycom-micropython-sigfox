@@ -89,6 +89,7 @@ int parse_SX1301_configuration(const char * conf_file) {
 	int i;
 	const char conf_obj[] = "SX1301_conf";
 	char param_name[32]; /* used to generate variable parameter names */
+	const char *str; /* used to store string value from JSON object */
 	struct lgw_conf_rxrf_s rfconf;
 	struct lgw_conf_rxif_s ifconf;
 	JSON_Value *root_val;
@@ -132,9 +133,21 @@ int parse_SX1301_configuration(const char * conf_file) {
 		if (rfconf.enable == false) { /* radio disabled, nothing else to parse */
 			MSG("INFO: radio %i disabled\n", i);
 		} else  { /* radio enabled, will parse the other parameters */
-			sprintf(param_name, "radio_%i.freq", i);
+			snprintf(param_name, sizeof param_name, "radio_%i.freq", i);
 			rfconf.freq_hz = (uint32_t)json_object_dotget_number(conf, param_name);
-			MSG("INFO: radio %i enabled, center frequency %u\n", i, rfconf.freq_hz);
+			snprintf(param_name, sizeof param_name, "radio_%i.rssi_offset", i);
+			rfconf.rssi_offset = (float)json_object_dotget_number(conf, param_name);
+			snprintf(param_name, sizeof param_name, "radio_%i.type", i);
+			str = json_object_dotget_string(conf, param_name);
+			if (!strncmp(str, "SX1255", 6)) {
+				rfconf.type = LGW_RADIO_TYPE_SX1255;
+			} else if (!strncmp(str, "SX1257", 6)) {
+				rfconf.type = LGW_RADIO_TYPE_SX1257;
+			} else {
+				MSG("WARNING: invalid radio type: %s (should be SX1255 or SX1257)\n", str);
+			}
+			MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f\n", i, str, rfconf.freq_hz, rfconf.rssi_offset);
+
 		}
 		/* all parameters parsed, submitting configuration to the HAL */
 		if (lgw_rxrf_setconf(i, rfconf) != LGW_HAL_SUCCESS) {
