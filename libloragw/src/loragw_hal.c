@@ -135,14 +135,6 @@ const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 	#define		CFG_CHIP_STR	"chip?"
 #endif
 
-#if (CFG_RADIO_1257 == 1)
-	#define		CFG_RADIO_STR	"sx1257"
-#elif (CFG_RADIO_1255 == 1)
-	#define		CFG_RADIO_STR	"sx1255"
-#else
-	#define		CFG_RADIO_STR	"radio?"
-#endif
-
 #if (CFG_BRD_NANO868 == 1)
 	#define		CFG_BRD_STR		"dev_nano_868"
 #elif (CFG_BRD_1301IOTSK868 == 1)
@@ -173,7 +165,7 @@ const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 #endif
 
 /* Version string, used to identify the library version/options once compiled */
-const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_RADIO_STR " " CFG_BRD_STR ";";
+const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_BRD_STR ";";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -196,6 +188,7 @@ static bool lgw_is_started;
 static bool rf_enable[LGW_RF_CHAIN_NB];
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
 static int8_t rf_rssi_offset[LGW_RF_CHAIN_NB];
+static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB];
 
 static bool if_enable[LGW_IF_CHAIN_NB];
 static bool if_rf_chain[LGW_IF_CHAIN_NB]; /* for each IF, 0 -> radio A, 1 -> radio B */
@@ -390,8 +383,8 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz) {
-	uint32_t part_int;
-	uint32_t part_frac;
+	uint32_t part_int = 0;
+	uint32_t part_frac = 0;
 	int cpt_attempts = 0;
 
 	if (rf_chain >= LGW_RF_CHAIN_NB) {
@@ -410,11 +403,18 @@ int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz) {
 		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL);
 		DEBUG_PRINTF("Note: SX125x #%d clock output disabled\n", rf_chain);
 	}
-	#if (CFG_RADIO_1257 == 1)
-	sx125x_write(rf_chain, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
-	#elif (CFG_RADIO_1255 == 1)
-	sx125x_write(rf_chain, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
-	#endif
+
+	switch (rf_radio_type[rf_chain]) {
+		case LGW_RADIO_TYPE_SX1255:
+			sx125x_write(rf_chain, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
+			break;
+		case LGW_RADIO_TYPE_SX1257:
+			sx125x_write(rf_chain, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
+			break;
+		default:
+			DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[rf_chain]);
+			break;
+	}
 
 	if (rf_enable[rf_chain] == true) {
 		/* Tx gain and trim */
@@ -428,13 +428,20 @@ int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz) {
 		sx125x_write(rf_chain, 0x0E, SX125x_ADC_TEMP + SX125x_RX_PLL_BW*2);
 
 		/* set RX PLL frequency */
-		#if (CFG_RADIO_1257 == 1)
-		part_int = freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
-		part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-		#elif (CFG_RADIO_1255 == 1)
-		part_int = freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
-		part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-		#endif
+		switch (rf_radio_type[rf_chain]) {
+			case LGW_RADIO_TYPE_SX1255:
+				part_int = freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
+				part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+				break;
+			case LGW_RADIO_TYPE_SX1257:
+				part_int = freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
+				part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+				break;
+			default:
+				DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[rf_chain]);
+				break;
+		}
+
 		sx125x_write(rf_chain, 0x01,0xFF & part_int); /* Most Significant Byte */
 		sx125x_write(rf_chain, 0x02,0xFF & (part_frac >> 8)); /* middle byte */
 		sx125x_write(rf_chain, 0x03,0xFF & part_frac); /* Least Significant Byte */
@@ -612,12 +619,19 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 		return LGW_HAL_ERROR;
 	}
 
+	/* check if radio type is supported */
+	if ((conf.type != LGW_RADIO_TYPE_SX1255) && (conf.type != LGW_RADIO_TYPE_SX1257)) {
+		DEBUG_MSG("ERROR: NOT A VALID RADIO TYPE\n");
+		return LGW_HAL_ERROR;
+	}
+
 	/* set internal config according to parameters */
 	rf_enable[rf_chain] = conf.enable;
 	rf_rx_freq[rf_chain] = conf.freq_hz;
 	rf_rssi_offset[rf_chain] = conf.rssi_offset;
+	rf_radio_type[rf_chain] = conf.type;
 
-	DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain]);
+	DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%d radio_type:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain]);
 
 	return LGW_HAL_SUCCESS;
 }
@@ -872,11 +886,17 @@ int lgw_start(void) {
 	cal_cmd |= (rf_enable[1] && rf_tx_enable[1]) ? 0x08 : 0x00; /* Bit 3: Calibrate Tx DC offset on radio B */
 	cal_cmd |= 0x10; /* Bit 4: 0: calibrate with DAC gain=2, 1: with DAC gain=3 (use 3) */
 
-	#if (CFG_RADIO_1257 == 1)
-	cal_cmd |= 0x00; /* Bit 5: 0: SX1257, 1: SX1255 */
-	#elif (CFG_RADIO_1255 == 1)
-	cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
-	#endif
+	switch (rf_radio_type[0]) { /* we assume that there is only one radio type on the board */
+		case LGW_RADIO_TYPE_SX1255:
+			cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
+			break;
+		case LGW_RADIO_TYPE_SX1257:
+			cal_cmd |= 0x00; /* Bit 5: 0: SX1257, 1: SX1255 */
+			break;
+		default:
+			DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[0]);
+			break;
+	}
 
 #if ((CFG_BRD_1301IOTSK868 == 1) || (CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1) || (CFG_BRD_KERLINK868_27DBM == 1) || (CFG_BRD_KERLINK433 == 1) || (CFG_BRD_CISCO433 == 1) || (CFG_BRD_CISCO470 == 1) || (CFG_BRD_CISCO780 == 1))
 	cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
@@ -1390,8 +1410,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	int i;
 	uint8_t buff[256+TX_METADATA_NB]; /* buffer to prepare the packet to send + metadata before SPI write burst */
-	uint32_t part_int; /* integer part for PLL register value calculation */
-	uint32_t part_frac; /* fractional part for PLL register value calculation */
+	uint32_t part_int = 0; /* integer part for PLL register value calculation */
+	uint32_t part_frac = 0; /* fractional part for PLL register value calculation */
 	uint16_t fsk_dr_div; /* divider to configure for target datarate */
 	int transfer_size = 0; /* data to transfer from host to TX databuffer */
 	int payload_offset = 0; /* start of the payload content in the databuffer */
@@ -1484,13 +1504,19 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	payload_offset = TX_METADATA_NB; /* start the payload just after the metadata */
 
 	/* metadata 0 to 2, TX PLL frequency */
-	#if (CFG_RADIO_1257 == 1)
-	part_int = pkt_data.freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
-	part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-	#elif (CFG_RADIO_1255 == 1)
-	part_int = pkt_data.freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
-	part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-	#endif
+	switch (rf_radio_type[0]) { /* we assume that there is only one radio type on the board */
+		case LGW_RADIO_TYPE_SX1255:
+			part_int = pkt_data.freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
+			part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+			break;
+		case LGW_RADIO_TYPE_SX1257:
+			part_int = pkt_data.freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
+			part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+			break;
+		default:
+			DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[0]);
+			break;
+	}
 
 	buff[0] = 0xFF & part_int; /* Most Significant Byte */
 	buff[1] = 0xFF & (part_frac >> 8); /* middle byte */

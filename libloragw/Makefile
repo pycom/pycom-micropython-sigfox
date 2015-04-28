@@ -34,16 +34,6 @@ else
   $(error No concentrator chip selected, check library.cfg file.)
 endif
 
-ifeq ($(CFG_RADIO),sx1257)
-  CFG_RADIO_MSG := Dual SX1257 transceivers, covering 860-1000 MHz
-  CFG_RADIO_OPT := CFG_RADIO_1257
-else ifeq ($(CFG_RADIO),sx1255)
-  CFG_RADIO_MSG := Dual SX1255 transceivers, covering 400-510 MHz
-  CFG_RADIO_OPT := CFG_RADIO_1255
-else
-  $(error No radio chip selected, check library.cfg file.)
-endif
-
 ifeq ($(CFG_BRD),dev_nano_868)
   CFG_BRD_MSG := FPGA-based nano-concentrator, with 868 MHz SAW filter
   CFG_BRD_OPT := CFG_BRD_NANO868
@@ -115,9 +105,6 @@ inc/config.h: ../VERSION library.cfg
   # Concentrator chip
 	@echo "Concentrator chip : $(CFG_CHIP_MSG)"
 	@echo "	#define $(CFG_CHIP_OPT)	1" >> $@
-  # Radio chip(s)
-	@echo "Radio chip(s)     : $(CFG_RADIO_MSG)"
-	@echo "	#define $(CFG_RADIO_OPT)	1" >> $@
   # Board misc. parameters
 	@echo "Board misc. param : $(CFG_BRD_MSG)"
 	@echo "	#define $(CFG_BRD_OPT)	1" >> $@

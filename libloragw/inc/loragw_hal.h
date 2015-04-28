@@ -46,11 +46,9 @@ Maintainer: Sylvain Miermont
 #define LGW_HAL_ERROR		-1
 
 /* radio-specific parameters */
-#if ((CFG_RADIO_1257 == 1) || (CFG_RADIO_1255 == 1))
-	#define LGW_XTAL_FREQU		32000000	/* frequency of the RF reference oscillator */
-	#define LGW_RF_CHAIN_NB		2	/* number of RF chains */
-	#define LGW_RF_RX_BANDWIDTH	{   1000000,   1000000}	/* bandwidth of the radios */
-#endif
+#define LGW_XTAL_FREQU		32000000	/* frequency of the RF reference oscillator */
+#define LGW_RF_CHAIN_NB		2	/* number of RF chains */
+#define LGW_RF_RX_BANDWIDTH	{   1000000,   1000000}	/* bandwidth of the radios */
 
 /* type of if_chain + modem */
 #define IF_UNDEFINED		0
@@ -201,6 +199,12 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
+enum lgw_radio_type_e {
+	LGW_RADIO_TYPE_NONE,
+	LGW_RADIO_TYPE_SX1255,
+	LGW_RADIO_TYPE_SX1257
+};
+
 /**
 @struct lgw_conf_board_s
 @brief Configuration structure for board specificities
@@ -214,9 +218,10 @@ struct lgw_conf_board_s {
 @brief Configuration structure for a RF chain
 */
 struct lgw_conf_rxrf_s {
-	bool		enable;			/*!> enable or disable that RF chain */
-	uint32_t	freq_hz;		/*!> center frequency of the radio in Hz */
-	int8_t		rssi_offset;		/*!> RSSI offset in dB */
+	bool			enable;			/*!> enable or disable that RF chain */
+	uint32_t		freq_hz;		/*!> center frequency of the radio in Hz */
+	int8_t			rssi_offset;		/*!> RSSI offset in dB */
+	enum lgw_radio_type_e	type;			/*!> Radio type for that RF chain (SX1255, SX1257....) */
 };
 
 /**
