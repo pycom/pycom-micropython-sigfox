@@ -37,8 +37,10 @@ functionality.
 This is the main module and contains the high level functions to configure and
 use the LoRa concentrator:
 
+* lgw_board_setconf, to set the configuration of the concentrator 
 * lgw_rxrf_setconf, to set the configuration of the radio channels
 * lgw_rxif_setconf, to set the configuration of the IF+modem channels
+* lgw_txgain_setconf, to set the configuration of the concentrator gain table
 * lgw_start, to apply the set configuration to the hardware and start it
 * lgw_stop, to stop the hardware
 * lgw_receive, to fetch packets if any was received
@@ -183,9 +185,6 @@ The other settings available in library.cfg are:
 * CFG_CHIP configures what the exact model of chip is, because there are small 
   differences in capabilities between the 'normal' SX1301 production chip, and 
   the FPGA-based version.
-
-* CFG_RADIO configures what chips are used for radios. Only the SX125x are 
-  supported for now, but other radios could be supported if drivers are added.
 
 * CFG_BRD configures board misc parameters and calibration values.
   The RSSI reported by the library when a packet is received, and the TX power 
