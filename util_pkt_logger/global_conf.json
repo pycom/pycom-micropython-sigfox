@@ -1,6 +1,7 @@
 {
 	"SX1301_conf": {
 		"lorawan_public": true,
+		"clksrc": 1, /* radio_1 provides clock to concentrator */
 		"radio_0": {
 			"enable": true,
 			"type": "SX1257",

@@ -118,7 +118,8 @@ int main(int argc, char **argv)
 	
 	/* RF configuration (TX fail if RF chain is not enabled) */
 	enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
-	struct lgw_conf_rxrf_s rfconf;;
+	struct lgw_conf_board_s boardconf;
+	struct lgw_conf_rxrf_s rfconf;
 	
 	/* allocate memory for packet sending */
 	struct lgw_pkt_tx_s txpkt; /* array containing 1 outbound packet + metadata */
@@ -265,6 +266,10 @@ int main(int argc, char **argv)
 		MSG("ERROR: frequency parameter not set, please use -f option to specify it.\n");
 		return EXIT_FAILURE;
 	}
+	if (radio_type == LGW_RADIO_TYPE_NONE) {
+		MSG("ERROR: radio type parameter not properly set, please use -r option to specify it.\n");
+		return EXIT_FAILURE;
+	}
 	printf("Sending %i packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble) at %i dBm, with %i ms between each\n", repeat, f_target, bw, sf, cr, pl_size, preamb, pow, delay);
 	
 	/* configure signal handling */
@@ -276,12 +281,17 @@ int main(int argc, char **argv)
 	sigaction(SIGTERM, &sigact, NULL);
 	
 	/* starting the concentrator */
+	boardconf.lorawan_public = true;
+	boardconf.clksrc = 1;
+	lgw_board_setconf(boardconf);
+
 	rfconf.enable = true;
 	rfconf.freq_hz = f_target;
 	rfconf.rssi_offset = DEFAULT_RSSI_OFFSET;
 	rfconf.type = radio_type;
 	rfconf.tx_enable = true;
 	lgw_rxrf_setconf(RF_CHAIN, rfconf);
+
 	i = lgw_start();
 	if (i == LGW_HAL_SUCCESS) {
 		MSG("INFO: concentrator started, packet can be sent\n");

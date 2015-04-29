@@ -90,6 +90,7 @@ int parse_SX1301_configuration(const char * conf_file) {
 	const char conf_obj[] = "SX1301_conf";
 	char param_name[32]; /* used to generate variable parameter names */
 	const char *str; /* used to store string value from JSON object */
+	struct lgw_conf_board_s boardconf;
 	struct lgw_conf_rxrf_s rfconf;
 	struct lgw_conf_rxif_s ifconf;
 	JSON_Value *root_val;
@@ -112,7 +113,29 @@ int parse_SX1301_configuration(const char * conf_file) {
 	} else {
 		MSG("INFO: %s does contain a JSON object named %s, parsing SX1301 parameters\n", conf_file, conf_obj);
 	}
-	
+
+	/* set board configuration */
+	memset(&boardconf, 0, sizeof boardconf); /* initialize configuration structure */
+	val = json_object_get_value(conf, "lorawan_public"); /* fetch value (if possible) */
+	if (json_value_get_type(val) == JSONBoolean) {
+		boardconf.lorawan_public = (bool)json_value_get_boolean(val);
+	} else {
+		MSG("WARNING: Data type for lorawan_public seems wrong, please check\n");
+		boardconf.lorawan_public = false;
+	}
+	val = json_object_get_value(conf, "clksrc"); /* fetch value (if possible) */
+	if (json_value_get_type(val) == JSONNumber) {
+		boardconf.clksrc = (uint8_t)json_value_get_number(val);
+	} else {
+		MSG("WARNING: Data type for clksrc seems wrong, please check\n");
+		boardconf.clksrc = 0;
+	}
+	MSG("INFO: lorawan_public %d, clksrc %d\n", boardconf.lorawan_public, boardconf.clksrc);
+	/* all parameters parsed, submitting configuration to the HAL */
+        if (lgw_board_setconf(boardconf) != LGW_HAL_SUCCESS) {
+                MSG("WARNING: Failed to configure board\n");
+	}
+
 	/* set configuration for RF chains */
 	for (i = 0; i < LGW_RF_CHAIN_NB; ++i) {
 		memset(&rfconf, 0, sizeof(rfconf)); /* initialize configuration structure */

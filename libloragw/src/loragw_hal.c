@@ -112,9 +112,7 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 /* constant arrays defining hardware capability */
 
 const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
-
 const uint32_t rf_rx_bandwidth[LGW_RF_CHAIN_NB] = LGW_RF_RX_BANDWIDTH;
-const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 
 /* Strings for version (and options) identification */
 
@@ -206,6 +204,7 @@ static uint8_t fsk_sync_word_size = 3; /* default number of bytes for FSK sync w
 static uint64_t fsk_sync_word= 0xC194C1; /* default FSK sync word (ALIGNED RIGHT, MSbit first) */
 
 static bool lorawan_public = false;
+static uint8_t rf_clkout = 0;
 
 static struct lgw_tx_gain_lut_s txgain_lut = {
 	.size = 2,
@@ -396,7 +395,7 @@ int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz) {
 	DEBUG_PRINTF("Note: SX125x #%d version register returned 0x%02x\n", rf_chain, sx125x_read(rf_chain, 0x07));
 
 	/* General radio setup */
-	if (rf_clkout[rf_chain] == true) {
+	if (rf_clkout == rf_chain) {
 		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + 2);
 		DEBUG_PRINTF("Note: SX125x #%d clock output enabled\n", rf_chain);
 	} else {
@@ -599,6 +598,7 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
 
 	/* set internal config according to parameters */
 	lorawan_public = conf.lorawan_public;
+	rf_clkout = conf.clksrc;
 
 	DEBUG_PRINTF("Note: board configuration; lorawan_public:%d\n", lorawan_public);
 
