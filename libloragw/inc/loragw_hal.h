@@ -96,10 +96,8 @@ Maintainer: Sylvain Miermont
 /* board-specific parameters */
 /* to use array parameters, declare a local const and use 'rf_chain' as index */
 #if (CFG_BRD_NANO868 == 1)
-	#define LGW_RF_TX_ENABLE	{ true, true}	/* both radio A and B are usable in TX */
 	#define LGW_RF_CLKOUT		{ true, true}	/* both radios have clkout enabled */
 #elif (CFG_BRD_1301IOTSK868 == 1)
-	#define LGW_RF_TX_ENABLE	{ true,false}	/* radio B TX output is disconnected */
 	#define LGW_RF_CLKOUT		{false, true}	/* radio A clkout disabled for spur optimization */
 #if (CFG_SPI_NATIVE == 1)
 	#define LGW_SX1301_RESET_PIN	7		/* reset pin for SX1301 (GPIO7 <-> pin 26 on RPi connector) */
@@ -107,16 +105,13 @@ Maintainer: Sylvain Miermont
 	/* NOT SUPPORTED */
 #endif
 #elif ((CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1) || (CFG_BRD_KERLINK868_27DBM == 1) || (CFG_BRD_KERLINK433 == 1))
-	#define LGW_RF_TX_ENABLE	{ true,false}	/* radio B TX output is disconnected */
 	#define LGW_RF_CLKOUT		{false, true}	/* radio A clkout disabled for spur optimization */
 #elif ((CFG_BRD_CISCO433 == 1) || (CFG_BRD_CISCO470 == 1) || (CFG_BRD_CISCO780 == 1))
-	#define LGW_RF_TX_ENABLE	{ true,false}	/* radio B TX output is disconnected */
 	#define LGW_RF_CLKOUT		{ true, true}	/* Do not know */
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
 */
 #elif (CFG_BRD_NONE == 1)
-	#define LGW_RF_TX_ENABLE	{ true, true}	/* both radio A and B are usable in TX */
 	#define LGW_RF_CLKOUT		{ true, true}	/* both radios have clkout enabled */
 #endif
 
@@ -222,6 +217,7 @@ struct lgw_conf_rxrf_s {
 	uint32_t		freq_hz;		/*!> center frequency of the radio in Hz */
 	float			rssi_offset;		/*!> Board-specific RSSI correction factor */
 	enum lgw_radio_type_e	type;			/*!> Radio type for that RF chain (SX1255, SX1257....) */
+	bool			tx_enable;		/*!> enable or disable TX on that RF chain */
 };
 
 /**

@@ -280,6 +280,7 @@ int main(int argc, char **argv)
 	rfconf.freq_hz = f_target;
 	rfconf.rssi_offset = DEFAULT_RSSI_OFFSET;
 	rfconf.type = radio_type;
+	rfconf.tx_enable = true;
 	lgw_rxrf_setconf(RF_CHAIN, rfconf);
 	i = lgw_start();
 	if (i == LGW_HAL_SUCCESS) {

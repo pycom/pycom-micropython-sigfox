@@ -146,8 +146,14 @@ int parse_SX1301_configuration(const char * conf_file) {
 			} else {
 				MSG("WARNING: invalid radio type: %s (should be SX1255 or SX1257)\n", str);
 			}
-			MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f\n", i, str, rfconf.freq_hz, rfconf.rssi_offset);
-
+			snprintf(param_name, sizeof param_name, "radio_%i.tx_enable", i);
+			val = json_object_dotget_value(conf, param_name);
+			if (json_value_get_type(val) == JSONBoolean) {
+				rfconf.tx_enable = (bool)json_value_get_boolean(val);
+			} else {
+				rfconf.tx_enable = false;
+			}
+			MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable);
 		}
 		/* all parameters parsed, submitting configuration to the HAL */
 		if (lgw_rxrf_setconf(i, rfconf) != LGW_HAL_SUCCESS) {

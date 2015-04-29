@@ -114,7 +114,6 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 
 const uint32_t rf_rx_bandwidth[LGW_RF_CHAIN_NB] = LGW_RF_RX_BANDWIDTH;
-const bool rf_tx_enable[LGW_RF_CHAIN_NB] = LGW_RF_TX_ENABLE;
 const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 
 /* Strings for version (and options) identification */
@@ -188,6 +187,7 @@ static bool lgw_is_started;
 static bool rf_enable[LGW_RF_CHAIN_NB];
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
 static float rf_rssi_offset[LGW_RF_CHAIN_NB];
+static bool rf_tx_enable[LGW_RF_CHAIN_NB];
 static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB];
 
 static bool if_enable[LGW_IF_CHAIN_NB];
@@ -630,8 +630,9 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 	rf_rx_freq[rf_chain] = conf.freq_hz;
 	rf_rssi_offset[rf_chain] = conf.rssi_offset;
 	rf_radio_type[rf_chain] = conf.type;
+	rf_tx_enable[rf_chain] = conf.tx_enable;
 
-	DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain]);
+	DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain]);
 
 	return LGW_HAL_SUCCESS;
 }
