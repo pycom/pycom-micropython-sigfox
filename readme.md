@@ -56,6 +56,16 @@ for spectral measurement.
 3. Changelog
 -------------
 
+### v3.0.0 ###
+
+* Added new HAL function lgw_board_setconf() to configure board/concentrator specific parameters: network type (LoRa public or private), concentrator clock source. Note: those parameters are not any more set from the library.cfg file configuration (CFG_NET, CFG_BRD), and should be passed at initialization by the application.
+* Added new HAL function lgw_txgain_setconf() to configure concentrator TX gain table. It can now be dynamically set by the application at initialization time.
+* Changed HAL function lgw_rxrf_setconf(), it will now also configure the radio type (CFG_RADIO has been removed from library.cfg), the RSSI offset to be used for this radio and if TX is enabled or not on this radio.
+* Added support of IoT Starter Kit platform, which is now the default board.
+* Added util_tx_continuous utility for gateway TX power calibration and spectral emission measurements/qualification.
+* Removed CFG_BAND configuration from library.cfg. Band configuration is done by application and passed dynamically at initialization time.
+* Updated makefiles to allow cross compilation from environment variable (ARCH, CROSS_COMPILE).
+
 ### v2.0.0 ###
 
 * Added support for Kerlink 868 27dBm gateway
