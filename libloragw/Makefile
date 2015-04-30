@@ -15,7 +15,7 @@ CFLAGS := -O2 -Wall -Wextra -std=c99 -Iinc -I.
 ### library.cfg configuration file processing
 
 ifeq ($(CFG_SPI),native)
-  CFG_SPI_MSG := Linux native SPI driver (/dev/spidev32766.0)
+  CFG_SPI_MSG := Linux native SPI driver
   CFG_SPI_OPT := CFG_SPI_NATIVE
 else ifeq ($(CFG_SPI),ftdi)
   CFG_SPI_MSG := FTDI SPI-over-USB bridge using libmpsse/libftdi/libusb
@@ -34,36 +34,9 @@ else
   $(error No concentrator chip selected, check library.cfg file.)
 endif
 
-ifeq ($(CFG_BRD),dev_nano_868)
-  CFG_BRD_MSG := FPGA-based nano-concentrator, with 868 MHz SAW filter
-  CFG_BRD_OPT := CFG_BRD_NANO868
-else ifeq ($(CFG_BRD),iot_sk_1301_868)
+ifeq ($(CFG_BRD),iot_sk_1301_868)
   CFG_BRD_MSG := SX1301 IoT Starter Kit board with SX1257 radios, 868 MHz filters
   CFG_BRD_OPT := CFG_BRD_1301IOTSK868
-else ifeq ($(CFG_BRD),ref_1301_868)
-  CFG_BRD_MSG := SX1301 reference board with SX1257 radios, 868 MHz filters
-  CFG_BRD_OPT := CFG_BRD_1301REF868
-else ifeq ($(CFG_BRD),ref_1301_433)
-  CFG_BRD_MSG := SX1301 reference board with SX1255 radios, 433 MHz filters
-  CFG_BRD_OPT := CFG_BRD_1301REF433
-else ifeq ($(CFG_BRD),kerlink_868)
-  CFG_BRD_MSG := Kerlink LoRa 868MHz gateway
-  CFG_BRD_OPT := CFG_BRD_KERLINK868
-else ifeq ($(CFG_BRD),kerlink_868_27dbm)
-  CFG_BRD_MSG := Kerlink LoRa 868MHz gateway with 27dBm capability
-  CFG_BRD_OPT := CFG_BRD_KERLINK868_27DBM
-else ifeq ($(CFG_BRD),kerlink_433)
-  CFG_BRD_MSG := Kerlink LoRa 433MHz gateway
-  CFG_BRD_OPT := CFG_BRD_KERLINK433
-else ifeq ($(CFG_BRD),cisco_433)
-  CFG_BRD_MSG := Cisco LoRa 433MHz gateway
-  CFG_BRD_OPT := CFG_BRD_CISCO433
-else ifeq ($(CFG_BRD),cisco_470)
-  CFG_BRD_MSG := Cisco LoRa 470MHz gateway
-  CFG_BRD_OPT := CFG_BRD_CISCO470
-else ifeq ($(CFG_BRD),cisco_780)
-  CFG_BRD_MSG := Cisco LoRa 780MHz gateway
-  CFG_BRD_OPT := CFG_BRD_CISCO780
 else
   $(info [Info] No specific board selected.)
   CFG_BRD_MSG := None

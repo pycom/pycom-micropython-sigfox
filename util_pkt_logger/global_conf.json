@@ -5,14 +5,14 @@
 		"radio_0": {
 			"enable": true,
 			"type": "SX1257",
-			"freq": 868200000,
+			"freq": 868400000,
 			"rssi_offset": -166.0,
 			"tx_enable": true
 		},
 		"radio_1": {
 			"enable": true,
 			"type": "SX1257",
-			"freq": 869200000,
+			"freq": 869100000,
 			"rssi_offset": -166.0,
 			"tx_enable": false
 		},
@@ -20,51 +20,63 @@
 			/* Lora MAC channel, 125kHz, all SF, 868.1 MHz */
 			"enable": true,
 			"radio": 0,
-			"if": -100000
+			"if": -300000
 		},
 		"chan_multiSF_1": {
 			/* Lora MAC channel, 125kHz, all SF, 868.3 MHz */
 			"enable": true,
 			"radio": 0,
-			"if": 100000
+			"if": -100000
 		},
 		"chan_multiSF_2": {
 			/* Lora MAC channel, 125kHz, all SF, 868.5 MHz */
 			"enable": true,
 			"radio": 0,
-			"if": 300000
+			"if": 100000
 		},
 		"chan_multiSF_3": {
-			/* Lora MAC channel, 125kHz, all SF, 868.85 MHz */
-			"enable": true,
-			"radio": 1,
-			"if": -350000
-		},
-		"chan_multiSF_4": {
-			/* Lora MAC channel, 125kHz, all SF, 869.05 MHz */
-			"enable": true,
-			"radio": 1,
-			"if": -150000
-		},
-		"chan_multiSF_5": {
-			/* Lora MAC channel, 125kHz, all SF, 869.525 MHz */
-			"enable": true,
-			"radio": 1,
-			"if": 325000
-		},
-		"chan_Lora_std": {
-			/* Lora MAC channel, 250kHz, SF7, 868.3 MHz */
+			/* Lora MAC channel, 125kHz, all SF, 868.65 MHz */
 			"enable": true,
 			"radio": 0,
-			"if": 100000,
+			"if": 250000
+		},
+		"chan_multiSF_4": {
+			/* Lora MAC channel, 125kHz, all SF, 868.8 MHz */
+			"enable": true,
+			"radio": 1,
+			"if": -300000
+		},
+		"chan_multiSF_5": {
+			/* Lora MAC channel, 125kHz, all SF, 869.1 MHz */
+			"enable": true,
+			"radio": 1,
+			"if": 0
+		},
+		"chan_multiSF_6": {
+			/* Lora MAC channel, 125kHz, all SF, 869.25 MHz */
+			"enable": true,
+			"radio": 1,
+			"if": 150000
+		},
+		"chan_multiSF_7": {
+			/* Lora MAC channel, 125kHz, all SF, 869.4 MHz */
+			"enable": true,
+			"radio": 1,
+			"if": 300000
+		},
+		"chan_Lora_std": {
+			/* Lora MAC channel, 250kHz, SF7, 868.4 MHz */
+			"enable": true,
+			"radio": 0,
+			"if": 0,
 			"bandwidth": 250000,
 			"spread_factor": 7
 		},
 		"chan_FSK": {
-			/* FSK 50kbps channel, 868.3 MHz */
+			/* FSK 50kbps channel, 868.6 MHz */
 			"enable": true,
 			"radio": 0,
-			"if": 100000,
+			"if": 200000,
 			"bandwidth": 250000,
 			"datarate": 50000
 		},

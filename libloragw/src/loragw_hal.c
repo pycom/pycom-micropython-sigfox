@@ -132,26 +132,8 @@ const uint32_t rf_rx_bandwidth[LGW_RF_CHAIN_NB] = LGW_RF_RX_BANDWIDTH;
 	#define		CFG_CHIP_STR	"chip?"
 #endif
 
-#if (CFG_BRD_NANO868 == 1)
-	#define		CFG_BRD_STR		"dev_nano_868"
-#elif (CFG_BRD_1301IOTSK868 == 1)
+#if (CFG_BRD_1301IOTSK868 == 1)
 	#define		CFG_BRD_STR		"iot_sk_1301_868"
-#elif (CFG_BRD_1301REF868 == 1)
-	#define		CFG_BRD_STR		"ref_1301_868"
-#elif (CFG_BRD_1301REF433 == 1)
-	#define		CFG_BRD_STR		"ref_1301_433"
-#elif (CFG_BRD_KERLINK868 == 1)
-	#define		CFG_BRD_STR		"kerlink_868"
-#elif (CFG_BRD_KERLINK868_27DBM == 1)
-	#define		CFG_BRD_STR		"kerlink_868_27dbm"
-#elif (CFG_BRD_KERLINK433 == 1)
-	#define		CFG_BRD_STR		"kerlink_433"
-#elif (CFG_BRD_CISCO433 == 1)
-	#define		CFG_BRD_STR		"cisco_433"
-#elif (CFG_BRD_CISCO470 == 1)
-	#define		CFG_BRD_STR		"cisco_470"
-#elif (CFG_BRD_CISCO780 == 1)
-	#define		CFG_BRD_STR		"cisco_780"
 /* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
 #elif (CFG_BRD_MYBOARD == 1)
 */
@@ -899,16 +881,8 @@ int lgw_start(void) {
 			break;
 	}
 
-#if ((CFG_BRD_1301IOTSK868 == 1) || (CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1) || (CFG_BRD_KERLINK868_27DBM == 1) || (CFG_BRD_KERLINK433 == 1) || (CFG_BRD_CISCO433 == 1) || (CFG_BRD_CISCO470 == 1) || (CFG_BRD_CISCO780 == 1))
 	cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
 	cal_time = 2300; /* measured between 2.1 and 2.2 sec, because 1 TX only */
-#elif (CFG_BRD_NANO868 == 1)
-	cal_cmd |= 0x40; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
-	cal_time = 5200; /* measured between 5.0 and 5.1 sec */
-#else
-	cal_cmd |= 0xC0; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
-	cal_time = 4200; /* measured between 4.0 and 4.1 sec */
-#endif
 
 	/* Load the calibration firmware  */
 	load_firmware(MCU_AGC, cal_firmware, MCU_AGC_FW_BYTE);

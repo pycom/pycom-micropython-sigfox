@@ -190,15 +190,7 @@ The other settings available in library.cfg are:
   differences in capabilities between the 'normal' SX1301 production chip, and 
   the FPGA-based version.
 
-* CFG_BRD configures board misc parameters and calibration values.
-  The RSSI reported by the library when a packet is received, and the TX power 
-  specified when is packet is sent, very significantly with the board and 
-  components use around the radios (eg. external PA and LNA, filters, RF 
-  switches, etc). A limited number of specific board designs have been 
-  calibrated by Semtech, if you don't find the board you used, ask Semtech 
-  which available setting will give the most accurate results. If you use 
-  elements such as external filters, long cables and antennas with gain, you 
-  will have to offset their effect in your application.
+* CFG_BRD configures board misc parameters.
 
 ### 3.3. Building procedures ###
 
