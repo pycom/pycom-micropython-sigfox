@@ -57,7 +57,7 @@ Maintainer: Matthieu Leurent
 #define DEFAULT_FREQ_HZ     868e6
 #define DEFAULT_RADIO         0
 #define DEFAULT_DIGITAL_GAIN  0
-#define DEFAULT_DAC_GAIN      2
+#define DEFAULT_DAC_GAIN      3
 #define DEFAULT_MIXER_GAIN   14
 #define DEFAULT_PA_VOLTAGE  1.5
 #define DEFAULT_MODULATION "LORA"
@@ -152,7 +152,6 @@ int main(int argc, char **argv)
 				printf( " -f <float>  Tx RF frequency in MHz\n");
 				printf( " -r <bool>  Radio select, 0:A 1:B\n");
 				printf( " --dig <uint>  Digital gain trim, [0:3]\n" );
-				printf( " --dac <uint>  SX1257 Tx DAC gain trim, [0:3]\n" );
 				printf( " --mix <uint>  SX1257 Tx mixer gain trim, [0:15]\n" );
 				printf( " --pa <uint>  PA gain trim, [0:2]\n" );
 				printf( " --mod <char>  Modulation type ['LORA','FSK','CW']\n" );
