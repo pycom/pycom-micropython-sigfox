@@ -180,7 +180,11 @@ messages if the DEBUG_xxx is set to 1 in library.cfg
 The other settings available in library.cfg are:
 
 * CFG_SPI configures how the link between the host and the concentrator chip 
- is done.
+  is done. It is highly recommended to use native SPI instead of FTDI when possible
+  for permormance reasons.
+  Note: when using native SPI on linux host, ensure that the /dev/spidevX.X
+  which is to be opened on your host is the same as the one defined in
+  libloragw/src/loragw_spi.native.c
 
 * CFG_CHIP configures what the exact model of chip is, because there are small 
   differences in capabilities between the 'normal' SX1301 production chip, and 

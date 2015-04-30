@@ -81,7 +81,7 @@ int lgw_spi_open(void **spi_target_ptr) {
 	/* open SPI device */
 	dev = open(SPI_DEV_PATH, O_RDWR);
 	if (dev < 0) {
-		DEBUG_MSG("SPI port fail to open\n");
+		DEBUG_PRINTF("ERROR: failed to open SPI device %s\n", SPI_DEV_PATH);
 		return LGW_SPI_ERROR;
 	}
 
