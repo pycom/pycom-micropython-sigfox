@@ -46,11 +46,9 @@ Maintainer: Sylvain Miermont
 #define LGW_HAL_ERROR		-1
 
 /* radio-specific parameters */
-#if ((CFG_RADIO_1257 == 1) || (CFG_RADIO_1255 == 1))
-	#define LGW_XTAL_FREQU		32000000	/* frequency of the RF reference oscillator */
-	#define LGW_RF_CHAIN_NB		2	/* number of RF chains */
-	#define LGW_RF_RX_BANDWIDTH	{   1000000,   1000000}	/* bandwidth of the radios */
-#endif
+#define LGW_XTAL_FREQU		32000000	/* frequency of the RF reference oscillator */
+#define LGW_RF_CHAIN_NB		2	/* number of RF chains */
+#define LGW_RF_RX_BANDWIDTH	{   1000000,   1000000}	/* bandwidth of the radios */
 
 /* type of if_chain + modem */
 #define IF_UNDEFINED		0
@@ -96,30 +94,12 @@ Maintainer: Sylvain Miermont
 #endif
 
 /* board-specific parameters */
-/* to use array parameters, declare a local const and use 'rf_chain' as index */
-#if (CFG_BRD_NANO868 == 1)
-	#define LGW_RF_TX_ENABLE	{ true, true}	/* both radio A and B are usable in TX */
-	#define LGW_RF_CLKOUT		{ true, true}	/* both radios have clkout enabled */
-#elif (CFG_BRD_1301IOTSK868 == 1)
-	#define LGW_RF_TX_ENABLE	{ true,false}	/* radio B TX output is disconnected */
-	#define LGW_RF_CLKOUT		{false, true}	/* radio A clkout disabled for spur optimization */
+#if (CFG_BRD_1301IOTSK868 == 1)
 #if (CFG_SPI_NATIVE == 1)
 	#define LGW_SX1301_RESET_PIN	7		/* reset pin for SX1301 (GPIO7 <-> pin 26 on RPi connector) */
 #else
 	/* NOT SUPPORTED */
 #endif
-#elif ((CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1) || (CFG_BRD_KERLINK868_27DBM == 1) || (CFG_BRD_KERLINK433 == 1))
-	#define LGW_RF_TX_ENABLE	{ true,false}	/* radio B TX output is disconnected */
-	#define LGW_RF_CLKOUT		{false, true}	/* radio A clkout disabled for spur optimization */
-#elif ((CFG_BRD_CISCO433 == 1) || (CFG_BRD_CISCO470 == 1) || (CFG_BRD_CISCO780 == 1))
-	#define LGW_RF_TX_ENABLE	{ true,false}	/* radio B TX output is disconnected */
-	#define LGW_RF_CLKOUT		{ true, true}	/* Do not know */
-/* === ADD CUSTOMIZATION FOR YOUR OWN BOARD HERE ===
-#elif (CFG_BRD_MYBOARD == 1)
-*/
-#elif (CFG_BRD_NONE == 1)
-	#define LGW_RF_TX_ENABLE	{ true, true}	/* both radio A and B are usable in TX */
-	#define LGW_RF_CLKOUT		{ true, true}	/* both radios have clkout enabled */
 #endif
 
 /* values available for the 'modulation' parameters */
@@ -201,14 +181,31 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
+enum lgw_radio_type_e {
+	LGW_RADIO_TYPE_NONE,
+	LGW_RADIO_TYPE_SX1255,
+	LGW_RADIO_TYPE_SX1257
+};
+
+/**
+@struct lgw_conf_board_s
+@brief Configuration structure for board specificities
+*/
+struct lgw_conf_board_s {
+	bool		lorawan_public;		/*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
+	uint8_t		clksrc;			/*!> Index of RF chain which provides clock to concentrator */
+};
+
 /**
 @struct lgw_conf_rxrf_s
 @brief Configuration structure for a RF chain
 */
 struct lgw_conf_rxrf_s {
-	bool		enable;			/*!> enable or disable that RF chain */
-	uint32_t	freq_hz;		/*!> center frequency of the radio in Hz */
-	int8_t		rssi_offset;		/*!> RSSI offset in dB */
+	bool			enable;			/*!> enable or disable that RF chain */
+	uint32_t		freq_hz;		/*!> center frequency of the radio in Hz */
+	float			rssi_offset;		/*!> Board-specific RSSI correction factor */
+	enum lgw_radio_type_e	type;			/*!> Radio type for that RF chain (SX1255, SX1257....) */
+	bool			tx_enable;		/*!> enable or disable TX on that RF chain */
 };
 
 /**
@@ -295,6 +292,13 @@ struct lgw_tx_gain_lut_s {
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
+
+/**
+@brief Configure the gateway board
+@param conf structure containing the configuration parameters
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_board_setconf(struct lgw_conf_board_s conf);
 
 /**
 @brief Configure an RF chain (must configure before start)

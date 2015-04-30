@@ -1,14 +1,20 @@
 {
 	"SX1301_conf": {
+		"lorawan_public": true,
+		"clksrc": 1, /* radio_1 provides clock to concentrator */
 		"radio_0": {
 			"enable": true,
+			"type": "SX1257",
 			"freq": 868200000,
-			"rssi_offset": 166.0
+			"rssi_offset": -166.0,
+			"tx_enable": true
 		},
 		"radio_1": {
 			"enable": true,
+			"type": "SX1257",
 			"freq": 869200000,
-			"rssi_offset": 166.0
+			"rssi_offset": -166.0,
+			"tx_enable": false
 		},
 		"chan_multiSF_0": {
 			/* Lora MAC channel, 125kHz, all SF, 868.1 MHz */

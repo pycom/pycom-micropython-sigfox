@@ -112,10 +112,7 @@ F_register(24bit) = F_rf (Hz) / F_step(Hz)
 /* constant arrays defining hardware capability */
 
 const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
-
 const uint32_t rf_rx_bandwidth[LGW_RF_CHAIN_NB] = LGW_RF_RX_BANDWIDTH;
-const bool rf_tx_enable[LGW_RF_CHAIN_NB] = LGW_RF_TX_ENABLE;
-const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 
 /* Strings for version (and options) identification */
 
@@ -133,14 +130,6 @@ const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 	#define		CFG_CHIP_STR	"fpga1301"
 #else
 	#define		CFG_CHIP_STR	"chip?"
-#endif
-
-#if (CFG_RADIO_1257 == 1)
-	#define		CFG_RADIO_STR	"sx1257"
-#elif (CFG_RADIO_1255 == 1)
-	#define		CFG_RADIO_STR	"sx1255"
-#else
-	#define		CFG_RADIO_STR	"radio?"
 #endif
 
 #if (CFG_BRD_NANO868 == 1)
@@ -172,16 +161,8 @@ const bool rf_clkout[LGW_RF_CHAIN_NB] = LGW_RF_CLKOUT;
 	#define		CFG_BRD_STR		"brd?"
 #endif
 
-#if (CFG_NET_PRIVATE == 1)
-	#define		CFG_NET_STR		"private"
-#elif (CFG_NET_LORAMAC == 1)
-	#define		CFG_NET_STR		"lora_mac"
-#else
-	#define		CFG_NET_STR		"network?"
-#endif
-
 /* Version string, used to identify the library version/options once compiled */
-const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_RADIO_STR " " CFG_BRD_STR " " CFG_NET_STR ";";
+const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION "; Options: " CFG_SPI_STR " " CFG_CHIP_STR " " CFG_BRD_STR ";";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -203,7 +184,9 @@ static bool lgw_is_started;
 
 static bool rf_enable[LGW_RF_CHAIN_NB];
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
-static int8_t rf_rssi_offset[LGW_RF_CHAIN_NB];
+static float rf_rssi_offset[LGW_RF_CHAIN_NB];
+static bool rf_tx_enable[LGW_RF_CHAIN_NB];
+static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB];
 
 static bool if_enable[LGW_IF_CHAIN_NB];
 static bool if_rf_chain[LGW_IF_CHAIN_NB]; /* for each IF, 0 -> radio A, 1 -> radio B */
@@ -219,6 +202,9 @@ static uint8_t fsk_rx_bw; /* bandwidth setting of FSK modem */
 static uint32_t fsk_rx_dr; /* FSK modem datarate in bauds */
 static uint8_t fsk_sync_word_size = 3; /* default number of bytes for FSK sync word */
 static uint64_t fsk_sync_word= 0xC194C1; /* default FSK sync word (ALIGNED RIGHT, MSbit first) */
+
+static bool lorawan_public = false;
+static uint8_t rf_clkout = 0;
 
 static struct lgw_tx_gain_lut_s txgain_lut = {
 	.size = 2,
@@ -396,8 +382,8 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz) {
-	uint32_t part_int;
-	uint32_t part_frac;
+	uint32_t part_int = 0;
+	uint32_t part_frac = 0;
 	int cpt_attempts = 0;
 
 	if (rf_chain >= LGW_RF_CHAIN_NB) {
@@ -409,18 +395,25 @@ int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz) {
 	DEBUG_PRINTF("Note: SX125x #%d version register returned 0x%02x\n", rf_chain, sx125x_read(rf_chain, 0x07));
 
 	/* General radio setup */
-	if (rf_clkout[rf_chain] == true) {
+	if (rf_clkout == rf_chain) {
 		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + 2);
 		DEBUG_PRINTF("Note: SX125x #%d clock output enabled\n", rf_chain);
 	} else {
 		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL);
 		DEBUG_PRINTF("Note: SX125x #%d clock output disabled\n", rf_chain);
 	}
-	#if (CFG_RADIO_1257 == 1)
-	sx125x_write(rf_chain, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
-	#elif (CFG_RADIO_1255 == 1)
-	sx125x_write(rf_chain, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
-	#endif
+
+	switch (rf_radio_type[rf_chain]) {
+		case LGW_RADIO_TYPE_SX1255:
+			sx125x_write(rf_chain, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
+			break;
+		case LGW_RADIO_TYPE_SX1257:
+			sx125x_write(rf_chain, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
+			break;
+		default:
+			DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[rf_chain]);
+			break;
+	}
 
 	if (rf_enable[rf_chain] == true) {
 		/* Tx gain and trim */
@@ -434,13 +427,20 @@ int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz) {
 		sx125x_write(rf_chain, 0x0E, SX125x_ADC_TEMP + SX125x_RX_PLL_BW*2);
 
 		/* set RX PLL frequency */
-		#if (CFG_RADIO_1257 == 1)
-		part_int = freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
-		part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-		#elif (CFG_RADIO_1255 == 1)
-		part_int = freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
-		part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-		#endif
+		switch (rf_radio_type[rf_chain]) {
+			case LGW_RADIO_TYPE_SX1255:
+				part_int = freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
+				part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+				break;
+			case LGW_RADIO_TYPE_SX1257:
+				part_int = freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
+				part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+				break;
+			default:
+				DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[rf_chain]);
+				break;
+		}
+
 		sx125x_write(rf_chain, 0x01,0xFF & part_int); /* Most Significant Byte */
 		sx125x_write(rf_chain, 0x02,0xFF & (part_frac >> 8)); /* middle byte */
 		sx125x_write(rf_chain, 0x03,0xFF & part_frac); /* Least Significant Byte */
@@ -510,13 +510,14 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_SYNCH_DETECT_TH,1); /* default 1 */
 	// lgw_reg_w(LGW_ZERO_PAD,0); /* default 0 */
 	lgw_reg_w(LGW_SNR_AVG_CST,3); /* default 2 */
-	#if (CFG_NET_LORAMAC == 1)
-	lgw_reg_w(LGW_FRAME_SYNCH_PEAK1_POS,3); /* default 1 */
-	lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS,4); /* default 2 */
-	#elif (CFG_NET_PRIVATE == 1)
-	//lgw_reg_w(LGW_FRAME_SYNCH_PEAK1_POS,1); /* default 1 */
-	//lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS,2); /* default 2 */
-	#endif
+	if (lorawan_public) { /* LoRa network */
+		lgw_reg_w(LGW_FRAME_SYNCH_PEAK1_POS,3); /* default 1 */
+		lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS,4); /* default 2 */
+	} else { /* private network */
+		lgw_reg_w(LGW_FRAME_SYNCH_PEAK1_POS,1); /* default 1 */
+		lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS,2); /* default 2 */
+	}
+
 	// lgw_reg_w(LGW_PREAMBLE_FINE_TIMING_GAIN,1); /* default 1 */
 	// lgw_reg_w(LGW_ONLY_CRC_EN,1); /* default 1 */
 	// lgw_reg_w(LGW_PAYLOAD_FINE_TIMING_GAIN,2); /* default 2 */
@@ -531,13 +532,13 @@ void lgw_constant_adjust(void) {
 	// lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_GAIN,1); /* default 1 */
 	// lgw_reg_w(LGW_MBWSSF_SYNCH_DETECT_TH,1); /* default 1 */
 	// lgw_reg_w(LGW_MBWSSF_ZERO_PAD,0); /* default 0 */
-	#if (CFG_NET_LORAMAC == 1)
-	lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS,3); /* default 1 */
-	lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS,4); /* default 2 */
-	#elif (CFG_NET_PRIVATE == 1)
-	//lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS,1); /* default 1 */
-	//lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS,2); /* default 2 */
-	#endif
+	if (lorawan_public) { /* LoRa network */
+		lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS,3); /* default 1 */
+		lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS,4); /* default 2 */
+	} else {
+		lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS,1); /* default 1 */
+		lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS,2); /* default 2 */
+	}
 	// lgw_reg_w(LGW_MBWSSF_ONLY_CRC_EN,1); /* default 1 */
 	// lgw_reg_w(LGW_MBWSSF_PAYLOAD_FINE_TIMING_GAIN,2); /* default 2 */
 	// lgw_reg_w(LGW_MBWSSF_PREAMBLE_FINE_TIMING_GAIN,1); /* default 1 */
@@ -567,13 +568,13 @@ void lgw_constant_adjust(void) {
 	/* TX LoRa */
 	// lgw_reg_w(LGW_TX_MODE,0); /* default 0 */
 	lgw_reg_w(LGW_TX_SWAP_IQ,1); /* "normal" polarity; default 0 */
-	#if (CFG_NET_LORAMAC == 1)
-	lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK1_POS,3); /* default 1 */
-	lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK2_POS,4); /* default 2 */
-	#elif (CFG_NET_PRIVATE == 1)
-	//lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK1_POS,1); /* default 1 */
-	//lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK2_POS,2); /* default 2 */
-	#endif
+	if (lorawan_public) { /* LoRa network */
+		lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK1_POS,3); /* default 1 */
+		lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK2_POS,4); /* default 2 */
+	} else { /* Private network */
+		lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK1_POS,1); /* default 1 */
+		lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK2_POS,2); /* default 2 */
+	}
 
 	/* TX FSK */
 	// lgw_reg_w(LGW_FSK_TX_GAUSSIAN_EN,1); /* default 1 */
@@ -586,6 +587,23 @@ void lgw_constant_adjust(void) {
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
+
+int lgw_board_setconf(struct lgw_conf_board_s conf) {
+
+	/* check if the concentrator is running */
+	if (lgw_is_started == true) {
+		DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
+		return LGW_HAL_ERROR;
+	}
+
+	/* set internal config according to parameters */
+	lorawan_public = conf.lorawan_public;
+	rf_clkout = conf.clksrc;
+
+	DEBUG_PRINTF("Note: board configuration; lorawan_public:%d\n", lorawan_public);
+
+	return LGW_HAL_SUCCESS;
+}
 
 int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 
@@ -601,12 +619,20 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 		return LGW_HAL_ERROR;
 	}
 
+	/* check if radio type is supported */
+	if ((conf.type != LGW_RADIO_TYPE_SX1255) && (conf.type != LGW_RADIO_TYPE_SX1257)) {
+		DEBUG_MSG("ERROR: NOT A VALID RADIO TYPE\n");
+		return LGW_HAL_ERROR;
+	}
+
 	/* set internal config according to parameters */
 	rf_enable[rf_chain] = conf.enable;
 	rf_rx_freq[rf_chain] = conf.freq_hz;
 	rf_rssi_offset[rf_chain] = conf.rssi_offset;
+	rf_radio_type[rf_chain] = conf.type;
+	rf_tx_enable[rf_chain] = conf.tx_enable;
 
-	DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain]);
+	DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain]);
 
 	return LGW_HAL_SUCCESS;
 }
@@ -861,11 +887,17 @@ int lgw_start(void) {
 	cal_cmd |= (rf_enable[1] && rf_tx_enable[1]) ? 0x08 : 0x00; /* Bit 3: Calibrate Tx DC offset on radio B */
 	cal_cmd |= 0x10; /* Bit 4: 0: calibrate with DAC gain=2, 1: with DAC gain=3 (use 3) */
 
-	#if (CFG_RADIO_1257 == 1)
-	cal_cmd |= 0x00; /* Bit 5: 0: SX1257, 1: SX1255 */
-	#elif (CFG_RADIO_1255 == 1)
-	cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
-	#endif
+	switch (rf_radio_type[0]) { /* we assume that there is only one radio type on the board */
+		case LGW_RADIO_TYPE_SX1255:
+			cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
+			break;
+		case LGW_RADIO_TYPE_SX1257:
+			cal_cmd |= 0x00; /* Bit 5: 0: SX1257, 1: SX1255 */
+			break;
+		default:
+			DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[0]);
+			break;
+	}
 
 #if ((CFG_BRD_1301IOTSK868 == 1) || (CFG_BRD_1301REF868 == 1) || (CFG_BRD_1301REF433 == 1) || (CFG_BRD_KERLINK868 == 1) || (CFG_BRD_KERLINK868_27DBM == 1) || (CFG_BRD_KERLINK433 == 1) || (CFG_BRD_CISCO433 == 1) || (CFG_BRD_CISCO470 == 1) || (CFG_BRD_CISCO780 == 1))
 	cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
@@ -1228,7 +1260,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 		p->if_chain = buff[sz+0];
 		ifmod = ifmod_config[p->if_chain];
 		DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
-		p->rssi = (int8_t)buff[sz+5] + rf_rssi_offset[p->rf_chain];
+		p->rssi = (float)buff[sz+5] + rf_rssi_offset[p->rf_chain];
 
 		if ((ifmod == IF_LORA_MULTI) || (ifmod == IF_LORA_STD)) {
 			DEBUG_MSG("Note: LoRa packet\n");
@@ -1379,8 +1411,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	int i;
 	uint8_t buff[256+TX_METADATA_NB]; /* buffer to prepare the packet to send + metadata before SPI write burst */
-	uint32_t part_int; /* integer part for PLL register value calculation */
-	uint32_t part_frac; /* fractional part for PLL register value calculation */
+	uint32_t part_int = 0; /* integer part for PLL register value calculation */
+	uint32_t part_frac = 0; /* fractional part for PLL register value calculation */
 	uint16_t fsk_dr_div; /* divider to configure for target datarate */
 	int transfer_size = 0; /* data to transfer from host to TX databuffer */
 	int payload_offset = 0; /* start of the payload content in the databuffer */
@@ -1473,13 +1505,19 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	payload_offset = TX_METADATA_NB; /* start the payload just after the metadata */
 
 	/* metadata 0 to 2, TX PLL frequency */
-	#if (CFG_RADIO_1257 == 1)
-	part_int = pkt_data.freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
-	part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-	#elif (CFG_RADIO_1255 == 1)
-	part_int = pkt_data.freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
-	part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-	#endif
+	switch (rf_radio_type[0]) { /* we assume that there is only one radio type on the board */
+		case LGW_RADIO_TYPE_SX1255:
+			part_int = pkt_data.freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
+			part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+			break;
+		case LGW_RADIO_TYPE_SX1257:
+			part_int = pkt_data.freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
+			part_frac = ((pkt_data.freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
+			break;
+		default:
+			DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[0]);
+			break;
+	}
 
 	buff[0] = 0xFF & part_int; /* Most Significant Byte */
 	buff[1] = 0xFF & (part_frac >> 8); /* middle byte */

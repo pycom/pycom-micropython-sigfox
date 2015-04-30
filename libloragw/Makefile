@@ -34,16 +34,6 @@ else
   $(error No concentrator chip selected, check library.cfg file.)
 endif
 
-ifeq ($(CFG_RADIO),sx1257)
-  CFG_RADIO_MSG := Dual SX1257 transceivers, covering 860-1000 MHz
-  CFG_RADIO_OPT := CFG_RADIO_1257
-else ifeq ($(CFG_RADIO),sx1255)
-  CFG_RADIO_MSG := Dual SX1255 transceivers, covering 400-510 MHz
-  CFG_RADIO_OPT := CFG_RADIO_1255
-else
-  $(error No radio chip selected, check library.cfg file.)
-endif
-
 ifeq ($(CFG_BRD),dev_nano_868)
   CFG_BRD_MSG := FPGA-based nano-concentrator, with 868 MHz SAW filter
   CFG_BRD_OPT := CFG_BRD_NANO868
@@ -78,18 +68,6 @@ else
   $(info [Info] No specific board selected.)
   CFG_BRD_MSG := None
   CFG_BRD_OPT := CFG_BRD_NONE
-endif
-
-ifeq ($(CFG_NET),private)
-  CFG_NET_MSG := Private network
-  CFG_NET_OPT := CFG_NET_PRIVATE
-else ifeq ($(CFG_NET),lora_mac)
-  CFG_NET_MSG := LoRa MAC network
-  CFG_NET_OPT := CFG_NET_LORAMAC
-else
-  $(warning [Warning] No network type selected, assume private network by default.)
-  CFG_NET_MSG := Private network
-  CFG_NET_OPT := CFG_NET_PRIVATE
 endif
 
 ### linking options
@@ -127,15 +105,9 @@ inc/config.h: ../VERSION library.cfg
   # Concentrator chip
 	@echo "Concentrator chip : $(CFG_CHIP_MSG)"
 	@echo "	#define $(CFG_CHIP_OPT)	1" >> $@
-  # Radio chip(s)
-	@echo "Radio chip(s)     : $(CFG_RADIO_MSG)"
-	@echo "	#define $(CFG_RADIO_OPT)	1" >> $@
   # Board misc. parameters
 	@echo "Board misc. param : $(CFG_BRD_MSG)"
 	@echo "	#define $(CFG_BRD_OPT)	1" >> $@
-  # Network type
-	@echo "Network type      : $(CFG_NET_MSG)"
-	@echo "	#define $(CFG_NET_OPT)	1" >> $@
   # Debug options
 	@echo "	#define DEBUG_AUX	$(DEBUG_AUX)" >> $@
 	@echo "	#define DEBUG_SPI	$(DEBUG_SPI)" >> $@
