@@ -5,78 +5,78 @@
 		"radio_0": {
 			"enable": true,
 			"type": "SX1257",
-			"freq": 868400000,
+			"freq": 867500000,
 			"rssi_offset": -166.0,
 			"tx_enable": true
 		},
 		"radio_1": {
 			"enable": true,
 			"type": "SX1257",
-			"freq": 869100000,
+			"freq": 868500000,
 			"rssi_offset": -166.0,
 			"tx_enable": false
 		},
 		"chan_multiSF_0": {
 			/* Lora MAC channel, 125kHz, all SF, 868.1 MHz */
 			"enable": true,
-			"radio": 0,
-			"if": -300000
+			"radio": 1,
+			"if": -400000
 		},
 		"chan_multiSF_1": {
 			/* Lora MAC channel, 125kHz, all SF, 868.3 MHz */
 			"enable": true,
-			"radio": 0,
-			"if": -100000
+			"radio": 1,
+			"if": -200000
 		},
 		"chan_multiSF_2": {
 			/* Lora MAC channel, 125kHz, all SF, 868.5 MHz */
 			"enable": true,
-			"radio": 0,
-			"if": 100000
-		},
-		"chan_multiSF_3": {
-			/* Lora MAC channel, 125kHz, all SF, 868.65 MHz */
-			"enable": true,
-			"radio": 0,
-			"if": 250000
-		},
-		"chan_multiSF_4": {
-			/* Lora MAC channel, 125kHz, all SF, 868.8 MHz */
-			"enable": true,
-			"radio": 1,
-			"if": -300000
-		},
-		"chan_multiSF_5": {
-			/* Lora MAC channel, 125kHz, all SF, 869.1 MHz */
-			"enable": true,
 			"radio": 1,
 			"if": 0
 		},
-		"chan_multiSF_6": {
-			/* Lora MAC channel, 125kHz, all SF, 869.25 MHz */
-			"enable": true,
-			"radio": 1,
-			"if": 150000
-		},
-		"chan_multiSF_7": {
-			/* Lora MAC channel, 125kHz, all SF, 869.4 MHz */
-			"enable": true,
-			"radio": 1,
-			"if": 300000
-		},
-		"chan_Lora_std": {
-			/* Lora MAC channel, 250kHz, SF7, 868.4 MHz */
+		"chan_multiSF_3": {
+			/* Lora MAC channel, 125kHz, all SF, 867.1 MHz */
 			"enable": true,
 			"radio": 0,
-			"if": 0,
+			"if": -400000
+		},
+		"chan_multiSF_4": {
+			/* Lora MAC channel, 125kHz, all SF, 867.3 MHz */
+			"enable": true,
+			"radio": 0,
+			"if": -200000
+		},
+		"chan_multiSF_5": {
+			/* Lora MAC channel, 125kHz, all SF, 867.5 MHz */
+			"enable": true,
+			"radio": 0,
+			"if": 0
+		},
+		"chan_multiSF_6": {
+			/* Lora MAC channel, 125kHz, all SF, 867.7 MHz */
+			"enable": true,
+			"radio": 0,
+			"if": 200000
+		},
+		"chan_multiSF_7": {
+			/* Lora MAC channel, 125kHz, all SF, 867.9 MHz */
+			"enable": true,
+			"radio": 0,
+			"if": 400000
+		},
+		"chan_Lora_std": {
+			/* Lora MAC channel, 250kHz, SF7, 868.3 MHz */
+			"enable": true,
+			"radio": 1,
+			"if": -200000,
 			"bandwidth": 250000,
 			"spread_factor": 7
 		},
 		"chan_FSK": {
-			/* FSK 50kbps channel, 868.6 MHz */
+			/* FSK 50kbps channel, 868.8 MHz */
 			"enable": true,
-			"radio": 0,
-			"if": 200000,
+			"radio": 1,
+			"if": 300000,
 			"bandwidth": 250000,
 			"datarate": 50000
 		},
