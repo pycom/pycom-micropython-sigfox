@@ -77,7 +77,7 @@
 			"enable": true,
 			"radio": 1,
 			"if": 300000,
-			"bandwidth": 250000,
+			"bandwidth": 125000,
 			"datarate": 50000
 		},
                 "tx_lut_0": {
