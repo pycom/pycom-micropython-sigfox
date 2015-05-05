@@ -61,7 +61,12 @@ int lgw_gpio_export(int pin) {
     }
 
     bytes_written = snprintf(buffer, BUFFER_MAX, "%d", pin);
-    write(fd, buffer, bytes_written);
+    if (write(fd, buffer, bytes_written) != bytes_written) {
+	DEBUG_MSG("Failed to export GPIO: write to sysfs error\n");
+	close(fd);
+	return(LGW_GPIO_ERROR);
+    }
+
     close(fd);
     wait_ms( 100 );
     return(LGW_GPIO_SUCCESS);
@@ -80,7 +85,12 @@ int lgw_gpio_unexport(int pin) {
     }
 
     bytes_written = snprintf(buffer, BUFFER_MAX, "%d", pin);
-    write(fd, buffer, bytes_written);
+    if (write(fd, buffer, bytes_written) != bytes_written) {
+	DEBUG_MSG("Failed to unexport GPIO: write to sysfs error\n");
+	close(fd);
+	return(LGW_GPIO_ERROR);
+    }
+
     close(fd);
     return(LGW_GPIO_SUCCESS);
 }
