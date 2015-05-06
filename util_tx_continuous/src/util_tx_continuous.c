@@ -209,7 +209,7 @@ int main(int argc, char **argv)
 				else if( strcmp(long_options[option_index].name,"pa") == 0 )
 				{
 					i = sscanf(optarg, "%u", &arg_u);
-					if( (i != 1) || (arg_u > 2)  )
+					if( (i != 1) || (arg_u > 3) )
 					{
 						printf( "ERROR: argument parsing of --pa argument. Use -h to print help\n" );
 						return EXIT_FAILURE;
