@@ -58,16 +58,12 @@ Maintainer: Sylvain Miermont
 
 /* concentrator chipset-specific parameters */
 /* to use array parameters, declare a local const and use 'if_chain' as index */
-#if ((CFG_CHIP_1301 == 1) || (CFG_CHIP_FPGA == 1))
-	#define LGW_IF_CHAIN_NB		10	/* number of IF+modem RX chains */
-	#define LGW_PKT_FIFO_SIZE	8			/* depth of the RX packet FIFO */
-	#define LGW_DATABUFF_SIZE	1024		/* size in bytes of the RX data buffer (contains payload & metadata) */
-	#define LGW_REF_BW			125000		/* typical bandwidth of data channel */
-#endif
-
-#if (CFG_CHIP_1301 == 1)
-	#define LGW_MULTI_NB		8	/* number of LoRa 'multi SF' chains */
-	#define LGW_IFMODEM_CONFIG {\
+#define LGW_IF_CHAIN_NB		10	/* number of IF+modem RX chains */
+#define LGW_PKT_FIFO_SIZE	8	/* depth of the RX packet FIFO */
+#define LGW_DATABUFF_SIZE	1024	/* size in bytes of the RX data buffer (contains payload & metadata) */
+#define LGW_REF_BW		125000	/* typical bandwidth of data channel */
+#define LGW_MULTI_NB		8	/* number of LoRa 'multi SF' chains */
+#define LGW_IFMODEM_CONFIG {\
 		IF_LORA_MULTI, \
 		IF_LORA_MULTI, \
 		IF_LORA_MULTI, \
@@ -78,20 +74,6 @@ Maintainer: Sylvain Miermont
 		IF_LORA_MULTI, \
 		IF_LORA_STD, \
 		IF_FSK_STD } /* configuration of available IF chains and modems on the hardware */
-#elif (CFG_CHIP_FPGA == 1)
-	#define LGW_MULTI_NB		4	/* number of LoRa 'multi SF' chains */
-	#define LGW_IFMODEM_CONFIG {\
-		IF_LORA_MULTI, \
-		IF_LORA_MULTI, \
-		IF_LORA_MULTI, \
-		IF_LORA_MULTI, \
-		IF_UNDEFINED, \
-		IF_UNDEFINED, \
-		IF_UNDEFINED, \
-		IF_UNDEFINED, \
-		IF_LORA_STD, \
-		IF_FSK_STD } /* configuration of available IF chains and modems on the hardware */
-#endif
 
 /* board-specific parameters */
 #if (CFG_BRD_1301IOTSK868 == 1)

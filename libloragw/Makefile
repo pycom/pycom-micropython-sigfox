@@ -24,16 +24,6 @@ else
   $(error No SPI physical layer selected, check ../target.cfg file.)
 endif
 
-ifeq ($(CFG_CHIP),sx1301)
-  CFG_CHIP_MSG := Semtech SX1301 production chip
-  CFG_CHIP_OPT := CFG_CHIP_1301
-else ifeq ($(CFG_CHIP),fpga1301)
-  CFG_CHIP_MSG := FPGA containing the SX1301 IP
-  CFG_CHIP_OPT := CFG_CHIP_FPGA
-else
-  $(error No concentrator chip selected, check library.cfg file.)
-endif
-
 ifeq ($(CFG_BRD),iot_sk_1301_868)
   CFG_BRD_MSG := SX1301 IoT Starter Kit board with SX1257 radios, 868 MHz filters
   CFG_BRD_OPT := CFG_BRD_1301IOTSK868
@@ -75,9 +65,6 @@ inc/config.h: ../VERSION library.cfg
   # SPI interface
 	@echo "SPI interface     : $(CFG_SPI_MSG)"
 	@echo "	#define $(CFG_SPI_OPT)	1" >> $@
-  # Concentrator chip
-	@echo "Concentrator chip : $(CFG_CHIP_MSG)"
-	@echo "	#define $(CFG_CHIP_OPT)	1" >> $@
   # Board misc. parameters
 	@echo "Board misc. param : $(CFG_BRD_MSG)"
 	@echo "	#define $(CFG_BRD_OPT)	1" >> $@

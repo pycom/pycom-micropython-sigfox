@@ -186,10 +186,6 @@ The other settings available in library.cfg are:
   which is to be opened on your host is the same as the one defined in
   libloragw/src/loragw_spi.native.c
 
-* CFG_CHIP configures what the exact model of chip is, because there are small 
-  differences in capabilities between the 'normal' SX1301 production chip, and 
-  the FPGA-based version.
-
 * CFG_BRD configures board misc parameters.
 
 ### 3.3. Building procedures ###

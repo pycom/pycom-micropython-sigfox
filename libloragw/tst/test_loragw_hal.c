@@ -231,7 +231,6 @@ int main(int argc, char **argv)
 	ifconf.datarate = DR_LORA_MULTI;
 	lgw_rxif_setconf(3, ifconf); /* chain 3: LoRa 125kHz, all SF, on f1 + 0.3 MHz */
 	
-#if (LGW_MULTI_NB >= 8)
 	ifconf.enable = true;
 	ifconf.rf_chain = 0;
 	ifconf.freq_hz = -100000;
@@ -255,7 +254,6 @@ int main(int argc, char **argv)
 	ifconf.freq_hz = 100000;
 	ifconf.datarate = DR_LORA_MULTI;
 	lgw_rxif_setconf(7, ifconf); /* chain 7: LoRa 125kHz, all SF, on f1 + 0.1 MHz */
-#endif
 	
 	/* set configuration for LoRa 'stand alone' channel */
 	memset(&ifconf, 0, sizeof(ifconf));
