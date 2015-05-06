@@ -76,6 +76,7 @@ void usage(void) {
 	printf( " -b <float> Radio B RX frequency in MHz\n");
 	printf( " -t <float> Radio TX frequency in MHz\n");
 	printf( " -r <int> Radio type (SX1255:1255, SX1257:1257)\n");
+	printf( " -k <int> Concentrator clock source (0: radio_A, 1: radio_B(default))\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -85,6 +86,7 @@ int main(int argc, char **argv)
 {
 	struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 	
+	struct lgw_conf_board_s boardconf;
 	struct lgw_conf_rxrf_s rfconf;
 	struct lgw_conf_rxif_s ifconf;
 	
@@ -96,6 +98,7 @@ int main(int argc, char **argv)
 	int nb_pkt;
 	uint32_t fa = 0, fb = 0, ft = 0;
 	enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
+	uint8_t clocksource = 1; /* Radio B is source by default */
 	
 	uint32_t tx_cnt = 0;
 	unsigned long loop_cnt = 0;
@@ -104,7 +107,7 @@ int main(int argc, char **argv)
 	int xi = 0;
 
 	/* parse command line options */
-	while ((i = getopt (argc, argv, "ha:b:t:r:")) != -1) {
+	while ((i = getopt (argc, argv, "ha:b:t:r:k:")) != -1) {
 		switch (i) {
 			case 'h':
 				usage();
@@ -136,6 +139,10 @@ int main(int argc, char **argv)
 						usage();
 						return -1;
 				}
+				break;
+			case 'k': /* <int> Concentrator clock source (Radio A or Radio B) */
+				sscanf(optarg, "%i", &xi);
+				clocksource = (uint8_t)xi;
 				break;
 			default:
 				printf("ERROR: argument parsing\n");
@@ -173,6 +180,13 @@ int main(int argc, char **argv)
 
 	printf("*** Library version information ***\n%s\n\n", lgw_version_info());
 
+	/* set configuration for board */
+	memset(&boardconf, 0, sizeof(boardconf));
+
+	boardconf.lorawan_public = true;
+	boardconf.clksrc = clocksource;
+	lgw_board_setconf(boardconf);
+
 	/* set configuration for RF chains */
 	memset(&rfconf, 0, sizeof(rfconf));
 
@@ -180,12 +194,14 @@ int main(int argc, char **argv)
 	rfconf.freq_hz = fa;
 	rfconf.rssi_offset = DEFAULT_RSSI_OFFSET;
 	rfconf.type = radio_type;
+	rfconf.tx_enable = true;
 	lgw_rxrf_setconf(0, rfconf); /* radio A, f0 */
 
 	rfconf.enable = true;
 	rfconf.freq_hz = fb;
 	rfconf.rssi_offset = DEFAULT_RSSI_OFFSET;
 	rfconf.type = radio_type;
+	rfconf.tx_enable = false;
 	lgw_rxrf_setconf(1, rfconf); /* radio B, f1 */
 
 	/* set configuration for LoRa multi-SF channels (bandwidth cannot be set) */

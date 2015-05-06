@@ -582,7 +582,7 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
 	lorawan_public = conf.lorawan_public;
 	rf_clkout = conf.clksrc;
 
-	DEBUG_PRINTF("Note: board configuration; lorawan_public:%d\n", lorawan_public);
+	DEBUG_PRINTF("Note: board configuration; lorawan_public:%d, clksrc:%d\n", lorawan_public, rf_clkout);
 
 	return LGW_HAL_SUCCESS;
 }

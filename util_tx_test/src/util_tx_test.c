@@ -118,6 +118,7 @@ int main(int argc, char **argv)
 	
 	/* RF configuration (TX fail if RF chain is not enabled) */
 	enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
+	uint8_t clocksource = 1; /* Radio B is source by default */
 	struct lgw_conf_board_s boardconf;
 	struct lgw_conf_rxrf_s rfconf;
 	
@@ -128,7 +129,7 @@ int main(int argc, char **argv)
 	uint16_t cycle_count = 0;
 	
 	/* parse command line options */
-	while ((i = getopt (argc, argv, "hf:b:s:c:p:l:z:t:x:r:i")) != -1) {
+	while ((i = getopt (argc, argv, "hif:b:s:c:p:l:z:t:x:r:k")) != -1) {
 		switch (i) {
 			case 'h':
 				usage();
@@ -253,7 +254,12 @@ int main(int argc, char **argv)
 			case 'i': /* -i send packet using inverted modulation polarity */
 				invert = true;
 				break;
-			
+
+			case 'k': /* <int> Concentrator clock source (Radio A or Radio B) */
+				sscanf(optarg, "%i", &xi);
+				clocksource = (uint8_t)xi;
+				break;
+
 			default:
 				MSG("ERROR: argument parsing\n");
 				usage();
@@ -281,9 +287,15 @@ int main(int argc, char **argv)
 	sigaction(SIGTERM, &sigact, NULL);
 	
 	/* starting the concentrator */
+	/* board config */
+	memset(&boardconf, 0, sizeof(boardconf));
+
 	boardconf.lorawan_public = true;
-	boardconf.clksrc = 1;
+	boardconf.clksrc = clocksource;
 	lgw_board_setconf(boardconf);
+
+	/* RF config */
+	memset(&rfconf, 0, sizeof(rfconf));
 
 	rfconf.enable = true;
 	rfconf.freq_hz = f_target;

@@ -108,6 +108,8 @@ void usage(void) {
 	printf( " -b <float> Radio B frequency in MHz\n");
 	printf( " -r <int> Radio type (SX1255:1255, SX1257:1257)\n");
 	printf( " -n <uint> Number of calibration iterations\n");
+	printf( " -k <int> Concentrator clock source (0:radio_A, 1:radio_B(default))\n");
+	printf( " -t <int> Radio to run TX calibration on (0:None(default), 1:radio_A, 2:radio_B, 3:both)\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -117,6 +119,7 @@ int main(int argc, char **argv)
 {	
 	int i, j, x;
 	int32_t read_val;
+	struct lgw_conf_board_s boardconf;
 	struct lgw_conf_rxrf_s rfconf;
 	uint8_t fw_version;
 	uint8_t cal_cmd;
@@ -139,20 +142,22 @@ int main(int argc, char **argv)
 	double xd = 0.0;
 	uint32_t fa = 0, fb = 0;
 	enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
+	uint8_t clocksource = 1; /* Radio B is source by default */
+	uint8_t tx_enable = 0;
 	int nb_cal = 5;	
 	
 	/* parse command line options */
-	while ((i = getopt (argc, argv, "ha:b:r:n:")) != -1) {
+	while ((i = getopt (argc, argv, "ha:b:r:n:k:t:")) != -1) {
 		switch (i) {
 			case 'h':
 				usage();
 				return -1;
 				break;
-			case 'a': /* -f <float> Radio A frequency in MHz */
+			case 'a': /* <float> Radio A frequency in MHz */
 				sscanf(optarg, "%lf", &xd);
 				fa = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
 				break;
-			case 'b': /* -f <float> Radio B frequency in MHz */
+			case 'b': /* <float> Radio B frequency in MHz */
 				sscanf(optarg, "%lf", &xd);
 				fb = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
 				break;
@@ -171,7 +176,7 @@ int main(int argc, char **argv)
 						return -1;
 				}
 				break;
-			case 'n': /*  -n <uint> Number of calibration iterations */
+			case 'n': /* <uint> Number of calibration iterations */
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || (xi > NB_CAL_MAX)) {
 					printf("ERROR: invalid number of calibration iterations (MAX %d)\n",NB_CAL_MAX);
@@ -180,6 +185,14 @@ int main(int argc, char **argv)
 				} else {
 					nb_cal = xi;
 				}
+				break;
+			case 'k': /* <int> Concentrator clock source (Radio A or Radio B) */
+				sscanf(optarg, "%i", &xi);
+				clocksource = (uint8_t)xi;
+				break;
+			case 't': /* <int> Radio to run TX calibration on */
+				sscanf(optarg, "%i", &xi);
+				tx_enable = (uint8_t)xi;
 				break;
 			default:
 				printf("ERROR: argument parsing\n");
@@ -203,14 +216,26 @@ int main(int argc, char **argv)
 		return -1;
 	}
 
+	/* starting the concentrator */
+	/* board config */
+	memset(&boardconf, 0, sizeof(boardconf));
+
+	boardconf.lorawan_public = true;
+	boardconf.clksrc = clocksource;
+	lgw_board_setconf(boardconf);
+
 	/* RF config */
+	memset(&rfconf, 0, sizeof(rfconf));
+
 	rfconf.enable = true;
 	rfconf.freq_hz = fa;
 	rfconf.rssi_offset = DEFAULT_RSSI_OFFSET;
 	rfconf.type = radio_type;
+	rfconf.tx_enable = false; /* ignored */
 	lgw_rxrf_setconf(0, rfconf);
 
 	rfconf.freq_hz = fb;
+	rfconf.tx_enable = false; /* ignored */
 	lgw_rxrf_setconf(1, rfconf);
 	
 	/* Calibration command */
@@ -309,68 +334,76 @@ int main(int argc, char **argv)
 	
 	/* Run Tx A DC offset calibation only */
 	printf("\n");
-	for (i=0; i<nb_cal; i++) {
-		cal_status = sx125x_cal(cal_cmd | 0x04, &cal_res[i]);
-		
-		printf("Tx A DC offset I :");
-		for (j=0; j<8; j++) {
-			printf(" %3d", cal_res[i].offset_i_a[j]);
+	if ((tx_enable == 1) || (tx_enable == 3)) {
+		for (i=0; i<nb_cal; i++) {
+			cal_status = sx125x_cal(cal_cmd | 0x04, &cal_res[i]);
+
+			printf("Tx A DC offset I :");
+			for (j=0; j<8; j++) {
+				printf(" %3d", cal_res[i].offset_i_a[j]);
+			}
+			printf("\n");
+			printf("Tx A DC offset Q :");
+			for (j=0; j<8; j++) {
+				printf(" %3d", cal_res[i].offset_q_a[j]);
+			}
+			printf("\n");
+			printf("Tx A DC rejection:");
+			for (j=0; j<8; j++) {
+				printf(" %3d", cal_res[i].offset_rej_a[j]);
+			}
+			printf("\n");
+			printf("Tx A DC debug BB :");
+			for (j=0; j<8; j++) {
+				printf(" %3d", (cal_res[i].debug[j] & 0xF0) >> 4);
+			}
+			printf("\n");
+			printf("Tx A DC debug Dec:");
+			for (j=0; j<8; j++) {
+				printf(" %3d", cal_res[i].debug[j] & 0x0F);
+			}
+			printf("\n");
+			printf("Tx A DC Status   : %3d\n", cal_status);
 		}
-		printf("\n");
-		printf("Tx A DC offset Q :");
-		for (j=0; j<8; j++) {
-			printf(" %3d", cal_res[i].offset_q_a[j]);
-		}
-		printf("\n");
-		printf("Tx A DC rejection:");
-		for (j=0; j<8; j++) {
-			printf(" %3d", cal_res[i].offset_rej_a[j]);
-		}
-		printf("\n");
-		printf("Tx A DC debug BB :");
-		for (j=0; j<8; j++) {
-			printf(" %3d", (cal_res[i].debug[j] & 0xF0) >> 4);
-		}
-		printf("\n");
-		printf("Tx A DC debug Dec:");
-		for (j=0; j<8; j++) {
-			printf(" %3d", cal_res[i].debug[j] & 0x0F);
-		}
-		printf("\n");
-		printf("Tx A DC Status   : %3d\n", cal_status);
+	} else {
+		printf("Tx A calibration bypassed\n");
 	}
 	
 	/* Run Tx B DC offset calibation only */
 	printf("\n");
-	for (i=0; i<nb_cal; i++) {
-		cal_status = sx125x_cal(cal_cmd | 0x08, &cal_res[i]);
-		
-		printf("Tx B DC offset I :");
-		for (j=0; j<8; j++) {
-			printf(" %3d", cal_res[i].offset_i_b[j]);
+	if ((tx_enable == 2) || (tx_enable == 3)) {
+		for (i=0; i<nb_cal; i++) {
+			cal_status = sx125x_cal(cal_cmd | 0x08, &cal_res[i]);
+
+			printf("Tx B DC offset I :");
+			for (j=0; j<8; j++) {
+				printf(" %3d", cal_res[i].offset_i_b[j]);
+			}
+			printf("\n");
+			printf("Tx B DC offset Q :");
+			for (j=0; j<8; j++) {
+				printf(" %3d", cal_res[i].offset_q_b[j]);
+			}
+			printf("\n");
+			printf("Tx B DC rejection:");
+			for (j=0; j<8; j++) {
+				printf(" %3d", cal_res[i].offset_rej_b[j]);
+			}
+			printf("\n");
+			printf("Tx B DC debug BB :");
+			for (j=0; j<8; j++) {
+				printf(" %3d", (cal_res[i].debug[j] & 0xF0) >> 4);
+			}
+			printf("\n");
+			printf("Tx B DC debug Dec:");
+			for (j=0; j<8; j++) {
+				printf(" %3d", cal_res[i].debug[j] & 0x0F);
+			}
+			printf("\n");
+			printf("Tx B DC Status   : %3d\n", cal_status);
 		}
-		printf("\n");
-		printf("Tx B DC offset Q :");
-		for (j=0; j<8; j++) {
-			printf(" %3d", cal_res[i].offset_q_b[j]);
-		}
-		printf("\n");
-		printf("Tx B DC rejection:");
-		for (j=0; j<8; j++) {
-			printf(" %3d", cal_res[i].offset_rej_b[j]);
-		}
-		printf("\n");
-		printf("Tx B DC debug BB :");
-		for (j=0; j<8; j++) {
-			printf(" %3d", (cal_res[i].debug[j] & 0xF0) >> 4);
-		}
-		printf("\n");
-		printf("Tx B DC debug Dec:");
-		for (j=0; j<8; j++) {
-			printf(" %3d", cal_res[i].debug[j] & 0x0F);
-		}
-		printf("\n");
-		printf("Tx B DC Status   : %3d\n", cal_status);
+	}  else {
+		printf("Tx B calibration bypassed\n");
 	}
 	
 	/* Compute statistics */	
@@ -516,17 +549,21 @@ int main(int argc, char **argv)
 	printf("\n");
 	printf("Rx B IQ mismatch calibration statistics on %3d iterations (min, max):\n", nb_cal);
 	printf("Amp: %3d %3d Phi: %3d %3d Rej: %2d %2d dB (capt.: %2d %2d dB)\n", cal_res_min.amp_b, cal_res_max.amp_b, cal_res_min.phi_b, cal_res_max.phi_b, cal_res_min.img_rej_b, cal_res_max.img_rej_b, img_rej_b_min, img_rej_b_max);
-	
-	printf("\n");
-	printf("Tx A DC offset calibration statistics on %3d iterations (min, max):\n", nb_cal);
-	for (j=0; j<8; j++) {
-		printf(" Mix gain %2d: I: %3d %3d Q: %3d %3d Rej: %2d %2d dB\n", 8+j, cal_res_min.offset_i_a[j], cal_res_max.offset_i_a[j], cal_res_min.offset_q_a[j], cal_res_max.offset_q_a[j], cal_res_min.offset_rej_a[j], cal_res_max.offset_rej_a[j]);
+
+	if ((tx_enable == 1) || (tx_enable == 3)) {
+		printf("\n");
+		printf("Tx A DC offset calibration statistics on %3d iterations (min, max):\n", nb_cal);
+		for (j=0; j<8; j++) {
+			printf(" Mix gain %2d: I: %3d %3d Q: %3d %3d Rej: %2d %2d dB\n", 8+j, cal_res_min.offset_i_a[j], cal_res_max.offset_i_a[j], cal_res_min.offset_q_a[j], cal_res_max.offset_q_a[j], cal_res_min.offset_rej_a[j], cal_res_max.offset_rej_a[j]);
+		}
 	}
 	
-	printf("\n");
-	printf("Tx B DC offset calibration statistics on %3d iterations (min, max):\n", nb_cal);
-	for (j=0; j<8; j++) {
-		printf(" Mix gain %2d: I: %3d %3d Q: %3d %3d Rej: %2d %2d dB\n", 8+j, cal_res_min.offset_i_b[j], cal_res_max.offset_i_b[j], cal_res_min.offset_q_b[j], cal_res_max.offset_q_b[j], cal_res_min.offset_rej_b[j], cal_res_max.offset_rej_b[j]);
+	if ((tx_enable == 2) || (tx_enable == 3)) {
+		printf("\n");
+		printf("Tx B DC offset calibration statistics on %3d iterations (min, max):\n", nb_cal);
+		for (j=0; j<8; j++) {
+			printf(" Mix gain %2d: I: %3d %3d Q: %3d %3d Rej: %2d %2d dB\n", 8+j, cal_res_min.offset_i_b[j], cal_res_max.offset_i_b[j], cal_res_min.offset_q_b[j], cal_res_max.offset_q_b[j], cal_res_min.offset_rej_b[j], cal_res_max.offset_rej_b[j]);
+		}
 	}
 	
 	lgw_stop();
