@@ -432,6 +432,9 @@ int main(int argc, char **argv)
 	lgw_reg_w(LGW_PA_GAIN, g_pa);
 	lgw_reg_w(LGW_TX_MODE, 1); // Tx continuous
 	lgw_reg_w(LGW_FSK_TX_GAUSSIAN_SELECT_BT, bt);
+	lgw_reg_w(LGW_GPIO_MODE,24); /* Set GPIO 3 and 4 in output to control potential Tx filter FPGA */
+	lgw_reg_w(LGW_GPIO_SELECT_OUTPUT,8); /* Control GPIO with register */
+	lgw_reg_w(LGW_GPIO_PIN_REG_OUT,16); /* Enable Tx */ 
 	
 	if( strcmp( mod, "CW" ) == 0 )
 	{
@@ -513,7 +516,13 @@ int main(int argc, char **argv)
 	{
 		lgw_reg_w(LGW_PA_A_EN,1);
 	}
-	
+
+	/* Enable Tx and Tx narrowband filter for 125kHz BW */
+	if( bw_khz == 125 )
+	{
+		lgw_reg_w(LGW_GPIO_PIN_REG_OUT,24);
+	}
+
 	/* Recap all settings */
 	printf( "SX1301 library version: %s\n", lgw_version_info( ) );
 	if( strcmp( mod, "LORA" ) == 0 )
