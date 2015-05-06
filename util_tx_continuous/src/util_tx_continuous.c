@@ -517,8 +517,8 @@ int main(int argc, char **argv)
 		lgw_reg_w(LGW_PA_A_EN,1);
 	}
 
-	/* Enable Tx and Tx narrowband filter for 125kHz BW */
-	if( bw_khz == 125 )
+	/* Enable Tx and Tx narrowband filter for LORA 125kHz BW */
+	if( ( strcmp( mod, "LORA" ) == 0 ) && ( bw_khz == 125 ) )
 	{
 		lgw_reg_w(LGW_GPIO_PIN_REG_OUT,24);
 	}
