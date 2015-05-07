@@ -17,7 +17,7 @@ Once compiled all the code is contained in the libloragw.a file that will be
 statically linked (ie. integrated in the final executable).
 
 The library must be configured by editing the library.cfg file to set target
-chip, radio, SPI interface, etc.
+platform, SPI interface, etc.
 
 The library also comes with a bunch of basic tests programs that are used to 
 test the different sub-modules of the library.
@@ -65,6 +65,9 @@ for spectral measurement.
 * Added util_tx_continuous utility for gateway TX power calibration and spectral emission measurements/qualification.
 * Removed CFG_BAND configuration from library.cfg. Band configuration is done by application and passed dynamically at initialization time.
 * Updated makefiles to allow cross compilation from environment variable (ARCH, CROSS_COMPILE).
+
+** WARNING: **
+** Known issue: a problem with carrier leakage calibration has been seen on 433MHz boards. **
 
 ### v2.0.0 ###
 
