@@ -431,6 +431,7 @@ int lgw_connect(void) {
 	/* checking the version register to properly configure SPI interface */
 	/* We want to know if there is an FPGA in between the host and SX1301 */
 	/* For this, we rely on expected version registers */
+#if 0
 	spi_stat = lgw_spi_w(lgw_spi_target, 118, 1); /* set the SPI mux select */
 	spi_stat |= lgw_spi_r(lgw_spi_target, loregs[LGW_VERSION].addr, &u);
 	if (spi_stat != LGW_SPI_SUCCESS) {
@@ -456,6 +457,14 @@ int lgw_connect(void) {
 			return LGW_REG_ERROR;
 		}
 	}
+#else
+    /* check SX1301 version */
+    spi_stat = lgw_spi_r(lgw_spi_target, loregs[LGW_VERSION].addr, &u);
+    if (u != loregs[LGW_VERSION].dflt) {
+        printf("ERROR: NOT EXPECTED CHIP VERSION: %u\n", u);
+        return LGW_REG_ERROR;
+    }
+#endif
 	if (spi_stat != LGW_SPI_SUCCESS) {
 		DEBUG_MSG("ERROR READING VERSION REGISTER\n");
 		return LGW_REG_ERROR;
@@ -468,6 +477,7 @@ int lgw_connect(void) {
 	} else {
 		lgw_regpage = 0;
 	}
+#if 0
 	/* checking the chip ID */
 	spi_stat = lgw_spi_r(lgw_spi_target, loregs[LGW_CHIP_ID].addr, &u);
 	if (spi_stat != LGW_SPI_SUCCESS) {
@@ -480,6 +490,8 @@ int lgw_connect(void) {
 		DEBUG_MSG("ERROR: MISMATCH BETWEEN EXPECTED REG CHIP_ID AND READ REG CHIP_ID\n");
 		return LGW_REG_ERROR;
 	}
+#endif
+
 	DEBUG_MSG("Note: success connecting the concentrator\n");
 	return LGW_REG_SUCCESS;
 }

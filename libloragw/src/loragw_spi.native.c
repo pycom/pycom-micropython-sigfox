@@ -163,7 +163,7 @@ int lgw_spi_close(void *spi_target) {
 /* Simple write */
 int lgw_spi_w(void *spi_target, uint8_t address, uint8_t data) {
 	int spi_device;
-	uint8_t out_buf[2];
+	uint8_t out_buf[3];
 	struct spi_ioc_transfer k;
 	int a;
 
@@ -176,8 +176,9 @@ int lgw_spi_w(void *spi_target, uint8_t address, uint8_t data) {
 	spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
 
 	/* prepare frame to be sent */
-	out_buf[0] = WRITE_ACCESS | (address & 0x7F);
-	out_buf[1] = data;
+	out_buf[0] = 0x0; /* talk to SX1301 */
+	out_buf[1] = WRITE_ACCESS | (address & 0x7F);
+	out_buf[2] = data;
 
 	/* I/O transaction */
 	memset(&k, 0, sizeof(k)); /* clear k */
@@ -189,7 +190,7 @@ int lgw_spi_w(void *spi_target, uint8_t address, uint8_t data) {
 	a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
 
 	/* determine return code */
-	if (a != 2) {
+	if (a != (int)k.len) {
 		DEBUG_MSG("ERROR: SPI WRITE FAILURE\n");
 		return LGW_SPI_ERROR;
 	} else {
@@ -203,7 +204,7 @@ int lgw_spi_w(void *spi_target, uint8_t address, uint8_t data) {
 /* Simple read */
 int lgw_spi_r(void *spi_target, uint8_t address, uint8_t *data) {
 	int spi_device;
-	uint8_t out_buf[2];
+	uint8_t out_buf[3];
 	uint8_t in_buf[ARRAY_SIZE(out_buf)];
 	struct spi_ioc_transfer k;
 	int a;
@@ -218,8 +219,9 @@ int lgw_spi_r(void *spi_target, uint8_t address, uint8_t *data) {
 	spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
 
 	/* prepare frame to be sent */
-	out_buf[0] = READ_ACCESS | (address & 0x7F);
-	out_buf[1] = 0x00;
+	out_buf[0] = 0x00; /* talk to SX1301 */
+	out_buf[1] = READ_ACCESS | (address & 0x7F);
+	out_buf[2] = 0x00;
 
 	/* I/O transaction */
 	memset(&k, 0, sizeof(k)); /* clear k */
@@ -230,12 +232,12 @@ int lgw_spi_r(void *spi_target, uint8_t address, uint8_t *data) {
 	a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
 
 	/* determine return code */
-	if (a != 2) {
+	if (a != (int)k.len) {
 		DEBUG_MSG("ERROR: SPI READ FAILURE\n");
 		return LGW_SPI_ERROR;
 	} else {
 		DEBUG_MSG("Note: SPI read success\n");
-		*data = in_buf[1];
+		*data = in_buf[2];
 		return LGW_SPI_SUCCESS;
 	}
 }
@@ -245,7 +247,7 @@ int lgw_spi_r(void *spi_target, uint8_t address, uint8_t *data) {
 /* Burst (multiple-byte) write */
 int lgw_spi_wb(void *spi_target, uint8_t address, uint8_t *data, uint16_t size) {
 	int spi_device;
-	uint8_t command;
+	uint8_t command[2];
 	struct spi_ioc_transfer k[2];
 	int size_to_do, chunk_size, offset;
 	int byte_transfered = 0;
@@ -265,13 +267,14 @@ int lgw_spi_wb(void *spi_target, uint8_t address, uint8_t *data, uint16_t size) 
 	spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
 
 	/* prepare command byte */
-	command = WRITE_ACCESS | (address & 0x7F);
+	command[0] = 0x0; /* talk to SX1301 */
+	command[1] = WRITE_ACCESS | (address & 0x7F);
 	size_to_do = size;
 
 	/* I/O transaction */
 	memset(&k, 0, sizeof(k)); /* clear k */
-	k[0].tx_buf = (unsigned long) &command;
-	k[0].len = 1;
+	k[0].tx_buf = (unsigned long) &command[0];
+	k[0].len = 2; /* command: header + address */
 	k[0].cs_change = 0;
 	k[1].cs_change = 1;
 	for (i=0; size_to_do > 0; ++i) {
@@ -279,7 +282,7 @@ int lgw_spi_wb(void *spi_target, uint8_t address, uint8_t *data, uint16_t size) 
 		offset = i * LGW_BURST_CHUNK;
 		k[1].tx_buf = (unsigned long)(data + offset);
 		k[1].len = chunk_size;
-		byte_transfered += (ioctl(spi_device, SPI_IOC_MESSAGE(2), &k) - 1 );
+		byte_transfered += (ioctl(spi_device, SPI_IOC_MESSAGE(2), &k) - k[0].len );
 		DEBUG_PRINTF("BURST WRITE: to trans %d # chunk %d # transferred %d \n", size_to_do, chunk_size, byte_transfered);
 		size_to_do -= chunk_size; /* subtract the quantity of data already transferred */
 	}
@@ -299,7 +302,7 @@ int lgw_spi_wb(void *spi_target, uint8_t address, uint8_t *data, uint16_t size) 
 /* Burst (multiple-byte) read */
 int lgw_spi_rb(void *spi_target, uint8_t address, uint8_t *data, uint16_t size) {
 	int spi_device;
-	uint8_t command;
+	uint8_t command[2];
 	struct spi_ioc_transfer k[2];
 	int size_to_do, chunk_size, offset;
 	int byte_transfered = 0;
@@ -319,13 +322,14 @@ int lgw_spi_rb(void *spi_target, uint8_t address, uint8_t *data, uint16_t size) 
 	spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
 
 	/* prepare command byte */
-	command = READ_ACCESS | (address & 0x7F);
+	command[0] = 0x0; /* talk to SX1301 */
+	command[1] = READ_ACCESS | (address & 0x7F);
 	size_to_do = size;
 
 	/* I/O transaction */
 	memset(&k, 0, sizeof(k)); /* clear k */
-	k[0].tx_buf = (unsigned long) &command;
-	k[0].len = 1;
+	k[0].tx_buf = (unsigned long) &command[0];
+	k[0].len = 2; /* command: header + address */
 	k[0].cs_change = 0;
 	k[1].cs_change = 1;
 	for (i=0; size_to_do > 0; ++i) {
@@ -333,7 +337,7 @@ int lgw_spi_rb(void *spi_target, uint8_t address, uint8_t *data, uint16_t size) 
 		offset = i * LGW_BURST_CHUNK;
 		k[1].rx_buf = (unsigned long)(data + offset);
 		k[1].len = chunk_size;
-		byte_transfered += (ioctl(spi_device, SPI_IOC_MESSAGE(2), &k) - 1 );
+		byte_transfered += (ioctl(spi_device, SPI_IOC_MESSAGE(2), &k) - k[0].len );
 		DEBUG_PRINTF("BURST READ: to trans %d # chunk %d # transferred %d \n", size_to_do, chunk_size, byte_transfered);
 		size_to_do -= chunk_size;  /* subtract the quantity of data already transferred */
 	}

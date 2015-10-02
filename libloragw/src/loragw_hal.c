@@ -212,6 +212,8 @@ void lgw_constant_adjust(void);
 int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
 	int reg_rst;
 	int reg_sel;
+    uint8_t fw_check[8192];
+    int32_t dummy;
 
 	/* check parameters */
 	CHECK_NULL(firmware);
@@ -243,6 +245,14 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
 
 	/* write the program in one burst */
 	lgw_reg_wb(LGW_MCU_PROM_DATA, firmware, size);
+
+    /* Read back firmware code for check */
+    lgw_reg_r( LGW_MCU_PROM_DATA, &dummy ); /* bug workaround */
+    lgw_reg_rb( LGW_MCU_PROM_DATA, fw_check, size );
+    if (memcmp(firmware, fw_check, size) != 0) {
+        printf ("ERROR: Failed to load fw %d\n", (int)target);
+        return -1;
+    }
 
 	/* give back control of the MCU program ram to the MCU */
 	lgw_reg_w(reg_sel, 1);
