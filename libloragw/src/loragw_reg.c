@@ -477,7 +477,6 @@ int lgw_connect(void) {
 	} else {
 		lgw_regpage = 0;
 	}
-#if 0
 	/* checking the chip ID */
 	spi_stat = lgw_spi_r(lgw_spi_target, loregs[LGW_CHIP_ID].addr, &u);
 	if (spi_stat != LGW_SPI_SUCCESS) {
@@ -490,7 +489,6 @@ int lgw_connect(void) {
 		DEBUG_MSG("ERROR: MISMATCH BETWEEN EXPECTED REG CHIP_ID AND READ REG CHIP_ID\n");
 		return LGW_REG_ERROR;
 	}
-#endif
 
 	DEBUG_MSG("Note: success connecting the concentrator\n");
 	return LGW_REG_SUCCESS;
