@@ -35,7 +35,7 @@ Maintainer: Sylvain Miermont
 #define LGW_SPI_ERROR	-1
 #define LGW_BURST_CHUNK	 1024
 
-#define LGW_SPI_MUX_MODE0   0x0     /* No FPGA, or FPGA without SPI mux header */
+#define LGW_SPI_MUX_MODE0   0x0     /* No FPGA */
 #define LGW_SPI_MUX_MODE1   0x1     /* FPGA, with spi mux header */
 
 #define LGW_SPI_MUX_TARGET_SX1301   0x0

@@ -60,7 +60,7 @@ struct lgw_reg_s {
 #define PAGE_ADDR		0x00
 #define PAGE_MASK		0x03
 
-#define FPGA_VERSION_MODE1  18
+#define FPGA_VERSION    18
 
 /*
 auto generated register mapping for C code : 11-Jul-2013 13:20:40
@@ -432,34 +432,16 @@ int lgw_connect(void) {
         return LGW_REG_ERROR;
     }
 
-    /* Detect which type of gateway we have:
-        - without FPGA
-        - with FPGA w/o spi mux header
-        - with FPGA w/ spi mux header
-    */
-    /* First, check if there is a FPGA, with SPI MUX header handling */
+    /* Detect if the gateway has an FPGA with SPI mux header support */
+    /* First, we assume there is an FPGA, and try to read its version */
     spi_stat = lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, loregs[LGW_VERSION].addr, &u);
        if (spi_stat != LGW_SPI_SUCCESS) {
         DEBUG_MSG("ERROR READING VERSION REGISTER\n");
         return LGW_REG_ERROR;
     }
-    if (u != FPGA_VERSION_MODE1) {
-        /* We failed to read proper FPGA version using SPI Mux header */
-        /* So let's try, without the header */
-        spi_stat = lgw_spi_w(lgw_spi_target, LGW_SPI_MUX_MODE0, LGW_SPI_MUX_TARGET_FPGA, 118, 1); /* set the SPI mux select on FPGA */
-        spi_stat |= lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_MODE0, LGW_SPI_MUX_TARGET_FPGA, loregs[LGW_VERSION].addr, &u);
-        if (spi_stat != LGW_SPI_SUCCESS) {
-            DEBUG_MSG("ERROR READING VERSION REGISTER\n");
-            return LGW_REG_ERROR;
-        }
-        /* Supported FPGA versions are v15 and v16 */
-        if ((u == 15) || (u == 16)) {
-            /* We have a FPGA, without SPI mux header, let's set mux select on SX1301 */
-            spi_stat = lgw_spi_w(lgw_spi_target, LGW_SPI_MUX_MODE0, LGW_SPI_MUX_TARGET_FPGA, 118, 0);
-            DEBUG_MSG("INFO: detected FPGA without SPI mux header\n");
-        } else {
-            DEBUG_MSG("INFO: no FPGA detected\n");
-        }
+    if (u != FPGA_VERSION) {
+        /* We failed to read expected FPGA version, so let's assume there is no FPGA */
+        DEBUG_MSG("INFO: no FPGA detected\n");
         lgw_spi_mux_mode = LGW_SPI_MUX_MODE0;
     } else {
         DEBUG_MSG("INFO: detected FPGA with SPI mux header\n");
