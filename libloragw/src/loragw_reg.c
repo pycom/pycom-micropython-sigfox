@@ -463,18 +463,6 @@ int lgw_connect(void) {
     } else {
         lgw_regpage = 0;
     }
-    /* checking the chip ID */
-    spi_stat = lgw_spi_r(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_CHIP_ID].addr, &u);
-    if (spi_stat != LGW_SPI_SUCCESS) {
-        DEBUG_MSG("ERROR READING CHIP_ID REGISTER\n");
-        return LGW_REG_ERROR;
-    } else if (u == 0) {
-        DEBUG_MSG("ERROR: CHIP_ID=0, CONCENTRATOR SEEMS DISCONNECTED\n");
-        return LGW_REG_ERROR;
-    } else if (u != loregs[LGW_CHIP_ID].dflt) {
-        printf("ERROR: MISMATCH BETWEEN EXPECTED REG CHIP_ID AND READ REG CHIP_ID %u\n", u);
-        return LGW_REG_ERROR;
-    }
 
     DEBUG_MSG("Note: success connecting the concentrator\n");
     return LGW_REG_SUCCESS;
