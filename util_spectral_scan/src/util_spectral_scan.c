@@ -184,11 +184,8 @@ int main( int argc, char ** argv )
 	}
 	
 	/* Configure FPGA */
-	x = lgw_fpga_reg_w(LGW_FPGA_SPI_MUX_CTRL, FPGA_SPI_MUX_REG);
-	x |= lgw_fpga_reg_w(LGW_FPGA_SOFT_RESET, 1); /* Soft reset */
-	x |= lgw_fpga_reg_w(LGW_FPGA_SPI_MUX_CTRL, FPGA_SPI_MUX_REG);
-	x |= lgw_fpga_reg_w(LGW_FPGA_SOFT_RESET, 0);
-	x |= lgw_fpga_reg_w(LGW_FPGA_SPI_MUX_CTRL, FPGA_SPI_MUX_REG);
+	x = lgw_fpga_reg_w(LGW_FPGA_SOFT_RESET, 1);
+    x |= lgw_fpga_reg_w(LGW_FPGA_SOFT_RESET, 0);
 	x |= lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, (filt_on << 4) | (input_sync_edge << 2)| (output_sync_edge << 3) | (1 << 1)); /* Reset Radio */
 	x |= lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, (filt_on << 4) | (input_sync_edge << 2)| (output_sync_edge << 3));
 	x |= lgw_fpga_reg_w(LGW_FPGA_HISTO_TEMPO, rssi_rate_div);
@@ -221,7 +218,6 @@ int main( int argc, char ** argv )
 		printf( "%d", freq );
 		
 		/* Set SX1272 */
-		x = lgw_fpga_reg_w(LGW_FPGA_SPI_MUX_CTRL, FPGA_SPI_MUX_RADIO);
 		x |= setup_sx1272( freq );
 		if( x != 0 )
 		{
@@ -230,7 +226,6 @@ int main( int argc, char ** argv )
 		}
 		
 		/* Start histogram */
-		lgw_fpga_reg_w(LGW_FPGA_SPI_MUX_CTRL, FPGA_SPI_MUX_REG_HISTO);
 		lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, 1);
 		
 		/* Wait until rssi_pts have been processed */
@@ -268,11 +263,8 @@ int main( int argc, char ** argv )
 	fclose( log_file );
 	
 	/* FGPA soft reset */
-	x = lgw_fpga_reg_w(LGW_FPGA_SPI_MUX_CTRL, FPGA_SPI_MUX_REG);
-	x |= lgw_fpga_reg_w(LGW_FPGA_SOFT_RESET, 1); 
-	x |= lgw_fpga_reg_w(LGW_FPGA_SPI_MUX_CTRL, FPGA_SPI_MUX_REG);
+	x = lgw_fpga_reg_w(LGW_FPGA_SOFT_RESET, 1); 
 	x |= lgw_fpga_reg_w(LGW_FPGA_SOFT_RESET, 0);
-	x |= lgw_fpga_reg_w(LGW_FPGA_SPI_MUX_CTRL, FPGA_SPI_MUX_REG);
 	
 	/* Close SPI */
 	x |= lgw_fpga_disconnect( );
@@ -364,3 +356,4 @@ int setup_sx1272( uint32_t freq )
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* --- EOF ------------------------------------------------------------------ */
+
