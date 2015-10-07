@@ -7,7 +7,7 @@
   (C)2013 Semtech-Cycleo
 
 Description:
-	LoRa concentrator HAL common auxiliary functions
+    LoRa concentrator HAL common auxiliary functions
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Matthieu Leurent

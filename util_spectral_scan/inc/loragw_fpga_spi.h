@@ -7,11 +7,11 @@
   (C)2013 Semtech-Cycleo
 
 Description:
-	Host specific functions to address the LoRa concentrator registers through a
-	SPI interface.
-	Single-byte read/write and burst read/write.
-	Does not handle pagination.
-	Could be used with multiple SPI ports in parallel (explicit file descriptor)
+    Host specific functions to address the LoRa concentrator registers through a
+    SPI interface.
+    Single-byte read/write and burst read/write.
+    Does not handle pagination.
+    Could be used with multiple SPI ports in parallel (explicit file descriptor)
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Matthieu Leurent
@@ -24,14 +24,14 @@ Maintainer: Matthieu Leurent
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include <stdint.h>		/* C99 types*/
+#include <stdint.h>        /* C99 types*/
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-#define LGW_SPI_SUCCESS	 0
-#define LGW_SPI_ERROR	-1
-#define LGW_BURST_CHUNK	 1024
+#define LGW_SPI_SUCCESS 0
+#define LGW_SPI_ERROR -1
+#define LGW_BURST_CHUNK 1024
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
