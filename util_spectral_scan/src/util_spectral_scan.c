@@ -48,7 +48,7 @@ Maintainer: Matthieu Leurent
 #define DEFAULT_LOG_NAME   "rssi_histogram"
 
 #define RSSI_RANGE   256
-#define RSSI_OFFSET  -142
+#define RSSI_OFFSET  -135
 
 #define MAX_FREQ   1000000000
 #define MIN_FREQ    800000000
@@ -105,7 +105,8 @@ int main( int argc, char ** argv )
         {
         case 'h':
             printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
-            printf( " -f <float>:<float>:<float>  Frequency vector to scan in MHz, start:step:stop, start>%3.3f step>%1.3f stop<%3.3f\n", MIN_FREQ/1e6, MIN_STEP_FREQ/1e6, MAX_FREQ/1e6 );
+            printf( " -f <float>:<float>:<float>  Frequency vector to scan in MHz (start:step:stop)\n" );
+            printf( "                               start>%3.3f step>%1.3f stop<%3.3f\n", MIN_FREQ/1e6, MIN_STEP_FREQ/1e6, MAX_FREQ/1e6 );
             printf( " -n <uint>  Total number of RSSI points, [1,65535]\n" );
             printf( " -r <uint>  Divide factor of RSSI sampling rate, 32MHz/(div+1030), [1,65535]\n" );
             printf( " -l <char>  Log file name\n" );
