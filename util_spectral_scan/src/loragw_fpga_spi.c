@@ -14,19 +14,19 @@ Description:
     Could be used with multiple SPI ports in parallel (explicit file descriptor)
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
+Maintainer: Michael Coracin
 */
 
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include <stdint.h>        /* C99 types */
-#include <stdio.h>        /* printf fprintf */
-#include <stdlib.h>        /* malloc free */
-#include <unistd.h>        /* lseek, close */
-#include <fcntl.h>        /* open */
-#include <string.h>        /* memset */
+#include <stdint.h> /* C99 types */
+#include <stdio.h>  /* printf fprintf */
+#include <stdlib.h> /* malloc free */
+#include <unistd.h> /* lseek, close */
+#include <fcntl.h>  /* open */
+#include <string.h> /* memset */
 
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
@@ -49,10 +49,10 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define READ_ACCESS            0x00
-#define WRITE_ACCESS        0x80
-#define SPI_SPEED            8000000
-#define SPI_DEV_PATH        "/dev/spidev0.0"
+#define READ_ACCESS     0x00
+#define WRITE_ACCESS    0x80
+#define SPI_SPEED       8000000
+#define SPI_DEV_PATH    "/dev/spidev0.0"
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */

@@ -55,6 +55,7 @@ int lgw_fpga_spi_close(void *spi_target);
 /**
 @brief LoRa concentrator SPI single-byte write
 @param spi_target generic pointer to SPI target (implementation dependant)
+@param spi_mux_dev device selection for SPI request (FPGA registers, SX1272 radio...)
 @param address 7-bit register address
 @param data data byte to write
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
@@ -64,6 +65,7 @@ int lgw_fpga_spi_w(void *spi_target, uint8_t spi_mux_dev, uint8_t address, uint8
 /**
 @brief LoRa concentrator SPI single-byte read
 @param spi_target generic pointer to SPI target (implementation dependant)
+@param spi_mux_dev device selection for SPI request (FPGA registers, SX1272 radio...)
 @param address 7-bit register address
 @param data data byte to write
 @return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
@@ -73,6 +75,7 @@ int lgw_fpga_spi_r(void *spi_target, uint8_t spi_mux_dev, uint8_t address, uint8
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) write
 @param spi_target generic pointer to SPI target (implementation dependant)
+@param spi_mux_dev device selection for SPI request (FPGA registers, SX1272 radio...)
 @param address 7-bit register address
 @param data pointer to byte array that will be sent to the LoRa concentrator
 @param size size of the transfer, in byte(s)
@@ -83,6 +86,7 @@ int lgw_fpga_spi_wb(void *spi_target, uint8_t spi_mux_dev, uint8_t address, uint
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) read
 @param spi_target generic pointer to SPI target (implementation dependant)
+@param spi_mux_dev device selection for SPI request (FPGA registers, SX1272 radio...)
 @param address 7-bit register address
 @param data pointer to byte array that will be written from the LoRa concentrator
 @param size size of the transfer, in byte(s)

@@ -20,9 +20,9 @@ Maintainer: Matthieu Leurent
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include <stdint.h>        /* C99 types */
+#include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
-#include <stdio.h>        /* printf fprintf */
+#include <stdio.h>      /* printf fprintf */
 
 #include "loragw_fpga_spi.h"
 #include "loragw_fpga_reg.h"
@@ -45,13 +45,13 @@ Maintainer: Matthieu Leurent
 /* --- PRIVATE TYPES -------------------------------------------------------- */
 
 struct lgw_reg_s {
-    int8_t        page;        /*!< page containing the register (-1 for all pages) */
-    uint8_t        addr;        /*!< base address of the register (7 bit) */
-    uint8_t        offs;        /*!< position of the register LSB (between 0 to 7) */
+    int8_t      page;        /*!< page containing the register (-1 for all pages) */
+    uint8_t     addr;        /*!< base address of the register (7 bit) */
+    uint8_t     offs;        /*!< position of the register LSB (between 0 to 7) */
     bool        sign;        /*!< 1 indicates the register is signed (2 complem.) */
-    uint8_t        leng;        /*!< number of bits in the register */
+    uint8_t     leng;        /*!< number of bits in the register */
     bool        rdon;        /*!< 1 indicates a read-only register */
-    int32_t        dflt;        /*!< register default value */
+    int32_t     dflt;        /*!< register default value */
 };
 
 /* -------------------------------------------------------------------------- */
@@ -60,10 +60,11 @@ struct lgw_reg_s {
 #define PAGE_ADDR        0x00
 #define PAGE_MASK        0x03
 
-#define FPGA_SPI_MUX_SX1301     0x00
-#define FPGA_SPI_MUX_FPGA_REG   0x01
-#define FPGA_SPI_MUX_EEPROM     0x02
-#define FPGA_SPI_MUX_SX1272     0x03
+/* FPGA SPI Mux device IDs */
+#define FPGA_SPI_MUX_SX1301     0x00 /* header to access SX1301 */
+#define FPGA_SPI_MUX_FPGA_REG   0x01 /* header to access FPGA registers */
+#define FPGA_SPI_MUX_EEPROM     0x02 /* header to access EEPROM */
+#define FPGA_SPI_MUX_SX1272     0x03 /* header to access SX1272 radio */
 
 /*
 auto generated register mapping for C code : 11-Jul-2013 13:20:40
