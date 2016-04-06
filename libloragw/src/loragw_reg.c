@@ -446,6 +446,9 @@ int lgw_connect(void) {
     } else {
         DEBUG_MSG("INFO: detected FPGA with SPI mux header\n");
         lgw_spi_mux_mode = LGW_SPI_MUX_MODE1;
+        /* FPGA Soft Reset */
+        lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 1);
+        lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 0);
     }
 
     /* check SX1301 version */
