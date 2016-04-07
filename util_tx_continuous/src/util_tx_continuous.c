@@ -42,20 +42,12 @@ Maintainer: Matthieu Leurent
 /* --- MACROS & CONSTANTS --------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
+#define MSG(args...)	fprintf(stderr, args) /* message that is destined to the user */
 
-#define SX125x_VERSION          0x21
-#define SX125x_32MHz_FRAC		15625	/* irreductible fraction for PLL register caculation */
-#define SX125x_TX_DAC_CLK_SEL	1	/* 0:int, 1:ext */
-#define SX125x_TX_DAC_GAIN		2	/* 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2) */
-#define SX125x_TX_MIX_GAIN		14	/* -38 + 2*TxMixGain dB (default 14) */
-#define SX125x_TX_PLL_BW		3	/* 0:75, 1:150, 2:225, 3:300 kHz (default 3) */
-#define SX125x_TX_ANA_BW		0	/* 17.5 / 2*(41-TxAnaBw) MHz (default 0) */
-#define SX125x_TX_DAC_BW		5	/* 24 + 8*TxDacBw Nb FIR taps (default 2) */
-#define SX125x_XOSC_GM_STARTUP	13	/* (default 13) */
-#define SX125x_XOSC_DISABLE		2	/* Disable of Xtal Oscillator blocks bit0:regulator, bit1:core(gm), bit2:amplifier */
+#define	TX_RF_CHAIN		      0	/* TX only supported on radio A */
+#define	DEFAULT_RSSI_OFFSET 0.0
 
-#define DEFAULT_FREQ_HZ     868e6
-#define DEFAULT_RADIO         0
+#define DEFAULT_FREQ_HZ   868e6
 #define DEFAULT_DIGITAL_GAIN  0
 #define DEFAULT_DAC_GAIN      3
 #define DEFAULT_MIXER_GAIN   14
@@ -73,9 +65,6 @@ Maintainer: Matthieu Leurent
 /* Signal handling variables */
 static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
 static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
-
-#include "cal_tx_fw.var"
-#include "util_fw.var"
 
 /* -------------------------------------------------------------------------- */
 /* --- SUBFUNCTIONS DECLARATION --------------------------------------------- */
@@ -96,7 +85,6 @@ int main(int argc, char **argv)
 	static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 	
 	int i; /* loop and temporary variables */
-	int x; /* return code for HAL functions */
 	
 	/* Parameter parsing */
 	int option_index = 0;
@@ -119,7 +107,6 @@ int main(int argc, char **argv)
 	
 	/* Application parameters */
 	uint32_t freq_hz = DEFAULT_FREQ_HZ;	
-	bool radio_select = DEFAULT_RADIO;
 	uint8_t g_dig = DEFAULT_DIGITAL_GAIN;
 	uint8_t g_dac = DEFAULT_DAC_GAIN;
 	uint8_t g_mix = DEFAULT_MIXER_GAIN;
@@ -131,14 +118,15 @@ int main(int argc, char **argv)
 	uint8_t fdev_khz = DEFAULT_FDEV_KHZ;
 	uint8_t bt = DEFAULT_BT;
 	
-	uint8_t buff[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint32_t part_int; /* integer part for PLL register value calculation */
-	uint32_t part_frac; /* fractional part for PLL register value calculation */
-	uint16_t br;
 	int32_t offset_i, offset_q;
-	bool is_sx1255;
-	int32_t cal_status, cal_status_expected;
-	int32_t tx_status;
+
+	/* RF configuration (TX fail if RF chain is not enabled) */
+	enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_SX1257;
+	struct lgw_conf_board_s boardconf;
+	struct lgw_conf_rxrf_s rfconf;
+	struct lgw_tx_gain_lut_s txlut;
+	struct lgw_pkt_tx_s txpkt;
+	
 	
 	/* Parse command line options */
 	while( (i = getopt_long (argc, argv, "hud::f:r:", long_options, &option_index)) != -1 )
@@ -150,10 +138,10 @@ int main(int argc, char **argv)
 				printf( " %s\n", lgw_version_info( ) );
 				printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
 				printf( " -f     <float>  Tx RF frequency in MHz [800:1000]\n");
-				printf( " -r     <bool>   Radio select, 0:A 1:B\n");
+				printf( " -r     <int>    Radio type (SX1255:1255, SX1257:1257)\n");
 				printf( " --dig  <uint>   Digital gain trim, [0:3]\n" );
 				printf( "                   0:1, 1:7/8, 2:3/4, 3:1/2\n" );
-				printf( " --mix  <uint>   SX1257 Tx mixer gain trim, [0:15]\n" );
+				printf( " --mix  <uint>   Radio Tx mixer gain trim, [0:15]\n" );
 				printf( "                   15 corresponds to maximum gain, 1 LSB corresponds to 2dB step\n" );
 				printf( " --pa   <uint>   PA gain trim, [0:3]\n" );
 				printf( " --mod  <char>   Modulation type ['LORA','FSK','CW']\n" );
@@ -318,15 +306,17 @@ int main(int argc, char **argv)
 			
 		case 'r':
 			i = sscanf(optarg, "%u", &arg_u);
-			if( (i != 1) || (arg_u > 1) )
-			{
-				printf( "ERROR: argument parsing of -r argument. Use -h to print help\n" );
-				return EXIT_FAILURE;
-			}
-			else
-			{
-				radio_select = (bool)arg_u;
-			}
+            switch (arg_u) {
+                case 1255:
+                    radio_type = LGW_RADIO_TYPE_SX1255;
+                    break;
+                case 1257:
+                    radio_type = LGW_RADIO_TYPE_SX1257;
+                    break;
+                default:
+                    printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
+                    return EXIT_FAILURE;
+            }
 			break;
 			
 		default:
@@ -343,186 +333,94 @@ int main(int argc, char **argv)
 	sigaction( SIGINT, &sigact, NULL );
 	sigaction( SIGTERM, &sigact, NULL );
 	
-	/* Decide if it is SX1257 or 55 depending on required freq*/
-	if (freq_hz > 700e6) {
-		is_sx1255 = false;
+	/* Board config */
+	memset(&boardconf, 0, sizeof(boardconf));
+	boardconf.lorawan_public = true;
+	boardconf.clksrc = 1; /* Radio B is source by default */
+	lgw_board_setconf(boardconf);
+
+	/* RF config */
+	memset(&rfconf, 0, sizeof(rfconf));
+	rfconf.enable = true;
+	rfconf.freq_hz = freq_hz;
+	rfconf.rssi_offset = DEFAULT_RSSI_OFFSET;
+    rfconf.type = radio_type;
+	rfconf.tx_enable = true;
+	lgw_rxrf_setconf(TX_RF_CHAIN, rfconf);
+
+	/* Tx gain LUT */
+	memset(&txlut, 0, sizeof txlut);
+	txlut.size = 1;
+	txlut.lut[0].dig_gain = g_dig;
+	txlut.lut[0].pa_gain = 0;
+	txlut.lut[0].dac_gain = g_dac;
+	txlut.lut[0].mix_gain = g_mix;
+	txlut.lut[0].rf_power = 0;
+	lgw_txgain_setconf(&txlut);
+	
+	/* Start the concentrator */
+	i = lgw_start();
+	if (i == LGW_HAL_SUCCESS) {
+		MSG("INFO: concentrator started, packet can be sent\n");
 	} else {
-		is_sx1255 = true;
-	} 
-	
-	/* Connect to concentrator */
-	x = lgw_connect();
-	if (x == LGW_REG_ERROR) {
-		printf("ERROR: FAIL TO CONNECT BOARD\n");
-		return LGW_HAL_ERROR;
-	}
-	
-	/* reset the registers (also shuts the radios down) */
-	lgw_soft_reset();
-	wait_ms(100);
-	
-	/* switch on and reset the radios (also starts the 32 MHz XTAL) */
-	lgw_reg_w(LGW_RADIO_A_EN,1);
-	lgw_reg_w(LGW_RADIO_B_EN,1);
-	wait_ms(500);
-	lgw_reg_w(LGW_RADIO_RST,1);
-	wait_ms(1);
-	lgw_reg_w(LGW_RADIO_RST,0);
-	
-	/* ~~~~~~ Setup SX1257 ~~~~~~ */
-	
-	/* Check version */
-	if( sx125x_read(radio_select, 0x07) != SX125x_VERSION )
-	{
-		printf( "ERROR: Bad SX1257 version\n" );
+		MSG("ERROR: failed to start the concentrator\n");
 		return EXIT_FAILURE;
 	}
 	
-	sx125x_write(0, 0x10, SX125x_TX_DAC_CLK_SEL + 2);
-	sx125x_write(1, 0x10, SX125x_TX_DAC_CLK_SEL + 2);
-	if (is_sx1255) {
-		sx125x_write(0, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
-		sx125x_write(1, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
-	}
-	else {
-		sx125x_write(0, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
-		sx125x_write(1, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
-	}
+	/* fill-up payload and parameters */
+	memset(&txpkt, 0, sizeof(txpkt));
+	txpkt.freq_hz = freq_hz;
+	txpkt.tx_mode = IMMEDIATE;
+	txpkt.rf_chain = TX_RF_CHAIN;
+	txpkt.rf_power = 0;
+    if( strcmp( mod, "FSK" ) == 0 ) {
+        txpkt.modulation = MOD_FSK;
+        txpkt.datarate = br_kbps * 1e3;
+    } else {
+        txpkt.modulation = MOD_LORA;
+        switch (bw_khz) {
+            case 125: txpkt.bandwidth = BW_125KHZ; break;
+            case 250: txpkt.bandwidth = BW_250KHZ; break;
+            case 500: txpkt.bandwidth = BW_500KHZ; break;
+            default:
+                MSG("ERROR: invalid 'bw' variable\n");
+                return EXIT_FAILURE;
+        }
+        switch (sf) {
+            case  7: txpkt.datarate = DR_LORA_SF7;  break;
+            case  8: txpkt.datarate = DR_LORA_SF8;  break;
+            case  9: txpkt.datarate = DR_LORA_SF9;  break;
+            case 10: txpkt.datarate = DR_LORA_SF10; break;
+            case 11: txpkt.datarate = DR_LORA_SF11; break;
+            case 12: txpkt.datarate = DR_LORA_SF12; break;
+            default:
+                MSG("ERROR: invalid 'sf' variable\n");
+                return EXIT_FAILURE;
+        }
+    }
+	txpkt.coderate = CR_LORA_4_5;
+    txpkt.f_dev = fdev_khz;
+	txpkt.preamble = 65535;
+	txpkt.invert_pol = false;
+    txpkt.no_crc = true;
+	txpkt.no_header = true;
+	txpkt.size = 1;
+	txpkt.payload[0] = 0;
 	
-	/* Tx gain and BW */
-	sx125x_write( radio_select, 0x08, g_mix + g_dac*16);
-	if( bw_khz > 250 )
+	/* Overwrite settings */
+	lgw_reg_w(LGW_TX_MODE, 1); /* Tx continuous */
+    lgw_reg_w(LGW_FSK_TX_GAUSSIAN_SELECT_BT, bt);
+	if( strcmp( mod, "CW" ) == 0 ) /* Enable signal generator with DC */
 	{
-		sx125x_write( radio_select, 0x0A, 12 + SX125x_TX_PLL_BW*32 ); /* ANA FILT BW */
-		sx125x_write( radio_select, 0x0B, 4 ); /* DIG FILT BW */
-	}
-	else
-	{
-		sx125x_write( radio_select, 0x0A, 0 + SX125x_TX_PLL_BW*32 ); /* ANA FILT BW */
-		sx125x_write( radio_select, 0x0B, 5 ); /* DIG FILT BW */
-	}
-	
-	/* set TX PLL frequency */
-	if (is_sx1255) {
-		part_int = freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
-		part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-	} else {
-		part_int = freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
-		part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-	}
-	sx125x_write(radio_select, 0x04,0xFF & part_int); /* Most Significant Byte */
-	sx125x_write(radio_select, 0x05,0xFF & (part_frac >> 8)); /* middle byte */
-	sx125x_write(radio_select, 0x06,0xFF & part_frac); /* Least Significant Byte */
-	
-	/* Lock PLL and enable Tx */
-	sx125x_write(radio_select, 0x00, 1);
-	wait_ms(1);
-	sx125x_write(radio_select, 0x00, 13);
-	wait_ms(10);
-	if ((sx125x_read(radio_select, 0x11) & 0x01) == 0) {
-		printf("ERROR: SX125x Tx PLL did not lock\n");
-		return -1;
-	}
-	
-	/* ~~~~~~~~~~~~~~~~~~ */
-	
-	/* Minimum SX1301 setup */
-	lgw_reg_w(LGW_GLOBAL_EN, 1);
-	lgw_reg_w(LGW_TX_GAIN, g_dig);
-	lgw_reg_w(LGW_PA_GAIN, g_pa);
-	lgw_reg_w(LGW_TX_MODE, 1); // Tx continuous
-	lgw_reg_w(LGW_FSK_TX_GAUSSIAN_SELECT_BT, bt);
-	lgw_reg_w(LGW_GPIO_MODE,24); /* Set GPIO 3 and 4 in output to control potential Tx filter FPGA */
-	lgw_reg_w(LGW_GPIO_SELECT_OUTPUT,8); /* Control GPIO with register */
-	lgw_reg_w(LGW_GPIO_PIN_REG_OUT,16); /* Enable Tx */ 
-	
-	if( strcmp( mod, "CW" ) == 0 )
-	{
-		/* Enable signal generator with DC */
 		lgw_reg_w( LGW_SIG_GEN_FREQ, 0 );
 		lgw_reg_w( LGW_SIG_GEN_EN, 1 );
-	}
-	else
-	{
-		/* Tx DC offset calibration */
-		x = load_firmware( 1, cal_tx_fw, 8192 ); /* Load firmware */
-		lgw_reg_w(LGW_RADIO_SELECT, (is_sx1255 << 5) | ((radio_select+1) << 2) ); /* Configure calibration */
-		lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL, 0); /* Give to MCU control of radio */
-		lgw_reg_w(LGW_MCU_RST_1, 0);
-		lgw_reg_w(LGW_PAGE_REG, 3); /* Calibration start condition */
-		lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 0); /* Give to MCU control of registers */
-		wait_ms(300); /* Wait enough until cal is done */
-		lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 1); /* Get back control of registers */
-		
-		/* Get calibration results */
-		lgw_reg_r( LGW_MCU_AGC_STATUS, &cal_status );
-		cal_status_expected = (1<<7) | ((radio_select+1)<<5) | (1<<2) | (1<<1) | 1;
-		if (cal_status != cal_status_expected)
-		{
-			lgw_reg_w( LGW_TX_OFFSET_I, 0 );
-			lgw_reg_w( LGW_TX_OFFSET_Q, 0 );
-			printf("WARNING: Tx DC Calibration failed\n");
-		}
-		
-		/* TX metadata buffer */
-		if( strcmp( mod, "LORA" ) == 0 )
-		{
-			buff[9] = sf;
-			switch( bw_khz )
-			{
-				case 125: buff[11] = 0; break;
-				case 250: buff[11] = 1; break;
-				case 500: buff[11] = 2; break;
-			}
-			buff[11] |= 0x04; /* set 'implicit header' bit */
-		}
-		else if( strcmp( mod, "FSK" ) == 0 )
-		{
-			br = (uint16_t)(32e3 / br_kbps);
-			buff[7] = 1 << 4;
-			buff[9] = fdev_khz; /* FSK frequency deviation */
-			buff[14] = 0xFF & (br >> 8); /* FSK bitrate */
-			buff[15] = 0xFF & br;
-		}
-		buff[10] = 1; /* payload size */
-		buff[12] = 0xFF & (65535 >> 8); /* preamble length */
-		buff[13] = 0xFF & 65535;
-			
-		/* Write metadata into buffer */
-		lgw_reg_w( LGW_TX_DATA_BUF_ADDR, 0 );
-		lgw_reg_wb( LGW_TX_DATA_BUF_DATA, buff, 16 );
-		
-		/* Trig Tx and check modulation is running */
-		lgw_reg_w( LGW_TX_TRIG_IMMEDIATE, 1 );
-		wait_ms(5);
-		lgw_reg_r( LGW_TX_STATUS, &tx_status );
-		if( tx_status != 80 )
-		{
-			printf( "ERROR: modulation not running\n" );
-			return EXIT_FAILURE;
-		}
+		lgw_reg_w( LGW_TX_OFFSET_I, 0 );
+		lgw_reg_w( LGW_TX_OFFSET_Q, 0 );
 	}
 	
-	/* Load firmware to select radio */
-	x = load_firmware( 1, util_fw, 8192 );
-	lgw_reg_w(LGW_MCU_RST_1, 0);
-	lgw_reg_w(LGW_RADIO_SELECT, radio_select);
+	/* Send packet */
+	i = lgw_send(txpkt);
 	
-	/* Set RF switch in Tx */
-	if( radio_select )
-	{
-		lgw_reg_w(LGW_PA_B_EN,1);
-	} else
-	{
-		lgw_reg_w(LGW_PA_A_EN,1);
-	}
-
-	/* Enable Tx and Tx narrowband filter for LORA 125kHz BW */
-	if( ( strcmp( mod, "LORA" ) == 0 ) && ( bw_khz == 125 ) )
-	{
-		lgw_reg_w(LGW_GPIO_PIN_REG_OUT,24);
-	}
-
 	/* Recap all settings */
 	printf( "SX1301 library version: %s\n", lgw_version_info( ) );
 	if( strcmp( mod, "LORA" ) == 0 )
@@ -537,17 +435,20 @@ int main(int argc, char **argv)
 	{
 		printf( "Modulation: CW\n" );
 	}
-	if( radio_select )
-	{
-		printf("Radio: B\n");
-	}
-	else
-	{
-		printf("Radio: A\n");
-	}
+    switch( rfconf.type )
+    {
+        case LGW_RADIO_TYPE_SX1255:
+            printf( "Radio Type: SX1255\n" );
+            break;
+        case LGW_RADIO_TYPE_SX1257:
+            printf( "Radio Type: SX1257\n" );
+            break;
+        default:
+            printf( "ERROR: undefined radio type\n" );
+            break;
+    }
 	printf( "Frequency: %4.3f MHz\n", freq_hz/1e6 );
-	printf( "Expected chip: SX125%d\n", 7-is_sx1255*2 );
-	printf( "Gains: Digital:%d DAC:%d Mixer:%d PA:%d\n", g_dig, g_dac, g_mix, g_pa );
+	printf( "TX Gains: Digital:%d DAC:%d Mixer:%d PA:%d\n", g_dig, g_dac, g_mix, g_pa );
 	if( strcmp( mod, "CW" ) != 0 )
 	{
 		lgw_reg_r( LGW_TX_OFFSET_I, &offset_i );

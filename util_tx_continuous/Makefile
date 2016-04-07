@@ -54,7 +54,7 @@ $(LGW_PATH)/libloragw.a: $(LGW_INC)
 
 ### Main program compilation and assembly
 
-obj/$(APP_NAME).o: src/$(APP_NAME).c $(LGW_INC) src/cal_tx_fw.var src/util_fw.var
+obj/$(APP_NAME).o: src/$(APP_NAME).c $(LGW_INC)
 	$(CC) -c $(CFLAGS) -I$(LGW_PATH)/inc $< -o $@
 
 $(APP_NAME): obj/$(APP_NAME).o $(LGW_PATH)/libloragw.a
