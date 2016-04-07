@@ -185,9 +185,7 @@ int main( int argc, char ** argv )
     }
     
     /* Configure FPGA */
-    x = lgw_fpga_reg_w(LGW_FPGA_SOFT_RESET, 1);
-    x |= lgw_fpga_reg_w(LGW_FPGA_SOFT_RESET, 0);
-    x |= lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, (filt_on << 4) | (input_sync_edge << 2)| (output_sync_edge << 3) | (1 << 1)); /* Reset Radio */
+    x = lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, (filt_on << 4) | (input_sync_edge << 2)| (output_sync_edge << 3) | (1 << 1)); /* Reset Radio */
     x |= lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, (filt_on << 4) | (input_sync_edge << 2)| (output_sync_edge << 3));
     x |= lgw_fpga_reg_w(LGW_FPGA_HISTO_TEMPO, rssi_rate_div);
     x |= lgw_fpga_reg_w(LGW_FPGA_HISTO_NB_READ, rssi_pts);
@@ -262,10 +260,6 @@ int main( int argc, char ** argv )
         printf( "\n" );
     }
     fclose( log_file );
-    
-    /* FGPA soft reset */
-    x = lgw_fpga_reg_w(LGW_FPGA_SOFT_RESET, 1); 
-    x |= lgw_fpga_reg_w(LGW_FPGA_SOFT_RESET, 0);
     
     /* Close SPI */
     x |= lgw_fpga_disconnect( );
