@@ -31,20 +31,20 @@ clean:
 inc/config.h: ../VERSION library.cfg
 	@echo "*** Checking libloragw library configuration ***"
 	@rm -f $@
-  # File initialization
+	#File initialization
 	@echo "#ifndef _LORAGW_CONFIGURATION_H" >> $@
 	@echo "#define _LORAGW_CONFIGURATION_H" >> $@
-  # Release version
+	# Release version
 	@echo "Release version   : $(LIBLORAGW_VERSION)"
 	@echo "	#define LIBLORAGW_VERSION	"\"$(LIBLORAGW_VERSION)\""" >> $@
-  # Debug options
+	# Debug options
 	@echo "	#define DEBUG_AUX	$(DEBUG_AUX)" >> $@
 	@echo "	#define DEBUG_SPI	$(DEBUG_SPI)" >> $@
 	@echo "	#define DEBUG_REG	$(DEBUG_REG)" >> $@
 	@echo "	#define DEBUG_HAL	$(DEBUG_HAL)" >> $@
 	@echo "	#define DEBUG_GPS	$(DEBUG_GPS)" >> $@
 	@echo "	#define DEBUG_GPIO	$(DEBUG_GPIO)" >> $@
-  # end of file
+	# end of file
 	@echo "#endif" >> $@
 	@echo "*** Configuration seems ok ***"
 
