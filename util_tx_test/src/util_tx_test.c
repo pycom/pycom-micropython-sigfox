@@ -45,8 +45,11 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define		RF_CHAIN		0	/* we'll use radio A only */
-#define		DEFAULT_RSSI_OFFSET 	0.0
+#define	TX_RF_CHAIN		        0	/* TX only supported on radio A */
+#define	DEFAULT_RSSI_OFFSET 	0.0
+#define DEFAULT_MODULATION      "LORA"
+#define DEFAULT_BR_KBPS         50
+#define DEFAULT_FDEV_KHZ        25
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
@@ -81,9 +84,13 @@ void usage(void) {
 	printf(" -h print this help\n");
 	printf(" -r <int>   radio type (SX1255:1255, SX1257:1257)\n");
 	printf(" -f <float> target frequency in MHz\n");
+	printf(" -k <uint>  concentrator clock source (0:Radio A, 1:Radio B)\n");
+    printf(" -m <str>   modulation type ['LORA', 'FSK']\n");
 	printf(" -b <uint>  LoRa bandwidth in kHz [125, 250, 500]\n");
 	printf(" -s <uint>  LoRa Spreading Factor [7-12]\n");
 	printf(" -c <uint>  LoRa Coding Rate [1-4]\n");
+	printf(" -d <uint>  FSK frequency deviation in kHz [1:250]\n");
+	printf(" -q <float> FSK bitrate in kbps [0.5:250]\n");
 	printf(" -p <int>   RF power (dBm)\n");
 	printf(" -l <uint>  LoRa preamble length (symbols)\n");
 	printf(" -z <uint>  payload size (bytes, <256)\n");
@@ -102,9 +109,13 @@ int main(int argc, char **argv)
 	
 	/* user entry parameters */
 	int xi = 0;
+    unsigned int xu = 0;
 	double xd = 0.0;
+    float xf = 0.0;
+    char arg_s[64];
 	
 	/* application parameters */
+    char mod[64] = DEFAULT_MODULATION;
 	uint32_t f_target = 0; /* target frequency - invalid default value, has to be specified by user */
 	int sf = 10; /* SF10 by default */
 	int cr = 1; /* CR1 aka 4/5 by default */
@@ -115,6 +126,8 @@ int main(int argc, char **argv)
 	int delay = 1000; /* 1 second between packets by default */
 	int repeat = -1; /* by default, repeat until stopped */
 	bool invert = false;
+    float br_kbps = DEFAULT_BR_KBPS;
+    uint8_t fdev_khz = DEFAULT_FDEV_KHZ;
 	
 	/* RF configuration (TX fail if RF chain is not enabled) */
 	enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
@@ -129,14 +142,14 @@ int main(int argc, char **argv)
 	uint16_t cycle_count = 0;
 	
 	/* parse command line options */
-	while ((i = getopt (argc, argv, "hif:b:s:c:p:l:z:t:x:r:k")) != -1) {
+	while ((i = getopt (argc, argv, "hif:m:b:s:c:p:l:z:t:x:r:k:d:q:")) != -1) {
 		switch (i) {
 			case 'h':
 				usage();
 				return EXIT_FAILURE;
 				break;
 			
-			case 'f': /* -f <float> target frequency in MHz */
+			case 'f': /* -f <float> Target frequency in MHz */
 				i = sscanf(optarg, "%lf", &xd);
 				if ((i != 1) || (xd < 30.0) || (xd > 3000.0)) {
 					MSG("ERROR: invalid TX frequency\n");
@@ -147,9 +160,20 @@ int main(int argc, char **argv)
 				}
 				break;
 			
+			case 'm': /* -m <str> Modulation type */
+				i = sscanf(optarg, "%s", arg_s);
+				if ((i != 1) || ((strcmp(arg_s,"LORA") != 0) && (strcmp(arg_s,"FSK")))) {
+					MSG("ERROR: invalid modulation type\n");
+					usage();
+					return EXIT_FAILURE;
+				} else {
+                    sprintf(mod, "%s", arg_s);
+				}
+				break;
+
 			case 'b': /* -b <int> Modulation bandwidth in kHz */
 				i = sscanf(optarg, "%i", &xi);
-				if ((i != 1) || ((xi != 125)&&(xi != 250)&&(xi != 500))) {
+				if ((i != 1) || ((xi != 125) && (xi != 250) && (xi != 500))) {
 					MSG("ERROR: invalid LoRa bandwidth\n");
 					usage();
 					return EXIT_FAILURE;
@@ -191,6 +215,28 @@ int main(int argc, char **argv)
 				}
 				break;
 			
+			case 'd': /* -d <uint> FSK frequency deviation */
+				i = sscanf(optarg, "%u", &xu);
+				if ((i != 1) || (xu < 1) || (xu > 250)) {
+					MSG("ERROR: invalid FSK frequency deviation\n");
+					usage();
+					return EXIT_FAILURE;
+				} else {
+					fdev_khz = (uint8_t)xu;
+				}
+				break;
+
+			case 'q': /* -q <float> FSK bitrate */
+				i = sscanf(optarg, "%f", &xf);
+				if ((i != 1) || (xf < 0.5) || (xf > 250)) {
+					MSG("ERROR: invalid FSK bitrate\n");
+					usage();
+					return EXIT_FAILURE;
+				} else {
+					br_kbps = xf;
+				}
+				break;
+
 			case 'l': /* -r <uint> preamble length (symbols) */
 				i = sscanf(optarg, "%i", &xi);
 				if ((i != 1) || (xi < 6)) {
@@ -256,8 +302,14 @@ int main(int argc, char **argv)
 				break;
 
 			case 'k': /* <int> Concentrator clock source (Radio A or Radio B) */
-				sscanf(optarg, "%i", &xi);
-				clocksource = (uint8_t)xi;
+				i = sscanf(optarg, "%i", &xi);
+				if ((i != 1) || ((xi != 0) && (xi != 1))) {
+					MSG("ERROR: invalid clock source\n");
+					usage();
+					return EXIT_FAILURE;
+                } else {
+				    clocksource = (uint8_t)xi;
+                }
 				break;
 
 			default:
@@ -276,7 +328,12 @@ int main(int argc, char **argv)
 		MSG("ERROR: radio type parameter not properly set, please use -r option to specify it.\n");
 		return EXIT_FAILURE;
 	}
-	printf("Sending %i packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble) at %i dBm, with %i ms between each\n", repeat, f_target, bw, sf, cr, pl_size, preamb, pow, delay);
+
+    if (strcmp(mod, "FSK") == 0) {
+        printf("Sending %i FSK packets on %u Hz (FDev %u kHz, Bitrate %.2f, %i bytes payload, %i symbols preamble) at %i dBm, with %i ms between each\n", repeat, f_target, fdev_khz, br_kbps, pl_size, preamb, pow, delay);
+    } else {
+        printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble) at %i dBm, with %i ms between each\n", repeat, f_target, bw, sf, cr, pl_size, preamb, pow, delay);
+    }
 	
 	/* configure signal handling */
 	sigemptyset(&sigact.sa_mask);
@@ -302,7 +359,7 @@ int main(int argc, char **argv)
 	rfconf.rssi_offset = DEFAULT_RSSI_OFFSET;
 	rfconf.type = radio_type;
 	rfconf.tx_enable = true;
-	lgw_rxrf_setconf(RF_CHAIN, rfconf);
+	lgw_rxrf_setconf(TX_RF_CHAIN, rfconf);
 
 	i = lgw_start();
 	if (i == LGW_HAL_SUCCESS) {
@@ -316,37 +373,43 @@ int main(int argc, char **argv)
 	memset(&txpkt, 0, sizeof(txpkt));
 	txpkt.freq_hz = f_target;
 	txpkt.tx_mode = IMMEDIATE;
-	txpkt.rf_chain = RF_CHAIN;
+	txpkt.rf_chain = TX_RF_CHAIN;
 	txpkt.rf_power = pow;
-	txpkt.modulation = MOD_LORA;
-	switch (bw) {
-		case 125: txpkt.bandwidth = BW_125KHZ; break;
-		case 250: txpkt.bandwidth = BW_250KHZ; break;
-		case 500: txpkt.bandwidth = BW_500KHZ; break;
-		default:
-			MSG("ERROR: invalid 'bw' variable\n");
-			return EXIT_FAILURE;
-	}
-	switch (sf) {
-		case  7: txpkt.datarate = DR_LORA_SF7;  break;
-		case  8: txpkt.datarate = DR_LORA_SF8;  break;
-		case  9: txpkt.datarate = DR_LORA_SF9;  break;
-		case 10: txpkt.datarate = DR_LORA_SF10; break;
-		case 11: txpkt.datarate = DR_LORA_SF11; break;
-		case 12: txpkt.datarate = DR_LORA_SF12; break;
-		default:
-			MSG("ERROR: invalid 'sf' variable\n");
-			return EXIT_FAILURE;
-	}
-	switch (cr) {
-		case 1: txpkt.coderate = CR_LORA_4_5; break;
-		case 2: txpkt.coderate = CR_LORA_4_6; break;
-		case 3: txpkt.coderate = CR_LORA_4_7; break;
-		case 4: txpkt.coderate = CR_LORA_4_8; break;
-		default:
-			MSG("ERROR: invalid 'cr' variable\n");
-			return EXIT_FAILURE;
-	}
+    if( strcmp( mod, "FSK" ) == 0 ) {
+        txpkt.modulation = MOD_FSK;
+        txpkt.datarate = br_kbps * 1e3;
+        txpkt.f_dev = fdev_khz;
+    } else {
+        txpkt.modulation = MOD_LORA;
+        switch (bw) {
+            case 125: txpkt.bandwidth = BW_125KHZ; break;
+            case 250: txpkt.bandwidth = BW_250KHZ; break;
+            case 500: txpkt.bandwidth = BW_500KHZ; break;
+            default:
+                MSG("ERROR: invalid 'bw' variable\n");
+                return EXIT_FAILURE;
+        }
+        switch (sf) {
+            case  7: txpkt.datarate = DR_LORA_SF7;  break;
+            case  8: txpkt.datarate = DR_LORA_SF8;  break;
+            case  9: txpkt.datarate = DR_LORA_SF9;  break;
+            case 10: txpkt.datarate = DR_LORA_SF10; break;
+            case 11: txpkt.datarate = DR_LORA_SF11; break;
+            case 12: txpkt.datarate = DR_LORA_SF12; break;
+            default:
+                MSG("ERROR: invalid 'sf' variable\n");
+                return EXIT_FAILURE;
+        }
+        switch (cr) {
+            case 1: txpkt.coderate = CR_LORA_4_5; break;
+            case 2: txpkt.coderate = CR_LORA_4_6; break;
+            case 3: txpkt.coderate = CR_LORA_4_7; break;
+            case 4: txpkt.coderate = CR_LORA_4_8; break;
+            default:
+                MSG("ERROR: invalid 'cr' variable\n");
+                return EXIT_FAILURE;
+        }
+    }
 	txpkt.invert_pol = invert;
 	txpkt.preamble = preamb;
 	txpkt.size = pl_size;
