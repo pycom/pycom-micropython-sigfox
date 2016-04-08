@@ -59,6 +59,45 @@ struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
 static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
 
+/* TX gain LUT table */
+static struct lgw_tx_gain_lut_s txgain_lut = {
+    .size = 5,
+    .lut[0] = {
+        .dig_gain = 0,
+        .pa_gain = 0,
+        .dac_gain = 3,
+        .mix_gain = 12,
+        .rf_power = 0
+    },
+    .lut[1] = {
+        .dig_gain = 0,
+        .pa_gain = 1,
+        .dac_gain = 3,
+        .mix_gain = 12,
+        .rf_power = 10
+    },
+    .lut[2] = {
+        .dig_gain = 0,
+        .pa_gain = 2,
+        .dac_gain = 3,
+        .mix_gain = 10,
+        .rf_power = 14
+    },
+    .lut[3] = {
+        .dig_gain = 0,
+        .pa_gain = 3,
+        .dac_gain = 3,
+        .mix_gain = 9,
+        .rf_power = 20
+    },
+    .lut[4] = {
+        .dig_gain = 0,
+        .pa_gain = 3,
+        .dac_gain = 3,
+        .mix_gain = 14,
+        .rf_power = 27
+    }};
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -79,6 +118,8 @@ static void sig_handler(int sigio) {
 
 /* describe command line options */
 void usage(void) {
+    int i;
+
     printf("*** Library version information ***\n%s\n\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h print this help\n");
@@ -91,7 +132,11 @@ void usage(void) {
     printf(" -c <uint>  LoRa Coding Rate [1-4]\n");
     printf(" -d <uint>  FSK frequency deviation in kHz [1:250]\n");
     printf(" -q <float> FSK bitrate in kbps [0.5:250]\n");
-    printf(" -p <int>   RF power (dBm)\n");
+    printf(" -p <int>   RF power (dBm) [ ");
+    for (i = 0; i < txgain_lut.size; i++) {
+        printf("%ddBm ", txgain_lut.lut[i].rf_power);
+    }
+    printf("]\n");
     printf(" -l <uint>  LoRa preamble length (symbols)\n");
     printf(" -z <uint>  payload size (bytes, <256)\n");
     printf(" -t <uint>  pause between packets (ms)\n");
@@ -360,6 +405,9 @@ int main(int argc, char **argv)
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
     lgw_rxrf_setconf(TX_RF_CHAIN, rfconf);
+
+    /* TX gain config */
+    lgw_txgain_setconf(&txgain_lut);
 
     i = lgw_start();
     if (i == LGW_HAL_SUCCESS) {
