@@ -61,6 +61,16 @@ gateway operates.
 3. Changelog
 -------------
 
+### v3.2.1 ###
+
+* HAL: Fixed downlink support for SX1301AP2 reference design: soft reset of the
+FPGA was missing for proper IQ inversion configuration.
+* HAL: Added support for several versions of FPGA (currently v18 and v19)
+* util_tx_test: Added FSK support and added minimal TX gain LUT.
+* util_spectral_scan: Removed FPGA soft reset, now done by the HAL.
+* util_tx_continous: reworked to use HAL functions instead of 'manual' config,
+and use same SX1301 calibration firmware as the HAL.
+
 ### v3.2.0 ###
 
 * Added support for SX1301AP2 reference design (with FPGA and additional
