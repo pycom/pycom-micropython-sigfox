@@ -86,7 +86,7 @@ Note: when using same SPI device from 2 applications, we rely on the host SPI
 driver and OS to properly handle concurrent SPI requests. It has been tested on
 Raspberry Pi / Raspbian with spi_bcm2708 driver.* Removed SPI FTDI support due
 to lack of performances to properly handle heavy packet traffic. Only native
-SPI suage is recommended.
+SPI usage is recommended.
 * HAL: added a check that SX1301 firmwares have been properly loaded at startup.
 
 ### v3.1.0 ###
@@ -149,11 +149,11 @@ before running any application
 
 ### v1.7.0 ###
 
-* Added TX “start delay” compensation for timestamp mode (fix time window
+* Added TX 'start delay' compensation for timestamp mode (fix time window
 alignment issue at low SF and/or high BW)
 * Added adaptive narrowband/wideband TX filtering for LoRa
 * Added a command-line option to set CR in util_tx_test
-* Added notes for TX “start delay” in immediate and triggered mode
+* Added notes for TX 'start delay' in immediate and triggered mode
 
 /!\ warning: due to start delay compensation being implemented, TX that were 
 previously 1.5ms late will be sent on time. At low datarate, this is not an 
@@ -298,7 +298,7 @@ maximum ratings or operation outside the specified range.
 SEMTECH PRODUCTS ARE NOT DESIGNED, INTENDED, AUTHORIZED OR WARRANTED TO BE 
 SUITABLE FOR USE IN LIFE-SUPPORT APPLICATIONS, DEVICES OR SYSTEMS OR OTHER 
 CRITICAL APPLICATIONS. INCLUSION OF SEMTECH PRODUCTS IN SUCH APPLICATIONS IS 
-UNDERSTOOD TO BE UNDERTAKEN SOLELY AT THE CUSTOMER’S OWN RISK. Should a 
+UNDERSTOOD TO BE UNDERTAKEN SOLELY AT THE CUSTOMER'S OWN RISK. Should a
 customer purchase or use Semtech products for any such unauthorized 
 application, the customer shall indemnify and hold Semtech and its officers, 
 employees, subsidiaries, affiliates, and distributors harmless against all 
