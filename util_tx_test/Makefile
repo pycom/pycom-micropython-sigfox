@@ -55,11 +55,11 @@ $(LGW_PATH)/libloragw.a: $(LGW_INC)
 
 ### Main program compilation and assembly
 
-$(OBJDIR)/$(APP_NAME).o: src/$(APP_NAME).c $(LGW_INC) | $(OBJDIR)
-	$(CC) -c $(CFLAGS) -I$(LGW_PATH)/inc $< -o $@
-
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
+
+$(OBJDIR)/$(APP_NAME).o: src/$(APP_NAME).c $(LGW_INC) | $(OBJDIR)
+	$(CC) -c $(CFLAGS) -I$(LGW_PATH)/inc $< -o $@
 
 $(APP_NAME): $(OBJDIR)/$(APP_NAME).o $(LGW_PATH)/libloragw.a
 	$(CC) -L$(LGW_PATH) $< -o $@ $(LIBS)
