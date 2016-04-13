@@ -70,6 +70,7 @@ FPGA was missing for proper IQ inversion configuration.
 * util_spectral_scan: Removed FPGA soft reset, now done by the HAL.
 * util_tx_continous: reworked to use HAL functions instead of 'manual' config,
 and use same SX1301 calibration firmware as the HAL.
+* Updated all makefiles to handle the creation of obj directory when necessary.
 
 ### v3.2.0 ###
 
