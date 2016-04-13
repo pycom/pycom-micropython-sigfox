@@ -17,7 +17,7 @@ INCLUDES = $(wildcard inc/*.h)
 all: util_spectral_scan
 
 clean:
-	rm -f obj/*.o
+	rm -f $(OBJDIR)/*.o
 	rm -f util_spectral_scan
 
 
@@ -31,7 +31,7 @@ $(OBJDIR):
 
 ### Main program assembly
 
-util_spectral_scan: obj/util_spectral_scan.o obj/loragw_fpga_reg.o obj/loragw_fpga_spi.o obj/loragw_fpga_aux.o
+util_spectral_scan: $(OBJDIR)/util_spectral_scan.o $(OBJDIR)/loragw_fpga_reg.o $(OBJDIR)/loragw_fpga_spi.o $(OBJDIR)/loragw_fpga_aux.o
 	$(CC) $^ -lrt -o $@
 
 ### EOF
