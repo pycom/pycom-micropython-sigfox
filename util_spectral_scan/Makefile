@@ -23,11 +23,11 @@ clean:
 
 ### Sub-modules compilation
 
-$(OBJDIR)/%.o: src/%.c $(INCLUDES) | $(OBJDIR)
-	$(CC) -c $(CFLAGS) $< -o $@
-
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
+
+$(OBJDIR)/%.o: src/%.c $(INCLUDES) | $(OBJDIR)
+	$(CC) -c $(CFLAGS) $< -o $@
 
 ### Main program assembly
 
