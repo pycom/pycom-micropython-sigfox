@@ -9,6 +9,9 @@ CC = $(CROSS_COMPILE)gcc
 AR = $(CROSS_COMPILE)ar
 CFLAGS = -O2 -Wall -Wextra -std=c99 -I inc -D DEBUG_SPI=0 -D DEBUG_REG=0
 
+OBJDIR = obj
+INCLUDES = $(wildcard inc/*.h)
+
 ### General build targets
 
 all: util_spectral_scan
@@ -20,19 +23,13 @@ clean:
 
 ### Sub-modules compilation
 
-obj/loragw_fpga_aux.o: src/loragw_fpga_aux.c inc/loragw_fpga_aux.h
+$(OBJDIR)/%.o: src/%.c $(INCLUDES) | $(OBJDIR)
 	$(CC) -c $(CFLAGS) $< -o $@
 
-obj/loragw_fpga_spi.o: src/loragw_fpga_spi.c inc/loragw_fpga_spi.h
-	$(CC) -c $(CFLAGS) $< -o $@
+$(OBJDIR):
+	mkdir -p $(OBJDIR)
 
-obj/loragw_fpga_reg.o: src/loragw_fpga_reg.c inc/loragw_fpga_reg.h inc/loragw_fpga_spi.h
-	$(CC) -c $(CFLAGS) $< -o $@
-
-### Main program compilation and assembly
-
-obj/util_spectral_scan.o: src/util_spectral_scan.c inc/loragw_fpga_reg.h inc/loragw_fpga_spi.h inc/loragw_fpga_aux.h
-	$(CC) -c $(CFLAGS) $< -o $@
+### Main program assembly
 
 util_spectral_scan: obj/util_spectral_scan.o obj/loragw_fpga_reg.o obj/loragw_fpga_spi.o obj/loragw_fpga_aux.o
 	$(CC) $^ -lrt -o $@
