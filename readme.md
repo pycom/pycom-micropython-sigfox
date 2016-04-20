@@ -16,9 +16,6 @@ a Semtech LoRa multi-channel RF receiver (a.k.a. concentrator).
 Once compiled all the code is contained in the libloragw.a file that will be 
 statically linked (ie. integrated in the final executable).
 
-The library must be configured by editing the library.cfg file to set target
-platform, SPI interface, etc.
-
 The library also comes with a bunch of basic tests programs that are used to 
 test the different sub-modules of the library.
 
