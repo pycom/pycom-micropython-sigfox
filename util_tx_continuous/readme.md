@@ -27,7 +27,7 @@ See command line help to get the list of all available options:
 ./util_tx_continuous -h
 
 Example:
-./util_tx_continuous -f 868 -r 1 --dig 0 --mix 11 --pa 2 --mod "LORA" --sf 7 --bw 125
+./util_tx_continuous -f 868 -r 1257 --dig 0 --mix 14 --pa 3 --mod "LORA" --sf 7 --bw 125
 
 
 4. License
