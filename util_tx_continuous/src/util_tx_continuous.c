@@ -51,7 +51,7 @@ Maintainer: Matthieu Leurent
 #define DEFAULT_DIGITAL_GAIN    0
 #define DEFAULT_DAC_GAIN        3
 #define DEFAULT_MIXER_GAIN      14
-#define DEFAULT_PA_VOLTAGE      1.5
+#define DEFAULT_PA_GAIN         3
 #define DEFAULT_MODULATION      "LORA"
 #define DEFAULT_SF              7
 #define DEFAULT_BW_KHZ          125
@@ -110,7 +110,7 @@ int main(int argc, char **argv)
     uint8_t g_dig = DEFAULT_DIGITAL_GAIN;
     uint8_t g_dac = DEFAULT_DAC_GAIN;
     uint8_t g_mix = DEFAULT_MIXER_GAIN;
-    uint8_t g_pa = DEFAULT_PA_VOLTAGE;
+    uint8_t g_pa = DEFAULT_PA_GAIN;
     char mod[64] = DEFAULT_MODULATION;
     uint8_t sf = DEFAULT_SF;
     unsigned int bw_khz = DEFAULT_BW_KHZ;
@@ -319,7 +319,7 @@ int main(int argc, char **argv)
     memset(&txlut, 0, sizeof txlut);
     txlut.size = 1;
     txlut.lut[0].dig_gain = g_dig;
-    txlut.lut[0].pa_gain = 0;
+    txlut.lut[0].pa_gain = g_pa;
     txlut.lut[0].dac_gain = g_dac;
     txlut.lut[0].mix_gain = g_mix;
     txlut.lut[0].rf_power = 0;
