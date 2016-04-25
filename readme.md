@@ -69,6 +69,8 @@ FPGA was missing for proper IQ inversion configuration.
 * util_tx_continous: reworked to use HAL functions instead of 'manual' config,
 and use same SX1301 calibration firmware as the HAL.
 * Updated all makefiles to handle the creation of obj directory when necessary.
+* Change cs_change usage policy in SPI module to let the driver handle the chip
+select.
 
 ### v3.2.0 ###
 
