@@ -26,6 +26,7 @@ Maintainer: Sylvain Miermont
 
 #include "loragw_spi.h"
 #include "loragw_reg.h"
+#include "loragw_fpga.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -60,7 +61,7 @@ struct lgw_reg_s {
 #define PAGE_ADDR		0x00
 #define PAGE_MASK		0x03
 
-const uint8_t FPGA_VERSION[] = { 18, 19 }; /* several versions supported */
+const uint8_t FPGA_VERSION[] = { 18, 19, 27 }; /* several versions supported */
 
 /*
 auto generated register mapping for C code : 11-Jul-2013 13:20:40
@@ -402,7 +403,7 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS] = {
 
 void *lgw_spi_target = NULL; /*! generic pointer to the SPI device */
 static int lgw_regpage = -1; /*! keep the value of the register page selected */
-static uint8_t lgw_spi_mux_mode = 0; /*! current SPI mux mode used */
+uint8_t lgw_spi_mux_mode = 0; /*! current SPI mux mode used */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
@@ -412,6 +413,8 @@ int page_switch(uint8_t target) {
 	lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, PAGE_ADDR, (uint8_t)lgw_regpage);
 	return LGW_REG_SUCCESS;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 bool check_fpga_version(uint8_t version) {
     int i;
@@ -456,11 +459,13 @@ int lgw_connect(void) {
         DEBUG_MSG("INFO: no FPGA detected\n");
         lgw_spi_mux_mode = LGW_SPI_MUX_MODE0;
     } else {
-        DEBUG_MSG("INFO: detected FPGA with SPI mux header\n");
+        DEBUG_PRINTF("INFO: detected FPGA with SPI mux header (v%u)\n", u);
         lgw_spi_mux_mode = LGW_SPI_MUX_MODE1;
         /* FPGA Soft Reset */
         lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 1);
         lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 0);
+        /* FPGA configure */
+        lgw_fpga_configure();
     }
 
     /* check SX1301 version */

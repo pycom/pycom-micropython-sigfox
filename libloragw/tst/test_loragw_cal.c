@@ -35,6 +35,7 @@ Maintainer: Sylvain Miermont
 #include "loragw_hal.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
+#include "loragw_radio.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -81,12 +82,6 @@ struct cal_res_s {
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
 int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size); /* defined in loragw_hal.c */
-
-void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data); /* defined in loragw_hal.c */
-
-uint8_t sx125x_read(uint8_t channel, uint8_t addr); /* defined in loragw_hal.c */
-
-int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz); /* defined in loragw_hal.c */
 
 uint8_t sx125x_cal(uint8_t cal_cmd, struct cal_res_s *cal_res);
 
@@ -288,8 +283,8 @@ int main(int argc, char **argv)
 	lgw_reg_w(LGW_RADIO_RST,0);
 	
 	/* setup the radios */
-	setup_sx125x(0, fa);
-	setup_sx125x(1, fb);
+	setup_sx125x(0, clocksource, true, radio_type, fa);
+	setup_sx125x(1, clocksource, false, radio_type, fb);
 	
 	/* Set GPIO 4 high for calibration */
 	lgw_reg_w(LGW_GPIO_MODE,31); /* Set all GPIOs as output */

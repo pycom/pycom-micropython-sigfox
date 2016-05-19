@@ -58,6 +58,10 @@ gateway operates.
 3. Changelog
 -------------
 
+### v4.0.0 ###
+
+* HAL: Added Listen-Before-Talk support for Semtech AP2 Reference Design
+
 ### v3.2.1 ###
 
 * HAL: Fixed downlink support for SX1301AP2 reference design: soft reset of the

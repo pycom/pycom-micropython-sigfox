@@ -44,6 +44,7 @@ Maintainer: Sylvain Miermont
 /* return status code */
 #define LGW_HAL_SUCCESS		0
 #define LGW_HAL_ERROR		-1
+#define LGW_LBT_ISSUE		1
 
 /* radio-specific parameters */
 #define LGW_XTAL_FREQU		32000000	/* frequency of the RF reference oscillator */
@@ -165,8 +166,23 @@ enum lgw_radio_type_e {
 @brief Configuration structure for board specificities
 */
 struct lgw_conf_board_s {
-	bool		lorawan_public;		/*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
-	uint8_t		clksrc;			/*!> Index of RF chain which provides clock to concentrator */
+	bool		lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
+	uint8_t		clksrc;         /*!> Index of RF chain which provides clock to concentrator */
+};
+
+/**
+@struct lgw_conf_lbt_s
+@brief Configuration structure for LBT specificities
+*/
+struct lgw_conf_lbt_s {
+	bool		enable;
+	uint8_t		rssi_target;
+	uint8_t     nb_channel;
+	uint16_t    scan_time_us;
+	uint32_t    start_freq;
+	uint32_t    tx_delay_1ch_us;
+	uint32_t    tx_delay_2ch_us;
+	uint32_t    tx_delay_3ch_us;
 };
 
 /**
@@ -272,6 +288,13 @@ struct lgw_tx_gain_lut_s {
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_board_setconf(struct lgw_conf_board_s conf);
+
+/**
+@brief Configure the gateway lbt function
+@param conf structure containing the configuration parameters
+@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
+*/
+int lgw_lbt_setconf(struct lgw_conf_lbt_s conf);
 
 /**
 @brief Configure an RF chain (must configure before start)

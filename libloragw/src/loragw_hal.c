@@ -26,6 +26,10 @@ Maintainer: Sylvain Miermont
 #include "loragw_reg.h"
 #include "loragw_hal.h"
 #include "loragw_aux.h"
+#include "loragw_spi.h"
+#include "loragw_radio.h"
+#include "loragw_fpga.h"
+#include "loragw_lbt.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -65,53 +69,19 @@ Maintainer: Sylvain Miermont
 #define		AGC_CMD_WAIT		16
 #define		AGC_CMD_ABORT		17
 
-#define		MIN_LORA_PREAMBLE		4
-#define		STD_LORA_PREAMBLE		6
-#define		MIN_FSK_PREAMBLE		3
-#define		STD_FSK_PREAMBLE		5
-#define		PLL_LOCK_MAX_ATTEMPTS	5
+#define		MIN_LORA_PREAMBLE	4
+#define		STD_LORA_PREAMBLE	6
+#define		MIN_FSK_PREAMBLE	3
+#define		STD_FSK_PREAMBLE	5
 
 #define		TX_START_DELAY		1500
 
-/*
-SX1257 frequency setting :
-F_register(24bit) = F_rf (Hz) / F_step(Hz)
-                  = F_rf (Hz) * 2^19 / F_xtal(Hz)
-                  = F_rf (Hz) * 2^19 / 32e6
-                  = F_rf (Hz) * 256/15625
-
-SX1255 frequency setting :
-F_register(24bit) = F_rf (Hz) / F_step(Hz)
-                  = F_rf (Hz) * 2^20 / F_xtal(Hz)
-                  = F_rf (Hz) * 2^20 / 32e6
-                  = F_rf (Hz) * 512/15625
-*/
-#define 	SX125x_32MHz_FRAC	15625	/* irreductible fraction for PLL register caculation */
-
-#define		SX125x_TX_DAC_CLK_SEL	1	/* 0:int, 1:ext */
-#define		SX125x_TX_DAC_GAIN		2	/* 3:0, 2:-3, 1:-6, 0:-9 dBFS (default 2) */
-#define		SX125x_TX_MIX_GAIN		14	/* -38 + 2*TxMixGain dB (default 14) */
-#define		SX125x_TX_PLL_BW		1	/* 0:75, 1:150, 2:225, 3:300 kHz (default 3) */
-#define		SX125x_TX_ANA_BW		0	/* 17.5 / 2*(41-TxAnaBw) MHz (default 0) */
-#define		SX125x_TX_DAC_BW		5	/* 24 + 8*TxDacBw Nb FIR taps (default 2) */
-#define		SX125x_RX_LNA_GAIN		1	/* 1 to 6, 1 highest gain */
-#define		SX125x_RX_BB_GAIN		12	/* 0 to 15 , 15 highest gain */
-#define 	SX125x_LNA_ZIN			1	/* 0:50, 1:200 Ohms (default 1) */
-#define		SX125x_RX_ADC_BW		7	/* 0 to 7, 2:100<BW<200, 5:200<BW<400,7:400<BW kHz SSB (default 7) */
-#define		SX125x_RX_ADC_TRIM		6	/* 0 to 7, 6 for 32MHz ref, 5 for 36MHz ref */
-#define 	SX125x_RX_BB_BW			0	/* 0:750, 1:500, 2:375; 3:250 kHz SSB (default 1, max 3) */
-#define 	SX125x_RX_PLL_BW		0	/* 0:75, 1:150, 2:225, 3:300 kHz (default 3, max 3) */
-#define 	SX125x_ADC_TEMP			0	/* ADC temperature measurement mode (default 0) */
-#define 	SX125x_XOSC_GM_STARTUP	13	/* (default 13) */
-#define 	SX125x_XOSC_DISABLE		2	/* Disable of Xtal Oscillator blocks bit0:regulator, bit1:core(gm), bit2:amplifier */
-
-#define		RSSI_MULTI_BIAS			-35		/* difference between "multi" modem RSSI offset and "stand-alone" modem RSSI offset */
-#define		RSSI_FSK_BIAS			-37.0	/* difference between FSK modem RSSI offset and "stand-alone" modem RSSI offset */
-#define		RSSI_FSK_REF			-70.0	/* linearize FSK RSSI curve around -70 dBm */
-#define		RSSI_FSK_SLOPE			0.8
+#define		RSSI_MULTI_BIAS		-35		/* difference between "multi" modem RSSI offset and "stand-alone" modem RSSI offset */
+#define		RSSI_FSK_BIAS		-37.0	/* difference between FSK modem RSSI offset and "stand-alone" modem RSSI offset */
+#define		RSSI_FSK_REF		-70.0	/* linearize FSK RSSI curve around -70 dBm */
+#define		RSSI_FSK_SLOPE		0.8
 
 /* constant arrays defining hardware capability */
-
 const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 const uint32_t rf_rx_bandwidth[LGW_RF_CHAIN_NB] = LGW_RF_RX_BANDWIDTH;
 
@@ -183,16 +153,17 @@ static int8_t cal_offset_a_q[8]; /* TX Q offset for radio A */
 static int8_t cal_offset_b_i[8]; /* TX I offset for radio B */
 static int8_t cal_offset_b_q[8]; /* TX Q offset for radio B */
 
+/* LBT variables - defined in loragw_lbt module */
+extern bool lbt_enable;
+extern uint8_t lbt_rssi_target;
+extern uint8_t lbt_nb_channel;
+extern uint32_t lbt_first_channel_freq;
+extern uint16_t lbt_scan_time_us;
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
 int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size);
-
-void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data);
-
-uint8_t sx125x_read(uint8_t channel, uint8_t addr);
-
-int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz);
 
 void lgw_constant_adjust(void);
 
@@ -247,183 +218,6 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
 
 	/* give back control of the MCU program ram to the MCU */
 	lgw_reg_w(reg_sel, 1);
-
-	return 0;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
-	int reg_add, reg_dat, reg_cs;
-
-	/* checking input parameters */
-	if (channel >= LGW_RF_CHAIN_NB) {
-		DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
-		return;
-	}
-	if (addr >= 0x7F) {
-		DEBUG_MSG("ERROR: ADDRESS OUT OF RANGE\n");
-		return;
-	}
-
-	/* selecting the target radio */
-	switch (channel) {
-		case 0:
-			reg_add = LGW_SPI_RADIO_A__ADDR;
-			reg_dat = LGW_SPI_RADIO_A__DATA;
-			reg_cs	= LGW_SPI_RADIO_A__CS;
-			break;
-
-		case 1:
-			reg_add = LGW_SPI_RADIO_B__ADDR;
-			reg_dat = LGW_SPI_RADIO_B__DATA;
-			reg_cs	= LGW_SPI_RADIO_B__CS;
-			break;
-
-		default:
-			DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", channel);
-			return;
-	}
-
-	/* SPI master data write procedure */
-	lgw_reg_w(reg_cs, 0);
-	lgw_reg_w(reg_add, 0x80 | addr); /* MSB at 1 for write operation */
-	lgw_reg_w(reg_dat, data);
-	lgw_reg_w(reg_cs, 1);
-	lgw_reg_w(reg_cs, 0);
-
-	return;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
-	int reg_add, reg_dat, reg_cs, reg_rb;
-	int32_t read_value;
-
-	/* checking input parameters */
-	if (channel >= LGW_RF_CHAIN_NB) {
-		DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
-		return 0;
-	}
-	if (addr >= 0x7F) {
-		DEBUG_MSG("ERROR: ADDRESS OUT OF RANGE\n");
-		return 0;
-	}
-
-	/* selecting the target radio */
-	switch (channel) {
-		case 0:
-			reg_add = LGW_SPI_RADIO_A__ADDR;
-			reg_dat = LGW_SPI_RADIO_A__DATA;
-			reg_cs	= LGW_SPI_RADIO_A__CS;
-			reg_rb	= LGW_SPI_RADIO_A__DATA_READBACK;
-			break;
-
-		case 1:
-			reg_add = LGW_SPI_RADIO_B__ADDR;
-			reg_dat = LGW_SPI_RADIO_B__DATA;
-			reg_cs	= LGW_SPI_RADIO_B__CS;
-			reg_rb	= LGW_SPI_RADIO_B__DATA_READBACK;
-			break;
-
-		default:
-			DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", channel);
-			return 0;
-	}
-
-	/* SPI master data read procedure */
-	lgw_reg_w(reg_cs, 0);
-	lgw_reg_w(reg_add, addr); /* MSB at 0 for read operation */
-	lgw_reg_w(reg_dat, 0);
-	lgw_reg_w(reg_cs, 1);
-	lgw_reg_w(reg_cs, 0);
-	lgw_reg_r(reg_rb, &read_value);
-
-	return (uint8_t)read_value;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int setup_sx125x(uint8_t rf_chain, uint32_t freq_hz) {
-	uint32_t part_int = 0;
-	uint32_t part_frac = 0;
-	int cpt_attempts = 0;
-
-	if (rf_chain >= LGW_RF_CHAIN_NB) {
-		DEBUG_MSG("ERROR: INVALID RF_CHAIN\n");
-		return -1;
-	}
-
-	/* Get version to identify SX1255/57 silicon revision */
-	DEBUG_PRINTF("Note: SX125x #%d version register returned 0x%02x\n", rf_chain, sx125x_read(rf_chain, 0x07));
-
-	/* General radio setup */
-	if (rf_clkout == rf_chain) {
-		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL + 2);
-		DEBUG_PRINTF("Note: SX125x #%d clock output enabled\n", rf_chain);
-	} else {
-		sx125x_write(rf_chain, 0x10, SX125x_TX_DAC_CLK_SEL);
-		DEBUG_PRINTF("Note: SX125x #%d clock output disabled\n", rf_chain);
-	}
-
-	switch (rf_radio_type[rf_chain]) {
-		case LGW_RADIO_TYPE_SX1255:
-			sx125x_write(rf_chain, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
-			break;
-		case LGW_RADIO_TYPE_SX1257:
-			sx125x_write(rf_chain, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
-			break;
-		default:
-			DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[rf_chain]);
-			break;
-	}
-
-	if (rf_enable[rf_chain] == true) {
-		/* Tx gain and trim */
-		sx125x_write(rf_chain, 0x08, SX125x_TX_MIX_GAIN + SX125x_TX_DAC_GAIN*16);
-		sx125x_write(rf_chain, 0x0A, SX125x_TX_ANA_BW + SX125x_TX_PLL_BW*32);
-		sx125x_write(rf_chain, 0x0B, SX125x_TX_DAC_BW);
-
-		/* Rx gain and trim */
-		sx125x_write(rf_chain, 0x0C, SX125x_LNA_ZIN + SX125x_RX_BB_GAIN*2 + SX125x_RX_LNA_GAIN*32);
-		sx125x_write(rf_chain, 0x0D, SX125x_RX_BB_BW + SX125x_RX_ADC_TRIM*4 + SX125x_RX_ADC_BW*32);
-		sx125x_write(rf_chain, 0x0E, SX125x_ADC_TEMP + SX125x_RX_PLL_BW*2);
-
-		/* set RX PLL frequency */
-		switch (rf_radio_type[rf_chain]) {
-			case LGW_RADIO_TYPE_SX1255:
-				part_int = freq_hz / (SX125x_32MHz_FRAC << 7); /* integer part, gives the MSB */
-				part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 7)) << 9) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-				break;
-			case LGW_RADIO_TYPE_SX1257:
-				part_int = freq_hz / (SX125x_32MHz_FRAC << 8); /* integer part, gives the MSB */
-				part_frac = ((freq_hz % (SX125x_32MHz_FRAC << 8)) << 8) / SX125x_32MHz_FRAC; /* fractional part, gives middle part and LSB */
-				break;
-			default:
-				DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[rf_chain]);
-				break;
-		}
-
-		sx125x_write(rf_chain, 0x01,0xFF & part_int); /* Most Significant Byte */
-		sx125x_write(rf_chain, 0x02,0xFF & (part_frac >> 8)); /* middle byte */
-		sx125x_write(rf_chain, 0x03,0xFF & part_frac); /* Least Significant Byte */
-
-		/* start and PLL lock */
-		do {
-			if (cpt_attempts >= PLL_LOCK_MAX_ATTEMPTS) {
-				DEBUG_MSG("ERROR: FAIL TO LOCK PLL\n");
-				return -1;
-			}
-			sx125x_write(rf_chain, 0x00, 1); /* enable Xtal oscillator */
-			sx125x_write(rf_chain, 0x00, 3); /* Enable RX (PLL+FE) */
-			++cpt_attempts;
-			DEBUG_PRINTF("Note: SX125x #%d PLL start (attempt %d)\n", rf_chain, cpt_attempts);
-			wait_ms(1);
-		} while((sx125x_read(rf_chain, 0x11) & 0x02) == 0);
-	} else {
-		DEBUG_PRINTF("Note: SX125x #%d kept in standby mode\n", rf_chain);
-	}
 
 	return 0;
 }
@@ -568,6 +362,28 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
 
 	return LGW_HAL_SUCCESS;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_lbt_setconf(struct lgw_conf_lbt_s conf) {
+	int x;
+
+	/* check if the concentrator is running */
+	if (lgw_is_started == true) {
+		DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
+		return LGW_HAL_ERROR;
+	}
+
+	x = lbt_setconf(&conf);
+	if (x != LGW_LBT_SUCCESS) {
+		DEBUG_MSG("ERROR: Failed to configure concentrator for LBT\n");
+		return LGW_HAL_ERROR;
+	}
+
+	return LGW_HAL_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 
@@ -816,8 +632,9 @@ int lgw_start(void) {
 	/* reset the registers (also shuts the radios down) */
 	lgw_soft_reset();
 
-	/* ungate clocks (gated by default) */
-	lgw_reg_w(LGW_GLOBAL_EN, 1);
+	/* gate clocks */
+	lgw_reg_w(LGW_GLOBAL_EN, 0);
+    lgw_reg_w(LGW_CLK32M_EN, 0);
 
 	/* switch on and reset the radios (also starts the 32 MHz XTAL) */
 	lgw_reg_w(LGW_RADIO_A_EN,1);
@@ -828,12 +645,33 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_RADIO_RST,0);
 
 	/* setup the radios */
-	setup_sx125x(0, rf_rx_freq[0]);
-	setup_sx125x(1, rf_rx_freq[1]);
+	setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
+	setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
 
 	/* gives AGC control of GPIOs to enable Tx external digital filter */
 	lgw_reg_w(LGW_GPIO_MODE,31); /* Set all GPIOs as output */
 	lgw_reg_w(LGW_GPIO_SELECT_OUTPUT,2);
+
+    /* Configure LBT */
+	if (lbt_enable == true) {
+	    lgw_reg_w(LGW_CLK32M_EN, 1);
+		i = lbt_setup(lbt_first_channel_freq, lbt_rssi_target, lbt_scan_time_us, lbt_nb_channel);
+		if (i != LGW_LBT_SUCCESS) {
+			DEBUG_MSG("ERROR: lbt_setup() did not return SUCCESS\n");
+			return LGW_HAL_ERROR;
+		}
+
+		lgw_reg_w(LGW_CLK32M_EN, 0);	
+		i = lbt_start();
+		if (i != LGW_LBT_SUCCESS) {
+			DEBUG_MSG("ERROR: lbt_start() did not return SUCCESS\n");
+			return LGW_HAL_ERROR;
+		}
+	}
+
+    /* Enable clocks */
+	lgw_reg_w(LGW_GLOBAL_EN, 1);
+	lgw_reg_w(LGW_CLK32M_EN, 1);
 
 	/* GPIOs table :
 	DGPIO0 -> N/A
@@ -1135,7 +973,13 @@ int lgw_start(void) {
 	}
 
 	/* enable GPS event capture */
-	lgw_reg_w(LGW_GPS_EN,1);
+	lgw_reg_w(LGW_GPS_EN, 1);
+
+    /* */
+    if (lbt_enable) {
+	    DEBUG_MSG("LBT: wait 8.38 sec to avoid unexpected TX if channels are busy\n");
+	    wait_ms(8400);
+    }
 
 	lgw_is_started = true;
 	return LGW_HAL_SUCCESS;
@@ -1363,7 +1207,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) {
-	int i;
+	int i, x;
 	uint8_t buff[256+TX_METADATA_NB]; /* buffer to prepare the packet to send + metadata before SPI write burst */
 	uint32_t part_int = 0; /* integer part for PLL register value calculation */
 	uint32_t part_frac = 0; /* fractional part for PLL register value calculation */
@@ -1372,7 +1216,8 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	int payload_offset = 0; /* start of the payload content in the databuffer */
 	uint8_t pow_index = 0; /* 4-bit value to set the firmware TX power */
 	uint8_t target_mix_gain = 0; /* used to select the proper I/Q offset correction */
-	uint32_t count_trig; /* timestamp value in trigger mode corrected for TX start delay */
+	uint32_t count_trig = 0; /* timestamp value in trigger mode corrected for TX start delay */
+	bool tx_allowed = false;
 
 	/* check if the concentrator is running */
 	if (lgw_is_started == false) {
@@ -1616,23 +1461,32 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	lgw_reg_wb(LGW_TX_DATA_BUF_DATA, buff, transfer_size);
 	DEBUG_ARRAY(i, transfer_size, buff);
 
-	/* send data */
-	switch(pkt_data.tx_mode) {
-		case IMMEDIATE:
-			lgw_reg_w(LGW_TX_TRIG_IMMEDIATE, 1);
-			break;
+	x = lbt_is_channel_free(&pkt_data, &tx_allowed);
+	if (x != LGW_LBT_SUCCESS) {
+		DEBUG_MSG("ERROR: Failed to check channel availability for TX\n");
+		return LGW_HAL_ERROR;
+	}
+	if (tx_allowed == true) {
+		switch(pkt_data.tx_mode) {
+			case IMMEDIATE:
+				lgw_reg_w(LGW_TX_TRIG_IMMEDIATE, 1);
+				break;
 
-		case TIMESTAMPED:
-			lgw_reg_w(LGW_TX_TRIG_DELAYED, 1);
-			break;
+			case TIMESTAMPED:
+				lgw_reg_w(LGW_TX_TRIG_DELAYED, 1);
+				break;
 
-		case ON_GPS:
-			lgw_reg_w(LGW_TX_TRIG_GPS, 1);
-			break;
+			case ON_GPS:
+				lgw_reg_w(LGW_TX_TRIG_GPS, 1);
+				break;
 
-		default:
-			DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", pkt_data.tx_mode);
-			return LGW_HAL_ERROR;
+			default:
+				DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", pkt_data.tx_mode);
+				return LGW_HAL_ERROR;
+		}
+	} else {
+		DEBUG_MSG("ERROR: Cannot send packet, channel is busy (LBT)\n");
+		return LGW_LBT_ISSUE;
 	}
 
 	return LGW_HAL_SUCCESS;
