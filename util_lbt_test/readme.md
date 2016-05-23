@@ -5,34 +5,41 @@
 	(______/|_____)_|_|_| \__)_____)\____)_| |_|
 		©2013 Semtech-Cycleo
 
-Lora Gateway RSSI histogram
-===========================
+Lora Gateway LBT basic test application
+=======================================
 
 1. Introduction
 ----------------
 
-This software captures and computes the histogram of RSSIs on SX1272.
+This software configures the FPGA for "Liste-Before-Talk" feature and
+continuously reads the LBT channels timestamps which indicate when was the last
+instant when the channel was free.
 
 2. Dependencies
 ----------------
 
-loragw_fpga
+- An AP2 Ref Design board with its FPGA programmed with LBT feature
 
 3. Usage
 ---------
-Before running the util_histo_test, the SX1301 MUST be first configured in RX mode.
-For example, you must run any packet-forwarder or packet-logger
 
-util_histo_test -f <start_freq>:<stop_freq>:<freq_step> -t <tempo> -n <nb_point> -o <rssi_offset>
+Before running the util_lbt_test application, the concentrator MUST be first
+started with the HAL, using for example util_pkt_logger or the packet forwarder.
 
-Command-line options:
- -h: help
- -f: <start_freq>:<stop_freq>:<freq_step>
- -n: number of RSSI captures default is 10000  (authorized value are 1000 <-> 32000)
- -t: delay b/w two capture in number of 32MHz clock period, default is 32000 (one RSSI read each ms) (authorized value are 1000 <-> 32000)
- -o: rssi negative offset in dBm (default 142 means that a -142 dBm offset is applied on rssi read value)
+ex:
+./util_lbt_test -f 867.1 -t 100 -n 14 -s 15 -p 50 -r 162
+
+This will set 6 LBT channels, starting from 867.1 MHz, then each subsequent
+channel being set to the frequency of the previous channel +200 KHz (867.3,
+867.5, ...).
+
+The above test will run for 100 iterations, with a CHANNEL_SCAN_TIME of 270µs
+and a target RSSI of -81dBm.
+
+Please refer to the lora_gateway library readme.md to get more details on the
+LBT feature implementation and configuration.
 
 4. Changelog
 -------------
 
-2015-02-17	v1.0	Initial version
+2016-03-03	v1.0	Initial version

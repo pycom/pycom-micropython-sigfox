@@ -55,12 +55,18 @@ for spectral measurement.
 This software is used to scan the spectral band in background, where the LoRa
 gateway operates.
 
+### 2.6. util_lbt_test ###
+
+This software is used to test "Listen-Before-Talk" channels timestamps.
+
 3. Changelog
 -------------
 
 ### v4.0.0 ###
 
 * HAL: Added Listen-Before-Talk support for Semtech AP2 Reference Design
+* Added a reset_lgw.sh script to be used with IoT Starter Kit (v1.0) to reset
+the concentrator through the HOST GPIO pin.
 
 ### v3.2.1 ###
 
