@@ -29,8 +29,8 @@ The library is composed of 6(8) modules:
 * loragw_aux
 * loragw_gps
 * loragw_radio
-* loragw_fpga (only for AP2 ref design)
-* loragw_lbt (only for AP2 ref design)
+* loragw_fpga (only for SX1301AP2 ref design)
+* loragw_lbt (only for SX1301AP2 ref design)
 
 The library also contains basic test programs to demonstrate code use and check
 functionality.
@@ -173,15 +173,15 @@ SX1272 radios.
 This module contains the description of the FPGA registers, the functions to
 read/write those registers, and a function to configure the FPGA features.
 
-This module is only required for AP2 reference design.
+This module is only required for SX1301AP2 reference design.
 
 ### 2.8. loragw_lbt ###
 
 This module contains functions to configure and use the "Listen-Before-Talk"
 feature. It depends on the loragw_fpga and loragw_radio modules.
 
-LBT feature is only available on AP2 reference design, which provides the FPGA
-and the SX1272 radio required to accomplish the feature.
+LBT feature is only available on SX1301AP2 reference design, which provides the
+FPGA and the SX1272 radio required to accomplish the feature.
 
 The FPGA implements the following Finite State Machine (FSM) to scan predefined
 channels used for LBT, using the SX1272 radio:
@@ -236,7 +236,7 @@ SPI_MASTER_SPEED_DIVIDER: defines the internal SPI_MASTER SPI clock speed.
 NB_RSSI_READ:             defines the number of SPI reads of SX1272 RSSI value
                           register.
 
-PLL_LOCK_TIME:            defines the delay in 8µs setp between frequency
+PLL_LOCK_TIME:            defines the delay in 8µs step between frequency
                           programming and RX ready.
 
 RSSI_TARGET:              defines the signal strength target used to detect if
@@ -249,7 +249,7 @@ CHANNEL_SCAN_TIME (µs) = (NB_RSSI_READ + 1) * Tspi
     with Tspi (µs) = (16*(2*(SPI_MASTER_SPEED_DIVIDER+1))/32) + 2
 
 With this FSM, the FPGA keeps the last instant when each channel was free during
-more than 128µs.
+more than CHANNEL_SCAN_TIME µs.
 
 Then, the HAL, when receiving a downlink request, will first determine on which
 LBT channel this downlink is supposed to be sent and then checks if the channel

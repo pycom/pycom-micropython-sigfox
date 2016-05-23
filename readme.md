@@ -64,7 +64,11 @@ This software is used to test "Listen-Before-Talk" channels timestamps.
 
 ### v4.0.0 ###
 
-* HAL: Added Listen-Before-Talk support for Semtech AP2 Reference Design
+* HAL: Added "Listen-Before-Talk" support for Semtech SX1301AP2 Ref Design.
+       A description of the feature implementation can be found in
+       libloragw/readme.md.
+* util_lbt_test: New utility provided for basic "Listen-Before-Talk" testing.
+* util_tx_test: Extended to configure and test "LBT" through the HAL.
 * Added a reset_lgw.sh script to be used with IoT Starter Kit (v1.0) to reset
 the concentrator through the HOST GPIO pin.
 
