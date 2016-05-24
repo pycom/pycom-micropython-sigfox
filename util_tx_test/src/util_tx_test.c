@@ -503,7 +503,6 @@ int main(int argc, char **argv)
         lbtconf.start_freq = lbt_f_target;
         lbtconf.tx_delay_1ch_us = lbt_tx_max_time;
         lbtconf.tx_delay_2ch_us = lbt_tx_max_time;
-        lbtconf.tx_delay_3ch_us = lbt_tx_max_time;
         lgw_lbt_setconf(lbtconf);
     }
 

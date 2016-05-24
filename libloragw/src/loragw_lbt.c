@@ -69,7 +69,6 @@ uint16_t lbt_scan_time_us = 220;
 /* LBT local variables */
 static uint32_t lbt_end_tx_delay_1ch_us = 400000;
 static uint32_t lbt_end_tx_delay_2ch_us = 200000;
-static uint32_t lbt_end_tx_delay_3ch_us = 100000;
 static uint32_t lbt_channel_freq[LBT_CHANNEL_FREQ_NB]; /* absolute, in Hz */
 
 /* -------------------------------------------------------------------------- */
@@ -116,7 +115,6 @@ int lbt_setconf(struct lgw_conf_lbt_s * conf) {
     lbt_nb_channel = conf->nb_channel;
     lbt_end_tx_delay_1ch_us = conf->tx_delay_1ch_us;
     lbt_end_tx_delay_2ch_us = conf->tx_delay_2ch_us;
-    lbt_end_tx_delay_3ch_us = conf->tx_delay_3ch_us;
     lbt_first_channel_freq = conf->start_freq;
 
     /* set derivated parameters */
@@ -132,7 +130,6 @@ int lbt_setconf(struct lgw_conf_lbt_s * conf) {
     DEBUG_PRINTF("     lbt_nb_channel           %d\n", lbt_nb_channel );
     DEBUG_PRINTF("     lbt_end_tx_delay_1ch_us  %d\n", lbt_end_tx_delay_1ch_us );
     DEBUG_PRINTF("     lbt_end_tx_delay_2ch_us  %d\n", lbt_end_tx_delay_2ch_us);
-    DEBUG_PRINTF("     lbt_end_tx_delay_3ch_us  %d\n", lbt_end_tx_delay_3ch_us);
     DEBUG_PRINTF("     lbt_first_channel_freq   %d\n", lbt_first_channel_freq);
 
     return LGW_LBT_SUCCESS;

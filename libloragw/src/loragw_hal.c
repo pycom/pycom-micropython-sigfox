@@ -977,7 +977,7 @@ int lgw_start(void) {
 
     /* */
     if (lbt_enable) {
-	    DEBUG_MSG("LBT: wait 8.38 sec to avoid unexpected TX if channels are busy\n");
+	    printf("INFO: Configuring LBT, this may take few seconds, please wait...\n");
 	    wait_ms(8400);
     }
 

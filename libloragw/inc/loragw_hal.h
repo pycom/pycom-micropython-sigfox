@@ -175,14 +175,13 @@ struct lgw_conf_board_s {
 @brief Configuration structure for LBT specificities
 */
 struct lgw_conf_lbt_s {
-	bool		enable;
-	uint8_t		rssi_target;
-	uint8_t     nb_channel;
-	uint16_t    scan_time_us;
-	uint32_t    start_freq;
-	uint32_t    tx_delay_1ch_us;
-	uint32_t    tx_delay_2ch_us;
-	uint32_t    tx_delay_3ch_us;
+    bool        enable;             /*!> enable or disable LBT */
+    uint8_t     rssi_target;        /*!> RSSI threshold to detect if channel is busy or not */
+    uint8_t     nb_channel;         /*!> number of LBT channels */
+    uint16_t    scan_time_us;       /*!> channel activity scan duration, in microseconds */
+    uint32_t    start_freq;         /*!> first LBT channel frequency */
+    uint32_t    tx_delay_1ch_us;    /*!> maximum time allowed to send a packet since channel was free, when TX is on one channel only */
+    uint32_t    tx_delay_2ch_us;    /*!> maximum time allowed to send a packet since channel was free, when TX is on two channels */
 };
 
 /**
@@ -192,8 +191,8 @@ struct lgw_conf_lbt_s {
 struct lgw_conf_rxrf_s {
 	bool			enable;			/*!> enable or disable that RF chain */
 	uint32_t		freq_hz;		/*!> center frequency of the radio in Hz */
-	float			rssi_offset;		/*!> Board-specific RSSI correction factor */
-	enum lgw_radio_type_e	type;			/*!> Radio type for that RF chain (SX1255, SX1257....) */
+	float			rssi_offset;	/*!> Board-specific RSSI correction factor */
+	enum lgw_radio_type_e	type;	/*!> Radio type for that RF chain (SX1255, SX1257....) */
 	bool			tx_enable;		/*!> enable or disable TX on that RF chain */
 };
 
