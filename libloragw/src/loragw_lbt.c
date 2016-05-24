@@ -137,12 +137,12 @@ int lbt_setconf(struct lgw_conf_lbt_s * conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lbt_setup(uint32_t rf_freq, uint8_t rssi_target, uint16_t lbt_scan_time_us, uint8_t lbt_nb_channel) {
+int lbt_setup(uint32_t rf_freq, uint8_t rssi_target, uint16_t scan_time_us, uint8_t nb_channel) {
     int x;
     int32_t val;
     uint8_t spi_speed_div = 31;
     uint16_t t_spi_us = 16*2*(spi_speed_div+1)/32 + 2;
-    uint8_t nb_point_calc = lbt_scan_time_us/t_spi_us - 1;
+    uint8_t nb_point_calc = scan_time_us/t_spi_us - 1;
     uint8_t pll_lock_time = 50;
     uint16_t lsb_start_freq_int;
 
@@ -171,7 +171,7 @@ int lbt_setup(uint32_t rf_freq, uint8_t rssi_target, uint16_t lbt_scan_time_us, 
     x |= lgw_fpga_reg_w(LGW_FPGA_RSSI_TARGET, (int32_t)rssi_target);
     lsb_start_freq_int = (((uint64_t)rf_freq<<19)/(uint64_t)32000000);
     x |= lgw_fpga_reg_w(LGW_FPGA_LSB_START_FREQ, (int32_t)lsb_start_freq_int);
-    x |= lgw_fpga_reg_w(LGW_FPGA_LBT_TIMESTAMP_NB_CH, (int32_t)(lbt_nb_channel-1));
+    x |= lgw_fpga_reg_w(LGW_FPGA_LBT_TIMESTAMP_NB_CH, (int32_t)(nb_channel-1));
     if (x != LGW_REG_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to configure FPGA for LBT\n");
         return LGW_LBT_ERROR;
