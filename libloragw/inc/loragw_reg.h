@@ -7,10 +7,10 @@
   (C)2013 Semtech-Cycleo
 
 Description:
-	Functions used to handle a single LoRa concentrator.
-	Registers are addressed by name.
-	Multi-bytes registers are handled automatically.
-	Read-modify-write is handled automatically.
+    Functions used to handle a single LoRa concentrator.
+    Registers are addressed by name.
+    Multi-bytes registers are handled automatically.
+    Read-modify-write is handled automatically.
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
@@ -23,16 +23,16 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include <stdint.h>		/* C99 types */
-#include <stdbool.h>	/* bool type */
+#include <stdint.h>        /* C99 types */
+#include <stdbool.h>    /* bool type */
 
-#include "config.h"	/* library configuration options (dynamically generated) */
+#include "config.h"    /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-#define LGW_REG_SUCCESS	 0
-#define LGW_REG_ERROR	-1
+#define LGW_REG_SUCCESS  0
+#define LGW_REG_ERROR    -1
 
 /*
 auto generated register mapping for C code : 11-Jul-2013 13:20:40

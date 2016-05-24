@@ -190,7 +190,7 @@ int main(int argc, char **argv)
     enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
     uint8_t clocksource = 1; /* Radio B is source by default */
     struct lgw_conf_board_s boardconf;
-	struct lgw_conf_lbt_s lbtconf;
+    struct lgw_conf_lbt_s lbtconf;
     struct lgw_conf_rxrf_s rfconf;
 
     /* allocate memory for packet sending */
@@ -591,7 +591,7 @@ int main(int argc, char **argv)
         /* send packet */
         printf("Sending packet number %u ...", cycle_count);
         i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
-		if (i == LGW_HAL_ERROR) {
+        if (i == LGW_HAL_ERROR) {
             printf("ERROR\n");
             return EXIT_FAILURE;
         } else if (i == LGW_LBT_ISSUE ) {
