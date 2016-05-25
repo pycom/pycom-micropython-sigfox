@@ -274,7 +274,7 @@ int setup_sx1272_LoRa(uint32_t frequency) {
     x |= lgw_sx127x_reg_w(SX1272_REG_LR_FRFLSB,  freq_reg        & 0xFF);
 
     /* Config */
-    x |= lgw_sx127x_reg_w(SX1272_REG_LR_MODEMCONFIG1, bw << 6);
+    x |= lgw_sx127x_reg_w(SX1272_REG_LR_MODEMCONFIG1, bw << 6); /* 125 KHz */
     x |= lgw_sx127x_reg_w(0x50, LowZin);
     x |= lgw_sx127x_reg_w(SX1272_REG_LR_MODEMCONFIG2, (sf << 4) | (AgcAuto << 2));
     x |= lgw_sx127x_reg_w(SX1272_REG_LR_LNA, LnaBoost | (TrimRxCrFo << 3) | (LnaGain << 5));
@@ -371,6 +371,68 @@ int setup_sx1276_FSK(uint32_t frequency) {
     wait_ms(500);
 
     DEBUG_MSG("INFO: Successfully configured SX1276 for FSK modulation\n");
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int setup_sx1276_LoRa(uint32_t frequency) {
+    uint64_t freq_reg;
+    uint8_t LoRaMode = 1;
+    uint8_t bw = 7;
+    uint8_t codingRate = 1;
+    uint8_t LowZin = 1;
+    uint8_t sf = 7;
+    uint8_t AgcAuto = 1;
+    uint8_t LnaGain = 1;
+    uint8_t LnaBoost = 3;
+    uint8_t AdcBwAuto = 0;
+    uint8_t AdcBw = 7;
+    uint8_t AdcLowPwr = 0;
+    uint8_t AdcTrim = 6;
+    uint8_t AdcTest = 0;
+    uint8_t reg_val;
+    int x;
+
+    /* Set in LoRa mode */
+    x = lgw_sx127x_reg_w(SX1276_REG_LR_OPMODE, 0);
+    wait_ms(100);
+    x |= lgw_sx127x_reg_w(SX1276_REG_LR_OPMODE, 0 | (LoRaMode << 7)); /* Sleep mode, LoRa Mode */
+    wait_ms(100);
+    x |= lgw_sx127x_reg_w(SX1276_REG_LR_OPMODE, 1 | (LoRaMode << 7)); /* Standby mode, LoRa Mode */
+    wait_ms(100);
+
+    /* Set RF carrier frequency */
+    freq_reg = ((uint64_t)frequency << 19) / (uint64_t)32000000;
+    x |= lgw_sx127x_reg_w(SX1276_REG_LR_FRFMSB, (freq_reg >> 16) & 0xFF);
+    x |= lgw_sx127x_reg_w(SX1276_REG_LR_FRFMID, (freq_reg >>  8) & 0xFF);
+    x |= lgw_sx127x_reg_w(SX1276_REG_LR_FRFLSB,  freq_reg        & 0xFF);
+
+    /* Config */
+    x |= lgw_sx127x_reg_w(SX1276_REG_LR_MODEMCONFIG1, 0 | (codingRate << 1) | (bw << 4)); /* 125 KHz, 4/5 */
+    x |= lgw_sx127x_reg_w(0x69, LowZin);
+    x |= lgw_sx127x_reg_w(SX1276_REG_LR_MODEMCONFIG2, sf << 4);
+    x |= lgw_sx127x_reg_w(SX1276_REG_LR_MODEMCONFIG3, AgcAuto << 2);
+    x |= lgw_sx127x_reg_w(SX1276_REG_LR_LNA, LnaBoost | (LnaGain << 5));
+    x |= lgw_sx127x_reg_w(0x57, AdcBw | (AdcBwAuto << 3));
+    x |= lgw_sx127x_reg_w(0x57, AdcTest | (AdcTrim << 4) | (AdcLowPwr << 7));
+
+    if (x != LGW_REG_SUCCESS) {
+        DEBUG_MSG("ERROR: Failed to configure SX1276\n");
+        return x;
+    }
+
+    /* Set in Rx continuous mode */
+    x = lgw_sx127x_reg_w(SX1276_REG_LR_OPMODE, 5 | (LoRaMode << 7)); /* Receiver mode, LoRa Mode */
+    wait_ms(100);
+    x |= lgw_sx127x_reg_r(SX1276_REG_LR_OPMODE, &reg_val);
+    if ((reg_val != (5 | (LoRaMode << 7))) || (x != LGW_REG_SUCCESS)) {
+        DEBUG_MSG("ERROR: SX1276 failed to enter RX continuous mode\n");
+        return x;
+    }
+
+    DEBUG_MSG("INFO: Successfully configured SX1276 for LoRa modulation\n");
 
     return LGW_REG_SUCCESS;
 }
@@ -512,9 +574,7 @@ int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation) {
             if (radio_type == LGW_RADIO_TYPE_SX1272) {
                 x = setup_sx1272_LoRa(frequency);
             } else {
-                /* Not supported */
-                DEBUG_MSG("ERROR: LoRa modulation not supported for SX1276\n");
-                x = LGW_REG_ERROR;
+                x = setup_sx1276_LoRa(frequency);
             }
             break;
         case MOD_FSK:
