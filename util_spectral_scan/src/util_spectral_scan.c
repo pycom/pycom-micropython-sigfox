@@ -213,11 +213,11 @@ int main( int argc, char ** argv )
         freq = start_freq + j * step_freq;
         printf( "%d", freq );
 
-        /* Set SX1272 */
-        x = lgw_setup_sx1272( freq, MOD_LORA );
+        /* Set SX127x */
+        x = lgw_setup_sx127x( freq, MOD_LORA );
         if( x != 0 )
         {
-            printf( "ERROR: SX1272 setup failed\n" );
+            printf( "ERROR: SX127x setup failed\n" );
             return EXIT_FAILURE;
         }
 

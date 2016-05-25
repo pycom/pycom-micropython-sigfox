@@ -35,11 +35,11 @@ Maintainer: Michael Coracin
 
 int setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf_radio_type, uint32_t freq_hz);
 
-int lgw_sx1272_reg_w(uint8_t address, uint8_t reg_value);
+int lgw_sx127x_reg_w(uint8_t address, uint8_t reg_value);
 
-int lgw_sx1272_reg_r(uint8_t address, uint8_t *reg_value);
+int lgw_sx127x_reg_r(uint8_t address, uint8_t *reg_value);
 
-int lgw_setup_sx1272(uint32_t frequency, uint8_t modulation);
+int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation);
 
 #endif
 /* --- EOF ------------------------------------------------------------------ */

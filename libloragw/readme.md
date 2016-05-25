@@ -166,7 +166,7 @@ the other way around (using lgw_utc2cnt).
 ### 2.6. loragw_radio ###
 
 This module contains functions to handle the configuration of SX125x and
-SX1272 radios.
+SX127x radios.
 
 ### 2.7. loragw_fpga ###
 
@@ -181,10 +181,10 @@ This module contains functions to configure and use the "Listen-Before-Talk"
 feature. It depends on the loragw_fpga and loragw_radio modules.
 
 LBT feature is only available on SX1301AP2 reference design, which provides the
-FPGA and the SX1272 radio required to accomplish the feature.
+FPGA and the SX127x radio required to accomplish the feature.
 
 The FPGA implements the following Finite State Machine (FSM) to scan predefined
-channels used for LBT, using the SX1272 radio:
+channels used for LBT, using the SX127x radio:
 
 
                           +-------+
@@ -233,7 +233,7 @@ In order to configure the LBT, the following parameters have to be set:
 SPI_MASTER_SPEED_DIVIDER: defines the internal SPI_MASTER SPI clock speed.
                           SPI_clock_freq = 32MHz / (SPI_MASTER_SPEED_DIVIDER*2)
 
-NB_RSSI_READ:             defines the number of SPI reads of SX1272 RSSI value
+NB_RSSI_READ:             defines the number of SPI reads of SX127x RSSI value
                           register.
 
 PLL_LOCK_TIME:            defines the delay in 8µs step between frequency

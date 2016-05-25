@@ -157,10 +157,10 @@ int lbt_setup(uint32_t rf_freq, uint8_t rssi_target, uint16_t scan_time_us, uint
         return LGW_LBT_ERROR;
     }
 
-    /* Configure SX1272 for FSK */
-    x = lgw_setup_sx1272(rf_freq, MOD_FSK);
+    /* Configure SX127x for FSK */
+    x = lgw_setup_sx127x(rf_freq, MOD_FSK);
     if (x != LGW_REG_SUCCESS) {
-        DEBUG_MSG("ERROR: Failed to configure SX1272 for LBT\n");
+        DEBUG_MSG("ERROR: Failed to configure SX127x for LBT\n");
         return LGW_LBT_ERROR;
     }
 

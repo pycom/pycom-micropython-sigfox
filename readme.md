@@ -89,7 +89,7 @@ select.
 ### v3.2.0 ###
 
 * Added support for SX1301AP2 reference design (with FPGA and additional
-SX1272). When a FPGA is detected at startup, the HAL automatically adapts SPI
+SX127x). When a FPGA is detected at startup, the HAL automatically adapts SPI
 communication requests (using SPI header or not).
 * Added util_spectral_scan diagnostic tool to scan the spectral band in
 background, where the LoRa gateway operates. (can only be used with SX1301AP2

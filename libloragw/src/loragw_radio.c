@@ -23,6 +23,8 @@ Maintainer: Michael Coracin
 #include "loragw_sx125x.h"
 #include "loragw_sx1272_fsk.h"
 #include "loragw_sx1272_lora.h"
+#include "loragw_sx1276_fsk.h"
+#include "loragw_sx1276_lora.h"
 #include "loragw_spi.h"
 #include "loragw_aux.h"
 #include "loragw_reg.h"
@@ -34,13 +36,13 @@ Maintainer: Michael Coracin
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_REG == 1
-    #define DEBUG_MSG(str)                fprintf(stderr, str)
-    #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
-    #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_REG_ERROR;}
+    #define DEBUG_MSG(str)              fprintf(stderr, str)
+    #define DEBUG_PRINTF(fmt, args...)  fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
+    #define CHECK_NULL(a)               if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_REG_ERROR;}
 #else
     #define DEBUG_MSG(str)
     #define DEBUG_PRINTF(fmt, args...)
-    #define CHECK_NULL(a)                if(a==NULL){return LGW_REG_ERROR;}
+    #define CHECK_NULL(a)               if(a==NULL){return LGW_REG_ERROR;}
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -66,6 +68,8 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr);
 int setup_sx1272_FSK(uint32_t frequency);
 
 int setup_sx1272_LoRa(uint32_t frequency);
+
+int setup_sx1276_FSK(uint32_t frequency);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -164,9 +168,10 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
 
 int setup_sx1272_FSK(uint32_t frequency) {
     uint64_t freq_reg;
-    uint8_t ModulationShaping = 1;
+    uint8_t ModulationShaping = 0;
     uint8_t PllHop = 1;
     uint8_t LnaGain = 1;
+    uint8_t LnaBoost = 3;
     uint8_t AdcBwAuto = 0;
     uint8_t AdcBw = 7;
     uint8_t AdcLowPwr = 0;
@@ -174,42 +179,44 @@ int setup_sx1272_FSK(uint32_t frequency) {
     uint8_t AdcTest = 0;
     uint8_t RxBwExp = 2;
     uint8_t RxBwMant = 1;
+    uint8_t RssiSmoothing = 5;
+    uint8_t RssiOffset = 3;
     uint8_t reg_val;
     int x;
 
     /* Set in FSK mode */
-    x = lgw_sx1272_reg_w(SX1272_REG_OPMODE, 0);
+    x = lgw_sx127x_reg_w(SX1272_REG_OPMODE, 0);
     wait_ms(100);
-    x |= lgw_sx1272_reg_w(SX1272_REG_OPMODE, RF_OPMODE_SLEEP | (ModulationShaping << 3));
+    x |= lgw_sx127x_reg_w(SX1272_REG_OPMODE, 0 | (ModulationShaping << 3)); /* Sleep mode, no FSK shaping */
     wait_ms(100);
-    x |= lgw_sx1272_reg_w(SX1272_REG_OPMODE, RF_OPMODE_STANDBY | (ModulationShaping << 3));
+    x |= lgw_sx127x_reg_w(SX1272_REG_OPMODE, 1 | (ModulationShaping << 3)); /* Standby mode, no FSK shaping */
     wait_ms(100);
 
     /* Set RF carrier frequency */
-    x |= lgw_sx1272_reg_w(SX1272_REG_PLLHOP, PllHop << 7);
+    x |= lgw_sx127x_reg_w(SX1272_REG_PLLHOP, PllHop << 7);
     freq_reg = ((uint64_t)frequency << 19) / (uint64_t)32000000;
-    x |= lgw_sx1272_reg_w(SX1272_REG_FRFMSB, (freq_reg >> 16) & 0xFF);
-    x |= lgw_sx1272_reg_w(SX1272_REG_FRFMID, (freq_reg >> 8) & 0xFF);
-    x |= lgw_sx1272_reg_w(SX1272_REG_FRFLSB, (freq_reg >> 0) & 0xFF);
+    x |= lgw_sx127x_reg_w(SX1272_REG_FRFMSB, (freq_reg >> 16) & 0xFF);
+    x |= lgw_sx127x_reg_w(SX1272_REG_FRFMID, (freq_reg >> 8) & 0xFF);
+    x |= lgw_sx127x_reg_w(SX1272_REG_FRFLSB, (freq_reg >> 0) & 0xFF);
 
     /* Config */
-    x |= lgw_sx1272_reg_w(SX1272_REG_LNA, RF_LNA_BOOST_ON | (LnaGain << 5));
-    x |= lgw_sx1272_reg_w(0x68, AdcBw | (AdcBwAuto << 3));
-    x |= lgw_sx1272_reg_w(0x69, AdcTest | (AdcTrim << 4) | (AdcLowPwr << 7));
+    x |= lgw_sx127x_reg_w(SX1272_REG_LNA, LnaBoost | (LnaGain << 5)); /* Improved sensitivity, highest gain */
+    x |= lgw_sx127x_reg_w(0x68, AdcBw | (AdcBwAuto << 3));
+    x |= lgw_sx127x_reg_w(0x69, AdcTest | (AdcTrim << 4) | (AdcLowPwr << 7));
 
     /* set BR and FDEV for 200 kHz bandwidth*/
-    x |= lgw_sx1272_reg_w(SX1272_REG_BITRATEMSB, RF_BITRATEMSB_1000_BPS);
-    x |= lgw_sx1272_reg_w(SX1272_REG_BITRATELSB, RF_BITRATELSB_1000_BPS);
-    x |= lgw_sx1272_reg_w(SX1272_REG_FDEVMSB, RF_FDEVMSB_45000_HZ);
-    x |= lgw_sx1272_reg_w(SX1272_REG_FDEVLSB, RF_FDEVLSB_45000_HZ);
+    x |= lgw_sx127x_reg_w(SX1272_REG_BITRATEMSB, 125);
+    x |= lgw_sx127x_reg_w(SX1272_REG_BITRATELSB, 0);
+    x |= lgw_sx127x_reg_w(SX1272_REG_FDEVMSB, 2);
+    x |= lgw_sx127x_reg_w(SX1272_REG_FDEVLSB, 225);
 
     /* Config continues... */
-    x |= lgw_sx1272_reg_w(SX1272_REG_RXCONFIG, RF_RXCONFIG_AGCAUTO_OFF);
-    x |= lgw_sx1272_reg_w(SX1272_REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_64 | RF_RSSICONFIG_OFFSET_P_03_DB);
-    x |= lgw_sx1272_reg_w(SX1272_REG_RXBW, RxBwExp | (RxBwMant << 3)); /* RX BW = 100kHz, Mant=20, Exp=2 */
-    x |= lgw_sx1272_reg_w(SX1272_REG_RXDELAY, 2);
-    x |= lgw_sx1272_reg_w(SX1272_REG_PLL, RF_PLL_BANDWIDTH_75);
-    x |= lgw_sx1272_reg_w(0x47, 1); /* optimize PLL start-up time */
+    x |= lgw_sx127x_reg_w(SX1272_REG_RXCONFIG, 0); /* Disable AGC */
+    x |= lgw_sx127x_reg_w(SX1272_REG_RSSICONFIG, RssiSmoothing | (RssiOffset << 3)); /* Set RSSI smoothing to 64 samples, RSSI offset 3dB */
+    x |= lgw_sx127x_reg_w(SX1272_REG_RXBW, RxBwExp | (RxBwMant << 3)); /* RX BW = 100kHz, Mant=20, Exp=2 */
+    x |= lgw_sx127x_reg_w(SX1272_REG_RXDELAY, 2);
+    x |= lgw_sx127x_reg_w(SX1272_REG_PLL, 0x10); /* PLL BW set to 75 KHz */
+    x |= lgw_sx127x_reg_w(0x47, 1); /* optimize PLL start-up time */
 
     if (x != LGW_REG_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to configure SX1272\n");
@@ -217,9 +224,9 @@ int setup_sx1272_FSK(uint32_t frequency) {
     }
 
     /* set Rx continuous mode */
-    x = lgw_sx1272_reg_w(SX1272_REG_OPMODE, RF_OPMODE_RECEIVER | (ModulationShaping << 3));
+    x = lgw_sx127x_reg_w(SX1272_REG_OPMODE, 5 | (ModulationShaping << 3)); /* Receiver Mode, no FSK shaping */
     wait_ms(500);
-    x |= lgw_sx1272_reg_r(SX1272_REG_IRQFLAGS1, &reg_val);
+    x |= lgw_sx127x_reg_r(SX1272_REG_IRQFLAGS1, &reg_val);
     /* Check if RxReady and ModeReady */
     if ((TAKE_N_BITS_FROM(reg_val, 6, 1) == 0) || (TAKE_N_BITS_FROM(reg_val, 7, 1) == 0) || (x != LGW_REG_SUCCESS)) {
         DEBUG_MSG("ERROR: SX1272 failed to enter RX continuous mode\n");
@@ -230,7 +237,6 @@ int setup_sx1272_FSK(uint32_t frequency) {
     DEBUG_MSG("INFO: Successfully configured SX1272 for FSK modulation\n");
 
     return LGW_REG_SUCCESS;
-
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -254,26 +260,26 @@ int setup_sx1272_LoRa(uint32_t frequency) {
     int x;
 
     /* Set in LoRa mode */
-    x = lgw_sx1272_reg_w(SX1272_REG_LR_OPMODE, 0);
+    x = lgw_sx127x_reg_w(SX1272_REG_LR_OPMODE, 0);
     wait_ms(100);
-    x |= lgw_sx1272_reg_w(SX1272_REG_LR_OPMODE, RFLR_OPMODE_SLEEP | (LoRaMode << 7));
+    x |= lgw_sx127x_reg_w(SX1272_REG_LR_OPMODE, 0 | (LoRaMode << 7)); /* Sleep mode, LoRa Mode */
     wait_ms(100);
-    x |= lgw_sx1272_reg_w(SX1272_REG_LR_OPMODE, RFLR_OPMODE_STANDBY | (LoRaMode << 7));
+    x |= lgw_sx127x_reg_w(SX1272_REG_LR_OPMODE, 1 | (LoRaMode << 7)); /* Standby mode, LoRa Mode */
     wait_ms(100);
 
     /* Set RF carrier frequency */
     freq_reg = ((uint64_t)frequency << 19) / (uint64_t)32000000;
-    x |= lgw_sx1272_reg_w(SX1272_REG_LR_FRFMSB, (freq_reg >> 16) & 0xFF);
-    x |= lgw_sx1272_reg_w(SX1272_REG_LR_FRFMID, (freq_reg >>  8) & 0xFF);
-    x |= lgw_sx1272_reg_w(SX1272_REG_LR_FRFLSB,  freq_reg        & 0xFF);
+    x |= lgw_sx127x_reg_w(SX1272_REG_LR_FRFMSB, (freq_reg >> 16) & 0xFF);
+    x |= lgw_sx127x_reg_w(SX1272_REG_LR_FRFMID, (freq_reg >>  8) & 0xFF);
+    x |= lgw_sx127x_reg_w(SX1272_REG_LR_FRFLSB,  freq_reg        & 0xFF);
 
     /* Config */
-    x |= lgw_sx1272_reg_w(SX1272_REG_LR_MODEMCONFIG1, bw << 6);
-    x |= lgw_sx1272_reg_w(0x50, LowZin);
-    x |= lgw_sx1272_reg_w(SX1272_REG_LR_MODEMCONFIG2, (sf << 4) | (AgcAuto << 2));
-    x |= lgw_sx1272_reg_w(SX1272_REG_LR_LNA, LnaBoost | (TrimRxCrFo << 3) | (LnaGain << 5));
-    x |= lgw_sx1272_reg_w(0x68, AdcBw | (AdcBwAuto << 3));
-    x |= lgw_sx1272_reg_w(0x69, AdcTest | (AdcTrim << 4) | (AdcLowPwr << 7));
+    x |= lgw_sx127x_reg_w(SX1272_REG_LR_MODEMCONFIG1, bw << 6);
+    x |= lgw_sx127x_reg_w(0x50, LowZin);
+    x |= lgw_sx127x_reg_w(SX1272_REG_LR_MODEMCONFIG2, (sf << 4) | (AgcAuto << 2));
+    x |= lgw_sx127x_reg_w(SX1272_REG_LR_LNA, LnaBoost | (TrimRxCrFo << 3) | (LnaGain << 5));
+    x |= lgw_sx127x_reg_w(0x68, AdcBw | (AdcBwAuto << 3));
+    x |= lgw_sx127x_reg_w(0x69, AdcTest | (AdcTrim << 4) | (AdcLowPwr << 7));
 
     if (x != LGW_REG_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to configure SX1272\n");
@@ -281,15 +287,90 @@ int setup_sx1272_LoRa(uint32_t frequency) {
     }
 
     /* Set in Rx continuous mode */
-    x = lgw_sx1272_reg_w(SX1272_REG_LR_OPMODE, RFLR_OPMODE_RECEIVER | (LoRaMode << 7));
+    x = lgw_sx127x_reg_w(SX1272_REG_LR_OPMODE, 5 | (LoRaMode << 7)); /* Receiver mode, LoRa Mode */
     wait_ms(100);
-    x |= lgw_sx1272_reg_r(SX1272_REG_LR_OPMODE, &reg_val);
-    if ((reg_val != (RFLR_OPMODE_RECEIVER | (LoRaMode << 7))) || (x != LGW_REG_SUCCESS)) {
+    x |= lgw_sx127x_reg_r(SX1272_REG_LR_OPMODE, &reg_val);
+    if ((reg_val != (5 | (LoRaMode << 7))) || (x != LGW_REG_SUCCESS)) {
         DEBUG_MSG("ERROR: SX1272 failed to enter RX continuous mode\n");
         return x;
     }
 
     DEBUG_MSG("INFO: Successfully configured SX1272 for LoRa modulation\n");
+
+    return LGW_REG_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int setup_sx1276_FSK(uint32_t frequency) {
+    uint64_t freq_reg;
+    uint8_t ModulationShaping = 0;
+    uint8_t PllHop = 1;
+    uint8_t LnaGain = 1;
+    uint8_t LnaBoost = 3;
+    uint8_t AdcBwAuto = 0;
+    uint8_t AdcBw = 7;
+    uint8_t AdcLowPwr = 0;
+    uint8_t AdcTrim = 6;
+    uint8_t AdcTest = 0;
+    uint8_t RxBwExp = 2;
+    uint8_t RxBwMant = 1;
+    uint8_t RssiSmoothing = 5;
+    uint8_t RssiOffset = 3;
+    uint8_t reg_val;
+    int x;
+
+    /* Set in FSK mode */
+    x = lgw_sx127x_reg_w(SX1276_REG_OPMODE, 0);
+    wait_ms(100);
+    x |= lgw_sx127x_reg_w(SX1276_REG_OPMODE, 0 | (ModulationShaping << 3)); /* Sleep mode, no FSK shaping */
+    wait_ms(100);
+    x |= lgw_sx127x_reg_w(SX1276_REG_OPMODE, 1 | (ModulationShaping << 3)); /* Standby mode, no FSK shaping */
+    wait_ms(100);
+
+    /* Set RF carrier frequency */
+    x |= lgw_sx127x_reg_w(SX1276_REG_PLLHOP, PllHop << 7);
+    freq_reg = ((uint64_t)frequency << 19) / (uint64_t)32000000;
+    x |= lgw_sx127x_reg_w(SX1276_REG_FRFMSB, (freq_reg >> 16) & 0xFF);
+    x |= lgw_sx127x_reg_w(SX1276_REG_FRFMID, (freq_reg >> 8) & 0xFF);
+    x |= lgw_sx127x_reg_w(SX1276_REG_FRFLSB, (freq_reg >> 0) & 0xFF);
+
+    /* Config */
+    x |= lgw_sx127x_reg_w(SX1276_REG_LNA, LnaBoost | (LnaGain << 5)); /* Improved sensitivity, highest gain */
+    x |= lgw_sx127x_reg_w(0x57, AdcBw | (AdcBwAuto << 3));
+    x |= lgw_sx127x_reg_w(0x58, AdcTest | (AdcTrim << 4) | (AdcLowPwr << 7));
+
+    /* set BR and FDEV for 200 kHz bandwidth*/
+    x |= lgw_sx127x_reg_w(SX1276_REG_BITRATEMSB, 125);
+    x |= lgw_sx127x_reg_w(SX1276_REG_BITRATELSB, 0);
+    x |= lgw_sx127x_reg_w(SX1276_REG_FDEVMSB, 2);
+    x |= lgw_sx127x_reg_w(SX1276_REG_FDEVLSB, 225);
+
+    /* Config continues... */
+    x |= lgw_sx127x_reg_w(SX1276_REG_RXCONFIG, 0); /* Disable AGC */
+    x |= lgw_sx127x_reg_w(SX1276_REG_RSSICONFIG, RssiSmoothing | (RssiOffset << 3)); /* Set RSSI smoothing to 64 samples, RSSI offset 3dB */
+    x |= lgw_sx127x_reg_w(SX1276_REG_RXBW, RxBwExp | (RxBwMant << 3)); /* RX BW = 100kHz, Mant=20, Exp=2 */
+    x |= lgw_sx127x_reg_w(SX1276_REG_RXDELAY, 2);
+    x |= lgw_sx127x_reg_w(SX1276_REG_PLL, 0x10); /* PLL BW set to 75 KHz */
+    x |= lgw_sx127x_reg_w(0x43, 1); /* optimize PLL start-up time */
+
+    if (x != LGW_REG_SUCCESS) {
+        DEBUG_MSG("ERROR: Failed to configure SX1276\n");
+        return x;
+    }
+
+    /* set Rx continuous mode */
+    x = lgw_sx127x_reg_w(SX1276_REG_OPMODE, 5 | (ModulationShaping << 3)); /* Receiver Mode, no FSK shaping */
+    wait_ms(500);
+    x |= lgw_sx127x_reg_r(SX1276_REG_IRQFLAGS1, &reg_val);
+    /* Check if RxReady and ModeReady */
+    if ((TAKE_N_BITS_FROM(reg_val, 6, 1) == 0) || (TAKE_N_BITS_FROM(reg_val, 7, 1) == 0) || (x != LGW_REG_SUCCESS)) {
+        DEBUG_MSG("ERROR: SX1276 failed to enter RX continuous mode\n");
+        return LGW_REG_ERROR;
+    }
+    wait_ms(500);
+
+    DEBUG_MSG("INFO: Successfully configured SX1276 for FSK modulation\n");
 
     return LGW_REG_SUCCESS;
 }
@@ -382,54 +463,73 @@ int setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_sx1272_reg_w(uint8_t address, uint8_t reg_value) {
-    return lgw_spi_w(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_SX1272, address, reg_value);
+int lgw_sx127x_reg_w(uint8_t address, uint8_t reg_value) {
+    return lgw_spi_w(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_SX127X, address, reg_value);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_sx1272_reg_r(uint8_t address, uint8_t *reg_value) {
-    return lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_SX1272, address, reg_value);
+int lgw_sx127x_reg_r(uint8_t address, uint8_t *reg_value) {
+    return lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_SX127X, address, reg_value);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_setup_sx1272(uint32_t frequency, uint8_t modulation) {
+int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation) {
     int x;
     uint8_t reg_val;
+    enum lgw_radio_type_e radio_type;
 
     /* Check parameters */
     if ((modulation != MOD_FSK) && (modulation != MOD_LORA)) {
-        DEBUG_PRINTF("ERROR: modulation not supported for SX1272 (%u)\n", modulation);
+        DEBUG_PRINTF("ERROR: modulation not supported for SX127x (%u)\n", modulation);
         return LGW_REG_ERROR;
     }
 
-    /* Test SX1272 version register */
-    x = lgw_sx1272_reg_r(0x42, &reg_val);
+    /* Test SX127x version register to determine if we have a SX1272 or SX1276 */
+    x = lgw_sx127x_reg_r(0x42, &reg_val);
     if (x != LGW_SPI_SUCCESS) {
-        DEBUG_MSG("ERROR: Failed to read sx1272 version register\n");
+        DEBUG_MSG("ERROR: Failed to read sx127x version register\n");
         return x;
     }
-    if (reg_val != 0x22) {
-        DEBUG_PRINTF("ERROR: Unexpected SX1272 register version (%u)\n", reg_val);
-        return LGW_REG_ERROR;
+    switch (reg_val) {
+        case 0x22:
+            radio_type = LGW_RADIO_TYPE_SX1272;
+            DEBUG_MSG("INFO: SX1272 radio has been found\n");
+            break;
+        case 0x12:
+            radio_type = LGW_RADIO_TYPE_SX1276;
+            DEBUG_MSG("INFO: SX1276 radio has been found\n");
+            break;
+        default:
+            DEBUG_PRINTF("ERROR: Unexpected SX127x register version (%u)\n", reg_val);
+            return LGW_REG_ERROR;
     }
 
-    DEBUG_PRINTF("SX1272 version : %u\n", reg_val);
-
+    /* Setup the radio */
     switch (modulation) {
         case MOD_LORA:
-            x = setup_sx1272_LoRa(frequency);
+            if (radio_type == LGW_RADIO_TYPE_SX1272) {
+                x = setup_sx1272_LoRa(frequency);
+            } else {
+                /* Not supported */
+                DEBUG_MSG("ERROR: LoRa modulation not supported for SX1276\n");
+                x = LGW_REG_ERROR;
+            }
             break;
         case MOD_FSK:
-            x = setup_sx1272_FSK(frequency);
+            if (radio_type == LGW_RADIO_TYPE_SX1272) {
+                x = setup_sx1272_FSK(frequency);
+            } else {
+                x = setup_sx1276_FSK(frequency);
+            }
             break;
         default:
             /* Should not happen */
             break;
     }
     if (x != LGW_REG_SUCCESS) {
-        DEBUG_MSG("ERROR: failed to setup SX1272\n");
+        DEBUG_MSG("ERROR: failed to setup SX127x\n");
         return x;
     }
 

@@ -158,7 +158,9 @@ Maintainer: Sylvain Miermont
 enum lgw_radio_type_e {
     LGW_RADIO_TYPE_NONE,
     LGW_RADIO_TYPE_SX1255,
-    LGW_RADIO_TYPE_SX1257
+    LGW_RADIO_TYPE_SX1257,
+    LGW_RADIO_TYPE_SX1272,
+    LGW_RADIO_TYPE_SX1276
 };
 
 /**

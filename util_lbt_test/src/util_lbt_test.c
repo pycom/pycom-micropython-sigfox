@@ -24,13 +24,13 @@ Maintainer: Michael Coracin
     #define _XOPEN_SOURCE 500
 #endif
 
-#include <stdint.h>        /* C99 types */
+#include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
-#include <stdio.h>        /* printf fprintf sprintf fopen fputs */
+#include <stdio.h>      /* printf fprintf sprintf fopen fputs */
 
-#include <signal.h>        /* sigaction */
-#include <unistd.h>        /* getopt access */
-#include <stdlib.h>        /* rand */
+#include <signal.h>     /* sigaction */
+#include <unistd.h>     /* getopt access */
+#include <stdlib.h>     /* rand */
 
 #include "loragw_aux.h"
 #include "loragw_reg.h"
@@ -41,7 +41,7 @@ Maintainer: Michael Coracin
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
-#define ARRAY_SIZE(a)    (sizeof(a) / sizeof((a)[0]))
+#define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
 #define MSG(args...)    fprintf(stderr, args) /* message that is destined to the user */
 
 /* -------------------------------------------------------------------------- */
@@ -76,7 +76,7 @@ void usage(void) {
     printf( " -h print this help\n");
     printf( " -f <float> start frequency in MHz\n");
     printf( " -t <uint>  number of read loops [1..32000]\n");
-    printf( " -n <uint>  number of spi access to SX1272 RSSI instant register [0..255]\n");
+    printf( " -n <uint>  number of spi access to SX127x RSSI instant register [0..255]\n");
     printf( " -s <uint>  spi speed divider [0..255]\n");
     printf( " -p <uint>  pll lock time: delay in 8 µsec step between frequency programming and RX ready [0..255]\n");
     printf( " -r <uint>  target RSSI: signal strength target used to detect if the channel is clear or not [0..255]\n");
@@ -213,11 +213,11 @@ int main(int argc, char **argv)
 
     MSG("FREQ: %u\n", f_start);
 
-    /* Configure SX1272 and read few RSSI points */
-    lgw_setup_sx1272(f_start, MOD_FSK);
+    /* Configure SX127x and read few RSSI points */
+    lgw_setup_sx127x(f_start, MOD_FSK);
     for (i = 0; i < 50; i++) {
-        lgw_sx1272_reg_r(0x11, &rssi_value); /* 0x11: RegRssiValue */
-        MSG("SX1272 RSSI:-%u dBm\n", rssi_value>>1);
+        lgw_sx127x_reg_r(0x11, &rssi_value); /* 0x11: RegRssiValue */
+        MSG("SX127x RSSI:-%u dBm\n", rssi_value>>1);
         wait_ms(10);
     }
 
