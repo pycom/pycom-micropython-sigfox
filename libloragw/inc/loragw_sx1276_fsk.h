@@ -25,7 +25,7 @@ Maintainer: Michael Coracin
 #define SX1276_REG_OPMODE                                  0x01
 #define SX1276_REG_BITRATEMSB                              0x02
 #define SX1276_REG_BITRATELSB                              0x03
-#define SX1276_REG_FDEVMSB                                 0x04 
+#define SX1276_REG_FDEVMSB                                 0x04
 #define SX1276_REG_FDEVLSB                                 0x05
 #define SX1276_REG_FRFMSB                                  0x06
 #define SX1276_REG_FRFMID                                  0x07
@@ -33,7 +33,7 @@ Maintainer: Michael Coracin
 // Tx settings
 #define SX1276_REG_PACONFIG                                0x09
 #define SX1276_REG_PARAMP                                  0x0A
-#define SX1276_REG_OCP                                     0x0B 
+#define SX1276_REG_OCP                                     0x0B
 // Rx settings
 #define SX1276_REG_LNA                                     0x0C
 #define SX1276_REG_RXCONFIG                                0x0D
@@ -41,7 +41,7 @@ Maintainer: Michael Coracin
 #define SX1276_REG_RSSICOLLISION                           0x0F
 #define SX1276_REG_RSSITHRESH                              0x10
 #define SX1276_REG_RSSIVALUE                               0x11
-#define SX1276_REG_RXBW                                    0x12 
+#define SX1276_REG_RXBW                                    0x12
 #define SX1276_REG_AFCBW                                   0x13
 #define SX1276_REG_OOKPEAK                                 0x14
 #define SX1276_REG_OOKFIX                                  0x15
