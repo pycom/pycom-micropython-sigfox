@@ -26,6 +26,7 @@ Maintainer: Michael Coracin
 #include "loragw_spi.h"
 #include "loragw_aux.h"
 #include "loragw_hal.h"
+#include "loragw_reg.h"
 #include "loragw_fpga.h"
 
 /* -------------------------------------------------------------------------- */
@@ -41,19 +42,6 @@ Maintainer: Michael Coracin
     #define DEBUG_PRINTF(fmt, args...)
     #define CHECK_NULL(a)                if(a==NULL){return LGW_REG_ERROR;}
 #endif
-
-/* -------------------------------------------------------------------------- */
-/* --- PRIVATE TYPES -------------------------------------------------------- */
-
-struct lgw_reg_s {
-    int8_t      page;        /*!< page containing the register (-1 for all pages) */
-    uint8_t     addr;        /*!< base address of the register (7 bit) */
-    uint8_t     offs;        /*!< position of the register LSB (between 0 to 7) */
-    bool        sign;        /*!< 1 indicates the register is signed (2 complem.) */
-    uint8_t     leng;        /*!< number of bits in the register */
-    bool        rdon;        /*!< 1 indicates a read-only register */
-    int32_t     dflt;        /*!< register default value */
-};
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -146,8 +134,6 @@ int lgw_fpga_configure(void) {
 int lgw_fpga_reg_w(uint16_t register_id, int32_t reg_value) {
     int spi_stat = LGW_SPI_SUCCESS;
     struct lgw_reg_s r;
-    uint8_t buf[4] = "\x00\x00\x00\x00";
-    int i, size_byte;
 
     /* check input parameters */
     if (register_id >= LGW_FPGA_TOTALREGS) {
@@ -170,31 +156,7 @@ int lgw_fpga_reg_w(uint16_t register_id, int32_t reg_value) {
         return LGW_REG_ERROR;
     }
 
-    if ((r.leng == 8) && (r.offs == 0)) {
-        /* direct write */
-        spi_stat += lgw_spi_w(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r.addr, (uint8_t)reg_value);
-    } else if ((r.offs + r.leng) <= 8) {
-        /* single-byte read-modify-write, offs:[0-7], leng:[1-7] */
-        spi_stat += lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r.addr, &buf[0]);
-        buf[1] = ((1 << r.leng) - 1) << r.offs; /* bit mask */
-        buf[2] = ((uint8_t)reg_value) << r.offs; /* new data offsetted */
-        buf[3] = (~buf[1] & buf[0]) | (buf[1] & buf[2]); /* mixing old & new data */
-        spi_stat += lgw_spi_w(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r.addr, buf[3]);
-    } else if ((r.offs == 0) && (r.leng > 0) && (r.leng <= 32)) {
-        /* multi-byte direct write routine */
-        size_byte = (r.leng + 7) / 8; /* add a byte if it's not an exact multiple of 8 */
-        for (i=0; i<size_byte; ++i) {
-            /* big endian register file for a file on N bytes
-            Least significant byte is stored in buf[0], most one in buf[N-1] */
-            buf[i] = (uint8_t)(0x000000FF & reg_value);
-            reg_value = (reg_value >> 8);
-        }
-        spi_stat += lgw_spi_wb(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r.addr, buf, size_byte); /* write the register in one burst */
-    } else {
-        /* register spanning multiple memory bytes but with an offset */
-        DEBUG_MSG("ERROR: REGISTER SIZE AND OFFSET ARE NOT SUPPORTED\n");
-        return LGW_REG_ERROR;
-    }
+    spi_stat += reg_w_align32(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r, reg_value);
 
     if (spi_stat != LGW_SPI_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
@@ -210,10 +172,6 @@ int lgw_fpga_reg_w(uint16_t register_id, int32_t reg_value) {
 int lgw_fpga_reg_r(uint16_t register_id, int32_t *reg_value) {
     int spi_stat = LGW_SPI_SUCCESS;
     struct lgw_reg_s r;
-    uint8_t bufu[4] = "\x00\x00\x00\x00";
-    int8_t *bufs = (int8_t *)bufu;
-    int i, size_byte;
-    uint32_t u = 0;
 
     /* check input parameters */
     CHECK_NULL(reg_value);
@@ -231,35 +189,7 @@ int lgw_fpga_reg_r(uint16_t register_id, int32_t *reg_value) {
     /* get register struct from the struct array */
     r = fpga_regs[register_id];
 
-    if ((r.offs + r.leng) <= 8) {
-        /* read one byte, then shift and mask bits to get reg value with sign extension if needed */
-        spi_stat += lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r.addr, &bufu[0]);
-        bufu[1] = bufu[0] << (8 - r.leng - r.offs); /* left-align the data */
-        if (r.sign == true) {
-            bufs[2] = bufs[1] >> (8 - r.leng); /* right align the data with sign extension (ARITHMETIC right shift) */
-            *reg_value = (int32_t)bufs[2]; /* signed pointer -> 32b sign extension */
-        } else {
-            bufu[2] = bufu[1] >> (8 - r.leng); /* right align the data, no sign extension */
-            *reg_value = (int32_t)bufu[2]; /* unsigned pointer -> no sign extension */
-        }
-    } else if ((r.offs == 0) && (r.leng > 0) && (r.leng <= 32)) {
-        size_byte = (r.leng + 7) / 8; /* add a byte if it's not an exact multiple of 8 */
-        spi_stat += lgw_spi_rb(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r.addr, bufu, size_byte);
-        u = 0;
-        for (i=(size_byte-1); i>=0; --i) {
-            u = (uint32_t)bufu[i] + (u << 8); /* transform a 4-byte array into a 32 bit word */
-        }
-        if (r.sign == true) {
-            u = u << (32 - r.leng); /* left-align the data */
-            *reg_value = (int32_t)u >> (32 - r.leng); /* right-align the data with sign extension (ARITHMETIC right shift) */
-        } else {
-            *reg_value = (int32_t)u; /* unsigned value -> return 'as is' */
-        }
-    } else {
-        /* register spanning multiple memory bytes but with an offset */
-        DEBUG_MSG("ERROR: REGISTER SIZE AND OFFSET ARE NOT SUPPORTED\n");
-        return LGW_REG_ERROR;
-    }
+    spi_stat += reg_r_align32(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r, reg_value);
 
     if (spi_stat != LGW_SPI_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
