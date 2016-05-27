@@ -180,11 +180,11 @@ int main(int argc, char **argv)
     float br_kbps = DEFAULT_BR_KBPS;
     uint8_t fdev_khz = DEFAULT_FDEV_KHZ;
     bool lbt_enable = false;
-    uint32_t lbt_f_target;
-    uint32_t lbt_tx_max_time;
-    uint32_t lbt_sc_time;
-    uint8_t  lbt_rssi_target;
-    uint8_t  lbt_nb_channel;
+    uint32_t lbt_f_target = 0;
+    uint32_t lbt_tx_max_time = 4000000;
+    uint32_t lbt_sc_time = 5000;
+    uint8_t  lbt_rssi_target = 160;
+    uint8_t  lbt_nb_channel = 1;
 
     /* RF configuration (TX fail if RF chain is not enabled) */
     enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
