@@ -59,7 +59,15 @@ gateway operates.
 
 This software is used to test "Listen-Before-Talk" channels timestamps.
 
-3. Changelog
+3. Helper scripts
+-----------------
+
+### 3.1. reset_lgw.sh
+
+This script must be launched on IoT Start Kit platform to reset concentrator
+chip through GPIO, before starting any application using the concentrator.
+
+4. Changelog
 -------------
 
 ### v4.0.0 ###
@@ -296,7 +304,7 @@ SPI-over-USB bridge).
 * Remove the 500 kHz limit on radio bandwith, back to the nominal 800 kHz.
 * Renamed debug flags.
 
-4. Legal notice
+5. Legal notice
 ----------------
 
 The information presented in this project documentation does not form part of 
