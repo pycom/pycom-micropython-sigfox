@@ -215,7 +215,7 @@ int main(int argc, char **argv)
 
     /* Configure SX127x and read few RSSI points */
     lgw_setup_sx127x(f_start, MOD_FSK);
-    for (i = 0; i < 50; i++) {
+    for (i = 0; i < 100; i++) {
         lgw_sx127x_reg_r(0x11, &rssi_value); /* 0x11: RegRssiValue */
         MSG("SX127x RSSI:-%u dBm\n", rssi_value>>1);
         wait_ms(10);
@@ -231,8 +231,7 @@ int main(int argc, char **argv)
     lgw_fpga_reg_w(LGW_FPGA_LBT_TIMESTAMP_NB_CH, (6-1)); /* 6 channels */
 
     /* Enable LBT FSM */
-    lgw_fpga_reg_r(LGW_FPGA_FPGA_CTRL, &val);
-    lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, (val | 0x01)); /* read & modify */
+    lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
 
     /* Read back LBT config */
     lgw_fpga_reg_r(LGW_FPGA_SPI_MASTER_SPEED_DIVIDER, &val);

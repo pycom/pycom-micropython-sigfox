@@ -185,22 +185,10 @@ int lbt_setup(uint32_t rf_freq, uint8_t rssi_target, uint16_t scan_time_us, uint
 
 int lbt_start(void) {
     int x;
-    int32_t val;
-    uint8_t fpga_ctl;
 
-    /* Get current FPGA CTRL configuration */
-    x = lgw_fpga_reg_r(LGW_FPGA_FPGA_CTRL, &val);
+    x = lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
     if (x != LGW_REG_SUCCESS) {
-        DEBUG_MSG("ERROR: Failed to read FPGA Ctrl register value\n");
-        return LGW_LBT_ERROR;
-    }
-    fpga_ctl = (uint8_t)val;
-
-    /* Enable LBT FSM */
-    fpga_ctl = fpga_ctl | 0x01; /* set LSB to 1 */
-    x = lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, (int32_t)fpga_ctl);
-    if (x != LGW_REG_SUCCESS) {
-        DEBUG_MSG("ERROR: Failed to write FPGA Ctrl register\n");
+        DEBUG_MSG("ERROR: Failed to start LBT FSM\n");
         return LGW_LBT_ERROR;
     }
 

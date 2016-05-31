@@ -57,7 +57,12 @@ const struct lgw_reg_s fpga_regs[LGW_FPGA_TOTALREGS] = {
     {-1,0,1,0,7,1,0}, /* FPGA_FEATURE */
     {-1,1,0,0,8,1,0}, /* VERSION */
     {-1,2,0,0,8,1,0}, /* FPGA_STATUS */
-    {-1,3,0,0,8,0,0}, /* FPGA_CTRL */
+    {-1,3,0,0,1,0,0}, /* FPGA_CTRL_FEATURE_START */
+    {-1,3,1,0,1,0,0}, /* FPGA_CTRL_RADIO_RESET */
+    {-1,3,2,0,1,0,1}, /* FPGA_CTRL_INPUT_SYNC_I */
+    {-1,3,3,0,1,0,1}, /* FPGA_CTRL_INPUT_SYNC_Q */
+    {-1,3,4,0,1,0,0}, /* FPGA_CTRL_OUTPUT_SYNC */
+    {-1,3,5,0,1,0,1}, /* FPGA_CTRL_INVERT_IQ */
     {-1,4,0,0,8,0,0}, /* HISTO_RAM_ADDR */
     {-1,5,0,0,8,1,0}, /* HISTO_RAM_DATA */
     {-1,6,0,0,16,0,32000}, /* HISTO_TEMPO */
@@ -94,11 +99,6 @@ int lgw_fpga_configure(void) {
     int32_t val;
     bool tx_filter_support, spectral_scan_support, lbt_support;
 
-    /* FPGA settings */
-    uint32_t input_sync_edge  = 0;
-    uint32_t output_sync_edge = 0;
-    uint32_t filt_on = 1;
-
     /* Get supported FPGA features */
     printf("INFO: FPGA supported features:");
     lgw_fpga_reg_r(LGW_FPGA_FPGA_FEATURE, &val);
@@ -117,11 +117,12 @@ int lgw_fpga_configure(void) {
     printf("\n");
 
     /* Configure TX filter */
-    x = lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, (filt_on << 4) | (input_sync_edge << 2) | (output_sync_edge << 3) | (1 << 1)); /* Reset Radio */
-    x |= lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, (filt_on << 4) | (input_sync_edge << 2) | (output_sync_edge << 3));
+    x  = lgw_fpga_reg_w(LGW_FPGA_CTRL_INPUT_SYNC_I, 0);
+    x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_INPUT_SYNC_Q, 0);
+    x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_OUTPUT_SYNC, 1);
     if( x != LGW_REG_SUCCESS )
     {
-        DEBUG_MSG("ERROR: Failed to configure FPGA\n");
+        DEBUG_MSG("ERROR: Failed to configure FPGA TX filter\n");
         return LGW_REG_ERROR;
     }
 

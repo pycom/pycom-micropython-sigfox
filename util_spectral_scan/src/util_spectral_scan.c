@@ -222,7 +222,7 @@ int main( int argc, char ** argv )
         }
 
         /* Start histogram */
-        lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, 1);
+        lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
 
         /* Wait until rssi_pts have been processed */
         do
@@ -233,7 +233,7 @@ int main( int argc, char ** argv )
         while( (reg_val & 0x0F) != 8 );
 
         /* Stop histogram */
-        lgw_fpga_reg_w(LGW_FPGA_FPGA_CTRL, 0);
+        lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 0);
 
         /* Read histogram */
         lgw_fpga_reg_w(LGW_FPGA_HISTO_RAM_ADDR, 0);

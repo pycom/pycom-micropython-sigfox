@@ -30,6 +30,7 @@ Maintainer: Michael Coracin
 #include "loragw_reg.h"
 #include "loragw_hal.h"
 #include "loragw_radio.h"
+#include "loragw_fpga.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -546,6 +547,14 @@ int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation) {
     if ((modulation != MOD_FSK) && (modulation != MOD_LORA)) {
         DEBUG_PRINTF("ERROR: modulation not supported for SX127x (%u)\n", modulation);
         return LGW_REG_ERROR;
+    }
+
+    /* Reset the radio */
+    x  = lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 1);
+    x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 0);
+    if (x != LGW_SPI_SUCCESS) {
+        DEBUG_MSG("ERROR: Failed to reset sx127x\n");
+        return x;
     }
 
     /* Test SX127x version register to determine if we have a SX1272 or SX1276 */
