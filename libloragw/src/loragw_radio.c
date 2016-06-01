@@ -49,6 +49,16 @@ Maintainer: Michael Coracin
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
 
+/**
+@struct lgw_radio_type_version_s
+@brief Associate a radio type with its corresponding expected version value
+        read in the radio version register.
+*/
+struct lgw_radio_type_version_s {
+    enum lgw_radio_type_e type;
+    uint8_t reg_version;
+};
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -71,6 +81,8 @@ int setup_sx1272_FSK(uint32_t frequency);
 int setup_sx1272_LoRa(uint32_t frequency);
 
 int setup_sx1276_FSK(uint32_t frequency);
+
+int reset_sx127x(enum lgw_radio_type_e radio_type);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -438,6 +450,34 @@ int setup_sx1276_LoRa(uint32_t frequency) {
     return LGW_REG_SUCCESS;
 }
 
+int reset_sx127x(enum lgw_radio_type_e radio_type) {
+    int x;
+
+    switch(radio_type) {
+        case LGW_RADIO_TYPE_SX1276:
+            x  = lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 0);
+            x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 1);
+            if (x != LGW_SPI_SUCCESS) {
+                DEBUG_MSG("ERROR: Failed to reset sx127x\n");
+                return x;
+            }
+            break;
+        case LGW_RADIO_TYPE_SX1272:
+            x  = lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 1);
+            x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 0);
+            if (x != LGW_SPI_SUCCESS) {
+                DEBUG_MSG("ERROR: Failed to reset sx127x\n");
+                return x;
+            }
+            break;
+        default:
+            DEBUG_PRINTF("ERROR: Failed to reset sx127x, not supported (%d)\n", radio_type);
+            return LGW_REG_ERROR;
+    }
+
+    return LGW_REG_SUCCESS;
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
@@ -539,9 +579,13 @@ int lgw_sx127x_reg_r(uint8_t address, uint8_t *reg_value) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation) {
-    int x;
-    uint8_t reg_val;
-    enum lgw_radio_type_e radio_type;
+    int x, i;
+    uint8_t version;
+    enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
+    struct lgw_radio_type_version_s supported_radio_type[2] = {
+        {LGW_RADIO_TYPE_SX1272, 0x22},
+        {LGW_RADIO_TYPE_SX1276, 0x12}
+    };
 
     /* Check parameters */
     if ((modulation != MOD_FSK) && (modulation != MOD_LORA)) {
@@ -549,32 +593,33 @@ int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation) {
         return LGW_REG_ERROR;
     }
 
-    /* Reset the radio */
-    x  = lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 1);
-    x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 0);
-    if (x != LGW_SPI_SUCCESS) {
-        DEBUG_MSG("ERROR: Failed to reset sx127x\n");
-        return x;
-    }
-
-    /* Test SX127x version register to determine if we have a SX1272 or SX1276 */
-    x = lgw_sx127x_reg_r(0x42, &reg_val);
-    if (x != LGW_SPI_SUCCESS) {
-        DEBUG_MSG("ERROR: Failed to read sx127x version register\n");
-        return x;
-    }
-    switch (reg_val) {
-        case 0x22:
-            radio_type = LGW_RADIO_TYPE_SX1272;
-            DEBUG_MSG("INFO: SX1272 radio has been found\n");
+    /* Probing radio type */
+    for (i = 0; i < (int)(sizeof supported_radio_type); i++) {
+        /* Reset the radio */
+        x = reset_sx127x(supported_radio_type[i].type);
+        if (x != LGW_SPI_SUCCESS) {
+            DEBUG_MSG("ERROR: Failed to reset sx127x\n");
+            return x;
+        }
+        /* Read version register */
+        x = lgw_sx127x_reg_r(0x42, &version);
+        if (x != LGW_SPI_SUCCESS) {
+            DEBUG_MSG("ERROR: Failed to read sx127x version register\n");
+            return x;
+        }
+        /* Check if we got the expected version */
+        if (version != supported_radio_type[i].reg_version) {
+            DEBUG_PRINTF("INFO: sx127x version register - read:0x%02x, expected:0x%02x\n", version, supported_radio_type[i].reg_version);
+            continue;
+        } else {
+            DEBUG_PRINTF("INFO: sx127x radio has been found (type:%d, version:0x%02x)\n", supported_radio_type[i].type, version);
+            radio_type = supported_radio_type[i].type;
             break;
-        case 0x12:
-            radio_type = LGW_RADIO_TYPE_SX1276;
-            DEBUG_MSG("INFO: SX1276 radio has been found\n");
-            break;
-        default:
-            DEBUG_PRINTF("ERROR: Unexpected SX127x register version (%u)\n", reg_val);
-            return LGW_REG_ERROR;
+        }
+    }
+    if (radio_type == LGW_RADIO_TYPE_NONE) {
+        DEBUG_MSG("ERROR: sx127x radio has not been found\n");
+        return LGW_REG_ERROR;
     }
 
     /* Setup the radio */
