@@ -155,6 +155,10 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
+/**
+@enum lgw_radio_type_e
+@brief Radio types that can be found on the LoRa Gateway
+*/
 enum lgw_radio_type_e {
     LGW_RADIO_TYPE_NONE,
     LGW_RADIO_TYPE_SX1255,
@@ -278,7 +282,6 @@ struct lgw_tx_gain_lut_s {
     struct lgw_tx_gain_s    lut[TX_GAIN_LUT_SIZE_MAX];  /*!> Array of Tx gain struct */
     uint8_t                 size;                       /*!> Number of LUT indexes */
 };
-
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
