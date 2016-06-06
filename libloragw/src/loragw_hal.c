@@ -54,32 +54,32 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
 
-#define MCU_ARB              0
-#define MCU_AGC              1
-#define MCU_ARB_FW_BYTE      8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
-#define MCU_AGC_FW_BYTE      8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
-#define FW_VERSION_ADDR      0x20 /* Address of firmware version in data memory */
-#define FW_VERSION_CAL       2 /* Expected version of calibration firmware */
-#define FW_VERSION_AGC       4 /* Expected version of AGC firmware */
-#define FW_VERSION_ARB       1 /* Expected version of arbiter firmware */
+#define MCU_ARB             0
+#define MCU_AGC             1
+#define MCU_ARB_FW_BYTE     8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
+#define MCU_AGC_FW_BYTE     8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
+#define FW_VERSION_ADDR     0x20 /* Address of firmware version in data memory */
+#define FW_VERSION_CAL      2 /* Expected version of calibration firmware */
+#define FW_VERSION_AGC      4 /* Expected version of AGC firmware */
+#define FW_VERSION_ARB      1 /* Expected version of arbiter firmware */
 
-#define TX_METADATA_NB       16
-#define RX_METADATA_NB       16
+#define TX_METADATA_NB      16
+#define RX_METADATA_NB      16
 
-#define AGC_CMD_WAIT         16
-#define AGC_CMD_ABORT        17
+#define AGC_CMD_WAIT        16
+#define AGC_CMD_ABORT       17
 
-#define MIN_LORA_PREAMBLE    4
-#define STD_LORA_PREAMBLE    6
-#define MIN_FSK_PREAMBLE     3
-#define STD_FSK_PREAMBLE     5
+#define MIN_LORA_PREAMBLE   4
+#define STD_LORA_PREAMBLE   6
+#define MIN_FSK_PREAMBLE    3
+#define STD_FSK_PREAMBLE    5
 
-#define TX_START_DELAY       1500
+#define TX_START_DELAY      1500
 
-#define RSSI_MULTI_BIAS      -35        /* difference between "multi" modem RSSI offset and "stand-alone" modem RSSI offset */
-#define RSSI_FSK_BIAS        -37.0    /* difference between FSK modem RSSI offset and "stand-alone" modem RSSI offset */
-#define RSSI_FSK_REF         -70.0    /* linearize FSK RSSI curve around -70 dBm */
-#define RSSI_FSK_SLOPE       0.8
+#define RSSI_MULTI_BIAS     -35 /* difference between "multi" modem RSSI offset and "stand-alone" modem RSSI offset */
+#define RSSI_FSK_POLY_0     60 /* polynomiam coefficients to linearize FSK RSSI */
+#define RSSI_FSK_POLY_1     1.5351
+#define RSSI_FSK_POLY_2     0.003
 
 /* constant arrays defining hardware capability */
 const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
@@ -1177,8 +1177,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             timestamp_correction = ((uint32_t)680000 / fsk_rx_dr) - 20;
 
             /* RSSI correction */
-            p->rssi -= RSSI_FSK_BIAS;
-            p->rssi = ((p->rssi - RSSI_FSK_REF) * RSSI_FSK_SLOPE) + RSSI_FSK_REF;
+            p->rssi = RSSI_FSK_POLY_0 + RSSI_FSK_POLY_1 * p->rssi + RSSI_FSK_POLY_2 * pow(p->rssi, 2);
         } else {
             DEBUG_MSG("ERROR: UNEXPECTED PACKET ORIGIN\n");
             p->status = STAT_UNDEFINED;
