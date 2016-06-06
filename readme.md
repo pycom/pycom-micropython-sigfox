@@ -75,6 +75,7 @@ chip through GPIO, before starting any application using the concentrator.
 * HAL: Added "Listen-Before-Talk" support for Semtech SX1301AP2 Ref Design.
        A description of the feature implementation can be found in
        libloragw/readme.md.
+* HAL: Updated FSK RSSI calculation for better linearization
 * util_lbt_test: New utility provided for basic "Listen-Before-Talk" testing.
 * util_tx_test: Extended to configure and test "LBT" through the HAL.
 * Added a reset_lgw.sh script to be used with IoT Starter Kit (v1.0) to reset
