@@ -706,9 +706,9 @@ int lgw_start(void) {
 
     /* Load the calibration firmware  */
     load_firmware(MCU_AGC, cal_firmware, MCU_AGC_FW_BYTE);
-    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0); /* gives to AGC MCU the control of the radios */
-    lgw_reg_w(LGW_RADIO_SELECT,cal_cmd); /* send calibration configuration word */
-    lgw_reg_w(LGW_MCU_RST_1,0);
+    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL, 0); /* gives to AGC MCU the control of the radios */
+    lgw_reg_w(LGW_RADIO_SELECT, cal_cmd); /* send calibration configuration word */
+    lgw_reg_w(LGW_MCU_RST_1, 0);
 
     /* Check firmware version */
     lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, FW_VERSION_ADDR);
@@ -719,13 +719,13 @@ int lgw_start(void) {
         return -1;
     }
 
-    lgw_reg_w(LGW_PAGE_REG,3); /* Calibration will start on this condition as soon as MCU can talk to concentrator registers */
-    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL,0); /* Give control of concentrator registers to MCU */
+    lgw_reg_w(LGW_PAGE_REG, 3); /* Calibration will start on this condition as soon as MCU can talk to concentrator registers */
+    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 0); /* Give control of concentrator registers to MCU */
 
     /* Wait for calibration to end */
     DEBUG_PRINTF("Note: calibration started (time: %u ms)\n", cal_time);
     wait_ms(cal_time); /* Wait for end of calibration */
-    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL,1); /* Take back control */
+    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 1); /* Take back control */
 
     /* Get calibration status */
     lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
@@ -737,8 +737,8 @@ int lgw_start(void) {
         bit 2: could access radio B registers
         bit 3: radio A RX image rejection successful
         bit 4: radio B RX image rejection successful
-        bit 5: radio A TX imbalance correction successful
-        bit 6: radio B TX imbalance correction successful
+        bit 5: radio A TX DC Offset correction successful
+        bit 6: radio B TX DC Offset correction successful
     */
     if ((cal_status & 0x81) != 0x81) {
         DEBUG_PRINTF("ERROR: CALIBRATION FAILURE (STATUS = %u)\n", cal_status);
@@ -759,10 +759,10 @@ int lgw_start(void) {
         DEBUG_MSG("WARNING: problem in calibration of radio B for image rejection\n");
     }
     if (rf_enable[0] && rf_tx_enable[0] && ((cal_status & 0x20) == 0)) {
-        DEBUG_MSG("WARNING: problem in calibration of radio A for TX imbalance\n");
+        DEBUG_MSG("WARNING: problem in calibration of radio A for TX DC offset\n");
     }
     if (rf_enable[1] && rf_tx_enable[1] && ((cal_status & 0x40) == 0)) {
-        DEBUG_MSG("WARNING: problem in calibration of radio B for TX imbalance\n");
+        DEBUG_MSG("WARNING: problem in calibration of radio B for TX DC offset\n");
     }
 
     /* Get TX DC offset values */
@@ -825,27 +825,27 @@ int lgw_start(void) {
 
     lgw_reg_w(LGW_PPM_OFFSET, 0x60); /* as the threshold is 16ms, use 0x60 to enable ppm_offset for SF12 and SF11 @125kHz*/
 
-    lgw_reg_w(LGW_CONCENTRATOR_MODEM_ENABLE,1); /* default 0 */
+    lgw_reg_w(LGW_CONCENTRATOR_MODEM_ENABLE, 1); /* default 0 */
 
     /* configure LoRa 'stand-alone' modem (IF8) */
     lgw_reg_w(LGW_IF_FREQ_8, IF_HZ_TO_REG(if_freq[8])); /* MBWSSF modem (default 0) */
     if (if_enable[8] == true) {
         lgw_reg_w(LGW_MBWSSF_RADIO_SELECT, if_rf_chain[8]);
         switch(lora_rx_bw) {
-            case BW_125KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,0); break;
-            case BW_250KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,1); break;
-            case BW_500KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW,2); break;
+            case BW_125KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW, 0); break;
+            case BW_250KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW, 1); break;
+            case BW_500KHZ: lgw_reg_w(LGW_MBWSSF_MODEM_BW, 2); break;
             default:
                 DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_bw);
                 return LGW_HAL_ERROR;
         }
         switch(lora_rx_sf) {
-            case DR_LORA_SF7: lgw_reg_w(LGW_MBWSSF_RATE_SF,7); break;
-            case DR_LORA_SF8: lgw_reg_w(LGW_MBWSSF_RATE_SF,8); break;
-            case DR_LORA_SF9: lgw_reg_w(LGW_MBWSSF_RATE_SF,9); break;
-            case DR_LORA_SF10: lgw_reg_w(LGW_MBWSSF_RATE_SF,10); break;
-            case DR_LORA_SF11: lgw_reg_w(LGW_MBWSSF_RATE_SF,11); break;
-            case DR_LORA_SF12: lgw_reg_w(LGW_MBWSSF_RATE_SF,12); break;
+            case DR_LORA_SF7: lgw_reg_w(LGW_MBWSSF_RATE_SF, 7); break;
+            case DR_LORA_SF8: lgw_reg_w(LGW_MBWSSF_RATE_SF, 8); break;
+            case DR_LORA_SF9: lgw_reg_w(LGW_MBWSSF_RATE_SF, 9); break;
+            case DR_LORA_SF10: lgw_reg_w(LGW_MBWSSF_RATE_SF, 10); break;
+            case DR_LORA_SF11: lgw_reg_w(LGW_MBWSSF_RATE_SF, 11); break;
+            case DR_LORA_SF12: lgw_reg_w(LGW_MBWSSF_RATE_SF, 12); break;
             default:
                 DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_sf);
                 return LGW_HAL_ERROR;
@@ -865,11 +865,11 @@ int lgw_start(void) {
     lgw_reg_w(LGW_FSK_REF_PATTERN_MSB, (uint32_t)(0xFFFFFFFF & (fsk_sync_word_reg >> 32)));
     if (if_enable[9] == true) {
         lgw_reg_w(LGW_FSK_RADIO_SELECT, if_rf_chain[9]);
-        lgw_reg_w(LGW_FSK_BR_RATIO,LGW_XTAL_FREQU/fsk_rx_dr); /* setting the dividing ratio for datarate */
-        lgw_reg_w(LGW_FSK_CH_BW_EXPO,fsk_rx_bw);
-        lgw_reg_w(LGW_FSK_MODEM_ENABLE,1); /* default 0 */
+        lgw_reg_w(LGW_FSK_BR_RATIO, LGW_XTAL_FREQU/fsk_rx_dr); /* setting the dividing ratio for datarate */
+        lgw_reg_w(LGW_FSK_CH_BW_EXPO, fsk_rx_bw);
+        lgw_reg_w(LGW_FSK_MODEM_ENABLE, 1); /* default 0 */
     } else {
-        lgw_reg_w(LGW_FSK_MODEM_ENABLE,0);
+        lgw_reg_w(LGW_FSK_MODEM_ENABLE, 0);
     }
 
     /* Load firmware */
@@ -877,9 +877,9 @@ int lgw_start(void) {
     load_firmware(MCU_AGC, agc_firmware, MCU_AGC_FW_BYTE);
 
     /* gives the AGC MCU control over radio, RF front-end and filter gain */
-    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL,0);
-    lgw_reg_w(LGW_FORCE_HOST_FE_CTRL,0);
-    lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN,0);
+    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL, 0);
+    lgw_reg_w(LGW_FORCE_HOST_FE_CTRL, 0);
+    lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN, 0);
 
     /* Get MCUs out of reset */
     lgw_reg_w(LGW_RADIO_SELECT, 0); /* MUST not be = to 1 or 2 at firmware init */
