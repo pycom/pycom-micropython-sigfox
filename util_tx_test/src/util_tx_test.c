@@ -145,7 +145,6 @@ void usage(void) {
     printf(" -x         <int>   nb of times the sequence is repeated (-1 loop until stopped)\n");
     printf(" --lbt-freq <float> lbt first channel frequency in MHz\n");
     printf(" --lbt-sctm <uint>  lbt scan time in usec\n");
-    printf(" --lbt-max  <uint>  lbt max tx duration in usec\n");
     printf(" --lbt-rssi <uint>  lbt rssi target (to be divided by -2)\n");
     printf(" --lbt-nbch <uint>  lbt nb channel\n");
 }
@@ -181,7 +180,6 @@ int main(int argc, char **argv)
     uint8_t fdev_khz = DEFAULT_FDEV_KHZ;
     bool lbt_enable = false;
     uint32_t lbt_f_target = 0;
-    uint32_t lbt_tx_max_time = 4000000;
     uint32_t lbt_sc_time = 5000;
     uint8_t  lbt_rssi_target = 160;
     uint8_t  lbt_nb_channel = 1;
@@ -204,7 +202,6 @@ int main(int argc, char **argv)
     static struct option long_options[] = {
         {"lbt-freq", required_argument, 0, 0},
         {"lbt-sctm", required_argument, 0, 0},
-        {"lbt-max", required_argument, 0, 0},
         {"lbt-rssi", required_argument, 0, 0},
         {"lbt-nbch", required_argument, 0, 0},
         {0, 0, 0, 0}
@@ -437,21 +434,6 @@ int main(int argc, char **argv)
                         usage();
                         return EXIT_FAILURE;
                     }
-                } else if( strcmp(long_options[option_index].name, "lbt-max") == 0 ) { /* <int> LBT max tx duration in usec */
-                    if (lbt_enable == true) {
-                        i = sscanf(optarg, "%i", &xi);
-                        if ((i != 1) || (xi < 0)) {
-                            MSG("ERROR: invalid LBT max TX duration\n");
-                            usage();
-                            return EXIT_FAILURE;
-                        } else {
-                            lbt_tx_max_time = xi;
-                        }
-                    } else {
-                        MSG("ERROR: invalid parameter, LBT start frequency must be set\n");
-                        usage();
-                        return EXIT_FAILURE;
-                    }
                 }
                 break;
             default:
@@ -497,12 +479,14 @@ int main(int argc, char **argv)
     if (lbt_enable) {
         memset(&lbtconf, 0, sizeof(lbtconf));
         lbtconf.enable = true;
-        lbtconf.rssi_target = lbt_rssi_target;
-        lbtconf.scan_time_us = lbt_sc_time;
         lbtconf.nb_channel = lbt_nb_channel;
-        lbtconf.start_freq = lbt_f_target;
-        lbtconf.tx_delay_1ch_us = lbt_tx_max_time;
-        lbtconf.tx_delay_2ch_us = lbt_tx_max_time;
+        lbtconf.rssi_target = lbt_rssi_target;
+        lbtconf.channels[0].freq_hz = lbt_f_target;
+        lbtconf.channels[0].scan_time_us = lbt_sc_time;
+        for (i=1; i<lbt_nb_channel; i++) {
+            lbtconf.channels[i].freq_hz = lbtconf.channels[i-1].freq_hz + 200E3; /* 200kHz offset for all channels */
+            lbtconf.channels[i].scan_time_us = lbt_sc_time;
+        }
         lgw_lbt_setconf(lbtconf);
     }
 

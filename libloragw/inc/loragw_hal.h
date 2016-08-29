@@ -152,6 +152,9 @@ Maintainer: Sylvain Miermont
 /* Maximum size of Tx gain LUT */
 #define TX_GAIN_LUT_SIZE_MAX 16
 
+/* LBT constants */
+#define LBT_CHANNEL_FREQ_NB 8 /* Number of LBT channels */
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
@@ -172,8 +175,17 @@ enum lgw_radio_type_e {
 @brief Configuration structure for board specificities
 */
 struct lgw_conf_board_s {
-    bool        lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
-    uint8_t     clksrc;         /*!> Index of RF chain which provides clock to concentrator */
+    bool    lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
+    uint8_t clksrc;         /*!> Index of RF chain which provides clock to concentrator */
+};
+
+/**
+@struct lgw_conf_lbt_chan_s
+@brief Configuration structure for LBT channels
+*/
+struct lgw_conf_lbt_chan_s {
+    uint32_t freq_hz;
+    uint16_t scan_time_us;
 };
 
 /**
@@ -181,13 +193,10 @@ struct lgw_conf_board_s {
 @brief Configuration structure for LBT specificities
 */
 struct lgw_conf_lbt_s {
-    bool        enable;             /*!> enable or disable LBT */
-    uint8_t     rssi_target;        /*!> RSSI threshold to detect if channel is busy or not */
-    uint8_t     nb_channel;         /*!> number of LBT channels */
-    uint16_t    scan_time_us;       /*!> channel activity scan duration, in microseconds */
-    uint32_t    start_freq;         /*!> first LBT channel frequency */
-    uint32_t    tx_delay_1ch_us;    /*!> maximum time allowed to send a packet since channel was free, when TX is on one channel only */
-    uint32_t    tx_delay_2ch_us;    /*!> maximum time allowed to send a packet since channel was free, when TX is on two channels */
+    bool                        enable;             /*!> enable or disable LBT */
+    uint8_t                     rssi_target;        /*!> RSSI threshold to detect if channel is busy or not */
+    uint8_t                     nb_channel;         /*!> number of LBT channels */
+    struct lgw_conf_lbt_chan_s  channels[LBT_CHANNEL_FREQ_NB];
 };
 
 /**
@@ -195,11 +204,11 @@ struct lgw_conf_lbt_s {
 @brief Configuration structure for a RF chain
 */
 struct lgw_conf_rxrf_s {
-    bool            enable;         /*!> enable or disable that RF chain */
-    uint32_t        freq_hz;        /*!> center frequency of the radio in Hz */
-    float            rssi_offset;   /*!> Board-specific RSSI correction factor */
-    enum lgw_radio_type_e    type;  /*!> Radio type for that RF chain (SX1255, SX1257....) */
-    bool            tx_enable;      /*!> enable or disable TX on that RF chain */
+    bool                    enable;         /*!> enable or disable that RF chain */
+    uint32_t                freq_hz;        /*!> center frequency of the radio in Hz */
+    float                   rssi_offset;    /*!> Board-specific RSSI correction factor */
+    enum lgw_radio_type_e   type;           /*!> Radio type for that RF chain (SX1255, SX1257....) */
+    bool                    tx_enable;      /*!> enable or disable TX on that RF chain */
 };
 
 /**

@@ -67,15 +67,30 @@ const struct lgw_reg_s fpga_regs[LGW_FPGA_TOTALREGS] = {
     {-1,5,0,0,8,1,0}, /* HISTO_RAM_DATA */
     {-1,6,0,0,16,0,32000}, /* HISTO_TEMPO */
     {-1,8,0,0,16,0,1000}, /* HISTO_NB_READ */
-    {-1,10,0,0,32,1,0}, /* TIMESTAMP */
-    {-1,14,0,0,24,1,0}, /* LBT_TIMESTAMP_CH */
-    {-1,17,0,0,8,0,0}, /* LBT_TIMESTAMP_SELECT_CH */
-    {-1,18,0,0,8,0,8}, /* LBT_TIMESTAMP_NB_CH */
-    {-1,19,0,0,8,0,7}, /* SPI_MASTER_SPEED_DIVIDER */
-    {-1,20,0,0,8,0,10}, /* NB_READ_RSSI */
-    {-1,21,0,0,8,0,10}, /* PLL_LOCK_TIME */
-    {-1,22,0,0,8,0,160}, /* RSSI_TARGET */
-    {-1,23,0,0,16,0,0}, /* LSB_START_FREQ */
+    {-1,30,0,0,8,0,160}, /* RSSI_TARGET */
+    {-1,14,0,0,16,1,0}, /* LBT_TIMESTAMP_CH */
+    {-1,17,0,0,4,0,0}, /* LBT_TIMESTAMP_SELECT_CH */
+    {-1,17,4,0,4,0,9}, /* LBT_TIMESTAMP_NB_CH */
+    {-1,18,0,0,8,0,0}, /* LBT_CH0_FREQ_OFFSET */
+    {-1,19,0,0,8,0,0}, /* LBT_CH1_FREQ_OFFSET */
+    {-1,20,0,0,8,0,0}, /* LBT_CH2_FREQ_OFFSET */
+    {-1,21,0,0,8,0,0}, /* LBT_CH3_FREQ_OFFSET */
+    {-1,22,0,0,8,0,0}, /* LBT_CH4_FREQ_OFFSET */
+    {-1,23,0,0,8,0,0}, /* LBT_CH5_FREQ_OFFSET */
+    {-1,24,0,0,8,0,0}, /* LBT_CH6_FREQ_OFFSET */
+    {-1,25,0,0,8,0,0}, /* LBT_CH7_FREQ_OFFSET */
+    {-1,26,0,0,8,0,0}, /* LBT_CH8_FREQ_OFFSET */
+    {-1,27,0,0,8,0,0}, /* LBT_CH9_FREQ_OFFSET */
+    {-1,28,0,0,1,0,0}, /* LBT_SCAN_TIME_CH0 */
+    {-1,28,1,0,1,0,0}, /* LBT_SCAN_TIME_CH1 */
+    {-1,28,2,0,1,0,0}, /* LBT_SCAN_TIME_CH2 */
+    {-1,28,3,0,1,0,0}, /* LBT_SCAN_TIME_CH3 */
+    {-1,28,4,0,1,0,0}, /* LBT_SCAN_TIME_CH4 */
+    {-1,28,5,0,1,0,0}, /* LBT_SCAN_TIME_CH5 */
+    {-1,28,6,0,1,0,0}, /* LBT_SCAN_TIME_CH6 */
+    {-1,28,7,0,1,0,0}, /* LBT_SCAN_TIME_CH7 */
+    {-1,29,0,0,1,0,0}, /* LBT_SCAN_TIME_CH8 */
+    {-1,29,1,0,1,0,0}, /* LBT_SCAN_TIME_CH9 */
     {-1,127,0,0,8,0,0} /* SPI_MUX_CTRL */
 };
 

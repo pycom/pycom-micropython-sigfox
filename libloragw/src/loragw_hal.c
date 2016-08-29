@@ -153,13 +153,6 @@ static int8_t cal_offset_a_q[8]; /* TX Q offset for radio A */
 static int8_t cal_offset_b_i[8]; /* TX I offset for radio B */
 static int8_t cal_offset_b_q[8]; /* TX Q offset for radio B */
 
-/* LBT variables - defined in loragw_lbt module */
-extern bool lbt_enable;
-extern uint8_t lbt_rssi_target;
-extern uint8_t lbt_nb_channel;
-extern uint32_t lbt_first_channel_freq;
-extern uint16_t lbt_scan_time_us;
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -653,9 +646,9 @@ int lgw_start(void) {
     lgw_reg_w(LGW_GPIO_SELECT_OUTPUT,2);
 
     /* Configure LBT */
-    if (lbt_enable == true) {
+    if (lbt_is_enabled() == true) {
         lgw_reg_w(LGW_CLK32M_EN, 1);
-        i = lbt_setup(lbt_first_channel_freq, lbt_rssi_target, lbt_scan_time_us, lbt_nb_channel);
+        i = lbt_setup();
         if (i != LGW_LBT_SUCCESS) {
             DEBUG_MSG("ERROR: lbt_setup() did not return SUCCESS\n");
             return LGW_HAL_ERROR;
@@ -976,7 +969,7 @@ int lgw_start(void) {
     lgw_reg_w(LGW_GPS_EN, 1);
 
     /* */
-    if (lbt_enable) {
+    if (lbt_is_enabled() == true) {
         printf("INFO: Configuring LBT, this may take few seconds, please wait...\n");
         wait_ms(8400);
     }
