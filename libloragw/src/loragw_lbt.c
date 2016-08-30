@@ -61,7 +61,7 @@ extern uint8_t lgw_spi_mux_mode; /*! current SPI mux mode used */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
 static bool lbt_enable;
-static uint8_t lbt_nb_channel;
+static uint8_t lbt_nb_active_channel;
 static uint8_t lbt_rssi_target;
 static uint32_t lbt_start_freq;
 static struct lgw_conf_lbt_chan_s lbt_channel_cfg[LBT_CHANNEL_FREQ_NB];
@@ -75,8 +75,7 @@ bool is_equal_freq(uint32_t a, uint32_t b);
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int lbt_setconf(struct lgw_conf_lbt_s * conf) {
-    int i, x;
-    int32_t val;
+    int i;
 
     /* Check input parameters */
     if (conf == NULL) {
@@ -90,13 +89,39 @@ int lbt_setconf(struct lgw_conf_lbt_s * conf) {
     /* Initialize LBT channels configuration */
     memset(lbt_channel_cfg, 0, sizeof lbt_channel_cfg);
 
-    /* set internal config according to parameters */
+    /* Set internal LBT config according to parameters */
     lbt_enable = conf->enable;
-    lbt_nb_channel = conf->nb_channel;
+    lbt_nb_active_channel = conf->nb_channel;
     lbt_rssi_target = conf->rssi_target;
 
+    for (i=0; i<lbt_nb_active_channel; i++) {
+        lbt_channel_cfg[i].freq_hz = conf->channels[i].freq_hz;
+        lbt_channel_cfg[i].scan_time_us = conf->channels[i].scan_time_us;
+    }
+
+    return LGW_LBT_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lbt_setup(void) {
+    int x, i;
+    int32_t val;
+    uint32_t freq_offset;
+
+    /* Check if LBT feature is supported by FPGA */
+    x = lgw_fpga_reg_r(LGW_FPGA_FEATURE, &val);
+    if (x != LGW_REG_SUCCESS) {
+        DEBUG_MSG("ERROR: Failed to read FPGA Features register\n");
+        return LGW_LBT_ERROR;
+    }
+    if (TAKE_N_BITS_FROM((uint8_t)val, 2, 1) != 1) {
+        DEBUG_MSG("ERROR: No support for LBT in FPGA\n");
+        return LGW_LBT_ERROR;
+    }
+
     /* Get FPGA lowest frequency for LBT channels */
-    x = lgw_fpga_reg_r(LGW_FPGA_FPGA_FEATURE, &val);
+    x = lgw_fpga_reg_r(LGW_FPGA_LBT_INITIAL_FREQ, &val);
     if (x != LGW_REG_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to read LBT initial frequency from FPGA\n");
         return LGW_LBT_ERROR;
@@ -113,54 +138,6 @@ int lbt_setconf(struct lgw_conf_lbt_s * conf) {
             return LGW_LBT_ERROR;
     }
 
-    /* set channels parameters */
-    for (i=0; i<lbt_nb_channel; i++) {
-        /* Check input parameters */
-        if (conf->channels[i].freq_hz < lbt_start_freq) {
-            DEBUG_PRINTF("ERROR: LBT channel frequency is out of range (%u)\n", conf->channels[i].freq_hz);
-            return LGW_LBT_ERROR;
-        }
-        if ((conf->channels[i].scan_time_us != 128) && (conf->channels[i].scan_time_us != 5000)) {
-            DEBUG_PRINTF("ERROR: LBT channel scan time is not supported (%u)\n", conf->channels[i].scan_time_us);
-            return LGW_LBT_ERROR;
-        }
-
-        /* Set parameters */
-        lbt_channel_cfg[i].freq_hz = conf->channels[i].freq_hz;
-        lbt_channel_cfg[i].scan_time_us = conf->channels[i].scan_time_us;
-    }
-
-    DEBUG_MSG("Note: LBT configuration:\n");
-    DEBUG_PRINTF("\tlbt_enable: %d\n", lbt_enable );
-    DEBUG_PRINTF("\tlbt_nb_channel: %d\n", lbt_nb_channel );
-    DEBUG_PRINTF("\tlbt_start_freq: %d\n", lbt_start_freq);
-    DEBUG_PRINTF("\tlbt_rssi_target: %d\n", lbt_rssi_target );
-    for (i=0; i<LBT_CHANNEL_FREQ_NB; i++) {
-        DEBUG_PRINTF("\tlbt_channel_cfg[%d].freq_hz: %u\n", i, lbt_channel_cfg[i].freq_hz );
-        DEBUG_PRINTF("\tlbt_channel_cfg[%d].scan_time_us: %u\n", i, lbt_channel_cfg[i].scan_time_us );
-    }
-
-    return LGW_LBT_SUCCESS;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lbt_setup(void) {
-    int x, i;
-    int32_t val;
-    uint32_t freq_offset;
-
-    /* Check if LBT feature is supported by FPGA */
-    x = lgw_fpga_reg_r(LGW_FPGA_FPGA_FEATURE, &val);
-    if (x != LGW_REG_SUCCESS) {
-        DEBUG_MSG("ERROR: Failed to read FPGA Features register\n");
-        return LGW_LBT_ERROR;
-    }
-    if (TAKE_N_BITS_FROM((uint8_t)val, 2, 1) != 1) {
-        DEBUG_MSG("ERROR: No support for LBT in FPGA\n");
-        return LGW_LBT_ERROR;
-    }
-
     /* Configure SX127x for FSK */
     x = lgw_setup_sx127x(lbt_start_freq, MOD_FSK);
     if (x != LGW_REG_SUCCESS) {
@@ -170,12 +147,27 @@ int lbt_setup(void) {
 
     /* Configure FPGA for LBT */
     x = lgw_fpga_reg_w(LGW_FPGA_RSSI_TARGET, (int32_t)lbt_rssi_target);
-    x |= lgw_fpga_reg_w(LGW_FPGA_LBT_TIMESTAMP_NB_CH, (int32_t)(lbt_nb_channel-1));
     if (x != LGW_REG_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to configure FPGA for LBT\n");
         return LGW_LBT_ERROR;
     }
-    for (i=0; i<lbt_nb_channel; i++) {
+    /* Set default values for non-active LBT channels */
+    for (i=lbt_nb_active_channel; i<LBT_CHANNEL_FREQ_NB; i++) {
+        lbt_channel_cfg[i].freq_hz = lbt_start_freq;
+        lbt_channel_cfg[i].scan_time_us = 128; /* fastest scan for non-active channels */
+    }
+    /* Configure FPGA for both active and non-active LBT channels */
+    for (i=0; i<LBT_CHANNEL_FREQ_NB; i++) {
+        /* Check input parameters */
+        if (lbt_channel_cfg[i].freq_hz < lbt_start_freq) {
+            DEBUG_PRINTF("ERROR: LBT channel frequency is out of range (%u)\n", lbt_channel_cfg[i].freq_hz);
+            return LGW_LBT_ERROR;
+        }
+        if ((lbt_channel_cfg[i].scan_time_us != 128) && (lbt_channel_cfg[i].scan_time_us != 5000)) {
+            DEBUG_PRINTF("ERROR: LBT channel scan time is not supported (%u)\n", lbt_channel_cfg[i].scan_time_us);
+            return LGW_LBT_ERROR;
+        }
+        /* Configure */
         freq_offset = (lbt_channel_cfg[i].freq_hz - lbt_start_freq) / 100E3; /* 100kHz unit */
         x = lgw_fpga_reg_w(LGW_FPGA_LBT_CH0_FREQ_OFFSET+i, (int32_t)freq_offset);
         if (x != LGW_REG_SUCCESS) {
@@ -189,6 +181,16 @@ int lbt_setup(void) {
                 return LGW_LBT_ERROR;
             }
         }
+    }
+
+    DEBUG_MSG("Note: LBT configuration:\n");
+    DEBUG_PRINTF("\tlbt_enable: %d\n", lbt_enable );
+    DEBUG_PRINTF("\tlbt_nb_active_channel: %d\n", lbt_nb_active_channel );
+    DEBUG_PRINTF("\tlbt_start_freq: %d\n", lbt_start_freq);
+    DEBUG_PRINTF("\tlbt_rssi_target: %d\n", lbt_rssi_target );
+    for (i=0; i<LBT_CHANNEL_FREQ_NB; i++) {
+        DEBUG_PRINTF("\tlbt_channel_cfg[%d].freq_hz: %u\n", i, lbt_channel_cfg[i].freq_hz );
+        DEBUG_PRINTF("\tlbt_channel_cfg[%d].scan_time_us: %u\n", i, lbt_channel_cfg[i].scan_time_us );
     }
 
     return LGW_LBT_SUCCESS;
@@ -264,7 +266,7 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, bool * tx_allowed) {
         if (pkt_data->bandwidth == BW_125KHZ){
             lbt_channel_decod_1 = -1;
             lbt_channel_decod_2 = -1;
-            for (i=0; i<lbt_nb_channel; i++) {
+            for (i=0; i<lbt_nb_active_channel; i++) {
                 if (is_equal_freq(pkt_data->freq_hz, lbt_channel_cfg[i].freq_hz) == true) {
                     DEBUG_PRINTF("LBT: select channel %d (%u Hz)\n", i, lbt_channel_cfg[i].freq_hz);
                     lbt_channel_decod_1 = i;
@@ -278,11 +280,12 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, bool * tx_allowed) {
                 }
             }
         } else if (pkt_data->bandwidth == BW_250KHZ) {
-            /* In case of 250KHz, the TX freq has to be in between 2 channels of 200KHz BW. The TX can only be over 2 channels, not more */
+            /* In case of 250KHz, the TX freq has to be in between 2 consecutive channels of 200KHz BW.
+                The TX can only be over 2 channels, not more */
             lbt_channel_decod_1 = -1;
             lbt_channel_decod_2 = -1;
-            for (i=0; i<(lbt_nb_channel-1); i++) {
-                if (is_equal_freq(pkt_data->freq_hz, (lbt_channel_cfg[i].freq_hz+lbt_channel_cfg[i+1].freq_hz)/2) == true) {
+            for (i=0; i<(lbt_nb_active_channel-1); i++) {
+                if ((is_equal_freq(pkt_data->freq_hz, (lbt_channel_cfg[i].freq_hz+lbt_channel_cfg[i+1].freq_hz)/2) == true) && ((lbt_channel_cfg[i+1].freq_hz-lbt_channel_cfg[i].freq_hz)==200E3)) {
                     DEBUG_PRINTF("LBT: select channels %d,%d (%u Hz)\n", i, i+1, (lbt_channel_cfg[i].freq_hz+lbt_channel_cfg[i+1].freq_hz)/2);
                     lbt_channel_decod_1 = i;
                     lbt_channel_decod_2 = i+1;
