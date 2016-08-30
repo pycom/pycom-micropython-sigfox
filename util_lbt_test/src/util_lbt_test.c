@@ -74,12 +74,9 @@ static void sig_handler(int sigio) {
 void usage(void) {
     printf( "Available options:\n");
     printf( " -h print this help\n");
-    printf( " -f <float> start frequency in MHz\n");
-    printf( " -t <uint>  number of read loops [1..32000]\n");
-    printf( " -n <uint>  number of spi access to SX127x RSSI instant register [0..255]\n");
-    printf( " -s <uint>  spi speed divider [0..255]\n");
-    printf( " -p <uint>  pll lock time: delay in 8 µsec step between frequency programming and RX ready [0..255]\n");
+    printf( " -f <float> frequency in MHz of the first LBT channel\n");
     printf( " -r <uint>  target RSSI: signal strength target used to detect if the channel is clear or not [0..255]\n");
+    printf( " -s <uint>  scan time in µs for all 8 LBT channels [128,5000]\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -92,21 +89,19 @@ int main(int argc, char **argv)
 
     /* in/out variables */
     double f1 = 0.0;
+    uint32_t f_init = 0; /* in Hz */
     uint32_t f_start = 0; /* in Hz */
     uint16_t loop_cnt = 0;
-    uint16_t tempo = 100;
-    uint16_t nb_point = 14;
-    uint8_t spi_speed_div = 15;
     uint8_t rssi_target = 162;
-    uint8_t pll_lock_time = 50;
-    uint16_t lsb_start_freq_int;
+    uint16_t scan_time_us = 128;
     uint32_t timestamp;
     uint8_t rssi_value;
-    int32_t val;
+    int32_t val, val2;
     int channel;
+    uint32_t freq_offset;
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "h:f:t:n:s:p:r:o:")) != -1) {
+    while ((i = getopt (argc, argv, "h:f:s:r:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -123,34 +118,14 @@ int main(int argc, char **argv)
                     f_start = (uint32_t)((f1*1e6) + 0.5);/* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
-            case 't':
-                i = sscanf(optarg, "%i", &xi);
-                if ((i != 1) || (xi < 1) || (xi > 32000)) {
-                    MSG("ERROR: tempo must be b/w 1 & 32000 \n");
-                    usage();
-                    return EXIT_FAILURE;
-                } else {
-                    tempo = xi;
-                }
-                break;
-            case 'n':
-                i = sscanf(optarg, "%i", &xi);
-                if ((i != 1) || (xi < 0) || (xi > 255)) {
-                    MSG("ERROR: nb_point must be b/w 0 & 255 \n");
-                    usage();
-                    return EXIT_FAILURE;
-                } else {
-                    nb_point = xi;
-                }
-                break;
             case 's':
                 i = sscanf(optarg, "%i", &xi);
-                if ((i != 1) || (xi < 0) || (xi > 255)) {
-                    MSG("ERROR: spi_speed_div must be b/w 0 & 255 \n");
+                if ((i != 1) || ((xi != 128) && (xi != 5000))) {
+                    MSG("ERROR: scan_time_us must be 128 or 5000 \n");
                     usage();
                     return EXIT_FAILURE;
                 } else {
-                    spi_speed_div = xi;
+                    scan_time_us = xi;
                 }
                 break;
             case 'r':
@@ -163,28 +138,11 @@ int main(int argc, char **argv)
                     rssi_target = xi;
                 }
                 break;
-            case 'p':
-                i = sscanf(optarg, "%i", &xi);
-                if ((i != 1) || (xi < 0) || (xi > 255)) {
-                    MSG("ERROR: pll_lock_time must be b/w 1 & 256 \n");
-                    usage();
-                    return EXIT_FAILURE;
-                } else {
-                    pll_lock_time = xi;
-                }
-                break;
             default:
                 MSG("ERROR: argument parsing use -h option for help\n");
                 usage();
                 return EXIT_FAILURE;
         }
-    }
-
-    /* Sanity check */
-    if (f_start == 0) {
-        MSG("ERROR: LBT start frequency must be set\n");
-        usage();
-        return EXIT_FAILURE;
     }
 
     MSG("INFO: Starting LoRa Gateway v1.5 LBT test\n");
@@ -205,16 +163,37 @@ int main(int argc, char **argv)
     }
 
     /* Check if FPGA supports LBT */
-    lgw_fpga_reg_r(LGW_FPGA_FPGA_FEATURE, &val);
+    lgw_fpga_reg_r(LGW_FPGA_FEATURE, &val);
     if (TAKE_N_BITS_FROM((uint8_t)val, 2, 1) != true) {
-        printf("ERROR: LBT is not supported (0x%x)\n", (uint8_t)val);
+        MSG("ERROR: LBT is not supported (0x%x)\n", (uint8_t)val);
         return EXIT_FAILURE;
     }
 
+    /* Get FPGA lowest frequency for LBT channels */
+    lgw_fpga_reg_r(LGW_FPGA_LBT_INITIAL_FREQ, &val);
+    switch(val) {
+        case 0:
+            f_init = 915000000;
+            break;
+        case 1:
+            f_init = 863000000;
+            break;
+        default:
+            MSG("ERROR: LBT start frequency %d is not supported\n", val);
+            return EXIT_FAILURE;
+    }
+
+    /* Initialize 1st LBT channel freq if not given by user */
+    if (f_start == 0) {
+        f_start = f_init;
+    } else if (f_start < f_init) {
+        MSG("ERROR: LBT start frequency %u is not supported (f_init=%u)\n", f_start, f_init);
+        return EXIT_FAILURE;
+    }
     MSG("FREQ: %u\n", f_start);
 
     /* Configure SX127x and read few RSSI points */
-    lgw_setup_sx127x(f_start, MOD_FSK);
+    lgw_setup_sx127x(f_init, MOD_FSK);
     for (i = 0; i < 100; i++) {
         lgw_sx127x_reg_r(0x11, &rssi_value); /* 0x11: RegRssiValue */
         MSG("SX127x RSSI:-%u dBm\n", rssi_value>>1);
@@ -222,55 +201,41 @@ int main(int argc, char **argv)
     }
 
     /* Configure LBT */
-    lgw_fpga_reg_w(LGW_FPGA_SPI_MASTER_SPEED_DIVIDER, (int32_t)spi_speed_div);
-    lgw_fpga_reg_w(LGW_FPGA_NB_READ_RSSI, (int32_t)nb_point);
-    lgw_fpga_reg_w(LGW_FPGA_PLL_LOCK_TIME, (int32_t)pll_lock_time);
     lgw_fpga_reg_w(LGW_FPGA_RSSI_TARGET, (int32_t)rssi_target);
-    lsb_start_freq_int = (((uint64_t)f_start<<19)/(uint64_t)32000000);
-    lgw_fpga_reg_w(LGW_FPGA_LSB_START_FREQ, (int32_t)lsb_start_freq_int);
-    lgw_fpga_reg_w(LGW_FPGA_LBT_TIMESTAMP_NB_CH, (6-1)); /* 6 channels */
+    for (i = 0; i < LBT_CHANNEL_FREQ_NB; i++) {
+        freq_offset = (f_start - f_init)/100E3 + i*2; /* 200KHz between each channel */
+        lgw_fpga_reg_w(LGW_FPGA_LBT_CH0_FREQ_OFFSET+i, (int32_t)freq_offset);
+        if (scan_time_us == 5000) { /* configured to 128 by default */
+            lgw_fpga_reg_w(LGW_FPGA_LBT_SCAN_TIME_CH0+i, 1);
+        }
+    }
 
-    /* Enable LBT FSM */
-    lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
-
-    /* Read back LBT config */
-    lgw_fpga_reg_r(LGW_FPGA_SPI_MASTER_SPEED_DIVIDER, &val);
-    MSG("spi_speed_div = %d\n", val);
-    if (val != spi_speed_div) {
-        return EXIT_FAILURE;
-    }
-    lgw_fpga_reg_r(LGW_FPGA_NB_READ_RSSI, &val);
-    MSG("nb_point = %d\n", val);
-    if (val != nb_point) {
-        return EXIT_FAILURE;
-    }
-    lgw_fpga_reg_r(LGW_FPGA_PLL_LOCK_TIME, &val);
-    MSG("PLL_LOCK = %d\n", val);
-    if (val != pll_lock_time) {
-        return EXIT_FAILURE;
-    }
     lgw_fpga_reg_r(LGW_FPGA_RSSI_TARGET, &val);
     MSG("RSSI_TARGET = %d\n", val);
     if (val != rssi_target) {
         return EXIT_FAILURE;
     }
+    for (i = 0; i < LBT_CHANNEL_FREQ_NB; i++) {
+        lgw_fpga_reg_r(LGW_FPGA_LBT_CH0_FREQ_OFFSET+i, &val);
+        lgw_fpga_reg_r(LGW_FPGA_LBT_SCAN_TIME_CH0+i, &val2);
+        MSG("CH_%i: freq=%u (offset=%i), scan_time=%u (%i)\n", i, (uint32_t)((val*100E3)+f_init), val, (val2==1)?5000:128, val2);
+    }
     lgw_fpga_reg_r(LGW_FPGA_VERSION, &val);
     MSG("FPGA VERSION = %d\n", val);
 
-    /* Start test */
-    while (((quit_sig != 1) && (exit_sig != 1)) && (loop_cnt != tempo)) {
-        /* Get current FPGA timestamp (1MHz) */
-        lgw_fpga_reg_r(LGW_FPGA_TIMESTAMP, &val);
-        timestamp = (uint32_t)val;
-        MSG(" TIMESTAMP = %u\n", timestamp);
+    /* Enable LBT FSM */
+    lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
 
-        for (channel = 0; channel <= 5; channel++) {
+    /* Start test */
+    while ((quit_sig != 1) && (exit_sig != 1)) {
+        MSG("~~~~\n");
+        for (channel = 0; channel < LBT_CHANNEL_FREQ_NB; channel++) {
             /* Select LBT channel */
             lgw_fpga_reg_w(LGW_FPGA_LBT_TIMESTAMP_SELECT_CH, channel);
 
             /* Get last instant when the selected channel was free */
             lgw_fpga_reg_r(LGW_FPGA_LBT_TIMESTAMP_CH, &val);
-            timestamp = (uint32_t)(val & 0x00FFFFFF) * 256; /* 24bits (1LSB = 256µs) */
+            timestamp = (uint32_t)(val & 0x0000FFFF) * 256; /* 16bits (1LSB = 256µs) */
             MSG(" TIMESTAMP_CH%u = %u\n", channel, timestamp);
         }
 
