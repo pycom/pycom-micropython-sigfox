@@ -35,6 +35,7 @@ Maintainer: Sylvain Miermont
 #include <getopt.h>     /* getopt_long */
 
 #include "loragw_hal.h"
+#include "loragw_reg.h"
 #include "loragw_aux.h"
 
 /* -------------------------------------------------------------------------- */
@@ -144,9 +145,9 @@ void usage(void) {
     printf(" -t         <uint>  pause between packets (ms)\n");
     printf(" -x         <int>   nb of times the sequence is repeated (-1 loop until stopped)\n");
     printf(" --lbt-freq <float> lbt first channel frequency in MHz\n");
+    printf(" --lbt-nbch <uint>  lbt nb channel\n");
     printf(" --lbt-sctm <uint>  lbt scan time in usec\n");
     printf(" --lbt-rssi <uint>  lbt rssi target (to be divided by -2)\n");
-    printf(" --lbt-nbch <uint>  lbt nb channel\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -183,6 +184,7 @@ int main(int argc, char **argv)
     uint32_t lbt_sc_time = 5000;
     uint8_t  lbt_rssi_target = 160;
     uint8_t  lbt_nb_channel = 1;
+    uint32_t sx1301_count_us;
 
     /* RF configuration (TX fail if RF chain is not enabled) */
     enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
@@ -520,7 +522,11 @@ int main(int argc, char **argv)
     /* fill-up payload and parameters */
     memset(&txpkt, 0, sizeof(txpkt));
     txpkt.freq_hz = f_target;
-    txpkt.tx_mode = IMMEDIATE;
+    if (lbt_enable == true) {
+        txpkt.tx_mode = TIMESTAMPED;
+    } else {
+        txpkt.tx_mode = IMMEDIATE;
+    }
     txpkt.rf_chain = TX_RF_CHAIN;
     txpkt.rf_power = pow;
     if( strcmp( mod, "FSK" ) == 0 ) {
@@ -571,6 +577,18 @@ int main(int argc, char **argv)
         /* refresh counters in payload (big endian, for readability) */
         txpkt.payload[4] = (uint8_t)(cycle_count >> 8); /* MSB */
         txpkt.payload[5] = (uint8_t)(cycle_count & 0x00FF); /* LSB */
+
+        /* When LBT is enabled, immediate send is not allowed, so we need
+            to set a timestamp to the packet */
+        if (lbt_enable == true) {
+            /* Get the current SX1301 time */
+            lgw_reg_w(LGW_GPS_EN, 0);
+            lgw_get_trigcnt(&sx1301_count_us);
+            lgw_reg_w(LGW_GPS_EN, 1);
+
+            /* Set packet timestamp to current time + few milliseconds */
+            txpkt.count_us = sx1301_count_us + 50E3;
+        }
 
         /* send packet */
         printf("Sending packet number %u ...", cycle_count);
