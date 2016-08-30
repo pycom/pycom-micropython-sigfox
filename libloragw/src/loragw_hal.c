@@ -654,6 +654,7 @@ int lgw_start(void) {
             return LGW_HAL_ERROR;
         }
 
+        /* Start SX1301 counter and LBT FSM at the same time to be in sync */
         lgw_reg_w(LGW_CLK32M_EN, 0);
         i = lbt_start();
         if (i != LGW_LBT_SUCCESS) {
