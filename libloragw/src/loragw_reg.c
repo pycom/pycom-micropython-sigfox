@@ -48,7 +48,7 @@ Maintainer: Sylvain Miermont
 #define PAGE_ADDR        0x00
 #define PAGE_MASK        0x03
 
-const uint8_t FPGA_VERSION[] = { 27 }; /* several versions could be supported */
+const uint8_t FPGA_VERSION[] = { 30 }; /* several versions could be supported */
 
 /*
 auto generated register mapping for C code : 11-Jul-2013 13:20:40
