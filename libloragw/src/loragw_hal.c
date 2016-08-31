@@ -616,7 +616,7 @@ int lgw_start(void) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    reg_stat = lgw_connect();
+    reg_stat = lgw_connect(false);
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;

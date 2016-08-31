@@ -156,7 +156,7 @@ int main(int argc, char **argv)
     sigaction(SIGTERM, &sigact, NULL);
 
     /* Connect to concentrator */
-    i = lgw_connect();
+    i = lgw_connect(false);
     if (i != LGW_REG_SUCCESS) {
         MSG("ERROR: lgw_connect() did not return SUCCESS\n");
         return EXIT_FAILURE;
@@ -171,7 +171,7 @@ int main(int argc, char **argv)
 
     /* Get FPGA lowest frequency for LBT channels */
     lgw_fpga_reg_r(LGW_FPGA_LBT_INITIAL_FREQ, &val);
-    switch(val) {
+    switch (val) {
         case 0:
             f_init = 915000000;
             break;

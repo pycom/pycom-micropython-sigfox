@@ -497,7 +497,7 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* Concentrator connect */
-int lgw_connect(void) {
+int lgw_connect(bool spi_only) {
     int spi_stat = LGW_SPI_SUCCESS;
     uint8_t u = 0;
 
@@ -512,41 +512,43 @@ int lgw_connect(void) {
         return LGW_REG_ERROR;
     }
 
-    /* Detect if the gateway has an FPGA with SPI mux header support */
-    /* First, we assume there is an FPGA, and try to read its version */
-    spi_stat = lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, loregs[LGW_VERSION].addr, &u);
-    if (spi_stat != LGW_SPI_SUCCESS) {
-        DEBUG_MSG("ERROR READING VERSION REGISTER\n");
-        return LGW_REG_ERROR;
-    }
-    if (check_fpga_version(u) != true) {
-        /* We failed to read expected FPGA version, so let's assume there is no FPGA */
-        DEBUG_PRINTF("INFO: no FPGA detected or version not supported (v%u)\n", u);
-        lgw_spi_mux_mode = LGW_SPI_MUX_MODE0;
-    } else {
-        DEBUG_PRINTF("INFO: detected FPGA with SPI mux header (v%u)\n", u);
-        lgw_spi_mux_mode = LGW_SPI_MUX_MODE1;
-        /* FPGA Soft Reset */
-        lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 1);
-        lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 0);
-        /* FPGA configure */
-        lgw_fpga_configure();
-    }
+    if (spi_only == false ) {
+        /* Detect if the gateway has an FPGA with SPI mux header support */
+        /* First, we assume there is an FPGA, and try to read its version */
+        spi_stat = lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, loregs[LGW_VERSION].addr, &u);
+        if (spi_stat != LGW_SPI_SUCCESS) {
+            DEBUG_MSG("ERROR READING VERSION REGISTER\n");
+            return LGW_REG_ERROR;
+        }
+        if (check_fpga_version(u) != true) {
+            /* We failed to read expected FPGA version, so let's assume there is no FPGA */
+            DEBUG_PRINTF("INFO: no FPGA detected or version not supported (v%u)\n", u);
+            lgw_spi_mux_mode = LGW_SPI_MUX_MODE0;
+        } else {
+            DEBUG_PRINTF("INFO: detected FPGA with SPI mux header (v%u)\n", u);
+            lgw_spi_mux_mode = LGW_SPI_MUX_MODE1;
+            /* FPGA Soft Reset */
+            lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 1);
+            lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 0);
+            /* FPGA configure */
+            lgw_fpga_configure();
+        }
 
-    /* check SX1301 version */
-    spi_stat |= lgw_spi_r(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
-    if (u != loregs[LGW_VERSION].dflt) {
-        DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
-        return LGW_REG_ERROR;
-    }
+        /* check SX1301 version */
+        spi_stat |= lgw_spi_r(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
+        if (u != loregs[LGW_VERSION].dflt) {
+            DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
+            return LGW_REG_ERROR;
+        }
 
-    /* write 0 to the page/reset register */
-    spi_stat = lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
-    if (spi_stat != LGW_SPI_SUCCESS) {
-        DEBUG_MSG("ERROR WRITING PAGE REGISTER\n");
-        return LGW_REG_ERROR;
-    } else {
-        lgw_regpage = 0;
+        /* write 0 to the page/reset register */
+        spi_stat = lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
+        if (spi_stat != LGW_SPI_SUCCESS) {
+            DEBUG_MSG("ERROR WRITING PAGE REGISTER\n");
+            return LGW_REG_ERROR;
+        } else {
+            lgw_regpage = 0;
+        }
     }
 
     DEBUG_MSG("Note: success connecting the concentrator\n");

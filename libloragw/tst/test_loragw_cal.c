@@ -262,7 +262,7 @@ int main(int argc, char **argv)
     printf("Number of calibration iterations: %d\n",nb_cal);
     printf("Calibration command: brd: %d, chip: %d, dac: %d\n\n", cal_cmd >> 6, 1257-2*((cal_cmd & 0x20) >> 5), 2+((cal_cmd & 0x10) >> 4));
 
-    x = lgw_connect();
+    x = lgw_connect(false);
     if (x == -1) {
         printf("ERROR: FAIL TO CONNECT BOARD\n");
         return -1;

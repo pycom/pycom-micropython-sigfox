@@ -139,7 +139,7 @@ int main(int argc, char **argv)
     sigaction(SIGTERM, &sigact, NULL);
 
     /* start SPI link */
-    i = lgw_connect();
+    i = lgw_connect(false);
     if (i != LGW_REG_SUCCESS) {
         MSG("ERROR: lgw_connect() did not return SUCCESS");
         return EXIT_FAILURE;
