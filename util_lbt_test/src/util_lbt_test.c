@@ -75,7 +75,7 @@ void usage(void) {
     printf( "Available options:\n");
     printf( " -h print this help\n");
     printf( " -f <float> frequency in MHz of the first LBT channel\n");
-    printf( " -r <uint>  target RSSI: signal strength target used to detect if the channel is clear or not [0..255]\n");
+    printf( " -r <int>  target RSSI: signal strength target used to detect if the channel is clear or not [-128..0]\n");
     printf( " -s <uint>  scan time in µs for all 8 LBT channels [128,5000]\n");
 }
 
@@ -92,7 +92,7 @@ int main(int argc, char **argv)
     uint32_t f_init = 0; /* in Hz */
     uint32_t f_start = 0; /* in Hz */
     uint16_t loop_cnt = 0;
-    uint8_t rssi_target = 162;
+    int8_t rssi_target_dBm = -80;
     uint16_t scan_time_us = 128;
     uint32_t timestamp;
     uint8_t rssi_value;
@@ -130,12 +130,12 @@ int main(int argc, char **argv)
                 break;
             case 'r':
                 i = sscanf(optarg, "%i", &xi);
-                if ((i != 1) || (xi < 0) || (xi > 255)) {
-                    MSG("ERROR: rssi_target must be b/w 0 & 255 \n");
+                if ((i != 1) || ((xi < -128) && (xi > 0))) {
+                    MSG("ERROR: rssi_target must be b/w -128 & 0 \n");
                     usage();
                     return EXIT_FAILURE;
                 } else {
-                    rssi_target = xi;
+                    rssi_target_dBm = xi;
                 }
                 break;
             default:
@@ -201,7 +201,8 @@ int main(int argc, char **argv)
     }
 
     /* Configure LBT */
-    lgw_fpga_reg_w(LGW_FPGA_RSSI_TARGET, (int32_t)rssi_target);
+    val = -2*rssi_target_dBm;
+    lgw_fpga_reg_w(LGW_FPGA_RSSI_TARGET, val);
     for (i = 0; i < LBT_CHANNEL_FREQ_NB; i++) {
         freq_offset = (f_start - f_init)/100E3 + i*2; /* 200KHz between each channel */
         lgw_fpga_reg_w(LGW_FPGA_LBT_CH0_FREQ_OFFSET+i, (int32_t)freq_offset);
@@ -212,7 +213,7 @@ int main(int argc, char **argv)
 
     lgw_fpga_reg_r(LGW_FPGA_RSSI_TARGET, &val);
     MSG("RSSI_TARGET = %d\n", val);
-    if (val != rssi_target) {
+    if (val != (-2*rssi_target_dBm)) {
         return EXIT_FAILURE;
     }
     for (i = 0; i < LBT_CHANNEL_FREQ_NB; i++) {

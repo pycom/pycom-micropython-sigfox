@@ -145,9 +145,9 @@ void usage(void) {
     printf(" -t         <uint>  pause between packets (ms)\n");
     printf(" -x         <int>   nb of times the sequence is repeated (-1 loop until stopped)\n");
     printf(" --lbt-freq <float> lbt first channel frequency in MHz\n");
-    printf(" --lbt-nbch <uint>  lbt nb channel\n");
-    printf(" --lbt-sctm <uint>  lbt scan time in usec\n");
-    printf(" --lbt-rssi <uint>  lbt rssi target (to be divided by -2)\n");
+    printf(" --lbt-nbch <uint>  lbt number of channels [1..8]\n");
+    printf(" --lbt-sctm <uint>  lbt scan time in usec to be applied to all channels [128, 5000]\n");
+    printf(" --lbt-rssi <int>   lbt rssi target in dBm [-128..0]\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -182,7 +182,7 @@ int main(int argc, char **argv)
     bool lbt_enable = false;
     uint32_t lbt_f_target = 0;
     uint32_t lbt_sc_time = 5000;
-    uint8_t  lbt_rssi_target = 160;
+    int8_t  lbt_rssi_target_dBm = -80;
     uint8_t  lbt_nb_channel = 1;
     uint32_t sx1301_count_us;
 
@@ -409,12 +409,12 @@ int main(int argc, char **argv)
                 } else if( strcmp(long_options[option_index].name, "lbt-rssi") == 0 ) { /* <int> LBT RSSI target */
                     if (lbt_enable == true) {
                         i = sscanf(optarg, "%i", &xi);
-                        if ((i != 1) || (xi < 0)) {
+                        if ((i != 1) || ((xi < -128) && (xi > 0))) {
                             MSG("ERROR: invalid LBT RSSI target\n");
                             usage();
                             return EXIT_FAILURE;
                         } else {
-                            lbt_rssi_target = xi;
+                            lbt_rssi_target_dBm = xi;
                         }
                     } else {
                         MSG("ERROR: invalid parameter, LBT start frequency must be set\n");
@@ -482,7 +482,7 @@ int main(int argc, char **argv)
         memset(&lbtconf, 0, sizeof(lbtconf));
         lbtconf.enable = true;
         lbtconf.nb_channel = lbt_nb_channel;
-        lbtconf.rssi_target = lbt_rssi_target;
+        lbtconf.rssi_target = lbt_rssi_target_dBm;
         lbtconf.channels[0].freq_hz = lbt_f_target;
         lbtconf.channels[0].scan_time_us = lbt_sc_time;
         for (i=1; i<lbt_nb_channel; i++) {

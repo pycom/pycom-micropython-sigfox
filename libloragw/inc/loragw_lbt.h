@@ -60,6 +60,10 @@ int lbt_start(void);
 */
 int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, bool * tx_allowed);
 
+/**
+@brief Check if LBT is enabled
+@return true if enabled, false otherwise
+*/
 bool lbt_is_enabled(void);
 
 #endif

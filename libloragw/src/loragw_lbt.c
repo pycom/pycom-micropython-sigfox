@@ -62,7 +62,7 @@ extern uint8_t lgw_spi_mux_mode; /*! current SPI mux mode used */
 
 static bool lbt_enable;
 static uint8_t lbt_nb_active_channel;
-static uint8_t lbt_rssi_target;
+static int8_t lbt_rssi_target_dBm;
 static uint32_t lbt_start_freq;
 static struct lgw_conf_lbt_chan_s lbt_channel_cfg[LBT_CHANNEL_FREQ_NB];
 
@@ -92,7 +92,7 @@ int lbt_setconf(struct lgw_conf_lbt_s * conf) {
     /* Set internal LBT config according to parameters */
     lbt_enable = conf->enable;
     lbt_nb_active_channel = conf->nb_channel;
-    lbt_rssi_target = conf->rssi_target;
+    lbt_rssi_target_dBm = conf->rssi_target;
 
     for (i=0; i<lbt_nb_active_channel; i++) {
         lbt_channel_cfg[i].freq_hz = conf->channels[i].freq_hz;
@@ -146,7 +146,8 @@ int lbt_setup(void) {
     }
 
     /* Configure FPGA for LBT */
-    x = lgw_fpga_reg_w(LGW_FPGA_RSSI_TARGET, (int32_t)lbt_rssi_target);
+    val = -2*lbt_rssi_target_dBm; /* Convert RSSI target in dBm to FPGA register format */
+    x = lgw_fpga_reg_w(LGW_FPGA_RSSI_TARGET, val);
     if (x != LGW_REG_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to configure FPGA for LBT\n");
         return LGW_LBT_ERROR;
@@ -187,7 +188,7 @@ int lbt_setup(void) {
     DEBUG_PRINTF("\tlbt_enable: %d\n", lbt_enable );
     DEBUG_PRINTF("\tlbt_nb_active_channel: %d\n", lbt_nb_active_channel );
     DEBUG_PRINTF("\tlbt_start_freq: %d\n", lbt_start_freq);
-    DEBUG_PRINTF("\tlbt_rssi_target: %d\n", lbt_rssi_target );
+    DEBUG_PRINTF("\tlbt_rssi_target: %d\n", lbt_rssi_target_dBm );
     for (i=0; i<LBT_CHANNEL_FREQ_NB; i++) {
         DEBUG_PRINTF("\tlbt_channel_cfg[%d].freq_hz: %u\n", i, lbt_channel_cfg[i].freq_hz );
         DEBUG_PRINTF("\tlbt_channel_cfg[%d].scan_time_us: %u\n", i, lbt_channel_cfg[i].scan_time_us );
