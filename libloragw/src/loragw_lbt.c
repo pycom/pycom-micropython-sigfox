@@ -81,7 +81,7 @@ int lbt_setconf(struct lgw_conf_lbt_s * conf) {
     if (conf == NULL) {
         return LGW_LBT_ERROR;
     }
-    if (conf->nb_channel > LBT_CHANNEL_FREQ_NB) {
+    if ((conf->nb_channel < 1) || (conf->nb_channel > LBT_CHANNEL_FREQ_NB)) {
         DEBUG_PRINTF("ERROR: Number of defined LBT channels is out of range (%u)\n", conf->nb_channel);
         return LGW_LBT_ERROR;
     }
