@@ -50,7 +50,7 @@ Maintainer: Matthieu Leurent
 #define DEFAULT_LOG_NAME   "rssi_histogram"
 
 #define RSSI_RANGE   256
-#define RSSI_OFFSET  -135
+#define RSSI_OFFSET  12
 
 #define MAX_FREQ   1000000000
 #define MIN_FREQ    800000000
@@ -91,10 +91,8 @@ int main( int argc, char ** argv )
     float rssi_thresh[] = {0.1,0.3,0.5,0.8,1};
 
     /* Parse command line options */
-    while( (i = getopt( argc, argv, "hud::f:n:r:l:" )) != -1 )
-    {
-        switch( i )
-        {
+    while((i = getopt( argc, argv, "hud::f:n:r:l:" )) != -1) {
+        switch (i) {
         case 'h':
             printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
             printf( " -f <float>:<float>:<float>  Frequency vector to scan in MHz (start:step:stop)\n" );
@@ -107,14 +105,11 @@ int main( int argc, char ** argv )
             break;
 
         case 'f': /* -f <float>:<float>:<float>  Frequency vector to scan in MHz, start:step:stop */
-            j = sscanf( optarg, "%lf:%lf:%lf", &arg_lf[0], &arg_lf[1], &arg_lf[2] );
-            if( (j!=3) || (arg_lf[0] < MIN_FREQ/1e6) || (arg_lf[0] > MAX_FREQ/1e6) || (arg_lf[1] < MIN_STEP_FREQ/1e6) || (arg_lf[2] < MIN_FREQ/1e6) || (arg_lf[2] > MAX_FREQ/1e6) )
-            {
+            j = sscanf(optarg, "%lf:%lf:%lf", &arg_lf[0], &arg_lf[1], &arg_lf[2]);
+            if((j!=3) || (arg_lf[0] < MIN_FREQ/1e6) || (arg_lf[0] > MAX_FREQ/1e6) || (arg_lf[1] < MIN_STEP_FREQ/1e6) || (arg_lf[2] < MIN_FREQ/1e6) || (arg_lf[2] > MAX_FREQ/1e6)) {
                 printf( "ERROR: argument parsing of -f argument. -h for help.\n" );
                 return EXIT_FAILURE;
-            }
-            else
-            {
+            } else {
                 start_freq = (uint32_t)((arg_lf[0] * 1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 step_freq = (uint32_t)((arg_lf[1] * 1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 stop_freq = (uint32_t)((arg_lf[2] * 1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
@@ -122,67 +117,58 @@ int main( int argc, char ** argv )
             break;
 
         case 'n': /* -n <uint>  Total number of RSSI points, [1,65535] */
-            j = sscanf( optarg, "%i", &arg_u );
-            if( (j != 1) || (arg_u < 1) || (arg_u > 65535) )
-            {
+            j = sscanf(optarg, "%i", &arg_u);
+            if((j != 1) || (arg_u < 1) || (arg_u > 65535)) {
                 printf( "ERROR: argument parsing of -n argument. -h for help.\n" );
                 return EXIT_FAILURE;
-            }
-            else
-            {
+            } else {
                 rssi_pts = (uint16_t)arg_u;
             }
             break;
 
         case 'r': /* -r <uint>  Divide factor of RSSI sampling rate, 32MHz/(div+1030), [1,65535] */
-            j = sscanf( optarg, "%i", &arg_u );
-            if( (j != 1) || (arg_u < 1) || (arg_u > 65535) )
-            {
+            j = sscanf(optarg, "%i", &arg_u);
+            if( (j != 1) || (arg_u < 1) || (arg_u > 65535) ) {
                 printf( "ERROR: argument parsing of -r argument. -h for help.\n" );
                 return EXIT_FAILURE;
-            }
-            else
-            {
+            } else {
                 rssi_rate_div = (uint16_t)arg_u;
             }
             break;
 
         case 'l': /* -l <char>  Log file name */
-            j = sscanf( optarg, "%s", arg_s );
-            if( j != 1 )
-            {
-                printf( "ERROR: argument parsing of -l argument. -h for help.\n" );
+            j = sscanf(optarg, "%s", arg_s);
+            if( j != 1 ) {
+                printf("ERROR: argument parsing of -l argument. -h for help.\n");
                 return EXIT_FAILURE;
-            }
-            else
-            {
+            } else {
                 sprintf(log_file_name, "%s", arg_s);
             }
             break;
 
         default:
-            printf( "ERROR: argument parsing options. -h for help.\n" );
+            printf("ERROR: argument parsing options. -h for help.\n");
             return EXIT_FAILURE;
         }
     }
 
     /* Start message */
-    printf( "+++ Start spectral scan of LoRa gateway channels +++\n" );
+    printf("+++ Start spectral scan of LoRa gateway channels +++\n");
 
-    x = lgw_connect( );
-    if( x != 0 )
-    {
-        printf( "ERROR: Failed to connect to FPGA\n" );
+    x = lgw_connect(true); /* SPI only, no FPGA reset/configure */
+    if(x != 0) {
+        printf("ERROR: Failed to connect to FPGA\n");
         return EXIT_FAILURE;
     }
 
     /* Check if FPGA supports Spectral Scan */
-    lgw_fpga_reg_r(LGW_FPGA_FPGA_FEATURE, &reg_val);
+    lgw_fpga_reg_r(LGW_FPGA_FEATURE, &reg_val);
     if (TAKE_N_BITS_FROM((uint8_t)reg_val, 1, 1) != true) {
         printf("ERROR: Spectral Scan is not supported (0x%x)\n", (uint8_t)reg_val);
         return EXIT_FAILURE;
     }
 
+#if 0
     /* Configure FPGA */
     x = lgw_fpga_reg_w(LGW_FPGA_HISTO_TEMPO, rssi_rate_div);
     x |= lgw_fpga_reg_w(LGW_FPGA_HISTO_NB_READ, rssi_pts);
@@ -191,28 +177,48 @@ int main( int argc, char ** argv )
         printf( "ERROR: Failed to configure FPGA\n" );
         return EXIT_FAILURE;
     }
+#endif
 
     /* create log file */
     strcat(log_file_name,".csv");
     log_file = fopen(log_file_name, "w");
-    if (log_file == NULL)
-    {
-        printf( "ERROR: impossible to create log file %s\n", log_file_name );
+    if (log_file == NULL) {
+        printf("ERROR: impossible to create log file %s\n", log_file_name);
         return EXIT_FAILURE;
     }
-    printf( "Writing to file: %s\n", log_file_name );
+    printf("Writing to file: %s\n", log_file_name);
+
+    /* Get start frequency from FPGA */
+    lgw_fpga_reg_r(LGW_FPGA_LBT_INITIAL_FREQ, &reg_val);
+    switch (reg_val) {
+        case 0:
+            start_freq = 915000000;
+            break;
+        case 1:
+            start_freq = 863000000;
+            break;
+        default:
+            printf("ERROR: start frequency %d is not supported\n", reg_val);
+            return EXIT_FAILURE;
+    }
 
     /* Number of frequency steps */
+#if 0
     freq_nb = (int)( (stop_freq - start_freq) / step_freq ) + 1;
     printf( "Scanning frequencies:\nstart: %d Hz\nstop : %d Hz\nstep : %d Hz\nnb   : %d\n", start_freq, stop_freq, step_freq, freq_nb );
+#else
+    freq_nb = 255;
+    step_freq = 100E3;
+    rssi_pts = 16641;
+#endif
 
     /* Main loop */
-    for( j = 0; j < freq_nb; j++ )
-    {
+    for(j = 0; j < freq_nb; j++) {
         /* Current frequency */
         freq = start_freq + j * step_freq;
-        printf( "%d", freq );
+        printf("%d", freq);
 
+#if 0
         /* Set SX127x */
         x = lgw_setup_sx127x( freq, MOD_LORA );
         if( x != 0 )
@@ -223,50 +229,70 @@ int main( int argc, char ** argv )
 
         /* Start histogram */
         lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
+#endif
+        /* Set scan frequency */
+        lgw_fpga_reg_w(LGW_FPGA_SCAN_FREQ_OFFSET, j);
 
-        /* Wait until rssi_pts have been processed */
-        do
-        {
-            wait_ms(1000);
-            lgw_fpga_reg_r(LGW_FPGA_FPGA_STATUS, &reg_val);
+        /* Clean histogram */
+        lgw_fpga_reg_w(LGW_FPGA_CTRL_ACCESS_HISTO_MEM, 0);
+        lgw_fpga_reg_w(LGW_FPGA_CTRL_CLEAR_HISTO_MEM, 1);
+
+        /* Wait for histogram clean to start */
+        do {
+            wait_ms(10);
+            lgw_fpga_reg_r(LGW_FPGA_STATUS, &reg_val);
         }
-        while( (reg_val & 0x0F) != 8 );
+        while((TAKE_N_BITS_FROM((uint8_t)reg_val, 0, 5)) != 17);
+        /* Update scan frequency */
 
+        lgw_fpga_reg_w(LGW_FPGA_CTRL_CLEAR_HISTO_MEM, 0);
+        /* Wait for histogram ready */
+        do {
+            wait_ms(1000);
+            lgw_fpga_reg_r(LGW_FPGA_STATUS, &reg_val);
+        }
+        while((TAKE_N_BITS_FROM((uint8_t)reg_val, 5, 1)) != 1);
+
+#if 0
         /* Stop histogram */
         lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 0);
+#endif
 
         /* Read histogram */
+        lgw_fpga_reg_w(LGW_FPGA_CTRL_ACCESS_HISTO_MEM, 1);
         lgw_fpga_reg_w(LGW_FPGA_HISTO_RAM_ADDR, 0);
         lgw_fpga_reg_rb(LGW_FPGA_HISTO_RAM_DATA, read_burst, RSSI_RANGE*2);
 
-        fprintf( log_file, "%d", freq );
+        /* Write data to CSV */
+        fprintf(log_file, "%d", freq);
         rssi_cumu = 0;
         k = 0;
-        for( i = 0; i < RSSI_RANGE; i++ )
-        {
+        for (i = 0; i < RSSI_RANGE; i++) {
             rssi_histo = (uint16_t)read_burst[2*i] | ((uint16_t)read_burst[2*i+1] << 8);
-            fprintf(log_file, ",%d,%d", i+RSSI_OFFSET, rssi_histo);
+            fprintf(log_file, ",%.1f,%d", -i/2.0 + RSSI_OFFSET, rssi_histo);
             rssi_cumu += rssi_histo;
-            if( rssi_cumu > rssi_thresh[k]*rssi_pts )
-            {
-                printf( "  %d%%<%4d", (uint16_t)(rssi_thresh[k]*100), i+RSSI_OFFSET );
+            if (rssi_cumu > rssi_pts) {
+                printf(" - WARNING: number of RSSI points higher than expected (%u,%u)", rssi_cumu, rssi_pts);
+                rssi_cumu = rssi_pts;
+            }
+            if (rssi_cumu > rssi_thresh[k]*rssi_pts) {
+                printf( "  %d%%<%.1f", (uint16_t)(rssi_thresh[k]*100), -i/2.0 + RSSI_OFFSET );
                 k++;
             }
         }
-        fprintf( log_file, "\n" );
-        printf( "\n" );
+        fprintf(log_file, "\n");
+        printf("\n");
     }
-    fclose( log_file );
+    fclose(log_file);
 
     /* Close SPI */
-    x = lgw_disconnect( );
-    if( x != 0 )
-    {
-        printf( "ERROR: Failed to disconnect FPGA\n" );
+    x = lgw_disconnect();
+    if(x != 0) {
+        printf("ERROR: Failed to disconnect FPGA\n");
         return EXIT_FAILURE;
     }
 
-    printf( "+++  Exiting Spectral scan program +++\n" );
+    printf("+++  Exiting Spectral scan program +++\n");
 
     return EXIT_SUCCESS;
 }
