@@ -42,19 +42,25 @@ Maintainer: Matthieu Leurent
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-#define DEFAULT_START_FREQ   863000000   /* start frequency, Hz */
-#define DEFAULT_STOP_FREQ    870000000   /* stop frequency, Hz */
-#define DEFAULT_STEP_FREQ       200000   /* frequency step, Hz */
-#define DEFAULT_RSSI_PTS         65535   /* number of RSSI reads */
-#define DEFAULT_RSSI_RATE_DIV        1   /* RSSI sampling rate = 32MHz/(div+1030)*/
+#define DEFAULT_START_FREQ   863000000  /* start frequency, Hz */
+#define DEFAULT_STOP_FREQ    870000000  /* stop frequency, Hz */
+#define DEFAULT_STEP_FREQ       200000  /* frequency step, Hz */
+#define DEFAULT_RSSI_PTS         65535  /* number of RSSI reads */
 #define DEFAULT_LOG_NAME   "rssi_histogram"
 
 #define RSSI_RANGE   256
 #define RSSI_OFFSET  12
 
-#define MAX_FREQ   1000000000
-#define MIN_FREQ    800000000
-#define MIN_STEP_FREQ    5000
+#define MAX_FREQ            1000000000
+#define MIN_FREQ            800000000
+#define MIN_STEP_FREQ       5000
+
+#define FPGA_FEATURE_SPECTRAL_SCAN  1
+#define FPGA_FEATURE_LBT            2
+
+/* When FPGA supports LBT, there are few more constraints on above constants */
+#define LBT_DEFAULT_RSSI_PTS    129*129 /* number of RSSI reads, hard-coded in FPGA*/
+#define LBT_MIN_STEP_FREQ       100000
 
 /* -------------------------------------------------------------------------- */
 /* --- GLOBAL VARIABLES ----------------------------------------------------- */
@@ -79,7 +85,6 @@ int main( int argc, char ** argv )
     uint32_t stop_freq = DEFAULT_STOP_FREQ;
     uint32_t step_freq = DEFAULT_STEP_FREQ;
     uint16_t rssi_pts = DEFAULT_RSSI_PTS;
-    uint16_t rssi_rate_div = DEFAULT_RSSI_RATE_DIV;
     char log_file_name[64] = DEFAULT_LOG_NAME;
     FILE * log_file = NULL;
 
@@ -100,7 +105,6 @@ int main( int argc, char ** argv )
             printf( " -f <float>:<float>:<float>  Frequency vector to scan in MHz (start:step:stop)\n" );
             printf( "                               start>%3.3f step>%1.3f stop<%3.3f\n", MIN_FREQ/1e6, MIN_STEP_FREQ/1e6, MAX_FREQ/1e6 );
             printf( " -n <uint>  Total number of RSSI points, [1,65535]\n" );
-            printf( " -r <uint>  Divide factor of RSSI sampling rate, 32MHz/(div+1030), [1,65535]\n" );
             printf( " -l <char>  Log file name\n" );
             printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
             return EXIT_SUCCESS;
@@ -125,16 +129,6 @@ int main( int argc, char ** argv )
                 return EXIT_FAILURE;
             } else {
                 rssi_pts = (uint16_t)arg_u;
-            }
-            break;
-
-        case 'r': /* -r <uint>  Divide factor of RSSI sampling rate, 32MHz/(div+1030), [1,65535] */
-            j = sscanf(optarg, "%i", &arg_u);
-            if( (j != 1) || (arg_u < 1) || (arg_u > 65535) ) {
-                printf( "ERROR: argument parsing of -r argument. -h for help.\n" );
-                return EXIT_FAILURE;
-            } else {
-                rssi_rate_div = (uint16_t)arg_u;
             }
             break;
 
@@ -165,14 +159,53 @@ int main( int argc, char ** argv )
 
     /* Check if FPGA supports Spectral Scan */
     lgw_fpga_reg_r(LGW_FPGA_FEATURE, &reg_val);
-    if (TAKE_N_BITS_FROM((uint8_t)reg_val, 1, 1) != true) {
+    if (TAKE_N_BITS_FROM((uint8_t)reg_val, FPGA_FEATURE_SPECTRAL_SCAN, 1) != true) {
         printf("ERROR: Spectral Scan is not supported (0x%x)\n", (uint8_t)reg_val);
         return EXIT_FAILURE;
     }
 
+    /* Check if FPGA supports LBT, in order to apply proper constraints on spectral scan parameters */
+    lgw_fpga_reg_r(LGW_FPGA_FEATURE, &reg_val);
+    if (TAKE_N_BITS_FROM((uint8_t)reg_val, FPGA_FEATURE_LBT, 1) == true) {
+        printf("WARNING: The FPGA supports LBT, so running spectral scan with specific constraints\n");
+        printf("         => Check the parameters summary below\n");
+        /* Get start frequency from FPGA */
+        lgw_fpga_reg_r(LGW_FPGA_LBT_INITIAL_FREQ, &reg_val);
+        switch (reg_val) {
+            case 0:
+                init_freq = 915000000;
+                break;
+            case 1:
+                init_freq = 863000000;
+                break;
+            default:
+                printf("ERROR: init frequency %d is not supported\n", reg_val);
+                return EXIT_FAILURE;
+        }
+
+        /* Check parameters based on LBT constraints */
+        if (start_freq < init_freq) {
+            printf("ERROR: start frequency %d is not supported, should be >=%d\n", start_freq, init_freq);
+            return EXIT_FAILURE;
+        }
+        if (stop_freq > (init_freq + 255*LBT_MIN_STEP_FREQ)) {
+            printf("ERROR: stop frequency %d is not supported, should be <%d\n", stop_freq, init_freq + 255*LBT_MIN_STEP_FREQ);
+            return EXIT_FAILURE;
+        }
+        if (step_freq < LBT_MIN_STEP_FREQ) {
+            printf("ERROR: step frequency %d is not supported, should be >=%d\n", step_freq, LBT_MIN_STEP_FREQ);
+            return EXIT_FAILURE;
+        } else {
+            /* Ensure the given step is a multiple of LBT_MIN_STEP_FREQ */
+            step_freq = (step_freq / LBT_MIN_STEP_FREQ) * LBT_MIN_STEP_FREQ;
+        }
+
+        /* Overload hard-coded spectral scan parameters */
+        rssi_pts = LBT_DEFAULT_RSSI_PTS;
+    }
+
 #if 0
     /* Configure FPGA */
-    x = lgw_fpga_reg_w(LGW_FPGA_HISTO_TEMPO, rssi_rate_div);
     x |= lgw_fpga_reg_w(LGW_FPGA_HISTO_NB_READ, rssi_pts);
     if( x != LGW_REG_SUCCESS )
     {
@@ -190,29 +223,9 @@ int main( int argc, char ** argv )
     }
     printf("Writing to file: %s\n", log_file_name);
 
-    /* Get start frequency from FPGA */
-    lgw_fpga_reg_r(LGW_FPGA_LBT_INITIAL_FREQ, &reg_val);
-    switch (reg_val) {
-        case 0:
-            init_freq = 915000000;
-            break;
-        case 1:
-            init_freq = 863000000;
-            break;
-        default:
-            printf("ERROR: start frequency %d is not supported\n", reg_val);
-            return EXIT_FAILURE;
-    }
-
     /* Number of frequency steps */
-    freq_nb = (int)( (stop_freq - start_freq) / step_freq ) + 1;
-    printf( "Scanning frequencies:\nstart: %d Hz\nstop : %d Hz\nstep : %d Hz\nnb   : %d\n", start_freq, stop_freq, step_freq, freq_nb );
-
-    //freq_nb = 255;
-    //step_freq = 100E3;
-#if 1
-    rssi_pts = 16641;
-#endif
+    freq_nb = (int)((stop_freq - start_freq) / step_freq) + 1;
+    printf("Scanning frequencies:\nstart: %d Hz\nstop : %d Hz\nstep : %d Hz\nnb   : %d\n", start_freq, stop_freq, step_freq, freq_nb);
 
     /* Main loop */
     for(j = 0; j < freq_nb; j++) {
@@ -232,13 +245,7 @@ int main( int argc, char ** argv )
         /* Start histogram */
         lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
 #endif
-        /* Set scan frequency */
-        freq_idx = (freq - init_freq)/100E3;
-        printf(" (idx=%i) ", freq_idx);
-        lgw_fpga_reg_w(LGW_FPGA_SCAN_FREQ_OFFSET, freq_idx);
-
         /* Clean histogram */
-        lgw_fpga_reg_w(LGW_FPGA_CTRL_ACCESS_HISTO_MEM, 0);
         lgw_fpga_reg_w(LGW_FPGA_CTRL_CLEAR_HISTO_MEM, 1);
 
         /* Wait for histogram clean to start */
@@ -246,10 +253,16 @@ int main( int argc, char ** argv )
             wait_ms(10);
             lgw_fpga_reg_r(LGW_FPGA_STATUS, &reg_val);
         }
-        while((TAKE_N_BITS_FROM((uint8_t)reg_val, 0, 5)) != 1);
-        /* Update scan frequency */
+        while((TAKE_N_BITS_FROM((uint8_t)reg_val, 0, 5)) != 1); /* Clear has started */
 
+        /* Set scan frequency during clear process */
+        freq_idx = (freq - init_freq)/LBT_MIN_STEP_FREQ;
+        printf(" (idx=%i) ", freq_idx);
+        lgw_fpga_reg_w(LGW_FPGA_SCAN_FREQ_OFFSET, freq_idx);
+
+        /* Release FPGA state machine */
         lgw_fpga_reg_w(LGW_FPGA_CTRL_CLEAR_HISTO_MEM, 0);
+
         /* Wait for histogram ready */
         do {
             wait_ms(1000);
@@ -263,9 +276,10 @@ int main( int argc, char ** argv )
 #endif
 
         /* Read histogram */
-        lgw_fpga_reg_w(LGW_FPGA_CTRL_ACCESS_HISTO_MEM, 1);
+        lgw_fpga_reg_w(LGW_FPGA_CTRL_ACCESS_HISTO_MEM, 1); /* HOST gets access to FPGA RAM */
         lgw_fpga_reg_w(LGW_FPGA_HISTO_RAM_ADDR, 0);
         lgw_fpga_reg_rb(LGW_FPGA_HISTO_RAM_DATA, read_burst, RSSI_RANGE*2);
+        lgw_fpga_reg_w(LGW_FPGA_CTRL_ACCESS_HISTO_MEM, 0); /* FPGA gets access to RAM back */
 
         /* Write data to CSV */
         fprintf(log_file, "%d", freq);
@@ -280,7 +294,7 @@ int main( int argc, char ** argv )
                 rssi_cumu = rssi_pts;
             }
             if (rssi_cumu > rssi_thresh[k]*rssi_pts) {
-                printf( "  %d%%<%.1f", (uint16_t)(rssi_thresh[k]*100), -i/2.0 + RSSI_OFFSET );
+                printf("  %d%%<%.1f", (uint16_t)(rssi_thresh[k]*100), -i/2.0 + RSSI_OFFSET);
                 k++;
             }
         }
