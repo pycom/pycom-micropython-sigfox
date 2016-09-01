@@ -74,6 +74,7 @@ int main( int argc, char ** argv )
     char arg_s[64];
 
     /* Application parameters */
+    uint32_t init_freq = DEFAULT_START_FREQ;
     uint32_t start_freq = DEFAULT_START_FREQ;
     uint32_t stop_freq = DEFAULT_STOP_FREQ;
     uint32_t step_freq = DEFAULT_STEP_FREQ;
@@ -83,6 +84,7 @@ int main( int argc, char ** argv )
     FILE * log_file = NULL;
 
     /* Local var */
+    int freq_idx;
     int freq_nb;
     uint32_t freq;
     uint8_t read_burst[RSSI_RANGE*2];
@@ -192,10 +194,10 @@ int main( int argc, char ** argv )
     lgw_fpga_reg_r(LGW_FPGA_LBT_INITIAL_FREQ, &reg_val);
     switch (reg_val) {
         case 0:
-            start_freq = 915000000;
+            init_freq = 915000000;
             break;
         case 1:
-            start_freq = 863000000;
+            init_freq = 863000000;
             break;
         default:
             printf("ERROR: start frequency %d is not supported\n", reg_val);
@@ -203,12 +205,12 @@ int main( int argc, char ** argv )
     }
 
     /* Number of frequency steps */
-#if 0
     freq_nb = (int)( (stop_freq - start_freq) / step_freq ) + 1;
     printf( "Scanning frequencies:\nstart: %d Hz\nstop : %d Hz\nstep : %d Hz\nnb   : %d\n", start_freq, stop_freq, step_freq, freq_nb );
-#else
-    freq_nb = 255;
-    step_freq = 100E3;
+
+    //freq_nb = 255;
+    //step_freq = 100E3;
+#if 1
     rssi_pts = 16641;
 #endif
 
@@ -231,7 +233,9 @@ int main( int argc, char ** argv )
         lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
 #endif
         /* Set scan frequency */
-        lgw_fpga_reg_w(LGW_FPGA_SCAN_FREQ_OFFSET, j);
+        freq_idx = (freq - init_freq)/100E3;
+        printf(" (idx=%i) ", freq_idx);
+        lgw_fpga_reg_w(LGW_FPGA_SCAN_FREQ_OFFSET, freq_idx);
 
         /* Clean histogram */
         lgw_fpga_reg_w(LGW_FPGA_CTRL_ACCESS_HISTO_MEM, 0);
@@ -242,7 +246,7 @@ int main( int argc, char ** argv )
             wait_ms(10);
             lgw_fpga_reg_r(LGW_FPGA_STATUS, &reg_val);
         }
-        while((TAKE_N_BITS_FROM((uint8_t)reg_val, 0, 5)) != 17);
+        while((TAKE_N_BITS_FROM((uint8_t)reg_val, 0, 5)) != 1);
         /* Update scan frequency */
 
         lgw_fpga_reg_w(LGW_FPGA_CTRL_CLEAR_HISTO_MEM, 0);
