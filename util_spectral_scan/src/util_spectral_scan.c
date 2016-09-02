@@ -89,8 +89,10 @@ int main( int argc, char ** argv )
     FILE * log_file = NULL;
 
     /* Local var */
+    bool lbt_support = false;
     int freq_idx;
     int freq_nb;
+    uint64_t freq_reg;
     uint32_t freq;
     uint8_t read_burst[RSSI_RANGE*2];
     uint16_t rssi_histo;
@@ -202,17 +204,35 @@ int main( int argc, char ** argv )
 
         /* Overload hard-coded spectral scan parameters */
         rssi_pts = LBT_DEFAULT_RSSI_PTS;
-    }
+
+        /* Spectral scan sequence is slightly different depending if LBT is there or not */
+        lbt_support = true;
+    } else {
+        /* Reconnect to FPGA with sw reset and configure */
+        x = lgw_disconnect();
+        if(x != 0) {
+            printf("ERROR: Failed to disconnect from FPGA\n");
+            return EXIT_FAILURE;
+        }
+        x = lgw_connect(false); /* FPGA reset/configure */
+        if(x != 0) {
+            printf("ERROR: Failed to connect to FPGA\n");
+            return EXIT_FAILURE;
+        }
+        /* Some spectral scan options are only available when there is no LBT support */
+        x = lgw_fpga_reg_w(LGW_FPGA_HISTO_NB_READ, rssi_pts);
+        if( x != LGW_REG_SUCCESS )
+        {
+            printf( "ERROR: Failed to configure FPGA\n" );
+            return EXIT_FAILURE;
+        }
 
 #if 0
-    /* Configure FPGA */
-    x |= lgw_fpga_reg_w(LGW_FPGA_HISTO_NB_READ, rssi_pts);
-    if( x != LGW_REG_SUCCESS )
-    {
-        printf( "ERROR: Failed to configure FPGA\n" );
-        return EXIT_FAILURE;
-    }
+        /* Necessary ??? */
+        freq_reg = ((uint64_t)start_freq << 19) / (uint64_t)32000000;
+        lgw_fpga_reg_w(LGW_FPGA_HISTO_SCAN_FREQ, (int32_t)freq_reg);
 #endif
+    }
 
     /* create log file */
     strcat(log_file_name,".csv");
@@ -233,18 +253,22 @@ int main( int argc, char ** argv )
         freq = start_freq + j * step_freq;
         printf("%d", freq);
 
-#if 0
-        /* Set SX127x */
-        x = lgw_setup_sx127x( freq, MOD_LORA );
-        if( x != 0 )
-        {
-            printf( "ERROR: SX127x setup failed\n" );
-            return EXIT_FAILURE;
+        if (lbt_support == false) {
+            /* Set SX127x */
+            x = lgw_setup_sx127x(freq, MOD_FSK);
+            if( x != 0 )
+            {
+                printf( "ERROR: SX127x setup failed\n" );
+                return EXIT_FAILURE;
+            }
+
+            /* Start FPGA state machine for spectral scal */
+            lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
+        } else {
+            /* Do Nothing */
+            /* LBT setup has already done the necessary */
         }
 
-        /* Start histogram */
-        lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 1);
-#endif
         /* Clean histogram */
         lgw_fpga_reg_w(LGW_FPGA_CTRL_CLEAR_HISTO_MEM, 1);
 
@@ -256,9 +280,16 @@ int main( int argc, char ** argv )
         while((TAKE_N_BITS_FROM((uint8_t)reg_val, 0, 5)) != 1); /* Clear has started */
 
         /* Set scan frequency during clear process */
-        freq_idx = (freq - init_freq)/LBT_MIN_STEP_FREQ;
-        printf(" (idx=%i) ", freq_idx);
-        lgw_fpga_reg_w(LGW_FPGA_SCAN_FREQ_OFFSET, freq_idx);
+        if (lbt_support == false) {
+            /* We can directly set the scan frequency */
+            freq_reg = ((uint64_t)freq << 19) / (uint64_t)32000000;
+            lgw_fpga_reg_w(LGW_FPGA_HISTO_SCAN_FREQ, (int32_t)freq_reg);
+        } else {
+            /* The possible scan frequencies are hard-coded in FPGA, we give an offset from init_freq */
+            freq_idx = (freq - init_freq)/LBT_MIN_STEP_FREQ;
+            printf(" (idx=%i) ", freq_idx);
+            lgw_fpga_reg_w(LGW_FPGA_SCAN_FREQ_OFFSET, freq_idx);
+        }
 
         /* Release FPGA state machine */
         lgw_fpga_reg_w(LGW_FPGA_CTRL_CLEAR_HISTO_MEM, 0);
@@ -270,10 +301,13 @@ int main( int argc, char ** argv )
         }
         while((TAKE_N_BITS_FROM((uint8_t)reg_val, 5, 1)) != 1);
 
-#if 0
-        /* Stop histogram */
-        lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 0);
-#endif
+        if (lbt_support == false) {
+            /* Stop FPGA state machine for spectral scan */
+            lgw_fpga_reg_w(LGW_FPGA_CTRL_FEATURE_START, 0);
+        } else {
+            /* Do Nothing */
+            /* LBT is running */
+        }
 
         /* Read histogram */
         lgw_fpga_reg_w(LGW_FPGA_CTRL_ACCESS_HISTO_MEM, 1); /* HOST gets access to FPGA RAM */

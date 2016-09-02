@@ -68,6 +68,7 @@ const struct lgw_reg_s fpga_regs[LGW_FPGA_TOTALREGS] = {
     {-1,3,7,0,1,0,0}, /* FPGA_CTRL_CLEAR_HISTO_MEM */
     {-1,4,0,0,8,0,0}, /* HISTO_RAM_ADDR */
     {-1,5,0,0,8,1,0}, /* HISTO_RAM_DATA */
+    {-1,8,0,0,16,0,1000}, /* HISTO_NB_READ */
     {-1,14,0,0,16,1,0}, /* LBT_TIMESTAMP_CH */
     {-1,17,0,0,4,0,0}, /* LBT_TIMESTAMP_SELECT_CH */
     {-1,18,0,0,8,0,0}, /* LBT_CH0_FREQ_OFFSET */
@@ -87,7 +88,9 @@ const struct lgw_reg_s fpga_regs[LGW_FPGA_TOTALREGS] = {
     {-1,28,5,0,1,0,0}, /* LBT_SCAN_TIME_CH5 */
     {-1,28,6,0,1,0,0}, /* LBT_SCAN_TIME_CH6 */
     {-1,28,7,0,1,0,0}, /* LBT_SCAN_TIME_CH7 */
-    {-1,30,0,0,8,0,160} /* RSSI_TARGET */
+    {-1,30,0,0,8,0,160}, /* RSSI_TARGET */
+    {-1,31,0,0,24,0,0}, /* HISTO_SCAN_FREQ */
+    {-1,34,0,0,6,0,0} /* NOTCH_FREQ_OFFSET */
 };
 
 /* -------------------------------------------------------------------------- */
