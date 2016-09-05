@@ -283,8 +283,8 @@ int main(int argc, char **argv)
     lgw_reg_w(LGW_RADIO_RST,0);
 
     /* setup the radios */
-    setup_sx125x(0, clocksource, true, radio_type, fa);
-    setup_sx125x(1, clocksource, false, radio_type, fb);
+    lgw_setup_sx125x(0, clocksource, true, radio_type, fa);
+    lgw_setup_sx125x(1, clocksource, false, radio_type, fb);
 
     /* Set GPIO 4 high for calibration */
     lgw_reg_w(LGW_GPIO_MODE,31); /* Set all GPIOs as output */

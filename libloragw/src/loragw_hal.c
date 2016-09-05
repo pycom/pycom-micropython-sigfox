@@ -638,8 +638,8 @@ int lgw_start(void) {
     lgw_reg_w(LGW_RADIO_RST,0);
 
     /* setup the radios */
-    setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
-    setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
+    lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
+    lgw_setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
 
     /* gives AGC control of GPIOs to enable Tx external digital filter */
     lgw_reg_w(LGW_GPIO_MODE,31); /* Set all GPIOs as output */

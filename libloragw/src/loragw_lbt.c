@@ -139,7 +139,7 @@ int lbt_setup(void) {
     }
 
     /* Configure SX127x for FSK */
-    x = lgw_setup_sx127x(lbt_start_freq, MOD_FSK);
+    x = lgw_setup_sx127x(lbt_start_freq, MOD_FSK, LGW_SX127X_RXBW_100K_HZ); /* 200KHz LBT channels */
     if (x != LGW_REG_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to configure SX127x for LBT\n");
         return LGW_LBT_ERROR;

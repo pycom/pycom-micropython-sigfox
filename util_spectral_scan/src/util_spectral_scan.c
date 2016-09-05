@@ -11,7 +11,7 @@ Description:
     SX1301 spectral scan
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Matthieu Leurent
+Maintainer: Michael Coracin
 */
 
 
@@ -42,14 +42,15 @@ Maintainer: Matthieu Leurent
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-#define DEFAULT_START_FREQ   863000000  /* start frequency, Hz */
-#define DEFAULT_STOP_FREQ    870000000  /* stop frequency, Hz */
-#define DEFAULT_STEP_FREQ       200000  /* frequency step, Hz */
-#define DEFAULT_RSSI_PTS         65535  /* number of RSSI reads */
-#define DEFAULT_LOG_NAME   "rssi_histogram"
+#define DEFAULT_START_FREQ  863000000   /* start frequency, Hz */
+#define DEFAULT_STOP_FREQ   870000000   /* stop frequency, Hz */
+#define DEFAULT_STEP_FREQ   200000      /* frequency step, Hz */
+#define DEFAULT_RSSI_PTS    65535       /* number of RSSI reads */
+#define DEFAULT_CHAN_BW     LGW_SX127X_RXBW_62K5_HZ /* channel bandwidth */
+#define DEFAULT_LOG_NAME    "rssi_histogram"
 
-#define RSSI_RANGE   256
-#define RSSI_OFFSET  12
+#define RSSI_RANGE          256
+#define RSSI_OFFSET         12
 
 #define MAX_FREQ            1000000000
 #define MIN_FREQ            800000000
@@ -85,6 +86,7 @@ int main( int argc, char ** argv )
     uint32_t stop_freq = DEFAULT_STOP_FREQ;
     uint32_t step_freq = DEFAULT_STEP_FREQ;
     uint16_t rssi_pts = DEFAULT_RSSI_PTS;
+    enum lgw_sx127x_rxbw_e channel_bw_khz = DEFAULT_CHAN_BW;
     char log_file_name[64] = DEFAULT_LOG_NAME;
     FILE * log_file = NULL;
 
@@ -100,13 +102,14 @@ int main( int argc, char ** argv )
     float rssi_thresh[] = {0.1,0.3,0.5,0.8,1};
 
     /* Parse command line options */
-    while((i = getopt( argc, argv, "hud::f:n:r:l:" )) != -1) {
+    while((i = getopt( argc, argv, "hf:n:b:l:" )) != -1) {
         switch (i) {
         case 'h':
             printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
             printf( " -f <float>:<float>:<float>  Frequency vector to scan in MHz (start:step:stop)\n" );
             printf( "                               start>%3.3f step>%1.3f stop<%3.3f\n", MIN_FREQ/1e6, MIN_STEP_FREQ/1e6, MAX_FREQ/1e6 );
-            printf( " -n <uint>  Total number of RSSI points, [1,65535]\n" );
+            printf( " -b <uint>  Channel bandwidth in KHz [25,50,100,125,200,250,500]\n" );
+            printf( " -n <uint>  Total number of RSSI points [1,65535]\n" );
             printf( " -l <char>  Log file name\n" );
             printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
             return EXIT_SUCCESS;
@@ -124,8 +127,43 @@ int main( int argc, char ** argv )
             }
             break;
 
+        case 'b': /* -b <uint>  Channel bandwidth in KHz [25,50,100,125,200,250,500] */
+            j = sscanf(optarg, "%u", &arg_u);
+            if(j != 1) {
+                printf( "ERROR: argument parsing of -b argument. -h for help.\n" );
+                return EXIT_FAILURE;
+            } else {
+                switch (arg_u) {
+                    case 25:
+                        channel_bw_khz = LGW_SX127X_RXBW_12K5_HZ;
+                        break;
+                    case 50:
+                        channel_bw_khz = LGW_SX127X_RXBW_25K_HZ;
+                        break;
+                    case 100:
+                        channel_bw_khz = LGW_SX127X_RXBW_50K_HZ;
+                        break;
+                    case 125:
+                        channel_bw_khz = LGW_SX127X_RXBW_62K5_HZ;
+                        break;
+                    case 200:
+                        channel_bw_khz = LGW_SX127X_RXBW_100K_HZ;
+                        break;
+                    case 250:
+                        channel_bw_khz = LGW_SX127X_RXBW_125K_HZ;
+                        break;
+                    case 500:
+                        channel_bw_khz = LGW_SX127X_RXBW_250K_HZ;
+                        break;
+                    default:
+                        printf( "ERROR: argument parsing of -b argument. -h for help.\n" );
+                        return EXIT_FAILURE;
+                }
+            }
+            break;
+
         case 'n': /* -n <uint>  Total number of RSSI points, [1,65535] */
-            j = sscanf(optarg, "%i", &arg_u);
+            j = sscanf(optarg, "%u", &arg_u);
             if((j != 1) || (arg_u < 1) || (arg_u > 65535)) {
                 printf( "ERROR: argument parsing of -n argument. -h for help.\n" );
                 return EXIT_FAILURE;
@@ -153,7 +191,7 @@ int main( int argc, char ** argv )
     /* Start message */
     printf("+++ Start spectral scan of LoRa gateway channels +++\n");
 
-    x = lgw_connect(true); /* SPI only, no FPGA reset/configure */
+    x = lgw_connect(true); /* SPI only, no FPGA reset/configure (for now) */
     if(x != 0) {
         printf("ERROR: Failed to connect to FPGA\n");
         return EXIT_FAILURE;
@@ -220,18 +258,16 @@ int main( int argc, char ** argv )
             return EXIT_FAILURE;
         }
         /* Some spectral scan options are only available when there is no LBT support */
-        x = lgw_fpga_reg_w(LGW_FPGA_HISTO_NB_READ, rssi_pts);
+        x = lgw_fpga_reg_w(LGW_FPGA_HISTO_NB_READ, rssi_pts-1);
         if( x != LGW_REG_SUCCESS )
         {
             printf( "ERROR: Failed to configure FPGA\n" );
             return EXIT_FAILURE;
         }
 
-#if 0
-        /* Necessary ??? */
+        /* Initialize frequency */
         freq_reg = ((uint64_t)start_freq << 19) / (uint64_t)32000000;
         lgw_fpga_reg_w(LGW_FPGA_HISTO_SCAN_FREQ, (int32_t)freq_reg);
-#endif
     }
 
     /* create log file */
@@ -255,7 +291,7 @@ int main( int argc, char ** argv )
 
         if (lbt_support == false) {
             /* Set SX127x */
-            x = lgw_setup_sx127x(freq, MOD_FSK);
+            x = lgw_setup_sx127x(freq, MOD_FSK, channel_bw_khz);
             if( x != 0 )
             {
                 printf( "ERROR: SX127x setup failed\n" );

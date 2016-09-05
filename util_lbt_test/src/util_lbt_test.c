@@ -193,7 +193,7 @@ int main(int argc, char **argv)
     MSG("FREQ: %u\n", f_start);
 
     /* Configure SX127x and read few RSSI points */
-    lgw_setup_sx127x(f_init, MOD_FSK);
+    lgw_setup_sx127x(f_init, MOD_FSK, LGW_SX127X_RXBW_100K_HZ); /* 200KHz LBT channels */
     for (i = 0; i < 100; i++) {
         lgw_sx127x_reg_r(0x11, &rssi_value); /* 0x11: RegRssiValue */
         MSG("SX127x RSSI:-%u dBm\n", rssi_value>>1);
