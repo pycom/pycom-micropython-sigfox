@@ -70,6 +70,14 @@ chip through GPIO, before starting any application using the concentrator.
 4. Changelog
 -------------
 
+### v4.1.0 ###
+
+* HAL: Reworked "Listen-Before-Talk" feature to have more flexibility to define
+LBT channels frequency, and to be able to have spectral scan running in parallel
+* FPGA: Updated to v31 for new LBT and spectral scan design.
+* util_spectral_scan: updated to match new spectral scan FPGA sequence
+* util_lbt_test: updated to match LBT rework
+
 ### v4.0.1 ###
 
 * HAL: SX1301AP2: Only FPGA v27 is supported, removed (v18,v19) from the list
