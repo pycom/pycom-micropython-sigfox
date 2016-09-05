@@ -18,13 +18,14 @@ instant when the channel was free.
 2. Dependencies
 ----------------
 
-- A SX1301AP2 Ref Design board with its FPGA programmed with LBT feature
+A SX1301AP2 Ref Design board with its FPGA programmed with LBT feature
 
 3. Usage
 ---------
 
 Before running the util_lbt_test application, the concentrator MUST be first
-started with the HAL, using for example util_pkt_logger or the packet forwarder.
+started with the HAL, using for example util_pkt_logger or the packet forwarder
+with LBT feature disabled, as the util_lbt_test will configure it.
 
 For a description of the command line options available:
 ./util_lbt_test -h

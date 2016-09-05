@@ -109,7 +109,7 @@ int main( int argc, char ** argv )
             printf( " -f <float>:<float>:<float>  Frequency vector to scan in MHz (start:step:stop)\n" );
             printf( "                               start>%3.3f step>%1.3f stop<%3.3f\n", MIN_FREQ/1e6, MIN_STEP_FREQ/1e6, MAX_FREQ/1e6 );
             printf( " -b <uint>  Channel bandwidth in KHz [25,50,100,125,200,250,500]\n" );
-            printf( " -n <uint>  Total number of RSSI points [1,65535]\n" );
+            printf( " -n <uint>  Total number of RSSI points [1..65535]\n" );
             printf( " -l <char>  Log file name\n" );
             printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
             return EXIT_SUCCESS;
@@ -162,7 +162,7 @@ int main( int argc, char ** argv )
             }
             break;
 
-        case 'n': /* -n <uint>  Total number of RSSI points, [1,65535] */
+        case 'n': /* -n <uint>  Total number of RSSI points [1..65535] */
             j = sscanf(optarg, "%u", &arg_u);
             if((j != 1) || (arg_u < 1) || (arg_u > 65535)) {
                 printf( "ERROR: argument parsing of -n argument. -h for help.\n" );
