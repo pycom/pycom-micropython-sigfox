@@ -39,10 +39,12 @@ Maintainer: Michael Coracin
 #include "loragw_fpga.h"
 
 /* -------------------------------------------------------------------------- */
-/* --- PRIVATE MACROS ------------------------------------------------------- */
+/* --- PRIVATE MACROS & CONSTANTS ------------------------------------------- */
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
 #define MSG(args...)    fprintf(stderr, args) /* message that is destined to the user */
+
+#define RSSI_OFFSET     13
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
@@ -196,12 +198,15 @@ int main(int argc, char **argv)
     lgw_setup_sx127x(f_init, MOD_FSK, LGW_SX127X_RXBW_100K_HZ); /* 200KHz LBT channels */
     for (i = 0; i < 100; i++) {
         lgw_sx127x_reg_r(0x11, &rssi_value); /* 0x11: RegRssiValue */
-        MSG("SX127x RSSI:-%u dBm\n", rssi_value>>1);
+        MSG("SX127x RSSI:%i dBm\n", -(rssi_value/2) + RSSI_OFFSET);
         wait_ms(10);
     }
 
+    /* Adjust given RSSI threshold with calibrated RSSI offset */
+    rssi_target_dBm -= RSSI_OFFSET;
+
     /* Configure LBT */
-    val = -2*rssi_target_dBm;
+    val = -2*(rssi_target_dBm);
     lgw_fpga_reg_w(LGW_FPGA_RSSI_TARGET, val);
     for (i = 0; i < LBT_CHANNEL_FREQ_NB; i++) {
         freq_offset = (f_start - f_init)/100E3 + i*2; /* 200KHz between each channel */
@@ -214,6 +219,7 @@ int main(int argc, char **argv)
     lgw_fpga_reg_r(LGW_FPGA_RSSI_TARGET, &val);
     MSG("RSSI_TARGET = %d\n", val);
     if (val != (-2*rssi_target_dBm)) {
+        MSG("ERROR: failed to read back RSSI target register value\n");
         return EXIT_FAILURE;
     }
     for (i = 0; i < LBT_CHANNEL_FREQ_NB; i++) {
