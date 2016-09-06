@@ -50,7 +50,7 @@ Maintainer: Michael Coracin
 #define DEFAULT_LOG_NAME    "rssi_histogram"
 
 #define RSSI_RANGE          256
-#define RSSI_OFFSET         12
+#define RSSI_OFFSET         13
 
 #define MAX_FREQ            1000000000
 #define MIN_FREQ            800000000
