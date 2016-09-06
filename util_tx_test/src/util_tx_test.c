@@ -47,11 +47,12 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define TX_RF_CHAIN          0    /* TX only supported on radio A */
-#define DEFAULT_RSSI_OFFSET  0.0
-#define DEFAULT_MODULATION   "LORA"
-#define DEFAULT_BR_KBPS      50
-#define DEFAULT_FDEV_KHZ     25
+#define TX_RF_CHAIN         0    /* TX only supported on radio A */
+#define DEFAULT_RSSI_OFFSET 0.0
+#define DEFAULT_MODULATION  "LORA"
+#define DEFAULT_BR_KBPS     50
+#define DEFAULT_FDEV_KHZ    25
+#define DEFAULT_NOTCH_FREQ  129000U /* 129 kHz */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
@@ -126,6 +127,7 @@ void usage(void) {
     printf("Available options:\n");
     printf(" -h                 print this help\n");
     printf(" -r         <int>   radio type (SX1255:1255, SX1257:1257)\n");
+    printf(" -n         <uint>  TX notch filter frequency in kHz [126..250]\n");
     printf(" -f         <float> target frequency in MHz\n");
     printf(" -k         <uint>  concentrator clock source (0:Radio A, 1:Radio B)\n");
     printf(" -m         <str>   modulation type ['LORA', 'FSK']\n");
@@ -185,6 +187,7 @@ int main(int argc, char **argv)
     int8_t  lbt_rssi_target_dBm = -80;
     uint8_t  lbt_nb_channel = 1;
     uint32_t sx1301_count_us;
+    uint32_t tx_notch_freq = DEFAULT_NOTCH_FREQ;
 
     /* RF configuration (TX fail if RF chain is not enabled) */
     enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
@@ -210,7 +213,7 @@ int main(int argc, char **argv)
     };
 
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hif:m:b:s:c:p:l:z:t:x:r:k:d:q:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hif:n:m:b:s:c:p:l:z:t:x:r:k:d:q:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -225,6 +228,17 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     f_target = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                }
+                break;
+
+            case 'n': /* <uint> TX notch filter frequency in kHz */
+                i = sscanf(optarg, "%i", &xi);
+                if ((i != 1) || ((xi < 126) || (xi > 250))) {
+                    MSG("ERROR: invalid TX notch filter frequency\n");
+                    usage();
+                    return EXIT_FAILURE;
+                } else {
+                    tx_notch_freq = xi*1000;
                 }
                 break;
 
@@ -501,6 +515,7 @@ int main(int argc, char **argv)
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
         if (i == TX_RF_CHAIN) {
             rfconf.tx_enable = true;
+            rfconf.tx_notch_freq = tx_notch_freq;
         } else {
             rfconf.tx_enable = false;
         }

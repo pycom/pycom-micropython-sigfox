@@ -497,14 +497,17 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* Concentrator connect */
-int lgw_connect(bool spi_only) {
+int lgw_connect(bool spi_only, uint32_t tx_notch_freq) {
     int spi_stat = LGW_SPI_SUCCESS;
     uint8_t u = 0;
+    int x;
 
+    /* check SPI link status */
     if (lgw_spi_target != NULL) {
         DEBUG_MSG("WARNING: concentrator was already connected\n");
         lgw_spi_close(lgw_spi_target);
     }
+
     /* open the SPI link */
     spi_stat = lgw_spi_open(&lgw_spi_target);
     if (spi_stat != LGW_SPI_SUCCESS) {
@@ -531,11 +534,19 @@ int lgw_connect(bool spi_only) {
             lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 1);
             lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 0);
             /* FPGA configure */
-            lgw_fpga_configure();
+            x = lgw_fpga_configure(tx_notch_freq);
+            if (x != LGW_REG_SUCCESS) {
+                DEBUG_MSG("ERROR CONFIGURING FPGA\n");
+                return LGW_REG_ERROR;
+            }
         }
 
         /* check SX1301 version */
-        spi_stat |= lgw_spi_r(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
+        spi_stat = lgw_spi_r(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
+        if (spi_stat != LGW_SPI_SUCCESS) {
+            DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
+            return LGW_REG_ERROR;
+        }
         if (u != loregs[LGW_VERSION].dflt) {
             DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
             return LGW_REG_ERROR;

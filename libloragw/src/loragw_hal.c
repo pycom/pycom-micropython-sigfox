@@ -110,6 +110,7 @@ static bool rf_enable[LGW_RF_CHAIN_NB];
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
 static float rf_rssi_offset[LGW_RF_CHAIN_NB];
 static bool rf_tx_enable[LGW_RF_CHAIN_NB];
+static uint32_t rf_tx_notch_freq[LGW_RF_CHAIN_NB];
 static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB];
 
 static bool if_enable[LGW_IF_CHAIN_NB];
@@ -398,14 +399,21 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
         return LGW_HAL_ERROR;
     }
 
+    /* check if TX notch filter frequency is supported */
+    if ((conf.tx_enable == true) && ((conf.tx_notch_freq < LGW_MIN_NOTCH_FREQ) || (conf.tx_notch_freq > LGW_MAX_NOTCH_FREQ))) {
+        DEBUG_PRINTF("ERROR: NOT A VALID TX NOTCH FILTER FREQUENCY [%u..%u]Hz\n", LGW_MIN_NOTCH_FREQ, LGW_MAX_NOTCH_FREQ);
+        return LGW_HAL_ERROR;
+    }
+
     /* set internal config according to parameters */
     rf_enable[rf_chain] = conf.enable;
     rf_rx_freq[rf_chain] = conf.freq_hz;
     rf_rssi_offset[rf_chain] = conf.rssi_offset;
     rf_radio_type[rf_chain] = conf.type;
     rf_tx_enable[rf_chain] = conf.tx_enable;
+    rf_tx_notch_freq[rf_chain] = conf.tx_notch_freq;
 
-    DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain]);
+    DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d tx_notch_freq:%u\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain], rf_tx_notch_freq[rf_chain]);
 
     return LGW_HAL_SUCCESS;
 }
@@ -599,7 +607,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_start(void) {
-    int i;
+    int i, err;
     int reg_stat;
     unsigned x;
     uint8_t radio_select;
@@ -616,7 +624,7 @@ int lgw_start(void) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    reg_stat = lgw_connect(false);
+    reg_stat = lgw_connect(false, rf_tx_notch_freq[rf_tx_enable[1]?1:0]);
     if (reg_stat == LGW_REG_ERROR) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
         return LGW_HAL_ERROR;
@@ -638,8 +646,16 @@ int lgw_start(void) {
     lgw_reg_w(LGW_RADIO_RST,0);
 
     /* setup the radios */
-    lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
-    lgw_setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
+    err = lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
+    if (err != 0) {
+        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
+        return LGW_HAL_ERROR;
+    }
+    err = lgw_setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
+    if (err != 0) {
+        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* gives AGC control of GPIOs to enable Tx external digital filter */
     lgw_reg_w(LGW_GPIO_MODE,31); /* Set all GPIOs as output */
@@ -777,6 +793,12 @@ int lgw_start(void) {
 
     /* load adjusted parameters */
     lgw_constant_adjust();
+
+    /* Sanity check for RX frequency */
+    if (rf_rx_freq[0] == 0) {
+        DEBUG_MSG("ERROR: wrong configuration, rf_rx_freq[0] is not set\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* Freq-to-time-drift calculation */
     x = 4096000000 / (rf_rx_freq[0] >> 1); /* dividend: (4*2048*1000000) >> 1, rescaled to avoid 32b overflow */

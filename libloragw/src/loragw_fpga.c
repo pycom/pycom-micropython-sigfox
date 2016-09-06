@@ -108,10 +108,16 @@ extern uint8_t lgw_spi_mux_mode; /*! current SPI mux mode used */
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int lgw_fpga_configure(void) {
+int lgw_fpga_configure(uint32_t tx_notch_freq) {
     int x;
-    int32_t val;
+    int32_t val, notch_offset_reg;
     bool tx_filter_support, spectral_scan_support, lbt_support;
+
+    /* Check input parameters */
+    if ((tx_notch_freq < LGW_MIN_NOTCH_FREQ) || (tx_notch_freq > LGW_MAX_NOTCH_FREQ)) {
+        DEBUG_PRINTF("WARNING: FPGA TX notch frequency is out of range (%u - [%u..%u]), setting it to default (%u)\n", tx_notch_freq, LGW_MIN_NOTCH_FREQ, LGW_MAX_NOTCH_FREQ, LGW_DEFAULT_NOTCH_FREQ);
+        tx_notch_freq = LGW_DEFAULT_NOTCH_FREQ;
+    }
 
     /* Get supported FPGA features */
     printf("INFO: FPGA supported features:");
@@ -130,14 +136,34 @@ int lgw_fpga_configure(void) {
     }
     printf("\n");
 
-    /* Configure TX filter */
     x  = lgw_fpga_reg_w(LGW_FPGA_CTRL_INPUT_SYNC_I, 0);
     x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_INPUT_SYNC_Q, 0);
     x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_OUTPUT_SYNC, 1);
-    if( x != LGW_REG_SUCCESS )
-    {
-        DEBUG_MSG("ERROR: Failed to configure FPGA TX filter\n");
+    if (x != LGW_REG_SUCCESS) {
+        DEBUG_MSG("ERROR: Failed to configure FPGA TX synchro\n");
         return LGW_REG_ERROR;
+    }
+
+    /* Configure TX notch filter */
+    if (tx_filter_support == true) {
+        notch_offset_reg = (32E6 / (2*tx_notch_freq)) - 64;
+        x = lgw_fpga_reg_w(LGW_FPGA_NOTCH_FREQ_OFFSET, notch_offset_reg);
+        if (x != LGW_REG_SUCCESS) {
+            DEBUG_MSG("ERROR: Failed to configure FPGA TX notch filter\n");
+            return LGW_REG_ERROR;
+        }
+
+        /* Readback to check that notch frequency is programmable */
+        x = lgw_fpga_reg_r(LGW_FPGA_NOTCH_FREQ_OFFSET, &val);
+        if (x != LGW_REG_SUCCESS) {
+            DEBUG_MSG("ERROR: Failed to read FPGA TX notch frequency\n");
+            return LGW_REG_ERROR;
+        }
+        if (val != notch_offset_reg) {
+            DEBUG_MSG("WARNING: TX notch filter frequency is not programmable (check your FPGA image)\n");
+        } else {
+            DEBUG_PRINTF("INFO: TX notch filter frequency set to %u (%i)\n", tx_notch_freq, notch_offset_reg);
+        }
     }
 
     return LGW_REG_SUCCESS;

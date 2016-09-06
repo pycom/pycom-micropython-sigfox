@@ -228,8 +228,6 @@ int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz) {
     uint8_t reg_val;
     int x;
 
-    DEBUG_PRINTF("--> %u\n", sx127x_FskBandwidths[rxbw_khz].RxBwKHz);
-
     /* Set in FSK mode */
     x = lgw_sx127x_reg_w(SX1272_REG_OPMODE, 0);
     wait_ms(100);
@@ -280,7 +278,7 @@ int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz) {
     }
     wait_ms(500);
 
-    DEBUG_MSG("INFO: Successfully configured SX1272 for FSK modulation\n");
+    DEBUG_PRINTF("INFO: Successfully configured SX1272 for FSK modulation (rxbw=%d)\n", rxbw_khz);
 
     return LGW_REG_SUCCESS;
 }
@@ -355,7 +353,7 @@ int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz) {
     }
     wait_ms(500);
 
-    DEBUG_MSG("INFO: Successfully configured SX1276 for FSK modulation\n");
+    DEBUG_PRINTF("INFO: Successfully configured SX1276 for FSK modulation (rxbw=%d)\n", rxbw_khz);
 
     return LGW_REG_SUCCESS;
 }

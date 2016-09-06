@@ -191,7 +191,7 @@ int main( int argc, char ** argv )
     /* Start message */
     printf("+++ Start spectral scan of LoRa gateway channels +++\n");
 
-    x = lgw_connect(true); /* SPI only, no FPGA reset/configure (for now) */
+    x = lgw_connect(true, 0); /* SPI only, no FPGA reset/configure (for now) */
     if(x != 0) {
         printf("ERROR: Failed to connect to FPGA\n");
         return EXIT_FAILURE;
@@ -252,7 +252,7 @@ int main( int argc, char ** argv )
             printf("ERROR: Failed to disconnect from FPGA\n");
             return EXIT_FAILURE;
         }
-        x = lgw_connect(false); /* FPGA reset/configure */
+        x = lgw_connect(false, LGW_DEFAULT_NOTCH_FREQ); /* FPGA reset/configure */
         if(x != 0) {
             printf("ERROR: Failed to connect to FPGA\n");
             return EXIT_FAILURE;
