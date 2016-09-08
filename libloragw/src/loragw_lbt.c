@@ -63,6 +63,7 @@ extern uint8_t lgw_spi_mux_mode; /*! current SPI mux mode used */
 static bool lbt_enable;
 static uint8_t lbt_nb_active_channel;
 static int8_t lbt_rssi_target_dBm;
+static int8_t lbt_rssi_offset_dB;
 static uint32_t lbt_start_freq;
 static struct lgw_conf_lbt_chan_s lbt_channel_cfg[LBT_CHANNEL_FREQ_NB];
 
@@ -93,6 +94,7 @@ int lbt_setconf(struct lgw_conf_lbt_s * conf) {
     lbt_enable = conf->enable;
     lbt_nb_active_channel = conf->nb_channel;
     lbt_rssi_target_dBm = conf->rssi_target;
+    lbt_rssi_offset_dB = conf->rssi_offset;
 
     for (i=0; i<lbt_nb_active_channel; i++) {
         lbt_channel_cfg[i].freq_hz = conf->channels[i].freq_hz;
@@ -139,7 +141,7 @@ int lbt_setup(void) {
     }
 
     /* Configure SX127x for FSK */
-    x = lgw_setup_sx127x(lbt_start_freq, MOD_FSK, LGW_SX127X_RXBW_100K_HZ); /* 200KHz LBT channels */
+    x = lgw_setup_sx127x(lbt_start_freq, MOD_FSK, LGW_SX127X_RXBW_100K_HZ, lbt_rssi_offset_dB); /* 200KHz LBT channels */
     if (x != LGW_REG_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to configure SX127x for LBT\n");
         return LGW_LBT_ERROR;

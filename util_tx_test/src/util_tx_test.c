@@ -47,12 +47,13 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define TX_RF_CHAIN         0    /* TX only supported on radio A */
-#define DEFAULT_RSSI_OFFSET 0.0
-#define DEFAULT_MODULATION  "LORA"
-#define DEFAULT_BR_KBPS     50
-#define DEFAULT_FDEV_KHZ    25
-#define DEFAULT_NOTCH_FREQ  129000U /* 129 kHz */
+#define TX_RF_CHAIN                 0 /* TX only supported on radio A */
+#define DEFAULT_RSSI_OFFSET         0.0
+#define DEFAULT_MODULATION          "LORA"
+#define DEFAULT_BR_KBPS             50
+#define DEFAULT_FDEV_KHZ            25
+#define DEFAULT_NOTCH_FREQ          129000U /* 129 kHz */
+#define DEFAULT_SX127X_RSSI_OFFSET  -4 /* dB */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
@@ -146,10 +147,11 @@ void usage(void) {
     printf(" -i                 send packet using inverted modulation polarity\n");
     printf(" -t         <uint>  pause between packets (ms)\n");
     printf(" -x         <int>   nb of times the sequence is repeated (-1 loop until stopped)\n");
-    printf(" --lbt-freq <float> lbt first channel frequency in MHz\n");
-    printf(" --lbt-nbch <uint>  lbt number of channels [1..8]\n");
-    printf(" --lbt-sctm <uint>  lbt scan time in usec to be applied to all channels [128, 5000]\n");
-    printf(" --lbt-rssi <int>   lbt rssi target in dBm [-128..0]\n");
+    printf(" --lbt-freq         <float> lbt first channel frequency in MHz\n");
+    printf(" --lbt-nbch         <uint>  lbt number of channels [1..8]\n");
+    printf(" --lbt-sctm         <uint>  lbt scan time in usec to be applied to all channels [128, 5000]\n");
+    printf(" --lbt-rssi         <int>   lbt rssi target in dBm [-128..0]\n");
+    printf(" --lbt-rssi-offset  <int>   rssi offset in dB to be applied to SX127x RSSI [-128..127]\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -184,7 +186,8 @@ int main(int argc, char **argv)
     bool lbt_enable = false;
     uint32_t lbt_f_target = 0;
     uint32_t lbt_sc_time = 5000;
-    int8_t  lbt_rssi_target_dBm = -80;
+    int8_t lbt_rssi_target_dBm = -80;
+    int8_t lbt_rssi_offset_dB = DEFAULT_SX127X_RSSI_OFFSET;
     uint8_t  lbt_nb_channel = 1;
     uint32_t sx1301_count_us;
     uint32_t tx_notch_freq = DEFAULT_NOTCH_FREQ;
@@ -209,6 +212,7 @@ int main(int argc, char **argv)
         {"lbt-sctm", required_argument, 0, 0},
         {"lbt-rssi", required_argument, 0, 0},
         {"lbt-nbch", required_argument, 0, 0},
+        {"lbt-rssi-offset", required_argument, 0, 0},
         {0, 0, 0, 0}
     };
 
@@ -435,6 +439,21 @@ int main(int argc, char **argv)
                         usage();
                         return EXIT_FAILURE;
                     }
+                } else if( strcmp(long_options[option_index].name, "lbt-rssi-offset") == 0 ) { /* <int> LBT RSSI offset */
+                    if (lbt_enable == true) {
+                        i = sscanf(optarg, "%i", &xi);
+                        if ((i != 1) || ((xi < -128) && (xi > 127))) {
+                            MSG("ERROR: invalid LBT RSSI offset\n");
+                            usage();
+                            return EXIT_FAILURE;
+                        } else {
+                            lbt_rssi_offset_dB = xi;
+                        }
+                    } else {
+                        MSG("ERROR: invalid parameter, LBT start frequency must be set\n");
+                        usage();
+                        return EXIT_FAILURE;
+                    }
                 } else if( strcmp(long_options[option_index].name, "lbt-nbch") == 0 ) { /* <int> LBT number of channels */
                     if (lbt_enable == true) {
                         i = sscanf(optarg, "%i", &xi);
@@ -497,6 +516,7 @@ int main(int argc, char **argv)
         lbtconf.enable = true;
         lbtconf.nb_channel = lbt_nb_channel;
         lbtconf.rssi_target = lbt_rssi_target_dBm;
+        lbtconf.rssi_offset = lbt_rssi_offset_dB;
         lbtconf.channels[0].freq_hz = lbt_f_target;
         lbtconf.channels[0].scan_time_us = lbt_sc_time;
         for (i=1; i<lbt_nb_channel; i++) {

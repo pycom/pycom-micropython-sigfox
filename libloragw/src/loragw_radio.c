@@ -110,8 +110,8 @@ extern void *lgw_spi_target; /*! generic pointer to the SPI device */
 void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data);
 uint8_t sx125x_read(uint8_t channel, uint8_t addr);
 
-int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz);
-int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz);
+int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t rssi_offset);
+int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t rssi_offset);
 
 int reset_sx127x(enum lgw_radio_type_e radio_type);
 
@@ -210,7 +210,7 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz) {
+int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t rssi_offset) {
     uint64_t freq_reg;
     uint8_t ModulationShaping = 0;
     uint8_t PllHop = 1;
@@ -224,7 +224,7 @@ int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz) {
     uint8_t RxBwExp = sx127x_FskBandwidths[rxbw_khz].RxBwExp;
     uint8_t RxBwMant = sx127x_FskBandwidths[rxbw_khz].RxBwMant;
     uint8_t RssiSmoothing = 5;
-    uint8_t RssiOffset = 3;
+    uint8_t RssiOffsetReg;
     uint8_t reg_val;
     int x;
 
@@ -256,7 +256,8 @@ int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz) {
 
     /* Config continues... */
     x |= lgw_sx127x_reg_w(SX1272_REG_RXCONFIG, 0); /* Disable AGC */
-    x |= lgw_sx127x_reg_w(SX1272_REG_RSSICONFIG, RssiSmoothing | (RssiOffset << 3)); /* Set RSSI smoothing to 64 samples, RSSI offset 3dB */
+    RssiOffsetReg = (rssi_offset >= 0) ? (uint8_t)rssi_offset : (uint8_t)(~(-rssi_offset)+1); /* 2's complement */
+    x |= lgw_sx127x_reg_w(SX1272_REG_RSSICONFIG, RssiSmoothing | (RssiOffsetReg << 3)); /* Set RSSI smoothing to 64 samples, RSSI offset to given value */
     x |= lgw_sx127x_reg_w(SX1272_REG_RXBW, RxBwExp | (RxBwMant << 3));
     x |= lgw_sx127x_reg_w(SX1272_REG_RXDELAY, 2);
     x |= lgw_sx127x_reg_w(SX1272_REG_PLL, 0x10); /* PLL BW set to 75 KHz */
@@ -285,7 +286,7 @@ int setup_sx1272_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz) {
+int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t rssi_offset) {
     uint64_t freq_reg;
     uint8_t ModulationShaping = 0;
     uint8_t PllHop = 1;
@@ -299,7 +300,7 @@ int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz) {
     uint8_t RxBwExp = sx127x_FskBandwidths[rxbw_khz].RxBwExp;
     uint8_t RxBwMant = sx127x_FskBandwidths[rxbw_khz].RxBwMant;
     uint8_t RssiSmoothing = 5;
-    uint8_t RssiOffset = 3;
+    uint8_t RssiOffsetReg;
     uint8_t reg_val;
     int x;
 
@@ -331,7 +332,8 @@ int setup_sx1276_FSK(uint32_t frequency, enum lgw_sx127x_rxbw_e rxbw_khz) {
 
     /* Config continues... */
     x |= lgw_sx127x_reg_w(SX1276_REG_RXCONFIG, 0); /* Disable AGC */
-    x |= lgw_sx127x_reg_w(SX1276_REG_RSSICONFIG, RssiSmoothing | (RssiOffset << 3)); /* Set RSSI smoothing to 64 samples, RSSI offset 3dB */
+    RssiOffsetReg = (rssi_offset >= 0) ? (uint8_t)rssi_offset : (uint8_t)(~(-rssi_offset)+1); /* 2's complement */
+    x |= lgw_sx127x_reg_w(SX1276_REG_RSSICONFIG, RssiSmoothing | (RssiOffsetReg << 3)); /* Set RSSI smoothing to 64 samples, RSSI offset 3dB */
     x |= lgw_sx127x_reg_w(SX1276_REG_RXBW, RxBwExp | (RxBwMant << 3));
     x |= lgw_sx127x_reg_w(SX1276_REG_RXDELAY, 2);
     x |= lgw_sx127x_reg_w(SX1276_REG_PLL, 0x10); /* PLL BW set to 75 KHz */
@@ -488,7 +490,7 @@ int lgw_sx127x_reg_r(uint8_t address, uint8_t *reg_value) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxbw_e rxbw_khz) {
+int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t rssi_offset) {
     int x, i;
     uint8_t version;
     enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
@@ -540,9 +542,9 @@ int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxb
     switch (modulation) {
         case MOD_FSK:
             if (radio_type == LGW_RADIO_TYPE_SX1272) {
-                x = setup_sx1272_FSK(frequency, rxbw_khz);
+                x = setup_sx1272_FSK(frequency, rxbw_khz, rssi_offset);
             } else {
-                x = setup_sx1276_FSK(frequency, rxbw_khz);
+                x = setup_sx1276_FSK(frequency, rxbw_khz, rssi_offset);
             }
             break;
         default:

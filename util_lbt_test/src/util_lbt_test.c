@@ -44,7 +44,7 @@ Maintainer: Michael Coracin
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
 #define MSG(args...)    fprintf(stderr, args) /* message that is destined to the user */
 
-#define RSSI_OFFSET     13
+#define DEFAULT_SX127X_RSSI_OFFSET -1
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
@@ -74,11 +74,12 @@ static void sig_handler(int sigio) {
 
 /* describe command line options */
 void usage(void) {
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -f <float> frequency in MHz of the first LBT channel\n");
-    printf( " -r <int>  target RSSI: signal strength target used to detect if the channel is clear or not [-128..0]\n");
-    printf( " -s <uint>  scan time in µs for all 8 LBT channels [128,5000]\n");
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -f <float> frequency in MHz of the first LBT channel\n");
+    printf(" -o <int>   offset in dB to be applied to the SX127x RSSI [-128..127]\n");
+    printf(" -r <int>   target RSSI: signal strength target used to detect if the channel is clear or not [-128..0]\n");
+    printf(" -s <uint>  scan time in µs for all 8 LBT channels [128,5000]\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -98,12 +99,13 @@ int main(int argc, char **argv)
     uint16_t scan_time_us = 128;
     uint32_t timestamp;
     uint8_t rssi_value;
+    int8_t rssi_offset = DEFAULT_SX127X_RSSI_OFFSET;
     int32_t val, val2;
     int channel;
     uint32_t freq_offset;
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "h:f:s:r:")) != -1) {
+    while ((i = getopt (argc, argv, "h:f:s:r:o:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -138,6 +140,16 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     rssi_target_dBm = xi;
+                }
+                break;
+            case 'o': /* -o <int>  SX127x RSSI offset [-128..127] */
+                i = sscanf(optarg, "%i", &xi);
+                if((i != 1) || (xi < -128) || (xi > 127)) {
+                    MSG("ERROR: rssi_offset must be b/w -128 & 127\n");
+                    usage();
+                    return EXIT_FAILURE;
+                } else {
+                    rssi_offset = (int8_t)xi;
                 }
                 break;
             default:
@@ -195,15 +207,12 @@ int main(int argc, char **argv)
     MSG("FREQ: %u\n", f_start);
 
     /* Configure SX127x and read few RSSI points */
-    lgw_setup_sx127x(f_init, MOD_FSK, LGW_SX127X_RXBW_100K_HZ); /* 200KHz LBT channels */
+    lgw_setup_sx127x(f_init, MOD_FSK, LGW_SX127X_RXBW_100K_HZ, rssi_offset); /* 200KHz LBT channels */
     for (i = 0; i < 100; i++) {
         lgw_sx127x_reg_r(0x11, &rssi_value); /* 0x11: RegRssiValue */
-        MSG("SX127x RSSI:%i dBm\n", -(rssi_value/2) + RSSI_OFFSET);
+        MSG("SX127x RSSI:%i dBm\n", -(rssi_value/2));
         wait_ms(10);
     }
-
-    /* Adjust given RSSI threshold with calibrated RSSI offset */
-    rssi_target_dBm -= RSSI_OFFSET;
 
     /* Configure LBT */
     val = -2*(rssi_target_dBm);

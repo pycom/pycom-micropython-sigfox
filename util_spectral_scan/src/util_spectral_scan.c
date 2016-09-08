@@ -42,19 +42,19 @@ Maintainer: Michael Coracin
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
-#define DEFAULT_START_FREQ  863000000   /* start frequency, Hz */
-#define DEFAULT_STOP_FREQ   870000000   /* stop frequency, Hz */
-#define DEFAULT_STEP_FREQ   200000      /* frequency step, Hz */
-#define DEFAULT_RSSI_PTS    65535       /* number of RSSI reads */
-#define DEFAULT_CHAN_BW     LGW_SX127X_RXBW_62K5_HZ /* channel bandwidth */
-#define DEFAULT_LOG_NAME    "rssi_histogram"
+#define DEFAULT_START_FREQ          863000000   /* start frequency, Hz */
+#define DEFAULT_STOP_FREQ           870000000   /* stop frequency, Hz */
+#define DEFAULT_STEP_FREQ           200000      /* frequency step, Hz */
+#define DEFAULT_RSSI_PTS            65535       /* number of RSSI reads */
+#define DEFAULT_CHAN_BW             LGW_SX127X_RXBW_62K5_HZ /* channel bandwidth */
+#define DEFAULT_LOG_NAME            "rssi_histogram"
+#define DEFAULT_SX127X_RSSI_OFFSET  -4
 
-#define RSSI_RANGE          256
-#define RSSI_OFFSET         13
+#define RSSI_RANGE                  256
 
-#define MAX_FREQ            1000000000
-#define MIN_FREQ            800000000
-#define MIN_STEP_FREQ       5000
+#define MAX_FREQ                    1000000000
+#define MIN_FREQ                    800000000
+#define MIN_STEP_FREQ               5000
 
 #define FPGA_FEATURE_SPECTRAL_SCAN  1
 #define FPGA_FEATURE_LBT            2
@@ -78,6 +78,7 @@ int main( int argc, char ** argv )
     /* Parameter parsing */
     double arg_lf[3] = {0,0,0};
     unsigned arg_u = 0;
+    int arg_i = 0;
     char arg_s[64];
 
     /* Application parameters */
@@ -86,6 +87,7 @@ int main( int argc, char ** argv )
     uint32_t stop_freq = DEFAULT_STOP_FREQ;
     uint32_t step_freq = DEFAULT_STEP_FREQ;
     uint16_t rssi_pts = DEFAULT_RSSI_PTS;
+    int8_t rssi_offset = DEFAULT_SX127X_RSSI_OFFSET;
     enum lgw_sx127x_rxbw_e channel_bw_khz = DEFAULT_CHAN_BW;
     char log_file_name[64] = DEFAULT_LOG_NAME;
     FILE * log_file = NULL;
@@ -102,23 +104,23 @@ int main( int argc, char ** argv )
     float rssi_thresh[] = {0.1,0.3,0.5,0.8,1};
 
     /* Parse command line options */
-    while((i = getopt( argc, argv, "hf:n:b:l:" )) != -1) {
+    while((i = getopt(argc, argv, "hf:n:b:l:o:")) != -1) {
         switch (i) {
         case 'h':
-            printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
-            printf( " -f <float>:<float>:<float>  Frequency vector to scan in MHz (start:step:stop)\n" );
-            printf( "                               start>%3.3f step>%1.3f stop<%3.3f\n", MIN_FREQ/1e6, MIN_STEP_FREQ/1e6, MAX_FREQ/1e6 );
-            printf( " -b <uint>  Channel bandwidth in KHz [25,50,100,125,200,250,500]\n" );
-            printf( " -n <uint>  Total number of RSSI points [1..65535]\n" );
-            printf( " -l <char>  Log file name\n" );
-            printf( "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n" );
+            printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+            printf(" -f <float>:<float>:<float>  Frequency vector to scan in MHz (start:step:stop)\n");
+            printf("                               start>%3.3f step>%1.3f stop<%3.3f\n", MIN_FREQ/1e6, MIN_STEP_FREQ/1e6, MAX_FREQ/1e6);
+            printf(" -b <uint>  Channel bandwidth in KHz [25,50,100,125,200,250,500]\n");
+            printf(" -n <uint>  Total number of RSSI points [1..65535]\n");
+            printf(" -o <int>   Offset in dB to be applied to the SX127x RSSI [-128..127]\n");
+            printf(" -l <char>  Log file name\n");
+            printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
             return EXIT_SUCCESS;
-            break;
 
         case 'f': /* -f <float>:<float>:<float>  Frequency vector to scan in MHz, start:step:stop */
             j = sscanf(optarg, "%lf:%lf:%lf", &arg_lf[0], &arg_lf[1], &arg_lf[2]);
-            if((j!=3) || (arg_lf[0] < MIN_FREQ/1e6) || (arg_lf[0] > MAX_FREQ/1e6) || (arg_lf[1] < MIN_STEP_FREQ/1e6) || (arg_lf[2] < MIN_FREQ/1e6) || (arg_lf[2] > MAX_FREQ/1e6)) {
-                printf( "ERROR: argument parsing of -f argument. -h for help.\n" );
+            if ((j!=3) || (arg_lf[0] < MIN_FREQ/1e6) || (arg_lf[0] > MAX_FREQ/1e6) || (arg_lf[1] < MIN_STEP_FREQ/1e6) || (arg_lf[2] < MIN_FREQ/1e6) || (arg_lf[2] > MAX_FREQ/1e6)) {
+                printf("ERROR: argument parsing of -f argument. -h for help.\n");
                 return EXIT_FAILURE;
             } else {
                 start_freq = (uint32_t)((arg_lf[0] * 1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
@@ -129,8 +131,8 @@ int main( int argc, char ** argv )
 
         case 'b': /* -b <uint>  Channel bandwidth in KHz [25,50,100,125,200,250,500] */
             j = sscanf(optarg, "%u", &arg_u);
-            if(j != 1) {
-                printf( "ERROR: argument parsing of -b argument. -h for help.\n" );
+            if (j != 1) {
+                printf("ERROR: argument parsing of -b argument. -h for help.\n");
                 return EXIT_FAILURE;
             } else {
                 switch (arg_u) {
@@ -156,7 +158,7 @@ int main( int argc, char ** argv )
                         channel_bw_khz = LGW_SX127X_RXBW_250K_HZ;
                         break;
                     default:
-                        printf( "ERROR: argument parsing of -b argument. -h for help.\n" );
+                        printf("ERROR: argument parsing of -b argument. -h for help.\n");
                         return EXIT_FAILURE;
                 }
             }
@@ -164,17 +166,27 @@ int main( int argc, char ** argv )
 
         case 'n': /* -n <uint>  Total number of RSSI points [1..65535] */
             j = sscanf(optarg, "%u", &arg_u);
-            if((j != 1) || (arg_u < 1) || (arg_u > 65535)) {
-                printf( "ERROR: argument parsing of -n argument. -h for help.\n" );
+            if ((j != 1) || (arg_u < 1) || (arg_u > 65535)) {
+                printf("ERROR: argument parsing of -n argument. -h for help.\n");
                 return EXIT_FAILURE;
             } else {
                 rssi_pts = (uint16_t)arg_u;
             }
             break;
 
+        case 'o': /* -o <int>  SX127x RSSI offset [-128..127] */
+            j = sscanf(optarg, "%i", &arg_i);
+            if ((j != 1) || (arg_i < -128) || (arg_i > 127)) {
+                printf("ERROR: argument parsing of -o argument. -h for help.\n");
+                return EXIT_FAILURE;
+            } else {
+                rssi_offset = (int8_t)arg_i;
+            }
+            break;
+
         case 'l': /* -l <char>  Log file name */
             j = sscanf(optarg, "%s", arg_s);
-            if( j != 1 ) {
+            if (j != 1) {
                 printf("ERROR: argument parsing of -l argument. -h for help.\n");
                 return EXIT_FAILURE;
             } else {
@@ -291,7 +303,7 @@ int main( int argc, char ** argv )
 
         if (lbt_support == false) {
             /* Set SX127x */
-            x = lgw_setup_sx127x(freq, MOD_FSK, channel_bw_khz);
+            x = lgw_setup_sx127x(freq, MOD_FSK, channel_bw_khz, rssi_offset);
             if( x != 0 )
             {
                 printf( "ERROR: SX127x setup failed\n" );
@@ -357,14 +369,14 @@ int main( int argc, char ** argv )
         k = 0;
         for (i = 0; i < RSSI_RANGE; i++) {
             rssi_histo = (uint16_t)read_burst[2*i] | ((uint16_t)read_burst[2*i+1] << 8);
-            fprintf(log_file, ",%.1f,%d", -i/2.0 + RSSI_OFFSET, rssi_histo);
+            fprintf(log_file, ",%.1f,%d", -i/2.0, rssi_histo);
             rssi_cumu += rssi_histo;
             if (rssi_cumu > rssi_pts) {
                 printf(" - WARNING: number of RSSI points higher than expected (%u,%u)", rssi_cumu, rssi_pts);
                 rssi_cumu = rssi_pts;
             }
             if (rssi_cumu > rssi_thresh[k]*rssi_pts) {
-                printf("  %d%%<%.1f", (uint16_t)(rssi_thresh[k]*100), -i/2.0 + RSSI_OFFSET);
+                printf("  %d%%<%.1f", (uint16_t)(rssi_thresh[k]*100), -i/2.0);
                 k++;
             }
         }

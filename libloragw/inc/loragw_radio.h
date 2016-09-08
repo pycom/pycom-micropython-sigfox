@@ -62,7 +62,7 @@ enum lgw_sx127x_rxbw_e {
 
 int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf_radio_type, uint32_t freq_hz);
 
-int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxbw_e rxbw_khz);
+int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t rssi_offset);
 
 int lgw_sx127x_reg_w(uint8_t address, uint8_t reg_value);
 
