@@ -1178,10 +1178,18 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         } else if (ifmod == IF_FSK_STD) {
             DEBUG_MSG("Note: FSK packet\n");
             switch(stat_fifo & 0x07) {
-                case 5: p->status = STAT_CRC_OK; break;
-                case 7: p->status = STAT_CRC_BAD; break;
-                case 1: p->status = STAT_NO_CRC; break;
-                default: p->status = STAT_UNDEFINED;
+                case 5:
+                    p->status = STAT_CRC_OK;
+                    break;
+                case 7:
+                    p->status = STAT_CRC_BAD;
+                    break;
+                case 1:
+                    p->status = STAT_NO_CRC;
+                    break;
+                default:
+                    p->status = STAT_UNDEFINED;
+                    break;
             }
             p->modulation = MOD_FSK;
             p->snr = -128.0;
@@ -1577,67 +1585,75 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet, bool isBeacon) {
     uint8_t SF, H, DE;
     uint16_t BW;
     uint32_t payloadSymbNb, Tpacket;
-    double Tsym, Tpreamble, Tpayload;
+    double Tsym, Tpreamble, Tpayload, Tfsk;
 
     if (packet == NULL) {
         DEBUG_MSG("ERROR: Failed to compute time on air, wrong parameter\n");
         return 0;
     }
 
-    switch (packet->bandwidth) {
-        case BW_125KHZ:
-            BW = 125;
-            break;
-        case BW_250KHZ:
-            BW = 250;
-            break;
-        case BW_500KHZ:
-            BW = 500;
-            break;
-        default:
-            DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported bandwidth (%u)\n", packet->bandwidth);
-            return 0;
+    if (packet->modulation == MOD_LORA) {
+        switch (packet->bandwidth) {
+            case BW_125KHZ:
+                BW = 125;
+                break;
+            case BW_250KHZ:
+                BW = 250;
+                break;
+            case BW_500KHZ:
+                BW = 500;
+                break;
+            default:
+                DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported bandwidth (%u)\n", packet->bandwidth);
+                return 0;
+        }
+
+        switch (packet->datarate) {
+            case DR_LORA_SF7:
+                SF = 7;
+                break;
+            case DR_LORA_SF8:
+                SF = 8;
+                break;
+            case DR_LORA_SF9:
+                SF = 9;
+                break;
+            case DR_LORA_SF10:
+                SF = 10;
+                break;
+            case DR_LORA_SF11:
+                SF = 11;
+                break;
+            case DR_LORA_SF12:
+                SF = 12;
+                break;
+            default:
+                DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported datarate (%u)\n", packet->datarate);
+                return 0;
+        }
+
+        /* Duration of 1 symbol */
+        Tsym = pow(2, SF) / BW;
+
+        /* Duration of preamble */
+        Tpreamble = (8 + 4.25) * Tsym; /* 8 programmed symbols in preamble */
+
+        /* Duration of payload */
+        H = (isBeacon==false) ? 0 : 1; /* header is always enabled, except for beacons */
+        DE = (SF >= 11) ? 1 : 0; /* Low datarate optimization enabled for SF11 and SF12 */
+
+        payloadSymbNb = 8 + (ceil((double)(8*packet->size - 4*SF + 28 + 16 - 20*H) / (double)(4*(SF - 2*DE))) * (packet->coderate + 4)); /* Explicitely cast to double to keep precision of the division */
+
+        Tpayload = payloadSymbNb * Tsym;
+
+        Tpacket = Tpreamble + Tpayload;
+    } else if (packet->modulation == MOD_FSK) {
+        Tfsk = (8 * (double)(packet->preamble + fsk_sync_word_size + packet->size + ((packet->no_crc == true) ? 0 : 2)) / (double)packet->datarate) * 1E3;
+        Tpacket = (uint32_t)Tfsk + 1; /* add margin for rounding */
+    } else {
+        Tpacket = 0;
+        DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported modulation (0x%02X)\n", packet->modulation);
     }
-
-    switch (packet->datarate) {
-        case DR_LORA_SF7:
-            SF = 7;
-            break;
-        case DR_LORA_SF8:
-            SF = 8;
-            break;
-        case DR_LORA_SF9:
-            SF = 9;
-            break;
-        case DR_LORA_SF10:
-            SF = 10;
-            break;
-        case DR_LORA_SF11:
-            SF = 11;
-            break;
-        case DR_LORA_SF12:
-            SF = 12;
-            break;
-        default:
-            DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported datarate (%u)\n", packet->datarate);
-            return 0;
-    }
-
-    /* Duration of 1 symbol */
-    Tsym = pow(2, SF) / BW;
-
-    /* Duration of preamble */
-    Tpreamble = (8 + 4.25) * Tsym; /* 8 programmed symbols in preamble */
-
-    /* Duration of payload */
-    H = (isBeacon==false) ? 0 : 1; /* header is always enabled, except for beacons */
-    DE = (SF >= 11) ? 1 : 0; /* Low datarate optimization enabled for SF11 and SF12 */
-
-    payloadSymbNb = 8 + (ceil((double)(8*packet->size - 4*SF + 28 + 16 - 20*H) / (double)(4*(SF - 2*DE))) * (packet->coderate + 4)); /* Explicitely cast to double to keep precision of the division */
-
-    Tpayload = payloadSymbNb * Tsym;
-
-    Tpacket = Tpreamble + Tpayload;
 
     return Tpacket;
 }
