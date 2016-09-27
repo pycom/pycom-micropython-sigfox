@@ -1648,7 +1648,14 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet, bool isBeacon) {
 
         Tpacket = Tpreamble + Tpayload;
     } else if (packet->modulation == MOD_FSK) {
-        Tfsk = (8 * (double)(packet->preamble + fsk_sync_word_size + packet->size + ((packet->no_crc == true) ? 0 : 2)) / (double)packet->datarate) * 1E3;
+        /* PREAMBLE + SYNC_WORD + PKT_LEN + PKT_PAYLOAD + CRC
+                PREAMBLE: default 5 bytes
+                SYNC_WORD: default 3 bytes
+                PKT_LEN: 1 byte (variable length mode)
+                PKT_PAYLOAD: x bytes
+                CRC: 0 or 2 bytes
+        */
+        Tfsk = (8 * (double)(packet->preamble + fsk_sync_word_size + 1 + packet->size + ((packet->no_crc == true) ? 0 : 2)) / (double)packet->datarate) * 1E3;
         Tpacket = (uint32_t)Tfsk + 1; /* add margin for rounding */
     } else {
         Tpacket = 0;
