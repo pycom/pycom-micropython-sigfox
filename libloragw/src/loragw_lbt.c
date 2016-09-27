@@ -266,9 +266,9 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, bool * tx_allowed) {
         }
 
         /* Select LBT Channel corresponding to required TX frequency */
+        lbt_channel_decod_1 = -1;
+        lbt_channel_decod_2 = -1;
         if (pkt_data->bandwidth == BW_125KHZ){
-            lbt_channel_decod_1 = -1;
-            lbt_channel_decod_2 = -1;
             for (i=0; i<lbt_nb_active_channel; i++) {
                 if (is_equal_freq(pkt_data->freq_hz, lbt_channel_cfg[i].freq_hz) == true) {
                     DEBUG_PRINTF("LBT: select channel %d (%u Hz)\n", i, lbt_channel_cfg[i].freq_hz);
@@ -285,8 +285,6 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, bool * tx_allowed) {
         } else if (pkt_data->bandwidth == BW_250KHZ) {
             /* In case of 250KHz, the TX freq has to be in between 2 consecutive channels of 200KHz BW.
                 The TX can only be over 2 channels, not more */
-            lbt_channel_decod_1 = -1;
-            lbt_channel_decod_2 = -1;
             for (i=0; i<(lbt_nb_active_channel-1); i++) {
                 if ((is_equal_freq(pkt_data->freq_hz, (lbt_channel_cfg[i].freq_hz+lbt_channel_cfg[i+1].freq_hz)/2) == true) && ((lbt_channel_cfg[i+1].freq_hz-lbt_channel_cfg[i].freq_hz)==200E3)) {
                     DEBUG_PRINTF("LBT: select channels %d,%d (%u Hz)\n", i, i+1, (lbt_channel_cfg[i].freq_hz+lbt_channel_cfg[i+1].freq_hz)/2);
@@ -301,8 +299,7 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, bool * tx_allowed) {
                 }
             }
         } else {
-            lbt_channel_decod_1 = -1;
-            lbt_channel_decod_2 = -1;
+            /* Nothing to do for now */
         }
 
         /* Get last time when selected channel was free */
@@ -349,7 +346,7 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, bool * tx_allowed) {
         /* lbt_time: last time when channel was free */
         /* tx_max_time: maximum time allowed to send packet since last free time */
         /* 2048: some margin */
-        if (((delta_time < (tx_max_time - 2048)) && (lbt_time != 0)) || (lbt_enable == false)) {
+        if ((delta_time < (tx_max_time - 2048)) && (lbt_time != 0)) {
             *tx_allowed = true;
         } else {
             DEBUG_MSG("ERROR: TX request rejected (LBT)\n");
