@@ -27,6 +27,11 @@ mode to optimize the matching impedance with SX127x. The 32MHz clock provided
 to the SX127x is available once SX1301 has enabled the two SX1257 radios, so
 the background RSSI scan must be launched after the packet forwarder.
 
+Note: if the FPGA running the spectral scan also supports Listen-Before-Talk
+feature (LBT), the LBT feature has to be enabled and running before launching
+util_spectral_scan. For example, if the lora_pkt_fwd runs in background, it has
+to use a global_conf.json file with "lbt_cfg.enable" set to true.
+
 2. Command line options
 ------------------------
 

@@ -334,7 +334,7 @@ int main( int argc, char ** argv )
             lgw_fpga_reg_w(LGW_FPGA_HISTO_SCAN_FREQ, (int32_t)freq_reg);
         } else {
             /* The possible scan frequencies are hard-coded in FPGA, we give an offset from init_freq */
-            freq_idx = (freq - init_freq)/LBT_MIN_STEP_FREQ;
+            freq_idx = (freq - init_freq) / LBT_MIN_STEP_FREQ;
             printf(" (idx=%i) ", freq_idx);
             lgw_fpga_reg_w(LGW_FPGA_SCAN_FREQ_OFFSET, freq_idx);
         }
