@@ -161,8 +161,8 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size);
 
 void lgw_constant_adjust(void);
 
-int lgw_bw_getval(int x);
-int lgw_sf_getval(int x);
+int32_t lgw_sf_getval(int x);
+int32_t lgw_bw_getval(int x);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -342,7 +342,7 @@ void lgw_constant_adjust(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_bw_getval(int x) {
+int32_t lgw_bw_getval(int x) {
     switch (x) {
         case BW_500KHZ: return 500000;
         case BW_250KHZ: return 250000;
@@ -357,7 +357,7 @@ int lgw_bw_getval(int x) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_sf_getval(int x) {
+int32_t lgw_sf_getval(int x) {
     switch (x) {
         case DR_LORA_SF7: return 7;
         case DR_LORA_SF8: return 8;
@@ -453,7 +453,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
-    int bw_hz;
+    int32_t bw_hz;
 
     /* check if the concentrator is running */
     if (lgw_is_started == true) {
@@ -1615,7 +1615,7 @@ const char* lgw_version_info() {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
-    int val;
+    int32_t val;
     uint8_t SF, H, DE;
     uint16_t BW;
     uint32_t payloadSymbNb, Tpacket;
