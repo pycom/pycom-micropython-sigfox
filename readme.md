@@ -77,6 +77,8 @@ LBT channels frequency, and to be able to have spectral scan running in parallel
 * HAL: Updated lgw_time_on_air() function for FSK packets
 * HAL: Disabled GPS UART input being re-echoed as output to avoid sending wrong
 commands to GPS module
+* HAL: Fixed IF frequency configuration check issue for channel bandwidths 250K
+and 500HKz.
 * FPGA: Updated to v31 for new LBT and spectral scan design.
 * util_spectral_scan: updated to match new spectral scan FPGA sequence
 * util_lbt_test: updated to match LBT rework
