@@ -396,10 +396,9 @@ const char* lgw_version_info(void);
 /**
 @brief Return time on air of given packet, in milliseconds
 @param packet is a pointer to the packet structure
-@param isBeacon indicates if the packet is a beacon or not
 @return the packet time on air in milliseconds
 */
-uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet, bool isBeacon);
+uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet);
 
 #endif
 

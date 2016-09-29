@@ -161,6 +161,9 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size);
 
 void lgw_constant_adjust(void);
 
+int lgw_bw_getval(int x);
+int lgw_sf_getval(int x);
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
@@ -337,6 +340,35 @@ void lgw_constant_adjust(void) {
     return;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_bw_getval(int x) {
+    switch (x) {
+        case BW_500KHZ: return 500000;
+        case BW_250KHZ: return 250000;
+        case BW_125KHZ: return 125000;
+        case BW_62K5HZ: return 62500;
+        case BW_31K2HZ: return 31200;
+        case BW_15K6HZ: return 15600;
+        case BW_7K8HZ : return 7800;
+        default: return -1;
+    }
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_sf_getval(int x) {
+    switch (x) {
+        case DR_LORA_SF7: return 7;
+        case DR_LORA_SF8: return 8;
+        case DR_LORA_SF9: return 9;
+        case DR_LORA_SF10: return 10;
+        case DR_LORA_SF11: return 11;
+        case DR_LORA_SF12: return 12;
+        default: return -1;
+    }
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
@@ -421,6 +453,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
+    int bw_hz;
 
     /* check if the concentrator is running */
     if (lgw_is_started == true) {
@@ -450,14 +483,14 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
         DEBUG_MSG("ERROR: INVALID RF_CHAIN TO ASSOCIATE WITH A LORA_STD IF CHAIN\n");
         return LGW_HAL_ERROR;
     }
-    if ((conf.freq_hz + LGW_REF_BW/2) > ((int32_t)rf_rx_bandwidth[conf.rf_chain] / 2)) {
+    bw_hz = lgw_bw_getval(conf.bandwidth);
+    if ((conf.freq_hz + ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) > ((int32_t)rf_rx_bandwidth[conf.rf_chain] / 2)) {
         DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO HIGH\n", conf.freq_hz);
         return LGW_HAL_ERROR;
-    } else if ((conf.freq_hz - LGW_REF_BW/2) < -((int32_t)rf_rx_bandwidth[conf.rf_chain] / 2)) {
+    } else if ((conf.freq_hz - ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) < -((int32_t)rf_rx_bandwidth[conf.rf_chain] / 2)) {
         DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO LOW\n", conf.freq_hz);
         return LGW_HAL_ERROR;
     }
-    /* WARNING: if the channel is 250 or 500kHz wide, that check is insufficient */
 
     /* check parameters according to the type of IF chain + modem,
     fill default if necessary, and commit configuration if everything is OK */
@@ -1581,7 +1614,8 @@ const char* lgw_version_info() {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet, bool isBeacon) {
+uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
+    int val;
     uint8_t SF, H, DE;
     uint16_t BW;
     uint32_t payloadSymbNb, Tpacket;
@@ -1593,43 +1627,22 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet, bool isBeacon) {
     }
 
     if (packet->modulation == MOD_LORA) {
-        switch (packet->bandwidth) {
-            case BW_125KHZ:
-                BW = 125;
-                break;
-            case BW_250KHZ:
-                BW = 250;
-                break;
-            case BW_500KHZ:
-                BW = 500;
-                break;
-            default:
-                DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported bandwidth (%u)\n", packet->bandwidth);
-                return 0;
+        /* Get bandwidth */
+        val = lgw_bw_getval(packet->bandwidth);
+        if (val != -1) {
+            BW = (uint16_t)(val / 1E3);
+        } else {
+            DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported bandwidth (0x%02X)\n", packet->bandwidth);
+            return 0;
         }
 
-        switch (packet->datarate) {
-            case DR_LORA_SF7:
-                SF = 7;
-                break;
-            case DR_LORA_SF8:
-                SF = 8;
-                break;
-            case DR_LORA_SF9:
-                SF = 9;
-                break;
-            case DR_LORA_SF10:
-                SF = 10;
-                break;
-            case DR_LORA_SF11:
-                SF = 11;
-                break;
-            case DR_LORA_SF12:
-                SF = 12;
-                break;
-            default:
-                DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported datarate (%u)\n", packet->datarate);
-                return 0;
+        /* Get datarate */
+        val = lgw_sf_getval(packet->datarate);
+        if (val != -1) {
+            SF = (uint8_t)val;
+        } else {
+            DEBUG_PRINTF("ERROR: Cannot compute time on air for this packet, unsupported datarate (0x%02X)\n", packet->datarate);
+            return 0;
         }
 
         /* Duration of 1 symbol */
@@ -1639,13 +1652,14 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet, bool isBeacon) {
         Tpreamble = (8 + 4.25) * Tsym; /* 8 programmed symbols in preamble */
 
         /* Duration of payload */
-        H = (isBeacon==false) ? 0 : 1; /* header is always enabled, except for beacons */
+        H = (packet->no_header==false) ? 0 : 1; /* header is always enabled, except for beacons */
         DE = (SF >= 11) ? 1 : 0; /* Low datarate optimization enabled for SF11 and SF12 */
 
         payloadSymbNb = 8 + (ceil((double)(8*packet->size - 4*SF + 28 + 16 - 20*H) / (double)(4*(SF - 2*DE))) * (packet->coderate + 4)); /* Explicitely cast to double to keep precision of the division */
 
         Tpayload = payloadSymbNb * Tsym;
 
+        /* Duration of packet */
         Tpacket = Tpreamble + Tpayload;
     } else if (packet->modulation == MOD_FSK) {
         /* PREAMBLE + SYNC_WORD + PKT_LEN + PKT_PAYLOAD + CRC
@@ -1656,6 +1670,8 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet, bool isBeacon) {
                 CRC: 0 or 2 bytes
         */
         Tfsk = (8 * (double)(packet->preamble + fsk_sync_word_size + 1 + packet->size + ((packet->no_crc == true) ? 0 : 2)) / (double)packet->datarate) * 1E3;
+
+        /* Duration of packet */
         Tpacket = (uint32_t)Tfsk + 1; /* add margin for rounding */
     } else {
         Tpacket = 0;

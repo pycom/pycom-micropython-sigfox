@@ -321,7 +321,7 @@ int lbt_is_channel_free(struct lgw_pkt_tx_s * pkt_data, bool * tx_allowed) {
             lbt_time = 0;
         }
 
-        packet_duration = lgw_time_on_air(pkt_data, pkt_data->no_header) * 1000UL;
+        packet_duration = lgw_time_on_air(pkt_data) * 1000UL;
         tx_end_time = (tx_start_time + packet_duration) & LBT_TIMESTAMP_MASK;
         if (lbt_time < tx_end_time) {
             delta_time = tx_end_time - lbt_time;
