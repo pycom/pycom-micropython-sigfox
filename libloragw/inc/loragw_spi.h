@@ -100,6 +100,38 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
 */
 int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
+
+
+/*usb picogw TBD documentation*/
+
+#define BURSTSIZE 1024
+#define BUFFERTXSIZE 4*(BURSTSIZE+2)  
+#define BUFFERRXSIZE 1024
+#define ATOMICTX 24
+#define ATOMICRX 24
+typedef struct 
+{
+	char Cmd; // w for write , r for read
+	int Id;
+	int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
+	int Adress;
+	int Value[BURSTSIZE];
+} CmdSettings_t;
+
+typedef struct 
+{
+	int Cmd; // w for write , r for read
+	int Id;
+	int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
+	int Rxbuf[BUFFERRXSIZE];
+} AnsSettings_t;
+int SendCmd(CmdSettings_t CmdSettings,int file1) 	;
+int ReceiveAns(AnsSettings_t *Ansbuffer,int file1) 	;
+void WriteBurstRegister(int file1,int adress,int *value,int size);
+int set_interface_attribs (int fd, int speed, int parity);
+void set_blocking (int fd, int should_block);
+
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

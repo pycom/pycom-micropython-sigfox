@@ -60,7 +60,7 @@ Maintainer: Sylvain Miermont
 #define MCU_AGC_FW_BYTE     8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
 #define FW_VERSION_ADDR     0x20 /* Address of firmware version in data memory */
 #define FW_VERSION_CAL      2 /* Expected version of calibration firmware */
-#define FW_VERSION_AGC      4 /* Expected version of AGC firmware */
+#define FW_VERSION_AGC      5 /* Expected version of AGC firmware */
 #define FW_VERSION_ARB      1 /* Expected version of arbiter firmware */
 
 #define TX_METADATA_NB      16

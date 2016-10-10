@@ -27,13 +27,28 @@ Maintainer: Sylvain Miermont
 #include <unistd.h>        /* lseek, close */
 #include <fcntl.h>        /* open */
 #include <string.h>        /* memset */
-
+#include <errno.h>   /* Error number definitions */
+#include <termios.h> /* POSIX terminal control definitions */
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
 
 #include "loragw_spi.h"
 #include "loragw_hal.h"
+#include "loragw_aux.h"
 
+
+#include <stdio.h>   /* Standard input/output definitions */
+#include <string.h>  /* String function definitions */
+#include <stdlib.h>
+#include <stdint.h>
+#include <unistd.h>  /* UNIX standard function definitions */
+#include <fcntl.h>   /* File control definitions */
+#include <errno.h>   /* Error number definitions */
+#include <termios.h> /* POSIX terminal control definitions */
+#include <time.h>
+    
+
+#include <sys/select.h>
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -60,326 +75,439 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
+
+/* configure TTYACM0 port*/
+
+
+int
+set_interface_attribs (int fd, int speed, int parity)
+{
+        struct termios tty;
+        memset (&tty, 0, sizeof tty);
+        if (tcgetattr (fd, &tty) != 0)
+        {
+                printf ("error %d from tcgetattr", errno);
+                return -1;
+        }
+
+        cfsetospeed (&tty, speed);
+        cfsetispeed (&tty, speed);
+
+        tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
+        // disable IGNBRK for mismatched speed tests; otherwise receive break
+        // as \000 chars
+        tty.c_iflag &= ~IGNBRK;         // disable break processing
+        tty.c_lflag = 0;                // no signaling chars, no echo,
+                                        // no canonical processing
+        tty.c_oflag = 0;                // no remapping, no delays
+        tty.c_cc[VMIN]  = 0;            // read doesn't block
+        tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
+
+        tty.c_iflag &= ~(IXON | IXOFF | IXANY|ICRNL); // shut off xon/xoff ctrl
+
+        tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
+                                        // enable reading
+        tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
+        tty.c_cflag |= parity;
+        tty.c_cflag &= ~CSTOPB;
+       //  tty.c_cflag &= ~CRTSCTS;
+
+        if (tcsetattr (fd, TCSANOW, &tty) != 0)
+        {
+                printf ("error %d from tcsetattr", errno);
+                return -1;
+        }
+        return 0;
+}
+/* configure TTYACM0 read blocking or not*/
+void set_blocking (int fd, int should_block)
+{
+        struct termios tty;
+        memset (&tty, 0, sizeof tty);
+        if (tcgetattr (fd, &tty) != 0)
+        {
+                printf ("error %d from tggetattr", errno);
+                return;
+        }
+
+        tty.c_cc[VMIN]  = should_block ? 1 : 0;
+        tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
+
+        if (tcsetattr (fd, TCSANOW, &tty) != 0)
+                printf ("error %d setting term attributes", errno);
+}
+
+
+
+
 /* SPI initialization and configuration */
 int lgw_spi_open(void **spi_target_ptr) {
-    int *spi_device = NULL;
-    int dev;
-    int a=0, b=0;
-    int i;
-
-    /* check input variables */
-    CHECK_NULL(spi_target_ptr); /* cannot be null, must point on a void pointer (*spi_target_ptr can be null) */
-
-    /* allocate memory for the device descriptor */
-    spi_device = malloc(sizeof(int));
-    if (spi_device == NULL) {
-        DEBUG_MSG("ERROR: MALLOC FAIL\n");
+	
+int *usb_device=NULL;
+  /*check input variables*/
+	CHECK_NULL(spi_target_ptr);	
+	
+    usb_device=malloc(sizeof(int));
+    if (usb_device ==NULL){
+		DEBUG_MSG("ERROR : MALLOC FAIL\n");
+		return LGW_SPI_ERROR;
+	}	
+	
+ /*TBD abstract the port name*/
+    char *portname = "/dev/ttyACM0";
+	int fd = open (portname, O_RDWR | O_NOCTTY | O_SYNC);
+    if (fd < 0)
+    {
+        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname);
         return LGW_SPI_ERROR;
     }
 
-    /* open SPI device */
-    dev = open(SPI_DEV_PATH, O_RDWR);
-    if (dev < 0) {
-        DEBUG_PRINTF("ERROR: failed to open SPI device %s\n", SPI_DEV_PATH);
-        return LGW_SPI_ERROR;
-    }
-
-    /* setting SPI mode to 'mode 0' */
-    i = SPI_MODE_0;
-    a = ioctl(dev, SPI_IOC_WR_MODE, &i);
-    b = ioctl(dev, SPI_IOC_RD_MODE, &i);
-    if ((a < 0) || (b < 0)) {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET IN MODE 0\n");
-        close(dev);
-        free(spi_device);
-        return LGW_SPI_ERROR;
-    }
-
-    /* setting SPI max clk (in Hz) */
-    i = SPI_SPEED;
-    a = ioctl(dev, SPI_IOC_WR_MAX_SPEED_HZ, &i);
-    b = ioctl(dev, SPI_IOC_RD_MAX_SPEED_HZ, &i);
-    if ((a < 0) || (b < 0)) {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET MAX SPEED\n");
-        close(dev);
-        free(spi_device);
-        return LGW_SPI_ERROR;
-    }
-
-    /* setting SPI to MSB first */
-    i = 0;
-    a = ioctl(dev, SPI_IOC_WR_LSB_FIRST, &i);
-    b = ioctl(dev, SPI_IOC_RD_LSB_FIRST, &i);
-    if ((a < 0) || (b < 0)) {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET MSB FIRST\n");
-        close(dev);
-        free(spi_device);
-        return LGW_SPI_ERROR;
-    }
-
-    /* setting SPI to 8 bits per word */
-    i = 0;
-    a = ioctl(dev, SPI_IOC_WR_BITS_PER_WORD, &i);
-    b = ioctl(dev, SPI_IOC_RD_BITS_PER_WORD, &i);
-    if ((a < 0) || (b < 0)) {
-        DEBUG_MSG("ERROR: SPI PORT FAIL TO SET 8 BITS-PER-WORD\n");
-        close(dev);
-        return LGW_SPI_ERROR;
-    }
-
-    *spi_device = dev;
-    *spi_target_ptr = (void *)spi_device;
-    DEBUG_MSG("Note: SPI port opened and configured ok\n");
+    set_interface_attribs (fd, B115200, 0);  // set speed to 115,200 bps, 8n1 (no parity)
+    set_blocking (fd, 0);                // set  blocking
+    *usb_device=fd;
+    *spi_target_ptr=(void*)usb_device;
     return LGW_SPI_SUCCESS;
+
+   
+
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* SPI release */
 int lgw_spi_close(void *spi_target) {
-    int spi_device;
-    int a;
-
-    /* check input variables */
-    CHECK_NULL(spi_target);
-
-    /* close file & deallocate file descriptor */
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
-    a = close(spi_device);
-    free(spi_target);
-
-    /* determine return code */
-    if (a < 0) {
-        DEBUG_MSG("ERROR: SPI PORT FAILED TO CLOSE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI port closed\n");
-        return LGW_SPI_SUCCESS;
-    }
-}
+  int usb_device;
+  int a;
+   /*check input variables*/
+	CHECK_NULL(spi_target);
+	usb_device=*(int*)spi_target;
+	
+	a=close(usb_device);
+	if (a<0){
+		DEBUG_MSG("ERROR : USB PORT FAILED TO CLOSE\n");
+		return LGW_SPI_ERROR;
+	}
+	else
+	 {
+		 DEBUG_MSG("Note : USB port closed \n");
+		 return LGW_SPI_SUCCESS;
+	 }
+ }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* Simple write */
+/* Simple write without ack TBD may be added ack */
 int lgw_spi_w(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t data) {
-    int spi_device;
-    uint8_t out_buf[3];
-    uint8_t command_size;
-    struct spi_ioc_transfer k;
-    int a;
-
-    /* check input variables */
-    CHECK_NULL(spi_target);
-    if ((address & 0x80) != 0) {
-        DEBUG_MSG("WARNING: SPI address > 127\n");
-    }
-
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
-
-    /* prepare frame to be sent */
-    if (spi_mux_mode == LGW_SPI_MUX_MODE1) {
-        out_buf[0] = spi_mux_target;
-        out_buf[1] = WRITE_ACCESS | (address & 0x7F);
-        out_buf[2] = data;
-        command_size = 3;
-    } else {
-        out_buf[0] = WRITE_ACCESS | (address & 0x7F);
-        out_buf[1] = data;
-        command_size = 2;
-    }
-
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.len = command_size;
-    k.speed_hz = SPI_SPEED;
-    k.cs_change = 0;
-    k.bits_per_word = 8;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
-
-    /* determine return code */
-    if (a != (int)k.len) {
-        DEBUG_MSG("ERROR: SPI WRITE FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI write success\n");
+    int fd;
+ 
+    int temp4WARNING;
+    temp4WARNING=spi_mux_mode;
+    temp4WARNING=spi_mux_target;
+    temp4WARNING++;
+    fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+  
+   /*build the write cmd*/
+   CmdSettings_t mystruct;
+   mystruct.Cmd='w';
+   mystruct.Id=0;
+   mystruct.Len=1;
+   mystruct.Adress=address;
+   mystruct.Value[0]=data;
+   SendCmd(mystruct,fd) ;
+   wait_ms(2);
+       
+    /* TBD + failure cases determine return code */
+  
+        DEBUG_MSG("Note: USB/SPI write success\n");
         return LGW_SPI_SUCCESS;
-    }
+    
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Simple read */
 int lgw_spi_r(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data) {
-    int spi_device;
-    uint8_t out_buf[3];
-    uint8_t command_size;
-    uint8_t in_buf[ARRAY_SIZE(out_buf)];
-    struct spi_ioc_transfer k;
-    int a;
-
+    int fd;
+    
+    int temp4WARNING;
+    temp4WARNING=spi_mux_mode;
+    temp4WARNING=spi_mux_target;
+    temp4WARNING++;
     /* check input variables */
     CHECK_NULL(spi_target);
-    if ((address & 0x80) != 0) {
-        DEBUG_MSG("WARNING: SPI address > 127\n");
-    }
     CHECK_NULL(data);
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
-
-    /* prepare frame to be sent */
-    if (spi_mux_mode == LGW_SPI_MUX_MODE1) {
-        out_buf[0] = spi_mux_target;
-        out_buf[1] = READ_ACCESS | (address & 0x7F);
-        out_buf[2] = 0x00;
-        command_size = 3;
-    } else {
-        out_buf[0] = READ_ACCESS | (address & 0x7F);
-        out_buf[1] = 0x00;
-        command_size = 2;
-    }
-
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k.tx_buf = (unsigned long) out_buf;
-    k.rx_buf = (unsigned long) in_buf;
-    k.len = command_size;
-    k.cs_change = 0;
-    a = ioctl(spi_device, SPI_IOC_MESSAGE(1), &k);
-
-    /* determine return code */
-    if (a != (int)k.len) {
+    fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    
+   CmdSettings_t mystruct;
+   AnsSettings_t mystrctAns;
+   mystruct.Cmd='r';
+   mystruct.Id=0;
+   mystruct.Len=1;
+   mystruct.Adress=address;
+   mystruct.Value[0]=0;
+   SendCmd(mystruct,fd) ;
+   wait_ms(2);	   
+   if(ReceiveAns(&mystrctAns,fd))
+   {
+	 DEBUG_MSG("Note: SPI read success\n");
+     *data = mystrctAns.Rxbuf[0];
+     
+      return LGW_SPI_SUCCESS;
+   }
+   else
+   {
         DEBUG_MSG("ERROR: SPI READ FAILURE\n");
         return LGW_SPI_ERROR;
-    } else {
-        DEBUG_MSG("Note: SPI read success\n");
-        *data = in_buf[command_size - 1];
-        return LGW_SPI_SUCCESS;
-    }
+    } 
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) write */
 int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size) {
-    int spi_device;
-    uint8_t command[2];
-    uint8_t command_size;
-    struct spi_ioc_transfer k[2];
-    int size_to_do, chunk_size, offset;
-    int byte_transfered = 0;
+    int fd;
     int i;
+	int sizei=size;
+	int cptalc=0;
+	int temp4WARNING;
+	temp4WARNING=spi_mux_mode;
+    temp4WARNING=spi_mux_target;
+    temp4WARNING++;
+    int first=1;
+    int end=0;
+    int middle=0;
+   
+	CmdSettings_t mystruct;
 
     /* check input parameters */
     CHECK_NULL(spi_target);
-    if ((address & 0x80) != 0) {
-        DEBUG_MSG("WARNING: SPI address > 127\n");
-    }
-    CHECK_NULL(data);
-    if (size == 0) {
-        DEBUG_MSG("ERROR: BURST OF NULL LENGTH\n");
-        return LGW_SPI_ERROR;
-    }
-
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
 
     /* prepare command byte */
-    if (spi_mux_mode == LGW_SPI_MUX_MODE1) {
-        command[0] = spi_mux_target;
-        command[1] = WRITE_ACCESS | (address & 0x7F);
-        command_size = 2;
-    } else {
-        command[0] = WRITE_ACCESS | (address & 0x7F);
-        command_size = 1;
+ 
+ while (sizei>ATOMICTX) // 64 bytes fifo transfer TBD have to be improve to speed up
+ {
+	  if (sizei==size)
+   {	 
+   mystruct.Cmd='x';
+   }
+   else
+    {	 
+   mystruct.Cmd='y';
     }
-    size_to_do = size;
-
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k[0].tx_buf = (unsigned long) &command[0];
-    k[0].len = command_size;
-    k[0].cs_change = 0;
-    k[1].cs_change = 0;
-    for (i=0; size_to_do > 0; ++i) {
-        chunk_size = (size_to_do < LGW_BURST_CHUNK) ? size_to_do : LGW_BURST_CHUNK;
-        offset = i * LGW_BURST_CHUNK;
-        k[1].tx_buf = (unsigned long)(data + offset);
-        k[1].len = chunk_size;
-        byte_transfered += (ioctl(spi_device, SPI_IOC_MESSAGE(2), &k) - k[0].len );
-        DEBUG_PRINTF("BURST WRITE: to trans %d # chunk %d # transferred %d \n", size_to_do, chunk_size, byte_transfered);
-        size_to_do -= chunk_size; /* subtract the quantity of data already transferred */
-    }
-
-    /* determine return code */
-    if (byte_transfered != size) {
-        DEBUG_MSG("ERROR: SPI BURST WRITE FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
+  
+   mystruct.Id=0;
+   mystruct.Len=ATOMICTX;
+   mystruct.Adress=address;
+  
+   for (i=0;i<mystruct.Len;i++)
+   {
+   
+   mystruct.Value[i]=data[i+cptalc];
+   }
+   SendCmd(mystruct,fd) ;
+   sizei=sizei-ATOMICTX;
+ 
+   cptalc=cptalc+ATOMICTX;
+   wait_ms(2);
+}
+/*end of the transfer*/
+if (sizei>0)
+{
+		 if (size<ATOMICTX)
+	 {  
+   mystruct.Cmd='a';
+}
+else
+{
+	mystruct.Cmd='z';
+}
+	
+   mystruct.Id=0;
+   mystruct.Len=sizei;
+   mystruct.Adress=address;
+  
+   for (i=0;i<mystruct.Len;i++)
+   {
+   
+   mystruct.Value[i]=data[i+cptalc];
+   }
+ 
+   SendCmd(mystruct,fd) ;
+  wait_ms(2);
+} 	   
+  
+    
         DEBUG_MSG("Note: SPI burst write success\n");
         return LGW_SPI_SUCCESS;
-    }
+    
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 /* Burst (multiple-byte) read */
 int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size) {
-    int spi_device;
-    uint8_t command[2];
-    uint8_t command_size;
-    struct spi_ioc_transfer k[2];
-    int size_to_do, chunk_size, offset;
-    int byte_transfered = 0;
-    int i;
+    int fd;
+   int temp4WARNING;
+	temp4WARNING=spi_mux_mode;
+    temp4WARNING=spi_mux_target;
+    temp4WARNING++;
 
     /* check input parameters */
     CHECK_NULL(spi_target);
-    if ((address & 0x80) != 0) {
-        DEBUG_MSG("WARNING: SPI address > 127\n");
-    }
-    CHECK_NULL(data);
-    if (size == 0) {
-        DEBUG_MSG("ERROR: BURST OF NULL LENGTH\n");
-        return LGW_SPI_ERROR;
-    }
+    
+    fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
 
-    spi_device = *(int *)spi_target; /* must check that spi_target is not null beforehand */
-
-    /* prepare command byte */
-    if (spi_mux_mode == LGW_SPI_MUX_MODE1) {
-        command[0] = spi_mux_target;
-        command[1] = READ_ACCESS | (address & 0x7F);
-        command_size = 2;
-    } else {
-        command[0] = READ_ACCESS | (address & 0x7F);
-        command_size = 1;
+   
+	int i;
+   CmdSettings_t mystruct;
+   AnsSettings_t mystrctAns;
+ 
+   int sizei=size;
+	int cptalc=0;
+	int cptalcadd=0;
+ while (sizei>ATOMICRX)
+ { 
+   if (sizei==size)
+   {	 
+   mystruct.Cmd='s';
+   }
+   else
+    {	 
+   mystruct.Cmd='t';
     }
-    size_to_do = size;
-
-    /* I/O transaction */
-    memset(&k, 0, sizeof(k)); /* clear k */
-    k[0].tx_buf = (unsigned long) &command[0];
-    k[0].len = command_size;
-    k[0].cs_change = 0;
-    k[1].cs_change = 0;
-    for (i=0; size_to_do > 0; ++i) {
-        chunk_size = (size_to_do < LGW_BURST_CHUNK) ? size_to_do : LGW_BURST_CHUNK;
-        offset = i * LGW_BURST_CHUNK;
-        k[1].rx_buf = (unsigned long)(data + offset);
-        k[1].len = chunk_size;
-        byte_transfered += (ioctl(spi_device, SPI_IOC_MESSAGE(2), &k) - k[0].len );
-        DEBUG_PRINTF("BURST READ: to trans %d # chunk %d # transferred %d \n", size_to_do, chunk_size, byte_transfered);
-        size_to_do -= chunk_size;  /* subtract the quantity of data already transferred */
-    }
-
-    /* determine return code */
-    if (byte_transfered != size) {
-        DEBUG_MSG("ERROR: SPI BURST READ FAILURE\n");
-        return LGW_SPI_ERROR;
-    } else {
+   mystruct.Id=0;
+   mystruct.Len=2;
+   mystruct.Adress=address;
+   
+   mystruct.Value[0]=0;
+   mystruct.Value[1]= ATOMICRX;
+//   printf("le= %d et %d\n", mystruct.Value[0], mystruct.Value[1]);
+   SendCmd(mystruct,fd) ;
+   wait_ms(2);	   
+   if(ReceiveAns(&mystrctAns,fd))
+   {
+	   for (i=0;i<ATOMICRX;i++)
+	   {data[i+cptalc]=mystrctAns.Rxbuf[i];
+	   }
+	 //  printf("struc receiv %d %d %d %d \n",mystrctAns.Cmd,mystrctAns.Id,mystrctAns.Len,mystrctAns.Rxbuf[0]);
+   }
+   sizei=sizei-ATOMICRX;
+ 
+   cptalc=cptalc+ATOMICRX;
+   wait_ms(2);	
+   }
+ if (sizei>0){
+	 if (size<ATOMICRX)
+	 {  
+   mystruct.Cmd='p';
+}
+else
+{
+	mystruct.Cmd='u';
+}
+   mystruct.Id=0;
+   mystruct.Len=2;
+   mystruct.Adress=address;
+   
+   mystruct.Value[0]=0;
+   mystruct.Value[1]= sizei;
+//   printf("le= %d et %d\n", mystruct.Value[0], mystruct.Value[1]);
+   SendCmd(mystruct,fd) ;
+   wait_ms(1);	   
+   if(ReceiveAns(&mystrctAns,fd))
+   {
+	   for (i=0;i<sizei;i++)
+	   {data[i+cptalc]=mystrctAns.Rxbuf[i];
+	   }
+	 //  printf("struc receiv %d %d %d %d \n",mystrctAns.Cmd,mystrctAns.Id,mystrctAns.Len,mystrctAns.Rxbuf[0]);
+   }
+   wait_ms(2);	
+}
+  
         DEBUG_MSG("Note: SPI burst read success\n");
         return LGW_SPI_SUCCESS;
-    }
+   
 }
+
+
+/*usb addded*/
+
+
+int SendCmd(CmdSettings_t CmdSettings,int file1) 	
+{     
+	char buffertx[BUFFERTXSIZE];
+	
+	int Clen =  CmdSettings.Len;
+	
+	int Tlen = 1+2+2+2+Clen*2; // cmd +ID+ Length =2chars+ write/read = 4*Clen
+	
+	if (Clen>255)
+	{
+	 return(-1); 	
+	}
+	int i;
+	int adresstemp;
+	int valuetemp;
+	
+	for (i=0;i<BUFFERTXSIZE;i++)
+	{
+		 buffertx[i]='\n';
+	}
+	
+    buffertx[0]=CmdSettings.Cmd;
+    
+    sprintf(&buffertx[1],"%.2x%.2x",CmdSettings.Id,CmdSettings.Len);
+    adresstemp=CmdSettings.Adress;
+    sprintf(&buffertx[5],"%.2x",adresstemp);
+    for (i=0;i<(Clen);i++)   
+	{
+		
+		valuetemp=CmdSettings.Value[i];
+		
+		sprintf(&buffertx[2*i+7],"%.2x",valuetemp);
+	}
+	#if debug
+	{
+	// printf("buffertx=%s\n",&buffertx[0]);
+	}
+    #endif
+    write(file1,buffertx,Tlen+4);
+	//fwrite(buffertx,sizeof(char),Tlen+4,file1);
+	return(1); //tbd	
+}
+
+int ReceiveAns(AnsSettings_t *Ansbuffer,int file1) 	
+{
+	uint8_t bufferrx[BUFFERRXSIZE];
+    int i;
+    for (i=0;i<BUFFERRXSIZE;i++)
+    {
+		bufferrx[i]=0;
+	
+	}
+	read(file1,bufferrx,3);
+	//fread(bufferrx,sizeof(uint8_t),3,file1);
+	for (i=0;i<3;i++)
+	{//	printf ("\n %.2x ",bufferrx[i]);
+	}
+	
+	read(file1,&bufferrx[3],(bufferrx[1]<<8)+bufferrx[2]);
+	//fread(&bufferrx[3],sizeof(uint8_t),bufferrx[2],file1);
+	for (i=0;i<10;i++)
+	{	//printf ("%.2x ",bufferrx[i]);
+	}
+	//printf ("\n");
+	Ansbuffer->Cmd=bufferrx[0];
+	Ansbuffer->Id=bufferrx[1];
+	Ansbuffer->Len=bufferrx[2];
+	for(i=0;i<bufferrx[2];i++)
+	{
+	Ansbuffer->Rxbuf[i]=bufferrx[3+i];
+    }
+	return(1);
+}
+
 
 /* --- EOF ------------------------------------------------------------------ */
