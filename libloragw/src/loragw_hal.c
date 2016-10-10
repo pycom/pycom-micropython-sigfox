@@ -1065,7 +1065,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     }
 
     /* check input variables */
-    if (max_pkt <= 0) {
+    if ((max_pkt <= 0) || (max_pkt > LGW_PKT_FIFO_SIZE)) {
         DEBUG_PRINTF("ERROR: %d = INVALID MAX NUMBER OF PACKETS TO FETCH\n", max_pkt);
         return LGW_HAL_ERROR;
     }
@@ -1082,13 +1082,23 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
         /* fetch all the RX FIFO data */
         lgw_reg_rb(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, buff, 5);
+        /* 0:   number of packets available in RX data buffer */
+        /* 1,2: start address of the current packet in RX data buffer */
+        /* 3:   CRC status of the current packet */
+        /* 4:   size of the current packet payload in byte */
 
         /* how many packets are in the RX buffer ? Break if zero */
         if (buff[0] == 0) {
             break; /* no more packets to fetch, exit out of FOR loop */
         }
 
-        DEBUG_PRINTF("FIFO content: %x %x %x %x %x\n",buff[0],buff[1],buff[2],buff[3],buff[4]);
+        /* sanity check */
+        if (buff[0] > LGW_PKT_FIFO_SIZE) {
+            DEBUG_PRINTF("WARNING: %u = INVALID NUMBER OF PACKETS TO FETCH, ABORTING\n", buff[0]);
+            break;
+        }
+
+        DEBUG_PRINTF("FIFO content: %x %x %x %x %x\n", buff[0], buff[1], buff[2], buff[3], buff[4]);
 
         p->size = buff[4];
         sz = p->size;
@@ -1102,6 +1112,10 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
         /* process metadata */
         p->if_chain = buff[sz+0];
+        if (p->if_chain >= LGW_IF_CHAIN_NB) {
+            DEBUG_PRINTF("WARNING: %u NOT A VALID IF_CHAIN NUMBER, ABORTING\n", p->if_chain);
+            break;
+        }
         ifmod = ifmod_config[p->if_chain];
         DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
 
