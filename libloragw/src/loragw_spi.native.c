@@ -274,10 +274,7 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
 	temp4WARNING=spi_mux_mode;
     temp4WARNING=spi_mux_target;
     temp4WARNING++;
-    int first=1;
-    int end=0;
-    int middle=0;
-   
+  
 	CmdSettings_t mystruct;
 
     /* check input parameters */
@@ -310,7 +307,7 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
    sizei=sizei-ATOMICTX;
  
    cptalc=cptalc+ATOMICTX;
-   wait_ms(2);
+   wait_ms(1);
 }
 /*end of the transfer*/
 if (sizei>0)
@@ -366,7 +363,7 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
  
    int sizei=size;
 	int cptalc=0;
-	int cptalcadd=0;
+	
  while (sizei>ATOMICRX)
  { 
    if (sizei==size)
@@ -385,7 +382,7 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
    mystruct.Value[1]= ATOMICRX;
 //   printf("le= %d et %d\n", mystruct.Value[0], mystruct.Value[1]);
    SendCmd(mystruct,fd) ;
-   wait_ms(2);	   
+   wait_ms(1);	   
    if(ReceiveAns(&mystrctAns,fd))
    {
 	   for (i=0;i<ATOMICRX;i++)
@@ -423,7 +420,7 @@ else
 	   }
 	 //  printf("struc receiv %d %d %d %d \n",mystrctAns.Cmd,mystrctAns.Id,mystrctAns.Len,mystrctAns.Rxbuf[0]);
    }
-   wait_ms(2);	
+   wait_ms(1);	
 }
   
         DEBUG_MSG("Note: SPI burst read success\n");
