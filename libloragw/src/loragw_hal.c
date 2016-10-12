@@ -1152,6 +1152,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 p->bandwidth = lora_rx_bw; /* get the parameter from the config variable */
             }
             sf = (buff[sz+1] >> 4) & 0x0F;
+            
             switch (sf) {
                 case 7: p->datarate = DR_LORA_SF7; break;
                 case 8: p->datarate = DR_LORA_SF8; break;
@@ -1159,7 +1160,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 case 10: p->datarate = DR_LORA_SF10; break;
                 case 11: p->datarate = DR_LORA_SF11; break;
                 case 12: p->datarate = DR_LORA_SF12; break;
-                default: p->datarate = DR_UNDEFINED;
+                default:
+                p->datarate = DR_UNDEFINED;
             }
             cr = (buff[sz+1] >> 1) & 0x07;
             switch (cr) {
@@ -1169,7 +1171,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 case 4: p->coderate = CR_LORA_4_8; break;
                 default: p->coderate = CR_UNDEFINED;
             }
-
+           DEBUG_PRINTF("ERROR: UNEXPECTED DataRate %d cr = %d snr = %f snr min = %f snr max = %f \n", sf,cr, p->snr,p->snr_min,p->snr_max); 
             /* determine if 'PPM mode' is on, needed for timestamp correction */
             if (SET_PPM_ON(p->bandwidth,p->datarate)) {
                 ppm = 1;

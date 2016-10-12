@@ -42,6 +42,7 @@ Maintainer: Sylvain Miermont
 @param t number of milliseconds to wait.
 */
 void wait_ms(unsigned long t);
+void wait_ns(unsigned long t);
 
 #endif
 

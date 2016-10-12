@@ -86,7 +86,7 @@ set_interface_attribs (int fd, int speed, int parity)
         memset (&tty, 0, sizeof tty);
         if (tcgetattr (fd, &tty) != 0)
         {
-                printf ("error %d from tcgetattr", errno);
+                DEBUG_PRINTF ("error %d from tcgetattr", errno);
                 return -1;
         }
 
@@ -103,7 +103,7 @@ set_interface_attribs (int fd, int speed, int parity)
         tty.c_cc[VMIN]  = 0;            // read doesn't block
         tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
 
-        tty.c_iflag &= ~(IXON | IXOFF | IXANY|ICRNL); // shut off xon/xoff ctrl
+        tty.c_iflag &= ~(IXON | IXOFF | IXANY|ICRNL|OCRNL); // shut off xon/xoff ctrl
 
         tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
                                         // enable reading
@@ -114,7 +114,7 @@ set_interface_attribs (int fd, int speed, int parity)
 
         if (tcsetattr (fd, TCSANOW, &tty) != 0)
         {
-                printf ("error %d from tcsetattr", errno);
+                DEBUG_PRINTF ("error %d from tcsetattr", errno);
                 return -1;
         }
         return 0;
@@ -126,15 +126,15 @@ void set_blocking (int fd, int should_block)
         memset (&tty, 0, sizeof tty);
         if (tcgetattr (fd, &tty) != 0)
         {
-                printf ("error %d from tggetattr", errno);
+                DEBUG_PRINTF ("error %d from tggetattr", errno);
                 return;
         }
 
         tty.c_cc[VMIN]  = should_block ? 1 : 0;
-        tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
+        tty.c_cc[VTIME] = 9;            // 0.5 seconds read timeout
 
         if (tcsetattr (fd, TCSANOW, &tty) != 0)
-                printf ("error %d setting term attributes", errno);
+                DEBUG_PRINTF ("error %d setting term attributes", errno);
 }
 
 
@@ -214,7 +214,7 @@ int lgw_spi_w(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, ui
    mystruct.Adress=address;
    mystruct.Value[0]=data;
    SendCmd(mystruct,fd) ;
-   wait_ms(2);
+   wait_ns(500000);
        
     /* TBD + failure cases determine return code */
   
@@ -247,7 +247,7 @@ int lgw_spi_r(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, ui
    mystruct.Adress=address;
    mystruct.Value[0]=0;
    SendCmd(mystruct,fd) ;
-   wait_ms(2);	   
+ // wait_ns(200000);
    if(ReceiveAns(&mystrctAns,fd))
    {
 	 DEBUG_MSG("Note: SPI read success\n");
@@ -307,12 +307,12 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
    sizei=sizei-ATOMICTX;
  
    cptalc=cptalc+ATOMICTX;
-   wait_ms(1);
+   wait_ns(200000);
 }
 /*end of the transfer*/
 if (sizei>0)
 {
-		 if (size<ATOMICTX)
+		 if (size<=ATOMICTX)
 	 {  
    mystruct.Cmd='a';
 }
@@ -332,7 +332,7 @@ else
    }
  
    SendCmd(mystruct,fd) ;
-  wait_ms(2);
+  wait_ns(200000);
 } 	   
   
     
@@ -382,7 +382,7 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
    mystruct.Value[1]= ATOMICRX;
 //   printf("le= %d et %d\n", mystruct.Value[0], mystruct.Value[1]);
    SendCmd(mystruct,fd) ;
-   wait_ms(1);	   
+ //wait_ns(200000);	   
    if(ReceiveAns(&mystrctAns,fd))
    {
 	   for (i=0;i<ATOMICRX;i++)
@@ -390,13 +390,20 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
 	   }
 	 //  printf("struc receiv %d %d %d %d \n",mystrctAns.Cmd,mystrctAns.Id,mystrctAns.Len,mystrctAns.Rxbuf[0]);
    }
+   else
+   {
+	   
+	   for (i=0;i<ATOMICRX;i++)
+	   {data[i+cptalc]=0xFF;
+	   }
+   }
    sizei=sizei-ATOMICRX;
  
    cptalc=cptalc+ATOMICRX;
-   wait_ms(2);	
+  // wait_ns(200000);	
    }
  if (sizei>0){
-	 if (size<ATOMICRX)
+	 if (size<=ATOMICRX)
 	 {  
    mystruct.Cmd='p';
 }
@@ -412,7 +419,7 @@ else
    mystruct.Value[1]= sizei;
 //   printf("le= %d et %d\n", mystruct.Value[0], mystruct.Value[1]);
    SendCmd(mystruct,fd) ;
-   wait_ms(1);	   
+ //wait_ns(200000); 
    if(ReceiveAns(&mystrctAns,fd))
    {
 	   for (i=0;i<sizei;i++)
@@ -420,7 +427,14 @@ else
 	   }
 	 //  printf("struc receiv %d %d %d %d \n",mystrctAns.Cmd,mystrctAns.Id,mystrctAns.Len,mystrctAns.Rxbuf[0]);
    }
-   wait_ms(1);	
+   else
+   {
+	   
+	   for (i=0;i<ATOMICRX;i++)
+	   {data[i+cptalc]=0xFF;
+	   }
+   }
+ //wait_ms(1);
 }
   
         DEBUG_MSG("Note: SPI burst read success\n");
@@ -487,7 +501,8 @@ int ReceiveAns(AnsSettings_t *Ansbuffer,int file1)
 	read(file1,bufferrx,3);
 	//fread(bufferrx,sizeof(uint8_t),3,file1);
 	for (i=0;i<3;i++)
-	{//	printf ("\n %.2x ",bufferrx[i]);
+	{DEBUG_PRINTF("readburst size %d\n",bufferrx[2]);
+		if(bufferrx[2]==0){return(0);} 
 	}
 	
 	read(file1,&bufferrx[3],(bufferrx[1]<<8)+bufferrx[2]);
