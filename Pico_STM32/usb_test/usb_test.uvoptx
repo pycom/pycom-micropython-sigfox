@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ProjectOpt xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="project_optx.xsd">
+	<SchemaVersion>1.0</SchemaVersion>
+	<Target>
+		<TargetName>usb_test</TargetName>
+		<ToolsetNumber>0x4</ToolsetNumber>
+		<ToolsetName>ARM-ADS</ToolsetName>
+		<TargetOption>
+			<DebugOpt>
+				<uSim>0</uSim>
+				<uTrg>1</uTrg>
+				<nTsel>11</nTsel>
+				<pMon>STLink\ST-LINKIII-KEIL_SWO.dll</pMon>
+			</DebugOpt>
+			<TargetDriverDllRegistry>
+				<SetRegEntry>
+					<Number>0</Number>
+					<Key>ST-LINKIII-KEIL_SWO</Key>
+					<Name>UL2CM3(-S0 -C0 -P0 -FD20000000 -FC1000 -FN1 -FF0STM32F4xx_512 -FS08000000 -FL080000 -FP0($$Device:STM32F401RETx$CMSIS\Flash\STM32F4xx_512.FLM))</Name>
+				</SetRegEntry>
+			</TargetDriverDllRegistry>
+		</TargetOption>
+	</Target>
+</ProjectOpt>
