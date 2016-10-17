@@ -1,4 +1,4 @@
-/*
+ /*
  / _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
@@ -241,6 +241,7 @@ int main(int argc, char **argv)
             test_addr = rand() & 0xFFFF;
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* write at random offset in memory */
             lgw_reg_wb(LGW_RX_DATA_BUF_DATA, test_buff, BUFF_SIZE);
+            
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
             lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, BUFF_SIZE);
             for (i=0; ((i<BUFF_SIZE) && (test_buff[i] == read_buff[i])); ++i);
@@ -254,7 +255,7 @@ int main(int argc, char **argv)
                 printf("\n");
                 printf("Read values:\n");
                 for (i=0; i<BUFF_SIZE; ++i) {
-                    printf(" %02X ", read_buff[i]);
+                    printf("%.2x ", test_buff[i]-read_buff[i]);
                     if (i%16 == 15) printf("\n");
                 }
                 printf("\n");

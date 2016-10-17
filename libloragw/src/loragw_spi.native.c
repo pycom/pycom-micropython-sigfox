@@ -31,11 +31,12 @@ Maintainer: Sylvain Miermont
 #include <termios.h> /* POSIX terminal control definitions */
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
-
+#include <pthread.h>
 #include "loragw_spi.h"
 #include "loragw_hal.h"
 #include "loragw_aux.h"
 
+#include "loragw_reg.h"
 
 #include <stdio.h>   /* Standard input/output definitions */
 #include <string.h>  /* String function definitions */
@@ -46,7 +47,7 @@ Maintainer: Sylvain Miermont
 #include <errno.h>   /* Error number definitions */
 #include <termios.h> /* POSIX terminal control definitions */
 #include <time.h>
-    
+
 
 #include <sys/select.h>
 /* -------------------------------------------------------------------------- */
@@ -62,6 +63,12 @@ Maintainer: Sylvain Miermont
     #define DEBUG_PRINTF(fmt, args...)
     #define CHECK_NULL(a)                if(a==NULL){return LGW_SPI_ERROR;}
 #endif
+
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE SHARED VARIABLES (GLOBAL) ------------------------------------ */
+
+pthread_mutex_t mx_usbbridgesync = PTHREAD_MUTEX_INITIALIZER; /* control access to usbbridge sync offsets */
+
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -103,7 +110,7 @@ set_interface_attribs (int fd, int speed, int parity)
         tty.c_cc[VMIN]  = 0;            // read doesn't block
         tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
 
-        tty.c_iflag &= ~(IXON | IXOFF | IXANY|ICRNL|OCRNL); // shut off xon/xoff ctrl
+        tty.c_iflag &= ~(IXON | IXOFF | IXANY|ICRNL); // shut off xon/xoff ctrl
 
         tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
                                         // enable reading
@@ -127,14 +134,14 @@ void set_blocking (int fd, int should_block)
         if (tcgetattr (fd, &tty) != 0)
         {
                 DEBUG_PRINTF ("error %d from tggetattr", errno);
-                return;
+                return ;
         }
 
         tty.c_cc[VMIN]  = should_block ? 1 : 0;
         tty.c_cc[VTIME] = 9;            // 0.5 seconds read timeout
 
         if (tcsetattr (fd, TCSANOW, &tty) != 0)
-                DEBUG_PRINTF ("error %d setting term attributes", errno);
+               { DEBUG_PRINTF ("error %d setting term attributes", errno);}
 }
 
 
@@ -154,15 +161,40 @@ int *usb_device=NULL;
 	}	
 	
  /*TBD abstract the port name*/
-    char *portname = "/dev/ttyACM0";
+ /*TBD fix the acm port */
+    char *portname= "/dev/ttyACM0";
+    
 	int fd = open (portname, O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0)
     {
         DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname);
+      char *portname1 = "/dev/ttyACM1";
+	 fd = open (portname1, O_RDWR | O_NOCTTY | O_SYNC);
+       if (fd < 0)
+        {
+        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname);
+     char *portname2 = "/dev/ttyACM2";
+	 fd = open (portname2, O_RDWR | O_NOCTTY | O_SYNC);
+    if (fd < 0)
+    {
+        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname);
+    
+    
+     char   *portname3 = "/dev/ttyACM3";
+	fd = open (portname3, O_RDWR | O_NOCTTY | O_SYNC);
+    if (fd < 0)
+    {    char *portname4 = "/dev/ttyACM4";
+	      fd = open (portname4, O_RDWR | O_NOCTTY | O_SYNC);
+	       if (fd < 0)
+			{   char  *portname5 = "/dev/ttyACM5";
+	      fd = open (portname5, O_RDWR | O_NOCTTY | O_SYNC);
+	      if (fd < 0)
+			{ 
+        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname);
         return LGW_SPI_ERROR;
-    }
+    }}}}}}
 
-    set_interface_attribs (fd, B115200, 0);  // set speed to 115,200 bps, 8n1 (no parity)
+    set_interface_attribs (fd, B921600, 0);  // set speed to 115,200 bps, 8n1 (no parity)
     set_blocking (fd, 0);                // set  blocking
     *usb_device=fd;
     *spi_target_ptr=(void*)usb_device;
@@ -208,18 +240,19 @@ int lgw_spi_w(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, ui
   
    /*build the write cmd*/
    CmdSettings_t mystruct;
+   AnsSettings_t mystrctAns;
+ 
    mystruct.Cmd='w';
    mystruct.Id=0;
    mystruct.Len=1;
    mystruct.Adress=address;
    mystruct.Value[0]=data;
-   SendCmd(mystruct,fd) ;
-   wait_ns(500000);
-       
-    /* TBD + failure cases determine return code */
-  
-        DEBUG_MSG("Note: USB/SPI write success\n");
-        return LGW_SPI_SUCCESS;
+   pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;
+   ReceiveAns(&mystrctAns,fd);
+   pthread_mutex_unlock(&mx_usbbridgesync);
+   DEBUG_MSG("Note: USB/SPI write success\n");
+   return LGW_SPI_SUCCESS;
     
 }
 
@@ -246,25 +279,26 @@ int lgw_spi_r(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, ui
    mystruct.Len=1;
    mystruct.Adress=address;
    mystruct.Value[0]=0;
-   SendCmd(mystruct,fd) ;
- // wait_ns(200000);
+   
+   pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;
    if(ReceiveAns(&mystrctAns,fd))
    {
 	 DEBUG_MSG("Note: SPI read success\n");
      *data = mystrctAns.Rxbuf[0];
-     
+      pthread_mutex_unlock(&mx_usbbridgesync);
       return LGW_SPI_SUCCESS;
    }
    else
    {
         DEBUG_MSG("ERROR: SPI READ FAILURE\n");
+         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_SPI_ERROR;
     } 
+    
 }
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* Burst (multiple-byte) write */
 int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size) {
     int fd;
     int i;
@@ -276,7 +310,8 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
     temp4WARNING++;
   
 	CmdSettings_t mystruct;
-
+	AnsSettings_t mystrctAns;
+	
     /* check input parameters */
     CHECK_NULL(spi_target);
     fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
@@ -294,20 +329,22 @@ int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
    mystruct.Cmd='y';
     }
   
-   mystruct.Id=0;
-   mystruct.Len=ATOMICTX;
+   mystruct.Id=(ATOMICTX>>8);
+   mystruct.Len=ATOMICTX-((ATOMICTX>>8)<<8);
    mystruct.Adress=address;
   
-   for (i=0;i<mystruct.Len;i++)
+   for (i=0;i<ATOMICTX;i++)
    {
    
    mystruct.Value[i]=data[i+cptalc];
    }
-   SendCmd(mystruct,fd) ;
+    pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;
+   ReceiveAns(&mystrctAns,fd);
    sizei=sizei-ATOMICTX;
- 
+   pthread_mutex_unlock(&mx_usbbridgesync);  
    cptalc=cptalc+ATOMICTX;
-   wait_ns(200000);
+  
 }
 /*end of the transfer*/
 if (sizei>0)
@@ -321,27 +358,27 @@ else
 	mystruct.Cmd='z';
 }
 	
-   mystruct.Id=0;
-   mystruct.Len=sizei;
+   mystruct.Id=(sizei>>8);
+   mystruct.Len=sizei-((sizei>>8)<<8);
    mystruct.Adress=address;
   
-   for (i=0;i<mystruct.Len;i++)
+   for (i=0;i<((mystruct.Id<<8)+mystruct.Len);i++)
    {
    
    mystruct.Value[i]=data[i+cptalc];
    }
- 
-   SendCmd(mystruct,fd) ;
-  wait_ns(200000);
-} 	   
+  pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;
+   ReceiveAns(&mystrctAns,fd);
+   pthread_mutex_unlock(&mx_usbbridgesync);  
   
-    
+} 	   
         DEBUG_MSG("Note: SPI burst write success\n");
-        return LGW_SPI_SUCCESS;
-    
+        return LGW_SPI_SUCCESS;   
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 
 /* Burst (multiple-byte) read */
 int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size) {
@@ -374,33 +411,34 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
     {	 
    mystruct.Cmd='t';
     }
+  
    mystruct.Id=0;
    mystruct.Len=2;
+   mystruct.Value[0]=ATOMICRX>>8;
+   mystruct.Value[1]= ATOMICRX-((ATOMICRX>>8)<<8);
    mystruct.Adress=address;
    
-   mystruct.Value[0]=0;
-   mystruct.Value[1]= ATOMICRX;
-//   printf("le= %d et %d\n", mystruct.Value[0], mystruct.Value[1]);
-   SendCmd(mystruct,fd) ;
- //wait_ns(200000);	   
+   pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;	   
    if(ReceiveAns(&mystrctAns,fd))
    {
 	   for (i=0;i<ATOMICRX;i++)
-	   {data[i+cptalc]=mystrctAns.Rxbuf[i];
+	   {
+		   data[i+cptalc]=mystrctAns.Rxbuf[i];
 	   }
-	 //  printf("struc receiv %d %d %d %d \n",mystrctAns.Cmd,mystrctAns.Id,mystrctAns.Len,mystrctAns.Rxbuf[0]);
    }
    else
    {
 	   
 	   for (i=0;i<ATOMICRX;i++)
-	   {data[i+cptalc]=0xFF;
+	   {
+		   data[i+cptalc]=0xFF;
 	   }
    }
-   sizei=sizei-ATOMICRX;
- 
+    pthread_mutex_unlock(&mx_usbbridgesync);  
+    sizei=sizei-ATOMICRX;
    cptalc=cptalc+ATOMICRX;
-  // wait_ns(200000);	
+ 
    }
  if (sizei>0){
 	 if (size<=ATOMICRX)
@@ -413,81 +451,59 @@ else
 }
    mystruct.Id=0;
    mystruct.Len=2;
+   mystruct.Value[0]=sizei>>8;
+   mystruct.Value[1]= sizei-((sizei>>8)<<8);
    mystruct.Adress=address;
-   
-   mystruct.Value[0]=0;
-   mystruct.Value[1]= sizei;
-//   printf("le= %d et %d\n", mystruct.Value[0], mystruct.Value[1]);
-   SendCmd(mystruct,fd) ;
- //wait_ns(200000); 
+   pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;
+
    if(ReceiveAns(&mystrctAns,fd))
    {
 	   for (i=0;i<sizei;i++)
-	   {data[i+cptalc]=mystrctAns.Rxbuf[i];
+	   {
+		   data[i+cptalc]=mystrctAns.Rxbuf[i];
 	   }
-	 //  printf("struc receiv %d %d %d %d \n",mystrctAns.Cmd,mystrctAns.Id,mystrctAns.Len,mystrctAns.Rxbuf[0]);
+
    }
    else
    {
 	   
 	   for (i=0;i<ATOMICRX;i++)
-	   {data[i+cptalc]=0xFF;
+	   {
+		   data[i+cptalc]=0xFF;
 	   }
    }
- //wait_ms(1);
+    pthread_mutex_unlock(&mx_usbbridgesync);  
+
 }
-  
         DEBUG_MSG("Note: SPI burst read success\n");
         return LGW_SPI_SUCCESS;
-   
 }
 
-
-/*usb addded*/
-
-
-int SendCmd(CmdSettings_t CmdSettings,int file1) 	
-{     
+int SendCmdn(CmdSettings_t CmdSettings,int file1) 	
+{    
 	char buffertx[BUFFERTXSIZE];
-	
-	int Clen =  CmdSettings.Len;
-	
-	int Tlen = 1+2+2+2+Clen*2; // cmd +ID+ Length =2chars+ write/read = 4*Clen
-	
-	if (Clen>255)
-	{
-	 return(-1); 	
-	}
+	int Clen =  CmdSettings.Len+(CmdSettings.Id<<8);
+	int Tlen = 1+2+1+Clen; // cmd  Length +adress
 	int i;
-	int adresstemp;
-	int valuetemp;
-	
 	for (i=0;i<BUFFERTXSIZE;i++)
 	{
-		 buffertx[i]='\n';
+		 buffertx[i]=0;
 	}
 	
     buffertx[0]=CmdSettings.Cmd;
-    
-    sprintf(&buffertx[1],"%.2x%.2x",CmdSettings.Id,CmdSettings.Len);
-    adresstemp=CmdSettings.Adress;
-    sprintf(&buffertx[5],"%.2x",adresstemp);
-    for (i=0;i<(Clen);i++)   
+    buffertx[1]=CmdSettings.Id;
+    buffertx[2]=CmdSettings.Len;
+    buffertx[3]=CmdSettings.Adress;
+    for (i=0;i<Clen;i++)   
 	{
+		buffertx[i+4]=CmdSettings.Value[i];
 		
-		valuetemp=CmdSettings.Value[i];
-		
-		sprintf(&buffertx[2*i+7],"%.2x",valuetemp);
 	}
-	#if debug
-	{
-	// printf("buffertx=%s\n",&buffertx[0]);
-	}
-    #endif
-    write(file1,buffertx,Tlen+4);
-	//fwrite(buffertx,sizeof(char),Tlen+4,file1);
+    write(file1,buffertx,Tlen);
 	return(1); //tbd	
 }
+
 
 int ReceiveAns(AnsSettings_t *Ansbuffer,int file1) 	
 {
@@ -496,16 +512,15 @@ int ReceiveAns(AnsSettings_t *Ansbuffer,int file1)
     for (i=0;i<BUFFERRXSIZE;i++)
     {
 		bufferrx[i]=0;
-	
 	}
-	read(file1,bufferrx,3);
-	//fread(bufferrx,sizeof(uint8_t),3,file1);
-	for (i=0;i<3;i++)
-	{DEBUG_PRINTF("readburst size %d\n",bufferrx[2]);
-		if(bufferrx[2]==0){return(0);} 
-	}
-	
+	while((((bufferrx[1]<<8)+bufferrx[2])==0)||(((bufferrx[1]<<8)+bufferrx[2])>ATOMICRX+6))
+	{
+	read(file1,bufferrx,3); 
+    }
+	wait_ns(((bufferrx[1]<<8)+bufferrx[2])*4000);
+	DEBUG_PRINTF("readburst size %d\n",(bufferrx[1]<<8)+bufferrx[2]);
 	read(file1,&bufferrx[3],(bufferrx[1]<<8)+bufferrx[2]);
+	
 	//fread(&bufferrx[3],sizeof(uint8_t),bufferrx[2],file1);
 	for (i=0;i<10;i++)
 	{	//printf ("%.2x ",bufferrx[i]);
@@ -514,7 +529,7 @@ int ReceiveAns(AnsSettings_t *Ansbuffer,int file1)
 	Ansbuffer->Cmd=bufferrx[0];
 	Ansbuffer->Id=bufferrx[1];
 	Ansbuffer->Len=bufferrx[2];
-	for(i=0;i<bufferrx[2];i++)
+	for(i=0;i<(bufferrx[1]<<8)+bufferrx[2];i++)
 	{
 	Ansbuffer->Rxbuf[i]=bufferrx[3+i];
     }

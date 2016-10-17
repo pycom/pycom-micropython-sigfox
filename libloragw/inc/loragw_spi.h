@@ -104,11 +104,11 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
 
 /*usb picogw TBD documentation*/
 
-#define BURSTSIZE 1024
+#define BURSTSIZE 9000
 #define BUFFERTXSIZE 4*(BURSTSIZE+2)  
-#define BUFFERRXSIZE 1024
-#define ATOMICTX 24
-#define ATOMICRX 55
+#define BUFFERRXSIZE 9000
+#define ATOMICTX 600
+#define ATOMICRX 924
 typedef struct 
 {
 	char Cmd; // w for write , r for read
@@ -126,6 +126,7 @@ typedef struct
 	int Rxbuf[BUFFERRXSIZE];
 } AnsSettings_t;
 int SendCmd(CmdSettings_t CmdSettings,int file1) 	;
+int SendCmdn(CmdSettings_t CmdSettings,int file1) 	;
 int ReceiveAns(AnsSettings_t *Ansbuffer,int file1) 	;
 void WriteBurstRegister(int file1,int adress,int *value,int size);
 int set_interface_attribs (int fd, int speed, int parity);

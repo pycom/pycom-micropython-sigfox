@@ -1095,6 +1095,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         /* sanity check */
         if (buff[0] > LGW_PKT_FIFO_SIZE) {
             DEBUG_PRINTF("WARNING: %u = INVALID NUMBER OF PACKETS TO FETCH, ABORTING\n", buff[0]);
+              DEBUG_PRINTF("FIFO content: %x %x %x %x %x\n", buff[0], buff[1], buff[2], buff[3], buff[4]);
             break;
         }
 
@@ -1160,7 +1161,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 case 10: p->datarate = DR_LORA_SF10; break;
                 case 11: p->datarate = DR_LORA_SF11; break;
                 case 12: p->datarate = DR_LORA_SF12; break;
-                default:
+                default:// DEBUG_PRINTF("ERROR: UNEXPECTED DataRate %d cr = %d snr = %f snr min = %f snr max = %f \n", sf,cr, p->snr,p->snr_min,p->snr_max); 
                 p->datarate = DR_UNDEFINED;
             }
             cr = (buff[sz+1] >> 1) & 0x07;
@@ -1171,7 +1172,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 case 4: p->coderate = CR_LORA_4_8; break;
                 default: p->coderate = CR_UNDEFINED;
             }
-           DEBUG_PRINTF("ERROR: UNEXPECTED DataRate %d cr = %d snr = %f snr min = %f snr max = %f \n", sf,cr, p->snr,p->snr_min,p->snr_max); 
+         
             /* determine if 'PPM mode' is on, needed for timestamp correction */
             if (SET_PPM_ON(p->bandwidth,p->datarate)) {
                 ppm = 1;
