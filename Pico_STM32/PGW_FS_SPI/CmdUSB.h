@@ -14,8 +14,8 @@ Maintainer: Fabien Holin
 #include "mbed.h"
 #include "SX1301.h"
 
-#define BUFFERRXUSBMANAGER 4096
-#define BUFFERTXUSBMANAGER 4096
+#define BUFFERRXUSBMANAGER 8200
+#define BUFFERTXUSBMANAGER 8200
 #define CMDLENGTH          800 
 
 typedef struct
@@ -41,13 +41,16 @@ public:
      uint8_t BufFromRasp[BUFFERRXUSBMANAGER];
      uint8_t BufFromRasptemp[BUFFERRXUSBMANAGER];
      uint8_t BufToRasp[BUFFERRXUSBMANAGER];
+     uint8_t BufToRasptemp[BUFFERRXUSBMANAGER];
     uint32_t receivelength[5] ;
+     uint32_t count;
     CmdSettings_t cmdSettings_FromRasp;
   
 private:
      int Convert2charsToByte(uint8_t a,uint8_t b); 
      
 };
+extern USBMANAGER Usbmanager;
 extern SX1301 Sx1301;
 extern Serial pc;
 

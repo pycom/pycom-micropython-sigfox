@@ -718,15 +718,15 @@ void HAL_PCD_IRQHandler(PCD_HandleTypeDef *hpcd)
   * @param  epnum: endpoint number  
   * @retval None
   */
- __weak void HAL_PCD_DataOutStageCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
-{
+// __weak void HAL_PCD_DataOutStageCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
+//{
   /* Prevent unused argument(s) compilation warning */
-  UNUSED(hpcd);
-  UNUSED(epnum);
+  //UNUSED(hpcd);
+  //UNUSED(epnum);
   /* NOTE : This function Should not be modified, when the callback is needed,
             the HAL_PCD_DataOutStageCallback could be implemented in the user file
    */ 
-}
+//}
 
 /**
   * @brief  Data IN stage callback.
