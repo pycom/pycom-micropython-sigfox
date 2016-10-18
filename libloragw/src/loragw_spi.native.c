@@ -281,6 +281,7 @@ int lgw_spi_r(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, ui
    mystruct.Value[0]=0;
    
    pthread_mutex_lock(&mx_usbbridgesync);  
+   DEBUG_MSG("Note: SPI send cmd read success\n");
    SendCmdn(mystruct,fd) ;
    if(ReceiveAns(&mystrctAns,fd))
    {
@@ -454,7 +455,8 @@ else
    mystruct.Value[0]=sizei>>8;
    mystruct.Value[1]= sizei-((sizei>>8)<<8);
    mystruct.Adress=address;
-   pthread_mutex_lock(&mx_usbbridgesync);  
+   pthread_mutex_lock(&mx_usbbridgesync); 
+   DEBUG_MSG("Note: SPI send cmd readburst success\n"); 
    SendCmdn(mystruct,fd) ;
 
    if(ReceiveAns(&mystrctAns,fd))
@@ -466,7 +468,7 @@ else
 
    }
    else
-   {
+   {    DEBUG_MSG("ERROR: Cannot readburst stole \n");
 	   
 	   for (i=0;i<ATOMICRX;i++)
 	   {
@@ -501,6 +503,7 @@ int SendCmdn(CmdSettings_t CmdSettings,int file1)
 		
 	}
     write(file1,buffertx,Tlen);
+    DEBUG_PRINTF("send burst done size %d\n",Tlen);
 	return(1); //tbd	
 }
 
@@ -509,6 +512,7 @@ int ReceiveAns(AnsSettings_t *Ansbuffer,int file1)
 {
 	uint8_t bufferrx[BUFFERRXSIZE];
     int i;
+    int cpttimer=0;
     for (i=0;i<BUFFERRXSIZE;i++)
     {
 		bufferrx[i]=0;
@@ -516,7 +520,13 @@ int ReceiveAns(AnsSettings_t *Ansbuffer,int file1)
 	while((((bufferrx[1]<<8)+bufferrx[2])==0)||(((bufferrx[1]<<8)+bufferrx[2])>ATOMICRX+6))
 	{
 	read(file1,bufferrx,3); 
+	cpttimer++;
+	//wait_ns(10);
+	if (cpttimer>2) // wait read error the read function isn't block but timeout of 0.1s
+	{return(0); // deadlock
+	}
     }
+    DEBUG_PRINTF("readburst size before wait %d\n",(bufferrx[1]<<8)+bufferrx[2]);
 	wait_ns(((bufferrx[1]<<8)+bufferrx[2])*4000);
 	DEBUG_PRINTF("readburst size %d\n",(bufferrx[1]<<8)+bufferrx[2]);
 	read(file1,&bufferrx[3],(bufferrx[1]<<8)+bufferrx[2]);
