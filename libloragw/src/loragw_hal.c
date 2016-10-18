@@ -1106,7 +1106,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         stat_fifo = buff[3]; /* will be used later, need to save it before overwriting buff */
 
         /* get payload + metadata */
-        lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, sz+RX_METADATA_NB);
+        if (lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, sz+RX_METADATA_NB)==LGW_REG_ERROR)
+        { DEBUG_MSG("ERROR: SPI RB failed\n");
+		  break; 	
+		}
+		
 
         /* copy payload to result struct */
         memcpy((void *)p->payload, (void *)buff, sz);

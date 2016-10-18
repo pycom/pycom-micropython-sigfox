@@ -465,21 +465,23 @@ else
 	   {
 		   data[i+cptalc]=mystrctAns.Rxbuf[i];
 	   }
-
+	   pthread_mutex_unlock(&mx_usbbridgesync);  
+       return LGW_SPI_SUCCESS;
    }
    else
-   {    DEBUG_MSG("ERROR: Cannot readburst stole \n");
+   {    DEBUG_MSG("ERROR: Cannot readburst stole  \n");
 	   
-	   for (i=0;i<ATOMICRX;i++)
-	   {
-		   data[i+cptalc]=0xFF;
-	   }
+	   
+	    pthread_mutex_unlock(&mx_usbbridgesync);  
+	    return LGW_SPI_ERROR;
+	   
    }
-    pthread_mutex_unlock(&mx_usbbridgesync);  
+   
 
+}else
+{return LGW_SPI_ERROR;
 }
-        DEBUG_MSG("Note: SPI burst read success\n");
-        return LGW_SPI_SUCCESS;
+        
 }
 
 int SendCmdn(CmdSettings_t CmdSettings,int file1) 	
