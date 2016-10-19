@@ -524,7 +524,7 @@ int ReceiveAns(AnsSettings_t *Ansbuffer,int file1)
 	read(file1,bufferrx,3); 
 	cpttimer++;
 	//wait_ns(10);
-	if (cpttimer>2) // wait read error the read function isn't block but timeout of 0.1s
+	if (cpttimer>5) // wait read error the read function isn't block but timeout of 0.1s
 	{return(0); // deadlock
 	}
     }

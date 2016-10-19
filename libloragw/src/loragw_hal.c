@@ -1081,7 +1081,11 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         p = &pkt_data[nb_pkt_fetch];
 
         /* fetch all the RX FIFO data */
-        lgw_reg_rb(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, buff, 5);
+        if (lgw_reg_rb(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, buff, 5)==LGW_REG_ERROR)
+         { DEBUG_MSG("ERROR: SPI RB failed\n");
+			 nb_pkt_fetch = 0;
+		  break; 
+		}
         /* 0:   number of packets available in RX data buffer */
         /* 1,2: start address of the current packet in RX data buffer */
         /* 3:   CRC status of the current packet */
@@ -1096,7 +1100,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         if (buff[0] > LGW_PKT_FIFO_SIZE) {
             DEBUG_PRINTF("WARNING: %u = INVALID NUMBER OF PACKETS TO FETCH, ABORTING\n", buff[0]);
               DEBUG_PRINTF("FIFO content: %x %x %x %x %x\n", buff[0], buff[1], buff[2], buff[3], buff[4]);
-            break;
+            nb_pkt_fetch = 0;
+		   break; 
         }
 
         DEBUG_PRINTF("FIFO content: %x %x %x %x %x\n", buff[0], buff[1], buff[2], buff[3], buff[4]);
@@ -1108,7 +1113,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         /* get payload + metadata */
         if (lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, sz+RX_METADATA_NB)==LGW_REG_ERROR)
         { DEBUG_MSG("ERROR: SPI RB failed\n");
-		  break; 	
+			nb_pkt_fetch = 0;
+		   break; 
 		}
 		
 
@@ -1145,7 +1151,9 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                     break;
                 default:
                     p->status = STAT_UNDEFINED;
+                    nb_pkt_fetch = 0;
                     crc_en = 0;
+                    break; 
             }
             p->modulation = MOD_LORA;
             p->snr = ((float)((int8_t)buff[sz+2]))/4;
@@ -1167,6 +1175,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 case 12: p->datarate = DR_LORA_SF12; break;
                 default:// DEBUG_PRINTF("ERROR: UNEXPECTED DataRate %d cr = %d snr = %f snr min = %f snr max = %f \n", sf,cr, p->snr,p->snr_min,p->snr_max); 
                 p->datarate = DR_UNDEFINED;
+                 nb_pkt_fetch = 0;
+                 break; 
             }
             cr = (buff[sz+1] >> 1) & 0x07;
             switch (cr) {
@@ -1174,7 +1184,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                 case 2: p->coderate = CR_LORA_4_6; break;
                 case 3: p->coderate = CR_LORA_4_7; break;
                 case 4: p->coderate = CR_LORA_4_8; break;
-                default: p->coderate = CR_UNDEFINED;
+                default: p->coderate = CR_UNDEFINED;nb_pkt_fetch = 0;break; 
             }
          
             /* determine if 'PPM mode' is on, needed for timestamp correction */
@@ -1203,6 +1213,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                         DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", p->bandwidth);
                         delay_x = 0;
                         bw_pow = 0;
+                        nb_pkt_fetch = 0;break;
                 }
             } else { /* packet was received on one of the sensor channels = 125kHz */
                 delay_x = 114;
@@ -1242,8 +1253,8 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
                     p->status = STAT_NO_CRC;
                     break;
                 default:
-                    p->status = STAT_UNDEFINED;
-                    break;
+                    p->status = STAT_UNDEFINED;nb_pkt_fetch = 0;break;
+                 
             }
             p->modulation = MOD_FSK;
             p->snr = -128.0;
