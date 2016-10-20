@@ -454,7 +454,10 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size);
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
 int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size);
-
+/**
+@brief LoRa concentrator receive cmd for PGW
+*/
+int lgw_reg_receive_cmd( uint8_t max_packet, uint8_t *data);
 
 #endif
 

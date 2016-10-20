@@ -131,7 +131,7 @@ int ReceiveAns(AnsSettings_t *Ansbuffer,int file1) 	;
 void WriteBurstRegister(int file1,int adress,int *value,int size);
 int set_interface_attribs (int fd, int speed, int parity);
 void set_blocking (int fd, int should_block);
-
+int lgw_receive_cmd(void *spi_target, uint8_t max_packet, uint8_t *data);
 
 #endif
 

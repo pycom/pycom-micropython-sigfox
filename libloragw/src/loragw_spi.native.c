@@ -549,4 +549,39 @@ int ReceiveAns(AnsSettings_t *Ansbuffer,int file1)
 }
 
 
+
+/*Embedded HAL into STM32 part */
+
+int lgw_receive_cmd(void *spi_target, uint8_t max_packet, uint8_t *data) {
+    int fd;
+    int i;
+   
+    fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+  
+   /*build the write cmd*/
+   CmdSettings_t mystruct;
+   AnsSettings_t mystrctAns;
+ 
+   mystruct.Cmd='b';
+   mystruct.Id=0;
+   mystruct.Len=1;
+   mystruct.Adress=0;
+   mystruct.Value[0]=max_packet;
+   pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;
+   ReceiveAns(&mystrctAns,fd);
+   pthread_mutex_unlock(&mx_usbbridgesync);
+   DEBUG_MSG("Note: USB/SPI write success\n");
+   DEBUG_PRINTF("NOTE : Available packet %d  %d\n",mystrctAns.Rxbuf[0],mystrctAns.Len);
+   DEBUG_PRINTF("NOTE : read structure %d %d %d %d %d\n",mystrctAns.Rxbuf[5],mystrctAns.Rxbuf[6],mystrctAns.Rxbuf[7],mystrctAns.Rxbuf[8],mystrctAns.Rxbuf[9]);
+   for (i=0;i<((mystrctAns.Id<<8)+(mystrctAns.Len)-1);i++)
+   {
+	  data[i]=mystrctAns.Rxbuf[i+1];
+   }   
+ 
+   return mystrctAns.Rxbuf[0];
+    
+}
+
+
 /* --- EOF ------------------------------------------------------------------ */

@@ -812,4 +812,14 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 }
 
+
+
+
+
+/*Embedded HAL into STM32 part */
+int lgw_reg_receive_cmd( uint8_t max_packet, uint8_t *data) {
+
+ return(lgw_receive_cmd(lgw_spi_target,max_packet, data));
+  // for 0 packets TBU
+} 
 /* --- EOF ------------------------------------------------------------------ */
