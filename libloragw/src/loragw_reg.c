@@ -496,11 +496,14 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
+
+
+
 /* Concentrator connect */
-int lgw_connect(bool spi_only, uint32_t tx_notch_freq) {
+int lgw_connect(bool spi_only) {
     int spi_stat = LGW_SPI_SUCCESS;
     uint8_t u = 0;
-    int x;
+  
 
     /* check SPI link status */
     if (lgw_spi_target != NULL) {
@@ -530,15 +533,7 @@ int lgw_connect(bool spi_only, uint32_t tx_notch_freq) {
         } else {
             DEBUG_PRINTF("INFO: detected FPGA with SPI mux header (v%u)\n", u);
             lgw_spi_mux_mode = LGW_SPI_MUX_MODE1;
-            /* FPGA Soft Reset */
-            lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 1);
-            lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 0);
-            /* FPGA configure */
-            x = lgw_fpga_configure(tx_notch_freq);
-            if (x != LGW_REG_SUCCESS) {
-                DEBUG_MSG("ERROR CONFIGURING FPGA\n");
-                return LGW_REG_ERROR;
-            }
+           
         }
 
         /* check SX1301 version */

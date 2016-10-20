@@ -400,7 +400,7 @@ concentrator, or if we also want to reset it and configure the FPGA (if present)
 used with SX1301AP2 reference design).
 @return status of register operation (LGW_REG_SUCCESS/LGW_REG_ERROR)
 */
-int lgw_connect(bool spi_only, uint32_t tx_notch_freq);
+int lgw_connect(bool spi_only);
 
 /**
 @brief Disconnect LoRa concentrator by closing SPI link

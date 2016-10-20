@@ -451,11 +451,15 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 /*added for PGW*/
 	
 int i;
+
 uint8_t data[(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t))];
+
 for (i=0;i<(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t));i++)
 {
-	data[i]=0;// ((uint8_t *)(&conf))+i;
+	data[i]= *(((uint8_t *)(&conf))+i);
+
 }
+
     lgw_reg_rxrf_setconfcmd( rf_chain, data,(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t)));
  
     return LGW_HAL_SUCCESS;
@@ -663,17 +667,18 @@ int lgw_start(void) {
     uint8_t cal_status;
 
     uint64_t fsk_sync_word_reg;
-
+    uint8_t xx;
     if (lgw_is_started == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    reg_stat = lgw_connect(false, rf_tx_notch_freq[rf_tx_enable[1]?1:0]);
-    if (reg_stat == LGW_REG_ERROR) {
-        DEBUG_MSG("ERROR: FAIL TO CONNECT BOARD\n");
-        return LGW_HAL_ERROR;
-    }
-
+    
+    
+      xx=lgw_fpga_configure( rf_tx_notch_freq[rf_tx_enable[1]?1:0]);
+      if (xx != LGW_REG_SUCCESS) {
+                DEBUG_MSG("ERROR CONFIGURING FPGA\n");
+                return LGW_REG_ERROR;
+                }
     /* reset the registers (also shuts the radios down) */
     lgw_soft_reset();
 

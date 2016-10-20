@@ -36,7 +36,7 @@ Maintainer: Sylvain Miermont
 #include "loragw_reg.h"
 #include "loragw_aux.h"
 #include "loragw_radio.h"
-
+#include "loragw_fpga.h"
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -263,7 +263,9 @@ int main(int argc, char **argv)
     printf("Number of calibration iterations: %d\n",nb_cal);
     printf("Calibration command: brd: %d, chip: %d, dac: %d\n\n", cal_cmd >> 6, 1257-2*((cal_cmd & 0x20) >> 5), 2+((cal_cmd & 0x10) >> 4));
 
-    x = lgw_connect(false, DEFAULT_TX_NOTCH_FREQ);
+ 
+    x =lgw_connect(false);
+    lgw_fpga_configure( DEFAULT_TX_NOTCH_FREQ);
     if (x == -1) {
         printf("ERROR: FAIL TO CONNECT BOARD\n");
         return -1;
