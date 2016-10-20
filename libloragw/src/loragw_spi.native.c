@@ -162,7 +162,7 @@ int *usb_device=NULL;
 	
  /*TBD abstract the port name*/
  /*TBD fix the acm port */
-    char *portname= "/dev/ttyACM0";
+    char *portname= "/dev/ttyACM1";
     
 	int fd = open (portname, O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0)
@@ -172,12 +172,12 @@ int *usb_device=NULL;
 	 fd = open (portname1, O_RDWR | O_NOCTTY | O_SYNC);
        if (fd < 0)
         {
-        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname);
+        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname1);
      char *portname2 = "/dev/ttyACM2";
 	 fd = open (portname2, O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0)
     {
-        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname);
+        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname2);
     
     
      char   *portname3 = "/dev/ttyACM3";
@@ -190,7 +190,7 @@ int *usb_device=NULL;
 	      fd = open (portname5, O_RDWR | O_NOCTTY | O_SYNC);
 	      if (fd < 0)
 			{ 
-        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname);
+        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname5);
         return LGW_SPI_ERROR;
     }}}}}}
 
@@ -583,5 +583,39 @@ int lgw_receive_cmd(void *spi_target, uint8_t max_packet, uint8_t *data) {
     
 }
 
+
+
+/*Embedded HAL into STM32 part */
+
+int lgw_rxrf_setconfcmd(void *spi_target, uint8_t rfchain, uint8_t *data,uint16_t size) {
+    int fd;
+    int i;
+   
+    fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+  
+   /*build the write cmd*/
+   CmdSettings_t mystruct;
+   AnsSettings_t mystrctAns;
+ 
+   mystruct.Cmd='c';
+   mystruct.Id=(size>>8);
+   mystruct.Len=size-((size>>8)<<8);
+   mystruct.Adress=rfchain;
+   for (i=0;i<size;i++)
+   {
+   mystruct.Value[i]=data[i];
+   }
+   pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;
+   if(ReceiveAns(&mystrctAns,fd))
+   {
+   pthread_mutex_unlock(&mx_usbbridgesync);
+   return LGW_SPI_SUCCESS;
+	}
+	else
+	{pthread_mutex_unlock(&mx_usbbridgesync);
+   return LGW_SPI_ERROR;
+	}
+}
 
 /* --- EOF ------------------------------------------------------------------ */

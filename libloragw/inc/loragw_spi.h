@@ -132,7 +132,7 @@ void WriteBurstRegister(int file1,int adress,int *value,int size);
 int set_interface_attribs (int fd, int speed, int parity);
 void set_blocking (int fd, int should_block);
 int lgw_receive_cmd(void *spi_target, uint8_t max_packet, uint8_t *data);
-
+int lgw_rxrf_setconfcmd(void *spi_target, uint8_t rfchain, uint8_t *data,uint16_t size);
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

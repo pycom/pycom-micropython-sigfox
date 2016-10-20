@@ -447,6 +447,17 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 
     DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d tx_notch_freq:%u\n", rf_chain, rf_enable[rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain], rf_tx_notch_freq[rf_chain]);
 
+/*****************************************************************************/
+/*added for PGW*/
+	
+int i;
+uint8_t data[(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t))];
+for (i=0;i<(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t));i++)
+{
+	data[i]=0;// ((uint8_t *)(&conf))+i;
+}
+    lgw_reg_rxrf_setconfcmd( rf_chain, data,(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t)));
+ 
     return LGW_HAL_SUCCESS;
 }
 
