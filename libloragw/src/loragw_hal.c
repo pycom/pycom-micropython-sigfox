@@ -450,7 +450,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 /*****************************************************************************/
 /*added for PGW*/
 	
-int i;
+uint8_t i;
 
 uint8_t data[(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t))];
 
@@ -603,7 +603,20 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             return LGW_HAL_ERROR;
     }
 
+
+/*********************pgw  */
+
+uint8_t i;
+uint8_t data[(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t))];
+for (i=0;i<(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t));i++)
+{
+	data[i]= *(((uint8_t *)(&conf))+i);
+}
+
+    lgw_reg_rxif_setconfcmd( if_chain, data,(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t)));
+ 
     return LGW_HAL_SUCCESS;
+
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

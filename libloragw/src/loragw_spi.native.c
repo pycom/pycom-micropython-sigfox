@@ -601,6 +601,7 @@ int lgw_rxrf_setconfcmd(void *spi_target, uint8_t rfchain, uint8_t *data,uint16_
    mystruct.Id=(size>>8);
    mystruct.Len=size-((size>>8)<<8);
    mystruct.Adress=rfchain;
+    DEBUG_PRINTF("Note: USB/SPI write success size = %d\n",size);
     DEBUG_MSG("Note: USB/SPI write success\n");
    for (i=0;i<size;i++)
    {
@@ -610,14 +611,53 @@ int lgw_rxrf_setconfcmd(void *spi_target, uint8_t rfchain, uint8_t *data,uint16_
    pthread_mutex_lock(&mx_usbbridgesync);  
    SendCmdn(mystruct,fd) ;
    if(ReceiveAns(&mystrctAns,fd))
-   {
+   { DEBUG_MSG("Note: USB/SPI read config success\n");
    pthread_mutex_unlock(&mx_usbbridgesync);
    return LGW_SPI_SUCCESS;
 	}
 	else
-	{pthread_mutex_unlock(&mx_usbbridgesync);
+	{DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+  pthread_mutex_unlock(&mx_usbbridgesync);
    return LGW_SPI_ERROR;
 	}
 }
+
+
+int lgw_rxif_setconfcmd(void *spi_target, uint8_t ifchain, uint8_t *data,uint16_t size) {
+    int fd;
+    int i;
+    DEBUG_MSG("Note: USB/SPI write success\n");
+    fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+   DEBUG_PRINTF("Note: USB/SPI write success %d\n",fd);
+   /*build the write cmd*/
+   CmdSettings_t mystruct;
+   AnsSettings_t mystrctAns;
+ 
+   mystruct.Cmd='d';
+   mystruct.Id=(size>>8);
+   mystruct.Len=size-((size>>8)<<8);
+   mystruct.Adress=ifchain;
+    DEBUG_PRINTF("Note: USB/SPI write success size = %d\n",size);
+    DEBUG_MSG("Note: USB/SPI write success\n");
+   for (i=0;i<size;i++)
+   {
+   mystruct.Value[i]=data[i];
+   }
+    DEBUG_MSG("Note: USB/SPI write success\n");
+   pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;
+   if(ReceiveAns(&mystrctAns,fd))
+   { DEBUG_MSG("Note: USB/SPI read config success\n");
+   pthread_mutex_unlock(&mx_usbbridgesync);
+   return LGW_SPI_SUCCESS;
+	}
+	else
+	{DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+  pthread_mutex_unlock(&mx_usbbridgesync);
+   return LGW_SPI_ERROR;
+	}
+}
+
+
 
 /* --- EOF ------------------------------------------------------------------ */

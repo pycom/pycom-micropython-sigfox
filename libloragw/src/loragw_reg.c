@@ -815,11 +815,15 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
 int lgw_reg_receive_cmd( uint8_t max_packet, uint8_t *data) {
 
  return(lgw_receive_cmd(lgw_spi_target,max_packet, data));
-  // for 0 packets TBU
+
 } 
 
 int lgw_reg_rxrf_setconfcmd(  uint8_t rfchain, uint8_t *data,uint16_t size)
 {
  return(lgw_rxrf_setconfcmd(lgw_spi_target,rfchain,data, size));
+}
+int lgw_reg_rxif_setconfcmd(  uint8_t ifchain, uint8_t *data,uint16_t size)
+{
+return (lgw_rxif_setconfcmd(lgw_spi_target, ifchain, data,size));
 }
 /* --- EOF ------------------------------------------------------------------ */
