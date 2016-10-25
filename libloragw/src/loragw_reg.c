@@ -826,4 +826,13 @@ int lgw_reg_rxif_setconfcmd(  uint8_t ifchain, uint8_t *data,uint16_t size)
 {
 return (lgw_rxif_setconfcmd(lgw_spi_target, ifchain, data,size));
 }
+int lgw_reg_sendconfcmd(uint8_t *data,uint16_t size)
+{
+return(lgw_sendconfcmd(lgw_spi_target,data,size));
+}
+int lgw_txgainreg_setconfcmd( uint8_t *data,uint16_t size)
+{
+return(lgw_txgain_setconfcmd(lgw_spi_target, data,size));
+}
+
 /* --- EOF ------------------------------------------------------------------ */

@@ -128,12 +128,16 @@ typedef struct
 int SendCmd(CmdSettings_t CmdSettings,int file1) 	;
 int SendCmdn(CmdSettings_t CmdSettings,int file1) 	;
 int ReceiveAns(AnsSettings_t *Ansbuffer,int file1) 	;
+int ReceiveAnsCmd(AnsSettings_t *Ansbuffer,int file1,uint8_t cmd); 	
 void WriteBurstRegister(int file1,int adress,int *value,int size);
 int set_interface_attribs (int fd, int speed, int parity);
 void set_blocking (int fd, int should_block);
 int lgw_receive_cmd(void *spi_target, uint8_t max_packet, uint8_t *data);
 int lgw_rxrf_setconfcmd(void *spi_target, uint8_t rfchain, uint8_t *data,uint16_t size);
 int lgw_rxif_setconfcmd(void *spi_target, uint8_t ifchain, uint8_t *data,uint16_t size);
+int checkcmd(uint8_t cmd);
+int lgw_txgain_setconfcmd(void *spi_target, uint8_t *data,uint16_t size);
+int lgw_sendconfcmd(void *spi_target,uint8_t *data,uint16_t size);
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

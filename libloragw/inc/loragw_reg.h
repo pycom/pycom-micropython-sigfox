@@ -460,6 +460,8 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size);
 int lgw_reg_receive_cmd( uint8_t max_packet, uint8_t *data);
 int lgw_reg_rxrf_setconfcmd(  uint8_t rfchain, uint8_t *data,uint16_t size);
 int lgw_reg_rxif_setconfcmd(  uint8_t rfchain, uint8_t *data,uint16_t size);
+int lgw_reg_sendconfcmd(uint8_t *data,uint16_t size);
+int lgw_txgainreg_setconfcmd( uint8_t *data,uint16_t size);
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
