@@ -27,7 +27,7 @@ Maintainer: Sylvain Miermont
 #include "loragw_spi.h"
 #include "loragw_reg.h"
 #include "loragw_fpga.h"
-
+#include "loragw_aux.h"
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -517,7 +517,7 @@ int lgw_connect(bool spi_only) {
         DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
         return LGW_REG_ERROR;
     }
-
+    wait_ms(10);
     if (spi_only == false ) {
         /* Detect if the gateway has an FPGA with SPI mux header support */
         /* First, we assume there is an FPGA, and try to read its version */
@@ -833,6 +833,10 @@ return(lgw_sendconfcmd(lgw_spi_target,data,size));
 int lgw_txgainreg_setconfcmd( uint8_t *data,uint16_t size)
 {
 return(lgw_txgain_setconfcmd(lgw_spi_target, data,size));
+}
+int lgw_regtrigger(uint32_t *data)
+{
+return(lgw_trigger(lgw_spi_target, 0,data));
 }
 
 /* --- EOF ------------------------------------------------------------------ */

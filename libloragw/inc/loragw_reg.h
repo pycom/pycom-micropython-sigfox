@@ -462,6 +462,7 @@ int lgw_reg_rxrf_setconfcmd(  uint8_t rfchain, uint8_t *data,uint16_t size);
 int lgw_reg_rxif_setconfcmd(  uint8_t rfchain, uint8_t *data,uint16_t size);
 int lgw_reg_sendconfcmd(uint8_t *data,uint16_t size);
 int lgw_txgainreg_setconfcmd( uint8_t *data,uint16_t size);
+int lgw_regtrigger(uint32_t *data);
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

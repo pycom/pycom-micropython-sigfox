@@ -665,9 +665,21 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
         txgain_lut.lut[i].pa_gain  = conf->lut[i].pa_gain;
         txgain_lut.lut[i].rf_power = conf->lut[i].rf_power;
     }
-
-    return LGW_HAL_SUCCESS;
+#if PGW ==1	
+uint32_t u =0;
+uint8_t data[(sizeof(struct lgw_tx_gain_lut_s)/sizeof(uint8_t))];
+for (u=0;u<(sizeof(struct lgw_tx_gain_lut_s)/sizeof(uint8_t));u++)
+{
+	data[u]= *(((uint8_t *)(conf))+u);
 }
+
+    lgw_txgainreg_setconfcmd( data,(sizeof(struct lgw_tx_gain_lut_s)/sizeof(uint8_t)));
+#endif 
+    return LGW_HAL_SUCCESS;
+
+}
+
+
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
@@ -691,7 +703,7 @@ int lgw_start(void) {
 
     
     
-      xx=lgw_fpga_configure( rf_tx_notch_freq[rf_tx_enable[1]?1:0]);
+    //  xx=lgw_fpga_configure( rf_tx_notch_freq[rf_tx_enable[1]?1:0]);
       if (xx != LGW_REG_SUCCESS) {
                 DEBUG_MSG("ERROR CONFIGURING FPGA\n");
                 return LGW_REG_ERROR;
@@ -1101,7 +1113,7 @@ uint8_t data[sstruct];
 for (i=0;i<sstruct;i++)
 {
 	data[i]= *(((uint8_t *)(&pkt_data))+i);
- DEBUG_PRINTF("data[%d]=%d size = %d\n",i,data[i],sstruct);
+// DEBUG_PRINTF("data[%d]=%d size = %d\n",i,data[i],sstruct);
 }
 
 
@@ -1161,16 +1173,24 @@ int lgw_abort_tx(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
-    int i;
+  /*int i;
     int32_t val;
+    uint32_t test;
 
     i = lgw_reg_r(LGW_TIMESTAMP, &val);
     if (i == LGW_REG_SUCCESS) {
         *trig_cnt_us = (uint32_t)val;
-        return LGW_HAL_SUCCESS;
+      //  return LGW_HAL_SUCCESS;
     } else {
-        return LGW_HAL_ERROR;
-    }
+      //  return LGW_HAL_ERROR;
+    }*/
+   
+#if (PGW ==1)	
+    lgw_regtrigger(trig_cnt_us); 
+  
+  DEBUG_PRINTF("internal time %d\n",*trig_cnt_us);
+#endif 
+    return LGW_HAL_SUCCESS;    
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

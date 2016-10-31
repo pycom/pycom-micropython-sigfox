@@ -802,7 +802,7 @@ int lgw_sendconfcmd(void *spi_target,uint8_t *data,uint16_t size) {
    for (i=0;i<size;i++)
    {
    mystruct.Value[i]=data[i];
-    DEBUG_PRINTF("debug data[%d]=%d\n",i, mystruct.Value[i]);
+   // DEBUG_PRINTF("debug data[%d]=%d\n",i, mystruct.Value[i]);
    }
     DEBUG_MSG("Note: USB/SPI write success\n");
    pthread_mutex_lock(&mx_usbbridgesync);  
@@ -817,6 +817,46 @@ int lgw_sendconfcmd(void *spi_target,uint8_t *data,uint16_t size) {
   pthread_mutex_unlock(&mx_usbbridgesync);
    return LGW_SPI_ERROR;
 	}
+}
+
+
+
+int lgw_trigger(void *spi_target, uint8_t address, uint32_t *data) {
+    int fd;
+    
+   
+    /* check input variables */
+    CHECK_NULL(spi_target);
+    CHECK_NULL(data);
+
+    fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+    
+   CmdSettings_t mystruct;
+   AnsSettings_t mystrctAns;
+   mystruct.Cmd='q';
+   mystruct.Id=0;
+   mystruct.Len=1;
+   mystruct.Adress=address;
+   mystruct.Value[0]=0;
+   
+   pthread_mutex_lock(&mx_usbbridgesync);  
+   DEBUG_MSG("Note: SPI send cmd read success\n");
+   SendCmdn(mystruct,fd) ;
+   if(ReceiveAns(&mystrctAns,fd))
+   {
+	 DEBUG_MSG("Note: SPI read success\n");
+     *data =(mystrctAns.Rxbuf[0]<<24)+(mystrctAns.Rxbuf[1]<<16)+(mystrctAns.Rxbuf[2]<<8)+(mystrctAns.Rxbuf[3]);
+     DEBUG_PRINTF("timestampreceive %d\n",(mystrctAns.Rxbuf[0]<<24)+(mystrctAns.Rxbuf[1]<<16)+(mystrctAns.Rxbuf[2]<<8)+(mystrctAns.Rxbuf[3]));
+      pthread_mutex_unlock(&mx_usbbridgesync);
+      return LGW_SPI_SUCCESS;
+   }
+   else
+   {
+        DEBUG_MSG("ERROR: SPI READ FAILURE\n");
+         pthread_mutex_unlock(&mx_usbbridgesync);
+        return LGW_SPI_ERROR;
+    } 
+    
 }
 
 
@@ -843,6 +883,7 @@ int checkcmd(uint8_t cmd)
  case 'd':{return(0); break;}
  case 'f':{return(0); break;}
  case 'h':{return(0); break;}
+ case 'q':{return(0); break;}
  //case 97 : return (1);   
      
      default : 
