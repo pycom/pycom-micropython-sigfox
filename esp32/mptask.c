@@ -103,7 +103,7 @@ void TASK_Micropython (void *pvParameters) {
     asm volatile("or %0, a1, a1" : "=r"(sp));
     mpTaskStack = (StackType_t *)sp;
 
-    bool sreset = false;
+    bool soft_reset = false;
 
     // init the antenna select switch here
     antenna_init0();
@@ -141,7 +141,7 @@ soft_reset:
     rng_init0();
     rtc_init0();
     mp_irq_init0();
-    mp_hal_init();
+    mp_hal_init(soft_reset);
     readline_init0();
     mod_network_init0();
     bool safeboot = false;
@@ -150,7 +150,7 @@ soft_reset:
     if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
         safeboot = boot_info.safeboot;
     }
-    if (!sreset) {
+    if (!soft_reset) {
         mptask_enter_ap_mode();
     #ifdef LOPY
         // this one is special because it needs uPy running and launches tasks
@@ -231,7 +231,7 @@ soft_reset_exit:
     mpsleep_signal_soft_reset();
     mp_printf(&mp_plat_print, "PYB: soft reboot\n");
     mp_hal_delay_us(25000);
-    sreset = true;
+    soft_reset = true;
     goto soft_reset;
 }
 

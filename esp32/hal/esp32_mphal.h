@@ -10,8 +10,10 @@
 #ifndef _INCLUDED_MPHAL_H_
 #define _INCLUDED_MPHAL_H_
 
+#ifdef LOPY
 void HAL_set_tick_cb (void *cb);
-void mp_hal_init(void);
+#endif
+void mp_hal_init(bool soft_reset);
 void mp_hal_feed_watchdog(void);
 void mp_hal_delay_us(uint32_t us);
 int mp_hal_stdin_rx_chr(void);
