@@ -123,7 +123,7 @@ void TASK_Servers (void *pvParameters) {
 
         // move to the next cycle
         cycle = cycle ? false : true;
-        mp_hal_delay_ms(SERVERS_CYCLE_TIME_MS);
+        vTaskDelay (SERVERS_CYCLE_TIME_MS / portTICK_PERIOD_MS);
     }
 }
 
