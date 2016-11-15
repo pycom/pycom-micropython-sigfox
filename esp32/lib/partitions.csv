@@ -1,0 +1,9 @@
+# Name,   Type, SubType, Offset,   Size
+factory,  app,  factory, 0x10000,  1M
+ota_0,    app,  ota_0,   ,         1M
+ota_1,    app,  ota_1,   ,         1M
+rfdata,   data, rf,      ,         32K
+wifidata, data, wifi,    ,         32K
+bootinfo, data, ota,     ,         4K
+fs,       data, 5,       0x380000, 508K
+config,   data, 6,       ,         4K

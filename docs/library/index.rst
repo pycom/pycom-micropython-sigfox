@@ -51,8 +51,8 @@ library.
     .. toctree::
        :maxdepth: 1
 
-       builtins.rst
        array.rst
+       builtins.rst
        cmath.rst
        gc.rst
        math.rst
@@ -76,8 +76,8 @@ library.
     .. toctree::
        :maxdepth: 1
 
-       builtins.rst
        array.rst
+       builtins.rst
        cmath.rst
        gc.rst
        math.rst
@@ -101,8 +101,8 @@ library.
     .. toctree::
        :maxdepth: 1
 
-       builtins.rst
        array.rst
+       builtins.rst
        gc.rst
        select.rst
        sys.rst
@@ -114,13 +114,49 @@ library.
        ussl.rst
        utime.rst
 
+.. only:: port_lopy
+
+    .. toctree::
+       :maxdepth: 1
+
+       array.rst
+       builtins.rst
+       gc.rst
+       select.rst
+       sys.rst
+       ubinascii.rst
+       ujson.rst
+       uos.rst
+       ure.rst
+       usocket.rst
+       utime.rst
+       uhashlib.rst
+
+.. only:: port_2wipy
+
+    .. toctree::
+       :maxdepth: 1
+
+       array.rst
+       builtins.rst
+       gc.rst
+       select.rst
+       sys.rst
+       ubinascii.rst
+       ujson.rst
+       uos.rst
+       ure.rst
+       usocket.rst
+       utime.rst
+       uhashlib.rst
+
 .. only:: port_esp8266
 
     .. toctree::
        :maxdepth: 1
 
-       builtins.rst
        array.rst
+       builtins.rst
        gc.rst
        math.rst
        sys.rst
@@ -177,6 +213,32 @@ the following libraries.
       :maxdepth: 2
 
       wipy.rst
+
+
+.. only:: port_2wipy
+
+   Libraries specific to the WiPy 2.0
+   ----------------------------------
+
+   The following libraries are specific to the WiPy.
+
+   .. toctree::
+      :maxdepth: 2
+
+      pycom.rst
+
+
+.. only:: port_lopy
+
+   Libraries specific to the LoPy
+   ------------------------------
+
+   The following libraries are specific to the LoPy.
+
+   .. toctree::
+      :maxdepth: 2
+
+      pycom.rst
 
 
 .. only:: port_esp8266

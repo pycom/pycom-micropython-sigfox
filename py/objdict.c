@@ -34,6 +34,8 @@
 #include "py/builtin.h"
 #include "py/objtype.h"
 
+#include "esp_attr.h"
+
 #define MP_OBJ_IS_DICT_TYPE(o) (MP_OBJ_IS_OBJ(o) && ((mp_obj_base_t*)MP_OBJ_TO_PTR(o))->type->make_new == dict_make_new)
 
 STATIC mp_obj_t dict_update(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs);
@@ -620,7 +622,7 @@ mp_obj_t mp_obj_dict_delete(mp_obj_t self_in, mp_obj_t key) {
     return self_in;
 }
 
-mp_map_t *mp_obj_dict_get_map(mp_obj_t self_in) {
+IRAM_ATTR mp_map_t *mp_obj_dict_get_map(mp_obj_t self_in) {
     mp_check_self(MP_OBJ_IS_DICT_TYPE(self_in));
     mp_obj_dict_t *self = MP_OBJ_TO_PTR(self_in);
     return &self->map;

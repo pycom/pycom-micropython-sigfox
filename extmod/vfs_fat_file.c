@@ -121,7 +121,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(file_obj_flush_obj, file_obj_flush);
 STATIC mp_obj_t file_obj_close(mp_obj_t self_in) {
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
     // if fs==NULL then the file is closed and in that case this method is a no-op
-    if (self->fp.fs != NULL) {
+    if (self->fp.obj.fs != NULL) {
         FRESULT res = f_close(&self->fp);
         if (res != FR_OK) {
             mp_raise_OSError(fresult_to_errno_table[res]);

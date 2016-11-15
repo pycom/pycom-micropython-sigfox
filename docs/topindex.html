@@ -25,7 +25,7 @@
 
   <table class="contentstable"><tr>
     <td width="40%" style="padding-left:2em;">
-      {% if port in ("pyboard", "wipy", "esp8266") %}
+      {% if port in ("pyboard", "wipy", "esp8266", "lopy", "2wipy") %}
         <p class="biglink">
           <a class="biglink" href="{{ pathto(port + "/quickref") }}">Quick reference for {{ port_name }}</a><br/>
           <span class="linkdescr">pinout for {{ port_name }} and snippets of useful code</span>
@@ -38,15 +38,15 @@
           <a class="biglink" href="{{ pathto(port + "/tutorial/index") }}">Tutorials and code examples</a><br/>
           <span class="linkdescr">start here</span>
         </p>
+        <p class="biglink">
+          <a class="biglink" href="{{ pathto("library/index") }}">Library Reference</a><br/>
+          {% if port == "pyboard" %}
+            <span class="linkdescr">MicroPython libraries, including the <a href="{{ pathto("library/pyb") }}">pyb module</a></span>
+          {% else %}
+              <span class="linkdescr">MicroPython libraries, including the <a href="{{ pathto("library/machine") }}">machine module</a></span>
+          {% endif %}
+        </p>
       {% endif %}
-      <p class="biglink">
-        <a class="biglink" href="{{ pathto("library/index") }}">Library Reference</a><br/>
-        {% if port == "pyboard" %}
-          <span class="linkdescr">MicroPython libraries, including the <a href="{{ pathto("library/pyb") }}">pyb module</a></span>
-        {% else %}
-          <span class="linkdescr">MicroPython libraries, including the <a href="{{ pathto("library/machine") }}">machine module</a></span>
-        {% endif %}
-      </p>
     </td>
     <td width="40%" style="padding-left:2em;">
       <p class="biglink">
@@ -63,10 +63,6 @@
             <span class="linkdescr">including DFU programming</span>
         </p>
       {% endif %}
-      <p class="biglink">
-        <a class="biglink" href="{{ pathto("license") }}">License</a><br/>
-        <span class="linkdescr">MicroPython license information</span>
-      </p>
     </td>
   </tr></table>
 
@@ -94,24 +90,20 @@
 
   <table class="contentstable"><tr>
     <td width="40%" style="padding-left:2em;">
-      <p class="biglink">
-      <a class="biglink" href="http://micropython.org">MicroPython homepage</a><br/>
-        <span class="linkdescr">the official MicroPython site</span>
-      </p>
-      <p class="biglink">
-        <a class="biglink" href="http://forum.micropython.org">MicroPython forum</a><br/>
-        <span class="linkdescr">community discussion for all things related to MicroPython</span>
-      </p>
-    </td>
-    <td width="40%" style="padding-left:2em;">
-      <p class="biglink">
-        <a class="biglink" href="https://github.com/micropython">MicroPython on GitHub</a><br/>
-        <span class="linkdescr">contribute to the source code on GitHub</span>
+       <p class="biglink">
+        <a class="biglink" href="https://forum.pycom.io/">Pycom forum</a><br/>
+        <span class="linkdescr">community discussion for all things related to Pycom products</span>
       </p>
       {% if port == "wipy" %}
         <p class="biglink">
           <a class="biglink" href="http://wipy.io">The WiPy homepage</a><br/>
           <span class="linkdescr">the official WiPy site</span>
+        </p>
+      {% endif %}
+      {% if port in ("lopy", "2wipy") %}
+        <p class="biglink">
+          <a class="biglink" href="http://pycom.io">The Pycom homepage</a><br/>
+          <span class="linkdescr">the official Pycom website</span>
         </p>
       {% endif %}
     </td>

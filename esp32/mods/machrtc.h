@@ -1,0 +1,17 @@
+/*
+ * Copyright (c) 2016, Pycom Limited.
+ *
+ * This software is licensed under the GNU GPL version 3 or any
+ * later version, with permitted additional terms. For more information
+ * see the Pycom Licence v1.0 document supplied with this file, or
+ * available at https://www.pycom.io/opensource/licensing
+ */
+
+#ifndef MACHRTC_H_
+#define MACHRTC_H_
+
+void rtc_init0(void);
+void mach_rtc_set_us_since_2000(uint64_t nowus);
+uint64_t mach_rtc_get_us_since_2000();
+
+#endif // MACHRTC_H_

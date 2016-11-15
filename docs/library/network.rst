@@ -5,12 +5,11 @@
 .. module:: network
    :synopsis: network configuration
 
-This module provides network drivers and routing configuration. To use this
-module, a MicroPython variant/build with network capabilities must be installed.
-Network drivers for specific hardware are available within this module and are
-used to configure hardware network interface(s). Network services provided
-by configured interfaces are then available for use via the :mod:`socket`
-module.
+This module provides network drivers and routing configuration.  Network
+drivers for specific hardware are available within this module and are
+used to configure a hardware network interface.  Configured interfaces
+are then available for use via the :mod:`socket` module. To use this module
+the network build of firmware must be installed.
 
 For example::
 
@@ -29,7 +28,7 @@ For example::
     data = s.recv(1000)
     s.close()
 
-.. only:: port_wipy
+.. only:: port_wipy or port_2wipy or port_lopy
 
     .. _network.Server:
 
@@ -73,157 +72,157 @@ For example::
 
     .. method:: server.isrunning()
 
-       Returns ``True`` if the server is running, ``False`` otherwise.
+       Returns ``True`` if the server is running (connected or accepting connections), ``False`` otherwise.
 
 .. only:: port_pyboard
 
     class CC3K
     ==========
-    
-    This class provides a driver for CC3000 WiFi modules.  Example usage::
-    
+
+    This class provides a driver for CC3000 wifi modules.  Example usage::
+
         import network
         nic = network.CC3K(pyb.SPI(2), pyb.Pin.board.Y5, pyb.Pin.board.Y4, pyb.Pin.board.Y3)
         nic.connect('your-ssid', 'your-password')
         while not nic.isconnected():
             pyb.delay(50)
         print(nic.ifconfig())
-    
+
         # now use socket as usual
         ...
-    
+
     For this example to work the CC3000 module must have the following connections:
-    
+
         - MOSI connected to Y8
         - MISO connected to Y7
         - CLK connected to Y6
         - CS connected to Y5
         - VBEN connected to Y4
         - IRQ connected to Y3
-    
+
     It is possible to use other SPI busses and other pins for CS, VBEN and IRQ.
-    
+
     Constructors
     ------------
-    
+
     .. class:: CC3K(spi, pin_cs, pin_en, pin_irq)
-    
+
        Create a CC3K driver object, initialise the CC3000 module using the given SPI bus
        and pins, and return the CC3K object.
-    
+
        Arguments are:
-    
+
          - ``spi`` is an :ref:`SPI object <pyb.SPI>` which is the SPI bus that the CC3000 is
            connected to (the MOSI, MISO and CLK pins).
          - ``pin_cs`` is a :ref:`Pin object <pyb.Pin>` which is connected to the CC3000 CS pin.
          - ``pin_en`` is a :ref:`Pin object <pyb.Pin>` which is connected to the CC3000 VBEN pin.
          - ``pin_irq`` is a :ref:`Pin object <pyb.Pin>` which is connected to the CC3000 IRQ pin.
-    
+
        All of these objects will be initialised by the driver, so there is no need to
        initialise them yourself.  For example, you can use::
-    
+
          nic = network.CC3K(pyb.SPI(2), pyb.Pin.board.Y5, pyb.Pin.board.Y4, pyb.Pin.board.Y3)
-    
+
     Methods
     -------
-    
+
     .. method:: cc3k.connect(ssid, key=None, \*, security=WPA2, bssid=None)
-    
-       Connect to a WiFi access point using the given SSID, and other security
+
+       Connect to a wifi access point using the given SSID, and other security
        parameters.
-    
+
     .. method:: cc3k.disconnect()
-    
-       Disconnect from the WiFi access point.
-    
+
+       Disconnect from the wifi access point.
+
     .. method:: cc3k.isconnected()
-    
-       Returns True if connected to a WiFi access point and has a valid IP address,
+
+       Returns True if connected to a wifi access point and has a valid IP address,
        False otherwise.
-    
+
     .. method:: cc3k.ifconfig()
-    
+
        Returns a 7-tuple with (ip, subnet mask, gateway, DNS server, DHCP server,
        MAC address, SSID).
-    
+
     .. method:: cc3k.patch_version()
-    
+
        Return the version of the patch program (firmware) on the CC3000.
-    
+
     .. method:: cc3k.patch_program('pgm')
-    
+
        Upload the current firmware to the CC3000.  You must pass 'pgm' as the first
        argument in order for the upload to proceed.
-    
+
     Constants
     ---------
-    
+
     .. data:: CC3K.WEP
     .. data:: CC3K.WPA
     .. data:: CC3K.WPA2
-    
+
        security type to use
-    
+
     class WIZNET5K
     ==============
-    
+
     This class allows you to control WIZnet5x00 Ethernet adaptors based on
     the W5200 and W5500 chipsets (only W5200 tested).
-    
+
     Example usage::
-    
+
         import network
         nic = network.WIZNET5K(pyb.SPI(1), pyb.Pin.board.X5, pyb.Pin.board.X4)
         print(nic.ifconfig())
-    
+
         # now use socket as usual
         ...
-    
+
     For this example to work the WIZnet5x00 module must have the following connections:
-    
+
         - MOSI connected to X8
         - MISO connected to X7
         - SCLK connected to X6
         - nSS connected to X5
         - nRESET connected to X4
-    
+
     It is possible to use other SPI busses and other pins for nSS and nRESET.
-    
+
     Constructors
     ------------
-    
+
     .. class:: WIZNET5K(spi, pin_cs, pin_rst)
-    
+
        Create a WIZNET5K driver object, initialise the WIZnet5x00 module using the given
        SPI bus and pins, and return the WIZNET5K object.
-    
+
        Arguments are:
-    
+
          - ``spi`` is an :ref:`SPI object <pyb.SPI>` which is the SPI bus that the WIZnet5x00 is
            connected to (the MOSI, MISO and SCLK pins).
          - ``pin_cs`` is a :ref:`Pin object <pyb.Pin>` which is connected to the WIZnet5x00 nSS pin.
          - ``pin_rst`` is a :ref:`Pin object <pyb.Pin>` which is connected to the WIZnet5x00 nRESET pin.
-    
+
        All of these objects will be initialised by the driver, so there is no need to
        initialise them yourself.  For example, you can use::
-    
+
          nic = network.WIZNET5K(pyb.SPI(1), pyb.Pin.board.X5, pyb.Pin.board.X4)
-    
+
     Methods
     -------
-    
+
     .. method:: wiznet5k.ifconfig([(ip, subnet, gateway, dns)])
-    
+
        Get/set IP address, subnet mask, gateway and DNS.
-    
+
        When called with no arguments, this method returns a 4-tuple with the above information.
-    
+
        To set the above values, pass a 4-tuple with the required information.  For example::
-    
+
         nic.ifconfig(('192.168.0.4', '255.255.255.0', '192.168.0.1', '8.8.8.8'))
-    
+
     .. method:: wiznet5k.regs()
-    
+
        Dump the WIZnet5x00 registers.  Useful for debugging.
 
 .. _network.WLAN:
@@ -324,7 +323,7 @@ For example::
 
     .. method:: wlan.isconnected()
 
-        In case of STA mode, returns ``True`` if connected to a WiFi access
+        In case of STA mode, returns ``True`` if connected to a wifi access
         point and has a valid IP address.  In AP mode returns ``True`` when a
         station is connected. Returns ``False`` otherwise.
 
@@ -349,7 +348,7 @@ For example::
 
         # Set WiFi access point name (formally known as ESSID) and WiFi channel
         ap.config(essid='My AP', channel=11)
-        # Query params one by one
+        # Queey params one by one
         print(ap.config('essid'))
         print(ap.config('channel'))
 
@@ -369,12 +368,12 @@ For example::
 
 
 
-.. only:: port_wipy
+.. only:: port_wipy or port_2wipy or port_lopy
 
     class WLAN
     ==========
 
-    This class provides a driver for the WiFi network processor in the WiPy. Example usage::
+    This class provides a driver for the WiFi network processor in the module. Example usage::
 
         import network
         import time
@@ -390,7 +389,7 @@ For example::
 
     Constructors
     ------------
-    
+
     .. class:: WLAN(id=0, ...)
 
        Create a WLAN object, and optionally configure it. See ``init`` for params of configuration.
@@ -407,11 +406,11 @@ For example::
     -------
 
     .. method:: wlan.init(mode, \*, ssid, auth, channel, antenna)
-    
+
        Set or get the WiFi network processor configuration.
-    
+
        Arguments are:
-    
+
          - ``mode`` can be either ``WLAN.STA`` or ``WLAN.AP``.
          - ``ssid`` is a string with the ssid name. Only needed when mode is ``WLAN.AP``.
          - ``auth`` is a tuple with (sec, key). Security can be ``None``, ``WLAN.WEP``,
@@ -421,7 +420,7 @@ For example::
          - ``channel`` a number in the range 1-11. Only needed when mode is ``WLAN.AP``.
          - ``antenna`` selects between the internal and the external antenna. Can be either
            ``WLAN.INT_ANT`` or ``WLAN.EXT_ANT``.
-    
+
        For example, you can do::
 
           # create and configure as an access point
@@ -434,7 +433,7 @@ For example::
 
     .. method:: wlan.connect(ssid, \*, auth=None, bssid=None, timeout=None)
 
-       Connect to a WiFi access point using the given SSID, and other security
+       Connect to a wifi access point using the given SSID, and other security
        parameters.
 
           - ``auth`` is a tuple with (sec, key). Security can be ``None``, ``WLAN.WEP``,
@@ -452,16 +451,16 @@ For example::
 
     .. method:: wlan.disconnect()
 
-       Disconnect from the WiFi access point.
+       Disconnect from the wifi access point.
 
     .. method:: wlan.isconnected()
 
-       In case of STA mode, returns ``True`` if connected to a WiFi access point and has a valid IP address.
+       In case of STA mode, returns ``True`` if connected to a wifi access point and has a valid IP address.
        In AP mode returns ``True`` when a station is connected, ``False`` otherwise.
 
     .. method:: wlan.ifconfig(if_id=0, config=['dhcp' or configtuple])
 
-       With no parameters given returns a 4-tuple of ``(ip, subnet_mask, gateway, DNS_server)``.
+       With no parameters given eturns a 4-tuple of ``(ip, subnet_mask, gateway, DNS_server)``.
 
        if ``'dhcp'`` is passed as a parameter then the DHCP client is enabled and the IP params
        are negotiated with the AP.
@@ -490,19 +489,27 @@ For example::
 
        Get or set the antenna type (external or internal).
 
-    .. method:: wlan.mac([mac_addr])
+    .. only:: port_wipy
 
-       Get or set a 6-byte long bytes object with the MAC address.
+        .. method:: wlan.mac([mac_addr])
 
-    .. method:: wlan.irq(\*, handler, wake)
+           Get or set a 6-byte long bytes object with the MAC address.
 
-        Create a callback to be triggered when a WLAN event occurs during ``machine.SLEEP``
-        mode. Events are triggered by socket activity or by WLAN connection/disconnection.
+        .. method:: wlan.irq(\*, handler, wake)
 
-            - ``handler`` is the function that gets called when the IRQ is triggered.
-            - ``wake`` must be ``machine.SLEEP``.
+            Create a callback to be triggered when a WLAN event occurs during ``machine.SLEEP``
+            mode. Events are triggered by socket activity or by WLAN connection/disconnection.
 
-        Returns an IRQ object.
+                - ``handler`` is the function that gets called when the irq is triggered.
+                - ``wake`` must be ``machine.SLEEP``.
+
+            Returns an irq object.
+
+    .. only:: port_2wipy or port_lopy
+
+        .. method:: wlan.mac()
+
+           Get a 6-byte long ``bytes`` object with the WiFI MAC address.
 
     Constants
     ---------
@@ -522,3 +529,102 @@ For example::
     .. data:: WLAN.EXT_ANT
 
        selects the antenna type
+
+
+.. only:: port_lopy
+
+    class LoRa
+    ==========
+
+    This class provides a driver for the LoRa network processor in the module. Example usage::
+
+      from network import LoRa
+      import socket
+
+      # Initialize LoRa in LORAWAN mode.
+      lora = LoRa(mode=LoRa.LORAWAN)
+      # create an OTAA authentication tuple (AppKey, AppEUI, DevEUI)
+      auth = (bytes([0,1,2,3,4,5,6,7,8,9,2,3,4,5,6,7]), bytes([1,2,3,4,5,6,7,8]), lora.mac()))
+      # join a network using OTAA (Over the Air Activation)
+      lora.join(activation=LoRa.OTAA, auth=auth, timeout=0)
+
+      # wait until the module has joined the network
+      while not lora.has_joined():
+          time.sleep(2.5)
+          print('Not yet joined...')
+
+      # create a LoRa socket
+      s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
+      s.setblocking(False)
+
+      # send some data
+      s.send(bytes([0x01, 0x02, 0x03]))
+
+      # get any data received...
+      data = s.recv(64)
+      print(data)
+
+    Constructors
+    ------------
+
+    .. class:: LoRa(id=0, ...)
+
+       Create and configure a LoRa object. See ``init`` for params of configuration.
+
+    Methods
+    -------
+
+    .. method:: lora.init(mode, \*, frequency=868000000, tx_power=14, bandwidth=LoRa.868000000, sf=7, preamble=8, coding_rate=LoRa.CODING_4_5, power_mode=LoRa.ALWAYS_ON, tx_iq=false, rx_iq=false, adr=false, public=true, tx_retries=1)
+
+       Set the LoRa subsystem configuration
+
+       The arguments are:
+
+         - ``mode`` can be either ``LoRa.LORA`` or ``LoRa.LORAWAN``.
+         - ``frequency`` accepts values between 863000000 and 870000000 in the 868 band, or between 902000000 and 928000000 in the 915 band.
+         - ``tx_power`` is the transmit power in dBm. It accepts between 2 and 14 for the 868 band, and between 5 and 20 in the 915 band.
+         - ``bandwidth`` is the channel bandwidth in KHz. In the 868 band the accepted values are ``LoRa.BW_125KHZ`` and ``LoRa.BW_250KHZ``. In the 915 band the accepted values are ``LoRa.BW_125KHZ`` and ``LoRa.BW_500KHZ``.
+         - ``sf`` sets the desired spreading factor. Accepts values between 7 and 12.
+         - ``preamble`` configures the number of pre-amble symbols. The default value is 8.
+         - ``coding_rate`` can take the following values: ``LoRa.CODING_4_5``, ``LoRa.CODING_4_6``,
+           ``LoRa.CODING_4_7`` or ``LoRa.CODING_4_8``.
+         - ``power_mode`` can be either ``LoRa.ALWAYS_ON``, ``LoRa.TX_ONLY`` or ``LoRa.SLEEP``. In ``ALWAYS_ON`` mode, the radio is always listening for incoming packets whenever a transmission is not taking place. In ``TX_ONLY`` the radio goes to sleep as soon as the transmission completes. In ``SLEEP`` mode the radio is sent to sleep permanently and won't accept any commands until the power mode is changed.
+         - ``tx_iq`` enables TX IQ inversion.
+         - ``rx_iq`` enables RX IQ inversion.
+         - ``adr`` enables Adaptive Data Rate.
+         - ``public`` selects wether the network is public or not.
+         - ``tx_retries`` sets the number of TX retries in ``LoRa.LORAWAN`` mode.
+
+        .. note:: In ``LoRa.LORAWAN`` mode, only ``adr``, ``public`` and ``tx_retries`` are used. All the other
+          params will be ignored as theiy are handled by the LoRaWAN stack directly. On the other hand, these same 3
+          params are ignored in ``LoRa.LORA`` mode as they are only relevant for the LoRaWAN stack.
+
+       For example, you can do::
+
+          # create and configure as an access point
+          lora.init(mode=LoRa.LORA, tx_power=14, sf=12)
+
+       or::
+
+          # configure as an station
+          lora.init(mode=LoRa.LORAWAN)
+
+    .. method:: lora.add_channel(index, \*, frequency, dr_min, dr_max, duty_cycle)
+
+        Add a LoRaWAN channel on the specified index. If there's already a channel with that index it will be replaced with the new one.
+
+        The arguments are:
+
+          - ``index``: Index of the channel to add. Accepts values between 0 and 15 for EU and between 0 and 71 for US.
+          - ``frequency``: Center frequency in Hz of the channel.
+          - ``dr_min``: Minimmum data rate of the channel (0-7).
+          - ``dr_min``: Maximum data rate of the channel (0-7).
+          - ``duty_cycle``: Need to be always zero for now.
+
+    .. method:: lora.remove_channel(index)
+
+         Removes the channel from the specified index. Channels 0 to 2 cannot be removed, they can only be replaced by other channels using the ``lora.add_channel`` method.
+
+    .. method:: lora.mac()
+
+       Returns a byte object with the 8-Byte MAC address of the LoRa radio.

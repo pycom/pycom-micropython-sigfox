@@ -30,6 +30,7 @@
 #include "py/misc.h"
 #include "py/qstr.h"
 #include "py/mpprint.h"
+#include "esp_attr.h"
 
 // This is the definition of the opaque MicroPython object type.
 // All concrete objects have an encoding within this type and the
@@ -315,6 +316,19 @@ static inline bool mp_obj_is_integer(mp_const_obj_t o) { return MP_OBJ_IS_INT(o)
 
 #define MP_DEFINE_CONST_DICT(dict_name, table_name) \
     const mp_obj_dict_t dict_name = { \
+        .base = {&mp_type_dict}, \
+        .map = { \
+            .all_keys_are_qstrs = 1, \
+            .is_fixed = 1, \
+            .is_ordered = 1, \
+            .used = MP_ARRAY_SIZE(table_name), \
+            .alloc = MP_ARRAY_SIZE(table_name), \
+            .table = (mp_map_elem_t*)(mp_rom_map_elem_t*)table_name, \
+        }, \
+    }
+
+#define MP_DEFINE_RAM_DICT(dict_name, table_name) \
+    DRAM_ATTR mp_obj_dict_t dict_name = { \
         .base = {&mp_type_dict}, \
         .map = { \
             .all_keys_are_qstrs = 1, \

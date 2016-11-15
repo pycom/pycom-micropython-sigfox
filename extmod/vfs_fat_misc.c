@@ -38,19 +38,11 @@
 #include "extmod/fsusermount.h"
 #include "py/lexer.h"
 
-#if _USE_LFN
-STATIC char lfn[_MAX_LFN + 1];   /* Buffer to store the LFN */
-#endif
-
 // TODO: actually, the core function should be ilistdir()
 mp_obj_t fat_vfs_listdir(const char *path, bool is_str_type) {
     FRESULT res;
     FILINFO fno;
     DIR dir;
-#if _USE_LFN
-    fno.lfname = lfn;
-    fno.lfsize = sizeof lfn;
-#endif
 
     res = f_opendir(&dir, path);                       /* Open the directory */
     if (res != FR_OK) {
@@ -65,11 +57,8 @@ mp_obj_t fat_vfs_listdir(const char *path, bool is_str_type) {
         if (fno.fname[0] == '.' && fno.fname[1] == 0) continue;             /* Ignore . entry */
         if (fno.fname[0] == '.' && fno.fname[1] == '.' && fno.fname[2] == 0) continue;             /* Ignore .. entry */
 
-#if _USE_LFN
-        char *fn = *fno.lfname ? fno.lfname : fno.fname;
-#else
+
         char *fn = fno.fname;
-#endif
 
         /*
         if (fno.fattrib & AM_DIR) {
@@ -100,10 +89,7 @@ mp_import_stat_t fat_vfs_import_stat(const char *path);
 
 mp_import_stat_t fat_vfs_import_stat(const char *path) {
     FILINFO fno;
-#if _USE_LFN
-    fno.lfname = NULL;
-    fno.lfsize = 0;
-#endif
+
     FRESULT res = f_stat(path, &fno);
     if (res == FR_OK) {
         if ((fno.fattrib & AM_DIR) != 0) {
