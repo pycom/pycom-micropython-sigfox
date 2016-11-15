@@ -28,13 +28,19 @@ if not wifi_passed: # try twice
     time.sleep(1.0)
     test_wifi()
 
+f = open('/flash/sys/test.fct', 'w')
+
 if wifi_passed:
     pycom.heartbeat(False)
     pycom.rgbled(0x008000)   # green
+    f.write('Test OK')
     print('Test OK')
 else:
+    f.write('Test failed')
     print('Test failed')
 
+f.close()
 time.sleep(0.5)
 while True:
     pass
+

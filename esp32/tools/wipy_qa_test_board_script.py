@@ -34,12 +34,15 @@ EMPTY_MAC_ADDRESS = b'ffffffffffff'
 pycom.heartbeat(False)
 
 try:
-    if wifi_passed and binascii.hexlify(wlan.mac()) != EMPTY_MAC_ADDRESS and os.uname().release == '0.9.0b' and 'WiPy' in os.uname().machine:
+    f = open('/flash/sys/test.fct', 'r')
+    initial_test_result = f.readall();
+    if wifi_passed and binascii.hexlify(wlan.mac()) != EMPTY_MAC_ADDRESS and os.uname().release == '0.9.4.b1' and 'WiPy' in os.uname().machine and initial_test_result == 'Test OK':
         pycom.rgbled(0x008000)      # green
         print('QA Test OK')
     else:
         pycom.rgbled(0x800000)      # red
         print('QA Test failed')
+    f.close()
 except Exception:
         pycom.rgbled(0x800000)      # red
         print('QA Test failed')
