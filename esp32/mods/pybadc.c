@@ -199,6 +199,7 @@ STATIC mp_obj_t adc_channel(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
         for (int i = 0; i < PYB_ADC_NUM_CHANNELS; i++) {
             if (pyb_adc_channel_obj[i].pin == _pin) {
                 ch_id = i;
+                break;
             }
         }
         if (ch_id < 0) {
