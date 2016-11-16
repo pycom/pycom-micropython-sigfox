@@ -132,11 +132,11 @@ soft_reset:
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR_)); // current dir (or base dir of the script)
 
     // execute all basic initializations
+    pin_init0();    // always before the rest of the peripherals
     mpexception_init0();
     mpsleep_init0();
     moduos_init0();
     uart_init0();
-    pin_init0();
     mperror_init0();
     rng_init0();
     rtc_init0();

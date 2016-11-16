@@ -38,7 +38,7 @@ static antenna_type_t antenna_type_selected = ANTENNA_TYPE_INTERNAL;
 DEFINE PUBLIC FUNCTIONS
 ******************************************************************************/
 void antenna_init0(void) {
-    gpio_config_t gpioconf = {.pin_bit_mask = 1 << MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM,
+    gpio_config_t gpioconf = {.pin_bit_mask = 1ull << MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM,
                               .mode = GPIO_MODE_OUTPUT,
                               .pull_up_en = GPIO_PULLUP_DISABLE,
                               .pull_down_en = GPIO_PULLDOWN_DISABLE,
@@ -59,9 +59,9 @@ void antenna_select (antenna_type_t _antenna) {
         }
     } else {
         if (_antenna == ANTENNA_TYPE_EXTERNAL) {
-            GPIO_REG_WRITE(GPIO_OUT1_W1TS_REG, 1 << MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM);
+            GPIO_REG_WRITE(GPIO_OUT1_W1TS_REG, 1 << (MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM & 31));
         } else {
-            GPIO_REG_WRITE(GPIO_OUT1_W1TC_REG, 1 << MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM);
+            GPIO_REG_WRITE(GPIO_OUT1_W1TC_REG, 1 << (MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM & 31));
         }
     }
     antenna_type_selected = _antenna;

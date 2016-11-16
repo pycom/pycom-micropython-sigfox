@@ -52,7 +52,7 @@ void TASK_Heartbeat (void *pvParameters);
  ******************************************************************************/
 
 void mperror_init0 (void) {
-    gpio_config_t gpioconf = {.pin_bit_mask = 1 << MICROPY_HW_HB_PIN_NUM,
+    gpio_config_t gpioconf = {.pin_bit_mask = 1ull << MICROPY_HW_HB_PIN_NUM,
                               .mode = GPIO_MODE_OUTPUT,
                               .pull_up_en = GPIO_PULLUP_DISABLE,
                               .pull_down_en = GPIO_PULLDOWN_DISABLE,

@@ -71,7 +71,7 @@ void mperror_init0 (void) {
     // configure the heartbeat led pin
     pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0, 0);
 #else
-    gpio_config_t gpioconf = {.pin_bit_mask = 1 << MICROPY_HW_HB_PIN_NUM,
+    gpio_config_t gpioconf = {.pin_bit_mask = 1ull << MICROPY_HW_HB_PIN_NUM,
                               .mode = GPIO_MODE_OUTPUT,
                               .pull_up_en = GPIO_PULLUP_DISABLE,
                               .pull_down_en = GPIO_PULLDOWN_DISABLE,

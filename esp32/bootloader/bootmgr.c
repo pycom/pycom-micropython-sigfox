@@ -99,7 +99,7 @@ bool wait_for_safe_boot (const boot_info_t *boot_info, uint32_t *ActiveImg) {
     bool ret = false;
 
     // configure the safeboot pin
-    gpio_config_t gpioconf = {.pin_bit_mask = 1 << MICROPY_HW_SAFE_PIN_NUM,
+    gpio_config_t gpioconf = {.pin_bit_mask = 1ull << MICROPY_HW_SAFE_PIN_NUM,
                               .mode = GPIO_MODE_INPUT,
                               .pull_up_en = GPIO_PULLUP_DISABLE,
                               .pull_down_en = GPIO_PULLDOWN_ENABLE,

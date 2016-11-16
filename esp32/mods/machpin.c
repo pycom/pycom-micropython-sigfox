@@ -85,13 +85,13 @@ STATIC const mp_irq_methods_t pin_irq_methods;
  ******************************************************************************/
 void pin_init0(void) {
     // initialize all pins as inputs with pull downs enabled
-    // mp_map_t *named_map = mp_obj_dict_get_map((mp_obj_t)&pin_module_pins_locals_dict);
-    // for (uint i = 0; i < named_map->used - 1; i++) {
-    //     pin_obj_t *self = (pin_obj_t *)named_map->table[i].value;
-    //     if (self != &PIN_MODULE_P1 && self->pin_number != 32) {
-    //         pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0, 0);
-    //     }
-    // }
+    mp_map_t *named_map = mp_obj_dict_get_map((mp_obj_t)&pin_module_pins_locals_dict);
+    for (uint i = 0; i < named_map->used - 1; i++) {
+        pin_obj_t *self = (pin_obj_t *)named_map->table[i].value;
+        if (self != &PIN_MODULE_P1) {  // temporal while we remove all the IDF logs
+            pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0, 0);
+        }
+    }
 }
 
 // C API used to convert a user-supplied pin name into an ordinal pin number
@@ -153,9 +153,9 @@ IRAM_ATTR void pin_set_value (const pin_obj_t* self) {
         }
     } else {
         if (self->value) {
-            GPIO_REG_WRITE(GPIO_OUT1_W1TS_REG, 1 << pin_number);
+            GPIO_REG_WRITE(GPIO_OUT1_W1TS_REG, 1 << (pin_number & 31));
         } else {
-            GPIO_REG_WRITE(GPIO_OUT1_W1TC_REG, 1 << pin_number);
+            GPIO_REG_WRITE(GPIO_OUT1_W1TC_REG, 1 << (pin_number & 31));
         }
     }
 }
@@ -179,7 +179,7 @@ static IRAM_ATTR void machpin_intr_process (void* arg) {
                 int_pend = true;
             }
         } else {
-            if (gpio_intr_status_h & BIT(gpio_num - 32)) {
+            if (gpio_intr_status_h & BIT(gpio_num & 31)) {
                 int_pend = true;
             }
         }
@@ -232,7 +232,7 @@ STATIC void pin_obj_configure (const pin_obj_t *self) {
     }
 
     // configure the pin
-    gpio_config_t gpioconf = {.pin_bit_mask = 1 << self->pin_number,
+    gpio_config_t gpioconf = {.pin_bit_mask = 1ull << self->pin_number,
                               .mode = self->mode,
                               .pull_up_en = (self->pull == MACHPIN_PULL_UP) ? GPIO_PULLUP_ENABLE : GPIO_PULLUP_DISABLE,
                               .pull_down_en = (self->pull == MACHPIN_PULL_DOWN) ? GPIO_PULLDOWN_ENABLE : GPIO_PULLDOWN_DISABLE,
