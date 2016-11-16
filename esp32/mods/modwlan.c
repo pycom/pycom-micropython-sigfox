@@ -38,6 +38,7 @@
 #include "serverstask.h"
 #include "mpexception.h"
 #include "antenna.h"
+#include "modussl.h"
 
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
@@ -82,7 +83,7 @@
 //
 //#define IPV4_ADDR_STR_LEN_MAX           (16)
 
-#define WLAN_MAX_RX_SIZE                (1024 + 256)
+#define WLAN_MAX_RX_SIZE                1024
 #define WLAN_MAX_TX_SIZE                1476
 
 #define MAKE_SOCKADDR(addr, ip, port)       struct sockaddr addr; \
@@ -1070,8 +1071,17 @@ static void wlan_socket_close(mod_network_socket_obj_t *s) {
     // this is to prevent the finalizer to close a socket that failed when being created
     if (s->sock_base.sd >= 0) {
         modusocket_socket_delete(s->sock_base.sd);
-        close(s->sock_base.sd);
-        s->sock_base.sd = -1;
+        if (s->sock_base.is_ssl) {
+            mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
+            if (ss->connected) {
+                mbedtls_ssl_close_notify(&ss->ssl);
+            }
+            mbedtls_ssl_session_reset(&ss->ssl);
+            mbedtls_net_free(&ss->context_fd);
+        } else {
+            close(s->sock_base.sd);
+            s->sock_base.sd = -1;
+        }
     }
 }
 
@@ -1116,6 +1126,35 @@ static int wlan_socket_accept(mod_network_socket_obj_t *s, mod_network_socket_ob
 static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
     MAKE_SOCKADDR(addr, ip, port)
     int ret = connect(s->sock_base.sd, &addr, sizeof(addr));
+
+    // printf("Connected.\n");
+
+    if (s->sock_base.is_ssl) {
+        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
+        mbedtls_ssl_set_bio(&ss->ssl, &ss->context_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+
+        // printf("Performing the SSL/TLS handshake...\n");
+
+        while ((ret = mbedtls_ssl_handshake(&ss->ssl)) != 0)
+        {
+            if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
+            {
+                // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
+                return -1;
+            }
+        }
+
+        // printf("Verifying peer X.509 certificate...\n");
+
+        int flags;
+        if ((flags = mbedtls_ssl_get_verify_result(&ss->ssl)) != 0) {
+            /* In real life, we probably want to close connection if ret != 0 */
+            // printf("Failed to verify peer certificate!\n");
+        } else {
+            // printf("Certificate verified.\n");
+        }
+    }
+
     if (ret != 0) {
         *_errno = errno;
         return -1;
@@ -1126,7 +1165,22 @@ static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t 
 static int wlan_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno) {
     mp_int_t bytes = 0;
     if (len > 0) {
-        bytes = send(s->sock_base.sd, (const void *)buf, len, 0);
+        if (s->sock_base.is_ssl) {
+            mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
+            while((bytes = mbedtls_ssl_write(&ss->ssl, (const unsigned char *)buf, len)) <= 0)
+            {
+                if(bytes != MBEDTLS_ERR_SSL_WANT_READ && bytes != MBEDTLS_ERR_SSL_WANT_WRITE)
+                {
+                    // printf("mbedtls_ssl_write returned -0x%x\n", -bytes);
+                    break;
+                } else {
+                    *_errno = EAGAIN;
+                    return -1;
+                }
+            }
+        } else {
+            bytes = send(s->sock_base.sd, (const void *)buf, len, 0);
+        }
     }
     if (bytes <= 0) {
         *_errno = errno;
@@ -1136,10 +1190,40 @@ static int wlan_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uin
 }
 
 static int wlan_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno) {
-    int ret = recv(s->sock_base.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0);
-    if (ret < 0) {
-        *_errno = errno;
-        return -1;
+    int ret;
+    if (s->sock_base.is_ssl) {
+        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
+        do {
+            ret = mbedtls_ssl_read(&ss->ssl, (unsigned char *)buf, len);
+            if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE || ret == MBEDTLS_ERR_SSL_TIMEOUT || ret == -0x4C) {
+                // printf("Nothing to read\n");
+                *_errno = EAGAIN;
+                return -1;
+            } else if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
+                // printf("Close notify received\n");
+                ret = 0;
+                break;
+            } else if (ret < 0) {
+                // printf("mbedtls_ssl_read returned -0x%x\n", -ret);
+                break;
+            } else if (ret == 0) {
+                // printf("Connection closed\n");
+                break;
+            } else {
+                // printf("Data read OK = %d\n", ret);
+                break;
+            }
+        } while (true);
+        if (ret < 0) {
+            *_errno = ret;
+            return -1;
+        }
+    } else {
+        ret = recv(s->sock_base.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0);
+        if (ret < 0) {
+            *_errno = errno;
+            return -1;
+        }
     }
     return ret;
 }

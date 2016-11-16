@@ -46,7 +46,7 @@
 #include "random.h"
 #include "bootmgr.h"
 #include "updater.h"
-#include "config.h"
+#include "pycom_config.h"
 #include "mpsleep.h"
 #include "machrtc.h"
 #include "mptask.h"

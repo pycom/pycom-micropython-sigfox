@@ -26,7 +26,7 @@
 #include "modnetwork.h"
 #include "pybioctl.h"
 #include "modusocket.h"
-#include "config.h"
+#include "pycom_config.h"
 
 #include "lora/mac/LoRaMac.h"
 

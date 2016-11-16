@@ -130,6 +130,7 @@ extern const struct _mp_obj_module_t mp_module_uselect;
 extern const struct _mp_obj_module_t utime_module;
 extern const struct _mp_obj_module_t pycom_module;
 extern const struct _mp_obj_module_t mp_module_uhashlib;
+extern const struct _mp_obj_module_t mp_module_ussl;
 
 #define MICROPY_PORT_BUILTIN_MODULES \
     { MP_OBJ_NEW_QSTR(MP_QSTR_umachine),        (mp_obj_t)&machine_module },      \
@@ -139,6 +140,8 @@ extern const struct _mp_obj_module_t mp_module_uhashlib;
     { MP_OBJ_NEW_QSTR(MP_QSTR_utime),           (mp_obj_t)&utime_module },        \
     { MP_OBJ_NEW_QSTR(MP_QSTR_pycom),           (mp_obj_t)&pycom_module },        \
     { MP_OBJ_NEW_QSTR(MP_QSTR_uhashlib),        (mp_obj_t)&mp_module_uhashlib },  \
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ubinascii),       (mp_obj_t)&mp_module_ubinascii }, \
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ussl),            (mp_obj_t)&mp_module_ussl },      \
 
 #define MICROPY_PORT_BUILTIN_MODULE_WEAK_LINKS \
     { MP_OBJ_NEW_QSTR(MP_QSTR_machine),         (mp_obj_t)&machine_module },      \
@@ -151,6 +154,7 @@ extern const struct _mp_obj_module_t mp_module_uhashlib;
     { MP_OBJ_NEW_QSTR(MP_QSTR_json),            (mp_obj_t)&mp_module_ujson },     \
     { MP_OBJ_NEW_QSTR(MP_QSTR_time),            (mp_obj_t)&utime_module },        \
     { MP_OBJ_NEW_QSTR(MP_QSTR_hashlib),         (mp_obj_t)&mp_module_uhashlib },  \
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ssl),             (mp_obj_t)&mp_module_ussl },      \
 
 // extra constants
 #define MICROPY_PORT_CONSTANTS \

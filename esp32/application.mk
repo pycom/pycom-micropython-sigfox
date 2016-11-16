@@ -19,6 +19,8 @@ APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
 APP_INC += -I$(BUILD)
 APP_INC += -I$(BUILD)/genhdr
+APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32
@@ -46,7 +48,7 @@ APP_MAIN_SRC_C = \
 	main.c \
 	mptask.c \
 	serverstask.c \
-	config.c \
+	pycom_config.c \
 	mpthreadport.c \
 
 APP_HAL_SRC_C = $(addprefix hal/,\
@@ -99,6 +101,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	moduhashlib.c \
 	analog.c \
 	pybadc.c \
+	modussl.c \
 	)
 
 

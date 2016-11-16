@@ -151,6 +151,7 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_
     s->sock_base.nic_type = NULL;
     s->sock_base.u_param.fileno = -1;
     s->sock_base.timeout = -1;      // sockets are blocking by default
+    s->sock_base.is_ssl = false;
 
     if (n_args > 0) {
         s->sock_base.u_param.domain = mp_obj_get_int(args[0]);
@@ -268,9 +269,6 @@ STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
     // connect the socket
     int _errno;
     if (self->sock_base.nic_type->n_connect(self, ip, port, &_errno) != 0) {
-//        if (!self->sock_base.cert_req && _errno == SL_ESECSNOVERIFY) { // TODO
-//            return mp_const_none;
-//        }
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
     }
     return mp_const_none;
@@ -303,10 +301,15 @@ STATIC mp_obj_t socket_recv(mp_obj_t self_in, mp_obj_t len_in) {
     int _errno;
     mp_int_t ret = self->sock_base.nic_type->n_recv(self, (byte*)vstr.buf, len, &_errno);
     if (ret < 0) {
-        if (_errno == EAGAIN && self->sock_base.timeout > 0) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
+        if (_errno == EAGAIN) {
+            if (self->sock_base.timeout > 0) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
+            } else {
+                ret = 0;        // non-blocking socket
+            }
+        } else {
+            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
         }
-        nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
     }
     if (ret == 0) {
         return mp_const_empty_bytes;
@@ -543,15 +546,6 @@ STATIC const mp_obj_type_t raw_socket_type = {
     .protocol = &raw_socket_stream_p,
     .locals_dict = (mp_obj_t)&raw_socket_locals_dict,
 };
-
-// TODO
-//STATIC const mp_obj_type_t lora_socket_type = {
-//    { &mp_type_type },
-//    .name = MP_QSTR_socket,
-//    .make_new = socket_make_new,
-//    .stream_p = &raw_socket_stream_p,
-//    .locals_dict = (mp_obj_t)&lora_socket_locals_dict,
-//};
 
 ///******************************************************************************/
 //// usocket module

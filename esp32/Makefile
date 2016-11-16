@@ -41,7 +41,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld \
        -Llib -lnvs_flash -ltcpip_adapter -L$(BUILD) -lhal -lcore -lcrypto \
        -lnet80211 -lphy -lpp -lrtc -llog -lsmartconfig -lwpa -lc -lm \
        -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat \
-       -lfreertos -ljson -llwip -lnewlib -lvfs
+       -lfreertos -ljson -llwip -lnewlib -lvfs -lopenssl -lmbedtls
 
 B_LIBS = -Lbootloader/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(BUILD)/bootloader \
          -L$(ESP_IDF_COMP_PATH)/esp32/lib -Lbootloader -llog -lcore -lspi_flash

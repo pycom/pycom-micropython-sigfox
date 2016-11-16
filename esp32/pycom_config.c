@@ -13,7 +13,7 @@
 
 #include "diskio.h"
 #include "sflash_diskio.h"
-#include "config.h"
+#include "pycom_config.h"
 
 
 #define CONFIG_DATA_FLASH_BLOCK         (SFLASH_START_BLOCK + SFLASH_BLOCK_COUNT)
