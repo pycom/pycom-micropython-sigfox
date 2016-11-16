@@ -80,7 +80,7 @@ See also
 
 How to upgrade your firmware
 Connecting without Pymakr
-
+Troubleshooting
 
 What’s under the hood
 
@@ -112,10 +112,6 @@ If you want to find out how these modules are mapped into the boards, please vis
 See also
 Hardware section
 
-
-
-
-In the following chapters you’ll learn how to upload code, get 
 
 
 
