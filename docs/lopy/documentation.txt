@@ -64,13 +64,16 @@ while True:
     pycom.rgbled(0x7f0000) # red
     time.sleep(3.5)
 
-After writing the code, you’ll have to press several enters to tell MicroPython that you’re closing the while loop.
+After writing the code, you’ll have to press enter several times to tell MicroPython that you’re closing the while loop.
 
 You now have a traffic light in your hands. To stop it, just do a right click on the console and press Reset.
 
-Here concludes the short intro to the use of your Pycom device. The next suggested step will be upgrading the firmware, as we are constantly making improvements and adding new features to it. Download the upgrader tool, and follow the instructions on screen. After you upgrade, you can use Pymakr to 
+Here concludes the short intro on how to start with your Pycom device. The next suggested step will be upgrading the firmware, as we are constantly making improvements and adding new features to it. Download the upgrader tool, and follow the instructions on screen.
 
-Just as a last note, Pymakr also supports wired connections. If you go back to Pycom Device in Preferences dialog. Instead of typing the IP address, you can click on the combo box arrow and get a list of the currently connected serial ports. Our boards don’t require any username or password for the serial connection, so you can leave those fields empty.
+After you’re done with the upgrade, you can use Pymakr to upload and run programs in your device. Go to this section to learn how.
+
+
+Just as a last note, Pymakr also supports wired connections. If you go back to Pycom Device in Preferences dialog, instead of typing the IP address, you can click on the combo box arrow and select the proper serial port from the list. Our boards don’t require any username or password for the serial connection, so you can leave those fields empty.
 
 
 See also
@@ -79,15 +82,36 @@ How to upgrade your firmware
 Connecting without Pymakr
 
 
-What’s in the module
+What’s under the hood
 
-All members in the current family of Pycom modules are powered by the ESP32. Under the hood they offer:
-4 Mb of flash (512 Kb available for the user)
-512 Kb of RAM (up to 128 Kb available for the user)
-Interrupts
-Hardware floating point unit
-4 Timers
-2 UARTs
+All members in the current family of Pycom modules are powered by the ESP32. By using it, the modules offer:
+* 512 Kb available for the user as internal storage, (external SD card support available)
+* Up to 128 Kb available for the user
+* Hardware floating point unit
+* GPIO
+* Interrupts
+* 4 Timers
+* 2 UARTs
+* 2 SPIs
+* I2C
+* RTC
+* WiFi
+* Bluetooth
+* DES, AES encryption
+* SHA, MD5 hashing
+* SSL/TLS support
+* LoRa (only available in the LoPy)
+
+.. #todo: add note in the next comment. Add links in the previous list. To the ones not yet in place, add a link to the “work in progress” section.
+
+Note: by clicking in the links contained in the previous list, you’ll get into a more detailed section about each module.
+
+.. #todo: add link to hardware section
+If you want to find out how these modules are mapped into the boards, please visit the hardware section.
+
+See also
+Hardware section
+
 
 
 
