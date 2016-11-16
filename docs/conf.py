@@ -15,6 +15,7 @@
 
 import sys
 import os
+from recommonmark.parser import CommonMarkParser
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -26,12 +27,9 @@ from collections import OrderedDict
 micropy_port = os.getenv('MICROPY_PORT') or 'pyboard'
 tags.add('port_' + micropy_port)
 ports = OrderedDict((
-    ('unix', 'unix'),
-    ('pyboard', 'the pyboard'),
     ('wipy', 'the WiPy'),
     ('2wipy', 'the WiPy 2.0'),
-    ('lopy', 'the LoPy'),
-    ('esp8266', 'the ESP8266'),
+    ('lopy', 'the LoPy')
 ))
 
 # The members of the html_context dict are available inside topindex.html
@@ -81,8 +79,12 @@ extensions = [
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['templates']
 
+source_parsers = {
+    '.md': CommonMarkParser,
+}
+
 # The suffix of source filenames.
-source_suffix = '.rst'
+source_suffix = ['.rst', '.md']
 
 # The encoding of source files.
 #source_encoding = 'utf-8-sig'
@@ -91,15 +93,15 @@ source_suffix = '.rst'
 #master_doc = 'index'
 
 # General information about the project.
-project = 'MicroPython'
-copyright = '2014-2016, Damien P. George and contributors'
+project = ''
+copyright = '2016, Pycom'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
 # The short X.Y version.
-version = '1.8'
+version = None
 # The full version, including alpha/beta/rc tags.
 release = '1.8.4'
 
@@ -149,9 +151,9 @@ on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 
 if not on_rtd:  # only import and set the theme if we're building docs locally
     try:
-        import sphinx_rtd_theme
-        html_theme = 'sphinx_rtd_theme'
-        html_theme_path = [sphinx_rtd_theme.get_html_theme_path(), '.']
+        import sphinx_rtd_pycom_theme
+        html_theme = 'sphinx_rtd_pycom_theme'
+        html_theme_path = [sphinx_rtd_pycom_theme.get_html_theme_path(), '.']
     except:
         html_theme = 'default'
         html_theme_path = ['.']
@@ -171,11 +173,11 @@ else:
 #html_title = None
 
 # A shorter title for the navigation bar.  Default is the same as html_title.
-#html_short_title = None
+html_short_title = "Pycom documentation"
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-#html_logo = '../../logo/trans-logo.png'
+html_logo = '../logo/pycom-web-logo.png'
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -220,7 +222,7 @@ html_additional_pages = {"index": "topindex.html"}
 #html_show_sourcelink = True
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
-#html_show_sphinx = True
+html_show_sphinx = False
 
 # If true, "(C) Copyright ..." is shown in the HTML footer. Default is True.
 #html_show_copyright = True
@@ -317,7 +319,7 @@ texinfo_documents = [
 
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'http://docs.python.org/': None}
+intersphinx_mapping = {'https://docs.python.org/': None}
 
 # Append the other ports' specific folders/files to the exclude pattern
 exclude_patterns.extend([port + '*' for port in ports if port != micropy_port])

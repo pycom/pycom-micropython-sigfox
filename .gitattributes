@@ -13,6 +13,8 @@
 *.a   binary
 *.bin binary
 *.pdf binary
+*.ttf binary
+*.svg binary
 
 # These should also not be modified by git.
 tests/basics/string_cr_conversion.py -text
