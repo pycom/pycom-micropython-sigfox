@@ -1,0 +1,113 @@
+Pycom modules in 5 minutes
+
+Placement in the expansion board
+
+If besides being the proud owner of a Pycom module you got your hands on an expansion board, this simple steps are for you:
+
+1. Look for the reset button on your module (located at a corner of the board).
+2. Look for the USB connector on your expansion board.
+3. Align them to the same side.
+4. Align the board pins with the expansion board socket.
+5. Gently push it.
+
+Is that simple! If you want to confirm your work, here are some pictures:
+
+Once you’re sure everything is in place, the fun begins. Is time to turn it on. Just plug it into any powered USB cable (your computer or a battery charger).
+
+In a few seconds, the LED should start blinking in blue every 4 seconds. This means everything is fine. If this doesn’t happen, please disconnect the power supply and re-check.
+
+.. #todo: add pictures in here.
+
+First interaction with your module
+
+To make it as easy as posible, we developed Pymakr, a tool that will allow you to connect to your Pycom devices. We’re going to use it in this section to give you a quick taste of how you can work with your device. You can download it from here.
+
+
+After installing it, you need to take a few seconds to configure it for the first time. Please follow these steps:
+1. Connect your computer to the WiFi network that is named after your board (e.g. lopy, wipy). The password is www.pycom.io
+2. Open Pymakr.
+3. In the menu, go to Settings > Preferences (Pymakr > Preferences on Mac).
+4. In the left list look for Pycom Device.
+5. For device, type down 192.168.4.1 . The default username and password are micro and python, respectively.
+6. Click OK
+
+That’s it for the first time configuration. In the lower portion of the screen, you should see the console, with connection process taking place. At the end of it, you’ll get a colored “>>>” prompt, telling you that you’re connected.
+
+Let’s test some code now
+
+You can use your board as a calculator. Simply type down: 6 * 7 and press enter. You should get the answer to the universe: 42.
+
+But math by itself can get boring pretty easily. Let’s get some color to our life. Type down line by line:
+
+import pycom # we need this module to control the LED
+pycom.heartbeat(False) # disable the blue blinking
+pycom.rgbled(0x00ff00) # make the LED light up in green color
+
+You can also copy this code, right click the console, and select paste. If you want to see another color:
+pycom.rgbled(0xff0000) # now make the LED light up in red color
+
+And white:
+pycom.rgbled(0xffffff) # and now white
+
+Is that simple. Now let’s write a more complex program. First, reset the board by doing right click on the console, and pressing Reset.
+
+Try to determine what the next code does:
+
+import pycom
+import time
+pycom.heartbeat(False)
+while True:
+    pycom.rgbled(0x007f00) # green
+    time.sleep(5)
+    pycom.rgbled(0x7f7f00) # yellow
+    time.sleep(1.5)
+    pycom.rgbled(0x7f0000) # red
+    time.sleep(3.5)
+
+After writing the code, you’ll have to press several enters to tell MicroPython that you’re closing the while loop.
+
+You now have a traffic light in your hands. To stop it, just do a right click on the console and press Reset.
+
+Here concludes the short intro to the use of your Pycom device. The next suggested step will be upgrading the firmware, as we are constantly making improvements and adding new features to it. Download the upgrader tool, and follow the instructions on screen. After you upgrade, you can use Pymakr to 
+
+Just as a last note, Pymakr also supports wired connections. If you go back to Pycom Device in Preferences dialog. Instead of typing the IP address, you can click on the combo box arrow and get a list of the currently connected serial ports. Our boards don’t require any username or password for the serial connection, so you can leave those fields empty.
+
+
+See also
+
+How to upgrade your firmware
+Connecting without Pymakr
+
+
+What’s in the module
+
+All members in the current family of Pycom modules are powered by the ESP32. Under the hood they offer:
+4 Mb of flash (512 Kb available for the user)
+512 Kb of RAM (up to 128 Kb available for the user)
+Interrupts
+Hardware floating point unit
+4 Timers
+2 UARTs
+
+
+
+In the following chapters you’ll learn how to upload code, get 
+
+
+
+Out of the box, Pycom modules can be reached in two different ways:
+Wired connection: using a serial port (or USB with your expansion board).
+Wireless connection: using Telnet over WiFi.
+
+.. #todo: put links in the previous list to the next section
+
+Please select your favorite and go to the corresponding section.
+
+Wired connection
+
+To continue with this step, you’ll need a Terminal emulation tool. For Windows users, we recommend PuTTY
+
+Depending on the Operating System of your computer 
+.. #todo: add specific notes to issues with serial
+
+
