@@ -119,16 +119,16 @@ library.
     .. toctree::
        :maxdepth: 1
 
-       array.rst
        builtins.rst
-       gc.rst
-       select.rst
        sys.rst
+       uos.rst
+       array.rst
+       gc.rst
        ubinascii.rst
        ujson.rst
-       uos.rst
        ure.rst
        usocket.rst
+       select.rst
        utime.rst
        uhashlib.rst
 

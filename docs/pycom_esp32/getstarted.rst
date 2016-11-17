@@ -39,7 +39,7 @@ expansion board:
     It is normal as long as you keep the orientation shown.
 
 .. tip::
-    If you prefer video tutorials, we have created a short
+    If you prefer video tutorials, here is a
     `video <https://www.youtube.com/embed/wUxsgls9Ymw>`_ showing these steps. 
     It applies to all our modules.
 
@@ -73,15 +73,12 @@ Initial configuration
 After installing Pymakr, you need to take a few seconds to configure it for the
 first time. Please follow these steps:
 
-1. Connect your computer to the WiFi network named after your board (e.g.
-``lopy-wlan-xxxx``, ``wipy-wlan-xxxx``). The password is ``www.pycom.io``
-2. Open Pymakr.
-3. In the menu, go to ``Settings > Preferences`` (``Pymakr > Preferences`` on
-macOs).
-4. In the left list look for Pycom Device.
-5. For device, type down ``192.168.4.1``. The default username and password are
-``micro`` and ``python``, respectively.
-6. Click OK
+    1. Connect your computer to the WiFi network named after your board (e.g. ``lopy-wlan-xxxx``, ``wipy-wlan-xxxx``). The password is ``www.pycom.io``
+    2. Open Pymakr.
+    3. In the menu, go to ``Settings > Preferences`` (``Pymakr > Preferences`` on macOS).
+    4. In the left list look for Pycom Device.
+    5. For device, type down ``192.168.4.1``. The default username and password are ``micro`` and ``python``, respectively.
+    6. Click OK
 
 .. image:: images/pymakr-wifi.png
     :alt: Pymakr WiFi settings
@@ -97,8 +94,8 @@ end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connec
     :scale: 50 %
 
 .. tip::
-    If you want, there is a video that explains these steps
-    `install Pymark <https://www.youtube.com/embed/bL5nn2lgaZE>`_ on macOS.
+    If you want, `there is also a video <https://www.youtube.com/embed/bL5nn2lgaZE>`_ that explains these steps
+    on macOS (it is similar for other operating systems).
 
 Our first coding steps
 ----------------------
@@ -129,12 +126,13 @@ And white:
 
     pycom.rgbled(0xffffff) # and now white
 
-It's that simple. Now let’s write a more complex program. First, reset the
+So far so good. Now let’s write a more complex program. First, reset the
 board by right clicking on the console, and pressing Reset.
 
 Try to determine what the next code does:
 
 .. code:: python
+    :name: trafficlight-py
 
     import pycom
     import time
@@ -151,6 +149,13 @@ Try to determine what the next code does:
 
 After writing the code, you’ll have to press enter up to three times to tell
 MicroPython that you’re closing the while loop (standard MicroPython behavior).
+
+Here is the expected result:
+
+.. image:: images/traffic.gif
+    :alt: Traffic light
+    :align: center
+    :scale: 60 %
 
 You now have a traffic light in your hands! To stop it, just do a right click
 on the console and press Reset.
@@ -176,8 +181,8 @@ rograms in your device. Go to this section to learn how.
 
 See also
 ========
-- How to upgrade your firmware
-- Connecting without Pymakr
-- Troubleshooting
+- :ref:`How to upgrade your firmware<firmware>`
+- :ref:`Connecting without Pymakr<connecting>`
+- :ref:`Troubleshooting`
 
-.. #todo: add links and check if we can remove the see also from the navigation menu
+.. #todo: check if we can remove the see also from the navigation menu

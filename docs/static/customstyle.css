@@ -8,3 +8,10 @@
 .admonition-difference-to-cpython .admonition-title {
     margin: 4px;
 }
+
+@media screen and (min-width: 1300px) {
+    .wy-nav-content {
+        padding: 5em 15em;
+        max-width: 1600px;
+    }
+}
