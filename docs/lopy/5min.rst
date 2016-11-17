@@ -2,18 +2,17 @@
 Quickstart guide
 ***************************
 
+Let us start with a quick description of what to do after you unpack your brand new toy. Our aim is not to bog you with complex details about it, but instead get you as quick as possible to the point you can start doing useful things with the device.
 
+It should take you around 10 minutes to complete this section. Please follow it carefully. In case of any problems, there is a troubleshoot section that addresses the most typical problems. In case of any doubts you can always make questions in our community forum.
 
-.. #todo: add extra info here
+.. #todo: add link to Troubleshooting and forum.
 
 
 Placement on the expansion board
 ================================
 
-
-If besides being the proud owner of a Pycom module you got your hands on an expansion board, these simple steps are for you:
-
-The LED on the WiPy should point in the same direction as the USB connector.
+The only way to learn how to use something new is by doing. First, we need to put together the basic pieces:
 
 1. Look for the reset button on your module (located at a corner of the board).
 2. Look for the USB connector on your expansion board.
@@ -28,7 +27,7 @@ Once you’re sure everything is in place, the fun begins. It is time to turn it
 In a few seconds, the LED should start blinking every 4 seconds. This means everything is fine. If this doesn’t happen, please disconnect the power supply and re-check.
 
 .. #todo: add short video/animation here.
-
+.. #todo: add support for people without expansion boards
 
 First interaction with your module
 ==================================
@@ -56,8 +55,8 @@ That’s it for the first time configuration. In the lower portion of the screen
 .. #todo: add screenshot here
 
 
-Let’s write some code
-------------------------
+Let’s get our hands in some coding
+-----------------------------------
 
 
 You can use your board as a calculator. Simply type down: ``6 * 7`` and press enter. You should get the answer to the universe: ``42``.
