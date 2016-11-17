@@ -91,6 +91,8 @@ See :mod:`machine.I2C`::
 LoRa (LoRaMAC)
 --------------
 
+::
+
     from network import LoRa
     import socket
 
