@@ -127,7 +127,7 @@ And white:
     pycom.rgbled(0xffffff) # and now white
 
 So far so good. Now let’s write a more complex program. First, reset the
-board by right clicking on the console, and pressing Reset.
+board by right clicking on the console, and pressing ``Reset``.
 
 Try to determine what the next code does:
 
@@ -158,7 +158,7 @@ Here is the expected result:
     :scale: 60 %
 
 You now have a traffic light in your hands! To stop it, just do a right click
-on the console and press Reset.
+on the console and press ``Reset``.
 
 This concludes the short intro on how to start playing with your Pycom device.
 The next suggested step will be upgrading the firmware, as we are constantly
