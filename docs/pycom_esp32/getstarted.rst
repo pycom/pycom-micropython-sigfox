@@ -5,9 +5,9 @@ Quickstart guide
 Let us start with a quick description of what to do after you unpack your brand new toy. Our aim is not to bog you with complex details about it, but instead get you as quick as possible to the point you can start doing useful things with the device.
 
 .. tip::
-    It should take you around 10 minutes to complete this section. Please follow it carefully. In case of any problems, there is a troubleshoot section that addresses the most typical problems. In case of any doubts you can always make questions in our community forum.
+    It should take you around 10 minutes to complete this section. Please follow it carefully. In case of any problems, there is a troubleshoot section that addresses the most typical problems. In case of any doubts you can always make questions in our `community forum <http://forum.pycom.io>`_.
 
-.. #todo: add link to Troubleshooting and forum.
+.. #todo: add link to Troubleshooting
 
 Placement on the expansion board
 ================================
@@ -18,7 +18,12 @@ The only way to learn how to use something new is by doing. First, we need to pu
 2. Look for the USB connector on your expansion board.
 3. Insert the module on the expansion board with the reset button pointing in the same direction as the USB connector.
 
-It's that simple! If you want to confirm your work, here are some pictures:
+It's that simple! If you want to confirm your work, here's a picture showing
+both the LoPy (top part) and the WiPy 2.0 (bottom part) properly placed on the
+expansion board:
+
+.. image:: images/placement.png
+    :alt: Correct placement
 
 .. #todo: add pictures in here.
 
