@@ -27,10 +27,10 @@ from collections import OrderedDict
 micropy_port = os.getenv('MICROPY_PORT') or 'pyboard'
 tags.add('port_' + micropy_port)
 ports = OrderedDict((
-    ('wipy', 'the WiPy'),
-    ('2wipy', 'the WiPy 2.0'),
-    ('lopy', 'the LoPy'),
-    ('pycom_esp32', 'Pycom modules using ESP32')
+    ('wipy', 'WiPy'),
+    ('2wipy', 'WiPy 2.0'),
+    ('lopy', 'LoPy'),
+    ('pycom_esp32', 'Pycom ESP32')
 ))
 
 # The members of the html_context dict are available inside topindex.html
@@ -38,11 +38,11 @@ micropy_version = os.getenv('MICROPY_VERSION') or 'latest'
 micropy_all_versions = (os.getenv('MICROPY_ALL_VERSIONS') or 'latest').split(',')
 url_pattern = '%s/en/%%s/%%s' % (os.getenv('MICROPY_URL_PREFIX') or '/',)
 html_context = {
-    'port':micropy_port,
+    'port':ports[micropy_port],
     'port_name':ports[micropy_port],
     'port_version':micropy_version,
     'all_ports':[
-        (port_id, url_pattern % (micropy_version, port_id))
+        (port_name, url_pattern % (micropy_version, port_id))
             for port_id, port_name in ports.items()
     ],
     'all_versions':[
@@ -220,7 +220,7 @@ html_additional_pages = {"index": "topindex.html"}
 #html_split_index = False
 
 # If true, links to the reST sources are added to the pages.
-#html_show_sourcelink = True
+html_show_sourcelink = False
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
 html_show_sphinx = False
@@ -237,7 +237,7 @@ html_show_sphinx = False
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'MicroPythondoc'
+htmlhelp_basename = 'Pycomdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
