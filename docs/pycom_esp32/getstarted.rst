@@ -2,10 +2,10 @@
 Quickstart guide
 ***************************
 
-Let us start with a quick description of what to do after you unpack your brand new toy. Our aim is not to bog you with complex details about it, but instead get you as quick as possible to the point you can start doing useful things with the device.
+Let's start with a quick description of what to do after you unpack your brand new toy. Our aim is not to bug you with complex details about it, but instead get you as quick as possible to the point you can start doing useful things with your device.
 
 .. tip::
-    It should take you around 10 minutes to complete this section. Please follow it carefully. In case of any problems, there is a troubleshoot section that addresses the most typical problems. In case of any doubts you can always make questions in our `community forum <http://forum.pycom.io>`_.
+    It should take you around 10 minutes to complete this section. Please follow it carefully. If you have any problems, there is a troubleshoot section that addresses the most common issues. In case of any doubts you can always ask questions in our `community forum <http://forum.pycom.io>`_.
 
 .. #todo: add link to Troubleshooting
 
@@ -18,7 +18,9 @@ The only way to learn how to use something new is by doing. First, we need to pu
 2. Look for the USB connector on your expansion board.
 3. Insert the module on the expansion board with the reset button pointing in the same direction as the USB connector.
 
-It's that simple! If you want to confirm your work, here's a picture to show you the final result:
+It's that simple! If you want to confirm your work, here's a picture showing
+both the LoPy (top part) and the WiPy 2.0 (bottom part) properly placed on the
+expansion board:
 
 .. image:: images/placement.png
     :alt: Correct placement
@@ -26,12 +28,22 @@ It's that simple! If you want to confirm your work, here's a picture to show you
 
 .. note::
     Some modules like the LoPy will be big enough to cover the USB connector. It is normal as long as you keep the orientation shown.
+And if you are still confused or prefer video tutorials, here's a video of
+how to place a WiPy 2.0 properly on the expansion board. Placing your LoPy is
+done in exactly the same way.
 
-Once you’re sure everything is in place, the fun begins. It is time to turn it on. Just plug it into any powered USB cable (your computer or a battery charger).
+.. raw:: html
 
-In a few seconds, the LED should start blinking every 4 seconds. This means everything is fine. If this doesn’t happen, please disconnect the power supply and re-check.
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/wUxsgls9Ymw" frameborder="0" allowfullscreen></iframe><br />
 
-.. #todo: add short video/animation here.
+Once you’re sure everything is in place, the fun begins. It is time to turn your device on. Just plug it into any powered USB cable (your computer or a battery charger).
+
+In a few seconds, the LED should start blinking every 4 seconds. This means everything is fine! If you cannot see the blinking, please disconnect the power supply and re-check.
+Here's an example of the LED blinking:
+
+.. image:: images/LED.gif
+    :alt: LED blink
+
 .. #todo: add support for people without expansion boards
 
 First interaction with your module
@@ -41,23 +53,32 @@ First interaction with your module
 To make it as easy as possible, we developed Pymakr, a tool that will allow you to connect to your Pycom devices. We’re going to use it in this section to give you a quick taste of how you can work with your device. You can download it from `here <https://www.pycom.io/solutions/pymakr/>`_
 .
 
+We have created a video that explains how to install Pymark on macOS:
+
+.. raw:: html
+
+    <iframe width="560" height="315" src="https://www.youtube.com/embed/bL5nn2lgaZE" frameborder="0" allowfullscreen></iframe><br />
+
 Initial configuration
 ---------------------
 
-After installing it, you need to take a few seconds to configure it for the first time. Please follow these steps:
+After installing Pymakr, you need to take a few seconds to configure it for the first time. Please follow these steps:
 
-1. Connect your computer to the WiFi network named after your board (e.g. ``lopy-wlan-xxxx``, ``wipy-wlan-xxxx``). The password will be ``www.pycom.io``
+1. Connect your computer to the WiFi network named after your board (e.g. ``lopy-wlan-xxxx``, ``wipy-wlan-xxxx``). The password is ``www.pycom.io``
 2. Open Pymakr.
 3. In the menu, go to ``Settings > Preferences`` (``Pymakr > Preferences`` on Mac).
 4. In the left list look for Pycom Device.
 5. For device, type down ``192.168.4.1``. The default username and password are ``micro`` and ``python``, respectively.
 6. Click OK
 
-.. #todo: add pymakr video here
+.. image:: images/pymakr-wifi.png
+    :alt: Pymakr WiFi settings
 
-That’s it for the first time configuration. In the lower portion of the screen, you should see the console, with the connection process taking place. At the end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connected.
+That’s it for the first time configuration. In the lower portion of the screen, you should see the console, with the connection process taking place. At the end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connected:
 
-.. #todo: add screenshot here
+.. image:: images/pymakr-repl.png
+    :alt: Pymakr REPL
+    
 
 
 Our first coding steps
