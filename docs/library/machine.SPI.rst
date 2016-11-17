@@ -6,7 +6,7 @@ class SPI -- a master-driven serial protocol
 SPI is a serial protocol that is driven by a master.  At the physical level
 there are 3 lines: SCK, MOSI, MISO.
 
-.. only:: port_wipy or port_2wipy or port_lopy
+.. only:: port_wipy or port_2wipy or port_lopy or port_pycom_esp32
 
     See usage model of I2C; SPI is very similar.  Main difference is
     parameters to init the SPI bus::
@@ -21,7 +21,7 @@ there are 3 lines: SCK, MOSI, MISO.
 Constructors
 ------------
 
-.. only:: port_wipy or port_2wipy or port_lopy
+.. only:: port_wipy or port_2wipy or port_lopy or port_pycom_esp32
 
     .. class:: SPI(id, ...)
 

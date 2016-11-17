@@ -114,25 +114,7 @@ library.
        ussl.rst
        utime.rst
 
-.. only:: port_lopy
-
-    .. toctree::
-       :maxdepth: 1
-
-       array.rst
-       builtins.rst
-       gc.rst
-       select.rst
-       sys.rst
-       ubinascii.rst
-       ujson.rst
-       uos.rst
-       ure.rst
-       usocket.rst
-       utime.rst
-       uhashlib.rst
-
-.. only:: port_2wipy
+.. only:: port_lopy or port_2wipy or port_pycom_esp32
 
     .. toctree::
        :maxdepth: 1
@@ -214,32 +196,17 @@ the following libraries.
 
       wipy.rst
 
+.. only:: port_lopy or port_2wipy or port_pycom_esp32
 
-.. only:: port_2wipy
+   Libraries specific to the Pycom modules
+   ---------------------------------------
 
-   Libraries specific to the WiPy 2.0
-   ----------------------------------
-
-   The following libraries are specific to the WiPy.
-
-   .. toctree::
-      :maxdepth: 2
-
-      pycom.rst
-
-
-.. only:: port_lopy
-
-   Libraries specific to the LoPy
-   ------------------------------
-
-   The following libraries are specific to the LoPy.
+   The following libraries are specific to the Pycom modules.
 
    .. toctree::
       :maxdepth: 2
 
       pycom.rst
-
 
 .. only:: port_esp8266
 

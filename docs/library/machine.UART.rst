@@ -26,7 +26,7 @@ UART objects can be created and initialised using::
 
     Bits can be 5, 6, 7, 8.  Parity can be ``None``, ``UART.EVEN`` or ``UART.ODD``.  Stop can be 1 or 2.
 
-.. only:: port_2wipy or port_lopy
+.. only:: port_2wipy or port_lopy or port_pycom_esp32
 
     Bits can be 5, 6, 7, 8.  Parity can be ``None``, ``UART.EVEN`` or ``UART.ODD``.  Stop can be 1, 1.5 or 2.
 
@@ -50,7 +50,7 @@ using the standard stream methods::
 
         uart.any()               # returns True if any characters waiting
 
-.. only:: port_wipy or port_2wipy or port_lopy
+.. only:: port_wipy or port_2wipy or port_lopy or port_pycom_esp32
 
     To check if there is anything to be read, use::
 
@@ -59,7 +59,7 @@ using the standard stream methods::
 Constructors
 ------------
 
-.. only:: port_wipy or port_2wipy or port_lopy
+.. only:: port_wipy or port_2wipy or port_lopy or port_pycom_esp32
 
     .. class:: UART(bus, ...)
 

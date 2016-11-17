@@ -29,7 +29,8 @@ tags.add('port_' + micropy_port)
 ports = OrderedDict((
     ('wipy', 'the WiPy'),
     ('2wipy', 'the WiPy 2.0'),
-    ('lopy', 'the LoPy')
+    ('lopy', 'the LoPy'),
+    ('pycom_esp32', 'Pycom modules using ESP32')
 ))
 
 # The members of the html_context dict are available inside topindex.html

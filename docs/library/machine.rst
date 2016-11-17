@@ -38,7 +38,7 @@ Interrupt related functions
      this function is to pass it the value returned by ``disable_irq`` to
      exit a critical section.
 
-.. only:: port_2wipy or port_lopy
+.. only:: port_2wipy or port_lopy or port_pycom_esp32
 
   .. function:: disable_irq()
 
@@ -62,7 +62,7 @@ Power related functions
 
         Returns CPU frequency in hertz.
 
-    .. only:: port_wipy or port_lopy or port_2wipy
+    .. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
 
         Returns a tuple of clock frequencies: ``(sysclk,)``
         These correspond to:
@@ -100,7 +100,7 @@ Power related functions
 Miscellaneous functions
 -----------------------
 
-.. only:: port_wipy or port_lopy or port_2wipy
+.. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
 
     .. function:: main(filename)
 
@@ -162,7 +162,7 @@ Miscellaneous functions
 
       wake reasons
 
-.. only:: port_lopy or port_2wipy
+.. only:: port_lopy or port_2wipy or port_pycom_esp32
 
   Constants
   ---------

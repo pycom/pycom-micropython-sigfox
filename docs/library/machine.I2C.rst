@@ -9,7 +9,7 @@ level it consists of 2 wires: SCL and SDA, the clock and data lines respectively
 I2C objects are created attached to a specific bus.  They can be initialised
 when created, or initialised later on.
 
-.. only:: port_wipy or port_lopy or port_2wipy
+.. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
 
     Example::
 
@@ -22,7 +22,7 @@ when created, or initialised later on.
 
 Printing the i2c object gives you information about its configuration.
 
-.. only:: port_wipy or port_lopy or port_2wipy
+.. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
 
     A master must specify the recipient's address::
 
@@ -42,7 +42,7 @@ Printing the i2c object gives you information about its configuration.
 Constructors
 ------------
 
-.. only:: port_wipy or port_lopy or port_2wipy
+.. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
 
     .. class:: I2C(bus, ...)
 
@@ -59,7 +59,7 @@ Constructors
 General Methods
 ---------------
 
-.. only:: port_wipy or port_lopy or port_2wipy
+.. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
 
     .. method:: I2C.init(mode, \*, baudrate=100000, pins=(SDA, SCL))
 
