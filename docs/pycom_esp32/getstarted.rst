@@ -18,14 +18,14 @@ The only way to learn how to use something new is by doing. First, we need to pu
 2. Look for the USB connector on your expansion board.
 3. Insert the module on the expansion board with the reset button pointing in the same direction as the USB connector.
 
-It's that simple! If you want to confirm your work, here's a picture showing
-both the LoPy (top part) and the WiPy 2.0 (bottom part) properly placed on the
-expansion board:
+It's that simple! If you want to confirm your work, here's a picture to show you the final result:
 
 .. image:: images/placement.png
     :alt: Correct placement
+    :align: center
 
-.. #todo: add pictures in here.
+.. note::
+    In some cases your module will cover the USB connector. It is normal as long as you keep the orientation shown.
 
 Once you’re sure everything is in place, the fun begins. It is time to turn it on. Just plug it into any powered USB cable (your computer or a battery charger).
 
