@@ -25,7 +25,7 @@ It's that simple! If you want to confirm your work, here's a picture to show you
     :align: center
 
 .. note::
-    In some cases your module will cover the USB connector. It is normal as long as you keep the orientation shown.
+    Some modules like the LoPy will be big enough to cover the USB connector. It is normal as long as you keep the orientation shown.
 
 Once you’re sure everything is in place, the fun begins. It is time to turn it on. Just plug it into any powered USB cable (your computer or a battery charger).
 
