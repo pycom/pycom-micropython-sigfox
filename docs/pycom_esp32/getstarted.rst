@@ -66,7 +66,7 @@ Let’s get our hands in some coding
 
 You can use your board as a calculator. Simply type down: ``6 * 7`` and press enter. You should get the answer to the universe: ``42``.
 
-But math by itself can get boring pretty easily. Let’s get some color to our life. Type down line by line:
+But math by itself can get boring pretty easily. Let’s get some color into our life. Type down line by line:
 
 .. code:: python
 
