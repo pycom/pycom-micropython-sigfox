@@ -81,8 +81,9 @@ first time. Please follow these steps:
     6. Click OK
 
 .. image:: images/pymakr-wifi.png
-    :alt: Pymakr WiFi settings
     :align: center
+    :scale: 50 %
+    :alt: Pymakr WiFi settings
 
 That’s it for the first time configuration. In the lower portion of the screen,
 you should see the console, with the connection process taking place. At the
