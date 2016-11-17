@@ -22,7 +22,7 @@ Quick reference for the Pycom modules
 General board control
 ---------------------
 
-::
+See the :mod:`machine` module::
 
     import machine
 
@@ -33,7 +33,7 @@ General board control
 Pins and GPIO
 -------------
 
-::
+See :mod:`machine.Pin`::
 
     from machine import Pin
 
@@ -51,7 +51,7 @@ Pins and GPIO
 UART (serial bus)
 -----------------
 
-::
+See :mod:`machine.UART`::
 
     from machine import UART
     # this uses the UART_1 default pins for TXD and RXD (``P3`` and ``P4``)
@@ -77,7 +77,7 @@ SPI bus
 I2C bus
 -------
 
-::
+See :mod:`machine.I2C`::
 
     from machine import I2C
     # configure the I2C bus
@@ -90,8 +90,6 @@ I2C bus
 
 LoRa (LoRaMAC)
 --------------
-
-::
 
     from network import LoRa
     import socket
@@ -191,7 +189,7 @@ LoRa (LoRaWAN with ABP)
 WLAN (WiFi)
 -----------
 
-::
+See :mod:`machine.WLAN`::
 
     import machine
     from network import WLAN
@@ -209,7 +207,7 @@ WLAN (WiFi)
 Telnet and FTP server
 ---------------------
 
-::
+See :mod:`network.Server`::
 
     from network import Server
 
@@ -222,7 +220,7 @@ Telnet and FTP server
 Heart beat RGB LED
 ------------------
 
-::
+See :mod:`pycom`::
 
     import pycom
 
@@ -251,7 +249,7 @@ Threading
 PWM
 ---
 
-::
+See :mod:`machine.PWM`::
 
     from machine import PWM
     pwm = PWM(0, frequency=5000)  # use PWM timer 0, with a frequency of 50KHz
@@ -263,7 +261,7 @@ PWM
 ADC
 ---
 
-::
+See :mod:`ADC`::
 
     from machine import ADC
     adc = ADC(0)
