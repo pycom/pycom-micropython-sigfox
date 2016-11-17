@@ -109,6 +109,10 @@ Upgrading with the LoPy updater stand-alone tool
 3. Connect to the ``lopy-wlan`` WLAN network (password: ``www.pycom.io``)
 4. Run the stand-alone update tool and follow the on-screen instructions.
 
+.. note::
+
+   The TX jumper on the expansion board needs to be connected for the updater to work.
+
 
 .. _pycom_boot_modes:
 
