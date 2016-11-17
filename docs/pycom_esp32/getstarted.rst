@@ -37,10 +37,11 @@ expansion board:
 .. note::
     Some modules like the LoPy will be big enough to cover the USB connector.
     It is normal as long as you keep the orientation shown.
-And if you are still confused or prefer video tutorials, we have created a short
-`video <https://www.youtube.com/embed/wUxsgls9Ymw>`_ showing you how to place a
-WiPy 2.0 properly on the expansion board. Placing your LoPy is done in exactly
-the same way.
+
+.. tip::
+    If you prefer video tutorials, we have created a short
+    `video <https://www.youtube.com/embed/wUxsgls9Ymw>`_ showing these steps. 
+    It applies to all our modules.
 
 Once you’re sure everything is in place, the fun begins. It is time to turn
 your device on. Just plug it into any powered USB cable (your computer or a
@@ -53,6 +54,7 @@ power supply and re-check.
 .. image:: images/LED.gif
     :alt: LED blink
     :align: center
+    :scale: 60 %
 
 .. #todo: add support for people without expansion boards
 
@@ -64,9 +66,6 @@ to connect to your Pycom devices. We’re going to use it in this section to giv
 you a quick taste of how you can work with your device. You can download it
 from `here <https://www.pycom.io/solutions/pymakr/>`_
 .
-
-If you need extra help, we have created a video that explains how to
-`install Pymark <https://www.youtube.com/embed/bL5nn2lgaZE>`_ on macOS.
 
 Initial configuration
 ---------------------
@@ -95,7 +94,11 @@ end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connec
 .. image:: images/pymakr-repl.png
     :alt: Pymakr REPL
     :align: center
+    :scale: 50 %
 
+.. tip::
+    If you want, there is a video that explains these steps
+    `install Pymark <https://www.youtube.com/embed/bL5nn2lgaZE>`_ on macOS.
 
 Our first coding steps
 ----------------------
