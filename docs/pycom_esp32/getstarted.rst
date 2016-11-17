@@ -115,8 +115,7 @@ After you’re done with the upgrade, you can use Pymakr to upload and run progr
 
 .. note::
 
-    Just as a last note, Pymakr also supports wired connections. If you go back to Pycom Device in Preferences dialog, instead of typing the IP address, you can click on the combo box arrow and select the proper serial port from the list. Our boards don’t require any username or password for the serial connection, so you can leave those fields empty.
-
+    Pymakr also supports wired connections. If you go back to Pycom Device in Preferences dialog, instead of typing the IP address, you can click on the combo box arrow and select the proper serial port from the list. Our boards don’t require any username or password for the serial connection, so you can leave those fields empty.
 
 See also
 ========
