@@ -4,10 +4,10 @@ Quickstart guide
 
 Let us start with a quick description of what to do after you unpack your brand new toy. Our aim is not to bog you with complex details about it, but instead get you as quick as possible to the point you can start doing useful things with the device.
 
-It should take you around 10 minutes to complete this section. Please follow it carefully. In case of any problems, there is a troubleshoot section that addresses the most typical problems. In case of any doubts you can always make questions in our community forum.
+.. tip::
+    It should take you around 10 minutes to complete this section. Please follow it carefully. In case of any problems, there is a troubleshoot section that addresses the most typical problems. In case of any doubts you can always make questions in our community forum.
 
 .. #todo: add link to Troubleshooting and forum.
-
 
 Placement on the expansion board
 ================================

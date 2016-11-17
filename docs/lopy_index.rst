@@ -3,7 +3,7 @@ LoPy documentation and references
 
 .. toctree::
 
-    lopy/5min.rst
+    lopy/getstarted.rst
     lopy/quickref.rst
     lopy/general.rst
     lopy/tutorial/index.rst
