@@ -28,21 +28,17 @@ expansion board:
 
 .. note::
     Some modules like the LoPy will be big enough to cover the USB connector. It is normal as long as you keep the orientation shown.
-And if you are still confused or prefer video tutorials, here's a video of
+And if you are still confused or prefer video tutorials, `here's a video <https://www.youtube.com/embed/wUxsgls9Ymw>`_ of
 how to place a WiPy 2.0 properly on the expansion board. Placing your LoPy is
 done in exactly the same way.
-
-.. raw:: html
-
-    <iframe width="560" height="315" src="https://www.youtube.com/embed/wUxsgls9Ymw" frameborder="0" allowfullscreen></iframe><br />
 
 Once you’re sure everything is in place, the fun begins. It is time to turn your device on. Just plug it into any powered USB cable (your computer or a battery charger).
 
 In a few seconds, the LED should start blinking every 4 seconds. This means everything is fine! If you cannot see the blinking, please disconnect the power supply and re-check.
-Here's an example of the LED blinking:
 
 .. image:: images/LED.gif
     :alt: LED blink
+    :align: center
 
 .. #todo: add support for people without expansion boards
 
@@ -53,11 +49,8 @@ First interaction with your module
 To make it as easy as possible, we developed Pymakr, a tool that will allow you to connect to your Pycom devices. We’re going to use it in this section to give you a quick taste of how you can work with your device. You can download it from `here <https://www.pycom.io/solutions/pymakr/>`_
 .
 
-We have created a video that explains how to install Pymark on macOS:
+If you need extra help, we have created a video that explains how to `install Pymark <https://www.youtube.com/embed/bL5nn2lgaZE>`_ on macOS:
 
-.. raw:: html
-
-    <iframe width="560" height="315" src="https://www.youtube.com/embed/bL5nn2lgaZE" frameborder="0" allowfullscreen></iframe><br />
 
 Initial configuration
 ---------------------
@@ -73,12 +66,13 @@ After installing Pymakr, you need to take a few seconds to configure it for the 
 
 .. image:: images/pymakr-wifi.png
     :alt: Pymakr WiFi settings
+    :align: center
 
 That’s it for the first time configuration. In the lower portion of the screen, you should see the console, with the connection process taking place. At the end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connected:
 
 .. image:: images/pymakr-repl.png
     :alt: Pymakr REPL
-    
+    :align: center
 
 
 Our first coding steps
@@ -107,9 +101,7 @@ And white:
 
     pycom.rgbled(0xffffff) # and now white
 
-It's that simple. Now let’s write a more complex program. First, reset the board by doing right click on the console, and pressing Reset.
-
-.. #todo: add video/animation here
+It's that simple. Now let’s write a more complex program. First, reset the board by right clicking on the console, and pressing Reset.
 
 Try to determine what the next code does:
 
