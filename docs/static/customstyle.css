@@ -11,7 +11,16 @@
 
 @media screen and (min-width: 1300px) {
     .wy-nav-content {
-        padding: 5em 15em;
+        padding: 5em 12em;
         max-width: 1600px;
     }
+}
+
+.admonition {
+    margin: 3em 10% !important;
+}
+
+img {
+    margin-top: 1em !important;
+    margin-bottom: 3em !important;
 }
