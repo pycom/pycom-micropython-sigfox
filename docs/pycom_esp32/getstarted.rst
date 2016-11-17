@@ -51,8 +51,8 @@ In a few seconds, the LED should start blinking every 4 seconds. This means
 that everything is fine! If you cannot see the blinking, please disconnect the
 power supply and re-check.
 
-.. image:: images/LED.gif
-    :alt: LED blink
+.. image:: images/blinking.gif
+    :alt: LED blinking
     :align: center
     :scale: 60 %
 
