@@ -40,7 +40,7 @@ Usage Model:
     All pin objects go through the pin mapper to come up with one of the
     gpio pins.
 
-.. only:: port_2wipy or port_lopy
+.. only:: port_2wipy or port_lopy or port_pycom_esp32
 
     Module pins are identified by their string id::
 
@@ -109,7 +109,7 @@ Methods
 
        Get the pin id.
 
-.. only:: port_2wipy or port_lopy
+.. only:: port_2wipy or port_lopy or port_pycom_esp32
 
     .. method:: Pin.init(mode, pull, \*, drive, alt)
 
@@ -175,7 +175,7 @@ Methods
         Returns a list of the alternate functions supported by the pin. List items are
         a tuple of the form: ``('ALT_FUN_NAME', ALT_FUN_INDEX)``
 
-.. only:: port_wipy or port_2wipy or port_lopy
+.. only:: port_wipy or port_2wipy or port_lopy or port_pycom_esp32
 
     .. method:: Pin.toggle()
 
@@ -257,7 +257,7 @@ Attributes
             led = Pin(Pin.board.GP25, mode=Pin.OUT)
             Pin.board.GP2.alt_list()
 
-.. only:: port_2wipy or port_lopy
+.. only:: port_2wipy or port_lopy or port_pycom_esp32
 
     .. class:: Pin.exp_board
 
@@ -309,7 +309,7 @@ not all constants are available on all ports.
 
        Selects the IRQ trigger type.
 
-.. only:: port_2wipy or port_lopy
+.. only:: port_2wipy or port_lopy or port_pycom_esp32
 
     .. data:: Pin.IN
               Pin.OUT

@@ -28,7 +28,7 @@ For example::
     data = s.recv(1000)
     s.close()
 
-.. only:: port_wipy or port_2wipy or port_lopy
+.. only:: port_wipy or port_2wipy or port_lopy or port_pycom_esp32
 
     .. _network.Server:
 
@@ -368,7 +368,7 @@ For example::
 
 
 
-.. only:: port_wipy or port_2wipy or port_lopy
+.. only:: port_wipy or port_2wipy or port_lopy or port_pycom_esp32
 
     class WLAN
     ==========
@@ -505,7 +505,7 @@ For example::
 
             Returns an irq object.
 
-    .. only:: port_2wipy or port_lopy
+    .. only:: port_2wipy or port_lopy or port_pycom_esp32
 
         .. method:: wlan.mac()
 
@@ -531,7 +531,7 @@ For example::
        selects the antenna type
 
 
-.. only:: port_lopy
+.. only:: port_lopy or port_pycom_esp32
 
     class LoRa
     ==========
