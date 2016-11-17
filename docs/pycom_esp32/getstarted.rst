@@ -42,7 +42,7 @@ To make it as easy as possible, we developed Pymakr, a tool that will allow you 
 .
 
 Initial configuration
-------------------------
+---------------------
 
 After installing it, you need to take a few seconds to configure it for the first time. Please follow these steps:
 
@@ -60,9 +60,8 @@ That’s it for the first time configuration. In the lower portion of the screen
 .. #todo: add screenshot here
 
 
-Let’s get our hands in some coding
------------------------------------
-
+Our first coding steps
+----------------------
 
 You can use your board as a calculator. Simply type down: ``6 * 7`` and press enter. You should get the answer to the universe: ``42``.
 
