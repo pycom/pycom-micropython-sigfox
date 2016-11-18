@@ -58,6 +58,7 @@ digital logic level. For analog control of a pin, see the ADC class.
     print(p2.value())
 
 .. only:: port_pycom_esp32
+  
   Quick usage example
   -------------------
 
