@@ -16,7 +16,7 @@ Modules and boards
 
 .. warning::
 
-   The GPIO pins of the LoPy are NOT 5V tolerant, connecting them to voltages higher
+   The GPIO pins of the modules are NOT 5V tolerant, connecting them to voltages higher
    than 3.3V might cause irreparable damage to the board.
 
 .. warning::
