@@ -32,7 +32,7 @@ ports = OrderedDict((
     ('wipy', 'WiPy'),
     ('2wipy', 'WiPy 2.0'),
     ('lopy', 'LoPy'),
-    ('pycom_esp32', 'Pycom ESP32')
+    ('pycom_esp32', 'pycom_esp32')
 ))
 
 url_mapping = (('LoPy', '/pycom_esp32'),
