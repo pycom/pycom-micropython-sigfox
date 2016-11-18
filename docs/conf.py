@@ -27,6 +27,8 @@ from collections import OrderedDict
 micropy_port = os.getenv('MICROPY_PORT') or 'pyboard'
 tags.add('port_' + micropy_port)
 ports = OrderedDict((
+    ('esp8266', 'the ESP8266'),
+    ('pyboard', 'the pyboard'),
     ('wipy', 'WiPy'),
     ('2wipy', 'WiPy 2.0'),
     ('lopy', 'LoPy'),
