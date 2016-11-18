@@ -28,9 +28,4 @@ All members in the current family of Pycom modules are powered by the ESP32, off
     Click in the links of the previous list to get more information about each module.
 
 .. tip::
-    If you want to find out how things are connected, visit the hardware section.
-
-See also
-========
-.. #todo: add link to hardware section
-- Hardware section
+    If you want to find out how things are connected, visit the :ref:`hardware section<Hardware>`.
