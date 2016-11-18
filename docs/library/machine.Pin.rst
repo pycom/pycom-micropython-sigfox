@@ -8,7 +8,9 @@ general-purpose input/output). It has methods to set
 the mode of the pin (input, output, etc) and methods to get and set the
 digital logic level. For analog control of a pin, see the ADC class.
 
-Usage Model:
+.. only:: not port_pycom_esp32
+
+    Usage Model:
 
 .. only:: port_wipy
 
@@ -40,13 +42,6 @@ Usage Model:
     All pin objects go through the pin mapper to come up with one of the
     gpio pins.
 
-.. only:: port_2wipy or port_lopy or port_pycom_esp32
-
-    Module pins are identified by their string id::
-
-        from machine import Pin
-        p = machine.Pin('P10', mode=Pin.OUT, pull=None, drive=Pin.MED_POWER, alt=-1)
-
 .. only:: port_esp8266
 
    ::
@@ -62,13 +57,44 @@ Usage Model:
     p2 = Pin(2, Pin.IN, Pin.PULL_UP)
     print(p2.value())
 
+Quick usage example
+-------------------
+
+    ::
+
+        from machine import Pin
+
+        # initialize ``P9`` in gpio mode and make it an output
+        p_out = Pin('P9', mode=Pin.OUT)
+        p_out.value(1)
+        p_out.value(0)
+        p_out.toggle()
+        p_out(True)
+
+        # make ``P10`` an input with the pull-up enabled
+        p_in = Pin('P10', mode=Pin.IN, pull=Pin.PULL_UP)
+        p_in() # get value, 0 or 1
+
 Constructors
 ------------
 
 .. class:: Pin(id, ...)
 
+.. only:: not port_pycom_esp32
+
    Create a new Pin object associated with the id.  If additional arguments are given,
    they are used to initialize the pin.  See :meth:`Pin.init`.
+
+.. only:: port_pycom_esp32
+
+   Create a new Pin object associated with the string ``id``. If additional arguments are given,
+   they are used to initialize the pin.  See :meth:`Pin.init`.
+
+   ::
+
+        from machine import Pin
+        p = machine.Pin('P10', mode=Pin.OUT, pull=None, alt=-1)
+
 
 Methods
 -------
@@ -111,7 +137,7 @@ Methods
 
 .. only:: port_2wipy or port_lopy or port_pycom_esp32
 
-    .. method:: Pin.init(mode, pull, \*, drive, alt)
+    .. method:: Pin.init(mode, pull, \*, alt)
 
        Initialize the pin:
 
@@ -188,10 +214,6 @@ Methods
     .. method:: Pin.pull([pull])
 
         Get or set the pin pull.
-
-    .. method:: Pin.drive([drive])
-
-        Get or set the pin drive strength.
 
 .. only:: port_wipy
 
