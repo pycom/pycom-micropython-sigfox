@@ -170,9 +170,9 @@ and follow the instructions on screen.
     Until further notice, :ref:`firmware upgrade<firmware_upgrade>` is required. 
 
 After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
-programs in your device. Go to this section to learn how.
+programs in your device. 
 
-.. #todo: add link to Ralf's section
+.. #todo: add link to Ralph's section. Add this tekst "Go to :ref:`this section <pymakr>` to learn how." behind the tekst above
 
 .. note::
 
