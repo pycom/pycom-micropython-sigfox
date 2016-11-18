@@ -15,6 +15,20 @@ Example::
     # enable the server again with new settings
     server.init(login=('user', 'password'), timeout=600)
 
+
+Quick usage example
+-------------------
+
+    ::
+
+        from network import Server
+
+        # init with new user, password and seconds timeout
+        server = Server(login=('user', 'password'), timeout=60)
+        server.timeout(300) # change the timeout
+        server.timeout() # get the timeout
+        server.isrunning() # check whether the server is running or not
+
 Constructors
 ------------
 

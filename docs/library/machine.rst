@@ -6,6 +6,18 @@
 
 The ``machine`` module contains specific functions related to the board.
 
+Quick usage example
+-------------------
+
+    ::
+
+        import machine
+
+        help(machine) # display all members from the machine module
+        machine.freq() # get the CPU frequency
+        machine.unique_id() # return the 6-byte unique id of the board (the LoPy's WiFi MAC address)
+
+
 Reset related functions
 -----------------------
 

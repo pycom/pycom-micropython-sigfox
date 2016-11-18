@@ -8,6 +8,19 @@
 The ``pycom`` module contains functions to control specific features of the
 pycom boards, such as the heartbeat RGB LED.
 
+
+Quick usage example
+-------------------
+
+    ::
+
+        import pycom
+
+        pycom.heartbeat(False)  # disable the heartbeat LED
+        pycom.heartbeat(True)   # enable the heartbeat LED
+        pycom.heartbeat()       # get the heartbeat state
+        pycom.rgbled(0xff00)    # make the LED light up in green color
+
 Functions
 ---------
 

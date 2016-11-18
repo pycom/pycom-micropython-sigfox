@@ -39,6 +39,21 @@ Printing the i2c object gives you information about its configuration.
         i2c.writeto_mem(0x42, 2, 'abc')     # write 'abc' (3 bytes) to memory of slave 0x42
                                             # starting at address 2 in the slave, timeout after 1 second
 
+
+Quick usage example
+-------------------
+    
+    ::
+
+        from machine import I2C
+        # configure the I2C bus
+        i2c = I2C(0, I2C.MASTER, baudrate=100000)
+        i2c.scan() # returns list of slave addresses
+        i2c.writeto(0x42, 'hello') # send 5 bytes to slave with address 0x42
+        i2c.readfrom(0x42, 5) # receive 5 bytes from slave
+        i2c.readfrom_mem(0x42, 0x10, 2) # read 2 bytes from slave 0x42, slave memory 0x10
+        i2c.writeto_mem(0x42, 0x10, 'xy') # write 2 bytes to slave 0x42, slave memory 0x10
+
 Constructors
 ------------
 
