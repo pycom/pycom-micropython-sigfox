@@ -709,7 +709,8 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
         timeout = mp_obj_get_int(args[3].u_obj);
     }
 
-    // connect to the requested access point
+    // copy the new ssid and connect to the requested access point
+    strcpy((char *)wlan_obj.ssid, ssid);
     modwlan_Status_t status;
     status = wlan_do_connect (ssid, ssid_len, bssid, key, key_len, timeout);
     if (status == MODWLAN_ERROR_TIMEOUT) {
@@ -1195,7 +1196,7 @@ static int wlan_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t le
         mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
         do {
             ret = mbedtls_ssl_read(&ss->ssl, (unsigned char *)buf, len);
-            if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE || ret == MBEDTLS_ERR_SSL_TIMEOUT || ret == -0x4C) {
+            if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE || ret == MBEDTLS_ERR_SSL_TIMEOUT || ret == -0x4C) { // FIXME
                 // printf("Nothing to read\n");
                 *_errno = EAGAIN;
                 return -1;
