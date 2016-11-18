@@ -62,7 +62,7 @@ See :mod:`machine.UART`::
 SPI bus
 -------
 
-::
+See :mod:`machine.SPI`::
 
     from machine import SPI
 
@@ -91,7 +91,7 @@ See :mod:`machine.I2C`::
 LoRa (LoRaMAC)
 --------------
 
-::
+See :mod:`network.LoRa`::
 
     from network import LoRa
     import socket
@@ -114,7 +114,7 @@ LoRa (LoRaMAC)
 LoRa (LoRaWAN with OTAA)
 ------------------------
 
-::
+See :mod:`network.LoRa`::
 
     from network import LoRa
     import socket
@@ -155,7 +155,7 @@ LoRa (LoRaWAN with OTAA)
 LoRa (LoRaWAN with ABP)
 -----------------------
 
-::
+See :mod:`network.LoRa`::
 
     from network import LoRa
     import socket
@@ -191,7 +191,7 @@ LoRa (LoRaWAN with ABP)
 WLAN (WiFi)
 -----------
 
-See :mod:`machine.WLAN`::
+See :mod:`network.WLAN`::
 
     import machine
     from network import WLAN
@@ -263,7 +263,7 @@ See :mod:`machine.PWM`::
 ADC
 ---
 
-See :mod:`ADC`::
+See :mod:`machine.ADC`::
 
     from machine import ADC
     adc = ADC(0)

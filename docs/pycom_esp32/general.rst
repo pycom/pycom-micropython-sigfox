@@ -1,5 +1,5 @@
-General information about the LoPy
-==================================
+General information
+===================
 
 
 
