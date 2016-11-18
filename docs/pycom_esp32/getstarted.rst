@@ -162,12 +162,14 @@ on the console and press ``Reset``.
 This concludes the short intro on how to start playing with your Pycom device.
 The next suggested step will be upgrading the firmware, as we are constantly
 making improvements and adding new features to it.
-`Download the upgrader tool <https://www.pycom.io/support/supportdownloads/>`_
-(section "Firmware Updates") and follow the instructions on screen.
+Download the upgrader tool :ref:`upgrader tool<firmware_upgrade>`
+and follow the instructions on screen.
 
-.. #todo: Add support for visiting firmware updates on the website and update link
+.. warning::
 
-After you’re done with the upgrade, you can use Pymakr to upload and run
+    Until further notice, :ref:`firmware upgrade<firmware_upgrade>` is required. 
+
+After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
 programs in your device. Go to this section to learn how.
 
 .. #todo: add link to Ralf's section
