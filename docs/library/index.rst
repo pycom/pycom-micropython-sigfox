@@ -206,6 +206,7 @@ the following libraries.
    .. toctree::
       :maxdepth: 1
 
+      pycom.treading.rst
       pycom.rst
 
 .. only:: port_esp8266
