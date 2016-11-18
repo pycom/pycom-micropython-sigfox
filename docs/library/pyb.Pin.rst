@@ -79,7 +79,7 @@ Constructors
 .. class:: pyb.Pin(id, ...)
 
    Create a new Pin object associated with the id.  If additional arguments are given,
-   they are used to initialise the pin.  See :meth:`pin.init`.
+   they are used to initialize the pin.  See :meth:`pin.init`.
 
 .. only:: port_pyboard
 
@@ -106,7 +106,7 @@ Methods
 
     .. method:: Pin.init(mode, pull=Pin.PULL_NONE, af=-1)
     
-       Initialise the pin:
+       Initialize the pin:
        
          - ``mode`` can be one of:
 
@@ -192,27 +192,27 @@ Constants
 
     .. data:: Pin.AF_OD
     
-       initialise the pin to alternate-function mode with an open-drain drive
+       initialize the pin to alternate-function mode with an open-drain drive
     
     .. data:: Pin.AF_PP
     
-       initialise the pin to alternate-function mode with a push-pull drive
+       initialize the pin to alternate-function mode with a push-pull drive
     
     .. data:: Pin.ANALOG
     
-       initialise the pin to analog mode
+       initialize the pin to analog mode
     
     .. data:: Pin.IN
     
-       initialise the pin to input mode
+       initialize the pin to input mode
     
     .. data:: Pin.OUT_OD
     
-       initialise the pin to output mode with an open-drain drive
+       initialize the pin to output mode with an open-drain drive
     
     .. data:: Pin.OUT_PP
     
-       initialise the pin to output mode with a push-pull drive
+       initialize the pin to output mode with a push-pull drive
     
     .. data:: Pin.PULL_DOWN
     

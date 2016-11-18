@@ -9,7 +9,7 @@ the physical level it consists of 2 lines: RX and TX.  The unit of communication
 is a character (not to be confused with a string character) which can be 8 or 9
 bits wide.
 
-UART objects can be created and initialised using::
+UART objects can be created and initialized using::
 
     from pyb import UART
 
@@ -56,8 +56,8 @@ Constructors
     
        Construct a UART object on the given bus.  ``bus`` can be 1-6, or 'XA', 'XB', 'YA', or 'YB'.
        With no additional parameters, the UART object is created but not
-       initialised (it has the settings from the last initialisation of
-       the bus, if any).  If extra arguments are given, the bus is initialised.
+       initialized (it has the settings from the last initialisation of
+       the bus, if any).  If extra arguments are given, the bus is initialized.
        See ``init`` for parameters of initialisation.
 
        The physical pins of the UART busses are:
@@ -79,7 +79,7 @@ Methods
 
     .. method:: UART.init(baudrate, bits=8, parity=None, stop=1, \*, timeout=1000, flow=0, timeout_char=0, read_buf_len=64)
     
-       Initialise the UART bus with the given parameters:
+       Initialize the UART bus with the given parameters:
     
          - ``baudrate`` is the clock rate.
          - ``bits`` is the number of bits per character, 7, 8 or 9.

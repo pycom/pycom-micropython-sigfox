@@ -68,7 +68,7 @@ Constructors
 .. class:: Pin(id, ...)
 
    Create a new Pin object associated with the id.  If additional arguments are given,
-   they are used to initialise the pin.  See :meth:`Pin.init`.
+   they are used to initialize the pin.  See :meth:`Pin.init`.
 
 Methods
 -------
@@ -77,7 +77,7 @@ Methods
 
     .. method:: Pin.init(mode, pull, \*, drive, alt)
 
-       Initialise the pin:
+       Initialize the pin:
 
          - ``mode`` can be one of:
 
@@ -113,7 +113,7 @@ Methods
 
     .. method:: Pin.init(mode, pull, \*, drive, alt)
 
-       Initialise the pin:
+       Initialize the pin:
 
          - ``mode`` can be one of:
 
@@ -139,7 +139,7 @@ Methods
 
     .. method:: Pin.init(mode, pull=None, \*, value)
 
-       Initialise the pin:
+       Initialize the pin:
 
          - `mode` can be one of:
 
