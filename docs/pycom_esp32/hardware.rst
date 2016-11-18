@@ -1,9 +1,11 @@
 .. _Hardware:
+
+****************
 Hardware section
-========================
+****************
 
 Modules and boards
-------------------
+==================
 
 .. toctree::
     :maxdepth: 1
