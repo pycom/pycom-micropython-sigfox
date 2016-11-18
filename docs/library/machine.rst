@@ -192,7 +192,7 @@ Miscellaneous functions
      machine.WDT.rst
 
 
-.. only:: port_lopy
+.. only:: port_lopy or port_2wipy or port_pycom_esp32
 
   Classes
   -------
@@ -201,19 +201,6 @@ Miscellaneous functions
      :maxdepth: 1
 
      machine.Pin.rst
-     machine.SPI.rst
      machine.UART.rst
-     machine.I2C.rst
-
-.. only:: port_2wipy
-
-  Classes
-  -------
-
-  .. toctree::
-     :maxdepth: 1
-
-     machine.Pin.rst
      machine.SPI.rst
-     machine.UART.rst
      machine.I2C.rst
