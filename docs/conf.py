@@ -35,6 +35,10 @@ ports = OrderedDict((
     ('pycom_esp32', 'Pycom ESP32')
 ))
 
+url_mapping = (('LoPy', '/pycom_esp32'),
+               ('WiPy 2.0', '/pycom_esp32'),
+               ('WiPy', '/wipy'))
+
 # The members of the html_context dict are available inside topindex.html
 micropy_version = os.getenv('MICROPY_VERSION') or 'latest'
 micropy_all_versions = (os.getenv('MICROPY_ALL_VERSIONS') or 'latest').split(',')
@@ -54,6 +58,7 @@ html_context = {
     'downloads':[
         ('PDF', url_pattern % (micropy_version, 'micropython-%s.pdf' % micropy_port)),
     ],
+    'url_mapping':url_mapping
 }
 
 
