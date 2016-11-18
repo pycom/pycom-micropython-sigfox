@@ -1,8 +1,6 @@
 General information
 ===================
 
-
-
 WLAN default behaviour
 ----------------------
 
@@ -66,49 +64,6 @@ plain FTP (insecure)``. In the Transfer Settings tab limit the max number of con
 to one, otherwise FileZilla will try to open a second command connection when retrieving
 and saving files, and for simplicity and to reduce code size, only one command and one
 data connections are possible. Other FTP clients might behave in a similar way.
-
-.. _pycom_firmware_upgrade:
-
-Upgrading the firmware Over The Air
------------------------------------
-
-OTA software updates can be performed through the FTP server. To do so, upload the ``appimg.bin`` file
-to: ``/flash/sys/appimg.bin``. This process should take around 4s. You won't see the file being stored
-inside ``/flash/sys/`` because it's actually saved bypassing the user file system, so it
-ends up inside the internal **hidden** file system. The update image is signed with a MD5 checksum that the
-bootloader uses to verify the integrity of the upgrade. After the file transfer completes, reset
-the LoPy by pressing the switch on the board, or by typing::
-
-    >>> import machine
-    >>> machine.reset()
-
-It's always recommended to update to the latest software, but make sure to
-read the **release notes** before.
-
-In order to check your software version, do::
-
-   >>> import os
-   >>> os.uname().release
-
-Upgrading with Pymakr
----------------------
-
-Coming soon.
-
-Upgrading with the LoPy updater stand-alone tool
-------------------------------------------------
-
-1. Download the stand-alone tool from: https://www.pycom.io/support/supportdownloads/
-2. Boot your LoPy in safe mode.
-3. Connect to the ``lopy-wlan`` WLAN network (password: ``www.pycom.io``)
-4. Run the stand-alone update tool and follow the on-screen instructions.
-
-.. note::
-
-   The TX jumper on the expansion board needs to be connected for the updater to work.
-
-
-.. _pycom_boot_modes:
 
 Boot modes and safe boot
 ------------------------

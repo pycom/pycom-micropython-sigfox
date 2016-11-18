@@ -46,36 +46,35 @@ digital logic level. For analog control of a pin, see the ADC class.
 
    ::
 
-    from machine import Pin
+        from machine import Pin
 
-    # create an output pin on GPIO0
-    p0 = Pin(0, Pin.OUT)
-    p0.value(0)
-    p0.value(1)
+        # create an output pin on GPIO0
+        p0 = Pin(0, Pin.OUT)
+        p0.value(0)
+        p0.value(1)
 
-    # create an input pin on GPIO2
-    p2 = Pin(2, Pin.IN, Pin.PULL_UP)
-    print(p2.value())
+        # create an input pin on GPIO2
+        p2 = Pin(2, Pin.IN, Pin.PULL_UP)
+        print(p2.value())
 
-.. only:: port_pycom_esp32
-  
-  Quick usage example
-  -------------------
 
-      ::
+Quick usage example
+-------------------
 
-          from machine import Pin
+    ::
 
-          # initialize ``P9`` in gpio mode and make it an output
-          p_out = Pin('P9', mode=Pin.OUT)
-          p_out.value(1)
-          p_out.value(0)
-          p_out.toggle()
-          p_out(True)
+        from machine import Pin
 
-          # make ``P10`` an input with the pull-up enabled
-          p_in = Pin('P10', mode=Pin.IN, pull=Pin.PULL_UP)
-          p_in() # get value, 0 or 1
+        # initialize ``P9`` in gpio mode and make it an output
+        p_out = Pin('P9', mode=Pin.OUT)
+        p_out.value(1)
+        p_out.value(0)
+        p_out.toggle()
+        p_out(True)
+
+        # make ``P10`` an input with the pull-up enabled
+        p_in = Pin('P10', mode=Pin.IN, pull=Pin.PULL_UP)
+        p_in() # get value, 0 or 1
 
 Constructors
 ------------

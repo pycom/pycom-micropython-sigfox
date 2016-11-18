@@ -31,6 +31,12 @@ This class provides a driver for the LoRa network processor in the module. Examp
   data = s.recv(64)
   print(data)
 
+
+Additional examples
+-------------------
+
+Check here for :ref:`aditional examples<lora_examples>`.
+
 Constructors
 ------------
 

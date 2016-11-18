@@ -56,6 +56,17 @@ using the standard stream methods::
 
         uart.any()               # returns the number of characters available for reading
 
+Quick usage example
+-------------------
+
+    ::
+
+        from machine import UART
+        # this uses the UART_1 default pins for TXD and RXD (``P3`` and ``P4``)
+        uart = UART(1, baudrate=9600)
+        uart.write('hello')
+        uart.read(5) # read up to 5 bytes
+
 Constructors
 ------------
 

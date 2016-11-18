@@ -204,7 +204,7 @@ the following libraries.
    The following libraries are specific to the Pycom modules.
 
    .. toctree::
-      :maxdepth: 2
+      :maxdepth: 1
 
       pycom.rst
 
