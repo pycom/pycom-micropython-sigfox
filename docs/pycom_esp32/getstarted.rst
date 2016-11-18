@@ -39,7 +39,7 @@ how to place your board properly on the expansion board:
 
 .. tip::
     If you prefer video tutorials, here is a
-    `video <https://www.youtube.com/embed/wUxsgls9Ymw>`_ showing these steps. 
+    `video <https://www.youtube.com/embed/wUxsgls9Ymw>`_ showing these steps.
     It applies to all our modules.
 
 Once you’re sure everything is in place, the fun begins. It is time to turn
@@ -61,10 +61,9 @@ First interaction with your module
 ==================================
 
 To make it as easy as possible, we developed Pymakr, a tool that will allow you
-to connect to your Pycom devices. We’re going to use it in this section to give
-you a quick taste of how you can work with your device. You can download it
-from `here <https://www.pycom.io/solutions/pymakr/>`_
-.
+to connect to and program your Pycom devices. We’re going to use it in this
+section to give you a quick taste of how you can work with your device. You can
+download Pymakr from `here <https://www.pycom.io/solutions/pymakr/>`_.
 
 Initial configuration
 ---------------------
@@ -94,18 +93,14 @@ end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connec
     :scale: 50 %
 
 .. tip::
-    If you want, `there is also a video <https://www.youtube.com/embed/bL5nn2lgaZE>`_ that explains these steps
-    on macOS (it is similar for other operating systems).
+    `There is also a video <https://www.youtube.com/embed/bL5nn2lgaZE>`_ that
+    explains these steps on macOS (it is similar for other operating systems).
 
 Our first coding steps
 ----------------------
 
 You can use your board as a calculator. Simply type down: ``6 * 7`` and press
 enter. You should get the answer to the universe: ``42``.
-
-.. tip::
-    Still confused with Pymakr? Check our short video to find out how to use Pymakr
-    for `writing Python code <https://www.youtube.com/watch?v=w1rFsZ1L7ws>`_.
 
 But math by itself can get boring pretty easily. Let’s get some color into our
 life. Type down the following code:
@@ -168,7 +163,9 @@ This concludes the short intro on how to start playing with your Pycom device.
 The next suggested step will be upgrading the firmware, as we are constantly
 making improvements and adding new features to it.
 `Download the upgrader tool <https://www.pycom.io/support/supportdownloads/>`_
-and follow the instructions on screen.
+(section "Firmware Updates") and follow the instructions on screen.
+
+.. #todo: Add support for visiting firmware updates on the website and update link
 
 After you’re done with the upgrade, you can use Pymakr to upload and run
 programs in your device. Go to this section to learn how.
