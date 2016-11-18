@@ -51,7 +51,7 @@ Methods
        the sample resolution will be reduced to 8 bits.
 
        ``timer`` should be a Timer object, and a sample is read each time the timer
-       triggers.  The timer must already be initialised and running at the desired
+       triggers.  The timer must already be initialized and running at the desired
        sampling frequency.
 
        To support previous behaviour of this function, ``timer`` can also be an

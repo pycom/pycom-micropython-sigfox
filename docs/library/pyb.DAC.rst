@@ -65,11 +65,11 @@ Methods
 
 .. method:: DAC.init(bits=8)
 
-   Reinitialise the DAC.  ``bits`` can be 8 or 12.
+   Reinitialize the DAC.  ``bits`` can be 8 or 12.
 
 .. method:: DAC.deinit()
 
-   De-initialise the DAC making its pin available for other uses.
+   De-initialize the DAC making its pin available for other uses.
 
 .. method:: DAC.noise(freq)
 
@@ -95,7 +95,7 @@ Methods
    an array of unsigned half-words (array typecode 'H') in 12-bit mode.
 
    ``freq`` can be an integer specifying the frequency to write the DAC
-   samples at, using Timer(6).  Or it can be an already-initialised
+   samples at, using Timer(6).  Or it can be an already-initialized
    Timer object which is used to trigger the DAC sample.  Valid timers
    are 2, 4, 5, 6, 7 and 8.
 

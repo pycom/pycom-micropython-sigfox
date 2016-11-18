@@ -18,12 +18,12 @@ Now let's see what we just created::
     Timer(4)
 
 The pyboard is telling us that ``tim`` is attached to timer number 4, but
-it's not yet initialised.  So let's initialise it to trigger at 10 Hz
+it's not yet initialized.  So let's initialize it to trigger at 10 Hz
 (that's 10 times per second)::
 
     >>> tim.init(freq=10)
 
-Now that it's initialised, we can see some information about the timer::
+Now that it's initialized, we can see some information about the timer::
 
     >>> tim
     Timer(4, prescaler=624, period=13439, mode=UP, div=1)

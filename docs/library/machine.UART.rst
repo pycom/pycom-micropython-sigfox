@@ -8,7 +8,7 @@ the physical level it consists of 2 lines: RXD and TXD.  The unit of communicati
 is a character (not to be confused with a string character) which can be 5, 6, 7 or 8
 bits wide.
 
-UART objects can be created and initialised using::
+UART objects can be created and initialized using::
 
     from machine import UART
 
@@ -74,7 +74,7 @@ Methods
 
     .. method:: UART.init(baudrate=9600, bits=8, parity=None, stop=1, \*, pins=(TXD, RXD, RTS, CTS))
 
-       Initialise the UART bus with the given parameters:
+       Initialize the UART bus with the given parameters:
 
          - ``baudrate`` is the clock rate.
          - ``bits`` is the number of bits per character, 7, 8 or 9.

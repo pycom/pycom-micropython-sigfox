@@ -37,7 +37,7 @@ configuration::
 You can also call the ``freq()`` and ``duty()`` methods with no arguments to
 get their current values.
 
-The pin will continue to be in PWM mode until you deinitialise it using::
+The pin will continue to be in PWM mode until you deinitialize it using::
 
     >>> pwm12.deinit()
 

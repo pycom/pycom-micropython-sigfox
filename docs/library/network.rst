@@ -28,8 +28,6 @@ For example::
     data = s.recv(1000)
     s.close()
 
-
-
 .. only:: port_lopy or port_pycom_esp32
   
   Classes
@@ -40,7 +38,6 @@ For example::
 
      network.Server.rst
      network.WLAN.rst
-     network.WLAN2.rst
      network.LORA.rst
 
 .. only:: port_pyboard

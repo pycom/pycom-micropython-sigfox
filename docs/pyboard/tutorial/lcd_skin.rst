@@ -78,7 +78,7 @@ This will continuously print out the touch status of all electrodes.
 Try touching each one in turn.
 
 Note that if you put the LCD skin in the Y-position, then you need to
-initialise the I2C bus using::
+initialize the I2C bus using::
 
     >>> m = mpr121.MPR121(pyb.I2C(2, pyb.I2C.MASTER))
 

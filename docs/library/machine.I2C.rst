@@ -6,8 +6,8 @@ class I2C -- a two-wire serial protocol
 I2C is a two-wire protocol for communicating between devices.  At the physical
 level it consists of 2 wires: SCL and SDA, the clock and data lines respectively.
 
-I2C objects are created attached to a specific bus.  They can be initialised
-when created, or initialised later on.
+I2C objects are created attached to a specific bus.  They can be initialized
+when created, or initialized later on.
 
 .. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
 
@@ -63,7 +63,7 @@ General Methods
 
     .. method:: I2C.init(mode, \*, baudrate=100000, pins=(SDA, SCL))
 
-      Initialise the I2C bus with the given parameters:
+      Initialize the I2C bus with the given parameters:
 
          - ``mode`` must be ``I2C.MASTER``
          - ``baudrate`` is the SCL clock rate
@@ -73,7 +73,7 @@ General Methods
 
     .. method:: I2C.init(scl, sda, \*, freq=400000)
 
-      Initialise the I2C bus with the given arguments:
+      Initialize the I2C bus with the given arguments:
 
          - `scl` is a pin object for the SCL line
          - `sda` is a pin object for the SDA line
