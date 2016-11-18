@@ -107,7 +107,7 @@ For example::
 
     .. class:: CC3K(spi, pin_cs, pin_en, pin_irq)
 
-       Create a CC3K driver object, initialise the CC3000 module using the given SPI bus
+       Create a CC3K driver object, initialize the CC3000 module using the given SPI bus
        and pins, and return the CC3K object.
 
        Arguments are:
@@ -118,8 +118,8 @@ For example::
          - ``pin_en`` is a :ref:`Pin object <pyb.Pin>` which is connected to the CC3000 VBEN pin.
          - ``pin_irq`` is a :ref:`Pin object <pyb.Pin>` which is connected to the CC3000 IRQ pin.
 
-       All of these objects will be initialised by the driver, so there is no need to
-       initialise them yourself.  For example, you can use::
+       All of these objects will be initialized by the driver, so there is no need to
+       initialize them yourself.  For example, you can use::
 
          nic = network.CC3K(pyb.SPI(2), pyb.Pin.board.Y5, pyb.Pin.board.Y4, pyb.Pin.board.Y3)
 
@@ -193,7 +193,7 @@ For example::
 
     .. class:: WIZNET5K(spi, pin_cs, pin_rst)
 
-       Create a WIZNET5K driver object, initialise the WIZnet5x00 module using the given
+       Create a WIZNET5K driver object, initialize the WIZnet5x00 module using the given
        SPI bus and pins, and return the WIZNET5K object.
 
        Arguments are:
@@ -203,8 +203,8 @@ For example::
          - ``pin_cs`` is a :ref:`Pin object <pyb.Pin>` which is connected to the WIZnet5x00 nSS pin.
          - ``pin_rst`` is a :ref:`Pin object <pyb.Pin>` which is connected to the WIZnet5x00 nRESET pin.
 
-       All of these objects will be initialised by the driver, so there is no need to
-       initialise them yourself.  For example, you can use::
+       All of these objects will be initialized by the driver, so there is no need to
+       initialize them yourself.  For example, you can use::
 
          nic = network.WIZNET5K(pyb.SPI(1), pyb.Pin.board.X5, pyb.Pin.board.X4)
 

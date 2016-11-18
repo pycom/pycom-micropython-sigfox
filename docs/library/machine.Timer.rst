@@ -73,7 +73,7 @@ Methods
 
     .. method:: Timer.init(mode, \*, width=16)
 
-       Initialise the timer. Example::
+       Initialize the timer. Example::
 
            tim.init(Timer.PERIODIC)             # periodic 16-bit timer
            tim.init(Timer.ONE_SHOT, width=32)   # one shot 32-bit timer
@@ -94,7 +94,7 @@ Methods
 
 .. method:: Timer.deinit()
 
-   Deinitialises the timer. Disables all channels and associated IRQs.
+   Deinitializes the timer. Disables all channels and associated IRQs.
    Stops the timer, and disables the timer peripheral.
 
 .. only:: port_wipy

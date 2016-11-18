@@ -60,7 +60,7 @@ Constructors
     .. only:: port_pyboard
     
        Construct a new timer object of the given id.  If additional
-       arguments are given, then the timer is initialised by ``init(...)``.
+       arguments are given, then the timer is initialized by ``init(...)``.
        ``id`` can be 1 to 14.
 
 Methods
@@ -70,7 +70,7 @@ Methods
 
     .. method:: Timer.init(\*, freq, prescaler, period)
     
-       Initialise the timer.  Initialisation must be either by frequency (in Hz)
+       Initialize the timer.  Initialisation must be either by frequency (in Hz)
        or by prescaler and period::
        
            tim.init(freq=100)                  # set the timer to trigger at 100Hz
@@ -117,7 +117,7 @@ Methods
 
 .. method:: Timer.deinit()
 
-   Deinitialises the timer.
+   Deinitializes the timer.
    
    .. only:: port_pyboard
 

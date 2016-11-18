@@ -25,8 +25,8 @@ Constructors
 
    Construct a CAN object on the given bus.  ``bus`` can be 1-2, or 'YA' or 'YB'.
    With no additional parameters, the CAN object is created but not
-   initialised (it has the settings from the last initialisation of
-   the bus, if any).  If extra arguments are given, the bus is initialised.
+   initialized (it has the settings from the last initialisation of
+   the bus, if any).  If extra arguments are given, the bus is initialized.
    See ``init`` for parameters of initialisation.
 
    The physical pins of the CAN busses are:
@@ -50,7 +50,7 @@ Methods
 
 .. method:: CAN.init(mode, extframe=False, prescaler=100, \*, sjw=1, bs1=6, bs2=8)
 
-   Initialise the CAN bus with the given parameters:
+   Initialize the CAN bus with the given parameters:
 
      - ``mode`` is one of:  NORMAL, LOOPBACK, SILENT, SILENT_LOOPBACK
      - if ``extframe`` is True then the bus uses extended identifiers in the frames

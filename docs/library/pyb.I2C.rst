@@ -7,8 +7,8 @@ class I2C -- a two-wire serial protocol
 I2C is a two-wire protocol for communicating between devices.  At the physical
 level it consists of 2 wires: SCL and SDA, the clock and data lines respectively.
 
-I2C objects are created attached to a specific bus.  They can be initialised
-when created, or initialised later on.
+I2C objects are created attached to a specific bus.  They can be initialized
+when created, or initialized later on.
 
 .. only:: port_pyboard
 
@@ -66,8 +66,8 @@ Constructors
 
        Construct an I2C object on the given bus.  ``bus`` can be 1 or 2, 'X' or
        'Y'. With no additional parameters, the I2C object is created but not
-       initialised (it has the settings from the last initialisation of
-       the bus, if any).  If extra arguments are given, the bus is initialised.
+       initialized (it has the settings from the last initialisation of
+       the bus, if any).  If extra arguments are given, the bus is initialized.
        See ``init`` for parameters of initialisation.
 
        The physical pins of the I2C busses on Pyboards V1.0 and V1.1 are:
@@ -94,7 +94,7 @@ Methods
 
     .. method:: I2C.init(mode, \*, addr=0x12, baudrate=400000, gencall=False)
 
-      Initialise the I2C bus with the given parameters:
+      Initialize the I2C bus with the given parameters:
 
          - ``mode`` must be either ``I2C.MASTER`` or ``I2C.SLAVE``
          - ``addr`` is the 7-bit address (only sensible for a slave)

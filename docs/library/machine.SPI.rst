@@ -27,8 +27,8 @@ Constructors
 
        Construct an SPI object on the given bus. ``id`` can be only 0.
        With no additional parameters, the SPI object is created but not
-       initialised (it has the settings from the last initialisation of
-       the bus, if any).  If extra arguments are given, the bus is initialised.
+       initialized (it has the settings from the last initialisation of
+       the bus, if any).  If extra arguments are given, the bus is initialized.
        See ``init`` for parameters of initialisation.
 
 Methods
@@ -36,7 +36,7 @@ Methods
 
 .. method:: SPI.init(mode, baudrate=1000000, \*, polarity=0, phase=0, bits=8, firstbit=SPI.MSB, pins=(CLK, MOSI, MISO))
 
-   Initialise the SPI bus with the given parameters:
+   Initialize the SPI bus with the given parameters:
 
      - ``mode`` must be ``SPI.MASTER``.
      - ``baudrate`` is the SCK clock rate.

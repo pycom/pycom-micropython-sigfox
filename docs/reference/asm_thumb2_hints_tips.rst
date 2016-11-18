@@ -75,7 +75,7 @@ Argument passing and return
 
 The tutorial details the fact that assembler functions can support from zero to
 three arguments, which must (if used) be named ``r0``, ``r1`` and ``r2``. When
-the code executes the registers will be initialised to those values.
+the code executes the registers will be initialized to those values.
 
 The data types which can be passed in this way are integers and memory
 addresses. With current firmware all possible 32 bit values may be passed and
