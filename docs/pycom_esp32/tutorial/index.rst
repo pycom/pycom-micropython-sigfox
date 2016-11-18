@@ -10,7 +10,6 @@ for instructions see :ref:`OTA How-To <pycom_firmware_upgrade>`.
    :maxdepth: 1
    :numbered:
 
-   intro.rst
    repl.rst
    wlan.rst
    reset.rst
