@@ -172,8 +172,6 @@ and follow the instructions on screen.
 After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
 programs in your device. 
 
-.. #todo: add link to Ralph's section. Add this tekst "Go to :ref:`this section <pymakr>` to learn how." behind the tekst above
-
 .. note::
 
     Pymakr also supports wired connections. If you go back to Pycom Device in
@@ -185,7 +183,7 @@ programs in your device.
 See also
 ========
 - :ref:`How to upgrade your firmware<firmware_upgrade>`
-- :ref:`Connecting without Pymakr<connecting>`
+- :ref:`Connecting without Pymakr<pycom_telnet_repl>`
 - :ref:`Troubleshooting`
 
 .. #todo: check if we can remove the see also from the navigation menu

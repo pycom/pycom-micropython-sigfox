@@ -14,6 +14,24 @@ Modules and boards
     lopy.rst
     expansionboard.rst
 
+Powering by an external power source
+====================================
+
+The modules can be powered by a battery or other external power source.
+
+**Be sure to connect the positive lead of the power supply to VIN, and
+ground to GND.**
+
+- When powering via ``VIN``:
+
+   **The input voltage must be between 3.4V and 5.5V.**
+
+- When powering via ``3V3``:
+
+   **The input voltage must be exactly 3V3, ripple free and from a supply capable
+   of sourcing at least 500mA of current**
+
+
 .. warning::
 
    The GPIO pins of the modules are NOT 5V tolerant, connecting them to voltages higher

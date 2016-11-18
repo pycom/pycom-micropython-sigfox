@@ -65,6 +65,8 @@ to one, otherwise FileZilla will try to open a second command connection when re
 and saving files, and for simplicity and to reduce code size, only one command and one
 data connections are possible. Other FTP clients might behave in a similar way.
 
+.. _safeboot:
+
 Boot modes and safe boot
 ------------------------
 

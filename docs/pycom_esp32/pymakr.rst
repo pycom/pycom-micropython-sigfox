@@ -45,6 +45,6 @@ Pymakr has a feature to sync and run your code on your device. This is mostly do
 .. Warning::
 
     While the module is busy executing code, Pymakr cannot control it. You can regain control of it by right clicking in the console and pressing Reset, or phisically press the reset button.
-    If your board is running code at boot time, you might need to boot it in safe mode.
+    If your board is running code at boot time, you might need to boot it in :ref:`safe mode <safeboot>`.
 
 .. #todo: add link to safeboot
