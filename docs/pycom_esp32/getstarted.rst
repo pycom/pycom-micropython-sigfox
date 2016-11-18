@@ -27,8 +27,7 @@ put together the basic pieces:
 the same direction as the USB connector.
 
 It's that simple! If you want to confirm your work, here's a picture showing
-both the LoPy (top part) and the WiPy 2.0 (bottom part) properly placed on the
-expansion board:
+how to place your board properly on the expansion board:
 
 .. image:: images/placement.png
     :alt: Correct placement
@@ -104,8 +103,12 @@ Our first coding steps
 You can use your board as a calculator. Simply type down: ``6 * 7`` and press
 enter. You should get the answer to the universe: ``42``.
 
+.. tip::
+    Still confused with Pymakr? Check our short video to find out how to use Pymakr
+    for `writing Python code <https://www.youtube.com/watch?v=w1rFsZ1L7ws>`_.
+
 But math by itself can get boring pretty easily. Let’s get some color into our
-life. Type down line by line:
+life. Type down the following code:
 
 .. code:: python
 
@@ -167,8 +170,8 @@ making improvements and adding new features to it.
 `Download the upgrader tool <https://www.pycom.io/support/supportdownloads/>`_
 and follow the instructions on screen.
 
-After you’re done with the upgrade, you can use Pymakr to upload and run p
-rograms in your device. Go to this section to learn how.
+After you’re done with the upgrade, you can use Pymakr to upload and run
+programs in your device. Go to this section to learn how.
 
 .. #todo: add link to Ralf's section
 
