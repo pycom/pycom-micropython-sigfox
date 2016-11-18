@@ -1,6 +1,18 @@
 /* custom CSS for MicroPython docs
  */
 
+ img {
+     margin-top: 1em !important;
+     margin-bottom: 3em !important;
+ }
+
+ @media screen and (min-width: 1300px) {
+     .wy-nav-content {
+         padding: 5em 12em;
+         max-width: 1600px;
+     }
+ }
+
 .admonition-difference-to-cpython {
     border: 1px solid black;
 }
@@ -9,20 +21,8 @@
     margin: 4px;
 }
 
-@media screen and (min-width: 1300px) {
-    .wy-nav-content {
-        padding: 5em 12em;
-        max-width: 1600px;
-    }
-}
-
 .admonition {
     margin: 3em 10% !important;
-}
-
-img {
-    margin-top: 1em !important;
-    margin-bottom: 3em !important;
 }
 
 .rst-current-version {
@@ -38,32 +38,33 @@ img {
 .rst-other-versions a:hover {
     color: rgb(195, 199, 205) !important;
 }
-.rst-versions {
-    border-top: solid 1px #fff;
-    background-color: rgb(50, 60, 79) !important;
-}
 
-hr {
+.rst-other-versions hr {
     border: 0 !important;
     border-bottom: 1px dashed #ccc !important;
     background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0)) !important;
+}
+
+.rst-versions {
+    border-top: solid 1px #fff;
+    background-color: rgb(50, 60, 79) !important;
 }
 
 .wy-side-scroll {
     background-color: rgb(50, 60, 79) !important;
 }
 
+.wy-nav-content a:visited {
+    color: rgb(82, 164, 216);
+}
+
 .wy-side-nav-search {
     background-color: rgb(50, 60, 79) !important;
 }
 
-a.current.reference.internal {
+.wy-menu-vertical a.current.reference.internal {
     background-color: rgb(50, 60, 79) !important;
     border: none !important;
-}
-
-a.reference.internal {
-    color: #fff !important;
 }
 
 .toctree-expand {
@@ -151,8 +152,4 @@ a.reference.internal {
 .wy-menu-vertical li.on a:hover span.toctree-expand,
 .wy-menu-vertical li.current>a:hover span.toctree-expand {
     color: rgb(195, 199, 205) !important;
-}
-
-a:visited {
-    color: rgb(82, 164, 216);
 }
