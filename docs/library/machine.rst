@@ -216,3 +216,5 @@ Miscellaneous functions
      machine.UART.rst
      machine.SPI.rst
      machine.I2C.rst
+     machine.PWM.rst
+     machine.ADC.rst

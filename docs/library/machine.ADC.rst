@@ -3,13 +3,17 @@
 class ADC -- analog to digital conversion
 =========================================
 
-Usage::
+Quick usage example
+-------------------
 
-   import machine
+      ::
 
-   adc = machine.ADC()             # create an ADC object
-   apin = adc.channel(pin='GP3')   # create an analog pin on GP3
-   val = apin()                    # read an analog value
+      import machine
+
+      adc = machine.ADC()             # create an ADC object
+      apin = adc.channel(pin='GP3')   # create an analog pin on GP3
+      val = apin()                    # read an analog value
+      val = apin.value()              # another way to read it
 
 Constructors
 ------------
@@ -50,24 +54,26 @@ Methods
 
    Disable the ADC block.
 
-class ADCChannel --- read analog values from internal or external sources
-=========================================================================
+..only:: not port_pycom_esp32
 
-ADC channels can be connected to internal points of the MCU or to GPIO pins.
-ADC channels are created using the ADC.channel method.
+      class ADCChannel --- read analog values from internal or external sources
+      =========================================================================
 
-.. method:: adcchannel()
+      ADC channels can be connected to internal points of the MCU or to GPIO pins.
+      ADC channels are created using the ADC.channel method.
 
-   Fast method to read the channel value.
+      .. method:: adcchannel()
 
-.. method:: adcchannel.value()
+      Fast method to read the channel value.
 
-   Read the channel value.
+      .. method:: adcchannel.value()
 
-.. method:: adcchannel.init()
+      Read the channel value.
 
-   Re-init (and effectively enable) the ADC channel.
+      .. method:: adcchannel.init()
 
-.. method:: adcchannel.deinit()
+      Re-init (and effectively enable) the ADC channel.
 
-   Disable the ADC channel.
+      .. method:: adcchannel.deinit()
+
+      Disable the ADC channel.
