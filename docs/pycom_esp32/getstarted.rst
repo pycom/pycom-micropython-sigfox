@@ -182,7 +182,7 @@ programs in your device. Go to this section to learn how.
 
 See also
 ========
-- :ref:`How to upgrade your firmware<firmware>`
+- :ref:`How to upgrade your firmware<firmware_upgrade>`
 - :ref:`Connecting without Pymakr<connecting>`
 - :ref:`Troubleshooting`
 
