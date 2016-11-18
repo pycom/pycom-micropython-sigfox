@@ -4,8 +4,8 @@
   <h1>Pycom documentation</h1>
 
   <p>
-    {{ _('Hello maker! This is the documentation for your Pycom board')}}
-    {% if last_updated %} ({{ _('last updated') }} {{ last_updated|e }}){% endif %}
+    {{ _('Hello maker! This is the documentation for your Pycom board')}}.
+    <strong>Please note that the documentation is still work in progress</strong>
   </p>
 
   {% if port == 'Pycom ESP32' %}
@@ -16,8 +16,18 @@
           <span class="linkdescr">Start playing with your Pycom board right now</span>
         </p>
         <p class="biglink">
+          <a class="biglink" href="{{ pathto(port + "/firmware") }}">Firmware upgrades</a><br/>
+          <span class="linkdescr">How to upgrade your firmware</span>
+        </p>
+    </td>
+    <td width="40%" style="padding-left:2em;">
+        <p class="biglink">
           <a class="biglink" href="{{ pathto(port + "/underhood") }}">What’s under the hood</a><br/>
           <span class="linkdescr">Read about the hardware specs of our boards</span>
+        </p>
+        <p class="biglink">
+          <a class="biglink" href="{{ pathto(port + "/expansionboard") }}">Hardware</a><br/>
+          <span class="linkdescr">Detailed pinouts and advice</span>
         </p>
     </td>
     </tr></table>
@@ -93,21 +103,23 @@
 
   <table class="contentstable"><tr>
     <td width="40%" style="padding-left:2em;">
+        <p class="biglink">
+         <a class="biglink" href="https://github.com/pycom">GitHub</a><br/>
+         <span class="linkdescr">Pycom on GitHub</span>
+       </p>
+       {% if port == "wipy" %}
+         <p class="biglink">
+           <a class="biglink" href="http://forum.micropython.org/viewforum.php?f=11">The WiPy homepage</a><br/>
+           <span class="linkdescr">The official WiPy site</span>
+         </p>
+       {% endif %}
+   </td>
+   <td width="40%" style="padding-left:2em;">
        <p class="biglink">
         <a class="biglink" href="https://forum.pycom.io/">Pycom forum</a><br/>
-        <span class="linkdescr">Community discussion for all things related to Pycom products</span>
+        <span class="linkdescr">Pycom community discussion</span>
       </p>
-      <p class="biglink">
-       <a class="biglink" href="https://github.com/pycom">GitHub</a><br/>
-       <span class="linkdescr">Pycom on GitHub</span>
-     </p>
-      {% if port == "wipy" %}
-        <p class="biglink">
-          <a class="biglink" href="http://forum.micropython.org/viewforum.php?f=11">The WiPy homepage</a><br/>
-          <span class="linkdescr">The official WiPy site</span>
-        </p>
-      {% endif %}
-    </td>
+  </td>
   </tr></table>
 
 {% endblock %}
