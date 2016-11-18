@@ -26,7 +26,7 @@ Pymakr has a feature to sync and run your code on your device. This is mostly do
 #. Give it a name and select a folder for your project, either a new of existing one.
 #. Now you are ready to place your own code. For fun, lets try again to build a traffic light. Add the following code to the main.py file:
 
-    ::
+::
 
 	import pycom
 	import time
