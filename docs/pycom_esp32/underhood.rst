@@ -7,11 +7,12 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - 512 Kb available for the user as internal storage, (external SD card support available)
 - Up to 128 Kb available for the user
 - Hardware floating point unit
-- :ref:`GPIO <quickref>`
+- :ref:`GPIO <pycom_esp32/quickref.rts>`
 - :class:`Interrupts <.Interrupts>` (coming soon)
 - 4 :class:`Timers <.TIMERS>`  (coming soon)
 - 2 :class:`UARTs <.UART>`
 - 2 :class:`SPIs <.SPI>`
+- :class:`.ADC`
 - :class:`.I2C`
 - :class:`WiFI <.WLAN>`
 - :class:`RTC <noreference>` (coming soon)
