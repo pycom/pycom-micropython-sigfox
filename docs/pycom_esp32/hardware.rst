@@ -2,9 +2,20 @@
 Hardware section
 ========================
 
+Modules and boards
+------------------
+
+.. toctree::
+    :maxdepth: 1
+
+    wipy2.rst
+    lopy.rst
+    expansionboard.rst
+
 .. warning::
-    Be gentle when plugging/unplugging the USB cable. Whilst the USB connector is well soldered and is relatively strong,
-    if it breaks off it can be very difficult to fix.
+
+   The GPIO pins of the LoPy are NOT 5V tolerant, connecting them to voltages higher
+   than 3.3V might cause irreparable damage to the board.
 
 .. warning::
     Static electricity can shock the components on the module and destroy them. If you experience a lot of static electricity
