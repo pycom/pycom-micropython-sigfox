@@ -7,7 +7,7 @@
 The MicroPython project
 =======================
 <p align="center">
-  <img src="https://raw.githubusercontent.com/micropython/micropython/master/logo/upython-with-micro.jpg" alt="MicroPython Logo"/>
+  <img src="https://raw.githubusercontent.com/pycom/LoPy/master/images/LopySide.jpg" alt="The LoPy"/>
 </p>
 
 This is the MicroPython project, which aims to put an implementation
@@ -33,6 +33,7 @@ Major components in this repository:
 - py/ -- the core Python implementation, including compiler, runtime, and
   core library.
 - unix/ -- a version of MicroPython that runs on Unix.
+- exp32/ -- a version of MicroPython that runs on the ESP32 based boards from Pycom.
 - stmhal/ -- a version of MicroPython that runs on the PyBoard and similar
   STM32 boards (using ST's Cube HAL drivers).
 - minimal/ -- a minimal MicroPython port. Start with this if you want
@@ -126,28 +127,52 @@ In `unix/mpconfigport.mk`, you can also disable some dependencies enabled
 by default, like FFI support, which requires libffi development files to
 be installed.
 
-The STM version
----------------
+The ESP32 version
+-----------------
 
-The "stmhal" port requires an ARM compiler, arm-none-eabi-gcc, and associated
-bin-utils.  For those using Arch Linux, you need arm-none-eabi-binutils and
-arm-none-eabi-gcc packages.  Otherwise, try here:
-https://launchpad.net/gcc-arm-embedded
+The "esp32" port requires an xtensa gcc compiler, which can be downloaded from
+the Espressif website:
 
-To build:
+- for 64-bit Linux::
 
-    $ cd stmhal
-    $ make
+    https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-59.tar.gz
 
-You then need to get your board into DFU mode.  On the pyboard, connect the
-3V3 pin to the P1/DFU pin with a wire (on PYBv1.0 they are next to each other
-on the bottom left of the board, second row from the bottom).
+- for 32-bit Linux::
 
-Then to flash the code via USB DFU to your device:
+    https://dl.espressif.com/dl/xtensa-esp32-elf-linux32-1.22.0-59.tar.gz
 
-    $ make deploy
+- for Mac OS:
 
-This will use the included `tools/pydfu.py` script.  If flashing the firmware
-does not work it may be because you don't have the correct permissions, and
-need to use `sudo make deploy`.
-See the README.md file in the stmhal/ directory for further details.
+    https://dl.espressif.com/dl/xtensa-esp32-elf-osx-1.22.0-59.tar.gz
+
+To use it, you will need to update your ``PATH`` environment variable in ``~/.bash_profile`` file. To make ``xtensa-esp32-elf`` available for all terminal sessions, add the following line to your ``~/.bash_profile`` file::
+
+    export PATH=$PATH:$HOME/esp/xtensa-esp32-elf/bin
+
+Alternatively, you may create an alias for the above command. This way you can get the toolchain only when you need it. To do this, add different line to your ``~/.bash_profile`` file::
+
+    alias get_esp32="export PATH=$PATH:$HOME/esp/xtensa-esp32-elf/bin"
+
+Then when you need the toolchain you can type ``get_esp32`` on the command line and the toolchain will be added to your ``PATH``.
+
+You also need the ESP IDF along side this repository in order to build the ESP32 port.
+To get it:
+
+    $ git clone https://github.com/pycom/pycom-esp-idf.git
+    $ export IDF_PATH=~/pycom-esp-idf
+
+To build and flash your LoPy for 868MHz regions:
+
+    $ cd esp32
+    $ make BOARD=LOPY LORA_BAND=USE_BAND_868 flash
+
+or for 915MHz regions:
+
+    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 flash
+
+or the WiPy 2.0:
+
+    $ make BOARD=WIPY flash
+
+Make sure that your board is placed into programming mode, otherwise flahing will fail.
+To do this, connect ``P2`` to ``GND`` and then reset the board.
