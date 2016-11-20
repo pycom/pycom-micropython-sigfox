@@ -159,6 +159,14 @@ You also need the ESP IDF along side this repository in order to build the ESP32
 To get it:
 
     $ git clone https://github.com/pycom/pycom-esp-idf.git
+
+After cloning, make sure to checkout all the submodules:
+
+    $ cd pycom-esp-idf
+    $ git submodule update --init
+
+Finally, before building, export the IDF_PATH variable
+
     $ export IDF_PATH=~/pycom-esp-idf
 
 To build and flash your LoPy for 868MHz regions:
