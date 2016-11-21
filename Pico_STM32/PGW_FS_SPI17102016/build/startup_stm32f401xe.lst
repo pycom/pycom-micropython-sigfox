@@ -83,9 +83,9 @@ ARM Macro Assembler    Page 2
                        ************************
    41 00000000         
    42 00000000         
-   43 00000000 20018000 
+   43 00000000 20010000 
                        __initial_sp
-                               EQU              0x20018000  ; Top of RAM
+                               EQU              0x20010000  ; Top of RAM
    44 00000000         
    45 00000000                 PRESERVE8
    46 00000000                 THUMB
@@ -97,7 +97,7 @@ ARM Macro Assembler    Page 2
    52 00000000                 EXPORT           __Vectors_End
    53 00000000                 EXPORT           __Vectors_Size
    54 00000000         
-   55 00000000 20018000 
+   55 00000000 20010000 
                        __Vectors
                                DCD              __initial_sp ; Top of Stack
    56 00000004 00000000        DCD              Reset_Handler ; Reset Handler
@@ -727,13 +727,13 @@ ARM Macro Assembler    Page 12
               00000000 
 Command Line: --debug --xref --cpreproc --diag_suppress=9931 --cpu=Cortex-M4.fp
  --apcs=interwork --depend=.\build\uvision5\startup_stm32f401xe.d -o.\build\uvi
-sion5\startup_stm32f401xe.o -IC:\STM32\mbed_blinky2_copy\RTE -IC:\Keil_v5\ARM\P
-ACK\Keil\STM32F4xx_DFP\2.10.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include -IC:\Ke
-il_v5\ARM\CMSIS\Include --predefine="__EVAL SETA 1" --predefine="__UVISION_VERS
-ION SETA 521" --predefine="STM32F401xE SETA 1" --cpreproc_opts=-D__ASSERT_MSG,-
-D__CMSIS_RTOS,-DARM_MATH_CM4,-D__CORTEX_M4,-D__MBED_CMSIS_RTOS_CM,-D__FPU_PRESE
-NT=1 --list=.\buildstartup_stm32f401xe.lst mbed-dev/targets/cmsis/TARGET_STM/TA
-RGET_STM32F4/TARGET_NUCLEO_F401RE/TOOLCHAIN_ARM_STD/startup_stm32f401xe.S
+sion5\startup_stm32f401xe.o -IC:\GIT\lora_gateway\Pico_STM32\PGW_FS_SPI17102016
+\RTE -IC:\Keil_v5\ARM\PACK\Keil\STM32F4xx_DFP\2.10.0\Drivers\CMSIS\Device\ST\ST
+M32F4xx\Include -IC:\Keil_v5\ARM\CMSIS\Include --predefine="__UVISION_VERSION S
+ETA 521" --predefine="STM32F401xE SETA 1" --cpreproc_opts=-D__ASSERT_MSG,-D__CM
+SIS_RTOS,-DARM_MATH_CM4,-D__CORTEX_M4,-D__MBED_CMSIS_RTOS_CM,-D__FPU_PRESENT=1 
+--list=.\build\startup_stm32f401xe.lst mbed-dev/targets/cmsis/TARGET_STM/TARGET
+_STM32F4/TARGET_NUCLEO_F401RE/TOOLCHAIN_ARM_STD/startup_stm32f401xe.S
 
 
 
@@ -1685,7 +1685,7 @@ ET_NUCLEO_F401RE\TOOLCHAIN_ARM_STD\startup_stm32f401xe.S
       At line 53 in file mbed-dev\targets\cmsis\TARGET_STM\TARGET_STM32F4\TARGE
 T_NUCLEO_F401RE\TOOLCHAIN_ARM_STD\startup_stm32f401xe.S
 Comment: __Vectors_Size used once
-__initial_sp 20018000
+__initial_sp 20010000
 
 Symbol: __initial_sp
    Definitions
@@ -1723,4 +1723,4 @@ ET_NUCLEO_F401RE\TOOLCHAIN_ARM_STD\startup_stm32f401xe.S
 ET_NUCLEO_F401RE\TOOLCHAIN_ARM_STD\startup_stm32f401xe.S
 Comment: __main used once
 2 symbols
-411 symbols in table
+410 symbols in table
