@@ -8,12 +8,12 @@ Quick usage example
 
       ::
 
-      import machine
+            import machine
 
-      adc = machine.ADC()             # create an ADC object
-      apin = adc.channel(pin='GP3')   # create an analog pin on GP3
-      val = apin()                    # read an analog value
-      val = apin.value()              # another way to read it
+            adc = machine.ADC()             # create an ADC object
+            apin = adc.channel(pin='GP3')   # create an analog pin on GP3
+            val = apin()                    # read an analog value
+            val = apin.value()              # another way to read it
 
 Constructors
 ------------
