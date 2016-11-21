@@ -34,6 +34,7 @@ LoRa (LoRaWAN with OTAA)
     from network import LoRa
     import socket
     import time
+    import binascii
 
     # Initialize LoRa in LORAWAN mode.
     lora = LoRa(mode=LoRa.LORAWAN)
@@ -74,6 +75,8 @@ LoRa (LoRaWAN with ABP)
 
     from network import LoRa
     import socket
+    import binascii
+    import struct
 
     # Initialize LoRa in LORAWAN mode.
     lora = LoRa(mode=LoRa.LORAWAN)
