@@ -880,6 +880,7 @@ uint8_t  USBD_CDC_TransmitPacket(USBD_HandleTypeDef *pdev)
   * @param  pdev: device instance
   * @retval status
   */
+
 uint8_t  USBD_CDC_ReceivePacket(USBD_HandleTypeDef *pdev)
 {      
   USBD_CDC_HandleTypeDef   *hcdc = (USBD_CDC_HandleTypeDef*) pdev->pClassData;

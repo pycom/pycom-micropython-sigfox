@@ -56,7 +56,8 @@ void SystemClock_Config(void);
                        LL Driver Callbacks (PCD -> USB Device Library)
 *******************************************************************************/
 /* MSP Init */
-Serial pcf (USBTX,USBRX);
+Serial pcf (PB_6,PB_7);
+#include "CmdUSB.h"
 
 void HAL_PCD_MspInit(PCD_HandleTypeDef* pcdHandle)
 {
@@ -132,9 +133,52 @@ void HAL_PCD_SetupStageCallback(PCD_HandleTypeDef *hpcd)
   * @retval None
   */
 void HAL_PCD_DataOutStageCallback(PCD_HandleTypeDef *hpcd, uint8_t epnum)
-{
-  USBD_LL_DataOutStage((USBD_HandleTypeDef *)hpcd->pData, epnum, hpcd->OUT_ep[epnum].xfer_buff);
-// pcf.printf("length interrupt %d\n",(hpcd->OUT_ep[epnum].xfer_count));
+{int i;
+	int size=0;
+	static int count =0;
+	static int detect=0;
+	static int firsttime=1;
+	 __disable_irq();    // Disable Interrupts
+	if (epnum==1)
+	{
+	for (i=0;i<64;i++)  //64 transfer length hardcode but faster in it
+	{
+		Usbmanager.BufFromRasp[i+64*count]=Usbmanager.BufFromRasptemp[i];
+	}
+	size=(Usbmanager.BufFromRasp[1]<<8)+Usbmanager.BufFromRasp[2]+4;
+	if ((firsttime==1)&&((Usbmanager.BufFromRasp[0]=='a')||(Usbmanager.BufFromRasp[0]=='x')||(Usbmanager.BufFromRasp[0]=='c')||(Usbmanager.BufFromRasp[0]=='h')||(Usbmanager.BufFromRasp[0]=='y')||(Usbmanager.BufFromRasp[0]=='z')||(Usbmanager.BufFromRasp[0]=='f')||(Usbmanager.BufFromRasp[0]=='b')))
+	{ firsttime=0;
+		
+		if (size>64)
+		{detect=1;
+			Usbmanager.count=((size-1)>>6)+1;
+		}	
+	}
+//	pc.printf("itreceiv %d et %d count = %d   ,%2x   , %2x\n",size,Usbmanager.count,count,Usbmanager.BufFromRasptemp[0],Usbmanager.BufFromRasptemp[64*count]);
+		count++;
+		Usbmanager.count--;
+	  if (Usbmanager.count==0)
+		{count=0;
+		 firsttime=1;
+		/*	if (detect==1)
+			{			
+			for(i=i=0;i<1024;i++)
+			{pc.printf("%.2x ",Usbmanager.BufFromRasp[i]);}
+			pc.printf("\n");
+				pc.printf("\n");
+				pc.printf("\n");
+			for(i=i=0;i<1024;i++)
+			{pc.printf("%.2x ",Usbmanager.BufFromRasptemp[i]);}
+				pc.printf("\n");
+				pc.printf("\n");
+				pc.printf("\n");
+		}*/
+     	
+		}
+	
+	 }
+	USBD_LL_DataOutStage((USBD_HandleTypeDef *)hpcd->pData, epnum, hpcd->OUT_ep[epnum].xfer_buff);
+   __enable_irq();    // Disable Interrupts
 }
 
 /**
