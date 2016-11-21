@@ -38,7 +38,7 @@ the philosophy of MicroPython.  They provide the core functionality of that
 module and are intended to be a drop-in replacement for the standard Python
 library.
 
-.. only:: not port_unix
+.. only:: not port_unix and not port_pycom_esp32
 
     The modules are available by their u-name, and also by their non-u-name.  The
     non-u-name can be overridden by a file of that name in your package path.
@@ -198,16 +198,26 @@ the following libraries.
 
 .. only:: port_lopy or port_2wipy or port_pycom_esp32
 
-   Libraries specific to the Pycom modules
-   ---------------------------------------
+    Libraries specific to the Pycom modules
+    ---------------------------------------
 
-   The following libraries are specific to the Pycom modules.
+    The following libraries are specific to the Pycom modules.
 
-   .. toctree::
-      :maxdepth: 1
+    .. toctree::
+        :maxdepth: 1
 
-      pycom.treading.rst
-      pycom.rst
+        pycom.treading.rst
+        pycom.rst
+
+    .. only:: port_pycom_esp32
+
+        .. note::
+
+            Some modules are available by an u-name, and also by their non-u-name.  The
+            non-u-name can be overridden by a file of that name in your package path.
+            For example, ``import json`` will first search for a file ``json.py`` or
+            directory ``json`` and load that package if it is found.  If nothing is found,
+            it will fallback to loading the built-in ``ujson`` module.
 
 .. only:: port_esp8266
 
