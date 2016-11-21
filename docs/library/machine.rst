@@ -209,12 +209,28 @@ Miscellaneous functions
   Classes
   -------
 
-  .. toctree::
-     :maxdepth: 1
+  .. raw:: html
 
-     machine.Pin.rst
-     machine.UART.rst
-     machine.SPI.rst
-     machine.I2C.rst
-     machine.PWM.rst
-     machine.ADC.rst
+    <modify_html name="TOC_1"/>
+
+  .. toctree::
+    :maxdepth: 1
+
+    machine.Pin.rst
+    machine.UART.rst
+    machine.SPI.rst
+    machine.I2C.rst
+    machine.PWM.rst
+    machine.ADC.rst
+
+  .. raw:: html
+
+    <script>
+        toc = document.getElementsByName('TOC_1')[0].getElementsByTagName('div')[0].getElementsByTagName('ul')[0].getElementsByTagName('li');
+        for (i = 0; i < toc.length; i++) {
+            if (toc[i].innerText.search('ADCChannel') !== -1) {
+                toc[i].remove();
+                break;
+            }
+        }
+    </script>
