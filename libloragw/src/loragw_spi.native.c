@@ -141,7 +141,7 @@ void set_blocking (int fd, int should_block)
         tty.c_cc[VTIME] = 1;            // 0.5 seconds read timeout
 
         if (tcsetattr (fd, TCSANOW, &tty) != 0)
-               { DEBUG_PRINTF ("error %d setting term attributes", errno);}
+        { DEBUG_PRINTF ("error %d setting term attributes", errno);}
 }
 
 
@@ -151,57 +151,37 @@ void set_blocking (int fd, int should_block)
 int lgw_spi_open(void **spi_target_ptr) {
 	
 int *usb_device=NULL;
+char portname [50];
+int i;
+int fd;
   /*check input variables*/
-	CHECK_NULL(spi_target_ptr);	
-	
-    usb_device=malloc(sizeof(int));
-    if (usb_device ==NULL){
+CHECK_NULL(spi_target_ptr);	
+usb_device=malloc(sizeof(int));
+if (usb_device ==NULL){
 		DEBUG_MSG("ERROR : MALLOC FAIL\n");
 		return LGW_SPI_ERROR;
 	}	
 	
- /*TBD abstract the port name*/
- /*TBD fix the acm port */
-    char *portname= "/dev/ttyACM0";
-    int fd = open (portname, O_RDWR | O_NOCTTY | O_SYNC);
+for (i=0;i<10;i++) // try to open one of the 10 port ttyACM
+{   sprintf(portname,"/dev/ttyACM%d",i);
+     fd = open (portname, O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0)
     {
-        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname);
-      char *portname1 = "/dev/ttyACM1";
-	 fd = open (portname1, O_RDWR | O_NOCTTY | O_SYNC);
-       if (fd < 0)
-        {
-        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname1);
-     char *portname2 = "/dev/ttyACM2";
-	 fd = open (portname2, O_RDWR | O_NOCTTY | O_SYNC);
-    if (fd < 0)
-    {
-        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname2);
-    
-    
-     char   *portname3 = "/dev/ttyACM3";
-	fd = open (portname3, O_RDWR | O_NOCTTY | O_SYNC);
-    if (fd < 0)
-    {    char *portname4 = "/dev/ttyACM4";
-	      fd = open (portname4, O_RDWR | O_NOCTTY | O_SYNC);
-	       if (fd < 0)
-			{   char  *portname5 = "/dev/ttyACM5";
-	      fd = open (portname5, O_RDWR | O_NOCTTY | O_SYNC);
-	      if (fd < 0)
-			{ 
-        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname5);
-        return LGW_SPI_ERROR;
-    }}}}}}
-
+       DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname);
+    }
+    else
+    {   
     set_interface_attribs (fd, B921600, 0);  // set speed to 115,200 bps, 8n1 (no parity)
-    set_blocking (fd, 0);                // set  blocking
+    set_blocking (fd, 0);                // set  non blocking
     *usb_device=fd;
     *spi_target_ptr=(void*)usb_device;
     return LGW_SPI_SUCCESS;
-
-   
-
+    }
 }
+
+return LGW_SPI_ERROR;
+}
+ 
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
@@ -709,7 +689,43 @@ int lgw_rxrf_setconfcmd(void *spi_target, uint8_t rfchain, uint8_t *data,uint16_
 	}
 }
 
+int lgw_boardconfcmd(void * spi_target,uint8_t *data,uint16_t size)
 
+{
+int fd;
+    int i;
+    DEBUG_MSG("Note: USB/SPI write success\n");
+    fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+   DEBUG_PRINTF("Note: USB/SPI write success %d\n",fd);
+   /*build the write cmd*/
+   CmdSettings_t mystruct;
+   AnsSettings_t mystrctAns;
+ 
+   mystruct.Cmd='i';
+   mystruct.Id=(size>>8);
+   mystruct.Len=size-((size>>8)<<8);
+   mystruct.Adress=0;
+    DEBUG_PRINTF("Note: USB/SPI write success size = %d\n",size);
+    DEBUG_MSG("Note: USB/SPI write success\n");
+   for (i=0;i<size;i++)
+   {
+   mystruct.Value[i]=data[i];
+   }
+    DEBUG_MSG("Note: USB/SPI write success\n");
+   pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;
+   if(ReceiveAns(&mystrctAns,fd))
+   { DEBUG_MSG("Note: USB/SPI read config success\n");
+   pthread_mutex_unlock(&mx_usbbridgesync);
+   return LGW_SPI_SUCCESS;
+	}
+	else
+	{DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+  pthread_mutex_unlock(&mx_usbbridgesync);
+   return LGW_SPI_ERROR;
+	}
+
+}
 int lgw_rxif_setconfcmd(void *spi_target, uint8_t ifchain, uint8_t *data,uint16_t size) {
     int fd;
     int i;

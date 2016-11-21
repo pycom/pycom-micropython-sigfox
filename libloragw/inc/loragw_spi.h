@@ -139,6 +139,7 @@ int checkcmd(uint8_t cmd);
 int lgw_txgain_setconfcmd(void *spi_target, uint8_t *data,uint16_t size);
 int lgw_sendconfcmd(void *spi_target,uint8_t *data,uint16_t size);
 int lgw_trigger(void *spi_target, uint8_t address, uint32_t *data);
+int lgw_boardconfcmd(void * spi_target,uint8_t *data,uint16_t size);
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

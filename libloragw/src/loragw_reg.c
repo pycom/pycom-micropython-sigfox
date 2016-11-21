@@ -838,5 +838,10 @@ int lgw_regtrigger(uint32_t *data)
 {
 return(lgw_trigger(lgw_spi_target, 0,data));
 }
+int lgw_reg_board_setconfcmd(uint8_t *data,uint16_t size)
+{
+return(lgw_boardconfcmd(lgw_spi_target,data,size));
+}
+
 
 /* --- EOF ------------------------------------------------------------------ */
