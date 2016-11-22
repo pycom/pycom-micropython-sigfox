@@ -1,0 +1,5 @@
+ADC(0, bits=12)
+ADCChannel(3, pin=P16)
+True
+ADCChannel(0, pin=P13)
+ADCChannel(0, pin=P13)
