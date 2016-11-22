@@ -8,16 +8,7 @@ from machine import UART
 import os
 
 mch = os.uname().machine
-'''
-pin_map = ['P0','P1','P2','P3','P4','P5','P6','P7','P8','P9','P10','P11','P13',
-           'P14','P15','P16','P17','P18','P19','P20','P21','P22','P23',
-           'G2','G1','G23','G24','G11','G12','G13','G14','G15','G16','G17',
-           'G22','G28','G5','G4','G0','G3','G31','G30','G6','G7','G8','G9','G10',
-           'GPIO03','GPIO1','GPIO0','GPIO4','GPIO15','GPIO5','GPIO27','GPIO19',
-           'GPIO19','GPIO2','GPIO12','GPIO13','GPIO22','GPIO21','GPI37','GPI36',
-           'GPI38','GPI39','GPI35','GPI34','GPI32','GPIO33','GPIO26','GPIO25',
-           'GPIO14']
-'''
+
 pin_map = [
     'G2','GPIO3','P0',
     'G1','GPIO1','P1',
@@ -48,8 +39,9 @@ pin_map = [
 if 'LoPy' in mch:
     used_pins = ['G12','P5',
                  'G13','P6',
-                 'G14','P7']
-    pin_map = [x if x in used_pins else 'P2' for x in pin_map]
+                 'G14','P7',
+                 'G23','P2']
+    pin_map = [x if x in used_pins else 'P3' for x in pin_map]
 
 
 # test initial value
@@ -94,7 +86,7 @@ def test_pin_af():
 #test_pin_af() # try the entire af range on all pins
 
 # test all constructor combinations
-magic_pin = pin_map[2]
+magic_pin = pin_map[3]
 pin = Pin(magic_pin)
 pin = Pin(magic_pin, mode=Pin.IN)
 pin = Pin(magic_pin, mode=Pin.OUT)

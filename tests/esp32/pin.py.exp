@@ -300,8 +300,8 @@ Exception
 Exception
 Exception
 Exception
-Pin('P2', mode=Pin.IN, pull=None, drive=Pin.MED_POWER, alt=1)
-P2
+Pin('P3', mode=Pin.IN, pull=None, drive=Pin.MED_POWER, alt=1)
+P3
 1
 None
 0
