@@ -1,0 +1,308 @@
+True
+True
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+<class 'Pin'>
+0
+PULL-UP
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+1
+PULL-DOWN
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+0
+Constructor pass
+True
+True
+True
+True
+True
+Exception
+Exception
+Exception
+Exception
+Pin('P2', mode=Pin.IN, pull=None, drive=Pin.MED_POWER, alt=1)
+P2
+1
+None
+0
+0
