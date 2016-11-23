@@ -9,7 +9,7 @@ import os
 
 mch = os.uname().machine
 
-pin_map = [
+all_pins = [
     #'G2','P0', #Pin used for UART
     #'G1','P1', #Pin used for UART
     #'G23','P2', #Pin used for ISP
@@ -36,14 +36,23 @@ pin_map = [
     'G10','P23'
 ]
 
+no_pull_up_pins = [
+    'G5','P13',
+    'G4','P14',
+    'G0','P15',
+    'G3','P16',
+    'G31','P17',
+    'G30','P18'
+]
 
 if 'LoPy' in mch:
     used_pins = ['G12','P5',    #Pin used for Lora CLK
                  'G13','P6',   #Pin used for Lora MOSI
                  'G14','P7'    #Pin used for Lora MISO
                  ]
-    pin_map = list(set(pin_map) - set(used_pins))
 
+
+pin_map = list(set(all_pins) - set(used_pins))
 
 # test initial value
 p = Pin('P9', Pin.IN)
@@ -66,8 +75,9 @@ def test_pin_read(pull):
     for p in pin_map:
         pin = Pin(p, mode=Pin.IN, pull=pull)
         val = pin()
-        print (val)
-        
+        if p not in no_pull_up_pins:
+            print ( val == 1 )
+
 # test with pull-up and pull-down
 print("PULL-UP")
 test_pin_read(Pin.PULL_UP)
