@@ -228,9 +228,8 @@ Miscellaneous functions
     <script>
         toc = document.getElementsByName('TOC_1')[0].getElementsByTagName('div')[0].getElementsByTagName('ul')[0].getElementsByTagName('li');
         for (i = 0; i < toc.length; i++) {
-            if (toc[i].innerText.search('ADCChannel') !== -1) {
+            if (toc[i].innerText.search(/ADCChannel|PWMChannel/) !== -1) {
                 toc[i].remove();
-                break;
             }
         }
     </script>
