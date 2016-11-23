@@ -38,6 +38,8 @@
 
 #include "sdkconfig.h"
 #include "mpconfigboard.h"
+#include "esp_image_format.h"
+#include "bootloader_flash.h"
 #include "bootmgr.h"
 #include "mperror.h"
 
@@ -60,15 +62,16 @@ extern void Cache_Flush(int);
 extern __attribute__((noreturn)) void mperror_fatal_error (void);
 
 void bootloader_main();
-void unpack_load_app(const partition_pos_t *app_node);
-void print_flash_info(struct flash_hdr* pfhdr);
-void IRAM_ATTR set_cache_and_start_app(uint32_t drom_addr,
+static void unpack_load_app(const esp_partition_pos_t *app_node);
+void print_flash_info(const esp_image_header_t* pfhdr);
+void set_cache_and_start_app(uint32_t drom_addr,
     uint32_t drom_load_addr,
     uint32_t drom_size,
     uint32_t irom_addr,
     uint32_t irom_load_addr,
     uint32_t irom_size,
     uint32_t entry_addr);
+static void update_flash_config(const esp_image_header_t* pfhdr);
 
 
 void IRAM_ATTR call_start_cpu0()
@@ -101,71 +104,54 @@ void IRAM_ATTR call_start_cpu0()
     REG_CLR_BIT(DPORT_PRO_CACHE_CTRL1_REG, DPORT_PRO_CACHE_MASK_DROM0);
     REG_CLR_BIT(DPORT_APP_CACHE_CTRL1_REG, DPORT_APP_CACHE_MASK_DROM0);
 
-    // workaround: configure the SPI flash size manually (2nd argument)
-    SPIParamCfg(0x1540ef, MICROPY_HW_FLASH_SIZE, 64 * 1024, 4096, 256, 0xffff);
-
     bootloader_main();
-}
-
-/** 
- *  @function :     boot_cache_redirect
- *  @description:   Configure several pages in flash map so that `size` bytes 
- *                  starting at `pos` are mapped to 0x3f400000.
- *                  This sets up mapping only for PRO CPU.
- *
- *  @inputs:        pos     address in flash
- *                  size    size of the area to map, in bytes
- */
-void boot_cache_redirect( uint32_t pos, size_t size )
-{
-    uint32_t pos_aligned = pos & 0xffff0000;
-    uint32_t count = (size + 0xffff) / 0x10000;
-    Cache_Read_Disable( 0 );
-    Cache_Flush( 0 );
-    ESP_LOGD(TAG, "mmu set paddr=%08x count=%d", pos_aligned, count );
-    cache_flash_mmu_set( 0, 0, 0x3f400000, pos_aligned, 64, count );
-    Cache_Read_Enable( 0 );
 }
 
 /**
  *  @function :     load_partition_table
- *  @description:   Parse partition table, get useful data such as location of 
+ *  @description:   Parse partition table, get useful data such as location of
  *                  OTA info sector, factory app sector, and test app sector.
  *
  *  @inputs:        bs     bootloader state structure used to save the data
- *                  addr   address of partition table in flash
  *  @return:        return true, if the partition table is loaded (and MD5 checksum is valid)
  *
  */
-bool load_partition_table(bootloader_state_t* bs, uint32_t addr)
+bool load_partition_table(bootloader_state_t* bs)
 {
-    partition_info_t partition;
-    uint32_t end = addr + 0x1000;
-    int index = 0;
+    const esp_partition_info_t *partitions;
+    const int ESP_PARTITION_TABLE_DATA_LEN = 0xC00; /* length of actual data (signature is appended to this) */
+    const int MAX_PARTITIONS = ESP_PARTITION_TABLE_DATA_LEN / sizeof(esp_partition_info_t);
     char *partition_usage;
 
     ESP_LOGI(TAG, "Partition Table:");
     ESP_LOGI(TAG, "## Label            Usage          Type ST Offset   Length");
 
-    while (addr < end) {
-        ESP_LOGD(TAG, "load partition table entry from %x(%08x)", addr, (uint32_t)MEM_CACHE(addr));
-        memcpy(&partition, MEM_CACHE(addr), sizeof(partition));
-        ESP_LOGD(TAG, "type=%x subtype=%x", partition.type, partition.subtype);
+    partitions = bootloader_mmap(ESP_PARTITION_TABLE_ADDR, ESP_PARTITION_TABLE_DATA_LEN);
+    if (!partitions) {
+            ESP_LOGE(TAG, "bootloader_mmap(0x%x, 0x%x) failed", ESP_PARTITION_TABLE_ADDR, ESP_PARTITION_TABLE_DATA_LEN);
+            return false;
+    }
+    ESP_LOGD(TAG, "mapped partition table 0x%x at 0x%x", ESP_PARTITION_TABLE_ADDR, (intptr_t)partitions);
+
+    for(int i = 0; i < MAX_PARTITIONS; i++) {
+        const esp_partition_info_t *partition = &partitions[i];
+        ESP_LOGD(TAG, "load partition table entry 0x%x", (intptr_t)partition);
+        ESP_LOGD(TAG, "type=%x subtype=%x", partition->type, partition->subtype);
         partition_usage = "unknown";
 
-        if (partition.magic == PARTITION_MAGIC) { /* valid partition definition */
-            switch(partition.type) {
+        if (partition->magic == ESP_PARTITION_MAGIC) { /* valid partition definition */
+            switch(partition->type) {
             case PART_TYPE_APP: /* app partition */
-                switch(partition.subtype) {
+                switch(partition->subtype) {
                 case PART_SUBTYPE_FACTORY: /* factory binary */
-                    bs->image[0] = partition.pos;
+                    bs->image[0] = partition->pos;
                     partition_usage = "factory app";
                     bs->image_count = 1;
                     break;
                 default:
                     /* OTA binary */
-                    if ((partition.subtype & ~PART_SUBTYPE_OTA_MASK) == PART_SUBTYPE_OTA_FLAG) {
-                        bs->image[bs->image_count++] = partition.pos;
+                    if ((partition->subtype & ~PART_SUBTYPE_OTA_MASK) == PART_SUBTYPE_OTA_FLAG) {
+                        bs->image[bs->image_count++] = partition->pos;
                         partition_usage = "OTA app";
                     } else {
                         partition_usage = "Unknown app";
@@ -174,9 +160,9 @@ bool load_partition_table(bootloader_state_t* bs, uint32_t addr)
                 }
                 break; /* PART_TYPE_APP */
             case PART_TYPE_DATA: /* data partition */
-                switch(partition.subtype) {
+                switch(partition->subtype) {
                 case PART_SUBTYPE_DATA_OTA: /* ota data */
-                    bs->ota_info = partition.pos;
+                    bs->ota_info = partition->pos;
                     partition_usage = "OTA data";
                     break;
                 case PART_SUBTYPE_DATA_RF:
@@ -196,16 +182,16 @@ bool load_partition_table(bootloader_state_t* bs, uint32_t addr)
         }
         /* invalid partition magic number */
         else {
-            break; /* todo: validate md5 */
+            break;
         }
 
         /* print partition type info */
-        ESP_LOGI(TAG, "%2d %-16s %-16s %02x %02x %08x %08x", index, partition.label, partition_usage,
-                 partition.type, partition.subtype,
-                 partition.pos.offset, partition.pos.size);
-        index++;
-        addr += sizeof(partition);
+        ESP_LOGI(TAG, "%2d %-16s %-16s %02x %02x %08x %08x", i, partition->label, partition_usage,
+                 partition->type, partition->subtype,
+                 partition->pos.offset, partition->pos.size);
     }
+
+    bootloader_munmap(partitions);
 
     ESP_LOGI(TAG,"End of partition table");
     return true;
@@ -262,7 +248,7 @@ static IRAM_ATTR void calculate_signature (uint8_t *signature) {
     MD5Final(signature, &md5_context);
 }
 
-static IRAM_ATTR bool bootloader_verify (const partition_pos_t *pos, uint32_t size) {
+static IRAM_ATTR bool bootloader_verify (const esp_partition_pos_t *pos, uint32_t size) {
     uint32_t total_len = 0, read_len;
     uint8_t hash[16];
     uint8_t hash_hex[33];
@@ -332,7 +318,7 @@ static IRAM_ATTR bool ota_write_boot_info (boot_info_t *boot_info, uint32_t offs
 }
 
 /**
- *  @function :     bootloader_main
+ *  @function :     pbootloader_main
  *  @description:   entry function of 2nd bootloader
  *
  *  @inputs:        void
@@ -342,44 +328,58 @@ void bootloader_main()
 {
     ESP_LOGI(TAG, "Espressif ESP32 2nd stage bootloader v. %s", BOOT_VERSION);
 
-    struct flash_hdr fhdr;
+    esp_image_header_t fhdr;
     bootloader_state_t bs;
     memset(&bs, 0, sizeof(bs));
 
     ESP_LOGI(TAG, "compile time " __TIME__ );
-    /* close watch dog here */
+    /* disable watch dog here */
     REG_CLR_BIT( RTC_CNTL_WDTCONFIG0_REG, RTC_CNTL_WDT_FLASHBOOT_MOD_EN );
     REG_CLR_BIT( TIMG_WDTCONFIG0_REG(0), TIMG_WDT_FLASHBOOT_MOD_EN );
     SPIUnlock();
-    /*register first sector in drom0 page 0 */
-    boot_cache_redirect( 0, 0x5000 );
 
-    memcpy((unsigned int *) &fhdr, MEM_CACHE(0x1000), sizeof(struct flash_hdr) );
+    if(esp_image_load_header(0x1000, &fhdr) != ESP_OK) {
+        ESP_LOGE(TAG, "failed to load bootloader header!");
+        return;
+    }
 
     print_flash_info(&fhdr);
 
-    if (!load_partition_table(&bs, PARTITION_ADD)) {
+    update_flash_config(&fhdr);
+
+    if (!load_partition_table(&bs)) {
         ESP_LOGE(TAG, "load partition table error!");
         return;
     }
 
-    partition_pos_t load_part_pos;
+    esp_partition_pos_t load_part_pos;
 
-    boot_info_t boot_info;
+    boot_info_t *boot_info;
+    boot_info_t _boot_info;
 
     if (bs.ota_info.offset != 0) {              // check if partition table has OTA info partition
-        boot_cache_redirect(bs.ota_info.offset, bs.ota_info.size);
-        memcpy(&boot_info, MEM_CACHE(bs.ota_info.offset & 0x0000ffff), sizeof(boot_info_t));
-
-        if (!ota_select_valid(&boot_info)) {
+        if (bs.ota_info.size < 2 * sizeof(esp_ota_select_entry_t)) {
+            ESP_LOGE(TAG, "ERROR: ota_info partition size %d is too small (minimum %d bytes)", bs.ota_info.size, sizeof(esp_ota_select_entry_t));
+            return;
+        }
+        ESP_LOGI(TAG, "Loading boot info");
+        boot_info = (boot_info_t *)bootloader_mmap(bs.ota_info.offset, bs.ota_info.size);
+        if (!boot_info) {
+            ESP_LOGE(TAG, "bootloader_mmap(0x%x, 0x%x) failed", bs.ota_info.offset, bs.ota_info.size);
+            return;
+        }
+        memcpy(&_boot_info, boot_info, sizeof(boot_info_t));
+        bootloader_munmap(boot_info);
+        boot_info = &_boot_info;
+        if (!ota_select_valid(boot_info)) {
             ESP_LOGI(TAG, "Initializing OTA partition info");
             // init status flash
             load_part_pos = bs.image[0];
-            boot_info.ActiveImg = IMG_ACT_FACTORY;
-            boot_info.Status = IMG_STATUS_READY;
-            boot_info.PrevImg = IMG_ACT_FACTORY;
-            boot_info.safeboot = false;
-            if (!ota_write_boot_info (&boot_info, bs.ota_info.offset)) {
+            boot_info->ActiveImg = IMG_ACT_FACTORY;
+            boot_info->Status = IMG_STATUS_READY;
+            boot_info->PrevImg = IMG_ACT_FACTORY;
+            boot_info->safeboot = false;
+            if (!ota_write_boot_info (boot_info, bs.ota_info.offset)) {
                 ESP_LOGE(TAG, "Error writing boot info");
                 mperror_fatal_error();
                 return;
@@ -390,16 +390,16 @@ void bootloader_main()
             // if the MD5 fails, then we roll back to the previous image
 
             // do we have a new image that needs to be verified?
-            if ((boot_info.ActiveImg != IMG_ACT_FACTORY) && (boot_info.Status == IMG_STATUS_CHECK)) {
-                if (!bootloader_verify(&bs.image[boot_info.ActiveImg], boot_info.size)) {
+            if ((boot_info->ActiveImg != IMG_ACT_FACTORY) && (boot_info->Status == IMG_STATUS_CHECK)) {
+                if (!bootloader_verify(&bs.image[boot_info->ActiveImg], boot_info->size)) {
                     // switch to the previous image
-                    boot_info.ActiveImg = boot_info.PrevImg;
-                    boot_info.PrevImg = IMG_ACT_FACTORY;
+                    boot_info->ActiveImg = boot_info->PrevImg;
+                    boot_info->PrevImg = IMG_ACT_FACTORY;
                 }
                 // in any case, change the status to "READY"
-                boot_info.Status = IMG_STATUS_READY;
+                boot_info->Status = IMG_STATUS_READY;
                 // write the new boot info
-                if (!ota_write_boot_info (&boot_info, bs.ota_info.offset)) {
+                if (!ota_write_boot_info (boot_info, bs.ota_info.offset)) {
                     ESP_LOGE(TAG, "Error writing boot info");
                     mperror_fatal_error();
                     return;
@@ -411,15 +411,15 @@ void bootloader_main()
             ets_update_cpu_frequency(40);
             mperror_init0();
             ESP_LOGI(TAG, "Checking safe boot pin");
-            uint32_t ActiveImg = boot_info.ActiveImg;
-            uint32_t safeboot = wait_for_safe_boot (&boot_info, &ActiveImg);
+            uint32_t ActiveImg = boot_info->ActiveImg;
+            uint32_t safeboot = wait_for_safe_boot (boot_info, &ActiveImg);
             if (safeboot) {
                 ESP_LOGI(TAG, "Safe boot requested!");
             }
-            if (safeboot != boot_info.safeboot) {
-                boot_info.safeboot = safeboot;
+            if (safeboot != boot_info->safeboot) {
+                boot_info->safeboot = safeboot;
                 // write the new boot info
-                if (!ota_write_boot_info (&boot_info, bs.ota_info.offset)) {
+                if (!ota_write_boot_info (boot_info, bs.ota_info.offset)) {
                     ESP_LOGE(TAG, "Error writing boot info");
                     mperror_fatal_error();
                     return;
@@ -429,8 +429,6 @@ void bootloader_main()
             // load the selected active image
             load_part_pos = bs.image[ActiveImg];
         }
-    } else if (bs.image[0].offset != 0) {       // otherwise, look for factory app partition
-        load_part_pos = bs.image[0];
     } else {                                    // nothing to load, bail out
         ESP_LOGE(TAG, "nothing to load");
         mperror_fatal_error();
@@ -440,11 +438,11 @@ void bootloader_main()
     // check the signature
     uint8_t signature[16];
     calculate_signature(signature);
-    if (!memcmp(boot_info.signature, empty_signature, sizeof(boot_info.signature))) {
+    if (!memcmp(boot_info->signature, empty_signature, sizeof(boot_info->signature))) {
         ESP_LOGI(TAG, "Writing the signature");
         // write the signature
-        memcpy(boot_info.signature, signature, sizeof(boot_info.signature));
-        if (!ota_write_boot_info (&boot_info, bs.ota_info.offset)) {
+        memcpy(boot_info->signature, signature, sizeof(boot_info->signature));
+        if (!ota_write_boot_info (boot_info, bs.ota_info.offset)) {
             ESP_LOGE(TAG, "Error writing boot info");
             mperror_fatal_error();
             return;
@@ -452,28 +450,37 @@ void bootloader_main()
     } else {
         ESP_LOGI(TAG, "Comparing the signature");
         // compare the signatures
-        if (memcmp(boot_info.signature, signature, sizeof(boot_info.signature))) {
+        if (memcmp(boot_info->signature, signature, sizeof(boot_info->signature))) {
             // signature check failed, don't load the app!
             mperror_fatal_error();
             return;
         }
     }
 
-    ESP_LOGI(TAG, "Loading app partition at offset %08x", load_part_pos.offset);
+    ESP_LOGI(TAG, "Loading app partition at offset %08x size %08x", load_part_pos.offset, load_part_pos.size);
 
     // copy sections to RAM, set up caches, and start application
     unpack_load_app(&load_part_pos);
 }
 
 
-void unpack_load_app(const partition_pos_t* partition)
+static void unpack_load_app(const esp_partition_pos_t* partition)
 {
-    boot_cache_redirect(partition->offset, partition->size);
+    esp_err_t err;
+    esp_image_header_t image_header;
+    uint32_t image_length;
 
-    uint32_t pos = 0;
-    struct flash_hdr image_header;
-    memcpy(&image_header, MEM_CACHE(pos), sizeof(image_header));
-    pos += sizeof(image_header);
+    /* TODO: verify the app image as part of OTA boot decision, so can have fallbacks */
+    err = esp_image_basic_verify(partition->offset, &image_length);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to verify app image @ 0x%x (%d)", partition->offset, err);
+        return;
+    }
+
+    if (esp_image_load_header(partition->offset, &image_header) != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to load app image header @ 0x%x", partition->offset);
+        return;
+    }
 
     uint32_t drom_addr = 0;
     uint32_t drom_load_addr = 0;
@@ -482,24 +489,27 @@ void unpack_load_app(const partition_pos_t* partition)
     uint32_t irom_load_addr = 0;
     uint32_t irom_size = 0;
 
-    /* Reload the RTC memory sections whenever a non-deepsleep reset
-       is occuring */
+    /* Reload the RTC memory segments whenever a non-deepsleep reset
+       is occurring */
     bool load_rtc_memory = rtc_get_reset_reason(0) != DEEPSLEEP_RESET;
 
     ESP_LOGD(TAG, "bin_header: %u %u %u %u %08x", image_header.magic,
-             image_header.blocks,
+             image_header.segment_count,
              image_header.spi_mode,
              image_header.spi_size,
              (unsigned)image_header.entry_addr);
 
-    for (uint32_t section_index = 0;
-            section_index < image_header.blocks;
-            ++section_index) {
-        struct block_hdr section_header = {0};
-        memcpy(&section_header, MEM_CACHE(pos), sizeof(section_header));
-        pos += sizeof(section_header);
+    for (int segment = 0; segment < image_header.segment_count; segment++) {
+        esp_image_segment_header_t segment_header;
+        uint32_t data_offs;
+        if(esp_image_load_segment_header(segment, partition->offset,
+                                         &image_header, &segment_header,
+                                         &data_offs) != ESP_OK) {
+            ESP_LOGE(TAG, "failed to load segment header #%d", segment);
+            return;
+        }
 
-        const uint32_t address = section_header.load_addr;
+        const uint32_t address = segment_header.load_addr;
         bool load = true;
         bool map = false;
         if (address == 0x00000000) {        // padding, ignore block
@@ -511,50 +521,49 @@ void unpack_load_app(const partition_pos_t* partition)
         }
 
         if (address >= DROM_LOW && address < DROM_HIGH) {
-            ESP_LOGD(TAG, "found drom section, map from %08x to %08x", pos,
-                      section_header.load_addr);
-            drom_addr = partition->offset + pos - sizeof(section_header);
-            drom_load_addr = section_header.load_addr;
-            drom_size = section_header.data_len + sizeof(section_header);
+            ESP_LOGD(TAG, "found drom segment, map from %08x to %08x", data_offs,
+                      segment_header.load_addr);
+            drom_addr = data_offs;
+            drom_load_addr = segment_header.load_addr;
+            drom_size = segment_header.data_len + sizeof(segment_header);
             load = false;
             map = true;
         }
 
         if (address >= IROM_LOW && address < IROM_HIGH) {
-            ESP_LOGD(TAG, "found irom section, map from %08x to %08x", pos,
-                      section_header.load_addr);
-            irom_addr = partition->offset + pos - sizeof(section_header);
-            irom_load_addr = section_header.load_addr;
-            irom_size = section_header.data_len + sizeof(section_header);
+            ESP_LOGD(TAG, "found irom segment, map from %08x to %08x", data_offs,
+                      segment_header.load_addr);
+            irom_addr = data_offs;
+            irom_load_addr = segment_header.load_addr;
+            irom_size = segment_header.data_len + sizeof(segment_header);
             load = false;
             map = true;
         }
 
-		if(!load_rtc_memory && address >= RTC_IRAM_LOW && address < RTC_IRAM_HIGH) {
-			ESP_LOGD(TAG, "Skipping RTC code section at %08x\n", pos);
-			load = false;
-		}
-
-		if(!load_rtc_memory && address >= RTC_DATA_LOW && address < RTC_DATA_HIGH) {
-			ESP_LOGD(TAG, "Skipping RTC data section at %08x\n", pos);
-			load = false;
-		}
-
-        ESP_LOGI(TAG, "section %d: paddr=0x%08x vaddr=0x%08x size=0x%05x (%6d) %s", section_index, pos,
-                 section_header.load_addr, section_header.data_len, section_header.data_len, (load)?"load":(map)?"map":"");
-
-        if (!load) {
-            pos += section_header.data_len;
-            continue;
+        if (!load_rtc_memory && address >= RTC_IRAM_LOW && address < RTC_IRAM_HIGH) {
+            ESP_LOGD(TAG, "Skipping RTC code segment at %08x\n", data_offs);
+            load = false;
         }
 
-        ESP_LOGI(TAG, "Copying section from=%d, to=%d, len=%d\n", (uint32_t)MEM_CACHE(pos), section_header.load_addr, section_header.data_len);
+        if (!load_rtc_memory && address >= RTC_DATA_LOW && address < RTC_DATA_HIGH) {
+            ESP_LOGD(TAG, "Skipping RTC data segment at %08x\n", data_offs);
+            load = false;
+        }
 
-        memcpy((void*) section_header.load_addr, MEM_CACHE(pos), section_header.data_len);
-        pos += section_header.data_len;
+        ESP_LOGI(TAG, "segment %d: paddr=0x%08x vaddr=0x%08x size=0x%05x (%6d) %s", segment, data_offs - sizeof(esp_image_segment_header_t),
+                 segment_header.load_addr, segment_header.data_len, segment_header.data_len, (load)?"load":(map)?"map":"");
+
+        if (load) {
+            const void *data = bootloader_mmap(data_offs, segment_header.data_len);
+            if(!data) {
+                ESP_LOGE(TAG, "bootloader_mmap(0x%xc, 0x%x) failed",
+                         data_offs, segment_header.data_len);
+                return;
+            }
+            memcpy((void *)segment_header.load_addr, data, segment_header.data_len);
+            bootloader_munmap(data);
+        }
     }
-
-    ESP_LOGI(TAG, "about to configure cache and start app\n");
 
     set_cache_and_start_app(drom_addr,
         drom_load_addr,
@@ -565,20 +574,18 @@ void unpack_load_app(const partition_pos_t* partition)
         image_header.entry_addr);
 }
 
-void IRAM_ATTR set_cache_and_start_app(
+void set_cache_and_start_app(
     uint32_t drom_addr,
     uint32_t drom_load_addr,
     uint32_t drom_size,
     uint32_t irom_addr,
     uint32_t irom_load_addr,
-    uint32_t irom_size, 
+    uint32_t irom_size,
     uint32_t entry_addr)
 {
     ESP_LOGD(TAG, "configure drom and irom and start");
     Cache_Read_Disable( 0 );
-    Cache_Read_Disable( 1 );
     Cache_Flush( 0 );
-    Cache_Flush( 1 );
     uint32_t drom_page_count = (drom_size + 64*1024 - 1) / (64*1024); // round up to 64k
     ESP_LOGV(TAG, "d mmu set paddr=%08x vaddr=%08x size=%d n=%d", drom_addr & 0xffff0000, drom_load_addr & 0xffff0000, drom_size, drom_page_count );
     int rc = cache_flash_mmu_set( 0, 0, drom_load_addr & 0xffff0000, drom_addr & 0xffff0000, 64, drom_page_count );
@@ -594,7 +601,8 @@ void IRAM_ATTR set_cache_and_start_app(
     REG_CLR_BIT( DPORT_PRO_CACHE_CTRL1_REG, (DPORT_PRO_CACHE_MASK_IRAM0) | (DPORT_PRO_CACHE_MASK_IRAM1 & 0) | (DPORT_PRO_CACHE_MASK_IROM0 & 0) | DPORT_PRO_CACHE_MASK_DROM0 | DPORT_PRO_CACHE_MASK_DRAM1 );
     REG_CLR_BIT( DPORT_APP_CACHE_CTRL1_REG, (DPORT_APP_CACHE_MASK_IRAM0) | (DPORT_APP_CACHE_MASK_IRAM1 & 0) | (DPORT_APP_CACHE_MASK_IROM0 & 0) | DPORT_APP_CACHE_MASK_DROM0 | DPORT_APP_CACHE_MASK_DRAM1 );
     Cache_Read_Enable( 0 );
-    Cache_Read_Enable( 1 );
+
+    // Application will need to do Cache_Flush(1) and Cache_Read_Enable(1)
 
     ESP_LOGD(TAG, "start: 0x%08x", entry_addr);
     typedef void (*entry_t)(void);
@@ -606,66 +614,85 @@ void IRAM_ATTR set_cache_and_start_app(
 }
 
 
-void print_flash_info(struct flash_hdr* pfhdr)
+static void update_flash_config(const esp_image_header_t* pfhdr)
+{
+    uint32_t size;
+    switch(pfhdr->spi_size) {
+        case ESP_IMAGE_FLASH_SIZE_1MB:
+            size = 1;
+            break;
+        case ESP_IMAGE_FLASH_SIZE_2MB:
+            size = 2;
+            break;
+        case ESP_IMAGE_FLASH_SIZE_4MB:
+            size = 4;
+            break;
+        case ESP_IMAGE_FLASH_SIZE_8MB:
+            size = 8;
+            break;
+        case ESP_IMAGE_FLASH_SIZE_16MB:
+            size = 16;
+            break;
+        default:
+            size = 2;
+    }
+    ESP_LOGD(TAG, "Flash size=%d\n", size);
+    Cache_Read_Disable( 0 );
+    // Set flash chip size
+    SPIParamCfg(g_rom_flashchip.deviceId, size * 0x100000, 0x10000, 0x1000, 0x100, 0xffff);
+    // TODO: set mode
+    // TODO: set frequency
+    Cache_Flush(0);
+    Cache_Read_Enable( 0 );
+}
+
+void print_flash_info(const esp_image_header_t* phdr)
 {
 #if (BOOT_LOG_LEVEL >= BOOT_LOG_LEVEL_NOTICE)
 
-    struct flash_hdr fhdr = *pfhdr;
-
-    ESP_LOGD(TAG, "magic %02x", fhdr.magic );
-    ESP_LOGD(TAG, "blocks %02x", fhdr.blocks );
-    ESP_LOGD(TAG, "spi_mode %02x", fhdr.spi_mode );
-    ESP_LOGD(TAG, "spi_speed %02x", fhdr.spi_speed );
-    ESP_LOGD(TAG, "spi_size %02x", fhdr.spi_size );
+    ESP_LOGD(TAG, "magic %02x", phdr->magic );
+    ESP_LOGD(TAG, "segments %02x", phdr->segment_count );
+    ESP_LOGD(TAG, "spi_mode %02x", phdr->spi_mode );
+    ESP_LOGD(TAG, "spi_speed %02x", phdr->spi_speed );
+    ESP_LOGD(TAG, "spi_size %02x", phdr->spi_size );
 
     const char* str;
-    switch ( fhdr.spi_speed ) {
-    case SPI_SPEED_40M:
+    switch ( phdr->spi_speed ) {
+    case ESP_IMAGE_SPI_SPEED_40M:
         str = "40MHz";
         break;
-
-    case SPI_SPEED_26M:
+    case ESP_IMAGE_SPI_SPEED_26M:
         str = "26.7MHz";
         break;
-
-    case SPI_SPEED_20M:
+    case ESP_IMAGE_SPI_SPEED_20M:
         str = "20MHz";
         break;
-
-    case SPI_SPEED_80M:
+    case ESP_IMAGE_SPI_SPEED_80M:
         str = "80MHz";
         break;
-
     default:
         str = "20MHz";
         break;
     }
     ESP_LOGI(TAG, "SPI Speed      : %s", str );
 
-    
-
-    switch ( fhdr.spi_mode ) {
-    case SPI_MODE_QIO:
+    switch ( phdr->spi_mode ) {
+    case ESP_IMAGE_SPI_MODE_QIO:
         str = "QIO";
         break;
-
-    case SPI_MODE_QOUT:
+    case ESP_IMAGE_SPI_MODE_QOUT:
         str = "QOUT";
         break;
-
-    case SPI_MODE_DIO:
+    case ESP_IMAGE_SPI_MODE_DIO:
         str = "DIO";
         break;
-
-    case SPI_MODE_DOUT:
+    case ESP_IMAGE_SPI_MODE_DOUT:
         str = "DOUT";
         break;
-
-    case SPI_MODE_FAST_READ:
+    case ESP_IMAGE_SPI_MODE_FAST_READ:
         str = "FAST READ";
         break;
-
-    case SPI_MODE_SLOW_READ:
+    case ESP_IMAGE_SPI_MODE_SLOW_READ:
         str = "SLOW READ";
         break;
     default:
@@ -674,37 +701,26 @@ void print_flash_info(struct flash_hdr* pfhdr)
     }
     ESP_LOGI(TAG, "SPI Mode       : %s", str );
 
-    
-
-    switch ( fhdr.spi_size ) {
-    case SPI_SIZE_1MB:
+    switch ( phdr->spi_size ) {
+    case ESP_IMAGE_FLASH_SIZE_1MB:
         str = "1MB";
         break;
-
-    case SPI_SIZE_2MB:
+    case ESP_IMAGE_FLASH_SIZE_2MB:
         str = "2MB";
         break;
-
-    case SPI_SIZE_4MB:
+    case ESP_IMAGE_FLASH_SIZE_4MB:
         str = "4MB";
         break;
-
-    case SPI_SIZE_8MB:
+    case ESP_IMAGE_FLASH_SIZE_8MB:
         str = "8MB";
         break;
-
-    case SPI_SIZE_16MB:
+    case ESP_IMAGE_FLASH_SIZE_16MB:
         str = "16MB";
         break;
-
     default:
-        str = "1MB";
+        str = "2MB";
         break;
     }
     ESP_LOGI(TAG, "SPI Flash Size : %s", str );
 #endif
-}
-
-int ets_printf_dummy(const char *fmt, ...) {
-    return 0;
 }

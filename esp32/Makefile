@@ -45,7 +45,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld \
        -lfreertos -ljson -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
 
 B_LIBS = -Lbootloader/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(BUILD)/bootloader \
-         -L$(ESP_IDF_COMP_PATH)/esp32/lib -Lbootloader -llog -lcore -lspi_flash
+         -L$(ESP_IDF_COMP_PATH)/esp32/lib -Lbootloader -llog -lcore -lbootloader_support -lspi_flash
 
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h $(BUILD)/pins_qstr.h

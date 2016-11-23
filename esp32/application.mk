@@ -19,6 +19,8 @@ APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
 APP_INC += -I$(BUILD)
 APP_INC += -I$(BUILD)/genhdr
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include_priv
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
@@ -250,12 +252,14 @@ PART_BIN = $(BUILD)/lib/partitions.bin
 ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
 
+FLASH_SIZE = 4MB
+
 ESPFLASHMODE = qio
 ESPFLASHFREQ = 40m
 ESPTOOLPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/esptool.py --chip esp32
 ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD)
 
-ESPTOOLPY_WRITE_FLASH  = $(ESPTOOLPY_SERIAL) write_flash -z --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ)
+ESPTOOLPY_WRITE_FLASH  = $(ESPTOOLPY_SERIAL) write_flash -z --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE)
 ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash
 ESPTOOL_ALL_FLASH_ARGS = $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)
 
@@ -275,9 +279,9 @@ $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
 
-#$(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
-#	$(ECHO) "IMAGE $@"
-#	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
+$(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
+	$(ECHO) "IMAGE $@"
+	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE) -o $@ $<
 
 $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
@@ -307,9 +311,9 @@ erase:
 	$(ECHO) "Erasing flash"
 	$(Q) $(ESPTOOLPY_ERASE_FLASH)
 
-# $(PART_BIN): $(PART_CSV)
-# 	$(ECHO) "Building partitions from $(PART_CSV)..."
-# 	$(Q) $(GEN_ESP32PART) $< $@
+$(PART_BIN): $(PART_CSV)
+	$(ECHO) "Building partitions from $(PART_CSV)..."
+	$(Q) $(GEN_ESP32PART) $< $@
 
 show_partitions: $(PART_BIN)
 	$(ECHO) "Partition table binary generated. Contents:"
