@@ -55,7 +55,7 @@ Functions
    which expresses a time as per localtime. It returns an integer which is
    the number of seconds since Jan 1, 2000.
 
-.. only:: port_unix or port_pyboard or port_esp8266
+.. only:: port_unix or port_pyboard or port_esp8266 or port_pycom_esp32
 
     .. function:: sleep(seconds)
     
@@ -70,7 +70,7 @@ Functions
     
        Sleep for the given number of seconds.
 
-.. only:: port_unix or port_pyboard or port_wipy or port_esp8266
+.. only:: port_unix or port_pyboard or port_wipy or port_esp8266 or port_pycom_esp32
 
     .. function::  sleep_ms(ms)
 
@@ -85,6 +85,8 @@ Functions
         Returns an increasing millisecond counter with arbitrary reference point, 
         that wraps after some (unspecified) value. The value should be treated as 
         opaque, suitable for use only with ticks_diff().
+
+.. only:: port_unix or port_pyboard or port_wipy or port_esp8266
 
     .. function::  ticks_us()
 
