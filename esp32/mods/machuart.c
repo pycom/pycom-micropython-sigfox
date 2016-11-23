@@ -39,6 +39,7 @@
 #include "moduos.h"
 #include "machpin.h"
 #include "pins.h"
+#include "esp32_config.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -79,8 +80,8 @@ static void uart_intr_handler(void *para);
 struct _mach_uart_obj_t {
     mp_obj_base_t base;
     volatile byte *read_buf;            // read buffer pointer
-    UART_ConfigTypeDef config;
-    UART_IntrConfTypeDef intr_config;
+    uart_config_t config;
+    uart_intr_config_t intr_config;
     volatile uint32_t read_buf_head;    // indexes the first empty slot
     volatile uint32_t read_buf_tail;    // indexes the first full slot (not full if equals head)
     uint8_t irq_flags;
@@ -138,7 +139,7 @@ bool uart_tx_char(mach_uart_obj_t *self, int c) {
         }
         ets_delay_us(MACHUART_TX_WAIT_US(self->config.baud_rate));
     }
-    WRITE_PERI_REG(UART_FIFO_REG(self->uart_id), c);
+    WRITE_PERI_REG(UART_FIFO_AHB_REG(self->uart_id), c);
     return true;
 }
 
@@ -192,7 +193,7 @@ STATIC IRAM_ATTR void UARTGenericIntHandler(uint32_t uart_id, uint32_t status) {
                    UART_RXFIFO_TOUT_INT_ST == (status & UART_RXFIFO_TOUT_INT_ST)) {
             // Rx data present
             while (READ_PERI_REG(UART_STATUS_REG(uart_id)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) {
-                int data = READ_PERI_REG(UART_FIFO_REG(uart_id)) & 0xFF;
+                int data = READ_PERI_REG(UART_FIFO_AHB_REG(uart_id)) & 0xFF;
                 if (MP_STATE_PORT(mp_os_stream_o) && MP_STATE_PORT(mp_os_stream_o) == self && data == user_interrupt_char) {
                     // raise an exception when interrupts are finished
                     mpexception_keyboard_nlr_jump();
@@ -231,14 +232,14 @@ STATIC IRAM_ATTR void UARTGenericIntHandler(uint32_t uart_id, uint32_t status) {
 static IRAM_ATTR void uart_intr_handler(void *para) {
     uint32_t status;
 
-    if ((status = READ_PERI_REG(UART_INT_ST_REG(UART0)))) {
-        UARTGenericIntHandler(UART0, status);
+    if ((status = READ_PERI_REG(UART_INT_ST_REG(UART_NUM_0)))) {
+        UARTGenericIntHandler(UART_NUM_0, status);
     }
-    if ((status = READ_PERI_REG(UART_INT_ST_REG(UART1)))) {
-        UARTGenericIntHandler(UART1, status);
+    if ((status = READ_PERI_REG(UART_INT_ST_REG(UART_NUM_1)))) {
+        UARTGenericIntHandler(UART_NUM_1, status);
     }
-    if ((status = READ_PERI_REG(UART_INT_ST_REG(UART2)))) {
-        UARTGenericIntHandler(UART2, status);
+    if ((status = READ_PERI_REG(UART_INT_ST_REG(UART_NUM_2)))) {
+        UARTGenericIntHandler(UART_NUM_2, status);
     }
 }
 
@@ -266,30 +267,30 @@ STATIC void mach_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_
     if (self->config.baud_rate > 0) {
         mp_printf(print, "UART(%u, baudrate=%u, bits=", self->uart_id, self->config.baud_rate);
         switch (self->config.data_bits) {
-        case UART_WordLength_5b:
+        case UART_DATA_5_BITS:
             mp_print_str(print, "5");
             break;
-        case UART_WordLength_6b:
+        case UART_DATA_6_BITS:
             mp_print_str(print, "6");
             break;
-        case UART_WordLength_7b:
+        case UART_DATA_7_BITS:
             mp_print_str(print, "7");
             break;
-        case UART_WordLength_8b:
+        case UART_DATA_8_BITS:
             mp_print_str(print, "8");
             break;
         default:
             break;
         }
-        if (self->config.parity == USART_Parity_None) {
+        if (self->config.parity == UART_PARITY_DISABLE) {
             mp_print_str(print, ", parity=None");
         } else {
-            mp_printf(print, ", parity=UART.%q", (self->config.parity == USART_Parity_Even) ? MP_QSTR_EVEN : MP_QSTR_ODD);
+            mp_printf(print, ", parity=UART.%q", (self->config.parity == UART_PARITY_EVEN) ? MP_QSTR_EVEN : MP_QSTR_ODD);
         }
-        if (self->config.stop_bits == USART_StopBits_1_5) {
+        if (self->config.stop_bits == UART_STOP_BITS_1_5) {
             mp_printf(print, ", stop=1.5)");
         } else {
-            mp_printf(print, ", stop=%u)", (self->config.stop_bits == USART_StopBits_1) ? 1 : 2);
+            mp_printf(print, ", stop=%u)", (self->config.stop_bits == UART_STOP_BITS_1) ? 1 : 2);
         }
     } else {
         mp_printf(print, "UART(%u)", self->uart_id);
@@ -307,16 +308,16 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     uint32_t data_bits;
     switch (args[1].u_int) {
     case 5:
-        data_bits = UART_WordLength_5b;
+        data_bits = UART_DATA_5_BITS;
         break;
     case 6:
-        data_bits = UART_WordLength_6b;
+        data_bits = UART_DATA_6_BITS;
         break;
     case 7:
-        data_bits = UART_WordLength_7b;
+        data_bits = UART_DATA_7_BITS;
         break;
     case 8:
-        data_bits = UART_WordLength_8b;
+        data_bits = UART_DATA_8_BITS;
         break;
     default:
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid bits size %d", args[1].u_int));
@@ -326,10 +327,10 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     // parity
     uint32_t parity;
     if (args[2].u_obj == mp_const_none) {
-        parity = USART_Parity_None;
+        parity = UART_PARITY_DISABLE;
     } else {
         uint parity = mp_obj_get_int(args[2].u_obj);
-        if (parity != USART_Parity_Odd && parity != USART_Parity_Even) {
+        if (parity != UART_PARITY_ODD && parity != UART_PARITY_EVEN) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid parity %d", parity));
         }
     }
@@ -343,14 +344,14 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
         _stop = mp_obj_get_float(args[3].u_obj);
     }
     if (_stop == 1.5) {
-        stop_bits = USART_StopBits_1_5;
+        stop_bits = UART_STOP_BITS_1_5;
     } else {
         switch ((int)_stop) {
         case 1:
-            stop_bits = USART_StopBits_1;
+            stop_bits = UART_STOP_BITS_1;
             break;
         case 2:
-            stop_bits = USART_StopBits_2;
+            stop_bits = UART_STOP_BITS_2;
             break;
         default:
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid stop bits %f", _stop));
@@ -372,7 +373,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
 
     // assign the pins
     mp_obj_t pins_o = args[4].u_obj;
-    uint32_t flowcontrol = USART_HardwareFlowControl_None;
+    uint32_t flowcontrol = UART_HW_FLOWCTRL_DISABLE;
     if (pins_o != mp_const_none) {
         mp_obj_t *pins;
         mp_uint_t n_pins = 2;
@@ -391,10 +392,10 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
                     goto error;  // CTS pin given in RX only mode
                 } else {
                     if (pins[PIN_TYPE_UART_RTS] != mp_const_none) {
-                        flowcontrol |= USART_HardwareFlowControl_RTS;
+                        flowcontrol |= UART_HW_FLOWCTRL_RTS;
                     }
                     if (pins[PIN_TYPE_UART_CTS] != mp_const_none) {
-                        flowcontrol |= USART_HardwareFlowControl_CTS;
+                        flowcontrol |= UART_HW_FLOWCTRL_CTS;
                     }
                 }
             }
@@ -415,7 +416,6 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     // disable insterrupts on the current UART before re-configuring
     // UART_IntrConfig() will enable them again
     CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(uart_id), UART_INTR_MASK);
-    UART_WaitTxFifoEmpty(uart_id);
 
     self->uart_id = uart_id;
     self->base.type = &mach_uart_type;
@@ -423,10 +423,9 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     self->config.data_bits = data_bits;
     self->config.parity = parity;
     self->config.stop_bits = stop_bits;
-    self->config.flow_ctrl = USART_HardwareFlowControl_None;
-    self->config.UART_RxFlowThresh = 120;
-    self->config.UART_InverseMask = UART_None_Inverse;
-    UART_InitConfig(uart_id, &self->config);
+    self->config.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
+    self->config.rx_flow_ctrl_thresh = 64;
+    uart_param_config(uart_id, &self->config);
 
     // re-allocate the read buffer after resetting the uart
     self->read_buf_head = 0;
@@ -435,14 +434,14 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     MP_STATE_PORT(uart_buf[uart_id]) = m_new(byte, MACHUART_RX_BUFFER_LEN);
     self->read_buf = (volatile byte *)MP_STATE_PORT(uart_buf[uart_id]);
 
-    self->intr_config.UART_IntrEnMask = intr_mask;
-    self->intr_config.UART_RX_FifoFullIntrThresh = 10;
-    self->intr_config.UART_RX_TimeOutIntrThresh = 2;
-    self->intr_config.UART_TX_FifoEmptyIntrThresh = 20;
-    UART_IntrConfig(uart_id, &self->intr_config);
+    self->intr_config.intr_enable_mask = intr_mask;
+    self->intr_config.rx_timeout_thresh = 10;
+    self->intr_config.txfifo_empty_intr_thresh = 2;
+    self->intr_config.rxfifo_full_thresh = 20;
+    uart_intr_config(uart_id, &self->intr_config);
 
-    UART_intr_handler_register(uart_intr_handler, NULL, uart_id);
-    ESP_UART0_INTR_ENABLE();    // this actually enables the common UART interrupt line
+    // interrupts are enabled here
+    uart_isr_register(uart_id, ESP32_CONFIG_UARTS_INUM, uart_intr_handler, NULL);
 
     return mp_const_none;
 
@@ -536,8 +535,8 @@ STATIC const mp_map_elem_t mach_uart_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_write),       (mp_obj_t)&mp_stream_write_obj },
 
     // class constants
-    { MP_OBJ_NEW_QSTR(MP_QSTR_EVEN),        MP_OBJ_NEW_SMALL_INT(USART_Parity_Even) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ODD),         MP_OBJ_NEW_SMALL_INT(USART_Parity_Odd) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVEN),        MP_OBJ_NEW_SMALL_INT(UART_PARITY_EVEN) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ODD),         MP_OBJ_NEW_SMALL_INT(UART_PARITY_ODD) },
     // { MP_OBJ_NEW_QSTR(MP_QSTR_RX_ANY),      MP_OBJ_NEW_SMALL_INT(2) },
 };
 STATIC MP_DEFINE_CONST_DICT(mach_uart_locals_dict, mach_uart_locals_dict_table);

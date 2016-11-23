@@ -135,11 +135,11 @@ void NORETURN __fatal_error(const char *msg) {
     for ( ;; ); //{__WFI();}
 }
 
-void __assert_func(const char *file, int line, const char *func, const char *expr) {
-    (void) func;
-    mp_printf(&mp_plat_print, "Assertion failed: %s, func %s, file %s, line %d\n", expr, func, file, line);
-    __fatal_error(NULL);
-}
+// void __assert_func(const char *file, int line, const char *func, const char *expr) {
+//     (void) func;
+//     mp_printf(&mp_plat_print, "Assertion failed: %s, func %s, file %s, line %d\n", expr, func, file, line);
+//     __fatal_error(NULL);
+// }
 
 void nlr_jump_fail(void *val) {
 #ifdef DEBUG
@@ -173,11 +173,11 @@ bool mperror_is_heartbeat_enabled (void) {
 
 #define BIT_1_HIGH_TIME_NS                  (950)
 #define BIT_1_LOW_TIME_NS                   (22)
-#define BIT_0_HIGH_TIME_NS                  (40)
+#define BIT_0_HIGH_TIME_NS                  (20)
 #define BIT_0_LOW_TIME_NS                   (500)
 #define RESET_TIME_US                       (52)
 
-#define NS_TO_COUNT(ns)                     (ns / 21)
+#define NS_TO_COUNT(ns)                     (ns / 9)
 
 static inline uint32_t get_ccount(void) {
     uint32_t r;
@@ -212,7 +212,7 @@ void IRAM_ATTR mperror_set_rgb_color (uint32_t rgbcolor) {
             DELAY_NS(BIT_1_LOW_TIME_NS);
         } else {
             GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << GP0_PIN_NUMBER);
-//            DELAY_NS(BIT_0_HIGH_TIME_NS);
+            DELAY_NS(BIT_0_HIGH_TIME_NS);
             GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << GP0_PIN_NUMBER);
             DELAY_NS(BIT_0_LOW_TIME_NS);
         }

@@ -65,8 +65,6 @@ void TASK_Servers (void *pvParameters) {
     strcpy (servers_user, SERVERS_DEF_USER);
     strcpy (servers_pass, SERVERS_DEF_PASS);
 
-    vTaskDelay (250 / portTICK_PERIOD_MS);
-
     telnet_init();
     ftp_init();
 

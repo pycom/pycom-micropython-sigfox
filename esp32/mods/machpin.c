@@ -49,11 +49,6 @@ STATIC void pin_validate_mode (uint mode);
 STATIC void pin_validate_pull (uint pull);
 STATIC void pin_validate_drive (uint strength);
 
-static void machpin_enable_pull_up (uint8_t gpio_num);
-static void machpin_disable_pull_up (uint8_t gpio_num);
-static void machpin_enable_pull_down (uint8_t gpio_num);
-static void machpin_disable_pull_down (uint8_t gpio_num);
-
 /******************************************************************************
 DEFINE CONSTANTS
 ******************************************************************************/
@@ -165,7 +160,7 @@ IRAM_ATTR uint32_t pin_get_value (const pin_obj_t* self) {
 }
 
 static IRAM_ATTR void machpin_intr_process (void* arg) {
-    ESP_GPIO_INTR_DISABLE();
+    ESP_INTR_DISABLE(ETS_GPIO_INUM);
     uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);
     uint32_t gpio_intr_status_h = READ_PERI_REG(GPIO_STATUS1_REG);
     // clear the interrupts
@@ -190,7 +185,7 @@ static IRAM_ATTR void machpin_intr_process (void* arg) {
             mp_irq_handler(mp_irq_find(self));
         }
     } while (++gpio_num < GPIO_PIN_COUNT);
-    ESP_GPIO_INTR_ENABLE();
+    ESP_INTR_ENABLE(ETS_GPIO_INUM);
 }
 
 /******************************************************************************
@@ -240,24 +235,24 @@ STATIC void pin_obj_configure (const pin_obj_t *self) {
     gpio_config(&gpioconf);
 
     if (gpioconf.pull_up_en == GPIO_PULLUP_ENABLE) {
-        machpin_enable_pull_up(self->pin_number);
+        gpio_pullup_en(self->pin_number);
     } else {
-        machpin_disable_pull_up(self->pin_number);
+        gpio_pullup_dis(self->pin_number);
     }
 
     if (gpioconf.pull_down_en == GPIO_PULLDOWN_ENABLE) {
-        machpin_enable_pull_down(self->pin_number);
+        gpio_pulldown_en(self->pin_number);
     } else {
-        machpin_disable_pull_down(self->pin_number);
+        gpio_pulldown_dis(self->pin_number);
     }
 }
 
 void pin_irq_enable (mp_obj_t self_in) {
-    ESP_GPIO_INTR_ENABLE();
+    ESP_INTR_ENABLE(ETS_GPIO_INUM);
 }
 
 void pin_irq_disable (mp_obj_t self_in) {
-    ESP_GPIO_INTR_DISABLE();
+    ESP_INTR_DISABLE(ETS_GPIO_INUM);
 }
 
 int pin_irq_flags (mp_obj_t self_in) {
@@ -740,210 +735,3 @@ const mp_obj_type_t pin_exp_board_pins_obj_type = {
     .print = pin_named_pins_obj_print,
     .locals_dict = (mp_obj_t)&pin_exp_board_pins_locals_dict,
 };
-
-
-
-//-----------API functions--------------
-#include "driver/gpio.h"
-#include "soc/rtc_io_reg.h"
-#include "soc/io_mux_reg.h"
-
-static void machpin_enable_pull_up (uint8_t gpio_num)
-{
-    switch(gpio_num) {
-        case GPIO_NUM_0:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD1_REG,RTC_IO_TOUCH_PAD1_RUE_M);
-            break;
-        case GPIO_NUM_2:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD2_REG,RTC_IO_TOUCH_PAD2_RUE_M);
-            break;
-        case GPIO_NUM_4:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD0_REG,RTC_IO_TOUCH_PAD0_RUE_M);
-            break;
-        case GPIO_NUM_12:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD5_REG, RTC_IO_TOUCH_PAD5_RUE_M);
-            break;
-        case GPIO_NUM_13:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD4_REG, RTC_IO_TOUCH_PAD4_RUE_M);
-            break;
-        case GPIO_NUM_14:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD6_REG, RTC_IO_TOUCH_PAD6_RUE_M);
-            break;
-        case GPIO_NUM_15:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD3_REG, RTC_IO_TOUCH_PAD3_RUE_M);
-            break;
-        case GPIO_NUM_25:
-            SET_PERI_REG_MASK(RTC_IO_PAD_DAC1_REG, RTC_IO_PDAC1_RUE_M);
-            break;
-        case GPIO_NUM_26:
-            SET_PERI_REG_MASK(RTC_IO_PAD_DAC2_REG, RTC_IO_PDAC2_RUE_M);
-            break;
-        case GPIO_NUM_27:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD7_REG, RTC_IO_TOUCH_PAD7_RUE_M);
-            break;
-        case GPIO_NUM_32:
-            SET_PERI_REG_MASK(RTC_IO_XTAL_32K_PAD_REG, RTC_IO_X32P_RUE_M);
-            break;
-        case GPIO_NUM_33:
-            SET_PERI_REG_MASK(RTC_IO_XTAL_32K_PAD_REG, RTC_IO_X32N_RUE_M);
-            break;
-        case GPIO_NUM_36:
-        case GPIO_NUM_37:
-        case GPIO_NUM_38:
-        case GPIO_NUM_39:
-            break;
-        default:
-            PIN_PULLUP_EN(GPIO_PIN_MUX_REG[gpio_num]);
-            break;
-    }
-}
-
-static void machpin_disable_pull_up (uint8_t gpio_num)
-{
-    switch(gpio_num) {
-        case GPIO_NUM_0:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD1_REG,RTC_IO_TOUCH_PAD1_RUE_M);
-            break;
-        case GPIO_NUM_2:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD2_REG,RTC_IO_TOUCH_PAD2_RUE_M);
-            break;
-        case GPIO_NUM_4:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD0_REG,RTC_IO_TOUCH_PAD0_RUE_M);
-            break;
-        case GPIO_NUM_12:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD5_REG, RTC_IO_TOUCH_PAD5_RUE_M);
-            break;
-        case GPIO_NUM_13:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD4_REG, RTC_IO_TOUCH_PAD4_RUE_M);
-            break;
-        case GPIO_NUM_14:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD6_REG, RTC_IO_TOUCH_PAD6_RUE_M);
-            break;
-        case GPIO_NUM_15:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD3_REG, RTC_IO_TOUCH_PAD3_RUE_M);
-            break;
-        case GPIO_NUM_25:
-            CLEAR_PERI_REG_MASK(RTC_IO_PAD_DAC1_REG, RTC_IO_PDAC1_RUE_M);
-            break;
-        case GPIO_NUM_26:
-            CLEAR_PERI_REG_MASK(RTC_IO_PAD_DAC2_REG, RTC_IO_PDAC2_RUE_M);
-            break;
-        case GPIO_NUM_27:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD7_REG, RTC_IO_TOUCH_PAD7_RUE_M);
-            break;
-        case GPIO_NUM_32:
-            CLEAR_PERI_REG_MASK(RTC_IO_XTAL_32K_PAD_REG, RTC_IO_X32P_RUE_M);
-            break;
-        case GPIO_NUM_33:
-            CLEAR_PERI_REG_MASK(RTC_IO_XTAL_32K_PAD_REG, RTC_IO_X32N_RUE_M);
-            break;
-        case GPIO_NUM_36:
-        case GPIO_NUM_37:
-        case GPIO_NUM_38:
-        case GPIO_NUM_39:
-            break;
-        default:
-            PIN_PULLUP_DIS(GPIO_PIN_MUX_REG[gpio_num]);
-            break;
-    }
-}
-
-static void machpin_enable_pull_down (uint8_t gpio_num)
-{
-    switch(gpio_num) {
-        case GPIO_NUM_0:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD1_REG,RTC_IO_TOUCH_PAD1_RDE_M);
-            break;
-        case GPIO_NUM_2:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD2_REG,RTC_IO_TOUCH_PAD2_RDE_M);
-            break;
-        case GPIO_NUM_4:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD0_REG,RTC_IO_TOUCH_PAD0_RDE_M);
-            break;
-        case GPIO_NUM_12:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD5_REG, RTC_IO_TOUCH_PAD5_RDE_M);
-            break;
-        case GPIO_NUM_13:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD4_REG, RTC_IO_TOUCH_PAD4_RDE_M);
-            break;
-        case GPIO_NUM_14:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD6_REG, RTC_IO_TOUCH_PAD6_RDE_M);
-            break;
-        case GPIO_NUM_15:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD3_REG, RTC_IO_TOUCH_PAD3_RDE_M);
-            break;
-        case GPIO_NUM_25:
-            SET_PERI_REG_MASK(RTC_IO_PAD_DAC1_REG, RTC_IO_PDAC1_RDE_M);
-            break;
-        case GPIO_NUM_26:
-            SET_PERI_REG_MASK(RTC_IO_PAD_DAC2_REG, RTC_IO_PDAC2_RDE_M);
-            break;
-        case GPIO_NUM_27:
-            SET_PERI_REG_MASK(RTC_IO_TOUCH_PAD7_REG, RTC_IO_TOUCH_PAD7_RDE_M);
-            break;
-        case GPIO_NUM_32:
-            SET_PERI_REG_MASK(RTC_IO_XTAL_32K_PAD_REG, RTC_IO_X32P_RDE_M);
-            break;
-        case GPIO_NUM_33:
-            SET_PERI_REG_MASK(RTC_IO_XTAL_32K_PAD_REG, RTC_IO_X32N_RDE_M);
-            break;
-        case GPIO_NUM_36:
-        case GPIO_NUM_37:
-        case GPIO_NUM_38:
-        case GPIO_NUM_39:
-            break;
-        default:
-            PIN_PULLDWN_EN(GPIO_PIN_MUX_REG[gpio_num]);
-            break;
-    }
-}
-
-static void machpin_disable_pull_down (uint8_t gpio_num)
-{
-    switch(gpio_num) {
-        case GPIO_NUM_0:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD1_REG,RTC_IO_TOUCH_PAD1_RDE_M);
-            break;
-        case GPIO_NUM_2:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD2_REG,RTC_IO_TOUCH_PAD2_RDE_M);
-            break;
-        case GPIO_NUM_4:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD0_REG,RTC_IO_TOUCH_PAD0_RDE_M);
-            break;
-        case GPIO_NUM_12:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD5_REG, RTC_IO_TOUCH_PAD5_RDE_M);
-            break;
-        case GPIO_NUM_13:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD4_REG, RTC_IO_TOUCH_PAD4_RDE_M);
-            break;
-        case GPIO_NUM_14:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD6_REG, RTC_IO_TOUCH_PAD6_RDE_M);
-            break;
-        case GPIO_NUM_15:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD3_REG, RTC_IO_TOUCH_PAD3_RDE_M);
-            break;
-        case GPIO_NUM_25:
-            CLEAR_PERI_REG_MASK(RTC_IO_PAD_DAC1_REG, RTC_IO_PDAC1_RDE_M);
-            break;
-        case GPIO_NUM_26:
-            CLEAR_PERI_REG_MASK(RTC_IO_PAD_DAC2_REG, RTC_IO_PDAC2_RDE_M);
-            break;
-        case GPIO_NUM_27:
-            CLEAR_PERI_REG_MASK(RTC_IO_TOUCH_PAD7_REG, RTC_IO_TOUCH_PAD7_RDE_M);
-            break;
-        case GPIO_NUM_32:
-            CLEAR_PERI_REG_MASK(RTC_IO_XTAL_32K_PAD_REG, RTC_IO_X32P_RDE_M);
-            break;
-        case GPIO_NUM_33:
-            CLEAR_PERI_REG_MASK(RTC_IO_XTAL_32K_PAD_REG, RTC_IO_X32N_RDE_M);
-            break;
-        case GPIO_NUM_36:
-        case GPIO_NUM_37:
-        case GPIO_NUM_38:
-        case GPIO_NUM_39:
-            break;
-        default:
-            PIN_PULLDWN_DIS(GPIO_PIN_MUX_REG[gpio_num]);
-            break;
-    }
-}
