@@ -36,7 +36,7 @@
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-static char *mod_ssl_read_file (const char *file_path);
+static char *mod_ssl_read_file (const char *file_path, vstr_t *vstr);
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -70,7 +70,7 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
     }
 
     if (ca_cert_path) {
-        const char *ca_cert = mod_ssl_read_file(ca_cert_path);
+        const char *ca_cert = mod_ssl_read_file(ca_cert_path, &ssl_sock->vstr_ca);
         if (ca_cert) {
             // printf("Loading the CA root certificate...\n");
             ret = mbedtls_x509_crt_parse(&ssl_sock->cacert, (uint8_t *)ca_cert, strlen(ca_cert) + 1);
@@ -84,7 +84,7 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
     }
 
     if (client_cert_path && key_path) {
-        const char *client_cert = mod_ssl_read_file(client_cert_path);
+        const char *client_cert = mod_ssl_read_file(client_cert_path, &ssl_sock->vstr_cert);
         if (client_cert) {
             //printf("Loading the own certificate...\n");
             ret = mbedtls_x509_crt_parse(&ssl_sock->own_cert, (uint8_t *)client_cert, strlen(client_cert) + 1);
@@ -96,7 +96,7 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "certificate file not found"));
         }
 
-        const char *client_key = mod_ssl_read_file(key_path);
+        const char *client_key = mod_ssl_read_file(key_path, &ssl_sock->vstr_key);
         if (client_key) {
             ret = mbedtls_pk_parse_key(&ssl_sock->pk_key, (uint8_t *)client_key, strlen(client_key) + 1, NULL, 0);
             if (ret < 0) {
@@ -149,10 +149,9 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
     return 0;
 }
 
-static char *mod_ssl_read_file (const char *file_path) {
-    vstr_t vstr;
-    vstr_init(&vstr, FILE_READ_SIZE);
-    char *filebuf = vstr.buf;
+static char *mod_ssl_read_file (const char *file_path, vstr_t *vstr) {
+    vstr_init(vstr, FILE_READ_SIZE);
+    char *filebuf = vstr->buf;
     mp_uint_t actualsize;
     mp_uint_t totalsize = 0;
 
@@ -172,14 +171,14 @@ static char *mod_ssl_read_file (const char *file_path) {
         if (actualsize < FILE_READ_SIZE) {
             break;
         } else {
-            filebuf = vstr_extend(&vstr, FILE_READ_SIZE);
+            filebuf = vstr_extend(vstr, FILE_READ_SIZE);
         }
     }
     f_close(&fp);
 
-    vstr.len = totalsize;
-    vstr_null_terminated_str(&vstr);
-    return vstr.buf;
+    vstr->len = totalsize;
+    vstr_null_terminated_str(vstr);
+    return vstr->buf;
 }
 
 /******************************************************************************/
@@ -223,10 +222,11 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
     }
 
     // create the ssl socket
-    mp_obj_ssl_socket_t *ssl_sock = m_new_obj(mp_obj_ssl_socket_t);
+    mp_obj_ssl_socket_t *ssl_sock = m_new_obj_with_finaliser(mp_obj_ssl_socket_t);
     // ssl sockets inherit all properties from the original socket
     memcpy (&ssl_sock->sock_base, &((mod_network_socket_obj_t *)args[0].u_obj)->sock_base, sizeof(mod_network_socket_base_t));
     ssl_sock->base.type = &ssl_socket_type;
+    ssl_sock->o_sock = args[0].u_obj;
 
     _error = mod_ssl_setup_socket(ssl_sock, host_name, cafile_path, certfile_path, keyfile_path,
                                   verify_type, server_side ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT);

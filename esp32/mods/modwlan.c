@@ -194,14 +194,13 @@ void wlan_pre_init (void) {
     // create the wlan lock
 //    ASSERT(OSI_OK == sl_LockObjCreate(&wlan_LockObj, "WlanLock"));
 //    wifi_set_event_handler_cb(wlan_event_handler_cb);
+    wifi_event_group = xEventGroupCreate();
     tcpip_adapter_init();
     ESP_ERROR_CHECK(esp_event_loop_init(wlan_event_handler, NULL));
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-    ESP_ERROR_CHECK(esp_wifi_start());
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
-    wifi_event_group = xEventGroupCreate();
 }
 
 void wlan_setup (int32_t mode, const char *ssid, uint32_t ssid_len, uint32_t auth, const char *key, uint32_t key_len,
@@ -217,6 +216,11 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t ssid_len, uint32_t aut
 
     if (mode != WIFI_MODE_STA) {
         wlan_setup_ap (ssid, ssid_len, auth, key, key_len, channel, add_mac);
+    }
+
+    if (!wlan_obj.started) {
+        ESP_ERROR_CHECK(esp_wifi_start());
+        wlan_obj.started = true;
     }
 
     // start the servers before returning
@@ -1168,10 +1172,8 @@ static int wlan_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uin
     if (len > 0) {
         if (s->sock_base.is_ssl) {
             mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-            while((bytes = mbedtls_ssl_write(&ss->ssl, (const unsigned char *)buf, len)) <= 0)
-            {
-                if(bytes != MBEDTLS_ERR_SSL_WANT_READ && bytes != MBEDTLS_ERR_SSL_WANT_WRITE)
-                {
+            while ((bytes = mbedtls_ssl_write(&ss->ssl, (const unsigned char *)buf, len)) <= 0) {
+                if (bytes != MBEDTLS_ERR_SSL_WANT_READ && bytes != MBEDTLS_ERR_SSL_WANT_WRITE) {
                     // printf("mbedtls_ssl_write returned -0x%x\n", -bytes);
                     break;
                 } else {

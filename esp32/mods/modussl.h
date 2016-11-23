@@ -16,7 +16,6 @@
 #include "lwip/netdb.h"
 #include "lwip/dns.h"
 
-#include "mbedtls/esp_config.h"
 #include "mbedtls/net.h"
 #include "mbedtls/debug.h"
 #include "mbedtls/ssl.h"
@@ -32,6 +31,9 @@ typedef struct _mp_obj_ssl_socket_t {
     mp_obj_base_t base;
     mod_network_socket_base_t sock_base;
     mp_obj_t o_sock;
+    vstr_t vstr_ca;
+    vstr_t vstr_cert;
+    vstr_t vstr_key;
     mbedtls_entropy_context entropy;
     mbedtls_ctr_drbg_context ctr_drbg;
     mbedtls_ssl_context ssl;

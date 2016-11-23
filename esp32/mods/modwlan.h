@@ -55,6 +55,7 @@ typedef struct _wlan_obj_t {
     uint8_t             irq_flags;
     bool                irq_enabled;
     bool                servers_enabled;
+    bool                started;
 } wlan_obj_t;
 
 /******************************************************************************
