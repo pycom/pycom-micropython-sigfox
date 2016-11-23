@@ -10,38 +10,39 @@ import os
 mch = os.uname().machine
 
 pin_map = [
-    'G2','GPIO3','P0',
-    'G1','GPIO1','P1',
-    'G23','GPIO0','P2',
-    'G24','GPIO4','P3',
-    'G11','GPIO15','P4',
-    'G12','GPIO5','P5',
-    'G13','GPIO27','P6',
-    'G14','GPIO19','P7',
-    'G15','GPIO2','P8',
-    'G16','GPIO12','P9',
-    'G17','GPIO13','P10',
-    'G22','GPIO22','P11',
-    'G28','GPIO21','P12',
-    'G5','GPI37','P13',
-    'G4','GPI36','P14',
-    'G0','GPI38','P15',
-    'G3','GPI39','P16',
-    'G31','GPI35','P17',
-    'G30','GPI34','P18',
-    'G6','GPIO32','P19',
-    'G7','GPIO33','P20',
-    'G8','GPIO26','P21',
-    'G9','GPIO25','P22',
-    'G10','GPIO14','P23'
+    #'G2','P0', #Pin used for UART
+    #'G1','P1', #Pin used for UART
+    #'G23','P2', #Pin used for ISP
+    'G24','P3',
+    'G11','P4',
+    'G12','P5',
+    'G13','P6',
+    'G14','P7',
+    'G15','P8',
+    'G16','P9',
+    'G17','P10',
+    'G22','P11',
+    #'G28','P12',  #Pin used for factory reset
+    'G5','P13',
+    'G4','P14',
+    'G0','P15',
+    'G3','P16',
+    'G31','P17',
+    'G30','P18',
+    'G6','P19',
+    'G7','P20',
+    'G8','P21',
+    'G9','P22',
+    'G10','P23'
 ]
 
+
 if 'LoPy' in mch:
-    used_pins = ['G12','P5',
-                 'G13','P6',
-                 'G14','P7',
-                 'G23','P2']
-    pin_map = [x if x in used_pins else 'P3' for x in pin_map]
+    used_pins = ['G12','P5',    #Pin used for Lora CLK
+                 'G13','P6',   #Pin used for Lora MOSI
+                 'G14','P7'    #Pin used for Lora MISO
+                 ]
+    pin_map = list(set(pin_map) - set(used_pins))
 
 
 # test initial value
@@ -55,19 +56,18 @@ def test_noinit():
     for p in pin_map:
         pin = Pin(p)
         val = pin.value()
-        uart = UART(0, 115200)
         print (type(pin))
-        print (val)
 
 # test un-initialized pins
 test_noinit()
+
 def test_pin_read(pull):
     # enable the pull resistor on all pins, then read the value
     for p in pin_map:
         pin = Pin(p, mode=Pin.IN, pull=pull)
         val = pin()
-        uart = UART(0, 115200)
         print (val)
+        
 # test with pull-up and pull-down
 print("PULL-UP")
 test_pin_read(Pin.PULL_UP)
@@ -134,6 +134,7 @@ try:
 except Exception:
     print('Exception')
 '''
+
 try:
     pin = Pin(magic_pin, mode=Pin.LOW_POWER, pull=Pin.PULL_UP) # incorrect mode value
 except Exception:
@@ -174,7 +175,7 @@ try:
 except Exception:
     print('Exception')
 '''
-'''
+
 try:
     pin.mode(Pin.PULL_UP) # incorrect pin mode
 except Exception:
@@ -189,6 +190,7 @@ try:
     pin.drive(Pin.IN) # incorrect drive strength
 except Exception:
     print('Exception')
+
 '''
 try:
     pin.id('ABC') # id cannot be set
@@ -204,3 +206,4 @@ print(p.pull())
 print(p.value())
 print(p.drive())
 #print(p.alt())
+'''
