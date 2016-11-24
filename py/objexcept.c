@@ -161,6 +161,10 @@ STATIC void exception_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
         dest[0] = MP_OBJ_FROM_PTR(self->args);
     } else if (self->base.type == &mp_type_StopIteration && attr == MP_QSTR_value) {
         dest[0] = mp_obj_exception_get_value(self_in);
+#if MICROPY_PY_UERRNO
+    } else if (self->base.type == &mp_type_OSError && attr == MP_QSTR_errno) {
+        dest[0] = mp_obj_exception_get_value(self_in);
+#endif
     }
 }
 
