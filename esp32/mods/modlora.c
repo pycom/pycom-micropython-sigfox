@@ -742,7 +742,7 @@ static void lora_validate_power (uint8_t tx_power) {
     }
 }
 
-static bool lora_validate_data_rate (uint8_t data_rate) {
+static bool lora_validate_data_rate (uint32_t data_rate) {
 #if defined(USE_BAND_868)
     if (data_rate > DR_7) {
         return false;
@@ -1420,7 +1420,7 @@ static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t l
 static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno) {
     LORA_CHECK_SOCKET(s);
     if (level != SOL_LORA) {
-        *_errno = ENOPROTOOPT;
+        *_errno = EOPNOTSUPP;
         return -1;
     }
 
@@ -1431,13 +1431,13 @@ static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, 
             LORAWAN_SOCKET_CLR_CONFIRMED(s->sock_base.sd);
         }
     } else if (opt == SO_LORAWAN_DR) {
-        if (!lora_validate_data_rate(*(uint8_t *)optval)) {
-            *_errno = ENOPROTOOPT;
+        if (!lora_validate_data_rate(*(uint32_t *)optval)) {
+            *_errno = EOPNOTSUPP;
             return -1;
         }
         LORAWAN_SOCKET_SET_DR(s->sock_base.sd, *(uint8_t *)optval);
     } else {
-        *_errno = ENOPROTOOPT;
+        *_errno = EOPNOTSUPP;
         return -1;
     }
     return 0;
