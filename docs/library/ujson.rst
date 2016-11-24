@@ -18,3 +18,8 @@ Functions
 
    Parse the JSON ``str`` and return an object.  Raises ValueError if the
    string is not correctly formed.
+
+.. function:: load(fp)
+
+   Parse contents of ``fp`` (a .read()-supporting file-like object containing
+   a JSON document) .  Raises ValueError if the content is not correctly formed.
