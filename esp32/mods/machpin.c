@@ -211,6 +211,8 @@ STATIC IRAM_ATTR pin_obj_t *pin_find_pin_by_num (const mp_obj_dict_t *named_pins
 }
 
 STATIC void pin_obj_configure (const pin_obj_t *self) {
+    // set the value before configuring the GPIO matrix (to minimze glitches)
+    pin_set_value(self);
     // first detach the pin from any outputs
     gpio_matrix_out(self->pin_number, MACHPIN_SIMPLE_OUTPUT, 0, 0);
     // assign the alternate function
@@ -219,8 +221,6 @@ STATIC void pin_obj_configure (const pin_obj_t *self) {
             gpio_matrix_in(self->pin_number, self->af_in, 0);
         }
     } else {    // output or open drain
-        // set the value before configuring the GPIO matrix (to minimze glitches)
-        pin_set_value(self);
         if (self->af_out >= 0) {
             gpio_matrix_out(self->pin_number, self->af_out, 0, 0);
         }
@@ -233,18 +233,6 @@ STATIC void pin_obj_configure (const pin_obj_t *self) {
                               .pull_down_en = (self->pull == MACHPIN_PULL_DOWN) ? GPIO_PULLDOWN_ENABLE : GPIO_PULLDOWN_DISABLE,
                               .intr_type = self->irq_trigger};
     gpio_config(&gpioconf);
-
-    if (gpioconf.pull_up_en == GPIO_PULLUP_ENABLE) {
-        gpio_pullup_en(self->pin_number);
-    } else {
-        gpio_pullup_dis(self->pin_number);
-    }
-
-    if (gpioconf.pull_down_en == GPIO_PULLDOWN_ENABLE) {
-        gpio_pulldown_en(self->pin_number);
-    } else {
-        gpio_pulldown_dis(self->pin_number);
-    }
 }
 
 void pin_irq_enable (mp_obj_t self_in) {

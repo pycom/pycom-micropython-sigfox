@@ -230,7 +230,7 @@ soft_reset_exit:
 
     mpsleep_signal_soft_reset();
     mp_printf(&mp_plat_print, "PYB: soft reboot\n");
-    mp_hal_delay_us(25000);
+    mp_hal_delay_us(5000);
     soft_reset = true;
     goto soft_reset;
 }

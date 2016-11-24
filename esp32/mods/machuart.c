@@ -177,7 +177,7 @@ static void uart_assign_pins_af (mp_obj_t *pins, uint32_t n_pins, uint32_t uart_
                 af_out = mach_uart_pin_af[uart_id][i];
                 mode = GPIO_MODE_OUTPUT;
             }
-            pin_config(pin, af_in, af_out, mode, MACHPIN_PULL_UP, 0, 0);
+            pin_config(pin, af_in, af_out, mode, MACHPIN_PULL_UP, 1, 0);
         }
     }
 }
@@ -359,17 +359,47 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
         }
     }
 
-    // enable the clocks to the peripheral
-    if (uart_id == MACH_UART_0) {
-        SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_UART_CLK_EN);
-        CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_UART_RST);
-    } else if (uart_id == MACH_UART_1) {
-        SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_UART1_CLK_EN);
-        CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_UART1_RST);
-    } else {
-        SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_UART2_CLK_EN);
-        CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_UART2_RST);
-    }
+    // register it with the sleep module
+    // pyb_sleep_add ((const mp_obj_t)self, (WakeUpCB_t)uart_init);
+    // enable the callback
+    // uart_irq_new (self, UART_TRIGGER_RX_ANY, INT_PRIORITY_LVL_3, mp_const_none);
+    // disable the irq (from the user point of view)
+    // uart_irq_disable(self);
+
+    uint32_t intr_mask = UART_RXFIFO_TOUT_INT_ENA | UART_FRM_ERR_INT_ENA |
+                         UART_RXFIFO_FULL_INT_ENA | UART_TXFIFO_EMPTY_INT_ENA;
+
+    // disable interrupts on the current UART before re-configuring
+    // UART_IntrConfig() will enable them again
+    CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(uart_id), UART_INTR_MASK);
+
+    // uart_reset_fifo(uart_id);
+
+    self->uart_id = uart_id;
+    self->base.type = &mach_uart_type;
+    self->config.baud_rate = baudrate;
+    self->config.data_bits = data_bits;
+    self->config.parity = parity;
+    self->config.stop_bits = stop_bits;
+    self->config.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
+    self->config.rx_flow_ctrl_thresh = 64;
+    uart_param_config(uart_id, &self->config);
+
+    // re-allocate the read buffer after resetting the uart
+    self->read_buf_head = 0;
+    self->read_buf_tail = 0;
+    self->read_buf = MP_OBJ_NULL; // free the read buffer before allocating again
+    MP_STATE_PORT(uart_buf[uart_id]) = m_new(byte, MACHUART_RX_BUFFER_LEN);
+    self->read_buf = (volatile byte *)MP_STATE_PORT(uart_buf[uart_id]);
+
+    self->intr_config.intr_enable_mask = intr_mask;
+    self->intr_config.rx_timeout_thresh = 10;
+    self->intr_config.txfifo_empty_intr_thresh = 2;
+    self->intr_config.rxfifo_full_thresh = 20;
+    uart_intr_config(uart_id, &self->intr_config);
+
+    // interrupts are enabled here
+    uart_isr_register(uart_id, ESP32_CONFIG_UARTS_INUM, uart_intr_handler, NULL);
 
     // assign the pins
     mp_obj_t pins_o = args[4].u_obj;
@@ -402,46 +432,6 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
         }
         uart_assign_pins_af (pins, n_pins, self->uart_id);
     }
-
-    // register it with the sleep module
-    // pyb_sleep_add ((const mp_obj_t)self, (WakeUpCB_t)uart_init);
-    // enable the callback
-    // uart_irq_new (self, UART_TRIGGER_RX_ANY, INT_PRIORITY_LVL_3, mp_const_none);
-    // disable the irq (from the user point of view)
-    // uart_irq_disable(self);
-
-    uint32_t intr_mask = UART_RXFIFO_TOUT_INT_ENA | UART_FRM_ERR_INT_ENA |
-                         UART_RXFIFO_FULL_INT_ENA | UART_TXFIFO_EMPTY_INT_ENA;
-
-    // disable insterrupts on the current UART before re-configuring
-    // UART_IntrConfig() will enable them again
-    CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(uart_id), UART_INTR_MASK);
-
-    self->uart_id = uart_id;
-    self->base.type = &mach_uart_type;
-    self->config.baud_rate = baudrate;
-    self->config.data_bits = data_bits;
-    self->config.parity = parity;
-    self->config.stop_bits = stop_bits;
-    self->config.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
-    self->config.rx_flow_ctrl_thresh = 64;
-    uart_param_config(uart_id, &self->config);
-
-    // re-allocate the read buffer after resetting the uart
-    self->read_buf_head = 0;
-    self->read_buf_tail = 0;
-    self->read_buf = MP_OBJ_NULL; // free the read buffer before allocating again
-    MP_STATE_PORT(uart_buf[uart_id]) = m_new(byte, MACHUART_RX_BUFFER_LEN);
-    self->read_buf = (volatile byte *)MP_STATE_PORT(uart_buf[uart_id]);
-
-    self->intr_config.intr_enable_mask = intr_mask;
-    self->intr_config.rx_timeout_thresh = 10;
-    self->intr_config.txfifo_empty_intr_thresh = 2;
-    self->intr_config.rxfifo_full_thresh = 20;
-    uart_intr_config(uart_id, &self->intr_config);
-
-    // interrupts are enabled here
-    uart_isr_register(uart_id, ESP32_CONFIG_UARTS_INUM, uart_intr_handler, NULL);
 
     return mp_const_none;
 
