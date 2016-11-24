@@ -765,7 +765,7 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
    if (args[1].u_obj == MP_OBJ_NULL) {
         // get
         tcpip_adapter_ip_info_t ip_info;
-        dns_addr = dns_getserver(0);
+        dns_addr = dns_getserver(1);
         if (ESP_OK == tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info)) {
             mp_obj_t ifconfig[4] = {
                 netutils_format_ipv4_addr((uint8_t *)&ip_info.ip.addr, NETUTILS_BIG),
@@ -792,7 +792,7 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
            netutils_parse_ipv4_addr(items[2], (uint8_t *)&ip_info.gw.addr, NETUTILS_BIG);
            netutils_parse_ipv4_addr(items[3], (uint8_t *)&dns_addr.u_addr.ip4.addr, NETUTILS_BIG);
            tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info);
-           dns_setserver(0, &dns_addr);
+           dns_setserver(1, &dns_addr);
 
            // if (wlan_obj.mode == ROLE_AP) {
            //     ASSERT_ON_ERROR(sl_NetCfgSet(SL_IPV4_AP_P2P_GO_STATIC_ENABLE, IPCONFIG_MODE_ENABLE_IPV4, sizeof(SlNetCfgIpV4Args_t), (uint8_t *)&ipV4));
