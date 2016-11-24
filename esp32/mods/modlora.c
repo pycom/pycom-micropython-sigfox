@@ -101,10 +101,15 @@
 #define LORAWAN_SOCKET_SET_CONFIRMED(sd)            (sd |= 0x80000000)
 #define LORAWAN_SOCKET_CLR_CONFIRMED(sd)            (sd &= ~0x80000000)
 
-#define LORAWAN_SOCKET_SET_PORT(sd, port)           (sd |= (port << 8))
+#define LORAWAN_SOCKET_SET_PORT(sd, port)           (sd &= 0xFFFF00FF); \
+                                                    (sd |= (port << 8))
+
 #define LORAWAN_SOCKET_GET_PORT(sd)                 ((sd >> 8) & 0xFF)
 
-#define LORAWAN_SOCKET_SET_DR(sd, dr)               (sd |= (dr << 16))
+
+#define LORAWAN_SOCKET_SET_DR(sd, dr)               (sd &= 0xFF00FFFF); \
+                                                    (sd |= (dr << 16))
+
 #define LORAWAN_SOCKET_GET_DR(sd)                   ((sd >> 16) & 0xFF)
 
 /******************************************************************************
@@ -214,8 +219,8 @@ static QueueHandle_t xDataQueue;
 
 static RadioEvents_t RadioEvents;
 
-static lora_obj_t   lora_obj;
-static lora_partial_rx_packet_t lora_partial_rx_packet;
+static volatile lora_obj_t   lora_obj;
+static volatile lora_partial_rx_packet_t lora_partial_rx_packet;
 
 static TimerEvent_t TxNextActReqTimer;
 
@@ -263,7 +268,7 @@ void modlora_init0(void) {
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
-static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms, bool confirmed, uint8_t dr) {
+static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms, bool confirmed, uint32_t dr) {
     lora_cmd_rsp_data_t cmd_rsp_data;
 
     cmd_rsp_data.cmd_u.cmd = E_LORA_CMD_LORAWAN_TX;
@@ -595,35 +600,35 @@ static void TASK_LoRa (void *pvParameters) {
             TimerStop( &TxNextActReqTimer );
             if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
                 lora_obj.joined = false;
-                memcpy(lora_obj.otaa.DevEui, cmd_rsp_data.cmd_u.info.join.otaa.DevEui, sizeof(lora_obj.otaa.DevEui));
-                memcpy(lora_obj.otaa.AppEui, cmd_rsp_data.cmd_u.info.join.otaa.AppEui, sizeof(lora_obj.otaa.AppEui));
-                memcpy(lora_obj.otaa.AppKey, cmd_rsp_data.cmd_u.info.join.otaa.AppKey, sizeof(lora_obj.otaa.AppKey));
+                memcpy((void *)lora_obj.otaa.DevEui, cmd_rsp_data.cmd_u.info.join.otaa.DevEui, sizeof(lora_obj.otaa.DevEui));
+                memcpy((void *)lora_obj.otaa.AppEui, cmd_rsp_data.cmd_u.info.join.otaa.AppEui, sizeof(lora_obj.otaa.AppEui));
+                memcpy((void *)lora_obj.otaa.AppKey, cmd_rsp_data.cmd_u.info.join.otaa.AppKey, sizeof(lora_obj.otaa.AppKey));
                 MlmeReq_t mlmeReq;
                 mlmeReq.Type = MLME_JOIN;
-                mlmeReq.Req.Join.DevEui = lora_obj.otaa.DevEui;
-                mlmeReq.Req.Join.AppEui = lora_obj.otaa.AppEui;
-                mlmeReq.Req.Join.AppKey = lora_obj.otaa.AppKey;
+                mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.otaa.DevEui;
+                mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.otaa.AppEui;
+                mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.otaa.AppKey;
                 LoRaMacMlmeRequest(&mlmeReq);
                 TimerSetValue( &TxNextActReqTimer, OVER_THE_AIR_ACTIVATION_DUTYCYCLE);
                 TimerStart( &TxNextActReqTimer );
             } else {
                 lora_obj.abp.DevAddr = cmd_rsp_data.cmd_u.info.join.abp.DevAddr;
-                memcpy(lora_obj.abp.AppSKey, cmd_rsp_data.cmd_u.info.join.abp.AppSKey, sizeof(lora_obj.abp.AppSKey));
-                memcpy(lora_obj.abp.NwkSKey, cmd_rsp_data.cmd_u.info.join.abp.NwkSKey, sizeof(lora_obj.abp.NwkSKey));
+                memcpy((void *)lora_obj.abp.AppSKey, cmd_rsp_data.cmd_u.info.join.abp.AppSKey, sizeof(lora_obj.abp.AppSKey));
+                memcpy((void *)lora_obj.abp.NwkSKey, cmd_rsp_data.cmd_u.info.join.abp.NwkSKey, sizeof(lora_obj.abp.NwkSKey));
                 mibReq.Type = MIB_NET_ID;
                 mibReq.Param.NetID = DEF_LORAWAN_NETWORK_ID;
                 LoRaMacMibSetRequestConfirm( &mibReq );
 
                 mibReq.Type = MIB_DEV_ADDR;
-                mibReq.Param.DevAddr = lora_obj.abp.DevAddr;
+                mibReq.Param.DevAddr = (uint32_t)lora_obj.abp.DevAddr;
                 LoRaMacMibSetRequestConfirm( &mibReq );
 
                 mibReq.Type = MIB_NWK_SKEY;
-                mibReq.Param.NwkSKey = lora_obj.abp.NwkSKey;
+                mibReq.Param.NwkSKey = (uint8_t *)lora_obj.abp.NwkSKey;
                 LoRaMacMibSetRequestConfirm( &mibReq );
 
                 mibReq.Type = MIB_APP_SKEY;
-                mibReq.Param.AppSKey = lora_obj.abp.AppSKey;
+                mibReq.Param.AppSKey = (uint8_t *)lora_obj.abp.AppSKey;
                 LoRaMacMibSetRequestConfirm( &mibReq );
 
                 mibReq.Type = MIB_NETWORK_JOINED;
@@ -843,7 +848,7 @@ static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms) {
         }
 
         // get the available data
-        memcpy(buf, &lora_partial_rx_packet.data[lora_partial_rx_packet.index], len);
+        memcpy(buf, (void *)&lora_partial_rx_packet.data[lora_partial_rx_packet.index], len);
 
         // update the index and size values
         lora_partial_rx_packet.index += len;
@@ -866,7 +871,7 @@ static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms) {
             // copy the remainder to the partial data buffer
             int32_t r_len = rsp_data.info.rx.len - len;
             if (r_len > 0) {
-                memcpy(lora_partial_rx_packet.data, &rsp_data.info.rx.data[len], r_len);
+                memcpy((void *)lora_partial_rx_packet.data, &rsp_data.info.rx.data[len], r_len);
                 lora_partial_rx_packet.size = r_len;
                 lora_partial_rx_packet.index = 0;
             }
@@ -976,7 +981,7 @@ STATIC mp_obj_t lora_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_ui
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(args), lora_init_args, args);
 
     // setup the object
-    lora_obj_t *self = &lora_obj;
+    lora_obj_t *self = (lora_obj_t *)&lora_obj;
     self->base.type = (mp_obj_t)&mod_network_nic_type_lora;
 
     // give it to the sleep module
