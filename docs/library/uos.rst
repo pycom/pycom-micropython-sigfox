@@ -29,6 +29,11 @@ available physical drives are accessible from here.  They are currently:
 Functions
 ---------
 
+.. function:: uname()
+
+    Return information about the system, firmware release version, and
+    micropython interpreter version.
+
 .. function:: chdir(path)
 
    Change current directory.
