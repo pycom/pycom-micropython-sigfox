@@ -819,6 +819,7 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
            //     uint8_t val = 1;
            //     sl_NetCfgSet(SL_IPV4_STA_P2P_CL_DHCP_ENABLE, IPCONFIG_MODE_ENABLE_IPV4, 1, &val);
            // }
+
            if (ESP_OK != tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_STA)) {
                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
            }
@@ -1089,12 +1090,15 @@ static void wlan_socket_close(mod_network_socket_obj_t *s) {
             if (ss->connected) {
                 mbedtls_ssl_close_notify(&ss->ssl);
             }
-            mbedtls_ssl_session_reset(&ss->ssl);
             mbedtls_net_free(&ss->context_fd);
+            mbedtls_ssl_free(&ss->ssl);
+            mbedtls_ssl_config_free(&ss->conf);
+            mbedtls_ctr_drbg_free(&ss->ctr_drbg);
+            mbedtls_entropy_free(&ss->entropy);
         } else {
             close(s->sock_base.sd);
-            s->sock_base.sd = -1;
         }
+        s->sock_base.sd = -1;
     }
 }
 
@@ -1142,7 +1146,7 @@ static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t 
 
     // printf("Connected.\n");
 
-    if (s->sock_base.is_ssl) {
+    if (s->sock_base.is_ssl && (ret == 0)) {
         mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
         mbedtls_ssl_set_bio(&ss->ssl, &ss->context_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 
@@ -1170,6 +1174,7 @@ static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t 
 
     if (ret != 0) {
         *_errno = errno;
+        // printf("Connect failed with %d\n", ret);
         return -1;
     }
     return 0;
