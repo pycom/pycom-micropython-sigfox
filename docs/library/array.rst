@@ -20,11 +20,11 @@ Classes
     array are given by an `iterable`. If it is not provided, an empty
     array is created.
 
-    .. method:: append(val)
+.. method:: append(val)
 
-        Append new element to the end of array, growing it.
+    Append new element to the end of array, growing it.
 
-    .. method:: extend(iterable)
+.. method:: extend(iterable)
 
-        Append new elements as contained in an iterable to the end of
-        array, growing it.
+    Append new elements as contained in an iterable to the end of
+    array, growing it.
