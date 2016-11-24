@@ -19,9 +19,20 @@
     implements SHA1 and SHA256 algorithms only. These two algorithms are
     more than enough for today's web applications.
 
+.. only:: port_pycom_esp32
+
+    This module implements binary data hashing algorithms. Currently, it only
+    implements MD5. Support for SHA family is expected in future firmware
+    updates.
 
 Constructors
 ------------
+
+.. only:: port_pycom_esp32
+
+    .. class:: uhashlib.MD5([data])
+
+       Create a hasher object and optionally feed ``data`` into it.
 
 .. only:: port_pyboard
 
