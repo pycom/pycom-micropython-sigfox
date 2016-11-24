@@ -276,26 +276,25 @@ void wlan_off_on (void) {
 // DEFINE STATIC FUNCTIONS
 //*****************************************************************************
 
-//STATIC void wlan_event_handler_cb (System_Event_t *event) {
-//    switch (event->event_id) {
-//    case EVENT_STAMODE_SCAN_DONE:
-//        break;
-//    default:
-//        break;
-//    }
-//}
-
 STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
     switch(event->event_id) {
     case SYSTEM_EVENT_STA_START:
         esp_wifi_connect();
         break;
+    case SYSTEM_EVENT_STA_CONNECTED:
+    {
+        system_event_sta_connected_t *_event = (system_event_sta_connected_t *)&event->event_info;
+        memcpy(wlan_obj.bssid, _event->bssid, 6);
+        wlan_obj.channel = _event->channel;
+        wlan_obj.auth = _event->authmode;
+        printf("Connected to AP %s channel %d", _event->ssid, _event->channel);
+    }
+        break;
     case SYSTEM_EVENT_STA_GOT_IP:
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
-        /* This is a workaround as ESP32 WiFi libs don't currently
-           auto-reassociate. */
+        /* This is a workaround as ESP32 WiFi libs don't currently auto-reassociate. */
         esp_wifi_connect();
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
         break;
@@ -722,6 +721,8 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
     } else if (status == MODWLAN_ERROR_INVALID_PARAMS) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
     }
+    memcpy(wlan_obj.key, key, key_len);
+    wlan_obj.key[key_len] = '\0';
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_connect_obj, 1, wlan_connect);
@@ -864,6 +865,12 @@ STATIC mp_obj_t wlan_ssid (mp_uint_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_ssid_obj, 1, 2, wlan_ssid);
 
+STATIC mp_obj_t wlan_bssid (mp_obj_t self_in) {
+    wlan_obj_t *self = self_in;
+    return mp_obj_new_bytes((const byte *)self->bssid, 6);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_bssid_obj, wlan_bssid);
+
 STATIC mp_obj_t wlan_auth (mp_uint_t n_args, const mp_obj_t *args) {
     wlan_obj_t *self = args[0];
     if (n_args == 1) {
@@ -987,6 +994,7 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_ifconfig),            (mp_obj_t)&wlan_ifconfig_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mode),                (mp_obj_t)&wlan_mode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ssid),                (mp_obj_t)&wlan_ssid_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_bssid),               (mp_obj_t)&wlan_bssid_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_auth),                (mp_obj_t)&wlan_auth_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_channel),             (mp_obj_t)&wlan_channel_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_antenna),             (mp_obj_t)&wlan_antenna_obj },
