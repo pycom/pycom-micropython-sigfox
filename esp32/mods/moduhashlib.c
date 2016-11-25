@@ -17,6 +17,8 @@
 #include "hwcrypto/sha.h"
 #include "mpexception.h"
 
+STATIC bool hash_busy = false;
+
 /******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
@@ -32,6 +34,7 @@ typedef struct _mp_obj_hash_t {
         esp_sha_context sha_context;
     };
 } mp_obj_hash_t;
+
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -153,6 +156,7 @@ STATIC mp_obj_t hash_read(mp_obj_t self_in) {
         }
 
         self->digested = true;
+        hash_busy = false;
     }
 
     return mp_obj_new_bytes(self->buffer, self->h_size);
@@ -165,6 +169,13 @@ STATIC mp_obj_t hash_read(mp_obj_t self_in) {
 /// initial data must be given if block_size wants to be passed
 STATIC mp_obj_t hash_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 1, false);
+
+
+    if (hash_busy == true) {
+        mp_raise_msg(&mp_type_OSError, "only one hash operation is permitted at a time");
+    }
+
+    hash_busy = true;
 
     mp_obj_hash_t *self = m_new_obj(mp_obj_hash_t);
 
