@@ -78,7 +78,7 @@ first time. Please follow these steps:
     5. For device, type down ``192.168.4.1``. The default username and password are ``micro`` and ``python``, respectively.
     6. Click OK
 
-.. image:: images/pymakr-wifi.png
+.. image:: images/pymakr-wifi-reset.png
     :align: center
     :scale: 50 %
     :alt: Pymakr WiFi settings
@@ -95,6 +95,21 @@ end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connec
 .. tip::
     `There is also a video <https://www.youtube.com/embed/bL5nn2lgaZE>`_ that
     explains these steps on macOS (it is similar for other operating systems).
+
+
+Soft-resets
+-----------
+
+Using the checkboxes in the preferences screen, you can choose to do an automatic soft reset every time Pymakr connects to your board and/or when you run your code (using the green 'run' button). This can be useful when you want to make sure the board is in the same state every time you connect or run your code. If you are running an infinite in your main code, keep the soft-reset option disabled.
+
+If you enabe soft-reset on connect, it's useful to add the following check to any wifi-connection scripts in your boot file, so the wifi connection doesn't re-initialize when pymakr connects.
+
+.. code:: python
+
+    if machine.reset_cause() != machine.SOFT_RESET:
+        # wifi init code
+
+
 
 Our first coding steps
 ----------------------
