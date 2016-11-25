@@ -1,1 +1,1 @@
-only one hash operation is permitted at a time
+only one active hash operation is permitted at a time
