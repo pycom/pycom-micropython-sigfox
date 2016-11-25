@@ -131,6 +131,7 @@ library.
        select.rst
        utime.rst
        uhashlib.rst
+       ussl.rst
 
 .. only:: port_esp8266
 
