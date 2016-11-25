@@ -172,7 +172,7 @@ STATIC mp_obj_t hash_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
 
 
     if (hash_busy == true) {
-        mp_raise_msg(&mp_type_OSError, "only one hash operation is permitted at a time");
+        mp_raise_msg(&mp_type_OSError, "only one active hash operation is permitted at a time");
     }
 
     hash_busy = true;
