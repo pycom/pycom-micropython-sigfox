@@ -5,31 +5,37 @@ class LoRa
 
 This class provides a driver for the LoRa network processor in the module. Example usage::
 
-  from network import LoRa
-  import socket
+    from network import LoRa
+    import socket
+    import binascii
+    import struct
 
-  # Initialize LoRa in LORAWAN mode.
-  lora = LoRa(mode=LoRa.LORAWAN)
-  # create an OTAA authentication tuple (AppKey, AppEUI, DevEUI)
-  auth = (bytes([0,1,2,3,4,5,6,7,8,9,2,3,4,5,6,7]), bytes([1,2,3,4,5,6,7,8]), lora.mac()))
-  # join a network using OTAA (Over the Air Activation)
-  lora.join(activation=LoRa.OTAA, auth=auth, timeout=0)
+    # Initialize LoRa in LORAWAN mode.
+    lora = LoRa(mode=LoRa.LORAWAN)
 
-  # wait until the module has joined the network
-  while not lora.has_joined():
-      time.sleep(2.5)
-      print('Not yet joined...')
+    # create an ABP authentication params
+    dev_addr = struct.unpack(">l", binascii.unhexlify('00 00 00 05'.replace(' ','')))[0]
+    nwk_swkey = binascii.unhexlify('2B 7E 15 16 28 AE D2 A6 AB F7 15 88 09 CF 4F 3C'.replace(' ',''))
+    app_swkey = binascii.unhexlify('2B 7E 15 16 28 AE D2 A6 AB F7 15 88 09 CF 4F 3C'.replace(' ',''))
 
-  # create a LoRa socket
-  s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
-  s.setblocking(False)
+    # join a network using ABP (Activation By Personalization)
+    lora.join(activation=LoRa.ABP, auth=(dev_addr, nwk_swkey, app_swkey))
 
-  # send some data
-  s.send(bytes([0x01, 0x02, 0x03]))
+    # create a LoRa socket
+    s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
 
-  # get any data received...
-  data = s.recv(64)
-  print(data)
+    # set the LoRaWAN data rate
+    s.setsockopt(socket.SOL_LORA, socket.SO_DR, 5)
+
+    # make the socket non-blocking
+    s.setblocking(False)
+
+    # send some data
+    s.send(bytes([0x01, 0x02, 0x03]))
+
+    # get any data received...
+    data = s.recv(64)
+    print(data)
 
 
 Additional examples
@@ -69,8 +75,7 @@ Methods
      - ``tx_retries`` sets the number of TX retries in ``LoRa.LORAWAN`` mode.
 
     .. note:: In ``LoRa.LORAWAN`` mode, only ``adr``, ``public`` and ``tx_retries`` are used. All the other
-      params will be ignored as theiy are handled by the LoRaWAN stack directly. On the other hand, these same 3
-      params are ignored in ``LoRa.LORA`` mode as they are only relevant for the LoRaWAN stack.
+      params will be ignored as theiy are handled by the LoRaWAN stack directly. On the other hand, these same 3 params are ignored in ``LoRa.LORA`` mode as they are only relevant for the LoRaWAN stack.
 
    For example, you can do::
 
@@ -81,6 +86,84 @@ Methods
 
       # configure as an station
       lora.init(mode=LoRa.LORAWAN)
+
+.. method:: lora.join(activation, auth, \*, timeout=None)
+
+    Join a LoRaWAN network. The parameters are:
+
+      - ``activation``: can be either ``LoRa.OTAA`` or ``LoRa.ABP``.
+      - ``auth``: is a tuple with the authentication data.
+      In the case of ``LoRa.OTAA`` the authentication tuple is: ``(app_eui, app_key)``. Example::
+
+          from network import LoRa
+          import socket
+          import time
+          import binascii
+
+          # Initialize LoRa in LORAWAN mode.
+          lora = LoRa(mode=LoRa.LORAWAN)
+
+          # create an OTAA authentication parameters
+          app_eui = binascii.unhexlify('AD A4 DA E3 AC 12 67 6B'.replace(' ',''))
+          app_key = binascii.unhexlify('11 B0 28 2A 18 9B 75 B0 B4 D2 D8 C7 FA 38 54 8B'.replace(' ',''))
+
+          # join a network using OTAA (Over the Air Activation)
+          lora.join(activation=LoRa.OTAA, auth=(app_eui, app_key), timeout=0)
+
+          # wait until the module has joined the network
+          while not lora.has_joined():
+              time.sleep(2.5)
+              print('Not yet joined...')
+
+      In the case of ``LoRa.ABP`` the authentication tuple is: ``(dev_addr, nwk_swkey, app_swkey)``. Example::
+
+          from network import LoRa
+          import socket
+          import binascii
+          import struct
+
+          # Initialize LoRa in LORAWAN mode.
+          lora = LoRa(mode=LoRa.LORAWAN)
+
+          # create an ABP authentication params
+          dev_addr = struct.unpack(">l", binascii.unhexlify('00 00 00 05'.replace(' ','')))[0]
+          nwk_swkey = binascii.unhexlify('2B 7E 15 16 28 AE D2 A6 AB F7 15 88 09 CF 4F 3C'.replace(' ',''))
+          app_swkey = binascii.unhexlify('2B 7E 15 16 28 AE D2 A6 AB F7 15 88 09 CF 4F 3C'.replace(' ',''))
+
+          # join a network using ABP (Activation By Personalization)
+          lora.join(activation=LoRa.ABP, auth=(dev_addr, nwk_swkey, app_swkey))
+
+.. method:: lora.bandwidth([bandwidth])
+
+    Get or set the bandwidth in raw LoRa mode (``LoRa.LORA``). Can be either ``LoRa.BW_125KHZ``, ``LoRa.BW_250KHZ`` or ``LoRa.BW_500KHZ``.
+
+.. method:: lora.frequency([frequency])
+
+    Get or set the frequency in raw LoRa mode (``LoRa.LORA``). The allowed range is between 863000000 and 870000000 Hz for the 868MHz band version or between 902000000 and 928000000 Hz for the 915MHz abdn version.
+
+.. method:: lora.coding_rate([coding_rate])
+
+    Get or set the coding rate in raw LoRa mode (``LoRa.LORA``). The allowed values are: ``LoRa.CODING_4_5``, ``LoRa.CODING_4_6``, ``LoRa.CODING_4_7`` and ``LoRa.CODING_4_8``.
+
+.. method:: lora.preamble([preamble])
+
+    Get or set the number of preamble symbols in raw LoRa mode (``LoRa.LORA``).
+
+.. method:: lora.sf([sf])
+
+    Get or set the spreading factor value in raw LoRa mode (``LoRa.LORA``). The minimmum value is 7 and the maximum is 12.
+
+.. method:: lora.power_mode([power_mode])
+
+    Get or set the power mode in raw LoRa mode (``LoRa.LORA``). The accepted values are: ``LoRa.ALWAYS_ON``, ``LoRa.TX_ONLY`` and ``LoRa.SLEEP``.
+
+.. method:: lora.rssi()
+
+    Get the RSSI value from the last received LoRa or LoRaWAN packet.
+
+.. method:: lora.has_joined()
+
+    Returns ``True`` if a LoRaWAN network has been joined. ``False`` otherwise.
 
 .. method:: lora.add_channel(index, \*, frequency, dr_min, dr_max, duty_cycle)
 
@@ -101,3 +184,35 @@ Methods
 .. method:: lora.mac()
 
    Returns a byte object with the 8-Byte MAC address of the LoRa radio.
+
+Constants
+---------
+
+.. data:: LoRa.LORA
+          LoRa.LORAWAN
+
+    LoRa mode
+
+.. data:: LoRa.OTAA
+          LoRa.ABP
+
+    LoRaWAN join procedure
+
+.. data:: LoRa.ALWAYS_ON
+          LoRa.TX_ONLY
+          LoRa.SLEEP
+
+    Raw LoRa power mode
+
+.. data:: LoRa.BW_125KHZ
+          LoRa.BW_250KHZ
+          LoRa.BW_500KHZ
+
+    Raw LoRa bandwidth
+
+.. data:: LoRa.CODING_4_5
+          LoRa.CODING_4_6
+          LoRa.CODING_4_7
+          LoRa.CODING_4_8
+
+    Raw LoRa coding rate

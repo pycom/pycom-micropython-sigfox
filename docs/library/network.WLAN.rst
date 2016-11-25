@@ -164,17 +164,17 @@ Constants
 ---------
 
 .. data:: WLAN.STA
-.. data:: WLAN.AP
+          WLAN.AP
 
    selects the WLAN mode
 
 .. data:: WLAN.WEP
-.. data:: WLAN.WPA
-.. data:: WLAN.WPA2
+          WLAN.WPA
+          WLAN.WPA2
 
    selects the network security
 
 .. data:: WLAN.INT_ANT
-.. data:: WLAN.EXT_ANT
+          WLAN.EXT_ANT
 
    selects the antenna type
