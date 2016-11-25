@@ -12,15 +12,6 @@ h.update(b'pycom')
 h.update(b'pycom')
 print(h.digest())
 
-# test single operation lock
-try:
-    h1 = hashlib.sha256()
-    h2 = hashlib.sha256()
-except OSError as e:
-    print(e)
-finally:
-    h1.digest()
- 
 # test other functions
 print(hashlib.md5(b'pycom').digest())
 print(hashlib.sha1(b'pycom').digest())
