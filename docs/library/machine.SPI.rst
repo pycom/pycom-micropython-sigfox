@@ -51,7 +51,7 @@ Constructors
 Methods
 -------
 
-.. method:: SPI.init(mode, baudrate=1000000, \*, polarity=0, phase=0, bits=8, firstbit=SPI.MSB, pins=(CLK, MOSI, MISO))
+.. method:: spi.init(mode, baudrate=1000000, \*, polarity=0, phase=0, bits=8, firstbit=SPI.MSB, pins=(CLK, MOSI, MISO))
 
    Initialize the SPI bus with the given parameters:
 
@@ -65,27 +65,27 @@ Methods
      - ``pins`` is an optional tuple with the pins to assign to the SPI bus. If the pins
        argument is not given the default pins will be selected (``P10`` as CLK, ``P11`` as MOSI and ``P12`` as MISO). If pins is passed as ``None`` then no pin assigment will be made.
 
-.. method:: SPI.deinit()
+.. method:: spi.deinit()
 
    Turn off the SPI bus.
 
-.. method:: SPI.write(buf)
+.. method:: spi.write(buf)
 
     Write the data contained in ``buf``.
     Returns the number of bytes written.
 
-.. method:: SPI.read(nbytes, *, write=0x00)
+.. method:: spi.read(nbytes, *, write=0x00)
 
     Read the ``nbytes`` while writing the data specified by ``write``.
     Return the number of bytes read.
 
-.. method:: SPI.readinto(buf, *, write=0x00)
+.. method:: spi.readinto(buf, *, write=0x00)
 
     Read into the buffer specified by ``buf`` while writing the data specified by
     ``write``.
     Return the number of bytes read.
 
-.. method:: SPI.write_readinto(write_buf, read_buf)
+.. method:: spi.write_readinto(write_buf, read_buf)
 
     Write from ``write_buf`` and read into ``read_buf``. Both buffers must have the
     same length.

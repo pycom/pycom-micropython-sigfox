@@ -25,17 +25,17 @@ Constructors
 Methods
 -------
 
-.. method:: ADC.init()
+.. method:: adc.init()
 
    Enable the ADC block. This method is automatically called on object creation.
 
-.. method:: ADC.deinit()
+.. method:: adc.deinit()
 
    Disable the ADC block.
 
 .. #todo: original documentation had an id here, but was removed to avoid confusion
 
-.. method:: ADC.channel(\*, pin)
+.. method:: adc.channel(\*, pin)
 
    Create an analog pin. ``pin`` is a keyword-only string argument.
    Returns an instance of :class:`ADCChannel`. Example::
