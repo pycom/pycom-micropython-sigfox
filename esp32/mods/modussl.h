@@ -42,7 +42,6 @@ typedef struct _mp_obj_ssl_socket_t {
     mbedtls_net_context context_fd;
     mbedtls_x509_crt own_cert;
     mbedtls_pk_context pk_key;
-    bool connected;
 } mp_obj_ssl_socket_t;
 
 #endif /* MODUSSL_H_ */

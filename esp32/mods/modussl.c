@@ -144,8 +144,32 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
 
     ssl_sock->context_fd.fd = ssl_sock->sock_base.sd;
     ssl_sock->sock_base.is_ssl = true;
-    ssl_sock->connected = false;
 
+    // perform the handshake if already connected
+    if (ssl_sock->sock_base.connected) {
+        mbedtls_ssl_set_bio(&ssl_sock->ssl, &ssl_sock->context_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+
+        // printf("Performing the SSL/TLS handshake...\n");
+
+        while ((ret = mbedtls_ssl_handshake(&ssl_sock->ssl)) != 0)
+        {
+            if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+                // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
+                return ret;
+            }
+        }
+
+        // printf("Verifying peer X.509 certificate...\n");
+
+        int flags;
+        if ((flags = mbedtls_ssl_get_verify_result(&ssl_sock->ssl)) != 0) {
+            /* In real life, we probably want to close connection if ret != 0 */
+            // printf("Failed to verify peer certificate!\n");
+            return -1;
+        } else {
+            // printf("Certificate verified.\n");
+        }
+    }
     return 0;
 }
 
@@ -226,7 +250,7 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
     // ssl sockets inherit all properties from the original socket
     memcpy (&ssl_sock->sock_base, &((mod_network_socket_obj_t *)args[0].u_obj)->sock_base, sizeof(mod_network_socket_base_t));
     ssl_sock->base.type = &ssl_socket_type;
-    ssl_sock->o_sock = args[0].u_obj;
+    ssl_sock->o_sock = args[0].u_obj;       // this is needed so that the GC doesnt collect the socket
 
     _error = mod_ssl_setup_socket(ssl_sock, host_name, cafile_path, certfile_path, keyfile_path,
                                   verify_type, server_side ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT);

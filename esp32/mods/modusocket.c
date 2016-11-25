@@ -152,6 +152,7 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_
     s->sock_base.u_param.fileno = -1;
     s->sock_base.timeout = -1;      // sockets are blocking by default
     s->sock_base.is_ssl = false;
+    s->sock_base.connected = false;
 
     if (n_args > 0) {
         s->sock_base.u_param.domain = mp_obj_get_int(args[0]);

@@ -59,6 +59,7 @@ typedef struct _mod_network_socket_base_t {
     };
     int32_t timeout;
     bool is_ssl;
+    bool connected;
 } mod_network_socket_base_t;
 
 typedef struct _mod_network_socket_obj_t {

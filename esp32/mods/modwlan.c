@@ -1087,7 +1087,7 @@ static void wlan_socket_close(mod_network_socket_obj_t *s) {
         modusocket_socket_delete(s->sock_base.sd);
         if (s->sock_base.is_ssl) {
             mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-            if (ss->connected) {
+            if (ss->sock_base.connected) {
                 mbedtls_ssl_close_notify(&ss->ssl);
             }
             mbedtls_net_free(&ss->context_fd);
@@ -1098,6 +1098,7 @@ static void wlan_socket_close(mod_network_socket_obj_t *s) {
         } else {
             close(s->sock_base.sd);
         }
+        s->sock_base.connected = false;
         s->sock_base.sd = -1;
     }
 }
@@ -1135,6 +1136,8 @@ static int wlan_socket_accept(mod_network_socket_obj_t *s, mod_network_socket_ob
         return -1;
     }
 
+    s2->sock_base.connected = true;
+
     // return ip and port
     UNPACK_SOCKADDR(addr, ip, *port);
     return 0;
@@ -1157,6 +1160,7 @@ static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t 
             if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
             {
                 // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
+                *_errno = errno;
                 return -1;
             }
         }
@@ -1167,6 +1171,7 @@ static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t 
         if ((flags = mbedtls_ssl_get_verify_result(&ss->ssl)) != 0) {
             /* In real life, we probably want to close connection if ret != 0 */
             // printf("Failed to verify peer certificate!\n");
+            ret = -1;
         } else {
             // printf("Certificate verified.\n");
         }
@@ -1177,6 +1182,9 @@ static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t 
         // printf("Connect failed with %d\n", ret);
         return -1;
     }
+
+    s->sock_base.connected = true;
+
     return 0;
 }
 
