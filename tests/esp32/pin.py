@@ -47,10 +47,14 @@ no_pull_up_pins = [
 ]
 
 if 'LoPy' in mch:
-    used_pins = ['G12','P5',    #Pin used for Lora CLK
+    used_pins = ['G12','P5',   #Pin used for Lora CLK
                  'G13','P6',   #Pin used for Lora MOSI
-                 'G14','P7'    #Pin used for Lora MISO
+                 'G14','P7',   #Pin used for Lora MISO
+                 'G16','P9',   #Pin used for I2C SDA
+                 'G17','P10',  #Pin used for I2C SCLK
+                 'G10','P23'   #Pin used for I2C SDA loop
                  ]
+
 
 
 pin_map = list(set(all_pins) - set(used_pins))
