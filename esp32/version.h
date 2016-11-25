@@ -10,6 +10,6 @@
 #ifndef VERSION_H_
 #define VERSION_H_
 
-#define SW_VERSION_NUMBER                              "0.9.5.b1"
+#define SW_VERSION_NUMBER                              "0.9.6.b1"
 
 #endif /* VERSION_H_ */
