@@ -180,7 +180,7 @@ Miscellaneous functions
   ---------
 
   .. data:: machine.PWRON_RESET
-  .. data:: machine.SOFT_RESET
+            machine.SOFT_RESET
 
       reset causes
 

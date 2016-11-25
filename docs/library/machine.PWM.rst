@@ -25,7 +25,7 @@ Constructors
 Methods
 -------
 
-.. method:: PWM.channel(id, pin \*, duty_cycle=0.5)
+.. method:: pwm.channel(id, pin \*, duty_cycle=0.5)
 
     Connect a PWM channel to a pin, setting the intial duty cycle. ``id`` is an integer from 0 to 7. ``pin`` is a string argument.
     ``duty_cycle`` is a keyword-only float argument, with values between 0 and 1.

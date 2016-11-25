@@ -138,7 +138,7 @@ Methods
 
 .. only:: port_2wipy or port_lopy or port_pycom_esp32
 
-    .. method:: Pin.init(mode, pull, \*, alt)
+    .. method:: pin.init(mode, pull, \*, alt)
 
        Initialize the pin:
 
@@ -158,13 +158,13 @@ Methods
 
        Returns: ``None``.
 
-    .. method:: Pin.id()
+    .. method:: pin.id()
 
        Get the pin id.
 
 .. only:: port_esp8266
 
-    .. method:: Pin.init(mode, pull=None, \*, value)
+    .. method:: pin.init(mode, pull=None, \*, value)
 
        Initialize the pin:
 
@@ -181,7 +181,7 @@ Methods
          - if `value` is given then it is the output value to set the pin
            if it is in output mode.
 
-.. method:: Pin.value([value])
+.. method:: pin.value([value])
 
    Get or set the digital logic level of the pin:
 
@@ -190,10 +190,23 @@ Methods
        anything that converts to a boolean.  If it converts to ``True``, the pin
        is set high, otherwise it is set low.
 
-.. method:: Pin.__call__([value])
+.. method:: pin([value])
 
    Pin objects are callable. The call method provides a (fast) shortcut to set and get the value of the pin.
-   See :func:`Pin.value` for more details.
+
+   Example::
+
+      from machine import Pin
+      pin = Pin('P12', mode=Pin.IN, pull=Pin.PULL_UP)
+      pin()   # fast method to get the value
+
+   See :func:`pin.value` for more details.
+
+.. raw:: html
+
+    <script>
+        el = document.getElementById('machine.pin').getElementsByClassName('descclassname')[0].innerText = "";
+    </script>
 
 .. only:: port_wipy
 
@@ -204,15 +217,15 @@ Methods
 
 .. only:: port_wipy or port_2wipy or port_lopy or port_pycom_esp32
 
-    .. method:: Pin.toggle()
+    .. method:: pin.toggle()
 
         Toggle the value of the pin.
 
-    .. method:: Pin.mode([mode])
+    .. method:: pin.mode([mode])
 
         Get or set the pin mode.
 
-    .. method:: Pin.pull([pull])
+    .. method:: pin.pull([pull])
 
         Get or set the pin pull.
 
@@ -282,7 +295,7 @@ Attributes
 
 .. only:: port_2wipy or port_lopy or port_pycom_esp32
 
-    .. class:: Pin.exp_board
+    .. class:: pin.exp_board
 
         Contains all ``Pin`` objects supported by the expansion board. Examples::
 
@@ -290,7 +303,7 @@ Attributes
             led = Pin(Pin.exp_board.G16, mode=Pin.OUT)
             Pin.exp_board.G16.id()
 
-    .. class:: Pin.module
+    .. class:: pin.module
 
         Contains all ``Pin`` objects supported by the module. Examples::
 

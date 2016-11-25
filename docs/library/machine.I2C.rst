@@ -42,7 +42,7 @@ Printing the i2c object gives you information about its configuration.
 
 Quick usage example
 -------------------
-    
+
     ::
 
         from machine import I2C
@@ -76,7 +76,7 @@ General Methods
 
 .. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
 
-    .. method:: I2C.init(mode, \*, baudrate=100000, pins=(SDA, SCL))
+    .. method:: i2c.init(mode, \*, baudrate=100000, pins=(SDA, SCL))
 
       Initialize the I2C bus with the given parameters:
 
@@ -86,7 +86,7 @@ General Methods
 
 .. only:: port_esp8266
 
-    .. method:: I2C.init(scl, sda, \*, freq=400000)
+    .. method:: i2c.init(scl, sda, \*, freq=400000)
 
       Initialize the I2C bus with the given arguments:
 
@@ -96,13 +96,13 @@ General Methods
 
 .. only:: port_wipy
 
-    .. method:: I2C.deinit()
+    .. method:: i2c.deinit()
 
        Turn off the I2C bus.
 
        Availability: WiPy.
 
-.. method:: I2C.scan()
+.. method:: i2c.scan()
 
    Scan all I2C addresses between 0x08 and 0x77 inclusive and return a list of
    those that respond.  A device responds if it pulls the SDA line low after
@@ -151,19 +151,19 @@ Standard bus operations
 The following methods implement the standard I2C master read and write
 operations that target a given slave device.
 
-.. method:: I2C.readfrom(addr, nbytes)
+.. method:: i2c.readfrom(addr, nbytes)
 
    Read `nbytes` from the slave specified by `addr`.
    Returns a `bytes` object with the data read.
 
-.. method:: I2C.readfrom_into(addr, buf)
+.. method:: i2c.readfrom_into(addr, buf)
 
    Read into `buf` from the slave specified by `addr`.
    The number of bytes read will be the length of `buf`.
 
    Return value is the number of bytes read.
 
-.. method:: I2C.writeto(addr, buf)
+.. method:: i2c.writeto(addr, buf)
 
    Write the bytes from `buf` to the slave specified by `addr`.
 
@@ -177,12 +177,12 @@ from and written to.  In this case there are two addresses associated with an
 I2C transaction: the slave address and the memory address.  The following
 methods are convenience functions to communicate with such devices.
 
-.. method:: I2C.readfrom_mem(addr, memaddr, nbytes,)
+.. method:: i2c.readfrom_mem(addr, memaddr, nbytes,)
 
    Read `nbytes` from the slave specified by `addr` starting from the memory
    address specified by `memaddr`.
 
-.. method:: I2C.readfrom_mem_into(addr, memaddr, buf)
+.. method:: i2c.readfrom_mem_into(addr, memaddr, buf)
 
    Read into `buf` from the slave specified by `addr` starting from the
    memory address specified by `memaddr`.  The number of bytes read is the
@@ -190,7 +190,7 @@ methods are convenience functions to communicate with such devices.
 
    The return value is the number of bytes read.
 
-.. method:: I2C.writeto_mem(addr, memaddr, buf)
+.. method:: i2c.writeto_mem(addr, memaddr, buf)
 
    Write `buf` to the slave specified by `addr` starting from the
    memory address specified by `memaddr`.
