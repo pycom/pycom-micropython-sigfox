@@ -14,6 +14,7 @@
 #include "py/nlr.h"
 #include "py/runtime.h"
 #include "rom/md5_hash.h"
+#include "hwcrypto/sha.h"
 #include "mpexception.h"
 
 /******************************************************************************
@@ -21,20 +22,17 @@
  ******************************************************************************/
 typedef struct _mp_obj_hash_t {
     mp_obj_base_t base;
-    uint8_t *buffer;
-    uint32_t b_size;
-    uint32_t c_size;
-    uint8_t  algo;
+    uint8_t  b_size;
     uint8_t  h_size;
-    bool  fixedlen;
+    uint8_t  buf_count;
     bool  digested;
-    bool  inprogress;
-    uint8_t hash[32];
+    uint8_t buffer[128];
+    union {
+        struct MD5Context md5_context;
+        esp_sha_context sha_context;
+    };
 } mp_obj_hash_t;
 
-STATIC mp_obj_hash_t mp_obj_hash = {.inprogress = false};
-
-static struct MD5Context md5_context;
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -44,112 +42,185 @@ STATIC mp_obj_t hash_read (mp_obj_t self_in);
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
-STATIC void hash_update_internal(mp_obj_t self_in, mp_obj_t data, bool digest) {
-    mp_obj_hash_t *self = self_in;
-    mp_buffer_info_t bufinfo;
 
-    if (data) {
-        mp_get_buffer_raise(data, &bufinfo, MP_BUFFER_READ);
-    }
 
-    if (digest) {
-        self->inprogress = true;
-//        CRYPTOHASH_SHAMD5Start (self->algo, self->b_size);
-    }
+STATIC void generic_hash_update(mp_obj_hash_t *self, void *data, uint32_t len) {
+    switch (self->base.type->name) {
+    case MP_QSTR_sha1:
+        esp_sha1_update(&self->sha_context, data, len);
+        break;
 
-    if (self->c_size < self->b_size || !data || !self->fixedlen) {
-//        if (digest || self->fixedlen) {
-//            // no data means we want to process our internal buffer
-//            CRYPTOHASH_SHAMD5Update (data ? bufinfo.buf : self->buffer, data ? bufinfo.len : self->b_size);
-            MD5Update(&md5_context, bufinfo.buf, bufinfo.len);
-            self->c_size += data ? bufinfo.len : 0;
-//        } else {
-//            self->buffer = m_renew(byte, self->buffer, self->b_size, self->b_size + bufinfo.len);
-//            MP_STATE_PORT(hash_buffer) = self->buffer;
-//            mp_seq_copy((byte*)self->buffer + self->b_size, bufinfo.buf, bufinfo.len, byte);
-//            self->b_size += bufinfo.len;
-//            self->digested = false;
-//        }
-    } else {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+    case MP_QSTR_sha256:
+        esp_sha256_update(&self->sha_context, data, len);
+        break;
+
+    case MP_QSTR_sha384:
+    case MP_QSTR_sha512:
+        esp_sha512_update(&self->sha_context, data, len);
+        break;
+
+    case MP_QSTR_md5:
+        MD5Update(&self->md5_context, data, len);
+        break;
     }
 }
 
-STATIC mp_obj_t hash_read (mp_obj_t self_in) {
+STATIC void hash_update_internal(mp_obj_t self_in, mp_obj_t data, bool digest) {
+    mp_obj_hash_t *self = self_in;
+    mp_buffer_info_t bufinfo;
+    uint32_t len;
+
+    if (digest == true) {
+        generic_hash_update(self, self->buffer, self->buf_count);
+        return;
+    }
+
+    if (!data) {
+        return;
+    }
+
+    mp_get_buffer_raise(data, &bufinfo, MP_BUFFER_READ);
+
+    // Try to fill the buffer to the top
+    len = self->b_size - self->buf_count;
+    len = MIN(len, bufinfo.len);
+
+    memcpy(self->buffer + self->buf_count, bufinfo.buf, len);
+
+    self->buf_count += len;
+
+    // check if there is a complete block
+    if (self->buf_count != self->b_size && digest == false) {
+        return;
+    }
+
+    // process it
+    generic_hash_update(self, self->buffer, self->buf_count);
+    self->buf_count = 0;
+
+    // update the input string information
+    bufinfo.buf = ((uint8_t *) bufinfo.buf) + len;
+    bufinfo.len -= len;
+
+    // see if there is at least another complete block
+    len = bufinfo.len / self->b_size;
+    if (len != 0) {
+        // process it (them)
+        len *= self->b_size;
+        generic_hash_update(self, bufinfo.buf, len);
+
+        // update the input string information
+        bufinfo.buf = ((uint8_t *) bufinfo.buf) + len;
+        bufinfo.len -= len;
+    }
+
+    // and copy any remaining bytes to the buffer
+    memcpy(self->buffer, bufinfo.buf, bufinfo.len);
+    self->buf_count = bufinfo.len;
+}
+
+STATIC mp_obj_t hash_read(mp_obj_t self_in) {
     mp_obj_hash_t *self = self_in;
 
-//    if (!self->fixedlen) {
-//        if (!self->digested) {
-//            hash_update_internal(self, MP_OBJ_NULL, true);
-//        }
-//    } else if (self->c_size < self->b_size) {
-//        // it's a fixed len block which is still incomplete
-//        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
-//    }
-
     if (!self->digested) {
-//        CRYPTOHASH_SHAMD5Read ((uint8_t *)self->hash);
-        MD5Final((uint8_t *)self->hash, &md5_context);
+        // process any remaining data in the buffer
+        hash_update_internal(self, MP_OBJ_NULL, true);
+
+        switch (self->base.type->name) {
+        case MP_QSTR_sha1:
+            esp_sha1_finish(&self->sha_context, (uint8_t *)self->buffer);
+            esp_sha1_free(&self->sha_context);
+            break;
+
+        case MP_QSTR_sha256:
+            esp_sha256_finish(&self->sha_context, (uint8_t *)self->buffer);
+            esp_sha256_free(&self->sha_context);
+            break;
+
+        case MP_QSTR_sha384:
+            esp_sha512_finish(&self->sha_context, (uint8_t *)self->buffer);
+            esp_sha512_free(&self->sha_context);
+            break;
+
+        case MP_QSTR_sha512:
+            esp_sha512_finish(&self->sha_context, (uint8_t *)self->buffer);
+            esp_sha512_free(&self->sha_context);
+            break;
+
+        case MP_QSTR_md5:
+            MD5Final((uint8_t *)self->buffer, &self->md5_context);
+            break;
+        }
+
         self->digested = true;
-        self->inprogress = false;
     }
-    return mp_obj_new_bytes(self->hash, self->h_size);
+
+    return mp_obj_new_bytes(self->buffer, self->h_size);
 }
 
 /******************************************************************************/
 // Micro Python bindings
 
-/// \classmethod \constructor([data[, block_size]])
+/// \classmethod \constructor([data])
 /// initial data must be given if block_size wants to be passed
 STATIC mp_obj_t hash_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
-    mp_arg_check_num(n_args, n_kw, 0, 2, false);
-    // this is needed to abort a previous operation
-    if (mp_obj_hash.inprogress) {
-        if (mp_obj_hash.c_size < mp_obj_hash.b_size) {
-//            CRYPTOHASH_SHAMD5Update ((uint8_t *)0x20000000, mp_obj_hash.b_size - mp_obj_hash.c_size);
-        }
-//        MAP_SHAMD5ResultRead(SHAMD5_BASE, (uint8_t *)mp_obj_hash.hash);
-        mp_obj_hash.inprogress = false;
-    }
-    mp_obj_hash_t *self = &mp_obj_hash;
-    memset(&mp_obj_hash, 0, sizeof(mp_obj_hash));
-    self->base.type = type;
-//    if (self->base.type->name == MP_QSTR_sha1) {
-//        self->algo = SHAMD5_ALGO_SHA1;
-//        self->h_size = 20;
-//    } else /* if (self->base.type->name == MP_QSTR_sha256) */ {
-//        self->algo = SHAMD5_ALGO_SHA256;
-//        self->h_size = 32;
-//    } /* else {
-//        self->algo = SHAMD5_ALGO_MD5;
-//        self->h_size = 32;
-//    } */
+    mp_arg_check_num(n_args, n_kw, 0, 1, false);
 
-    self->h_size = 16;
-    MD5Init(&md5_context);
-    if (n_args) {
-        // CPython extension to avoid buffering the data before digesting it
-        // Note: care must be taken to provide all intermediate blocks as multiple
-        //       of four bytes, otherwise the resulting hash will be incorrect.
-        //       the final block can be of any length
-        if (n_args > 1) {
-            uint32_t b_size = mp_obj_get_int(args[1]);
-            if (b_size > 0) {
-                // block size given and > 0, we will feed the data directly into the hash engine
-                self->fixedlen = true;
-                self->b_size = b_size;
-                hash_update_internal(self, args[0], true);
-            }
-        } else {
-            hash_update_internal(self, args[0], false);
-        }
+    mp_obj_hash_t *self = m_new_obj(mp_obj_hash_t);
+
+    memset(self, 0, sizeof(mp_obj_hash_t));
+
+    self->digested = false;
+    self->base.type = type;
+
+    switch (self->base.type->name) {
+    case MP_QSTR_sha1:
+        self->h_size = 20;
+        self->b_size = 64;
+        esp_sha1_init(&self->sha_context);
+        esp_sha1_start(&self->sha_context);
+        break;
+
+    case MP_QSTR_sha256:
+        self->h_size = 32;
+        self->b_size = 64;
+        esp_sha256_init(&self->sha_context);
+        esp_sha256_start(&self->sha_context, 0);
+        break;
+
+    case MP_QSTR_sha384:
+        self->h_size = 48;
+        self->b_size = 128;
+        esp_sha512_init(&self->sha_context);
+        esp_sha512_start(&self->sha_context, 1);
+        break;
+
+    case MP_QSTR_sha512:
+        self->h_size = 64;
+        self->b_size = 128;
+        esp_sha512_init(&self->sha_context);
+        esp_sha512_start(&self->sha_context, 0);
+        break;
+
+    case MP_QSTR_md5:
+        self->h_size = 16;
+        self->b_size = 64;
+        MD5Init(&self->md5_context);
+        break;
     }
+
+    if (n_args) {
+        hash_update_internal(self, args[0], false);
+    }
+
     return self;
 }
 
 STATIC mp_obj_t hash_update(mp_obj_t self_in, mp_obj_t arg) {
     mp_obj_hash_t *self = self_in;
-    hash_update_internal(self, arg, false);
+    if (self->digested == false) {
+        hash_update_internal(self, arg, false);
+    }
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_2(hash_update_obj, hash_update);
@@ -173,25 +244,41 @@ STATIC const mp_obj_type_t md5_type = {
     .locals_dict = (mp_obj_t)&hash_locals_dict,
 };
 
-//STATIC const mp_obj_type_t sha1_type = {
-//    { &mp_type_type },
-//    .name = MP_QSTR_sha1,
-//    .make_new = hash_make_new,
-//    .locals_dict = (mp_obj_t)&hash_locals_dict,
-//};
-//
-//STATIC const mp_obj_type_t sha256_type = {
-//    { &mp_type_type },
-//    .name = MP_QSTR_sha256,
-//    .make_new = hash_make_new,
-//    .locals_dict = (mp_obj_t)&hash_locals_dict,
-//};
+STATIC const mp_obj_type_t sha1_type = {
+   { &mp_type_type },
+   .name = MP_QSTR_sha1,
+   .make_new = hash_make_new,
+   .locals_dict = (mp_obj_t)&hash_locals_dict,
+};
+
+STATIC const mp_obj_type_t sha256_type = {
+   { &mp_type_type },
+   .name = MP_QSTR_sha256,
+   .make_new = hash_make_new,
+   .locals_dict = (mp_obj_t)&hash_locals_dict,
+};
+
+STATIC const mp_obj_type_t sha384_type = {
+   { &mp_type_type },
+   .name = MP_QSTR_sha384,
+   .make_new = hash_make_new,
+   .locals_dict = (mp_obj_t)&hash_locals_dict,
+};
+
+STATIC const mp_obj_type_t sha512_type = {
+   { &mp_type_type },
+   .name = MP_QSTR_sha512,
+   .make_new = hash_make_new,
+   .locals_dict = (mp_obj_t)&hash_locals_dict,
+};
 
 STATIC const mp_map_elem_t mp_module_hashlib_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),    MP_OBJ_NEW_QSTR(MP_QSTR_uhashlib) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_md5),         (mp_obj_t)&md5_type },
-//    { MP_OBJ_NEW_QSTR(MP_QSTR_sha1),        (mp_obj_t)&sha1_type },
-//    { MP_OBJ_NEW_QSTR(MP_QSTR_sha256),      (mp_obj_t)&sha256_type },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sha1),        (mp_obj_t)&sha1_type },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sha256),      (mp_obj_t)&sha256_type },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sha384),      (mp_obj_t)&sha384_type },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sha512),      (mp_obj_t)&sha512_type },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mp_module_hashlib_globals, mp_module_hashlib_globals_table);
