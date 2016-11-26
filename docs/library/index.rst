@@ -209,6 +209,8 @@ the following libraries.
 
         pycom.treading.rst
         pycom.rst
+        ucrypto.rst
+
 
     .. only:: port_pycom_esp32
 

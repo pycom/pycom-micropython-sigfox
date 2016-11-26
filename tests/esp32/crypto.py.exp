@@ -1,0 +1,25 @@
+at test 1  b'\x9f03\xbc^\x7f\xef\xa5\xf1\xd6P\x1d\x07)\xe6R'
+at test 2  b'testing ecb 123.'
+at test 3  True
+at test 4  True
+at test 5  b'this is a test..this is a test..'
+at test 6  False
+at test 7  b'"\x1b\x14\x81G\xa1b\xd7\x8b\xae\xaa\x8bO\x7f\xac\x07'
+at test 8  b'this is a test..'
+at test 9  b'"\x03\xc2x\xe9!\x0c\xd4\xc5\xff\xcc\'\xfci\xda~'
+at test 10  b'this is a test..'
+at test 11  True
+at test 12  b'this is a test..and another one.'
+at test 13  False
+at test 14  b'Jzv\x9c\x17\xfa\x9c\xbd\xbe/\xc943\x81t\x19'
+at test 15  b'testing cbc 123.'
+at test 16  True
+at test 17  b'this is a test..and another one.'
+at test 18  True
+at test 19  b'\xb8\x17\xef\xceau\x97\xb6\xe1\xcbJQ\xc1wW\xc0-z'
+at test 20  b'this is a ctr test'
+at test 21  b'\x8d\x1e\xb98(\xb4\xa5\xff\x86,V\x9b\x10\xb6h\x18IR\xff\xb1\x08Q\x1b&hH\xc7v'
+at test 22  b'\x9f03\xbc^\x7f\xef\xa5\xf1\xd6P\x1d\x07)\xe6R'
+at test 23  AES key must be either 16, 24, or 32 bytes long
+at test 24  Unknown cipher feedback mode -1
+at test 25  IV must be 16 bytes long
