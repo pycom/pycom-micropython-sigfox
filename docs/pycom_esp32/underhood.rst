@@ -22,6 +22,7 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :class:`Bluetooth` (coming soon)
 - :class:`AES encryption <.AES>` (coming soon)
 - :class:`SD` (coming soon)
+- :class:`DAC` (coming soon)
 
 .. #todo: add note in the next comment. Add links in the previous list. To the ones not yet in place, add a link to the “work in progress” section.
 
