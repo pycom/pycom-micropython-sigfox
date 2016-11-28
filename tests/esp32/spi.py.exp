@@ -32,4 +32,5 @@ Exception
 Exception
 Exception
 Exception
+Exception
 SPI(0, SPI.MASTER, baudrate=500000, bits=8, polarity=0, phase=0, firstbit=SPI.MSB)

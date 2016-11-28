@@ -1,15 +1,7 @@
 from machine import SPI
-import os
 
-mch = os.uname().machine
 spi_pins=('P5','P9','P23')
-#if 'LaunchPad' in mch:
-#    spi_pins = ('GP14', 'GP16', 'GP30')
-#elif 'WiPy' in mch:
-#    spi_pins = ('GP14', 'GP16', 'GP30')
-#else:
-#    raise Exception('Board not supported!')
-
+spi_ports = [0,1]
 
 spi = SPI(0, SPI.MASTER, baudrate=2000000, polarity=0, phase=0, firstbit=SPI.MSB, pins=spi_pins)
 print(spi)
@@ -45,8 +37,12 @@ buffer_w = bytearray([1, 2, 3, 4, 5, 6, 7, 8, 9, 0])
 print(spi.write_readinto(buffer_w, buffer_r) == 10)
 print(buffer_w == buffer_r)
 
-
-
+#Check all ports
+'''
+for port in spi_ports:
+    spi = SPI(port, SPI.MASTER, baudrate=10000000, polarity=0, phase=0, pins=spi_pins)
+    print (spi)
+'''
 
 # test all polaritiy and phase combinations
 spi.init(polarity=1, phase=0, pins=spi_pins)
@@ -140,6 +136,11 @@ except Exception:
 
 try:
     spi.write_readinto(buffer_w, buffer_r)
+except Exception:
+    print("Exception")
+
+try:
+    spi = SPI(0, SPI.MASTER, baudrate=0)
 except Exception:
     print("Exception")
 
