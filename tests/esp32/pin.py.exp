@@ -1,11 +1,4 @@
 True
-True
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
 <class 'Pin'>
 <class 'Pin'>
 <class 'Pin'>
@@ -45,10 +38,6 @@ True
 True
 True
 True
-True
-True
-True
-True
 PULL-DOWN
 False
 False
@@ -56,11 +45,7 @@ False
 False
 False
 False
-False
-False
-False
-False
-False
+Falses
 False
 False
 False
@@ -69,7 +54,7 @@ True
 True
 True
 True
-False
+True
 Exception
 Exception
 Exception

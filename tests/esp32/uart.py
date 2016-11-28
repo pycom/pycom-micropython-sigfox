@@ -16,6 +16,7 @@ for uart_id in uart_id_range:
     uart.init(baudrate=9600, stop=2, parity=UART.EVEN, pins=('P23', 'P9'))
     uart.init(baudrate=115200, parity=UART.ODD, stop=1, pins=('P23', 'P9'))
     #uart = UART(baudrate=1
+    uart.read()
     print (uart.readall())
     print (uart.readline())
     buff=bytearray(1)
@@ -51,10 +52,12 @@ for uart_id in uart_id_range:
 for uart_id in uart_id_range:
     uart1 = UART(uart_id, 1000000, pins=('P9', 'P23'))
     print(uart1)
+    uart1.read()
     print(uart1.write(b'123456') == 6)
     print(uart1.read() == b'123456')
     uart1 = UART(uart_id, 1000000, pins=('P23', 'P9'))
     print(uart1)
+    uart1.read()
     print(uart1.write(b'123456') == 6)
     print(uart1.read() == b'123456')
 

@@ -63,8 +63,6 @@ pin_map = list(set(all_pins) - set(used_pins))
 p = Pin('P9', Pin.IN)
 out = Pin('P23', Pin.OUT, value=1)
 print(p() == 1)
-put = Pin('P23', Pin.OUT, value=0)
-print(p() == 0)
 
 def test_noinit():
     for p in pin_map:
