@@ -9,7 +9,9 @@ wifi = WLAN()
 
 print(machine)
 machine.idle()
-print(machine.freq() == (80000000,))
+freq = machine.freq()
+if machine.freq()[0] < 80000000:
+    print("To low freq")
 print(machine.unique_id() == wifi.mac())
 
 machine.main('main.py')
