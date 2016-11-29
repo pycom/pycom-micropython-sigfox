@@ -777,7 +777,7 @@ LoRaMacStatus_t SendFrameOnChannel( ChannelParams_t channel );
 
 
 
-static void OnRadioTxDone( void )
+IRAM_ATTR static void OnRadioTxDone( void )
 {
     TimerTime_t curTime = TimerGetCurrentTime( );
     if( LoRaMacDeviceClass != CLASS_C )
@@ -1219,6 +1219,7 @@ static void OnRadioTxTimeout( void )
     if( LoRaMacDeviceClass != CLASS_C )
     {
         Radio.Sleep( );
+        printf("TO sleep\n");
     }
     else
     {
@@ -1228,6 +1229,7 @@ static void OnRadioTxTimeout( void )
     McpsConfirm.Status = LORAMAC_EVENT_INFO_STATUS_TX_TIMEOUT;
     MlmeConfirm.Status = LORAMAC_EVENT_INFO_STATUS_TX_TIMEOUT;
     LoRaMacFlags.Bits.MacDone = 1;
+    printf("Radio tx TO\n");
 }
 
 static void OnRadioRxError( void )
@@ -1250,6 +1252,7 @@ static void OnRadioRxError( void )
         MlmeConfirm.Status = LORAMAC_EVENT_INFO_STATUS_RX2_ERROR;
         LoRaMacFlags.Bits.MacDone = 1;
     }
+    printf("Rx error\n");
 }
 
 static void OnRadioRxTimeout( void )
@@ -1272,9 +1275,10 @@ static void OnRadioRxTimeout( void )
         MlmeConfirm.Status = LORAMAC_EVENT_INFO_STATUS_RX2_TIMEOUT;
         LoRaMacFlags.Bits.MacDone = 1;
     }
+    printf("Rx TO=%d\n", RxSlot);
 }
 
-static void OnMacStateCheckTimerEvent( void )
+IRAM_ATTR static void OnMacStateCheckTimerEvent( void )
 {
     TimerStop( &MacStateCheckTimer );
     bool txTimeout = false;
@@ -1303,6 +1307,7 @@ static void OnMacStateCheckTimerEvent( void )
                 {
                     if( MlmeConfirm.Status == LORAMAC_EVENT_INFO_STATUS_OK )
                     {
+                        printf("Uplink counter reset\n");
                         UpLinkCounter = 0;
                     }
                     // Join messages aren't repeated automatically
@@ -1318,6 +1323,7 @@ static void OnMacStateCheckTimerEvent( void )
                     AdrAckCounter++;
                     if( IsUpLinkCounterFixed == false )
                     {
+                        printf("Uplink counter incremented\n");
                         UpLinkCounter++;
                     }
 
@@ -1327,6 +1333,7 @@ static void OnMacStateCheckTimerEvent( void )
                 {
                     LoRaMacFlags.Bits.MacDone = 0;
                     // Sends the same frame again
+                    printf("sending frame again\n");
                     ScheduleTx( );
                 }
             }
@@ -1340,6 +1347,7 @@ static void OnMacStateCheckTimerEvent( void )
                 NodeAckRequested = false;
                 if( IsUpLinkCounterFixed == false )
                 {
+                    printf("Uplink counter incremented 2\n");
                     UpLinkCounter++;
                 }
                 McpsConfirm.NbRetries = AckTimeoutRetriesCounter;
@@ -1394,6 +1402,7 @@ static void OnMacStateCheckTimerEvent( void )
                 McpsConfirm.NbRetries = AckTimeoutRetriesCounter;
                 if( IsUpLinkCounterFixed == false )
                 {
+                    printf("Uplink counter incremented 3\n");
                     UpLinkCounter++;
                 }
             }
@@ -1434,7 +1443,7 @@ static void OnMacStateCheckTimerEvent( void )
     }
 }
 
-static void OnTxDelayedTimerEvent( void )
+IRAM_ATTR static void OnTxDelayedTimerEvent( void )
 {
     TimerStop( &TxDelayedTimer );
     LoRaMacState &= ~MAC_TX_DELAYED;
@@ -1442,15 +1451,16 @@ static void OnTxDelayedTimerEvent( void )
     ScheduleTx( );
 }
 
-static void OnRxWindow1TimerEvent( void )
+IRAM_ATTR static void OnRxWindow1TimerEvent( void )
 {
-    uint16_t symbTimeout = 5; // DR_2, DR_1, DR_0
+    uint16_t symbTimeout = 10;//5; // DR_2, DR_1, DR_0
     int8_t datarate = 0;
     uint32_t bandwidth = 0; // LoRa 125 kHz
 
     TimerStop( &RxWindowTimer1 );
     RxSlot = 0;
 
+    // printf("w 1\n");
     if( LoRaMacDeviceClass == CLASS_C )
     {
         Radio.Standby( );
@@ -1466,7 +1476,7 @@ static void OnRxWindow1TimerEvent( void )
     // For higher datarates, we increase the number of symbols generating a Rx Timeout
     if( datarate >= DR_3 )
     { // DR_6, DR_5, DR_4, DR_3
-        symbTimeout = 8;
+        symbTimeout = 15;//8;
     }
     if( datarate == DR_6 )
     {// LoRa 250 kHz
@@ -1482,7 +1492,7 @@ static void OnRxWindow1TimerEvent( void )
     // For higher datarates, we increase the number of symbols generating a Rx Timeout
     if( datarate > DR_0 )
     { // DR_1, DR_2, DR_3, DR_4, DR_8, DR_9, DR_10, DR_11, DR_12, DR_13
-        symbTimeout = 8;
+        symbTimeout = 15;//8;
     }
     if( datarate >= DR_4 )
     {// LoRa 500 kHz
@@ -1494,11 +1504,12 @@ static void OnRxWindow1TimerEvent( void )
 #endif
 }
 
-static void OnRxWindow2TimerEvent( void )
+IRAM_ATTR static void OnRxWindow2TimerEvent( void )
 {
-    uint16_t symbTimeout = 5; // DR_2, DR_1, DR_0
+    uint16_t symbTimeout = 10;//5; // DR_2, DR_1, DR_0
     uint32_t bandwidth = 0; // LoRa 125 kHz
 
+    // printf("w 2\n");
     TimerStop( &RxWindowTimer2 );
     RxSlot = 1;
 
@@ -1506,7 +1517,7 @@ static void OnRxWindow2TimerEvent( void )
     // For higher datarates, we increase the number of symbols generating a Rx Timeout
     if( Rx2Channel.Datarate >= DR_3 )
     { // DR_6, DR_5, DR_4, DR_3
-        symbTimeout = 8;
+        symbTimeout = 15;//8;
     }
     if( Rx2Channel.Datarate == DR_6 )
     {// LoRa 250 kHz
@@ -1516,7 +1527,7 @@ static void OnRxWindow2TimerEvent( void )
     // For higher datarates, we increase the number of symbols generating a Rx Timeout
     if( Rx2Channel.Datarate > DR_0 )
     { // DR_1, DR_2, DR_3, DR_4, DR_8, DR_9, DR_10, DR_11, DR_12, DR_13
-        symbTimeout = 8;
+        symbTimeout = 15;//8;
     }
     if( Rx2Channel.Datarate >= DR_4 )
     {// LoRa 500 kHz
@@ -1535,7 +1546,7 @@ static void OnRxWindow2TimerEvent( void )
     }
 }
 
-static void OnAckTimeoutTimerEvent( void )
+IRAM_ATTR static void OnAckTimeoutTimerEvent( void )
 {
     TimerStop( &AckTimeoutTimer );
 
@@ -1692,7 +1703,7 @@ static void SetPublicNetwork( bool enable )
     }
 }
 
-static void RxWindowSetup( uint32_t freq, int8_t datarate, uint32_t bandwidth, uint16_t timeout, bool rxContinuous )
+IRAM_ATTR static void RxWindowSetup( uint32_t freq, int8_t datarate, uint32_t bandwidth, uint16_t timeout, bool rxContinuous )
 {
     uint8_t downlinkDatarate = Datarates[datarate];
     RadioModems_t modem;

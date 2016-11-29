@@ -328,11 +328,12 @@ static IRAM_ATTR void McpsConfirm (McpsConfirm_t *McpsConfirm) {
     if (!lora_obj.async_tx) {
         lora_isr_cmd_rsp_data.rsp_u.rsp = E_LORA_CMD_RSP;
         xQueueSend(xRspQueue, (void *)&lora_isr_cmd_rsp_data, 0);
+        // xQueueSendFromISR(xRspQueue, (void *)&lora_isr_cmd_rsp_data, NULL);
     }
     lora_obj.state = E_LORA_STATE_IDLE;
 }
 
-static void McpsIndication (McpsIndication_t *mcpsIndication) {
+static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
     if (mcpsIndication->Status != LORAMAC_EVENT_INFO_STATUS_OK) {
         return;
     }
@@ -375,6 +376,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
             memcpy(lora_isr_cmd_rsp_data.rsp_u.info.rx.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
             lora_isr_cmd_rsp_data.rsp_u.info.rx.len = mcpsIndication->BufferSize;
             xQueueSend(xDataQueue, (void *)&lora_isr_cmd_rsp_data, 0);
+            // xQueueSendFromISR(xDataQueue, (void *)&lora_isr_cmd_rsp_data, NULL);
         }
     }
 }
@@ -394,7 +396,7 @@ static IRAM_ATTR void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
     }
 }
 
-static void OnTxNextActReqTimerEvent(void) {
+static IRAM_ATTR void OnTxNextActReqTimerEvent(void) {
     MibRequestConfirm_t mibReq;
     LoRaMacStatus_t status;
 
@@ -457,7 +459,7 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
                    #if defined( USE_BAND_868 )
-                       LoRaMacTestSetDutyCycleOn(false);   // Test only
+                       // LoRaMacTestSetDutyCycleOn(false);   // Test only
                        LoRaMacChannelAdd(3, (ChannelParams_t)LC4);
                        LoRaMacChannelAdd(4, (ChannelParams_t)LC5);
                        LoRaMacChannelAdd(5, (ChannelParams_t)LC6);
@@ -544,6 +546,7 @@ static void TASK_LoRa (void *pvParameters) {
                             mcpsReq.Req.Unconfirmed.fBufferSize = 0;
                             mcpsReq.Req.Unconfirmed.Datarate = cmd_rsp_data.cmd_u.info.tx.dr;
                             empty_frame = true;
+                            printf("Sending empty frame\n");
                         } else {
                             if (cmd_rsp_data.cmd_u.info.tx.confirmed) {
                                 mcpsReq.Type = MCPS_CONFIRMED;

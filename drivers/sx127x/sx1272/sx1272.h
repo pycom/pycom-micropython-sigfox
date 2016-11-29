@@ -113,7 +113,6 @@ typedef struct SX1272_s
     Gpio_t        Reset;
     Gpio_t        DIO;
     Spi_t         Spi;
-    uint8_t       RxTx;
     RadioSettings_t Settings;
 }SX1272_t;
 
