@@ -47,7 +47,7 @@ def testBuild(name){
       sleep(5) //Delay to skip all bootlog
       dir('tests') {
          timeout(10){
-           sh '''./run-tests --target=''' + name +''' --device /dev/ttyUSB0'''
+           sh '''./run-tests --target=esp32-''' + name +''' --device /dev/ttyUSB0'''
          }
       }
       sh 'python esp32/tools/resetBoard.py reset'

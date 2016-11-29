@@ -381,7 +381,7 @@ def main():
     cmd_parser.add_argument('files', nargs='*', help='input test files')
     args = cmd_parser.parse_args()
 
-    EXTERNAL_TARGETS = ('pyboard', 'wipy1','WIPY2', 'esp8266', 'LOPY')
+    EXTERNAL_TARGETS = ('pyboard', 'wipy1','esp32-WIPY', 'esp8266', 'esp32-LOPY')
     if args.target in EXTERNAL_TARGETS:
         import pyboard
         pyb = pyboard.Pyboard(args.device, args.baudrate, args.user, args.password)
@@ -401,10 +401,10 @@ def main():
             elif args.target == 'wipy1':
                 # run WiPy tests
                 test_dirs = ('basics', 'micropython', 'misc', 'extmod', 'wipy')
-            elif args.target == 'WIPY2':
+            elif args.target == 'esp32-WIPY':
                 # run Lopy tests
                 test_dirs = ('basics', 'micropython', 'esp32')
-            elif args.target == 'LOPY':
+            elif args.target == 'esp32-LOPY':
                 # run Lopy tests
                 test_dirs = ('basics', 'micropython', 'esp32')
             else:
