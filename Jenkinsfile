@@ -1,5 +1,5 @@
 def buildVersion
-def boards = ["LOPY"]
+def boards = ["LOPY", "WIPY"]
 node {
    stage('Checkout') { // get source
       checkout scm
