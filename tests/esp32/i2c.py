@@ -5,11 +5,11 @@ A MPU-9150 sensor must be connected to the I2C bus to P9 and P10.
 from machine import I2C
 import time
 import os
+import sys
 
 mch = os.uname().machine
-
 if 'WiPy' in mch:
-    print("SKIP")
+    print('SKIP')
     sys.exit()
 
 

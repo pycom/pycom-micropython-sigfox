@@ -100,7 +100,7 @@ def test_pin_af():
 #test_pin_af() # try the entire af range on all pins
 
 # test all constructor combinations
-magic_pin = pin_map[3]
+magic_pin = pin_map[0]
 pin = Pin(magic_pin)
 pin = Pin(magic_pin, mode=Pin.IN)
 pin = Pin(magic_pin, mode=Pin.OUT)
