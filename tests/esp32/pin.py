@@ -45,7 +45,7 @@ no_pull_up_pins = [
     'G30','P18',
     'G6','P19'
 ]
-
+used_pins = []
 if 'LoPy' in mch:
     used_pins = ['G12','P5',   #Pin used for Lora CLK
                  'G13','P6',   #Pin used for Lora MOSI
@@ -58,6 +58,7 @@ if 'LoPy' in mch:
 
 
 pin_map = list(set(all_pins) - set(used_pins))
+pin_map += ['P12'] * (len(all_pins)-len(pin_map))
 
 # test initial value
 p = Pin('P9', Pin.IN)

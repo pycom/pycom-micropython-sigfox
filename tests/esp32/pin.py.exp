@@ -27,7 +27,31 @@ True
 <class 'Pin'>
 <class 'Pin'>
 <class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
 PULL-UP
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
 True
 True
 True
@@ -49,12 +73,24 @@ False
 False
 False
 False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
 Constructor pass
 True
 True
 True
 True
-True
+False
 Exception
 Exception
 Exception
