@@ -124,6 +124,7 @@ typedef enum {
     E_LORA_STATE_NOINIT = 0,
     E_LORA_STATE_IDLE,
     E_LORA_STATE_JOIN,
+    E_LORA_STATE_LINK_CHECK,
     E_LORA_STATE_RX,
     E_LORA_STATE_RX_DONE,
     E_LORA_STATE_RX_TIMEOUT,
@@ -173,8 +174,16 @@ typedef struct {
   uint8_t           sf;
   uint8_t           tx_power;
   uint8_t           pwr_mode;
-  uint8_t           demod_margin;       // for the compliancy tests
-  uint8_t           nbr_gateways;       // for the compliancy tests
+  struct {
+    bool Enabled;
+    bool Running;
+    uint8_t State;
+    bool IsTxConfirmed;
+    uint16_t DownLinkCounter;
+    bool LinkCheck;
+    uint8_t DemodMargin;
+    uint8_t NbGateways;
+  } ComplianceTest;
   uint8_t           activation;
   uint8_t           tx_retries;
   union {
@@ -363,20 +372,117 @@ static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
 
     lora_obj.rssi = mcpsIndication->Rssi;
 
+    if (lora_obj.ComplianceTest.Running == true) {
+        lora_obj.ComplianceTest.DownLinkCounter++;
+    }
+
+    // printf("MCPS indication!=%d :%d\n", mcpsIndication->BufferSize, mcpsIndication->Port);
+
     if (mcpsIndication->RxData) {
         switch (mcpsIndication->Port) {
         case 1:
         case 2:
+            if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
+                lora_isr_cmd_rsp_data.rsp_u.rsp = E_LORA_RX_DATA;
+                memcpy(lora_isr_cmd_rsp_data.rsp_u.info.rx.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
+                lora_isr_cmd_rsp_data.rsp_u.info.rx.len = mcpsIndication->BufferSize;
+                xQueueSend(xDataQueue, (void *)&lora_isr_cmd_rsp_data, 0);
+                // xQueueSendFromISR(xDataQueue, (void *)&lora_isr_cmd_rsp_data, NULL);
+            }
+            // printf("Data on port 2 received\n");
+            break;
+        case 224:
+            if (lora_obj.ComplianceTest.Enabled == true) {
+                if (lora_obj.ComplianceTest.Running == false) {
+                    // printf("Checking start test msg\n");
+                    // Check compliance test enable command (i)
+                    if( ( mcpsIndication->BufferSize == 4 ) &&
+                        ( mcpsIndication->Buffer[0] == 0x01 ) &&
+                        ( mcpsIndication->Buffer[1] == 0x01 ) &&
+                        ( mcpsIndication->Buffer[2] == 0x01 ) &&
+                        ( mcpsIndication->Buffer[3] == 0x01 ) )
+                    {
+                        lora_obj.ComplianceTest.IsTxConfirmed = false;
+                        lora_obj.ComplianceTest.DownLinkCounter = 0;
+                        lora_obj.ComplianceTest.LinkCheck = false;
+                        lora_obj.ComplianceTest.DemodMargin = 0;
+                        lora_obj.ComplianceTest.NbGateways = 0;
+                        lora_obj.ComplianceTest.Running = true;
+                        lora_obj.ComplianceTest.State = 1;
+
+                        // enable ADR during test mode
+                        MibRequestConfirm_t mibReq;
+                        mibReq.Type = MIB_ADR;
+                        mibReq.Param.AdrEnable = true;
+                        LoRaMacMibSetRequestConfirm( &mibReq );
+
+                    #if defined(USE_BAND_868)
+                        // always disable duty cycle limitation during test mode
+                        LoRaMacTestSetDutyCycleOn(false);
+                    #endif
+                        // printf("Compliance enabled\n");
+                    }
+                } else {
+                    lora_obj.ComplianceTest.State = mcpsIndication->Buffer[0];
+                    switch (lora_obj.ComplianceTest.State) {
+                    case 0: // Check compliance test disable command (ii)
+                        lora_obj.ComplianceTest.IsTxConfirmed = false;
+                        lora_obj.ComplianceTest.DownLinkCounter = 0;
+                        lora_obj.ComplianceTest.Running = false;
+
+                        // set adr back to its original value
+                        MibRequestConfirm_t mibReq;
+                        mibReq.Type = MIB_ADR;
+                        mibReq.Param.AdrEnable = lora_obj.adr;
+                        LoRaMacMibSetRequestConfirm(&mibReq);
+                    #if defined( USE_BAND_868 )
+                        LoRaMacTestSetDutyCycleOn(true);
+                    #endif
+                        // printf("Compliance disabled\n");
+                        break;
+                    case 1: // (iii, iv)
+                        lora_obj.ComplianceTest.Running = true;
+                        // printf("Compliance running\n");
+                        break;
+                    case 2: // Enable confirmed messages (v)
+                        lora_obj.ComplianceTest.IsTxConfirmed = true;
+                        lora_obj.ComplianceTest.State = 1;
+                        // printf("Confirmed messages enabled\n");
+                        break;
+                    case 3:  // Disable confirmed messages (vi)
+                        lora_obj.ComplianceTest.IsTxConfirmed = false;
+                        lora_obj.ComplianceTest.State = 1;
+                        // printf("Confirmed messages disabled\n");
+                        break;
+                    case 4: // (vii)
+                        // return the payload
+                        if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
+                            lora_isr_cmd_rsp_data.rsp_u.rsp = E_LORA_RX_DATA;
+                            memcpy(lora_isr_cmd_rsp_data.rsp_u.info.rx.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
+                            lora_isr_cmd_rsp_data.rsp_u.info.rx.len = mcpsIndication->BufferSize;
+                            xQueueSend(xDataQueue, (void *)&lora_isr_cmd_rsp_data, 0);
+                        }
+                        // printf("Crypto message received\n");
+                        break;
+                    case 5: // (viii)
+                        // trigger a link check
+                        lora_obj.state = E_LORA_STATE_LINK_CHECK;
+                        // printf("Link check\n");
+                        break;
+                    case 6: // (ix)
+                        // trigger a join request
+                        lora_obj.ComplianceTest.State = 6;
+                        lora_obj.state = E_LORA_STATE_JOIN;
+                        // printf("Trigger join\n");
+                        break;
+                    default:
+                        break;
+                    }
+                }
+            }
             break;
         default:
             break;
-        }
-        if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
-            lora_isr_cmd_rsp_data.rsp_u.rsp = E_LORA_RX_DATA;
-            memcpy(lora_isr_cmd_rsp_data.rsp_u.info.rx.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
-            lora_isr_cmd_rsp_data.rsp_u.info.rx.len = mcpsIndication->BufferSize;
-            xQueueSend(xDataQueue, (void *)&lora_isr_cmd_rsp_data, 0);
-            // xQueueSendFromISR(xDataQueue, (void *)&lora_isr_cmd_rsp_data, NULL);
         }
     }
 }
@@ -387,8 +493,17 @@ static IRAM_ATTR void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
             case MLME_JOIN:
                 TimerStop(&TxNextActReqTimer);
                 lora_obj.joined = true;
+                lora_obj.ComplianceTest.State = 1;
                 break;
             case MLME_LINK_CHECK:
+                // Check DemodMargin
+                // Check NbGateways
+                if (lora_obj.ComplianceTest.Running == true) {
+                    lora_obj.ComplianceTest.LinkCheck = true;
+                    lora_obj.ComplianceTest.DemodMargin = MlmeConfirm->DemodMargin;
+                    lora_obj.ComplianceTest.NbGateways = MlmeConfirm->NbGateways;
+                }
+                // printf("Link check confirm\n");
                 break;
             default:
                 break;
@@ -423,6 +538,7 @@ static void TASK_LoRa (void *pvParameters) {
     LoRaMacPrimitives_t LoRaMacPrimitives;
     LoRaMacCallback_t LoRaMacCallbacks;
     MibRequestConfirm_t mibReq;
+    MlmeReq_t mlmeReq;
 
     // target board initialisation
     BoardInitMcu();
@@ -459,7 +575,7 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
                    #if defined( USE_BAND_868 )
-                       // LoRaMacTestSetDutyCycleOn(false);   // Test only
+                       LoRaMacTestSetDutyCycleOn(true);
                        LoRaMacChannelAdd(3, (ChannelParams_t)LC4);
                        LoRaMacChannelAdd(4, (ChannelParams_t)LC5);
                        LoRaMacChannelAdd(5, (ChannelParams_t)LC6);
@@ -511,7 +627,17 @@ static void TASK_LoRa (void *pvParameters) {
                     xQueueSend(xRspQueue, (void *)&cmd_rsp_data, (TickType_t)portMAX_DELAY);
                     break;
                 case E_LORA_CMD_JOIN:
+                    lora_obj.joined = false;
                     lora_obj.activation = cmd_rsp_data.cmd_u.info.join.activation;
+                    if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
+                        memcpy((void *)lora_obj.otaa.DevEui, cmd_rsp_data.cmd_u.info.join.otaa.DevEui, sizeof(lora_obj.otaa.DevEui));
+                        memcpy((void *)lora_obj.otaa.AppEui, cmd_rsp_data.cmd_u.info.join.otaa.AppEui, sizeof(lora_obj.otaa.AppEui));
+                        memcpy((void *)lora_obj.otaa.AppKey, cmd_rsp_data.cmd_u.info.join.otaa.AppKey, sizeof(lora_obj.otaa.AppKey));
+                    } else {
+                        lora_obj.abp.DevAddr = cmd_rsp_data.cmd_u.info.join.abp.DevAddr;
+                        memcpy((void *)lora_obj.abp.AppSKey, cmd_rsp_data.cmd_u.info.join.abp.AppSKey, sizeof(lora_obj.abp.AppSKey));
+                        memcpy((void *)lora_obj.abp.NwkSKey, cmd_rsp_data.cmd_u.info.join.abp.NwkSKey, sizeof(lora_obj.abp.NwkSKey));
+                    }
                     lora_obj.is_cmd = true;
                     lora_obj.state = E_LORA_STATE_JOIN;
                     break;
@@ -546,7 +672,7 @@ static void TASK_LoRa (void *pvParameters) {
                             mcpsReq.Req.Unconfirmed.fBufferSize = 0;
                             mcpsReq.Req.Unconfirmed.Datarate = cmd_rsp_data.cmd_u.info.tx.dr;
                             empty_frame = true;
-                            printf("Sending empty frame\n");
+                            // printf("Sending empty frame\n");
                         } else {
                             if (cmd_rsp_data.cmd_u.info.tx.confirmed) {
                                 mcpsReq.Type = MCPS_CONFIRMED;
@@ -603,11 +729,6 @@ static void TASK_LoRa (void *pvParameters) {
         case E_LORA_STATE_JOIN:
             TimerStop( &TxNextActReqTimer );
             if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
-                lora_obj.joined = false;
-                memcpy((void *)lora_obj.otaa.DevEui, cmd_rsp_data.cmd_u.info.join.otaa.DevEui, sizeof(lora_obj.otaa.DevEui));
-                memcpy((void *)lora_obj.otaa.AppEui, cmd_rsp_data.cmd_u.info.join.otaa.AppEui, sizeof(lora_obj.otaa.AppEui));
-                memcpy((void *)lora_obj.otaa.AppKey, cmd_rsp_data.cmd_u.info.join.otaa.AppKey, sizeof(lora_obj.otaa.AppKey));
-                MlmeReq_t mlmeReq;
                 mlmeReq.Type = MLME_JOIN;
                 mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.otaa.DevEui;
                 mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.otaa.AppEui;
@@ -616,9 +737,6 @@ static void TASK_LoRa (void *pvParameters) {
                 TimerSetValue( &TxNextActReqTimer, OVER_THE_AIR_ACTIVATION_DUTYCYCLE);
                 TimerStart( &TxNextActReqTimer );
             } else {
-                lora_obj.abp.DevAddr = cmd_rsp_data.cmd_u.info.join.abp.DevAddr;
-                memcpy((void *)lora_obj.abp.AppSKey, cmd_rsp_data.cmd_u.info.join.abp.AppSKey, sizeof(lora_obj.abp.AppSKey));
-                memcpy((void *)lora_obj.abp.NwkSKey, cmd_rsp_data.cmd_u.info.join.abp.NwkSKey, sizeof(lora_obj.abp.NwkSKey));
                 mibReq.Type = MIB_NET_ID;
                 mibReq.Param.NetID = DEF_LORAWAN_NETWORK_ID;
                 LoRaMacMibSetRequestConfirm( &mibReq );
@@ -647,6 +765,11 @@ static void TASK_LoRa (void *pvParameters) {
                 cmd_rsp_data.rsp_u.info.rsp.result = E_LORA_CMD_OK;
                 xQueueSend(xRspQueue, (void *)&cmd_rsp_data, (TickType_t)portMAX_DELAY);
             }
+            lora_obj.state = E_LORA_STATE_IDLE;
+            break;
+        case E_LORA_STATE_LINK_CHECK:
+            mlmeReq.Type = MLME_LINK_CHECK;
+            LoRaMacMlmeRequest(&mlmeReq);
             lora_obj.state = E_LORA_STATE_IDLE;
             break;
         case E_LORA_STATE_RX_DONE:
@@ -974,7 +1097,7 @@ STATIC const mp_arg_t lora_init_args[] = {
     { MP_QSTR_rx_iq,        MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
     { MP_QSTR_adr,          MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
     { MP_QSTR_public,       MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = true} },
-    { MP_QSTR_tx_retries,   MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = 1} },
+    { MP_QSTR_tx_retries,   MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = 2} },
 };
 STATIC mp_obj_t lora_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -1087,6 +1210,52 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lora_join_obj, 1, lora_join);
+
+STATIC mp_obj_t lora_compliance_test(mp_uint_t n_args, const mp_obj_t *args) {
+    // get
+    if (n_args == 1) {
+        static const qstr lora_compliance_info_fields[] = {
+            MP_QSTR_enabled, MP_QSTR_running, MP_QSTR_state, MP_QSTR_tx_confirmed,
+            MP_QSTR_downlink_counter, MP_QSTR_link_check, MP_QSTR_demod_margin,
+            MP_QSTR_nbr_gateways
+        };
+
+        mp_obj_t compliance_tuple[8];
+        compliance_tuple[0] = mp_obj_new_bool(lora_obj.ComplianceTest.Enabled);
+        compliance_tuple[1] = mp_obj_new_bool(lora_obj.ComplianceTest.Running);
+        compliance_tuple[2] = mp_obj_new_int(lora_obj.ComplianceTest.State);
+        compliance_tuple[3] = mp_obj_new_bool(lora_obj.ComplianceTest.IsTxConfirmed);
+        compliance_tuple[4] = mp_obj_new_int(lora_obj.ComplianceTest.DownLinkCounter);
+        compliance_tuple[5] = mp_obj_new_bool(lora_obj.ComplianceTest.LinkCheck);
+        compliance_tuple[6] = mp_obj_new_int(lora_obj.ComplianceTest.DemodMargin);
+        compliance_tuple[7] = mp_obj_new_int(lora_obj.ComplianceTest.NbGateways);
+
+        return mp_obj_new_attrtuple(lora_compliance_info_fields, 8, compliance_tuple);
+    } else {    // set
+        if (mp_obj_is_true(args[1])) {  // enable or disable
+            lora_obj.ComplianceTest.Enabled = true;
+        } else {
+            lora_obj.ComplianceTest.Enabled = false;
+        }
+
+    if (n_args > 2) {
+        // state
+        lora_obj.ComplianceTest.State = mp_obj_get_int(args[2]);
+
+        if (n_args > 3) {
+            // link check
+            if (mp_obj_is_true(args[3])) {
+                lora_obj.ComplianceTest.LinkCheck = true;
+            } else {
+                lora_obj.ComplianceTest.LinkCheck = false;
+            }
+        }
+    }
+
+        return mp_const_none;
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lora_compliance_test_obj, 1, 4, lora_compliance_test);
 
 STATIC mp_obj_t lora_tx_power (mp_uint_t n_args, const mp_obj_t *args) {
     lora_obj_t *self = args[0];
@@ -1310,6 +1479,7 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_add_channel),         (mp_obj_t)&lora_add_channel_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_remove_channel),      (mp_obj_t)&lora_remove_channel_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&lora_mac_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_compliance_test),     (mp_obj_t)&lora_compliance_test_obj },
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_LORA),                MP_OBJ_NEW_SMALL_INT(E_LORA_STACK_MODE_LORA) },

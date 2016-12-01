@@ -758,7 +758,7 @@ void SX1272Send( uint8_t *buffer, uint8_t size )
             }
             else
             {
-				memcpy1( RxTxBuffer, buffer, size );
+                memcpy1( RxTxBuffer, buffer, size );
                 SX1272.Settings.FskPacketHandler.ChunkSize = 32;
             }
 
@@ -1455,6 +1455,7 @@ IRAM_ATTR void SX1272OnDio0Irq( void )
                 if( ( RadioEvents != NULL ) && ( RadioEvents->RxDone != NULL ) )
                 {
                     RadioEvents->RxDone( RxTxBuffer, SX1272.Settings.FskPacketHandler.Size, SX1272.Settings.FskPacketHandler.RssiValue, 0 );
+                    // printf("Rx Done called\n");
                 }
                 SX1272.Settings.FskPacketHandler.PreambleDetected = false;
                 SX1272.Settings.FskPacketHandler.SyncWordDetected = false;

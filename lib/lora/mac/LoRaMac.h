@@ -541,6 +541,10 @@ typedef enum eLoRaMacEventInfoStatus
      */
     LORAMAC_EVENT_INFO_STATUS_DOWNLINK_REPEATED,
     /*!
+     * The node has lost MAX_FCNT_GAP or more frames.
+     */
+    LORAMAC_EVENT_INFO_STATUS_DOWNLINK_TOO_MANY_FRAMES_LOSS,
+    /*!
      * An address error occured
      */
     LORAMAC_EVENT_INFO_STATUS_ADDRESS_FAIL,
@@ -1117,6 +1121,16 @@ typedef enum eMib
      */
     MIB_JOIN_ACCEPT_DELAY_2,
     /*!
+     * Default Data rate of a channel
+     *
+     * LoRaWAN Specification V1.0, chapter 7
+     *
+     * EU868 - [DR_0, DR_1, DR_2, DR_3, DR_4, DR_5, DR_6, DR_7]
+     *
+     * US915 - [DR_0, DR_1, DR_2, DR_3, DR_4, DR_8, DR_9, DR_10, DR_11, DR_12, DR_13]
+     */
+    MIB_CHANNELS_DEFAULT_DATARATE,
+    /*!
      * Data rate of a channel
      *
      * LoRaWAN Specification V1.0, chapter 7
@@ -1273,6 +1287,12 @@ typedef union uMibParam
      * Related MIB type: \ref MIB_JOIN_ACCEPT_DELAY_2
      */
     uint32_t JoinAcceptDelay2;
+    /*!
+     * Channels default data rate
+     *
+     * Related MIB type: \ref MIB_CHANNELS_DEFAULT_DATARATE
+     */
+    int8_t ChannelsDefaultDatarate;
     /*!
      * Channels data rate
      *
