@@ -757,6 +757,7 @@ static void TASK_LoRa (void *pvParameters) {
                 mibReq.Param.IsNetworkJoined = true;
                 LoRaMacMibSetRequestConfirm( &mibReq );
                 lora_obj.joined = true;
+                lora_obj.ComplianceTest.State = 1;
             }
             if (lora_obj.is_cmd) {
                 lora_obj.is_cmd = false;
