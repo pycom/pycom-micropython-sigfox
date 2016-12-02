@@ -84,9 +84,12 @@ Maintainer: Sylvain Miermont
 #define RSSI_FSK_POLY_1     1.5351
 #define RSSI_FSK_POLY_2     0.003
 
+#define LGW_RF_RX_BANDWIDTH_125KHZ  925000      /* for 125KHz channels */
+#define LGW_RF_RX_BANDWIDTH_250KHZ  1000000     /* for 250KHz channels */
+#define LGW_RF_RX_BANDWIDTH_500KHZ  1100000     /* for 500KHz channels */
 /* constant arrays defining hardware capability */
 const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
-const uint32_t rf_rx_bandwidth[LGW_RF_CHAIN_NB] = LGW_RF_RX_BANDWIDTH;
+
 
 /* Version string, used to identify the library version/options once compiled */
 const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
@@ -518,7 +521,7 @@ data[23]=*(((uint8_t *)(&conf.tx_notch_freq))+3);
 
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     int32_t bw_hz;
-
+      uint32_t rf_rx_bandwidth;
     /* check if the concentrator is running */
     if (lgw_is_started == true) {
         DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
@@ -547,11 +550,23 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
         DEBUG_MSG("ERROR: INVALID RF_CHAIN TO ASSOCIATE WITH A LORA_STD IF CHAIN\n");
         return LGW_HAL_ERROR;
     }
+    switch (conf.bandwidth) {        
+      case BW_250KHZ:            
+      rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_250KHZ;         
+      break;        
+      case BW_500KHZ:            
+      rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_500KHZ;             
+      break;        
+      default:        
+      rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_125KHZ;          
+      break;
+          }
+    
     bw_hz = lgw_bw_getval(conf.bandwidth);
-    if ((conf.freq_hz + ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) > ((int32_t)rf_rx_bandwidth[conf.rf_chain] / 2)) {
+    if ((conf.freq_hz + ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) > ((int32_t)rf_rx_bandwidth / 2)) {
         DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO HIGH\n", conf.freq_hz);
         return LGW_HAL_ERROR;
-    } else if ((conf.freq_hz - ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) < -((int32_t)rf_rx_bandwidth[conf.rf_chain] / 2)) {
+    } else if ((conf.freq_hz - ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) < -((int32_t)rf_rx_bandwidth / 2)) {
         DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO LOW\n", conf.freq_hz);
         return LGW_HAL_ERROR;
     }
