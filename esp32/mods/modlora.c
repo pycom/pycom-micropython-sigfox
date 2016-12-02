@@ -545,7 +545,7 @@ static void TASK_LoRa (void *pvParameters) {
     BoardInitPeriph();
 
     for ( ; ; ) {
-        vTaskDelay (1 / portTICK_PERIOD_MS);
+        vTaskDelay (2 / portTICK_PERIOD_MS);
 
         switch (lora_obj.state) {
         case E_LORA_STATE_NOINIT:

@@ -810,6 +810,7 @@ void SX1272SetSleep( void )
 {
     TimerStop( &RxTimeoutTimer );
     TimerStop( &TxTimeoutTimer );
+    TimerStop(&FskIrqFlagsTimer);
 
     SX1272SetOpMode( RF_OPMODE_SLEEP );
     SX1272.Settings.State = RF_IDLE;
@@ -819,6 +820,7 @@ void SX1272SetStby( void )
 {
     TimerStop( &RxTimeoutTimer );
     TimerStop( &TxTimeoutTimer );
+    TimerStop(&FskIrqFlagsTimer);
 
     SX1272SetOpMode( RF_OPMODE_STANDBY );
     SX1272.Settings.State = RF_IDLE;
@@ -1208,6 +1210,8 @@ IRAM_ATTR void SX1272SetMaxPayloadLength( RadioModems_t modem, uint8_t max )
 
 IRAM_ATTR void SX1272OnTimeoutIrq( void )
 {
+    // stop the fsk flags timer here
+    TimerStop(&FskIrqFlagsTimer);
     switch( SX1272.Settings.State )
     {
     case RF_RX_RUNNING:
@@ -1373,11 +1377,12 @@ IRAM_ATTR void SX1272OnDio0Irq( void )
     switch( SX1272.Settings.State )
     {
         case RF_RX_RUNNING:
-            TimerStop(&FskIrqFlagsTimer);
             // RxDone interrupt
             switch( SX1272.Settings.Modem )
             {
             case MODEM_FSK:
+                // stop checking the fsk flags here
+                TimerStop(&FskIrqFlagsTimer);
                 if( SX1272.Settings.Fsk.CrcOn == true )
                 {
                     irqFlags = SX1272Read( REG_IRQFLAGS2 );
