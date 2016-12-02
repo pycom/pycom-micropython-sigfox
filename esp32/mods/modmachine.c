@@ -33,6 +33,7 @@
 #include "mperror.h"
 #include "mpsleep.h"
 #include "pybadc.h"
+#include "pybdac.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -147,6 +148,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_I2C),                 (mp_obj_t)&machine_i2c_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_PWM),                 (mp_obj_t)&mach_pwm_timer_type },
 	{ MP_OBJ_NEW_QSTR(MP_QSTR_ADC),                 (mp_obj_t)&pyb_adc_type },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_DAC),                 (mp_obj_t)&pyb_dac_type },
 
     // constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_PWRON_RESET),         MP_OBJ_NEW_SMALL_INT(MPSLEEP_PWRON_RESET) },
