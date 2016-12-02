@@ -10,7 +10,9 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - Up to 24 GPIO :class:`Pins <.Pin>`
 - 2x :class:`UARTs <.UART>`
 - 2x :class:`SPIs <.SPI>`
+- :class:`PWM <.PWM>`
 - :class:`ADC <.ADC>`
+- :class:`DAC <.DAC>`
 - :class:`I2C <.I2C>`
 - :class:`WiFi <.WLAN>`
 - :class:`LoRa <.LoRa>` (only available in the LoPy)
@@ -22,7 +24,7 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :class:`Bluetooth` (coming soon)
 - :class:`AES encryption <.AES>`
 - :class:`SD` (coming soon)
-- :class:`DAC <.DAC>`
+
 
 .. #todo: add note in the next comment. Add links in the previous list. To the ones not yet in place, add a link to the “work in progress” section.
 
