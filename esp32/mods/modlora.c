@@ -575,7 +575,7 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
                    #if defined( USE_BAND_868 )
-                       LoRaMacTestSetDutyCycleOn(true);
+                       LoRaMacTestSetDutyCycleOn(false);            // TODO
                        LoRaMacChannelAdd(3, (ChannelParams_t)LC4);
                        LoRaMacChannelAdd(4, (ChannelParams_t)LC5);
                        LoRaMacChannelAdd(5, (ChannelParams_t)LC6);
