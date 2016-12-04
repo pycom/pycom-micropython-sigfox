@@ -74,7 +74,7 @@ typedef struct {
     uint8_t     dr;
     bool        async;
     bool        confirmed;
-} lora_tx_t;
+} lora_tx_cmd_data_t;
 
 typedef struct {
     uint32_t    frequency;
@@ -82,13 +82,13 @@ typedef struct {
     uint8_t     dr_min;
     uint8_t     dr_max;
     bool        add;
-} lora_config_channel_t;
+} lora_config_channel_cmd_data_t;
 
 typedef union {
-    lora_init_cmd_data_t        init;
-    lora_join_cmd_data_t        join;
-    lora_tx_t                   tx;
-    lora_config_channel_t       channel;
+    lora_init_cmd_data_t                init;
+    lora_join_cmd_data_t                join;
+    lora_tx_cmd_data_t                  tx;
+    lora_config_channel_cmd_data_t      channel;
 } lora_cmd_info_u_t;
 
 typedef struct {

@@ -76,6 +76,7 @@
 
 #define LORA_CHECK_SOCKET(s)                        if (s->sock_base.sd < 0) {  \
                                                         *_errno = EBADF;        \
+                                                        return -1;              \
                                                     }
 
 #define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           10000000  // 10 [s] value in us
@@ -1164,14 +1165,22 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
 
     // get the auth details
     mp_obj_t *auth;
-    mp_buffer_info_t bufinfo_0, bufinfo_1;
+    mp_buffer_info_t bufinfo_0, bufinfo_1, bufinfo_2;
     if (activation == E_LORA_ACTIVATION_OTAA) {
-        mp_obj_get_array_fixed_n(args[1].u_obj, 2, &auth);
-        mp_get_buffer_raise(auth[0], &bufinfo_0, MP_BUFFER_READ);
-        mp_get_buffer_raise(auth[1], &bufinfo_1, MP_BUFFER_READ);
-        config_get_lora_mac(cmd_rsp_data.cmd_u.info.join.otaa.DevEui);
-        memcpy(cmd_rsp_data.cmd_u.info.join.otaa.AppEui, bufinfo_0.buf, sizeof(cmd_rsp_data.cmd_u.info.join.otaa.AppEui));
-        memcpy(cmd_rsp_data.cmd_u.info.join.otaa.AppKey, bufinfo_1.buf, sizeof(cmd_rsp_data.cmd_u.info.join.otaa.AppKey));
+        uint32_t auth_len;
+        mp_obj_get_array(args[1].u_obj, &auth_len, &auth);
+        if (auth_len == 2) {
+            mp_get_buffer_raise(auth[0], &bufinfo_1, MP_BUFFER_READ);
+            mp_get_buffer_raise(auth[1], &bufinfo_2, MP_BUFFER_READ);
+            config_get_lora_mac(cmd_rsp_data.cmd_u.info.join.otaa.DevEui);
+        } else {
+            mp_get_buffer_raise(auth[0], &bufinfo_0, MP_BUFFER_READ);
+            memcpy(cmd_rsp_data.cmd_u.info.join.otaa.DevEui, bufinfo_0.buf, sizeof(cmd_rsp_data.cmd_u.info.join.otaa.DevEui));
+            mp_get_buffer_raise(auth[1], &bufinfo_1, MP_BUFFER_READ);
+            mp_get_buffer_raise(auth[2], &bufinfo_2, MP_BUFFER_READ);
+        }
+        memcpy(cmd_rsp_data.cmd_u.info.join.otaa.AppEui, bufinfo_1.buf, sizeof(cmd_rsp_data.cmd_u.info.join.otaa.AppEui));
+        memcpy(cmd_rsp_data.cmd_u.info.join.otaa.AppKey, bufinfo_2.buf, sizeof(cmd_rsp_data.cmd_u.info.join.otaa.AppKey));
     } else {
         mp_obj_get_array_fixed_n(args[1].u_obj, 3, &auth);
         mp_get_buffer_raise(auth[1], &bufinfo_0, MP_BUFFER_READ);
