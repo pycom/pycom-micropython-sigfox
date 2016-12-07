@@ -43,10 +43,11 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld \
        -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libm.a $(ESP_IDF_COMP_PATH)/newlib/lib/libc.a \
        -lfreertos -ljson -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
-       -lxtensa-debug-module
+       -lxtensa-debug-module -lethernet
 
 B_LIBS = -Lbootloader/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(BUILD)/bootloader \
-         -L$(ESP_IDF_COMP_PATH)/esp32/lib -Lbootloader -llog -lcore -lbootloader_support -lspi_flash
+         -L$(ESP_IDF_COMP_PATH)/esp32/lib -Lbootloader -llog -lcore -lbootloader_support \
+         -lspi_flash
 
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h $(BUILD)/pins_qstr.h

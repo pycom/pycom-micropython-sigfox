@@ -73,6 +73,18 @@ void set_cache_and_start_app(uint32_t drom_addr,
     uint32_t entry_addr);
 static void update_flash_config(const esp_image_header_t* pfhdr);
 
+static void read_mac(uint8_t* mac)
+{
+    uint32_t mac_low = REG_READ(EFUSE_BLK0_RDATA1_REG);
+    uint32_t mac_high = REG_READ(EFUSE_BLK0_RDATA2_REG);
+
+    mac[0] = mac_high >> 8;
+    mac[1] = mac_high;
+    mac[2] = mac_low >> 24;
+    mac[3] = mac_low >> 16;
+    mac[4] = mac_low >> 8;
+    mac[5] = mac_low;
+}
 
 void IRAM_ATTR call_start_cpu0()
 {
@@ -224,7 +236,7 @@ static uint32_t bootloader_buf[1024];
 static IRAM_ATTR void calculate_signature (uint8_t *signature) {
     uint32_t total_len = 0;
     uint8_t mac[6];
-    system_efuse_read_mac(mac);
+    read_mac(mac);
 
     struct MD5Context md5_context;
 
