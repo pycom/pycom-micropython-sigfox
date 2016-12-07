@@ -100,6 +100,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modutime.c \
 	modlora.c \
 	modpycom.c \
+	moduhashlib.c \
 	moducrypto.c \
 	analog.c \
 	pybadc.c \
