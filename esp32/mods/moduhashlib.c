@@ -62,6 +62,7 @@ STATIC void generic_hash_update(mp_obj_hash_t *self, void *data, uint32_t len) {
         mbedtls_sha1_update(&self->sha1_context, data, len);
         break;
 
+    case MP_QSTR_sha224:
     case MP_QSTR_sha256:
         mbedtls_sha256_update(&self->sha256_context, data, len);
         break;
@@ -144,6 +145,7 @@ STATIC mp_obj_t hash_read(mp_obj_t self_in) {
             mbedtls_sha1_free(&self->sha1_context);
             break;
 
+        case MP_QSTR_sha224:
         case MP_QSTR_sha256:
             mbedtls_sha256_finish(&self->sha256_context, (uint8_t *)self->buffer);
             mbedtls_sha256_free(&self->sha256_context);
@@ -195,6 +197,13 @@ STATIC mp_obj_t hash_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
         self->b_size = 64;
         mbedtls_sha1_init(&self->sha1_context);
         mbedtls_sha1_starts(&self->sha1_context);
+        break;
+
+    case MP_QSTR_sha224:
+        self->h_size = 28;
+        self->b_size = 64;
+        mbedtls_sha256_init(&self->sha256_context);
+        mbedtls_sha256_starts(&self->sha256_context, 1);
         break;
 
     case MP_QSTR_sha256:
@@ -267,6 +276,13 @@ STATIC const mp_obj_type_t sha1_type = {
    .locals_dict = (mp_obj_t)&hash_locals_dict,
 };
 
+STATIC const mp_obj_type_t sha224_type = {
+   { &mp_type_type },
+   .name = MP_QSTR_sha224,
+   .make_new = hash_make_new,
+   .locals_dict = (mp_obj_t)&hash_locals_dict,
+};
+
 STATIC const mp_obj_type_t sha256_type = {
    { &mp_type_type },
    .name = MP_QSTR_sha256,
@@ -292,6 +308,7 @@ STATIC const mp_map_elem_t mp_module_hashlib_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),    MP_OBJ_NEW_QSTR(MP_QSTR_uhashlib) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_md5),         (mp_obj_t)&md5_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sha1),        (mp_obj_t)&sha1_type },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sha224),      (mp_obj_t)&sha224_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sha256),      (mp_obj_t)&sha256_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sha384),      (mp_obj_t)&sha384_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sha512),      (mp_obj_t)&sha512_type },

@@ -15,6 +15,7 @@ print(h.digest())
 # test other functions
 print(hashlib.md5(b'pycom').digest())
 print(hashlib.sha1(b'pycom').digest())
+print(hashlib.sha224(b'pycom').digest())
 print(hashlib.sha384(b'pycom').digest())
 print(hashlib.sha512(b'pycom').digest())
 
