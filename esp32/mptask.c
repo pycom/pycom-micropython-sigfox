@@ -62,6 +62,11 @@
 #include "freertos/queue.h"
 
 /******************************************************************************
+ DECLARE EXTERNAL FUNCTIONS
+ ******************************************************************************/
+extern void modtimer_init0(void);
+
+/******************************************************************************
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
 #if defined(LOPY)
@@ -154,6 +159,7 @@ soft_reset:
     readline_init0();
     mod_network_init0();
     modbt_init0();
+    modtimer_init0();
     bool safeboot = false;
     boot_info_t boot_info;
     uint32_t boot_info_offset;

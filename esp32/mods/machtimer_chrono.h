@@ -1,0 +1,1 @@
+extern const mp_obj_type_t mach_timer_chrono_type;

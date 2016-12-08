@@ -22,7 +22,7 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :class:`AES encryption <.AES>`
 - :mod:`SSL/TLS support <.ussl>`
 - :class:`Interrupts` (coming soon)
-- 4x :class:`Timers` (coming soon)
+- :class:`Timer <.Timer>`
 - :class:`RTC` (coming soon)
 
 

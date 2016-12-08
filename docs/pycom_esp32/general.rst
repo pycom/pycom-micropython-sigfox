@@ -115,3 +115,27 @@ the system is alive. This can be overridden through the :mod:`pycom` module::
    >>> pycom.rgbled(0xff00)           # turn on the RGB LED in green color
 
 The heartbeat LED is also used to indicate that an error was detected:
+
+.. only:: port_pycom_esp32
+
+    .. _pycom_interrupt_handling:
+
+    Interrupt handling
+    ------------------
+
+    In Pycom's ESP32 MicroPython port there are no restrictions on what you can do within an interrupt handler.
+    For example, other ports don't allow you to allocate memory inside the handler or use sockets.
+
+    These limitations were raised by handling the interrupt events differently. When an interrupt happens,
+    a message is posted into a queue, notifying a separate thread that the appropriate callback handler should be called.
+    Such handler would receive an argument. By default it is the object associated with the event.
+
+    The programmer can do whatever is needed inside the callback, such as creating new variables,
+    or even sending network packets. Just keep in mind that interrupts are processed sequentially,
+    so try to keep the handlers as quick as possible in order to attend them all in a short time.
+
+    .. note::
+
+        Currently the interrupt system can queue up to 16 interrupts.
+
+

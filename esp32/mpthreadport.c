@@ -102,7 +102,7 @@ STATIC void freertos_entry(void *arg) {
     }
 }
 
-void mp_thread_create(void *(*entry)(void*), void *arg, size_t *stack_size) {
+void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, int priority, char *name) {
     // store thread entry function into a global variable so we can access it
     ext_thread_entry = entry;
 
@@ -120,7 +120,7 @@ void mp_thread_create(void *(*entry)(void*), void *arg, size_t *stack_size) {
     mp_thread_mutex_lock(&thread_mutex, 1);
 
     // create thread
-    TaskHandle_t id = xTaskCreateStaticPinnedToCore(freertos_entry, "Thread", *stack_size / sizeof(void*), arg, 5, stack, tcb, 0);
+    TaskHandle_t id = xTaskCreateStaticPinnedToCore(freertos_entry, name, *stack_size / sizeof(void*), arg, priority, stack, tcb, 0);
     if (id == NULL) {
         mp_thread_mutex_unlock(&thread_mutex);
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "can't create thread"));
@@ -139,6 +139,10 @@ void mp_thread_create(void *(*entry)(void*), void *arg, size_t *stack_size) {
 
     // adjust stack_size to provide room to recover from hitting the limit
     *stack_size -= 512;
+}
+
+void mp_thread_create(void *(*entry)(void*), void *arg, size_t *stack_size) {
+    mp_thread_create_ex(entry, arg, stack_size, 5, "Thread");
 }
 
 void mp_thread_finish(void) {
