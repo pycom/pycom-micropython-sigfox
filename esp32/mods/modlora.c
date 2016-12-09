@@ -1569,7 +1569,8 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
     mp_int_t n_bytes = -1;
 
     LORA_CHECK_SOCKET(s);
-    // is the radio able to transmi
+
+    // is the radio able to transmit
     if (lora_obj.pwr_mode == E_LORA_MODE_SLEEP) {
         *_errno = ENETDOWN;
     } else if (len > LORA_PAYLOAD_SIZE_MAX) {
@@ -1577,7 +1578,7 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
     } else if (len > 0) {
         if (lora_obj.stack_mode == E_LORA_STACK_MODE_LORA) {
             n_bytes = lora_send (buf, len, s->sock_base.timeout);
-        } else {
+        } else if (lora_obj.joined) {
             n_bytes = lorawan_send (buf, len, s->sock_base.timeout,
                                     LORAWAN_SOCKET_IS_CONFIRMED(s->sock_base.sd),
                                     LORAWAN_SOCKET_GET_DR(s->sock_base.sd));
@@ -1585,7 +1586,7 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
         if (n_bytes == 0) {
             *_errno = EAGAIN;
             n_bytes = -1;
-        } else if (n_bytes < 0 || !lora_obj.joined) {
+        } else if (n_bytes < 0) {
             *_errno = ENETUNREACH;
         }
     }
