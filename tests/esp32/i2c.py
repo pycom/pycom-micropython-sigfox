@@ -7,11 +7,6 @@ import time
 import os
 import sys
 
-mch = os.uname().machine
-if 'WiPy' in mch:
-    print('SKIP')
-    sys.exit()
-
 
 print(I2C(0))
 print(I2C(0,I2C.MASTER))
