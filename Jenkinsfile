@@ -58,6 +58,7 @@ def testBuild(name){
 def flashBuild(name){
 return {
   node(name){
+      sh 'rm -rf *'
       unstash 'binary'
       unstash 'esp-idfTools'
       unstash 'esp32Tools'

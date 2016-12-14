@@ -33,12 +33,6 @@ True
 <class 'Pin'>
 <class 'Pin'>
 <class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
 PULL-UP
 True
 True
@@ -60,19 +54,7 @@ True
 True
 True
 True
-True
-True
-True
-True
-True
-True
 PULL-DOWN
-False
-False
-False
-False
-False
-False
 False
 False
 False
