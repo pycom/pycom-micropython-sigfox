@@ -30,13 +30,16 @@ modules from the Python standard library, as well as further MicroPython
 extensions to it, can be found in the `micropython-lib repository
 <https://github.com/micropython/micropython-lib>`_.
 
-Python standard libraries and micro-libraries
----------------------------------------------
+General libraries
+-----------------
 
-The following standard Python libraries have been "micro-ified" to fit in with
-the philosophy of MicroPython.  They provide the core functionality of that
-module and are intended to be a drop-in replacement for the standard Python
-library.
+The following list contains the standard Python libraries, MicroPython-specific 
+libraries and Pycom specific modules that are available on our boards. 
+
+The standard Python libraries have been "micro-ified" to fit in with the philosophy 
+of MicroPython. They provide the core functionality of that module and are intended 
+to be a drop-in replacement for the standard Python library.
+
 
 .. only:: not port_unix and not port_pycom_esp32
 
@@ -119,7 +122,10 @@ library.
     .. toctree::
        :maxdepth: 1
 
-       builtins.rst
+       machine.rst
+       micropython.rst
+       network.rst
+       uctypes.rst
        sys.rst
        uos.rst
        array.rst
@@ -132,6 +138,22 @@ library.
        utime.rst
        uhashlib.rst
        ussl.rst
+       pycom.treading.rst
+       pycom.rst
+       ucrypto.rst
+       builtins.rst
+
+
+    .. only:: port_pycom_esp32
+
+        .. note::
+
+            Some modules are available by an u-name, and also by their non-u-name.  The
+            non-u-name can be overridden by a file of that name in your package path.
+            For example, ``import json`` will first search for a file ``json.py`` or
+            directory ``json`` and load that package if it is found.  If nothing is found,
+            it will fallback to loading the built-in ``ujson`` module.
+
 
 .. only:: port_esp8266
 
@@ -157,20 +179,14 @@ library.
        utime.rst
        uzlib.rst
 
-
-MicroPython-specific libraries
-------------------------------
-
-Functionality specific to the MicroPython implementation is available in
-the following libraries.
-
+LoPy
+----
 .. toctree::
    :maxdepth: 1
 
-   machine.rst
-   micropython.rst
-   network.rst
-   uctypes.rst
+   network.lora.rst
+
+
 
 
 .. only:: port_pyboard
@@ -197,30 +213,6 @@ the following libraries.
 
       wipy.rst
 
-.. only:: port_lopy or port_2wipy or port_pycom_esp32
-
-    Libraries specific to the Pycom modules
-    ---------------------------------------
-
-    The following libraries are specific to the Pycom modules.
-
-    .. toctree::
-        :maxdepth: 1
-
-        pycom.treading.rst
-        pycom.rst
-        ucrypto.rst
-
-
-    .. only:: port_pycom_esp32
-
-        .. note::
-
-            Some modules are available by an u-name, and also by their non-u-name.  The
-            non-u-name can be overridden by a file of that name in your package path.
-            For example, ``import json`` will first search for a file ``json.py`` or
-            directory ``json`` and load that package if it is found.  If nothing is found,
-            it will fallback to loading the built-in ``ujson`` module.
 
 .. only:: port_esp8266
 

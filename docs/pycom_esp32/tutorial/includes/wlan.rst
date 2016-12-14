@@ -1,5 +1,7 @@
+
+
 WLAN step by step
-=================
+-----------------
 
 The WLAN is a system feature of the LoPy, therefore it is enabled by default.
 
@@ -22,7 +24,7 @@ You can check the current mode (which is normally ``WLAN.AP`` after power up)::
      2. :ref:`duplicate the REPL on UART <pycom_uart>`, so that you can run commands via USB.
 
 Connecting to your home router
-------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The WLAN network card always boots in ``WLAN.AP`` mode, so we must first configure
 it as a station::
@@ -44,7 +46,7 @@ Now you can proceed to scan for networks::
             break
 
 Assigning a static IP address when booting
-------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you want your LoPy to connect to your home router after boot-up, and with a fixed
 IP address so that you can access it via telnet or FTP, use the following script as /flash/boot.py::

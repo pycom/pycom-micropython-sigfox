@@ -1,5 +1,5 @@
-Getting a MicroPython REPL prompt
-=================================
+MicroPython REPL prompt
+-----------------------
 
 REPL stands for Read Evaluate Print Loop, and is the name given to the
 interactive MicroPython prompt that you can access on the LoPy. Using
@@ -21,17 +21,8 @@ do::
 Place this piece of code inside your `boot.py` so that it's done automatically after
 reset.
 
-Using Pymakr
-------------
-
-Download the latest version of the Pymakr IDE `here <https://www.pycom.io/support/supportdownloads/>`_.
-After installing it, go to the settings and in the `Pycom Device` section configure the way to connect
-to the board. If you are connected to the LoPy via WiFi then use the IP address as `device` (192.168.4.1)
-or the name of the serial port if you are connected via the expansion board USB.
-
-
 Windows
--------
+^^^^^^^
 
 First you need to install the FTDI drivers for the expansion board's USB to serial
 converter. Then you need a terminal software. The best option is to download the
@@ -51,7 +42,7 @@ the "Serial" radio button on the right, then enter you COM port (eg COM4) in the
 "Serial Line" box.  Finally, click the "Open" button.
 
 Mac OS X
---------
+^^^^^^^^
 
 Open a terminal and run::
 
@@ -69,7 +60,7 @@ When you are finished and want to exit ``screen``, type CTRL-A CTRL-\\. If your 
 This will allow you to quit ``screen`` by hitting CTRL-A Q.
 
 Linux
------
+^^^^^
 
 Open a terminal and run::
 
@@ -85,7 +76,7 @@ yourself the correct permissions to access this devices (eg group ``uucp`` or ``
 or use sudo).
 
 Using the REPL prompt
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
 Now let's try running some MicroPython code directly on the LoPy.
 
@@ -121,7 +112,7 @@ Go ahead and try typing in some other commands.  For example::
     'pypypypypypypypypypypypypypypypypypypypy'
 
 Resetting the board
--------------------
+^^^^^^^^^^^^^^^^^^^
 
 If something goes wrong, you can reset the board in two ways. The first is to press CTRL-D
 at the MicroPython prompt, which performs a soft reset.  You will see a message something like::

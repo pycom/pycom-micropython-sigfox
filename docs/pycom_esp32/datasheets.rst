@@ -1,18 +1,26 @@
 .. _Hardware:
 
 ****************
-Hardware section
+Datasheets
 ****************
 
-Modules and boards
-==================
 
-.. toctree::
-    :maxdepth: 1
+.. include:: datasheets/wipy.rst
 
-    wipy2.rst
-    lopy.rst
-    expansionboard.rst
+.. include:: datasheets/wipy2.rst
+
+.. include:: datasheets/lopy.rst
+
+.. include:: datasheets/expansionboard.rst
+
+
+
+.. .. toctree::
+..     :maxdepth: 1
+
+..     datasheets/wipy2.rst
+..     datasheets/lopy.rst
+..     datasheets/expansionboard.rst
 
 Powering by an external power source
 ====================================

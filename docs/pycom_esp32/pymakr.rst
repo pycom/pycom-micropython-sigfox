@@ -14,7 +14,7 @@ If you just want to test some code on the module, you can create a new file or o
 
 .. Warning::
     
-    The changes you make to your file won't be automatically saved to the disk on execution.
+    The changes you make to your file won't be automatically saved to the device on execution.
 
 
 Creating a project

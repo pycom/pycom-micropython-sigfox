@@ -1,5 +1,6 @@
+
 Reset and boot modes
-====================
+--------------------
 
 There are soft resets and hard resets.
 
@@ -17,7 +18,7 @@ hard reset the LoPy, press the switch on the board or::
    >>> machine.reset()
 
 Safe boot
----------
+^^^^^^^^^
 
 If something goes wrong with your LoPy, don't panic!  It is almost
 impossible for you to break the LoPy by programming the wrong thing.
@@ -40,7 +41,7 @@ files on the LoPy.
 .. _pycom_factory_reset:
 
 Factory reset the filesystem
-----------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you LoPy's filesystem gets corrupted (very unlikely, but possible), you
 can format it very easily by doing::

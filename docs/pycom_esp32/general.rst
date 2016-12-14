@@ -1,20 +1,91 @@
-General information
-===================
+***************************
+Tools & Features
+***************************
 
-WLAN default behaviour
-----------------------
+Intro - How to use this section
+================
 
-When the LoPy boots with the default factory configuration, it' starts in Access Point mode',
-and it's ``ssid`` that starts with: ``lopy-wlan`` and ``key: www.pycom.io``.
-Connect to this network and the LoPy will be reachable at ``192.168.4.1``. In order
-to gain access to the interactive prompt, open a telnet session to that IP address on
-the default port (23). You will be asked for credentials:
-``login: micro`` and ``password: python``
+
+TODO: Write small intro on the contents of this page
+
+
+Pymakr IDE
+================
+
+TODO: Intro to Pymakr, summary of features
+
+Creating a project
+------------------
+
+Pymakr has a feature to sync and run your code on your device. This is mostly done using projects. The following steps will get you started.
+
+#. In Pymakr, go to Project > New project.
+#. Give it a name and select a folder for your project, either a new of existing one.
+#. Now you are ready to place your own code. For fun, lets try again to build a traffic light. Add the following code to the main.py file:
+
+::
+
+    import pycom
+    import time
+    pycom.heartbeat(False)
+    for cycles in range(10): # stop after 10 cycles 
+        pycom.rgbled(0x007f00) # green
+        time.sleep(5)
+        pycom.rgbled(0x7f7f00) # yellow
+        time.sleep(1.5)
+        pycom.rgbled(0x7f0000) # red
+        time.sleep(4)
+
+#. Make sure the connection to your board is open in the Pycom Console
+#. Press the sync button on the top toolbar. Any progress will be shown in the console.
+
+Here is the expected result:
+
+.. image:: images/traffic.gif
+    :alt: Traffic light
+    :align: center
+    :scale: 60 %
+
+
+You now have a traffic light in your hands! To stop it, just do a right click
+on the console and press ``Reset`` or use ctrl-c.
+
+
+.. Warning::
+
+    While the module is busy executing code, Pymakr cannot control it. You can regain control of it by right clicking in the console and pressing Reset, or phisically press the reset button.
+    If your board is running code at boot time, you might need to boot it in :ref:`safe mode <safeboot>`.
+
+.. #todo: add link to safeboot
+
+
+Without creating a project
+--------------------------
+
+If you just want to test some code on the module, you can create a new file or open an existing one and press the 'run' button.
+
+.. Warning::
+    
+    The changes you make to your file won't be automatically saved to the device on execution.
+
+
+Soft-resets
+-----------
+
+Using the checkboxes in the preferences screen, you can choose to do an automatic soft reset every time Pymakr connects to your board and/or when you run your code (using the green 'run' button). This can be useful when you want to make sure the board is in the same state every time you connect or run your code. If you are running an infinite in your main code, keep the soft-reset option disabled.
+
+If you enabe soft-reset on connect, it's useful to add the following check to any wifi-connection scripts in your boot file, so the wifi connection doesn't re-initialize when pymakr connects.
+
+.. code:: python
+
+    if machine.reset_cause() != machine.SOFT_RESET:
+        # wifi init code
+
 
 .. _pycom_telnet_repl:
 
 Telnet REPL
------------
+===========
 
 To connect to the Telnet REPL we recommend the usage of Linux or OS X stock telnet, although
 other tools like Putty are also compatible. The default credentials are: **user:** ``micro``,
@@ -27,7 +98,7 @@ For instance, on a linux shell (when connected to the LoPy in AP mode)::
 .. _pycom_filesystem:
 
 Local file system and FTP access
---------------------------------
+================================
 
 There is a small internal file system (a drive) on the LoPy, called ``/flash``,
 which is stored within the external serial flash memory.  If a micro SD card
@@ -68,7 +139,7 @@ data connections are possible. Other FTP clients might behave in a similar way.
 .. _safeboot:
 
 Boot modes and safe boot
-------------------------
+========================
 
 If you power up normally, or press the reset button, the LoPy will boot
 into standard mode; the ``boot.py`` file will be executed first, then
@@ -105,7 +176,7 @@ made during safe boot is not persistent, therefore after the next normal reset
 the latest firmware will run again.
 
 The heartbeat LED
-------------------
+=================
 
 By default the heartbeat LED flashes in blue color once every 4s to signal that
 the system is alive. This can be overridden through the :mod:`pycom` module::
@@ -115,3 +186,16 @@ the system is alive. This can be overridden through the :mod:`pycom` module::
    >>> pycom.rgbled(0xff00)           # turn on the RGB LED in green color
 
 The heartbeat LED is also used to indicate that an error was detected:
+
+
+... 
+.. WLAN default behaviour
+.. ----------------------
+
+.. When the LoPy boots with the default factory configuration, it' starts in Access Point mode',
+.. and it's ``ssid`` that starts with: ``lopy-wlan`` and ``key: www.pycom.io``.
+.. Connect to this network and the LoPy will be reachable at ``192.168.4.1``. In order
+.. to gain access to the interactive prompt, open a telnet session to that IP address on
+.. the default port (23). You will be asked for credentials:
+.. ``login: micro`` and ``password: python``
+

@@ -1,9 +1,9 @@
-***************
+
 Expansion Board
-***************
+===============
 
 Pinout
-======
+------
 
 The pinout of the board is available as a `PDF file <https://www.pycom.io/wp-content/uploads/2016/11/expansion_v02_pinout.pdf>`_.
 

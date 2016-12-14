@@ -7,15 +7,21 @@ new toy. Our aim is not to bug you with complex details about it, but instead
 get you as quick as possible to the point you can start doing useful things
 with your device.
 
-.. tip::
-    It should take you around 10 minutes to complete this section. Please
-    follow it carefully. If you have any problems, there is a troubleshoot
-    section that addresses the most common issues. In case of any doubts you
-    can always ask questions in our `community forum <http://forum.pycom.io>`_.
 
-.. #todo: add link to Troubleshooting
+This chapter will get you unboxed and ready to code in no time. 
 
-Placement on the expansion board
+- :ref:`Unboxing and the expansion board <unboxing>` Intro to the hardware and how to use the expansion board
+- :ref:`Connecting over USB <connecting_over_usb>` How to connect your board
+- :ref:`Firmware Upgrades <firmware_upgrades>` Where to download the upload tool
+- :ref:`Connecting your board using Pymakr <connecting_using_pymakr>` First steps on using Pymakr with your board
+- :ref:`Examples <examples>` Basic code snippets to get you started
+
+If anyting goes wrong, there is a :ref:`Troubleshooting` section that addresses
+ the most common issues. In case of any doubts you can always ask questions in 
+ our `community forum <http://forum.pycom.io>`_.
+
+.. _unboxing:
+Unboxing and the expansion board
 ================================
 
 The only way to learn how to use something new is by doing. First, we need to
@@ -23,8 +29,7 @@ put together the basic pieces:
 
 1. Look for the reset button on your module (located at a corner of the board).
 2. Look for the USB connector on your expansion board.
-3. Insert the module on the expansion board with the reset button pointing in
-the same direction as the USB connector.
+3. Insert the module on the expansion board with the reset button pointing in the same direction as the USB connector.
 
 It's that simple! If you want to confirm your work, here's a picture showing
 how to place your board properly on the expansion board:
@@ -33,14 +38,31 @@ how to place your board properly on the expansion board:
     :alt: Correct placement
     :align: center
 
+If you prefer video tutorials, here is a
+`video <https://www.youtube.com/embed/wUxsgls9Ymw>`_ showing these steps.
+It applies to all our modules.
+
+.. raw:: html
+    
+    <object style="margin:0 auto;" width="480" height="385"><param name="movie"
+    value="https://www.youtube.com/v/wUxsgls9Ymw"></param><param
+    name="allowFullScreen" value="true"></param><param
+    name="allowscriptaccess" value="always"></param><embed
+    src="http://www.youtube.com/v/wUxsgls9Ymw"
+    type="application/x-shockwave-flash" allowscriptaccess="always"
+    allowfullscreen="true" width="480"
+    height="385"></embed></object>
+    
+    
 .. note::
     Some modules like the LoPy will be big enough to cover the USB connector.
     It is normal as long as you keep the orientation shown.
 
-.. tip::
-    If you prefer video tutorials, here is a
-    `video <https://www.youtube.com/embed/wUxsgls9Ymw>`_ showing these steps.
-    It applies to all our modules.
+
+.. _connecting_over_usb:
+
+Connecting over USB
+===================
 
 Once you’re sure everything is in place, the fun begins. It is time to turn
 your device on. Just plug it into any powered USB cable (your computer or a
@@ -48,16 +70,47 @@ battery charger).
 
 In a few seconds, the LED should start blinking every 4 seconds. This means
 that everything is fine! If you cannot see the blinking, please disconnect the
-power supply and re-check.
+power supply and re-check the boards position on the expansion board.
 
 .. image:: images/blinking.gif
     :alt: LED blinking
     :align: center
     :scale: 60 %
 
+
+.. _firmware_upgrades:
+
+Firmware Upgrades
+=================
+
+The next suggested step will be upgrading the firmware, as we are constantly
+making improvements and adding new features to it.
+Download the upgrader tool :ref:`upgrader tool<firmware_upgrade>`
+and follow the instructions on screen.
+
+
+.. warning::
+
+    Until further notice, :ref:`firmware upgrade<firmware_upgrade>` is required. 
+
+    
+After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
+programs in your device. 
+
+We strongly recommend you to upgrade your firmware to the latest version. Here
+are the download links to the update tool:
+
+- `Windows <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=win32&redirect=true>`_.
+- `MacOS <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=macos&redirect=true>`_ (10.11 or higher).
+- `Linux <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=unix&redirect=true>`_ (requires dialog package).
+
+Please download the appropriate one and follow the instructions on the screen.
+
 .. #todo: add support for people without expansion boards
 
-First interaction with your module
+
+.. _connecting_using_pymakr:
+Connecting your board using Pymakr
 ==================================
 
 To make it as easy as possible, we developed Pymakr, a tool that will allow you
@@ -83,6 +136,12 @@ first time. Please follow these steps:
     :scale: 50 %
     :alt: Pymakr WiFi settings
 
+.. note::
+    Pymakr also supports wired connections. Instead of typing the IP address, you 
+    can click on the combo box arrow and select the proper serial port from the list. 
+    Our boards don’t require any username or password for the serial connection, so you
+    can leave those fields empty.
+
 That’s it for the first time configuration. In the lower portion of the screen,
 you should see the console, with the connection process taking place. At the
 end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connected:
@@ -97,28 +156,10 @@ end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connec
     explains these steps on macOS (it is similar for other operating systems).
 
 
-Soft-resets
------------
+Pycom Console
+-------------
 
-Using the checkboxes in the preferences screen, you can choose to do an automatic soft reset every time Pymakr connects to your board and/or when you run your code (using the green 'run' button). This can be useful when you want to make sure the board is in the same state every time you connect or run your code. If you are running an infinite in your main code, keep the soft-reset option disabled.
-
-If you enabe soft-reset on connect, it's useful to add the following check to any wifi-connection scripts in your boot file, so the wifi connection doesn't re-initialize when pymakr connects.
-
-.. code:: python
-
-    if machine.reset_cause() != machine.SOFT_RESET:
-        # wifi init code
-
-
-
-Our first coding steps
-----------------------
-
-You can use your board as a calculator. Simply type down: ``6 * 7`` and press
-enter. You should get the answer to the universe: ``42``.
-
-But math by itself can get boring pretty easily. Let’s get some color into our
-life. Type down the following code:
+To start coding, simply go to the Pycom Console and type your code. Lets try to make the LED light up
 
 .. code:: python
 
@@ -127,23 +168,78 @@ life. Type down the following code:
     pycom.rgbled(0x00ff00) # make the LED light up in green color
 
 
-You can also copy this code, by right clicking at the console, and selecting
-paste. If you want to see another color:
+Change the color by 
 
 .. code:: python
 
     pycom.rgbled(0xff0000) # now make the LED light up in red color
 
-And white:
 
-.. code:: python
+Creating a project
+------------------
 
-    pycom.rgbled(0xffffff) # and now white
+Pymakr has a feature to sync and run your code on your device. This is mostly done using projects. The following steps will get you started.
 
-So far so good. Now let’s write a more complex program. First, reset the
-board by right clicking on the console, and pressing ``Reset``.
+#. In Pymakr, go to Project > New project.
+#. Give it a name and select a folder for your project, either a new of existing one.
+#. Now you are ready to place your own code. For fun, lets try again to build a traffic light. Add the following code to the main.py file:
 
-Try to determine what the next code does:
+::
+
+    import pycom
+    import time
+    pycom.heartbeat(False)
+    for cycles in range(10): # stop after 10 cycles 
+        pycom.rgbled(0x007f00) # green
+        time.sleep(5)
+        pycom.rgbled(0x7f7f00) # yellow
+        time.sleep(1.5)
+        pycom.rgbled(0x7f0000) # red
+        time.sleep(4)
+
+#. Make sure the connection to your board is open in the Pycom Console
+#. Press the sync button on the top toolbar. Any progress will be shown in the console.
+
+Here is the expected result:
+
+.. image:: images/traffic.gif
+    :alt: Traffic light
+    :align: center
+    :scale: 60 %
+
+
+You now have a traffic light in your hands! To stop it, just do a right click
+on the console and press ``Reset`` or use ctrl-c.
+
+
+.. Warning::
+
+    While the module is busy executing code, Pymakr cannot control it. You can regain control of it by right clicking in the console and pressing Reset, or phisically press the reset button.
+    If your board is running code at boot time, you might need to boot it in :ref:`safe mode <safeboot>`.
+
+.. #todo: add link to safeboot
+
+
+Without creating a project
+--------------------------
+
+If you just want to test some code on the module, you can create a new file or open an existing one and press the 'run' button.
+
+
+.. Warning::
+    
+    The changes you make to your file won't be automatically saved to the device on execution.
+
+
+.. _examples:
+
+Examples
+========
+
+A few very basic examples to get you started coding.
+
+Blink an LED
+------------
 
 .. code:: python
     :name: trafficlight-py
@@ -161,44 +257,30 @@ Try to determine what the next code does:
         pycom.rgbled(0x7f0000) # red
         time.sleep(3.5)
 
-After writing the code, you’ll have to press enter up to three times to tell
-MicroPython that you’re closing the while loop (standard MicroPython behavior).
 
-Here is the expected result:
+WLAN connection
+---------------
 
-.. image:: images/traffic.gif
-    :alt: Traffic light
-    :align: center
-    :scale: 60 %
+This code sets up a basic connection to your home router. 
 
-You now have a traffic light in your hands! To stop it, just do a right click
-on the console and press ``Reset``.
+.. code:: python
+    nets = wlan.scan()
+    for net in nets:
+        if net.ssid == 'mywifi':
+            print('Network found!')
+            wlan.connect(net.ssid, auth=(net.sec, 'mywifikey'), timeout=5000)
+            while not wlan.isconnected():
+                machine.idle() # save power while waiting
+            print('WLAN connection succeeded!')
+            break
 
-This concludes the short intro on how to start playing with your Pycom device.
-The next suggested step will be upgrading the firmware, as we are constantly
-making improvements and adding new features to it.
-Download the upgrader tool :ref:`upgrader tool<firmware_upgrade>`
-and follow the instructions on screen.
+More advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`Wifi Examples <wlan_step_by_step>` chapter. 
 
-.. warning::
+.. #TODO: make link work
 
-    Until further notice, :ref:`firmware upgrade<firmware_upgrade>` is required. 
 
-After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
-programs in your device. 
-
-.. note::
-
-    Pymakr also supports wired connections. If you go back to Pycom Device in
-    Preferences dialog, instead of typing the IP address, you can click on the
-    combo box arrow and select the proper serial port from the list. Our boards
-    don’t require any username or password for the serial connection, so you
-    can leave those fields empty.
 
 See also
 ========
-- :ref:`How to upgrade your firmware<firmware_upgrade>`
-- :ref:`Connecting without Pymakr<pycom_telnet_repl>`
+- :ref:`Connecting without Pymakr <pycom_telnet_repl>`
 - :ref:`Troubleshooting`
-
-.. #todo: check if we can remove the see also from the navigation menu
