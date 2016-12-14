@@ -287,7 +287,11 @@ static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms,
     cmd_rsp_data.cmd_u.info.tx.async = (timeout_ms == 0);
     cmd_rsp_data.cmd_u.info.tx.confirmed = confirmed;
     cmd_rsp_data.cmd_u.info.tx.dr = dr;
-    cmd_rsp_data.cmd_u.info.tx.port = 2;    // data port
+    if (lora_obj.ComplianceTest.Running) {
+        cmd_rsp_data.cmd_u.info.tx.port = 224;  // MAC commands port
+    } else {
+        cmd_rsp_data.cmd_u.info.tx.port = 1;    // data port
+    }
 
     if (timeout_ms < 0) {
         // blocking mode
