@@ -45,14 +45,14 @@ typedef struct _boot_info_t
 #define IMG_SIZE                        (1024 * 1024)
 #define IMG_FACTORY_OFFSET              (64 * 1024)
 #define IMG_UPDATE1_OFFSET              (IMG_FACTORY_OFFSET + IMG_SIZE)
-#define IMG_UPDATE2_OFFSET              (IMG_UPDATE1_OFFSET + IMG_SIZE)
+#define IMG_UPDATE2_OFFSET              (IMG_FACTORY_OFFSET)
 
 #define IMG_STATUS_CHECK                    0
 #define IMG_STATUS_READY                    1
 
 #define IMG_ACT_FACTORY                     0
 #define IMG_ACT_UPDATE1                     1
-#define IMG_ACT_UPDATE2                     2
+#define IMG_ACT_UPDATE2                     0
 
 #define BOOT_VERSION "V0.1"
 #define SPI_SEC_SIZE 0x1000

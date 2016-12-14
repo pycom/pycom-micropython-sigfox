@@ -16,7 +16,7 @@
 #define LORA_PAYLOAD_SIZE_MAX                                   (128)
 #define LORA_CMD_QUEUE_SIZE_MAX                                 (2)
 #define LORA_DATA_QUEUE_SIZE_MAX                                (2)
-#define LORA_STACK_SIZE                                         (2048)
+#define LORA_STACK_SIZE                                         (2048 + 512)
 #define LORA_TASK_PRIORITY                                      (6)
 
 #define LORA_STATUS_COMPLETED                                   (0x01)

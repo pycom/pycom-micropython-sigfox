@@ -32,6 +32,7 @@
 //#include "pybsleep.h"
 #include "mpexception.h"
 #include "mperror.h"
+#include "pycom_config.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -250,9 +251,10 @@ int pin_irq_flags (mp_obj_t self_in) {
 void pin_extint_register(pin_obj_t *self, uint32_t trigger, uint32_t priority) {
     self->irq_trigger = trigger;
     pin_obj_configure(self);
-    gpio_isr_register(machpin_intr_process, NULL, ESP_INTR_FLAG_LEVEL1 || ESP_INTR_FLAG_LEVEL2 || ESP_INTR_FLAG_LEVEL3 ||
-                                                  ESP_INTR_FLAG_LEVEL4 || ESP_INTR_FLAG_LEVEL5 || ESP_INTR_FLAG_LEVEL6 ||
-                                                  ESP_INTR_FLAG_IRAM, NULL);
+    ESP_INTR_DISABLE(PYCOM_GPIO_INT_NUM);
+    intr_matrix_set(xPortGetCoreID(), ETS_GPIO_INTR_SOURCE, PYCOM_GPIO_INT_NUM);
+    xt_set_interrupt_handler(PYCOM_GPIO_INT_NUM, machpin_intr_process, NULL);
+    ESP_INTR_ENABLE(PYCOM_GPIO_INT_NUM);
 }
 
 STATIC void pin_validate_mode (uint mode) {
