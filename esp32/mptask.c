@@ -180,7 +180,7 @@ soft_reset:
     // enable telnet and ftp
     servers_start();
 
-    if (!safeboot) {
+    // if (!safeboot) {
         // run boot.py
         int ret = pyexec_file("boot.py");
         if (ret & PYEXEC_FORCED_EXIT) {
@@ -190,7 +190,7 @@ soft_reset:
             // flash the system led
             mperror_signal_error();
         }
-    }
+    // }
 
     if (!safeboot) {
         // run the main script from the current directory.

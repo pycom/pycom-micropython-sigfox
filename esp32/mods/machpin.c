@@ -250,7 +250,9 @@ int pin_irq_flags (mp_obj_t self_in) {
 void pin_extint_register(pin_obj_t *self, uint32_t trigger, uint32_t priority) {
     self->irq_trigger = trigger;
     pin_obj_configure(self);
-    gpio_isr_register(ETS_GPIO_INUM, machpin_intr_process, NULL);
+    gpio_isr_register(machpin_intr_process, NULL, ESP_INTR_FLAG_LEVEL1 || ESP_INTR_FLAG_LEVEL2 || ESP_INTR_FLAG_LEVEL3 ||
+                                                  ESP_INTR_FLAG_LEVEL4 || ESP_INTR_FLAG_LEVEL5 || ESP_INTR_FLAG_LEVEL6 ||
+                                                  ESP_INTR_FLAG_IRAM, NULL);
 }
 
 STATIC void pin_validate_mode (uint mode) {

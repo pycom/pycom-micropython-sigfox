@@ -281,9 +281,9 @@ $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
 
-$(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
-	$(ECHO) "IMAGE $@"
-	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE) -o $@ $<
+#$(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
+#	$(ECHO) "IMAGE $@"
+#	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE) -o $@ $<
 
 $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"

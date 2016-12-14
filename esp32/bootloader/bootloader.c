@@ -350,7 +350,7 @@ void bootloader_main()
     REG_CLR_BIT( TIMG_WDTCONFIG0_REG(0), TIMG_WDT_FLASHBOOT_MOD_EN );
     SPIUnlock();
 
-    if(esp_image_load_header(0x1000, &fhdr) != ESP_OK) {
+    if(esp_image_load_header(0x1000, true, &fhdr) != ESP_OK) {
         ESP_LOGE(TAG, "failed to load bootloader header!");
         return;
     }
@@ -483,13 +483,13 @@ static void unpack_load_app(const esp_partition_pos_t* partition)
     uint32_t image_length;
 
     /* TODO: verify the app image as part of OTA boot decision, so can have fallbacks */
-    err = esp_image_basic_verify(partition->offset, &image_length);
+    err = esp_image_basic_verify(partition->offset, true, &image_length);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to verify app image @ 0x%x (%d)", partition->offset, err);
         return;
     }
 
-    if (esp_image_load_header(partition->offset, &image_header) != ESP_OK) {
+    if (esp_image_load_header(partition->offset, true, &image_header) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to load app image header @ 0x%x", partition->offset);
         return;
     }
@@ -515,7 +515,7 @@ static void unpack_load_app(const esp_partition_pos_t* partition)
         esp_image_segment_header_t segment_header;
         uint32_t data_offs;
         if(esp_image_load_segment_header(segment, partition->offset,
-                                         &image_header, &segment_header,
+                                         &image_header, true, &segment_header,
                                          &data_offs) != ESP_OK) {
             ESP_LOGE(TAG, "failed to load segment header #%d", segment);
             return;
