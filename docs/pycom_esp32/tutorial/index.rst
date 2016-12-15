@@ -9,8 +9,8 @@ for instructions see :ref:`Firmware Upgrades <_firmware_upgrades>`.
 
 .. toctree::
    :maxdepth: 1
-   :numbered:
 
    pycom.rst
    lopy.rst
    sipy.rst
+

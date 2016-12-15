@@ -2,6 +2,7 @@ Pycom documentation contents
 ==================================
 
 .. toctree::
+	:maxdepth: 2
 	:numbered:
 
     pycom_esp32/quickref.rst

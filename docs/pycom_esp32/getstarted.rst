@@ -43,7 +43,8 @@ If you prefer video tutorials, here is a
 It applies to all our modules.
 
 .. raw:: html
-    
+
+    <div style="text-align:center;margin:0 auto;">
     <object style="margin:0 auto;" width="480" height="385"><param name="movie"
     value="https://www.youtube.com/v/wUxsgls9Ymw"></param><param
     name="allowFullScreen" value="true"></param><param
@@ -52,11 +53,12 @@ It applies to all our modules.
     type="application/x-shockwave-flash" allowscriptaccess="always"
     allowfullscreen="true" width="480"
     height="385"></embed></object>
+    </div>
     
     
 .. note::
     Some modules like the LoPy will be big enough to cover the USB connector.
-    It is normal as long as you keep the orientation shown.
+    This is normal as long as you keep the orientation as shown.
 
 
 .. _connecting_over_usb:
@@ -264,6 +266,7 @@ WLAN connection
 This code sets up a basic connection to your home router. 
 
 .. code:: python
+
     nets = wlan.scan()
     for net in nets:
         if net.ssid == 'mywifi':
