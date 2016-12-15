@@ -59,7 +59,7 @@ spot_test(-1072915200,  (1966,  1,  1,  0,  0,  0, 5,   1))
 spot_test(-1072915201,  (1965, 12, 31, 23, 59, 59, 4, 365))
 
 t1 = time.time()
-time.sleep(2)
+time.sleep(60)
 t2 = time.time()
 print((abs(t2-t1) -2) <= 1)
 

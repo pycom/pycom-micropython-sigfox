@@ -19,8 +19,8 @@ all_pins = [
     'G13','P6',
     'G14','P7',
     'G15','P8',
-    'G16','P9',
-    'G17','P10',
+    #'G16','P9',   #Pin used for I2C SDA
+    #'G17','P10',  #Pin used for I2C SCLK
     'G22','P11',
     #'G28','P12',  #Pin used for factory reset
     'G5','P13',
@@ -32,8 +32,8 @@ all_pins = [
     'G6','P19',
     'G7','P20',
     'G8','P21',
-    'G9','P22',
-    'G10','P23'
+    'G9','P22'
+    #'G10','P23'   #Pin used for I2C SDA loop
 ]
 
 no_pull_up_pins = [
@@ -49,11 +49,9 @@ used_pins = []
 if 'LoPy' in mch:
     used_pins = ['G12','P5',   #Pin used for Lora CLK
                  'G13','P6',   #Pin used for Lora MOSI
-                 'G14','P7',   #Pin used for Lora MISO
-                 'G16','P9',   #Pin used for I2C SDA
-                 'G17','P10',  #Pin used for I2C SCLK
-                 'G10','P23'   #Pin used for I2C SDA loop
+                 'G14','P7'   #Pin used for Lora MISO
                  ]
+
 
 
 
