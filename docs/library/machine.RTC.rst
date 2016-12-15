@@ -1,6 +1,6 @@
 .. currentmodule:: machine
 
-class RTC -- real time clock
+class RTC -- real time clock (coming soon)
 ============================
 
 The RTC is and independent clock that keeps track of the date

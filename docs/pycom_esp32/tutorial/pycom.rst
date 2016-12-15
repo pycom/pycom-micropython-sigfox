@@ -1,6 +1,6 @@
 
 General Pycom Firmware
-================
+======================
 
 General Pycom tutorials and examples:
 
@@ -16,4 +16,3 @@ General Pycom tutorials and examples:
    includes/aws.rst
    includes/onewire.rst
    includes/threading.rst
-

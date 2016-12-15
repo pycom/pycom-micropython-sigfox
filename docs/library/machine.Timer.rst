@@ -1,6 +1,6 @@
 .. currentmodule:: machine
 
-class Timer -- control internal timers
+class Timer -- control internal timers (coming soon)
 ======================================
 
 .. only:: port_wipy

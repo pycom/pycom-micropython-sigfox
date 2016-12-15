@@ -1,7 +1,7 @@
-One-wire protocol
------------------
+One-wire driver
+---------------
 
-Usage:
+Basic usage
 
 ::
 
@@ -21,7 +21,7 @@ Usage:
 	    time.sleep(1)
 
 
-Lib file
+Library file
 
 ::
 

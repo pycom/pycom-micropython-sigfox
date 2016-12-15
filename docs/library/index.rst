@@ -30,6 +30,33 @@ modules from the Python standard library, as well as further MicroPython
 extensions to it, can be found in the `micropython-lib repository
 <https://github.com/micropython/micropython-lib>`_.
 
+Pycom Modules
+-------------
+
+ .. toctree::
+    :maxdepth: 1
+
+    machine.rst
+    machine.ADC.rst
+    machine.DAC.rst
+    machine.I2C.rst
+    machine.Pin.rst
+    machine.PWM.rst
+    machine.RTC.rst
+    machine.SPI.rst
+    machine.UART.rst
+    machine.WDT.rst
+    network.rst
+    network.WLAN.rst
+    network.Server.rst
+    machine.Timer.rst
+    machine.SD.rst
+
+- :class:`Interrupts` (coming soon)
+- :class:`Bluetooth` (coming soon)
+- :class:`AES encryption <.AES>`
+
+
 General libraries
 -----------------
 
@@ -119,12 +146,12 @@ to be a drop-in replacement for the standard Python library.
 
 .. only:: port_lopy or port_2wipy or port_pycom_esp32
 
+
+
     .. toctree::
        :maxdepth: 1
 
-       machine.rst
        micropython.rst
-       network.rst
        uctypes.rst
        sys.rst
        uos.rst
@@ -186,6 +213,7 @@ LoPy
 
    network.lora.rst
 
+- :class:`LoRa <.LoRa>`
 
 
 

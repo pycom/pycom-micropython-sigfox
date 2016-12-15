@@ -13,4 +13,3 @@ for instructions see :ref:`Firmware Upgrades <_firmware_upgrades>`.
    pycom.rst
    lopy.rst
    sipy.rst
-
