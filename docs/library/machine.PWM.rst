@@ -1,6 +1,6 @@
 .. currentmodule:: machine
 
-class PWM - Pulse width modulation
+class PWM -- Pulse width modulation
 ==================================
 
 Quick usage example

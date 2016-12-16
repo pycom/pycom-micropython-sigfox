@@ -1,3 +1,4 @@
+.. currentmodule:: network
 
 class WLAN
 ==========
