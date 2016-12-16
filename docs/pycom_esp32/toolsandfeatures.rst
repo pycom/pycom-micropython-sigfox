@@ -7,7 +7,8 @@ Intro
 
 Do you have your basic setup working? Then it's time to look at all the ways you can use and interact with your board. We'll look at some more features of Pymakr and see how we can use telnet, FTP and how to reset the board.
 
-Quicklinks
+Contents
+
 - :ref:`Pymakr IDE <pymakr_ide>`
 - :ref:`Telnet REPL <telnet_repl>`
 - :ref:`Local file system and FTP access <pycom_filesystem>`
@@ -16,9 +17,9 @@ Quicklinks
 
 .. _pymakr_ide:
 
-.. import:: pymakr.rst
+.. include:: pymakr.rst
 
-.. _pycom_telnet_repl:
+.. _telnet_repl:
 
 Telnet REPL
 ===========

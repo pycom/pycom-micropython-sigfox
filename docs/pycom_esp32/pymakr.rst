@@ -1,11 +1,19 @@
 
 
-.. _Pymakr:
-
 Pymakr
 ======
 
-Here are some basic tips on how to further use Pymakr to upload code to your modules. The easiest and most used way to work is by creating projects:
+Here are some basic tips on how to further use Pymakr to upload code to your modules. 
+
+You can `download Pymakr here <https://www.pycom.io/solutions/pymakr/>`_.
+
+You can find the code on github:
+
+- `Pymakr sourcecode <https://github.com/pycom/Pymakr>`_.
+- `Pymakr-kitchen build tool <https://github.com/pycom/Pymakr-kitchen>`_.
+
+So far, one plugin has been created for Pymaker. We hope this list will expand in the future!
+- `WakaTime plugin for Pymakr <https://github.com/wakatime/eric6-wakatime/>`_.
 
 Creating a project
 ------------------
@@ -63,7 +71,69 @@ If you just want to test some code on the module, you can create a new file or o
     The changes you make to your file won't be automatically saved to the device on execution.
 
 
+Connecting your board using Pymakr
+==================================
+
+    1. Connect your computer to the WiFi network named after your board (e.g. ``lopy-wlan-xxxx``, ``wipy-wlan-xxxx``). The password is ``www.pycom.io``
+    2. Open Pymakr.
+    3. In the menu, go to ``Settings > Preferences`` (``Pymakr > Preferences`` on macOS).
+    4. In the left list look for Pycom Device.
+    5. For device, type down ``192.168.4.1``. The default username and password are ``micro`` and ``python``, respectively.
+    6. Click OK
 
 
+.. note::
+    Pymakr also supports wired connections. Instead of typing the IP address, you 
+    can click on the combo box arrow and select the proper serial port from the list. 
+    Our boards don’t require any username or password for the serial connection, so you
+    can leave those fields empty.
 
-.. #todo: add link to safeboot
+
+.. image:: images/pymakr-wifi-reset.png
+    :align: center
+    :scale: 50 %
+    :alt: Pymakr WiFi settings
+
+That’s it for the first time configuration. In the lower portion of the screen,
+you should see the console, with the connection process taking place. At the
+end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connected:
+
+.. image:: images/pymakr-repl.png
+    :alt: Pymakr REPL
+    :align: center
+    :scale: 100 %
+
+`There is also a video <https://www.youtube.com/embed/bL5nn2lgaZE>`_ that explains 
+these steps on macOS (it is similar for other operating systems):
+
+.. raw:: html
+
+    <div style="text-align:center;margin:0 auto;">
+    <object style="margin:0 auto;" width="480" height="385"><param name="movie"
+    value="https://www.youtube.com/v/bL5nn2lgaZE"></param><param
+    name="allowFullScreen" value="true"></param><param
+    name="allowscriptaccess" value="always"></param><embed
+    src="http://www.youtube.com/v/bL5nn2lgaZE"
+    type="application/x-shockwave-flash" allowscriptaccess="always"
+    allowfullscreen="true" width="480"
+    height="385"></embed></object>
+    </div>
+ 
+
+Expert interface
+================
+
+By default, Pymakr is configured in 'lite' interface. In this mode, a lot of features are hidden and only the basic functionality remains. This makes it very user friendly, but after you become familiar with the software, you might want to switch to 'expert' interface to get the most out of Pymakr. 
+
+You can enable expert interface under Settings -> Switch to expert interface. After Pymakr restarts, you'll get access to a few new options:
+
+- Full interface control over tabs and layout
+- Control over keyboard shortcuts
+- Export/import of preferences
+- Preferenes for the editor
+- Extra tabs besides the Pycom Console: A local python shell, a task viewer and a basic number converter.
+- Bookmarks
+- Plugin controls
+- Lots of other extra's
+
+To switch back to 'lite' mode, go back to Settings and choose Switch to Lite interface. 

@@ -13,8 +13,7 @@ This chapter will get you unboxed and ready to code in no time.
 - :ref:`Unboxing and the expansion board <unboxing>` Intro to the hardware and how to use the expansion board
 - :ref:`Connecting over USB <connecting_over_usb>` How to connect your board
 - :ref:`Firmware Upgrades <firmware_upgrades>` Where to download the upload tool
-- :ref:`Connecting your board using Pymakr <connecting_using_pymakr>` First steps on using Pymakr with your board
-- :ref:`Examples <examples>` Basic code snippets to get you started
+- :ref:`Connecting your board using Pymakr <connecting_using_pymakr>` Connecting and coding with Pymakr
 
 If anyting goes wrong, there is a :ref:`Troubleshooting` section that addresses the most common issues. In case of any doubts you can always ask questions in our `community forum <http://forum.pycom.io>`_.
 
@@ -199,7 +198,31 @@ Pymakr has a feature to sync and run your code on your device. This is mostly do
 
 #. In Pymakr, go to Project > New project.
 #. Give it a name and select a folder for your project, either a new of existing one.
-#. Now you are ready to place your own code. For fun, lets try again to build a traffic light. Add the following code to the main.py file:
+#. Now you are ready to place your own code. Most users, especially WiPy users, would want a wifi script in the boot.py file. The following coe does this. Leave the existing REPL code on the top.
+
+.. code:: python
+    
+    from machine import UART
+    import os
+    uart = UART(0, 115200)
+    os.dupterm(uart)
+
+    from network import WLAN
+    wlan = WLAN(mode=WLAN.STA)
+
+    nets = wlan.scan()
+    for net in nets:
+        if net.ssid == 'mywifi':
+            print('Network found!')
+            wlan.connect(net.ssid, auth=(net.sec, 'mywifikey'), timeout=5000)
+            while not wlan.isconnected():
+                machine.idle() # save power while waiting
+            print('WLAN connection succeeded!')
+            break
+
+More advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`Wifi Examples <wlan_step_by_step>` chapter. 
+
+#. For fun, lets try again to build a traffic light. Add the following code to the main.py file:
 
 ::
 
@@ -246,59 +269,3 @@ If you just want to test some code on the module, you can create a new file or o
 .. Warning::
     
     The changes you make to your file won't be automatically saved to the device on execution.
-
-
-.. _examples:
-
-Examples
-========
-
-A few very basic examples to get you started coding.
-
-Blink an LED
-------------
-
-.. code:: python
-    :name: trafficlight-py
-
-    import pycom
-    import time
-
-    pycom.heartbeat(False)
-
-    while True:
-        pycom.rgbled(0x007f00) # green
-        time.sleep(5)
-        pycom.rgbled(0x7f7f00) # yellow
-        time.sleep(1.5)
-        pycom.rgbled(0x7f0000) # red
-        time.sleep(3.5)
-
-
-WLAN connection
----------------
-
-This code sets up a basic connection to your home router. 
-
-.. code:: python
-
-    nets = wlan.scan()
-    for net in nets:
-        if net.ssid == 'mywifi':
-            print('Network found!')
-            wlan.connect(net.ssid, auth=(net.sec, 'mywifikey'), timeout=5000)
-            while not wlan.isconnected():
-                machine.idle() # save power while waiting
-            print('WLAN connection succeeded!')
-            break
-
-More advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`Wifi Examples <wlan_step_by_step>` chapter. 
-
-.. #TODO: make link work
-
-
-
-See also
-========
-- :ref:`Connecting without Pymakr <pycom_telnet_repl>`
-- :ref:`Troubleshooting`
