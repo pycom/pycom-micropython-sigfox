@@ -2,85 +2,21 @@
 Tools & Features
 ***************************
 
-Intro - How to use this section
-================
+Intro
+=====
+
+Do you have your basic setup working? Then it's time to look at all the ways you can use and interact with your board. We'll look at some more features of Pymakr and see how we can use telnet, FTP and how to reset the board.
+
+Quicklinks
+- :ref:`Pymakr IDE <pymakr_ide>`
+- :ref:`Telnet REPL <telnet_repl>`
+- :ref:`Local file system and FTP access <pycom_filesystem>`
+- :ref:`Boot modes and safe boot <safeboot>`
 
 
-TODO: Write small intro on the contents of this page
+.. _pymakr_ide:
 
-
-Pymakr IDE
-================
-
-TODO: Intro to Pymakr, summary of features
-
-Creating a project
-------------------
-
-Pymakr has a feature to sync and run your code on your device. This is mostly done using projects. The following steps will get you started.
-
-#. In Pymakr, go to Project > New project.
-#. Give it a name and select a folder for your project, either a new of existing one.
-#. Now you are ready to place your own code. For fun, lets try again to build a traffic light. Add the following code to the main.py file:
-
-::
-
-    import pycom
-    import time
-    pycom.heartbeat(False)
-    for cycles in range(10): # stop after 10 cycles 
-        pycom.rgbled(0x007f00) # green
-        time.sleep(5)
-        pycom.rgbled(0x7f7f00) # yellow
-        time.sleep(1.5)
-        pycom.rgbled(0x7f0000) # red
-        time.sleep(4)
-
-#. Make sure the connection to your board is open in the Pycom Console
-#. Press the sync button on the top toolbar. Any progress will be shown in the console.
-
-Here is the expected result:
-
-.. image:: images/traffic.gif
-    :alt: Traffic light
-    :align: center
-    :scale: 60 %
-
-
-You now have a traffic light in your hands! To stop it, just do a right click
-on the console and press ``Reset`` or use ctrl-c.
-
-
-.. Warning::
-
-    While the module is busy executing code, Pymakr cannot control it. You can regain control of it by right clicking in the console and pressing Reset, or phisically press the reset button.
-    If your board is running code at boot time, you might need to boot it in :ref:`safe mode <safeboot>`.
-
-.. #todo: add link to safeboot
-
-
-Without creating a project
---------------------------
-
-If you just want to test some code on the module, you can create a new file or open an existing one and press the 'run' button.
-
-.. Warning::
-    
-    The changes you make to your file won't be automatically saved to the device on execution.
-
-
-Soft-resets
------------
-
-Using the checkboxes in the preferences screen, you can choose to do an automatic soft reset every time Pymakr connects to your board and/or when you run your code (using the green 'run' button). This can be useful when you want to make sure the board is in the same state every time you connect or run your code. If you are running an infinite in your main code, keep the soft-reset option disabled.
-
-If you enabe soft-reset on connect, it's useful to add the following check to any wifi-connection scripts in your boot file, so the wifi connection doesn't re-initialize when pymakr connects.
-
-.. code:: python
-
-    if machine.reset_cause() != machine.SOFT_RESET:
-        # wifi init code
-
+.. import:: pymakr.rst
 
 .. _pycom_telnet_repl:
 

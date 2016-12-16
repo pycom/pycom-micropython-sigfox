@@ -1,6 +1,3 @@
-.. _quickref_:
-
-
 
 ADC
 ---

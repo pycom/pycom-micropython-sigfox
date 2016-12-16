@@ -14,7 +14,6 @@ Datasheets
 .. include:: datasheets/expansionboard.rst
 
 
-
 .. .. toctree::
 ..     :maxdepth: 1
 

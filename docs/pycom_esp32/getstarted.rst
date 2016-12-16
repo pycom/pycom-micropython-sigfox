@@ -16,9 +16,7 @@ This chapter will get you unboxed and ready to code in no time.
 - :ref:`Connecting your board using Pymakr <connecting_using_pymakr>` First steps on using Pymakr with your board
 - :ref:`Examples <examples>` Basic code snippets to get you started
 
-If anyting goes wrong, there is a :ref:`Troubleshooting` section that addresses
- the most common issues. In case of any doubts you can always ask questions in 
- our `community forum <http://forum.pycom.io>`_.
+If anyting goes wrong, there is a :ref:`Troubleshooting` section that addresses the most common issues. In case of any doubts you can always ask questions in our `community forum <http://forum.pycom.io>`_.
 
 .. _unboxing:
 Unboxing and the expansion board
@@ -112,6 +110,7 @@ Please download the appropriate one and follow the instructions on the screen.
 
 
 .. _connecting_using_pymakr:
+
 Connecting your board using Pymakr
 ==================================
 
@@ -133,16 +132,18 @@ first time. Please follow these steps:
     5. For device, type down ``192.168.4.1``. The default username and password are ``micro`` and ``python``, respectively.
     6. Click OK
 
-.. image:: images/pymakr-wifi-reset.png
-    :align: center
-    :scale: 50 %
-    :alt: Pymakr WiFi settings
 
 .. note::
     Pymakr also supports wired connections. Instead of typing the IP address, you 
     can click on the combo box arrow and select the proper serial port from the list. 
     Our boards don’t require any username or password for the serial connection, so you
     can leave those fields empty.
+
+
+.. image:: images/pymakr-wifi-reset.png
+    :align: center
+    :scale: 50 %
+    :alt: Pymakr WiFi settings
 
 That’s it for the first time configuration. In the lower portion of the screen,
 you should see the console, with the connection process taking place. At the
@@ -151,12 +152,26 @@ end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connec
 .. image:: images/pymakr-repl.png
     :alt: Pymakr REPL
     :align: center
-    :scale: 50 %
+    :scale: 100 %
 
-.. tip::
-    `There is also a video <https://www.youtube.com/embed/bL5nn2lgaZE>`_ that
-    explains these steps on macOS (it is similar for other operating systems).
+`There is also a video <https://www.youtube.com/embed/bL5nn2lgaZE>`_ that explains 
+these steps on macOS (it is similar for other operating systems).
 
+
+.. raw:: html
+
+    <div style="text-align:center;margin:0 auto;">
+    <object style="margin:0 auto;" width="480" height="385"><param name="movie"
+    value="https://www.youtube.com/v/bL5nn2lgaZE"></param><param
+    name="allowFullScreen" value="true"></param><param
+    name="allowscriptaccess" value="always"></param><embed
+    src="http://www.youtube.com/v/bL5nn2lgaZE"
+    type="application/x-shockwave-flash" allowscriptaccess="always"
+    allowfullscreen="true" width="480"
+    height="385"></embed></object>
+    </div>
+    
+    
 
 Pycom Console
 -------------
