@@ -3,9 +3,7 @@
 Pymakr
 ======
 
-Here are some basic tips on how to further use Pymakr to upload code to your modules. 
-
-You can `download Pymakr here <https://www.pycom.io/solutions/pymakr/>`_.
+Here are some basic tips on how to further use Pymakr to upload code to your modules. You can `download Pymakr here <https://www.pycom.io/solutions/pymakr/>`_.
 
 You can find the code on github:
 
@@ -13,6 +11,7 @@ You can find the code on github:
 - `Pymakr-kitchen build tool <https://github.com/pycom/Pymakr-kitchen>`_.
 
 So far, one plugin has been created for Pymaker. We hope this list will expand in the future!
+
 - `WakaTime plugin for Pymakr <https://github.com/wakatime/eric6-wakatime/>`_.
 
 Creating a project
@@ -57,22 +56,13 @@ on the console and press ``Reset`` or use ctrl-c.
     While the module is busy executing code, Pymakr cannot control it. You can regain control of it by using ctrl-c (or right clicking in the console and pressing Reset) or physically press the reset button.
     If your board is running code at boot time, you might need to boot it in :ref:`safe mode <safeboot>`.
 
-.. #todo: add link to safeboot
 
-
-Without creating a project
---------------------------
-
-If you just want to test some code on the module, you can create a new file or open an existing one and press the 'run' button.
-
-
-.. Warning::
-    
-    The changes you make to your file won't be automatically saved to the device on execution.
+If you just want to test some code on the module without creating a Project, you can create a new file or open an existing one and press the 'run' button. 
+Note that the changes you make to your file won't be automatically saved to the device on execution.
 
 
 Connecting your board using Pymakr
-==================================
+----------------------------------
 
     1. Connect your computer to the WiFi network named after your board (e.g. ``lopy-wlan-xxxx``, ``wipy-wlan-xxxx``). The password is ``www.pycom.io``
     2. Open Pymakr.
@@ -121,7 +111,7 @@ these steps on macOS (it is similar for other operating systems):
  
 
 Expert interface
-================
+----------------
 
 By default, Pymakr is configured in 'lite' interface. In this mode, a lot of features are hidden and only the basic functionality remains. This makes it very user friendly, but after you become familiar with the software, you might want to switch to 'expert' interface to get the most out of Pymakr. 
 

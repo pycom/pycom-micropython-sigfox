@@ -5,8 +5,6 @@ Datasheets
 ****************
 
 
-.. include:: datasheets/wipy.rst
-
 .. include:: datasheets/wipy2.rst
 
 .. include:: datasheets/lopy.rst
