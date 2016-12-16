@@ -16,7 +16,7 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :class:`I2C <.I2C>`
 - :class:`WiFi <.WLAN>`
 - :class:`LoRa <.LoRa>` (only available in the LoPy)
-- :class:`Bluetooth`
+- :class:`Bluetooth <.Bluetooth>`
 - :mod:`hashlib <.uhashlib>` MD5, SHA1, SHA256, SHA384 and SHA512 hash algorithms
 - :class:`AES encryption <.AES>`
 - :mod:`SSL/TLS support <.ussl>`
