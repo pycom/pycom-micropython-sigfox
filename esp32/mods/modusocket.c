@@ -199,15 +199,22 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(socket_close_obj, socket_close);
 // method socket.bind(address)
 STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
     mod_network_socket_obj_t *self = self_in;
-
-    // get address
-    uint8_t ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
-    mp_uint_t port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
-
-    // call the NIC to bind the socket
     int _errno;
-    if (self->sock_base.nic_type->n_bind(self, ip, port, &_errno) != 0) {
-        nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
+
+    if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
+        mp_uint_t port = mp_obj_get_int(addr_in);
+
+        if (self->sock_base.nic_type->n_bind(self, NULL, port, &_errno) != 0) {
+            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
+        }
+    } else {
+        // get the address
+        uint8_t ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
+        mp_uint_t port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
+
+        if (self->sock_base.nic_type->n_bind(self, ip, port, &_errno) != 0) {
+            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
+        }
     }
     return mp_const_none;
 }
@@ -485,6 +492,7 @@ STATIC const mp_map_elem_t raw_socket_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_send),            (mp_obj_t)&socket_send_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_recv),            (mp_obj_t)&socket_recv_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_settimeout),      (mp_obj_t)&socket_settimeout_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_bind),            (mp_obj_t)&socket_bind_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_setblocking),     (mp_obj_t)&socket_setblocking_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_setsockopt),      (mp_obj_t)&socket_setsockopt_obj },
 };

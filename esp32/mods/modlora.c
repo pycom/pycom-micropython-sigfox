@@ -259,6 +259,7 @@ static void lora_socket_close (mod_network_socket_obj_t *s);
 static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno);
 static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno);
 static int lora_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno);
+static int lora_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno);
 static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
 static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 
@@ -276,13 +277,12 @@ void modlora_init0(void) {
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
-static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms, bool confirmed, uint32_t dr) {
+static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms, bool confirmed, uint32_t dr, uint32_t port) {
     lora_cmd_data_t cmd_data;
 
     cmd_data.cmd = E_LORA_CMD_LORAWAN_TX;
     memcpy (cmd_data.info.tx.data, buf, len);
     cmd_data.info.tx.len = len;
-    cmd_data.info.tx.confirmed = confirmed;
     cmd_data.info.tx.dr = dr;
     if (lora_obj.ComplianceTest.Running) {
         cmd_data.info.tx.port = 224;  // MAC commands port
@@ -292,7 +292,8 @@ static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms,
             cmd_data.info.tx.confirmed = false;
         }
     } else {
-        cmd_data.info.tx.port = 2;    // data port
+        cmd_data.info.tx.confirmed = confirmed;
+        cmd_data.info.tx.port = port;    // data port
     }
 
     if (timeout_ms < 0) {
@@ -1491,6 +1492,7 @@ const mod_network_nic_type_t mod_network_nic_type_lora = {
     .n_recv = lora_socket_recv,
     .n_settimeout = lora_socket_settimeout,
     .n_setsockopt = lora_socket_setsockopt,
+    .n_bind = lora_socket_bind,
     .n_ioctl = lora_socket_ioctl,
 };
 
@@ -1508,6 +1510,8 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
 #else
     LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_4);
 #endif
+    // port #2 is the defualt one
+    LORAWAN_SOCKET_SET_PORT(s->sock_base.sd, 2);
     return 0;
 }
 
@@ -1534,7 +1538,8 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
         } else if (lora_obj.joined) {
             n_bytes = lorawan_send (buf, len, s->sock_base.timeout,
                                     LORAWAN_SOCKET_IS_CONFIRMED(s->sock_base.sd),
-                                    LORAWAN_SOCKET_GET_DR(s->sock_base.sd));
+                                    LORAWAN_SOCKET_GET_DR(s->sock_base.sd),
+                                    LORAWAN_SOCKET_GET_PORT(s->sock_base.sd));
         }
         if (n_bytes == 0) {
             *_errno = EAGAIN;
@@ -1585,6 +1590,16 @@ static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, 
 static int lora_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno) {
     LORA_CHECK_SOCKET(s);
     s->sock_base.timeout = timeout_ms;
+    return 0;
+}
+
+static int lora_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
+    LORA_CHECK_SOCKET(s);
+    if (port > 224) {
+        *_errno = EOPNOTSUPP;
+        return -1;
+    }
+    LORAWAN_SOCKET_SET_PORT(s->sock_base.sd, port);
     return 0;
 }
 
