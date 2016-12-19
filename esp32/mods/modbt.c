@@ -327,7 +327,9 @@ STATIC mp_obj_t bt_scan(mp_obj_t self_in) {
     bt_obj.nbr_scan_results = 0;
     esp_ble_gap_set_scan_params(&ble_scan_params);
 
-    while (!bt_obj.scan_complete);
+    while (!bt_obj.scan_complete) {
+        vTaskDelay(50 / portTICK_RATE_MS);
+    }
 
     mp_obj_t devices = mp_const_none;
     devices = mp_obj_new_list(0, NULL);
