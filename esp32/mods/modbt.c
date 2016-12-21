@@ -48,6 +48,7 @@
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
+#define MODBT_MAX_SCAN_RESULTS                  16
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -59,10 +60,11 @@ typedef struct {
 
 typedef struct {
   mp_obj_base_t         base;
+  uint32_t              scan_duration;
   bool                  init;
   bool                  scan_complete;
   uint8_t               nbr_scan_results;
-  bt_scan_result_t      scan_result[MOD_BT_MAX_SCAN_RESULTS];
+  bt_scan_result_t      *scan_result[MODBT_MAX_SCAN_RESULTS];
 } bt_obj_t;
 
 typedef enum {
@@ -114,69 +116,41 @@ static void esp_gap_cb(uint32_t event, void *param)
     case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT: {
         //the unit of the duration is second
         LOG_INFO("Start scanning\n");
-        uint32_t duration = 10;
-        esp_ble_gap_start_scanning(duration);
+        esp_ble_gap_start_scanning(bt_obj.scan_duration);
         break;
     }
     case ESP_GAP_BLE_SCAN_RESULT_EVT: {
         esp_ble_gap_cb_param_t *scan_result = (esp_ble_gap_cb_param_t *)param;
         switch (scan_result->scan_rst.search_evt) {
         case ESP_GAP_SEARCH_INQ_RES_EVT:
-            // for (int i = 0; i < 6; i++) {
-            //     LOG_INFO("%x:", scan_result->scan_rst.bda[i]);
-            // }
-            // LOG_INFO("MAC = %x:%x:%x:%x:%x:%x\n", scan_result->scan_rst.bda[0], scan_result->scan_rst.bda[1],
-            //                                       scan_result->scan_rst.bda[2], scan_result->scan_rst.bda[3],
-            //                                       scan_result->scan_rst.bda[4], scan_result->scan_rst.bda[5]);
-            // adv_name = esp_ble_resolve_adv_data(scan_result->scan_rst.ble_adv,
-            //                                     ESP_BLE_AD_TYPE_NAME_CMPL, &adv_name_len);
-            // LOG_INFO("adv_name_len=%x\n", adv_name_len);
-            // for (int j = 0; j < adv_name_len; j++) {
-            //     LOG_INFO("%c", adv_name[j]);
-            // }
-            // LOG_INFO("\n");
-            // for (int j = 0; j < adv_name_len; j++) {
-            //     LOG_INFO("%c", device_name[j]);
-            // }
-            // LOG_INFO("\n");
-
-            // if (adv_name != NULL) {
-            //     if (strcmp((char *)adv_name, device_name) == 0) {
-            //         LOG_INFO("the name eque to Heart Rate.\n");
-            //         if (status ==  ESP_GATT_OK && connet == false) {
-            //             connet = true;
-            //             LOG_INFO("Connect to the remote device.\n");
-            //             esp_ble_gap_stop_scanning();
-            //             esp_ble_gattc_open(client_if, scan_result->scan_rst.bda, true);
-            //         }
-            //     }
-            // }
-
-            // add the scan results to the list here
-            if (bt_obj.nbr_scan_results < MOD_BT_MAX_SCAN_RESULTS) {
-                // first check if it's not a repeated result
+            if (bt_obj.nbr_scan_results < MODBT_MAX_SCAN_RESULTS) {
+                // first check that it's not a repeated result
                 for (int i = 0; i < bt_obj.nbr_scan_results; i++) {
-                    if (!memcmp((void *)bt_obj.scan_result[i].mac, (void *)scan_result->scan_rst.bda, 6)) {
+                    if (!memcmp((void *)bt_obj.scan_result[i]->mac, (void *)scan_result->scan_rst.bda, 6)) {
                         return;
                     }
+                }
+
+                bt_obj.scan_result[bt_obj.nbr_scan_results] = pvPortMalloc(sizeof(bt_scan_result_t));
+                if (!bt_obj.scan_result[bt_obj.nbr_scan_results]) {
+                    return;
                 }
 
                 adv_name = esp_ble_resolve_adv_data(scan_result->scan_rst.ble_adv,
                                                     ESP_BLE_AD_TYPE_NAME_CMPL, &adv_name_len);
 
-                if (adv_name_len > 0) {
+                if (adv_name_len > 0 && adv_name) {
                     if (adv_name_len > MOD_BT_MAX_ADVERTISEMENT_LEN) {
                         adv_name_len = MOD_BT_MAX_ADVERTISEMENT_LEN;
                     }
-                    memcpy((char *)bt_obj.scan_result[bt_obj.nbr_scan_results].name, (char *)adv_name, adv_name_len);
-                    bt_obj.scan_result[bt_obj.nbr_scan_results].name[adv_name_len] = '\0';
+                    memcpy((char *)bt_obj.scan_result[bt_obj.nbr_scan_results]->name, (char *)adv_name, adv_name_len);
+                    bt_obj.scan_result[bt_obj.nbr_scan_results]->name[adv_name_len] = '\0';
                 } else {
-                    bt_obj.scan_result[bt_obj.nbr_scan_results].name[0] = '\0';
+                    bt_obj.scan_result[bt_obj.nbr_scan_results]->name[0] = '\0';
                 }
-                memcpy((void *)bt_obj.scan_result[bt_obj.nbr_scan_results].mac, scan_result->scan_rst.bda, 6);
+                memcpy((void *)bt_obj.scan_result[bt_obj.nbr_scan_results]->mac, scan_result->scan_rst.bda, 6);
                 bt_obj.nbr_scan_results++;
             }
-
             break;
         case ESP_GAP_SEARCH_DISC_RES_EVT:
             LOG_INFO("Discovery result\n");
@@ -318,10 +292,16 @@ STATIC mp_obj_t bt_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_init_obj, 1, bt_init);
 
-STATIC mp_obj_t bt_scan(mp_obj_t self_in) {
+STATIC mp_obj_t bt_scan_devices(mp_obj_t self_in, mp_obj_t duration) {
     STATIC const qstr bt_scan_info_fields[] = {
         MP_QSTR_name, MP_QSTR_mac
     };
+
+    uint32_t _duration = mp_obj_get_int(duration);
+    if (_duration <= 0) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid scan time"));
+    }
+    bt_obj.scan_duration = _duration;
 
     bt_obj.scan_complete = false;
     bt_obj.nbr_scan_results = 0;
@@ -335,9 +315,16 @@ STATIC mp_obj_t bt_scan(mp_obj_t self_in) {
     devices = mp_obj_new_list(0, NULL);
     for (int i = 0; i < bt_obj.nbr_scan_results; i++) {
         mp_obj_t tuple[2];
-        tuple[0] = mp_obj_new_str((const char *)bt_obj.scan_result[i].name,
-                                  strlen((char *)bt_obj.scan_result[i].name), false);
-        tuple[1] = mp_obj_new_bytes((const byte *)bt_obj.scan_result[i].mac, 6);
+        uint32_t name_len = strlen((char *)bt_obj.scan_result[i]->name);
+        if (name_len > 0) {
+            tuple[0] = mp_obj_new_str((const char *)bt_obj.scan_result[i]->name, name_len, false);
+        } else {
+            tuple[0] = mp_const_none;
+        }
+        tuple[1] = mp_obj_new_bytes((const byte *)bt_obj.scan_result[i]->mac, 6);
+
+        // release the memory used by the scan result
+        vPortFree(bt_obj.scan_result[i]);
 
         // add the network to the list
         mp_obj_list_append(devices, mp_obj_new_attrtuple(bt_scan_info_fields, 2, tuple));
@@ -345,12 +332,13 @@ STATIC mp_obj_t bt_scan(mp_obj_t self_in) {
 
     return devices;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_scan_obj, bt_scan);
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_scan_devices_obj, bt_scan_devices);
 
 STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&bt_init_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_scan),                (mp_obj_t)&bt_scan_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_scan_devices),        (mp_obj_t)&bt_scan_devices_obj },
+    // { MP_OBJ_NEW_QSTR(MP_QSTR_scan_beacons),        (mp_obj_t)&bt_scan_beacons_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(bt_locals_dict, bt_locals_dict_table);

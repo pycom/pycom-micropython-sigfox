@@ -279,6 +279,8 @@ ESPTOOL_ALL_FLASH_ARGS = $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN) $
 
 GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py -q
 
+BOOT_BIN := bootloader/lib/bootloader.bin
+
 all: $(BOOT_BIN) $(APP_BIN)
 
 .PHONY: all
@@ -293,9 +295,9 @@ $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
 
-$(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
-	$(ECHO) "IMAGE $@"
-	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE) -o $@ $<
+#$(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
+#	$(ECHO) "IMAGE $@"
+#	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE) -o $@ $<
 
 $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
