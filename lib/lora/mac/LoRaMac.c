@@ -1926,7 +1926,9 @@ static uint8_t CountNbEnabled125kHzChannels( uint16_t *channelsMask )
         {// Verify if the channel is active
             if( ( channelsMask[k] & ( 1 << j ) ) == ( 1 << j ) )
             {
-                nb125kHzChannels++;
+                if (Channels[i+j].Frequency!=0) {
+                    nb125kHzChannels++;
+                }
             }
         }
     }
@@ -3463,7 +3465,30 @@ LoRaMacStatus_t LoRaMacChannelRemove( uint8_t id )
     }
     return LORAMAC_STATUS_OK;
 #elif ( defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID ) )
-    return LORAMAC_STATUS_PARAMETER_INVALID;
+    if( ( LoRaMacState & MAC_TX_RUNNING ) == MAC_TX_RUNNING )
+    {
+        if( ( LoRaMacState & MAC_TX_CONFIG ) != MAC_TX_CONFIG )
+        {
+            return LORAMAC_STATUS_BUSY;
+        }
+    }
+
+    if( id >= LORA_MAX_NB_CHANNELS )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
+    }
+    else
+    {
+        // Remove the channel from the list of channels
+        Channels[id] = ( ChannelParams_t ){ 0, { 0 }, 0 };
+
+        // Disable the channel as it doesn't exist anymore
+        if( DisableChannelInMask( id, ChannelsMask ) == false )
+        {
+            return LORAMAC_STATUS_PARAMETER_INVALID;
+        }
+    }
+    return LORAMAC_STATUS_OK;
 #endif
 }
 
