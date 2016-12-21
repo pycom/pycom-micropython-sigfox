@@ -3331,9 +3331,6 @@ LoRaMacStatus_t LoRaMacMibSetRequestConfirm( MibRequestConfirm_t *mibSet )
 
 LoRaMacStatus_t LoRaMacChannelAdd( uint8_t id, ChannelParams_t params )
 {
-#if ( defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID ) )
-    return LORAMAC_STATUS_PARAMETER_INVALID;
-#else
     bool datarateInvalid = false;
     bool frequencyInvalid = false;
     uint8_t band = 0;
@@ -3408,6 +3405,8 @@ LoRaMacStatus_t LoRaMacChannelAdd( uint8_t id, ChannelParams_t params )
         {
             frequencyInvalid = true;
         }
+#elif  defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID)
+            band = 0;
 #endif
     }
     else
@@ -3431,10 +3430,13 @@ LoRaMacStatus_t LoRaMacChannelAdd( uint8_t id, ChannelParams_t params )
     // Every parameter is valid, activate the channel
     Channels[id] = params;
     Channels[id].Band = band;
+#if ( defined( USE_BAND_433 ) || defined( USE_BAND_780 ) || defined( USE_BAND_868 ) )
     ChannelsMask[0] |= ( 1 << id );
+#elif (defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID) )
+    ChannelsMask[ (id / 16) ] |= (1 << (id % 16));
+#endif
 
     return LORAMAC_STATUS_OK;
-#endif
 }
 
 LoRaMacStatus_t LoRaMacChannelRemove( uint8_t id )
