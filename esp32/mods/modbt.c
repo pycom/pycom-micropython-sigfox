@@ -404,7 +404,7 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
     }
 
     if (bt_obj.conn_id < 0) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection refused"));
     }
 
     return mp_const_none;
