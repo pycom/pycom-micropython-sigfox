@@ -19,7 +19,7 @@ do::
    >>> os.dupterm(uart)
 
 Place this piece of code inside your `boot.py` so that it's done automatically after
-reset.
+reset. The WiPy 2.0 and LoPy already have this code in the boot.py file by default.
 
 Windows
 ^^^^^^^

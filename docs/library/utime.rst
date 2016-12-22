@@ -83,8 +83,9 @@ Functions
     .. function::  ticks_ms()
 
         Returns an increasing millisecond counter with arbitrary reference point, 
-        that wraps after some (unspecified) value. The value should be treated as 
-        opaque, suitable for use only with ticks_diff().
+        that wraps after some (unspecified) value. 
+
+.. Add to the ticks_ms text, when ticks_diff() is implemented: The value should be treated as opaque, suitable for use only with ticks_diff()
 
 .. only:: port_unix or port_pyboard or port_wipy or port_esp8266
 

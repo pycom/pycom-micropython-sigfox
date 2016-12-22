@@ -71,6 +71,7 @@ Usage (main.py)
 MQTT client class:
 
 ::
+
 	import socket
 	import struct
 	import select

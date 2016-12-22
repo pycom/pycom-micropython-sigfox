@@ -1,3 +1,4 @@
+.. _lora_examples:
 
 LoPy Specific
 =============

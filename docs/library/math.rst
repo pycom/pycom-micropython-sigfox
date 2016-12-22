@@ -7,9 +7,11 @@
 The ``math`` module provides some basic mathematical functions for
 working with floating-point numbers.
 
-*Note:* On the pyboard, floating-point numbers have 32-bit precision.
+.. only:: port_pyboard
 
-Availability: not available on WiPy. Floating point support required
+   *Note:* On the pyboard, floating-point numbers have 32-bit precision.
+
+Availability: not available on WiPy 1.0. Floating point support required
 for this module.
 
 Functions

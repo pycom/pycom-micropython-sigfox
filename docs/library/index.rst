@@ -156,6 +156,8 @@ to be a drop-in replacement for the standard Python library.
        sys.rst
        uos.rst
        array.rst
+       cmath.rst
+       math.rst
        gc.rst
        ubinascii.rst
        ujson.rst
@@ -211,9 +213,9 @@ LoPy
 .. toctree::
    :maxdepth: 1
 
-   network.lora.rst
+   network.LORA.rst
 
-- :class:`LoRa <.LoRa>`
+.. - :class:`LoRa <.LoRa>`
 
 
 
