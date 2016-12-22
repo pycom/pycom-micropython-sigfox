@@ -1,6 +1,6 @@
 
-Expansion Board
-===============
+5.4 Expansion Board
+===================
 
 Pinout
 ------

@@ -3,7 +3,6 @@
 ****************************************
 
 .. module:: ucrypto
-
    :synopsis: Cryptographic algorithms and functions.
 
 This module provides native support for cryptographic algorithms.

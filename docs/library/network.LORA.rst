@@ -93,6 +93,7 @@ Methods
 
       - ``activation``: can be either ``LoRa.OTAA`` or ``LoRa.ABP``.
       - ``auth``: is a tuple with the authentication data.
+      
       In the case of ``LoRa.OTAA`` the authentication tuple is: ``(app_eui, app_key)``. Example::
 
           from network import LoRa

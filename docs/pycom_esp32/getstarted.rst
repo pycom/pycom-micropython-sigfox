@@ -1,5 +1,5 @@
 ***************************
-Quickstart guide
+1. Quickstart guide
 ***************************
 
 Let's start with a quick description of what to do after you unpack your brand
@@ -18,7 +18,8 @@ This chapter will get you unboxed and ready to code in no time.
 If anyting goes wrong, there is a :ref:`Troubleshooting` section that addresses the most common issues. In case of any doubts you can always ask questions in our `community forum <http://forum.pycom.io>`_.
 
 .. _unboxing:
-Unboxing and the expansion board
+
+1.1 Unboxing and the expansion board
 ================================
 
 The only way to learn how to use something new is by doing. First, we need to
@@ -60,7 +61,7 @@ It applies to all our modules.
 
 .. _connecting_over_usb:
 
-Connecting over USB
+1.2 Connecting over USB
 ===================
 
 Once you’re sure everything is in place, the fun begins. It is time to turn
@@ -79,7 +80,7 @@ power supply and re-check the boards position on the expansion board.
 
 .. _firmware_upgrades:
 
-Firmware Upgrades
+1.3 Firmware Upgrades
 =================
 
 The next suggested step will be upgrading the firmware, as we are constantly
@@ -110,7 +111,7 @@ Please download the appropriate one and follow the instructions on the screen.
 
 .. _connecting_using_pymakr:
 
-Connecting your board using Pymakr
+1.4 Connecting your board using Pymakr
 ==================================
 
 To make it as easy as possible, we developed Pymakr, a tool that will allow you

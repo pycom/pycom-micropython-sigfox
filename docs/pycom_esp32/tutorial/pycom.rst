@@ -1,13 +1,12 @@
 
-General Pycom Firmware
-======================
+3.1 General Pycom Firmware
+===========================
 
 
 Tutorials and examples:
 
 .. toctree::
    :maxdepth: 1
-   :numbered:
 
    includes/reset.rst
    includes/repl.rst

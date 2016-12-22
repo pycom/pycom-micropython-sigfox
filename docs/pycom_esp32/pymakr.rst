@@ -1,7 +1,7 @@
 
 
-Pymakr
-======
+2.3 Pymakr
+==========
 
 Here are some basic tips on how to further use Pymakr to upload code to your modules. You can `download Pymakr here <https://www.pycom.io/solutions/pymakr/>`_.
 

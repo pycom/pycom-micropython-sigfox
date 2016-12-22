@@ -1,7 +1,7 @@
 .. currentmodule:: machine
 
 class SD -- secure digital memory card (coming soon)
-======================================
+====================================================
 
 The SD card class allows to configure and enable the memory card
 module of the WiPy and automatically mount it as ``/sd`` as part

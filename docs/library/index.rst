@@ -1,4 +1,4 @@
-MicroPython libraries
+4. MicroPython libraries
 =====================
 
 This chapter describes modules (function and class libraries) which are built
@@ -30,7 +30,7 @@ modules from the Python standard library, as well as further MicroPython
 extensions to it, can be found in the `micropython-lib repository
 <https://github.com/micropython/micropython-lib>`_.
 
-Pycom Modules
+4.1 Pycom Modules
 -------------
 
  .. toctree::
@@ -49,6 +49,7 @@ Pycom Modules
     network.rst
     network.WLAN.rst
     network.Server.rst
+    network.LORA.rst
     machine.Timer.rst
     machine.SD.rst
 
@@ -57,7 +58,7 @@ Pycom Modules
 - :class:`AES encryption <.AES>`
 
 
-General libraries
+4.2 General libraries
 -----------------
 
 The following list contains the standard Python libraries, MicroPython-specific 
@@ -208,20 +209,9 @@ to be a drop-in replacement for the standard Python library.
        utime.rst
        uzlib.rst
 
-LoPy
-----
-.. toctree::
-   :maxdepth: 1
-
-   network.LORA.rst
-
-.. - :class:`LoRa <.LoRa>`
-
-
-
 .. only:: port_pyboard
 
-   Libraries specific to the pyboard
+   4.3 Libraries specific to the pyboard
    ---------------------------------
 
    The following libraries are specific to the pyboard.
@@ -233,7 +223,7 @@ LoPy
 
 .. only:: port_wipy
 
-   Libraries specific to the WiPy
+   4.3 Libraries specific to the WiPy
    ---------------------------------
 
    The following libraries are specific to the WiPy.
@@ -246,7 +236,7 @@ LoPy
 
 .. only:: port_esp8266
 
-   Libraries specific to the ESP8266
+   4.3 Libraries specific to the ESP8266
    ---------------------------------
 
    The following libraries are specific to the ESP8266.

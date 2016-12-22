@@ -19,6 +19,7 @@ This example shows one of the simplest scripts,
 that doesn't define any custom behaviour.
 You're still able to do direct pin operations.
 In your Blynk App project:
+
   Add a Gauge widget,  bind it to Analog Pin 5.
   Add a Slider widget, bind it to Digital Pin 25.
   Run the App (green triangle in the upper right corner).
@@ -51,6 +52,7 @@ Virual read
 ^^^^^^^^^^^
 This example shows how to display custom data on the widget.
 In your Blynk App project:
+
   Add a Value Display widget,
   bind it to Virtual Pin V2,
   set the read frequency to 1 second.
@@ -284,12 +286,13 @@ This example shows how to perform periodic actions and
 update the widget value on demand.
 
 In your Blynk App project:
+
   Add a Value Display widget,
   bind it to Virtual Pin V2,
   set reading frequency to 'PUSH'.
   Run the App (green triangle in the upper right corner).
-::
 
+::
 
 	import BlynkLib
 	from network import WLAN

@@ -1,4 +1,4 @@
-MicroPython license information
+6. MicroPython license information
 ===============================
 
 The MIT License (MIT)

@@ -1,8 +1,8 @@
 ***************************
-Tools & Features
+2. Tools & Features
 ***************************
 
-Intro
+2.1 Intro
 =====
 
 Do you have your basic setup working? Then it's time to look at all the ways you can use and interact with your board. We'll look at some more features of Pymakr and see how we can use telnet, FTP and how to reset the board.
@@ -18,7 +18,7 @@ Contents
 
 .. _under_the_hood:
 
-What’s under the hood
+2.2 What’s under the hood
 =====================
 
 All members in the current family of Pycom modules are powered by the ESP32, offering:
@@ -61,7 +61,7 @@ More extended info and lists of available libraries cna be found under :ref:`Fir
 
 .. _telnet_repl:
 
-Telnet REPL
+2.4 Telnet REPL
 ===========
 
 To connect to the Telnet REPL we recommend the usage of Linux or OS X stock telnet, although
@@ -74,7 +74,7 @@ For instance, on a linux shell (when connected to the LoPy in AP mode)::
 
 .. _pycom_filesystem:
 
-Local file system and FTP access
+2.5 Local file system and FTP access
 ================================
 
 There is a small internal file system (a drive) on the LoPy, called ``/flash``,
@@ -115,7 +115,7 @@ data connections are possible. Other FTP clients might behave in a similar way.
 
 .. _safeboot:
 
-Boot modes and safe boot
+2.6 Boot modes and safe boot
 ========================
 
 If you power up normally, or press the reset button, the LoPy will boot
@@ -152,7 +152,7 @@ useful to recover from crash situations caused by the user scripts. The selectio
 made during safe boot is not persistent, therefore after the next normal reset
 the latest firmware will run again.
 
-The heartbeat LED
+2.7 The heartbeat LED
 =================
 
 By default the heartbeat LED flashes in blue color once every 4s to signal that

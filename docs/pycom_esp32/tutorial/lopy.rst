@@ -1,13 +1,12 @@
 .. _lora_examples:
 
-LoPy Specific
-=============
+3.2 LoPy Specific
+=================
 
 .. toctree::
    :maxdepth: 1
-   :numbered:
 
-   includes/loram-ac.rst
+   includes/lora-mac.rst
    includes/lora-otaa.rst
    includes/lora-abp.rst
    includes/lora-nano-gateway.rst

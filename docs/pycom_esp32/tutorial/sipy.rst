@@ -1,10 +1,9 @@
 
-SiPy Specific
-================
+3.3 SiPy Specific
+=================
 
 
 .. toctree::
    :maxdepth: 1
-   :numbered:
 
    includes/sipy.rst
