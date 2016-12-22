@@ -49,6 +49,7 @@
 #include "pycom_config.h"
 #include "mpsleep.h"
 #include "machrtc.h"
+#include "modbt.h"
 #include "mptask.h"
 
 #include "ff.h"
@@ -63,7 +64,7 @@
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
-#define GC_POOL_SIZE_BYTES                                          (46 * 1024)
+#define GC_POOL_SIZE_BYTES                                          (36 * 1024)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -144,6 +145,7 @@ soft_reset:
     mp_hal_init(soft_reset);
     readline_init0();
     mod_network_init0();
+    modbt_init0();
     bool safeboot = false;
     boot_info_t boot_info;
     uint32_t boot_info_offset;
