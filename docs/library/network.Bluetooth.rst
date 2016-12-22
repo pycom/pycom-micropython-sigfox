@@ -92,7 +92,7 @@ Methods
 
 .. method:: bluetooth.isconnected()
 
-    Returns ``True`` is a connection with another BLE device is active. ``False`` otherwise.
+    Returns ``True`` if a connection with another BLE device is active. ``False`` otherwise.
 
     Example::
 
