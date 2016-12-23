@@ -34,25 +34,26 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :class:`DAC <.DAC>`
 - :class:`I2C <.I2C>`
 - :class:`WiFi <.WLAN>`
+- :class:`Bluetooth <.Bluetooth>`
 - :class:`LoRa <.LoRa>` (only available in the LoPy)
 - :mod:`hashlib <.uhashlib>` MD5, SHA1, SHA256, SHA384 and SHA512 hash algorithms
 - :mod:`SSL/TLS support <.ussl>`
+- :class:`AES encryption <.AES>`
 - :class:`Interrupts` (coming soon)
 - 4x :class:`Timers` (coming soon)
 - :class:`RTC` (coming soon)
-- :class:`Bluetooth` (coming soon)
-- :class:`AES encryption <.AES>`
 - :class:`SD` (coming soon)
 
-More extended info and lists of available libraries cna be found under :ref:`Firmware API Reference`
+Click the links in the list above to see more details on that feature. 
 
-.. #todo: add note in the next comment. Add links in the previous list. To the ones not yet in place, add a link to the “work in progress” section.
+For all available modules and libraries, please visit the :ref:`Firmware API Reference <firmware_api_reference>` section.
 
-.. tip::
-    Click in the links of the previous list to get more information about each module. 
+Datasheets
+----------
 
-.. tip::
-    If you want to find out how things are connected, visit the :ref:`hardware section<Hardware>`.
+If you want to find out how things are connected, visit the :ref:`datasheets section <datasheets>`. Here you'll find data
+
+
 
 
 .. _pymakr_ide:

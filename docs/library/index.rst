@@ -1,5 +1,7 @@
-4. MicroPython libraries
-=====================
+.. _firmware_api_reference:
+
+4. Firmware API Reference
+==========================
 
 This chapter describes modules (function and class libraries) which are built
 into MicroPython. There are a few categories of modules:
@@ -31,12 +33,13 @@ extensions to it, can be found in the `micropython-lib repository
 <https://github.com/micropython/micropython-lib>`_.
 
 4.1 Pycom Modules
--------------
+-----------------
 
  .. toctree::
     :maxdepth: 1
 
     machine.rst
+
     machine.ADC.rst
     machine.DAC.rst
     machine.I2C.rst
@@ -46,20 +49,21 @@ extensions to it, can be found in the `micropython-lib repository
     machine.SPI.rst
     machine.UART.rst
     machine.WDT.rst
+    machine.Timer.rst
+    machine.SD.rst
     network.rst
     network.WLAN.rst
     network.Server.rst
     network.LORA.rst
-    machine.Timer.rst
-    machine.SD.rst
+    network.Bluetooth.rst
 
-- :class:`Interrupts` (coming soon)
-- :class:`Bluetooth` (coming soon)
-- :class:`AES encryption <.AES>`
+    ucrypto.AES.rst
+
+- :class:`Interrupts`
 
 
 4.2 General libraries
------------------
+---------------------
 
 The following list contains the standard Python libraries, MicroPython-specific 
 libraries and Pycom specific modules that are available on our boards. 
@@ -212,7 +216,7 @@ to be a drop-in replacement for the standard Python library.
 .. only:: port_pyboard
 
    4.3 Libraries specific to the pyboard
-   ---------------------------------
+   --------------------------------------
 
    The following libraries are specific to the pyboard.
 
@@ -224,7 +228,7 @@ to be a drop-in replacement for the standard Python library.
 .. only:: port_wipy
 
    4.3 Libraries specific to the WiPy
-   ---------------------------------
+   -----------------------------------
 
    The following libraries are specific to the WiPy.
 
@@ -237,7 +241,7 @@ to be a drop-in replacement for the standard Python library.
 .. only:: port_esp8266
 
    4.3 Libraries specific to the ESP8266
-   ---------------------------------
+   -------------------------------------
 
    The following libraries are specific to the ESP8266.
 

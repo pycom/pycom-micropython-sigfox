@@ -1,15 +1,12 @@
 .. _pycom_tutorial_index:
 
 ********************************
-3. Pycom tutorials and examples
+3. Tutorials and examples
 ********************************
 
 Before starting, make sure that you are running the latest firmware,
 for instructions see :ref:`Firmware Upgrades <_firmware_upgrades>`.
 
-.. toctree::
- 	:maxdepth: 1
+.. include:: pycom.rst
 
-	pycom.rst
-	lopy.rst
-	sipy.rst
+.. include:: lopy.rst

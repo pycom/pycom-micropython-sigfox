@@ -39,6 +39,7 @@ For example::
      network.Server.rst
      network.WLAN.rst
      network.LORA.rst
+     network.Bluetooth.rst
 
 .. only:: port_pyboard
   

@@ -1,4 +1,4 @@
-.. _Hardware:
+.. _datasheets:
 
 ****************
 5. Datasheets

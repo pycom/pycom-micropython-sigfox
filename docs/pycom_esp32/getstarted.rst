@@ -197,9 +197,9 @@ Creating a project
 
 Pymakr has a feature to sync and run your code on your device. This is mostly done using projects. The following steps will get you started.
 
-#. In Pymakr, go to Project > New project.
-#. Give it a name and select a folder for your project, either a new of existing one.
-#. Now you are ready to place your own code. Most users, especially WiPy users, would want a wifi script in the boot.py file. The following coe does this. Leave the existing REPL code on the top.
+- In Pymakr, go to Project > New project.
+- Give it a name and select a folder for your project, either a new of existing one.
+- Now you are ready to place your own code. Most users, especially WiPy users, would want a wifi script in the boot.py file. The following coe does this. Leave the existing REPL code on the top. (More information on REPL can be found on :ref:`this page <pycom_repl>` in the tutorials seciton)
 
 .. code:: python
     
@@ -223,7 +223,7 @@ Pymakr has a feature to sync and run your code on your device. This is mostly do
 
 More advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`Wifi Examples <wlan_step_by_step>` chapter. 
 
-#. For fun, lets try again to build a traffic light. Add the following code to the main.py file:
+For fun, lets try again to build a traffic light. Add the following code to the main.py file:
 
 ::
 
@@ -238,8 +238,8 @@ More advanced WLAN examples, like fixed IP and multiple networks, can be found i
         pycom.rgbled(0x7f0000) # red
         time.sleep(4)
 
-#. Make sure the connection to your board is open in the Pycom Console
-#. Press the sync button on the top toolbar. Any progress will be shown in the console.
+- Make sure the connection to your board is open in the Pycom Console
+- Press the sync button on the top toolbar. Any progress will be shown in the console.
 
 Here is the expected result:
 
