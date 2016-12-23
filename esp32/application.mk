@@ -38,6 +38,17 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/nvs_flash/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/spi_flash/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/tcpip_adapter/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/log/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/device/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/stack/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btcore/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/osi/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/hci/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/gki/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
 APP_INC += -I../lib/timeutils
@@ -106,6 +117,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	pybadc.c \
 	pybdac.c \
 	modussl.c \
+	modbt.c \
 	)
 
 
@@ -267,6 +279,8 @@ ESPTOOL_ALL_FLASH_ARGS = $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN) $
 
 GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py -q
 
+BOOT_BIN := bootloader/lib/bootloader.bin
+
 all: $(BOOT_BIN) $(APP_BIN)
 
 .PHONY: all
@@ -281,9 +295,9 @@ $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
 
-$(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
-	$(ECHO) "IMAGE $@"
-	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE) -o $@ $<
+#$(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
+#	$(ECHO) "IMAGE $@"
+#	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE) -o $@ $<
 
 $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"

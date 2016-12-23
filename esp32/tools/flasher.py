@@ -25,6 +25,8 @@ import argparse
 import subprocess
 import threading
 import time
+import fw_version
+import csv
 
 working_threads = {}
 macs_db = None
@@ -82,7 +84,7 @@ def flash_firmware(port, command):
             break
         if 'at 0x00001000' in nextline:
             sys.stdout.write('Bootloader programmed OK on port %s\n' % port)
-        elif 'at 0x00004000' in nextline:
+        elif 'at 0x00008000' in nextline:
             sys.stdout.write('Partition table programmed OK on port %s\n' % port)
         elif 'at 0x00010000' in nextline:
             sys.stdout.write('Application programmed OK on port %s\n' % port)
@@ -98,11 +100,11 @@ def run_initial_test(port, board):
     global working_threads
 
     if board == 'LoPy':
-        import run_initial_lopy_test
-        run_test = run_initial_lopy_test
+        import run_initial_lopy_test as run_test
+    elif board == 'SiPy':
+        import run_initial_sipy_test as run_test
     else:
-        import run_initial_wipy_test
-        run_test = run_initial_wipy_test
+        import run_initial_wipy_test as run_test
 
     try:
         if not run_test.test_board(port):
@@ -111,23 +113,25 @@ def run_initial_test(port, board):
     except Exception:
         working_threads[port] = None
 
-def flash_lora_mac(port, mac):
-    import flash_lora_mac
+def flash_lpwan_mac(port, mac):
+    import flash_lpwan_mac
     global working_threads
 
     try:
-        if not flash_lora_mac.program_board(port, mac):
+        if not flash_lpwan_mac.program_board(port, mac):
             # same trick to give feedback to the main thread
             working_threads[port] = None
     except Exception:
             working_threads[port] = None
 
-def run_final_test(port, mac):
-    import run_final_lopy_test
-    global working_threads
+def run_final_test(port, board, mac):
+    if board == 'LoPy':
+        import run_final_lopy_test as run_test
+    else:
+        import run_final_sipy_test as run_test
 
     try:
-        if not run_final_lopy_test.test_board(port, mac):
+        if not run_test.test_board(port, mac, fw_version.number):
             # same trick to give feedback to the main thread
             working_threads[port] = None
     except Exception:
@@ -137,14 +141,14 @@ def run_qa_test(port, board):
     global working_threads
 
     if board == 'LoPy':
-        import run_qa_lopy_test
-        run_test = run_qa_lopy_test
+        import run_qa_lopy_test as run_test
+    elif board == 'SiPy':
+        import run_qa_sipy_test as run_test
     else:
-        import run_qa_wipy_test
-        run_test = run_qa_wipy_test
+        import run_qa_wipy_test as run_test
 
     try:
-        if not run_test.test_board(port):
+        if not run_test.test_board(port, fw_version.number):
             # same trick to give feedback to the main thread
             working_threads[port] = None
     except Exception:
@@ -237,7 +241,7 @@ def main():
             working_threads = {}
 
         try:
-            if cmd_args.board == 'LoPy':
+            if cmd_args.board == 'LoPy' or cmd_args.board == 'SiPy':
                 open_macs_db(cmd_args.macs)
                 macs_list = fetch_MACs(len(cmd_args.ports))
                 if len(macs_list) < len(cmd_args.ports):
@@ -251,7 +255,7 @@ def main():
             for port in cmd_args.ports:
                 cmd = ['python', cmd_args.esptool, '--chip', 'esp32', '--port', port, '--baud', '921600',
                        'write_flash', '-z', '--flash_mode', 'qio', '--flash_freq', '40m', '0x1000', cmd_args.boot,
-                       '0x4000', cmd_args.table, '0x10000', cmd_args.app]
+                       '0x8000', cmd_args.table, '0x10000', cmd_args.app]
                 working_threads[port] = threading.Thread(target=flash_firmware, args=(port, cmd))
                 working_threads[port].start()
             for port in cmd_args.ports:
@@ -280,7 +284,7 @@ def main():
             global_ret = 1
 
         raw_input("Please place all boards into run mode, RESET them and then \n press enter to continue with the testing process...")
-        time.sleep(3.5)   # wait for the board to reset
+        time.sleep(5.0)   # wait for the board to reset
 
         working_threads = {}
 
@@ -314,8 +318,8 @@ def main():
             global_ret = 1
 
 
-        # Only do the MAC programming and MAC verificacion for the LoPy
-        if cmd_args.board == 'LoPy':
+        # only do the MAC programming and MAC verificacion for the LoPy and SiPy
+        if cmd_args.board == 'LoPy' or cmd_args.board == 'SiPy':
             print("Waiting before programming the mac address...")
             time.sleep(3.5)   # wait for the board to reset
 
@@ -324,7 +328,7 @@ def main():
             try:
                 for port in cmd_args.ports:
                     set_mac_status(mac_per_port[port], DB_MAC_LOCK) # mark them as locked, so if the script fails and doesn't get to save, they wont be accidentally reused
-                    working_threads[port] = threading.Thread(target=flash_lora_mac, args=(port, mac_per_port[port]))
+                    working_threads[port] = threading.Thread(target=flash_lpwan_mac, args=(port, mac_per_port[port]))
                     working_threads[port].start()
 
                 for port in cmd_args.ports:
@@ -354,13 +358,13 @@ def main():
                 global_ret = 1
 
             print("Waiting for the board(s) to reboot...")
-            time.sleep(3.5)   # wait for the board to reset
+            time.sleep(4.5)   # wait for the board to reset
 
             working_threads = {}
 
             try:
                 for port in cmd_args.ports:
-                    working_threads[port] = threading.Thread(target=run_final_test, args=(port, mac_per_port[port]))
+                    working_threads[port] = threading.Thread(target=run_final_test, args=(port, cmd_args.board, mac_per_port[port]))
                     working_threads[port].start()
 
                 for port in cmd_args.ports:
@@ -374,6 +378,10 @@ def main():
                         print("Error performing MAC address test on port %s" % port)
                     else:
                         set_mac_status(mac_per_port[port], DB_MAC_OK)
+                        print("Final test OK on port %s, firmware version %s, MAC address %s" % (port, fw_version.number, mac_per_port[port]))
+                        with open('%s_Flasher_Results.csv' % (cmd_args.board), 'ab') as csv_file:
+                            csv_writer = csv.writer(csv_file, delimiter=',')
+                            csv_writer.writerow(['%s' % (cmd_args.board), '%s' % (fw_version.number), '%s' % (mac_per_port[port]), 'OK'])
 
             except Exception as e:
                 ret = 1
@@ -381,7 +389,7 @@ def main():
 
             if ret == 0:
                 print("=============================================================")
-                print("Final test succeeded :-)")
+                print("Final test succeeded on all boards :-)")
                 print("=============================================================")
             else:
                 print("=============================================================")

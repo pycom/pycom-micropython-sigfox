@@ -32,6 +32,7 @@
 //#include "pybsleep.h"
 #include "mpexception.h"
 #include "mperror.h"
+#include "pycom_config.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -211,10 +212,16 @@ STATIC IRAM_ATTR pin_obj_t *pin_find_pin_by_num (const mp_obj_dict_t *named_pins
 }
 
 STATIC void pin_obj_configure (const pin_obj_t *self) {
-    // set the value before configuring the GPIO matrix (to minimze glitches)
+    // set the value first (to minimize glitches)
     pin_set_value(self);
-    // first detach the pin from any outputs
-    gpio_matrix_out(self->pin_number, MACHPIN_SIMPLE_OUTPUT, 0, 0);
+    // configure the pin
+    gpio_config_t gpioconf = {.pin_bit_mask = 1ull << self->pin_number,
+                              .mode = self->mode,
+                              .pull_up_en = (self->pull == MACHPIN_PULL_UP) ? GPIO_PULLUP_ENABLE : GPIO_PULLUP_DISABLE,
+                              .pull_down_en = (self->pull == MACHPIN_PULL_DOWN) ? GPIO_PULLDOWN_ENABLE : GPIO_PULLDOWN_DISABLE,
+                              .intr_type = self->irq_trigger};
+    gpio_config(&gpioconf);
+
     // assign the alternate function
     if (self->mode == GPIO_MODE_INPUT) {
         if (self->af_in >= 0) {
@@ -223,16 +230,10 @@ STATIC void pin_obj_configure (const pin_obj_t *self) {
     } else {    // output or open drain
         if (self->af_out >= 0) {
             gpio_matrix_out(self->pin_number, self->af_out, 0, 0);
+        } else {
+            gpio_matrix_out(self->pin_number, MACHPIN_SIMPLE_OUTPUT, 0, 0);
         }
     }
-
-    // configure the pin
-    gpio_config_t gpioconf = {.pin_bit_mask = 1ull << self->pin_number,
-                              .mode = self->mode,
-                              .pull_up_en = (self->pull == MACHPIN_PULL_UP) ? GPIO_PULLUP_ENABLE : GPIO_PULLUP_DISABLE,
-                              .pull_down_en = (self->pull == MACHPIN_PULL_DOWN) ? GPIO_PULLDOWN_ENABLE : GPIO_PULLDOWN_DISABLE,
-                              .intr_type = self->irq_trigger};
-    gpio_config(&gpioconf);
 }
 
 void pin_irq_enable (mp_obj_t self_in) {
@@ -250,7 +251,10 @@ int pin_irq_flags (mp_obj_t self_in) {
 void pin_extint_register(pin_obj_t *self, uint32_t trigger, uint32_t priority) {
     self->irq_trigger = trigger;
     pin_obj_configure(self);
-    gpio_isr_register(ETS_GPIO_INUM, machpin_intr_process, NULL);
+    ESP_INTR_DISABLE(PYCOM_GPIO_INT_NUM);
+    intr_matrix_set(xPortGetCoreID(), ETS_GPIO_INTR_SOURCE, PYCOM_GPIO_INT_NUM);
+    xt_set_interrupt_handler(PYCOM_GPIO_INT_NUM, machpin_intr_process, NULL);
+    ESP_INTR_ENABLE(PYCOM_GPIO_INT_NUM);
 }
 
 STATIC void pin_validate_mode (uint mode) {

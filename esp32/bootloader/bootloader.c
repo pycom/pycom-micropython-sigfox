@@ -73,6 +73,18 @@ void set_cache_and_start_app(uint32_t drom_addr,
     uint32_t entry_addr);
 static void update_flash_config(const esp_image_header_t* pfhdr);
 
+static void read_mac(uint8_t* mac)
+{
+    uint32_t mac_low = REG_READ(EFUSE_BLK0_RDATA1_REG);
+    uint32_t mac_high = REG_READ(EFUSE_BLK0_RDATA2_REG);
+
+    mac[0] = mac_high >> 8;
+    mac[1] = mac_high;
+    mac[2] = mac_low >> 24;
+    mac[3] = mac_low >> 16;
+    mac[4] = mac_low >> 8;
+    mac[5] = mac_low;
+}
 
 void IRAM_ATTR call_start_cpu0()
 {
@@ -224,7 +236,7 @@ static uint32_t bootloader_buf[1024];
 static IRAM_ATTR void calculate_signature (uint8_t *signature) {
     uint32_t total_len = 0;
     uint8_t mac[6];
-    system_efuse_read_mac(mac);
+    read_mac(mac);
 
     struct MD5Context md5_context;
 
@@ -338,7 +350,7 @@ void bootloader_main()
     REG_CLR_BIT( TIMG_WDTCONFIG0_REG(0), TIMG_WDT_FLASHBOOT_MOD_EN );
     SPIUnlock();
 
-    if(esp_image_load_header(0x1000, &fhdr) != ESP_OK) {
+    if(esp_image_load_header(0x1000, true, &fhdr) != ESP_OK) {
         ESP_LOGE(TAG, "failed to load bootloader header!");
         return;
     }
@@ -471,13 +483,13 @@ static void unpack_load_app(const esp_partition_pos_t* partition)
     uint32_t image_length;
 
     /* TODO: verify the app image as part of OTA boot decision, so can have fallbacks */
-    err = esp_image_basic_verify(partition->offset, &image_length);
+    err = esp_image_basic_verify(partition->offset, true, &image_length);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to verify app image @ 0x%x (%d)", partition->offset, err);
         return;
     }
 
-    if (esp_image_load_header(partition->offset, &image_header) != ESP_OK) {
+    if (esp_image_load_header(partition->offset, true, &image_header) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to load app image header @ 0x%x", partition->offset);
         return;
     }
@@ -503,7 +515,7 @@ static void unpack_load_app(const esp_partition_pos_t* partition)
         esp_image_segment_header_t segment_header;
         uint32_t data_offs;
         if(esp_image_load_segment_header(segment, partition->offset,
-                                         &image_header, &segment_header,
+                                         &image_header, true, &segment_header,
                                          &data_offs) != ESP_OK) {
             ESP_LOGE(TAG, "failed to load segment header #%d", segment);
             return;

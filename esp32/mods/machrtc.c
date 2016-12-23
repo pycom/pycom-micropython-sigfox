@@ -16,13 +16,14 @@
 #include "timeutils.h"
 #include "esp_system.h"
 
+extern uint64_t system_get_rtc_time(void);
 
 typedef struct _mach_rtc_obj_t {
     mp_obj_base_t base;
 } mach_rtc_obj_t;
 
 // RTC overflow checking
-static uint32_t rtc_last_ticks;
+static uint64_t rtc_last_ticks;
 static int64_t delta = 0;
 
 void rtc_init0(void) {
@@ -37,7 +38,7 @@ void mach_rtc_set_us_since_2000(uint64_t nowus) {
 }
 
 uint64_t mach_rtc_get_us_since_2000(void) {
-    uint32_t rtc_ticks;
+    uint64_t rtc_ticks;
 
     // ESP-SDK system_get_rtc_time() only returns uint32 and therefore
     // overflow about every 7:45h.  Thus, we have to check for
@@ -45,9 +46,9 @@ uint64_t mach_rtc_get_us_since_2000(void) {
     rtc_ticks = system_get_rtc_time();
     if (rtc_ticks < rtc_last_ticks) {
         // adjust delta because of RTC overflow.
-        delta += UINT32_MAX;
+        delta += UINT64_MAX;
     }
     rtc_last_ticks = rtc_ticks;
 
-    return ((uint64_t)rtc_ticks / 150000);
+    return (uint64_t)(rtc_ticks / 150000);
 };

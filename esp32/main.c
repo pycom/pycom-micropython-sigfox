@@ -7,8 +7,22 @@
  * available at https://www.pycom.io/opensource/licensing
  */
 
+#include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include "controller.h"
+
+#include "bt.h"
+#include "bt_trace.h"
+#include "bt_types.h"
+#include "btm_api.h"
+#include "bta_api.h"
+#include "bta_gatt_api.h"
+#include "esp_gap_ble_api.h"
+#include "esp_gattc_api.h"
+#include "esp_gatt_defs.h"
+#include "esp_bt_main.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

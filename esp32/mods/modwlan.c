@@ -287,7 +287,6 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
         memcpy(wlan_obj.bssid, _event->bssid, 6);
         wlan_obj.channel = _event->channel;
         wlan_obj.auth = _event->authmode;
-        printf("Connected to AP %s channel %d", _event->ssid, _event->channel);
     }
         break;
     case SYSTEM_EVENT_STA_GOT_IP:

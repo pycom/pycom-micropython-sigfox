@@ -36,7 +36,7 @@ pycom.heartbeat(False)
 try:
     f = open('/flash/sys/test.fct', 'r')
     initial_test_result = f.readall();
-    if wifi_passed and binascii.hexlify(wlan.mac()) != EMPTY_MAC_ADDRESS and os.uname().release == '0.9.4.b1' and 'WiPy' in os.uname().machine and initial_test_result == 'Test OK':
+    if wifi_passed and binascii.hexlify(wlan.mac()) != EMPTY_MAC_ADDRESS and os.uname().release == "{FW_VERSION}" and 'WiPy' in os.uname().machine and initial_test_result == 'Test OK':
         pycom.rgbled(0x008000)      # green
         print('QA Test OK')
     else:

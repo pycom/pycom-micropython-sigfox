@@ -10,6 +10,7 @@
 from network import LoRa
 import binascii
 import pycom
+import os
 
 EMPTY_MAC_ADDRESS = b'ffffffffffffffff'
 
@@ -17,7 +18,7 @@ lora = LoRa(mode=LoRa.LORA)
 pycom.heartbeat(False)
 
 try:
-    if binascii.hexlify(lora.mac()) != EMPTY_MAC_ADDRESS:
+    if binascii.hexlify(lora.mac()) != EMPTY_MAC_ADDRESS and os.uname().release == "{FW_VERSION}" and 'LoPy' in os.uname().machine:
         pycom.rgbled(0x008000)      # green
         print('QA Test OK')
     else:

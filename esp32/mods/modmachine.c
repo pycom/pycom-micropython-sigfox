@@ -47,7 +47,7 @@
 // Micro Python bindings;
 
 STATIC mp_obj_t machine_reset(void) {
-    system_restart();
+    esp_restart();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_reset_obj, machine_reset);
@@ -62,7 +62,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_freq_obj, machine_freq);
 
 STATIC mp_obj_t machine_unique_id(void) {
     uint8_t id[6];
-    system_efuse_read_mac(id);
+    esp_efuse_read_mac(id);
     return mp_obj_new_bytes((byte *)&id, sizeof(id));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_unique_id_obj, machine_unique_id);

@@ -59,7 +59,7 @@ void rng_init0 (void) {
     // get the seconds and the milliseconds from the RTC
 //    pyb_rtc_get_time(&seconds, &mseconds);
 
-    system_efuse_read_mac(juggler.id8);
+    esp_efuse_read_mac(juggler.id8);
 
     // flatten the 48-bit board identification to 24 bits
     juggler.id16[0] ^= juggler.id16[2];

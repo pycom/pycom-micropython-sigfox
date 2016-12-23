@@ -29,7 +29,7 @@ For example::
     s.close()
 
 .. only:: port_lopy or port_pycom_esp32
-  
+
   Classes
   -------
 
@@ -42,7 +42,7 @@ For example::
      network.Bluetooth.rst
 
 .. only:: port_pyboard
-  
+
   Classes
   -------
 
@@ -61,3 +61,4 @@ For example::
 
      network.Server.rst
      network.WLAN.rst
+     network.Bluetooth.rst

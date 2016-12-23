@@ -49,6 +49,7 @@
 #include "pycom_config.h"
 #include "mpsleep.h"
 #include "machrtc.h"
+#include "modbt.h"
 #include "mptask.h"
 
 #include "ff.h"
@@ -63,7 +64,7 @@
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
-#define GC_POOL_SIZE_BYTES                                      (80 * 1024)
+#define GC_POOL_SIZE_BYTES                                          (42 * 1024)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -144,6 +145,7 @@ soft_reset:
     mp_hal_init(soft_reset);
     readline_init0();
     mod_network_init0();
+    modbt_init0();
     bool safeboot = false;
     boot_info_t boot_info;
     uint32_t boot_info_offset;
@@ -309,7 +311,7 @@ STATIC void mptask_init_sflash_filesystem (void) {
 
 #ifdef LOPY
 STATIC void mptask_update_lora_mac_address (void) {
-    #define LORA_MAC_ADDR_PATH          "/flash/sys/lora.mac"
+    #define LORA_MAC_ADDR_PATH          "/flash/sys/lpwan.mac"
 
     FILINFO fno;
 
@@ -323,7 +325,7 @@ STATIC void mptask_update_lora_mac_address (void) {
             // file found, update the MAC address
             if (config_set_lora_mac(mac)) {
                 mp_hal_delay_ms(500);
-                ets_printf("\n\nLoRa MAC write OK\n\n");
+                ets_printf("\n\nLPWAN MAC write OK\n\n");
             } else {
                 res = FR_DENIED;    // just anything different than FR_OK
             }

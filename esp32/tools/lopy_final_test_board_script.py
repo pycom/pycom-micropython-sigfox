@@ -10,12 +10,13 @@
 from network import LoRa
 import binascii
 import pycom
+import os
 
 EXPECTED_MAC_ADDRESS = b"{MAC_ADDRESS}"
 
 lora = LoRa(mode=LoRa.LORA)
 
-if binascii.hexlify(lora.mac()) == EXPECTED_MAC_ADDRESS:
+if binascii.hexlify(lora.mac()) == EXPECTED_MAC_ADDRESS  and os.uname().release == "{FW_VERSION}" and 'LoPy' in os.uname().machine:
     pycom.heartbeat(False)
     pycom.rgbled(0x008000)   # green
     print('Test OK')

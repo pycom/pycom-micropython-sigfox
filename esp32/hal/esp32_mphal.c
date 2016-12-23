@@ -148,11 +148,15 @@ void mp_hal_stdout_tx_strn_cooked(const char *str, uint32_t len) {
 }
 
 uint32_t mp_hal_ticks_ms(void) {
-    return system_get_time() / 1000;
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    return now.tv_sec * 1000 + now.tv_usec / 1000;
 }
 
 uint32_t mp_hal_ticks_us(void) {
-    return system_get_time();
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    return now.tv_sec * 1000000 + now.tv_usec;
 }
 
 void mp_hal_delay_ms(uint32_t delay) {

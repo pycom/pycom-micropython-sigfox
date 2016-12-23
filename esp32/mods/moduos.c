@@ -21,7 +21,7 @@
 #include "sflash_diskio.h"
 #include "extmod/vfs_fat_file.h"
 #include "random.h"
-#include "version.h"
+#include "pycom_version.h"
 #include "timeutils.h"
 #include "machuart.h"
 #include "mpexception.h"

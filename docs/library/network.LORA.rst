@@ -79,12 +79,12 @@ Methods
 
    For example, you can do::
 
-      # create and configure as an access point
+      # initialize in raw LoRa mode
       lora.init(mode=LoRa.LORA, tx_power=14, sf=12)
 
    or::
 
-      # configure as an station
+      # initialize in LoRaWAN mode
       lora.init(mode=LoRa.LORAWAN)
 
 .. method:: lora.join(activation, auth, \*, timeout=None)
