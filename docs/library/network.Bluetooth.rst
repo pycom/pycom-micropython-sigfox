@@ -38,7 +38,7 @@ Methods
 
 .. method:: bluetooth.start_scan(timeout)
 
-   Starts performing a scan listening for BLE devices sending advertisements. This function always returns inmmediatelly, the scanning will be performed on the background. The return value is ``None``.
+   Starts performing a scan listening for BLE devices sending advertisements. This function always returns inmmediatelly, the scanning will be performed on the background. The return value is ``None``. After starting the scan the function ``get_adv()`` can be used to retrieve the advertisements messages from the FIFO. The internal FIFO has space to cache 8 advertisements.
 
    The arguments are:
 
