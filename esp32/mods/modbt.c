@@ -49,7 +49,8 @@
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
-#define BT_SCAN_QUEUE_SIZE_MAX                              8
+#define BT_SCAN_QUEUE_SIZE_MAX                              (8)
+#define BT_CHAR_VALUE_SIZE_MAX                              (20)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -57,10 +58,47 @@
 typedef struct {
     mp_obj_base_t         base;
     int32_t               scan_duration;
-    int32_t               conn_id;
+    int32_t               conn_id;          // current activity connection id
+    mp_obj_list_t         conn_list;
     bool                  init;
     bool                  busy;
+    bool                  scanning;
 } bt_obj_t;
+
+typedef struct {
+    mp_obj_base_t         base;
+    int32_t               conn_id;
+    mp_obj_list_t         srv_list;
+} bt_connection_obj_t;
+
+typedef struct {
+    mp_obj_base_t         base;
+    bt_connection_obj_t   *connection;
+    esp_gatt_srvc_id_t    srv_id;
+    mp_obj_list_t         char_list;
+} bt_srv_obj_t;
+
+typedef struct {
+    esp_gatt_id_t           char_id;
+    esp_gatt_char_prop_t    char_prop;
+} bt_char_t;
+
+typedef struct {
+    mp_obj_base_t           base;
+    bt_srv_obj_t            *service;
+    bt_char_t               characteristic;
+    // mp_obj_list_t         desc_list;
+} bt_char_obj_t;
+
+typedef struct {
+    uint8_t     value[BT_CHAR_VALUE_SIZE_MAX];
+    uint16_t    value_type;
+    uint16_t    value_len;
+} bt_read_value_t;
+
+typedef struct {
+    esp_gatt_status_t status;
+} bt_write_value_t;
 
 typedef enum {
     E_BT_STACK_MODE_BLE = 0,
@@ -68,8 +106,12 @@ typedef enum {
 } bt_mode_t;
 
 typedef union {
-    esp_ble_gap_cb_param_t scan;
-    esp_gatt_srvc_id_t service;
+    esp_ble_gap_cb_param_t  scan;
+    esp_gatt_srvc_id_t      service;
+    bt_char_t               characteristic;
+    bt_read_value_t         read;
+    bt_write_value_t        write;
+    int32_t                 conn_id;
 } bt_event_result_t;
 
 /******************************************************************************
@@ -78,10 +120,18 @@ typedef union {
 static volatile bt_obj_t bt_obj;
 static QueueHandle_t xScanQueue;
 
+static const mp_obj_type_t mod_bt_connection_type;
+static const mp_obj_type_t mod_bt_service_type;
+static const mp_obj_type_t mod_bt_characteristic_type;
+// static const mp_obj_type_t mod_bt_descriptor_type;
+
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
+static void esp_gap_cb(uint32_t event, void *param);
+static void esp_gattc_cb(uint32_t event, void *param);
 static void flush_event_queue(void);
+static void close_connection(int32_t conn_id);
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
@@ -92,6 +142,7 @@ void modbt_init0(void) {
     } else {
         flush_event_queue();
     }
+    mp_obj_list_init((void *)&bt_obj.conn_list, 0);
 }
 
 /******************************************************************************
@@ -116,12 +167,17 @@ static void flush_event_queue(void) {
     while (xQueueReceive(xScanQueue, &bt_event, (TickType_t)0));
 }
 
-static void esp_gap_cb(uint32_t event, void *param);
+static void close_connection (int32_t conn_id) {
+    for (mp_uint_t i = 0; i < bt_obj.conn_list.len; i++) {
+        bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(bt_obj.conn_list.items[i]));
+        if (connection_obj->conn_id == conn_id) {
+            connection_obj->conn_id = -1;
+            mp_obj_list_remove((void *)&bt_obj.conn_list, connection_obj);
+        }
+    }
+}
 
-static void esp_gattc_cb(uint32_t event, void *param);
-
-static void esp_gap_cb(uint32_t event, void *param)
-{
+static void esp_gap_cb(uint32_t event, void *param) {
     switch (event) {
     case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT: {
         int32_t duration = bt_obj.scan_duration;
@@ -134,10 +190,12 @@ static void esp_gap_cb(uint32_t event, void *param)
         break;
     }
     case ESP_GAP_BLE_SCAN_RESULT_EVT: {
+        bt_event_result_t bt_event_result;
         esp_ble_gap_cb_param_t *scan_result = (esp_ble_gap_cb_param_t *)param;
+        memcpy(&bt_event_result.scan, scan_result, sizeof(esp_ble_gap_cb_param_t));
         switch (scan_result->scan_rst.search_evt) {
         case ESP_GAP_SEARCH_INQ_RES_EVT:
-            xQueueSend(xScanQueue, (void *)scan_result, (TickType_t)0);
+            xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
             break;
         case ESP_GAP_SEARCH_DISC_RES_EVT:
             // printf("Discovery result\n");
@@ -147,7 +205,7 @@ static void esp_gap_cb(uint32_t event, void *param)
                 esp_ble_gap_set_scan_params(&ble_scan_params);
             } else {
                 // printf("Scan finished\n");
-                bt_obj.busy = false;
+                bt_obj.scanning = false;
             }
             break;
         default:
@@ -160,11 +218,10 @@ static void esp_gap_cb(uint32_t event, void *param)
     }
 }
 
-
-static void esp_gattc_cb(uint32_t event, void *param)
-{
+static void esp_gattc_cb(uint32_t event, void *param) {
     uint16_t conn_id = 0;
     esp_ble_gattc_cb_param_t *p_data = (esp_ble_gattc_cb_param_t *)param;
+    bt_event_result_t bt_event_result;
 
     LOG_INFO("esp_gattc_cb, event = %x\n", event);
     switch (event) {
@@ -175,25 +232,51 @@ static void esp_gattc_cb(uint32_t event, void *param)
         break;
     case ESP_GATTC_OPEN_EVT:
         conn_id = p_data->open.conn_id;
-        bt_obj.conn_id = conn_id;
-        // printf("ESP_GATTC_OPEN_EVT conn_id %d, if %d, status %x\n", conn_id, p_data->open.gatt_if, p_data->open.status);
+        printf("ESP_GATTC_OPEN_EVT conn_id %d, if %d, status %x\n", conn_id, p_data->open.gatt_if, p_data->open.status);
         if (p_data->open.status == ESP_GATT_OK) {
-            // printf("Device connected\n");
+            printf("Device connected=%d\n", conn_id);
+            bt_event_result.conn_id = conn_id;
         } else {
-            // printf("Connection failed! \n");
-            bt_obj.conn_id = -1;
+            printf("Connection failed!=%d\n", conn_id);
+            bt_event_result.conn_id = -1;
         }
+        xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
+        bt_obj.busy = false;
+        break;
+    case ESP_GATTC_READ_CHAR_EVT:
+        if (p_data->read.status == ESP_GATT_OK) {
+            memcpy(&bt_event_result.read.value, p_data->read.value, p_data->read.value_len);
+            bt_event_result.read.value_len = p_data->read.value_len;
+            bt_event_result.read.value_type = p_data->read.value_type;
+            xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
+        } else {
+            printf("Error reading BLE characteristic\n");
+        }
+        bt_obj.busy = false;
+        break;
+    case ESP_GATTC_WRITE_CHAR_EVT:
+        bt_event_result.write.status = p_data->write.status;
+        xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
         bt_obj.busy = false;
         break;
     case ESP_GATTC_SEARCH_RES_EVT: {
         esp_gatt_srvc_id_t *srvc_id = &p_data->search_res.srvc_id;
-        xQueueSend(xScanQueue, (void *)srvc_id, (TickType_t)0);
+        memcpy(&bt_event_result.service, srvc_id, sizeof(esp_gatt_srvc_id_t));
+        xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
+        bt_obj.busy = false;
         break;
     }
     case ESP_GATTC_GET_CHAR_EVT:
         if (p_data->get_char.status == ESP_GATT_OK) {
-            esp_ble_gattc_get_characteristic(bt_obj.conn_id, &p_data->get_char.srvc_id, &p_data->get_char.char_id);
-            // printf("characteristic found=%x\n", p_data->get_char.char_id.uuid.uuid.uuid16);
+            esp_gatt_id_t *char_id = &p_data->get_char.char_id;
+            memcpy(&bt_event_result.characteristic.char_id, char_id, sizeof(esp_gatt_id_t));
+            bt_event_result.characteristic.char_prop = p_data->get_char.char_prop;
+            xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
+            esp_ble_gattc_get_characteristic(bt_obj.conn_id, &p_data->get_char.srvc_id, char_id);
+            printf("characteristic found=%x\n", p_data->get_char.char_id.uuid.uuid.uuid16);
+        } else {
+            printf("Error getting BLE characteristic\n");
+            bt_obj.busy = false;
         }
         break;
     case ESP_GATTC_SEARCH_CMPL_EVT:
@@ -201,18 +284,19 @@ static void esp_gattc_cb(uint32_t event, void *param)
         bt_obj.busy = false;
         break;
     case ESP_GATTC_CANCEL_OPEN_EVT:
+        bt_obj.busy = false;
+        // intentional fall through
     case ESP_GATTC_CLOSE_EVT:
         // printf("Connection closed!\n");
         bt_obj.conn_id = -1;
-        bt_obj.busy = false;
+        close_connection(p_data->close.conn_id);
         break;
     default:
         break;
     }
 }
 
-void ble_client_appRegister(void)
-{
+static void ble_client_appRegister(void) {
     LOG_INFO("register callback\n");
 
     // register the scan callback function to the gap moudule
@@ -288,7 +372,7 @@ STATIC mp_obj_t bt_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_init_obj, 1, bt_init);
 
 STATIC mp_obj_t bt_start_scan(mp_obj_t self_in, mp_obj_t timeout) {
-    if (bt_obj.busy) {
+    if (bt_obj.scanning || bt_obj.busy) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "operation already in progress"));
     }
 
@@ -298,18 +382,28 @@ STATIC mp_obj_t bt_start_scan(mp_obj_t self_in, mp_obj_t timeout) {
     }
 
     bt_obj.scan_duration = duration;
-    bt_obj.busy = true;
+    bt_obj.scanning = true;
     flush_event_queue();
-    esp_ble_gap_set_scan_params(&ble_scan_params);
+    if (ESP_OK != esp_ble_gap_set_scan_params(&ble_scan_params)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+    }
 
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_start_scan_obj, bt_start_scan);
 
+STATIC mp_obj_t bt_isscanning(mp_obj_t self_in) {
+    if (bt_obj.scanning) {
+        return mp_const_true;
+    }
+    return mp_const_false;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_isscanning_obj, bt_isscanning);
+
 STATIC mp_obj_t bt_stop_scan(mp_obj_t self_in) {
-    if (bt_obj.busy) {
+    if (bt_obj.scanning) {
         esp_ble_gap_stop_scanning();
-        bt_obj.busy = false;
+        bt_obj.scanning = false;
     }
     return mp_const_none;
 }
@@ -384,118 +478,56 @@ STATIC mp_obj_t bt_resolve_adv_data(mp_obj_t self_in, mp_obj_t adv_data, mp_obj_
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(bt_resolve_adv_data_obj, bt_resolve_adv_data);
 
 STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
-    if (bt_obj.busy) {
-        esp_ble_gap_stop_scanning();
-        bt_obj.busy = false;
-    }
+    bt_event_result_t bt_event;
 
-    if (bt_obj.conn_id > 0) {
-        esp_ble_gattc_close(bt_obj.conn_id);
-        vTaskDelay(150);
+    if (bt_obj.busy) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "operation already in progress"));
+    } else if (bt_obj.scanning) {
+        esp_ble_gap_stop_scanning();
+        bt_obj.scanning = false;
+        printf("Scanning stopped\n");
     }
 
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(addr, &bufinfo, MP_BUFFER_READ);
-    esp_ble_gattc_open(client_if, bufinfo.buf, true);
+
+    flush_event_queue();
     bt_obj.busy = true;
+    if (ESP_OK != esp_ble_gattc_open(client_if, bufinfo.buf, true)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+    }
 
     while (bt_obj.busy) {
-        vTaskDelay(50);
+        vTaskDelay(5 / portTICK_RATE_MS);
     }
 
-    if (bt_obj.conn_id < 0) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection refused"));
+    if (xQueueReceive(xScanQueue, &bt_event, (TickType_t)5)) {
+        if (bt_event.conn_id < 0) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection refused"));
+        }
+
+        // setup the object
+        bt_connection_obj_t *conn = m_new_obj(bt_connection_obj_t);
+        conn->base.type = (mp_obj_t)&mod_bt_connection_type;
+        conn->conn_id = bt_event.conn_id;
+        printf("conn id=%d\n", bt_event.conn_id);
+        mp_obj_list_append((void *)&bt_obj.conn_list, conn);
+        return conn;
     }
 
-    return mp_const_none;
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection failed"));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_connect_obj, bt_connect);
-
-STATIC mp_obj_t bt_isconnected(mp_obj_t self_in) {
-    if (bt_obj.conn_id > 0) {
-        return mp_const_true;
-    }
-    return mp_const_false;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_isconnected_obj, bt_isconnected);
-
-STATIC mp_obj_t bt_disconnect(mp_obj_t self_in) {
-    if (bt_obj.conn_id > 0) {
-        esp_ble_gattc_close(bt_obj.conn_id);
-        bt_obj.conn_id = -1;
-    }
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_disconnect_obj, bt_disconnect);
-
-STATIC mp_obj_t bt_get_services (mp_obj_t self_in) {
-    bt_event_result_t bt_event;
-
-    if (bt_obj.conn_id > 0) {
-        flush_event_queue();
-        bt_obj.busy = true;
-        esp_ble_gattc_search_service(bt_obj.conn_id, NULL);
-        mp_obj_t services = mp_obj_new_list(0, NULL);
-        while (bt_obj.busy || xQueuePeek(xScanQueue, &bt_event, 0)) {
-            while (xQueueReceive(xScanQueue, &bt_event, (TickType_t)50)) {
-                mp_obj_t srv;
-                if (bt_event.service.id.uuid.len == ESP_UUID_LEN_16) {
-                    srv = mp_obj_new_int(bt_event.service.id.uuid.uuid.uuid16);
-                } else if (bt_event.service.id.uuid.len == ESP_UUID_LEN_32) {
-                    srv = mp_obj_new_int(bt_event.service.id.uuid.uuid.uuid32);
-                } else {
-                    srv = mp_obj_new_bytes(bt_event.service.id.uuid.uuid.uuid128, ESP_UUID_LEN_128);
-                }
-                mp_obj_list_append(services, srv);
-            }
-        }
-        return services;
-    } else {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no device connected"));
-    }
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_get_services_obj, bt_get_services);
-
-STATIC mp_obj_t bt_get_characteristics (mp_obj_t self_in, mp_obj_t service) {
-    // bt_event_result_t bt_event;
-    esp_gatt_srvc_id_t srvc_id;
-
-    if (MP_OBJ_IS_STR_OR_BYTES(service)) {
-        mp_buffer_info_t bufinfo;
-        mp_get_buffer_raise(service, &bufinfo, MP_BUFFER_READ);
-        srvc_id.id.uuid.len = ESP_UUID_LEN_128;
-        memcpy(srvc_id.id.uuid.uuid.uuid128, bufinfo.buf, ESP_UUID_LEN_128);
-        esp_ble_gattc_get_characteristic(bt_obj.conn_id, &srvc_id, NULL);
-    } else {
-        uint32_t id = mp_obj_get_int(service);
-        if (id > 0xFFFF) {
-            srvc_id.id.uuid.len = ESP_UUID_LEN_32;
-            srvc_id.id.uuid.uuid.uuid32 = id;
-        } else {
-            srvc_id.id.uuid.len = ESP_UUID_LEN_16;
-            srvc_id.id.uuid.uuid.uuid16 = id;
-        }
-        esp_ble_gattc_get_characteristic(bt_obj.conn_id, &srvc_id, NULL);
-    }
-
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_get_characteristics_obj, bt_get_characteristics);
-
-
 
 STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                    (mp_obj_t)&bt_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_start_scan),              (mp_obj_t)&bt_start_scan_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_isscanning),              (mp_obj_t)&bt_isscanning_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_stop_scan),               (mp_obj_t)&bt_stop_scan_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_get_adv),                 (mp_obj_t)&bt_read_scan_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_resolve_adv_data),        (mp_obj_t)&bt_resolve_adv_data_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_connect),                 (mp_obj_t)&bt_connect_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_isconnected),             (mp_obj_t)&bt_isconnected_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect),              (mp_obj_t)&bt_disconnect_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_get_services),            (mp_obj_t)&bt_get_services_obj },
-    // { MP_OBJ_NEW_QSTR(MP_QSTR_get_characteristics),     (mp_obj_t)&bt_get_characteristics_obj },
 
     // constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_CONN_ADV),                MP_OBJ_NEW_SMALL_INT(ESP_BLE_EVT_CONN_ADV) },
@@ -527,18 +559,277 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_ADV_128SERVICE_DATA),     MP_OBJ_NEW_SMALL_INT(ESP_BLE_AD_TYPE_128SERVICE_DATA) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ADV_MANUFACTURER_DATA),   MP_OBJ_NEW_SMALL_INT(ESP_BLE_AD_MANUFACTURER_SPECIFIC_TYPE) },
 
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROP_BROADCAST),          MP_OBJ_NEW_SMALL_INT(ESP_GATT_CHAR_PROP_BIT_BROADCAST) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROP_READ),               MP_OBJ_NEW_SMALL_INT(ESP_GATT_CHAR_PROP_BIT_READ) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROP_WRITE_NR),           MP_OBJ_NEW_SMALL_INT(ESP_GATT_CHAR_PROP_BIT_WRITE_NR) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROP_WRITE),              MP_OBJ_NEW_SMALL_INT(ESP_GATT_CHAR_PROP_BIT_WRITE) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROP_NOTIFY),             MP_OBJ_NEW_SMALL_INT(ESP_GATT_CHAR_PROP_BIT_NOTIFY) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROP_INDICATE),           MP_OBJ_NEW_SMALL_INT(ESP_GATT_CHAR_PROP_BIT_INDICATE) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROP_AUTH),               MP_OBJ_NEW_SMALL_INT(ESP_GATT_CHAR_PROP_BIT_AUTH) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROP_EXT_PROP),           MP_OBJ_NEW_SMALL_INT(ESP_GATT_CHAR_PROP_BIT_EXT_PROP) },
 };
 STATIC MP_DEFINE_CONST_DICT(bt_locals_dict, bt_locals_dict_table);
 
 const mod_network_nic_type_t mod_network_nic_type_bt = {
     .base = {
         { &mp_type_type },
-        .name = MP_QSTR_BT,
+        .name = MP_QSTR_Bluetooth,
         .make_new = bt_make_new,
         .locals_dict = (mp_obj_t)&bt_locals_dict,
      },
 };
 
-///******************************************************************************/
-//// Micro Python bindings; BT socket
+STATIC mp_obj_t bt_conn_isconnected(mp_obj_t self_in) {
+    bt_connection_obj_t *self = self_in;
 
+    if (self->conn_id > 0) {
+        return mp_const_true;
+    }
+    return mp_const_false;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_conn_isconnected_obj, bt_conn_isconnected);
+
+STATIC mp_obj_t bt_conn_disconnect(mp_obj_t self_in) {
+    bt_connection_obj_t *self = self_in;
+
+    if (self->conn_id > 0) {
+        esp_ble_gattc_close(self->conn_id);
+        self->conn_id = -1;
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_conn_disconnect_obj, bt_conn_disconnect);
+
+STATIC mp_obj_t bt_conn_services (mp_obj_t self_in) {
+    bt_connection_obj_t *self = self_in;
+    bt_event_result_t bt_event;
+
+    if (self->conn_id > 0) {
+        flush_event_queue();
+        bt_obj.busy = true;
+        bt_obj.conn_id = self->conn_id;
+        mp_obj_list_init(&self->srv_list, 0);
+        if (ESP_OK != esp_ble_gattc_search_service(self->conn_id, NULL)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+        while (bt_obj.busy || xQueuePeek(xScanQueue, &bt_event, 0)) {
+            while (xQueueReceive(xScanQueue, &bt_event, (TickType_t)5)) {
+                bt_srv_obj_t *srv = m_new_obj(bt_srv_obj_t);
+                srv->base.type = (mp_obj_t)&mod_bt_service_type;
+                srv->connection = self;
+                memcpy(&srv->srv_id, &bt_event.service, sizeof(esp_gatt_srvc_id_t));
+                mp_obj_list_append(&self->srv_list, srv);
+            }
+        }
+        return &self->srv_list;
+    } else {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection already closed"));
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_conn_services_obj, bt_conn_services);
+
+STATIC const mp_map_elem_t bt_connection_locals_dict_table[] = {
+    // instance methods
+    { MP_OBJ_NEW_QSTR(MP_QSTR_isconnected),             (mp_obj_t)&bt_conn_isconnected_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect),              (mp_obj_t)&bt_conn_disconnect_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_services),                (mp_obj_t)&bt_conn_services_obj },
+
+};
+STATIC MP_DEFINE_CONST_DICT(bt_connection_locals_dict, bt_connection_locals_dict_table);
+
+static const mp_obj_type_t mod_bt_connection_type = {
+     { &mp_type_type },
+    .name = MP_QSTR_BluetoothConnection,
+    .locals_dict = (mp_obj_t)&bt_connection_locals_dict,
+};
+
+STATIC mp_obj_t bt_srv_isprimary(mp_obj_t self_in) {
+    bt_srv_obj_t *self = self_in;
+
+    if (self->srv_id.is_primary) {
+        return mp_const_true;
+    }
+    return mp_const_false;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_srv_isprimary_obj, bt_srv_isprimary);
+
+STATIC mp_obj_t bt_srv_uuid(mp_obj_t self_in) {
+    bt_srv_obj_t *self = self_in;
+
+    if (self->srv_id.id.uuid.len == ESP_UUID_LEN_16) {
+        return mp_obj_new_int(self->srv_id.id.uuid.uuid.uuid16);
+    } else if (self->srv_id.id.uuid.len == ESP_UUID_LEN_32) {
+        return mp_obj_new_int(self->srv_id.id.uuid.uuid.uuid32);
+    } else {
+        return mp_obj_new_bytes(self->srv_id.id.uuid.uuid.uuid128, ESP_UUID_LEN_128);
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_srv_uuid_obj, bt_srv_uuid);
+
+STATIC mp_obj_t bt_srv_instance(mp_obj_t self_in) {
+    bt_srv_obj_t *self = self_in;
+    return mp_obj_new_int(self->srv_id.id.inst_id);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_srv_instance_obj, bt_srv_instance);
+
+STATIC mp_obj_t bt_srv_characteristics(mp_obj_t self_in) {
+    bt_srv_obj_t *self = self_in;
+    bt_event_result_t bt_event;
+
+    if (self->connection->conn_id > 0) {
+        flush_event_queue();
+        bt_obj.busy = true;
+        bt_obj.conn_id = self->connection->conn_id;
+        mp_obj_list_init(&self->char_list, 0);
+        if (ESP_OK != esp_ble_gattc_get_characteristic(self->connection->conn_id, &self->srv_id, NULL)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+        while (bt_obj.busy || xQueuePeek(xScanQueue, &bt_event, 0)) {
+            while (xQueueReceive(xScanQueue, &bt_event, (TickType_t)5)) {
+                bt_char_obj_t *chr = m_new_obj(bt_char_obj_t);
+                chr->base.type = (mp_obj_t)&mod_bt_characteristic_type;
+                chr->service = self;
+                memcpy(&chr->characteristic.char_id, &bt_event.characteristic.char_id, sizeof(esp_gatt_id_t));
+                chr->characteristic.char_prop = bt_event.characteristic.char_prop;
+                mp_obj_list_append(&self->char_list, chr);
+            }
+        }
+        return &self->char_list;
+    } else {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection already closed"));
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_srv_characteristics_obj, bt_srv_characteristics);
+
+STATIC const mp_map_elem_t bt_service_locals_dict_table[] = {
+    // instance methods
+    { MP_OBJ_NEW_QSTR(MP_QSTR_isprimary),               (mp_obj_t)&bt_srv_isprimary_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_uuid),                    (mp_obj_t)&bt_srv_uuid_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_instance),                (mp_obj_t)&bt_srv_instance_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_characteristics),         (mp_obj_t)&bt_srv_characteristics_obj },
+};
+STATIC MP_DEFINE_CONST_DICT(bt_service_locals_dict, bt_service_locals_dict_table);
+
+static const mp_obj_type_t mod_bt_service_type = {
+    { &mp_type_type },
+    .name = MP_QSTR_BluetoothService,
+    .locals_dict = (mp_obj_t)&bt_service_locals_dict,
+};
+
+STATIC mp_obj_t bt_char_uuid(mp_obj_t self_in) {
+    bt_char_obj_t *self = self_in;
+
+    if (self->characteristic.char_id.uuid.len == ESP_UUID_LEN_16) {
+        return mp_obj_new_int(self->characteristic.char_id.uuid.uuid.uuid16);
+    } else if (self->characteristic.char_id.uuid.len == ESP_UUID_LEN_32) {
+        return mp_obj_new_int(self->characteristic.char_id.uuid.uuid.uuid32);
+    } else {
+        return mp_obj_new_bytes(self->characteristic.char_id.uuid.uuid.uuid128, ESP_UUID_LEN_128);
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_char_uuid_obj, bt_char_uuid);
+
+STATIC mp_obj_t bt_char_instance(mp_obj_t self_in) {
+    bt_char_obj_t *self = self_in;
+    return mp_obj_new_int(self->characteristic.char_id.inst_id);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_char_instance_obj, bt_char_instance);
+
+STATIC mp_obj_t bt_char_properties(mp_obj_t self_in) {
+    bt_char_obj_t *self = self_in;
+    return mp_obj_new_int(self->characteristic.char_prop);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_char_properties_obj, bt_char_properties);
+
+STATIC mp_obj_t bt_char_read(mp_obj_t self_in) {
+    bt_char_obj_t *self = self_in;
+    bt_event_result_t bt_event;
+
+    if (self->service->connection->conn_id > 0) {
+        flush_event_queue();
+        bt_obj.busy = true;
+        bt_obj.conn_id = self->service->connection->conn_id;
+
+        if (ESP_OK != esp_ble_gattc_read_char (self->service->connection->conn_id,
+                                               &self->service->srv_id,
+                                               &self->characteristic.char_id,
+                                               ESP_GATT_AUTH_REQ_NONE)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+        while (bt_obj.busy) {
+            vTaskDelay(5 / portTICK_RATE_MS);
+        }
+        if (xQueueReceive(xScanQueue, &bt_event, (TickType_t)5)) {
+            return mp_obj_new_bytes(bt_event.read.value, bt_event.read.value_len);
+        } else {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+    } else {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection already closed"));
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_char_read_obj, bt_char_read);
+
+STATIC mp_obj_t bt_char_write(mp_obj_t self_in, mp_obj_t value) {
+    bt_char_obj_t *self = self_in;
+    bt_event_result_t bt_event;
+
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(value, &bufinfo, MP_BUFFER_READ);
+
+    if (self->service->connection->conn_id > 0) {
+        flush_event_queue();
+        bt_obj.busy = true;
+        bt_obj.conn_id = self->service->connection->conn_id;
+
+        if (ESP_OK != esp_ble_gattc_write_char (self->service->connection->conn_id,
+                                                &self->service->srv_id,
+                                                &self->characteristic.char_id,
+                                                bufinfo.len,
+                                                bufinfo.buf,
+                                                ESP_GATT_WRITE_TYPE_NO_RSP,
+                                                ESP_GATT_AUTH_REQ_NONE)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+
+        while (bt_obj.busy) {
+            vTaskDelay(5 / portTICK_RATE_MS);
+        }
+        if (xQueueReceive(xScanQueue, &bt_event, (TickType_t)5)) {
+            if (bt_event.write.status != ESP_GATT_OK) {
+                goto error;
+            }
+        } else {
+            goto error;
+        }
+    }
+    return mp_const_none;
+
+error:
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_char_write_obj, bt_char_write);
+
+STATIC const mp_map_elem_t bt_characteristic_locals_dict_table[] = {
+    // instance methods
+    { MP_OBJ_NEW_QSTR(MP_QSTR_uuid),                    (mp_obj_t)&bt_char_uuid_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_instance),                (mp_obj_t)&bt_char_instance_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_properties),              (mp_obj_t)&bt_char_properties_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_read),                    (mp_obj_t)&bt_char_read_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_write),                   (mp_obj_t)&bt_char_write_obj },
+    // { MP_OBJ_NEW_QSTR(MP_QSTR_descriptors),             (mp_obj_t)&bt_char_descriptors_obj },
+    // { MP_OBJ_NEW_QSTR(MP_QSTR_subscribe),               (mp_obj_t)&bt_char_subscribe_obj },
+};
+STATIC MP_DEFINE_CONST_DICT(bt_characteristic_locals_dict, bt_characteristic_locals_dict_table);
+
+static const mp_obj_type_t mod_bt_characteristic_type = {
+    { &mp_type_type },
+    .name = MP_QSTR_BluetoothCharacteristic,
+    .locals_dict = (mp_obj_t)&bt_characteristic_locals_dict,
+};
+
+// static const mp_obj_type_t mod_bt_descriptor_type = {
+    // { &mp_type_type },
+    // .name = MP_QSTR_BT_DESCRIPTOR,
+    // .locals_dict = (mp_obj_t)&bt_descriptor_locals_dict,
+// };
