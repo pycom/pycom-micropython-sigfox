@@ -24,6 +24,7 @@
 #include "pycom_version.h"
 #include "timeutils.h"
 #include "machuart.h"
+#include "pybsd.h"
 #include "mpexception.h"
 
 /// \module os - basic "operating system" services
@@ -146,18 +147,18 @@ STATIC void mount (mp_obj_t device, const char *path, uint pathlen, bool readonl
     self->pathlen = pathlen;
     self->vol = os_num_mounted_devices + 1;     // '/flash' is volume 0
 
-//    if (device == (mp_obj_t)&pybsd_obj) {
-//        // need to make it different to NULL, otherwise it's read only by default
-//        self->writeblocks[0] = mp_const_none;
-//        self->sync[0] = MP_OBJ_NULL;    // no need to sync the SD card
-//        self->count[0] = MP_OBJ_NULL;
-//    } else {
+   if (device == (mp_obj_t)&pybsd_obj) {
+       // need to make it different to NULL, otherwise it's read only by default
+       self->writeblocks[0] = mp_const_none;
+       self->sync[0] = MP_OBJ_NULL;    // no need to sync the SD card
+       self->count[0] = MP_OBJ_NULL;
+   } else {
         // load block protocol methods
         mp_load_method(device, MP_QSTR_readblocks, self->readblocks);
         mp_load_method_maybe(device, MP_QSTR_writeblocks, self->writeblocks);
         mp_load_method_maybe(device, MP_QSTR_sync, self->sync);
         mp_load_method(device, MP_QSTR_count, self->count);
-//    }
+   }
 
     // Read-only device indicated by writeblocks[0] == MP_OBJ_NULL.
     // User can specify read-only device by:
@@ -487,16 +488,17 @@ STATIC mp_obj_t os_mkfs(mp_obj_t device) {
         unmt = true;
     }
 
-    byte options = FM_FAT32;
+    uint8_t options = FM_FAT;
     if (!memcmp(path, "/flash", strlen("/flash"))) {
-        options = FM_FAT;
         options |= FM_SFD;
-//    } else if ((mount_obj = osmount_find_by_path(path))) {
-//        if (mount_obj->device != (mp_obj_t)&pybsd_obj &&
-//            mp_obj_get_int(mp_call_method_n_kw(0, 0, mount_obj->count)) < 2048) {
-//            sfd = 1;
-//        }
-   }
+    } else if ((mount_obj = osmount_find_by_path(path))) {
+        if (mount_obj->device != (mp_obj_t)&pybsd_obj &&
+            mp_obj_get_int(mp_call_method_n_kw(0, 0, mount_obj->count)) < 32768) {
+            options |= FM_SFD;
+        } else {
+            options = FM_FAT32;
+        }
+    }
 
     // now format the device
     res = f_mkfs(path, options, 0, NULL, 0);

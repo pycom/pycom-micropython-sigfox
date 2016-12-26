@@ -12,18 +12,15 @@
 #include "py/mpconfig.h"
 #include "py/runtime.h"
 #include "py/obj.h"
+#include "driver/sdmmc_host.h"
+#include "driver/sdmmc_defs.h"
 #include "lib/fatfs/ff.h"
-#include "lib/fatfs/diskio.h"   /* FatFs lower layer API */
-#include "sflash_diskio.h"      /* Serial flash disk IO API */
-//#include "sd_diskio.h"          /* SDCARD disk IO API */
-//#include "inc/hw_types.h"
-//#include "inc/hw_ints.h"
-//#include "inc/hw_memmap.h"
-//#include "rom_map.h"
-//#include "prcm.h"
+#include "lib/fatfs/diskio.h"           // FatFs lower layer API
+#include "sflash_diskio.h"              // Serial flash disk IO API
+#include "sd_diskio.h"                  // SDCARD disk IO API
 //#include "pybrtc.h"
 //#include "timeutils.h"
-//#include "pybsd.h"
+#include "pybsd.h"
 #include "moduos.h"
 
 
@@ -31,20 +28,18 @@
 /* Get Drive Status                                                      */
 /*-----------------------------------------------------------------------*/
 
-DSTATUS disk_status (
-	BYTE pdrv		/* Physical drive number to identify the drive */
-)
+DSTATUS disk_status (BYTE pdrv) /* Physical drive number to identify the drive */
 {
     if (pdrv == PD_FLASH) {
         return sflash_disk_status();
-//    } else {
-//        os_fs_mount_t *mount_obj;
-//        if ((mount_obj = osmount_find_by_volume(pdrv))) {
-//            if (mount_obj->writeblocks[0] == MP_OBJ_NULL) {
-//                return STA_PROTECT;
-//            }
-//            return 0;
-//        }
+    } else {
+        os_fs_mount_t *mount_obj;
+        if ((mount_obj = osmount_find_by_volume(pdrv))) {
+            if (mount_obj->writeblocks[0] == MP_OBJ_NULL) {
+                return STA_PROTECT;
+            }
+            return 0;
+        }
     }
     return STA_NODISK;
 }
@@ -53,22 +48,20 @@ DSTATUS disk_status (
 /* Inidialize a Drive                                                    */
 /*-----------------------------------------------------------------------*/
 
-DSTATUS disk_initialize (
-	BYTE pdrv				/* Physical drive nmuber to identify the drive */
-)
+DSTATUS disk_initialize (BYTE pdrv) /* Physical drive number to identify the drive */
 {
     if (pdrv == PD_FLASH) {
         if (RES_OK != sflash_disk_init()) {
             return STA_NOINIT;
         }
-//    } else {
-//        os_fs_mount_t *mount_obj;
-//        if ((mount_obj = osmount_find_by_volume(pdrv))) {
-//            if (mount_obj->writeblocks[0] == MP_OBJ_NULL) {
-//                return STA_PROTECT;
-//            }
-//            return 0;
-//        }
+    } else {
+        os_fs_mount_t *mount_obj;
+        if ((mount_obj = osmount_find_by_volume(pdrv))) {
+            if (mount_obj->writeblocks[0] == MP_OBJ_NULL) {
+                return STA_PROTECT;
+            }
+            return 0;
+        }
     }
     return STA_NODISK;
 }
@@ -86,19 +79,19 @@ DRESULT disk_read (
 {
     if (pdrv == PD_FLASH) {
         return sflash_disk_read(buff, sector, count);
-//    } else {
-//        os_fs_mount_t *mount_obj;
-//        if ((mount_obj = osmount_find_by_volume(pdrv))) {
-//            // optimization for the built-in sd card device
-//            if (mount_obj->device == (mp_obj_t)&pybsd_obj) {
-//                return sd_disk_read(buff, sector, count);
-//            }
-//            mount_obj->readblocks[2] = MP_OBJ_NEW_SMALL_INT(sector);
-//            mount_obj->readblocks[3] = mp_obj_new_bytearray_by_ref(count * 512, buff);
-//            return mp_obj_get_int(mp_call_method_n_kw(2, 0, mount_obj->readblocks));
-//        }
-//        // nothing mounted
-//        return RES_ERROR;
+    } else {
+       os_fs_mount_t *mount_obj;
+       if ((mount_obj = osmount_find_by_volume(pdrv))) {
+           // optimization for the built-in sd card device
+           if (mount_obj->device == (mp_obj_t)&pybsd_obj) {
+               return sd_disk_read(buff, sector, count);
+           }
+           mount_obj->readblocks[2] = MP_OBJ_NEW_SMALL_INT(sector);
+           mount_obj->readblocks[3] = mp_obj_new_bytearray_by_ref(count * 512, buff);
+           return mp_obj_get_int(mp_call_method_n_kw(2, 0, mount_obj->readblocks));
+       }
+       // nothing mounted
+       return RES_ERROR;
     }
     return RES_PARERR;
 }
@@ -117,19 +110,19 @@ DRESULT disk_write (
 {
     if (pdrv == PD_FLASH) {
         return sflash_disk_write(buff, sector, count);
-//    } else {
-//        os_fs_mount_t *mount_obj;
-//        if ((mount_obj = osmount_find_by_volume(pdrv))) {
-//            // optimization for the built-in sd card device
-//            if (mount_obj->device == (mp_obj_t)&pybsd_obj) {
-//                return sd_disk_write(buff, sector, count);
-//            }
-//            mount_obj->writeblocks[2] = MP_OBJ_NEW_SMALL_INT(sector);
-//            mount_obj->writeblocks[3] = mp_obj_new_bytearray_by_ref(count * 512, (void *)buff);
-//            return mp_obj_get_int(mp_call_method_n_kw(2, 0, mount_obj->writeblocks));
-//        }
-//        // nothing mounted
-//        return RES_ERROR;
+    } else {
+       os_fs_mount_t *mount_obj;
+       if ((mount_obj = osmount_find_by_volume(pdrv))) {
+           // optimization for the built-in sd card device
+           if (mount_obj->device == (mp_obj_t)&pybsd_obj) {
+               return sd_disk_write(buff, sector, count);
+           }
+           mount_obj->writeblocks[2] = MP_OBJ_NEW_SMALL_INT(sector);
+           mount_obj->writeblocks[3] = mp_obj_new_bytearray_by_ref(count * 512, (void *)buff);
+           return mp_obj_get_int(mp_call_method_n_kw(2, 0, mount_obj->writeblocks));
+       }
+       // nothing mounted
+       return RES_ERROR;
     }
     return RES_PARERR;
 }
@@ -161,33 +154,33 @@ DRESULT disk_ioctl (
             *((DWORD*)buff) = 1; // high-level sector erase size in units of the block size
             return RES_OK;
         }
-//    } else {
-//        os_fs_mount_t *mount_obj;
-//        if ((mount_obj = osmount_find_by_volume(pdrv))) {
-//            switch (cmd) {
-//            case CTRL_SYNC:
-//                if (mount_obj->sync[0] != MP_OBJ_NULL) {
-//                    mp_call_method_n_kw(0, 0, mount_obj->sync);
-//                }
-//                return RES_OK;
-//            case GET_SECTOR_COUNT:
-//                // optimization for the built-in sd card device
-//                if (mount_obj->device == (mp_obj_t)&pybsd_obj) {
-//                    *((DWORD*)buff) = sd_disk_info.ulNofBlock * (sd_disk_info.ulBlockSize / 512);
-//                } else {
-//                    *((DWORD*)buff) = mp_obj_get_int(mp_call_method_n_kw(0, 0, mount_obj->count));
-//                }
-//                return RES_OK;
-//            case GET_SECTOR_SIZE:
-//                *((DWORD*)buff) = SD_SECTOR_SIZE;  // Sector size is fixed to 512 bytes, as with SD cards
-//                return RES_OK;
-//            case GET_BLOCK_SIZE:
-//                *((DWORD*)buff) = 1; // high-level sector erase size in units of the block size
-//                return RES_OK;
-//            }
-//        }
-//        // nothing mounted
-//        return RES_ERROR;
+    } else {
+       os_fs_mount_t *mount_obj;
+       if ((mount_obj = osmount_find_by_volume(pdrv))) {
+           switch (cmd) {
+           case CTRL_SYNC:
+               if (mount_obj->sync[0] != MP_OBJ_NULL) {
+                   mp_call_method_n_kw(0, 0, mount_obj->sync);
+               }
+               return RES_OK;
+           case GET_SECTOR_COUNT:
+               // optimization for the built-in sd card device
+               if (mount_obj->device == (mp_obj_t)&pybsd_obj) {
+                   *((DWORD*)buff) = sdmmc_card_info.csd.capacity;
+               } else {
+                   *((DWORD*)buff) = mp_obj_get_int(mp_call_method_n_kw(0, 0, mount_obj->count));
+               }
+               return RES_OK;
+           case GET_SECTOR_SIZE:
+               *((DWORD*)buff) = SD_SECTOR_SIZE;  // Sector size is fixed to 512 bytes, as with SD cards
+               return RES_OK;
+           case GET_BLOCK_SIZE:
+               *((DWORD*)buff) = 1; // high-level sector erase size in units of the block size
+               return RES_OK;
+           }
+       }
+       // nothing mounted
+       return RES_ERROR;
    }
     return RES_PARERR;
 }

@@ -58,3 +58,51 @@ void app_main(void) {
 int ets_printf_dummy(const char *fmt, ...) {
     return 0;
 }
+
+
+// #include <stdio.h>
+// #include <stdlib.h>
+// #include <string.h>
+// #include "driver/gpio.h"
+// #include "sdmmc_cmd.h"
+// #include "sdmmc_req.h"
+// #include "esp_log.h"
+// #include "esp_heap_alloc_caps.h"
+
+// #include "freertos/FreeRTOS.h"
+// #include "freertos/task.h"
+// #include "freertos/semphr.h"
+// #include "freertos/queue.h"
+// #include "freertos/timers.h"
+// #include "freertos/xtensa_api.h"
+
+
+// static void print_card_info(const sdmmc_card_info_t* card) {
+//     printf("Card name: %s\n", card->cid.name);
+//     printf("Card CSD: ver=%d, flags=%x, sector_size=%d, capacity=%d read_bl_len=%d\n",
+//             card->csd.csd_ver, card->ocr & SD_OCR_SDHC_CAP,
+//             card->csd.sector_size, card->csd.capacity, card->csd.read_block_len);
+//     printf("SCR: sd_spec=%d, bus_width=%d\n", card->scr.sd_spec, card->scr.bus_width);
+// }
+
+// void test_sd(void)
+// {
+//     sdmmc_req_init();
+//     sdmmc_init_config_t config = {
+//             .flags = SDMMC_FLAG_1BIT,
+//             .slot = SDMMC_SLOT_1,
+//             .max_freq_khz = 20000,
+//             .io_voltage = 3.3f
+//     };
+//     sdmmc_card_info_t* card = malloc(sizeof(sdmmc_card_info_t));
+//     sdmmc_card_init(&config, card);
+//     print_card_info(card);
+//     sdmmc_req_deinit();
+//     free(card);
+// }
+
+// void app_main(void) {
+//     vTaskDelay(1000);
+//     // create the MicroPython task
+//     test_sd();
+// }

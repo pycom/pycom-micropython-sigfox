@@ -38,6 +38,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/nvs_flash/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/spi_flash/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/tcpip_adapter/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/log/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/sdmmc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/device/include
@@ -116,6 +117,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	analog.c \
 	pybadc.c \
 	pybdac.c \
+	pybsd.c \
 	modussl.c \
 	modbt.c \
 	)
@@ -145,6 +147,7 @@ APP_UTIL_SRC_C = $(addprefix util/,\
 
 APP_FATFS_SRC_C = $(addprefix fatfs/src/,\
 	drivers/sflash_diskio.c \
+	drivers/sd_diskio.c \
 	option/syscall.c \
 	diskio.c \
 	ffconf.c \
