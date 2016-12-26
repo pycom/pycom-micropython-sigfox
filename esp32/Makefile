@@ -45,7 +45,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        -lfreertos -ljson -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lxtensa-debug-module -lethernet -lbt
 
-B_LIBS = -Lbootloader/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(BUILD)/bootloader \
+B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader \
          -L$(ESP_IDF_COMP_PATH)/esp32/lib -Lbootloader -llog -lcore -lbootloader_support \
          -lspi_flash
 
