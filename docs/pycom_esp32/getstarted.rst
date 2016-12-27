@@ -85,7 +85,8 @@ first time. Please follow these steps:
 
 That’s it for the first time configuration. In the lower portion of the screen,
 you should see the console, with the connection process taking place. At the
-end of it, you’ll get a colored ``>>>`` prompt, indicating that you are connected:
+end of it, you’ll get a 'connected' message and a colored ``>>>`` prompt, 
+indicating that you are connected:
 
 .. image:: images/pymakr-repl.png
     :alt: Pymakr REPL
