@@ -163,17 +163,4 @@ the system is alive. This can be overridden through the :mod:`pycom` module::
    >>> pycom.heartbeat(False)
    >>> pycom.rgbled(0xff00)           # turn on the RGB LED in green color
 
-The heartbeat LED is also used to indicate that an error was detected:
-
-
-... 
-.. WLAN default behaviour
-.. ----------------------
-
-.. When the LoPy boots with the default factory configuration, it' starts in Access Point mode',
-.. and it's ``ssid`` that starts with: ``lopy-wlan`` and ``key: www.pycom.io``.
-.. Connect to this network and the LoPy will be reachable at ``192.168.4.1``. In order
-.. to gain access to the interactive prompt, open a telnet session to that IP address on
-.. the default port (23). You will be asked for credentials:
-.. ``login: micro`` and ``password: python``
-
+The heartbeat LED is also used to indicate that an error was detected.

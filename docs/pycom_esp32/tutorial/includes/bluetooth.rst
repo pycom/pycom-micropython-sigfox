@@ -51,4 +51,4 @@ Using :ref:`resolve_adv_data <network.bluetooth.resolve_adv_data>` to get more i
 	        print(bluetooth.resolve_adv_data(adv.data, Bluetooth.ADV_NAME_CMPL))
 
 	        # try to get the manufacturer data (Apple's iBeacon data is sent here)
-	        print(binascii.hexlify(bluetooth.resolve_adv_data(adv.data, Bluetooth.ADV_MANUFACTURER_DATA))
+	        print(binascii.hexlify(bluetooth.resolve_adv_data(adv.data, Bluetooth.ADV_MANUFACTURER_DATA)))
