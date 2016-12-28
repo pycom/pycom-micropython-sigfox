@@ -9,11 +9,11 @@ Do you have your basic setup working? Then it's time to look at all the ways you
 
 Contents
 
-- :ref:`What's under the hood <under_the_hood>`
-- :ref:`Pymakr IDE <pymakr_ide>`
-- :ref:`Telnet REPL <telnet_repl>`
-- :ref:`Local file system and FTP access <pycom_filesystem>`
-- :ref:`Boot modes and safe boot <safeboot>`
+- :ref:`2.2 What's under the hood <under_the_hood>`
+- :ref:`2.3 Pymakr IDE <pymakr_ide>`
+- :ref:`2.4 Telnet REPL <telnet_repl>`
+- :ref:`2.5 Local file system and FTP access <pycom_filesystem>`
+- :ref:`2.6 Boot modes and safe boot <safeboot>`
 
 
 .. _under_the_hood:
@@ -51,9 +51,7 @@ For all available modules and libraries, please visit the :ref:`Firmware API Ref
 Datasheets
 ----------
 
-If you want to find out how things are connected, visit the :ref:`datasheets section <datasheets>`. Here you'll find data
-
-
+If you want to find out how things are connected, visit the :ref:`datasheets section <datasheets>`. Here you'll find the datasheets for all of our products.
 
 
 .. _pymakr_ide:
@@ -63,7 +61,7 @@ If you want to find out how things are connected, visit the :ref:`datasheets sec
 .. _telnet_repl:
 
 2.4 Telnet REPL
-===========
+===============
 
 To connect to the Telnet REPL we recommend the usage of Linux or OS X stock telnet, although
 other tools like Putty are also compatible. The default credentials are: **user:** ``micro``,
@@ -73,10 +71,18 @@ For instance, on a linux shell (when connected to the LoPy in AP mode)::
 
    $ telnet 192.168.4.1
 
+The following control commands are available in REPL:
+
+- ``Ctrl-A`` on a blank line will enter raw REPL mode. This is like a permanent paste mode, except that characters are not echoed back.
+- ``Ctrl-B`` on a blank like goes to normal REPL mode.
+- ``Ctrl-C`` cancels any input, or interrupts the currently running code.
+- ``Ctrl-D`` on a blank line will do a soft reset.
+- ``Ctrl-E`` enters 'paste mode' that allows you to copy and paste chuncks of text. Finish using ``Ctrl-d``
+
 .. _pycom_filesystem:
 
 2.5 Local file system and FTP access
-================================
+====================================
 
 There is a small internal file system (a drive) on the LoPy, called ``/flash``,
 which is stored within the external serial flash memory.  If a micro SD card

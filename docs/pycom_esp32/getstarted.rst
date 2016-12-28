@@ -108,10 +108,19 @@ Please download the appropriate one and follow the instructions on the screen.
 
 .. #todo: add support for people without expansion boards
 
+.. _micropython_intro:
+
+1.4 Micropython Introduction
+============================
+
+Our boards work with `Micropython <https://micropython.org/>`_, which is a Python 3 implementation that is optimised to run on micocontrollers. This allows for much faster and easyer development than using C. 
+
+When booting, two files are executed: first boot.py and then main.py. These are placed in the /flash folder on the board. Any other files or libraries can be placed here as well, and included or used from boot.py or main.py.
+
 
 .. _connecting_using_pymakr:
 
-1.4 Connecting your board using Pymakr
+1.5 Connecting your board using Pymakr
 ==================================
 
 To make it as easy as possible, we developed Pymakr, a tool that will allow you
@@ -171,12 +180,11 @@ these steps on macOS (it is similar for other operating systems).
     height="385"></embed></object>
     </div>
     
-    
 
 Pycom Console
 -------------
 
-To start coding, simply go to the Pycom Console and type your code. Lets try to make the LED light up
+To start coding, simply go to the Pycom Console and type your code. Lets try to make the LED light up.
 
 .. code:: python
 
@@ -185,11 +193,31 @@ To start coding, simply go to the Pycom Console and type your code. Lets try to 
     pycom.rgbled(0x00ff00) # make the LED light up in green color
 
 
-Change the color by 
+Change the color by adjusting the hex RGB value
 
 .. code:: python
 
     pycom.rgbled(0xff0000) # now make the LED light up in red color
+
+
+The console can be used to run any python code, also functions or loops. Simply copy-paste it into the console or type it manually. Note that after writing or pasting any indented code like a function or a while loop, you’ll have to press enter up to three times to tell MicroPython that you’re closing the code (this is standard MicroPython behavior). 
+
+
+.. image:: images/pymakr-repl-while.png
+    :alt: Pymakr REPL while-loop
+    :align: center
+    :scale: 100 %
+
+
+Use ``print()`` to output contents of variables to the console for you to read. Returned values from functions will also be displayed if they are not caught in a variable. This will not happen for code running from the main or boot files. Here you need to use ``print()`` to output to the console.
+
+A few pycom-console features you can use:
+
+- ``Input history``: use arrow up and arrow down to scroll through the history
+- ``Tab completion``: press tab to auto-complete variables or module names
+- ``Stop any running code``: with ctrl-c
+- ``Copy/paste code or output``: ctrl-c and ctrl-v (cmd-c and cmd-v for mac)
+
 
 
 Creating a project
@@ -199,7 +227,12 @@ Pymakr has a feature to sync and run your code on your device. This is mostly do
 
 - In Pymakr, go to Project > New project.
 - Give it a name and select a folder for your project, either a new of existing one.
-- Now you are ready to place your own code. Most users, especially WiPy users, would want a wifi script in the boot.py file. The following coe does this. Leave the existing REPL code on the top. (More information on REPL can be found on :ref:`this page <pycom_repl>` in the tutorials seciton)
+- Create two files: main.py and boot.py, if you don't already have those. 
+
+.. note::
+    You can also :ref:`use FTP <pycom_filesystem>` to download boot.py and main.py from the board to your project folder, after which you can right-click the project viewer and use the 'add source files' option to add them to your project.
+
+The boot.py file should always have the following code on the top, so we can run our python scripts over serial or telnet:
 
 .. code:: python
     
@@ -208,20 +241,24 @@ Pymakr has a feature to sync and run your code on your device. This is mostly do
     uart = UART(0, 115200)
     os.dupterm(uart)
 
-    from network import WLAN
-    wlan = WLAN(mode=WLAN.STA)
 
-    nets = wlan.scan()
-    for net in nets:
-        if net.ssid == 'mywifi':
-            print('Network found!')
-            wlan.connect(net.ssid, auth=(net.sec, 'mywifikey'), timeout=5000)
-            while not wlan.isconnected():
-                machine.idle() # save power while waiting
-            print('WLAN connection succeeded!')
-            break
+Most users, especially WiPy users, would want a wifi script in the boot.py file. A basic wifi script but also more advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`Wifi Examples <wlan_step_by_step>` chapter. 
 
-More advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`Wifi Examples <wlan_step_by_step>` chapter. 
+Besides the neccesary main.py and boot.py files, you can create any folders and python files or libraries that you want to include in your main file. Pymakr will synchronize all files in the project to the board when using the sync button. 
+
+Without creating a project
+--------------------------
+
+If you just want to test some code on the module, you can create a new file or open an existing one and press the 'run' button.
+
+
+.. Warning::
+    
+    The changes you make to your file won't be automatically saved to the device on execution.
+
+
+Coding basics
+-------------
 
 For fun, lets try again to build a traffic light. Add the following code to the main.py file:
 
@@ -248,25 +285,12 @@ Here is the expected result:
     :align: center
     :scale: 60 %
 
-
-You now have a traffic light in your hands! To stop it, just do a right click
-on the console and press ``Reset`` or use ctrl-c.
-
+You now have a traffic light in your hands! To stop a running program, use ctrl-c or do a right click
+on the console and press ``Reset``. You can also reboot the board by 
+pressing the physical reset button.
 
 .. Warning::
-
-    While the module is busy executing code, Pymakr cannot control it. You can regain control of it by right clicking in the console and pressing Reset, or phisically press the reset button.
     If your board is running code at boot time, you might need to boot it in :ref:`safe mode <safeboot>`.
 
-.. #todo: add link to safeboot
 
 
-Without creating a project
---------------------------
-
-If you just want to test some code on the module, you can create a new file or open an existing one and press the 'run' button.
-
-
-.. Warning::
-    
-    The changes you make to your file won't be automatically saved to the device on execution.

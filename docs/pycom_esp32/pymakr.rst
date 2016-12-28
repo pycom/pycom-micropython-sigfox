@@ -3,7 +3,7 @@
 2.3 Pymakr
 ==========
 
-Here are some basic tips on how to further use Pymakr to upload code to your modules. You can `download Pymakr here <https://www.pycom.io/solutions/pymakr/>`_.
+Here are some basic tips on how to further use Pymakr to upload code to your modules. You can download Pymakr `here <https://www.pycom.io/solutions/pymakr/>`_.
 
 You can find the code on github:
 
@@ -59,6 +59,44 @@ on the console and press ``Reset`` or use ctrl-c.
 
 If you just want to test some code on the module without creating a Project, you can create a new file or open an existing one and press the 'run' button. 
 Note that the changes you make to your file won't be automatically saved to the device on execution.
+
+Pycom Console
+-------------
+
+To start coding, simply go to the Pycom Console and type your code. Lets try to make the LED light up.
+
+.. code:: python
+
+    import pycom # we need this module to control the LED
+    pycom.heartbeat(False) # disable the blue blinking
+    pycom.rgbled(0x00ff00) # make the LED light up in green color
+
+
+Change the color by adjusting the hex RGB value
+
+.. code:: python
+
+    pycom.rgbled(0xff0000) # now make the LED light up in red color
+
+
+The console can be used to run any python code, also functions or loops. Simply copy-paste it into the console or type it manually. Note that after writing or pasting any indented code like a function or a while loop, you’ll have to press enter up to three times to tell MicroPython that you’re closing the code (this is standard MicroPython behavior). 
+
+
+.. image:: images/pymakr-repl-while.png
+    :alt: Pymakr REPL while-loop
+    :align: center
+    :scale: 100 %
+
+
+Use ``print()`` to output contents of variables to the console for you to read. Returned values from functions will also be displayed if they are not caught in a variable. This will not happen for code running from the main or boot files. Here you need to use ``print()`` to output to the console.
+
+A few pycom-console features you can use:
+
+- ``Input history``: use arrow up and arrow down to scroll through the history
+- ``Tab completion``: press tab to auto-complete variables or module names
+- ``Stop any running code``: with ctrl-c
+- ``Copy/paste code or output``: ctrl-c and ctrl-v (cmd-c and cmd-v for mac)
+
 
 
 Connecting your board using Pymakr
