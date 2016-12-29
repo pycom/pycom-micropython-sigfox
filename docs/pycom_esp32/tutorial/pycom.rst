@@ -5,7 +5,6 @@
 .. toctree::
    :maxdepth: 1
 
-   includes/reset.rst
    includes/repl.rst
    includes/wlan.rst
    includes/bluetooth.rst

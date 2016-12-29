@@ -89,22 +89,21 @@ Download the upgrader tool :ref:`upgrader tool<firmware_upgrade>`
 and follow the instructions on screen.
 
 
-.. warning::
-
-    Until further notice, :ref:`firmware upgrade<firmware_upgrade>` is required. 
-
-    
-After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
-programs in your device. 
-
 We strongly recommend you to upgrade your firmware to the latest version. Here
-are the download links to the update tool:
+are the download links to the update tool. Please download the appropriate one for 
+your OS and follow the instructions on the screen.
 
 - `Windows <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=win32&redirect=true>`_.
 - `MacOS <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=macos&redirect=true>`_ (10.11 or higher).
 - `Linux <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=unix&redirect=true>`_ (requires dialog package).
 
-Please download the appropriate one and follow the instructions on the screen.
+After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
+programs in your device. 
+
+.. warning::
+
+    Make sure the TX jumper is present on your expansion board, as the jumpers sometimes come loose in the box during transport. Without this jumper, the updater will fail.
+
 
 .. #todo: add support for people without expansion boards
 
@@ -113,9 +112,15 @@ Please download the appropriate one and follow the instructions on the screen.
 1.4 Micropython Introduction
 ============================
 
-Our boards work with `Micropython <https://micropython.org/>`_, which is a Python 3 implementation that is optimised to run on micocontrollers. This allows for much faster and easyer development than using C. 
+Our boards work with `Micropython <https://micropython.org/>`_; a Python 3 implementation that is optimised to run on micocontrollers. This allows for much faster and easier development than using C. 
 
-When booting, two files are executed: first boot.py and then main.py. These are placed in the /flash folder on the board. Any other files or libraries can be placed here as well, and included or used from boot.py or main.py.
+When booting, two files are executed automatically: first boot.py and then main.py. These are placed in the /flash folder on the board. Any other files or libraries can be placed here as well, and included or used from boot.py or main.py. 
+
+The folder structure in /flash looks like the picture below. The files can be managed either using :ref:`FTP <pycom_filesystem>` or using :ref:`Pymakr <pymakr_ide>`.
+
+.. image:: images/wipy-files-ftp.png
+    :alt: File structure
+    :align: center
 
 
 .. _connecting_using_pymakr:
@@ -127,6 +132,8 @@ To make it as easy as possible, we developed Pymakr, a tool that will allow you
 to connect to and program your Pycom devices. We’re going to use it in this
 section to give you a quick taste of how you can work with your device. You can
 download Pymakr from `here <https://www.pycom.io/solutions/pymakr/>`_.
+
+More extended info on pymakr can be found under Tools & Features in chapter :ref:`2.3 Pymakr <pymakr_ide>`
 
 Initial configuration
 ---------------------
@@ -219,7 +226,6 @@ A few pycom-console features you can use:
 - ``Copy/paste code or output``: ctrl-c and ctrl-v (cmd-c and cmd-v for mac)
 
 
-
 Creating a project
 ------------------
 
@@ -291,6 +297,4 @@ pressing the physical reset button.
 
 .. Warning::
     If your board is running code at boot time, you might need to boot it in :ref:`safe mode <safeboot>`.
-
-
 

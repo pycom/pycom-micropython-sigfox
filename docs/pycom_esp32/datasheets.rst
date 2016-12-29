@@ -12,13 +12,6 @@
 .. include:: datasheets/expansionboard.rst
 
 
-.. .. toctree::
-..     :maxdepth: 1
-
-..     datasheets/wipy2.rst
-..     datasheets/lopy.rst
-..     datasheets/expansionboard.rst
-
 5.4 Powering by an external power source
 ====================================
 

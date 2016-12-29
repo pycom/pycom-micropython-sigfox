@@ -11,7 +11,7 @@ Contents
 
 - :ref:`2.2 What's under the hood <under_the_hood>`
 - :ref:`2.3 Pymakr IDE <pymakr_ide>`
-- :ref:`2.4 Telnet REPL <telnet_repl>`
+- :ref:`2.4 REPL over Telnet and Serial <repl>`
 - :ref:`2.5 Local file system and FTP access <pycom_filesystem>`
 - :ref:`2.6 Boot modes and safe boot <safeboot>`
 
@@ -45,31 +45,47 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :class:`SD` (coming soon)
 
 Click the links in the list above to see more details on that feature. 
-
-For all available modules and libraries, please visit the :ref:`Firmware API Reference <firmware_api_reference>` section.
+For all available modules and libraries, please visit the :ref:`Firmware API 
+Reference <firmware_api_reference>` section.
 
 Datasheets
 ----------
 
-If you want to find out how things are connected, visit the :ref:`datasheets section <datasheets>`. Here you'll find the datasheets for all of our products.
+If you want to find out how things are connected, visit the :ref:`datasheets 
+section <datasheets>`. Here you'll find the datasheets for all of our products.
 
 
 .. _pymakr_ide:
 
 .. include:: pymakr.rst
 
-.. _telnet_repl:
+.. _repl:
 
-2.4 Telnet REPL
-===============
+2.4 REPL over Telnet and Serial
+===============================
 
-To connect to the Telnet REPL we recommend the usage of Linux or OS X stock telnet, although
-other tools like Putty are also compatible. The default credentials are: **user:** ``micro``,
-**password:** ``python``.
-See :ref:`network.server <network.server>` for info on how to change the defaults.
-For instance, on a linux shell (when connected to the LoPy in AP mode)::
+REPL stands for Read Evaluate Print Loop, and is the name given to the interactive MicroPython prompt that you can access on the LoPy. Using the REPL is by far the easiest way to test out your code and run commands. You can use the REPL in addition to writing scripts in ``main.py``.
 
-   $ telnet 192.168.4.1
+.. _pycom_uart:
+
+To use the REPL, you must connect to the LoPy either via ``telnet``,
+or with a USB to serial converter wired to one of the two UARTs on the
+LoPy. When using the REPL over telnet, authentication is needed. The default credentials are: 
+- **user:** ``micro``
+- **password:** ``python``
+See :class:`network.server <.Server>` for info on how to change the defaults.
+
+To enable REPL duplication on UART0 (the one accessible via the expansion board)
+do::
+
+   >>> from machine import UART
+   >>> import os
+   >>> uart = UART(0, 115200)
+   >>> os.dupterm(uart)
+
+
+Place this piece of code inside your `boot.py` so that it's done automatically after
+reset. The WiPy 2.0 and LoPy already have this code in the boot.py file by default.
 
 The following control commands are available in REPL:
 
@@ -78,6 +94,53 @@ The following control commands are available in REPL:
 - ``Ctrl-C`` cancels any input, or interrupts the currently running code.
 - ``Ctrl-D`` on a blank line will do a soft reset.
 - ``Ctrl-E`` enters 'paste mode' that allows you to copy and paste chuncks of text. Finish using ``Ctrl-d``
+
+Instructions on how to connect can be found in the two chapters below. A small tutorial on :ref:`how to use the REPL <repl_tutorial>` is available in chapter :ref:`3. Tutorials and Examples`
+
+Mac OS X and Linux
+-------------------
+
+Open a terminal and run::
+
+    $ telnet 192.168.4.1
+
+or::
+
+    $ screen /dev/tty.usbmodem* 115200
+
+When you are finished and want to exit ``screen``, type CTRL-A CTRL-\\. If your keyboard does not have a \\-key (i.e. you need an obscure combination for \\ like ALT-SHIFT-7) you can remap the ``quit`` command:
+
+- create ``~/.screenrc``
+- add ``bind q quit``
+
+This will allow you to quit ``screen`` by hitting CTRL-A Q.
+
+On Linux, you can also try ``picocom`` or ``minicom`` instead of screen.  You may have to
+use ``/dev/ttyUSB01`` or a higher number for ``ttyUSB``.  And, you may need to give
+yourself the correct permissions to access this devices (eg group ``uucp`` or ``dialout``,
+or use sudo).
+
+Windows (PuTTY)
+---------------
+
+First you need to install the FTDI drivers for the expansion board's USB to serial
+converter. Then you need a terminal software. The best option is to download the
+free program PuTTY: `putty.exe <http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html>`_.
+
+**In order to get to the telnet REPL:**
+
+Using putty, select ``Telnet`` as connection type, leave the default port (23)
+and enter the IP address of your device (192.168.4.1 when in ``WLAN.AP`` mode),
+then click open.
+
+**In order to get to the REPL UART:**
+
+Using your serial program you must connect to the COM port that you found in the
+previous step.  With PuTTY, click on "Session" in the left-hand panel, then click
+the "Serial" radio button on the right, then enter you COM port (eg COM4) in the
+"Serial Line" box.  Finally, click the "Open" button.
+
+
 
 .. _pycom_filesystem:
 
@@ -96,7 +159,7 @@ Open your FTP client of choice and connect to:
 
 **url:** ``ftp://192.168.4.1``, **user:** ``micro``, **password:** ``python``
 
-See :ref:`network.server <network.server>` for info on how to change the defaults.
+See :class:`network.server <.Server>` for info on how to change the defaults.
 The recommended clients are: Linux stock FTP (also on OS X), Filezilla and FireFTP.
 For example, on a linux terminal::
 
@@ -123,7 +186,7 @@ data connections are possible. Other FTP clients might behave in a similar way.
 .. _safeboot:
 
 2.6 Boot modes and safe boot
-========================
+============================
 
 If you power up normally, or press the reset button, the LoPy will boot
 into standard mode; the ``boot.py`` file will be executed first, then
@@ -159,8 +222,45 @@ useful to recover from crash situations caused by the user scripts. The selectio
 made during safe boot is not persistent, therefore after the next normal reset
 the latest firmware will run again.
 
+If you have problems with the filesystem you can :ref:`format the internal flash
+drive <pycom_factory_reset>`.
+
+Reset
+-----
+
+There are soft resets and hard resets.
+
+A soft reset simply clears the state of the MicroPython virtual machine,
+but leaves hardware peripherals unaffected. To do a soft reset, simply press
+**Ctrl+D** on the REPL, or within a script do::
+
+   >>> import sys
+   >>> sys.exit()
+
+A hard reset is the same as performing a power cycle to the board. In order to
+hard reset the LoPy, press the switch on the board or::
+
+   >>> import machine
+   >>> machine.reset()
+
+.. _pycom_factory_reset:
+
+Factory reset the filesystem
+----------------------------
+
+If you device's filesystem gets corrupted (very unlikely, but possible), you
+can format it very easily by doing::
+
+   >>> import os
+   >>> os.mkfs('/flash')
+
+Resetting the `flash` filesystem deletes all files inside the internal LoPy
+storage (not the SD card), and restores the files ``boot.py`` and ``main.py``
+back to their original states after the next reset.
+
+
 2.7 The heartbeat LED
-=================
+=====================
 
 By default the heartbeat LED flashes in blue color once every 4s to signal that
 the system is alive. This can be overridden through the :mod:`pycom` module::
@@ -170,3 +270,5 @@ the system is alive. This can be overridden through the :mod:`pycom` module::
    >>> pycom.rgbled(0xff00)           # turn on the RGB LED in green color
 
 The heartbeat LED is also used to indicate that an error was detected.
+
+

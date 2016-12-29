@@ -3,7 +3,8 @@
 2.3 Pymakr
 ==========
 
-Here are some basic tips on how to further use Pymakr to upload code to your modules. You can download Pymakr `here <https://www.pycom.io/solutions/pymakr/>`_.
+Here are some basic tips on how to further use Pymakr to upload code to your modules. 
+You can download Pymakr `here <https://www.pycom.io/solutions/pymakr/>`_.
 
 You can find the code on github:
 
@@ -17,11 +18,76 @@ So far, one plugin has been created for Pymaker. We hope this list will expand i
 Creating a project
 ------------------
 
-Pymakr has a feature to sync and run your code on your device. This is mostly done using projects. The following steps will get you started.
+Pymakr has a feature to sync and run your code on your device. This is mostly done 
+using projects. The following steps will get you started.
 
-#. In Pymakr, go to Project > New project.
-#. Give it a name and select a folder for your project, either a new of existing one.
-#. Now you are ready to place your own code. For fun, lets try again to build a traffic light. Add the following code to the main.py file:
+- In Pymakr, go to Project > New project.
+- Give it a name and select a folder for your project, either a new of existing one.
+- Create two files: main.py and boot.py, if you don't already have those. 
+
+.. note::
+    You can also :ref:`use FTP <pycom_filesystem>` to download boot.py and main.py from 
+    the board to your project folder, after which you can right-click the project viewer 
+    and use the 'add source files' option to add them to your project.
+
+The boot.py file should always have the following code on the top, so we can run our 
+python scripts over serial or telnet:
+
+.. code:: python
+    
+    from machine import UART
+    import os
+    uart = UART(0, 115200)
+    os.dupterm(uart)
+
+
+Most users, especially WiPy users, would want a wifi script in the boot.py file. 
+A basic wifi script but also more advanced WLAN examples, like fixed IP and 
+multiple networks, can be found in the :ref:`Wifi Examples <wlan_step_by_step>` chapter. 
+
+Besides the neccesary main.py and boot.py files, you can create any folders and 
+python files or libraries that you want to include in your main file. Pymakr 
+will synchronize all files in the project to the board when using the sync button. 
+
+Adding files/folders to a project
+---------------------------------
+
+If you create any files to your project directory from outside of pymakr, they 
+won't appear in your project files. To add them, right-click on the left sidebar 
+in the Project-Viewer when you have your project open, and click 'Add source files'.
+
+
+.. image:: images/pymakr-project-rightclick-popup.png
+    :alt: Pymakr project popup
+    :align: center
+    :scale: 60 %
+
+In the popup that appears, click the folder icon next to the 'Source files' input 
+and select one or more files to be included.
+
+.. image:: images/pymakr-add-files.png
+    :alt: Pymakr project popup
+    :align: center
+    :scale: 60 %
+
+Adding a folder works in the exact same way, using the 'Add source directory' after 
+right-clicking in the project sidebar. All files inside the chosen directories will 
+be added as well.
+
+Without creating a project
+--------------------------
+
+If you just want to test some code on the module without creating a Project, 
+you can create a new file or open an existing one and press the 'run' button. 
+
+Note that the changes you make to your file won't be automatically saved to 
+the device on execution.
+
+
+Coding basics
+-------------
+
+For fun, lets try to build a traffic light. Add the following code to the ``main.py`` file:
 
 ::
 
@@ -36,8 +102,8 @@ Pymakr has a feature to sync and run your code on your device. This is mostly do
         pycom.rgbled(0x7f0000) # red
         time.sleep(4)
 
-#. Make sure the connection to your board is open in the Pycom Console
-#. Press the sync button on the top toolbar. Any progress will be shown in the console.
+- Make sure the connection to your board is open in the Pycom Console
+- Press the sync button on the top toolbar. Any progress will be shown in the console.
 
 Here is the expected result:
 
@@ -46,24 +112,19 @@ Here is the expected result:
     :align: center
     :scale: 60 %
 
-
-You now have a traffic light in your hands! To stop it, just do a right click
-on the console and press ``Reset`` or use ctrl-c.
-
+You now have a traffic light in your hands. To stop a running program, use ctrl-c 
+or do a right click on the console and press ``Reset``. You can also reboot 
+the board by pressing the physical reset button.
 
 .. Warning::
-
-    While the module is busy executing code, Pymakr cannot control it. You can regain control of it by using ctrl-c (or right clicking in the console and pressing Reset) or physically press the reset button.
-    If your board is running code at boot time, you might need to boot it in :ref:`safe mode <safeboot>`.
-
-
-If you just want to test some code on the module without creating a Project, you can create a new file or open an existing one and press the 'run' button. 
-Note that the changes you make to your file won't be automatically saved to the device on execution.
+    If your board is running code at boot time, you might need to boot it in 
+    :ref:`safe mode <safeboot>`.
 
 Pycom Console
 -------------
 
-To start coding, simply go to the Pycom Console and type your code. Lets try to make the LED light up.
+To start coding, simply go to the Pycom Console and type your code. Lets try to 
+make the LED light up.
 
 .. code:: python
 
@@ -79,7 +140,11 @@ Change the color by adjusting the hex RGB value
     pycom.rgbled(0xff0000) # now make the LED light up in red color
 
 
-The console can be used to run any python code, also functions or loops. Simply copy-paste it into the console or type it manually. Note that after writing or pasting any indented code like a function or a while loop, you’ll have to press enter up to three times to tell MicroPython that you’re closing the code (this is standard MicroPython behavior). 
+The console can be used to run any python code, also functions or loops. Simply 
+copy-paste it into the console or type it manually. Note that after writing or 
+pasting any indented code like a function or a while loop, you’ll have to press 
+enter up to three times to tell MicroPython that you’re closing the code (this 
+is standard MicroPython behavior). 
 
 
 .. image:: images/pymakr-repl-while.png
@@ -88,7 +153,10 @@ The console can be used to run any python code, also functions or loops. Simply 
     :scale: 100 %
 
 
-Use ``print()`` to output contents of variables to the console for you to read. Returned values from functions will also be displayed if they are not caught in a variable. This will not happen for code running from the main or boot files. Here you need to use ``print()`` to output to the console.
+Use ``print()`` to output contents of variables to the console for you to read. 
+Returned values from functions will also be displayed if they are not caught in 
+a variable. This will not happen for code running from the main or boot files. 
+Here you need to use ``print()`` to output to the console.
 
 A few pycom-console features you can use:
 
@@ -165,3 +233,4 @@ You can enable expert interface under Settings -> Switch to expert interface. Af
 - Lots of other extra's
 
 To switch back to 'lite' mode, go back to Settings and choose Switch to Lite interface. 
+
