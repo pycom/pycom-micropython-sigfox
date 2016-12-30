@@ -284,7 +284,7 @@ static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms,
     memcpy (cmd_data.info.tx.data, buf, len);
     cmd_data.info.tx.len = len;
     cmd_data.info.tx.dr = dr;
-    if (lora_obj.ComplianceTest.Running) {
+    if (lora_obj.ComplianceTest.Enabled && lora_obj.ComplianceTest.Running) {
         cmd_data.info.tx.port = 224;  // MAC commands port
         if (lora_obj.ComplianceTest.IsTxConfirmed) {
             cmd_data.info.tx.confirmed = true;
@@ -665,7 +665,6 @@ static void TASK_LoRa (void *pvParameters) {
                             mcpsReq.Req.Unconfirmed.fBufferSize = 0;
                             mcpsReq.Req.Unconfirmed.Datarate = cmd_data.info.tx.dr;
                             empty_frame = true;
-                            // printf("Sending empty frame\n");
                         } else {
                             if (cmd_data.info.tx.confirmed) {
                                 mcpsReq.Type = MCPS_CONFIRMED;
@@ -1204,6 +1203,15 @@ STATIC mp_obj_t lora_compliance_test(mp_uint_t n_args, const mp_obj_t *args) {
             lora_obj.ComplianceTest.Enabled = true;
         } else {
             lora_obj.ComplianceTest.Enabled = false;
+            lora_obj.ComplianceTest.IsTxConfirmed = false;
+            lora_obj.ComplianceTest.DownLinkCounter = 0;
+            lora_obj.ComplianceTest.Running = false;
+
+            // set adr back to its original value
+            MibRequestConfirm_t mibReq;
+            mibReq.Type = MIB_ADR;
+            mibReq.Param.AdrEnable = lora_obj.adr;
+            LoRaMacMibSetRequestConfirm(&mibReq);
         }
 
         if (n_args > 2) {
