@@ -9,7 +9,6 @@
    includes/wlan.rst
    includes/bluetooth.rst
    includes/https.rst
-   includes/blynk.rst
    includes/mqtt.rst
    includes/aws.rst
    includes/adc.rst

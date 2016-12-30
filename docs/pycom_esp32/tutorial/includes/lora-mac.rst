@@ -2,6 +2,10 @@
 LoRa (LoRaMAC)
 --------------
 
+Basic LoRa connection, sending and receiving data.
+
+TODO: Add explanation and info links about LoRaMAC
+
 ::
 
     from network import LoRa

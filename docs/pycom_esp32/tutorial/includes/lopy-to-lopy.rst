@@ -1,6 +1,7 @@
 
 LoPy to LoPy
 ------------
+
 This example show how to connect two nodes via LoRa.
 
 Node A code:

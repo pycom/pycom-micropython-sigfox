@@ -2,6 +2,8 @@
 LoRa (LoRaWAN with OTAA)
 ------------------------
 
+An example using LoraWAN mode and OTAA (Over the Air Activation). 
+
 ::
 
     from network import LoRa
