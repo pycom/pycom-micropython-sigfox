@@ -11,11 +11,31 @@ Quick usage example
 
     ::
 
-        from network import Bluetooth
-        bluetooth = Bluetooth()
-        bluetooth.start_scan(-1)    # start scanning with no timeout
-        while True:
-            print(bluetooth.get_adv())
+          from network import Bluetooth
+          import time
+          bt = Bluetooth()
+          bt.start_scan(-1)
+
+          while True:
+              adv = bt.get_adv()
+              if adv and bt.resolve_adv_data(adv.data, Bluetooth.ADV_NAME_CMPL) == 'Heart Rate':
+                  conn = bt.connect(adv.mac)
+                  services = conn.services()
+                  for service in services:
+                      time.sleep(0.050)
+                      if type(service.uuid()) == bytes:
+                          print('Reading chars from service = {}'.format(service.uuid()))
+                      else:
+                          print('Reading chars from service = %x' % service.uuid())
+                      chars = service.characteristics()
+                      for char in chars:
+                          if (char.properties() & Bluetooth.PROP_READ):
+                              print('char {} value = {}'.format(char.uuid(), char.read()))
+                  conn.disconnect()
+                  break
+              else:
+                  time.sleep(0.050)
+
 
 Constructors
 ------------
@@ -38,7 +58,7 @@ Methods
 
 .. method:: bluetooth.start_scan(timeout)
 
-   Starts performing a scan listening for BLE devices sending advertisements. This function always returns inmmediatelly, the scanning will be performed on the background. The return value is ``None``.
+   Starts performing a scan listening for BLE devices sending advertisements. This function always returns inmmediatelly, the scanning will be performed on the background. The return value is ``None``. After starting the scan the function ``get_adv()`` can be used to retrieve the advertisements messages from the FIFO. The internal FIFO has space to cache 8 advertisements.
 
    The arguments are:
 
@@ -52,6 +72,10 @@ Methods
 .. method:: bluetooth.stop_scan()
 
    Stops an ongoing scanning process. Returns ``None``.
+
+.. method:: bluetooth.isscanning()
+
+   Returns ``True`` if a Bluetooth scan is in progress. ``False`` otherwise.
 
 .. method:: bluetooth.get_adv()
 
@@ -89,45 +113,7 @@ Methods
 
 .. method:: bluetooth.connect(mac_addr)
 
-    Opens a BLE connection with the device specified by the ``mac_addr`` argument. This function blocks until the connection succeeds or fails.
-
-.. method:: bluetooth.isconnected()
-
-    Returns ``True`` if a connection with another BLE device is active. ``False`` otherwise.
-
-    Example::
-
-        from network import Bluetooth
-        import binascii
-        bluetooth = Bluetooth()
-
-        # scan until we can connect to any BLE device around
-        bluetooth.start_scan(-1)
-        adv = None
-        while True:
-            adv = bluetooth.get_adv()
-            if adv:
-                try:
-                    bluetooth.connect(adv.mac)
-                except:
-                    pass
-                if bluetooth.isconnected()
-                    break
-        printf("Connected to device with addr = {}".format(binascii.hexlify(adv.mac)))
-
-.. method:: bluetooth.disconnect()
-
-    Closes the current active BLE connection.
-
-.. method:: bluetooth.get_services()
-
-    If a BLE connection is active, this method gets the list of services provided by the BLE peripheral. The list will contain the ``UUID`` of the services. These UUIDs can be 16-bit, 32-bit or 128-bit long. 16 and 32 bit long UUIDs are returned as integers, while 128-bit UUIDs are returned as bytes objects.
-
-    Example::
-
-        bluetooth.connect(some_mac_addr)
-        if bluetooth.isconnected():
-            bluetooth.get_services()
+    Opens a BLE connection with the device specified by the ``mac_addr`` argument. This function blocks until the connection succeeds or fails. If the connections succeeds it returns a object of type ``BluetoothConnection``.
 
 Constants
 ---------
@@ -166,3 +152,101 @@ Constants
           Bluetooth.ADV_MANUFACTURER_DATA
 
     Advertisement data type
+
+.. data:: Bluetooth.PROP_BROADCAST
+          Bluetooth.PROP_READ
+          Bluetooth.PROP_WRITE_NR
+          Bluetooth.PROP_WRITE
+          Bluetooth.PROP_NOTIFY
+          Bluetooth.PROP_INDICATE
+          Bluetooth.PROP_AUTH
+          Bluetooth.PROP_EXT_PROP
+
+    Characteristic properties (bit values that can be combined)
+
+
+class BluetoothConnection
+=========================
+
+.. method:: connection.disconnect()
+
+    Closes the BLE connection. Returns ``None``.
+
+.. method:: connection.isconnected()
+
+    Returns ``True`` if the connection is still open. ``False`` otherwise.
+
+    Example::
+
+        from network import Bluetooth
+        import binascii
+        bluetooth = Bluetooth()
+
+        # scan until we can connect to any BLE device around
+        bluetooth.start_scan(-1)
+        while True:
+            adv = bluetooth.get_adv()
+            if adv:
+                try:
+                    connection = bluetooth.connect(adv.mac)
+                except:
+                    continue
+                if connection.isconnected()
+                    break
+        printf("Connected to device with addr = {}".format(binascii.hexlify(adv.mac)))
+
+.. method:: connection.services()
+
+    Performs a service search on the connected BLE peripheral a returns a list containing objects of the class ``BluetoothService`` if the search succeeds.
+
+    Example::
+
+      # assuming that a BLE connection is already open
+      services = connection.services()
+      print(services)
+      for service in services:
+          print(service.uuid())
+
+
+class BluetoothService
+======================
+
+.. method:: service.isprimary()
+
+    Returns ``True`` if the service is a primary one. ``False`` otherwise.
+
+.. method:: service.uuid()
+
+    Returns the UUID of the service. In the case of 16-bit or 32-bit long UUIDs, the value returned is an integer, but for 128-bit long UUIDs the value returned is a bytes object.
+
+.. method:: service.instance()
+
+    Returns the instance ID of the service.
+
+.. method:: service.characteristics()
+
+    Performs a get characteristics request on the connected BLE peripheral a returns a list containing objects of the class ``BluetoothCharacteristic`` if the request succeeds.
+
+
+class BluetoothCharacteristic
+=============================
+
+.. method:: characteristic.uuid()
+
+    Returns the UUID of the service. In the case of 16-bit or 32-bit long UUIDs, the value returned is an integer, but for 128-bit long UUIDs the value returned is a bytes object.
+
+.. method:: characteristic.instance()
+
+    Returns the instance ID of the service.
+
+.. method:: characteristic.properties()
+
+    Returns an integer indicating the properties of the characteristic. Properties are represented by bit values that can be ORed together. See the constants section for more details.
+
+.. method:: characteristic.read()
+
+    Read the value of the characteristic. For now it always returns a bytes object represetning the characteristic value. In the future a specific type (integer, string, bytes) will be returned depending on the characteristic in question.
+
+.. method:: characteristic.write(value)
+
+    Writes the given value on the characteristic. For now it only accepts bytes object representing the value to be written.

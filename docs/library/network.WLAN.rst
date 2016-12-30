@@ -8,8 +8,8 @@ This class provides a driver for the WiFi network processor in the module. Examp
     import network
     import time
     # setup as a station
-    wlan = network.WLAN(mode=WLAN.STA)
-    wlan.connect('your-ssid', auth=(WLAN.WPA2, 'your-key'))
+    wlan = network.WLAN(mode=network.WLAN.STA)
+    wlan.connect('your-ssid', auth=(network.WLAN.WPA2, 'your-key'))
     while not wlan.isconnected():
         time.sleep_ms(50)
     print(wlan.ifconfig())
