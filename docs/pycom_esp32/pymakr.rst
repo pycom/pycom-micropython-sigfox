@@ -214,7 +214,7 @@ these steps on macOS (it is similar for other operating systems):
     allowfullscreen="true" width="480"
     height="385"></embed></object>
     </div>
- 
+
 
 Expert interface
 ----------------
@@ -232,5 +232,18 @@ You can enable expert interface under Settings -> Switch to expert interface. Af
 - Plugin controls
 - Lots of other extra's
 
-To switch back to 'lite' mode, go back to Settings and choose Switch to Lite interface. 
+To switch back to 'lite' mode, go back to Settings and choose Switch to Lite interface.
 
+Themes and colors
+-----------------
+
+Pymakr has 2 default themes: ``Dark`` and ``Light``. To change the basic style, go to Preferences (Pymakr -> Preferences on the left top, or shortkey cmd-,) and head to the ``Interface`` tab. There you'll find a Style property with with both theme options. Press OK or Apply to change to the new theme.
+
+If you are on the Expert interface, the properties screen will also contain an ``Editor`` tab. The second to last sub-tab is named ``Style`` and contains a lot of options regarding colors and fonts. Below the most important options on this page
+
+- Fonts
+Change the font of the IDE itself using the 'Default text font' button. The editor and pycom console use the Monospaced font, which is changable with the button below it.
+
+- Editor colors
+Change the colors of the 
+    
