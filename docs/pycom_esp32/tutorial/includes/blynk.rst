@@ -6,12 +6,12 @@ Arduino, Raspberry Pi and the likes over the Internet.
 You can easily build graphic interfaces for all your
 projects by simply dragging and dropping widgets.
   
-`Downloads, docs, tutorials <http://www.blynk.cc>`_ 
-`Blynk community <http://community.blynk.cc>`_            
-`Facebook <http://www.fb.com/blynkapp>`_            
-`Twitter <http://twitter.com/blynk_app>`_            
+- `Downloads, docs, tutorials <http://www.blynk.cc>`_ 
+- `Blynk community <http://community.blynk.cc>`_            
+- `Facebook <http://www.fb.com/blynkapp>`_            
+- `Twitter <http://twitter.com/blynk_app>`_            
                               
-More info and download of these examples on `github <https://github.com/wipy/wipy/tree/master/examples/blynk>`_
+More info and downloads of these examples on `github <https://github.com/wipy/wipy/tree/master/examples/blynk>`_
 
 Basic usage
 ^^^^^^^^^^^

@@ -71,6 +71,7 @@ REPL stands for Read Evaluate Print Loop, and is the name given to the interacti
 To use the REPL, you must connect to the LoPy either via ``telnet``,
 or with a USB to serial converter wired to one of the two UARTs on the
 LoPy. When using the REPL over telnet, authentication is needed. The default credentials are: 
+
 - **user:** ``micro``
 - **password:** ``python``
 See :class:`network.server <.Server>` for info on how to change the defaults.

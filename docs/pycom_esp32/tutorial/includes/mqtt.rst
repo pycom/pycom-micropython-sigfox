@@ -9,10 +9,10 @@ Basic usage example
 For more info on this example, see `this topic <https://forum.pycom.io/topic/211/simple-mqtt-tutorial/25>`_ on our forum
 
 
-Broker used: `MiveMQ <http://www.hivemq.com/demos/websocket-client/>`_ 
-Library used: `UMQTT <https://pypi.python.org/pypi/micropython-umqtt.simple>`_ (simple.py file)
+- Broker used: `MiveMQ <http://www.hivemq.com/demos/websocket-client/>`_ 
+- Library used: `UMQTT <https://pypi.python.org/pypi/micropython-umqtt.simple>`_ (simple.py file)
 
-The library has bug on line 57. Make sure to change:
+The library has a bug on line 57. Make sure to change:
 
 ::
 

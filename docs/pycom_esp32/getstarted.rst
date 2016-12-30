@@ -126,7 +126,7 @@ The folder structure in /flash looks like the picture below. The files can be ma
 .. _connecting_using_pymakr:
 
 1.5 Connecting your board using Pymakr
-==================================
+=====================================
 
 To make it as easy as possible, we developed Pymakr, a tool that will allow you
 to connect to and program your Pycom devices. We’re going to use it in this
@@ -252,11 +252,17 @@ Most users, especially WiPy users, would want a wifi script in the boot.py file.
 
 Besides the neccesary main.py and boot.py files, you can create any folders and python files or libraries that you want to include in your main file. Pymakr will synchronize all files in the project to the board when using the sync button. 
 
+
+.. Warning::
+
+    When synchronizing your project to the board, make sure the REPL console is ready. If any programs are running or the board is still booting, synchronization might fail.
+
+
+
 Without creating a project
 --------------------------
 
 If you just want to test some code on the module, you can create a new file or open an existing one and press the 'run' button.
-
 
 .. Warning::
     
