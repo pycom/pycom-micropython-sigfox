@@ -1564,6 +1564,7 @@ LoRaMacStatus_t LoRaMacQueryTxPossible( uint8_t size, LoRaMacTxInfo_t* txInfo );
  *          \ref LORAMAC_STATUS_PARAMETER_INVALID.
  */
 LoRaMacStatus_t LoRaMacChannelAdd( uint8_t id, ChannelParams_t params );
+LoRaMacStatus_t LoRaMacChannelManualAdd( uint8_t id, ChannelParams_t params );
 
 /*!
  * \brief   LoRaMAC channel remove service
@@ -1578,6 +1579,7 @@ LoRaMacStatus_t LoRaMacChannelAdd( uint8_t id, ChannelParams_t params );
  *          \ref LORAMAC_STATUS_PARAMETER_INVALID.
  */
 LoRaMacStatus_t LoRaMacChannelRemove( uint8_t id );
+LoRaMacStatus_t LoRaMacChannelManualRemove( uint8_t id );
 
 /*!
  * \brief   LoRaMAC multicast channel link service

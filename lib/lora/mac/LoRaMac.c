@@ -3749,6 +3749,111 @@ LoRaMacStatus_t LoRaMacChannelAdd( uint8_t id, ChannelParams_t params )
 #endif
 }
 
+LoRaMacStatus_t LoRaMacChannelManualAdd( uint8_t id, ChannelParams_t params )
+{
+    bool datarateInvalid = false;
+    bool frequencyInvalid = false;
+    uint8_t band = 0;
+
+    // The id must not exceed LORA_MAX_NB_CHANNELS
+    if( id >= LORA_MAX_NB_CHANNELS )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
+    }
+    // Validate if the MAC is in a correct state
+    if( ( LoRaMacState & MAC_TX_RUNNING ) == MAC_TX_RUNNING )
+    {
+        if( ( LoRaMacState & MAC_TX_CONFIG ) != MAC_TX_CONFIG )
+        {
+            return LORAMAC_STATUS_BUSY;
+        }
+    }
+    // Validate the datarate
+    if( ( params.DrRange.Fields.Min > params.DrRange.Fields.Max ) ||
+        ( ValueInRange( params.DrRange.Fields.Min, LORAMAC_TX_MIN_DATARATE,
+                        LORAMAC_TX_MAX_DATARATE ) == false ) ||
+        ( ValueInRange( params.DrRange.Fields.Max, LORAMAC_TX_MIN_DATARATE,
+                        LORAMAC_TX_MAX_DATARATE ) == false ) )
+    {
+        datarateInvalid = true;
+    }
+
+#if defined( USE_BAND_433 ) || defined( USE_BAND_780 ) || defined( USE_BAND_868 )
+    if( id < 3 )
+    {
+        if( params.DrRange.Fields.Min > LoRaMacParamsDefaults.ChannelsDatarate )
+        {
+            datarateInvalid = true;
+        }
+        if( ValueInRange( params.DrRange.Fields.Max, DR_5, LORAMAC_TX_MAX_DATARATE ) == false )
+        {
+            datarateInvalid = true;
+        }
+    }
+#endif
+
+    // Validate the frequency
+    if( ( Radio.CheckRfFrequency( params.Frequency ) == true ) && ( params.Frequency > 0 ) && ( frequencyInvalid == false ) )
+    {
+#if defined( USE_BAND_868 )
+        if( ( params.Frequency >= 865000000 ) && ( params.Frequency <= 868000000 ) )
+        {
+            band = BAND_G1_0;
+        }
+        else if( ( params.Frequency > 868000000 ) && ( params.Frequency <= 868600000 ) )
+        {
+            band = BAND_G1_1;
+        }
+        else if( ( params.Frequency >= 868700000 ) && ( params.Frequency <= 869200000 ) )
+        {
+            band = BAND_G1_2;
+        }
+        else if( ( params.Frequency >= 869400000 ) && ( params.Frequency <= 869650000 ) )
+        {
+            band = BAND_G1_3;
+        }
+        else if( ( params.Frequency >= 869700000 ) && ( params.Frequency <= 870000000 ) )
+        {
+            band = BAND_G1_4;
+        }
+        else
+        {
+            frequencyInvalid = true;
+        }
+#elif defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID)
+        band = 0;
+#endif
+    }
+    else
+    {
+        frequencyInvalid = true;
+    }
+
+    if( ( datarateInvalid == true ) && ( frequencyInvalid == true ) )
+    {
+        return LORAMAC_STATUS_FREQ_AND_DR_INVALID;
+    }
+    if( datarateInvalid == true )
+    {
+        return LORAMAC_STATUS_DATARATE_INVALID;
+    }
+    if( frequencyInvalid == true )
+    {
+        return LORAMAC_STATUS_FREQUENCY_INVALID;
+    }
+
+    // Every parameter is valid, activate the channel
+    Channels[id] = params;
+    Channels[id].Band = band;
+#if ( defined( USE_BAND_433 ) || defined( USE_BAND_780 ) || defined( USE_BAND_868 ) )
+    LoRaMacParams.ChannelsMask[0] |= ( 1 << id );
+#elif (defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID) )
+    LoRaMacParams.ChannelsMask[ (id / 16) ] |= (1 << (id % 16));
+#endif
+
+    return LORAMAC_STATUS_OK;
+}
+
 LoRaMacStatus_t LoRaMacChannelRemove( uint8_t id )
 {
 #if defined( USE_BAND_433 ) || defined( USE_BAND_780 ) || defined( USE_BAND_868 )
@@ -3778,6 +3883,61 @@ LoRaMacStatus_t LoRaMacChannelRemove( uint8_t id )
     return LORAMAC_STATUS_OK;
 #elif ( defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID ) )
     return LORAMAC_STATUS_PARAMETER_INVALID;
+#endif
+}
+
+LoRaMacStatus_t LoRaMacChannelManualRemove( uint8_t id )
+{
+#if defined( USE_BAND_433 ) || defined( USE_BAND_780 ) || defined( USE_BAND_868 )
+    if( ( LoRaMacState & MAC_TX_RUNNING ) == MAC_TX_RUNNING )
+    {
+        if( ( LoRaMacState & MAC_TX_CONFIG ) != MAC_TX_CONFIG )
+        {
+            return LORAMAC_STATUS_BUSY;
+        }
+    }
+
+    if( ( id < 3 ) || ( id >= LORA_MAX_NB_CHANNELS ) )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
+    }
+    else
+    {
+        // Remove the channel from the list of channels
+        Channels[id] = ( ChannelParams_t ){ 0, { 0 }, 0 };
+
+        // Disable the channel as it doesn't exist anymore
+        if( DisableChannelInMask( id, LoRaMacParams.ChannelsMask ) == false )
+        {
+            return LORAMAC_STATUS_PARAMETER_INVALID;
+        }
+    }
+    return LORAMAC_STATUS_OK;
+#elif ( defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID ) )
+    if( ( LoRaMacState & MAC_TX_RUNNING ) == MAC_TX_RUNNING )
+    {
+        if( ( LoRaMacState & MAC_TX_CONFIG ) != MAC_TX_CONFIG )
+        {
+            return LORAMAC_STATUS_BUSY;
+        }
+    }
+
+    if( id >= LORA_MAX_NB_CHANNELS )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
+    }
+    else
+    {
+        // Remove the channel from the list of channels
+        Channels[id] = ( ChannelParams_t ){ 0, { 0 }, 0 };
+
+        // Disable the channel as it doesn't exist anymore
+        if( DisableChannelInMask( id, LoRaMacParams.ChannelsMask ) == false )
+        {
+            return LORAMAC_STATUS_PARAMETER_INVALID;
+        }
+    }
+    return LORAMAC_STATUS_OK;
 #endif
 }
 

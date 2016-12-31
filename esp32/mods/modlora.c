@@ -80,7 +80,7 @@
                                                         return -1;              \
                                                     }
 
-#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           12000  // 12 [s] value in ms
+#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           15000  // 15 [s] value in ms
 
 #if defined( USE_BAND_868 )
 #define LC4                                         { 867100000, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
@@ -575,17 +575,6 @@ static void TASK_LoRa (void *pvParameters) {
                         mibReq.Param.EnablePublicNetwork = cmd_data.info.init.public;
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
-                   #if defined( USE_BAND_868 )
-                       LoRaMacTestSetDutyCycleOn(false);            // TODO
-                       LoRaMacChannelAdd(3, (ChannelParams_t)LC4);
-                       LoRaMacChannelAdd(4, (ChannelParams_t)LC5);
-                       LoRaMacChannelAdd(5, (ChannelParams_t)LC6);
-                       LoRaMacChannelAdd(6, (ChannelParams_t)LC7);
-                       LoRaMacChannelAdd(7, (ChannelParams_t)LC8);
-                       LoRaMacChannelAdd(8, (ChannelParams_t)LC9);
-                       LoRaMacChannelAdd(9, (ChannelParams_t)LC10);
-                   #endif
-
                         // copy the configuration (must be done before sending the response)
                         lora_obj.adr = cmd_data.info.init.adr;
                         lora_obj.public = cmd_data.info.init.public;
@@ -646,9 +635,9 @@ static void TASK_LoRa (void *pvParameters) {
                     if (cmd_data.info.channel.add) {
                         ChannelParams_t channel =
                         { cmd_data.info.channel.frequency, {((cmd_data.info.channel.dr_max << 4) | cmd_data.info.channel.dr_min)}, 0};
-                        LoRaMacChannelAdd(cmd_data.info.channel.index, channel);
+                        LoRaMacChannelManualAdd(cmd_data.info.channel.index, channel);
                     } else {
-                        LoRaMacChannelRemove(cmd_data.info.channel.index);
+                        LoRaMacChannelManualRemove(cmd_data.info.channel.index);
                     }
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
                     break;
@@ -1373,7 +1362,6 @@ STATIC mp_obj_t lora_add_channel (mp_uint_t n_args, const mp_obj_t *pos_args, mp
         { MP_QSTR_frequency,    MP_ARG_REQUIRED | MP_ARG_KW_ONLY  | MP_ARG_INT },
         { MP_QSTR_dr_min,       MP_ARG_REQUIRED | MP_ARG_KW_ONLY  | MP_ARG_INT },
         { MP_QSTR_dr_max,       MP_ARG_REQUIRED | MP_ARG_KW_ONLY  | MP_ARG_INT },
-        { MP_QSTR_duty_cycle,   MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_obj = mp_const_none} },
     };
     lora_cmd_data_t cmd_data;
 
@@ -1391,11 +1379,6 @@ STATIC mp_obj_t lora_add_channel (mp_uint_t n_args, const mp_obj_t *pos_args, mp
     uint32_t dr_min = args[2].u_int;
     uint32_t dr_max = args[3].u_int;
     if (dr_min > dr_max || !lora_validate_data_rate(dr_min) || !lora_validate_data_rate(dr_max)) {
-        goto error;
-    }
-
-    uint32_t band = args[4].u_int;
-    if (band >= LORA_MAX_NB_BANDS) {
         goto error;
     }
 

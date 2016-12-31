@@ -934,7 +934,7 @@ IRAM_ATTR void SX1272SetRx( uint32_t timeout )
                                                              ( ( SX1272Read( REG_SYNCCONFIG ) &
                                                                 ~RF_SYNCCONFIG_SYNCSIZE_MASK ) +
                                                                 1.0 ) + 10.0 ) /
-                                                             ( double )SX1272.Settings.Fsk.Datarate ) * 1e3 ) + 12 );
+                                                             ( double )SX1272.Settings.Fsk.Datarate ) * 1e3 ) + 7 );
             TimerStart( &RxTimeoutSyncWord );
         }
         TimerStart( &FskIrqFlagsTimer );
@@ -1268,7 +1268,7 @@ IRAM_ATTR void SX1272FskFlagsIrq (void) {
     case MODEM_FSK:
         if (SX1272.Settings.State == RF_TX_RUNNING) {
             irqflags2 = SX1272Read(REG_IRQFLAGS2);
-            if ((irqflags2 & RF_IRQFLAGS2_PACKETSENT) == RF_IRQFLAGS2_PACKETSENT) {
+            if (irqflags2 & RF_IRQFLAGS2_PACKETSENT) {
                 SX1272OnDio0Irq();
                 TimerStop(&FskIrqFlagsTimer);
             } else {
@@ -1315,6 +1315,7 @@ static IRAM_ATTR void SX1272OnDioIrq (void) {
             if (SX1272.Settings.State == RF_TX_RUNNING) {
                 if (irqflags2 & RF_IRQFLAGS2_PACKETSENT) {
                     SX1272OnDio0Irq();
+                    TimerStop(&FskIrqFlagsTimer);
                 }
                 if (irqflags2 & RF_IRQFLAGS2_FIFOEMPTY) {
                     SX1272OnDio1Irq();
