@@ -20,8 +20,6 @@
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
     (C)2013 Semtech
 
-Description: Bleeper STM32L151RD microcontroller pins definition
-
 License: Revised BSD License, see LICENSE.TXT file include in the project
 
 Maintainer: Miguel Luis and Gregory Cristian
@@ -81,27 +79,26 @@ void TimerHwInit( void ) {
 }
 
 void TimerHwDeInit( void ) {
-    // nothing to do here
     __disable_irq();
     HAL_set_tick_cb(NULL);
     __enable_irq();
 }
 
 IRAM_ATTR uint32_t TimerHwGetMinimumTimeout( void ) {
-    return (ceil( 2 * HW_TIMER_TIME_BASE));
+    return HW_TIMER_TIME_BASE;
 }
 
 IRAM_ATTR void TimerHwStart (uint32_t val) {
 
+    __disable_irq( );
     TimerTickCounterContext = TimerHwGetTimerValue();
-
-    if (val <= HW_TIMER_TIME_BASE + 1) {
+    if (val < HW_TIMER_TIME_BASE) {
         TimeoutCntValue = TimerTickCounterContext + 1;
     } else {
-        TimeoutCntValue = TimerTickCounterContext + ((val - 1) / HW_TIMER_TIME_BASE);
+        TimeoutCntValue = TimerTickCounterContext + val;
     }
-
     TimerEnabled = true;
+    __enable_irq( );
 }
 
 void IRAM_ATTR TimerHwStop( void ) {
@@ -128,6 +125,21 @@ IRAM_ATTR TimerTime_t TimerHwGetTime( void ) {
 
 IRAM_ATTR TimerTime_t TimerHwGetElapsedTime (void) {
      return (((TimerHwGetTimerValue() - TimerTickCounterContext) + 1) * HW_TIMER_TIME_BASE);
+}
+
+IRAM_ATTR TimerTime_t TimerHwComputeTimeDifference( TimerTime_t eventInTime ) {
+    TimerTime_t currTime = TimerHwGetTime();
+
+    if (eventInTime == 0) {
+        return 0;
+    }
+
+    if (eventInTime <= currTime) {
+        return currTime - eventInTime;
+    } else {
+        // roll over of the counter
+        return( currTime + (0xFFFFFFFF - eventInTime));
+    }
 }
 
 IRAM_ATTR void TimerHwEnterLowPowerStopMode( void ) {

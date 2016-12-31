@@ -87,6 +87,14 @@ void TimerSetValue( TimerEvent_t *obj, uint32_t value );
 TimerTime_t TimerGetCurrentTime( void );
 
 /*!
+ * \brief Return the Time elapsed since a fix moment in Time
+ *
+ * \param [IN] savedTime    fix moment in Time
+ * \retval time             returns elapsed time
+ */
+TimerTime_t TimerGetElapsedTime( TimerTime_t savedTime );
+
+/*!
  * \brief Manages the entry into ARM cortex deep-sleep mode
  */
 void TimerLowPowerHandler( void );

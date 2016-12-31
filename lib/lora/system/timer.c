@@ -67,7 +67,7 @@ static bool TimerExists( TimerEvent_t *obj );
  *
  * \retval value current timer value
  */
-uint32_t TimerGetValue( void );
+TimerTime_t TimerGetValue( void );
 
 IRAM_ATTR void TimerInit( TimerEvent_t *obj, void ( *callback )( void ) )
 {
@@ -200,14 +200,9 @@ IRAM_ATTR void TimerIrqHandler( void )
 {
     uint32_t elapsedTime = 0;
 
-    if( TimerListHead == NULL )
-    {
-        return;  // Only necessary when the standard timer is used as a time base
-    }
+    elapsedTime = TimerGetValue( );
 
-    elapsedTime = TimerGetValue();
-
-    if( elapsedTime > TimerListHead->Timestamp )
+    if( elapsedTime >= TimerListHead->Timestamp )
     {
         TimerListHead->Timestamp = 0;
     }
@@ -215,6 +210,8 @@ IRAM_ATTR void TimerIrqHandler( void )
     {
         TimerListHead->Timestamp -= elapsedTime;
     }
+
+    TimerListHead->IsRunning = false;
 
     while( ( TimerListHead != NULL ) && ( TimerListHead->Timestamp == 0 ) )
     {
@@ -230,8 +227,11 @@ IRAM_ATTR void TimerIrqHandler( void )
     // start the next TimerListHead if it exists
     if( TimerListHead != NULL )
     {
-        TimerListHead->IsRunning = true;
-        TimerSetTimeout( TimerListHead );
+        if( TimerListHead->IsRunning != true )
+        {
+            TimerListHead->IsRunning = true;
+            TimerSetTimeout( TimerListHead );
+        }
     }
 }
 
@@ -345,22 +345,12 @@ void IRAM_ATTR TimerReset( TimerEvent_t *obj )
 
 void IRAM_ATTR TimerSetValue( TimerEvent_t *obj, uint32_t value )
 {
-    uint32_t minValue = 0;
-
     TimerStop( obj );
-
-    minValue = TimerHwGetMinimumTimeout();
-
-    if( value < minValue )
-    {
-        value = minValue;
-    }
-
     obj->Timestamp = value;
     obj->ReloadValue = value;
 }
 
-IRAM_ATTR uint32_t TimerGetValue( void )
+IRAM_ATTR TimerTime_t TimerGetValue( void )
 {
     return TimerHwGetElapsedTime( );
 }
@@ -374,6 +364,11 @@ static IRAM_ATTR void TimerSetTimeout( TimerEvent_t *obj )
 {
     HasLoopedThroughMain = 0;
     TimerHwStart( obj->Timestamp );
+}
+
+IRAM_ATTR TimerTime_t TimerGetElapsedTime( TimerTime_t savedTime )
+{
+    return TimerHwComputeTimeDifference( savedTime );
 }
 
 IRAM_ATTR void TimerLowPowerHandler( void )

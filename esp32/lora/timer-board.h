@@ -91,6 +91,11 @@ TimerTime_t TimerHwGetTime( void );
 TimerTime_t TimerHwGetElapsedTime( void );
 
 /*!
+ * \brief Calculates the elapsed time since the eventInTime was saved
+ */
+TimerTime_t TimerHwComputeTimeDifference( TimerTime_t eventInTime );
+
+/*!
  * \brief Set the ARM core in Wait For Interrupt mode (only working if Debug mode is not used)
  */
 void TimerHwEnterLowPowerStopMode( void );
