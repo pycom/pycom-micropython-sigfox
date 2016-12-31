@@ -152,7 +152,6 @@ APP_FATFS_SRC_C = $(addprefix fatfs/src/,\
 
 APP_LORA_SRC_C = $(addprefix lora/,\
 	utilities.c \
-	rtc-board.c \
 	timer-board.c \
 	gpio-board.c \
 	spi-board.c \
@@ -162,7 +161,6 @@ APP_LORA_SRC_C = $(addprefix lora/,\
 
 APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/LoRaMac.c \
-	mac/LoRaMac-api-v3.c \
 	mac/LoRaMacCrypto.c \
 	system/delay.c \
 	system/gpio.c \

@@ -68,7 +68,7 @@
 #define LORA_SYMBOL_TIMEOUT                         (5)         // Symbols
 #define LORA_FIX_LENGTH_PAYLOAD_ON                  (true)
 #define LORA_FIX_LENGTH_PAYLOAD_OFF                 (false)
-#define LORA_TX_TIMEOUT_MAX                         (9000000)   // 9 seconds
+#define LORA_TX_TIMEOUT_MAX                         (9000)      // 9 seconds
 #define LORA_RX_TIMEOUT                             (0)         // No timeout
 
 // [SF7..SF12]
@@ -80,7 +80,7 @@
                                                         return -1;              \
                                                     }
 
-#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           10000000  // 10 [s] value in us
+#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           12000  // 12 [s] value in ms
 
 #if defined( USE_BAND_868 )
 #define LC4                                         { 867100000, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }

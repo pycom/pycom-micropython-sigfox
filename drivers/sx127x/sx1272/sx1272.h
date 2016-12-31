@@ -21,7 +21,17 @@ Maintainer: Miguel Luis and Gregory Cristian
 /*!
  * Radio wakeup time from SLEEP mode
  */
-#define RADIO_WAKEUP_TIME                           1000 // [us]
+#define RADIO_OSC_STARTUP                           1 // [ms]
+
+/*!
+ * Radio PLL lock and Mode Ready delay which can vary with the temperature
+ */
+#define RADIO_SLEEP_TO_RX                           2 // [ms]
+
+/*!
+ * Radio complete Wake-up Time with margin for temperature compensation
+ */
+#define RADIO_WAKEUP_TIME                           ( RADIO_OSC_STARTUP + RADIO_SLEEP_TO_RX )
 
 /*!
  * Radio FSK modem parameters
@@ -266,7 +276,7 @@ void SX1272SetRxConfig(  RadioModems_t modem, uint32_t bandwidth,
  * \param [IN] iqInverted   Inverts IQ signals (LoRa only)
  *                          FSK : N/A ( set to 0 )
  *                          LoRa: [0: not inverted, 1: inverted]
- * \param [IN] timeout      Transmission timeout [us]
+ * \param [IN] timeout      Transmission timeout [ms]
  */
 void SX1272SetTxConfig( RadioModems_t modem, int8_t power, uint32_t fdev,
                         uint32_t bandwidth, uint32_t datarate,
@@ -307,7 +317,7 @@ void SX1272SetStby( void );
 
 /*!
  * \brief Sets the radio in reception mode for the given time
- * \param [IN] timeout Reception timeout [us] [0: continuous, others timeout]
+ * \param [IN] timeout Reception timeout [ms] [0: continuous, others timeout]
  */
 void SX1272SetRx( uint32_t timeout );
 

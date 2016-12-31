@@ -40,9 +40,9 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "math.h"
 
 /*!
- * Hardware Time base in us
+ * Hardware Time base in ms
  */
-#define HW_TIMER_TIME_BASE                              1000 //us
+#define HW_TIMER_TIME_BASE                              1 // ms
 
 /*!
  * Hardware Timer tick counter

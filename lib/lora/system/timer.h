@@ -31,22 +31,8 @@ typedef struct TimerEvent_s
  * \brief Timer time variable definition
  */
 #ifndef TimerTime_t
-typedef uint64_t TimerTime_t;
+typedef uint32_t TimerTime_t;
 #endif
-
-/*!
- * \brief Enables/Disables low power timers usage
- *
- * \param [IN] enable [true]RTC timer used, [false]Normal timer used
- */
-void TimerSetLowPowerEnable( bool enable );
-
-/*!
- * \brief Initializes the timer object
- *
- * \retval enable [true]RTC timer used, [false]Normal timer used
- */
-bool TimerGetLowPowerEnable( void );
 
 /*!
  * \brief Initializes the timer object

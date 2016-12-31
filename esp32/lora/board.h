@@ -42,7 +42,6 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "lora/system/delay.h"
 #include "radio.h"
 #include "sx1272/sx1272.h"
-#include "rtc-board.h"
 #include "timer-board.h"
 #include "sx1272-board.h"
 #include "utilities.h"
