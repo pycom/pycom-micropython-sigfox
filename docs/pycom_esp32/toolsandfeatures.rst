@@ -54,14 +54,9 @@ Datasheets
 If you want to find out how things are connected, visit the :ref:`datasheets 
 section <datasheets>`. Here you'll find the datasheets for all of our products.
 
-
-.. _pymakr_ide:
-
-.. include:: pymakr.rst
-
 .. _repl:
 
-2.4 REPL over Telnet and Serial
+2.3 REPL over Telnet and Serial
 ===============================
 
 REPL stands for Read Evaluate Print Loop, and is the name given to the interactive MicroPython prompt that you can access on the LoPy. Using the REPL is by far the easiest way to test out your code and run commands. You can use the REPL in addition to writing scripts in ``main.py``.
@@ -145,20 +140,20 @@ the "Serial" radio button on the right, then enter you COM port (eg COM4) in the
 
 .. _pycom_filesystem:
 
-2.5 Local file system and FTP access
+2.4 Local file system and FTP access
 ====================================
 
 There is a small internal file system (a drive) on the LoPy, called ``/flash``,
 which is stored within the external serial flash memory.  If a micro SD card
-is hooked-up and mounted, it will be available as well.
-
-When the LoPy starts up, it always boots from the ``boot.py`` located in the
-``/flash`` file system.
+is hooked-up and mounted, it will be available as well. When the device starts 
+up, it always boots from the ``boot.py`` located in the ``/flash`` file system.
 
 The file system is accessible via the native FTP server running in the LoPy.
 Open your FTP client of choice and connect to:
 
-**url:** ``ftp://192.168.4.1``, **user:** ``micro``, **password:** ``python``
+- **url:** ``ftp://192.168.4.1`` 
+- **user:** ``micro`` 
+- **password:** ``python``
 
 See :class:`network.server <.Server>` for info on how to change the defaults.
 The recommended clients are: Linux stock FTP (also on OS X), Filezilla and FireFTP.
@@ -186,7 +181,7 @@ data connections are possible. Other FTP clients might behave in a similar way.
 
 .. _safeboot:
 
-2.6 Boot modes and safe boot
+2.5 Boot modes and safe boot
 ============================
 
 If you power up normally, or press the reset button, the LoPy will boot
@@ -229,11 +224,9 @@ drive <pycom_factory_reset>`.
 Reset
 -----
 
-There are soft resets and hard resets.
-
-A soft reset simply clears the state of the MicroPython virtual machine,
-but leaves hardware peripherals unaffected. To do a soft reset, simply press
-**Ctrl+D** on the REPL, or within a script do::
+There are soft resets and hard resets. A soft reset simply clears the state of 
+the MicroPython virtual machine, but leaves hardware peripherals unaffected. To 
+do a soft reset, simply press **Ctrl+D** on the REPL, or within a script do::
 
    >>> import sys
    >>> sys.exit()
@@ -260,7 +253,7 @@ storage (not the SD card), and restores the files ``boot.py`` and ``main.py``
 back to their original states after the next reset.
 
 
-2.7 The heartbeat LED
+2.6 The heartbeat LED
 =====================
 
 By default the heartbeat LED flashes in blue color once every 4s to signal that
@@ -271,5 +264,10 @@ the system is alive. This can be overridden through the :mod:`pycom` module::
    >>> pycom.rgbled(0xff00)           # turn on the RGB LED in green color
 
 The heartbeat LED is also used to indicate that an error was detected.
+
+
+.. _pymakr_ide:
+
+.. include:: pymakr.rst
 
 

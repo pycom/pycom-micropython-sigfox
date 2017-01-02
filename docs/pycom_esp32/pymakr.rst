@@ -1,6 +1,6 @@
 
 
-2.3 Pymakr
+2.7 Pymakr
 ==========
 
 Here are some basic tips on how to further use Pymakr to upload code to your modules. 
@@ -244,6 +244,43 @@ If you are on the Expert interface, the properties screen will also contain an `
 - Fonts
 Change the font of the IDE itself using the 'Default text font' button. The editor and pycom console use the Monospaced font, which is changable with the button below it.
 
-- Editor colors
-Change the colors of the 
-    
+.. image:: images/pymakr-settings-fonts.png
+    :align: center
+    :scale: 80 %
+    :alt: Pymakr font settings
+
+- Margins
+The 'margins' box is used to change the properties of the left margin next to the editor. Change the colors, font of the line numbers and the icon for folding.
+
+.. image:: images/pymakr-settings-margins.png
+    :align: center
+    :scale: 80 %
+    :alt: Pymakr margins settings
+
+- Colors
+The remainder of the Style page can be used to tweak a lot of colors concerning the editor, like the selection colors, caretline, brace indications, and lots more. 
+
+.. image:: images/pymakr-settings-colors.png
+    :align: center
+    :scale: 80 %
+    :alt: Pymakr font settings
+
+- End of line features
+In this box, you have the option to enable visualisation of line-endings and options for handling long lines. The 'Edge mode' is an indicator for when your lines are too long. The mode and amount of characters for this indicator is configurable here.
+
+
+.. image:: images/pymakr-settings-eol.png
+    :align: center
+    :scale: 80 %
+    :alt: Pymakr end-of-line settings
+
+
+- Annotations
+Enabling 'Show annotations' can be usefull for debuging, as it adds a bit more info about coding errors in your editor. The colors for the warning, error and style messages can be set individually.
+
+
+.. image:: images/pymakr-settings-annotations.png
+    :align: center
+    :scale: 80 %
+    :alt: Pymakr annotation settings
+
