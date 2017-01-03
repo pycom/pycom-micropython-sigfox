@@ -223,6 +223,7 @@ Miscellaneous functions
     machine.PWM.rst
     machine.ADC.rst
     machine.DAC.rst
+    machine.SD.rst
 
   .. raw:: html
 

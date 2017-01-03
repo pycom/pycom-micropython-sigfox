@@ -1,41 +1,94 @@
 .. currentmodule:: machine
 
-class SD -- secure digital memory card
+class SD -- Secure digital memory card
 ======================================
 
-The SD card class allows to configure and enable the memory card
-module of the WiPy and automatically mount it as ``/sd`` as part
-of the file system. There are several pin combinations that can be
-used to wire the SD card socket to the WiPy and the pins used can
-be specified in the constructor. Please check the `pinout and alternate functions
-table. <https://raw.githubusercontent.com/wipy/wipy/master/docs/PinOUT.png>`_ for
-more info regarding the pins which can be remapped to be used with a SD card.
+.. only:: port_wipy
 
-Example usage::
+    The SD card class allows to configure and enable the memory card
+    module of the WiPy and automatically mount it as ``/sd`` as part
+    of the file system. There are several pin combinations that can be
+    used to wire the SD card socket to the WiPy and the pins used can
+    be specified in the constructor. Please check the `pinout and alternate functions
+    table. <https://raw.githubusercontent.com/wipy/wipy/master/docs/PinOUT.png>`_ for
+    more info regarding the pins which can be remapped to be used with a SD card.
 
-    from machine import SD
-    import os
-    # clk cmd and dat0 pins must be passed along with
-    # their respective alternate functions
-    sd = machine.SD(pins=('GP10', 'GP11', 'GP15'))
-    os.mount(sd, '/sd')
-    # do normal file operations
+    Example usage::
 
-Constructors
-------------
+        from machine import SD
+        import os
+        # clk cmd and dat0 pins must be passed along with
+        # their respective alternate functions
+        sd = machine.SD(pins=('GP10', 'GP11', 'GP15'))
+        os.mount(sd, '/sd')
+        # do normal file operations
 
-.. class:: SD(id,... )
+    Constructors
+    ------------
 
-   Create a SD card object. See ``init()`` for parameters if initialization. 
+    .. class:: SD(id,... )
 
-Methods
--------
+       Create a SD card object. See ``init()`` for parameters if initialization.
 
-.. method:: SD.init(id=0, pins=('GP10', 'GP11', 'GP15'))
+    Methods
+    -------
 
-   Enable the SD card. In order to initalize the card, give it a 3-tuple:
-   ``(clk_pin, cmd_pin, dat0_pin)``.
+    .. method:: SD.init(id=0, pins=('GP10', 'GP11', 'GP15'))
 
-.. method:: SD.deinit()
+       Enable the SD card. In order to initalize the card, give it a 3-tuple:
+       ``(clk_pin, cmd_pin, dat0_pin)``.
 
-   Disable the SD card.
+    .. method:: SD.deinit()
+
+       Disable the SD card.
+
+.. only:: port_pycom_esp32
+
+    The SD card class allows to configure and enable the memory card
+    module of your Pycom module and automatically mount it as ``/sd`` as part
+    of the file system. There is a single pin combination the can be used for the
+    SD card, and the current implementation only works in 1-bit mode. The pin
+    connections are as follows:
+
+    ``P8: DAT0, P23: SCLK and P4: CMD`` no external pull-up resistors are needed.
+
+    If you have one of the Pycom expansion boards, then simply insert the card into
+    the micro SD socket and run your script.
+
+    Example usage::
+
+        from machine import SD
+        import os
+
+        sd = SD()
+        os.mount(sd, '/sd')
+
+        # check the content
+        os.listdir('/sd')
+
+        # try some standard file operations
+        f = open('/sd/test.txt', 'w')
+        f.write('Testing SD card write operations')
+        f.close()
+        f = open('/sd/test.txt', 'r')
+        f.readall()
+        f.close()
+
+    Constructors
+    ------------
+
+    .. class:: SD(id, ...)
+
+       Create a SD card object. See ``init()`` for parameters if initialization.
+
+    Methods
+    -------
+
+    .. method:: sd.init(id=0)
+
+       Enable the SD card. In order to initalize the card, give it a 3-tuple:
+       ``(clk_pin, cmd_pin, dat0_pin)``.
+
+    .. method:: sd.deinit()
+
+       Disable the SD card.
