@@ -86,8 +86,7 @@ class SD -- Secure digital memory card
 
     .. method:: sd.init(id=0)
 
-       Enable the SD card. In order to initalize the card, give it a 3-tuple:
-       ``(clk_pin, cmd_pin, dat0_pin)``.
+       Enable the SD card.
 
     .. method:: sd.deinit()
 
