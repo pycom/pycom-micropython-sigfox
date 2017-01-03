@@ -228,6 +228,7 @@ static RadioEvents_t RadioEvents;
 
 static volatile lora_obj_t lora_obj;
 static volatile lora_partial_rx_packet_t lora_partial_rx_packet;
+static volatile lora_rx_data_t rx_data_isr;
 
 static TimerEvent_t TxNextActReqTimer;
 
@@ -347,7 +348,6 @@ static IRAM_ATTR void McpsConfirm (McpsConfirm_t *McpsConfirm) {
 }
 
 static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
-    lora_rx_data_t rx_data;
     if (mcpsIndication->Status != LORAMAC_EVENT_INFO_STATUS_OK) {
         return;
     }
@@ -388,9 +388,9 @@ static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
         case 1:
         case 2:
             if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
-                memcpy(rx_data.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
-                rx_data.len = mcpsIndication->BufferSize;
-                xQueueSendFromISR(xRxQueue, (void *)&rx_data, NULL);
+                memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
+                rx_data_isr.len = mcpsIndication->BufferSize;
+                xQueueSendFromISR(xRxQueue, (void *)&rx_data_isr, NULL);
             }
             // printf("Data on port 2 received\n");
             break;
@@ -412,6 +412,9 @@ static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
                         lora_obj.ComplianceTest.NbGateways = 0;
                         lora_obj.ComplianceTest.Running = true;
                         lora_obj.ComplianceTest.State = 1;
+
+                        // flush the rx queue
+                        while (xQueueReceiveFromISR(xRxQueue, (void *)&rx_data_isr, (TickType_t)0));
 
                         // enable ADR during test mode
                         MibRequestConfirm_t mibReq;
@@ -460,9 +463,9 @@ static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
                     case 4: // (vii)
                         // return the payload
                         if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
-                            memcpy(rx_data.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
-                            rx_data.len = mcpsIndication->BufferSize;
-                            xQueueSendFromISR(xRxQueue, (void *)&rx_data, NULL);
+                            memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
+                            rx_data_isr.len = mcpsIndication->BufferSize;
+                            xQueueSendFromISR(xRxQueue, (void *)&rx_data_isr, NULL);
                         }
                         // printf("Crypto message received\n");
                         break;
@@ -773,14 +776,12 @@ static IRAM_ATTR void OnTxDone (void) {
 }
 
 static IRAM_ATTR void OnRxDone (uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr) {
-    lora_rx_data_t rx_data;
-
     lora_obj.state = E_LORA_STATE_RX_DONE;
     lora_obj.rssi = rssi;
     if (size <= LORA_PAYLOAD_SIZE_MAX) {
-        memcpy(rx_data.data, payload, size);
-        rx_data.len = size;
-        xQueueSendFromISR(xRxQueue, (void *)&rx_data, NULL);
+        memcpy((void *)rx_data_isr.data, payload, size);
+        rx_data_isr.len = size;
+        xQueueSendFromISR(xRxQueue, (void *)&rx_data_isr, NULL);
     }
 }
 
