@@ -10,6 +10,7 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - Up to 24 GPIO :class:`Pins <.Pin>`
 - 2x :class:`UARTs <.UART>`
 - :class:`SPIs <.SPI>`
+- :class:`Timers <.Timer>`
 - :class:`PWM <.PWM>`
 - :class:`ADC <.ADC>`
 - :class:`DAC <.DAC>`
@@ -22,7 +23,6 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :class:`AES encryption <.AES>`
 - :mod:`SSL/TLS support <.ussl>`
 - :class:`Interrupts` (coming soon)
-- :class:`Timer <.Timer>`
 - :class:`RTC` (coming soon)
 
 

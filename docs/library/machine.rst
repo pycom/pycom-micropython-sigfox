@@ -219,6 +219,7 @@ Miscellaneous functions
     machine.Pin.rst
     machine.UART.rst
     machine.SPI.rst
+    machine.Timer.rst
     machine.I2C.rst
     machine.PWM.rst
     machine.ADC.rst

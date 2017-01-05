@@ -1,5 +1,6 @@
 .. currentmodule:: machine
-.. _machine.Timer:
+
+.. class:: Timer
 
 class Timer -- measure time spans and set alarms
 ================================================
