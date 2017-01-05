@@ -201,6 +201,7 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
     mod_network_socket_obj_t *self = self_in;
     int _errno;
 
+#ifdef LOPY
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
         mp_uint_t port = mp_obj_get_int(addr_in);
 
@@ -208,6 +209,7 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
             nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
         }
     } else {
+#endif
         // get the address
         uint8_t ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
         mp_uint_t port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
@@ -215,7 +217,9 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
         if (self->sock_base.nic_type->n_bind(self, ip, port, &_errno) != 0) {
             nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
         }
+#ifdef LOPY
     }
+#endif
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_bind_obj, socket_bind);

@@ -96,6 +96,7 @@ APP_LIB_SRC_C = $(addprefix lib/,\
 	fatfs/option/ccsbcs.c \
 	)
 
+ifeq ($(BOARD), LOPY)
 APP_MODS_SRC_C = $(addprefix mods/,\
 	machuart.c \
 	machpin.c \
@@ -124,7 +125,37 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modussl.c \
 	modbt.c \
 	)
+endif
 
+ifeq ($(BOARD), WIPY)
+APP_MODS_SRC_C = $(addprefix mods/,\
+	machuart.c \
+	machpin.c \
+	machrtc.c \
+	machspi.c \
+	machine_i2c.c \
+	machpwm.c \
+	modmachine.c \
+	moduos.c \
+	modusocket.c \
+	modnetwork.c \
+	modwlan.c \
+	moduselect.c \
+	modutime.c \
+	modpycom.c \
+	moduhashlib.c \
+	moducrypto.c \
+	machtimer.c \
+	machtimer_alarm.c \
+	machtimer_chrono.c \
+	analog.c \
+	pybadc.c \
+	pybdac.c \
+	pybsd.c \
+	modussl.c \
+	modbt.c \
+	)
+endif
 
 APP_STM_SRC_C = $(addprefix stmhal/,\
 	bufhelper.c \
