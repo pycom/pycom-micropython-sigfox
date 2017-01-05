@@ -68,7 +68,7 @@
 #define LORA_SYMBOL_TIMEOUT                         (5)         // Symbols
 #define LORA_FIX_LENGTH_PAYLOAD_ON                  (true)
 #define LORA_FIX_LENGTH_PAYLOAD_OFF                 (false)
-#define LORA_TX_TIMEOUT_MAX                         (9000)      // 9 seconds
+#define LORA_TX_TIMEOUT_MAX                         (9500)      // 9.5 seconds
 #define LORA_RX_TIMEOUT                             (0)         // No timeout
 
 // [SF7..SF12]

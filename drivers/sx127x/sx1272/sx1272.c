@@ -222,10 +222,10 @@ DioIrqHandler *DioIrq[] = { SX1272OnDioIrq };
 /*!
  * Tx and Rx timers
  */
-TimerEvent_t TxTimeoutTimer;
-TimerEvent_t RxTimeoutTimer;
-TimerEvent_t RxTimeoutSyncWord;
-TimerEvent_t FskIrqFlagsTimer;
+static TimerEvent_t TxTimeoutTimer;
+static TimerEvent_t RxTimeoutTimer;
+static TimerEvent_t RxTimeoutSyncWord;
+static TimerEvent_t FskIrqFlagsTimer;
 
 /*
  * Radio driver functions implementation

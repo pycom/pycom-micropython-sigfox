@@ -83,11 +83,11 @@ IRAM_ATTR void TimerStart( TimerEvent_t *obj )
     uint32_t elapsedTime = 0;
     uint32_t remainingTime = 0;
 
-    __disable_irq( );
+    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;;
 
     if( ( obj == NULL ) || ( TimerExists( obj ) == true ) )
     {
-        __enable_irq( );
+        XTOS_RESTORE_INTLEVEL(ilevel);
         return;
     }
 
@@ -123,7 +123,7 @@ IRAM_ATTR void TimerStart( TimerEvent_t *obj )
              TimerInsertTimer( obj, remainingTime );
         }
     }
-    __enable_irq( );
+    XTOS_RESTORE_INTLEVEL(ilevel);
 }
 
 static IRAM_ATTR void TimerInsertTimer( TimerEvent_t *obj, uint32_t remainingTime )
@@ -200,6 +200,12 @@ IRAM_ATTR void TimerIrqHandler( void )
 {
     uint32_t elapsedTime = 0;
 
+    // when all timers are stopped or expired, TimerListHead is NULL
+    if( TimerListHead == NULL )
+    {
+        return;
+    }
+
     elapsedTime = TimerGetValue( );
 
     if( elapsedTime >= TimerListHead->Timestamp )
@@ -237,7 +243,7 @@ IRAM_ATTR void TimerIrqHandler( void )
 
 IRAM_ATTR void TimerStop( TimerEvent_t *obj )
 {
-    __disable_irq( );
+    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
 
     uint32_t elapsedTime = 0;
     uint32_t remainingTime = 0;
@@ -248,7 +254,7 @@ IRAM_ATTR void TimerStop( TimerEvent_t *obj )
     // List is empty or the Obj to stop does not exist
     if( ( TimerListHead == NULL ) || ( obj == NULL ) )
     {
-        __enable_irq( );
+        XTOS_RESTORE_INTLEVEL(ilevel);
         return;
     }
 
@@ -319,7 +325,7 @@ IRAM_ATTR void TimerStop( TimerEvent_t *obj )
             }
         }
     }
-    __enable_irq( );
+    XTOS_RESTORE_INTLEVEL(ilevel);
 }
 
 static IRAM_ATTR bool TimerExists( TimerEvent_t *obj )

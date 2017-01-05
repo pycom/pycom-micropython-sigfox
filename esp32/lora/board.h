@@ -66,12 +66,6 @@ Maintainer: Miguel Luis and Gregory Cristian
 
 #define RADIO_DIO                                   GPIO23
 
-#undef __disable_irq
-#define __disable_irq()                             XTOS_DISABLE_ALL_INTERRUPTS
-#undef __enable_irq
-#define __enable_irq()                              XTOS_ENABLE_INTERRUPTS
-
-
 void BoardInitPeriph( void );
 
 void BoardInitMcu( void );

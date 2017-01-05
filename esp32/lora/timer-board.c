@@ -73,15 +73,15 @@ static IRAM_ATTR void TimerCallback (void) {
 }
 
 void TimerHwInit( void ) {
-    __disable_irq();
+    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
     HAL_set_tick_cb(TimerCallback);
-    __enable_irq();
+    XTOS_RESTORE_INTLEVEL(ilevel);
 }
 
 void TimerHwDeInit( void ) {
-    __disable_irq();
+    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
     HAL_set_tick_cb(NULL);
-    __enable_irq();
+    XTOS_RESTORE_INTLEVEL(ilevel);
 }
 
 IRAM_ATTR uint32_t TimerHwGetMinimumTimeout( void ) {
@@ -89,8 +89,7 @@ IRAM_ATTR uint32_t TimerHwGetMinimumTimeout( void ) {
 }
 
 IRAM_ATTR void TimerHwStart (uint32_t val) {
-
-    __disable_irq( );
+    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
     TimerTickCounterContext = TimerHwGetTimerValue();
     if (val < HW_TIMER_TIME_BASE) {
         TimeoutCntValue = TimerTickCounterContext + 1;
@@ -98,7 +97,7 @@ IRAM_ATTR void TimerHwStart (uint32_t val) {
         TimeoutCntValue = TimerTickCounterContext + val;
     }
     TimerEnabled = true;
-    __enable_irq( );
+    XTOS_RESTORE_INTLEVEL(ilevel);
 }
 
 void IRAM_ATTR TimerHwStop( void ) {
@@ -112,9 +111,9 @@ void IRAM_ATTR TimerHwDelayMs( uint32_t delay ) {
 IRAM_ATTR TimerTime_t TimerHwGetTimerValue (void) {
     TimerTime_t val;
 
-    __disable_irq( );
+    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
     val = TimerTickCounter;
-    __enable_irq( );
+    XTOS_RESTORE_INTLEVEL(ilevel);
 
     return (val);
 }
