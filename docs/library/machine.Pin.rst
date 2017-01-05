@@ -231,7 +231,7 @@ Methods
 
 .. only:: port_pycom_esp32
 
-    .. method:: Pin.callback(trigger, handler=None, arg=None)
+    .. method:: pin.callback(trigger, handler=None, arg=None)
 
         Set a callback to be triggered when the input level at the pin changes.
 
