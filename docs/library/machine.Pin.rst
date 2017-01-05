@@ -260,6 +260,10 @@ Methods
             p_in = Pin('P10', mode=Pin.IN, pull=Pin.PULL_UP)
             p_in.callback(pin_handler, trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING)
 
+        .. note::
+
+            For more information on how Pycom's products handle interrupts, see :ref:`here<pycom_interrupt_handling>`.
+
 .. only:: port_wipy
 
     .. method:: Pin.irq(\*, trigger, priority=1, handler=None, wake=None)

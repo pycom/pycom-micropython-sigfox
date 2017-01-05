@@ -122,6 +122,9 @@ class Timer -- measure time spans and set alarms
 
         clock = Clock()
 
+    .. note::
+
+        For more information on how Pycom's products handle interrupts, see :ref:`here<pycom_interrupt_handling>`.
 
 .. only:: port_wipy
 
