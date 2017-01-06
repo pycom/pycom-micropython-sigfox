@@ -498,7 +498,7 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
     }
 
     while (bt_obj.busy) {
-        vTaskDelay(5 / portTICK_RATE_MS);
+        mp_hal_delay_ms(5);
     }
 
     if (xQueueReceive(xScanQueue, &bt_event, (TickType_t)5)) {
@@ -757,7 +757,7 @@ STATIC mp_obj_t bt_char_read(mp_obj_t self_in) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
         }
         while (bt_obj.busy) {
-            vTaskDelay(5 / portTICK_RATE_MS);
+            mp_hal_delay_ms(5);
         }
         if (xQueueReceive(xScanQueue, &bt_event, (TickType_t)5)) {
             return mp_obj_new_bytes(bt_event.read.value, bt_event.read.value_len);
@@ -793,7 +793,7 @@ STATIC mp_obj_t bt_char_write(mp_obj_t self_in, mp_obj_t value) {
         }
 
         while (bt_obj.busy) {
-            vTaskDelay(5 / portTICK_RATE_MS);
+            mp_hal_delay_ms(5);
         }
         if (xQueueReceive(xScanQueue, &bt_event, (TickType_t)5)) {
             if (bt_event.write.status != ESP_GATT_OK) {
