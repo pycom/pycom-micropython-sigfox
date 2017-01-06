@@ -127,8 +127,10 @@ STATIC IRAM_ATTR void load_next_alarm(void) {
     }
 }
 
-STATIC void set_alarm_when(mp_obj_alarm_t *alarm, uint64_t delta) {
-    timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &alarm->when);
+STATIC IRAM_ATTR void set_alarm_when(mp_obj_alarm_t *alarm, uint64_t delta) {
+    TIMERG0.hw_timer[0].update = 1;
+    alarm->when = ((uint64_t) TIMERG0.hw_timer[0].cnt_high << 32)
+        | (TIMERG0.hw_timer[0].cnt_low);
     alarm->when += delta;
 }
 
