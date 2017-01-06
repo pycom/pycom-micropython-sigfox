@@ -50,6 +50,7 @@
 #include "mpsleep.h"
 #include "machrtc.h"
 #include "modbt.h"
+#include "machtimer.h"
 #include "mptask.h"
 
 #include "ff.h"
@@ -64,7 +65,6 @@
 /******************************************************************************
  DECLARE EXTERNAL FUNCTIONS
  ******************************************************************************/
-extern void modtimer_init0(void);
 
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
