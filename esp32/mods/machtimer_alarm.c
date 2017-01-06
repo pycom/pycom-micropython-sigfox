@@ -153,7 +153,9 @@ STATIC void alarm_handler(void *arg) {
     mp_obj_alarm_t *alarm = arg;
 
     tidy_alarm_memory();
-    mp_call_function_1(alarm->handler, alarm->handler_arg);
+    if (alarm->handler != mp_const_none) {
+        mp_call_function_1(alarm->handler, alarm->handler_arg);
+    }
 }
 
 IRAM_ATTR void timer_alarm_isr(void *arg) {
