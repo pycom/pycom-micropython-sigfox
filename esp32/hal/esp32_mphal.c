@@ -82,7 +82,13 @@ void mp_hal_feed_watchdog(void) {
 }
 
 void mp_hal_delay_us(uint32_t us) {
-    ets_delay_us(us);
+    if (us < 1000) {
+        ets_delay_us(us);
+    } else {
+        MP_THREAD_GIL_EXIT();
+        ets_delay_us(us);
+        MP_THREAD_GIL_ENTER();
+    }
 }
 
 int mp_hal_stdin_rx_chr(void) {
