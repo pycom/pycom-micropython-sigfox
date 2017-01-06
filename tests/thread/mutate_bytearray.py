@@ -24,7 +24,7 @@ def th(n, lo, hi):
         n_finished += 1
 
 lock = _thread.allocate_lock()
-n_thread = 4
+n_thread = 3
 n_finished = 0
 n_repeat = 4 # use 40 for more stressful test (uses more heap)
 

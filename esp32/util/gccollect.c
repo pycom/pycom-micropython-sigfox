@@ -24,15 +24,10 @@ DECLARE PRIVATE DATA
 /******************************************************************************
 DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
-// this function is called recursively to make sure that all the register windows
-// are dumped into the stack. By checking the dissaembly we see that gc_collect_inner()
-// is executed with a call8 instruction (which pushes 8 registers every time), but we
-// do 'level < XCHAL_NUM_AREGS / 2' to be on the safe side.
-static void gc_collect_inner(int level) {
-    if (level < XCHAL_NUM_AREGS / 2) {
-        gc_collect_inner(level + 1);
-        return;
-    }
+static void gc_collect_inner(void) {
+    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
+    xthal_window_spill();
+    MICROPY_END_ATOMIC_SECTION(state);
 
     volatile uint32_t sp;
     asm volatile("or %0, a1, a1" : "=r"(sp));
@@ -46,6 +41,6 @@ static void gc_collect_inner(int level) {
 
 void gc_collect(void) {
     gc_collect_start();
-    gc_collect_inner(0);
+    gc_collect_inner();
     gc_collect_end();
 }

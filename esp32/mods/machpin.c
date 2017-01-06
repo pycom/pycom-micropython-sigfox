@@ -32,7 +32,6 @@
 //#include "pybsleep.h"
 #include "mpexception.h"
 #include "mperror.h"
-#include "pycom_config.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

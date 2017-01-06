@@ -22,7 +22,7 @@ def thread_entry():
             output.append((arg, ans))
 
 # create a list of jobs
-jobs = [(fac, i) for i in range(20, 80)]
+jobs = [(fac, i) for i in range(20, 50)]
 jobs_lock = _thread.allocate_lock()
 n_jobs = len(jobs)
 

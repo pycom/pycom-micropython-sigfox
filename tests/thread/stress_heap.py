@@ -10,7 +10,7 @@ def last(l):
 
 def thread_entry(n):
     # allocate a bytearray and fill it
-    data = bytearray(i for i in range(256))
+    data = bytearray(i for i in range(16))
 
     # run a loop which allocates a small list and uses it each iteration
     lst = 8 * [0]
@@ -30,12 +30,12 @@ def thread_entry(n):
         n_finished += 1
 
 lock = _thread.allocate_lock()
-n_thread = 10
+n_thread = 4
 n_finished = 0
 
 # spawn threads
 for i in range(n_thread):
-    _thread.start_new_thread(thread_entry, (10000,))
+    _thread.start_new_thread(thread_entry, (100,))
 
 # busy wait for threads to finish
 while n_finished < n_thread:

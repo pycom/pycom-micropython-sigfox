@@ -52,6 +52,7 @@
 #include "modbt.h"
 #include "machtimer.h"
 #include "mptask.h"
+#include "machtimer.h"
 
 #include "ff.h"
 #include "diskio.h"
@@ -71,12 +72,12 @@
  ******************************************************************************/
 #if defined(LOPY)
     #if defined(USE_BAND_868)
-        #define GC_POOL_SIZE_BYTES                                          (36 * 1024)
+        #define GC_POOL_SIZE_BYTES                                          (48 * 1024)
     #else
-        #define GC_POOL_SIZE_BYTES                                          (36 * 1024)
+        #define GC_POOL_SIZE_BYTES                                          (48 * 1024)
     #endif
 #else
-    #define GC_POOL_SIZE_BYTES                                          (40 * 1024)
+    #define GC_POOL_SIZE_BYTES                                          (48 * 1024)
 #endif
 
 /******************************************************************************
@@ -125,6 +126,7 @@ void TASK_Micropython (void *pvParameters) {
 
     // initialization that must not be repeted after a soft reset
     mptask_pre_init();
+    mp_irq_preinit();
 
 soft_reset:
 

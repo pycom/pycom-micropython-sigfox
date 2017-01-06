@@ -98,5 +98,6 @@ void mp_irq_kill(void) {
     do {
         vTaskDelay(5 / portTICK_PERIOD_MS);
     } while (mp_irq_is_alive);
+    xQueueReset(interruptsQueue);
     // TODO disable all interrupts here at hardware level
 }

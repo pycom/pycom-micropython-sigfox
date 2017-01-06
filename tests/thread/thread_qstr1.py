@@ -22,7 +22,7 @@ def th(base, n):
 lock = _thread.allocate_lock()
 n_thread = 4
 n_finished = 0
-n_qstr_per_thread = 100 # make 1000 for a more stressful test (uses more heap)
+n_qstr_per_thread = 20 # make 1000 for a more stressful test (uses more heap)
 
 # spawn threads
 for i in range(n_thread):
