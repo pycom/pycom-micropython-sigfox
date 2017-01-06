@@ -22,7 +22,6 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :mod:`hashlib <.uhashlib>` MD5, SHA1, SHA256, SHA384 and SHA512 hash algorithms
 - :class:`AES encryption <.AES>`
 - :mod:`SSL/TLS support <.ussl>`
-- :class:`Interrupts` (coming soon)
 - :class:`RTC` (coming soon)
 
 

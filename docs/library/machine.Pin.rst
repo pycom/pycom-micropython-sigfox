@@ -258,7 +258,7 @@ Methods
                 print("got an interrupt in pin %s" % (arg.id()))
 
             p_in = Pin('P10', mode=Pin.IN, pull=Pin.PULL_UP)
-            p_in.callback(pin_handler, trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING)
+            p_in.callback(Pin.IRQ_FALLING | Pin.IRQ_RISING, pin_handler)
 
         .. note::
 
