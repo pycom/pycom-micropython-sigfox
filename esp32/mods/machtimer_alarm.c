@@ -208,7 +208,7 @@ STATIC mp_obj_t alarm_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_u
 
     uint64_t clocks = (uint64_t) (s * CLK_FREQ + 0.5) + ms * (CLK_FREQ / 1000) + us * (CLK_FREQ / 1000000);
 
-    mp_obj_alarm_t *self = m_new_obj(mp_obj_alarm_t);
+    mp_obj_alarm_t *self = m_new_obj_with_finaliser(mp_obj_alarm_t);
 
     self->base.type = type;
     self->interval = clocks;
