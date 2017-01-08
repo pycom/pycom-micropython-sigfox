@@ -171,7 +171,7 @@ IRAM_ATTR void timer_alarm_isr(void *arg) {
         insert_alarm(alarm);
     }
 
-    queue_interrupt(alarm_handler, alarm);
+    mp_irq_queue_interrupt(alarm_handler, alarm);
 }
 
 STATIC mp_obj_t alarm_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {

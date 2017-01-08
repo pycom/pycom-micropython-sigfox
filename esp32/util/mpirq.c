@@ -73,7 +73,7 @@ void mp_irq_init0(void) {
     mp_thread_create_ex(TASK_Interrupts, NULL, &stack_size, INTERRUPTS_TASK_PRIORITY, "Interrupts");
 }
 
-void IRAM_ATTR queue_interrupt(void (* handler)(void *), void *arg) {
+void IRAM_ATTR mp_irq_queue_interrupt(void (* handler)(void *), void *arg) {
     mp_callback_obj_t cb = {.handler = handler, .arg = arg};
     xQueueSendFromISR(interruptsQueue, &cb, NULL);
 }

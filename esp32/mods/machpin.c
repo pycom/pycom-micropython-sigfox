@@ -179,7 +179,7 @@ static IRAM_ATTR void call_interrupt_handler (pin_obj_t *pin) {
         ((void(*)(void))pin->handler)();
     } else {
         // pass it to the queue
-        queue_interrupt(pin_interrupt_queue_handler, pin);
+        mp_irq_queue_interrupt(pin_interrupt_queue_handler, pin);
     }
 }
 
