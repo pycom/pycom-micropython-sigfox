@@ -33,6 +33,8 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 
+#include "esp_freertos_hooks.h"
+
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
@@ -58,12 +60,11 @@ struct mperror_heart_beat {
     bool do_disable;
 } mperror_heart_beat = {.off_time = 0, .on_time = 0, .beating = false, .enabled = false, .do_disable = false};
 
-void TASK_Heartbeat (void *pvParameters);
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 void mperror_pre_init(void) {
-    xTaskCreatePinnedToCore(TASK_Heartbeat, "Heart", 2048, NULL, MPERROR_HEARTBEAT_PRIORITY, NULL, 0);
+    esp_register_freertos_idle_hook(mperror_heartbeat_signal);
 }
 
 void mperror_init0 (void) {
@@ -101,7 +102,7 @@ void mperror_heartbeat_switch_off (void) {
     }
 }
 
-void mperror_heartbeat_signal (void) {
+bool mperror_heartbeat_signal (void) {
     if (mperror_heart_beat.do_disable) {
         mperror_heart_beat.do_disable = false;
     } else if (mperror_heart_beat.enabled) {
@@ -117,6 +118,7 @@ void mperror_heartbeat_signal (void) {
             }
         }
     }
+    return true;
 }
 
 #ifndef BOOTLOADER_BUILD
@@ -221,13 +223,4 @@ void IRAM_ATTR mperror_set_rgb_color (uint32_t rgbcolor) {
     }
     XTOS_RESTORE_INTLEVEL(ilevel);
     ets_delay_us(RESET_TIME_US);
-}
-
-void TASK_Heartbeat (void *pvParameters) {
-    mperror_init0();
-
-    while (true) {
-        mperror_heartbeat_signal();
-        vTaskDelay (10 / portTICK_PERIOD_MS);
-    }
 }
