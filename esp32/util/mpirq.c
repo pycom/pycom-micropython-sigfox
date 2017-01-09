@@ -16,10 +16,15 @@
 #include "mpirq.h"
 #include "py/stackctrl.h"
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
 QueueHandle_t interruptsQueue;
+
+bool mp_irq_is_alive;
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -32,12 +37,15 @@ static void *TASK_Interrupts(void *pvParameters) {
     mp_stack_set_top(&ts + 1); // need to include ts in root-pointer scan
     mp_stack_set_limit(INTERRUPTS_TASK_STACK_SIZE);
 
-    // // signal that we are set up and running
+    // signal that we are set up and running
     mp_thread_start();
 
     for (;;) {
-        if (xQueueReceive(interruptsQueue, &cb, portMAX_DELAY) == pdFALSE) {
-            mp_printf(&mp_plat_print, "Unhandled exception in interrupt thread");
+        xQueueReceive(interruptsQueue, &cb, portMAX_DELAY);
+
+        // a NULL handler means that we need to exit the loop
+        if (NULL == cb.handler) {
+            break;
         }
 
         MP_THREAD_GIL_ENTER();
@@ -61,19 +69,34 @@ static void *TASK_Interrupts(void *pvParameters) {
         MP_THREAD_GIL_EXIT();
     }
 
+    mp_irq_is_alive = false;
+
     return NULL;
 }
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
+void mp_irq_preinit(void) {
+    interruptsQueue = xQueueCreate(INTERRUPTS_QUEUE_LEN, sizeof(mp_callback_obj_t));
+}
+
 void mp_irq_init0(void) {
     uint32_t stack_size = INTERRUPTS_TASK_STACK_SIZE;
-    interruptsQueue = xQueueCreate(INTERRUPTS_QUEUE_LEN, sizeof(mp_callback_obj_t));
+    mp_irq_is_alive = true;
     mp_thread_create_ex(TASK_Interrupts, NULL, &stack_size, INTERRUPTS_TASK_PRIORITY, "Interrupts");
 }
 
 void IRAM_ATTR mp_irq_queue_interrupt(void (* handler)(void *), void *arg) {
     mp_callback_obj_t cb = {.handler = handler, .arg = arg};
     xQueueSendFromISR(interruptsQueue, &cb, NULL);
+}
+
+void mp_irq_kill(void) {
+    // sending a NULL handler will kill the interrupt task
+    mp_irq_queue_interrupt(NULL, NULL);
+    do {
+        vTaskDelay(5 / portTICK_PERIOD_MS);
+    } while (mp_irq_is_alive);
+    // TODO disable all interrupts here at hardware level
 }

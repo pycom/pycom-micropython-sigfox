@@ -58,4 +58,5 @@ extern const mp_obj_type_t mp_irq_type;
  ******************************************************************************/
 void mp_irq_init0 (void);
 void mp_irq_queue_interrupt(void (* handler)(void *), void *arg);
+void mp_irq_kill(void);
 #endif /* MPIRQ_H_ */
