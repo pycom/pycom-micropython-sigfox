@@ -229,6 +229,41 @@ Methods
 
         Get or set the pin pull.
 
+.. only:: port_pycom_esp32
+
+    .. method:: pin.callback(trigger, handler=None, arg=None)
+
+        Set a callback to be triggered when the input level at the pin changes.
+
+            - ``trigger`` is the type of event that triggers the callback. Possible values are:
+
+                - ``Pin.IRQ_FALLING`` interrupt on falling edge.
+                - ``Pin.IRQ_RISING`` interrupt on rising edge.
+                - ``Pin.IRQ_LOW_LEVEL`` interrupt on low level.
+                - ``Pin.IRQ_HIGH_LEVEL`` interrupt on high level.
+
+              The values can be *ORed* together, for instance trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING
+
+            - ``handler`` is the function to be called when the event happens. This function will receive one argument.
+              Set ``handler`` to ``None`` to disable it.
+
+            - ``arg`` is an optional argument to pass to the callback. If left empty or set to ``None``,
+              the function will receive the ``Pin`` object that triggered it.
+
+        Example::
+
+            from machine import Pin
+
+            def pin_handler(arg):
+                print("got an interrupt in pin %s" % (arg.id()))
+
+            p_in = Pin('P10', mode=Pin.IN, pull=Pin.PULL_UP)
+            p_in.callback(Pin.IRQ_FALLING | Pin.IRQ_RISING, pin_handler)
+
+        .. note::
+
+            For more information on how Pycom's products handle interrupts, see :ref:`here<pycom_interrupt_handling>`.
+
 .. only:: port_wipy
 
     .. method:: Pin.irq(\*, trigger, priority=1, handler=None, wake=None)

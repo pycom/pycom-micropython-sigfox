@@ -36,14 +36,14 @@ CFLAGS = $(CFLAGS_XTENSA) -nostdlib -std=gnu99 -g3 -fstrict-volatile-bitfields -
 LDFLAGS = -nostdlib -Wl,-Map=$(@:.elf=.map) -Wl,--no-check-sections -u call_user_start_cpu0
 LDFLAGS += -Wl,-static -Wl,--undefined=uxTopUsedPriority -Wl,--gc-sections
 
-LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_IDF_COMP_PATH)/bt/lib\
+LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_IDF_COMP_PATH)/bt/lib \
        -L$(ESP_IDF_COMP_PATH)/esp32 -L$(ESP_IDF_COMP_PATH)/newlib/lib -Lbootloader \
-       -Llib -lnvs_flash -ltcpip_adapter -L$(BUILD) -lhal -lcore -lwps -lcoexist\
+       -Llib -lnvs_flash -ltcpip_adapter -L$(BUILD) -lhal -lcore -lwps -lcoexist \
        -lnet80211 -lphy lib/libpp.a -lrtc -llog -lsmartconfig -lwpa -lbtdm_app \
        -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libm.a $(ESP_IDF_COMP_PATH)/newlib/lib/libc.a \
        -lfreertos -ljson -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
-       -lxtensa-debug-module -lethernet -lbt
+       -lxtensa-debug-module -lethernet -lbt -lsdmmc
 
 B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader \
          -L$(ESP_IDF_COMP_PATH)/esp32/lib -Lbootloader -llog -lcore -lbootloader_support \

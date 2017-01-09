@@ -10,10 +10,11 @@ Do you have your basic setup working? Then it's time to look at all the ways you
 Contents
 
 - :ref:`2.2 What's under the hood <under_the_hood>`
-- :ref:`2.3 Pymakr IDE <pymakr_ide>`
-- :ref:`2.4 REPL over Telnet and Serial <repl>`
-- :ref:`2.5 Local file system and FTP access <pycom_filesystem>`
-- :ref:`2.6 Boot modes and safe boot <safeboot>`
+- :ref:`2.3 REPL over Telnet and Serial <repl>`
+- :ref:`2.4 Local file system and FTP access <pycom_filesystem>`
+- :ref:`2.5 Boot modes and safe boot <safeboot>`
+- :ref:`2.6 Interrupt handling <pycom_interrupt_handling>`
+- :ref:`2.7 Pymakr IDE <pymakr_ide>`
 
 
 .. _under_the_hood:
@@ -28,21 +29,21 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - Hardware floating point unit
 - Up to 24 GPIO :class:`Pins <.Pin>`
 - 2x :class:`UARTs <.UART>`
-- 2x :class:`SPIs <.SPI>`
+- :class:`SPIs <.SPI>`
+- :class:`Timers <.Timer>`
 - :class:`PWM <.PWM>`
 - :class:`ADC <.ADC>`
 - :class:`DAC <.DAC>`
 - :class:`I2C <.I2C>`
+- :class:`SD <.SD>`
 - :class:`WiFi <.WLAN>`
 - :class:`Bluetooth <.Bluetooth>`
 - :class:`LoRa <.LoRa>` (only available in the LoPy)
+- :class:`Bluetooth <.Bluetooth>`
 - :mod:`hashlib <.uhashlib>` MD5, SHA1, SHA256, SHA384 and SHA512 hash algorithms
-- :mod:`SSL/TLS support <.ussl>`
 - :class:`AES encryption <.AES>`
-- :class:`Interrupts` (coming soon)
-- 4x :class:`Timers` (coming soon)
+- :mod:`SSL/TLS support <.ussl>`
 - :class:`RTC` (coming soon)
-- :class:`SD` (coming soon)
 
 Click the links in the list above to see more details on that feature. 
 For all available modules and libraries, please visit the :ref:`Firmware API 
@@ -253,7 +254,28 @@ storage (not the SD card), and restores the files ``boot.py`` and ``main.py``
 back to their original states after the next reset.
 
 
-2.6 The heartbeat LED
+.. _pycom_interrupt_handling:
+
+2.6 Interrupt handling
+------------------
+
+In Pycom's ESP32 MicroPython port there are no restrictions on what you can do within an interrupt handler.
+For example, other ports don't allow you to allocate memory inside the handler or use sockets.
+
+These limitations were raised by handling the interrupt events differently. When an interrupt happens,
+a message is posted into a queue, notifying a separate thread that the appropriate callback handler should be called.
+Such handler would receive an argument. By default it is the object associated with the event.
+
+The programmer can do whatever is needed inside the callback, such as creating new variables,
+or even sending network packets. Just keep in mind that interrupts are processed sequentially,
+so try to keep the handlers as quick as possible in order to attend them all in a short time.
+
+.. note::
+
+    Currently the interrupt system can queue up to 16 interrupts.
+
+
+2.7 The heartbeat LED
 =====================
 
 By default the heartbeat LED flashes in blue color once every 4s to signal that

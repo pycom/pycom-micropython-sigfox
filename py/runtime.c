@@ -102,7 +102,7 @@ void mp_deinit(void) {
     //mp_obj_dict_free(&dict_main);
     mp_module_deinit();
 
-    // call port specific deinitialization if any 
+    // call port specific deinitialization if any
 #ifdef MICROPY_PORT_INIT_FUNC
     MICROPY_PORT_DEINIT_FUNC;
 #endif
@@ -565,8 +565,6 @@ mp_obj_t mp_call_function_2(mp_obj_t fun, mp_obj_t arg1, mp_obj_t arg2) {
 mp_obj_t mp_call_function_n_kw(mp_obj_t fun_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
     // TODO improve this: fun object can specify its type and we parse here the arguments,
     // passing to the function arrays of fixed and keyword arguments
-
-    DEBUG_OP_printf("calling function %p(n_args=" UINT_FMT ", n_kw=" UINT_FMT ", args=%p)\n", fun_in, n_args, n_kw, args);
 
     // get the type
     mp_obj_type_t *type = mp_obj_get_type(fun_in);

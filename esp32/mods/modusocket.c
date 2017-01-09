@@ -201,6 +201,7 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
     mod_network_socket_obj_t *self = self_in;
     int _errno;
 
+#ifdef LOPY
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
         mp_uint_t port = mp_obj_get_int(addr_in);
 
@@ -208,6 +209,7 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
             nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
         }
     } else {
+#endif
         // get the address
         uint8_t ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
         mp_uint_t port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
@@ -215,7 +217,9 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
         if (self->sock_base.nic_type->n_bind(self, ip, port, &_errno) != 0) {
             nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
         }
+#ifdef LOPY
     }
+#endif
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_bind_obj, socket_bind);
@@ -251,11 +255,14 @@ STATIC mp_obj_t socket_accept(mp_obj_t self_in) {
     uint8_t ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
     mp_uint_t port;
     int _errno;
+    MP_THREAD_GIL_EXIT();
     if (self->sock_base.nic_type->n_accept(self, socket2, ip, &port, &_errno) != 0) {
+        MP_THREAD_GIL_ENTER();
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
     }
 
     // add the socket to the list
+    MP_THREAD_GIL_ENTER();
     modusocket_socket_add(socket2->sock_base.sd, true);
 
     // make the return value
@@ -276,9 +283,12 @@ STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
 
     // connect the socket
     int _errno;
+    MP_THREAD_GIL_EXIT();
     if (self->sock_base.nic_type->n_connect(self, ip, port, &_errno) != 0) {
+        MP_THREAD_GIL_ENTER();
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
     }
+    MP_THREAD_GIL_ENTER();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_connect_obj, socket_connect);
@@ -289,7 +299,9 @@ STATIC mp_obj_t socket_send(mp_obj_t self_in, mp_obj_t buf_in) {
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(buf_in, &bufinfo, MP_BUFFER_READ);
     int _errno;
+    MP_THREAD_GIL_EXIT();
     mp_int_t ret = self->sock_base.nic_type->n_send(self, bufinfo.buf, bufinfo.len, &_errno);
+    MP_THREAD_GIL_ENTER();
     if (ret < 0) {
         if (_errno == EAGAIN && self->sock_base.timeout > 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
@@ -307,7 +319,9 @@ STATIC mp_obj_t socket_recv(mp_obj_t self_in, mp_obj_t len_in) {
     vstr_t vstr;
     vstr_init_len(&vstr, len);
     int _errno;
+    MP_THREAD_GIL_EXIT();
     mp_int_t ret = self->sock_base.nic_type->n_recv(self, (byte*)vstr.buf, len, &_errno);
+    MP_THREAD_GIL_ENTER();
     if (ret < 0) {
         if (_errno == EAGAIN) {
             if (self->sock_base.timeout > 0) {
@@ -342,7 +356,9 @@ STATIC mp_obj_t socket_sendto(mp_obj_t self_in, mp_obj_t data_in, mp_obj_t addr_
 
     // call the nic to sendto
     int _errno;
+    MP_THREAD_GIL_EXIT();
     mp_int_t ret = self->sock_base.nic_type->n_sendto(self, bufinfo.buf, bufinfo.len, ip, port, &_errno);
+    MP_THREAD_GIL_ENTER();
     if (ret < 0) {
         if (_errno == EAGAIN && self->sock_base.timeout > 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
@@ -361,7 +377,9 @@ STATIC mp_obj_t socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
     byte ip[4];
     mp_uint_t port;
     int _errno;
+    MP_THREAD_GIL_EXIT();
     mp_int_t ret = self->sock_base.nic_type->n_recvfrom(self, (byte*)vstr.buf, vstr.len, ip, &port, &_errno);
+    MP_THREAD_GIL_ENTER();
     if (ret < 0) {
         if (_errno == EAGAIN && self->sock_base.timeout > 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));

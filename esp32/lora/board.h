@@ -42,7 +42,6 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "lora/system/delay.h"
 #include "radio.h"
 #include "sx1272/sx1272.h"
-#include "rtc-board.h"
 #include "timer-board.h"
 #include "sx1272-board.h"
 #include "utilities.h"
@@ -66,12 +65,6 @@ Maintainer: Miguel Luis and Gregory Cristian
 #define RADIO_NSS                                   GPIO17
 
 #define RADIO_DIO                                   GPIO23
-
-#undef __disable_irq
-#define __disable_irq()                             XTOS_DISABLE_ALL_INTERRUPTS
-#undef __enable_irq
-#define __enable_irq()                              XTOS_ENABLE_INTERRUPTS
-
 
 void BoardInitPeriph( void );
 

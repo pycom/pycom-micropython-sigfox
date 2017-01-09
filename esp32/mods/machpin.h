@@ -37,6 +37,8 @@ enum {
 typedef struct {
     mp_obj_base_t       base;
     qstr                name;
+    mp_obj_t            handler;
+    mp_obj_t            handler_arg;
     uint8_t             pin_number;
     uint8_t             mode;
     uint8_t             pull;
@@ -45,9 +47,9 @@ typedef struct {
     int8_t              af_in;
     int8_t              af_out;
     int8_t              value;
-    bool                used;
     uint8_t             irq_trigger;
     uint8_t             irq_flags;
+    bool                used;
 } pin_obj_t;
 
 extern const mp_obj_type_t pin_type;

@@ -68,7 +68,7 @@
 #define LORA_SYMBOL_TIMEOUT                         (5)         // Symbols
 #define LORA_FIX_LENGTH_PAYLOAD_ON                  (true)
 #define LORA_FIX_LENGTH_PAYLOAD_OFF                 (false)
-#define LORA_TX_TIMEOUT_MAX                         (9000000)   // 9 seconds
+#define LORA_TX_TIMEOUT_MAX                         (9500)      // 9.5 seconds
 #define LORA_RX_TIMEOUT                             (0)         // No timeout
 
 // [SF7..SF12]
@@ -80,7 +80,7 @@
                                                         return -1;              \
                                                     }
 
-#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           10000000  // 10 [s] value in us
+#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           15000  // 15 [s] value in ms
 
 #if defined( USE_BAND_868 )
 #define LC4                                         { 867100000, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
@@ -228,6 +228,7 @@ static RadioEvents_t RadioEvents;
 
 static volatile lora_obj_t lora_obj;
 static volatile lora_partial_rx_packet_t lora_partial_rx_packet;
+static volatile lora_rx_data_t rx_data_isr;
 
 static TimerEvent_t TxNextActReqTimer;
 
@@ -284,7 +285,7 @@ static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms,
     memcpy (cmd_data.info.tx.data, buf, len);
     cmd_data.info.tx.len = len;
     cmd_data.info.tx.dr = dr;
-    if (lora_obj.ComplianceTest.Running) {
+    if (lora_obj.ComplianceTest.Enabled && lora_obj.ComplianceTest.Running) {
         cmd_data.info.tx.port = 224;  // MAC commands port
         if (lora_obj.ComplianceTest.IsTxConfirmed) {
             cmd_data.info.tx.confirmed = true;
@@ -347,7 +348,6 @@ static IRAM_ATTR void McpsConfirm (McpsConfirm_t *McpsConfirm) {
 }
 
 static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
-    lora_rx_data_t rx_data;
     if (mcpsIndication->Status != LORAMAC_EVENT_INFO_STATUS_OK) {
         return;
     }
@@ -388,9 +388,9 @@ static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
         case 1:
         case 2:
             if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
-                memcpy(rx_data.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
-                rx_data.len = mcpsIndication->BufferSize;
-                xQueueSendFromISR(xRxQueue, (void *)&rx_data, NULL);
+                memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
+                rx_data_isr.len = mcpsIndication->BufferSize;
+                xQueueSendFromISR(xRxQueue, (void *)&rx_data_isr, NULL);
             }
             // printf("Data on port 2 received\n");
             break;
@@ -412,6 +412,9 @@ static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
                         lora_obj.ComplianceTest.NbGateways = 0;
                         lora_obj.ComplianceTest.Running = true;
                         lora_obj.ComplianceTest.State = 1;
+
+                        // flush the rx queue
+                        while (xQueueReceiveFromISR(xRxQueue, (void *)&rx_data_isr, (TickType_t)0));
 
                         // enable ADR during test mode
                         MibRequestConfirm_t mibReq;
@@ -460,9 +463,9 @@ static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
                     case 4: // (vii)
                         // return the payload
                         if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
-                            memcpy(rx_data.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
-                            rx_data.len = mcpsIndication->BufferSize;
-                            xQueueSendFromISR(xRxQueue, (void *)&rx_data, NULL);
+                            memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
+                            rx_data_isr.len = mcpsIndication->BufferSize;
+                            xQueueSendFromISR(xRxQueue, (void *)&rx_data_isr, NULL);
                         }
                         // printf("Crypto message received\n");
                         break;
@@ -575,17 +578,6 @@ static void TASK_LoRa (void *pvParameters) {
                         mibReq.Param.EnablePublicNetwork = cmd_data.info.init.public;
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
-                   #if defined( USE_BAND_868 )
-                       LoRaMacTestSetDutyCycleOn(false);            // TODO
-                       LoRaMacChannelAdd(3, (ChannelParams_t)LC4);
-                       LoRaMacChannelAdd(4, (ChannelParams_t)LC5);
-                       LoRaMacChannelAdd(5, (ChannelParams_t)LC6);
-                       LoRaMacChannelAdd(6, (ChannelParams_t)LC7);
-                       LoRaMacChannelAdd(7, (ChannelParams_t)LC8);
-                       LoRaMacChannelAdd(8, (ChannelParams_t)LC9);
-                       LoRaMacChannelAdd(9, (ChannelParams_t)LC10);
-                   #endif
-
                         // copy the configuration (must be done before sending the response)
                         lora_obj.adr = cmd_data.info.init.adr;
                         lora_obj.public = cmd_data.info.init.public;
@@ -646,9 +638,9 @@ static void TASK_LoRa (void *pvParameters) {
                     if (cmd_data.info.channel.add) {
                         ChannelParams_t channel =
                         { cmd_data.info.channel.frequency, {((cmd_data.info.channel.dr_max << 4) | cmd_data.info.channel.dr_min)}, 0};
-                        LoRaMacChannelAdd(cmd_data.info.channel.index, channel);
+                        LoRaMacChannelManualAdd(cmd_data.info.channel.index, channel);
                     } else {
-                        LoRaMacChannelRemove(cmd_data.info.channel.index);
+                        LoRaMacChannelManualRemove(cmd_data.info.channel.index);
                     }
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
                     break;
@@ -665,7 +657,6 @@ static void TASK_LoRa (void *pvParameters) {
                             mcpsReq.Req.Unconfirmed.fBufferSize = 0;
                             mcpsReq.Req.Unconfirmed.Datarate = cmd_data.info.tx.dr;
                             empty_frame = true;
-                            // printf("Sending empty frame\n");
                         } else {
                             if (cmd_data.info.tx.confirmed) {
                                 mcpsReq.Type = MCPS_CONFIRMED;
@@ -785,14 +776,12 @@ static IRAM_ATTR void OnTxDone (void) {
 }
 
 static IRAM_ATTR void OnRxDone (uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr) {
-    lora_rx_data_t rx_data;
-
     lora_obj.state = E_LORA_STATE_RX_DONE;
     lora_obj.rssi = rssi;
     if (size <= LORA_PAYLOAD_SIZE_MAX) {
-        memcpy(rx_data.data, payload, size);
-        rx_data.len = size;
-        xQueueSendFromISR(xRxQueue, (void *)&rx_data, NULL);
+        memcpy((void *)rx_data_isr.data, payload, size);
+        rx_data_isr.len = size;
+        xQueueSendFromISR(xRxQueue, (void *)&rx_data_isr, NULL);
     }
 }
 
@@ -1204,6 +1193,15 @@ STATIC mp_obj_t lora_compliance_test(mp_uint_t n_args, const mp_obj_t *args) {
             lora_obj.ComplianceTest.Enabled = true;
         } else {
             lora_obj.ComplianceTest.Enabled = false;
+            lora_obj.ComplianceTest.IsTxConfirmed = false;
+            lora_obj.ComplianceTest.DownLinkCounter = 0;
+            lora_obj.ComplianceTest.Running = false;
+
+            // set adr back to its original value
+            MibRequestConfirm_t mibReq;
+            mibReq.Type = MIB_ADR;
+            mibReq.Param.AdrEnable = lora_obj.adr;
+            LoRaMacMibSetRequestConfirm(&mibReq);
         }
 
         if (n_args > 2) {
@@ -1365,7 +1363,6 @@ STATIC mp_obj_t lora_add_channel (mp_uint_t n_args, const mp_obj_t *pos_args, mp
         { MP_QSTR_frequency,    MP_ARG_REQUIRED | MP_ARG_KW_ONLY  | MP_ARG_INT },
         { MP_QSTR_dr_min,       MP_ARG_REQUIRED | MP_ARG_KW_ONLY  | MP_ARG_INT },
         { MP_QSTR_dr_max,       MP_ARG_REQUIRED | MP_ARG_KW_ONLY  | MP_ARG_INT },
-        { MP_QSTR_duty_cycle,   MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_obj = mp_const_none} },
     };
     lora_cmd_data_t cmd_data;
 
@@ -1383,11 +1380,6 @@ STATIC mp_obj_t lora_add_channel (mp_uint_t n_args, const mp_obj_t *pos_args, mp
     uint32_t dr_min = args[2].u_int;
     uint32_t dr_max = args[3].u_int;
     if (dr_min > dr_max || !lora_validate_data_rate(dr_min) || !lora_validate_data_rate(dr_max)) {
-        goto error;
-    }
-
-    uint32_t band = args[4].u_int;
-    if (band >= LORA_MAX_NB_BANDS) {
         goto error;
     }
 

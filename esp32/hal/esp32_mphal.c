@@ -82,7 +82,13 @@ void mp_hal_feed_watchdog(void) {
 }
 
 void mp_hal_delay_us(uint32_t us) {
-    ets_delay_us(us);
+    if (us < 1000) {
+        ets_delay_us(us);
+    } else {
+        MP_THREAD_GIL_EXIT();
+        ets_delay_us(us);
+        MP_THREAD_GIL_ENTER();
+    }
 }
 
 int mp_hal_stdin_rx_chr(void) {
@@ -160,7 +166,6 @@ uint32_t mp_hal_ticks_us(void) {
 }
 
 void mp_hal_delay_ms(uint32_t delay) {
-    // FIXME: Cannot do it like this within interrupts
     MP_THREAD_GIL_EXIT();
     vTaskDelay (delay / portTICK_PERIOD_MS);
     MP_THREAD_GIL_ENTER();

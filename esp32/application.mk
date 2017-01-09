@@ -38,6 +38,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/nvs_flash/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/spi_flash/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/tcpip_adapter/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/log/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/sdmmc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/device/include
@@ -95,6 +96,7 @@ APP_LIB_SRC_C = $(addprefix lib/,\
 	fatfs/option/ccsbcs.c \
 	)
 
+ifeq ($(BOARD), LOPY)
 APP_MODS_SRC_C = $(addprefix mods/,\
 	machuart.c \
 	machpin.c \
@@ -113,13 +115,47 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modpycom.c \
 	moduhashlib.c \
 	moducrypto.c \
+	machtimer.c \
+	machtimer_alarm.c \
+	machtimer_chrono.c \
 	analog.c \
 	pybadc.c \
 	pybdac.c \
+	pybsd.c \
 	modussl.c \
 	modbt.c \
 	)
+endif
 
+ifeq ($(BOARD), WIPY)
+APP_MODS_SRC_C = $(addprefix mods/,\
+	machuart.c \
+	machpin.c \
+	machrtc.c \
+	machspi.c \
+	machine_i2c.c \
+	machpwm.c \
+	modmachine.c \
+	moduos.c \
+	modusocket.c \
+	modnetwork.c \
+	modwlan.c \
+	moduselect.c \
+	modutime.c \
+	modpycom.c \
+	moduhashlib.c \
+	moducrypto.c \
+	machtimer.c \
+	machtimer_alarm.c \
+	machtimer_chrono.c \
+	analog.c \
+	pybadc.c \
+	pybdac.c \
+	pybsd.c \
+	modussl.c \
+	modbt.c \
+	)
+endif
 
 APP_STM_SRC_C = $(addprefix stmhal/,\
 	bufhelper.c \
@@ -145,6 +181,7 @@ APP_UTIL_SRC_C = $(addprefix util/,\
 
 APP_FATFS_SRC_C = $(addprefix fatfs/src/,\
 	drivers/sflash_diskio.c \
+	drivers/sd_diskio.c \
 	option/syscall.c \
 	diskio.c \
 	ffconf.c \
@@ -152,7 +189,6 @@ APP_FATFS_SRC_C = $(addprefix fatfs/src/,\
 
 APP_LORA_SRC_C = $(addprefix lora/,\
 	utilities.c \
-	rtc-board.c \
 	timer-board.c \
 	gpio-board.c \
 	spi-board.c \
@@ -162,7 +198,6 @@ APP_LORA_SRC_C = $(addprefix lora/,\
 
 APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/LoRaMac.c \
-	mac/LoRaMac-api-v3.c \
 	mac/LoRaMacCrypto.c \
 	system/delay.c \
 	system/gpio.c \

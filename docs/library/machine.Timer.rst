@@ -1,7 +1,130 @@
 .. currentmodule:: machine
 
-class Timer -- control internal timers (coming soon)
-====================================================
+.. class:: Timer
+
+class Timer -- measure time spans and set alarms
+================================================
+
+.. only:: port_pycom_esp32
+
+    Timers can be used for a great variety of tasks, like measuring time spans or being
+    notified that a specific interval has elapsed.
+
+    These two concepts are grouped into two different subclasses:
+
+        - :class:`Chrono`: used to measure time spans.
+        - :class:`Alarm`: to get interrupted after a specific interval.
+
+    .. hint::
+        You can create as many of these objects as needed.
+
+
+    Constructors
+    ------------
+
+    .. class:: Timer.Chrono( )
+
+        Create a chronometer object.
+
+    .. class:: Timer.Alarm(handler=None, s, \*, ms, us, arg=None, periodic=False)
+
+        Create an Alarm object.
+
+            - ``handler``: will be called after the interval has elapsed. If set to ``None``, the alarm will be
+              disabled after creation.
+
+            - ``arg``: an optional argument can be passed to the callback handler function. If ``None`` is specified, the function will
+              receive the object that triggered the alarm.
+
+            - ``s``, ``ms``, ``us``: the interval can be specified in seconds (float), miliseconds (integer) or microseconds (integer).
+              Only one at a time can be specified.
+
+            - ``periodic``: an alarm can be set to trigger repeatedly by setting this parameter to True.
+
+    class Chrono -- measure time spans
+    ==================================
+
+    Methods
+    -------
+
+        .. method:: chrono.start()
+
+            Start the chronometer.
+
+        .. method:: chrono.stop()
+
+            Stop the chronometer.
+
+        .. method:: chrono.reset()
+
+            Reset the time count to 0.
+
+        .. method:: chrono.read()
+
+            Get the elapsed time in seconds.
+
+        .. method:: chrono.read_ms()
+
+            Get the elapsed time in miliseconds.
+
+        .. method:: chrono.read_us()
+
+            Get the elapsed time in microseconds.
+
+
+    Usage example::
+
+        from machine import Timer
+        import time
+
+        chrono = Timer.Chrono()
+
+        chrono.start()
+        time.sleep(1.25) # simulate the first lap took 1.25 seconds
+        lap = chrono.read() # read elapsed time without stopping
+        time.sleep(1.5)
+        chrono.stop()
+        total = chrono.read()
+
+        print()
+        print("\nthe racer took %f seconds to finish the race" % total)
+        print("  %f seconds in the first lap" % lap)
+        print("  %f seconds in the last lap" % (total - lap))
+
+    class Alarm -- get interrupted after a specific interval
+    ========================================================
+
+    Methods
+    -------
+
+        .. method:: alarm.callback(handler, arg)
+
+            Specify a callback ``handler`` for the alarm. If set to ``None``, the alarm will be disabled.
+
+            An optional argument ``arg`` can be passed to the callback handler function. If ``None`` is specified, the function
+            will receive the object that triggered the alarm.
+
+    Usage example::
+
+        from machine import Timer
+
+        class Clock:
+
+            def __init__(self):
+                self.seconds = 0
+                self.__alarm = Timer.Alarm(self._seconds_handler, 1, periodic=True)
+
+            def _seconds_handler(self, alarm):
+                self.seconds += 1
+                print("%02d seconds have passed" % self.seconds)
+                if self.seconds == 10:
+                    alarm.callback(None) # stop counting after 10 seconds
+
+        clock = Clock()
+
+    .. note::
+
+        For more information on how Pycom's products handle interrupts, see :ref:`here<pycom_interrupt_handling>`.
 
 .. only:: port_wipy
 
@@ -9,7 +132,7 @@ class Timer -- control internal timers (coming soon)
     counting events, and generating a PWM signal are among the most common use cases.
     Each timer consists of two 16-bit channels and this channels can be tied together to
     form one 32-bit timer. The operating mode needs to be configured per timer, but then
-    the period (or the frequency) can be independently configured on each channel. 
+    the period (or the frequency) can be independently configured on each channel.
     By using the callback method, the timer event can call a Python function.
 
     Example usage to toggle an LED at a fixed frequency::
@@ -49,67 +172,69 @@ class Timer -- control internal timers (coming soon)
         tim2_ch.duty_cycle(3020, Timer.NEGATIVE)                           # set the duty cycle to 30.2% and change the polarity to negative
         tim2_ch.period(2000000)                                            # change the period to 2 seconds
 
-.. note::
+.. only:: not port_pycom_esp32
 
-    Memory can't be allocated inside irq handlers (an interrupt) and so
-    exceptions raised within a handler don't give much information.  See
-    :func:`micropython.alloc_emergency_exception_buf` for how to get around this
-    limitation.
+    .. note::
 
-Constructors
-------------
+        Memory can't be allocated inside irq handlers (an interrupt) and so
+        exceptions raised within a handler don't give much information.  See
+        :func:`micropython.alloc_emergency_exception_buf` for how to get around this
+        limitation.
 
-.. class:: Timer(id, ...)
+    Constructors
+    ------------
+
+    .. class:: Timer(id, ...)
+
+        .. only:: port_wipy
+
+        Construct a new timer object of the given id. ``id`` can take values from 0 to 3.
+
+
+    Methods
+    -------
 
     .. only:: port_wipy
 
-       Construct a new timer object of the given id. ``id`` can take values from 0 to 3.
+        .. method:: Timer.init(mode, \*, width=16)
 
+        Initialize the timer. Example::
 
-Methods
--------
+            tim.init(Timer.PERIODIC)             # periodic 16-bit timer
+            tim.init(Timer.ONE_SHOT, width=32)   # one shot 32-bit timer
 
-.. only:: port_wipy
+        Keyword arguments:
 
-    .. method:: Timer.init(mode, \*, width=16)
+            - ``mode`` can be one of:
 
-       Initialize the timer. Example::
+            - ``Timer.ONE_SHOT`` - The timer runs once until the configured
+                period of the channel expires.
+            - ``Timer.PERIODIC`` - The timer runs periodically at the configured
+                frequency of the channel.
+            - ``Timer.PWM``      - Output a PWM signal on a pin.
 
-           tim.init(Timer.PERIODIC)             # periodic 16-bit timer
-           tim.init(Timer.ONE_SHOT, width=32)   # one shot 32-bit timer
+            - ``width`` must be either 16 or 32 (bits). For really low frequencies < 5Hz
+            (or large periods), 32-bit timers should be used. 32-bit mode is only available
+            for ``ONE_SHOT`` AND ``PERIODIC`` modes.
 
-       Keyword arguments:
-       
-         - ``mode`` can be one of:
-         
-           - ``Timer.ONE_SHOT`` - The timer runs once until the configured 
-             period of the channel expires.
-           - ``Timer.PERIODIC`` - The timer runs periodically at the configured 
-             frequency of the channel.
-           - ``Timer.PWM``      - Output a PWM signal on a pin.
+    .. method:: Timer.deinit()
 
-         - ``width`` must be either 16 or 32 (bits). For really low frequencies < 5Hz
-           (or large periods), 32-bit timers should be used. 32-bit mode is only available
-           for ``ONE_SHOT`` AND ``PERIODIC`` modes.
-
-.. method:: Timer.deinit()
-
-   Deinitializes the timer. Disables all channels and associated IRQs.
-   Stops the timer, and disables the timer peripheral.
+    Deinitializes the timer. Disables all channels and associated IRQs.
+    Stops the timer, and disables the timer peripheral.
 
 .. only:: port_wipy
 
     .. method:: Timer.channel(channel, \**, freq, period, polarity=Timer.POSITIVE, duty_cycle=0)
-    
+
        If only a channel identifier passed, then a previously initialized channel
        object is returned (or ``None`` if there is no previous channel).
 
        Otherwise, a TimerChannel object is initialized and returned.
-       
+
        The operating mode is is the one configured to the Timer object that was used to
        create the channel.
 
-       - ``channel`` if the width of the timer is 16-bit, then must be either ``TIMER.A``, ``TIMER.B``. 
+       - ``channel`` if the width of the timer is 16-bit, then must be either ``TIMER.A``, ``TIMER.B``.
          If the width is 32-bit then it **must be** ``TIMER.A | TIMER.B``.
 
        Keyword only arguments:
@@ -138,78 +263,80 @@ Methods
           - ``GP10`` on Timer 3 channel A.
           - ``GP11`` on Timer 3 channel B.
 
-class TimerChannel --- setup a channel for a timer
-==================================================
+.. only:: not port_pycom_esp32
 
-Timer channels are used to generate/capture a signal using a timer.
+    class TimerChannel --- setup a channel for a timer
+    ==================================================
 
-TimerChannel objects are created using the Timer.channel() method.
+    Timer channels are used to generate/capture a signal using a timer.
 
-Methods
--------
+    TimerChannel objects are created using the Timer.channel() method.
 
-.. only:: port_wipy
+    Methods
+    -------
 
-    .. method:: timerchannel.irq(\*, trigger, priority=1, handler=None)
+    .. only:: port_wipy
 
-        The behavior of this callback is heavily dependent on the operating
-        mode of the timer channel:
+        .. method:: timerchannel.irq(\*, trigger, priority=1, handler=None)
 
-            - If mode is ``Timer.PERIODIC`` the callback is executed periodically
-              with the configured frequency or period.
-            - If mode is ``Timer.ONE_SHOT`` the callback is executed once when
-              the configured timer expires.
-            - If mode is ``Timer.PWM`` the callback is executed when reaching the duty
-              cycle value.
+            The behavior of this callback is heavily dependent on the operating
+            mode of the timer channel:
 
-        The accepted params are:
+                - If mode is ``Timer.PERIODIC`` the callback is executed periodically
+                with the configured frequency or period.
+                - If mode is ``Timer.ONE_SHOT`` the callback is executed once when
+                the configured timer expires.
+                - If mode is ``Timer.PWM`` the callback is executed when reaching the duty
+                cycle value.
 
-            - ``priority`` level of the interrupt. Can take values in the range 1-7.
-              Higher values represent higher priorities.
-            - ``handler`` is an optional function to be called when the interrupt is triggered.
-            - ``trigger`` must be ``Timer.TIMEOUT`` when the operating mode is either ``Timer.PERIODIC`` or
-              ``Timer.ONE_SHOT``. In the case that mode is ``Timer.PWM`` then trigger must be equal to
-              ``Timer.MATCH``.
+            The accepted params are:
 
-        Returns a callback object.
+                - ``priority`` level of the interrupt. Can take values in the range 1-7.
+                Higher values represent higher priorities.
+                - ``handler`` is an optional function to be called when the interrupt is triggered.
+                - ``trigger`` must be ``Timer.TIMEOUT`` when the operating mode is either ``Timer.PERIODIC`` or
+                ``Timer.ONE_SHOT``. In the case that mode is ``Timer.PWM`` then trigger must be equal to
+                ``Timer.MATCH``.
 
-.. only:: port_wipy
+            Returns a callback object.
 
-    .. method:: timerchannel.freq([value])
+    .. only:: port_wipy
 
-       Get or set the timer channel frequency (in Hz).
+        .. method:: timerchannel.freq([value])
 
-    .. method:: timerchannel.period([value])
+        Get or set the timer channel frequency (in Hz).
 
-       Get or set the timer channel period (in microseconds).
+        .. method:: timerchannel.period([value])
 
-    .. method:: timerchannel.duty_cycle([value])
+        Get or set the timer channel period (in microseconds).
 
-       Get or set the duty cycle of the PWM signal. It's a percentage (0.00-100.00). Since the WiPy
-       doesn't support floating point numbers the duty cycle must be specified in the range 0-10000,
-       where 10000 would represent 100.00, 5050 represents 50.50, and so on.
+        .. method:: timerchannel.duty_cycle([value])
 
-Constants
----------
+        Get or set the duty cycle of the PWM signal. It's a percentage (0.00-100.00). Since the WiPy
+        doesn't support floating point numbers the duty cycle must be specified in the range 0-10000,
+        where 10000 would represent 100.00, 5050 represents 50.50, and so on.
 
-.. data:: Timer.ONE_SHOT
-.. data:: Timer.PERIODIC
-.. data:: Timer.PWM
+    Constants
+    ---------
 
-   Selects the timer operating mode.
+    .. data:: Timer.ONE_SHOT
+    .. data:: Timer.PERIODIC
+    .. data:: Timer.PWM
 
-.. data:: Timer.A
-.. data:: Timer.B
+    Selects the timer operating mode.
 
-   Selects the timer channel. Must be ORed (``Timer.A`` | ``Timer.B``) when
-   using a 32-bit timer.
+    .. data:: Timer.A
+    .. data:: Timer.B
 
-.. data:: Timer.POSITIVE
-.. data:: Timer.NEGATIVE
+    Selects the timer channel. Must be ORed (``Timer.A`` | ``Timer.B``) when
+    using a 32-bit timer.
 
-   Timer channel polarity selection (only relevant in PWM mode).
+    .. data:: Timer.POSITIVE
+    .. data:: Timer.NEGATIVE
 
-.. data:: Timer.TIMEOUT
-.. data:: Timer.MATCH
+    Timer channel polarity selection (only relevant in PWM mode).
 
-   Timer channel IRQ triggers.
+    .. data:: Timer.TIMEOUT
+    .. data:: Timer.MATCH
+
+    Timer channel IRQ triggers.

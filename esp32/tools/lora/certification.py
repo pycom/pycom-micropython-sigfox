@@ -78,7 +78,7 @@ class Compliance:
                         self.lora.compliance_test(True, 1, False)
                     else:
                         if self.lora.compliance_test().state == 4:
-                            rx_payload = self.s.recv(128)
+                            rx_payload = self.s.recv(255)
                             if rx_payload:
                                 self.tx_payload = bytes([rx_payload[0]])
                                 for i in range(1, len(rx_payload)):

@@ -47,8 +47,6 @@ void BoardInitMcu( void )
         SpiInit( &SX1272.Spi, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, NC );
         SX1272IoInit( );
 
-        TimerSetLowPowerEnable( false );
-
         TimerHwInit( );
 
         McuInitialized = true;

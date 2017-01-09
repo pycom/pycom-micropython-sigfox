@@ -50,6 +50,7 @@
 #include "mpsleep.h"
 #include "machrtc.h"
 #include "modbt.h"
+#include "machtimer.h"
 #include "mptask.h"
 
 #include "ff.h"
@@ -62,13 +63,17 @@
 #include "freertos/queue.h"
 
 /******************************************************************************
+ DECLARE EXTERNAL FUNCTIONS
+ ******************************************************************************/
+
+/******************************************************************************
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
 #if defined(LOPY)
     #if defined(USE_BAND_868)
-        #define GC_POOL_SIZE_BYTES                                          (42 * 1024)
+        #define GC_POOL_SIZE_BYTES                                          (36 * 1024)
     #else
-        #define GC_POOL_SIZE_BYTES                                          (38 * 1024)
+        #define GC_POOL_SIZE_BYTES                                          (36 * 1024)
     #endif
 #else
     #define GC_POOL_SIZE_BYTES                                          (40 * 1024)
@@ -154,6 +159,7 @@ soft_reset:
     readline_init0();
     mod_network_init0();
     modbt_init0();
+    modtimer_init0();
     bool safeboot = false;
     boot_info_t boot_info;
     uint32_t boot_info_offset;

@@ -13,10 +13,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Miguel Luis and Gregory Cristian
 */
 #include "board.h"
-#include "rtc-board.h"
 #include "timer-board.h"
-
-static bool LowPowerModeEnable = true;
 
 /*!
  * This flag is used to make sure we have looped through the main several time to avoid race issues
@@ -52,16 +49,16 @@ static void TimerInsertTimer( TimerEvent_t *obj, uint32_t remainingTime );
 
 /*!
  * \brief Sets a timeout with the duration "timestamp"
- * 
+ *
  * \param [IN] timestamp Delay duration
  */
 static void TimerSetTimeout( TimerEvent_t *obj );
 
 /*!
  * \brief Check if the Object to be added is not already in the list
- * 
+ *
  * \param [IN] timestamp Delay duration
- * \retval true (the object is already in the list) or false  
+ * \retval true (the object is already in the list) or false
  */
 static bool TimerExists( TimerEvent_t *obj );
 
@@ -70,17 +67,7 @@ static bool TimerExists( TimerEvent_t *obj );
  *
  * \retval value current timer value
  */
-uint32_t TimerGetValue( void );
-
-IRAM_ATTR void TimerSetLowPowerEnable( bool enable )
-{
-   LowPowerModeEnable = enable;
-}
-
-IRAM_ATTR bool TimerGetLowPowerEnable( void )
-{
-    return LowPowerModeEnable;
-}
+TimerTime_t TimerGetValue( void );
 
 IRAM_ATTR void TimerInit( TimerEvent_t *obj, void ( *callback )( void ) )
 {
@@ -96,11 +83,11 @@ IRAM_ATTR void TimerStart( TimerEvent_t *obj )
     uint32_t elapsedTime = 0;
     uint32_t remainingTime = 0;
 
-    __disable_irq( );
+    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;;
 
     if( ( obj == NULL ) || ( TimerExists( obj ) == true ) )
     {
-        __enable_irq( );
+        XTOS_RESTORE_INTLEVEL(ilevel);
         return;
     }
 
@@ -111,7 +98,7 @@ IRAM_ATTR void TimerStart( TimerEvent_t *obj )
     {
         TimerInsertNewHeadTimer( obj, obj->Timestamp );
     }
-    else 
+    else
     {
         if( TimerListHead->IsRunning == true )
         {
@@ -126,7 +113,7 @@ IRAM_ATTR void TimerStart( TimerEvent_t *obj )
         {
             remainingTime = TimerListHead->Timestamp;
         }
-    
+
         if( obj->Timestamp < remainingTime )
         {
             TimerInsertNewHeadTimer( obj, remainingTime );
@@ -136,12 +123,12 @@ IRAM_ATTR void TimerStart( TimerEvent_t *obj )
              TimerInsertTimer( obj, remainingTime );
         }
     }
-    __enable_irq( );
+    XTOS_RESTORE_INTLEVEL(ilevel);
 }
 
 static IRAM_ATTR void TimerInsertTimer( TimerEvent_t *obj, uint32_t remainingTime )
 {
-    uint32_t aggregatedTimestamp = 0;      // hold the sum of timestamps 
+    uint32_t aggregatedTimestamp = 0;      // hold the sum of timestamps
     uint32_t aggregatedTimestampNext = 0;  // hold the sum of timestamps up to the next event
 
     TimerEvent_t* prev = TimerListHead;
@@ -212,18 +199,16 @@ static IRAM_ATTR void TimerInsertNewHeadTimer( TimerEvent_t *obj, uint32_t remai
 IRAM_ATTR void TimerIrqHandler( void )
 {
     uint32_t elapsedTime = 0;
- 
-    if( LowPowerModeEnable == false )
+
+    // when all timers are stopped or expired, TimerListHead is NULL
+    if( TimerListHead == NULL )
     {
-        if( TimerListHead == NULL )
-        {
-            return;  // Only necessary when the standard timer is used as a time base
-        }
+        return;
     }
 
-    elapsedTime = TimerGetValue();
+    elapsedTime = TimerGetValue( );
 
-    if( elapsedTime > TimerListHead->Timestamp )
+    if( elapsedTime >= TimerListHead->Timestamp )
     {
         TimerListHead->Timestamp = 0;
     }
@@ -231,6 +216,8 @@ IRAM_ATTR void TimerIrqHandler( void )
     {
         TimerListHead->Timestamp -= elapsedTime;
     }
+
+    TimerListHead->IsRunning = false;
 
     while( ( TimerListHead != NULL ) && ( TimerListHead->Timestamp == 0 ) )
     {
@@ -245,15 +232,18 @@ IRAM_ATTR void TimerIrqHandler( void )
 
     // start the next TimerListHead if it exists
     if( TimerListHead != NULL )
-    {    
-        TimerListHead->IsRunning = true;
-        TimerSetTimeout( TimerListHead );
-    } 
+    {
+        if( TimerListHead->IsRunning != true )
+        {
+            TimerListHead->IsRunning = true;
+            TimerSetTimeout( TimerListHead );
+        }
+    }
 }
 
 IRAM_ATTR void TimerStop( TimerEvent_t *obj )
 {
-    __disable_irq( );
+    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
 
     uint32_t elapsedTime = 0;
     uint32_t remainingTime = 0;
@@ -261,25 +251,25 @@ IRAM_ATTR void TimerStop( TimerEvent_t *obj )
     TimerEvent_t* prev = TimerListHead;
     TimerEvent_t* cur = TimerListHead;
 
-    // List is empty or the Obj to stop does not exist 
+    // List is empty or the Obj to stop does not exist
     if( ( TimerListHead == NULL ) || ( obj == NULL ) )
     {
-        __enable_irq( );
+        XTOS_RESTORE_INTLEVEL(ilevel);
         return;
     }
 
-    if( TimerListHead == obj ) // Stop the Head                                    
+    if( TimerListHead == obj ) // Stop the Head
     {
-        if( TimerListHead->IsRunning == true ) // The head is already running 
+        if( TimerListHead->IsRunning == true ) // The head is already running
         {
             elapsedTime = TimerGetValue( );
             if( elapsedTime > obj->Timestamp )
             {
                 elapsedTime = obj->Timestamp;
             }
-        
+
             remainingTime = obj->Timestamp - elapsedTime;
-        
+
             if( TimerListHead->Next != NULL )
             {
                 TimerListHead->IsRunning = false;
@@ -294,8 +284,8 @@ IRAM_ATTR void TimerStop( TimerEvent_t *obj )
             }
         }
         else // Stop the head before it is started
-        {     
-            if( TimerListHead->Next != NULL )     
+        {
+            if( TimerListHead->Next != NULL )
             {
                 remainingTime = obj->Timestamp;
                 TimerListHead = TimerListHead->Next;
@@ -308,9 +298,9 @@ IRAM_ATTR void TimerStop( TimerEvent_t *obj )
         }
     }
     else // Stop an object within the list
-    {    
+    {
         remainingTime = obj->Timestamp;
-        
+
         while( cur != NULL )
         {
             if( cur == obj )
@@ -333,11 +323,11 @@ IRAM_ATTR void TimerStop( TimerEvent_t *obj )
                 prev = cur;
                 cur = cur->Next;
             }
-        }   
+        }
     }
-    __enable_irq( );
-}    
-    
+    XTOS_RESTORE_INTLEVEL(ilevel);
+}
+
 static IRAM_ATTR bool TimerExists( TimerEvent_t *obj )
 {
     TimerEvent_t* cur = TimerListHead;
@@ -361,86 +351,44 @@ void IRAM_ATTR TimerReset( TimerEvent_t *obj )
 
 void IRAM_ATTR TimerSetValue( TimerEvent_t *obj, uint32_t value )
 {
-    uint32_t minValue = 0;
-
     TimerStop( obj );
-
-    if( LowPowerModeEnable == true )
-    {
-        minValue = RtcGetMinimumTimeout( );
-    }
-    else
-    {
-        minValue = TimerHwGetMinimumTimeout( );
-    }
-    
-    if( value < minValue )
-    {
-        value = minValue;
-    }
-
     obj->Timestamp = value;
     obj->ReloadValue = value;
 }
 
-IRAM_ATTR uint32_t TimerGetValue( void )
+IRAM_ATTR TimerTime_t TimerGetValue( void )
 {
-    if( LowPowerModeEnable == true )
-    {
-        return RtcGetTimerElapsedTime( );
-    }
-    else
-    {
-        return TimerHwGetElapsedTime( );
-    }
+    return TimerHwGetElapsedTime( );
 }
 
 IRAM_ATTR TimerTime_t TimerGetCurrentTime( void )
 {
-    if( LowPowerModeEnable == true )
-    {
-        return RtcGetTimerValue( );
-    }
-    else
-    {
-        return TimerHwGetTime( );
-    }
+    return TimerHwGetTime( );
 }
 
 static IRAM_ATTR void TimerSetTimeout( TimerEvent_t *obj )
 {
     HasLoopedThroughMain = 0;
+    TimerHwStart( obj->Timestamp );
+}
 
-    if( LowPowerModeEnable == true )
-    {
-        RtcSetTimeout( obj->Timestamp );
-    }
-    else
-    {
-        TimerHwStart( obj->Timestamp );
-    }
+IRAM_ATTR TimerTime_t TimerGetElapsedTime( TimerTime_t savedTime )
+{
+    return TimerHwComputeTimeDifference( savedTime );
 }
 
 IRAM_ATTR void TimerLowPowerHandler( void )
 {
-    if( ( TimerListHead != NULL ) && ( TimerListHead->IsRunning == true ) ) 
-    {    
+    if( ( TimerListHead != NULL ) && ( TimerListHead->IsRunning == true ) )
+    {
         if( HasLoopedThroughMain < 5 )
         {
             HasLoopedThroughMain++;
         }
         else
-        { 
+        {
             HasLoopedThroughMain = 0;
-    
-            if( LowPowerModeEnable == true )
-            {
-                RtcEnterLowPowerStopMode( );
-            }
-            else
-            {
-                TimerHwEnterLowPowerStopMode( );
-            }
+            TimerHwEnterLowPowerStopMode( );
         }
     }
 }

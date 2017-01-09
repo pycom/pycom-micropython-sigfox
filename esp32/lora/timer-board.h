@@ -34,7 +34,7 @@ Maintainer: Miguel Luis and Gregory Cristian
  * \brief Timer time variable definition
  */
 #ifndef TimerTime_t
-typedef uint64_t TimerTime_t;
+typedef uint32_t TimerTime_t;
 #endif
 
 /*!
@@ -89,6 +89,11 @@ TimerTime_t TimerHwGetTime( void );
  * \brief Return the value on the timer Tick counter
  */
 TimerTime_t TimerHwGetElapsedTime( void );
+
+/*!
+ * \brief Calculates the elapsed time since the eventInTime was saved
+ */
+TimerTime_t TimerHwComputeTimeDifference( TimerTime_t eventInTime );
 
 /*!
  * \brief Set the ARM core in Wait For Interrupt mode (only working if Debug mode is not used)
