@@ -42,6 +42,8 @@
 #include "freertos/FreeRTOS.h"
 #endif
 
+#define MP_THREAD_PRIORITY                  5
+
 typedef struct _mp_thread_mutex_t {
     #ifndef BOOTLOADER
     SemaphoreHandle_t handle;
