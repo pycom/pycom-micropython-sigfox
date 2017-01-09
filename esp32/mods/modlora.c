@@ -414,7 +414,7 @@ static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
                         lora_obj.ComplianceTest.State = 1;
 
                         // flush the rx queue
-                        while (xQueueReceiveFromISR(xRxQueue, (void *)&rx_data_isr, (TickType_t)0));
+                        xQueueReset(xRxQueue);
 
                         // enable ADR during test mode
                         MibRequestConfirm_t mibReq;
