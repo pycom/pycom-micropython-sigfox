@@ -7,13 +7,13 @@ new toy. Our aim is not to bug you with complex details about it, but instead
 get you as quick as possible to the point you can start doing useful things
 with your device.
 
-
 This chapter will get you unboxed and ready to code in no time. 
 
-- :ref:`Unboxing and the expansion board <unboxing>` Intro to the hardware and how to use the expansion board
-- :ref:`Connecting over USB <connecting_over_usb>` How to connect your board
-- :ref:`Firmware Upgrades <firmware_upgrades>` Where to download the upload tool
-- :ref:`Connecting your board using Pymakr <connecting_using_pymakr>` Connecting and coding with Pymakr
+- :ref:`Unboxing and the expansion board <unboxing>`
+- :ref:`Connecting over USB <connecting_over_usb>`
+- :ref:`Firmware Upgrades <firmware_upgrades>`
+- :ref:`Micropython introduction <micropython_intro>` 
+- :ref:`Connecting the board and coding using Pymakr <connecting_using_pymakr>`
 
 If anyting goes wrong, there is a :ref:`Troubleshooting` section that addresses the most common issues. In case of any doubts you can always ask questions in our `community forum <http://forum.pycom.io>`_.
 
@@ -62,7 +62,7 @@ It applies to all our modules.
 .. _connecting_over_usb:
 
 1.2 Connecting over USB
-===================
+=======================
 
 Once you’re sure everything is in place, the fun begins. It is time to turn
 your device on. Just plug it into any powered USB cable (your computer or a
@@ -81,11 +81,11 @@ power supply and re-check the boards position on the expansion board.
 .. _firmware_upgrades:
 
 1.3 Firmware Upgrades
-=================
+=====================
 
 The next suggested step will be upgrading the firmware, as we are constantly
 making improvements and adding new features to it.
-Download the upgrader tool :ref:`upgrader tool<firmware_upgrade>`
+Download the :ref:`upgrader tool<firmware_upgrade>`
 and follow the instructions on screen.
 
 
@@ -134,7 +134,11 @@ to connect to and program your Pycom devices. We’re going to use it in this
 section to give you a quick taste of how you can work with your device. You can
 download Pymakr from `here <https://www.pycom.io/solutions/pymakr/>`_.
 
-More extended info on pymakr like how to use the pycom console and the expert interface can be found under :ref:`Tools & Features <pymakr_ide>`
+More extended info on pymakr like how to use the pycom console and the expert 
+interface can be found under :ref:`Tools & Features <pymakr_ide>`
+
+.. note::
+    If you have any trouble connecting over USB using pymakr, make sure you have the proper `FTDI drivers <http://www.ftdichip.com/Drivers/D2XX.htm>`_ installed.
 
 Initial configuration
 ---------------------

@@ -4,7 +4,11 @@
 ==========
 
 Here are some basic tips on how to further use Pymakr to upload code to your modules. 
-You can download Pymakr `here <https://www.pycom.io/solutions/pymakr/>`_.
+
+Download links:
+
+- `Pymakr download <https://www.pycom.io/solutions/pymakr/>`_.
+- `FTDI driver <http://www.ftdichip.com/Drivers/D2XX.htm>`_.
 
 You can find the code on github:
 
