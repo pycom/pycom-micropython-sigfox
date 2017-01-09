@@ -165,7 +165,7 @@ Methods
 
     Returns ``True`` if a LoRaWAN network has been joined. ``False`` otherwise.
 
-.. method:: lora.add_channel(index, \*, frequency, dr_min, dr_max, duty_cycle)
+.. method:: lora.add_channel(index, \*, frequency, dr_min, dr_max)
 
     Add a LoRaWAN channel on the specified index. If there's already a channel with that index it will be replaced with the new one.
 
@@ -173,9 +173,8 @@ Methods
 
       - ``index``: Index of the channel to add. Accepts values between 0 and 15 for EU and between 0 and 71 for US.
       - ``frequency``: Center frequency in Hz of the channel.
-      - ``dr_min``: Minimmum data rate of the channel (0-7).
-      - ``dr_min``: Maximum data rate of the channel (0-7).
-      - ``duty_cycle``: Need to be always zero for now.
+      - ``dr_min``: Minimum data rate of the channel (0-7).
+      - ``dr_max``: Maximum data rate of the channel (0-7).
 
 .. method:: lora.remove_channel(index)
 
