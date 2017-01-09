@@ -538,6 +538,22 @@ STATIC mp_obj_t pin_drive(mp_uint_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pin_drive_obj, 1, 2, pin_drive);
 
+STATIC mp_obj_t pin_hold(mp_uint_t n_args, const mp_obj_t *args) {
+    pin_obj_t *self = args[0];
+    if (n_args == 1) {
+        return mp_obj_new_bool(self->hold);
+    } else {
+        self->hold = mp_obj_is_true(args[1]);
+        if (self->hold == true) {
+            gpio_pad_hold(self->pin_number);
+        } else {
+            gpio_pad_unhold(self->pin_number);
+        }
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pin_hold_obj, 1, 2, pin_hold);
+
 STATIC mp_obj_t pin_call(mp_obj_t self_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 1, false);
     mp_obj_t _args[2] = {self_in, *args};
@@ -615,6 +631,7 @@ STATIC const mp_map_elem_t pin_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_mode),                    (mp_obj_t)&pin_mode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pull),                    (mp_obj_t)&pin_pull_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_drive),                   (mp_obj_t)&pin_drive_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_hold),                    (mp_obj_t)&pin_hold_obj },
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_alt_list),                (mp_obj_t)&pin_alt_list_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&pin_callback_obj },
 

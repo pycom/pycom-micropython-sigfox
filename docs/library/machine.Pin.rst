@@ -94,7 +94,7 @@ Constructors
    ::
 
         from machine import Pin
-        p = machine.Pin('P10', mode=Pin.OUT, pull=None, alt=-1)
+        p = Pin('P10', mode=Pin.OUT, pull=None, alt=-1)
 
 
 Methods
@@ -228,6 +228,11 @@ Methods
     .. method:: pin.pull([pull])
 
         Get or set the pin pull.
+
+    .. method:: pin.hold([hold])
+
+        Get or set the pin hold. Can be used to retain the pin state through a core reset and
+        system reset triggered by watchdog time-out or Deep-sleep events.
 
 .. only:: port_pycom_esp32
 
