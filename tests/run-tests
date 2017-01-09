@@ -239,7 +239,7 @@ def run_tests(pyb, tests, args):
         skip_tests.add('micropython/meminfo.py') # output is very different to PC output
         skip_tests.add('extmod/machine_mem.py') # raw memory access not supported
 
-        if args.target == 'wipy':
+        if args.target == 'wipy1' or args.target == 'esp32-WIPY' or args.target == 'esp32-LOPY':
             skip_tests.add('misc/print_exception.py')       # requires error reporting full
             skip_tests.add('misc/recursion.py')             # requires stack checking enabled
             skip_tests.add('misc/recursive_data.py')        # requires stack checking enabled
@@ -403,10 +403,10 @@ def main():
                 test_dirs = ('basics', 'micropython', 'misc', 'extmod', 'wipy')
             elif args.target == 'esp32-WIPY':
                 # run Lopy tests
-                test_dirs = ('basics', 'micropython', 'esp32')
+                test_dirs = ('basics', 'micropython', 'esp32', 'float', 'misc', 'extmod', 'thread')
             elif args.target == 'esp32-LOPY':
                 # run Lopy tests
-                test_dirs = ('basics', 'micropython', 'esp32')
+                test_dirs = ('basics', 'micropython', 'esp32', 'float', 'misc', 'extmod', 'thread')
             else:
                 # run PC tests
                 test_dirs = ('basics', 'micropython', 'float', 'import', 'io', 'misc', 'stress', 'unicode', 'extmod', 'unix', 'cmdline')

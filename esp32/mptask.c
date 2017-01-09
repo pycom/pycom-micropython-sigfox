@@ -149,6 +149,7 @@ soft_reset:
 
     // execute all basic initializations
     pin_init0();    // always before the rest of the peripherals
+    mp_irq_init0();
     mpexception_init0();
     mpsleep_init0();
     moduos_init0();
@@ -156,7 +157,6 @@ soft_reset:
     mperror_init0();
     rng_init0();
     rtc_init0();
-    mp_irq_init0();
     mp_hal_init(soft_reset);
     readline_init0();
     mod_network_init0();
