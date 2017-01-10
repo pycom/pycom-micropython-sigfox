@@ -52,7 +52,6 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
-APP_INC += -I../lib/timeutils
 APP_INC += -I../lib/fatfs
 APP_INC += -I../lib
 APP_INC += -I../drivers/sx127x
@@ -90,7 +89,6 @@ APP_LIB_SRC_C = $(addprefix lib/,\
 	libm/atan2f.c \
 	mp-readline/readline.c \
 	netutils/netutils.c \
-	timeutils/timeutils.c \
 	utils/pyexec.c \
 	fatfs/ff.c \
 	fatfs/option/ccsbcs.c \
@@ -177,6 +175,7 @@ APP_UTIL_SRC_C = $(addprefix util/,\
 	socketfifo.c \
 	mpirq.c \
 	mpsleep.c \
+	timeutils.c \
 	)
 
 APP_FATFS_SRC_C = $(addprefix fatfs/src/,\

@@ -50,6 +50,13 @@ void modtimer_init0(void) {
     calibrate_us_timer();
 }
 
+uint64_t get_timer_counter_value(void) {
+    uint64_t t;
+
+    timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &t);
+    return t;
+}
+
 STATIC IRAM_ATTR mp_obj_t sleep_us(mp_obj_t delay) {
     uint64_t d = mp_obj_get_int(delay);
     uint64_t t;

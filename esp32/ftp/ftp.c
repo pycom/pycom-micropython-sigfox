@@ -884,7 +884,7 @@ static int ftp_print_eplf_item (char *dest, uint32_t destsize, FILINFO *fno) {
     uint32_t tseconds;
     uint mindex = (((fno->fdate >> 5) & 0x0f) > 0) ? (((fno->fdate >> 5) & 0x0f) - 1) : 0;
     uint day = ((fno->fdate & 0x1f) > 0) ? (fno->fdate & 0x1f) : 1;
-    uint fseconds = timeutils_seconds_since_2000(1980 + ((fno->fdate >> 9) & 0x7f),
+    uint fseconds = timeutils_seconds_since_epoch(1980 + ((fno->fdate >> 9) & 0x7f),
                                                         (fno->fdate >> 5) & 0x0f,
                                                         fno->fdate & 0x1f,
                                                         (fno->ftime >> 11) & 0x1f,
@@ -907,7 +907,7 @@ static int ftp_print_eplf_drive (char *dest, uint32_t destsize, char *name) {
     uint32_t tseconds;
     char *type = "d";
 
-    timeutils_seconds_since_2000_to_struct_time((FTP_UNIX_TIME_20150101 - FTP_UNIX_TIME_20000101), &tm);
+    timeutils_seconds_since_epoch_to_struct_time((FTP_UNIX_TIME_20150101 - FTP_UNIX_TIME_20000101), &tm);
 
     tseconds = 3600; // pyb_rtc_get_seconds(); // FIXME
     if (FTP_UNIX_SECONDS_180_DAYS < tseconds - (FTP_UNIX_TIME_20150101 - FTP_UNIX_TIME_20000101)) {

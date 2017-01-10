@@ -11,6 +11,7 @@
 #define MACHTIMER_H_
 
 extern void modtimer_init0(void);
+uint64_t get_timer_counter_value(void);
 
 extern const mp_obj_type_t mach_timer_type;
 

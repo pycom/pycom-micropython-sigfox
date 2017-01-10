@@ -123,6 +123,7 @@ void TASK_Micropython (void *pvParameters) {
     // init the antenna select switch here
     antenna_init0();
     config_init0();
+    rtc_init0();
 
     // initialization that must not be repeted after a soft reset
     mptask_preinit();
@@ -163,7 +164,7 @@ soft_reset:
     uart_init0();
     mperror_init0();
     rng_init0();
-    rtc_init0();
+
     mp_hal_init(soft_reset);
     readline_init0();
     mod_network_init0();

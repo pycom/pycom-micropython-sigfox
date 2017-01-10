@@ -372,7 +372,7 @@ STATIC mp_obj_t os_stat(mp_obj_t path_in) {
     } else {
         mode |= 0x8000; // stat.S_IFREG
     }
-    mp_int_t seconds = timeutils_seconds_since_2000(
+    mp_int_t seconds = timeutils_seconds_since_epoch(
         1980 + ((fno.fdate >> 9) & 0x7f),
         (fno.fdate >> 5) & 0x0f,
         fno.fdate & 0x1f,

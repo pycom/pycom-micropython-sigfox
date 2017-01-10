@@ -7,9 +7,16 @@
 The ``utime`` module provides functions for getting the current time and date,
 measuring time intervals, and for delays.
 
-**Time Epoch**: Unix port uses standard for POSIX systems epoch of
-1970-01-01 00:00:00 UTC. However, embedded ports use epoch of
-2000-01-01 00:00:00 UTC.
+.. only:: port_pycom_esp32
+
+    **Time Epoch**: Pycom's ESP32 port uses standard for POSIX systems epoch of
+    1970-01-01 00:00:00 UTC.
+
+.. only:: not port_pycom_esp32
+
+    **Time Epoch**: Unix port uses standard for POSIX systems epoch of
+    1970-01-01 00:00:00 UTC. However, embedded ports use epoch of
+    2000-01-01 00:00:00 UTC.
 
 **Maintaining actual calendar date/time**: This requires a
 Real Time Clock (RTC). On systems with underlying OS (including some
@@ -58,7 +65,7 @@ Functions
 .. only:: port_unix or port_pyboard or port_esp8266 or port_pycom_esp32
 
     .. function:: sleep(seconds)
-    
+
        Sleep for the given number of seconds.  Seconds can be a floating-point number to
        sleep for a fractional number of seconds. Note that other MicroPython ports may
        not accept floating-point argument, for compatibility with them use ``sleep_ms()``
@@ -67,7 +74,7 @@ Functions
 .. only:: port_wipy
 
     .. function:: sleep(seconds)
-    
+
        Sleep for the given number of seconds.
 
 .. only:: port_unix or port_pyboard or port_wipy or port_esp8266 or port_pycom_esp32
@@ -80,14 +87,23 @@ Functions
 
        Delay for given number of microseconds, should be positive or 0
 
-    .. function::  ticks_ms()
+    .. only:: not port_pycom_esp32
 
-        Returns an increasing millisecond counter with arbitrary reference point, 
-        that wraps after some (unspecified) value. 
+        .. function::  ticks_ms()
+
+            Returns an increasing millisecond counter with arbitrary reference point,
+            that wraps after some (unspecified) value.
+
+
+    .. only:: port_pycom_esp32
+
+        .. function::  ticks_ms()
+
+            Returns uptime, in milliseconds.
 
 .. Add to the ticks_ms text, when ticks_diff() is implemented: The value should be treated as opaque, suitable for use only with ticks_diff()
 
-.. only:: port_unix or port_pyboard or port_wipy or port_esp8266
+.. only:: port_unix or port_pyboard or port_wipy or port_esp8266 or port_pycom_esp32
 
     .. function::  ticks_us()
 
@@ -99,16 +115,28 @@ Functions
 
        Similar to ``ticks_ms`` and ``ticks_us``, but with higher resolution (usually CPU clocks).
 
-.. only:: port_unix or port_pyboard or port_wipy or port_esp8266
+.. only:: port_wipy or port_pyboard
+
+    .. function::  ticks_cpu()
+
+       Similar to ``ticks_ms`` and ``ticks_us``, but with higher resolution (usually CPU clocks).
+
+.. only:: port_pycom_esp32
+
+    .. function::  ticks_cpu()
+
+       Similar to ``ticks_ms`` and ``ticks_us``, but with higher resolution (25 ns).
+
+.. only:: port_unix or port_pyboard or port_wipy or port_esp8266 or port_pycom_esp32
 
     .. function::  ticks_diff(old, new)
 
-       Measure period between consecutive calls to ticks_ms(), ticks_us(), or ticks_cpu(). 
-       The value returned by these functions may wrap around at any time, so directly 
-       subtracting them is not supported. ticks_diff() should be used instead. "old" value should 
+       Measure period between consecutive calls to ticks_ms(), ticks_us(), or ticks_cpu().
+       The value returned by these functions may wrap around at any time, so directly
+       subtracting them is not supported. ticks_diff() should be used instead. "old" value should
        actually precede "new" value in time, or result is undefined. This function should not be
-       used to measure arbitrarily long periods of time (because ticks_*() functions wrap around 
-       and usually would have short period). The expected usage pattern is implementing event 
+       used to measure arbitrarily long periods of time (because ticks_*() functions wrap around
+       and usually would have short period). The expected usage pattern is implementing event
        polling with timeout::
 
             # Wait for GPIO pin to be asserted, but at most 500us
@@ -119,24 +147,34 @@ Functions
 
 .. function:: time()
 
-   Returns the number of seconds, as an integer, since the Epoch, assuming that underlying
-   RTC is set and maintained as described above. If an RTC is not set, this function returns
-   number of seconds since a port-specific reference point in time (for embedded boards without
-   a battery-backed RTC, usually since power up or reset). If you want to develop portable
-   MicroPython application, you should not rely on this function to provide higher than second
-   precision. If you need higher precision, use ``ticks_ms()`` and ``ticks_us()`` functions,
-   if you need calendar time, ``localtime()`` without an argument is a better choice.
+    .. only:: port_pycom_esp32
 
-   .. admonition:: Difference to CPython
-      :class: attention
+        Returns the number of seconds, as an float, since the Epoch, assuming that underlying
+        RTC is set. If an RTC is not set, this function returns number of seconds since power up or reset).
+        If you want to develop portable MicroPython application, you should not rely on this function to
+        provide higher than second precision. If you need higher precision, use ``ticks_ms()`` and ``ticks_us()``
+        functions, if you need calendar time, ``localtime()`` without an argument is a better choice.
 
-      In CPython, this function returns number of
-      seconds since Unix epoch, 1970-01-01 00:00 UTC, as a floating-point,
-      usually having microsecond precision. With MicroPython, only Unix port
-      uses the same Epoch, and if floating-point precision allows,
-      returns sub-second precision. Embedded hardware usually doesn't have
-      floating-point precision to represent both long time ranges and subsecond
-      precision, so they use integer value with second precision. Some embedded
-      hardware also lacks battery-powered RTC, so returns number of seconds
-      since last power-up or from other relative, hardware-specific point
-      (e.g. reset).
+    .. only:: not port_pycom_esp32
+
+        Returns the number of seconds, as an integer, since the Epoch, assuming that underlying
+        RTC is set and maintained as described above. If an RTC is not set, this function returns
+        number of seconds since a port-specific reference point in time (for embedded boards without
+        a battery-backed RTC, usually since power up or reset). If you want to develop portable
+        MicroPython application, you should not rely on this function to provide higher than second
+        precision. If you need higher precision, use ``ticks_ms()`` and ``ticks_us()`` functions,
+        if you need calendar time, ``localtime()`` without an argument is a better choice.
+
+        .. admonition:: Difference to CPython
+            :class: attention
+
+            In CPython, this function returns number of
+            seconds since Unix epoch, 1970-01-01 00:00 UTC, as a floating-point,
+            usually having microsecond precision. With MicroPython, only Unix port
+            uses the same Epoch, and if floating-point precision allows,
+            returns sub-second precision. Embedded hardware usually doesn't have
+            floating-point precision to represent both long time ranges and subsecond
+            precision, so they use integer value with second precision. Some embedded
+            hardware also lacks battery-powered RTC, so returns number of seconds
+            since last power-up or from other relative, hardware-specific point
+            (e.g. reset).
