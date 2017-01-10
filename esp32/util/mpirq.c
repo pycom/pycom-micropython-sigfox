@@ -84,6 +84,7 @@ void mp_irq_preinit(void) {
 void mp_irq_init0(void) {
     uint32_t stack_size = INTERRUPTS_TASK_STACK_SIZE;
     mp_irq_is_alive = true;
+    xQueueReset(interruptsQueue);
     mp_thread_create_ex(TASK_Interrupts, NULL, &stack_size, INTERRUPTS_TASK_PRIORITY, "Interrupts");
 }
 
@@ -95,8 +96,10 @@ void IRAM_ATTR mp_irq_queue_interrupt(void (* handler)(void *), void *arg) {
 void mp_irq_kill(void) {
     // sending a NULL handler will kill the interrupt task
     mp_irq_queue_interrupt(NULL, NULL);
+    MP_THREAD_GIL_EXIT();       // release the GIL if we have it
     do {
-        vTaskDelay(5 / portTICK_PERIOD_MS);
+        // it needs to be this one in order to not mess with the GIL
+        vTaskDelay(3 / portTICK_PERIOD_MS);
     } while (mp_irq_is_alive);
     xQueueReset(interruptsQueue);
     // TODO disable all interrupts here at hardware level

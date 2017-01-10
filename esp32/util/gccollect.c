@@ -22,7 +22,7 @@ DECLARE PRIVATE DATA
  ******************************************************************************/
 
 /******************************************************************************
-DECLARE PUBLIC FUNCTIONS
+DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
 static void gc_collect_inner(void) {
     uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
@@ -39,6 +39,9 @@ static void gc_collect_inner(void) {
     #endif
 }
 
+/******************************************************************************
+DECLARE PUBLIC FUNCTIONS
+ ******************************************************************************/
 void gc_collect(void) {
     gc_collect_start();
     gc_collect_inner();

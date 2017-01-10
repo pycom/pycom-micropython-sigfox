@@ -51,6 +51,7 @@ typedef struct _mp_thread_mutex_t {
     #endif
 } mp_thread_mutex_t;
 
+void mp_thread_preinit(void);
 void mp_thread_init(void);
 void mp_thread_gc_others(void);
 

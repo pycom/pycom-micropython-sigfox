@@ -69,10 +69,8 @@ STATIC mp_thread_mutex_t thread_mutex;
 STATIC thread_t thread_entry0;
 STATIC thread_t *thread; // root pointer, handled by mp_thread_gc_others
 
-void mp_thread_init(void) {
-    mp_thread_mutex_init(&thread_mutex);
+void mp_thread_preinit(void) {
     mp_thread_set_state(&mp_state_ctx.thread);
-
     // create first entry in linked list of all threads
     thread = &thread_entry0;
     thread->id = xTaskGetCurrentTaskHandle();
@@ -81,6 +79,10 @@ void mp_thread_init(void) {
     thread->stack = mpTaskStack;
     thread->stack_len = MICROPY_TASK_STACK_LEN;
     thread->next = NULL;
+}
+
+void mp_thread_init(void) {
+    mp_thread_mutex_init(&thread_mutex);
 }
 
 void mp_thread_gc_others(void) {
@@ -152,6 +154,9 @@ void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, i
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "can't create thread"));
     }
 
+    // adjust the stack_size to provide room to recover from hitting the limit
+    *stack_size -= 1024;
+
     // add thread to linked list of all threads
     th->id = id;
     th->ready = 0;
@@ -163,9 +168,6 @@ void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, i
     thread = th;
 
     mp_thread_mutex_unlock(&thread_mutex);
-
-    // adjust stack_size to provide room to recover from hitting the limit
-    *stack_size -= 256;
 }
 
 void mp_thread_create(void *(*entry)(void*), void *arg, size_t *stack_size) {
