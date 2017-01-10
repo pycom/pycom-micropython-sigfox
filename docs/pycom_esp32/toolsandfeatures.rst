@@ -9,7 +9,7 @@ Do you have your basic setup working? Then it's time to look at all the ways you
 
 Contents
 
-- :ref:`2.2 What's under the hood <under_the_hood>`
+- :ref:`2.2 Main features <main_features>`
 - :ref:`2.3 REPL over Telnet and Serial <repl>`
 - :ref:`2.4 Local file system and FTP access <pycom_filesystem>`
 - :ref:`2.5 Boot modes and safe boot <safeboot>`
@@ -17,9 +17,9 @@ Contents
 - :ref:`2.7 Pymakr IDE <pymakr_ide>`
 
 
-.. _under_the_hood:
+.. _main_features:
 
-2.2 What’s under the hood
+2.2 Main features
 =====================
 
 All members in the current family of Pycom modules are powered by the ESP32, offering:
@@ -60,7 +60,7 @@ section <datasheets>`. Here you'll find the datasheets for all of our products.
 2.3 REPL over Telnet and Serial
 ===============================
 
-REPL stands for Read Evaluate Print Loop, and is the name given to the interactive MicroPython prompt that you can access on the LoPy. Using the REPL is by far the easiest way to test out your code and run commands. You can use the REPL in addition to writing scripts in ``main.py``.
+REPL stands for Read Evaluate Print Loop, and is the name given to the interactive MicroPython prompt that you can access on the LoPy. Using the REPL is by far the easiest way to test out your python code and run commands. You can use the REPL in addition to writing scripts in ``main.py``.
 
 .. _pycom_uart:
 
@@ -180,6 +180,17 @@ to one, otherwise FileZilla will try to open a second command connection when re
 and saving files, and for simplicity and to reduce code size, only one command and one
 data connections are possible. Other FTP clients might behave in a similar way.
 
+.. image:: images/filezilla-settings-1.png
+    :alt: Filezilla 1
+    :align: center
+    :scale: 60 %
+
+.. image:: images/filezilla-settings-2.png
+    :alt: Filezilla 1
+    :align: center
+    :scale: 60 %
+
+
 .. _safeboot:
 
 2.5 Boot modes and safe boot
@@ -273,20 +284,6 @@ so try to keep the handlers as quick as possible in order to attend them all in 
 .. note::
 
     Currently the interrupt system can queue up to 16 interrupts.
-
-
-2.7 The heartbeat LED
-=====================
-
-By default the heartbeat LED flashes in blue color once every 4s to signal that
-the system is alive. This can be overridden through the :mod:`pycom` module::
-
-   >>> import pycom
-   >>> pycom.heartbeat(False)
-   >>> pycom.rgbled(0xff00)           # turn on the RGB LED in green color
-
-The heartbeat LED is also used to indicate that an error was detected.
-
 
 .. _pymakr_ide:
 

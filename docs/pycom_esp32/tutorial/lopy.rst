@@ -1,7 +1,9 @@
 .. _lora_examples:
 
-3.2 LoPy Specific
+3.2 LoPy Tutorials
 =================
+
+TODO: write intro
 
 .. toctree::
    :maxdepth: 1

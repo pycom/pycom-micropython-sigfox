@@ -97,15 +97,45 @@ your OS and follow the instructions on the screen.
 - `MacOS <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=macos&redirect=true>`_ (10.11 or higher).
 - `Linux <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=unix&redirect=true>`_ (requires dialog package).
 
+.. image:: images/firmware-updater-screenshot.png
+    :alt: Firmware upgrader
+    :align: center
+    :scale: 50 %
+
+The instructions given by the updater tool should be followed carefully. The basic procedure is like this:
+
+- Disconnect your device from the PC.
+- Connect wire G23+GND using a jumper cable.
+- Connect the board to the USB.
+- Run the upgrader
+- Remove the G23+GND wire.
+- Reboot the device (button or powercycle)
+
+Connecting G23 and GND looks like this (TODO: make a nice picture:
+
+.. image:: images/firmware-update-jumper
+    :alt: Firmware update jumpers
+    :align: center
+    :scale: 50 %
+
+
 After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
 programs in your device. 
+
+If you have your telnet connection or Pymakr already setup, the version can be  with the following code:
+
+::
+    import os
+    os.uname().release
+
+
 
 .. warning::
 
     Make sure the TX jumper is present on your expansion board, as the jumpers sometimes come loose in the box during transport. Without this jumper, the updater will fail.
 
 
-.. #todo: add support for people without expansion boards
+
 
 .. _micropython_intro:
 
@@ -206,7 +236,7 @@ Pymakr has a feature to sync and run your code on your device. This is mostly do
 .. note::
     You can also :ref:`use FTP <pycom_filesystem>` to download boot.py and main.py from the board to your project folder, after which you can right-click the project viewer and use the 'add source files' option to add them to your project.
 
-The boot.py file should always have the following code on the top, so we can run our python scripts over serial or telnet:
+The boot.py file should always have the following code on the top, so we can run our python scripts over serial or telnet. All of our newer boards have this code already in the boot.py file.
 
 .. code:: python
     
@@ -271,4 +301,11 @@ pressing the physical reset button.
 
 .. Warning::
     If your board is running code at boot time, you might need to boot it in :ref:`safe mode <safeboot>`.
+
+
+
+.. _connecting_using_pymakr:
+
+1.6 Troubleshooting
+=====================================
 

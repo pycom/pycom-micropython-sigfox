@@ -62,8 +62,8 @@ extensions to it, can be found in the `micropython-lib repository
 - :class:`Interrupts`
 
 
-4.2 General libraries
----------------------
+4.2 Micropython libraries
+-------------------------
 
 The following list contains the standard Python libraries, MicroPython-specific 
 libraries and Pycom specific modules that are available on our boards. 

@@ -1,6 +1,6 @@
 
-3.1 General Pycom Firmware
-===========================
+3.1 Pycom Tutorials
+===================
 
 .. toctree::
    :maxdepth: 1
@@ -15,5 +15,4 @@
    includes/onewire.rst
    includes/threading.rst
    includes/blynk.rst
-
-
+   includes/led.rst
