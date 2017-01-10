@@ -179,6 +179,7 @@ outer_dispatch_loop:
             const byte *ip = code_state->ip;
             mp_obj_t *sp = code_state->sp;
             mp_obj_t obj_shared;
+            uint32_t gil_divisor = MICROPY_PY_THREAD_GIL_DIVISOR;
             MICROPY_VM_HOOK_INIT
 
             // If we have exception to inject, now that we finish setting up
@@ -1244,9 +1245,13 @@ pending_exception_check:
                     RAISE(obj);
                 }
 
-                // TODO make GIL release more efficient
-                MP_THREAD_GIL_EXIT();
-                MP_THREAD_GIL_ENTER();
+#if MICROPY_PY_THREAD && MICROPY_PY_THREAD_GIL
+                if (--gil_divisor == 0) {
+                    gil_divisor = MICROPY_PY_THREAD_GIL_DIVISOR;
+                    MP_THREAD_GIL_EXIT();
+                    MP_THREAD_GIL_ENTER();
+                }
+#endif
 
             } // for loop
 
