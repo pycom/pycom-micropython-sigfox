@@ -5,6 +5,8 @@ AWS
 Example using AWS and MQTT
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+AWS (Amazon Web Services) is a cloud service that offers easy data storage using MQTT, HTTP or websockets protocol. This example uses MQTT to send simple test data to the AWS server. For more information, visit the `Amazon website <https://aws.amazon.com/>`_.
+
 Connectivity code (demo.py):
 
 ::

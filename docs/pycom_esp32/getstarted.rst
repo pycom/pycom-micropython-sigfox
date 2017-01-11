@@ -60,6 +60,27 @@ It applies to all our modules.
     Some modules like the LoPy will be big enough to cover the USB connector.
     This is normal as long as you keep the orientation as shown.
 
+To extend the life of your expansion board, please be aware of the following:
+
+  - Be gentle when plugging/unplugging the USB cable.  Whilst the USB connector
+    is well soldered and is relatively strong, if it breaks off it can be very
+    difficult to fix.
+
+  - Static electricity can shock the components on the device and destroy them.
+    If you experience a lot of static electricity in your area (eg dry and cold
+    climates), take extra care not to shock the device.  If your device came
+    in a ESD bag, then this bag is the best way to store and carry the
+    device as it will protect it against static discharges.
+
+
+Expansion board hardware guide
+------------------------------
+
+The document explaining the hardware details of the expansion board can be found
+`here <https://github.com/WiPy/WiPy/blob/master/docs/User_manual_exp_board.pdf>`_.
+
+The pinout for the expansion board can be found in the :ref:'datasheets <expansion-board>' section.
+
 
 .. _connecting_over_usb:
 

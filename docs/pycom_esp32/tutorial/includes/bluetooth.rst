@@ -2,9 +2,11 @@
 Bluetooth
 ---------
 
-Full info on bluetooth can be found on :class:`bluetooth page <.Bluetooth>` the Firmware API Reference
+Currently, basic BLE functionality is available. More features will be implemented soon, like pairing. This page will be updated along the way.
 
-A quick usage example that scans and prints the advertisements found.
+Full info on bluetooth can be found on :class:`bluetooth page <.Bluetooth>` the Firmware API Reference.
+
+A quick usage example that scans and prints the raw data from advertisements.
 
 ::
 
@@ -14,7 +16,7 @@ A quick usage example that scans and prints the advertisements found.
 	while True:
 	    print(bluetooth.get_adv())
 
-Connecting to a device
+Connecting to a device that is sending advertisements.
 
 ::
 
@@ -68,7 +70,7 @@ Connecting onnecting to a device named 'Heart Rate' and receiving data from it's
 
 
 
-Using ``resolve_adv_data()`` to get more information about a device
+Using ``resolve_adv_data()`` to atempt to get the name and manufacturer of the advertiser.
 
 ::
 
