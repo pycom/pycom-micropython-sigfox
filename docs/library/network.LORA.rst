@@ -93,7 +93,7 @@ Methods
 
       - ``activation``: can be either ``LoRa.OTAA`` or ``LoRa.ABP``.
       - ``auth``: is a tuple with the authentication data.
-      
+
       In the case of ``LoRa.OTAA`` the authentication tuple is: ``(app_eui, app_key)``. Example::
 
           from network import LoRa
@@ -216,3 +216,54 @@ Constants
           LoRa.CODING_4_8
 
     Raw LoRa coding rate
+
+
+Working with LoRa sockets
+-------------------------
+
+LoRa sockets are created in the following way::
+
+   import socket
+   s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
+
+And they must be created after initializing the LoRa network card.
+
+LoRa socket support the following standard methods from the :class:`socket <.socket>` module:
+
+.. method:: socket.close
+
+   Usage: ``s.close()``
+
+.. method:: socket.bind(port_number)
+
+   Usage: ``s.bind(1)``
+
+.. method:: socket.send(bytes)
+
+   Usage: ``s.send(bytes([1, 2, 3]))`` or: ``s.send('Hello')``
+
+.. method:: socket.recv(bufsize)
+
+   Usage: ``s.recv(128)``
+
+.. method:: socket.setsockopt(level, optname, value)
+
+   Set the value of the given socket option. The needed symbolic constants are defined in the
+   socket module (SO_* etc.). In the case of LoRa the values are always an integer. Examples::
+
+      # configuring the data rate
+      s.setsockopt(socket.SOL_LORA, socket.SO_DR, 5)
+
+      # selecting non-confirmed type of messages
+      s.setsockopt(socket.SOL_LORA, socket.SO_CONFIRMED, False)
+
+      # selecting confirmed type of messages
+      s.setsockopt(socket.SOL_LORA, socket.SO_CONFIRMED, True)
+
+.. method:: socket.settimeout(value)
+
+   Usage: ``s.settimeout(5.0)``
+
+.. method:: socket.setblocking(flag)
+
+   Usage: ``s.setblocking(True)``

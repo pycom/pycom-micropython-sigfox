@@ -26,10 +26,11 @@ Functions
 
    Create a new socket using the given address family, socket type and protocol number.
 
+.. only:: port_wipy
 
     .. note::
 
-       SSL sockets need to be created the following way before wrapping them with 
+       SSL sockets need to be created the following way before wrapping them with
        ``ssl.wrap_socket``::
 
           import socket
@@ -39,39 +40,53 @@ Functions
 
 .. function:: socket.getaddrinfo(host, port)
 
-   Translate the host/port argument into a sequence of 5-tuples that contain all the 
-   necessary arguments for creating a socket connected to that service. The list of 
-   5-tuples has following structure::
+   Translate the host/port argument into a sequence of 5-tuples that contain all the
+   necessary arguments for creating a socket connected to that service. The list of
+   5-tuples has following structure:
 
-      (family, type, proto, canonname, sockaddr)
+      ``(family, type, proto, canonname, sockaddr)``
 
    The following example shows how to connect to a given url::
 
       s = socket.socket()
       s.connect(socket.getaddrinfo('www.micropython.org', 80)[0][-1])
 
-.. only:: port_wipy
+Exceptions
+----------
 
-    Exceptions
-    ----------
-
-    .. data:: socket.error
-    .. data:: socket.timeout
+.. data:: socket.error
+          socket.timeout
 
 Constants
 ---------
 
 .. data:: socket.AF_INET
+          socket.AF_LORA
 
    family types
 
 .. data:: socket.SOCK_STREAM
-.. data:: socket.SOCK_DGRAM
+          socket.SOCK_DGRAM
+          socket.SOCK_RAW
 
    socket types
 
 .. data:: socket.IPPROTO_UDP
-.. data:: socket.IPPROTO_TCP
+          socket.IPPROTO_TCP
+
+   socket protocols
+
+.. data:: socket.SOL_SOCKET
+          socket.SOL_LORA
+
+   socket options layers
+
+.. data:: socket.SO_REUSEADDR
+          socket.SO_CONFIRMED
+          socket.SO_DR
+
+   socket options
+
 .. only:: port_wipy
 
    .. data:: socket.IPPROTO_SEC
@@ -84,124 +99,128 @@ class socket
 Methods
 -------
 
-    .. method:: socket.close
+.. method:: socket.close
 
-       Mark the socket closed. Once that happens, all future operations on the socket 
-       object will fail. The remote end will receive no more data (after queued data is flushed).
+   Mark the socket closed. Once that happens, all future operations on the socket
+   object will fail. The remote end will receive no more data (after queued data is flushed).
 
-       Sockets are automatically closed when they are garbage-collected, but it is recommended 
-       to close() them explicitly, or to use a with statement around them.
+   Sockets are automatically closed when they are garbage-collected, but it is recommended
+   to close() them explicitly, or to use a with statement around them.
 
-    .. method:: socket.bind(address)
+.. method:: socket.bind(address)
 
-       Bind the socket to address. The socket must not already be bound. The address parameter must be a tuple containing the IP address and the port.
+   Bind the socket to address. The socket must not already be bound. The address parameter must be a tuple containing the IP address and the port.
 
-    .. method:: socket.listen([backlog])
+   .. note::
 
-       Enable a server to accept connections. If backlog is specified, it must be at least 0 
-       (if it's lower, it will be set to 0); and specifies the number of unaccepted connections
-       that the system will allow before refusing new connections. If not specified, a default
-       reasonable value is chosen.
+      In the case of LoRa sockets, the address parameter is simply an integer with the port number, for instance: ``s.bind(1)``
 
-    .. method:: socket.accept()
+.. method:: socket.listen([backlog])
 
-       Accept a connection. The socket must be bound to an address and listening for connections.
-       The return value is a pair (conn, address) where conn is a new socket object usable to send
-       and receive data on the connection, and address is the address bound to the socket on the
-       other end of the connection.
+   Enable a server to accept connections. If backlog is specified, it must be at least 0
+   (if it's lower, it will be set to 0); and specifies the number of unaccepted connections
+   that the system will allow before refusing new connections. If not specified, a default
+   reasonable value is chosen.
 
-    .. method:: socket.connect(address)
+.. method:: socket.accept()
 
-       Connect to a remote socket at address.
+   Accept a connection. The socket must be bound to an address and listening for connections.
+   The return value is a pair (conn, address) where conn is a new socket object usable to send
+   and receive data on the connection, and address is the address bound to the socket on the
+   other end of the connection.
 
-    .. method:: socket.send(bytes)
+.. method:: socket.connect(address)
 
-       Send data to the socket. The socket must be connected to a remote socket.
+   Connect to a remote socket at address.
 
-    .. method:: socket.sendall(bytes)
+.. method:: socket.send(bytes)
 
-       Alias of socket.send(bytes).
+   Send data to the socket. The socket must be connected to a remote socket.
 
-    .. method:: socket.recv(bufsize)
+.. method:: socket.sendall(bytes)
 
-       Receive data from the socket. The return value is a bytes object representing the data
-       received. The maximum amount of data to be received at once is specified by bufsize.
+   Alias of socket.send(bytes).
 
-    .. method:: socket.sendto(bytes, address)
+.. method:: socket.recv(bufsize)
 
-       Send data to the socket. The socket should not be connected to a remote socket, since the
-       destination socket is specified by `address`.
+   Receive data from the socket. The return value is a bytes object representing the data
+   received. The maximum amount of data to be received at once is specified by bufsize.
 
-    .. method:: socket.recvfrom(bufsize)
+.. method:: socket.sendto(bytes, address)
 
-      Receive data from the socket. The return value is a pair (bytes, address) where bytes is a
-      bytes object representing the data received and address is the address of the socket sending
-      the data.
+   Send data to the socket. The socket should not be connected to a remote socket, since the
+   destination socket is specified by `address`.
 
-    .. method:: socket.setsockopt(level, optname, value)
+.. method:: socket.recvfrom(bufsize)
 
-       Set the value of the given socket option. The needed symbolic constants are defined in the
-       socket module (SO_* etc.). The value can be an integer or a bytes-like object representing
-       a buffer.
+  Receive data from the socket. The return value is a pair (bytes, address) where bytes is a
+  bytes object representing the data received and address is the address of the socket sending
+  the data.
 
-    .. method:: socket.settimeout(value)
+.. method:: socket.setsockopt(level, optname, value)
 
-       Set a timeout on blocking socket operations. The value argument can be a nonnegative floating
-       point number expressing seconds, or None. If a non-zero value is given, subsequent socket operations
-       will raise a timeout exception if the timeout period value has elapsed before the operation has
-       completed. If zero is given, the socket is put in non-blocking mode. If None is given, the socket
-       is put in blocking mode.
+   Set the value of the given socket option. The needed symbolic constants are defined in the
+   socket module (SO_* etc.). The value can be an integer or a bytes-like object representing
+   a buffer.
 
-    .. method:: socket.setblocking(flag)
+.. method:: socket.settimeout(value)
 
-       Set blocking or non-blocking mode of the socket: if flag is false, the socket is set to non-blocking,
-       else to blocking mode.
+   Set a timeout on blocking socket operations. The value argument can be a nonnegative floating
+   point number expressing seconds, or None. If a non-zero value is given, subsequent socket operations
+   will raise a timeout exception if the timeout period value has elapsed before the operation has
+   completed. If zero is given, the socket is put in non-blocking mode. If None is given, the socket
+   is put in blocking mode.
 
-       This method is a shorthand for certain ``settimeout()`` calls::
+.. method:: socket.setblocking(flag)
 
-          sock.setblocking(True) is equivalent to sock.settimeout(None)
-          sock.setblocking(False) is equivalent to sock.settimeout(0.0)
+   Set blocking or non-blocking mode of the socket: if flag is false, the socket is set to non-blocking,
+   else to blocking mode.
 
-    .. method:: socket.makefile(mode='rb')
+   This method is a shorthand for certain ``settimeout()`` calls::
 
-       Return a file object associated with the socket. The exact returned type depends on the arguments
-       given to makefile(). The support is limited to binary modes only ('rb' and 'wb').
-       CPython's arguments: ``encoding``, ``errors`` and ``newline`` are not supported.
+      sock.setblocking(True) is equivalent to sock.settimeout(None)
+      sock.setblocking(False) is equivalent to sock.settimeout(0.0)
 
-       The socket must be in blocking mode; it can have a timeout, but the file object’s internal buffer
-       may end up in a inconsistent state if a timeout occurs.
+.. method:: socket.makefile(mode='rb')
 
-       .. admonition:: Difference to CPython
-          :class: attention
+   Return a file object associated with the socket. The exact returned type depends on the arguments
+   given to makefile(). The support is limited to binary modes only ('rb' and 'wb').
+   CPython's arguments: ``encoding``, ``errors`` and ``newline`` are not supported.
 
-          Closing the file object returned by makefile() WILL close the
-          original socket as well.
+   The socket must be in blocking mode; it can have a timeout, but the file object’s internal buffer
+   may end up in a inconsistent state if a timeout occurs.
 
-    .. method:: socket.read(size)
+   .. admonition:: Difference to CPython
+      :class: attention
 
-       Read up to size bytes from the socket. Return a bytes object. If ``size`` is not given, it
-       behaves just like ``socket.readall()``, see below.
+      Closing the file object returned by makefile() WILL close the
+      original socket as well.
 
-    .. method:: socket.readall()
+.. method:: socket.read(size)
 
-       Read all data available from the socket until ``EOF``. This function will not return until
-       the socket is closed.
+   Read up to size bytes from the socket. Return a bytes object. If ``size`` is not given, it
+   behaves just like ``socket.readall()``, see below.
 
-    .. method:: socket.readinto(buf[, nbytes])
+.. method:: socket.readall()
 
-       Read bytes into the ``buf``.  If ``nbytes`` is specified then read at most
-       that many bytes.  Otherwise, read at most ``len(buf)`` bytes.
+   Read all data available from the socket until ``EOF``. This function will not return until
+   the socket is closed.
 
-       Return value: number of bytes read and stored into ``buf``.
+.. method:: socket.readinto(buf[, nbytes])
 
-    .. method:: socket.readline()
+   Read bytes into the ``buf``.  If ``nbytes`` is specified then read at most
+   that many bytes.  Otherwise, read at most ``len(buf)`` bytes.
 
-       Read a line, ending in a newline character.
+   Return value: number of bytes read and stored into ``buf``.
 
-       Return value: the line read.
+.. method:: socket.readline()
 
-    .. method:: socket.write(buf)
+   Read a line, ending in a newline character.
 
-       Write the buffer of bytes to the socket.
+   Return value: the line read.
 
-       Return value: number of bytes written.
+.. method:: socket.write(buf)
+
+   Write the buffer of bytes to the socket.
+
+   Return value: number of bytes written.
