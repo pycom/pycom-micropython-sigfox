@@ -16,4 +16,5 @@
    includes/threading.rst
    includes/blynk.rst
    includes/led.rst
+   includes/timers.rst
    
