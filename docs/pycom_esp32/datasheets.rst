@@ -9,6 +9,8 @@
 
 .. include:: datasheets/lopy.rst
 
+.. include:: datasheets/sipy.rst
+
 .. include:: datasheets/expansionboard.rst
 
 
