@@ -117,7 +117,7 @@ one for your OS and follow the instructions on the screen.
 - `Linux <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=unix&redirect=true>`_ (requires dialog package).
 
 Previous versions of firmware are available for download on the `Pycom website 
-<https://www.pycom.io/support/supportdownloads/>`_. 
+<https://www.pycom.io/support/supportdownloads/#firmware>`_. 
 
 .. image:: images/firmware-updater-screenshot.png
     :alt: Firmware upgrader
