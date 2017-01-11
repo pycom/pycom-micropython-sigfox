@@ -12,6 +12,7 @@
    includes/mqtt.rst
    includes/aws.rst
    includes/adc.rst
+   includes/i2c.rst
    includes/onewire.rst
    includes/threading.rst
    includes/blynk.rst
