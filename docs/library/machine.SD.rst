@@ -56,6 +56,10 @@ class SD -- Secure digital memory card
     If you have one of the Pycom expansion boards, then simply insert the card into
     the micro SD socket and run your script.
 
+    .. note::
+
+        Make sure your SD card is formatted either as FAT16 or FAT32.
+
     Example usage::
 
         from machine import SD

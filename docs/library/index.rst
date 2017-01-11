@@ -39,7 +39,6 @@ extensions to it, can be found in the `micropython-lib repository
     :maxdepth: 1
 
     machine.rst
-
     machine.ADC.rst
     machine.DAC.rst
     machine.I2C.rst
@@ -56,10 +55,8 @@ extensions to it, can be found in the `micropython-lib repository
     network.Server.rst
     network.LORA.rst
     network.Bluetooth.rst
-
     ucrypto.AES.rst
-
-- :class:`Interrupts`
+    pycom.rst
 
 
 4.2 Micropython libraries
@@ -173,8 +170,8 @@ to be a drop-in replacement for the standard Python library.
        uhashlib.rst
        ussl.rst
        pycom.treading.rst
-       pycom.rst
        ucrypto.rst
+       ustruct.rst
        builtins.rst
 
 
@@ -249,3 +246,29 @@ to be a drop-in replacement for the standard Python library.
       :maxdepth: 2
 
       esp.rst
+
+
+.. raw:: html
+
+    <script type="text/javascript">
+    function removeModules(elements,toRemove){
+      el = document.querySelectorAll(elements)
+      console.log("Removing from "+elements+" (found "+el.length+" items)")
+      for(var i=0;i<el.length;i++){
+          for(var j=0;j<toRemove.length;j++){
+              key = toRemove[j]
+              if(el[i].innerHTML.indexOf(key) > -1){
+                  console.log(" > Found "+key+", removing now")
+                  el[i].className += " hidden"
+              }
+          }
+      }
+    }
+
+    var toRemove = ['Channel','BluetoothConnection','BluetoothService','BluetoothCharacteristic']
+    
+    removeModules('#pycom-modules blockquote div ul li',toRemove)
+
+    removeModules('.toctree-l1.current ul .toctree-l2.current ul li',toRemove)
+
+    </script>

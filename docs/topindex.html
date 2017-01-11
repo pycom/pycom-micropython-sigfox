@@ -4,8 +4,15 @@
   <h1>Pycom documentation</h1>
 
   <p>
-    {{ _('Hello maker! This is the documentation for your Pycom board')}}.
-    <strong>Please note that the documentation is still work in progress</strong>
+    Welcome to the Pycom documentation site. The documentation is broken down into 6 sections, we recommend reading through all the sections to familiarize yourself with the various tools and features available to you to help you develop on your Pycom module.
+
+    All Pycom modules are based on the same ESP32 chip and therefore share similar Pin outs and firmware. The majority of the documentation is applicable to all Pycom boards with separate sections for tutorials and firmware references for using LoRa and Sigfox. 
+    If you want to get started quickly, read through section 1 then feel free to jump straight into the tutorials and examples in section 3 to start building your project. 
+
+    Having difficulty? Have a look at section 5 for common problems and solutions. 
+
+    As always, we will continue to add to our documentation and we welcome any suggestions or improvements. 
+
   </p>
 
   {% if port == 'pycom_esp32' %}
@@ -13,7 +20,7 @@
     <td width="40%" style="padding-left:2em;">
         <p class="biglink">
           <a class="biglink" href="{{ pathto(port + "/getstarted") }}">Quickstart guide</a><br/>
-          <span class="linkdescr">Start playing with your Pycom board right now</span>
+          <span class="linkdescr">Connect your Pycom module and run your first code</span>
         </p>
         <p class="biglink">
           <a class="biglink" href="{{ pathto(port + "/tutorial/index") }}">Tutorials and examples</a><br/>
@@ -27,7 +34,7 @@
         </p>
         <p class="biglink">
           <a class="biglink" href="{{ pathto("library/index") }}">Firmware API Reference</a><br/>
-          <span class="linkdescr">All available methods and libraries</span>
+          <span class="linkdescr">All available modules and libraries</span>
         </p>
     </td>
     <tr/>
@@ -129,5 +136,6 @@
       </p>
   </td>
   </tr></table>
+
 
 {% endblock %}

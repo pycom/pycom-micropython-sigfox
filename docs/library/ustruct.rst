@@ -1,4 +1,4 @@
-:mod:`ustruct` -- pack and unpack primitive data types
+:mod:`ustruct` -- Pack and unpack primitive data types
 ======================================================
 
 .. module:: ustruct

@@ -6,10 +6,13 @@ MQTT
 Basic usage example
 ^^^^^^^^^^^^^^^^^^^
 
-For more info on this example, see `this topic <https://forum.pycom.io/topic/211/simple-mqtt-tutorial/25>`_ on our forum
+MQTT is a lightweight messaging protocol that is ideal for sending small pakcets to and from  IoT devices.
+
+For more info on this example, see `this topic <https://forum.pycom.io/topic/211/simple-mqtt-tutorial/>`_ on our forum
 
 
 - Broker used: `MiveMQ <http://www.hivemq.com/demos/websocket-client/>`_ 
+- We also recommend using Adafruits broker which is free and allows you start tinkering with their IoT platform, IO.adafruit. https://learn.adafruit.com/adafruit-io/mqtt-api
 - Library used: `UMQTT <https://pypi.python.org/pypi/micropython-umqtt.simple>`_ (simple.py file)
 
 The library has a bug on line 57. Make sure to change:

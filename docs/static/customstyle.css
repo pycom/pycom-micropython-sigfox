@@ -3,7 +3,7 @@
 
  img {
      margin-top: 1em !important;
-     margin-bottom: 3em !important;
+     margin-bottom: 1em !important;
  }
 
  @media screen and (min-width: 1300px) {
@@ -12,7 +12,9 @@
          max-width: 1600px;
      }
  }
-
+.hidden {
+    display: none;
+}
 .admonition-difference-to-cpython {
     border: 1px solid black;
 }

@@ -105,6 +105,10 @@ or::
 
     $ screen /dev/tty.usbmodem* 115200
 
+.. note::
+
+    When using telnet on mac, it takes a while connecting. This is because it's waiting for a reverse dns lookup. 
+
 When you are finished and want to exit ``screen``, type CTRL-A CTRL-\\. If your keyboard does not have a \\-key (i.e. you need an obscure combination for \\ like ALT-SHIFT-7) you can remap the ``quit`` command:
 
 - create ``~/.screenrc``
@@ -268,7 +272,7 @@ back to their original states after the next reset.
 .. _pycom_interrupt_handling:
 
 2.6 Interrupt handling
-------------------
+======================
 
 In Pycom's ESP32 MicroPython port there are no restrictions on what you can do within an interrupt handler.
 For example, other ports don't allow you to allocate memory inside the handler or use sockets.

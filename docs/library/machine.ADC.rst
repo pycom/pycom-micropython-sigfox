@@ -44,7 +44,7 @@ Methods
       apin = adc.channel(pin='P16')
 
 class ADCChannel --- read analog values from internal or external sources
-=========================================================================
+-------------------------------------------------------------------------
 
 ADC channels can be connected to internal points of the MCU or to GPIO pins.
 ADC channels are created using the ADC.channel method.

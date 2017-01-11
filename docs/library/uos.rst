@@ -4,7 +4,7 @@
 .. module:: uos
    :synopsis: basic "operating system" services
 
-The ``os`` module contains functions for filesystem access and ``urandom``
+The ``uos`` module contains functions for filesystem access and ``urandom``
 function.
 
 Port specifics
@@ -64,7 +64,20 @@ Functions
 
 .. function:: stat(path)
 
-   Get the status of a file or directory.
+   Get the status of a file or directory. 
+
+   The return value is a tuple with the following 10 values, in order:
+
+   - st_mode: protection bits.
+   - st_ino: inode number. (not implemented, returns 0)
+   - st_dev: device. (not implemented, returns 0)
+   - st_nlink: number of hard links. (not implemented, returns 0)
+   - st_uid: user id of owner. (not implemented, returns 0)
+   - st_gid: group id of owner. (not implemented, returns 0)
+   - st_size: size of file in bytes.
+   - st_atime: time of most recent access.
+   - st_mtime: time of most recent content modification.
+   - st_ctime: time of most recent metadata change.
 
 .. function:: sync()
 

@@ -68,7 +68,7 @@ Connecting onnecting to a device named 'Heart Rate' and receiving data from it's
 
 
 
-Using :ref:`resolve_adv_data <network.bluetooth.resolve_adv_data>` to get more info of a device
+Using ``resolve_adv_data()`` to get more information about a device
 
 ::
 

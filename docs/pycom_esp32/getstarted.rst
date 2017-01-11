@@ -7,6 +7,8 @@ new toy. Our aim is not to bug you with complex details about it, but instead
 get you as quick as possible to the point you can start doing useful things
 with your device.
 
+It is strongly recommended to update the firmware on your device before coding, this is described in section 1.3 below
+
 This chapter will get you unboxed and ready to code in no time. 
 
 - :ref:`Unboxing and the expansion board <unboxing>`
@@ -83,19 +85,17 @@ power supply and re-check the boards position on the expansion board.
 1.3 Firmware Upgrades
 =====================
 
-The next suggested step will be upgrading the firmware, as we are constantly
-making improvements and adding new features to it.
-Download the :ref:`upgrader tool<firmware_upgrade>`
-and follow the instructions on screen.
+We **strongly recommend** you to upgrade your firmware to the latest version 
+as we are constantly making improvements and adding new features.
 
-
-We strongly recommend you to upgrade your firmware to the latest version. Here
-are the download links to the update tool. Please download the appropriate one for 
-your OS and follow the instructions on the screen.
+Here are the download links to the update tool. Please download the appropriate 
+one for your OS and follow the instructions on the screen.
 
 - `Windows <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=win32&redirect=true>`_.
 - `MacOS <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=macos&redirect=true>`_ (10.11 or higher).
 - `Linux <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=unix&redirect=true>`_ (requires dialog package).
+
+Previous versions of firmware are available for download on the `Pycom website <https://www.pycom.io/support/supportdownloads/>`_. 
 
 .. image:: images/firmware-updater-screenshot.png
     :alt: Firmware upgrader
@@ -111,7 +111,7 @@ The instructions given by the updater tool should be followed carefully. The bas
 - Remove the G23+GND wire.
 - Reboot the device (button or powercycle)
 
-Connecting G23 and GND looks like this (TODO: make a nice picture:
+Connecting G23 and GND puts that device in 'update mode'. You won't need this for any other task than using the firmware upgrader. Placing the jumper looks like this (TODO: make a nice picture):
 
 .. image:: images/firmware-update-jumper
     :alt: Firmware update jumpers
@@ -153,8 +153,8 @@ The folder structure in /flash looks like the picture below. The files can be ma
     :align: center
     :scale: 50 %
 
-
 .. _connecting_using_pymakr:
+
 
 1.5 Connecting your board using Pymakr
 =====================================
@@ -301,11 +301,3 @@ pressing the physical reset button.
 
 .. Warning::
     If your board is running code at boot time, you might need to boot it in :ref:`safe mode <safeboot>`.
-
-
-
-.. _connecting_using_pymakr:
-
-1.6 Troubleshooting
-=====================================
-

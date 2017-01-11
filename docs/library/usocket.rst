@@ -26,17 +26,16 @@ Functions
 
    Create a new socket using the given address family, socket type and protocol number.
 
-    .. only:: port_wipy
 
-        .. note::
+    .. note::
 
-           SSL sockets need to be created the following way before wrapping them with 
-           ``ssl.wrap_socket``::
+       SSL sockets need to be created the following way before wrapping them with 
+       ``ssl.wrap_socket``::
 
-              import socket
-              import ssl
-              s = socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_SEC)
-              ss = ssl.wrap_socket(s)
+          import socket
+          import ssl
+          s = socket.socket(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_SEC)
+          ss = ssl.wrap_socket(s)
 
 .. function:: socket.getaddrinfo(host, port)
 
@@ -95,7 +94,7 @@ Methods
 
     .. method:: socket.bind(address)
 
-       Bind the socket to address. The socket must not already be bound.
+       Bind the socket to address. The socket must not already be bound. The address parameter must be a tuple containing the IP address and the port.
 
     .. method:: socket.listen([backlog])
 
@@ -121,7 +120,7 @@ Methods
 
     .. method:: socket.sendall(bytes)
 
-       Send data to the socket. The socket must be connected to a remote socket.
+       Alias of socket.send(bytes).
 
     .. method:: socket.recv(bufsize)
 

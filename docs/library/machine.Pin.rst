@@ -290,7 +290,7 @@ Methods
                 ``GP11``, GP17`` or ``GP24`` can wake the board. Note that only 1
                 of this pins can be enabled as a wake source at the same time, so, only
                 the last enabled pin as a ``machine.Sleep.SUSPENDED`` wake source will have effect.
-              - If ``wake_from=machine.Sleep.SUSPENDED`` pins ``GP2``, ``GP4``, ``GP10``,
+              - If ``wake_from=machine.Sleep.HIBERNATE`` pins ``GP2``, ``GP4``, ``GP10``,
                 ``GP11``, ``GP17`` and ``GP24`` can wake the board. In this case all of the
                 6 pins can be enabled as a ``machine.Sleep.HIBERNATE`` wake source at the same time.
               - Values can be ORed to make a pin generate interrupts in more than one power

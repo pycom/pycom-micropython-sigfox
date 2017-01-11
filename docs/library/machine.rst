@@ -132,6 +132,9 @@ Miscellaneous functions
    varies by hardware (so use substring of a full value if you expect a short
    ID). In some MicroPython ports, ID corresponds to the network MAC address.
 
+   Hint: use :mod:`binascii`.hexlify() to convert the byte string to the much used 
+   hexadecimal form.
+
 .. only:: port_wipy
 
     .. function:: time_pulse_us(pin, pulse_level, timeout_us=1000000)
