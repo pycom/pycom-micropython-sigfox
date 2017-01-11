@@ -1,6 +1,8 @@
 One-wire driver
 ---------------
 
+This tutorial explains how to connect and read data from a DS18x20 temperature sensor.
+
 Basic usage
 
 ::

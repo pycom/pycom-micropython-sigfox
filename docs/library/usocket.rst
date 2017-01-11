@@ -78,14 +78,25 @@ Constants
 
 .. data:: socket.SOL_SOCKET
           socket.SOL_LORA
+          socket.SOL_SIGFOX
 
    socket options layers
 
 .. data:: socket.SO_REUSEADDR
-          socket.SO_CONFIRMED
+
+   IP socket options
+
+.. data:: socket.SO_CONFIRMED
           socket.SO_DR
 
-   socket options
+   LoRa socket options
+
+.. data:: socket.SO_RX
+          socket.SO_TX_REPEAT
+          socket.SO_OOB
+          socket.SO_BIT
+
+   Sigfox socket options
 
 .. only:: port_wipy
 

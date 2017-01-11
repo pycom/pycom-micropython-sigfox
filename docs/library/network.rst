@@ -7,9 +7,9 @@
 
 This module provides network drivers and routing configuration.  Network
 drivers for specific hardware are available within this module and are
-used to configure a hardware network interface. 
+used to configure a hardware network interface.
 
-Click one of the links below to see more information and exmaples for 
+Click one of the links below to see more information and exmaples for
 each network.
 
 .. only:: port_lopy or port_pycom_esp32
@@ -22,8 +22,9 @@ each network.
 
      network.Server.rst
      network.WLAN.rst
-     network.LORA.rst
+     network.LoRa.rst
      network.Bluetooth.rst
+     network.Sigfox.rst
 
 .. only:: port_pyboard
 

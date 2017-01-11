@@ -19,8 +19,8 @@ Contents
 
 .. _main_features:
 
-2.2 Main features
-===================
+2.2 Main Features of Pycom Modules
+==================================
 
 All members in the current family of Pycom modules are powered by the ESP32, offering:
 
@@ -83,6 +83,11 @@ do::
 
 Place this piece of code inside your `boot.py` so that it's done automatically after
 reset. The WiPy 2.0 and LoPy already have this code in the boot.py file by default.
+
+.. note::
+
+   The boards already ship with a **boot.py** file that contains the REPL duplication code.
+   In case that you erase it or change, you can enable it back using the lines above.
 
 The following control commands are available in REPL:
 

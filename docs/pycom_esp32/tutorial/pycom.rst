@@ -1,6 +1,6 @@
 
-3.1 Pycom Tutorials
-===================
+3.1 All Pycom Modules Tutorials
+===============================
 
 .. toctree::
    :maxdepth: 1
@@ -18,4 +18,3 @@
    includes/blynk.rst
    includes/led.rst
    includes/timers.rst
-  

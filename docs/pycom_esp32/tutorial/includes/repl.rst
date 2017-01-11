@@ -5,9 +5,7 @@ Using the REPL prompt
 
 Now let's try running some MicroPython code directly on the LoPy.
 
-With your serial program open (PuTTY, screen, picocom, etc) you may see a blank
-screen with a flashing cursor.  Press Enter and you should be presented with a
-MicroPython prompt, i.e. ``>>>``.  Let's make sure it is working with the obligatory test::
+With Pymakr open and your board connected or your preferred serial program (PuTTY, screen, picocom, etc) you may see a blank screen with a flashing cursor.  Press Enter and you should be presented with a MicroPython prompt, i.e. ``>>>``.  Let's make sure it is working with the obligatory test::
 
     >>> print("Hello LoPy!")
     Hello LoPy!

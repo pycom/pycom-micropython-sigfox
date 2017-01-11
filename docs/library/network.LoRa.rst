@@ -228,9 +228,9 @@ LoRa sockets are created in the following way::
 
 And they must be created after initializing the LoRa network card.
 
-LoRa sockets support the following standard methods from the :class:`socket <.socket>` module:
+LoRa socket support the following standard methods from the :class:`socket <.socket>` module:
 
-.. method:: socket.close()
+.. method:: socket.close
 
    Usage: ``s.close()``
 
