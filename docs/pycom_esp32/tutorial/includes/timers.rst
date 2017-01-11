@@ -2,7 +2,7 @@
 Timers
 -------
 
-Detailed information about this class can be found in :class:`Timer <.Timer>`
+Detailed information about this class can be found in :class:`Timer <.Timer>`.
 
 Chronometer
 ^^^^^^^^^^^
@@ -50,3 +50,6 @@ The Alarm can be used to get interrupts at a specific interval. The following co
 	            alarm.callback(None) # stop counting after 10 seconds
 
 	clock = Clock()
+
+.. note::
+	There are no restrictions to what you can do in an interrupt. It's even possible to do network requests. But keep in mind that interrupts hare handled sequentially, so it's good practice to keep them short. More information can be found in chapter :ref:`2.6 Interrupt handling <pycom_interrupt_handling>`.

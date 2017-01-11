@@ -9,7 +9,7 @@ Basic connection using :mod:`ssl.wrap_socket <ssl.wrap_socket>`.
 
 	import socket
 	import ssl
-	s = socket()
+	s = socket.socket()
 	ss = ssl.wrap_socket(s)
 	ss.connect(socket.getaddrinfo('www.google.com', 443)[0][-1])
 

@@ -3,7 +3,7 @@
 2.7 Pymakr
 ==========
 
-Here are some basic tips on how to further use Pymakr to upload code to your modules. 
+Here are some basic tips on how to use Pymakr to upload code to your modules. 
 
 Download links:
 
