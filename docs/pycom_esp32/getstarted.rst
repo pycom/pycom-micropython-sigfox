@@ -60,6 +60,27 @@ It applies to all our modules.
     Some modules like the LoPy will be big enough to cover the USB connector.
     This is normal as long as you keep the orientation as shown.
 
+To extend the life of your expansion board, please be aware of the following:
+
+  - Be gentle when plugging/unplugging the USB cable.  Whilst the USB connector
+    is well soldered and is relatively strong, if it breaks off it can be very
+    difficult to fix.
+
+  - Static electricity can shock the components on the device and destroy them.
+    If you experience a lot of static electricity in your area (eg dry and cold
+    climates), take extra care not to shock the device.  If your device came
+    in a ESD bag, then this bag is the best way to store and carry the
+    device as it will protect it against static discharges.
+
+
+Expansion board hardware guide
+------------------------------
+
+The document explaining the hardware details of the expansion board can be found
+`here <https://github.com/WiPy/WiPy/blob/master/docs/User_manual_exp_board.pdf>`_.
+
+The pinout for the expansion board can be found in the :ref:'datasheets <expansion-board>' section.
+
 
 .. _connecting_over_usb:
 
@@ -95,14 +116,16 @@ one for your OS and follow the instructions on the screen.
 - `MacOS <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=macos&redirect=true>`_ (10.11 or higher).
 - `Linux <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=unix&redirect=true>`_ (requires dialog package).
 
-Previous versions of firmware are available for download on the `Pycom website <https://www.pycom.io/support/supportdownloads/>`_.
+Previous versions of firmware are available for download on the `Pycom website 
+<https://www.pycom.io/support/supportdownloads/>`_. 
 
 .. image:: images/firmware-updater-screenshot.png
     :alt: Firmware upgrader
     :align: center
     :scale: 50 %
 
-The instructions given by the updater tool should be followed carefully. The basic procedure is like this:
+The instructions given by the updater tool should be followed carefully. The basic 
+procedure is like this:
 
 - Disconnect your device from the PC.
 - Connect wire G23+GND using a jumper cable.
@@ -111,28 +134,24 @@ The instructions given by the updater tool should be followed carefully. The bas
 - Remove the G23+GND wire.
 - Reboot the device (button or powercycle)
 
-Connecting G23 and GND puts that device in 'update mode'. You won't need this for any other task than using the firmware upgrader. Placing the jumper looks like this (TODO: make a nice picture):
-
-.. image:: images/firmware-update-jumper
-    :alt: Firmware update jumpers
-    :align: center
-    :scale: 50 %
-
+Connecting G23 and GND puts the device in 'update mode'. You won't need this for any 
+other task than using the firmware upgrader.
 
 After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
 programs in your device.
 
-If you have your telnet connection or Pymakr already setup, the version can be  with the following code:
+If you have your telnet connection or Pymakr already setup, the version can be  with the 
+following code:
 
 ::
+
     import os
     os.uname().release
 
-
-
 .. warning::
 
-    Make sure the TX jumper is present on your expansion board, as the jumpers sometimes come loose in the box during transport. Without this jumper, the updater will fail.
+    Make sure the TX jumper is present on your expansion board, as the jumpers sometimes 
+    come loose in the box during transport. Without this jumper, the updater will fail.
 
 
 
@@ -142,11 +161,16 @@ If you have your telnet connection or Pymakr already setup, the version can be  
 1.4 Micropython Introduction
 ============================
 
-Our boards work with `Micropython <https://micropython.org/>`_; a Python 3 implementation that is optimised to run on micocontrollers. This allows for much faster and easier development than using C.
+Our boards work with `Micropython <https://micropython.org/>`_; a Python 3 implementation 
+that is optimised to run on micocontrollers. This allows for much faster and easier 
+development than using C. 
 
-When booting, two files are executed automatically: first boot.py and then main.py. These are placed in the /flash folder on the board. Any other files or libraries can be placed here as well, and included or used from boot.py or main.py.
+When booting, two files are executed automatically: first boot.py and then main.py. These 
+are placed in the /flash folder on the board. Any other files or libraries can be placed 
+here as well, and included or used from boot.py or main.py. 
 
-The folder structure in /flash looks like the picture below. The files can be managed either using :ref:`FTP <pycom_filesystem>` or using :ref:`Pymakr <pymakr_ide>`.
+The folder structure in /flash looks like the picture below. The files can be managed either 
+using :ref:`FTP <pycom_filesystem>` or using :ref:`Pymakr <pymakr_ide>`.
 
 .. image:: images/wipy-files-ftp.png
     :alt: File structure
@@ -168,7 +192,8 @@ More extended info on pymakr like how to use the pycom console and the expert
 interface can be found under :ref:`Tools & Features <pymakr_ide>`
 
 .. note::
-    If you have any trouble connecting over USB using pymakr, make sure you have the proper `FTDI drivers <http://www.ftdichip.com/Drivers/D2XX.htm>`_ installed.
+    If you have any trouble connecting over USB using pymakr, make sure you have the 
+    proper `FTDI drivers <http://www.ftdichip.com/Drivers/D2XX.htm>`_ installed.
 
 Initial configuration
 ---------------------

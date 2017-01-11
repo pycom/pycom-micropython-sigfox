@@ -3,7 +3,7 @@
 ***************************
 
 2.1 Intro
-=====
+=========
 
 Do you have your basic setup working? Then it's time to look at all the ways you can use and interact with your board. We'll look at some more features of Pymakr and see how we can use telnet, FTP and how to reset the board.
 
@@ -20,7 +20,7 @@ Contents
 .. _main_features:
 
 2.2 Main features
-=====================
+===================
 
 All members in the current family of Pycom modules are powered by the ESP32, offering:
 

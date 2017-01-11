@@ -37,6 +37,6 @@ class PWMChannel --- control a PWM channel
 Methods
 -------
 
-    .. method:: channel.duty_cycle(value)
+    .. method:: pwmchannel.duty_cycle(value)
 
         Set the duty cycle for a PWM channel. ``value`` is a float argument, with values between 0 and 1.

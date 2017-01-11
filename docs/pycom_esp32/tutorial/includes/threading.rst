@@ -4,7 +4,8 @@ Threading
 
 MicroPython supports spawning threads by the ``_thread`` module. The following example
 demonstrates the use of this module. A thread is simply defined as a function that can
-receive any number of parameters.
+receive any number of parameters. Below 3 threads are started, each one perform a print
+at a different interval.
 
 ::
 
@@ -30,3 +31,4 @@ receive any number of parameters.
 
     with a_lock:
         print("a_lock is locked while this executes")
+
