@@ -39,7 +39,6 @@
 #include "moduos.h"
 #include "machpin.h"
 #include "pins.h"
-#include "pycom_config.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -297,24 +296,22 @@ STATIC void mach_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_
     }
 }
 
-esp_err_t machuart_isr_register(uart_port_t uart_num, uint8_t uart_intr_num, void (*fn)(void*), void * arg)
+esp_err_t machuart_isr_register(uart_port_t uart_num, void (*fn)(void*), void * arg)
 {
-    ESP_INTR_DISABLE(uart_intr_num);
+    int32_t source;
     switch(uart_num) {
-        case 1:
-            intr_matrix_set(xPortGetCoreID(), ETS_UART1_INTR_SOURCE, uart_intr_num);
-            break;
-        case 2:
-            intr_matrix_set(xPortGetCoreID(), ETS_UART2_INTR_SOURCE, uart_intr_num);
-            break;
-        case 0:
-            default:
-            intr_matrix_set(xPortGetCoreID(), ETS_UART0_INTR_SOURCE, uart_intr_num);
-            break;
+    case 1:
+        source = ETS_UART1_INTR_SOURCE;
+        break;
+    case 2:
+        source = ETS_UART2_INTR_SOURCE;
+        break;
+    case 0:
+        default:
+        source = ETS_UART0_INTR_SOURCE;
+        break;
     }
-    xt_set_interrupt_handler(uart_intr_num, fn, arg);
-    ESP_INTR_ENABLE(uart_intr_num);
-    return ESP_OK;
+    return esp_intr_alloc(source, 0, fn, arg, NULL);
 }
 
 STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t *args) {
@@ -413,8 +410,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     self->read_buf = (volatile byte *)MP_STATE_PORT(uart_buf[uart_id]);
 
     // interrupts are enabled here
-    // uart_isr_register(uart_id, uart_intr_handler, NULL, ESP_INTR_FLAG_IRAM);
-    machuart_isr_register(uart_id, PYCOM_UART_INT_NUM, uart_intr_handler, NULL);
+    machuart_isr_register(uart_id, uart_intr_handler, NULL);
 
     self->intr_config.intr_enable_mask = intr_mask;
     self->intr_config.rx_timeout_thresh = 10;

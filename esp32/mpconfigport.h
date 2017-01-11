@@ -23,7 +23,7 @@
 #define MICROPY_MEM_STATS                           (0)
 #define MICROPY_DEBUG_PRINTERS                      (1)
 #define MICROPY_ENABLE_GC                           (1)
-#define MICROPY_STACK_CHECK                         (0)
+#define MICROPY_STACK_CHECK                         (1)
 #define MICROPY_HELPER_REPL                         (1)
 #define MICROPY_HELPER_LEXER_UNIX                   (0)
 #define MICROPY_ENABLE_SOURCE_LINE                  (1)
@@ -51,6 +51,7 @@
 #define MICROPY_PY_SYS                              (1)
 #define MICROPY_PY_THREAD                           (1)
 #define MICROPY_PY_THREAD_GIL                       (1)
+#define MICROPY_PY_THREAD_GIL_DIVISOR               (8)
 #define MICROPY_PY_SYS_MAXSIZE                      (1)
 #define MICROPY_PY_SYS_EXIT                         (1)
 #define MICROPY_PY_SYS_STDFILES                     (1)
@@ -185,6 +186,7 @@ extern const struct _mp_obj_module_t mp_module_ussl;
     mp_obj_t mp_os_stream_o;                                    \
     mp_obj_t mp_os_read[3];                                     \
     mp_obj_t mp_os_write[3];                                    \
+    mp_obj_t mp_alarm_heap;                                     \
 
 // we need to provide a declaration/definition of alloca()
 #include <alloca.h>

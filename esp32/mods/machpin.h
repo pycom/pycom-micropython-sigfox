@@ -50,6 +50,7 @@ typedef struct {
     uint8_t             irq_trigger;
     uint8_t             irq_flags;
     bool                used;
+    bool                hold;
 } pin_obj_t;
 
 extern const mp_obj_type_t pin_type;

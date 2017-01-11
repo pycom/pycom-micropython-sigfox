@@ -272,7 +272,7 @@ void modlora_init0(void) {
     xRxQueue = xQueueCreate(LORA_DATA_QUEUE_SIZE_MAX, sizeof(lora_rx_data_t));
     LoRaEvents = xEventGroupCreate();
 
-    xTaskCreate(TASK_LoRa, "LoRa", LORA_STACK_SIZE, NULL, LORA_TASK_PRIORITY, NULL);
+    xTaskCreate(TASK_LoRa, "LoRa", LORA_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TASK_PRIORITY, NULL);
 }
 
 /******************************************************************************
@@ -414,7 +414,7 @@ static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
                         lora_obj.ComplianceTest.State = 1;
 
                         // flush the rx queue
-                        while (xQueueReceiveFromISR(xRxQueue, (void *)&rx_data_isr, (TickType_t)0));
+                        xQueueReset(xRxQueue);
 
                         // enable ADR during test mode
                         MibRequestConfirm_t mibReq;

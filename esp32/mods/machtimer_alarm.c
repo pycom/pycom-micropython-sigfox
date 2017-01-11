@@ -47,6 +47,7 @@ void init_alarm_heap(void) {
     alarm_heap.size = MIN_HEAP_ELEMENTS;
     alarm_heap.count = 0;
     alarm_heap.data = gc_alloc(MIN_HEAP_ELEMENTS, false);
+    MP_STATE_PORT(mp_alarm_heap) = alarm_heap.data;
     if (alarm_heap.data == NULL) {
         printf("ERROR: no enough memory for the alarms heap\n");
         for (;;);
@@ -69,6 +70,7 @@ STATIC IRAM_ATTR void insert_alarm(mp_obj_alarm_t *alarm) {
         if (!new_data) {
             mp_raise_OSError(MP_ENOMEM);
         }
+        MP_STATE_PORT(mp_alarm_heap) = alarm_heap.data;
         alarm_heap.data = new_data;
     }
 
@@ -144,6 +146,7 @@ STATIC void tidy_alarm_memory(void) {
         if (!new_data) {
             mp_raise_OSError(MP_ENOMEM);
         }
+        MP_STATE_PORT(mp_alarm_heap) = alarm_heap.data;
         alarm_heap.data = new_data;
     }
 }

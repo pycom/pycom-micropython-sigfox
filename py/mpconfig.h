@@ -890,6 +890,12 @@ typedef double mp_float_t;
 #define MICROPY_PY_THREAD_GIL (MICROPY_PY_THREAD)
 #endif
 
+// The GIL will be released and acquired every MICROPY_PY_THREAD_GIL_DIVISOR
+// number of jump opcodes
+#ifndef MICROPY_PY_THREAD_GIL_DIVISOR
+#define MICROPY_PY_THREAD_GIL_DIVISOR (2)
+#endif
+
 // Extended modules
 
 #ifndef MICROPY_PY_UCTYPES

@@ -24,13 +24,13 @@ def th(n, lo, hi):
         n_finished += 1
 
 lock = _thread.allocate_lock()
-n_thread = 4
+n_thread = 3
 n_finished = 0
 n_repeat = 4 # use 40 for more stressful test (uses more heap)
 
 # spawn threads
 for i in range(n_thread):
-    _thread.start_new_thread(th, (n_repeat, i * 256 // n_thread, (i + 1) * 256 // n_thread))
+    _thread.start_new_thread(th, (n_repeat, i * 128 // n_thread, (i + 1) * 128 // n_thread))
 
 # busy wait for threads to finish
 while n_finished < n_thread:
@@ -38,8 +38,7 @@ while n_finished < n_thread:
 
 # check bytearray has correct contents
 print(len(ba))
-count = [0 for _ in range(256)]
+count = [0 for _ in range(128)]
 for b in ba:
     count[b] += 1
 print(count)
-

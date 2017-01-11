@@ -13,12 +13,10 @@
 #include "py/mpconfig.h"
 #include "py/nlr.h"
 #include "py/runtime.h"
+#include "esp_system.h"
 #include "hwcrypto/aes.h"
 #include "hwcrypto/sha.h"
 #include "mpexception.h"
-#include <stdio.h>
-
-#define dbg_trace(fmt, ...) printf("%s:%d " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -220,15 +218,15 @@ STATIC mp_obj_t AES_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
 
     // store the IV (ignored in ECB & CTR)
     if (mode != CRYPT_MODE_ECB &&
-        mode != CRYPT_MODE_CTR && 
+        mode != CRYPT_MODE_CTR &&
         args[2].u_obj != mp_const_none
-    ) { 
+    ) {
         mp_get_buffer_raise(args[2].u_obj, &bufinfo, MP_BUFFER_READ);
         if(bufinfo.len == sizeof(self->IV)) {
             memcpy(self->IV, bufinfo.buf, sizeof(self->IV));
         } else {
             mp_raise_ValueError("IV must be 16 bytes long");
-        }           
+        }
     }
 
     // store the counter (only valid in CTR mode)
@@ -256,12 +254,26 @@ STATIC mp_obj_t AES_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
 
     return self;
 }
-// STATIC MP_DEFINE_CONST_FUN_OBJ_KW(AES_make_new_obj, 1, AES_make_new);
 
+STATIC mp_obj_t getrandbits(mp_obj_t bits) {
+    uint32_t num_cycles, i;
+    vstr_t vstr;
+
+    num_cycles = mp_obj_get_int(bits);
+    num_cycles += 0x20 * ((num_cycles & 0x1F) != 0);  // round the bits to a multiple of 32
+    num_cycles >>= 5;
+
+    vstr_init_len(&vstr, num_cycles << 2); // going to get 32 bit integers (4 bytes)
+    for (i = 0; i < num_cycles; i++) {
+        *((uint32_t *) (vstr.buf + (i << 2))) = esp_random();
+    }
+
+    return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(getrandbits_obj, getrandbits);
 
 STATIC const mp_map_elem_t mp_module_AES_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_uAES) },
-    // { MP_OBJ_NEW_QSTR(MP_QSTR_new),                 (mp_obj_t)&AES_new_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MODE_ECB),            MP_OBJ_NEW_SMALL_INT(CRYPT_MODE_ECB) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MODE_CBC),            MP_OBJ_NEW_SMALL_INT(CRYPT_MODE_CBC) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MODE_CFB),            MP_OBJ_NEW_SMALL_INT(CRYPT_MODE_CFB) },
@@ -283,6 +295,7 @@ STATIC const mp_obj_type_t mod_crypt_aes = {
 STATIC const mp_map_elem_t module_ucrypto_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_ucrypto) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_AES),                 (mp_obj_t)&mod_crypt_aes },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_getrandbits),         (mp_obj_t)&getrandbits_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(module_ucrypto_globals, module_ucrypto_globals_table);

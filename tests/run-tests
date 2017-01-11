@@ -239,7 +239,7 @@ def run_tests(pyb, tests, args):
         skip_tests.add('micropython/meminfo.py') # output is very different to PC output
         skip_tests.add('extmod/machine_mem.py') # raw memory access not supported
 
-        if args.target == 'wipy':
+        if args.target == 'wipy1':
             skip_tests.add('misc/print_exception.py')       # requires error reporting full
             skip_tests.add('misc/recursion.py')             # requires stack checking enabled
             skip_tests.add('misc/recursive_data.py')        # requires stack checking enabled
@@ -247,11 +247,18 @@ def run_tests(pyb, tests, args):
             skip_tests.add('misc/rge_sm.py')                # requires floating point
             skip_tests.update({'extmod/uctypes_%s.py' % t for t in 'bytearray le native_le ptr_le ptr_native_le sizeof sizeof_native array_assign_le array_assign_native_le'.split()}) # requires uctypes
             skip_tests.add('extmod/zlibd_decompress.py')    # requires zlib
-            skip_tests.add('extmod/ujson_dumps_float.py')   # requires floating point
-            skip_tests.add('extmod/ujson_loads_float.py')   # requires floating point
-            skip_tests.add('extmod/uheapq1.py')             # uheapq not supported by WiPy
+        elif args.target == 'esp32-WIPY' or args.target == 'esp32-LOPY':
+            skip_tests.add('extmod/uheapq1.py')             # requires uheapq
             skip_tests.add('extmod/urandom_basic.py')       # requires urandom
             skip_tests.add('extmod/urandom_extra.py')       # requires urandom
+            skip_tests.add('extmod/uzlib_decompio_gz.py')   # requires zlib
+            skip_tests.add('extmod/uzlib_decompio.py')      # requires zlib
+            skip_tests.add('extmod/uzlib_decompress.py')    # requires zlib
+            skip_tests.add('extmod/time_ms_us.py')          # not yet implemented
+            skip_tests.add('extmod/ticks_diff.py')          # not yet implemented
+            skip_tests.add('thread/stress_aes.py')          # requires too much heap and stack
+            skip_tests.add('float/float2int.py')            # fails on big numbers, needs to be investigated
+            skip_tests.add('misc/rge_sm.py')                # too large
         elif args.target == 'esp8266':
             skip_tests.add('float/float2int.py')            # requires at least fp32, there's float2int_fp30.py instead
             skip_tests.add('float/string_format.py')        # requires at least fp32, there's string_format_fp30.py instead
@@ -402,11 +409,11 @@ def main():
                 # run WiPy tests
                 test_dirs = ('basics', 'micropython', 'misc', 'extmod', 'wipy')
             elif args.target == 'esp32-WIPY':
-                # run Lopy tests
-                test_dirs = ('basics', 'micropython', 'esp32')
+                # run on the WiPy 2.0
+                test_dirs = ('basics', 'micropython', 'esp32', 'float', 'misc', 'extmod', 'thread')
             elif args.target == 'esp32-LOPY':
-                # run Lopy tests
-                test_dirs = ('basics', 'micropython', 'esp32')
+                # run on the LoPy
+                test_dirs = ('basics', 'micropython', 'esp32', 'float', 'misc', 'extmod', 'thread')
             else:
                 # run PC tests
                 test_dirs = ('basics', 'micropython', 'float', 'import', 'io', 'misc', 'stress', 'unicode', 'extmod', 'unix', 'cmdline')

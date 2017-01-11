@@ -41,6 +41,16 @@ class Timer -- measure time spans and set alarms
 
             - ``periodic``: an alarm can be set to trigger repeatedly by setting this parameter to True.
 
+    Methods
+    -------
+
+        .. method:: Timer.sleep_us()
+
+            Delay for a given number of microseconds, should be positive or 0 (for speed, the condition is not enforced).
+            Internally it uses the same timer as the other elements of the Timer class. It compensates for the calling overhead,
+            so for example, 100 us should be really close to 100us. For times bigger than 10,000 us it releases the GIL to let
+            other threads run, so exactitude is not guaranteed for delays longer than that.
+
     class Chrono -- measure time spans
     ==================================
 

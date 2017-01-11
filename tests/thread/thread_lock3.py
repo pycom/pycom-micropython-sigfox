@@ -5,7 +5,7 @@
 import _thread
 
 lock = _thread.allocate_lock()
-n_thread = 10
+n_thread = 8
 n_finished = 0
 
 def thread_entry(idx):

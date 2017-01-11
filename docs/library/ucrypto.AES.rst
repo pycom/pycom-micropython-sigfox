@@ -15,8 +15,9 @@ It has a fixed data block size of 16 bytes. Its keys can be 128, 192, or 256 bit
 Usage::
 
     from crypto import AES
+    import crypto
     key = b'notsuchsecretkey' # 128 bit (16 bytes) key
-    iv = b'alwaysusearandom' # in real life you should use a random IV and never reuse it
+    iv = crypto.getrandbits(128) # hardware generated random IV (never reuse it)
 
     cipher = AES(key, AES.MODE_CFB, iv)
     msg = iv + cipher.encrypt(b'Attack at dawn')
@@ -86,5 +87,6 @@ Constants
 
 
 .. warning::
-    To avoid security issues, IV should always be a random number and should never be 
+    To avoid security issues, IV should always be a random number and should never be
     reused to encrypt two different messages. The same applies to the counter in CTR mode.
+    You can use :meth:`crypto.getrandbits` for this purpose.

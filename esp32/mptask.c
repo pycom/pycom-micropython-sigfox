@@ -52,6 +52,7 @@
 #include "modbt.h"
 #include "machtimer.h"
 #include "mptask.h"
+#include "machtimer.h"
 
 #include "ff.h"
 #include "diskio.h"
@@ -71,18 +72,18 @@
  ******************************************************************************/
 #if defined(LOPY)
     #if defined(USE_BAND_868)
-        #define GC_POOL_SIZE_BYTES                                          (36 * 1024)
+        #define GC_POOL_SIZE_BYTES                                          (48 * 1024)
     #else
-        #define GC_POOL_SIZE_BYTES                                          (36 * 1024)
+        #define GC_POOL_SIZE_BYTES                                          (42 * 1024)
     #endif
 #else
-    #define GC_POOL_SIZE_BYTES                                          (40 * 1024)
+    #define GC_POOL_SIZE_BYTES                                          (48 * 1024)
 #endif
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-STATIC void mptask_pre_init (void);
+STATIC void mptask_preinit (void);
 STATIC void mptask_init_sflash_filesystem (void);
 #ifdef LOPY
 STATIC void mptask_update_lora_mac_address (void);
@@ -124,7 +125,18 @@ void TASK_Micropython (void *pvParameters) {
     config_init0();
 
     // initialization that must not be repeted after a soft reset
-    mptask_pre_init();
+    mptask_preinit();
+    mp_irq_preinit();
+    #if MICROPY_PY_THREAD
+    mp_thread_preinit();
+    #endif
+
+    // initialise the stack pointer for the main thread (must be done after mp_thread_preinit)
+    mp_stack_set_top((void *)sp);
+
+    // the stack limit should be less than real stack size, so we have a chance
+    // to recover from hiting the limit (the limit is measured in bytes)
+    mp_stack_set_limit(MICROPY_TASK_STACK_LEN - 1024);
 
 soft_reset:
 
@@ -132,9 +144,6 @@ soft_reset:
     #if MICROPY_PY_THREAD
     mp_thread_init();
     #endif
-
-    // initialise the stack pointer for the main thread (must be done after mp_thread_init)
-    mp_stack_set_top((void*)sp);
 
     // GC init
     gc_init((void *)gc_pool_upy, (void *)(gc_pool_upy + sizeof(gc_pool_upy)));
@@ -149,12 +158,12 @@ soft_reset:
     pin_init0();    // always before the rest of the peripherals
     mpexception_init0();
     mpsleep_init0();
+    mp_irq_init0();
     moduos_init0();
     uart_init0();
     mperror_init0();
     rng_init0();
     rtc_init0();
-    mp_irq_init0();
     mp_hal_init(soft_reset);
     readline_init0();
     mod_network_init0();
@@ -244,9 +253,11 @@ soft_reset:
 
 soft_reset_exit:
 
+    mp_irq_kill();
     mpsleep_signal_soft_reset();
     mp_printf(&mp_plat_print, "PYB: soft reboot\n");
-    mp_hal_delay_us(5000);
+    // it needs to be this one in order to not mess with the GIL
+    ets_delay_us(5000);
     soft_reset = true;
     goto soft_reset;
 }
@@ -254,7 +265,7 @@ soft_reset_exit:
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
-STATIC void mptask_pre_init (void) {
+STATIC void mptask_preinit (void) {
     mperror_pre_init();
     wlan_pre_init();
     xTaskCreate(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, NULL);
