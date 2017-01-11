@@ -4,7 +4,7 @@ LoPy to LoPy
 
 This example show how to connect two nodes via LoRa.
 
-Node A code:
+**Node A script:**
 
 ::
 
@@ -23,7 +23,7 @@ Node A code:
 
 
 
-Node B code:
+**Node B script:**
 
 ::
 

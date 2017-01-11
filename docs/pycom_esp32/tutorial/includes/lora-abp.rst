@@ -1,9 +1,11 @@
 
 
-LoRa (LoRaWAN with ABP)
------------------------
+LoRaWAN with ABP join method
+----------------------------
 
-TODO: Add explanation and info links about ABP
+**ABP** stands for Authentication By Personalization. It basically means that the encryption keys are configured manually on the device and this can start sending frames to the Gateway without needing a "handshake" procedure to exchange the keys (like the one performed during an OTAA join procedure).
+
+The example below tries to get any data received after sending the frame. Keep in mind that the Gateway might not be sending any data back, therefore we make the ocket non-blocking before trying to receive in order to prevent getting stucked waiting for a packet that will never arrive.
 
 ::
 
@@ -29,12 +31,17 @@ TODO: Add explanation and info links about ABP
     # set the LoRaWAN data rate
     s.setsockopt(socket.SOL_LORA, socket.SO_DR, 5)
 
-    # make the socket non-blocking
-    s.setblocking(False)
+    # make the socket blocking
+    # (waits for the data to be sent and for the 2 receive windows to expire)
+    s.setblocking(True)
 
     # send some data
     s.send(bytes([0x01, 0x02, 0x03]))
 
-    # get any data received...
+    # make the socket non-blocking
+    # (because if there's no data received it will block forever...)
+    s.setblocking(False)
+
+    # get any data received (if any...)
     data = s.recv(64)
     print(data)

@@ -9,12 +9,12 @@ with your device.
 
 It is strongly recommended to update the firmware on your device before coding, this is described in section 1.3 below
 
-This chapter will get you unboxed and ready to code in no time. 
+This chapter will get you unboxed and ready to code in no time.
 
 - :ref:`Unboxing and the expansion board <unboxing>`
 - :ref:`Connecting over USB <connecting_over_usb>`
 - :ref:`Firmware Upgrades <firmware_upgrades>`
-- :ref:`Micropython introduction <micropython_intro>` 
+- :ref:`Micropython introduction <micropython_intro>`
 - :ref:`Connecting the board and coding using Pymakr <connecting_using_pymakr>`
 
 If anyting goes wrong, there is a :ref:`Troubleshooting` section that addresses the most common issues. In case of any doubts you can always ask questions in our `community forum <http://forum.pycom.io>`_.
@@ -54,8 +54,8 @@ It applies to all our modules.
     allowfullscreen="true" width="480"
     height="385"></embed></object>
     </div>
-    
-    
+
+
 .. note::
     Some modules like the LoPy will be big enough to cover the USB connector.
     This is normal as long as you keep the orientation as shown.
@@ -85,17 +85,17 @@ power supply and re-check the boards position on the expansion board.
 1.3 Firmware Upgrades
 =====================
 
-We **strongly recommend** you to upgrade your firmware to the latest version 
+We **strongly recommend** you to upgrade your firmware to the latest version
 as we are constantly making improvements and adding new features.
 
-Here are the download links to the update tool. Please download the appropriate 
+Here are the download links to the update tool. Please download the appropriate
 one for your OS and follow the instructions on the screen.
 
 - `Windows <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=win32&redirect=true>`_.
 - `MacOS <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=macos&redirect=true>`_ (10.11 or higher).
 - `Linux <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=unix&redirect=true>`_ (requires dialog package).
 
-Previous versions of firmware are available for download on the `Pycom website <https://www.pycom.io/support/supportdownloads/>`_. 
+Previous versions of firmware are available for download on the `Pycom website <https://www.pycom.io/support/supportdownloads/>`_.
 
 .. image:: images/firmware-updater-screenshot.png
     :alt: Firmware upgrader
@@ -120,7 +120,7 @@ Connecting G23 and GND puts that device in 'update mode'. You won't need this fo
 
 
 After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
-programs in your device. 
+programs in your device.
 
 If you have your telnet connection or Pymakr already setup, the version can be  with the following code:
 
@@ -142,9 +142,9 @@ If you have your telnet connection or Pymakr already setup, the version can be  
 1.4 Micropython Introduction
 ============================
 
-Our boards work with `Micropython <https://micropython.org/>`_; a Python 3 implementation that is optimised to run on micocontrollers. This allows for much faster and easier development than using C. 
+Our boards work with `Micropython <https://micropython.org/>`_; a Python 3 implementation that is optimised to run on micocontrollers. This allows for much faster and easier development than using C.
 
-When booting, two files are executed automatically: first boot.py and then main.py. These are placed in the /flash folder on the board. Any other files or libraries can be placed here as well, and included or used from boot.py or main.py. 
+When booting, two files are executed automatically: first boot.py and then main.py. These are placed in the /flash folder on the board. Any other files or libraries can be placed here as well, and included or used from boot.py or main.py.
 
 The folder structure in /flash looks like the picture below. The files can be managed either using :ref:`FTP <pycom_filesystem>` or using :ref:`Pymakr <pymakr_ide>`.
 
@@ -164,7 +164,7 @@ to connect to and program your Pycom devices. We’re going to use it in this
 section to give you a quick taste of how you can work with your device. You can
 download Pymakr from `here <https://www.pycom.io/solutions/pymakr/>`_.
 
-More extended info on pymakr like how to use the pycom console and the expert 
+More extended info on pymakr like how to use the pycom console and the expert
 interface can be found under :ref:`Tools & Features <pymakr_ide>`
 
 .. note::
@@ -185,8 +185,8 @@ first time. Please follow these steps:
 
 
 .. note::
-    Pymakr also supports wired connections. Instead of typing the IP address, you 
-    can click on the combo box arrow and select the proper serial port from the list. 
+    Pymakr also supports wired connections. Instead of typing the IP address, you
+    can click on the combo box arrow and select the proper serial port from the list.
     Our boards don’t require any username or password for the serial connection, so you
     can leave those fields empty.
 
@@ -198,7 +198,7 @@ first time. Please follow these steps:
 
 That’s it for the first time configuration. In the lower portion of the screen,
 you should see the console, with the connection process taking place. At the
-end of it, you’ll get a 'connected' message and a colored ``>>>`` prompt, 
+end of it, you’ll get a 'connected' message and a colored ``>>>`` prompt,
 indicating that you are connected:
 
 .. image:: images/pymakr-repl.png
@@ -206,7 +206,7 @@ indicating that you are connected:
     :align: center
     :scale: 100 %
 
-`There is also a video <https://www.youtube.com/embed/bL5nn2lgaZE>`_ that explains 
+`There is also a video <https://www.youtube.com/embed/bL5nn2lgaZE>`_ that explains
 these steps on macOS (it is similar for other operating systems).
 
 
@@ -222,7 +222,7 @@ these steps on macOS (it is similar for other operating systems).
     allowfullscreen="true" width="480"
     height="385"></embed></object>
     </div>
-    
+
 
 Creating a project
 ------------------
@@ -231,7 +231,7 @@ Pymakr has a feature to sync and run your code on your device. This is mostly do
 
 - In Pymakr, go to Project > New project.
 - Give it a name and select a folder for your project, either a new of existing one.
-- Create two files: main.py and boot.py, if you don't already have those. 
+- Create two files: main.py and boot.py, if you don't already have those.
 
 .. note::
     You can also :ref:`use FTP <pycom_filesystem>` to download boot.py and main.py from the board to your project folder, after which you can right-click the project viewer and use the 'add source files' option to add them to your project.
@@ -239,16 +239,16 @@ Pymakr has a feature to sync and run your code on your device. This is mostly do
 The boot.py file should always have the following code on the top, so we can run our python scripts over serial or telnet. All of our newer boards have this code already in the boot.py file.
 
 .. code:: python
-    
+
     from machine import UART
     import os
     uart = UART(0, 115200)
     os.dupterm(uart)
 
 
-Most users, especially WiPy users, would want a wifi script in the boot.py file. A basic wifi script but also more advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`Wifi Examples <wlan_step_by_step>` chapter. 
+Most users, especially WiPy users, would want a wifi script in the boot.py file. A basic wifi script but also more advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`Wifi Examples <wlan_step_by_step>` chapter.
 
-Besides the neccesary main.py and boot.py files, you can create any folders and python files or libraries that you want to include in your main file. Pymakr will synchronize all files in the project to the board when using the sync button. 
+Besides the neccesary main.py and boot.py files, you can create any folders and python files or libraries that you want to include in your main file. Pymakr will synchronize all files in the project to the board when using the sync button.
 
 
 .. Warning::
@@ -263,7 +263,7 @@ Without creating a project
 If you just want to test some code on the module, you can create a new file or open an existing one and press the 'run' button.
 
 .. Warning::
-    
+
     The changes you make to your file won't be automatically saved to the device on execution.
 
 
@@ -277,7 +277,7 @@ For fun, lets try again to build a traffic light. Add the following code to the 
     import pycom
     import time
     pycom.heartbeat(False)
-    for cycles in range(10): # stop after 10 cycles 
+    for cycles in range(10): # stop after 10 cycles
         pycom.rgbled(0x007f00) # green
         time.sleep(5)
         pycom.rgbled(0x7f7f00) # yellow
@@ -296,7 +296,7 @@ Here is the expected result:
     :scale: 60 %
 
 You now have a traffic light in your hands! To stop a running program, use ctrl-c or do a right click
-on the console and press ``Reset``. You can also reboot the board by 
+on the console and press ``Reset``. You can also reboot the board by
 pressing the physical reset button.
 
 .. Warning::

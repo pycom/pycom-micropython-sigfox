@@ -45,14 +45,14 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :mod:`SSL/TLS support <.ussl>`
 - :class:`RTC` (coming soon)
 
-Click the links in the list above to see more details on that feature. 
-For all available modules and libraries, please visit the :ref:`Firmware API 
+Click the links in the list above to see more details on that feature.
+For all available modules and libraries, please visit the :ref:`Firmware API
 Reference <firmware_api_reference>` section.
 
 Datasheets
 ----------
 
-If you want to find out how things are connected, visit the :ref:`datasheets 
+If you want to find out how things are connected, visit the :ref:`datasheets
 section <datasheets>`. Here you'll find the datasheets for all of our products.
 
 .. _repl:
@@ -66,7 +66,7 @@ REPL stands for Read Evaluate Print Loop, and is the name given to the interacti
 
 To use the REPL, you must connect to the LoPy either via ``telnet``,
 or with a USB to serial converter wired to one of the two UARTs on the
-LoPy. When using the REPL over telnet, authentication is needed. The default credentials are: 
+LoPy. When using the REPL over telnet, authentication is needed. The default credentials are:
 
 - **user:** ``micro``
 - **password:** ``python``
@@ -107,7 +107,7 @@ or::
 
 .. note::
 
-    When using telnet on mac, it takes a while connecting. This is because it's waiting for a reverse dns lookup. 
+    When using telnet on mac, it takes a while connecting. This is because it's waiting for a reverse dns lookup.
 
 When you are finished and want to exit ``screen``, type CTRL-A CTRL-\\. If your keyboard does not have a \\-key (i.e. you need an obscure combination for \\ like ALT-SHIFT-7) you can remap the ``quit`` command:
 
@@ -150,14 +150,14 @@ the "Serial" radio button on the right, then enter you COM port (eg COM4) in the
 
 There is a small internal file system (a drive) on the LoPy, called ``/flash``,
 which is stored within the external serial flash memory.  If a micro SD card
-is hooked-up and mounted, it will be available as well. When the device starts 
+is hooked-up and mounted, it will be available as well. When the device starts
 up, it always boots from the ``boot.py`` located in the ``/flash`` file system.
 
 The file system is accessible via the native FTP server running in the LoPy.
 Open your FTP client of choice and connect to:
 
-- **url:** ``ftp://192.168.4.1`` 
-- **user:** ``micro`` 
+- **url:** ``ftp://192.168.4.1``
+- **user:** ``micro``
 - **password:** ``python``
 
 See :class:`network.server <.Server>` for info on how to change the defaults.
@@ -240,8 +240,8 @@ drive <pycom_factory_reset>`.
 Reset
 -----
 
-There are soft resets and hard resets. A soft reset simply clears the state of 
-the MicroPython virtual machine, but leaves hardware peripherals unaffected. To 
+There are soft resets and hard resets. A soft reset simply clears the state of
+the MicroPython virtual machine, but leaves hardware peripherals unaffected. To
 do a soft reset, simply press **Ctrl+D** on the REPL, or within a script do::
 
    >>> import sys
@@ -285,6 +285,8 @@ The programmer can do whatever is needed inside the callback, such as creating n
 or even sending network packets. Just keep in mind that interrupts are processed sequentially,
 so try to keep the handlers as quick as possible in order to attend them all in a short time.
 
+Currently there are 2 classes supporting interrupts, there the :class:`Alarm <.Alarm>` class and the :class:`Pin <.Pin>`. Both classes provide the ``.callback()`` method that enables the interrupt and registers the given handler. More details about the usage along with examples can be found in their respective sections.
+
 .. note::
 
     Currently the interrupt system can queue up to 16 interrupts.
@@ -292,5 +294,3 @@ so try to keep the handlers as quick as possible in order to attend them all in 
 .. _pymakr_ide:
 
 .. include:: pymakr.rst
-
-

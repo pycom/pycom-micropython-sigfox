@@ -2,7 +2,7 @@
 PIR Sensor
 ----------
 
-This code reads PIR sensor triggers from `this simple PIR sensor <https://www.kiwi-electronics.nl/PIR-Motion-Sensor>`_. 
+This code reads PIR sensor triggers from `this simple PIR sensor <https://www.kiwi-electronics.nl/PIR-Motion-Sensor>`_.
 
 ::
 
@@ -27,5 +27,3 @@ This code reads PIR sensor triggers from `this simple PIR sensor <https://www.ki
 	    if pir_triggered:
 	        pir_triggered = False
 	        print("Sensor triggered")
-
-

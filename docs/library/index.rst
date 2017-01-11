@@ -62,11 +62,11 @@ extensions to it, can be found in the `micropython-lib repository
 4.2 Micropython libraries
 -------------------------
 
-The following list contains the standard Python libraries, MicroPython-specific 
-libraries and Pycom specific modules that are available on our boards. 
+The following list contains the standard Python libraries, MicroPython-specific
+libraries and Pycom specific modules that are available on our boards.
 
-The standard Python libraries have been "micro-ified" to fit in with the philosophy 
-of MicroPython. They provide the core functionality of that module and are intended 
+The standard Python libraries have been "micro-ified" to fit in with the philosophy
+of MicroPython. They provide the core functionality of that module and are intended
 to be a drop-in replacement for the standard Python library.
 
 
@@ -169,9 +169,9 @@ to be a drop-in replacement for the standard Python library.
        utime.rst
        uhashlib.rst
        ussl.rst
-       pycom.treading.rst
        ucrypto.rst
        ustruct.rst
+       thread.rst
        builtins.rst
 
 
@@ -266,7 +266,7 @@ to be a drop-in replacement for the standard Python library.
     }
 
     var toRemove = ['Channel','BluetoothConnection','BluetoothService','BluetoothCharacteristic']
-    
+
     removeModules('#pycom-modules blockquote div ul li',toRemove)
 
     removeModules('.toctree-l1.current ul .toctree-l2.current ul li',toRemove)
