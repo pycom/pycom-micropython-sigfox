@@ -50,7 +50,7 @@ Functions
 Objects
 -------
 
-.. class:: _thread.LockType
+.. object:: _thread.LockType
 
     This is the type of lock objects.
 
