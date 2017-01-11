@@ -1,6 +1,6 @@
 
-5.1 WiPy 2
-==========
+5.1 WiPy 2.0
+============
 
 Pinout
 ------
@@ -13,3 +13,8 @@ The pinout of the module is available as a `PDF file <https://www.pycom.io/wp-co
     :alt: Wipy Pinout
     :target: https://www.pycom.io/wp-content/uploads/2016/11/wipy_pinout.pdf
 
+
+Specsheet
+---------
+
+The specsheet of the WiPy 2.0 is available as a `PDF file <https://www.pycom.io/wp-content/uploads/2017/01/wipy2SpecsheetGraffiti.pdf>`_.

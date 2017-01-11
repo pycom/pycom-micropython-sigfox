@@ -12,8 +12,8 @@
 .. include:: datasheets/expansionboard.rst
 
 
-5.4 Powering by an external power source
-====================================
+5.5 Powering by an external power source
+========================================
 
 The modules can be powered by a battery or other external power source.
 
