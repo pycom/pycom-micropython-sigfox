@@ -1,4 +1,4 @@
-5.4 SiPy
+5.3 SiPy
 ========
 
 Pinout
