@@ -57,7 +57,8 @@ It applies to all our modules.
 
 
 .. note::
-    Some modules like the LoPy will be big enough to cover the USB connector.
+
+    Some modules like the LoPy will be big enough to cover the USB connector. 
     This is normal as long as you keep the orientation as shown.
 
 To extend the life of your expansion board, please be aware of the following:
@@ -79,8 +80,7 @@ Expansion board hardware guide
 The document explaining the hardware details of the expansion board can be found
 `here <https://github.com/WiPy/WiPy/blob/master/docs/User_manual_exp_board.pdf>`_.
 
-The pinout for the expansion board can be found in the :ref:'datasheets <expansion-board>' section.
-
+The pinout for the expansion board can be found in chapter :ref:`datasheets`
 
 .. _connecting_over_usb:
 
