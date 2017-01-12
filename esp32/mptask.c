@@ -72,12 +72,12 @@
  ******************************************************************************/
 #if defined(LOPY)
     #if defined(USE_BAND_868)
-        #define GC_POOL_SIZE_BYTES                                          (48 * 1024)
+        #define GC_POOL_SIZE_BYTES                                          (36 * 1024)
     #else
-        #define GC_POOL_SIZE_BYTES                                          (42 * 1024)
+        #define GC_POOL_SIZE_BYTES                                          (36 * 1024)
     #endif
 #else
-    #define GC_POOL_SIZE_BYTES                                          (48 * 1024)
+    #define GC_POOL_SIZE_BYTES                                          (38 * 1024)
 #endif
 
 /******************************************************************************

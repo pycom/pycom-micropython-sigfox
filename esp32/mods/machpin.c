@@ -609,7 +609,7 @@ STATIC mp_obj_t pin_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
     pin_extint_register(self, args[0].u_int, 0);
 
     // enable the interrupt just before leaving
-    if (args[0].u_obj != mp_const_none) {
+    if (args[0].u_int != GPIO_INTR_DISABLE) {
         pin_irq_enable(self);
     }
 

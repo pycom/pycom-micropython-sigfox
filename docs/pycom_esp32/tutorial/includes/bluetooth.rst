@@ -85,7 +85,6 @@ Using ``resolve_adv_data()`` to atempt to get the name and manufacturer data of 
     while bluetooth.isscanning():
         adv = bluetooth.get_adv()
         if adv:
-
             # try to get the complete name
             print(bluetooth.resolve_adv_data(adv.data, Bluetooth.ADV_NAME_CMPL))
 
