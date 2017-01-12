@@ -15,6 +15,5 @@
    includes/i2c.rst
    includes/onewire.rst
    includes/threading.rst
-   includes/blynk.rst
    includes/led.rst
    includes/timers.rst
