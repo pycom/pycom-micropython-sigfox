@@ -3,7 +3,7 @@
 class Sigfox
 ============
 
-This class provides a driver for the Sigfox network processor in the module. Example usage::
+This class provides a driver for the Sigfox network processor in the **SiPy**. Example usage::
 
    from network import Sigfox
    import socket
@@ -33,14 +33,14 @@ Constructors
 Methods
 -------
 
-.. method:: sigfox.init(mode, rcz)
+.. method:: sigfox.init(mode, rcz=None)
 
    Set the Sigfox radio configuration.
 
    The arguments are:
 
      - ``mode`` can be either ``Sigfox.SIGFOX`` or ``Sigfox.FSK``. ``Sigfox.SIGFOX`` uses the Sigfox modulation and protocol while ``Sigfox.FSK`` allows to create point to point communication between 2 SiPy's using FSK modulation.
-     - ``rcz`` takes the following values: ``Sigfox.RCZ1``, ``Sigfox.RCZ2``, ``Sigfox.RCZ3``, ``Sigfox.RCZ4``.
+     - ``rcz`` takes the following values: ``Sigfox.RCZ1``, ``Sigfox.RCZ2``, ``Sigfox.RCZ3``, ``Sigfox.RCZ4``. The **rcz** argument is only required if the mode is ``Sigfox.SIGFOX``.
 
      .. warning::
 
@@ -64,7 +64,7 @@ Methods
 
 .. method:: sigfox.public_key([public])
 
-   Allows to set or get the public key flag. When called passing a ``True`` value the Sigfox public key will be used to encrypt the packets. Calling it without arguments returns the state of the flag.
+   Sets or gets the public key flag. When called passing a ``True`` value the Sigfox public key will be used to encrypt the packets. Calling it without arguments returns the state of the flag.
 
 
 Constants

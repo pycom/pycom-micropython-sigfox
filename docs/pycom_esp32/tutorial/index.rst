@@ -23,3 +23,5 @@ in the **pycom-libraries** repository on Pycom's Github account `here <https://g
 .. include:: pycom.rst
 
 .. include:: lopy.rst
+
+.. include:: sipy.rst

@@ -1,10 +1,5 @@
 
-3.3 SiPy Specific
-=================
+3.3 SiPy Tutorials
+==================
 
-TODO: write intro
-
-.. toctree::
-   :maxdepth: 1
-
-   includes/sipy.rst
+The SiPy is currently undergoing final certification by Sigfox, once certified tutorials on how to join Sigfox networks globally will be available here. In the meantime to familiarise yourself with the Sigfox class, please refer to the firmware :class:`API reference <.Sigfox>`.

@@ -3,7 +3,7 @@
 class LoRa
 ==========
 
-This class provides a driver for the LoRa network processor in the module. Example usage::
+This class provides a driver for the LoRa network processor in the **LoPy**. Example usage::
 
     from network import LoRa
     import socket
@@ -179,7 +179,9 @@ Methods
 
 .. method:: lora.remove_channel(index)
 
-     Removes the channel from the specified index. Channels 0 to 2 cannot be removed, they can only be replaced by other channels using the ``lora.add_channel`` method.
+     Removes the channel from the specified index. On the 868MHz band the channels 0 to 2 cannot be removed, they can only be replaced by other channels using the ``lora.add_channel`` method. A way to remove all channels except for one is to add the same channel 3 times on indexes 0, 1 and 2.
+
+     On the 915MHz band there are not restrictions around this.
 
 .. method:: lora.mac()
 

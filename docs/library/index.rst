@@ -53,8 +53,9 @@ extensions to it, can be found in the `micropython-lib repository
     network.rst
     network.WLAN.rst
     network.Server.rst
-    network.LORA.rst
     network.Bluetooth.rst
+    network.LoRa.rst
+    network.Sigfox.rst
     ucrypto.AES.rst
     pycom.rst
 
