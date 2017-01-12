@@ -275,8 +275,7 @@ STATIC mp_obj_t adc_channel_value(mp_obj_t self_in) {
     }
 
     value = analog_adc1_read(self->channel, self->attn);
-    // the 12 bit sampled value is stored in bits [13:2]
-    return MP_OBJ_NEW_SMALL_INT((value & 0x3FFF) >> 2);
+    return MP_OBJ_NEW_SMALL_INT(value);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_value_obj, adc_channel_value);
 
