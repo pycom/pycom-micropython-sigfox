@@ -60,7 +60,7 @@ Methods
 
 .. method:: sigfox.frequencies()
 
-   Returns a tuple of the form: ``(uplink_frequency, downlink_frequency)``
+   Returns a tuple of the form: ``(uplink_frequency_hz, downlink_frequency_hz)``
 
 .. method:: sigfox.public_key([public])
 
@@ -122,7 +122,7 @@ Sigfox sockets support the following standard methods from the :class:`socket <.
       s.setsockopt(socket.SOL_SIGFOX, socket.SO_OOB, True)
 
       # disable Out-Of-Band to use the socket normally
-      s.setsockopt(socket.SOL_SIGFOX, socket.SO_OOB, True)
+      s.setsockopt(socket.SOL_SIGFOX, socket.SO_OOB, False)
 
       # select the bit value when sending bit only packets
       s.setsockopt(socket.SOL_SIGFOX, socket.SO_BIT, False)
