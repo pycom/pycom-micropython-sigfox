@@ -11,14 +11,15 @@ Quick usage example
 
     ::
 
-          from network import Bluetooth
-          import time
-          bt = Bluetooth()
-          bt.start_scan(-1)
+        from network import Bluetooth
+        import time
+        bt = Bluetooth()
+        bt.start_scan(-1)
 
-          while True:
-              adv = bt.get_adv()
-              if adv and bt.resolve_adv_data(adv.data, Bluetooth.ADV_NAME_CMPL) == 'Heart Rate':
+        while True:
+          adv = bt.get_adv()
+          if adv and bt.resolve_adv_data(adv.data, Bluetooth.ADV_NAME_CMPL) == 'Heart Rate':
+              try:
                   conn = bt.connect(adv.mac)
                   services = conn.services()
                   for service in services:
@@ -33,8 +34,11 @@ Quick usage example
                               print('char {} value = {}'.format(char.uuid(), char.read()))
                   conn.disconnect()
                   break
-              else:
-                  time.sleep(0.050)
+              except:
+                  print("Error while connecting or reading from the BLE device")
+                  break
+          else:
+              time.sleep(0.050)
 
 
 Constructors
@@ -82,7 +86,7 @@ Methods
    Gets an named tuple with the advertisement data received during the scanning. The tuple has the following structure: ``(mac, addr_type, adv_type, rssi, data)``
 
    - ``mac`` is the 6-byte ling mac address of the device that sent the advertisement.
-   - ``addr_type`` is the address type. See the constants section below fro more details.
+   - ``addr_type`` is the address type. See the constants section below for more details.
    - ``adv_type`` is the advertisement type received. See the constants section below fro more details.
    - ``rssi`` is signed integer with the signal strength of the advertisement.
    - ``data`` contains the complete 31 bytes of the advertisement message. In order to parse the data and get the specific types, the method ``resolve_adv_data()`` can be used.
@@ -99,17 +103,23 @@ Methods
     Example::
 
         import binascii
+        from network import Bluetooth
+        bluetooth = Bluetooth()
 
-        bluetooth.start_scan(5)
-        while True:
+        bluetooth.start_scan(20)
+        while bluetooth.isscanning():
             adv = bluetooth.get_adv()
             if adv:
 
                 # try to get the complete name
                 print(bluetooth.resolve_adv_data(adv.data, Bluetooth.ADV_NAME_CMPL))
 
-                # try to get the manufacturer data (Apple's iBeacon data is sent here)
-                print(binascii.hexlify(bluetooth.resolve_adv_data(adv.data, Bluetooth.ADV_MANUFACTURER_DATA)))
+                mfg_data = bluetooth.resolve_adv_data(adv.data, Bluetooth.ADV_MANUFACTURER_DATA)
+
+                if mfg_data:
+                    # try to get the manufacturer data (Apple's iBeacon data is sent here)
+                    print(binascii.hexlify(mfg_data))
+
 
 .. method:: bluetooth.connect(mac_addr)
 
@@ -184,16 +194,19 @@ class BluetoothConnection
 
         # scan until we can connect to any BLE device around
         bluetooth.start_scan(-1)
+        adv = None
         while True:
             adv = bluetooth.get_adv()
             if adv:
                 try:
-                    connection = bluetooth.connect(adv.mac)
+                    bluetooth.connect(adv.mac)
                 except:
+                    # start scanning again
+                    bluetooth.start_scan(-1)
                     continue
-                if connection.isconnected()
-                    break
-        printf("Connected to device with addr = {}".format(binascii.hexlify(adv.mac)))
+                break
+        print("Connected to device with addr = {}".format(binascii.hexlify(adv.mac)))
+
 
 .. method:: connection.services()
 
