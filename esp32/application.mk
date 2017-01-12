@@ -123,6 +123,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	pybsd.c \
 	modussl.c \
 	modbt.c \
+	modled.c \
 	)
 endif
 
@@ -153,6 +154,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	pybsd.c \
 	modussl.c \
 	modbt.c \
+	modled.c \
 	)
 endif
 

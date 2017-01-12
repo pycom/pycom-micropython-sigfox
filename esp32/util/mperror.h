@@ -28,6 +28,6 @@ bool mperror_heartbeat_signal (void);
 void mperror_enable_heartbeat (bool enable);
 bool mperror_is_heartbeat_enabled (void);
 
-void mperror_set_rgb_color (uint32_t rgbcolor);
+void mperror_set_rgb_color(uint32_t rgbcolor);
 
 #endif // MPERROR_H_
