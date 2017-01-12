@@ -28,7 +28,7 @@ Constructors
 
 .. class:: Sigfox(id=0, ...)
 
-   Create and configure a LoRa object. See ``init`` for params of configuration.
+   Create and configure a Sigfox object. See ``init`` for params of configuration.
 
 Methods
 -------
