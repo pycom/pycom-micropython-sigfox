@@ -124,6 +124,32 @@ Methods
 
     Opens a BLE connection with the device specified by the ``mac_addr`` argument. This function blocks until the connection succeeds or fails. If the connections succeeds it returns a object of type ``BluetoothConnection``.
 
+.. method:: bluetooth.set_advertisement(\*, name=None, manufacturer_data=None, service_data=None, service_uuid=None)
+
+    Configure the data to be sent while advertising. If left with the default of ``None`` the data won't be part of
+    the advertisement message.
+
+    The arguments are:
+
+       - ``Name`` is the string name to be shown on advertisements.
+       - ``manufacturer_data`` manufacturer data to be advertised (hint: use it for iBeacons).
+       - ``service_data`` service data to be advertised.
+       - ``service_uuid`` uuid of the service to be advertised.
+
+.. method:: bluetooth.advertise([Enable])
+
+    Start or stop sending advertisements. The ``.set_advertisement()`` method must have been called prior to this one.
+
+.. method:: bluetooth.service(uuid, \*, isprimary=True)
+
+    Create a new service on the internal GATT server. Returns a object of type ``BluetoothServerService``.
+
+    The arguments are:
+
+       - ``uuid`` is the UUID of the service. Can take an integer or a 16 byte long string or bytes object.
+       - ``isprimary`` selects if the service is a primary one. Takes a bool value.
+
+
 Constants
 ---------
 
@@ -172,6 +198,11 @@ Constants
           Bluetooth.PROP_EXT_PROP
 
     Characteristic properties (bit values that can be combined)
+
+.. data:: Bluetooth.CHAR_READ_EVENT
+          Bluetooth.CHAR_WRITE_EVENT
+
+    Charactertistic callback events
 
 
 class BluetoothConnection
@@ -262,3 +293,58 @@ class BluetoothCharacteristic
 .. method:: characteristic.write(value)
 
     Writes the given value on the characteristic. For now it only accepts bytes object representing the value to be written.
+
+
+class BluetoothServerService
+============================
+
+.. method:: service.characteristic(uuid, \*, permissions, properties, value)
+
+    Creates a new characteristic on the service. Returns an object of the class ``BluetoothServerCharacteristic``.
+    The arguments are:
+
+      - ``uuid`` is the UUID of the service. Can take an integer or a 16 byte long string or bytes object.
+      - ``permissions`` configures the permissions of the characteristic. Takes an integer with an ORed combination of the flags
+      - ``properties`` sets the properties. Takes an integer with an ORed combination of the flags.
+      - ``value`` sets the initial value. Can take an integer, a string or a bytes object.
+
+
+class BluetoothServerCharacteristic
+===================================
+
+.. method:: service.value([value])
+
+    Gets or sets the value of the characteristic. Can take an integer, a string or a bytes object.
+
+.. method:: service.callback(trigger=None, handler=None, arg=None)
+
+    Creates a callback that will be executed when any of the triggers occurs. The arguments are:
+
+       - ``trigger`` can be either ``Bluetooth.CHAR_READ_EVENT`` or ``Bluetooth.CHAR_WRITE_EVENT``.
+       - ``handler`` is the function that will be executed when the callback is triggered.
+       - ``arg`` is the argument that gets passed to the callback. If nothing is given, the characteristic object that
+       owns the callback will be passed.
+
+
+Example of advertising and creating services on the device::
+
+    from network import Bluetooth
+
+    bluetooth = Bluetooth()
+    bluetooth.set_advertisement(name='LoPy', service_uuid=b'1234567890123456')
+
+    bluetooth.advertise(True)
+
+    srv1 = bluetooth.service(uuid=b'1234567890123456', isprimary=True)
+
+    chr1 = srv1.characteristic(uuid=b'ab34567890123456', value=5)
+
+    def char1_cb(chr):
+        print("Write request with value = {}".format(chr.value()))
+
+    char1_cb = chr1.callback(trigger=Bluetooth.CHAR_WRITE_EVENT, handler=char1_cb)
+
+    srv2 = bluetooth.service(uuid=1234, isprimary=True)
+
+    chr2 = srv2.characteristic(uuid=4567)
+
