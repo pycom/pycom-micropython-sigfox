@@ -179,7 +179,9 @@ outer_dispatch_loop:
             const byte *ip = code_state->ip;
             mp_obj_t *sp = code_state->sp;
             mp_obj_t obj_shared;
+#if MICROPY_PY_THREAD && MICROPY_PY_THREAD_GIL
             uint32_t gil_divisor = MICROPY_PY_THREAD_GIL_DIVISOR;
+#endif
             MICROPY_VM_HOOK_INIT
 
             // If we have exception to inject, now that we finish setting up
