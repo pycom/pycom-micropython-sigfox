@@ -56,6 +56,7 @@ typedef struct _wlan_obj_t {
     bool                irq_enabled;
     bool                servers_enabled;
     bool                started;
+    bool                disconnected;
 } wlan_obj_t;
 
 /******************************************************************************

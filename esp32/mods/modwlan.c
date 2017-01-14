@@ -293,9 +293,24 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
-        /* This is a workaround as ESP32 WiFi libs don't currently auto-reassociate. */
-        esp_wifi_connect();
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+        system_event_sta_disconnected_t *disconn = &event->event_info.disconnected;
+        switch (disconn->reason) {
+            case WIFI_REASON_AUTH_FAIL:
+                wlan_obj.disconnected = true;
+                break;
+            default:
+                // Let other errors through and try to reconnect.
+                break;
+        }
+        if (!wlan_obj.disconnected) {
+            wifi_mode_t mode;
+            if (esp_wifi_get_mode(&mode) == ESP_OK) {
+                if (mode & WIFI_MODE_STA) {
+                    esp_wifi_connect();
+                }
+            }
+        }
         break;
     default:
         break;
@@ -446,6 +461,8 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
 
     // first close any active connections
     esp_wifi_disconnect();
+
+    wlan_obj.disconnected = false;
 
     memcpy(config.sta.ssid, ssid, ssid_len);
     if (key) {
@@ -732,6 +749,7 @@ STATIC mp_obj_t wlan_disconnect(mp_obj_t self_in) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
     esp_wifi_disconnect();
+    wlan_obj.disconnected = true;
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_disconnect_obj, wlan_disconnect);
@@ -764,7 +782,7 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
    if (args[1].u_obj == MP_OBJ_NULL) {
         // get
         tcpip_adapter_ip_info_t ip_info;
-        dns_addr = dns_getserver(1);
+        dns_addr = dns_getserver(0);
         if (ESP_OK == tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info)) {
             mp_obj_t ifconfig[4] = {
                 netutils_format_ipv4_addr((uint8_t *)&ip_info.ip.addr, NETUTILS_BIG),
@@ -791,7 +809,7 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
            netutils_parse_ipv4_addr(items[2], (uint8_t *)&ip_info.gw.addr, NETUTILS_BIG);
            netutils_parse_ipv4_addr(items[3], (uint8_t *)&dns_addr.u_addr.ip4.addr, NETUTILS_BIG);
            tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info);
-           dns_setserver(1, &dns_addr);
+           // dns_setserver(1, &dns_addr); FIXME, this doesn't seem to be supported by the IDF
 
            // if (wlan_obj.mode == ROLE_AP) {
            //     ASSERT_ON_ERROR(sl_NetCfgSet(SL_IPV4_AP_P2P_GO_STATIC_ENABLE, IPCONFIG_MODE_ENABLE_IPV4, sizeof(SlNetCfgIpV4Args_t), (uint8_t *)&ipV4));
