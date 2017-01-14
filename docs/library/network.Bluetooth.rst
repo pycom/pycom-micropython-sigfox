@@ -312,11 +312,11 @@ class BluetoothServerService
 class BluetoothServerCharacteristic
 ===================================
 
-.. method:: service.value([value])
+.. method:: characteristic.value([value])
 
     Gets or sets the value of the characteristic. Can take an integer, a string or a bytes object.
 
-.. method:: service.callback(trigger=None, handler=None, arg=None)
+.. method:: characteristic.callback(trigger=None, handler=None, arg=None)
 
     Creates a callback that will be executed when any of the triggers occurs. The arguments are:
 
