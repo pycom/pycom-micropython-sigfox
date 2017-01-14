@@ -991,9 +991,9 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(bt_characteristic_value_obj, 1, 2, bt
 /// \method callback(trigger, handler, arg)
 STATIC mp_obj_t bt_characteristic_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     STATIC const mp_arg_t allowed_args[] = {
-        { MP_QSTR_trigger,      MP_ARG_OBJ,                  {.u_obj = mp_const_none} },
-        { MP_QSTR_handler,      MP_ARG_OBJ,                  {.u_obj = mp_const_none} },
-        { MP_QSTR_arg,          MP_ARG_OBJ,                  {.u_obj = mp_const_none} },
+        { MP_QSTR_trigger,      MP_ARG_REQUIRED | MP_ARG_OBJ,   },
+        { MP_QSTR_handler,      MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+        { MP_QSTR_arg,          MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
     };
 
     // parse arguments
