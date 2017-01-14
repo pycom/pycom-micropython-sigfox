@@ -322,8 +322,7 @@ class BluetoothServerCharacteristic
 
        - ``trigger`` can be either ``Bluetooth.CHAR_READ_EVENT`` or ``Bluetooth.CHAR_WRITE_EVENT``.
        - ``handler`` is the function that will be executed when the callback is triggered.
-       - ``arg`` is the argument that gets passed to the callback. If nothing is given, the characteristic object that
-       owns the callback will be passed.
+       - ``arg`` is the argument that gets passed to the callback. If nothing is given, the characteristic object that owns the callback will be passed.
 
 
 Example of advertising and creating services on the device::
