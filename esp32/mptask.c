@@ -127,8 +127,8 @@ void TASK_Micropython (void *pvParameters) {
 
     // initialization that must not be repeted after a soft reset
     mptask_preinit();
-    mp_irq_preinit();
     #if MICROPY_PY_THREAD
+    mp_irq_preinit();
     mp_thread_preinit();
     #endif
 
@@ -159,7 +159,9 @@ soft_reset:
     pin_init0();    // always before the rest of the peripherals
     mpexception_init0();
     mpsleep_init0();
+    #if MICROPY_PY_THREAD
     mp_irq_init0();
+    #endif
     moduos_init0();
     uart_init0();
     mperror_init0();
@@ -254,7 +256,9 @@ soft_reset:
 
 soft_reset_exit:
 
+    #if MICROPY_PY_THREAD
     mp_irq_kill();
+    #endif
     mpsleep_signal_soft_reset();
     mp_printf(&mp_plat_print, "PYB: soft reboot\n");
     // it needs to be this one in order to not mess with the GIL

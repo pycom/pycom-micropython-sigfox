@@ -19,6 +19,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#if MICROPY_PY_THREAD
+
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
@@ -104,3 +106,11 @@ void mp_irq_kill(void) {
     xQueueReset(interruptsQueue);
     // TODO disable all interrupts here at hardware level
 }
+
+#else
+
+void IRAM_ATTR mp_irq_queue_interrupt(void (* handler)(void *), void *arg) {
+
+}
+
+#endif  // MICROPY_PY_THREAD

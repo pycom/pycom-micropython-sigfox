@@ -219,4 +219,10 @@ void mp_thread_mutex_unlock(mp_thread_mutex_t *mutex) {
     xSemaphoreGive(mutex->handle);
 }
 
+#else
+
+void mp_thread_clean (void *tcb) {
+
+}
+
 #endif // MICROPY_PY_THREAD

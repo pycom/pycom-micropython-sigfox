@@ -170,8 +170,3 @@ void mp_hal_delay_ms(uint32_t delay) {
     vTaskDelay (delay / portTICK_PERIOD_MS);
     MP_THREAD_GIL_ENTER();
 }
-
-void mp_hal_set_interrupt_char(int c) {
-    mpexception_set_interrupt_char (c);
-}
-

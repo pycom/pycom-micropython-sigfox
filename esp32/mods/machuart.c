@@ -36,6 +36,7 @@
 #include "uart.h"
 #include "machuart.h"
 #include "mpexception.h"
+#include "utils/interrupt_char.h"
 #include "moduos.h"
 #include "machpin.h"
 #include "pins.h"
@@ -193,9 +194,9 @@ STATIC IRAM_ATTR void UARTGenericIntHandler(uint32_t uart_id, uint32_t status) {
             // Rx data present
             while (READ_PERI_REG(UART_STATUS_REG(uart_id)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) {
                 int data = READ_PERI_REG(UART_FIFO_AHB_REG(uart_id)) & 0xFF;
-                if (MP_STATE_PORT(mp_os_stream_o) && MP_STATE_PORT(mp_os_stream_o) == self && data == user_interrupt_char) {
+                if (MP_STATE_PORT(mp_os_stream_o) && MP_STATE_PORT(mp_os_stream_o) == self && data == mp_interrupt_char) {
                     // raise an exception when interrupts are finished
-                    mpexception_keyboard_nlr_jump();
+                    mp_keyboard_interrupt();
                 } else { // there's always a read buffer available
                     uint16_t next_head = (self->read_buf_head + 1) % MACHUART_RX_BUFFER_LEN;
                     if (next_head != self->read_buf_tail) {

@@ -26,7 +26,7 @@
 //#include "modwlan.h"
 #include "modusocket.h"
 //#include "debug.h"
-#include "mpexception.h"
+#include "utils/interrupt_char.h"
 #include "serverstask.h"
 #include "genhdr/mpversion.h"
 
@@ -532,9 +532,9 @@ static void telnet_parse_input (uint8_t *str, int32_t *len) {
         }
 
         // in this case the server is not operating on binary mode
-        if (ch > 127 || ch == 0 || (telnet_data.state == E_TELNET_STE_LOGGED_IN && ch == user_interrupt_char)) {
-            if (ch == user_interrupt_char) {
-                mpexception_keyboard_nlr_jump();
+        if (ch > 127 || ch == 0 || (telnet_data.state == E_TELNET_STE_LOGGED_IN && ch == mp_interrupt_char)) {
+            if (ch == mp_interrupt_char) {
+                mp_keyboard_interrupt();
             }
             // skip this char
             (*len)--;

@@ -76,6 +76,7 @@
 #define MICROPY_ENABLE_FINALISER                    (1)
 #define MICROPY_COMP_TRIPLE_TUPLE_ASSIGN            (1)
 #define MICROPY_USE_INTERNAL_PRINTF                 (0)
+#define MICROPY_PY_SYS_EXC_INFO                     (1)
 
 #define MICROPY_STREAMS_NON_BLOCK                   (1)
 #define MICROPY_PY_BUILTINS_TIMEOUTERROR            (1)

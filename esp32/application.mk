@@ -90,6 +90,7 @@ APP_LIB_SRC_C = $(addprefix lib/,\
 	mp-readline/readline.c \
 	netutils/netutils.c \
 	utils/pyexec.c \
+	utils/interrupt_char.c \
 	fatfs/ff.c \
 	fatfs/option/ccsbcs.c \
 	)
