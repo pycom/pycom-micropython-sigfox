@@ -26,6 +26,7 @@
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "esp_wifi.h"
+#include "esp_wifi_types.h"
 #include "esp_event_loop.h"
 
 //#include "timeutils.h"
@@ -197,8 +198,13 @@ void wlan_pre_init (void) {
     wifi_event_group = xEventGroupCreate();
     tcpip_adapter_init();
     ESP_ERROR_CHECK(esp_event_loop_init(wlan_event_handler, NULL));
+    
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+    
+    wifi_ps_type_t wifi_ps_type = WIFI_PS_MODEM;
+    ESP_ERROR_CHECK(esp_wifi_set_ps(wifi_ps_type));
+            
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
 }
