@@ -85,7 +85,7 @@ void pin_init0(void) {
             pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0);
         }
     }
-    printf("size of struct %d\n", sizeof(pin_obj_t));
+
     gpio_isr_register(machpin_intr_process, NULL, 0, NULL);
 }
 
