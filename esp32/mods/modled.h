@@ -13,7 +13,7 @@
 #include "driver/rmt.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
-    
+
 /******************************************************************************
  DEFINE PUBLIC CONSTANTS
  ******************************************************************************/
@@ -30,22 +30,19 @@ typedef union {
         uint8_t red;
     } component;
     uint32_t value : 24;
-} color_rgb_t; 
+} color_rgb_t;
 
 typedef struct {
     rmt_channel_t rmt_channel;
     gpio_num_t gpio;
-    color_rgb_t  color;
+    color_rgb_t color;
     rmt_item32_t *rmt_grb_buf;
-    rmt_item32_t *rmt_white_buf;
 } led_info_t;
 
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
 
-bool led_send_color(led_info_t *led_info);
-bool led_send_reset(led_info_t *led_info);
 bool led_set_color(led_info_t *led_info, bool synchronize);
 bool led_init(led_info_t *led_info);
 

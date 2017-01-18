@@ -46,7 +46,7 @@
 
 #define MPERROR_HEARTBEAT_PRIORITY                  (5)
 
-#define MPERROR_HEARTBEAT_LED_GPIO                  (0)                
+#define MPERROR_HEARTBEAT_LED_GPIO                  (0)
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -54,13 +54,11 @@
 STATIC const mp_obj_base_t pyb_heartbeat_obj = {&pyb_heartbeat_type};
 
 static rmt_item32_t rmt_grb_items[COLOR_BITS];
-static rmt_item32_t rmt_white_items[COLOR_BITS];
 
 led_info_t led_info = {
     .rmt_channel = RMT_CHANNEL_1,
     .gpio = MPERROR_HEARTBEAT_LED_GPIO,
     .rmt_grb_buf = rmt_grb_items,
-    .rmt_white_buf = rmt_white_items,
     .color = {
         .value = MPERROR_HEARTBEAT_COLOR,
     }
@@ -74,7 +72,7 @@ struct mperror_heart_beat {
     bool beating;
     bool enabled;
     bool do_disable;
-} mperror_heart_beat = {.off_time = 0, .on_time = 0, .beating = false, .enabled = false, .do_disable = false};
+} mperror_heart_beat;
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
@@ -87,7 +85,7 @@ void mperror_init0 (void) {
 #ifndef BOOTLOADER_BUILD
     // configure the heartbeat led pin
     pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0, 0);
- 
+
     led_init(&led_info);
 #else
     gpio_config_t gpioconf = {.pin_bit_mask = 1ull << MICROPY_HW_HB_PIN_NUM,
@@ -106,11 +104,12 @@ void mperror_signal_error (void) {
     bool toggle = true;
     while ((MPERROR_TOOGLE_MS * count++) < MPERROR_SIGNAL_ERROR_MS) {
         // toogle the led
-        if (!toggle){
-            led_send_color(&led_info);
+        if (!toggle) {
+            led_info.color.value = MPERROR_FATAL_COLOR;
         } else {
-            led_send_reset(&led_info);
+            led_info.color.value = 0;
         }
+        led_set_color(&led_info, false);
         toggle = ~toggle;
         mp_hal_delay_ms(MPERROR_TOOGLE_MS);
     }
@@ -120,7 +119,8 @@ void mperror_heartbeat_switch_off (void) {
     if (mperror_heart_beat.enabled) {
         mperror_heart_beat.on_time = 0;
         mperror_heart_beat.off_time = 0;
-        led_send_reset(&led_info);
+        led_info.color.value = 0;
+        led_set_color(&led_info, false);
     }
 }
 
@@ -130,12 +130,14 @@ bool mperror_heartbeat_signal (void) {
     } else if (mperror_heart_beat.enabled) {
         if (!mperror_heart_beat.beating) {
             if ((mperror_heart_beat.on_time = mp_hal_ticks_ms()) - mperror_heart_beat.off_time > MPERROR_HEARTBEAT_OFF_MS) {
-                led_send_color(&led_info);
+                led_info.color.value = MPERROR_HEARTBEAT_COLOR;
+                led_set_color(&led_info, false);
                 mperror_heart_beat.beating = true;
             }
         } else {
             if ((mperror_heart_beat.off_time = mp_hal_ticks_ms()) - mperror_heart_beat.on_time > MPERROR_HEARTBEAT_ON_MS) {
-                led_send_reset(&led_info);
+                led_info.color.value = 0;
+                led_set_color(&led_info, false);
                 mperror_heart_beat.beating = false;
             }
         }
@@ -179,21 +181,16 @@ void nlr_jump_fail(void *val) {
 
 void mperror_enable_heartbeat (bool enable) {
     if (enable) {
-//    #ifndef BOOTLOADER_BUILD
-//        // configure the led again
-//        pin_config ((pin_obj_t *)&MICROPY_SYS_LED_GPIO, -1, -1, GPIO_DIR_MODE_OUT, PIN_TYPE_STD, 0, PIN_STRENGTH_6MA);
-//    #endif
         led_info.color.value = MPERROR_HEARTBEAT_COLOR;
-        led_set_color(&led_info, false);
-        
         mperror_heart_beat.enabled = true;
         mperror_heart_beat.do_disable = false;
         mperror_heartbeat_switch_off();
     } else {
-        led_send_reset(&led_info);
+        led_info.color.value = 0;
         mperror_heart_beat.do_disable = true;
         mperror_heart_beat.enabled = false;
     }
+    led_set_color(&led_info, false);
 }
 
 bool mperror_is_heartbeat_enabled (void) {
