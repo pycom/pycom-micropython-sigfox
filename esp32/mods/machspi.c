@@ -184,7 +184,7 @@ static void spi_assign_pins_af (mp_obj_t *pins) {
                 af_out = mach_spi_pin_af[i];
                 mode = GPIO_MODE_OUTPUT;
             }
-            pin_config(pin, af_in, af_out, mode, MACHPIN_PULL_NONE, 0, 0);
+            pin_config(pin, af_in, af_out, mode, MACHPIN_PULL_NONE, 0);
         }
     }
 }

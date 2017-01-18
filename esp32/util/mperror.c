@@ -84,7 +84,7 @@ void mperror_pre_init(void) {
 void mperror_init0 (void) {
 #ifndef BOOTLOADER_BUILD
     // configure the heartbeat led pin
-    pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0, 0);
+    pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
 
     led_init(&led_info);
 #else

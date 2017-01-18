@@ -38,10 +38,7 @@
     .af_out         = (-1), \
     .mode           = (GPIO_MODE_INPUT), \
     .pull           = (0), \
-    .strength       = (0), \
-    .irq_config     = (0), \
     .value          = (0), \
-    .used           = (false), \
     .irq_trigger    = (0), \
-    .irq_flags      = (0), \
+    .hold           = (0), \
 }

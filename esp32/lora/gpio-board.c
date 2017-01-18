@@ -73,7 +73,7 @@ pin_obj_t *gpio_board_map[NBR_GP_PINS] = {
 void GpioMcuInit( Gpio_t *obj, PinNames pin, PinModes mode, PinConfigs config, PinTypes type, uint32_t value ) {
     (void)config;
     obj->pin_obj = gpio_board_map[pin];
-    pin_config(obj->pin_obj, -1, -1, mode, type, value, 0);
+    pin_config(obj->pin_obj, -1, -1, mode, type, value);
 }
 
 /*!

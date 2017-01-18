@@ -177,7 +177,7 @@ static void uart_assign_pins_af (mp_obj_t *pins, uint32_t n_pins, uint32_t uart_
                 af_out = mach_uart_pin_af[uart_id][i];
                 mode = GPIO_MODE_OUTPUT;
             }
-            pin_config(pin, af_in, af_out, mode, MACHPIN_PULL_UP, 1, 0);
+            pin_config(pin, af_in, af_out, mode, MACHPIN_PULL_UP, 1);
         }
     }
 }

@@ -46,7 +46,6 @@ STATIC pin_obj_t *pin_find_pin_by_num (const mp_obj_dict_t *named_pins, uint pin
 STATIC void pin_obj_configure (const pin_obj_t *self);
 STATIC void pin_validate_mode (uint mode);
 STATIC void pin_validate_pull (uint pull);
-STATIC void pin_validate_drive (uint strength);
 static IRAM_ATTR void machpin_intr_process (void* arg);
 
 /******************************************************************************
@@ -83,10 +82,10 @@ void pin_init0(void) {
     for (uint i = 0; i < named_map->used - 1; i++) {
         pin_obj_t *self = (pin_obj_t *)named_map->table[i].value;
         if (self != &PIN_MODULE_P1) {  // temporal while we remove all the IDF logs
-            pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0, 0);
+            pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0);
         }
     }
-
+    printf("size of struct %d\n", sizeof(pin_obj_t));
     gpio_isr_register(machpin_intr_process, NULL, 0, NULL);
 }
 
@@ -115,8 +114,10 @@ pin_obj_t *pin_find(mp_obj_t user_obj) {
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
 }
 
-void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, int value, uint strength) {
-    self->mode = mode, self->pull = pull, self->strength = strength;
+void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, int value) {
+    self->mode = mode;
+    self->pull = pull;
+
     // if af is -1, then we want to keep it as it is
     if (af_in >= 0) {
         self->af_in = af_in;
@@ -130,8 +131,6 @@ void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, i
         self->value = value;
     }
 
-    // mark the pin as used
-    self->used = true;
     pin_obj_configure ((const pin_obj_t *)self);
 
 //    // register it with the sleep module
@@ -314,12 +313,6 @@ STATIC void pin_validate_pull (uint pull) {
     }
 }
 
-STATIC void pin_validate_drive(uint strength) {
-//    if (strength != PIN_STRENGTH_2MA && strength != PIN_STRENGTH_4MA && strength != PIN_STRENGTH_6MA) {
-//        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
-//    }
-}
-
 /******************************************************************************/
 // Micro Python bindings
 
@@ -327,7 +320,6 @@ STATIC const mp_arg_t pin_init_args[] = {
     { MP_QSTR_mode,                        MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_pull,                        MP_ARG_OBJ, {.u_obj = mp_const_none} },
     { MP_QSTR_value,    MP_ARG_KW_ONLY  |  MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-    { MP_QSTR_drive,    MP_ARG_KW_ONLY  |  MP_ARG_INT, {.u_int = 0} },
     { MP_QSTR_alt,      MP_ARG_KW_ONLY  |  MP_ARG_OBJ, {.u_obj = mp_const_none} },
 };
 #define pin_INIT_NUM_ARGS MP_ARRAY_SIZE(pin_init_args)
@@ -366,13 +358,9 @@ STATIC mp_obj_t pin_obj_init_helper(pin_obj_t *self, mp_uint_t n_args, const mp_
         }
     }
 
-    // get the strenght
-    uint strength = args[3].u_int;
-    pin_validate_drive(strength);
-
     // get the alternate function
     int af_in = -1, af_out = -1;
-    int af = (args[4].u_obj != mp_const_none) ? mp_obj_get_int(args[4].u_obj) : -1;
+    int af = (args[3].u_obj != mp_const_none) ? mp_obj_get_int(args[3].u_obj) : -1;
     if (af > 255) {
         goto invalid_args;
     }
@@ -385,7 +373,7 @@ STATIC mp_obj_t pin_obj_init_helper(pin_obj_t *self, mp_uint_t n_args, const mp_
         af_out = af;
     }
 
-    pin_config(self, af_in, af_out, mode, pull, value, strength);
+    pin_config(self, af_in, af_out, mode, pull, value);
 
     return mp_const_none;
 
@@ -396,7 +384,6 @@ invalid_args:
 STATIC void pin_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     pin_obj_t *self = self_in;
     uint32_t pull = self->pull;
-    //uint32_t drive = self->strength; // FIXME
 
     // pin name
     mp_printf(print, "Pin('%q'", self->name);
@@ -425,18 +412,6 @@ STATIC void pin_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t
         }
         mp_printf(print, ", pull=Pin.%q", pull_qst);
     }
-
-//    // pin drive
-//    qstr drv_qst;
-//    if (drive == PIN_STRENGTH_2MA) {
-//        drv_qst = MP_QSTR_LOW_POWER;
-//    } else if (drive == PIN_STRENGTH_4MA) {
-//        drv_qst = MP_QSTR_MED_POWER;
-//    } else {
-//        drv_qst = MP_QSTR_HIGH_POWER;
-//    }
-    qstr drv_qst = MP_QSTR_MED_POWER; // FIXME
-    mp_printf(print, ", drive=Pin.%q", drv_qst);
 
     // pin af
     int alt = (self->af_in >= 0) ? self->af_in : self->af_out;
@@ -523,20 +498,6 @@ STATIC mp_obj_t pin_pull(mp_uint_t n_args, const mp_obj_t *args) {
     }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pin_pull_obj, 1, 2, pin_pull);
-
-STATIC mp_obj_t pin_drive(mp_uint_t n_args, const mp_obj_t *args) {
-    pin_obj_t *self = args[0];
-    if (n_args == 1) {
-        return mp_obj_new_int(self->strength);
-    } else {
-        uint32_t strength = mp_obj_get_int(args[1]);
-        pin_validate_drive (strength);
-        self->strength = strength;
-        pin_obj_configure(self);
-        return mp_const_none;
-    }
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pin_drive_obj, 1, 2, pin_drive);
 
 STATIC mp_obj_t pin_hold(mp_uint_t n_args, const mp_obj_t *args) {
     pin_obj_t *self = args[0];
@@ -630,7 +591,6 @@ STATIC const mp_map_elem_t pin_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_id),                      (mp_obj_t)&pin_id_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mode),                    (mp_obj_t)&pin_mode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pull),                    (mp_obj_t)&pin_pull_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_drive),                   (mp_obj_t)&pin_drive_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_hold),                    (mp_obj_t)&pin_hold_obj },
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_alt_list),                (mp_obj_t)&pin_alt_list_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&pin_callback_obj },

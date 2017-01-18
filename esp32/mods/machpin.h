@@ -39,18 +39,14 @@ typedef struct {
     qstr                name;
     mp_obj_t            handler;
     mp_obj_t            handler_arg;
-    uint8_t             pin_number;
-    uint8_t             mode;
-    uint8_t             pull;
-    uint8_t             strength;
-    uint8_t             irq_config;
     int8_t              af_in;
     int8_t              af_out;
-    int8_t              value;
-    uint8_t             irq_trigger;
-    uint8_t             irq_flags;
-    bool                used;
-    bool                hold;
+    unsigned int        pin_number : 6;
+    unsigned int        mode : 2;
+    unsigned int        pull : 2;
+    unsigned int        irq_trigger : 3;
+    unsigned int        value : 1;
+    unsigned int        hold : 1;
 } pin_obj_t;
 
 extern const mp_obj_type_t pin_type;
@@ -76,7 +72,7 @@ extern const mp_obj_type_t pin_module_pins_obj_type;
 extern mp_obj_dict_t pin_module_pins_locals_dict;
 
 void pin_init0(void);
-void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, int value, uint strength);
+void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, int value);
 pin_obj_t *pin_find(mp_obj_t user_obj);
 void pin_assign_pins_af (mp_obj_t *pins, uint32_t n_pins, uint32_t pull, uint32_t fn, uint32_t unit);
 uint8_t pin_find_peripheral_unit (const mp_obj_t pin, uint8_t fn, uint8_t type);

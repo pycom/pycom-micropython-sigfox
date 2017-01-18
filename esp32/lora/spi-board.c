@@ -102,9 +102,9 @@ void SpiInit( Spi_t *obj, PinNames mosi, PinNames miso, PinNames sclk, PinNames 
     SET_PERI_REG_BITS(SPI_MISO_DLEN_REG((uint32_t)obj->Spi), SPI_USR_MISO_DBITLEN, 7, SPI_USR_MISO_DBITLEN_S);
 
     // assign the SPI pins to the GPIO matrix and configure the AF
-    pin_config(obj->Miso.pin_obj, VSPIQ_IN_IDX, -1, GPIO_MODE_INPUT, PIN_NO_PULL, 0, 0);
-    pin_config(obj->Mosi.pin_obj, -1, VSPID_OUT_IDX, GPIO_MODE_OUTPUT, PIN_NO_PULL, 0, 0);
-    pin_config(obj->Sclk.pin_obj, -1, VSPICLK_OUT_MUX_IDX, GPIO_MODE_OUTPUT, PIN_NO_PULL, 0, 0);
+    pin_config(obj->Miso.pin_obj, VSPIQ_IN_IDX, -1, GPIO_MODE_INPUT, PIN_NO_PULL, 0);
+    pin_config(obj->Mosi.pin_obj, -1, VSPID_OUT_IDX, GPIO_MODE_OUTPUT, PIN_NO_PULL, 0);
+    pin_config(obj->Sclk.pin_obj, -1, VSPICLK_OUT_MUX_IDX, GPIO_MODE_OUTPUT, PIN_NO_PULL, 0);
 }
 
 /*!
