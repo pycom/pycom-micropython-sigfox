@@ -198,19 +198,18 @@ void wlan_pre_init (void) {
     wifi_event_group = xEventGroupCreate();
     tcpip_adapter_init();
     ESP_ERROR_CHECK(esp_event_loop_init(wlan_event_handler, NULL));
-    
+
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    
-    wifi_ps_type_t wifi_ps_type = WIFI_PS_MODEM;
-    ESP_ERROR_CHECK(esp_wifi_set_ps(wifi_ps_type));
-            
+
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
 }
 
 void wlan_setup (int32_t mode, const char *ssid, uint32_t ssid_len, uint32_t auth, const char *key, uint32_t key_len,
                  uint32_t channel, uint32_t antenna, bool add_mac) {
+
+    wifi_ps_type_t wifi_ps_type;
 
     // stop the servers
     wlan_servers_stop();
@@ -222,7 +221,13 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t ssid_len, uint32_t aut
 
     if (mode != WIFI_MODE_STA) {
         wlan_setup_ap (ssid, ssid_len, auth, key, key_len, channel, add_mac);
+        wifi_ps_type = WIFI_PS_NONE;
+    } else {
+        wifi_ps_type = WIFI_PS_MODEM;
     }
+
+    // set the power saving mode
+    ESP_ERROR_CHECK(esp_wifi_set_ps(wifi_ps_type));
 
     if (!wlan_obj.started) {
         ESP_ERROR_CHECK(esp_wifi_start());
