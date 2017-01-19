@@ -78,6 +78,7 @@ typedef struct {
     bool                  busy;
     bool                  scanning;
     bool                  advertising;
+    bool                  controller_active;
 } bt_obj_t;
 
 typedef struct {
@@ -484,13 +485,17 @@ static void gatts_event_handler(uint32_t event, void *param)
 
 /// \class Bluetooth
 static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
-    if (!self->init) {
+    if (!self->controller_active){
         bt_controller_init();
+        self->controller_active = true;
+    }
+
+    if (!self->init) {
         if (ESP_OK != esp_init_bluetooth()) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth init failed\n"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth init failed"));
         }
         if (ESP_OK != esp_enable_bluetooth()) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth enable failed\n"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth enable failed"));
         }
 
         esp_ble_gap_register_callback(esp_gap_cb);
@@ -548,6 +553,16 @@ STATIC mp_obj_t bt_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw
     return bt_init_helper(pos_args[0], args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_init_obj, 1, bt_init);
+
+STATIC mp_obj_t bt_deinit(mp_obj_t self_in) {
+    if (bt_obj.init) {
+        esp_disable_bluetooth();
+        esp_deinit_bluetooth();
+        bt_obj.init = false;
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_deinit_obj, bt_deinit);
 
 STATIC mp_obj_t bt_start_scan(mp_obj_t self_in, mp_obj_t timeout) {
     if (bt_obj.scanning || bt_obj.busy) {
@@ -1045,6 +1060,7 @@ static const mp_obj_type_t mod_bt_gatts_char_type = {
 STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                    (mp_obj_t)&bt_init_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),                  (mp_obj_t)&bt_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_start_scan),              (mp_obj_t)&bt_start_scan_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_isscanning),              (mp_obj_t)&bt_isscanning_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_stop_scan),               (mp_obj_t)&bt_stop_scan_obj },
