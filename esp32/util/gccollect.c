@@ -16,6 +16,7 @@
 #include "py/gc.h"
 #include "py/mpthread.h"
 #include "gccollect.h"
+#include "soc/cpu.h"
 
 /******************************************************************************
 DECLARE PRIVATE DATA
@@ -24,13 +25,16 @@ DECLARE PRIVATE DATA
 /******************************************************************************
 DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-static void gc_collect_inner(void) {
-    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
-    xthal_window_spill();
-    MICROPY_END_ATOMIC_SECTION(state);
+uint32_t gc_helper_get_regs_and_sp(mp_uint_t *regs) {
+    // FIXME
+    return (mp_uint_t)regs;
+}
 
-    volatile uint32_t sp;
-    asm volatile("or %0, a1, a1" : "=r"(sp));
+static void gc_collect_inner(void) {
+    // get the registers and the sp
+    mp_uint_t regs[8];
+    mp_uint_t sp = gc_helper_get_regs_and_sp(regs);
+
     gc_collect_root((void**)sp, ((mp_uint_t)MP_STATE_THREAD(stack_top) - sp) / sizeof(uint32_t));
 
     // trace root pointers from any threads
