@@ -192,33 +192,31 @@ static int wlan_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp
 //!
 //*****************************************************************************
 void wlan_pre_init (void) {
-    // create the wlan lock
-//    ASSERT(OSI_OK == sl_LockObjCreate(&wlan_LockObj, "WlanLock"));
-//    wifi_set_event_handler_cb(wlan_event_handler_cb);
     wifi_event_group = xEventGroupCreate();
     tcpip_adapter_init();
     ESP_ERROR_CHECK(esp_event_loop_init(wlan_event_handler, NULL));
-
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
 }
 
 void wlan_setup (int32_t mode, const char *ssid, uint32_t ssid_len, uint32_t auth, const char *key, uint32_t key_len,
                  uint32_t channel, uint32_t antenna, bool add_mac) {
 
-    wifi_ps_type_t wifi_ps_type;
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
     // stop the servers
     wlan_servers_stop();
 
     esp_wifi_get_mac(WIFI_IF_STA, wlan_obj.mac);
 
+    esp_wifi_stop();
+
     wlan_set_antenna(antenna);
     wlan_set_mode(mode);
 
+    wifi_ps_type_t wifi_ps_type;
     if (mode != WIFI_MODE_STA) {
         wlan_setup_ap (ssid, ssid_len, auth, key, key_len, channel, add_mac);
         wifi_ps_type = WIFI_PS_NONE;
@@ -229,10 +227,7 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t ssid_len, uint32_t aut
     // set the power saving mode
     ESP_ERROR_CHECK(esp_wifi_set_ps(wifi_ps_type));
 
-    if (!wlan_obj.started) {
-        ESP_ERROR_CHECK(esp_wifi_start());
-        wlan_obj.started = true;
-    }
+    esp_wifi_start();
 
     // start the servers before returning
     wlan_servers_start();
@@ -348,14 +343,18 @@ STATIC void wlan_clear_data (void) {
 
 STATIC void wlan_servers_start (void) {
     // start the servers if they were enabled before
-    if (wlan_obj.servers_enabled) {
+    if (wlan_obj.enable_servers) {
         servers_start();
     }
 }
 
 STATIC void wlan_servers_stop (void) {
-    // Stop all other processes using the wlan engine
-    if ((wlan_obj.servers_enabled = servers_are_enabled())) {
+    if (servers_are_enabled()) {
+        wlan_obj.enable_servers = true;
+    }
+
+    // stop all other processes using the wlan engine
+    if (wlan_obj.enable_servers) {
         servers_stop();
     }
 }
@@ -641,6 +640,20 @@ STATIC mp_obj_t wlan_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     return wlan_init_helper(pos_args[0], args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_init_obj, 1, wlan_init);
+
+STATIC mp_obj_t wlan_deinit(mp_obj_t self_in) {
+
+    if (servers_are_enabled()){
+       wlan_servers_stop();
+    }
+
+    esp_wifi_stop();
+    esp_wifi_set_mode(WIFI_MODE_NULL);
+    esp_wifi_deinit();
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_deinit_obj, wlan_deinit);
 
 STATIC mp_obj_t wlan_scan(mp_obj_t self_in) {
     STATIC const qstr wlan_scan_info_fields[] = {
@@ -1016,6 +1029,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_mac_obj, 1, 2, wlan_mac);
 
 STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&wlan_init_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&wlan_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_scan),                (mp_obj_t)&wlan_scan_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_connect),             (mp_obj_t)&wlan_connect_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect),          (mp_obj_t)&wlan_disconnect_obj },
