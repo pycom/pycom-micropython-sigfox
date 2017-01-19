@@ -21,6 +21,7 @@
 #include "esp_event_loop.h"
 #include "nvs_flash.h"
 #include "esp_spi_flash.h"
+#include "soc/cpu.h"
 
 #include "py/mpconfig.h"
 #include "py/stackctrl.h"
@@ -114,8 +115,7 @@ static char fresh_boot_py[] = "# boot.py -- run on boot-up\r\n"
  ******************************************************************************/
 void TASK_Micropython (void *pvParameters) {
     // initialize the garbage collector with the top of our stack
-    volatile uint32_t sp;
-    asm volatile("or %0, a1, a1" : "=r"(sp));
+    volatile uint32_t sp = (uint32_t)get_sp();
     mpTaskStack = (StackType_t *)sp;
 
     bool soft_reset = false;
