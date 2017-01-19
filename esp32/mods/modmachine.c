@@ -56,10 +56,7 @@ STATIC mp_obj_t machine_reset(void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_reset_obj, machine_reset);
 
 STATIC mp_obj_t machine_freq(void) {
-    mp_obj_t tuple[1] = {
-       mp_obj_new_int(/*system_get_cpu_freq()*/160000000),
-    };
-    return mp_obj_new_tuple(1, tuple);
+    return mp_obj_new_int(ets_get_cpu_frequency() * 1000000);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_freq_obj, machine_freq);
 
