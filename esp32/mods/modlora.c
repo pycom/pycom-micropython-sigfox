@@ -347,7 +347,7 @@ static IRAM_ATTR void McpsConfirm (McpsConfirm_t *McpsConfirm) {
     xEventGroupSetBits(LoRaEvents, status);
 }
 
-static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
+static void McpsIndication (McpsIndication_t *mcpsIndication) {
     if (mcpsIndication->Status != LORAMAC_EVENT_INFO_STATUS_OK) {
         return;
     }
@@ -492,7 +492,7 @@ static IRAM_ATTR void McpsIndication (McpsIndication_t *mcpsIndication) {
     }
 }
 
-static IRAM_ATTR void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
+static void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
     if (MlmeConfirm->Status == LORAMAC_EVENT_INFO_STATUS_OK) {
         switch (MlmeConfirm->MlmeRequest) {
             case MLME_JOIN:
@@ -516,7 +516,7 @@ static IRAM_ATTR void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
     }
 }
 
-static IRAM_ATTR void OnTxNextActReqTimerEvent(void) {
+static void OnTxNextActReqTimerEvent(void) {
     MibRequestConfirm_t mibReq;
     LoRaMacStatus_t status;
 
