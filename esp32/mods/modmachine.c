@@ -81,7 +81,7 @@ STATIC mp_obj_t machine_main(mp_obj_t main) {
 MP_DEFINE_CONST_FUN_OBJ_1(machine_main_obj, machine_main);
 
 STATIC mp_obj_t machine_idle(void) {
-    // TODO
+    taskYIELD();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_idle_obj, machine_idle);

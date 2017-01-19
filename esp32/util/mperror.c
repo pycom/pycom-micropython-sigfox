@@ -142,6 +142,7 @@ bool mperror_heartbeat_signal (void) {
             }
         }
     }
+    // let the CPU save some power
     return true;
 }
 
