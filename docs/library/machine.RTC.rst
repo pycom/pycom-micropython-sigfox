@@ -1,7 +1,7 @@
 .. currentmodule:: machine
 
 class RTC -- real time clock
-==========================================
+============================
 
 The RTC is used to keep track of the date
 and time.

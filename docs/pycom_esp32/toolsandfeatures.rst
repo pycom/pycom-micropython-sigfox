@@ -25,12 +25,13 @@ Contents
 All members in the current family of Pycom modules are powered by the ESP32, offering:
 
 - 512 Kb available for the user as internal storage, (external SD card support available)
-- Up to 128 Kb available for the user
+- Up to 96 Kb of RAM available for python code.
 - Hardware floating point unit
 - Up to 24 GPIO :class:`Pins <.Pin>`
 - 2x :class:`UARTs <.UART>`
 - :class:`SPIs <.SPI>`
 - :class:`Timers <.Timer>`
+- :class:`RTC <.RTC>`
 - :class:`PWM <.PWM>`
 - :class:`ADC <.ADC>`
 - :class:`DAC <.DAC>`
@@ -41,8 +42,7 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :class:`LoRa <.LoRa>` (only available in the LoPy)
 - :mod:`hashlib <.uhashlib>` MD5, SHA1, SHA256, SHA384 and SHA512 hash algorithms
 - :class:`AES encryption <.AES>`
-- :mod:`SSL/TLS support <.ussl>`
-- :class:`RTC` (coming soon)
+- :mod:`SSL/TLS support <.ussl>``
 
 Click the links in the list above to see more details on that feature.
 For all available modules and libraries, please visit the :ref:`Firmware API
