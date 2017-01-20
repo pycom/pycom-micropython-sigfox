@@ -188,6 +188,7 @@ extern const struct _mp_obj_module_t mp_module_ussl;
     mp_obj_t mp_os_read[3];                                     \
     mp_obj_t mp_os_write[3];                                    \
     mp_obj_t mp_alarm_heap;                                     \
+    mp_obj_t mach_pwm_timer_obj[4];                             \
 
 // we need to provide a declaration/definition of alloca()
 #include <alloca.h>

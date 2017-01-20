@@ -18,15 +18,13 @@
 #include "py/objlist.h"
 #include "py/stream.h"
 #include "py/mphal.h"
+#include "py/gc.h"
 #include "pybioctl.h"
 #include "mpexception.h"
 #include "machpwm.h"
 #include "ledc.h"
 #include "periph_ctrl.h"
 #include "machpin.h"
-
-
-static mach_pwm_timer_obj_t mach_pwm_timer_obj[LEDC_TIMER_3 + 1];
 
 
 
@@ -38,7 +36,8 @@ STATIC mp_obj_t pwm_channel_duty(mp_obj_t self_in, mp_obj_t duty_o) {
     } else if (duty < 0.0f) {
         duty = 0.0f;
     }
-    uint32_t max_duty = (0x1 << mach_pwm_timer_obj[self->config.timer_sel].config.bit_num) - 1;
+
+    uint32_t max_duty = (0x1 << ((mach_pwm_timer_obj_t *) MP_STATE_PORT(mach_pwm_timer_obj[self->config.timer_sel]))->config.bit_num) - 1;
     uint32_t duty_scaled =(uint32_t) (max_duty * 1.0f * duty);
     if (ledc_set_duty(self->config.speed_mode, self->config.channel, duty_scaled) != ESP_OK) { //set speed mode, channel, and duty.
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Failed to set duty-cycle"));
@@ -97,7 +96,10 @@ STATIC mp_obj_t mach_pwm_channel_make_new(mp_uint_t n_args, const mp_obj_t *pos_
     pin_obj_t *pin = pin_find(args[1].u_obj);
 
     // get the correct pwm timer instance
-    mach_pwm_channel_obj_t *self = &pwm->mach_pwm_channel_obj_t[pwm_channel_id];
+    if (pwm->mach_pwm_channel_obj_t[pwm_channel_id] == NULL) {
+        pwm->mach_pwm_channel_obj_t[pwm_channel_id] = gc_alloc(sizeof(mach_pwm_channel_obj_t), false);
+    }
+    mach_pwm_channel_obj_t *self = pwm->mach_pwm_channel_obj_t[pwm_channel_id];
 
     float duty = 0.5f;
     if (args[2].u_obj != mp_const_none) {
@@ -162,8 +164,14 @@ STATIC mp_obj_t mach_pwm_timer_make_new(const mp_obj_type_t *type, mp_uint_t n_a
 
     uint32_t freq = args[1].u_int;
 
-    // get the correct pwm timer instance
-    mach_pwm_timer_obj_t *self = &mach_pwm_timer_obj[pwm_timer_id];
+    // get the correct pwm timer instance or create one
+    if (MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]) == NULL) {
+        MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]) = gc_alloc(sizeof(mach_pwm_timer_obj_t), false);
+        memset(((mach_pwm_timer_obj_t *) MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]))->mach_pwm_channel_obj_t,
+            0,
+            sizeof(((mach_pwm_timer_obj_t *) MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]))->mach_pwm_channel_obj_t));
+    }
+    mach_pwm_timer_obj_t *self = MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]);
     self->base.type = &mach_pwm_timer_type;
     self->config.timer_num = (ledc_timer_t) pwm_timer_id;
     self->config.freq_hz = freq;

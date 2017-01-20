@@ -21,7 +21,7 @@ typedef struct {
 typedef struct {
     mp_obj_base_t base;
     ledc_timer_config_t config;
-    mach_pwm_channel_obj_t mach_pwm_channel_obj_t[LEDC_CHANNEL_7 + 1];
+    mach_pwm_channel_obj_t *mach_pwm_channel_obj_t[LEDC_CHANNEL_7 + 1];
 
 } mach_pwm_timer_obj_t;
 
