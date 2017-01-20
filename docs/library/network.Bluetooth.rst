@@ -58,7 +58,11 @@ Methods
 
 .. method:: bluetooth.init()
 
-   Initialize the Bluetooth radio in BLE mode.
+   Initializes and enables the Bluetooth radio in BLE mode.
+
+.. method:: bluetooth.deinit()
+
+   Disables the Bluetooth radio.
 
 .. method:: bluetooth.start_scan(timeout)
 
@@ -122,7 +126,36 @@ Methods
 
 .. method:: bluetooth.connect(mac_addr)
 
-    Opens a BLE connection with the device specified by the ``mac_addr`` argument. This function blocks until the connection succeeds or fails. If the connections succeeds it returns a object of type ``BluetoothConnection``.
+    Opens a BLE connection with the device specified by the ``mac_addr`` argument. This function blocks until the connection succeeds or fails. If the connections succeeds it returns a object of type ``GATTCConnection``.
+
+. method:: bluetooth.callback(trigger=None, handler=None, arg=None)
+
+    Creates a callback that will be executed when any of the triggers occurs. The arguments are:
+
+       - ``trigger`` can be either ``Bluetooth.NEW_ADV_EVENT``, ``Bluetooth.CLIENT_CONNECTED`` or ``Bluetooth.CLIENT_DISCONNECTED``
+       - ``handler`` is the function that will be executed when the callback is triggered.
+       - ``arg`` is the argument that gets passed to the callback. If nothing is given the bluetoth object itself is used.
+
+. method:: bluetooth.events()
+
+    Returns a valut with bit flags identifying the events that have occurred since the last call. Calling this function clears the events. Example of usage::
+
+        from network import Bluetooth
+
+        bluetooth = Bluetooth()
+        bluetooth.set_advertisement(name='LoPy', service_uuid=b'1234567890123456')
+
+        def conn_cb (bt_o):
+            events = bt_o.events()   # this method returns the flags and clears the internal registry
+            if events & Bluetooth.CLIENT_CONNECTED:
+                print("Client connected")
+            elif events & Bluetooth.CLIENT_DISCONNECTED:
+                print("Client disconnected")
+
+        bluetooth.callback(trigger=Bluetooth.CLIENT_CONNECTED | Bluetooth.CLIENT_DISCONNECTED, handler=conn_cb)
+
+        bluetooth.advertise(True)
+
 
 .. method:: bluetooth.set_advertisement(\*, name=None, manufacturer_data=None, service_data=None, service_uuid=None)
 
@@ -201,12 +234,16 @@ Constants
 
 .. data:: Bluetooth.CHAR_READ_EVENT
           Bluetooth.CHAR_WRITE_EVENT
+          Bluetooth.NEW_ADV_EVENT
+          Bluetooth.CLIENT_CONNECTED
+          Bluetooth.CLIENT_DISCONNECTED
+          Bluetooth.CHAR_NOTIFY_EVENT
 
     Charactertistic callback events
 
 
-class BluetoothConnection
-=========================
+class GATTCConnection
+=====================
 
 .. method:: connection.disconnect()
 
@@ -240,7 +277,7 @@ class BluetoothConnection
 
 .. method:: connection.services()
 
-    Performs a service search on the connected BLE peripheral a returns a list containing objects of the class ``BluetoothService`` if the search succeeds.
+    Performs a service search on the connected BLE peripheral a returns a list containing objects of the class ``GATTCService`` if the search succeeds.
 
     Example::
 
@@ -251,8 +288,8 @@ class BluetoothConnection
           print(service.uuid())
 
 
-class BluetoothService
-======================
+class GATTCService
+==================
 
 .. method:: service.isprimary()
 
@@ -268,11 +305,11 @@ class BluetoothService
 
 .. method:: service.characteristics()
 
-    Performs a get characteristics request on the connected BLE peripheral a returns a list containing objects of the class ``BluetoothCharacteristic`` if the request succeeds.
+    Performs a get characteristics request on the connected BLE peripheral a returns a list containing objects of the class ``GATTCCharacteristic`` if the request succeeds.
 
 
-class BluetoothCharacteristic
-=============================
+class GATTCCharacteristic
+=========================
 
 .. method:: characteristic.uuid()
 
@@ -294,13 +331,21 @@ class BluetoothCharacteristic
 
     Writes the given value on the characteristic. For now it only accepts bytes object representing the value to be written.
 
+.. method:: characteristic.callback(trigger=None, handler=None, arg=None)
 
-class BluetoothServerService
-============================
+    This method allows to register for notifications on the characteristic.
+
+       - ``trigger`` can must be ``Bluetooth.CHAR_NOTIFY_EVENT``.
+       - ``handler`` is the function that will be executed when the callback is triggered.
+       - ``arg`` is the argument that gets passed to the callback. If nothing is given, the characteristic object that owns the callback will be used.
+
+
+class GATTSService
+==================
 
 .. method:: service.characteristic(uuid, \*, permissions, properties, value)
 
-    Creates a new characteristic on the service. Returns an object of the class ``BluetoothServerCharacteristic``.
+    Creates a new characteristic on the service. Returns an object of the class ``GATTSCharacteristic``.
     The arguments are:
 
       - ``uuid`` is the UUID of the service. Can take an integer or a 16 byte long string or bytes object.
@@ -309,8 +354,8 @@ class BluetoothServerService
       - ``value`` sets the initial value. Can take an integer, a string or a bytes object.
 
 
-class BluetoothServerCharacteristic
-===================================
+class GATTSCharacteristic
+=========================
 
 .. method:: characteristic.value([value])
 
@@ -322,7 +367,11 @@ class BluetoothServerCharacteristic
 
        - ``trigger`` can be either ``Bluetooth.CHAR_READ_EVENT`` or ``Bluetooth.CHAR_WRITE_EVENT``.
        - ``handler`` is the function that will be executed when the callback is triggered.
-       - ``arg`` is the argument that gets passed to the callback. If nothing is given, the characteristic object that owns the callback will be passed.
+       - ``arg`` is the argument that gets passed to the callback. If nothing is given, the characteristic object that owns the callback will be used.
+
+. method:: characteristic.events()
+
+    Returns a valut with bit flags identifying the events that have occurred since the last call. Calling this function clears the events.
 
 
 Example of advertising and creating services on the device::
@@ -331,6 +380,15 @@ Example of advertising and creating services on the device::
 
     bluetooth = Bluetooth()
     bluetooth.set_advertisement(name='LoPy', service_uuid=b'1234567890123456')
+
+    def conn_cb (bt_o):
+        events = bt_o.events()
+        if  events & Bluetooth.CLIENT_CONNECTED:
+            print("Client connected")
+        elif events & Bluetooth.CLIENT_DISCONNECTED:
+            print("Client disconnected")
+
+    bluetooth.callback(trigger=Bluetooth.CLIENT_CONNECTED | Bluetooth.CLIENT_DISCONNECTED, handler=conn_cb)
 
     bluetooth.advertise(True)
 

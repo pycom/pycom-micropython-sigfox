@@ -81,6 +81,10 @@ Methods
       # configure as an station
       wlan.init(mode=WLAN.STA)
 
+.. method:: wlan.deinit()
+
+    Disables the WiFi radio.
+
 .. method:: wlan.connect(ssid, \*, auth=None, bssid=None, timeout=None)
 
    Connect to a wifi access point using the given SSID, and other security
