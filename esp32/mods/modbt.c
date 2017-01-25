@@ -42,6 +42,7 @@
 #include "esp_gatts_api.h"
 #include "esp_gatt_defs.h"
 #include "esp_bt_main.h"
+#include "util/btdynmem.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -580,12 +581,16 @@ static void gatts_event_handler(uint32_t event, void *param)
 
 /// \class Bluetooth
 static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
-    if (!self->controller_active){
+    if (!self->controller_active) {
         bt_controller_init();
         self->controller_active = true;
     }
 
     if (!self->init) {
+        if (0 != bluetooth_alloc_memory()) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth memory allocation failed"));
+        }
+
         if (ESP_OK != esp_init_bluetooth()) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth init failed"));
         }
@@ -653,6 +658,7 @@ STATIC mp_obj_t bt_deinit(mp_obj_t self_in) {
     if (bt_obj.init) {
         esp_disable_bluetooth();
         esp_deinit_bluetooth();
+        bluetooth_free_memory();
         bt_obj.init = false;
     }
     return mp_const_none;

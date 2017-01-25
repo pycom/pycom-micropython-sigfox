@@ -42,11 +42,17 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/sdmmc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/device/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/dm
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/hh
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/sys/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/stack/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/stack/gatt/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/stack/gap/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/stack/l2cap/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btcore/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/osi/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/hci/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/gki/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
@@ -169,6 +175,7 @@ APP_STM_SRC_C = $(addprefix stmhal/,\
 
 APP_UTIL_SRC_C = $(addprefix util/,\
 	antenna.c \
+	btdynmem.c \
 	gccollect.c \
 	help.c \
 	mperror.c \
