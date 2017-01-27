@@ -17,3 +17,4 @@
    includes/threading.rst
    includes/led.rst
    includes/timers.rst
+   includes/pir.rst
