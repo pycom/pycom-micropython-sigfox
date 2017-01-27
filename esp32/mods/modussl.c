@@ -161,8 +161,7 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
 
         // printf("Verifying peer X.509 certificate...\n");
 
-        int flags;
-        if ((flags = mbedtls_ssl_get_verify_result(&ssl_sock->ssl)) != 0) {
+        if ((ret = mbedtls_ssl_get_verify_result(&ssl_sock->ssl)) != 0) {
             /* In real life, we probably want to close connection if ret != 0 */
             // printf("Failed to verify peer certificate!\n");
             return -1;

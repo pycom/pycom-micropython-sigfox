@@ -73,12 +73,12 @@
  ******************************************************************************/
 #if defined(LOPY)
     #if defined(USE_BAND_868)
-        #define GC_POOL_SIZE_BYTES                                          (38 * 1024)
+        #define GC_POOL_SIZE_BYTES                                          (64 * 1024)
     #else
-        #define GC_POOL_SIZE_BYTES                                          (38 * 1024)
+        #define GC_POOL_SIZE_BYTES                                          (64 * 1024)
     #endif
 #else
-    #define GC_POOL_SIZE_BYTES                                          (38 * 1024)
+    #define GC_POOL_SIZE_BYTES                                          (64 * 1024)
 #endif
 
 /******************************************************************************
@@ -101,7 +101,7 @@ StackType_t *mpTaskStack;
  DECLARE PRIVATE DATA
  ******************************************************************************/
 static FATFS sflash_fatfs;
-static uint8_t gc_pool_upy[GC_POOL_SIZE_BYTES];
+static uint8_t *gc_pool_upy;
 
 static char fresh_main_py[] = "# main.py -- put your code here!\r\n";
 static char fresh_boot_py[] = "# boot.py -- run on boot-up\r\n"
@@ -139,6 +139,12 @@ void TASK_Micropython (void *pvParameters) {
     // to recover from hiting the limit (the limit is measured in bytes)
     mp_stack_set_limit(MICROPY_TASK_STACK_LEN - 1024);
 
+    gc_pool_upy = pvPortMalloc(GC_POOL_SIZE_BYTES);
+    if (!gc_pool_upy) {
+        printf("mptask malloc failed!\n");
+        for ( ; ; );
+    }
+
 soft_reset:
 
     // Thread init
@@ -147,7 +153,7 @@ soft_reset:
     #endif
 
     // GC init
-    gc_init((void *)gc_pool_upy, (void *)(gc_pool_upy + sizeof(gc_pool_upy)));
+    gc_init((void *)gc_pool_upy, (void *)(gc_pool_upy + GC_POOL_SIZE_BYTES));
 
     // MicroPython init
     mp_init();

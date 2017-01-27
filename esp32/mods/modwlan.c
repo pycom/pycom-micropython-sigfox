@@ -1202,31 +1202,24 @@ static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t 
             if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
             {
                 // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
-                *_errno = errno;
+                *_errno = ret;
                 return -1;
             }
         }
 
-        // printf("Verifying peer X.509 certificate...\n");
+        printf("Verifying peer X.509 certificate...\n");
 
-        int flags;
-        if ((flags = mbedtls_ssl_get_verify_result(&ss->ssl)) != 0) {
+        if ((ret = mbedtls_ssl_get_verify_result(&ss->ssl)) != 0) {
             /* In real life, we probably want to close connection if ret != 0 */
             // printf("Failed to verify peer certificate!\n");
-            ret = -1;
+            *_errno = ret;
+            return -1;
         } else {
             // printf("Certificate verified.\n");
         }
     }
 
-    if (ret != 0) {
-        *_errno = errno;
-        // printf("Connect failed with %d\n", ret);
-        return -1;
-    }
-
     s->sock_base.connected = true;
-
     return 0;
 }
 
