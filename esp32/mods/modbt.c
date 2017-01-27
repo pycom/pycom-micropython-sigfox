@@ -81,7 +81,6 @@ typedef struct {
     mp_obj_list_t         srv_list;
     mp_obj_list_t         char_list;
     uint16_t              gatts_if;
-    uint16_t              gatts_service_handle;
     uint16_t              gatts_conn_id;
     bool                  init;
     bool                  busy;
@@ -234,7 +233,6 @@ void modbt_init0(void) {
     mp_obj_list_init((mp_obj_t)&bt_obj.srv_list, 0);
     mp_obj_list_init((mp_obj_t)&bt_obj.char_list, 0);
     mp_obj_list_init((void *)&bt_obj.conn_list, 0);
-    bt_obj.gatts_service_handle = 4;
 }
 
 /******************************************************************************
@@ -953,8 +951,9 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_advertise_obj, bt_advertise);
 
 STATIC mp_obj_t bt_service (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_uuid,                     MP_ARG_REQUIRED | MP_ARG_KW_ONLY | MP_ARG_OBJ },
+        { MP_QSTR_uuid,                     MP_ARG_REQUIRED | MP_ARG_OBJ },
         { MP_QSTR_isprimary,                MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = true} },
+        { MP_QSTR_nbr_chars,                MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 1} },
     };
 
     mp_buffer_info_t uuid_bufinfo;
@@ -986,7 +985,7 @@ STATIC mp_obj_t bt_service (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
     service_id.is_primary = args[1].u_bool;
     service_id.id.inst_id = 0x00;
 
-    esp_ble_gatts_create_service(bt_obj.gatts_if, &service_id, bt_obj.gatts_service_handle++);
+    esp_ble_gatts_create_service(bt_obj.gatts_if, &service_id, (args[2].u_int * 3) + 1);
 
     bt_gatts_event_result_t gatts_event;
     xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);

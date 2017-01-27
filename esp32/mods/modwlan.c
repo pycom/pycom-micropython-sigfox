@@ -216,16 +216,9 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t ssid_len, uint32_t aut
     wlan_set_antenna(antenna);
     wlan_set_mode(mode);
 
-    wifi_ps_type_t wifi_ps_type;
     if (mode != WIFI_MODE_STA) {
         wlan_setup_ap (ssid, ssid_len, auth, key, key_len, channel, add_mac);
-        wifi_ps_type = WIFI_PS_NONE;
-    } else {
-        wifi_ps_type = WIFI_PS_MODEM;
     }
-
-    // set the power saving mode
-    ESP_ERROR_CHECK(esp_wifi_set_ps(wifi_ps_type));
 
     esp_wifi_start();
 
@@ -391,6 +384,14 @@ STATIC void wlan_validate_mode (uint mode) {
 STATIC void wlan_set_mode (uint mode) {
     wlan_obj.mode = mode;
     esp_wifi_set_mode(mode);
+    wifi_ps_type_t wifi_ps_type;
+    if (mode != WIFI_MODE_STA) {
+        wifi_ps_type = WIFI_PS_NONE;
+    } else {
+        wifi_ps_type = WIFI_PS_MODEM;
+    }
+    // set the power saving mode
+    esp_wifi_set_ps(wifi_ps_type);
 }
 
 STATIC void wlan_validate_ssid_len (uint32_t len) {
@@ -797,8 +798,13 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), wlan_ifconfig_args, args);
 
    // check the interface id
-   if (args[0].u_int != 0) {
+   tcpip_adapter_if_t adapter_if;
+   if (args[0].u_int > 1) {
        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
+   } else if (args[0].u_int == 0) {
+        adapter_if = TCPIP_ADAPTER_IF_STA;
+   } else {
+        adapter_if = TCPIP_ADAPTER_IF_AP;
    }
 
    ip_addr_t dns_addr;
@@ -807,7 +813,7 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
         // get
         tcpip_adapter_ip_info_t ip_info;
         dns_addr = dns_getserver(0);
-        if (ESP_OK == tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info)) {
+        if (ESP_OK == tcpip_adapter_get_ip_info(adapter_if, &ip_info)) {
             mp_obj_t ifconfig[4] = {
                 netutils_format_ipv4_addr((uint8_t *)&ip_info.ip.addr, NETUTILS_BIG),
                 netutils_format_ipv4_addr((uint8_t *)&ip_info.netmask.addr, NETUTILS_BIG),
@@ -825,29 +831,14 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
            mp_obj_get_array_fixed_n(args[1].u_obj, 4, &items);
 
            // stop the DHCP client first
-           tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
+           tcpip_adapter_dhcpc_stop(adapter_if);
 
            tcpip_adapter_ip_info_t ip_info;
            netutils_parse_ipv4_addr(items[0], (uint8_t *)&ip_info.ip.addr, NETUTILS_BIG);
            netutils_parse_ipv4_addr(items[1], (uint8_t *)&ip_info.netmask.addr, NETUTILS_BIG);
            netutils_parse_ipv4_addr(items[2], (uint8_t *)&ip_info.gw.addr, NETUTILS_BIG);
            netutils_parse_ipv4_addr(items[3], (uint8_t *)&dns_addr.u_addr.ip4.addr, NETUTILS_BIG);
-           tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info);
-           // dns_setserver(1, &dns_addr); FIXME, this doesn't seem to be supported by the IDF
-
-           // if (wlan_obj.mode == ROLE_AP) {
-           //     ASSERT_ON_ERROR(sl_NetCfgSet(SL_IPV4_AP_P2P_GO_STATIC_ENABLE, IPCONFIG_MODE_ENABLE_IPV4, sizeof(SlNetCfgIpV4Args_t), (uint8_t *)&ipV4));
-           //     SlNetAppDhcpServerBasicOpt_t dhcpParams;
-           //     dhcpParams.lease_time      =  4096;                             // lease time (in seconds) of the IP Address
-           //     dhcpParams.ipv4_addr_start =  ipV4.ipV4 + 1;                    // first IP Address for allocation.
-           //     dhcpParams.ipv4_addr_last  =  (ipV4.ipV4 & 0xFFFFFF00) + 254;   // last IP Address for allocation.
-           //     ASSERT_ON_ERROR(sl_NetAppStop(SL_NET_APP_DHCP_SERVER_ID));      // stop DHCP server before settings
-           //     ASSERT_ON_ERROR(sl_NetAppSet(SL_NET_APP_DHCP_SERVER_ID, NETAPP_SET_DHCP_SRV_BASIC_OPT,
-           //                     sizeof(SlNetAppDhcpServerBasicOpt_t), (uint8_t* )&dhcpParams));  // set parameters
-           //     ASSERT_ON_ERROR(sl_NetAppStart(SL_NET_APP_DHCP_SERVER_ID));     // start DHCP server with new settings
-           // } else {
-           //     ASSERT_ON_ERROR(sl_NetCfgSet(SL_IPV4_STA_P2P_CL_STATIC_ENABLE, IPCONFIG_MODE_ENABLE_IPV4, sizeof(SlNetCfgIpV4Args_t), (uint8_t *)&ipV4));
-           // }
+           tcpip_adapter_set_ip_info(adapter_if, &ip_info);
        } else {
            // check for the correct string
            const char *mode = mp_obj_str_get_str(args[1].u_obj);
@@ -855,20 +846,10 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
            }
 
-           // // only if we are not in AP mode
-           // if (wlan_obj.mode != ROLE_AP) {
-           //     uint8_t val = 1;
-           //     sl_NetCfgSet(SL_IPV4_STA_P2P_CL_DHCP_ENABLE, IPCONFIG_MODE_ENABLE_IPV4, 1, &val);
-           // }
-
-           if (ESP_OK != tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_STA)) {
+           if (ESP_OK != tcpip_adapter_dhcpc_start(adapter_if)) {
                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
            }
        }
-       // // config values have changed, so reset
-       // wlan_reset();
-       // // set current time and date (needed to validate certificates)
-       // wlan_set_current_time (pyb_rtc_get_seconds());
        return mp_const_none;
    }
 }
@@ -1049,7 +1030,7 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_STA),                 MP_OBJ_NEW_SMALL_INT(WIFI_MODE_STA) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_AP),                  MP_OBJ_NEW_SMALL_INT(WIFI_MODE_AP) },
-//    { MP_OBJ_NEW_QSTR(MP_QSTR_STA_AP),              MP_OBJ_NEW_SMALL_INT(STATIONAP_MODE) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_STA_AP),              MP_OBJ_NEW_SMALL_INT(WIFI_MODE_APSTA) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WEP),                 MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WEP) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WPA),                 MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA_PSK) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WPA2),                MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA2_PSK) },
@@ -1207,7 +1188,7 @@ static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t 
             }
         }
 
-        printf("Verifying peer X.509 certificate...\n");
+        // printf("Verifying peer X.509 certificate...\n");
 
         if ((ret = mbedtls_ssl_get_verify_result(&ss->ssl)) != 0) {
             /* In real life, we probably want to close connection if ret != 0 */
