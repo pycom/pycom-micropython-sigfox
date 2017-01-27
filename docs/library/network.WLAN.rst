@@ -61,7 +61,7 @@ Methods
 
    Arguments are:
 
-     - ``mode`` can be either ``WLAN.STA`` or ``WLAN.AP``.
+     - ``mode`` can be either ``WLAN.STA``, ``WLAN.AP`` or WLAN.STA_AP.
      - ``ssid`` is a string with the ssid name. Only needed when mode is ``WLAN.AP``.
      - ``auth`` is a tuple with (sec, key). Security can be ``None``, ``WLAN.WEP``,
        ``WLAN.WPA`` or ``WLAN.WPA2``. The key is a string with the network password.
@@ -112,7 +112,9 @@ Methods
    In case of STA mode, returns ``True`` if connected to a wifi access point and has a valid IP address.
    In AP mode returns ``True`` when a station is connected, ``False`` otherwise.
 
-.. method:: wlan.ifconfig(if_id=0, config=['dhcp' or configtuple])
+.. method:: wlan.ifconfig(id=0, config=['dhcp' or configtuple])
+
+   When ``id`` is 0, the configuration will be get/set on the **Station** interface. When ``id`` is 1 the configuration will be done for the **AP** interface.
 
    With no parameters given eturns a 4-tuple of ``(ip, subnet_mask, gateway, DNS_server)``.
 
@@ -170,6 +172,7 @@ Constants
 
 .. data:: WLAN.STA
           WLAN.AP
+          WLAN.STA_AP
 
    selects the WLAN mode
 
