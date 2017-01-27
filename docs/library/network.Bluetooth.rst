@@ -173,7 +173,7 @@ Methods
 
     Start or stop sending advertisements. The ``.set_advertisement()`` method must have been called prior to this one.
 
-.. method:: bluetooth.service(uuid, \*, isprimary=True)
+.. method:: bluetooth.service(uuid, \*, isprimary=True, nbr_chars=1)
 
     Create a new service on the internal GATT server. Returns a object of type ``BluetoothServerService``.
 
@@ -181,6 +181,7 @@ Methods
 
        - ``uuid`` is the UUID of the service. Can take an integer or a 16 byte long string or bytes object.
        - ``isprimary`` selects if the service is a primary one. Takes a bool value.
+       - ``nbr_chars`` specifies the number of characteristics that the service will contain.
 
 
 Constants
