@@ -149,7 +149,7 @@ Functions
 
     .. only:: port_pycom_esp32
 
-        Returns the number of seconds, as an float, since the Epoch, assuming that underlying
+        Returns the number of seconds, as an integer, since the Epoch, assuming that underlying
         RTC is set. If an RTC is not set, this function returns number of seconds since power up or reset).
         If you want to develop portable MicroPython application, you should not rely on this function to
         provide higher than second precision. If you need higher precision, use ``ticks_ms()`` and ``ticks_us()``

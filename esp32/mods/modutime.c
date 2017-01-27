@@ -137,7 +137,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(time_ticks_diff_obj, time_ticks_diff);
 /// Returns the number of seconds, as an integer, since 1/1/1970.
 STATIC mp_obj_t time_time(void) {
    // get date and time
-   return mp_obj_new_float(mach_rtc_get_us_since_epoch() / 1000000.0);
+   return mp_obj_new_int(mach_rtc_get_us_since_epoch() / 1000000);
 }
 MP_DEFINE_CONST_FUN_OBJ_0(time_time_obj, time_time);
 
