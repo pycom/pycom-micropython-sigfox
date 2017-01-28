@@ -42,8 +42,8 @@ typedef struct {
     int8_t              af_in;
     int8_t              af_out;
     unsigned int        pin_number : 6;
-    unsigned int        mode : 2;
     unsigned int        pull : 2;
+    unsigned int        mode : 3;
     unsigned int        irq_trigger : 3;
     unsigned int        value : 1;
     unsigned int        hold : 1;
