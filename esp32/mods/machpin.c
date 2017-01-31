@@ -448,7 +448,10 @@ STATIC mp_obj_t pin_value(mp_uint_t n_args, const mp_obj_t *args) {
     pin_obj_t *self = args[0];
     if (n_args == 1) {
         // get the value
-        return MP_OBJ_NEW_SMALL_INT(pin_get_value(self));
+        if (self->mode == GPIO_MODE_INPUT) {
+            return MP_OBJ_NEW_SMALL_INT(pin_get_value(self));
+        }
+        return MP_OBJ_NEW_SMALL_INT(self->value);
     } else {
         self->value = mp_obj_is_true(args[1]);
         pin_set_value(self);
