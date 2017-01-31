@@ -10,8 +10,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "apps/sntp/sntp.h"
+
 #include "py/nlr.h"
 #include "py/obj.h"
+#include "py/objstr.h"
 #include "py/runtime.h"
 #include "timeutils.h"
 #include "esp_system.h"
@@ -25,6 +28,8 @@ extern int32_t rtc_get_timer_calibration(void);
 
 #define MAX_CAL_VAL ((1 << 27) - 1)
 
+uint32_t sntp_update_period = 3600000; // in ms
+
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -32,11 +37,11 @@ extern int32_t rtc_get_timer_calibration(void);
 typedef struct _mach_rtc_obj_t {
     mp_obj_base_t base;
     uint64_t delta_from_epoch_til_boot;
+    mp_obj_t sntp_server_name;
 } mach_rtc_obj_t;
 
 STATIC mach_rtc_obj_t mach_rtc_obj;
 const mp_obj_type_t mach_rtc_type;
-
 
 void rtc_init0(void) {
     mach_rtc_set_us_since_epoch(0);
@@ -151,12 +156,6 @@ STATIC mp_obj_t mach_rtc_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_rtc_init_obj, 1, mach_rtc_init);
 
-// STATIC mp_obj_t mach_rtc_deinit (mp_obj_t self_in) {
-//     mach_rtc_set_us_since_epoch(0);
-//     return mp_const_none;
-// }
-// STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_rtc_deinit_obj, mach_rtc_deinit);
-
 STATIC mp_obj_t mach_rtc_now (mp_obj_t self_in) {
     timeutils_struct_time_t tm;
     uint64_t useconds;
@@ -200,11 +199,38 @@ mp_obj_t mach_rtc_calibration(mp_uint_t n_args, const mp_obj_t *args) {
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mach_rtc_calibration_obj, 1, 2, mach_rtc_calibration);
 
+STATIC mp_obj_t mach_rtc_ntp_sync(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_server,           MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_update_period,                      MP_ARG_INT, {.u_int = 3600} },
+    };
+
+    mach_rtc_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    sntp_update_period = args[1].u_int * 1000;
+    if (sntp_update_period < 15000) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "update period cannot be shorter than 15 s"));
+    }
+
+    sntp_stop();
+
+    if (self->sntp_server_name != mp_const_none) {
+        self->sntp_server_name = args[0].u_obj;
+        sntp_setservername(0, (char *) mp_obj_str_get_str(self->sntp_server_name));
+        sntp_init();
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_rtc_ntp_sync_obj, 1, mach_rtc_ntp_sync);
+
 STATIC const mp_map_elem_t mach_rtc_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init),            (mp_obj_t)&mach_rtc_init_obj },
-    // { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),          (mp_obj_t)&mach_rtc_deinit_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_now),             (mp_obj_t)&mach_rtc_now_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_calibration),     (mp_obj_t)&mach_rtc_calibration_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&mach_rtc_init_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_now),                 (mp_obj_t)&mach_rtc_now_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_calibration),         (mp_obj_t)&mach_rtc_calibration_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ntp_sync),            (mp_obj_t)&mach_rtc_ntp_sync_obj },
 };
 STATIC MP_DEFINE_CONST_DICT(mach_rtc_locals_dict, mach_rtc_locals_dict_table);
 

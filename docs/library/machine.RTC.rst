@@ -35,6 +35,21 @@ Methods
 
 .. only:: port_pycom_esp32
 
+    .. method:: rtc.ntp_sync(server, *, update_period)
+
+        Set up automatic fetch and update the time using NTP (SNTP).
+
+            - ``server`` is the URL of the NTP server. Can be set to None to disable the periodic updates.
+            - ``update_period`` is the number of seconds between updates. Shortest period is 15 seconds.
+
+        Can be used like:
+
+        ::
+
+            import machine
+            rtc = machine.RTC()
+            rtc.ntp_sync("pool.ntp.org") # select an appropriate server
+
     .. method:: rtc.calibration([cal])
 
         Get or set RTC calibration.

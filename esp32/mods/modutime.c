@@ -31,6 +31,32 @@
 
 extern uint64_t get_time_since_boot();
 
+static int32_t timezone_offset;
+
+STATIC mp_obj_t seconds_to_tuple_helper(mp_uint_t n_args, const mp_obj_t *args, int32_t offset) {
+    timeutils_struct_time_t tm;
+    mp_time_t seconds;
+    if (n_args == 0 || args[0] == mp_const_none) {
+        seconds = mach_rtc_get_us_since_epoch() / 1000000;
+    } else {
+        seconds = mp_obj_get_int(args[0]);
+    }
+
+    seconds += offset;
+    timeutils_seconds_since_epoch_to_struct_time(seconds, &tm);
+    mp_obj_t tuple[8] = {
+        tuple[0] = mp_obj_new_int(tm.tm_year),
+        tuple[1] = mp_obj_new_int(tm.tm_mon),
+        tuple[2] = mp_obj_new_int(tm.tm_mday),
+        tuple[3] = mp_obj_new_int(tm.tm_hour),
+        tuple[4] = mp_obj_new_int(tm.tm_min),
+        tuple[5] = mp_obj_new_int(tm.tm_sec),
+        tuple[6] = mp_obj_new_int(tm.tm_wday),
+        tuple[7] = mp_obj_new_int(tm.tm_yday),
+    };
+    return mp_obj_new_tuple(8, tuple);
+}
+
 /// \module time - time related functions
 ///
 /// The `time` module provides functions for getting the current time and date,
@@ -49,27 +75,15 @@ extern uint64_t get_time_since_boot();
 /// weekday is 0-6 for Mon-Sun.
 /// yearday is 1-366
 STATIC mp_obj_t time_localtime(mp_uint_t n_args, const mp_obj_t *args) {
-    timeutils_struct_time_t tm;
-    mp_time_t seconds;
-    if (n_args == 0 || args[0] == mp_const_none) {
-        seconds = mach_rtc_get_us_since_epoch() / 1000000;
-    } else {
-        seconds = mp_obj_get_int(args[0]);
-    }
-    timeutils_seconds_since_epoch_to_struct_time(seconds, &tm);
-    mp_obj_t tuple[8] = {
-        tuple[0] = mp_obj_new_int(tm.tm_year),
-        tuple[1] = mp_obj_new_int(tm.tm_mon),
-        tuple[2] = mp_obj_new_int(tm.tm_mday),
-        tuple[3] = mp_obj_new_int(tm.tm_hour),
-        tuple[4] = mp_obj_new_int(tm.tm_min),
-        tuple[5] = mp_obj_new_int(tm.tm_sec),
-        tuple[6] = mp_obj_new_int(tm.tm_wday),
-        tuple[7] = mp_obj_new_int(tm.tm_yday),
-    };
-    return mp_obj_new_tuple(8, tuple);
+    return seconds_to_tuple_helper(n_args, args, timezone_offset);
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(time_localtime_obj, 0, 1, time_localtime);
+
+
+STATIC mp_obj_t time_gmtime(mp_uint_t n_args, const mp_obj_t *args) {
+    return seconds_to_tuple_helper(n_args, args, 0);
+}
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(time_gmtime_obj, 0, 1, time_gmtime);
 
 /// \function mktime()
 /// This is inverse function of localtime. It's argument is a full 8-tuple
@@ -85,7 +99,7 @@ STATIC mp_obj_t time_mktime(mp_obj_t tuple) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_TypeError, "mktime needs a tuple of length 8 or 9 (%d given)", len));
     }
 
-    return mp_obj_new_int_from_uint(timeutils_mktime(mp_obj_get_int(elem[0]),
+    return mp_obj_new_int_from_uint(timezone_offset + timeutils_mktime(mp_obj_get_int(elem[0]),
             mp_obj_get_int(elem[1]), mp_obj_get_int(elem[2]), mp_obj_get_int(elem[3]),
             mp_obj_get_int(elem[4]), mp_obj_get_int(elem[5])));
 }
@@ -141,10 +155,23 @@ STATIC mp_obj_t time_time(void) {
 }
 MP_DEFINE_CONST_FUN_OBJ_0(time_time_obj, time_time);
 
+/// \function time_timezone()
+/// Return or set the timezone offset, in seconds
+STATIC mp_obj_t time_timezone(mp_uint_t n_args, const mp_obj_t *args) {
+    if (n_args == 0 || args[0] == mp_const_none) {
+        return mp_obj_new_int(timezone_offset);
+    } else {
+        timezone_offset = mp_obj_get_int(args[0]);
+    }
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(time_timezone_obj, 0, 1, time_timezone);
+
 STATIC const mp_map_elem_t time_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_utime) },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_localtime),           (mp_obj_t)&time_localtime_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_gmtime),              (mp_obj_t)&time_gmtime_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mktime),              (mp_obj_t)&time_mktime_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sleep),               (mp_obj_t)&time_sleep_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sleep_ms),            (mp_obj_t)&time_sleep_ms_obj },
@@ -154,6 +181,7 @@ STATIC const mp_map_elem_t time_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_cpu),           (mp_obj_t)&time_ticks_cpu_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_diff),          (mp_obj_t)&time_ticks_diff_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_time),                (mp_obj_t)&time_time_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_timezone),            (mp_obj_t)&time_timezone_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(time_module_globals, time_module_globals_table);

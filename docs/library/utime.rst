@@ -41,20 +41,44 @@ behave not as expected.
 Functions
 ---------
 
-.. function:: localtime([secs])
 
-   Convert a time expressed in seconds since the Epoch (see above) into an 8-tuple which
-   contains: (year, month, mday, hour, minute, second, weekday, yearday)
-   If secs is not provided or None, then the current time from the RTC is used.
+.. only:: port_pycom_esp32
 
-   * year includes the century (for example 2014).
-   * month   is 1-12
-   * mday    is 1-31
-   * hour    is 0-23
-   * minute  is 0-59
-   * second  is 0-59
-   * weekday is 0-6 for Mon-Sun
-   * yearday is 1-366
+    .. function:: mkime([secs])
+
+        Convert a time expressed in seconds since the Epoch (see above) into an 8-tuple which
+        contains: (year, month, mday, hour, minute, second, weekday, yearday)
+        If secs is not provided or None, then the current time from the RTC is used.
+
+        * year includes the century (for example 2014).
+        * month   is 1-12
+        * mday    is 1-31
+        * hour    is 0-23
+        * minute  is 0-59
+        * second  is 0-59
+        * weekday is 0-6 for Mon-Sun
+        * yearday is 1-366
+
+    .. function:: localtime([secs])
+
+        Like gmtime() but converts to local time. If secs is not provided or None, the current time from the RTC is used.
+
+.. only:: not port_pycom_esp32
+
+    .. function:: localtime([secs])
+
+        Convert a time expressed in seconds since the Epoch (see above) into an 8-tuple which
+        contains: (year, month, mday, hour, minute, second, weekday, yearday)
+        If secs is not provided or None, then the current time from the RTC is used.
+
+        * year includes the century (for example 2014).
+        * month   is 1-12
+        * mday    is 1-31
+        * hour    is 0-23
+        * minute  is 0-59
+        * second  is 0-59
+        * weekday is 0-6 for Mon-Sun
+        * yearday is 1-366
 
 .. function:: mktime()
 
@@ -178,3 +202,9 @@ Functions
             hardware also lacks battery-powered RTC, so returns number of seconds
             since last power-up or from other relative, hardware-specific point
             (e.g. reset).
+
+.. only:: port_pycom_esp32
+
+    .. function:: timezone([secs])
+
+        Set or get the timezone offset, in seconds. If ``secs`` is not provided, it returns the current value.
