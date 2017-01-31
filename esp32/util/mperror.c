@@ -82,20 +82,11 @@ void mperror_pre_init(void) {
 }
 
 void mperror_init0 (void) {
-#ifndef BOOTLOADER_BUILD
     // configure the heartbeat led pin
     pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
-
     led_init(&led_info);
-#else
-    gpio_config_t gpioconf = {.pin_bit_mask = 1ull << MICROPY_HW_HB_PIN_NUM,
-                              .mode = GPIO_MODE_OUTPUT,
-                              .pull_up_en = GPIO_PULLUP_DISABLE,
-                              .pull_down_en = GPIO_PULLDOWN_DISABLE,
-                              .intr_type = GPIO_INTR_DISABLE};
-    gpio_config(&gpioconf);
-#endif
     mperror_heart_beat.enabled = true;
+    mperror_heart_beat.do_disable = false;
     mperror_heartbeat_switch_off();
 }
 
@@ -183,9 +174,7 @@ void nlr_jump_fail(void *val) {
 void mperror_enable_heartbeat (bool enable) {
     if (enable) {
         led_info.color.value = MPERROR_HEARTBEAT_COLOR;
-        mperror_heart_beat.enabled = true;
-        mperror_heart_beat.do_disable = false;
-        mperror_heartbeat_switch_off();
+        mperror_init0();
     } else {
         led_info.color.value = 0;
         mperror_heart_beat.do_disable = true;

@@ -414,7 +414,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     machuart_isr_register(uart_id, uart_intr_handler, NULL);
 
     self->intr_config.intr_enable_mask = intr_mask;
-    self->intr_config.rx_timeout_thresh = 10;
+    self->intr_config.rx_timeout_thresh = 1;
     self->intr_config.txfifo_empty_intr_thresh = 2;
     self->intr_config.rxfifo_full_thresh = 20;
     uart_intr_config(uart_id, &self->intr_config);
