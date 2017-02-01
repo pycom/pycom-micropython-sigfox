@@ -3862,7 +3862,7 @@ LoRaMacStatus_t LoRaMacChannelManualAdd( uint8_t id, ChannelParams_t params )
         {
             band = BAND_G1_3;
         }
-        else if( ( params.Frequency >= 869700000 ) && ( params.Frequency <= 870000000 ) )
+        else if( params.Frequency >= 869700000 )
         {
             band = BAND_G1_4;
         }

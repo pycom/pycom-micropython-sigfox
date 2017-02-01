@@ -1383,9 +1383,8 @@ STATIC mp_obj_t lora_add_channel (mp_uint_t n_args, const mp_obj_t *pos_args, mp
     if (index >= LORA_MAX_NB_CHANNELS) {
         goto error;
     }
-    uint32_t frequency = args[1].u_int;
-    lora_validate_frequency(frequency);
 
+    uint32_t frequency = args[1].u_int;
     uint32_t dr_min = args[2].u_int;
     uint32_t dr_max = args[3].u_int;
     if (dr_min > dr_max || !lora_validate_data_rate(dr_min) || !lora_validate_data_rate(dr_max)) {
