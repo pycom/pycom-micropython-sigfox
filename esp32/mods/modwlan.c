@@ -661,7 +661,7 @@ STATIC mp_obj_t wlan_scan(mp_obj_t self_in) {
         MP_QSTR_ssid, MP_QSTR_bssid, MP_QSTR_sec, MP_QSTR_channel, MP_QSTR_rssi
     };
 
-    // check for correct wlan mode
+    // check for the correct wlan mode
     if (wlan_obj.mode == WIFI_MODE_AP) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }

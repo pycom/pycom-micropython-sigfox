@@ -40,6 +40,7 @@
 #include "moduos.h"
 #include "machpin.h"
 #include "pins.h"
+#include "periph_ctrl.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -53,14 +54,14 @@
  DEFINE CONSTANTS
  *******-***********************************************************************/
 #define MACHUART_FRAME_TIME_US(baud)            ((11 * 1000000) / baud)
-#define MACHUART_2_FRAMES_TIME_US(baud)         (MACHUART_FRAME_TIME_US(baud) * 2)
-#define MACHUART_RX_TIMEOUT_US(baud)            (MACHUART_2_FRAMES_TIME_US(baud) * 8) // we need at least characters in the FIFO
+#define MACHUART_2_FRAMES_TIME_US(baud)         ((MACHUART_FRAME_TIME_US(baud) * 2) + 1)
+#define MACHUART_RX_TIMEOUT_US(baud)            (MACHUART_2_FRAMES_TIME_US(baud))
 
 #define MACHUART_TX_WAIT_US(baud)               ((MACHUART_FRAME_TIME_US(baud)) + 1)
 #define MACHUART_TX_MAX_TIMEOUT_MS              (5)
 
 #define MACHUART_RX_BUFFER_LEN                  (256)
-#define MACHUART_TX_FIFO_LEN                    (126)
+#define MACHUART_TX_FIFO_LEN                    (UART_FIFO_LEN)
 
 // interrupt triggers
 #define UART_TRIGGER_RX_ANY                     (0x01)
@@ -134,10 +135,11 @@ int uart_rx_char(mach_uart_obj_t *self) {
 bool uart_tx_char(mach_uart_obj_t *self, int c) {
     uint32_t timeout = 0;
     while (!uart_tx_fifo_space(self)) {
-        if (timeout++ > ((MACHUART_TX_MAX_TIMEOUT_MS * 1000) / MACHUART_TX_WAIT_US(self->config.baud_rate))) {
+        if (timeout > (MACHUART_TX_MAX_TIMEOUT_MS * 1000)) {
             return false;
         }
         ets_delay_us(MACHUART_TX_WAIT_US(self->config.baud_rate));
+        timeout += MACHUART_TX_WAIT_US(self->config.baud_rate);
     }
     WRITE_PERI_REG(UART_FIFO_AHB_REG(self->uart_id), c);
     return true;
@@ -156,8 +158,8 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
 static bool uart_tx_fifo_space (mach_uart_obj_t *self) {
-    uint32_t tx_fifo_cnt = READ_PERI_REG(UART_STATUS_REG(self->uart_id)) & (UART_TXFIFO_CNT << UART_TXFIFO_CNT_S);
-    if ((tx_fifo_cnt >> UART_TXFIFO_CNT_S & UART_TXFIFO_CNT) < MACHUART_TX_FIFO_LEN) {
+    uint32_t tx_fifo_cnt = READ_PERI_REG(UART_STATUS_REG(self->uart_id)) & UART_TXFIFO_CNT_M;
+    if (((tx_fifo_cnt >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT) < MACHUART_TX_FIFO_LEN) {
         return true;
     }
     return false;
@@ -318,6 +320,21 @@ esp_err_t machuart_isr_register(uart_port_t uart_num, void (*fn)(void*), void * 
 STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t *args) {
     uint32_t uart_id = self->uart_id;
 
+    // enable the peripheral clock
+    periph_module_t periph_module;
+    switch (uart_id) {
+        case MACH_UART_0:
+            periph_module = PERIPH_UART0_MODULE;
+            break;
+        case MACH_UART_1:
+            periph_module = PERIPH_UART1_MODULE;
+            break;
+        default:
+            periph_module = PERIPH_UART2_MODULE;
+            break;
+    }
+    periph_module_enable(periph_module);
+
     // get the baudrate
     if (args[0].u_int <= 0) {
         goto error;
@@ -377,23 +394,18 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
         }
     }
 
-    // register it with the sleep module
-    // pyb_sleep_add ((const mp_obj_t)self, (WakeUpCB_t)uart_init);
-    // enable the callback
-    // uart_irq_new (self, UART_TRIGGER_RX_ANY, INT_PRIORITY_LVL_3, mp_const_none);
-    // disable the irq (from the user point of view)
-    // uart_irq_disable(self);
-
     uint32_t intr_mask = UART_RXFIFO_TOUT_INT_ENA | UART_FRM_ERR_INT_ENA |
                          UART_RXFIFO_FULL_INT_ENA | UART_TXFIFO_EMPTY_INT_ENA;
+
+    // disable the delay between transfers
+    WRITE_PERI_REG(UART_IDLE_CONF_REG(self->uart_id),
+        READ_PERI_REG(UART_IDLE_CONF_REG(self->uart_id)) & (~UART_TX_IDLE_NUM_M));
+
 
     // disable interrupts on the current UART before re-configuring
     // UART_IntrConfig() will enable them again
     CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(uart_id), UART_INTR_MASK);
 
-    // uart_reset_fifo(uart_id);
-
-    self->uart_id = uart_id;
     self->base.type = &mach_uart_type;
     self->config.baud_rate = baudrate;
     self->config.data_bits = data_bits;
@@ -500,24 +512,12 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_uart_init_obj, 1, mach_uart_init);
 
 STATIC mp_obj_t mach_uart_deinit(mp_obj_t self_in) {
     mach_uart_obj_t *self = self_in;
-
     // invalidate the baudrate
     self->config.baud_rate = 0;
-    // free the read buffer
-    m_del(byte, (void *)self->read_buf, MACHUART_RX_BUFFER_LEN);
     // disable the interrupt
     CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(self->uart_id), UART_INTR_MASK);
-    // enable the clock to the peripheral
-    if (self->uart_id == MACH_UART_0) {
-        SET_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_UART_RST);
-        CLEAR_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_UART_CLK_EN);
-    } else if (self->uart_id == MACH_UART_1) {
-        SET_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_UART1_RST);
-        CLEAR_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_UART1_CLK_EN);
-    } else {
-        SET_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_UART2_RST);
-        CLEAR_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_UART2_CLK_EN);
-    }
+    // free the read buffer
+    m_del(byte, (void *)self->read_buf, MACHUART_RX_BUFFER_LEN);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_deinit_obj, mach_uart_deinit);
