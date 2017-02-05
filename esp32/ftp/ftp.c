@@ -51,7 +51,7 @@
 #define FTP_CMD_PORT                        21
 #define FTP_ACTIVE_DATA_PORT                20
 #define FTP_PASIVE_DATA_PORT                2024
-#define FTP_BUFFER_SIZE                     1024
+#define FTP_BUFFER_SIZE                     512
 #define FTP_TX_RETRIES_MAX                  25
 #define FTP_CMD_SIZE_MAX                    6
 #define FTP_CMD_CLIENTS_MAX                 1
