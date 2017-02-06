@@ -15,7 +15,6 @@
 
 import sys
 import os
-from recommonmark.parser import CommonMarkParser
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -86,10 +85,6 @@ extensions = [
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['templates']
-
-source_parsers = {
-    '.md': CommonMarkParser,
-}
 
 # The suffix of source filenames.
 source_suffix = ['.rst', '.md']
