@@ -12,15 +12,16 @@ Now you will need to enter the SiPy's **Device ID** and **PAC number**. These ar
 ::
 
     from network import Sigfox
+    import binascii
 
     # initalise Sigfox for RCZ1 (You may need a different RCZ Region)
-    sigfox = Sigfox(mode = Sigfox.SIGFOX, rcz = Sigfox.RCZ1)
+    sigfox = Sigfox(mode=Sigfox.SIGFOX, rcz=Sigfox.RCZ1)
 
     # print Sigfox Device ID
-    print(sigfox.id())
+    print(binascii.hexlify(sigfox.id()))
 
     # print Sigfox PAC number
-    print(sigfox.pac())
+    print(binascii.hexlify(sigfox.pac()))
 
 See :class:`Sigfox <.Sigfox>` for more info about the Sigfox Class and which RCZ region to use.
 
