@@ -9,7 +9,7 @@ The pinout of the board is available as a `PDF file <https://www.pycom.io/wp-con
 
 .. image:: images/pinout_exp_screenshot.png
     :align: center
-    :scale: 50 %
+    :scale: 70 %
     :alt: Expansionboard Pinout
     :target: https://www.pycom.io/wp-content/uploads/2017/02/exp_v03_pinout_v13.pdf
 
