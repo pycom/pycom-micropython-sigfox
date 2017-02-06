@@ -4,7 +4,14 @@
 Pinout
 ------
 
-The pinout of the module is available as a ``PDF file``.
+The pinout of the module is available as a `PDF file <https://www.pycom.io/wp-content/uploads/2017/02/Sipy_v01_1_pinout_rc.pdf>`_.
+
+
+.. image:: images/pinout_sipy_screenshot.png
+    :align: center
+    :scale: 50 %
+    :alt: LoPy Pinout
+    :target: https://www.pycom.io/wp-content/uploads/2017/02/Sipy_v01_1_pinout_rc.pdf
 
 
 .. warning::
