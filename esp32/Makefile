@@ -27,9 +27,15 @@ CROSS_COMPILE = xtensa-esp32-elf-
 ESP_IDF_PATH = $(IDF_PATH)
 ESP_IDF_COMP_PATH = $(ESP_IDF_PATH)/components
 
-CFLAGS_XTENSA = -DESP_PLATFORM -O2 -g3 -Wpointer-arith -Werror -Wno-error=unused-function \
+CFLAGS_XTENSA = -DESP_PLATFORM -g3 -Wpointer-arith -Werror -Wno-error=unused-function \
                 -Wno-error=unused-but-set-variable -Wno-error=unused-variable -Wl,-EL \
                 -mlongcalls -Wall -ffunction-sections -fdata-sections -fno-common
+
+ifeq ($(BOARD), SIPY)
+CFLAGS_XTENSA += -O2
+else
+CFLAGS_XTENSA += -Og
+endif
 
 CFLAGS = $(CFLAGS_XTENSA) -nostdlib -std=gnu99 -g3 -fstrict-volatile-bitfields -Iboards/$(BOARD)
 
@@ -41,6 +47,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        -Llib -lnvs_flash -ltcpip_adapter -L$(BUILD) -lhal -lcore -lwps -lcoexist \
        -lnet80211 -lphy lib/libpp.a -lrtc -llog -lsmartconfig -lwpa -lbtdm_app \
        -lsigfox -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat \
+       -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libm.a $(ESP_IDF_COMP_PATH)/newlib/lib/libc.a \
        -lfreertos -ljson -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lxtensa-debug-module -lethernet -lbt -lsdmmc
