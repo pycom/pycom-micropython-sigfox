@@ -29,6 +29,8 @@ Maintainer: Miguel Luis and Gregory Cristian
 #ifndef __SPI_BOARD_H__
 #define __SPI_BOARD_H__
 
+#include "lora/system/gpio.h"
+
 /*!
  * SPI driver structure definition
  */

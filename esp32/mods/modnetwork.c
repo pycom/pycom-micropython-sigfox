@@ -62,6 +62,11 @@ mp_obj_t mod_network_find_nic(const uint8_t *ip) {
                 return nic;
             }
         #endif
+        #ifdef SIPY
+            if (mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_sigfox) {
+                return nic;
+            }
+        #endif
         } else {
             // TODO check IP suitability here
             return nic;
@@ -163,6 +168,9 @@ STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_WLAN),                (mp_obj_t)&mod_network_nic_type_wlan },
 #ifdef LOPY
     { MP_OBJ_NEW_QSTR(MP_QSTR_LoRa),                (mp_obj_t)&mod_network_nic_type_lora },
+#endif
+#ifdef SIPY
+    { MP_OBJ_NEW_QSTR(MP_QSTR_Sigfox),              (mp_obj_t)&mod_network_nic_type_sigfox },
 #endif
     { MP_OBJ_NEW_QSTR(MP_QSTR_Bluetooth),           (mp_obj_t)&mod_network_nic_type_bt },
     { MP_OBJ_NEW_QSTR(MP_QSTR_Server),              (mp_obj_t)&network_server_type },

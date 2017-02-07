@@ -195,22 +195,36 @@ STATIC void unmount (os_fs_mount_t *mount_obj) {
 
 STATIC const qstr os_uname_info_fields[] = {
     MP_QSTR_sysname, MP_QSTR_nodename,
-    MP_QSTR_release, MP_QSTR_version, MP_QSTR_machine
+    MP_QSTR_release, MP_QSTR_version,
+    MP_QSTR_machine,
+#if defined(LOPY)
+	MP_QSTR_lorawan
+#elif defined(SIPY)
+	MP_QSTR_sigfox
+#endif
 };
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_sysname_obj, MICROPY_PY_SYS_PLATFORM);
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_nodename_obj, MICROPY_PY_SYS_PLATFORM);
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_release_obj, SW_VERSION_NUMBER);
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_version_obj, MICROPY_GIT_TAG " on " MICROPY_BUILD_DATE);
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_machine_obj, MICROPY_HW_BOARD_NAME " with " MICROPY_HW_MCU_NAME);
+STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lpwan_obj, LPWAN_VERSION_NUMBER);
 STATIC MP_DEFINE_ATTRTUPLE(
-    os_uname_info_obj,
-    os_uname_info_fields,
-    5,
-    (mp_obj_t)&os_uname_info_sysname_obj,
-    (mp_obj_t)&os_uname_info_nodename_obj,
-    (mp_obj_t)&os_uname_info_release_obj,
-    (mp_obj_t)&os_uname_info_version_obj,
-    (mp_obj_t)&os_uname_info_machine_obj
+    os_uname_info_obj
+    ,os_uname_info_fields
+#if defined(LOPY) || defined(SIPY)
+    ,6
+#else
+    ,5
+#endif
+    ,(mp_obj_t)&os_uname_info_sysname_obj
+    ,(mp_obj_t)&os_uname_info_nodename_obj
+    ,(mp_obj_t)&os_uname_info_release_obj
+    ,(mp_obj_t)&os_uname_info_version_obj
+    ,(mp_obj_t)&os_uname_info_machine_obj
+#if defined(LOPY) || defined(SIPY)
+    ,(mp_obj_t)&os_uname_info_lpwan_obj
+#endif
 );
 
 STATIC mp_obj_t os_uname(void) {

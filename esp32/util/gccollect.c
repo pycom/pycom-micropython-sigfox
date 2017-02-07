@@ -17,6 +17,7 @@
 #include "py/mpthread.h"
 #include "gccollect.h"
 #include "soc/cpu.h"
+#include "xtensa/hal.h"
 
 /******************************************************************************
 DECLARE PRIVATE DATA
@@ -25,15 +26,13 @@ DECLARE PRIVATE DATA
 /******************************************************************************
 DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-uint32_t gc_helper_get_regs_and_sp(mp_uint_t *regs) {
-    // FIXME
-    return (mp_uint_t)regs;
-}
-
 static void gc_collect_inner(void) {
-    // get the registers and the sp
-    mp_uint_t regs[8];
-    mp_uint_t sp = gc_helper_get_regs_and_sp(regs);
+    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
+    xthal_window_spill();
+    MICROPY_END_ATOMIC_SECTION(state);
+
+    // get the sp
+    volatile uint32_t sp = (uint32_t)get_sp();
 
     gc_collect_root((void**)sp, ((mp_uint_t)MP_STATE_THREAD(stack_top) - sp) / sizeof(uint32_t));
 

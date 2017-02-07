@@ -13,13 +13,17 @@
 #define MODUSOCKET_H_
 
 #define AF_LORA                             (0xA0)
-
-#define PROTO_LORA                          (120)
+#define AF_SIGFOX                           (0xA1)
 
 #define SOL_LORA                            (0xFFF05)
+#define SOL_SIGFOX                          (0xFFF06)
 
 #define SO_LORAWAN_CONFIRMED                (0xF0002)
 #define SO_LORAWAN_DR                       (0xF0003)
+#define SO_SIGFOX_RX                        (0xF0004)
+#define SO_SIGFOX_TX_REPEAT                 (0xF0005)
+#define SO_SIGFOX_OOB                       (0xF0006)
+#define SO_SIGFOX_BIT                       (0xF0007)
 
 extern const mp_obj_dict_t socket_locals_dict;
 extern const mp_stream_p_t socket_stream_p;

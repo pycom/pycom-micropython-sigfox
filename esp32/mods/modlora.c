@@ -1135,7 +1135,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
         if (auth_len == 2) {
             mp_get_buffer_raise(auth[0], &bufinfo_1, MP_BUFFER_READ);
             mp_get_buffer_raise(auth[1], &bufinfo_2, MP_BUFFER_READ);
-            config_get_lora_mac(cmd_data.info.join.otaa.DevEui);
+            config_get_lpwan_mac(cmd_data.info.join.otaa.DevEui);
         } else {
             mp_get_buffer_raise(auth[0], &bufinfo_0, MP_BUFFER_READ);
             memcpy(cmd_data.info.join.otaa.DevEui, bufinfo_0.buf, sizeof(cmd_data.info.join.otaa.DevEui));
@@ -1427,7 +1427,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_remove_channel_obj, lora_remove_channel);
 
 STATIC mp_obj_t lora_mac(mp_obj_t self_in) {
     uint8_t mac[8];
-    config_get_lora_mac(mac);
+    config_get_lpwan_mac(mac);
     return mp_obj_new_bytes((const byte *)mac, sizeof(mac));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_mac_obj, lora_mac);

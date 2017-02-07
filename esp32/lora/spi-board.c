@@ -105,6 +105,12 @@ void SpiInit( Spi_t *obj, PinNames mosi, PinNames miso, PinNames sclk, PinNames 
     pin_config(obj->Miso.pin_obj, VSPIQ_IN_IDX, -1, GPIO_MODE_INPUT, PIN_NO_PULL, 0);
     pin_config(obj->Mosi.pin_obj, -1, VSPID_OUT_IDX, GPIO_MODE_OUTPUT, PIN_NO_PULL, 0);
     pin_config(obj->Sclk.pin_obj, -1, VSPICLK_OUT_MUX_IDX, GPIO_MODE_OUTPUT, PIN_NO_PULL, 0);
+
+#ifdef SIPY
+    // configure the chip select pin
+    obj->Nss.pin_obj = gpio_board_map[nss];
+    pin_config(obj->Nss.pin_obj, -1, -1, GPIO_MODE_OUTPUT, PIN_PULL_UP, 1);
+#endif
 }
 
 /*!
@@ -148,6 +154,7 @@ void SpiFrequency( Spi_t *obj, uint32_t hz ) {
  * \param [IN] outData Byte to be sent
  * \retval inData      Received byte.
  */
+#if defined(LOPY)
 IRAM_ATTR uint16_t SpiInOut(Spi_t *obj, uint16_t outData) {
     uint32_t spiNum = (uint32_t)obj->Spi;
     // load the send buffer
@@ -158,3 +165,41 @@ IRAM_ATTR uint16_t SpiInOut(Spi_t *obj, uint16_t outData) {
     // read data out
     return READ_PERI_REG(SPI_W0_REG(spiNum));
 }
+#elif defined(SIPY)
+IRAM_ATTR uint8_t SpiInOut(uint32_t spiNum, uint32_t outData) {
+    // set data send buffer length (1 byte)
+    SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 7, SPI_USR_MOSI_DBITLEN_S);
+    SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 7, SPI_USR_MISO_DBITLEN_S);
+
+    // load the send buffer
+    WRITE_PERI_REG(SPI_W0_REG(spiNum), outData);
+
+    // start send data
+    SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
+    while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
+
+    // read data out
+    return READ_PERI_REG(SPI_W0_REG(spiNum));
+}
+
+/*!
+ * \brief Sends outData
+ *
+ * \param [IN] obj     SPI object
+ * \param [IN] outData Byte to be sent
+ * \retval void
+ */
+IRAM_ATTR void SpiOut(uint32_t spiNum, uint32_t outData) {
+    // set data send buffer length (2 bytes)
+    SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 15, SPI_USR_MOSI_DBITLEN_S);
+    SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 15, SPI_USR_MISO_DBITLEN_S);
+
+    // load send buffer
+    WRITE_PERI_REG(SPI_W0_REG(spiNum), outData);
+    WRITE_PERI_REG(SPI_W0_REG(spiNum) + 4, outData >> 8);  // the SPI FIFO is 4-byte wide
+
+    // start send data
+    SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
+    while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
+}
+#endif

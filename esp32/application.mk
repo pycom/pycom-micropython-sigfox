@@ -101,6 +101,37 @@ APP_LIB_SRC_C = $(addprefix lib/,\
 	fatfs/option/ccsbcs.c \
 	)
 
+ifeq ($(BOARD), WIPY)
+APP_MODS_SRC_C = $(addprefix mods/,\
+	machuart.c \
+	machpin.c \
+	machrtc.c \
+	machspi.c \
+	machine_i2c.c \
+	machpwm.c \
+	modmachine.c \
+	moduos.c \
+	modusocket.c \
+	modnetwork.c \
+	modwlan.c \
+	moduselect.c \
+	modutime.c \
+	modpycom.c \
+	moduhashlib.c \
+	moducrypto.c \
+	machtimer.c \
+	machtimer_alarm.c \
+	machtimer_chrono.c \
+	analog.c \
+	pybadc.c \
+	pybdac.c \
+	pybsd.c \
+	modussl.c \
+	modbt.c \
+	modled.c \
+	)
+endif
+
 ifeq ($(BOARD), LOPY)
 APP_MODS_SRC_C = $(addprefix mods/,\
 	machuart.c \
@@ -133,7 +164,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	)
 endif
 
-ifeq ($(BOARD), WIPY)
+ifeq ($(BOARD), SIPY)
 APP_MODS_SRC_C = $(addprefix mods/,\
 	machuart.c \
 	machpin.c \
@@ -148,6 +179,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modwlan.c \
 	moduselect.c \
 	modutime.c \
+	modsigfox.c \
 	modpycom.c \
 	moduhashlib.c \
 	moducrypto.c \
@@ -156,8 +188,8 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machtimer_chrono.c \
 	analog.c \
 	pybadc.c \
-	pybdac.c \
 	pybsd.c \
+	pybdac.c \
 	modussl.c \
 	modbt.c \
 	modled.c \
@@ -219,6 +251,26 @@ APP_SX1272_SRC_C = $(addprefix drivers/sx127x/,\
 	sx1272/sx1272.c \
 	)
 
+APP_SIGFOX_SRC_C = $(addprefix sigfox/,\
+	manufacturer_api.c \
+	radio.c \
+	ti_aes_128.c \
+	timer.c \
+	transmission.c \
+	)
+
+APP_SIGFOX_TARGET_SRC_C = $(addprefix sigfox/targets/,\
+	cc112x_spi.c \
+	hal_int.c \
+	hal_spi_rf_trxeb.c \
+	trx_rf_int.c \
+	)
+
+APP_SIGFOX_SPI_SRC_C = $(addprefix lora/,\
+	spi-board.c \
+	gpio-board.c \
+	)
+
 APP_TELNET_SRC_C = $(addprefix telnet/,\
 	telnet.c \
 	)
@@ -236,12 +288,15 @@ BOOT_SRC_C = $(addprefix bootloader/,\
 	)
 
 OBJ = $(PY_O)
-OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
 ifeq ($(BOARD), LOPY)
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1272_SRC_C:.c=.o))
 endif
+ifeq ($(BOARD), SIPY)
+OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_C:.c=.o) $(APP_SIGFOX_TARGET_SRC_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o))
+endif
+OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins.o
 
@@ -299,9 +354,13 @@ APP_SIGN = tools/appsign.sh
 
 BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
 ifeq ($(BOARD), LOPY)
-    APP_BIN  = $(BUILD)/lopy_$(LORA_FREQ).bin
+    APP_BIN = $(BUILD)/lopy_$(LORA_FREQ).bin
 else
-    APP_BIN  = $(BUILD)/wipy.bin
+    ifeq ($(BOARD), SIPY)
+        APP_BIN = $(BUILD)/sipy.bin
+    else
+        APP_BIN = $(BUILD)/wipy.bin
+    endif
 endif
 APP_IMG  = $(BUILD)/appimg.bin
 PART_CSV = lib/partitions.csv
@@ -322,8 +381,6 @@ ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash
 ESPTOOL_ALL_FLASH_ARGS = $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)
 
 GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py -q
-
-BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
 
 all: $(BOOT_BIN) $(APP_BIN)
 

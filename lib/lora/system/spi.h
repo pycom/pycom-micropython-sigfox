@@ -15,6 +15,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 #ifndef __SPI_LORA_H__
 #define __SPI_LORA_H__
 
+#include "py/mpconfig.h"
 #include "spi-board.h"
 
 /*!
@@ -71,6 +72,19 @@ void SpiFrequency( Spi_t *obj, uint32_t hz );
  * \param [IN] outData Byte to be sent
  * \retval inData      Received byte.
  */
+#if defined(LOPY)
 uint16_t SpiInOut( Spi_t *obj, uint16_t outData );
+#elif defined(SIPY)
+uint8_t SpiInOut(uint32_t spiNum, uint32_t outData );
+
+/*!
+ * \brief Sends outData
+ *
+ * \param [IN] obj     SPI object
+ * \param [IN] outData Byte to be sent
+ * \retval void
+ */
+void SpiOut(uint32_t spiNum, uint32_t outData );
+#endif
 
 #endif  // __SPI_LORA_H__
