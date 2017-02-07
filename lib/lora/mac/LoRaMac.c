@@ -339,12 +339,12 @@ const int8_t datarateOffsets[16][4] =
 /*!
  * Maximum payload with respect to the datarate index. Cannot operate with repeater.
  */
-const uint8_t MaxPayloadOfDatarate[] = { 11, 53, 125, 242, 242, 0, 0, 0, 53, 129, 242, 242, 242, 242, 0, 0 };
+const uint8_t MaxPayloadOfDatarate[] = { 11, 53, 126, 242, 242, 0, 0, 0, 53, 129, 242, 242, 242, 242, 0, 0 };
 
 /*!
  * Maximum payload with respect to the datarate index. Can operate with repeater.
  */
-const uint8_t MaxPayloadOfDatarateRepeater[] = { 11, 53, 125, 242, 242, 0, 0, 0, 33, 109, 222, 222, 222, 222, 0, 0 };
+const uint8_t MaxPayloadOfDatarateRepeater[] = { 11, 53, 126, 242, 242, 0, 0, 0, 33, 109, 222, 222, 222, 222, 0, 0 };
 
 /*!
  * Tx output powers table definition
@@ -2123,62 +2123,112 @@ static bool AdrNextDr( bool adrEnabled, bool updateChannelMask, int8_t* datarate
         }
         else
         {
-            if( AdrAckCounter >= ADR_ACK_LIMIT )
+            if( AdrAckCounter > ADR_ACK_LIMIT )
             {
                 adrAckReq = true;
+
+                if( AdrAckCounter >= ( ADR_ACK_LIMIT + ( 2 * ADR_ACK_DELAY ) ) )
+                {
+                    if ( ( ( AdrAckCounter - ( ADR_ACK_LIMIT + 1 ) ) % ADR_ACK_DELAY ) == 0 )
+                    {
+    #if defined( USE_BAND_433 ) || defined( USE_BAND_780 ) || defined( USE_BAND_868 )
+                        if( datarate > LORAMAC_TX_MIN_DATARATE )
+                        {
+                            datarate--;
+                        }
+                        if( datarate == LORAMAC_TX_MIN_DATARATE )
+                        {
+                            if( updateChannelMask == true )
+                            {
+                                // Re-enable default channels LC1, LC2, LC3
+                                LoRaMacParams.ChannelsMask[0] = LoRaMacParams.ChannelsMask[0] | ( LC( 1 ) + LC( 2 ) + LC( 3 ) );
+                            }
+                        }
+    #elif defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID )
+                        if( ( datarate > LORAMAC_TX_MIN_DATARATE ) && ( datarate == DR_8 ) )
+                        {
+                            datarate = DR_4;
+                        }
+                        else if( datarate > LORAMAC_TX_MIN_DATARATE )
+                        {
+                            datarate--;
+                        }
+                        if( datarate == LORAMAC_TX_MIN_DATARATE )
+                        {
+                            if( updateChannelMask == true )
+                            {
+    #if defined( USE_BAND_915 )
+                                // Re-enable default channels
+                                LoRaMacParams.ChannelsMask[0] = 0xFFFF;
+                                LoRaMacParams.ChannelsMask[1] = 0xFFFF;
+                                LoRaMacParams.ChannelsMask[2] = 0xFFFF;
+                                LoRaMacParams.ChannelsMask[3] = 0xFFFF;
+                                LoRaMacParams.ChannelsMask[4] = 0x00FF;
+                                LoRaMacParams.ChannelsMask[5] = 0x0000;
+    #else // defined( USE_BAND_915_HYBRID )
+                                // Re-enable default channels
+                                ReenableChannels( LoRaMacParams.ChannelsMask[4], LoRaMacParams.ChannelsMask );
+    #endif
+                            }
+                        }
+    #else
+        #error "Please define a frequency band in the compiler options."
+    #endif
+                    }
+                }
+                else
+                {
+                    if ( ( AdrAckCounter - ADR_ACK_LIMIT ) % ( ADR_ACK_DELAY + 1 ) == 0 )
+                    {
+    #if defined( USE_BAND_433 ) || defined( USE_BAND_780 ) || defined( USE_BAND_868 )
+                        if( datarate > LORAMAC_TX_MIN_DATARATE )
+                        {
+                            datarate--;
+                        }
+                        if( datarate == LORAMAC_TX_MIN_DATARATE )
+                        {
+                            if( updateChannelMask == true )
+                            {
+                                // Re-enable default channels LC1, LC2, LC3
+                                LoRaMacParams.ChannelsMask[0] = LoRaMacParams.ChannelsMask[0] | ( LC( 1 ) + LC( 2 ) + LC( 3 ) );
+                            }
+                        }
+    #elif defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID )
+                        if( ( datarate > LORAMAC_TX_MIN_DATARATE ) && ( datarate == DR_8 ) )
+                        {
+                            datarate = DR_4;
+                        }
+                        else if( datarate > LORAMAC_TX_MIN_DATARATE )
+                        {
+                            datarate--;
+                        }
+                        if( datarate == LORAMAC_TX_MIN_DATARATE )
+                        {
+                            if( updateChannelMask == true )
+                            {
+    #if defined( USE_BAND_915 )
+                                // Re-enable default channels
+                                LoRaMacParams.ChannelsMask[0] = 0xFFFF;
+                                LoRaMacParams.ChannelsMask[1] = 0xFFFF;
+                                LoRaMacParams.ChannelsMask[2] = 0xFFFF;
+                                LoRaMacParams.ChannelsMask[3] = 0xFFFF;
+                                LoRaMacParams.ChannelsMask[4] = 0x00FF;
+                                LoRaMacParams.ChannelsMask[5] = 0x0000;
+    #else // defined( USE_BAND_915_HYBRID )
+                                // Re-enable default channels
+                                ReenableChannels( LoRaMacParams.ChannelsMask[4], LoRaMacParams.ChannelsMask );
+    #endif
+                            }
+                        }
+    #else
+        #error "Please define a frequency band in the compiler options."
+    #endif
+                    }
+                }
             }
             else
             {
                 adrAckReq = false;
-            }
-            if( AdrAckCounter >= ( ADR_ACK_LIMIT + ADR_ACK_DELAY ) )
-            {
-                if( ( AdrAckCounter % ADR_ACK_DELAY ) == 0 )
-                {
-#if defined( USE_BAND_433 ) || defined( USE_BAND_780 ) || defined( USE_BAND_868 )
-                    if( datarate > LORAMAC_TX_MIN_DATARATE )
-                    {
-                        datarate--;
-                    }
-                    if( datarate == LORAMAC_TX_MIN_DATARATE )
-                    {
-                        if( updateChannelMask == true )
-                        {
-                            // Re-enable default channels LC1, LC2, LC3
-                            LoRaMacParams.ChannelsMask[0] = LoRaMacParams.ChannelsMask[0] | ( LC( 1 ) + LC( 2 ) + LC( 3 ) );
-                        }
-                    }
-#elif defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID )
-                    if( ( datarate > LORAMAC_TX_MIN_DATARATE ) && ( datarate == DR_8 ) )
-                    {
-                        datarate = DR_4;
-                    }
-                    else if( datarate > LORAMAC_TX_MIN_DATARATE )
-                    {
-                        datarate--;
-                    }
-                    if( datarate == LORAMAC_TX_MIN_DATARATE )
-                    {
-                        if( updateChannelMask == true )
-                        {
-#if defined( USE_BAND_915 )
-                            // Re-enable default channels
-                            LoRaMacParams.ChannelsMask[0] = 0xFFFF;
-                            LoRaMacParams.ChannelsMask[1] = 0xFFFF;
-                            LoRaMacParams.ChannelsMask[2] = 0xFFFF;
-                            LoRaMacParams.ChannelsMask[3] = 0xFFFF;
-                            LoRaMacParams.ChannelsMask[4] = 0x00FF;
-                            LoRaMacParams.ChannelsMask[5] = 0x0000;
-#else // defined( USE_BAND_915_HYBRID )
-                            // Re-enable default channels
-                            ReenableChannels( LoRaMacParams.ChannelsMask[4], LoRaMacParams.ChannelsMask );
-#endif
-                        }
-                    }
-#else
-#error "Please define a frequency band in the compiler options."
-#endif
-                }
             }
         }
     }

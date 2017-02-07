@@ -13,7 +13,7 @@
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
-#define LORA_PAYLOAD_SIZE_MAX                                   (255)
+#define LORA_PAYLOAD_SIZE_MAX                                   (256)
 #define LORA_CMD_QUEUE_SIZE_MAX                                 (2)
 #define LORA_DATA_QUEUE_SIZE_MAX                                (2)
 #define LORA_STACK_SIZE                                         (3072)

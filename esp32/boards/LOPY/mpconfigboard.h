@@ -17,3 +17,6 @@
 #define DEFAULT_AP_SSID                                         "lopy-wlan"
 
 #define MICROPY_HW_FLASH_SIZE                                   (4 * 1024 * 1024)
+
+#define MICROPY_LPWAN_DIO_PIN_NUM                               (23)
+#define MICROPY_LPWAN_DIO_PIN                                   (pin_GPIO23)

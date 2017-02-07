@@ -168,16 +168,14 @@ STATIC void pin_interrupt_queue_handler(void *arg) {
 }
 
 static IRAM_ATTR void call_interrupt_handler (pin_obj_t *pin) {
-    if (pin->handler == NULL) {
-        return;
-    }
-
-    if (pin->handler_arg == NULL) {
-        // do a direct call
-        ((void(*)(void))pin->handler)();
-    } else {
-        // pass it to the queue
-        mp_irq_queue_interrupt(pin_interrupt_queue_handler, pin);
+    if (pin->handler) {
+        if (pin->handler_arg == NULL) {
+            // do a direct call (this means the pin has a C interupt handler)
+            ((void(*)(void))pin->handler)();
+        } else {
+            // pass it to the queue
+            mp_irq_queue_interrupt(pin_interrupt_queue_handler, pin);
+        }
     }
 }
 
@@ -191,6 +189,16 @@ static IRAM_ATTR void machpin_intr_process (void* arg) {
     SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, gpio_intr_status_h);
     uint32_t gpio_num = 0;
     uint32_t mask;
+
+#ifdef MICROPY_LPWAN_DIO_PIN_NUM
+    // fast path for the LPWAN DIO interrupt
+    if (gpio_intr_status & (1 << MICROPY_LPWAN_DIO_PIN_NUM)) {
+        ((void(*)(void))MICROPY_LPWAN_DIO_PIN.handler)();
+
+        // clear this bit from the interrupt status
+        gpio_intr_status &= ~(1 << MICROPY_LPWAN_DIO_PIN_NUM);
+    }
+#endif
 
     mask = 1;
     while (mask) {
@@ -566,7 +574,6 @@ STATIC mp_obj_t pin_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
 
     pin_irq_disable(self);
     set_pin_callback_helper(self, args[1].u_obj, args[2].u_obj);
-
     pin_extint_register(self, args[0].u_int, 0);
 
     // enable the interrupt just before leaving

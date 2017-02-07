@@ -8,11 +8,6 @@
 # available at https://www.pycom.io/opensource/licensing
 #
 
-# import certification
-# from network import LoRa
-# compliance = certification.Compliance(activation=LoRa.OTAA)
-# compliance.run()
-
 from network import LoRa
 import time
 import binascii
@@ -32,8 +27,16 @@ class Compliance:
     def __init__(self, activation=LoRa.OTAA):
         self.lora = LoRa(mode=LoRa.LORAWAN)
         self.lora.compliance_test(True, 0, False)  # enable testing
+        self.activation = activation
 
-        if activation == LoRa.OTAA:
+        self._join()
+
+        self.s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
+        self.s.setsockopt(socket.SOL_LORA, socket.SO_DR, 5)
+        self.s.setsockopt(socket.SOL_LORA, socket.SO_CONFIRMED, False)
+
+    def _join(self):
+        if self.activation == LoRa.OTAA:
             app_eui = binascii.unhexlify(APP_EUI.replace(' ',''))
             app_key = binascii.unhexlify(APP_KEY.replace(' ',''))
             self.lora.join(activation=LoRa.OTAA, auth=(app_eui, app_key), timeout=0)
@@ -45,31 +48,32 @@ class Compliance:
 
         # wait until the module has joined the network
         while not self.lora.has_joined():
-            time.sleep(2.5)
-            print("Waiting to join...")
+            time.sleep(5)
+            print("Joining...")
 
         print("Network joined!")
-        self.s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
-        self.s.setsockopt(socket.SOL_LORA, socket.SO_DR, 5)
-        self.s.setsockopt(socket.SOL_LORA, socket.SO_CONFIRMED, False)
-
-        self.tx_payload = bytes([(self.lora.compliance_test().downlink_counter >> 8) & 0xFF,
-                                  self.lora.compliance_test().downlink_counter & 0xFF])
 
     def run(self):
         while True:
             while not self.lora.compliance_test().running:
-                time.sleep(5.0)
-                print('Sending ready packet')
+                time.sleep(5)
                 self.s.send('Ready')
 
             print('Test running!')
-            self.s.setblocking(False)
+
+            self.s.setblocking(True)
+
+            self.tx_payload = bytes([(self.lora.compliance_test().downlink_counter >> 8) & 0xFF,
+                                      self.lora.compliance_test().downlink_counter & 0xFF])
+
             while self.lora.compliance_test().running:
-                time.sleep(5.0)
 
                 if self.lora.compliance_test().state < 6: # re-join
-                    self.s.send(self.tx_payload)
+                    try:
+                        self.s.send(self.tx_payload)
+                        time.sleep(2)
+                    except Exception:
+                        time.sleep(1)
 
                     if self.lora.compliance_test().link_check:
                         self.tx_payload = bytes([5, self.lora.compliance_test().demod_margin,
@@ -87,3 +91,6 @@ class Compliance:
                         else:
                             self.tx_payload = bytes([(self.lora.compliance_test().downlink_counter >> 8) & 0xFF,
                                                       self.lora.compliance_test().downlink_counter & 0xFF])
+                else:
+                    time.sleep(2)
+                    self._join()

@@ -55,7 +55,7 @@
 #define RF_FREQUENCY_MAX                            870000000   // Hz
 #define TX_OUTPUT_POWER_MAX                         14          // dBm
 #define TX_OUTPUT_POWER_MIN                         2           // dBm
-#elif defined(USE_BAND_915)
+#elif defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID)
 #define RF_FREQUENCY_MIN                            902000000   // Hz
 #define RF_FREQUENCY_CENTER                         915000000   // Hz
 #define RF_FREQUENCY_MAX                            928000000   // Hz
@@ -383,16 +383,16 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
 
     // printf("MCPS indication!=%d :%d\n", mcpsIndication->BufferSize, mcpsIndication->Port);
 
-    if (mcpsIndication->RxData) {
+    if (mcpsIndication->RxData && mcpsIndication->BufferSize > 0) {
         switch (mcpsIndication->Port) {
         case 1:
         case 2:
-            if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
+            if (mcpsIndication->BufferSize < LORA_PAYLOAD_SIZE_MAX) {
                 memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
                 rx_data_isr.len = mcpsIndication->BufferSize;
-                xQueueSendFromISR(xRxQueue, (void *)&rx_data_isr, NULL);
+                xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);
             }
-            // printf("Data on port 2 received\n");
+            // printf("Data on port 1 or 2 received\n");
             break;
         case 224:
             if (lora_obj.ComplianceTest.Enabled == true) {
@@ -465,7 +465,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                         if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
                             memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
                             rx_data_isr.len = mcpsIndication->BufferSize;
-                            xQueueSendFromISR(xRxQueue, (void *)&rx_data_isr, NULL);
+                            xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);
                         }
                         // printf("Crypto message received\n");
                         break;
@@ -476,8 +476,8 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                         break;
                     case 6: // (ix)
                         // trigger a join request
+                        lora_obj.joined = false;
                         lora_obj.ComplianceTest.State = 6;
-                        lora_obj.state = E_LORA_STATE_JOIN;
                         // printf("Trigger join\n");
                         break;
                     default:
@@ -499,6 +499,8 @@ static void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
                 TimerStop(&TxNextActReqTimer);
                 lora_obj.joined = true;
                 lora_obj.ComplianceTest.State = 1;
+                lora_obj.ComplianceTest.Running = false;
+                lora_obj.ComplianceTest.DownLinkCounter = 0;
                 break;
             case MLME_LINK_CHECK:
                 // Check DemodMargin
@@ -520,14 +522,15 @@ static void OnTxNextActReqTimerEvent(void) {
     MibRequestConfirm_t mibReq;
     LoRaMacStatus_t status;
 
-    TimerStop(&TxNextActReqTimer);
-
     mibReq.Type = MIB_NETWORK_JOINED;
     status = LoRaMacMibGetRequestConfirm(&mibReq);
 
     if (status == LORAMAC_STATUS_OK) {
         if (mibReq.Param.IsNetworkJoined == true) {
             lora_obj.joined = true;
+            lora_obj.ComplianceTest.State = 1;
+            lora_obj.ComplianceTest.Running = false;
+            lora_obj.ComplianceTest.DownLinkCounter = 0;
         } else {
             lora_obj.state = E_LORA_STATE_JOIN;
         }
@@ -569,6 +572,7 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacInitialization(&LoRaMacPrimitives, &LoRaMacCallbacks);
 
                         TimerInit(&TxNextActReqTimer, OnTxNextActReqTimerEvent);
+                        TimerSetValue(&TxNextActReqTimer, OVER_THE_AIR_ACTIVATION_DUTYCYCLE);
 
                         mibReq.Type = MIB_ADR;
                         mibReq.Param.AdrEnable = cmd_data.info.init.adr;
@@ -577,6 +581,10 @@ static void TASK_LoRa (void *pvParameters) {
                         mibReq.Type = MIB_PUBLIC_NETWORK;
                         mibReq.Param.EnablePublicNetwork = cmd_data.info.init.public;
                         LoRaMacMibSetRequestConfirm(&mibReq);
+
+                    #if defined(USE_BAND_868)
+                        LoRaMacTestSetDutyCycleOn(false);
+                    #endif
 
                         // copy the configuration (must be done before sending the response)
                         lora_obj.adr = cmd_data.info.init.adr;
@@ -704,36 +712,37 @@ static void TASK_LoRa (void *pvParameters) {
             break;
         case E_LORA_STATE_JOIN:
             TimerStop( &TxNextActReqTimer );
-            if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
-                mlmeReq.Type = MLME_JOIN;
-                mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.otaa.DevEui;
-                mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.otaa.AppEui;
-                mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.otaa.AppKey;
-                LoRaMacMlmeRequest(&mlmeReq);
-                TimerSetValue( &TxNextActReqTimer, OVER_THE_AIR_ACTIVATION_DUTYCYCLE);
-                TimerStart( &TxNextActReqTimer );
-            } else {
-                mibReq.Type = MIB_NET_ID;
-                mibReq.Param.NetID = DEF_LORAWAN_NETWORK_ID;
-                LoRaMacMibSetRequestConfirm( &mibReq );
+            if (!lora_obj.joined) {
+                if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
+                    TimerStart( &TxNextActReqTimer );
+                    mlmeReq.Type = MLME_JOIN;
+                    mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.otaa.DevEui;
+                    mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.otaa.AppEui;
+                    mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.otaa.AppKey;
+                    LoRaMacMlmeRequest(&mlmeReq);
+                } else {
+                    mibReq.Type = MIB_NET_ID;
+                    mibReq.Param.NetID = DEF_LORAWAN_NETWORK_ID;
+                    LoRaMacMibSetRequestConfirm( &mibReq );
 
-                mibReq.Type = MIB_DEV_ADDR;
-                mibReq.Param.DevAddr = (uint32_t)lora_obj.abp.DevAddr;
-                LoRaMacMibSetRequestConfirm( &mibReq );
+                    mibReq.Type = MIB_DEV_ADDR;
+                    mibReq.Param.DevAddr = (uint32_t)lora_obj.abp.DevAddr;
+                    LoRaMacMibSetRequestConfirm( &mibReq );
 
-                mibReq.Type = MIB_NWK_SKEY;
-                mibReq.Param.NwkSKey = (uint8_t *)lora_obj.abp.NwkSKey;
-                LoRaMacMibSetRequestConfirm( &mibReq );
+                    mibReq.Type = MIB_NWK_SKEY;
+                    mibReq.Param.NwkSKey = (uint8_t *)lora_obj.abp.NwkSKey;
+                    LoRaMacMibSetRequestConfirm( &mibReq );
 
-                mibReq.Type = MIB_APP_SKEY;
-                mibReq.Param.AppSKey = (uint8_t *)lora_obj.abp.AppSKey;
-                LoRaMacMibSetRequestConfirm( &mibReq );
+                    mibReq.Type = MIB_APP_SKEY;
+                    mibReq.Param.AppSKey = (uint8_t *)lora_obj.abp.AppSKey;
+                    LoRaMacMibSetRequestConfirm( &mibReq );
 
-                mibReq.Type = MIB_NETWORK_JOINED;
-                mibReq.Param.IsNetworkJoined = true;
-                LoRaMacMibSetRequestConfirm( &mibReq );
-                lora_obj.joined = true;
-                lora_obj.ComplianceTest.State = 1;
+                    mibReq.Type = MIB_NETWORK_JOINED;
+                    mibReq.Param.IsNetworkJoined = true;
+                    LoRaMacMibSetRequestConfirm( &mibReq );
+                    lora_obj.joined = true;
+                    lora_obj.ComplianceTest.State = 1;
+                }
             }
             xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
             lora_obj.state = E_LORA_STATE_IDLE;

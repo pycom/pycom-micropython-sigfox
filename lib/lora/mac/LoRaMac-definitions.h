@@ -268,7 +268,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 /*!
  * Maximal datarate that can be used by the node
  */
-#define LORAMAC_TX_MAX_DATARATE                     DR_7
+#define LORAMAC_TX_MAX_DATARATE                     DR_6
 
 /*!
  * Minimal datarate that can be used by the node
@@ -278,7 +278,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 /*!
  * Maximal datarate that can be used by the node
  */
-#define LORAMAC_RX_MAX_DATARATE                     DR_7
+#define LORAMAC_RX_MAX_DATARATE                     DR_6
 
 /*!
  * Default datarate used by the node
