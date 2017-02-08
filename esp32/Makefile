@@ -47,7 +47,6 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        -Llib -lnvs_flash -ltcpip_adapter -L$(BUILD) -lhal -lcore -lwps -lcoexist \
        -lnet80211 -lphy lib/libpp.a -lrtc -llog -lsmartconfig -lwpa -lbtdm_app \
        -lsigfox -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat \
-       -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libm.a $(ESP_IDF_COMP_PATH)/newlib/lib/libc.a \
        -lfreertos -ljson -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lxtensa-debug-module -lethernet -lbt -lsdmmc

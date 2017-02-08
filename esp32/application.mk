@@ -101,7 +101,6 @@ APP_LIB_SRC_C = $(addprefix lib/,\
 	fatfs/option/ccsbcs.c \
 	)
 
-ifeq ($(BOARD), WIPY)
 APP_MODS_SRC_C = $(addprefix mods/,\
 	machuart.c \
 	machpin.c \
@@ -130,71 +129,14 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modbt.c \
 	modled.c \
 	)
-endif
 
-ifeq ($(BOARD), LOPY)
-APP_MODS_SRC_C = $(addprefix mods/,\
-	machuart.c \
-	machpin.c \
-	machrtc.c \
-	machspi.c \
-	machine_i2c.c \
-	machpwm.c \
-	modmachine.c \
-	moduos.c \
-	modusocket.c \
-	modnetwork.c \
-	modwlan.c \
-	moduselect.c \
-	modutime.c \
+APP_MODS_LORA_SRC_C = $(addprefix mods/,\
 	modlora.c \
-	modpycom.c \
-	moduhashlib.c \
-	moducrypto.c \
-	machtimer.c \
-	machtimer_alarm.c \
-	machtimer_chrono.c \
-	analog.c \
-	pybadc.c \
-	pybdac.c \
-	pybsd.c \
-	modussl.c \
-	modbt.c \
-	modled.c \
 	)
-endif
 
-ifeq ($(BOARD), SIPY)
-APP_MODS_SRC_C = $(addprefix mods/,\
-	machuart.c \
-	machpin.c \
-	machrtc.c \
-	machspi.c \
-	machine_i2c.c \
-	machpwm.c \
-	modmachine.c \
-	moduos.c \
-	modusocket.c \
-	modnetwork.c \
-	modwlan.c \
-	moduselect.c \
-	modutime.c \
+APP_MODS_SIGFOX_SRC_C = $(addprefix mods/,\
 	modsigfox.c \
-	modpycom.c \
-	moduhashlib.c \
-	moducrypto.c \
-	machtimer.c \
-	machtimer_alarm.c \
-	machtimer_chrono.c \
-	analog.c \
-	pybadc.c \
-	pybsd.c \
-	pybdac.c \
-	modussl.c \
-	modbt.c \
-	modled.c \
 	)
-endif
 
 APP_STM_SRC_C = $(addprefix stmhal/,\
 	bufhelper.c \
@@ -289,10 +231,10 @@ BOOT_SRC_C = $(addprefix bootloader/,\
 
 OBJ = $(PY_O)
 ifeq ($(BOARD), LOPY)
-OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1272_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1272_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
 endif
 ifeq ($(BOARD), SIPY)
-OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_C:.c=.o) $(APP_SIGFOX_TARGET_SRC_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_C:.c=.o) $(APP_SIGFOX_TARGET_SRC_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o) $(APP_MODS_SIGFOX_SRC_C:.c=.o))
 endif
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
@@ -304,6 +246,13 @@ BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
 
 # List of sources for qstr extraction
 SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C)
+ifeq ($(BOARD), LOPY)
+SRC_QSTR += $(APP_MODS_LORA_SRC_C)
+endif
+ifeq ($(BOARD), SIPY)
+SRC_QSTR += $(APP_MODS_SIGFOX_SRC_C)
+endif
+
 # Append any auto-generated sources that are needed by sources listed in
 # SRC_QSTR
 SRC_QSTR_AUTO_DEPS +=
