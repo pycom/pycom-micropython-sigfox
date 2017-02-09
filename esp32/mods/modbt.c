@@ -79,7 +79,7 @@ typedef struct {
     int32_t               events;
     mp_obj_list_t         conn_list;
     mp_obj_list_t         srv_list;
-    mp_obj_list_t         char_list;
+    mp_obj_list_t         attr_list;
     uint16_t              gatts_if;
     uint16_t              gatts_conn_id;
     bool                  init;
@@ -139,7 +139,7 @@ typedef struct {
     int32_t         conn_id;
     esp_bd_addr_t   srv_bda;
     esp_gatt_if_t   gatt_if;
-} bt_connection_event;
+} bt_connection_event_t;
 
 typedef union {
     esp_ble_gap_cb_param_t      scan;
@@ -147,12 +147,13 @@ typedef union {
     bt_char_t                   characteristic;
     bt_read_value_t             read;
     bt_write_value_t            write;
-    bt_connection_event         connection;
+    bt_connection_event_t       connection;
 } bt_event_result_t;
 
 typedef union {
     uint16_t service_handle;
     uint16_t char_handle;
+    uint16_t char_descr_handle;
     bool     adv_set;
 } bt_gatts_event_result_t;
 
@@ -163,16 +164,21 @@ typedef struct {
 
 typedef struct {
     mp_obj_base_t         base;
-    bt_gatts_srv_obj_t    *srv;
+    mp_obj_t              parent;
+    esp_bt_uuid_t         uuid;
+    uint16_t              handle;
+    uint16_t              value_len;
+    uint8_t               value[20];
+    bool                  is_char;
+} bt_gatts_attr_obj_t;
+
+typedef struct {
+    bt_gatts_attr_obj_t   attr_obj;
     mp_obj_t              handler;
     mp_obj_t              handler_arg;
     uint32_t              trigger;
     int32_t               events;
-    uint16_t              handle;
-    uint16_t              value_len;
-    uint8_t               value[20];
-    esp_bt_uuid_t         uuid;
-    esp_bt_uuid_t         descr_uuid;
+    uint16_t              config;
 } bt_gatts_char_obj_t;
 
 /******************************************************************************
@@ -230,9 +236,9 @@ void modbt_init0(void) {
         esp_ble_gatts_app_unregister(MOD_BT_SERVER_APP_ID);
     }
 
+    mp_obj_list_init((mp_obj_t)&bt_obj.conn_list, 0);
     mp_obj_list_init((mp_obj_t)&bt_obj.srv_list, 0);
-    mp_obj_list_init((mp_obj_t)&bt_obj.char_list, 0);
-    mp_obj_list_init((void *)&bt_obj.conn_list, 0);
+    mp_obj_list_init((mp_obj_t)&bt_obj.attr_list, 0);
 }
 
 /******************************************************************************
@@ -292,9 +298,9 @@ static bt_char_obj_t *finds_gattc_char (int32_t conn_id, esp_gatt_srvc_id_t *srv
     return NULL;
 }
 
-static bt_gatts_char_obj_t *finds_gatts_char_by_handle (uint16_t handle) {
-    for (mp_uint_t i = 0; i < bt_obj.char_list.len; i++) {
-        bt_gatts_char_obj_t *char_obj = ((bt_gatts_char_obj_t *)(bt_obj.char_list.items[i]));
+static bt_gatts_attr_obj_t *finds_gatts_attr_by_handle (uint16_t handle) {
+    for (mp_uint_t i = 0; i < bt_obj.attr_list.len; i++) {
+        bt_gatts_attr_obj_t *char_obj = ((bt_gatts_attr_obj_t *)(bt_obj.attr_list.items[i]));
         if (char_obj->handle == handle) {
             return char_obj;
         }
@@ -482,34 +488,43 @@ static void gatts_event_handler(uint32_t event, void *param)
         bt_obj.gatts_if = p->reg.gatt_if;
         break;
     case ESP_GATTS_READ_EVT: {
-        bt_gatts_char_obj_t *char_obj = finds_gatts_char_by_handle (p->read.handle);
-        if (char_obj) {
+        bt_gatts_attr_obj_t *attr_obj = finds_gatts_attr_by_handle (p->read.handle);
+        if (attr_obj) {
             esp_gatt_rsp_t rsp;
             memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
             rsp.attr_value.handle = p->read.handle;
-            rsp.attr_value.len = char_obj->value_len;
-            memcpy(&rsp.attr_value.value, char_obj->value, char_obj->value_len);
+            rsp.attr_value.len = attr_obj->value_len;
+            memcpy(&rsp.attr_value.value, attr_obj->value, attr_obj->value_len);
             esp_ble_gatts_send_response(p->read.conn_id, p->read.trans_id, ESP_GATT_OK, &rsp);
 
-            char_obj->events |= MOD_BT_GATTS_READ_EVT;
-            if (char_obj->trigger & MOD_BT_GATTS_READ_EVT) {
-                mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+            if (attr_obj->is_char) {
+                bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
+                char_obj->events |= MOD_BT_GATTS_READ_EVT;
+                if (char_obj->trigger & MOD_BT_GATTS_READ_EVT) {
+                    mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+                }
             }
         }
         break;
     }
     case ESP_GATTS_WRITE_EVT: {
-        bt_gatts_char_obj_t *char_obj = finds_gatts_char_by_handle (p->write.handle);
-        if (char_obj) {
-            if (p->write.len <= sizeof(char_obj->value)) {
-                memcpy(char_obj->value, p->write.value, p->write.len);
-                char_obj->value_len = p->write.len;
+        bt_gatts_attr_obj_t *attr_obj = finds_gatts_attr_by_handle (p->write.handle);
+        if (attr_obj) {
+            if (p->write.len <= sizeof(attr_obj->value)) {
+                memcpy(attr_obj->value, p->write.value, p->write.len);
+                attr_obj->value_len = p->write.len;
             }
             esp_ble_gatts_send_response(p->write.conn_id, p->write.trans_id, ESP_GATT_OK, NULL);
 
-            char_obj->events |= MOD_BT_GATTS_WRITE_EVT;
-            if (char_obj->trigger & MOD_BT_GATTS_WRITE_EVT) {
-                mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+            if (attr_obj->is_char) {
+                bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
+                char_obj->events |= MOD_BT_GATTS_WRITE_EVT;
+                if (char_obj->trigger & MOD_BT_GATTS_WRITE_EVT) {
+                    mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+                }
+            }  else {    // characteristic descriptor (only characteristic configuration is available ATM)
+                bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj->parent;
+                memcpy(&char_obj->config, p->write.value, 2);
             }
         }
         break;
@@ -536,14 +551,15 @@ static void gatts_event_handler(uint32_t event, void *param)
     }
         break;
     case ESP_GATTS_ADD_CHAR_DESCR_EVT:
-        // LOG_INFO("ADD_DESCR_EVT, status %d, gatt_if %d,  attr_handle %d, service_handle %d\n",
-        //          p->add_char.status, p->add_char.gatt_if, p->add_char.attr_handle, p->add_char.service_handle);
+    {
+        bt_gatts_event_result_t gatts_event;
+        gatts_event.char_descr_handle = p->add_char_descr.attr_handle;
+        xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
+    }
         break;
     case ESP_GATTS_DELETE_EVT:
         break;
     case ESP_GATTS_START_EVT:
-        // LOG_INFO("SERVICE_START_EVT, status %d, gatt_if %d, service_handle %d\n",
-        //          p->start.status, p->start.gatt_if, p->start.service_handle);
         break;
     case ESP_GATTS_STOP_EVT:
         break;
@@ -556,6 +572,7 @@ static void gatts_event_handler(uint32_t event, void *param)
         }
         break;
     case ESP_GATTS_DISCONNECT_EVT:
+        bt_obj.gatts_conn_id = -1;
         if (bt_obj.advertising) {
             esp_ble_gap_start_advertising(&bt_adv_params);
         }
@@ -602,12 +619,13 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
 
         mp_obj_list_init((mp_obj_t)&bt_obj.conn_list, 0);
         mp_obj_list_init((mp_obj_t)&bt_obj.srv_list, 0);
-        mp_obj_list_init((mp_obj_t)&bt_obj.char_list, 0);
+        mp_obj_list_init((mp_obj_t)&bt_obj.attr_list, 0);
 
         self->init = true;
     }
     esp_ble_gattc_app_register(MOD_BT_CLIENT_ID);
     esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
+    bt_obj.gatts_conn_id = -1;
     return mp_const_none;
 }
 
@@ -1058,42 +1076,53 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);
 
     bt_gatts_char_obj_t *characteristic = m_new_obj(bt_gatts_char_obj_t);
-    characteristic->base.type = (mp_obj_t)&mod_bt_gatts_char_type;
-    characteristic->handle = gatts_event.char_handle;
-    characteristic->srv = self;
+    characteristic->attr_obj.base.type = (mp_obj_t)&mod_bt_gatts_char_type;
+    characteristic->attr_obj.handle = gatts_event.char_handle;
+    characteristic->attr_obj.parent = self;
     characteristic->trigger = 0;
     characteristic->events = 0;
-    memcpy(&characteristic->uuid, &char_uuid, sizeof(char_uuid));
+    memcpy(&characteristic->attr_obj.uuid, &char_uuid, sizeof(char_uuid));
 
     if (args[3].u_obj != mp_const_none) {
         // characteristic value
         if (MP_OBJ_IS_SMALL_INT(args[3].u_obj)) {
             int32_t value = mp_obj_get_int(args[3].u_obj);
-            memcpy(characteristic->value, &value, sizeof(value));
+            memcpy(characteristic->attr_obj.value, &value, sizeof(value));
             if (value > 0xFF) {
-                characteristic->value_len = 2;
+                characteristic->attr_obj.value_len = 2;
             } else if (value > 0xFFFF) {
-                characteristic->value_len = 4;
+                characteristic->attr_obj.value_len = 4;
             } else {
-                characteristic->value_len = 1;
+                characteristic->attr_obj.value_len = 1;
             }
         } else {
             mp_buffer_info_t value_bufinfo;
             mp_get_buffer_raise(args[3].u_obj, &value_bufinfo, MP_BUFFER_READ);
-            memcpy(characteristic->value, value_bufinfo.buf, value_bufinfo.len);
-            characteristic->value_len = value_bufinfo.len;
+            memcpy(characteristic->attr_obj.value, value_bufinfo.buf, value_bufinfo.len);
+            characteristic->attr_obj.value_len = value_bufinfo.len;
         }
     } else {
-        characteristic->value[0] = 0;
-        characteristic->value_len = 1;
+        characteristic->attr_obj.value[0] = 0;
+        characteristic->attr_obj.value_len = 1;
     }
 
-    mp_obj_list_append((mp_obj_t)&bt_obj.char_list, characteristic);
+    mp_obj_list_append((mp_obj_t)&bt_obj.attr_list, characteristic);
 
-    // characteristic->descr_uuid.len = ESP_UUID_LEN_16;
-    // characteristic->descr_uuid.uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
-    // esp_ble_gatts_add_char_descr(self->handle, &characteristic->descr_uuid,
-    //                              ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE);
+    bt_gatts_attr_obj_t *descriptor = m_new_obj(bt_gatts_attr_obj_t);
+    descriptor->uuid.len = ESP_UUID_LEN_16;
+    descriptor->uuid.uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
+    esp_ble_gatts_add_char_descr(self->handle, &descriptor->uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE);
+
+    xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);
+
+    descriptor->base.type = (mp_obj_t)&mod_bt_gatts_char_type;
+    descriptor->handle = gatts_event.char_descr_handle;
+    descriptor->parent = characteristic;
+    descriptor->value_len = 2;
+    descriptor->value[0] = 0;
+    descriptor->value[1] = 0;
+
+    mp_obj_list_append((mp_obj_t)&bt_obj.attr_list, descriptor);
 
     return characteristic;
 
@@ -1119,24 +1148,25 @@ STATIC mp_obj_t bt_characteristic_value (mp_uint_t n_args, const mp_obj_t *args)
     bt_gatts_char_obj_t *self = args[0];
     if (n_args == 1) {
         // get
-        return mp_obj_new_bytes(self->value, self->value_len);
+        return mp_obj_new_bytes(self->attr_obj.value, self->attr_obj.value_len);
     } else {
         // set
         if (MP_OBJ_IS_SMALL_INT(args[1])) {
             int32_t value = mp_obj_get_int(args[1]);
-            memcpy(self->value, &value, sizeof(value));
+            memcpy(self->attr_obj.value, &value, sizeof(value));
             if (value > 0xFF) {
-                self->value_len = 2;
+                self->attr_obj.value_len = 2;
             } else if (value > 0xFFFF) {
-                self->value_len = 4;
+                self->attr_obj.value_len = 4;
             } else {
-                self->value_len = 1;
+                self->attr_obj.value_len = 1;
             }
+            esp_ble_gatts_send_indicate(bt_obj.gatts_conn_id, self->attr_obj.handle, self->attr_obj.value_len, self->attr_obj.value, false);
         } else {
             mp_buffer_info_t value_bufinfo;
             mp_get_buffer_raise(args[1], &value_bufinfo, MP_BUFFER_READ);
-            memcpy(self->value, value_bufinfo.buf, value_bufinfo.len);
-            self->value_len = value_bufinfo.len;
+            memcpy(self->attr_obj.value, value_bufinfo.buf, value_bufinfo.len);
+            self->attr_obj.value_len = value_bufinfo.len;
         }
         return mp_const_none;
     }
