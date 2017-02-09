@@ -406,36 +406,31 @@ IRAM_ATTR void RADIO_modulate(void)
         }
     }
 
-	// Program the frequency offset
-	cc112xSpiWriteReg(CC112X_FREQOFF1, &writeByte_FOFF1_pi_shifting, 1);
-	cc112xSpiWriteReg(CC112X_FREQOFF0, &writeByte_FOFF0_pi_shifting, 1);
+    // Program the frequency offset
+    cc112xSpiWriteReg(CC112X_FREQOFF1, &writeByte_FOFF1_pi_shifting, 1);
+    cc112xSpiWriteReg(CC112X_FREQOFF0, &writeByte_FOFF0_pi_shifting, 1);
 
-    // GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 2);
-
-	/* IMPORTANT NOTE
-	 *
-	 * As explained above in the Modulation section,
-	 * a  __delay_cycles(PHASE_ACCUMULATION_DELAY_CYCLES)
-     * instruction should take place here
-	 * to ensure a phase accumation of pi.
-	 *
-	 * This value of delay cycles must account for the SPI write delays
-	 * and was obtained experimentally. This value can be used to calibrate
-	 * the modulation for best possible quality ( SNR ) of the BPSK
-	 * signal. The quality of BPSK modulation might change for different
-	 * compiler optimization settings and different MCU clock frequencies.
-	 * Thus, requiring new calibration for this delay value.
-	 */
+    /* IMPORTANT NOTE
+        *
+        * As explained above in the Modulation section,
+        * a  __delay_cycles(PHASE_ACCUMULATION_DELAY_CYCLES)
+        * instruction should take place here
+        * to ensure a phase accumation of pi.
+        *
+        * This value of delay cycles must account for the SPI write delays
+        * and was obtained experimentally. This value can be used to calibrate
+        * the modulation for best possible quality ( SNR ) of the BPSK
+        * signal. The quality of BPSK modulation might change for different
+        * compiler optimization settings and different MCU clock frequencies.
+        * Thus, requiring new calibration for this delay value.
+        */
     __delay_cycles(PHASE_ACCUMULATION_DELAY_CYCLES);
 
-	cc112xSpiWriteReg(CC112X_FREQOFF1, &writeByte_FOFF1_init, 1);
-	cc112xSpiWriteReg(CC112X_FREQOFF0, &writeByte_FOFF0_init, 1);
+    cc112xSpiWriteReg(CC112X_FREQOFF1, &writeByte_FOFF1_init, 1);
+    cc112xSpiWriteReg(CC112X_FREQOFF0, &writeByte_FOFF0_init, 1);
 
-    // GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << 2);
-
-	// increase PA
-    if(uplink_spectrum_access == SFX_FH)
-    {
+    // increase PA
+    if (uplink_spectrum_access == SFX_FH) {
         for (count = NB_PTS_PA-1; count >= (0); count--)
         {
             trx8BitWrite(CC112X_PA_CFG2, Table_Pa_600bps[count]);
@@ -455,7 +450,7 @@ IRAM_ATTR void RADIO_modulate(void)
 /**************************************************************************//**
  *  @brief this function starts the oscillator, and generates the ramp-up
  ******************************************************************************/
-void
+void IRAM_ATTR
 RADIO_start_rf_carrier(void)
 {
     int16 countStart;
@@ -468,8 +463,7 @@ RADIO_start_rf_carrier(void)
     cc112xSpiWriteReg(CC112X_PA_CFG2, &writeByte, 1);
 
     // Ramp up the PA
-    if(uplink_spectrum_access == SFX_FH)
-    {
+    if (uplink_spectrum_access == SFX_FH) {
         for (countStart = NB_PTS_PA-1; countStart >= (0); countStart--)
         {
             cc112xSpiWriteReg(CC112X_PA_CFG2, (uint8*) &Table_Pa_600bps[countStart], 1);
@@ -491,15 +485,14 @@ RADIO_start_rf_carrier(void)
 /**************************************************************************//**
  *  @brief This function stops the radio and produces the ramp down
  ******************************************************************************/
-void
+void IRAM_ATTR
 RADIO_stop_rf_carrier(void)
 {
     uint16 count_stop;
     uint8 writeByte;
 
     // Ramp down the PA
-    if(uplink_spectrum_access == SFX_FH)
-    {
+    if (uplink_spectrum_access == SFX_FH) {
         for (count_stop = 0; count_stop < (NB_PTS_PA); count_stop++)
         {
             cc112xSpiWriteReg(CC112X_PA_CFG2, (uint8*) &Table_Pa_600bps[count_stop], 1);
@@ -529,14 +522,14 @@ RADIO_stop_rf_carrier(void)
 void
 RADIO_start_unmodulated_cw(unsigned long ul_Freq)
 {
-	// Initialize the radio in TX mode
-	RADIO_init_chip(SFX_RF_MODE_TX);
+    // Initialize the radio in TX mode
+    RADIO_init_chip(SFX_RF_MODE_TX);
 
     /* Update the frequency */
     RADIO_change_frequency(ul_Freq);
 
-	// Start TX carrier wave
-	RADIO_start_rf_carrier();
+    // Start TX carrier wave
+    RADIO_start_rf_carrier();
 }
 
 
@@ -548,11 +541,11 @@ RADIO_start_unmodulated_cw(unsigned long ul_Freq)
 void
 RADIO_stop_unmodulated_cw(unsigned long ul_Freq)
 {
-	// Stop TX carrier wave
-	RADIO_stop_rf_carrier();
+    // Stop TX carrier wave
+    RADIO_stop_rf_carrier();
 
-	// Reinitialize the radio in TX mode
-	RADIO_init_chip(SFX_RF_MODE_TX );
+    // Reinitialize the radio in TX mode
+    RADIO_init_chip(SFX_RF_MODE_TX );
 
     /* Update the frequency */
     RADIO_change_frequency(ul_Freq);
