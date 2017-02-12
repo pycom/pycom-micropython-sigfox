@@ -46,8 +46,10 @@
     X(ENODEV) \
     X(EISDIR) \
     X(EINVAL) \
+    X(EMSGSIZE) \
     X(EOPNOTSUPP) \
     X(EADDRINUSE) \
+    X(ENETDOWN) \
     X(ECONNABORTED) \
     X(ECONNRESET) \
     X(ENOBUFS) \

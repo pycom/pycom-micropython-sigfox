@@ -18,6 +18,7 @@
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "py/stream.h"
+#include "py/mperrno.h"
 #include "bufhelper.h"
 #include "mpexception.h"
 #include "modlora.h"
@@ -76,11 +77,11 @@
 #define LORA_SPREADING_FACTOR_MAX                   (12)
 
 #define LORA_CHECK_SOCKET(s)                        if (s->sock_base.sd < 0) {  \
-                                                        *_errno = EBADF;        \
+                                                        *_errno = MP_EBADF;     \
                                                         return -1;              \
                                                     }
 
-#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           15000  // 15 [s] value in ms
+#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           10000  // 10 [s] value in ms
 
 #if defined( USE_BAND_868 )
 #define LC4                                         { 867100000, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
@@ -281,6 +282,12 @@ void modlora_init0(void) {
 static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms, bool confirmed, uint32_t dr, uint32_t port) {
     lora_cmd_data_t cmd_data;
 
+    // validate the message size with the requested data rate
+    if (false == ValidatePayloadLength(len, dr, 0)) {
+        // message too long
+        return -1;
+    }
+
     cmd_data.cmd = E_LORA_CMD_LORAWAN_TX;
     memcpy (cmd_data.info.tx.data, buf, len);
     cmd_data.info.tx.len = len;
@@ -313,8 +320,11 @@ static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms,
                                               pdTRUE,   // clear on exit
                                               pdFALSE,  // do not wait for all bits
                                               (TickType_t)portMAX_DELAY);
-        if (result & LORA_STATUS_ERROR) {
+
+        if (result & LORA_STATUS_MSG_SIZE) {
             return -1;
+        } else if (result & LORA_STATUS_ERROR) {
+            return 0;
         }
     }
     // return the number of bytes sent
@@ -656,6 +666,7 @@ static void TASK_LoRa (void *pvParameters) {
                     {
                         McpsReq_t mcpsReq;
                         LoRaMacTxInfo_t txInfo;
+                        EventBits_t status = 0;
                         bool empty_frame = false;
 
                         if (LoRaMacQueryTxPossible (cmd_data.info.tx.len, &txInfo) != LORAMAC_STATUS_OK) {
@@ -665,6 +676,7 @@ static void TASK_LoRa (void *pvParameters) {
                             mcpsReq.Req.Unconfirmed.fBufferSize = 0;
                             mcpsReq.Req.Unconfirmed.Datarate = cmd_data.info.tx.dr;
                             empty_frame = true;
+                            status |= LORA_STATUS_MSG_SIZE;
                         } else {
                             if (cmd_data.info.tx.confirmed) {
                                 mcpsReq.Type = MCPS_CONFIRMED;
@@ -685,7 +697,8 @@ static void TASK_LoRa (void *pvParameters) {
                         if (LoRaMacMcpsRequest(&mcpsReq) != LORAMAC_STATUS_OK || empty_frame) {
                             // the command has failed, send the response now
                             lora_obj.state = E_LORA_STATE_IDLE;
-                            xEventGroupSetBits(LoRaEvents, LORA_STATUS_ERROR);
+                            status |= LORA_STATUS_ERROR;
+                            xEventGroupSetBits(LoRaEvents, status);
                         } else {
                             lora_obj.state = E_LORA_STATE_TX;
                         }
@@ -840,7 +853,7 @@ static void lora_validate_power (uint8_t tx_power) {
 
 static bool lora_validate_data_rate (uint32_t data_rate) {
 #if defined(USE_BAND_868)
-    if (data_rate > DR_7) {
+    if (data_rate > DR_6) {
         return false;
     }
 #else
@@ -1460,7 +1473,7 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_TX_ONLY),             MP_OBJ_NEW_SMALL_INT(E_LORA_MODE_TX_ONLY) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SLEEP),               MP_OBJ_NEW_SMALL_INT(E_LORA_MODE_SLEEP) },
 
-#if defined(USE_BAND_868) || defined(USE_BAND_915)
+#if defined(USE_BAND_868) || defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID)
     { MP_OBJ_NEW_QSTR(MP_QSTR_BW_125KHZ),           MP_OBJ_NEW_SMALL_INT(E_LORA_BW_125_KHZ) },
 #endif
 #if defined(USE_BAND_868)
@@ -1501,7 +1514,7 @@ const mod_network_nic_type_t mod_network_nic_type_lora = {
 
 static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
     if (lora_obj.state == E_LORA_STATE_NOINIT) {
-        *_errno = ENETDOWN;
+        *_errno = MP_ENETDOWN;
         return -1;
     }
     s->sock_base.sd = 1;
@@ -1510,7 +1523,7 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
 #else
     LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_4);
 #endif
-    // port #2 is the defualt one
+    // port number 2 is the default one
     LORAWAN_SOCKET_SET_PORT(s->sock_base.sd, 2);
     return 0;
 }
@@ -1529,9 +1542,9 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
 
     // is the radio able to transmit
     if (lora_obj.pwr_mode == E_LORA_MODE_SLEEP) {
-        *_errno = ENETDOWN;
+        *_errno = MP_ENETDOWN;
     } else if (len > LORA_PAYLOAD_SIZE_MAX) {
-        *_errno = EMSGSIZE;
+        *_errno = MP_EMSGSIZE;
     } else if (len > 0) {
         if (lora_obj.stack_mode == E_LORA_STACK_MODE_LORA) {
             n_bytes = lora_send (buf, len, s->sock_base.timeout);
@@ -1542,10 +1555,10 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
                                     LORAWAN_SOCKET_GET_PORT(s->sock_base.sd));
         }
         if (n_bytes == 0) {
-            *_errno = EAGAIN;
+            *_errno = MP_EAGAIN;
             n_bytes = -1;
         } else if (n_bytes < 0) {
-            *_errno = ENETUNREACH;
+            *_errno = MP_EMSGSIZE;
         }
     }
     return n_bytes;
@@ -1555,7 +1568,7 @@ static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t l
     LORA_CHECK_SOCKET(s);
     int ret = lora_recv (buf, len, s->sock_base.timeout);
     if (ret < 0) {
-        *_errno = EAGAIN;
+        *_errno = MP_EAGAIN;
         return -1;
     }
     return ret;
@@ -1564,7 +1577,7 @@ static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t l
 static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno) {
     LORA_CHECK_SOCKET(s);
     if (level != SOL_LORA) {
-        *_errno = EOPNOTSUPP;
+        *_errno = MP_EOPNOTSUPP;
         return -1;
     }
 
@@ -1576,12 +1589,12 @@ static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, 
         }
     } else if (opt == SO_LORAWAN_DR) {
         if (!lora_validate_data_rate(*(uint32_t *)optval)) {
-            *_errno = EOPNOTSUPP;
+            *_errno = MP_EOPNOTSUPP;
             return -1;
         }
         LORAWAN_SOCKET_SET_DR(s->sock_base.sd, *(uint8_t *)optval);
     } else {
-        *_errno = EOPNOTSUPP;
+        *_errno = MP_EOPNOTSUPP;
         return -1;
     }
     return 0;
@@ -1596,7 +1609,7 @@ static int lora_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout
 static int lora_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
     LORA_CHECK_SOCKET(s);
     if (port > 224) {
-        *_errno = EOPNOTSUPP;
+        *_errno = MP_EOPNOTSUPP;
         return -1;
     }
     LORAWAN_SOCKET_SET_PORT(s->sock_base.sd, port);
@@ -1616,7 +1629,7 @@ static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp
             ret |= MP_IOCTL_POLL_WR;
         }
     } else {
-        *_errno = EINVAL;
+        *_errno = MP_EINVAL;
         ret = MP_STREAM_ERROR;
     }
     return ret;

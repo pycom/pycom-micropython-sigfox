@@ -17,6 +17,7 @@
 #include "py/nlr.h"
 #include "py/runtime.h"
 #include "py/stream.h"
+#include "py/mperrno.h"
 #include "mpexception.h"
 #include "pybioctl.h"
 
@@ -128,7 +129,7 @@ static int32_t sigfox_recv (byte *buf, uint32_t len, int32_t timeout_ms);
 #define RX_FIFO_ERROR                                 (0x11)
 
 #define SIGFOX_CHECK_SOCKET(s)                        if (s->sock_base.sd < 0) {  \
-                                                          *_errno = EBADF;        \
+                                                          *_errno = MP_EBADF;        \
                                                           return -1;              \
                                                       }
 
@@ -933,7 +934,7 @@ const mod_network_nic_type_t mod_network_nic_type_sigfox = {
 
 static int sigfox_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
     if (sigfox_obj.state == E_SIGFOX_STATE_NOINIT) {
-        *_errno = ENETDOWN;
+        *_errno = MP_ENETDOWN;
         return -1;
     }
     s->sock_base.sd = 1;
@@ -955,7 +956,7 @@ static int sigfox_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_u
     SIGFOX_CHECK_SOCKET(s);
 
     if (len > SIGFOX_TX_PAYLOAD_SIZE_MAX) {
-        *_errno = EMSGSIZE;
+        *_errno = MP_EMSGSIZE;
         return -1;
     }
 
@@ -982,7 +983,7 @@ static int sigfox_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_u
 
     // just pass it to the Sigfox queue
     if (!xQueueSend(xCmdQueue, (void *)&cmd_rx_data, (TickType_t)(timeout_ms / portTICK_PERIOD_MS))) {
-        *_errno = EAGAIN;
+        *_errno = MP_EAGAIN;
         return -1;
     }
 
@@ -993,7 +994,7 @@ static int sigfox_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_u
                                               pdFALSE,  // do not wait for all bits
                                              (TickType_t)portMAX_DELAY);
         if (result & SIGFOX_STATUS_ERR) {
-            *_errno = ENETUNREACH;
+            *_errno = MP_ENETDOWN;
             return -1;
         }
     }
@@ -1005,7 +1006,7 @@ static int sigfox_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t
     SIGFOX_CHECK_SOCKET(s);
     int ret = sigfox_recv (buf, len, s->sock_base.timeout);
     if (ret < 0) {
-        *_errno = EAGAIN;
+        *_errno = MP_EAGAIN;
         return -1;
     }
     return ret;
@@ -1014,7 +1015,7 @@ static int sigfox_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t
 static int sigfox_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno) {
     SIGFOX_CHECK_SOCKET(s);
     if (level != SOL_SIGFOX) {
-        *_errno = EOPNOTSUPP;
+        *_errno = MP_EOPNOTSUPP;
         return -1;
     }
 
@@ -1023,7 +1024,7 @@ static int sigfox_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level
     } else if (opt == SO_SIGFOX_TX_REPEAT) {
         uint8_t tx_repeat = *(uint8_t *)optval;
         if (tx_repeat > 2) {
-            *_errno = ENOPROTOOPT;
+            *_errno = MP_EOPNOTSUPP;
             return -1;
         }
         SIGFOX_SOCKET_SET_TX_REPEAT(s->sock_base.sd, tx_repeat);
@@ -1032,7 +1033,7 @@ static int sigfox_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level
     } else if (opt == SO_SIGFOX_BIT) {
         SIGFOX_SOCKET_SET_BIT(s->sock_base.sd, *(uint8_t *)optval);
     } else {
-        *_errno = EOPNOTSUPP;
+        *_errno = MP_EOPNOTSUPP;
         return -1;
     }
     return 0;
@@ -1057,7 +1058,7 @@ static int sigfox_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, 
             ret |= MP_IOCTL_POLL_WR;
         }
     } else {
-        *_errno = EINVAL;
+        *_errno = MP_EINVAL;
         ret = MP_STREAM_ERROR;
     }
     return ret;

@@ -18,6 +18,7 @@
 #include "py/runtime.h"
 #include "py/stream.h"
 #include "py/mphal.h"
+#include "py/mperrno.h"
 
 #include "heap_alloc_caps.h"
 #include "sdkconfig.h"
@@ -1214,7 +1215,7 @@ static int wlan_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uin
                     // printf("mbedtls_ssl_write returned -0x%x\n", -bytes);
                     break;
                 } else {
-                    *_errno = EAGAIN;
+                    *_errno = MP_EAGAIN;
                     return -1;
                 }
             }
@@ -1237,7 +1238,7 @@ static int wlan_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t le
             ret = mbedtls_ssl_read(&ss->ssl, (unsigned char *)buf, len);
             if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE || ret == MBEDTLS_ERR_SSL_TIMEOUT || ret == -0x4C) { // FIXME
                 // printf("Nothing to read\n");
-                *_errno = EAGAIN;
+                *_errno = MP_EAGAIN;
                 return -1;
             } else if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
                 // printf("Close notify received\n");
@@ -1375,7 +1376,7 @@ static int wlan_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp
             ret |= MP_IOCTL_POLL_HUP;
         }
     } else {
-        *_errno = EINVAL;
+        *_errno = MP_EINVAL;
         ret = MP_STREAM_ERROR;
     }
     return ret;

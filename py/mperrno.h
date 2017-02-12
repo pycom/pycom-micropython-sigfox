@@ -67,9 +67,11 @@
 #define MP_EDOM              (33) // Math argument out of domain of func
 #define MP_ERANGE            (34) // Math result not representable
 #define MP_EWOULDBLOCK  MP_EAGAIN // Operation would block
+#define MP_EMSGSIZE          (90) // Message too long
 #define MP_EOPNOTSUPP        (95) // Operation not supported on transport endpoint
 #define MP_EAFNOSUPPORT      (97) // Address family not supported by protocol
 #define MP_EADDRINUSE        (98) // Address already in use
+#define MP_ENETDOWN         (100) // Network is down
 #define MP_ECONNABORTED     (103) // Software caused connection abort
 #define MP_ECONNRESET       (104) // Connection reset by peer
 #define MP_ENOBUFS          (105) // No buffer space available
@@ -121,9 +123,11 @@
 #define MP_EDOM             EDOM
 #define MP_ERANGE           ERANGE
 #define MP_EWOULDBLOCK      EAGAIN
+#define MP_EMSGSIZE         EMSGSIZE
 #define MP_EOPNOTSUPP       EOPNOTSUPP
 #define MP_EAFNOSUPPORT     EAFNOSUPPORT
 #define MP_EADDRINUSE       EADDRINUSE
+#define MP_ENETDOWN         ENETDOWN
 #define MP_ECONNABORTED     ECONNABORTED
 #define MP_ECONNRESET       ECONNRESET
 #define MP_ENOBUFS          ENOBUFS

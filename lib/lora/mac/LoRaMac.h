@@ -1750,6 +1750,24 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest );
  */
 LoRaMacStatus_t LoRaMacMcpsRequest( McpsReq_t *mcpsRequest );
 
+/*!
+ * \brief Validates if the payload fits into the frame, taking the datarate
+ *        into account.
+ *
+ * \details Refer to chapter 4.3.2 of the LoRaWAN specification, v1.0
+ *
+ * \param lenN Length of the application payload. The length depends on the
+ *             datarate and is region specific
+ *
+ * \param datarate Current datarate
+ *
+ * \param fOptsLen Length of the fOpts field
+ *
+ * \retval [false: payload does not fit into the frame, true: payload fits into
+ *          the frame]
+ */
+bool ValidatePayloadLength( uint8_t lenN, int8_t datarate, uint8_t fOptsLen );
+
 /*! \} defgroup LORAMAC */
 
 #endif // __LORAMAC_H__
