@@ -2435,25 +2435,45 @@ static void ProcessMacCommands( uint8_t *payload, uint8_t macIndex, uint8_t comm
 #elif defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID )
                     if( chMaskCntl == 6 )
                     {
-                        // Enable all 125 kHz channels
-                        for( uint8_t i = 0, k = 0; i < LORA_MAX_NB_CHANNELS - 8; i += 16, k++ )
+                        if ( chMask == 0 && datarate == DR_4 ) 
                         {
-                            for( uint8_t j = 0; j < 16; j++ )
+                            status &= 0xFD; // Datarate KO
+                        }
+                        else
+                        {
+                            // Enable all the 125 kHz channels
+                            for( uint8_t i = 0, k = 0; i < LORA_MAX_NB_CHANNELS - 8; i += 16, k++ )
                             {
-                                if( Channels[i + j].Frequency != 0 )
+                                for( uint8_t j = 0; j < 16; j++ )
                                 {
-                                    channelsMask[k] |= 1 << j;
+                                    if( Channels[i + j].Frequency != 0 )
+                                    {
+                                        channelsMask[k] |= 1 << j;
+                                    }
                                 }
                             }
+
+                            // Set the 500 KHz channel mask equal to chMask
+                            channelsMask[4] = chMask;
                         }
                     }
                     else if( chMaskCntl == 7 )
                     {
-                        // Disable all 125 kHz channels
-                        channelsMask[0] = 0x0000;
-                        channelsMask[1] = 0x0000;
-                        channelsMask[2] = 0x0000;
-                        channelsMask[3] = 0x0000;
+                        if ( chMask == 0x00FF && datarate != DR_4 )
+                        {
+                            status &= 0xFD; // Datarate KO
+                        }
+                        else
+                        {
+                            // Disable all the 125 kHz channels
+                            channelsMask[0] = 0x0000;
+                            channelsMask[1] = 0x0000;
+                            channelsMask[2] = 0x0000;
+                            channelsMask[3] = 0x0000;
+
+                            // Set the 500 KHz channel mask equal to chMask
+                            channelsMask[4] = chMask;
+                        }
                     }
                     else if( chMaskCntl == 5 )
                     {
@@ -2512,6 +2532,14 @@ static void ProcessMacCommands( uint8_t *payload, uint8_t macIndex, uint8_t comm
                         LoRaMacParams.ChannelsMask[5] = channelsMask[5];
 
                         LoRaMacParams.ChannelsNbRep = nbRep;
+
+#if ( defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID ) )
+                        // Modify the channels mask remaining accordingly
+                        for ( uint8_t i = 0; i < sizeof( LoRaMacParams.ChannelsMask ) / sizeof( LoRaMacParams.ChannelsMask[0] ); i++ )
+                        {
+                            ChannelsMaskRemaining[i] &= LoRaMacParams.ChannelsMask[i];
+                        }
+#endif
                     }
                     AddMacCommand( MOTE_MAC_LINK_ADR_ANS, status, 0 );
                 }
