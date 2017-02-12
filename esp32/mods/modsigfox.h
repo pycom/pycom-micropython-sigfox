@@ -51,7 +51,6 @@ typedef struct {
     uint8_t     len;
     uint8_t     tx_repeat;
     bool        receive;
-    bool        async;
     bool        oob;
 } sigfox_tx_cmd_t;
 
