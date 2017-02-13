@@ -146,6 +146,11 @@ void SX1272OnTimeoutIrq( void );
  */
 void SX1272FskFlagsIrq (void);
 
+/*!
+ * \brief General radio flags check callback
+ */
+void SX1272RadioFlagsIrq (void);
+
 /*
  * Private global constants
  */
@@ -226,6 +231,7 @@ static TimerEvent_t TxTimeoutTimer;
 static TimerEvent_t RxTimeoutTimer;
 static TimerEvent_t RxTimeoutSyncWord;
 static TimerEvent_t FskIrqFlagsTimer;
+static TimerEvent_t RadioIrqFlagsTimer;
 
 /*
  * Radio driver functions implementation
@@ -242,7 +248,9 @@ void SX1272Init( RadioEvents_t *events )
     TimerInit( &RxTimeoutTimer, SX1272OnTimeoutIrq );
     TimerInit( &RxTimeoutSyncWord, SX1272OnTimeoutIrq );
     TimerInit( &FskIrqFlagsTimer, SX1272FskFlagsIrq );
+    TimerInit( &RadioIrqFlagsTimer, SX1272RadioFlagsIrq );
     TimerSetValue(&FskIrqFlagsTimer, 1);     // every 1ms
+    TimerSetValue(&RadioIrqFlagsTimer, 1);   // every 1ms
 
     SX1272Reset( );
 
@@ -1210,7 +1218,7 @@ IRAM_ATTR void SX1272SetMaxPayloadLength( RadioModems_t modem, uint8_t max )
     }
 }
 
-IRAM_ATTR void SX1272OnTimeoutIrq( void )
+void SX1272OnTimeoutIrq( void )
 {
     // stop the fsk flags timer here
     TimerStop(&FskIrqFlagsTimer);
@@ -1243,6 +1251,12 @@ IRAM_ATTR void SX1272OnTimeoutIrq( void )
                 TimerStop( &RxTimeoutSyncWord );
             }
         }
+        else
+        {
+            // Clear Irq
+            SX1272Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXTIMEOUT );
+            SX1272.Settings.State = RF_IDLE;
+        }
         if( ( RadioEvents != NULL ) && ( RadioEvents->RxTimeout != NULL ) )
         {
             RadioEvents->RxTimeout( );
@@ -1260,7 +1274,31 @@ IRAM_ATTR void SX1272OnTimeoutIrq( void )
     }
 }
 
-IRAM_ATTR void SX1272FskFlagsIrq (void) {
+void SX1272RadioFlagsIrq (void) {
+    if (SX1272.irqFlags | RADIO_IRQ_FLAG_RX_TIMEOUT) {
+        SX1272.irqFlags &= ~RADIO_IRQ_FLAG_RX_TIMEOUT;
+        if( ( RadioEvents != NULL ) && ( RadioEvents->RxTimeout != NULL ) )
+        {
+            RadioEvents->RxTimeout( );
+        }
+    }
+    if (SX1272.irqFlags | RADIO_IRQ_FLAG_RX_DONE) {
+        SX1272.irqFlags &= ~RADIO_IRQ_FLAG_RX_DONE;
+        if( ( RadioEvents != NULL ) && ( RadioEvents->RxDone != NULL ) )
+        {
+            RadioEvents->RxDone( RxTxBuffer, SX1272.Settings.LoRaPacketHandler.Size, SX1272.Settings.LoRaPacketHandler.RssiValue, SX1272.Settings.LoRaPacketHandler.SnrValue );
+        }
+    }
+    if (SX1272.irqFlags | RADIO_IRQ_FLAG_RX_ERROR) {
+        SX1272.irqFlags &= ~RADIO_IRQ_FLAG_RX_ERROR;
+        if( ( RadioEvents != NULL ) && ( RadioEvents->RxError != NULL ) )
+        {
+            RadioEvents->RxError( );
+        }
+    }
+}
+
+void SX1272FskFlagsIrq (void) {
     // read the the irq flags registers
     uint8_t volatile irqflags1;
     uint8_t volatile irqflags2;
@@ -1400,10 +1438,10 @@ IRAM_ATTR void SX1272OnDio0Irq( void )
                         }
 
 
-                        if( ( RadioEvents != NULL ) && ( RadioEvents->RxError != NULL ) )
-                        {
-                            RadioEvents->RxError( );
-                        }
+                        // set the flag and trigger the timer to call the handler as soon as possible
+                        SX1272.irqFlags |= RADIO_IRQ_FLAG_RX_ERROR;
+                        TimerStart(&RadioIrqFlagsTimer);
+
                         SX1272.Settings.FskPacketHandler.PreambleDetected = false;
                         SX1272.Settings.FskPacketHandler.SyncWordDetected = false;
                         SX1272.Settings.FskPacketHandler.NbBytes = 0;
@@ -1446,10 +1484,10 @@ IRAM_ATTR void SX1272OnDio0Irq( void )
                     TimerStart( &RxTimeoutSyncWord );
                 }
 
-                if( ( RadioEvents != NULL ) && ( RadioEvents->RxDone != NULL ) )
-                {
-                    RadioEvents->RxDone( RxTxBuffer, SX1272.Settings.FskPacketHandler.Size, SX1272.Settings.FskPacketHandler.RssiValue, 0 );
-                }
+                // set the flag and trigger the timer to call the handler as soon as possible
+                SX1272.irqFlags |= RADIO_IRQ_FLAG_RX_DONE;
+                TimerStart(&RadioIrqFlagsTimer);
+
                 SX1272.Settings.FskPacketHandler.PreambleDetected = false;
                 SX1272.Settings.FskPacketHandler.SyncWordDetected = false;
                 SX1272.Settings.FskPacketHandler.NbBytes = 0;
@@ -1474,10 +1512,9 @@ IRAM_ATTR void SX1272OnDio0Irq( void )
                         }
                         TimerStop( &RxTimeoutTimer );
 
-                        if( ( RadioEvents != NULL ) && ( RadioEvents->RxError != NULL ) )
-                        {
-                            RadioEvents->RxError( );
-                        }
+                        // set the flag and trigger the timer to call the handler as soon as possible
+                        SX1272.irqFlags |= RADIO_IRQ_FLAG_RX_ERROR;
+                        TimerStart(&RadioIrqFlagsTimer);
                         break;
                     }
 
@@ -1514,10 +1551,9 @@ IRAM_ATTR void SX1272OnDio0Irq( void )
                     }
                     TimerStop( &RxTimeoutTimer );
 
-                    if( ( RadioEvents != NULL ) && ( RadioEvents->RxDone != NULL ) )
-                    {
-                        RadioEvents->RxDone( RxTxBuffer, SX1272.Settings.LoRaPacketHandler.Size, SX1272.Settings.LoRaPacketHandler.RssiValue, SX1272.Settings.LoRaPacketHandler.SnrValue );
-                    }
+                    // set the flag and trigger the timer to call the handler as soon as possible
+                    SX1272.irqFlags |= RADIO_IRQ_FLAG_RX_DONE;
+                    TimerStart(&RadioIrqFlagsTimer);
                 }
                 break;
             default:
@@ -1588,10 +1624,10 @@ IRAM_ATTR void SX1272OnDio1Irq( void )
                 SX1272Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXTIMEOUT );
 
                 SX1272.Settings.State = RF_IDLE;
-                if( ( RadioEvents != NULL ) && ( RadioEvents->RxTimeout != NULL ) )
-                {
-                    RadioEvents->RxTimeout( );
-                }
+
+                // set the flag and trigger the timer to call the handler as soon as possible
+                SX1272.irqFlags |= RADIO_IRQ_FLAG_RX_TIMEOUT;
+                TimerStart(&RadioIrqFlagsTimer);
                 break;
             default:
                 break;
@@ -1743,7 +1779,8 @@ IRAM_ATTR void SX1272OnDio4Irq( void )
     }
 }
 
-IRAM_ATTR void SX1272OnDio5Irq( void )
+// not used
+void SX1272OnDio5Irq( void )
 {
     switch( SX1272.Settings.Modem )
     {

@@ -82,7 +82,7 @@ void sd_disk_deinit (void) {
 //*****************************************************************************
 DRESULT sd_disk_read (BYTE* pBuffer, DWORD ulSectorNumber, UINT SectorCount) {
     if (SectorCount > 0) {
-        if (ESP_OK == sdmmc_read_blocks(&sdmmc_card_info, pBuffer, ulSectorNumber, SectorCount)) {
+        if (ESP_OK == sdmmc_read_sectors(&sdmmc_card_info, pBuffer, ulSectorNumber, SectorCount)) {
             return RES_OK;
         }
     }
@@ -101,7 +101,7 @@ DRESULT sd_disk_read (BYTE* pBuffer, DWORD ulSectorNumber, UINT SectorCount) {
 //*****************************************************************************
 DRESULT sd_disk_write (const BYTE* pBuffer, DWORD ulSectorNumber, UINT SectorCount) {
     if (SectorCount > 0) {
-        if (ESP_OK == sdmmc_write_blocks(&sdmmc_card_info, pBuffer, ulSectorNumber, SectorCount)) {
+        if (ESP_OK == sdmmc_write_sectors(&sdmmc_card_info, pBuffer, ulSectorNumber, SectorCount)) {
             return RES_OK;
         }
     }

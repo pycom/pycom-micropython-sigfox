@@ -910,7 +910,7 @@ static void PrepareRxDoneAbort( void )
     TimerStart( &MacStateCheckTimer );
 }
 
-IRAM_ATTR static void OnRadioRxDone( uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr )
+static void OnRadioRxDone( uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr )
 {
     LoRaMacHeader_t macHdr;
     LoRaMacFrameCtrl_t fCtrl;
@@ -1306,7 +1306,7 @@ IRAM_ATTR static void OnRadioRxDone( uint8_t *payload, uint16_t size, int16_t rs
     TimerStart( &MacStateCheckTimer );
 }
 
-IRAM_ATTR static void OnRadioTxTimeout( void )
+static void OnRadioTxTimeout( void )
 {
     if( LoRaMacDeviceClass != CLASS_C )
     {
@@ -1322,7 +1322,7 @@ IRAM_ATTR static void OnRadioTxTimeout( void )
     LoRaMacFlags.Bits.MacDone = 1;
 }
 
-IRAM_ATTR static void OnRadioRxError( void )
+static void OnRadioRxError( void )
 {
     if( LoRaMacDeviceClass != CLASS_C )
     {
@@ -1344,7 +1344,7 @@ IRAM_ATTR static void OnRadioRxError( void )
     }
 }
 
-IRAM_ATTR static void OnRadioRxTimeout( void )
+static void OnRadioRxTimeout( void )
 {
     if( LoRaMacDeviceClass != CLASS_C )
     {
@@ -1552,7 +1552,7 @@ static void OnTxDelayedTimerEvent( void )
     ScheduleTx( );
 }
 
-IRAM_ATTR static void OnRxWindow1TimerEvent( void )
+static void OnRxWindow1TimerEvent( void )
 {
     uint16_t symbTimeout = 8; // DR_2, DR_1, DR_0
     int8_t datarate = 0;

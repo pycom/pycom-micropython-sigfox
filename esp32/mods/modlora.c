@@ -331,7 +331,7 @@ static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms,
     return len;
 }
 
-static IRAM_ATTR void McpsConfirm (McpsConfirm_t *McpsConfirm) {
+static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
     uint32_t status = LORA_STATUS_COMPLETED;
     if (McpsConfirm->Status == LORAMAC_EVENT_INFO_STATUS_OK) {
         switch (McpsConfirm->McpsRequest) {

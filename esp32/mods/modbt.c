@@ -56,8 +56,8 @@
 #define BT_GATTS_QUEUE_SIZE_MAX                             (2)
 #define BT_CHAR_VALUE_SIZE_MAX                              (20)
 
-#define MOD_BT_CLIENT_ID                                    (0xEE)
-#define MOD_BT_SERVER_APP_ID                                (0x00FF)
+#define MOD_BT_CLIENT_APP_ID                                (0)
+#define MOD_BT_SERVER_APP_ID                                (0)
 
 #define MOD_BT_GATTC_ADV_EVT                                (0x0001)
 #define MOD_BT_GATTS_CONN_EVT                               (0x0002)
@@ -81,6 +81,7 @@ typedef struct {
     mp_obj_list_t         srv_list;
     mp_obj_list_t         attr_list;
     uint16_t              gatts_if;
+    uint16_t              gattc_if;
     uint16_t              gatts_conn_id;
     bool                  init;
     bool                  busy;
@@ -208,8 +209,9 @@ static esp_ble_adv_params_t bt_adv_params = {
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-static void esp_gap_cb(uint32_t event, void *param);
-static void esp_gattc_cb(uint32_t event, void *param);
+static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
+static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
+static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 static void close_connection(int32_t conn_id);
 
 STATIC void bluetooth_callback_handler(void *arg);
@@ -232,7 +234,7 @@ void modbt_init0(void) {
     }
 
     if (bt_obj.init) {
-        esp_ble_gattc_app_unregister(MOD_BT_CLIENT_ID);
+        esp_ble_gattc_app_unregister(MOD_BT_CLIENT_APP_ID);
         esp_ble_gatts_app_unregister(MOD_BT_SERVER_APP_ID);
     }
 
@@ -244,8 +246,6 @@ void modbt_init0(void) {
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
-
-static esp_gatt_if_t client_if;
 static esp_gatt_status_t status = ESP_GATT_ERROR;
 
 static esp_ble_scan_params_t ble_scan_params = {
@@ -274,7 +274,7 @@ static void close_connection (int32_t conn_id) {
     }
 }
 
-static bt_char_obj_t *finds_gattc_char (int32_t conn_id, esp_gatt_srvc_id_t *srvc_id, esp_gatt_id_t *char_id) {
+static bt_char_obj_t *find_gattc_char (int32_t conn_id, esp_gatt_srvc_id_t *srvc_id, esp_gatt_id_t *char_id) {
     for (mp_uint_t i = 0; i < bt_obj.conn_list.len; i++) {
         bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(bt_obj.conn_list.items[i]));
 
@@ -298,7 +298,7 @@ static bt_char_obj_t *finds_gattc_char (int32_t conn_id, esp_gatt_srvc_id_t *srv
     return NULL;
 }
 
-static bt_gatts_attr_obj_t *finds_gatts_attr_by_handle (uint16_t handle) {
+static bt_gatts_attr_obj_t *find_gatts_attr_by_handle (uint16_t handle) {
     for (mp_uint_t i = 0; i < bt_obj.attr_list.len; i++) {
         bt_gatts_attr_obj_t *char_obj = ((bt_gatts_attr_obj_t *)(bt_obj.attr_list.items[i]));
         if (char_obj->handle == handle) {
@@ -308,7 +308,7 @@ static bt_gatts_attr_obj_t *finds_gatts_attr_by_handle (uint16_t handle) {
     return NULL;
 }
 
-static void esp_gap_cb(uint32_t event, void *param) {
+static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
     switch (event) {
     case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT: {
         int32_t duration = bt_obj.scan_duration;
@@ -360,7 +360,7 @@ static void esp_gap_cb(uint32_t event, void *param) {
     }
 }
 
-static void esp_gattc_cb(uint32_t event, void *param) {
+static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
     uint16_t conn_id = 0;
     esp_ble_gattc_cb_param_t *p_data = (esp_ble_gattc_cb_param_t *)param;
     bt_event_result_t bt_event_result;
@@ -369,7 +369,7 @@ static void esp_gattc_cb(uint32_t event, void *param) {
     switch (event) {
     case ESP_GATTC_REG_EVT:
         status = p_data->reg.status;
-        client_if = p_data->reg.gatt_if;
+        bt_obj.gattc_if = gattc_if;
         // printf("status = %x, client_if = %x\n", status, client_if);
         break;
     case ESP_GATTC_OPEN_EVT:
@@ -378,7 +378,7 @@ static void esp_gattc_cb(uint32_t event, void *param) {
         if (p_data->open.status == ESP_GATT_OK) {
             // printf("Device connected=%d\n", conn_id);
             bt_event_result.connection.conn_id = conn_id;
-            bt_event_result.connection.gatt_if = p_data->open.gatt_if;
+            bt_event_result.connection.gatt_if = gattc_if;
             memcpy(bt_event_result.connection.srv_bda, p_data->open.remote_bda, ESP_BD_ADDR_LEN);
         } else {
             // printf("Connection failed!=%d\n", conn_id);
@@ -416,7 +416,7 @@ static void esp_gattc_cb(uint32_t event, void *param) {
             memcpy(&bt_event_result.characteristic.char_id, char_id, sizeof(esp_gatt_id_t));
             bt_event_result.characteristic.char_prop = p_data->get_char.char_prop;
             xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
-            esp_ble_gattc_get_characteristic(bt_obj.conn_id, &p_data->get_char.srvc_id, char_id);
+            esp_ble_gattc_get_characteristic(gattc_if, bt_obj.conn_id, &p_data->get_char.srvc_id, char_id);
             // printf("characteristic found=%x\n", p_data->get_char.char_id.uuid.uuid.uuid16);
         } else {
             // printf("Error getting BLE characteristic\n");
@@ -426,7 +426,7 @@ static void esp_gattc_cb(uint32_t event, void *param) {
     case ESP_GATTC_NOTIFY_EVT:
     {
         bt_char_obj_t *char_obj;
-        char_obj = finds_gattc_char (p_data->notify.conn_id, &p_data->notify.srvc_id, &p_data->notify.char_id);
+        char_obj = find_gattc_char (p_data->notify.conn_id, &p_data->notify.srvc_id, &p_data->notify.char_id);
         if (char_obj != NULL) {
             char_obj->events |= MOD_BT_GATTC_NOTIFY_EVT;
             if (char_obj->trigger & MOD_BT_GATTC_NOTIFY_EVT) {
@@ -479,23 +479,23 @@ STATIC void gatts_char_callback_handler(void *arg) {
     }
 }
 
-static void gatts_event_handler(uint32_t event, void *param)
+static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
     esp_ble_gatts_cb_param_t *p = (esp_ble_gatts_cb_param_t *)param;
 
     switch (event) {
     case ESP_GATTS_REG_EVT:
-        bt_obj.gatts_if = p->reg.gatt_if;
+        bt_obj.gatts_if = gatts_if;
         break;
     case ESP_GATTS_READ_EVT: {
-        bt_gatts_attr_obj_t *attr_obj = finds_gatts_attr_by_handle (p->read.handle);
+        bt_gatts_attr_obj_t *attr_obj = find_gatts_attr_by_handle (p->read.handle);
         if (attr_obj) {
             esp_gatt_rsp_t rsp;
             memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
             rsp.attr_value.handle = p->read.handle;
             rsp.attr_value.len = attr_obj->value_len;
             memcpy(&rsp.attr_value.value, attr_obj->value, attr_obj->value_len);
-            esp_ble_gatts_send_response(p->read.conn_id, p->read.trans_id, ESP_GATT_OK, &rsp);
+            esp_ble_gatts_send_response(gatts_if, p->read.conn_id, p->read.trans_id, ESP_GATT_OK, &rsp);
 
             if (attr_obj->is_char) {
                 bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
@@ -508,13 +508,13 @@ static void gatts_event_handler(uint32_t event, void *param)
         break;
     }
     case ESP_GATTS_WRITE_EVT: {
-        bt_gatts_attr_obj_t *attr_obj = finds_gatts_attr_by_handle (p->write.handle);
+        bt_gatts_attr_obj_t *attr_obj = find_gatts_attr_by_handle (p->write.handle);
         if (attr_obj) {
             if (p->write.len <= sizeof(attr_obj->value)) {
                 memcpy(attr_obj->value, p->write.value, p->write.len);
                 attr_obj->value_len = p->write.len;
             }
-            esp_ble_gatts_send_response(p->write.conn_id, p->write.trans_id, ESP_GATT_OK, NULL);
+            esp_ble_gatts_send_response(gatts_if, p->write.conn_id, p->write.trans_id, ESP_GATT_OK, NULL);
 
             if (attr_obj->is_char) {
                 bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
@@ -597,7 +597,7 @@ static void gatts_event_handler(uint32_t event, void *param)
 /// \class Bluetooth
 static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
     if (!self->controller_active) {
-        bt_controller_init();
+        esp_bt_controller_init();
         self->controller_active = true;
     }
 
@@ -606,10 +606,10 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth memory allocation failed"));
         }
 
-        if (ESP_OK != esp_init_bluetooth()) {
+        if (ESP_OK != esp_bluedroid_init()) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth init failed"));
         }
-        if (ESP_OK != esp_enable_bluetooth()) {
+        if (ESP_OK != esp_bluedroid_enable()) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth enable failed"));
         }
 
@@ -623,9 +623,11 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
 
         self->init = true;
     }
-    esp_ble_gattc_app_register(MOD_BT_CLIENT_ID);
+
+    esp_ble_gattc_app_register(MOD_BT_CLIENT_APP_ID);
     esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
     bt_obj.gatts_conn_id = -1;
+
     return mp_const_none;
 }
 
@@ -672,8 +674,8 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_init_obj, 1, bt_init);
 
 STATIC mp_obj_t bt_deinit(mp_obj_t self_in) {
     if (bt_obj.init) {
-        esp_disable_bluetooth();
-        esp_deinit_bluetooth();
+        esp_bluedroid_disable();
+        esp_bluedroid_deinit();
         bluetooth_free_memory();
         bt_obj.init = false;
     }
@@ -842,7 +844,7 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
 
     xQueueReset(xScanQueue);
     bt_obj.busy = true;
-    if (ESP_OK != esp_ble_gattc_open(client_if, bufinfo.buf, true)) {
+    if (ESP_OK != esp_ble_gattc_open(bt_obj.gattc_if, bufinfo.buf, true)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
 
@@ -941,7 +943,7 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
     adv_data.min_interval = 0x20;
     adv_data.max_interval = 0x40;
     adv_data.appearance = 0x00;
-    adv_data.flag = 0x2;
+    adv_data.flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT);
 
     esp_ble_gap_config_adv_data(&adv_data);
 
@@ -1070,18 +1072,11 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
         properties = mp_obj_get_int(args[2].u_obj);
     }
 
-    esp_ble_gatts_add_char(self->handle, &char_uuid, permissions, properties);
-
-    bt_gatts_event_result_t gatts_event;
-    xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);
-
     bt_gatts_char_obj_t *characteristic = m_new_obj(bt_gatts_char_obj_t);
     characteristic->attr_obj.base.type = (mp_obj_t)&mod_bt_gatts_char_type;
-    characteristic->attr_obj.handle = gatts_event.char_handle;
     characteristic->attr_obj.parent = self;
     characteristic->trigger = 0;
     characteristic->events = 0;
-    memcpy(&characteristic->attr_obj.uuid, &char_uuid, sizeof(char_uuid));
 
     if (args[3].u_obj != mp_const_none) {
         // characteristic value
@@ -1106,12 +1101,29 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
         characteristic->attr_obj.value_len = 1;
     }
 
+    esp_attr_value_t char_val = {.attr_max_len = 20, 
+                                 .attr_len = characteristic->attr_obj.value_len, 
+                                 .attr_value = characteristic->attr_obj.value};
+    esp_attr_control_t char_control = {.auto_rsp = ESP_GATT_RSP_BY_APP};
+    esp_ble_gatts_add_char(self->handle, &char_uuid, permissions, properties, &char_val, &char_control);
+
+    bt_gatts_event_result_t gatts_event;
+    xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);
+
+    characteristic->attr_obj.handle = gatts_event.char_handle;
+    memcpy(&characteristic->attr_obj.uuid, &char_uuid, sizeof(char_uuid));
+
     mp_obj_list_append((mp_obj_t)&bt_obj.attr_list, characteristic);
 
     bt_gatts_attr_obj_t *descriptor = m_new_obj(bt_gatts_attr_obj_t);
     descriptor->uuid.len = ESP_UUID_LEN_16;
     descriptor->uuid.uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
-    esp_ble_gatts_add_char_descr(self->handle, &descriptor->uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE);
+
+    esp_attr_value_t attr_val = {.attr_max_len = 20, 
+                                 .attr_len = descriptor->value_len, 
+                                 .attr_value = descriptor->value};
+    esp_attr_control_t attr_control = {.auto_rsp = ESP_GATT_RSP_BY_APP};
+    esp_ble_gatts_add_char_descr(self->handle, &descriptor->uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, &attr_val, &attr_control);
 
     xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);
 
@@ -1161,7 +1173,8 @@ STATIC mp_obj_t bt_characteristic_value (mp_uint_t n_args, const mp_obj_t *args)
             } else {
                 self->attr_obj.value_len = 1;
             }
-            esp_ble_gatts_send_indicate(bt_obj.gatts_conn_id, self->attr_obj.handle, self->attr_obj.value_len, self->attr_obj.value, false);
+            esp_ble_gatts_send_indicate(bt_obj.gatts_if, bt_obj.gatts_conn_id, self->attr_obj.handle, 
+                                        self->attr_obj.value_len, self->attr_obj.value, false);
         } else {
             mp_buffer_info_t value_bufinfo;
             mp_get_buffer_raise(args[1], &value_bufinfo, MP_BUFFER_READ);
@@ -1314,7 +1327,7 @@ STATIC mp_obj_t bt_conn_disconnect(mp_obj_t self_in) {
     bt_connection_obj_t *self = self_in;
 
     if (self->conn_id > 0) {
-        esp_ble_gattc_close(self->conn_id);
+        esp_ble_gattc_close(bt_obj.gattc_if, self->conn_id);
         self->conn_id = -1;
     }
     return mp_const_none;
@@ -1330,7 +1343,7 @@ STATIC mp_obj_t bt_conn_services (mp_obj_t self_in) {
         bt_obj.busy = true;
         bt_obj.conn_id = self->conn_id;
         mp_obj_list_init(&self->srv_list, 0);
-        if (ESP_OK != esp_ble_gattc_search_service(self->conn_id, NULL)) {
+        if (ESP_OK != esp_ble_gattc_search_service(bt_obj.gattc_if, self->conn_id, NULL)) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
         }
         while (bt_obj.busy || xQueuePeek(xScanQueue, &bt_event, 0)) {
@@ -1402,7 +1415,7 @@ STATIC mp_obj_t bt_srv_characteristics(mp_obj_t self_in) {
         bt_obj.busy = true;
         bt_obj.conn_id = self->connection->conn_id;
         mp_obj_list_init(&self->char_list, 0);
-        if (ESP_OK != esp_ble_gattc_get_characteristic(self->connection->conn_id, &self->srv_id, NULL)) {
+        if (ESP_OK != esp_ble_gattc_get_characteristic(bt_obj.gattc_if, self->connection->conn_id, &self->srv_id, NULL)) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
         }
         while (bt_obj.busy || xQueuePeek(xScanQueue, &bt_event, 0)) {
@@ -1471,7 +1484,7 @@ STATIC mp_obj_t bt_char_read(mp_obj_t self_in) {
         bt_obj.busy = true;
         bt_obj.conn_id = self->service->connection->conn_id;
 
-        if (ESP_OK != esp_ble_gattc_read_char (self->service->connection->conn_id,
+        if (ESP_OK != esp_ble_gattc_read_char (bt_obj.gattc_if, self->service->connection->conn_id,
                                                &self->service->srv_id,
                                                &self->characteristic.char_id,
                                                ESP_GATT_AUTH_REQ_NONE)) {
@@ -1503,7 +1516,7 @@ STATIC mp_obj_t bt_char_write(mp_obj_t self_in, mp_obj_t value) {
         bt_obj.busy = true;
         bt_obj.conn_id = self->service->connection->conn_id;
 
-        if (ESP_OK != esp_ble_gattc_write_char (self->service->connection->conn_id,
+        if (ESP_OK != esp_ble_gattc_write_char (bt_obj.gattc_if, self->service->connection->conn_id,
                                                 &self->service->srv_id,
                                                 &self->characteristic.char_id,
                                                 bufinfo.len,

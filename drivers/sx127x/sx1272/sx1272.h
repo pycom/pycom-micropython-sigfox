@@ -33,6 +33,10 @@ Maintainer: Miguel Luis and Gregory Cristian
  */
 #define RADIO_WAKEUP_TIME                           ( RADIO_OSC_STARTUP + RADIO_SLEEP_TO_RX )
 
+#define RADIO_IRQ_FLAG_RX_TIMEOUT                   ( 0x01 )
+#define RADIO_IRQ_FLAG_RX_DONE                      ( 0x02 )
+#define RADIO_IRQ_FLAG_RX_ERROR                     ( 0x04 )
+
 /*!
  * Radio FSK modem parameters
  */
@@ -124,6 +128,7 @@ typedef struct SX1272_s
     Gpio_t        DIO;
     Spi_t         Spi;
     RadioSettings_t Settings;
+    uint32_t      irqFlags;
 }SX1272_t;
 
 /*!
