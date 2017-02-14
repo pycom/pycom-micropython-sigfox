@@ -113,8 +113,6 @@ typedef struct
     RadioState_t             State;
     RadioModems_t            Modem;
     uint32_t                 Channel;
-    RadioFskSettings_t       Fsk;
-    RadioFskPacketHandler_t  FskPacketHandler;
     RadioLoRaSettings_t      LoRa;
     RadioLoRaPacketHandler_t LoRaPacketHandler;
 }RadioSettings_t;

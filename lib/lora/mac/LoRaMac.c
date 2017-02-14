@@ -1876,16 +1876,8 @@ IRAM_ATTR static void RxWindowSetup( uint32_t freq, int8_t datarate, uint32_t ba
         McpsIndication.RxDatarate = ( uint8_t ) datarate;
 
 #if defined( USE_BAND_433 ) || defined( USE_BAND_780 ) || defined( USE_BAND_868 )
-        if( datarate == DR_7 )
-        {
-            modem = MODEM_FSK;
-            Radio.SetRxConfig( modem, 50e3, downlinkDatarate * 1e3, 0, 83.333e3, 5, 0, false, 0, true, 0, 0, false, rxContinuous );
-        }
-        else
-        {
-            modem = MODEM_LORA;
-            Radio.SetRxConfig( modem, bandwidth, downlinkDatarate, 1, 0, 8, timeout, false, 0, false, 0, 0, true, rxContinuous );
-        }
+        modem = MODEM_LORA;
+        Radio.SetRxConfig( modem, bandwidth, downlinkDatarate, 1, 0, 8, timeout, false, 0, false, 0, 0, true, rxContinuous );
 #elif defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID )
         modem = MODEM_LORA;
         Radio.SetRxConfig( modem, bandwidth, downlinkDatarate, 1, 0, 8, timeout, false, 0, false, 0, 0, true, rxContinuous );
@@ -3116,14 +3108,7 @@ LoRaMacStatus_t SendFrameOnChannel( ChannelParams_t channel )
     Radio.SetChannel( channel.Frequency );
 
 #if defined( USE_BAND_433 ) || defined( USE_BAND_780 ) || defined( USE_BAND_868 )
-    if( LoRaMacParams.ChannelsDatarate == DR_7 )
-    { // High Speed FSK channel
-        Radio.SetMaxPayloadLength( MODEM_FSK, LoRaMacBufferPktLen );
-        Radio.SetTxConfig( MODEM_FSK, txPower, 25e3, 0, datarate * 1e3, 0, 5, false, true, 0, 0, false, 3e3 );
-        TxTimeOnAir = Radio.TimeOnAir( MODEM_FSK, LoRaMacBufferPktLen );
-
-    }
-    else if( LoRaMacParams.ChannelsDatarate == DR_6 )
+    if( LoRaMacParams.ChannelsDatarate >= DR_6 )
     { // High speed LoRa channel
         Radio.SetMaxPayloadLength( MODEM_LORA, LoRaMacBufferPktLen );
         Radio.SetTxConfig( MODEM_LORA, txPower, 0, 1, datarate, 1, 8, false, true, 0, 0, false, 3e3 );
