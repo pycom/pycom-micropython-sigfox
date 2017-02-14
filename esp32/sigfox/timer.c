@@ -282,7 +282,7 @@ void TIMER_RxTx_done_stop (void) {
  ******************************************************************************/
 void TIMER_downlink_timing_init(sfx_u16 time_in_seconds) {
     // initialize the number of interrupt to wait for (this interrupt happens every 100ms)
-    TIMER_downlink_nb_interrupt_to_wait_for = ((time_in_seconds + 1) * 10);
+    TIMER_downlink_nb_interrupt_to_wait_for = (time_in_seconds * 10) + 1;
 
     // reset the counter
     TIMER_downlink_interrupt_count = 0;
