@@ -55,7 +55,7 @@ Constructors
 Methods
 -------
 
-.. method:: wlan.init(mode, \*, ssid, auth, channel, antenna)
+.. method:: wlan.init(mode, \*, ssid=None, auth=None, channel=1, antenna=WLAN.INT_ANT, power_save=False)
 
    Set or get the WiFi network processor configuration.
 
@@ -70,6 +70,7 @@ Methods
      - ``channel`` a number in the range 1-11. Only needed when mode is ``WLAN.AP``.
      - ``antenna`` selects between the internal and the external antenna. Can be either
        ``WLAN.INT_ANT`` or ``WLAN.EXT_ANT``.
+    - ``power_save`` enables or disables power save functions in STA mode.
 
    For example, you can do::
 

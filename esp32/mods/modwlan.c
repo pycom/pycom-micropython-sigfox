@@ -386,7 +386,7 @@ STATIC void wlan_set_mode (uint mode) {
     wlan_obj.mode = mode;
     esp_wifi_set_mode(mode);
     wifi_ps_type_t wifi_ps_type;
-    if (mode != WIFI_MODE_STA) {
+    if (mode != WIFI_MODE_STA || wlan_obj.pwrsave == false) {
         wifi_ps_type = WIFI_PS_NONE;
     } else {
         wifi_ps_type = WIFI_PS_MODEM;
@@ -592,6 +592,8 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
     wlan_validate_antenna(antenna);
 #endif
 
+    wlan_obj.pwrsave = args[5].u_bool;
+
     // initialize the wlan subsystem
     wlan_setup(mode, (const char *)ssid, ssid_len, auth, (const char *)key, key_len, channel, antenna, false);
 
@@ -607,6 +609,7 @@ STATIC const mp_arg_t wlan_init_args[] = {
     { MP_QSTR_auth,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
     { MP_QSTR_channel,      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 1} },
     { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = ANTENNA_TYPE_INTERNAL} },
+    { MP_QSTR_power_save,   MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
 };
 STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
