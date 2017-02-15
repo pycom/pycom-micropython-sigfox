@@ -10,7 +10,7 @@
 #ifndef VERSION_H_
 #define VERSION_H_
 
-#define SW_VERSION_NUMBER                              "1.6.0.b1"
+#define SW_VERSION_NUMBER                              "1.6.1.b1"
 #define LPWAN_VERSION_NUMBER                           "1.0.0"
 
 #endif /* VERSION_H_ */
