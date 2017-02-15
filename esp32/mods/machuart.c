@@ -16,6 +16,7 @@
 #include "py/stream.h"
 #include "py/mphal.h"
 #include "pybioctl.h"
+#include "py/mperrno.h"
 
 #include "heap_alloc_caps.h"
 #include "sdkconfig.h"
@@ -561,7 +562,7 @@ STATIC mp_uint_t mach_uart_read(mp_obj_t self_in, void *buf_in, mp_uint_t size, 
     // wait for first char to become available
     if (!uart_rx_wait(self)) {
         // return EAGAIN error to indicate non-blocking (then read() method returns None)
-        *errcode = EAGAIN;
+        *errcode = MP_EAGAIN;
         return MP_STREAM_ERROR;
     }
 

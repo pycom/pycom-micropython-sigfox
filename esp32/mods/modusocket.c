@@ -17,6 +17,7 @@
 #include "py/objstr.h"
 #include "py/runtime.h"
 #include "py/stream.h"
+#include "py/mperrno.h"
 #include "netutils.h"
 #include "modnetwork.h"
 #include "modwlan.h"
@@ -305,7 +306,7 @@ STATIC mp_obj_t socket_send(mp_obj_t self_in, mp_obj_t buf_in) {
     mp_int_t ret = self->sock_base.nic_type->n_send(self, bufinfo.buf, bufinfo.len, &_errno);
     MP_THREAD_GIL_ENTER();
     if (ret < 0) {
-        if (_errno == EAGAIN && self->sock_base.timeout > 0) {
+        if (_errno == MP_EAGAIN && self->sock_base.timeout > 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
         }
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
@@ -325,7 +326,7 @@ STATIC mp_obj_t socket_recv(mp_obj_t self_in, mp_obj_t len_in) {
     mp_int_t ret = self->sock_base.nic_type->n_recv(self, (byte*)vstr.buf, len, &_errno);
     MP_THREAD_GIL_ENTER();
     if (ret < 0) {
-        if (_errno == EAGAIN) {
+        if (_errno == MP_EAGAIN) {
             if (self->sock_base.timeout > 0) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
             } else {
@@ -362,7 +363,7 @@ STATIC mp_obj_t socket_sendto(mp_obj_t self_in, mp_obj_t data_in, mp_obj_t addr_
     mp_int_t ret = self->sock_base.nic_type->n_sendto(self, bufinfo.buf, bufinfo.len, ip, port, &_errno);
     MP_THREAD_GIL_ENTER();
     if (ret < 0) {
-        if (_errno == EAGAIN && self->sock_base.timeout > 0) {
+        if (_errno == MP_EAGAIN && self->sock_base.timeout > 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
         }
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
@@ -383,7 +384,7 @@ STATIC mp_obj_t socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
     mp_int_t ret = self->sock_base.nic_type->n_recvfrom(self, (byte*)vstr.buf, vstr.len, ip, &port, &_errno);
     MP_THREAD_GIL_ENTER();
     if (ret < 0) {
-        if (_errno == EAGAIN && self->sock_base.timeout > 0) {
+        if (_errno == MP_EAGAIN && self->sock_base.timeout > 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
         }
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
