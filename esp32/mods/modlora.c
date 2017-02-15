@@ -316,7 +316,7 @@ static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms,
 
     if (timeout_ms != 0) {
         uint32_t result = xEventGroupWaitBits(LoRaEvents,
-                                              LORA_STATUS_COMPLETED | LORA_STATUS_ERROR,
+                                              LORA_STATUS_COMPLETED | LORA_STATUS_ERROR | LORA_STATUS_MSG_SIZE,
                                               pdTRUE,   // clear on exit
                                               pdFALSE,  // do not wait for all bits
                                               (TickType_t)portMAX_DELAY);
