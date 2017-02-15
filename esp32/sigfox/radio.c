@@ -388,7 +388,7 @@ IRAM_ATTR void RADIO_modulate(void)
 	writeByte_FOFF1_pi_shifting = (offset_value + sign * SIGFOX_FREQ_STEP)>>8;
 	writeByte_FOFF0_pi_shifting = (offset_value + sign * SIGFOX_FREQ_STEP) & 0x00FF;
 
-	// deacrease PA
+	// decrease the PA
     if(uplink_spectrum_access == SFX_FH)
     {
         for (count = (NB_PTS_PA-1); count >= 0; count--)
@@ -429,7 +429,7 @@ IRAM_ATTR void RADIO_modulate(void)
     cc112xSpiWriteReg(CC112X_FREQOFF1, &writeByte_FOFF1_init, 1);
     cc112xSpiWriteReg(CC112X_FREQOFF0, &writeByte_FOFF0_init, 1);
 
-    // increase PA
+    // increase the PA
     if (uplink_spectrum_access == SFX_FH) {
         for (count = NB_PTS_PA-1; count >= (0); count--)
         {
@@ -453,7 +453,7 @@ IRAM_ATTR void RADIO_modulate(void)
 void IRAM_ATTR
 RADIO_start_rf_carrier(void)
 {
-    int16 countStart;
+    int16 count_start;
     uint8 writeByte;
 
     writeByte = 0x00;
@@ -464,21 +464,18 @@ RADIO_start_rf_carrier(void)
 
     // Ramp up the PA
     if (uplink_spectrum_access == SFX_FH) {
-        for (countStart = NB_PTS_PA-1; countStart >= (0); countStart--)
+        for (count_start = NB_PTS_PA-1; count_start >= (0); count_start--)
         {
-            cc112xSpiWriteReg(CC112X_PA_CFG2, (uint8*) &Table_Pa_600bps[countStart], 1);
+            cc112xSpiWriteReg(CC112X_PA_CFG2, (uint8*) &Table_Pa_600bps[count_start], 1);
             __delay_cycles(MODULATION_DELAY_CYCLES_100bps / 4);
         }
     } else {
-        for (countStart = NB_PTS_PA-1; countStart >= (0); countStart--)
+        for (count_start = NB_PTS_PA-1; count_start >= (0); count_start--)
         {
-            cc112xSpiWriteReg(CC112X_PA_CFG2, (uint8*) &Table_Pa_600bps[countStart], 1);
+            cc112xSpiWriteReg(CC112X_PA_CFG2, (uint8*) &Table_Pa_600bps[count_start], 1);
             __delay_cycles(MODULATION_DELAY_CYCLES_100bps * 3);
         }
     }
-
-    writeByte = 63;
-    cc112xSpiWriteReg(CC112X_PA_CFG2, &writeByte, 1);
 }
 
 
@@ -505,10 +502,11 @@ RADIO_stop_rf_carrier(void)
             __delay_cycles(MODULATION_DELAY_CYCLES_100bps * 3);
         }
     }
-    writeByte = 0;
+
+    writeByte = 0x00;
     cc112xSpiWriteReg(CC112X_PA_CFG2, &writeByte, 1);
     trxSpiCmdStrobe(CC112X_SIDLE);
-    writeByte = 0;
+    writeByte = 0x00;
     cc112xSpiWriteReg(CC112X_PA_CFG2, &writeByte, 1);
 }
 
