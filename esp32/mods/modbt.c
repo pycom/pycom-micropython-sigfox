@@ -169,7 +169,7 @@ typedef struct {
     esp_bt_uuid_t         uuid;
     uint16_t              handle;
     uint16_t              value_len;
-    uint8_t               value[20];
+    uint8_t               value[BT_CHAR_VALUE_SIZE_MAX];
     bool                  is_char;
 } bt_gatts_attr_obj_t;
 
@@ -510,10 +510,11 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     case ESP_GATTS_WRITE_EVT: {
         bt_gatts_attr_obj_t *attr_obj = find_gatts_attr_by_handle (p->write.handle);
         if (attr_obj) {
-            if (p->write.len <= sizeof(attr_obj->value)) {
-                memcpy(attr_obj->value, p->write.value, p->write.len);
-                attr_obj->value_len = p->write.len;
-            }
+            // only write up to the maximum allowed size
+            uint16_t write_len = p->write.len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : p->write.len;
+            memcpy(attr_obj->value, p->write.value, write_len);
+            attr_obj->value_len = write_len;
+
             esp_ble_gatts_send_response(gatts_if, p->write.conn_id, p->write.trans_id, ESP_GATT_OK, NULL);
 
             if (attr_obj->is_char) {
@@ -1180,8 +1181,9 @@ STATIC mp_obj_t bt_characteristic_value (mp_uint_t n_args, const mp_obj_t *args)
         } else {
             mp_buffer_info_t value_bufinfo;
             mp_get_buffer_raise(args[1], &value_bufinfo, MP_BUFFER_READ);
-            memcpy(self->attr_obj.value, value_bufinfo.buf, value_bufinfo.len);
-            self->attr_obj.value_len = value_bufinfo.len;
+            uint8_t value_len = value_bufinfo.len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : value_bufinfo.len;
+            memcpy(self->attr_obj.value, value_bufinfo.buf, value_len);
+            self->attr_obj.value_len = value_len;
         }
         return mp_const_none;
     }
