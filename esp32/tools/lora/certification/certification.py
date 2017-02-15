@@ -32,7 +32,7 @@ class Compliance:
         self._join()
 
         self.s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
-        self.s.setsockopt(socket.SOL_LORA, socket.SO_DR, 5)
+        self.s.setsockopt(socket.SOL_LORA, socket.SO_DR, 3)
         self.s.setsockopt(socket.SOL_LORA, socket.SO_CONFIRMED, False)
 
     def _join(self):
