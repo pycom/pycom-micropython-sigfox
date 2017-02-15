@@ -1075,6 +1075,7 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     bt_gatts_char_obj_t *characteristic = m_new_obj(bt_gatts_char_obj_t);
     characteristic->attr_obj.base.type = (mp_obj_t)&mod_bt_gatts_char_type;
     characteristic->attr_obj.parent = self;
+    characteristic->attr_obj.is_char = true;
     characteristic->trigger = 0;
     characteristic->events = 0;
 
@@ -1130,6 +1131,7 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     descriptor->base.type = (mp_obj_t)&mod_bt_gatts_char_type;
     descriptor->handle = gatts_event.char_descr_handle;
     descriptor->parent = characteristic;
+    descriptor->is_char = false;
     descriptor->value_len = 2;
     descriptor->value[0] = 0;
     descriptor->value[1] = 0;
