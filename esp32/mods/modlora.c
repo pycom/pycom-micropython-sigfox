@@ -1560,6 +1560,8 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
         } else if (n_bytes < 0) {
             *_errno = MP_EMSGSIZE;
         }
+    } else {
+        n_bytes = 0;
     }
     return n_bytes;
 }

@@ -1281,13 +1281,16 @@ static int wlan_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t le
 }
 
 static int wlan_socket_sendto( mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port, int *_errno) {
-    MAKE_SOCKADDR(addr, ip, port)
-    int ret = sendto(s->sock_base.sd, (byte*)buf, len, 0, (struct sockaddr*)&addr, sizeof(addr));
-    if (ret < 0) {
-        *_errno = errno;
-        return -1;
+    if (len > 0) {
+        MAKE_SOCKADDR(addr, ip, port)
+        int ret = sendto(s->sock_base.sd, (byte*)buf, len, 0, (struct sockaddr*)&addr, sizeof(addr));
+        if (ret < 0) {
+            *_errno = errno;
+            return -1;
+        }
+        return ret;
     }
-    return ret;
+    return 0;
 }
 
 static int wlan_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno) {
