@@ -27,10 +27,6 @@ DECLARE PRIVATE DATA
 DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
 static void gc_collect_inner(void) {
-    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
-    xthal_window_spill();
-    MICROPY_END_ATOMIC_SECTION(state);
-
     // get the sp
     volatile uint32_t sp = (uint32_t)get_sp();
 
