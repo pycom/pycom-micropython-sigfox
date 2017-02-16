@@ -104,7 +104,7 @@ void IRAM_ATTR TimerHwStop( void ) {
     TimerEnabled = false;
 }
 
-void IRAM_ATTR TimerHwDelayMs( uint32_t delay ) {
+void TimerHwDelayMs( uint32_t delay ) {
     vTaskDelay (delay / portTICK_PERIOD_MS);
 }
 
@@ -141,6 +141,5 @@ IRAM_ATTR TimerTime_t TimerHwComputeTimeDifference( TimerTime_t eventInTime ) {
     }
 }
 
-IRAM_ATTR void TimerHwEnterLowPowerStopMode( void ) {
+void TimerHwEnterLowPowerStopMode( void ) {
 }
-

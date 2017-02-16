@@ -855,24 +855,8 @@ void SX1272Reset( void )
     DelayMs( 6 );
 }
 
-void SX1272SetOpMode( uint8_t opMode )
+IRAM_ATTR void SX1272SetOpMode( uint8_t opMode )
 {
-    if( opMode == RF_OPMODE_SLEEP )
-    {
-        SX1272SetAntSwLowPower( true );
-    }
-    else
-    {
-        SX1272SetAntSwLowPower( false );
-        if( opMode == RF_OPMODE_TRANSMITTER )
-        {
-            SX1272SetAntSw( 1 );
-        }
-        else
-        {
-            SX1272SetAntSw( 0 );
-        }
-    }
     SX1272Write( REG_OPMODE, ( SX1272Read( REG_OPMODE ) & RF_OPMODE_MASK ) | opMode );
 }
 

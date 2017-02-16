@@ -69,34 +69,6 @@ void SX1272IoDeInit( void );
 uint8_t SX1272GetPaSelect( uint32_t channel );
 
 /*!
- * \brief Set the RF Switch I/Os pins in Low Power mode
- *
- * \param [IN] status enable or disable
- */
-void SX1272SetAntSwLowPower( bool status );
-
-/*!
- * \brief Initializes the RF Switch I/Os pins interface
- */
-void SX1272AntSwInit( void );
-
-/*!
- * \brief De-initializes the RF Switch I/Os pins interface 
- *
- * \remark Needed to decrease the power consumption in MCU lowpower modes
- */
-void SX1272AntSwDeInit( void );
-
-/*!
- * \brief Controls the antena switch if necessary.
- *
- * \remark see errata note
- *
- * \param [IN] rxTx [1: Tx, 0: Rx]
- */
-void SX1272SetAntSw( uint8_t rxTx );
-
-/*!
  * \brief Checks if the given RF frequency is supported by the hardware
  *
  * \param [IN] frequency RF frequency to be checked

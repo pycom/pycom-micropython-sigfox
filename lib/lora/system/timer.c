@@ -69,7 +69,7 @@ static bool TimerExists( TimerEvent_t *obj );
  */
 TimerTime_t TimerGetValue( void );
 
-IRAM_ATTR void TimerInit( TimerEvent_t *obj, void ( *callback )( void ) )
+void TimerInit( TimerEvent_t *obj, void ( *callback )( void ) )
 {
     obj->Timestamp = 0;
     obj->ReloadValue = 0;
@@ -343,7 +343,7 @@ static IRAM_ATTR bool TimerExists( TimerEvent_t *obj )
     return false;
 }
 
-void IRAM_ATTR TimerReset( TimerEvent_t *obj )
+void TimerReset( TimerEvent_t *obj )
 {
     TimerStop( obj );
     TimerStart( obj );
@@ -377,7 +377,7 @@ IRAM_ATTR TimerTime_t TimerGetElapsedTime( TimerTime_t savedTime )
     return TimerHwComputeTimeDifference( savedTime );
 }
 
-IRAM_ATTR void TimerLowPowerHandler( void )
+void TimerLowPowerHandler( void )
 {
     if( ( TimerListHead != NULL ) && ( TimerListHead->IsRunning == true ) )
     {

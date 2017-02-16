@@ -49,11 +49,10 @@ extern "C" {
 /******************************************************************************
  * FUNCTION PROTOTYPES
  */
-void        trxIsrConnect(ISR_FUNC_PTR pF);                             
-void        trxEnableInt(void);                                         
-void        trxDisableInt(void);                                        
-void        trxClearIntFlag(void); 
-uint8       trxSampleSyncPin(void);    
+void        trxIsrConnect(ISR_FUNC_PTR pF);
+void        trxEnableInt(void);
+void        trxDisableInt(void);
+void        trxClearIntFlag(void);
 
 #ifdef  __cplusplus
 }

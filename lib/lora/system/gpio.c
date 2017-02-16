@@ -39,8 +39,3 @@ IRAM_ATTR void GpioWrite( Gpio_t *obj, uint32_t value )
 {
     GpioMcuWrite( obj, value );
 }
-
-IRAM_ATTR uint32_t GpioRead( Gpio_t *obj )
-{
-    return GpioMcuRead( obj );
-}

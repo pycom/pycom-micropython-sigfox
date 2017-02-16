@@ -155,7 +155,7 @@ IRAM_ATTR void pin_set_value (const pin_obj_t* self) {
     }
 }
 
-IRAM_ATTR uint32_t pin_get_value (const pin_obj_t* self) {
+uint32_t pin_get_value (const pin_obj_t* self) {
     return gpio_get_level(self->pin_number);
 }
 

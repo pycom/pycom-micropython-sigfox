@@ -18,11 +18,6 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "sx1272-board.h"
 
 /*!
- * Flag used to set the RF switch control pins in low power mode when the radio is not active.
- */
-static bool RadioIsActive = false;
-
-/*!
  * Radio driver structure initialization
  */
 const struct Radio_s Radio =
@@ -73,38 +68,6 @@ void SX1272IoDeInit( void )
 uint8_t SX1272GetPaSelect( uint32_t channel )
 {
     return RF_PACONFIG_PASELECT_PABOOST;
-}
-
-void SX1272SetAntSwLowPower( bool status )
-{
-    if( RadioIsActive != status )
-    {
-        RadioIsActive = status;
-
-        if( status == false )
-        {
-            SX1272AntSwInit( );
-        }
-        else
-        {
-            SX1272AntSwDeInit( );
-        }
-    }
-}
-
-void SX1272AntSwInit( void )
-{
-
-}
-
-void SX1272AntSwDeInit( void )
-{
-
-}
-
-void SX1272SetAntSw( uint8_t rxTx )
-{
-
 }
 
 bool SX1272CheckRfFrequency( uint32_t frequency )

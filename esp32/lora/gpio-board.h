@@ -72,12 +72,4 @@ void GpioMcuRemoveInterrupt( Gpio_t *obj );
  */
 void GpioMcuWrite( Gpio_t *obj, uint32_t value );
 
-/*!
- * \brief Reads the current GPIO input value
- *
- * \param [IN] obj    Pointer to the GPIO object
- * \retval value  Current GPIO input value
- */
-uint32_t GpioMcuRead( Gpio_t *obj );
-
 #endif // __GPIO_MCU_H__

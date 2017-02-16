@@ -163,12 +163,4 @@ void GpioRemoveInterrupt( Gpio_t *obj );
  */
 void GpioWrite( Gpio_t *obj, uint32_t value );
 
-/*!
- * \brief Reads the current GPIO input value
- *
- * \param [IN] obj Pointer to the GPIO object
- * \retval value   Current GPIO input value
- */
-uint32_t GpioRead( Gpio_t *obj );
-
 #endif // __LORA_GPIO_H__

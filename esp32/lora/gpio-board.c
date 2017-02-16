@@ -118,13 +118,3 @@ IRAM_ATTR void GpioMcuWrite( Gpio_t *obj, uint32_t value ) {
     }
     pin_set_value(obj->pin_obj);
 }
-
-/*!
- * \brief Reads the current GPIO input value
- *
- * \param [IN] obj    Pointer to the GPIO object
- * \retval value  Current GPIO input value
- */
-IRAM_ATTR uint32_t GpioMcuRead( Gpio_t *obj ) {
-    return pin_get_value(obj->pin_obj);
-}
