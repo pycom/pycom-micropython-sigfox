@@ -208,7 +208,11 @@ STATIC const MP_DEFINE_STR_OBJ(os_uname_info_nodename_obj, MICROPY_PY_SYS_PLATFO
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_release_obj, SW_VERSION_NUMBER);
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_version_obj, MICROPY_GIT_TAG " on " MICROPY_BUILD_DATE);
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_machine_obj, MICROPY_HW_BOARD_NAME " with " MICROPY_HW_MCU_NAME);
-STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lpwan_obj, LPWAN_VERSION_NUMBER);
+#if defined(LOPY)
+STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lpwan_obj, LORAWAN_VERSION_NUMBER);
+#elif defined(SIPY)
+STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lpwan_obj, SIGFOX_VERSION_NUMBER);
+#endif
 STATIC MP_DEFINE_ATTRTUPLE(
     os_uname_info_obj
     ,os_uname_info_fields

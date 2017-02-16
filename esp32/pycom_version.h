@@ -11,6 +11,9 @@
 #define VERSION_H_
 
 #define SW_VERSION_NUMBER                              "1.6.3.b1"
-#define LPWAN_VERSION_NUMBER                           "1.0.0"
+
+#define LORAWAN_VERSION_NUMBER                         "1.0.0"
+
+#define SIGFOX_VERSION_NUMBER                          "1.0.1"
 
 #endif /* VERSION_H_ */
