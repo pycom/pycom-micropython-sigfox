@@ -102,7 +102,7 @@ STATIC sfx_u16 rcz_current_channel;
 STATIC sfx_u32 rcz_frequencies[4][2] = {
     {868130000, 869525000},
     {902200000, 905200000},
-    {921000000, 922200000},
+    {923200000, 922200000},
     {920800000, 922300000},
 };
 
@@ -754,10 +754,10 @@ STATIC mp_obj_t sigfox_config(mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args == 1) {
         if (sfx_rcz_id > 0) {
             mp_obj_t tuple[4];
-            tuple[0] = mp_obj_new_int(rcz_current_config_words[0]);
-            tuple[1] = mp_obj_new_int(rcz_current_config_words[1]);
-            tuple[2] = mp_obj_new_int(rcz_current_config_words[2]);
-            tuple[3] = mp_obj_new_int(rcz_current_channel);
+            tuple[0] = mp_obj_new_int_from_uint(rcz_current_config_words[0]);
+            tuple[1] = mp_obj_new_int_from_uint(rcz_current_config_words[1]);
+            tuple[2] = mp_obj_new_int_from_uint(rcz_current_config_words[2]);
+            tuple[3] = mp_obj_new_int_from_uint(rcz_current_channel);
             return mp_obj_new_tuple(4, tuple);
         } else {
             return mp_const_none;
@@ -767,10 +767,10 @@ STATIC mp_obj_t sigfox_config(mp_uint_t n_args, const mp_obj_t *args) {
             mp_obj_t *config;
             mp_obj_get_array_fixed_n(args[1], 4, &config);
             sfx_u32 config_words[3];
-            config_words[0] = mp_obj_get_int(config[0]);
-            config_words[1] = mp_obj_get_int(config[1]);
-            config_words[2] = mp_obj_get_int(config[2]);
-            sfx_u16 channel = mp_obj_get_int(config[3]);
+            config_words[0] = mp_obj_get_int_truncated(config[0]);
+            config_words[1] = mp_obj_get_int_truncated(config[1]);
+            config_words[2] = mp_obj_get_int_truncated(config[2]);
+            sfx_u16 channel = mp_obj_get_int_truncated(config[3]);
             if (SFX_ERR_NONE != SIGFOX_API_set_std_config(config_words, channel)) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             } else {
@@ -826,6 +826,10 @@ STATIC mp_obj_t sigfox_freq_offset(mp_uint_t n_args, const mp_obj_t *args) {
         }
         return mp_obj_new_int(freq_offset);
     } else {
+        if (mp_obj_get_int(args[1]) > INT16_MAX || mp_obj_get_int(args[1]) < INT16_MIN) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "the freq offset is out of range (-32768 < freq_offset < 32767)"));
+        }
+
         if (SFX_ERR_MANUF_NONE != MANUF_API_set_nv_mem(SFX_NVMEM_FREQ, mp_obj_get_int(args[1]))) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
         }
