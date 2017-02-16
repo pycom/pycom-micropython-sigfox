@@ -472,9 +472,8 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
     memset(&config, 0, sizeof(config));
 
     // first close any active connections
+    wlan_obj.disconnected = true;
     esp_wifi_disconnect();
-
-    wlan_obj.disconnected = false;
 
     memcpy(config.sta.ssid, ssid, ssid_len);
     if (key) {
@@ -487,6 +486,7 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
 
     esp_wifi_set_config(WIFI_IF_STA, &config);
     esp_wifi_connect();
+    wlan_obj.disconnected = false;
     return MODWLAN_OK;
 
     // TODO Add timeout handling!!
@@ -834,15 +834,23 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
            mp_obj_t *items;
            mp_obj_get_array_fixed_n(args[1].u_obj, 4, &items);
 
-           // stop the DHCP client first
-           tcpip_adapter_dhcpc_stop(adapter_if);
-
            tcpip_adapter_ip_info_t ip_info;
            netutils_parse_ipv4_addr(items[0], (uint8_t *)&ip_info.ip.addr, NETUTILS_BIG);
            netutils_parse_ipv4_addr(items[1], (uint8_t *)&ip_info.netmask.addr, NETUTILS_BIG);
            netutils_parse_ipv4_addr(items[2], (uint8_t *)&ip_info.gw.addr, NETUTILS_BIG);
            netutils_parse_ipv4_addr(items[3], (uint8_t *)&dns_addr.u_addr.ip4.addr, NETUTILS_BIG);
-           tcpip_adapter_set_ip_info(adapter_if, &ip_info);
+
+           if (adapter_if == TCPIP_ADAPTER_IF_STA) {
+               // first close any active connections
+               esp_wifi_disconnect();
+               tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
+               tcpip_adapter_set_ip_info(adapter_if, &ip_info);
+           } else {
+               tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP);
+               tcpip_adapter_set_ip_info(adapter_if, &ip_info);
+               tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP);
+           }
+           dns_setserver(0, &dns_addr);
        } else {
            // check for the correct string
            const char *mode = mp_obj_str_get_str(args[1].u_obj);
