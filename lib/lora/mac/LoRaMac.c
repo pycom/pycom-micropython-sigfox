@@ -1552,7 +1552,7 @@ static void OnTxDelayedTimerEvent( void )
     ScheduleTx( );
 }
 
-static void OnRxWindow1TimerEvent( void )
+IRAM_ATTR static void OnRxWindow1TimerEvent( void )
 {
     uint16_t symbTimeout = 8; // DR_2, DR_1, DR_0
     int8_t datarate = 0;

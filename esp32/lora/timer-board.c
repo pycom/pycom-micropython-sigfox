@@ -91,8 +91,8 @@ IRAM_ATTR uint32_t TimerHwGetMinimumTimeout( void ) {
 IRAM_ATTR void TimerHwStart (uint32_t val) {
     uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
     TimerTickCounterContext = TimerHwGetTimerValue();
-    if (val < HW_TIMER_TIME_BASE) {
-        TimeoutCntValue = TimerTickCounterContext + 1;
+    if (val <= HW_TIMER_TIME_BASE) {
+        TimeoutCntValue = TimerTickCounterContext + (HW_TIMER_TIME_BASE * 2);
     } else {
         TimeoutCntValue = TimerTickCounterContext + val;
     }

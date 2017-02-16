@@ -48,15 +48,6 @@ typedef struct
     uint8_t       Value;
 }RadioRegisters_t;
 
-/*!
- * FSK bandwidth definition
- */
-typedef struct
-{
-    uint32_t bandwidth;
-    uint8_t  RegValue;
-}FskBandwidth_t;
-
 
 /*
  * Private functions prototypes
