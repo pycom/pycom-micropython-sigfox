@@ -1243,6 +1243,14 @@ static const mp_obj_type_t mod_bt_gatts_char_type = {
     .locals_dict = (mp_obj_t)&bt_gatts_char_locals_dict,
 };
 
+STATIC mp_obj_t bt_gatts_disconnect_client(mp_obj_t self_in) {
+    if (bt_obj.gatts_conn_id >= 0) {
+        esp_ble_gatts_close(bt_obj.gatts_if, bt_obj.gatts_conn_id);
+        bt_obj.gatts_conn_id = -1;
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_gatts_disconnect_client_obj, bt_gatts_disconnect_client);
 
 STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     // instance methods
@@ -1259,6 +1267,7 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_service),                 (mp_obj_t)&bt_service_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&bt_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_events),                  (mp_obj_t)&bt_events_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect_client),       (mp_obj_t)&bt_gatts_disconnect_client_obj },
 
     // constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_CONN_ADV),                MP_OBJ_NEW_SMALL_INT(ESP_BLE_EVT_CONN_ADV) },

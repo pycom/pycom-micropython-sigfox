@@ -128,7 +128,7 @@ Methods
 
     Opens a BLE connection with the device specified by the ``mac_addr`` argument. This function blocks until the connection succeeds or fails. If the connections succeeds it returns a object of type ``GATTCConnection``.
 
-. method:: bluetooth.callback(trigger=None, handler=None, arg=None)
+.. method:: bluetooth.callback(trigger=None, handler=None, arg=None)
 
     Creates a callback that will be executed when any of the triggers occurs. The arguments are:
 
@@ -136,7 +136,7 @@ Methods
        - ``handler`` is the function that will be executed when the callback is triggered.
        - ``arg`` is the argument that gets passed to the callback. If nothing is given the bluetoth object itself is used.
 
-. method:: bluetooth.events()
+.. method:: bluetooth.events()
 
     Returns a valut with bit flags identifying the events that have occurred since the last call. Calling this function clears the events. Example of usage::
 
@@ -183,6 +183,9 @@ Methods
        - ``isprimary`` selects if the service is a primary one. Takes a bool value.
        - ``nbr_chars`` specifies the number of characteristics that the service will contain.
 
+.. method:: bluetooth.disconnect_client()
+
+    Closes the BLE connection with the client.
 
 Constants
 ---------
