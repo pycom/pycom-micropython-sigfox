@@ -186,7 +186,6 @@ DioIrqHandler *DioIrq[] = { SX1272OnDioIrq };
  */
 static TimerEvent_t TxTimeoutTimer;
 static TimerEvent_t RxTimeoutTimer;
-static TimerEvent_t RxTimeoutSyncWord;
 static TimerEvent_t RadioIrqFlagsTimer;
 
 /*
@@ -202,9 +201,8 @@ void SX1272Init( RadioEvents_t *events )
     // Initialize driver timeout timers
     TimerInit( &TxTimeoutTimer, SX1272OnTimeoutIrq );
     TimerInit( &RxTimeoutTimer, SX1272OnTimeoutIrq );
-    TimerInit( &RxTimeoutSyncWord, SX1272OnTimeoutIrq );
     TimerInit( &RadioIrqFlagsTimer, SX1272RadioFlagsIrq );
-    TimerSetValue(&RadioIrqFlagsTimer, 1);   // every 1ms
+    TimerSetValue( &RadioIrqFlagsTimer, 1 );
 
     SX1272Reset( );
 
@@ -221,6 +219,7 @@ void SX1272Init( RadioEvents_t *events )
     SX1272SetModem( MODEM_FSK );
 
     SX1272.Settings.State = RF_IDLE;
+    SX1272.irqFlags = 0;
 }
 
 IRAM_ATTR RadioState_t SX1272GetStatus( void )
@@ -991,21 +990,21 @@ void SX1272OnTimeoutIrq( void )
 }
 
 void SX1272RadioFlagsIrq (void) {
-    if (SX1272.irqFlags | RADIO_IRQ_FLAG_RX_TIMEOUT) {
+    if (SX1272.irqFlags & RADIO_IRQ_FLAG_RX_TIMEOUT) {
         SX1272.irqFlags &= ~RADIO_IRQ_FLAG_RX_TIMEOUT;
         if( ( RadioEvents != NULL ) && ( RadioEvents->RxTimeout != NULL ) )
         {
             RadioEvents->RxTimeout( );
         }
     }
-    if (SX1272.irqFlags | RADIO_IRQ_FLAG_RX_DONE) {
+    if (SX1272.irqFlags & RADIO_IRQ_FLAG_RX_DONE) {
         SX1272.irqFlags &= ~RADIO_IRQ_FLAG_RX_DONE;
         if( ( RadioEvents != NULL ) && ( RadioEvents->RxDone != NULL ) )
         {
             RadioEvents->RxDone( RxTxBuffer, SX1272.Settings.LoRaPacketHandler.Size, SX1272.Settings.LoRaPacketHandler.RssiValue, SX1272.Settings.LoRaPacketHandler.SnrValue );
         }
     }
-    if (SX1272.irqFlags | RADIO_IRQ_FLAG_RX_ERROR) {
+    if (SX1272.irqFlags & RADIO_IRQ_FLAG_RX_ERROR) {
         SX1272.irqFlags &= ~RADIO_IRQ_FLAG_RX_ERROR;
         if( ( RadioEvents != NULL ) && ( RadioEvents->RxError != NULL ) )
         {

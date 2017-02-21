@@ -66,10 +66,9 @@
     #error "Please define a frequency band in the compiler options."
 #endif
 
-#define LORA_SYMBOL_TIMEOUT                         (5)         // Symbols
 #define LORA_FIX_LENGTH_PAYLOAD_ON                  (true)
 #define LORA_FIX_LENGTH_PAYLOAD_OFF                 (false)
-#define LORA_TX_TIMEOUT_MAX                         (9500)      // 9.5 seconds
+#define LORA_TX_TIMEOUT_MAX                         (9000)      // 9 seconds
 #define LORA_RX_TIMEOUT                             (0)         // No timeout
 
 // [SF7..SF12]
@@ -611,7 +610,15 @@ static void TASK_LoRa (void *pvParameters) {
                         RadioEvents.RxError = OnRxError;
                         Radio.Init(&RadioEvents);
 
+                        Radio.SetModem(MODEM_LORA);
+                        if (cmd_data.info.init.public) {
+                            Radio.Write(REG_LR_SYNCWORD, LORA_MAC_PUBLIC_SYNCWORD);
+                        } else {
+                            Radio.Write(REG_LR_SYNCWORD, LORA_MAC_PRIVATE_SYNCWORD);
+                        }
+
                         lora_setup(&cmd_data.info.init);
+
                         // copy the configuration (must be done before sending the response)
                         lora_obj.bandwidth = cmd_data.info.init.bandwidth;
                         lora_obj.coding_rate = cmd_data.info.init.coding_rate;
@@ -820,6 +827,58 @@ static IRAM_ATTR void OnRxError (void) {
 }
 
 static void lora_setup (lora_init_cmd_data_t *init_data) {
+    uint16_t symbol_to = 8;
+
+#if defined( USE_BAND_868 )
+    // For higher datarates, we increase the number of symbols generating a Rx Timeout
+    if (init_data->sf == 9 || init_data->sf == 8) {
+        symbol_to = 12;
+    } else if(init_data->sf == 7) {
+        if (init_data->bandwidth == E_LORA_BW_250_KHZ) {
+            symbol_to = 20;
+        } else {
+            symbol_to = 15;
+        }
+    }
+#else
+    // For higher datarates, we increase the number of symbols generating a Rx Timeout
+    if (init_data->bandwidth == E_LORA_BW_125_KHZ) {
+        switch(init_data->sf) {
+            case 10:      // SF10 - BW125
+                symbTimeout = 8;
+                break;
+            case 9:       // SF9  - BW125
+            case 8:       // SF8  - BW125
+                symbTimeout = 12;
+                break;
+            case 7:       // SF7  - BW125
+                symbTimeout = 15;
+                break;
+            default:
+                break;
+        }
+    } else {
+        switch(init_data->sf) {
+            case 12:       // SF12 - BW500
+            case 11:       // SF11 - BW500
+            case 10:       // SF10 - BW500
+                symbTimeout = 12;
+                break;
+            case 9:        // SF9  - BW500
+                symbTimeout = 15;
+                break;
+            case 8:        // SF8  - BW500
+                symbTimeout = 20;
+                break;
+            case 7:        // SF7  - BW500
+                symbTimeout = 24;
+                break;
+            default:
+                break;
+        }
+    }
+#endif
+
     Radio.SetChannel(init_data->frequency);
 
     Radio.SetTxConfig(MODEM_LORA, init_data->tx_power, 0, init_data->bandwidth,
@@ -829,7 +888,7 @@ static void lora_setup (lora_init_cmd_data_t *init_data) {
 
     Radio.SetRxConfig(MODEM_LORA, init_data->bandwidth, init_data->sf,
                                   init_data->coding_rate, 0, init_data->preamble,
-                                  LORA_SYMBOL_TIMEOUT, LORA_FIX_LENGTH_PAYLOAD_OFF,
+                                  symbol_to, LORA_FIX_LENGTH_PAYLOAD_OFF,
                                   0, true, 0, 0, init_data->rxiq, true);
 }
 
