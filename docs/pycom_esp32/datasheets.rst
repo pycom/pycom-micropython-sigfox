@@ -13,6 +13,34 @@
 
 .. include:: datasheets/expansionboard.rst
 
+:download:`PDF file hidden <downloads/exp_v03_pinout_v13.pdf>`
+:download:`PDF file hidden <downloads/expansionBoard2SpecsheetGraffiti.pdf>`
+:download:`PDF file hidden <downloads/lopy_pinout.pdf>`
+:download:`PDF file hidden <downloads/lopySpecsheetGraffiti.pdf>`
+:download:`PDF file hidden <downloads/l01SpecsheetGraffitiOEM.pdf>`
+:download:`PDF file hidden <downloads/Sipy_v01_1_pinout_rc.pdf>`
+:download:`PDF file hidden <downloads/sipySpecsheetGraffiti.pdf>`
+:download:`PDF file hidden <downloads/s01SpecsheetGraffitiOEM.pdf>`
+:download:`PDF file hidden <downloads/wipy_pinout.pdf>`
+:download:`PDF file hidden <downloads/wipy2SpecsheetGraffiti.pdf>`
+:download:`PDF file hidden <downloads/w01SpecsheetGraffitiOEM.pdf>`
+
+
+.. raw:: html
+
+    <script type="text/javascript">
+    function removeModules(elements){
+      el = document.querySelectorAll(elements)
+      for(var i=0;i<el.length;i++){
+      	  el[i].className += " hidden"
+      }
+    }
+    removeModules('#datasheets a.reference.download.internal')
+
+    </script>
+
+
+
 
 5.5 Powering by an external power source
 ========================================
