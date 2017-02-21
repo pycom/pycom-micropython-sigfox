@@ -5,13 +5,13 @@
 Pinout
 ------
 
-The pinout of the board is available as a `PDF file <https://www.pycom.io/wp-content/uploads/2017/02/exp_v03_pinout_v13.pdf>`_.
+The pinout of the board is available as a `PDF file <../_downloads/exp_v03_pinout_v13.pdf>`_.
 
 .. image:: images/pinout_exp_screenshot.png
     :align: center
     :scale: 70 %
     :alt: Expansionboard Pinout
-    :target: https://www.pycom.io/wp-content/uploads/2017/02/exp_v03_pinout_v13.pdf
+    :target: ../_downloads/exp_v03_pinout_v13.pdf
 
 
 .. warning::
@@ -22,4 +22,4 @@ The pinout of the board is available as a `PDF file <https://www.pycom.io/wp-con
 Specsheet
 ---------
 
-The specsheet of the expansion board is available as a `PDF file <https://www.pycom.io/wp-content/uploads/2017/01/expansionBoard2SpecsheetGraffiti.pdf>`_.
+The specsheet of the expansion board is available as a `PDF file <../_downloads/expansionBoard2SpecsheetGraffiti.pdf>`_.

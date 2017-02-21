@@ -4,14 +4,14 @@
 Pinout
 ------
 
-The pinout of the module is available as a `PDF file <https://www.pycom.io/wp-content/uploads/2016/11/lopy_pinout.pdf>`_.
+The pinout of the module is available as a `PDF file <../_downloads/lopy_pinout.pdf>`_.
 
 
 .. image:: images/pinout_lopy_screenshot.png
     :align: center
     :scale: 50 %
     :alt: LoPy Pinout
-    :target: https://www.pycom.io/wp-content/uploads/2016/11/lopy_pinout.pdf
+    :target: ../_downloads/lopy_pinout.pdf
 
 
 .. warning::
@@ -22,4 +22,4 @@ The pinout of the module is available as a `PDF file <https://www.pycom.io/wp-co
 Specsheets
 ----------
 
-The specsheet of the LoPy developer version is available as a `PDF file <https://www.pycom.io/wp-content/uploads/2017/01/lopySpecsheetGraffiti.pdf>`_. The specsheet of the **L01** which is the OEM version of the LoPy can be found in the following `link <https://www.pycom.io/wp-content/uploads/2017/01/l01SpecsheetGraffitiOEM.pdf>`_.
+The specsheet of the LoPy developer version is available as a `PDF file <../_downloads/lopySpecsheetGraffiti.pdf>`_. The specsheet of the **L01** which is the OEM version of the LoPy can be found in the following `link <../_downloads/l01SpecsheetGraffitiOEM.pdf>`_.

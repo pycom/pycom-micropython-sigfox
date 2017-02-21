@@ -4,14 +4,14 @@
 Pinout
 ------
 
-The pinout of the module is available as a `PDF file <https://www.pycom.io/wp-content/uploads/2017/02/Sipy_v01_1_pinout_rc.pdf>`_.
+The pinout of the module is available as a `PDF file <../_downloads/Sipy_v01_1_pinout_rc.pdf>`_.
 
 
 .. image:: images/pinout_sipy_screenshot.png
     :align: center
     :scale: 70 %
     :alt: LoPy Pinout
-    :target: https://www.pycom.io/wp-content/uploads/2017/02/Sipy_v01_1_pinout_rc.pdf
+    :target: ../_downloads/Sipy_v01_1_pinout_rc.pdf
 
 
 .. warning::
@@ -22,4 +22,4 @@ The pinout of the module is available as a `PDF file <https://www.pycom.io/wp-co
 Specsheets
 ----------
 
-The specsheet of the SiPy developer version is available as a `PDF file <https://www.pycom.io/wp-content/uploads/2017/01/sipySpecsheetGraffiti.pdf>`_. The specsheet of the **S01** which is the OEM version of the SiPy can be found in the following `link <https://www.pycom.io/wp-content/uploads/2017/01/s01SpecsheetGraffitiOEM.pdf>`_.
+The specsheet of the SiPy developer version is available as a `PDF file <../_downloads/sipySpecsheetGraffiti.pdf>`_. The specsheet of the **S01** which is the OEM version of the SiPy can be found in the following `link <../_downloads/s01SpecsheetGraffitiOEM.pdf>`_.
