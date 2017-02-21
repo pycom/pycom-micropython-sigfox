@@ -71,8 +71,8 @@
 #define LORA_TX_TIMEOUT_MAX                         (9000)      // 9 seconds
 #define LORA_RX_TIMEOUT                             (0)         // No timeout
 
-// [SF7..SF12]
-#define LORA_SPREADING_FACTOR_MIN                   (7)
+// [SF6..SF12]
+#define LORA_SPREADING_FACTOR_MIN                   (6)
 #define LORA_SPREADING_FACTOR_MAX                   (12)
 
 #define LORA_CHECK_SOCKET(s)                        if (s->sock_base.sd < 0) {  \
@@ -834,10 +834,16 @@ static void lora_setup (lora_init_cmd_data_t *init_data) {
     if (init_data->sf == 9 || init_data->sf == 8) {
         symbol_to = 12;
     } else if(init_data->sf == 7) {
-        if (init_data->bandwidth == E_LORA_BW_250_KHZ) {
+        if (init_data->bandwidth >= E_LORA_BW_250_KHZ) {
             symbol_to = 20;
         } else {
             symbol_to = 15;
+        }
+    } else if (init_data->sf == 6) {
+        if (init_data->bandwidth >= E_LORA_BW_250_KHZ) {
+            symbol_to = 30;
+        } else {
+            symbol_to = 25;
         }
     }
 #else
@@ -924,11 +930,7 @@ static bool lora_validate_data_rate (uint32_t data_rate) {
 }
 
 static void lora_validate_bandwidth (uint8_t bandwidth) {
-#if defined(USE_BAND_868)
-    if (bandwidth > E_LORA_BW_250_KHZ) {
-#else
-    if (bandwidth != E_LORA_BW_125_KHZ && bandwidth != E_LORA_BW_500_KHZ) {
-#endif
+    if (bandwidth > E_LORA_BW_500_KHZ) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "bandwidth %d not supported", bandwidth));
     }
 }
@@ -1532,15 +1534,9 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_TX_ONLY),             MP_OBJ_NEW_SMALL_INT(E_LORA_MODE_TX_ONLY) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SLEEP),               MP_OBJ_NEW_SMALL_INT(E_LORA_MODE_SLEEP) },
 
-#if defined(USE_BAND_868) || defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID)
     { MP_OBJ_NEW_QSTR(MP_QSTR_BW_125KHZ),           MP_OBJ_NEW_SMALL_INT(E_LORA_BW_125_KHZ) },
-#endif
-#if defined(USE_BAND_868)
     { MP_OBJ_NEW_QSTR(MP_QSTR_BW_250KHZ),           MP_OBJ_NEW_SMALL_INT(E_LORA_BW_250_KHZ) },
-#endif
-#if defined(USE_BAND_915)
     { MP_OBJ_NEW_QSTR(MP_QSTR_BW_500KHZ),           MP_OBJ_NEW_SMALL_INT(E_LORA_BW_500_KHZ) },
-#endif
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_CODING_4_5),          MP_OBJ_NEW_SMALL_INT(E_LORA_CODING_4_5) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CODING_4_6),          MP_OBJ_NEW_SMALL_INT(E_LORA_CODING_4_6) },
