@@ -851,14 +851,14 @@ static void lora_setup (lora_init_cmd_data_t *init_data) {
     if (init_data->bandwidth == E_LORA_BW_125_KHZ) {
         switch(init_data->sf) {
             case 10:      // SF10 - BW125
-                symbTimeout = 8;
+                symbol_to = 8;
                 break;
             case 9:       // SF9  - BW125
             case 8:       // SF8  - BW125
-                symbTimeout = 12;
+                symbol_to = 12;
                 break;
             case 7:       // SF7  - BW125
-                symbTimeout = 15;
+                symbol_to = 15;
                 break;
             default:
                 break;
@@ -868,16 +868,16 @@ static void lora_setup (lora_init_cmd_data_t *init_data) {
             case 12:       // SF12 - BW500
             case 11:       // SF11 - BW500
             case 10:       // SF10 - BW500
-                symbTimeout = 12;
+                symbol_to = 12;
                 break;
             case 9:        // SF9  - BW500
-                symbTimeout = 15;
+                symbol_to = 15;
                 break;
             case 8:        // SF8  - BW500
-                symbTimeout = 20;
+                symbol_to = 20;
                 break;
             case 7:        // SF7  - BW500
-                symbTimeout = 24;
+                symbol_to = 24;
                 break;
             default:
                 break;
