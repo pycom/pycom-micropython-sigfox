@@ -597,15 +597,17 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 
 /// \class Bluetooth
 static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
-    if (!self->controller_active) {
-        esp_bt_controller_init();
-        self->controller_active = true;
-    }
-
     if (!self->init) {
         if (0 != bluetooth_alloc_memory()) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth memory allocation failed"));
         }
+
+        if (!self->controller_active) {
+            esp_bt_controller_init();
+            self->controller_active = true;
+        }
+
+        esp_bt_controller_enable(ESP_BT_MODE_BTDM);
 
         if (ESP_OK != esp_bluedroid_init()) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth init failed"));
@@ -677,6 +679,7 @@ STATIC mp_obj_t bt_deinit(mp_obj_t self_in) {
     if (bt_obj.init) {
         esp_bluedroid_disable();
         esp_bluedroid_deinit();
+        esp_bt_controller_disable(ESP_BT_MODE_BTDM);
         bluetooth_free_memory();
         bt_obj.init = false;
     }

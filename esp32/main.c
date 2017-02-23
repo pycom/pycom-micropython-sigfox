@@ -52,15 +52,9 @@
  * Returns      : none
 *******************************************************************************/
 void app_main(void) {
-#ifdef SIPY
     // initalize the non-volatile flash space
     nvs_flash_init();
-#endif
 
     // create the MicroPython task
     xTaskCreatePinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL, MICROPY_TASK_PRIORITY, NULL, 0);
-}
-
-int ets_printf_dummy(const char *fmt, ...) {
-    return 0;
 }
