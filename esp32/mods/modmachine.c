@@ -92,13 +92,17 @@ STATIC mp_obj_t machine_sleep (void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_sleep_obj, machine_sleep);
 
-STATIC mp_obj_t machine_deepsleep (mp_obj_t time_ms) {
+STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     mperror_enable_heartbeat(false);
     bt_deinit(NULL);
     wlan_deinit(NULL);
-    esp_deep_sleep((uint64_t)(mp_obj_get_int(time_ms) * 1000));
+    if (n_args == 0) {
+        esp_deep_sleep_start();
+    } else {
+        esp_deep_sleep((uint64_t)(mp_obj_get_int(arg[0]) * 1000));
+    }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_deepsleep_obj, machine_deepsleep);
+MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsleep);
 
 STATIC mp_obj_t machine_reset_cause (void) {
     return mp_obj_new_int(mpsleep_get_reset_cause());
