@@ -219,6 +219,7 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t ssid_len, uint32_t aut
     }
 
     esp_wifi_start();
+    wlan_obj.started = true;
 
     // start the servers before returning
     wlan_servers_start();
@@ -628,13 +629,16 @@ STATIC mp_obj_t wlan_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_init_obj, 1, wlan_init);
 
-STATIC mp_obj_t wlan_deinit(mp_obj_t self_in) {
+mp_obj_t wlan_deinit(mp_obj_t self_in) {
 
     if (servers_are_enabled()) {
        wlan_servers_stop();
     }
 
-    esp_wifi_stop();
+    if (wlan_obj.started) {
+        esp_wifi_stop();
+        wlan_obj.started = false;
+    }
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_deinit_obj, wlan_deinit);

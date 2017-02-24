@@ -22,6 +22,7 @@
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
 #include "esp_event.h"
+#include "esp_deep_sleep.h"
 
 #include "random.h"
 #include "extmod/machine_mem.h"
@@ -37,6 +38,8 @@
 #include "pybadc.h"
 #include "pybdac.h"
 #include "pybsd.h"
+#include "modbt.h"
+#include "modwlan.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -89,11 +92,13 @@ STATIC mp_obj_t machine_sleep (void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_sleep_obj, machine_sleep);
 
-STATIC mp_obj_t machine_deepsleep (void) {
-    // TODO
-    return mp_const_none;
+STATIC mp_obj_t machine_deepsleep (mp_obj_t time_ms) {
+    mperror_enable_heartbeat(false);
+    bt_deinit(NULL);
+    wlan_deinit(NULL);
+    esp_deep_sleep((uint64_t)(mp_obj_get_int(time_ms) * 1000));
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_deepsleep_obj, machine_deepsleep);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_deepsleep_obj, machine_deepsleep);
 
 STATIC mp_obj_t machine_reset_cause (void) {
     return mp_obj_new_int(mpsleep_get_reset_cause());

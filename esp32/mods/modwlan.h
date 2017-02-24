@@ -57,6 +57,7 @@ typedef struct _wlan_obj_t {
     bool                enable_servers;
     bool                disconnected;
     bool                pwrsave;
+    bool                started;
 } wlan_obj_t;
 
 /******************************************************************************
@@ -76,5 +77,6 @@ extern void wlan_get_ip (uint32_t *ip);
 extern bool wlan_is_connected (void);
 extern void wlan_set_current_time (uint32_t seconds_since_2000);
 extern void wlan_off_on (void);
+extern mp_obj_t wlan_deinit(mp_obj_t self_in);
 
 #endif /* MODWLAN_H_ */

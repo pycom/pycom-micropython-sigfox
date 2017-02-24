@@ -675,7 +675,7 @@ STATIC mp_obj_t bt_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_init_obj, 1, bt_init);
 
-STATIC mp_obj_t bt_deinit(mp_obj_t self_in) {
+mp_obj_t bt_deinit(mp_obj_t self_in) {
     if (bt_obj.init) {
         esp_bluedroid_disable();
         esp_bluedroid_deinit();

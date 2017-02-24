@@ -300,7 +300,7 @@ soft_reset_exit:
 STATIC void mptask_preinit (void) {
     mperror_pre_init();
     wlan_pre_init();
-    xTaskCreate(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, NULL);
+    xTaskCreatePinnedToCore(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, NULL, 0);
 }
 
 STATIC void mptask_init_sflash_filesystem (void) {
