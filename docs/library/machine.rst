@@ -103,6 +103,22 @@ Power related functions
        to know that we are coming from ``machine.DEEPSLEEP``. For wake up to actually happen,
        wake sources should be configured first, like ``Pin`` change or ``RTC`` timeout.
 
+.. only:: port_pycom_esp32
+
+    .. function:: idle()
+
+       Gates the clock to the CPU, useful to reduce power consumption at any time during
+       short or long periods. Peripherals continue working and execution resumes as soon
+       as any interrupt is triggered (on many ports this includes system timer
+       interrupt occurring at regular intervals on the order of millisecond).
+
+    .. function:: deepsleep([time_ms])
+
+       Stops the CPU and all peripherals (including networking interfaces, if any). Execution
+       is resumed from the main script, just as with a reset. If a value in milliseconds is given
+       then the device will wake up after that period of time, otherwise it will remain in deep sleep
+       until the reset button is pressed.
+
 .. only:: port_wipy
 
     .. function:: wake_reason()
