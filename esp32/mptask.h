@@ -20,11 +20,6 @@
 #define MICROPY_TASK_STACK_LEN                  (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t))
 
 /******************************************************************************
- EXPORTED DATA
- ******************************************************************************/
-extern StackType_t *mpTaskStack;
-
-/******************************************************************************
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
 extern void TASK_Micropython (void *pvParameters);

@@ -69,14 +69,14 @@ STATIC mp_thread_mutex_t thread_mutex;
 STATIC thread_t thread_entry0;
 STATIC thread_t *thread; // root pointer, handled by mp_thread_gc_others
 
-void mp_thread_preinit(void) {
+void mp_thread_preinit(void *stack) {
     mp_thread_set_state(&mp_state_ctx.thread);
     // create first entry in linked list of all threads
     thread = &thread_entry0;
     thread->id = xTaskGetCurrentTaskHandle();
     thread->ready = 1;
     thread->arg = NULL;
-    thread->stack = mpTaskStack;
+    thread->stack = stack;
     thread->stack_len = MICROPY_TASK_STACK_LEN;
     thread->next = NULL;
 }

@@ -46,6 +46,16 @@
 #include "mptask.h"
 
 /******************************************************************************
+ DECLARE PUBLIC DATA
+ ******************************************************************************/
+StackType_t mpTaskStack[MICROPY_TASK_STACK_LEN] __attribute__((aligned (4)));
+
+/******************************************************************************
+ DECLARE PRIVATE DATA
+ ******************************************************************************/
+static StaticTask_t mpTaskTCB;
+
+/******************************************************************************
  * FunctionName : app_main
  * Description  : entry of user application, init user function here
  * Parameters   : none
@@ -56,5 +66,6 @@ void app_main(void) {
     nvs_flash_init();
 
     // create the MicroPython task
-    xTaskCreatePinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL, MICROPY_TASK_PRIORITY, NULL, 0);
+    xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL,
+                                  MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 0);
 }

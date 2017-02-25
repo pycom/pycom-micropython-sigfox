@@ -77,15 +77,7 @@
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
-#if defined(LOPY)
-    #if defined(USE_BAND_868)
-        #define GC_POOL_SIZE_BYTES                                          (64 * 1024)
-    #else
-        #define GC_POOL_SIZE_BYTES                                          (64 * 1024)
-    #endif
-#else
-    #define GC_POOL_SIZE_BYTES                                          (64 * 1024)
-#endif
+#define GC_POOL_SIZE_BYTES                                          (64 * 1024)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -108,7 +100,7 @@ STATIC void mptask_update_sigfox_public_key (void);
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
-StackType_t *mpTaskStack;
+extern StackType_t mpTaskStack;
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -129,8 +121,6 @@ static char fresh_boot_py[] = "# boot.py -- run on boot-up\r\n"
 void TASK_Micropython (void *pvParameters) {
     // initialize the garbage collector with the top of our stack
     volatile uint32_t sp = (uint32_t)get_sp();
-    mpTaskStack = (StackType_t *)sp;
-
     bool soft_reset = false;
 
     // init the antenna select switch here
@@ -140,10 +130,10 @@ void TASK_Micropython (void *pvParameters) {
 
     // initialization that must not be repeted after a soft reset
     mptask_preinit();
-    #if MICROPY_PY_THREAD
+#if MICROPY_PY_THREAD
+    mp_thread_preinit(&mpTaskStack);
     mp_irq_preinit();
-    mp_thread_preinit();
-    #endif
+#endif
 
     // initialise the stack pointer for the main thread (must be done after mp_thread_preinit)
     mp_stack_set_top((void *)sp);
@@ -152,18 +142,17 @@ void TASK_Micropython (void *pvParameters) {
     // to recover from hiting the limit (the limit is measured in bytes)
     mp_stack_set_limit(MICROPY_TASK_STACK_LEN - 1024);
 
-    gc_pool_upy = pvPortMalloc(GC_POOL_SIZE_BYTES);
-    if (!gc_pool_upy) {
-        printf("mptask malloc failed!\n");
+    if (NULL == (gc_pool_upy = pvPortMalloc(GC_POOL_SIZE_BYTES))) {
+        printf("GC pool malloc failed!\n");
         for ( ; ; );
     }
 
 soft_reset:
 
     // Thread init
-    #if MICROPY_PY_THREAD
+#if MICROPY_PY_THREAD
     mp_thread_init();
-    #endif
+#endif
 
     // GC init
     gc_init((void *)gc_pool_upy, (void *)(gc_pool_upy + GC_POOL_SIZE_BYTES));
@@ -178,9 +167,9 @@ soft_reset:
     pin_init0();    // always before the rest of the peripherals
     mpexception_init0();
     mpsleep_init0();
-    #if MICROPY_PY_THREAD
+#if MICROPY_PY_THREAD
     mp_irq_init0();
-    #endif
+#endif
     moduos_init0();
     uart_init0();
     mperror_init0();
@@ -199,11 +188,11 @@ soft_reset:
     if (!soft_reset) {
         mptask_enter_ap_mode();
     // these ones are special because they need uPy running and they launch tasks
-    #if defined(LOPY)
+#if defined(LOPY)
         modlora_init0();
-    #elif defined(SIPY)
+#elif defined(SIPY)
         modsigfox_init0();
-    #endif
+#endif
     }
 
     // FIXME!!
@@ -283,9 +272,9 @@ soft_reset:
 
 soft_reset_exit:
 
-    #if MICROPY_PY_THREAD
+#if MICROPY_PY_THREAD
     mp_irq_kill();
-    #endif
+#endif
     mpsleep_signal_soft_reset();
     mp_printf(&mp_plat_print, "PYB: soft reboot\n");
     // it needs to be this one in order to not mess with the GIL
