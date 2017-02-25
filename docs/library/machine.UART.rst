@@ -83,7 +83,7 @@ Methods
 
 .. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
 
-    .. method:: uart.init(baudrate=9600, bits=8, parity=None, stop=1, \*, pins=(TXD, RXD, RTS, CTS))
+    .. method:: uart.init(baudrate=9600, bits=8, parity=None, stop=1, \*, timeout_chars=2, pins=(TXD, RXD, RTS, CTS))
 
        Initialize the UART bus with the given parameters:
 
@@ -91,6 +91,8 @@ Methods
          - ``bits`` is the number of bits per character. Can be 5, 6, 7 or 8.
          - ``parity`` is the parity, ``None``, ``UART.EVEN`` or ``UART.ODD``.
          - ``stop`` is the number of stop bits, 1 or 2.
+         - ``timeout_chars`` Rx timeout defined in number of characters. The value given here will be
+            multiplied by the time a characters takes to be transmitted at the configured baudrate.
          - ``pins`` is a 4 or 2 item list indicating the TXD, RXD, RTS and CTS pins (in that order).
            Any of the pins can be None if one wants the UART to operate with limited functionality.
            If the RTS pin is given the the RX pin must be given as well. The same applies to CTS.

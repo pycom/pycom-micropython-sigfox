@@ -55,8 +55,7 @@
  DEFINE CONSTANTS
  *******-***********************************************************************/
 #define MACHUART_FRAME_TIME_US(baud)            ((11 * 1000000) / baud)
-#define MACHUART_2_FRAMES_TIME_US(baud)         ((MACHUART_FRAME_TIME_US(baud) * 2) + 1)
-#define MACHUART_RX_TIMEOUT_US(baud)            (MACHUART_2_FRAMES_TIME_US(baud))
+#define MACHUART_RX_TIMEOUT_US(baud, nb_chars)  (((MACHUART_FRAME_TIME_US(baud)) * nb_chars) + 1)
 
 #define MACHUART_TX_WAIT_US(baud)               ((MACHUART_FRAME_TIME_US(baud)) + 1)
 #define MACHUART_TX_MAX_TIMEOUT_MS              (5)
@@ -88,6 +87,7 @@ struct _mach_uart_obj_t {
     volatile uint32_t read_buf_tail;    // indexes the first full slot (not full if equals head)
     uint8_t irq_flags;
     uint8_t uart_id;
+    uint8_t rx_timeout;
 };
 
 /******************************************************************************
@@ -251,7 +251,7 @@ static IRAM_ATTR void uart_intr_handler(void *para) {
 // reading (from buf or for direct reading).
 // returns true if something available, false if not.
 STATIC bool uart_rx_wait (mach_uart_obj_t *self) {
-    int timeout = MACHUART_RX_TIMEOUT_US(self->config.baud_rate);
+    int timeout = MACHUART_RX_TIMEOUT_US(self->config.baud_rate, self->rx_timeout);
     for ( ; ; ) {
         if (uart_rx_any(self)) {
             return true; // we have at least 1 char ready for reading
@@ -400,8 +400,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
 
     // disable the delay between transfers
     WRITE_PERI_REG(UART_IDLE_CONF_REG(self->uart_id),
-        READ_PERI_REG(UART_IDLE_CONF_REG(self->uart_id)) & (~UART_TX_IDLE_NUM_M));
-
+    READ_PERI_REG(UART_IDLE_CONF_REG(self->uart_id)) & (~UART_TX_IDLE_NUM_M));
 
     // disable interrupts on the current UART before re-configuring
     // UART_IntrConfig() will enable them again
@@ -464,6 +463,8 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
         uart_assign_pins_af (pins, n_pins, self->uart_id);
     }
 
+    self->rx_timeout = args[5].u_int;
+
     return mp_const_none;
 
 error:
@@ -471,12 +472,13 @@ error:
 }
 
 STATIC const mp_arg_t mach_uart_init_args[] = {
-    { MP_QSTR_id,                             MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
-    { MP_QSTR_baudrate,                       MP_ARG_INT,  {.u_int = 9600} },
-    { MP_QSTR_bits,                           MP_ARG_INT,  {.u_int = 8} },
-    { MP_QSTR_parity,                         MP_ARG_OBJ,  {.u_obj = mp_const_none} },
-    { MP_QSTR_stop,                           MP_ARG_OBJ,  {.u_obj = mp_const_none} },
-    { MP_QSTR_pins,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
+    { MP_QSTR_id,                              MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
+    { MP_QSTR_baudrate,                        MP_ARG_INT,  {.u_int = 9600} },
+    { MP_QSTR_bits,                            MP_ARG_INT,  {.u_int = 8} },
+    { MP_QSTR_parity,                          MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+    { MP_QSTR_stop,                            MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+    { MP_QSTR_pins,           MP_ARG_KW_ONLY | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
+    { MP_QSTR_timeout_chars,  MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = 2} },
 };
 STATIC mp_obj_t mach_uart_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
