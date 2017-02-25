@@ -130,9 +130,10 @@ Methods
 
 .. method:: uart.readline()
 
-   Read a line, ending in a newline character.
+   Read a line, ending in a newline character. If such a line exists, return is immediate.
+   If the timeout elapses, all available data is returned regardless of whether a newline exists.
 
-   Return value: the line read or ``None`` on timeout.
+   Return value: the line read or None on timeout if no data is available.
 
 .. method:: uart.write(buf)
 
