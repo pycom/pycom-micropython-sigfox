@@ -20,22 +20,27 @@
 #include "xtensa/hal.h"
 
 /******************************************************************************
-DECLARE PRIVATE DATA
- ******************************************************************************/
-
-/******************************************************************************
 DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-static void gc_collect_inner(void) {
-    // get the sp
-    volatile uint32_t sp = (uint32_t)get_sp();
+static void gc_collect_inner(int level) {
+    if (level < XCHAL_NUM_AREGS / 8) {
+        gc_collect_inner(level + 1);
+        if (level != 0) {
+            return;
+        }
+    }
 
-    gc_collect_root((void**)sp, ((mp_uint_t)MP_STATE_THREAD(stack_top) - sp) / sizeof(uint32_t));
+    if (level == XCHAL_NUM_AREGS / 8) {
+        // get the sp
+        volatile uint32_t sp = (uint32_t)get_sp();
+        gc_collect_root((void**)sp, ((mp_uint_t)MP_STATE_THREAD(stack_top) - sp) / sizeof(uint32_t));
+        return;
+    }
 
     // trace root pointers from any threads
-    #if MICROPY_PY_THREAD
+#if MICROPY_PY_THREAD
     mp_thread_gc_others();
-    #endif
+#endif
 }
 
 /******************************************************************************
@@ -43,6 +48,6 @@ DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
 void gc_collect(void) {
     gc_collect_start();
-    gc_collect_inner();
+    gc_collect_inner(0);
     gc_collect_end();
 }
