@@ -92,7 +92,7 @@ Methods
          - ``parity`` is the parity, ``None``, ``UART.EVEN`` or ``UART.ODD``.
          - ``stop`` is the number of stop bits, 1 or 2.
          - ``timeout_chars`` Rx timeout defined in number of characters. The value given here will be
-            multiplied by the time a characters takes to be transmitted at the configured baudrate.
+           multiplied by the time a characters takes to be transmitted at the configured baudrate.
          - ``pins`` is a 4 or 2 item list indicating the TXD, RXD, RTS and CTS pins (in that order).
            Any of the pins can be None if one wants the UART to operate with limited functionality.
            If the RTS pin is given the the RX pin must be given as well. The same applies to CTS.
