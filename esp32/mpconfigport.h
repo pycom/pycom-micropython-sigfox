@@ -51,7 +51,7 @@
 #define MICROPY_PY_SYS                              (1)
 #define MICROPY_PY_THREAD                           (1)
 #define MICROPY_PY_THREAD_GIL                       (1)
-#define MICROPY_PY_THREAD_GIL_DIVISOR               (8)
+#define MICROPY_PY_THREAD_GIL_VM_DIVISOR            (8)
 #define MICROPY_PY_SYS_MAXSIZE                      (1)
 #define MICROPY_PY_SYS_EXIT                         (1)
 #define MICROPY_PY_SYS_STDFILES                     (1)

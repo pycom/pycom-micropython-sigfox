@@ -38,7 +38,6 @@
 #include "py/bc.h"
 
 #if 0
-//#define TRACE(ip) printf("sp=" INT_FMT " ", sp - code_state->sp); mp_bytecode_print2(ip, 1);
 #define TRACE(ip) printf("sp=%d ", sp - code_state->sp); mp_bytecode_print2(ip, 1);
 #else
 #define TRACE(ip)
@@ -64,8 +63,8 @@ typedef enum {
     do { \
         unum = (unum << 7) + (*ip & 0x7f); \
     } while ((*ip++ & 0x80) != 0)
-#define DECODE_ULABEL mp_uint_t ulab = (ip[0] | (ip[1] << 8)); ip += 2
-#define DECODE_SLABEL mp_uint_t slab = (ip[0] | (ip[1] << 8)) - 0x8000; ip += 2
+#define DECODE_ULABEL size_t ulab = (ip[0] | (ip[1] << 8)); ip += 2
+#define DECODE_SLABEL size_t slab = (ip[0] | (ip[1] << 8)) - 0x8000; ip += 2
 
 #if MICROPY_PERSISTENT_CODE
 
@@ -170,6 +169,12 @@ run_code_state: ;
     volatile bool currently_in_except_block = MP_TAGPTR_TAG0(code_state->exc_sp); // 0 or 1, to detect nested exceptions
     mp_exc_stack_t *volatile exc_sp = MP_TAGPTR_PTR(code_state->exc_sp); // stack grows up, exc_sp points to top of stack
 
+    #if MICROPY_PY_THREAD_GIL && MICROPY_PY_THREAD_GIL_VM_DIVISOR
+    // This needs to be volatile and outside the VM loop so it persists across handling
+    // of any exceptions.  Otherwise it's possible that the VM never gives up the GIL.
+    volatile int gil_divisor = MICROPY_PY_THREAD_GIL_VM_DIVISOR;
+    #endif
+
     // outer exception handling loop
     for (;;) {
         nlr_buf_t nlr;
@@ -179,9 +184,6 @@ outer_dispatch_loop:
             const byte *ip = code_state->ip;
             mp_obj_t *sp = code_state->sp;
             mp_obj_t obj_shared;
-#if MICROPY_PY_THREAD && MICROPY_PY_THREAD_GIL
-            uint32_t gil_divisor = MICROPY_PY_THREAD_GIL_DIVISOR;
-#endif
             MICROPY_VM_HOOK_INIT
 
             // If we have exception to inject, now that we finish setting up
@@ -1247,13 +1249,17 @@ pending_exception_check:
                     RAISE(obj);
                 }
 
-#if MICROPY_PY_THREAD && MICROPY_PY_THREAD_GIL
+                #if MICROPY_PY_THREAD_GIL
+                #if MICROPY_PY_THREAD_GIL_VM_DIVISOR
                 if (--gil_divisor == 0) {
-                    gil_divisor = MICROPY_PY_THREAD_GIL_DIVISOR;
+                    gil_divisor = MICROPY_PY_THREAD_GIL_VM_DIVISOR;
+                #else
+                {
+                #endif
                     MP_THREAD_GIL_EXIT();
                     MP_THREAD_GIL_ENTER();
                 }
-#endif
+                #endif
 
             } // for loop
 
