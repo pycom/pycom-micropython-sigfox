@@ -1001,7 +1001,9 @@ void SX1272RadioFlagsIrq (void) {
         SX1272.irqFlags &= ~RADIO_IRQ_FLAG_RX_DONE;
         if( ( RadioEvents != NULL ) && ( RadioEvents->RxDone != NULL ) )
         {
-            RadioEvents->RxDone( RxTxBuffer, SX1272.Settings.LoRaPacketHandler.Size, SX1272.Settings.LoRaPacketHandler.RssiValue, SX1272.Settings.LoRaPacketHandler.SnrValue );
+            RadioEvents->RxDone( RxTxBuffer, SX1272.Settings.LoRaPacketHandler.TimeStamp, SX1272.Settings.LoRaPacketHandler.Size,
+                                 SX1272.Settings.LoRaPacketHandler.RssiValue, SX1272.Settings.LoRaPacketHandler.SnrValue,
+                                 SX1272.Settings.LoRaPacketHandler.SFValue );
         }
     }
     if (SX1272.irqFlags & RADIO_IRQ_FLAG_RX_ERROR) {
@@ -1041,6 +1043,8 @@ static IRAM_ATTR void SX1272OnDioIrq (void) {
     }
 }
 
+extern uint64_t get_time_since_boot();
+
 IRAM_ATTR void SX1272OnDio0Irq( void )
 {
     volatile uint8_t irqFlags = 0;
@@ -1056,6 +1060,9 @@ IRAM_ATTR void SX1272OnDio0Irq( void )
             case MODEM_LORA:
                 {
                     int8_t snr = 0;
+
+                    // Store the packet timestamp
+                    SX1272.Settings.LoRaPacketHandler.TimeStamp = (uint32_t)get_time_since_boot();
 
                     // Clear Irq
                     SX1272Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXDONE );

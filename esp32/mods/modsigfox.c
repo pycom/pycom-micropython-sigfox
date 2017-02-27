@@ -536,7 +536,10 @@ IRAM_ATTR static void fsk_manual_calibration(void) {
 }
 
 static void sigfox_send_cmd (sigfox_cmd_rx_data_t *cmd_rx_data) {
+    xEventGroupClearBits(sigfoxEvents, SIGFOX_STATUS_COMPLETED | SIGFOX_STATUS_ERR);
+
     xQueueSend(xCmdQueue, (void *)cmd_rx_data, (TickType_t)portMAX_DELAY);
+
     uint32_t result = xEventGroupWaitBits(sigfoxEvents,
                                           SIGFOX_STATUS_COMPLETED | SIGFOX_STATUS_ERR,
                                           pdTRUE,   // clear on exit
@@ -984,6 +987,8 @@ static int sigfox_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_u
         // blocking mode
         timeout_ms = portMAX_DELAY;
     }
+
+    xEventGroupClearBits(sigfoxEvents, SIGFOX_STATUS_COMPLETED | SIGFOX_STATUS_ERR);
 
     // just pass it to the Sigfox queue
     if (!xQueueSend(xCmdQueue, (void *)&cmd_rx_data, (TickType_t)(timeout_ms / portTICK_PERIOD_MS))) {

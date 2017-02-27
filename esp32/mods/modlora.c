@@ -28,6 +28,7 @@
 #include "pybioctl.h"
 #include "modusocket.h"
 #include "pycom_config.h"
+#include "mpirq.h"
 
 #include "lora/mac/LoRaMac.h"
 
@@ -114,6 +115,11 @@
 
 #define LORAWAN_SOCKET_GET_DR(sd)                   ((sd >> 16) & 0xFF)
 
+
+// callback events
+#define MODLORA_RX_EVENT                            (0x01)
+#define MODLORA_TX_EVENT                            (0x02)
+
 /******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
@@ -163,13 +169,18 @@ typedef enum {
 
 typedef struct {
   mp_obj_base_t     base;
+  mp_obj_t          handler;
+  mp_obj_t          handler_arg;
   lora_stack_mode_t stack_mode;
   lora_state_t      state;
   uint32_t          frequency;
   uint32_t          rx_timeout;
   uint32_t          tx_timeout;
   uint32_t          dev_addr;
+  uint32_t          timestamp;
   int16_t           rssi;
+  int8_t            snr;
+  uint8_t           sfrx;
   uint8_t           preamble;
   uint8_t           bandwidth;
   uint8_t           coding_rate;
@@ -208,6 +219,8 @@ typedef struct {
   bool              adr;
   bool              public;
   bool              joined;
+  uint8_t           events;
+  uint8_t           trigger;
 } lora_obj_t;
 
 typedef struct {
@@ -237,7 +250,7 @@ static TimerEvent_t TxNextActReqTimer;
  ******************************************************************************/
 static void TASK_LoRa (void *pvParameters);
 static void OnTxDone (void);
-static void OnRxDone (uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr);
+static void OnRxDone (uint8_t *payload, uint32_t timestamp, uint16_t size, int16_t rssi, int8_t snr, uint8_t sf);
 static void OnTxTimeout (void);
 static void OnRxTimeout (void);
 static void OnRxError (void);
@@ -254,6 +267,7 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms);
 static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms);
 static bool lora_rx_any (void);
 static bool lora_tx_space (void);
+static void lora_callback_handler(void *arg);
 
 static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno);
 static void lora_socket_close (mod_network_socket_obj_t *s);
@@ -308,6 +322,8 @@ static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms,
         timeout_ms = portMAX_DELAY;
     }
 
+    xEventGroupClearBits(LoRaEvents, LORA_STATUS_COMPLETED | LORA_STATUS_ERROR | LORA_STATUS_MSG_SIZE);
+
     // just pass to the LoRa queue
     if (!xQueueSend(xCmdQueue, (void *)&cmd_data, (TickType_t)(timeout_ms / portTICK_PERIOD_MS))) {
         return 0;
@@ -354,6 +370,11 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
     }
     lora_obj.state = E_LORA_STATE_IDLE;
     xEventGroupSetBits(LoRaEvents, status);
+
+    lora_obj.events |= MODLORA_TX_EVENT;
+    if (lora_obj.trigger & MODLORA_TX_EVENT) {
+        mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+    }
 }
 
 static void McpsIndication (McpsIndication_t *mcpsIndication) {
@@ -384,7 +405,10 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
     // Check Snr
     // Check RxSlot
 
+    lora_obj.timestamp = mcpsIndication->TimeStamp;
     lora_obj.rssi = mcpsIndication->Rssi;
+    lora_obj.snr = mcpsIndication->Snr;
+    lora_obj.sfrx = mcpsIndication->SFValue;
 
     if (lora_obj.ComplianceTest.Running == true) {
         lora_obj.ComplianceTest.DownLinkCounter++;
@@ -400,6 +424,11 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                 memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
                 rx_data_isr.len = mcpsIndication->BufferSize;
                 xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);
+
+                lora_obj.events |= MODLORA_RX_EVENT;
+                if (lora_obj.trigger & MODLORA_RX_EVENT) {
+                    mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+                }
             }
             // printf("Data on port 1 or 2 received\n");
             break;
@@ -800,18 +829,39 @@ static void TASK_LoRa (void *pvParameters) {
     }
 }
 
+static void lora_callback_handler(void *arg) {
+    lora_obj_t *self = arg;
+
+    if (self->handler != mp_const_none) {
+        mp_call_function_1(self->handler, self->handler_arg);
+    }
+}
+
 static IRAM_ATTR void OnTxDone (void) {
+    lora_obj.events |= MODLORA_TX_EVENT;
+    if (lora_obj.trigger & MODLORA_TX_EVENT) {
+        mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+    }
     lora_obj.state = E_LORA_STATE_TX_DONE;
 }
 
-static IRAM_ATTR void OnRxDone (uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr) {
-    lora_obj.state = E_LORA_STATE_RX_DONE;
+static IRAM_ATTR void OnRxDone (uint8_t *payload, uint32_t timestamp, uint16_t size, int16_t rssi, int8_t snr, uint8_t sf) {
+    lora_obj.timestamp = timestamp;
     lora_obj.rssi = rssi;
+    lora_obj.snr = snr;
+    lora_obj.sfrx = sf;
     if (size <= LORA_PAYLOAD_SIZE_MAX) {
         memcpy((void *)rx_data_isr.data, payload, size);
         rx_data_isr.len = size;
         xQueueSendFromISR(xRxQueue, (void *)&rx_data_isr, NULL);
     }
+
+    lora_obj.events |= MODLORA_RX_EVENT;
+    if (lora_obj.trigger & MODLORA_RX_EVENT) {
+        mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+    }
+
+    lora_obj.state = E_LORA_STATE_RX_DONE;
 }
 
 static IRAM_ATTR void OnTxTimeout (void) {
@@ -966,6 +1016,8 @@ static void lora_get_config (lora_cmd_data_t *cmd_data) {
 }
 
 static void lora_send_cmd (lora_cmd_data_t *cmd_data) {
+    xEventGroupClearBits(LoRaEvents, LORA_STATUS_COMPLETED | LORA_STATUS_ERROR | LORA_STATUS_MSG_SIZE);
+
     xQueueSend(xCmdQueue, (void *)cmd_data, (TickType_t)portMAX_DELAY);
 
     uint32_t result = xEventGroupWaitBits(LoRaEvents,
@@ -990,6 +1042,8 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
         // blocking mode
         timeout_ms = portMAX_DELAY;
     }
+
+    xEventGroupClearBits(LoRaEvents, LORA_STATUS_COMPLETED | LORA_STATUS_ERROR | LORA_STATUS_MSG_SIZE);
 
     // just pass to the LoRa queue
     if (!xQueueSend(xCmdQueue, (void *)&cmd_data, (TickType_t)(timeout_ms / portTICK_PERIOD_MS))) {
@@ -1428,11 +1482,22 @@ STATIC mp_obj_t lora_power_mode(mp_uint_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lora_power_mode_obj, 1, 2, lora_power_mode);
 
-STATIC mp_obj_t lora_rssi(mp_obj_t self_in) {
+STATIC mp_obj_t lora_stats(mp_obj_t self_in) {
     lora_obj_t *self = self_in;
-    return mp_obj_new_int(self->rssi);
+
+    static const qstr lora_stats_info_fields[] = {
+        MP_QSTR_timestamp, MP_QSTR_rssi, MP_QSTR_snr, MP_QSTR_sf
+    };
+
+    mp_obj_t stats_tuple[4];
+    stats_tuple[0] = mp_obj_new_int_from_uint(self->timestamp);
+    stats_tuple[1] = mp_obj_new_int(self->rssi);
+    stats_tuple[2] = mp_obj_new_int(self->snr);
+    stats_tuple[3] = mp_obj_new_int(self->sfrx);
+
+    return mp_obj_new_attrtuple(lora_stats_info_fields, 4, stats_tuple);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_rssi_obj, lora_rssi);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_stats_obj, lora_stats);
 
 STATIC mp_obj_t lora_has_joined(mp_obj_t self_in) {
     lora_obj_t *self = self_in;
@@ -1505,6 +1570,45 @@ STATIC mp_obj_t lora_mac(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_mac_obj, lora_mac);
 
+/// \method callback(trigger, handler, arg)
+STATIC mp_obj_t lora_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    STATIC const mp_arg_t allowed_args[] = {
+        { MP_QSTR_trigger,      MP_ARG_REQUIRED | MP_ARG_OBJ,   },
+        { MP_QSTR_handler,      MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+        { MP_QSTR_arg,          MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+    };
+
+    // parse arguments
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
+    lora_obj_t *self = pos_args[0];
+
+    // enable the callback
+    if (args[0].u_obj != mp_const_none && args[1].u_obj != mp_const_none) {
+        self->trigger = mp_obj_get_int(args[0].u_obj);
+        self->handler = args[1].u_obj;
+        if (args[2].u_obj == mp_const_none) {
+            self->handler_arg = self;
+        } else {
+            self->handler_arg = args[2].u_obj;
+        }
+    } else {
+        self->trigger = 0;
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lora_callback_obj, 1, lora_callback);
+
+STATIC mp_obj_t lora_events(mp_obj_t self_in) {
+    lora_obj_t *self = self_in;
+
+    int32_t events = self->events;
+    self->events = 0;
+    return mp_obj_new_int(events);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_events_obj, lora_events);
+
 STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&lora_init_obj },
@@ -1516,12 +1620,14 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_preamble),            (mp_obj_t)&lora_preamble_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sf),                  (mp_obj_t)&lora_sf_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_power_mode),          (mp_obj_t)&lora_power_mode_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_rssi),                (mp_obj_t)&lora_rssi_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_stats),               (mp_obj_t)&lora_stats_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_has_joined),          (mp_obj_t)&lora_has_joined_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_add_channel),         (mp_obj_t)&lora_add_channel_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_remove_channel),      (mp_obj_t)&lora_remove_channel_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&lora_mac_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_compliance_test),     (mp_obj_t)&lora_compliance_test_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_callback),            (mp_obj_t)&lora_callback_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_events),              (mp_obj_t)&lora_events_obj },
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_LORA),                MP_OBJ_NEW_SMALL_INT(E_LORA_STACK_MODE_LORA) },
@@ -1542,6 +1648,9 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_CODING_4_6),          MP_OBJ_NEW_SMALL_INT(E_LORA_CODING_4_6) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CODING_4_7),          MP_OBJ_NEW_SMALL_INT(E_LORA_CODING_4_7) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CODING_4_8),          MP_OBJ_NEW_SMALL_INT(E_LORA_CODING_4_8) },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_RX_PACKET_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_RX_EVENT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_TX_PACKET_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_TX_EVENT) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(lora_locals_dict, lora_locals_dict_table);

@@ -853,6 +853,10 @@ typedef struct sMcpsIndication
      * Status of the operation
      */
     LoRaMacEventInfoStatus_t Status;
+
+    uint32_t TimeStamp;
+    uint8_t SFValue;
+
     /*!
      * Multicast
      */

@@ -559,7 +559,7 @@ static void PrepareRxDoneAbort( void );
 /*!
  * \brief Function to be executed on Radio Rx Done event
  */
-static void OnRadioRxDone( uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr );
+static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, int16_t rssi, int8_t snr, uint8_t sf );
 
 /*!
  * \brief Function executed on Radio Tx Timeout event
@@ -910,7 +910,7 @@ static void PrepareRxDoneAbort( void )
     TimerStart( &MacStateCheckTimer );
 }
 
-static void OnRadioRxDone( uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr )
+static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, int16_t rssi, int8_t snr, uint8_t sf )
 {
     LoRaMacHeader_t macHdr;
     LoRaMacFrameCtrl_t fCtrl;
@@ -938,6 +938,8 @@ static void OnRadioRxDone( uint8_t *payload, uint16_t size, int16_t rssi, int8_t
     bool isMicOk = false;
 
     McpsConfirm.AckReceived = false;
+    McpsIndication.TimeStamp = timestamp;
+    McpsIndication.SFValue = sf;
     McpsIndication.Rssi = rssi;
     McpsIndication.Snr = snr;
     McpsIndication.RxSlot = RxSlot;

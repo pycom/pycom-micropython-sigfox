@@ -100,9 +100,11 @@ typedef struct
  */
 typedef struct
 {
-    int8_t SnrValue;
+    uint32_t TimeStamp;
     int16_t RssiValue;
+    int8_t SnrValue;
     uint8_t Size;
+    uint8_t SFValue;
 }RadioLoRaPacketHandler_t;
 
 /*!

@@ -51,14 +51,16 @@ typedef struct
     /*!
      * \brief Rx Done callback prototype.
      *
-     * \param [IN] payload Received buffer pointer
-     * \param [IN] size    Received buffer size
-     * \param [IN] rssi    RSSI value computed while receiving the frame [dBm]
-     * \param [IN] snr     Raw SNR value given by the radio hardware
-     *                     FSK : N/A ( set to 0 )
-     *                     LoRa: SNR value in dB
+     * \param [IN] payload      Received buffer pointer
+     * \param [IN] size         Received buffer size
+     * \param [IN] timestamp    timestamp of the packet in us
+     * \param [IN] rssi         RSSI value computed while receiving the frame [dBm]
+     * \param [IN] snr          Raw SNR value given by the radio hardware
+     *                          FSK : N/A ( set to 0 )
+     *                          LoRa: SNR value in dB
+     * \param [IN] sf           Spreading factor of the packet received (6 - 12)
      */
-    void    ( *RxDone )( uint8_t *payload, uint16_t size, int16_t rssi, int8_t snr );
+    void    ( *RxDone )( uint8_t *payload, uint32_t timestamp, uint16_t size, int16_t rssi, int8_t snr, uint8_t sf );
     /*!
      * \brief  Rx Timeout callback prototype.
      */
