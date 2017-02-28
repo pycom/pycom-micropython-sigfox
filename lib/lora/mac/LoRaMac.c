@@ -939,7 +939,6 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
 
     McpsConfirm.AckReceived = false;
     McpsIndication.TimeStamp = timestamp;
-    McpsIndication.SFValue = sf;
     McpsIndication.Rssi = rssi;
     McpsIndication.Snr = snr;
     McpsIndication.RxSlot = RxSlot;
@@ -1273,7 +1272,6 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
                 else
                 {
                     McpsIndication.Status = LORAMAC_EVENT_INFO_STATUS_MIC_FAIL;
-
                     PrepareRxDoneAbort( );
                     return;
                 }

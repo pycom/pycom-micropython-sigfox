@@ -1003,7 +1003,7 @@ void SX1272RadioFlagsIrq (void) {
         {
             RadioEvents->RxDone( RxTxBuffer, SX1272.Settings.LoRaPacketHandler.TimeStamp, SX1272.Settings.LoRaPacketHandler.Size,
                                  SX1272.Settings.LoRaPacketHandler.RssiValue, SX1272.Settings.LoRaPacketHandler.SnrValue,
-                                 SX1272.Settings.LoRaPacketHandler.SFValue );
+                                 SX1272.Settings.LoRa.Datarate );
         }
     }
     if (SX1272.irqFlags & RADIO_IRQ_FLAG_RX_ERROR) {

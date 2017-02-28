@@ -24,7 +24,7 @@ class NanoGateway:
             self.udp_sock.sendto(self._server, udp_pkt)
 
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2
 
 PUSH_DATA = 0
 PUSH_ACK = 1
@@ -35,7 +35,7 @@ PULL_RESP = 3
 GATEWAY_ID = '1a2b3c4d5e6f7081'
 
 gateway_stat = {"stat": {"time": 0, "lati": 0, "long": 0, "alti": 0, "rxnb": 0, "rxf2": 0, "ackr": 0, "dwnb": 2, "txnb": 2}}
-node_packet = {"rxpk": [{"tmst": 0, "chan": 0, "rfch": 0, "freq": 868.1, "stat": 1, "modu": "LORA", "datr": "SF7BW125", "codr": "4/5", "rssi": -20, "lsnr": 5.1, "size": 0, "data": ""}]}
+node_packet = {"rxpk": [{"tmst": 0, "chan": 0, "rfch": 0, "freq": 868.1, "stat": 1, "modu": "LORA", "datr": "SF7BW125", "codr": "4/5", "rssi": 0, "lsnr": 0, "size": 0, "data": ""}]}
 
 from network import WLAN
 from network import LoRa
@@ -49,28 +49,27 @@ import _thread
 import socket
 from machine import Timer
 
-# initialize LoRa in LORA mode
-# more params can also be given, like frequency, tx power and spreading factor
-lora = LoRa(mode=LoRa.LORA, frequency=868100000, bandwidth=LoRa.BW_125KHZ, sf=7, preamble=8, coding_rate=LoRa.CODING_4_5)
-# create a raw LoRa socket
-lora_sock = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
-lora_sock.setblocking(False)
-
 wlan = WLAN(mode=WLAN.STA)
-wlan.connect('ONO43DA', auth=(None, '3PM3w7mVCeR1'))
+wlan.connect('Pycom', auth=(None, 'G01nv3nt!'))
 
 while not wlan.isconnected():
     time.sleep(2)
+
+print("WiFi connected!")
 
 time.sleep(0.5)
 rtc = machine.RTC()
 rtc.ntp_sync("pool.ntp.org") # select an appropriate server
 
+print("Time sync!")
+
 server_addr = socket.getaddrinfo('router.eu.thethings.network', 1700)[0][-1]
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
 sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-sock.settimeout(0.5)
+sock.setblocking(False)
+
+start_tmst_1 = 0
 
 def make_gateway_stat():
     now = rtc.now()
@@ -79,8 +78,11 @@ def make_gateway_stat():
 
 a_lock = _thread.allocate_lock()
 
-def make_node_data(rx_data):
-    node_packet["rxpk"][0]["tmst"] = time.ticks_us()
+def make_node_data(rx_data, tmst, sf, rssi, snr):
+    node_packet["rxpk"][0]["tmst"] = tmst
+    node_packet["rxpk"][0]["datr"] = "SF7BW125"
+    node_packet["rxpk"][0]["rssi"] = rssi
+    node_packet["rxpk"][0]["lsnr"] = float(snr)
     node_packet["rxpk"][0]["data"] = binascii.b2a_base64(rx_data)[:-1]
     node_packet["rxpk"][0]["size"] = len(rx_data)
     return json.dumps(node_packet)
@@ -105,14 +107,56 @@ def pull_data():
         except Exception:
             print("PULL exception")
 
-push_data(make_gateway_stat())
+def ack_pull_rsp(token):
+    global sock
+    packet = bytes([PROTOCOL_VERSION]) + token + bytes([PULL_ACK]) + binascii.unhexlify(GATEWAY_ID)
+    with a_lock:
+        try:
+            sock.sendto(packet, server_addr)
+        except Exception:
+            print("PULL RSP ACK exception")
+
 udp_alarm = Timer.Alarm(handler=lambda f: push_data(make_gateway_stat()), s=60, periodic=True)
 udp_alarm2 = Timer.Alarm(handler=lambda f2: pull_data(), s=25, periodic=True)
+push_data(make_gateway_stat())
+
+def lora_cb(l):
+    global lora_sock
+    global start_tmst_1
+    events = l.events()
+    if events & LoRa.RX_PACKET_EVENT:
+        rx = lora_sock.recv(256)
+        stats = l.stats()
+        push_data(make_node_data(rx, stats.timestamp, stats.sf, stats.rssi, stats.snr))
+        start_tmst_1 = stats.timestamp
+    elif events & LoRa.TX_PACKET_EVENT:
+        l.sf(7)
+
+# initialize LoRa in LORA mode
+# more params can also be given, like frequency, tx power and spreading factor
+lora = LoRa(mode=LoRa.LORA, frequency=868100000, bandwidth=LoRa.BW_125KHZ, sf=7, preamble=8, coding_rate=LoRa.CODING_4_5, tx_iq=True)
+# create a raw LoRa socket
+lora_sock = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
+lora_sock.setblocking(False)
+
+lora.callback(trigger=(LoRa.RX_PACKET_EVENT | LoRa.TX_PACKET_EVENT), handler=lora_cb)
 
 pkts_up_acked = 0
 
-def send_down_link(data):
+def send_down_link(data, tmst, dr):
+    global start_tmst_1
+    global lora
+
+    sf = dr[2:4]
+    if sf[1] not in '0123456789':
+        sf = sf[0:1]
+
+    lora.sf(int(sf))
+    ts = time.ticks_us()
+    while ts < tmst:
+        ts = time.ticks_us()
     lora_sock.send(data)
+    print("T1: " + str(ts - start_tmst_1))
 
 def udp_thread(sock_r):
     global pkts_up_acked
@@ -120,6 +164,7 @@ def udp_thread(sock_r):
     while True:
         try:
             data, src = sock_r.recvfrom(1024)
+            _token = data[1:3]
             _type = data[3]
             if _type == PUSH_ACK:
                 pkts_up_acked += 1
@@ -129,34 +174,33 @@ def udp_thread(sock_r):
                 print("Pull ack!")
             elif _type == PULL_RESP:
                 tx_pk = json.loads(data[4:])
-                l_tmst = tx_pk["txpk"]["tmst"]
-                t_us = (l_tmst - time.ticks_us() - 30000)
-                l_data = tx_pk["txpk"]["data"]
-                print("pkt time: ", t_us)
-                lora_alarm = Timer.Alarm(handler=lambda f: send_down_link(binascii.a2b_base64(l_data)), us=t_us)
-                print("Pull rsp!")
-                print(l_data)
+                tmst = tx_pk["txpk"]["tmst"]
+                t_us = tmst - time.ticks_us() - 5000
+                if t_us < 0:
+                    t_us += 0xFFFFFFFF
+                if t_us < 10000000:
+                    lora_alarm = Timer.Alarm(handler=lambda f: send_down_link(binascii.a2b_base64(tx_pk["txpk"]["data"]), tx_pk["txpk"]["tmst"] - 5, tx_pk["txpk"]["datr"]), us=t_us)
+                    print('Downlink!')
+                    ack_pull_rsp(_token)
+                else:
+                    print("Downlink TMST error!")
         except socket.timeout:
             pass
+        except OSError as e:
+            if e.errno == errno.EAGAIN:
+                pass
+            else:
+                print("UDP recv OSError Exception")
         except Exception:
-            print("UDP recv EXCEPTION")
+            print("UDP recv Exception")
+        time.sleep(0.05)
 
 _thread.start_new_thread(udp_thread, (sock,))
 
-def rx_lora(s):
-    # try to receive
-    rx = s.recv(128)
-    if rx:
-        # print("lora rx: " + str(rx, 'ascii'))
-        push_data(make_node_data(rx))
-
-import gc
-
 while True:
     if not wlan.isconnected():
-        wlan.connect('ONO43DA', auth=(None, '3PM3w7mVCeR1'))
+        wlan.connect('Pycom', auth=(None, 'G01nv3nt!'))
         while not wlan.isconnected():
             time.sleep(2)
     else:
-        rx_lora(lora_sock)
         time.sleep(2)

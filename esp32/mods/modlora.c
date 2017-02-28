@@ -254,13 +254,14 @@ static void OnRxDone (uint8_t *payload, uint32_t timestamp, uint16_t size, int16
 static void OnTxTimeout (void);
 static void OnRxTimeout (void);
 static void OnRxError (void);
-static void lora_setup (lora_init_cmd_data_t *init_data);
+static void lora_radio_setup (lora_init_cmd_data_t *init_data);
 static void lora_validate_mode (uint32_t mode);
 static void lora_validate_frequency (uint32_t frequency);
 static void lora_validate_power (uint8_t tx_power);
 static void lora_validate_bandwidth (uint8_t bandwidth);
 static void lora_validate_sf (uint8_t sf);
 static void lora_validate_coding_rate (uint8_t coding_rate);
+static void lora_set_config (lora_cmd_data_t *cmd_data);
 static void lora_get_config (lora_cmd_data_t *cmd_data);
 static void lora_send_cmd (lora_cmd_data_t *cmd_data);
 static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms);
@@ -408,7 +409,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
     lora_obj.timestamp = mcpsIndication->TimeStamp;
     lora_obj.rssi = mcpsIndication->Rssi;
     lora_obj.snr = mcpsIndication->Snr;
-    lora_obj.sfrx = mcpsIndication->SFValue;
+    lora_obj.sfrx = mcpsIndication->RxDatarate;
 
     if (lora_obj.ComplianceTest.Running == true) {
         lora_obj.ComplianceTest.DownLinkCounter++;
@@ -590,7 +591,7 @@ static void TASK_LoRa (void *pvParameters) {
     BoardInitPeriph();
 
     for ( ; ; ) {
-        vTaskDelay (2 / portTICK_PERIOD_MS);
+        vTaskDelay (1 / portTICK_PERIOD_MS);
 
         switch (lora_obj.state) {
         case E_LORA_STATE_NOINIT:
@@ -601,7 +602,8 @@ static void TASK_LoRa (void *pvParameters) {
             if (xQueueReceive(xCmdQueue, &cmd_data, 0)) {
                 switch (cmd_data.cmd) {
                 case E_LORA_CMD_INIT:
-                    lora_obj.stack_mode = cmd_data.info.init.stack_mode;
+                    // save the new configuration first
+                    lora_set_config(&cmd_data);
                     if (cmd_data.info.init.stack_mode == E_LORA_STACK_MODE_LORAWAN) {
                         LoRaMacPrimitives.MacMcpsConfirm = McpsConfirm;
                         LoRaMacPrimitives.MacMcpsIndication = McpsIndication;
@@ -624,10 +626,7 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacTestSetDutyCycleOn(false);
                     #endif
 
-                        // copy the configuration (must be done before sending the response)
-                        lora_obj.adr = cmd_data.info.init.adr;
-                        lora_obj.public = cmd_data.info.init.public;
-                        lora_obj.tx_retries = cmd_data.info.init.tx_retries;
+                        // change the frequency to be on the center of the band
                         lora_obj.frequency = RF_FREQUENCY_CENTER;
                         lora_obj.state = E_LORA_STATE_IDLE;
                     } else {
@@ -639,35 +638,18 @@ static void TASK_LoRa (void *pvParameters) {
                         RadioEvents.RxError = OnRxError;
                         Radio.Init(&RadioEvents);
 
-                        Radio.SetModem(MODEM_LORA);
-                        if (cmd_data.info.init.public) {
-                            Radio.Write(REG_LR_SYNCWORD, LORA_MAC_PUBLIC_SYNCWORD);
-                        } else {
-                            Radio.Write(REG_LR_SYNCWORD, LORA_MAC_PRIVATE_SYNCWORD);
-                        }
-
-                        lora_setup(&cmd_data.info.init);
-
-                        // copy the configuration (must be done before sending the response)
-                        lora_obj.bandwidth = cmd_data.info.init.bandwidth;
-                        lora_obj.coding_rate = cmd_data.info.init.coding_rate;
-                        lora_obj.frequency = cmd_data.info.init.frequency;
-                        lora_obj.preamble = cmd_data.info.init.preamble;
-                        lora_obj.rxiq = cmd_data.info.init.rxiq;
-                        lora_obj.txiq = cmd_data.info.init.txiq;
-                        lora_obj.sf = cmd_data.info.init.sf;
-                        lora_obj.tx_power = cmd_data.info.init.tx_power;
-                        lora_obj.pwr_mode = cmd_data.info.init.power_mode;
-                        if (lora_obj.pwr_mode == E_LORA_MODE_ALWAYS_ON) {
-                            // start listening
-                            Radio.Rx(LORA_RX_TIMEOUT);
-                            lora_obj.state = E_LORA_STATE_RX;
-                        } else {
-                            Radio.Sleep();
-                            lora_obj.state = E_LORA_STATE_SLEEP;
-                        }
+                        // init the radio
+                        lora_radio_setup(&cmd_data.info.init);
                     }
                     lora_obj.joined = false;
+                    xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
+                    break;
+                case E_LORA_CMD_REINIT:
+                    // save the new configuration first
+                    lora_set_config(&cmd_data);
+
+                    // init the radio
+                    lora_radio_setup(&cmd_data.info.init);
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
                     break;
                 case E_LORA_CMD_JOIN:
@@ -876,7 +858,7 @@ static IRAM_ATTR void OnRxError (void) {
     lora_obj.state = E_LORA_STATE_RX_ERROR;
 }
 
-static void lora_setup (lora_init_cmd_data_t *init_data) {
+static void lora_radio_setup (lora_init_cmd_data_t *init_data) {
     uint16_t symbol_to = 8;
 
 #if defined( USE_BAND_868 )
@@ -935,6 +917,14 @@ static void lora_setup (lora_init_cmd_data_t *init_data) {
     }
 #endif
 
+    Radio.SetModem(MODEM_LORA);
+
+    if (init_data->public) {
+        Radio.Write(REG_LR_SYNCWORD, LORA_MAC_PUBLIC_SYNCWORD);
+    } else {
+        Radio.Write(REG_LR_SYNCWORD, LORA_MAC_PRIVATE_SYNCWORD);
+    }
+
     Radio.SetChannel(init_data->frequency);
 
     Radio.SetTxConfig(MODEM_LORA, init_data->tx_power, 0, init_data->bandwidth,
@@ -946,6 +936,15 @@ static void lora_setup (lora_init_cmd_data_t *init_data) {
                                   init_data->coding_rate, 0, init_data->preamble,
                                   symbol_to, LORA_FIX_LENGTH_PAYLOAD_OFF,
                                   0, true, 0, 0, init_data->rxiq, true);
+
+    if (init_data->power_mode == E_LORA_MODE_ALWAYS_ON) {
+        // start listening
+        Radio.Rx(LORA_RX_TIMEOUT);
+        lora_obj.state = E_LORA_STATE_RX;
+    } else {
+        Radio.Sleep();
+        lora_obj.state = E_LORA_STATE_SLEEP;
+    }
 }
 
 static void lora_validate_mode (uint32_t mode) {
@@ -1003,7 +1002,24 @@ static void lora_validate_power_mode (uint8_t power_mode) {
     }
 }
 
+static void lora_set_config (lora_cmd_data_t *cmd_data) {
+    lora_obj.stack_mode = cmd_data->info.init.stack_mode;
+    lora_obj.bandwidth = cmd_data->info.init.bandwidth;
+    lora_obj.coding_rate = cmd_data->info.init.coding_rate;
+    lora_obj.frequency = cmd_data->info.init.frequency;
+    lora_obj.preamble = cmd_data->info.init.preamble;
+    lora_obj.rxiq = cmd_data->info.init.rxiq;
+    lora_obj.txiq = cmd_data->info.init.txiq;
+    lora_obj.sf = cmd_data->info.init.sf;
+    lora_obj.tx_power = cmd_data->info.init.tx_power;
+    lora_obj.pwr_mode = cmd_data->info.init.power_mode;
+    lora_obj.adr = cmd_data->info.init.adr;
+    lora_obj.public = cmd_data->info.init.public;
+    lora_obj.tx_retries = cmd_data->info.init.tx_retries;
+}
+
 static void lora_get_config (lora_cmd_data_t *cmd_data) {
+    cmd_data->info.init.stack_mode = lora_obj.stack_mode;
     cmd_data->info.init.bandwidth = lora_obj.bandwidth;
     cmd_data->info.init.coding_rate = lora_obj.coding_rate;
     cmd_data->info.init.frequency = lora_obj.frequency;
@@ -1013,6 +1029,9 @@ static void lora_get_config (lora_cmd_data_t *cmd_data) {
     cmd_data->info.init.sf = lora_obj.sf;
     cmd_data->info.init.tx_power = lora_obj.tx_power;
     cmd_data->info.init.power_mode = lora_obj.pwr_mode;
+    cmd_data->info.init.public = lora_obj.public;
+    cmd_data->info.init.adr = lora_obj.adr;
+    cmd_data->info.init.tx_retries = lora_obj.tx_retries;
 }
 
 static void lora_send_cmd (lora_cmd_data_t *cmd_data) {
@@ -1370,7 +1389,7 @@ STATIC mp_obj_t lora_tx_power (mp_uint_t n_args, const mp_obj_t *args) {
         lora_validate_power(power);
         lora_get_config (&cmd_data);
         cmd_data.info.init.tx_power = power;
-        cmd_data.cmd = E_LORA_CMD_INIT;
+        cmd_data.cmd = E_LORA_CMD_REINIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }
@@ -1387,7 +1406,7 @@ STATIC mp_obj_t lora_coding_rate (mp_uint_t n_args, const mp_obj_t *args) {
         lora_validate_coding_rate(coding_rate);
         lora_get_config (&cmd_data);
         cmd_data.info.init.coding_rate = coding_rate;
-        cmd_data.cmd = E_LORA_CMD_INIT;
+        cmd_data.cmd = E_LORA_CMD_REINIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }
@@ -1403,7 +1422,7 @@ STATIC mp_obj_t lora_preamble (mp_uint_t n_args, const mp_obj_t *args) {
         uint8_t preamble = mp_obj_get_int(args[1]);
         lora_get_config (&cmd_data);
         cmd_data.info.init.preamble = preamble;
-        cmd_data.cmd = E_LORA_CMD_INIT;
+        cmd_data.cmd = E_LORA_CMD_REINIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }
@@ -1420,7 +1439,7 @@ STATIC mp_obj_t lora_bandwidth (mp_uint_t n_args, const mp_obj_t *args) {
         lora_validate_bandwidth(bandwidth);
         lora_get_config (&cmd_data);
         cmd_data.info.init.bandwidth = bandwidth;
-        cmd_data.cmd = E_LORA_CMD_INIT;
+        cmd_data.cmd = E_LORA_CMD_REINIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }
@@ -1437,7 +1456,7 @@ STATIC mp_obj_t lora_frequency (mp_uint_t n_args, const mp_obj_t *args) {
         lora_validate_frequency(frequency);
         lora_get_config (&cmd_data);
         cmd_data.info.init.frequency = frequency;
-        cmd_data.cmd = E_LORA_CMD_INIT;
+        cmd_data.cmd = E_LORA_CMD_REINIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }
@@ -1454,7 +1473,7 @@ STATIC mp_obj_t lora_sf (mp_uint_t n_args, const mp_obj_t *args) {
         lora_validate_sf(sf);
         lora_get_config (&cmd_data);
         cmd_data.info.init.sf = sf;
-        cmd_data.cmd = E_LORA_CMD_INIT;
+        cmd_data.cmd = E_LORA_CMD_REINIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }
@@ -1712,11 +1731,16 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
     } else if (len > 0) {
         if (lora_obj.stack_mode == E_LORA_STACK_MODE_LORA) {
             n_bytes = lora_send (buf, len, s->sock_base.timeout);
-        } else if (lora_obj.joined) {
-            n_bytes = lorawan_send (buf, len, s->sock_base.timeout,
-                                    LORAWAN_SOCKET_IS_CONFIRMED(s->sock_base.sd),
-                                    LORAWAN_SOCKET_GET_DR(s->sock_base.sd),
-                                    LORAWAN_SOCKET_GET_PORT(s->sock_base.sd));
+        } else {
+            if (lora_obj.joined) {
+                n_bytes = lorawan_send (buf, len, s->sock_base.timeout,
+                                        LORAWAN_SOCKET_IS_CONFIRMED(s->sock_base.sd),
+                                        LORAWAN_SOCKET_GET_DR(s->sock_base.sd),
+                                        LORAWAN_SOCKET_GET_PORT(s->sock_base.sd));
+            } else {
+                *_errno = MP_ENETDOWN;
+                return -1;
+            }
         }
         if (n_bytes == 0) {
             *_errno = MP_EAGAIN;
