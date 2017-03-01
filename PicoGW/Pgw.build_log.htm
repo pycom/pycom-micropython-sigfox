@@ -1,0 +1,76 @@
+<html>
+<body>
+<pre>
+<h1>µVision Build Log</h1>
+<h2>Tool Versions:</h2>
+IDE-Version: µVision V5.21.1.0
+Copyright (C) 2016 ARM Ltd and ARM Germany GmbH. All rights reserved.
+License Information: ff ff ff Flex license: MDK-ARM Standard Cortex-M only: 4 user(s) (mdk_cm_std) Support: Dec 2017
+ 
+Tool Versions:
+Toolchain:       MDK-ARM Standard Cortex-M only: 4 user(s)  Version: 5.21a
+Toolchain Path:  C:\Keil_v5\ARM\ARMCC\Bin
+C Compiler:      Armcc.exe V5.06 update 3 (build 300)
+Assembler:       Armasm.exe V5.06 update 3 (build 300)
+Linker/Locator:  ArmLink.exe V5.06 update 3 (build 300)
+Library Manager: ArmAr.exe V5.06 update 3 (build 300)
+Hex Converter:   FromElf.exe V5.06 update 3 (build 300)
+CPU DLL:         SARMCM3.DLL V5.21a
+Dialog DLL:      DCM.DLL V1.13.8.0
+Target DLL:      STLink\ST-LINKIII-KEIL_SWO.dll V2.0.18.0
+Dialog DLL:      TCM.DLL V1.14.14.0
+ 
+<h2>Project:</h2>
+C:\Picogatyeway\PicoGWV2\Pico_STM32\PGW_FS_SPI17102016\pgw.uvprojx
+Project File Date:  03/01/2017
+
+<h2>Output:</h2>
+*** Using Compiler 'V5.06 update 3 (build 300)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
+Build target 'Pico'
+compiling loragw_hal.cpp...
+SX1301HAL\src\loragw_hal.cpp(612): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+              p->rssi = 
+SSI_FSK_POLY_0 + 
+SSI_FSK_POLY_1 * p->rssi + RSSI_FSK_POLY_2 *p->rssi*p->rssi; //pow(p->rssi, 2);
+SX1301HAL\src\loragw_hal.cpp(612): warning:  #1035-D: single-precision operand implicitly converted to double-precision
+              p->rssi = 
+SSI_FSK_POLY_0 + 
+SSI_FSK_POLY_1 * p->rssi + 
+SSI_FSK_POLY_2 *p->rssi*p->rssi; //pow(p->rssi, 2);
+SX1301HAL\src\loragw_hal.cpp(641): warning:  #177-D: variable "x" was declared but never referenced
+      int i, x;
+SX1301HAL\src\loragw_hal.cpp(1004): warning:  #550-D: variable "BW" was set but never used
+      uint16_t BW;
+SX1301HAL\src\loragw_hal.cpp(1115): warning:  #177-D: variable "err" was declared but never referenced
+      int i, err; 
+SX1301HAL\src\loragw_hal.cpp(1122): warning:  #177-D: variable "cal_cmd" was declared but never referenced
+      uint8_t cal_cmd;
+SX1301HAL\src\loragw_hal.cpp(1123): warning:  #177-D: variable "cal_time" was declared but never referenced
+      uint16_t cal_time;
+SX1301HAL\src\loragw_hal.cpp(1124): warning:  #177-D: variable "cal_status" was declared but never referenced
+      uint8_t cal_status;
+SX1301HAL\src\loragw_hal.cpp(1126): warning:  #177-D: variable "xx" was declared but never referenced
+      uint8_t xx;
+SX1301HAL\src\loragw_hal.cpp(1131): warning:  #550-D: variable "offset" was set but never used
+  		static int offset =0 ;
+SX1301HAL\src\loragw_hal.cpp(1514): warning:  #177-D: variable "dummy" was declared but never referenced
+      int32_t dummy;
+SX1301HAL\src\loragw_hal.cpp(115): warning:  #550-D: variable "rf_tx_notch_freq" was set but never used
+  static uint32_t rf_tx_notch_freq[LGW_RF_CHAIN_NB];
+SX1301HAL\src\loragw_hal.cpp(129): warning:  #550-D: variable "rf_clkout" was set but never used
+  static uint8_t rf_clkout = 1;
+SX1301HAL\src\loragw_hal.cpp: 13 warnings, 0 errors
+linking...
+Program Size: Code=46340 RO-data=6000 RW-data=708 ZI-data=61728  
+FromELF: creating hex file...
+"..\..\Pgw.axf" - 0 Error(s), 13 Warning(s).
+
+<h2>Collection of Component include folders:</h2>
+  C:\Picogatyeway\PicoGWV2\Pico_STM32\PGW_FS_SPI17102016\RTE
+  C:\Keil_v5\ARM\PACK\Keil\STM32F4xx_DFP\2.10.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include
+
+<h2>Collection of Component Files used:</h2>
+Build Time Elapsed:  00:00:07
+</pre>
+</body>
+</html>
