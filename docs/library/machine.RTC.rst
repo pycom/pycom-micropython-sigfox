@@ -8,7 +8,9 @@ and time.
 
 Example usage::
 
-    rtc = machine.RTC()
+    from machine import RTC
+
+    rtc = RTC()
     rtc.init((2014, 5, 1, 4, 13, 0, 0, 0))
     print(rtc.now())
 
@@ -18,7 +20,12 @@ Constructors
 
 .. class:: RTC(id=0, ...)
 
-   Create an RTC object. See init for parameters of initialization.
+   Create an RTC object. See init for parameters of initialization.::
+
+
+      # id of the RTC may be set if multiple are connected. Defaults to id = 0.
+      rtc = RTC(id=0)
+
 
 Methods
 -------
@@ -29,9 +36,17 @@ Methods
 
       ``(year, month, day[, hour[, minute[, second[, microsecond[, tzinfo]]]]])``
 
+   For example: ::
+
+      # for 2nd of February 2017 at 10:30am (TZ 0)
+      rtc.init((2017, 2, 28, 10, 30, 0, 0, 0))
+
 .. method:: rtc.now()
 
-   Get get the current datetime tuple.
+   Get get the current datetime tuple.::
+
+      # returns datetime tuple
+      rtc.now()
 
 .. only:: port_pycom_esp32
 
@@ -40,15 +55,12 @@ Methods
         Set up automatic fetch and update the time using NTP (SNTP).
 
             - ``server`` is the URL of the NTP server. Can be set to None to disable the periodic updates.
-            - ``update_period`` is the number of seconds between updates. Shortest period is 15 seconds.
+            - ``update_period`` is the number of **seconds** between updates. Shortest period is 15 seconds.
 
-        Can be used like:
+        Can be used like: ::
 
-        ::
-
-            import machine
-            rtc = machine.RTC()
-            rtc.ntp_sync("pool.ntp.org") # select an appropriate server
+            # select an appropriate server and update period, e.g. 30s
+            rtc.ntp_sync("pool.ntp.org", update_period=30)
 
     .. method:: rtc.calibration([cal])
 
@@ -56,7 +68,13 @@ Methods
 
         With no arguments, ``calibration()`` returns the current calibration
         value, which is an integer in the range [-(2^27 - 1) : 2^27 -1].  With one
-        argument it sets the RTC calibration for long term counting.
+        argument it sets the RTC calibration for long term counting.::
+
+            # returns current calibration
+            rtc.calibration()
+
+            # adjusts calibration to +1/128 of the counter tick.
+            rtc.calibration(1)
 
         The RTC counter ticks at 5 MHz. Current crystal has an error of less than 10 ppm (5 minutes a year),
         which is more than acceptable for most applications. Calibration is only needed if you want to achieve
@@ -106,7 +124,7 @@ Methods
 
     .. method:: RTC.deinit()
 
-        Resets the RTC to the time of January 1, 2015 and starts running it again.
+        Resets the RTC to the time of January 1, 2015 and starts running it again.::
 
     .. method:: RTC.alarm(id, time, /*, repeat=False)
 
