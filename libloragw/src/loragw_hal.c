@@ -766,6 +766,14 @@ uint8_t data[(8*16)+4];
 //	data[u]= *(((uint8_t *)(conf))+u);
  //printf("data[%d] = %d \n",u,data[u]);
 //}
+for (u=0;u<TX_GAIN_LUT_SIZE_MAX;u++)
+{
+data[0+(5*u)]=0;
+data[1+(5*u)]=0;
+data[2+(5*u)]=0;
+data[3+(5*u)]=0;
+data[4+(5*u)]=0;
+}
 for (u=0;u<conf->size;u++)
 {
 data[0+(5*u)]=conf->lut[u].dig_gain;
@@ -774,7 +782,7 @@ data[2+(5*u)]=conf->lut[u].dac_gain;
 data[3+(5*u)]=conf->lut[u].mix_gain;
 data[4+(5*u)]=conf->lut[u].rf_power;
 }
-u=((conf->size)*5);
+u=((TX_GAIN_LUT_SIZE_MAX)*5);
 data[u]=conf->size;
 
 
@@ -826,7 +834,7 @@ int lgw_start(void) {
     lgw_reg_w(LGW_RADIO_RST,1);
     wait_ms(5);
     lgw_reg_w(LGW_RADIO_RST,0);
-
+    //  lgw_reg_RADIO_RST(); 
     /* setup the radios */
     err = lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
     if (err != 0) {

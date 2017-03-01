@@ -66,41 +66,43 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 /* TX gain LUT table */
 static struct lgw_tx_gain_lut_s txgain_lut = {
     .size = 5,
-    .lut[0] = {
+     .lut[0] = {
         .dig_gain = 0,
         .pa_gain = 0,
         .dac_gain = 3,
-        .mix_gain = 12,
-        .rf_power = 0
+        .mix_gain = 0,
+        .rf_power = -2
     },
     .lut[1] = {
         .dig_gain = 0,
-        .pa_gain = 1,
+        .pa_gain = 0,
         .dac_gain = 3,
-        .mix_gain = 12,
-        .rf_power = 10
+        .mix_gain = 5,
+        .rf_power = 8
     },
     .lut[2] = {
         .dig_gain = 0,
-        .pa_gain = 2,
+        .pa_gain = 0,
         .dac_gain = 3,
         .mix_gain = 10,
-        .rf_power = 14
+        .rf_power = 18
     },
     .lut[3] = {
         .dig_gain = 0,
-        .pa_gain = 3,
+        .pa_gain = 0,
         .dac_gain = 3,
-        .mix_gain = 9,
+        .mix_gain = 11,
         .rf_power = 20
     },
     .lut[4] = {
         .dig_gain = 0,
-        .pa_gain = 3,
+        .pa_gain = 0,
         .dac_gain = 3,
-        .mix_gain = 14,
-        .rf_power = 27
+        .mix_gain = 12,
+        .rf_power = 21
     }};
+
+
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -204,7 +206,7 @@ int main(int argc, char **argv)
 
     /* loop variables (also use as counters in the packet payload) */
     uint16_t cycle_count = 0;
-
+    lgw_connect(false);
     /* Parameter parsing */
     int option_index = 0;
     static struct option long_options[] = {
@@ -215,7 +217,7 @@ int main(int argc, char **argv)
         {"lbt-rssi-offset", required_argument, 0, 0},
         {0, 0, 0, 0}
     };
-
+     
     /* parse command line options */
     while ((i = getopt_long (argc, argv, "hif:n:m:b:s:c:p:l:z:t:x:r:k:d:q:", long_options, &option_index)) != -1) {
         switch (i) {

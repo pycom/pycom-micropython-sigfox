@@ -102,9 +102,11 @@ int main(int argc, char **argv)
     char arg_s[64];
     
   //tbd  
-     int reg_stat;
-    reg_stat = lgw_connect(false);
+   
+     
     
+    lgw_connect(false);
+   
     /* Application parameters */
     uint32_t freq_hz = DEFAULT_FREQ_HZ;
     uint8_t g_dig = DEFAULT_DIGITAL_GAIN;
@@ -330,12 +332,16 @@ int main(int argc, char **argv)
 
     /* Tx gain LUT */
     memset(&txlut, 0, sizeof txlut);
-    txlut.size = 1;
-    txlut.lut[0].dig_gain = g_dig;
-    txlut.lut[0].pa_gain = g_pa;
-    txlut.lut[0].dac_gain = g_dac;
-    txlut.lut[0].mix_gain = g_mix;
-    txlut.lut[0].rf_power = 0;
+    txlut.size = 16;
+    int kk;
+    for (kk=0;kk<16;kk++)
+    {
+    txlut.lut[kk].dig_gain = g_dig;
+    txlut.lut[kk].pa_gain = g_pa;
+    txlut.lut[kk].dac_gain = g_dac;
+    txlut.lut[kk].mix_gain = g_mix;
+    txlut.lut[kk].rf_power = 0;
+    }
     lgw_txgain_setconf(&txlut);
 
     /* Start the concentrator */

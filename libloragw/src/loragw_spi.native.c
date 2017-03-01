@@ -786,7 +786,7 @@ int lgw_txgain_setconfcmd(void *spi_target, uint8_t *data,uint16_t size)
    pthread_mutex_lock(&mx_usbbridgesync);  
    SendCmdn(mystruct,fd) ;
    if(ReceiveAns(&mystrctAns,fd))
-   { DEBUG_MSG("Note: USB/SPI read config success\n");
+   { DEBUG_PRINTF("Note: USB/SPI read config success                                    tx gain set conf = %d\n",mystrctAns.Rxbuf[0]);
    pthread_mutex_unlock(&mx_usbbridgesync);
    return LGW_SPI_SUCCESS;
 	}
@@ -824,7 +824,7 @@ int lgw_sendconfcmd(void *spi_target,uint8_t *data,uint16_t size) {
    pthread_mutex_lock(&mx_usbbridgesync);  
    SendCmdn(mystruct,fd) ;
    if(ReceiveAns(&mystrctAns,fd))
-   { DEBUG_MSG("Note: USB/SPI read config success\n");
+    { DEBUG_PRINTF("Note: USB/SPI read config success               ???????????????????????????????????????????????????????????????????                     tx power = %d\n",mystrctAns.Rxbuf[0]);
    pthread_mutex_unlock(&mx_usbbridgesync);
    return LGW_SPI_SUCCESS;
 	}
@@ -875,6 +875,43 @@ int lgw_trigger(void *spi_target, uint8_t address, uint32_t *data) {
     
 }
 
+int lgw_RADIO_RST(void * spi_target)
+
+{
+int fd;
+    int i;
+    DEBUG_MSG("Note: USB/SPI write success\n");
+    fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+   DEBUG_PRINTF("Note: USB/SPI write success %d\n",fd);
+   /*build the write cmd*/
+   CmdSettings_t mystruct;
+   AnsSettings_t mystrctAns;
+   int size=1;
+   mystruct.Cmd='j';
+   mystruct.Id=0;
+   mystruct.Len=1;
+   mystruct.Adress=0;
+    DEBUG_PRINTF("Note: USB/SPI cmd =  write success size = %d!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",1);
+    DEBUG_MSG("Note: USB/SPI write success\n");
+   for (i=0;i<size;i++)
+   {
+   mystruct.Value[i]=0;
+   }
+    DEBUG_MSG("Note: USB/SPI write success\n");
+   pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;
+   if(ReceiveAns(&mystrctAns,fd))
+   { DEBUG_MSG("Note: USB/SPI read config success\n");
+   pthread_mutex_unlock(&mx_usbbridgesync);
+   return LGW_SPI_SUCCESS;
+	}
+	else
+	{DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+  pthread_mutex_unlock(&mx_usbbridgesync);
+   return LGW_SPI_ERROR;
+	}
+
+}
 
 
 
@@ -900,6 +937,9 @@ int checkcmd(uint8_t cmd)
  case 'f':{return(0); break;}
  case 'h':{return(0); break;}
  case 'q':{return(0); break;}
+ case 'i':{return(0); break;}
+ case 'j':{return(0); break;}
+
  //case 97 : return (1);   
      
      default : 

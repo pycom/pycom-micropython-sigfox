@@ -842,6 +842,10 @@ int lgw_reg_board_setconfcmd(uint8_t *data,uint16_t size)
 {
 return(lgw_boardconfcmd(lgw_spi_target,data,size));
 }
+int lgw_reg_RADIO_RST(void)
+{
+return(lgw_RADIO_RST(lgw_spi_target));
+}
 
 
 /* --- EOF ------------------------------------------------------------------ */
