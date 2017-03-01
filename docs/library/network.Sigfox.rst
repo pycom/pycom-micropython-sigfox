@@ -42,7 +42,7 @@ Constructors
 Methods
 -------
 
-.. method:: sigfox.init(mode, rcz=None)
+.. method:: sigfox.init(mode=Sigfox.SIGFOX, rcz=Sigfox.RCZ1, \*, frequency=None)
 
    Set the Sigfox radio configuration.
 
@@ -50,6 +50,7 @@ Methods
 
      - ``mode`` can be either ``Sigfox.SIGFOX`` or ``Sigfox.FSK``. ``Sigfox.SIGFOX`` uses the Sigfox modulation and protocol while ``Sigfox.FSK`` allows to create point to point communication between 2 SiPy's using FSK modulation.
      - ``rcz`` takes the following values: ``Sigfox.RCZ1``, ``Sigfox.RCZ2``, ``Sigfox.RCZ3``, ``Sigfox.RCZ4``. The **rcz** argument is only required if the mode is ``Sigfox.SIGFOX``.
+     - ``frequency`` sets the frequency value in FSK mode. Can take values between 863 and 928 MHz.
 
      .. warning::
 
@@ -134,6 +135,7 @@ Sigfox sockets support the following standard methods from the :class:`socket <.
 .. method:: socket.send(bytes)
 
    Usage: ``s.send(bytes([1, 2, 3]))``::
+   In Sigfox mode the maximum data size is 12 bytes. In FSK the maximum is 64.
 
      # send a Sigfox payload of bytes
      s.send(bytes([1, 2, 3]))
@@ -143,7 +145,7 @@ Sigfox sockets support the following standard methods from the :class:`socket <.
 
 .. method:: socket.recv(bufsize)
 
-   Usage: ``s.recv(32)``::
+   Usage: ``s.recv(32)``
 
      # this method can be used to receive a Sigfox downlink or FSK message
      # size of buffer should be passed for expected payload, e.g. 64 bits

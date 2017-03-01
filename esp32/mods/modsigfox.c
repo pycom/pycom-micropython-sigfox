@@ -44,6 +44,9 @@ sigfox_settings_t sigfox_settings = {};
 
 sfx_u8 uplink_spectrum_access;
 
+#define FSK_FREQUENCY_MIN                            863000000   // Hz
+#define FSK_FREQUENCY_MAX                            928000000   // Hz
+
 typedef enum {
     E_SIGFOX_STATE_NOINIT = 0,
     E_SIGFOX_STATE_IDLE,
@@ -68,12 +71,13 @@ typedef struct {
   mp_obj_base_t     base;
   sigfox_mode_t     mode;
   sigfox_state_t    state;
+  uint32_t          frequency;
 } sigfox_obj_t;
 
 typedef struct {
     uint32_t    index;
     uint32_t    size;
-    uint8_t     data[SIGFOX_TX_PAYLOAD_SIZE_MAX];
+    uint8_t     data[FSK_TX_PAYLOAD_SIZE_MAX + 4];
 } sigfox_partial_rx_packet_t;
 
 
@@ -272,6 +276,7 @@ static void TASK_Sigfox(void *pvParameters) {
                             fsk_manual_calibration();
                         }
                         sigfox_obj.mode = cmd_rx_data.cmd_u.info.init.mode;
+                        sigfox_obj.frequency = cmd_rx_data.cmd_u.info.init.frequency;
                         sigfox_obj.state = E_SIGFOX_STATE_IDLE;
                         xEventGroupSetBits(sigfoxEvents, status);
                     }
@@ -314,9 +319,10 @@ static void TASK_Sigfox(void *pvParameters) {
                             // stop the TxRx timer before reconfiguring for Tx
                             TIMER_RxTx_done_stop();
                             trxSpiCmdStrobe(CC112X_SIDLE);
+                            // we must start the timer before calling fsk_cc112x_tx()
+                            TIMER_RxTx_done_start();
                             fsk_cc112x_tx (cmd_rx_data.cmd_u.info.tx.data, cmd_rx_data.cmd_u.info.tx.len);
                             sigfox_obj.state = E_SIGFOX_STATE_TX;
-                            TIMER_RxTx_done_start();
                         }
                     }
                     break;
@@ -349,6 +355,7 @@ static void TASK_Sigfox(void *pvParameters) {
                 if (sigfox_obj.state == E_SIGFOX_STATE_IDLE) {
                     // set radio in RX
                     fsk_rx_register_config();
+                    RADIO_change_frequency(sigfox_obj.frequency);
                     trxSpiCmdStrobe(CC112X_SRX);
                     sigfox_obj.state = E_SIGFOX_STATE_RX;
                     TIMER_RxTx_done_start();
@@ -376,18 +383,20 @@ static void TASK_Sigfox(void *pvParameters) {
     }
 }
 
-IRAM_ATTR static void fsk_cc112x_tx (uint8_t *data, uint32_t len) {
-    // initialize packet buffer of size PKTLEN + 4
-    uint8 packet[SIGFOX_TX_PAYLOAD_SIZE_MAX + 4];
+static void fsk_cc112x_tx (uint8_t *data, uint32_t len) {
+    uint8 packet[FSK_TX_PAYLOAD_SIZE_MAX + 4];
 
     // clear the semaphore flag
     packetSemaphore = ISR_IDLE;
 
     fsk_tx_register_config();
 
+    RADIO_change_frequency(sigfox_obj.frequency);
+
     // Write packet to tx fifo
     packet[0] = len;
     memcpy(&packet[1], data, len);
+    packet[len + 1] = 0;
 
     cc112xSpiWriteTxFifo(packet, len + 1);
 
@@ -395,36 +404,48 @@ IRAM_ATTR static void fsk_cc112x_tx (uint8_t *data, uint32_t len) {
     trxSpiCmdStrobe(CC112X_STX);
 }
 
-IRAM_ATTR static void fsk_cc112x_rx (void) {
+static void fsk_cc112x_rx (void) {
     sigfox_rx_data_t rx_data;
-    uint8 payload[SIGFOX_TX_PAYLOAD_SIZE_MAX + 4];
-    uint8 size, status;
+    uint8_t rx_last, status;
+    uint8_t rxlastindex;
 
     // wait for the packet received interrupt
     if (packetSemaphore == ISR_ACTION_REQUIRED) {
-          // read the number of bytes in rx fifo
-          cc112xSpiReadReg(CC112X_NUM_RXBYTES, &size, 1);
 
-          // check that we have bytes in fifo
-          if (size > 0) {
+        /* IMPORTANT : using the register CC112X_NUM_RXBYTES gives wrong values concerning the packet length
+         * DO NOT USE THIS REGISTER, use RXLAST instead which give the last index in the RX FIFO
+         * and flush the FIFO after reading it   */
+        rxlastindex = 0;
+
+        // Read 10 times to get around a bug
+        for (int i = 0; i < 10; i++) {
+            cc112xSpiReadReg(CC112X_RXLAST, &rx_last, 1);
+            rxlastindex |= rx_last;
+        }
+
+        /* Check that we have bytes in the fifo */
+        if (rxlastindex != 0) {
             // read marcstate to check for RX FIFO error
             cc112xSpiReadReg(CC112X_MARCSTATE, &status, 1);
 
             // mask out marcstate bits and check if we have a RX FIFO error
-            if ((status & 0x1F) == RX_FIFO_ERROR) {
+            if ((status & 0x1F) == RX_FIFO_ERROR && (rxlastindex + 1 < sizeof(rx_data.data))) {
                 // flush the RX Fifo
                 trxSpiCmdStrobe(CC112X_SFRX);
             } else {
                 // read n bytes from rx fifo
-                cc112xSpiReadRxFifo(payload, size);
+                cc112xSpiReadRxFifo(rx_data.data, rxlastindex + 1);
+
+                // Once read, Flush RX Fifo
+                trxSpiCmdStrobe(CC112X_SFRX);
 
                 // check CRC ok (CRC_OK: bit7 in second status byte)
                 // this assumes status bytes are appended in RX_FIFO
                 // (PKT_CFG1.APPEND_STATUS = 1.)
                 // if CRC is disabled the CRC_OK field will read 1
-                if(payload[size - 1] & 0x80){
-                    memcpy(rx_data.data, &payload[1], payload[0]);
-                    rx_data.len = payload[0];
+                if (rx_data.data[rxlastindex] & 0x80) {
+                    rx_data.len = rx_data.data[0];
+                    memmove(rx_data.data, &rx_data.data[1], rx_data.data[0]);
                     xQueueSend(xRxQueue, (void *)&rx_data, 0);
                 }
             }
@@ -437,7 +458,7 @@ IRAM_ATTR static void fsk_cc112x_rx (void) {
     }
 }
 
-IRAM_ATTR static void fsk_register_config(void) {
+static void fsk_register_config(void) {
     // reset the radio
     trxSpiCmdStrobe(CC112X_SRES);
 
@@ -448,7 +469,7 @@ IRAM_ATTR static void fsk_register_config(void) {
     }
 }
 
-IRAM_ATTR static void fsk_tx_register_config(void) {
+static void fsk_tx_register_config(void) {
     // write registers to radio
     for(uint16 i = 0; i < sizeof(cc1125TxSettings) / sizeof(registerSetting_t); i++) {
         uint8 writeByte = cc1125TxSettings[i].data;
@@ -456,7 +477,7 @@ IRAM_ATTR static void fsk_tx_register_config(void) {
     }
 }
 
-IRAM_ATTR static void fsk_rx_register_config(void) {
+static void fsk_rx_register_config(void) {
     // write registers to radio
     for(uint16 i = 0; i < sizeof(cc1125RxSettings) / sizeof(registerSetting_t); i++) {
         uint8 writeByte = cc1125RxSettings[i].data;
@@ -464,11 +485,12 @@ IRAM_ATTR static void fsk_rx_register_config(void) {
     }
 }
 
-IRAM_ATTR static void fsk_manual_calibration(void) {
-#define VCDAC_START_OFFSET                  (2)
-#define FS_VCO2_INDEX                       (0)
-#define FS_VCO4_INDEX                       (1)
-#define FS_CHP_INDEX                        (2)
+static void fsk_manual_calibration(void) {
+
+    #define VCDAC_START_OFFSET                  (2)
+    #define FS_VCO2_INDEX                       (0)
+    #define FS_VCO4_INDEX                       (1)
+    #define FS_CHP_INDEX                        (2)
 
     uint8 original_fs_cal2;
     uint8 calResults_for_vcdac_start_high[3];
@@ -622,23 +644,36 @@ static bool sigfox_tx_space (void) {
     return false;
 }
 
+static void sigfox_validate_frequency (uint32_t frequency) {
+    if (frequency < FSK_FREQUENCY_MIN || frequency > FSK_FREQUENCY_MAX) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "frequency %d out of range", frequency));
+    }
+}
+
 /******************************************************************************/
 // Micro Python bindings; Sigfox class
 
 STATIC mp_obj_t sigfox_init_helper(sigfox_obj_t *self, const mp_arg_val_t *args) {
     sigfox_cmd_rx_data_t cmd_rx_data;
-    uint8_t rcz = args[1].u_int;
     uint8_t mode = args[0].u_int;
+    uint8_t rcz = args[1].u_int;
+    uint32_t frequency = 0;
 
     if (mode > E_SIGFOX_MODE_FSK) {
         mp_raise_ValueError("invalid mode");
     } else if (mode == E_SIGFOX_MODE_SIGFOX) {
         if (rcz > E_SIGFOX_RCZ4) {
             mp_raise_ValueError("invalid RCZ");
+        } else if (args[2].u_obj != mp_const_none) {
+            mp_raise_ValueError("frequency is only valid in FSK mode");
         }
+    } else {
+        frequency = mp_obj_get_int(args[2].u_obj);
+        sigfox_validate_frequency(frequency);
     }
 
     cmd_rx_data.cmd_u.cmd = E_SIGFOX_CMD_INIT;
+    cmd_rx_data.cmd_u.info.init.frequency = frequency;
     cmd_rx_data.cmd_u.info.init.mode = mode;
     cmd_rx_data.cmd_u.info.init.rcz = rcz;
     sigfox_send_cmd (&cmd_rx_data);
@@ -651,6 +686,7 @@ STATIC const mp_arg_t sigfox_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,   {.u_int  = 0} },
     { MP_QSTR_mode,                           MP_ARG_INT,   {.u_int  = E_SIGFOX_MODE_SIGFOX} },
     { MP_QSTR_rcz,                            MP_ARG_INT,   {.u_int  = E_SIGFOX_RCZ1} },
+    { MP_QSTR_frequency,     MP_ARG_KW_ONLY | MP_ARG_OBJ,   {.u_obj  = mp_const_none} },
 };
 
 STATIC mp_obj_t sigfox_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
@@ -962,7 +998,9 @@ static int sigfox_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_u
     sigfox_cmd_rx_data_t cmd_rx_data;
     SIGFOX_CHECK_SOCKET(s);
 
-    if (len > SIGFOX_TX_PAYLOAD_SIZE_MAX) {
+    uint8_t maxlen = (sigfox_obj.mode == E_SIGFOX_MODE_SIGFOX) ? SIGFOX_TX_PAYLOAD_SIZE_MAX : FSK_TX_PAYLOAD_SIZE_MAX;
+
+    if (len > maxlen) {
         *_errno = MP_EMSGSIZE;
         return -1;
     }

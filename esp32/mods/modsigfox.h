@@ -21,6 +21,7 @@
 
 #define SIGFOX_TX_PAYLOAD_SIZE_MAX                    (12)
 #define SIGFOX_RX_PAYLOAD_SIZE_MAX                    (8)
+#define FSK_TX_PAYLOAD_SIZE_MAX                       (64)
 
 #define SIGFOX_CMD_QUEUE_SIZE_MAX                     (2)
 #define SIGFOX_DATA_QUEUE_SIZE_MAX                    (3)
@@ -42,12 +43,13 @@ typedef enum {
 } sigfox_cmd_t;
 
 typedef struct {
+    uint32_t   frequency;
     uint8_t    mode;
     uint8_t    rcz;
 } sigfox_init_cmd_data_t;
 
 typedef struct {
-    uint8_t     data[SIGFOX_TX_PAYLOAD_SIZE_MAX + 1];
+    uint8_t     data[FSK_TX_PAYLOAD_SIZE_MAX + 4];
     uint8_t     len;
     uint8_t     tx_repeat;
     bool        receive;
@@ -73,7 +75,7 @@ typedef struct {
 ///////////////////////////////////////////
 
 typedef struct {
-    uint8_t data[SIGFOX_TX_PAYLOAD_SIZE_MAX + 1];
+    uint8_t data[FSK_TX_PAYLOAD_SIZE_MAX + 4];
     uint8_t len;
 } sigfox_rx_data_t;
 

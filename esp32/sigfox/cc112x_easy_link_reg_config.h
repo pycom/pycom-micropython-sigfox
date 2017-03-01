@@ -89,7 +89,7 @@ static const registerSetting_t cc1125PreferredSettings[]=
   {CC112X_FIFO_CFG,          0x00},
   {CC112X_SETTLING_CFG,      0x03},
   {CC112X_FS_CFG,            0x12},
-  {CC112X_PKT_CFG0,          0x20},
+  {CC112X_PKT_CFG0,          0x20},     // Variable oacket length. The first byte after sync word specifies the length.
   {CC112X_PKT_LEN,           0xFF},
   {CC112X_IF_MIX_CFG,        0x00},
   {CC112X_FREQOFF_CFG,       0x22},

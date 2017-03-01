@@ -124,8 +124,8 @@ sfx_u16 offset_value;
 
 
 /* Delay constants. (Depend on MCU SMCLK value and SPI speed) */
-#define MODULATION_DELAY_CYCLES_100bps          350     // Calibrate the shape of 100 bps spectrum
-#define PHASE_ACCUMULATION_DELAY_CYCLES         250     // Calibrate time to accumulate the 180 degree phase change. Depends on FOFFx values declared above.
+#define MODULATION_DELAY_CYCLES_100bps          305     // Calibrate the shape of 100 bps spectrum
+#define PHASE_ACCUMULATION_DELAY_CYCLES         225     // Calibrate time to accumulate the 180 degree phase change. Depends on FOFFx values declared above.
 
 #define FREQ_BIG_STEP   152.587890625    /* float ( 10000000)/float(2**16) = 152.587890625  */
 #define FREQ_FINE_STEP   38.14697265625  /* float ( 10000000)/float(2**18) = 38.14697265625 */
@@ -385,7 +385,7 @@ IRAM_ATTR void RADIO_modulate(void)
 		sign = +1;
 	}
 
-	writeByte_FOFF1_pi_shifting = (offset_value + sign * SIGFOX_FREQ_STEP)>>8;
+	writeByte_FOFF1_pi_shifting = (offset_value + sign * SIGFOX_FREQ_STEP) >> 8;
 	writeByte_FOFF0_pi_shifting = (offset_value + sign * SIGFOX_FREQ_STEP) & 0x00FF;
 
 	// decrease the PA
@@ -395,7 +395,7 @@ IRAM_ATTR void RADIO_modulate(void)
         {
             // Write the PA ramp levels to PA_CFG2 register
             trx8BitWrite(CC112X_PA_CFG2, Table_Pa_600bps[NB_PTS_PA-count-1]);
-            __delay_cycles(MODULATION_DELAY_CYCLES_100bps / 21);
+            __delay_cycles(MODULATION_DELAY_CYCLES_100bps / 45);
         }
     } else {
         for (count = (NB_PTS_PA-1); count >= 0; count--)
@@ -434,7 +434,7 @@ IRAM_ATTR void RADIO_modulate(void)
         for (count = NB_PTS_PA-1; count >= (0); count--)
         {
             trx8BitWrite(CC112X_PA_CFG2, Table_Pa_600bps[count]);
-            __delay_cycles(MODULATION_DELAY_CYCLES_100bps / 21);
+            __delay_cycles(MODULATION_DELAY_CYCLES_100bps / 45);
         }
     } else {
         for (count = NB_PTS_PA-1; count >= (0); count--)

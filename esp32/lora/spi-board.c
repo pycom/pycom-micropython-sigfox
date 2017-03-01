@@ -27,6 +27,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Miguel Luis and Gregory Cristian
 */
 
+#include "py/mpconfig.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -80,9 +82,15 @@ void SpiInit( Spi_t *obj, PinNames mosi, PinNames miso, PinNames sclk, PinNames 
     SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG,DPORT_SPI_CLK_EN_2);
     CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG,DPORT_SPI_RST_2);
 
+#ifdef SIPY
+    // configure the SPI port
+    spi_attr_t spi_attr = {.mode = SpiMode_Master, .subMode = SpiSubMode_0, .speed = SpiSpeed_8MHz,
+                           .bitOrder = SpiBitOrder_MSBFirst, .halfMode = SpiWorkMode_Full};
+#else
     // configure the SPI port
     spi_attr_t spi_attr = {.mode = SpiMode_Master, .subMode = SpiSubMode_0, .speed = SpiSpeed_10MHz,
                            .bitOrder = SpiBitOrder_MSBFirst, .halfMode = SpiWorkMode_Full};
+#endif
     spi_init((uint32_t)obj->Spi, &spi_attr);
     while (READ_PERI_REG(SPI_CMD_REG((uint32_t)obj->Spi)) & SPI_USR);  // wait for SPI not busy
 
