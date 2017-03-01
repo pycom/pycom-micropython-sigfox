@@ -50,7 +50,7 @@ import socket
 from machine import Timer
 
 wlan = WLAN(mode=WLAN.STA)
-wlan.connect('Pycom', auth=(None, 'G01nv3nt!'))
+wlan.connect('H369A09317F', auth=(None, '667F976DC447'))
 
 while not wlan.isconnected():
     time.sleep(2)
@@ -147,6 +147,7 @@ def send_down_link(data, tmst, dr):
     global start_tmst_1
     global lora
 
+    print(dr)
     sf = dr[2:4]
     if sf[1] not in '0123456789':
         sf = sf[0:1]
@@ -199,7 +200,7 @@ _thread.start_new_thread(udp_thread, (sock,))
 
 while True:
     if not wlan.isconnected():
-        wlan.connect('Pycom', auth=(None, 'G01nv3nt!'))
+        wlan.connect('H369A09317F', auth=(None, '667F976DC447'))
         while not wlan.isconnected():
             time.sleep(2)
     else:
