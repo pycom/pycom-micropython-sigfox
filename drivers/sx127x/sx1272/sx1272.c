@@ -728,11 +728,7 @@ IRAM_ATTR void SX1272SetRx( uint32_t timeout )
         TimerStart( &RxTimeoutTimer );
     }
 
-    if( SX1272.Settings.Modem == MODEM_FSK )
-    {
-
-    }
-    else
+    if( SX1272.Settings.Modem == MODEM_LORA )
     {
         if( rxContinuous == true )
         {
@@ -962,11 +958,7 @@ void SX1272OnTimeoutIrq( void )
     switch( SX1272.Settings.State )
     {
     case RF_RX_RUNNING:
-        if( SX1272.Settings.Modem == MODEM_FSK )
-        {
-
-        }
-        else
+        if( SX1272.Settings.Modem == MODEM_LORA )
         {
             // Clear Irq
             SX1272Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXTIMEOUT );

@@ -59,7 +59,7 @@ print("WiFi connected!")
 
 time.sleep(0.5)
 rtc = machine.RTC()
-rtc.ntp_sync("pool.ntp.org") # select an appropriate server
+rtc.ntp_sync("pool.ntp.org", update_period=3600) # select an appropriate server
 
 print("Time sync!")
 
@@ -179,7 +179,7 @@ def udp_thread(sock_r):
                 if t_us < 0:
                     t_us += 0xFFFFFFFF
                 if t_us < 10000000:
-                    lora_alarm = Timer.Alarm(handler=lambda f: send_down_link(binascii.a2b_base64(tx_pk["txpk"]["data"]), tx_pk["txpk"]["tmst"] - 5, tx_pk["txpk"]["datr"]), us=t_us)
+                    lora_alarm = Timer.Alarm(handler=lambda f: send_down_link(binascii.a2b_base64(tx_pk["txpk"]["data"]), tx_pk["txpk"]["tmst"] - 10, tx_pk["txpk"]["datr"]), us=t_us)
                     print('Downlink!')
                     ack_pull_rsp(_token)
                 else:
