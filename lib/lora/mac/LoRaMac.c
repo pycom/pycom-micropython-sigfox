@@ -1399,13 +1399,11 @@ static void OnMacStateCheckTimerEvent( void )
             {
                 if( MlmeConfirm.MlmeRequest == MLME_JOIN )
                 {
-                    // Retransmit only if the answer is not OK
-                    ChannelsNbRepCounter = 0;
+                    // Always stop retransmissions of join requests
+                    ChannelsNbRepCounter = LoRaMacParams.ChannelsNbRep;
 
                     if( MlmeConfirm.Status == LORAMAC_EVENT_INFO_STATUS_OK )
                     {
-                        // Stop retransmission
-                        ChannelsNbRepCounter = LoRaMacParams.ChannelsNbRep;
                         UpLinkCounter = 0;
                     }
                 }
