@@ -219,6 +219,7 @@ typedef struct {
   bool              adr;
   bool              public;
   bool              joined;
+  bool              radio_init;
   uint8_t           events;
   uint8_t           trigger;
 } lora_obj_t;
@@ -630,26 +631,21 @@ static void TASK_LoRa (void *pvParameters) {
                         lora_obj.frequency = RF_FREQUENCY_CENTER;
                         lora_obj.state = E_LORA_STATE_IDLE;
                     } else {
-                        // radio initialization
-                        RadioEvents.TxDone = OnTxDone;
-                        RadioEvents.RxDone = OnRxDone;
-                        RadioEvents.TxTimeout = OnTxTimeout;
-                        RadioEvents.RxTimeout = OnRxTimeout;
-                        RadioEvents.RxError = OnRxError;
-                        Radio.Init(&RadioEvents);
+                        if (!lora_obj.radio_init) {
+                            // radio initialization
+                            RadioEvents.TxDone = OnTxDone;
+                            RadioEvents.RxDone = OnRxDone;
+                            RadioEvents.TxTimeout = OnTxTimeout;
+                            RadioEvents.RxTimeout = OnRxTimeout;
+                            RadioEvents.RxError = OnRxError;
+                            Radio.Init(&RadioEvents);
+                            lora_obj.radio_init = true;
+                        }
 
                         // init the radio
                         lora_radio_setup(&cmd_data.info.init);
                     }
                     lora_obj.joined = false;
-                    xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
-                    break;
-                case E_LORA_CMD_REINIT:
-                    // save the new configuration first
-                    lora_set_config(&cmd_data);
-
-                    // init the radio
-                    lora_radio_setup(&cmd_data.info.init);
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
                     break;
                 case E_LORA_CMD_JOIN:
@@ -1071,7 +1067,7 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
 
     if (timeout_ms != 0) {
         xEventGroupWaitBits(LoRaEvents,
-                            LORA_STATUS_COMPLETED | LORA_STATUS_ERROR,
+                            LORA_STATUS_COMPLETED | LORA_STATUS_ERROR | LORA_STATUS_MSG_SIZE,
                             pdTRUE,   // clear on exit
                             pdFALSE,  // do not wait for all bits
                             (TickType_t)portMAX_DELAY);
@@ -1389,7 +1385,7 @@ STATIC mp_obj_t lora_tx_power (mp_uint_t n_args, const mp_obj_t *args) {
         lora_validate_power(power);
         lora_get_config (&cmd_data);
         cmd_data.info.init.tx_power = power;
-        cmd_data.cmd = E_LORA_CMD_REINIT;
+        cmd_data.cmd = E_LORA_CMD_INIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }
@@ -1406,7 +1402,7 @@ STATIC mp_obj_t lora_coding_rate (mp_uint_t n_args, const mp_obj_t *args) {
         lora_validate_coding_rate(coding_rate);
         lora_get_config (&cmd_data);
         cmd_data.info.init.coding_rate = coding_rate;
-        cmd_data.cmd = E_LORA_CMD_REINIT;
+        cmd_data.cmd = E_LORA_CMD_INIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }
@@ -1422,7 +1418,7 @@ STATIC mp_obj_t lora_preamble (mp_uint_t n_args, const mp_obj_t *args) {
         uint8_t preamble = mp_obj_get_int(args[1]);
         lora_get_config (&cmd_data);
         cmd_data.info.init.preamble = preamble;
-        cmd_data.cmd = E_LORA_CMD_REINIT;
+        cmd_data.cmd = E_LORA_CMD_INIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }
@@ -1439,7 +1435,7 @@ STATIC mp_obj_t lora_bandwidth (mp_uint_t n_args, const mp_obj_t *args) {
         lora_validate_bandwidth(bandwidth);
         lora_get_config (&cmd_data);
         cmd_data.info.init.bandwidth = bandwidth;
-        cmd_data.cmd = E_LORA_CMD_REINIT;
+        cmd_data.cmd = E_LORA_CMD_INIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }
@@ -1456,7 +1452,7 @@ STATIC mp_obj_t lora_frequency (mp_uint_t n_args, const mp_obj_t *args) {
         lora_validate_frequency(frequency);
         lora_get_config (&cmd_data);
         cmd_data.info.init.frequency = frequency;
-        cmd_data.cmd = E_LORA_CMD_REINIT;
+        cmd_data.cmd = E_LORA_CMD_INIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }
@@ -1473,7 +1469,7 @@ STATIC mp_obj_t lora_sf (mp_uint_t n_args, const mp_obj_t *args) {
         lora_validate_sf(sf);
         lora_get_config (&cmd_data);
         cmd_data.info.init.sf = sf;
-        cmd_data.cmd = E_LORA_CMD_REINIT;
+        cmd_data.cmd = E_LORA_CMD_INIT;
         lora_send_cmd (&cmd_data);
         return mp_const_none;
     }

@@ -28,7 +28,6 @@
  ******************************************************************************/
 typedef enum {
     E_LORA_CMD_INIT = 0,
-    E_LORA_CMD_REINIT,
     E_LORA_CMD_JOIN,
     E_LORA_CMD_TX,
     E_LORA_CMD_CONFIG_CHANNEL,
