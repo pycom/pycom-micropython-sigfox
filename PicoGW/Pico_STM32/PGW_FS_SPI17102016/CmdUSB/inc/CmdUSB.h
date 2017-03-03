@@ -12,16 +12,19 @@ Maintainer: Fabien Holin
 #ifndef USBMANAGER_H
 #define USBMANAGER_H
 #include "mbed.h"
-#include "SX1301.h"
+#include "SX1308.h"
 
-#define BUFFERRXUSBMANAGER 8200
-#define BUFFERTXUSBMANAGER 8200
+#define BUFFERRXUSBMANAGER 2200
+#define BUFFERTXUSBMANAGER 2200
 #define CMDLENGTH          800 
-
+#define CMD_ERROR 				 0
+#define CMD_OK 						 1
+#define CMD_K0						 0
+#define ACK_OK 						 1
 typedef struct
 {
 	char Cmd;
-	int Id;
+	int LenMsb;
 	int Len;
 	int Adress;
 	int Value[CMDLENGTH];
@@ -30,26 +33,25 @@ typedef struct
 class USBMANAGER //
 {
 public:
-    
-   USBMANAGER();
-   
-    virtual bool   init();
-    virtual bool  initBuf();
-    int ReceiveCmd();
-    int DecodeCmd();
-    int TransmitAnswer();
-     uint8_t BufFromRasp[BUFFERRXUSBMANAGER];
-     uint8_t BufFromRasptemp[BUFFERRXUSBMANAGER];
-     uint8_t BufToRasp[BUFFERRXUSBMANAGER];
-     uint8_t BufToRasptemp[BUFFERRXUSBMANAGER];
-    uint32_t receivelength[5] ;
-     uint32_t count;
-    CmdSettings_t cmdSettings_FromRasp;
-  
+	USBMANAGER();
+	virtual void   init();
+	virtual void  initBuffromhost();
+  virtual void  initBuftohost();
+	void ReceiveCmd();
+	int DecodeCmd();
+	int TransmitAnswer();
+	uint8_t BufFromHost[BUFFERRXUSBMANAGER];
+	uint8_t BufFromHosttemp[BUFFERRXUSBMANAGER];
+	uint8_t BufToHost[BUFFERRXUSBMANAGER];
+	uint8_t BufToHosttemp[BUFFERRXUSBMANAGER];
+	uint32_t receivelength[5];
+	uint32_t count;
+	CmdSettings_t cmdSettings_FromHost;
+
 private:
-     int Convert2charsToByte(uint8_t a,uint8_t b); 
-     
+	int Convert2charsToByte(uint8_t a, uint8_t b);
+
 };
 extern USBMANAGER Usbmanager;
-
 #endif
+

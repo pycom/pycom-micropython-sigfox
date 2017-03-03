@@ -1,8 +1,8 @@
 /*
-/ _____)             _              | |
+ / ____)              _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
-\____ \| ___ |    (_   _) ___ |/ ___)  _ \
-_____) ) ____| | | || |_| ____( (___| | | |
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
 (C)2016 Semtech
 
@@ -13,17 +13,14 @@ Maintainer: Fabien Holin
 #include "mbed.h"
 #include "usb_device.h"
 #include "usbd_cdc_if.h"
-#include "Registers1301.h"
+#include "Registers1308.h"
 #include "string.h"
 #include "CmdUSB.h"
 #include "board.h"
 
-
-
 USBMANAGER Usbmanager;
 
 void Error_Handler(void);
-
 
 #if DEBUG_MAIN == 0
 #define DEBUG_MSG(str)                pc.printf(str)
@@ -51,39 +48,33 @@ int main(void)
 	Timer t;
 	uint16_t size;
 
-	//init 	
-	Sx1301.init();
-	Sx1301.SelectPage(0);
+	/************ start init  *************/ 	
+	Sx1308.init();
+	Sx1308.SelectPage(0);
 	Usbmanager.init();
-	Usbmanager.initBuf();
+	Usbmanager.initBuffromhost(); 
 	wait_ms(1000);
-
-
-
+	/************ end init  *************/
 	Usbmanager.count = 1; // wait for an 64 bytes transfer
 	Usbmanager.ReceiveCmd();
 	while (1) {
 		while (Usbmanager.count > 0) {// wait until it usbcmd rx 
 		}
 		Usbmanager.count = 1;
+		Usbmanager.initBuftohost();
 		if (Usbmanager.DecodeCmd()) {	// decode cmd from Host
-			size = (Usbmanager.BufToRasp[1] << 8) + Usbmanager.BufToRasp[2] + 3;
+			size = (Usbmanager.BufToHost[1] << 8) + Usbmanager.BufToHost[2] + 3;
 			for (i = 0; i < size; i++)
 			{
-				Usbmanager.BufToRasptemp[i] = Usbmanager.BufToRasp[i];
+				Usbmanager.BufToHosttemp[i] = Usbmanager.BufToHost[i];
 			}
-			while (CDC_Transmit_FS(Usbmanager.BufToRasptemp, (uint16_t)((Usbmanager.BufToRasptemp[1] << 8) + Usbmanager.BufToRasptemp[2] + 3)) != USBD_OK) // transmit answer to Host
+			while (CDC_Transmit_FS(Usbmanager.BufToHosttemp, (uint16_t)((Usbmanager.BufToHosttemp[1] << 8) + Usbmanager.BufToHosttemp[2] + 3)) != USBD_OK) // transmit answer to Host
+			//	while (CDC_Transmit_FS(Usbmanager.BufToHost, (uint16_t)((Usbmanager.BufToHost[1] << 8) + Usbmanager.BufToHost[2] + 3)) != USBD_OK) // transmit answer to Host
 			{
+				// buffer tohost temp is use because CDC_Transmit_FS respond ok before to really send the data on the usb  wire , initbuf clean the buffer to reduce ram size implement a wait or it tx usb done
 			}
 		}
-		Usbmanager.initBuf(); // clean buffer
+		Usbmanager.initBuffromhost(); // clean buffer
 		Usbmanager.ReceiveCmd();
 	}
-
-	DEBUG_MSG("End never reach\n");
-	wait_ms(1);
 }
-
-
-
-

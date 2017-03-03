@@ -149,7 +149,7 @@
 ..\..\main.o: .\usb_cdc\Inc\usbd_core.h
 ..\..\main.o: .\usb_cdc\Inc\usbd_ioreq.h
 ..\..\main.o: .\usb_cdc\Inc\usbd_ctlreq.h
-..\..\main.o: .\SX1301HAL\inc\Registers1301.h
+..\..\main.o: .\SX1308HAL\inc\Registers1308.h
 ..\..\main.o: .\CmdUSB\inc\CmdUSB.h
-..\..\main.o: .\SX1301HAL\inc\SX1301.h
+..\..\main.o: .\SX1308HAL\inc\SX1308.h
 ..\..\main.o: MAIN\board.h

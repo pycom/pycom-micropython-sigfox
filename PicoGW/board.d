@@ -141,5 +141,5 @@
 ..\..\board.o: mbed-dev/hal/sleep_api.h
 ..\..\board.o: mbed-dev/api/rtc_time.h
 ..\..\board.o: mbed-dev/api/FunctionPointer.h
-..\..\board.o: .\SX1301HAL\inc\SX1301.h
+..\..\board.o: .\SX1308HAL\inc\SX1308.h
 ..\..\board.o: MAIN\board.h

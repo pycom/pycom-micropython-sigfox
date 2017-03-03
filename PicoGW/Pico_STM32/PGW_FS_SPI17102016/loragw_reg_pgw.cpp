@@ -9,7 +9,7 @@
 
 Maintainer: Fabien Holin
 */
-#include "SX1301.h"
+#include "SX1308.h"
 #include "loragw_reg.h"
 #include "CmdUSB.h"
 #include "loragw_hal.h"
@@ -351,8 +351,8 @@ static int lgw_regpage = -1; /*! keep the value of the register page selected */
 int page_switch(uint8_t target) {
 	
 	lgw_regpage = PAGE_MASK & target;
-  Sx1301.lgw_currentpage=  lgw_regpage;
-	Sx1301.spiWrite( PAGE_ADDR, (uint8_t)lgw_regpage);
+  Sx1308.lgw_currentpage=  lgw_regpage;
+	Sx1308.spiWrite( PAGE_ADDR, (uint8_t)lgw_regpage);
     return LGW_REG_SUCCESS;
   
 }
@@ -363,7 +363,7 @@ int page_switch(uint8_t target) {
 int lgw_soft_reset(void) {
     /* check if SPI is initialised */
     
-     Sx1301.spiWrite( 0, 0x80); /* 1 -> SOFT_RESET bit */
+     Sx1308.spiWrite( 0, 0x80); /* 1 -> SOFT_RESET bit */
     lgw_regpage = 0; /* reset the paging static variable */
     return LGW_REG_SUCCESS;
 }
@@ -378,16 +378,16 @@ int reg_w_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
 
     if ((r.leng == 8) && (r.offs == 0)) {
         /* direct write */
-        Sx1301.spiWrite(r.addr, (uint8_t)reg_value);
+        Sx1308.spiWrite(r.addr, (uint8_t)reg_value);
     } else if ((r.offs + r.leng) <= 8) {
         /* single-byte read-modify-write, offs:[0-7], leng:[1-7] */
        //spi_stat += lgw_spi_r(spi_target, spi_mux_mode, spi_mux_target, r.addr, &buf[0]);
-			  buf[0]=Sx1301.spiRead(r.addr);
+			  buf[0]=Sx1308.spiRead(r.addr);
         buf[1] = ((1 << r.leng) - 1) << r.offs; /* bit mask */
         buf[2] = ((uint8_t)reg_value) << r.offs; /* new data offsetted */
         buf[3] = (~buf[1] & buf[0]) | (buf[1] & buf[2]); /* mixing old & new data */
      //   spi_stat += lgw_spi_w(spi_target, spi_mux_mode, spi_mux_target, r.addr, buf[3]);
-			   Sx1301.spiWrite(r.addr, (uint8_t)buf[3]);
+			   Sx1308.spiWrite(r.addr, (uint8_t)buf[3]);
     } else if ((r.offs == 0) && (r.leng > 0) && (r.leng <= 32)) {
         /* multi-byte direct write routine */
         size_byte = (r.leng + 7) / 8; /* add a byte if it's not an exact multiple of 8 */
@@ -398,7 +398,7 @@ int reg_w_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
             reg_value = (reg_value >> 8);
         }
        // spi_stat += lgw_spi_wb(spi_target, spi_mux_mode, spi_mux_target, r.addr, buf, size_byte); /* write the register in one burst */
-        Sx1301.spiWriteBurstuint8( r.addr, buf, size_byte);
+        Sx1308.spiWriteBurstuint8( r.addr, buf, size_byte);
 		} else {
         /* register spanning multiple memory bytes but with an offset */
        
@@ -421,7 +421,7 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
     if ((r.offs + r.leng) <= 8) {
         /* read one byte, then shift and mask bits to get reg value with sign extension if needed */
         //spi_stat += lgw_spi_r(spi_target, spi_mux_mode, spi_mux_target, r.addr, &bufu[0]);
-			   bufu[0]=Sx1301.spiRead(r.addr);
+			   bufu[0]=Sx1308.spiRead(r.addr);
         bufu[1] = bufu[0] << (8 - r.leng - r.offs); /* left-align the data */
         if (r.sign == true) {
             bufs[2] = bufs[1] >> (8 - r.leng); /* right align the data with sign extension (ARITHMETIC right shift) */
@@ -433,7 +433,7 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
     } else if ((r.offs == 0) && (r.leng > 0) && (r.leng <= 32)) {
         size_byte = (r.leng + 7) / 8; /* add a byte if it's not an exact multiple of 8 */
        // spi_stat += lgw_spi_rb(spi_target, spi_mux_mode, spi_mux_target, r.addr, bufu, size_byte);
-			  Sx1301.spiReadBurst( r.addr,bufu,size_byte);
+			  Sx1308.spiReadBurst( r.addr,bufu,size_byte);
         u = 0;
         for (i=(size_byte-1); i>=0; --i) {
             u = (uint32_t)bufu[i] + (u << 8); /* transform a 4-byte array into a 32 bit word */
@@ -581,7 +581,7 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size)
 
     /* do the burst write */
     
-     Sx1301.spiWriteBurstuint8( r.addr, data, size);
+     Sx1308.spiWriteBurstuint8( r.addr, data, size);
    
         return LGW_REG_SUCCESS;
     
@@ -624,10 +624,8 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size)
     }
 
     /* do the burst read */
-  //  spi_stat += lgw_spi_rb(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r.addr, data, size);
-     Sx1301.spiReadBurst(r.addr,data,size); 
+  //  spi_stat += lgw_spi_rb(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1308, r.addr, data, size);
+     Sx1308.spiReadBurst(r.addr,data,size); 
   
         return LGW_REG_SUCCESS;
-    
-
 }

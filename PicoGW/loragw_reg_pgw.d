@@ -1,6 +1,6 @@
 ..\..\loragw_reg_pgw.o: loragw_reg_pgw.cpp
 ..\..\loragw_reg_pgw.o: mbed_config.h
-..\..\loragw_reg_pgw.o: .\SX1301HAL\inc\SX1301.h
+..\..\loragw_reg_pgw.o: .\SX1308HAL\inc\SX1308.h
 ..\..\loragw_reg_pgw.o: mbed-dev/api/mbed.h
 ..\..\loragw_reg_pgw.o: mbed-dev/api/toolchain.h
 ..\..\loragw_reg_pgw.o: mbed-dev/api/platform.h
@@ -141,7 +141,7 @@
 ..\..\loragw_reg_pgw.o: mbed-dev/hal/sleep_api.h
 ..\..\loragw_reg_pgw.o: mbed-dev/api/rtc_time.h
 ..\..\loragw_reg_pgw.o: mbed-dev/api/FunctionPointer.h
-..\..\loragw_reg_pgw.o: .\SX1301HAL\inc\loragw_reg.h
+..\..\loragw_reg_pgw.o: .\SX1308HAL\inc\loragw_reg.h
 ..\..\loragw_reg_pgw.o: .\CmdUSB\inc\CmdUSB.h
-..\..\loragw_reg_pgw.o: .\SX1301HAL\inc\loragw_hal.h
+..\..\loragw_reg_pgw.o: .\SX1308HAL\inc\loragw_hal.h
 ..\..\loragw_reg_pgw.o: .\MAIN\board.h

@@ -140,7 +140,7 @@
 "..\..\usbd_ctlreq.o"
 "..\..\usbd_desc.o"
 "..\..\usbd_ioreq.o"
-"..\..\sx1301.o"
+"..\..\sx1308.o"
 "..\..\cmdusb.o"
 "..\..\loragw_hal.o"
 "..\..\loragw_reg_pgw.o"

@@ -141,7 +141,7 @@
 ..\..\cmdusb.o: mbed-dev/hal/sleep_api.h
 ..\..\cmdusb.o: mbed-dev/api/rtc_time.h
 ..\..\cmdusb.o: mbed-dev/api/FunctionPointer.h
-..\..\cmdusb.o: .\SX1301HAL\inc\SX1301.h
+..\..\cmdusb.o: .\SX1308HAL\inc\SX1308.h
 ..\..\cmdusb.o: .\usb_cdc\Inc\usb_device.h
 ..\..\cmdusb.o: .\usb_cdc\Inc\usbd_def.h
 ..\..\cmdusb.o: .\usb_cdc\Inc\usbd_conf.h
@@ -151,7 +151,7 @@
 ..\..\cmdusb.o: .\usb_cdc\Inc\usbd_core.h
 ..\..\cmdusb.o: .\usb_cdc\Inc\usbd_ioreq.h
 ..\..\cmdusb.o: .\usb_cdc\Inc\usbd_ctlreq.h
-..\..\cmdusb.o: .\SX1301HAL\inc\loragw_hal.h
-..\..\cmdusb.o: .\SX1301HAL\inc\loragw_reg.h
-..\..\cmdusb.o: .\SX1301HAL\inc\Registers1301.h
+..\..\cmdusb.o: .\SX1308HAL\inc\loragw_hal.h
+..\..\cmdusb.o: .\SX1308HAL\inc\loragw_reg.h
+..\..\cmdusb.o: .\SX1308HAL\inc\Registers1308.h
 ..\..\cmdusb.o: .\MAIN\board.h

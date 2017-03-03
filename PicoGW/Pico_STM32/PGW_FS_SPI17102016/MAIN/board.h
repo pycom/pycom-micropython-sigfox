@@ -12,8 +12,8 @@ Maintainer: Fabien Holin
 #ifndef BOARD_H
 #define BOARD_H
 #include "mbed.h"
-#include "SX1301.h"
-extern SX1301 Sx1301;
+#include "SX1308.h"
+extern SX1308 Sx1308;
 extern Serial pc;
 extern DigitalOut HSCLKEN ;
 

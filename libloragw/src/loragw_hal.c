@@ -979,8 +979,9 @@ int lgw_start(void) {
         lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8+i);
         lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
         cal_offset_b_q[i] = (int8_t)read_val;
+        DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
     }
-
+     lgw_reg_RADIO_RST();
     /* load adjusted parameters */
     lgw_constant_adjust();
 

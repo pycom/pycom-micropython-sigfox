@@ -22,55 +22,29 @@ Dialog DLL:      TCM.DLL V1.14.14.0
  
 <h2>Project:</h2>
 C:\Picogatyeway\PicoGWV2\Pico_STM32\PGW_FS_SPI17102016\pgw.uvprojx
-Project File Date:  03/01/2017
+Project File Date:  03/03/2017
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 3 (build 300)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'Pico'
-compiling loragw_hal.cpp...
-SX1301HAL\src\loragw_hal.cpp(612): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-              p->rssi = 
-SSI_FSK_POLY_0 + 
-SSI_FSK_POLY_1 * p->rssi + RSSI_FSK_POLY_2 *p->rssi*p->rssi; //pow(p->rssi, 2);
-SX1301HAL\src\loragw_hal.cpp(612): warning:  #1035-D: single-precision operand implicitly converted to double-precision
-              p->rssi = 
-SSI_FSK_POLY_0 + 
-SSI_FSK_POLY_1 * p->rssi + 
-SSI_FSK_POLY_2 *p->rssi*p->rssi; //pow(p->rssi, 2);
-SX1301HAL\src\loragw_hal.cpp(641): warning:  #177-D: variable "x" was declared but never referenced
-      int i, x;
-SX1301HAL\src\loragw_hal.cpp(1004): warning:  #550-D: variable "BW" was set but never used
-      uint16_t BW;
-SX1301HAL\src\loragw_hal.cpp(1115): warning:  #177-D: variable "err" was declared but never referenced
-      int i, err; 
-SX1301HAL\src\loragw_hal.cpp(1122): warning:  #177-D: variable "cal_cmd" was declared but never referenced
-      uint8_t cal_cmd;
-SX1301HAL\src\loragw_hal.cpp(1123): warning:  #177-D: variable "cal_time" was declared but never referenced
-      uint16_t cal_time;
-SX1301HAL\src\loragw_hal.cpp(1124): warning:  #177-D: variable "cal_status" was declared but never referenced
-      uint8_t cal_status;
-SX1301HAL\src\loragw_hal.cpp(1126): warning:  #177-D: variable "xx" was declared but never referenced
-      uint8_t xx;
-SX1301HAL\src\loragw_hal.cpp(1131): warning:  #550-D: variable "offset" was set but never used
-  		static int offset =0 ;
-SX1301HAL\src\loragw_hal.cpp(1514): warning:  #177-D: variable "dummy" was declared but never referenced
-      int32_t dummy;
-SX1301HAL\src\loragw_hal.cpp(115): warning:  #550-D: variable "rf_tx_notch_freq" was set but never used
-  static uint32_t rf_tx_notch_freq[LGW_RF_CHAIN_NB];
-SX1301HAL\src\loragw_hal.cpp(129): warning:  #550-D: variable "rf_clkout" was set but never used
-  static uint8_t rf_clkout = 1;
-SX1301HAL\src\loragw_hal.cpp: 13 warnings, 0 errors
+compiling FileBase.cpp...
+compiling us_ticker.c...
+compiling SX1308.cpp...
+SX1308HAL\src\SX1308.cpp(19): warning:  #1299-D: members and base-classes will be initialized in declaration order, not in member initialisation list order
+         : _slaveSelectPin(slaveSelectPin),  _spi(mosi, miso, sclk), _interrupt(GPIO0),_reset(Reset)
+SX1308HAL\src\SX1308.cpp: 1 warning, 0 errors
+compiling loragw_reg_pgw.cpp...
 linking...
-Program Size: Code=46340 RO-data=6000 RW-data=708 ZI-data=61728  
+Program Size: Code=44776 RO-data=6004 RW-data=700 ZI-data=37728  
 FromELF: creating hex file...
-"..\..\Pgw.axf" - 0 Error(s), 13 Warning(s).
+"..\..\Pgw.axf" - 0 Error(s), 1 Warning(s).
 
 <h2>Collection of Component include folders:</h2>
   C:\Picogatyeway\PicoGWV2\Pico_STM32\PGW_FS_SPI17102016\RTE
   C:\Keil_v5\ARM\PACK\Keil\STM32F4xx_DFP\2.10.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include
 
 <h2>Collection of Component Files used:</h2>
-Build Time Elapsed:  00:00:07
+Build Time Elapsed:  00:00:10
 </pre>
 </body>
 </html>

@@ -4129,7 +4129,7 @@
 
   <Group>
     <GroupName>USB_CDC_src</GroupName>
-    <tvExp>1</tvExp>
+    <tvExp>0</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
     <RteFlg>0</RteFlg>
@@ -4245,7 +4245,7 @@
 
   <Group>
     <GroupName>USB_CDC_inc</GroupName>
-    <tvExp>1</tvExp>
+    <tvExp>0</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
     <RteFlg>0</RteFlg>
@@ -4396,7 +4396,7 @@
   </Group>
 
   <Group>
-    <GroupName>SX1301</GroupName>
+    <GroupName>SX1308</GroupName>
     <tvExp>1</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
@@ -4408,8 +4408,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\SX1301HAL\src\SX1301.cpp</PathWithFileName>
-      <FilenameWithoutPath>SX1301.cpp</FilenameWithoutPath>
+      <PathWithFileName>.\SX1308HAL\src\SX1308.cpp</PathWithFileName>
+      <FilenameWithoutPath>SX1308.cpp</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -4420,20 +4420,8 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\SX1301HAL\inc\SX1301.h</PathWithFileName>
-      <FilenameWithoutPath>SX1301.h</FilenameWithoutPath>
-      <RteFlg>0</RteFlg>
-      <bShared>0</bShared>
-    </File>
-    <File>
-      <GroupNumber>12</GroupNumber>
-      <FileNumber>343</FileNumber>
-      <FileType>5</FileType>
-      <tvExp>0</tvExp>
-      <tvExpOptDlg>0</tvExpOptDlg>
-      <bDave2>0</bDave2>
-      <PathWithFileName>.\SX1301HAL\inc\Registers1301.h</PathWithFileName>
-      <FilenameWithoutPath>Registers1301.h</FilenameWithoutPath>
+      <PathWithFileName>.\SX1308HAL\inc\SX1308.h</PathWithFileName>
+      <FilenameWithoutPath>SX1308.h</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
@@ -4447,7 +4435,7 @@
     <RteFlg>0</RteFlg>
     <File>
       <GroupNumber>13</GroupNumber>
-      <FileNumber>344</FileNumber>
+      <FileNumber>343</FileNumber>
       <FileType>8</FileType>
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
@@ -4459,7 +4447,7 @@
     </File>
     <File>
       <GroupNumber>13</GroupNumber>
-      <FileNumber>345</FileNumber>
+      <FileNumber>344</FileNumber>
       <FileType>5</FileType>
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
@@ -4469,10 +4457,22 @@
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
     </File>
+    <File>
+      <GroupNumber>13</GroupNumber>
+      <FileNumber>345</FileNumber>
+      <FileType>5</FileType>
+      <tvExp>0</tvExp>
+      <tvExpOptDlg>0</tvExpOptDlg>
+      <bDave2>0</bDave2>
+      <PathWithFileName>.\SX1308HAL\inc\Registers1308.h</PathWithFileName>
+      <FilenameWithoutPath>Registers1308.h</FilenameWithoutPath>
+      <RteFlg>0</RteFlg>
+      <bShared>0</bShared>
+    </File>
   </Group>
 
   <Group>
-    <GroupName>SX1301HAL_src</GroupName>
+    <GroupName>SX1308HAL_src</GroupName>
     <tvExp>1</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
@@ -4484,7 +4484,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\SX1301HAL\src\loragw_hal.cpp</PathWithFileName>
+      <PathWithFileName>.\SX1308HAL\src\loragw_hal.cpp</PathWithFileName>
       <FilenameWithoutPath>loragw_hal.cpp</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -4504,7 +4504,7 @@
   </Group>
 
   <Group>
-    <GroupName>SX1301HAL_inc</GroupName>
+    <GroupName>SX1308HAL_inc</GroupName>
     <tvExp>1</tvExp>
     <tvExpOptDlg>0</tvExpOptDlg>
     <cbSel>0</cbSel>
@@ -4516,7 +4516,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\SX1301HAL\inc\loragw_aux.h</PathWithFileName>
+      <PathWithFileName>.\SX1308HAL\inc\loragw_aux.h</PathWithFileName>
       <FilenameWithoutPath>loragw_aux.h</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -4528,7 +4528,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\SX1301HAL\inc\loragw_fpga.h</PathWithFileName>
+      <PathWithFileName>.\SX1308HAL\inc\loragw_fpga.h</PathWithFileName>
       <FilenameWithoutPath>loragw_fpga.h</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -4540,7 +4540,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\SX1301HAL\inc\loragw_gps.h</PathWithFileName>
+      <PathWithFileName>.\SX1308HAL\inc\loragw_gps.h</PathWithFileName>
       <FilenameWithoutPath>loragw_gps.h</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -4552,7 +4552,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\SX1301HAL\inc\loragw_hal.h</PathWithFileName>
+      <PathWithFileName>.\SX1308HAL\inc\loragw_hal.h</PathWithFileName>
       <FilenameWithoutPath>loragw_hal.h</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -4564,7 +4564,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\SX1301HAL\inc\loragw_lbt.h</PathWithFileName>
+      <PathWithFileName>.\SX1308HAL\inc\loragw_lbt.h</PathWithFileName>
       <FilenameWithoutPath>loragw_lbt.h</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -4576,7 +4576,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\SX1301HAL\inc\loragw_radio.h</PathWithFileName>
+      <PathWithFileName>.\SX1308HAL\inc\loragw_radio.h</PathWithFileName>
       <FilenameWithoutPath>loragw_radio.h</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>
@@ -4588,7 +4588,7 @@
       <tvExp>0</tvExp>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
-      <PathWithFileName>.\SX1301HAL\inc\loragw_reg.h</PathWithFileName>
+      <PathWithFileName>.\SX1308HAL\inc\loragw_reg.h</PathWithFileName>
       <FilenameWithoutPath>loragw_reg.h</FilenameWithoutPath>
       <RteFlg>0</RteFlg>
       <bShared>0</bShared>

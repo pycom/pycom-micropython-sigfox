@@ -547,7 +547,7 @@ int ReceiveAns(AnsSettings_t *Ansbuffer,int file1)
 	return(1);
 }
 
-int ReceiveAnsCmd(AnsSettings_t *Ansbuffer,int file1,uint8_t cmd) 	
+int  ReceiveAnsCmd(AnsSettings_t *Ansbuffer,int file1,uint8_t cmd) 	
 {
 	uint8_t bufferrx[BUFFERRXSIZE];
     int i;

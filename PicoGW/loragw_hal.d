@@ -1,10 +1,10 @@
-..\..\loragw_hal.o: SX1301HAL\src\loragw_hal.cpp
+..\..\loragw_hal.o: SX1308HAL\src\loragw_hal.cpp
 ..\..\loragw_hal.o: mbed_config.h
-..\..\loragw_hal.o: .\SX1301HAL\inc\loragw_reg.h
-..\..\loragw_hal.o: .\SX1301HAL\inc\loragw_hal.h
-..\..\loragw_hal.o: .\SX1301HAL\inc\loragw_aux.h
-..\..\loragw_hal.o: .\SX1301HAL\inc\loragw_radio.h
-..\..\loragw_hal.o: .\SX1301HAL\inc\loragw_fpga.h
+..\..\loragw_hal.o: .\SX1308HAL\inc\loragw_reg.h
+..\..\loragw_hal.o: .\SX1308HAL\inc\loragw_hal.h
+..\..\loragw_hal.o: .\SX1308HAL\inc\loragw_aux.h
+..\..\loragw_hal.o: .\SX1308HAL\inc\loragw_radio.h
+..\..\loragw_hal.o: .\SX1308HAL\inc\loragw_fpga.h
 ..\..\loragw_hal.o: .\CmdUSB\inc\CmdUSB.h
 ..\..\loragw_hal.o: mbed-dev/api/mbed.h
 ..\..\loragw_hal.o: mbed-dev/api/toolchain.h
@@ -146,5 +146,5 @@
 ..\..\loragw_hal.o: mbed-dev/hal/sleep_api.h
 ..\..\loragw_hal.o: mbed-dev/api/rtc_time.h
 ..\..\loragw_hal.o: mbed-dev/api/FunctionPointer.h
-..\..\loragw_hal.o: .\SX1301HAL\inc\SX1301.h
+..\..\loragw_hal.o: .\SX1308HAL\inc\SX1308.h
 ..\..\loragw_hal.o: .\MAIN\board.h
