@@ -71,7 +71,7 @@ Methods
      - ``tx_iq`` enables TX IQ inversion.
      - ``rx_iq`` enables RX IQ inversion.
      - ``adr`` enables Adaptive Data Rate.
-     - ``public`` selects wether the network is public or not.
+     - ``public`` selects between the public and private sync word.
      - ``tx_retries`` sets the number of TX retries in ``LoRa.LORAWAN`` mode.
 
     .. note::
