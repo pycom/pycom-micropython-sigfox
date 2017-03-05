@@ -180,12 +180,12 @@ IRAM_ATTR void timer_alarm_isr(void *arg) {
 STATIC mp_obj_t alarm_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
 
     STATIC const mp_arg_t allowed_args[] = {
-        { MP_QSTR_handler,      MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
-        { MP_QSTR_s,            MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
-        { MP_QSTR_ms,           MP_ARG_INT | MP_ARG_KW_ONLY,    {.u_int = 0} },
-        { MP_QSTR_us,           MP_ARG_INT | MP_ARG_KW_ONLY,    {.u_int = 0} },
-        { MP_QSTR_arg,          MP_ARG_OBJ | MP_ARG_KW_ONLY,    {.u_obj = mp_const_none} },
-        { MP_QSTR_periodic,     MP_ARG_BOOL | MP_ARG_KW_ONLY,   {.u_bool = false} },
+        { MP_QSTR_handler,      MP_ARG_OBJ  | MP_ARG_REQUIRED,   {.u_obj = mp_const_none} },
+        { MP_QSTR_s,            MP_ARG_OBJ,                      {.u_obj = mp_const_none} },
+        { MP_QSTR_ms,           MP_ARG_INT  | MP_ARG_KW_ONLY,    {.u_int = 0} },
+        { MP_QSTR_us,           MP_ARG_INT  | MP_ARG_KW_ONLY,    {.u_int = 0} },
+        { MP_QSTR_arg,          MP_ARG_OBJ  | MP_ARG_KW_ONLY,    {.u_obj = mp_const_none} },
+        { MP_QSTR_periodic,     MP_ARG_BOOL | MP_ARG_KW_ONLY,    {.u_bool = false} },
     };
 
     // parse arguments
@@ -246,8 +246,8 @@ STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj
 STATIC mp_obj_t alarm_callback(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_handler,  MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_arg,      MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_handler,  MP_ARG_OBJ | MP_ARG_REQUIRED, {.u_obj = mp_const_none} },
+        { MP_QSTR_arg,      MP_ARG_OBJ | MP_ARG_KW_ONLY,  {.u_obj = mp_const_none} },
     };
 
     mp_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
@@ -275,6 +275,7 @@ STATIC const mp_map_elem_t mach_timer_alarm_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_alarm) },
     { MP_OBJ_NEW_QSTR(MP_QSTR___del__),             (mp_obj_t) &alarm_delete_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),            (mp_obj_t) &alarm_callback_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_cancel),              (mp_obj_t) &alarm_delete_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mach_timer_alarm_dict, mach_timer_alarm_dict_table);
