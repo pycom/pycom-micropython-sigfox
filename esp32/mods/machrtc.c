@@ -214,7 +214,9 @@ STATIC mp_obj_t mach_rtc_ntp_sync(size_t n_args, const mp_obj_t *pos_args, mp_ma
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "update period cannot be shorter than 15 s"));
     }
 
-    sntp_stop();
+    if (sntp_enabled()) {
+        sntp_stop();
+    }
 
     if (self->sntp_server_name != mp_const_none) {
         self->sntp_server_name = args[0].u_obj;
