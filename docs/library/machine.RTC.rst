@@ -41,6 +41,10 @@ Methods
       # for 2nd of February 2017 at 10:30am (TZ 0)
       rtc.init((2017, 2, 28, 10, 30, 0, 0, 0))
 
+   .. note::
+      
+      tzinfo is ignored by this method. Use ``time.timezone`` to achieve similar results.
+
 .. method:: rtc.now()
 
    Get get the current datetime tuple.::
@@ -50,17 +54,17 @@ Methods
 
 .. only:: port_pycom_esp32
 
-    .. method:: rtc.ntp_sync(server, *, update_period)
+    .. method:: rtc.ntp_sync(server, \*, update_period=3600)
 
         Set up automatic fetch and update the time using NTP (SNTP).
 
-            - ``server`` is the URL of the NTP server. Can be set to None to disable the periodic updates.
+            - ``server`` is the URL of the NTP server. Can be set to ``None`` to disable the periodic updates.
             - ``update_period`` is the number of **seconds** between updates. Shortest period is 15 seconds.
 
         Can be used like: ::
 
-            # select an appropriate server and update period, e.g. 30s
-            rtc.ntp_sync("pool.ntp.org", update_period=30)
+            
+            rtc.ntp_sync("pool.ntp.org") # this is an example. You can select a more specific server according to your geographical location
 
     .. method:: rtc.calibration([cal])
 
@@ -124,7 +128,7 @@ Methods
 
     .. method:: RTC.deinit()
 
-        Resets the RTC to the time of January 1, 2015 and starts running it again.::
+        Resets the RTC to the time of January 1, 2015 and starts running it again.
 
     .. method:: RTC.alarm(id, time, /*, repeat=False)
 

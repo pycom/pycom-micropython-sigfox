@@ -74,8 +74,12 @@ Methods
      - ``public`` selects wether the network is public or not.
      - ``tx_retries`` sets the number of TX retries in ``LoRa.LORAWAN`` mode.
 
-    .. note:: In ``LoRa.LORAWAN`` mode, only ``adr``, ``public`` and ``tx_retries`` are used. All the other
-      params will be ignored as theiy are handled by the LoRaWAN stack directly. On the other hand, these same 3 params are ignored in ``LoRa.LORA`` mode as they are only relevant for the LoRaWAN stack.
+    .. note::
+
+       In ``LoRa.LORAWAN`` mode, only ``adr``, ``public`` and ``tx_retries`` are used. All the other
+       params will be ignored as they are handled by the LoRaWAN stack directly. On the other hand, in ``LoRa.LORA`` mode
+       from those 3 arguments, only the ``public`` one is important in order to program the sync word. In ``LoRa.LORA`` mode ``adr``
+       and ``tx_retries`` are ignored since they are only relevant to the LoRaWAN stack.
 
    For example, you can do::
 
@@ -158,9 +162,18 @@ Methods
 
     Get or set the power mode in raw LoRa mode (``LoRa.LORA``). The accepted values are: ``LoRa.ALWAYS_ON``, ``LoRa.TX_ONLY`` and ``LoRa.SLEEP``.
 
-.. method:: lora.rssi()
+.. method:: lora.stats()
 
-    Get the RSSI value from the last received LoRa or LoRaWAN packet.
+    Return a named tuple with usefel information from the last received LoRa or LoRaWAN packet. The named tuple has the following form:
+
+    ``(timestamp, rssi, snr, sf)``
+
+    Where:
+
+       - ``timestamp`` is an internat timestamp with microseconds presicion.
+       - ``rssi`` hold the received signal strength in dBm.
+       - ``snr`` contains the signal to noise ratio id dB.
+       - ``sf`` tells the spreading factor of the packet received.
 
 .. method:: lora.has_joined()
 
@@ -179,13 +192,35 @@ Methods
 
 .. method:: lora.remove_channel(index)
 
-     Removes the channel from the specified index. On the 868MHz band the channels 0 to 2 cannot be removed, they can only be replaced by other channels using the ``lora.add_channel`` method. A way to remove all channels except for one is to add the same channel 3 times on indexes 0, 1 and 2.
+     Removes the channel from the specified index. On the 868MHz band the channels 0 to 2 cannot be removed, they can
+     only be replaced by other channels using the ``lora.add_channel`` method. A way to remove all channels except for
+     one is to add the same channel 3 times on indexes 0, 1 and 2.
 
-     On the 915MHz band there are not restrictions around this.
+     On the 915MHz band there are no restrictions around this.
 
 .. method:: lora.mac()
 
    Returns a byte object with the 8-Byte MAC address of the LoRa radio.
+
+.. method:: lora.callback(trigger, handler=None, arg=None)
+
+   Specify a callback handler for the LoRa radio. The trigger types are ``LoRa.RX_PACKET_EVENT`` and ``LoRa.TX_PACKET_EVENT``
+
+.. method:: lora.events()
+
+   This method returns a value with bits sets (if any) indicating the events that have triggered the callback. Please note that
+   by calling this function the internal events registry is cleared automatically, therefore calling it immediaelly for a second time
+   will most likely return a value of 0. Example::
+
+        def lora_cb(lora):
+            events = lora.events()
+            if events & LoRa.RX_PACKET_EVENT:
+                print('Lora packet received')
+            if events & LoRa.TX_PACKET_EVENT:
+                print('Lora packet sent')
+
+        lora.callback(trigger=(LoRa.RX_PACKET_EVENT | LoRa.TX_PACKET_EVENT), handler=lora_cb)
+
 
 Constants
 ---------
@@ -219,16 +254,21 @@ Constants
 
     Raw LoRa coding rate
 
+.. data:: LoRa.RX_PACKET_EVENT
+          LoRa.TX_PACKET_EVENT
 
-Working with LoRa sockets
--------------------------
+    Callback trigger types (may be ORed)
+
+
+Working with LoRa and LoRaWAN sockets
+-------------------------------------
 
 LoRa sockets are created in the following way::
 
    import socket
    s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
 
-And they must be created after initializing the LoRa network card.
+And they **must** be created after initializing the LoRa network card.
 
 LoRa sockets support the following standard methods from the :class:`socket <.socket>` module:
 
@@ -239,6 +279,10 @@ LoRa sockets support the following standard methods from the :class:`socket <.so
 .. method:: socket.bind(port_number)
 
    Usage: ``s.bind(1)``
+
+   .. note::
+
+      The ``.bind()`` method is only applicable when the radio is configured in ``LoRa.LORAWAN`` mode.
 
 .. method:: socket.send(bytes)
 
@@ -251,7 +295,7 @@ LoRa sockets support the following standard methods from the :class:`socket <.so
 .. method:: socket.setsockopt(level, optname, value)
 
    Set the value of the given socket option. The needed symbolic constants are defined in the
-   socket module (SO_* etc.). In the case of LoRa the values are always an integer. Examples::
+   socket module (SO_* etc.). In the case of LoRa the values are always integers. Examples::
 
       # configuring the data rate
       s.setsockopt(socket.SOL_LORA, socket.SO_DR, 5)
@@ -262,9 +306,17 @@ LoRa sockets support the following standard methods from the :class:`socket <.so
       # selecting confirmed type of messages
       s.setsockopt(socket.SOL_LORA, socket.SO_CONFIRMED, True)
 
+   .. note::
+
+      Socket options are only applicable when the LoRa radio is used in ``LoRa.LORAWAN`` mode.
+      When using the radio in ``LoRa.LORA`` mode, use the class methods to change the spreading
+      factor, bandwidth and coding rate to the desired values.
+
 .. method:: socket.settimeout(value)
 
-   Usage: ``s.settimeout(5.0)``
+   Sets the socket timeout value in seconds. Accepts floating point values.
+
+   Usage: ``s.settimeout(5.5)``
 
 .. method:: socket.setblocking(flag)
 

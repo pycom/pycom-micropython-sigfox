@@ -107,12 +107,16 @@ class Timer -- measure time spans and set alarms
     Methods
     -------
 
-        .. method:: alarm.callback(handler, arg)
+        .. method:: alarm.callback(handler, \*, arg=None)
 
             Specify a callback ``handler`` for the alarm. If set to ``None``, the alarm will be disabled.
 
             An optional argument ``arg`` can be passed to the callback handler function. If ``None`` is specified, the function
             will receive the object that triggered the alarm.
+
+        .. method:: alarm.cancel()
+
+            Disables the alarm.
 
     Usage example::
 
@@ -128,7 +132,7 @@ class Timer -- measure time spans and set alarms
                 self.seconds += 1
                 print("%02d seconds have passed" % self.seconds)
                 if self.seconds == 10:
-                    alarm.callback(None) # stop counting after 10 seconds
+                    alarm.cancel() # stop counting after 10 seconds
 
         clock = Clock()
 
