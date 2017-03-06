@@ -849,7 +849,7 @@ int lgw_start(void) {
 
     /* gives AGC control of GPIOs to enable Tx external digital filter */
     lgw_reg_w(LGW_GPIO_MODE,31); /* Set all GPIOs as output */
-    lgw_reg_w(LGW_GPIO_SELECT_OUTPUT,2);
+    lgw_reg_w(LGW_GPIO_SELECT_OUTPUT,0);
 
     /* Configure LBT */
     if (lbt_is_enabled() == true) {

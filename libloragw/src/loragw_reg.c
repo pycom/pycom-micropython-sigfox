@@ -847,5 +847,4 @@ int lgw_reg_RADIO_RST(void)
 return(lgw_RADIO_RST(lgw_spi_target));
 }
 
-
 /* --- EOF ------------------------------------------------------------------ */

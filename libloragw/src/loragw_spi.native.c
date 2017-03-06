@@ -76,7 +76,9 @@ pthread_mutex_t mx_usbbridgesync = PTHREAD_MUTEX_INITIALIZER; /* control access 
 #define READ_ACCESS     0x00
 #define WRITE_ACCESS    0x80
 #define SPI_SPEED       8000000
+
 #define SPI_DEV_PATH    "/dev/spidev0.0"
+
 //#define SPI_DEV_PATH    "/dev/spidev32766.0"
 
 /* -------------------------------------------------------------------------- */
@@ -154,6 +156,7 @@ int *usb_device=NULL;
 char portname [50];
 int i;
 int fd;
+int fwversion = STM32FWVERSION;
   /*check input variables*/
 CHECK_NULL(spi_target_ptr);	
 usb_device=malloc(sizeof(int));
@@ -165,6 +168,7 @@ if (usb_device ==NULL){
 for (i=0;i<10;i++) // try to open one of the 10 port ttyACM
 {   sprintf(portname,"/dev/ttyACM%d",i);
      fd = open (portname, O_RDWR | O_NOCTTY | O_SYNC);
+    
     if (fd < 0)
     {
        DEBUG_PRINTF ("ERROR: failed to open bridge USB /spi %s \n",portname);
@@ -175,6 +179,42 @@ for (i=0;i<10;i++) // try to open one of the 10 port ttyACM
     set_blocking (fd, 0);                // set  non blocking
     *usb_device=fd;
     *spi_target_ptr=(void*)usb_device;
+   CmdSettings_t mystruct;
+   AnsSettings_t mystrctAns;
+   
+   mystruct.Cmd='l';
+   mystruct.Id=0;
+   mystruct.Len=4;
+   mystruct.Adress=0;
+   mystruct.Value[0]=(uint8_t)((fwversion>>24)&(0x000000ff));
+   mystruct.Value[1]=(uint8_t)((fwversion>>16)&(0x000000ff));
+   mystruct.Value[2]=(uint8_t)((fwversion>>8)&(0x000000ff));
+   mystruct.Value[3]=(uint8_t)((fwversion)&(0x000000ff));
+    DEBUG_PRINTF("Note: USB/SPI cmd =  write success size = %d!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",1);
+    DEBUG_MSG("Note: USB/SPI write success\n");
+   
+    DEBUG_MSG("Note: USB/SPI write success\n");
+   pthread_mutex_lock(&mx_usbbridgesync);  
+   SendCmdn(mystruct,fd) ;
+   if(ReceiveAns(&mystrctAns,fd))
+   { 
+   if (mystrctAns.Rxbuf[0]==0){return LGW_SPI_ERROR;} 
+    DEBUG_PRINTF("check fw version %d \n",mystrctAns.Rxbuf[0]);
+   DEBUG_MSG("Note: USB/SPI read config success\n");
+   pthread_mutex_unlock(&mx_usbbridgesync);
+   return LGW_SPI_SUCCESS;
+	}
+	else
+	{DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+  pthread_mutex_unlock(&mx_usbbridgesync);
+   return LGW_SPI_ERROR;
+	}
+
+    
+    
+    
+    
+    
     return LGW_SPI_SUCCESS;
     }
 }
@@ -939,7 +979,7 @@ int checkcmd(uint8_t cmd)
  case 'q':{return(0); break;}
  case 'i':{return(0); break;}
  case 'j':{return(0); break;}
-
+ case 'l':{return(0); break;}
  //case 97 : return (1);   
      
      default : 
