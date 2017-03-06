@@ -43,10 +43,7 @@ void Error_Handler(void)
 
 int main(void)
 {
-	pc.baud(115200);
-	int i;
-	Timer t;
-	uint16_t size;
+	
 
 	/************ start init  *************/ 	
 	Sx1308.init();
@@ -63,15 +60,8 @@ int main(void)
 		Usbmanager.count = 1;
 		Usbmanager.initBuftohost();
 		if (Usbmanager.DecodeCmd()) {	// decode cmd from Host
-			size = (Usbmanager.BufToHost[1] << 8) + Usbmanager.BufToHost[2] + 3;
-			for (i = 0; i < size; i++)
+				while (CDC_Transmit_FS(Usbmanager.BufToHost, (uint16_t)((Usbmanager.BufToHost[1] << 8) + Usbmanager.BufToHost[2] + 3)) != USBD_OK) // transmit answer to Host
 			{
-				Usbmanager.BufToHosttemp[i] = Usbmanager.BufToHost[i];
-			}
-			while (CDC_Transmit_FS(Usbmanager.BufToHosttemp, (uint16_t)((Usbmanager.BufToHosttemp[1] << 8) + Usbmanager.BufToHosttemp[2] + 3)) != USBD_OK) // transmit answer to Host
-			//	while (CDC_Transmit_FS(Usbmanager.BufToHost, (uint16_t)((Usbmanager.BufToHost[1] << 8) + Usbmanager.BufToHost[2] + 3)) != USBD_OK) // transmit answer to Host
-			{
-				// buffer tohost temp is use because CDC_Transmit_FS respond ok before to really send the data on the usb  wire , initbuf clean the buffer to reduce ram size implement a wait or it tx usb done
 			}
 		}
 		Usbmanager.initBuffromhost(); // clean buffer

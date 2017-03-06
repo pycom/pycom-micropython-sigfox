@@ -37,7 +37,11 @@ void USBMANAGER::initBuffromhost()
 	for (i = 0; i < BUFFERRXUSBMANAGER; i++)
 	{
 		BufFromHost[i] = 0;
-		BufFromHosttemp[i] = 0;
+		
+	}
+	for (i = 0; i < 64; i++)
+	{
+	BufFromHosttemp[i] = 0;
 	}
 	receivelength[0] = 0;
 }
@@ -76,6 +80,8 @@ void USBMANAGER::ReceiveCmd()
 /*  h           |lgw_txgain_setconf                     */
 /*  q						|lgw_trigger                            */
 /*  i           |lgw_board_setconf                      */
+/*  j           |lgw_calibration_snapshot               */
+/*  l						|lgw_check_fw_version										*/
 
 int USBMANAGER::DecodeCmd()
 {
@@ -176,7 +182,7 @@ int USBMANAGER::DecodeCmd()
 		return(CMD_OK);
 	}
 	case 'e': { // cmd Read burst register atomic
-		int i;
+		
 		cmdSettings_FromHost.LenMsb = BufFromHost[1];
 		cmdSettings_FromHost.Len = BufFromHost[2];
 		adressreg = BufFromHost[3];
@@ -384,10 +390,7 @@ int USBMANAGER::DecodeCmd()
 			{
 				// remove the timeout in case of no txdone timeout is manage in the HAL by no response from the usb cmd
 			}
-			
-			Sx1308.timerstm32.stop();
-			Sx1308.timerstm32.reset();
-			Sx1308.timerstm32.start();
+		
 			lgw_get_trigcnt(&(Sx1308.hosttm));
 			if (Sx1308.firsttx == 0)
 			{
@@ -445,10 +448,35 @@ int USBMANAGER::DecodeCmd()
 	}
 	case 'j': { // lgw_calibration_snapshot
      calibrationoffset_save();
-		BufToHost[0] = 'l';
+		BufToHost[0] = 'j';
 		BufToHost[1] = 0;
 		BufToHost[2] = 1;
 		BufToHost[3] = ACK_OK;
+		return(CMD_OK); //mean no ack transmission									
+	}
+	case 'l': { // lgw_check_fw_version	
+		cmdSettings_FromHost.LenMsb = BufFromHost[1];
+		cmdSettings_FromHost.Len = BufFromHost[2];
+		adressreg = BufFromHost[3];
+		int fwfromhost;
+		int size = cmdSettings_FromHost.Len + (cmdSettings_FromHost.LenMsb << 8);
+		for (i = 0; i < cmdSettings_FromHost.Len + (cmdSettings_FromHost.LenMsb << 8); i++)
+		{
+			cmdSettings_FromHost.Value[i] = BufFromHost[4 + i];
+		}
+    fwfromhost=(BufFromHost[4]<<24)+(BufFromHost[5]<<16)+(BufFromHost[6]<<8)+(BufFromHost[7]);
+		pc.printf("fwfromhost =%x\n",fwfromhost);
+		BufToHost[0] = 'l';
+		BufToHost[1] = 0;
+		BufToHost[2] = 1;
+		if (fwfromhost==FWVERSION)
+		{
+			BufToHost[3] = ACK_OK;
+		}
+		else
+		{
+			BufToHost[3] = ACK_K0;
+		}
 		return(CMD_OK); //mean no ack transmission									
 	}
 

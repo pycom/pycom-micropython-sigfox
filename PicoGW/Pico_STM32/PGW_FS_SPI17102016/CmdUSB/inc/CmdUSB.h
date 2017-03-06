@@ -21,6 +21,8 @@ Maintainer: Fabien Holin
 #define CMD_OK 						 1
 #define CMD_K0						 0
 #define ACK_OK 						 1
+#define ACK_K0 						 0
+#define FWVERSION          0x23040900
 typedef struct
 {
 	char Cmd;
@@ -41,9 +43,9 @@ public:
 	int DecodeCmd();
 	int TransmitAnswer();
 	uint8_t BufFromHost[BUFFERRXUSBMANAGER];
-	uint8_t BufFromHosttemp[BUFFERRXUSBMANAGER];
+	uint8_t BufFromHosttemp[64];
 	uint8_t BufToHost[BUFFERRXUSBMANAGER];
-	uint8_t BufToHosttemp[BUFFERRXUSBMANAGER];
+	//uint8_t BufToHosttemp[BUFFERRXUSBMANAGER];
 	uint32_t receivelength[5];
 	uint32_t count;
 	CmdSettings_t cmdSettings_FromHost;

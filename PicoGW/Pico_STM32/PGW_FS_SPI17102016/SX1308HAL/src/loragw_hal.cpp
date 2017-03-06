@@ -1149,21 +1149,13 @@ int lgw_start(void) {
 	uint8_t fw_version;
 	uint64_t fsk_sync_word_reg;
 	int DELAYSTART = 1;
-	int timerlatch;
-	static int timerlatchp = 0;
-	static int drift = 0;
+	
 	/* Enable clocks */
 	lgw_reg_w(LGW_GLOBAL_EN, 1);
 	//Sx1308.offtmstpstm32+=Sx1308.timerstm32.read_us()+Sx1308.hosttm;// TBD manage wrap may be done alone !!!!
 	lgw_reg_w(LGW_CLK32M_EN, 1);
-	lgw_get_trigcnt(&countsx1308);
-	//if (timerlatchp==0)
-	//{	
-	//Sx1308.offtmstpstm32+=Sx1308.timerstm32.read_us()+Sx1308.hosttm-countsx1308;//+drift;
-	//timerlatch = Sx1308.timerstm32ref.read_us()-offset-Sx1308.offtmstpstm32;
-	//Sx1308.offtmstpstm32+=timerlatch;
-	//}
-	//else{
+	
+	
 	Sx1308.offtmstpstm32 = Sx1308.timerstm32ref.read_us() - Sx1308.offtmstpstm32ref;
 	if (Sx1308.firsttx == 1)
 	{
@@ -1175,53 +1167,15 @@ int lgw_start(void) {
 		Sx1308.firsttx = 1;
 	}
 
-	//}			
-	DEBUG_PRINTF("timer diff %d and driftd %d real drift%d \n", timerlatch, (timerlatch - timerlatchp), drift);
-	if (timerlatchp != 0)
-	{
-		drift = drift + timerlatch - timerlatchp;
-	}
-
-	timerlatchp = timerlatch;
-
-
+	
 	lgw_reg_w(LGW_GPIO_MODE, 31); /* Set all GPIOs as output RXON/TXON*/
 	lgw_reg_w(LGW_GPIO_SELECT_OUTPUT, 0);
-	lgw_get_trigcnt(&countsx1308);
-	// Sx1308.offtmstpstm32+=Sx1308.timerstm32.read_us()+Sx1308.hosttm-countsx1308;
-	//pc.printf("counter 1308 = %d\n",countsx1308);
-	//  lgw_reg_w(LGW_RADIO_A_EN,1);
-	// lgw_reg_w(LGW_RADIO_B_EN,1);
-	// Sx1308.offtmstpstm32+=Sx1308.timerstm32.read_us()+Sx1308.hosttm;// TBD manage wrap may be done alone !!!!
-	//	lgw_reg_w(LGW_CLKHS_EN, 1);
-	//	pc.printf("il est 9heureeees = %d  et %d\n",Sx1308.offtmstpstm32,Sx1308.timerstm32.read_us());	
-	//	 Sx1308.offtmstpstm32=0;
-	/* GPIOs table :
-	DGPIO0 -> N/A
-	DGPIO1 -> N/A
-	DGPIO2 -> N/A
-	DGPIO3 -> TX digital filter ON
-	DGPIO4 -> TX ON
-	*/
+	
+
 
 	/* select calibration command */
 	calibration_reload();
 
-	/* Get TX DC offset values */
-	/*for (i = 0; i <= 7; ++i) {
-		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0 + i);
-		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-		cal_offset_a_i[i] = (int8_t)read_val;
-		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8 + i);
-		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-		cal_offset_a_q[i] = (int8_t)read_val;
-		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0 + i);
-		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-		cal_offset_b_i[i] = (int8_t)read_val;
-		lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8 + i);
-		lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-		cal_offset_b_q[i] = (int8_t)read_val;
-	}*/
 
 	/* load adjusted parameters */
 

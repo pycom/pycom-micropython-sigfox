@@ -21,30 +21,31 @@ Target DLL:      STLink\ST-LINKIII-KEIL_SWO.dll V2.0.18.0
 Dialog DLL:      TCM.DLL V1.14.14.0
  
 <h2>Project:</h2>
-C:\Picogatyeway\PicoGWV2\Pico_STM32\PGW_FS_SPI17102016\pgw.uvprojx
-Project File Date:  03/03/2017
+C:\GIT\lora_gatewayV3\lora_gateway\PicoGW\Pico_STM32\PGW_FS_SPI17102016\pgw.uvprojx
+Project File Date:  03/06/2017
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 3 (build 300)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
 Build target 'Pico'
-compiling FileBase.cpp...
-compiling us_ticker.c...
 compiling SX1308.cpp...
 SX1308HAL\src\SX1308.cpp(19): warning:  #1299-D: members and base-classes will be initialized in declaration order, not in member initialisation list order
          : _slaveSelectPin(slaveSelectPin),  _spi(mosi, miso, sclk), _interrupt(GPIO0),_reset(Reset)
 SX1308HAL\src\SX1308.cpp: 1 warning, 0 errors
-compiling loragw_reg_pgw.cpp...
+compiling CmdUSB.cpp...
+CmdUSB\src\CmdUSB.cpp(462): warning:  #177-D: variable "size" was declared but never referenced
+  		int size = cmdSettings_FromHost.Len + (cmdSettings_FromHost.LenMsb << 8);
+CmdUSB\src\CmdUSB.cpp: 1 warning, 0 errors
 linking...
-Program Size: Code=44776 RO-data=6004 RW-data=700 ZI-data=37728  
+Program Size: Code=44540 RO-data=6004 RW-data=692 ZI-data=33392  
 FromELF: creating hex file...
-"..\..\Pgw.axf" - 0 Error(s), 1 Warning(s).
+"..\..\Pgw.axf" - 0 Error(s), 2 Warning(s).
 
 <h2>Collection of Component include folders:</h2>
-  C:\Picogatyeway\PicoGWV2\Pico_STM32\PGW_FS_SPI17102016\RTE
+  C:\GIT\lora_gatewayV3\lora_gateway\PicoGW\Pico_STM32\PGW_FS_SPI17102016\RTE
   C:\Keil_v5\ARM\PACK\Keil\STM32F4xx_DFP\2.10.0\Drivers\CMSIS\Device\ST\STM32F4xx\Include
 
 <h2>Collection of Component Files used:</h2>
-Build Time Elapsed:  00:00:10
+Build Time Elapsed:  00:00:08
 </pre>
 </body>
 </html>
