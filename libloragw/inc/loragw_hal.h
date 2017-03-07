@@ -399,7 +399,7 @@ const char* lgw_version_info(void);
 @return the packet time on air in milliseconds
 */
 uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet);
-
+int lgw_MCUversion_info(void);
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

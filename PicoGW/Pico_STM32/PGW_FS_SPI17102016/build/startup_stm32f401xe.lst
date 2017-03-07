@@ -726,15 +726,15 @@ ARM Macro Assembler    Page 12
               00000000 
               00000000 
 Command Line: --debug --xref --cpreproc --diag_suppress=9931 --cpu=Cortex-M4.fp
- --apcs=interwork --depend=..\..\startup_stm32f401xe.d -o..\..\startup_stm32f40
-1xe.o -IC:\GIT\lora_gatewayV3\lora_gateway\PicoGW\Pico_STM32\PGW_FS_SPI17102016
-\RTE -IC:\Keil_v5\ARM\PACK\Keil\STM32F4xx_DFP\2.10.0\Drivers\CMSIS\Device\ST\ST
-M32F4xx\Include -IC:\Keil_v5\ARM\CMSIS\Include --predefine="__UVISION_VERSION S
-ETA 521" --predefine="STM32F401xE SETA 1" --predefine="V2 SETA 1" --cpreproc_op
-ts=-D__ASSERT_MSG,-D__CMSIS_RTOS,-DARM_MATH_CM4,-D__CORTEX_M4,-D__MBED_CMSIS_RT
-OS_CM,-D__FPU_PRESENT=1 --list=.\build\startup_stm32f401xe.lst mbed-dev/targets
-/cmsis/TARGET_STM/TARGET_STM32F4/TARGET_NUCLEO_F401RE/TOOLCHAIN_ARM_STD/startup
-_stm32f401xe.S
+ --apcs=interwork --depend=.\build\startup_stm32f401xe.d -o.\build\startup_stm3
+2f401xe.o -IC:\GIT\lora_gatewayV3\lora_gateway\PicoGW\Pico_STM32\PGW_FS_SPI1710
+2016\RTE -IC:\Keil_v5\ARM\PACK\Keil\STM32F4xx_DFP\2.10.0\Drivers\CMSIS\Device\S
+T\STM32F4xx\Include -IC:\Keil_v5\ARM\CMSIS\Include --predefine="__UVISION_VERSI
+ON SETA 521" --predefine="STM32F401xE SETA 1" --predefine="V2 SETA 1" --cprepro
+c_opts=-D__ASSERT_MSG,-D__CMSIS_RTOS,-DARM_MATH_CM4,-D__CORTEX_M4,-D__MBED_CMSI
+S_RTOS_CM,-D__FPU_PRESENT=1 --list=.\build\startup_stm32f401xe.lst mbed-dev/tar
+gets/cmsis/TARGET_STM/TARGET_STM32F4/TARGET_NUCLEO_F401RE/TOOLCHAIN_ARM_STD/sta
+rtup_stm32f401xe.S
 
 
 

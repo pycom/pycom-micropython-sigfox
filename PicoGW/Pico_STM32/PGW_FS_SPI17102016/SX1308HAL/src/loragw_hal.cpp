@@ -1142,7 +1142,6 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
 int lgw_start(void) {
 	int i;
 	uint32_t x;
-	uint32_t countsx1308;
 	uint8_t radio_select;
 	int32_t read_val;
 	uint8_t load_val;

@@ -451,7 +451,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 
     /* check if TX notch filter frequency is supported */
     if ((conf.tx_enable == true) && ((conf.tx_notch_freq < LGW_MIN_NOTCH_FREQ) || (conf.tx_notch_freq > LGW_MAX_NOTCH_FREQ))) {
-        DEBUG_PRINTF("WARNING: NOT A VALID TX NOTCH FILTER FREQUENCY [%u..%u]Hz\n", LGW_MIN_NOTCH_FREQ, LGW_MAX_NOTCH_FREQ);
+      //  DEBUG_PRINTF("WARNING: NOT A VALID TX NOTCH FILTER FREQUENCY [%u..%u]Hz\n", LGW_MIN_NOTCH_FREQ, LGW_MAX_NOTCH_FREQ);
         conf.tx_notch_freq = 0;
     }
 
@@ -727,7 +727,8 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
             DEBUG_MSG("ERROR: TX gain LUT: SX1257 mixer gain must not exceed 15\n");
             return LGW_HAL_ERROR;
         } else if (conf->lut[i].mix_gain < 8) {
-            DEBUG_MSG("WARNING: TX gain LUT: SX1257 mixer gains < 8 are not supported\n");
+            //DEBUG_MSG("WARNING: TX gain LUT: SX1257 mixer gains < 8 are not supported\n");
+           
            // return LGW_HAL_ERROR;
         }
         if (conf->lut[i].pa_gain > 3) {
@@ -1362,6 +1363,10 @@ int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
 
 const char* lgw_version_info() {
     return lgw_version_string;
+}
+
+int lgw_MCUversion_info() {
+    return (int)(STM32FWVERSION);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
