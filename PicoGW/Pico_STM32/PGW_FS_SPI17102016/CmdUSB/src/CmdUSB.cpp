@@ -459,7 +459,6 @@ int USBMANAGER::DecodeCmd()
 		cmdSettings_FromHost.Len = BufFromHost[2];
 		adressreg = BufFromHost[3];
 		int fwfromhost;
-		int size = cmdSettings_FromHost.Len + (cmdSettings_FromHost.LenMsb << 8);
 		for (i = 0; i < cmdSettings_FromHost.Len + (cmdSettings_FromHost.LenMsb << 8); i++)
 		{
 			cmdSettings_FromHost.Value[i] = BufFromHost[4 + i];

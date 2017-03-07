@@ -1151,9 +1151,7 @@ int lgw_start(void) {
 	
 	/* Enable clocks */
 	lgw_reg_w(LGW_GLOBAL_EN, 1);
-	//Sx1308.offtmstpstm32+=Sx1308.timerstm32.read_us()+Sx1308.hosttm;// TBD manage wrap may be done alone !!!!
 	lgw_reg_w(LGW_CLK32M_EN, 1);
-	
 	
 	Sx1308.offtmstpstm32 = Sx1308.timerstm32ref.read_us() - Sx1308.offtmstpstm32ref;
 	if (Sx1308.firsttx == 1)
@@ -1165,28 +1163,17 @@ int lgw_start(void) {
 	{
 		Sx1308.firsttx = 1;
 	}
-
-	
 	lgw_reg_w(LGW_GPIO_MODE, 31); /* Set all GPIOs as output RXON/TXON*/
 	lgw_reg_w(LGW_GPIO_SELECT_OUTPUT, 0);
-	
-
-
 	/* select calibration command */
 	calibration_reload();
-
-
 	/* load adjusted parameters */
-
 	lgw_constant_adjust();
-
 	/* Sanity check for RX frequency */
-
 	if (rf_rx_freq[0] == 0) {
 		DEBUG_MSG("ERROR: wrong configuration, rf_rx_freq[0] is not set\n");
 		return LGW_HAL_ERROR;
 	}
-
 	/* Freq-to-time-drift calculation */
 	//float ftemp=(409600 / (rf_rx_freq[0] >> 1))*10000;
 	float ftemp = (4096 * 2) / (rf_rx_freq[0] / 1000000);
@@ -1221,7 +1208,6 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_IF_FREQ_5, IF_HZ_TO_REG(if_freq[5])); /* default -128 */
 	lgw_reg_w(LGW_IF_FREQ_6, IF_HZ_TO_REG(if_freq[6])); /* default 128 */
 	lgw_reg_w(LGW_IF_FREQ_7, IF_HZ_TO_REG(if_freq[7])); /* default 384 */
-
 	lgw_reg_w(LGW_CORR0_DETECT_EN, (if_enable[0] == true) ? lora_multi_sfmask[0] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR1_DETECT_EN, (if_enable[1] == true) ? lora_multi_sfmask[1] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR2_DETECT_EN, (if_enable[2] == true) ? lora_multi_sfmask[2] : 0); /* default 0 */
@@ -1230,11 +1216,8 @@ int lgw_start(void) {
 	lgw_reg_w(LGW_CORR5_DETECT_EN, (if_enable[5] == true) ? lora_multi_sfmask[5] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR6_DETECT_EN, (if_enable[6] == true) ? lora_multi_sfmask[6] : 0); /* default 0 */
 	lgw_reg_w(LGW_CORR7_DETECT_EN, (if_enable[7] == true) ? lora_multi_sfmask[7] : 0); /* default 0 */
-
 	lgw_reg_w(LGW_PPM_OFFSET, 0x60); /* as the threshold is 16ms, use 0x60 to enable ppm_offset for SF12 and SF11 @125kHz*/
-
 	lgw_reg_w(LGW_CONCENTRATOR_MODEM_ENABLE, 1); /* default 0 */
-
 												 /* configure LoRa 'stand-alone' modem (IF8) */
 	lgw_reg_w(LGW_IF_FREQ_8, IF_HZ_TO_REG(if_freq[8])); /* MBWSSF modem (default 0) */
 	if (if_enable[8] == true) {
@@ -1411,23 +1394,13 @@ void lgw_constant_adjust(void) {
 
 
 	lgw_reg_w(LGW_RSSI_BB_FILTER_ALPHA, 6); /* default 7 */
-
-
 	lgw_reg_w(LGW_RSSI_DEC_FILTER_ALPHA, 7); /* default 5 */
-
 	lgw_reg_w(LGW_RSSI_CHANN_FILTER_ALPHA, 7); /* default 8 */
-
 	lgw_reg_w(LGW_RSSI_BB_DEFAULT_VALUE, 23); /* default 32 */
-
 	lgw_reg_w(LGW_RSSI_CHANN_DEFAULT_VALUE, 85); /* default 100 */
-
 	lgw_reg_w(LGW_RSSI_DEC_DEFAULT_VALUE, 66); /* default 100 */
-
 	lgw_reg_w(LGW_DEC_GAIN_OFFSET, 7); /* default 8 */
-
 	lgw_reg_w(LGW_CHAN_GAIN_OFFSET, 6); /* default 7 */
-
-
 	lgw_reg_w(LGW_SNR_AVG_CST, 3); /* default 2 */
 	if (lorawan_public) { /* LoRa network */
 		lgw_reg_w(LGW_FRAME_SYNCH_PEAK1_POS, 3); /* default 1 */
