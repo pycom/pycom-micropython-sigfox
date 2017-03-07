@@ -42,6 +42,9 @@ Maintainer: Sylvain Miermont
 #define LGW_SPI_MUX_TARGET_FPGA     0x1
 #define LGW_SPI_MUX_TARGET_EEPROM   0x2
 #define LGW_SPI_MUX_TARGET_SX127X   0x3
+#define ACK_KO   0
+#define OK 1
+#define KO 0
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
@@ -112,7 +115,7 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
 typedef struct 
 {
 	char Cmd; // w for write , r for read
-	int Id;
+	int LenMsb;
 	int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
 	int Adress;
 	int Value[BURSTSIZE];
@@ -140,7 +143,7 @@ int lgw_txgain_setconfcmd(void *spi_target, uint8_t *data,uint16_t size);
 int lgw_sendconfcmd(void *spi_target,uint8_t *data,uint16_t size);
 int lgw_trigger(void *spi_target, uint8_t address, uint32_t *data);
 int lgw_boardconfcmd(void * spi_target,uint8_t *data,uint16_t size);
-int lgw_RADIO_RST(void * spi_target);
+int lgw_calibration_snapshot(void * spi_target);
 
 #endif
 

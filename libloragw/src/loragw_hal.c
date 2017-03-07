@@ -393,21 +393,13 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
     DEBUG_PRINTF("Note: board configuration; lorawan_public:%d, clksrc:%d\n", lorawan_public, rf_clkout);
 
 #if PGW ==1	
-uint16_t i;
+
 uint8_t PADDING =0;
-//uint8_t data[(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t))];
 uint8_t data[4];
-for (i=0;i<(sizeof(struct lgw_conf_board_s)/sizeof(uint8_t));i++)
-{
-	data[i]= *(((uint8_t *)(&conf))+i);
- 
- DEBUG_PRINTF("data[%d] = %d \n",i,data[i]);
-}
 data[0]=conf.lorawan_public;
 data[1]=conf.clksrc;
 data[2]=PADDING;
 data[3]=PADDING;
-
 
 lgw_reg_board_setconfcmd(data,4);//(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t)));
 #endif
@@ -476,16 +468,11 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
 /*****************************************************************************/
 /*added for PGW*/
 #if PGW ==1	
-uint16_t i;
+
 uint8_t PADDING =0;
 //uint8_t data[(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t))];
 uint8_t data[24];
-for (i=0;i<(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t));i++)
-{
-	//data[i]= *(((uint8_t *)(&conf))+i);
- 
-//DEBUG_PRINTF("data[%d] = %d \n",i,data[i]);
-}
+
 data[0]=conf.enable;
 data[1]=PADDING;
 data[2]=PADDING;
@@ -670,14 +657,14 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
 
 /*********************pgw  */
 #if PGW ==1	
-uint8_t i;
+
 uint8_t PADDING=0;
 //uint8_t data[(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t))];
 uint8_t data[28];
-for (i=0;i<(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t));i++)
-{
+//for (i=0;i<(sizeof(struct lgw_conf_rxrf_s)/sizeof(uint8_t));i++)
+//{
 //	data[i]= *(((uint8_t *)(&conf))+i);
-}
+//}
 data[0]=conf.enable;
 data[1]=*(((uint8_t *)(&conf.rf_chain)));
 data[2]=PADDING;
@@ -981,7 +968,7 @@ int lgw_start(void) {
         cal_offset_b_q[i] = (int8_t)read_val;
         DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
     }
-     lgw_reg_RADIO_RST();
+     lgw_reg_calibration_snapshot();
     /* load adjusted parameters */
     lgw_constant_adjust();
 
@@ -1250,14 +1237,14 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
 #if PGW ==1	
 int i;
 uint8_t PADDING =0;
-int sstruct = (sizeof(struct lgw_pkt_tx_s)/sizeof(uint8_t));
+
 uint8_t data[256+32];
 //uint8_t dataa[256+32];
-for(i=0;i<sstruct;i++)
-{
+//for(i=0;i<sstruct;i++)
+//{
 	// dataa[i]= *(((uint8_t *)(&pkt_data))+i);
  //DEBUG_PRINTF("data[%d]=%d size = %d\n",i,data[i],sstruct);
-}
+//}
 data[0]=*(((uint8_t *)(&pkt_data.freq_hz)));//uint32_t
 data[1]=*(((uint8_t *)(&pkt_data.freq_hz))+1);
 data[2]=*(((uint8_t *)(&pkt_data.freq_hz))+2);
