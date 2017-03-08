@@ -73,7 +73,7 @@
 #define LORA_RX_TIMEOUT                             (0)         // No timeout
 
 // [SF6..SF12]
-#define LORA_SPREADING_FACTOR_MIN                   (6)
+#define LORA_SPREADING_FACTOR_MIN                   (7)
 #define LORA_SPREADING_FACTOR_MAX                   (12)
 
 #define LORA_CHECK_SOCKET(s)                        if (s->sock_base.sd < 0) {  \
