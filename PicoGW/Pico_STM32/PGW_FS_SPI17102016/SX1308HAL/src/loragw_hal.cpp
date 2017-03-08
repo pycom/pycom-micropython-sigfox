@@ -1419,8 +1419,12 @@ void lgw_constant_adjust(void) {
 		lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS, 1); /* default 1 */
 		lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS, 2); /* default 2 */
 	}
+ /* Improvement of reference clock frequency error tolerance */
+  lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_RDX4, 1); /* default 0 */
+  lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_SF12_RDX4, 4094); /* default 4092 */
+  lgw_reg_w(LGW_CORR_MAC_GAIN, 7); /* default 5 */
 
-
+	
 	/* FSK datapath setup */
 	lgw_reg_w(LGW_FSK_RX_INVERT, 1); /* default 0 */
 	lgw_reg_w(LGW_FSK_MODEM_INVERT_IQ, 1); /* default 0 */

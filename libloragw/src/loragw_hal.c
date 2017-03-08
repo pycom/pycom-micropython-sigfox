@@ -305,7 +305,12 @@ void lgw_constant_adjust(void) {
     // lgw_reg_w(LGW_MBWSSF_PREAMBLE_FINE_TIMING_GAIN,1); /* default 1 */
     // lgw_reg_w(LGW_MBWSSF_TRACKING_INTEGRAL,0); /* default 0 */
     // lgw_reg_w(LGW_MBWSSF_AGC_FREEZE_ON_DETECT,1); /* default 1 */
-
+    lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_RDX4, 1); /* default 0 */
+    lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_SF12_RDX4, 4094); /* default 4092 */
+    lgw_reg_w(LGW_CORR_MAC_GAIN, 7); /* default 5 */
+	
+	
+	
     /* FSK datapath setup */
     lgw_reg_w(LGW_FSK_RX_INVERT,1); /* default 0 */
     lgw_reg_w(LGW_FSK_MODEM_INVERT_IQ,1); /* default 0 */
