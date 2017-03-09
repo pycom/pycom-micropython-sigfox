@@ -1093,23 +1093,23 @@ int lgw_start(void) {
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_AGC) {
         DEBUG_PRINTF("ERROR: Version of AGC firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_AGC);
-        return LGW_HAL_ERROR;
+        //return LGW_HAL_ERROR;
     }
     lgw_reg_w(LGW_DBG_ARB_MCU_RAM_ADDR, FW_VERSION_ADDR);
     lgw_reg_r(LGW_DBG_ARB_MCU_RAM_DATA, &read_val);
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_ARB) {
         DEBUG_PRINTF("ERROR: Version of arbiter firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_ARB);
-        return LGW_HAL_ERROR;
+       // return LGW_HAL_ERROR;
     }
 
     DEBUG_MSG("Info: Initialising AGC firmware...\n");
-    wait_ms(1);
+    wait_ms(10);
 
     lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x10) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
-        return LGW_HAL_ERROR;
+      //  return LGW_HAL_ERROR;
     }
 
     /* Update Tx gain LUT and start AGC */
@@ -1128,10 +1128,10 @@ int lgw_start(void) {
     /* As the AGC fw is waiting for 16 entries, we need to abort the transaction if we get less entries */
     if (txgain_lut.size < TX_GAIN_LUT_SIZE_MAX) {
         lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
-        wait_ms(1);
+        wait_ms(10);
         load_val = AGC_CMD_ABORT;
         lgw_reg_w(LGW_RADIO_SELECT, load_val);
-        wait_ms(1);
+        wait_ms(10);
         lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
         if (read_val != 0x30) {
             DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
@@ -1141,9 +1141,9 @@ int lgw_start(void) {
 
     /* Load Tx freq MSBs (always 3 if f > 768 for SX1257 or f > 384 for SX1255 */
     lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
-    wait_ms(1);
+    wait_ms(10);
     lgw_reg_w(LGW_RADIO_SELECT, 3);
-    wait_ms(1);
+    wait_ms(10);
     lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x33) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
@@ -1152,9 +1152,9 @@ int lgw_start(void) {
 
     /* Load chan_select firmware option */
     lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
-    wait_ms(1);
+    wait_ms(10);
     lgw_reg_w(LGW_RADIO_SELECT, 0);
-    wait_ms(1);
+    wait_ms(10);
     lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x30) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
@@ -1163,9 +1163,9 @@ int lgw_start(void) {
 
     /* End AGC firmware init and check status */
     lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
-    wait_ms(1);
+    wait_ms(10);
     lgw_reg_w(LGW_RADIO_SELECT, radio_select); /* Load intended value of RADIO_SELECT */
-    wait_ms(1);
+    wait_ms(10);
     DEBUG_MSG("Info: putting back original RADIO_SELECT value\n");
     lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x40) {

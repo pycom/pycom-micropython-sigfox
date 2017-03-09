@@ -507,6 +507,7 @@ int SendCmdn(CmdSettings_t CmdSettings, int file1)
 	int Clen = CmdSettings.Len + (CmdSettings.LenMsb << 8);
 	int Tlen = 1 + 2 + 1 + Clen; // cmd  Length +adress
 	int i;
+  ssize_t lencheck;
 	for (i = 0; i < BUFFERTXSIZE; i++)
 	{
 		buffertx[i] = 0;
@@ -520,7 +521,11 @@ int SendCmdn(CmdSettings_t CmdSettings, int file1)
 		buffertx[i + 4] = CmdSettings.Value[i];
 
 	}
-	write(file1, buffertx, Tlen);
+	lencheck = write(file1, buffertx, Tlen);
+  if (lencheck!=Tlen)
+  {
+  DEBUG_PRINTF("WARNING : write cmd failed (%d)\n", (int) lencheck);
+  }
 	DEBUG_PRINTF("send burst done size %d\n", Tlen);
 	return(OK); 
 }
@@ -531,6 +536,7 @@ int ReceiveAns(AnsSettings_t *Ansbuffer, int file1)
 	uint8_t bufferrx[BUFFERRXSIZE];
 	int i;
 	int cpttimer = 0;
+  ssize_t lencheck;
 	for (i = 0; i < BUFFERRXSIZE; i++)
 	{
 		bufferrx[i] = 0;
@@ -538,8 +544,12 @@ int ReceiveAns(AnsSettings_t *Ansbuffer, int file1)
 	cpttimer = 0;
 	while (checkcmd(bufferrx[0]))
 	{
-		read(file1, bufferrx, 3);
+		lencheck =read(file1, bufferrx, 3);
 		cpttimer++;
+    if (lencheck!=3)
+    {
+    DEBUG_PRINTF("WARNING : write  read  failed (%d) time\n", (int) cpttimer);
+    }
 		if (cpttimer > 15) // wait read error the read function isn't block but timeout of 0.1s
 		{
 			DEBUG_MSG("ERROR: DEADLOCK SPI");
@@ -548,7 +558,11 @@ int ReceiveAns(AnsSettings_t *Ansbuffer, int file1)
 	}
 	wait_ns(((bufferrx[1] << 8) + bufferrx[2]) * 4000);
 	DEBUG_PRINTF("cmd = %d readburst size %d\n", bufferrx[0], (bufferrx[1] << 8) + bufferrx[2]);
-	read(file1, &bufferrx[3], (bufferrx[1] << 8) + bufferrx[2]);
+	lencheck = read(file1, &bufferrx[3], (bufferrx[1] << 8) + bufferrx[2]);
+  if (lencheck!=((bufferrx[1] << 8) + bufferrx[2]))
+    {
+    DEBUG_PRINTF("WARNING : write  read  failed %d\n", lencheck);
+    }
 	Ansbuffer->Cmd = bufferrx[0];
 	Ansbuffer->Id = bufferrx[1];
 	Ansbuffer->Len = bufferrx[2];
