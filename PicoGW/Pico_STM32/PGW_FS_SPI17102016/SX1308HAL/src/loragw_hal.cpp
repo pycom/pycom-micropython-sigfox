@@ -32,7 +32,7 @@ Maintainer: Sylvain Miermont
 //#include "loragw_lbt.h"
 #include "CmdUSB.h"
 #include "board.h"
-#define DEBUG_HAL  1
+//#define DEBUG_HAL  1
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
