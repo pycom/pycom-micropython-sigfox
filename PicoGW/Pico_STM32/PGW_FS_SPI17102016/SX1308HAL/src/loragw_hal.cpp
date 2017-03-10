@@ -125,6 +125,7 @@ static uint32_t fsk_rx_dr; /* FSK modem datarate in bauds */
 static uint8_t fsk_sync_word_size = 3; /* default number of bytes for FSK sync word */
 static uint64_t fsk_sync_word = 0xC194C1; /* default FSK sync word (ALIGNED RIGHT, MSbit first) */
 static bool lorawan_public = true;
+static uint8_t firstimecalibration =1;
 static struct lgw_tx_gain_lut_s txgain_lut = {
 	.size = 2,
 	.lut[0] = {
@@ -143,10 +144,10 @@ static struct lgw_tx_gain_lut_s txgain_lut = {
 } };
 
 /* TX I/Q imbalance coefficients for mixer gain = 8 to 15 */
-static int8_t cal_offset_a_i[8]; /* TX I offset for radio A */
-static int8_t cal_offset_a_q[8]; /* TX Q offset for radio A */
-static int8_t cal_offset_b_i[8]; /* TX I offset for radio B */
-static int8_t cal_offset_b_q[8]; /* TX Q offset for radio B */
+static int8_t cal_offset_a_i[16]; /* TX I offset for radio A */
+static int8_t cal_offset_a_q[16]; /* TX Q offset for radio A */
+static int8_t cal_offset_b_i[16]; /* TX I offset for radio B */
+static int8_t cal_offset_b_q[16]; /* TX Q offset for radio B */
 
 								 /* -------------------------------------------------------------------------- */
 								 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -732,12 +733,12 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
 	
 	target_mix_gain = txgain_lut.lut[pow_index].mix_gain;
 	if (pkt_data.rf_chain == 0) { /* use radio A calibration table */
-		lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_a_i[target_mix_gain - 8]);
-		lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_a_q[target_mix_gain - 8]);
+		lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_a_i[target_mix_gain ]);
+		lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_a_q[target_mix_gain ]);
 	}
 	else { /* use radio B calibration table */
-		lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_b_i[target_mix_gain - 8]);
-		lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_b_q[target_mix_gain - 8]);
+		lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_b_i[target_mix_gain ]);
+		lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_b_q[target_mix_gain ]);
 	}
 
 	/* Set digital gain from LUT */
@@ -1513,7 +1514,9 @@ void calibrationoffset_save(void)
 { 
 	int read_val;
 	int i;
-	for(i=0; i<=7; ++i) {
+	if (firstimecalibration==1)
+	{	
+	for(i=5; i<12; ++i) {    // fw_calow calibrate only for gain 5 TO 12
         lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0+i);
 		    wait_ms(1);
         lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
@@ -1536,6 +1539,42 @@ void calibrationoffset_save(void)
         cal_offset_b_q[i] = (int8_t)read_val;
         DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
     }
+	for(i=0; i<5; ++i)
+		{
+			 cal_offset_a_i[i] =cal_offset_a_i[5];
+			 cal_offset_a_q[i] =cal_offset_a_q[5];
+			 cal_offset_b_i[i] =cal_offset_b_i[5];
+			 cal_offset_b_q[i] =cal_offset_b_q[5];
+		}
+	firstimecalibration=2;
+	}
+	if (firstimecalibration==2)
+	{	
+	for(i=8; i<16; ++i) {    // fw_calow calibrate only for gain 5 TO 12
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0+i);
+		    wait_ms(1);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		 wait_ms(1);
+        cal_offset_a_i[i] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8+i);
+		 wait_ms(1);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		 wait_ms(1);
+        cal_offset_a_q[i] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0+i);
+		 wait_ms(1);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		 wait_ms(1);
+        cal_offset_b_i[i] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8+i);
+		 wait_ms(1);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		 wait_ms(1);
+        cal_offset_b_q[i] = (int8_t)read_val;
+        DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
+    }
+	firstimecalibration=0;
+	}
 }
 
 void calibration_save(void)

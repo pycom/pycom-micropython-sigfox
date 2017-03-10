@@ -100,7 +100,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 #include "arb_fw.var" /* external definition of the variable */
 #include "agc_fw.var" /* external definition of the variable */
 #include "cal_fw.var" /* external definition of the variable */
-
+#include "cal_fw5-12.var" /* external definition of the variable */
 /*
 The following static variables are the configuration set that the user can
 modify using rxrf_setconf, rxif_setconf and txgain_setconf functions.
@@ -898,7 +898,7 @@ int lgw_start(void) {
     cal_time = 2300; /* measured between 2.1 and 2.2 sec, because 1 TX only */
 
     /* Load the calibration firmware  */
-    load_firmware(MCU_AGC, cal_firmware, MCU_AGC_FW_BYTE);
+    load_firmware(MCU_AGC, callow_firmware, MCU_AGC_FW_BYTE);
     lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL, 0); /* gives to AGC MCU the control of the radios */
     lgw_reg_w(LGW_RADIO_SELECT, cal_cmd); /* send calibration configuration word */
     lgw_reg_w(LGW_MCU_RST_1, 0);
@@ -974,7 +974,178 @@ int lgw_start(void) {
         cal_offset_b_q[i] = (int8_t)read_val;
         DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
     }
-     lgw_reg_calibration_snapshot();
+     lgw_reg_calibration_snapshotlow(); 
+       wait_ms(5);
+/****************************************************************************************************************************************************************/
+ lgw_soft_reset();
+
+    /* gate clocks */
+    lgw_reg_w(LGW_GLOBAL_EN, 0);
+    lgw_reg_w(LGW_CLK32M_EN, 0);
+
+    /* switch on and reset the radios (also starts the 32 MHz XTAL) */
+    lgw_reg_w(LGW_RADIO_A_EN,1);
+    lgw_reg_w(LGW_RADIO_B_EN,1);
+    wait_ms(500); /* TODO: optimize */
+    lgw_reg_w(LGW_RADIO_RST,1);
+    wait_ms(5);
+    lgw_reg_w(LGW_RADIO_RST,0);
+    //  lgw_reg_RADIO_RST(); 
+    /* setup the radios */
+    err = lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
+    if (err != 0) {
+        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
+        return LGW_HAL_ERROR;
+    }
+    err = lgw_setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
+    if (err != 0) {
+        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* gives AGC control of GPIOs to enable Tx external digital filter */
+    lgw_reg_w(LGW_GPIO_MODE,31); /* Set all GPIOs as output */
+    lgw_reg_w(LGW_GPIO_SELECT_OUTPUT,0);
+
+    /* Configure LBT */
+    if (lbt_is_enabled() == true) {
+        lgw_reg_w(LGW_CLK32M_EN, 1);
+        i = lbt_setup();
+        if (i != LGW_LBT_SUCCESS) {
+            DEBUG_MSG("ERROR: lbt_setup() did not return SUCCESS\n");
+            return LGW_HAL_ERROR;
+        }
+
+        /* Start SX1301 counter and LBT FSM at the same time to be in sync */
+        lgw_reg_w(LGW_CLK32M_EN, 0);
+        i = lbt_start();
+        if (i != LGW_LBT_SUCCESS) {
+            DEBUG_MSG("ERROR: lbt_start() did not return SUCCESS\n");
+            return LGW_HAL_ERROR;
+        }
+    }
+
+    /* Enable clocks */
+    lgw_reg_w(LGW_GLOBAL_EN, 1);
+    lgw_reg_w(LGW_CLK32M_EN, 1);
+
+    /* GPIOs table :
+    DGPIO0 -> N/A
+    DGPIO1 -> N/A
+    DGPIO2 -> N/A
+    DGPIO3 -> TX digital filter ON
+    DGPIO4 -> TX ON
+    */
+
+    /* select calibration command */
+    cal_cmd = 0;
+    cal_cmd |= rf_enable[0] ? 0x01 : 0x00; /* Bit 0: Calibrate Rx IQ mismatch compensation on radio A */
+    cal_cmd |= rf_enable[1] ? 0x02 : 0x00; /* Bit 1: Calibrate Rx IQ mismatch compensation on radio B */
+    cal_cmd |= (rf_enable[0] && rf_tx_enable[0]) ? 0x04 : 0x00; /* Bit 2: Calibrate Tx DC offset on radio A */
+    cal_cmd |= (rf_enable[1] && rf_tx_enable[1]) ? 0x08 : 0x00; /* Bit 3: Calibrate Tx DC offset on radio B */
+    cal_cmd |= 0x10; /* Bit 4: 0: calibrate with DAC gain=2, 1: with DAC gain=3 (use 3) */
+
+    switch (rf_radio_type[0]) { /* we assume that there is only one radio type on the board */
+        case LGW_RADIO_TYPE_SX1255:
+            cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
+            break;
+        case LGW_RADIO_TYPE_SX1257:
+            cal_cmd |= 0x00; /* Bit 5: 0: SX1257, 1: SX1255 */
+            break;
+        default:
+            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[0]);
+            break;
+    }
+
+    cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
+    cal_time = 2300; /* measured between 2.1 and 2.2 sec, because 1 TX only */
+
+    /* Load the calibration firmware  */
+    load_firmware(MCU_AGC, cal_firmware, MCU_AGC_FW_BYTE);
+    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL, 0); /* gives to AGC MCU the control of the radios */
+    lgw_reg_w(LGW_RADIO_SELECT, cal_cmd); /* send calibration configuration word */
+    lgw_reg_w(LGW_MCU_RST_1, 0);
+
+    /* Check firmware version */
+    lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, FW_VERSION_ADDR);
+    lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+    fw_version = (uint8_t)read_val;
+    if (fw_version != FW_VERSION_CAL) {
+     
+        return -1;
+    }
+
+    lgw_reg_w(LGW_PAGE_REG, 3); /* Calibration will start on this condition as soon as MCU can talk to concentrator registers */
+    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 0); /* Give control of concentrator registers to MCU */
+
+    /* Wait for calibration to end */
+    DEBUG_PRINTF("Note: calibration started (time: %u ms)\n", cal_time);
+    wait_ms(cal_time); /* Wait for end of calibration */
+    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 1); /* Take back control */
+
+    /* Get calibration status */
+    lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+    cal_status = (uint8_t)read_val;
+    /*
+        bit 7: calibration finished
+        bit 0: could access SX1301 registers
+        bit 1: could access radio A registers
+        bit 2: could access radio B registers
+        bit 3: radio A RX image rejection successful
+        bit 4: radio B RX image rejection successful
+        bit 5: radio A TX DC Offset correction successful
+        bit 6: radio B TX DC Offset correction successful
+    */
+    if ((cal_status & 0x81) != 0x81) {
+        DEBUG_PRINTF("ERROR: CALIBRATION FAILURE (STATUS = %u)\n", cal_status);
+        return LGW_HAL_ERROR;
+    } else {
+        DEBUG_PRINTF("Note: calibration finished (status = %u)\n", cal_status);
+    }
+    if (rf_enable[0] && ((cal_status & 0x02) == 0)) {
+        DEBUG_MSG("WARNING: calibration could not access radio A\n");
+    }
+    if (rf_enable[1] && ((cal_status & 0x04) == 0)) {
+        DEBUG_MSG("WARNING: calibration could not access radio B\n");
+    }
+    if (rf_enable[0] && ((cal_status & 0x08) == 0)) {
+        DEBUG_MSG("WARNING: problem in calibration of radio A for image rejection\n");
+    }
+    if (rf_enable[1] && ((cal_status & 0x10) == 0)) {
+        DEBUG_MSG("WARNING: problem in calibration of radio B for image rejection\n");
+    }
+    if (rf_enable[0] && rf_tx_enable[0] && ((cal_status & 0x20) == 0)) {
+        DEBUG_MSG("WARNING: problem in calibration of radio A for TX DC offset\n");
+    }
+    if (rf_enable[1] && rf_tx_enable[1] && ((cal_status & 0x40) == 0)) {
+        DEBUG_MSG("WARNING: problem in calibration of radio B for TX DC offset\n");
+    }
+
+    /* Get TX DC offset values */
+    for(i=0; i<=7; ++i) {
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0+i);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        cal_offset_a_i[i] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8+i);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        cal_offset_a_q[i] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0+i);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        cal_offset_b_i[i] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8+i);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        cal_offset_b_q[i] = (int8_t)read_val;
+        DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
+    }    
+    
+    
+    
+    
+    
+    
+    
+    
+     lgw_reg_calibration_snapshothigh();
     /* load adjusted parameters */
     lgw_constant_adjust();
 
