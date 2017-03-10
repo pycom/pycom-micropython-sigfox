@@ -32,7 +32,7 @@ Maintainer: Sylvain Miermont
 //#include "loragw_lbt.h"
 #include "CmdUSB.h"
 #include "board.h"
-
+#define DEBUG_HAL  1
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -125,7 +125,7 @@ static uint32_t fsk_rx_dr; /* FSK modem datarate in bauds */
 static uint8_t fsk_sync_word_size = 3; /* default number of bytes for FSK sync word */
 static uint64_t fsk_sync_word = 0xC194C1; /* default FSK sync word (ALIGNED RIGHT, MSbit first) */
 static bool lorawan_public = true;
-static uint8_t firstimecalibration =1;
+
 static struct lgw_tx_gain_lut_s txgain_lut = {
 	.size = 2,
 	.lut[0] = {
@@ -1512,34 +1512,63 @@ int load_firmware(uint8_t target, uint16_t size) {
 }
 void calibrationoffset_save(void)
 { 
+	static uint8_t firstimecalibration =1;
+	DEBUG_PRINTF("start calibration with  firstimecalibration = %d\n",firstimecalibration);
 	int read_val;
 	int i;
-	if (firstimecalibration==1)
+	if (firstimecalibration==2)
 	{	
-	for(i=5; i<12; ++i) {    // fw_calow calibrate only for gain 5 TO 12
+	for(i=0; i<7; ++i) {    // fw_calow calibrate only for gain 5 TO 12
         lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0+i);
 		    wait_ms(1);
         lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
 		 wait_ms(1);
-        cal_offset_a_i[i] = (int8_t)read_val;
+        cal_offset_a_i[i+8] = (int8_t)read_val;
         lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8+i);
 		 wait_ms(1);
         lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
 		 wait_ms(1);
-        cal_offset_a_q[i] = (int8_t)read_val;
+        cal_offset_a_q[i+8] = (int8_t)read_val;
         lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0+i);
 		 wait_ms(1);
         lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
 		 wait_ms(1);
-        cal_offset_b_i[i] = (int8_t)read_val;
+        cal_offset_b_i[i+8] = (int8_t)read_val;
         lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8+i);
 		 wait_ms(1);
         lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
 		 wait_ms(1);
-        cal_offset_b_q[i] = (int8_t)read_val;
-        DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
+        cal_offset_b_q[i+8] = (int8_t)read_val;
+        //DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
     }
-	for(i=0; i<5; ++i)
+	firstimecalibration=3;
+	}
+	if (firstimecalibration==1)
+	{	
+	for(i=0; i<7; i++) {    // fw_calow calibrate only for gain 5 TO 12
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0+i);
+		    wait_ms(1);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		 wait_ms(1);
+        cal_offset_a_i[i+5] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8+i);
+		 wait_ms(1);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		 wait_ms(1);
+        cal_offset_a_q[i+5] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0+i);
+		 wait_ms(1);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		 wait_ms(1);
+        cal_offset_b_i[i+5] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8+i);
+		 wait_ms(1);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+		 wait_ms(1);
+        cal_offset_b_q[i+5] = (int8_t)read_val;
+      //  DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
+    }
+	for(i=0; i<5; i++)
 		{
 			 cal_offset_a_i[i] =cal_offset_a_i[5];
 			 cal_offset_a_q[i] =cal_offset_a_q[5];
@@ -1548,33 +1577,13 @@ void calibrationoffset_save(void)
 		}
 	firstimecalibration=2;
 	}
-	if (firstimecalibration==2)
-	{	
-	for(i=8; i<16; ++i) {    // fw_calow calibrate only for gain 5 TO 12
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0+i);
-		    wait_ms(1);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-		 wait_ms(1);
-        cal_offset_a_i[i] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8+i);
-		 wait_ms(1);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-		 wait_ms(1);
-        cal_offset_a_q[i] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0+i);
-		 wait_ms(1);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-		 wait_ms(1);
-        cal_offset_b_i[i] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8+i);
-		 wait_ms(1);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-		 wait_ms(1);
-        cal_offset_b_q[i] = (int8_t)read_val;
-        DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
-    }
-	firstimecalibration=0;
+	if (firstimecalibration==3)
+	{
+		for(i=0; i<15; i++)
+		{ DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);}
+		firstimecalibration=1;
 	}
+	
 }
 
 void calibration_save(void)
