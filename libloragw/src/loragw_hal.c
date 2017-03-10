@@ -974,7 +974,7 @@ int lgw_start(void) {
         cal_offset_b_q[i] = (int8_t)read_val;
         DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
     }
-     lgw_reg_calibration_snapshotlow(); 
+     lgw_reg_calibration_snapshot(); 
        wait_ms(5);
 /****************************************************************************************************************************************************************/
  lgw_soft_reset();
@@ -1145,7 +1145,7 @@ int lgw_start(void) {
     
     
     
-     lgw_reg_calibration_snapshothigh();
+     lgw_reg_calibration_snapshot();
     /* load adjusted parameters */
     lgw_constant_adjust();
 

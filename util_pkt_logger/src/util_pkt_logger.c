@@ -37,6 +37,8 @@ Maintainer: Sylvain Miermont
 #include "parson.h"
 #include "loragw_hal.h"
 
+#include "loragw_reg.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -399,7 +401,7 @@ int main(int argc, char **argv)
     struct timespec fetch_time;
     char fetch_timestamp[30];
     struct tm * x;
-
+     lgw_connect(false);
     /* parse command line options */
     while ((i = getopt (argc, argv, "hr:")) != -1) {
         switch (i) {
