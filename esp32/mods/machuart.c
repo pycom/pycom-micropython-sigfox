@@ -170,17 +170,19 @@ static void uart_assign_pins_af (mp_obj_t *pins, uint32_t n_pins, uint32_t uart_
     for (int i = 0; i < n_pins; i++) {
         if (pins[i] != mp_const_none) {
             pin_obj_t *pin = pin_find(pins[i]);
-            int32_t af_in, af_out, mode;
+            int32_t af_in, af_out, mode, pull;
             if (i % 2) {
                 af_in = mach_uart_pin_af[uart_id][i];
                 af_out = -1;
                 mode = GPIO_MODE_INPUT;
+                pull = MACHPIN_PULL_UP;
             } else {
                 af_in = -1;
                 af_out = mach_uart_pin_af[uart_id][i];
                 mode = GPIO_MODE_OUTPUT;
+                pull = MACHPIN_PULL_NONE;
             }
-            pin_config(pin, af_in, af_out, mode, MACHPIN_PULL_UP, 1);
+            pin_config(pin, af_in, af_out, mode, pull, 1);
         }
     }
 }
@@ -319,27 +321,11 @@ esp_err_t machuart_isr_register(uart_port_t uart_num, void (*fn)(void*), void * 
 }
 
 STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t *args) {
-    uint32_t uart_id = self->uart_id;
-
-    // enable the peripheral clock
-    periph_module_t periph_module;
-    switch (uart_id) {
-        case MACH_UART_0:
-            periph_module = PERIPH_UART0_MODULE;
-            break;
-        case MACH_UART_1:
-            periph_module = PERIPH_UART1_MODULE;
-            break;
-        default:
-            periph_module = PERIPH_UART2_MODULE;
-            break;
-    }
-    periph_module_enable(periph_module);
-
     // get the baudrate
     if (args[0].u_int <= 0) {
         goto error;
     }
+
     uint32_t baudrate = args[0].u_int;
     uint32_t data_bits;
     switch (args[1].u_int) {
@@ -403,33 +389,8 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     READ_PERI_REG(UART_IDLE_CONF_REG(self->uart_id)) & (~UART_TX_IDLE_NUM_M));
 
     // disable interrupts on the current UART before re-configuring
-    // UART_IntrConfig() will enable them again
-    CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(uart_id), UART_INTR_MASK);
-
-    self->base.type = &mach_uart_type;
-    self->config.baud_rate = baudrate;
-    self->config.data_bits = data_bits;
-    self->config.parity = parity;
-    self->config.stop_bits = stop_bits;
-    self->config.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
-    self->config.rx_flow_ctrl_thresh = 64;
-    uart_param_config(uart_id, &self->config);
-
-    // re-allocate the read buffer after resetting the uart
-    self->read_buf_head = 0;
-    self->read_buf_tail = 0;
-    self->read_buf = MP_OBJ_NULL; // free the read buffer before allocating again
-    MP_STATE_PORT(uart_buf[uart_id]) = m_new(byte, MACHUART_RX_BUFFER_LEN);
-    self->read_buf = (volatile byte *)MP_STATE_PORT(uart_buf[uart_id]);
-
-    // interrupts are enabled here
-    machuart_isr_register(uart_id, uart_intr_handler, NULL);
-
-    self->intr_config.intr_enable_mask = intr_mask;
-    self->intr_config.rx_timeout_thresh = 1;
-    self->intr_config.txfifo_empty_intr_thresh = 2;
-    self->intr_config.rxfifo_full_thresh = 20;
-    uart_intr_config(uart_id, &self->intr_config);
+    // and UART_IntrConfig() will enable them again
+    CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(self->uart_id), UART_INTR_MASK);
 
     // assign the pins
     mp_obj_t pins_o = args[4].u_obj;
@@ -464,6 +425,31 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     }
 
     self->rx_timeout = args[5].u_int;
+
+    self->base.type = &mach_uart_type;
+    self->config.baud_rate = baudrate;
+    self->config.data_bits = data_bits;
+    self->config.parity = parity;
+    self->config.stop_bits = stop_bits;
+    self->config.flow_ctrl = flowcontrol;
+    self->config.rx_flow_ctrl_thresh = 64;
+    uart_param_config(self->uart_id, &self->config);
+
+    // re-allocate the read buffer after resetting the uart
+    self->read_buf_head = 0;
+    self->read_buf_tail = 0;
+    self->read_buf = MP_OBJ_NULL; // free the read buffer before allocating again
+    MP_STATE_PORT(uart_buf[self->uart_id]) = m_new(byte, MACHUART_RX_BUFFER_LEN);
+    self->read_buf = (volatile byte *)MP_STATE_PORT(uart_buf[self->uart_id]);
+
+    // interrupts are enabled here
+    machuart_isr_register(self->uart_id, uart_intr_handler, NULL);
+
+    self->intr_config.intr_enable_mask = intr_mask;
+    self->intr_config.rx_timeout_thresh = 1;
+    self->intr_config.txfifo_empty_intr_thresh = 2;
+    self->intr_config.rxfifo_full_thresh = 20;
+    uart_intr_config(self->uart_id, &self->intr_config);
 
     return mp_const_none;
 

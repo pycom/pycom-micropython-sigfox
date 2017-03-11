@@ -131,6 +131,9 @@ void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, i
         self->value = value;
     }
 
+    // clear the interrupt configuration
+    self->irq_trigger = GPIO_INTR_DISABLE;
+
     pin_obj_configure ((const pin_obj_t *)self);
 
 //    // register it with the sleep module
@@ -271,12 +274,14 @@ STATIC IRAM_ATTR pin_obj_t *pin_find_pin_by_num (const mp_obj_dict_t *named_pins
 STATIC void pin_obj_configure (const pin_obj_t *self) {
     // set the value first (to minimize glitches)
     pin_set_value(self);
+
     // configure the pin
     gpio_config_t gpioconf = {.pin_bit_mask = 1ull << self->pin_number,
                               .mode = self->mode,
                               .pull_up_en = (self->pull == MACHPIN_PULL_UP) ? GPIO_PULLUP_ENABLE : GPIO_PULLUP_DISABLE,
                               .pull_down_en = (self->pull == MACHPIN_PULL_DOWN) ? GPIO_PULLDOWN_ENABLE : GPIO_PULLDOWN_DISABLE,
-                              .intr_type = self->irq_trigger};
+                              .intr_type = self->irq_trigger
+                             };
     gpio_config(&gpioconf);
 
     // assign the alternate function

@@ -39,8 +39,8 @@ typedef struct {
     qstr                name;
     mp_obj_t            handler;
     mp_obj_t            handler_arg;
-    int8_t              af_in;
-    int8_t              af_out;
+    int16_t             af_in;
+    int16_t             af_out;
     unsigned int        pin_number : 6;
     unsigned int        pull : 2;
     unsigned int        mode : 3;
