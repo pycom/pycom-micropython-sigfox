@@ -46,12 +46,15 @@ RX_PK = {"rxpk": [{"time": "", "tmst": 0,
 
 TX_ACK_PK = {"txpk_ack":{"error":""}}
 
+UDP_THREAD_CYCLE_S = 0.025
+
 
 class NanoGateway:
 
     def __init__(self, id, frequency, datarate, ssid, password, server, port, ntp='pool.ntp.org', ntp_period=3600):
         self.id = id
         self.frequency = frequency
+        self.datarate = datarate
         self.sf = self._dr_to_sf(datarate)
         self.ssid = ssid
         self.password = password
@@ -59,6 +62,8 @@ class NanoGateway:
         self.port = port
         self.ntp = ntp
         self.ntp_period = ntp_period
+
+        self.started = False
 
         self.rxnb = 0
         self.rxok = 0
@@ -70,18 +75,24 @@ class NanoGateway:
         self.pull_alarm = None
         self.uplink_alarm = None
 
+        self.wlan = None
+        self.sock = None
         self.udp_lock = _thread.allocate_lock()
 
         self.lora = None
         self.lora_sock = None
 
+        self.rtc = machine.RTC()
+
     def start(self):
+        # Set the started flasg before anything else
+        self.started = True
+
         # Change WiFi to STA mode and connect
         self.wlan = WLAN(mode=WLAN.STA)
         self._connect_to_wifi()
 
         # Get a time Sync
-        self.rtc = machine.RTC()
         self.rtc.ntp_sync(self.ntp, update_period=self.ntp_period)
 
         # Get the server IP and create an UDP socket
@@ -111,10 +122,20 @@ class NanoGateway:
         self.lora.callback(trigger=(LoRa.RX_PACKET_EVENT | LoRa.TX_PACKET_EVENT), handler=self._lora_cb)
 
     def stop(self):
-        # TODO: Check how to stop the NTP sync
-        # TODO: Create a cancel method for the alarm
-        # TODO: kill the UDP thread
-        self.sock.close()
+        # Stop the NTP sync
+        self.rtc.ntp_sync(None)
+        # Cancel all the alarms
+        self.stat_alarm.cancel()
+        self.pull_alarm.cancel()
+        self.uplink_alarm.cancel()
+
+        # Wait for the alarms to be removed
+        time.sleep(0.01)
+
+        # Wait for the UDP thread to end and close the socket
+        self.started = False
+        while self.sock:
+            time.sleep(UDP_THREAD_CYCLE_S * 2)
 
     def _connect_to_wifi(self):
         self.wlan.connect(self.ssid, auth=(None, self.password))
@@ -129,7 +150,7 @@ class NanoGateway:
         return int(sf)
 
     def _sf_to_dr(self, sf):
-        return "SF7BW125"
+        return self.datarate
 
     def _make_stat_packet(self):
         now = self.rtc.now()
@@ -202,7 +223,7 @@ class NanoGateway:
         self.lora_sock.send(data)
 
     def _udp_thread(self):
-        while True:
+        while self.started:
             try:
                 data, src = self.sock.recvfrom(1024)
                 _token = data[1:3]
@@ -238,4 +259,7 @@ class NanoGateway:
             except Exception:
                 print("UDP recv Exception")
             # Wait before trying to receive again
-            time.sleep(0.025)
+            time.sleep(UDP_THREAD_CYCLE_S)
+
+        self.sock.close()
+        self.sock = None
