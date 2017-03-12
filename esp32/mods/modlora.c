@@ -73,7 +73,7 @@
 #define LORA_RX_TIMEOUT                             (0)         // No timeout
 
 // [SF6..SF12]
-#define LORA_SPREADING_FACTOR_MIN                   (7)
+#define LORA_SPREADING_FACTOR_MIN                   (6)
 #define LORA_SPREADING_FACTOR_MAX                   (12)
 
 #define LORA_CHECK_SOCKET(s)                        if (s->sock_base.sd < 0) {  \
@@ -1197,7 +1197,7 @@ STATIC const mp_arg_t lora_init_args[] = {
     { MP_QSTR_frequency,    MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = RF_FREQUENCY_CENTER} },
     { MP_QSTR_tx_power,     MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = TX_OUTPUT_POWER_MAX} },
     { MP_QSTR_bandwidth,    MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_LORA_BW_125_KHZ} },
-    { MP_QSTR_sf,           MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = LORA_SPREADING_FACTOR_MIN} },
+    { MP_QSTR_sf,           MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = 7} },
     { MP_QSTR_preamble,     MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = 8} },
     { MP_QSTR_coding_rate,  MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_LORA_CODING_4_5} },
     { MP_QSTR_power_mode,   MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_LORA_MODE_ALWAYS_ON} },
