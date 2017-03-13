@@ -42,8 +42,8 @@ void Error_Handler(void)
 
 
 int main(void)
-{
-	
+{uint16_t size;
+ uint16_t sizet;	
 
 	/************ start init  *************/ 	
 	Sx1308.init();
@@ -60,7 +60,10 @@ int main(void)
 		Usbmanager.count = 1;
 		Usbmanager.initBuftohost();
 		if (Usbmanager.DecodeCmd()) {	// decode cmd from Host
-				while (CDC_Transmit_FS(Usbmanager.BufToHost, (uint16_t)((Usbmanager.BufToHost[1] << 8) + Usbmanager.BufToHost[2] + 3)) != USBD_OK) // transmit answer to Host
+			  size = (uint16_t)((Usbmanager.BufToHost[1] << 8) + Usbmanager.BufToHost[2] + 3);
+			  if ((size%64)==0) // for ZLP
+				{sizet=size+1;}else{sizet=size;}
+				while (CDC_Transmit_FS(Usbmanager.BufToHost, sizet) != USBD_OK) // transmit answer to Host
 			{
 			}
 		}

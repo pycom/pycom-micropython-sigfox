@@ -6706,115 +6706,115 @@ Image Symbol Table
     i.init_uart                              0x0800a280   Section        0  serial_api.o(i.init_uart)
     init_uart                                0x0800a281   Thumb Code   104  serial_api.o(i.init_uart)
     i.main                                   0x0800a304   Section        0  main.o(i.main)
-    i.mbed_assert_internal                   0x0800a390   Section        0  mbed_assert.o(i.mbed_assert_internal)
-    i.mbed_die                               0x0800a3e4   Section        0  mbed_board.o(i.mbed_die)
-    i.mbed_error_printf                      0x0800a490   Section        0  mbed_board.o(i.mbed_error_printf)
-    i.mbed_error_vfprintf                    0x0800a4e4   Section        0  mbed_board.o(i.mbed_error_vfprintf)
-    i.mbed_main                              0x0800a530   Section        0  retarget.o(i.mbed_main)
-    i.mbed_sdk_init                          0x0800a532   Section        0  mbed_overrides.o(i.mbed_sdk_init)
-    i.pin_function                           0x0800a540   Section        0  pinmap.o(i.pin_function)
-    i.pin_mode                               0x0800a5e0   Section        0  pinmap.o(i.pin_mode)
-    i.pinmap_merge                           0x0800a66c   Section        0  mbed_pinmap_common.o(i.pinmap_merge)
-    i.pinmap_peripheral                      0x0800a6a8   Section        0  mbed_pinmap_common.o(i.pinmap_peripheral)
-    i.pinmap_pinout                          0x0800a708   Section        0  mbed_pinmap_common.o(i.pinmap_pinout)
-    i.serial_init                            0x0800a764   Section        0  serial_api.o(i.serial_init)
-    i.serial_irq_handler                     0x0800a914   Section        0  serial_api.o(i.serial_irq_handler)
-    i.serial_irq_handler_asynch              0x0800a92c   Section        0  serial_api.o(i.serial_irq_handler_asynch)
-    i.serial_putc                            0x0800aa88   Section        0  serial_api.o(i.serial_putc)
-    i.spi_format                             0x0800aaac   Section        0  spi_api.o(i.spi_format)
-    i.spi_frequency                          0x0800ab14   Section        0  spi_api.o(i.spi_frequency)
-    i.spi_init                               0x0800abcc   Section        0  spi_api.o(i.spi_init)
-    i.spi_master_write                       0x0800ad60   Section        0  spi_api.o(i.spi_master_write)
-    i.ticker_irq_handler                     0x0800ad90   Section        0  mbed_ticker_api.o(i.ticker_irq_handler)
-    i.ticker_read                            0x0800adde   Section        0  mbed_ticker_api.o(i.ticker_read)
-    i.timer_irq_handler                      0x0800ade4   Section        0  hal_tick.o(i.timer_irq_handler)
-    i.us_ticker_clear_interrupt              0x0800ae48   Section        0  us_ticker.o(i.us_ticker_clear_interrupt)
-    i.us_ticker_disable_interrupt            0x0800ae58   Section        0  us_ticker.o(i.us_ticker_disable_interrupt)
-    i.us_ticker_init                         0x0800ae6c   Section        0  us_ticker.o(i.us_ticker_init)
-    i.us_ticker_irq_handler                  0x0800ae94   Section        0  mbed_us_ticker_api.o(i.us_ticker_irq_handler)
-    i.us_ticker_read                         0x0800aea0   Section        0  us_ticker.o(i.us_ticker_read)
-    i.us_ticker_set_interrupt                0x0800aed0   Section        0  us_ticker.o(i.us_ticker_set_interrupt)
-    i.wait_ms                                0x0800aee4   Section        0  mbed_wait_api.o(i.wait_ms)
-    i.wait_us                                0x0800af00   Section        0  mbed_wait_api.o(i.wait_us)
-    locale$$code                             0x0800af18   Section       44  lc_numeric_c.o(locale$$code)
-    locale$$code                             0x0800af44   Section       44  lc_ctype_c.o(locale$$code)
-    t._ZN12SingletonPtrI13PlatformMutexEptEv 0x0800af70   Section        0  filebase.o(t._ZN12SingletonPtrI13PlatformMutexEptEv)
-    t._ZN4mbed8CallbackIFvvEE12_methodthunkI6SX1308EEvPvS5_ 0x0800af9c   Section        0  sx1308.o(t._ZN4mbed8CallbackIFvvEE12_methodthunkI6SX1308EEvPvS5_)
-    t._ZN6CThunkIN4mbed10SerialBaseEE10trampolineEPS1_PvPMS1_FvS4_E 0x0800afb0   Section        0  serialbase.o(t._ZN6CThunkIN4mbed10SerialBaseEE10trampolineEPS1_PvPMS1_FvS4_E)
-    x$fpl$fpinit                             0x0800afe6   Section       10  fpinit.o(x$fpl$fpinit)
-    $v0                                      0x0800afe6   Number         0  fpinit.o(x$fpl$fpinit)
-    x$fpl$printf1                            0x0800aff0   Section        4  printf1.o(x$fpl$printf1)
-    $v0                                      0x0800aff0   Number         0  printf1.o(x$fpl$printf1)
-    x$fpl$printf2                            0x0800aff4   Section        4  printf2.o(x$fpl$printf2)
-    $v0                                      0x0800aff4   Number         0  printf2.o(x$fpl$printf2)
-    .constdata                               0x0800aff8   Section       72  peripheralpins.o(.constdata)
-    x$fpl$usenofp                            0x0800aff8   Section        0  usenofp.o(x$fpl$usenofp)
-    .constdata                               0x0800b040   Section       72  peripheralpins.o(.constdata)
-    .constdata                               0x0800b088   Section       72  peripheralpins.o(.constdata)
-    .constdata                               0x0800b0d0   Section       72  peripheralpins.o(.constdata)
-    .constdata                               0x0800b118   Section       72  peripheralpins.o(.constdata)
-    .constdata                               0x0800b160   Section       60  peripheralpins.o(.constdata)
-    .constdata                               0x0800b19c   Section       16  system_stm32f4xx.o(.constdata)
-    .constdata                               0x0800b1ac   Section       52  pinmap.o(.constdata)
-    gpio_mode                                0x0800b1ac   Data          52  pinmap.o(.constdata)
-    .constdata                               0x0800b1e0   Section       16  spi_api.o(.constdata)
-    baudrate_prescaler_table                 0x0800b1e0   Data          16  spi_api.o(.constdata)
-    .constdata                               0x0800b1f0   Section       16  stm32f4xx_hal_rcc.o(.constdata)
-    .constdata                               0x0800b200   Section       20  mbed_us_ticker_api.o(.constdata)
-    us_interface                             0x0800b200   Data          20  mbed_us_ticker_api.o(.constdata)
-    .constdata                               0x0800b214   Section        8  mbed_us_ticker_api.o(.constdata)
-    us_data                                  0x0800b214   Data           8  mbed_us_ticker_api.o(.constdata)
-    .constdata                               0x0800b21c   Section       23  retarget.o(.constdata)
-    .constdata                               0x0800b234   Section       16  serialbase.o(.constdata)
-    <Data1>                                  0x0800b234   Data           8  serialbase.o(.constdata)
-    <Data2>                                  0x0800b23c   Data           8  serialbase.o(.constdata)
-    .constdata                               0x0800b244   Section        8  sx1308.o(.constdata)
-    <Data1>                                  0x0800b244   Data           8  sx1308.o(.constdata)
-    .constdata                               0x0800b24c   Section       23  loragw_hal.o(.constdata)
-    ifmod_config                             0x0800b24c   Data          10  loragw_hal.o(.constdata)
-    lgw_version_string                       0x0800b256   Data          13  loragw_hal.o(.constdata)
-    .constdata                               0x0800b264   Section     3912  loragw_reg_pgw.o(.constdata)
-    loregs                                   0x0800b264   Data        3912  loragw_reg_pgw.o(.constdata)
-    .constdata                               0x0800c1ac   Section       40  _printf_hex_int_ll_ptr.o(.constdata)
-    uc_hextab                                0x0800c1ac   Data          20  _printf_hex_int_ll_ptr.o(.constdata)
-    lc_hextab                                0x0800c1c0   Data          20  _printf_hex_int_ll_ptr.o(.constdata)
-    .constdata                               0x0800c1d4   Section       17  __printf_flags_ss_wp.o(.constdata)
-    maptable                                 0x0800c1d4   Data          17  __printf_flags_ss_wp.o(.constdata)
-    .constdata                               0x0800c1e8   Section        8  _printf_wctomb.o(.constdata)
-    initial_mbstate                          0x0800c1e8   Data           8  _printf_wctomb.o(.constdata)
-    .constdata                               0x0800c1f0   Section       38  _printf_fp_hex.o(.constdata)
-    lc_hextab                                0x0800c1f0   Data          19  _printf_fp_hex.o(.constdata)
-    uc_hextab                                0x0800c203   Data          19  _printf_fp_hex.o(.constdata)
-    .constdata                               0x0800c218   Section      148  bigflt0.o(.constdata)
-    tenpwrs_x                                0x0800c218   Data          60  bigflt0.o(.constdata)
-    tenpwrs_i                                0x0800c254   Data          64  bigflt0.o(.constdata)
-    .constdata__ZTV10USBMANAGER              0x0800c2ac   Section       20  cmdusb.o(.constdata__ZTV10USBMANAGER)
-    .constdata__ZTV6SX1308                   0x0800c2c0   Section       12  sx1308.o(.constdata__ZTV6SX1308)
-    .constdata__ZTVN4mbed10FileHandleE       0x0800c2cc   Section       52  retarget.o(.constdata__ZTVN4mbed10FileHandleE)
-    .constdata__ZTVN4mbed10SerialBaseE       0x0800c300   Section       24  serialbase.o(.constdata__ZTVN4mbed10SerialBaseE)
-    .constdata__ZTVN4mbed11InterruptInE      0x0800c318   Section       16  interruptin.o(.constdata__ZTVN4mbed11InterruptInE)
-    .constdata__ZTVN4mbed3SPIE               0x0800c328   Section       28  spi.o(.constdata__ZTVN4mbed3SPIE)
-    .constdata__ZTVN4mbed6SerialE            0x0800c344   Section      108  serial.o(.constdata__ZTVN4mbed6SerialE)
-    .constdata__ZTVN4mbed6StreamE            0x0800c3b0   Section       76  stream.o(.constdata__ZTVN4mbed6StreamE)
-    .constdata__ZTVN4mbed8FileBaseE          0x0800c3fc   Section       16  filebase.o(.constdata__ZTVN4mbed8FileBaseE)
-    .constdata__ZTVN4mbed8FileLikeE          0x0800c40c   Section       68  filelike.o(.constdata__ZTVN4mbed8FileLikeE)
-    .constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs 0x0800c450   Section       20  filebase.o(.constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs)
-    .constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs_0 0x0800c464   Section       28  filebase.o(.constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs_0)
-    locale$$data                             0x0800c4a0   Section       28  lc_numeric_c.o(locale$$data)
-    __lcnum_c_name                           0x0800c4a4   Data           2  lc_numeric_c.o(locale$$data)
-    __lcnum_c_start                          0x0800c4ac   Data           0  lc_numeric_c.o(locale$$data)
-    __lcnum_c_point                          0x0800c4b8   Data           0  lc_numeric_c.o(locale$$data)
-    __lcnum_c_thousands                      0x0800c4ba   Data           0  lc_numeric_c.o(locale$$data)
-    __lcnum_c_grouping                       0x0800c4bb   Data           0  lc_numeric_c.o(locale$$data)
-    locale$$data                             0x0800c4bc   Section      272  lc_ctype_c.o(locale$$data)
-    __lcnum_c_end                            0x0800c4bc   Data           0  lc_numeric_c.o(locale$$data)
-    __lcctype_c_name                         0x0800c4c0   Data           2  lc_ctype_c.o(locale$$data)
-    __lcctype_c_start                        0x0800c4c8   Data           0  lc_ctype_c.o(locale$$data)
-    .init_array                              0x0800c5cc   Section        4  usbd_conf.o(.init_array)
-    __lcctype_c_end                          0x0800c5cc   Data           0  lc_ctype_c.o(locale$$data)
-    .init_array                              0x0800c5d0   Section        4  main.o(.init_array)
-    .init_array                              0x0800c5d4   Section        4  board.o(.init_array)
-    .init_array                              0x0800c5d8   Section        0  init_aeabi.o(.init_array)
+    i.mbed_assert_internal                   0x0800a39c   Section        0  mbed_assert.o(i.mbed_assert_internal)
+    i.mbed_die                               0x0800a3f0   Section        0  mbed_board.o(i.mbed_die)
+    i.mbed_error_printf                      0x0800a49c   Section        0  mbed_board.o(i.mbed_error_printf)
+    i.mbed_error_vfprintf                    0x0800a4f0   Section        0  mbed_board.o(i.mbed_error_vfprintf)
+    i.mbed_main                              0x0800a53c   Section        0  retarget.o(i.mbed_main)
+    i.mbed_sdk_init                          0x0800a53e   Section        0  mbed_overrides.o(i.mbed_sdk_init)
+    i.pin_function                           0x0800a54c   Section        0  pinmap.o(i.pin_function)
+    i.pin_mode                               0x0800a5ec   Section        0  pinmap.o(i.pin_mode)
+    i.pinmap_merge                           0x0800a678   Section        0  mbed_pinmap_common.o(i.pinmap_merge)
+    i.pinmap_peripheral                      0x0800a6b4   Section        0  mbed_pinmap_common.o(i.pinmap_peripheral)
+    i.pinmap_pinout                          0x0800a714   Section        0  mbed_pinmap_common.o(i.pinmap_pinout)
+    i.serial_init                            0x0800a770   Section        0  serial_api.o(i.serial_init)
+    i.serial_irq_handler                     0x0800a920   Section        0  serial_api.o(i.serial_irq_handler)
+    i.serial_irq_handler_asynch              0x0800a938   Section        0  serial_api.o(i.serial_irq_handler_asynch)
+    i.serial_putc                            0x0800aa94   Section        0  serial_api.o(i.serial_putc)
+    i.spi_format                             0x0800aab8   Section        0  spi_api.o(i.spi_format)
+    i.spi_frequency                          0x0800ab20   Section        0  spi_api.o(i.spi_frequency)
+    i.spi_init                               0x0800abd8   Section        0  spi_api.o(i.spi_init)
+    i.spi_master_write                       0x0800ad6c   Section        0  spi_api.o(i.spi_master_write)
+    i.ticker_irq_handler                     0x0800ad9c   Section        0  mbed_ticker_api.o(i.ticker_irq_handler)
+    i.ticker_read                            0x0800adea   Section        0  mbed_ticker_api.o(i.ticker_read)
+    i.timer_irq_handler                      0x0800adf0   Section        0  hal_tick.o(i.timer_irq_handler)
+    i.us_ticker_clear_interrupt              0x0800ae54   Section        0  us_ticker.o(i.us_ticker_clear_interrupt)
+    i.us_ticker_disable_interrupt            0x0800ae64   Section        0  us_ticker.o(i.us_ticker_disable_interrupt)
+    i.us_ticker_init                         0x0800ae78   Section        0  us_ticker.o(i.us_ticker_init)
+    i.us_ticker_irq_handler                  0x0800aea0   Section        0  mbed_us_ticker_api.o(i.us_ticker_irq_handler)
+    i.us_ticker_read                         0x0800aeac   Section        0  us_ticker.o(i.us_ticker_read)
+    i.us_ticker_set_interrupt                0x0800aedc   Section        0  us_ticker.o(i.us_ticker_set_interrupt)
+    i.wait_ms                                0x0800aef0   Section        0  mbed_wait_api.o(i.wait_ms)
+    i.wait_us                                0x0800af0c   Section        0  mbed_wait_api.o(i.wait_us)
+    locale$$code                             0x0800af24   Section       44  lc_numeric_c.o(locale$$code)
+    locale$$code                             0x0800af50   Section       44  lc_ctype_c.o(locale$$code)
+    t._ZN12SingletonPtrI13PlatformMutexEptEv 0x0800af7c   Section        0  filebase.o(t._ZN12SingletonPtrI13PlatformMutexEptEv)
+    t._ZN4mbed8CallbackIFvvEE12_methodthunkI6SX1308EEvPvS5_ 0x0800afa8   Section        0  sx1308.o(t._ZN4mbed8CallbackIFvvEE12_methodthunkI6SX1308EEvPvS5_)
+    t._ZN6CThunkIN4mbed10SerialBaseEE10trampolineEPS1_PvPMS1_FvS4_E 0x0800afbc   Section        0  serialbase.o(t._ZN6CThunkIN4mbed10SerialBaseEE10trampolineEPS1_PvPMS1_FvS4_E)
+    x$fpl$fpinit                             0x0800aff2   Section       10  fpinit.o(x$fpl$fpinit)
+    $v0                                      0x0800aff2   Number         0  fpinit.o(x$fpl$fpinit)
+    x$fpl$printf1                            0x0800affc   Section        4  printf1.o(x$fpl$printf1)
+    $v0                                      0x0800affc   Number         0  printf1.o(x$fpl$printf1)
+    x$fpl$printf2                            0x0800b000   Section        4  printf2.o(x$fpl$printf2)
+    $v0                                      0x0800b000   Number         0  printf2.o(x$fpl$printf2)
+    .constdata                               0x0800b004   Section       72  peripheralpins.o(.constdata)
+    x$fpl$usenofp                            0x0800b004   Section        0  usenofp.o(x$fpl$usenofp)
+    .constdata                               0x0800b04c   Section       72  peripheralpins.o(.constdata)
+    .constdata                               0x0800b094   Section       72  peripheralpins.o(.constdata)
+    .constdata                               0x0800b0dc   Section       72  peripheralpins.o(.constdata)
+    .constdata                               0x0800b124   Section       72  peripheralpins.o(.constdata)
+    .constdata                               0x0800b16c   Section       60  peripheralpins.o(.constdata)
+    .constdata                               0x0800b1a8   Section       16  system_stm32f4xx.o(.constdata)
+    .constdata                               0x0800b1b8   Section       52  pinmap.o(.constdata)
+    gpio_mode                                0x0800b1b8   Data          52  pinmap.o(.constdata)
+    .constdata                               0x0800b1ec   Section       16  spi_api.o(.constdata)
+    baudrate_prescaler_table                 0x0800b1ec   Data          16  spi_api.o(.constdata)
+    .constdata                               0x0800b1fc   Section       16  stm32f4xx_hal_rcc.o(.constdata)
+    .constdata                               0x0800b20c   Section       20  mbed_us_ticker_api.o(.constdata)
+    us_interface                             0x0800b20c   Data          20  mbed_us_ticker_api.o(.constdata)
+    .constdata                               0x0800b220   Section        8  mbed_us_ticker_api.o(.constdata)
+    us_data                                  0x0800b220   Data           8  mbed_us_ticker_api.o(.constdata)
+    .constdata                               0x0800b228   Section       23  retarget.o(.constdata)
+    .constdata                               0x0800b240   Section       16  serialbase.o(.constdata)
+    <Data1>                                  0x0800b240   Data           8  serialbase.o(.constdata)
+    <Data2>                                  0x0800b248   Data           8  serialbase.o(.constdata)
+    .constdata                               0x0800b250   Section        8  sx1308.o(.constdata)
+    <Data1>                                  0x0800b250   Data           8  sx1308.o(.constdata)
+    .constdata                               0x0800b258   Section       23  loragw_hal.o(.constdata)
+    ifmod_config                             0x0800b258   Data          10  loragw_hal.o(.constdata)
+    lgw_version_string                       0x0800b262   Data          13  loragw_hal.o(.constdata)
+    .constdata                               0x0800b270   Section     3912  loragw_reg_pgw.o(.constdata)
+    loregs                                   0x0800b270   Data        3912  loragw_reg_pgw.o(.constdata)
+    .constdata                               0x0800c1b8   Section       40  _printf_hex_int_ll_ptr.o(.constdata)
+    uc_hextab                                0x0800c1b8   Data          20  _printf_hex_int_ll_ptr.o(.constdata)
+    lc_hextab                                0x0800c1cc   Data          20  _printf_hex_int_ll_ptr.o(.constdata)
+    .constdata                               0x0800c1e0   Section       17  __printf_flags_ss_wp.o(.constdata)
+    maptable                                 0x0800c1e0   Data          17  __printf_flags_ss_wp.o(.constdata)
+    .constdata                               0x0800c1f4   Section        8  _printf_wctomb.o(.constdata)
+    initial_mbstate                          0x0800c1f4   Data           8  _printf_wctomb.o(.constdata)
+    .constdata                               0x0800c1fc   Section       38  _printf_fp_hex.o(.constdata)
+    lc_hextab                                0x0800c1fc   Data          19  _printf_fp_hex.o(.constdata)
+    uc_hextab                                0x0800c20f   Data          19  _printf_fp_hex.o(.constdata)
+    .constdata                               0x0800c224   Section      148  bigflt0.o(.constdata)
+    tenpwrs_x                                0x0800c224   Data          60  bigflt0.o(.constdata)
+    tenpwrs_i                                0x0800c260   Data          64  bigflt0.o(.constdata)
+    .constdata__ZTV10USBMANAGER              0x0800c2b8   Section       20  cmdusb.o(.constdata__ZTV10USBMANAGER)
+    .constdata__ZTV6SX1308                   0x0800c2cc   Section       12  sx1308.o(.constdata__ZTV6SX1308)
+    .constdata__ZTVN4mbed10FileHandleE       0x0800c2d8   Section       52  retarget.o(.constdata__ZTVN4mbed10FileHandleE)
+    .constdata__ZTVN4mbed10SerialBaseE       0x0800c30c   Section       24  serialbase.o(.constdata__ZTVN4mbed10SerialBaseE)
+    .constdata__ZTVN4mbed11InterruptInE      0x0800c324   Section       16  interruptin.o(.constdata__ZTVN4mbed11InterruptInE)
+    .constdata__ZTVN4mbed3SPIE               0x0800c334   Section       28  spi.o(.constdata__ZTVN4mbed3SPIE)
+    .constdata__ZTVN4mbed6SerialE            0x0800c350   Section      108  serial.o(.constdata__ZTVN4mbed6SerialE)
+    .constdata__ZTVN4mbed6StreamE            0x0800c3bc   Section       76  stream.o(.constdata__ZTVN4mbed6StreamE)
+    .constdata__ZTVN4mbed8FileBaseE          0x0800c408   Section       16  filebase.o(.constdata__ZTVN4mbed8FileBaseE)
+    .constdata__ZTVN4mbed8FileLikeE          0x0800c418   Section       68  filelike.o(.constdata__ZTVN4mbed8FileLikeE)
+    .constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs 0x0800c45c   Section       20  filebase.o(.constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs)
+    .constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs_0 0x0800c470   Section       28  filebase.o(.constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs_0)
+    locale$$data                             0x0800c4ac   Section       28  lc_numeric_c.o(locale$$data)
+    __lcnum_c_name                           0x0800c4b0   Data           2  lc_numeric_c.o(locale$$data)
+    __lcnum_c_start                          0x0800c4b8   Data           0  lc_numeric_c.o(locale$$data)
+    __lcnum_c_point                          0x0800c4c4   Data           0  lc_numeric_c.o(locale$$data)
+    __lcnum_c_thousands                      0x0800c4c6   Data           0  lc_numeric_c.o(locale$$data)
+    __lcnum_c_grouping                       0x0800c4c7   Data           0  lc_numeric_c.o(locale$$data)
+    locale$$data                             0x0800c4c8   Section      272  lc_ctype_c.o(locale$$data)
+    __lcnum_c_end                            0x0800c4c8   Data           0  lc_numeric_c.o(locale$$data)
+    __lcctype_c_name                         0x0800c4cc   Data           2  lc_ctype_c.o(locale$$data)
+    __lcctype_c_start                        0x0800c4d4   Data           0  lc_ctype_c.o(locale$$data)
+    .init_array                              0x0800c5d8   Section        4  usbd_conf.o(.init_array)
+    __lcctype_c_end                          0x0800c5d8   Data           0  lc_ctype_c.o(locale$$data)
+    .init_array                              0x0800c5dc   Section        4  main.o(.init_array)
+    .init_array                              0x0800c5e0   Section        4  board.o(.init_array)
+    .init_array                              0x0800c5e4   Section        0  init_aeabi.o(.init_array)
     .data                                    0x20000194   Section        4  hal_tick.o(.data)
     .data                                    0x20000198   Section        4  system_stm32f4xx.o(.data)
     .data                                    0x2000019c   Section       68  gpio_irq_api.o(.data)
@@ -7494,76 +7494,76 @@ Image Symbol Table
     gpio_irq_init                            0x08009fcd   Thumb Code   242  gpio_irq_api.o(i.gpio_irq_init)
     gpio_irq_set                             0x0800a111   Thumb Code   120  gpio_irq_api.o(i.gpio_irq_set)
     gpio_mode                                0x0800a189   Thumb Code     8  gpio_api.o(i.gpio_mode)
-    $Super$$main                             0x0800a305   Thumb Code   126  main.o(i.main)
-    mbed_assert_internal                     0x0800a391   Thumb Code    32  mbed_assert.o(i.mbed_assert_internal)
-    mbed_die                                 0x0800a3e5   Thumb Code    84  mbed_board.o(i.mbed_die)
-    mbed_error_printf                        0x0800a491   Thumb Code    74  mbed_board.o(i.mbed_error_printf)
-    mbed_error_vfprintf                      0x0800a4e5   Thumb Code    68  mbed_board.o(i.mbed_error_vfprintf)
-    mbed_main                                0x0800a531   Thumb Code     2  retarget.o(i.mbed_main)
-    mbed_sdk_init                            0x0800a533   Thumb Code    14  mbed_overrides.o(i.mbed_sdk_init)
-    pin_function                             0x0800a541   Thumb Code    80  pinmap.o(i.pin_function)
-    pin_mode                                 0x0800a5e1   Thumb Code    64  pinmap.o(i.pin_mode)
-    pinmap_merge                             0x0800a66d   Thumb Code    38  mbed_pinmap_common.o(i.pinmap_merge)
-    pinmap_peripheral                        0x0800a6a9   Thumb Code    62  mbed_pinmap_common.o(i.pinmap_peripheral)
-    pinmap_pinout                            0x0800a709   Thumb Code    72  mbed_pinmap_common.o(i.pinmap_pinout)
-    serial_init                              0x0800a765   Thumb Code   310  serial_api.o(i.serial_init)
-    serial_irq_handler                       0x0800a915   Thumb Code    14  serial_api.o(i.serial_irq_handler)
-    serial_irq_handler_asynch                0x0800a92d   Thumb Code   344  serial_api.o(i.serial_irq_handler_asynch)
-    serial_putc                              0x0800aa89   Thumb Code    30  serial_api.o(i.serial_putc)
-    spi_format                               0x0800aaad   Thumb Code   102  spi_api.o(i.spi_format)
-    spi_frequency                            0x0800ab15   Thumb Code   116  spi_api.o(i.spi_frequency)
-    spi_init                                 0x0800abcd   Thumb Code   294  spi_api.o(i.spi_init)
-    spi_master_write                         0x0800ad61   Thumb Code    44  spi_api.o(i.spi_master_write)
-    ticker_irq_handler                       0x0800ad91   Thumb Code    78  mbed_ticker_api.o(i.ticker_irq_handler)
-    ticker_read                              0x0800addf   Thumb Code     6  mbed_ticker_api.o(i.ticker_read)
-    timer_irq_handler                        0x0800ade5   Thumb Code    90  hal_tick.o(i.timer_irq_handler)
-    us_ticker_clear_interrupt                0x0800ae49   Thumb Code    12  us_ticker.o(i.us_ticker_clear_interrupt)
-    us_ticker_disable_interrupt              0x0800ae59   Thumb Code    14  us_ticker.o(i.us_ticker_disable_interrupt)
-    us_ticker_init                           0x0800ae6d   Thumb Code    26  us_ticker.o(i.us_ticker_init)
-    us_ticker_irq_handler                    0x0800ae95   Thumb Code     6  mbed_us_ticker_api.o(i.us_ticker_irq_handler)
-    us_ticker_read                           0x0800aea1   Thumb Code    30  us_ticker.o(i.us_ticker_read)
-    us_ticker_set_interrupt                  0x0800aed1   Thumb Code    16  us_ticker.o(i.us_ticker_set_interrupt)
-    wait_ms                                  0x0800aee5   Thumb Code    28  mbed_wait_api.o(i.wait_ms)
-    wait_us                                  0x0800af01   Thumb Code    24  mbed_wait_api.o(i.wait_us)
-    _get_lc_numeric                          0x0800af19   Thumb Code    44  lc_numeric_c.o(locale$$code)
-    _get_lc_ctype                            0x0800af45   Thumb Code    44  lc_ctype_c.o(locale$$code)
-    SingletonPtr<PlatformMutex>::operator ->() 0x0800af71   Thumb Code    36  filebase.o(t._ZN12SingletonPtrI13PlatformMutexEptEv)
-    void mbed::Callback<void()>::_methodthunk<SX1308>(void*, void*) 0x0800af9d   Thumb Code    20  sx1308.o(t._ZN4mbed8CallbackIFvvEE12_methodthunkI6SX1308EEvPvS5_)
-    CThunk<mbed::SerialBase>::trampoline(mbed::SerialBase*, void*, void(mbed::SerialBase::**)(void*)) 0x0800afb1   Thumb Code    54  serialbase.o(t._ZN6CThunkIN4mbed10SerialBaseEE10trampolineEPS1_PvPMS1_FvS4_E)
-    _fp_init                                 0x0800afe7   Thumb Code    10  fpinit.o(x$fpl$fpinit)
-    __fplib_config_fpu_vfp                   0x0800afef   Thumb Code     0  fpinit.o(x$fpl$fpinit)
-    __fplib_config_pureend_doubles           0x0800afef   Thumb Code     0  fpinit.o(x$fpl$fpinit)
-    _printf_fp_dec                           0x0800aff1   Thumb Code     4  printf1.o(x$fpl$printf1)
-    _printf_fp_hex                           0x0800aff5   Thumb Code     4  printf2.o(x$fpl$printf2)
-    PinMap_UART_TX                           0x0800aff8   Data          72  peripheralpins.o(.constdata)
-    __I$use$fp                               0x0800aff8   Number         0  usenofp.o(x$fpl$usenofp)
-    PinMap_UART_RX                           0x0800b040   Data          72  peripheralpins.o(.constdata)
-    PinMap_SPI_MOSI                          0x0800b088   Data          72  peripheralpins.o(.constdata)
-    PinMap_SPI_MISO                          0x0800b0d0   Data          72  peripheralpins.o(.constdata)
-    PinMap_SPI_SCLK                          0x0800b118   Data          72  peripheralpins.o(.constdata)
-    PinMap_SPI_SSEL                          0x0800b160   Data          60  peripheralpins.o(.constdata)
-    AHBPrescTable                            0x0800b19c   Data          16  system_stm32f4xx.o(.constdata)
-    APBAHBPrescTable                         0x0800b1f0   Data          16  stm32f4xx_hal_rcc.o(.constdata)
-    __stdin_name                             0x0800b21c   Data           7  retarget.o(.constdata)
-    __stdout_name                            0x0800b223   Data           8  retarget.o(.constdata)
-    __stderr_name                            0x0800b22b   Data           8  retarget.o(.constdata)
-    vtable for USBMANAGER                    0x0800c2ac   Data          20  cmdusb.o(.constdata__ZTV10USBMANAGER)
-    vtable for SX1308                        0x0800c2c0   Data          12  sx1308.o(.constdata__ZTV6SX1308)
-    vtable for mbed::FileHandle              0x0800c2cc   Data          52  retarget.o(.constdata__ZTVN4mbed10FileHandleE)
-    vtable for mbed::SerialBase              0x0800c300   Data          24  serialbase.o(.constdata__ZTVN4mbed10SerialBaseE)
-    vtable for mbed::InterruptIn             0x0800c318   Data          16  interruptin.o(.constdata__ZTVN4mbed11InterruptInE)
-    vtable for mbed::SPI                     0x0800c328   Data          28  spi.o(.constdata__ZTVN4mbed3SPIE)
-    vtable for mbed::Serial                  0x0800c344   Data         108  serial.o(.constdata__ZTVN4mbed6SerialE)
-    vtable for mbed::Stream                  0x0800c3b0   Data          76  stream.o(.constdata__ZTVN4mbed6StreamE)
-    vtable for mbed::FileBase                0x0800c3fc   Data          16  filebase.o(.constdata__ZTVN4mbed8FileBaseE)
-    vtable for mbed::FileLike                0x0800c40c   Data          68  filelike.o(.constdata__ZTVN4mbed8FileLikeE)
-    SingletonPtr<PlatformMutex>::get()::string 0x0800c450   Data          20  filebase.o(.constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs)
-    SingletonPtr<PlatformMutex>::get()::string (instance 2) 0x0800c464   Data          28  filebase.o(.constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs_0)
-    Region$$Table$$Base                      0x0800c480   Number         0  anon$$obj.o(Region$$Table)
-    Region$$Table$$Limit                     0x0800c4a0   Number         0  anon$$obj.o(Region$$Table)
-    __ctype                                  0x0800c4c9   Data           0  lc_ctype_c.o(locale$$data)
-    SHT$$INIT_ARRAY$$Base                    0x0800c5cc   Number         0  usbd_conf.o(.init_array)
-    SHT$$INIT_ARRAY$$Limit                   0x0800c5d8   Number         0  init_aeabi.o(.init_array)
+    $Super$$main                             0x0800a305   Thumb Code   140  main.o(i.main)
+    mbed_assert_internal                     0x0800a39d   Thumb Code    32  mbed_assert.o(i.mbed_assert_internal)
+    mbed_die                                 0x0800a3f1   Thumb Code    84  mbed_board.o(i.mbed_die)
+    mbed_error_printf                        0x0800a49d   Thumb Code    74  mbed_board.o(i.mbed_error_printf)
+    mbed_error_vfprintf                      0x0800a4f1   Thumb Code    68  mbed_board.o(i.mbed_error_vfprintf)
+    mbed_main                                0x0800a53d   Thumb Code     2  retarget.o(i.mbed_main)
+    mbed_sdk_init                            0x0800a53f   Thumb Code    14  mbed_overrides.o(i.mbed_sdk_init)
+    pin_function                             0x0800a54d   Thumb Code    80  pinmap.o(i.pin_function)
+    pin_mode                                 0x0800a5ed   Thumb Code    64  pinmap.o(i.pin_mode)
+    pinmap_merge                             0x0800a679   Thumb Code    38  mbed_pinmap_common.o(i.pinmap_merge)
+    pinmap_peripheral                        0x0800a6b5   Thumb Code    62  mbed_pinmap_common.o(i.pinmap_peripheral)
+    pinmap_pinout                            0x0800a715   Thumb Code    72  mbed_pinmap_common.o(i.pinmap_pinout)
+    serial_init                              0x0800a771   Thumb Code   310  serial_api.o(i.serial_init)
+    serial_irq_handler                       0x0800a921   Thumb Code    14  serial_api.o(i.serial_irq_handler)
+    serial_irq_handler_asynch                0x0800a939   Thumb Code   344  serial_api.o(i.serial_irq_handler_asynch)
+    serial_putc                              0x0800aa95   Thumb Code    30  serial_api.o(i.serial_putc)
+    spi_format                               0x0800aab9   Thumb Code   102  spi_api.o(i.spi_format)
+    spi_frequency                            0x0800ab21   Thumb Code   116  spi_api.o(i.spi_frequency)
+    spi_init                                 0x0800abd9   Thumb Code   294  spi_api.o(i.spi_init)
+    spi_master_write                         0x0800ad6d   Thumb Code    44  spi_api.o(i.spi_master_write)
+    ticker_irq_handler                       0x0800ad9d   Thumb Code    78  mbed_ticker_api.o(i.ticker_irq_handler)
+    ticker_read                              0x0800adeb   Thumb Code     6  mbed_ticker_api.o(i.ticker_read)
+    timer_irq_handler                        0x0800adf1   Thumb Code    90  hal_tick.o(i.timer_irq_handler)
+    us_ticker_clear_interrupt                0x0800ae55   Thumb Code    12  us_ticker.o(i.us_ticker_clear_interrupt)
+    us_ticker_disable_interrupt              0x0800ae65   Thumb Code    14  us_ticker.o(i.us_ticker_disable_interrupt)
+    us_ticker_init                           0x0800ae79   Thumb Code    26  us_ticker.o(i.us_ticker_init)
+    us_ticker_irq_handler                    0x0800aea1   Thumb Code     6  mbed_us_ticker_api.o(i.us_ticker_irq_handler)
+    us_ticker_read                           0x0800aead   Thumb Code    30  us_ticker.o(i.us_ticker_read)
+    us_ticker_set_interrupt                  0x0800aedd   Thumb Code    16  us_ticker.o(i.us_ticker_set_interrupt)
+    wait_ms                                  0x0800aef1   Thumb Code    28  mbed_wait_api.o(i.wait_ms)
+    wait_us                                  0x0800af0d   Thumb Code    24  mbed_wait_api.o(i.wait_us)
+    _get_lc_numeric                          0x0800af25   Thumb Code    44  lc_numeric_c.o(locale$$code)
+    _get_lc_ctype                            0x0800af51   Thumb Code    44  lc_ctype_c.o(locale$$code)
+    SingletonPtr<PlatformMutex>::operator ->() 0x0800af7d   Thumb Code    36  filebase.o(t._ZN12SingletonPtrI13PlatformMutexEptEv)
+    void mbed::Callback<void()>::_methodthunk<SX1308>(void*, void*) 0x0800afa9   Thumb Code    20  sx1308.o(t._ZN4mbed8CallbackIFvvEE12_methodthunkI6SX1308EEvPvS5_)
+    CThunk<mbed::SerialBase>::trampoline(mbed::SerialBase*, void*, void(mbed::SerialBase::**)(void*)) 0x0800afbd   Thumb Code    54  serialbase.o(t._ZN6CThunkIN4mbed10SerialBaseEE10trampolineEPS1_PvPMS1_FvS4_E)
+    _fp_init                                 0x0800aff3   Thumb Code    10  fpinit.o(x$fpl$fpinit)
+    __fplib_config_fpu_vfp                   0x0800affb   Thumb Code     0  fpinit.o(x$fpl$fpinit)
+    __fplib_config_pureend_doubles           0x0800affb   Thumb Code     0  fpinit.o(x$fpl$fpinit)
+    _printf_fp_dec                           0x0800affd   Thumb Code     4  printf1.o(x$fpl$printf1)
+    _printf_fp_hex                           0x0800b001   Thumb Code     4  printf2.o(x$fpl$printf2)
+    PinMap_UART_TX                           0x0800b004   Data          72  peripheralpins.o(.constdata)
+    __I$use$fp                               0x0800b004   Number         0  usenofp.o(x$fpl$usenofp)
+    PinMap_UART_RX                           0x0800b04c   Data          72  peripheralpins.o(.constdata)
+    PinMap_SPI_MOSI                          0x0800b094   Data          72  peripheralpins.o(.constdata)
+    PinMap_SPI_MISO                          0x0800b0dc   Data          72  peripheralpins.o(.constdata)
+    PinMap_SPI_SCLK                          0x0800b124   Data          72  peripheralpins.o(.constdata)
+    PinMap_SPI_SSEL                          0x0800b16c   Data          60  peripheralpins.o(.constdata)
+    AHBPrescTable                            0x0800b1a8   Data          16  system_stm32f4xx.o(.constdata)
+    APBAHBPrescTable                         0x0800b1fc   Data          16  stm32f4xx_hal_rcc.o(.constdata)
+    __stdin_name                             0x0800b228   Data           7  retarget.o(.constdata)
+    __stdout_name                            0x0800b22f   Data           8  retarget.o(.constdata)
+    __stderr_name                            0x0800b237   Data           8  retarget.o(.constdata)
+    vtable for USBMANAGER                    0x0800c2b8   Data          20  cmdusb.o(.constdata__ZTV10USBMANAGER)
+    vtable for SX1308                        0x0800c2cc   Data          12  sx1308.o(.constdata__ZTV6SX1308)
+    vtable for mbed::FileHandle              0x0800c2d8   Data          52  retarget.o(.constdata__ZTVN4mbed10FileHandleE)
+    vtable for mbed::SerialBase              0x0800c30c   Data          24  serialbase.o(.constdata__ZTVN4mbed10SerialBaseE)
+    vtable for mbed::InterruptIn             0x0800c324   Data          16  interruptin.o(.constdata__ZTVN4mbed11InterruptInE)
+    vtable for mbed::SPI                     0x0800c334   Data          28  spi.o(.constdata__ZTVN4mbed3SPIE)
+    vtable for mbed::Serial                  0x0800c350   Data         108  serial.o(.constdata__ZTVN4mbed6SerialE)
+    vtable for mbed::Stream                  0x0800c3bc   Data          76  stream.o(.constdata__ZTVN4mbed6StreamE)
+    vtable for mbed::FileBase                0x0800c408   Data          16  filebase.o(.constdata__ZTVN4mbed8FileBaseE)
+    vtable for mbed::FileLike                0x0800c418   Data          68  filelike.o(.constdata__ZTVN4mbed8FileLikeE)
+    SingletonPtr<PlatformMutex>::get()::string 0x0800c45c   Data          20  filebase.o(.constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs)
+    SingletonPtr<PlatformMutex>::get()::string (instance 2) 0x0800c470   Data          28  filebase.o(.constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs_0)
+    Region$$Table$$Base                      0x0800c48c   Number         0  anon$$obj.o(Region$$Table)
+    Region$$Table$$Limit                     0x0800c4ac   Number         0  anon$$obj.o(Region$$Table)
+    __ctype                                  0x0800c4d5   Data           0  lc_ctype_c.o(locale$$data)
+    SHT$$INIT_ARRAY$$Base                    0x0800c5d8   Number         0  usbd_conf.o(.init_array)
+    SHT$$INIT_ARRAY$$Limit                   0x0800c5e4   Number         0  init_aeabi.o(.init_array)
     PreviousVal                              0x20000194   Data           4  hal_tick.o(.data)
     SystemCoreClock                          0x20000198   Data           4  system_stm32f4xx.o(.data)
     stdio_uart_inited                        0x200001e0   Data           4  serial_api.o(.data)
@@ -7610,9 +7610,9 @@ Memory Map of the image
 
   Image Entry point : 0x08000195
 
-  Load Region LR_IROM1 (Base: 0x08000000, Size: 0x0000c86c, Max: 0x00060000, ABSOLUTE, COMPRESSED[0x0000c6c4])
+  Load Region LR_IROM1 (Base: 0x08000000, Size: 0x0000c878, Max: 0x00060000, ABSOLUTE, COMPRESSED[0x0000c6d0])
 
-    Execution Region ER_IROM1 (Base: 0x08000000, Size: 0x0000c5d8, Max: 0x00060000, ABSOLUTE)
+    Execution Region ER_IROM1 (Base: 0x08000000, Size: 0x0000c5e4, Max: 0x00060000, ABSOLUTE)
 
     Base Addr    Size         Type   Attr      Idx    E Section Name        Object
 
@@ -8104,92 +8104,92 @@ Memory Map of the image
     0x0800a190   0x00000080   Code   RO          628    i.handle_interrupt_in  gpio_irq_api.o
     0x0800a210   0x00000070   Code   RO         1373    i.init_spi          spi_api.o
     0x0800a280   0x00000084   Code   RO         1131    i.init_uart         serial_api.o
-    0x0800a304   0x0000008c   Code   RO        13868    i.main              main.o
-    0x0800a390   0x00000054   Code   RO         9685    i.mbed_assert_internal  mbed_assert.o
-    0x0800a3e4   0x000000ac   Code   RO         9725    i.mbed_die          mbed_board.o
-    0x0800a490   0x00000054   Code   RO         9726    i.mbed_error_printf  mbed_board.o
-    0x0800a4e4   0x0000004c   Code   RO         9727    i.mbed_error_vfprintf  mbed_board.o
-    0x0800a530   0x00000002   Code   RO        10466    i.mbed_main         retarget.o
-    0x0800a532   0x0000000e   Code   RO          843    i.mbed_sdk_init     mbed_overrides.o
-    0x0800a540   0x000000a0   Code   RO          883    i.pin_function      pinmap.o
-    0x0800a5e0   0x0000008c   Code   RO          884    i.pin_mode          pinmap.o
-    0x0800a66c   0x0000003c   Code   RO        10078    i.pinmap_merge      mbed_pinmap_common.o
-    0x0800a6a8   0x00000060   Code   RO        10079    i.pinmap_peripheral  mbed_pinmap_common.o
-    0x0800a708   0x0000005c   Code   RO        10080    i.pinmap_pinout     mbed_pinmap_common.o
-    0x0800a764   0x000001b0   Code   RO         1139    i.serial_init       serial_api.o
-    0x0800a914   0x00000018   Code   RO         1140    i.serial_irq_handler  serial_api.o
-    0x0800a92c   0x0000015c   Code   RO         1141    i.serial_irq_handler_asynch  serial_api.o
-    0x0800aa88   0x00000024   Code   RO         1144    i.serial_putc       serial_api.o
-    0x0800aaac   0x00000066   Code   RO         1375    i.spi_format        spi_api.o
-    0x0800ab12   0x00000002   PAD
-    0x0800ab14   0x000000b8   Code   RO         1377    i.spi_frequency     spi_api.o
-    0x0800abcc   0x00000194   Code   RO         1378    i.spi_init          spi_api.o
-    0x0800ad60   0x00000030   Code   RO         1379    i.spi_master_write  spi_api.o
-    0x0800ad90   0x0000004e   Code   RO        10210    i.ticker_irq_handler  mbed_ticker_api.o
-    0x0800adde   0x00000006   Code   RO        10211    i.ticker_read       mbed_ticker_api.o
-    0x0800ade4   0x00000064   Code   RO          262    i.timer_irq_handler  hal_tick.o
-    0x0800ae48   0x00000010   Code   RO         7737    i.us_ticker_clear_interrupt  us_ticker.o
-    0x0800ae58   0x00000014   Code   RO         7738    i.us_ticker_disable_interrupt  us_ticker.o
-    0x0800ae6c   0x00000028   Code   RO         7739    i.us_ticker_init    us_ticker.o
-    0x0800ae94   0x0000000c   Code   RO        10267    i.us_ticker_irq_handler  mbed_us_ticker_api.o
-    0x0800aea0   0x00000030   Code   RO         7740    i.us_ticker_read    us_ticker.o
-    0x0800aed0   0x00000014   Code   RO         7741    i.us_ticker_set_interrupt  us_ticker.o
-    0x0800aee4   0x0000001c   Code   RO        10305    i.wait_ms           mbed_wait_api.o
-    0x0800af00   0x00000018   Code   RO        10306    i.wait_us           mbed_wait_api.o
-    0x0800af18   0x0000002c   Code   RO        14717    locale$$code        c_w.l(lc_numeric_c.o)
-    0x0800af44   0x0000002c   Code   RO        14788    locale$$code        c_w.l(lc_ctype_c.o)
-    0x0800af70   0x0000002c   Code   RO         8891    t._ZN12SingletonPtrI13PlatformMutexEptEv  filebase.o
-    0x0800af9c   0x00000014   Code   RO        12935    t._ZN4mbed8CallbackIFvvEE12_methodthunkI6SX1308EEvPvS5_  sx1308.o
-    0x0800afb0   0x00000036   Code   RO        11006    t._ZN6CThunkIN4mbed10SerialBaseEE10trampolineEPS1_PvPMS1_FvS4_E  serialbase.o
-    0x0800afe6   0x0000000a   Code   RO        14664    x$fpl$fpinit        fz_wm.l(fpinit.o)
-    0x0800aff0   0x00000004   Code   RO        14515    x$fpl$printf1       fz_wm.l(printf1.o)
-    0x0800aff4   0x00000004   Code   RO        14517    x$fpl$printf2       fz_wm.l(printf2.o)
-    0x0800aff8   0x00000000   Code   RO        14525    x$fpl$usenofp       fz_wm.l(usenofp.o)
-    0x0800aff8   0x00000048   Data   RO          326    .constdata          peripheralpins.o
-    0x0800b040   0x00000048   Data   RO          327    .constdata          peripheralpins.o
-    0x0800b088   0x00000048   Data   RO          330    .constdata          peripheralpins.o
-    0x0800b0d0   0x00000048   Data   RO          331    .constdata          peripheralpins.o
-    0x0800b118   0x00000048   Data   RO          332    .constdata          peripheralpins.o
-    0x0800b160   0x0000003c   Data   RO          333    .constdata          peripheralpins.o
-    0x0800b19c   0x00000010   Data   RO          376    .constdata          system_stm32f4xx.o
-    0x0800b1ac   0x00000034   Data   RO          885    .constdata          pinmap.o
-    0x0800b1e0   0x00000010   Data   RO         1384    .constdata          spi_api.o
-    0x0800b1f0   0x00000010   Data   RO         4713    .constdata          stm32f4xx_hal_rcc.o
-    0x0800b200   0x00000014   Data   RO        10268    .constdata          mbed_us_ticker_api.o
-    0x0800b214   0x00000008   Data   RO        10269    .constdata          mbed_us_ticker_api.o
-    0x0800b21c   0x00000017   Data   RO        10512    .constdata          retarget.o
-    0x0800b233   0x00000001   PAD
-    0x0800b234   0x00000010   Data   RO        10881    .constdata          serialbase.o
-    0x0800b244   0x00000008   Data   RO        12856    .constdata          sx1308.o
-    0x0800b24c   0x00000017   Data   RO        13392    .constdata          loragw_hal.o
-    0x0800b263   0x00000001   PAD
-    0x0800b264   0x00000f48   Data   RO        13776    .constdata          loragw_reg_pgw.o
-    0x0800c1ac   0x00000028   Data   RO        14068    .constdata          c_w.l(_printf_hex_int_ll_ptr.o)
-    0x0800c1d4   0x00000011   Data   RO        14088    .constdata          c_w.l(__printf_flags_ss_wp.o)
-    0x0800c1e5   0x00000003   PAD
-    0x0800c1e8   0x00000008   Data   RO        14360    .constdata          c_w.l(_printf_wctomb.o)
-    0x0800c1f0   0x00000026   Data   RO        14561    .constdata          c_w.l(_printf_fp_hex.o)
-    0x0800c216   0x00000002   PAD
-    0x0800c218   0x00000094   Data   RO        14690    .constdata          c_w.l(bigflt0.o)
-    0x0800c2ac   0x00000014   Data   RO        13081    .constdata__ZTV10USBMANAGER  cmdusb.o
-    0x0800c2c0   0x0000000c   Data   RO        12934    .constdata__ZTV6SX1308  sx1308.o
-    0x0800c2cc   0x00000034   Data   RO        10699    .constdata__ZTVN4mbed10FileHandleE  retarget.o
-    0x0800c300   0x00000018   Data   RO        10999    .constdata__ZTVN4mbed10SerialBaseE  serialbase.o
-    0x0800c318   0x00000010   Data   RO         9478    .constdata__ZTVN4mbed11InterruptInE  interruptin.o
-    0x0800c328   0x0000001c   Data   RO        11115    .constdata__ZTVN4mbed3SPIE  spi.o
-    0x0800c344   0x0000006c   Data   RO        10801    .constdata__ZTVN4mbed6SerialE  serial.o
-    0x0800c3b0   0x0000004c   Data   RO        11336    .constdata__ZTVN4mbed6StreamE  stream.o
-    0x0800c3fc   0x00000010   Data   RO         8888    .constdata__ZTVN4mbed8FileBaseE  filebase.o
-    0x0800c40c   0x00000044   Data   RO         8952    .constdata__ZTVN4mbed8FileLikeE  filelike.o
-    0x0800c450   0x00000014   Data   RO         8889    .constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs  filebase.o
-    0x0800c464   0x0000001c   Data   RO         8890    .constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs_0  filebase.o
-    0x0800c480   0x00000020   Data   RO        14861    Region$$Table       anon$$obj.o
-    0x0800c4a0   0x0000001c   Data   RO        14716    locale$$data        c_w.l(lc_numeric_c.o)
-    0x0800c4bc   0x00000110   Data   RO        14787    locale$$data        c_w.l(lc_ctype_c.o)
-    0x0800c5cc   0x00000004   Data   RO        12237    .init_array         usbd_conf.o
-    0x0800c5d0   0x00000004   Data   RO        13873    .init_array         main.o
-    0x0800c5d4   0x00000004   Data   RO        13926    .init_array         board.o
-    0x0800c5d8   0x00000000   Data   RO        14163    .init_array         c_w.l(init_aeabi.o)
+    0x0800a304   0x00000098   Code   RO        13868    i.main              main.o
+    0x0800a39c   0x00000054   Code   RO         9685    i.mbed_assert_internal  mbed_assert.o
+    0x0800a3f0   0x000000ac   Code   RO         9725    i.mbed_die          mbed_board.o
+    0x0800a49c   0x00000054   Code   RO         9726    i.mbed_error_printf  mbed_board.o
+    0x0800a4f0   0x0000004c   Code   RO         9727    i.mbed_error_vfprintf  mbed_board.o
+    0x0800a53c   0x00000002   Code   RO        10466    i.mbed_main         retarget.o
+    0x0800a53e   0x0000000e   Code   RO          843    i.mbed_sdk_init     mbed_overrides.o
+    0x0800a54c   0x000000a0   Code   RO          883    i.pin_function      pinmap.o
+    0x0800a5ec   0x0000008c   Code   RO          884    i.pin_mode          pinmap.o
+    0x0800a678   0x0000003c   Code   RO        10078    i.pinmap_merge      mbed_pinmap_common.o
+    0x0800a6b4   0x00000060   Code   RO        10079    i.pinmap_peripheral  mbed_pinmap_common.o
+    0x0800a714   0x0000005c   Code   RO        10080    i.pinmap_pinout     mbed_pinmap_common.o
+    0x0800a770   0x000001b0   Code   RO         1139    i.serial_init       serial_api.o
+    0x0800a920   0x00000018   Code   RO         1140    i.serial_irq_handler  serial_api.o
+    0x0800a938   0x0000015c   Code   RO         1141    i.serial_irq_handler_asynch  serial_api.o
+    0x0800aa94   0x00000024   Code   RO         1144    i.serial_putc       serial_api.o
+    0x0800aab8   0x00000066   Code   RO         1375    i.spi_format        spi_api.o
+    0x0800ab1e   0x00000002   PAD
+    0x0800ab20   0x000000b8   Code   RO         1377    i.spi_frequency     spi_api.o
+    0x0800abd8   0x00000194   Code   RO         1378    i.spi_init          spi_api.o
+    0x0800ad6c   0x00000030   Code   RO         1379    i.spi_master_write  spi_api.o
+    0x0800ad9c   0x0000004e   Code   RO        10210    i.ticker_irq_handler  mbed_ticker_api.o
+    0x0800adea   0x00000006   Code   RO        10211    i.ticker_read       mbed_ticker_api.o
+    0x0800adf0   0x00000064   Code   RO          262    i.timer_irq_handler  hal_tick.o
+    0x0800ae54   0x00000010   Code   RO         7737    i.us_ticker_clear_interrupt  us_ticker.o
+    0x0800ae64   0x00000014   Code   RO         7738    i.us_ticker_disable_interrupt  us_ticker.o
+    0x0800ae78   0x00000028   Code   RO         7739    i.us_ticker_init    us_ticker.o
+    0x0800aea0   0x0000000c   Code   RO        10267    i.us_ticker_irq_handler  mbed_us_ticker_api.o
+    0x0800aeac   0x00000030   Code   RO         7740    i.us_ticker_read    us_ticker.o
+    0x0800aedc   0x00000014   Code   RO         7741    i.us_ticker_set_interrupt  us_ticker.o
+    0x0800aef0   0x0000001c   Code   RO        10305    i.wait_ms           mbed_wait_api.o
+    0x0800af0c   0x00000018   Code   RO        10306    i.wait_us           mbed_wait_api.o
+    0x0800af24   0x0000002c   Code   RO        14717    locale$$code        c_w.l(lc_numeric_c.o)
+    0x0800af50   0x0000002c   Code   RO        14788    locale$$code        c_w.l(lc_ctype_c.o)
+    0x0800af7c   0x0000002c   Code   RO         8891    t._ZN12SingletonPtrI13PlatformMutexEptEv  filebase.o
+    0x0800afa8   0x00000014   Code   RO        12935    t._ZN4mbed8CallbackIFvvEE12_methodthunkI6SX1308EEvPvS5_  sx1308.o
+    0x0800afbc   0x00000036   Code   RO        11006    t._ZN6CThunkIN4mbed10SerialBaseEE10trampolineEPS1_PvPMS1_FvS4_E  serialbase.o
+    0x0800aff2   0x0000000a   Code   RO        14664    x$fpl$fpinit        fz_wm.l(fpinit.o)
+    0x0800affc   0x00000004   Code   RO        14515    x$fpl$printf1       fz_wm.l(printf1.o)
+    0x0800b000   0x00000004   Code   RO        14517    x$fpl$printf2       fz_wm.l(printf2.o)
+    0x0800b004   0x00000000   Code   RO        14525    x$fpl$usenofp       fz_wm.l(usenofp.o)
+    0x0800b004   0x00000048   Data   RO          326    .constdata          peripheralpins.o
+    0x0800b04c   0x00000048   Data   RO          327    .constdata          peripheralpins.o
+    0x0800b094   0x00000048   Data   RO          330    .constdata          peripheralpins.o
+    0x0800b0dc   0x00000048   Data   RO          331    .constdata          peripheralpins.o
+    0x0800b124   0x00000048   Data   RO          332    .constdata          peripheralpins.o
+    0x0800b16c   0x0000003c   Data   RO          333    .constdata          peripheralpins.o
+    0x0800b1a8   0x00000010   Data   RO          376    .constdata          system_stm32f4xx.o
+    0x0800b1b8   0x00000034   Data   RO          885    .constdata          pinmap.o
+    0x0800b1ec   0x00000010   Data   RO         1384    .constdata          spi_api.o
+    0x0800b1fc   0x00000010   Data   RO         4713    .constdata          stm32f4xx_hal_rcc.o
+    0x0800b20c   0x00000014   Data   RO        10268    .constdata          mbed_us_ticker_api.o
+    0x0800b220   0x00000008   Data   RO        10269    .constdata          mbed_us_ticker_api.o
+    0x0800b228   0x00000017   Data   RO        10512    .constdata          retarget.o
+    0x0800b23f   0x00000001   PAD
+    0x0800b240   0x00000010   Data   RO        10881    .constdata          serialbase.o
+    0x0800b250   0x00000008   Data   RO        12856    .constdata          sx1308.o
+    0x0800b258   0x00000017   Data   RO        13392    .constdata          loragw_hal.o
+    0x0800b26f   0x00000001   PAD
+    0x0800b270   0x00000f48   Data   RO        13776    .constdata          loragw_reg_pgw.o
+    0x0800c1b8   0x00000028   Data   RO        14068    .constdata          c_w.l(_printf_hex_int_ll_ptr.o)
+    0x0800c1e0   0x00000011   Data   RO        14088    .constdata          c_w.l(__printf_flags_ss_wp.o)
+    0x0800c1f1   0x00000003   PAD
+    0x0800c1f4   0x00000008   Data   RO        14360    .constdata          c_w.l(_printf_wctomb.o)
+    0x0800c1fc   0x00000026   Data   RO        14561    .constdata          c_w.l(_printf_fp_hex.o)
+    0x0800c222   0x00000002   PAD
+    0x0800c224   0x00000094   Data   RO        14690    .constdata          c_w.l(bigflt0.o)
+    0x0800c2b8   0x00000014   Data   RO        13081    .constdata__ZTV10USBMANAGER  cmdusb.o
+    0x0800c2cc   0x0000000c   Data   RO        12934    .constdata__ZTV6SX1308  sx1308.o
+    0x0800c2d8   0x00000034   Data   RO        10699    .constdata__ZTVN4mbed10FileHandleE  retarget.o
+    0x0800c30c   0x00000018   Data   RO        10999    .constdata__ZTVN4mbed10SerialBaseE  serialbase.o
+    0x0800c324   0x00000010   Data   RO         9478    .constdata__ZTVN4mbed11InterruptInE  interruptin.o
+    0x0800c334   0x0000001c   Data   RO        11115    .constdata__ZTVN4mbed3SPIE  spi.o
+    0x0800c350   0x0000006c   Data   RO        10801    .constdata__ZTVN4mbed6SerialE  serial.o
+    0x0800c3bc   0x0000004c   Data   RO        11336    .constdata__ZTVN4mbed6StreamE  stream.o
+    0x0800c408   0x00000010   Data   RO         8888    .constdata__ZTVN4mbed8FileBaseE  filebase.o
+    0x0800c418   0x00000044   Data   RO         8952    .constdata__ZTVN4mbed8FileLikeE  filelike.o
+    0x0800c45c   0x00000014   Data   RO         8889    .constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs  filebase.o
+    0x0800c470   0x0000001c   Data   RO         8890    .constdata__ZZN12SingletonPtrI13PlatformMutexE3getEvEs_0  filebase.o
+    0x0800c48c   0x00000020   Data   RO        14861    Region$$Table       anon$$obj.o
+    0x0800c4ac   0x0000001c   Data   RO        14716    locale$$data        c_w.l(lc_numeric_c.o)
+    0x0800c4c8   0x00000110   Data   RO        14787    locale$$data        c_w.l(lc_ctype_c.o)
+    0x0800c5d8   0x00000004   Data   RO        12237    .init_array         usbd_conf.o
+    0x0800c5dc   0x00000004   Data   RO        13873    .init_array         main.o
+    0x0800c5e0   0x00000004   Data   RO        13926    .init_array         board.o
+    0x0800c5e4   0x00000000   Data   RO        14163    .init_array         c_w.l(init_aeabi.o)
 
 
     Execution Region RW_IRAM1 (Base: 0x20000194, Size: 0x00008544, Max: 0x0000fe6c, ABSOLUTE, COMPRESSED[0x000000ec])
@@ -8254,74 +8254,74 @@ Image component sizes
 
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   Object Name
 
-         0          0          0          0          0     138784   analogin.o
-         0          0          0          0          0       3348   analogin_api.o
-       164         36          4          0        476       3141   board.o
-         0          0          0          0          0        848   busin.o
+         0          0          0          0          0     138812   analogin.o
+         0          0          0          0          0       3352   analogin_api.o
+       164         36          4          0        476       3145   board.o
+         0          0          0          0          0        852   busin.o
          0          0          0          0          0        564   callchain.o
-      3218        198         20          0       4800      27645   cmdusb.o
-        52          4          0          0          0     216779   cmsis_nvic.o
-       292         52         64         12          0       6404   filebase.o
-       140         10         68          0          0       7668   filelike.o
-       154          0          0          0          0      10032   filepath.o
+      3218        198         20          0       4800      27661   cmdusb.o
+        52          4          0          0          0     216791   cmsis_nvic.o
+       292         52         64         12          0       6412   filebase.o
+       140         10         68          0          0       7672   filelike.o
+       154          0          0          0          0      10048   filepath.o
        206         86          0          0          0       2870   gpio_api.o
        704        120          0         68        532      36218   gpio_irq_api.o
-       280         48          0          4         60      29252   hal_tick.o
-       210         12         16          0          0       5488   interruptin.o
+       280         48          0          4         60      29264   hal_tick.o
+       210         12         16          0          0       5496   interruptin.o
          0          0          0          0          0        660   interruptmanager.o
-      5244        250         23        137        140      21958   loragw_hal.o
-       756         58       3912          4          0       6772   loragw_reg_pgw.o
-       172         32          4          0       7708       2420   main.o
+      5244        250         23        137        140      21966   loragw_hal.o
+       756         58       3912          4          0       6776   loragw_reg_pgw.o
+       184         30          4          0       7708       2512   main.o
         84         52          0          0          0       2563   mbed_assert.o
-       332        106          0          0          0       5986   mbed_board.o
+       332        106          0          0          0       5990   mbed_board.o
        284        154          0          8          0       4545   mbed_critical.o
         18          0          0          0          0        560   mbed_error.o
-       284         94          0          0          0       3358   mbed_gpio.o
-        46          0          0          0          0       2692   mbed_overrides.o
-       248         76          0          0          0       3025   mbed_pinmap_common.o
+       284         94          0          0          0       3366   mbed_gpio.o
+        46          0          0          0          0       2696   mbed_overrides.o
+       248         76          0          0          0       3029   mbed_pinmap_common.o
         84          0          0          0          0       1815   mbed_ticker_api.o
-        20         10         28          8          0       1797   mbed_us_ticker_api.o
+        20         10         28          8          0       1801   mbed_us_ticker_api.o
         52          0          0          0          0       1748   mbed_wait_api.o
-         0          0        420          0          0       5092   peripheralpins.o
-       508        230         52          0          0       3539   pinmap.o
-         0          0          0          0          0       6188   rawserial.o
-       874        102         75          8         64      16129   retarget.o
+         0          0        420          0          0       5096   peripheralpins.o
+       508        230         52          0          0       3543   pinmap.o
+         0          0          0          0          0       6200   rawserial.o
+       874        102         75          8         64      16141   retarget.o
         90         14        108          0          0       1744   serial.o
-      1038        170          0          8        620      11470   serial_api.o
-       314         24         40          0          0      10028   serialbase.o
-       464         60         28         12          0       6076   spi.o
-       850        212         16          0         88       6415   spi_api.o
-        36          8        404          0          0       1008   startup_stm32f401xe.o
-        80         16          0          4          0     224724   stm32f4xx_hal.o
-       170         10          0          0          0      30534   stm32f4xx_hal_cortex.o
+      1038        170          0          8        620      11478   serial_api.o
+       314         24         40          0          0      10052   serialbase.o
+       464         60         28         12          0       6084   spi.o
+       850        212         16          0         88       6435   spi_api.o
+        36          8        404          0          0       1012   startup_stm32f401xe.o
+        80         16          0          4          0     224756   stm32f4xx_hal.o
+       170         10          0          0          0      30542   stm32f4xx_hal_cortex.o
         36          0          0          0          0       1875   stm32f4xx_hal_dma.o
        516         22          0          0          0       2060   stm32f4xx_hal_gpio.o
-         2          0          0          0          0        582   stm32f4xx_hal_msp_template.o
-      2086          0          0          0          0      11744   stm32f4xx_hal_pcd.o
+         2          0          0          0          0        586   stm32f4xx_hal_msp_template.o
+      2086          0          0          0          0      11760   stm32f4xx_hal_pcd.o
         86          0          0          0          0       2156   stm32f4xx_hal_pcd_ex.o
-      1528        104         16          0          0       6131   stm32f4xx_hal_rcc.o
+      1528        104         16          0          0       6139   stm32f4xx_hal_rcc.o
        142          0          0          0          0       2714   stm32f4xx_hal_spi.o
-       258         16          0          0          0       5199   stm32f4xx_hal_tim.o
-      1610         20          0          0          0       6499   stm32f4xx_hal_uart.o
-        42          6          0          0          0       4966   stm32f4xx_it.o
-      2570         26          0          0          0      21482   stm32f4xx_ll_usb.o
-       222         16         76          0          0       8232   stream.o
-      1850        172         20          0          0      24996   sx1308.o
+       258         16          0          0          0       5207   stm32f4xx_hal_tim.o
+      1610         20          0          0          0       6511   stm32f4xx_hal_uart.o
+        42          6          0          0          0       4978   stm32f4xx_it.o
+      2570         26          0          0          0      21502   stm32f4xx_ll_usb.o
+       222         16         76          0          0       8244   stream.o
+      1850        172         20          0          0      25016   sx1308.o
         16          6          0          0          0       6217   sys.o
-       512         68         16          4          0       4171   system_stm32f4xx.o
-       144          0          0          0          0       2964   timer.o
+       512         68         16          4          0       4179   system_stm32f4xx.o
+       144          0          0          0          0       2972   timer.o
        144         46          0          4         60       4026   us_ticker.o
-        56         18          0          0        548       6675   usb_device.o
-       634         22          0        275          0      14954   usbd_cdc.o
-       136         24          0         16      16400       4370   usbd_cdc_if.o
-       784         70          4          8       1164      23345   usbd_conf.o
-       646          0          0          0          0      11222   usbd_core.o
+        56         18          0          0        548       6683   usb_device.o
+       634         22          0        275          0      14990   usbd_cdc.o
+       136         24          0         16      16400       4382   usbd_cdc_if.o
+       784         70          4          8       1164      23389   usbd_conf.o
+       646          0          0          0          0      11238   usbd_core.o
       1130         30          0          1          0       6548   usbd_ctlreq.o
-       204        108          0         50        512       5647   usbd_desc.o
-       132          0          0          0          0       4320   usbd_ioreq.o
+       204        108          0         50        512       5663   usbd_desc.o
+       132          0          0          0          0       4332   usbd_ioreq.o
 
     ----------------------------------------------------------------------
-     33006       3018       5448        644      33172    1064982   Object Totals
+     33018       3016       5448        644      33172    1065634   Object Totals
          0          0         32          0          0          0   (incl. Generated)
         52          0          2         13          0          0   (incl. Padding)
 
@@ -8478,15 +8478,15 @@ Image component sizes
 
       Code (inc. data)   RO Data    RW Data    ZI Data      Debug   
 
-     44644       3534       6004        660      33456    1036918   Grand Totals
-     44644       3534       6004        236      33456    1036918   ELF Image Totals (compressed)
-     44644       3534       6004        236          0          0   ROM Totals
+     44656       3532       6004        660      33456    1037570   Grand Totals
+     44656       3532       6004        236      33456    1037570   ELF Image Totals (compressed)
+     44656       3532       6004        236          0          0   ROM Totals
 
 ==============================================================================
 
-    Total RO  Size (Code + RO Data)                50648 (  49.46kB)
+    Total RO  Size (Code + RO Data)                50660 (  49.47kB)
     Total RW  Size (RW Data + ZI Data)             34116 (  33.32kB)
-    Total ROM Size (Code + RO Data + RW Data)      50884 (  49.69kB)
+    Total ROM Size (Code + RO Data + RW Data)      50896 (  49.70kB)
 
 ==============================================================================
 
