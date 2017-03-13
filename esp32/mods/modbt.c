@@ -42,7 +42,6 @@
 #include "esp_gatts_api.h"
 #include "esp_gatt_defs.h"
 #include "esp_bt_main.h"
-#include "util/btdynmem.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -71,15 +70,15 @@
  ******************************************************************************/
 typedef struct {
     mp_obj_base_t         base;
+    mp_obj_list_t         conn_list;
+    mp_obj_list_t         srv_list;
+    mp_obj_list_t         attr_list;
     int32_t               scan_duration;
     int32_t               conn_id;          // current activity connection id
     mp_obj_t              handler;
     mp_obj_t              handler_arg;
     uint32_t              trigger;
     int32_t               events;
-    mp_obj_list_t         conn_list;
-    mp_obj_list_t         srv_list;
-    mp_obj_list_t         attr_list;
     uint16_t              gatts_if;
     uint16_t              gattc_if;
     uint16_t              gatts_conn_id;
@@ -598,10 +597,6 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 /// \class Bluetooth
 static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
     if (!self->init) {
-        if (0 != bluetooth_alloc_memory()) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth memory allocation failed"));
-        }
-
         if (!self->controller_active) {
             esp_bt_controller_init();
             self->controller_active = true;
@@ -680,7 +675,6 @@ mp_obj_t bt_deinit(mp_obj_t self_in) {
         esp_bluedroid_disable();
         esp_bluedroid_deinit();
         esp_bt_controller_disable(ESP_BT_MODE_BTDM);
-        bluetooth_free_memory();
         bt_obj.init = false;
     }
     return mp_const_none;
@@ -1098,15 +1092,16 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
         } else {
             mp_buffer_info_t value_bufinfo;
             mp_get_buffer_raise(args[3].u_obj, &value_bufinfo, MP_BUFFER_READ);
-            memcpy(characteristic->attr_obj.value, value_bufinfo.buf, value_bufinfo.len);
-            characteristic->attr_obj.value_len = value_bufinfo.len;
+            uint16_t write_len = value_bufinfo.len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : value_bufinfo.len;
+            memcpy(characteristic->attr_obj.value, value_bufinfo.buf, write_len);
+            characteristic->attr_obj.value_len = write_len;
         }
     } else {
         characteristic->attr_obj.value[0] = 0;
         characteristic->attr_obj.value_len = 1;
     }
 
-    esp_attr_value_t char_val = {.attr_max_len = 20, 
+    esp_attr_value_t char_val = {.attr_max_len = BT_CHAR_VALUE_SIZE_MAX,
                                  .attr_len = characteristic->attr_obj.value_len, 
                                  .attr_value = characteristic->attr_obj.value};
     esp_attr_control_t char_control = {.auto_rsp = ESP_GATT_RSP_BY_APP};
@@ -1124,7 +1119,7 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     descriptor->uuid.len = ESP_UUID_LEN_16;
     descriptor->uuid.uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
 
-    esp_attr_value_t attr_val = {.attr_max_len = 20, 
+    esp_attr_value_t attr_val = {.attr_max_len = BT_CHAR_VALUE_SIZE_MAX,
                                  .attr_len = descriptor->value_len, 
                                  .attr_value = descriptor->value};
     esp_attr_control_t attr_control = {.auto_rsp = ESP_GATT_RSP_BY_APP};

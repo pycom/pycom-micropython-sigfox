@@ -149,7 +149,6 @@ APP_STM_SRC_C = $(addprefix stmhal/,\
 
 APP_UTIL_SRC_C = $(addprefix util/,\
 	antenna.c \
-	btdynmem.c \
 	gccollect.c \
 	help.c \
 	mperror.c \

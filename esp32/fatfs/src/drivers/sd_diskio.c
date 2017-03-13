@@ -50,7 +50,24 @@ static DSTATUS sd_card_status = STA_NOINIT;
 //! \return Returns 0 on succeeded.
 //*****************************************************************************
 DSTATUS sd_disk_init (void) {
-    sdmmc_host_t config = SDMMC_HOST_1_BIT_DEFAULT();
+    sdmmc_host_t config =
+    {
+        .flags = SDMMC_HOST_FLAG_1BIT,
+        .slot = SDMMC_HOST_SLOT_1,
+        .max_freq_khz = SDMMC_FREQ_DEFAULT,
+        .io_voltage = 3.3f,
+        .init = &sdmmc_host_init,
+        .set_bus_width = &sdmmc_host_set_bus_width,
+        .set_card_clk = &sdmmc_host_set_card_clk,
+        .do_transaction = &sdmmc_host_do_transaction,
+        .deinit = &sdmmc_host_deinit,
+    };
+
+    // enable pull-ups on the SD card pins
+    gpio_set_pull_mode(2, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(14, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(15, GPIO_PULLUP_ONLY);
+
     if (ESP_OK == sdmmc_card_init(&config, &sdmmc_card_info)) {
         sd_card_status = 0;
     } else {

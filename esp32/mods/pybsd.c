@@ -57,7 +57,13 @@ STATIC mp_obj_t pyb_sd_deinit (mp_obj_t self_in);
 /// initalizes the sd card hardware driver
 STATIC void pyb_sd_hw_init (pybsd_obj_t *self) {
     if (!self->enabled) {
-        sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+        sdmmc_slot_config_t slot_config =
+        {
+            .gpio_cd = SDMMC_SLOT_NO_CD,
+            .gpio_wp = SDMMC_SLOT_NO_WP,
+            .width   = 1,  // single bit bus
+        };
+
         sdmmc_host_init();
         sdmmc_host_init_slot(SDMMC_HOST_SLOT_1, &slot_config);
         self->enabled = true;
