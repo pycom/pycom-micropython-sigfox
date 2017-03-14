@@ -54,7 +54,11 @@ True
 True
 True
 True
+True
+True
 PULL-DOWN
+False
+False
 False
 False
 False
@@ -84,3 +88,9 @@ True
 Exception
 Exception
 Exception
+Exception
+Pin('P18', mode=Pin.IN, pull=None, alt=1)
+P18
+1
+None
+0

@@ -43,7 +43,6 @@ no_pull_up_pins = [
     'G3','P16',
     'G31','P17',
     'G30','P18',
-    'G6','P19'
 ]
 used_pins = []
 if 'LoPy' in mch:
@@ -51,8 +50,6 @@ if 'LoPy' in mch:
                  'G13','P6',   #Pin used for Lora MOSI
                  'G14','P7'   #Pin used for Lora MISO
                  ]
-
-
 
 
 pin_map = list(set(all_pins) - set(used_pins))
@@ -86,17 +83,6 @@ test_pin_read(Pin.PULL_UP)
 print("PULL-DOWN")
 test_pin_read(Pin.PULL_DOWN)
 
-
-def test_pin_af():
-    for p in pin_map:
-        for af in Pin(p).alt_list():
-            if af[1] <= max_af_idx:
-                Pin(p, mode=Pin.ALT, alt=af[1])
-                Pin(p, mode=Pin.ALT_OPEN_DRAIN, alt=af[1])
-
-
-#test_pin_af() # try the entire af range on all pins
-
 # test all constructor combinations
 magic_pin = pin_map[0]
 pin = Pin(magic_pin)
@@ -108,8 +94,8 @@ pin = Pin(magic_pin, mode=Pin.OPEN_DRAIN, pull=Pin.PULL_UP)
 pin = Pin(magic_pin, mode=Pin.OUT, pull=Pin.PULL_DOWN)
 pin = Pin(magic_pin, mode=Pin.OUT, pull=None)
 pin = Pin(magic_pin, mode=Pin.OUT, pull=Pin.PULL_UP)
-pin = Pin(magic_pin, mode=Pin.OUT, pull=Pin.PULL_UP, drive=0)
-pin = Pin(magic_pin, mode=Pin.OUT, pull=Pin.PULL_UP, drive=100)
+pin = Pin(magic_pin, mode=Pin.OUT, pull=Pin.PULL_UP)
+pin = Pin(magic_pin, mode=Pin.OUT, pull=Pin.PULL_UP)
 pin = Pin(magic_pin,value=1, mode=Pin.OUT)
 pin = Pin(magic_pin,value=0, mode=Pin.OUT)
 pin = Pin(magic_pin,value=1, mode=Pin.IN)
@@ -131,22 +117,10 @@ pin.pull(None)
 print(pin.pull() == None)
 pin.pull(Pin.PULL_DOWN)
 print(pin.pull() == Pin.PULL_DOWN)
-# drive
-#pin.drive(Pin.MED_POWER)
-#print(pin.drive() == Pin.MED_POWER)
-#pin.drive(Pin.HIGH_POWER)
-#print(pin.drive() == Pin.HIGH_POWER)
 # id
 print(pin.id() == magic_pin)
 
 # all the next ones MUST raise
-'''
-try:
-    pin = Pin(magic_pin, mode=Pin.OUT, pull=Pin.PULL_UP, drive=pin.IN) # incorrect drive value
-except Exception:
-    print('Exception')
-'''
-
 try:
     pin = Pin(magic_pin, mode=Pin.LOW_POWER, pull=Pin.PULL_UP) # incorrect mode value
 except Exception:
@@ -162,32 +136,6 @@ try:
 except Exception:
     print('Exception')
 
-'''try:
-    pin = Pin(magic_pin, Pin.IN, Pin.PULL_UP, alt=0) # af specified in GPIO mode
-except Exception:
-    print('Exception')
-
-try:
-    pin = Pin(magic_pin, Pin.OUT, Pin.PULL_UP, alt=7) # af specified in GPIO mode
-except Exception:
-    print('Exception')
-
-try:
-    pin = Pin(magic_pin, Pin.ALT, Pin.PULL_UP, alt=0) # incorrect af
-except Exception:
-    print('Exception')
-
-try:
-    pin = Pin(magic_pin, Pin.ALT_OPEN_DRAIN, Pin.PULL_UP, alt=-1) # incorrect af
-except Exception:
-    print('Exception')
-
-try:
-    pin = Pin(magic_pin, Pin.ALT_OPEN_DRAIN, Pin.PULL_UP, alt=16) # incorrect af
-except Exception:
-    print('Exception')
-'''
-
 try:
     pin.mode(Pin.PULL_UP) # incorrect pin mode
 except Exception:
@@ -198,24 +146,16 @@ try:
 except Exception:
     print('Exception')
 
-try:
-    pin.drive(Pin.IN) # incorrect drive strength
-except Exception:
-    print('Exception')
 
-'''
 try:
     pin.id('ABC') # id cannot be set
 except Exception:
     print('Exception')
 
-#test pin object
+# test the magic pin object
 p = Pin(magic_pin, Pin.IN)
 print(p)
 print(p.id())
 print(p.mode())
 print(p.pull())
 print(p.value())
-print(p.drive())
-#print(p.alt())
-'''
