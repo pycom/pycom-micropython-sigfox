@@ -147,9 +147,9 @@ mp_time_t timeutils_seconds_since_epoch(mp_uint_t year, mp_uint_t month,
         + minute * 60
         + hour * 3600
         + ((mp_time_t) (timeutils_year_day(year, month, date) - 1
-            + ((year - 1970 + 3) / 4) // add a day each 4 years starting with 1971
-            - ((year - 1970 + 99) / 100) // subtract a day each 100 years starting with 1971
-            + ((year - 1970 + 399) / 400) // add a day each 400 years starting with 1971
+            + ((year - 1972 + 3) / 4) // add a day each 4 years starting with 1973
+            - ((year - 2000 + 99) / 100) // subtract a day each 100 years starting with 2001
+            + ((year - 2000 + 399) / 400) // add a day each 400 years starting with 2001
             )) * 86400
         + ((mp_time_t) (year - 1970)) * 31536000;
 }
@@ -207,5 +207,6 @@ mp_time_t timeutils_mktime(mp_uint_t year, mp_int_t month, mp_int_t mday,
             year++;
         }
     }
+
     return timeutils_seconds_since_epoch(year, month, mday, hours, minutes, seconds);
 }
