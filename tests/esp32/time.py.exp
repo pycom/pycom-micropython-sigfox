@@ -1,3 +1,33 @@
+Testing 1970
+Testing 1971
+Testing 1972
+Testing 1973
+Testing 1974
+Testing 1975
+Testing 1976
+Testing 1977
+Testing 1978
+Testing 1979
+Testing 1980
+Testing 1981
+Testing 1982
+Testing 1983
+Testing 1984
+Testing 1985
+Testing 1986
+Testing 1987
+Testing 1988
+Testing 1989
+Testing 1990
+Testing 1991
+Testing 1992
+Testing 1993
+Testing 1994
+Testing 1995
+Testing 1996
+Testing 1997
+Testing 1998
+Testing 1999
 Testing 2000
 Testing 2001
 Testing 2002
@@ -36,28 +66,28 @@ Testing 2034
 Testing 2035
 Testing 2036
 Testing 2037
-Testing 2038
-Testing 2039
-Testing 2040
-Testing 2041
-Testing 2042
-Testing 2043
-Testing 2044
-Testing 2045
-Testing 2046
-Testing 2047
-Testing 2048
-time.localtime( 0 ) returned (2000, 1, 1, 0, 0, 0, 5, 1) (pass)
-time.localtime( 1 ) returned (2000, 1, 1, 0, 0, 1, 5, 1) (pass)
-time.localtime( 59 ) returned (2000, 1, 1, 0, 0, 59, 5, 1) (pass)
-time.localtime( 60 ) returned (2000, 1, 1, 0, 1, 0, 5, 1) (pass)
-time.localtime( 3599 ) returned (2000, 1, 1, 0, 59, 59, 5, 1) (pass)
-time.localtime( 3600 ) returned (2000, 1, 1, 1, 0, 0, 5, 1) (pass)
-time.localtime( -1 ) returned (1999, 12, 31, 23, 59, 59, 4, 365) (pass)
-time.localtime( 447549467 ) returned (2014, 3, 7, 23, 17, 47, 4, 66) (pass)
-time.localtime( -940984933 ) returned (1970, 3, 7, 23, 17, 47, 5, 66) (pass)
-time.localtime( -1072915199 ) returned (1966, 1, 1, 0, 0, 1, 5, 1) (pass)
-time.localtime( -1072915200 ) returned (1966, 1, 1, 0, 0, 0, 5, 1) (pass)
-time.localtime( -1072915201 ) returned (1965, 12, 31, 23, 59, 59, 4, 365) (pass)
+time.localtime( 0 ) returned (1970, 1, 1, 0, 0, 0, 3, 1) (pass)
+time.localtime( 1 ) returned (1970, 1, 1, 0, 0, 1, 3, 1) (pass)
+time.localtime( 59 ) returned (1970, 1, 1, 0, 0, 59, 3, 1) (pass)
+time.localtime( 60 ) returned (1970, 1, 1, 0, 1, 0, 3, 1) (pass)
+time.localtime( 3599 ) returned (1970, 1, 1, 0, 59, 59, 3, 1) (pass)
+time.localtime( 3600 ) returned (1970, 1, 1, 1, 0, 0, 3, 1) (pass)
+time.localtime( -1 ) returned (1969, 12, 31, 23, 59, 59, 2, 365) (pass)
+time.localtime( 447549467 ) returned (1984, 3, 7, 23, 17, 47, 2, 67) (pass)
+time.localtime( -940984933 ) returned (1940, 3, 7, 23, 17, 47, 3, 67) (pass)
+time.localtime( 1394234267 ) returned (2014, 3, 7, 23, 17, 47, 4, 66) (pass)
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+True
 True
 True

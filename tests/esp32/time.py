@@ -3,12 +3,12 @@ import time
 DAYS_PER_MONTH = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
 def is_leap(year):
-    return (year % 4) == 0
+    return year % 4 == 0 and (year % 100 != 0 or year % 400 == 0)
 
 def test():
     seconds = 0
-    wday = 5    # Jan 1, 2000 was a Saturday
-    for year in range(2000, 2049):
+    wday = 3    # Jan 1, 1970 was a Thursday
+    for year in range(1970, 2038):
         print("Testing %d" % year)
         yday = 1
         for month in range(1, 13):
@@ -45,34 +45,37 @@ def spot_test(seconds, expected_time):
 
 test()
 
-spot_test(          0,  (2000,  1,  1,  0,  0,  0, 5,   1))
-spot_test(          1,  (2000,  1,  1,  0,  0,  1, 5,   1))
-spot_test(         59,  (2000,  1,  1,  0,  0, 59, 5,   1))
-spot_test(         60,  (2000,  1,  1,  0,  1,  0, 5,   1))
-spot_test(       3599,  (2000,  1,  1,  0, 59, 59, 5,   1))
-spot_test(       3600,  (2000,  1,  1,  1,  0,  0, 5,   1))
-spot_test(         -1,  (1999, 12, 31, 23, 59, 59, 4, 365))
-spot_test(  447549467,  (2014,  3,  7, 23, 17, 47, 4,  66))
-spot_test( -940984933,  (1970,  3,  7, 23, 17, 47, 5,  66))
-spot_test(-1072915199,  (1966,  1,  1,  0,  0,  1, 5,   1))
-spot_test(-1072915200,  (1966,  1,  1,  0,  0,  0, 5,   1))
-spot_test(-1072915201,  (1965, 12, 31, 23, 59, 59, 4, 365))
+spot_test(          0,  (1970,  1,  1,  0,  0,  0, 3,   1))
+spot_test(          1,  (1970,  1,  1,  0,  0,  1, 3,   1))
+spot_test(         59,  (1970,  1,  1,  0,  0, 59, 3,   1))
+spot_test(         60,  (1970,  1,  1,  0,  1,  0, 3,   1))
+spot_test(       3599,  (1970,  1,  1,  0, 59, 59, 3,   1))
+spot_test(       3600,  (1970,  1,  1,  1,  0,  0, 3,   1))
+spot_test(         -1,  (1969, 12, 31, 23, 59, 59, 2, 365))
+spot_test(  447549467,  (1984,  3,  7, 23, 17, 47, 2,  67))
+spot_test( -940984933,  (1940,  3,  7, 23, 17, 47, 3,  67))
+spot_test( 1394234267,  (2014,  3,  7, 23, 17, 47, 4,  66))
 
+# times before 1970 (specially before 1940) need all sorts of adjustments to comply with reality back them. Trivial calculation performed by micropython is not gonna cut it
+# spot_test(-1072915199,  (1936,  1,  1, 23, 19, 33, 2,   1))
+# spot_test(-1072915200,  (1936,  1,  1, 23, 19, 32, 2,   1))
+# spot_test(-1072915201,  (1936,  1,  1, 23, 19, 31, 2,   1))
+
+# the next test is performed this way to overcome what it looks some sort of timeout in run-tests. If it receives something every 5 seconds, it seems to be happy
 t1 = time.time()
-time.sleep(60)
+for i in range(0, 12):
+    time.sleep(5)
+    print(i)
 t2 = time.time()
-print((abs(t2-t1) -2) <= 1)
+
+print(abs(t2 - t1 - 60) <= 1)
 
 t1 = time.ticks_ms()
-time.sleep_ms(50)
+time.sleep_ms(100)
 t2 = time.ticks_ms()
-print((abs(t2 - t1)- 50) <= 10)
+print(abs(t2 - t1 - 100) <= 10)
 
-'''
 t1 = time.ticks_us()
 time.sleep_us(1000)
 t2 = time.ticks_us()
-print((abs(t2 - t1))  < 1500)
-
-print((time.ticks_cpu() - time.ticks_cpu()) < 16384)
-'''
+print((abs(t2 - t1 - 1000))  < 200)
