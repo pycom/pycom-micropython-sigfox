@@ -111,7 +111,7 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
 #define BUFFERTXSIZE 4*(BURSTSIZE+2)  
 #define BUFFERRXSIZE 9000
 #define ATOMICTX 600
-#define ATOMICRX 924
+#define ATOMICRX 900
 typedef struct 
 {
 	char Cmd; // w for write , r for read

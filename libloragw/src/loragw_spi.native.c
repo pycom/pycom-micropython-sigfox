@@ -480,6 +480,7 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
 
 		if (ReceiveAns(&mystrctAns, fd))  
 		{
+     DEBUG_PRINTF("mystrctAns = %x et %x \n",mystrctAns.Len,mystrctAns.Id);
 			for (i = 0; i < sizei; i++)
 			{
 				data[i + cptalc] = mystrctAns.Rxbuf[i];
@@ -536,30 +537,35 @@ int ReceiveAns(AnsSettings_t *Ansbuffer, int file1)
 	uint8_t bufferrx[BUFFERRXSIZE];
 	int i;
 	int cpttimer = 0;
+ int sizet=0;
   ssize_t lencheck;
 	for (i = 0; i < BUFFERRXSIZE; i++)
 	{
 		bufferrx[i] = 0;
 	}
 	cpttimer = 0;
+
 	while (checkcmd(bufferrx[0]))
 	{
 		lencheck =read(file1, bufferrx, 3);
 		cpttimer++;
     if (lencheck!=3)
     {
-    DEBUG_PRINTF("WARNING : write  read  failed (%d) time\n", (int) cpttimer);
+    DEBUG_PRINTF("WARNING : write  read  failed (%d) time buffer 0 = %d\n", (int) cpttimer,bufferrx[0]);
     }
-		if (cpttimer > 15) // wait read error the read function isn't block but timeout of 0.1s
+		if (cpttimer > 150) // wait read error the read function isn't block but timeout of 0.1s
 		{
-			DEBUG_MSG("ERROR: DEADLOCK SPI");
-			return(KO); // deadlock
+			DEBUG_MSG("WARNING : DEADLOCK SPI");
+			return(OK); // deadlock
 		}
 	}
-	wait_ns(((bufferrx[1] << 8) + bufferrx[2]) * 4000);
+	wait_ns(((bufferrx[1] << 8) + bufferrx[2]+1) * 6000);
 	DEBUG_PRINTF("cmd = %d readburst size %d\n", bufferrx[0], (bufferrx[1] << 8) + bufferrx[2]);
-	lencheck = read(file1, &bufferrx[3], (bufferrx[1] << 8) + bufferrx[2]);
-  if (lencheck!=((bufferrx[1] << 8) + bufferrx[2]))
+  sizet= (bufferrx[1] << 8) + bufferrx[2]+3;
+  if ((sizet%64)==0){sizet=sizet-2;}else{sizet=sizet-3;}
+//lencheck = read(file1, &bufferrx[3], (bufferrx[1] << 8) + bufferrx[2]);
+lencheck = read(file1, &bufferrx[3], sizet);
+  if (lencheck!=(sizet))
     {
     DEBUG_PRINTF("WARNING : write  read  failed %d\n", lencheck);
     }

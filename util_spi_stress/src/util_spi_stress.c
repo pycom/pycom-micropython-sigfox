@@ -235,43 +235,51 @@ int main(int argc, char **argv)
         }
     } else if (test_number == 4) {
         /* databuffer R/W stress test */
+        int bufftest =5;
         while ((quit_sig != 1) && (exit_sig != 1)) {
-            for (i=0; i<BUFF_SIZE; ++i) {
+            if(bufftest<BUFF_SIZE)
+               bufftest++;
+            else
+              bufftest=5;
+            
+            for (i=0; i<bufftest; ++i) {
                 test_buff[i] = rand() & 0xFF;
             }
             printf("Cycle %i > ", cycle_number);
             test_addr = rand() & 0xFFFF;
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* write at random offset in memory */
-            lgw_reg_wb(LGW_RX_DATA_BUF_DATA, test_buff, BUFF_SIZE);
+            lgw_reg_wb(LGW_RX_DATA_BUF_DATA, test_buff, bufftest);
             
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
-            lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, BUFF_SIZE);
-            for (i=0; ((i<BUFF_SIZE) && (test_buff[i] == read_buff[i])); ++i);
-            if (i != BUFF_SIZE) {
+         
+            lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, bufftest);
+            for (i=0; ((i<bufftest) && (test_buff[i] == read_buff[i])); ++i);
+            if (i != bufftest) {
                 printf("error during the buffer comparison\n");
                 printf("Written values:\n");
-                for (i=0; i<BUFF_SIZE; ++i) {
+                for (i=0; i<bufftest; ++i) {
                     printf(" %02X ", test_buff[i]);
                     if (i%16 == 15) printf("\n");
                 }
                 printf("\n");
                 printf("Read values:\n");
-                for (i=0; i<BUFF_SIZE; ++i) {
+                for (i=0; i<bufftest; ++i) {
                     printf("%.2x ", test_buff[i]-read_buff[i]);
                     if (i%16 == 15) printf("\n");
                 }
                 printf("\n");
                 lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
-                lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, BUFF_SIZE);
+                lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, bufftest);
                 printf("Re-read values:\n");
-                for (i=0; i<BUFF_SIZE; ++i) {
+                for (i=0; i<bufftest; ++i) {
                     printf(" %02X ", read_buff[i]);
                     if (i%16 == 15) printf("\n");
                 }
                 printf("\n");
+                 i = lgw_disconnect();
                 return EXIT_FAILURE;
             } else {
-                printf("did a %i-byte R/W on a data buffer with no error\n", BUFF_SIZE);
+                printf("did a %i-bytes R/W on a data buffer with no error\n", bufftest);
                 ++cycle_number;
             }
         }
