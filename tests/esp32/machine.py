@@ -9,9 +9,10 @@ wifi = WLAN()
 
 print(machine)
 machine.idle()
-freq = machine.freq()
-if machine.freq()[0] < 80000000:
-    print("To low freq")
+
+if machine.freq() < 80000000 or machine.freq() > 240000000:
+    print("CPU frequency out of range")
+
 print(machine.unique_id() == wifi.mac())
 
 machine.main('main.py')
@@ -35,5 +36,10 @@ print("Active")
 
 try:
     machine.main(123456)
+except:
+    print('Exception')
+
+try:
+    machine.main("other_main.py")
 except:
     print('Exception')
