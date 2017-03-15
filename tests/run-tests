@@ -257,8 +257,6 @@ def run_tests(pyb, tests, args):
             skip_tests.add('extmod/time_ms_us.py')          # not yet implemented
             skip_tests.add('extmod/ticks_diff.py')          # not yet implemented
             skip_tests.add('thread/stress_aes.py')          # requires too much heap and stack
-            skip_tests.add('float/float2int.py')            # fails on big numbers, needs to be investigated
-            skip_tests.add('misc/rge_sm.py')                # too large
         elif args.target == 'esp8266':
             skip_tests.add('float/float2int.py')            # requires at least fp32, there's float2int_fp30.py instead
             skip_tests.add('float/string_format.py')        # requires at least fp32, there's string_format_fp30.py instead
