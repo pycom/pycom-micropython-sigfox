@@ -168,6 +168,16 @@ static bool uart_tx_fifo_space (mach_uart_obj_t *self) {
     return false;
 }
 
+static void uart_deassign_pins_af (mach_uart_obj_t *self) {
+    for (int i = 0; i < self->n_pins; i++) {
+        // We must set the value to 1 so that when Rx pins are deassigned, their are hardwired to 1
+        ((pin_obj_t *)((mp_obj_t *)self->pins)[i])->value = 1;
+        pin_deassign((pin_obj_t *)((mp_obj_t *)self->pins)[i]);
+        self->pins[i] = mp_const_none;
+    }
+    self->n_pins = 0;
+}
+
 static void uart_assign_pins_af (mach_uart_obj_t *self, mp_obj_t *pins, uint32_t n_pins) {
     for (int i = 0; i < n_pins; i++) {
         if (pins[i] != mp_const_none) {
@@ -189,14 +199,6 @@ static void uart_assign_pins_af (mach_uart_obj_t *self, mp_obj_t *pins, uint32_t
         }
     }
     self->n_pins = n_pins;
-}
-
-static void uart_deassign_pins_af (mach_uart_obj_t *self) {
-    for (int i = 0; i < self->n_pins; i++) {
-        pin_deinit((pin_obj_t *)((mp_obj_t *)self->pins)[i]);
-        self->pins[i] = mp_const_none;
-    }
-    self->n_pins = 0;
 }
 
 STATIC IRAM_ATTR void UARTGenericIntHandler(uint32_t uart_id, uint32_t status) {
@@ -513,14 +515,15 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_uart_init_obj, 1, mach_uart_init);
 
 STATIC mp_obj_t mach_uart_deinit(mp_obj_t self_in) {
     mach_uart_obj_t *self = self_in;
+
+    // detach the pins
+    uart_deassign_pins_af(self);
     // invalidate the baudrate
     self->config.baud_rate = 0;
     // disable the interrupt
     CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(self->uart_id), UART_INTR_MASK);
     // free the read buffer
     m_del(byte, (void *)self->read_buf, MACHUART_RX_BUFFER_LEN);
-    // detach the pins
-    uart_deassign_pins_af(self);
 
     return mp_const_none;
 }

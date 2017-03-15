@@ -146,23 +146,16 @@ void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, i
 //    pyb_sleep_add ((const mp_obj_t)self, (WakeUpCB_t)pin_obj_configure);
 }
 
-void pin_deinit (pin_obj_t *self) {
-    // configure the pin
-    gpio_config_t gpioconf = {.pin_bit_mask = 1ull << self->pin_number,
-                              .mode = GPIO_MODE_INPUT,
-                              .pull_up_en = GPIO_PULLUP_DISABLE,
-                              .pull_down_en = GPIO_PULLDOWN_ENABLE,
-                              .intr_type = GPIO_INTR_DISABLE
-                             };
-    gpio_config(&gpioconf);
-
+void pin_deassign (pin_obj_t *self) {
     // de-assign the alternate functions
     if (self->af_in >= 0) {
-        gpio_matrix_in(self->value ? MACHPIN_SIMPLE_IN_HIGH : MACHPIN_SIMPLE_IN_LOW, self->af_in, 0);
+        gpio_matrix_in(self->value ? MACHPIN_SIMPLE_IN_HIGH : MACHPIN_SIMPLE_IN_LOW, self->af_in, false);
+        self->af_in = -1;
     }
 
     if (self->af_out >= 0) {
-        gpio_matrix_out(self->pin_number, MACHPIN_SIMPLE_OUTPUT, 0, 0);
+        gpio_matrix_out(self->pin_number, MACHPIN_SIMPLE_OUTPUT, false, false);
+        self->af_out = -1;
     }
 }
 
@@ -313,13 +306,13 @@ STATIC void pin_obj_configure (const pin_obj_t *self) {
     // assign the alternate function
     if (self->mode == GPIO_MODE_INPUT) {
         if (self->af_in >= 0) {
-            gpio_matrix_in(self->pin_number, self->af_in, 0);
+            gpio_matrix_in(self->pin_number, self->af_in, false);
         }
     } else {    // output or open drain
         if (self->af_out >= 0) {
-            gpio_matrix_out(self->pin_number, self->af_out, 0, 0);
+            gpio_matrix_out(self->pin_number, self->af_out, false, false);
         } else {
-            gpio_matrix_out(self->pin_number, MACHPIN_SIMPLE_OUTPUT, 0, 0);
+            gpio_matrix_out(self->pin_number, MACHPIN_SIMPLE_OUTPUT, false, false);
         }
     }
 }

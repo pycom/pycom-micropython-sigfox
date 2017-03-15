@@ -112,8 +112,9 @@ static char fresh_main_py[] = "# main.py -- put your code here!\r\n";
 static char fresh_boot_py[] = "# boot.py -- run on boot-up\r\n"
                               "import os\r\n"
                               "from machine import UART\r\n"
-                              "uart = UART(0, 115200)\r\n"
-                              "os.dupterm(uart)\r\n";
+                              "UART(1, 115200)\r\n"
+                              "UART(2, 115200)\r\n"
+                              "os.dupterm(UART(0, 115200))\r\n";
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
@@ -190,7 +191,7 @@ soft_reset:
     }
     if (!soft_reset) {
         mptask_enter_ap_mode();
-    // these ones are special because they need uPy running and they launch tasks
+        // these ones are special because they need uPy running and they launch tasks
 #if defined(LOPY)
         modlora_init0();
 #elif defined(SIPY)
