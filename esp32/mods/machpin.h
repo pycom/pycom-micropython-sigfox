@@ -71,6 +71,7 @@ extern mp_obj_dict_t pin_exp_board_pins_locals_dict;
 extern const mp_obj_type_t pin_module_pins_obj_type;
 extern mp_obj_dict_t pin_module_pins_locals_dict;
 
+void pin_preinit(void);
 void pin_init0(void);
 void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, int value);
 pin_obj_t *pin_find(mp_obj_t user_obj);

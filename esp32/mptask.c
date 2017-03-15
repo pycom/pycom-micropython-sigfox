@@ -58,8 +58,8 @@
 #include "machrtc.h"
 #include "modbt.h"
 #include "machtimer.h"
+#include "machtimer_alarm.h"
 #include "mptask.h"
-#include "machtimer.h"
 
 #include "ff.h"
 #include "diskio.h"
@@ -146,6 +146,9 @@ void TASK_Micropython (void *pvParameters) {
         printf("GC pool malloc failed!\n");
         for ( ; ; );
     }
+
+    alarm_preinit();
+    pin_preinit();
 
 soft_reset:
 

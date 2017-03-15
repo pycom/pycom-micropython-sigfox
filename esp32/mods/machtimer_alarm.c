@@ -42,6 +42,9 @@ STATIC void load_next_alarm(void);
 STATIC mp_obj_t alarm_delete(mp_obj_t self_in);
 STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj_t handler_arg);
 
+void alarm_preinit(void) {
+    timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_alarm_isr, NULL, ESP_INTR_FLAG_IRAM, NULL);
+}
 
 void init_alarm_heap(void) {
     alarm_heap.size = MIN_HEAP_ELEMENTS;
@@ -53,7 +56,6 @@ void init_alarm_heap(void) {
         for (;;);
     }
     timer_enable_intr(TIMER_GROUP_0, TIMER_0);
-    timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_alarm_isr, NULL, ESP_INTR_FLAG_IRAM, NULL);
 }
 
 STATIC IRAM_ATTR void insert_alarm(mp_obj_alarm_t *alarm) {

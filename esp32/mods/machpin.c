@@ -78,6 +78,10 @@ DECLARE PRIVATE DATA
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
+void pin_preinit(void) {
+    gpio_isr_register(machpin_intr_process, NULL, 0, NULL);
+}
+
 void pin_init0(void) {
     // initialize all pins as inputs with pull downs enabled
     mp_map_t *named_map = mp_obj_dict_get_map((mp_obj_t)&pin_module_pins_locals_dict);
@@ -88,7 +92,7 @@ void pin_init0(void) {
         }
     }
 
-    gpio_isr_register(machpin_intr_process, NULL, 0, NULL);
+
 }
 
 // C API used to convert a user-supplied pin name into an ordinal pin number
