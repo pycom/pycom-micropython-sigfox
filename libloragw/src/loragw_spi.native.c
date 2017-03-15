@@ -874,7 +874,6 @@ int lgw_calibration_snapshot(void * spi_target)
 	mystruct.LenMsb = 0;
 	mystruct.Len = 1;
 	mystruct.Adress = 0;
-	DEBUG_PRINTF("Note: USB/SPI cmd =  write success size = %d!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n", 1);
 	DEBUG_MSG("Note: USB/SPI write success\n");
 	for (i = 0; i < size; i++)
 	{
@@ -898,6 +897,44 @@ int lgw_calibration_snapshot(void * spi_target)
 
 }
 
+int lgw_resetSTM32(void * spi_target)
+{
+	int fd;
+	int i;
+	DEBUG_MSG("Note: USB/SPI write success\n");
+	fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+	DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+	/*build the write cmd*/
+	CmdSettings_t mystruct;
+	AnsSettings_t mystrctAns;
+	int size = 1;
+	mystruct.Cmd = 'm';
+	mystruct.LenMsb = 0;
+	mystruct.Len = 1;
+	mystruct.Adress = 0;
+	
+	DEBUG_MSG("Note: USB/SPI write success\n");
+	for (i = 0; i < size; i++)
+	{
+		mystruct.Value[i] = 0;
+	}
+	DEBUG_MSG("Note: USB/SPI write success\n");
+	pthread_mutex_lock(&mx_usbbridgesync);
+	SendCmdn(mystruct, fd);
+	if (ReceiveAns(&mystrctAns, fd))
+	{
+		DEBUG_MSG("Note: USB/SPI read config success\n");
+		pthread_mutex_unlock(&mx_usbbridgesync);
+		return LGW_SPI_SUCCESS;
+	}
+	else
+	{
+		DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+		pthread_mutex_unlock(&mx_usbbridgesync);
+		return LGW_SPI_ERROR;
+	}
+
+}
 
 
 /****************************/
@@ -925,6 +962,7 @@ int checkcmd(uint8_t cmd)
 	case 'i': {return(0); break; }
 	case 'j': {return(0); break; }
 	case 'l': {return(0); break; }
+ 	case 'm': {return(0); break; }
 			  //case 97 : return (1);   
 
 	default:

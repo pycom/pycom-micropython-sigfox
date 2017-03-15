@@ -566,6 +566,9 @@ int lgw_connect(bool spi_only) {
 /* Concentrator disconnect */
 int lgw_disconnect(void) {
     if (lgw_spi_target != NULL) {
+        
+    
+        lgw_reg_resetSTM32();
         lgw_spi_close(lgw_spi_target);
         lgw_spi_target = NULL;
         DEBUG_MSG("Note: success disconnecting the concentrator\n");
@@ -845,6 +848,11 @@ return(lgw_boardconfcmd(lgw_spi_target,data,size));
 int lgw_reg_calibration_snapshot(void)
 {
 return(lgw_calibration_snapshot(lgw_spi_target));
+}
+
+int lgw_reg_resetSTM32(void)
+{
+return(lgw_resetSTM32(lgw_spi_target));
 }
 
 /* --- EOF ------------------------------------------------------------------ */

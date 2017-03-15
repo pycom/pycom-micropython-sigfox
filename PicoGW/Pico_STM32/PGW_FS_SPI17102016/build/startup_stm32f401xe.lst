@@ -727,7 +727,7 @@ ARM Macro Assembler    Page 12
               00000000 
 Command Line: --debug --xref --cpreproc --diag_suppress=9931 --cpu=Cortex-M4.fp
  --apcs=interwork --depend=.\build\startup_stm32f401xe.d -o.\build\startup_stm3
-2f401xe.o -IC:\GIT\lora-net-work2\lora_gateway\PicoGW\Pico_STM32\PGW_FS_SPI1710
+2f401xe.o -IC:\GIT\lora_net-work3\lora_gateway\PicoGW\Pico_STM32\PGW_FS_SPI1710
 2016\RTE -IC:\Keil_v5\ARM\PACK\Keil\STM32F4xx_DFP\2.10.0\Drivers\CMSIS\Device\S
 T\STM32F4xx\Include -IC:\Keil_v5\ARM\CMSIS\Include --predefine="__UVISION_VERSI
 ON SETA 521" --predefine="STM32F401xE SETA 1" --predefine="V2 SETA 1" --cprepro

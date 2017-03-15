@@ -368,6 +368,7 @@ int USBMANAGER::DecodeCmd()
 	}
 
 	case 'f': { // lgw_send 
+		int32_t txcontinuous;
 		uint8_t  conf[(sizeof(struct lgw_pkt_tx_s) / sizeof(uint8_t))];
 		cmdSettings_FromHost.LenMsb = BufFromHost[1];
 		cmdSettings_FromHost.Len = BufFromHost[2];
@@ -386,6 +387,15 @@ int USBMANAGER::DecodeCmd()
 			Sx1308.txongoing = 1;
 			Sx1308.waittxend = 1;
 		  lgw_send(*(lgw_pkt_tx_s *)conf);
+		  lgw_reg_r(LGW_TX_MODE, &txcontinuous); // to switch off the timeout in case of tx continuous
+			if (txcontinuous==1)
+			{
+				BufToHost[0] = 'f';
+	    	BufToHost[1] = 0;
+	    	BufToHost[2] = 1;
+		    BufToHost[3] = ACK_OK;
+	    	return(CMD_OK); //mean no ack transmission	
+			}
 			while (Sx1308.waittxend) //wait for tx interrupt
 			{
 				// remove the timeout in case of no txdone timeout is manage in the HAL by no response from the usb cmd
@@ -477,6 +487,11 @@ int USBMANAGER::DecodeCmd()
 			BufToHost[3] = ACK_K0;
 		}
 		return(CMD_OK); //mean no ack transmission									
+	}
+	
+	case 'm': { // KILL STM32 
+     
+		NVIC_SystemReset(); 						
 	}
 
 	default:BufToHost[0] = 'k';

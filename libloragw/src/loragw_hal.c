@@ -934,8 +934,8 @@ int lgw_start(void) {
         bit 6: radio B TX DC Offset correction successful
     */
     if ((cal_status & 0x81) != 0x81) {
-        DEBUG_PRINTF("ERROR: CALIBRATION FAILURE (STATUS = %u)\n", cal_status);
-        return LGW_HAL_ERROR;
+        DEBUG_PRINTF("WARNING: CALIBRATION FAILURE (STATUS = %u)\n", cal_status);
+        //return LGW_HAL_ERROR;
     } else {
         DEBUG_PRINTF("Note: calibration finished (status = %u)\n", cal_status);
     }
