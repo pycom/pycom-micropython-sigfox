@@ -11,6 +11,17 @@
 
 .. include:: datasheets/sipy.rst
 
+OEM baseboard reference design
+------------------------------
+
+Our OEM baseboard reference design with schematic and layout are available `here <../_downloads/OEM-baseboard-schematic.pdf>`_ and `here <../_downloads/OEM-baseboard-layout.pdf>`_.
+
+.. image:: images/OEM-baseboard-top-bottom.png
+    :align: center
+    :scale: 50 %
+    :alt: OEM baseboard top view
+
+
 .. include:: datasheets/expansionboard.rst
 
 :download:`PDF file hidden <downloads/exp_v03_pinout_v13.pdf>`
@@ -24,7 +35,10 @@
 :download:`PDF file hidden <downloads/wipy_pinout.pdf>`
 :download:`PDF file hidden <downloads/wipy2SpecsheetGraffiti.pdf>`
 :download:`PDF file hidden <downloads/w01SpecsheetGraffitiOEM.pdf>`
-
+:download:`PDF file hidden <downloads/OEM-baseboard-layout.pdf>`
+:download:`PDF file hidden <downloads/OEM-baseboard-schematic.pdf>`
+:download:`PDF file hidden <downloads/WiPy-OEM-Drawings.pdf>`
+:download:`PDF file hidden <downloads/LoPy-OEM-Drawings.pdf>`
 
 .. raw:: html
 
@@ -40,10 +54,8 @@
     </script>
 
 
-
-
-5.5 Powering by an external power source
-========================================
+5.5 Powering with an external power source
+==========================================
 
 The modules can be powered by a battery or other external power source.
 
