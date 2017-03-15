@@ -34,14 +34,14 @@ True
 <class 'Pin'>
 <class 'Pin'>
 PULL-UP
-False
 True
 True
 True
 True
 True
 True
-False
+True
+True
 True
 True
 True
@@ -58,11 +58,11 @@ True
 True
 PULL-DOWN
 False
+True
 False
-False
-False
-False
-False
+True
+True
+True
 False
 False
 False
