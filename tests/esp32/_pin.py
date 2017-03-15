@@ -45,12 +45,12 @@ no_pull_up_pins = [
     'G30','P18',
 ]
 used_pins = []
-if 'LoPy' in mch:
-    used_pins = ['G12','P5',   #Pin used for Lora CLK
-                 'G13','P6',   #Pin used for Lora MOSI
-                 'G14','P7'    #Pin used for Lora MISO
-                 ]
 
+used_pins = [
+             'G12','P5',   #Pin used for Lora CLK
+             'G13','P6',   #Pin used for Lora MOSI
+             'G14','P7'    #Pin used for Lora MISO
+]
 
 pin_map = list(set(all_pins) - set(used_pins))
 pin_map += ['P12'] * (len(all_pins)-len(pin_map))

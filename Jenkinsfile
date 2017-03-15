@@ -51,6 +51,7 @@ def testBuild(name) {
                 }
             }
             sh 'python esp32/tools/resetBoard.py reset'
+            sh 'python esp32/tools/resetBoard.py releasePins'
         }
     }
 }
@@ -69,6 +70,7 @@ def flashBuild(name) {
             sh 'python esp32/tools/resetBoard.py bootloader'
             sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 921600 write_flash -z --flash_mode qio --flash_freq 40m --flash_size 4MB 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
             sh 'python esp32/tools/resetBoard.py reset'
+            sh 'python esp32/tools/resetBoard.py releasePins'
         }
     }
 }

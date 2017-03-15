@@ -68,6 +68,11 @@ def safeBootPrev():
 def safeBootFactory():
     enterSafeBoot(FACTORYBOOTDELAY)
 
+def releasePins():
+    GPIO.setup(NRESET, GPIO.IN)
+    GPIO.setup(SAFEBOOT, GPIO.IN)
+    GPIO.setup(BOOTLOADER, GPIO.IN)
+
 def main(argv):
     setup()
     if len(argv)>0:
@@ -82,6 +87,8 @@ def main(argv):
             safeBootPrev()
         elif cmd == 'safeBootFactory':
             safeBootFactory()
+        elif cmd == 'releasePins':
+            releasePins()
         else:
             pass
 

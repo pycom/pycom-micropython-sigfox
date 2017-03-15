@@ -91,8 +91,6 @@ void pin_init0(void) {
             pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0);
         }
     }
-
-
 }
 
 // C API used to convert a user-supplied pin name into an ordinal pin number
