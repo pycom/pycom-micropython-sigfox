@@ -10,9 +10,9 @@ import os
 mch = os.uname().machine
 
 all_pins = [
-    #'G2','P0', #Pin used for UART
-    #'G1','P1', #Pin used for UART
-    #'G23','P2', #Pin used for ISP
+    #'G2','P0',   #Pin used for UART
+    #'G1','P1',   #Pin used for UART
+    #'G23','P2',  #Pin used for ISP
     'G24','P3',
     'G11','P4',
     'G12','P5',
@@ -48,7 +48,7 @@ used_pins = []
 if 'LoPy' in mch:
     used_pins = ['G12','P5',   #Pin used for Lora CLK
                  'G13','P6',   #Pin used for Lora MOSI
-                 'G14','P7'   #Pin used for Lora MISO
+                 'G14','P7'    #Pin used for Lora MISO
                  ]
 
 
@@ -145,7 +145,6 @@ try:
     pin.pull(Pin.OUT) # incorrect pull
 except Exception:
     print('Exception')
-
 
 try:
     pin.id('ABC') # id cannot be set
