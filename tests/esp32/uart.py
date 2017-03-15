@@ -7,45 +7,24 @@ from machine import Pin
 import os
 import time
 
-uart_id_range = [1,2]
+uart_id_range = [1, 2]
+uart_to_test = 2
 
 for uart_id in uart_id_range:
-    uart = UART(uart_id, 38400)
+    uart1 = UART(uart_id, 115200)
     print(uart)
-    uart.init(57600, 8, None, 1, pins=('P23', 'P9'))
-    uart.init(baudrate=9600, stop=2, parity=UART.EVEN, pins=('P23', 'P9'))
-    uart.init(baudrate=115200, parity=UART.ODD, stop=1, pins=('P23', 'P9'))
-    #uart = UART(baudrate=1
-    uart.read()
-    print (uart.readall())
-    print (uart.readline())
+    uart1.init(57600, 8, None, 1, pins=('P23', 'P9'))
+    uart1.init(baudrate=9600, stop=2, parity=UART.EVEN, pins=('P23', 'P9'))
+    uart1.init(baudrate=115200, parity=UART.ODD, stop=1, pins=('P23', 'P9'))
+    uart1.read()
+    print (uart1.readall())
+    print (uart1.readline())
     buff=bytearray(1)
-    print (uart.readinto(buff,1))
-    print (uart.read())
-    print (uart.any())
-    print (uart.write('a'))
-    #uart.deinit()
-
-
-#uart = UART(baudrate=1000000)
-#uart = UART()
-#print(uart)
-#uart = UART(baudrate=38400, pins=('GP12', 'GP13'))
-#print(uart)
-#uart = UART(pins=('GP12', 'GP13'))
-#print(uart)
-#uart = UART(pins=(None, 'GP17'))
-#print(uart)
-#uart = UART(baudrate=57600, pins=('GP16', 'GP17'))
-#print(uart)
-
-
-#loopback between ports
-#Connected P9 to P23 and P10 to P22
-#uart1 = UART(1, 1000000, pins=('P9', 'P10'))
-#uart2 = UART(2, 1000000, pins=('P22', 'P23'))
-#print(uart1.write(b'123456') == 6)
-#print(uart2.read() == b'123456')
+    print (uart1.readinto(buff,1))
+    print (uart1.read())
+    print (uart1.any())
+    print (uart1.write('a'))
+    uart1.deinit()
 
 
 # now it's time for some loopback tests between pins
@@ -54,15 +33,18 @@ for uart_id in uart_id_range:
     print(uart1)
     uart1.read()
     print(uart1.write(b'123456') == 6)
-    print(uart1.read() == b'123456')
+    time.sleep(0.5)
+    print(uart1.read())
     uart1 = UART(uart_id, 1000000, pins=('P23', 'P9'))
     print(uart1)
     uart1.read()
     print(uart1.write(b'123456') == 6)
-    print(uart1.read() == b'123456')
+    time.sleep(0.5)
+    print(uart1.read())
+    uart1.deinit()
 
 
-uart1 = UART(1, 1000000, pins=('P23', 'P9'))
+uart1 = UART(uart_to_test, 1000000, pins=('P23', 'P9'))
 print(uart1.write(b'123') == 3)
 print(uart1.read(1) == b'1')
 print(uart1.read(2) == b'23')
@@ -122,12 +104,12 @@ for i in range (0, 1000):
 
 # next ones must raise
 try:
-    UART(1, 9600, parity=None, pins=('GP12', 'GP13', 'GP7'))
+    UART(uart_to_test, 9600, parity=None, pins=('GP12', 'GP13', 'GP7'))
 except Exception:
     print('Exception')
 
 try:
-    UART(1, 9600, parity=UART.ODD, pins=('GP12', 'GP7'))
+    UART(uart_to_test, 9600, parity=UART.ODD, pins=('GP12', 'GP7'))
 except Exception:
     print('Exception')
 
@@ -175,12 +157,14 @@ for uart_id in uart_id_range:
 '''
 
 #Buffer overflow
-uart1 = UART(1, 1000000, pins=('P9', 'P23'))
+uart1 = UART(uart_to_test, 1000000, pins=('P9', 'P23'))
 buf = bytearray([0x55AA]*567)
 print("Bach 0")
 for i in range(1000):
     r = uart1.write(buf)
 r = uart1.readall()
 r = uart1.readall()
+print(r)
 print(uart1.write(b'123456') == 6)
 print(uart1.read() == b'123456')
+uart1.deinit()

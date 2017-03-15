@@ -80,6 +80,7 @@ static void uart_intr_handler(void *para);
  ******************************************************************************/
 struct _mach_uart_obj_t {
     mp_obj_base_t base;
+    mp_obj_t pins[4];
     volatile byte *read_buf;            // read buffer pointer
     uart_config_t config;
     uart_intr_config_t intr_config;
@@ -88,6 +89,7 @@ struct _mach_uart_obj_t {
     uint8_t irq_flags;
     uint8_t uart_id;
     uint8_t rx_timeout;
+    uint8_t n_pins;
 };
 
 /******************************************************************************
@@ -166,25 +168,35 @@ static bool uart_tx_fifo_space (mach_uart_obj_t *self) {
     return false;
 }
 
-static void uart_assign_pins_af (mp_obj_t *pins, uint32_t n_pins, uint32_t uart_id) {
+static void uart_assign_pins_af (mach_uart_obj_t *self, mp_obj_t *pins, uint32_t n_pins) {
     for (int i = 0; i < n_pins; i++) {
         if (pins[i] != mp_const_none) {
             pin_obj_t *pin = pin_find(pins[i]);
             int32_t af_in, af_out, mode, pull;
             if (i % 2) {
-                af_in = mach_uart_pin_af[uart_id][i];
+                af_in = mach_uart_pin_af[self->uart_id][i];
                 af_out = -1;
                 mode = GPIO_MODE_INPUT;
                 pull = MACHPIN_PULL_UP;
             } else {
                 af_in = -1;
-                af_out = mach_uart_pin_af[uart_id][i];
+                af_out = mach_uart_pin_af[self->uart_id][i];
                 mode = GPIO_MODE_OUTPUT;
                 pull = MACHPIN_PULL_NONE;
             }
             pin_config(pin, af_in, af_out, mode, pull, 1);
+            self->pins[i] = pin;
         }
     }
+    self->n_pins = n_pins;
+}
+
+static void uart_deassign_pins_af (mach_uart_obj_t *self) {
+    for (int i = 0; i < self->n_pins; i++) {
+        pin_deinit((pin_obj_t *)((mp_obj_t *)self->pins)[i]);
+        self->pins[i] = mp_const_none;
+    }
+    self->n_pins = 0;
 }
 
 STATIC IRAM_ATTR void UARTGenericIntHandler(uint32_t uart_id, uint32_t status) {
@@ -421,7 +433,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
                 }
             }
         }
-        uart_assign_pins_af (pins, n_pins, self->uart_id);
+        uart_assign_pins_af (self, pins, n_pins);
     }
 
     self->rx_timeout = args[5].u_int;
@@ -507,6 +519,9 @@ STATIC mp_obj_t mach_uart_deinit(mp_obj_t self_in) {
     CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(self->uart_id), UART_INTR_MASK);
     // free the read buffer
     m_del(byte, (void *)self->read_buf, MACHUART_RX_BUFFER_LEN);
+    // detach the pins
+    uart_deassign_pins_af(self);
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_deinit_obj, mach_uart_deinit);

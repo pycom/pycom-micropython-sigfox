@@ -52,6 +52,8 @@ static IRAM_ATTR void machpin_intr_process (void* arg);
 DEFINE CONSTANTS
 ******************************************************************************/
 #define MACHPIN_SIMPLE_OUTPUT               0x100
+#define MACHPIN_SIMPLE_IN_LOW               0x30
+#define MACHPIN_SIMPLE_IN_HIGH              0x38
 #define ETS_GPIO_INUM                       13
 
 /******************************************************************************
@@ -138,6 +140,26 @@ void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, i
 
 //    // register it with the sleep module
 //    pyb_sleep_add ((const mp_obj_t)self, (WakeUpCB_t)pin_obj_configure);
+}
+
+void pin_deinit (pin_obj_t *self) {
+    // configure the pin
+    gpio_config_t gpioconf = {.pin_bit_mask = 1ull << self->pin_number,
+                              .mode = GPIO_MODE_INPUT,
+                              .pull_up_en = GPIO_PULLUP_DISABLE,
+                              .pull_down_en = GPIO_PULLDOWN_ENABLE,
+                              .intr_type = GPIO_INTR_DISABLE
+                             };
+    gpio_config(&gpioconf);
+
+    // de-assign the alternate functions
+    if (self->af_in >= 0) {
+        gpio_matrix_in(self->value ? MACHPIN_SIMPLE_IN_HIGH : MACHPIN_SIMPLE_IN_LOW, self->af_in, 0);
+    }
+
+    if (self->af_out >= 0) {
+        gpio_matrix_out(self->pin_number, MACHPIN_SIMPLE_OUTPUT, 0, 0);
+    }
 }
 
 IRAM_ATTR void pin_set_value (const pin_obj_t* self) {
