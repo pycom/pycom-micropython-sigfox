@@ -80,12 +80,12 @@ def boardBuild(name) {
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make -j2 TARGET=boot BOARD=''' + name
+        make TARGET=boot -j2 BOARD=''' + name
 
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make -j2 TARGET=app BOARD=''' + name
+        make TARGET=app -j2 BOARD=''' + name
     }
 }
 

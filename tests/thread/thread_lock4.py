@@ -2,6 +2,10 @@
 #
 # MIT license; Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
 
+try:
+    import utime as time
+except ImportError:
+    import time
 import _thread
 
 def fac(n):
@@ -22,7 +26,7 @@ def thread_entry():
             output.append((arg, ans))
 
 # create a list of jobs
-jobs = [(fac, i) for i in range(20, 50)]
+jobs = [(fac, i) for i in range(20, 80)]
 jobs_lock = _thread.allocate_lock()
 n_jobs = len(jobs)
 
@@ -39,6 +43,7 @@ while True:
     with jobs_lock:
         if len(output) == n_jobs:
             break
+    time.sleep(1)
 
 # sort and print the results
 output.sort(key=lambda x: x[0])

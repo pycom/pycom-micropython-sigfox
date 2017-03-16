@@ -3,6 +3,10 @@
 #
 # MIT license; Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
 
+try:
+    import utime as time
+except ImportError:
+    import time
 import _thread
 
 def last(l):
@@ -10,7 +14,7 @@ def last(l):
 
 def thread_entry(n):
     # allocate a bytearray and fill it
-    data = bytearray(i for i in range(16))
+    data = bytearray(i for i in range(128))
 
     # run a loop which allocates a small list and uses it each iteration
     lst = 8 * [0]
@@ -30,13 +34,13 @@ def thread_entry(n):
         n_finished += 1
 
 lock = _thread.allocate_lock()
-n_thread = 4
+n_thread = 8
 n_finished = 0
 
 # spawn threads
 for i in range(n_thread):
-    _thread.start_new_thread(thread_entry, (100,))
+    _thread.start_new_thread(thread_entry, (10000,))
 
-# busy wait for threads to finish
+# wait for threads to finish
 while n_finished < n_thread:
-    pass
+    time.sleep(1)

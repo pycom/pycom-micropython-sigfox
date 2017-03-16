@@ -8,7 +8,7 @@ import _thread
 
 # different implementations have different minimum sizes
 if sys.implementation.name == 'micropython':
-    if 'ESP32' in os.uname().machine:
+    if 'ESP32' in os.uname().machine:   # minimmum stack size of the ESP32 is 4K
         sz = 4 * 1024
     else:
         sz = 2 * 1024
@@ -41,6 +41,9 @@ n_finished = 0
 _thread.stack_size(sz)
 for i in range(n_thread):
     _thread.start_new_thread(thread_entry, ())
+
+# reset stack size to default (for subsequent scripts on baremetal)
+_thread.stack_size()
 
 # busy wait for threads to finish
 while n_finished < n_thread:
