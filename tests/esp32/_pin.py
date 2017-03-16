@@ -32,7 +32,7 @@ all_pins = [
     'G6','P19',
     'G7','P20',
     'G8','P21',
-    'G9','P22'
+    #'G9','P22'    #Pin used for the onewire sensor
     #'G10','P23'   #Pin used for I2C SDA loop
 ]
 
