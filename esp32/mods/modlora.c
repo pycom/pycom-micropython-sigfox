@@ -100,9 +100,9 @@
 
 #define LORAWAN_SOCKET_GET_FD(sd)                   (sd & 0xFF)
 
-#define LORAWAN_SOCKET_IS_CONFIRMED(sd)             ((sd & 0x80000000) == 0x80000000)
-#define LORAWAN_SOCKET_SET_CONFIRMED(sd)            (sd |= 0x80000000)
-#define LORAWAN_SOCKET_CLR_CONFIRMED(sd)            (sd &= ~0x80000000)
+#define LORAWAN_SOCKET_IS_CONFIRMED(sd)             ((sd & 0x40000000) == 0x40000000)
+#define LORAWAN_SOCKET_SET_CONFIRMED(sd)            (sd |= 0x40000000)
+#define LORAWAN_SOCKET_CLR_CONFIRMED(sd)            (sd &= ~0x40000000)
 
 #define LORAWAN_SOCKET_SET_PORT(sd, port)           (sd &= 0xFFFF00FF); \
                                                     (sd |= (port << 8))
