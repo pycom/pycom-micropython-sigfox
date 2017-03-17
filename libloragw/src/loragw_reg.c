@@ -855,4 +855,9 @@ int lgw_reg_resetSTM32(void)
 return(lgw_resetSTM32(lgw_spi_target));
 }
 
+int lgw_reg_GOTODFU(void)
+{
+return(lgw_GOTODFU(lgw_spi_target));
+}
+
 /* --- EOF ------------------------------------------------------------------ */

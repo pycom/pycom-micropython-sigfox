@@ -145,6 +145,7 @@ int lgw_trigger(void *spi_target, uint8_t address, uint32_t *data);
 int lgw_boardconfcmd(void * spi_target,uint8_t *data,uint16_t size);
 int lgw_calibration_snapshot(void * spi_target);
 int lgw_resetSTM32(void * spi_target);
+int lgw_GOTODFU(void * spi_target);
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

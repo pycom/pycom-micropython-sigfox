@@ -553,7 +553,7 @@ int ReceiveAns(AnsSettings_t *Ansbuffer, int file1)
     {
     DEBUG_PRINTF("WARNING : write  read  failed (%d) time buffer 0 = %d\n", (int) cpttimer,bufferrx[0]);
     }
-		if (cpttimer > 150) // wait read error the read function isn't block but timeout of 0.1s
+		if (cpttimer > 15) // wait read error the read function isn't block but timeout of 0.1s
 		{
 			DEBUG_MSG("WARNING : DEADLOCK SPI");
 			return(OK); // deadlock
@@ -936,6 +936,45 @@ int lgw_resetSTM32(void * spi_target)
 
 }
 
+int lgw_GOTODFU(void * spi_target)
+{
+	int fd;
+	int i;
+	DEBUG_MSG("Note: USB/SPI write success\n");
+	fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+	DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+	/*build the write cmd*/
+	CmdSettings_t mystruct;
+	AnsSettings_t mystrctAns;
+	int size = 1;
+	mystruct.Cmd = 'n';
+	mystruct.LenMsb = 0;
+	mystruct.Len = 1;
+	mystruct.Adress = 0;
+	
+	DEBUG_MSG("Note: USB/SPI write success\n");
+	for (i = 0; i < size; i++)
+	{
+		mystruct.Value[i] = 0;
+	}
+	DEBUG_MSG("Note: USB/SPI write success\n");
+	pthread_mutex_lock(&mx_usbbridgesync);
+	SendCmdn(mystruct, fd);
+	if (ReceiveAns(&mystrctAns, fd))
+	{
+		DEBUG_MSG("Note: USB/SPI read config success\n");
+		pthread_mutex_unlock(&mx_usbbridgesync);
+		return LGW_SPI_SUCCESS;
+	}
+	else
+	{
+		DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+		pthread_mutex_unlock(&mx_usbbridgesync);
+		return LGW_SPI_ERROR;
+	}
+
+}
+
 
 /****************************/
 int checkcmd(uint8_t cmd)
@@ -963,6 +1002,7 @@ int checkcmd(uint8_t cmd)
 	case 'j': {return(0); break; }
 	case 'l': {return(0); break; }
  	case 'm': {return(0); break; }
+	case 'n': {return(0); break; }
 			  //case 97 : return (1);   
 
 	default:

@@ -466,7 +466,7 @@ int lgw_regtrigger(uint32_t *data);
 int lgw_reg_board_setconfcmd(uint8_t *data,uint16_t size);
 int lgw_reg_calibration_snapshot(void);
 int lgw_reg_resetSTM32(void);
-
+int lgw_reg_GOTODFU(void);
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
