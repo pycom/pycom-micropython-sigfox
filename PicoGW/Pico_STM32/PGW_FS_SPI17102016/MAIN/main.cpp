@@ -41,11 +41,25 @@ void Error_Handler(void)
 
 
 
-int main(void)
-{uint16_t size;
- uint16_t sizet;	
 
-	/************ start init  *************/ 	
+
+
+
+
+int main(void)
+{
+ uint16_t size;
+ uint16_t sizet;
+ uint8_t dataflash;
+ 
+  dataflash=*(uint8_t *)DATA_EEPROM_BASE;
+	if (dataflash==GOTODFU)
+	{ 
+    FLASH_Prog(DATA_EEPROM_BASE, 0);		
+		((void (*)(void)) *((uint32_t*) 0x1FFF0004))(); 
+	}
+	
+		/************ start init  *************/ 	
 	Sx1308.init();
 	Sx1308.SelectPage(0);
 	Usbmanager.init();
@@ -54,9 +68,12 @@ int main(void)
 	/************ end init  *************/
 	Usbmanager.count = 1; // wait for an 64 bytes transfer
 	Usbmanager.ReceiveCmd();
+//	pc.printf("data falsh =%d\n",dataflash);
 	while (1) {
 		while (Usbmanager.count > 0) {// wait until it usbcmd rx 
 		}
+		 // __set_MSP(0x00000000);
+	 // ((void (*)(void)) *((uint32_t*) 0x1FFF0004))(); 
 		Usbmanager.count = 1;
 		Usbmanager.initBuftohost();
 		if (Usbmanager.DecodeCmd()) {	// decode cmd from Host

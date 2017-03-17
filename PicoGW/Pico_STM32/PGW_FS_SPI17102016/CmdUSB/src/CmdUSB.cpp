@@ -82,6 +82,8 @@ void USBMANAGER::ReceiveCmd()
 /*  i           |lgw_board_setconf                      */
 /*  j           |lgw_calibration_snapshot               */
 /*  l						|lgw_check_fw_version										*/
+/*  m						|Reset STM32        										*/
+/*  n						|GOTODFU            										*/
 
 int USBMANAGER::DecodeCmd()
 {
@@ -95,6 +97,7 @@ int USBMANAGER::DecodeCmd()
 	switch (cmdSettings_FromHost.Cmd) {
 
 	case 'r': { // cmd Read register 
+		
 		cmdSettings_FromHost.LenMsb = BufFromHost[1];
 		cmdSettings_FromHost.Len = BufFromHost[2];
 		adressreg = BufFromHost[3];
@@ -491,6 +494,13 @@ int USBMANAGER::DecodeCmd()
 	
 	case 'm': { // KILL STM32 
      
+		NVIC_SystemReset(); 						
+	}
+  
+	case 'n': { // GOTODFU 
+    FLASH_Prog(DATA_EEPROM_BASE, GOTODFU);	
+    wait_ms(200);
+		
 		NVIC_SystemReset(); 						
 	}
 

@@ -326,7 +326,7 @@ uint8_t SetSysClock_PLL_HSI(void)
   return 1; // OK
 }
 void SystemInit(void)
-{
+{	
   /* FPU settings ------------------------------------------------------------*/
   #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
     SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));  /* set CP10 and CP11 Full Access */
@@ -363,6 +363,11 @@ void SystemInit(void)
 
   /* Configure the Cube driver */
   SystemCoreClock = 16000000; // At this stage the HSI is used as system clock
+		__HAL_REMAPMEMORY_SYSTEMFLASH();
+	
+	
+
+	
   HAL_Init();
 
   /* Configure the System clock source, PLL Multiplier and Divider factors,

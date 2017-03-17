@@ -29,8 +29,8 @@ bool SX1308::init()
 {
 #ifdef V2
 	FEM_EN = 1;
-	HSCLKEN = 1;
 #endif
+	HSCLKEN = 1;
 	_reset = 1;
 	wait_ms(10);
 	_reset = 0;
