@@ -22,6 +22,8 @@ BTYPE ?= release
 # if the build directory is not given, make it reflect the board name.
 BUILD ?= build/$(BOARD)/$(BTYPE)
 
+FROZEN_MPY_DIR = frozen
+
 include ../py/mkenv.mk
 
 CROSS_COMPILE = xtensa-esp32-elf-

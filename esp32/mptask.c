@@ -109,12 +109,7 @@ static FATFS sflash_fatfs;
 static uint8_t *gc_pool_upy;
 
 static char fresh_main_py[] = "# main.py -- put your code here!\r\n";
-static char fresh_boot_py[] = "# boot.py -- run on boot-up\r\n"
-                              "import os\r\n"
-                              "from machine import UART\r\n"
-                              "UART(1, 115200)\r\n"
-                              "UART(2, 115200)\r\n"
-                              "os.dupterm(UART(0, 115200))\r\n";
+static char fresh_boot_py[] = "# boot.py -- run on boot-up\r\n";
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
@@ -227,6 +222,8 @@ soft_reset:
 
     // enable telnet and ftp
     servers_start();
+
+    pyexec_frozen_module("_boot.py");
 
     if (!safeboot) {
         // run boot.py

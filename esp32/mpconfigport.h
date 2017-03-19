@@ -68,7 +68,6 @@
 #define MICROPY_LONGINT_IMPL                        (MICROPY_LONGINT_IMPL_MPZ)
 #define MICROPY_FLOAT_IMPL                          (MICROPY_FLOAT_IMPL_FLOAT)
 #define MICROPY_ERROR_REPORTING                     (MICROPY_ERROR_REPORTING_NORMAL)
-#define MICROPY_MODULE_FROZEN                       (0)
 #define MICROPY_OPT_COMPUTED_GOTO                   (1)
 #define MICROPY_OPT_CACHE_MAP_LOOKUP_IN_BYTECODE    (0)
 #define MICROPY_REPL_AUTO_INDENT                    (1)
@@ -77,6 +76,10 @@
 #define MICROPY_COMP_TRIPLE_TUPLE_ASSIGN            (1)
 #define MICROPY_USE_INTERNAL_PRINTF                 (0)
 #define MICROPY_PY_SYS_EXC_INFO                     (1)
+#define MICROPY_MODULE_FROZEN_STR                   (0)
+#define MICROPY_MODULE_FROZEN_MPY                   (1)
+#define MICROPY_QSTR_EXTRA_POOL                     mp_qstr_frozen_const_pool
+#define MICROPY_PY_FRAMEBUF                         (1)
 
 #define MICROPY_STREAMS_NON_BLOCK                   (1)
 #define MICROPY_PY_BUILTINS_TIMEOUTERROR            (1)
