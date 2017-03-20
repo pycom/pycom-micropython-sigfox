@@ -1,4 +1,3 @@
-from network import LoRa
 import binascii
 import socket
 import errno
@@ -10,6 +9,8 @@ if os.uname().sysname != 'LoPy':
     print("SKIP")
     import sys
     sys.exit()
+else:
+    from network import LoRa
 
 print('Starting LoRaWAN OTAA test')
 

@@ -7,7 +7,7 @@ node {
         sh 'rm -rf esp-idf'
         sh 'git clone --depth=1 --recursive -b esp-idf-2017-03-12 ssh://git@dev.pycom.io:2222/source/espidf2.git esp-idf'
     }
-    stage('Build') {
+    stage('Build') { // build the cross compiler first
         sh '''cd mpy-cross;
         make all'''
 
