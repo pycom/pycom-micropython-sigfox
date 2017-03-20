@@ -30,7 +30,6 @@
 #include "py/misc.h"
 #include "py/qstr.h"
 #include "py/mpprint.h"
-#include "esp_attr.h"
 
 // This is the definition of the opaque MicroPython object type.
 // All concrete objects have an encoding within this type and the

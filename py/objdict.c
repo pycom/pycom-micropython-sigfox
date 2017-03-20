@@ -27,6 +27,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include "mpconfig.h"
 #include "py/nlr.h"
 #include "py/obj.h"
 #include "py/runtime0.h"
@@ -34,7 +35,9 @@
 #include "py/builtin.h"
 #include "py/objtype.h"
 
+#if defined(LOPY) || defined (WIPY) || defined(SIPY)
 #include "esp_attr.h"
+#endif
 
 #define MP_OBJ_IS_DICT_TYPE(o) (MP_OBJ_IS_OBJ(o) && ((mp_obj_base_t*)MP_OBJ_TO_PTR(o))->type->make_new == dict_make_new)
 
@@ -622,7 +625,10 @@ mp_obj_t mp_obj_dict_delete(mp_obj_t self_in, mp_obj_t key) {
     return self_in;
 }
 
-IRAM_ATTR mp_map_t *mp_obj_dict_get_map(mp_obj_t self_in) {
+#if defined(LOPY) || defined (WIPY) || defined(SIPY)
+IRAM_ATTR
+#endif
+mp_map_t *mp_obj_dict_get_map(mp_obj_t self_in) {
     mp_check_self(MP_OBJ_IS_DICT_TYPE(self_in));
     mp_obj_dict_t *self = MP_OBJ_TO_PTR(self_in);
     return &self->map;

@@ -77,6 +77,9 @@ def flashBuild(name) {
 
 def boardBuild(name) {
     return {
+        sh '''cd mpy-cross;
+        make all'''
+
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
