@@ -8,6 +8,9 @@ node {
         sh 'git clone --depth=1 --recursive -b esp-idf-2017-03-12 ssh://git@dev.pycom.io:2222/source/espidf2.git esp-idf'
     }
     stage('Build') {
+        sh '''cd mpy-cross;
+        make all'''
+
         def parallelSteps = [:]
         for (x in boards) {
             def name = x
@@ -77,9 +80,6 @@ def flashBuild(name) {
 
 def boardBuild(name) {
     return {
-        sh '''cd mpy-cross;
-        make all'''
-
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
