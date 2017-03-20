@@ -480,7 +480,7 @@ int USBMANAGER::DecodeCmd()
 		pc.printf("fwfromhost =%x\n",fwfromhost);
 		BufToHost[0] = 'l';
 		BufToHost[1] = 0;
-		BufToHost[2] = 1;
+		BufToHost[2] = 9;
 		if (fwfromhost==FWVERSION)
 		{
 			BufToHost[3] = ACK_OK;
@@ -489,6 +489,14 @@ int USBMANAGER::DecodeCmd()
 		{
 			BufToHost[3] = ACK_K0;
 		}
+		BufToHost[4] =*(uint8_t *)0x1fff7a18;    //unique STM32 register base adresse 
+		BufToHost[5] =*(uint8_t *)0x1fff7a19;
+		BufToHost[6] =*(uint8_t *)0x1fff7a1a;
+		BufToHost[7] =*(uint8_t *)0x1fff7a1b;
+		BufToHost[8] =*(uint8_t *)0x1fff7a10;
+		BufToHost[9] =*(uint8_t *)0x1fff7a11;
+		BufToHost[10] =*(uint8_t *)0x1fff7a12;
+		BufToHost[11] =*(uint8_t *)0x1fff7a13;
 		return(CMD_OK); //mean no ack transmission									
 	}
 	

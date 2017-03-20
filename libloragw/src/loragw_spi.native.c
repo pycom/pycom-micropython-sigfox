@@ -202,7 +202,14 @@ int lgw_spi_open(void **spi_target_ptr) {
 			if (ReceiveAns(&mystrctAns, fd))
 			{
 				if (mystrctAns.Rxbuf[0] == ACK_KO) { return LGW_SPI_ERROR; }
-				DEBUG_PRINTF("check fw version %d \n", mystrctAns.Rxbuf[0]);
+				printf("uid 0x%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\n",mystrctAns.Rxbuf[1],mystrctAns.Rxbuf[2],mystrctAns.Rxbuf[3],mystrctAns.Rxbuf[4],mystrctAns.Rxbuf[5],mystrctAns.Rxbuf[6],mystrctAns.Rxbuf[7],mystrctAns.Rxbuf[8]);
+        FILE *f; 
+        f=fopen("local_conf.json","w");
+        fprintf(f,"/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
+        fprintf(f,"{\"gateway_conf\": {\n\"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n}\n}",mystrctAns.Rxbuf[1],mystrctAns.Rxbuf[2],mystrctAns.Rxbuf[3],mystrctAns.Rxbuf[4],mystrctAns.Rxbuf[5],mystrctAns.Rxbuf[6],
+        mystrctAns.Rxbuf[7],mystrctAns.Rxbuf[8]);
+           fclose(f);
+        DEBUG_PRINTF("check fw version %d \n", mystrctAns.Rxbuf[0]);
 				DEBUG_MSG("Note: USB/SPI read config success\n");
 				pthread_mutex_unlock(&mx_usbbridgesync);
 				return LGW_SPI_SUCCESS;
