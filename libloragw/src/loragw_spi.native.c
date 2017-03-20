@@ -202,14 +202,7 @@ int lgw_spi_open(void **spi_target_ptr) {
 			if (ReceiveAns(&mystrctAns, fd))
 			{
 				if (mystrctAns.Rxbuf[0] == ACK_KO) { return LGW_SPI_ERROR; }
-				printf("uid 0x%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\n",mystrctAns.Rxbuf[1],mystrctAns.Rxbuf[2],mystrctAns.Rxbuf[3],mystrctAns.Rxbuf[4],mystrctAns.Rxbuf[5],mystrctAns.Rxbuf[6],mystrctAns.Rxbuf[7],mystrctAns.Rxbuf[8]);
-        FILE *f; 
-        f=fopen("local_conf.json","w");
-        fprintf(f,"/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
-        fprintf(f,"{\"gateway_conf\": {\n\"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n}\n}",mystrctAns.Rxbuf[1],mystrctAns.Rxbuf[2],mystrctAns.Rxbuf[3],mystrctAns.Rxbuf[4],mystrctAns.Rxbuf[5],mystrctAns.Rxbuf[6],
-        mystrctAns.Rxbuf[7],mystrctAns.Rxbuf[8]);
-           fclose(f);
-        DEBUG_PRINTF("check fw version %d \n", mystrctAns.Rxbuf[0]);
+			  DEBUG_PRINTF("check fw version %d \n", mystrctAns.Rxbuf[0]);
 				DEBUG_MSG("Note: USB/SPI read config success\n");
 				pthread_mutex_unlock(&mx_usbbridgesync);
 				return LGW_SPI_SUCCESS;
@@ -982,6 +975,48 @@ int lgw_GOTODFU(void * spi_target)
 
 }
 
+int lgw_GetUniqueId(void * spi_target,uint8_t * uid)
+{
+	int fd;
+	int i;
+  int fwversion = STM32FWVERSION;
+	DEBUG_MSG("Note: USB/SPI write success\n");
+	fd = *(int *)spi_target; /* must check that spi_target is not null beforehand */
+	DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+  CmdSettings_t mystruct;
+	AnsSettings_t mystrctAns;
+			mystruct.Cmd = 'l';
+			mystruct.LenMsb = 0;
+			mystruct.Len = 4;
+			mystruct.Adress = 0;
+			mystruct.Value[0] = (uint8_t)((fwversion >> 24)&(0x000000ff));
+			mystruct.Value[1] = (uint8_t)((fwversion >> 16)&(0x000000ff));
+			mystruct.Value[2] = (uint8_t)((fwversion >> 8)&(0x000000ff));
+			mystruct.Value[3] = (uint8_t)((fwversion)&(0x000000ff));
+		
+			DEBUG_MSG("Note: USB/SPI write success\n");
+			pthread_mutex_lock(&mx_usbbridgesync);
+			SendCmdn(mystruct, fd);
+			if (ReceiveAns(&mystrctAns, fd))
+			{
+				if (mystrctAns.Rxbuf[0] == ACK_KO) { return LGW_SPI_ERROR; }
+		    for (i=0;i<7;i++)
+        {	
+        uid[i]=mystrctAns.Rxbuf[i+1];
+        }
+				DEBUG_MSG("Note: USB/SPI read config success\n");
+				pthread_mutex_unlock(&mx_usbbridgesync);
+				return LGW_SPI_SUCCESS;
+			}
+			else
+			{
+				DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+				pthread_mutex_unlock(&mx_usbbridgesync);
+				return LGW_SPI_ERROR;
+			}
+			return LGW_SPI_SUCCESS;
+}
+ 
 
 /****************************/
 int checkcmd(uint8_t cmd)

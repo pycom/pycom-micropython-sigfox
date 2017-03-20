@@ -860,4 +860,9 @@ int lgw_reg_GOTODFU(void)
 return(lgw_GOTODFU(lgw_spi_target));
 }
 
+int lgw_reg_GetUniqueId(uint8_t * uid)
+{
+return( lgw_GetUniqueId(lgw_spi_target, uid));
+}
+
 /* --- EOF ------------------------------------------------------------------ */

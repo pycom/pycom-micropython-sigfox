@@ -78,18 +78,18 @@ static void sig_handler(int sigio) {
 void usage(void) {
     MSG( "Available options:\n");
     MSG( " -h print this help\n");
-    MSG( " -t <int> specify which test you want to run (1-4)\n");
+    MSG( " -b flash the MCU\n");
+    MSG( " -l generate a new local_conf.json file\n");
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(void)
+int main(int argc, char **argv)
 {
-  
-    MSG("INFO: Starting boot stm32\n");
-
-    /* configure signal handling */
+int i;
+uint8_t uid[8];  //unique id
+  /* configure signal handling */
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
     sigact.sa_handler = sig_handler;
@@ -97,12 +97,35 @@ int main(void)
     sigaction(SIGINT, &sigact, NULL);
     sigaction(SIGTERM, &sigact, NULL);
 
-    /* start SPI link */
-    
-    lgw_connect(false);
-    lgw_reg_GOTODFU();
-  
-   
+ while ((i = getopt (argc, argv, "hblq:")) != -1) {
+ printf("cmd = %c\n",i);
+        switch (i) {
+            case 'h':
+                usage();
+                return EXIT_FAILURE;
+                break;
+            case 'b':
+               lgw_connect(false);
+               lgw_reg_GOTODFU();
+               return EXIT_SUCCESS;
+                break;
+           case 'l':
+               lgw_connect(false);
+               lgw_reg_GetUniqueId(&uid[0]);
+               FILE *f; 
+               f=fopen("local_conf.json","w");
+               fprintf(f,"/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
+               fprintf(f,"{\"gateway_conf\": {\n     \"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n     }\n}",uid[0],uid[1],uid[2],uid[3],uid[4],uid[5],uid[6],uid[7]);
+               fclose(f);
+               return EXIT_SUCCESS;
+               
+
+            default:
+                MSG("ERROR: argument parsing use -h option for help\n");
+                usage();
+                return EXIT_FAILURE;
+        }
+    } 
 }
 
 /* --- EOF ------------------------------------------------------------------ */

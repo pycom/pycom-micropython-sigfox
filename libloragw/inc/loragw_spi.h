@@ -107,9 +107,9 @@ int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, u
 
 /*usb picogw TBD documentation*/
 
-#define BURSTSIZE 9000
+#define BURSTSIZE 1024
 #define BUFFERTXSIZE 4*(BURSTSIZE+2)  
-#define BUFFERRXSIZE 9000
+#define BUFFERRXSIZE 1024
 #define ATOMICTX 600
 #define ATOMICRX 900
 typedef struct 
@@ -146,6 +146,7 @@ int lgw_boardconfcmd(void * spi_target,uint8_t *data,uint16_t size);
 int lgw_calibration_snapshot(void * spi_target);
 int lgw_resetSTM32(void * spi_target);
 int lgw_GOTODFU(void * spi_target);
+int lgw_GetUniqueId(void * spi_target,uint8_t * uid);
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
