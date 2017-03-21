@@ -18,8 +18,8 @@ Maintainer: Sylvain Miermont
 */
 
 
-#ifndef _LORAGW_SPI_H
-#define _LORAGW_SPI_H
+#ifndef _LORAGW_com_H
+#define _LORAGW_com_H
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
@@ -31,17 +31,17 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-#define LGW_SPI_SUCCESS     0
-#define LGW_SPI_ERROR       -1
+#define LGW_com_SUCCESS     0
+#define LGW_com_ERROR       -1
 #define LGW_BURST_CHUNK     1024
 
-#define LGW_SPI_MUX_MODE0   0x0     /* No FPGA */
-#define LGW_SPI_MUX_MODE1   0x1     /* FPGA, with spi mux header */
+#define LGW_com_MUX_MODE0   0x0     /* No FPGA */
+#define LGW_com_MUX_MODE1   0x1     /* FPGA, with spi mux header */
 
-#define LGW_SPI_MUX_TARGET_SX1301   0x0
-#define LGW_SPI_MUX_TARGET_FPGA     0x1
-#define LGW_SPI_MUX_TARGET_EEPROM   0x2
-#define LGW_SPI_MUX_TARGET_SX127X   0x3
+#define LGW_com_MUX_TARGET_SX1301   0x0
+#define LGW_com_MUX_TARGET_FPGA     0x1
+#define LGW_com_MUX_TARGET_EEPROM   0x2
+#define LGW_com_MUX_TARGET_SX127X   0x3
 #define ACK_KO   0
 #define OK 1
 #define KO 0
@@ -51,57 +51,57 @@ Maintainer: Sylvain Miermont
 
 /**
 @brief LoRa concentrator SPI setup (configure I/O and peripherals)
-@param spi_target_ptr pointer on a generic pointer to SPI target (implementation dependant)
-@return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
+@param com_target_ptr pointer on a generic pointer to SPI target (implementation dependant)
+@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
 */
 
-int lgw_spi_open(void **spi_target_ptr);
+int lgw_com_open(void **com_target_ptr);
 
 /**
 @brief LoRa concentrator SPI close
-@param spi_target generic pointer to SPI target (implementation dependant)
-@return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
+@param com_target generic pointer to SPI target (implementation dependant)
+@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
 */
 
-int lgw_spi_close(void *spi_target);
+int lgw_com_close(void *com_target);
 
 /**
 @brief LoRa concentrator SPI single-byte write
-@param spi_target generic pointer to SPI target (implementation dependant)
+@param com_target generic pointer to SPI target (implementation dependant)
 @param address 7-bit register address
 @param data data byte to write
-@return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
+@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
 */
-int lgw_spi_w(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t data);
+int lgw_com_w(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t data);
 
 /**
 @brief LoRa concentrator SPI single-byte read
-@param spi_target generic pointer to SPI target (implementation dependant)
+@param com_target generic pointer to SPI target (implementation dependant)
 @param address 7-bit register address
 @param data data byte to write
-@return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
+@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
 */
-int lgw_spi_r(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data);
+int lgw_com_r(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) write
-@param spi_target generic pointer to SPI target (implementation dependant)
+@param com_target generic pointer to SPI target (implementation dependant)
 @param address 7-bit register address
 @param data pointer to byte array that will be sent to the LoRa concentrator
 @param size size of the transfer, in byte(s)
-@return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
+@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
 */
-int lgw_spi_wb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size);
+int lgw_com_wb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
 /**
 @brief LoRa concentrator SPI burst (multiple-byte) read
-@param spi_target generic pointer to SPI target (implementation dependant)
+@param com_target generic pointer to SPI target (implementation dependant)
 @param address 7-bit register address
 @param data pointer to byte array that will be written from the LoRa concentrator
 @param size size of the transfer, in byte(s)
-@return status of register operation (LGW_SPI_SUCCESS/LGW_SPI_ERROR)
+@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
 */
-int lgw_spi_rb(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, uint8_t address, uint8_t *data, uint16_t size);
+int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
 
 
@@ -135,18 +135,18 @@ int ReceiveAnsCmd(AnsSettings_t *Ansbuffer,int file1,uint8_t cmd);
 void WriteBurstRegister(int file1,int adress,int *value,int size);
 int set_interface_attribs (int fd, int speed, int parity);
 void set_blocking (int fd, int should_block);
-int lgw_receive_cmd(void *spi_target, uint8_t max_packet, uint8_t *data);
-int lgw_rxrf_setconfcmd(void *spi_target, uint8_t rfchain, uint8_t *data,uint16_t size);
-int lgw_rxif_setconfcmd(void *spi_target, uint8_t ifchain, uint8_t *data,uint16_t size);
+int lgw_receive_cmd(void *com_target, uint8_t max_packet, uint8_t *data);
+int lgw_rxrf_setconfcmd(void *com_target, uint8_t rfchain, uint8_t *data,uint16_t size);
+int lgw_rxif_setconfcmd(void *com_target, uint8_t ifchain, uint8_t *data,uint16_t size);
 int checkcmd(uint8_t cmd);
-int lgw_txgain_setconfcmd(void *spi_target, uint8_t *data,uint16_t size);
-int lgw_sendconfcmd(void *spi_target,uint8_t *data,uint16_t size);
-int lgw_trigger(void *spi_target, uint8_t address, uint32_t *data);
-int lgw_boardconfcmd(void * spi_target,uint8_t *data,uint16_t size);
-int lgw_calibration_snapshot(void * spi_target);
-int lgw_resetSTM32(void * spi_target);
-int lgw_GOTODFU(void * spi_target);
-int lgw_GetUniqueId(void * spi_target,uint8_t * uid);
+int lgw_txgain_setconfcmd(void *com_target, uint8_t *data,uint16_t size);
+int lgw_sendconfcmd(void *com_target,uint8_t *data,uint16_t size);
+int lgw_trigger(void *com_target, uint8_t address, uint32_t *data);
+int lgw_boardconfcmd(void * com_target,uint8_t *data,uint16_t size);
+int lgw_calibration_snapshot(void * com_target);
+int lgw_resetSTM32(void * com_target);
+int lgw_GOTODFU(void * com_target);
+int lgw_GetUniqueId(void * com_target,uint8_t * uid);
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

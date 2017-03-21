@@ -26,7 +26,7 @@ Maintainer: Sylvain Miermont
 #include "loragw_reg.h"
 #include "loragw_hal.h"
 #include "loragw_aux.h"
-#include "loragw_spi.h"
+#include "loragw_com.h"
 #include "loragw_radio.h"
 #include "loragw_fpga.h"
 #include "loragw_lbt.h"

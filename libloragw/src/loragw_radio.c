@@ -25,7 +25,7 @@ Maintainer: Michael Coracin
 #include "loragw_sx1272_lora.h"
 #include "loragw_sx1276_fsk.h"
 #include "loragw_sx1276_lora.h"
-#include "loragw_spi.h"
+#include "loragw_com.h"
 #include "loragw_aux.h"
 #include "loragw_reg.h"
 #include "loragw_hal.h"
@@ -102,7 +102,7 @@ const struct lgw_sx127x_FSK_bandwidth_s sx127x_FskBandwidths[] =
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-extern void *lgw_spi_target; /*! generic pointer to the SPI device */
+extern void *lgw_com_target; /*! generic pointer to the SPI device */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
@@ -134,15 +134,15 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
     /* selecting the target radio */
     switch (channel) {
         case 0:
-            reg_add = LGW_SPI_RADIO_A__ADDR;
-            reg_dat = LGW_SPI_RADIO_A__DATA;
-            reg_cs  = LGW_SPI_RADIO_A__CS;
+            reg_add = LGW_com_RADIO_A__ADDR;
+            reg_dat = LGW_com_RADIO_A__DATA;
+            reg_cs  = LGW_com_RADIO_A__CS;
             break;
 
         case 1:
-            reg_add = LGW_SPI_RADIO_B__ADDR;
-            reg_dat = LGW_SPI_RADIO_B__DATA;
-            reg_cs  = LGW_SPI_RADIO_B__CS;
+            reg_add = LGW_com_RADIO_B__ADDR;
+            reg_dat = LGW_com_RADIO_B__DATA;
+            reg_cs  = LGW_com_RADIO_B__CS;
             break;
 
         default:
@@ -179,17 +179,17 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
     /* selecting the target radio */
     switch (channel) {
         case 0:
-            reg_add = LGW_SPI_RADIO_A__ADDR;
-            reg_dat = LGW_SPI_RADIO_A__DATA;
-            reg_cs  = LGW_SPI_RADIO_A__CS;
-            reg_rb  = LGW_SPI_RADIO_A__DATA_READBACK;
+            reg_add = LGW_com_RADIO_A__ADDR;
+            reg_dat = LGW_com_RADIO_A__DATA;
+            reg_cs  = LGW_com_RADIO_A__CS;
+            reg_rb  = LGW_com_RADIO_A__DATA_READBACK;
             break;
 
         case 1:
-            reg_add = LGW_SPI_RADIO_B__ADDR;
-            reg_dat = LGW_SPI_RADIO_B__DATA;
-            reg_cs  = LGW_SPI_RADIO_B__CS;
-            reg_rb  = LGW_SPI_RADIO_B__DATA_READBACK;
+            reg_add = LGW_com_RADIO_B__ADDR;
+            reg_dat = LGW_com_RADIO_B__DATA;
+            reg_cs  = LGW_com_RADIO_B__CS;
+            reg_rb  = LGW_com_RADIO_B__DATA_READBACK;
             break;
 
         default:
@@ -369,7 +369,7 @@ int reset_sx127x(enum lgw_radio_type_e radio_type) {
         case LGW_RADIO_TYPE_SX1276:
             x  = lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 0);
             x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 1);
-            if (x != LGW_SPI_SUCCESS) {
+            if (x != LGW_com_SUCCESS) {
                 DEBUG_MSG("ERROR: Failed to reset sx127x\n");
                 return x;
             }
@@ -377,7 +377,7 @@ int reset_sx127x(enum lgw_radio_type_e radio_type) {
         case LGW_RADIO_TYPE_SX1272:
             x  = lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 1);
             x |= lgw_fpga_reg_w(LGW_FPGA_CTRL_RADIO_RESET, 0);
-            if (x != LGW_SPI_SUCCESS) {
+            if (x != LGW_com_SUCCESS) {
                 DEBUG_MSG("ERROR: Failed to reset sx127x\n");
                 return x;
             }
@@ -479,13 +479,13 @@ int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_sx127x_reg_w(uint8_t address, uint8_t reg_value) {
-    return lgw_spi_w(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_SX127X, address, reg_value);
+    return lgw_com_w(lgw_com_target, LGW_com_MUX_MODE1, LGW_com_MUX_TARGET_SX127X, address, reg_value);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_sx127x_reg_r(uint8_t address, uint8_t *reg_value) {
-    return lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_SX127X, address, reg_value);
+    return lgw_com_r(lgw_com_target, LGW_com_MUX_MODE1, LGW_com_MUX_TARGET_SX127X, address, reg_value);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -513,13 +513,13 @@ int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxb
     for (i = 0; i < (int)(sizeof supported_radio_type); i++) {
         /* Reset the radio */
         x = reset_sx127x(supported_radio_type[i].type);
-        if (x != LGW_SPI_SUCCESS) {
+        if (x != LGW_com_SUCCESS) {
             DEBUG_MSG("ERROR: Failed to reset sx127x\n");
             return x;
         }
         /* Read version register */
         x = lgw_sx127x_reg_r(0x42, &version);
-        if (x != LGW_SPI_SUCCESS) {
+        if (x != LGW_com_SUCCESS) {
             DEBUG_MSG("ERROR: Failed to read sx127x version register\n");
             return x;
         }

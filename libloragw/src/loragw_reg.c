@@ -24,7 +24,7 @@ Maintainer: Sylvain Miermont
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
 
-#include "loragw_spi.h"
+#include "loragw_com.h"
 #include "loragw_reg.h"
 #include "loragw_fpga.h"
 #include "loragw_aux.h"
@@ -306,14 +306,14 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS] = {
     {1,81,0,0,8,0,0},        /* FSK_BROADCAST */
     {1,82,0,0,1,0,1},        /* FSK_AUTO_AFC_ON */
     {1,83,0,0,10,0,0},       /* FSK_PATTERN_TIMEOUT_CFG */
-    {2,33,0,0,8,0,0},        /* SPI_RADIO_A__DATA */
-    {2,34,0,0,8,1,0},        /* SPI_RADIO_A__DATA_READBACK */
-    {2,35,0,0,8,0,0},        /* SPI_RADIO_A__ADDR */
-    {2,37,0,0,1,0,0},        /* SPI_RADIO_A__CS */
-    {2,38,0,0,8,0,0},        /* SPI_RADIO_B__DATA */
-    {2,39,0,0,8,1,0},        /* SPI_RADIO_B__DATA_READBACK */
-    {2,40,0,0,8,0,0},        /* SPI_RADIO_B__ADDR */
-    {2,42,0,0,1,0,0},        /* SPI_RADIO_B__CS */
+    {2,33,0,0,8,0,0},        /* com_RADIO_A__DATA */
+    {2,34,0,0,8,1,0},        /* com_RADIO_A__DATA_READBACK */
+    {2,35,0,0,8,0,0},        /* com_RADIO_A__ADDR */
+    {2,37,0,0,1,0,0},        /* com_RADIO_A__CS */
+    {2,38,0,0,8,0,0},        /* com_RADIO_B__DATA */
+    {2,39,0,0,8,1,0},        /* com_RADIO_B__DATA_READBACK */
+    {2,40,0,0,8,0,0},        /* com_RADIO_B__ADDR */
+    {2,42,0,0,1,0,0},        /* com_RADIO_B__CS */
     {2,43,0,0,1,0,0},        /* RADIO_A_EN */
     {2,43,1,0,1,0,0},        /* RADIO_B_EN */
     {2,43,2,0,1,0,1},        /* RADIO_RST */
@@ -356,13 +356,13 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS] = {
     {2,77,0,0,4,1,0},        /* DBG_CHANN6_GAIN */
     {2,77,4,0,4,1,0},        /* DBG_CHANN7_GAIN */
     {2,78,0,0,4,1,0},        /* DBG_DEC_FILT_GAIN */
-    {2,79,0,0,3,1,0},        /* SPI_DATA_FIFO_PTR */
+    {2,79,0,0,3,1,0},        /* com_DATA_FIFO_PTR */
     {2,79,3,0,3,1,0},        /* PACKET_DATA_FIFO_PTR */
     {2,80,0,0,8,0,0},        /* DBG_ARB_MCU_RAM_ADDR */
     {2,81,0,0,8,0,0},        /* DBG_AGC_MCU_RAM_ADDR */
-    {2,82,0,0,1,0,0},        /* SPI_MASTER_CHIP_SELECT_POLARITY */
-    {2,82,1,0,1,0,0},        /* SPI_MASTER_CPOL */
-    {2,82,2,0,1,0,0},        /* SPI_MASTER_CPHA */
+    {2,82,0,0,1,0,0},        /* com_MASTER_CHIP_SELECT_POLARITY */
+    {2,82,1,0,1,0,0},        /* com_MASTER_CPOL */
+    {2,82,2,0,1,0,0},        /* com_MASTER_CPHA */
     {2,83,0,0,1,0,0},        /* SIG_GEN_ANALYSER_MUX_SEL */
     {2,84,0,0,1,0,0},        /* SIG_GEN_EN */
     {2,84,1,0,1,0,0},        /* SIG_ANALYSER_EN */
@@ -388,16 +388,16 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS] = {
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-void *lgw_spi_target = NULL; /*! generic pointer to the SPI device */
+void *lgw_com_target = NULL; /*! generic pointer to the SPI device */
 static int lgw_regpage = -1; /*! keep the value of the register page selected */
-uint8_t lgw_spi_mux_mode = 0; /*! current SPI mux mode used */
+uint8_t lgw_com_mux_mode = 0; /*! current SPI mux mode used */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
 int page_switch(uint8_t target) {
     lgw_regpage = PAGE_MASK & target;
-    lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, PAGE_ADDR, (uint8_t)lgw_regpage);
+    lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, PAGE_ADDR, (uint8_t)lgw_regpage);
     return LGW_REG_SUCCESS;
 }
 
@@ -417,21 +417,21 @@ bool check_fpga_version(uint8_t version) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int reg_w_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t reg_value) {
-    int spi_stat = LGW_REG_SUCCESS;
+int reg_w_align32(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, struct lgw_reg_s r, int32_t reg_value) {
+    int com_stat = LGW_REG_SUCCESS;
     int i, size_byte;
     uint8_t buf[4] = "\x00\x00\x00\x00";
 
     if ((r.leng == 8) && (r.offs == 0)) {
         /* direct write */
-        spi_stat += lgw_spi_w(spi_target, spi_mux_mode, spi_mux_target, r.addr, (uint8_t)reg_value);
+        com_stat += lgw_com_w(com_target, com_mux_mode, com_mux_target, r.addr, (uint8_t)reg_value);
     } else if ((r.offs + r.leng) <= 8) {
         /* single-byte read-modify-write, offs:[0-7], leng:[1-7] */
-        spi_stat += lgw_spi_r(spi_target, spi_mux_mode, spi_mux_target, r.addr, &buf[0]);
+        com_stat += lgw_com_r(com_target, com_mux_mode, com_mux_target, r.addr, &buf[0]);
         buf[1] = ((1 << r.leng) - 1) << r.offs; /* bit mask */
         buf[2] = ((uint8_t)reg_value) << r.offs; /* new data offsetted */
         buf[3] = (~buf[1] & buf[0]) | (buf[1] & buf[2]); /* mixing old & new data */
-        spi_stat += lgw_spi_w(spi_target, spi_mux_mode, spi_mux_target, r.addr, buf[3]);
+        com_stat += lgw_com_w(com_target, com_mux_mode, com_mux_target, r.addr, buf[3]);
     } else if ((r.offs == 0) && (r.leng > 0) && (r.leng <= 32)) {
         /* multi-byte direct write routine */
         size_byte = (r.leng + 7) / 8; /* add a byte if it's not an exact multiple of 8 */
@@ -441,20 +441,20 @@ int reg_w_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
             buf[i] = (uint8_t)(0x000000FF & reg_value);
             reg_value = (reg_value >> 8);
         }
-        spi_stat += lgw_spi_wb(spi_target, spi_mux_mode, spi_mux_target, r.addr, buf, size_byte); /* write the register in one burst */
+        com_stat += lgw_com_wb(com_target, com_mux_mode, com_mux_target, r.addr, buf, size_byte); /* write the register in one burst */
     } else {
         /* register spanning multiple memory bytes but with an offset */
         DEBUG_MSG("ERROR: REGISTER SIZE AND OFFSET ARE NOT SUPPORTED\n");
         return LGW_REG_ERROR;
     }
 
-    return spi_stat;
+    return com_stat;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target, struct lgw_reg_s r, int32_t *reg_value) {
-    int spi_stat = LGW_SPI_SUCCESS;
+int reg_r_align32(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, struct lgw_reg_s r, int32_t *reg_value) {
+    int com_stat = LGW_com_SUCCESS;
     uint8_t bufu[4] = "\x00\x00\x00\x00";
     int8_t *bufs = (int8_t *)bufu;
     int i, size_byte;
@@ -462,7 +462,7 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
 
     if ((r.offs + r.leng) <= 8) {
         /* read one byte, then shift and mask bits to get reg value with sign extension if needed */
-        spi_stat += lgw_spi_r(spi_target, spi_mux_mode, spi_mux_target, r.addr, &bufu[0]);
+        com_stat += lgw_com_r(com_target, com_mux_mode, com_mux_target, r.addr, &bufu[0]);
         bufu[1] = bufu[0] << (8 - r.leng - r.offs); /* left-align the data */
         if (r.sign == true) {
             bufs[2] = bufs[1] >> (8 - r.leng); /* right align the data with sign extension (ARITHMETIC right shift) */
@@ -473,7 +473,7 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
         }
     } else if ((r.offs == 0) && (r.leng > 0) && (r.leng <= 32)) {
         size_byte = (r.leng + 7) / 8; /* add a byte if it's not an exact multiple of 8 */
-        spi_stat += lgw_spi_rb(spi_target, spi_mux_mode, spi_mux_target, r.addr, bufu, size_byte);
+        com_stat += lgw_com_rb(com_target, com_mux_mode, com_mux_target, r.addr, bufu, size_byte);
         u = 0;
         for (i=(size_byte-1); i>=0; --i) {
             u = (uint32_t)bufu[i] + (u << 8); /* transform a 4-byte array into a 32 bit word */
@@ -490,7 +490,7 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
         return LGW_REG_ERROR;
     }
 
-    return spi_stat;
+    return com_stat;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -500,45 +500,45 @@ int reg_r_align32(void *spi_target, uint8_t spi_mux_mode, uint8_t spi_mux_target
 
 
 /* Concentrator connect */
-int lgw_connect(bool spi_only) {
-    int spi_stat = LGW_SPI_SUCCESS;
+int lgw_connect(bool com_only) {
+    int com_stat = LGW_com_SUCCESS;
     uint8_t u = 0;
   
 
     /* check SPI link status */
-    if (lgw_spi_target != NULL) {
+    if (lgw_com_target != NULL) {
         DEBUG_MSG("WARNING: concentrator was already connected\n");
-        lgw_spi_close(lgw_spi_target);
+        lgw_com_close(lgw_com_target);
     }
 
     /* open the SPI link */
-    spi_stat = lgw_spi_open(&lgw_spi_target);
-    if (spi_stat != LGW_SPI_SUCCESS) {
+    com_stat = lgw_com_open(&lgw_com_target);
+    if (com_stat != LGW_com_SUCCESS) {
         DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
         return LGW_REG_ERROR;
     }
     wait_ms(10);
-    if (spi_only == false ) {
+    if (com_only == false ) {
         /* Detect if the gateway has an FPGA with SPI mux header support */
         /* First, we assume there is an FPGA, and try to read its version */
-        spi_stat = lgw_spi_r(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, loregs[LGW_VERSION].addr, &u);
-        if (spi_stat != LGW_SPI_SUCCESS) {
+        com_stat = lgw_com_r(lgw_com_target, LGW_com_MUX_MODE1, LGW_com_MUX_TARGET_FPGA, loregs[LGW_VERSION].addr, &u);
+        if (com_stat != LGW_com_SUCCESS) {
             DEBUG_MSG("ERROR READING VERSION REGISTER\n");
             return LGW_REG_ERROR;
         }
         if (check_fpga_version(u) != true) {
             /* We failed to read expected FPGA version, so let's assume there is no FPGA */
             DEBUG_PRINTF("INFO: no FPGA detected or version not supported (v%u)\n", u);
-            lgw_spi_mux_mode = LGW_SPI_MUX_MODE0;
+            lgw_com_mux_mode = LGW_com_MUX_MODE0;
         } else {
             DEBUG_PRINTF("INFO: detected FPGA with SPI mux header (v%u)\n", u);
-            lgw_spi_mux_mode = LGW_SPI_MUX_MODE1;
+            lgw_com_mux_mode = LGW_com_MUX_MODE1;
            
         }
 
         /* check SX1301 version */
-        spi_stat = lgw_spi_r(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
-        if (spi_stat != LGW_SPI_SUCCESS) {
+        com_stat = lgw_com_r(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
+        if (com_stat != LGW_com_SUCCESS) {
             DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
             return LGW_REG_ERROR;
         }
@@ -548,8 +548,8 @@ int lgw_connect(bool spi_only) {
         }
 
         /* write 0 to the page/reset register */
-        spi_stat = lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
-        if (spi_stat != LGW_SPI_SUCCESS) {
+        com_stat = lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
+        if (com_stat != LGW_com_SUCCESS) {
             DEBUG_MSG("ERROR WRITING PAGE REGISTER\n");
             return LGW_REG_ERROR;
         } else {
@@ -565,12 +565,12 @@ int lgw_connect(bool spi_only) {
 
 /* Concentrator disconnect */
 int lgw_disconnect(void) {
-    if (lgw_spi_target != NULL) {
+    if (lgw_com_target != NULL) {
         
     
         lgw_reg_resetSTM32();
-        lgw_spi_close(lgw_spi_target);
-        lgw_spi_target = NULL;
+        lgw_com_close(lgw_com_target);
+        lgw_com_target = NULL;
         DEBUG_MSG("Note: success disconnecting the concentrator\n");
         return LGW_REG_SUCCESS;
     } else {
@@ -584,11 +584,11 @@ int lgw_disconnect(void) {
 /* soft-reset function */
 int lgw_soft_reset(void) {
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0)) {
+    if ((lgw_com_target == NULL) || (lgw_regpage < 0)) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
     }
-    lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, 0, 0x80); /* 1 -> SOFT_RESET bit */
+    lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, 0, 0x80); /* 1 -> SOFT_RESET bit */
     lgw_regpage = 0; /* reset the paging static variable */
     return LGW_REG_SUCCESS;
 }
@@ -605,7 +605,7 @@ int lgw_reg_check(FILE *f) {
     int i;
 
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0)) {
+    if ((lgw_com_target == NULL) || (lgw_regpage < 0)) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         fprintf(f, "ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
@@ -630,7 +630,7 @@ int lgw_reg_check(FILE *f) {
 
 /* Write to a register addressed by name */
 int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
-    int spi_stat = LGW_SPI_SUCCESS;
+    int com_stat = LGW_com_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -640,7 +640,7 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
     }
 
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0)) {
+    if ((lgw_com_target == NULL) || (lgw_regpage < 0)) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
     }
@@ -667,12 +667,12 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
 
     /* select proper register page if needed */
     if ((r.page != -1) && (r.page != lgw_regpage)) {
-        spi_stat += page_switch(r.page);
+        com_stat += page_switch(r.page);
     }
 
-    spi_stat += reg_w_align32(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r, reg_value);
+    com_stat += reg_w_align32(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, r, reg_value);
 
-    if (spi_stat != LGW_SPI_SUCCESS) {
+    if (com_stat != LGW_com_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
         return LGW_REG_ERROR;
     } else {
@@ -684,7 +684,7 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
 
 /* Read to a register addressed by name */
 int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
-    int spi_stat = LGW_SPI_SUCCESS;
+    int com_stat = LGW_com_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -695,7 +695,7 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
     }
 
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0)) {
+    if ((lgw_com_target == NULL) || (lgw_regpage < 0)) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
     }
@@ -705,12 +705,12 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
 
     /* select proper register page if needed */
     if ((r.page != -1) && (r.page != lgw_regpage)) {
-        spi_stat += page_switch(r.page);
+        com_stat += page_switch(r.page);
     }
 
-    spi_stat += reg_r_align32(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r, reg_value);
+    com_stat += reg_r_align32(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, r, reg_value);
 
-    if (spi_stat != LGW_SPI_SUCCESS) {
+    if (com_stat != LGW_com_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
         return LGW_REG_ERROR;
     } else {
@@ -722,7 +722,7 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
 
 /* Point to a register by name and do a burst write */
 int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
-    int spi_stat = LGW_SPI_SUCCESS;
+    int com_stat = LGW_com_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -737,7 +737,7 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0)) {
+    if ((lgw_com_target == NULL) || (lgw_regpage < 0)) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
     }
@@ -753,13 +753,13 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
 
     /* select proper register page if needed */
     if ((r.page != -1) && (r.page != lgw_regpage)) {
-        spi_stat += page_switch(r.page);
+        com_stat += page_switch(r.page);
     }
 
     /* do the burst write */
-    spi_stat += lgw_spi_wb(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r.addr, data, size);
+    com_stat += lgw_com_wb(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, r.addr, data, size);
 
-    if (spi_stat != LGW_SPI_SUCCESS) {
+    if (com_stat != LGW_com_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST WRITE\n");
         return LGW_REG_ERROR;
     } else {
@@ -771,7 +771,7 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
 
 /* Point to a register by name and do a burst read */
 int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
-    int spi_stat = LGW_SPI_SUCCESS;
+    int com_stat = LGW_com_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -786,7 +786,7 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* check if SPI is initialised */
-    if ((lgw_spi_target == NULL) || (lgw_regpage < 0)) {
+    if ((lgw_com_target == NULL) || (lgw_regpage < 0)) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
     }
@@ -796,13 +796,13 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
 
     /* select proper register page if needed */
     if ((r.page != -1) && (r.page != lgw_regpage)) {
-        spi_stat += page_switch(r.page);
+        com_stat += page_switch(r.page);
     }
 
     /* do the burst read */
-    spi_stat += lgw_spi_rb(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_SX1301, r.addr, data, size);
+    com_stat += lgw_com_rb(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, r.addr, data, size);
 
-    if (spi_stat != LGW_SPI_SUCCESS) {
+    if (com_stat != LGW_com_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST READ\n");
         return LGW_REG_ERROR;
     } else {
@@ -817,52 +817,52 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
 /*Embedded HAL into STM32 part */
 int lgw_reg_receive_cmd( uint8_t max_packet, uint8_t *data) {
 
- return(lgw_receive_cmd(lgw_spi_target,max_packet, data));
+ return(lgw_receive_cmd(lgw_com_target,max_packet, data));
 
 } 
 
 int lgw_reg_rxrf_setconfcmd(  uint8_t rfchain, uint8_t *data,uint16_t size)
 {
- return(lgw_rxrf_setconfcmd(lgw_spi_target,rfchain,data, size));
+ return(lgw_rxrf_setconfcmd(lgw_com_target,rfchain,data, size));
 }
 int lgw_reg_rxif_setconfcmd(  uint8_t ifchain, uint8_t *data,uint16_t size)
 {
-return (lgw_rxif_setconfcmd(lgw_spi_target, ifchain, data,size));
+return (lgw_rxif_setconfcmd(lgw_com_target, ifchain, data,size));
 }
 int lgw_reg_sendconfcmd(uint8_t *data,uint16_t size)
 {
-return(lgw_sendconfcmd(lgw_spi_target,data,size));
+return(lgw_sendconfcmd(lgw_com_target,data,size));
 }
 int lgw_txgainreg_setconfcmd( uint8_t *data,uint16_t size)
 {
-return(lgw_txgain_setconfcmd(lgw_spi_target, data,size));
+return(lgw_txgain_setconfcmd(lgw_com_target, data,size));
 }
 int lgw_regtrigger(uint32_t *data)
 {
-return(lgw_trigger(lgw_spi_target, 0,data));
+return(lgw_trigger(lgw_com_target, 0,data));
 }
 int lgw_reg_board_setconfcmd(uint8_t *data,uint16_t size)
 {
-return(lgw_boardconfcmd(lgw_spi_target,data,size));
+return(lgw_boardconfcmd(lgw_com_target,data,size));
 }
 int lgw_reg_calibration_snapshot(void)
 {
-return(lgw_calibration_snapshot(lgw_spi_target));
+return(lgw_calibration_snapshot(lgw_com_target));
 }
 
 int lgw_reg_resetSTM32(void)
 {
-return(lgw_resetSTM32(lgw_spi_target));
+return(lgw_resetSTM32(lgw_com_target));
 }
 
 int lgw_reg_GOTODFU(void)
 {
-return(lgw_GOTODFU(lgw_spi_target));
+return(lgw_GOTODFU(lgw_com_target));
 }
 
 int lgw_reg_GetUniqueId(uint8_t * uid)
 {
-return( lgw_GetUniqueId(lgw_spi_target, uid));
+return( lgw_GetUniqueId(lgw_com_target, uid));
 }
 
 /* --- EOF ------------------------------------------------------------------ */

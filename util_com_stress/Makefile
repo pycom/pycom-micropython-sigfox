@@ -1,6 +1,6 @@
 ### Application-specific constants
 
-APP_NAME := util_spi_stress
+APP_NAME := util_com_stress
 
 ### Environment constants 
 

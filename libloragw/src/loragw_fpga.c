@@ -23,7 +23,7 @@ Maintainer: Michael Coracin
 #include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf */
 
-#include "loragw_spi.h"
+#include "loragw_com.h"
 #include "loragw_aux.h"
 #include "loragw_hal.h"
 #include "loragw_reg.h"
@@ -96,8 +96,8 @@ const struct lgw_reg_s fpga_regs[LGW_FPGA_TOTALREGS] = {
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-extern void *lgw_spi_target; /*! generic pointer to the SPI device */
-extern uint8_t lgw_spi_mux_mode; /*! current SPI mux mode used */
+extern void *lgw_com_target; /*! generic pointer to the SPI device */
+extern uint8_t lgw_com_mux_mode; /*! current SPI mux mode used */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
@@ -113,8 +113,8 @@ int lgw_fpga_configure(uint32_t tx_notch_freq) {
     int32_t val, notch_offset_reg;
     bool tx_filter_support, spectral_scan_support, lbt_support;
       /* FPGA Soft Reset */
-    lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 1);
-    lgw_spi_w(lgw_spi_target, lgw_spi_mux_mode, LGW_SPI_MUX_TARGET_FPGA, 0, 0);
+    lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_FPGA, 0, 1);
+    lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_FPGA, 0, 0);
     
     /* Check input parameters */
     if ((tx_notch_freq < LGW_MIN_NOTCH_FREQ) || (tx_notch_freq > LGW_MAX_NOTCH_FREQ)) {
@@ -176,7 +176,7 @@ int lgw_fpga_configure(uint32_t tx_notch_freq) {
 
 /* Write to a register addressed by name */
 int lgw_fpga_reg_w(uint16_t register_id, int32_t reg_value) {
-    int spi_stat = LGW_SPI_SUCCESS;
+    int com_stat = LGW_com_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -186,7 +186,7 @@ int lgw_fpga_reg_w(uint16_t register_id, int32_t reg_value) {
     }
 
     /* check if SPI is initialised */
-    if (lgw_spi_target == NULL) {
+    if (lgw_com_target == NULL) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
     }
@@ -200,9 +200,9 @@ int lgw_fpga_reg_w(uint16_t register_id, int32_t reg_value) {
         return LGW_REG_ERROR;
     }
 
-    spi_stat += reg_w_align32(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r, reg_value);
+    com_stat += reg_w_align32(lgw_com_target, LGW_com_MUX_MODE1, LGW_com_MUX_TARGET_FPGA, r, reg_value);
 
-    if (spi_stat != LGW_SPI_SUCCESS) {
+    if (com_stat != LGW_com_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
         return LGW_REG_ERROR;
     } else {
@@ -214,7 +214,7 @@ int lgw_fpga_reg_w(uint16_t register_id, int32_t reg_value) {
 
 /* Read to a register addressed by name */
 int lgw_fpga_reg_r(uint16_t register_id, int32_t *reg_value) {
-    int spi_stat = LGW_SPI_SUCCESS;
+    int com_stat = LGW_com_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -225,7 +225,7 @@ int lgw_fpga_reg_r(uint16_t register_id, int32_t *reg_value) {
     }
 
     /* check if SPI is initialised */
-    if (lgw_spi_target == NULL) {
+    if (lgw_com_target == NULL) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
     }
@@ -233,9 +233,9 @@ int lgw_fpga_reg_r(uint16_t register_id, int32_t *reg_value) {
     /* get register struct from the struct array */
     r = fpga_regs[register_id];
 
-    spi_stat += reg_r_align32(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r, reg_value);
+    com_stat += reg_r_align32(lgw_com_target, LGW_com_MUX_MODE1, LGW_com_MUX_TARGET_FPGA, r, reg_value);
 
-    if (spi_stat != LGW_SPI_SUCCESS) {
+    if (com_stat != LGW_com_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
         return LGW_REG_ERROR;
     } else {
@@ -247,7 +247,7 @@ int lgw_fpga_reg_r(uint16_t register_id, int32_t *reg_value) {
 
 /* Point to a register by name and do a burst write */
 int lgw_fpga_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
-    int spi_stat = LGW_SPI_SUCCESS;
+    int com_stat = LGW_com_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -262,7 +262,7 @@ int lgw_fpga_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* check if SPI is initialised */
-    if (lgw_spi_target == NULL) {
+    if (lgw_com_target == NULL) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
     }
@@ -277,9 +277,9 @@ int lgw_fpga_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* do the burst write */
-    spi_stat += lgw_spi_wb(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r.addr, data, size);
+    com_stat += lgw_com_wb(lgw_com_target, LGW_com_MUX_MODE1, LGW_com_MUX_TARGET_FPGA, r.addr, data, size);
 
-    if (spi_stat != LGW_SPI_SUCCESS) {
+    if (com_stat != LGW_com_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST WRITE\n");
         return LGW_REG_ERROR;
     } else {
@@ -291,7 +291,7 @@ int lgw_fpga_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
 
 /* Point to a register by name and do a burst read */
 int lgw_fpga_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
-    int spi_stat = LGW_SPI_SUCCESS;
+    int com_stat = LGW_com_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -306,7 +306,7 @@ int lgw_fpga_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* check if SPI is initialised */
-    if (lgw_spi_target == NULL) {
+    if (lgw_com_target == NULL) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
     }
@@ -315,9 +315,9 @@ int lgw_fpga_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     r = fpga_regs[register_id];
 
     /* do the burst read */
-    spi_stat += lgw_spi_rb(lgw_spi_target, LGW_SPI_MUX_MODE1, LGW_SPI_MUX_TARGET_FPGA, r.addr, data, size);
+    com_stat += lgw_com_rb(lgw_com_target, LGW_com_MUX_MODE1, LGW_com_MUX_TARGET_FPGA, r.addr, data, size);
 
-    if (spi_stat != LGW_SPI_SUCCESS) {
+    if (com_stat != LGW_com_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST READ\n");
         return LGW_REG_ERROR;
     } else {
