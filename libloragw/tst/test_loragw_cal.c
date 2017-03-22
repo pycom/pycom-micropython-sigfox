@@ -141,7 +141,7 @@ int main(int argc, char **argv)
     uint8_t clocksource = 1; /* Radio B is source by default */
     uint8_t tx_enable = 0;
     int nb_cal = 5;
-
+    lgw_connect(false);
     /* parse command line options */
     while ((i = getopt (argc, argv, "ha:b:r:n:k:t:")) != -1) {
         switch (i) {

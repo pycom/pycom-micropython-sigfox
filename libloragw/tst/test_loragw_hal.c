@@ -106,7 +106,7 @@ int main(int argc, char **argv)
     uint8_t status_var = 0;
     double xd = 0.0;
     int xi = 0;
-
+    lgw_connect(false);
     /* parse command line options */
     while ((i = getopt (argc, argv, "ha:b:t:r:k:")) != -1) {
         switch (i) {

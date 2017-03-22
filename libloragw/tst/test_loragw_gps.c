@@ -103,7 +103,7 @@ int main()
         printf("ERROR: IMPOSSIBLE TO ENABLE GPS\n");
         exit(EXIT_FAILURE);
     }
-
+    lgw_connect(false);
     /* start concentrator */
     lgw_start();
 
