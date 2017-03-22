@@ -2464,7 +2464,7 @@ static void ProcessMacCommands( uint8_t *payload, uint8_t macIndex, uint8_t comm
                             channelsMask[3] = 0x0000;
 
                             // We must NOT disable all the channels
-                            if ( chMask != 0 )
+                            if ( chMask & 0x00FF != 0 )
                             {
                                 // Set the 500 KHz channel mask equal to chMask
                                 channelsMask[4] = chMask;
