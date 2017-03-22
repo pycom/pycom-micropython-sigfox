@@ -20,6 +20,7 @@
 #include "py/mperrno.h"
 #include "mpexception.h"
 #include "pybioctl.h"
+#include "esp32_mphal.h"
 
 #include "modnetwork.h"
 #include "modusocket.h"
@@ -28,6 +29,10 @@
 #include "sigfox/radio.h"
 #include "sigfox/manufacturer_api.h"
 #include "sigfox/manuf_api.h"
+
+#include "ff.h"
+#include "diskio.h"
+#include "sflash_diskio.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -39,53 +44,21 @@
 
 #include "sigfox/cc112x_easy_link_reg_config.h"
 
+
+#define FSK_FREQUENCY_MIN                            863000000   // Hz
+#define FSK_FREQUENCY_MAX                            928000000   // Hz
+
 Spi_t sigfox_spi = {};
 sigfox_settings_t sigfox_settings = {};
 
 sfx_u8 uplink_spectrum_access;
 
-#define FSK_FREQUENCY_MIN                            863000000   // Hz
-#define FSK_FREQUENCY_MAX                            928000000   // Hz
-
-typedef enum {
-    E_SIGFOX_STATE_NOINIT = 0,
-    E_SIGFOX_STATE_IDLE,
-    E_SIGFOX_STATE_RX,
-    E_SIGFOX_STATE_TX,
-    E_SIGFOX_STATE_TEST
-} sigfox_state_t;
-
-typedef enum {
-    E_SIGFOX_RCZ1 = 0,
-    E_SIGFOX_RCZ2,
-    E_SIGFOX_RCZ3,
-    E_SIGFOX_RCZ4,
-} sigfox_rcz_t;
-
-typedef enum {
-    E_SIGFOX_MODE_SIGFOX = 0,
-    E_SIGFOX_MODE_FSK
-} sigfox_mode_t;
-
-typedef struct {
-  mp_obj_base_t     base;
-  sigfox_mode_t     mode;
-  sigfox_state_t    state;
-  uint32_t          frequency;
-} sigfox_obj_t;
-
-typedef struct {
-    uint32_t    index;
-    uint32_t    size;
-    uint8_t     data[FSK_TX_PAYLOAD_SIZE_MAX + 4];
-} sigfox_partial_rx_packet_t;
-
+sigfox_obj_t sigfox_obj;
 
 static QueueHandle_t xCmdQueue;
 static QueueHandle_t xRxQueue;
 static EventGroupHandle_t sigfoxEvents;
 
-static sigfox_obj_t sigfox_obj;
 static sigfox_partial_rx_packet_t sigfox_partial_rx_packet;
 static sfx_rcz_t all_rcz[] = {RCZ1, RCZ2, RCZ3, RCZ4};
 static uint32_t sfx_rcz_id;
@@ -111,13 +84,6 @@ STATIC sfx_u32 rcz_frequencies[4][2] = {
 };
 
 static void TASK_Sigfox (void *pvParameters);
-static int sigfox_socket_socket (mod_network_socket_obj_t *s, int *_errno);
-static void sigfox_socket_close (mod_network_socket_obj_t *s);
-static int sigfox_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno);
-static int sigfox_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno);
-static int sigfox_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno);
-static int sigfox_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
-static int sigfox_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 
 static void fsk_register_config (void);
 static void fsk_manual_calibration (void);
@@ -195,6 +161,114 @@ void modsigfox_init0 (void) {
     SpiInit( &sigfox_spi, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, RADIO_NSS );
 
     xTaskCreate(TASK_Sigfox, "Sigfox", SIGFOX_STACK_SIZE, NULL, SIGFOX_TASK_PRIORITY, NULL);
+}
+
+void sigfox_update_id (void) {
+    #define SFX_ID_PATH          "/flash/sys/sfx.id"
+
+    FILINFO fno;
+
+    if (FR_OK == f_stat(SFX_ID_PATH, &fno)) {
+        FIL fp;
+        f_open(&fp, SFX_ID_PATH, FA_READ);
+        UINT sz_out;
+        uint8_t id[4];
+        FRESULT res = f_read(&fp, id, sizeof(id), &sz_out);
+        if (res == FR_OK) {
+            if (config_set_sigfox_id(id)) {
+                mp_hal_delay_ms(250);
+                ets_printf("SFX ID write OK\n");
+            } else {
+                res = FR_DENIED;    // just anything different than FR_OK
+            }
+        }
+        f_close(&fp);
+        if (res == FR_OK) {
+            // delete the mac address file
+            f_unlink(SFX_ID_PATH);
+        }
+    }
+}
+
+void sigfox_update_pac (void) {
+    #define SFX_PAC_PATH          "/flash/sys/sfx.pac"
+
+    FILINFO fno;
+
+    if (FR_OK == f_stat(SFX_PAC_PATH, &fno)) {
+        FIL fp;
+        f_open(&fp, SFX_PAC_PATH, FA_READ);
+        UINT sz_out;
+        uint8_t pac[8];
+        FRESULT res = f_read(&fp, pac, sizeof(pac), &sz_out);
+        if (res == FR_OK) {
+            if (config_set_sigfox_pac(pac)) {
+                mp_hal_delay_ms(250);
+                ets_printf("SFX PAC write OK\n");
+            } else {
+                res = FR_DENIED;    // just anything different than FR_OK
+            }
+        }
+        f_close(&fp);
+        if (res == FR_OK) {
+            // delete the mac address file
+            f_unlink(SFX_PAC_PATH);
+        }
+    }
+}
+
+void sigfox_update_private_key (void) {
+    #define SFX_PRIVATE_KEY_PATH          "/flash/sys/sfx_private.key"
+
+    FILINFO fno;
+
+    if (FR_OK == f_stat(SFX_PRIVATE_KEY_PATH, &fno)) {
+        FIL fp;
+        f_open(&fp, SFX_PRIVATE_KEY_PATH, FA_READ);
+        UINT sz_out;
+        uint8_t key[16];
+        FRESULT res = f_read(&fp, key, sizeof(key), &sz_out);
+        if (res == FR_OK) {
+            if (config_set_sigfox_private_key(key)) {
+                mp_hal_delay_ms(250);
+                ets_printf("SFX private key write OK\n");
+            } else {
+                res = FR_DENIED;    // just anything different than FR_OK
+            }
+        }
+        f_close(&fp);
+        if (res == FR_OK) {
+            // delete the mac address file
+            f_unlink(SFX_PRIVATE_KEY_PATH);
+        }
+    }
+}
+
+void sigfox_update_public_key (void) {
+    #define SFX_PUBLIC_KEY_PATH          "/flash/sys/sfx_public.key"
+
+    FILINFO fno;
+
+    if (FR_OK == f_stat(SFX_PUBLIC_KEY_PATH, &fno)) {
+        FIL fp;
+        f_open(&fp, SFX_PUBLIC_KEY_PATH, FA_READ);
+        UINT sz_out;
+        uint8_t key[16];
+        FRESULT res = f_read(&fp, key, sizeof(key), &sz_out);
+        if (res == FR_OK) {
+            if (config_set_sigfox_public_key(key)) {
+                mp_hal_delay_ms(250);
+                ets_printf("SFX public key write OK\n");
+            } else {
+                res = FR_DENIED;    // just anything different than FR_OK
+            }
+        }
+        f_close(&fp);
+        if (res == FR_OK) {
+            // delete the mac address file
+            f_unlink(SFX_PUBLIC_KEY_PATH);
+        }
+    }
 }
 
 /******************************************************************************
@@ -653,7 +727,7 @@ static void sigfox_validate_frequency (uint32_t frequency) {
 /******************************************************************************/
 // Micro Python bindings; Sigfox class
 
-STATIC mp_obj_t sigfox_init_helper(sigfox_obj_t *self, const mp_arg_val_t *args) {
+mp_obj_t sigfox_init_helper(sigfox_obj_t *self, const mp_arg_val_t *args) {
     sigfox_cmd_rx_data_t cmd_rx_data;
     uint8_t mode = args[0].u_int;
     uint8_t rcz = args[1].u_int;
@@ -677,76 +751,30 @@ STATIC mp_obj_t sigfox_init_helper(sigfox_obj_t *self, const mp_arg_val_t *args)
     cmd_rx_data.cmd_u.info.init.mode = mode;
     cmd_rx_data.cmd_u.info.init.rcz = rcz;
     sigfox_send_cmd (&cmd_rx_data);
-    sigfox_obj.state = E_SIGFOX_STATE_IDLE;
+    self->state = E_SIGFOX_STATE_IDLE;
 
     return mp_const_none;
 }
 
-STATIC const mp_arg_t sigfox_init_args[] = {
-    { MP_QSTR_id,                             MP_ARG_INT,   {.u_int  = 0} },
-    { MP_QSTR_mode,                           MP_ARG_INT,   {.u_int  = E_SIGFOX_MODE_SIGFOX} },
-    { MP_QSTR_rcz,                            MP_ARG_INT,   {.u_int  = E_SIGFOX_RCZ1} },
-    { MP_QSTR_frequency,     MP_ARG_KW_ONLY | MP_ARG_OBJ,   {.u_obj  = mp_const_none} },
-};
-
-STATIC mp_obj_t sigfox_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
-    // parse args
-    mp_map_t kw_args;
-    mp_map_init_fixed_table(&kw_args, n_kw, all_args + n_args);
-    // parse args
-    mp_arg_val_t args[MP_ARRAY_SIZE(sigfox_init_args)];
-    mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(args), sigfox_init_args, args);
-
-    // setup the object
-    sigfox_obj_t *self = &sigfox_obj;
-    self->base.type = (mp_obj_t)&mod_network_nic_type_sigfox;
-
-    // check the peripheral id
-    if (args[0].u_int != 0) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
-    }
-
-    // run the constructor if the peripehral is not initialized or extra parameters are given
-    if (n_kw > 0 || self->state == E_SIGFOX_STATE_NOINIT) {
-        // start the peripheral
-        sigfox_init_helper(self, &args[1]);
-        // register it as a network card
-        mod_network_register_nic(self);
-    }
-
-    return (mp_obj_t)self;
-}
-
-STATIC mp_obj_t sigfox_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    // parse args
-    mp_arg_val_t args[MP_ARRAY_SIZE(sigfox_init_args) - 1];
-    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &sigfox_init_args[1], args);
-    return sigfox_init_helper(pos_args[0], args);
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(sigfox_init_obj, 1, sigfox_init);
-
-STATIC mp_obj_t sigfox_mac(mp_obj_t self_in) {
+mp_obj_t sigfox_mac(mp_obj_t self_in) {
     uint8_t mac[8];
     config_get_lpwan_mac(mac);
     return mp_obj_new_bytes((const byte *)mac, sizeof(mac));
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(sigfox_mac_obj, sigfox_mac);
 
-STATIC mp_obj_t sigfox_id(mp_obj_t self_in) {
+mp_obj_t sigfox_id(mp_obj_t self_in) {
     uint8_t id[4];
     config_get_sigfox_id(id);
     return mp_obj_new_bytes((const byte *)id, sizeof(id));
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(sigfox_id_obj, sigfox_id);
 
-STATIC mp_obj_t sigfox_pac(mp_obj_t self_in) {
+mp_obj_t sigfox_pac(mp_obj_t self_in) {
     uint8_t pac[8];
     config_get_sigfox_pac(pac);
     return mp_obj_new_bytes((const byte *)pac, sizeof(pac));
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(sigfox_pac_obj, sigfox_pac);
 
-STATIC mp_obj_t sigfox_test_mode(mp_obj_t self_in, mp_obj_t mode, mp_obj_t config) {
+mp_obj_t sigfox_test_mode(mp_obj_t self_in, mp_obj_t mode, mp_obj_t config) {
     sigfox_cmd_rx_data_t cmd_rx_data;
     uint32_t _mode = mp_obj_get_int(mode);
     uint32_t _config = mp_obj_get_int(config);
@@ -761,9 +789,8 @@ STATIC mp_obj_t sigfox_test_mode(mp_obj_t self_in, mp_obj_t mode, mp_obj_t confi
     sigfox_send_cmd (&cmd_rx_data);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_3(sigfox_test_mode_obj, sigfox_test_mode);
 
-STATIC mp_obj_t sigfox_cw(mp_obj_t self_in, mp_obj_t frequency, mp_obj_t start) {
+mp_obj_t sigfox_cw(mp_obj_t self_in, mp_obj_t frequency, mp_obj_t start) {
     sigfox_cmd_rx_data_t cmd_rx_data;
     uint32_t _frequency = mp_obj_get_int(frequency);
 
@@ -778,18 +805,16 @@ STATIC mp_obj_t sigfox_cw(mp_obj_t self_in, mp_obj_t frequency, mp_obj_t start) 
     sigfox_send_cmd (&cmd_rx_data);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_3(sigfox_cw_obj, sigfox_cw);
 
-STATIC mp_obj_t sigfox_frequencies(mp_obj_t self_in) {
+mp_obj_t sigfox_frequencies(mp_obj_t self_in) {
     mp_obj_t tuple[2];
     tuple[0] = mp_obj_new_int(rcz_frequencies[sfx_rcz_id][0]);
     tuple[1] = mp_obj_new_int(rcz_frequencies[sfx_rcz_id][1]);
 
     return mp_obj_new_tuple(2, tuple);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(sigfox_frequencies_obj, sigfox_frequencies);
 
-STATIC mp_obj_t sigfox_config(mp_uint_t n_args, const mp_obj_t *args) {
+mp_obj_t sigfox_config(mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args == 1) {
         if (sfx_rcz_id > 0) {
             mp_obj_t tuple[4];
@@ -822,9 +847,8 @@ STATIC mp_obj_t sigfox_config(mp_uint_t n_args, const mp_obj_t *args) {
         }
     }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(sigfox_config_obj, 1, 2, sigfox_config);
 
-STATIC mp_obj_t sigfox_public_key(mp_uint_t n_args, const mp_obj_t *args) {
+mp_obj_t sigfox_public_key(mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args == 1) {
         if (usePublicKey == SFX_TRUE) {
             return mp_const_true;
@@ -839,9 +863,8 @@ STATIC mp_obj_t sigfox_public_key(mp_uint_t n_args, const mp_obj_t *args) {
         return mp_const_none;
     }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(sigfox_public_key_obj, 1, 2, sigfox_public_key);
 
-STATIC mp_obj_t sigfox_rssi_offset(mp_uint_t n_args, const mp_obj_t *args) {
+mp_obj_t sigfox_rssi_offset(mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args == 1) {
         int16_t rssi_offset;
         if (SFX_ERR_MANUF_NONE != MANUF_API_get_nv_mem(SFX_NVMEM_RSSI, (sfx_u16 *)&rssi_offset)) {
@@ -855,9 +878,8 @@ STATIC mp_obj_t sigfox_rssi_offset(mp_uint_t n_args, const mp_obj_t *args) {
         return mp_const_none;
     }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(sigfox_rssi_offset_obj, 1, 2, sigfox_rssi_offset);
 
-STATIC mp_obj_t sigfox_freq_offset(mp_uint_t n_args, const mp_obj_t *args) {
+mp_obj_t sigfox_freq_offset(mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args == 1) {
         int16_t freq_offset;
         if (SFX_ERR_MANUF_NONE != MANUF_API_get_nv_mem(SFX_NVMEM_FREQ, (sfx_u16 *)&freq_offset)) {
@@ -875,9 +897,8 @@ STATIC mp_obj_t sigfox_freq_offset(mp_uint_t n_args, const mp_obj_t *args) {
         return mp_const_none;
     }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(sigfox_freq_offset_obj, 1, 2, sigfox_freq_offset);
 
-STATIC mp_obj_t sigfox_version(mp_obj_t self_in) {
+mp_obj_t sigfox_version(mp_obj_t self_in) {
     sfx_u8 *ptr;
     sfx_u8 size;
 
@@ -886,9 +907,8 @@ STATIC mp_obj_t sigfox_version(mp_obj_t self_in) {
     }
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(sigfox_version_obj, sigfox_version);
 
-STATIC mp_obj_t sigfox_info(mp_obj_t self_in) {
+mp_obj_t sigfox_info(mp_obj_t self_in) {
     sfx_u8 info;
 
     if (sfx_rcz_id > 0) {
@@ -907,9 +927,8 @@ STATIC mp_obj_t sigfox_info(mp_obj_t self_in) {
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(sigfox_info_obj, sigfox_info);
 
-STATIC mp_obj_t sigfox_reset(mp_obj_t self_in) {
+mp_obj_t sigfox_reset(mp_obj_t self_in) {
     sfx_u8 info;
     // only for RCZ2 and RCZ4
     if (sfx_rcz_id == 1 || sfx_rcz_id == 3) {
@@ -923,59 +942,11 @@ STATIC mp_obj_t sigfox_reset(mp_obj_t self_in) {
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(sigfox_reset_obj, sigfox_reset);
-
-
-STATIC const mp_map_elem_t sigfox_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&sigfox_init_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&sigfox_mac_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_id),                  (mp_obj_t)&sigfox_id_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_pac),                 (mp_obj_t)&sigfox_pac_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_test_mode),           (mp_obj_t)&sigfox_test_mode_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_cw),                  (mp_obj_t)&sigfox_cw_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_frequencies),         (mp_obj_t)&sigfox_frequencies_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_config),              (mp_obj_t)&sigfox_config_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_public_key),          (mp_obj_t)&sigfox_public_key_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_version),             (mp_obj_t)&sigfox_version_obj },
-    // { MP_OBJ_NEW_QSTR(MP_QSTR_rssi),                (mp_obj_t)&sigfox_rssi_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_rssi_offset),         (mp_obj_t)&sigfox_rssi_offset_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_freq_offset),         (mp_obj_t)&sigfox_freq_offset_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_info),                (mp_obj_t)&sigfox_info_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_reset),               (mp_obj_t)&sigfox_reset_obj },
-
-    { MP_OBJ_NEW_QSTR(MP_QSTR_SIGFOX),              MP_OBJ_NEW_SMALL_INT(E_SIGFOX_MODE_SIGFOX) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_FSK),                 MP_OBJ_NEW_SMALL_INT(E_SIGFOX_MODE_FSK) },
-
-    { MP_OBJ_NEW_QSTR(MP_QSTR_RCZ1),                MP_OBJ_NEW_SMALL_INT(E_SIGFOX_RCZ1) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_RCZ2),                MP_OBJ_NEW_SMALL_INT(E_SIGFOX_RCZ2) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_RCZ3),                MP_OBJ_NEW_SMALL_INT(E_SIGFOX_RCZ3) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_RCZ4),                MP_OBJ_NEW_SMALL_INT(E_SIGFOX_RCZ4) },
-};
-
-STATIC MP_DEFINE_CONST_DICT(sigfox_locals_dict, sigfox_locals_dict_table);
-
-const mod_network_nic_type_t mod_network_nic_type_sigfox = {
-    .base = {
-        { &mp_type_type },
-        .name = MP_QSTR_Sigfox,
-        .make_new = sigfox_make_new,
-        .locals_dict = (mp_obj_t)&sigfox_locals_dict,
-     },
-
-    .n_socket = sigfox_socket_socket,
-    .n_close = sigfox_socket_close,
-    .n_send = sigfox_socket_send,
-    .n_recv = sigfox_socket_recv,
-    .n_settimeout = sigfox_socket_settimeout,
-    .n_setsockopt = sigfox_socket_setsockopt,
-    .n_ioctl = sigfox_socket_ioctl,
-};
-
 
 ///******************************************************************************/
 //// Micro Python bindings; Sigfox socket
 
-static int sigfox_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
+int sigfox_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
     if (sigfox_obj.state == E_SIGFOX_STATE_NOINIT) {
         *_errno = MP_ENETDOWN;
         return -1;
@@ -987,14 +958,14 @@ static int sigfox_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
     return 0;
 }
 
-static void sigfox_socket_close (mod_network_socket_obj_t *s) {
+void sigfox_socket_close (mod_network_socket_obj_t *s) {
     // this is to prevent the finalizer to close a socket that failed during creation
     if (s->sock_base.sd > 0) {
         s->sock_base.sd = -1;
     }
 }
 
-static int sigfox_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno) {
+int sigfox_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno) {
     sigfox_cmd_rx_data_t cmd_rx_data;
     SIGFOX_CHECK_SOCKET(s);
 
@@ -1049,7 +1020,7 @@ static int sigfox_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_u
     return len;
 }
 
-static int sigfox_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno) {
+int sigfox_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno) {
     SIGFOX_CHECK_SOCKET(s);
     int ret = sigfox_recv (buf, len, s->sock_base.timeout);
     if (ret < 0) {
@@ -1059,7 +1030,7 @@ static int sigfox_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t
     return ret;
 }
 
-static int sigfox_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno) {
+int sigfox_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno) {
     SIGFOX_CHECK_SOCKET(s);
     if (level != SOL_SIGFOX) {
         *_errno = MP_EOPNOTSUPP;
@@ -1086,13 +1057,13 @@ static int sigfox_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level
     return 0;
 }
 
-static int sigfox_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno) {
+int sigfox_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno) {
     SIGFOX_CHECK_SOCKET(s);
     s->sock_base.timeout = timeout_ms;
     return 0;
 }
 
-static int sigfox_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno) {
+int sigfox_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno) {
     mp_int_t ret = 0;
 
     SIGFOX_CHECK_SOCKET(s);

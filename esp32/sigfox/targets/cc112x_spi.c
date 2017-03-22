@@ -48,7 +48,7 @@
 #include "hal_types.h"
 #include "cc112x_spi.h"
 
-#include "mods/modsigfox.h"
+#include "sigfox/modsigfox.h"
 #include "lora/system/spi.h"
 /******************************************************************************
  * FUNCTIONS

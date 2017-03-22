@@ -54,7 +54,6 @@
 #include "sigfox_api.h"
 #include "timer.h"
 
-#include "mods/modsigfox.h"
 #include "lora/system/spi.h"
 #include "modsigfox.h"
 

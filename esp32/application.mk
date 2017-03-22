@@ -134,10 +134,6 @@ APP_MODS_LORA_SRC_C = $(addprefix mods/,\
 	modlora.c \
 	)
 
-APP_MODS_SIGFOX_SRC_C = $(addprefix mods/,\
-	modsigfox.c \
-	)
-
 APP_STM_SRC_C = $(addprefix stmhal/,\
 	bufhelper.c \
 	builtin_open.c \
@@ -198,6 +194,11 @@ APP_SIGFOX_SRC_C = $(addprefix sigfox/,\
 	ti_aes_128.c \
 	timer.c \
 	transmission.c \
+	modsigfox.c \
+	)
+
+APP_SIGFOX_MOD_SRC_C = $(addprefix mods/,\
+	modsigfox_api.c \
 	)
 
 APP_SIGFOX_TARGET_SRC_C = $(addprefix sigfox/targets/,\
@@ -228,12 +229,16 @@ BOOT_SRC_C = $(addprefix bootloader/,\
 	gpio.c \
 	)
 
+SFX_OBJ =
+
 OBJ = $(PY_O)
 ifeq ($(BOARD), LOPY)
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1272_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
 endif
 ifeq ($(BOARD), SIPY)
-OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_C:.c=.o) $(APP_SIGFOX_TARGET_SRC_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o) $(APP_MODS_SIGFOX_SRC_C:.c=.o))
+SFX_OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_C:.c=.o) $(APP_SIGFOX_TARGET_SRC_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o))
+OBJ += $(SFX_OBJ)
+OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
@@ -249,7 +254,7 @@ ifeq ($(BOARD), LOPY)
 SRC_QSTR += $(APP_MODS_LORA_SRC_C)
 endif
 ifeq ($(BOARD), SIPY)
-SRC_QSTR += $(APP_MODS_SIGFOX_SRC_C)
+SRC_QSTR += $(APP_SIGFOX_MOD_SRC_C)
 endif
 
 # Append any auto-generated sources that are needed by sources listed in
@@ -353,15 +358,31 @@ $(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
 	$(ECHO) "IMAGE $@"
 	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE) -o $@ $<
 else
-$(BUILD)/application.a: $(OBJ)
+
+ifeq ($(BOARD), SIPY)
+$(BUILD)/sigfox/sigfox.a: $(SFX_OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
 
+$(BUILD)/application.a: | $(BUILD)/sigfox/sigfox.a
+endif
+
+$(BUILD)/application.a: $(OBJ)
+	$(ECHO) "AR $@"
+	$(Q) rm -f $@
+	$(Q) $(AR) cru $@ $^
+ifeq ($(BOARD), SIPY)
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
 	$(Q) $(SIZE) $@
+else
+$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
+	$(ECHO) "LINK $@"
+	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
+	$(Q) $(SIZE) $@
+endif
 
 $(APP_BIN): $(BUILD)/application.elf $(PART_BIN)
 	$(ECHO) "IMAGE $@"

@@ -48,7 +48,7 @@
 #include "hal_defs.h"
 #include "hal_spi_rf_trxeb.h"
 
-#include "mods/modsigfox.h"
+#include "sigfox/modsigfox.h"
 #include "lora/system/spi.h"
 
 /******************************************************************************

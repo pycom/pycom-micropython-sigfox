@@ -47,7 +47,7 @@
 #if defined(LOPY)
 #include "modlora.h"
 #elif defined(SIPY)
-#include "modsigfox.h"
+#include "sigfox/modsigfox.h"
 #endif
 
 #include "random.h"
@@ -89,13 +89,6 @@ STATIC void mptask_update_lpwan_mac_address (void);
 #endif
 STATIC void mptask_enter_ap_mode (void);
 STATIC void mptask_create_main_py (void);
-
-#if defined(SIPY)
-STATIC void mptask_update_sigfox_id (void);
-STATIC void mptask_update_sigfox_pac (void);
-STATIC void mptask_update_sigfox_private_key (void);
-STATIC void mptask_update_sigfox_public_key (void);
-#endif
 
 /******************************************************************************
  DECLARE PUBLIC DATA
@@ -207,10 +200,10 @@ soft_reset:
 #endif
 
 #if defined(SIPY)
-    mptask_update_sigfox_id();
-    mptask_update_sigfox_pac();
-    mptask_update_sigfox_private_key();
-    mptask_update_sigfox_public_key();
+    sigfox_update_id();
+    sigfox_update_pac();
+    sigfox_update_private_key();
+    sigfox_update_public_key();
 #endif
 
     // append the flash paths to the system path
@@ -381,116 +374,6 @@ STATIC void mptask_update_lpwan_mac_address (void) {
         if (res == FR_OK) {
             // delete the mac address file
             f_unlink(LPWAN_MAC_ADDR_PATH);
-        }
-    }
-}
-#endif
-
-#if defined(SIPY)
-STATIC void mptask_update_sigfox_id (void) {
-    #define SFX_ID_PATH          "/flash/sys/sfx.id"
-
-    FILINFO fno;
-
-    if (FR_OK == f_stat(SFX_ID_PATH, &fno)) {
-        FIL fp;
-        f_open(&fp, SFX_ID_PATH, FA_READ);
-        UINT sz_out;
-        uint8_t id[4];
-        FRESULT res = f_read(&fp, id, sizeof(id), &sz_out);
-        if (res == FR_OK) {
-            if (config_set_sigfox_id(id)) {
-                mp_hal_delay_ms(250);
-                ets_printf("SFX ID write OK\n");
-            } else {
-                res = FR_DENIED;    // just anything different than FR_OK
-            }
-        }
-        f_close(&fp);
-        if (res == FR_OK) {
-            // delete the mac address file
-            f_unlink(SFX_ID_PATH);
-        }
-    }
-}
-
-STATIC void mptask_update_sigfox_pac (void) {
-    #define SFX_PAC_PATH          "/flash/sys/sfx.pac"
-
-    FILINFO fno;
-
-    if (FR_OK == f_stat(SFX_PAC_PATH, &fno)) {
-        FIL fp;
-        f_open(&fp, SFX_PAC_PATH, FA_READ);
-        UINT sz_out;
-        uint8_t pac[8];
-        FRESULT res = f_read(&fp, pac, sizeof(pac), &sz_out);
-        if (res == FR_OK) {
-            if (config_set_sigfox_pac(pac)) {
-                mp_hal_delay_ms(250);
-                ets_printf("SFX PAC write OK\n");
-            } else {
-                res = FR_DENIED;    // just anything different than FR_OK
-            }
-        }
-        f_close(&fp);
-        if (res == FR_OK) {
-            // delete the mac address file
-            f_unlink(SFX_PAC_PATH);
-        }
-    }
-}
-
-STATIC void mptask_update_sigfox_private_key (void) {
-    #define SFX_PRIVATE_KEY_PATH          "/flash/sys/sfx_private.key"
-
-    FILINFO fno;
-
-    if (FR_OK == f_stat(SFX_PRIVATE_KEY_PATH, &fno)) {
-        FIL fp;
-        f_open(&fp, SFX_PRIVATE_KEY_PATH, FA_READ);
-        UINT sz_out;
-        uint8_t key[16];
-        FRESULT res = f_read(&fp, key, sizeof(key), &sz_out);
-        if (res == FR_OK) {
-            if (config_set_sigfox_private_key(key)) {
-                mp_hal_delay_ms(250);
-                ets_printf("SFX private key write OK\n");
-            } else {
-                res = FR_DENIED;    // just anything different than FR_OK
-            }
-        }
-        f_close(&fp);
-        if (res == FR_OK) {
-            // delete the mac address file
-            f_unlink(SFX_PRIVATE_KEY_PATH);
-        }
-    }
-}
-
-STATIC void mptask_update_sigfox_public_key (void) {
-    #define SFX_PUBLIC_KEY_PATH          "/flash/sys/sfx_public.key"
-
-    FILINFO fno;
-
-    if (FR_OK == f_stat(SFX_PUBLIC_KEY_PATH, &fno)) {
-        FIL fp;
-        f_open(&fp, SFX_PUBLIC_KEY_PATH, FA_READ);
-        UINT sz_out;
-        uint8_t key[16];
-        FRESULT res = f_read(&fp, key, sizeof(key), &sz_out);
-        if (res == FR_OK) {
-            if (config_set_sigfox_public_key(key)) {
-                mp_hal_delay_ms(250);
-                ets_printf("SFX public key write OK\n");
-            } else {
-                res = FR_DENIED;    // just anything different than FR_OK
-            }
-        }
-        f_close(&fp);
-        if (res == FR_OK) {
-            // delete the mac address file
-            f_unlink(SFX_PUBLIC_KEY_PATH);
         }
     }
 }

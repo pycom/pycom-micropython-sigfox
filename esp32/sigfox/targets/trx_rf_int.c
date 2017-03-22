@@ -45,7 +45,7 @@
  * INCLUDES
  */
 #include "hal_spi_rf_trxeb.h"
-#include "mods/modsigfox.h"
+#include "sigfox/modsigfox.h"
 #include "hal_types.h"
 #include "hal_defs.h"
 #include "trx_rf_int.h"

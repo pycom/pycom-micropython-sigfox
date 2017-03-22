@@ -11,7 +11,12 @@
 #ifndef MODSIGFOX_H_
 #define MODSIGFOX_H_
 
+#include "py/mpconfig.h"
+#include "py/nlr.h"
+#include "py/runtime.h"
+
 #include "lora/system/spi.h"
+#include "modnetwork.h"
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -31,6 +36,39 @@
 /******************************************************************************
  DEFINE TYPES
  ******************************************************************************/
+typedef enum {
+    E_SIGFOX_STATE_NOINIT = 0,
+    E_SIGFOX_STATE_IDLE,
+    E_SIGFOX_STATE_RX,
+    E_SIGFOX_STATE_TX,
+    E_SIGFOX_STATE_TEST
+} sigfox_state_t;
+
+typedef enum {
+    E_SIGFOX_RCZ1 = 0,
+    E_SIGFOX_RCZ2,
+    E_SIGFOX_RCZ3,
+    E_SIGFOX_RCZ4,
+} sigfox_rcz_t;
+
+typedef enum {
+    E_SIGFOX_MODE_SIGFOX = 0,
+    E_SIGFOX_MODE_FSK
+} sigfox_mode_t;
+
+typedef struct {
+  mp_obj_base_t     base;
+  sigfox_mode_t     mode;
+  sigfox_state_t    state;
+  uint32_t          frequency;
+} sigfox_obj_t;
+
+typedef struct {
+    uint32_t    index;
+    uint32_t    size;
+    uint8_t     data[FSK_TX_PAYLOAD_SIZE_MAX + 4];
+} sigfox_partial_rx_packet_t;
+
 typedef struct {
     Gpio_t        Reset;
     Gpio_t        DIO;
@@ -111,10 +149,38 @@ typedef union {
  ******************************************************************************/
 extern Spi_t sigfox_spi;
 extern sigfox_settings_t sigfox_settings;
+extern sigfox_obj_t sigfox_obj;
 
 /******************************************************************************
  DECLARE FUNCTIONS
  ******************************************************************************/
 extern void modsigfox_init0 (void);
+extern void sigfox_update_id (void);
+extern void sigfox_update_pac (void);
+extern void sigfox_update_private_key (void);
+extern void sigfox_update_public_key (void);
+
+extern mp_obj_t sigfox_init_helper(sigfox_obj_t *self, const mp_arg_val_t *args);
+extern mp_obj_t sigfox_mac(mp_obj_t self_in);
+extern mp_obj_t sigfox_id(mp_obj_t self_in);
+extern mp_obj_t sigfox_pac(mp_obj_t self_in);
+extern mp_obj_t sigfox_test_mode(mp_obj_t self_in, mp_obj_t mode, mp_obj_t config);
+extern mp_obj_t sigfox_cw(mp_obj_t self_in, mp_obj_t frequency, mp_obj_t start);
+extern mp_obj_t sigfox_frequencies(mp_obj_t self_in);
+extern mp_obj_t sigfox_config(mp_uint_t n_args, const mp_obj_t *args);
+extern mp_obj_t sigfox_public_key(mp_uint_t n_args, const mp_obj_t *args);
+extern mp_obj_t sigfox_rssi_offset(mp_uint_t n_args, const mp_obj_t *args);
+extern mp_obj_t sigfox_freq_offset(mp_uint_t n_args, const mp_obj_t *args);
+extern mp_obj_t sigfox_version(mp_obj_t self_in);
+extern mp_obj_t sigfox_info(mp_obj_t self_in);
+extern mp_obj_t sigfox_reset(mp_obj_t self_in);
+
+extern int sigfox_socket_socket (mod_network_socket_obj_t *s, int *_errno);
+extern void sigfox_socket_close (mod_network_socket_obj_t *s);
+extern int sigfox_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno);
+extern int sigfox_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno);
+extern int sigfox_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno);
+extern int sigfox_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
+extern int sigfox_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 
 #endif  // MODSIGFOX_H_
