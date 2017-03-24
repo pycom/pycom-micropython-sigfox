@@ -1,0 +1,23 @@
+<div class="rst-versions" data-toggle="rst-versions" role="note" aria-label="versions">
+  <span class="rst-current-version" data-toggle="rst-current-version">
+    <span class="fa fa-book"> More documentation</span>
+    <!--{{ port }}-->
+  </span>
+  <div class="rst-other-versions">
+    <dl>
+      {% for slug, url in url_mapping %}
+        <dd><a href="{{ url }}">{{ slug }}</a></dd>
+      {% endfor %}
+    </dl>
+    <hr/>
+    <dl>
+      <dt>External links</dt>
+        <dd>
+          <a href="https://github.com/pycom">GitHub</a>
+        </dd>
+        <dd>
+          <a href="https://forum.pycom.io">Forum</a>
+        </dd>
+    </dl>
+  </div>
+</div>

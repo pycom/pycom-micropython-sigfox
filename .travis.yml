@@ -1,0 +1,65 @@
+sudo: required
+dist: trusty
+language: c
+compiler:
+  - gcc
+cache:
+  directories:
+    - "${HOME}/persist"
+
+before_script:
+# Extra CPython versions
+#  - sudo add-apt-repository -y ppa:fkrull/deadsnakes
+# Extra gcc versions
+#  - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+  - sudo add-apt-repository -y ppa:terry.guo/gcc-arm-embedded
+  - sudo dpkg --add-architecture i386
+  - sudo apt-get update -qq || true
+  - sudo apt-get install -y python3 gcc-multilib pkg-config libffi-dev libffi-dev:i386 qemu-system gcc-mingw-w64
+  - sudo apt-get install -y --force-yes gcc-arm-none-eabi
+  # For teensy build
+  - sudo apt-get install realpath
+  # For coverage testing
+  - sudo pip install cpp-coveralls
+  - gcc --version
+  - arm-none-eabi-gcc --version
+  - python3 --version
+
+script:
+  - make -C mpy-cross
+  - make -C minimal CROSS=1 build/firmware.bin
+  - ls -l minimal/build/firmware.bin
+  - tools/check_code_size.sh
+  - mkdir -p ${HOME}/persist
+  # Save new firmware for reference, but only if building a main branch, not a pull request
+  - 'if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then cp minimal/build/firmware.bin ${HOME}/persist/; fi'
+  - make -C unix deplibs
+  - make -C unix
+  - make -C unix nanbox
+  - make -C bare-arm
+  - make -C qemu-arm test
+  - make -C stmhal
+  - make -C stmhal -B MICROPY_PY_WIZNET5K=1 MICROPY_PY_CC3K=1
+  - make -C stmhal BOARD=STM32F4DISC
+  - make -C teensy
+  - make -C cc3200 BTARGET=application BTYPE=release
+  - make -C cc3200 BTARGET=bootloader  BTYPE=release
+  - make -C windows CROSS_COMPILE=i686-w64-mingw32-
+
+  # run tests without coverage info
+  #- (cd tests && MICROPY_CPYTHON3=python3.4 ./run-tests)
+  #- (cd tests && MICROPY_CPYTHON3=python3.4 ./run-tests --emit native)
+
+  # run tests with coverage info
+  - make -C unix coverage
+  - (cd tests && MICROPY_CPYTHON3=python3.4 MICROPY_MICROPYTHON=../unix/micropython_coverage ./run-tests)
+  - (cd tests && MICROPY_CPYTHON3=python3.4 MICROPY_MICROPYTHON=../unix/micropython_coverage ./run-tests -d thread)
+  - (cd tests && MICROPY_CPYTHON3=python3.4 MICROPY_MICROPYTHON=../unix/micropython_coverage ./run-tests --emit native)
+  - (cd tests && MICROPY_CPYTHON3=python3.4 MICROPY_MICROPYTHON=../unix/micropython_coverage ./run-tests --via-mpy -d basics)
+
+after_success:
+  - (cd unix && coveralls --root .. --build-root . --gcov $(which gcov) --gcov-options '\-o build-coverage/' --include py --include extmod)
+
+after_failure:
+  - (cd tests && for exp in *.exp; do testbase=$(basename $exp .exp); echo -e "\nFAILURE $testbase"; diff -u $testbase.exp $testbase.out; done)
+  - (grep "FAIL" qemu-arm/build/console.out)

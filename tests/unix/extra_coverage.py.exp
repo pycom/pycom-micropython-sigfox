@@ -1,0 +1,42 @@
+# mp_printf
+-123 +123  123
+-0123
+123
+1ABCDEF
+ab abc
+
+false true
+(null)
+-2147483648
+2147483648
+80000000
+80000000
+# vstr
+tests
+sts
+
+test
+tes
+larg
+# repl
+ame__
+
+__name__        path            argv            version
+version_info    implementation  platform        byteorder
+maxsize         exit            stdin           stdout
+stderr          modules         exc_info        print_exception
+ementation
+# attrtuple
+(start=1, stop=2, step=3)
+# str
+1
+# mpz
+1
+12345678
+0
+0
+('0123456789', b'0123456789')
+7300
+7300
+7300
+7300

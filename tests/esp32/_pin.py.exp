@@ -1,0 +1,90 @@
+True
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+<class 'Pin'>
+PULL-UP
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+True
+PULL-DOWN
+False
+True
+False
+True
+True
+True
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+False
+Constructor pass
+True
+True
+True
+True
+True
+Exception
+Exception
+Exception
+Exception
+Pin('P18', mode=Pin.IN, pull=None, alt=1)
+P18
+1
+None
+0

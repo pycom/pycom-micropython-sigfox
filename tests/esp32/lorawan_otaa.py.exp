@@ -1,0 +1,88 @@
+Starting LoRaWAN OTAA test
+Not joined yet...
+Not joined yet...
+Network joined!
+Sending...
+13
+Sending pk #0
+True
+True
+13
+Sending pk #1
+True
+True
+13
+Sending pk #2
+True
+True
+13
+Sending pk #3
+True
+True
+13
+Sending pk #4
+True
+True
+13
+Sending pk #5
+True
+True
+13
+Sending pk #6
+True
+True
+Not joined yet...
+Not joined yet...
+Network joined!
+True
+13
+False
+True
+13
+False
+True
+13
+False
+True
+13
+False
+True
+13
+False
+True
+13
+False
+True
+13
+False
+True
+Exception
+Not joined yet...
+Not joined yet...
+Network joined!
+<class 'LoRa'>
+Packet sent
+Packet received
+b'Sending pk #0'
+<class 'LoRa'>
+13
+<class 'LoRa'>
+Packet sent
+Packet received
+b'Sending pk #1'
+<class 'LoRa'>
+13
+<class 'tuple'>
+Exception
+<class 'tuple'>
+Exception
+13
+<class 'tuple'>
+Exception
+<class 'tuple'>
+Exception
+13
+True
+True
+True
+True
