@@ -3,7 +3,7 @@
 class LoRa
 ==========
 
-This class provides a driver for the LoRa network processor in the **LoPy**. Example usage::
+This class provides a driver for the LoRa network processor in the **LoPy**. Below is an example demonstrating LoRaWAN Activation by Personalisation usage::
 
     from network import LoRa
     import socket
@@ -41,21 +41,23 @@ This class provides a driver for the LoRa network processor in the **LoPy**. Exa
 Additional examples
 -------------------
 
-Check here for :ref:`aditional examples<lora_examples>`.
+For various other complete LoRa examples, check here for :ref:`additional examples<lora_examples>`.
 
 Constructors
 ------------
 
 .. class:: LoRa(id=0, ...)
 
-   Create and configure a LoRa object. See ``init`` for params of configuration.
+   Create and configure a LoRa object. See ``init`` for params of configuration. ::
+
+	   lora = LoRa(mode=LoRa.LORAWAN)
 
 Methods
 -------
 
 .. method:: lora.init(mode, \*, frequency=868000000, tx_power=14, bandwidth=LoRa.868000000, sf=7, preamble=8, coding_rate=LoRa.CODING_4_5, power_mode=LoRa.ALWAYS_ON, tx_iq=false, rx_iq=false, adr=false, public=true, tx_retries=1)
 
-   Set the LoRa subsystem configuration
+   This method is used to set the LoRa subsystem configuration and to specific raw LoRa or LoRaWAN.
 
    The arguments are:
 
@@ -98,7 +100,7 @@ Methods
       - ``activation``: can be either ``LoRa.OTAA`` or ``LoRa.ABP``.
       - ``auth``: is a tuple with the authentication data.
 
-      In the case of ``LoRa.OTAA`` the authentication tuple is: ``(app_eui, app_key)``. Example::
+    In the case of ``LoRa.OTAA`` the authentication tuple is: ``(app_eui, app_key)``. Example::
 
           from network import LoRa
           import socket
@@ -120,7 +122,7 @@ Methods
               time.sleep(2.5)
               print('Not yet joined...')
 
-      In the case of ``LoRa.ABP`` the authentication tuple is: ``(dev_addr, nwk_swkey, app_swkey)``. Example::
+    In the case of ``LoRa.ABP`` the authentication tuple is: ``(dev_addr, nwk_swkey, app_swkey)``. Example::
 
           from network import LoRa
           import socket
@@ -140,33 +142,68 @@ Methods
 
 .. method:: lora.bandwidth([bandwidth])
 
-    Get or set the bandwidth in raw LoRa mode (``LoRa.LORA``). Can be either ``LoRa.BW_125KHZ``, ``LoRa.BW_250KHZ`` or ``LoRa.BW_500KHZ``.
+    Get or set the bandwidth in raw LoRa mode (``LoRa.LORA``). Can be either ``LoRa.BW_125KHZ`` ``(0)``, ``LoRa.BW_250KHZ`` ``(1)`` or ``LoRa.BW_500KHZ`` ``(2)``.::
+
+		# get raw LoRa Bandwidth
+		lora.bandwidth()
+
+		# set raw LoRa Bandwidth
+		lora.bandwidth(LoRa.BW_125KHZ)
 
 .. method:: lora.frequency([frequency])
 
-    Get or set the frequency in raw LoRa mode (``LoRa.LORA``). The allowed range is between 863000000 and 870000000 Hz for the 868MHz band version or between 902000000 and 928000000 Hz for the 915MHz abdn version.
+    Get or set the frequency in raw LoRa mode (``LoRa.LORA``). The allowed range is between 863000000 and 870000000 Hz for the 868 MHz band version or between 902000000 and 928000000 Hz for the 915 MHz band version.::
+
+		# get raw LoRa Frequency
+		lora.frequency()
+
+		# set raw LoRa Frequency
+		lora.frequency(868000000)
 
 .. method:: lora.coding_rate([coding_rate])
 
-    Get or set the coding rate in raw LoRa mode (``LoRa.LORA``). The allowed values are: ``LoRa.CODING_4_5``, ``LoRa.CODING_4_6``, ``LoRa.CODING_4_7`` and ``LoRa.CODING_4_8``.
+    Get or set the coding rate in raw LoRa mode (``LoRa.LORA``). The allowed values are: ``LoRa.CODING_4_5`` ``(0)``, ``LoRa.CODING_4_6`` ``(1)``, ``LoRa.CODING_4_7`` ``(2)`` and ``LoRa.CODING_4_8`` ``(3)``. ::
+
+		# get raw LoRa Coding Rate
+		lora.coding_rate()
+
+		# set raw LoRa Coding Rate
+		lora.coding_rate(LoRa.CODING_4_5)
 
 .. method:: lora.preamble([preamble])
 
-    Get or set the number of preamble symbols in raw LoRa mode (``LoRa.LORA``).
+    Get or set the number of preamble symbols in raw LoRa mode (``LoRa.LORA``).::
+
+		# get raw LoRa preamble symbols
+		lora.preamble()
+
+		# set raw LoRa preamble symbols
+		lora.preamble(LoRa.CODING_4_5)
 
 .. method:: lora.sf([sf])
 
-    Get or set the spreading factor value in raw LoRa mode (``LoRa.LORA``). The minimmum value is 7 and the maximum is 12.
+    Get or set the spreading factor value in raw LoRa mode (``LoRa.LORA``). The minimmum value is 7 and the maximum is 12.::
+
+		# get raw LoRa spread factor value
+		lora.sf()
+
+		# set raw LoRa spread factor value
+		lora.sf(7)
 
 .. method:: lora.power_mode([power_mode])
 
-    Get or set the power mode in raw LoRa mode (``LoRa.LORA``). The accepted values are: ``LoRa.ALWAYS_ON``, ``LoRa.TX_ONLY`` and ``LoRa.SLEEP``.
+    Get or set the power mode in raw LoRa mode (``LoRa.LORA``). The accepted values are: ``LoRa.ALWAYS_ON``, ``LoRa.TX_ONLY`` and ``LoRa.SLEEP``.::
 
 .. method:: lora.stats()
 
     Return a named tuple with usefel information from the last received LoRa or LoRaWAN packet. The named tuple has the following form:
 
     ``(timestamp, rssi, snr, sf)``
+
+	Example: ::
+
+		lora.stats()
+
 
     Where:
 
@@ -177,7 +214,9 @@ Methods
 
 .. method:: lora.has_joined()
 
-    Returns ``True`` if a LoRaWAN network has been joined. ``False`` otherwise.
+    Returns ``True`` if a LoRaWAN network has been joined. ``False`` otherwise.::
+
+		lora.has_joined()
 
 .. method:: lora.add_channel(index, \*, frequency, dr_min, dr_max)
 
@@ -185,32 +224,45 @@ Methods
 
     The arguments are:
 
-      - ``index``: Index of the channel to add. Accepts values between 0 and 15 for EU and between 0 and 71 for US.
+      - ``index``: Index of the channel to add. Accepts values between **0 and 15 for EU** and between **0 and 71 for US**.
       - ``frequency``: Center frequency in Hz of the channel.
       - ``dr_min``: Minimum data rate of the channel (0-7).
       - ``dr_max``: Maximum data rate of the channel (0-7).
 
+	Examples: ::
+
+		lora.add_channel(index=0, frequency=868000000, dr_min=5, dr_max=6)
+
 .. method:: lora.remove_channel(index)
 
-     Removes the channel from the specified index. On the 868MHz band the channels 0 to 2 cannot be removed, they can
-     only be replaced by other channels using the ``lora.add_channel`` method. A way to remove all channels except for
-     one is to add the same channel 3 times on indexes 0, 1 and 2.
+     Removes the channel from the specified index. On the 868MHz band the channels 0 to 2 cannot be removed, they can only be replaced by other channels using the ``lora.add_channel`` method. A way to remove all channels except for one is to add the same channel, 3 times on indexes 0, 1 and 2. An example can be seen below: ::
+
+		 lora.remove_channel()
 
      On the 915MHz band there are no restrictions around this.
 
 .. method:: lora.mac()
 
-   Returns a byte object with the 8-Byte MAC address of the LoRa radio.
+   Returns a byte object with the 8-Byte MAC address of the LoRa radio.::
+
+	   lora.mac()
 
 .. method:: lora.callback(trigger, handler=None, arg=None)
 
    Specify a callback handler for the LoRa radio. The trigger types are ``LoRa.RX_PACKET_EVENT`` and ``LoRa.TX_PACKET_EVENT``
 
+   An example of how this callback functions can be seen the in method :ref:`lora.events() <lora_events>`.
+
+
+.. _lora_events:
+
 .. method:: lora.events()
 
    This method returns a value with bits sets (if any) indicating the events that have triggered the callback. Please note that
-   by calling this function the internal events registry is cleared automatically, therefore calling it immediaelly for a second time
-   will most likely return a value of 0. Example::
+   by calling this function the internal events registry is cleared automatically, therefore calling it immediately for a second time
+   will most likely return a value of 0.
+
+   Example::
 
         def lora_cb(lora):
             events = lora.events()
