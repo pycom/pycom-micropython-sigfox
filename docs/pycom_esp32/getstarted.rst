@@ -58,7 +58,7 @@ It applies to all our modules.
 
 .. note::
 
-    Some modules like the LoPy will be big enough to cover the USB connector. 
+    Some modules like the LoPy will be big enough to cover the USB connector.
     This is normal as long as you keep the orientation as shown.
 
 To extend the life of your expansion board, please be aware of the following:
@@ -116,15 +116,15 @@ one for your OS and follow the instructions on the screen.
 - `MacOS <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=macos&redirect=true>`_ (10.11 or higher).
 - `Linux <https://software.pycom.io/findupgrade?product=pycom-firmware-updater&type=all&platform=unix&redirect=true>`_ (requires dialog package).
 
-Previous versions of firmware are available for download on the `Pycom website 
-<https://www.pycom.io/support/supportdownloads/#firmware>`_. 
+Previous versions of firmware are available for download on the `Pycom website
+<https://www.pycom.io/support/supportdownloads/#firmware>`_.
 
 .. image:: images/firmware-updater-screenshot.png
     :alt: Firmware upgrader
     :align: center
     :scale: 50 %
 
-The instructions given by the updater tool should be followed carefully. The basic 
+The instructions given by the updater tool should be followed carefully. The basic
 procedure is like this:
 
 - Disconnect your device from the PC.
@@ -134,13 +134,13 @@ procedure is like this:
 - Remove the G23+GND wire.
 - Reboot the device (button or powercycle)
 
-Connecting G23 and GND puts the device in 'update mode'. You won't need this for any 
+Connecting G23 and GND puts the device in 'update mode'. You won't need this for any
 other task than using the firmware upgrader.
 
 After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
 programs in your device.
 
-If you have your telnet connection or Pymakr already setup, the version can be  with the 
+If you have your telnet connection or Pymakr already setup, the version can be  with the
 following code:
 
 ::
@@ -150,32 +150,130 @@ following code:
 
 .. warning::
 
-    Make sure the TX jumper is present on your expansion board, as the jumpers sometimes 
+    Make sure the TX jumper is present on your expansion board, as the jumpers sometimes
     come loose in the box during transport. Without this jumper, the updater will fail.
-
-
-
 
 .. _micropython_intro:
 
 1.4 Micropython Introduction
 ============================
 
-Our boards work with `Micropython <https://micropython.org/>`_; a Python 3 implementation 
-that is optimised to run on micocontrollers. This allows for much faster and easier 
-development than using C. 
+Our boards work with `Micropython <https://micropython.org/>`_; a Python 3.5 implementation
+that is optimised to run on microcontrollers. This allows for much faster and more simple
+development process than using C.
 
-When booting, two files are executed automatically: first boot.py and then main.py. These 
-are placed in the /flash folder on the board. Any other files or libraries can be placed 
-here as well, and included or used from boot.py or main.py. 
+Booting into Micropython
+------------------------
 
-The folder structure in /flash looks like the picture below. The files can be managed either 
+When booting, two files are executed automatically: first boot.py and then main.py. These
+are placed in the /flash folder on the board. Any other files or libraries can be placed
+here as well, and can be included or used from boot.py or main.py.
+
+The folder structure in /flash looks like the picture below. The files can be managed either
 using :ref:`FTP <pycom_filesystem>` or using :ref:`Pymakr <pymakr_ide>`.
 
 .. image:: images/wipy-files-ftp.png
     :alt: File structure
     :align: center
     :scale: 50 %
+
+Tips & Tricks
+-------------
+
+Micropython shares majority of the same syntax as Python 3.5. The intention of this design is to provide compatibility upwards from Micropython to Python 3.5, meaning that code written for Micropython should work in a similar manner in Python 3.5. There are some minor variations and these should taken viewed as implementation differences.
+
+Micropython also has a number of Micropython specific libraries for accessing hardware level features. Specifics relating to those libraries can be found in the Firmware API Reference section of this documentation.
+
+.. note::
+
+	Micropython, unlike C/C++ or Arduino, **does not use braces({})** to indicate blocks of code specified for class and function definitions or flow control. Blocks of code are denoted by line indentation, which is strictly enforced.
+
+	The number of spaces in the indentation is variable but all statements within a block must be indented the same amount.
+
+
+**Variable Assignment**
+
+As with Python 3.5, variables can be assigned to and referenced. Below is an example of setting a variable equal to a string and then printing it to the console. ::
+
+	variable = "Hello World"
+	print(variable)
+
+**Conditional Statements**
+
+Conditional statements allow control over which elements of code run depending on specific cases. The example below shows how a temperature sensor might be implemented in code. ::
+
+	temperature = 15
+	target = 10
+
+	if temperature > target:
+	    print("Too High!")
+	elif temperature < target:
+	    print("Too Low!")
+	else:
+	    print("Just right!")
+
+**Loops (For & While loop)**
+
+Loops are another important feature of any programming language. This allows you to cycle your code and repeat functions/assignments/etc.
+
+*For loops* allow you to control how many times a block of code runs for within a range. ::
+
+	x = 0
+	for y in range(0,9):
+	    x += 1
+	print(x)
+
+*While loops* are similar to For loops, however they allow you to run a loop until a specific conditional is true/false. In this case, the loop checks if x is less than 9 each time the loop passes. ::
+
+	x = 0
+	while x < 9:
+ 	    x += 1
+	print(x)
+
+**Functions**
+
+Functions are blocks of code that are referred to by name. Data can be passed into it to be operated on (i.e., the parameters) and can optionally return data (the return value). All data that is passed to a function is explicitly passed.
+
+The function below takes two numbers and adds them together, outputting the result. ::
+
+	def add(number1, number 2):
+	    return number1 + number2
+
+	add(1,2) # expect a result of 3
+
+
+The next function takes an input name and returns a string containing a welcome phrase. ::
+
+	def welcome(name):
+	    welcome_phrase = "Hello, " + name + "!"
+	    print(welcome_phrase)
+
+	welcome("Alex") # expect "Hello, Alex!"
+
+**Data Structures**
+
+Python has a number of different data structures for storing and manipulating variables. The main difference (regarding data structures) between C and Python is that Python manages memory for you. This means there's no need to declare the sizes of lists, dictionaries, strings, etc. ::
+
+	# lists - a data structure that holds an ordered collection (sequence) of items
+	networks = ['lora', 'sigfox', 'wifi', 'bluetooth', 'lte-m']
+	print(network[2]) # expect 'wifi'
+
+
+	# dictionaries - a dictionary is like an address-book where you can find the address or contact details of a person by knowing only his/her name, i.e. keys (names) are associate with values (details)
+
+	address_book = {'Alex':'2604 Crosswind Drive','Joe':'1301 Hillview Drive','Chris':'3236 Goldleaf Lane'}
+	print(address_book['Alex']) # expect '2604 Crosswind Drive'
+
+
+	# tuple - similar to lists but are  immutable, i.e. you cannot modify tuples after instantiation
+
+	pycom_devices = ('wipy', 'lopy', 'sipy', 'gpy', 'fipy')
+	print(pycom_devices[0]) # expect 'wipy'
+
+
+
+.. note::
+	For more Python examples, check out `these tutorials <https://www.tutorialspoint.com/python3/>`_. Be aware of the implementation differences between Micropython and Python 3.5.
 
 .. _connecting_using_pymakr:
 
@@ -192,7 +290,7 @@ More extended info on pymakr like how to use the pycom console and the expert
 interface can be found under :ref:`Tools & Features <pymakr_ide>`
 
 .. note::
-    If you have any trouble connecting over USB using pymakr, make sure you have the 
+    If you have any trouble connecting over USB using pymakr, make sure you have the
     proper `FTDI drivers <http://www.ftdichip.com/Drivers/D2XX.htm>`_ installed.
 
 Initial configuration
