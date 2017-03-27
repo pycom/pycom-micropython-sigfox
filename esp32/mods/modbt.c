@@ -893,7 +893,7 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
         esp_ble_gap_set_device_name(name);
     } else {
         adv_data.include_name = false;
-        esp_ble_gap_set_device_name("");
+        esp_ble_gap_set_device_name("-");
     }
 
     // manufacturer data
@@ -1101,11 +1101,7 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
         characteristic->attr_obj.value_len = 1;
     }
 
-    esp_attr_value_t char_val = {.attr_max_len = BT_CHAR_VALUE_SIZE_MAX,
-                                 .attr_len = characteristic->attr_obj.value_len, 
-                                 .attr_value = characteristic->attr_obj.value};
-    esp_attr_control_t char_control = {.auto_rsp = ESP_GATT_RSP_BY_APP};
-    esp_ble_gatts_add_char(self->handle, &char_uuid, permissions, properties, &char_val, &char_control);
+    esp_ble_gatts_add_char(self->handle, &char_uuid, permissions, properties, NULL, NULL);
 
     bt_gatts_event_result_t gatts_event;
     xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);
@@ -1119,11 +1115,7 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     descriptor->uuid.len = ESP_UUID_LEN_16;
     descriptor->uuid.uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
 
-    esp_attr_value_t attr_val = {.attr_max_len = BT_CHAR_VALUE_SIZE_MAX,
-                                 .attr_len = descriptor->value_len, 
-                                 .attr_value = descriptor->value};
-    esp_attr_control_t attr_control = {.auto_rsp = ESP_GATT_RSP_BY_APP};
-    esp_ble_gatts_add_char_descr(self->handle, &descriptor->uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, &attr_val, &attr_control);
+    esp_ble_gatts_add_char_descr(self->handle, &descriptor->uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, NULL, NULL);
 
     xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);
 
