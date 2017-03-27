@@ -121,16 +121,10 @@ pin_obj_t *pin_find(mp_obj_t user_obj) {
 void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, int value) {
     self->mode = mode;
     self->pull = pull;
+    self->af_in = af_in;
+    self->af_out = af_out;
 
-    // if af is -1, then we want to keep it as it is
-    if (af_in >= 0) {
-        self->af_in = af_in;
-    }
-    if (af_out >= 0) {
-        self->af_out = af_out;
-    }
-
-    // if value is -1, then we want to keep it as it is
+    // if value is < 0, then we want to keep it as it is
     if (value >= 0) {
         self->value = value;
     }
