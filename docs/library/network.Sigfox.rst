@@ -134,8 +134,9 @@ Sigfox sockets support the following standard methods from the :class:`socket <.
 
 .. method:: socket.send(bytes)
 
-   Usage: ``s.send(bytes([1, 2, 3]))``::
-   In Sigfox mode the maximum data size is 12 bytes. In FSK the maximum is 64.
+   Usage: ``s.send(bytes([1, 2, 3]))``
+
+   In Sigfox mode the maximum data size is 12 bytes. In FSK the maximum is 64. ::
 
      # send a Sigfox payload of bytes
      s.send(bytes([1, 2, 3]))
@@ -147,7 +148,8 @@ Sigfox sockets support the following standard methods from the :class:`socket <.
 
    Usage: ``s.recv(32)``
 
-     # this method can be used to receive a Sigfox downlink or FSK message
+   This method can be used to receive a Sigfox downlink or FSK message. ::
+
      # size of buffer should be passed for expected payload, e.g. 64 bits
      s.recv(64)
 
