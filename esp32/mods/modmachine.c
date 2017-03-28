@@ -99,7 +99,7 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     if (n_args == 0) {
         esp_deep_sleep_start();
     } else {
-        esp_deep_sleep((uint64_t)(mp_obj_get_int(arg[0]) * 1000));
+        esp_deep_sleep((uint64_t)mp_obj_get_int(arg[0]) * 1000);
     }
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsleep);
