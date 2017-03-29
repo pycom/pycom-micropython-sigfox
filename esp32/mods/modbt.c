@@ -70,9 +70,6 @@
  ******************************************************************************/
 typedef struct {
     mp_obj_base_t         base;
-    mp_obj_list_t         conn_list;
-    mp_obj_list_t         srv_list;
-    mp_obj_list_t         attr_list;
     int32_t               scan_duration;
     int32_t               conn_id;          // current activity connection id
     mp_obj_t              handler;
@@ -91,17 +88,17 @@ typedef struct {
 
 typedef struct {
     mp_obj_base_t         base;
+    mp_obj_list_t         srv_list;
     esp_bd_addr_t         srv_bda;
     int32_t               conn_id;
-    mp_obj_list_t         srv_list;
     esp_gatt_if_t         gatt_if;
 } bt_connection_obj_t;
 
 typedef struct {
     mp_obj_base_t         base;
+    mp_obj_list_t         char_list;
     bt_connection_obj_t   *connection;
     esp_gatt_srvc_id_t    srv_id;
-    mp_obj_list_t         char_list;
 } bt_srv_obj_t;
 
 typedef struct {
@@ -237,9 +234,9 @@ void modbt_init0(void) {
         esp_ble_gatts_app_unregister(MOD_BT_SERVER_APP_ID);
     }
 
-    mp_obj_list_init((mp_obj_t)&bt_obj.conn_list, 0);
-    mp_obj_list_init((mp_obj_t)&bt_obj.srv_list, 0);
-    mp_obj_list_init((mp_obj_t)&bt_obj.attr_list, 0);
+    mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(btc_conn_list), 0);
+    mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_srv_list), 0);
+    mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_attr_list), 0);
 }
 
 /******************************************************************************
@@ -264,18 +261,18 @@ static bool bt_match_id (esp_gatt_id_t *uuid_a, esp_gatt_id_t *uuid_b) {
 }
 
 static void close_connection (int32_t conn_id) {
-    for (mp_uint_t i = 0; i < bt_obj.conn_list.len; i++) {
-        bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(bt_obj.conn_list.items[i]));
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++) {
+        bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
         if (connection_obj->conn_id == conn_id) {
             connection_obj->conn_id = -1;
-            mp_obj_list_remove((void *)&bt_obj.conn_list, connection_obj);
+            mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
         }
     }
 }
 
 static bt_char_obj_t *find_gattc_char (int32_t conn_id, esp_gatt_srvc_id_t *srvc_id, esp_gatt_id_t *char_id) {
-    for (mp_uint_t i = 0; i < bt_obj.conn_list.len; i++) {
-        bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(bt_obj.conn_list.items[i]));
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++) {
+        bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
 
         if (connection_obj->conn_id == conn_id) {
 
@@ -298,8 +295,8 @@ static bt_char_obj_t *find_gattc_char (int32_t conn_id, esp_gatt_srvc_id_t *srvc
 }
 
 static bt_gatts_attr_obj_t *find_gatts_attr_by_handle (uint16_t handle) {
-    for (mp_uint_t i = 0; i < bt_obj.attr_list.len; i++) {
-        bt_gatts_attr_obj_t *char_obj = ((bt_gatts_attr_obj_t *)(bt_obj.attr_list.items[i]));
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(bts_attr_list).len; i++) {
+        bt_gatts_attr_obj_t *char_obj = ((bt_gatts_attr_obj_t *)(MP_STATE_PORT(bts_attr_list).items[i]));
         if (char_obj->handle == handle) {
             return char_obj;
         }
@@ -615,9 +612,9 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
         esp_ble_gattc_register_callback(esp_gattc_cb);
         esp_ble_gatts_register_callback(gatts_event_handler);
 
-        mp_obj_list_init((mp_obj_t)&bt_obj.conn_list, 0);
-        mp_obj_list_init((mp_obj_t)&bt_obj.srv_list, 0);
-        mp_obj_list_init((mp_obj_t)&bt_obj.attr_list, 0);
+        mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(btc_conn_list), 0);
+        mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_srv_list), 0);
+        mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_attr_list), 0);
 
         self->init = true;
     }
@@ -861,7 +858,7 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
         conn->conn_id = bt_event.connection.conn_id;
         memcpy(conn->srv_bda, bt_event.connection.srv_bda, 6);
         // printf("conn id=%d\n", bt_event.conn_id);
-        mp_obj_list_append((void *)&bt_obj.conn_list, conn);
+        mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), conn);
         return conn;
     }
 
@@ -1014,7 +1011,7 @@ STATIC mp_obj_t bt_service (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
 
     esp_ble_gatts_start_service(gatts_event.service_handle);
 
-    mp_obj_list_append((mp_obj_t)&bt_obj.srv_list, srv);
+    mp_obj_list_append((mp_obj_t)&MP_STATE_PORT(bts_srv_list), srv);
 
     return srv;
 
@@ -1109,7 +1106,7 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     characteristic->attr_obj.handle = gatts_event.char_handle;
     memcpy(&characteristic->attr_obj.uuid, &char_uuid, sizeof(char_uuid));
 
-    mp_obj_list_append((mp_obj_t)&bt_obj.attr_list, characteristic);
+    mp_obj_list_append((mp_obj_t)&MP_STATE_PORT(bts_attr_list), characteristic);
 
     bt_gatts_attr_obj_t *descriptor = m_new_obj(bt_gatts_attr_obj_t);
     descriptor->uuid.len = ESP_UUID_LEN_16;
@@ -1127,7 +1124,7 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     descriptor->value[0] = 0;
     descriptor->value[1] = 0;
 
-    mp_obj_list_append((mp_obj_t)&bt_obj.attr_list, descriptor);
+    mp_obj_list_append((mp_obj_t)&MP_STATE_PORT(bts_attr_list), descriptor);
 
     return characteristic;
 
