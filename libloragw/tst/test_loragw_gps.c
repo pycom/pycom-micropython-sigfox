@@ -35,7 +35,7 @@ Maintainer: Sylvain Miermont
 #include "loragw_hal.h"
 #include "loragw_gps.h"
 #include "loragw_aux.h"
-
+#include "loragw_reg.h"
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 

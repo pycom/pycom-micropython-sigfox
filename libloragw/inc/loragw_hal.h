@@ -152,6 +152,12 @@ Maintainer: Sylvain Miermont
 /* Maximum size of Tx gain LUT */
 #define TX_GAIN_LUT_SIZE_MAX 16
 
+/* Maximum size of Rx packet struct */
+#define RX_SIZE_MAX 300
+
+/* Maximum size of Tx packet struct */
+#define TX_SIZE_MAX 256
+
 /* LBT constants */
 #define LBT_CHANNEL_FREQ_NB 8 /* Number of LBT channels */
 
