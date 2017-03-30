@@ -12,12 +12,9 @@ node {
         sh '''cd mpy-cross;
         make all'''
 
-        def parallelSteps = [:]
-        for (x in boards_to_build) {
-            def name = x
-            parallelSteps[name] = boardBuild(name)
+        for (name in boards_to_build) {
+            boardBuild(name)
         }
-        parallel parallelSteps
 
         stash includes: '**/*.bin', name: 'binary'
         stash includes: 'tests/**', name: 'tests'
