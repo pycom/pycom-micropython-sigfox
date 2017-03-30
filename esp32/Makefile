@@ -19,8 +19,18 @@ TARGET ?= app
 # make 'release' the default build type
 BTYPE ?= release
 
-# if the build directory is not given, make it reflect the board name.
-BUILD ?= build/$(BOARD)/$(BTYPE)
+LORA_BAND ?= USE_BAND_868
+ifeq ($(BOARD), LOPY)
+    ifeq ($(LORA_BAND), USE_BAND_868)
+        LORA_FREQ = 868
+    else
+        LORA_FREQ = 915
+    endif
+    BUILD = build/$(BOARD)_$(LORA_FREQ)/$(BTYPE)
+else
+    LORA_FREQ =
+    BUILD = build/$(BOARD)/$(BTYPE)
+endif
 
 FROZEN_MPY_DIR = frozen
 

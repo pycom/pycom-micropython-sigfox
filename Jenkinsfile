@@ -1,5 +1,6 @@
 def buildVersion
-def boards = ["LOPY", "WIPY"]
+def boards_to_build = ["LOPY_868", "LOPY_915", "WIPY", "SIPY"]
+def boards_to_test = ["LOPY_868", "WIPY"]
 
 node {
     stage('Checkout') { // get source
@@ -12,7 +13,7 @@ node {
         make all'''
 
         def parallelSteps = [:]
-        for (x in boards) {
+        for (x in boards_to_build) {
             def name = x
             parallelSteps[name] = boardBuild(name)
         }
@@ -28,7 +29,7 @@ node {
 
 stage ('Flash') {
     def parallelFlash = [:]
-    for (x in boards) {
+    for (x in boards_to_test) {
         def name = x
         parallelFlash[name] = flashBuild(name)
     }
@@ -37,7 +38,7 @@ stage ('Flash') {
 
 stage ('Test'){
     def parallelTests = [:]
-    for (x in boards) {
+    for (x in boards_to_test) {
         def name = x
         parallelTests[name] = testBuild(name)
     }
@@ -79,16 +80,24 @@ def flashBuild(name) {
 }
 
 def boardBuild(name) {
+    if (name == "LOPY_868") {
+        name_ext = "LOPY LORA_BAND=USE_BAND_868"
+    } else if (name == "LOPY_915") {
+        name_ext = "LOPY LORA_BAND=USE_BAND_915"
+    } else {
+        name_ext = name
+    }
+
     return {
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=boot -j2 BOARD=''' + name
+        make TARGET=boot -j2 BOARD=''' + name_ext
 
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=app -j2 BOARD=''' + name
+        make TARGET=app -j2 BOARD=''' + name_ext
     }
 }
 
