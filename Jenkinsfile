@@ -19,7 +19,14 @@ node {
         def parallelSteps = [:]
         for (x in boards_to_build_1) {
             def name = x
-            parallelSteps[name] = boardBuild(name)
+            if (name == "LOPY_868") {
+                name_ext = "LOPY LORA_BAND=USE_BAND_868"
+            } else if (name == "LOPY_915") {
+                name_ext = "LOPY LORA_BAND=USE_BAND_915"
+            } else {
+                name_ext = name
+            }
+            parallelSteps[name] = boardBuild(name_ext)
         }
         parallel parallelSteps
 
@@ -43,7 +50,7 @@ node {
             } else {
                 name_ext = name
             }
-            parallelSteps[name_ext] = boardBuild(name_ext)
+            parallelSteps[name] = boardBuild(name_ext)
         }
         parallel parallelSteps
 
