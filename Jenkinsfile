@@ -86,13 +86,8 @@ stage ('Test'){
 }
 
 def testBuild(name) {
-    if (name != "WIPY") {
-        node_name = "LOPY"
-    } else {
-        node_name = name
-    }
     return {
-        node(node_name) {
+        node(name) {
             sleep(5) //Delay to skip all bootlog
             dir('tests') {
                 timeout(30) {
