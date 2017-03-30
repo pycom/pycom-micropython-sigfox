@@ -49,9 +49,16 @@ def testBuild(name) {
     return {
         node(name) {
             sleep(5) //Delay to skip all bootlog
+
+        if (name == "LOPY_868" || name == "LOPY_915") {
+            board_name = "LOPY"
+        } else {
+            board_name = name
+        }
+
             dir('tests') {
                 timeout(10) {
-                    sh '''./run-tests --target=esp32-''' + name +''' --device /dev/ttyUSB0'''
+                    sh '''./run-tests --target=esp32-''' + board_name +''' --device /dev/ttyUSB0'''
                 }
             }
             sh 'python esp32/tools/resetBoard.py reset'
