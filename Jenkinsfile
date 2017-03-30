@@ -19,14 +19,16 @@ node {
         def parallelSteps = [:]
         for (x in boards_to_build_1) {
             def name = x
+            def name_short = "LOPY"
+            def lora_band = ""
             if (name == "LOPY_868") {
-                name_ext = "LOPY LORA_BAND=USE_BAND_868"
+                lora_band = "LORA_BAND=USE_BAND_868"
             } else if (name == "LOPY_915") {
-                name_ext = "LOPY LORA_BAND=USE_BAND_915"
+                lora_band = "LORA_BAND=USE_BAND_915"
             } else {
-                name_ext = name
+                name_short = name
             }
-            parallelSteps[name] = boardBuild(name_ext)
+            parallelSteps[name] = boardBuild(name, name_short, lora_band)
         }
         parallel parallelSteps
 
@@ -43,14 +45,16 @@ node {
         def parallelSteps = [:]
         for (x in boards_to_build_2) {
             def name = x
+            def name_short = "LOPY"
+            def lora_band = ""
             if (name == "LOPY_868") {
-                name_ext = "LOPY LORA_BAND=USE_BAND_868"
+                lora_band = "LORA_BAND=USE_BAND_868"
             } else if (name == "LOPY_915") {
-                name_ext = "LOPY LORA_BAND=USE_BAND_915"
+                lora_band = "LORA_BAND=USE_BAND_915"
             } else {
-                name_ext = name
+                name_short = name
             }
-            parallelSteps[name] = boardBuild(name_ext)
+            parallelSteps[name] = boardBuild(name, name_short, lora_band)
         }
         parallel parallelSteps
 
@@ -75,10 +79,9 @@ stage ('Test'){
     def parallelTests = [:]
     for (x in boards_to_test) {
         def name = x
+        def board_name = name
         if (name == "LOPY_868" || name == "LOPY_915") {
             board_name = "LOPY"
-        } else {
-            board_name = name
         }
         parallelTests[board_name] = testBuild(board_name)
     }
@@ -101,10 +104,9 @@ def testBuild(name) {
 }
 
 def flashBuild(name) {
+    def node_name = name
     if (name != "WIPY") {
         node_name = "LOPY"
-    } else {
-        node_name = name
     }
     return {
         node(node_name) {
@@ -124,17 +126,19 @@ def flashBuild(name) {
     }
 }
 
-def boardBuild(name) {
+def boardBuild(name, name_short, lora_band) {
     return {
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=boot -j2 BOARD=''' + name
+        make TARGET=boot -j2 BOARD=''' + name_short + lora_band
 
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=app -j2 BOARD=''' + name
+        make TARGET=app -j2 BOARD=''' + name_short + lora_band
+
+        sh 'tar -cvzf esp32/build/'+ name +'/release/' name + '.tar.gz esp32/build/'+ name +'/release/bootloader/bootloader.bin   esp32/build/'+ name +'/release/lib/partitions.bin   esp32/build/'+ name +'/release/appimg.bin'   'esp32/boards/' + name_short + '/' + name + '/script'
     }
 }
 
