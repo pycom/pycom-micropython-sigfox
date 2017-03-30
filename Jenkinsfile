@@ -1,5 +1,6 @@
 def buildVersion
-def boards_to_build = ["LOPY_868", "LOPY_915", "WIPY", "SIPY"]
+def boards_to_build_1 = ["LOPY_868", "WIPY"]
+def boards_to_build_2 = ["LOPY_915", "SIPY"]
 def boards_to_test = ["LOPY_868", "WIPY"]
 
 node {
@@ -8,13 +9,33 @@ node {
         sh 'rm -rf esp-idf'
         sh 'git clone --depth=1 --recursive -b esp-idf-2017-03-12 ssh://git@dev.pycom.io:2222/source/espidf2.git esp-idf'
     }
-    stage('Build') { // build the cross compiler first
+
+    stage('Build1') { // build the cross compiler first
         sh '''cd mpy-cross;
         make all'''
 
-        for (name in boards_to_build) {
-            boardBuild(name)
+        def parallelSteps = [:]
+        for (x in boards_to_build_1) {
+            def name = x
+            parallelSteps[name] = boardBuild(name)
         }
+        parallel parallelSteps
+
+        stash includes: '**/*.bin', name: 'binary'
+        stash includes: 'tests/**', name: 'tests'
+        stash includes: 'esp-idf/components/esptool_py/**', name: 'esp-idfTools'
+        stash includes: 'tools/**', name: 'tools'
+        stash includes: 'esp32/tools/**', name: 'esp32Tools'
+    }
+
+    stage('Build2') { // build the cross compiler first
+
+        def parallelSteps = [:]
+        for (x in boards_to_build_2) {
+            def name = x
+            parallelSteps[name] = boardBuild(name)
+        }
+        parallel parallelSteps
 
         stash includes: '**/*.bin', name: 'binary'
         stash includes: 'tests/**', name: 'tests'
