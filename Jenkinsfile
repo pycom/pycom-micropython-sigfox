@@ -10,7 +10,9 @@ node {
         sh 'git clone --depth=1 --recursive -b esp-idf-2017-03-12 ssh://git@dev.pycom.io:2222/source/espidf2.git esp-idf'
     }
 
-    stage('Build1') { // build the cross compiler first
+    // build the primary boards that we test
+    stage('Build1') {
+        // build the cross compiler first
         sh '''cd mpy-cross;
         make all'''
 
@@ -28,12 +30,20 @@ node {
         stash includes: 'esp32/tools/**', name: 'esp32Tools'
     }
 
-    stage('Build2') { // build the cross compiler first
+    // build the secondary boards just used for the release
+    stage('Build2') {
 
         def parallelSteps = [:]
         for (x in boards_to_build_2) {
             def name = x
-            parallelSteps[name] = boardBuild(name)
+            if (name == "LOPY_868") {
+                name_ext = "LOPY LORA_BAND=USE_BAND_868"
+            } else if (name == "LOPY_915") {
+                name_ext = "LOPY LORA_BAND=USE_BAND_915"
+            } else {
+                name_ext = name
+            }
+            parallelSteps[name_ext] = boardBuild(name_ext)
         }
         parallel parallelSteps
 
@@ -58,25 +68,28 @@ stage ('Test'){
     def parallelTests = [:]
     for (x in boards_to_test) {
         def name = x
-        parallelTests[name] = testBuild(name)
-    }
-    parallel parallelTests
-}
-
-def testBuild(name) {
-    return {
-        node(name) {
-            sleep(5) //Delay to skip all bootlog
-
         if (name == "LOPY_868" || name == "LOPY_915") {
             board_name = "LOPY"
         } else {
             board_name = name
         }
+        parallelTests[board_name] = testBuild(board_name)
+    }
+    parallel parallelTests
+}
 
+def testBuild(name) {
+    if (name != "WIPY") {
+        node_name = "LOPY"
+    } else {
+        node_name = name
+    }
+    return {
+        node(node_name) {
+            sleep(5) //Delay to skip all bootlog
             dir('tests') {
-                timeout(10) {
-                    sh '''./run-tests --target=esp32-''' + board_name +''' --device /dev/ttyUSB0'''
+                timeout(30) {
+                    sh '''./run-tests --target=esp32-''' + name +''' --device /dev/ttyUSB0'''
                 }
             }
             sh 'python esp32/tools/resetBoard.py reset'
@@ -86,8 +99,13 @@ def testBuild(name) {
 }
 
 def flashBuild(name) {
+    if (name != "WIPY") {
+        node_name = "LOPY"
+    } else {
+        node_name = name
+    }
     return {
-        node(name) {
+        node(node_name) {
             sh 'rm -rf *'
             unstash 'binary'
             unstash 'esp-idfTools'
@@ -105,24 +123,16 @@ def flashBuild(name) {
 }
 
 def boardBuild(name) {
-    if (name == "LOPY_868") {
-        name_ext = "LOPY LORA_BAND=USE_BAND_868"
-    } else if (name == "LOPY_915") {
-        name_ext = "LOPY LORA_BAND=USE_BAND_915"
-    } else {
-        name_ext = name
-    }
-
     return {
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=boot -j2 BOARD=''' + name_ext
+        make TARGET=boot -j2 BOARD=''' + name
 
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=app -j2 BOARD=''' + name_ext
+        make TARGET=app -j2 BOARD=''' + name
     }
 }
 
