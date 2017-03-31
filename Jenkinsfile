@@ -22,9 +22,9 @@ node {
             def name_short = "LOPY"
             def lora_band = ""
             if (name == "LOPY_868") {
-                lora_band = "LORA_BAND=USE_BAND_868"
+                lora_band = " LORA_BAND=USE_BAND_868"
             } else if (name == "LOPY_915") {
-                lora_band = "LORA_BAND=USE_BAND_915"
+                lora_band = " LORA_BAND=USE_BAND_915"
             } else {
                 name_short = name
             }
@@ -48,9 +48,9 @@ node {
             def name_short = "LOPY"
             def lora_band = ""
             if (name == "LOPY_868") {
-                lora_band = "LORA_BAND=USE_BAND_868"
+                lora_band = " LORA_BAND=USE_BAND_868"
             } else if (name == "LOPY_915") {
-                lora_band = "LORA_BAND=USE_BAND_915"
+                lora_band = " LORA_BAND=USE_BAND_915"
             } else {
                 name_short = name
             }
