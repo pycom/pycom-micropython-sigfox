@@ -138,7 +138,16 @@ def boardBuild(name, name_short, lora_band) {
         cd esp32;
         make TARGET=app -j2 BOARD=''' + name_short + lora_band
 
-        //sh 'tar -cvzf esp32/build/'+ name +'/release/'+ name +'.tar.gz   esp32/build/'+ name +'/release/bootloader/bootloader.bin   esp32/build/'+ name +'/release/lib/partitions.bin   esp32/build/'+ name +'/release/appimg.bin   esp32/boards/' + name_short + '/' + name + '/script'
+        def app_bin = name_short.toLowerCase() + '.bin'
+
+        sh 'cd esp32/build/'+ name +'/release/'
+        sh 'mkdir firmware_package'
+        sh 'cd firmware_package'
+        sh 'cp ../bootloader/bootloader.bin .'
+        sh 'cp ../lib/partitions.bin .'
+        sh 'cp ../../../../boards/' + name_short + '/' + name + '/script .'
+        sh 'cp ../' + app_bin + ' .'
+        sh 'tar -cvzf' + name + '.tar.gz   bootloader.bin   partitions.bin   script' + app_bin
     }
 }
 
