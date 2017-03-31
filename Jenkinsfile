@@ -127,7 +127,7 @@ def flashBuild(name) {
 }
 
 def boardBuild(name, name_short, lora_band) {
-    def app_bin = name_short.toLowerCase() + '.bin'
+    def app_bin = name.toLowerCase() + '.bin'
     return {
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
