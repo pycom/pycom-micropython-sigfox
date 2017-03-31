@@ -146,7 +146,7 @@ def boardBuild(name, name_short, lora_band) {
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name + '''/script .;
         cp ../''' + app_bin + ''' .;
-        tar -cvzf''' + name + '''.tar.gz   bootloader.bin   partitions.bin   script''' + app_bin
+        tar -cvzf ''' + name + '''.tar.gz   bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
