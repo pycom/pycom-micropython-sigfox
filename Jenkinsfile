@@ -127,6 +127,7 @@ def flashBuild(name) {
 }
 
 def boardBuild(name, name_short, lora_band) {
+    def app_bin = name_short.toLowerCase() + '.bin'
     return {
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
@@ -138,16 +139,14 @@ def boardBuild(name, name_short, lora_band) {
         cd esp32;
         make TARGET=app -j2 BOARD=''' + name_short + lora_band
 
-        def app_bin = name_short.toLowerCase() + '.bin'
-
-        sh 'cd esp32/build/'+ name +'/release/'
-        sh 'mkdir firmware_package'
-        sh 'cd firmware_package'
-        sh 'cp ../bootloader/bootloader.bin .'
-        sh 'cp ../lib/partitions.bin .'
-        sh 'cp ../../../../boards/' + name_short + '/' + name + '/script .'
-        sh 'cp ../' + app_bin + ' .'
-        sh 'tar -cvzf' + name + '.tar.gz   bootloader.bin   partitions.bin   script' + app_bin
+        sh '''cd esp32/build/'''+ name +'''/release;
+        mkdir firmware_package;
+        cd firmware_package;
+        cp ../bootloader/bootloader.bin .;
+        cp ../lib/partitions.bin .;
+        cp ../../../../boards/''' + name_short + '''/''' + name + '''/script .;
+        cp ../''' + app_bin + ''' .;
+        tar -cvzf''' + name + '''.tar.gz   bootloader.bin   partitions.bin   script''' + app_bin
     }
 }
 
