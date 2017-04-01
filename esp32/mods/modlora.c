@@ -118,6 +118,12 @@
 #define MODLORA_TX_EVENT                            (0x02)
 #define MODLORA_TX_FAILED_EVENT                     (0x04)
 
+#define MODLORA_NVM_NUM_ELEMENTS                    (5)
+#define MODLORA_NVS_NAMESPACE                       "LORA_NVM"
+
+static nvs_handle modlora_nvs_handle;
+static const char *modlora_nvs_data_key[NVM_NUM_ELEMENTS] = {"SFX_PN", "SFX_SEQ", "SFX_FH", "SFX_RSSI", "SFX_FREQ"};
+
 /******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
@@ -230,7 +236,6 @@ typedef struct {
     uint32_t    size;
     uint8_t     data[LORA_PAYLOAD_SIZE_MAX];
 } lora_partial_rx_packet_t;
-
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -769,7 +774,7 @@ static void TASK_LoRa (void *pvParameters) {
                     mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.otaa.DevEui;
                     mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.otaa.AppEui;
                     mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.otaa.AppKey;
-                    LoRaMacMlmeRequest(&mlmeReq);
+                    LoRaMacMlmeRequest( &mlmeReq );
                 } else {
                     mibReq.Type = MIB_NET_ID;
                     mibReq.Param.NetID = DEF_LORAWAN_NETWORK_ID;
