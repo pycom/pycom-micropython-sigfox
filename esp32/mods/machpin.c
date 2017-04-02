@@ -618,36 +618,38 @@ void machpin_register_irq_c_handler(pin_obj_t *self, void *handler) {
 int parseError(esp_err_t error){
 	int status = error;
 	switch(error){
-					case ESP_ERR_INVALID_ARG: printf("Invalid trigger level entered. Valid values are 0 or 1 \n");
+					case ESP_ERR_INVALID_ARG: nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
 						break;
-					case ESP_ERR_INVALID_STATE: printf("Conflicting wake-up triggers detected.\n");
+					case ESP_ERR_INVALID_STATE: nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_os_operation_failed));
 						break;
 					default: break;
 	}
 	return status;
 }
 
-STATIC mp_obj_t pin_deepsleep(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t pin_wakeup_trigger(mp_uint_t n_args, const mp_obj_t *args) {
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_trigger_level,    MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0x00} },
+    };
+    mp_map_t kw_args;
 	pin_obj_t *self = args[0];
+	mp_arg_val_t ok_args[MP_ARRAY_SIZE(allowed_args)];
+	mp_map_init(&kw_args, 0);
+	mp_arg_parse_all(n_args - 1, args + 1, &kw_args, MP_ARRAY_SIZE(ok_args), allowed_args, ok_args);
+
     if (!RTC_GPIO_IS_VALID_GPIO((gpio_num_t) (self->pin_number)))
-    	printf("This Pin does not support wake up. Please choose a different pin.\n");
+    	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_os_request_not_possible));
     else{
         mperror_enable_heartbeat(false);
         bt_deinit(NULL);
         wlan_deinit(NULL);
-        int trigger = (n_args >= 2) ? (int)(mp_obj_get_int(args[1])) : -1;
-		esp_err_t err = esp_deep_sleep_enable_ext0_wakeup((gpio_num_t) (self->pin_number) , trigger);
+		esp_err_t err = esp_deep_sleep_enable_ext0_wakeup((gpio_num_t) (self->pin_number) , ok_args[0].u_int);
 		if(parseError(err) != 0)
 			return mp_const_none;
-		if (n_args > 2 && mp_obj_get_int(args[2]) > 0) {
-			printf("Configuring a time out to pin wake-up.\n");
-			esp_deep_sleep((uint64_t)mp_obj_get_int(args[2]) * 1000);
-		}
-		esp_deep_sleep_start();
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pin_deepsleep_obj, 2, 3, pin_deepsleep);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR(pin_wakeup_trigger_obj, 2, pin_wakeup_trigger);
 
 
 STATIC const mp_map_elem_t pin_locals_dict_table[] = {
@@ -659,7 +661,7 @@ STATIC const mp_map_elem_t pin_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_mode),                    (mp_obj_t)&pin_mode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pull),                    (mp_obj_t)&pin_pull_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_hold),                    (mp_obj_t)&pin_hold_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_deepsleep),                    (mp_obj_t)&pin_deepsleep_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_wakeup_trigger),                    (mp_obj_t)&pin_wakeup_trigger_obj },
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_alt_list),                (mp_obj_t)&pin_alt_list_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&pin_callback_obj },
 
