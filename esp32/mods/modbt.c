@@ -74,11 +74,11 @@ typedef struct {
     int32_t               conn_id;          // current activity connection id
     mp_obj_t              handler;
     mp_obj_t              handler_arg;
+    int32_t               gatts_conn_id;
     uint32_t              trigger;
     int32_t               events;
     uint16_t              gatts_if;
     uint16_t              gattc_if;
-    uint16_t              gatts_conn_id;
     bool                  init;
     bool                  busy;
     bool                  scanning;
@@ -157,6 +157,7 @@ typedef union {
 typedef struct {
     mp_obj_base_t         base;
     uint16_t              handle;
+    bool                  started;
 } bt_gatts_srv_obj_t;
 
 typedef struct {
@@ -429,8 +430,8 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
                 mp_irq_queue_interrupt(gattc_char_callback_handler, char_obj);
             }
         }
-    }
         break;
+    }
     case ESP_GATTC_SEARCH_CMPL_EVT:
         // printf("SEARCH_CMPL: conn_id = %x, status %d\n", conn_id, p_data->search_cmpl.status);
         bt_obj.busy = false;
@@ -536,8 +537,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         bt_gatts_event_result_t gatts_event;
         gatts_event.service_handle = p->create.service_handle;
         xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
-    }
         break;
+    }
     case ESP_GATTS_ADD_INCL_SRVC_EVT:
         break;
     case ESP_GATTS_ADD_CHAR_EVT:
@@ -545,15 +546,15 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         bt_gatts_event_result_t gatts_event;
         gatts_event.char_handle = p->add_char.attr_handle;
         xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
-    }
         break;
+    }
     case ESP_GATTS_ADD_CHAR_DESCR_EVT:
     {
         bt_gatts_event_result_t gatts_event;
         gatts_event.char_descr_handle = p->add_char_descr.attr_handle;
         xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
-    }
         break;
+    }
     case ESP_GATTS_DELETE_EVT:
         break;
     case ESP_GATTS_START_EVT:
@@ -561,11 +562,15 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     case ESP_GATTS_STOP_EVT:
         break;
     case ESP_GATTS_CONNECT_EVT:
-        bt_obj.gatts_conn_id = p->connect.conn_id;
-
-        bt_obj.events |= MOD_BT_GATTS_CONN_EVT;
-        if (bt_obj.trigger & MOD_BT_GATTS_CONN_EVT) {
-            mp_irq_queue_interrupt(bluetooth_callback_handler, (void *)&bt_obj);
+        // only allow one connection at a time
+        if (bt_obj.gatts_conn_id >= 0) {
+            esp_ble_gatts_close(bt_obj.gatts_if, p->connect.conn_id);
+        } else {
+            bt_obj.gatts_conn_id = p->connect.conn_id;
+            bt_obj.events |= MOD_BT_GATTS_CONN_EVT;
+            if (bt_obj.trigger & MOD_BT_GATTS_CONN_EVT) {
+                mp_irq_queue_interrupt(bluetooth_callback_handler, (void *)&bt_obj);
+            }
         }
         break;
     case ESP_GATTS_DISCONNECT_EVT:
@@ -602,10 +607,10 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
         esp_bt_controller_enable(ESP_BT_MODE_BTDM);
 
         if (ESP_OK != esp_bluedroid_init()) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth init failed"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Bluetooth init failed"));
         }
         if (ESP_OK != esp_bluedroid_enable()) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth enable failed"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Bluetooth enable failed"));
         }
 
         esp_ble_gap_register_callback(esp_gap_cb);
@@ -890,7 +895,7 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
         esp_ble_gap_set_device_name(name);
     } else {
         adv_data.include_name = false;
-        esp_ble_gap_set_device_name("-");
+        esp_ble_gap_set_device_name(" ");
     }
 
     // manufacturer data
@@ -969,6 +974,7 @@ STATIC mp_obj_t bt_service (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
         { MP_QSTR_uuid,                     MP_ARG_REQUIRED | MP_ARG_OBJ },
         { MP_QSTR_isprimary,                MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = true} },
         { MP_QSTR_nbr_chars,                MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 1} },
+        { MP_QSTR_start,                    MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = true} },
     };
 
     mp_buffer_info_t uuid_bufinfo;
@@ -1009,7 +1015,10 @@ STATIC mp_obj_t bt_service (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
     srv->base.type = (mp_obj_t)&mod_bt_gatts_service_type;
     srv->handle = gatts_event.service_handle;
 
-    esp_ble_gatts_start_service(gatts_event.service_handle);
+    if (args[3].u_bool) {
+        esp_ble_gatts_start_service(gatts_event.service_handle);
+        srv->started = true;
+    }
 
     mp_obj_list_append((mp_obj_t)&MP_STATE_PORT(bts_srv_list), srv);
 
@@ -1020,6 +1029,29 @@ error:
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_service_obj, 1, bt_service);
 
+STATIC mp_obj_t bt_service_start(mp_obj_t self_in) {
+    bt_gatts_srv_obj_t *self = self_in;
+    if (!self->started) {
+        if (ESP_OK != esp_ble_gatts_start_service(self->handle)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+        self->started = true;
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_service_start_obj, bt_service_start);
+
+STATIC mp_obj_t bt_service_stop(mp_obj_t self_in) {
+    bt_gatts_srv_obj_t *self = self_in;
+    if (self->started) {
+        if (ESP_OK != esp_ble_gatts_stop_service(self->handle)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+        self->started = false;
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_service_stop_obj, bt_service_stop);
 
 STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
@@ -1137,6 +1169,8 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_characteristic_obj, 1, bt_characteristic);
 STATIC const mp_map_elem_t bt_gatts_service_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_characteristic),          (mp_obj_t)&bt_characteristic_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_start),                   (mp_obj_t)&bt_service_start_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_stop),                    (mp_obj_t)&bt_service_stop_obj },
 };
 STATIC MP_DEFINE_CONST_DICT(bt_gatts_service_locals_dict, bt_gatts_service_locals_dict_table);
 
