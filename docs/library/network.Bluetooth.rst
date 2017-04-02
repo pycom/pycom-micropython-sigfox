@@ -217,7 +217,7 @@ Methods
 
      bluetooth.advertise(True) # enable advertisements
 
-.. method:: bluetooth.service(uuid, \*, isprimary=True, nbr_chars=1)
+.. method:: bluetooth.service(uuid, \*, isprimary=True, nbr_chars=1, start=True)
 
     Create a new service on the internal GATT server. Returns a object of type ``BluetoothServerService``.
 
@@ -226,6 +226,7 @@ Methods
        - ``uuid`` is the UUID of the service. Can take an integer or a 16 byte long string or bytes object.
        - ``isprimary`` selects if the service is a primary one. Takes a bool value.
        - ``nbr_chars`` specifies the number of characteristics that the service will contain.
+       - ``start`` if ``True`` the service is started immediatelly.
 
     ::
 
@@ -447,6 +448,16 @@ The GATT Server allows the device to act as a peripheral and hold its own ATT lo
 
 The following class allows control over **Server** services.
 
+
+.. method:: service.start()
+
+    Starts the service if not already started.
+
+.. method:: service.stop()
+
+    Stops the service if previously started.
+
+
 .. method:: service.characteristic(uuid, \*, permissions, properties, value)
 
     Creates a new characteristic on the service. Returns an object of the class ``GATTSCharacteristic``.
@@ -515,11 +526,31 @@ The following class allows you to manage **Server** characteristics.
 
      chr1 = srv1.characteristic(uuid=b'ab34567890123456', value=5)
 
-     def char1_cb(chr):
-         print("Write request with value = {}".format(chr.value()))
+     char1_read_counter = 0
+     def char1_cb_handler(chr):
+         global char1_read_counter
+         char1_read_counter += 1
 
-     char1_cb = chr1.callback(trigger=Bluetooth.CHAR_WRITE_EVENT, handler=char1_cb)
+         events = chr.events()
+         if  events & Bluetooth.CHAR_WRITE_EVENT:
+         print("Write request with value = {}".format(chr.value()))
+         else:
+             if char1_read_counter < 3:
+                 print('Read request on char 1')
+             else:
+                 return 'ABC DEF'
+
+     char1_cb = chr1.callback(trigger=Bluetooth.CHAR_WRITE_EVENT | Bluetooth.CHAR_READ_EVENT, handler=char1_cb_handler)
 
      srv2 = bluetooth.service(uuid=1234, isprimary=True)
 
-     chr2 = srv2.characteristic(uuid=4567)
+     chr2 = srv2.characteristic(uuid=4567, value=0x1234)
+     char2_read_counter = 0xF0
+     def char2_cb_handler(chr):
+         global char2_read_counter
+         char2_read_counter += 1
+         if char2_read_counter > 0xF1:
+             return char2_read_counter
+
+     char2_cb = chr2.callback(trigger=Bluetooth.CHAR_READ_EVENT, handler=char2_cb_handler)
+

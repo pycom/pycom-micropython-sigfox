@@ -48,6 +48,9 @@
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 
+#include "lwip/opt.h"
+#include "lwip/def.h"
+
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
@@ -461,25 +464,38 @@ STATIC void gatts_char_callback_handler(void *arg) {
         mp_obj_t r_value = mp_call_function_1(chr->handler, chr->handler_arg);
 
         if (chr->read_request) {
+            uint32_t u_value;
             uint8_t *value;
-            uint8_t value_len;
+            uint8_t value_l = 1;
 
             chr->read_request = false;
             if (r_value != mp_const_none) {
-                mp_buffer_info_t bufinfo;
-                mp_get_buffer_raise(r_value, &bufinfo, MP_BUFFER_READ);
-                value = bufinfo.buf;
-                value_len = bufinfo.len;
+                if (mp_obj_is_integer(r_value)) {
+                    u_value = mp_obj_get_int_truncated(r_value);
+                    value = (uint8_t *)&u_value;
+                    if (u_value > UINT16_MAX) {
+                        value_l = 4;
+                        u_value = lwip_htonl(u_value);
+                    } else if (u_value > UINT8_MAX) {
+                        value_l = 2;
+                        u_value = lwip_htons(u_value);
+                    }
+                } else {
+                    mp_buffer_info_t bufinfo;
+                    mp_get_buffer_raise(r_value, &bufinfo, MP_BUFFER_READ);
+                    value = bufinfo.buf;
+                    value_l = bufinfo.len;
+                }
             } else {
                 value = chr->attr_obj.value;
-                value_len = chr->attr_obj.value_len;
+                value_l = chr->attr_obj.value_len;
             }
 
             esp_gatt_rsp_t rsp;
             memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
             rsp.attr_value.handle = chr->attr_obj.handle;
-            rsp.attr_value.len = value_len;
-            memcpy(&rsp.attr_value.value, value, value_len);
+            rsp.attr_value.len = value_l;
+            memcpy(&rsp.attr_value.value, value, value_l);
             esp_ble_gatts_send_response(bt_obj.gatts_if, bt_obj.gatts_conn_id, chr->trans_id, ESP_GATT_OK, &rsp);
         }
     }
@@ -922,12 +938,14 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
 
     // service uuid
     if (args[3].u_obj != mp_const_none) {
-        if (MP_OBJ_IS_SMALL_INT(args[3].u_obj)) {
-            int32_t srv_uuid = mp_obj_get_int(args[3].u_obj);
-            if (srv_uuid > 0xFFFF) {
+        if (mp_obj_is_integer(args[3].u_obj)) {
+            uint32_t srv_uuid = mp_obj_get_int_truncated(args[3].u_obj);
+            if (srv_uuid > UINT16_MAX) {
                 adv_data.service_uuid_len = 4;
+                srv_uuid = lwip_htonl(srv_uuid);
             } else {
                 adv_data.service_uuid_len = 2;
+                srv_uuid = lwip_htons(srv_uuid);
             }
             adv_data.p_service_uuid = (uint8_t *)&srv_uuid;
         } else {
@@ -987,9 +1005,9 @@ STATIC mp_obj_t bt_service (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
 
     // service uuid
-    if (MP_OBJ_IS_SMALL_INT(args[0].u_obj)) {
-        int32_t srv_uuid = mp_obj_get_int(args[0].u_obj);
-        if (srv_uuid > 0xFFFF) {
+    if (mp_obj_is_integer(args[0].u_obj)) {
+        uint32_t srv_uuid = mp_obj_get_int_truncated(args[0].u_obj);
+        if (srv_uuid > UINT16_MAX) {
             service_id.id.uuid.len = 4;
             service_id.id.uuid.uuid.uuid32 = srv_uuid;
         } else {
@@ -1073,9 +1091,9 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     esp_bt_uuid_t char_uuid;
 
     // characteristic uuid
-    if (MP_OBJ_IS_SMALL_INT(args[0].u_obj)) {
-        int32_t srv_uuid = mp_obj_get_int(args[0].u_obj);
-        if (srv_uuid > 0xFFFF) {
+    if (mp_obj_is_integer(args[0].u_obj)) {
+        uint32_t srv_uuid = mp_obj_get_int_truncated(args[0].u_obj);
+        if (srv_uuid > UINT16_MAX) {
             char_uuid.len = 4;
             char_uuid.uuid.uuid32 = srv_uuid;
         } else {
@@ -1110,16 +1128,18 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
 
     if (args[3].u_obj != mp_const_none) {
         // characteristic value
-        if (MP_OBJ_IS_SMALL_INT(args[3].u_obj)) {
-            int32_t value = mp_obj_get_int(args[3].u_obj);
-            memcpy(characteristic->attr_obj.value, &value, sizeof(value));
-            if (value > 0xFF) {
-                characteristic->attr_obj.value_len = 2;
-            } else if (value > 0xFFFF) {
+        if (mp_obj_is_integer(args[3].u_obj)) {
+            uint32_t value = mp_obj_get_int_truncated(args[3].u_obj);
+            if (value > UINT16_MAX) {
                 characteristic->attr_obj.value_len = 4;
+                value = lwip_htonl(value);
+            } else if (value > UINT8_MAX) {
+                characteristic->attr_obj.value_len = 2;
+                value = lwip_htons(value);
             } else {
                 characteristic->attr_obj.value_len = 1;
             }
+            memcpy(characteristic->attr_obj.value, &value, sizeof(value));
         } else {
             mp_buffer_info_t value_bufinfo;
             mp_get_buffer_raise(args[3].u_obj, &value_bufinfo, MP_BUFFER_READ);
@@ -1189,8 +1209,8 @@ STATIC mp_obj_t bt_characteristic_value (mp_uint_t n_args, const mp_obj_t *args)
         return mp_obj_new_bytes(self->attr_obj.value, self->attr_obj.value_len);
     } else {
         // set
-        if (MP_OBJ_IS_SMALL_INT(args[1])) {
-            int32_t value = mp_obj_get_int(args[1]);
+        if (mp_obj_is_integer(args[1])) {
+            uint32_t value = mp_obj_get_int_truncated(args[1]);
             memcpy(self->attr_obj.value, &value, sizeof(value));
             if (value > 0xFF) {
                 self->attr_obj.value_len = 2;
