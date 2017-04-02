@@ -23,11 +23,10 @@
 #if MICROPY_PY_THREAD
 
 /******************************************************************************
- DECLARE PUBLIC DATA
+ DECLARE PRIVATE DATA
  ******************************************************************************/
-QueueHandle_t interruptsQueue;
-
-bool mp_irq_is_alive;
+STATIC QueueHandle_t InterruptsQueue;
+STATIC bool mp_irq_is_alive;
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -44,7 +43,7 @@ static void *TASK_Interrupts(void *pvParameters) {
     mp_thread_start();
 
     for (;;) {
-        xQueueReceive(interruptsQueue, &cb, portMAX_DELAY);
+        xQueueReceive(InterruptsQueue, &cb, portMAX_DELAY);
 
         // a NULL handler means that we need to exit the loop
         if (NULL == cb.handler) {
@@ -58,14 +57,13 @@ static void *TASK_Interrupts(void *pvParameters) {
             cb.handler(cb.arg);
             nlr_pop();
         } else {
-            // uncaught exception
-            // check for SystemExit
+            // uncaught exception, check for SystemExit
             mp_obj_base_t *exc = (mp_obj_base_t*)nlr.ret_val;
             if (mp_obj_is_subclass_fast(MP_OBJ_FROM_PTR(exc->type), MP_OBJ_FROM_PTR(&mp_type_SystemExit))) {
-                // swallow exception silently
+                // swallow the exception silently
             } else {
-                // print exception out
-                mp_printf(&mp_plat_print, "Unhandled exception in interrupt handler\n");
+                // print the exception out
+                mp_printf(&mp_plat_print, "Unhandled exception in callback handler\n");
                 mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(exc));
             }
         }
@@ -81,30 +79,31 @@ static void *TASK_Interrupts(void *pvParameters) {
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 void mp_irq_preinit(void) {
-    interruptsQueue = xQueueCreate(INTERRUPTS_QUEUE_LEN, sizeof(mp_callback_obj_t));
+    InterruptsQueue = xQueueCreate(INTERRUPTS_QUEUE_LEN, sizeof(mp_callback_obj_t));
 }
 
 void mp_irq_init0(void) {
     uint32_t stack_size = INTERRUPTS_TASK_STACK_SIZE;
     mp_irq_is_alive = true;
-    xQueueReset(interruptsQueue);
-    mp_thread_create_ex(TASK_Interrupts, NULL, &stack_size, INTERRUPTS_TASK_PRIORITY, "Interrupts");
+    xQueueReset(InterruptsQueue);
+    mp_thread_create_ex(TASK_Interrupts, NULL, &stack_size, INTERRUPTS_TASK_PRIORITY, "IRQs");
 }
 
 void IRAM_ATTR mp_irq_queue_interrupt(void (* handler)(void *), void *arg) {
     mp_callback_obj_t cb = {.handler = handler, .arg = arg};
-    xQueueSendFromISR(interruptsQueue, &cb, NULL);
+    xQueueSendFromISR(InterruptsQueue, &cb, NULL);
 }
 
 void mp_irq_kill(void) {
     // sending a NULL handler will kill the interrupt task
     mp_irq_queue_interrupt(NULL, NULL);
-    MP_THREAD_GIL_EXIT();       // release the GIL if we have it
+    // release the GIL if we have it
+    MP_THREAD_GIL_EXIT();
     do {
         // it needs to be this one in order to not mess with the GIL
         vTaskDelay(3 / portTICK_PERIOD_MS);
     } while (mp_irq_is_alive);
-    xQueueReset(interruptsQueue);
+    xQueueReset(InterruptsQueue);
     // TODO disable all interrupts here at hardware level
 }
 
