@@ -206,8 +206,8 @@ static esp_ble_adv_params_t bt_adv_params = {
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
-static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
+static void gap_events_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
+static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 static void close_connection(int32_t conn_id);
 
@@ -305,25 +305,23 @@ static bt_gatts_attr_obj_t *find_gatts_attr_by_handle (uint16_t handle) {
     return NULL;
 }
 
-static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
+static void gap_events_handler (esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
     switch (event) {
     case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT: {
         int32_t duration = bt_obj.scan_duration;
         // the unit of the duration is seconds
-        // printf("Start scanning\n");
         if (duration < 0) {
             duration = 0xFFFF;
         }
         esp_ble_gap_start_scanning(duration);
         break;
     }
-    case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
-    {
+    case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT: {
         bt_gatts_event_result_t gatts_event;
         gatts_event.adv_set = true;
         xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
-    }
         break;
+    }
     case ESP_GAP_BLE_SCAN_RESULT_EVT: {
         bt_event_result_t bt_event_result;
         esp_ble_gap_cb_param_t *scan_result = (esp_ble_gap_cb_param_t *)param;
@@ -337,13 +335,11 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
             }
             break;
         case ESP_GAP_SEARCH_DISC_RES_EVT:
-            // printf("Discovery result\n");
             break;
         case ESP_GAP_SEARCH_INQ_CMPL_EVT:
             if (bt_obj.scan_duration < 0) {
                 esp_ble_gap_set_scan_params(&ble_scan_params);
             } else {
-                // printf("Scan finished\n");
                 bt_obj.scanning = false;
             }
             break;
@@ -357,28 +353,23 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
     }
 }
 
-static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
+static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
     uint16_t conn_id = 0;
     esp_ble_gattc_cb_param_t *p_data = (esp_ble_gattc_cb_param_t *)param;
     bt_event_result_t bt_event_result;
 
-    LOG_INFO("esp_gattc_cb, event = %x\n", event);
     switch (event) {
     case ESP_GATTC_REG_EVT:
         status = p_data->reg.status;
         bt_obj.gattc_if = gattc_if;
-        // printf("status = %x, client_if = %x\n", status, client_if);
         break;
     case ESP_GATTC_OPEN_EVT:
         conn_id = p_data->open.conn_id;
-        // printf("ESP_GATTC_OPEN_EVT conn_id %d, if %d, status %x\n", conn_id, p_data->open.gatt_if, p_data->open.status);
         if (p_data->open.status == ESP_GATT_OK) {
-            // printf("Device connected=%d\n", conn_id);
             bt_event_result.connection.conn_id = conn_id;
             bt_event_result.connection.gatt_if = gattc_if;
             memcpy(bt_event_result.connection.srv_bda, p_data->open.remote_bda, ESP_BD_ADDR_LEN);
         } else {
-            // printf("Connection failed!=%d\n", conn_id);
             bt_event_result.connection.conn_id = -1;
         }
         xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
@@ -390,8 +381,6 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
             bt_event_result.read.value_len = p_data->read.value_len;
             bt_event_result.read.value_type = p_data->read.value_type;
             xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
-        } else {
-            // printf("Error reading BLE characteristic\n");
         }
         bt_obj.busy = false;
         break;
@@ -414,14 +403,11 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
             bt_event_result.characteristic.char_prop = p_data->get_char.char_prop;
             xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
             esp_ble_gattc_get_characteristic(gattc_if, bt_obj.conn_id, &p_data->get_char.srvc_id, char_id);
-            // printf("characteristic found=%x\n", p_data->get_char.char_id.uuid.uuid.uuid16);
         } else {
-            // printf("Error getting BLE characteristic\n");
             bt_obj.busy = false;
         }
         break;
-    case ESP_GATTC_NOTIFY_EVT:
-    {
+    case ESP_GATTC_NOTIFY_EVT: {
         bt_char_obj_t *char_obj;
         char_obj = find_gattc_char (p_data->notify.conn_id, &p_data->notify.srvc_id, &p_data->notify.char_id);
         if (char_obj != NULL) {
@@ -433,14 +419,12 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
         break;
     }
     case ESP_GATTC_SEARCH_CMPL_EVT:
-        // printf("SEARCH_CMPL: conn_id = %x, status %d\n", conn_id, p_data->search_cmpl.status);
         bt_obj.busy = false;
         break;
     case ESP_GATTC_CANCEL_OPEN_EVT:
         bt_obj.busy = false;
         // intentional fall through
     case ESP_GATTC_CLOSE_EVT:
-        // printf("Connection closed!\n");
         bt_obj.conn_id = -1;
         close_connection(p_data->close.conn_id);
         break;
@@ -476,8 +460,7 @@ STATIC void gatts_char_callback_handler(void *arg) {
     }
 }
 
-static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
-{
+static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
     esp_ble_gatts_cb_param_t *p = (esp_ble_gatts_cb_param_t *)param;
 
     switch (event) {
@@ -532,8 +515,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     case ESP_GATTS_CONF_EVT:
     case ESP_GATTS_UNREG_EVT:
         break;
-    case ESP_GATTS_CREATE_EVT:
-    {
+    case ESP_GATTS_CREATE_EVT: {
         bt_gatts_event_result_t gatts_event;
         gatts_event.service_handle = p->create.service_handle;
         xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
@@ -541,15 +523,13 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     }
     case ESP_GATTS_ADD_INCL_SRVC_EVT:
         break;
-    case ESP_GATTS_ADD_CHAR_EVT:
-    {
+    case ESP_GATTS_ADD_CHAR_EVT: {
         bt_gatts_event_result_t gatts_event;
         gatts_event.char_handle = p->add_char.attr_handle;
         xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
         break;
     }
-    case ESP_GATTS_ADD_CHAR_DESCR_EVT:
-    {
+    case ESP_GATTS_ADD_CHAR_DESCR_EVT: {
         bt_gatts_event_result_t gatts_event;
         gatts_event.char_descr_handle = p->add_char_descr.attr_handle;
         xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
@@ -613,8 +593,8 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Bluetooth enable failed"));
         }
 
-        esp_ble_gap_register_callback(esp_gap_cb);
-        esp_ble_gattc_register_callback(esp_gattc_cb);
+        esp_ble_gap_register_callback(gap_events_handler);
+        esp_ble_gattc_register_callback(gattc_events_handler);
         esp_ble_gatts_register_callback(gatts_event_handler);
 
         mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(btc_conn_list), 0);
@@ -646,9 +626,6 @@ STATIC mp_obj_t bt_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint
     // setup the object
     bt_obj_t *self = (bt_obj_t *)&bt_obj;
     self->base.type = (mp_obj_t)&mod_network_nic_type_bt;
-
-    // give it to the sleep module
-    //pyb_sleep_set_wlan_obj(self); // FIXME
 
     // check the peripheral id
     if (args[0].u_int != 0) {
@@ -836,7 +813,6 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
     } else if (bt_obj.scanning) {
         esp_ble_gap_stop_scanning();
         bt_obj.scanning = false;
-        // printf("Scanning stopped\n");
     }
 
     mp_buffer_info_t bufinfo;
@@ -862,7 +838,6 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
         conn->base.type = (mp_obj_t)&mod_bt_connection_type;
         conn->conn_id = bt_event.connection.conn_id;
         memcpy(conn->srv_bda, bt_event.connection.srv_bda, 6);
-        // printf("conn id=%d\n", bt_event.conn_id);
         mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), conn);
         return conn;
     }
@@ -1610,7 +1585,7 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
                                                              &self->characteristic.char_id)) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
-        }  else {
+        } else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection already closed"));
         }
     } else {
