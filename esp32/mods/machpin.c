@@ -24,6 +24,8 @@
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "esp_intr.h"
+#include "esp_deep_sleep.h"
+#include "driver/rtc_io.h"
 
 #include "gpio.h"
 #include "machpin.h"
@@ -32,6 +34,10 @@
 //#include "pybsleep.h"
 #include "mpexception.h"
 #include "mperror.h"
+#include "mpsleep.h"
+#include "modbt.h"
+#include "modwlan.h"
+
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -609,6 +615,41 @@ void machpin_register_irq_c_handler(pin_obj_t *self, void *handler) {
     self->handler_arg = NULL;
 }
 
+int parseError(esp_err_t error){
+	int status = error;
+	switch(error){
+					case ESP_ERR_INVALID_ARG: printf("Invalid trigger level entered. Valid values are 0 or 1 \n");
+						break;
+					case ESP_ERR_INVALID_STATE: printf("Conflicting wake-up triggers detected.\n");
+						break;
+					default: break;
+	}
+	return status;
+}
+
+STATIC mp_obj_t pin_deepsleep(mp_uint_t n_args, const mp_obj_t *args) {
+	pin_obj_t *self = args[0];
+    if (!RTC_GPIO_IS_VALID_GPIO((gpio_num_t) (self->pin_number)))
+    	printf("This Pin does not support wake up. Please choose a different pin.\n");
+    else{
+        mperror_enable_heartbeat(false);
+        bt_deinit(NULL);
+        wlan_deinit(NULL);
+        int trigger = (n_args >= 2) ? (int)(mp_obj_get_int(args[1])) : -1;
+		esp_err_t err = esp_deep_sleep_enable_ext0_wakeup((gpio_num_t) (self->pin_number) , trigger);
+		if(parseError(err) != 0)
+			return mp_const_none;
+		if (n_args > 2 && mp_obj_get_int(args[2]) > 0) {
+			printf("Configuring a time out to pin wake-up.\n");
+			esp_deep_sleep((uint64_t)mp_obj_get_int(args[2]) * 1000);
+		}
+		esp_deep_sleep_start();
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pin_deepsleep_obj, 2, 3, pin_deepsleep);
+
+
 STATIC const mp_map_elem_t pin_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                    (mp_obj_t)&pin_init_obj },
@@ -618,6 +659,7 @@ STATIC const mp_map_elem_t pin_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_mode),                    (mp_obj_t)&pin_mode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pull),                    (mp_obj_t)&pin_pull_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_hold),                    (mp_obj_t)&pin_hold_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_deepsleep),                    (mp_obj_t)&pin_deepsleep_obj },
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_alt_list),                (mp_obj_t)&pin_alt_list_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&pin_callback_obj },
 
