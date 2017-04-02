@@ -175,8 +175,10 @@ typedef struct {
     mp_obj_t              handler;
     mp_obj_t              handler_arg;
     uint32_t              trigger;
-    int32_t               events;
+    uint32_t              events;
+    uint32_t              trans_id;
     uint16_t              config;
+    bool                  read_request;
 } bt_gatts_char_obj_t;
 
 /******************************************************************************
@@ -456,7 +458,30 @@ STATIC void gatts_char_callback_handler(void *arg) {
     bt_gatts_char_obj_t *chr = arg;
 
     if (chr->handler != mp_const_none) {
-        mp_call_function_1(chr->handler, chr->handler_arg);
+        mp_obj_t r_value = mp_call_function_1(chr->handler, chr->handler_arg);
+
+        if (chr->read_request) {
+            uint8_t *value;
+            uint8_t value_len;
+
+            chr->read_request = false;
+            if (r_value != mp_const_none) {
+                mp_buffer_info_t bufinfo;
+                mp_get_buffer_raise(r_value, &bufinfo, MP_BUFFER_READ);
+                value = bufinfo.buf;
+                value_len = bufinfo.len;
+            } else {
+                value = chr->attr_obj.value;
+                value_len = chr->attr_obj.value_len;
+            }
+
+            esp_gatt_rsp_t rsp;
+            memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
+            rsp.attr_value.handle = chr->attr_obj.handle;
+            rsp.attr_value.len = value_len;
+            memcpy(&rsp.attr_value.value, value, value_len);
+            esp_ble_gatts_send_response(bt_obj.gatts_if, bt_obj.gatts_conn_id, chr->trans_id, ESP_GATT_OK, &rsp);
+        }
     }
 }
 
@@ -470,19 +495,21 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     case ESP_GATTS_READ_EVT: {
         bt_gatts_attr_obj_t *attr_obj = find_gatts_attr_by_handle (p->read.handle);
         if (attr_obj) {
-            esp_gatt_rsp_t rsp;
-            memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
-            rsp.attr_value.handle = p->read.handle;
-            rsp.attr_value.len = attr_obj->value_len;
-            memcpy(&rsp.attr_value.value, attr_obj->value, attr_obj->value_len);
-            esp_ble_gatts_send_response(gatts_if, p->read.conn_id, p->read.trans_id, ESP_GATT_OK, &rsp);
-
             if (attr_obj->is_char) {
                 bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
                 char_obj->events |= MOD_BT_GATTS_READ_EVT;
                 if (char_obj->trigger & MOD_BT_GATTS_READ_EVT) {
+                    char_obj->read_request = true;
+                    char_obj->trans_id = p->read.trans_id;
                     mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
                 }
+            } else {    // send the response immediatelly
+                esp_gatt_rsp_t rsp;
+                memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
+                rsp.attr_value.handle = p->read.handle;
+                rsp.attr_value.len = attr_obj->value_len;
+                memcpy(&rsp.attr_value.value, attr_obj->value, attr_obj->value_len);
+                esp_ble_gatts_send_response(gatts_if, p->read.conn_id, p->read.trans_id, ESP_GATT_OK, &rsp);
             }
         }
         break;
