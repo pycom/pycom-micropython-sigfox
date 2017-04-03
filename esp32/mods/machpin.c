@@ -627,15 +627,13 @@ int parseError(esp_err_t error){
 	return status;
 }
 
-STATIC mp_obj_t pin_wakeup_trigger(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t pin_wakeup_trigger(mp_uint_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_trigger_level,    MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0x00} },
     };
-    mp_map_t kw_args;
 	pin_obj_t *self = args[0];
 	mp_arg_val_t ok_args[MP_ARRAY_SIZE(allowed_args)];
-	mp_map_init(&kw_args, 0);
-	mp_arg_parse_all(n_args - 1, args + 1, &kw_args, MP_ARRAY_SIZE(ok_args), allowed_args, ok_args);
+	mp_arg_parse_all(n_args - 1, args + 1, kw_args, MP_ARRAY_SIZE(ok_args), allowed_args, ok_args);
 
     if (!RTC_GPIO_IS_VALID_GPIO((gpio_num_t) (self->pin_number)))
     	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_os_request_not_possible));
@@ -649,7 +647,7 @@ STATIC mp_obj_t pin_wakeup_trigger(mp_uint_t n_args, const mp_obj_t *args) {
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR(pin_wakeup_trigger_obj, 2, pin_wakeup_trigger);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(pin_wakeup_trigger_obj, 2, pin_wakeup_trigger);
 
 
 STATIC const mp_map_elem_t pin_locals_dict_table[] = {
