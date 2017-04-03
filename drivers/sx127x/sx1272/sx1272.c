@@ -837,6 +837,7 @@ int16_t SX1272ReadRssi( RadioModems_t modem )
 
 void SX1272Reset( void )
 {
+#if MICROPY_LPWAN_USE_RESET_PIN
     // Set RESET pin to 1
     GpioInit( &SX1272.Reset, RADIO_RESET, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
 
@@ -848,6 +849,9 @@ void SX1272Reset( void )
 
     // Wait 6 ms
     DelayMs( 6 );
+#else
+    DelayMs( 1 );
+#endif
 }
 
 IRAM_ATTR void SX1272SetOpMode( uint8_t opMode )

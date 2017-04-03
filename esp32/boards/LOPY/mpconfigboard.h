@@ -18,5 +18,34 @@
 
 #define MICROPY_HW_FLASH_SIZE                                   (4 * 1024 * 1024)
 
-#define MICROPY_LPWAN_DIO_PIN_NUM                               (23)
-#define MICROPY_LPWAN_DIO_PIN                                   (pin_GPIO23)
+#if defined(OEM_VERSION)
+
+    #define MICROPY_LPWAN_RESET_PIN_NUM
+    #define MICROPY_LPWAN_RESET_PIN_NAME
+    #define MICROPY_LPWAN_RESET_PIN
+    #define MICROPY_LPWAN_USE_RESET_PIN                             0
+
+    #define MICROPY_LPWAN_DIO_PIN_NUM                               (23)
+    #define MICROPY_LPWAN_DIO_PIN_NAME                              GPIO23
+    #define MICROPY_LPWAN_DIO_PIN                                   (pin_GPIO23)
+
+    #define MICROPY_LPWAN_NCS_PIN_NUM                               (18)
+    #define MICROPY_LPWAN_NCS_PIN_NAME                              GPIO18
+    #define MICROPY_LPWAN_NCS_PIN                                   (pin_GPIO18)
+
+#else
+
+    #define MICROPY_LPWAN_RESET_PIN_NUM                             (18)
+    #define MICROPY_LPWAN_RESET_PIN_NAME                            GPIO18
+    #define MICROPY_LPWAN_RESET_PIN                                 (pin_GPIO18)
+    #define MICROPY_LPWAN_USE_RESET_PIN                             1
+
+    #define MICROPY_LPWAN_DIO_PIN_NUM                               (23)
+    #define MICROPY_LPWAN_DIO_PIN_NAME                              GPIO23
+    #define MICROPY_LPWAN_DIO_PIN                                   (pin_GPIO23)
+
+    #define MICROPY_LPWAN_NCS_PIN_NUM                               (17)
+    #define MICROPY_LPWAN_NCS_PIN_NAME                              GPIO17
+    #define MICROPY_LPWAN_NCS_PIN                                   (pin_GPIO17)
+
+#endif

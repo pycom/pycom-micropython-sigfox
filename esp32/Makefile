@@ -16,6 +16,8 @@ endif
 
 TARGET ?= app
 
+OEM ?= 0
+
 # make 'release' the default build type
 BTYPE ?= release
 
@@ -49,6 +51,10 @@ ifeq ($(TARGET), app)
 CFLAGS_XTENSA += -O2
 else
 CFLAGS_XTENSA += -Og
+endif
+
+ifeq ($(OEM), 1)
+CFLAGS_XTENSA += -DOEM_VERSION
 endif
 
 CFLAGS = $(CFLAGS_XTENSA) -nostdlib -std=gnu99 -g3 -fstrict-volatile-bitfields -Iboards/$(BOARD)
