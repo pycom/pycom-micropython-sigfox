@@ -2,9 +2,22 @@
 Bluetooth
 ---------
 
-Currently, basic BLE functionality is available. More features will be implemented soon, like pairing. This page will be updated along the way.
+Currently, basic BLE functionality is available. More features will be implemented in the near future, such as pairing. This page will be updated in line with these features.
 
-Full info on bluetooth can be found on :class:`bluetooth page <.Bluetooth>` the Firmware API Reference.
+Full info on bluetooth can be found within :class:`bluetooth page <.Bluetooth>` of the Firmware API Reference.
+
+Scan for BLE Devices
+^^^^^^^^^^^^^^^^^^^^
+
+Scan for all of the advertising devices within range of the scanning device.
+
+::
+
+	 bluetooth.start_scan(10)        # starts scanning and stop after 10 seconds
+	 bluetooth.start_scan(-1)        # starts scanning indefenitely until bluetooth.stop_scan() is called
+
+Raw Data from Device
+^^^^^^^^^^^^^^^^^^^^
 
 A quick usage example that scans and prints the raw data from advertisements.
 
@@ -15,6 +28,9 @@ A quick usage example that scans and prints the raw data from advertisements.
 	bluetooth.start_scan(-1)    # start scanning with no timeout
 	while True:
 	    print(bluetooth.get_adv())
+
+Connect to an Device
+^^^^^^^^^^^^^^^^^^^^
 
 Connecting to a device that is sending advertisements.
 
@@ -39,6 +55,8 @@ Connecting to a device that is sending advertisements.
             break
     print("Connected to device with addr = {}".format(binascii.hexlify(adv.mac)))
 
+Connect to a Device and Retrieve Data
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Connecting to a device named 'Heart Rate' and receiving data from it's services.
 
@@ -72,8 +90,10 @@ Connecting to a device named 'Heart Rate' and receiving data from it's services.
       else:
           time.sleep(0.050)
 
+Retrieve Name & Manufacturer from Device
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Using ``resolve_adv_data()`` to atempt to get the name and manufacturer data of the advertiser.
+Using ``resolve_adv_data()`` to attempt to retrieve the name and manufacturer data from the advertiser.
 
 ::
 
