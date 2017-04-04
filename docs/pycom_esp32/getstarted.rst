@@ -255,6 +255,7 @@ The next function takes an input name and returns a string containing a welcome 
 Python has a number of different data structures for storing and manipulating variables. The main difference (regarding data structures) between C and Python is that Python manages memory for you. This means there's no need to declare the sizes of lists, dictionaries, strings, etc. ::
 
 	# lists - a data structure that holds an ordered collection (sequence) of items
+
 	networks = ['lora', 'sigfox', 'wifi', 'bluetooth', 'lte-m']
 	print(network[2]) # expect 'wifi'
 
@@ -278,20 +279,24 @@ Python has a number of different data structures for storing and manipulating va
 .. _connecting_using_pymakr:
 
 
-1.5 Connecting your board using Pymakr
-=====================================
+1.5 Connecting your board using Pymakr (Retired)
+================================================
 
 To make it as easy as possible, we developed Pymakr, a tool that will allow you
 to connect to and program your Pycom devices. We’re going to use it in this
 section to give you a quick taste of how you can work with your device. You can
 download Pymakr from `here <https://www.pycom.io/solutions/pymakr/>`_.
 
-More extended info on pymakr like how to use the pycom console and the expert
+More extended info on Pymakr like how to use the pycom console and the expert
 interface can be found under :ref:`Tools & Features <pymakr_ide>`
 
 .. note::
     If you have any trouble connecting over USB using pymakr, make sure you have the
     proper `FTDI drivers <http://www.ftdichip.com/Drivers/D2XX.htm>`_ installed.
+
+.. warning::
+
+	**Please be aware that Pymakr has been retired** and that plugins for `Atom <https://atom.io/>`_, `Sublime <https://www.sublimetext.com/>`_, `Visual Studio Code <https://code.visualstudio.com>`_ & `PyCharm <https://www.jetbrains.com/pycharm/>`_ are under development, with intention to replace Pymakr. Currently, users are advised to use an FTP client such as FileZilla to upload code/projects to their devices. You can find instructions on how to do this, in the :ref:`tools section <pycom_filesystem>` of the documentation. Please read this `forum <https://forum.pycom.io/topic/635/pymakr-time-of-death-09-02/41>`_ post for more information.
 
 Initial configuration
 ---------------------
@@ -369,12 +374,12 @@ The boot.py file should always have the following code on the top, so we can run
     os.dupterm(uart)
 
 
-Most users, especially WiPy users, would want a wifi script in the boot.py file. A basic wifi script but also more advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`Wifi Examples <wlan_step_by_step>` chapter.
+Most users, especially WiPy users, would want a wifi script in the boot.py file. A basic wifi script but also more advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`WiFi Examples <wlan_step_by_step>` chapter.
 
 Besides the neccesary main.py and boot.py files, you can create any folders and python files or libraries that you want to include in your main file. Pymakr will synchronize all files in the project to the board when using the sync button.
 
 
-.. Warning::
+.. warning::
 
     When synchronizing your project to the board, make sure the REPL console is ready. If any programs are running or the board is still booting, synchronization might fail.
 
