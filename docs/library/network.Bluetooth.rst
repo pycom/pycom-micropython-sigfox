@@ -4,7 +4,7 @@ class Bluetooth
 ===============
 
 This class provides a driver for the Bluetooth radio in the module.
-At the moment only basic BLE functionality is available.
+Currently, only basic BLE functionality is available.
 
 Quick usage example
 -------------------
@@ -40,6 +40,15 @@ Quick usage example
           else:
               time.sleep(0.050)
 
+Bluetooth Low Energy (BLE)
+--------------------------
+
+Bluetooth low energy (BLE) is a subset of classic Bluetooth, designed for easy connecting and communicating between devices (in particular mobile platforms). BLE uses a methodology known as Generic Access Profile (GAP) to control connections and advertising.
+
+GAP allows for devices to take various roles but generic flow works with devices that are either a **Server** (low power, resource constrained, sending small payloads of data) or a **Client** device (commonly a mobile device, PC or Pycom Device with large resources and processing power). Pycom devices can act as both a Client and a Server.
+
+
+
 
 Constructors
 ------------
@@ -58,11 +67,15 @@ Methods
 
 .. method:: bluetooth.init()
 
-   Initializes and enables the Bluetooth radio in BLE mode.
+   Initializes and enables the Bluetooth radio in BLE mode. ::
+
+    bluetooth.init()
 
 .. method:: bluetooth.deinit()
 
-   Disables the Bluetooth radio.
+   Disables the Bluetooth radio. ::
+
+    bluetooth.deinit()
 
 .. method:: bluetooth.start_scan(timeout)
 
@@ -79,21 +92,37 @@ Methods
 
 .. method:: bluetooth.stop_scan()
 
-   Stops an ongoing scanning process. Returns ``None``.
+   Stops an ongoing scanning process. Returns ``None``. ::
+
+    bluetooth.stop_scan()
 
 .. method:: bluetooth.isscanning()
 
-   Returns ``True`` if a Bluetooth scan is in progress. ``False`` otherwise.
+   Returns ``True`` if a Bluetooth scan is in progress. ``False`` otherwise. ::
+
+    bluetooth.isscanning()
 
 .. method:: bluetooth.get_adv()
 
    Gets an named tuple with the advertisement data received during the scanning. The tuple has the following structure: ``(mac, addr_type, adv_type, rssi, data)``
 
-   - ``mac`` is the 6-byte ling mac address of the device that sent the advertisement.
-   - ``addr_type`` is the address type. See the constants section below for more details.
-   - ``adv_type`` is the advertisement type received. See the constants section below fro more details.
-   - ``rssi`` is signed integer with the signal strength of the advertisement.
-   - ``data`` contains the complete 31 bytes of the advertisement message. In order to parse the data and get the specific types, the method ``resolve_adv_data()`` can be used.
+     - ``mac`` is the 6-byte ling mac address of the device that sent the advertisement.
+     - ``addr_type`` is the address type. See the constants section below for more details.
+     - ``adv_type`` is the advertisement type received. See the constants section below fro more details.
+     - ``rssi`` is signed integer with the signal strength of the advertisement.
+     - ``data`` contains the complete 31 bytes of the advertisement message. In order to parse the data and get the specific types, the method ``resolve_adv_data()`` can be used.
+
+   Example for getting ``mac`` address of an advertiser:
+   ::
+
+    import binascii
+
+    bluetooth = Bluetooth()
+    bluetooth.start_scan(20) # scan for 20 seconds
+
+    adv = bluetooth.get_adv() #
+    binascii.hexlify(adv.mac) # convert hexidecimal to ascii
+
 
 .. method:: bluetooth.resolve_adv_data(data, data_type)
 
@@ -126,7 +155,10 @@ Methods
 
 .. method:: bluetooth.connect(mac_addr)
 
-    Opens a BLE connection with the device specified by the ``mac_addr`` argument. This function blocks until the connection succeeds or fails. If the connections succeeds it returns a object of type ``GATTCConnection``.
+    Opens a BLE connection with the device specified by the ``mac_addr`` argument. This function blocks until the connection succeeds or fails. If the connections succeeds it returns a object of type ``GATTCConnection``. ::
+
+     bluetooth.connect('112233eeddff') # mac address is accepted as a string
+
 
 .. method:: bluetooth.callback(trigger=None, handler=None, arg=None)
 
@@ -136,9 +168,13 @@ Methods
        - ``handler`` is the function that will be executed when the callback is triggered.
        - ``arg`` is the argument that gets passed to the callback. If nothing is given the bluetoth object itself is used.
 
+    An example of how this may be used can be seen in the :ref:`bluetooth.events() <bluetooth_events>` method.
+
+.. _bluetooth_events:
+
 .. method:: bluetooth.events()
 
-    Returns a valut with bit flags identifying the events that have occurred since the last call. Calling this function clears the events. Example of usage::
+    Returns a value with bit flags identifying the events that have occurred since the last call. Calling this function clears the events. Example of usage: ::
 
         from network import Bluetooth
 
@@ -164,14 +200,22 @@ Methods
 
     The arguments are:
 
-       - ``Name`` is the string name to be shown on advertisements.
+       - ``name`` is the string name to be shown on advertisements.
        - ``manufacturer_data`` manufacturer data to be advertised (hint: use it for iBeacons).
        - ``service_data`` service data to be advertised.
        - ``service_uuid`` uuid of the service to be advertised.
 
+    Example:
+
+    ::
+
+     bluetooth.set_advertisement(name="advert", manufacturer_data="lopy_v1")
+
 .. method:: bluetooth.advertise([Enable])
 
-    Start or stop sending advertisements. The ``.set_advertisement()`` method must have been called prior to this one.
+    Start or stop sending advertisements. The ``.set_advertisement()`` method must have been called prior to this one. ::
+
+     bluetooth.advertise(True) # enable advertisements
 
 .. method:: bluetooth.service(uuid, \*, isprimary=True, nbr_chars=1)
 
@@ -183,9 +227,17 @@ Methods
        - ``isprimary`` selects if the service is a primary one. Takes a bool value.
        - ``nbr_chars`` specifies the number of characteristics that the service will contain.
 
+    ::
+
+     bluetooth.service('abc123')
+
 .. method:: bluetooth.disconnect_client()
 
     Closes the BLE connection with the client.
+
+    ::
+
+     bluetooth.disconnect_client()
 
 Constants
 ---------
@@ -245,19 +297,33 @@ Constants
 
     Charactertistic callback events
 
+Generic Attribute Profile (GATT)
+--------------------------------
+
+GATT stands for the Generic Attribute Profile and it defines the way that two Bluetooth Low Energy devices communicate between each other using concepts called Services and Characteristics. GATT uses a data protocol known as the Attribute Protocol (ATT), which is used to store/manage Services, Characteristics and related data in a lookup table.
+
+GATT comes into use once a connection is established between two devices, meaning that you have already gone through the advertising process managed by GAP. It's important to remember that this connection is exclusive; i.e. that only **one client** is connected to **one server** at a time. This means that the client will stop advertising once a connection has been made. This remains the case, until the connection is broken or disconnected.
+
+The GATT Server, which holds the ATT lookup data and service and characteristic definitions, and the GATT Client (the phone/tablet), which sends requests to this server.
+
 
 class GATTCConnection
 =====================
 
+The GATT Client is the device that requests data from the server, otherwise known as the **master** device (commonly this might be a phone/tablet/PC). All transactions are initiated by the master, which receives a response from the slave.
+
+
 .. method:: connection.disconnect()
 
-    Closes the BLE connection. Returns ``None``.
+    Closes the BLE connection. Returns ``None``. ::
+
+     connection.disconnect()
 
 .. method:: connection.isconnected()
 
     Returns ``True`` if the connection is still open. ``False`` otherwise.
 
-    Example::
+    Example: ::
 
         from network import Bluetooth
         import binascii
@@ -281,9 +347,9 @@ class GATTCConnection
 
 .. method:: connection.services()
 
-    Performs a service search on the connected BLE peripheral a returns a list containing objects of the class ``GATTCService`` if the search succeeds.
+    Performs a service search on the connected BLE peripheral (server) a returns a list containing objects of the class ``GATTCService`` if the search succeeds.
 
-    Example::
+    Example: ::
 
       # assuming that a BLE connection is already open
       services = connection.services()
@@ -295,45 +361,73 @@ class GATTCConnection
 class GATTCService
 ==================
 
+**Services** are used to categorise data up into specific chunks of data known as characteristics. A service may have multiple characteristics, and each service has a unique numeric ID called a UUID.
+
+The following class allows control over **Client** services.
+
 .. method:: service.isprimary()
 
     Returns ``True`` if the service is a primary one. ``False`` otherwise.
 
+    ::
+
+     service.isprimary()
+
 .. method:: service.uuid()
 
-    Returns the UUID of the service. In the case of 16-bit or 32-bit long UUIDs, the value returned is an integer, but for 128-bit long UUIDs the value returned is a bytes object.
+    Returns the UUID of the service. In the case of 16-bit or 32-bit long UUIDs, the value returned is an integer, but for 128-bit long UUIDs the value returned is a bytes object. ::
+
+     service.uuid()
 
 .. method:: service.instance()
 
-    Returns the instance ID of the service.
+    Returns the instance ID of the service. ::
+
+     service.instance()
 
 .. method:: service.characteristics()
 
-    Performs a get characteristics request on the connected BLE peripheral a returns a list containing objects of the class ``GATTCCharacteristic`` if the request succeeds.
+    Performs a get characteristics request on the connected BLE peripheral a returns a list containing objects of the class ``GATTCCharacteristic`` if the request succeeds. ::
+
+     service.characteristics()
 
 
 class GATTCCharacteristic
 =========================
 
+The smallest concept in GATT is the **Characteristic**, which encapsulates a single data point (though it may contain an array of related data, such as X/Y/Z values from a 3-axis accelerometer, longitude and latitude from a GPS, etc.).
+
+The following class allows you to manage characteristics from a **Client**.
+
 .. method:: characteristic.uuid()
 
-    Returns the UUID of the service. In the case of 16-bit or 32-bit long UUIDs, the value returned is an integer, but for 128-bit long UUIDs the value returned is a bytes object.
+    Returns the UUID of the service. In the case of 16-bit or 32-bit long UUIDs, the value returned is an integer, but for 128-bit long UUIDs the value returned is a bytes object. ::
+
+     characteristics.uuid()
 
 .. method:: characteristic.instance()
 
-    Returns the instance ID of the service.
+    Returns the instance ID of the service. ::
+
+     characteristic.instance()
 
 .. method:: characteristic.properties()
 
-    Returns an integer indicating the properties of the characteristic. Properties are represented by bit values that can be ORed together. See the constants section for more details.
+    Returns an integer indicating the properties of the characteristic. Properties are represented by bit values that can be ORed together. See the constants section for more details. ::
+
+     characteristic.properties()
 
 .. method:: characteristic.read()
 
-    Read the value of the characteristic. For now it always returns a bytes object represetning the characteristic value. In the future a specific type (integer, string, bytes) will be returned depending on the characteristic in question.
+    Read the value of the characteristic. For now it always returns a bytes object representing the characteristic value. In the future a specific type (integer, string, bytes) will be returned depending on the characteristic in question. ::
+
+     characteristic.read()
 
 .. method:: characteristic.write(value)
 
-    Writes the given value on the characteristic. For now it only accepts bytes object representing the value to be written.
+    Writes the given value on the characteristic. For now it only accepts bytes object representing the value to be written. ::
+
+     characteristic.write(b'x0f')
 
 .. method:: characteristic.callback(trigger=None, handler=None, arg=None)
 
@@ -347,23 +441,40 @@ class GATTCCharacteristic
 class GATTSService
 ==================
 
+The GATT Server allows the device to act as a peripheral and hold its own ATT lookup data, server & characteristic definitions. In this mode, the device acts as a **slave** and a master must initiate a request.
+
+**Services** are used to categorise data up into specific chunks of data known as characteristics. A service may have multiple characteristics, and each service has a unique numeric ID called a UUID.
+
+The following class allows control over **Server** services.
+
 .. method:: service.characteristic(uuid, \*, permissions, properties, value)
 
     Creates a new characteristic on the service. Returns an object of the class ``GATTSCharacteristic``.
     The arguments are:
 
       - ``uuid`` is the UUID of the service. Can take an integer or a 16 byte long string or bytes object.
-      - ``permissions`` configures the permissions of the characteristic. Takes an integer with an ORed combination of the flags
+      - ``permissions`` configures the permissions of the characteristic. Takes an integer with a combination of the flags.
       - ``properties`` sets the properties. Takes an integer with an ORed combination of the flags.
       - ``value`` sets the initial value. Can take an integer, a string or a bytes object.
+
+    ::
+
+     service.characteristic('temp', value=25)
 
 
 class GATTSCharacteristic
 =========================
 
+The smallest concept in GATT is the **Characteristic**, which encapsulates a single data point (though it may contain an array of related data, such as X/Y/Z values from a 3-axis accelerometer, longitude and latitude from a GPS, etc.).
+
+The following class allows you to manage **Server** characteristics.
+
 .. method:: characteristic.value([value])
 
-    Gets or sets the value of the characteristic. Can take an integer, a string or a bytes object.
+    Gets or sets the value of the characteristic. Can take an integer, a string or a bytes object. ::
+
+     characteristic.value(123) # set characteristic value to an integer with the value 123
+     characteristic.value() # get characteristic value
 
 .. method:: characteristic.callback(trigger=None, handler=None, arg=None)
 
@@ -373,39 +484,42 @@ class GATTSCharacteristic
        - ``handler`` is the function that will be executed when the callback is triggered.
        - ``arg`` is the argument that gets passed to the callback. If nothing is given, the characteristic object that owns the callback will be used.
 
-. method:: characteristic.events()
+    An example of how this could be implemented can be seen in the :ref:`characteristic.events() <characteristic_events>` section.
 
-    Returns a valut with bit flags identifying the events that have occurred since the last call. Calling this function clears the events.
+.. _characteristic_events:
+
+.. method:: characteristic.events()
+
+    Returns a value with bit flags identifying the events that have occurred since the last call. Calling this function clears the events.
 
 
-Example of advertising and creating services on the device::
+    An example of advertising and creating services on the device: ::
 
-    from network import Bluetooth
+     from network import Bluetooth
 
-    bluetooth = Bluetooth()
-    bluetooth.set_advertisement(name='LoPy', service_uuid=b'1234567890123456')
+     bluetooth = Bluetooth()
+     bluetooth.set_advertisement(name='LoPy', service_uuid=b'1234567890123456')
 
-    def conn_cb (bt_o):
-        events = bt_o.events()
-        if  events & Bluetooth.CLIENT_CONNECTED:
-            print("Client connected")
-        elif events & Bluetooth.CLIENT_DISCONNECTED:
-            print("Client disconnected")
+     def conn_cb (bt_o):
+         events = bt_o.events()
+         if  events & Bluetooth.CLIENT_CONNECTED:
+             print("Client connected")
+         elif events & Bluetooth.CLIENT_DISCONNECTED:
+             print("Client disconnected")
 
-    bluetooth.callback(trigger=Bluetooth.CLIENT_CONNECTED | Bluetooth.CLIENT_DISCONNECTED, handler=conn_cb)
+     bluetooth.callback(trigger=Bluetooth.CLIENT_CONNECTED | Bluetooth.CLIENT_DISCONNECTED, handler=conn_cb)
 
-    bluetooth.advertise(True)
+     bluetooth.advertise(True)
 
-    srv1 = bluetooth.service(uuid=b'1234567890123456', isprimary=True)
+     srv1 = bluetooth.service(uuid=b'1234567890123456', isprimary=True)
 
-    chr1 = srv1.characteristic(uuid=b'ab34567890123456', value=5)
+     chr1 = srv1.characteristic(uuid=b'ab34567890123456', value=5)
 
-    def char1_cb(chr):
-        print("Write request with value = {}".format(chr.value()))
+     def char1_cb(chr):
+         print("Write request with value = {}".format(chr.value()))
 
-    char1_cb = chr1.callback(trigger=Bluetooth.CHAR_WRITE_EVENT, handler=char1_cb)
+     char1_cb = chr1.callback(trigger=Bluetooth.CHAR_WRITE_EVENT, handler=char1_cb)
 
-    srv2 = bluetooth.service(uuid=1234, isprimary=True)
+     srv2 = bluetooth.service(uuid=1234, isprimary=True)
 
-    chr2 = srv2.characteristic(uuid=4567)
-
+     chr2 = srv2.characteristic(uuid=4567)
