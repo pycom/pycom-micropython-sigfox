@@ -42,7 +42,9 @@ Maintainer: Sylvain Miermont
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* This implementation is POSIX-pecific and require a fix to be compatible with C99 */
-void wait_ms(unsigned long a) {
+
+
+void wait_ms_linux(unsigned long a) {
     struct timespec dly;
     struct timespec rem;
 
@@ -58,7 +60,7 @@ void wait_ms(unsigned long a) {
     return;
 }
 
-void wait_ns(unsigned long a) {
+void wait_ns_linux(unsigned long a) {
     struct timespec dly;
     struct timespec rem;
 
@@ -72,6 +74,37 @@ void wait_ns(unsigned long a) {
         DEBUG_PRINTF("NOTE remain: %ld sec %ld ns\n", rem.tv_sec, rem.tv_nsec);
     }
     return;
+}
+
+void wait_ms(unsigned long a) {
+#ifdef _WIN32
+		return wait_ms_win(a) ;
+	#elif __linux__
+		return wait_ms_linux(a) ;
+	#elif __APPLE__
+		DEBUG_PRINTF("System is not recognized.");
+	#elif __unix__
+		DEBUG_PRINTF("System is not recognized.");
+	#elif __posix__
+		DEBUG_PRINTF("System is not recognized.");
+	#else
+		DEBUG_PRINTF("System is not recognized.");
+	#endif
+}
+void wait_ns(unsigned long a) {
+#ifdef _WIN32
+		return wait_ns_win(a) ;
+	#elif __linux__
+		return wait_ns_linux(a) ;
+	#elif __APPLE__
+		DEBUG_PRINTF("System is not recognized.");
+	#elif __unix__
+		DEBUG_PRINTF("System is not recognized.");
+	#elif __posix__
+		DEBUG_PRINTF("System is not recognized.");
+	#else
+		DEBUG_PRINTF("System is not recognized.");
+	#endif
 }
 
 /* --- EOF ------------------------------------------------------------------ */
