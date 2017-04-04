@@ -109,7 +109,7 @@ int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 
 #define BURSTSIZE 1024
 #define BUFFERTXSIZE 4*(BURSTSIZE+2)  
-#define BUFFERRXSIZE 1024
+#define BUFFERRXSIZE 2048
 #define ATOMICTX 600
 #define ATOMICRX 900
 typedef struct 
