@@ -42,7 +42,7 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :class:`LoRa <.LoRa>` (only available in the LoPy)
 - :mod:`hashlib <.uhashlib>` MD5, SHA1, SHA256, SHA384 and SHA512 hash algorithms
 - :class:`AES encryption <.AES>`
-- :mod:`SSL/TLS support <.ussl>``
+- :mod:`SSL/TLS support <.ussl>`
 
 Click the links in the list above to see more details on that feature.
 For all available modules and libraries, please visit the :ref:`Firmware API
@@ -194,7 +194,7 @@ data connections are possible. Other FTP clients might behave in a similar way.
     :scale: 60 %
 
 .. image:: images/filezilla-settings-2.png
-    :alt: Filezilla 1
+    :alt: Filezilla 2
     :align: center
     :scale: 60 %
 
