@@ -638,9 +638,6 @@ STATIC mp_obj_t pin_wakeup_trigger(mp_uint_t n_args, const mp_obj_t *args, mp_ma
     if (!RTC_GPIO_IS_VALID_GPIO((gpio_num_t) (self->pin_number)))
     	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_os_request_not_possible));
     else{
-        mperror_enable_heartbeat(false);
-        bt_deinit(NULL);
-        wlan_deinit(NULL);
 		esp_err_t err = esp_deep_sleep_enable_ext0_wakeup((gpio_num_t) (self->pin_number) , ok_args[0].u_int);
 		if(parseError(err) != 0)
 			return mp_const_none;
