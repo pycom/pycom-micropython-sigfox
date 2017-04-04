@@ -26,9 +26,10 @@ def otaa_join(lora):
     # wait until the module has joined the network
     join_wait = 0
     while not lora.has_joined() and join_wait < 10:
-        time.sleep(3)
-        print('Not joined yet...')
+        time.sleep(5)
         join_wait += 1
+        if join_wait < 2:
+            print('Waiting to join')
 
     print('Network joined!')
 
