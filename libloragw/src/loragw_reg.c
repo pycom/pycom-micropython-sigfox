@@ -26,7 +26,6 @@ Maintainer: Sylvain Miermont
 
 #include "loragw_com.h"
 #include "loragw_reg.h"
-#include "loragw_fpga.h"
 #include "loragw_aux.h"
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -403,20 +402,6 @@ int page_switch(uint8_t target) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-bool check_fpga_version(uint8_t version) {
-    int i;
-
-    for (i = 0; i < (int)(sizeof FPGA_VERSION); i++) {
-        if (FPGA_VERSION[i] == version ) {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
 int reg_w_align32(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, struct lgw_reg_s r, int32_t reg_value) {
     int com_stat = LGW_REG_SUCCESS;
     int i, size_byte;
@@ -526,15 +511,7 @@ int lgw_connect(bool com_only) {
             DEBUG_MSG("ERROR READING VERSION REGISTER\n");
             return LGW_REG_ERROR;
         }
-        if (check_fpga_version(u) != true) {
-            /* We failed to read expected FPGA version, so let's assume there is no FPGA */
-            DEBUG_PRINTF("INFO: no FPGA detected or version not supported (v%u)\n", u);
-            lgw_com_mux_mode = LGW_com_MUX_MODE0;
-        } else {
-            DEBUG_PRINTF("INFO: detected FPGA with SPI mux header (v%u)\n", u);
-            lgw_com_mux_mode = LGW_com_MUX_MODE1;
-           
-        }
+        lgw_com_mux_mode = LGW_com_MUX_MODE0;
 
         /* check SX1301 version */
         com_stat = lgw_com_r(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);

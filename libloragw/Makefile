@@ -10,7 +10,7 @@ CROSS_COMPILE ?=
 CC := $(CROSS_COMPILE)gcc
 AR := $(CROSS_COMPILE)ar
 
-CFLAGS := -g -O0 -Wall -Wextra -std=c99 -Iinc -I.
+CFLAGS := -O2 -Wall -Wextra -std=c99 -Iinc -I.
 
 OBJDIR = obj
 INCLUDES = $(wildcard inc/*.h)
@@ -21,7 +21,7 @@ LIBS := -lloragw -lrt -lm
 
 ### general build targets
 
-all: libloragw.a test_loragw_com test_loragw_reg test_loragw_hal test_loragw_gps test_loragw_cal
+all: libloragw.a test_loragw_com test_loragw_reg test_loragw_hal test_loragw_cal
 
 clean:
 	rm -f libloragw.a
@@ -71,7 +71,7 @@ $(OBJDIR)/loragw_hal.o: src/loragw_hal.c $(INCLUDES) src/arb_fw.var src/agc_fw.v
 
 ### static library
 
-libloragw.a: $(OBJDIR)/loragw_hal.o $(OBJDIR)/loragw_gps.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_com.o $(OBJDIR)/loragw_com_linux.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_radio.o $(OBJDIR)/loragw_fpga.o $(OBJDIR)/loragw_lbt.o
+libloragw.a: $(OBJDIR)/loragw_hal.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_com.o $(OBJDIR)/loragw_com_linux.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_radio.o
 	$(AR) rcs $@ $^
 
 ### test programs

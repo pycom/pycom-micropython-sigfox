@@ -28,8 +28,6 @@ Maintainer: Sylvain Miermont
 #include "loragw_aux.h"
 #include "loragw_com.h"
 #include "loragw_radio.h"
-#include "loragw_fpga.h"
-#include "loragw_lbt.h"
 
 /**********************PGW*///////////////
 #define PGW  1
@@ -384,7 +382,8 @@ int32_t lgw_sf_getval(int x) {
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int lgw_board_setconf(struct lgw_conf_board_s conf) {
-int s;
+    int x;
+
     /* check if the concentrator is running */
     if (lgw_is_started == true) {
         DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
@@ -397,49 +396,28 @@ int s;
 
     DEBUG_PRINTF("Note: board configuration; lorawan_public:%d, clksrc:%d\n", lorawan_public, rf_clkout);
 
-/*****************/
-/* PGW specific  */
-/*****************/
-
+    /*****************/
+    /* PGW specific  */
+    /*****************/
     uint8_t PADDING =0;
     uint8_t data[4];
     data[0]=conf.lorawan_public;
     data[1]=conf.clksrc;
     data[2]=PADDING;
     data[3]=PADDING;    
-    s=(lgw_reg_board_setconfcmd(data,sizeof(data)/sizeof(uint8_t)));
-    if (s == LGW_REG_SUCCESS) {
+    x = lgw_reg_board_setconfcmd(data, sizeof(data)/sizeof(uint8_t));
+    if (x == LGW_REG_SUCCESS) {
         return LGW_HAL_SUCCESS;
     } else {
-        DEBUG_MSG("ERROR: lgw_board_setconf issue \n");
+        DEBUG_MSG("ERROR: lgw_board_setconf issue\n");
         return LGW_HAL_ERROR;
     }
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_lbt_setconf(struct lgw_conf_lbt_s conf) {
-    int x;
-
-    /* check if the concentrator is running */
-    if (lgw_is_started == true) {
-        DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
-        return LGW_HAL_ERROR;
-    }
-
-    x = lbt_setconf(&conf);
-    if (x != LGW_LBT_SUCCESS) {
-        DEBUG_MSG("ERROR: Failed to configure concentrator for LBT\n");
-        return LGW_HAL_ERROR;
-    }
-
-    return LGW_HAL_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
-
+    int x;
 
     /* check if the concentrator is running */
     if (lgw_is_started == true) {
@@ -459,12 +437,6 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
         return LGW_HAL_ERROR;
     }
 
-    /* check if TX notch filter frequency is supported */
-    if ((conf.tx_enable == true) && ((conf.tx_notch_freq < LGW_MIN_NOTCH_FREQ) || (conf.tx_notch_freq > LGW_MAX_NOTCH_FREQ))) {
-      //  DEBUG_PRINTF("WARNING: NOT A VALID TX NOTCH FILTER FREQUENCY [%u..%u]Hz\n", LGW_MIN_NOTCH_FREQ, LGW_MAX_NOTCH_FREQ);
-        conf.tx_notch_freq = 0;
-    }
-
     /* set internal config according to parameters */
     rf_enable[rf_chain] = conf.enable;
     rf_rx_freq[rf_chain] = conf.freq_hz;
@@ -474,51 +446,52 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     rf_tx_notch_freq[rf_chain] = conf.tx_notch_freq;
 
     DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d tx_notch_freq:%u\n", rf_chain, rf_enable  [rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain], rf_tx_notch_freq[rf_chain]);
-      
-/*****************/
-/* PGW specific  */
-/*****************/
-     uint8_t PADDING =0;
-     uint8_t data[24];
-     data[0]=conf.enable;
-     data[1]=PADDING;
-     data[2]=PADDING;
-     data[3]=PADDING;
-     data[4]=*(((uint8_t *)(&conf.freq_hz)));//uint32_t
-     data[5]=*(((uint8_t *)(&conf.freq_hz))+1);
-     data[6]=*(((uint8_t *)(&conf.freq_hz))+2);
-     data[7]=*(((uint8_t *)(&conf.freq_hz))+3);
-     data[8]=*(((uint8_t *)(&conf.rssi_offset)));//uint32_t
-     data[9]=*(((uint8_t *)(&conf.rssi_offset))+1);
-     data[10]=*(((uint8_t *)(&conf.rssi_offset))+2);
-     data[11]=*(((uint8_t *)(&conf.rssi_offset))+3);
-     data[12]=*(((uint8_t *)(&conf.type)));
-     data[13]=PADDING;
-     data[14]=PADDING;
-     data[15]=PADDING;
-     data[16]=*(((uint8_t *)(&conf.tx_enable)));
-     data[17]=*(((uint8_t *)(&conf.tx_enable))+1);
-     data[18]=*(((uint8_t *)(&conf.tx_enable))+2);
-     data[19]=*(((uint8_t *)(&conf.tx_enable))+3);
-     data[20]=*(((uint8_t *)(&conf.tx_notch_freq)));
-     data[21]=*(((uint8_t *)(&conf.tx_notch_freq))+1);
-     data[22]=*(((uint8_t *)(&conf.tx_notch_freq))+2);
-     data[23]=*(((uint8_t *)(&conf.tx_notch_freq))+3);
-     int s;
-     s=lgw_reg_rxrf_setconfcmd(rf_chain, data,sizeof(data)/sizeof(uint8_t));
-      if (s == LGW_REG_SUCCESS) {
-             return LGW_HAL_SUCCESS;
-         } else {
-             DEBUG_MSG("ERROR: lgw_rxrf_setconf issue \n");
-             return LGW_HAL_ERROR;
-         }
+
+    /*****************/
+    /* PGW specific  */
+    /*****************/
+    uint8_t PADDING = 0;
+    uint8_t data[24];
+    data[0]=conf.enable;
+    data[1]=PADDING;
+    data[2]=PADDING;
+    data[3]=PADDING;
+    data[4]=*(((uint8_t *)(&conf.freq_hz)));//uint32_t
+    data[5]=*(((uint8_t *)(&conf.freq_hz))+1);
+    data[6]=*(((uint8_t *)(&conf.freq_hz))+2);
+    data[7]=*(((uint8_t *)(&conf.freq_hz))+3);
+    data[8]=*(((uint8_t *)(&conf.rssi_offset)));//uint32_t
+    data[9]=*(((uint8_t *)(&conf.rssi_offset))+1);
+    data[10]=*(((uint8_t *)(&conf.rssi_offset))+2);
+    data[11]=*(((uint8_t *)(&conf.rssi_offset))+3);
+    data[12]=*(((uint8_t *)(&conf.type)));
+    data[13]=PADDING;
+    data[14]=PADDING;
+    data[15]=PADDING;
+    data[16]=*(((uint8_t *)(&conf.tx_enable)));
+    data[17]=*(((uint8_t *)(&conf.tx_enable))+1);
+    data[18]=*(((uint8_t *)(&conf.tx_enable))+2);
+    data[19]=*(((uint8_t *)(&conf.tx_enable))+3);
+    data[20]=*(((uint8_t *)(&conf.tx_notch_freq)));
+    data[21]=*(((uint8_t *)(&conf.tx_notch_freq))+1);
+    data[22]=*(((uint8_t *)(&conf.tx_notch_freq))+2);
+    data[23]=*(((uint8_t *)(&conf.tx_notch_freq))+3);
+    x = lgw_reg_rxrf_setconfcmd(rf_chain, data, sizeof(data)/sizeof(uint8_t));
+    if (x == LGW_REG_SUCCESS) {
+        return LGW_HAL_SUCCESS;
+    } else {
+        DEBUG_MSG("ERROR: lgw_rxrf_setconf issue\n");
+        return LGW_HAL_ERROR;
+    }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
+    int x;
     int32_t bw_hz;
-      uint32_t rf_rx_bandwidth;
+    uint32_t rf_rx_bandwidth;
+
     /* check if the concentrator is running */
     if (lgw_is_started == true) {
         DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
@@ -549,15 +522,15 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     }
     switch (conf.bandwidth) {        
       case BW_250KHZ:            
-      rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_250KHZ;         
-      break;        
+          rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_250KHZ;         
+          break;        
       case BW_500KHZ:            
-      rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_500KHZ;             
-      break;        
+          rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_500KHZ;             
+          break;        
       default:        
-      rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_125KHZ;          
-      break;
-          }
+          rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_125KHZ;          
+          break;
+    }
     
     bw_hz = lgw_bw_getval(conf.bandwidth);
     if ((conf.freq_hz + ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) > ((int32_t)rf_rx_bandwidth / 2)) {
@@ -664,11 +637,9 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             return LGW_HAL_ERROR;
     }
 
-
-/*****************/
-/* PGW specific  */
-/*****************/
-
+    /*****************/
+    /* PGW specific  */
+    /*****************/
     uint8_t PADDING=0;
     uint8_t data[28]; 
     data[0]=conf.enable;
@@ -699,20 +670,20 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     data[25]=*(((uint8_t *)(&conf.sync_word))+5);
     data[26]=*(((uint8_t *)(&conf.sync_word))+6);
     data[27]=*(((uint8_t *)(&conf.sync_word))+7);
-    int s;
-    s=lgw_reg_rxif_setconfcmd( if_chain, data,sizeof(data)/sizeof(uint8_t));
-    if (s == LGW_REG_SUCCESS) {
-            return LGW_HAL_SUCCESS;
-        } else {
-            DEBUG_MSG("ERROR: lgw_rxif_setconf issue \n");
-            return LGW_HAL_ERROR;
-        }
+    x = lgw_reg_rxif_setconfcmd(if_chain, data, sizeof(data)/sizeof(uint8_t));
+    if (x == LGW_REG_SUCCESS) {
+        return LGW_HAL_SUCCESS;
+    } else {
+        DEBUG_MSG("ERROR: lgw_rxif_setconf issue\n");
+        return LGW_HAL_ERROR;
+    }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
     int i;
+    int x;
 
     /* Check LUT size */
     if ((conf->size < 1) || (conf->size > TX_GAIN_LUT_SIZE_MAX)) {
@@ -752,38 +723,36 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
         txgain_lut.lut[i].pa_gain  = conf->lut[i].pa_gain;
         txgain_lut.lut[i].rf_power = conf->lut[i].rf_power;
     }
-/*****************/
-/* PGW specific  */
-/*****************/
-     uint32_t u =0;
+
+    /*****************/
+    /* PGW specific  */
+    /*****************/
+     uint32_t u = 0;
      uint8_t data[(LGW_MULTI_NB*TX_GAIN_LUT_SIZE_MAX)+4];   
-     for (u=0;u<TX_GAIN_LUT_SIZE_MAX;u++)
-     {
-     data[0+(5*u)]=0;
-     data[1+(5*u)]=0;
-     data[2+(5*u)]=0;
-     data[3+(5*u)]=0;
-     data[4+(5*u)]=0;
+     for (u = 0; u < TX_GAIN_LUT_SIZE_MAX; u++) {
+         data[0+(5*u)]=0;
+         data[1+(5*u)]=0;
+         data[2+(5*u)]=0;
+         data[3+(5*u)]=0;
+         data[4+(5*u)]=0;
      }
      
-     for (u=0;u<conf->size;u++)
+     for (u = 0; u < conf->size; u++)
      {
-     data[0+(5*u)]=conf->lut[u].dig_gain;
-     data[1+(5*u)]=conf->lut[u].pa_gain;
-     data[2+(5*u)]=conf->lut[u].dac_gain;
-     data[3+(5*u)]=conf->lut[u].mix_gain;
-     data[4+(5*u)]=conf->lut[u].rf_power;
+         data[0+(5*u)]=conf->lut[u].dig_gain;
+         data[1+(5*u)]=conf->lut[u].pa_gain;
+         data[2+(5*u)]=conf->lut[u].dac_gain;
+         data[3+(5*u)]=conf->lut[u].mix_gain;
+         data[4+(5*u)]=conf->lut[u].rf_power;
      }   
-     data[((TX_GAIN_LUT_SIZE_MAX)*5)]=conf->size;
-     int s;
-     s=lgw_txgainreg_setconfcmd( data,((TX_GAIN_LUT_SIZE_MAX)*5)+1);
-     
-      if (s == LGW_REG_SUCCESS) {
-             return LGW_HAL_SUCCESS;
-         } else {
-             DEBUG_MSG("ERROR: lgw_txgainreg_setconfcmd issue \n");
-             return LGW_HAL_ERROR;
-         }
+     data[(TX_GAIN_LUT_SIZE_MAX)*5] = conf->size;
+     x = lgw_txgainreg_setconfcmd(data, ((TX_GAIN_LUT_SIZE_MAX)*5)+1);
+     if (x == LGW_REG_SUCCESS) {
+        return LGW_HAL_SUCCESS;
+     } else {
+        DEBUG_MSG("ERROR: lgw_txgainreg_setconfcmd issue \n");
+        return LGW_HAL_ERROR;
+     }
 }
 
 
@@ -836,24 +805,6 @@ int lgw_start(void) {
     /* gives AGC control of GPIOs to enable Tx external digital filter */
     lgw_reg_w(LGW_GPIO_MODE,31); /* Set all GPIOs as output */
     lgw_reg_w(LGW_GPIO_SELECT_OUTPUT,0);
-
-    /* Configure LBT */
-    if (lbt_is_enabled() == true) {
-        lgw_reg_w(LGW_CLK32M_EN, 1);
-        i = lbt_setup();
-        if (i != LGW_LBT_SUCCESS) {
-            DEBUG_MSG("ERROR: lbt_setup() did not return SUCCESS\n");
-            return LGW_HAL_ERROR;
-        }
-
-        /* Start SX1301 counter and LBT FSM at the same time to be in sync */
-        lgw_reg_w(LGW_CLK32M_EN, 0);
-        i = lbt_start();
-        if (i != LGW_LBT_SUCCESS) {
-            DEBUG_MSG("ERROR: lbt_start() did not return SUCCESS\n");
-            return LGW_HAL_ERROR;
-        }
-    }
 
     /* Enable clocks */
     lgw_reg_w(LGW_GLOBAL_EN, 1);
@@ -967,10 +918,10 @@ int lgw_start(void) {
         cal_offset_b_q[i] = (int8_t)read_val;
         DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
     }
-     lgw_reg_calibration_snapshot(); 
-       wait_ms(5);
-/****************************************************************************************************************************************************************/
- lgw_soft_reset();
+
+    lgw_reg_calibration_snapshot(); 
+    wait_ms(5);
+    lgw_soft_reset();
 
     /* gate clocks */
     lgw_reg_w(LGW_GLOBAL_EN, 0);
@@ -999,24 +950,6 @@ int lgw_start(void) {
     /* gives AGC control of GPIOs to enable Tx external digital filter */
     lgw_reg_w(LGW_GPIO_MODE,31); /* Set all GPIOs as output */
     lgw_reg_w(LGW_GPIO_SELECT_OUTPUT,0);
-
-    /* Configure LBT */
-    if (lbt_is_enabled() == true) {
-        lgw_reg_w(LGW_CLK32M_EN, 1);
-        i = lbt_setup();
-        if (i != LGW_LBT_SUCCESS) {
-            DEBUG_MSG("ERROR: lbt_setup() did not return SUCCESS\n");
-            return LGW_HAL_ERROR;
-        }
-
-        /* Start SX1301 counter and LBT FSM at the same time to be in sync */
-        lgw_reg_w(LGW_CLK32M_EN, 0);
-        i = lbt_start();
-        if (i != LGW_LBT_SUCCESS) {
-            DEBUG_MSG("ERROR: lbt_start() did not return SUCCESS\n");
-            return LGW_HAL_ERROR;
-        }
-    }
 
     /* Enable clocks */
     lgw_reg_w(LGW_GLOBAL_EN, 1);
@@ -1131,19 +1064,12 @@ int lgw_start(void) {
         DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
     }    
     
-    
-    
-    
-    
-    
-    
-    
-     lgw_reg_calibration_snapshot();
+    lgw_reg_calibration_snapshot();
+
     /* load adjusted parameters */
     lgw_constant_adjust();
 
-    /* Sanity check for RX frequency */
- 
+    /* Sanity check for RX frequency */ 
     if (rf_rx_freq[0] == 0) {
         DEBUG_MSG("ERROR: wrong configuration, rf_rx_freq[0] is not set\n");
         return LGW_HAL_ERROR;
@@ -1340,12 +1266,6 @@ int lgw_start(void) {
     /* enable GPS event capture */
     lgw_reg_w(LGW_GPS_EN, 1);
 
-    /* */
-    if (lbt_is_enabled() == true) {
-        
-        wait_ms(8400);
-    }
-
     lgw_is_started = true;
     return LGW_HAL_SUCCESS;
 }
@@ -1363,69 +1283,57 @@ int lgw_stop(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
-/*****************/
-/* PGW specific  */
-/*****************/
-   int nb_packet ;
-   uint8_t data[(RX_SIZE_MAX+1)*max_pkt];
-# pragma GCC diagnostic ignored "-Wstrict-aliasing"
+    int nb_packet ;
+    uint8_t data[(RX_SIZE_MAX+1)*max_pkt];
 
-   int i;
-   int u;
-   /* check input variables */
+# pragma GCC diagnostic ignored "-Wstrict-aliasing"
+    int i;
+    int u;
+
+    /* check input variables */
 	if ((max_pkt <= 0) || (max_pkt > LGW_PKT_FIFO_SIZE)) {
 		DEBUG_PRINTF("ERROR: %d = INVALID MAX NUMBER OF PACKETS TO FETCH\n", max_pkt);
 		return LGW_HAL_ERROR;
 	}
-   nb_packet=lgw_reg_receive_cmd( max_pkt, (uint8_t *)data); 
-   /* check nb_packet variables */
-   if ((nb_packet > LGW_PKT_FIFO_SIZE)|| (nb_packet < 0)) {
-         DEBUG_MSG("ERROR: NOT A VALID NUMBER OF RECEIVE PACKET\n");
+
+    nb_packet=lgw_reg_receive_cmd( max_pkt, (uint8_t *)data); 
+    /* check nb_packet variables */
+    if ((nb_packet > LGW_PKT_FIFO_SIZE)|| (nb_packet < 0)) {
+        DEBUG_MSG("ERROR: NOT A VALID NUMBER OF RECEIVE PACKET\n");
         return LGW_HAL_ERROR;
     }
    
-   for (u=0;u<nb_packet;u++)
-   { 
-    pkt_data[u].freq_hz=*((uint32_t*)(&data[0+RX_SIZE_MAX*u])); //the following code is done to work both with 32 or 64 bits host
-    pkt_data[u].if_chain=*((uint8_t*)(&data[4+RX_SIZE_MAX*u]));
-    pkt_data[u].status=*((uint8_t*)(&data[5+RX_SIZE_MAX*u]));
-    pkt_data[u].count_us=*((uint32_t*)(&data[8+RX_SIZE_MAX*u]));
-    pkt_data[u].rf_chain=*((uint8_t*)(&data[12+RX_SIZE_MAX*u]));
-    pkt_data[u].modulation=*((uint8_t*)(&data[13+RX_SIZE_MAX*u]));
-    pkt_data[u].bandwidth=*((uint8_t*)(&data[14+RX_SIZE_MAX*u]));
-    pkt_data[u].datarate=*((uint32_t*)(&data[16+RX_SIZE_MAX*u]));
-    pkt_data[u].coderate=*((uint8_t*)(&data[20+RX_SIZE_MAX*u]));
-    pkt_data[u].rssi=*((float*)(&data[24+RX_SIZE_MAX*u]));
-    pkt_data[u].snr=*((float*)(&data[28+RX_SIZE_MAX*u]));
-    pkt_data[u].snr_min=*((float*)(&data[32+RX_SIZE_MAX*u]));
-    pkt_data[u].snr_max=*((float*)(&data[36+RX_SIZE_MAX*u]));
-    pkt_data[u].crc=*((uint16_t*)(&data[40+RX_SIZE_MAX*u]));
-    pkt_data[u].size=*((uint16_t*)(&data[42+RX_SIZE_MAX*u]));
-   for(i=0;i<256;i++)
-   {
-    (pkt_data[u].payload[i])=*((uint8_t*)(&data[44+i+RX_SIZE_MAX*u]));
-    }
-   } 
-   return (nb_packet); // for 0 packet
+    for (u = 0; u < nb_packet; u++) { 
+        pkt_data[u].freq_hz=*((uint32_t*)(&data[0+RX_SIZE_MAX*u])); //the following code is done to work both with 32 or 64 bits host
+        pkt_data[u].if_chain=*((uint8_t*)(&data[4+RX_SIZE_MAX*u]));
+        pkt_data[u].status=*((uint8_t*)(&data[5+RX_SIZE_MAX*u]));
+        pkt_data[u].count_us=*((uint32_t*)(&data[8+RX_SIZE_MAX*u]));
+        pkt_data[u].rf_chain=*((uint8_t*)(&data[12+RX_SIZE_MAX*u]));
+        pkt_data[u].modulation=*((uint8_t*)(&data[13+RX_SIZE_MAX*u]));
+        pkt_data[u].bandwidth=*((uint8_t*)(&data[14+RX_SIZE_MAX*u]));
+        pkt_data[u].datarate=*((uint32_t*)(&data[16+RX_SIZE_MAX*u]));
+        pkt_data[u].coderate=*((uint8_t*)(&data[20+RX_SIZE_MAX*u]));
+        pkt_data[u].rssi=*((float*)(&data[24+RX_SIZE_MAX*u]));
+        pkt_data[u].snr=*((float*)(&data[28+RX_SIZE_MAX*u]));
+        pkt_data[u].snr_min=*((float*)(&data[32+RX_SIZE_MAX*u]));
+        pkt_data[u].snr_max=*((float*)(&data[36+RX_SIZE_MAX*u]));
+        pkt_data[u].crc=*((uint16_t*)(&data[40+RX_SIZE_MAX*u]));
+        pkt_data[u].size=*((uint16_t*)(&data[42+RX_SIZE_MAX*u]));
+        for (i = 0; i < 256; i++) {
+            (pkt_data[u].payload[i])=*((uint8_t*)(&data[44+i+RX_SIZE_MAX*u]));
+        }
+    } 
+
+    return (nb_packet);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_send(struct lgw_pkt_tx_s pkt_data) 
 {
-
-/*****************/
-/* PGW specific  */
-/*****************/
-int i;
-uint8_t PADDING =0;
-uint8_t data[256+32];
-//uint8_t dataa[256+32];
-//for(i=0;i<sstruct;i++)
-//{
-	// dataa[i]= *(((uint8_t *)(&pkt_data))+i);
- //DEBUG_PRINTF("data[%d]=%d size = %d\n",i,data[i],sstruct);
-//}
+    int i, x;
+    uint8_t PADDING = 0;
+    uint8_t data[256+32];
 
 	/* check input range (segfault prevention) */
 	if (pkt_data.rf_chain >= LGW_RF_CHAIN_NB) {
@@ -1483,58 +1391,50 @@ uint8_t data[256+32];
 		return LGW_HAL_ERROR;
 	}
 
-  data[0]=*(((uint8_t *)(&pkt_data.freq_hz)));//uint32_t
-  data[1]=*(((uint8_t *)(&pkt_data.freq_hz))+1);
-  data[2]=*(((uint8_t *)(&pkt_data.freq_hz))+2);
-  data[3]=*(((uint8_t *)(&pkt_data.freq_hz))+3);
-  data[4]=*(((uint8_t *)(&pkt_data.tx_mode)));
-  data[5]=PADDING;
-  data[6]=PADDING;
-  data[7]=PADDING;
-  data[8]=*(((uint8_t *)(&pkt_data.count_us)));//uint32_t
-  data[9]=*(((uint8_t *)(&pkt_data.count_us))+1);
-  data[10]=*(((uint8_t *)(&pkt_data.count_us))+2);
-  data[11]=*(((uint8_t *)(&pkt_data.count_us))+3);
-  data[12]=*(((uint8_t *)(&pkt_data.rf_chain)));
-  data[13]=*(((uint8_t *)(&pkt_data.rf_power)));
-  data[14]=*(((uint8_t *)(&pkt_data.modulation)));
-  data[15]=*(((uint8_t *)(&pkt_data.bandwidth)));
-  data[16]=*(((uint8_t *)(&pkt_data.datarate)));
-  data[17]=*(((uint8_t *)(&pkt_data.datarate))+1);
-  data[18]=*(((uint8_t *)(&pkt_data.datarate))+2);
-  data[19]=*(((uint8_t *)(&pkt_data.datarate))+3);
-  data[20]=*(((uint8_t *)(&pkt_data.coderate)));
-  data[21]=*(((uint8_t *)(&pkt_data.invert_pol)));
-  data[22]=*(((uint8_t *)(&pkt_data.f_dev)));
-  data[23]=PADDING;
-  data[24]=*(((uint8_t *)(&pkt_data.preamble)));
-  data[25]=*(((uint8_t *)(&pkt_data.preamble))+1);
-  data[26]=*(((uint8_t *)(&pkt_data.no_crc)));
-  data[27]=*(((uint8_t *)(&pkt_data.no_header)));
-  data[28]=*(((uint8_t *)(&pkt_data.size)));
-  data[29]=*(((uint8_t *)(&pkt_data.size))+1);
-  
-  // Pkt size already check 
-  for (i=0;i<TX_SIZE_MAX;i++)
-  {
-  	data[i+30]= *(((uint8_t *)(&pkt_data.payload))+i);
-  }
+    data[0]=*(((uint8_t *)(&pkt_data.freq_hz)));//uint32_t
+    data[1]=*(((uint8_t *)(&pkt_data.freq_hz))+1);
+    data[2]=*(((uint8_t *)(&pkt_data.freq_hz))+2);
+    data[3]=*(((uint8_t *)(&pkt_data.freq_hz))+3);
+    data[4]=*(((uint8_t *)(&pkt_data.tx_mode)));
+    data[5]=PADDING;
+    data[6]=PADDING;
+    data[7]=PADDING;
+    data[8]=*(((uint8_t *)(&pkt_data.count_us)));//uint32_t
+    data[9]=*(((uint8_t *)(&pkt_data.count_us))+1);
+    data[10]=*(((uint8_t *)(&pkt_data.count_us))+2);
+    data[11]=*(((uint8_t *)(&pkt_data.count_us))+3);
+    data[12]=*(((uint8_t *)(&pkt_data.rf_chain)));
+    data[13]=*(((uint8_t *)(&pkt_data.rf_power)));
+    data[14]=*(((uint8_t *)(&pkt_data.modulation)));
+    data[15]=*(((uint8_t *)(&pkt_data.bandwidth)));
+    data[16]=*(((uint8_t *)(&pkt_data.datarate)));
+    data[17]=*(((uint8_t *)(&pkt_data.datarate))+1);
+    data[18]=*(((uint8_t *)(&pkt_data.datarate))+2);
+    data[19]=*(((uint8_t *)(&pkt_data.datarate))+3);
+    data[20]=*(((uint8_t *)(&pkt_data.coderate)));
+    data[21]=*(((uint8_t *)(&pkt_data.invert_pol)));
+    data[22]=*(((uint8_t *)(&pkt_data.f_dev)));
+    data[23]=PADDING;
+    data[24]=*(((uint8_t *)(&pkt_data.preamble)));
+    data[25]=*(((uint8_t *)(&pkt_data.preamble))+1);
+    data[26]=*(((uint8_t *)(&pkt_data.no_crc)));
+    data[27]=*(((uint8_t *)(&pkt_data.no_header)));
+    data[28]=*(((uint8_t *)(&pkt_data.size)));
+    data[29]=*(((uint8_t *)(&pkt_data.size))+1);
+    // Pkt size already check 
+    for (i = 0; i < TX_SIZE_MAX; i++) {
+        data[i+30]= *(((uint8_t *)(&pkt_data.payload))+i);
+    }
 
-
-  int s;
-  s=(lgw_reg_sendconfcmd(data,TX_SIZE_MAX+30));
-  if (s == LGW_REG_SUCCESS) {
-         return LGW_HAL_SUCCESS;
-     } else {
-         DEBUG_MSG("ERROR: lgw_reg_sendconfcmd issue \n");
-         return LGW_HAL_ERROR;
-     }
+    x = lgw_reg_sendconfcmd(data, TX_SIZE_MAX+30);
+    if (x == LGW_REG_SUCCESS) {
+        return LGW_HAL_SUCCESS;
+    } else {
+        DEBUG_MSG("ERROR: lgw_reg_sendconfcmd issue\n");
+        return LGW_HAL_ERROR;
+    }
 }
   
-    
-    
-    
-    
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_status(uint8_t select, uint8_t *code) {
@@ -1581,16 +1481,15 @@ int lgw_abort_tx(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
- 
-   int s ;
-   s=lgw_regtrigger(trig_cnt_us); 
-   if (s == LGW_REG_SUCCESS) {
-             return LGW_HAL_SUCCESS;
-         } else {
-             DEBUG_MSG("ERROR: lgw_regtrigger issue \n");
-             return LGW_HAL_ERROR;
-         }
-   
+    int x;
+
+    x = lgw_regtrigger(trig_cnt_us); 
+    if (x == LGW_REG_SUCCESS) {
+        return LGW_HAL_SUCCESS;
+    } else {
+        DEBUG_MSG("ERROR: lgw_get_trigcnt issue\n");
+        return LGW_HAL_ERROR;
+    }
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

@@ -21,7 +21,7 @@ Maintainer: Sylvain Miermont
 #include <stdio.h>
 
 #include "loragw_reg.h"
-#include "loragw_fpga.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
@@ -38,7 +38,7 @@ int main()
     printf("Beginning of test for loragw_reg.c\n");
 
     lgw_connect(false);
-    lgw_fpga_configure( 129E3);
+
     /* 2 SPI transactions:
     -> 0x80 0x00        <- 0x00 0x00        forcing page 0
     -> 0x01 0x00        <- 0x00 0x64        checking version

@@ -130,7 +130,6 @@ void usage(void) {
     printf("Available options:\n");
     printf(" -h                 print this help\n");
     printf(" -r         <int>   radio type (SX1255:1255, SX1257:1257)\n");
-    printf(" -n         <uint>  TX notch filter frequency in kHz [126..250]\n");
     printf(" -f         <float> target frequency in MHz\n");
     printf(" -k         <uint>  concentrator clock source (0:Radio A, 1:Radio B)\n");
     printf(" -m         <str>   modulation type ['LORA', 'FSK']\n");
@@ -149,11 +148,6 @@ void usage(void) {
     printf(" -i                 send packet using inverted modulation polarity\n");
     printf(" -t         <uint>  pause between packets (ms)\n");
     printf(" -x         <int>   nb of times the sequence is repeated (-1 loop until stopped)\n");
-    printf(" --lbt-freq         <float> lbt first channel frequency in MHz\n");
-    printf(" --lbt-nbch         <uint>  lbt number of channels [1..8]\n");
-    printf(" --lbt-sctm         <uint>  lbt scan time in usec to be applied to all channels [128, 5000]\n");
-    printf(" --lbt-rssi         <int>   lbt rssi target in dBm [-128..0]\n");
-    printf(" --lbt-rssi-offset  <int>   rssi offset in dB to be applied to SX127x RSSI [-128..127]\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -185,20 +179,11 @@ int main(int argc, char **argv)
     bool invert = false;
     float br_kbps = DEFAULT_BR_KBPS;
     uint8_t fdev_khz = DEFAULT_FDEV_KHZ;
-    bool lbt_enable = false;
-    uint32_t lbt_f_target = 0;
-    uint32_t lbt_sc_time = 5000;
-    int8_t lbt_rssi_target_dBm = -80;
-    int8_t lbt_rssi_offset_dB = DEFAULT_SX127X_RSSI_OFFSET;
-    uint8_t  lbt_nb_channel = 1;
-    uint32_t sx1301_count_us;
-    uint32_t tx_notch_freq = DEFAULT_NOTCH_FREQ;
 
     /* RF configuration (TX fail if RF chain is not enabled) */
     enum lgw_radio_type_e radio_type = LGW_RADIO_TYPE_NONE;
     uint8_t clocksource = 1; /* Radio B is source by default */
     struct lgw_conf_board_s boardconf;
-    struct lgw_conf_lbt_s lbtconf;
     struct lgw_conf_rxrf_s rfconf;
 
     /* allocate memory for packet sending */
@@ -210,16 +195,11 @@ int main(int argc, char **argv)
     /* Parameter parsing */
     int option_index = 0;
     static struct option long_options[] = {
-        {"lbt-freq", required_argument, 0, 0},
-        {"lbt-sctm", required_argument, 0, 0},
-        {"lbt-rssi", required_argument, 0, 0},
-        {"lbt-nbch", required_argument, 0, 0},
-        {"lbt-rssi-offset", required_argument, 0, 0},
         {0, 0, 0, 0}
     };
      
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hif:n:m:b:s:c:p:l:z:t:x:r:k:d:q:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hif:m:b:s:c:p:l:z:t:x:r:k:d:q:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -234,17 +214,6 @@ int main(int argc, char **argv)
                     return EXIT_FAILURE;
                 } else {
                     f_target = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
-                }
-                break;
-
-            case 'n': /* <uint> TX notch filter frequency in kHz */
-                i = sscanf(optarg, "%i", &xi);
-                if ((i != 1) || ((xi < 126) || (xi > 250))) {
-                    MSG("ERROR: invalid TX notch filter frequency\n");
-                    usage();
-                    return EXIT_FAILURE;
-                } else {
-                    tx_notch_freq = xi*1000;
                 }
                 break;
 
@@ -399,84 +368,6 @@ int main(int argc, char **argv)
                     clocksource = (uint8_t)xi;
                 }
                 break;
-
-            case 0:
-                if( strcmp(long_options[option_index].name, "lbt-freq") == 0 ) { /* <float> LBT first channel frequency in MHz */
-                    i = sscanf(optarg, "%lf", &xd);
-                    if ((i != 1) || (xd < 30.0) || (xd > 3000.0)) {
-                        MSG("ERROR: invalid LBT start frequency\n");
-                        usage();
-                        return EXIT_FAILURE;
-                    } else {
-                        lbt_f_target = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
-                        lbt_enable = true;
-                    }
-                } else if( strcmp(long_options[option_index].name, "lbt-sctm") == 0 ) { /* <int> LBT scan time in usec */
-                    if (lbt_enable == true) {
-                        i = sscanf(optarg, "%i", &xi);
-                        if ((i != 1) || (xi < 0)) {
-                            MSG("ERROR: invalid LBT scan time\n");
-                            usage();
-                            return EXIT_FAILURE;
-                        } else {
-                            lbt_sc_time = xi;
-                        }
-                    } else {
-                        MSG("ERROR: invalid parameter, LBT start frequency must be set\n");
-                        usage();
-                        return EXIT_FAILURE;
-                    }
-                } else if( strcmp(long_options[option_index].name, "lbt-rssi") == 0 ) { /* <int> LBT RSSI target */
-                    if (lbt_enable == true) {
-                        i = sscanf(optarg, "%i", &xi);
-                        if ((i != 1) || ((xi < -128) && (xi > 0))) {
-                            MSG("ERROR: invalid LBT RSSI target\n");
-                            usage();
-                            return EXIT_FAILURE;
-                        } else {
-                            lbt_rssi_target_dBm = xi;
-                        }
-                    } else {
-                        MSG("ERROR: invalid parameter, LBT start frequency must be set\n");
-                        usage();
-                        return EXIT_FAILURE;
-                    }
-                } else if( strcmp(long_options[option_index].name, "lbt-rssi-offset") == 0 ) { /* <int> LBT RSSI offset */
-                    if (lbt_enable == true) {
-                        i = sscanf(optarg, "%i", &xi);
-                        if ((i != 1) || ((xi < -128) && (xi > 127))) {
-                            MSG("ERROR: invalid LBT RSSI offset\n");
-                            usage();
-                            return EXIT_FAILURE;
-                        } else {
-                            lbt_rssi_offset_dB = xi;
-                        }
-                    } else {
-                        MSG("ERROR: invalid parameter, LBT start frequency must be set\n");
-                        usage();
-                        return EXIT_FAILURE;
-                    }
-                } else if( strcmp(long_options[option_index].name, "lbt-nbch") == 0 ) { /* <int> LBT number of channels */
-                    if (lbt_enable == true) {
-                        i = sscanf(optarg, "%i", &xi);
-                        if ((i != 1) || (xi < 0)) {
-                            MSG("ERROR: invalid LBT number of channels\n");
-                            usage();
-                            return EXIT_FAILURE;
-                        } else {
-                            lbt_nb_channel = xi;
-                        }
-                    } else {
-                        MSG("ERROR: invalid parameter, LBT start frequency must be set\n");
-                        usage();
-                        return EXIT_FAILURE;
-                    }
-                }
-                break;
-            default:
-                MSG("ERROR: argument parsing\n");
-                usage();
-                return EXIT_FAILURE;
         }
     }
 
@@ -512,22 +403,6 @@ int main(int argc, char **argv)
     boardconf.clksrc = clocksource;
     lgw_board_setconf(boardconf);
 
-    /* LBT config */
-    if (lbt_enable) {
-        memset(&lbtconf, 0, sizeof(lbtconf));
-        lbtconf.enable = true;
-        lbtconf.nb_channel = lbt_nb_channel;
-        lbtconf.rssi_target = lbt_rssi_target_dBm;
-        lbtconf.rssi_offset = lbt_rssi_offset_dB;
-        lbtconf.channels[0].freq_hz = lbt_f_target;
-        lbtconf.channels[0].scan_time_us = lbt_sc_time;
-        for (i=1; i<lbt_nb_channel; i++) {
-            lbtconf.channels[i].freq_hz = lbtconf.channels[i-1].freq_hz + 200E3; /* 200kHz offset for all channels */
-            lbtconf.channels[i].scan_time_us = lbt_sc_time;
-        }
-        lgw_lbt_setconf(lbtconf);
-    }
-
     /* RF config */
     memset(&rfconf, 0, sizeof(rfconf));
     rfconf.enable = true;
@@ -537,7 +412,6 @@ int main(int argc, char **argv)
     for (i = 0; i < LGW_RF_CHAIN_NB; i++) {
         if (i == TX_RF_CHAIN) {
             rfconf.tx_enable = true;
-            rfconf.tx_notch_freq = tx_notch_freq;
         } else {
             rfconf.tx_enable = false;
         }
@@ -559,11 +433,7 @@ int main(int argc, char **argv)
     /* fill-up payload and parameters */
     memset(&txpkt, 0, sizeof(txpkt));
     txpkt.freq_hz = f_target;
-    if (lbt_enable == true) {
-        txpkt.tx_mode = TIMESTAMPED;
-    } else {
-        txpkt.tx_mode = IMMEDIATE;
-    }
+    txpkt.tx_mode = IMMEDIATE;
     txpkt.rf_chain = TX_RF_CHAIN;
     txpkt.rf_power = pow;
     if( strcmp( mod, "FSK" ) == 0 ) {
@@ -614,18 +484,6 @@ int main(int argc, char **argv)
         /* refresh counters in payload (big endian, for readability) */
         txpkt.payload[4] = (uint8_t)(cycle_count >> 8); /* MSB */
         txpkt.payload[5] = (uint8_t)(cycle_count & 0x00FF); /* LSB */
-
-        /* When LBT is enabled, immediate send is not allowed, so we need
-            to set a timestamp to the packet */
-        if (lbt_enable == true) {
-            /* Get the current SX1301 time */
-            lgw_reg_w(LGW_GPS_EN, 0);
-            lgw_get_trigcnt(&sx1301_count_us);
-            lgw_reg_w(LGW_GPS_EN, 1);
-
-            /* Set packet timestamp to current time + few milliseconds */
-            txpkt.count_us = sx1301_count_us + 50E3;
-        }
 
         /* send packet */
         printf("Sending packet number %u ...", cycle_count);
