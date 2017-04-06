@@ -1,0 +1,5 @@
+/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */
+{"gateway_conf": {
+     "gateway_ID": "363635393b006300" 
+     }
+}
