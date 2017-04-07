@@ -84,6 +84,10 @@ void mp_irq_preinit(void) {
 
 void mp_irq_init0(void) {
     uint32_t stack_size = INTERRUPTS_TASK_STACK_SIZE;
+
+    // initialize the callback objects list
+    mp_obj_list_init(&MP_STATE_PORT(mp_irq_obj_list), 0);
+
     mp_irq_is_alive = true;
     xQueueReset(InterruptsQueue);
     mp_thread_create_ex(TASK_Interrupts, NULL, &stack_size, INTERRUPTS_TASK_PRIORITY, "IRQs");

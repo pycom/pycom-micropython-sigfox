@@ -940,18 +940,17 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
     if (args[3].u_obj != mp_const_none) {
         if (mp_obj_is_integer(args[3].u_obj)) {
             uint32_t srv_uuid = mp_obj_get_int_truncated(args[3].u_obj);
-            if (srv_uuid > UINT16_MAX) {
-                adv_data.service_uuid_len = 4;
-                srv_uuid = lwip_htonl(srv_uuid);
-            } else {
-                adv_data.service_uuid_len = 2;
-                srv_uuid = lwip_htons(srv_uuid);
-            }
+            uint8_t uuid_buf[16] = {0};
+            memcpy(uuid_buf, (uint8_t *)&srv_uuid, sizeof(uuid_buf));
+            adv_data.service_uuid_len = 16;
             adv_data.p_service_uuid = (uint8_t *)&srv_uuid;
         } else {
             mp_get_buffer_raise(args[3].u_obj, &uuid_bufinfo, MP_BUFFER_READ);
             adv_data.service_uuid_len = uuid_bufinfo.len;
             adv_data.p_service_uuid = uuid_bufinfo.buf;
+            if (adv_data.service_uuid_len != 16) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "incorrect service UUID length"));
+            }
         }
     } else {
         adv_data.service_uuid_len = 0;
