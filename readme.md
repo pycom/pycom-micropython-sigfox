@@ -11,11 +11,12 @@ LoRa Gateway project
 1. Core library: libloragw
 ---------------------------
 
-This directory contains the sources of the library to build a gateway based on 
-a Semtech LoRa multi-channel RF receiver (a.k.a. concentrator).
+This directory contains the sources of the library to build a LoRa Picocell
+Gateway based on a Semtech LoRa multi-channel RF receiver (a.k.a. concentrator).
 Once compiled all the code is contained in the libloragw.a file that will be 
 statically linked (ie. integrated in the final executable).
-The library implements an USB CDC (virtual com port) to communicate with the embedded mcu.
+The library implements an USB CDC (virtual com port) to communicate with the
+embedded mcu.
 
 The library also comes with a bunch of basic tests programs that are used to 
 test the different sub-modules of the library.
@@ -51,13 +52,12 @@ gateways as receivers.
 This software is used to set LoRa concentrator in Tx continuous mode,
 for spectral measurement.
 
-
-
-
 4. Changelog
 -------------
+
 ### v0.0.1  ###
-Initial release
+
+* Initial release
 
 
 5. Legal notice
