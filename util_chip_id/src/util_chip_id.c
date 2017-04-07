@@ -79,6 +79,7 @@ void usage(void) {
     MSG( "Available options:\n");
     MSG( " -h print this help\n");
     MSG( " -l generate a new guid.json file\n");
+    MSG( " -p print the pico cell gateway id\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -96,8 +97,7 @@ uint8_t uid[8];  //unique id
     sigaction(SIGINT, &sigact, NULL);
     sigaction(SIGTERM, &sigact, NULL);
 
- while ((i = getopt (argc, argv, "hblq:")) != -1) {
- printf("cmd = %c\n",i);
+ while ((i = getopt (argc, argv, "hplq:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
@@ -112,6 +112,14 @@ uint8_t uid[8];  //unique id
                fprintf(f,"/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
                fprintf(f,"{\"gateway_conf\": {\n     \"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n     }\n}",uid[0],uid[1],uid[2],uid[3],uid[4],uid[5],uid[6],uid[7]);
                fclose(f);
+               return EXIT_SUCCESS;
+               
+           case 'p':
+               lgw_connect(false);
+               lgw_reg_GetUniqueId(&uid[0]);
+               printf("/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
+               printf("{\"gateway_conf\": {\n     \"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n     }\n}",uid[0],uid[1],uid[2],uid[3],uid[4],uid[5],uid[6],uid[7]);
+              
                return EXIT_SUCCESS;
                
 

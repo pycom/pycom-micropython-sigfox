@@ -22,9 +22,7 @@ happens.
 This program only access the LoRa concentrator HAL library through its
 loragw_reg "named registers" access sub-module.
 
-It was tested with v1.3.0 of the libloragw library, and should be compatible
-with any later version of the library and the hardware, assuming the registers
-used for the tests are still present.
+
 
 The registers used are:
  * LGW_VERSION
@@ -57,9 +55,9 @@ Test 1 > R/W on a simple 8-bit register
 
 Test 2 > R/W on a simple 8-bit register with interstitial reads on VERSION
 
-Test 3 > R/W on a 32-bit register (short SPI bursts access)
+Test 3 > R/W on a 32-bit register 
 
-Test 4 > data buffer R/W (long SPI bursts access)
+Test 4 > data buffer R/W 
 
 4. License
 -----------
