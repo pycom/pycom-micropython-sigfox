@@ -52,6 +52,16 @@ gateways as receivers.
 This software is used to set LoRa concentrator in Tx continuous mode,
 for spectral measurement.
 
+### 2.5. util_boot ###
+
+This software is used to set PicoCell Gateway in dfu mode for download new FW MCU.
+
+### 2.6. util_chip_id ###
+
+This software is used to obtain the unique id of the PicoCell gateway.
+64 bits unique id extracts from the STM32 uinque id registers.
+
+
 4. Changelog
 -------------
 
