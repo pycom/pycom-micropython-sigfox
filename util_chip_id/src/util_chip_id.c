@@ -78,7 +78,7 @@ static void sig_handler(int sigio) {
 void usage(void) {
     MSG( "Available options:\n");
     MSG( " -h print this help\n");
-    MSG( " -b to enter in DFU mode \n");
+    MSG( " -l generate a new guid.json file\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -87,7 +87,7 @@ void usage(void) {
 int main(int argc, char **argv)
 {
 int i;
-
+uint8_t uid[8];  //unique id
   /* configure signal handling */
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
@@ -103,12 +103,17 @@ int i;
                 usage();
                 return EXIT_FAILURE;
                 break;
-            case 'b':
+           
+           case 'l':
                lgw_connect(false);
-               lgw_reg_GOTODFU();
+               lgw_reg_GetUniqueId(&uid[0]);
+               FILE *f; 
+               f=fopen("guid.json","w");
+               fprintf(f,"/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
+               fprintf(f,"{\"gateway_conf\": {\n     \"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n     }\n}",uid[0],uid[1],uid[2],uid[3],uid[4],uid[5],uid[6],uid[7]);
+               fclose(f);
                return EXIT_SUCCESS;
-                break;
-          
+               
 
             default:
                 MSG("ERROR: argument parsing use -h option for help\n");
