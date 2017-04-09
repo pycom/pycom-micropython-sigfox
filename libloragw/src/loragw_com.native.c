@@ -1,58 +1,44 @@
 /*
-/ _____)             _              | |
+ / _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
-\____ \| ___ |    (_   _) ___ |/ ___)  _ \
-_____) ) ____| | | || |_| ____( (___| | | |
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
 (C)2013 Semtech-Cycleo
 
 Description:
-Host specific functions to address the LoRa concentrator registers through
-a SPI interface.
+Host specific functions to address the LoRa concentrator registers through a
+USB interface. USB CDC driver is required to establish the connection with the
+Picocell Gateway.
 Single-byte read/write and burst read/write.
-Does not handle pagination.
-Could be used with multiple SPI ports in parallel (explicit file descriptor)
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
-
-
-Note : for picogateway this file contains the USB cmd and an encapsulation of the spi functions to provide an usb bridge.
-Usb CDC drivers is require to establish the connection with the picogateway.
-
-
 */
 
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include <stdint.h>        /* C99 types */
-#include <stdio.h>        /* printf fprintf */
-#include <stdlib.h>        /* malloc free */
-#include <unistd.h>        /* lseek, close */
-#include <fcntl.h>        /* open */
-#include <string.h>        /* memset */
-#include <errno.h>   /* Error number definitions */
-#include <termios.h> /* POSIX terminal control definitions */
+#include <stdint.h>             /* C99 types */
+#include <stdio.h>              /* printf fprintf */
+#include <stdlib.h>             /* malloc free */
+#include <unistd.h>             /* lseek, close */
+#include <fcntl.h>              /* open */
+#include <string.h>             /* memset */
+#include <errno.h>              /* Error number definitions */
+#include <termios.h>            /* POSIX terminal control definitions */
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
 #include <pthread.h>
+#include <time.h>
+#include <sys/select.h>
+
 #include "loragw_com.h"
 #include "loragw_hal.h"
 #include "loragw_aux.h"
 #include "loragw_reg.h"
-#include <stdio.h>   /* Standard input/output definitions */
-#include <string.h>  /* String function definitions */
-#include <stdlib.h>
-#include <stdint.h>
-#include <unistd.h>  /* UNIX standard function definitions */
-#include <fcntl.h>   /* File control definitions */
-#include <errno.h>   /* Error number definitions */
-#include <termios.h> /* POSIX terminal control definitions */
-#include <time.h>
 #include "loragw_com_linux.h"
-#include <sys/select.h>
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -70,28 +56,13 @@ Usb CDC drivers is require to establish the connection with the picogateway.
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE SHARED VARIABLES (GLOBAL) ------------------------------------ */
 
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+/* -------------------------------------------------------------------------- */
+/* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-
-                                                              /* -------------------------------------------------------------------------- */
-                                                              /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
-/*
-#define READ_ACCESS     0x00
-#define WRITE_ACCESS    0x80
-#define com_SPEED       8000000
-#define com_DEV_PATH    "/dev/spidev0.0"
-*/
-                                                              //#define com_DEV_PATH    "/dev/spidev32766.0"
-
-                                                              /* -------------------------------------------------------------------------- */
-                                                              /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
-
-
-                                                              /* configure TTYACM0 port*/
-
-
-int set_interface_attribs(int fd, int speed, int parity)
-{
+int set_interface_attribs(int fd, int speed, int parity) {
     #ifdef _WIN32
         return set_interface_attribs_win(fd,speed,parity);
     #elif __linux__
@@ -107,8 +78,9 @@ int set_interface_attribs(int fd, int speed, int parity)
     #endif
 }
 
-void set_blocking(int fd, int should_block)
-{
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+void set_blocking(int fd, int should_block) {
     #ifdef _WIN32
         return set_blocking_win(fd,should_block);
     #elif __linux__
@@ -124,12 +96,9 @@ void set_blocking(int fd, int should_block)
     #endif
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-
-
-/* SPI initialization and configuration */
 int lgw_com_open(void **com_target_ptr) {
-
     #ifdef _WIN32
         return lgw_com_open_win(com_target_ptr);
     #elif __linux__
@@ -145,14 +114,10 @@ int lgw_com_open(void **com_target_ptr) {
     #endif
 }
 
-
-
-
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* COM release */
 int lgw_com_close(void *com_target) {
-#ifdef _WIN32
+    #ifdef _WIN32
         return lgw_com_close_win(com_target);
     #elif __linux__
         return lgw_com_close_linux(com_target);
@@ -169,7 +134,6 @@ int lgw_com_close(void *com_target) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* Simple write */
 int lgw_com_w(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t data) {
     #ifdef _WIN32
         return lgw_com_w_win(com_target,com_mux_mode,com_mux_target,address,data);
@@ -188,7 +152,6 @@ int lgw_com_w(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, ui
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* Simple read */
 int lgw_com_r(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data) {
     #ifdef _WIN32
         return lgw_com_r_win(com_target,com_mux_mode,com_mux_target,address,data);
@@ -206,9 +169,10 @@ int lgw_com_r(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, ui
 
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_com_wb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size) {
-#ifdef _WIN32
+    #ifdef _WIN32
         return lgw_com_wb_win(com_target,com_mux_mode,com_mux_target,address,data,size);
     #elif __linux__
         return lgw_com_wb_linux(com_target,com_mux_mode,com_mux_target,address,data,size);
@@ -225,10 +189,8 @@ int lgw_com_wb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-
-/* Burst (multiple-byte) read */
 int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size) {
-#ifdef _WIN32
+    #ifdef _WIN32
         return lgw_com_rb_win(com_target,com_mux_mode,com_mux_target,address,data,size);
     #elif __linux__
         return lgw_com_rb_linux(com_target,com_mux_mode,com_mux_target,address,data,size);
@@ -243,8 +205,9 @@ int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
     #endif
 }
 
-int SendCmdn(CmdSettings_t CmdSettings, int file1)
-{
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int SendCmdn(CmdSettings_t CmdSettings, int file1) {
     #ifdef _WIN32
         return SendCmdn_win(CmdSettings,file1);
     #elif __linux__
@@ -260,9 +223,9 @@ int SendCmdn(CmdSettings_t CmdSettings, int file1)
     #endif
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int ReceiveAns(AnsSettings_t *Ansbuffer, int file1)
-{
+int ReceiveAns(AnsSettings_t *Ansbuffer, int file1) {
     #ifdef _WIN32
         return ReceiveAns_win(Ansbuffer,file1);
     #elif __linux__
@@ -278,8 +241,7 @@ int ReceiveAns(AnsSettings_t *Ansbuffer, int file1)
     #endif
 }
 
-
-/*Embedded HAL into STM32 part */
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_receive_cmd(void *com_target, uint8_t max_packet, uint8_t *data) {
     #ifdef _WIN32
@@ -297,9 +259,7 @@ int lgw_receive_cmd(void *com_target, uint8_t max_packet, uint8_t *data) {
     #endif
 }
 
-
-
-/*Embedded HAL into STM32 part */
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_rxrf_setconfcmd(void *com_target, uint8_t rfchain, uint8_t *data, uint16_t size) {
     #ifdef _WIN32
@@ -318,9 +278,9 @@ int lgw_rxrf_setconfcmd(void *com_target, uint8_t rfchain, uint8_t *data, uint16
 
 }
 
-int lgw_boardconfcmd(void * com_target, uint8_t *data, uint16_t size)
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-{
+int lgw_boardconfcmd(void * com_target, uint8_t *data, uint16_t size) {
     #ifdef _WIN32
         return  lgw_boardconfcmd_win(com_target,data,size);
     #elif __linux__
@@ -336,6 +296,9 @@ int lgw_boardconfcmd(void * com_target, uint8_t *data, uint16_t size)
     #endif
 
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 int lgw_rxif_setconfcmd(void *com_target, uint8_t ifchain, uint8_t *data, uint16_t size) {
     #ifdef _WIN32
         return lgw_rxif_setconfcmd_win(com_target,ifchain,data,size);
@@ -352,8 +315,9 @@ int lgw_rxif_setconfcmd(void *com_target, uint8_t ifchain, uint8_t *data, uint16
     #endif
 }
 
-int lgw_txgain_setconfcmd(void *com_target, uint8_t *data, uint16_t size)
-{
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_txgain_setconfcmd(void *com_target, uint8_t *data, uint16_t size) {
     #ifdef _WIN32
         return  lgw_txgain_setconfcmd_win(com_target,data,size);
     #elif __linux__
@@ -369,7 +333,7 @@ int lgw_txgain_setconfcmd(void *com_target, uint8_t *data, uint16_t size)
     #endif
 }
 
-
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_sendconfcmd(void *com_target, uint8_t *data, uint16_t size) {
     #ifdef _WIN32
@@ -387,7 +351,7 @@ int lgw_sendconfcmd(void *com_target, uint8_t *data, uint16_t size) {
     #endif
 }
 
-
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_trigger(void *com_target, uint8_t address, uint32_t *data) {
     #ifdef _WIN32
@@ -405,9 +369,9 @@ int lgw_trigger(void *com_target, uint8_t address, uint32_t *data) {
     #endif
 }
 
-int lgw_calibration_snapshot(void * com_target)
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-{
+int lgw_calibration_snapshot(void * com_target) {
     #ifdef _WIN32
         return lgw_calibration_snapshot_win(com_target);
     #elif __linux__
@@ -423,8 +387,9 @@ int lgw_calibration_snapshot(void * com_target)
     #endif
 }
 
-int lgw_resetSTM32(void * com_target)
-{
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_resetSTM32(void * com_target) {
     #ifdef _WIN32
         return lgw_resetSTM32_win(com_target);
     #elif __linux__
@@ -440,8 +405,9 @@ int lgw_resetSTM32(void * com_target)
     #endif
 }
 
-int lgw_GOTODFU(void * com_target)
-{
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_GOTODFU(void * com_target) {
     #ifdef _WIN32
         return lgw_GOTODFU_win(com_target);
     #elif __linux__
@@ -457,8 +423,9 @@ int lgw_GOTODFU(void * com_target)
     #endif
 }
 
-int lgw_GetUniqueId(void * com_target,uint8_t * uid)
-{
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_GetUniqueId(void * com_target,uint8_t * uid) {
     #ifdef _WIN32
         return lgw_GetUniqueId_win(com_target,uid);
     #elif __linux__
@@ -474,10 +441,9 @@ int lgw_GetUniqueId(void * com_target,uint8_t * uid)
     #endif
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/****************************/
-int checkcmd(uint8_t cmd)
-{
+int checkcmd(uint8_t cmd) {
     #ifdef _WIN32
         return checkcmd_win(cmd);
     #elif __linux__
@@ -492,6 +458,5 @@ int checkcmd(uint8_t cmd)
         DEBUG_PRINTF("System is not recognized.");
     #endif
 }
-
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -1,20 +1,18 @@
 /*
  / _____)             _              | |
-_linux( _linux(____  _____ ____ _| |_ _____  ____| |__
- \____ \| ___ |    _linux(_   _) ___ |/ ___)  _ \
- _____) ) ____| | | || |_| _____linux( _linux(___| | | |
-_linux(______/|_____)_|_|_| \__)_____)\____)_| |_|
-  _linux(C)2013 Semtech-Cycleo
+( (____  _____ ____ _| |_ _____  ____| |__
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
+(______/|_____)_|_|_| \__)_____)\____)_| |_|
+  (C)2013 Semtech-Cycleo
 
 Description:
-    Host specific functions to address the LoRa concentrator registers through a
-    SPI interface.
-    Single-byte read/write and burst read/write.
-    Does not handle pagination.
-    Could be used with multiple SPI ports in parallel _linux(explicit file descriptor)
+Host specific functions to address the LoRa concentrator registers through a
+USB interface. USB CDC driver is required to establish the connection with the
+Picocell Gateway.
+Single-byte read/write and burst read/write.
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
@@ -24,10 +22,11 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include <stdint.h>        /* C99 types*/
+#include <stdint.h>     /* C99 types*/
 
-#include "config.h"    /* library configuration options _linux(dynamically generated) */
+#include "config.h"     /* library configuration options _linux(dynamically generated) */
 #include "loragw_com.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
@@ -104,27 +103,26 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
 int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
 
-
-
-int SendCmd_linux(CmdSettings_t CmdSettings,int file1)     ;
-int SendCmdn_linux(CmdSettings_t CmdSettings,int file1)     ;
-int ReceiveAns_linux(AnsSettings_t *Ansbuffer,int file1)     ;
-int ReceiveAnsCmd_linux(AnsSettings_t *Ansbuffer,int file1,uint8_t cmd);
-void WriteBurstRegister_linux(int file1,int adress,int *value,int size);
+int SendCmd_linux(CmdSettings_t CmdSettings, int file1);
+int SendCmdn_linux(CmdSettings_t CmdSettings, int file1);
+int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int file1);
+int ReceiveAnsCmd_linux(AnsSettings_t *Ansbuffer, int file1, uint8_t cmd);
+void WriteBurstRegister_linux(int file1, int adress, int *value, int size);
 int set_interface_attribs_linux(int fd, int speed, int parity);
 void set_blocking_linux(int fd, int should_block);
 int lgw_receive_cmd_linux(void *com_target, uint8_t max_packet, uint8_t *data);
 int lgw_rxrf_setconfcmd_linux(void *com_target, uint8_t rfchain, uint8_t *data,uint16_t size);
 int lgw_rxif_setconfcmd_linux(void *com_target, uint8_t ifchain, uint8_t *data,uint16_t size);
 int checkcmd_linux(uint8_t cmd);
-int lgw_txgain_setconfcmd_linux(void *com_target, uint8_t *data,uint16_t size);
-int lgw_sendconfcmd_linux(void *com_target,uint8_t *data,uint16_t size);
+int lgw_txgain_setconfcmd_linux(void *com_target, uint8_t *data, uint16_t size);
+int lgw_sendconfcmd_linux(void *com_target, uint8_t *data, uint16_t size);
 int lgw_trigger_linux(void *com_target, uint8_t address, uint32_t *data);
-int lgw_boardconfcmd_linux(void * com_target,uint8_t *data,uint16_t size);
+int lgw_boardconfcmd_linux(void * com_target, uint8_t *data, uint16_t size);
 int lgw_calibration_snapshot_linux(void * com_target);
 int lgw_resetSTM32_linux(void * com_target);
 int lgw_GOTODFU_linux(void * com_target);
-int lgw_GetUniqueId_linux(void * com_target,uint8_t * uid);
+int lgw_GetUniqueId_linux(void * com_target, uint8_t * uid);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */
