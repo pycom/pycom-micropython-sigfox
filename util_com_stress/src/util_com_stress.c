@@ -239,7 +239,7 @@ int main(int argc, char **argv)
                bufftest++;
             else
               bufftest=5;
-            
+
             for (i=0; i<bufftest; ++i) {
                 test_buff[i] = rand() & 0xFF;
             }
@@ -247,9 +247,9 @@ int main(int argc, char **argv)
             test_addr = rand() & 0xFFFF;
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* write at random offset in memory */
             lgw_reg_wb(LGW_RX_DATA_BUF_DATA, test_buff, bufftest);
-            
+
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
-         
+
             lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, bufftest);
             for (i=0; ((i<bufftest) && (test_buff[i] == read_buff[i])); ++i);
             if (i != bufftest) {

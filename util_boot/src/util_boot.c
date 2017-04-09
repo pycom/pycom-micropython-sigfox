@@ -5,7 +5,7 @@
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
   (C)2013 Semtech-Cycleo
- 
+
 Description:
     SPI stress test
 
@@ -108,14 +108,14 @@ int i;
                lgw_reg_GOTODFU();
                return EXIT_SUCCESS;
                 break;
-          
+
 
             default:
                 MSG("ERROR: argument parsing use -h option for help\n");
                 usage();
                 return EXIT_FAILURE;
         }
-    } 
+    }
 }
 
 /* --- EOF ------------------------------------------------------------------ */

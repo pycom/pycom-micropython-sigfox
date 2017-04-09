@@ -108,30 +108,30 @@ int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 /*usb picogw TBD documentation*/
 
 #define BURSTSIZE 1024
-#define BUFFERTXSIZE 4*(BURSTSIZE+2)  
+#define BUFFERTXSIZE 4*(BURSTSIZE+2)
 #define BUFFERRXSIZE 2048
 #define ATOMICTX 600
 #define ATOMICRX 900
-typedef struct 
+typedef struct
 {
-	char Cmd; // w for write , r for read
-	int LenMsb;
-	int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
-	int Adress;
-	int Value[BURSTSIZE];
+    char Cmd; // w for write , r for read
+    int LenMsb;
+    int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
+    int Adress;
+    int Value[BURSTSIZE];
 } CmdSettings_t;
 
-typedef struct 
+typedef struct
 {
-	int Cmd; // w for write , r for read
-	int Id;
-	int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
-	int Rxbuf[BUFFERRXSIZE];
+    int Cmd; // w for write , r for read
+    int Id;
+    int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
+    int Rxbuf[BUFFERRXSIZE];
 } AnsSettings_t;
-int SendCmd(CmdSettings_t CmdSettings,int file1) 	;
-int SendCmdn(CmdSettings_t CmdSettings,int file1) 	;
-int ReceiveAns(AnsSettings_t *Ansbuffer,int file1) 	;
-int ReceiveAnsCmd(AnsSettings_t *Ansbuffer,int file1,uint8_t cmd); 	
+int SendCmd(CmdSettings_t CmdSettings,int file1)     ;
+int SendCmdn(CmdSettings_t CmdSettings,int file1)     ;
+int ReceiveAns(AnsSettings_t *Ansbuffer,int file1)     ;
+int ReceiveAnsCmd(AnsSettings_t *Ansbuffer,int file1,uint8_t cmd);
 void WriteBurstRegister(int file1,int adress,int *value,int size);
 int set_interface_attribs (int fd, int speed, int parity);
 void set_blocking (int fd, int should_block);

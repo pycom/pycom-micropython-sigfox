@@ -197,7 +197,7 @@ int main(int argc, char **argv)
     static struct option long_options[] = {
         {0, 0, 0, 0}
     };
-     
+
     /* parse command line options */
     while ((i = getopt_long (argc, argv, "hif:m:b:s:c:p:l:z:t:x:r:k:d:q:", long_options, &option_index)) != -1) {
         switch (i) {

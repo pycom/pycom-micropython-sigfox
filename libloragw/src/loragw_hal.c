@@ -213,7 +213,7 @@ int load_firmware(uint8_t target, uint8_t *firmware, uint16_t size) {
     lgw_reg_r( LGW_MCU_PROM_DATA, &dummy ); /* bug workaround */
     lgw_reg_rb( LGW_MCU_PROM_DATA, fw_check, size );
     if (memcmp(firmware, fw_check, size) != 0) {
-      
+
         return -1;
     }
 
@@ -306,9 +306,9 @@ void lgw_constant_adjust(void) {
     lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_RDX4, 1); /* default 0 */
     lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_SF12_RDX4, 4094); /* default 4092 */
     lgw_reg_w(LGW_CORR_MAC_GAIN, 7); /* default 5 */
-	
-	
-	
+
+
+
     /* FSK datapath setup */
     lgw_reg_w(LGW_FSK_RX_INVERT,1); /* default 0 */
     lgw_reg_w(LGW_FSK_MODEM_INVERT_IQ,1); /* default 0 */
@@ -404,7 +404,7 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
     data[0]=conf.lorawan_public;
     data[1]=conf.clksrc;
     data[2]=PADDING;
-    data[3]=PADDING;    
+    data[3]=PADDING;
     x = lgw_reg_board_setconfcmd(data, sizeof(data)/sizeof(uint8_t));
     if (x == LGW_REG_SUCCESS) {
         return LGW_HAL_SUCCESS;
@@ -520,18 +520,18 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
         DEBUG_MSG("ERROR: INVALID RF_CHAIN TO ASSOCIATE WITH A LORA_STD IF CHAIN\n");
         return LGW_HAL_ERROR;
     }
-    switch (conf.bandwidth) {        
-      case BW_250KHZ:            
-          rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_250KHZ;         
-          break;        
-      case BW_500KHZ:            
-          rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_500KHZ;             
-          break;        
-      default:        
-          rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_125KHZ;          
+    switch (conf.bandwidth) {
+      case BW_250KHZ:
+          rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_250KHZ;
+          break;
+      case BW_500KHZ:
+          rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_500KHZ;
+          break;
+      default:
+          rf_rx_bandwidth = LGW_RF_RX_BANDWIDTH_125KHZ;
           break;
     }
-    
+
     bw_hz = lgw_bw_getval(conf.bandwidth);
     if ((conf.freq_hz + ((bw_hz==-1)?LGW_REF_BW:bw_hz)/2) > ((int32_t)rf_rx_bandwidth / 2)) {
         DEBUG_PRINTF("ERROR: IF FREQUENCY %d TOO HIGH\n", conf.freq_hz);
@@ -641,7 +641,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     /* PGW specific  */
     /*****************/
     uint8_t PADDING=0;
-    uint8_t data[28]; 
+    uint8_t data[28];
     data[0]=conf.enable;
     data[1]=*(((uint8_t *)(&conf.rf_chain)));
     data[2]=PADDING;
@@ -708,7 +708,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
             return LGW_HAL_ERROR;
         } else if (conf->lut[i].mix_gain < 8) {
             //DEBUG_MSG("WARNING: TX gain LUT: SX1257 mixer gains < 8 are not supported\n");
-           
+
            // return LGW_HAL_ERROR;
         }
         if (conf->lut[i].pa_gain > 3) {
@@ -728,7 +728,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
     /* PGW specific  */
     /*****************/
      uint32_t u = 0;
-     uint8_t data[(LGW_MULTI_NB*TX_GAIN_LUT_SIZE_MAX)+4];   
+     uint8_t data[(LGW_MULTI_NB*TX_GAIN_LUT_SIZE_MAX)+4];
      for (u = 0; u < TX_GAIN_LUT_SIZE_MAX; u++) {
          data[0+(5*u)]=0;
          data[1+(5*u)]=0;
@@ -736,7 +736,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
          data[3+(5*u)]=0;
          data[4+(5*u)]=0;
      }
-     
+
      for (u = 0; u < conf->size; u++)
      {
          data[0+(5*u)]=conf->lut[u].dig_gain;
@@ -744,7 +744,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
          data[2+(5*u)]=conf->lut[u].dac_gain;
          data[3+(5*u)]=conf->lut[u].mix_gain;
          data[4+(5*u)]=conf->lut[u].rf_power;
-     }   
+     }
      data[(TX_GAIN_LUT_SIZE_MAX)*5] = conf->size;
      x = lgw_txgainreg_setconfcmd(data, ((TX_GAIN_LUT_SIZE_MAX)*5)+1);
      if (x == LGW_REG_SUCCESS) {
@@ -770,7 +770,7 @@ int lgw_start(void) {
     uint16_t cal_time;
     uint8_t cal_status;
     uint64_t fsk_sync_word_reg;
-  
+
     if (lgw_is_started == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
@@ -789,7 +789,7 @@ int lgw_start(void) {
     lgw_reg_w(LGW_RADIO_RST,1);
     wait_ms(5);
     lgw_reg_w(LGW_RADIO_RST,0);
-    //  lgw_reg_RADIO_RST(); 
+    //  lgw_reg_RADIO_RST();
     /* setup the radios */
     err = lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
     if (err != 0) {
@@ -852,7 +852,7 @@ int lgw_start(void) {
     lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_CAL) {
-     
+
         return -1;
     }
 
@@ -919,7 +919,7 @@ int lgw_start(void) {
         DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
     }
 
-    lgw_reg_calibration_snapshot(); 
+    lgw_reg_calibration_snapshot();
     wait_ms(5);
     lgw_soft_reset();
 
@@ -934,7 +934,7 @@ int lgw_start(void) {
     lgw_reg_w(LGW_RADIO_RST,1);
     wait_ms(5);
     lgw_reg_w(LGW_RADIO_RST,0);
-    //  lgw_reg_RADIO_RST(); 
+    //  lgw_reg_RADIO_RST();
     /* setup the radios */
     err = lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
     if (err != 0) {
@@ -997,7 +997,7 @@ int lgw_start(void) {
     lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_CAL) {
-     
+
         return -1;
     }
 
@@ -1062,19 +1062,19 @@ int lgw_start(void) {
         lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
         cal_offset_b_q[i] = (int8_t)read_val;
         DEBUG_PRINTF("calibration a_i = %d\n",cal_offset_a_i[i]);
-    }    
-    
+    }
+
     lgw_reg_calibration_snapshot();
 
     /* load adjusted parameters */
     lgw_constant_adjust();
 
-    /* Sanity check for RX frequency */ 
+    /* Sanity check for RX frequency */
     if (rf_rx_freq[0] == 0) {
         DEBUG_MSG("ERROR: wrong configuration, rf_rx_freq[0] is not set\n");
         return LGW_HAL_ERROR;
     }
- 
+
     /* Freq-to-time-drift calculation */
     x = 4096000000 / (rf_rx_freq[0] >> 1); /* dividend: (4*2048*1000000) >> 1, rescaled to avoid 32b overflow */
     x = ( x > 63 ) ? 63 : x; /* saturation */
@@ -1291,19 +1291,19 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int u;
 
     /* check input variables */
-	if ((max_pkt <= 0) || (max_pkt > LGW_PKT_FIFO_SIZE)) {
-		DEBUG_PRINTF("ERROR: %d = INVALID MAX NUMBER OF PACKETS TO FETCH\n", max_pkt);
-		return LGW_HAL_ERROR;
-	}
+    if ((max_pkt <= 0) || (max_pkt > LGW_PKT_FIFO_SIZE)) {
+        DEBUG_PRINTF("ERROR: %d = INVALID MAX NUMBER OF PACKETS TO FETCH\n", max_pkt);
+        return LGW_HAL_ERROR;
+    }
 
-    nb_packet=lgw_reg_receive_cmd( max_pkt, (uint8_t *)data); 
+    nb_packet=lgw_reg_receive_cmd( max_pkt, (uint8_t *)data);
     /* check nb_packet variables */
     if ((nb_packet > LGW_PKT_FIFO_SIZE)|| (nb_packet < 0)) {
         DEBUG_MSG("ERROR: NOT A VALID NUMBER OF RECEIVE PACKET\n");
         return LGW_HAL_ERROR;
     }
-   
-    for (u = 0; u < nb_packet; u++) { 
+
+    for (u = 0; u < nb_packet; u++) {
         pkt_data[u].freq_hz=*((uint32_t*)(&data[0+RX_SIZE_MAX*u])); //the following code is done to work both with 32 or 64 bits host
         pkt_data[u].if_chain=*((uint8_t*)(&data[4+RX_SIZE_MAX*u]));
         pkt_data[u].status=*((uint8_t*)(&data[5+RX_SIZE_MAX*u]));
@@ -1322,74 +1322,74 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         for (i = 0; i < 256; i++) {
             (pkt_data[u].payload[i])=*((uint8_t*)(&data[44+i+RX_SIZE_MAX*u]));
         }
-    } 
+    }
 
     return (nb_packet);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_send(struct lgw_pkt_tx_s pkt_data) 
+int lgw_send(struct lgw_pkt_tx_s pkt_data)
 {
     int i, x;
     uint8_t PADDING = 0;
     uint8_t data[256+32];
 
-	/* check input range (segfault prevention) */
-	if (pkt_data.rf_chain >= LGW_RF_CHAIN_NB) {
-		DEBUG_MSG("ERROR: INVALID RF_CHAIN TO SEND PACKETS\n");
-		return LGW_HAL_ERROR;
-	}
+    /* check input range (segfault prevention) */
+    if (pkt_data.rf_chain >= LGW_RF_CHAIN_NB) {
+        DEBUG_MSG("ERROR: INVALID RF_CHAIN TO SEND PACKETS\n");
+        return LGW_HAL_ERROR;
+    }
 
-	/* check input variables */
-	if (rf_tx_enable[pkt_data.rf_chain] == false) {
-		DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED FOR TX ON SELECTED BOARD\n");
-		return LGW_HAL_ERROR;
-	}
-	if (rf_enable[pkt_data.rf_chain] == false) {
-		DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED\n");
-		return LGW_HAL_ERROR;
-	}
-	if (!IS_TX_MODE(pkt_data.tx_mode)) {
-		DEBUG_MSG("ERROR: TX_MODE NOT SUPPORTED\n");
-		return LGW_HAL_ERROR;
-	}
-	if (pkt_data.modulation == MOD_LORA) {
-		if (!IS_LORA_BW(pkt_data.bandwidth)) {
-			DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA TX\n");
-			return LGW_HAL_ERROR;
-		}
-		if (!IS_LORA_STD_DR(pkt_data.datarate)) {
-			DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY LORA TX\n");
-			return LGW_HAL_ERROR;
-		}
-		if (!IS_LORA_CR(pkt_data.coderate)) {
-			DEBUG_MSG("ERROR: CODERATE NOT SUPPORTED BY LORA TX\n");
-			return LGW_HAL_ERROR;
-		}
-		if (pkt_data.size > 255) {
-			DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR LORA TX\n");
-			return LGW_HAL_ERROR;
-		}
-	}
-	else if (pkt_data.modulation == MOD_FSK) {
-		if ((pkt_data.f_dev < 1) || (pkt_data.f_dev > 200)) {
-			DEBUG_MSG("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
-			return LGW_HAL_ERROR;
-		}
-		if (!IS_FSK_DR(pkt_data.datarate)) {
-			DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
-			return LGW_HAL_ERROR;
-		}
-		if (pkt_data.size > 255) {
-			DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR FSK TX\n");
-			return LGW_HAL_ERROR;
-		}
-	}
-	else {
-		DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
-		return LGW_HAL_ERROR;
-	}
+    /* check input variables */
+    if (rf_tx_enable[pkt_data.rf_chain] == false) {
+        DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED FOR TX ON SELECTED BOARD\n");
+        return LGW_HAL_ERROR;
+    }
+    if (rf_enable[pkt_data.rf_chain] == false) {
+        DEBUG_MSG("ERROR: SELECTED RF_CHAIN IS DISABLED\n");
+        return LGW_HAL_ERROR;
+    }
+    if (!IS_TX_MODE(pkt_data.tx_mode)) {
+        DEBUG_MSG("ERROR: TX_MODE NOT SUPPORTED\n");
+        return LGW_HAL_ERROR;
+    }
+    if (pkt_data.modulation == MOD_LORA) {
+        if (!IS_LORA_BW(pkt_data.bandwidth)) {
+            DEBUG_MSG("ERROR: BANDWIDTH NOT SUPPORTED BY LORA TX\n");
+            return LGW_HAL_ERROR;
+        }
+        if (!IS_LORA_STD_DR(pkt_data.datarate)) {
+            DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY LORA TX\n");
+            return LGW_HAL_ERROR;
+        }
+        if (!IS_LORA_CR(pkt_data.coderate)) {
+            DEBUG_MSG("ERROR: CODERATE NOT SUPPORTED BY LORA TX\n");
+            return LGW_HAL_ERROR;
+        }
+        if (pkt_data.size > 255) {
+            DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR LORA TX\n");
+            return LGW_HAL_ERROR;
+        }
+    }
+    else if (pkt_data.modulation == MOD_FSK) {
+        if ((pkt_data.f_dev < 1) || (pkt_data.f_dev > 200)) {
+            DEBUG_MSG("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
+            return LGW_HAL_ERROR;
+        }
+        if (!IS_FSK_DR(pkt_data.datarate)) {
+            DEBUG_MSG("ERROR: DATARATE NOT SUPPORTED BY FSK IF CHAIN\n");
+            return LGW_HAL_ERROR;
+        }
+        if (pkt_data.size > 255) {
+            DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR FSK TX\n");
+            return LGW_HAL_ERROR;
+        }
+    }
+    else {
+        DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
+        return LGW_HAL_ERROR;
+    }
 
     data[0]=*(((uint8_t *)(&pkt_data.freq_hz)));//uint32_t
     data[1]=*(((uint8_t *)(&pkt_data.freq_hz))+1);
@@ -1421,7 +1421,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
     data[27]=*(((uint8_t *)(&pkt_data.no_header)));
     data[28]=*(((uint8_t *)(&pkt_data.size)));
     data[29]=*(((uint8_t *)(&pkt_data.size))+1);
-    // Pkt size already check 
+    // Pkt size already check
     for (i = 0; i < TX_SIZE_MAX; i++) {
         data[i+30]= *(((uint8_t *)(&pkt_data.payload))+i);
     }
@@ -1434,7 +1434,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
         return LGW_HAL_ERROR;
     }
 }
-  
+
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_status(uint8_t select, uint8_t *code) {
@@ -1483,7 +1483,7 @@ int lgw_abort_tx(void) {
 int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
     int x;
 
-    x = lgw_regtrigger(trig_cnt_us); 
+    x = lgw_regtrigger(trig_cnt_us);
     if (x == LGW_REG_SUCCESS) {
         return LGW_HAL_SUCCESS;
     } else {

@@ -78,33 +78,33 @@ void wait_ns_linux(unsigned long a) {
 
 void wait_ms(unsigned long a) {
 #ifdef _WIN32
-		return wait_ms_win(a) ;
-	#elif __linux__
-		return wait_ms_linux(a) ;
-	#elif __APPLE__
-		DEBUG_PRINTF("System is not recognized.");
-	#elif __unix__
-		DEBUG_PRINTF("System is not recognized.");
-	#elif __posix__
-		DEBUG_PRINTF("System is not recognized.");
-	#else
-		DEBUG_PRINTF("System is not recognized.");
-	#endif
+        return wait_ms_win(a) ;
+    #elif __linux__
+        return wait_ms_linux(a) ;
+    #elif __APPLE__
+        DEBUG_PRINTF("System is not recognized.");
+    #elif __unix__
+        DEBUG_PRINTF("System is not recognized.");
+    #elif __posix__
+        DEBUG_PRINTF("System is not recognized.");
+    #else
+        DEBUG_PRINTF("System is not recognized.");
+    #endif
 }
 void wait_ns(unsigned long a) {
 #ifdef _WIN32
-		return wait_ns_win(a) ;
-	#elif __linux__
-		return wait_ns_linux(a) ;
-	#elif __APPLE__
-		DEBUG_PRINTF("System is not recognized.");
-	#elif __unix__
-		DEBUG_PRINTF("System is not recognized.");
-	#elif __posix__
-		DEBUG_PRINTF("System is not recognized.");
-	#else
-		DEBUG_PRINTF("System is not recognized.");
-	#endif
+        return wait_ns_win(a) ;
+    #elif __linux__
+        return wait_ns_linux(a) ;
+    #elif __APPLE__
+        DEBUG_PRINTF("System is not recognized.");
+    #elif __unix__
+        DEBUG_PRINTF("System is not recognized.");
+    #elif __posix__
+        DEBUG_PRINTF("System is not recognized.");
+    #else
+        DEBUG_PRINTF("System is not recognized.");
+    #endif
 }
 
 /* --- EOF ------------------------------------------------------------------ */

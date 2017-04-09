@@ -486,7 +486,7 @@ int reg_r_align32(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target
 int lgw_connect(bool com_only) {
     int com_stat = LGW_com_SUCCESS;
     uint8_t u = 0;
-  
+
 
     /* check SPI link status */
     if (lgw_com_target != NULL) {
@@ -534,8 +534,8 @@ int lgw_connect(bool com_only) {
 /* Concentrator disconnect */
 int lgw_disconnect(void) {
     if (lgw_com_target != NULL) {
-        
-    
+
+
         lgw_reg_resetSTM32();
         lgw_com_close(lgw_com_target);
         lgw_com_target = NULL;
@@ -787,7 +787,7 @@ int lgw_reg_receive_cmd( uint8_t max_packet, uint8_t *data) {
 
  return(lgw_receive_cmd(lgw_com_target,max_packet, data));
 
-} 
+}
 
 int lgw_reg_rxrf_setconfcmd(  uint8_t rfchain, uint8_t *data,uint16_t size)
 {

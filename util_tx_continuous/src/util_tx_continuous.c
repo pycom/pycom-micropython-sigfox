@@ -100,13 +100,13 @@ int main(int argc, char **argv)
     unsigned int arg_u;
     float arg_f;
     char arg_s[64];
-    
-  //tbd  
-   
-     
-    
+
+  //tbd
+
+
+
     lgw_connect(false);
-   
+
     /* Application parameters */
     uint32_t freq_hz = DEFAULT_FREQ_HZ;
     uint8_t g_dig = DEFAULT_DIGITAL_GAIN;
