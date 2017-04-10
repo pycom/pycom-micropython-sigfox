@@ -109,7 +109,7 @@ int main()
 
     /* initialize data for SPI test */
     lfsr = 0xFFFF;
-    for(i=0; i<BURST_TEST_LENGTH; ++i) {
+    for(i = 0; i < BURST_TEST_LENGTH; ++i) {
         burst_buffout[i] = (uint8_t)(lfsr ^ (lfsr >> 4));
         /* printf("%05d # 0x%04x 0x%02x\n", i, lfsr, burst_buffout[i]); */
         lfsr = (lfsr & 1) ? ((lfsr >> 1) ^ 0x8679) : (lfsr >> 1);

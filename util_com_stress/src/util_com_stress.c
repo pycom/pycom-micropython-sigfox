@@ -1,13 +1,13 @@
- /*
- / _____)             _              | |
+/*
+/ _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
- \____ \| ___ |    (_   _) ___ |/ ___)  _ \
- _____) ) ____| | | || |_| ____( (___| | | |
+\____ \| ___ |    (_   _) ___ |/ ___)  _ \
+_____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2013 Semtech-Cycleo
+ (C)2013 Semtech-Cycleo
 
 Description:
-    SPI stress test
+   SPI stress test
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
@@ -19,9 +19,9 @@ Maintainer: Sylvain Miermont
 
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 600
 #else
-    #define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 500
 #endif
 
 #include <stdint.h>     /* C99 types */
@@ -150,7 +150,7 @@ int main(int argc, char **argv)
         /* single 8b register R/W stress test */
         while ((quit_sig != 1) && (exit_sig != 1)) {
             printf("Cycle %i > ", cycle_number);
-            for (i=0; i<repeats_per_cycle; ++i) {
+            for (i = 0; i < repeats_per_cycle; ++i) {
                 test_value = (rand() % 256);
                 lgw_reg_w(LGW_IMPLICIT_PAYLOAD_LENGHT, test_value);
                 lgw_reg_r(LGW_IMPLICIT_PAYLOAD_LENGHT, &read_value);
@@ -160,9 +160,9 @@ int main(int argc, char **argv)
                 }
             }
             if (error) {
-                printf("error during the %ith iteration: write 0x%02X, read 0x%02X\n", i+1, test_value, read_value);
+                printf("error during the %ith iteration: write 0x%02X, read 0x%02X\n", i + 1, test_value, read_value);
                 printf("Repeat read of target register:");
-                for (i=0; i<READS_WHEN_ERROR; ++i) {
+                for (i = 0; i < READS_WHEN_ERROR; ++i) {
                     lgw_reg_r(LGW_IMPLICIT_PAYLOAD_LENGHT, &read_value);
                     printf(" 0x%02X", read_value);
                 }
@@ -177,7 +177,7 @@ int main(int argc, char **argv)
         /* single 8b register R/W with interstitial VERSION check stress test */
         while ((quit_sig != 1) && (exit_sig != 1)) {
             printf("Cycle %i > ", cycle_number);
-            for (i=0; i<repeats_per_cycle; ++i) {
+            for (i = 0; i < repeats_per_cycle; ++i) {
                 test_value = (rand() % 256);
                 lgw_reg_r(LGW_VERSION, &rb1);
                 lgw_reg_w(LGW_IMPLICIT_PAYLOAD_LENGHT, test_value);
@@ -190,9 +190,9 @@ int main(int argc, char **argv)
                 }
             }
             if (error) {
-                printf("error during the %ith iteration: write %02X, read %02X, version (%i, %i, %i)\n", i+1, test_value, read_value, rb1, rb2, rb3);
+                printf("error during the %ith iteration: write %02X, read %02X, version (%i, %i, %i)\n", i + 1, test_value, read_value, rb1, rb2, rb3);
                 printf("Repeat read of target register:");
-                for (i=0; i<READS_WHEN_ERROR; ++i) {
+                for (i = 0; i < READS_WHEN_ERROR; ++i) {
                     lgw_reg_r(LGW_IMPLICIT_PAYLOAD_LENGHT, &read_value);
                     printf(" 0x%02X", read_value);
                 }
@@ -207,7 +207,7 @@ int main(int argc, char **argv)
         /* 32b register R/W stress test */
         while ((quit_sig != 1) && (exit_sig != 1)) {
             printf("Cycle %i > ", cycle_number);
-            for (i=0; i<repeats_per_cycle; ++i) {
+            for (i = 0; i < repeats_per_cycle; ++i) {
                 test_value = (rand() & 0x0000FFFF);
                 test_value += (int32_t)(rand() & 0x0000FFFF) << 16;
                 lgw_reg_w(LGW_FSK_REF_PATTERN_LSB, test_value);
@@ -218,9 +218,9 @@ int main(int argc, char **argv)
                 }
             }
             if (error) {
-                printf("error during the %ith iteration: write 0x%08X, read 0x%08X\n", i+1, test_value, read_value);
+                printf("error during the %ith iteration: write 0x%08X, read 0x%08X\n", i + 1, test_value, read_value);
                 printf("Repeat read of target register:");
-                for (i=0; i<READS_WHEN_ERROR; ++i) {
+                for (i = 0; i < READS_WHEN_ERROR; ++i) {
                     lgw_reg_r(LGW_FSK_REF_PATTERN_LSB, &read_value);
                     printf(" 0x%08X", read_value);
                 }
@@ -233,14 +233,16 @@ int main(int argc, char **argv)
         }
     } else if (test_number == 4) {
         /* databuffer R/W stress test */
-        int bufftest =5;
+        int bufftest = 5;
         while ((quit_sig != 1) && (exit_sig != 1)) {
-            if(bufftest<BUFF_SIZE)
-               bufftest++;
-            else
-              bufftest=5;
+            if(bufftest < BUFF_SIZE) {
+                bufftest++;
+            }
+            else {
+                bufftest = 5;
+            }
 
-            for (i=0; i<bufftest; ++i) {
+            for (i = 0; i < bufftest; ++i) {
                 test_buff[i] = rand() & 0xFF;
             }
             printf("Cycle %i > ", cycle_number);
@@ -251,30 +253,36 @@ int main(int argc, char **argv)
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
 
             lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, bufftest);
-            for (i=0; ((i<bufftest) && (test_buff[i] == read_buff[i])); ++i);
+            for (i = 0; ((i < bufftest) && (test_buff[i] == read_buff[i])); ++i);
             if (i != bufftest) {
                 printf("error during the buffer comparison\n");
                 printf("Written values:\n");
-                for (i=0; i<bufftest; ++i) {
+                for (i = 0; i < bufftest; ++i) {
                     printf(" %02X ", test_buff[i]);
-                    if (i%16 == 15) printf("\n");
+                    if (i % 16 == 15) {
+                        printf("\n");
+                    }
                 }
                 printf("\n");
                 printf("Read values:\n");
-                for (i=0; i<bufftest; ++i) {
-                    printf("%.2x ", test_buff[i]-read_buff[i]);
-                    if (i%16 == 15) printf("\n");
+                for (i = 0; i < bufftest; ++i) {
+                    printf("%.2x ", test_buff[i] - read_buff[i]);
+                    if (i % 16 == 15) {
+                        printf("\n");
+                    }
                 }
                 printf("\n");
                 lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
                 lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, bufftest);
                 printf("Re-read values:\n");
-                for (i=0; i<bufftest; ++i) {
+                for (i = 0; i < bufftest; ++i) {
                     printf(" %02X ", read_buff[i]);
-                    if (i%16 == 15) printf("\n");
+                    if (i % 16 == 15) {
+                        printf("\n");
+                    }
                 }
                 printf("\n");
-                 i = lgw_disconnect();
+                i = lgw_disconnect();
                 return EXIT_FAILURE;
             } else {
                 printf("did a %i-bytes R/W on a data buffer with no error\n", bufftest);

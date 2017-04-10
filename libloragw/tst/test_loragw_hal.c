@@ -19,9 +19,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 600
 #else
-    #define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 500
 #endif
 
 #include <stdint.h>        /* C99 types */
@@ -116,15 +116,15 @@ int main(int argc, char **argv)
                 break;
             case 'a': /* <float> Radio A RX frequency in MHz */
                 sscanf(optarg, "%lf", &xd);
-                fa = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                fa = (uint32_t)((xd * 1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 break;
             case 'b': /* <float> Radio B RX frequency in MHz */
                 sscanf(optarg, "%lf", &xd);
-                fb = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                fb = (uint32_t)((xd * 1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 break;
             case 't': /* <float> Radio TX frequency in MHz */
                 sscanf(optarg, "%lf", &xd);
-                ft = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                ft = (uint32_t)((xd * 1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 break;
             case 'r': /* <int> Radio type (1255, 1257) */
                 sscanf(optarg, "%i", &xi);
@@ -288,19 +288,19 @@ int main(int argc, char **argv)
     txpkt.size = 20;
     txpkt.preamble = 6;
     txpkt.rf_chain = 0;
-/*
-    memset(&txpkt, 0, sizeof(txpkt));
-    txpkt.freq_hz = F_TX;
-    txpkt.tx_mode = IMMEDIATE;
-    txpkt.rf_power = 10;
-    txpkt.modulation = MOD_FSK;
-    txpkt.f_dev = 50;
-    txpkt.datarate = 64000;
-    strcpy((char *)txpkt.payload, "TX.TEST.LORA.GW.????" );
-    txpkt.size = 20;
-    txpkt.preamble = 4;
-    txpkt.rf_chain = 0;
-*/
+    /*
+        memset(&txpkt, 0, sizeof(txpkt));
+        txpkt.freq_hz = F_TX;
+        txpkt.tx_mode = IMMEDIATE;
+        txpkt.rf_power = 10;
+        txpkt.modulation = MOD_FSK;
+        txpkt.f_dev = 50;
+        txpkt.datarate = 64000;
+        strcpy((char *)txpkt.payload, "TX.TEST.LORA.GW.????" );
+        txpkt.size = 20;
+        txpkt.preamble = 4;
+        txpkt.rf_chain = 0;
+    */
 
     /* connect, configure and start the LoRa concentrator */
     i = lgw_start();
@@ -315,8 +315,8 @@ int main(int argc, char **argv)
     // FILE * reg_dump = NULL;
     // reg_dump = fopen("reg_dump.log", "w");
     // if (reg_dump != NULL) {
-        // lgw_reg_check(reg_dump);
-        // fclose(reg_dump);
+    // lgw_reg_check(reg_dump);
+    // fclose(reg_dump);
     // }
 
     while ((quit_sig != 1) && (exit_sig != 1)) {
@@ -329,33 +329,60 @@ int main(int argc, char **argv)
             wait_ms(300);
         } else {
             /* display received packets */
-            for(i=0; i < nb_pkt; ++i) {
+            for(i = 0; i < nb_pkt; ++i) {
                 p = &rxpkt[i];
-                printf("---\nRcv pkt #%d >>", i+1);
+                printf("---\nRcv pkt #%d >>", i + 1);
                 if (p->status == STAT_CRC_OK) {
                     printf(" if_chain:%2d", p->if_chain);
                     printf(" tstamp:%010u", p->count_us);
                     printf(" size:%3u", p->size);
                     switch (p-> modulation) {
-                        case MOD_LORA: printf(" LoRa"); break;
-                        case MOD_FSK: printf(" FSK"); break;
-                        default: printf(" modulation?");
+                        case MOD_LORA:
+                            printf(" LoRa");
+                            break;
+                        case MOD_FSK:
+                            printf(" FSK");
+                            break;
+                        default:
+                            printf(" modulation?");
                     }
                     switch (p->datarate) {
-                        case DR_LORA_SF7: printf(" SF7"); break;
-                        case DR_LORA_SF8: printf(" SF8"); break;
-                        case DR_LORA_SF9: printf(" SF9"); break;
-                        case DR_LORA_SF10: printf(" SF10"); break;
-                        case DR_LORA_SF11: printf(" SF11"); break;
-                        case DR_LORA_SF12: printf(" SF12"); break;
-                        default: printf(" datarate?");
+                        case DR_LORA_SF7:
+                            printf(" SF7");
+                            break;
+                        case DR_LORA_SF8:
+                            printf(" SF8");
+                            break;
+                        case DR_LORA_SF9:
+                            printf(" SF9");
+                            break;
+                        case DR_LORA_SF10:
+                            printf(" SF10");
+                            break;
+                        case DR_LORA_SF11:
+                            printf(" SF11");
+                            break;
+                        case DR_LORA_SF12:
+                            printf(" SF12");
+                            break;
+                        default:
+                            printf(" datarate?");
                     }
                     switch (p->coderate) {
-                        case CR_LORA_4_5: printf(" CR1(4/5)"); break;
-                        case CR_LORA_4_6: printf(" CR2(2/3)"); break;
-                        case CR_LORA_4_7: printf(" CR3(4/7)"); break;
-                        case CR_LORA_4_8: printf(" CR4(1/2)"); break;
-                        default: printf(" coderate?");
+                        case CR_LORA_4_5:
+                            printf(" CR1(4/5)");
+                            break;
+                        case CR_LORA_4_6:
+                            printf(" CR2(2/3)");
+                            break;
+                        case CR_LORA_4_7:
+                            printf(" CR3(4/7)");
+                            break;
+                        case CR_LORA_4_8:
+                            printf(" CR4(1/2)");
+                            break;
+                        default:
+                            printf(" coderate?");
                     }
                     printf("\n");
                     printf(" RSSI:%+6.1f SNR:%+5.1f (min:%+5.1f, max:%+5.1f) payload:\n", p->rssi, p->snr, p->snr_min, p->snr_max);
@@ -369,7 +396,7 @@ int main(int argc, char **argv)
                     printf(" tstamp:%010u", p->count_us);
                     printf(" size:%3u\n", p->size);
                     printf(" CRC error, damaged packet\n\n");
-                } else if (p->status == STAT_NO_CRC){
+                } else if (p->status == STAT_NO_CRC) {
                     printf(" if_chain:%2d", p->if_chain);
                     printf(" tstamp:%010u", p->count_us);
                     printf(" size:%3u\n", p->size);
@@ -384,7 +411,7 @@ int main(int argc, char **argv)
         }
 
         /* send a packet every X loop */
-        if (loop_cnt%16 == 0) {
+        if (loop_cnt % 16 == 0) {
             /* 32b counter in the payload, big endian */
             txpkt.payload[16] = 0xff & (tx_cnt >> 24);
             txpkt.payload[17] = 0xff & (tx_cnt >> 16);

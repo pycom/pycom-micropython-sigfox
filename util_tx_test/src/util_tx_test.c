@@ -19,9 +19,9 @@ Maintainer: Sylvain Miermont
 
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 600
 #else
-    #define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 500
 #endif
 
 #include <stdint.h>     /* C99 types */
@@ -66,7 +66,7 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 /* TX gain LUT table */
 static struct lgw_tx_gain_lut_s txgain_lut = {
     .size = 5,
-     .lut[0] = {
+    .lut[0] = {
         .dig_gain = 0,
         .pa_gain = 0,
         .dac_gain = 3,
@@ -100,7 +100,8 @@ static struct lgw_tx_gain_lut_s txgain_lut = {
         .dac_gain = 3,
         .mix_gain = 12,
         .rf_power = 21
-    }};
+    }
+};
 
 
 
@@ -213,13 +214,13 @@ int main(int argc, char **argv)
                     usage();
                     return EXIT_FAILURE;
                 } else {
-                    f_target = (uint32_t)((xd*1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
+                    f_target = (uint32_t)((xd * 1e6) + 0.5); /* .5 Hz offset to get rounding instead of truncating */
                 }
                 break;
 
             case 'm': /* <str> Modulation type */
                 i = sscanf(optarg, "%s", arg_s);
-                if ((i != 1) || ((strcmp(arg_s,"LORA") != 0) && (strcmp(arg_s,"FSK")))) {
+                if ((i != 1) || ((strcmp(arg_s, "LORA") != 0) && (strcmp(arg_s, "FSK")))) {
                     MSG("ERROR: invalid modulation type\n");
                     usage();
                     return EXIT_FAILURE;
@@ -443,29 +444,55 @@ int main(int argc, char **argv)
     } else {
         txpkt.modulation = MOD_LORA;
         switch (bw) {
-            case 125: txpkt.bandwidth = BW_125KHZ; break;
-            case 250: txpkt.bandwidth = BW_250KHZ; break;
-            case 500: txpkt.bandwidth = BW_500KHZ; break;
+            case 125:
+                txpkt.bandwidth = BW_125KHZ;
+                break;
+            case 250:
+                txpkt.bandwidth = BW_250KHZ;
+                break;
+            case 500:
+                txpkt.bandwidth = BW_500KHZ;
+                break;
             default:
                 MSG("ERROR: invalid 'bw' variable\n");
                 return EXIT_FAILURE;
         }
         switch (sf) {
-            case  7: txpkt.datarate = DR_LORA_SF7;  break;
-            case  8: txpkt.datarate = DR_LORA_SF8;  break;
-            case  9: txpkt.datarate = DR_LORA_SF9;  break;
-            case 10: txpkt.datarate = DR_LORA_SF10; break;
-            case 11: txpkt.datarate = DR_LORA_SF11; break;
-            case 12: txpkt.datarate = DR_LORA_SF12; break;
+            case  7:
+                txpkt.datarate = DR_LORA_SF7;
+                break;
+            case  8:
+                txpkt.datarate = DR_LORA_SF8;
+                break;
+            case  9:
+                txpkt.datarate = DR_LORA_SF9;
+                break;
+            case 10:
+                txpkt.datarate = DR_LORA_SF10;
+                break;
+            case 11:
+                txpkt.datarate = DR_LORA_SF11;
+                break;
+            case 12:
+                txpkt.datarate = DR_LORA_SF12;
+                break;
             default:
                 MSG("ERROR: invalid 'sf' variable\n");
                 return EXIT_FAILURE;
         }
         switch (cr) {
-            case 1: txpkt.coderate = CR_LORA_4_5; break;
-            case 2: txpkt.coderate = CR_LORA_4_6; break;
-            case 3: txpkt.coderate = CR_LORA_4_7; break;
-            case 4: txpkt.coderate = CR_LORA_4_8; break;
+            case 1:
+                txpkt.coderate = CR_LORA_4_5;
+                break;
+            case 2:
+                txpkt.coderate = CR_LORA_4_6;
+                break;
+            case 3:
+                txpkt.coderate = CR_LORA_4_7;
+                break;
+            case 4:
+                txpkt.coderate = CR_LORA_4_8;
+                break;
             default:
                 MSG("ERROR: invalid 'cr' variable\n");
                 return EXIT_FAILURE;

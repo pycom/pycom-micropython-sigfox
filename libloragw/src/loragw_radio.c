@@ -32,13 +32,13 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_REG == 1
-    #define DEBUG_MSG(str)              fprintf(stderr, str)
-    #define DEBUG_PRINTF(fmt, args...)  fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
-    #define CHECK_NULL(a)               if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_REG_ERROR;}
+#define DEBUG_MSG(str)              fprintf(stderr, str)
+#define DEBUG_PRINTF(fmt, args...)  fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
+#define CHECK_NULL(a)               if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_REG_ERROR;}
 #else
-    #define DEBUG_MSG(str)
-    #define DEBUG_PRINTF(fmt, args...)
-    #define CHECK_NULL(a)               if(a==NULL){return LGW_REG_ERROR;}
+#define DEBUG_MSG(str)
+#define DEBUG_PRINTF(fmt, args...)
+#define CHECK_NULL(a)               if(a==NULL){return LGW_REG_ERROR;}
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -200,10 +200,10 @@ int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_
 
     switch (rf_radio_type) {
         case LGW_RADIO_TYPE_SX1255:
-            sx125x_write(rf_chain, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
+            sx125x_write(rf_chain, 0x28, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE * 16);
             break;
         case LGW_RADIO_TYPE_SX1257:
-            sx125x_write(rf_chain, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE*16);
+            sx125x_write(rf_chain, 0x26, SX125x_XOSC_GM_STARTUP + SX125x_XOSC_DISABLE * 16);
             break;
         default:
             DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type);
@@ -212,14 +212,14 @@ int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_
 
     if (rf_enable == true) {
         /* Tx gain and trim */
-        sx125x_write(rf_chain, 0x08, SX125x_TX_MIX_GAIN + SX125x_TX_DAC_GAIN*16);
-        sx125x_write(rf_chain, 0x0A, SX125x_TX_ANA_BW + SX125x_TX_PLL_BW*32);
+        sx125x_write(rf_chain, 0x08, SX125x_TX_MIX_GAIN + SX125x_TX_DAC_GAIN * 16);
+        sx125x_write(rf_chain, 0x0A, SX125x_TX_ANA_BW + SX125x_TX_PLL_BW * 32);
         sx125x_write(rf_chain, 0x0B, SX125x_TX_DAC_BW);
 
         /* Rx gain and trim */
-        sx125x_write(rf_chain, 0x0C, SX125x_LNA_ZIN + SX125x_RX_BB_GAIN*2 + SX125x_RX_LNA_GAIN*32);
-        sx125x_write(rf_chain, 0x0D, SX125x_RX_BB_BW + SX125x_RX_ADC_TRIM*4 + SX125x_RX_ADC_BW*32);
-        sx125x_write(rf_chain, 0x0E, SX125x_ADC_TEMP + SX125x_RX_PLL_BW*2);
+        sx125x_write(rf_chain, 0x0C, SX125x_LNA_ZIN + SX125x_RX_BB_GAIN * 2 + SX125x_RX_LNA_GAIN * 32);
+        sx125x_write(rf_chain, 0x0D, SX125x_RX_BB_BW + SX125x_RX_ADC_TRIM * 4 + SX125x_RX_ADC_BW * 32);
+        sx125x_write(rf_chain, 0x0E, SX125x_ADC_TEMP + SX125x_RX_PLL_BW * 2);
 
         /* set RX PLL frequency */
         switch (rf_radio_type) {
@@ -236,9 +236,9 @@ int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_
                 break;
         }
 
-        sx125x_write(rf_chain, 0x01,0xFF & part_int); /* Most Significant Byte */
-        sx125x_write(rf_chain, 0x02,0xFF & (part_frac >> 8)); /* middle byte */
-        sx125x_write(rf_chain, 0x03,0xFF & part_frac); /* Least Significant Byte */
+        sx125x_write(rf_chain, 0x01, 0xFF & part_int); /* Most Significant Byte */
+        sx125x_write(rf_chain, 0x02, 0xFF & (part_frac >> 8)); /* middle byte */
+        sx125x_write(rf_chain, 0x03, 0xFF & part_frac); /* Least Significant Byte */
 
         /* start and PLL lock */
         do {

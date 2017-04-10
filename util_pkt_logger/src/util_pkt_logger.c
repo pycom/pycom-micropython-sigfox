@@ -19,9 +19,9 @@ Maintainer: Sylvain Miermont
 
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 600
 #else
-    #define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 500
 #endif
 
 #include <stdint.h>     /* C99 types */
@@ -246,20 +246,40 @@ int parse_SX1301_configuration(const char * conf_file) {
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf, "chan_Lora_std.if");
             bw = (uint32_t)json_object_dotget_number(conf, "chan_Lora_std.bandwidth");
             switch(bw) {
-                case 500000: ifconf.bandwidth = BW_500KHZ; break;
-                case 250000: ifconf.bandwidth = BW_250KHZ; break;
-                case 125000: ifconf.bandwidth = BW_125KHZ; break;
-                default: ifconf.bandwidth = BW_UNDEFINED;
+                case 500000:
+                    ifconf.bandwidth = BW_500KHZ;
+                    break;
+                case 250000:
+                    ifconf.bandwidth = BW_250KHZ;
+                    break;
+                case 125000:
+                    ifconf.bandwidth = BW_125KHZ;
+                    break;
+                default:
+                    ifconf.bandwidth = BW_UNDEFINED;
             }
             sf = (uint32_t)json_object_dotget_number(conf, "chan_Lora_std.spread_factor");
             switch(sf) {
-                case  7: ifconf.datarate = DR_LORA_SF7;  break;
-                case  8: ifconf.datarate = DR_LORA_SF8;  break;
-                case  9: ifconf.datarate = DR_LORA_SF9;  break;
-                case 10: ifconf.datarate = DR_LORA_SF10; break;
-                case 11: ifconf.datarate = DR_LORA_SF11; break;
-                case 12: ifconf.datarate = DR_LORA_SF12; break;
-                default: ifconf.datarate = DR_UNDEFINED;
+                case  7:
+                    ifconf.datarate = DR_LORA_SF7;
+                    break;
+                case  8:
+                    ifconf.datarate = DR_LORA_SF8;
+                    break;
+                case  9:
+                    ifconf.datarate = DR_LORA_SF9;
+                    break;
+                case 10:
+                    ifconf.datarate = DR_LORA_SF10;
+                    break;
+                case 11:
+                    ifconf.datarate = DR_LORA_SF11;
+                    break;
+                case 12:
+                    ifconf.datarate = DR_LORA_SF12;
+                    break;
+                default:
+                    ifconf.datarate = DR_UNDEFINED;
             }
             MSG("INFO: LoRa standard channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
         }
@@ -287,14 +307,30 @@ int parse_SX1301_configuration(const char * conf_file) {
             ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf, "chan_FSK.radio");
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf, "chan_FSK.if");
             bw = (uint32_t)json_object_dotget_number(conf, "chan_FSK.bandwidth");
-            if      (bw <= 7800)   ifconf.bandwidth = BW_7K8HZ;
-            else if (bw <= 15600)  ifconf.bandwidth = BW_15K6HZ;
-            else if (bw <= 31200)  ifconf.bandwidth = BW_31K2HZ;
-            else if (bw <= 62500)  ifconf.bandwidth = BW_62K5HZ;
-            else if (bw <= 125000) ifconf.bandwidth = BW_125KHZ;
-            else if (bw <= 250000) ifconf.bandwidth = BW_250KHZ;
-            else if (bw <= 500000) ifconf.bandwidth = BW_500KHZ;
-            else ifconf.bandwidth = BW_UNDEFINED;
+            if      (bw <= 7800) {
+                ifconf.bandwidth = BW_7K8HZ;
+            }
+            else if (bw <= 15600) {
+                ifconf.bandwidth = BW_15K6HZ;
+            }
+            else if (bw <= 31200) {
+                ifconf.bandwidth = BW_31K2HZ;
+            }
+            else if (bw <= 62500) {
+                ifconf.bandwidth = BW_62K5HZ;
+            }
+            else if (bw <= 125000) {
+                ifconf.bandwidth = BW_125KHZ;
+            }
+            else if (bw <= 250000) {
+                ifconf.bandwidth = BW_250KHZ;
+            }
+            else if (bw <= 500000) {
+                ifconf.bandwidth = BW_500KHZ;
+            }
+            else {
+                ifconf.bandwidth = BW_UNDEFINED;
+            }
             ifconf.datarate = (uint32_t)json_object_dotget_number(conf, "chan_FSK.datarate");
             MSG("INFO: FSK channel enabled, radio %i selected, IF %i Hz, %u Hz bandwidth, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
         }
@@ -346,7 +382,7 @@ void open_log(void) {
     int i;
     char iso_date[20];
 
-    strftime(iso_date,ARRAY_SIZE(iso_date),"%Y%m%dT%H%M%SZ",gmtime(&now_time)); /* format yyyymmddThhmmssZ */
+    strftime(iso_date, ARRAY_SIZE(iso_date), "%Y%m%dT%H%M%SZ", gmtime(&now_time)); /* format yyyymmddThhmmssZ */
     log_start_time = now_time; /* keep track of when the log was started, for log rotation */
 
     sprintf(log_file_name, "pktlog_%s_%s.csv", lgwm_str, iso_date);
@@ -401,7 +437,7 @@ int main(int argc, char **argv)
     struct timespec fetch_time;
     char fetch_timestamp[30];
     struct tm * x;
-     lgw_connect(false);
+    lgw_connect(false);
     /* parse command line options */
     while ((i = getopt (argc, argv, "hr:")) != -1) {
         switch (i) {
@@ -435,12 +471,12 @@ int main(int argc, char **argv)
 
     /* configuration files management */
     if (access(debug_conf_fname, R_OK) == 0) {
-    /* if there is a debug conf, parse only the debug conf */
+        /* if there is a debug conf, parse only the debug conf */
         MSG("INFO: found debug configuration file %s, other configuration files will be ignored\n", debug_conf_fname);
         parse_SX1301_configuration(debug_conf_fname);
         parse_gateway_configuration(debug_conf_fname);
     } else if (access(global_conf_fname, R_OK) == 0) {
-    /* if there is a global conf, parse it and then try to parse local conf  */
+        /* if there is a global conf, parse it and then try to parse local conf  */
         MSG("INFO: found global configuration file %s, trying to parse it\n", global_conf_fname);
         parse_SX1301_configuration(global_conf_fname);
         parse_gateway_configuration(global_conf_fname);
@@ -450,7 +486,7 @@ int main(int argc, char **argv)
             parse_gateway_configuration(local_conf_fname);
         }
     } else if (access(local_conf_fname, R_OK) == 0) {
-    /* if there is only a local conf, parse it and that's all */
+        /* if there is only a local conf, parse it and that's all */
         MSG("INFO: found local configuration file %s, trying to parse it\n", local_conf_fname);
         parse_SX1301_configuration(local_conf_fname);
         parse_gateway_configuration(local_conf_fname);
@@ -488,11 +524,11 @@ int main(int argc, char **argv)
             /* local timestamp generation until we get accurate GPS time */
             clock_gettime(CLOCK_REALTIME, &fetch_time);
             x = gmtime(&(fetch_time.tv_sec));
-            sprintf(fetch_timestamp,"%04i-%02i-%02i %02i:%02i:%02i.%03liZ",(x->tm_year)+1900,(x->tm_mon)+1,x->tm_mday,x->tm_hour,x->tm_min,x->tm_sec,(fetch_time.tv_nsec)/1000000); /* ISO 8601 format */
+            sprintf(fetch_timestamp, "%04i-%02i-%02i %02i:%02i:%02i.%03liZ", (x->tm_year) + 1900, (x->tm_mon) + 1, x->tm_mday, x->tm_hour, x->tm_min, x->tm_sec, (fetch_time.tv_nsec) / 1000000); /* ISO 8601 format */
         }
 
         /* log packets */
-        for (i=0; i < nb_pkt; ++i) {
+        for (i = 0; i < nb_pkt; ++i) {
             p = &rxpkt[i];
 
             /* writing gateway ID */
@@ -519,11 +555,20 @@ int main(int argc, char **argv)
 
             /* writing status */
             switch(p->status) {
-                case STAT_CRC_OK:       fputs("\"CRC_OK\" ,", log_file); break;
-                case STAT_CRC_BAD:      fputs("\"CRC_BAD\",", log_file); break;
-                case STAT_NO_CRC:       fputs("\"NO_CRC\" ,", log_file); break;
-                case STAT_UNDEFINED:    fputs("\"UNDEF\"  ,", log_file); break;
-                default:                fputs("\"ERR\"    ,", log_file);
+                case STAT_CRC_OK:
+                    fputs("\"CRC_OK\" ,", log_file);
+                    break;
+                case STAT_CRC_BAD:
+                    fputs("\"CRC_BAD\",", log_file);
+                    break;
+                case STAT_NO_CRC:
+                    fputs("\"NO_CRC\" ,", log_file);
+                    break;
+                case STAT_UNDEFINED:
+                    fputs("\"UNDEF\"  ,", log_file);
+                    break;
+                default:
+                    fputs("\"ERR\"    ,", log_file);
             }
 
             /* writing payload size */
@@ -531,34 +576,69 @@ int main(int argc, char **argv)
 
             /* writing modulation */
             switch(p->modulation) {
-                case MOD_LORA:  fputs("\"LORA\",", log_file); break;
-                case MOD_FSK:   fputs("\"FSK\" ,", log_file); break;
-                default:        fputs("\"ERR\" ,", log_file);
+                case MOD_LORA:
+                    fputs("\"LORA\",", log_file);
+                    break;
+                case MOD_FSK:
+                    fputs("\"FSK\" ,", log_file);
+                    break;
+                default:
+                    fputs("\"ERR\" ,", log_file);
             }
 
             /* writing bandwidth */
             switch(p->bandwidth) {
-                case BW_500KHZ:     fputs("500000,", log_file); break;
-                case BW_250KHZ:     fputs("250000,", log_file); break;
-                case BW_125KHZ:     fputs("125000,", log_file); break;
-                case BW_62K5HZ:     fputs("62500 ,", log_file); break;
-                case BW_31K2HZ:     fputs("31200 ,", log_file); break;
-                case BW_15K6HZ:     fputs("15600 ,", log_file); break;
-                case BW_7K8HZ:      fputs("7800  ,", log_file); break;
-                case BW_UNDEFINED:  fputs("0     ,", log_file); break;
-                default:            fputs("-1    ,", log_file);
+                case BW_500KHZ:
+                    fputs("500000,", log_file);
+                    break;
+                case BW_250KHZ:
+                    fputs("250000,", log_file);
+                    break;
+                case BW_125KHZ:
+                    fputs("125000,", log_file);
+                    break;
+                case BW_62K5HZ:
+                    fputs("62500 ,", log_file);
+                    break;
+                case BW_31K2HZ:
+                    fputs("31200 ,", log_file);
+                    break;
+                case BW_15K6HZ:
+                    fputs("15600 ,", log_file);
+                    break;
+                case BW_7K8HZ:
+                    fputs("7800  ,", log_file);
+                    break;
+                case BW_UNDEFINED:
+                    fputs("0     ,", log_file);
+                    break;
+                default:
+                    fputs("-1    ,", log_file);
             }
 
             /* writing datarate */
             if (p->modulation == MOD_LORA) {
                 switch (p->datarate) {
-                    case DR_LORA_SF7:   fputs("\"SF7\"   ,", log_file); break;
-                    case DR_LORA_SF8:   fputs("\"SF8\"   ,", log_file); break;
-                    case DR_LORA_SF9:   fputs("\"SF9\"   ,", log_file); break;
-                    case DR_LORA_SF10:  fputs("\"SF10\"  ,", log_file); break;
-                    case DR_LORA_SF11:  fputs("\"SF11\"  ,", log_file); break;
-                    case DR_LORA_SF12:  fputs("\"SF12\"  ,", log_file); break;
-                    default:            fputs("\"ERR\"   ,", log_file);
+                    case DR_LORA_SF7:
+                        fputs("\"SF7\"   ,", log_file);
+                        break;
+                    case DR_LORA_SF8:
+                        fputs("\"SF8\"   ,", log_file);
+                        break;
+                    case DR_LORA_SF9:
+                        fputs("\"SF9\"   ,", log_file);
+                        break;
+                    case DR_LORA_SF10:
+                        fputs("\"SF10\"  ,", log_file);
+                        break;
+                    case DR_LORA_SF11:
+                        fputs("\"SF11\"  ,", log_file);
+                        break;
+                    case DR_LORA_SF12:
+                        fputs("\"SF12\"  ,", log_file);
+                        break;
+                    default:
+                        fputs("\"ERR\"   ,", log_file);
                 }
             } else if (p->modulation == MOD_FSK) {
                 fprintf(log_file, "\"%6u\",", p->datarate);
@@ -568,12 +648,23 @@ int main(int argc, char **argv)
 
             /* writing coderate */
             switch (p->coderate) {
-                case CR_LORA_4_5:   fputs("\"4/5\",", log_file); break;
-                case CR_LORA_4_6:   fputs("\"2/3\",", log_file); break;
-                case CR_LORA_4_7:   fputs("\"4/7\",", log_file); break;
-                case CR_LORA_4_8:   fputs("\"1/2\",", log_file); break;
-                case CR_UNDEFINED:  fputs("\"\"   ,", log_file); break;
-                default:            fputs("\"ERR\",", log_file);
+                case CR_LORA_4_5:
+                    fputs("\"4/5\",", log_file);
+                    break;
+                case CR_LORA_4_6:
+                    fputs("\"2/3\",", log_file);
+                    break;
+                case CR_LORA_4_7:
+                    fputs("\"4/7\",", log_file);
+                    break;
+                case CR_LORA_4_8:
+                    fputs("\"1/2\",", log_file);
+                    break;
+                case CR_UNDEFINED:
+                    fputs("\"\"   ,", log_file);
+                    break;
+                default:
+                    fputs("\"ERR\",", log_file);
             }
 
             /* writing packet RSSI */
@@ -585,7 +676,9 @@ int main(int argc, char **argv)
             /* writing hex-encoded payload (bundled in 32-bit words) */
             fputs("\"", log_file);
             for (j = 0; j < p->size; ++j) {
-                if ((j > 0) && (j%4 == 0)) fputs("-", log_file);
+                if ((j > 0) && (j % 4 == 0)) {
+                    fputs("-", log_file);
+                }
                 fprintf(log_file, "%02X", p->payload[j]);
             }
 

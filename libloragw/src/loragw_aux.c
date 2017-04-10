@@ -19,9 +19,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 600
 #else
-    #define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 500
 #endif
 
 #include <stdio.h>  /* printf fprintf */
@@ -31,11 +31,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #if DEBUG_AUX == 1
-    #define DEBUG_MSG(str)                fprintf(stderr, str)
-    #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
+#define DEBUG_MSG(str)                fprintf(stderr, str)
+#define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
 #else
-    #define DEBUG_MSG(str)
-    #define DEBUG_PRINTF(fmt, args...)
+#define DEBUG_MSG(str)
+#define DEBUG_PRINTF(fmt, args...)
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -78,33 +78,33 @@ void wait_ns_linux(unsigned long a) {
 
 void wait_ms(unsigned long a) {
 #ifdef _WIN32
-        return wait_ms_win(a) ;
-    #elif __linux__
-        return wait_ms_linux(a) ;
-    #elif __APPLE__
-        DEBUG_PRINTF("System is not recognized.");
-    #elif __unix__
-        DEBUG_PRINTF("System is not recognized.");
-    #elif __posix__
-        DEBUG_PRINTF("System is not recognized.");
-    #else
-        DEBUG_PRINTF("System is not recognized.");
-    #endif
+    return wait_ms_win(a) ;
+#elif __linux__
+    return wait_ms_linux(a) ;
+#elif __APPLE__
+    DEBUG_PRINTF("System is not recognized.");
+#elif __unix__
+    DEBUG_PRINTF("System is not recognized.");
+#elif __posix__
+    DEBUG_PRINTF("System is not recognized.");
+#else
+    DEBUG_PRINTF("System is not recognized.");
+#endif
 }
 void wait_ns(unsigned long a) {
 #ifdef _WIN32
-        return wait_ns_win(a) ;
-    #elif __linux__
-        return wait_ns_linux(a) ;
-    #elif __APPLE__
-        DEBUG_PRINTF("System is not recognized.");
-    #elif __unix__
-        DEBUG_PRINTF("System is not recognized.");
-    #elif __posix__
-        DEBUG_PRINTF("System is not recognized.");
-    #else
-        DEBUG_PRINTF("System is not recognized.");
-    #endif
+    return wait_ns_win(a) ;
+#elif __linux__
+    return wait_ns_linux(a) ;
+#elif __APPLE__
+    DEBUG_PRINTF("System is not recognized.");
+#elif __unix__
+    DEBUG_PRINTF("System is not recognized.");
+#elif __posix__
+    DEBUG_PRINTF("System is not recognized.");
+#else
+    DEBUG_PRINTF("System is not recognized.");
+#endif
 }
 
 /* --- EOF ------------------------------------------------------------------ */

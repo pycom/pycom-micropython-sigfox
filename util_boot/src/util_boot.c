@@ -1,13 +1,13 @@
- /*
- / _____)             _              | |
+/*
+/ _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
- \____ \| ___ |    (_   _) ___ |/ ___)  _ \
- _____) ) ____| | | || |_| ____( (___| | | |
+\____ \| ___ |    (_   _) ___ |/ ___)  _ \
+_____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2013 Semtech-Cycleo
+ (C)2013 Semtech-Cycleo
 
 Description:
-    SPI stress test
+   SPI stress test
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
@@ -19,9 +19,9 @@ Maintainer: Sylvain Miermont
 
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 600
 #else
-    #define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 500
 #endif
 
 #include <stdint.h>     /* C99 types */
@@ -86,9 +86,9 @@ void usage(void) {
 
 int main(int argc, char **argv)
 {
-int i;
+    int i;
 
-  /* configure signal handling */
+    /* configure signal handling */
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
     sigact.sa_handler = sig_handler;
@@ -96,17 +96,17 @@ int i;
     sigaction(SIGINT, &sigact, NULL);
     sigaction(SIGTERM, &sigact, NULL);
 
- while ((i = getopt (argc, argv, "hblq:")) != -1) {
- printf("cmd = %c\n",i);
+    while ((i = getopt (argc, argv, "hblq:")) != -1) {
+        printf("cmd = %c\n", i);
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
                 break;
             case 'b':
-               lgw_connect(false);
-               lgw_reg_GOTODFU();
-               return EXIT_SUCCESS;
+                lgw_connect(false);
+                lgw_reg_GOTODFU();
+                return EXIT_SUCCESS;
                 break;
 
 

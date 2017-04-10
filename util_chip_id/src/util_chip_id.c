@@ -1,13 +1,13 @@
- /*
- / _____)             _              | |
+/*
+/ _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
- \____ \| ___ |    (_   _) ___ |/ ___)  _ \
- _____) ) ____| | | || |_| ____( (___| | | |
+\____ \| ___ |    (_   _) ___ |/ ___)  _ \
+_____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-  (C)2013 Semtech-Cycleo
+ (C)2013 Semtech-Cycleo
 
 Description:
-    SPI stress test
+   SPI stress test
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
@@ -19,9 +19,9 @@ Maintainer: Sylvain Miermont
 
 /* fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 600
 #else
-    #define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 500
 #endif
 
 #include <stdint.h>     /* C99 types */
@@ -87,9 +87,9 @@ void usage(void) {
 
 int main(int argc, char **argv)
 {
-int i;
-uint8_t uid[8];  //unique id
-  /* configure signal handling */
+    int i;
+    uint8_t uid[8];  //unique id
+    /* configure signal handling */
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
     sigact.sa_handler = sig_handler;
@@ -97,30 +97,30 @@ uint8_t uid[8];  //unique id
     sigaction(SIGINT, &sigact, NULL);
     sigaction(SIGTERM, &sigact, NULL);
 
- while ((i = getopt (argc, argv, "hplq:")) != -1) {
+    while ((i = getopt (argc, argv, "hplq:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
                 break;
 
-           case 'l':
-               lgw_connect(false);
-               lgw_reg_GetUniqueId(&uid[0]);
-               FILE *f;
-               f=fopen("guid.json","w");
-               fprintf(f,"/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
-               fprintf(f,"{\"gateway_conf\": {\n     \"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n     }\n}",uid[0],uid[1],uid[2],uid[3],uid[4],uid[5],uid[6],uid[7]);
-               fclose(f);
-               return EXIT_SUCCESS;
+            case 'l':
+                lgw_connect(false);
+                lgw_reg_GetUniqueId(&uid[0]);
+                FILE *f;
+                f = fopen("guid.json", "w");
+                fprintf(f, "/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
+                fprintf(f, "{\"gateway_conf\": {\n     \"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n     }\n}", uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6], uid[7]);
+                fclose(f);
+                return EXIT_SUCCESS;
 
-           case 'p':
-               lgw_connect(false);
-               lgw_reg_GetUniqueId(&uid[0]);
-               printf("/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
-               printf("{\"gateway_conf\": {\n     \"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n     }\n}",uid[0],uid[1],uid[2],uid[3],uid[4],uid[5],uid[6],uid[7]);
+            case 'p':
+                lgw_connect(false);
+                lgw_reg_GetUniqueId(&uid[0]);
+                printf("/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
+                printf("{\"gateway_conf\": {\n     \"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n     }\n}", uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6], uid[7]);
 
-               return EXIT_SUCCESS;
+                return EXIT_SUCCESS;
 
 
             default:

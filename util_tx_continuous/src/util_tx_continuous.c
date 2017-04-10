@@ -20,9 +20,9 @@ Maintainer: Matthieu Leurent
 
 /* Fix an issue between POSIX and C99 */
 #if __STDC_VERSION__ >= 199901L
-    #define _XOPEN_SOURCE 600
+#define _XOPEN_SOURCE 600
 #else
-    #define _XOPEN_SOURCE 500
+#define _XOPEN_SOURCE 500
 #endif
 
 #include <stdint.h>     /* C99 types */
@@ -101,7 +101,7 @@ int main(int argc, char **argv)
     float arg_f;
     char arg_s[64];
 
-  //tbd
+    //tbd
 
 
 
@@ -157,7 +157,7 @@ int main(int argc, char **argv)
                 break;
 
             case 0:
-                if (strcmp(long_options[option_index].name,"dig") == 0) {
+                if (strcmp(long_options[option_index].name, "dig") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u > 3)) {
                         printf("ERROR: argument parsing of --dig argument. Use -h to print help\n");
@@ -168,7 +168,7 @@ int main(int argc, char **argv)
                         g_dig = (uint8_t)arg_u;
                     }
                 }
-                else if (strcmp(long_options[option_index].name,"dac") == 0) {
+                else if (strcmp(long_options[option_index].name, "dac") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u > 3)) {
                         printf("ERROR: argument parsing of --dac argument. Use -h to print help\n");
@@ -178,7 +178,7 @@ int main(int argc, char **argv)
                         g_dac = (uint8_t)arg_u;
                     }
                 }
-                else if (strcmp(long_options[option_index].name,"mix") == 0) {
+                else if (strcmp(long_options[option_index].name, "mix") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u > 15)) {
                         printf("ERROR: argument parsing of --mix argument. Use -h to print help\n");
@@ -188,7 +188,7 @@ int main(int argc, char **argv)
                         g_mix = (uint8_t)arg_u;
                     }
                 }
-                else if (strcmp(long_options[option_index].name,"pa") == 0) {
+                else if (strcmp(long_options[option_index].name, "pa") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u > 3)) {
                         printf("ERROR: argument parsing of --pa argument. Use -h to print help\n");
@@ -198,9 +198,9 @@ int main(int argc, char **argv)
                         g_pa = arg_u;
                     }
                 }
-                else if (strcmp(long_options[option_index].name,"mod") == 0) {
+                else if (strcmp(long_options[option_index].name, "mod") == 0) {
                     i = sscanf(optarg, "%s", arg_s);
-                    if ((i != 1) || ((strcmp(arg_s,"LORA") != 0) && (strcmp(arg_s,"FSK") != 0)  && (strcmp(arg_s,"CW") != 0))) {
+                    if ((i != 1) || ((strcmp(arg_s, "LORA") != 0) && (strcmp(arg_s, "FSK") != 0)  && (strcmp(arg_s, "CW") != 0))) {
                         printf("ERROR: argument parsing of --mod argument. Use -h to print help\n");
                         return EXIT_FAILURE;
                     }
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
                         sprintf(mod, "%s", arg_s);
                     }
                 }
-                else if (strcmp(long_options[option_index].name,"sf") == 0) {
+                else if (strcmp(long_options[option_index].name, "sf") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u < 7) || (arg_u > 12)) {
                         printf("ERROR: argument parsing of --sf argument. Use -h to print help\n");
@@ -218,7 +218,7 @@ int main(int argc, char **argv)
                         sf = (uint8_t)arg_u;
                     }
                 }
-                else if (strcmp(long_options[option_index].name,"bw") == 0) {
+                else if (strcmp(long_options[option_index].name, "bw") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || ((arg_u != 125) && (arg_u != 250) && (arg_u != 500))) {
                         printf("ERROR: argument parsing of --bw argument. Use -h to print help\n");
@@ -228,7 +228,7 @@ int main(int argc, char **argv)
                         bw_khz = arg_u;
                     }
                 }
-                else if (strcmp(long_options[option_index].name,"br") == 0) {
+                else if (strcmp(long_options[option_index].name, "br") == 0) {
                     i = sscanf(optarg, "%f", &arg_f);
                     if ((i != 1) || (arg_f < 0.5) || (arg_f > 250)) {
                         printf("ERROR: argument parsing of --br argument. Use -h to print help\n");
@@ -238,7 +238,7 @@ int main(int argc, char **argv)
                         br_kbps = arg_f;
                     }
                 }
-                else if (strcmp(long_options[option_index].name,"fdev") == 0) {
+                else if (strcmp(long_options[option_index].name, "fdev") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u < 1) || (arg_u > 250)) {
                         printf("ERROR: argument parsing of --fdev argument. Use -h to print help\n");
@@ -248,7 +248,7 @@ int main(int argc, char **argv)
                         fdev_khz = (uint8_t)arg_u;
                     }
                 }
-                else if (strcmp(long_options[option_index].name,"bt") == 0) {
+                else if (strcmp(long_options[option_index].name, "bt") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u > 3)) {
                         printf("ERROR: argument parsing of --bt argument. Use -h to print help\n");
@@ -258,7 +258,7 @@ int main(int argc, char **argv)
                         bt = (uint8_t)arg_u;
                     }
                 }
-                else if (strcmp(long_options[option_index].name,"notch") == 0) {
+                else if (strcmp(long_options[option_index].name, "notch") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || ((arg_u < 126) || (arg_u > 250))) {
                         printf("ERROR: argument parsing of --notch argument. Use -h to print help\n");
@@ -274,35 +274,35 @@ int main(int argc, char **argv)
                 }
                 break;
 
-        case 'f':
-            i = sscanf(optarg, "%f", &arg_f);
-            if ((i != 1) || (arg_f < 1)) {
-                printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
-                return EXIT_FAILURE;
-            }
-            else {
-                freq_hz = (uint32_t)((arg_f * 1e6) + 0.5);
-            }
-            break;
-
-        case 'r':
-            i = sscanf(optarg, "%u", &arg_u);
-            switch (arg_u) {
-                case 1255:
-                    radio_type = LGW_RADIO_TYPE_SX1255;
-                    break;
-                case 1257:
-                    radio_type = LGW_RADIO_TYPE_SX1257;
-                    break;
-                default:
-                    printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
+            case 'f':
+                i = sscanf(optarg, "%f", &arg_f);
+                if ((i != 1) || (arg_f < 1)) {
+                    printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
                     return EXIT_FAILURE;
-            }
-            break;
+                }
+                else {
+                    freq_hz = (uint32_t)((arg_f * 1e6) + 0.5);
+                }
+                break;
 
-        default:
-            printf("ERROR: argument parsing options. Use -h to print help\n");
-            return EXIT_FAILURE;
+            case 'r':
+                i = sscanf(optarg, "%u", &arg_u);
+                switch (arg_u) {
+                    case 1255:
+                        radio_type = LGW_RADIO_TYPE_SX1255;
+                        break;
+                    case 1257:
+                        radio_type = LGW_RADIO_TYPE_SX1257;
+                        break;
+                    default:
+                        printf("ERROR: argument parsing of -r argument. Use -h to print help\n");
+                        return EXIT_FAILURE;
+                }
+                break;
+
+            default:
+                printf("ERROR: argument parsing options. Use -h to print help\n");
+                return EXIT_FAILURE;
         }
     }
 
@@ -334,13 +334,13 @@ int main(int argc, char **argv)
     memset(&txlut, 0, sizeof txlut);
     txlut.size = 16;
     int kk;
-    for (kk=0;kk<16;kk++)
+    for (kk = 0; kk < 16; kk++)
     {
-    txlut.lut[kk].dig_gain = g_dig;
-    txlut.lut[kk].pa_gain = g_pa;
-    txlut.lut[kk].dac_gain = g_dac;
-    txlut.lut[kk].mix_gain = g_mix;
-    txlut.lut[kk].rf_power = 0;
+        txlut.lut[kk].dig_gain = g_dig;
+        txlut.lut[kk].pa_gain = g_pa;
+        txlut.lut[kk].dac_gain = g_dac;
+        txlut.lut[kk].mix_gain = g_mix;
+        txlut.lut[kk].rf_power = 0;
     }
     lgw_txgain_setconf(&txlut);
 
@@ -365,20 +365,38 @@ int main(int argc, char **argv)
     } else {
         txpkt.modulation = MOD_LORA;
         switch (bw_khz) {
-            case 125: txpkt.bandwidth = BW_125KHZ; break;
-            case 250: txpkt.bandwidth = BW_250KHZ; break;
-            case 500: txpkt.bandwidth = BW_500KHZ; break;
+            case 125:
+                txpkt.bandwidth = BW_125KHZ;
+                break;
+            case 250:
+                txpkt.bandwidth = BW_250KHZ;
+                break;
+            case 500:
+                txpkt.bandwidth = BW_500KHZ;
+                break;
             default:
                 MSG("ERROR: invalid 'bw' variable\n");
                 return EXIT_FAILURE;
         }
         switch (sf) {
-            case  7: txpkt.datarate = DR_LORA_SF7;  break;
-            case  8: txpkt.datarate = DR_LORA_SF8;  break;
-            case  9: txpkt.datarate = DR_LORA_SF9;  break;
-            case 10: txpkt.datarate = DR_LORA_SF10; break;
-            case 11: txpkt.datarate = DR_LORA_SF11; break;
-            case 12: txpkt.datarate = DR_LORA_SF12; break;
+            case  7:
+                txpkt.datarate = DR_LORA_SF7;
+                break;
+            case  8:
+                txpkt.datarate = DR_LORA_SF8;
+                break;
+            case  9:
+                txpkt.datarate = DR_LORA_SF9;
+                break;
+            case 10:
+                txpkt.datarate = DR_LORA_SF10;
+                break;
+            case 11:
+                txpkt.datarate = DR_LORA_SF11;
+                break;
+            case 12:
+                txpkt.datarate = DR_LORA_SF12;
+                break;
             default:
                 MSG("ERROR: invalid 'sf' variable\n");
                 return EXIT_FAILURE;
@@ -429,7 +447,7 @@ int main(int argc, char **argv)
             printf("ERROR: undefined radio type\n");
             break;
     }
-    printf("Frequency: %4.3f MHz\n", freq_hz/1e6);
+    printf("Frequency: %4.3f MHz\n", freq_hz / 1e6);
     printf("TX Gains: Digital:%d DAC:%d Mixer:%d PA:%d\n", g_dig, g_dac, g_mix, g_pa);
     if (strcmp(mod, "CW") != 0) {
         lgw_reg_r(LGW_TX_OFFSET_I, &offset_i);
