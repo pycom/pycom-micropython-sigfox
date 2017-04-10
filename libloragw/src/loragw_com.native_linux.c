@@ -8,10 +8,10 @@ _____) ) ____| | | || |_| ____( (___| | | |
 
 Description:
 Host specific functions to address the LoRa concentrator registers through
-a SPI interface.
+a USB interface.
 Single-byte read/write and burst read/write.
 Does not handle pagination.
-Could be used with multiple SPI ports in parallel (explicit file descriptor)
+
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 Maintainer: Sylvain Miermont
@@ -36,21 +36,12 @@ Usb CDC drivers is require to establish the connection with the picogateway.
 #include <errno.h>   /* Error number definitions */
 #include <termios.h> /* POSIX terminal control definitions */
 #include <sys/ioctl.h>
-#include <linux/spi/spidev.h>
 #include <pthread.h>
 #include "loragw_com_linux.h"
 #include "loragw_com.h"
 #include "loragw_hal.h"
 #include "loragw_aux.h"
 #include "loragw_reg.h"
-#include <stdio.h>   /* Standard input/output definitions */
-#include <string.h>  /* String function definitions */
-#include <stdlib.h>
-#include <stdint.h>
-#include <unistd.h>  /* UNIX standard function definitions */
-#include <fcntl.h>   /* File control definitions */
-#include <errno.h>   /* Error number definitions */
-#include <termios.h> /* POSIX terminal control definitions */
 #include <time.h>
 
 #include <sys/select.h>
@@ -58,7 +49,7 @@ Usb CDC drivers is require to establish the connection with the picogateway.
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#if DEBUG_SPI == 1
+#if DEBUG_COM == 1
 #define DEBUG_MSG(str)                fprintf(stderr, str)
 #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
 #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_com_ERROR;}
@@ -74,21 +65,6 @@ Usb CDC drivers is require to establish the connection with the picogateway.
 pthread_mutex_t mx_usbbridgesync = PTHREAD_MUTEX_INITIALIZER; /* control access to usbbridge sync offsets */
 
 
-                                                              /* -------------------------------------------------------------------------- */
-                                                              /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
-/*
-#define READ_ACCESS     0x00
-#define WRITE_ACCESS    0x80
-#define com_SPEED       8000000
-#define com_DEV_PATH    "/dev/spidev0.0"
-*/
-                                                              //#define com_DEV_PATH    "/dev/spidev32766.0"
-
-                                                              /* -------------------------------------------------------------------------- */
-                                                              /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
-
-
-                                                              /* configure TTYACM0 port*/
 
 
 int
@@ -154,7 +130,7 @@ void set_blocking_linux(int fd, int should_block)
 
 
 
-/* SPI initialization and configuration */
+/* open USB port */
 int lgw_com_open_linux(void **com_target_ptr) {
 
     int *usb_device = NULL;
@@ -177,7 +153,7 @@ int lgw_com_open_linux(void **com_target_ptr) {
 
         if (fd < 0)
         {
-            DEBUG_PRINTF("ERROR: failed to open bridge USB /spi %s \n", portname);
+            DEBUG_PRINTF("ERROR: failed to open bridge USB  %s \n", portname);
         }
         else
         {
@@ -197,20 +173,20 @@ int lgw_com_open_linux(void **com_target_ptr) {
             mystruct.Value[2] = (uint8_t)((fwversion >> 8)&(0x000000ff));
             mystruct.Value[3] = (uint8_t)((fwversion)&(0x000000ff));
 
-            DEBUG_MSG("Note: USB/SPI write success\n");
+            DEBUG_MSG("Note: USB write success\n");
             pthread_mutex_lock(&mx_usbbridgesync);
             SendCmdn(mystruct, fd);
             if (ReceiveAns(&mystrctAns, fd))
             {
                 if (mystrctAns.Rxbuf[0] == ACK_KO) { return LGW_com_ERROR; }
               DEBUG_PRINTF("check fw version %d \n", mystrctAns.Rxbuf[0]);
-                DEBUG_MSG("Note: USB/SPI read config success\n");
+                DEBUG_MSG("Note: USB read config success\n");
                 pthread_mutex_unlock(&mx_usbbridgesync);
                 return LGW_com_SUCCESS;
             }
             else
             {
-                DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+                DEBUG_MSG("ERROR: USB read config FAILED\n");
                 pthread_mutex_unlock(&mx_usbbridgesync);
                 return LGW_com_ERROR;
             }
@@ -269,13 +245,13 @@ int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
     SendCmdn(mystruct, fd);
      if (ReceiveAns(&mystrctAns, fd))
     {
-        DEBUG_MSG("Note: SPI read success\n");
+        DEBUG_MSG("Note: usb read success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_SUCCESS;
     }
     else
     {
-        DEBUG_MSG("ERROR: SPI READ FAILURE\n");
+        DEBUG_MSG("ERROR: usb READ FAILURE\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
     }
@@ -306,18 +282,18 @@ int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
     mystruct.Value[0] = 0;
 
     pthread_mutex_lock(&mx_usbbridgesync);
-    DEBUG_MSG("Note: SPI send cmd read success\n");
+    DEBUG_MSG("Note: usb send cmd read success\n");
     SendCmdn(mystruct, fd);
     if (ReceiveAns(&mystrctAns, fd))
     {
-        DEBUG_MSG("Note: SPI read success\n");
+        DEBUG_MSG("Note: usb read success\n");
         *data = mystrctAns.Rxbuf[0];
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_SUCCESS;
     }
     else
     {
-        DEBUG_MSG("ERROR: SPI READ FAILURE\n");
+        DEBUG_MSG("ERROR: USB READ FAILURE\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
     }
@@ -391,18 +367,18 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         SendCmdn(mystruct, fd);
         if (ReceiveAns(&mystrctAns, fd))
       {
-        DEBUG_MSG("Note: SPI read success\n");
+        DEBUG_MSG("Note: usb read success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_SUCCESS;
       }
       else
       {
-        DEBUG_MSG("ERROR: SPI READ FAILURE\n");
+        DEBUG_MSG("ERROR: USB READ FAILURE\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
       }
     }
-  DEBUG_MSG("ERROR: SPI READ FAILURE\n");
+  DEBUG_MSG("ERROR: USB READ FAILURE\n");
     return LGW_com_ERROR; //never reach
 }
 
@@ -476,7 +452,7 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         mystruct.Value[1] = sizei - ((sizei >> 8) << 8);
         mystruct.Adress = address;
 
-        DEBUG_MSG("Note: SPI send cmd readburst success\n");
+        DEBUG_MSG("Note: usb send cmd readburst success\n");
         SendCmdn(mystruct, fd);
 
         if (ReceiveAns(&mystrctAns, fd))
@@ -503,7 +479,7 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
 
 }
 
-int SendCmdn_linux(CmdSettings_t CmdSettings, int file1)
+int SendCmdn_linux(CmdSettings_t CmdSettings, int fd)
 {
     char buffertx[BUFFERTXSIZE];
     int Clen = CmdSettings.Len + (CmdSettings.LenMsb << 8);
@@ -533,7 +509,7 @@ int SendCmdn_linux(CmdSettings_t CmdSettings, int file1)
 }
 
 
-int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int file1)
+int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd )
 {
     uint8_t bufferrx[BUFFERRXSIZE];
     int i;
@@ -556,7 +532,7 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int file1)
     }
         if (cpttimer > 15) // wait read error the read function isn't block but timeout of 0.1s
         {
-            DEBUG_MSG("WARNING : DEADLOCK SPI");
+            DEBUG_MSG("WARNING : deadlock usb");
             return(OK); // deadlock
         }
     }
@@ -603,7 +579,7 @@ int lgw_receive_cmd_linux(void *com_target, uint8_t max_packet, uint8_t *data) {
     SendCmdn(mystruct, fd);
 
   resp = ReceiveAns(&mystrctAns, fd);
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: usb write success\n");
     DEBUG_PRINTF("NOTE : Available packet %d  %d\n", mystrctAns.Rxbuf[0], (mystrctAns.Id << 8) + mystrctAns.Len);
     DEBUG_PRINTF("NOTE : read structure %d %d %d %d %d\n", mystrctAns.Rxbuf[5], mystrctAns.Rxbuf[6], mystrctAns.Rxbuf[7], mystrctAns.Rxbuf[8], mystrctAns.Rxbuf[9]);
 
@@ -635,9 +611,9 @@ int lgw_receive_cmd_linux(void *com_target, uint8_t max_packet, uint8_t *data) {
 int lgw_rxrf_setconfcmd_linux(void *com_target, uint8_t rfchain, uint8_t *data, uint16_t size) {
     int fd;
     int i;
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+    DEBUG_PRINTF("Note: USB write success %d\n", fd);
     /*build the write cmd*/
     CmdSettings_t mystruct;
     AnsSettings_t mystrctAns;
@@ -646,24 +622,24 @@ int lgw_rxrf_setconfcmd_linux(void *com_target, uint8_t rfchain, uint8_t *data, 
     mystruct.LenMsb = (size >> 8);
     mystruct.Len = size - ((size >> 8) << 8);
     mystruct.Adress = rfchain;
-    DEBUG_PRINTF("Note: USB/SPI write success size = %d\n", size);
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_PRINTF("Note: USB write success size = %d\n", size);
+    DEBUG_MSG("Note: USB write success\n");
     for (i = 0; i < size; i++)
     {
         mystruct.Value[i] = data[i];
     }
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     pthread_mutex_lock(&mx_usbbridgesync);
     SendCmdn(mystruct, fd);
     if (ReceiveAns(&mystrctAns, fd))
     {
-        DEBUG_MSG("Note: USB/SPI read config success\n");
+        DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_SUCCESS;
     }
     else
     {
-        DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+        DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
     }
@@ -674,9 +650,9 @@ int lgw_boardconfcmd_linux(void * com_target, uint8_t *data, uint16_t size)
 {
     int fd;
     int i;
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+    DEBUG_PRINTF("Note: USB write success %d\n", fd);
     /*build the write cmd*/
     CmdSettings_t mystruct;
     AnsSettings_t mystrctAns;
@@ -685,24 +661,24 @@ int lgw_boardconfcmd_linux(void * com_target, uint8_t *data, uint16_t size)
     mystruct.LenMsb = (size >> 8);
     mystruct.Len = size - ((size >> 8) << 8);
     mystruct.Adress = 0;
-    DEBUG_PRINTF("Note: USB/SPI write success size = %d\n", size);
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_PRINTF("Note: USB write success size = %d\n", size);
+    DEBUG_MSG("Note: USB write success\n");
     for (i = 0; i < size; i++)
     {
         mystruct.Value[i] = data[i];
     }
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     pthread_mutex_lock(&mx_usbbridgesync);
     SendCmdn(mystruct, fd);
     if (ReceiveAns(&mystrctAns, fd))
     {
-        DEBUG_MSG("Note: USB/SPI read config success\n");
+        DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_SUCCESS;
     }
     else
     {
-        DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+        DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
     }
@@ -711,9 +687,9 @@ int lgw_boardconfcmd_linux(void * com_target, uint8_t *data, uint16_t size)
 int lgw_rxif_setconfcmd_linux(void *com_target, uint8_t ifchain, uint8_t *data, uint16_t size) {
     int fd;
     int i;
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+    DEBUG_PRINTF("Note: USB write success %d\n", fd);
     /*build the write cmd*/
     CmdSettings_t mystruct;
     AnsSettings_t mystrctAns;
@@ -722,24 +698,24 @@ int lgw_rxif_setconfcmd_linux(void *com_target, uint8_t ifchain, uint8_t *data, 
     mystruct.LenMsb = (size >> 8);
     mystruct.Len = size - ((size >> 8) << 8);
     mystruct.Adress = ifchain;
-    DEBUG_PRINTF("Note: USB/SPI write success size = %d\n", size);
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_PRINTF("Note: USB write success size = %d\n", size);
+    DEBUG_MSG("Note: USB write success\n");
     for (i = 0; i < size; i++)
     {
         mystruct.Value[i] = data[i];
     }
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     pthread_mutex_lock(&mx_usbbridgesync);
     SendCmdn(mystruct, fd);
     if (ReceiveAns(&mystrctAns, fd))
     {
-        DEBUG_MSG("Note: USB/SPI read config success\n");
+        DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_SUCCESS;
     }
     else
     {
-        DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+        DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
     }
@@ -749,9 +725,9 @@ int lgw_txgain_setconfcmd_linux(void *com_target, uint8_t *data, uint16_t size)
 {
     int fd;
     int i;
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+    DEBUG_PRINTF("Note: USB write success %d\n", fd);
     /*build the write cmd*/
     CmdSettings_t mystruct;
     AnsSettings_t mystrctAns;
@@ -760,14 +736,14 @@ int lgw_txgain_setconfcmd_linux(void *com_target, uint8_t *data, uint16_t size)
     mystruct.LenMsb = (size >> 8);
     mystruct.Len = size - ((size >> 8) << 8);
     mystruct.Adress = 0;
-    DEBUG_PRINTF("Note: USB/SPI write success size = %d\n", size);
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_PRINTF("Note: USB write success size = %d\n", size);
+    DEBUG_MSG("Note: USB write success\n");
     for (i = 0; i < size; i++)
     {
         mystruct.Value[i] = data[i];
 
     }
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     pthread_mutex_lock(&mx_usbbridgesync);
     SendCmdn(mystruct, fd);
     if (ReceiveAns(&mystrctAns, fd))
@@ -777,7 +753,7 @@ int lgw_txgain_setconfcmd_linux(void *com_target, uint8_t *data, uint16_t size)
     }
     else
     {
-        DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+        DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
     }
@@ -788,9 +764,9 @@ int lgw_txgain_setconfcmd_linux(void *com_target, uint8_t *data, uint16_t size)
 int lgw_sendconfcmd_linux(void *com_target, uint8_t *data, uint16_t size) {
     int fd;
     int i;
-    DEBUG_MSG("Note SEND A PACKET: USB/SPI write success\n");
+    DEBUG_MSG("Note SEND A PACKET: USB write success\n");
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+    DEBUG_PRINTF("Note: USB write success %d\n", fd);
     /*build the write cmd*/
     CmdSettings_t mystruct;
     AnsSettings_t mystrctAns;
@@ -799,13 +775,13 @@ int lgw_sendconfcmd_linux(void *com_target, uint8_t *data, uint16_t size) {
     mystruct.LenMsb = (size >> 8);
     mystruct.Len = size - ((size >> 8) << 8);
     mystruct.Adress = 0;
-    DEBUG_PRINTF("Note: USB/SPI write success size = %d\n", size);
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_PRINTF("Note: USB write success size = %d\n", size);
+    DEBUG_MSG("Note: USB write success\n");
     for (i = 0; i < size; i++)
     {
         mystruct.Value[i] = data[i];
     }
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     pthread_mutex_lock(&mx_usbbridgesync);
     SendCmdn(mystruct, fd);
     if (ReceiveAns(&mystrctAns, fd))
@@ -815,7 +791,7 @@ int lgw_sendconfcmd_linux(void *com_target, uint8_t *data, uint16_t size) {
     }
     else
     {
-        DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+        DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
     }
@@ -840,11 +816,11 @@ int lgw_trigger_linux(void *com_target, uint8_t address, uint32_t *data) {
     mystruct.Value[0] = 0;
 
     pthread_mutex_lock(&mx_usbbridgesync);
-    DEBUG_MSG("Note: SPI send cmd read success\n");
+    DEBUG_MSG("Note: usb send cmd read success\n");
     SendCmdn(mystruct, fd);
     if (ReceiveAns(&mystrctAns, fd))
     {
-        DEBUG_MSG("Note: SPI read success\n");
+        DEBUG_MSG("Note: usb read success\n");
         *data = (mystrctAns.Rxbuf[0] << 24) + (mystrctAns.Rxbuf[1] << 16) + (mystrctAns.Rxbuf[2] << 8) + (mystrctAns.Rxbuf[3]);
         DEBUG_PRINTF("timestampreceive %d\n", (mystrctAns.Rxbuf[0] << 24) + (mystrctAns.Rxbuf[1] << 16) + (mystrctAns.Rxbuf[2] << 8) + (mystrctAns.Rxbuf[3]));
         pthread_mutex_unlock(&mx_usbbridgesync);
@@ -852,7 +828,7 @@ int lgw_trigger_linux(void *com_target, uint8_t address, uint32_t *data) {
     }
     else
     {
-        DEBUG_MSG("ERROR: SPI READ FAILURE\n");
+        DEBUG_MSG("ERROR: USB READ FAILURE\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
     }
@@ -864,9 +840,9 @@ int lgw_calibration_snapshot_linux(void * com_target)
 {
     int fd;
     int i;
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+    DEBUG_PRINTF("Note: USB write success %d\n", fd);
     /*build the write cmd*/
     CmdSettings_t mystruct;
     AnsSettings_t mystrctAns;
@@ -875,23 +851,23 @@ int lgw_calibration_snapshot_linux(void * com_target)
     mystruct.LenMsb = 0;
     mystruct.Len = 1;
     mystruct.Adress = 0;
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     for (i = 0; i < size; i++)
     {
         mystruct.Value[i] = 0;
     }
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     pthread_mutex_lock(&mx_usbbridgesync);
     SendCmdn(mystruct, fd);
     if (ReceiveAns(&mystrctAns, fd))
     {
-        DEBUG_MSG("Note: USB/SPI read config success\n");
+        DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_SUCCESS;
     }
     else
     {
-        DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+        DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
     }
@@ -902,9 +878,9 @@ int lgw_resetSTM32_linux(void * com_target)
 {
     int fd;
     int i;
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+    DEBUG_PRINTF("Note: USB write success %d\n", fd);
     /*build the write cmd*/
     CmdSettings_t mystruct;
     AnsSettings_t mystrctAns;
@@ -914,23 +890,23 @@ int lgw_resetSTM32_linux(void * com_target)
     mystruct.Len = 1;
     mystruct.Adress = 0;
 
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     for (i = 0; i < size; i++)
     {
         mystruct.Value[i] = 0;
     }
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     pthread_mutex_lock(&mx_usbbridgesync);
     SendCmdn(mystruct, fd);
     if (ReceiveAns(&mystrctAns, fd))
     {
-        DEBUG_MSG("Note: USB/SPI read config success\n");
+        DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_SUCCESS;
     }
     else
     {
-        DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+        DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
     }
@@ -941,9 +917,9 @@ int lgw_GOTODFU_linux(void * com_target)
 {
     int fd;
     int i;
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+    DEBUG_PRINTF("Note: USB write success %d\n", fd);
     /*build the write cmd*/
     CmdSettings_t mystruct;
     AnsSettings_t mystrctAns;
@@ -953,23 +929,23 @@ int lgw_GOTODFU_linux(void * com_target)
     mystruct.Len = 1;
     mystruct.Adress = 0;
 
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     for (i = 0; i < size; i++)
     {
         mystruct.Value[i] = 0;
     }
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     pthread_mutex_lock(&mx_usbbridgesync);
     SendCmdn(mystruct, fd);
     if (ReceiveAns(&mystrctAns, fd))
     {
-        DEBUG_MSG("Note: USB/SPI read config success\n");
+        DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_SUCCESS;
     }
     else
     {
-        DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+        DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_com_ERROR;
     }
@@ -981,9 +957,9 @@ int lgw_GetUniqueId_linux(void * com_target,uint8_t * uid)
     int fd;
     int i;
   int fwversion = STM32FWVERSION;
-    DEBUG_MSG("Note: USB/SPI write success\n");
+    DEBUG_MSG("Note: USB write success\n");
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB/SPI write success %d\n", fd);
+    DEBUG_PRINTF("Note: USB write success %d\n", fd);
   CmdSettings_t mystruct;
     AnsSettings_t mystrctAns;
             mystruct.Cmd = 'l';
@@ -995,7 +971,7 @@ int lgw_GetUniqueId_linux(void * com_target,uint8_t * uid)
             mystruct.Value[2] = (uint8_t)((fwversion >> 8)&(0x000000ff));
             mystruct.Value[3] = (uint8_t)((fwversion)&(0x000000ff));
 
-            DEBUG_MSG("Note: USB/SPI write success\n");
+            DEBUG_MSG("Note: USB write success\n");
             pthread_mutex_lock(&mx_usbbridgesync);
             SendCmdn(mystruct, fd);
             if (ReceiveAns(&mystrctAns, fd))
@@ -1005,13 +981,13 @@ int lgw_GetUniqueId_linux(void * com_target,uint8_t * uid)
         {
         uid[i]=mystrctAns.Rxbuf[i+1];
         }
-                DEBUG_MSG("Note: USB/SPI read config success\n");
+                DEBUG_MSG("Note: USB read config success\n");
                 pthread_mutex_unlock(&mx_usbbridgesync);
                 return LGW_com_SUCCESS;
             }
             else
             {
-                DEBUG_MSG("ERROR: USB/SPI read config FAILED\n");
+                DEBUG_MSG("ERROR: USB read config FAILED\n");
                 pthread_mutex_unlock(&mx_usbbridgesync);
                 return LGW_com_ERROR;
             }
