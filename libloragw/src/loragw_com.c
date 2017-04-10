@@ -4,13 +4,12 @@
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-(C)2013 Semtech-Cycleo
+(C)2017 Semtech-Cycleo
 
 Description:
-Host specific functions to address the LoRa concentrator registers through a
-USB interface. USB CDC driver is required to establish the connection with the
-Picocell Gateway.
-Single-byte read/write and burst read/write.
+A bridge layer to abstract os linux/windows or others
+The current project support only linux os
+
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */

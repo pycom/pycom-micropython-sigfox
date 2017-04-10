@@ -5,23 +5,14 @@
 \____ \| ___ |    (_   _) ___ |/ ___)  _ \
 _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-(C)2013 Semtech-Cycleo
+(C)2017 Semtech-Cycleo
 
 Description:
-Host specific functions to address the LoRa concentrator registers through
-a USB interface.
-Single-byte read/write and burst read/write.
-Does not handle pagination.
-
+this file contains the USB cmd to configure and communicate with 
+the Sx1308 LoRA concentrator.
+An USB CDC drivers is required to establish the connection with the picogateway board.
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
-
-
-Note : for picogateway this file contains the USB cmd and an encapsulation of the spi functions to provide an usb bridge.
-Usb CDC drivers is require to establish the connection with the picogateway.
-
-
 */
 
 
