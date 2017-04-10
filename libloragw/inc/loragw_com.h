@@ -55,28 +55,28 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /********************************************************/
 /*   cmd name   |      description                      */
 /*------------------------------------------------------*/
-/*  r                        |Read register                                                    */
-/*    s                        |Read long burst First packet                        */
-/*    t                        |Read long burst Middle packet                    */
-/*    u                        |Read long burst End packet                            */
-/*    p,e                    |Read long Atomic packet                                */
-/*    w                        |Write register                                                    */
-/*    x                        |Write long burst First packet                   */
-/*    y                        |Write long burst First packet                    */
-/*    z                        |Write long burst First packet                    */
-/*    a                        |Write long burst First packet                    */
+/*  r           |Read register                          */
+/*  s           |Read long burst First packet           */
+/*  t           |Read long burst Middle packet          */
+/*  u           |Read long burst End packet             */
+/*  p,e         |Read long Atomic packet                */
+/*  w           |Write register                         */
+/*  x           |Write long burst First packet          */
+/*  y           |Write long burst First packet          */
+/*  z           |Write long burst First packet          */
+/*  a           |Write long burst First packet          */
 /*------------------------------------------------------*/
-/*    b                        |lgw_receive cmd                                                */
-/*    c                        |lgw_rxrf_setconf cmd                                        */
-/*  d                        |int lgw_rxif_setconf_cmd                                */
-/*  f                        |int lgw_send cmd                                                */
+/*  b           |lgw_receive cmd                        */
+/*  c           |lgw_rxrf_setconf cmd                   */
+/*  d           |int lgw_rxif_setconf_cmd               */
+/*  f           |int lgw_send cmd                       */
 /*  h           |lgw_txgain_setconf                     */
-/*  q                        |lgw_trigger                            */
+/*  q           |lgw_trigger                            */
 /*  i           |lgw_board_setconf                      */
 /*  j           |lgw_calibration_snapshot               */
-/*  l                        |lgw_check_fw_version                                        */
-/*  m                        |Reset STM32                                                */
-/*  n                        |GOTODFU                                                    */
+/*  l           |lgw_check_fw_version                   */
+/*  m           |Reset STM32                            */
+/*  n           |GOTODFU                                */
 /********************************************************/
 
 typedef struct {
