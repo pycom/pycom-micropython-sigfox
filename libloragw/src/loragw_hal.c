@@ -1298,7 +1298,7 @@ int lgw_start(void) {
     }
 
     /* enable GPS event capture */
-    lgw_reg_w(LGW_GPS_EN, 1);
+    lgw_reg_w(LGW_GPS_EN, 0);
 
     lgw_is_started = true;
     return LGW_HAL_SUCCESS;
