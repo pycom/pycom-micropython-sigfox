@@ -499,7 +499,7 @@ int SendCmdn_linux(CmdSettings_t CmdSettings, int fd)
         buffertx[i + 4] = CmdSettings.Value[i];
 
     }
-    lencheck = write(file1, buffertx, Tlen);
+    lencheck = write(fd, buffertx, Tlen);
   if (lencheck!=Tlen)
   {
   DEBUG_PRINTF("WARNING : write cmd failed (%d)\n", (int) lencheck);
@@ -524,7 +524,7 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd )
 
     while (checkcmd(bufferrx[0]))
     {
-        lencheck =read(file1, bufferrx, 3);
+        lencheck =read(fd, bufferrx, 3);
         cpttimer++;
     if (lencheck!=3)
     {
@@ -541,7 +541,7 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd )
   sizet= (bufferrx[1] << 8) + bufferrx[2]+3;
   if ((sizet%64)==0){sizet=sizet-2;}else{sizet=sizet-3;}
 //lencheck = read(file1, &bufferrx[3], (bufferrx[1] << 8) + bufferrx[2]);
-lencheck = read(file1, &bufferrx[3], sizet);
+lencheck = read(fd, &bufferrx[3], sizet);
   if (lencheck!=(sizet))
     {
     DEBUG_PRINTF("WARNING : write  read  failed %d\n", lencheck);

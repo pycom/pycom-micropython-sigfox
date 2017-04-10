@@ -28,7 +28,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <errno.h>              /* Error number definitions */
 #include <termios.h>            /* POSIX terminal control definitions */
 #include <sys/ioctl.h>
-#include <linux/spi/spidev.h>
 #include <pthread.h>
 #include <time.h>
 #include <sys/select.h>
@@ -43,7 +42,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-#if DEBUG_SPI == 1
+#if DEBUG_COM == 1
 #define DEBUG_MSG(str)                fprintf(stderr, str)
 #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
 #define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_com_ERROR;}
