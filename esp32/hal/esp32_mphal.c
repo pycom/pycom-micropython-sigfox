@@ -81,12 +81,12 @@ void mp_hal_delay_us(uint32_t us) {
         }
     } else {
         uint32_t ms = us / 1000;
-        uint32_t _us = ms % 1000;
+        us = us % 1000;
         MP_THREAD_GIL_EXIT();
         vTaskDelay (ms / portTICK_PERIOD_MS);
         MP_THREAD_GIL_ENTER();
-        if (_us > 0) {
-            ets_delay_us(_us);
+        if (us > 0) {
+            ets_delay_us(us);
         }
     }
 }
