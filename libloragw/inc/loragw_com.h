@@ -29,15 +29,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-#define LGW_com_SUCCESS     0
-#define LGW_com_ERROR       -1
+#define LGW_COM_SUCCESS     0
+#define LGW_COM_ERROR       -1
 #define LGW_BURST_CHUNK     1024
-#define LGW_com_MUX_MODE0   0x0     /* No FPGA */
-#define LGW_com_MUX_MODE1   0x1     /* FPGA, with spi mux header */
-#define LGW_com_MUX_TARGET_SX1301   0x0
-#define LGW_com_MUX_TARGET_FPGA     0x1
-#define LGW_com_MUX_TARGET_EEPROM   0x2
-#define LGW_com_MUX_TARGET_SX127X   0x3
+#define LGW_COM_MUX_MODE0   0x0     /* No FPGA */
+#define LGW_COM_MUX_TARGET_SX1301   0x0
+
 #define ACK_KO   0
 #define OK 1
 #define KO 0
@@ -49,15 +46,54 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
+/**
+@brief cmd structure from host to stm32
+@param Cmd char  for cmd id 
+@param length  : length (16 bits) of the full msg,  length = LenMsb<<8 + Len
+@param Adress  : adress parameter is used in case of read/wrtire registers cmd
+@param Value   : raw data data to transfer
+*/
+/********************************************************/
+/*   cmd name   |      description                      */
+/*------------------------------------------------------*/
+/*  r						|Read register													*/
+/*	s						|Read long burst First packet						*/
+/*	t						|Read long burst Middle packet					*/
+/*	u						|Read long burst End packet							*/
+/*	p,e					|Read long Atomic packet								*/
+/*	w						|Write register													*/
+/*	x						|Write long burst First packet	   			*/
+/*	y						|Write long burst First packet					*/
+/*	z						|Write long burst First packet					*/
+/*	a						|Write long burst First packet					*/
+/*------------------------------------------------------*/
+/*	b						|lgw_receive cmd												*/
+/*	c						|lgw_rxrf_setconf cmd										*/
+/*  d						|int lgw_rxif_setconf_cmd								*/
+/*  f						|int lgw_send cmd												*/
+/*  h           |lgw_txgain_setconf                     */
+/*  q						|lgw_trigger                            */
+/*  i           |lgw_board_setconf                      */
+/*  j           |lgw_calibration_snapshot               */
+/*  l						|lgw_check_fw_version										*/
+/*  m						|Reset STM32        										*/
+/*  n						|GOTODFU            										*/
+/********************************************************/
 
 typedef struct {
-    char Cmd; // w for write , r for read
+    char Cmd; 
     int LenMsb;
     int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
     int Adress;
     int Value[BURSTSIZE];
 } CmdSettings_t;
 
+/**
+@brief cmd structure response from stm32 to host
+@param Cmd char  for cmd id 
+@param length  : length (8 bits) of the full msg
+@param Rxbuf   : raw data data to transfer
+*/
 typedef struct {
     int Cmd; // w for write , r for read
     int Id;

@@ -1,3 +1,4 @@
+
 /*
 / _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
@@ -52,11 +53,11 @@ Usb CDC drivers is require to establish the connection with the picogateway.
 #if DEBUG_COM == 1
 #define DEBUG_MSG(str)                fprintf(stderr, str)
 #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
-#define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_com_ERROR;}
+#define CHECK_NULL(a)                if(a==NULL){fprintf(stderr,"%s:%d: ERROR: NULL POINTER AS ARGUMENT\n", __FUNCTION__, __LINE__);return LGW_COM_ERROR;}
 #else
 #define DEBUG_MSG(str)
 #define DEBUG_PRINTF(fmt, args...)
-#define CHECK_NULL(a)                if(a==NULL){return LGW_com_ERROR;}
+#define CHECK_NULL(a)                if(a==NULL){return LGW_COM_ERROR;}
 #endif
 
 /* -------------------------------------------------------------------------- */
@@ -143,7 +144,7 @@ int lgw_com_open_linux(void **com_target_ptr) {
     usb_device = malloc(sizeof(int));
     if (usb_device == NULL) {
         DEBUG_MSG("ERROR : MALLOC FAIL\n");
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 
     for (i = 0; i < 10; i++) // try to open one of the 10 port ttyACM
@@ -178,23 +179,23 @@ int lgw_com_open_linux(void **com_target_ptr) {
             SendCmdn(mystruct, fd);
             if (ReceiveAns(&mystrctAns, fd))
             {
-                if (mystrctAns.Rxbuf[0] == ACK_KO) { return LGW_com_ERROR; }
+                if (mystrctAns.Rxbuf[0] == ACK_KO) { return LGW_COM_ERROR; }
               DEBUG_PRINTF("check fw version %d \n", mystrctAns.Rxbuf[0]);
                 DEBUG_MSG("Note: USB read config success\n");
                 pthread_mutex_unlock(&mx_usbbridgesync);
-                return LGW_com_SUCCESS;
+                return LGW_COM_SUCCESS;
             }
             else
             {
                 DEBUG_MSG("ERROR: USB read config FAILED\n");
                 pthread_mutex_unlock(&mx_usbbridgesync);
-                return LGW_com_ERROR;
+                return LGW_COM_ERROR;
             }
-            return LGW_com_SUCCESS;
+            return LGW_COM_SUCCESS;
         }
     }
 
-    return LGW_com_ERROR;
+    return LGW_COM_ERROR;
 }
 
 
@@ -211,12 +212,12 @@ int lgw_com_close_linux(void *com_target) {
     a = close(usb_device);
     if (a < 0) {
         DEBUG_MSG("ERROR : USB PORT FAILED TO CLOSE\n");
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
     else
     {
         DEBUG_MSG("Note : USB port closed \n");
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
 }
 
@@ -247,13 +248,13 @@ int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
     {
         DEBUG_MSG("Note: usb read success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
     else
     {
         DEBUG_MSG("ERROR: usb READ FAILURE\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 }
 
@@ -289,13 +290,13 @@ int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
         DEBUG_MSG("Note: usb read success\n");
         *data = mystrctAns.Rxbuf[0];
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
     else
     {
         DEBUG_MSG("ERROR: USB READ FAILURE\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 
 }
@@ -369,17 +370,17 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
       {
         DEBUG_MSG("Note: usb read success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
       }
       else
       {
         DEBUG_MSG("ERROR: USB READ FAILURE\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
       }
     }
   DEBUG_MSG("ERROR: USB READ FAILURE\n");
-    return LGW_com_ERROR; //never reach
+    return LGW_COM_ERROR; //never reach
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -463,18 +464,18 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
                 data[i + cptalc] = mystrctAns.Rxbuf[i];
             }
             pthread_mutex_unlock(&mx_usbbridgesync);
-            return LGW_com_SUCCESS;
+            return LGW_COM_SUCCESS;
         }
         else
         {
             DEBUG_MSG("ERROR: Cannot readburst stole  \n");
             pthread_mutex_unlock(&mx_usbbridgesync);
-            return LGW_com_ERROR;
+            return LGW_COM_ERROR;
         }
     }
     else
     {
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 
 }
@@ -635,13 +636,13 @@ int lgw_rxrf_setconfcmd_linux(void *com_target, uint8_t rfchain, uint8_t *data, 
     {
         DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
     else
     {
         DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 }
 
@@ -674,13 +675,13 @@ int lgw_boardconfcmd_linux(void * com_target, uint8_t *data, uint16_t size)
     {
         DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
     else
     {
         DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 
 }
@@ -711,13 +712,13 @@ int lgw_rxif_setconfcmd_linux(void *com_target, uint8_t ifchain, uint8_t *data, 
     {
         DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
     else
     {
         DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 }
 
@@ -749,13 +750,13 @@ int lgw_txgain_setconfcmd_linux(void *com_target, uint8_t *data, uint16_t size)
     if (ReceiveAns(&mystrctAns, fd))
     {
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
     else
     {
         DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 }
 
@@ -787,13 +788,13 @@ int lgw_sendconfcmd_linux(void *com_target, uint8_t *data, uint16_t size) {
     if (ReceiveAns(&mystrctAns, fd))
     {
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
     else
     {
         DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 }
 
@@ -824,13 +825,13 @@ int lgw_trigger_linux(void *com_target, uint8_t address, uint32_t *data) {
         *data = (mystrctAns.Rxbuf[0] << 24) + (mystrctAns.Rxbuf[1] << 16) + (mystrctAns.Rxbuf[2] << 8) + (mystrctAns.Rxbuf[3]);
         DEBUG_PRINTF("timestampreceive %d\n", (mystrctAns.Rxbuf[0] << 24) + (mystrctAns.Rxbuf[1] << 16) + (mystrctAns.Rxbuf[2] << 8) + (mystrctAns.Rxbuf[3]));
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
     else
     {
         DEBUG_MSG("ERROR: USB READ FAILURE\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 
 }
@@ -863,13 +864,13 @@ int lgw_calibration_snapshot_linux(void * com_target)
     {
         DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
     else
     {
         DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 
 }
@@ -902,13 +903,13 @@ int lgw_resetSTM32_linux(void * com_target)
     {
         DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
     else
     {
         DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 
 }
@@ -941,13 +942,13 @@ int lgw_GOTODFU_linux(void * com_target)
     {
         DEBUG_MSG("Note: USB read config success\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_SUCCESS;
+        return LGW_COM_SUCCESS;
     }
     else
     {
         DEBUG_MSG("ERROR: USB read config FAILED\n");
         pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_com_ERROR;
+        return LGW_COM_ERROR;
     }
 
 }
@@ -976,22 +977,22 @@ int lgw_GetUniqueId_linux(void * com_target,uint8_t * uid)
             SendCmdn(mystruct, fd);
             if (ReceiveAns(&mystrctAns, fd))
             {
-                if (mystrctAns.Rxbuf[0] == ACK_KO) { return LGW_com_ERROR; }
+                if (mystrctAns.Rxbuf[0] == ACK_KO) { return LGW_COM_ERROR; }
             for (i=0;i<7;i++)
         {
         uid[i]=mystrctAns.Rxbuf[i+1];
         }
                 DEBUG_MSG("Note: USB read config success\n");
                 pthread_mutex_unlock(&mx_usbbridgesync);
-                return LGW_com_SUCCESS;
+                return LGW_COM_SUCCESS;
             }
             else
             {
                 DEBUG_MSG("ERROR: USB read config FAILED\n");
                 pthread_mutex_unlock(&mx_usbbridgesync);
-                return LGW_com_ERROR;
+                return LGW_COM_ERROR;
             }
-            return LGW_com_SUCCESS;
+            return LGW_COM_SUCCESS;
 }
 
 

@@ -394,7 +394,7 @@ uint8_t lgw_com_mux_mode = 0; /*! current SPI mux mode used */
 
 int page_switch(uint8_t target) {
     lgw_regpage = PAGE_MASK & target;
-    lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, PAGE_ADDR, (uint8_t)lgw_regpage);
+    lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, PAGE_ADDR, (uint8_t)lgw_regpage);
     return LGW_REG_SUCCESS;
 }
 
@@ -437,7 +437,7 @@ int reg_w_align32(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int reg_r_align32(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, struct lgw_reg_s r, int32_t *reg_value) {
-    int com_stat = LGW_com_SUCCESS;
+    int com_stat = LGW_COM_SUCCESS;
     uint8_t bufu[4] = "\x00\x00\x00\x00";
     int8_t *bufs = (int8_t *)bufu;
     int i, size_byte;
@@ -484,7 +484,7 @@ int reg_r_align32(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target
 
 /* Concentrator connect */
 int lgw_connect(bool com_only) {
-    int com_stat = LGW_com_SUCCESS;
+    int com_stat = LGW_COM_SUCCESS;
     uint8_t u = 0;
 
 
@@ -496,17 +496,17 @@ int lgw_connect(bool com_only) {
 
     /* open the SPI link */
     com_stat = lgw_com_open(&lgw_com_target);
-    if (com_stat != LGW_com_SUCCESS) {
+    if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
         return LGW_REG_ERROR;
     }
     wait_ms(10);
     if (com_only == false ) {
-        lgw_com_mux_mode = LGW_com_MUX_MODE0;
+        lgw_com_mux_mode = LGW_COM_MUX_MODE0;
 
         /* check SX1301 version */
-        com_stat = lgw_com_r(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
-        if (com_stat != LGW_com_SUCCESS) {
+        com_stat = lgw_com_r(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
+        if (com_stat != LGW_COM_SUCCESS) {
             DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
             return LGW_REG_ERROR;
         }
@@ -516,8 +516,8 @@ int lgw_connect(bool com_only) {
         }
 
         /* write 0 to the page/reset register */
-        com_stat = lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
-        if (com_stat != LGW_com_SUCCESS) {
+        com_stat = lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
+        if (com_stat != LGW_COM_SUCCESS) {
             DEBUG_MSG("ERROR WRITING PAGE REGISTER\n");
             return LGW_REG_ERROR;
         } else {
@@ -556,7 +556,7 @@ int lgw_soft_reset(void) {
         DEBUG_MSG("ERROR: CONCENTRATOR UNCONNECTED\n");
         return LGW_REG_ERROR;
     }
-    lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, 0, 0x80); /* 1 -> SOFT_RESET bit */
+    lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, 0, 0x80); /* 1 -> SOFT_RESET bit */
     lgw_regpage = 0; /* reset the paging static variable */
     return LGW_REG_SUCCESS;
 }
@@ -598,7 +598,7 @@ int lgw_reg_check(FILE *f) {
 
 /* Write to a register addressed by name */
 int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
-    int com_stat = LGW_com_SUCCESS;
+    int com_stat = LGW_COM_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -638,9 +638,9 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
         com_stat += page_switch(r.page);
     }
 
-    com_stat += reg_w_align32(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, r, reg_value);
+    com_stat += reg_w_align32(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, r, reg_value);
 
-    if (com_stat != LGW_com_SUCCESS) {
+    if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
         return LGW_REG_ERROR;
     } else {
@@ -652,7 +652,7 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
 
 /* Read to a register addressed by name */
 int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
-    int com_stat = LGW_com_SUCCESS;
+    int com_stat = LGW_COM_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -676,9 +676,9 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
         com_stat += page_switch(r.page);
     }
 
-    com_stat += reg_r_align32(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, r, reg_value);
+    com_stat += reg_r_align32(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, r, reg_value);
 
-    if (com_stat != LGW_com_SUCCESS) {
+    if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER WRITE\n");
         return LGW_REG_ERROR;
     } else {
@@ -690,7 +690,7 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
 
 /* Point to a register by name and do a burst write */
 int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
-    int com_stat = LGW_com_SUCCESS;
+    int com_stat = LGW_COM_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -725,9 +725,9 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* do the burst write */
-    com_stat += lgw_com_wb(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, r.addr, data, size);
+    com_stat += lgw_com_wb(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, r.addr, data, size);
 
-    if (com_stat != LGW_com_SUCCESS) {
+    if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST WRITE\n");
         return LGW_REG_ERROR;
     } else {
@@ -739,7 +739,7 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
 
 /* Point to a register by name and do a burst read */
 int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
-    int com_stat = LGW_com_SUCCESS;
+    int com_stat = LGW_COM_SUCCESS;
     struct lgw_reg_s r;
 
     /* check input parameters */
@@ -768,9 +768,9 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* do the burst read */
-    com_stat += lgw_com_rb(lgw_com_target, lgw_com_mux_mode, LGW_com_MUX_TARGET_SX1301, r.addr, data, size);
+    com_stat += lgw_com_rb(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, r.addr, data, size);
 
-    if (com_stat != LGW_com_SUCCESS) {
+    if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: SPI ERROR DURING REGISTER BURST READ\n");
         return LGW_REG_ERROR;
     } else {

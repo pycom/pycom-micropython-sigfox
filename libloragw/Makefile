@@ -60,10 +60,10 @@ $(OBJDIR):
 $(OBJDIR)/%.o: src/%.c $(INCLUDES) inc/config.h | $(OBJDIR)
 	$(CC) -c $(CFLAGS) $< -o $@
  
-$(OBJDIR)/loragw_com_linux.o: src/loragw_com.native_linux.c $(INCLUDES) inc/config.h | $(OBJDIR)
+$(OBJDIR)/loragw_com_linux.o: src/loragw_com_linux.c $(INCLUDES) inc/config.h | $(OBJDIR)
 	$(CC) -c $(CFLAGS) $< -o $@ 
 
-$(OBJDIR)/loragw_com.o: src/loragw_com.native.c $(INCLUDES) inc/config.h | $(OBJDIR)
+$(OBJDIR)/loragw_com.o: src/loragw_com.c $(INCLUDES) inc/config.h | $(OBJDIR)
 	$(CC) -c $(CFLAGS) $< -o $@
 
 $(OBJDIR)/loragw_hal.o: src/loragw_hal.c $(INCLUDES) src/arb_fw.var src/agc_fw.var src/cal_fw.var inc/config.h | $(OBJDIR)

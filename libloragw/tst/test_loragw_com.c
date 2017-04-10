@@ -44,7 +44,7 @@ int main()
     uint8_t data = 0;
     uint8_t dataout[BURST_TEST_SIZE];
     uint8_t datain[BURST_TEST_SIZE];
-    uint8_t com_mux_mode = LGW_com_MUX_MODE0;
+    uint8_t com_mux_mode = LGW_COM_MUX_MODE0;
 
     for (i = 0; i < BURST_TEST_SIZE; ++i) {
         dataout[i] = 0x30 + (i % 10); /* ASCCI code for 0 -> 9 */
@@ -56,24 +56,24 @@ int main()
 
     /* normal R/W test */
     for (i = 0; i < TIMING_REPEAT; ++i)
-        lgw_com_w(com_target, com_mux_mode, LGW_com_MUX_TARGET_SX1301, 0xAA, 0x96);
+        lgw_com_w(com_target, com_mux_mode, LGW_COM_MUX_TARGET_SX1301, 0xAA, 0x96);
     for (i = 0; i < TIMING_REPEAT; ++i)
-        lgw_com_r(com_target, com_mux_mode, LGW_com_MUX_TARGET_SX1301, 0x55, &data);
+        lgw_com_r(com_target, com_mux_mode, LGW_COM_MUX_TARGET_SX1301, 0x55, &data);
 
     /* burst R/W test, small bursts << LGW_BURST_CHUNK */
     for (i = 0; i < TIMING_REPEAT; ++i)
-        lgw_com_wb(com_target, com_mux_mode, LGW_com_MUX_TARGET_SX1301, 0x55, dataout, 16);
+        lgw_com_wb(com_target, com_mux_mode, LGW_COM_MUX_TARGET_SX1301, 0x55, dataout, 16);
     for (i = 0; i < TIMING_REPEAT; ++i)
-        lgw_com_rb(com_target, com_mux_mode, LGW_com_MUX_TARGET_SX1301, 0x55, datain, 16);
+        lgw_com_rb(com_target, com_mux_mode, LGW_COM_MUX_TARGET_SX1301, 0x55, datain, 16);
 
     /* burst R/W test, large bursts >> LGW_BURST_CHUNK */
     for (i = 0; i < TIMING_REPEAT; ++i)
-        lgw_com_wb(com_target, com_mux_mode, LGW_com_MUX_TARGET_SX1301, 0x5A, dataout, ARRAY_SIZE(dataout));
+        lgw_com_wb(com_target, com_mux_mode, LGW_COM_MUX_TARGET_SX1301, 0x5A, dataout, ARRAY_SIZE(dataout));
     for (i = 0; i < TIMING_REPEAT; ++i)
-        lgw_com_rb(com_target, com_mux_mode, LGW_com_MUX_TARGET_SX1301, 0x5A, datain, ARRAY_SIZE(datain));
+        lgw_com_rb(com_target, com_mux_mode, LGW_COM_MUX_TARGET_SX1301, 0x5A, datain, ARRAY_SIZE(datain));
 
     /* last read (blocking), just to be sure no to quit before the FTDI buffer is flushed */
-    lgw_com_r(com_target, com_mux_mode, LGW_com_MUX_TARGET_SX1301, 0x55, &data);
+    lgw_com_r(com_target, com_mux_mode, LGW_COM_MUX_TARGET_SX1301, 0x55, &data);
     printf("data received (simple read): %d\n",data);
 
     lgw_com_close(com_target);
