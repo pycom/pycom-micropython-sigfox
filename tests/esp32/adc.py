@@ -8,7 +8,7 @@ print(apin)
 
 #read single sample
 val = apin.value()
-print( val> -1)
+print( val > -1)
 
 
 apin = adc.channel(0)
