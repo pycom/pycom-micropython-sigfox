@@ -27,7 +27,7 @@
 #include "soc/dport_reg.h"
 #include "soc/gpio_sig_map.h"
 
-#include "analog.h"
+#include "adc.h"
 #include "pybadc.h"
 #include "mpexception.h"
 #include "mpsleep.h"
@@ -38,13 +38,14 @@
 /******************************************************************************
  DECLARE CONSTANTS
  ******************************************************************************/
-#define PYB_ADC_NUM_CHANNELS                (ADC1_CH_MAX)
+#define PYB_ADC_NUM_CHANNELS                (ADC1_CHANNEL_MAX)
 
 /******************************************************************************
  DEFINE TYPES
  ******************************************************************************/
 typedef struct {
     mp_obj_base_t base;
+    uint8_t width;
     bool enabled;
 } pyb_adc_obj_t;
 
@@ -52,7 +53,6 @@ typedef struct {
     mp_obj_base_t base;
     pin_obj_t *pin;
     uint8_t channel;
-    uint8_t id;
     uint8_t attn;
     bool enabled;
 } pyb_adc_channel_obj_t;
@@ -61,14 +61,14 @@ typedef struct {
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
-STATIC pyb_adc_channel_obj_t pyb_adc_channel_obj[PYB_ADC_NUM_CHANNELS] = { {.pin = &PIN_MODULE_P13, .channel = ADC1_CH0_GPIO36, .id = 0, .enabled = false},
-                                                                           {.pin = &PIN_MODULE_P14, .channel = ADC1_CH1_GPIO37, .id = 1, .enabled = false},
-                                                                           {.pin = &PIN_MODULE_P15, .channel = ADC1_CH2_GPIO38, .id = 2, .enabled = false},
-                                                                           {.pin = &PIN_MODULE_P16, .channel = ADC1_CH3_GPIO39, .id = 3, .enabled = false},
-                                                                           {.pin = &PIN_MODULE_P17, .channel = ADC1_CH7_GPIO35, .id = 4, .enabled = false},
-                                                                           {.pin = &PIN_MODULE_P18, .channel = ADC1_CH6_GPIO34, .id = 5, .enabled = false},
-                                                                           {.pin = &PIN_MODULE_P19, .channel = ADC1_CH4_GPIO32, .id = 6, .enabled = false},
-                                                                           {.pin = &PIN_MODULE_P20, .channel = ADC1_CH5_GPIO33, .id = 7, .enabled = false} };
+STATIC pyb_adc_channel_obj_t pyb_adc_channel_obj[PYB_ADC_NUM_CHANNELS] = { {.pin = &PIN_MODULE_P13, .channel = ADC1_CHANNEL_0, .enabled = false},
+                                                                           {.pin = &PIN_MODULE_P14, .channel = ADC1_CHANNEL_1, .enabled = false},
+                                                                           {.pin = &PIN_MODULE_P15, .channel = ADC1_CHANNEL_2, .enabled = false},
+                                                                           {.pin = &PIN_MODULE_P16, .channel = ADC1_CHANNEL_3, .enabled = false},
+                                                                           {.pin = &PIN_MODULE_P17, .channel = ADC1_CHANNEL_4, .enabled = false},
+                                                                           {.pin = &PIN_MODULE_P18, .channel = ADC1_CHANNEL_5, .enabled = false},
+                                                                           {.pin = &PIN_MODULE_P19, .channel = ADC1_CHANNEL_6, .enabled = false},
+                                                                           {.pin = &PIN_MODULE_P20, .channel = ADC1_CHANNEL_7, .enabled = false} };
 STATIC pyb_adc_obj_t pyb_adc_obj = {.enabled = false};
 
 STATIC const mp_obj_type_t pyb_adc_channel_type;
@@ -82,6 +82,7 @@ STATIC mp_obj_t adc_channel_deinit(mp_obj_t self_in);
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 STATIC void pyb_adc_init (pyb_adc_obj_t *self) {
+    adc1_config_width(self->width - 9);     // ADC_WIDTH_9Bit = 0
     self->enabled = true;
 }
 
@@ -95,18 +96,9 @@ STATIC void pyb_adc_check_init(void) {
 STATIC void pyb_adc_channel_init (pyb_adc_channel_obj_t *self) {
     // the ADC block must be enabled first
     pyb_adc_check_init();
-    // configure the pin in analog mode
-    // pin_config (self->pin, -1, PIN_TYPE_ANALOG, PIN_TYPE_STD, -1, PIN_STRENGTH_2MA);
-    // // enable the ADC channel
-    // MAP_ADCChannelEnable(ADC_BASE, self->channel);
+    adc1_config_channel_atten(self->channel, self->attn);
     self->enabled = true;
 }
-
-// STATIC void pyb_adc_deinit_all_channels (void) {
-//     for (int i = 0; i < PYB_ADC_NUM_CHANNELS; i++) {
-//         adc_channel_deinit(&pyb_adc_channel_obj[i]);
-//     }
-// }
 
 /******************************************************************************/
 /* Micro Python bindings : adc object                                         */
@@ -114,7 +106,7 @@ STATIC void pyb_adc_channel_init (pyb_adc_channel_obj_t *self) {
 STATIC void adc_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     pyb_adc_obj_t *self = self_in;
     if (self->enabled) {
-        mp_printf(print, "ADC(0, bits=12)");
+        mp_printf(print, "ADC(0, bits=%d)", self->width);
     } else {
         mp_printf(print, "ADC(0)");
     }
@@ -137,13 +129,14 @@ STATIC mp_obj_t adc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
     }
 
     // check the number of bits
-    if (args[1].u_int != 12) {
+    if (args[1].u_int < 9 || args[1].u_int > 12) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
     }
 
     // setup the object
     pyb_adc_obj_t *self = &pyb_adc_obj;
     self->base.type = &pyb_adc_type;
+    self->width = args[1].u_int;
 
     // initialize and register with the sleep module
     pyb_adc_init(self);
@@ -176,7 +169,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_deinit_obj, adc_deinit);
 STATIC mp_obj_t adc_channel(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     STATIC const mp_arg_t pyb_adc_channel_args[] = {
         { MP_QSTR_id,                          MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-        { MP_QSTR_attn,       MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 0} },
+        { MP_QSTR_attn,       MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = ADC_ATTEN_0db} },
         { MP_QSTR_pin,        MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
 
@@ -207,7 +200,7 @@ STATIC mp_obj_t adc_channel(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
         }
     }
 
-    if (args[1].u_int < ADC_ATTEN_0DB || args[1].u_int > ADC_ATTEN_12DB) {
+    if (args[1].u_int < ADC_ATTEN_0db || args[1].u_int > ADC_ATTEN_11db) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
     }
 
@@ -216,8 +209,6 @@ STATIC mp_obj_t adc_channel(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
     self->base.type = &pyb_adc_channel_type;
     self->attn = args[1].u_int;
     pyb_adc_channel_init (self);
-    // register it with the sleep module
-    // pyb_sleep_add ((const mp_obj_t)self, (WakeUpCB_t)pyb_adc_channel_init);
     return self;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(adc_channel_obj, 1, adc_channel);
@@ -226,6 +217,11 @@ STATIC const mp_map_elem_t adc_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&adc_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&adc_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_channel),             (mp_obj_t)&adc_channel_obj },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ATTN_0DB),            MP_OBJ_NEW_SMALL_INT(ADC_ATTEN_0db) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ATTN_2_5DB),          MP_OBJ_NEW_SMALL_INT(ADC_ATTEN_2_5db) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ATTN_6DB),            MP_OBJ_NEW_SMALL_INT(ADC_ATTEN_6db) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ATTN_11DB),           MP_OBJ_NEW_SMALL_INT(ADC_ATTEN_11db) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(adc_locals_dict, adc_locals_dict_table);
@@ -241,9 +237,9 @@ const mp_obj_type_t pyb_adc_type = {
 STATIC void adc_channel_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     pyb_adc_channel_obj_t *self = self_in;
     if (self->enabled) {
-        mp_printf(print, "ADCChannel(%u, pin=%q)", self->id, self->pin->name);
+        mp_printf(print, "ADCChannel(%u, pin=%q, attn=%d)", self->channel, self->pin->name, self->attn);
     } else {
-        mp_printf(print, "ADCChannel(%u)", self->id);
+        mp_printf(print, "ADCChannel(%u)", self->channel);
     }
 }
 
@@ -257,9 +253,6 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_init_obj, adc_channel_init);
 
 STATIC mp_obj_t adc_channel_deinit(mp_obj_t self_in) {
     pyb_adc_channel_obj_t *self = self_in;
-
-    // // unregister it with the sleep module
-    // pyb_sleep_remove ((const mp_obj_t)self);
     self->enabled = false;
     return mp_const_none;
 }
@@ -267,15 +260,12 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_deinit_obj, adc_channel_deinit);
 
 STATIC mp_obj_t adc_channel_value(mp_obj_t self_in) {
     pyb_adc_channel_obj_t *self = self_in;
-    uint32_t value;
 
     // the channel must be enabled
     if (!self->enabled) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
-
-    value = analog_adc1_read(self->channel, self->attn);
-    return MP_OBJ_NEW_SMALL_INT(value);
+    return MP_OBJ_NEW_SMALL_INT(adc1_get_voltage(self->channel));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_value_obj, adc_channel_value);
 
