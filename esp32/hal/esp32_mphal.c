@@ -76,11 +76,18 @@ void mp_hal_feed_watchdog(void) {
 
 void mp_hal_delay_us(uint32_t us) {
     if (us < 1000) {
-        ets_delay_us(us);
+        if (us > 0) {
+            ets_delay_us(us);
+        }
     } else {
+        uint32_t ms = us / 1000;
+        uint32_t _us = ms % 1000;
         MP_THREAD_GIL_EXIT();
-        ets_delay_us(us);
+        vTaskDelay (ms / portTICK_PERIOD_MS);
         MP_THREAD_GIL_ENTER();
+        if (_us > 0) {
+            ets_delay_us(_us);
+        }
     }
 }
 
