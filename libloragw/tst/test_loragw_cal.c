@@ -111,7 +111,8 @@ void usage(void) {
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     int i, j, x;
     int32_t read_val;
     struct lgw_conf_board_s boardconf;

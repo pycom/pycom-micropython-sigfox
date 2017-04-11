@@ -85,7 +85,8 @@ void usage(void) {
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     int i;
     uint8_t uid[8];  //unique id
     /* configure signal handling */

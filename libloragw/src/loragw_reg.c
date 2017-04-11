@@ -586,7 +586,8 @@ int lgw_reg_check(FILE *f) {
         ptr = (read_value == r.dflt) ? ok_msg : notok_msg;
         if (r.sign == true) {
             fprintf(f, "%s reg number %d read: %d (%x) default: %d (%x)\n", ptr, i, read_value, read_value, r.dflt, r.dflt);
-        } else {
+        }
+        else {
             fprintf(f, "%s reg number %d read: %u (%x) default: %u (%x)\n", ptr, i, read_value, read_value, r.dflt, r.dflt);
         }
     }
@@ -791,37 +792,47 @@ int lgw_reg_receive_cmd( uint8_t max_packet, uint8_t *data) {
 
 }
 
-int lgw_reg_rxrf_setconfcmd(  uint8_t rfchain, uint8_t *data, uint16_t size) {
+int lgw_reg_rxrf_setconfcmd(  uint8_t rfchain, uint8_t *data, uint16_t size)
+{
     return(lgw_rxrf_setconfcmd(lgw_com_target, rfchain, data, size));
 }
-int lgw_reg_rxif_setconfcmd(  uint8_t ifchain, uint8_t *data, uint16_t size) {
+int lgw_reg_rxif_setconfcmd(  uint8_t ifchain, uint8_t *data, uint16_t size)
+{
     return (lgw_rxif_setconfcmd(lgw_com_target, ifchain, data, size));
 }
-int lgw_reg_sendconfcmd(uint8_t *data, uint16_t size) {
+int lgw_reg_sendconfcmd(uint8_t *data, uint16_t size)
+{
     return(lgw_sendconfcmd(lgw_com_target, data, size));
 }
-int lgw_txgainreg_setconfcmd( uint8_t *data, uint16_t size) {
+int lgw_txgainreg_setconfcmd( uint8_t *data, uint16_t size)
+{
     return(lgw_txgain_setconfcmd(lgw_com_target, data, size));
 }
-int lgw_regtrigger(uint32_t *data) {
+int lgw_regtrigger(uint32_t *data)
+{
     return(lgw_trigger(lgw_com_target, 0, data));
 }
-int lgw_reg_board_setconfcmd(uint8_t *data, uint16_t size) {
+int lgw_reg_board_setconfcmd(uint8_t *data, uint16_t size)
+{
     return(lgw_boardconfcmd(lgw_com_target, data, size));
 }
-int lgw_reg_calibration_snapshot(void) {
+int lgw_reg_calibration_snapshot(void)
+{
     return(lgw_calibration_snapshot(lgw_com_target));
 }
 
-int lgw_reg_resetSTM32(void) {
+int lgw_reg_resetSTM32(void)
+{
     return(lgw_resetSTM32(lgw_com_target));
 }
 
-int lgw_reg_GOTODFU(void) {
+int lgw_reg_GOTODFU(void)
+{
     return(lgw_GOTODFU(lgw_com_target));
 }
 
-int lgw_reg_GetUniqueId(uint8_t * uid) {
+int lgw_reg_GetUniqueId(uint8_t * uid)
+{
     return( lgw_GetUniqueId(lgw_com_target, uid));
 }
 
