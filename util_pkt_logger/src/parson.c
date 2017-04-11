@@ -781,8 +781,7 @@ static JSON_Value * parse_null_value(const char **string) {
                                   if (buf != NULL) { buf += written; } \
                                   written_total += written; } while(0)
 
-static int json_serialize_to_buffer_r(const JSON_Value *value, char *buf, int level, int is_pretty, char *num_buf)
-{
+static int json_serialize_to_buffer_r(const JSON_Value *value, char *buf, int level, int is_pretty, char *num_buf) {
     const char *key = NULL, *string = NULL;
     JSON_Value *temp_value = NULL;
     JSON_Array *array = NULL;
@@ -883,8 +882,7 @@ static int json_serialize_to_buffer_r(const JSON_Value *value, char *buf, int le
         case JSONBoolean:
             if (json_value_get_boolean(value)) {
                 APPEND_STRING("true");
-            }
-            else {
+            } else {
                 APPEND_STRING("false");
             }
             return written_total;
@@ -895,8 +893,7 @@ static int json_serialize_to_buffer_r(const JSON_Value *value, char *buf, int le
             }
             if (num == ((double)(int)num)) { /*  check if num is integer */
                 written = sprintf(num_buf, "%d", (int)num);
-            }
-            else {
+            } else {
                 written = sprintf(num_buf, DOUBLE_SERIALIZATION_FORMAT, num);
             }
             if (written < 0) {
@@ -1805,8 +1802,7 @@ JSON_Status json_validate(const JSON_Value *schema, const JSON_Value *value) {
             count = json_object_get_count(schema_object);
             if (count == 0) {
                 return JSONSuccess;    /* Empty object allows all objects */
-            }
-            else if (json_object_get_count(value_object) < count) {
+            } else if (json_object_get_count(value_object) < count) {
                 return JSONFailure;    /* Tested object mustn't have less name-value pairs than schema */
             }
             for (i = 0; i < count; i++) {

@@ -309,26 +309,19 @@ int parse_SX1301_configuration(const char * conf_file) {
             bw = (uint32_t)json_object_dotget_number(conf, "chan_FSK.bandwidth");
             if      (bw <= 7800) {
                 ifconf.bandwidth = BW_7K8HZ;
-            }
-            else if (bw <= 15600) {
+            } else if (bw <= 15600) {
                 ifconf.bandwidth = BW_15K6HZ;
-            }
-            else if (bw <= 31200) {
+            } else if (bw <= 31200) {
                 ifconf.bandwidth = BW_31K2HZ;
-            }
-            else if (bw <= 62500) {
+            } else if (bw <= 62500) {
                 ifconf.bandwidth = BW_62K5HZ;
-            }
-            else if (bw <= 125000) {
+            } else if (bw <= 125000) {
                 ifconf.bandwidth = BW_125KHZ;
-            }
-            else if (bw <= 250000) {
+            } else if (bw <= 250000) {
                 ifconf.bandwidth = BW_250KHZ;
-            }
-            else if (bw <= 500000) {
+            } else if (bw <= 500000) {
                 ifconf.bandwidth = BW_500KHZ;
-            }
-            else {
+            } else {
                 ifconf.bandwidth = BW_UNDEFINED;
             }
             ifconf.datarate = (uint32_t)json_object_dotget_number(conf, "chan_FSK.datarate");
@@ -413,8 +406,7 @@ void usage(void) {
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int i, j; /* loop and temporary variables */
     struct timespec sleep_time = {0, 3000000}; /* 3 ms */
 

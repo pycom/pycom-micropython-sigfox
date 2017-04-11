@@ -84,8 +84,7 @@ void usage(void) {
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int i;
     int xi = 0;
 
@@ -237,8 +236,7 @@ int main(int argc, char **argv)
         while ((quit_sig != 1) && (exit_sig != 1)) {
             if(bufftest < BUFF_SIZE) {
                 bufftest++;
-            }
-            else {
+            } else {
                 bufftest = 5;
             }
 

@@ -27,8 +27,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define BURST_TEST_LENGTH    8192
 
-int main()
-{
+int main() {
     int32_t read_value, test_value;
     uint16_t lfsr;
     uint8_t burst_buffout[BURST_TEST_LENGTH];
