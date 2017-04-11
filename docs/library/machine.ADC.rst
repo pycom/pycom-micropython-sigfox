@@ -28,8 +28,7 @@ Methods
 
    Enable the ADC block. This method is automatically called on object creation.
 
-      - ``bits`` can take alues between 9 and 12 and defines the bit width of the ADC block.
-
+      - ``bits`` can take values between 9 and 12 and selects the number of bits of resolution of the ADC block.
 .. method:: adc.deinit()
 
    Disable the ADC block.
@@ -90,5 +89,5 @@ ADC channels are created using the ADC.channel method.
 
 .. warning::
 
-      ADC pin input range is 0-1.1V. This maximum value can be increased up to 3.3V using the maximum attenuation of 11dB.
+      ADC pin input range is 0-1.1V. This maximum value can be increased up to 3.3V using the highest attenuation of 11dB.
       DO NOT exceed the maximum of 3.3V in order to avoid damaging the device.
