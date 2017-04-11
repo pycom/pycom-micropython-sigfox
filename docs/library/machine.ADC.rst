@@ -33,12 +33,11 @@ Methods
 
    Disable the ADC block.
 
-.. method:: adc.channel(id=0, \*, pin, attn=ADC.ATTN_0DB)
+.. method:: adc.channel(\*, pin, attn=ADC.ATTN_0DB)
 
    Create an analog pin.
 
-      - ``id`` is a keyword-only string argument. Valid pins are P13 to P20.
-      - ``pin`` is a keyword-only string argument. Valid pins are P13 to P20.
+      - ``pin`` is a keyword-only string argument. Valid pins are 'P13' to 'P20'.
       - ``attn`` is the attenuation level. The supported values are: ``ADC.ATTN_0DB``, ``ADC.ATTN_2_5DB``, ``ADC.ATTN_6DB``, ``ADC.ATTN_11DB``
 
    Returns an instance of :class:`ADCChannel`. Example::
