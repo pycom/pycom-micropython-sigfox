@@ -75,7 +75,7 @@ void mp_hal_feed_watchdog(void) {
 }
 
 void mp_hal_delay_us(uint32_t us) {
-    if (us < 1000) {
+    if (us <= 1000) {
         if (us > 0) {
             ets_delay_us(us);
         }

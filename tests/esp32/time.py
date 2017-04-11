@@ -1,4 +1,5 @@
 import time
+import machine
 
 DAYS_PER_MONTH = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
 
@@ -75,7 +76,9 @@ time.sleep_ms(100)
 t2 = time.ticks_ms()
 print(abs(t2 - t1 - 100) <= 10)
 
+irqs = machine.disable_irq()
 t1 = time.ticks_us()
-time.sleep_us(1000)
+time.sleep_us(900)
 t2 = time.ticks_us()
-print((abs(t2 - t1 - 1000))  < 200)
+irqs = machine.enable_irq(irqs)
+print((abs(t2 - t1 - 900)) < 100)
