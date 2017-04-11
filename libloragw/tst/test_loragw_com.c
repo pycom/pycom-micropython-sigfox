@@ -37,8 +37,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main()
-{
+int main() {
     int i;
     void *com_target = NULL;
     uint8_t data = 0;

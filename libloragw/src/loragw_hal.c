@@ -753,8 +753,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
         data[4 + (5 * u)] = 0;
     }
 
-    for (u = 0; u < conf->size; u++)
-    {
+    for (u = 0; u < conf->size; u++) {
         data[0 + (5 * u)] = conf->lut[u].dig_gain;
         data[1 + (5 * u)] = conf->lut[u].pa_gain;
         data[2 + (5 * u)] = conf->lut[u].dac_gain;
@@ -1363,8 +1362,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_send(struct lgw_pkt_tx_s pkt_data)
-{
+int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     int i, x;
     uint8_t PADDING = 0;
     uint8_t data[256 + 32];
@@ -1405,8 +1403,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
             DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR LORA TX\n");
             return LGW_HAL_ERROR;
         }
-    }
-    else if (pkt_data.modulation == MOD_FSK) {
+    } else if (pkt_data.modulation == MOD_FSK) {
         if ((pkt_data.f_dev < 1) || (pkt_data.f_dev > 200)) {
             DEBUG_MSG("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
             return LGW_HAL_ERROR;
@@ -1419,8 +1416,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
             DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR FSK TX\n");
             return LGW_HAL_ERROR;
         }
-    }
-    else {
+    } else {
         DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
         return LGW_HAL_ERROR;
     }
@@ -1510,8 +1506,7 @@ int lgw_abort_tx(void) {
 
     if (i == LGW_REG_SUCCESS) {
         return LGW_HAL_SUCCESS;
-    }
-    else {
+    } else {
         return LGW_HAL_ERROR;
     }
 }
