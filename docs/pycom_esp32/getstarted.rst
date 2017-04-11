@@ -1,13 +1,13 @@
 ***************************
-1. Quickstart guide
+1. Quickstart Guide
 ***************************
 
 Let's start with a quick description of what to do after you unpack your brand
 new toy. Our aim is not to bug you with complex details about it, but instead
 get you as quick as possible to the point you can start doing useful things
-with your device.
+with your board.
 
-It is strongly recommended to update the firmware on your device before coding, this is described in section 1.3 below
+It is strongly recommended to update the firmware on your board before coding, this is described in section 1.3 below
 
 This chapter will get you unboxed and ready to code in no time.
 
@@ -21,10 +21,10 @@ If anyting goes wrong, there is a :ref:`Troubleshooting` section that addresses 
 
 .. _unboxing:
 
-1.1 Unboxing and the expansion board
+1.1 Unboxing and the Expansion Board
 ================================
 
-The only way to learn how to use something new is by doing. First, we need to
+The best way to learn something new is by doing it! Lets get started setting your Pycom board. First, we'll need to
 put together the basic pieces:
 
 1. Look for the reset button on your module (located at a corner of the board).
@@ -67,14 +67,14 @@ To extend the life of your expansion board, please be aware of the following:
     is well soldered and is relatively strong, if it breaks off it can be very
     difficult to fix.
 
-  - Static electricity can shock the components on the device and destroy them.
+  - Static electricity can shock the components on the board and destroy them.
     If you experience a lot of static electricity in your area (eg dry and cold
     climates), take extra care not to shock the device.  If your device came
     in a ESD bag, then this bag is the best way to store and carry the
     device as it will protect it against static discharges.
 
 
-Expansion board hardware guide
+Expansion Board Hardware Guide
 ------------------------------
 
 The document explaining the hardware details of the expansion board can be found
@@ -84,11 +84,11 @@ The pinout for the expansion board can be found in chapter :ref:`datasheets`
 
 .. _connecting_over_usb:
 
-1.2 Connecting over USB
+1.2 Connecting Over USB
 =======================
 
 Once you’re sure everything is in place, the fun begins. It is time to turn
-your device on. Just plug it into any powered USB cable (your computer or a
+your board on. Just plug it into any powered USB cable (your computer or a
 battery charger).
 
 In a few seconds, the LED should start blinking every 4 seconds. This means
@@ -137,10 +137,10 @@ procedure is like this:
 Connecting G23 and GND puts the device in 'update mode'. You won't need this for any
 other task than using the firmware upgrader.
 
-After you’re done with the upgrade, you can :ref:`use Pymakr <pymakr>` to upload and run
+After you’re done with the upgrade, you can :ref:`use the Pymakr Plugins <pymakr>` to upload and run
 programs in your device.
 
-If you have your telnet connection or Pymakr already setup, the version can be  with the
+If you have your Telnet connection or Pymakr Plugin already setup, the version can be  with the
 following code:
 
 ::
@@ -150,7 +150,7 @@ following code:
 
 .. warning::
 
-    Make sure the TX jumper is present on your expansion board, as the jumpers sometimes
+    Make sure the **TX jumper** is present on your expansion board, as the jumpers sometimes
     come loose in the box during transport. Without this jumper, the updater will fail.
 
 .. _micropython_intro:
@@ -170,7 +170,7 @@ are placed in the /flash folder on the board. Any other files or libraries can b
 here as well, and can be included or used from boot.py or main.py.
 
 The folder structure in /flash looks like the picture below. The files can be managed either
-using :ref:`FTP <pycom_filesystem>` or using :ref:`Pymakr <pymakr_ide>`.
+using :ref:`FTP <pycom_filesystem>` or using the :ref:`Pymakr Plugin <pymakr_ide>`.
 
 .. image:: images/wipy-files-ftp.png
     :alt: File structure
@@ -279,94 +279,95 @@ Python has a number of different data structures for storing and manipulating va
 .. _connecting_using_pymakr:
 
 
-1.5 Connecting your board using Pymakr (Retired)
-================================================
+1.5 Connecting a Board using Pymakr Plugin
+==========================================
 
-To make it as easy as possible, we developed Pymakr, a tool that will allow you
-to connect to and program your Pycom devices. We’re going to use it in this
-section to give you a quick taste of how you can work with your device. You can
-download Pymakr from `here <https://www.pycom.io/solutions/pymakr/>`_.
+To make it as easy as possible we developed a series of tools known as the **Pymakr Plugins**, which allow you
+to connect to and program your Pycom devices. These Plugins have been built for a number of text editors and IDEs to allow for users to choose their favourite development enviroment.
 
-More extended info on Pymakr like how to use the pycom console and the expert
-interface can be found under :ref:`Tools & Features <pymakr_ide>`
+Extended info about these Plugins, such as how to use the Pycom console and other features can be found under :ref:`Tools & Features <pymakr_ide>`
 
 .. note::
-    If you have any trouble connecting over USB using pymakr, make sure you have the
-    proper `FTDI drivers <http://www.ftdichip.com/Drivers/D2XX.htm>`_ installed.
+    If you have any trouble connecting over USB using the Pymakr Plugins, make sure you have the
+    correct `FTDI drivers <http://www.ftdichip.com/Drivers/D2XX.htm>`_ installed.
 
 .. warning::
 
-	**Please be aware that Pymakr has been retired** and that plugins for `Atom <https://atom.io/>`_, `Sublime <https://www.sublimetext.com/>`_, `Visual Studio Code <https://code.visualstudio.com>`_ & `PyCharm <https://www.jetbrains.com/pycharm/>`_ are under development, with intention to replace Pymakr. Currently, users are advised to use an FTP client such as FileZilla to upload code/projects to their devices. You can find instructions on how to do this, in the :ref:`tools section <pycom_filesystem>` of the documentation. Please read this `forum <https://forum.pycom.io/topic/635/pymakr-time-of-death-09-02/41>`_ post for more information.
+	**Please be aware that Pymakr IDE has been retired** and that plugins for `Atom <https://atom.io/>`_, `Sublime <https://www.sublimetext.com/>`_, `Visual Studio Code <https://code.visualstudio.com>`_ & `PyCharm <https://www.jetbrains.com/pycharm/>`_ are under development, with intention to replace Pymakr. Currently, users are advised to use an FTP client such as FileZilla to upload code/projects to their devices. You can find instructions on how to do this, in the :ref:`tools section <pycom_filesystem>` of the documentation. Please read this `forum <https://forum.pycom.io/topic/635/pymakr-time-of-death-09-02/41>`_ post for more information.
 
-Initial configuration
----------------------
+Installing Pymakr Plugin (Atom)
+-------------------------------
 
-After installing Pymakr, you need to take a few seconds to configure it for the
+For beginners, users getting started with MicroPython & Pycom as well as Atom text editor users, we recommend the **Pymakr Plugin for Atom**. This section will help you get started using the `Atom Text Editor <https://atom.io>`_ & `Pymakr Plugin <https://atom.io/packages/pymakr>`_.
+
+.. image:: images/atom-text-editor.png
+    :alt: Atom Text Editor
+    :align: center
+    :scale: 35 %
+
+Please follow these steps to install the Pymakr Plugin:
+
+	1. Ensure that you have `Atom <https://atom.io/>`_ installed and open.
+	2. Navigate to the ``Install`` page, via ``Atom > Preferences > Install``
+	3. Search for ``Pymakr`` and select the official Pycom Pymakr Plugin.
+	4. You should now see and ``Install`` button. Click this to download and install the Pymakr Plugin.
+	5. That's it! You've installed the Pymakr Plugin for Atom.
+
+
+Initial Configuration (Atom)
+----------------------------
+
+After installing the Pymakr Plugin, you need to take a few seconds to configure it for the
 first time. Please follow these steps:
 
     1. Connect your computer to the WiFi network named after your board (e.g. ``lopy-wlan-xxxx``, ``wipy-wlan-xxxx``). The password is ``www.pycom.io``
-    2. Open Pymakr.
-    3. In the menu, go to ``Settings > Preferences`` (``Pymakr > Preferences`` on macOS).
-    4. In the left list look for Pycom Device.
-    5. For device, type down ``192.168.4.1``. The default username and password are ``micro`` and ``python``, respectively.
-    6. Click OK
+    2. Open Atom and ensure that the Pymakr Plugins are installed.
+    3. In the menu, go to ``Atom > Preferences > Packages > Pymakr``.
+    4. By default, the Address should be listed as ``192.168.4.1``. If not, change this to ``192.168.4.1``.
+    5. The default username and password are ``micro`` and ``python``, respectively.
+    6. You settings will be saved automatically.
 
+.. image:: images/pymakr-plugin-settings.png
+    :align: center
+    :scale: 60 %
+    :alt: Pymakr Plugin settings
 
 .. note::
-    Pymakr also supports wired connections. Instead of typing the IP address, you
-    can click on the combo box arrow and select the proper serial port from the list.
+    The Pymakr Plugins also support wired connections (Serial USB). Instead of typing the IP address, you
+    can enter the Serial USB address (Mac/Linux) or COM Port (Windows) of your device.
     Our boards don’t require any username or password for the serial connection, so you
-    can leave those fields empty.
-
-
-.. image:: images/pymakr-wifi-reset.png
-    :align: center
-    :scale: 50 %
-    :alt: Pymakr WiFi settings
+    can leave those fields empty. For more information, please visit :ref:`Tools & Features <pymakr_ide>`.
 
 That’s it for the first time configuration. In the lower portion of the screen,
 you should see the console, with the connection process taking place. At the
-end of it, you’ll get a 'connected' message and a colored ``>>>`` prompt,
+end of it, you’ll get a 'Connecting on 192.168.4.1...' message and a ``>>>`` prompt,
 indicating that you are connected:
 
-.. image:: images/pymakr-repl.png
-    :alt: Pymakr REPL
+.. image:: images/pymakr-plugin-repl.png
+    :alt: Pymakr Plugin REPL
     :align: center
     :scale: 100 %
 
-`There is also a video <https://www.youtube.com/embed/bL5nn2lgaZE>`_ that explains
-these steps on macOS (it is similar for other operating systems).
-
-
-.. raw:: html
-
-    <div style="text-align:center;margin:0 auto;">
-    <object style="margin:0 auto;" width="480" height="385"><param name="movie"
-    value="https://www.youtube.com/v/bL5nn2lgaZE"></param><param
-    name="allowFullScreen" value="true"></param><param
-    name="allowscriptaccess" value="always"></param><embed
-    src="http://www.youtube.com/v/bL5nn2lgaZE"
-    type="application/x-shockwave-flash" allowscriptaccess="always"
-    allowfullscreen="true" width="480"
-    height="385"></embed></object>
-    </div>
-
-
-Creating a project
+Creating a Project
 ------------------
 
-Pymakr has a feature to sync and run your code on your device. This is mostly done using projects. The following steps will get you started.
+The Pymakr Plugins have a feature to sync and run your code on your device. This can be used for both uploading code to your device as well as testing out scripts by running them live on the device. The following steps will get you started.
 
-- In Pymakr, go to Project > New project.
-- Give it a name and select a folder for your project, either a new of existing one.
+.. image:: images/pymakr-plugin-overview.png
+    :alt: Pymakr Plugin Overview
+    :align: center
+    :scale: 100 %
+
+- In Atom, go to File > Add Project Folder.
+- Create a new folder within the prompt and give it a name. Then select `open` to initialise this as a project folder. You may also use an existing folder if you choose.
 - Create two files: main.py and boot.py, if you don't already have those.
 
 .. note::
-    You can also :ref:`use FTP <pycom_filesystem>` to download boot.py and main.py from the board to your project folder, after which you can right-click the project viewer and use the 'add source files' option to add them to your project.
+    You can also :ref:`use FTP <pycom_filesystem>` to download boot.py and main.py from the board to your project folder. This is commonly used when copying large numbers of files to a Pycom board.
 
-The boot.py file should always have the following code on the top, so we can run our python scripts over serial or telnet. All of our newer boards have this code already in the boot.py file.
+The boot.py file should always start with following code, so we can run our python scripts over Serial or Telnet. Newer Pycom boards have this code already in the boot.py file.
 
-.. code:: python
+::
 
     from machine import UART
     import os
@@ -374,28 +375,45 @@ The boot.py file should always have the following code on the top, so we can run
     os.dupterm(uart)
 
 
-Most users, especially WiPy users, would want a wifi script in the boot.py file. A basic wifi script but also more advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`WiFi Examples <wlan_step_by_step>` chapter.
+Many users, especially the WiPy users, will want a WiFi script in the boot.py file. A basic WiFi script but also more advanced WLAN examples, like fixed IP and multiple networks, can be found in the :ref:`WiFi Examples <wlan_step_by_step>` chapter. The script below connects to your network and prints out your device's local IP address.
 
-Besides the neccesary main.py and boot.py files, you can create any folders and python files or libraries that you want to include in your main file. Pymakr will synchronize all files in the project to the board when using the sync button.
+::
+
+    from machine import UART
+    import os
+    uart = UART(0, 115200)
+    os.dupterm(uart)
+
+    wlan = WLAN(mode=WLAN.STA)
+    wlan.scan()
+
+    wlan.connect(ssid='Your Network SSID', auth=(WLAN.WPA2, 'Your Network Password'))
+
+    while not wlan.isconnected():
+        pass
+
+    print(wlan.ifconfig()) # prints out local IP to allow for easy connection via Pymakr Plugin or FTP Client
+
+Besides the neccesary main.py and boot.py files, you can create any folders and python files or libraries that you want to include in your main file. The Pymakr Plugin will synchronize all files in the project to the board when using the Sync button.
 
 
 .. warning::
 
-    When synchronizing your project to the board, make sure the REPL console is ready. If any programs are running or the board is still booting, synchronization might fail.
+    When synchronizing your project to the board, ensure the REPL console is ready. If any programs are running or the board is still booting, synchronization may fail.
 
 
 
-Without creating a project
---------------------------
+Running Your Code
+-----------------
 
-If you just want to test some code on the module, you can create a new file or open an existing one and press the 'run' button.
+If you want to test some code on the module, you can create a new file or open an existing one and then press the ``Run`` button. This will run the code directly onto the Pycom board but it will not upload/sync to the board.
 
 .. Warning::
 
-    The changes you make to your file won't be automatically saved to the device on execution.
+    The changes you make to your file won't be automatically saved to the board upon restarting or exiting the ``Run`` feature, as the Pycom board will not store this code.
 
 
-Coding basics
+Coding Basics
 -------------
 
 For fun, lets try again to build a traffic light. Add the following code to the main.py file:
@@ -414,7 +432,7 @@ For fun, lets try again to build a traffic light. Add the following code to the 
         time.sleep(4)
 
 - Make sure the connection to your board is open in the Pycom Console
-- Press the sync button on the top toolbar. Any progress will be shown in the console.
+- Press the Sync button at the top of the Pycom Console. Any progress will be shown in the console.
 
 Here is the expected result:
 
@@ -423,8 +441,8 @@ Here is the expected result:
     :align: center
     :scale: 60 %
 
-You now have a traffic light in your hands! To stop a running program, use ctrl-c or do a right click
-on the console and press ``Reset``. You can also reboot the board by
+You now have a traffic light in your hands! To stop a running program, use ctrl-c or click ``Cancel``
+on the console. You can also reboot the board by
 pressing the physical reset button.
 
 .. Warning::
