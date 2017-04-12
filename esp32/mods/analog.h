@@ -62,6 +62,8 @@ typedef enum {
 //     ADC_ATTEN_MAX,
 // } adc_atten_t;
 
+#define ADC_ATTEN_MAX 4
+
 typedef enum {
     DAC1_DIS_DAC2_DIS = 0,     /*DAC1 disable, DAC2 disable*/
     DAC1_EN_DAC2_DIS,          /*DAC1 enable,  DAC2 disable*/
