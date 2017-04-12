@@ -5,7 +5,7 @@
 2.1 Intro
 =========
 
-Do you have your basic setup working? Then it's time to look at all the ways you can use and interact with your board. We'll look at some more features of Pymakr and see how we can use telnet, FTP and how to reset the board.
+Do you have your basic setup working? Then it's time to look at all the ways you can use and interact with your board. We'll look at some more features of the Pymakr Plugin and see how we can use telnet, FTP and how to reset the board.
 
 Contents
 
@@ -14,7 +14,7 @@ Contents
 - :ref:`2.4 Local file system and FTP access <pycom_filesystem>`
 - :ref:`2.5 Boot modes and safe boot <safeboot>`
 - :ref:`2.6 Interrupt handling <pycom_interrupt_handling>`
-- :ref:`2.7 Pymakr IDE <pymakr_ide>`
+- :ref:`2.7 Pymakr Plugin <pymakr_ide>`
 
 
 .. _main_features:
