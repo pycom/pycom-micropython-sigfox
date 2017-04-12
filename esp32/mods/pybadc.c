@@ -28,6 +28,7 @@
 #include "soc/gpio_sig_map.h"
 
 #include "adc.h"
+#include "analog.h"
 #include "pybadc.h"
 #include "mpexception.h"
 #include "mpsleep.h"
@@ -82,7 +83,7 @@ STATIC mp_obj_t adc_channel_deinit(mp_obj_t self_in);
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 STATIC void pyb_adc_init (pyb_adc_obj_t *self) {
-    adc1_config_width(self->width - 9);     // ADC_WIDTH_9Bit = 0
+    // adc1_config_width(self->width - 9);     // ADC_WIDTH_9Bit = 0
     self->enabled = true;
 }
 
@@ -96,7 +97,7 @@ STATIC void pyb_adc_check_init(void) {
 STATIC void pyb_adc_channel_init (pyb_adc_channel_obj_t *self) {
     // the ADC block must be enabled first
     pyb_adc_check_init();
-    adc1_config_channel_atten(self->channel, self->attn);
+    // adc1_config_channel_atten(self->channel, self->attn);
     self->enabled = true;
 }
 
@@ -265,7 +266,8 @@ STATIC mp_obj_t adc_channel_value(mp_obj_t self_in) {
     if (!self->enabled) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
-    return MP_OBJ_NEW_SMALL_INT(adc1_get_voltage(self->channel));
+    // return MP_OBJ_NEW_SMALL_INT(adc1_get_voltage(self->channel));
+    return MP_OBJ_NEW_SMALL_INT(analog_adc1_read(self->channel, self->attn));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_value_obj, adc_channel_value);
 
