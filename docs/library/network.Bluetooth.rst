@@ -533,7 +533,7 @@ The following class allows you to manage **Server** characteristics.
 
          events = chr.events()
          if  events & Bluetooth.CHAR_WRITE_EVENT:
-         print("Write request with value = {}".format(chr.value()))
+             print("Write request with value = {}".format(chr.value()))
          else:
              if char1_read_counter < 3:
                  print('Read request on char 1')
