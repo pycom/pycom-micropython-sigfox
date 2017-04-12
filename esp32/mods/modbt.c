@@ -518,29 +518,30 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                     char_obj->read_request = true;
                     char_obj->trans_id = p->read.trans_id;
                     mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+                    break;
                 }
-            } else {    // send the response immediatelly
-                esp_gatt_rsp_t rsp;
-                memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
-                rsp.attr_value.handle = p->read.handle;
-                rsp.attr_value.len = attr_obj->value_len;
-                memcpy(&rsp.attr_value.value, attr_obj->value, attr_obj->value_len);
-                esp_ble_gatts_send_response(gatts_if, p->read.conn_id, p->read.trans_id, ESP_GATT_OK, &rsp);
             }
+            // send the response immediatelly if not a characteristic or if there's no callback registered
+            esp_gatt_rsp_t rsp;
+            memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
+            rsp.attr_value.handle = p->read.handle;
+            rsp.attr_value.len = attr_obj->value_len;
+            memcpy(&rsp.attr_value.value, attr_obj->value, attr_obj->value_len);
+            esp_ble_gatts_send_response(gatts_if, p->read.conn_id, p->read.trans_id, ESP_GATT_OK, &rsp);
         }
         break;
     }
     case ESP_GATTS_WRITE_EVT: {
         bt_gatts_attr_obj_t *attr_obj = find_gatts_attr_by_handle (p->write.handle);
         if (attr_obj) {
-            // only write up to the maximum allowed size
-            uint16_t write_len = p->write.len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : p->write.len;
-            memcpy(attr_obj->value, p->write.value, write_len);
-            attr_obj->value_len = write_len;
-
             esp_ble_gatts_send_response(gatts_if, p->write.conn_id, p->write.trans_id, ESP_GATT_OK, NULL);
 
             if (attr_obj->is_char) {
+                // only write up to the maximum allowed size
+                uint16_t write_len = p->write.len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : p->write.len;
+                memcpy(attr_obj->value, p->write.value, write_len);
+                attr_obj->value_len = write_len;
+
                 bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
                 char_obj->events |= MOD_BT_GATTS_WRITE_EVT;
                 if (char_obj->trigger & MOD_BT_GATTS_WRITE_EVT) {
