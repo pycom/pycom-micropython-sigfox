@@ -39,6 +39,7 @@ Our OEM baseboard reference design with schematic and layout are available `here
 :download:`PDF file hidden <downloads/OEM-baseboard-schematic.pdf>`
 :download:`PDF file hidden <downloads/WiPy-OEM-Drawings.pdf>`
 :download:`PDF file hidden <downloads/LoPy-OEM-Drawings.pdf>`
+:download:`PDF file hidden <downloads/Deep-Sleep-Shield_Schematic.pdf>`
 
 .. raw:: html
 
@@ -52,6 +53,12 @@ Our OEM baseboard reference design with schematic and layout are available `here
     removeModules('#datasheets a.reference.download.internal')
 
     </script>
+
+
+Deep Sleep Shield Schematic
+---------------------------
+
+The Deep sleep shield schematic is available on this `link <../_downloads/Deep-Sleep-Shield_Schematic.pdf>`_.
 
 
 5.5 Powering with an external power source
