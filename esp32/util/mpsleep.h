@@ -22,8 +22,9 @@ typedef enum {
     MPSLEEP_PWRON_RESET = 0,
     MPSLEEP_HARD_RESET,
     MPSLEEP_WDT_RESET,
-    MPSLEEP_HIB_RESET,
-    MPSLEEP_SOFT_RESET
+    MPSLEEP_DEEPSLEEP_RESET,
+    MPSLEEP_SOFT_RESET,
+    MPSLEEP_BROWN_OUT_RESET,
 } mpsleep_reset_cause_t;
 
 /******************************************************************************

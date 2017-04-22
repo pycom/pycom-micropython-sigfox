@@ -36,9 +36,10 @@ uint32_t sntp_update_period = 3600000; // in ms
 
 typedef struct _mach_rtc_obj_t {
     mp_obj_base_t base;
-    uint64_t delta_from_epoch_til_boot;
     mp_obj_t sntp_server_name;
 } mach_rtc_obj_t;
+
+static RTC_DATA_ATTR uint64_t delta_from_epoch_til_boot;
 
 STATIC mach_rtc_obj_t mach_rtc_obj;
 const mp_obj_type_t mach_rtc_type;
@@ -48,11 +49,11 @@ void rtc_init0(void) {
 }
 
 void mach_rtc_set_us_since_epoch(uint64_t nowus) {
-    mach_rtc_obj.delta_from_epoch_til_boot = nowus - get_time_since_boot();
+    delta_from_epoch_til_boot = nowus - get_time_since_boot();
 }
 
 uint64_t mach_rtc_get_us_since_epoch(void) {
-    return get_time_since_boot() + mach_rtc_obj.delta_from_epoch_til_boot;
+    return get_time_since_boot() + delta_from_epoch_til_boot;
 };
 
 STATIC uint64_t mach_rtc_datetime_us(const mp_obj_t datetime) {
@@ -103,16 +104,12 @@ STATIC uint64_t mach_rtc_datetime_us(const mp_obj_t datetime) {
 STATIC void mach_rtc_datetime(const mp_obj_t datetime) {
     uint64_t useconds;
 
-    if (datetime != MP_OBJ_NULL) {
+    if (datetime != mp_const_none) {
         useconds = mach_rtc_datetime_us(datetime);
         mach_rtc_set_us_since_epoch(useconds);
     } else {
         mach_rtc_set_us_since_epoch(0);
     }
-
-    // set WLAN time and date, this is needed to verify certificates
-    // #todo: something similar to the next line is needed
-    // wlan_set_current_time(seconds);
 }
 
 /******************************************************************************/
@@ -120,7 +117,7 @@ STATIC void mach_rtc_datetime(const mp_obj_t datetime) {
 
 STATIC const mp_arg_t mach_rtc_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT, {.u_int = 0} },
-    { MP_QSTR_datetime,                       MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+    { MP_QSTR_datetime,                       MP_ARG_OBJ, {.u_obj = mp_const_none} },
 };
 STATIC mp_obj_t mach_rtc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -139,7 +136,7 @@ STATIC mp_obj_t mach_rtc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, m
     self->base.type = &mach_rtc_type;
 
     // set the time and date
-    if (args[1].u_obj != MP_OBJ_NULL) {
+    if (args[1].u_obj != mp_const_none) {
         mach_rtc_datetime(args[1].u_obj);
     }
 

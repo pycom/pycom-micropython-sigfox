@@ -115,7 +115,10 @@ void TASK_Micropython (void *pvParameters) {
     // init the antenna select switch here
     antenna_init0();
     config_init0();
-    rtc_init0();
+    mpsleep_init0();
+    if (mpsleep_get_reset_cause() != MPSLEEP_DEEPSLEEP_RESET) {
+        rtc_init0();
+    }
 
     // initialization that must not be repeted after a soft reset
     mptask_preinit();
@@ -158,7 +161,6 @@ soft_reset:
     // execute all basic initializations
     pin_init0();    // always before the rest of the peripherals
     mpexception_init0();
-    mpsleep_init0();
 #if MICROPY_PY_THREAD
     mp_irq_init0();
 #endif
