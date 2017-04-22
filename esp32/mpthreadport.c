@@ -171,7 +171,7 @@ void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, i
 }
 
 void mp_thread_create(void *(*entry)(void*), void *arg, size_t *stack_size) {
-    mp_thread_create_ex(entry, arg, stack_size, MP_THREAD_PRIORITY, "Thread");
+    mp_thread_create_ex(entry, arg, stack_size, MP_THREAD_PRIORITY, "MPThread");
 }
 
 void mp_thread_finish(void) {

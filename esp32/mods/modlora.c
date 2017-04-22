@@ -422,7 +422,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
         switch (mcpsIndication->Port) {
         case 1:
         case 2:
-            if (mcpsIndication->BufferSize < LORA_PAYLOAD_SIZE_MAX) {
+            if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
                 memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
                 rx_data_isr.len = mcpsIndication->BufferSize;
                 xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);

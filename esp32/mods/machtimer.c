@@ -38,16 +38,21 @@ void calibrate_us_timer(void) {
     us_timer_calibration = t2 - t1;
 }
 
-void modtimer_init0(void) {
+void machtimer_init0(void) {
     timer_config_t config = {.alarm_en = false, .counter_en = false, .counter_dir = TIMER_COUNT_UP, .intr_type = TIMER_INTR_LEVEL, .auto_reload = false, .divider = 2};
 
     init_alarm_heap();
 
     timer_init(TIMER_GROUP_0, TIMER_0, &config);
-
     timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0);
+    timer_enable_intr(TIMER_GROUP_0, TIMER_0);
     timer_start(TIMER_GROUP_0, TIMER_0);
     calibrate_us_timer();
+}
+
+void machtimer_deinit(void) {
+    timer_pause(TIMER_GROUP_0, TIMER_0);
+    timer_disable_intr(TIMER_GROUP_0, TIMER_0);
 }
 
 uint64_t get_timer_counter_value(void) {

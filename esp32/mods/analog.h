@@ -16,6 +16,7 @@
 #include "esp_types.h"
 #include "esp_err.h"
 #include "soc/soc.h"
+#include "adc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,13 +54,15 @@ typedef enum {
     ADC1_CH_MAX,
 } adc_channel_t;
 
-typedef enum {
-    ADC_ATTEN_0DB = 0,
-    ADC_ATTEN_3DB,
-    ADC_ATTEN_6DB,
-    ADC_ATTEN_12DB,
-    ADC_ATTEN_MAX,
-} adc_atten_t;
+// typedef enum {
+//     ADC_ATTEN_0DB = 0,
+//     ADC_ATTEN_3DB,
+//     ADC_ATTEN_6DB,
+//     ADC_ATTEN_12DB,
+//     ADC_ATTEN_MAX,
+// } adc_atten_t;
+
+#define ADC_ATTEN_MAX 4
 
 typedef enum {
     DAC1_DIS_DAC2_DIS = 0,     /*DAC1 disable, DAC2 disable*/

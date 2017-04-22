@@ -48,6 +48,9 @@
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 
+#include "lwip/opt.h"
+#include "lwip/def.h"
+
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
@@ -70,18 +73,15 @@
  ******************************************************************************/
 typedef struct {
     mp_obj_base_t         base;
-    mp_obj_list_t         conn_list;
-    mp_obj_list_t         srv_list;
-    mp_obj_list_t         attr_list;
     int32_t               scan_duration;
     int32_t               conn_id;          // current activity connection id
     mp_obj_t              handler;
     mp_obj_t              handler_arg;
+    int32_t               gatts_conn_id;
     uint32_t              trigger;
     int32_t               events;
     uint16_t              gatts_if;
     uint16_t              gattc_if;
-    uint16_t              gatts_conn_id;
     bool                  init;
     bool                  busy;
     bool                  scanning;
@@ -91,17 +91,17 @@ typedef struct {
 
 typedef struct {
     mp_obj_base_t         base;
+    mp_obj_list_t         srv_list;
     esp_bd_addr_t         srv_bda;
     int32_t               conn_id;
-    mp_obj_list_t         srv_list;
     esp_gatt_if_t         gatt_if;
 } bt_connection_obj_t;
 
 typedef struct {
     mp_obj_base_t         base;
+    mp_obj_list_t         char_list;
     bt_connection_obj_t   *connection;
     esp_gatt_srvc_id_t    srv_id;
-    mp_obj_list_t         char_list;
 } bt_srv_obj_t;
 
 typedef struct {
@@ -160,6 +160,7 @@ typedef union {
 typedef struct {
     mp_obj_base_t         base;
     uint16_t              handle;
+    bool                  started;
 } bt_gatts_srv_obj_t;
 
 typedef struct {
@@ -177,8 +178,10 @@ typedef struct {
     mp_obj_t              handler;
     mp_obj_t              handler_arg;
     uint32_t              trigger;
-    int32_t               events;
+    uint32_t              events;
+    uint32_t              trans_id;
     uint16_t              config;
+    bool                  read_request;
 } bt_gatts_char_obj_t;
 
 /******************************************************************************
@@ -208,8 +211,8 @@ static esp_ble_adv_params_t bt_adv_params = {
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
-static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
+static void gap_events_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
+static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 static void close_connection(int32_t conn_id);
 
@@ -237,9 +240,9 @@ void modbt_init0(void) {
         esp_ble_gatts_app_unregister(MOD_BT_SERVER_APP_ID);
     }
 
-    mp_obj_list_init((mp_obj_t)&bt_obj.conn_list, 0);
-    mp_obj_list_init((mp_obj_t)&bt_obj.srv_list, 0);
-    mp_obj_list_init((mp_obj_t)&bt_obj.attr_list, 0);
+    mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(btc_conn_list), 0);
+    mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_srv_list), 0);
+    mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_attr_list), 0);
 }
 
 /******************************************************************************
@@ -264,18 +267,18 @@ static bool bt_match_id (esp_gatt_id_t *uuid_a, esp_gatt_id_t *uuid_b) {
 }
 
 static void close_connection (int32_t conn_id) {
-    for (mp_uint_t i = 0; i < bt_obj.conn_list.len; i++) {
-        bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(bt_obj.conn_list.items[i]));
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++) {
+        bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
         if (connection_obj->conn_id == conn_id) {
             connection_obj->conn_id = -1;
-            mp_obj_list_remove((void *)&bt_obj.conn_list, connection_obj);
+            mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
         }
     }
 }
 
 static bt_char_obj_t *find_gattc_char (int32_t conn_id, esp_gatt_srvc_id_t *srvc_id, esp_gatt_id_t *char_id) {
-    for (mp_uint_t i = 0; i < bt_obj.conn_list.len; i++) {
-        bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(bt_obj.conn_list.items[i]));
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++) {
+        bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
 
         if (connection_obj->conn_id == conn_id) {
 
@@ -298,8 +301,8 @@ static bt_char_obj_t *find_gattc_char (int32_t conn_id, esp_gatt_srvc_id_t *srvc
 }
 
 static bt_gatts_attr_obj_t *find_gatts_attr_by_handle (uint16_t handle) {
-    for (mp_uint_t i = 0; i < bt_obj.attr_list.len; i++) {
-        bt_gatts_attr_obj_t *char_obj = ((bt_gatts_attr_obj_t *)(bt_obj.attr_list.items[i]));
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(bts_attr_list).len; i++) {
+        bt_gatts_attr_obj_t *char_obj = ((bt_gatts_attr_obj_t *)(MP_STATE_PORT(bts_attr_list).items[i]));
         if (char_obj->handle == handle) {
             return char_obj;
         }
@@ -307,25 +310,23 @@ static bt_gatts_attr_obj_t *find_gatts_attr_by_handle (uint16_t handle) {
     return NULL;
 }
 
-static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
+static void gap_events_handler (esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param) {
     switch (event) {
     case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT: {
         int32_t duration = bt_obj.scan_duration;
         // the unit of the duration is seconds
-        // printf("Start scanning\n");
         if (duration < 0) {
             duration = 0xFFFF;
         }
         esp_ble_gap_start_scanning(duration);
         break;
     }
-    case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT:
-    {
+    case ESP_GAP_BLE_ADV_DATA_SET_COMPLETE_EVT: {
         bt_gatts_event_result_t gatts_event;
         gatts_event.adv_set = true;
         xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
-    }
         break;
+    }
     case ESP_GAP_BLE_SCAN_RESULT_EVT: {
         bt_event_result_t bt_event_result;
         esp_ble_gap_cb_param_t *scan_result = (esp_ble_gap_cb_param_t *)param;
@@ -339,13 +340,11 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
             }
             break;
         case ESP_GAP_SEARCH_DISC_RES_EVT:
-            // printf("Discovery result\n");
             break;
         case ESP_GAP_SEARCH_INQ_CMPL_EVT:
             if (bt_obj.scan_duration < 0) {
                 esp_ble_gap_set_scan_params(&ble_scan_params);
             } else {
-                // printf("Scan finished\n");
                 bt_obj.scanning = false;
             }
             break;
@@ -359,28 +358,23 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
     }
 }
 
-static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
+static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
     uint16_t conn_id = 0;
     esp_ble_gattc_cb_param_t *p_data = (esp_ble_gattc_cb_param_t *)param;
     bt_event_result_t bt_event_result;
 
-    LOG_INFO("esp_gattc_cb, event = %x\n", event);
     switch (event) {
     case ESP_GATTC_REG_EVT:
         status = p_data->reg.status;
         bt_obj.gattc_if = gattc_if;
-        // printf("status = %x, client_if = %x\n", status, client_if);
         break;
     case ESP_GATTC_OPEN_EVT:
         conn_id = p_data->open.conn_id;
-        // printf("ESP_GATTC_OPEN_EVT conn_id %d, if %d, status %x\n", conn_id, p_data->open.gatt_if, p_data->open.status);
         if (p_data->open.status == ESP_GATT_OK) {
-            // printf("Device connected=%d\n", conn_id);
             bt_event_result.connection.conn_id = conn_id;
             bt_event_result.connection.gatt_if = gattc_if;
             memcpy(bt_event_result.connection.srv_bda, p_data->open.remote_bda, ESP_BD_ADDR_LEN);
         } else {
-            // printf("Connection failed!=%d\n", conn_id);
             bt_event_result.connection.conn_id = -1;
         }
         xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
@@ -392,8 +386,6 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
             bt_event_result.read.value_len = p_data->read.value_len;
             bt_event_result.read.value_type = p_data->read.value_type;
             xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
-        } else {
-            // printf("Error reading BLE characteristic\n");
         }
         bt_obj.busy = false;
         break;
@@ -416,14 +408,11 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
             bt_event_result.characteristic.char_prop = p_data->get_char.char_prop;
             xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
             esp_ble_gattc_get_characteristic(gattc_if, bt_obj.conn_id, &p_data->get_char.srvc_id, char_id);
-            // printf("characteristic found=%x\n", p_data->get_char.char_id.uuid.uuid.uuid16);
         } else {
-            // printf("Error getting BLE characteristic\n");
             bt_obj.busy = false;
         }
         break;
-    case ESP_GATTC_NOTIFY_EVT:
-    {
+    case ESP_GATTC_NOTIFY_EVT: {
         bt_char_obj_t *char_obj;
         char_obj = find_gattc_char (p_data->notify.conn_id, &p_data->notify.srvc_id, &p_data->notify.char_id);
         if (char_obj != NULL) {
@@ -432,17 +421,15 @@ static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp
                 mp_irq_queue_interrupt(gattc_char_callback_handler, char_obj);
             }
         }
-    }
         break;
+    }
     case ESP_GATTC_SEARCH_CMPL_EVT:
-        // printf("SEARCH_CMPL: conn_id = %x, status %d\n", conn_id, p_data->search_cmpl.status);
         bt_obj.busy = false;
         break;
     case ESP_GATTC_CANCEL_OPEN_EVT:
         bt_obj.busy = false;
         // intentional fall through
     case ESP_GATTC_CLOSE_EVT:
-        // printf("Connection closed!\n");
         bt_obj.conn_id = -1;
         close_connection(p_data->close.conn_id);
         break;
@@ -474,12 +461,47 @@ STATIC void gatts_char_callback_handler(void *arg) {
     bt_gatts_char_obj_t *chr = arg;
 
     if (chr->handler != mp_const_none) {
-        mp_call_function_1(chr->handler, chr->handler_arg);
+        mp_obj_t r_value = mp_call_function_1(chr->handler, chr->handler_arg);
+
+        if (chr->read_request) {
+            uint32_t u_value;
+            uint8_t *value;
+            uint8_t value_l = 1;
+
+            chr->read_request = false;
+            if (r_value != mp_const_none) {
+                if (mp_obj_is_integer(r_value)) {
+                    u_value = mp_obj_get_int_truncated(r_value);
+                    value = (uint8_t *)&u_value;
+                    if (u_value > UINT16_MAX) {
+                        value_l = 4;
+                        u_value = lwip_htonl(u_value);
+                    } else if (u_value > UINT8_MAX) {
+                        value_l = 2;
+                        u_value = lwip_htons(u_value);
+                    }
+                } else {
+                    mp_buffer_info_t bufinfo;
+                    mp_get_buffer_raise(r_value, &bufinfo, MP_BUFFER_READ);
+                    value = bufinfo.buf;
+                    value_l = bufinfo.len;
+                }
+            } else {
+                value = chr->attr_obj.value;
+                value_l = chr->attr_obj.value_len;
+            }
+
+            esp_gatt_rsp_t rsp;
+            memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
+            rsp.attr_value.handle = chr->attr_obj.handle;
+            rsp.attr_value.len = value_l;
+            memcpy(&rsp.attr_value.value, value, value_l);
+            esp_ble_gatts_send_response(bt_obj.gatts_if, bt_obj.gatts_conn_id, chr->trans_id, ESP_GATT_OK, &rsp);
+        }
     }
 }
 
-static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
-{
+static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
     esp_ble_gatts_cb_param_t *p = (esp_ble_gatts_cb_param_t *)param;
 
     switch (event) {
@@ -489,34 +511,37 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     case ESP_GATTS_READ_EVT: {
         bt_gatts_attr_obj_t *attr_obj = find_gatts_attr_by_handle (p->read.handle);
         if (attr_obj) {
+            if (attr_obj->is_char) {
+                bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
+                char_obj->events |= MOD_BT_GATTS_READ_EVT;
+                if (char_obj->trigger & MOD_BT_GATTS_READ_EVT) {
+                    char_obj->read_request = true;
+                    char_obj->trans_id = p->read.trans_id;
+                    mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+                    break;
+                }
+            }
+            // send the response immediatelly if not a characteristic or if there's no callback registered
             esp_gatt_rsp_t rsp;
             memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
             rsp.attr_value.handle = p->read.handle;
             rsp.attr_value.len = attr_obj->value_len;
             memcpy(&rsp.attr_value.value, attr_obj->value, attr_obj->value_len);
             esp_ble_gatts_send_response(gatts_if, p->read.conn_id, p->read.trans_id, ESP_GATT_OK, &rsp);
-
-            if (attr_obj->is_char) {
-                bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
-                char_obj->events |= MOD_BT_GATTS_READ_EVT;
-                if (char_obj->trigger & MOD_BT_GATTS_READ_EVT) {
-                    mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
-                }
-            }
         }
         break;
     }
     case ESP_GATTS_WRITE_EVT: {
         bt_gatts_attr_obj_t *attr_obj = find_gatts_attr_by_handle (p->write.handle);
         if (attr_obj) {
-            // only write up to the maximum allowed size
-            uint16_t write_len = p->write.len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : p->write.len;
-            memcpy(attr_obj->value, p->write.value, write_len);
-            attr_obj->value_len = write_len;
-
             esp_ble_gatts_send_response(gatts_if, p->write.conn_id, p->write.trans_id, ESP_GATT_OK, NULL);
 
             if (attr_obj->is_char) {
+                // only write up to the maximum allowed size
+                uint16_t write_len = p->write.len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : p->write.len;
+                memcpy(attr_obj->value, p->write.value, write_len);
+                attr_obj->value_len = write_len;
+
                 bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
                 char_obj->events |= MOD_BT_GATTS_WRITE_EVT;
                 if (char_obj->trigger & MOD_BT_GATTS_WRITE_EVT) {
@@ -534,29 +559,26 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     case ESP_GATTS_CONF_EVT:
     case ESP_GATTS_UNREG_EVT:
         break;
-    case ESP_GATTS_CREATE_EVT:
-    {
+    case ESP_GATTS_CREATE_EVT: {
         bt_gatts_event_result_t gatts_event;
         gatts_event.service_handle = p->create.service_handle;
         xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
-    }
         break;
+    }
     case ESP_GATTS_ADD_INCL_SRVC_EVT:
         break;
-    case ESP_GATTS_ADD_CHAR_EVT:
-    {
+    case ESP_GATTS_ADD_CHAR_EVT: {
         bt_gatts_event_result_t gatts_event;
         gatts_event.char_handle = p->add_char.attr_handle;
         xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
-    }
         break;
-    case ESP_GATTS_ADD_CHAR_DESCR_EVT:
-    {
+    }
+    case ESP_GATTS_ADD_CHAR_DESCR_EVT: {
         bt_gatts_event_result_t gatts_event;
         gatts_event.char_descr_handle = p->add_char_descr.attr_handle;
         xQueueSend(xGattsQueue, (void *)&gatts_event, (TickType_t)0);
-    }
         break;
+    }
     case ESP_GATTS_DELETE_EVT:
         break;
     case ESP_GATTS_START_EVT:
@@ -564,11 +586,15 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
     case ESP_GATTS_STOP_EVT:
         break;
     case ESP_GATTS_CONNECT_EVT:
-        bt_obj.gatts_conn_id = p->connect.conn_id;
-
-        bt_obj.events |= MOD_BT_GATTS_CONN_EVT;
-        if (bt_obj.trigger & MOD_BT_GATTS_CONN_EVT) {
-            mp_irq_queue_interrupt(bluetooth_callback_handler, (void *)&bt_obj);
+        // only allow one connection at a time
+        if (bt_obj.gatts_conn_id >= 0) {
+            esp_ble_gatts_close(bt_obj.gatts_if, p->connect.conn_id);
+        } else {
+            bt_obj.gatts_conn_id = p->connect.conn_id;
+            bt_obj.events |= MOD_BT_GATTS_CONN_EVT;
+            if (bt_obj.trigger & MOD_BT_GATTS_CONN_EVT) {
+                mp_irq_queue_interrupt(bluetooth_callback_handler, (void *)&bt_obj);
+            }
         }
         break;
     case ESP_GATTS_DISCONNECT_EVT:
@@ -605,19 +631,19 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
         esp_bt_controller_enable(ESP_BT_MODE_BTDM);
 
         if (ESP_OK != esp_bluedroid_init()) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth init failed"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Bluetooth init failed"));
         }
         if (ESP_OK != esp_bluedroid_enable()) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError,"Bluetooth enable failed"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Bluetooth enable failed"));
         }
 
-        esp_ble_gap_register_callback(esp_gap_cb);
-        esp_ble_gattc_register_callback(esp_gattc_cb);
+        esp_ble_gap_register_callback(gap_events_handler);
+        esp_ble_gattc_register_callback(gattc_events_handler);
         esp_ble_gatts_register_callback(gatts_event_handler);
 
-        mp_obj_list_init((mp_obj_t)&bt_obj.conn_list, 0);
-        mp_obj_list_init((mp_obj_t)&bt_obj.srv_list, 0);
-        mp_obj_list_init((mp_obj_t)&bt_obj.attr_list, 0);
+        mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(btc_conn_list), 0);
+        mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_srv_list), 0);
+        mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_attr_list), 0);
 
         self->init = true;
     }
@@ -644,9 +670,6 @@ STATIC mp_obj_t bt_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint
     // setup the object
     bt_obj_t *self = (bt_obj_t *)&bt_obj;
     self->base.type = (mp_obj_t)&mod_network_nic_type_bt;
-
-    // give it to the sleep module
-    //pyb_sleep_set_wlan_obj(self); // FIXME
 
     // check the peripheral id
     if (args[0].u_int != 0) {
@@ -834,7 +857,6 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
     } else if (bt_obj.scanning) {
         esp_ble_gap_stop_scanning();
         bt_obj.scanning = false;
-        // printf("Scanning stopped\n");
     }
 
     mp_buffer_info_t bufinfo;
@@ -860,8 +882,7 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
         conn->base.type = (mp_obj_t)&mod_bt_connection_type;
         conn->conn_id = bt_event.connection.conn_id;
         memcpy(conn->srv_bda, bt_event.connection.srv_bda, 6);
-        // printf("conn id=%d\n", bt_event.conn_id);
-        mp_obj_list_append((void *)&bt_obj.conn_list, conn);
+        mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), conn);
         return conn;
     }
 
@@ -893,7 +914,7 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
         esp_ble_gap_set_device_name(name);
     } else {
         adv_data.include_name = false;
-        esp_ble_gap_set_device_name("");
+        esp_ble_gap_set_device_name(" ");
     }
 
     // manufacturer data
@@ -918,18 +939,19 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
 
     // service uuid
     if (args[3].u_obj != mp_const_none) {
-        if (MP_OBJ_IS_SMALL_INT(args[3].u_obj)) {
-            int32_t srv_uuid = mp_obj_get_int(args[3].u_obj);
-            if (srv_uuid > 0xFFFF) {
-                adv_data.service_uuid_len = 4;
-            } else {
-                adv_data.service_uuid_len = 2;
-            }
+        if (mp_obj_is_integer(args[3].u_obj)) {
+            uint32_t srv_uuid = mp_obj_get_int_truncated(args[3].u_obj);
+            uint8_t uuid_buf[16] = {0};
+            memcpy(uuid_buf, (uint8_t *)&srv_uuid, sizeof(uuid_buf));
+            adv_data.service_uuid_len = 16;
             adv_data.p_service_uuid = (uint8_t *)&srv_uuid;
         } else {
             mp_get_buffer_raise(args[3].u_obj, &uuid_bufinfo, MP_BUFFER_READ);
             adv_data.service_uuid_len = uuid_bufinfo.len;
             adv_data.p_service_uuid = uuid_bufinfo.buf;
+            if (adv_data.service_uuid_len != 16) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "incorrect service UUID length"));
+            }
         }
     } else {
         adv_data.service_uuid_len = 0;
@@ -972,6 +994,7 @@ STATIC mp_obj_t bt_service (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
         { MP_QSTR_uuid,                     MP_ARG_REQUIRED | MP_ARG_OBJ },
         { MP_QSTR_isprimary,                MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = true} },
         { MP_QSTR_nbr_chars,                MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 1} },
+        { MP_QSTR_start,                    MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = true} },
     };
 
     mp_buffer_info_t uuid_bufinfo;
@@ -982,9 +1005,9 @@ STATIC mp_obj_t bt_service (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
 
     // service uuid
-    if (MP_OBJ_IS_SMALL_INT(args[0].u_obj)) {
-        int32_t srv_uuid = mp_obj_get_int(args[0].u_obj);
-        if (srv_uuid > 0xFFFF) {
+    if (mp_obj_is_integer(args[0].u_obj)) {
+        uint32_t srv_uuid = mp_obj_get_int_truncated(args[0].u_obj);
+        if (srv_uuid > UINT16_MAX) {
             service_id.id.uuid.len = 4;
             service_id.id.uuid.uuid.uuid32 = srv_uuid;
         } else {
@@ -1012,9 +1035,12 @@ STATIC mp_obj_t bt_service (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
     srv->base.type = (mp_obj_t)&mod_bt_gatts_service_type;
     srv->handle = gatts_event.service_handle;
 
-    esp_ble_gatts_start_service(gatts_event.service_handle);
+    if (args[3].u_bool) {
+        esp_ble_gatts_start_service(gatts_event.service_handle);
+        srv->started = true;
+    }
 
-    mp_obj_list_append((mp_obj_t)&bt_obj.srv_list, srv);
+    mp_obj_list_append((mp_obj_t)&MP_STATE_PORT(bts_srv_list), srv);
 
     return srv;
 
@@ -1023,6 +1049,29 @@ error:
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_service_obj, 1, bt_service);
 
+STATIC mp_obj_t bt_service_start(mp_obj_t self_in) {
+    bt_gatts_srv_obj_t *self = self_in;
+    if (!self->started) {
+        if (ESP_OK != esp_ble_gatts_start_service(self->handle)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+        self->started = true;
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_service_start_obj, bt_service_start);
+
+STATIC mp_obj_t bt_service_stop(mp_obj_t self_in) {
+    bt_gatts_srv_obj_t *self = self_in;
+    if (self->started) {
+        if (ESP_OK != esp_ble_gatts_stop_service(self->handle)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+        self->started = false;
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_service_stop_obj, bt_service_stop);
 
 STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
@@ -1042,9 +1091,9 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     esp_bt_uuid_t char_uuid;
 
     // characteristic uuid
-    if (MP_OBJ_IS_SMALL_INT(args[0].u_obj)) {
-        int32_t srv_uuid = mp_obj_get_int(args[0].u_obj);
-        if (srv_uuid > 0xFFFF) {
+    if (mp_obj_is_integer(args[0].u_obj)) {
+        uint32_t srv_uuid = mp_obj_get_int_truncated(args[0].u_obj);
+        if (srv_uuid > UINT16_MAX) {
             char_uuid.len = 4;
             char_uuid.uuid.uuid32 = srv_uuid;
         } else {
@@ -1079,16 +1128,18 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
 
     if (args[3].u_obj != mp_const_none) {
         // characteristic value
-        if (MP_OBJ_IS_SMALL_INT(args[3].u_obj)) {
-            int32_t value = mp_obj_get_int(args[3].u_obj);
-            memcpy(characteristic->attr_obj.value, &value, sizeof(value));
-            if (value > 0xFF) {
-                characteristic->attr_obj.value_len = 2;
-            } else if (value > 0xFFFF) {
+        if (mp_obj_is_integer(args[3].u_obj)) {
+            uint32_t value = mp_obj_get_int_truncated(args[3].u_obj);
+            if (value > UINT16_MAX) {
                 characteristic->attr_obj.value_len = 4;
+                value = lwip_htonl(value);
+            } else if (value > UINT8_MAX) {
+                characteristic->attr_obj.value_len = 2;
+                value = lwip_htons(value);
             } else {
                 characteristic->attr_obj.value_len = 1;
             }
+            memcpy(characteristic->attr_obj.value, &value, sizeof(value));
         } else {
             mp_buffer_info_t value_bufinfo;
             mp_get_buffer_raise(args[3].u_obj, &value_bufinfo, MP_BUFFER_READ);
@@ -1101,11 +1152,7 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
         characteristic->attr_obj.value_len = 1;
     }
 
-    esp_attr_value_t char_val = {.attr_max_len = BT_CHAR_VALUE_SIZE_MAX,
-                                 .attr_len = characteristic->attr_obj.value_len, 
-                                 .attr_value = characteristic->attr_obj.value};
-    esp_attr_control_t char_control = {.auto_rsp = ESP_GATT_RSP_BY_APP};
-    esp_ble_gatts_add_char(self->handle, &char_uuid, permissions, properties, &char_val, &char_control);
+    esp_ble_gatts_add_char(self->handle, &char_uuid, permissions, properties, NULL, NULL);
 
     bt_gatts_event_result_t gatts_event;
     xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);
@@ -1113,17 +1160,13 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     characteristic->attr_obj.handle = gatts_event.char_handle;
     memcpy(&characteristic->attr_obj.uuid, &char_uuid, sizeof(char_uuid));
 
-    mp_obj_list_append((mp_obj_t)&bt_obj.attr_list, characteristic);
+    mp_obj_list_append((mp_obj_t)&MP_STATE_PORT(bts_attr_list), characteristic);
 
     bt_gatts_attr_obj_t *descriptor = m_new_obj(bt_gatts_attr_obj_t);
     descriptor->uuid.len = ESP_UUID_LEN_16;
     descriptor->uuid.uuid.uuid16 = ESP_GATT_UUID_CHAR_CLIENT_CONFIG;
 
-    esp_attr_value_t attr_val = {.attr_max_len = BT_CHAR_VALUE_SIZE_MAX,
-                                 .attr_len = descriptor->value_len, 
-                                 .attr_value = descriptor->value};
-    esp_attr_control_t attr_control = {.auto_rsp = ESP_GATT_RSP_BY_APP};
-    esp_ble_gatts_add_char_descr(self->handle, &descriptor->uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, &attr_val, &attr_control);
+    esp_ble_gatts_add_char_descr(self->handle, &descriptor->uuid, ESP_GATT_PERM_READ | ESP_GATT_PERM_WRITE, NULL, NULL);
 
     xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);
 
@@ -1135,7 +1178,7 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     descriptor->value[0] = 0;
     descriptor->value[1] = 0;
 
-    mp_obj_list_append((mp_obj_t)&bt_obj.attr_list, descriptor);
+    mp_obj_list_append((mp_obj_t)&MP_STATE_PORT(bts_attr_list), descriptor);
 
     return characteristic;
 
@@ -1148,6 +1191,8 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_characteristic_obj, 1, bt_characteristic);
 STATIC const mp_map_elem_t bt_gatts_service_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_characteristic),          (mp_obj_t)&bt_characteristic_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_start),                   (mp_obj_t)&bt_service_start_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_stop),                    (mp_obj_t)&bt_service_stop_obj },
 };
 STATIC MP_DEFINE_CONST_DICT(bt_gatts_service_locals_dict, bt_gatts_service_locals_dict_table);
 
@@ -1164,8 +1209,8 @@ STATIC mp_obj_t bt_characteristic_value (mp_uint_t n_args, const mp_obj_t *args)
         return mp_obj_new_bytes(self->attr_obj.value, self->attr_obj.value_len);
     } else {
         // set
-        if (MP_OBJ_IS_SMALL_INT(args[1])) {
-            int32_t value = mp_obj_get_int(args[1]);
+        if (mp_obj_is_integer(args[1])) {
+            uint32_t value = mp_obj_get_int_truncated(args[1]);
             memcpy(self->attr_obj.value, &value, sizeof(value));
             if (value > 0xFF) {
                 self->attr_obj.value_len = 2;
@@ -1587,7 +1632,7 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
                                                              &self->characteristic.char_id)) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
-        }  else {
+        } else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection already closed"));
         }
     } else {

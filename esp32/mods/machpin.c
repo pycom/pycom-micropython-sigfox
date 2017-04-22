@@ -194,15 +194,11 @@ static IRAM_ATTR void call_interrupt_handler (pin_obj_t *pin) {
 }
 
 static IRAM_ATTR void machpin_intr_process (void* arg) {
-    // ESP_INTR_DISABLE(ETS_GPIO_INUM);
-    uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);
-    uint32_t gpio_intr_status_h = READ_PERI_REG(GPIO_STATUS1_REG);
-
-    // clear the interrupts
-    SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, gpio_intr_status);
-    SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, gpio_intr_status_h);
     uint32_t gpio_num = 0;
     uint32_t mask;
+
+    uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);
+    uint32_t gpio_intr_status_h = READ_PERI_REG(GPIO_STATUS1_REG);
 
 #ifdef MICROPY_LPWAN_DIO_PIN_NUM
     // fast path for the LPWAN DIO interrupt
@@ -211,6 +207,8 @@ static IRAM_ATTR void machpin_intr_process (void* arg) {
 
         // clear this bit from the interrupt status
         gpio_intr_status &= ~(1 << MICROPY_LPWAN_DIO_PIN_NUM);
+        // clear the interrupt
+        SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, (1 << MICROPY_LPWAN_DIO_PIN_NUM));
     }
 #endif
 
@@ -235,29 +233,9 @@ static IRAM_ATTR void machpin_intr_process (void* arg) {
         mask <<= 1;
     }
 
-// the next algorithm could be faster
-#if 0
-    uint32_t n;
-    for (;;) {
-        n = __builtin_ffs(gpio_intr_status); // find first bit set
-        if (n == 0) break;
-        gpio_num += n;
-        pin_obj_t *self = (pin_obj_t *)pin_find_pin_by_num(&pin_cpu_pins_locals_dict, gpio_num - 1);
-        mp_irq_handler(mp_irq_find(self));
-        gpio_intr_status >>= n;
-    }
-
-    gpio_num = 32;
-    for (;;) {
-        n = __builtin_ffs(gpio_intr_status_h); // find first bit set
-        if (n == 0) break;
-        gpio_num += n;
-        pin_obj_t *self = (pin_obj_t *)pin_find_pin_by_num(&pin_cpu_pins_locals_dict, gpio_num - 1);
-        mp_irq_handler(mp_irq_find(self));
-        gpio_intr_status_h >>= n;
-    }
-#endif
-    // ESP_INTR_ENABLE(ETS_GPIO_INUM);
+    // clear the interrupts
+    SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, gpio_intr_status);
+    SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, gpio_intr_status_h);
 }
 
 /******************************************************************************

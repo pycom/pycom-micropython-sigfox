@@ -46,15 +46,49 @@
 #include "freertos/queue.h"
 #include "freertos/xtensa_api.h"
 
+#include <esp_types.h>
+#include "esp_err.h"
+#include "esp_intr.h"
+#include "esp_intr_alloc.h"
+#include "esp_attr.h"
+#include "esp_freertos_hooks.h"
+#include "soc/timer_group_struct.h"
+#include "soc/timer_group_reg.h"
+#include "esp_log.h"
+#include "driver/timer.h"
+
 /// \module machine - functions related to the SoC
 ///
 
 /******************************************************************************/
 // Micro Python bindings;
 
-STATIC mp_obj_t machine_reset(void) {
-    esp_restart();
-    return mp_const_none;
+static void task_wdt_isr(void *arg) {
+    // ack the interrupt
+    TIMERG0.int_clr_timers.wdt=1;
+    // ets_printf("Task watchdog got triggered\n");
+}
+
+STATIC void machine_wdt_start(void) {
+    TIMERG0.wdt_wprotect=TIMG_WDT_WKEY_VALUE;
+    TIMERG0.wdt_config0.sys_reset_length=7;                 //3.2uS
+    TIMERG0.wdt_config0.cpu_reset_length=7;                 //3.2uS
+    TIMERG0.wdt_config0.level_int_en=1;
+    TIMERG0.wdt_config0.stg0=TIMG_WDT_STG_SEL_INT;          //1st stage timeout: interrupt
+    TIMERG0.wdt_config0.stg1=TIMG_WDT_STG_SEL_RESET_SYSTEM; //2nd stage timeout: reset system
+    TIMERG0.wdt_config1.clk_prescale=80*500;                //Prescaler: wdt counts in ticks of 0.5mS
+    TIMERG0.wdt_config2=2;     //Set timeout before interrupt (1ms)
+    TIMERG0.wdt_config3=2;     //Set timeout before reset     (1ms)
+    TIMERG0.wdt_config0.en=1;
+    TIMERG0.wdt_feed=1;
+    TIMERG0.wdt_wprotect=0;
+    esp_intr_alloc(ETS_TG0_WDT_LEVEL_INTR_SOURCE, 0, task_wdt_isr, NULL, NULL);
+}
+
+STATIC mp_obj_t NORETURN machine_reset(void) {
+    machtimer_deinit();
+    machine_wdt_start();
+    for ( ; ; );
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_reset_obj, machine_reset);
 
@@ -99,7 +133,7 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     if (n_args == 0) {
         esp_deep_sleep_start();
     } else {
-        esp_deep_sleep((uint64_t)(mp_obj_get_int(arg[0]) * 1000));
+        esp_deep_sleep((uint64_t)mp_obj_get_int(arg[0]) * 1000);
     }
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsleep);

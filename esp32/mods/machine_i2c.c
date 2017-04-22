@@ -132,8 +132,8 @@ STATIC void mp_hal_i2c_init(machine_i2c_obj_t *self, uint32_t freq) {
     if (self->us_delay == 0) {
         self->us_delay = 1;
     }
-    pin_config (self->scl, -1, -1, GPIO_MODE_INPUT_OUTPUT_OD, MACHPIN_PULL_UP, 0);
-    pin_config (self->sda, -1, -1, GPIO_MODE_INPUT_OUTPUT_OD, MACHPIN_PULL_UP, 0);
+    pin_config (self->scl, -1, -1, GPIO_MODE_INPUT_OUTPUT_OD, MACHPIN_PULL_UP, 1);
+    pin_config (self->sda, -1, -1, GPIO_MODE_INPUT_OUTPUT_OD, MACHPIN_PULL_UP, 1);
     mp_hal_i2c_stop(self);
 }
 

@@ -13,9 +13,11 @@
 #include "util/mpirq.h"
 
 #include "esp_system.h"
+#include "machtimer_alarm.h"
+
 
 #define CMP(a, b) ((a)->when <= (b)->when)
-#define MIN_HEAP_ELEMENTS (4)
+#define MIN_HEAP_ELEMENTS (8)
 
 #define CLK_FREQ (APB_CLK_FREQ / 2)
 
@@ -35,12 +37,11 @@ struct {
     mp_obj_alarm_t **data;
 } alarm_heap;
 
-mp_obj_alarm_t *alarms[MIN_HEAP_ELEMENTS];
-
 IRAM_ATTR void timer_alarm_isr(void *arg);
 STATIC void load_next_alarm(void);
 STATIC mp_obj_t alarm_delete(mp_obj_t self_in);
 STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj_t handler_arg);
+// STATIC void tidy_alarm_memory(void);
 
 void alarm_preinit(void) {
     timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_alarm_isr, NULL, ESP_INTR_FLAG_IRAM, NULL);
@@ -55,7 +56,6 @@ void init_alarm_heap(void) {
         printf("ERROR: no enough memory for the alarms heap\n");
         for (;;);
     }
-    timer_enable_intr(TIMER_GROUP_0, TIMER_0);
 }
 
 STATIC IRAM_ATTR void insert_alarm(mp_obj_alarm_t *alarm) {
@@ -138,29 +138,27 @@ STATIC IRAM_ATTR void set_alarm_when(mp_obj_alarm_t *alarm, uint64_t delta) {
     alarm->when += delta;
 }
 
-STATIC void tidy_alarm_memory(void) {
-    // Resize the heap if it's consuming too much memory
-    if ((alarm_heap.count <= (alarm_heap.size >> 2)) && (alarm_heap.size > MIN_HEAP_ELEMENTS)) {
-        alarm_heap.size >>= 1;
-
-        void *new_data;
-        new_data = gc_realloc(alarm_heap.data, sizeof(mp_obj_alarm_t *) * alarm_heap.size, true);
-        if (!new_data) {
-            mp_raise_OSError(MP_ENOMEM);
-        }
-        MP_STATE_PORT(mp_alarm_heap) = alarm_heap.data;
-        alarm_heap.data = new_data;
-    }
-}
+// STATIC void tidy_alarm_memory(void) {
+//     // resize the heap if it's consuming too much memory
+//     if ((alarm_heap.count < (alarm_heap.size >> 2)) && (alarm_heap.size > MIN_HEAP_ELEMENTS)) {
+//         alarm_heap.size >>= 1;
+//         void *new_data = gc_realloc(alarm_heap.data, sizeof(mp_obj_alarm_t *) * alarm_heap.size, true);
+//         if (!new_data) {
+//             mp_raise_OSError(MP_ENOMEM);
+//         }
+//         MP_STATE_PORT(mp_alarm_heap) = alarm_heap.data;
+//         alarm_heap.data = new_data;
+//     }
+// }
 
 STATIC void alarm_handler(void *arg) {
     // this function will be called by the interrupt thread
     mp_obj_alarm_t *alarm = arg;
 
-    tidy_alarm_memory();
     if (alarm->handler != mp_const_none) {
         mp_call_function_1(alarm->handler, alarm->handler_arg);
     }
+    // tidy_alarm_memory();
 }
 
 IRAM_ATTR void timer_alarm_isr(void *arg) {
@@ -267,7 +265,6 @@ STATIC mp_obj_t alarm_delete(mp_obj_t self_in) {
 
     if (self->heap_index != -1) {
         remove_alarm(self->heap_index);
-        tidy_alarm_memory();
     }
     return mp_const_none;
 }

@@ -36,6 +36,8 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include <string.h>
 #include <stdint.h>
 
+#include "py/mpconfig.h"
+
 #include "lora/system/gpio.h"
 #include "lora/system/timer.h"
 #include "lora/system/spi.h"
@@ -57,14 +59,14 @@ Maintainer: Miguel Luis and Gregory Cristian
  * Board MCU pins definitions
  */
 
-#define RADIO_RESET                                 GPIO18
+#define RADIO_RESET                                 MICROPY_LPWAN_RESET_PIN_NAME
 
 #define RADIO_MOSI                                  GPIO27
 #define RADIO_MISO                                  GPIO19
 #define RADIO_SCLK                                  GPIO5
-#define RADIO_NSS                                   GPIO17
+#define RADIO_NSS                                   MICROPY_LPWAN_NCS_PIN_NAME
 
-#define RADIO_DIO                                   GPIO23
+#define RADIO_DIO                                   MICROPY_LPWAN_DIO_PIN_NAME
 
 void BoardInitPeriph( void );
 

@@ -170,7 +170,7 @@ soft_reset:
     readline_init0();
     mod_network_init0();
     modbt_init0();
-    modtimer_init0();
+    machtimer_init0();
     bool safeboot = false;
     boot_info_t boot_info;
     uint32_t boot_info_offset;
@@ -266,6 +266,7 @@ soft_reset:
 
 soft_reset_exit:
 
+    machtimer_deinit();
 #if MICROPY_PY_THREAD
     mp_irq_kill();
 #endif

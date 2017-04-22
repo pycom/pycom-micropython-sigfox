@@ -264,17 +264,6 @@ BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.periph
 # add the application linker script(s)
 APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld
 
-LORA_BAND ?= USE_BAND_868
-ifeq ($(BOARD), LOPY)
-    ifeq ($(LORA_BAND), USE_BAND_868)
-        LORA_FREQ = 868
-    else
-        LORA_FREQ = 915
-    endif
-else
-    LORA_FREQ =
-endif
-
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -D$(LORA_BAND) -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
 
@@ -361,7 +350,6 @@ $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
-
 ifeq ($(BOARD), SIPY)
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
 	$(ECHO) "LINK $@"

@@ -218,7 +218,7 @@ STATIC IRAM_ATTR void UARTGenericIntHandler(uint32_t uart_id, uint32_t status) {
                     mp_keyboard_interrupt();
                 } else { // there's always a read buffer available
                     uint16_t next_head = (self->read_buf_head + 1) % MACHUART_RX_BUFFER_LEN;
-                    if (next_head != self->read_buf_tail) {
+                    if (self->read_buf && next_head != self->read_buf_tail) {
                         // only store data if there's room in the buffer
                         self->read_buf[self->read_buf_head] = data;
                         self->read_buf_head = next_head;
