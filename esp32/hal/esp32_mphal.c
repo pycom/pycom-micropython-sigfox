@@ -153,6 +153,12 @@ void mp_hal_stdout_tx_strn_cooked(const char *str, uint32_t len) {
     }
 }
 
+uint32_t mp_hal_ticks_s(void) {
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    return now.tv_sec;
+}
+
 uint32_t mp_hal_ticks_ms(void) {
     struct timeval now;
     gettimeofday(&now, NULL);

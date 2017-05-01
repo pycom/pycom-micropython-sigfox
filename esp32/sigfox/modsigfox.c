@@ -48,6 +48,8 @@
 #define FSK_FREQUENCY_MIN                            863000000   // Hz
 #define FSK_FREQUENCY_MAX                            928000000   // Hz
 
+#define SFX_RESET_FCC_MIN_DELAY_S                    23
+
 Spi_t sigfox_spi = {};
 sigfox_settings_t sigfox_settings = {};
 
@@ -300,16 +302,39 @@ static uint32_t modsigfox_api_init (void) {
 }
 
 static sfx_error_t modsigfox_sfx_send(sigfox_cmd_rx_data_t *cmd_rx_data, sigfox_rx_data_t *rx_data) {
+    uint32_t now = mp_hal_ticks_s();
+
+    if (sfx_rcz_id == E_SIGFOX_RCZ2 || sfx_rcz_id == E_SIGFOX_RCZ4) {
+        sfx_u8 info;
+        if (SFX_ERR_NONE == SIGFOX_API_get_info(&info)) {
+            if ((info & 0b00001111) || !(info & 0b11110000)) {   // FCC channel not default or no free micro-channels on the default one
+                SIGFOX_API_reset();    // Need to reset the Sigfox API in order to return to the default channel
+                int32_t tx_delay = now - sigfox_obj.tx_timestamp;
+                if (sigfox_obj.tx_timestamp > 0) {
+                    // We must wait in order to respect FCC regulations
+                    if (tx_delay >= 0 && tx_delay < SFX_RESET_FCC_MIN_DELAY_S) {
+                        vTaskDelay(((SFX_RESET_FCC_MIN_DELAY_S - tx_delay) * 1000) / portTICK_RATE_MS);
+                    }
+                }
+            }
+        } else {
+            // reset anyway in order to return to the default channel
+            SIGFOX_API_reset();
+        }
+    }
+
+    sigfox_obj.tx_timestamp = now;     // save the current timestamp
+
     if (cmd_rx_data->cmd_u.info.tx.oob) {
         return SIGFOX_API_send_outofband();
     } else {
         if (cmd_rx_data->cmd_u.info.tx.len > 0) {
             return SIGFOX_API_send_frame(cmd_rx_data->cmd_u.info.tx.data, cmd_rx_data->cmd_u.info.tx.len, rx_data->data,
-                                        cmd_rx_data->cmd_u.info.tx.tx_repeat, cmd_rx_data->cmd_u.info.tx.receive);
+                                         cmd_rx_data->cmd_u.info.tx.tx_repeat, cmd_rx_data->cmd_u.info.tx.receive);
         }
         return SIGFOX_API_send_bit(cmd_rx_data->cmd_u.info.tx.data[0] ? SFX_TRUE : SFX_FALSE,
-                                  rx_data->data, cmd_rx_data->cmd_u.info.tx.tx_repeat,
-                                  cmd_rx_data->cmd_u.info.tx.receive);
+                                   rx_data->data, cmd_rx_data->cmd_u.info.tx.tx_repeat,
+                                   cmd_rx_data->cmd_u.info.tx.receive);
     }
 }
 
@@ -816,7 +841,7 @@ mp_obj_t sigfox_frequencies(mp_obj_t self_in) {
 
 mp_obj_t sigfox_config(mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args == 1) {
-        if (sfx_rcz_id > 0) {
+        if (sfx_rcz_id != E_SIGFOX_RCZ1) {
             mp_obj_t tuple[4];
             tuple[0] = mp_obj_new_int_from_uint(rcz_current_config_words[0]);
             tuple[1] = mp_obj_new_int_from_uint(rcz_current_config_words[1]);
@@ -827,7 +852,7 @@ mp_obj_t sigfox_config(mp_uint_t n_args, const mp_obj_t *args) {
             return mp_const_none;
         }
     } else {
-        if (sfx_rcz_id > 0) {
+        if (sfx_rcz_id != E_SIGFOX_RCZ1) {
             mp_obj_t *config;
             mp_obj_get_array_fixed_n(args[1], 4, &config);
             sfx_u32 config_words[3];
@@ -911,10 +936,10 @@ mp_obj_t sigfox_version(mp_obj_t self_in) {
 mp_obj_t sigfox_info(mp_obj_t self_in) {
     sfx_u8 info;
 
-    if (sfx_rcz_id > 0) {
+    if (sfx_rcz_id != E_SIGFOX_RCZ1) {
         if (SFX_ERR_NONE == SIGFOX_API_get_info(&info)) {
             mp_obj_t tuple[2];
-            if (sfx_rcz_id == 2) {  // RCZ3 - LBT
+            if (sfx_rcz_id == E_SIGFOX_RCZ3) {  // RCZ3 - LBT
                 tuple[0] = mp_obj_new_int(info & 0b00000111);   // Frames sent
                 tuple[1] = mp_obj_new_int(info & 0b11111000);   // Carrier sense attempts
             } else {
@@ -929,16 +954,9 @@ mp_obj_t sigfox_info(mp_obj_t self_in) {
 }
 
 mp_obj_t sigfox_reset(mp_obj_t self_in) {
-    sfx_u8 info;
     // only for RCZ2 and RCZ4
-    if (sfx_rcz_id == 1 || sfx_rcz_id == 3) {
+    if (sfx_rcz_id == E_SIGFOX_RCZ2 || sfx_rcz_id == E_SIGFOX_RCZ4) {
         SIGFOX_API_reset();
-        if (SFX_ERR_NONE == SIGFOX_API_get_info(&info) && (info & 0b11110000)) {
-            // we still have free channels, so there's no need to wait
-        } else {
-            // we must force wait 20s in order to comply with FCC regulations
-            vTaskDelay(20000 / portTICK_RATE_MS);
-        }
     }
     return mp_const_none;
 }

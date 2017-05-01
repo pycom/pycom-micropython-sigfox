@@ -20,6 +20,7 @@ int mp_hal_stdin_rx_chr(void);
 void mp_hal_stdout_tx_str(const char *str);
 void mp_hal_stdout_tx_strn(const char *str, uint32_t len);
 void mp_hal_stdout_tx_strn_cooked(const char *str, uint32_t len);
+uint32_t mp_hal_ticks_s(void);
 uint32_t mp_hal_ticks_ms(void);
 uint32_t mp_hal_ticks_us(void);
 void mp_hal_delay_ms(uint32_t delay);
