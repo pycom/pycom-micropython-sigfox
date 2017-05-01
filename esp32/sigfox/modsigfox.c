@@ -889,6 +889,13 @@ mp_obj_t sigfox_public_key(mp_uint_t n_args, const mp_obj_t *args) {
     }
 }
 
+mp_obj_t sigfox_rssi(mp_obj_t self_in) {
+    int8_t rssi;
+    MANUF_API_get_rssi(&rssi);
+    rssi -= 100;   // Sigfox backend compatibility
+    return MP_OBJ_NEW_SMALL_INT(rssi);
+}
+
 mp_obj_t sigfox_rssi_offset(mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args == 1) {
         int16_t rssi_offset;

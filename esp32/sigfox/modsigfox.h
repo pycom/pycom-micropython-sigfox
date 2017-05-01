@@ -170,6 +170,7 @@ extern mp_obj_t sigfox_cw(mp_obj_t self_in, mp_obj_t frequency, mp_obj_t start);
 extern mp_obj_t sigfox_frequencies(mp_obj_t self_in);
 extern mp_obj_t sigfox_config(mp_uint_t n_args, const mp_obj_t *args);
 extern mp_obj_t sigfox_public_key(mp_uint_t n_args, const mp_obj_t *args);
+extern mp_obj_t sigfox_rssi(mp_obj_t self_in);
 extern mp_obj_t sigfox_rssi_offset(mp_uint_t n_args, const mp_obj_t *args);
 extern mp_obj_t sigfox_freq_offset(mp_uint_t n_args, const mp_obj_t *args);
 extern mp_obj_t sigfox_version(mp_obj_t self_in);
