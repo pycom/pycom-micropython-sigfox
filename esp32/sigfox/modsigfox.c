@@ -67,6 +67,8 @@ static uint32_t sfx_rcz_id;
 static uint8_t sigfox_id_rev[4];
 static sfx_rcz_t sfx_rcz;
 
+static RTC_DATA_ATTR uint32_t tx_timestamp;
+
 STATIC sfx_u32 rcz_config_words[4][3] = {
     {0},
     {RCZ2_SET_STD_CONFIG_WORD_0, RCZ2_SET_STD_CONFIG_WORD_1, RCZ2_SET_STD_CONFIG_WORD_2},
@@ -309,8 +311,8 @@ static sfx_error_t modsigfox_sfx_send(sigfox_cmd_rx_data_t *cmd_rx_data, sigfox_
         if (SFX_ERR_NONE == SIGFOX_API_get_info(&info)) {
             if ((info & 0b00001111) || !(info & 0b11110000)) {   // FCC channel not default or no free micro-channels on the default one
                 SIGFOX_API_reset();    // Need to reset the Sigfox API in order to return to the default channel
-                int32_t tx_delay = now - sigfox_obj.tx_timestamp;
-                if (sigfox_obj.tx_timestamp > 0) {
+                int32_t tx_delay = now - tx_timestamp;
+                if (tx_timestamp > 0) {
                     // We must wait in order to respect FCC regulations
                     if (tx_delay >= 0 && tx_delay < SFX_RESET_FCC_MIN_DELAY_S) {
                         vTaskDelay(((SFX_RESET_FCC_MIN_DELAY_S - tx_delay) * 1000) / portTICK_RATE_MS);
@@ -323,7 +325,7 @@ static sfx_error_t modsigfox_sfx_send(sigfox_cmd_rx_data_t *cmd_rx_data, sigfox_
         }
     }
 
-    sigfox_obj.tx_timestamp = now;     // save the current timestamp
+    tx_timestamp = now;     // save the current timestamp
 
     if (cmd_rx_data->cmd_u.info.tx.oob) {
         return SIGFOX_API_send_outofband();

@@ -61,7 +61,6 @@ typedef struct {
   sigfox_mode_t     mode;
   sigfox_state_t    state;
   uint32_t          frequency;
-  uint32_t          tx_timestamp;
 } sigfox_obj_t;
 
 typedef struct {
