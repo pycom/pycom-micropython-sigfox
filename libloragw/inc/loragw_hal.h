@@ -44,7 +44,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* return status code */
 #define LGW_HAL_SUCCESS     0
 #define LGW_HAL_ERROR       -1
-#define LGW_LBT_ISSUE       1
 
 /* radio-specific parameters */
 #define LGW_XTAL_FREQU      32000000            /* frequency of the RF reference oscillator */
@@ -158,9 +157,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* Maximum size of Tx packet struct */
 #define TX_SIZE_MAX 256
 
-/* LBT constants */
-#define LBT_CHANNEL_FREQ_NB 8 /* Number of LBT channels */
-
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
@@ -183,27 +179,6 @@ enum lgw_radio_type_e {
 struct lgw_conf_board_s {
     bool    lorawan_public; /*!> Enable ONLY for *public* networks using the LoRa MAC protocol */
     uint8_t clksrc;         /*!> Index of RF chain which provides clock to concentrator */
-};
-
-/**
-@struct lgw_conf_lbt_chan_s
-@brief Configuration structure for LBT channels
-*/
-struct lgw_conf_lbt_chan_s {
-    uint32_t freq_hz;
-    uint16_t scan_time_us;
-};
-
-/**
-@struct lgw_conf_lbt_s
-@brief Configuration structure for LBT specificities
-*/
-struct lgw_conf_lbt_s {
-    bool                        enable;             /*!> enable or disable LBT */
-    int8_t                      rssi_target;        /*!> RSSI threshold to detect if channel is busy or not (dBm) */
-    uint8_t                     nb_channel;         /*!> number of LBT channels */
-    struct lgw_conf_lbt_chan_s  channels[LBT_CHANNEL_FREQ_NB];
-    int8_t                      rssi_offset;        /*!> RSSI offset to be applied to SX127x RSSI values */
 };
 
 /**
@@ -309,13 +284,6 @@ struct lgw_tx_gain_lut_s {
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_board_setconf(struct lgw_conf_board_s conf);
-
-/**
-@brief Configure the gateway lbt function
-@param conf structure containing the configuration parameters
-@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
-*/
-int lgw_lbt_setconf(struct lgw_conf_lbt_s conf);
 
 /**
 @brief Configure an RF chain (must configure before start)

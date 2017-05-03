@@ -8,9 +8,10 @@ _____) ) ____| | | || |_| ____( (___| | | |
 (C)2017 Semtech-Cycleo
 
 Description:
-this file contains the USB cmd to configure and communicate with
-the Sx1308 LoRA concentrator.
-An USB CDC drivers is required to establish the connection with the picogateway board.
+this file contains the USB commands to configure and communicate with the SX1308
+LoRA concentrator.
+A USB CDC drivers is required to establish the connection with the PicoCell
+board.
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
@@ -19,24 +20,24 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include <stdint.h>        /* C99 types */
-#include <stdio.h>        /* printf fprintf */
-#include <stdlib.h>        /* malloc free */
-#include <unistd.h>        /* lseek, close */
-#include <fcntl.h>        /* open */
-#include <string.h>        /* memset */
-#include <errno.h>   /* Error number definitions */
-#include <termios.h> /* POSIX terminal control definitions */
+#include <stdint.h>     /* C99 types */
+#include <stdio.h>      /* printf fprintf */
+#include <stdlib.h>     /* malloc free */
+#include <unistd.h>     /* lseek, close */
+#include <fcntl.h>      /* open */
+#include <string.h>     /* memset */
+#include <errno.h>      /* Error number definitions */
+#include <termios.h>    /* POSIX terminal control definitions */
 #include <sys/ioctl.h>
 #include <pthread.h>
+#include <time.h>
+#include <sys/select.h>
 #include "loragw_com_linux.h"
 #include "loragw_com.h"
 #include "loragw_hal.h"
 #include "loragw_aux.h"
 #include "loragw_reg.h"
-#include <time.h>
 
-#include <sys/select.h>
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 

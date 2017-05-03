@@ -10,7 +10,6 @@ Description:
     Send a bunch of packets on a settable frequency
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
@@ -517,8 +516,6 @@ int main(int argc, char **argv) {
         if (i == LGW_HAL_ERROR) {
             printf("ERROR\n");
             return EXIT_FAILURE;
-        } else if (i == LGW_LBT_ISSUE ) {
-            printf("Failed: Not allowed (LBT)\n");
         } else {
             /* wait for packet to finish sending */
             do {
