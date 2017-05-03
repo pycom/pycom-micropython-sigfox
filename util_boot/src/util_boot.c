@@ -7,10 +7,9 @@ _____) ) ____| | | || |_| ____( (___| | | |
  (C)2013 Semtech-Cycleo
 
 Description:
-   SPI stress test
+ Utility to switch the PicoCell MCU to DFU mode
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
@@ -43,71 +42,35 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define VERS                    103
-#define READS_WHEN_ERROR        16 /* number of times a read is repeated if there is a read error */
-#define BUFF_SIZE               1024 /* maximum number of bytes that we can write in sx1301 RX data buffer */
-#define DEFAULT_TX_NOTCH_FREQ   129E3
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
-/* signal handling variables */
-struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
-static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
-
-static void sig_handler(int sigio);
 
 void usage (void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;;
-    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
-}
-
 /* describe command line options */
 void usage(void) {
-    MSG( "Available options:\n");
-    MSG( " -h print this help\n");
-    MSG( " -b to enter in DFU mode \n");
+    MSG("Available options:\n");
+    MSG(" -h print this help\n");
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
 int main(int argc, char **argv) {
-    int i;
+    int i, x;
 
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL);
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
-
-    while ((i = getopt (argc, argv, "hblq:")) != -1) {
-        printf("cmd = %c\n", i);
+    while ((i = getopt (argc, argv, "h")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
                 break;
-            case 'b':
-                lgw_connect(false);
-                lgw_reg_GOTODFU();
-                return EXIT_SUCCESS;
-                break;
-
 
             default:
                 MSG("ERROR: argument parsing use -h option for help\n");
@@ -115,6 +78,25 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
         }
     }
+
+    /* Open communication bridge */
+    x = lgw_connect();
+    if (x == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        return -1;
+    }
+
+    /* Switch PicoCell MCU to DFU mode */
+    lgw_reg_GOTODFU();
+
+    /* Close communication bridge */
+    x = lgw_disconnect();
+    if (x == -1) {
+        printf("ERROR: FAIL TO DISCONNECT BOARD\n");
+        return -1;
+    }
+
+    return EXIT_SUCCESS;
 }
 
 /* --- EOF ------------------------------------------------------------------ */
