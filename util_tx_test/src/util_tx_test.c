@@ -190,7 +190,7 @@ int main(int argc, char **argv) {
 
     /* loop variables (also use as counters in the packet payload) */
     uint16_t cycle_count = 0;
-    lgw_connect(false);
+
     /* Parameter parsing */
     int option_index = 0;
     static struct option long_options[] = {
@@ -396,6 +396,14 @@ int main(int argc, char **argv) {
     sigaction(SIGTERM, &sigact, NULL);
 
     /* starting the concentrator */
+
+    /* Open the communication bridge */
+    i = lgw_connect();
+    if (i == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        return -1;
+    }
+
     /* board config */
     memset(&boardconf, 0, sizeof(boardconf));
     boardconf.lorawan_public = true;

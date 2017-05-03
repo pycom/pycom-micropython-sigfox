@@ -7,10 +7,9 @@ _____) ) ____| | | || |_| ____( (___| | | |
  (C)2013 Semtech-Cycleo
 
 Description:
-   SPI stress test
+   USB stress test
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
@@ -139,7 +138,7 @@ int main(int argc, char **argv) {
     sigaction(SIGTERM, &sigact, NULL);
 
     /* start SPI link */
-    i = lgw_connect(false);
+    i = lgw_connect();
     if (i != LGW_REG_SUCCESS) {
         MSG("ERROR: lgw_connect() did not return SUCCESS");
         return EXIT_FAILURE;

@@ -7,12 +7,10 @@
   (C)2017 Semtech-Cycleo
 
 Description:
-    Minimum test program for the loragw_spi 'library'
+    Minimum test program for the loragw_reg 'library'
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-
 */
-
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
@@ -36,7 +34,7 @@ int main() {
 
     printf("Beginning of test for loragw_reg.c\n");
 
-    lgw_connect(false);
+    lgw_connect();
 
     /* 2 SPI transactions:
     -> 0x80 0x00        <- 0x00 0x00        forcing page 0

@@ -11,7 +11,6 @@ Description:
     SX1301 tx continuous utility
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Matthieu Leurent
 */
 
 
@@ -99,12 +98,6 @@ int main(int argc, char **argv) {
     unsigned int arg_u;
     float arg_f;
     char arg_s[64];
-
-    //tbd
-
-
-
-    lgw_connect(false);
 
     /* Application parameters */
     uint32_t freq_hz = DEFAULT_FREQ_HZ;
@@ -289,6 +282,13 @@ int main(int argc, char **argv) {
     sigaction( SIGINT, &sigact, NULL );
     sigaction( SIGTERM, &sigact, NULL );
 
+    /* Open communication bridge */
+    i = lgw_connect();
+    if (i == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        return -1;
+    }
+
     /* Board config */
     memset(&boardconf, 0, sizeof(boardconf));
     boardconf.lorawan_public = true;
@@ -398,6 +398,10 @@ int main(int argc, char **argv) {
 
     /* Send packet */
     i = lgw_send(txpkt);
+    if (i == -1) {
+        printf("ERROR: FAIL TO START TX...\n");
+        return -1;
+    }
 
     /* Recap all settings */
     printf("SX1301 library version: %s\n", lgw_version_info());

@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
     uint8_t status_var = 0;
     double xd = 0.0;
     int xi = 0;
-    lgw_connect(false);
+
     /* parse command line options */
     while ((i = getopt (argc, argv, "ha:b:t:r:k:")) != -1) {
         switch (i) {
@@ -179,6 +179,13 @@ int main(int argc, char **argv) {
     printf("Beginning of test for loragw_hal.c\n");
 
     printf("*** Library version information ***\n%s\n\n", lgw_version_info());
+
+    /* Open communication bridge */
+    i = lgw_connect();
+    if (i == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        return -1;
+    }
 
     /* set configuration for board */
     memset(&boardconf, 0, sizeof(boardconf));

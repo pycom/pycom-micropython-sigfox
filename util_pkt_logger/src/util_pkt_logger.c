@@ -10,7 +10,6 @@ Description:
     Configure LoRa concentrator and record received packets in a log file
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
@@ -36,7 +35,6 @@ Maintainer: Sylvain Miermont
 
 #include "parson.h"
 #include "loragw_hal.h"
-
 #include "loragw_reg.h"
 
 /* -------------------------------------------------------------------------- */
@@ -429,7 +427,7 @@ int main(int argc, char **argv) {
     struct timespec fetch_time;
     char fetch_timestamp[30];
     struct tm * x;
-    lgw_connect(false);
+
     /* parse command line options */
     while ((i = getopt (argc, argv, "hr:")) != -1) {
         switch (i) {
@@ -460,6 +458,13 @@ int main(int argc, char **argv) {
     sigaction(SIGQUIT, &sigact, NULL);
     sigaction(SIGINT, &sigact, NULL);
     sigaction(SIGTERM, &sigact, NULL);
+
+    /* Open communication bridge */
+    i = lgw_connect();
+    if (i == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        return -1;
+    }
 
     /* configuration files management */
     if (access(debug_conf_fname, R_OK) == 0) {
