@@ -27,6 +27,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_com.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -483,46 +484,44 @@ int reg_r_align32(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target
 
 
 /* Concentrator connect */
-int lgw_connect(bool com_only) {
+int lgw_connect(void) {
     int com_stat = LGW_COM_SUCCESS;
     uint8_t u = 0;
 
-
-    /* check SPI link status */
+    /* check COM link status */
     if (lgw_com_target != NULL) {
         DEBUG_MSG("WARNING: concentrator was already connected\n");
         lgw_com_close(lgw_com_target);
     }
 
-    /* open the SPI link */
+    /* open the COM link */
     com_stat = lgw_com_open(&lgw_com_target);
     if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
         return LGW_REG_ERROR;
     }
+
     wait_ms(10);
-    if (com_only == false ) {
-        lgw_com_mux_mode = LGW_COM_MUX_MODE0;
+    lgw_com_mux_mode = LGW_COM_MUX_MODE0;
 
-        /* check SX1301 version */
-        com_stat = lgw_com_r(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
-        if (com_stat != LGW_COM_SUCCESS) {
-            DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
-            return LGW_REG_ERROR;
-        }
-        if (u != loregs[LGW_VERSION].dflt) {
-            DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
-            return LGW_REG_ERROR;
-        }
+    /* check SX1301 version */
+    com_stat = lgw_com_r(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
+    if (com_stat != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
+        return LGW_REG_ERROR;
+    }
+    if (u != loregs[LGW_VERSION].dflt) {
+        DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
+        return LGW_REG_ERROR;
+    }
 
-        /* write 0 to the page/reset register */
-        com_stat = lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
-        if (com_stat != LGW_COM_SUCCESS) {
-            DEBUG_MSG("ERROR WRITING PAGE REGISTER\n");
-            return LGW_REG_ERROR;
-        } else {
-            lgw_regpage = 0;
-        }
+    /* write 0 to the page/reset register */
+    com_stat = lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
+    if (com_stat != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR WRITING PAGE REGISTER\n");
+        return LGW_REG_ERROR;
+    } else {
+        lgw_regpage = 0;
     }
 
     DEBUG_MSG("Note: success connecting the concentrator\n");
@@ -534,8 +533,6 @@ int lgw_connect(bool com_only) {
 /* Concentrator disconnect */
 int lgw_disconnect(void) {
     if (lgw_com_target != NULL) {
-
-
         lgw_reg_resetSTM32();
         lgw_com_close(lgw_com_target);
         lgw_com_target = NULL;
@@ -780,35 +777,36 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-
-
-
-/*Embedded HAL into STM32 part */
 int lgw_reg_receive_cmd( uint8_t max_packet, uint8_t *data) {
-
     return(lgw_receive_cmd(lgw_com_target, max_packet, data));
-
 }
 
 int lgw_reg_rxrf_setconfcmd(  uint8_t rfchain, uint8_t *data, uint16_t size) {
     return(lgw_rxrf_setconfcmd(lgw_com_target, rfchain, data, size));
 }
+
 int lgw_reg_rxif_setconfcmd(  uint8_t ifchain, uint8_t *data, uint16_t size) {
-    return (lgw_rxif_setconfcmd(lgw_com_target, ifchain, data, size));
+    return(lgw_rxif_setconfcmd(lgw_com_target, ifchain, data, size));
 }
+
 int lgw_reg_sendconfcmd(uint8_t *data, uint16_t size) {
     return(lgw_sendconfcmd(lgw_com_target, data, size));
 }
+
 int lgw_txgainreg_setconfcmd( uint8_t *data, uint16_t size) {
     return(lgw_txgain_setconfcmd(lgw_com_target, data, size));
 }
+
 int lgw_regtrigger(uint32_t *data) {
     return(lgw_trigger(lgw_com_target, 0, data));
 }
+
 int lgw_reg_board_setconfcmd(uint8_t *data, uint16_t size) {
     return(lgw_boardconfcmd(lgw_com_target, data, size));
 }
+
 int lgw_reg_calibration_snapshot(void) {
     return(lgw_calibration_snapshot(lgw_com_target));
 }
@@ -822,7 +820,7 @@ int lgw_reg_GOTODFU(void) {
 }
 
 int lgw_reg_GetUniqueId(uint8_t * uid) {
-    return( lgw_GetUniqueId(lgw_com_target, uid));
+    return(lgw_GetUniqueId(lgw_com_target, uid));
 }
 
 /* --- EOF ------------------------------------------------------------------ */
