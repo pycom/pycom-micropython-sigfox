@@ -54,16 +54,24 @@ for spectral measurement.
 
 ### 2.5. util_boot ###
 
-This software is used to set PicoCell Gateway in dfu mode for download new FW MCU.
+This software is used to set PicoCell Gateway in dfu mode for programming the
+MCU with a new firmware.
 
 ### 2.6. util_chip_id ###
 
 This software is used to obtain the unique id of the PicoCell gateway.
-64 bits unique id extracts from the STM32 uinque id registers.
+64 bits unique id extracted from the STM32 unique id registers.
 
 
 4. Changelog
 -------------
+
+### v0.1.0  ###
+
+* util_boot: no more command line parameter, only used to switch to DFU mode
+* util_chip_id: no more command line parameter, just print the PicoCell GW
+unique ID on the console.
+* HAL: removed com_only parameter from lgw_connect() function
 
 ### v0.0.1  ###
 
