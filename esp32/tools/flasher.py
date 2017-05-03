@@ -72,6 +72,25 @@ def erase_flash(port, command):
     if process.returncode != 0 or num_erases != 1:
         working_threads[port] = None
 
+def set_vdd_sdio_voltage(port, command):
+    global working_threads
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    num_voltages = 0
+
+    # poll the process for new output until finished
+    while True:
+        nextline = process.stdout.readline()
+        if nextline == '' and process.poll() != None:
+            break
+        if 'VDD_SDIO setting complete' in nextline:
+            sys.stdout.write('Board VDD_SDIO Voltage configured OK on port %s\n' % port)
+            num_voltages += 1
+        sys.stdout.flush()
+
+    # hack to give feedback to the main thread
+    if process.returncode != 0 or num_voltages != 1:
+        working_threads[port] = None
+
 def flash_firmware(port, command):
     global working_threads
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -157,6 +176,7 @@ def run_qa_test(port, board):
 def main():
     cmd_parser = argparse.ArgumentParser(description='Flash the ESP32 and optionally run a small test on it.')
     cmd_parser.add_argument('--esptool', default=None, help='the path to the esptool')
+    cmd_parser.add_argument('--espefuse', default=None, help='the path to the espefuse')
     cmd_parser.add_argument('--boot', default=None, help='the path to the bootloader binary')
     cmd_parser.add_argument('--table', default=None, help='the path to the partitions table')
     cmd_parser.add_argument('--app', default=None, help='the path to the application binary')
@@ -165,6 +185,7 @@ def main():
     cmd_parser.add_argument('--erase', default=None, help='set to True to erase the boards first')
     cmd_parser.add_argument('--qa', action='store_true', help='just do some quality asurance test')
     cmd_parser.add_argument('--board', default='LoPy', help='identifies the board to be flashed and tested')
+    cmd_parser.add_argument('--revision', default='1', help='identifies the hardware revision')
     cmd_args = cmd_parser.parse_args()
 
     global working_threads
@@ -203,6 +224,43 @@ def main():
             print("=============================================================")
             global_ret = 1
     else:
+        if int(cmd_args.revision) > 1:
+            # program the efuse bits to set the VDD_SDIO voltage to 1.8V
+            try:
+                print('Configuring the VDD_SDIO voltage...')
+                for port in cmd_args.ports:
+                    cmd = ['python', cmd_args.espefuse, '--port', port, '--do-not-confirm', 'set_flash_voltage', '1.8V']
+                    working_threads[port] = threading.Thread(target=set_vdd_sdio_voltage, args=(port, cmd))
+                    working_threads[port].start()
+
+                for port in cmd_args.ports:
+                    if working_threads[port]:
+                        working_threads[port].join()
+                _ports = list(cmd_args.ports)
+                for port in _ports:
+                    if working_threads[port] == None:
+                        print("Error setting the VDD_SDIO voltage on the board on port %s" % port)
+                        cmd_args.ports.remove(port)
+                        ret = 1
+
+            except Exception as e:
+                ret = 1
+                print_exception(e)
+
+            if ret == 0:
+                print("=============================================================")
+                print("VDD_SDIO voltage setting succeeded :-)")
+                print("=============================================================")
+            else:
+                print("=============================================================")
+                print("ERROR: VDD_SDIO voltage setting failed in some boards!")
+                print("=============================================================")
+                global_ret = 1
+
+            raw_input("Please reset all the boards and press enter to continue with the flashing process...")
+            time.sleep(1.0)   # wait for the board to reset
+            working_threads = {}
+
         if cmd_args.erase:
             try:
                 print('Erasing flash memory... (will take a few seconds)')

@@ -8,6 +8,7 @@
 #
 
 from network import WLAN
+from machine import Pin
 import binascii
 import pycom
 import time
@@ -15,6 +16,9 @@ import os
 
 wlan = WLAN(mode=WLAN.STA)
 wifi_passed = False
+
+red_led = Pin('P10', mode=Pin.OUT, value=0)
+green_led = Pin('P11', mode=Pin.OUT, value=0)
 
 def test_wifi():
     global wifi_passed
@@ -38,13 +42,16 @@ try:
     initial_test_result = f.readall();
     if wifi_passed and binascii.hexlify(wlan.mac()) != EMPTY_MAC_ADDRESS and os.uname().release == "{FW_VERSION}" and 'WiPy' in os.uname().machine and initial_test_result == 'Test OK':
         pycom.rgbled(0x008000)      # green
+        green_led(1)
         print('QA Test OK')
     else:
         pycom.rgbled(0x800000)      # red
+        red_led(1)
         print('QA Test failed')
     f.close()
 except Exception:
         pycom.rgbled(0x800000)      # red
+        red_led(1)
         print('QA Test failed')
 
 while True:

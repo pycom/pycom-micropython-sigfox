@@ -10,10 +10,15 @@
 import time
 import machine
 from network import WLAN
+from machine import Pin
+
 wlan = WLAN(mode=WLAN.STA)
 
 wifi_passed = False
 lora_passed = False
+
+red_led = Pin('P10', mode=Pin.OUT, value=0)
+green_led = Pin('P11', mode=Pin.OUT, value=0)
 
 def test_wifi():
     global wifi_passed
@@ -49,8 +54,14 @@ def test_lora(ls):
 test_lora(s)
 
 if wifi_passed and lora_passed:
+    pycom.heartbeat(False)
+    pycom.rgbled(0x008000)   # green
+    green_led(1)
     print('Test OK')
 else:
+    pycom.heartbeat(False)
+    pycom.rgbled(0x800000)   # red
+    red_led(1)
     print('Test failed')
 
 time.sleep(0.5)
