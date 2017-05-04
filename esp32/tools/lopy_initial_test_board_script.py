@@ -9,6 +9,7 @@
 
 import time
 import machine
+import pycom
 from network import WLAN
 from machine import Pin
 
@@ -40,7 +41,7 @@ lora = LoRa(mode=LoRa.LORA)
 s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
 s.setblocking(False)
 
-time.sleep(1.5)
+time.sleep(0.5)
 
 def test_lora(ls):
     import time

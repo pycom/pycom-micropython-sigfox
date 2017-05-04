@@ -8,7 +8,7 @@
 #
 
 from network import LoRa
-from mchine import Pin
+from machine import Pin
 import binascii
 import pycom
 import os
