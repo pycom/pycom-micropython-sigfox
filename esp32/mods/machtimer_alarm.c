@@ -50,8 +50,8 @@ void alarm_preinit(void) {
 void init_alarm_heap(void) {
     alarm_heap.size = MIN_HEAP_ELEMENTS;
     alarm_heap.count = 0;
-    alarm_heap.data = gc_alloc(MIN_HEAP_ELEMENTS, false);
-    MP_STATE_PORT(mp_alarm_heap) = alarm_heap.data;
+    MP_STATE_PORT(mp_alarm_heap) = gc_alloc(MIN_HEAP_ELEMENTS * sizeof(mp_obj_alarm_t *), false);
+    alarm_heap.data = MP_STATE_PORT(mp_alarm_heap);
     if (alarm_heap.data == NULL) {
         printf("ERROR: no enough memory for the alarms heap\n");
         for (;;);
@@ -62,31 +62,33 @@ STATIC IRAM_ATTR void insert_alarm(mp_obj_alarm_t *alarm) {
     uint32_t index, parent;
 
     if (alarm_heap.count == alarm_heap.size) {
-        // no need to panic, interrupt doesn't alter the heap size when reinserting a periodic alarm
+        // no need to panic, interrupt doesn't alter the heap size when re-inserting a periodic alarm
         // so this is not going to be called from within the interrupt for a periodic alarm reinsertion
         alarm_heap.size <<= 1;
 
-
-        void *new_data;
-        new_data = gc_realloc(alarm_heap.data, alarm_heap.size * sizeof(mp_obj_alarm_t *), true);
+        void *new_data = gc_realloc(alarm_heap.data, alarm_heap.size * sizeof(mp_obj_alarm_t *), true);
         if (!new_data) {
             mp_raise_OSError(MP_ENOMEM);
         }
-        MP_STATE_PORT(mp_alarm_heap) = alarm_heap.data;
-        alarm_heap.data = new_data;
+        MP_STATE_PORT(mp_alarm_heap) = new_data;
+        alarm_heap.data = MP_STATE_PORT(mp_alarm_heap);
     }
 
-    // Find out where to put the element and put it
-    for (index = alarm_heap.count++; index; index = parent) {
+    // find out where to put the element and put it
+    for (index = alarm_heap.count++; index > 0; index = parent) {
         parent = (index - 1) >> 1;
-        if (CMP(alarm_heap.data[parent], alarm)) break;
+        if (CMP(alarm_heap.data[parent], alarm)) {
+            break;
+        }
         alarm_heap.data[index] = alarm_heap.data[parent];
         alarm_heap.data[index]->heap_index = index;
     }
     alarm_heap.data[index] = alarm;
-
     alarm->heap_index = index;
-    if (index == 0) load_next_alarm();
+
+    if (index == 0) {
+        load_next_alarm();
+    }
 }
 
 // remove top alarm from the heap
@@ -103,10 +105,16 @@ STATIC IRAM_ATTR void remove_alarm(uint32_t el) {
     for (index = el; 1; index = swap) {
         // Find the child to swap with
         swap = (index << 1) + 1;
-        if (swap >= alarm_heap.count) break; // If there are no children, the heap is reordered
+        if (swap >= alarm_heap.count) {
+            break; // If there are no children, the heap is reordered
+        }
         other = swap + 1;
-        if ((other < alarm_heap.count) && CMP(alarm_heap.data[other], alarm_heap.data[swap])) swap = other;
-        if (CMP(temp, alarm_heap.data[swap])) break; // If the bigger child is bigger than or equal to its parent, the heap is reordered
+        if ((other < alarm_heap.count) && CMP(alarm_heap.data[other], alarm_heap.data[swap])) {
+            swap = other;
+        }
+        if (CMP(temp, alarm_heap.data[swap])) {
+            break; // If the biggest child is bigger than or equal to its parent, the heap is reordered
+        }
 
         alarm_heap.data[index] = alarm_heap.data[swap];
         alarm_heap.data[index]->heap_index = index;
@@ -115,7 +123,9 @@ STATIC IRAM_ATTR void remove_alarm(uint32_t el) {
     if (alarm_heap.count) {
         alarm_heap.data[index]->heap_index = index;
     }
-    if (el == 0) load_next_alarm();
+    if (el == 0) {
+        load_next_alarm();
+    }
 }
 
 STATIC IRAM_ATTR void load_next_alarm(void) {
