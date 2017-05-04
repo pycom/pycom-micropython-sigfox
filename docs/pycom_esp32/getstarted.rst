@@ -380,6 +380,7 @@ Many users, especially the WiPy users, will want a WiFi script in the boot.py fi
 ::
 
     from machine import UART
+    from network import WLAN
     import os
     uart = UART(0, 115200)
     os.dupterm(uart)
