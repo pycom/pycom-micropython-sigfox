@@ -60,41 +60,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int set_interface_attribs(int fd, int speed, int parity) {
-#ifdef _WIN32
-    return set_interface_attribs_win(fd, speed, parity);
-#elif __linux__
-    return set_interface_attribs_linux(fd, speed, parity);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-void set_blocking(int fd, int should_block) {
-#ifdef _WIN32
-    return set_blocking_win(fd, should_block);
-#elif __linux__
-    return set_blocking_linux(fd, should_block);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_com_open(void **com_target_ptr) {
 #ifdef _WIN32
@@ -192,42 +157,6 @@ int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
     return lgw_com_rb_win(com_target, com_mux_mode, com_mux_target, address, data, size);
 #elif __linux__
     return lgw_com_rb_linux(com_target, com_mux_mode, com_mux_target, address, data, size);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int SendCmdn(CmdSettings_t CmdSettings, int file1) {
-#ifdef _WIN32
-    return SendCmdn_win(CmdSettings, file1);
-#elif __linux__
-    return SendCmdn_linux(CmdSettings, file1);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int ReceiveAns(AnsSettings_t *Ansbuffer, int file1) {
-#ifdef _WIN32
-    return ReceiveAns_win(Ansbuffer, file1);
-#elif __linux__
-    return ReceiveAns_linux(Ansbuffer, file1);
 #elif __APPLE__
     DEBUG_PRINTF("System is not recognized.");
 #elif __unix__
@@ -428,24 +357,6 @@ int lgw_GetUniqueId(void * com_target, uint8_t * uid) {
     return lgw_GetUniqueId_win(com_target, uid);
 #elif __linux__
     return lgw_GetUniqueId_linux(com_target, uid);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int checkcmd(uint8_t cmd) {
-#ifdef _WIN32
-    return checkcmd_win(cmd);
-#elif __linux__
-    return checkcmd_linux(cmd);
 #elif __APPLE__
     DEBUG_PRINTF("System is not recognized.");
 #elif __unix__
