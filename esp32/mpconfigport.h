@@ -209,9 +209,6 @@ extern const struct _mp_obj_module_t mp_module_ussl;
 
 #define _assert(expr)   ((expr) ? (void)0 : __assert_func(__FILE__, __LINE__, __func__, #expr))
 
-#define MICROPY_HW_ANTENNA_DIVERSITY                            (1)
-#define MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM                    (16)
-
 #include "mpconfigboard.h"
 
 #endif // __INCLUDED_MPCONFIGPORT_H

@@ -20,6 +20,8 @@
 
 #if defined(OEM_VERSION)
 
+    #define MICROPY_HW_ANTENNA_DIVERSITY                            (0)
+
     #define MICROPY_LPWAN_RESET_PIN_NUM
     #define MICROPY_LPWAN_RESET_PIN_NAME
     #define MICROPY_LPWAN_RESET_PIN
@@ -34,6 +36,9 @@
     #define MICROPY_LPWAN_NCS_PIN                                   (pin_GPIO18)
 
 #else
+
+    #define MICROPY_HW_ANTENNA_DIVERSITY                            (1)
+    #define MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM                    (16)
 
     #define MICROPY_LPWAN_RESET_PIN_NUM                             (18)
     #define MICROPY_LPWAN_RESET_PIN_NAME                            GPIO18

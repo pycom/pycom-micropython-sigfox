@@ -21,6 +21,8 @@ lora_passed = False
 red_led = Pin('P10', mode=Pin.OUT, value=0)
 green_led = Pin('P11', mode=Pin.OUT, value=0)
 
+time.sleep(1.0)
+
 def test_wifi():
     global wifi_passed
     nets = wlan.scan()
@@ -36,7 +38,7 @@ if not wifi_passed: # try twice
 
 from network import LoRa
 import socket
-lora = LoRa(mode=LoRa.LORA)
+lora = LoRa(mode=LoRa.LORA, public=False)
 
 s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
 s.setblocking(False)
@@ -46,7 +48,7 @@ time.sleep(0.5)
 def test_lora(ls):
     import time
     global lora_passed
-    for i in range(3):
+    for i in range(5):
         if ls.recv(16) == b'Pycom':
             lora_passed = True
             break

@@ -23,8 +23,6 @@
 #include "antenna.h"
 
 
-#if MICROPY_HW_ANTENNA_DIVERSITY
-
 /******************************************************************************
 DEFINE CONSTANTS
 ******************************************************************************/
@@ -32,12 +30,15 @@ DEFINE CONSTANTS
 /******************************************************************************
 DEFINE PRIVATE DATA
 ******************************************************************************/
+#if MICROPY_HW_ANTENNA_DIVERSITY
 static antenna_type_t antenna_type_selected = ANTENNA_TYPE_INTERNAL;
+#endif
 
 /******************************************************************************
 DEFINE PUBLIC FUNCTIONS
 ******************************************************************************/
 void antenna_init0(void) {
+#if MICROPY_HW_ANTENNA_DIVERSITY
     gpio_config_t gpioconf = {.pin_bit_mask = 1ull << MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM,
                               .mode = GPIO_MODE_OUTPUT,
                               .pull_up_en = GPIO_PULLUP_DISABLE,
@@ -47,9 +48,11 @@ void antenna_init0(void) {
 
     // select the currently active antenna
     antenna_select(ANTENNA_TYPE_INTERNAL);
+#endif
 }
 
 void antenna_select (antenna_type_t _antenna) {
+#if MICROPY_HW_ANTENNA_DIVERSITY
     if (MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM < 32) {
         // set the pin value
         if (_antenna == ANTENNA_TYPE_EXTERNAL) {
@@ -65,6 +68,5 @@ void antenna_select (antenna_type_t _antenna) {
         }
     }
     antenna_type_selected = _antenna;
-}
-
 #endif
+}
