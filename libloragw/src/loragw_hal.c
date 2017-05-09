@@ -432,12 +432,6 @@ int lgw_calibrate_sx125x(uint8_t *cal_fw) {
         return LGW_HAL_ERROR;
     }
 
-#if 0
-    /* gives AGC control of GPIOs to enable Tx external digital filter */
-    lgw_reg_w(LGW_GPIO_MODE, 31); /* Set all GPIOs as output */
-    lgw_reg_w(LGW_GPIO_SELECT_OUTPUT, 0);
-#endif
-
     /* Enable clocks */
     lgw_reg_w(LGW_GLOBAL_EN, 1);
     lgw_reg_w(LGW_CLK32M_EN, 1);
@@ -962,6 +956,10 @@ int lgw_start(void) {
         DEBUG_MSG("ERROR: Failed to calibrate sx125x radios (8-15)\n");
         return LGW_HAL_ERROR;
     }
+
+    /* RX and TX packets signalling through GPIOs */
+    lgw_reg_w(LGW_GPIO_MODE, 31); /* Set all GPIOs as output */
+    lgw_reg_w(LGW_GPIO_SELECT_OUTPUT, 0);
 
     /* load adjusted parameters */
     lgw_constant_adjust();
