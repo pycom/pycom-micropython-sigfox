@@ -1212,7 +1212,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     nb_packet = lgw_reg_receive_cmd( max_pkt, (uint8_t *)data);
     /* check nb_packet variables */
     if ((nb_packet > LGW_PKT_FIFO_SIZE) || (nb_packet < 0)) {
-        DEBUG_MSG("ERROR: NOT A VALID NUMBER OF RECEIVE PACKET\n");
+        DEBUG_PRINTF("ERROR: NOT A VALID NUMBER OF RECEIVED PACKET (%d)\n", nb_packet);
         return LGW_HAL_ERROR;
     }
 

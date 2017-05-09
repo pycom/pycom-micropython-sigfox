@@ -215,13 +215,12 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd) {
     while (checkcmd_linux(bufferrx[0])) {
         lencheck = read(fd, bufferrx, 3);
         if (lencheck < 3) {
-            DEBUG_PRINTF("ERROR: failed to read cmd answer (%d - %s)\n", errno, strerror(errno));
-            return(KO);
+            DEBUG_PRINTF("WARNING: failed to read cmd answer (%d - %s), retry...\n", errno, strerror(errno));
         }
-        cpttimer++;
         /* Exit after several unsuccessful read */
+        cpttimer++;
         if (cpttimer > 15) {
-            DEBUG_MSG("ERROR: failed to received answer");
+            DEBUG_PRINTF("ERROR: failed to receive answer, aborting.");
             return(KO);
         }
     }
@@ -233,7 +232,7 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd) {
     /* Read the answer */
     buf_size = cmd_size + 3; /* + cmd header */
     if ((buf_size % 64) == 0) {
-        buf_size = cmd_size + 1; /* ont padding byte is added by USB driver, we need to read it */
+        buf_size = cmd_size + 1; /* one padding byte is added by USB driver, we need to read it */
     } else {
         buf_size = cmd_size;
     }
