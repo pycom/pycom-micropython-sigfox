@@ -227,7 +227,7 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd) {
         /* Exit after several unsuccessful read */
         cpttimer++;
         if (cpttimer > 15) {
-            DEBUG_PRINTF("ERROR: failed to receive answer, aborting.");
+            DEBUG_MSG("ERROR: failed to receive answer, aborting.");
             return(KO);
         }
     }
@@ -422,7 +422,7 @@ int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
 int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size) {
     int fd;
     int i;
-    int sizei = size;
+    uint16_t chunk_size = size;
     int cptalc = 0;
     CmdSettings_t mystruct;
     AnsSettings_t mystrctAns;
@@ -433,57 +433,67 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
     CHECK_NULL(com_target);
     CHECK_NULL(data);
 
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
+    fd = *(int *)com_target;
 
-    /* prepare command byte */
+    /* lock for complete burst */
     pthread_mutex_lock(&mx_usbbridgesync);
-    while (sizei > ATOMICTX) {
-        if (sizei == size) {
-            mystruct.Cmd = 'x'; //first part of big packet
-        } else {
-            mystruct.Cmd = 'y';   //middle part of big packet
-        }
 
+    /* Split burst in multiple chunks if necessary */
+    while (chunk_size > ATOMICTX) {
+        /* Prepare command */
+        if (chunk_size == size) {
+            mystruct.Cmd = 'x'; /* write burst - first */
+        } else {
+            mystruct.Cmd = 'y'; /* write burst - middle */
+        }
         mystruct.LenMsb = (uint8_t)(ATOMICTX >> 8);
         mystruct.Len = (uint8_t)(ATOMICTX - ((ATOMICTX >> 8) << 8));
         mystruct.Address = address;
-
         for (i = 0; i < ATOMICTX; i++) {
             mystruct.Value[i] = data[i + cptalc];
         }
 
+        /* Send command */
         SendCmd_linux(mystruct, fd);
-        ReceiveAns_linux(&mystrctAns, fd);
-        sizei = sizei - ATOMICTX;
+        if (ReceiveAns_linux(&mystrctAns, fd) == KO) {
+            pthread_mutex_unlock(&mx_usbbridgesync);
+            return LGW_COM_ERROR;
+        }
+
+        chunk_size = chunk_size - ATOMICTX;
         cptalc = cptalc + ATOMICTX;
     }
 
-    /*end of the transfer*/
-    if (sizei > 0) {
+    /* Complete multiple-chunk transfer, or send atomic one */
+    if (chunk_size > 0) {
+        /* Prepare command */
         if (size <= ATOMICTX) {
-            mystruct.Cmd = 'a'; //  end part of big packet
+            mystruct.Cmd = 'a'; /* write burst - atomic */
         } else {
-            mystruct.Cmd = 'z';   // case short packet
+            mystruct.Cmd = 'z'; /* write burst - end */
         }
-        mystruct.LenMsb = (uint8_t)(sizei >> 8);
-        mystruct.Len = (uint8_t)(sizei - ((sizei >> 8) << 8));
+        mystruct.LenMsb = (uint8_t)(chunk_size >> 8);
+        mystruct.Len = (uint8_t)(chunk_size - ((chunk_size >> 8) << 8));
         mystruct.Address = address;
         for (i = 0; i < ((mystruct.LenMsb << 8) + mystruct.Len); i++) {
             mystruct.Value[i] = data[i + cptalc];
         }
 
+        /* Send command */
         SendCmd_linux(mystruct, fd);
-        if (ReceiveAns_linux(&mystrctAns, fd) == OK) {
-            pthread_mutex_unlock(&mx_usbbridgesync);
-            return LGW_COM_SUCCESS;
-        } else {
-            DEBUG_MSG("ERROR: USB READ FAILURE\n");
+        if (ReceiveAns_linux(&mystrctAns, fd) == KO) {
             pthread_mutex_unlock(&mx_usbbridgesync);
             return LGW_COM_ERROR;
         }
+    } else {
+        pthread_mutex_unlock(&mx_usbbridgesync);
+        return LGW_COM_ERROR;
     }
-    DEBUG_MSG("ERROR: USB READ FAILURE\n");
-    return LGW_COM_ERROR; //never reach
+
+    /* unlock burst */
+    pthread_mutex_unlock(&mx_usbbridgesync);
+
+    return LGW_COM_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -491,7 +501,7 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
 int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size) {
     int fd;
     int i;
-    int sizei = size;
+    uint16_t chunk_size = size;
     int cptalc = 0;
     CmdSettings_t mystruct;
     AnsSettings_t mystrctAns;
@@ -502,65 +512,73 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
     CHECK_NULL(com_target);
     CHECK_NULL(data);
 
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
+    fd = *(int *)com_target;
 
+    /* lock for complete burst */
     pthread_mutex_lock(&mx_usbbridgesync);
-    while (sizei > ATOMICRX) {
-        if (sizei == size) {
-            mystruct.Cmd = 's';
+
+    /* Split burst in multiple chunks if necessary */
+    while (chunk_size > ATOMICRX) {
+        /* Prepare command */
+        if (chunk_size == size) {
+            mystruct.Cmd = 's'; /* read burst - first */
         } else {
-            mystruct.Cmd = 't';
+            mystruct.Cmd = 't'; /* read burst - middle */
         }
         mystruct.LenMsb = 0;
         mystruct.Len = 2;
         mystruct.Value[0] = (uint8_t)(ATOMICRX >> 8);
         mystruct.Value[1] = (uint8_t)(ATOMICRX - ((ATOMICRX >> 8) << 8));
         mystruct.Address = address;
+
+        /* Send command */
         SendCmd_linux(mystruct, fd);
         if (ReceiveAns_linux(&mystrctAns, fd) == OK) {
             for (i = 0; i < ATOMICRX; i++) {
                 data[i + cptalc] = mystrctAns.Rxbuf[i];
             }
         } else {
-
-            for (i = 0; i < ATOMICRX; i++) {
-                data[i + cptalc] = 0xFF;
-            }
+            pthread_mutex_unlock(&mx_usbbridgesync);
+            return LGW_COM_ERROR;
         }
 
-        sizei = sizei - ATOMICRX;
+        chunk_size = chunk_size - ATOMICRX;
         cptalc = cptalc + ATOMICRX;
     }
-    if (sizei > 0) {
+
+    /* Complete multiple-chunk transfer, or send atomic one */
+    if (chunk_size > 0) {
+        /* Prepare command */
         if (size <= ATOMICRX) {
-            mystruct.Cmd = 'p';
+            mystruct.Cmd = 'p'; /* read burst - atomic */
         } else {
-            mystruct.Cmd = 'u';
+            mystruct.Cmd = 'u'; /* read burst - end */
         }
         mystruct.LenMsb = 0;
         mystruct.Len = 2;
-        mystruct.Value[0] = (uint8_t)(sizei >> 8);
-        mystruct.Value[1] = (uint8_t)(sizei - ((sizei >> 8) << 8));
+        mystruct.Value[0] = (uint8_t)(chunk_size >> 8);
+        mystruct.Value[1] = (uint8_t)(chunk_size - ((chunk_size >> 8) << 8));
         mystruct.Address = address;
 
-        DEBUG_MSG("Note: usb send cmd readburst success\n");
+        /* Send command */
         SendCmd_linux(mystruct, fd);
-
         if (ReceiveAns_linux(&mystrctAns, fd) == OK) {
-            DEBUG_PRINTF("mystrctAns = %x et %x \n", mystrctAns.Len, mystrctAns.LenMsb);
-            for (i = 0; i < sizei; i++) {
+            for (i = 0; i < chunk_size; i++) {
                 data[i + cptalc] = mystrctAns.Rxbuf[i];
             }
-            pthread_mutex_unlock(&mx_usbbridgesync);
-            return LGW_COM_SUCCESS;
         } else {
-            DEBUG_MSG("ERROR: Cannot readburst stole  \n");
             pthread_mutex_unlock(&mx_usbbridgesync);
             return LGW_COM_ERROR;
         }
     } else {
+        pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_COM_ERROR;
     }
+
+    /* unlock burst */
+    pthread_mutex_unlock(&mx_usbbridgesync);
+
+    return LGW_COM_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
