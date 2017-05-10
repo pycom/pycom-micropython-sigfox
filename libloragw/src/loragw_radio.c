@@ -99,15 +99,15 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
     /* selecting the target radio */
     switch (channel) {
         case 0:
-            reg_add = LGW_com_RADIO_A__ADDR;
-            reg_dat = LGW_com_RADIO_A__DATA;
-            reg_cs  = LGW_com_RADIO_A__CS;
+            reg_add = LGW_SPI_RADIO_A__ADDR;
+            reg_dat = LGW_SPI_RADIO_A__DATA;
+            reg_cs  = LGW_SPI_RADIO_A__CS;
             break;
 
         case 1:
-            reg_add = LGW_com_RADIO_B__ADDR;
-            reg_dat = LGW_com_RADIO_B__DATA;
-            reg_cs  = LGW_com_RADIO_B__CS;
+            reg_add = LGW_SPI_RADIO_B__ADDR;
+            reg_dat = LGW_SPI_RADIO_B__DATA;
+            reg_cs  = LGW_SPI_RADIO_B__CS;
             break;
 
         default:
@@ -144,17 +144,17 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
     /* selecting the target radio */
     switch (channel) {
         case 0:
-            reg_add = LGW_com_RADIO_A__ADDR;
-            reg_dat = LGW_com_RADIO_A__DATA;
-            reg_cs  = LGW_com_RADIO_A__CS;
-            reg_rb  = LGW_com_RADIO_A__DATA_READBACK;
+            reg_add = LGW_SPI_RADIO_A__ADDR;
+            reg_dat = LGW_SPI_RADIO_A__DATA;
+            reg_cs  = LGW_SPI_RADIO_A__CS;
+            reg_rb  = LGW_SPI_RADIO_A__DATA_READBACK;
             break;
 
         case 1:
-            reg_add = LGW_com_RADIO_B__ADDR;
-            reg_dat = LGW_com_RADIO_B__DATA;
-            reg_cs  = LGW_com_RADIO_B__CS;
-            reg_rb  = LGW_com_RADIO_B__DATA_READBACK;
+            reg_add = LGW_SPI_RADIO_B__ADDR;
+            reg_dat = LGW_SPI_RADIO_B__DATA;
+            reg_cs  = LGW_SPI_RADIO_B__CS;
+            reg_rb  = LGW_SPI_RADIO_B__DATA_READBACK;
             break;
 
         default:

@@ -31,6 +31,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <pthread.h>
 #include <time.h>
 #include <sys/select.h>
+#include "loragw_com.h"
 #include "loragw_com_linux.h"
 #include "loragw_hal.h"
 #include "loragw_aux.h"
@@ -262,7 +263,6 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd) {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-/* open USB port */
 int lgw_com_open_linux(void **com_target_ptr) {
 
     int *usb_device = NULL;
@@ -311,7 +311,7 @@ int lgw_com_open_linux(void **com_target_ptr) {
 
             pthread_mutex_lock(&mx_usbbridgesync);
             SendCmd_linux(mystruct, fd);
-            if (ReceiveAns_linux(&mystrctAns, fd)) {
+            if (ReceiveAns_linux(&mystrctAns, fd) == OK) {
                 if (mystrctAns.Rxbuf[0] == ACK_KO) {
                     pthread_mutex_unlock(&mx_usbbridgesync);
                     DEBUG_MSG("ERROR: Wrong MCU firmware version\n");
@@ -333,7 +333,6 @@ int lgw_com_open_linux(void **com_target_ptr) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* COM release */
 int lgw_com_close_linux(void *com_target) {
     int usb_device;
     int a;
@@ -355,7 +354,6 @@ int lgw_com_close_linux(void *com_target) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* Simple write */
 int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t data) {
     int fd;
     CmdSettings_t mystruct;
@@ -387,7 +385,6 @@ int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* Simple read */
 int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data) {
     int fd;
     CmdSettings_t mystruct;
@@ -476,7 +473,7 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         }
 
         SendCmd_linux(mystruct, fd);
-        if (ReceiveAns_linux(&mystrctAns, fd)) {
+        if (ReceiveAns_linux(&mystrctAns, fd) == OK) {
             pthread_mutex_unlock(&mx_usbbridgesync);
             return LGW_COM_SUCCESS;
         } else {
@@ -491,7 +488,6 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* Burst (multiple-byte) read */
 int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size) {
     int fd;
     int i;
@@ -521,7 +517,7 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         mystruct.Value[1] = (uint8_t)(ATOMICRX - ((ATOMICRX >> 8) << 8));
         mystruct.Address = address;
         SendCmd_linux(mystruct, fd);
-        if (ReceiveAns_linux(&mystrctAns, fd)) {
+        if (ReceiveAns_linux(&mystrctAns, fd) == OK) {
             for (i = 0; i < ATOMICRX; i++) {
                 data[i + cptalc] = mystrctAns.Rxbuf[i];
             }
@@ -550,7 +546,7 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         DEBUG_MSG("Note: usb send cmd readburst success\n");
         SendCmd_linux(mystruct, fd);
 
-        if (ReceiveAns_linux(&mystrctAns, fd)) {
+        if (ReceiveAns_linux(&mystrctAns, fd) == OK) {
             DEBUG_PRINTF("mystrctAns = %x et %x \n", mystrctAns.Len, mystrctAns.LenMsb);
             for (i = 0; i < sizei; i++) {
                 data[i + cptalc] = mystrctAns.Rxbuf[i];
@@ -922,7 +918,7 @@ int lgw_GetUniqueId_linux(void * com_target, uint8_t * uid) {
 
     pthread_mutex_lock(&mx_usbbridgesync);
     SendCmd_linux(mystruct, fd);
-    if (ReceiveAns_linux(&mystrctAns, fd)) {
+    if (ReceiveAns_linux(&mystrctAns, fd) == OK) {
         if (mystrctAns.Rxbuf[0] == ACK_KO) {
             pthread_mutex_unlock(&mx_usbbridgesync);
             return LGW_COM_ERROR;

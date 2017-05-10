@@ -24,22 +24,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types*/
 
 #include "config.h"     /* library configuration options _linux(dynamically generated) */
-#include "loragw_com.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
-
-#define LGW_com_SUCCESS     0
-#define LGW_com_ERROR       -1
-#define LGW_BURST_CHUNK     1024
-
-#define LGW_com_MUX_MODE0   0x0     /* No FPGA */
-#define LGW_com_MUX_MODE1   0x1     /* FPGA, with spi mux header */
-
-#define LGW_com_MUX_TARGET_SX1301   0x0
-#define LGW_com_MUX_TARGET_FPGA     0x1
-#define LGW_com_MUX_TARGET_EEPROM   0x2
-#define LGW_com_MUX_TARGET_SX127X   0x3
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
@@ -47,7 +34,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /**
 @brief LoRa concentrator SPI setup _linux(configure I/O and peripherals)
 @param com_target_ptr pointer on a generic pointer to SPI target _linux(implementation dependant)
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation _linux(LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 
 int lgw_com_open_linux(void **com_target_ptr);
@@ -55,7 +42,7 @@ int lgw_com_open_linux(void **com_target_ptr);
 /**
 @brief LoRa concentrator SPI close
 @param com_target generic pointer to SPI target _linux(implementation dependant)
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation _linux(LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 
 int lgw_com_close_linux(void *com_target);
@@ -65,7 +52,7 @@ int lgw_com_close_linux(void *com_target);
 @param com_target generic pointer to SPI target _linux(implementation dependant)
 @param address 7-bit register address
 @param data data byte to write
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation _linux(LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t data);
 
@@ -74,7 +61,7 @@ int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
 @param com_target generic pointer to SPI target _linux(implementation dependant)
 @param address 7-bit register address
 @param data data byte to write
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation _linux(LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data);
 
@@ -84,7 +71,7 @@ int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
 @param address 7-bit register address
 @param data pointer to byte array that will be sent to the LoRa concentrator
 @param size size of the transfer, in byte_linux(s)
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation _linux(LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
@@ -94,7 +81,7 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
 @param address 7-bit register address
 @param data pointer to byte array that will be written from the LoRa concentrator
 @param size size of the transfer, in byte_linux(s)
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation _linux(LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
