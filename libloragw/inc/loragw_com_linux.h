@@ -40,9 +40,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_com_MUX_TARGET_FPGA     0x1
 #define LGW_com_MUX_TARGET_EEPROM   0x2
 #define LGW_com_MUX_TARGET_SX127X   0x3
-#define ACK_KO   0
-#define OK 1
-#define KO 0
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */

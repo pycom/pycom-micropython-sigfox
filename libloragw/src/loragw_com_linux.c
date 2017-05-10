@@ -52,6 +52,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define UNUSED(x) (void)(x)
 
+#define OK 1
+#define KO 0
+#define ACK_KO   0
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
@@ -161,9 +165,9 @@ int checkcmd_linux(uint8_t cmd) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int SendCmd_linux(CmdSettings_t CmdSettings, int fd) {
-    char buffertx[BUFFERTXSIZE];
-    int Clen = CmdSettings.Len + (CmdSettings.LenMsb << 8);
-    int Tlen = 1 + 2 + 1 + Clen;
+    uint8_t buffertx[CMD_HEADER_TX_SIZE + CMD_DATA_TX_SIZE];
+    uint16_t Clen = CmdSettings.Len + (CmdSettings.LenMsb << 8);
+    uint16_t Tlen = CMD_HEADER_TX_SIZE + Clen;
     int i;
     ssize_t lencheck;
 
@@ -171,10 +175,10 @@ int SendCmd_linux(CmdSettings_t CmdSettings, int fd) {
     memset(buffertx, 0, sizeof buffertx);
 
     /* Prepare command */
-    buffertx[0] = CmdSettings.Cmd;
+    buffertx[0] = (uint8_t)CmdSettings.Cmd;
     buffertx[1] = CmdSettings.LenMsb;
     buffertx[2] = CmdSettings.Len;
-    buffertx[3] = CmdSettings.Adress;
+    buffertx[3] = CmdSettings.Address;
     for (i = 0; i < Clen; i++) {
         buffertx[i + 4] = CmdSettings.Value[i];
     }
@@ -197,7 +201,7 @@ int SendCmd_linux(CmdSettings_t CmdSettings, int fd) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd) {
-    uint8_t bufferrx[BUFFERRXSIZE];
+    uint8_t bufferrx[CMD_HEADER_RX_SIZE + CMD_DATA_RX_SIZE];
     int i;
     int cpttimer = 0;
     size_t cmd_size;
@@ -210,12 +214,12 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd) {
 
     /* Wait for cmd answer header */
     while (checkcmd_linux(bufferrx[0])) {
-        lencheck = read(fd, bufferrx, 3);
+        lencheck = read(fd, bufferrx, CMD_HEADER_RX_SIZE);
         if (lencheck < 0) {
             DEBUG_PRINTF("WARNING: failed to read from communication bridge (%d - %s), retry...\n", errno, strerror(errno));
         } else if (lencheck == 0) {
             DEBUG_MSG("WARNING: no data read yet, retry...\n");
-        } else if ((lencheck > 0) && (lencheck < 3)) { /* TODO: improve mechanism to try to get complete hearder? */
+        } else if ((lencheck > 0) && (lencheck < CMD_HEADER_RX_SIZE)) { /* TODO: improve mechanism to try to get complete hearder? */
             DEBUG_MSG("ERROR: read incomplete cmd answer, aborting.\n");
             return(KO);
         }
@@ -232,22 +236,22 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd) {
     wait_ns((cmd_size + 1) * 6000); /* TODO: refine this tempo */
 
     /* Read the answer */
-    buf_size = cmd_size + 3; /* + cmd header */
+    buf_size = cmd_size + CMD_HEADER_RX_SIZE;
     if ((buf_size % 64) == 0) {
         buf_size = cmd_size + 1; /* one padding byte is added by USB driver, we need to read it */
     } else {
         buf_size = cmd_size;
     }
-    lencheck = read(fd, &bufferrx[3], buf_size);
+    lencheck = read(fd, &bufferrx[CMD_HEADER_RX_SIZE], buf_size);
     if (lencheck < buf_size) {
         DEBUG_PRINTF("ERROR: failed to read cmd answer (%d - %s)\n", errno, strerror(errno));
         return(KO);
     }
-    Ansbuffer->Cmd = bufferrx[0];
-    Ansbuffer->Id = bufferrx[1];
+    Ansbuffer->Cmd = (char)bufferrx[0];
+    Ansbuffer->LenMsb = bufferrx[1];
     Ansbuffer->Len = bufferrx[2];
     for (i = 0; i < (bufferrx[1] << 8) + bufferrx[2]; i++) {
-        Ansbuffer->Rxbuf[i] = bufferrx[3 + i];
+        Ansbuffer->Rxbuf[i] = bufferrx[CMD_HEADER_RX_SIZE + i];
     }
 
     DEBUG_PRINTF("Note: received answer for cmd \'%c\', length=%d\n", bufferrx[0], (bufferrx[1] << 8) + bufferrx[2]);
@@ -299,7 +303,7 @@ int lgw_com_open_linux(void **com_target_ptr) {
             mystruct.Cmd = 'l';
             mystruct.LenMsb = 0;
             mystruct.Len = 4;
-            mystruct.Adress = 0;
+            mystruct.Address = 0;
             mystruct.Value[0] = (uint8_t)((fwversion >> 24) & (0x000000ff));
             mystruct.Value[1] = (uint8_t)((fwversion >> 16) & (0x000000ff));
             mystruct.Value[2] = (uint8_t)((fwversion >> 8) & (0x000000ff));
@@ -367,7 +371,7 @@ int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
     mystruct.Cmd = 'w';
     mystruct.LenMsb = 0;
     mystruct.Len = 1;
-    mystruct.Adress = address;
+    mystruct.Address = address;
     mystruct.Value[0] = data;
 
     pthread_mutex_lock(&mx_usbbridgesync);
@@ -400,7 +404,7 @@ int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
     mystruct.Cmd = 'r';
     mystruct.LenMsb = 0;
     mystruct.Len = 1;
-    mystruct.Adress = address;
+    mystruct.Address = address;
     mystruct.Value[0] = 0;
 
     pthread_mutex_lock(&mx_usbbridgesync);
@@ -443,9 +447,9 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
             mystruct.Cmd = 'y';   //middle part of big packet
         }
 
-        mystruct.LenMsb = (ATOMICTX >> 8);
-        mystruct.Len = ATOMICTX - ((ATOMICTX >> 8) << 8);
-        mystruct.Adress = address;
+        mystruct.LenMsb = (uint8_t)(ATOMICTX >> 8);
+        mystruct.Len = (uint8_t)(ATOMICTX - ((ATOMICTX >> 8) << 8));
+        mystruct.Address = address;
 
         for (i = 0; i < ATOMICTX; i++) {
             mystruct.Value[i] = data[i + cptalc];
@@ -464,9 +468,9 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         } else {
             mystruct.Cmd = 'z';   // case short packet
         }
-        mystruct.LenMsb = (sizei >> 8);
-        mystruct.Len = sizei - ((sizei >> 8) << 8);
-        mystruct.Adress = address;
+        mystruct.LenMsb = (uint8_t)(sizei >> 8);
+        mystruct.Len = (uint8_t)(sizei - ((sizei >> 8) << 8));
+        mystruct.Address = address;
         for (i = 0; i < ((mystruct.LenMsb << 8) + mystruct.Len); i++) {
             mystruct.Value[i] = data[i + cptalc];
         }
@@ -513,9 +517,9 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         }
         mystruct.LenMsb = 0;
         mystruct.Len = 2;
-        mystruct.Value[0] = ATOMICRX >> 8;
-        mystruct.Value[1] = ATOMICRX - ((ATOMICRX >> 8) << 8);
-        mystruct.Adress = address;
+        mystruct.Value[0] = (uint8_t)(ATOMICRX >> 8);
+        mystruct.Value[1] = (uint8_t)(ATOMICRX - ((ATOMICRX >> 8) << 8));
+        mystruct.Address = address;
         SendCmd_linux(mystruct, fd);
         if (ReceiveAns_linux(&mystrctAns, fd)) {
             for (i = 0; i < ATOMICRX; i++) {
@@ -539,15 +543,15 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         }
         mystruct.LenMsb = 0;
         mystruct.Len = 2;
-        mystruct.Value[0] = sizei >> 8;
-        mystruct.Value[1] = sizei - ((sizei >> 8) << 8);
-        mystruct.Adress = address;
+        mystruct.Value[0] = (uint8_t)(sizei >> 8);
+        mystruct.Value[1] = (uint8_t)(sizei - ((sizei >> 8) << 8));
+        mystruct.Address = address;
 
         DEBUG_MSG("Note: usb send cmd readburst success\n");
         SendCmd_linux(mystruct, fd);
 
         if (ReceiveAns_linux(&mystrctAns, fd)) {
-            DEBUG_PRINTF("mystrctAns = %x et %x \n", mystrctAns.Len, mystrctAns.Id);
+            DEBUG_PRINTF("mystrctAns = %x et %x \n", mystrctAns.Len, mystrctAns.LenMsb);
             for (i = 0; i < sizei; i++) {
                 data[i + cptalc] = mystrctAns.Rxbuf[i];
             }
@@ -583,7 +587,7 @@ int lgw_receive_cmd_linux(void *com_target, uint8_t max_packet, uint8_t *data) {
     mystruct.Cmd = 'b';
     mystruct.LenMsb = 0;
     mystruct.Len = 1;
-    mystruct.Adress = 0;
+    mystruct.Address = 0;
     mystruct.Value[0] = max_packet;
 
     pthread_mutex_lock(&mx_usbbridgesync);
@@ -594,7 +598,7 @@ int lgw_receive_cmd_linux(void *com_target, uint8_t max_packet, uint8_t *data) {
     }
     pthread_mutex_unlock(&mx_usbbridgesync);
 
-    DEBUG_PRINTF("NOTE: Available packet %d %d\n", mystrctAns.Rxbuf[0], (mystrctAns.Id << 8) + mystrctAns.Len);
+    DEBUG_PRINTF("NOTE: Available packet %d %d\n", mystrctAns.Rxbuf[0], (mystrctAns.LenMsb << 8) + mystrctAns.Len);
     DEBUG_PRINTF("NOTE: read structure %d %d %d %d %d\n", mystrctAns.Rxbuf[5], mystrctAns.Rxbuf[6], mystrctAns.Rxbuf[7], mystrctAns.Rxbuf[8], mystrctAns.Rxbuf[9]);
 
     /* over the number of packets */
@@ -625,9 +629,9 @@ int lgw_rxrf_setconfcmd_linux(void *com_target, uint8_t rfchain, uint8_t *data, 
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
     mystruct.Cmd = 'c';
-    mystruct.LenMsb = (size >> 8);
-    mystruct.Len = size - ((size >> 8) << 8);
-    mystruct.Adress = rfchain;
+    mystruct.LenMsb = (uint8_t)(size >> 8);
+    mystruct.Len = (uint8_t)(size - ((size >> 8) << 8));
+    mystruct.Address = rfchain;
     for (i = 0; i < size; i++) {
         mystruct.Value[i] = data[i];
     }
@@ -659,9 +663,9 @@ int lgw_boardconfcmd_linux(void * com_target, uint8_t *data, uint16_t size)
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
     mystruct.Cmd = 'i';
-    mystruct.LenMsb = (size >> 8);
-    mystruct.Len = size - ((size >> 8) << 8);
-    mystruct.Adress = 0;
+    mystruct.LenMsb = (uint8_t)(size >> 8);
+    mystruct.Len = (uint8_t)(size - ((size >> 8) << 8));
+    mystruct.Address = 0;
     for (i = 0; i < size; i++) {
         mystruct.Value[i] = data[i];
     }
@@ -691,9 +695,9 @@ int lgw_rxif_setconfcmd_linux(void *com_target, uint8_t ifchain, uint8_t *data, 
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
     mystruct.Cmd = 'd';
-    mystruct.LenMsb = (size >> 8);
-    mystruct.Len = size - ((size >> 8) << 8);
-    mystruct.Adress = ifchain;
+    mystruct.LenMsb = (uint8_t)(size >> 8);
+    mystruct.Len = (uint8_t)(size - ((size >> 8) << 8));
+    mystruct.Address = ifchain;
     for (i = 0; i < size; i++) {
         mystruct.Value[i] = data[i];
     }
@@ -724,9 +728,9 @@ int lgw_txgain_setconfcmd_linux(void *com_target, uint8_t *data, uint16_t size) 
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
     mystruct.Cmd = 'h';
-    mystruct.LenMsb = (size >> 8);
-    mystruct.Len = size - ((size >> 8) << 8);
-    mystruct.Adress = 0;
+    mystruct.LenMsb = (uint8_t)(size >> 8);
+    mystruct.Len = (uint8_t)(size - ((size >> 8) << 8));
+    mystruct.Address = 0;
     for (i = 0; i < size; i++) {
         mystruct.Value[i] = data[i];
 
@@ -758,9 +762,9 @@ int lgw_sendconfcmd_linux(void *com_target, uint8_t *data, uint16_t size) {
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
     mystruct.Cmd = 'f';
-    mystruct.LenMsb = (size >> 8);
-    mystruct.Len = size - ((size >> 8) << 8);
-    mystruct.Adress = 0;
+    mystruct.LenMsb = (uint8_t)(size >> 8);
+    mystruct.Len = (uint8_t)(size - ((size >> 8) << 8));
+    mystruct.Address = 0;
     for (i = 0; i < size; i++) {
         mystruct.Value[i] = data[i];
     }
@@ -792,7 +796,7 @@ int lgw_trigger_linux(void *com_target, uint8_t address, uint32_t *data) {
     mystruct.Cmd = 'q';
     mystruct.LenMsb = 0;
     mystruct.Len = 1;
-    mystruct.Adress = address;
+    mystruct.Address = address;
     mystruct.Value[0] = 0;
 
     pthread_mutex_lock(&mx_usbbridgesync);
@@ -825,7 +829,7 @@ int lgw_calibration_snapshot_linux(void *com_target)
     mystruct.Cmd = 'j';
     mystruct.LenMsb = 0;
     mystruct.Len = 1;
-    mystruct.Adress = 0;
+    mystruct.Address = 0;
     mystruct.Value[0] = 0;
 
     pthread_mutex_lock(&mx_usbbridgesync);
@@ -854,7 +858,7 @@ int lgw_resetSTM32_linux(void *com_target) {
     mystruct.Cmd = 'm';
     mystruct.LenMsb = 0;
     mystruct.Len = 1;
-    mystruct.Adress = 0;
+    mystruct.Address = 0;
     mystruct.Value[0] = 0;
 
     pthread_mutex_lock(&mx_usbbridgesync);
@@ -883,7 +887,7 @@ int lgw_GOTODFU_linux(void *com_target) {
     mystruct.Cmd = 'n';
     mystruct.LenMsb = 0;
     mystruct.Len = 1;
-    mystruct.Adress = 0;
+    mystruct.Address = 0;
     mystruct.Value[0] = 0;
 
     pthread_mutex_lock(&mx_usbbridgesync);
@@ -910,7 +914,7 @@ int lgw_GetUniqueId_linux(void * com_target, uint8_t * uid) {
     mystruct.Cmd = 'l';
     mystruct.LenMsb = 0;
     mystruct.Len = 4;
-    mystruct.Adress = 0;
+    mystruct.Address = 0;
     mystruct.Value[0] = (uint8_t)((fwversion >> 24) & (0x000000ff));
     mystruct.Value[1] = (uint8_t)((fwversion >> 16) & (0x000000ff));
     mystruct.Value[2] = (uint8_t)((fwversion >> 8) & (0x000000ff));

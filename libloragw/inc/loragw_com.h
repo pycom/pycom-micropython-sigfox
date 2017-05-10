@@ -34,23 +34,23 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_COM_MUX_MODE0   0x0     /* No FPGA */
 #define LGW_COM_MUX_TARGET_SX1301   0x0
 
-#define ACK_KO   0
-#define OK 1
-#define KO 0
-#define BURSTSIZE 1024
-#define BUFFERTXSIZE 4*(BURSTSIZE+2)
-#define BUFFERRXSIZE 2048
 #define ATOMICTX 600
 #define ATOMICRX 900
+
+#define CMD_HEADER_TX_SIZE 4 /* Cmd + LenMsb + Len + Address */
+#define CMD_HEADER_RX_SIZE 3 /* Cmd + LenMsb + Len */
+
+#define CMD_DATA_TX_SIZE ATOMICTX
+#define CMD_DATA_RX_SIZE ATOMICRX
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 /**
-@brief cmd structure from host to stm32
+@brief structure for host to mcu commands
 @param Cmd char  for cmd id
 @param length  : length (16 bits) of the full msg,  length = LenMsb<<8 + Len
-@param Adress  : adress parameter is used in case of read/wrtire registers cmd
-@param Value   : raw data data to transfer
+@param Address : address parameter is used in case of read/wrire registers cmd
+@param Value   : raw data to transfer
 */
 /********************************************************/
 /*   cmd name   |      description                      */
@@ -81,10 +81,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 typedef struct {
     char Cmd;
-    int LenMsb;
-    int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
-    int Adress;
-    int Value[BURSTSIZE];
+    uint8_t LenMsb;
+    uint8_t Len;
+    uint8_t Address;
+    uint8_t Value[CMD_DATA_TX_SIZE];
 } CmdSettings_t;
 
 /**
@@ -94,10 +94,10 @@ typedef struct {
 @param Rxbuf   : raw data data to transfer
 */
 typedef struct {
-    int Cmd; // w for write , r for read
-    int Id;
-    int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
-    int Rxbuf[BUFFERRXSIZE];
+    char Cmd;
+    uint8_t LenMsb;
+    uint8_t Len;
+    uint8_t Rxbuf[CMD_DATA_RX_SIZE];
 } AnsSettings_t;
 
 /* -------------------------------------------------------------------------- */
