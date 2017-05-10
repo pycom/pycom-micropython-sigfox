@@ -136,16 +136,16 @@ int set_blocking_linux(int fd, bool blocking) {
 int checkcmd_linux(uint8_t cmd) {
     switch (cmd) {
         case 'r': /* read register */
-        case 's':
-        case 't':
-        case 'u':
-        case 'p':
-        case 'e':
+        case 's': /* read burst - first chunk */
+        case 't': /* read burst - middle chunk */
+        case 'u': /* read burst - end chunk */
+        case 'p': /* read burst - atomic */
+        case 'e': /* TODO: TO BE REMOVED */
         case 'w': /* write register */
-        case 'x':
-        case 'y':
-        case 'z':
-        case 'a':
+        case 'x': /* write burst - first chunk */
+        case 'y': /* write burst - middle chunk */
+        case 'z': /* write burst - end chunk */
+        case 'a': /* write burst - atomic */
         case 'b': /* lgw_receive */
         case 'c': /* lgw_rxrf_setconf */
         case 'd': /* lgw_rxif_setconf */

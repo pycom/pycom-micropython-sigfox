@@ -59,12 +59,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /*  s           |Read long burst First packet           */
 /*  t           |Read long burst Middle packet          */
 /*  u           |Read long burst End packet             */
-/*  p,e         |Read long Atomic packet                */
+/*  p           |Read atomic burst packet               */
 /*  w           |Write register                         */
 /*  x           |Write long burst First packet          */
-/*  y           |Write long burst First packet          */
-/*  z           |Write long burst First packet          */
-/*  a           |Write long burst First packet          */
+/*  y           |Write long burst Middle packet         */
+/*  z           |Write long burst End packet            */
+/*  a           |Write atomic burst packet              */
 /*------------------------------------------------------*/
 /*  b           |lgw_receive cmd                        */
 /*  c           |lgw_rxrf_setconf cmd                   */
