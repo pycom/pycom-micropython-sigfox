@@ -1,11 +1,10 @@
-
 /*
-/ _____)             _              | |
+ / _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
-\____ \| ___ |    (_   _) ___ |/ ___)  _ \
-_____) ) ____| | | || |_| ____( (___| | | |
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-(C)2017 Semtech-Cycleo
+  (C)2017 Semtech-Cycleo
 
 Description:
 this file contains the USB commands to configure and communicate with the SX1308
@@ -61,7 +60,7 @@ static pthread_mutex_t mx_usbbridgesync = PTHREAD_MUTEX_INITIALIZER; /* control 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
-int set_interface_attribs_linux(int fd, int speed, int parity) {
+int set_interface_attribs_linux(int fd, int speed) {
     struct termios tty;
 
     memset(&tty, 0, sizeof tty);
@@ -75,24 +74,22 @@ int set_interface_attribs_linux(int fd, int speed, int parity) {
     cfsetospeed(&tty, speed);
     cfsetispeed(&tty, speed);
 
-    tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
-    // disable IGNBRK for mismatched speed tests; otherwise receive break
-    // as \000 chars
-    tty.c_iflag &= ~IGNBRK;         // disable break processing
-    tty.c_lflag = 0;                // no signaling chars, no echo,
-    // no canonical processing
-    tty.c_oflag = 0;                // no remapping, no delays
-    tty.c_cc[VMIN] = 0;            // read doesn't block
-    tty.c_cc[VTIME] = 50;            // 0.5 seconds read timeout
-
-    tty.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL); // shut off xon/xoff ctrl
-
-    tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
-    // enable reading
-    tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
-    tty.c_cflag |= parity;
-    tty.c_cflag &= ~CSTOPB;
-    //  tty.c_cflag &= ~CRTSCTS;
+    /* Control Modes */
+    tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8; /* set 8-bit characters */
+    tty.c_cflag |= CLOCAL;                      /* local connection, no modem control */
+    tty.c_cflag |= CREAD;                       /* enable receiving characters */
+    tty.c_cflag &= ~PARENB;                     /* no parity */
+    tty.c_cflag &= ~CSTOPB;                     /* one stop bit */
+    /* Input Modes */
+    tty.c_iflag &= ~IGNBRK;
+    tty.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL);
+    /* Output Modes */
+    tty.c_oflag = 0;
+    /* Local Modes */
+    tty.c_lflag = 0;
+    /* Settings for non-canonical mode */
+    tty.c_cc[VMIN] = 0;                         /* non-blocking mode */
+    tty.c_cc[VTIME] = 50;                       /* wait for (n * 0.1) seconds before returning */
 
     /* Set attributes */
     if (tcsetattr(fd, TCSANOW, &tty) != 0) {
@@ -117,8 +114,8 @@ int set_blocking_linux(int fd, bool blocking) {
         return -1;
     }
 
-    tty.c_cc[VMIN] = (blocking == true) ? 1 : 0;
-    tty.c_cc[VTIME] = 1;            // 0.5 seconds read timeout
+    tty.c_cc[VMIN] = (blocking == true) ? 1 : 0;    /* set blocking or non-blocking mode */
+    tty.c_cc[VTIME] = 1;                            /* wait for (n * 0.1) seconds before returning */
 
     /* Set attributes */
     if (tcsetattr(fd, TCSANOW, &tty) != 0) {
@@ -170,17 +167,19 @@ int SendCmd_linux(CmdSettings_t CmdSettings, int fd) {
     int i;
     ssize_t lencheck;
 
-    for (i = 0; i < BUFFERTXSIZE; i++) {
-        buffertx[i] = 0;
-    }
+    /* Initialize buffer */
+    memset(buffertx, 0, sizeof buffertx);
+
+    /* Prepare command */
     buffertx[0] = CmdSettings.Cmd;
     buffertx[1] = CmdSettings.LenMsb;
     buffertx[2] = CmdSettings.Len;
     buffertx[3] = CmdSettings.Adress;
     for (i = 0; i < Clen; i++) {
         buffertx[i + 4] = CmdSettings.Value[i];
-
     }
+
+    /* Send command */
     lencheck = write(fd, buffertx, Tlen);
     if (lencheck < 0) {
         DEBUG_PRINTF("ERROR: failed to write cmd (%d - %s)\n", errno, strerror(errno));
@@ -206,16 +205,19 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd) {
     ssize_t lencheck;
 
     /* Initialize variables */
-    for (i = 0; i < BUFFERRXSIZE; i++) {
-        bufferrx[i] = 0;
-    }
+    memset(bufferrx, 0, sizeof bufferrx);
     cpttimer = 0;
 
     /* Wait for cmd answer header */
     while (checkcmd_linux(bufferrx[0])) {
         lencheck = read(fd, bufferrx, 3);
-        if (lencheck < 3) {
-            DEBUG_PRINTF("WARNING: failed to read cmd answer (%d - %s), retry...\n", errno, strerror(errno));
+        if (lencheck < 0) {
+            DEBUG_PRINTF("WARNING: failed to read from communication bridge (%d - %s), retry...\n", errno, strerror(errno));
+        } else if (lencheck == 0) {
+            DEBUG_MSG("WARNING: no data read yet, retry...\n");
+        } else if ((lencheck > 0) && (lencheck < 3)) { /* TODO: improve mechanism to try to get complete hearder? */
+            DEBUG_MSG("ERROR: read incomplete cmd answer, aborting.\n");
+            return(KO);
         }
         /* Exit after several unsuccessful read */
         cpttimer++;
@@ -283,7 +285,7 @@ int lgw_com_open_linux(void **com_target_ptr) {
         if (fd < 0) {
             DEBUG_PRINTF("ERROR: failed to open USB port %s - %s\n", portname, strerror(errno));
         } else {
-            x = set_interface_attribs_linux(fd, B921600, 0);
+            x = set_interface_attribs_linux(fd, B921600);
             x |= set_blocking_linux(fd, false);
             if (x != 0) {
                 DEBUG_PRINTF("ERROR: failed to configure USB port %s\n", portname);
