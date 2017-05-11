@@ -21,10 +21,11 @@ radio used to send and receive packets wirelessly using LoRa or FSK modulations.
 2. Components of the library
 ----------------------------
 
-The library is composed of 5 modules:
+The library is composed of 6 modules:
 
 * loragw_hal
 * loragw_reg
+* loragw_mcu
 * loragw_com
 * loragw_aux
 * loragw_radio
@@ -66,7 +67,19 @@ emitted 1.5ms after a rising edge of the trigger signal. Because there is no
 way to anticipate the triggering event and start the analog circuitry
 beforehand, that delay must be taken into account in the protocol.
 
-### 2.2. loragw_reg ###
+### 2.2. loragw_mcu ###
+
+This module wraps the HAL functions into commands to be sent to the concentrator
+MCU.
+
+The HAL structures are serialized in a byte array and sent over the COM/USB
+interface.
+
+* board configuration
+* send/receive packets
+* ...
+
+### 2.3. loragw_reg ###
 
 This module is used to access to the LoRa concentrator registers by name instead
 of by address:
@@ -97,7 +110,7 @@ application.
 **/!\ Warning** please be sure to have a good understanding of the LoRa
 concentrator inner working before accessing the internal registers directly.
 
-### 2.3. loragw_com ###
+### 2.4. loragw_com ###
 
 This module contains the functions to access the LoRa concentrator register
 array through the USB interface:
@@ -112,7 +125,7 @@ Please *do not* include that module directly into your application.
 **/!\ Warning** Accessing the LoRa concentrator register array without the
 checks and safety provided by the functions in loragw_reg is not recommended.
 
-### 2.4. loragw_aux ###
+### 2.5. loragw_aux ###
 
 This module contains a single host-dependant function wait_ms to pause for a
 defined amount of milliseconds.
@@ -131,7 +144,7 @@ If the minimum delays are not guaranteed during the configuration and start
 procedure, the hardware might not work at nominal performance.
 Most likely, it will not work at all.
 
-### 2.5. loragw_radio ###
+### 2.6. loragw_radio ###
 
 This module contains functions to handle the configuration of SX125x radios.
 
