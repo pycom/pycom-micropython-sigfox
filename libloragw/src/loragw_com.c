@@ -54,7 +54,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE SHARED VARIABLES (GLOBAL) ------------------------------------ */
 
-extern void *lgw_com_target; /*! generic pointer to the SPI device */
+extern void *lgw_com_target; /*! generic pointer to the COM device */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -170,11 +170,11 @@ int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int SendCmd(CmdSettings_t CmdSettings, int fd) {
+int SendCmd(CmdSettings_t CmdSettings, lgw_handle_t handle) {
 #ifdef _WIN32
-    return SendCmd_win(CmdSettings, fd);
+    return SendCmd_win(CmdSettings, handle);
 #elif __linux__
-    return SendCmd_linux(CmdSettings, fd);
+    return SendCmd_linux(CmdSettings, handle);
 #elif __APPLE__
     DEBUG_PRINTF("System is not recognized.");
 #elif __unix__
@@ -188,11 +188,11 @@ int SendCmd(CmdSettings_t CmdSettings, int fd) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int ReceiveAns(AnsSettings_t *Ansbuffer, int fd) {
+int ReceiveAns(AnsSettings_t *Ansbuffer, lgw_handle_t handle) {
 #ifdef _WIN32
-    return ReceiveAns_win(Ansbuffer, fd);
+    return ReceiveAns_win(Ansbuffer, handle);
 #elif __linux__
-    return ReceiveAns_linux(Ansbuffer, fd);
+    return ReceiveAns_linux(Ansbuffer, handle);
 #elif __APPLE__
     DEBUG_PRINTF("System is not recognized.");
 #elif __unix__

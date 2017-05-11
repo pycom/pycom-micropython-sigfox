@@ -85,8 +85,9 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
 */
 int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
-int SendCmd_linux(CmdSettings_t CmdSettings, int fd);
-int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd);
+int SendCmd_linux(CmdSettings_t CmdSettings, lgw_handle_t handle);
+
+int ReceiveAns_linux(AnsSettings_t *Ansbuffer, lgw_handle_t handle);
 
 #endif
 

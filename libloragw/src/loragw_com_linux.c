@@ -162,7 +162,7 @@ int checkcmd_linux(uint8_t cmd) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int SendCmd_linux(CmdSettings_t CmdSettings, int fd) {
+int SendCmd_linux(CmdSettings_t CmdSettings, lgw_handle_t handle) {
     uint8_t buffertx[CMD_HEADER_TX_SIZE + CMD_DATA_TX_SIZE];
     uint16_t Clen = CmdSettings.Len + (CmdSettings.LenMsb << 8);
     uint16_t Tlen = CMD_HEADER_TX_SIZE + Clen;
@@ -182,7 +182,7 @@ int SendCmd_linux(CmdSettings_t CmdSettings, int fd) {
     }
 
     /* Send command */
-    lencheck = write(fd, buffertx, Tlen);
+    lencheck = write(handle, buffertx, Tlen);
     if (lencheck < 0) {
         DEBUG_PRINTF("ERROR: failed to write cmd (%d - %s)\n", errno, strerror(errno));
         return(KO);
@@ -198,7 +198,7 @@ int SendCmd_linux(CmdSettings_t CmdSettings, int fd) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd) {
+int ReceiveAns_linux(AnsSettings_t *Ansbuffer, lgw_handle_t handle) {
     uint8_t bufferrx[CMD_HEADER_RX_SIZE + CMD_DATA_RX_SIZE];
     int i;
     int cpttimer = 0;
@@ -212,7 +212,7 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd) {
 
     /* Wait for cmd answer header */
     while (checkcmd_linux(bufferrx[0])) {
-        lencheck = read(fd, bufferrx, CMD_HEADER_RX_SIZE);
+        lencheck = read(handle, bufferrx, CMD_HEADER_RX_SIZE);
         if (lencheck < 0) {
             DEBUG_PRINTF("WARNING: failed to read from communication bridge (%d - %s), retry...\n", errno, strerror(errno));
         } else if (lencheck == 0) {
@@ -240,7 +240,7 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd) {
     } else {
         buf_size = cmd_size;
     }
-    lencheck = read(fd, &bufferrx[CMD_HEADER_RX_SIZE], buf_size);
+    lencheck = read(handle, &bufferrx[CMD_HEADER_RX_SIZE], buf_size);
     if (lencheck < buf_size) {
         DEBUG_PRINTF("ERROR: failed to read cmd answer (%d - %s)\n", errno, strerror(errno));
         return(KO);

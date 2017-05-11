@@ -48,12 +48,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
+
 /**
+@struct CmdSettings_t
 @brief structure for host to mcu commands
-@param Cmd char  for cmd id
-@param length  : length (16 bits) of the full msg,  length = LenMsb<<8 + Len
-@param Address : address parameter is used in case of read/wrire registers cmd
-@param Value   : raw data to transfer
 */
 /********************************************************/
 /*   cmd name   |      description                      */
@@ -83,25 +81,35 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /********************************************************/
 
 typedef struct {
-    char Cmd;
-    uint8_t LenMsb;
-    uint8_t Len;
-    uint8_t Address;
-    uint8_t Value[CMD_DATA_TX_SIZE];
+    char Cmd;                           /*!> command ID */
+    uint8_t LenMsb;                     /*!> command length MSB */
+    uint8_t Len;                        /*!> command length LSB */
+    uint8_t Address;                    /*!> register address for register read/write commands */
+    uint8_t Value[CMD_DATA_TX_SIZE];    /*!> raw data to be transfered */
 } CmdSettings_t;
 
 /**
-@brief cmd structure response from stm32 to host
-@param Cmd char  for cmd id
-@param length  : length (8 bits) of the full msg
-@param Rxbuf   : raw data data to transfer
+@struct AnsSettings_t
+@brief structure for mcu to host command answers
 */
 typedef struct {
-    char Cmd;
-    uint8_t LenMsb;
-    uint8_t Len;
-    uint8_t Rxbuf[CMD_DATA_RX_SIZE];
+    char Cmd;                           /*!> command ID */
+    uint8_t LenMsb;                     /*!> command length MSB */
+    uint8_t Len;                        /*!> command length LSB */
+    uint8_t Rxbuf[CMD_DATA_RX_SIZE];    /*!> raw answer data */
 } AnsSettings_t;
+
+/**
+@brief Generic file handle for communication bridge
+*/
+#ifdef _WIN32
+    typedef HANDLE lgw_handle_t;
+    #define LGW_GET_HANDLE(x) ((lgw_handle_t *)x)
+#elif __linux__
+    typedef int lgw_handle_t;
+    #define LGW_GET_HANDLE(x) (*(lgw_handle_t *)x)
+#endif
+
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
@@ -162,19 +170,19 @@ int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 
 /**
 @brief LoRa usb cmd to send a cmd to the stm32
-@param CmdSettings_t : cmd structure
-param com_target : USB target
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
+@param CmdSettings_t command structure
+param handle handle to communication bridge
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
-int SendCmd(CmdSettings_t CmdSettings, int fd);
+int SendCmd(CmdSettings_t CmdSettings, lgw_handle_t handle);
 
 /**
 @brief LoRa usb cmd to receive a cmd response from the stm32
-@param CmdSettings_t : cmd structure
-@param fd : USB target
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
+@param CmdSettings_t command structure
+@param handle handle to communication bridge
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
-int ReceiveAns(AnsSettings_t *Ansbuffer, int fd);
+int ReceiveAns(AnsSettings_t *Ansbuffer, lgw_handle_t handle);
 
 #endif
 
