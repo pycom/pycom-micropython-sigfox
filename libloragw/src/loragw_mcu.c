@@ -262,7 +262,7 @@ int lgw_mcu_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     nb_packet = ans.ans_data[0];
     if ((nb_packet > LGW_PKT_FIFO_SIZE) || (nb_packet < 0)) {
         DEBUG_PRINTF("ERROR: NOT A VALID NUMBER OF RECEIVED PACKET (%d)\n", nb_packet);
-        return LGW_COM_ERROR;
+        return 0;
     }
 
     DEBUG_PRINTF("NOTE: Available packet %d %d\n", nb_packet, (ans.len_msb << 8) + ans.len_lsb);
@@ -386,13 +386,13 @@ int lgw_mcu_get_trigcnt(uint32_t *data) {
     x = lgw_com_send_command(cmd, &ans);
     if (x != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: failed to get concentrator internal counter\n");
-        return LGW_COM_ERROR;
+        return LGW_MCU_ERROR;
     }
 
     *data = (ans.ans_data[0] << 24) + (ans.ans_data[1] << 16) + (ans.ans_data[2] << 8) + (ans.ans_data[3]);
     DEBUG_PRINTF("sx1301 counter %d\n", (ans.ans_data[0] << 24) + (ans.ans_data[1] << 16) + (ans.ans_data[2] << 8) + (ans.ans_data[3]));
 
-    return LGW_COM_SUCCESS;
+    return LGW_MCU_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -468,13 +468,13 @@ int lgw_mcu_get_unique_id(uint8_t *uid) {
     x = lgw_com_send_command(cmd, &ans);
     if (x != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to get MCU unique ID\n");
-        return LGW_COM_ERROR;
+        return LGW_MCU_ERROR;
     }
 
     /* Check MCU FW version */
     if (ans.ans_data[0] == ACK_KO) {
         DEBUG_MSG("ERROR: Invalid MCU firmware version\n");
-        return LGW_COM_ERROR;
+        return LGW_MCU_ERROR;
     }
 
     /* Get MCU unique ID */
@@ -482,7 +482,7 @@ int lgw_mcu_get_unique_id(uint8_t *uid) {
         uid[i] = ans.ans_data[i + 1];
     }
 
-    return LGW_COM_SUCCESS;
+    return LGW_MCU_SUCCESS;
 }
 
 /* --- EOF ------------------------------------------------------------------ */
