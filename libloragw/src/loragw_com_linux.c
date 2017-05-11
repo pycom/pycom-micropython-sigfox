@@ -162,23 +162,23 @@ int checkcmd_linux(uint8_t cmd) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int SendCmd_linux(CmdSettings_t CmdSettings, lgw_handle_t handle) {
-    uint8_t buffertx[CMD_HEADER_TX_SIZE + CMD_DATA_TX_SIZE];
-    uint16_t Clen = CmdSettings.Len + (CmdSettings.LenMsb << 8);
-    uint16_t Tlen = CMD_HEADER_TX_SIZE + Clen;
+int lgw_com_send_cmd_linux(lgw_com_cmd_t cmd, lgw_handle_t handle) {
     int i;
+    uint8_t buffertx[CMD_HEADER_TX_SIZE + CMD_DATA_TX_SIZE];
+    uint16_t Clen = cmd.len_lsb + (cmd.len_msb << 8);
+    uint16_t Tlen = CMD_HEADER_TX_SIZE + Clen;
     ssize_t lencheck;
 
     /* Initialize buffer */
     memset(buffertx, 0, sizeof buffertx);
 
     /* Prepare command */
-    buffertx[0] = (uint8_t)CmdSettings.Cmd;
-    buffertx[1] = CmdSettings.LenMsb;
-    buffertx[2] = CmdSettings.Len;
-    buffertx[3] = CmdSettings.Address;
+    buffertx[0] = (uint8_t)cmd.id;
+    buffertx[1] = cmd.len_msb;
+    buffertx[2] = cmd.len_lsb;
+    buffertx[3] = cmd.address;
     for (i = 0; i < Clen; i++) {
-        buffertx[i + 4] = CmdSettings.Value[i];
+        buffertx[i + 4] = cmd.cmd_data[i];
     }
 
     /* Send command */
@@ -191,16 +191,16 @@ int SendCmd_linux(CmdSettings_t CmdSettings, lgw_handle_t handle) {
         DEBUG_PRINTF("WARNING: incomplete cmd written (%d)\n", (int)lencheck);
     }
 
-    DEBUG_PRINTF("Note: sent cmd \'%c\', length=%d\n", CmdSettings.Cmd, Clen);
+    DEBUG_PRINTF("Note: sent cmd \'%c\', length=%d\n", cmd.id, Clen);
 
     return(OK);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int ReceiveAns_linux(AnsSettings_t *Ansbuffer, lgw_handle_t handle) {
-    uint8_t bufferrx[CMD_HEADER_RX_SIZE + CMD_DATA_RX_SIZE];
+int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
     int i;
+    uint8_t bufferrx[CMD_HEADER_RX_SIZE + CMD_DATA_RX_SIZE];
     int cpttimer = 0;
     size_t cmd_size;
     ssize_t buf_size = 0;
@@ -245,11 +245,11 @@ int ReceiveAns_linux(AnsSettings_t *Ansbuffer, lgw_handle_t handle) {
         DEBUG_PRINTF("ERROR: failed to read cmd answer (%d - %s)\n", errno, strerror(errno));
         return(KO);
     }
-    Ansbuffer->Cmd = (char)bufferrx[0];
-    Ansbuffer->LenMsb = bufferrx[1];
-    Ansbuffer->Len = bufferrx[2];
+    ans->id = (char)bufferrx[0];
+    ans->len_msb = bufferrx[1];
+    ans->len_lsb = bufferrx[2];
     for (i = 0; i < (bufferrx[1] << 8) + bufferrx[2]; i++) {
-        Ansbuffer->Rxbuf[i] = bufferrx[CMD_HEADER_RX_SIZE + i];
+        ans->ans_data[i] = bufferrx[CMD_HEADER_RX_SIZE + i];
     }
 
     DEBUG_PRINTF("Note: received answer for cmd \'%c\', length=%d\n", bufferrx[0], (bufferrx[1] << 8) + bufferrx[2]);
@@ -267,8 +267,8 @@ int lgw_com_open_linux(void **com_target_ptr) {
     int i, x;
     int fd;
     int fwversion = STM32FWVERSION;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
     /*check input variables*/
     CHECK_NULL(com_target_ptr);
@@ -297,19 +297,19 @@ int lgw_com_open_linux(void **com_target_ptr) {
             *com_target_ptr = (void*)usb_device;
 
             /* Check that MCU firmware version is correct */
-            mystruct.Cmd = 'l';
-            mystruct.LenMsb = 0;
-            mystruct.Len = 4;
-            mystruct.Address = 0;
-            mystruct.Value[0] = (uint8_t)((fwversion >> 24) & (0x000000ff));
-            mystruct.Value[1] = (uint8_t)((fwversion >> 16) & (0x000000ff));
-            mystruct.Value[2] = (uint8_t)((fwversion >> 8) & (0x000000ff));
-            mystruct.Value[3] = (uint8_t)((fwversion) & (0x000000ff));
+            cmd.id = 'l';
+            cmd.len_msb = 0;
+            cmd.len_lsb = 4;
+            cmd.address = 0;
+            cmd.cmd_data[0] = (uint8_t)((fwversion >> 24) & (0x000000ff));
+            cmd.cmd_data[1] = (uint8_t)((fwversion >> 16) & (0x000000ff));
+            cmd.cmd_data[2] = (uint8_t)((fwversion >> 8) & (0x000000ff));
+            cmd.cmd_data[3] = (uint8_t)((fwversion) & (0x000000ff));
 
             pthread_mutex_lock(&mx_usbbridgesync);
-            SendCmd_linux(mystruct, fd);
-            if (ReceiveAns_linux(&mystrctAns, fd) == OK) {
-                if (mystrctAns.Rxbuf[0] == ACK_KO) {
+            lgw_com_send_cmd_linux(cmd, fd);
+            if (lgw_com_receive_ans_linux(&ans, fd) == OK) {
+                if (ans.ans_data[0] == ACK_KO) {
                     pthread_mutex_unlock(&mx_usbbridgesync);
                     DEBUG_MSG("ERROR: Wrong MCU firmware version\n");
                     return LGW_COM_ERROR;
@@ -353,8 +353,8 @@ int lgw_com_close_linux(void *com_target) {
 
 int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t data) {
     int fd;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
     UNUSED(com_mux_mode);
     UNUSED(com_mux_target);
 
@@ -363,15 +363,15 @@ int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
 
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
-    mystruct.Cmd = 'w';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Address = address;
-    mystruct.Value[0] = data;
+    cmd.id = 'w';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 1;
+    cmd.address = address;
+    cmd.cmd_data[0] = data;
 
     pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd_linux(mystruct, fd);
-    if (ReceiveAns_linux(&mystrctAns, fd) == KO) {
+    lgw_com_send_cmd_linux(cmd, fd);
+    if (lgw_com_receive_ans_linux(&ans, fd) == KO) {
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_COM_ERROR;
     }
@@ -384,8 +384,8 @@ int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
 
 int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data) {
     int fd;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
     UNUSED(com_mux_mode);
     UNUSED(com_mux_target);
 
@@ -395,21 +395,21 @@ int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
 
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
-    mystruct.Cmd = 'r';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Address = address;
-    mystruct.Value[0] = 0;
+    cmd.id = 'r';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 1;
+    cmd.address = address;
+    cmd.cmd_data[0] = 0;
 
     pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd_linux(mystruct, fd);
-    if (ReceiveAns_linux(&mystrctAns, fd) == KO) {
+    lgw_com_send_cmd_linux(cmd, fd);
+    if (lgw_com_receive_ans_linux(&ans, fd) == KO) {
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_COM_ERROR;
     }
     pthread_mutex_unlock(&mx_usbbridgesync);
 
-    *data = mystrctAns.Rxbuf[0];
+    *data = ans.ans_data[0];
 
     return LGW_COM_SUCCESS;
 }
@@ -421,8 +421,8 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
     int i;
     uint16_t chunk_size = size;
     int cptalc = 0;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
     UNUSED(com_mux_mode);
     UNUSED(com_mux_target);
 
@@ -439,20 +439,20 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
     while (chunk_size > ATOMICTX) {
         /* Prepare command */
         if (chunk_size == size) {
-            mystruct.Cmd = 'x'; /* write burst - first */
+            cmd.id = 'x'; /* write burst - first */
         } else {
-            mystruct.Cmd = 'y'; /* write burst - middle */
+            cmd.id = 'y'; /* write burst - middle */
         }
-        mystruct.LenMsb = (uint8_t)(ATOMICTX >> 8);
-        mystruct.Len = (uint8_t)(ATOMICTX - ((ATOMICTX >> 8) << 8));
-        mystruct.Address = address;
+        cmd.len_msb = (uint8_t)(ATOMICTX >> 8);
+        cmd.len_lsb = (uint8_t)(ATOMICTX - ((ATOMICTX >> 8) << 8));
+        cmd.address = address;
         for (i = 0; i < ATOMICTX; i++) {
-            mystruct.Value[i] = data[i + cptalc];
+            cmd.cmd_data[i] = data[i + cptalc];
         }
 
         /* Send command */
-        SendCmd_linux(mystruct, fd);
-        if (ReceiveAns_linux(&mystrctAns, fd) == KO) {
+        lgw_com_send_cmd_linux(cmd, fd);
+        if (lgw_com_receive_ans_linux(&ans, fd) == KO) {
             pthread_mutex_unlock(&mx_usbbridgesync);
             return LGW_COM_ERROR;
         }
@@ -465,20 +465,20 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
     if (chunk_size > 0) {
         /* Prepare command */
         if (size <= ATOMICTX) {
-            mystruct.Cmd = 'a'; /* write burst - atomic */
+            cmd.id = 'a'; /* write burst - atomic */
         } else {
-            mystruct.Cmd = 'z'; /* write burst - end */
+            cmd.id = 'z'; /* write burst - end */
         }
-        mystruct.LenMsb = (uint8_t)(chunk_size >> 8);
-        mystruct.Len = (uint8_t)(chunk_size - ((chunk_size >> 8) << 8));
-        mystruct.Address = address;
-        for (i = 0; i < ((mystruct.LenMsb << 8) + mystruct.Len); i++) {
-            mystruct.Value[i] = data[i + cptalc];
+        cmd.len_msb = (uint8_t)(chunk_size >> 8);
+        cmd.len_lsb = (uint8_t)(chunk_size - ((chunk_size >> 8) << 8));
+        cmd.address = address;
+        for (i = 0; i < ((cmd.len_msb << 8) + cmd.len_lsb); i++) {
+            cmd.cmd_data[i] = data[i + cptalc];
         }
 
         /* Send command */
-        SendCmd_linux(mystruct, fd);
-        if (ReceiveAns_linux(&mystrctAns, fd) == KO) {
+        lgw_com_send_cmd_linux(cmd, fd);
+        if (lgw_com_receive_ans_linux(&ans, fd) == KO) {
             pthread_mutex_unlock(&mx_usbbridgesync);
             return LGW_COM_ERROR;
         }
@@ -500,8 +500,8 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
     int i;
     uint16_t chunk_size = size;
     int cptalc = 0;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
     UNUSED(com_mux_mode);
     UNUSED(com_mux_target);
 
@@ -518,21 +518,21 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
     while (chunk_size > ATOMICRX) {
         /* Prepare command */
         if (chunk_size == size) {
-            mystruct.Cmd = 's'; /* read burst - first */
+            cmd.id = 's'; /* read burst - first */
         } else {
-            mystruct.Cmd = 't'; /* read burst - middle */
+            cmd.id = 't'; /* read burst - middle */
         }
-        mystruct.LenMsb = 0;
-        mystruct.Len = 2;
-        mystruct.Value[0] = (uint8_t)(ATOMICRX >> 8);
-        mystruct.Value[1] = (uint8_t)(ATOMICRX - ((ATOMICRX >> 8) << 8));
-        mystruct.Address = address;
+        cmd.len_msb = 0;
+        cmd.len_lsb = 2;
+        cmd.cmd_data[0] = (uint8_t)(ATOMICRX >> 8);
+        cmd.cmd_data[1] = (uint8_t)(ATOMICRX - ((ATOMICRX >> 8) << 8));
+        cmd.address = address;
 
         /* Send command */
-        SendCmd_linux(mystruct, fd);
-        if (ReceiveAns_linux(&mystrctAns, fd) == OK) {
+        lgw_com_send_cmd_linux(cmd, fd);
+        if (lgw_com_receive_ans_linux(&ans, fd) == OK) {
             for (i = 0; i < ATOMICRX; i++) {
-                data[i + cptalc] = mystrctAns.Rxbuf[i];
+                data[i + cptalc] = ans.ans_data[i];
             }
         } else {
             pthread_mutex_unlock(&mx_usbbridgesync);
@@ -547,21 +547,21 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
     if (chunk_size > 0) {
         /* Prepare command */
         if (size <= ATOMICRX) {
-            mystruct.Cmd = 'p'; /* read burst - atomic */
+            cmd.id = 'p'; /* read burst - atomic */
         } else {
-            mystruct.Cmd = 'u'; /* read burst - end */
+            cmd.id = 'u'; /* read burst - end */
         }
-        mystruct.LenMsb = 0;
-        mystruct.Len = 2;
-        mystruct.Value[0] = (uint8_t)(chunk_size >> 8);
-        mystruct.Value[1] = (uint8_t)(chunk_size - ((chunk_size >> 8) << 8));
-        mystruct.Address = address;
+        cmd.len_msb = 0;
+        cmd.len_lsb = 2;
+        cmd.cmd_data[0] = (uint8_t)(chunk_size >> 8);
+        cmd.cmd_data[1] = (uint8_t)(chunk_size - ((chunk_size >> 8) << 8));
+        cmd.address = address;
 
         /* Send command */
-        SendCmd_linux(mystruct, fd);
-        if (ReceiveAns_linux(&mystrctAns, fd) == OK) {
+        lgw_com_send_cmd_linux(cmd, fd);
+        if (lgw_com_receive_ans_linux(&ans, fd) == OK) {
             for (i = 0; i < chunk_size; i++) {
-                data[i + cptalc] = mystrctAns.Rxbuf[i];
+                data[i + cptalc] = ans.ans_data[i];
             }
         } else {
             pthread_mutex_unlock(&mx_usbbridgesync);

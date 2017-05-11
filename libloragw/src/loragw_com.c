@@ -38,7 +38,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_COM == 1
 #define DEBUG_MSG(str)                fprintf(stderr, str)
 #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
@@ -49,15 +48,52 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CHECK_NULL(a)                if(a==NULL){return LGW_COM_ERROR;}
 #endif
 
-#define UNUSED(x) (void)(x)
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE SHARED VARIABLES (GLOBAL) ------------------------------------ */
 
 extern void *lgw_com_target; /*! generic pointer to the COM device */
 
+pthread_mutex_t mx_usbbridgesync = PTHREAD_MUTEX_INITIALIZER; /* control access to usbbridge sync offsets */
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+int lgw_com_send_cmd(lgw_com_cmd_t cmd, lgw_handle_t handle) {
+#ifdef _WIN32
+    return lgw_com_send_cmd_win(cmd, handle);
+#elif __linux__
+    return lgw_com_send_cmd_linux(cmd, handle);
+#elif __APPLE__
+    DEBUG_PRINTF("System is not recognized.");
+#elif __unix__
+    DEBUG_PRINTF("System is not recognized.");
+#elif __posix__
+    DEBUG_PRINTF("System is not recognized.");
+#else
+    DEBUG_PRINTF("System is not recognized.");
+#endif
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_com_receive_ans(lgw_com_ans_t *ans, lgw_handle_t handle) {
+#ifdef _WIN32
+    return lgw_com_receive_ans_win(ans, handle);
+#elif __linux__
+    return lgw_com_receive_ans_linux(ans, handle);
+#elif __APPLE__
+    DEBUG_PRINTF("System is not recognized.");
+#elif __unix__
+    DEBUG_PRINTF("System is not recognized.");
+#elif __posix__
+    DEBUG_PRINTF("System is not recognized.");
+#else
+    DEBUG_PRINTF("System is not recognized.");
+#endif
+}
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
@@ -170,38 +206,25 @@ int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int SendCmd(CmdSettings_t CmdSettings, lgw_handle_t handle) {
-#ifdef _WIN32
-    return SendCmd_win(CmdSettings, handle);
-#elif __linux__
-    return SendCmd_linux(CmdSettings, handle);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
+int lgw_com_send_command(lgw_com_cmd_t cmd, lgw_com_ans_t *ans) {
+    lgw_handle_t handle;
 
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+    CHECK_NULL(lgw_com_target);
+    CHECK_NULL(ans);
 
-int ReceiveAns(AnsSettings_t *Ansbuffer, lgw_handle_t handle) {
-#ifdef _WIN32
-    return ReceiveAns_win(Ansbuffer, handle);
-#elif __linux__
-    return ReceiveAns_linux(Ansbuffer, handle);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
+    handle = LGW_GET_HANDLE(lgw_com_target);
+
+    pthread_mutex_lock(&mx_usbbridgesync);
+
+    lgw_com_send_cmd(cmd, handle);
+    if (lgw_com_receive_ans(ans, handle) == KO) {
+        pthread_mutex_unlock(&mx_usbbridgesync);
+        return LGW_COM_ERROR;
+    }
+
+    pthread_mutex_unlock(&mx_usbbridgesync);
+
+    return LGW_COM_SUCCESS;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

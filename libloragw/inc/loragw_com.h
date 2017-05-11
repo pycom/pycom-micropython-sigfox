@@ -50,7 +50,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
 /**
-@struct CmdSettings_t
+@struct lgw_com_cmd_t
 @brief structure for host to mcu commands
 */
 /********************************************************/
@@ -81,23 +81,23 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /********************************************************/
 
 typedef struct {
-    char Cmd;                           /*!> command ID */
-    uint8_t LenMsb;                     /*!> command length MSB */
-    uint8_t Len;                        /*!> command length LSB */
-    uint8_t Address;                    /*!> register address for register read/write commands */
-    uint8_t Value[CMD_DATA_TX_SIZE];    /*!> raw data to be transfered */
-} CmdSettings_t;
+    char id;                            /*!> command ID */
+    uint8_t len_msb;                    /*!> command length MSB */
+    uint8_t len_lsb;                    /*!> command length LSB */
+    uint8_t address;                    /*!> register address for register read/write commands */
+    uint8_t cmd_data[CMD_DATA_TX_SIZE]; /*!> raw data to be transfered */
+} lgw_com_cmd_t;
 
 /**
-@struct AnsSettings_t
+@struct lgw_com_ans_t
 @brief structure for mcu to host command answers
 */
 typedef struct {
-    char Cmd;                           /*!> command ID */
-    uint8_t LenMsb;                     /*!> command length MSB */
-    uint8_t Len;                        /*!> command length LSB */
-    uint8_t Rxbuf[CMD_DATA_RX_SIZE];    /*!> raw answer data */
-} AnsSettings_t;
+    char id;                            /*!> command ID */
+    uint8_t len_msb;                    /*!> command length MSB */
+    uint8_t len_lsb;                    /*!> command length LSB */
+    uint8_t ans_data[CMD_DATA_RX_SIZE]; /*!> raw answer data */
+} lgw_com_ans_t;
 
 /**
 @brief Generic file handle for communication bridge
@@ -169,20 +169,12 @@ int lgw_com_wb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
 /**
-@brief LoRa usb cmd to send a cmd to the stm32
-@param CmdSettings_t command structure
-param handle handle to communication bridge
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
+@brief Send command to concentrator through MCU, and wait for answer
+@param cmd command to be sent to the concentrator
+@param ans answer received from the concentrator
+@return status of operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
-int SendCmd(CmdSettings_t CmdSettings, lgw_handle_t handle);
-
-/**
-@brief LoRa usb cmd to receive a cmd response from the stm32
-@param CmdSettings_t command structure
-@param handle handle to communication bridge
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
-*/
-int ReceiveAns(AnsSettings_t *Ansbuffer, lgw_handle_t handle);
+int lgw_com_send_command(lgw_com_cmd_t cmd, lgw_com_ans_t *ans);
 
 #endif
 

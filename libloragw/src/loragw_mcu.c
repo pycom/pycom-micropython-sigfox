@@ -36,7 +36,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 #if DEBUG_MCU == 1
 #define DEBUG_MSG(str)                fprintf(stderr, str)
 #define DEBUG_PRINTF(fmt, args...)    fprintf(stderr,"%s:%d: "fmt, __FUNCTION__, __LINE__, args)
@@ -47,14 +46,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CHECK_NULL(a)                if(a==NULL){return LGW_COM_ERROR;}
 #endif
 
-#define UNUSED(x) (void)(x)
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE SHARED VARIABLES (GLOBAL) ------------------------------------ */
-
-extern void *lgw_com_target; /*! generic pointer to the SPI device */
-
-pthread_mutex_t mx_usbbridgesync = PTHREAD_MUTEX_INITIALIZER; /* control access to usbbridge sync offsets */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
@@ -63,244 +56,171 @@ pthread_mutex_t mx_usbbridgesync = PTHREAD_MUTEX_INITIALIZER; /* control access 
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int lgw_mcu_board_setconf(uint8_t *data, uint16_t size) {
-    lgw_handle_t handle;
     int i;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
     /* check input variables */
-    CHECK_NULL(lgw_com_target);
     CHECK_NULL(data);
 
-    handle = LGW_GET_HANDLE(lgw_com_target);
-
-    mystruct.Cmd = 'i';
-    mystruct.LenMsb = (uint8_t)(size >> 8);
-    mystruct.Len = (uint8_t)(size - ((size >> 8) << 8));
-    mystruct.Address = 0;
+    cmd.id = 'i';
+    cmd.len_msb = (uint8_t)(size >> 8);
+    cmd.len_lsb = (uint8_t)(size - ((size >> 8) << 8));
+    cmd.address = 0;
     for (i = 0; i < size; i++) {
-        mystruct.Value[i] = data[i];
+        cmd.cmd_data[i] = data[i];
     }
 
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd(mystruct, handle);
-    if (ReceiveAns(&mystrctAns, handle) == KO) {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-    pthread_mutex_unlock(&mx_usbbridgesync);
-
-    return LGW_COM_SUCCESS;
+    return lgw_com_send_command(cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_rxrf_setconf(uint8_t rfchain, uint8_t *data, uint16_t size) {
-    lgw_handle_t handle;
     int i;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
     /* check input variables */
-    CHECK_NULL(lgw_com_target);
     CHECK_NULL(data);
 
-    handle = LGW_GET_HANDLE(lgw_com_target);
-
-    mystruct.Cmd = 'c';
-    mystruct.LenMsb = (uint8_t)(size >> 8);
-    mystruct.Len = (uint8_t)(size - ((size >> 8) << 8));
-    mystruct.Address = rfchain;
+    cmd.id = 'c';
+    cmd.len_msb = (uint8_t)(size >> 8);
+    cmd.len_lsb = (uint8_t)(size - ((size >> 8) << 8));
+    cmd.address = rfchain;
     for (i = 0; i < size; i++) {
-        mystruct.Value[i] = data[i];
+        cmd.cmd_data[i] = data[i];
     }
 
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd(mystruct, handle);
-    if (ReceiveAns(&mystrctAns, handle) == KO) {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-    pthread_mutex_unlock(&mx_usbbridgesync);
-
-    return LGW_COM_SUCCESS;
+    return lgw_com_send_command(cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_rxif_setconf(uint8_t ifchain, uint8_t *data, uint16_t size) {
-    lgw_handle_t handle;
     int i;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
-    /* check input variables */
-    CHECK_NULL(lgw_com_target);
-
-    handle = LGW_GET_HANDLE(lgw_com_target);
-
-    mystruct.Cmd = 'd';
-    mystruct.LenMsb = (uint8_t)(size >> 8);
-    mystruct.Len = (uint8_t)(size - ((size >> 8) << 8));
-    mystruct.Address = ifchain;
+    cmd.id = 'd';
+    cmd.len_msb = (uint8_t)(size >> 8);
+    cmd.len_lsb = (uint8_t)(size - ((size >> 8) << 8));
+    cmd.address = ifchain;
     for (i = 0; i < size; i++) {
-        mystruct.Value[i] = data[i];
+        cmd.cmd_data[i] = data[i];
     }
 
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd(mystruct, handle);
-    if (ReceiveAns(&mystrctAns, handle) == KO) {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-    pthread_mutex_unlock(&mx_usbbridgesync);
-
-    return LGW_COM_SUCCESS;
+    return lgw_com_send_command(cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_txgain_setconf(uint8_t *data, uint16_t size) {
-    lgw_handle_t handle;
     int i;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
     /* check input variables */
-    CHECK_NULL(lgw_com_target);
     CHECK_NULL(data);
 
-    handle = LGW_GET_HANDLE(lgw_com_target);
-
-    mystruct.Cmd = 'h';
-    mystruct.LenMsb = (uint8_t)(size >> 8);
-    mystruct.Len = (uint8_t)(size - ((size >> 8) << 8));
-    mystruct.Address = 0;
+    cmd.id = 'h';
+    cmd.len_msb = (uint8_t)(size >> 8);
+    cmd.len_lsb = (uint8_t)(size - ((size >> 8) << 8));
+    cmd.address = 0;
     for (i = 0; i < size; i++) {
-        mystruct.Value[i] = data[i];
+        cmd.cmd_data[i] = data[i];
 
     }
 
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd(mystruct, handle);
-    if (ReceiveAns(&mystrctAns, handle) == KO) {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-    pthread_mutex_unlock(&mx_usbbridgesync);
-
-    return LGW_COM_SUCCESS;
+    return lgw_com_send_command(cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_receive(uint8_t max_packet, uint8_t *data) {
-    lgw_handle_t handle;
-    int i, j;
+    int i, j, x;
     int pt = 0;
     int cptalc = 0;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
     /* check input variables */
-    CHECK_NULL(lgw_com_target);
     CHECK_NULL(data);
 
-    handle = LGW_GET_HANDLE(lgw_com_target);
-
     /* Prepare command for fetching packets */
-    mystruct.Cmd = 'b';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Address = 0;
-    mystruct.Value[0] = max_packet;
+    cmd.id = 'b';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 1;
+    cmd.address = 0;
+    cmd.cmd_data[0] = max_packet;
 
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd(mystruct, handle);
-    if (ReceiveAns(&mystrctAns, handle) == KO) {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return (0); // for 0 receive packet
+    x = lgw_com_send_command(cmd, &ans);
+    if (x != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR: failed to receive packets from concentrator\n");
+        return 0;
     }
-    pthread_mutex_unlock(&mx_usbbridgesync);
 
-    DEBUG_PRINTF("NOTE: Available packet %d %d\n", mystrctAns.Rxbuf[0], (mystrctAns.LenMsb << 8) + mystrctAns.Len);
-    DEBUG_PRINTF("NOTE: read structure %d %d %d %d %d\n", mystrctAns.Rxbuf[5], mystrctAns.Rxbuf[6], mystrctAns.Rxbuf[7], mystrctAns.Rxbuf[8], mystrctAns.Rxbuf[9]);
+    DEBUG_PRINTF("NOTE: Available packet %d %d\n", ans.ans_data[0], (ans.len_msb << 8) + ans.len_lsb);
+    DEBUG_PRINTF("NOTE: read structure %d %d %d %d %d\n", ans.ans_data[5], ans.ans_data[6], ans.ans_data[7], ans.ans_data[8], ans.ans_data[9]);
 
     /* over the number of packets */
-    for (i = 0; i < mystrctAns.Rxbuf[0]; i++) {
+    for (i = 0; i < ans.ans_data[0]; i++) {
         /* for each packet */
-        for (j = 0; j < mystrctAns.Rxbuf[cptalc + 43] + 44; j++) {
-            pt = mystrctAns.Rxbuf[cptalc + 43] + 44;
-            data[(i * 300) + j] = mystrctAns.Rxbuf[j + cptalc + 1]; /* 300 size of struct target */
+        for (j = 0; j < ans.ans_data[cptalc + 43] + 44; j++) {
+            pt = ans.ans_data[cptalc + 43] + 44;
+            data[(i * 300) + j] = ans.ans_data[j + cptalc + 1]; /* 300 size of struct target */
         }
         cptalc = pt;
     }
 
-    return mystrctAns.Rxbuf[0];
+    return ans.ans_data[0];
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_send(uint8_t *data, uint16_t size) {
-    lgw_handle_t handle;
     int i;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
     /* check input variables */
-    CHECK_NULL(lgw_com_target);
     CHECK_NULL(data);
 
-    handle = LGW_GET_HANDLE(lgw_com_target);
-
-    mystruct.Cmd = 'f';
-    mystruct.LenMsb = (uint8_t)(size >> 8);
-    mystruct.Len = (uint8_t)(size - ((size >> 8) << 8));
-    mystruct.Address = 0;
+    cmd.id = 'f';
+    cmd.len_msb = (uint8_t)(size >> 8);
+    cmd.len_lsb = (uint8_t)(size - ((size >> 8) << 8));
+    cmd.address = 0;
     for (i = 0; i < size; i++) {
-        mystruct.Value[i] = data[i];
+        cmd.cmd_data[i] = data[i];
     }
 
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd(mystruct, handle);
-    if (ReceiveAns(&mystrctAns, handle) == KO) {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-    pthread_mutex_unlock(&mx_usbbridgesync);
-
-    return LGW_COM_SUCCESS;
+    return lgw_com_send_command(cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_get_trigcnt(uint32_t *data) {
-    lgw_handle_t handle;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    int x;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
     /* check input variables */
-    CHECK_NULL(lgw_com_target);
     CHECK_NULL(data);
 
-    handle = LGW_GET_HANDLE(lgw_com_target);
+    cmd.id = 'q';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 1;
+    cmd.address = 0;
+    cmd.cmd_data[0] = 0;
 
-    mystruct.Cmd = 'q';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Address = 0;
-    mystruct.Value[0] = 0;
-
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd(mystruct, handle);
-    if (ReceiveAns(&mystrctAns, handle) == KO) {
-        pthread_mutex_unlock(&mx_usbbridgesync);
+    x = lgw_com_send_command(cmd, &ans);
+    if (x != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR: failed to get concentrator internal counter\n");
         return LGW_COM_ERROR;
     }
-    pthread_mutex_unlock(&mx_usbbridgesync);
 
-    *data = (mystrctAns.Rxbuf[0] << 24) + (mystrctAns.Rxbuf[1] << 16) + (mystrctAns.Rxbuf[2] << 8) + (mystrctAns.Rxbuf[3]);
-    DEBUG_PRINTF("sx1301 counter %d\n", (mystrctAns.Rxbuf[0] << 24) + (mystrctAns.Rxbuf[1] << 16) + (mystrctAns.Rxbuf[2] << 8) + (mystrctAns.Rxbuf[3]));
+    *data = (ans.ans_data[0] << 24) + (ans.ans_data[1] << 16) + (ans.ans_data[2] << 8) + (ans.ans_data[3]);
+    DEBUG_PRINTF("sx1301 counter %d\n", (ans.ans_data[0] << 24) + (ans.ans_data[1] << 16) + (ans.ans_data[2] << 8) + (ans.ans_data[3]));
 
     return LGW_COM_SUCCESS;
 }
@@ -308,129 +228,81 @@ int lgw_mcu_get_trigcnt(uint32_t *data) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_commit_radio_calibration(void) {
-    lgw_handle_t handle;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
-    /* check input variables */
-    CHECK_NULL(lgw_com_target);
+    cmd.id = 'j';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 1;
+    cmd.address = 0;
+    cmd.cmd_data[0] = 0;
 
-    handle = LGW_GET_HANDLE(lgw_com_target);
-
-    mystruct.Cmd = 'j';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Address = 0;
-    mystruct.Value[0] = 0;
-
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd(mystruct, handle);
-    if (ReceiveAns(&mystrctAns, handle) == KO) {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-    pthread_mutex_unlock(&mx_usbbridgesync);
-
-    return LGW_COM_SUCCESS;
+    return lgw_com_send_command(cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_reset(void) {
-    lgw_handle_t handle;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
-    /* check input variables */
-    CHECK_NULL(lgw_com_target);
+    cmd.id = 'm';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 1;
+    cmd.address = 0;
+    cmd.cmd_data[0] = 0;
 
-    handle = LGW_GET_HANDLE(lgw_com_target);
-
-    mystruct.Cmd = 'm';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Address = 0;
-    mystruct.Value[0] = 0;
-
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd(mystruct, handle);
-    if (ReceiveAns(&mystrctAns, handle) == KO) {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-    pthread_mutex_unlock(&mx_usbbridgesync);
-
-    return LGW_COM_SUCCESS;
+    return lgw_com_send_command(cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_set_dfu_mode(void) {
-    lgw_handle_t handle;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
-    /* check input variables */
-    CHECK_NULL(lgw_com_target);
+    cmd.id = 'n';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 1;
+    cmd.address = 0;
+    cmd.cmd_data[0] = 0;
 
-    handle = LGW_GET_HANDLE(lgw_com_target);
-
-    mystruct.Cmd = 'n';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Address = 0;
-    mystruct.Value[0] = 0;
-
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd(mystruct, handle);
-    if (ReceiveAns(&mystrctAns, handle) == KO) {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-    pthread_mutex_unlock(&mx_usbbridgesync);
-
-    return LGW_COM_SUCCESS;
+    return lgw_com_send_command(cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_get_unique_id(uint8_t *uid) {
-    lgw_handle_t handle;
-    int i;
+    int i, x;
     int fwversion = STM32FWVERSION;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
-    /* check input variables */
-    CHECK_NULL(lgw_com_target);
+    cmd.id = 'l';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 4;
+    cmd.address = 0;
+    cmd.cmd_data[0] = (uint8_t)((fwversion >> 24) & (0x000000ff));
+    cmd.cmd_data[1] = (uint8_t)((fwversion >> 16) & (0x000000ff));
+    cmd.cmd_data[2] = (uint8_t)((fwversion >> 8) & (0x000000ff));
+    cmd.cmd_data[3] = (uint8_t)((fwversion) & (0x000000ff));
 
-    handle = LGW_GET_HANDLE(lgw_com_target);
-
-    mystruct.Cmd = 'l';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 4;
-    mystruct.Address = 0;
-    mystruct.Value[0] = (uint8_t)((fwversion >> 24) & (0x000000ff));
-    mystruct.Value[1] = (uint8_t)((fwversion >> 16) & (0x000000ff));
-    mystruct.Value[2] = (uint8_t)((fwversion >> 8) & (0x000000ff));
-    mystruct.Value[3] = (uint8_t)((fwversion) & (0x000000ff));
-
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmd(mystruct, handle);
-    if (ReceiveAns(&mystrctAns, handle) == OK) {
-        if (mystrctAns.Rxbuf[0] == ACK_KO) {
-            pthread_mutex_unlock(&mx_usbbridgesync);
-            return LGW_COM_ERROR;
-        }
-        for (i = 0; i < 7; i++) {
-            uid[i] = mystrctAns.Rxbuf[i + 1];
-        }
-    } else {
+    x = lgw_com_send_command(cmd, &ans);
+    if (x != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to get MCU unique ID\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_COM_ERROR;
     }
-    pthread_mutex_unlock(&mx_usbbridgesync);
+
+    /* Check MCU FW version */
+    if (ans.ans_data[0] == ACK_KO) {
+        DEBUG_MSG("ERROR: Invalid MCU firmware version\n");
+        return LGW_COM_ERROR;
+    }
+
+    /* Get MCU unique ID */
+    for (i = 0; i < 7; i++) {
+        uid[i] = ans.ans_data[i + 1];
+    }
 
     return LGW_COM_SUCCESS;
 }
