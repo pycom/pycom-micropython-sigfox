@@ -75,7 +75,6 @@ def erase_flash(port, command):
 def set_vdd_sdio_voltage(port, command):
     global working_threads
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    num_voltages = 0
 
     # poll the process for new output until finished
     while True:
@@ -84,11 +83,10 @@ def set_vdd_sdio_voltage(port, command):
             break
         if 'VDD_SDIO setting complete' in nextline:
             sys.stdout.write('Board VDD_SDIO Voltage configured OK on port %s\n' % port)
-            num_voltages += 1
         sys.stdout.flush()
 
     # hack to give feedback to the main thread
-    if process.returncode != 0 or num_voltages != 1:
+    if process.returncode != 0:
         working_threads[port] = None
 
 def flash_firmware(port, command):
