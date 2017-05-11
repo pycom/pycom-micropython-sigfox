@@ -42,8 +42,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CMD_DATA_TX_SIZE ATOMICTX
 #define CMD_DATA_RX_SIZE ATOMICRX
 
-#define OK 1
-#define KO 0
 #define ACK_KO 0
 
 /* -------------------------------------------------------------------------- */

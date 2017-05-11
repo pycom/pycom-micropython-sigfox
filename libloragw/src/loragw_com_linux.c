@@ -70,7 +70,7 @@ int set_interface_attribs_linux(int fd, int speed) {
     /* Get current attributes */
     if (tcgetattr(fd, &tty) != 0) {
         DEBUG_PRINTF("ERROR: tcgetattr failed with %d - %s", errno, strerror(errno));
-        return -1;
+        return LGW_COM_ERROR;
     }
 
     cfsetospeed(&tty, speed);
@@ -96,10 +96,10 @@ int set_interface_attribs_linux(int fd, int speed) {
     /* Set attributes */
     if (tcsetattr(fd, TCSANOW, &tty) != 0) {
         DEBUG_PRINTF("ERROR: tcsetattr failed with %d - %s", errno, strerror(errno));
-        return -1;
+        return LGW_COM_ERROR;
     }
 
-    return 0;
+    return LGW_COM_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -113,7 +113,7 @@ int set_blocking_linux(int fd, bool blocking) {
     /* Get current attributes */
     if (tcgetattr(fd, &tty) != 0) {
         DEBUG_PRINTF("ERROR: tcgetattr failed with %d - %s", errno, strerror(errno));
-        return -1;
+        return LGW_COM_ERROR;
     }
 
     tty.c_cc[VMIN] = (blocking == true) ? 1 : 0;    /* set blocking or non-blocking mode */
@@ -122,15 +122,15 @@ int set_blocking_linux(int fd, bool blocking) {
     /* Set attributes */
     if (tcsetattr(fd, TCSANOW, &tty) != 0) {
         DEBUG_PRINTF("ERROR: tcsetattr failed with %d - %s", errno, strerror(errno));
-        return -1;
+        return LGW_COM_ERROR;
     }
 
-    return 0;
+    return LGW_COM_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int checkcmd_linux(uint8_t cmd) {
+bool checkcmd_linux(uint8_t cmd) {
     switch (cmd) {
         case 'r': /* read register */
         case 's': /* read burst - first chunk */
@@ -154,9 +154,9 @@ int checkcmd_linux(uint8_t cmd) {
         case 'l': /* lgw_check_fw_version */
         case 'm': /* reset STM32 */
         case 'n': /* Go to DFU */
-            return(0);
+            return true;
         default:
-            return(OK);
+            return false;
     }
 }
 
@@ -185,7 +185,7 @@ int lgw_com_send_cmd_linux(lgw_com_cmd_t cmd, lgw_handle_t handle) {
     lencheck = write(handle, buffertx, Tlen);
     if (lencheck < 0) {
         DEBUG_PRINTF("ERROR: failed to write cmd (%d - %s)\n", errno, strerror(errno));
-        return(KO);
+        return LGW_COM_ERROR;
     }
     if (lencheck != Tlen) {
         DEBUG_PRINTF("WARNING: incomplete cmd written (%d)\n", (int)lencheck);
@@ -193,7 +193,7 @@ int lgw_com_send_cmd_linux(lgw_com_cmd_t cmd, lgw_handle_t handle) {
 
     DEBUG_PRINTF("Note: sent cmd \'%c\', length=%d\n", cmd.id, Clen);
 
-    return(OK);
+    return LGW_COM_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -211,7 +211,7 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
     cpttimer = 0;
 
     /* Wait for cmd answer header */
-    while (checkcmd_linux(bufferrx[0])) {
+    while (checkcmd_linux(bufferrx[0]) != true) {
         lencheck = read(handle, bufferrx, CMD_HEADER_RX_SIZE);
         if (lencheck < 0) {
             DEBUG_PRINTF("WARNING: failed to read from communication bridge (%d - %s), retry...\n", errno, strerror(errno));
@@ -219,13 +219,13 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
             DEBUG_MSG("WARNING: no data read yet, retry...\n");
         } else if ((lencheck > 0) && (lencheck < CMD_HEADER_RX_SIZE)) { /* TODO: improve mechanism to try to get complete hearder? */
             DEBUG_MSG("ERROR: read incomplete cmd answer, aborting.\n");
-            return(KO);
+            return LGW_COM_ERROR;
         }
         /* Exit after several unsuccessful read */
         cpttimer++;
         if (cpttimer > 15) {
             DEBUG_MSG("ERROR: failed to receive answer, aborting.");
-            return(KO);
+            return LGW_COM_ERROR;
         }
     }
     cmd_size = (bufferrx[1] << 8) + bufferrx[2];
@@ -243,7 +243,7 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
     lencheck = read(handle, &bufferrx[CMD_HEADER_RX_SIZE], buf_size);
     if (lencheck < buf_size) {
         DEBUG_PRINTF("ERROR: failed to read cmd answer (%d - %s)\n", errno, strerror(errno));
-        return(KO);
+        return LGW_COM_ERROR;
     }
     ans->id = (char)bufferrx[0];
     ans->len_msb = bufferrx[1];
@@ -254,7 +254,7 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
 
     DEBUG_PRINTF("Note: received answer for cmd \'%c\', length=%d\n", bufferrx[0], (bufferrx[1] << 8) + bufferrx[2]);
 
-    return(OK);
+    return LGW_COM_SUCCESS;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -308,7 +308,7 @@ int lgw_com_open_linux(void **com_target_ptr) {
 
             pthread_mutex_lock(&mx_usbbridgesync);
             lgw_com_send_cmd_linux(cmd, fd);
-            if (lgw_com_receive_ans_linux(&ans, fd) == OK) {
+            if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_SUCCESS) {
                 if (ans.ans_data[0] == ACK_KO) {
                     pthread_mutex_unlock(&mx_usbbridgesync);
                     DEBUG_MSG("ERROR: Wrong MCU firmware version\n");
@@ -371,7 +371,7 @@ int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
 
     pthread_mutex_lock(&mx_usbbridgesync);
     lgw_com_send_cmd_linux(cmd, fd);
-    if (lgw_com_receive_ans_linux(&ans, fd) == KO) {
+    if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_ERROR) {
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_COM_ERROR;
     }
@@ -403,7 +403,7 @@ int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
 
     pthread_mutex_lock(&mx_usbbridgesync);
     lgw_com_send_cmd_linux(cmd, fd);
-    if (lgw_com_receive_ans_linux(&ans, fd) == KO) {
+    if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_ERROR) {
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_COM_ERROR;
     }
@@ -452,7 +452,7 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
 
         /* Send command */
         lgw_com_send_cmd_linux(cmd, fd);
-        if (lgw_com_receive_ans_linux(&ans, fd) == KO) {
+        if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_ERROR) {
             pthread_mutex_unlock(&mx_usbbridgesync);
             return LGW_COM_ERROR;
         }
@@ -478,7 +478,7 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
 
         /* Send command */
         lgw_com_send_cmd_linux(cmd, fd);
-        if (lgw_com_receive_ans_linux(&ans, fd) == KO) {
+        if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_ERROR) {
             pthread_mutex_unlock(&mx_usbbridgesync);
             return LGW_COM_ERROR;
         }
@@ -530,7 +530,7 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
 
         /* Send command */
         lgw_com_send_cmd_linux(cmd, fd);
-        if (lgw_com_receive_ans_linux(&ans, fd) == OK) {
+        if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_SUCCESS) {
             for (i = 0; i < ATOMICRX; i++) {
                 data[i + cptalc] = ans.ans_data[i];
             }
@@ -559,7 +559,7 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
 
         /* Send command */
         lgw_com_send_cmd_linux(cmd, fd);
-        if (lgw_com_receive_ans_linux(&ans, fd) == OK) {
+        if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_SUCCESS) {
             for (i = 0; i < chunk_size; i++) {
                 data[i + cptalc] = ans.ans_data[i];
             }
