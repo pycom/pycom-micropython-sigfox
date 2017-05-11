@@ -23,9 +23,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <math.h>       /* pow, cell */
 
 #include "loragw_reg.h"
+#include "loragw_mcu.h"
 #include "loragw_hal.h"
 #include "loragw_aux.h"
-#include "loragw_com.h"
 #include "loragw_radio.h"
 
 /* -------------------------------------------------------------------------- */
@@ -547,7 +547,7 @@ int lgw_calibrate_sx125x(uint8_t *cal_fw) {
     }
 
     /* Require MCU to capture calibration values */
-    lgw_reg_calibration_snapshot();
+    lgw_mcu_commit_radio_calibration();
 
     return LGW_HAL_SUCCESS;
 }
@@ -579,7 +579,7 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
     data[1] = conf.clksrc;
     data[2] = PADDING;
     data[3] = PADDING;
-    x = lgw_reg_board_setconfcmd(data, sizeof(data) / sizeof(uint8_t));
+    x = lgw_mcu_board_setconf(data, sizeof(data) / sizeof(uint8_t));
     if (x == LGW_REG_SUCCESS) {
         return LGW_HAL_SUCCESS;
     } else {
@@ -650,7 +650,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     data[21] = *(((uint8_t *)(&conf.tx_notch_freq)) + 1);
     data[22] = *(((uint8_t *)(&conf.tx_notch_freq)) + 2);
     data[23] = *(((uint8_t *)(&conf.tx_notch_freq)) + 3);
-    x = lgw_reg_rxrf_setconfcmd(rf_chain, data, sizeof(data) / sizeof(uint8_t));
+    x = lgw_mcu_rxrf_setconf(rf_chain, data, sizeof(data) / sizeof(uint8_t));
     if (x == LGW_REG_SUCCESS) {
         return LGW_HAL_SUCCESS;
     } else {
@@ -844,7 +844,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
     data[25] = *(((uint8_t *)(&conf.sync_word)) + 5);
     data[26] = *(((uint8_t *)(&conf.sync_word)) + 6);
     data[27] = *(((uint8_t *)(&conf.sync_word)) + 7);
-    x = lgw_reg_rxif_setconfcmd(if_chain, data, sizeof(data) / sizeof(uint8_t));
+    x = lgw_mcu_rxif_setconf(if_chain, data, sizeof(data) / sizeof(uint8_t));
     if (x == LGW_REG_SUCCESS) {
         return LGW_HAL_SUCCESS;
     } else {
@@ -919,7 +919,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
         data[4 + (5 * u)] = conf->lut[u].rf_power;
     }
     data[(TX_GAIN_LUT_SIZE_MAX) * 5] = conf->size;
-    x = lgw_txgainreg_setconfcmd(data, ((TX_GAIN_LUT_SIZE_MAX) * 5) + 1);
+    x = lgw_mcu_txgain_setconf(data, ((TX_GAIN_LUT_SIZE_MAX) * 5) + 1);
     if (x == LGW_REG_SUCCESS) {
         return LGW_HAL_SUCCESS;
     } else {
@@ -1208,7 +1208,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         return LGW_HAL_ERROR;
     }
 
-    nb_packet = lgw_reg_receive_cmd( max_pkt, (uint8_t *)data);
+    nb_packet = lgw_mcu_receive( max_pkt, (uint8_t *)data);
     /* check nb_packet variables */
     if ((nb_packet > LGW_PKT_FIFO_SIZE) || (nb_packet < 0)) {
         DEBUG_PRINTF("ERROR: NOT A VALID NUMBER OF RECEIVED PACKET (%d)\n", nb_packet);
@@ -1335,7 +1335,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data) {
         data[i + 30] = *(((uint8_t *)(&pkt_data.payload)) + i);
     }
 
-    x = lgw_reg_sendconfcmd(data, TX_SIZE_MAX + 30);
+    x = lgw_mcu_send(data, TX_SIZE_MAX + 30);
     if (x == LGW_REG_SUCCESS) {
         return LGW_HAL_SUCCESS;
     } else {
@@ -1395,7 +1395,7 @@ int lgw_abort_tx(void) {
 int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
     int x;
 
-    x = lgw_regtrigger(trig_cnt_us);
+    x = lgw_mcu_get_trigcnt(trig_cnt_us);
     if (x == LGW_REG_SUCCESS) {
         return LGW_HAL_SUCCESS;
     } else {
@@ -1410,7 +1410,9 @@ const char* lgw_version_info() {
     return lgw_version_string;
 }
 
-int lgw_MCUversion_info() {
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_mcu_version_info() {
     return (int)(STM32FWVERSION);
 }
 

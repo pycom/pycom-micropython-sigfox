@@ -368,12 +368,18 @@ int lgw_get_trigcnt(uint32_t* trig_cnt_us);
 const char* lgw_version_info(void);
 
 /**
+@brief Allow user to check the version of the concentrator MCU firmware
+@return An integer value representing the firmware version
+*/
+int lgw_mcu_version_info(void);
+
+/**
 @brief Return time on air of given packet, in milliseconds
 @param packet is a pointer to the packet structure
 @return the packet time on air in milliseconds
 */
 uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet);
-int lgw_MCUversion_info(void);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -25,6 +25,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>      /* printf fprintf */
 
 #include "loragw_com.h"
+#include "loragw_mcu.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
 
@@ -530,7 +531,7 @@ int lgw_connect(void) {
 /* Concentrator disconnect */
 int lgw_disconnect(void) {
     if (lgw_com_target != NULL) {
-        lgw_reg_resetSTM32();
+        lgw_mcu_reset();
         lgw_com_close(lgw_com_target);
         lgw_com_target = NULL;
         DEBUG_MSG("Note: success disconnecting the concentrator\n");
@@ -772,52 +773,6 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     } else {
         return LGW_REG_SUCCESS;
     }
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_reg_receive_cmd( uint8_t max_packet, uint8_t *data) {
-    return(lgw_receive_cmd(lgw_com_target, max_packet, data));
-}
-
-int lgw_reg_rxrf_setconfcmd(  uint8_t rfchain, uint8_t *data, uint16_t size) {
-    return(lgw_rxrf_setconfcmd(lgw_com_target, rfchain, data, size));
-}
-
-int lgw_reg_rxif_setconfcmd(  uint8_t ifchain, uint8_t *data, uint16_t size) {
-    return(lgw_rxif_setconfcmd(lgw_com_target, ifchain, data, size));
-}
-
-int lgw_reg_sendconfcmd(uint8_t *data, uint16_t size) {
-    return(lgw_sendconfcmd(lgw_com_target, data, size));
-}
-
-int lgw_txgainreg_setconfcmd( uint8_t *data, uint16_t size) {
-    return(lgw_txgain_setconfcmd(lgw_com_target, data, size));
-}
-
-int lgw_regtrigger(uint32_t *data) {
-    return(lgw_trigger(lgw_com_target, 0, data));
-}
-
-int lgw_reg_board_setconfcmd(uint8_t *data, uint16_t size) {
-    return(lgw_boardconfcmd(lgw_com_target, data, size));
-}
-
-int lgw_reg_calibration_snapshot(void) {
-    return(lgw_calibration_snapshot(lgw_com_target));
-}
-
-int lgw_reg_resetSTM32(void) {
-    return(lgw_resetSTM32(lgw_com_target));
-}
-
-int lgw_reg_GOTODFU(void) {
-    return(lgw_GOTODFU(lgw_com_target));
-}
-
-int lgw_reg_GetUniqueId(uint8_t * uid) {
-    return(lgw_GetUniqueId(lgw_com_target, uid));
 }
 
 /* --- EOF ------------------------------------------------------------------ */

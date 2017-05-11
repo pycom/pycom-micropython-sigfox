@@ -85,17 +85,8 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
 */
 int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
-int lgw_receive_cmd_linux(void *com_target, uint8_t max_packet, uint8_t *data);
-int lgw_rxrf_setconfcmd_linux(void *com_target, uint8_t rfchain, uint8_t *data, uint16_t size);
-int lgw_rxif_setconfcmd_linux(void *com_target, uint8_t ifchain, uint8_t *data, uint16_t size);
-int lgw_txgain_setconfcmd_linux(void *com_target, uint8_t *data, uint16_t size);
-int lgw_sendconfcmd_linux(void *com_target, uint8_t *data, uint16_t size);
-int lgw_trigger_linux(void *com_target, uint8_t address, uint32_t *data);
-int lgw_boardconfcmd_linux(void * com_target, uint8_t *data, uint16_t size);
-int lgw_calibration_snapshot_linux(void * com_target);
-int lgw_resetSTM32_linux(void * com_target);
-int lgw_GOTODFU_linux(void * com_target);
-int lgw_GetUniqueId_linux(void * com_target, uint8_t * uid);
+int SendCmd_linux(CmdSettings_t CmdSettings, int fd);
+int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd);
 
 #endif
 

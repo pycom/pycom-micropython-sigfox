@@ -7,16 +7,15 @@
   (C)2017 Semtech-Cycleo
 
 Description:
-A bridge layer to abstract os linux/windows or others
-The current project support only linux os.
+  A communication bridge layer to abstract linux/windows OS or others.
+  The current project support only linux os
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 
 */
 
-
-#ifndef _LORAGW_com_H
-#define _LORAGW_com_H
+#ifndef _LORAGW_COM_H
+#define _LORAGW_COM_H
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
@@ -42,6 +41,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define CMD_DATA_TX_SIZE ATOMICTX
 #define CMD_DATA_RX_SIZE ATOMICRX
+
+#define OK 1
+#define KO 0
+#define ACK_KO 0
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
@@ -158,97 +161,20 @@ int lgw_com_wb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
 /**
-@brief LoRa usb receive packet cmd for sx1308 concentrator
-@param com_target generic pointer to USB target
-@param max_packet : nbr of max receive packets
-@param data pointer to byte array that will be written by the LoRa concentrator
-@return nbr of current receive packets
+@brief LoRa usb cmd to send a cmd to the stm32
+@param CmdSettings_t : cmd structure
+param com_target : USB target
+@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
 */
-int lgw_receive_cmd(void *com_target, uint8_t max_packet, uint8_t *data);
+int SendCmd(CmdSettings_t CmdSettings, int fd);
 
 /**
-@brief LoRa usb cmd to configure rf chain for LoRa concentrator
-@param com_target generic pointer to USB target
-@param rfchain : rfchain id
-@param data pointer to byte array that will be written to the LoRa concentrator
-@param size size of the transfer, in byte(s)
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
+@brief LoRa usb cmd to receive a cmd response from the stm32
+@param CmdSettings_t : cmd structure
+@param fd : USB target
+@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
 */
-int lgw_rxrf_setconfcmd(void *com_target, uint8_t rfchain, uint8_t *data, uint16_t size);
-
-/**
-@brief LoRa usb cmd to configure if chain for LoRa concentrator
-@param com_target generic pointer to USB target
-@param ifchain : rfchain id
-@param data pointer to byte array that will be written to the LoRa concentrator
-@param size size of the transfer, in byte(s)
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
-*/
-int lgw_rxif_setconfcmd(void *com_target, uint8_t ifchain, uint8_t *data, uint16_t size);
-
-/**
-@brief LoRa usb cmd to configure tx gain for LoRa concentrator
-@param com_target generic pointer to USB target
-@param data pointer to byte array that will be written to the LoRa concentrator
-@param size size of the transfer, in byte(s)
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
-*/
-int lgw_txgain_setconfcmd(void *com_target, uint8_t *data, uint16_t size);
-
-/**
-@brief LoRa usb cmd to configure  LoRa concentrator
-@param com_target generic pointer to USB target
-@param data pointer to byte array that will be written to the LoRa concentrator
-@param size size of the transfer, in byte(s)
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
-*/
-int lgw_sendconfcmd(void *com_target, uint8_t *data, uint16_t size);
-
-/**
-@brief LoRa usb cmd to configure trigger of the LoRa concentrator
-@param com_target generic pointer to USB target
-@param data pointer to byte array that will be read from the LoRa concentrator
-@param address 7-bit register address
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
-*/
-int lgw_trigger(void *com_target, uint8_t address, uint32_t *data);
-
-/**
-@brief LoRa usb cmd to configure  the board of the LoRa concentrator
-@param com_target generic pointer to USB target
-@param data pointer to byte array that will be written to the LoRa concentrator
-@param size size of the transfer, in byte(s)
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
-*/
-int lgw_boardconfcmd(void * com_target, uint8_t *data, uint16_t size);
-
-/**
-@brief LoRa usb cmd to store calibration parameters to the LoRa concentrator
-@param com_target generic pointer to USB target
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
-*/
-int lgw_calibration_snapshot(void * com_target);
-
-/**
-@brief LoRa usb cmd to reset STM32 of the LoRa concentrator
-@param com_target generic pointer to USB target
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
-*/
-int lgw_resetSTM32(void * com_target);
-
-/**
-@brief LoRa usb cmd to set STM32 in DFU mode
-@param com_target generic pointer to USB target
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
-*/
-int lgw_GOTODFU(void * com_target);
-
-/**
-@brief LoRa usb cmd to get the unique id of STM32
-@param com_target generic pointer to USB target
-@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
-*/
-int lgw_GetUniqueId(void * com_target, uint8_t * uid);
+int ReceiveAns(AnsSettings_t *Ansbuffer, int fd);
 
 #endif
 

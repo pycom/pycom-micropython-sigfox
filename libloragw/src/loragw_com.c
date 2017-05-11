@@ -7,8 +7,8 @@
   (C)2017 Semtech-Cycleo
 
 Description:
-A bridge layer to abstract os linux/windows or others
-The current project support only linux os
+  A communication bridge layer to abstract linux/windows OS or others.
+  The current project support only linux os
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
@@ -30,10 +30,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <time.h>
 #include <sys/select.h>
 
-#include "loragw_com.h"
-#include "loragw_hal.h"
 #include "loragw_aux.h"
 #include "loragw_reg.h"
+#include "loragw_com.h"
 #include "loragw_com_linux.h"
 
 /* -------------------------------------------------------------------------- */
@@ -50,15 +49,18 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CHECK_NULL(a)                if(a==NULL){return LGW_COM_ERROR;}
 #endif
 
+#define UNUSED(x) (void)(x)
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE SHARED VARIABLES (GLOBAL) ------------------------------------ */
+
+extern void *lgw_com_target; /*! generic pointer to the SPI device */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
-
 
 int lgw_com_open(void **com_target_ptr) {
 #ifdef _WIN32
@@ -128,7 +130,6 @@ int lgw_com_r(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, ui
 #else
     DEBUG_PRINTF("System is not recognized.");
 #endif
-
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -169,11 +170,11 @@ int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_receive_cmd(void *com_target, uint8_t max_packet, uint8_t *data) {
+int SendCmd(CmdSettings_t CmdSettings, int fd) {
 #ifdef _WIN32
-    return lgw_receive_cmd_win(com_target, max_packet, data);
+    return SendCmd_win(CmdSettings, fd);
 #elif __linux__
-    return lgw_receive_cmd_linux(com_target, max_packet, data);
+    return SendCmd_linux(CmdSettings, fd);
 #elif __APPLE__
     DEBUG_PRINTF("System is not recognized.");
 #elif __unix__
@@ -187,175 +188,11 @@ int lgw_receive_cmd(void *com_target, uint8_t max_packet, uint8_t *data) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_rxrf_setconfcmd(void *com_target, uint8_t rfchain, uint8_t *data, uint16_t size) {
+int ReceiveAns(AnsSettings_t *Ansbuffer, int fd) {
 #ifdef _WIN32
-    return lgw_rxrf_setconfcmd_win(com_target, rfchain, data, size);
+    return ReceiveAns_win(Ansbuffer, fd);
 #elif __linux__
-    return lgw_rxrf_setconfcmd_linux(com_target, rfchain, data, size);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_boardconfcmd(void * com_target, uint8_t *data, uint16_t size) {
-#ifdef _WIN32
-    return  lgw_boardconfcmd_win(com_target, data, size);
-#elif __linux__
-    return  lgw_boardconfcmd_linux(com_target, data, size);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_rxif_setconfcmd(void *com_target, uint8_t ifchain, uint8_t *data, uint16_t size) {
-#ifdef _WIN32
-    return lgw_rxif_setconfcmd_win(com_target, ifchain, data, size);
-#elif __linux__
-    return lgw_rxif_setconfcmd_linux(com_target, ifchain, data, size);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_txgain_setconfcmd(void *com_target, uint8_t *data, uint16_t size) {
-#ifdef _WIN32
-    return  lgw_txgain_setconfcmd_win(com_target, data, size);
-#elif __linux__
-    return  lgw_txgain_setconfcmd_linux(com_target, data, size);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_sendconfcmd(void *com_target, uint8_t *data, uint16_t size) {
-#ifdef _WIN32
-    return lgw_sendconfcmd_win(com_target, data, size);
-#elif __linux__
-    return lgw_sendconfcmd_linux(com_target, data, size);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_trigger(void *com_target, uint8_t address, uint32_t *data) {
-#ifdef _WIN32
-    return lgw_trigger_win(com_target, address, data);
-#elif __linux__
-    return lgw_trigger_linux(com_target, address, data);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_calibration_snapshot(void * com_target) {
-#ifdef _WIN32
-    return lgw_calibration_snapshot_win(com_target);
-#elif __linux__
-    return lgw_calibration_snapshot_linux(com_target);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_resetSTM32(void * com_target) {
-#ifdef _WIN32
-    return lgw_resetSTM32_win(com_target);
-#elif __linux__
-    return lgw_resetSTM32_linux(com_target);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_GOTODFU(void * com_target) {
-#ifdef _WIN32
-    return lgw_GOTODFU_win(com_target);
-#elif __linux__
-    return lgw_GOTODFU_linux(com_target);
-#elif __APPLE__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __unix__
-    DEBUG_PRINTF("System is not recognized.");
-#elif __posix__
-    DEBUG_PRINTF("System is not recognized.");
-#else
-    DEBUG_PRINTF("System is not recognized.");
-#endif
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_GetUniqueId(void * com_target, uint8_t * uid) {
-#ifdef _WIN32
-    return lgw_GetUniqueId_win(com_target, uid);
-#elif __linux__
-    return lgw_GetUniqueId_linux(com_target, uid);
+    return ReceiveAns_linux(Ansbuffer, fd);
 #elif __APPLE__
     DEBUG_PRINTF("System is not recognized.");
 #elif __unix__

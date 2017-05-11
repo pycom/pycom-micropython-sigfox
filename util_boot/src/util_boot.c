@@ -32,6 +32,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdlib.h>     /* rand */
 
 #include "loragw_reg.h"
+#include "loragw_mcu.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -87,7 +88,7 @@ int main(int argc, char **argv) {
     }
 
     /* Switch PicoCell MCU to DFU mode */
-    lgw_reg_GOTODFU();
+    lgw_mcu_set_dfu_mode();
 
     /* Close communication bridge */
     x = lgw_disconnect();

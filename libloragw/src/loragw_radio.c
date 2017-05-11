@@ -45,16 +45,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE TYPES -------------------------------------------------------- */
 
 /**
-@struct lgw_radio_FSK_bandwidth_s
-@brief Associate a bandwidth in kHz with its corresponding register values
-*/
-struct lgw_sx127x_FSK_bandwidth_s {
-    uint32_t    RxBwKHz;
-    uint8_t     RxBwMant;
-    uint8_t     RxBwExp;
-};
-
-/**
 @struct lgw_radio_type_version_s
 @brief Associate a radio type with its corresponding expected version value
         read in the radio version register.
@@ -71,8 +61,6 @@ struct lgw_radio_type_version_s {
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
-
-extern void *lgw_com_target; /*! generic pointer to the SPI device */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */

@@ -32,6 +32,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdlib.h>     /* rand */
 
 #include "loragw_reg.h"
+#include "loragw_mcu.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -88,7 +89,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    lgw_reg_GetUniqueId(&uid[0]);
+    lgw_mcu_get_unique_id(&uid[0]);
     printf("%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\n", uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6], uid[7]);
 
     x = lgw_disconnect();
