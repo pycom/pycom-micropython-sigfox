@@ -114,6 +114,10 @@ void usage (void);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
+static void exit_cleanup(void) {
+    lgw_stop();
+}
+
 static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
         quit_sig = 1;;
@@ -387,6 +391,9 @@ int main(int argc, char **argv) {
         printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble) at %i dBm, with %i ms between each\n", repeat, f_target, bw, sf, cr, pl_size, preamb, pow, delay);
     }
 
+    /* register function to be called for exit cleanups */
+    atexit(exit_cleanup);
+
     /* configure signal handling */
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
@@ -394,8 +401,6 @@ int main(int argc, char **argv) {
     sigaction(SIGQUIT, &sigact, NULL);
     sigaction(SIGINT, &sigact, NULL);
     sigaction(SIGTERM, &sigact, NULL);
-
-    /* starting the concentrator */
 
     /* Open the communication bridge */
     i = lgw_connect();

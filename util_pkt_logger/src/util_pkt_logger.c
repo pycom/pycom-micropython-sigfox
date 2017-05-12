@@ -77,6 +77,10 @@ void usage (void);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
+static void exit_cleanup(void) {
+    lgw_stop();
+}
+
 static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
         quit_sig = 1;;
@@ -450,6 +454,9 @@ int main(int argc, char **argv) {
                 return EXIT_FAILURE;
         }
     }
+
+    /* register function to be called for exit cleanups */
+    atexit(exit_cleanup);
 
     /* configure signal handling */
     sigemptyset(&sigact.sa_mask);

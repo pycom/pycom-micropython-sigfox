@@ -69,6 +69,7 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 /* -------------------------------------------------------------------------- */
 /* --- SUBFUNCTIONS DECLARATION --------------------------------------------- */
 
+static void exit_cleanup(void);
 static void sig_handler(int sigio);
 
 /* -------------------------------------------------------------------------- */
@@ -274,6 +275,9 @@ int main(int argc, char **argv) {
         }
     }
 
+    /* register function to be called for exit cleanups */
+    atexit(exit_cleanup);
+
     /* Configure signal handling */
     sigemptyset( &sigact.sa_mask );
     sigact.sa_flags = 0;
@@ -444,6 +448,10 @@ int main(int argc, char **argv) {
 
 /* -------------------------------------------------------------------------- */
 /* --- SUBFUNCTIONS DEFINITION ---------------------------------------------- */
+
+static void exit_cleanup(void) {
+    lgw_stop();
+}
 
 static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
