@@ -788,10 +788,6 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
         if (conf->lut[i].mix_gain > 15) {
             DEBUG_MSG("ERROR: TX gain LUT: SX1257 mixer gain must not exceed 15\n");
             return LGW_HAL_ERROR;
-        } else if (conf->lut[i].mix_gain < 8) {
-            //DEBUG_MSG("WARNING: TX gain LUT: SX1257 mixer gains < 8 are not supported\n");
-
-            // return LGW_HAL_ERROR;
         }
         if (conf->lut[i].pa_gain > 3) {
             DEBUG_MSG("ERROR: TX gain LUT: External PA gain must not exceed 3\n");
