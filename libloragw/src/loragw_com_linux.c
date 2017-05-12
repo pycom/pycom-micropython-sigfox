@@ -443,8 +443,8 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         } else {
             cmd.id = 'y'; /* write burst - middle */
         }
-        cmd.len_msb = (uint8_t)(ATOMICTX >> 8);
-        cmd.len_lsb = (uint8_t)(ATOMICTX - ((ATOMICTX >> 8) << 8));
+        cmd.len_msb = (uint8_t)((ATOMICTX >> 8) & 0xFF);
+        cmd.len_lsb = (uint8_t)((ATOMICTX >> 0) & 0xFF);
         cmd.address = address;
         for (i = 0; i < ATOMICTX; i++) {
             cmd.cmd_data[i] = data[i + cptalc];
@@ -469,8 +469,8 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         } else {
             cmd.id = 'z'; /* write burst - end */
         }
-        cmd.len_msb = (uint8_t)(chunk_size >> 8);
-        cmd.len_lsb = (uint8_t)(chunk_size - ((chunk_size >> 8) << 8));
+        cmd.len_msb = (uint8_t)((chunk_size >> 8) & 0xFF);
+        cmd.len_lsb = (uint8_t)((chunk_size >> 0) & 0xFF);
         cmd.address = address;
         for (i = 0; i < ((cmd.len_msb << 8) + cmd.len_lsb); i++) {
             cmd.cmd_data[i] = data[i + cptalc];
@@ -524,8 +524,8 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         }
         cmd.len_msb = 0;
         cmd.len_lsb = 2;
-        cmd.cmd_data[0] = (uint8_t)(ATOMICRX >> 8);
-        cmd.cmd_data[1] = (uint8_t)(ATOMICRX - ((ATOMICRX >> 8) << 8));
+        cmd.cmd_data[0] = (uint8_t)((ATOMICRX >> 8) & 0xFF);
+        cmd.cmd_data[1] = (uint8_t)((ATOMICRX >> 0) & 0xFF);
         cmd.address = address;
 
         /* Send command */
@@ -553,8 +553,8 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
         }
         cmd.len_msb = 0;
         cmd.len_lsb = 2;
-        cmd.cmd_data[0] = (uint8_t)(chunk_size >> 8);
-        cmd.cmd_data[1] = (uint8_t)(chunk_size - ((chunk_size >> 8) << 8));
+        cmd.cmd_data[0] = (uint8_t)((chunk_size >> 8) & 0xFF);
+        cmd.cmd_data[1] = (uint8_t)((chunk_size >> 0) & 0xFF);
         cmd.address = address;
 
         /* Send command */

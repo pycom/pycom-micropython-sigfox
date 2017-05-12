@@ -72,8 +72,8 @@ int lgw_mcu_board_setconf(struct lgw_conf_board_s conf) {
 
     /* prepare command */
     cmd.id = 'i';
-    cmd.len_msb = (uint8_t)(size >> 8);
-    cmd.len_lsb = (uint8_t)(size - ((size >> 8) << 8));
+    cmd.len_msb = (uint8_t)((size >> 8) & 0xFF);
+    cmd.len_lsb = (uint8_t)((size >> 0) & 0xFF);
     cmd.address = 0;
     for (i = 0; i < size; i++) {
         cmd.cmd_data[i] = data[i];
@@ -122,8 +122,8 @@ int lgw_mcu_rxrf_setconf(uint8_t rfchain, struct lgw_conf_rxrf_s conf) {
 
     /* prepare command */
     cmd.id = 'c';
-    cmd.len_msb = (uint8_t)(size >> 8);
-    cmd.len_lsb = (uint8_t)(size - ((size >> 8) << 8));
+    cmd.len_msb = (uint8_t)((size >> 8) & 0xFF);
+    cmd.len_lsb = (uint8_t)((size >> 0) & 0xFF);
     cmd.address = rfchain;
     for (i = 0; i < size; i++) {
         cmd.cmd_data[i] = data[i];
@@ -176,8 +176,8 @@ int lgw_mcu_rxif_setconf(uint8_t ifchain, struct lgw_conf_rxif_s conf) {
 
     /* prepare command */
     cmd.id = 'd';
-    cmd.len_msb = (uint8_t)(size >> 8);
-    cmd.len_lsb = (uint8_t)(size - ((size >> 8) << 8));
+    cmd.len_msb = (uint8_t)((size >> 8) & 0xFF);
+    cmd.len_lsb = (uint8_t)((size >> 0) & 0xFF);
     cmd.address = ifchain;
     for (i = 0; i < size; i++) {
         cmd.cmd_data[i] = data[i];
@@ -218,8 +218,8 @@ int lgw_mcu_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
 
     /* prepare command */
     cmd.id = 'h';
-    cmd.len_msb = (uint8_t)(size >> 8);
-    cmd.len_lsb = (uint8_t)(size - ((size >> 8) << 8));
+    cmd.len_msb = (uint8_t)((size >> 8) & 0xFF);
+    cmd.len_lsb = (uint8_t)((size >> 0) & 0xFF);
     cmd.address = 0;
     for (i = 0; i < size; i++) {
         cmd.cmd_data[i] = data[i];
@@ -354,8 +354,8 @@ int lgw_mcu_send(struct lgw_pkt_tx_s pkt_data) {
 
     /* prepare command */
     cmd.id = 'f';
-    cmd.len_msb = (uint8_t)(size >> 8);
-    cmd.len_lsb = (uint8_t)(size - ((size >> 8) << 8));
+    cmd.len_msb = (uint8_t)((size >> 8) & 0xFF);
+    cmd.len_lsb = (uint8_t)((size >> 0) & 0xFF);
     cmd.address = 0;
     for (i = 0; i < size; i++) {
         cmd.cmd_data[i] = data[i];
