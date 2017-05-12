@@ -36,8 +36,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define ATOMICTX 600
 #define ATOMICRX 900
 
-#define CMD_HEADER_TX_SIZE 4 /* Cmd + LenMsb + Len + Address */
-#define CMD_HEADER_RX_SIZE 3 /* Cmd + LenMsb + Len */
+#define CMD_HEADER_TX_SIZE 4 /* id + len_msb + len_lsb + address */
+#define CMD_HEADER_RX_SIZE 3 /* id + len_msb + len_lsb */
 
 #define CMD_DATA_TX_SIZE ATOMICTX
 #define CMD_DATA_RX_SIZE ATOMICRX
