@@ -191,7 +191,7 @@ int lgw_com_send_cmd_linux(lgw_com_cmd_t cmd, lgw_handle_t handle) {
         DEBUG_PRINTF("WARNING: incomplete cmd written (%d)\n", (int)lencheck);
     }
 
-    DEBUG_PRINTF("Note: sent cmd \'%c\', length=%d\n", cmd.id, Clen);
+    DEBUG_PRINTF("Note: sent cmd \'%c\', addr 0x%02X, length=%d\n", cmd.id, cmd.address, Clen);
 
     return LGW_COM_SUCCESS;
 }
@@ -224,35 +224,40 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
         /* Exit after several unsuccessful read */
         cpttimer++;
         if (cpttimer > 15) {
-            DEBUG_MSG("ERROR: failed to receive answer, aborting.");
+            DEBUG_MSG("ERROR: failed to receive answer, aborting.\n");
             return LGW_COM_ERROR;
         }
     }
     cmd_size = (bufferrx[1] << 8) + bufferrx[2];
 
-    /* Wait for more data */
-    wait_ns((cmd_size + 1) * 6000); /* TODO: refine this tempo */
+    DEBUG_PRINTF("Note: received answer header for cmd \'%c\', length=%d, ack=%u\n", bufferrx[0], cmd_size, bufferrx[3]);
 
-    /* Read the answer */
-    buf_size = cmd_size + CMD_HEADER_RX_SIZE;
-    if ((buf_size % 64) == 0) {
-        buf_size = cmd_size + 1; /* one padding byte is added by USB driver, we need to read it */
-    } else {
-        buf_size = cmd_size;
-    }
-    lencheck = read(handle, &bufferrx[CMD_HEADER_RX_SIZE], buf_size);
-    if (lencheck < buf_size) {
-        DEBUG_PRINTF("ERROR: failed to read cmd answer (%d - %s)\n", errno, strerror(errno));
-        return LGW_COM_ERROR;
+    if (cmd_size > 0) {
+        /* Wait for more data */
+        wait_ns((cmd_size + 1) * 20000); /* TODO: refine this tempo */
+
+        /* Read the answer */
+        buf_size = cmd_size + CMD_HEADER_RX_SIZE;
+        if ((buf_size % 64) == 0) {
+            buf_size = cmd_size + 1; /* one padding byte is added by USB driver, we need to read it */
+        } else {
+            buf_size = cmd_size;
+        }
+        lencheck = read(handle, &bufferrx[CMD_HEADER_RX_SIZE], buf_size);
+        if (lencheck < buf_size) {
+            DEBUG_PRINTF("ERROR: failed to read cmd answer (%d - %s)\n", errno, strerror(errno));
+            return LGW_COM_ERROR;
+        }
     }
     ans->id = (char)bufferrx[0];
     ans->len_msb = bufferrx[1];
     ans->len_lsb = bufferrx[2];
-    for (i = 0; i < (bufferrx[1] << 8) + bufferrx[2]; i++) {
+    ans->status = bufferrx[3];
+    for (i = 0; i < (int)cmd_size; i++) {
         ans->ans_data[i] = bufferrx[CMD_HEADER_RX_SIZE + i];
     }
 
-    DEBUG_PRINTF("Note: received answer for cmd \'%c\', length=%d\n", bufferrx[0], (bufferrx[1] << 8) + bufferrx[2]);
+    DEBUG_PRINTF("Note: received answer for cmd \'%c\', length=%d\n", bufferrx[0], cmd_size);
 
     return LGW_COM_SUCCESS;
 }
@@ -363,6 +368,8 @@ int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
 
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
+    //printf("--> com_w: addr:0x%02X data:0x%02X\n", address, data);
+
     cmd.id = 'w';
     cmd.len_msb = 0;
     cmd.len_lsb = 1;
@@ -410,6 +417,8 @@ int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
     pthread_mutex_unlock(&mx_usbbridgesync);
 
     *data = ans.ans_data[0];
+
+    //printf("--> com_r: addr:0x%02X data:0x%02X\n", address, *data);
 
     return LGW_COM_SUCCESS;
 }

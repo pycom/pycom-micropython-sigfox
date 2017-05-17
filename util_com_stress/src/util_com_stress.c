@@ -45,7 +45,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define VERS                    103
 #define READS_WHEN_ERROR        16 /* number of times a read is repeated if there is a read error */
 #define BUFF_SIZE               1024 /* maximum number of bytes that we can write in sx1301 RX data buffer */
-#define DEFAULT_TX_NOTCH_FREQ   129E3
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
@@ -243,16 +242,15 @@ int main(int argc, char **argv) {
                 test_buff[i] = rand() & 0xFF;
             }
             printf("Cycle %i > ", cycle_number);
-            test_addr = rand() & 0xFFFF;
+            test_addr = rand() & 0x0000FFFF;
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* write at random offset in memory */
             lgw_reg_wb(LGW_RX_DATA_BUF_DATA, test_buff, bufftest);
 
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
-
             lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, bufftest);
             for (i = 0; ((i < bufftest) && (test_buff[i] == read_buff[i])); ++i);
             if (i != bufftest) {
-                printf("error during the buffer comparison\n");
+                printf("error during the buffer comparison (test_addr=0x%X)\n", test_addr);
                 printf("Written values:\n");
                 for (i = 0; i < bufftest; ++i) {
                     printf(" %02X ", test_buff[i]);
@@ -263,7 +261,7 @@ int main(int argc, char **argv) {
                 printf("\n");
                 printf("Read values:\n");
                 for (i = 0; i < bufftest; ++i) {
-                    printf("%.2x ", test_buff[i] - read_buff[i]);
+                    printf(" %02X ", (uint8_t)(test_buff[i] - read_buff[i]));
                     if (i % 16 == 15) {
                         printf("\n");
                     }
@@ -273,7 +271,8 @@ int main(int argc, char **argv) {
                 lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, bufftest);
                 printf("Re-read values:\n");
                 for (i = 0; i < bufftest; ++i) {
-                    printf(" %02X ", read_buff[i]);
+                    //printf(" %02X ", read_buff[i]);
+                    printf(" %02X ", (uint8_t)(test_buff[i] - read_buff[i]));
                     if (i % 16 == 15) {
                         printf("\n");
                     }
@@ -282,7 +281,7 @@ int main(int argc, char **argv) {
                 i = lgw_disconnect();
                 return EXIT_FAILURE;
             } else {
-                printf("did a %i-bytes R/W on a data buffer with no error\n", bufftest);
+                printf("did a %i-bytes R/W on a data buffer with no error (test_addr=0x%X)\n", bufftest, test_addr);
                 ++cycle_number;
             }
         }

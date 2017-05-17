@@ -265,7 +265,7 @@ int lgw_mcu_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         return 0;
     }
 
-    DEBUG_PRINTF("NOTE: Available packet %d %d\n", nb_packet, (ans.len_msb << 8) + ans.len_lsb);
+    //DEBUG_PRINTF("NOTE: Available packet %d %d\n", nb_packet, (ans.len_msb << 8) + ans.len_lsb);
 
     /* over the number of packets */
     for (i = 0; i < nb_packet; i++) {
@@ -363,13 +363,13 @@ int lgw_mcu_send(struct lgw_pkt_tx_s pkt_data) {
     /* send command to MCU */
     x = lgw_com_send_command(cmd, &ans);
     if (x != LGW_COM_SUCCESS) {
-        DEBUG_MSG("ERROR: failed to send packet\n");
+        printf("ERROR: failed to send packet\n");
         return LGW_MCU_ERROR;
     }
 
     /* check command acknoledge */
     if (ans.ans_data[0] != ACK_OK) {
-        DEBUG_MSG("ERROR: failed to send packet, ACK failed\n");
+        printf("ERROR: failed to send packet, ACK failed\n");
         return LGW_MCU_ERROR;
     }
 

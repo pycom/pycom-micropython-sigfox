@@ -37,7 +37,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define ATOMICRX 900
 
 #define CMD_HEADER_TX_SIZE 4 /* id + len_msb + len_lsb + address */
-#define CMD_HEADER_RX_SIZE 3 /* id + len_msb + len_lsb */
+#define CMD_HEADER_RX_SIZE 4 /* id + len_msb + len_lsb + status */
 
 #define CMD_DATA_TX_SIZE ATOMICTX
 #define CMD_DATA_RX_SIZE ATOMICRX
@@ -95,6 +95,7 @@ typedef struct {
     char id;                            /*!> command ID */
     uint8_t len_msb;                    /*!> command length MSB */
     uint8_t len_lsb;                    /*!> command length LSB */
+    uint8_t status;                     /*!> command acknoledge */
     uint8_t ans_data[CMD_DATA_RX_SIZE]; /*!> raw answer data */
 } lgw_com_ans_t;
 
