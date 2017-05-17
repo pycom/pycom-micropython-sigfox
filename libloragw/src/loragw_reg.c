@@ -305,14 +305,14 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS] = {
     {1, 81, 0, 0, 8, 0, 0},  /* FSK_BROADCAST */
     {1, 82, 0, 0, 1, 0, 1},  /* FSK_AUTO_AFC_ON */
     {1, 83, 0, 0, 10, 0, 0}, /* FSK_PATTERN_TIMEOUT_CFG */
-    {2, 33, 0, 0, 8, 0, 0},  /* com_RADIO_A__DATA */
-    {2, 34, 0, 0, 8, 1, 0},  /* com_RADIO_A__DATA_READBACK */
-    {2, 35, 0, 0, 8, 0, 0},  /* com_RADIO_A__ADDR */
-    {2, 37, 0, 0, 1, 0, 0},  /* com_RADIO_A__CS */
-    {2, 38, 0, 0, 8, 0, 0},  /* com_RADIO_B__DATA */
-    {2, 39, 0, 0, 8, 1, 0},  /* com_RADIO_B__DATA_READBACK */
-    {2, 40, 0, 0, 8, 0, 0},  /* com_RADIO_B__ADDR */
-    {2, 42, 0, 0, 1, 0, 0},  /* com_RADIO_B__CS */
+    {2, 33, 0, 0, 8, 0, 0},  /* SPI_RADIO_A__DATA */
+    {2, 34, 0, 0, 8, 1, 0},  /* SPI_RADIO_A__DATA_READBACK */
+    {2, 35, 0, 0, 8, 0, 0},  /* SPI_RADIO_A__ADDR */
+    {2, 37, 0, 0, 1, 0, 0},  /* SPI_RADIO_A__CS */
+    {2, 38, 0, 0, 8, 0, 0},  /* SPI_RADIO_B__DATA */
+    {2, 39, 0, 0, 8, 1, 0},  /* SPI_RADIO_B__DATA_READBACK */
+    {2, 40, 0, 0, 8, 0, 0},  /* SPI_RADIO_B__ADDR */
+    {2, 42, 0, 0, 1, 0, 0},  /* SPI_RADIO_B__CS */
     {2, 43, 0, 0, 1, 0, 0},  /* RADIO_A_EN */
     {2, 43, 1, 0, 1, 0, 0},  /* RADIO_B_EN */
     {2, 43, 2, 0, 1, 0, 1},  /* RADIO_RST */
