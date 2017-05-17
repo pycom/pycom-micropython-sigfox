@@ -314,9 +314,9 @@ int lgw_com_open_linux(void **com_target_ptr) {
             pthread_mutex_lock(&mx_usbbridgesync);
             lgw_com_send_cmd_linux(cmd, fd);
             if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_SUCCESS) {
-                if (ans.ans_data[0] == ACK_KO) {
+                if (ans.status == ACK_KO) {
                     pthread_mutex_unlock(&mx_usbbridgesync);
-                    DEBUG_MSG("ERROR: Wrong MCU firmware version\n");
+                    printf("ERROR: Wrong MCU firmware version\n");
                     return LGW_COM_ERROR;
                 }
             } else {

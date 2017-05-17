@@ -27,10 +27,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 
-#define LGW_MCU_SUCCESS     0
-#define LGW_MCU_ERROR       -1
+#define LGW_MCU_SUCCESS 0
+#define LGW_MCU_ERROR   -1
 
-#define STM32FWVERSION 0x010a0000
+#define STM32FWVERSION  0x010a0001 /* incremement LSB for new version */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
