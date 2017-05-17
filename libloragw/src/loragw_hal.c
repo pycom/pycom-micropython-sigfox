@@ -419,22 +419,18 @@ int lgw_calibrate_sx125x(uint8_t *cal_fw) {
     wait_ms(5);
     lgw_reg_w(LGW_RADIO_RST, 0);
 
-    printf("--> cal1\n");
-
     /* setup the radios */
     err = lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
     if (err != 0) {
         DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
         return LGW_HAL_ERROR;
     }
-    printf("--> cal2\n");
     err = lgw_setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
     if (err != 0) {
         DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
         return LGW_HAL_ERROR;
     }
 
-    printf("--> cal3\n");
     /* Enable clocks */
     lgw_reg_w(LGW_GLOBAL_EN, 1);
     lgw_reg_w(LGW_CLK32M_EN, 1);
@@ -821,8 +817,6 @@ int lgw_start(void) {
     uint8_t fw_version;
     uint64_t fsk_sync_word_reg;
 
-    printf("toto1\n");
-
     if (lgw_is_started == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
@@ -839,8 +833,6 @@ int lgw_start(void) {
         DEBUG_MSG("ERROR: Failed to calibrate sx125x radios (8-15)\n");
         return LGW_HAL_ERROR;
     }
-
-    printf("toto2\n");
 
     /* RX and TX packets signalling through GPIOs */
     lgw_reg_w(LGW_GPIO_MODE, 31); /* Set all GPIOs as output */

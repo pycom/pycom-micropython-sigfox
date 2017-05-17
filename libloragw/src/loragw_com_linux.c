@@ -368,8 +368,6 @@ int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
 
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
-    //printf("--> com_w: addr:0x%02X data:0x%02X\n", address, data);
-
     cmd.id = 'w';
     cmd.len_msb = 0;
     cmd.len_lsb = 1;
@@ -417,8 +415,6 @@ int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
     pthread_mutex_unlock(&mx_usbbridgesync);
 
     *data = ans.ans_data[0];
-
-    //printf("--> com_r: addr:0x%02X data:0x%02X\n", address, *data);
 
     return LGW_COM_SUCCESS;
 }
