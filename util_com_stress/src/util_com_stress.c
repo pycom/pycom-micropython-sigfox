@@ -250,7 +250,7 @@ int main(int argc, char **argv) {
             lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, bufftest);
             for (i = 0; ((i < bufftest) && (test_buff[i] == read_buff[i])); ++i);
             if (i != bufftest) {
-                printf("error during the buffer comparison (test_addr=0x%X)\n", test_addr);
+                printf("error during the buffer comparison\n");
                 printf("Written values:\n");
                 for (i = 0; i < bufftest; ++i) {
                     printf(" %02X ", test_buff[i]);
@@ -271,7 +271,6 @@ int main(int argc, char **argv) {
                 lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, bufftest);
                 printf("Re-read values:\n");
                 for (i = 0; i < bufftest; ++i) {
-                    //printf(" %02X ", read_buff[i]);
                     printf(" %02X ", (uint8_t)(test_buff[i] - read_buff[i]));
                     if (i % 16 == 15) {
                         printf("\n");
@@ -281,7 +280,7 @@ int main(int argc, char **argv) {
                 i = lgw_disconnect();
                 return EXIT_FAILURE;
             } else {
-                printf("did a %i-bytes R/W on a data buffer with no error (test_addr=0x%X)\n", bufftest, test_addr);
+                printf("did a %i-bytes R/W on a data buffer with no error\n", bufftest);
                 ++cycle_number;
             }
         }
