@@ -223,7 +223,6 @@ int lgw_mcu_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
     cmd.address = 0;
     for (i = 0; i < size; i++) {
         cmd.cmd_data[i] = data[i];
-
     }
 
     /* send command to MCU */
@@ -368,7 +367,7 @@ int lgw_mcu_send(struct lgw_pkt_tx_s pkt_data) {
     }
 
     /* check command acknoledge */
-    if (ans.ans_data[0] != ACK_OK) {
+    if (ans.status != ACK_OK) {
         printf("ERROR: failed to send packet, ACK failed\n");
         return LGW_MCU_ERROR;
     }
@@ -483,7 +482,7 @@ int lgw_mcu_get_unique_id(uint8_t *uid) {
     }
 
     /* Check MCU FW version */
-    if (ans.ans_data[0] == ACK_KO) {
+    if (ans.status == ACK_KO) {
         DEBUG_MSG("ERROR: Invalid MCU firmware version\n");
         return LGW_MCU_ERROR;
     }
