@@ -1,10 +1,10 @@
 /*
-/ _____)             _              | |
+ / _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
-\____ \| ___ |    (_   _) ___ |/ ___)  _ \
-_____) ) ____| | | || |_| ____( (___| | | |
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
- (C)2013 Semtech-Cycleo
+  (C)2017 Semtech-Cycleo
 
 Description:
  Utility to switch the PicoCell MCU to DFU mode
@@ -24,15 +24,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #endif
 
 #include <stdint.h>     /* C99 types */
-#include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf sprintf fopen fputs */
-
-#include <signal.h>     /* sigaction */
 #include <unistd.h>     /* getopt access */
-#include <stdlib.h>     /* rand */
+#include <stdlib.h>     /* EXIT_FAILURE */
 
-#include "loragw_reg.h"
-#include "loragw_mcu.h"
+#include "loragw_com.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -45,6 +41,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
+
+void *lgw_com_target = NULL; /*! generic pointer to the COM device */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -65,6 +63,8 @@ void usage(void) {
 
 int main(int argc, char **argv) {
     int i, x;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
 
     while ((i = getopt (argc, argv, "h")) != -1) {
         switch (i) {
@@ -81,18 +81,28 @@ int main(int argc, char **argv) {
     }
 
     /* Open communication bridge */
-    x = lgw_connect();
-    if (x == -1) {
+    x = lgw_com_open(&lgw_com_target);
+    if (x == LGW_COM_ERROR) {
         printf("ERROR: FAIL TO CONNECT BOARD\n");
         return -1;
     }
 
     /* Switch PicoCell MCU to DFU mode */
-    lgw_mcu_set_dfu_mode();
+    /* prepare command */
+    cmd.id = 'n';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 0;
+    cmd.address = 0;
+    /* send command to MCU */
+    x = lgw_com_send_command(lgw_com_target, cmd, &ans);
+    if (x == LGW_COM_ERROR) {
+        printf("ERROR: FAIL TO SEND COMMAND\n");
+        return -1;
+    }
 
     /* Close communication bridge */
-    x = lgw_disconnect();
-    if (x == -1) {
+    x = lgw_com_close(lgw_com_target);
+    if (x == LGW_COM_ERROR) {
         printf("ERROR: FAIL TO DISCONNECT BOARD\n");
         return -1;
     }
