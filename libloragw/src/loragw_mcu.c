@@ -94,15 +94,17 @@ int lgw_mcu_rxrf_setconf(uint8_t rfchain, struct lgw_conf_rxrf_s conf) {
     uint16_t size;
 
     /* struct to byte array */
+    /* --- 64-bits start --- */
     data[0] = conf.enable;
     data[1] = PADDING;
     data[2] = PADDING;
     data[3] = PADDING;
-    data[4] = *(((uint8_t *)(&conf.freq_hz))); //uint32_t
+    data[4] = *(((uint8_t *)(&conf.freq_hz)));
     data[5] = *(((uint8_t *)(&conf.freq_hz)) + 1);
     data[6] = *(((uint8_t *)(&conf.freq_hz)) + 2);
     data[7] = *(((uint8_t *)(&conf.freq_hz)) + 3);
-    data[8] = *(((uint8_t *)(&conf.rssi_offset))); //uint32_t
+    /* --- 64-bits start --- */
+    data[8] = *(((uint8_t *)(&conf.rssi_offset)));
     data[9] = *(((uint8_t *)(&conf.rssi_offset)) + 1);
     data[10] = *(((uint8_t *)(&conf.rssi_offset)) + 2);
     data[11] = *(((uint8_t *)(&conf.rssi_offset)) + 3);
@@ -110,6 +112,7 @@ int lgw_mcu_rxrf_setconf(uint8_t rfchain, struct lgw_conf_rxrf_s conf) {
     data[13] = PADDING;
     data[14] = PADDING;
     data[15] = PADDING;
+    /* --- 64-bits start --- */
     data[16] = *(((uint8_t *)(&conf.tx_enable)));
     data[17] = *(((uint8_t *)(&conf.tx_enable)) + 1);
     data[18] = *(((uint8_t *)(&conf.tx_enable)) + 2);
@@ -144,14 +147,16 @@ int lgw_mcu_rxif_setconf(uint8_t ifchain, struct lgw_conf_rxif_s conf) {
     uint16_t size;
 
     /* struct to byte array */
+    /* --- 64-bits start --- */
     data[0] = conf.enable;
     data[1] = *(((uint8_t *)(&conf.rf_chain)));
     data[2] = PADDING;
     data[3] = PADDING;
-    data[4] = *(((uint8_t *)(&conf.freq_hz))); //uint32_t
+    data[4] = *(((uint8_t *)(&conf.freq_hz)));
     data[5] = *(((uint8_t *)(&conf.freq_hz)) + 1);
     data[6] = *(((uint8_t *)(&conf.freq_hz)) + 2);
     data[7] = *(((uint8_t *)(&conf.freq_hz)) + 3);
+    /* --- 64-bits start --- */
     data[8] = *(((uint8_t *)(&conf.bandwidth)));
     data[9] = PADDING;
     data[10] = PADDING;
@@ -160,6 +165,7 @@ int lgw_mcu_rxif_setconf(uint8_t ifchain, struct lgw_conf_rxif_s conf) {
     data[13] = *(((uint8_t *)(&conf.datarate)) + 1);
     data[14] = *(((uint8_t *)(&conf.datarate)) + 2);
     data[15] = *(((uint8_t *)(&conf.datarate)) + 3);
+    /* --- 64-bits start --- */
     data[16] = *(((uint8_t *)(&conf.sync_word_size)));
     data[17] = PADDING;
     data[18] = PADDING;
@@ -168,6 +174,7 @@ int lgw_mcu_rxif_setconf(uint8_t ifchain, struct lgw_conf_rxif_s conf) {
     data[21] = *(((uint8_t *)(&conf.sync_word)) + 1);
     data[22] = *(((uint8_t *)(&conf.sync_word)) + 2);
     data[23] = *(((uint8_t *)(&conf.sync_word)) + 3);
+    /* --- 64-bits start --- */
     data[24] = *(((uint8_t *)(&conf.sync_word)) + 4);
     data[25] = *(((uint8_t *)(&conf.sync_word)) + 5);
     data[26] = *(((uint8_t *)(&conf.sync_word)) + 6);
@@ -321,11 +328,12 @@ int lgw_mcu_send(struct lgw_pkt_tx_s pkt_data) {
     lgw_com_cmd_t cmd;
     lgw_com_ans_t ans;
     uint8_t PADDING = 0;
-    uint8_t data[TX_SIZE_MAX + 32];
+    uint8_t data[LGW_PKT_TX_STRUCT_SIZE_ALIGNED];
     uint16_t size;
 
     /* struct to byte array */
-    data[0] = *(((uint8_t *)(&pkt_data.freq_hz))); //uint32_t
+    /* --- 64-bits start --- */
+    data[0] = *(((uint8_t *)(&pkt_data.freq_hz)));
     data[1] = *(((uint8_t *)(&pkt_data.freq_hz)) + 1);
     data[2] = *(((uint8_t *)(&pkt_data.freq_hz)) + 2);
     data[3] = *(((uint8_t *)(&pkt_data.freq_hz)) + 3);
@@ -333,7 +341,8 @@ int lgw_mcu_send(struct lgw_pkt_tx_s pkt_data) {
     data[5] = PADDING;
     data[6] = PADDING;
     data[7] = PADDING;
-    data[8] = *(((uint8_t *)(&pkt_data.count_us))); //uint32_t
+    /* --- 64-bits start --- */
+    data[8] = *(((uint8_t *)(&pkt_data.count_us)));
     data[9] = *(((uint8_t *)(&pkt_data.count_us)) + 1);
     data[10] = *(((uint8_t *)(&pkt_data.count_us)) + 2);
     data[11] = *(((uint8_t *)(&pkt_data.count_us)) + 3);
@@ -341,6 +350,7 @@ int lgw_mcu_send(struct lgw_pkt_tx_s pkt_data) {
     data[13] = *(((uint8_t *)(&pkt_data.rf_power)));
     data[14] = *(((uint8_t *)(&pkt_data.modulation)));
     data[15] = *(((uint8_t *)(&pkt_data.bandwidth)));
+    /* --- 64-bits start --- */
     data[16] = *(((uint8_t *)(&pkt_data.datarate)));
     data[17] = *(((uint8_t *)(&pkt_data.datarate)) + 1);
     data[18] = *(((uint8_t *)(&pkt_data.datarate)) + 2);
@@ -349,14 +359,16 @@ int lgw_mcu_send(struct lgw_pkt_tx_s pkt_data) {
     data[21] = *(((uint8_t *)(&pkt_data.invert_pol)));
     data[22] = *(((uint8_t *)(&pkt_data.f_dev)));
     data[23] = PADDING;
+    /* --- 64-bits start --- */
     data[24] = *(((uint8_t *)(&pkt_data.preamble)));
     data[25] = *(((uint8_t *)(&pkt_data.preamble)) + 1);
     data[26] = *(((uint8_t *)(&pkt_data.no_crc)));
     data[27] = *(((uint8_t *)(&pkt_data.no_header)));
     data[28] = *(((uint8_t *)(&pkt_data.size)));
     data[29] = *(((uint8_t *)(&pkt_data.size)) + 1);
-    for (i = 0; i < TX_SIZE_MAX; i++) {
-        data[i + 30] = *(((uint8_t *)(&pkt_data.payload)) + i);
+    /* NO PADDING NEEDED HERE, END OF ARRAY */
+    for (i = 0; i < 256; i++) {
+        data[i + LGW_PKT_TX_METADATA_SIZE_ALIGNED] = *(((uint8_t *)(&pkt_data.payload)) + i);
     }
     size = sizeof(data) / sizeof(uint8_t);
 
@@ -410,7 +422,7 @@ int lgw_mcu_get_trigcnt(uint32_t *data) {
     }
 
     *data = (ans.ans_data[0] << 24) + (ans.ans_data[1] << 16) + (ans.ans_data[2] << 8) + (ans.ans_data[3]);
-    DEBUG_PRINTF("sx1301 counter %d\n", (ans.ans_data[0] << 24) + (ans.ans_data[1] << 16) + (ans.ans_data[2] << 8) + (ans.ans_data[3]));
+    DEBUG_PRINTF("Note: sx1301 counter %u\n", *data);
 
     return LGW_MCU_SUCCESS;
 }

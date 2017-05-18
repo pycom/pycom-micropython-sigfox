@@ -151,9 +151,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* Maximum size of Tx gain LUT */
 #define TX_GAIN_LUT_SIZE_MAX 16
 
-/* Maximum size of Tx packet struct */
-#define TX_SIZE_MAX 256
-
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
@@ -228,9 +225,11 @@ struct lgw_pkt_rx_s {
     uint8_t     payload[256];   /*!> buffer containing the payload */
 };
 #define LGW_PKT_RX_METADATA_SIZE_ALIGNED 44
-/* WARNING: This metadata size is used to convert the byte array received from MCU to
-a lgw_pkt_rx_s structure. Structure members are 64-bits aligned in the byte array.
-Any modification of this structure has to be done with caution! */
+/* ---------- WARNING -------------
+This metadata size is used to convert the byte array received from the MCU to a
+lgw_pkt_rx_s structure. Structure members are 64-bits aligned in the byte array.
+Any modification of this structure has to be done with caution!
+--------------WARNING ------------- */
 #define LGW_PKT_RX_STRUCT_SIZE_ALIGNED (256 + LGW_PKT_RX_METADATA_SIZE_ALIGNED)
 
 /**
@@ -255,6 +254,13 @@ struct lgw_pkt_tx_s {
     uint16_t    size;           /*!> payload size in bytes */
     uint8_t     payload[256];   /*!> buffer containing the payload */
 };
+#define LGW_PKT_TX_METADATA_SIZE_ALIGNED 30
+/* ---------- WARNING -------------
+This metadata size is used to convert a lgw_pkt_tx_s structure to the byte array
+sent to the MCU to. The structure members are 64-bits aligned in the byte array.
+Any modification of this structure has to be done with caution!
+--------------WARNING ------------- */
+#define LGW_PKT_TX_STRUCT_SIZE_ALIGNED (256 + LGW_PKT_TX_METADATA_SIZE_ALIGNED)
 
 /**
 @struct lgw_tx_gain_s
