@@ -170,11 +170,12 @@ int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 
 /**
 @brief Send command to concentrator through MCU, and wait for answer
+@param com_target generic pointer to USB target
 @param cmd command to be sent to the concentrator
 @param ans answer received from the concentrator
 @return status of operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
-int lgw_com_send_command(lgw_com_cmd_t cmd, lgw_com_ans_t *ans);
+int lgw_com_send_command(void *com_target, lgw_com_cmd_t cmd, lgw_com_ans_t *ans);
 
 #endif
 

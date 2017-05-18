@@ -206,13 +206,13 @@ int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_com_send_command(lgw_com_cmd_t cmd, lgw_com_ans_t *ans) {
+int lgw_com_send_command(void *com_target, lgw_com_cmd_t cmd, lgw_com_ans_t *ans) {
     lgw_handle_t handle;
 
-    CHECK_NULL(lgw_com_target);
+    CHECK_NULL(com_target);
     CHECK_NULL(ans);
 
-    handle = LGW_GET_HANDLE(lgw_com_target);
+    handle = LGW_GET_HANDLE(com_target);
 
     pthread_mutex_lock(&mx_usbbridgesync);
 

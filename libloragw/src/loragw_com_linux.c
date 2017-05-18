@@ -271,9 +271,6 @@ int lgw_com_open_linux(void **com_target_ptr) {
     char portname[50];
     int i, x;
     int fd;
-    int fwversion = STM32FWVERSION;
-    lgw_com_cmd_t cmd;
-    lgw_com_ans_t ans;
 
     /*check input variables*/
     CHECK_NULL(com_target_ptr);
@@ -301,31 +298,6 @@ int lgw_com_open_linux(void **com_target_ptr) {
             *usb_device = fd;
             *com_target_ptr = (void*)usb_device;
 
-            /* Check that MCU firmware version is correct */
-            cmd.id = 'l';
-            cmd.len_msb = 0;
-            cmd.len_lsb = 4;
-            cmd.address = 0;
-            cmd.cmd_data[0] = (uint8_t)((fwversion >> 24) & (0x000000ff));
-            cmd.cmd_data[1] = (uint8_t)((fwversion >> 16) & (0x000000ff));
-            cmd.cmd_data[2] = (uint8_t)((fwversion >> 8) & (0x000000ff));
-            cmd.cmd_data[3] = (uint8_t)((fwversion) & (0x000000ff));
-
-            pthread_mutex_lock(&mx_usbbridgesync);
-            lgw_com_send_cmd_linux(cmd, fd);
-            if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_SUCCESS) {
-                if (ans.status == ACK_KO) {
-                    pthread_mutex_unlock(&mx_usbbridgesync);
-                    printf("ERROR: Wrong MCU firmware version\n");
-                    return LGW_COM_ERROR;
-                }
-            } else {
-                pthread_mutex_unlock(&mx_usbbridgesync);
-                DEBUG_MSG("ERROR: failed to get MCU firmware version\n");
-                return LGW_COM_ERROR;
-            }
-            pthread_mutex_unlock(&mx_usbbridgesync);
-            DEBUG_PRINTF("Note: MCU firmware version checked: 0x%X\n", STM32FWVERSION);
             return LGW_COM_SUCCESS;
         }
     }

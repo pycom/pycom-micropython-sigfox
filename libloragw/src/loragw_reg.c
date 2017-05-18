@@ -387,7 +387,7 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS] = {
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-void *lgw_com_target = NULL; /*! generic pointer to the SPI device */
+void *lgw_com_target = NULL; /*! generic pointer to the COM device */
 static int lgw_regpage = -1; /*! keep the value of the register page selected */
 uint8_t lgw_com_mux_mode = 0; /*! current SPI mux mode used */
 
@@ -483,6 +483,7 @@ int reg_r_align32(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target
 
 /* Concentrator connect */
 int lgw_connect(void) {
+    uint8_t uid[8];
     int com_stat = LGW_COM_SUCCESS;
     uint8_t u = 0;
 
@@ -499,7 +500,15 @@ int lgw_connect(void) {
         return LGW_REG_ERROR;
     }
 
-    wait_ms(10);
+    /* check MCU FW version */
+    com_stat = lgw_mcu_get_unique_id(&uid[0]);
+    if (com_stat != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR: MCU FW VERSION CHECK FAILED\n");
+        return LGW_REG_ERROR;
+    }
+    DEBUG_PRINTF("Note: MCU firmware version checked: 0x%X\n", STM32FWVERSION);
+
+    //wait_ms(10);
     lgw_com_mux_mode = LGW_COM_MUX_MODE0;
 
     /* check SX1301 version */

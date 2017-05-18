@@ -103,12 +103,6 @@ int lgw_mcu_commit_radio_calibration(void);
 int lgw_mcu_reset(void);
 
 /**
-@brief Command to switch the MCU to DFU mode
-@return status of operation (LGW_MCU_SUCCESS/LGW_MCU_ERROR)
-*/
-int lgw_mcu_set_dfu_mode(void);
-
-/**
 @brief Command to get the MCU's unique ID
 @return status of operation (LGW_MCU_SUCCESS/LGW_MCU_ERROR)
 */

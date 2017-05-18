@@ -49,6 +49,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE SHARED VARIABLES (GLOBAL) ------------------------------------ */
 
+extern void *lgw_com_target; /*! generic pointer to the COM device */
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -80,7 +82,7 @@ int lgw_mcu_board_setconf(struct lgw_conf_board_s conf) {
     }
 
     /* send command to MCU */
-    return lgw_com_send_command(cmd, &ans);
+    return lgw_com_send_command(lgw_com_target, cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -133,7 +135,7 @@ int lgw_mcu_rxrf_setconf(uint8_t rfchain, struct lgw_conf_rxrf_s conf) {
     }
 
     /* send command to MCU */
-    return lgw_com_send_command(cmd, &ans);
+    return lgw_com_send_command(lgw_com_target, cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -191,7 +193,7 @@ int lgw_mcu_rxif_setconf(uint8_t ifchain, struct lgw_conf_rxif_s conf) {
     }
 
     /* send command to MCU */
-    return lgw_com_send_command(cmd, &ans);
+    return lgw_com_send_command(lgw_com_target, cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -233,7 +235,7 @@ int lgw_mcu_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
     }
 
     /* send command to MCU */
-    return lgw_com_send_command(cmd, &ans);
+    return lgw_com_send_command(lgw_com_target, cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -258,7 +260,7 @@ int lgw_mcu_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     cmd.cmd_data[0] = max_pkt;
 
     /* send command to MCU */
-    x = lgw_com_send_command(cmd, &ans);
+    x = lgw_com_send_command(lgw_com_target, cmd, &ans);
     if (x != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: failed to receive packets from concentrator\n");
         return 0;
@@ -382,7 +384,7 @@ int lgw_mcu_send(struct lgw_pkt_tx_s pkt_data) {
     }
 
     /* send command to MCU */
-    x = lgw_com_send_command(cmd, &ans);
+    x = lgw_com_send_command(lgw_com_target, cmd, &ans);
     if (x != LGW_COM_SUCCESS) {
         printf("ERROR: failed to send packet\n");
         return LGW_MCU_ERROR;
@@ -414,7 +416,7 @@ int lgw_mcu_get_trigcnt(uint32_t *data) {
     cmd.address = 0;
 
     /* send command to MCU */
-    x = lgw_com_send_command(cmd, &ans);
+    x = lgw_com_send_command(lgw_com_target, cmd, &ans);
     if ((x != LGW_COM_SUCCESS) || (ans.status != ACK_OK)) {
         DEBUG_MSG("ERROR: failed to get concentrator internal counter\n");
         return LGW_MCU_ERROR;
@@ -439,7 +441,7 @@ int lgw_mcu_commit_radio_calibration(void) {
     cmd.address = 0;
 
     /* send command to MCU */
-    return lgw_com_send_command(cmd, &ans);
+    return lgw_com_send_command(lgw_com_target, cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -455,23 +457,7 @@ int lgw_mcu_reset(void) {
     cmd.address = 0;
 
     /* send command to MCU */
-    return lgw_com_send_command(cmd, &ans);
-}
-
-/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
-
-int lgw_mcu_set_dfu_mode(void) {
-    lgw_com_cmd_t cmd;
-    lgw_com_ans_t ans;
-
-    /* prepare command */
-    cmd.id = 'n';
-    cmd.len_msb = 0;
-    cmd.len_lsb = 0;
-    cmd.address = 0;
-
-    /* send command to MCU */
-    return lgw_com_send_command(cmd, &ans);
+    return lgw_com_send_command(lgw_com_target, cmd, &ans);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -493,7 +479,7 @@ int lgw_mcu_get_unique_id(uint8_t *uid) {
     cmd.cmd_data[3] = (uint8_t)((fwversion) & (0x000000ff));
 
     /* send command to MCU */
-    x = lgw_com_send_command(cmd, &ans);
+    x = lgw_com_send_command(lgw_com_target, cmd, &ans);
     if (x != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to get MCU unique ID\n");
         return LGW_MCU_ERROR;
