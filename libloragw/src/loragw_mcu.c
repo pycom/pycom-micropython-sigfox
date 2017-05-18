@@ -410,13 +410,12 @@ int lgw_mcu_get_trigcnt(uint32_t *data) {
     /* prepare command */
     cmd.id = 'q';
     cmd.len_msb = 0;
-    cmd.len_lsb = 1;
+    cmd.len_lsb = 0;
     cmd.address = 0;
-    cmd.cmd_data[0] = 0;
 
     /* send command to MCU */
     x = lgw_com_send_command(cmd, &ans);
-    if (x != LGW_COM_SUCCESS) {
+    if ((x != LGW_COM_SUCCESS) || (ans.status != ACK_OK)) {
         DEBUG_MSG("ERROR: failed to get concentrator internal counter\n");
         return LGW_MCU_ERROR;
     }
@@ -436,9 +435,8 @@ int lgw_mcu_commit_radio_calibration(void) {
     /* prepare command */
     cmd.id = 'j';
     cmd.len_msb = 0;
-    cmd.len_lsb = 1;
+    cmd.len_lsb = 0;
     cmd.address = 0;
-    cmd.cmd_data[0] = 0;
 
     /* send command to MCU */
     return lgw_com_send_command(cmd, &ans);
@@ -453,9 +451,8 @@ int lgw_mcu_reset(void) {
     /* prepare command */
     cmd.id = 'm';
     cmd.len_msb = 0;
-    cmd.len_lsb = 1;
+    cmd.len_lsb = 0;
     cmd.address = 0;
-    cmd.cmd_data[0] = 0;
 
     /* send command to MCU */
     return lgw_com_send_command(cmd, &ans);
@@ -470,9 +467,8 @@ int lgw_mcu_set_dfu_mode(void) {
     /* prepare command */
     cmd.id = 'n';
     cmd.len_msb = 0;
-    cmd.len_lsb = 1;
+    cmd.len_lsb = 0;
     cmd.address = 0;
-    cmd.cmd_data[0] = 0;
 
     /* send command to MCU */
     return lgw_com_send_command(cmd, &ans);
