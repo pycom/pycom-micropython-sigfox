@@ -233,12 +233,12 @@ int lgw_mcu_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
 
 int lgw_mcu_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int i, j, x;
-    int pt = 0;
     int cptalc = 0;
     lgw_com_cmd_t cmd;
     lgw_com_ans_t ans;
     int nb_packet ;
-    uint8_t data[(RX_SIZE_MAX + 1) * max_pkt];
+    uint8_t data[LGW_PKT_RX_STRUCT_SIZE_ALIGNED * max_pkt];
+    uint16_t pkt_size;
 
     /* check input variables */
     CHECK_NULL(pkt_data);
@@ -269,34 +269,44 @@ int lgw_mcu_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     /* over the number of packets */
     for (i = 0; i < nb_packet; i++) {
         /* for each packet */
-        for (j = 0; j < ans.ans_data[cptalc + 43] + 44; j++) {
-            pt = ans.ans_data[cptalc + 43] + 44;
-            data[(i * 300) + j] = ans.ans_data[j + cptalc + 1]; /* 300 size of struct target */
+        pkt_size = (uint16_t)((uint8_t)(ans.ans_data[cptalc + 42] << 8) | (uint8_t)ans.ans_data[cptalc + 43]);
+        for (j = 0; j < (LGW_PKT_RX_METADATA_SIZE_ALIGNED + pkt_size); j++) {
+            data[(i * LGW_PKT_RX_STRUCT_SIZE_ALIGNED) + j] = ans.ans_data[j + cptalc + 1]; /* +1 because ans.ans_data[0] is nb_packet */
         }
-        cptalc = pt;
+        cptalc = j;
     }
 
     /* byte array to struct - the following code is done to work both with 32 or 64 bits host */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
     for (i = 0; i < nb_packet; i++) {
-        pkt_data[i].freq_hz = *((uint32_t*)(&data[0 + RX_SIZE_MAX * i])); 
-        pkt_data[i].if_chain = *((uint8_t*)(&data[4 + RX_SIZE_MAX * i]));
-        pkt_data[i].status = *((uint8_t*)(&data[5 + RX_SIZE_MAX * i]));
-        pkt_data[i].count_us = *((uint32_t*)(&data[8 + RX_SIZE_MAX * i]));
-        pkt_data[i].rf_chain = *((uint8_t*)(&data[12 + RX_SIZE_MAX * i]));
-        pkt_data[i].modulation = *((uint8_t*)(&data[13 + RX_SIZE_MAX * i]));
-        pkt_data[i].bandwidth = *((uint8_t*)(&data[14 + RX_SIZE_MAX * i]));
-        pkt_data[i].datarate = *((uint32_t*)(&data[16 + RX_SIZE_MAX * i]));
-        pkt_data[i].coderate = *((uint8_t*)(&data[20 + RX_SIZE_MAX * i]));
-        pkt_data[i].rssi = *((float*)(&data[24 + RX_SIZE_MAX * i]));
-        pkt_data[i].snr = *((float*)(&data[28 + RX_SIZE_MAX * i]));
-        pkt_data[i].snr_min = *((float*)(&data[32 + RX_SIZE_MAX * i]));
-        pkt_data[i].snr_max = *((float*)(&data[36 + RX_SIZE_MAX * i]));
-        pkt_data[i].crc = *((uint16_t*)(&data[40 + RX_SIZE_MAX * i]));
-        pkt_data[i].size = *((uint16_t*)(&data[42 + RX_SIZE_MAX * i]));
+        /* --- 64-bits start --- */
+        pkt_data[i].freq_hz = *((uint32_t*)(&data[0 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        pkt_data[i].if_chain = *((uint8_t*)(&data[4 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        pkt_data[i].status = *((uint8_t*)(&data[5 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        /* 1 BYTE PADDING FOR 64-bits ALIGNMENT */
+        /* 1 BYTE PADDING FOR 64-bits ALIGNMENT */
+        /* --- 64-bits start --- */
+        pkt_data[i].count_us = *((uint32_t*)(&data[8 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        pkt_data[i].rf_chain = *((uint8_t*)(&data[12 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        pkt_data[i].modulation = *((uint8_t*)(&data[13 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        pkt_data[i].bandwidth = *((uint8_t*)(&data[14 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        /* 1 BYTE PADDING FOR 64-bits ALIGNMENT */
+        /* --- 64-bits start --- */
+        pkt_data[i].datarate = *((uint32_t*)(&data[16 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        pkt_data[i].coderate = *((uint8_t*)(&data[20 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        /* --- 64-bits start --- */
+        pkt_data[i].rssi = *((float*)(&data[24 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        pkt_data[i].snr = *((float*)(&data[28 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        /* --- 64-bits start --- */
+        pkt_data[i].snr_min = *((float*)(&data[32 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        pkt_data[i].snr_max = *((float*)(&data[36 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        /* --- 64-bits start --- */
+        pkt_data[i].crc = *((uint16_t*)(&data[40 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        pkt_data[i].size = *((uint16_t*)(&data[42 + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
+        /* NO PADDING NEEDED HERE, END OF ARRAY */
         for (j = 0; j < 256; j++) {
-            (pkt_data[i].payload[j]) = *((uint8_t*)(&data[44 + j + RX_SIZE_MAX * i]));
+            (pkt_data[i].payload[j]) = *((uint8_t*)(&data[LGW_PKT_RX_METADATA_SIZE_ALIGNED + j + LGW_PKT_RX_STRUCT_SIZE_ALIGNED * i]));
         }
     }
 #pragma GCC diagnostic pop
