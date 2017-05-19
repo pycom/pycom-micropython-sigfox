@@ -261,7 +261,7 @@ int lgw_mcu_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
     /* send command to MCU */
     x = lgw_com_send_command(lgw_com_target, cmd, &ans);
-    if (x != LGW_COM_SUCCESS) {
+    if ((x != LGW_COM_SUCCESS) || (ans.status != ACK_OK)) {
         DEBUG_MSG("ERROR: failed to receive packets from concentrator\n");
         return 0;
     }
