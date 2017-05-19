@@ -40,7 +40,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CMD_HEADER_RX_SIZE 4 /* id + len_msb + len_lsb + status */
 
 #define CMD_DATA_TX_SIZE ATOMICTX
-#define CMD_DATA_RX_SIZE ATOMICRX
+#define CMD_DATA_RX_SIZE (1024 + 16 * 44) /* MAX_FIFO + 16 * METADATA_SIZE_ALIGNED */
 
 #define ACK_OK 1
 #define ACK_KO 0
