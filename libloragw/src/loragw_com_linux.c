@@ -211,38 +211,37 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
     cpttimer = 0;
 
     /* Wait for cmd answer header */
-    while (checkcmd_linux(bufferrx[0]) != true) {
-        lencheck = read(handle, bufferrx, CMD_HEADER_RX_SIZE);
+    while ((checkcmd_linux(bufferrx[0]) != true) && (cpttimer < CMD_HEADER_RX_SIZE)) {
+        lencheck = read(handle, &bufferrx[cpttimer], CMD_HEADER_RX_SIZE - cpttimer);
         if (lencheck < 0) {
             DEBUG_PRINTF("WARNING: failed to read from communication bridge (%d - %s), retry...\n", errno, strerror(errno));
-        } else if (lencheck == 0) {
-            DEBUG_MSG("WARNING: no data read yet, retry...\n");
-        } else if ((lencheck > 0) && (lencheck < CMD_HEADER_RX_SIZE)) { /* TODO: improve mechanism to try to get complete hearder? */
-            DEBUG_MSG("ERROR: read incomplete cmd answer, aborting.\n");
             return LGW_COM_ERROR;
         }
-        /* Exit after several unsuccessful read */
-        cpttimer++;
-        if (cpttimer > 15) {
-            DEBUG_MSG("ERROR: failed to receive answer, aborting.\n");
-            return LGW_COM_ERROR;
-        }
+        cpttimer += lencheck;
     }
+
     cmd_size = (bufferrx[1] << 8) + bufferrx[2];
 
     DEBUG_PRINTF("Note: received answer header for cmd \'%c\', length=%d, ack=%u\n", bufferrx[0], cmd_size, bufferrx[3]);
 
+    /* Read answer Data */
     if (cmd_size > 0) {
-        /* Wait for more data */
+        /* Wait for data to come */
         wait_ns((cmd_size + 1) * 20000); /* TODO: refine this tempo */
 
-        /* Read the answer */
+        /* Determine how much we need to read */
         buf_size = cmd_size + CMD_HEADER_RX_SIZE;
         if ((buf_size % 64) == 0) {
             buf_size = cmd_size + 1; /* one padding byte is added by USB driver, we need to read it */
         } else {
             buf_size = cmd_size;
         }
+        /* Check that data size does not exceed buffer size */
+        if (buf_size > CMD_DATA_RX_SIZE) {
+            DEBUG_PRINTF("ERROR: exceed read buffer size, abort. (%d)\n", buf_size);
+            return LGW_COM_ERROR;
+        }
+        /* Read the answer */
         lencheck = read(handle, &bufferrx[CMD_HEADER_RX_SIZE], buf_size);
         if (lencheck < buf_size) {
             DEBUG_PRINTF("ERROR: failed to read cmd answer (%d - %s)\n", errno, strerror(errno));
@@ -289,7 +288,7 @@ int lgw_com_open_linux(void **com_target_ptr) {
             DEBUG_PRINTF("ERROR: failed to open USB port %s - %s\n", portname, strerror(errno));
         } else {
             x = set_interface_attribs_linux(fd, B921600);
-            x |= set_blocking_linux(fd, false);
+            x |= set_blocking_linux(fd, true);
             if (x != 0) {
                 DEBUG_PRINTF("ERROR: failed to configure USB port %s\n", portname);
                 return LGW_COM_ERROR;
