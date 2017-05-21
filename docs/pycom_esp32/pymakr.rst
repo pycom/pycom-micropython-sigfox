@@ -1,16 +1,20 @@
 
-
 2.7 Pymakr Plugin
 =================
 
 Here are some basic tips on how to use the Pymakr Plugin to upload code to your devices. This guide is generic for all of our Plugins (Atom, Sublime, etc.) but the images in this chapter will refer to the Atom text editor.
 
+.. image:: images/pymakr-logo.png
+    :alt: Pymakr Plugin Logo
+    :align: center
+    :scale: 50%
+
 Supported Editors/IDEs:
 
 - `Atom <https://atom.io/>`_
-- `Sublime <https://www.sublimetext.com/>`_
-- `Visual Studio Code <https://code.visualstudio.com>`_
-- `PyCharm <https://www.jetbrains.com/pycharm/>`_
+- `Sublime <https://www.sublimetext.com/>`_ (Coming soon)
+- `Visual Studio Code <https://code.visualstudio.com>`_ (Coming soon)
+- `PyCharm <https://www.jetbrains.com/pycharm/>`_ (Coming soon)
 
 Drivers (FTDI):
 
@@ -85,6 +89,11 @@ Open up your ``terminal`` and type the following command:
 
 This will print out all of the devices connected to your Mac via the USB serial port. If you are using an expansion board, it should appear in a similar format to this ``/dev/cu.usbserial-XXXXXXXX``.
 
+.. image:: images/pymakr-plugin-macos.png
+    :alt: Pymakr Plugin USB MacOS
+    :align: center
+    :scale: 90 %
+
 Linux
 ^^^^^
 
@@ -94,16 +103,22 @@ Open up your ``terminal`` and type the following command:
 
  $ ls /dev/serial/
 
-This will print out all of the devices connected to your Linux computer via the USB serial port. If you are using an expansion board, it should appear in a similar format to this ``/dev/cu.usbserial-XXXXXXXX``.
+This will print out all of the devices connected to your Linux computer via the USB serial port. If you are using an expansion board, it should appear in a similar format to this ``/dev/ttyUSB0``.
 
 Windows
 ^^^^^^^
 
 Open your ``Start Menu`` and type ``Device Manager``. This will open a tool that lists all of the peripherals (connected devices) on your computer. Navigate to ``Ports`` and unfold the dropdown. You should see a device listed as something similar to ``USB Device (COM 4)``. Depending on what you have connected to your machine, the COM Port and name may vary.
 
+.. image:: images/pymakr-plugin-windows.png
+    :alt: Pymakr Plugin USB Windows
+    :align: center
+    :scale: 90 %
+
+
 .. note::
 
-	You can also find this via ``Control Panel > Device Manager > Ports``.
+    You can also find this via ``Control Panel > Device Manager > Ports``.
 
 Once you've worked out what your Pycom device is listed/named, you can add this to the Pymakr Plugin Settings:
 
@@ -111,6 +126,10 @@ Once you've worked out what your Pycom device is listed/named, you can add this 
     :alt: Pymakr Plugin USB Serial Device
     :align: center
     :scale: 60 %
+
+.. note::
+
+    You may need to press the ``reset`` button on your device before you see a connection message appear.
 
 Creating a Project
 ------------------

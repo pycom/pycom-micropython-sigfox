@@ -42,6 +42,9 @@ This class provides a driver for the Sigfox network processor in the **SiPy**. E
    # send some bytes
    s.send(bytes([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]))
 
+.. warning::
+ Please ensure that there is an **antenna connected** to your device before sending/receiving Sigfox messages as inproper use (e.g. without an antenna), may damage the device.
+
 Constructors
 ------------
 

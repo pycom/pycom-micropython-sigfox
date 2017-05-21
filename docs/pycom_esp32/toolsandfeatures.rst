@@ -98,6 +98,8 @@ The following control commands are available in REPL:
 
 Instructions on how to connect can be found in the two chapters below. A small tutorial on :ref:`how to use the REPL <repl_tutorial>` is available in chapter :ref:`3. Tutorials and Examples`
 
+.. _pycom_telnet_connect:
+
 Mac OS X and Linux
 -------------------
 

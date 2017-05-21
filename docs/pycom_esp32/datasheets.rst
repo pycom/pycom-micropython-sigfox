@@ -4,6 +4,8 @@
 5. Datasheets
 ****************
 
+This section contains all of the datasheets for our devices. This includes pinouts and schematics (for certain devices).
+
 
 .. include:: datasheets/wipy2.rst
 
@@ -11,14 +13,17 @@
 
 .. include:: datasheets/sipy.rst
 
+
 OEM baseboard reference design
 ------------------------------
 
 Our OEM baseboard reference design with schematic and layout are available `here <../_downloads/OEM-baseboard-schematic.pdf>`_ and `here <../_downloads/OEM-baseboard-layout.pdf>`_.
 
+The complete Altium project and Gerber files are available on `this link <../_downloads/OEM_Baseboard_reference_design.zip>`_.
+
 .. image:: images/OEM-baseboard-top-bottom.png
     :align: center
-    :scale: 50 %
+    :scale: 55 %
     :alt: OEM baseboard top view
 
 
@@ -40,6 +45,7 @@ Our OEM baseboard reference design with schematic and layout are available `here
 :download:`PDF file hidden <downloads/WiPy-OEM-Drawings.pdf>`
 :download:`PDF file hidden <downloads/LoPy-OEM-Drawings.pdf>`
 :download:`PDF file hidden <downloads/Deep-Sleep-Shield_Schematic.pdf>`
+:download:`PDF file hidden <downloads/OEM_Baseboard_reference_design.zip>`
 
 .. raw:: html
 
@@ -78,6 +84,7 @@ ground to GND.**
    **The input voltage must be exactly 3V3, ripple free and from a supply capable
    of sourcing at least 500mA of current**
 
+The battery connector for the expansion board is a **JST SH 2P** variant. The expansion board exposes the male connector and an external battery should use a femail adapter in order to connect and power the expansion board.
 
 .. warning::
 

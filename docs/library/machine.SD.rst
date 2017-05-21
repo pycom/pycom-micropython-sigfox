@@ -22,7 +22,7 @@ class SD -- Secure digital memory card
         # their respective alternate functions
         sd = machine.SD(pins=('GP10', 'GP11', 'GP15'))
         os.mount(sd, '/sd')
-        # do normal file operations
+        # perform normal file operations
 
     Constructors
     ------------
@@ -92,3 +92,8 @@ class SD -- Secure digital memory card
     .. method:: sd.deinit()
 
        Disable the SD card.
+
+    .. note::
+
+        Please note that the SD card library currently supports **FAT16/32** formatted SD cards up to 32 GB. Future firmware updates will increase compatibility with additional formats and sizes.
+

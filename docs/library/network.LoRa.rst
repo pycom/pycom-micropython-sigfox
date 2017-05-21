@@ -37,6 +37,9 @@ This class provides a driver for the LoRa network processor in the **LoPy**. Bel
     data = s.recv(64)
     print(data)
 
+.. warning::
+  Please ensure that there is an **antenna connected** to your device before sending/receiving LoRa messages as inproper use (e.g. without an antenna), may damage the device.
+
 
 Additional examples
 -------------------

@@ -7,32 +7,35 @@ new toy. Our aim is not to bug you with complex details about it, but instead
 get you as quick as possible to the point you can start doing useful things
 with your board.
 
-It is strongly recommended to update the firmware on your board before coding, this is described in section 1.3 below
+.. note::
 
-This chapter will get you unboxed and ready to code in no time.
+	It is strongly recommended to **update the firmware** on your board before starting to code. The update proceedure is described in :ref:`Firmware Upgrades <firmware_upgrades>` below.
 
-- :ref:`Unboxing and the expansion board <unboxing>`
+This chapter help you with unboxing and getting started with your device.
+
+- :ref:`Unboxing and the Expansion Board <unboxing>`
 - :ref:`Connecting over USB <connecting_over_usb>`
 - :ref:`Firmware Upgrades <firmware_upgrades>`
-- :ref:`Micropython introduction <micropython_intro>`
-- :ref:`Connecting the board and coding using Pymakr <connecting_using_pymakr>`
+- :ref:`Connecting to the board's WiFi <pycom_wifi>`
+- :ref:`Introduction to MicroPython <micropython_intro>`
+- :ref:`Connecting your board and coding using the Pymakr Plugins<connecting_using_pymakr>`
 
-If anyting goes wrong, there is a :ref:`Troubleshooting` section that addresses the most common issues. In case of any doubts you can always ask questions in our `community forum <http://forum.pycom.io>`_.
+If you come across any issues along the way, there is a :ref:`Troubleshooting` section that addresses the common problems. In case you can not find the answer to your issue, you can always ask questions in our `Forum <http://forum.pycom.io>`_.
 
 .. _unboxing:
 
 1.1 Unboxing and the Expansion Board
-================================
+====================================
 
-The best way to learn something new is by doing it! Lets get started setting your Pycom board. First, we'll need to
-put together the basic pieces:
+The best way to learn something new is by doing it! Lets get started setting up your Pycom board. First, we'll need to
+put together:
 
-1. Look for the reset button on your module (located at a corner of the board).
+1. Look for the reset button on your module (located at a corner of the board, next to the LED).
 2. Look for the USB connector on your expansion board.
-3. Insert the module on the expansion board with the reset button pointing in the same direction as the USB connector.
+3. Insert the module on the expansion board with the reset button pointing towards the USB connector.
 
 It's that simple! If you want to confirm your work, here's a picture showing
-how to place your board properly on the expansion board:
+how to correctly align your device with the expansion board:
 
 .. image:: images/placement.png
     :alt: Correct placement
@@ -58,42 +61,41 @@ It applies to all our modules.
 
 .. note::
 
-    Some modules like the LoPy will be big enough to cover the USB connector.
-    This is normal as long as you keep the orientation as shown.
+    Some modules such as the LoPy, will cover the USB connector.
+    This is normal; just remember to keep the orientation as shown above.
 
-To extend the life of your expansion board, please be aware of the following:
+To ensure the longevity of your expansion board, please be aware of the following:
 
-  - Be gentle when plugging/unplugging the USB cable.  Whilst the USB connector
-    is well soldered and is relatively strong, if it breaks off it can be very
-    difficult to fix.
+  - Be gentle when plugging/unplugging the USB cable. Whilst the USB connector
+    is soldered and relatively strong, it can break off and is be difficult to fix.
 
-  - Static electricity can shock the components on the board and destroy them.
-    If you experience a lot of static electricity in your area (eg dry and cold
-    climates), take extra care not to shock the device.  If your device came
-    in a ESD bag, then this bag is the best way to store and carry the
-    device as it will protect it against static discharges.
+  - Static electricity can damage components on the board and may destroy them.
+    If you experience a lot of static electricity in your area (e.g. dry and cold
+    climates), take extra care not to shock the device. If your device came
+    in a ESD bag (Silver packaging), the best way to store and carry the
+    device is inside this bag as it will be protected against static discharges.
 
 
-Expansion Board Hardware Guide
-------------------------------
+Expansion Board Details
+-----------------------
 
-The document explaining the hardware details of the expansion board can be found
+Details regarding the hardware specifics for the expansion board can be found
 `here <https://github.com/WiPy/WiPy/blob/master/docs/User_manual_exp_board.pdf>`_.
 
-The pinout for the expansion board can be found in chapter :ref:`datasheets`
+The pinout for the expansion board can also be found in chapter :ref:`datasheets`
 
 .. _connecting_over_usb:
 
 1.2 Connecting Over USB
 =======================
 
-Once you’re sure everything is in place, the fun begins. It is time to turn
-your board on. Just plug it into any powered USB cable (your computer or a
+Once you’re sure everything is in place, you're ready to start programming the device. It is time to turn
+your board on. Just plug it into a USB socket (either on your computer or using a
 battery charger).
 
 In a few seconds, the LED should start blinking every 4 seconds. This means
-that everything is fine! If you cannot see the blinking, please disconnect the
-power supply and re-check the boards position on the expansion board.
+that everything is working correctly! If you cannot see the blinking, please disconnect the
+power supply and re-check the board's position on the expansion board.
 
 .. image:: images/blinking.gif
     :alt: LED blinking
@@ -107,7 +109,7 @@ power supply and re-check the boards position on the expansion board.
 =====================
 
 We **strongly recommend** you to upgrade your firmware to the latest version
-as we are constantly making improvements and adding new features.
+as we are constantly making improvements and adding new features to the devices.
 
 Here are the download links to the update tool. Please download the appropriate
 one for your OS and follow the instructions on the screen.
@@ -122,26 +124,25 @@ Previous versions of firmware are available for download on the `Pycom website
 .. image:: images/firmware-updater-screenshot.png
     :alt: Firmware upgrader
     :align: center
-    :scale: 50 %
+    :scale: 40 %
 
 The instructions given by the updater tool should be followed carefully. The basic
-procedure is like this:
+procedure can be found below:
 
-- Disconnect your device from the PC.
-- Connect wire G23+GND using a jumper cable.
-- Connect the board to the USB.
-- Run the upgrader
-- Remove the G23+GND wire.
-- Reboot the device (button or powercycle)
+- Disconnect your device from your computer
+- Connect a jumper cable or wire between G23 and GND
+- Reconnect the board via USB to your computer
+- Run the Firmware Upgrade tool
+- Remove the G23 to GND jumper cable/wire
+- Reboot the device (button or power off then on)
 
-Connecting G23 and GND puts the device in 'update mode'. You won't need this for any
-other task than using the firmware upgrader.
+Connecting G23 and GND puts the device in 'firmware update mode'. This mode is only used for updating the device's firmware using the Firmware Update tool.
 
-After you’re done with the upgrade, you can :ref:`use the Pymakr Plugins <pymakr>` to upload and run
+After you’re done with upgrading, you can :ref:`use the Pymakr Plugins <pymakr>` to upload and run
 programs in your device.
 
-If you have your Telnet connection or Pymakr Plugin already setup, the version can be  with the
-following code:
+If you have an open Telnet connection or Pymakr Plugin connected, the version can found be with the
+following commands:
 
 ::
 
@@ -153,19 +154,55 @@ following code:
     Make sure the **TX jumper** is present on your expansion board, as the jumpers sometimes
     come loose in the box during transport. Without this jumper, the updater will fail.
 
+.. _pycom_wifi:
+
+1.4 Connecting to the Board's WiFi
+===================================
+
+Once the device's firmware has been updated, restart the device (press the button next to the LED) and it will boot into a WiFi broadcast mode (Access Point). This allows you to connect to the device's internal server in order to upload files/scripts as well as change configuration settings.
+
+.. image:: images/wifi-icon.png
+    :alt: WiFi Icon
+    :align: center
+    :scale: 30 %
+
+
+
+Open the network settings on your computer and you will see an SSID appear with a name, similiar to the following name ``lopy-wlan-xxxx``, ``wipy-wlan-xxxx``, etc. Connect to the network and enter the password ``www.pycom.io``. Once you're connected to the device's network, you can open start :ref:`programming in MicroPython <pycom_telnet_connect>` or :ref:`upload scripts <pycom_filesystem>` to your device!
+
+.. note::
+
+	When connected to the board's network, you will **not be able to access the internet** from your computer! You will need to reconnect to your home/office WiFi before continuing to browse this documentation.
+
+1.5 Device Registration
+=======================
+
+Some of our devices require registration before you can utilise specific features. Please see the list below for setup guides to ensure that your device is registered and activated on the various platforms required to access all of the available features.
+
+- **SiPy** (:ref:`Sigfox Activation <sigfox_register>`)
+
+.. note::
+
+    **Not all Pycom devices require activation**; most features work immediately out of the box! Currently the registration/activation only applies to the **SiPy**, in order to connect it to the Sigfox Network.
+
 .. _micropython_intro:
 
-1.4 Micropython Introduction
-============================
+1.6 Introduction to MicroPython
+===============================
 
 Our boards work with `Micropython <https://micropython.org/>`_; a Python 3.5 implementation
 that is optimised to run on microcontrollers. This allows for much faster and more simple
 development process than using C.
 
-Booting into Micropython
+.. image:: images/micropython.jpg
+    :alt: MicroPython
+    :align: center
+    :scale: 45 %
+
+Booting into MicroPython
 ------------------------
 
-When booting, two files are executed automatically: first boot.py and then main.py. These
+When booting, two files are executed automatically: first **boot.py** and then **main.py**. These
 are placed in the /flash folder on the board. Any other files or libraries can be placed
 here as well, and can be included or used from boot.py or main.py.
 
@@ -186,7 +223,7 @@ Micropython also has a number of Micropython specific libraries for accessing ha
 
 .. note::
 
-	Micropython, unlike C/C++ or Arduino, **does not use braces({})** to indicate blocks of code specified for class and function definitions or flow control. Blocks of code are denoted by line indentation, which is strictly enforced.
+	Micropython, unlike C/C++ or Arduino, **does not use braces {}** to indicate blocks of code specified for class and function definitions or flow control. Blocks of code are denoted by line indentation, which is strictly enforced.
 
 	The number of spaces in the indentation is variable but all statements within a block must be indented the same amount.
 
@@ -279,13 +316,18 @@ Python has a number of different data structures for storing and manipulating va
 .. _connecting_using_pymakr:
 
 
-1.5 Connecting a Board using Pymakr Plugin
+1.7 Connecting a Board using Pymakr Plugin
 ==========================================
 
 To make it as easy as possible we developed a series of tools known as the **Pymakr Plugins**, which allow you
-to connect to and program your Pycom devices. These Plugins have been built for a number of text editors and IDEs to allow for users to choose their favourite development enviroment.
+to connect to and program your Pycom devices. These Plugins have been built for a number of text editors and IDEs to allow for users to choose their favourite development environment.
 
-Extended info about these Plugins, such as how to use the Pycom console and other features can be found under :ref:`Tools & Features <pymakr_ide>`
+.. image:: images/pymakr-logo.png
+    :alt: Pymakr Plugin Logo
+    :align: center
+    :scale: 50%
+
+Extended info about these Plugins, such as how to use the Pycom console and other features can be found under :ref:`Tools & Features <pymakr_ide>`.
 
 .. note::
     If you have any trouble connecting over USB using the Pymakr Plugins, make sure you have the
@@ -340,13 +382,13 @@ first time. Please follow these steps:
 
 That’s it for the first time configuration. In the lower portion of the screen,
 you should see the console, with the connection process taking place. At the
-end of it, you’ll get a 'Connecting on 192.168.4.1...' message and a ``>>>`` prompt,
+end of it, you’ll get a **'Connecting on 192.168.4.1...'** message and a ``>>>`` prompt,
 indicating that you are connected:
 
 .. image:: images/pymakr-plugin-repl.png
     :alt: Pymakr Plugin REPL
     :align: center
-    :scale: 100 %
+    :scale: 120 %
 
 Creating a Project
 ------------------
