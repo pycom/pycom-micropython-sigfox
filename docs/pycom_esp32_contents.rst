@@ -2,7 +2,6 @@ Pycom documentation contents
 ==================================
 
 .. toctree::
-    :numbered:
 
     pycom_esp32/getstarted
     pycom_esp32/toolsandfeatures

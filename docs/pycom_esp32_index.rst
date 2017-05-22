@@ -2,7 +2,6 @@ Pycom documentation and references
 ========================================
 
 .. toctree::
-    :numbered:
 
     pycom_esp32/getstarted
     pycom_esp32/toolsandfeatures
@@ -18,4 +17,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
