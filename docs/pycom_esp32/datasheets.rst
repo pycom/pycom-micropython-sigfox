@@ -13,6 +13,10 @@ This section contains all of the datasheets for our devices. This includes pinou
 
 .. include:: datasheets/sipy.rst
 
+.. include:: datasheets/pysense.rst
+
+.. include:: datasheets/pytrack.rst
+
 
 OEM baseboard reference design
 ------------------------------
@@ -67,7 +71,7 @@ Deep Sleep Shield Schematic
 The Deep sleep shield schematic is available on this `link <../_downloads/Deep-Sleep-Shield_Schematic.pdf>`_.
 
 
-5.5 Powering with an external power source
+5.7 Powering with an external power source
 ==========================================
 
 The modules can be powered by a battery or other external power source.
