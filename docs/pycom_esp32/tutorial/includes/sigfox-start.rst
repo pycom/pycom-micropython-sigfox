@@ -1,13 +1,34 @@
+.. _sigfox_register:
+
 Registering the SiPy with Sigfox
 --------------------------------
 
 To ensure your device has been provisioned with **Device ID** and **PAC number**, please update to the latest :ref:`firmware <firmware_upgrades>`.
 
-In order to send a Sigfox message, you will need to register your SiPy with the Sigfox Backend. Navigate to https://backend.sigfox.com/activate and you will find a list of Sigfox enabled development kits. Select **Pycom** to proceed.
+In order to send a Sigfox message, you will need to register your SiPy with the Sigfox Backend. Navigate to https://backend.sigfox.com/activate and you will find a list of Sigfox enabled development kits.
+
+.. image:: images/sigfox-backend-1.png
+    :alt: Activate Sigfox
+    :align: center
+    :scale: 30 %
+
+Select **Pycom** to proceed.
 
 Next you will need to choose a Sigfox Operator for the country in which you will be activating your SiPy. Find your country and select the operator to continue.
 
-Now you will need to enter the SiPy's **Device ID** and **PAC number**. These are retrievable through a couple of commands via the REPL.
+.. image:: images/sigfox-backend-2.png
+    :alt: Sigfox Operator
+    :align: center
+    :scale: 30 %
+
+Now you will need to enter the SiPy's **Device ID** and **PAC number**.
+
+.. image:: images/sigfox-backend-3.png
+    :alt: Sigfox ID and PAC
+    :align: center
+    :scale: 30 %
+
+The  Device ID and PAC number are retrievable through a couple of commands via the REPL.
 
 ::
 
@@ -26,5 +47,10 @@ Now you will need to enter the SiPy's **Device ID** and **PAC number**. These ar
 See :class:`Sigfox <.Sigfox>` for more info about the Sigfox Class and which RCZ region to use.
 
 Once you have retrieved and entered your SiPy's Device ID and PAC number, you will need to create an account for yourself. Provide the required information including email address and click to continue.
+
+.. image:: images/sigfox-backend-4.png
+    :alt: Sigfox Account Creation
+    :align: center
+    :scale: 40 %
 
 You should now receive an email confirming the creation of your Sigfox Backend account and the successful registration of your SiPy.
