@@ -137,7 +137,6 @@ bool checkcmd_linux(uint8_t cmd) {
         case 't': /* read burst - middle chunk */
         case 'u': /* read burst - end chunk */
         case 'p': /* read burst - atomic */
-        case 'e': /* TODO: TO BE REMOVED */
         case 'w': /* write register */
         case 'x': /* write burst - first chunk */
         case 'y': /* write burst - middle chunk */
@@ -148,7 +147,7 @@ bool checkcmd_linux(uint8_t cmd) {
         case 'd': /* lgw_rxif_setconf */
         case 'f': /* lgw_send */
         case 'h': /* lgw_txgain_setconf */
-        case 'q': /* lgw_trigger */
+        case 'q': /* lgw_get_trigcnt */
         case 'i': /* lgw_board_setconf */
         case 'j': /* lgw_calibration_snapshot */
         case 'l': /* lgw_check_fw_version */
