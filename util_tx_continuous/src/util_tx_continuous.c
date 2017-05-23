@@ -290,7 +290,7 @@ int main(int argc, char **argv) {
     i = lgw_connect();
     if (i == -1) {
         printf("ERROR: FAIL TO CONNECT BOARD\n");
-        return -1;
+        exit(EXIT_FAILURE);
     }
 
     /* Board config */
@@ -328,7 +328,7 @@ int main(int argc, char **argv) {
         MSG("INFO: concentrator started, packet can be sent\n");
     } else {
         MSG("ERROR: failed to start the concentrator\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     /* fill-up payload and parameters */
@@ -404,7 +404,7 @@ int main(int argc, char **argv) {
     i = lgw_send(txpkt);
     if (i == -1) {
         printf("ERROR: FAIL TO START TX...\n");
-        return -1;
+        exit(EXIT_FAILURE);
     }
 
     /* Recap all settings */
@@ -440,16 +440,14 @@ int main(int argc, char **argv) {
         wait_ms(100);
     }
 
-    /* clean up before leaving */
-    lgw_stop();
-
-    return 0;
+    exit(EXIT_SUCCESS);
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- SUBFUNCTIONS DEFINITION ---------------------------------------------- */
 
 static void exit_cleanup(void) {
+    printf("Stopping concentrator.\n");
     lgw_stop();
 }
 
