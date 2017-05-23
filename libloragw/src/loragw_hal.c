@@ -165,7 +165,7 @@ void lgw_constant_adjust(void);
 int32_t lgw_sf_getval(int x);
 int32_t lgw_bw_getval(int x);
 
-int lgw_calibrate_sx125x(uint8_t *cal_fw);
+int lgw_calibrate_sx125x(uint8_t *cal_fw, uint8_t idx_start, uint8_t idx_nb);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -394,13 +394,27 @@ int32_t lgw_sf_getval(int x) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_calibrate_sx125x(uint8_t *cal_fw) {
+int lgw_calibrate_sx125x(uint8_t *cal_fw, uint8_t idx_start, uint8_t idx_nb) {
     int i, err;
     int32_t read_val;
     uint8_t fw_version;
     uint8_t cal_cmd;
     uint16_t cal_time;
     uint8_t cal_status;
+
+    /* check parameters */
+    if (cal_fw == NULL) {
+        DEBUG_MSG("ERROR: invalid parameter, null pointer\n");
+        return LGW_HAL_ERROR;
+    }
+    if ((idx_start < 5) || (idx_start > 15)) {
+        DEBUG_MSG("ERROR: invalid parameter, calibration offset index start must be [5-15]\n");
+        return LGW_HAL_ERROR;
+    }
+    if (idx_nb > 8) {
+        DEBUG_MSG("ERROR: invalid parameter, calibration offset index number must be <= 8\n");
+        return LGW_HAL_ERROR;
+    }
 
     /* reset the registers (also shuts the radios down) */
     lgw_soft_reset();
@@ -530,7 +544,7 @@ int lgw_calibrate_sx125x(uint8_t *cal_fw) {
     }
 
     /* Get TX DC offset values */
-    for(i = 0; i <= 7; ++i) {
+    for(i = 0; i < (int)idx_nb; ++i) {
         lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0 + i);
         lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
         cal_offset_a_i[i] = (int8_t)read_val;
@@ -547,7 +561,7 @@ int lgw_calibrate_sx125x(uint8_t *cal_fw) {
     }
 
     /* Require MCU to capture calibration values */
-    lgw_mcu_commit_radio_calibration();
+    lgw_mcu_commit_radio_calibration(idx_start, idx_nb);
 
     return LGW_HAL_SUCCESS;
 }
@@ -822,13 +836,13 @@ int lgw_start(void) {
     }
 
     /* Calibrate radios */
-    err = lgw_calibrate_sx125x(callow_firmware);
+    err = lgw_calibrate_sx125x(callow_firmware, 5, 8);
     if (err != LGW_HAL_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to calibrate sx125x radios (5-12)\n");
         return LGW_HAL_ERROR;
     }
     wait_ms(5);
-    err = lgw_calibrate_sx125x(cal_firmware);
+    err = lgw_calibrate_sx125x(cal_firmware, 8, 8);
     if (err != LGW_HAL_SUCCESS) {
         DEBUG_MSG("ERROR: Failed to calibrate sx125x radios (8-15)\n");
         return LGW_HAL_ERROR;

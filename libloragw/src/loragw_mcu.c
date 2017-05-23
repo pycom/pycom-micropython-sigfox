@@ -430,15 +430,17 @@ int lgw_mcu_get_trigcnt(uint32_t *data) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_mcu_commit_radio_calibration(void) {
+int lgw_mcu_commit_radio_calibration(uint8_t idx_start, uint8_t idx_nb) {
     lgw_com_cmd_t cmd;
     lgw_com_ans_t ans;
 
     /* prepare command */
     cmd.id = 'j';
     cmd.len_msb = 0;
-    cmd.len_lsb = 0;
+    cmd.len_lsb = 1;
     cmd.address = 0;
+    cmd.cmd_data[0] = idx_start;
+    cmd.cmd_data[1] = idx_nb;
 
     /* send command to MCU */
     return lgw_com_send_command(lgw_com_target, cmd, &ans);

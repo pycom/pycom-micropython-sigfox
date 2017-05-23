@@ -92,9 +92,11 @@ int lgw_mcu_get_trigcnt(uint32_t *data);
 
 /**
 @brief Command to store radio calibration parameters to the concentrator through MCU
+@param idx_start start index in the MCU calibration offset table where to store the given offsets
+@param idx_nb the number of calibration offsets to be stored in the MCU table
 @return status of operation (LGW_MCU_SUCCESS/LGW_MCU_ERROR)
 */
-int lgw_mcu_commit_radio_calibration(void);
+int lgw_mcu_commit_radio_calibration(uint8_t idx_start, uint8_t idx_nb);
 
 /**
 @brief Command to reset the MCU
