@@ -201,23 +201,23 @@ int lgw_com_send_cmd_linux(lgw_com_cmd_t cmd, lgw_handle_t handle) {
 int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
     int i;
     uint8_t bufferrx[CMD_HEADER_RX_SIZE + CMD_DATA_RX_SIZE];
-    int cpttimer = 0;
+    unsigned int buffer_idx;
     size_t cmd_size;
     ssize_t buf_size = 0;
     ssize_t lencheck;
 
     /* Initialize variables */
     memset(bufferrx, 0, sizeof bufferrx);
-    cpttimer = 0;
 
     /* Wait for cmd answer header */
-    while ((checkcmd_linux(bufferrx[0]) != true) && (cpttimer < CMD_HEADER_RX_SIZE)) {
-        lencheck = read(handle, &bufferrx[cpttimer], CMD_HEADER_RX_SIZE - cpttimer);
+    buffer_idx = 0;
+    while ((checkcmd_linux(bufferrx[0]) != true) || (buffer_idx < CMD_HEADER_RX_SIZE)) {
+        lencheck = read(handle, &bufferrx[buffer_idx], CMD_HEADER_RX_SIZE - buffer_idx);
         if (lencheck < 0) {
             DEBUG_PRINTF("WARNING: failed to read from communication bridge (%d - %s), retry...\n", errno, strerror(errno));
             return LGW_COM_ERROR;
         }
-        cpttimer += lencheck;
+        buffer_idx += lencheck;
     }
 
     cmd_size = (bufferrx[1] << 8) + bufferrx[2];
@@ -226,26 +226,25 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
 
     /* Read answer Data */
     if (cmd_size > 0) {
-        /* Wait for data to come */
-        wait_ns((cmd_size + 1) * 20000); /* TODO: refine this tempo */
-
         /* Determine how much we need to read */
         buf_size = cmd_size + CMD_HEADER_RX_SIZE;
         if ((buf_size % 64) == 0) {
-            buf_size = cmd_size + 1; /* one padding byte is added by USB driver, we need to read it */
-        } else {
-            buf_size = cmd_size;
+            cmd_size = cmd_size + 1; /* one padding byte is added by USB driver, we need to read it */
         }
         /* Check that data size does not exceed buffer size */
-        if (buf_size > CMD_DATA_RX_SIZE) {
-            DEBUG_PRINTF("ERROR: exceed read buffer size, abort. (%d)\n", buf_size);
+        if (cmd_size > CMD_DATA_RX_SIZE) {
+            DEBUG_PRINTF("ERROR: exceed read buffer size, abort. (%d)\n", cmd_size);
             return LGW_COM_ERROR;
         }
         /* Read the answer */
-        lencheck = read(handle, &bufferrx[CMD_HEADER_RX_SIZE], buf_size);
-        if (lencheck < buf_size) {
-            DEBUG_PRINTF("ERROR: failed to read cmd answer (%d - %s)\n", errno, strerror(errno));
-            return LGW_COM_ERROR;
+        buffer_idx = 0;
+        while (buffer_idx < cmd_size) {
+            lencheck = read(handle, &bufferrx[CMD_HEADER_RX_SIZE + buffer_idx], cmd_size - buffer_idx);
+            if (lencheck < 0) {
+                DEBUG_PRINTF("ERROR: failed to read cmd answer (%d - %s)\n", errno, strerror(errno));
+                return LGW_COM_ERROR;
+            }
+            buffer_idx += lencheck;
         }
     }
     ans->id = (char)bufferrx[0];
