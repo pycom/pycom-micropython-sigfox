@@ -508,7 +508,6 @@ int lgw_connect(void) {
     }
     DEBUG_PRINTF("Note: MCU firmware version checked: 0x%X\n", STM32FWVERSION);
 
-    //wait_ms(10);
     lgw_com_mux_mode = LGW_COM_MUX_MODE0;
 
     /* check SX1301 version */
