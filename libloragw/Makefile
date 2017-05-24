@@ -40,6 +40,9 @@ inc/config.h: ../VERSION library.cfg
 	# Release version
 	@echo "Release version   : $(LIBLORAGW_VERSION)"
 	@echo "	#define LIBLORAGW_VERSION	"\"$(LIBLORAGW_VERSION)\""" >> $@
+	# COM options
+	@echo "tty COM port prefix: $(LGW_COM_DEV)"
+	@echo "	#define LGW_COM_DEV	"\"$(LGW_COM_DEV)\""" >> $@
 	# Debug options
 	@echo "	#define DEBUG_AUX	$(DEBUG_AUX)" >> $@
 	@echo "	#define DEBUG_COM	$(DEBUG_COM)" >> $@

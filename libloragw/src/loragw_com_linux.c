@@ -279,9 +279,9 @@ int lgw_com_open_linux(void **com_target_ptr) {
         return LGW_COM_ERROR;
     }
 
-    /* try to open one of the 10 port ttyACM */
+    /* try to open tty port based on the LGW_COM_DEV value given in library.cfg */
     for (i = 0; i < 10; i++) {
-        sprintf(portname, "/dev/ttyACM%d", i);
+        sprintf(portname, "%s%d", LGW_COM_DEV, i);
         fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
         if (fd < 0) {
             DEBUG_PRINTF("ERROR: failed to open USB port %s - %s\n", portname, strerror(errno));
