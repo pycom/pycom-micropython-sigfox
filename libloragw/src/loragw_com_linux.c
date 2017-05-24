@@ -86,7 +86,8 @@ int set_interface_attribs_linux(int fd, int speed) {
     tty.c_iflag &= ~IGNBRK;
     tty.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL);
     /* Output Modes */
-    tty.c_oflag = 0;
+    tty.c_oflag &= ~IGNBRK;
+    tty.c_oflag &= ~(IXON | IXOFF | IXANY | ICRNL);
     /* Local Modes */
     tty.c_lflag = 0;
     /* Settings for non-canonical mode */
@@ -285,7 +286,7 @@ int lgw_com_open_linux(void **com_target_ptr) {
         if (fd < 0) {
             DEBUG_PRINTF("ERROR: failed to open USB port %s - %s\n", portname, strerror(errno));
         } else {
-            x = set_interface_attribs_linux(fd, B921600);
+            x = set_interface_attribs_linux(fd, B115200);
             x |= set_blocking_linux(fd, true);
             if (x != 0) {
                 DEBUG_PRINTF("ERROR: failed to configure USB port %s\n", portname);
