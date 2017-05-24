@@ -31,7 +31,7 @@
 #include "freertos/timers.h"
 #include "freertos/xtensa_api.h"
 
-#include "heap_alloc_caps.h"
+#include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_attr.h"
@@ -41,6 +41,7 @@
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "soc/dport_reg.h"
+#include "esp_log.h"
 
 #include "py/mpconfig.h"
 #include "mptask.h"
@@ -62,6 +63,7 @@ static StaticTask_t mpTaskTCB;
  * Returns      : none
 *******************************************************************************/
 void app_main(void) {
+    esp_log_level_set("*", ESP_LOG_NONE);
     // initalize the non-volatile flash space
     nvs_flash_init();
 

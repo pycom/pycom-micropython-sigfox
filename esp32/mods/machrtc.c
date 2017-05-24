@@ -21,14 +21,9 @@
 #include "mpexception.h"
 #include "machrtc.h"
 
-// next functions are from the IDF
-extern uint64_t get_time_since_boot();
-extern void rtc_calibrate_timer(int32_t adjust_value);
-extern int32_t rtc_get_timer_calibration(void);
-
-#define MAX_CAL_VAL ((1 << 27) - 1)
 
 uint32_t sntp_update_period = 3600000; // in ms
+
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -49,11 +44,17 @@ void rtc_init0(void) {
 }
 
 void mach_rtc_set_us_since_epoch(uint64_t nowus) {
-    delta_from_epoch_til_boot = nowus - get_time_since_boot();
+    struct timeval tv;
+
+    // store the packet timestamp
+    gettimeofday(&tv, NULL);
+    delta_from_epoch_til_boot = nowus - ((tv.tv_sec * 1000000) + tv.tv_usec);
 }
 
 uint64_t mach_rtc_get_us_since_epoch(void) {
-    return get_time_since_boot() + delta_from_epoch_til_boot;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return ((tv.tv_sec * 1000000) + tv.tv_usec) + delta_from_epoch_til_boot;
 };
 
 STATIC uint64_t mach_rtc_datetime_us(const mp_obj_t datetime) {
@@ -180,18 +181,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_rtc_now_obj, mach_rtc_now);
 // When an integer argument is provided, set the calibration value;
 //      otherwise return calibration value
 mp_obj_t mach_rtc_calibration(mp_uint_t n_args, const mp_obj_t *args) {
-    mp_int_t cal;
     if (n_args == 2) {
-        cal = mp_obj_get_int(args[1]);
-        if ((cal > MAX_CAL_VAL) || (-cal > MAX_CAL_VAL)) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError,
-                            "calibration value out of range"));
-        }
-        rtc_calibrate_timer(cal);
         return mp_const_none;
     } else {
-        cal = rtc_get_timer_calibration();
-        return mp_obj_new_int(cal);
+        return mp_obj_new_int(0);
     }
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mach_rtc_calibration_obj, 1, 2, mach_rtc_calibration);

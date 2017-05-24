@@ -185,7 +185,7 @@ void mp_thread_finish(void) {
     mp_thread_mutex_unlock(&thread_mutex);
 }
 
-void mp_thread_clean (void *tcb) {
+void vPortCleanUpTCB (void *tcb) {
     thread_t *prev = NULL;
     mp_thread_mutex_lock(&thread_mutex, 1);
     for (thread_t *th = thread; th != NULL; prev = th, th = th->next) {
@@ -221,7 +221,7 @@ void mp_thread_mutex_unlock(mp_thread_mutex_t *mutex) {
 
 #else
 
-void mp_thread_clean (void *tcb) {
+void vPortCleanUpTCB (void *tcb) {
 
 }
 

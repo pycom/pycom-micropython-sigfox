@@ -27,6 +27,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/freertos/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/json/include
@@ -294,7 +295,8 @@ APP_OFFSET  = 0x10000
 SHELL    = bash
 APP_SIGN = tools/appsign.sh
 
-BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
+# BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
+BOOT_BIN = bootloader/bootloader.bin
 ifeq ($(BOARD), LOPY)
     APP_BIN = $(BUILD)/lopy_$(LORA_FREQ).bin
 else
@@ -311,10 +313,15 @@ PART_BIN = $(BUILD)/lib/partitions.bin
 ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
 
+ifeq ($(OEM), 1)
+FLASH_SIZE = 8MB
+ESPFLASHFREQ = 80m
+else
 FLASH_SIZE = 4MB
+ESPFLASHFREQ = 40m
+endif
 
 ESPFLASHMODE = qio
-ESPFLASHFREQ = 40m
 ESPTOOLPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/esptool.py --chip esp32
 ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD)
 

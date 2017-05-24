@@ -252,7 +252,7 @@ static esp_gatt_status_t status = ESP_GATT_ERROR;
 
 static esp_ble_scan_params_t ble_scan_params = {
     .scan_type              = BLE_SCAN_TYPE_ACTIVE,
-    .own_addr_type          = ESP_PUBLIC_ADDR,
+    .own_addr_type          = BLE_ADDR_TYPE_PUBLIC,
     .scan_filter_policy     = BLE_SCAN_FILTER_ALLOW_ALL,
     .scan_interval          = 0x50,
     .scan_window            = 0x30
@@ -624,7 +624,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
     if (!self->init) {
         if (!self->controller_active) {
-            esp_bt_controller_init();
+            esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+            esp_bt_controller_init(&bt_cfg);
             self->controller_active = true;
         }
 

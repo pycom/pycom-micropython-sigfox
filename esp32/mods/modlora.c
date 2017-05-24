@@ -32,7 +32,7 @@
 
 #include "lora/mac/LoRaMac.h"
 
-#include "heap_alloc_caps.h"
+#include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"

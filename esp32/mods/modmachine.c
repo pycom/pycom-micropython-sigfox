@@ -16,7 +16,7 @@
 #include "py/stream.h"
 #include "py/mphal.h"
 
-#include "heap_alloc_caps.h"
+#include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
@@ -99,7 +99,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_freq_obj, machine_freq);
 
 STATIC mp_obj_t machine_unique_id(void) {
     uint8_t id[6];
-    esp_efuse_read_mac(id);
+    esp_efuse_mac_get_default(id);
     return mp_obj_new_bytes((byte *)&id, sizeof(id));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_unique_id_obj, machine_unique_id);

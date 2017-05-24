@@ -13,7 +13,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "heap_alloc_caps.h"
+#include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
@@ -77,7 +77,7 @@
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
-#define GC_POOL_SIZE_BYTES                                          (72 * 1024)
+#define GC_POOL_SIZE_BYTES                                     (2 * 1024 * 1024)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
