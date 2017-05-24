@@ -15,8 +15,8 @@ This directory contains the sources of the library to build a LoRa Picocell
 Gateway based on a Semtech LoRa multi-channel RF receiver (a.k.a. concentrator).
 Once compiled all the code is contained in the libloragw.a file that will be 
 statically linked (ie. integrated in the final executable).
-The library implements an USB CDC (virtual com port) to communicate with the
-embedded mcu.
+The library implements the communication with the concentrator embedded MCU
+through a serial port.
 
 The library also comes with a bunch of basic tests programs that are used to 
 test the different sub-modules of the library.
@@ -59,8 +59,8 @@ MCU with a new firmware.
 
 ### 2.6. util_chip_id ###
 
-This software is used to obtain the unique id of the PicoCell gateway.
-64 bits unique id extracted from the STM32 unique id registers.
+This software is used to obtain the unique id of the PicoCell gateway (the
+64 bits unique id extracted from the STM32 unique id registers).
 
 
 4. Changelog
@@ -68,10 +68,12 @@ This software is used to obtain the unique id of the PicoCell gateway.
 
 ### v0.1.0  ###
 
+* HAL: code clean-up/refactoring
+* HAL: serial port configuration to handle both USB or UART communication with
+mcu.
 * util_boot: no more command line parameter, only used to switch to DFU mode
 * util_chip_id: no more command line parameter, just print the PicoCell GW
 unique ID on the console.
-* HAL: removed com_only parameter from lgw_connect() function
 
 ### v0.0.1  ###
 

@@ -113,7 +113,7 @@ concentrator inner working before accessing the internal registers directly.
 ### 2.4. loragw_com ###
 
 This module contains the functions to access the LoRa concentrator register
-array through the USB interface:
+array through the USB/UART interface:
 
 * lgw_com_r to read one byte
 * lgw_com_w to write one byte
@@ -162,6 +162,10 @@ accuracy pause.
 For embedded platforms, the function could be rewritten using hardware timers.
 
 ### 3.2. Building options ###
+
+The tty serial device path prefix has to be specified with the LGW_COM_DEV
+constant defined in library.cfg. It will be used by the loragw_com module to
+test which device to be opened for communicating with the concentrator MCU.
 
 All modules use a fprintf(stderr,...) function to display debug diagnostic
 messages if the DEBUG_xxx is set to 1 in library.cfg
@@ -214,13 +218,13 @@ The library will not work if there is a mismatch between the hardware version
 and the library version. You can use the test program test_loragw_reg to check 
 if the hardware registers match their software declaration.
 
-### 4.2. USB communication ###
+### 4.2. USB/UART communication ###
 
 loragw_com contains 4 functions (read, write, burst read, burst write) that are
 platform-dependant.
 The functions must be rewritten depending on the communication bridge you use:
 
-* USB over linux Virtual Com Port (provided)
+* USB/UART over linux tty port (provided)
 
 You can use the test program test_loragw_com to check that the USB communication
 is working.
