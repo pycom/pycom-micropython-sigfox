@@ -54,7 +54,7 @@ CFLAGS_XTENSA += -Og
 endif
 
 ifeq ($(OEM), 1)
-CFLAGS_XTENSA += -DOEM_VERSION
+CFLAGS_XTENSA += -DOEM_VERSION -mfix-esp32-psram-cache-issue
 endif
 
 CFLAGS = $(CFLAGS_XTENSA) -nostdlib -std=gnu99 -g3 -fstrict-volatile-bitfields -Iboards/$(BOARD)
