@@ -18,3 +18,13 @@
 
 #define MICROPY_HW_FLASH_SIZE                                   (4 * 1024 * 1024)
 
+#if defined(OEM_VERSION)
+
+    #define MICROPY_HW_ANTENNA_DIVERSITY                            (0)
+
+#else
+
+    #define MICROPY_HW_ANTENNA_DIVERSITY                            (1)
+    #define MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM                    (16)
+
+#endif
