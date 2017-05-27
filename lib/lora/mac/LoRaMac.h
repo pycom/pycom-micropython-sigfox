@@ -48,6 +48,7 @@
 
 // Includes board dependent definitions such as channels frequencies
 #include "LoRaMac-definitions.h"
+#include "board.h"
 
 /*!
  * Beacon interval in ms
@@ -1517,12 +1518,16 @@ typedef struct sLoRaMacCallback
  * \param   [IN] events - Pointer to a structure defining the LoRaMAC
  *                        callback functions. Refer to \ref LoRaMacCallback_t.
  *
+ * \param   [IN] device_class - The class of the device in case of LoRaWAN
+ *                              stack is used.
+ *                              Refer to \ref DeviceClass_t.
+ *
  * \retval  LoRaMacStatus_t Status of the operation. Possible returns are:
  *          returns are:
  *          \ref LORAMAC_STATUS_OK,
  *          \ref LORAMAC_STATUS_PARAMETER_INVALID.
  */
-LoRaMacStatus_t LoRaMacInitialization( LoRaMacPrimitives_t *primitives, LoRaMacCallback_t *callbacks );
+LoRaMacStatus_t LoRaMacInitialization( LoRaMacPrimitives_t *primitives, LoRaMacCallback_t *callbacks, DeviceClass_t device_class );
 
 /*!
  * \brief   Queries the LoRaMAC if it is possible to send the next frame with

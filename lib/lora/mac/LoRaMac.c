@@ -3160,7 +3160,7 @@ LoRaMacStatus_t SendFrameOnChannel( ChannelParams_t channel )
     return LORAMAC_STATUS_OK;
 }
 
-LoRaMacStatus_t LoRaMacInitialization( LoRaMacPrimitives_t *primitives, LoRaMacCallback_t *callbacks )
+LoRaMacStatus_t LoRaMacInitialization( LoRaMacPrimitives_t *primitives, LoRaMacCallback_t *callbacks, DeviceClass_t device_class )
 {
     if( primitives == NULL )
     {
@@ -3179,7 +3179,7 @@ LoRaMacStatus_t LoRaMacInitialization( LoRaMacPrimitives_t *primitives, LoRaMacC
 
     LoRaMacFlags.Value = 0;
 
-    LoRaMacDeviceClass = CLASS_A;
+    LoRaMacDeviceClass = device_class;
     LoRaMacState = MAC_IDLE;
 
     JoinRequestTrials = 0;

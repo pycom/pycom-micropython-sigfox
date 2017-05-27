@@ -172,6 +172,7 @@ typedef struct {
   mp_obj_t          handler;
   mp_obj_t          handler_arg;
   lora_stack_mode_t stack_mode;
+  DeviceClass_t     device_class;
   lora_state_t      state;
   uint32_t          frequency;
   uint32_t          rx_timeout;
@@ -610,7 +611,7 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacPrimitives.MacMcpsIndication = McpsIndication;
                         LoRaMacPrimitives.MacMlmeConfirm = MlmeConfirm;
                         LoRaMacCallbacks.GetBatteryLevel = BoardGetBatteryLevel;
-                        LoRaMacInitialization(&LoRaMacPrimitives, &LoRaMacCallbacks);
+                        LoRaMacInitialization(&LoRaMacPrimitives, &LoRaMacCallbacks, cmd_data.info.init.device_class);
 
                         TimerInit(&TxNextActReqTimer, OnTxNextActReqTimerEvent);
                         TimerSetValue(&TxNextActReqTimer, OVER_THE_AIR_ACTIVATION_DUTYCYCLE);
@@ -998,8 +999,16 @@ static void lora_validate_power_mode (uint8_t power_mode) {
     }
 }
 
+static void lora_validate_device_class (DeviceClass_t device_class) {
+	/*CLASS_B is not implemented*/
+    if (device_class != CLASS_A && device_class != CLASS_C) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid device_class %d", device_class));
+    }
+}
+
 static void lora_set_config (lora_cmd_data_t *cmd_data) {
     lora_obj.stack_mode = cmd_data->info.init.stack_mode;
+    lora_obj.device_class = cmd_data->info.init.device_class;
     lora_obj.bandwidth = cmd_data->info.init.bandwidth;
     lora_obj.coding_rate = cmd_data->info.init.coding_rate;
     lora_obj.frequency = cmd_data->info.init.frequency;
@@ -1016,6 +1025,7 @@ static void lora_set_config (lora_cmd_data_t *cmd_data) {
 
 static void lora_get_config (lora_cmd_data_t *cmd_data) {
     cmd_data->info.init.stack_mode = lora_obj.stack_mode;
+    cmd_data->info.init.device_class = lora_obj.device_class;
     cmd_data->info.init.bandwidth = lora_obj.bandwidth;
     cmd_data->info.init.coding_rate = lora_obj.coding_rate;
     cmd_data->info.init.frequency = lora_obj.frequency;
@@ -1184,6 +1194,9 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
     cmd_data.info.init.public = args[11].u_bool;
     cmd_data.info.init.tx_retries = args[11].u_int;
 
+    cmd_data.info.init.device_class = args[13].u_int;
+    lora_validate_device_class(cmd_data.info.init.device_class);
+
     // send message to the lora task
     cmd_data.cmd = E_LORA_CMD_INIT;
     lora_send_cmd(&cmd_data);
@@ -1206,6 +1219,7 @@ STATIC const mp_arg_t lora_init_args[] = {
     { MP_QSTR_adr,          MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
     { MP_QSTR_public,       MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = true} },
     { MP_QSTR_tx_retries,   MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = 2} },
+	{ MP_QSTR_device_class, MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = CLASS_A} }
 };
 STATIC mp_obj_t lora_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -1624,6 +1638,28 @@ STATIC mp_obj_t lora_events(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_events_obj, lora_events);
 
+STATIC mp_obj_t lora_get_device_class(mp_obj_t self_in) {
+    lora_obj_t *self = self_in;
+    char* device_class;
+
+    if(self->stack_mode == E_LORA_STACK_MODE_LORAWAN) {
+		if(self->device_class == CLASS_A) {
+			device_class = "CLASS_A";
+		} else if(self->device_class == CLASS_B) {
+			device_class = "CLASS_B";
+		} else if(self->device_class == CLASS_C) {
+			device_class = "CLASS_C";
+		} else {
+			/*Due to lora_validate_device_class() this should not happen*/
+			device_class = "NOCLASS";
+		}
+		return mp_obj_new_str(device_class,7,true);
+    } else {
+    	return mp_obj_new_str("LoRa mode is not LORAWAN!", 25, false);
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_get_device_class_obj, lora_get_device_class);
+
 STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&lora_init_obj },
@@ -1643,6 +1679,7 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_compliance_test),     (mp_obj_t)&lora_compliance_test_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),            (mp_obj_t)&lora_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_events),              (mp_obj_t)&lora_events_obj },
+	{ MP_OBJ_NEW_QSTR(MP_QSTR_get_device_class),    (mp_obj_t)&lora_get_device_class_obj },
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_LORA),                MP_OBJ_NEW_SMALL_INT(E_LORA_STACK_MODE_LORA) },
@@ -1666,6 +1703,10 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_RX_PACKET_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_RX_EVENT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_TX_PACKET_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_TX_EVENT) },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CLASS_A),     MP_OBJ_NEW_SMALL_INT(CLASS_A) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CLASS_B),     MP_OBJ_NEW_SMALL_INT(CLASS_B) },
+	{ MP_OBJ_NEW_QSTR(MP_QSTR_CLASS_C),     MP_OBJ_NEW_SMALL_INT(CLASS_C) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(lora_locals_dict, lora_locals_dict_table);

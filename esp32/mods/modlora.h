@@ -10,6 +10,8 @@
 #ifndef MODLORA_H_
 #define MODLORA_H_
 
+#include "lora/mac/LoRaMac.h"
+
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
@@ -38,6 +40,7 @@ typedef enum {
 
 typedef struct {
     uint32_t    frequency;
+    DeviceClass_t device_class;
     uint8_t     stack_mode;
     uint8_t     preamble;
     uint8_t     bandwidth;
