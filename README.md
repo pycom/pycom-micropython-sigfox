@@ -172,15 +172,26 @@ Finally, before building, export the IDF_PATH variable
 To build and flash your LoPy for 868MHz regions:
 
     $ cd esp32
+    $ make BOARD=LOPY TARGET=boot
+    $ make BOARD=LOPY LORA_BAND=USE_BAND_868 TARGET=app
     $ make BOARD=LOPY LORA_BAND=USE_BAND_868 flash
 
 or for 915MHz regions:
 
+    $ cd esp32
+    $ make BOARD=LOPY TARGET=boot
+    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=app
     $ make BOARD=LOPY LORA_BAND=USE_BAND_915 flash
 
 or the WiPy 2.0:
 
+    $ cd esp32
+    $ make BOARD=WIPY TARGET=boot
+    $ make BOARD=WIPY TARGET=app
     $ make BOARD=WIPY flash
 
 Make sure that your board is placed into programming mode, otherwise flahing will fail.
 To do this, connect ``P2`` to ``GND`` and then reset the board.
+
+For more recent information about the process of building and flashing, please refer to
+the `README.md` file in the `esp32` folder.
