@@ -241,6 +241,7 @@ STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj
         return;
     }
 
+    mp_irq_handler_add(handler);
     if (self->heap_index == -1) {
         set_alarm_when(self, self->interval);
         insert_alarm(self);
