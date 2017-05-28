@@ -174,7 +174,6 @@ STATIC void *thread_entry(void *args_in) {
     // TODO set more thread-specific state here:
     //  mp_pending_exception? (root pointer)
     //  cur_exception (root pointer)
-    //  dict_locals? (root pointer) uPy doesn't make a new locals dict for functions, just for classes, so it's different to CPy
 
     DEBUG_printf("[thread] start ts=%p args=%p stack=%p\n", &ts, &args, MP_STATE_THREAD(stack_top));
 
@@ -241,7 +240,7 @@ STATIC mp_obj_t mod_thread_start_new_thread(size_t n_args, const mp_obj_t *args)
         }
     }
 
-    // copy agross the positional arguments
+    // copy across the positional arguments
     th_args->n_args = pos_args_len;
     memcpy(th_args->args, pos_args_items, pos_args_len * sizeof(mp_obj_t));
 

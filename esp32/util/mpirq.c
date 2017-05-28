@@ -22,11 +22,18 @@
 
 #if MICROPY_PY_THREAD
 
+typedef struct {
+    mp_obj_dict_t *dict_locals;
+    mp_obj_dict_t *dict_globals;
+} mpirq_args_t;
+
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
 STATIC QueueHandle_t InterruptsQueue;
 STATIC bool mp_irq_is_alive;
+
+STATIC mpirq_args_t mpirq_args;
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -36,8 +43,13 @@ static void *TASK_Interrupts(void *pvParameters) {
     mp_state_thread_t ts;
     mp_thread_set_state(&ts);
 
+    mpirq_args_t *args = (mpirq_args_t *)pvParameters;
+
     mp_stack_set_top(&ts + 1); // need to include ts in root-pointer scan
-    mp_stack_set_limit(INTERRUPTS_TASK_STACK_SIZE);
+    mp_stack_set_limit(INTERRUPTS_TASK_STACK_SIZE - 1024);
+
+    mp_locals_set(args->dict_locals);
+    mp_globals_set(args->dict_globals);
 
     // signal that we are set up and running
     mp_thread_start();
@@ -90,7 +102,21 @@ void mp_irq_init0(void) {
 
     mp_irq_is_alive = true;
     xQueueReset(InterruptsQueue);
-    mp_thread_create_ex(TASK_Interrupts, NULL, &stack_size, INTERRUPTS_TASK_PRIORITY, "IRQs");
+
+    mpirq_args.dict_locals = mp_locals_get();
+    mpirq_args.dict_globals = mp_globals_get();
+
+    mp_thread_create_ex(TASK_Interrupts, &mpirq_args, &stack_size, INTERRUPTS_TASK_PRIORITY, "IRQs");
+}
+
+void mp_irq_handler_add (mp_obj_t irq_handler) {
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(mp_irq_obj_list).len; i++) {
+        if (irq_handler == ((mp_irq_obj_t *)(MP_STATE_PORT(mp_irq_obj_list).items[i]))) {
+            // already in the list, do not add it again
+            return;
+        }
+    }
+    mp_obj_list_append(&MP_STATE_PORT(mp_irq_obj_list), irq_handler);
 }
 
 void IRAM_ATTR mp_irq_queue_interrupt(void (* handler)(void *), void *arg) {

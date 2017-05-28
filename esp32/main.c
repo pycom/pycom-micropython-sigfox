@@ -63,7 +63,8 @@ static StaticTask_t mpTaskTCB;
  * Returns      : none
 *******************************************************************************/
 void app_main(void) {
-    // esp_log_level_set("*", ESP_LOG_NONE);
+    // remove all the logs from the IDF
+    esp_log_level_set("*", ESP_LOG_NONE);
     // initalize the non-volatile flash space
     nvs_flash_init();
 

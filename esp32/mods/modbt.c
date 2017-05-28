@@ -837,6 +837,8 @@ STATIC mp_obj_t bt_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
         self->trigger = 0;
     }
 
+    mp_irq_handler_add(args[1].u_obj);
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_callback_obj, 1, bt_callback);
@@ -981,8 +983,6 @@ STATIC mp_obj_t bt_advertise(mp_obj_t self_in, mp_obj_t enable) {
         esp_ble_gap_start_advertising(&bt_adv_params);
         bt_obj.advertising = true;
     } else {
-        // FIXME (why is it needed to start and stop?)
-        esp_ble_gap_start_advertising(&bt_adv_params);
         esp_ble_gap_stop_advertising();
         bt_obj.advertising = false;
     }
@@ -1259,6 +1259,8 @@ STATIC mp_obj_t bt_characteristic_callback(mp_uint_t n_args, const mp_obj_t *pos
     } else {
         self->trigger = 0;
     }
+
+    mp_irq_handler_add(args[1].u_obj);
 
     return mp_const_none;
 }
@@ -1639,6 +1641,8 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
     } else {
         self->trigger = 0;
     }
+
+    mp_irq_handler_add(args[1].u_obj);
 
     return mp_const_none;
 }
