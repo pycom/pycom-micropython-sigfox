@@ -1192,7 +1192,7 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
 
     cmd_data.info.init.adr = args[10].u_bool;
     cmd_data.info.init.public = args[11].u_bool;
-    cmd_data.info.init.tx_retries = args[11].u_int;
+    cmd_data.info.init.tx_retries = args[12].u_int;
 
     cmd_data.info.init.device_class = args[13].u_int;
     lora_validate_device_class(cmd_data.info.init.device_class);
