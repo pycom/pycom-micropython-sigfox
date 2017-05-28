@@ -54,5 +54,6 @@ typedef struct _mp_thread_mutex_t {
 void mp_thread_preinit(void *stack);
 void mp_thread_init(void);
 void mp_thread_gc_others(void);
+void mp_thread_deinit(void);
 
 #endif // __MICROPY_INCLUDED_ESP32_MPTHREADPORT_H__

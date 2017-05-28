@@ -219,6 +219,20 @@ void mp_thread_mutex_unlock(mp_thread_mutex_t *mutex) {
     xSemaphoreGive(mutex->handle);
 }
 
+void mp_thread_deinit(void) {
+    mp_thread_mutex_lock(&thread_mutex, 1);
+    for (thread_t *th = thread; th != NULL; th = th->next) {
+        // don't delete the current task
+        if (th->id == xTaskGetCurrentTaskHandle()) {
+            continue;
+        }
+        vTaskDelete(th->id);
+    }
+    mp_thread_mutex_unlock(&thread_mutex);
+    // allow FreeRTOS to clean-up the threads
+    vTaskDelay(2);
+}
+
 #else
 
 void vPortCleanUpTCB (void *tcb) {

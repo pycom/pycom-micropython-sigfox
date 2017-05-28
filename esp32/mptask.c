@@ -77,7 +77,7 @@
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
-#define GC_POOL_SIZE_BYTES                                     (2 * 1024 * 1024)
+#define GC_POOL_SIZE_BYTES                                     (64 * 1024)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -268,6 +268,7 @@ soft_reset:
 
 soft_reset_exit:
 
+    mp_thread_deinit();
     machtimer_deinit();
 #if MICROPY_PY_THREAD
     mp_irq_kill();
