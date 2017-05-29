@@ -263,11 +263,11 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int lgw_com_open_linux(void **com_target_ptr) {
+int lgw_com_open_linux(void **com_target_ptr, const char *com_path) {
 
     int *usb_device = NULL;
     char portname[50];
-    int i, x;
+    int x;
     int fd;
 
     /*check input variables*/
@@ -279,25 +279,23 @@ int lgw_com_open_linux(void **com_target_ptr) {
         return LGW_COM_ERROR;
     }
 
-    /* try to open tty port based on the LGW_COM_DEV value given in library.cfg */
-    for (i = 0; i < 10; i++) {
-        sprintf(portname, "%s%d", LGW_COM_DEV, i);
-        fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
-        if (fd < 0) {
-            DEBUG_PRINTF("ERROR: failed to open USB port %s - %s\n", portname, strerror(errno));
-        } else {
-            x = set_interface_attribs_linux(fd, B115200);
-            x |= set_blocking_linux(fd, true);
-            if (x != 0) {
-                DEBUG_PRINTF("ERROR: failed to configure USB port %s\n", portname);
-                return LGW_COM_ERROR;
-            }
-
-            *usb_device = fd;
-            *com_target_ptr = (void*)usb_device;
-
-            return LGW_COM_SUCCESS;
+    /* open tty port */
+    sprintf(portname, "%s", com_path);
+    fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
+    if (fd < 0) {
+        DEBUG_PRINTF("ERROR: failed to open COM port %s - %s\n", portname, strerror(errno));
+    } else {
+        x = set_interface_attribs_linux(fd, B115200);
+        x |= set_blocking_linux(fd, true);
+        if (x != 0) {
+            DEBUG_PRINTF("ERROR: failed to configure COM port %s\n", portname);
+            return LGW_COM_ERROR;
         }
+
+        *usb_device = fd;
+        *com_target_ptr = (void*)usb_device;
+
+        return LGW_COM_SUCCESS;
     }
 
     return LGW_COM_ERROR;
@@ -316,7 +314,7 @@ int lgw_com_close_linux(void *com_target) {
 
     a = close(usb_device);
     if (a < 0) {
-        DEBUG_PRINTF("ERROR: failed to close USB port - %s\n", strerror(errno));
+        DEBUG_PRINTF("ERROR: failed to close COM port - %s\n", strerror(errno));
         return LGW_COM_ERROR;
     } else {
         DEBUG_MSG("Note : USB port closed \n");

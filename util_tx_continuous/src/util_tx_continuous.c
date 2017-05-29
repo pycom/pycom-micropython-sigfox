@@ -59,6 +59,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_BT              2
 #define DEFAULT_NOTCH_FREQ      129000U
 
+#define COM_PATH_DEFAULT        "/dev/ttyACM0"
+
 /* -------------------------------------------------------------------------- */
 /* --- GLOBAL VARIABLES ----------------------------------------------------- */
 
@@ -123,14 +125,19 @@ int main(int argc, char **argv) {
     struct lgw_tx_gain_lut_s txlut;
     struct lgw_pkt_tx_s txpkt;
 
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
 
     /* Parse command line options */
-    while ((i = getopt_long (argc, argv, "hud::f:r:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hf:r:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 printf("~~~ Library version string~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
                 printf(" %s\n", lgw_version_info());
                 printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+                printf(" -d      <path>   COM device to be used to access the concentrator board\n");
+                printf("                    => default path: " COM_PATH_DEFAULT "\n");
                 printf(" -f      <float>  Tx RF frequency in MHz [800:1000]\n");
                 printf(" -r      <int>    Radio type (SX1255:1255, SX1257:1257)\n");
                 printf(" --notch <uint>   Tx notch filter frequency in KhZ [126..250]\n");
@@ -269,6 +276,12 @@ int main(int argc, char **argv) {
                 }
                 break;
 
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
+                break;
+
             default:
                 printf("ERROR: argument parsing options. Use -h to print help\n");
                 return EXIT_FAILURE;
@@ -287,9 +300,9 @@ int main(int argc, char **argv) {
     sigaction( SIGTERM, &sigact, NULL );
 
     /* Open communication bridge */
-    i = lgw_connect();
+    i = lgw_connect(com_path);
     if (i == -1) {
-        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
         exit(EXIT_FAILURE);
     }
 

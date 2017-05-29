@@ -43,6 +43,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define COM_PATH_DEFAULT "/dev/ttyACM0"
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
@@ -58,8 +60,10 @@ void usage (void);
 void usage(void) {
     MSG("Available options:\n");
     MSG(" -h print this help\n");
+    MSG(" -d <path> COM device to be used to access the concentrator board\n");
+    MSG("            => default path: " COM_PATH_DEFAULT "\n");
     MSG(" -l generate a new guid.json file\n");
-    MSG(" -p print the pico cell gateway id\n");
+    MSG(" -p print the ID of the PicoCell gateway\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -68,12 +72,21 @@ void usage(void) {
 int main(int argc, char **argv) {
     int i, x;
     uint8_t uid[8];
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
 
-    while ((i = getopt (argc, argv, "h")) != -1) {
+    while ((i = getopt (argc, argv, "hd:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
+                break;
+
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
 
             default:
@@ -83,9 +96,9 @@ int main(int argc, char **argv) {
         }
     }
 
-    x = lgw_connect();
+    x = lgw_connect(com_path);
     if (x == -1) {
-        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
         return -1;
     }
 

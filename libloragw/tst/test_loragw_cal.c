@@ -45,7 +45,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define DEFAULT_TX_NOTCH_FREQ   129E3
+#define COM_PATH_DEFAULT        "/dev/ttyACM0"
 #define DEFAULT_RSSI_OFFSET     0.0
 #define NB_CAL_MAX              100
 #define MCU_AGC                 1
@@ -98,14 +98,16 @@ void usage (void);
 /* describe command line options */
 void usage(void) {
     printf("Library version information: %s\n", lgw_version_info());
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -a <float> Radio A frequency in MHz\n");
-    printf( " -b <float> Radio B frequency in MHz\n");
-    printf( " -r <int> Radio type (SX1255:1255, SX1257:1257)\n");
-    printf( " -n <uint> Number of calibration iterations\n");
-    printf( " -k <int> Concentrator clock source (0:radio_A, 1:radio_B(default))\n");
-    printf( " -t <int> Radio to run TX calibration on (0:None(default), 1:radio_A, 2:radio_B, 3:both)\n");
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -d <path> COM device to be used to access the concentrator board\n");
+    printf("            => default path: " COM_PATH_DEFAULT "\n");
+    printf(" -a <float> Radio A frequency in MHz\n");
+    printf(" -b <float> Radio B frequency in MHz\n");
+    printf(" -r <int> Radio type (SX1255:1255, SX1257:1257)\n");
+    printf(" -n <uint> Number of calibration iterations\n");
+    printf(" -k <int> Concentrator clock source (0:radio_A, 1:radio_B(default))\n");
+    printf(" -t <int> Radio to run TX calibration on (0:None(default), 1:radio_A, 2:radio_B, 3:both)\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -132,6 +134,10 @@ int main(int argc, char **argv) {
     uint8_t img_rej_b_min;
     //FILE *file;
 
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
+
     /* command line options */
     int xi = 0;
     double xd = 0.0;
@@ -142,11 +148,16 @@ int main(int argc, char **argv) {
     int nb_cal = 5;
 
     /* parse command line options */
-    while ((i = getopt (argc, argv, "ha:b:r:n:k:t:")) != -1) {
+    while ((i = getopt (argc, argv, "ha:b:r:n:k:t:d:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
+                break;
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
             case 'a': /* <float> Radio A frequency in MHz */
                 sscanf(optarg, "%lf", &xd);
@@ -214,9 +225,9 @@ int main(int argc, char **argv) {
     /* starting the concentrator */
 
     /* Open communication bridge */
-    x = lgw_connect();
+    x = lgw_connect(com_path);
     if (x == -1) {
-        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
         return -1;
     }
 

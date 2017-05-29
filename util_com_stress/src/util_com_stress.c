@@ -42,6 +42,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define COM_PATH_DEFAULT        "/dev/ttyACM0"
 #define VERS                    103
 #define READS_WHEN_ERROR        16 /* number of times a read is repeated if there is a read error */
 #define BUFF_SIZE               1024 /* maximum number of bytes that we can write in sx1301 RX data buffer */
@@ -74,9 +75,11 @@ static void sig_handler(int sigio) {
 
 /* describe command line options */
 void usage(void) {
-    MSG( "Available options:\n");
-    MSG( " -h print this help\n");
-    MSG( " -t <int> specify which test you want to run (1-4)\n");
+    MSG("Available options:\n");
+    MSG(" -d <path> COM device to be used to access the concentrator board\n");
+    MSG("            => default path: " COM_PATH_DEFAULT "\n");
+    MSG(" -h print this help\n");
+    MSG(" -t <int> specify which test you want to run (1-4)\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -102,12 +105,22 @@ int main(int argc, char **argv) {
     uint8_t test_buff[BUFF_SIZE];
     uint8_t read_buff[BUFF_SIZE];
 
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
+
     /* parse command line options */
-    while ((i = getopt (argc, argv, "ht:")) != -1) {
+    while ((i = getopt (argc, argv, "ht:d:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
+                break;
+
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
 
             case 't':
@@ -137,9 +150,9 @@ int main(int argc, char **argv) {
     sigaction(SIGTERM, &sigact, NULL);
 
     /* start SPI link */
-    i = lgw_connect();
+    i = lgw_connect(com_path);
     if (i != LGW_REG_SUCCESS) {
-        MSG("ERROR: lgw_connect() did not return SUCCESS");
+        MSG("ERROR: lgw_connect() did not return SUCCESS ON %s\n", com_path);
         return EXIT_FAILURE;
     }
 
@@ -285,14 +298,14 @@ int main(int argc, char **argv) {
             }
         }
     } else {
-        MSG("ERROR: invalid test number");
+        MSG("ERROR: invalid test number\n");
         usage();
     }
 
     /* close SPI link */
     i = lgw_disconnect();
     if (i != LGW_REG_SUCCESS) {
-        MSG("ERROR: lgw_disconnect() did not return SUCCESS");
+        MSG("ERROR: lgw_disconnect() did not return SUCCESS\n");
         return EXIT_FAILURE;
     }
 

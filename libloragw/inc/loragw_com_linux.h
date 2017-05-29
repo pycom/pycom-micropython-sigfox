@@ -37,7 +37,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 @return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 
-int lgw_com_open_linux(void **com_target_ptr);
+int lgw_com_open_linux(void **com_target_ptr, const char *com_path);
 
 /**
 @brief LoRa concentrator COM close

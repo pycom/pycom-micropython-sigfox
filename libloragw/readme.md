@@ -163,10 +163,6 @@ For embedded platforms, the function could be rewritten using hardware timers.
 
 ### 3.2. Building options ###
 
-The tty serial device path prefix has to be specified with the LGW_COM_DEV
-constant defined in library.cfg. It will be used by the loragw_com module to
-test which device to be opened for communicating with the concentrator MCU.
-
 All modules use a fprintf(stderr,...) function to display debug diagnostic
 messages if the DEBUG_xxx is set to 1 in library.cfg
 

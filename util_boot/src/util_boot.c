@@ -39,6 +39,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define COM_PATH_DEFAULT "/dev/ttyACM0"
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
@@ -56,6 +58,8 @@ void usage (void);
 void usage(void) {
     MSG("Available options:\n");
     MSG(" -h print this help\n");
+    MSG(" -d <path> COM device to be used to access the concentrator board\n");
+    MSG("            => default path: " COM_PATH_DEFAULT "\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -65,12 +69,21 @@ int main(int argc, char **argv) {
     int i, x;
     lgw_com_cmd_t cmd;
     lgw_com_ans_t ans;
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
 
-    while ((i = getopt (argc, argv, "h")) != -1) {
+    while ((i = getopt (argc, argv, "hd:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
+                break;
+
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
 
             default:
@@ -81,9 +94,9 @@ int main(int argc, char **argv) {
     }
 
     /* Open communication bridge */
-    x = lgw_com_open(&lgw_com_target);
+    x = lgw_com_open(&lgw_com_target, com_path);
     if (x == LGW_COM_ERROR) {
-        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
         return -1;
     }
 

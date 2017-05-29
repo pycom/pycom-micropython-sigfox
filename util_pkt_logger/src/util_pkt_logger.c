@@ -44,6 +44,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define MSG(args...)    fprintf(stderr,"loragw_pkt_logger: " args) /* message that is destined to the user */
 
 /* -------------------------------------------------------------------------- */
+/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
+
+#define COM_PATH_DEFAULT "/dev/ttyACM0"
+
+/* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
 /* signal handling variables */
@@ -400,9 +405,11 @@ void open_log(void) {
 /* describe command line options */
 void usage(void) {
     printf("*** Library version information ***\n%s\n\n", lgw_version_info());
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -r <int> rotate log file every N seconds (-1 disable log rotation)\n");
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -d <path> COM device to be used to access the concentrator board\n");
+    printf("            => default path: " COM_PATH_DEFAULT "\n");
+    printf(" -r <int> rotate log file every N seconds (-1 disable log rotation)\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -432,12 +439,22 @@ int main(int argc, char **argv) {
     char fetch_timestamp[30];
     struct tm * x;
 
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
+
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hr:")) != -1) {
+    while ((i = getopt (argc, argv, "hr:d:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
+                break;
+
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
 
             case 'r':
@@ -467,9 +484,9 @@ int main(int argc, char **argv) {
     sigaction(SIGTERM, &sigact, NULL);
 
     /* Open communication bridge */
-    i = lgw_connect();
+    i = lgw_connect(com_path);
     if (i == -1) {
-        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
         return -1;
     }
 

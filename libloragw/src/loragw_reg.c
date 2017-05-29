@@ -482,7 +482,7 @@ int reg_r_align32(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 /* Concentrator connect */
-int lgw_connect(void) {
+int lgw_connect(const char *com_path) {
     uint8_t uid[8];
     int com_stat = LGW_COM_SUCCESS;
     uint8_t u = 0;
@@ -494,7 +494,7 @@ int lgw_connect(void) {
     }
 
     /* open the COM link */
-    com_stat = lgw_com_open(&lgw_com_target);
+    com_stat = lgw_com_open(&lgw_com_target, com_path);
     if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR: FAIL TO CONNECT CONCENTRATOR\n");
         return LGW_REG_ERROR;

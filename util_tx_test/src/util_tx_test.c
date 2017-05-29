@@ -46,6 +46,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define COM_PATH_DEFAULT            "/dev/ttyACM0"
 #define TX_RF_CHAIN                 0 /* TX only supported on radio A */
 #define DEFAULT_RSSI_OFFSET         0.0
 #define DEFAULT_MODULATION          "LORA"
@@ -133,6 +134,8 @@ void usage(void) {
     printf("*** Library version information ***\n%s\n\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h                 print this help\n");
+    printf(" -d         <path>  COM device to be used to access the concentrator board\n");
+    printf("                      => default path: " COM_PATH_DEFAULT "\n");
     printf(" -r         <int>   radio type (SX1255:1255, SX1257:1257)\n");
     printf(" -f         <float> target frequency in MHz\n");
     printf(" -k         <uint>  concentrator clock source (0:Radio A, 1:Radio B)\n");
@@ -140,7 +143,7 @@ void usage(void) {
     printf(" -b         <uint>  LoRa bandwidth in kHz [125, 250, 500]\n");
     printf(" -s         <uint>  LoRa Spreading Factor [7-12]\n");
     printf(" -c         <uint>  LoRa Coding Rate [1-4]\n");
-    printf(" -d         <uint>  FSK frequency deviation in kHz [1:250]\n");
+    printf(" -D         <uint>  FSK frequency deviation in kHz [1:250]\n");
     printf(" -q         <float> FSK bitrate in kbps [0.5:250]\n");
     printf(" -p         <int>   RF power (dBm) [ ");
     for (i = 0; i < txgain_lut.size; i++) {
@@ -201,12 +204,22 @@ int main(int argc, char **argv) {
         {0, 0, 0, 0}
     };
 
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
+
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hif:m:b:s:c:p:l:z:t:x:r:k:d:q:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hif:m:b:s:c:p:l:z:t:x:r:k:D:q:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
+                break;
+
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
 
             case 'f': /* <float> Target frequency in MHz */
@@ -275,7 +288,7 @@ int main(int argc, char **argv) {
                 }
                 break;
 
-            case 'd': /* <uint> FSK frequency deviation */
+            case 'D': /* <uint> FSK frequency deviation */
                 i = sscanf(optarg, "%u", &xu);
                 if ((i != 1) || (xu < 1) || (xu > 250)) {
                     MSG("ERROR: invalid FSK frequency deviation\n");
@@ -403,9 +416,9 @@ int main(int argc, char **argv) {
     sigaction(SIGTERM, &sigact, NULL);
 
     /* Open the communication bridge */
-    i = lgw_connect();
+    i = lgw_connect(com_path);
     if (i == -1) {
-        printf("ERROR: FAIL TO CONNECT BOARD\n");
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
         return -1;
     }
 

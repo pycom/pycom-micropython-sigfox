@@ -98,11 +98,11 @@ int lgw_com_receive_ans(lgw_com_ans_t *ans, lgw_handle_t handle) {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int lgw_com_open(void **com_target_ptr) {
+int lgw_com_open(void **com_target_ptr, const char *com_path) {
 #ifdef _WIN32
     return lgw_com_open_win(com_target_ptr);
 #elif __linux__
-    return lgw_com_open_linux(com_target_ptr);
+    return lgw_com_open_linux(com_target_ptr, com_path);
 #elif __APPLE__
     DEBUG_PRINTF("System is not recognized.");
 #elif __unix__
