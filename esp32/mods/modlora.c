@@ -933,6 +933,8 @@ static void lora_radio_setup (lora_init_cmd_data_t *init_data) {
                                   symbol_to, LORA_FIX_LENGTH_PAYLOAD_OFF,
                                   0, true, 0, 0, init_data->rxiq, true);
 
+    Radio.SetMaxPayloadLength(MODEM_LORA, LORA_PAYLOAD_SIZE_MAX);
+
     if (init_data->power_mode == E_LORA_MODE_ALWAYS_ON) {
         // start listening
         Radio.Rx(LORA_RX_TIMEOUT);
