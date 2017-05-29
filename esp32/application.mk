@@ -228,6 +228,7 @@ BOOT_SRC_C = $(addprefix bootloader/,\
 	bootmgr.c \
 	mperror.c \
 	gpio.c \
+	flash_qio_mode.c \
 	)
 
 SFX_OBJ =
@@ -262,7 +263,7 @@ endif
 # SRC_QSTR
 SRC_QSTR_AUTO_DEPS +=
 
-BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld
+BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld
 
 # add the application linker script(s)
 APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld
@@ -295,8 +296,8 @@ APP_OFFSET  = 0x10000
 SHELL    = bash
 APP_SIGN = tools/appsign.sh
 
-# BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
-BOOT_BIN = bootloader/bootloader.bin
+BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
+#BOOT_BIN = bootloader/bootloader.bin
 ifeq ($(BOARD), LOPY)
     APP_BIN = $(BUILD)/lopy_$(LORA_FREQ).bin
 else
@@ -318,7 +319,7 @@ FLASH_SIZE = 8MB
 ESPFLASHFREQ = 80m
 else
 FLASH_SIZE = 4MB
-ESPFLASHFREQ = 40m
+ESPFLASHFREQ = 80m
 endif
 
 ESPFLASHMODE = qio

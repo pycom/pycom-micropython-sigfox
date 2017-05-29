@@ -17,7 +17,7 @@
 #include "esp_intr_alloc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/xtensa_api.h"
-#include "driver/gpio.h"
+#include "gpio.h"
 #include "driver/rtc_io.h"
 #include "soc/soc.h"
 #include "esp_log.h"
