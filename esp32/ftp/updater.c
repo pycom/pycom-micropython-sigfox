@@ -61,7 +61,7 @@ bool updater_read_boot_info (boot_info_t *boot_info, uint32_t *boot_info_offset)
         return false;
     }
     // get the data from the boot info partition
-    if (ESP_OK != spi_flash_read(partition_info[5].pos.offset, (void *)boot_info, sizeof(boot_info_t))) {
+    if (ESP_OK != spi_flash_read(partition_info[3].pos.offset, (void *)boot_info, sizeof(boot_info_t))) {
         return false;
     }
     *boot_info_offset = partition_info[5].pos.offset;
