@@ -259,7 +259,7 @@ static IRAM_ATTR void calculate_signature (uint8_t *signature) {
     ESP_LOGI(TAG, "md5 init sig");
     while (total_len < 0x7000) {
         // Cache_Read_Disable(0);
-        if (ESP_ROM_SPIFLASH_RESULT_OK != bootloader_flash_read(0x1000 + total_len, (void *)bootloader_buf, SPI_SEC_SIZE)) {
+        if (ESP_ROM_SPIFLASH_RESULT_OK != bootloader_flash_read(0x1000 + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, false)) {
             ESP_LOGE(TAG, SPI_ERROR_LOG);
             // Cache_Read_Enable(0);
             return;
