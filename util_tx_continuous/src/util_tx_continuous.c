@@ -57,7 +57,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_BR_KBPS         50
 #define DEFAULT_FDEV_KHZ        25
 #define DEFAULT_BT              2
-#define DEFAULT_NOTCH_FREQ      129000U
 
 #define COM_PATH_DEFAULT        "/dev/ttyACM0"
 
@@ -95,7 +94,6 @@ int main(int argc, char **argv) {
         {"br", 1, 0, 0},
         {"fdev", 1, 0, 0},
         {"bt", 1, 0, 0},
-        {"notch", 1, 0, 0},
         {0, 0, 0, 0}
     };
     unsigned int arg_u;
@@ -114,7 +112,6 @@ int main(int argc, char **argv) {
     float br_kbps = DEFAULT_BR_KBPS;
     uint8_t fdev_khz = DEFAULT_FDEV_KHZ;
     uint8_t bt = DEFAULT_BT;
-    uint32_t tx_notch_freq = DEFAULT_NOTCH_FREQ;
 
     int32_t offset_i, offset_q;
 
@@ -140,7 +137,6 @@ int main(int argc, char **argv) {
                 printf("                    => default path: " COM_PATH_DEFAULT "\n");
                 printf(" -f      <float>  Tx RF frequency in MHz [800:1000]\n");
                 printf(" -r      <int>    Radio type (SX1255:1255, SX1257:1257)\n");
-                printf(" --notch <uint>   Tx notch filter frequency in KhZ [126..250]\n");
                 printf(" --dig   <uint>   Digital gain trim, [0:3]\n");
                 printf("                   0:1, 1:7/8, 2:3/4, 3:1/2\n");
                 printf(" --mix   <uint>   Radio Tx mixer gain trim, [0:15]\n");
@@ -237,14 +233,6 @@ int main(int argc, char **argv) {
                     } else {
                         bt = (uint8_t)arg_u;
                     }
-                } else if (strcmp(long_options[option_index].name, "notch") == 0) {
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || ((arg_u < 126) || (arg_u > 250))) {
-                        printf("ERROR: argument parsing of --notch argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    } else {
-                        tx_notch_freq = (uint32_t)arg_u * 1000U;
-                    }
                 } else {
                     printf("ERROR: argument parsing options. Use -h to print help\n");
                     return EXIT_FAILURE;
@@ -319,7 +307,6 @@ int main(int argc, char **argv) {
     rfconf.rssi_offset = DEFAULT_RSSI_OFFSET;
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
-    rfconf.tx_notch_freq = tx_notch_freq;
     lgw_rxrf_setconf(TX_RF_CHAIN, rfconf);
 
     /* Tx gain LUT */

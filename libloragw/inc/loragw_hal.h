@@ -185,7 +185,6 @@ struct lgw_conf_rxrf_s {
     float                   rssi_offset;    /*!> Board-specific RSSI correction factor */
     enum lgw_radio_type_e   type;           /*!> Radio type for that RF chain (SX1255, SX1257....) */
     bool                    tx_enable;      /*!> enable or disable TX on that RF chain */
-    uint32_t                tx_notch_freq;  /*!> TX notch filter frequency [126KHz..250KHz] */
 };
 
 /**

@@ -92,7 +92,7 @@ int lgw_mcu_rxrf_setconf(uint8_t rfchain, struct lgw_conf_rxrf_s conf) {
     lgw_com_cmd_t cmd;
     lgw_com_ans_t ans;
     uint8_t PADDING = 0;
-    uint8_t data[24];
+    uint8_t data[20];
     uint16_t size;
 
     /* struct to byte array */
@@ -119,10 +119,6 @@ int lgw_mcu_rxrf_setconf(uint8_t rfchain, struct lgw_conf_rxrf_s conf) {
     data[17] = *(((uint8_t *)(&conf.tx_enable)) + 1);
     data[18] = *(((uint8_t *)(&conf.tx_enable)) + 2);
     data[19] = *(((uint8_t *)(&conf.tx_enable)) + 3);
-    data[20] = *(((uint8_t *)(&conf.tx_notch_freq)));
-    data[21] = *(((uint8_t *)(&conf.tx_notch_freq)) + 1);
-    data[22] = *(((uint8_t *)(&conf.tx_notch_freq)) + 2);
-    data[23] = *(((uint8_t *)(&conf.tx_notch_freq)) + 3);
     size = sizeof(data) / sizeof(uint8_t);
 
     /* prepare command */

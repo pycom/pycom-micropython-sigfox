@@ -52,7 +52,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define DEFAULT_MODULATION          "LORA"
 #define DEFAULT_BR_KBPS             50
 #define DEFAULT_FDEV_KHZ            25
-#define DEFAULT_NOTCH_FREQ          129000U /* 129 kHz */
 #define DEFAULT_SX127X_RSSI_OFFSET  -4 /* dB */
 
 /* -------------------------------------------------------------------------- */

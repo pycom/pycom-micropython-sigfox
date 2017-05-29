@@ -45,7 +45,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define COM_PATH_DEFAULT    "/dev/ttyACM0"
 #define DEFAULT_RSSI_OFFSET 0.0
-#define DEFAULT_NOTCH_FREQ  129000U
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -214,7 +213,6 @@ int main(int argc, char **argv) {
     rfconf.rssi_offset = DEFAULT_RSSI_OFFSET;
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
-    rfconf.tx_notch_freq = DEFAULT_NOTCH_FREQ;
     lgw_rxrf_setconf(0, rfconf); /* radio A, f0 */
 
     rfconf.enable = true;

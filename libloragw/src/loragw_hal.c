@@ -110,7 +110,6 @@ static bool rf_enable[LGW_RF_CHAIN_NB];
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
 static float rf_rssi_offset[LGW_RF_CHAIN_NB];
 static bool rf_tx_enable[LGW_RF_CHAIN_NB];
-static uint32_t rf_tx_notch_freq[LGW_RF_CHAIN_NB];
 static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB];
 
 static bool if_enable[LGW_IF_CHAIN_NB];
@@ -613,9 +612,8 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     rf_rssi_offset[rf_chain] = conf.rssi_offset;
     rf_radio_type[rf_chain] = conf.type;
     rf_tx_enable[rf_chain] = conf.tx_enable;
-    rf_tx_notch_freq[rf_chain] = conf.tx_notch_freq;
 
-    DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d tx_notch_freq:%u\n", rf_chain, rf_enable  [rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain], rf_tx_notch_freq[rf_chain]);
+    DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d\n", rf_chain, rf_enable  [rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain]);
 
     /* send configuration to concentrator MCU */
     return lgw_mcu_rxrf_setconf(rf_chain, conf);

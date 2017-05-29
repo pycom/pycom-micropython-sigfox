@@ -183,15 +183,10 @@ int parse_SX1301_configuration(const char * conf_file) {
             val = json_object_dotget_value(conf, param_name);
             if (json_value_get_type(val) == JSONBoolean) {
                 rfconf.tx_enable = (bool)json_value_get_boolean(val);
-                if (rfconf.tx_enable == true) {
-                    /* tx notch filter frequency to be set */
-                    snprintf(param_name, sizeof param_name, "radio_%i.tx_notch_freq", i);
-                    rfconf.tx_notch_freq = (uint32_t)json_object_dotget_number(conf, param_name);
-                }
             } else {
                 rfconf.tx_enable = false;
             }
-            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d, tx_notch_freq %u\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable, rfconf.tx_notch_freq);
+            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxrf_setconf(i, rfconf) != LGW_HAL_SUCCESS) {
