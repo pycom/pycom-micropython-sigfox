@@ -72,6 +72,8 @@
 #define LORA_TX_TIMEOUT_MAX                         (9000)      // 9 seconds
 #define LORA_RX_TIMEOUT                             (0)         // No timeout
 
+#define LORA_MAX_PACKET_SIZE                        (255)
+
 // [SF6..SF12]
 #define LORA_SPREADING_FACTOR_MIN                   (6)
 #define LORA_SPREADING_FACTOR_MAX                   (12)
@@ -932,6 +934,8 @@ static void lora_radio_setup (lora_init_cmd_data_t *init_data) {
                                   init_data->coding_rate, 0, init_data->preamble,
                                   symbol_to, LORA_FIX_LENGTH_PAYLOAD_OFF,
                                   0, true, 0, 0, init_data->rxiq, true);
+
+    Radio.SetMaxPayloadLength(MODEM_LORA, LORA_MAX_PACKET_SIZE);
 
     if (init_data->power_mode == E_LORA_MODE_ALWAYS_ON) {
         // start listening
