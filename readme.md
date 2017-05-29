@@ -71,9 +71,11 @@ This software is used to obtain the unique id of the PicoCell gateway (the
 * HAL: code clean-up/refactoring
 * HAL: serial port configuration to handle both USB or UART communication with
 mcu.
-* util_boot: no more command line parameter, only used to switch to DFU mode
+* util_boot: only used to switch to DFU mode.
 * util_chip_id: no more command line parameter, just print the PicoCell GW
 unique ID on the console.
+* HAL/util_*: added a parameter to lgw_connect() function to specify the COM
+device path to be used to communicate with the concentrator board (tty...).
 
 ### v0.0.1  ###
 
