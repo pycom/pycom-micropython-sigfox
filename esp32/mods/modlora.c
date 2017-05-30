@@ -119,6 +119,7 @@
 // callback events
 #define MODLORA_RX_EVENT                            (0x01)
 #define MODLORA_TX_EVENT                            (0x02)
+#define MODLORA_TX_FAILED_EVENT                     (0x04)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -177,10 +178,11 @@ typedef struct {
   uint32_t          rx_timeout;
   uint32_t          tx_timeout;
   uint32_t          dev_addr;
-  uint32_t          timestamp;
+  uint32_t          rx_timestamp;
   int16_t           rssi;
   int8_t            snr;
   uint8_t           sfrx;
+  uint8_t           sftx;
   uint8_t           preamble;
   uint8_t           bandwidth;
   uint8_t           coding_rate;
@@ -222,6 +224,7 @@ typedef struct {
   bool              radio_init;
   uint8_t           events;
   uint8_t           trigger;
+  uint8_t           tx_trials;
 } lora_obj_t;
 
 typedef struct {
@@ -355,12 +358,30 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
             case MCPS_UNCONFIRMED:
                 // Check Datarate
                 // Check TxPower
+                lora_obj.events |= MODLORA_TX_EVENT;
+                if (lora_obj.trigger & MODLORA_TX_EVENT) {
+                    mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+                }
+                lora_obj.state = E_LORA_STATE_IDLE;
+                xEventGroupSetBits(LoRaEvents, status);
                 break;
             case MCPS_CONFIRMED:
                 // Check Datarate
                 // Check TxPower
                 // Check AckReceived
-                // Check NbTrials
+                // Check NbRetries
+                lora_obj.sftx = McpsConfirm->Datarate;
+                lora_obj.tx_trials = McpsConfirm->NbRetries;
+                if (McpsConfirm->AckReceived) {
+                    lora_obj.events |= MODLORA_TX_EVENT;
+                    if (lora_obj.trigger & MODLORA_TX_EVENT) {
+                        mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+                    }
+                    lora_obj.state = E_LORA_STATE_IDLE;
+                    xEventGroupSetBits(LoRaEvents, status);
+                } else {
+                    // the ack wasn't received, so the stack will re-transmit
+                }
                 break;
             case MCPS_PROPRIETARY:
                 break;
@@ -368,14 +389,14 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
                 break;
         }
     } else {
+        lora_obj.tx_trials = McpsConfirm->NbRetries;
+        lora_obj.state = E_LORA_STATE_IDLE;
+        lora_obj.events |= MODLORA_TX_FAILED_EVENT;
+        if (lora_obj.trigger & MODLORA_TX_FAILED_EVENT) {
+            mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+        }
         status |= LORA_STATUS_ERROR;
-    }
-    lora_obj.state = E_LORA_STATE_IDLE;
-    xEventGroupSetBits(LoRaEvents, status);
-
-    lora_obj.events |= MODLORA_TX_EVENT;
-    if (lora_obj.trigger & MODLORA_TX_EVENT) {
-        mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+        xEventGroupSetBits(LoRaEvents, status);
     }
 }
 
@@ -407,7 +428,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
     // Check Snr
     // Check RxSlot
 
-    lora_obj.timestamp = mcpsIndication->TimeStamp;
+    lora_obj.rx_timestamp = mcpsIndication->TimeStamp;
     lora_obj.rssi = mcpsIndication->Rssi;
     lora_obj.snr = mcpsIndication->Snr;
     lora_obj.sfrx = mcpsIndication->RxDatarate;
@@ -824,7 +845,7 @@ static IRAM_ATTR void OnTxDone (void) {
 }
 
 static IRAM_ATTR void OnRxDone (uint8_t *payload, uint32_t timestamp, uint16_t size, int16_t rssi, int8_t snr, uint8_t sf) {
-    lora_obj.timestamp = timestamp;
+    lora_obj.rx_timestamp = timestamp;
     lora_obj.rssi = rssi;
     lora_obj.snr = snr;
     lora_obj.sfrx = sf;
@@ -1184,7 +1205,7 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
 
     cmd_data.info.init.adr = args[10].u_bool;
     cmd_data.info.init.public = args[11].u_bool;
-    cmd_data.info.init.tx_retries = args[11].u_int;
+    cmd_data.info.init.tx_retries = args[12].u_int;
 
     // send message to the lora task
     cmd_data.cmd = E_LORA_CMD_INIT;
@@ -1503,16 +1524,18 @@ STATIC mp_obj_t lora_stats(mp_obj_t self_in) {
     lora_obj_t *self = self_in;
 
     static const qstr lora_stats_info_fields[] = {
-        MP_QSTR_timestamp, MP_QSTR_rssi, MP_QSTR_snr, MP_QSTR_sf
+        MP_QSTR_rx_timestamp, MP_QSTR_rssi, MP_QSTR_snr, MP_QSTR_sfrx, MP_QSTR_sftx, MP_QSTR_tx_trials
     };
 
-    mp_obj_t stats_tuple[4];
-    stats_tuple[0] = mp_obj_new_int_from_uint(self->timestamp);
+    mp_obj_t stats_tuple[6];
+    stats_tuple[0] = mp_obj_new_int_from_uint(self->rx_timestamp);
     stats_tuple[1] = mp_obj_new_int(self->rssi);
     stats_tuple[2] = mp_obj_new_int(self->snr);
     stats_tuple[3] = mp_obj_new_int(self->sfrx);
+    stats_tuple[4] = mp_obj_new_int(self->sftx);
+    stats_tuple[5] = mp_obj_new_int(self->tx_trials);
 
-    return mp_obj_new_attrtuple(lora_stats_info_fields, 4, stats_tuple);
+    return mp_obj_new_attrtuple(lora_stats_info_fields, sizeof(stats_tuple) / sizeof(stats_tuple[0]), stats_tuple);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_stats_obj, lora_stats);
 
@@ -1669,6 +1692,7 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_RX_PACKET_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_RX_EVENT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_TX_PACKET_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_TX_EVENT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_TX_FAILED_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_TX_FAILED_EVENT) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(lora_locals_dict, lora_locals_dict_table);
