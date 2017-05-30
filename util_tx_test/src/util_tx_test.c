@@ -102,8 +102,6 @@ static struct lgw_tx_gain_lut_s txgain_lut = {
     }
 };
 
-
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -115,6 +113,9 @@ void usage (void);
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
 static void exit_cleanup(void) {
+    printf("Exiting LoRa concentrator TX test program\n");
+
+    /* clean up before leaving */
     lgw_stop();
 }
 
@@ -418,7 +419,7 @@ int main(int argc, char **argv) {
     i = lgw_connect(com_path);
     if (i == -1) {
         printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
-        return -1;
+        exit(EXIT_FAILURE);
     }
 
     /* board config */
@@ -451,7 +452,7 @@ int main(int argc, char **argv) {
         MSG("INFO: concentrator started, packet can be sent\n");
     } else {
         MSG("ERROR: failed to start the concentrator\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     /* fill-up payload and parameters */
@@ -478,7 +479,7 @@ int main(int argc, char **argv) {
                 break;
             default:
                 MSG("ERROR: invalid 'bw' variable\n");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
         switch (sf) {
             case  7:
@@ -501,7 +502,7 @@ int main(int argc, char **argv) {
                 break;
             default:
                 MSG("ERROR: invalid 'sf' variable\n");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
         switch (cr) {
             case 1:
@@ -518,7 +519,7 @@ int main(int argc, char **argv) {
                 break;
             default:
                 MSG("ERROR: invalid 'cr' variable\n");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
     }
     txpkt.invert_pol = invert;
@@ -540,7 +541,7 @@ int main(int argc, char **argv) {
         i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
         if (i == LGW_HAL_ERROR) {
             printf("ERROR\n");
-            return EXIT_FAILURE;
+            exit(EXIT_FAILURE);
         } else {
             /* wait for packet to finish sending */
             do {
@@ -559,11 +560,8 @@ int main(int argc, char **argv) {
         }
     }
 
-    /* clean up before leaving */
-    lgw_stop();
-
     printf("Exiting LoRa concentrator TX test program\n");
-    return EXIT_SUCCESS;
+    exit(EXIT_SUCCESS);
 }
 
 /* --- EOF ------------------------------------------------------------------ */

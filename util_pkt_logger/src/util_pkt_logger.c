@@ -83,6 +83,7 @@ void usage (void);
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
 static void exit_cleanup(void) {
+    MSG("INFO: Stopping concentrator\n");
     lgw_stop();
 }
 
@@ -482,7 +483,7 @@ int main(int argc, char **argv) {
     i = lgw_connect(com_path);
     if (i == -1) {
         printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
-        return -1;
+        exit(EXIT_FAILURE);
     }
 
     /* configuration files management */
@@ -508,7 +509,7 @@ int main(int argc, char **argv) {
         parse_gateway_configuration(local_conf_fname);
     } else {
         MSG("ERROR: failed to find any configuration file named %s, %s or %s\n", global_conf_fname, local_conf_fname, debug_conf_fname);
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     /* starting the concentrator */
@@ -517,7 +518,7 @@ int main(int argc, char **argv) {
         MSG("INFO: concentrator started, packet can now be received\n");
     } else {
         MSG("ERROR: failed to start the concentrator\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     /* transform the MAC address into a string */
@@ -533,7 +534,7 @@ int main(int argc, char **argv) {
         nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
         if (nb_pkt == LGW_HAL_ERROR) {
             MSG("ERROR: failed packet fetch, exiting\n");
-            return EXIT_FAILURE;
+            exit(EXIT_FAILURE);
         } else if (nb_pkt == 0) {
             clock_nanosleep(CLOCK_MONOTONIC, 0, &sleep_time, NULL); /* wait a short time if no packets */
         } else {
@@ -731,7 +732,7 @@ int main(int argc, char **argv) {
     }
 
     MSG("INFO: Exiting packet logger program\n");
-    return EXIT_SUCCESS;
+    exit(EXIT_SUCCESS);
 }
 
 /* --- EOF ------------------------------------------------------------------ */

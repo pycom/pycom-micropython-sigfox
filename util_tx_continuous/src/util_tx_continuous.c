@@ -354,7 +354,7 @@ int main(int argc, char **argv) {
                 break;
             default:
                 MSG("ERROR: invalid 'bw' variable\n");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
         switch (sf) {
             case  7:
@@ -377,7 +377,7 @@ int main(int argc, char **argv) {
                 break;
             default:
                 MSG("ERROR: invalid 'sf' variable\n");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
     }
     txpkt.coderate = CR_LORA_4_5;
