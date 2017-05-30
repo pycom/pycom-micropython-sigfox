@@ -201,19 +201,21 @@ Methods
 
     Return a named tuple with usefel information from the last received LoRa or LoRaWAN packet. The named tuple has the following form:
 
-    ``(timestamp, rssi, snr, sf)``
+    ``(rx_timestamp, rssi, snr, sftx, sfrx, sftx, tx_trials)``
 
-	Example: ::
+    Example: ::
 
-		lora.stats()
+        lora.stats()
 
 
     Where:
 
-       - ``timestamp`` is an internat timestamp with microseconds presicion.
-       - ``rssi`` hold the received signal strength in dBm.
+       - ``rx_timestamp`` is an internat timestamp of the last received packet with microseconds presicion.
+       - ``rssi`` holds the received signal strength in dBm.
        - ``snr`` contains the signal to noise ratio id dB.
-       - ``sf`` tells the spreading factor of the packet received.
+       - ``sfrx`` tells the data rate (in the case of ``LORAWAN`` mode) or the spreading factor (in the case of ``LORA`` mode) of the last packet received.
+       - ``sftx`` tells the data rate (in the case of ``LORAWAN`` mode) or the spreading factor (in the case of ``LORA`` mode) of the last packet transmitted.
+       - ``tx_trials`` is the number of tx attempts of the last transmitted packet (only relevant for ``LORAWAN`` confirmed packets).
 
 .. method:: lora.has_joined()
 
@@ -252,7 +254,12 @@ Methods
 
 .. method:: lora.callback(trigger, handler=None, arg=None)
 
-   Specify a callback handler for the LoRa radio. The trigger types are ``LoRa.RX_PACKET_EVENT`` and ``LoRa.TX_PACKET_EVENT``
+   Specify a callback handler for the LoRa radio. The trigger types are ``LoRa.RX_PACKET_EVENT``, ``LoRa.TX_PACKET_EVENT`` and ``LoRa.TX_FAILED_EVENT``
+
+   The ``LoRa.RX_PACKET_EVENT` event is raised for every received packet.
+   The ``LoRa.TX_PACKET_EVENT`` event is raised as soon as the packet transmisison cycle ends. In the case of non-confirmed transmissions, this will occur at the end of the
+   receive windows, but, in the case of confirmed transmissions, this event will only be raised if the **ack** is received. If the **ack** is not received ``LoRa.TX_FAILED_EVENT``
+   will be raised after the number of ``tx_retries`` configured have been performed.
 
    An example of how this callback functions can be seen the in method :ref:`lora.events() <lora_events>`.
 
@@ -311,6 +318,7 @@ Constants
 
 .. data:: LoRa.RX_PACKET_EVENT
           LoRa.TX_PACKET_EVENT
+          LoRa.TX_FAILED_EVENT
 
     Callback trigger types (may be ORed)
 

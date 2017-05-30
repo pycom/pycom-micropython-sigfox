@@ -1088,6 +1088,8 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
         return 0;
     }
 
+    lora_obj.sftx = lora_obj.sf;
+
     if (timeout_ms != 0) {
         xEventGroupWaitBits(LoRaEvents,
                             LORA_STATUS_COMPLETED | LORA_STATUS_ERROR | LORA_STATUS_MSG_SIZE,

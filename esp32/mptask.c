@@ -268,10 +268,10 @@ soft_reset:
 
 soft_reset_exit:
 
-    mp_thread_deinit();
     machtimer_deinit();
 #if MICROPY_PY_THREAD
     mp_irq_kill();
+    mp_thread_deinit();
 #endif
     mpsleep_signal_soft_reset();
     mp_printf(&mp_plat_print, "PYB: soft reboot\n");
