@@ -20,10 +20,14 @@
 #include "esp_system.h"
 #include "mpexception.h"
 #include "machrtc.h"
+#include "soc/rtc.h"
+#include "esp_clk.h"
 
 
 uint32_t sntp_update_period = 3600000; // in ms
 
+#define RTC_SOURCE_INTERNAL_RC                  RTC_SLOW_FREQ_RTC
+#define RTC_SOURCE_EXTERNAL_XTAL                RTC_SLOW_FREQ_32K_XTAL
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -119,6 +123,7 @@ STATIC void mach_rtc_datetime(const mp_obj_t datetime) {
 STATIC const mp_arg_t mach_rtc_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT, {.u_int = 0} },
     { MP_QSTR_datetime,                       MP_ARG_OBJ, {.u_obj = mp_const_none} },
+    { MP_QSTR_source,                         MP_ARG_OBJ, {.u_obj = mp_const_none} },
 };
 STATIC mp_obj_t mach_rtc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -139,6 +144,14 @@ STATIC mp_obj_t mach_rtc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, m
     // set the time and date
     if (args[1].u_obj != mp_const_none) {
         mach_rtc_datetime(args[1].u_obj);
+    }
+
+    // change the RTC clock source
+    if (args[2].u_obj != mp_const_none) {
+        struct timeval now;
+        gettimeofday(&now, NULL);
+        select_rtc_slow_clk(mp_obj_get_int(args[2].u_obj));
+        settimeofday(&now, NULL);
     }
 
     // return constant object
@@ -223,6 +236,9 @@ STATIC const mp_map_elem_t mach_rtc_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_now),                 (mp_obj_t)&mach_rtc_now_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_calibration),         (mp_obj_t)&mach_rtc_calibration_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ntp_sync),            (mp_obj_t)&mach_rtc_ntp_sync_obj },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INTERNAL_RC),         MP_OBJ_NEW_SMALL_INT(RTC_SOURCE_INTERNAL_RC) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_XTAL_32KHZ),          MP_OBJ_NEW_SMALL_INT(RTC_SOURCE_EXTERNAL_XTAL) },
 };
 STATIC MP_DEFINE_CONST_DICT(mach_rtc_locals_dict, mach_rtc_locals_dict_table);
 
