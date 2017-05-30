@@ -1651,11 +1651,12 @@ STATIC mp_obj_t lora_get_device_class(mp_obj_t self_in) {
 			device_class = "CLASS_C";
 		} else {
 			/*Due to lora_validate_device_class() this should not happen*/
-			device_class = "NOCLASS";
+			nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Invalid device_class!"));
 		}
 		return mp_obj_new_str(device_class,7,true);
     } else {
-    	return mp_obj_new_str("LoRa mode is not LORAWAN!", 25, false);
+    	nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Invalid device_class, LoRaWAN is not configured!"));
+
     }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_get_device_class_obj, lora_get_device_class);
