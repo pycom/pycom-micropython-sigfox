@@ -95,6 +95,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 #include "agc_fw.var" /* external definition of the variable */
 #include "cal_fw.var" /* external definition of the variable */
 #include "cal_fw5-12.var" /* external definition of the variable */
+
 /*
 The following static variables are the configuration set that the user can
 modify using rxrf_setconf, rxif_setconf and txgain_setconf functions.
@@ -104,7 +105,7 @@ Parameters validity and coherency is verified by the _setconf functions and
 the _start and _send functions assume they are valid.
 */
 
-static bool lgw_is_started;
+static bool lgw_is_started = false;
 
 static bool rf_enable[LGW_RF_CHAIN_NB];
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
