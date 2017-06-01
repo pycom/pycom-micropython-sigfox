@@ -21,16 +21,13 @@
 #include "py/mperrno.h"
 #include "bufhelper.h"
 #include "mpexception.h"
-#include "modlora.h"
-#include "board.h"
 #include "radio.h"
 #include "modnetwork.h"
 #include "pybioctl.h"
 #include "modusocket.h"
 #include "pycom_config.h"
 #include "mpirq.h"
-
-#include "lora/mac/LoRaMac.h"
+#include "modlora.h"
 
 #include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
@@ -173,6 +170,7 @@ typedef struct {
   mp_obj_t          handler;
   mp_obj_t          handler_arg;
   lora_stack_mode_t stack_mode;
+  DeviceClass_t     device_class;
   lora_state_t      state;
   uint32_t          frequency;
   uint32_t          rx_timeout;
@@ -644,6 +642,10 @@ static void TASK_LoRa (void *pvParameters) {
                         mibReq.Param.EnablePublicNetwork = cmd_data.info.init.public;
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
+                        mibReq.Type = MIB_DEVICE_CLASS;
+                        mibReq.Param.Class = cmd_data.info.init.device_class;
+                        LoRaMacMibSetRequestConfirm(&mibReq);
+
                     #if defined(USE_BAND_868)
                         LoRaMacTestSetDutyCycleOn(false);
                     #endif
@@ -1021,6 +1023,13 @@ static void lora_validate_power_mode (uint8_t power_mode) {
     }
 }
 
+static void lora_validate_device_class (DeviceClass_t device_class) {
+    // CLASS_B is not implemented
+    if (device_class != CLASS_A && device_class != CLASS_C) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid device_class %d", device_class));
+    }
+}
+
 static void lora_set_config (lora_cmd_data_t *cmd_data) {
     lora_obj.stack_mode = cmd_data->info.init.stack_mode;
     lora_obj.bandwidth = cmd_data->info.init.bandwidth;
@@ -1035,6 +1044,7 @@ static void lora_set_config (lora_cmd_data_t *cmd_data) {
     lora_obj.adr = cmd_data->info.init.adr;
     lora_obj.public = cmd_data->info.init.public;
     lora_obj.tx_retries = cmd_data->info.init.tx_retries;
+    lora_obj.device_class = cmd_data->info.init.device_class;
 }
 
 static void lora_get_config (lora_cmd_data_t *cmd_data) {
@@ -1051,6 +1061,7 @@ static void lora_get_config (lora_cmd_data_t *cmd_data) {
     cmd_data->info.init.public = lora_obj.public;
     cmd_data->info.init.adr = lora_obj.adr;
     cmd_data->info.init.tx_retries = lora_obj.tx_retries;
+    cmd_data->info.init.device_class = lora_obj.device_class;
 }
 
 static void lora_send_cmd (lora_cmd_data_t *cmd_data) {
@@ -1209,6 +1220,9 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
     cmd_data.info.init.public = args[11].u_bool;
     cmd_data.info.init.tx_retries = args[12].u_int;
 
+    cmd_data.info.init.device_class = args[13].u_int;
+    lora_validate_device_class(cmd_data.info.init.device_class);
+
     // send message to the lora task
     cmd_data.cmd = E_LORA_CMD_INIT;
     lora_send_cmd(&cmd_data);
@@ -1231,6 +1245,7 @@ STATIC const mp_arg_t lora_init_args[] = {
     { MP_QSTR_adr,          MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
     { MP_QSTR_public,       MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = true} },
     { MP_QSTR_tx_retries,   MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = 2} },
+    { MP_QSTR_device_class, MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = CLASS_A} }
 };
 STATIC mp_obj_t lora_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -1695,6 +1710,9 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_RX_PACKET_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_RX_EVENT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_TX_PACKET_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_TX_EVENT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_TX_FAILED_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_TX_FAILED_EVENT) },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CLASS_A),             MP_OBJ_NEW_SMALL_INT(CLASS_A) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CLASS_C),             MP_OBJ_NEW_SMALL_INT(CLASS_C) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(lora_locals_dict, lora_locals_dict_table);

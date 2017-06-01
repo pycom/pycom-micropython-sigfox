@@ -53,12 +53,12 @@ Constructors
 
    Create and configure a LoRa object. See ``init`` for params of configuration. ::
 
-	   lora = LoRa(mode=LoRa.LORAWAN)
+        lora = LoRa(mode=LoRa.LORAWAN)
 
 Methods
 -------
 
-.. method:: lora.init(mode, \*, frequency=868000000, tx_power=14, bandwidth=LoRa.868000000, sf=7, preamble=8, coding_rate=LoRa.CODING_4_5, power_mode=LoRa.ALWAYS_ON, tx_iq=false, rx_iq=false, adr=false, public=true, tx_retries=1)
+.. method:: lora.init(mode, \*, frequency=868000000, tx_power=14, bandwidth=LoRa.868000000, sf=7, preamble=8, coding_rate=LoRa.CODING_4_5, power_mode=LoRa.ALWAYS_ON, tx_iq=false, rx_iq=false, adr=false, public=true, tx_retries=1, device_class=LoRa.CLASS_A)
 
    This method is used to set the LoRa subsystem configuration and to specific raw LoRa or LoRaWAN.
 
@@ -78,13 +78,14 @@ Methods
      - ``adr`` enables Adaptive Data Rate.
      - ``public`` selects between the public and private sync word.
      - ``tx_retries`` sets the number of TX retries in ``LoRa.LORAWAN`` mode.
+     - ``device_class`` sets the LoRaWAN device class. Can be either ``LoRa.CLASS_A`` or ``LoRa.CLASS_C``.
 
     .. note::
 
-       In ``LoRa.LORAWAN`` mode, only ``adr``, ``public`` and ``tx_retries`` are used. All the other
+       In ``LoRa.LORAWAN`` mode, only ``adr``, ``public``, ``tx_retries`` and ``device_class`` are used. All the other
        params will be ignored as they are handled by the LoRaWAN stack directly. On the other hand, in ``LoRa.LORA`` mode
-       from those 3 arguments, only the ``public`` one is important in order to program the sync word. In ``LoRa.LORA`` mode ``adr``
-       and ``tx_retries`` are ignored since they are only relevant to the LoRaWAN stack.
+       from those 3 arguments, only the ``public`` one is important in order to program the sync word. In ``LoRa.LORA`` mode ``adr``,
+       ``tx_retries`` and ``device_class`` are ignored since they are only relevant to the LoRaWAN stack.
 
    For example, you can do::
 
@@ -290,7 +291,7 @@ Constants
 .. data:: LoRa.LORA
           LoRa.LORAWAN
 
-    LoRa mode
+    LoRa stack mode
 
 .. data:: LoRa.OTAA
           LoRa.ABP
@@ -321,6 +322,11 @@ Constants
           LoRa.TX_FAILED_EVENT
 
     Callback trigger types (may be ORed)
+
+.. data:: LoRa.CLASS_A
+          LoRa.CLASS_C
+
+    LoRaWAN device class
 
 
 Working with LoRa and LoRaWAN sockets

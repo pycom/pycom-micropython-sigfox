@@ -10,6 +10,9 @@
 #ifndef MODLORA_H_
 #define MODLORA_H_
 
+#include "board.h"
+#include "lora/mac/LoRaMac.h"
+
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
@@ -37,19 +40,20 @@ typedef enum {
 } lora_cmd_t;
 
 typedef struct {
-    uint32_t    frequency;
-    uint8_t     stack_mode;
-    uint8_t     preamble;
-    uint8_t     bandwidth;
-    uint8_t     coding_rate;
-    uint8_t     sf;
-    uint8_t     tx_power;
-    uint8_t     power_mode;
-    uint8_t     tx_retries;
-    bool        txiq;
-    bool        rxiq;
-    bool        adr;
-    bool        public;
+    uint32_t        frequency;
+    DeviceClass_t   device_class;
+    uint8_t         stack_mode;
+    uint8_t         preamble;
+    uint8_t         bandwidth;
+    uint8_t         coding_rate;
+    uint8_t         sf;
+    uint8_t         tx_power;
+    uint8_t         power_mode;
+    uint8_t         tx_retries;
+    bool            txiq;
+    bool            rxiq;
+    bool            adr;
+    bool            public;
 } lora_init_cmd_data_t;
 
 typedef struct {
