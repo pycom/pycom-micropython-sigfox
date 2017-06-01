@@ -44,6 +44,8 @@ The complete Altium project and Gerber files are available on `this link <../_do
 :download:`PDF file hidden <downloads/wipy_pinout.pdf>`
 :download:`PDF file hidden <downloads/wipy2SpecsheetGraffiti.pdf>`
 :download:`PDF file hidden <downloads/w01SpecsheetGraffitiOEM.pdf>`
+:download:`PDF file hidden <downloads/pysensePinoutComp.pdf>`
+:download:`PDF file hidden <downloads/pytrackPinoutComp.pdf>`
 :download:`PDF file hidden <downloads/OEM-baseboard-layout.pdf>`
 :download:`PDF file hidden <downloads/OEM-baseboard-schematic.pdf>`
 :download:`PDF file hidden <downloads/WiPy-OEM-Drawings.pdf>`
