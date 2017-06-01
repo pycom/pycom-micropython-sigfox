@@ -58,7 +58,7 @@ extern void *lgw_com_target; /*! generic pointer to the COM device */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int lgw_mcu_board_setconf(struct lgw_conf_board_s conf) {
-    int i;
+    int i, x;
     lgw_com_cmd_t cmd;
     lgw_com_ans_t ans;
     uint8_t PADDING = 0;
@@ -82,13 +82,25 @@ int lgw_mcu_board_setconf(struct lgw_conf_board_s conf) {
     }
 
     /* send command to MCU */
-    return lgw_com_send_command(lgw_com_target, cmd, &ans);
+    x = lgw_com_send_command(lgw_com_target, cmd, &ans);
+    if (x != LGW_COM_SUCCESS) {
+        printf("ERROR: failed to configure board\n");
+        return LGW_MCU_ERROR;
+    }
+
+    /* check command acknoledge */
+    if (ans.status != ACK_OK) {
+        printf("ERROR: failed to configure board, ACK failed\n");
+        return LGW_MCU_ERROR;
+    }
+
+    return LGW_MCU_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_rxrf_setconf(uint8_t rfchain, struct lgw_conf_rxrf_s conf) {
-    int i;
+    int i, x;
     lgw_com_cmd_t cmd;
     lgw_com_ans_t ans;
     uint8_t PADDING = 0;
@@ -131,13 +143,25 @@ int lgw_mcu_rxrf_setconf(uint8_t rfchain, struct lgw_conf_rxrf_s conf) {
     }
 
     /* send command to MCU */
-    return lgw_com_send_command(lgw_com_target, cmd, &ans);
+    x = lgw_com_send_command(lgw_com_target, cmd, &ans);
+    if (x != LGW_COM_SUCCESS) {
+        printf("ERROR: failed to send rxrf configuration\n");
+        return LGW_MCU_ERROR;
+    }
+
+    /* check command acknoledge */
+    if (ans.status != ACK_OK) {
+        printf("ERROR: rxrf configuration, ACK failed\n");
+        return LGW_MCU_ERROR;
+    }
+
+    return LGW_MCU_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_rxif_setconf(uint8_t ifchain, struct lgw_conf_rxif_s conf) {
-    int i;
+    int i, x;
     lgw_com_cmd_t cmd;
     lgw_com_ans_t ans;
     uint8_t PADDING = 0;
@@ -189,13 +213,25 @@ int lgw_mcu_rxif_setconf(uint8_t ifchain, struct lgw_conf_rxif_s conf) {
     }
 
     /* send command to MCU */
-    return lgw_com_send_command(lgw_com_target, cmd, &ans);
+    x = lgw_com_send_command(lgw_com_target, cmd, &ans);
+    if (x != LGW_COM_SUCCESS) {
+        printf("ERROR: failed to send rxif configuration\n");
+        return LGW_MCU_ERROR;
+    }
+
+    /* check command acknoledge */
+    if (ans.status != ACK_OK) {
+        printf("ERROR: rxif configuration, ACK failed\n");
+        return LGW_MCU_ERROR;
+    }
+
+    return LGW_MCU_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_mcu_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
-    int i;
+    int i, x;
     lgw_com_cmd_t cmd;
     lgw_com_ans_t ans;
     uint32_t u = 0;
@@ -231,7 +267,19 @@ int lgw_mcu_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
     }
 
     /* send command to MCU */
-    return lgw_com_send_command(lgw_com_target, cmd, &ans);
+    x = lgw_com_send_command(lgw_com_target, cmd, &ans);
+    if (x != LGW_COM_SUCCESS) {
+        printf("ERROR: failed to send tx gain configuration\n");
+        return LGW_MCU_ERROR;
+    }
+
+    /* check command acknoledge */
+    if (ans.status != ACK_OK) {
+        printf("ERROR: tx gain configuration, ACK failed\n");
+        return LGW_MCU_ERROR;
+    }
+
+    return LGW_MCU_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
