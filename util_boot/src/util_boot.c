@@ -7,7 +7,7 @@
   (C)2017 Semtech-Cycleo
 
 Description:
- Utility to switch the PicoCell MCU to DFU mode
+ Utility to jump to the PicoCell MCU bootloader
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
@@ -100,8 +100,7 @@ int main(int argc, char **argv) {
         return -1;
     }
 
-    /* Switch PicoCell MCU to DFU mode */
-    /* prepare command */
+    /* prepare command to jump to bootloader */
     cmd.id = 'n';
     cmd.len_msb = 0;
     cmd.len_lsb = 0;

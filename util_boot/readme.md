@@ -13,7 +13,8 @@ util_boot program for LoRa concentrator
 1. Introduction
 ----------------
 
-This software is used to set PicoCell Gateway in dfu mode for download new FW MCU.
+This software is used to jump to the PicoCell Gateway bootloader in order to
+program the MCU flash with a new firmware.
 
 
 2. Usage
@@ -21,9 +22,6 @@ This software is used to set PicoCell Gateway in dfu mode for download new FW MC
 
 See command line help to get the list of all available options:
 ./util_boot -h
-
-to configure mcu in dfu mode
-./util_boot -b 
 
 4. License
 -----------

@@ -76,7 +76,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /*  j           |lgw_calibration_snapshot               */
 /*  l           |lgw_check_fw_version                   */
 /*  m           |Reset STM32                            */
-/*  n           |GOTODFU                                */
+/*  n           |Go to bootloader                       */
 /********************************************************/
 
 typedef struct {

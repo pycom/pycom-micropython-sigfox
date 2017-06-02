@@ -153,7 +153,7 @@ bool checkcmd_linux(uint8_t cmd) {
         case 'j': /* lgw_calibration_snapshot */
         case 'l': /* lgw_check_fw_version */
         case 'm': /* reset STM32 */
-        case 'n': /* Go to DFU */
+        case 'n': /* Go to bootloader */
             return true;
         default:
             return false;
