@@ -17,7 +17,7 @@
 #include "py/gc.h"
 #include "py/mpstate.h"
 
-#include "heap_alloc_caps.h"
+#include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
@@ -572,6 +572,8 @@ STATIC mp_obj_t pin_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
     pin_irq_disable(self);
     set_pin_callback_helper(self, args[1].u_obj, args[2].u_obj);
     pin_extint_register(self, args[0].u_int, 0);
+
+    mp_irq_handler_add(args[1].u_obj);
 
     // enable the interrupt just before leaving
     if (args[0].u_int != GPIO_INTR_DISABLE) {

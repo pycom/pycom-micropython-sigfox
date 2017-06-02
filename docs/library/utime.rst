@@ -44,7 +44,7 @@ Functions
 
 .. only:: port_pycom_esp32
 
-    .. function:: mktime([secs])
+    .. function:: gmtime([secs])
 
         Convert a time expressed in seconds since the Epoch (see above) into an 8-tuple which
         contains: (year, month, mday, hour, minute, second, weekday, yearday)

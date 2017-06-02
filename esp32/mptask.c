@@ -13,7 +13,7 @@
 #include <string.h>
 #include <ctype.h>
 
-#include "heap_alloc_caps.h"
+#include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
 #include "esp_wifi.h"
 #include "esp_system.h"
@@ -77,7 +77,7 @@
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
-#define GC_POOL_SIZE_BYTES                                          (72 * 1024)
+#define GC_POOL_SIZE_BYTES                                     (72 * 1024)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -115,7 +115,10 @@ void TASK_Micropython (void *pvParameters) {
     // init the antenna select switch here
     antenna_init0();
     config_init0();
-    rtc_init0();
+    mpsleep_init0();
+    if (mpsleep_get_reset_cause() != MPSLEEP_DEEPSLEEP_RESET) {
+        rtc_init0();
+    }
 
     // initialization that must not be repeted after a soft reset
     mptask_preinit();
@@ -158,7 +161,6 @@ soft_reset:
     // execute all basic initializations
     pin_init0();    // always before the rest of the peripherals
     mpexception_init0();
-    mpsleep_init0();
 #if MICROPY_PY_THREAD
     mp_irq_init0();
 #endif
@@ -269,6 +271,7 @@ soft_reset_exit:
     machtimer_deinit();
 #if MICROPY_PY_THREAD
     mp_irq_kill();
+    mp_thread_deinit();
 #endif
     mpsleep_signal_soft_reset();
     mp_printf(&mp_plat_print, "PYB: soft reboot\n");

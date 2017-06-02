@@ -2,18 +2,18 @@ Pycom documentation contents
 ==================================
 
 .. toctree::
-	:numbered:
-	
+
     pycom_esp32/getstarted
     pycom_esp32/toolsandfeatures
     pycom_esp32/tutorial/index
     library/index
     pycom_esp32/datasheets
+    pycom_esp32/docshowto
     license
 
 .. raw:: html
 
-	
+
     <script type="text/javascript">
     function removeModules(elements,toRemove){
       el = document.querySelectorAll(elements)
@@ -30,7 +30,7 @@ Pycom documentation contents
     }
 
     var toRemove = ['Channel','BluetoothConnection','BluetoothService','BluetoothCharacteristic']
-    
+
     removeModules('#pycom-modules blockquote div ul li',toRemove)
 
     removeModules('.toctree-l1.current ul .toctree-l2.current ul li',toRemove)

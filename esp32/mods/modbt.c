@@ -251,8 +251,8 @@ void modbt_init0(void) {
 static esp_gatt_status_t status = ESP_GATT_ERROR;
 
 static esp_ble_scan_params_t ble_scan_params = {
-    .scan_type              = BLE_SCAN_TYPE_ACTIVE,
-    .own_addr_type          = ESP_PUBLIC_ADDR,
+    .scan_type              = BLE_SCAN_TYPE_PASSIVE,
+    .own_addr_type          = BLE_ADDR_TYPE_PUBLIC,
     .scan_filter_policy     = BLE_SCAN_FILTER_ALLOW_ALL,
     .scan_interval          = 0x50,
     .scan_window            = 0x30
@@ -359,7 +359,7 @@ static void gap_events_handler (esp_gap_ble_cb_event_t event, esp_ble_gap_cb_par
 }
 
 static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param) {
-    uint16_t conn_id = 0;
+    int32_t conn_id = 0;
     esp_ble_gattc_cb_param_t *p_data = (esp_ble_gattc_cb_param_t *)param;
     bt_event_result_t bt_event_result;
 
@@ -624,7 +624,8 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
 static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
     if (!self->init) {
         if (!self->controller_active) {
-            esp_bt_controller_init();
+            esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+            esp_bt_controller_init(&bt_cfg);
             self->controller_active = true;
         }
 
@@ -836,6 +837,8 @@ STATIC mp_obj_t bt_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
         self->trigger = 0;
     }
 
+    mp_irq_handler_add(args[1].u_obj);
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_callback_obj, 1, bt_callback);
@@ -881,6 +884,7 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
         bt_connection_obj_t *conn = m_new_obj(bt_connection_obj_t);
         conn->base.type = (mp_obj_t)&mod_bt_connection_type;
         conn->conn_id = bt_event.connection.conn_id;
+        bt_obj.conn_id = bt_event.connection.conn_id;
         memcpy(conn->srv_bda, bt_event.connection.srv_bda, 6);
         mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), conn);
         return conn;
@@ -980,8 +984,6 @@ STATIC mp_obj_t bt_advertise(mp_obj_t self_in, mp_obj_t enable) {
         esp_ble_gap_start_advertising(&bt_adv_params);
         bt_obj.advertising = true;
     } else {
-        // FIXME (why is it needed to start and stop?)
-        esp_ble_gap_start_advertising(&bt_adv_params);
         esp_ble_gap_stop_advertising();
         bt_obj.advertising = false;
     }
@@ -1259,6 +1261,8 @@ STATIC mp_obj_t bt_characteristic_callback(mp_uint_t n_args, const mp_obj_t *pos
         self->trigger = 0;
     }
 
+    mp_irq_handler_add(args[1].u_obj);
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_characteristic_callback_obj, 1, bt_characteristic_callback);
@@ -1372,7 +1376,7 @@ const mod_network_nic_type_t mod_network_nic_type_bt = {
 STATIC mp_obj_t bt_conn_isconnected(mp_obj_t self_in) {
     bt_connection_obj_t *self = self_in;
 
-    if (self->conn_id > 0) {
+    if (self->conn_id >= 0) {
         return mp_const_true;
     }
     return mp_const_false;
@@ -1382,9 +1386,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_conn_isconnected_obj, bt_conn_isconnected);
 STATIC mp_obj_t bt_conn_disconnect(mp_obj_t self_in) {
     bt_connection_obj_t *self = self_in;
 
-    if (self->conn_id > 0) {
+    if (self->conn_id >= 0) {
         esp_ble_gattc_close(bt_obj.gattc_if, self->conn_id);
         self->conn_id = -1;
+        bt_obj.conn_id = -1;
     }
     return mp_const_none;
 }
@@ -1394,7 +1399,7 @@ STATIC mp_obj_t bt_conn_services (mp_obj_t self_in) {
     bt_connection_obj_t *self = self_in;
     bt_event_result_t bt_event;
 
-    if (self->conn_id > 0) {
+    if (self->conn_id >= 0) {
         xQueueReset(xScanQueue);
         bt_obj.busy = true;
         bt_obj.conn_id = self->conn_id;
@@ -1466,7 +1471,7 @@ STATIC mp_obj_t bt_srv_characteristics(mp_obj_t self_in) {
     bt_srv_obj_t *self = self_in;
     bt_event_result_t bt_event;
 
-    if (self->connection->conn_id > 0) {
+    if (self->connection->conn_id >= 0) {
         xQueueReset(xScanQueue);
         bt_obj.busy = true;
         bt_obj.conn_id = self->connection->conn_id;
@@ -1535,7 +1540,7 @@ STATIC mp_obj_t bt_char_read(mp_obj_t self_in) {
     bt_char_obj_t *self = self_in;
     bt_event_result_t bt_event;
 
-    if (self->service->connection->conn_id > 0) {
+    if (self->service->connection->conn_id >= 0) {
         xQueueReset(xScanQueue);
         bt_obj.busy = true;
         bt_obj.conn_id = self->service->connection->conn_id;
@@ -1567,7 +1572,7 @@ STATIC mp_obj_t bt_char_write(mp_obj_t self_in, mp_obj_t value) {
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(value, &bufinfo, MP_BUFFER_READ);
 
-    if (self->service->connection->conn_id > 0) {
+    if (self->service->connection->conn_id >= 0) {
         xQueueReset(xScanQueue);
         bt_obj.busy = true;
         bt_obj.conn_id = self->service->connection->conn_id;
@@ -1625,7 +1630,7 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
             self->handler_arg = args[2].u_obj;
         }
 
-        if (self->service->connection->conn_id > 0) {
+        if (self->service->connection->conn_id >= 0) {
             if (ESP_OK != esp_ble_gattc_register_for_notify (self->service->connection->gatt_if,
                                                              self->service->connection->srv_bda,
                                                              &self->service->srv_id,
@@ -1638,6 +1643,8 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
     } else {
         self->trigger = 0;
     }
+
+    mp_irq_handler_add(args[1].u_obj);
 
     return mp_const_none;
 }

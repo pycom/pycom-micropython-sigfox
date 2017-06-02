@@ -14,7 +14,7 @@
 #include "py/runtime.h"
 #include "bufhelper.h"
 
-#include "heap_alloc_caps.h"
+#include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
@@ -28,7 +28,6 @@
 #include "soc/gpio_sig_map.h"
 
 #include "adc.h"
-#include "analog.h"
 #include "pybadc.h"
 #include "mpexception.h"
 #include "mpsleep.h"
@@ -58,7 +57,6 @@ typedef struct {
     bool enabled;
 } pyb_adc_channel_obj_t;
 
-
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -66,10 +64,10 @@ STATIC pyb_adc_channel_obj_t pyb_adc_channel_obj[PYB_ADC_NUM_CHANNELS] = { {.pin
                                                                            {.pin = &PIN_MODULE_P14, .channel = ADC1_CHANNEL_1, .enabled = false},
                                                                            {.pin = &PIN_MODULE_P15, .channel = ADC1_CHANNEL_2, .enabled = false},
                                                                            {.pin = &PIN_MODULE_P16, .channel = ADC1_CHANNEL_3, .enabled = false},
-                                                                           {.pin = &PIN_MODULE_P17, .channel = ADC1_CHANNEL_4, .enabled = false},
-                                                                           {.pin = &PIN_MODULE_P18, .channel = ADC1_CHANNEL_5, .enabled = false},
-                                                                           {.pin = &PIN_MODULE_P19, .channel = ADC1_CHANNEL_6, .enabled = false},
-                                                                           {.pin = &PIN_MODULE_P20, .channel = ADC1_CHANNEL_7, .enabled = false} };
+                                                                           {.pin = &PIN_MODULE_P19, .channel = ADC1_CHANNEL_4, .enabled = false},
+                                                                           {.pin = &PIN_MODULE_P20, .channel = ADC1_CHANNEL_5, .enabled = false},
+                                                                           {.pin = &PIN_MODULE_P18, .channel = ADC1_CHANNEL_6, .enabled = false},
+                                                                           {.pin = &PIN_MODULE_P17, .channel = ADC1_CHANNEL_7, .enabled = false}, };
 STATIC pyb_adc_obj_t pyb_adc_obj = {.enabled = false};
 
 STATIC const mp_obj_type_t pyb_adc_channel_type;
@@ -83,7 +81,7 @@ STATIC mp_obj_t adc_channel_deinit(mp_obj_t self_in);
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 STATIC void pyb_adc_init (pyb_adc_obj_t *self) {
-    // adc1_config_width(self->width - 9);     // ADC_WIDTH_9Bit = 0
+    adc1_config_width(self->width - 9);     // ADC_WIDTH_9Bit = 0
     self->enabled = true;
 }
 
@@ -97,7 +95,7 @@ STATIC void pyb_adc_check_init(void) {
 STATIC void pyb_adc_channel_init (pyb_adc_channel_obj_t *self) {
     // the ADC block must be enabled first
     pyb_adc_check_init();
-    // adc1_config_channel_atten(self->channel, self->attn);
+    adc1_config_channel_atten(self->channel, self->attn);
     self->enabled = true;
 }
 
@@ -141,7 +139,6 @@ STATIC mp_obj_t adc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
 
     // initialize and register with the sleep module
     pyb_adc_init(self);
-    //pyb_sleep_add ((const mp_obj_t)self, (WakeUpCB_t)pyb_adc_init);
     return self;
 }
 
@@ -161,8 +158,6 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(adc_init_obj, 1, adc_init);
 STATIC mp_obj_t adc_deinit(mp_obj_t self_in) {
     pyb_adc_obj_t *self = self_in;
     self->enabled = false;
-    // unregister it with the sleep module
-    // pyb_sleep_remove ((const mp_obj_t)self);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_deinit_obj, adc_deinit);
@@ -266,8 +261,7 @@ STATIC mp_obj_t adc_channel_value(mp_obj_t self_in) {
     if (!self->enabled) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
-    // return MP_OBJ_NEW_SMALL_INT(adc1_get_voltage(self->channel));
-    return MP_OBJ_NEW_SMALL_INT(analog_adc1_read(self->channel, self->attn));
+    return MP_OBJ_NEW_SMALL_INT(adc1_get_voltage(self->channel));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_value_obj, adc_channel_value);
 

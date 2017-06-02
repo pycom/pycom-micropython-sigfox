@@ -21,18 +21,15 @@
 #include "py/mperrno.h"
 #include "bufhelper.h"
 #include "mpexception.h"
-#include "modlora.h"
-#include "board.h"
 #include "radio.h"
 #include "modnetwork.h"
 #include "pybioctl.h"
 #include "modusocket.h"
 #include "pycom_config.h"
 #include "mpirq.h"
+#include "modlora.h"
 
-#include "lora/mac/LoRaMac.h"
-
-#include "heap_alloc_caps.h"
+#include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
@@ -119,6 +116,7 @@
 // callback events
 #define MODLORA_RX_EVENT                            (0x01)
 #define MODLORA_TX_EVENT                            (0x02)
+#define MODLORA_TX_FAILED_EVENT                     (0x04)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -172,15 +170,17 @@ typedef struct {
   mp_obj_t          handler;
   mp_obj_t          handler_arg;
   lora_stack_mode_t stack_mode;
+  DeviceClass_t     device_class;
   lora_state_t      state;
   uint32_t          frequency;
   uint32_t          rx_timeout;
   uint32_t          tx_timeout;
   uint32_t          dev_addr;
-  uint32_t          timestamp;
+  uint32_t          rx_timestamp;
   int16_t           rssi;
   int8_t            snr;
   uint8_t           sfrx;
+  uint8_t           sftx;
   uint8_t           preamble;
   uint8_t           bandwidth;
   uint8_t           coding_rate;
@@ -222,6 +222,7 @@ typedef struct {
   bool              radio_init;
   uint8_t           events;
   uint8_t           trigger;
+  uint8_t           tx_trials;
 } lora_obj_t;
 
 typedef struct {
@@ -355,12 +356,30 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
             case MCPS_UNCONFIRMED:
                 // Check Datarate
                 // Check TxPower
+                lora_obj.events |= MODLORA_TX_EVENT;
+                if (lora_obj.trigger & MODLORA_TX_EVENT) {
+                    mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+                }
+                lora_obj.state = E_LORA_STATE_IDLE;
+                xEventGroupSetBits(LoRaEvents, status);
                 break;
             case MCPS_CONFIRMED:
                 // Check Datarate
                 // Check TxPower
                 // Check AckReceived
-                // Check NbTrials
+                // Check NbRetries
+                lora_obj.sftx = McpsConfirm->Datarate;
+                lora_obj.tx_trials = McpsConfirm->NbRetries;
+                if (McpsConfirm->AckReceived) {
+                    lora_obj.events |= MODLORA_TX_EVENT;
+                    if (lora_obj.trigger & MODLORA_TX_EVENT) {
+                        mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+                    }
+                    lora_obj.state = E_LORA_STATE_IDLE;
+                    xEventGroupSetBits(LoRaEvents, status);
+                } else {
+                    // the ack wasn't received, so the stack will re-transmit
+                }
                 break;
             case MCPS_PROPRIETARY:
                 break;
@@ -368,14 +387,14 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
                 break;
         }
     } else {
+        lora_obj.tx_trials = McpsConfirm->NbRetries;
+        lora_obj.state = E_LORA_STATE_IDLE;
+        lora_obj.events |= MODLORA_TX_FAILED_EVENT;
+        if (lora_obj.trigger & MODLORA_TX_FAILED_EVENT) {
+            mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+        }
         status |= LORA_STATUS_ERROR;
-    }
-    lora_obj.state = E_LORA_STATE_IDLE;
-    xEventGroupSetBits(LoRaEvents, status);
-
-    lora_obj.events |= MODLORA_TX_EVENT;
-    if (lora_obj.trigger & MODLORA_TX_EVENT) {
-        mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+        xEventGroupSetBits(LoRaEvents, status);
     }
 }
 
@@ -407,7 +426,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
     // Check Snr
     // Check RxSlot
 
-    lora_obj.timestamp = mcpsIndication->TimeStamp;
+    lora_obj.rx_timestamp = mcpsIndication->TimeStamp;
     lora_obj.rssi = mcpsIndication->Rssi;
     lora_obj.snr = mcpsIndication->Snr;
     lora_obj.sfrx = mcpsIndication->RxDatarate;
@@ -623,6 +642,10 @@ static void TASK_LoRa (void *pvParameters) {
                         mibReq.Param.EnablePublicNetwork = cmd_data.info.init.public;
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
+                        mibReq.Type = MIB_DEVICE_CLASS;
+                        mibReq.Param.Class = cmd_data.info.init.device_class;
+                        LoRaMacMibSetRequestConfirm(&mibReq);
+
                     #if defined(USE_BAND_868)
                         LoRaMacTestSetDutyCycleOn(false);
                     #endif
@@ -824,7 +847,7 @@ static IRAM_ATTR void OnTxDone (void) {
 }
 
 static IRAM_ATTR void OnRxDone (uint8_t *payload, uint32_t timestamp, uint16_t size, int16_t rssi, int8_t snr, uint8_t sf) {
-    lora_obj.timestamp = timestamp;
+    lora_obj.rx_timestamp = timestamp;
     lora_obj.rssi = rssi;
     lora_obj.snr = snr;
     lora_obj.sfrx = sf;
@@ -933,6 +956,8 @@ static void lora_radio_setup (lora_init_cmd_data_t *init_data) {
                                   symbol_to, LORA_FIX_LENGTH_PAYLOAD_OFF,
                                   0, true, 0, 0, init_data->rxiq, true);
 
+    Radio.SetMaxPayloadLength(MODEM_LORA, LORA_PAYLOAD_SIZE_MAX);
+
     if (init_data->power_mode == E_LORA_MODE_ALWAYS_ON) {
         // start listening
         Radio.Rx(LORA_RX_TIMEOUT);
@@ -998,6 +1023,13 @@ static void lora_validate_power_mode (uint8_t power_mode) {
     }
 }
 
+static void lora_validate_device_class (DeviceClass_t device_class) {
+    // CLASS_B is not implemented
+    if (device_class != CLASS_A && device_class != CLASS_C) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid device_class %d", device_class));
+    }
+}
+
 static void lora_set_config (lora_cmd_data_t *cmd_data) {
     lora_obj.stack_mode = cmd_data->info.init.stack_mode;
     lora_obj.bandwidth = cmd_data->info.init.bandwidth;
@@ -1012,6 +1044,7 @@ static void lora_set_config (lora_cmd_data_t *cmd_data) {
     lora_obj.adr = cmd_data->info.init.adr;
     lora_obj.public = cmd_data->info.init.public;
     lora_obj.tx_retries = cmd_data->info.init.tx_retries;
+    lora_obj.device_class = cmd_data->info.init.device_class;
 }
 
 static void lora_get_config (lora_cmd_data_t *cmd_data) {
@@ -1028,6 +1061,7 @@ static void lora_get_config (lora_cmd_data_t *cmd_data) {
     cmd_data->info.init.public = lora_obj.public;
     cmd_data->info.init.adr = lora_obj.adr;
     cmd_data->info.init.tx_retries = lora_obj.tx_retries;
+    cmd_data->info.init.device_class = lora_obj.device_class;
 }
 
 static void lora_send_cmd (lora_cmd_data_t *cmd_data) {
@@ -1064,6 +1098,8 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
     if (!xQueueSend(xCmdQueue, (void *)&cmd_data, (TickType_t)(timeout_ms / portTICK_PERIOD_MS))) {
         return 0;
     }
+
+    lora_obj.sftx = lora_obj.sf;
 
     if (timeout_ms != 0) {
         xEventGroupWaitBits(LoRaEvents,
@@ -1182,7 +1218,10 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
 
     cmd_data.info.init.adr = args[10].u_bool;
     cmd_data.info.init.public = args[11].u_bool;
-    cmd_data.info.init.tx_retries = args[11].u_int;
+    cmd_data.info.init.tx_retries = args[12].u_int;
+
+    cmd_data.info.init.device_class = args[13].u_int;
+    lora_validate_device_class(cmd_data.info.init.device_class);
 
     // send message to the lora task
     cmd_data.cmd = E_LORA_CMD_INIT;
@@ -1206,6 +1245,7 @@ STATIC const mp_arg_t lora_init_args[] = {
     { MP_QSTR_adr,          MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
     { MP_QSTR_public,       MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = true} },
     { MP_QSTR_tx_retries,   MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = 2} },
+    { MP_QSTR_device_class, MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = CLASS_A} }
 };
 STATIC mp_obj_t lora_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -1501,16 +1541,18 @@ STATIC mp_obj_t lora_stats(mp_obj_t self_in) {
     lora_obj_t *self = self_in;
 
     static const qstr lora_stats_info_fields[] = {
-        MP_QSTR_timestamp, MP_QSTR_rssi, MP_QSTR_snr, MP_QSTR_sf
+        MP_QSTR_rx_timestamp, MP_QSTR_rssi, MP_QSTR_snr, MP_QSTR_sfrx, MP_QSTR_sftx, MP_QSTR_tx_trials
     };
 
-    mp_obj_t stats_tuple[4];
-    stats_tuple[0] = mp_obj_new_int_from_uint(self->timestamp);
+    mp_obj_t stats_tuple[6];
+    stats_tuple[0] = mp_obj_new_int_from_uint(self->rx_timestamp);
     stats_tuple[1] = mp_obj_new_int(self->rssi);
     stats_tuple[2] = mp_obj_new_int(self->snr);
     stats_tuple[3] = mp_obj_new_int(self->sfrx);
+    stats_tuple[4] = mp_obj_new_int(self->sftx);
+    stats_tuple[5] = mp_obj_new_int(self->tx_trials);
 
-    return mp_obj_new_attrtuple(lora_stats_info_fields, 4, stats_tuple);
+    return mp_obj_new_attrtuple(lora_stats_info_fields, sizeof(stats_tuple) / sizeof(stats_tuple[0]), stats_tuple);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_stats_obj, lora_stats);
 
@@ -1602,6 +1644,7 @@ STATIC mp_obj_t lora_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
     if (args[0].u_obj != mp_const_none && args[1].u_obj != mp_const_none) {
         self->trigger = mp_obj_get_int(args[0].u_obj);
         self->handler = args[1].u_obj;
+        mp_irq_handler_add(args[1].u_obj);
         if (args[2].u_obj == mp_const_none) {
             self->handler_arg = self;
         } else {
@@ -1666,6 +1709,10 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_RX_PACKET_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_RX_EVENT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_TX_PACKET_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_TX_EVENT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_TX_FAILED_EVENT),     MP_OBJ_NEW_SMALL_INT(MODLORA_TX_FAILED_EVENT) },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CLASS_A),             MP_OBJ_NEW_SMALL_INT(CLASS_A) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CLASS_C),             MP_OBJ_NEW_SMALL_INT(CLASS_C) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(lora_locals_dict, lora_locals_dict_table);

@@ -837,6 +837,7 @@ int16_t SX1272ReadRssi( RadioModems_t modem )
 
 void SX1272Reset( void )
 {
+#if MICROPY_LPWAN_USE_RESET_PIN
     // Set RESET pin to 1
     GpioInit( &SX1272.Reset, RADIO_RESET, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
 
@@ -848,6 +849,9 @@ void SX1272Reset( void )
 
     // Wait 6 ms
     DelayMs( 6 );
+#else
+    DelayMs( 1 );
+#endif
 }
 
 IRAM_ATTR void SX1272SetOpMode( uint8_t opMode )
@@ -1035,8 +1039,6 @@ static IRAM_ATTR void SX1272OnDioIrq (void) {
     }
 }
 
-extern uint64_t get_time_since_boot();
-
 IRAM_ATTR void SX1272OnDio0Irq( void )
 {
     volatile uint8_t irqFlags = 0;
@@ -1052,9 +1054,11 @@ IRAM_ATTR void SX1272OnDio0Irq( void )
             case MODEM_LORA:
                 {
                     int8_t snr = 0;
+                    struct timeval tv;
 
                     // Store the packet timestamp
-                    SX1272.Settings.LoRaPacketHandler.TimeStamp = (uint32_t)get_time_since_boot();
+                    gettimeofday(&tv, NULL);
+                    SX1272.Settings.LoRaPacketHandler.TimeStamp = (tv.tv_sec * 1000000) + tv.tv_usec;
 
                     // Clear Irq
                     SX1272Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXDONE );

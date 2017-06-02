@@ -27,6 +27,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/freertos/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/json/include
@@ -227,6 +228,7 @@ BOOT_SRC_C = $(addprefix bootloader/,\
 	bootmgr.c \
 	mperror.c \
 	gpio.c \
+	flash_qio_mode.c \
 	)
 
 SFX_OBJ =
@@ -259,7 +261,7 @@ endif
 # SRC_QSTR
 SRC_QSTR_AUTO_DEPS +=
 
-BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld
+BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld
 
 # add the application linker script(s)
 APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld
@@ -309,10 +311,15 @@ PART_BIN = $(BUILD)/lib/partitions.bin
 ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
 
+ifeq ($(OEM), 1)
+FLASH_SIZE = 8MB
+ESPFLASHFREQ = 80m
+else
 FLASH_SIZE = 4MB
+ESPFLASHFREQ = 80m
+endif
 
 ESPFLASHMODE = qio
-ESPFLASHFREQ = 40m
 ESPTOOLPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/esptool.py --chip esp32
 ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD)
 

@@ -79,6 +79,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(sigfox_cw_obj, sigfox_cw);
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(sigfox_frequencies_obj, sigfox_frequencies);
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(sigfox_config_obj, 1, 2, sigfox_config);
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(sigfox_public_key_obj, 1, 2, sigfox_public_key);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(sigfox_rssi_obj, sigfox_rssi);
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(sigfox_rssi_offset_obj, 1, 2, sigfox_rssi_offset);
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(sigfox_freq_offset_obj, 1, 2, sigfox_freq_offset);
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(sigfox_version_obj, sigfox_version);
@@ -97,7 +98,7 @@ STATIC const mp_map_elem_t sigfox_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_config),              (mp_obj_t)&sigfox_config_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_public_key),          (mp_obj_t)&sigfox_public_key_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_version),             (mp_obj_t)&sigfox_version_obj },
-    // { MP_OBJ_NEW_QSTR(MP_QSTR_rssi),                (mp_obj_t)&sigfox_rssi_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_rssi),                (mp_obj_t)&sigfox_rssi_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_rssi_offset),         (mp_obj_t)&sigfox_rssi_offset_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_freq_offset),         (mp_obj_t)&sigfox_freq_offset_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_info),                (mp_obj_t)&sigfox_info_obj },

@@ -17,7 +17,7 @@
 #include "py/objstr.h"
 #include "py/mpstate.h"
 
-#include "heap_alloc_caps.h"
+#include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
@@ -151,6 +151,12 @@ void mp_hal_stdout_tx_strn_cooked(const char *str, uint32_t len) {
     if (_str < str + len) {
         mp_hal_stdout_tx_strn(_str, nslen);
     }
+}
+
+uint32_t mp_hal_ticks_s(void) {
+    struct timeval now;
+    gettimeofday(&now, NULL);
+    return now.tv_sec;
 }
 
 uint32_t mp_hal_ticks_ms(void) {

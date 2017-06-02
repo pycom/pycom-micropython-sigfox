@@ -22,14 +22,14 @@
 #include "machtimer.h"
 #include "timeutils.h"
 
-#include "heap_alloc_caps.h"
+#include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
 #include "esp_event.h"
 
-extern uint64_t get_time_since_boot();
+// extern uint64_t get_time_since_boot();
 
 static int32_t timezone_offset;
 
@@ -126,12 +126,16 @@ STATIC mp_obj_t time_sleep_us(mp_obj_t arg) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(time_sleep_us_obj, time_sleep_us);
 
 STATIC mp_obj_t time_ticks_ms(void) {
-    return mp_obj_new_int((get_time_since_boot() / 1000));
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return mp_obj_new_int(((tv.tv_sec * 1000) + tv.tv_usec / 1000));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_ms_obj, time_ticks_ms);
 
 STATIC mp_obj_t time_ticks_us(void) {
-   return mp_obj_new_int(get_time_since_boot());
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return mp_obj_new_int(((tv.tv_sec * 1000000) + tv.tv_usec));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_us_obj, time_ticks_us);
 

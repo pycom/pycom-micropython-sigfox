@@ -20,7 +20,7 @@
 #include "py/mphal.h"
 #include "py/mperrno.h"
 
-#include "heap_alloc_caps.h"
+#include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
@@ -151,10 +151,8 @@ STATIC uint32_t wlan_set_ssid_internal (const char *ssid, uint8_t len, bool add_
 STATIC void wlan_validate_security (uint8_t auth, const char *key);
 STATIC void wlan_set_security_internal (uint8_t auth, const char *key, uint8_t len);
 STATIC void wlan_validate_channel (uint8_t channel);
-#if MICROPY_HW_ANTENNA_DIVERSITY
 STATIC void wlan_validate_antenna (uint8_t antenna);
 STATIC void wlan_set_antenna (uint8_t antenna);
-#endif
 static esp_err_t wlan_event_handler(void *ctx, system_event_t *event);
 STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, const char* bssid,
                                          const char* key, uint32_t key_len, int32_t timeout);
@@ -436,18 +434,21 @@ STATIC void wlan_validate_channel (uint8_t channel) {
     }
 }
 
-#if MICROPY_HW_ANTENNA_DIVERSITY
+
 STATIC void wlan_validate_antenna (uint8_t antenna) {
+#if MICROPY_HW_ANTENNA_DIVERSITY
     if (antenna != ANTENNA_TYPE_INTERNAL && antenna != ANTENNA_TYPE_EXTERNAL) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
     }
+#endif
 }
 
 STATIC void wlan_set_antenna (uint8_t antenna) {
+#if MICROPY_HW_ANTENNA_DIVERSITY
     wlan_obj.antenna = antenna;
     antenna_select(antenna);
-}
 #endif
+}
 
 STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, const char* bssid,
                                          const char* key, uint32_t key_len, int32_t timeout) {
@@ -571,9 +572,7 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
 
     // get the antenna type
     uint8_t antenna = args[4].u_int;
-#if MICROPY_HW_ANTENNA_DIVERSITY
     wlan_validate_antenna(antenna);
-#endif
 
     wlan_obj.pwrsave = args[5].u_bool;
 
@@ -945,11 +944,9 @@ STATIC mp_obj_t wlan_antenna (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args == 1) {
         return mp_obj_new_int(self->antenna);
     } else {
-    #if MICROPY_HW_ANTENNA_DIVERSITY
         uint8_t antenna  = mp_obj_get_int(args[1]);
         wlan_validate_antenna(antenna);
         wlan_set_antenna(antenna);
-    #endif
         return mp_const_none;
     }
 }

@@ -3,7 +3,7 @@
 class LoRa
 ==========
 
-This class provides a driver for the LoRa network processor in the **LoPy**. Example usage::
+This class provides a driver for the LoRa network processor in the **LoPy**. Below is an example demonstrating LoRaWAN Activation by Personalisation usage::
 
     from network import LoRa
     import socket
@@ -37,25 +37,30 @@ This class provides a driver for the LoRa network processor in the **LoPy**. Exa
     data = s.recv(64)
     print(data)
 
+.. warning::
+  Please ensure that there is an **antenna connected** to your device before sending/receiving LoRa messages as inproper use (e.g. without an antenna), may damage the device.
+
 
 Additional examples
 -------------------
 
-Check here for :ref:`aditional examples<lora_examples>`.
+For various other complete LoRa examples, check here for :ref:`additional examples<lora_examples>`.
 
 Constructors
 ------------
 
 .. class:: LoRa(id=0, ...)
 
-   Create and configure a LoRa object. See ``init`` for params of configuration.
+   Create and configure a LoRa object. See ``init`` for params of configuration. ::
+
+        lora = LoRa(mode=LoRa.LORAWAN)
 
 Methods
 -------
 
-.. method:: lora.init(mode, \*, frequency=868000000, tx_power=14, bandwidth=LoRa.868000000, sf=7, preamble=8, coding_rate=LoRa.CODING_4_5, power_mode=LoRa.ALWAYS_ON, tx_iq=false, rx_iq=false, adr=false, public=true, tx_retries=1)
+.. method:: lora.init(mode, \*, frequency=868000000, tx_power=14, bandwidth=LoRa.868000000, sf=7, preamble=8, coding_rate=LoRa.CODING_4_5, power_mode=LoRa.ALWAYS_ON, tx_iq=false, rx_iq=false, adr=false, public=true, tx_retries=1, device_class=LoRa.CLASS_A)
 
-   Set the LoRa subsystem configuration
+   This method is used to set the LoRa subsystem configuration and to specific raw LoRa or LoRaWAN.
 
    The arguments are:
 
@@ -73,13 +78,14 @@ Methods
      - ``adr`` enables Adaptive Data Rate.
      - ``public`` selects between the public and private sync word.
      - ``tx_retries`` sets the number of TX retries in ``LoRa.LORAWAN`` mode.
+     - ``device_class`` sets the LoRaWAN device class. Can be either ``LoRa.CLASS_A`` or ``LoRa.CLASS_C``.
 
     .. note::
 
-       In ``LoRa.LORAWAN`` mode, only ``adr``, ``public`` and ``tx_retries`` are used. All the other
+       In ``LoRa.LORAWAN`` mode, only ``adr``, ``public``, ``tx_retries`` and ``device_class`` are used. All the other
        params will be ignored as they are handled by the LoRaWAN stack directly. On the other hand, in ``LoRa.LORA`` mode
-       from those 3 arguments, only the ``public`` one is important in order to program the sync word. In ``LoRa.LORA`` mode ``adr``
-       and ``tx_retries`` are ignored since they are only relevant to the LoRaWAN stack.
+       from those 3 arguments, only the ``public`` one is important in order to program the sync word. In ``LoRa.LORA`` mode ``adr``,
+       ``tx_retries`` and ``device_class`` are ignored since they are only relevant to the LoRaWAN stack.
 
    For example, you can do::
 
@@ -98,7 +104,7 @@ Methods
       - ``activation``: can be either ``LoRa.OTAA`` or ``LoRa.ABP``.
       - ``auth``: is a tuple with the authentication data.
 
-      In the case of ``LoRa.OTAA`` the authentication tuple is: ``(app_eui, app_key)``. Example::
+    In the case of ``LoRa.OTAA`` the authentication tuple is: ``(app_eui, app_key)``. Example::
 
           from network import LoRa
           import socket
@@ -120,7 +126,7 @@ Methods
               time.sleep(2.5)
               print('Not yet joined...')
 
-      In the case of ``LoRa.ABP`` the authentication tuple is: ``(dev_addr, nwk_swkey, app_swkey)``. Example::
+    In the case of ``LoRa.ABP`` the authentication tuple is: ``(dev_addr, nwk_swkey, app_swkey)``. Example::
 
           from network import LoRa
           import socket
@@ -140,44 +146,83 @@ Methods
 
 .. method:: lora.bandwidth([bandwidth])
 
-    Get or set the bandwidth in raw LoRa mode (``LoRa.LORA``). Can be either ``LoRa.BW_125KHZ``, ``LoRa.BW_250KHZ`` or ``LoRa.BW_500KHZ``.
+    Get or set the bandwidth in raw LoRa mode (``LoRa.LORA``). Can be either ``LoRa.BW_125KHZ`` ``(0)``, ``LoRa.BW_250KHZ`` ``(1)`` or ``LoRa.BW_500KHZ`` ``(2)``.::
+
+		# get raw LoRa Bandwidth
+		lora.bandwidth()
+
+		# set raw LoRa Bandwidth
+		lora.bandwidth(LoRa.BW_125KHZ)
 
 .. method:: lora.frequency([frequency])
 
-    Get or set the frequency in raw LoRa mode (``LoRa.LORA``). The allowed range is between 863000000 and 870000000 Hz for the 868MHz band version or between 902000000 and 928000000 Hz for the 915MHz abdn version.
+    Get or set the frequency in raw LoRa mode (``LoRa.LORA``). The allowed range is between 863000000 and 870000000 Hz for the 868 MHz band version or between 902000000 and 928000000 Hz for the 915 MHz band version.::
+
+		# get raw LoRa Frequency
+		lora.frequency()
+
+		# set raw LoRa Frequency
+		lora.frequency(868000000)
 
 .. method:: lora.coding_rate([coding_rate])
 
-    Get or set the coding rate in raw LoRa mode (``LoRa.LORA``). The allowed values are: ``LoRa.CODING_4_5``, ``LoRa.CODING_4_6``, ``LoRa.CODING_4_7`` and ``LoRa.CODING_4_8``.
+    Get or set the coding rate in raw LoRa mode (``LoRa.LORA``). The allowed values are: ``LoRa.CODING_4_5`` ``(0)``, ``LoRa.CODING_4_6`` ``(1)``, ``LoRa.CODING_4_7`` ``(2)`` and ``LoRa.CODING_4_8`` ``(3)``. ::
+
+		# get raw LoRa Coding Rate
+		lora.coding_rate()
+
+		# set raw LoRa Coding Rate
+		lora.coding_rate(LoRa.CODING_4_5)
 
 .. method:: lora.preamble([preamble])
 
-    Get or set the number of preamble symbols in raw LoRa mode (``LoRa.LORA``).
+    Get or set the number of preamble symbols in raw LoRa mode (``LoRa.LORA``).::
+
+		# get raw LoRa preamble symbols
+		lora.preamble()
+
+		# set raw LoRa preamble symbols
+		lora.preamble(LoRa.CODING_4_5)
 
 .. method:: lora.sf([sf])
 
-    Get or set the spreading factor value in raw LoRa mode (``LoRa.LORA``). The minimmum value is 7 and the maximum is 12.
+    Get or set the spreading factor value in raw LoRa mode (``LoRa.LORA``). The minimmum value is 7 and the maximum is 12.::
+
+		# get raw LoRa spread factor value
+		lora.sf()
+
+		# set raw LoRa spread factor value
+		lora.sf(7)
 
 .. method:: lora.power_mode([power_mode])
 
-    Get or set the power mode in raw LoRa mode (``LoRa.LORA``). The accepted values are: ``LoRa.ALWAYS_ON``, ``LoRa.TX_ONLY`` and ``LoRa.SLEEP``.
+    Get or set the power mode in raw LoRa mode (``LoRa.LORA``). The accepted values are: ``LoRa.ALWAYS_ON``, ``LoRa.TX_ONLY`` and ``LoRa.SLEEP``.::
 
 .. method:: lora.stats()
 
     Return a named tuple with usefel information from the last received LoRa or LoRaWAN packet. The named tuple has the following form:
 
-    ``(timestamp, rssi, snr, sf)``
+    ``(rx_timestamp, rssi, snr, sftx, sfrx, sftx, tx_trials)``
+
+    Example: ::
+
+        lora.stats()
+
 
     Where:
 
-       - ``timestamp`` is an internat timestamp with microseconds presicion.
-       - ``rssi`` hold the received signal strength in dBm.
+       - ``rx_timestamp`` is an internat timestamp of the last received packet with microseconds presicion.
+       - ``rssi`` holds the received signal strength in dBm.
        - ``snr`` contains the signal to noise ratio id dB.
-       - ``sf`` tells the spreading factor of the packet received.
+       - ``sfrx`` tells the data rate (in the case of ``LORAWAN`` mode) or the spreading factor (in the case of ``LORA`` mode) of the last packet received.
+       - ``sftx`` tells the data rate (in the case of ``LORAWAN`` mode) or the spreading factor (in the case of ``LORA`` mode) of the last packet transmitted.
+       - ``tx_trials`` is the number of tx attempts of the last transmitted packet (only relevant for ``LORAWAN`` confirmed packets).
 
 .. method:: lora.has_joined()
 
-    Returns ``True`` if a LoRaWAN network has been joined. ``False`` otherwise.
+    Returns ``True`` if a LoRaWAN network has been joined. ``False`` otherwise.::
+
+		lora.has_joined()
 
 .. method:: lora.add_channel(index, \*, frequency, dr_min, dr_max)
 
@@ -185,32 +230,50 @@ Methods
 
     The arguments are:
 
-      - ``index``: Index of the channel to add. Accepts values between 0 and 15 for EU and between 0 and 71 for US.
+      - ``index``: Index of the channel to add. Accepts values between **0 and 15 for EU** and between **0 and 71 for US**.
       - ``frequency``: Center frequency in Hz of the channel.
       - ``dr_min``: Minimum data rate of the channel (0-7).
       - ``dr_max``: Maximum data rate of the channel (0-7).
 
+	Examples: ::
+
+		lora.add_channel(index=0, frequency=868000000, dr_min=5, dr_max=6)
+
 .. method:: lora.remove_channel(index)
 
-     Removes the channel from the specified index. On the 868MHz band the channels 0 to 2 cannot be removed, they can
-     only be replaced by other channels using the ``lora.add_channel`` method. A way to remove all channels except for
-     one is to add the same channel 3 times on indexes 0, 1 and 2.
+     Removes the channel from the specified index. On the 868MHz band the channels 0 to 2 cannot be removed, they can only be replaced by other channels using the ``lora.add_channel`` method. A way to remove all channels except for one is to add the same channel, 3 times on indexes 0, 1 and 2. An example can be seen below: ::
+
+		 lora.remove_channel()
 
      On the 915MHz band there are no restrictions around this.
 
 .. method:: lora.mac()
 
-   Returns a byte object with the 8-Byte MAC address of the LoRa radio.
+   Returns a byte object with the 8-Byte MAC address of the LoRa radio.::
+
+	   lora.mac()
 
 .. method:: lora.callback(trigger, handler=None, arg=None)
 
-   Specify a callback handler for the LoRa radio. The trigger types are ``LoRa.RX_PACKET_EVENT`` and ``LoRa.TX_PACKET_EVENT``
+   Specify a callback handler for the LoRa radio. The trigger types are ``LoRa.RX_PACKET_EVENT``, ``LoRa.TX_PACKET_EVENT`` and ``LoRa.TX_FAILED_EVENT``
+
+   The ``LoRa.RX_PACKET_EVENT` event is raised for every received packet.
+   The ``LoRa.TX_PACKET_EVENT`` event is raised as soon as the packet transmisison cycle ends. In the case of non-confirmed transmissions, this will occur at the end of the
+   receive windows, but, in the case of confirmed transmissions, this event will only be raised if the **ack** is received. If the **ack** is not received ``LoRa.TX_FAILED_EVENT``
+   will be raised after the number of ``tx_retries`` configured have been performed.
+
+   An example of how this callback functions can be seen the in method :ref:`lora.events() <lora_events>`.
+
+
+.. _lora_events:
 
 .. method:: lora.events()
 
    This method returns a value with bits sets (if any) indicating the events that have triggered the callback. Please note that
-   by calling this function the internal events registry is cleared automatically, therefore calling it immediaelly for a second time
-   will most likely return a value of 0. Example::
+   by calling this function the internal events registry is cleared automatically, therefore calling it immediately for a second time
+   will most likely return a value of 0.
+
+   Example::
 
         def lora_cb(lora):
             events = lora.events()
@@ -228,7 +291,7 @@ Constants
 .. data:: LoRa.LORA
           LoRa.LORAWAN
 
-    LoRa mode
+    LoRa stack mode
 
 .. data:: LoRa.OTAA
           LoRa.ABP
@@ -256,8 +319,14 @@ Constants
 
 .. data:: LoRa.RX_PACKET_EVENT
           LoRa.TX_PACKET_EVENT
+          LoRa.TX_FAILED_EVENT
 
     Callback trigger types (may be ORed)
+
+.. data:: LoRa.CLASS_A
+          LoRa.CLASS_C
+
+    LoRaWAN device class
 
 
 Working with LoRa and LoRaWAN sockets

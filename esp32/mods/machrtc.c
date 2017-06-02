@@ -20,15 +20,14 @@
 #include "esp_system.h"
 #include "mpexception.h"
 #include "machrtc.h"
+#include "soc/rtc.h"
+#include "esp_clk.h"
 
-// next functions are from the IDF
-extern uint64_t get_time_since_boot();
-extern void rtc_calibrate_timer(int32_t adjust_value);
-extern int32_t rtc_get_timer_calibration(void);
-
-#define MAX_CAL_VAL ((1 << 27) - 1)
 
 uint32_t sntp_update_period = 3600000; // in ms
+
+#define RTC_SOURCE_INTERNAL_RC                  RTC_SLOW_FREQ_RTC
+#define RTC_SOURCE_EXTERNAL_XTAL                RTC_SLOW_FREQ_32K_XTAL
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -36,9 +35,10 @@ uint32_t sntp_update_period = 3600000; // in ms
 
 typedef struct _mach_rtc_obj_t {
     mp_obj_base_t base;
-    uint64_t delta_from_epoch_til_boot;
     mp_obj_t sntp_server_name;
 } mach_rtc_obj_t;
+
+static RTC_DATA_ATTR uint64_t delta_from_epoch_til_boot;
 
 STATIC mach_rtc_obj_t mach_rtc_obj;
 const mp_obj_type_t mach_rtc_type;
@@ -48,11 +48,17 @@ void rtc_init0(void) {
 }
 
 void mach_rtc_set_us_since_epoch(uint64_t nowus) {
-    mach_rtc_obj.delta_from_epoch_til_boot = nowus - get_time_since_boot();
+    struct timeval tv;
+
+    // store the packet timestamp
+    gettimeofday(&tv, NULL);
+    delta_from_epoch_til_boot = nowus - ((tv.tv_sec * 1000000) + tv.tv_usec);
 }
 
 uint64_t mach_rtc_get_us_since_epoch(void) {
-    return get_time_since_boot() + mach_rtc_obj.delta_from_epoch_til_boot;
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    return ((tv.tv_sec * 1000000) + tv.tv_usec) + delta_from_epoch_til_boot;
 };
 
 STATIC uint64_t mach_rtc_datetime_us(const mp_obj_t datetime) {
@@ -103,16 +109,12 @@ STATIC uint64_t mach_rtc_datetime_us(const mp_obj_t datetime) {
 STATIC void mach_rtc_datetime(const mp_obj_t datetime) {
     uint64_t useconds;
 
-    if (datetime != MP_OBJ_NULL) {
+    if (datetime != mp_const_none) {
         useconds = mach_rtc_datetime_us(datetime);
         mach_rtc_set_us_since_epoch(useconds);
     } else {
         mach_rtc_set_us_since_epoch(0);
     }
-
-    // set WLAN time and date, this is needed to verify certificates
-    // #todo: something similar to the next line is needed
-    // wlan_set_current_time(seconds);
 }
 
 /******************************************************************************/
@@ -120,7 +122,8 @@ STATIC void mach_rtc_datetime(const mp_obj_t datetime) {
 
 STATIC const mp_arg_t mach_rtc_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT, {.u_int = 0} },
-    { MP_QSTR_datetime,                       MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+    { MP_QSTR_datetime,                       MP_ARG_OBJ, {.u_obj = mp_const_none} },
+    { MP_QSTR_source,                         MP_ARG_OBJ, {.u_obj = mp_const_none} },
 };
 STATIC mp_obj_t mach_rtc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -139,8 +142,16 @@ STATIC mp_obj_t mach_rtc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, m
     self->base.type = &mach_rtc_type;
 
     // set the time and date
-    if (args[1].u_obj != MP_OBJ_NULL) {
+    if (args[1].u_obj != mp_const_none) {
         mach_rtc_datetime(args[1].u_obj);
+    }
+
+    // change the RTC clock source
+    if (args[2].u_obj != mp_const_none) {
+        struct timeval now;
+        gettimeofday(&now, NULL);
+        select_rtc_slow_clk(mp_obj_get_int(args[2].u_obj));
+        settimeofday(&now, NULL);
     }
 
     // return constant object
@@ -183,18 +194,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_rtc_now_obj, mach_rtc_now);
 // When an integer argument is provided, set the calibration value;
 //      otherwise return calibration value
 mp_obj_t mach_rtc_calibration(mp_uint_t n_args, const mp_obj_t *args) {
-    mp_int_t cal;
     if (n_args == 2) {
-        cal = mp_obj_get_int(args[1]);
-        if ((cal > MAX_CAL_VAL) || (-cal > MAX_CAL_VAL)) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError,
-                            "calibration value out of range"));
-        }
-        rtc_calibrate_timer(cal);
         return mp_const_none;
     } else {
-        cal = rtc_get_timer_calibration();
-        return mp_obj_new_int(cal);
+        return mp_obj_new_int(0);
     }
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mach_rtc_calibration_obj, 1, 2, mach_rtc_calibration);
@@ -233,6 +236,9 @@ STATIC const mp_map_elem_t mach_rtc_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_now),                 (mp_obj_t)&mach_rtc_now_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_calibration),         (mp_obj_t)&mach_rtc_calibration_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ntp_sync),            (mp_obj_t)&mach_rtc_ntp_sync_obj },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INTERNAL_RC),         MP_OBJ_NEW_SMALL_INT(RTC_SOURCE_INTERNAL_RC) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_XTAL_32KHZ),          MP_OBJ_NEW_SMALL_INT(RTC_SOURCE_EXTERNAL_XTAL) },
 };
 STATIC MP_DEFINE_CONST_DICT(mach_rtc_locals_dict, mach_rtc_locals_dict_table);
 

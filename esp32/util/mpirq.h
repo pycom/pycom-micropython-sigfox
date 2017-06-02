@@ -14,10 +14,10 @@
  DEFINE CONSTANTS
  ******************************************************************************/
 #define INTERRUPTS_TASK_PRIORITY                   (11)
-#define INTERRUPTS_TASK_STACK_SIZE                 (5 * 1024)
+#define INTERRUPTS_TASK_STACK_SIZE                 (8 * 1024)
 #define INTERRUPTS_TASK_STACK_LEN                  (INTERRUPTS_TASK_STACK_SIZE / sizeof(StackType_t))
 
-#define INTERRUPTS_QUEUE_LEN                       (16)
+#define INTERRUPTS_QUEUE_LEN                       (32)
 
 /******************************************************************************
  DEFINE TYPES
@@ -58,6 +58,7 @@ extern const mp_obj_type_t mp_irq_type;
  ******************************************************************************/
 void mp_irq_preinit(void);
 void mp_irq_init0 (void);
+void mp_irq_handler_add (mp_obj_t irq_handler);
 void mp_irq_queue_interrupt(void (* handler)(void *), void *arg);
 void mp_irq_kill(void);
 #endif /* MPIRQ_H_ */

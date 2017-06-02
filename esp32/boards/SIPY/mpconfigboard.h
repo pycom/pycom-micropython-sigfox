@@ -18,5 +18,16 @@
 
 #define MICROPY_HW_FLASH_SIZE                                   (4 * 1024 * 1024)
 
-#define MICROPY_LPWAN_DIO_PIN_NUM                               (23)
-#define MICROPY_LPWAN_DIO_PIN                                   (pin_GPIO23)
+#if defined(OEM_VERSION)
+
+    #define MICROPY_HW_ANTENNA_DIVERSITY                            (0)
+
+#else
+
+    #define MICROPY_HW_ANTENNA_DIVERSITY                            (1)
+    #define MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM                    (16)
+
+    #define MICROPY_LPWAN_DIO_PIN_NUM                               (23)
+    #define MICROPY_LPWAN_DIO_PIN                                   (pin_GPIO23)
+
+#endif

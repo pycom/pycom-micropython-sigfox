@@ -26,9 +26,10 @@ def otaa_join(lora):
     # wait until the module has joined the network
     join_wait = 0
     while not lora.has_joined() and join_wait < 10:
-        time.sleep(3)
-        print('Not joined yet...')
+        time.sleep(5)
         join_wait += 1
+        if join_wait < 2:
+            print('Waiting to join')
 
     print('Network joined!')
 
@@ -75,11 +76,15 @@ for i in range(7):
 
 lora.init(mode=LoRa.LORAWAN, public=True, adr=False)
 
+time.sleep(0.5)
+
 try:
     s.send('123')
 except Exception as e:
     if e.errno == errno.ENETDOWN:
         print('Exception')
+    else:
+        print("ENETDOWN Exception not thrown")
 
 otaa_join(lora)
 
@@ -96,7 +101,7 @@ def lora_cb_handler(lora):
     except Exception:
         print('Exception')
 
-cb = lora.callback(handler=lora_cb_handler, trigger=LoRa.TX_PACKET_EVENT | LoRa.RX_PACKET_EVENT,)
+cb = lora.callback(handler=lora_cb_handler, trigger=LoRa.TX_PACKET_EVENT | LoRa.RX_PACKET_EVENT)
 s.setblocking(True)
 for i in range(2):
     print(s.send("Sending pk #%d" % i))
@@ -110,7 +115,9 @@ for i in range(2):
     print(s.send("Sending pk #%d" % i))
     time.sleep(0.5)
 
-print(lora.stats().timestamp > 0)
+print(lora.stats().rx_timestamp > 0)
 print(lora.stats().rssi < 0)
 print(lora.stats().snr > 0)
-print(lora.stats().sf >= 0)
+print(lora.stats().sftx >= 0)
+print(lora.stats().sfrx >= 0)
+print(lora.stats().tx_trials >= 1)

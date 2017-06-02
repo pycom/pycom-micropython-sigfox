@@ -5,7 +5,7 @@
 2.1 Intro
 =========
 
-Do you have your basic setup working? Then it's time to look at all the ways you can use and interact with your board. We'll look at some more features of Pymakr and see how we can use telnet, FTP and how to reset the board.
+Do you have your basic setup working? Then it's time to look at all the ways you can use and interact with your board. We'll look at some more features of the Pymakr Plugin and see how we can use telnet, FTP and how to reset the board.
 
 Contents
 
@@ -14,7 +14,7 @@ Contents
 - :ref:`2.4 Local file system and FTP access <pycom_filesystem>`
 - :ref:`2.5 Boot modes and safe boot <safeboot>`
 - :ref:`2.6 Interrupt handling <pycom_interrupt_handling>`
-- :ref:`2.7 Pymakr IDE <pymakr_ide>`
+- :ref:`2.7 Pymakr Plugin <pymakr_ide>`
 
 
 .. _main_features:
@@ -42,7 +42,7 @@ All members in the current family of Pycom modules are powered by the ESP32, off
 - :class:`LoRa <.LoRa>` (only available in the LoPy)
 - :mod:`hashlib <.uhashlib>` MD5, SHA1, SHA256, SHA384 and SHA512 hash algorithms
 - :class:`AES encryption <.AES>`
-- :mod:`SSL/TLS support <.ussl>``
+- :mod:`SSL/TLS support <.ussl>`
 
 Click the links in the list above to see more details on that feature.
 For all available modules and libraries, please visit the :ref:`Firmware API
@@ -97,6 +97,8 @@ The following control commands are available in REPL:
 - ``Ctrl-E`` enters 'paste mode' that allows you to copy and paste chuncks of text. Finish using ``Ctrl-d``
 
 Instructions on how to connect can be found in the two chapters below. A small tutorial on :ref:`how to use the REPL <repl_tutorial>` is available in chapter :ref:`3. Tutorials and Examples`
+
+.. _pycom_telnet_connect:
 
 Mac OS X and Linux
 -------------------
@@ -194,7 +196,7 @@ data connections are possible. Other FTP clients might behave in a similar way.
     :scale: 60 %
 
 .. image:: images/filezilla-settings-2.png
-    :alt: Filezilla 1
+    :alt: Filezilla 2
     :align: center
     :scale: 60 %
 

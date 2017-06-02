@@ -17,6 +17,7 @@ python esptool.py '--chip', 'esp32', '--port', /dev/ttyUSB0, '--baud', '921600',
 
 """
 
+from esptool import ESP32ROM
 import os
 import sys
 import struct
@@ -30,6 +31,7 @@ import csv
 
 working_threads = {}
 macs_db = None
+wmacs = {}
 
 DB_MAC_UNUSED = 0
 DB_MAC_ERROR = -1
@@ -46,8 +48,8 @@ def open_macs_db(db_filename):
 def fetch_MACs(number):
     return [x[0].encode('ascii', 'ignore') for x in macs_db.execute("select mac from macs where status = 0 order by rowid asc limit ?", (number,)).fetchall()]
 
-def set_mac_status(mac, status):
-    macs_db.execute("update macs set status = ?, last_touch = strftime('%s','now') where mac = ?", (status, mac))
+def set_mac_status(mac, wmac, status):
+    macs_db.execute("update macs set status = ?, last_touch = strftime('%s','now'), wmac = ? where mac = ?", (status, wmac, mac))
     macs_db.commit()
 
 def print_exception(e):
@@ -70,6 +72,62 @@ def erase_flash(port, command):
 
     # hack to give feedback to the main thread
     if process.returncode != 0 or num_erases != 1:
+        working_threads[port] = None
+
+def read_wlan_mac(port, command):
+    global working_threads
+    global wmacs
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    mac_read = False
+
+    # poll the process for new output until finished
+    while True:
+        nextline = process.stdout.readline()
+        if nextline == '' and process.poll() != None:
+            break
+        if 'MAC: ' in nextline:
+            wmacs[port] = nextline[5:-1].replace(":", "-").upper()
+            sys.stdout.write('MAC address %s read OK on port %s\n' % (nextline[5:-1], port))
+            mac_read = True
+        sys.stdout.flush()
+
+    # hack to give feedback to the main thread
+    if process.returncode != 0 or not mac_read:
+        working_threads[port] = None
+
+# # read the MAC address
+#         for port in cmd_args.ports:
+
+#             print("Reading MAC address in port %s" % port)
+#             process = subprocess.Popen(['python', 'esptool.py', '--port', port, 'read_mac'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+#             # poll the process for new output until finished
+#             while True:
+#                 nextline = process.stdout.readline()
+#                 if nextline == '' and process.poll() != None:
+#                     break
+#                 if 'MAC: ' in nextline:
+#                     print(nextline[5:-1])
+#                     wmacs[port] = nextline[5:-1].replace(":", "-").upper()
+#                     print(wmacs)
+
+
+def set_vdd_sdio_voltage(port, command):
+    global working_threads
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    # poll the process for new output until finished
+    while True:
+        nextline = process.stdout.readline()
+        if nextline == '' and process.poll() != None:
+            break
+        if 'VDD_SDIO setting complete' in nextline:
+            sys.stdout.write('Board VDD_SDIO Voltage configured OK on port %s\n' % port)
+        sys.stdout.flush()
+
+    # hack to give feedback to the main thread
+    if process.returncode != 0:
         working_threads[port] = None
 
 def flash_firmware(port, command):
@@ -157,6 +215,7 @@ def run_qa_test(port, board):
 def main():
     cmd_parser = argparse.ArgumentParser(description='Flash the ESP32 and optionally run a small test on it.')
     cmd_parser.add_argument('--esptool', default=None, help='the path to the esptool')
+    cmd_parser.add_argument('--espefuse', default=None, help='the path to the espefuse')
     cmd_parser.add_argument('--boot', default=None, help='the path to the bootloader binary')
     cmd_parser.add_argument('--table', default=None, help='the path to the partitions table')
     cmd_parser.add_argument('--app', default=None, help='the path to the application binary')
@@ -165,9 +224,11 @@ def main():
     cmd_parser.add_argument('--erase', default=None, help='set to True to erase the boards first')
     cmd_parser.add_argument('--qa', action='store_true', help='just do some quality asurance test')
     cmd_parser.add_argument('--board', default='LoPy', help='identifies the board to be flashed and tested')
+    cmd_parser.add_argument('--revision', default='1', help='identifies the hardware revision')
     cmd_args = cmd_parser.parse_args()
 
     global working_threads
+    global wmacs
     output = ""
     ret = 0
     global_ret = 0
@@ -203,6 +264,77 @@ def main():
             print("=============================================================")
             global_ret = 1
     else:
+
+        print("Reading the WLAN MAC address...")
+        try:
+            for port in cmd_args.ports:
+                cmd = ['python', 'esptool.py', '--port', port, 'read_mac']
+                working_threads[port] = threading.Thread(target=read_wlan_mac, args=(port, cmd))
+                working_threads[port].start()
+
+            for port in cmd_args.ports:
+                if working_threads[port]:
+                    working_threads[port].join()
+            _ports = list(cmd_args.ports)
+            for port in _ports:
+                if working_threads[port] == None:
+                    print("Error reading the WLAN MAC on the board on port %s" % port)
+                    cmd_args.ports.remove(port)
+                    ret = 1
+
+        except Exception as e:
+            ret = 1
+            print_exception(e)
+
+        if ret == 0:
+            print("=============================================================")
+            print("WLAN MAC address reading succeeded :-)")
+            print("=============================================================")
+        else:
+            print("=============================================================")
+            print("ERROR: WLAN MAC address reading failed in some boards!")
+            print("=============================================================")
+            global_ret = 1
+
+        raw_input("Please reset all the boards and press enter to continue with the flashing process...")
+
+        if int(cmd_args.revision) > 1:
+            # program the efuse bits to set the VDD_SDIO voltage to 1.8V
+            try:
+                print('Configuring the VDD_SDIO voltage...')
+                for port in cmd_args.ports:
+                    cmd = ['python', cmd_args.espefuse, '--port', port, '--do-not-confirm', 'set_flash_voltage', '1.8V']
+                    working_threads[port] = threading.Thread(target=set_vdd_sdio_voltage, args=(port, cmd))
+                    working_threads[port].start()
+
+                for port in cmd_args.ports:
+                    if working_threads[port]:
+                        working_threads[port].join()
+                _ports = list(cmd_args.ports)
+                for port in _ports:
+                    if working_threads[port] == None:
+                        print("Error setting the VDD_SDIO voltage on the board on port %s" % port)
+                        cmd_args.ports.remove(port)
+                        ret = 1
+
+            except Exception as e:
+                ret = 1
+                print_exception(e)
+
+            if ret == 0:
+                print("=============================================================")
+                print("VDD_SDIO voltage setting succeeded :-)")
+                print("=============================================================")
+            else:
+                print("=============================================================")
+                print("ERROR: VDD_SDIO voltage setting failed in some boards!")
+                print("=============================================================")
+                global_ret = 1
+
+            raw_input("Please reset all the boards and press enter to continue with the flashing process...")
+            time.sleep(1.0)   # wait for the board to reset
+            working_threads = {}
+
         if cmd_args.erase:
             try:
                 print('Erasing flash memory... (will take a few seconds)')
@@ -254,7 +386,7 @@ def main():
                     i += 1
             for port in cmd_args.ports:
                 cmd = ['python', cmd_args.esptool, '--chip', 'esp32', '--port', port, '--baud', '921600',
-                       'write_flash', '-z', '--flash_mode', 'qio', '--flash_freq', '40m', '--flash_size', '4MB', '0x1000', cmd_args.boot,
+                       'write_flash', '-z', '--flash_mode', 'qio', '--flash_freq', '80m', '--flash_size', '8MB', '0x1000', cmd_args.boot,
                        '0x8000', cmd_args.table, '0x10000', cmd_args.app]
                 working_threads[port] = threading.Thread(target=flash_firmware, args=(port, cmd))
                 working_threads[port].start()
@@ -325,14 +457,14 @@ def main():
 
         # only do the MAC programming and MAC verificacion for the LoPy and SiPy
         if cmd_args.board == 'LoPy' or cmd_args.board == 'SiPy':
-            print("Waiting before programming the mac address...")
+            print("Waiting before programming the LPWAN MAC address...")
             time.sleep(3.5)   # wait for the board to reset
 
             working_threads = {}
 
             try:
                 for port in cmd_args.ports:
-                    set_mac_status(mac_per_port[port], DB_MAC_LOCK) # mark them as locked, so if the script fails and doesn't get to save, they wont be accidentally reused
+                    set_mac_status(mac_per_port[port], "", DB_MAC_LOCK) # mark them as locked, so if the script fails and doesn't get to save, they wont be accidentally reused
                     working_threads[port] = threading.Thread(target=flash_lpwan_mac, args=(port, mac_per_port[port]))
                     working_threads[port].start()
 
@@ -346,7 +478,7 @@ def main():
                         print("Error programing MAC address on port %s" % port)
                         cmd_args.ports.remove(port)
                         ret = 1
-                        set_mac_status(mac_per_port[port], DB_MAC_ERROR)
+                        set_mac_status(mac_per_port[port], wmacs[port], DB_MAC_ERROR)
 
             except Exception as e:
                 ret = 1
@@ -379,10 +511,10 @@ def main():
                 for port in cmd_args.ports:
                     if working_threads[port] == None:
                         ret = 1
-                        set_mac_status(mac_per_port[port], DB_MAC_ERROR)
+                        set_mac_status(mac_per_port[port], wmacs[port], DB_MAC_ERROR)
                         print("Error performing MAC address test on port %s" % port)
                     else:
-                        set_mac_status(mac_per_port[port], DB_MAC_OK)
+                        set_mac_status(mac_per_port[port], wmacs[port], DB_MAC_OK)
                         print("Final test OK on port %s, firmware version %s, MAC address %s" % (port, fw_version.number, mac_per_port[port]))
                         with open('%s_Flasher_Results.csv' % (cmd_args.board), 'ab') as csv_file:
                             csv_writer = csv.writer(csv_file, delimiter=',')

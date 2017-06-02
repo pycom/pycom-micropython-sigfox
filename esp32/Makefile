@@ -54,7 +54,7 @@ CFLAGS_XTENSA += -Og
 endif
 
 ifeq ($(OEM), 1)
-CFLAGS_XTENSA += -DOEM_VERSION
+CFLAGS_XTENSA += -DOEM_VERSION -mfix-esp32-psram-cache-issue
 endif
 
 CFLAGS = $(CFLAGS_XTENSA) -nostdlib -std=gnu99 -g3 -fstrict-volatile-bitfields -Iboards/$(BOARD)
@@ -68,12 +68,12 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        -lnet80211 -lphy -lpp -lrtc -llog -lsmartconfig -lwpa -lbtdm_app -lcxx -u __cxa_guard_dummy -lstdc++ \
        -lsigfox -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libm.a $(ESP_IDF_COMP_PATH)/newlib/lib/libc.a \
-       -lfreertos -ljson -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
-       -lxtensa-debug-module -lbt -lsdmmc -lrtc_clk sigfox/modsigfox.a
+       -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
+       -lxtensa-debug-module -lbt -lsdmmc -lsoc sigfox/modsigfox.a
 
 B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader \
          -L$(ESP_IDF_COMP_PATH)/esp32/lib -Lbootloader -llog -lcore -lbootloader_support \
-         -lspi_flash
+         -lspi_flash -lsoc -lmicro-ecc
 
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h $(BUILD)/pins_qstr.h

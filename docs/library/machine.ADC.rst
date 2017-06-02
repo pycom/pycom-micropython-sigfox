@@ -18,30 +18,43 @@ Constructors
 
 .. class:: ADC(id=0)
 
-   Create an ADC object, that will let you associate a channel
-   with a pin.
+   Create an ADC object, that will let you associate a channel with a pin.
    For more info check the :ref:`hardware section<hardware>`.
 
 Methods
 -------
 
-.. method:: adc.init()
+.. method:: adc.init(\*, bits=12)
 
    Enable the ADC block. This method is automatically called on object creation.
 
+      - ``bits`` can take values between 9 and 12 and selects the number of bits of resolution of the ADC block.
 .. method:: adc.deinit()
 
    Disable the ADC block.
 
-.. #todo: original documentation had an id here, but was removed to avoid confusion
+.. method:: adc.channel(\*, pin, attn=ADC.ATTN_0DB)
 
-.. method:: adc.channel(\*, pin)
+   Create an analog pin.
 
-   Create an analog pin. ``pin`` is a keyword-only string argument.
+      - ``pin`` is a keyword-only string argument. Valid pins are 'P13' to 'P20'.
+      - ``attn`` is the attenuation level. The supported values are: ``ADC.ATTN_0DB``, ``ADC.ATTN_2_5DB``, ``ADC.ATTN_6DB``, ``ADC.ATTN_11DB``
+
    Returns an instance of :class:`ADCChannel`. Example::
 
       # enable an ADC channel on P16
       apin = adc.channel(pin='P16')
+
+Constants
+---------
+
+.. data:: ADC.ATTN_0DB
+          ADC.ATTN_2_5DB
+          ADC.ATTN_6DB
+          ADC.ATTN_11DB
+
+   ADC channel attenuation values
+
 
 class ADCChannel --- read analog values from internal or external sources
 -------------------------------------------------------------------------
@@ -75,4 +88,5 @@ ADC channels are created using the ADC.channel method.
 
 .. warning::
 
-      ADC pin input range is 0-1.1V (being 4.4V the absolute maximum that they can withstand).
+      ADC pin input range is 0-1.1V. This maximum value can be increased up to 3.3V using the highest attenuation of 11dB.
+      DO NOT exceed the maximum of 3.3V in order to avoid damaging the device.

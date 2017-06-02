@@ -1,7 +1,7 @@
 .. currentmodule:: machine
 
 class PWM -- Pulse width modulation
-==================================
+===================================
 
 Quick usage example
 -------------------
@@ -32,7 +32,7 @@ Methods
     Returns an instance of :class:`PWMChannel`.
 
 class PWMChannel --- control a PWM channel
-=========================================================================
+==========================================
 
 Methods
 -------

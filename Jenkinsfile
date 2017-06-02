@@ -1,20 +1,60 @@
 def buildVersion
-def boards = ["LOPY", "WIPY"]
+def boards_to_build_1 = ["LOPY_868", "WIPY"]
+def boards_to_build_2 = ["LOPY_915", "SIPY"]
+def boards_to_test = ["LOPY_868", "WIPY"]
 
 node {
     stage('Checkout') { // get source
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --depth=1 --recursive -b esp-idf-2017-03-12 ssh://git@dev.pycom.io:2222/source/espidf2.git esp-idf'
+        sh 'git clone --depth=1 --recursive -b master ssh://git@dev.pycom.io:2222/source/espidf2.git esp-idf'
     }
-    stage('Build') { // build the cross compiler first
+
+    // build the primary boards that we test
+    stage('Build1') {
+        // build the cross compiler first
         sh '''cd mpy-cross;
         make all'''
 
         def parallelSteps = [:]
-        for (x in boards) {
+        for (x in boards_to_build_1) {
             def name = x
-            parallelSteps[name] = boardBuild(name)
+            def name_short = "LOPY"
+            def lora_band = ""
+            if (name == "LOPY_868") {
+                lora_band = " LORA_BAND=USE_BAND_868"
+            } else if (name == "LOPY_915") {
+                lora_band = " LORA_BAND=USE_BAND_915"
+            } else {
+                name_short = name
+            }
+            parallelSteps[name] = boardBuild(name, name_short, lora_band)
+        }
+        parallel parallelSteps
+
+        stash includes: '**/*.bin', name: 'binary'
+        stash includes: 'tests/**', name: 'tests'
+        stash includes: 'esp-idf/components/esptool_py/**', name: 'esp-idfTools'
+        stash includes: 'tools/**', name: 'tools'
+        stash includes: 'esp32/tools/**', name: 'esp32Tools'
+    }
+
+    // build the secondary boards just used for the release
+    stage('Build2') {
+
+        def parallelSteps = [:]
+        for (x in boards_to_build_2) {
+            def name = x
+            def name_short = "LOPY"
+            def lora_band = ""
+            if (name == "LOPY_868") {
+                lora_band = " LORA_BAND=USE_BAND_868"
+            } else if (name == "LOPY_915") {
+                lora_band = " LORA_BAND=USE_BAND_915"
+            } else {
+                name_short = name
+            }
+            parallelSteps[name] = boardBuild(name, name_short, lora_band)
         }
         parallel parallelSteps
 
@@ -28,7 +68,7 @@ node {
 
 stage ('Flash') {
     def parallelFlash = [:]
-    for (x in boards) {
+    for (x in boards_to_test) {
         def name = x
         parallelFlash[name] = flashBuild(name)
     }
@@ -37,9 +77,13 @@ stage ('Flash') {
 
 stage ('Test'){
     def parallelTests = [:]
-    for (x in boards) {
+    for (x in boards_to_test) {
         def name = x
-        parallelTests[name] = testBuild(name)
+        def board_name = name
+        if (name == "LOPY_868" || name == "LOPY_915") {
+            board_name = "LOPY"
+        }
+        parallelTests[board_name] = testBuild(board_name)
     }
     parallel parallelTests
 }
@@ -49,7 +93,7 @@ def testBuild(name) {
         node(name) {
             sleep(5) //Delay to skip all bootlog
             dir('tests') {
-                timeout(10) {
+                timeout(30) {
                     sh '''./run-tests --target=esp32-''' + name +''' --device /dev/ttyUSB0'''
                 }
             }
@@ -60,8 +104,12 @@ def testBuild(name) {
 }
 
 def flashBuild(name) {
+    def node_name = name
+    if (name != "WIPY") {
+        node_name = "LOPY"
+    }
     return {
-        node(name) {
+        node(node_name) {
             sh 'rm -rf *'
             unstash 'binary'
             unstash 'esp-idfTools'
@@ -78,17 +126,27 @@ def flashBuild(name) {
     }
 }
 
-def boardBuild(name) {
+def boardBuild(name, name_short, lora_band) {
+    def app_bin = name.toLowerCase() + '.bin'
     return {
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=boot -j2 BOARD=''' + name
+        make TARGET=boot -j2 BOARD=''' + name_short + lora_band
 
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=app -j2 BOARD=''' + name
+        make TARGET=app -j2 BOARD=''' + name_short + lora_band
+
+        sh '''cd esp32/build/'''+ name +'''/release;
+        mkdir firmware_package;
+        cd firmware_package;
+        cp ../bootloader/bootloader.bin .;
+        cp ../lib/partitions.bin .;
+        cp ../../../../boards/''' + name_short + '''/''' + name + '''/script .;
+        cp ../''' + app_bin + ''' .;
+        tar -cvzf ''' + name + '''.tar.gz   bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
