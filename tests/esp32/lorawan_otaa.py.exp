@@ -62,12 +62,14 @@ Packet sent
 Packet received
 b'Sending pk #0'
 <class 'LoRa'>
+Packet received
+b'Sending pk #1'
 13
 <class 'LoRa'>
 Packet sent
-Packet received
-b'Sending pk #1'
 <class 'LoRa'>
+Packet received
+b'Sending pk #0'
 13
 <class 'tuple'>
 Exception
