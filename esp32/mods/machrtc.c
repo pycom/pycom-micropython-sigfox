@@ -189,19 +189,6 @@ STATIC mp_obj_t mach_rtc_now (mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_rtc_now_obj, mach_rtc_now);
 
-// calibration(None)
-// calibration(cal)
-// When an integer argument is provided, set the calibration value;
-//      otherwise return calibration value
-mp_obj_t mach_rtc_calibration(mp_uint_t n_args, const mp_obj_t *args) {
-    if (n_args == 2) {
-        return mp_const_none;
-    } else {
-        return mp_obj_new_int(0);
-    }
-}
-MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mach_rtc_calibration_obj, 1, 2, mach_rtc_calibration);
-
 STATIC mp_obj_t mach_rtc_ntp_sync(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_server,           MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = mp_const_none} },
@@ -234,7 +221,6 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_rtc_ntp_sync_obj, 1, mach_rtc_ntp_sync);
 STATIC const mp_map_elem_t mach_rtc_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&mach_rtc_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_now),                 (mp_obj_t)&mach_rtc_now_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_calibration),         (mp_obj_t)&mach_rtc_calibration_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ntp_sync),            (mp_obj_t)&mach_rtc_ntp_sync_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_INTERNAL_RC),         MP_OBJ_NEW_SMALL_INT(RTC_SOURCE_INTERNAL_RC) },
