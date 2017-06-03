@@ -40,15 +40,7 @@ STATIC mpsleep_reset_cause_t mpsleep_reset_cause = MPSLEEP_PWRON_RESET;
 void mpsleep_init0 (void) {
     // check the reset casue (if it's soft reset, leave it as it is)
     switch (rtc_get_reset_reason(0)) {
-        case SW_RESET:
-            mpsleep_reset_cause = MPSLEEP_HARD_RESET;
-            break;
-        case OWDT_RESET:
         case TG0WDT_SYS_RESET:
-        case TG1WDT_SYS_RESET:
-        case RTCWDT_SYS_RESET:
-        case TGWDT_CPU_RESET:
-        case RTCWDT_CPU_RESET:
             mpsleep_reset_cause = MPSLEEP_WDT_RESET;
             break;
         case DEEPSLEEP_RESET:
@@ -56,6 +48,9 @@ void mpsleep_init0 (void) {
             break;
         case RTCWDT_BROWN_OUT_RESET:
             mpsleep_reset_cause = MPSLEEP_BROWN_OUT_RESET;
+            break;
+        case TG1WDT_SYS_RESET:      // machine.reset()
+            mpsleep_reset_cause = MPSLEEP_HARD_RESET;
             break;
         case POWERON_RESET:
         case RTCWDT_RTC_RESET:      // silicon bug after power on
