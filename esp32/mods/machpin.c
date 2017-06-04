@@ -42,11 +42,10 @@
 DECLARE PRIVATE FUNCTIONS
 ******************************************************************************/
 STATIC pin_obj_t *pin_find_named_pin(const mp_obj_dict_t *named_pins, mp_obj_t name);
-STATIC pin_obj_t *pin_find_pin_by_num (const mp_obj_dict_t *named_pins, uint pin_num);
 STATIC void pin_obj_configure (const pin_obj_t *self);
 STATIC void pin_validate_mode (uint mode);
 STATIC void pin_validate_pull (uint pull);
-static IRAM_ATTR void machpin_intr_process (void* arg);
+STATIC void machpin_intr_process (void* arg);
 
 /******************************************************************************
 DEFINE CONSTANTS
@@ -138,6 +137,23 @@ void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, i
 //    pyb_sleep_add ((const mp_obj_t)self, (WakeUpCB_t)pin_obj_configure);
 }
 
+void pin_irq_enable (mp_obj_t self_in) {
+    gpio_intr_enable(((pin_obj_t *)self_in)->pin_number);
+}
+
+void pin_irq_disable (mp_obj_t self_in) {
+    gpio_intr_disable(((pin_obj_t *)self_in)->pin_number);
+}
+
+int pin_irq_flags (mp_obj_t self_in) {
+    return 0;
+}
+
+void pin_extint_register(pin_obj_t *self, uint32_t trigger, uint32_t priority) {
+    self->irq_trigger = trigger;
+    pin_obj_configure(self);
+}
+
 void pin_deassign (pin_obj_t *self) {
     // de-assign the alternate functions
     if (self->af_in >= 0) {
@@ -173,69 +189,14 @@ uint32_t pin_get_value (const pin_obj_t* self) {
     return gpio_get_level(self->pin_number);
 }
 
-STATIC void pin_interrupt_queue_handler(void *arg) {
-    // this function will be called by the interrupt thread
-    pin_obj_t *pin = arg;
-    if (pin->handler != mp_const_none) {
-        mp_call_function_1(pin->handler, pin->handler_arg);
-    }
-}
-
-static IRAM_ATTR void call_interrupt_handler (pin_obj_t *pin) {
-    if (pin->handler) {
-        if (pin->handler_arg == NULL) {
-            // do a direct call (this means the pin has a C interupt handler)
-            ((void(*)(void))pin->handler)();
-        } else {
-            // pass it to the queue
-            mp_irq_queue_interrupt(pin_interrupt_queue_handler, pin);
+IRAM_ATTR pin_obj_t *pin_find_pin_by_num (const mp_obj_dict_t *named_pins, uint pin_num) {
+    mp_map_t *named_map = mp_obj_dict_get_map((mp_obj_t)named_pins);
+    for (uint i = 0; i < named_map->used; i++) {
+        if ((((pin_obj_t *)named_map->table[i].value)->pin_number == pin_num)) {
+            return named_map->table[i].value;
         }
     }
-}
-
-static IRAM_ATTR void machpin_intr_process (void* arg) {
-    uint32_t gpio_num = 0;
-    uint32_t mask;
-
-    uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);
-    uint32_t gpio_intr_status_h = READ_PERI_REG(GPIO_STATUS1_REG);
-
-#ifdef MICROPY_LPWAN_DIO_PIN_NUM
-    // fast path for the LPWAN DIO interrupt
-    if (gpio_intr_status & (1 << MICROPY_LPWAN_DIO_PIN_NUM)) {
-        ((void(*)(void))MICROPY_LPWAN_DIO_PIN.handler)();
-
-        // clear this bit from the interrupt status
-        gpio_intr_status &= ~(1 << MICROPY_LPWAN_DIO_PIN_NUM);
-        // clear the interrupt
-        SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, (1 << MICROPY_LPWAN_DIO_PIN_NUM));
-    }
-#endif
-
-    mask = 1;
-    while (mask) {
-        if (gpio_intr_status & mask) {
-            pin_obj_t *self = (pin_obj_t *)pin_find_pin_by_num(&pin_cpu_pins_locals_dict, gpio_num);
-            call_interrupt_handler(self);
-        }
-        gpio_num++;
-        mask <<= 1;
-    }
-
-    // now do the same with the high portion
-    mask = 1;
-    while (mask) {
-        if (gpio_intr_status_h & mask) {
-            pin_obj_t *self = (pin_obj_t *)pin_find_pin_by_num(&pin_cpu_pins_locals_dict, gpio_num);
-            call_interrupt_handler(self);
-        }
-        gpio_num++;
-        mask <<= 1;
-    }
-
-    // clear the interrupts
-    SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, gpio_intr_status);
-    SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, gpio_intr_status_h);
+    return NULL;
 }
 
 /******************************************************************************
@@ -246,16 +207,6 @@ STATIC pin_obj_t *pin_find_named_pin(const mp_obj_dict_t *named_pins, mp_obj_t n
     mp_map_elem_t *named_elem = mp_map_lookup(named_map, name, MP_MAP_LOOKUP);
     if (named_elem != NULL && named_elem->value != NULL) {
         return named_elem->value;
-    }
-    return NULL;
-}
-
-STATIC IRAM_ATTR pin_obj_t *pin_find_pin_by_num (const mp_obj_dict_t *named_pins, uint pin_num) {
-    mp_map_t *named_map = mp_obj_dict_get_map((mp_obj_t)named_pins);
-    for (uint i = 0; i < named_map->used; i++) {
-        if ((((pin_obj_t *)named_map->table[i].value)->pin_number == pin_num)) {
-            return named_map->table[i].value;
-        }
     }
     return NULL;
 }
@@ -287,32 +238,81 @@ STATIC void pin_obj_configure (const pin_obj_t *self) {
     }
 }
 
-void pin_irq_enable (mp_obj_t self_in) {
-    gpio_intr_enable(((pin_obj_t *)self_in)->pin_number);
-}
-
-void pin_irq_disable (mp_obj_t self_in) {
-    gpio_intr_disable(((pin_obj_t *)self_in)->pin_number);
-}
-
-int pin_irq_flags (mp_obj_t self_in) {
-    return 0;
-}
-
-void pin_extint_register(pin_obj_t *self, uint32_t trigger, uint32_t priority) {
-    self->irq_trigger = trigger;
-    pin_obj_configure(self);
-}
-
 STATIC void pin_validate_mode (uint mode) {
     if (mode != GPIO_MODE_INPUT && mode != GPIO_MODE_OUTPUT && mode != GPIO_MODE_INPUT_OUTPUT_OD) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
     }
 }
+
 STATIC void pin_validate_pull (uint pull) {
     if (pull != MACHPIN_PULL_UP && pull != MACHPIN_PULL_DOWN) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
     }
+}
+
+STATIC void pin_interrupt_queue_handler(void *arg) {
+    // this function will be called by the interrupt thread
+    pin_obj_t *pin = arg;
+    if (pin->handler != mp_const_none) {
+        mp_call_function_1(pin->handler, pin->handler_arg);
+    }
+}
+
+STATIC IRAM_ATTR void call_interrupt_handler (pin_obj_t *pin) {
+    if (pin->handler) {
+        if (pin->handler_arg == NULL) {
+            // do a direct call (this means the pin has a C interupt handler)
+            ((void(*)(void))pin->handler)();
+        } else {
+            // pass it to the queue
+            mp_irq_queue_interrupt(pin_interrupt_queue_handler, pin);
+        }
+    }
+}
+
+STATIC IRAM_ATTR void machpin_intr_process (void* arg) {
+    uint32_t gpio_num = 0;
+    uint32_t mask;
+
+    uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);
+    uint32_t gpio_intr_status_h = READ_PERI_REG(GPIO_STATUS1_REG);
+
+#ifdef MICROPY_LPWAN_DIO_PIN_NUM
+    // fast path for the LPWAN DIO interrupt
+    if (gpio_intr_status & (1 << MICROPY_LPWAN_DIO_PIN_NUM)) {
+        ((void(*)(void))MICROPY_LPWAN_DIO_PIN.handler)();
+
+        // clear this bit from the interrupt status
+        gpio_intr_status &= ~(1 << MICROPY_LPWAN_DIO_PIN_NUM);
+        // clear the interrupt
+        SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, (1 << MICROPY_LPWAN_DIO_PIN_NUM));
+    }
+#endif
+
+    mask = 1;
+    while (gpio_num < 32) {
+        if (gpio_intr_status & mask) {
+            pin_obj_t *self = (pin_obj_t *)pin_find_pin_by_num(&pin_cpu_pins_locals_dict, gpio_num);
+            call_interrupt_handler(self);
+        }
+        gpio_num++;
+        mask <<= 1;
+    }
+
+    // now do the same with the high portion
+    mask = 1;
+    while (gpio_num < 40) {
+        if (gpio_intr_status_h & mask) {
+            pin_obj_t *self = (pin_obj_t *)pin_find_pin_by_num(&pin_cpu_pins_locals_dict, gpio_num);
+            call_interrupt_handler(self);
+        }
+        gpio_num++;
+        mask <<= 1;
+    }
+
+    // clear the interrupts
+    SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, gpio_intr_status);
+    SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, gpio_intr_status_h);
 }
 
 /******************************************************************************/

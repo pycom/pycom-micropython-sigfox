@@ -30,6 +30,7 @@ Reset related functions
 
    Get the reset cause. See :ref:`constants <machine_constants>` for the possible return values.
 
+
 Interrupt related functions
 ---------------------------
 
@@ -119,6 +120,27 @@ Power related functions
        then the device will wake up after that period of time, otherwise it will remain in deep sleep
        until the reset button is pressed.
 
+    .. function:: pin_deepsleep_wakeup(pins, mode, enable_pull)
+
+       Configure pins to wake up from deep sleep mode. The pins which have this capability are:
+       ``P2``, ``P3``, ``P4``, ``P6``, ``P8`` to ``P10`` and ``P13`` to ``P23``.
+
+       The arguments are:
+
+            - ``pins`` a list or tuple containing the GPIO to setup for deepsleep wakeup.
+            - ``mode`` selects the way the configure GPIOs can wake up the module. The possible
+              values are: ``machine.WAKEUP_ALL_LOW`` and ``machine.WAKEUP_ANY_HIGH``.
+            - ``enable_pull`` if set to ``True`` keeps the pull up or pull down resistors enabled
+              during deep sleep. If this variable is set to True, then ULP or capactive touch wakeup
+              cannot be used in combination with GPIO wakeup.
+
+    .. function:: wake_reason()
+
+        Get the wake reason. See :ref:`constants <machine_constants>` for the possible return values.
+        Returns a tuple of the form: ``(wake_reason, gpio_list)``.
+        When the wakeup reason is either GPIO or touch pad, then the second element of the tuple is a
+        list with GPIOs that generated the wakeup.
+
 .. only:: port_wipy
 
     .. function:: wake_reason()
@@ -199,10 +221,25 @@ Miscellaneous functions
   ---------
 
   .. data:: machine.PWRON_RESET
+            machine.HARD_RESET
+            machine.WDT_RESET
+            machine.DEEPSLEEP_RESET
             machine.SOFT_RESET
+            machine.BROWN_OUT_RESET
 
       reset causes
 
+  .. data:: machine.PWRON_WAKE
+            machine.PIN_WAKE
+            machine.RTC_WAKE
+            machine.ULP_WAK
+
+      wake reasons
+
+  .. data:: machine.WAKEUP_ALL_LOW
+            machine.WAKEUP_ANY_HIGH
+
+      Pin wakeup modes
 
 .. only:: port_wipy
 

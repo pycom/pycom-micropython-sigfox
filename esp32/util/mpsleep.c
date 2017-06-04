@@ -14,7 +14,10 @@
 #include "py/runtime.h"
 #include "py/mphal.h"
 
+#include "sdkconfig.h"
 #include "rom/rtc.h"
+#include "esp_system.h"
+#include "esp_deep_sleep.h"
 #include "mpsleep.h"
 
 /******************************************************************************
@@ -22,13 +25,14 @@
  ******************************************************************************/
 
 /******************************************************************************
- DECLARE PRIVATE TYPES
+ DEFINE PRIVATE TYPES
  ******************************************************************************/
 
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
 STATIC mpsleep_reset_cause_t mpsleep_reset_cause = MPSLEEP_PWRON_RESET;
+STATIC mpsleep_wake_reason_t mpsleep_wake_reason = MPSLEEP_PWRON_WAKE;
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -58,6 +62,21 @@ void mpsleep_init0 (void) {
             mpsleep_reset_cause = MPSLEEP_PWRON_RESET;
             break;
     }
+
+    // check the wakeup reason
+    switch (esp_deep_sleep_get_wakeup_cause()) {
+        case ESP_DEEP_SLEEP_WAKEUP_EXT0:
+        case ESP_DEEP_SLEEP_WAKEUP_EXT1:
+            mpsleep_wake_reason = MPSLEEP_GPIO_WAKE;
+            break;
+        case ESP_DEEP_SLEEP_WAKEUP_TIMER:
+            mpsleep_wake_reason = MPSLEEP_RTC_WAKE;
+            break;
+        case ESP_DEEP_SLEEP_WAKEUP_UNDEFINED:
+        default:
+            mpsleep_wake_reason = MPSLEEP_PWRON_WAKE;
+            break;
+    }
 }
 
 void mpsleep_signal_soft_reset (void) {
@@ -66,6 +85,10 @@ void mpsleep_signal_soft_reset (void) {
 
 mpsleep_reset_cause_t mpsleep_get_reset_cause (void) {
     return mpsleep_reset_cause;
+}
+
+mpsleep_wake_reason_t mpsleep_get_wake_reason (void) {
+    return mpsleep_wake_reason;
 }
 
 /******************************************************************************
