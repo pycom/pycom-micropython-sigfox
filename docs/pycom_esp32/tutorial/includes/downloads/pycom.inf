@@ -1,0 +1,60 @@
+; M-Stack CDC-ACM Windows INF file
+;
+; This file has been tested on Windows 7, 64-bit. It may or may not work on
+; Windows versions earlier than 7. Improvements and bug reports are welcome.
+;
+
+[Version]
+Signature="$Windows NT$"
+Class=Ports
+ClassGuid={4D36E978-E325-11CE-BFC1-08002BE10318}
+Provider=%MFGNAME%
+DriverVer=05/16/2014,1.0.0.18
+
+[Manufacturer]
+%MFGNAME%=DeviceList, NTx86, NTamd64, NTia64, NTarm
+
+
+[DeviceList.NTamd64]
+%DESC_CDC_PYSENSE% = DriverInstall, %VID_PID_PYSENSE_STRING%
+%DESC_CDC_PYTRACK% = DriverInstall, %VID_PID_PYTRACK_STRING%
+
+[DeviceList.NTx86]
+%DESC_CDC_PYSENSE% = DriverInstall, %VID_PID_PYSENSE_STRING%
+%DESC_CDC_PYTRACK% = DriverInstall, %VID_PID_PYTRACK_STRING%
+
+[DeviceList.NTia64]
+%DESC_CDC_PYSENSE% = DriverInstall, %VID_PID_PYSENSE_STRING%
+%DESC_CDC_PYTRACK% = DriverInstall, %VID_PID_PYTRACK_STRING%
+
+[DeviceList.NTarm]
+%DESC_CDC_PYSENSE% = DriverInstall, %VID_PID_PYSENSE_STRING%
+%DESC_CDC_PYTRACK% = DriverInstall, %VID_PID_PYTRACK_STRING%
+
+; For the DriverInstall sections below see:
+;   http://support.microsoft.com/kb/837637
+;   http://www.microchip.com/forums/m488342.aspx
+;
+; This INF file includes mdmcpq.inf, which is a standard Windows
+; INF file that you can find by searching for it recursively from
+; %WINDIR%. It's in the WinSxS folders. In that file, you can see
+; the symbols referenced here (eg: FakeModemCopyFileSection, etc).
+
+[DriverInstall.NT]
+include=mdmcpq.inf
+CopyFiles=FakeModemCopyFileSection
+
+[DriverInstall.NT.Services]
+include=mdmcpq.inf
+AddService=usbser, 0x00000002, LowerFilter_Service_Inst
+
+[DriverInstall.HW]
+include=mdmcpq.inf
+AddReg=LowerFilterAddReg
+
+[Strings]
+MFGNAME = "Pycom Ltd"
+DESC_CDC_PYSENSE = "Pysense"
+DESC_CDC_PYTRACK = "Pytrack"
+VID_PID_PYSENSE_STRING = "USB\VID_04D8&PID_F012"
+VID_PID_PYTRACK_STRING = "USB\VID_04D8&PID_F013"

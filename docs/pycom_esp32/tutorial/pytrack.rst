@@ -9,3 +9,4 @@ Pytrack is a location enabled version of the Expansion Board, intended for use i
    includes/pytrack-start.rst
    includes/pytrack-ref.rst
    includes/pytrack-examples.rst
+   includes/windows-7.rst

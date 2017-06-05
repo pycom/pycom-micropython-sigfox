@@ -30,3 +30,6 @@ in the **pycom-libraries** repository on Pycom's Github account `here <https://g
 
 .. include:: pytrack.rst
 
+.. note::
+
+	If you are using Windows 7 for either the Pysense or Pytrack, please see the following :ref:`section <windows_7_driver>` for the required drivers.
