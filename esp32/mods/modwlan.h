@@ -29,7 +29,9 @@ typedef enum {
     MODWLAN_OK = 0,
     MODWLAN_ERROR_INVALID_PARAMS = -1,
     MODWLAN_ERROR_TIMEOUT = -2,
-    MODWLAN_ERROR_UNKNOWN = -3,
+	MODWLAN_ERROR_CERTIFICATE = -3,
+	MODWLAN_ERROR_MEMORY_ALLOCATION = -4,
+    MODWLAN_ERROR_UNKNOWN = -5,
 } modwlan_Status_t;
 
 typedef struct _wlan_obj_t {

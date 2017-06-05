@@ -26,6 +26,8 @@ const char mpexception_os_operation_failed[]        = "the requested operation f
 const char mpexception_os_request_not_possible[]    = "the requested operation is not possible";
 const char mpexception_value_invalid_arguments[]    = "invalid argument(s) value";
 const char mpexception_num_type_invalid_arguments[] = "invalid argument(s) num/type";
+const char mpexception_value_invalid_certificates[] = "invalid certificate(s)";
+
 
 /******************************************************************************
 DECLARE PRIVATE DATA
