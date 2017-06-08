@@ -15,7 +15,7 @@ Contents
 - :ref:`2.5 Boot modes and safe boot <safeboot>`
 - :ref:`2.6 Interrupt handling <pycom_interrupt_handling>`
 - :ref:`2.7 Pymakr Plugin <pymakr_ide>`
-
+- :ref:`2.8 Updating Pysense and Pytrack firmware <pysense_pytrack_firmware>`
 
 .. _main_features:
 
@@ -291,7 +291,9 @@ The programmer can do whatever is needed inside the callback, such as creating n
 or even sending network packets. Just keep in mind that interrupts are processed sequentially,
 so try to keep the handlers as quick as possible in order to attend them all in a short time.
 
-Currently there are 2 classes supporting interrupts, there the :class:`Alarm <.Alarm>` class and the :class:`Pin <.Pin>`. Both classes provide the ``.callback()`` method that enables the interrupt and registers the given handler. More details about the usage along with examples can be found in their respective sections.
+Currently there are 2 classes supporting interrupts, there the :class:`Alarm <.Alarm>` class and the :class:`Pin <.Pin>`.
+Both classes provide the ``.callback()`` method that enables the interrupt and registers the given handler.
+More details about the usage along with examples can be found in their respective sections.
 
 .. note::
 
@@ -300,3 +302,7 @@ Currently there are 2 classes supporting interrupts, there the :class:`Alarm <.A
 .. _pymakr_ide:
 
 .. include:: pymakr.rst
+
+.. _pysense_pytrack_firmware:
+
+.. include:: pysensefirmware.rst
