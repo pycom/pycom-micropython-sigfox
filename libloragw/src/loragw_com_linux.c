@@ -289,6 +289,7 @@ int lgw_com_open_linux(void **com_target_ptr, const char *com_path) {
         x |= set_blocking_linux(fd, true);
         if (x != 0) {
             DEBUG_PRINTF("ERROR: failed to configure COM port %s\n", portname);
+            free(usb_device);
             return LGW_COM_ERROR;
         }
 
@@ -298,6 +299,7 @@ int lgw_com_open_linux(void **com_target_ptr, const char *com_path) {
         return LGW_COM_SUCCESS;
     }
 
+    free(usb_device);
     return LGW_COM_ERROR;
 }
 
@@ -310,9 +312,12 @@ int lgw_com_close_linux(void *com_target) {
     /*check input variables*/
     CHECK_NULL(com_target);
 
+    /* close file & deallocate file descriptor */
     usb_device = *(int*)com_target;
-
     a = close(usb_device);
+    free(com_target);
+
+    /* determine return code */
     if (a < 0) {
         DEBUG_PRINTF("ERROR: failed to close COM port - %s\n", strerror(errno));
         return LGW_COM_ERROR;

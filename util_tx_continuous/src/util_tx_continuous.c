@@ -186,7 +186,7 @@ int main(int argc, char **argv) {
                         g_pa = arg_u;
                     }
                 } else if (strcmp(long_options[option_index].name, "mod") == 0) {
-                    i = sscanf(optarg, "%s", arg_s);
+                    i = sscanf(optarg, "%63s", arg_s);
                     if ((i != 1) || ((strcmp(arg_s, "LORA") != 0) && (strcmp(arg_s, "FSK") != 0)  && (strcmp(arg_s, "CW") != 0))) {
                         printf("ERROR: argument parsing of --mod argument. Use -h to print help\n");
                         return EXIT_FAILURE;
@@ -410,7 +410,7 @@ int main(int argc, char **argv) {
     /* Recap all settings */
     printf("SX1301 library version: %s\n", lgw_version_info());
     if (strcmp(mod, "LORA") == 0) {
-        printf("Modulation: LORA SF:%d BW:%d kHz\n", sf, bw_khz);
+        printf("Modulation: LORA SF:%u BW:%u kHz\n", sf, bw_khz);
     } else if (strcmp(mod, "FSK") == 0) {
         printf("Modulation: FSK BR:%3.3f kbps FDEV:%d kHz BT:%d\n", br_kbps, fdev_khz, bt);
     } else if (strcmp(mod, "CW") == 0) {

@@ -234,7 +234,7 @@ int main(int argc, char **argv) {
                 break;
 
             case 'm': /* <str> Modulation type */
-                i = sscanf(optarg, "%s", arg_s);
+                i = sscanf(optarg, "%63s", arg_s);
                 if ((i != 1) || ((strcmp(arg_s, "LORA") != 0) && (strcmp(arg_s, "FSK")))) {
                     MSG("ERROR: invalid modulation type\n");
                     usage();

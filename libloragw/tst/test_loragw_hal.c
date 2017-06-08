@@ -435,7 +435,7 @@ int main(int argc, char **argv) {
             txpkt.payload[19] = 0xff & tx_cnt;
             i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
             j = 0;
-            printf("+++\nSending packet #%d, rf path %d, return %d\nstatus -> ", tx_cnt, txpkt.rf_chain, i);
+            printf("+++\nSending packet #%u, rf path %d, return %d\nstatus -> ", tx_cnt, txpkt.rf_chain, i);
             do {
                 ++j;
                 wait_ms(100);
