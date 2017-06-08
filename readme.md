@@ -8,8 +8,8 @@
 LoRa Gateway project
 =====================
 
-1. Core library: libloragw
----------------------------
+## 1. Core library: libloragw
+-----------------------------
 
 This directory contains the sources of the library to build a LoRa Picocell
 Gateway based on a Semtech LoRa multi-channel RF receiver (a.k.a. concentrator).
@@ -21,8 +21,8 @@ through a serial port.
 The library also comes with a bunch of basic tests programs that are used to 
 test the different sub-modules of the library.
 
-2. Helper programs
--------------------
+## 2. Helper programs
+---------------------
 
 Those programs are included in the project to provide examples on how to use 
 the HAL library, and to help the system builder test different parts of it.
@@ -56,15 +56,21 @@ for spectral measurement.
 
 This software is used to jump to the PicoCell Gateway bootloader for programming
 the MCU with a new firmware.
+Please refer to the readme of picoGW_mcu repository for more information about
+MCU flash programming.
 
 ### 2.6. util_chip_id ###
 
 This software is used to obtain the unique id of the PicoCell gateway (the
 64 bits unique id extracted from the STM32 unique id registers).
 
+## 4. User Guide
+----------------
 
-4. Changelog
--------------
+[A detailed PicoCell GW user guide is available here](http://www.semtech.com/images/datasheet/picocell_gateway_user_guide.pdf)
+
+## 5. Changelog
+---------------
 
 ### v0.1.0  ###
 
@@ -82,8 +88,8 @@ device path to be used to communicate with the concentrator board (tty...).
 * Initial release
 
 
-5. Legal notice
-----------------
+## 6. Legal notice
+------------------
 
 The information presented in this project documentation does not form part of 
 any quotation or contract, is believed to be accurate and reliable and may be 
