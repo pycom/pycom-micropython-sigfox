@@ -7,8 +7,8 @@
  * available at https://www.pycom.io/opensource/licensing
  */
 
-#ifndef PYBPIN_H_
-#define PYBPIN_H_
+#ifndef MACHPIN_H_
+#define MACHPIN_H_
 
 #include "gpio.h"
 
@@ -71,21 +71,18 @@ extern mp_obj_dict_t pin_exp_board_pins_locals_dict;
 extern const mp_obj_type_t pin_module_pins_obj_type;
 extern mp_obj_dict_t pin_module_pins_locals_dict;
 
-void pin_preinit(void);
-void pin_init0(void);
-void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, int value);
-pin_obj_t *pin_find(mp_obj_t user_obj);
-void pin_assign_pins_af (mp_obj_t *pins, uint32_t n_pins, uint32_t pull, uint32_t fn, uint32_t unit);
-uint8_t pin_find_peripheral_unit (const mp_obj_t pin, uint8_t fn, uint8_t type);
-uint8_t pin_find_peripheral_type (const mp_obj_t pin, uint8_t fn, uint8_t unit);
-int8_t pin_find_af_index (const pin_obj_t* pin, uint8_t fn, uint8_t unit, uint8_t type);
-uint32_t pin_get_value (const pin_obj_t* self);
-void pin_extint_register(pin_obj_t *self, uint32_t trigger, uint32_t priority);
-void machpin_register_irq_c_handler(pin_obj_t *self, void *handler);
-void pin_irq_enable (mp_obj_t self_in);
-void pin_irq_disable (mp_obj_t self_in);
-void pin_set_value (const pin_obj_t* self);
-uint32_t pin_get_value (const pin_obj_t* self);
-void pin_deassign (pin_obj_t *self);
+extern void pin_preinit(void);
+extern void pin_init0(void);
+extern void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, int value);
+extern pin_obj_t *pin_find(mp_obj_t user_obj);
+extern pin_obj_t *pin_find_pin_by_num (const mp_obj_dict_t *named_pins, uint pin_num);
+extern uint32_t pin_get_value (const pin_obj_t* self);
+extern void pin_extint_register(pin_obj_t *self, uint32_t trigger, uint32_t priority);
+extern void machpin_register_irq_c_handler(pin_obj_t *self, void *handler);
+extern void pin_irq_enable (mp_obj_t self_in);
+extern void pin_irq_disable (mp_obj_t self_in);
+extern void pin_set_value (const pin_obj_t* self);
+extern uint32_t pin_get_value (const pin_obj_t* self);
+extern void pin_deassign (pin_obj_t *self);
 
-#endif  // PYBPIN_H_
+#endif  // MACHPIN_H_

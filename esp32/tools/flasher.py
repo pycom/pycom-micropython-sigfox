@@ -96,22 +96,6 @@ def read_wlan_mac(port, command):
     if process.returncode != 0 or not mac_read:
         working_threads[port] = None
 
-# # read the MAC address
-#         for port in cmd_args.ports:
-
-#             print("Reading MAC address in port %s" % port)
-#             process = subprocess.Popen(['python', 'esptool.py', '--port', port, 'read_mac'], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-
-#             # poll the process for new output until finished
-#             while True:
-#                 nextline = process.stdout.readline()
-#                 if nextline == '' and process.poll() != None:
-#                     break
-#                 if 'MAC: ' in nextline:
-#                     print(nextline[5:-1])
-#                     wmacs[port] = nextline[5:-1].replace(":", "-").upper()
-#                     print(wmacs)
-
 
 def set_vdd_sdio_voltage(port, command):
     global working_threads

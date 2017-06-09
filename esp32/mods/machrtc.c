@@ -36,6 +36,7 @@ uint32_t sntp_update_period = 3600000; // in ms
 typedef struct _mach_rtc_obj_t {
     mp_obj_base_t base;
     mp_obj_t sntp_server_name;
+    bool   synced;
 } mach_rtc_obj_t;
 
 static RTC_DATA_ATTR uint64_t delta_from_epoch_til_boot;
@@ -52,13 +53,17 @@ void mach_rtc_set_us_since_epoch(uint64_t nowus) {
 
     // store the packet timestamp
     gettimeofday(&tv, NULL);
-    delta_from_epoch_til_boot = nowus - ((tv.tv_sec * 1000000) + tv.tv_usec);
+    delta_from_epoch_til_boot = nowus - (uint64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec);
+}
+
+void mach_rtc_synced (void) {
+    mach_rtc_obj.synced = true;
 }
 
 uint64_t mach_rtc_get_us_since_epoch(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return ((tv.tv_sec * 1000000) + tv.tv_usec) + delta_from_epoch_til_boot;
+    return (uint64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + delta_from_epoch_til_boot;
 };
 
 STATIC uint64_t mach_rtc_datetime_us(const mp_obj_t datetime) {
@@ -98,7 +103,7 @@ STATIC uint64_t mach_rtc_datetime_us(const mp_obj_t datetime) {
     } else {
         tm.tm_hour = mp_obj_get_int(items[3]);
     }
-    useconds += 1000000 * timeutils_seconds_since_epoch(tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    useconds += 1000000ull * timeutils_seconds_since_epoch(tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     return useconds;
 }
 
@@ -173,7 +178,7 @@ STATIC mp_obj_t mach_rtc_now (mp_obj_t self_in) {
 
     // get the time from the RTC
     useconds = mach_rtc_get_us_since_epoch();
-    timeutils_seconds_since_epoch_to_struct_time(useconds / 1000000, &tm);
+    timeutils_seconds_since_epoch_to_struct_time((useconds / 1000000ull), &tm);
 
     mp_obj_t tuple[8] = {
         mp_obj_new_int(tm.tm_year),
@@ -188,19 +193,6 @@ STATIC mp_obj_t mach_rtc_now (mp_obj_t self_in) {
     return mp_obj_new_tuple(8, tuple);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_rtc_now_obj, mach_rtc_now);
-
-// calibration(None)
-// calibration(cal)
-// When an integer argument is provided, set the calibration value;
-//      otherwise return calibration value
-mp_obj_t mach_rtc_calibration(mp_uint_t n_args, const mp_obj_t *args) {
-    if (n_args == 2) {
-        return mp_const_none;
-    } else {
-        return mp_obj_new_int(0);
-    }
-}
-MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mach_rtc_calibration_obj, 1, 2, mach_rtc_calibration);
 
 STATIC mp_obj_t mach_rtc_ntp_sync(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
@@ -217,6 +209,7 @@ STATIC mp_obj_t mach_rtc_ntp_sync(size_t n_args, const mp_obj_t *pos_args, mp_ma
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "update period cannot be shorter than 15 s"));
     }
 
+    mach_rtc_obj.synced = false;
     if (sntp_enabled()) {
         sntp_stop();
     }
@@ -231,11 +224,20 @@ STATIC mp_obj_t mach_rtc_ntp_sync(size_t n_args, const mp_obj_t *pos_args, mp_ma
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_rtc_ntp_sync_obj, 1, mach_rtc_ntp_sync);
 
+STATIC mp_obj_t mach_rtc_has_synced (mp_obj_t self_in) {
+    if (mach_rtc_obj.synced) {
+        return mp_const_true;
+    } else {
+        return mp_const_false;
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_rtc_has_synced_obj, mach_rtc_has_synced);
+
 STATIC const mp_map_elem_t mach_rtc_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&mach_rtc_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_now),                 (mp_obj_t)&mach_rtc_now_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_calibration),         (mp_obj_t)&mach_rtc_calibration_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ntp_sync),            (mp_obj_t)&mach_rtc_ntp_sync_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_synced),              (mp_obj_t)&mach_rtc_has_synced_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_INTERNAL_RC),         MP_OBJ_NEW_SMALL_INT(RTC_SOURCE_INTERNAL_RC) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_XTAL_32KHZ),          MP_OBJ_NEW_SMALL_INT(RTC_SOURCE_EXTERNAL_XTAL) },

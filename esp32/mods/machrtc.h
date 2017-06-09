@@ -13,6 +13,7 @@
 extern const mp_obj_type_t mach_rtc_type;
 
 void rtc_init0(void);
+void mach_rtc_synced (void);
 void mach_rtc_set_us_since_epoch(uint64_t nowus);
 uint64_t mach_rtc_get_us_since_epoch();
 
