@@ -65,8 +65,13 @@ Methods
 
         Can be used like: ::
 
-            
             rtc.ntp_sync("pool.ntp.org") # this is an example. You can select a more specific server according to your geographical location
+
+    .. method:: rtc.synced()
+
+        Returns ``True`` if the last ntp_sync has been completed, ``False`` otherwise::
+
+        rtc.synced()
 
 
     Constants
