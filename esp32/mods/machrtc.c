@@ -53,7 +53,7 @@ void mach_rtc_set_us_since_epoch(uint64_t nowus) {
 
     // store the packet timestamp
     gettimeofday(&tv, NULL);
-    delta_from_epoch_til_boot = nowus - ((tv.tv_sec * 1000000ull) + tv.tv_usec);
+    delta_from_epoch_til_boot = nowus - (uint64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec);
 }
 
 void mach_rtc_synced (void) {
@@ -63,7 +63,7 @@ void mach_rtc_synced (void) {
 uint64_t mach_rtc_get_us_since_epoch(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return ((tv.tv_sec * 1000000ull) + tv.tv_usec) + delta_from_epoch_til_boot;
+    return (uint64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + delta_from_epoch_til_boot;
 };
 
 STATIC uint64_t mach_rtc_datetime_us(const mp_obj_t datetime) {

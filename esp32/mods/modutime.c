@@ -37,7 +37,7 @@ STATIC mp_obj_t seconds_to_tuple_helper(mp_uint_t n_args, const mp_obj_t *args, 
     timeutils_struct_time_t tm;
     mp_time_t seconds;
     if (n_args == 0 || args[0] == mp_const_none) {
-        seconds = mach_rtc_get_us_since_epoch() / 1000000;
+        seconds = mach_rtc_get_us_since_epoch() / 1000000ull;
     } else {
         seconds = mp_obj_get_int(args[0]);
     }
@@ -128,26 +128,26 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(time_sleep_us_obj, time_sleep_us);
 STATIC mp_obj_t time_ticks_ms(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return mp_obj_new_int(((tv.tv_sec * 1000) + tv.tv_usec / 1000));
+    return mp_obj_new_int_from_uint(((tv.tv_sec * 1000) + tv.tv_usec / 1000));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_ms_obj, time_ticks_ms);
 
 STATIC mp_obj_t time_ticks_us(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return mp_obj_new_int(((tv.tv_sec * 1000000) + tv.tv_usec));
+    return mp_obj_new_int_from_uint(((uint64_t)(tv.tv_sec * 1000000ull) + tv.tv_usec));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_us_obj, time_ticks_us);
 
 STATIC mp_obj_t time_ticks_cpu(void) {
-   return mp_obj_new_int(get_timer_counter_value());
+   return mp_obj_new_int_from_uint(get_timer_counter_value());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_cpu_obj, time_ticks_cpu);
 
 STATIC mp_obj_t time_ticks_diff(mp_obj_t start_in, mp_obj_t end_in) {
    uint32_t start = mp_obj_get_int(start_in);
    uint32_t end = mp_obj_get_int(end_in);
-   return mp_obj_new_int((end - start));
+   return mp_obj_new_int_from_uint((end - start));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(time_ticks_diff_obj, time_ticks_diff);
 
@@ -155,7 +155,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(time_ticks_diff_obj, time_ticks_diff);
 /// Returns the number of seconds, as an integer, since 1/1/1970.
 STATIC mp_obj_t time_time(void) {
    // get date and time
-   return mp_obj_new_int(mach_rtc_get_us_since_epoch() / 1000000);
+   return mp_obj_new_int_from_uint(mach_rtc_get_us_since_epoch() / 1000000ull);
 }
 MP_DEFINE_CONST_FUN_OBJ_0(time_time_obj, time_time);
 
