@@ -21,7 +21,7 @@ LIBS := -lloragw -lrt -lm
 
 ### general build targets
 
-all: libloragw.a test_loragw_com test_loragw_reg test_loragw_hal test_loragw_cal
+all: libloragw.a test_loragw_reg test_loragw_hal test_loragw_cal
 
 clean:
 	rm -f libloragw.a
@@ -44,10 +44,8 @@ inc/config.h: ../VERSION library.cfg
 	@echo "	#define DEBUG_AUX	$(DEBUG_AUX)" >> $@
 	@echo "	#define DEBUG_COM	$(DEBUG_COM)" >> $@
 	@echo "	#define DEBUG_REG	$(DEBUG_REG)" >> $@
+	@echo "	#define DEBUG_MCU	$(DEBUG_MCU)" >> $@
 	@echo "	#define DEBUG_HAL	$(DEBUG_HAL)" >> $@
-	@echo "	#define DEBUG_GPS	$(DEBUG_GPS)" >> $@
-	@echo "	#define DEBUG_GPIO	$(DEBUG_GPIO)" >> $@
-	@echo "	#define DEBUG_LBT	$(DEBUG_LBT)" >> $@
 	# end of file
 	@echo "#endif" >> $@
 	@echo "*** Configuration seems ok ***"
@@ -66,12 +64,15 @@ $(OBJDIR)/loragw_com_linux.o: src/loragw_com_linux.c $(INCLUDES) inc/config.h | 
 $(OBJDIR)/loragw_com.o: src/loragw_com.c $(INCLUDES) inc/config.h | $(OBJDIR)
 	$(CC) -c $(CFLAGS) $< -o $@
 
+$(OBJDIR)/loragw_mcu.o: src/loragw_mcu.c $(INCLUDES) inc/config.h | $(OBJDIR)
+	$(CC) -c $(CFLAGS) $< -o $@
+
 $(OBJDIR)/loragw_hal.o: src/loragw_hal.c $(INCLUDES) src/arb_fw.var src/agc_fw.var src/cal_fw.var inc/config.h | $(OBJDIR)
 	$(CC) -c $(CFLAGS) $< -o $@
 
 ### static library
 
-libloragw.a: $(OBJDIR)/loragw_hal.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_com.o $(OBJDIR)/loragw_com_linux.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_radio.o
+libloragw.a: $(OBJDIR)/loragw_hal.o $(OBJDIR)/loragw_mcu.o $(OBJDIR)/loragw_reg.o $(OBJDIR)/loragw_com.o $(OBJDIR)/loragw_com_linux.o $(OBJDIR)/loragw_aux.o $(OBJDIR)/loragw_radio.o
 	$(AR) rcs $@ $^
 
 ### test programs

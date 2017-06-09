@@ -10,7 +10,6 @@ Description:
     Configure LoRa concentrator and record received packets in a log file
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
@@ -36,7 +35,6 @@ Maintainer: Sylvain Miermont
 
 #include "parson.h"
 #include "loragw_hal.h"
-
 #include "loragw_reg.h"
 
 /* -------------------------------------------------------------------------- */
@@ -44,6 +42,11 @@ Maintainer: Sylvain Miermont
 
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
 #define MSG(args...)    fprintf(stderr,"loragw_pkt_logger: " args) /* message that is destined to the user */
+
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
+
+#define COM_PATH_DEFAULT "/dev/ttyACM0"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
@@ -78,6 +81,11 @@ void usage (void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+static void exit_cleanup(void) {
+    MSG("INFO: Stopping concentrator\n");
+    lgw_stop();
+}
 
 static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
@@ -176,15 +184,10 @@ int parse_SX1301_configuration(const char * conf_file) {
             val = json_object_dotget_value(conf, param_name);
             if (json_value_get_type(val) == JSONBoolean) {
                 rfconf.tx_enable = (bool)json_value_get_boolean(val);
-                if (rfconf.tx_enable == true) {
-                    /* tx notch filter frequency to be set */
-                    snprintf(param_name, sizeof param_name, "radio_%i.tx_notch_freq", i);
-                    rfconf.tx_notch_freq = (uint32_t)json_object_dotget_number(conf, param_name);
-                }
             } else {
                 rfconf.tx_enable = false;
             }
-            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d, tx_notch_freq %u\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable, rfconf.tx_notch_freq);
+            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxrf_setconf(i, rfconf) != LGW_HAL_SUCCESS) {
@@ -309,26 +312,19 @@ int parse_SX1301_configuration(const char * conf_file) {
             bw = (uint32_t)json_object_dotget_number(conf, "chan_FSK.bandwidth");
             if      (bw <= 7800) {
                 ifconf.bandwidth = BW_7K8HZ;
-            }
-            else if (bw <= 15600) {
+            } else if (bw <= 15600) {
                 ifconf.bandwidth = BW_15K6HZ;
-            }
-            else if (bw <= 31200) {
+            } else if (bw <= 31200) {
                 ifconf.bandwidth = BW_31K2HZ;
-            }
-            else if (bw <= 62500) {
+            } else if (bw <= 62500) {
                 ifconf.bandwidth = BW_62K5HZ;
-            }
-            else if (bw <= 125000) {
+            } else if (bw <= 125000) {
                 ifconf.bandwidth = BW_125KHZ;
-            }
-            else if (bw <= 250000) {
+            } else if (bw <= 250000) {
                 ifconf.bandwidth = BW_250KHZ;
-            }
-            else if (bw <= 500000) {
+            } else if (bw <= 500000) {
                 ifconf.bandwidth = BW_500KHZ;
-            }
-            else {
+            } else {
                 ifconf.bandwidth = BW_UNDEFINED;
             }
             ifconf.datarate = (uint32_t)json_object_dotget_number(conf, "chan_FSK.datarate");
@@ -405,16 +401,17 @@ void open_log(void) {
 /* describe command line options */
 void usage(void) {
     printf("*** Library version information ***\n%s\n\n", lgw_version_info());
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -r <int> rotate log file every N seconds (-1 disable log rotation)\n");
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -d <path> COM device to be used to access the concentrator board\n");
+    printf("            => default path: " COM_PATH_DEFAULT "\n");
+    printf(" -r <int> rotate log file every N seconds (-1 disable log rotation)\n");
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int i, j; /* loop and temporary variables */
     struct timespec sleep_time = {0, 3000000}; /* 3 ms */
 
@@ -437,13 +434,23 @@ int main(int argc, char **argv)
     struct timespec fetch_time;
     char fetch_timestamp[30];
     struct tm * x;
-    lgw_connect(false);
+
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
+
     /* parse command line options */
-    while ((i = getopt (argc, argv, "hr:")) != -1) {
+    while ((i = getopt (argc, argv, "hr:d:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
+                break;
+
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
 
             case 'r':
@@ -461,6 +468,9 @@ int main(int argc, char **argv)
         }
     }
 
+    /* register function to be called for exit cleanups */
+    atexit(exit_cleanup);
+
     /* configure signal handling */
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
@@ -468,6 +478,13 @@ int main(int argc, char **argv)
     sigaction(SIGQUIT, &sigact, NULL);
     sigaction(SIGINT, &sigact, NULL);
     sigaction(SIGTERM, &sigact, NULL);
+
+    /* Open communication bridge */
+    i = lgw_connect(com_path);
+    if (i == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
+        exit(EXIT_FAILURE);
+    }
 
     /* configuration files management */
     if (access(debug_conf_fname, R_OK) == 0) {
@@ -492,7 +509,7 @@ int main(int argc, char **argv)
         parse_gateway_configuration(local_conf_fname);
     } else {
         MSG("ERROR: failed to find any configuration file named %s, %s or %s\n", global_conf_fname, local_conf_fname, debug_conf_fname);
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     /* starting the concentrator */
@@ -501,7 +518,7 @@ int main(int argc, char **argv)
         MSG("INFO: concentrator started, packet can now be received\n");
     } else {
         MSG("ERROR: failed to start the concentrator\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     /* transform the MAC address into a string */
@@ -517,7 +534,7 @@ int main(int argc, char **argv)
         nb_pkt = lgw_receive(ARRAY_SIZE(rxpkt), rxpkt);
         if (nb_pkt == LGW_HAL_ERROR) {
             MSG("ERROR: failed packet fetch, exiting\n");
-            return EXIT_FAILURE;
+            exit(EXIT_FAILURE);
         } else if (nb_pkt == 0) {
             clock_nanosleep(CLOCK_MONOTONIC, 0, &sleep_time, NULL); /* wait a short time if no packets */
         } else {
@@ -715,7 +732,7 @@ int main(int argc, char **argv)
     }
 
     MSG("INFO: Exiting packet logger program\n");
-    return EXIT_SUCCESS;
+    exit(EXIT_SUCCESS);
 }
 
 /* --- EOF ------------------------------------------------------------------ */

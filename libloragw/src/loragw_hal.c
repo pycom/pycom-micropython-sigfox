@@ -10,7 +10,6 @@ Description:
     LoRa concentrator Hardware Abstraction Layer
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-
 */
 
 
@@ -24,13 +23,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <math.h>       /* pow, cell */
 
 #include "loragw_reg.h"
+#include "loragw_mcu.h"
 #include "loragw_hal.h"
 #include "loragw_aux.h"
-#include "loragw_com.h"
 #include "loragw_radio.h"
-
-/**********************PGW*///////////////
-#define PGW  1
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -85,9 +81,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_RF_RX_BANDWIDTH_125KHZ  925000      /* for 125KHz channels */
 #define LGW_RF_RX_BANDWIDTH_250KHZ  1000000     /* for 250KHz channels */
 #define LGW_RF_RX_BANDWIDTH_500KHZ  1100000     /* for 500KHz channels */
+
 /* constant arrays defining hardware capability */
 const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
-
 
 /* Version string, used to identify the library version/options once compiled */
 const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
@@ -99,6 +95,7 @@ const char lgw_version_string[] = "Version: " LIBLORAGW_VERSION ";";
 #include "agc_fw.var" /* external definition of the variable */
 #include "cal_fw.var" /* external definition of the variable */
 #include "cal_fw5-12.var" /* external definition of the variable */
+
 /*
 The following static variables are the configuration set that the user can
 modify using rxrf_setconf, rxif_setconf and txgain_setconf functions.
@@ -108,13 +105,12 @@ Parameters validity and coherency is verified by the _setconf functions and
 the _start and _send functions assume they are valid.
 */
 
-static bool lgw_is_started;
+static bool lgw_is_started = false;
 
 static bool rf_enable[LGW_RF_CHAIN_NB];
 static uint32_t rf_rx_freq[LGW_RF_CHAIN_NB]; /* absolute, in Hz */
 static float rf_rssi_offset[LGW_RF_CHAIN_NB];
 static bool rf_tx_enable[LGW_RF_CHAIN_NB];
-static uint32_t rf_tx_notch_freq[LGW_RF_CHAIN_NB];
 static enum lgw_radio_type_e rf_radio_type[LGW_RF_CHAIN_NB];
 
 static bool if_enable[LGW_IF_CHAIN_NB];
@@ -168,6 +164,8 @@ void lgw_constant_adjust(void);
 
 int32_t lgw_sf_getval(int x);
 int32_t lgw_bw_getval(int x);
+
+int lgw_calibrate_sx125x(uint8_t *cal_fw, uint8_t idx_start, uint8_t idx_nb);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -304,11 +302,11 @@ void lgw_constant_adjust(void) {
     // lgw_reg_w(LGW_MBWSSF_PREAMBLE_FINE_TIMING_GAIN,1); /* default 1 */
     // lgw_reg_w(LGW_MBWSSF_TRACKING_INTEGRAL,0); /* default 0 */
     // lgw_reg_w(LGW_MBWSSF_AGC_FREEZE_ON_DETECT,1); /* default 1 */
+
+    /* Improvement of reference clock frequency error tolerance */
     lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_RDX4, 1); /* default 0 */
     lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_SF12_RDX4, 4094); /* default 4092 */
     lgw_reg_w(LGW_CORR_MAC_GAIN, 7); /* default 5 */
-
-
 
     /* FSK datapath setup */
     lgw_reg_w(LGW_FSK_RX_INVERT, 1); /* default 0 */
@@ -394,12 +392,184 @@ int32_t lgw_sf_getval(int x) {
     }
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_calibrate_sx125x(uint8_t *cal_fw, uint8_t idx_start, uint8_t idx_nb) {
+    int i, err;
+    int32_t read_val;
+    uint8_t fw_version;
+    uint8_t cal_cmd;
+    uint16_t cal_time;
+    uint8_t cal_status;
+
+    /* check parameters */
+    if (cal_fw == NULL) {
+        DEBUG_MSG("ERROR: invalid parameter, null pointer\n");
+        return LGW_HAL_ERROR;
+    }
+    if ((idx_start < 5) || (idx_start > 15)) {
+        DEBUG_MSG("ERROR: invalid parameter, calibration offset index start must be [5-15]\n");
+        return LGW_HAL_ERROR;
+    }
+    if (idx_nb > 8) {
+        DEBUG_MSG("ERROR: invalid parameter, calibration offset index number must be <= 8\n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* reset the registers (also shuts the radios down) */
+    lgw_soft_reset();
+
+    /* gate clocks */
+    lgw_reg_w(LGW_GLOBAL_EN, 0);
+    lgw_reg_w(LGW_CLK32M_EN, 0);
+
+#if 0
+    /* switch on and reset the radios (also starts the 32 MHz XTAL) */
+    lgw_reg_w(LGW_RADIO_A_EN, 1);
+    lgw_reg_w(LGW_RADIO_B_EN, 1);
+    wait_ms(500); /* TODO: optimize */
+#endif
+    lgw_reg_w(LGW_RADIO_RST, 1);
+    wait_ms(5);
+    lgw_reg_w(LGW_RADIO_RST, 0);
+
+    /* setup the radios */
+    err = lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
+    if (err != 0) {
+        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
+        return LGW_HAL_ERROR;
+    }
+    err = lgw_setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
+    if (err != 0) {
+        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
+        return LGW_HAL_ERROR;
+    }
+
+    /* Enable clocks */
+    lgw_reg_w(LGW_GLOBAL_EN, 1);
+    lgw_reg_w(LGW_CLK32M_EN, 1);
+
+    /* GPIOs table :
+    DGPIO0 -> N/A
+    DGPIO1 -> N/A
+    DGPIO2 -> N/A
+    DGPIO3 -> TX digital filter ON
+    DGPIO4 -> TX ON
+    */
+
+    /* select calibration command */
+    cal_cmd = 0;
+    cal_cmd |= rf_enable[0] ? 0x01 : 0x00; /* Bit 0: Calibrate Rx IQ mismatch compensation on radio A */
+    cal_cmd |= rf_enable[1] ? 0x02 : 0x00; /* Bit 1: Calibrate Rx IQ mismatch compensation on radio B */
+    cal_cmd |= (rf_enable[0] && rf_tx_enable[0]) ? 0x04 : 0x00; /* Bit 2: Calibrate Tx DC offset on radio A */
+    cal_cmd |= (rf_enable[1] && rf_tx_enable[1]) ? 0x08 : 0x00; /* Bit 3: Calibrate Tx DC offset on radio B */
+    cal_cmd |= 0x10; /* Bit 4: 0: calibrate with DAC gain=2, 1: with DAC gain=3 (use 3) */
+
+    switch (rf_radio_type[0]) { /* we assume that there is only one radio type on the board */
+        case LGW_RADIO_TYPE_SX1255:
+            cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
+            break;
+        case LGW_RADIO_TYPE_SX1257:
+            cal_cmd |= 0x00; /* Bit 5: 0: SX1257, 1: SX1255 */
+            break;
+        default:
+            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[0]);
+            break;
+    }
+
+    cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
+    cal_time = 2300; /* measured between 2.1 and 2.2 sec, because 1 TX only */
+
+    /* Load the calibration firmware  */
+    load_firmware(MCU_AGC, cal_fw, MCU_AGC_FW_BYTE);
+    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL, 0); /* gives to AGC MCU the control of the radios */
+    lgw_reg_w(LGW_RADIO_SELECT, cal_cmd); /* send calibration configuration word */
+    lgw_reg_w(LGW_MCU_RST_1, 0);
+
+    /* Check firmware version */
+    lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, FW_VERSION_ADDR);
+    lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+    fw_version = (uint8_t)read_val;
+    if (fw_version != FW_VERSION_CAL) {
+
+        return LGW_HAL_ERROR;
+    }
+
+    lgw_reg_w(LGW_PAGE_REG, 3); /* Calibration will start on this condition as soon as MCU can talk to concentrator registers */
+    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 0); /* Give control of concentrator registers to MCU */
+
+    /* Wait for calibration to end */
+    DEBUG_PRINTF("Note: calibration started (time: %u ms)\n", cal_time);
+    wait_ms(cal_time); /* Wait for end of calibration */
+    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 1); /* Take back control */
+
+    /* Get calibration status */
+    lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+    cal_status = (uint8_t)read_val;
+    /*
+        bit 7: calibration finished
+        bit 0: could access SX1301 registers
+        bit 1: could access radio A registers
+        bit 2: could access radio B registers
+        bit 3: radio A RX image rejection successful
+        bit 4: radio B RX image rejection successful
+        bit 5: radio A TX DC Offset correction successful
+        bit 6: radio B TX DC Offset correction successful
+    */
+    if ((cal_status & 0x81) != 0x81) {
+        DEBUG_PRINTF("ERROR: CALIBRATION FAILURE (STATUS = 0x%X)\n", cal_status);
+        return LGW_HAL_ERROR;
+    } else {
+        DEBUG_PRINTF("Note: calibration finished (status = 0x%X)\n", cal_status);
+    }
+    if (rf_enable[0] && ((cal_status & 0x02) == 0)) {
+        DEBUG_MSG("ERROR: calibration could not access radio A\n");
+        return LGW_HAL_ERROR;
+    }
+    if (rf_enable[1] && ((cal_status & 0x04) == 0)) {
+        DEBUG_MSG("ERROR: calibration could not access radio B\n");
+        return LGW_HAL_ERROR;
+    }
+    if (rf_enable[0] && ((cal_status & 0x08) == 0)) {
+        DEBUG_MSG("WARNING: problem in calibration of radio A for image rejection\n");
+    }
+    if (rf_enable[1] && ((cal_status & 0x10) == 0)) {
+        DEBUG_MSG("WARNING: problem in calibration of radio B for image rejection\n");
+    }
+    if (rf_enable[0] && rf_tx_enable[0] && ((cal_status & 0x20) == 0)) {
+        DEBUG_MSG("WARNING: problem in calibration of radio A for TX DC offset\n");
+    }
+    if (rf_enable[1] && rf_tx_enable[1] && ((cal_status & 0x40) == 0)) {
+        DEBUG_MSG("WARNING: problem in calibration of radio B for TX DC offset\n");
+    }
+
+    /* Get TX DC offset values */
+    for(i = 0; i < (int)idx_nb; ++i) {
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0 + i);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        cal_offset_a_i[i] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8 + i);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        cal_offset_a_q[i] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0 + i);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        cal_offset_b_i[i] = (int8_t)read_val;
+        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8 + i);
+        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        cal_offset_b_q[i] = (int8_t)read_val;
+        DEBUG_PRINTF("calibration a_i = %d\n", cal_offset_a_i[i]);
+    }
+
+    /* Require MCU to capture calibration values */
+    lgw_mcu_commit_radio_calibration(idx_start, idx_nb);
+
+    return LGW_HAL_SUCCESS;
+}
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int lgw_board_setconf(struct lgw_conf_board_s conf) {
-    int x;
-
     /* check if the concentrator is running */
     if (lgw_is_started == true) {
         DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
@@ -412,29 +582,13 @@ int lgw_board_setconf(struct lgw_conf_board_s conf) {
 
     DEBUG_PRINTF("Note: board configuration; lorawan_public:%d, clksrc:%d\n", lorawan_public, rf_clkout);
 
-    /*****************/
-    /* PGW specific  */
-    /*****************/
-    uint8_t PADDING = 0;
-    uint8_t data[4];
-    data[0] = conf.lorawan_public;
-    data[1] = conf.clksrc;
-    data[2] = PADDING;
-    data[3] = PADDING;
-    x = lgw_reg_board_setconfcmd(data, sizeof(data) / sizeof(uint8_t));
-    if (x == LGW_REG_SUCCESS) {
-        return LGW_HAL_SUCCESS;
-    } else {
-        DEBUG_MSG("ERROR: lgw_board_setconf issue\n");
-        return LGW_HAL_ERROR;
-    }
+    /* send configuration to concentrator MCU */
+    return lgw_mcu_board_setconf(conf);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
-    int x;
-
     /* check if the concentrator is running */
     if (lgw_is_started == true) {
         DEBUG_MSG("ERROR: CONCENTRATOR IS RUNNING, STOP IT BEFORE TOUCHING CONFIGURATION\n");
@@ -459,52 +613,16 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf) {
     rf_rssi_offset[rf_chain] = conf.rssi_offset;
     rf_radio_type[rf_chain] = conf.type;
     rf_tx_enable[rf_chain] = conf.tx_enable;
-    rf_tx_notch_freq[rf_chain] = conf.tx_notch_freq;
 
-    DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d tx_notch_freq:%u\n", rf_chain, rf_enable  [rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain], rf_tx_notch_freq[rf_chain]);
+    DEBUG_PRINTF("Note: rf_chain %d configuration; en:%d freq:%d rssi_offset:%f radio_type:%d tx_enable:%d\n", rf_chain, rf_enable  [rf_chain], rf_rx_freq[rf_chain], rf_rssi_offset[rf_chain], rf_radio_type[rf_chain], rf_tx_enable[rf_chain]);
 
-    /*****************/
-    /* PGW specific  */
-    /*****************/
-    uint8_t PADDING = 0;
-    uint8_t data[24];
-    data[0] = conf.enable;
-    data[1] = PADDING;
-    data[2] = PADDING;
-    data[3] = PADDING;
-    data[4] = *(((uint8_t *)(&conf.freq_hz))); //uint32_t
-    data[5] = *(((uint8_t *)(&conf.freq_hz)) + 1);
-    data[6] = *(((uint8_t *)(&conf.freq_hz)) + 2);
-    data[7] = *(((uint8_t *)(&conf.freq_hz)) + 3);
-    data[8] = *(((uint8_t *)(&conf.rssi_offset))); //uint32_t
-    data[9] = *(((uint8_t *)(&conf.rssi_offset)) + 1);
-    data[10] = *(((uint8_t *)(&conf.rssi_offset)) + 2);
-    data[11] = *(((uint8_t *)(&conf.rssi_offset)) + 3);
-    data[12] = *(((uint8_t *)(&conf.type)));
-    data[13] = PADDING;
-    data[14] = PADDING;
-    data[15] = PADDING;
-    data[16] = *(((uint8_t *)(&conf.tx_enable)));
-    data[17] = *(((uint8_t *)(&conf.tx_enable)) + 1);
-    data[18] = *(((uint8_t *)(&conf.tx_enable)) + 2);
-    data[19] = *(((uint8_t *)(&conf.tx_enable)) + 3);
-    data[20] = *(((uint8_t *)(&conf.tx_notch_freq)));
-    data[21] = *(((uint8_t *)(&conf.tx_notch_freq)) + 1);
-    data[22] = *(((uint8_t *)(&conf.tx_notch_freq)) + 2);
-    data[23] = *(((uint8_t *)(&conf.tx_notch_freq)) + 3);
-    x = lgw_reg_rxrf_setconfcmd(rf_chain, data, sizeof(data) / sizeof(uint8_t));
-    if (x == LGW_REG_SUCCESS) {
-        return LGW_HAL_SUCCESS;
-    } else {
-        DEBUG_MSG("ERROR: lgw_rxrf_setconf issue\n");
-        return LGW_HAL_ERROR;
-    }
+    /* send configuration to concentrator MCU */
+    return lgw_mcu_rxrf_setconf(rf_chain, conf);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
-    int x;
     int32_t bw_hz;
     uint32_t rf_rx_bandwidth;
 
@@ -645,7 +763,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
                 fsk_sync_word_size = conf.sync_word_size;
                 fsk_sync_word = conf.sync_word;
             }
-            DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%d dr:%d (%d real dr) sync:0x%0*llX\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU / (LGW_XTAL_FREQU / fsk_rx_dr), 2 * fsk_sync_word_size, fsk_sync_word);
+            DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%u dr:%u (%u real dr) sync:0x%0*lX\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU / (LGW_XTAL_FREQU / fsk_rx_dr), 2 * fsk_sync_word_size, fsk_sync_word);
             break;
 
         default:
@@ -653,53 +771,14 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
             return LGW_HAL_ERROR;
     }
 
-    /*****************/
-    /* PGW specific  */
-    /*****************/
-    uint8_t PADDING = 0;
-    uint8_t data[28];
-    data[0] = conf.enable;
-    data[1] = *(((uint8_t *)(&conf.rf_chain)));
-    data[2] = PADDING;
-    data[3] = PADDING;
-    data[4] = *(((uint8_t *)(&conf.freq_hz))); //uint32_t
-    data[5] = *(((uint8_t *)(&conf.freq_hz)) + 1);
-    data[6] = *(((uint8_t *)(&conf.freq_hz)) + 2);
-    data[7] = *(((uint8_t *)(&conf.freq_hz)) + 3);
-    data[8] = *(((uint8_t *)(&conf.bandwidth)));
-    data[9] = PADDING;
-    data[10] = PADDING;
-    data[11] = PADDING;
-    data[12] = *(((uint8_t *)(&conf.datarate)));
-    data[13] = *(((uint8_t *)(&conf.datarate)) + 1);
-    data[14] = *(((uint8_t *)(&conf.datarate)) + 2);
-    data[15] = *(((uint8_t *)(&conf.datarate)) + 3);
-    data[16] = *(((uint8_t *)(&conf.sync_word_size)));
-    data[17] = PADDING;
-    data[18] = PADDING;
-    data[19] = PADDING;
-    data[20] = *(((uint8_t *)(&conf.sync_word)));
-    data[21] = *(((uint8_t *)(&conf.sync_word)) + 1);
-    data[22] = *(((uint8_t *)(&conf.sync_word)) + 2);
-    data[23] = *(((uint8_t *)(&conf.sync_word)) + 3);
-    data[24] = *(((uint8_t *)(&conf.sync_word)) + 4);
-    data[25] = *(((uint8_t *)(&conf.sync_word)) + 5);
-    data[26] = *(((uint8_t *)(&conf.sync_word)) + 6);
-    data[27] = *(((uint8_t *)(&conf.sync_word)) + 7);
-    x = lgw_reg_rxif_setconfcmd(if_chain, data, sizeof(data) / sizeof(uint8_t));
-    if (x == LGW_REG_SUCCESS) {
-        return LGW_HAL_SUCCESS;
-    } else {
-        DEBUG_MSG("ERROR: lgw_rxif_setconf issue\n");
-        return LGW_HAL_ERROR;
-    }
+    /* send configuration to concentrator MCU */
+    return lgw_mcu_rxif_setconf(if_chain, conf);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
     int i;
-    int x;
 
     /* Check LUT size */
     if ((conf->size < 1) || (conf->size > TX_GAIN_LUT_SIZE_MAX)) {
@@ -722,10 +801,6 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
         if (conf->lut[i].mix_gain > 15) {
             DEBUG_MSG("ERROR: TX gain LUT: SX1257 mixer gain must not exceed 15\n");
             return LGW_HAL_ERROR;
-        } else if (conf->lut[i].mix_gain < 8) {
-            //DEBUG_MSG("WARNING: TX gain LUT: SX1257 mixer gains < 8 are not supported\n");
-
-            // return LGW_HAL_ERROR;
         }
         if (conf->lut[i].pa_gain > 3) {
             DEBUG_MSG("ERROR: TX gain LUT: External PA gain must not exceed 3\n");
@@ -740,38 +815,9 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
         txgain_lut.lut[i].rf_power = conf->lut[i].rf_power;
     }
 
-    /*****************/
-    /* PGW specific  */
-    /*****************/
-    uint32_t u = 0;
-    uint8_t data[(LGW_MULTI_NB * TX_GAIN_LUT_SIZE_MAX) + 4];
-    for (u = 0; u < TX_GAIN_LUT_SIZE_MAX; u++) {
-        data[0 + (5 * u)] = 0;
-        data[1 + (5 * u)] = 0;
-        data[2 + (5 * u)] = 0;
-        data[3 + (5 * u)] = 0;
-        data[4 + (5 * u)] = 0;
-    }
-
-    for (u = 0; u < conf->size; u++)
-    {
-        data[0 + (5 * u)] = conf->lut[u].dig_gain;
-        data[1 + (5 * u)] = conf->lut[u].pa_gain;
-        data[2 + (5 * u)] = conf->lut[u].dac_gain;
-        data[3 + (5 * u)] = conf->lut[u].mix_gain;
-        data[4 + (5 * u)] = conf->lut[u].rf_power;
-    }
-    data[(TX_GAIN_LUT_SIZE_MAX) * 5] = conf->size;
-    x = lgw_txgainreg_setconfcmd(data, ((TX_GAIN_LUT_SIZE_MAX) * 5) + 1);
-    if (x == LGW_REG_SUCCESS) {
-        return LGW_HAL_SUCCESS;
-    } else {
-        DEBUG_MSG("ERROR: lgw_txgainreg_setconfcmd issue \n");
-        return LGW_HAL_ERROR;
-    }
+    /* send configuration to concentrator MCU */
+    return lgw_mcu_txgain_setconf(conf);
 }
-
-
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
@@ -782,305 +828,28 @@ int lgw_start(void) {
     int32_t read_val;
     uint8_t load_val;
     uint8_t fw_version;
-    uint8_t cal_cmd;
-    uint16_t cal_time;
-    uint8_t cal_status;
     uint64_t fsk_sync_word_reg;
 
     if (lgw_is_started == true) {
         DEBUG_MSG("Note: LoRa concentrator already started, restarting it now\n");
     }
 
-    /* reset the registers (also shuts the radios down) */
-    lgw_soft_reset();
-
-    /* gate clocks */
-    lgw_reg_w(LGW_GLOBAL_EN, 0);
-    lgw_reg_w(LGW_CLK32M_EN, 0);
-
-    /* switch on and reset the radios (also starts the 32 MHz XTAL) */
-    lgw_reg_w(LGW_RADIO_A_EN, 1);
-    lgw_reg_w(LGW_RADIO_B_EN, 1);
-    wait_ms(500); /* TODO: optimize */
-    lgw_reg_w(LGW_RADIO_RST, 1);
+    /* Calibrate radios */
+    err = lgw_calibrate_sx125x(callow_firmware, 5, 8);
+    if (err != LGW_HAL_SUCCESS) {
+        DEBUG_MSG("ERROR: Failed to calibrate sx125x radios (5-12)\n");
+        return LGW_HAL_ERROR;
+    }
     wait_ms(5);
-    lgw_reg_w(LGW_RADIO_RST, 0);
-    //  lgw_reg_RADIO_RST();
-    /* setup the radios */
-    err = lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
-    if (err != 0) {
-        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
-        return LGW_HAL_ERROR;
-    }
-    err = lgw_setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
-    if (err != 0) {
-        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
+    err = lgw_calibrate_sx125x(cal_firmware, 8, 8);
+    if (err != LGW_HAL_SUCCESS) {
+        DEBUG_MSG("ERROR: Failed to calibrate sx125x radios (8-15)\n");
         return LGW_HAL_ERROR;
     }
 
-    /* gives AGC control of GPIOs to enable Tx external digital filter */
+    /* RX and TX packets signalling through GPIOs */
     lgw_reg_w(LGW_GPIO_MODE, 31); /* Set all GPIOs as output */
     lgw_reg_w(LGW_GPIO_SELECT_OUTPUT, 0);
-
-    /* Enable clocks */
-    lgw_reg_w(LGW_GLOBAL_EN, 1);
-    lgw_reg_w(LGW_CLK32M_EN, 1);
-
-    /* GPIOs table :
-    DGPIO0 -> N/A
-    DGPIO1 -> N/A
-    DGPIO2 -> N/A
-    DGPIO3 -> TX digital filter ON
-    DGPIO4 -> TX ON
-    */
-
-    /* select calibration command */
-    cal_cmd = 0;
-    cal_cmd |= rf_enable[0] ? 0x01 : 0x00; /* Bit 0: Calibrate Rx IQ mismatch compensation on radio A */
-    cal_cmd |= rf_enable[1] ? 0x02 : 0x00; /* Bit 1: Calibrate Rx IQ mismatch compensation on radio B */
-    cal_cmd |= (rf_enable[0] && rf_tx_enable[0]) ? 0x04 : 0x00; /* Bit 2: Calibrate Tx DC offset on radio A */
-    cal_cmd |= (rf_enable[1] && rf_tx_enable[1]) ? 0x08 : 0x00; /* Bit 3: Calibrate Tx DC offset on radio B */
-    cal_cmd |= 0x10; /* Bit 4: 0: calibrate with DAC gain=2, 1: with DAC gain=3 (use 3) */
-
-    switch (rf_radio_type[0]) { /* we assume that there is only one radio type on the board */
-        case LGW_RADIO_TYPE_SX1255:
-            cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
-            break;
-        case LGW_RADIO_TYPE_SX1257:
-            cal_cmd |= 0x00; /* Bit 5: 0: SX1257, 1: SX1255 */
-            break;
-        default:
-            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[0]);
-            break;
-    }
-
-    cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
-    cal_time = 2300; /* measured between 2.1 and 2.2 sec, because 1 TX only */
-
-    /* Load the calibration firmware  */
-    load_firmware(MCU_AGC, callow_firmware, MCU_AGC_FW_BYTE);
-    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL, 0); /* gives to AGC MCU the control of the radios */
-    lgw_reg_w(LGW_RADIO_SELECT, cal_cmd); /* send calibration configuration word */
-    lgw_reg_w(LGW_MCU_RST_1, 0);
-
-    /* Check firmware version */
-    lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, FW_VERSION_ADDR);
-    lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-    fw_version = (uint8_t)read_val;
-    if (fw_version != FW_VERSION_CAL) {
-
-        return -1;
-    }
-
-    lgw_reg_w(LGW_PAGE_REG, 3); /* Calibration will start on this condition as soon as MCU can talk to concentrator registers */
-    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 0); /* Give control of concentrator registers to MCU */
-
-    /* Wait for calibration to end */
-    DEBUG_PRINTF("Note: calibration started (time: %u ms)\n", cal_time);
-    wait_ms(cal_time); /* Wait for end of calibration */
-    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 1); /* Take back control */
-
-    /* Get calibration status */
-    lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
-    cal_status = (uint8_t)read_val;
-    /*
-        bit 7: calibration finished
-        bit 0: could access SX1301 registers
-        bit 1: could access radio A registers
-        bit 2: could access radio B registers
-        bit 3: radio A RX image rejection successful
-        bit 4: radio B RX image rejection successful
-        bit 5: radio A TX DC Offset correction successful
-        bit 6: radio B TX DC Offset correction successful
-    */
-    if ((cal_status & 0x81) != 0x81) {
-        DEBUG_PRINTF("WARNING: CALIBRATION FAILURE (STATUS = %u)\n", cal_status);
-        //return LGW_HAL_ERROR;
-    } else {
-        DEBUG_PRINTF("Note: calibration finished (status = %u)\n", cal_status);
-    }
-    if (rf_enable[0] && ((cal_status & 0x02) == 0)) {
-        DEBUG_MSG("WARNING: calibration could not access radio A\n");
-    }
-    if (rf_enable[1] && ((cal_status & 0x04) == 0)) {
-        DEBUG_MSG("WARNING: calibration could not access radio B\n");
-    }
-    if (rf_enable[0] && ((cal_status & 0x08) == 0)) {
-        DEBUG_MSG("WARNING: problem in calibration of radio A for image rejection\n");
-    }
-    if (rf_enable[1] && ((cal_status & 0x10) == 0)) {
-        DEBUG_MSG("WARNING: problem in calibration of radio B for image rejection\n");
-    }
-    if (rf_enable[0] && rf_tx_enable[0] && ((cal_status & 0x20) == 0)) {
-        DEBUG_MSG("WARNING: problem in calibration of radio A for TX DC offset\n");
-    }
-    if (rf_enable[1] && rf_tx_enable[1] && ((cal_status & 0x40) == 0)) {
-        DEBUG_MSG("WARNING: problem in calibration of radio B for TX DC offset\n");
-    }
-
-    /* Get TX DC offset values */
-    for(i = 0; i <= 7; ++i) {
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0 + i);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        cal_offset_a_i[i] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8 + i);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        cal_offset_a_q[i] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0 + i);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        cal_offset_b_i[i] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8 + i);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        cal_offset_b_q[i] = (int8_t)read_val;
-        DEBUG_PRINTF("calibration a_i = %d\n", cal_offset_a_i[i]);
-    }
-
-    lgw_reg_calibration_snapshot();
-    wait_ms(5);
-    lgw_soft_reset();
-
-    /* gate clocks */
-    lgw_reg_w(LGW_GLOBAL_EN, 0);
-    lgw_reg_w(LGW_CLK32M_EN, 0);
-
-    /* switch on and reset the radios (also starts the 32 MHz XTAL) */
-    lgw_reg_w(LGW_RADIO_A_EN, 1);
-    lgw_reg_w(LGW_RADIO_B_EN, 1);
-    wait_ms(500); /* TODO: optimize */
-    lgw_reg_w(LGW_RADIO_RST, 1);
-    wait_ms(5);
-    lgw_reg_w(LGW_RADIO_RST, 0);
-    //  lgw_reg_RADIO_RST();
-    /* setup the radios */
-    err = lgw_setup_sx125x(0, rf_clkout, rf_enable[0], rf_radio_type[0], rf_rx_freq[0]);
-    if (err != 0) {
-        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
-        return LGW_HAL_ERROR;
-    }
-    err = lgw_setup_sx125x(1, rf_clkout, rf_enable[1], rf_radio_type[1], rf_rx_freq[1]);
-    if (err != 0) {
-        DEBUG_MSG("ERROR: Failed to setup sx125x radio for RF chain 0\n");
-        return LGW_HAL_ERROR;
-    }
-
-    /* gives AGC control of GPIOs to enable Tx external digital filter */
-    lgw_reg_w(LGW_GPIO_MODE, 31); /* Set all GPIOs as output */
-    lgw_reg_w(LGW_GPIO_SELECT_OUTPUT, 0);
-
-    /* Enable clocks */
-    lgw_reg_w(LGW_GLOBAL_EN, 1);
-    lgw_reg_w(LGW_CLK32M_EN, 1);
-
-    /* GPIOs table :
-    DGPIO0 -> N/A
-    DGPIO1 -> N/A
-    DGPIO2 -> N/A
-    DGPIO3 -> TX digital filter ON
-    DGPIO4 -> TX ON
-    */
-
-    /* select calibration command */
-    cal_cmd = 0;
-    cal_cmd |= rf_enable[0] ? 0x01 : 0x00; /* Bit 0: Calibrate Rx IQ mismatch compensation on radio A */
-    cal_cmd |= rf_enable[1] ? 0x02 : 0x00; /* Bit 1: Calibrate Rx IQ mismatch compensation on radio B */
-    cal_cmd |= (rf_enable[0] && rf_tx_enable[0]) ? 0x04 : 0x00; /* Bit 2: Calibrate Tx DC offset on radio A */
-    cal_cmd |= (rf_enable[1] && rf_tx_enable[1]) ? 0x08 : 0x00; /* Bit 3: Calibrate Tx DC offset on radio B */
-    cal_cmd |= 0x10; /* Bit 4: 0: calibrate with DAC gain=2, 1: with DAC gain=3 (use 3) */
-
-    switch (rf_radio_type[0]) { /* we assume that there is only one radio type on the board */
-        case LGW_RADIO_TYPE_SX1255:
-            cal_cmd |= 0x20; /* Bit 5: 0: SX1257, 1: SX1255 */
-            break;
-        case LGW_RADIO_TYPE_SX1257:
-            cal_cmd |= 0x00; /* Bit 5: 0: SX1257, 1: SX1255 */
-            break;
-        default:
-            DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d FOR RADIO TYPE\n", rf_radio_type[0]);
-            break;
-    }
-
-    cal_cmd |= 0x00; /* Bit 6-7: Board type 0: ref, 1: FPGA, 3: board X */
-    cal_time = 2300; /* measured between 2.1 and 2.2 sec, because 1 TX only */
-
-    /* Load the calibration firmware  */
-    load_firmware(MCU_AGC, cal_firmware, MCU_AGC_FW_BYTE);
-    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL, 0); /* gives to AGC MCU the control of the radios */
-    lgw_reg_w(LGW_RADIO_SELECT, cal_cmd); /* send calibration configuration word */
-    lgw_reg_w(LGW_MCU_RST_1, 0);
-
-    /* Check firmware version */
-    lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, FW_VERSION_ADDR);
-    lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-    fw_version = (uint8_t)read_val;
-    if (fw_version != FW_VERSION_CAL) {
-
-        return -1;
-    }
-
-    lgw_reg_w(LGW_PAGE_REG, 3); /* Calibration will start on this condition as soon as MCU can talk to concentrator registers */
-    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 0); /* Give control of concentrator registers to MCU */
-
-    /* Wait for calibration to end */
-    DEBUG_PRINTF("Note: calibration started (time: %u ms)\n", cal_time);
-    wait_ms(cal_time); /* Wait for end of calibration */
-    lgw_reg_w(LGW_EMERGENCY_FORCE_HOST_CTRL, 1); /* Take back control */
-
-    /* Get calibration status */
-    lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
-    cal_status = (uint8_t)read_val;
-    /*
-        bit 7: calibration finished
-        bit 0: could access SX1301 registers
-        bit 1: could access radio A registers
-        bit 2: could access radio B registers
-        bit 3: radio A RX image rejection successful
-        bit 4: radio B RX image rejection successful
-        bit 5: radio A TX DC Offset correction successful
-        bit 6: radio B TX DC Offset correction successful
-    */
-    if ((cal_status & 0x81) != 0x81) {
-        DEBUG_PRINTF("ERROR: CALIBRATION FAILURE (STATUS = %u)\n", cal_status);
-        return LGW_HAL_ERROR;
-    } else {
-        DEBUG_PRINTF("Note: calibration finished (status = %u)\n", cal_status);
-    }
-    if (rf_enable[0] && ((cal_status & 0x02) == 0)) {
-        DEBUG_MSG("WARNING: calibration could not access radio A\n");
-    }
-    if (rf_enable[1] && ((cal_status & 0x04) == 0)) {
-        DEBUG_MSG("WARNING: calibration could not access radio B\n");
-    }
-    if (rf_enable[0] && ((cal_status & 0x08) == 0)) {
-        DEBUG_MSG("WARNING: problem in calibration of radio A for image rejection\n");
-    }
-    if (rf_enable[1] && ((cal_status & 0x10) == 0)) {
-        DEBUG_MSG("WARNING: problem in calibration of radio B for image rejection\n");
-    }
-    if (rf_enable[0] && rf_tx_enable[0] && ((cal_status & 0x20) == 0)) {
-        DEBUG_MSG("WARNING: problem in calibration of radio A for TX DC offset\n");
-    }
-    if (rf_enable[1] && rf_tx_enable[1] && ((cal_status & 0x40) == 0)) {
-        DEBUG_MSG("WARNING: problem in calibration of radio B for TX DC offset\n");
-    }
-
-    /* Get TX DC offset values */
-    for(i = 0; i <= 7; ++i) {
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0 + i);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        cal_offset_a_i[i] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8 + i);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        cal_offset_a_q[i] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0 + i);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        cal_offset_b_i[i] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8 + i);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        cal_offset_b_q[i] = (int8_t)read_val;
-        DEBUG_PRINTF("calibration a_i = %d\n", cal_offset_a_i[i]);
-    }
-
-    lgw_reg_calibration_snapshot();
 
     /* load adjusted parameters */
     lgw_constant_adjust();
@@ -1217,14 +986,14 @@ int lgw_start(void) {
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_AGC) {
         DEBUG_PRINTF("ERROR: Version of AGC firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_AGC);
-        //return LGW_HAL_ERROR;
+        return LGW_HAL_ERROR;
     }
     lgw_reg_w(LGW_DBG_ARB_MCU_RAM_ADDR, FW_VERSION_ADDR);
     lgw_reg_r(LGW_DBG_ARB_MCU_RAM_DATA, &read_val);
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_ARB) {
         DEBUG_PRINTF("ERROR: Version of arbiter firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_ARB);
-        // return LGW_HAL_ERROR;
+        return LGW_HAL_ERROR;
     }
 
     DEBUG_MSG("Info: Initialising AGC firmware...\n");
@@ -1233,7 +1002,7 @@ int lgw_start(void) {
     lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x10) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
-        //  return LGW_HAL_ERROR;
+        return LGW_HAL_ERROR;
     }
 
     /* Update Tx gain LUT and start AGC */
@@ -1317,58 +1086,19 @@ int lgw_stop(void) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
-    int nb_packet ;
-    uint8_t data[(RX_SIZE_MAX + 1)*max_pkt];
-
-# pragma GCC diagnostic ignored "-Wstrict-aliasing"
-    int i;
-    int u;
-
     /* check input variables */
-    if ((max_pkt <= 0) || (max_pkt > LGW_PKT_FIFO_SIZE)) {
+    if ((max_pkt == 0) || (max_pkt > LGW_PKT_FIFO_SIZE)) {
         DEBUG_PRINTF("ERROR: %d = INVALID MAX NUMBER OF PACKETS TO FETCH\n", max_pkt);
         return LGW_HAL_ERROR;
     }
 
-    nb_packet = lgw_reg_receive_cmd( max_pkt, (uint8_t *)data);
-    /* check nb_packet variables */
-    if ((nb_packet > LGW_PKT_FIFO_SIZE) || (nb_packet < 0)) {
-        DEBUG_MSG("ERROR: NOT A VALID NUMBER OF RECEIVE PACKET\n");
-        return LGW_HAL_ERROR;
-    }
-
-    for (u = 0; u < nb_packet; u++) {
-        pkt_data[u].freq_hz = *((uint32_t*)(&data[0 + RX_SIZE_MAX * u])); //the following code is done to work both with 32 or 64 bits host
-        pkt_data[u].if_chain = *((uint8_t*)(&data[4 + RX_SIZE_MAX * u]));
-        pkt_data[u].status = *((uint8_t*)(&data[5 + RX_SIZE_MAX * u]));
-        pkt_data[u].count_us = *((uint32_t*)(&data[8 + RX_SIZE_MAX * u]));
-        pkt_data[u].rf_chain = *((uint8_t*)(&data[12 + RX_SIZE_MAX * u]));
-        pkt_data[u].modulation = *((uint8_t*)(&data[13 + RX_SIZE_MAX * u]));
-        pkt_data[u].bandwidth = *((uint8_t*)(&data[14 + RX_SIZE_MAX * u]));
-        pkt_data[u].datarate = *((uint32_t*)(&data[16 + RX_SIZE_MAX * u]));
-        pkt_data[u].coderate = *((uint8_t*)(&data[20 + RX_SIZE_MAX * u]));
-        pkt_data[u].rssi = *((float*)(&data[24 + RX_SIZE_MAX * u]));
-        pkt_data[u].snr = *((float*)(&data[28 + RX_SIZE_MAX * u]));
-        pkt_data[u].snr_min = *((float*)(&data[32 + RX_SIZE_MAX * u]));
-        pkt_data[u].snr_max = *((float*)(&data[36 + RX_SIZE_MAX * u]));
-        pkt_data[u].crc = *((uint16_t*)(&data[40 + RX_SIZE_MAX * u]));
-        pkt_data[u].size = *((uint16_t*)(&data[42 + RX_SIZE_MAX * u]));
-        for (i = 0; i < 256; i++) {
-            (pkt_data[u].payload[i]) = *((uint8_t*)(&data[44 + i + RX_SIZE_MAX * u]));
-        }
-    }
-
-    return (nb_packet);
+    /* send packet data to concentrator MCU */
+    return lgw_mcu_receive( max_pkt, pkt_data);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_send(struct lgw_pkt_tx_s pkt_data)
-{
-    int i, x;
-    uint8_t PADDING = 0;
-    uint8_t data[256 + 32];
-
+int lgw_send(struct lgw_pkt_tx_s pkt_data) {
     /* check input range (segfault prevention) */
     if (pkt_data.rf_chain >= LGW_RF_CHAIN_NB) {
         DEBUG_MSG("ERROR: INVALID RF_CHAIN TO SEND PACKETS\n");
@@ -1405,8 +1135,7 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
             DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR LORA TX\n");
             return LGW_HAL_ERROR;
         }
-    }
-    else if (pkt_data.modulation == MOD_FSK) {
+    } else if (pkt_data.modulation == MOD_FSK) {
         if ((pkt_data.f_dev < 1) || (pkt_data.f_dev > 200)) {
             DEBUG_MSG("ERROR: TX FREQUENCY DEVIATION OUT OF ACCEPTABLE RANGE\n");
             return LGW_HAL_ERROR;
@@ -1419,54 +1148,13 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data)
             DEBUG_MSG("ERROR: PAYLOAD LENGTH TOO BIG FOR FSK TX\n");
             return LGW_HAL_ERROR;
         }
-    }
-    else {
+    } else {
         DEBUG_MSG("ERROR: INVALID TX MODULATION\n");
         return LGW_HAL_ERROR;
     }
 
-    data[0] = *(((uint8_t *)(&pkt_data.freq_hz))); //uint32_t
-    data[1] = *(((uint8_t *)(&pkt_data.freq_hz)) + 1);
-    data[2] = *(((uint8_t *)(&pkt_data.freq_hz)) + 2);
-    data[3] = *(((uint8_t *)(&pkt_data.freq_hz)) + 3);
-    data[4] = *(((uint8_t *)(&pkt_data.tx_mode)));
-    data[5] = PADDING;
-    data[6] = PADDING;
-    data[7] = PADDING;
-    data[8] = *(((uint8_t *)(&pkt_data.count_us))); //uint32_t
-    data[9] = *(((uint8_t *)(&pkt_data.count_us)) + 1);
-    data[10] = *(((uint8_t *)(&pkt_data.count_us)) + 2);
-    data[11] = *(((uint8_t *)(&pkt_data.count_us)) + 3);
-    data[12] = *(((uint8_t *)(&pkt_data.rf_chain)));
-    data[13] = *(((uint8_t *)(&pkt_data.rf_power)));
-    data[14] = *(((uint8_t *)(&pkt_data.modulation)));
-    data[15] = *(((uint8_t *)(&pkt_data.bandwidth)));
-    data[16] = *(((uint8_t *)(&pkt_data.datarate)));
-    data[17] = *(((uint8_t *)(&pkt_data.datarate)) + 1);
-    data[18] = *(((uint8_t *)(&pkt_data.datarate)) + 2);
-    data[19] = *(((uint8_t *)(&pkt_data.datarate)) + 3);
-    data[20] = *(((uint8_t *)(&pkt_data.coderate)));
-    data[21] = *(((uint8_t *)(&pkt_data.invert_pol)));
-    data[22] = *(((uint8_t *)(&pkt_data.f_dev)));
-    data[23] = PADDING;
-    data[24] = *(((uint8_t *)(&pkt_data.preamble)));
-    data[25] = *(((uint8_t *)(&pkt_data.preamble)) + 1);
-    data[26] = *(((uint8_t *)(&pkt_data.no_crc)));
-    data[27] = *(((uint8_t *)(&pkt_data.no_header)));
-    data[28] = *(((uint8_t *)(&pkt_data.size)));
-    data[29] = *(((uint8_t *)(&pkt_data.size)) + 1);
-    // Pkt size already check
-    for (i = 0; i < TX_SIZE_MAX; i++) {
-        data[i + 30] = *(((uint8_t *)(&pkt_data.payload)) + i);
-    }
-
-    x = lgw_reg_sendconfcmd(data, TX_SIZE_MAX + 30);
-    if (x == LGW_REG_SUCCESS) {
-        return LGW_HAL_SUCCESS;
-    } else {
-        DEBUG_MSG("ERROR: lgw_reg_sendconfcmd issue\n");
-        return LGW_HAL_ERROR;
-    }
+    /* send packet data to concentrator MCU */
+    return lgw_mcu_send(pkt_data);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -1498,36 +1186,18 @@ int lgw_status(uint8_t select, uint8_t *code) {
         DEBUG_MSG("ERROR: SELECTION INVALID, NO STATUS TO RETURN\n");
         return LGW_HAL_ERROR;
     }
-
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_abort_tx(void) {
-    int i;
-
-    i = lgw_reg_w(LGW_TX_TRIG_ALL, 0);
-
-    if (i == LGW_REG_SUCCESS) {
-        return LGW_HAL_SUCCESS;
-    }
-    else {
-        return LGW_HAL_ERROR;
-    }
+    return lgw_reg_w(LGW_TX_TRIG_ALL, 0);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
-    int x;
-
-    x = lgw_regtrigger(trig_cnt_us);
-    if (x == LGW_REG_SUCCESS) {
-        return LGW_HAL_SUCCESS;
-    } else {
-        DEBUG_MSG("ERROR: lgw_get_trigcnt issue\n");
-        return LGW_HAL_ERROR;
-    }
+    return lgw_mcu_get_trigcnt(trig_cnt_us);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
@@ -1536,7 +1206,9 @@ const char* lgw_version_info() {
     return lgw_version_string;
 }
 
-int lgw_MCUversion_info() {
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_mcu_version_info() {
     return (int)(STM32FWVERSION);
 }
 

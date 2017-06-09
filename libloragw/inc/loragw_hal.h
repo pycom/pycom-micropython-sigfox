@@ -44,7 +44,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* return status code */
 #define LGW_HAL_SUCCESS     0
 #define LGW_HAL_ERROR       -1
-#define LGW_LBT_ISSUE       1
 
 /* radio-specific parameters */
 #define LGW_XTAL_FREQU      32000000            /* frequency of the RF reference oscillator */
@@ -152,15 +151,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* Maximum size of Tx gain LUT */
 #define TX_GAIN_LUT_SIZE_MAX 16
 
-/* Maximum size of Rx packet struct */
-#define RX_SIZE_MAX 300
-
-/* Maximum size of Tx packet struct */
-#define TX_SIZE_MAX 256
-
-/* LBT constants */
-#define LBT_CHANNEL_FREQ_NB 8 /* Number of LBT channels */
-
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
 
@@ -186,27 +176,6 @@ struct lgw_conf_board_s {
 };
 
 /**
-@struct lgw_conf_lbt_chan_s
-@brief Configuration structure for LBT channels
-*/
-struct lgw_conf_lbt_chan_s {
-    uint32_t freq_hz;
-    uint16_t scan_time_us;
-};
-
-/**
-@struct lgw_conf_lbt_s
-@brief Configuration structure for LBT specificities
-*/
-struct lgw_conf_lbt_s {
-    bool                        enable;             /*!> enable or disable LBT */
-    int8_t                      rssi_target;        /*!> RSSI threshold to detect if channel is busy or not (dBm) */
-    uint8_t                     nb_channel;         /*!> number of LBT channels */
-    struct lgw_conf_lbt_chan_s  channels[LBT_CHANNEL_FREQ_NB];
-    int8_t                      rssi_offset;        /*!> RSSI offset to be applied to SX127x RSSI values */
-};
-
-/**
 @struct lgw_conf_rxrf_s
 @brief Configuration structure for a RF chain
 */
@@ -216,7 +185,6 @@ struct lgw_conf_rxrf_s {
     float                   rssi_offset;    /*!> Board-specific RSSI correction factor */
     enum lgw_radio_type_e   type;           /*!> Radio type for that RF chain (SX1255, SX1257....) */
     bool                    tx_enable;      /*!> enable or disable TX on that RF chain */
-    uint32_t                tx_notch_freq;  /*!> TX notch filter frequency [126KHz..250KHz] */
 };
 
 /**
@@ -255,6 +223,13 @@ struct lgw_pkt_rx_s {
     uint16_t    size;           /*!> payload size in bytes */
     uint8_t     payload[256];   /*!> buffer containing the payload */
 };
+#define LGW_PKT_RX_METADATA_SIZE_ALIGNED 44
+/* ---------- WARNING -------------
+This metadata size is used to convert the byte array received from the MCU to a
+lgw_pkt_rx_s structure. Structure members are 64-bits aligned in the byte array.
+Any modification of this structure has to be done with caution!
+--------------WARNING ------------- */
+#define LGW_PKT_RX_STRUCT_SIZE_ALIGNED (256 + LGW_PKT_RX_METADATA_SIZE_ALIGNED)
 
 /**
 @struct lgw_pkt_tx_s
@@ -278,6 +253,13 @@ struct lgw_pkt_tx_s {
     uint16_t    size;           /*!> payload size in bytes */
     uint8_t     payload[256];   /*!> buffer containing the payload */
 };
+#define LGW_PKT_TX_METADATA_SIZE_ALIGNED 30
+/* ---------- WARNING -------------
+This metadata size is used to convert a lgw_pkt_tx_s structure to the byte array
+sent to the MCU to. The structure members are 64-bits aligned in the byte array.
+Any modification of this structure has to be done with caution!
+--------------WARNING ------------- */
+#define LGW_PKT_TX_STRUCT_SIZE_ALIGNED (256 + LGW_PKT_TX_METADATA_SIZE_ALIGNED)
 
 /**
 @struct lgw_tx_gain_s
@@ -309,13 +291,6 @@ struct lgw_tx_gain_lut_s {
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
 int lgw_board_setconf(struct lgw_conf_board_s conf);
-
-/**
-@brief Configure the gateway lbt function
-@param conf structure containing the configuration parameters
-@return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
-*/
-int lgw_lbt_setconf(struct lgw_conf_lbt_s conf);
 
 /**
 @brief Configure an RF chain (must configure before start)
@@ -400,12 +375,18 @@ int lgw_get_trigcnt(uint32_t* trig_cnt_us);
 const char* lgw_version_info(void);
 
 /**
+@brief Allow user to check the version of the concentrator MCU firmware
+@return An integer value representing the firmware version
+*/
+int lgw_mcu_version_info(void);
+
+/**
 @brief Return time on air of given packet, in milliseconds
 @param packet is a pointer to the packet structure
 @return the packet time on air in milliseconds
 */
 uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet);
-int lgw_MCUversion_info(void);
+
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

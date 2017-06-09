@@ -11,7 +11,6 @@ Description:
     SX1301 tx continuous utility
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Matthieu Leurent
 */
 
 
@@ -58,7 +57,8 @@ Maintainer: Matthieu Leurent
 #define DEFAULT_BR_KBPS         50
 #define DEFAULT_FDEV_KHZ        25
 #define DEFAULT_BT              2
-#define DEFAULT_NOTCH_FREQ      129000U
+
+#define COM_PATH_DEFAULT        "/dev/ttyACM0"
 
 /* -------------------------------------------------------------------------- */
 /* --- GLOBAL VARIABLES ----------------------------------------------------- */
@@ -70,13 +70,13 @@ static int quit_sig = 0; /* 1 -> application terminates without shutting down th
 /* -------------------------------------------------------------------------- */
 /* --- SUBFUNCTIONS DECLARATION --------------------------------------------- */
 
+static void exit_cleanup(void);
 static void sig_handler(int sigio);
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     static struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     int i; /* loop and temporary variables */
@@ -94,18 +94,11 @@ int main(int argc, char **argv)
         {"br", 1, 0, 0},
         {"fdev", 1, 0, 0},
         {"bt", 1, 0, 0},
-        {"notch", 1, 0, 0},
         {0, 0, 0, 0}
     };
     unsigned int arg_u;
     float arg_f;
     char arg_s[64];
-
-    //tbd
-
-
-
-    lgw_connect(false);
 
     /* Application parameters */
     uint32_t freq_hz = DEFAULT_FREQ_HZ;
@@ -119,7 +112,6 @@ int main(int argc, char **argv)
     float br_kbps = DEFAULT_BR_KBPS;
     uint8_t fdev_khz = DEFAULT_FDEV_KHZ;
     uint8_t bt = DEFAULT_BT;
-    uint32_t tx_notch_freq = DEFAULT_NOTCH_FREQ;
 
     int32_t offset_i, offset_q;
 
@@ -130,17 +122,21 @@ int main(int argc, char **argv)
     struct lgw_tx_gain_lut_s txlut;
     struct lgw_pkt_tx_s txpkt;
 
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
 
     /* Parse command line options */
-    while ((i = getopt_long (argc, argv, "hud::f:r:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hf:r:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 printf("~~~ Library version string~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
                 printf(" %s\n", lgw_version_info());
                 printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+                printf(" -d      <path>   COM device to be used to access the concentrator board\n");
+                printf("                    => default path: " COM_PATH_DEFAULT "\n");
                 printf(" -f      <float>  Tx RF frequency in MHz [800:1000]\n");
                 printf(" -r      <int>    Radio type (SX1255:1255, SX1257:1257)\n");
-                printf(" --notch <uint>   Tx notch filter frequency in KhZ [126..250]\n");
                 printf(" --dig   <uint>   Digital gain trim, [0:3]\n");
                 printf("                   0:1, 1:7/8, 2:3/4, 3:1/2\n");
                 printf(" --mix   <uint>   Radio Tx mixer gain trim, [0:15]\n");
@@ -162,113 +158,82 @@ int main(int argc, char **argv)
                     if ((i != 1) || (arg_u > 3)) {
                         printf("ERROR: argument parsing of --dig argument. Use -h to print help\n");
                         return EXIT_FAILURE;
-                    }
-                    else
-                    {
+                    } else {
                         g_dig = (uint8_t)arg_u;
                     }
-                }
-                else if (strcmp(long_options[option_index].name, "dac") == 0) {
+                } else if (strcmp(long_options[option_index].name, "dac") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u > 3)) {
                         printf("ERROR: argument parsing of --dac argument. Use -h to print help\n");
                         return EXIT_FAILURE;
-                    }
-                    else {
+                    } else {
                         g_dac = (uint8_t)arg_u;
                     }
-                }
-                else if (strcmp(long_options[option_index].name, "mix") == 0) {
+                } else if (strcmp(long_options[option_index].name, "mix") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u > 15)) {
                         printf("ERROR: argument parsing of --mix argument. Use -h to print help\n");
                         return EXIT_FAILURE;
-                    }
-                    else {
+                    } else {
                         g_mix = (uint8_t)arg_u;
                     }
-                }
-                else if (strcmp(long_options[option_index].name, "pa") == 0) {
+                } else if (strcmp(long_options[option_index].name, "pa") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u > 3)) {
                         printf("ERROR: argument parsing of --pa argument. Use -h to print help\n");
                         return EXIT_FAILURE;
-                    }
-                    else {
+                    } else {
                         g_pa = arg_u;
                     }
-                }
-                else if (strcmp(long_options[option_index].name, "mod") == 0) {
-                    i = sscanf(optarg, "%s", arg_s);
+                } else if (strcmp(long_options[option_index].name, "mod") == 0) {
+                    i = sscanf(optarg, "%63s", arg_s);
                     if ((i != 1) || ((strcmp(arg_s, "LORA") != 0) && (strcmp(arg_s, "FSK") != 0)  && (strcmp(arg_s, "CW") != 0))) {
                         printf("ERROR: argument parsing of --mod argument. Use -h to print help\n");
                         return EXIT_FAILURE;
-                    }
-                    else {
+                    } else {
                         sprintf(mod, "%s", arg_s);
                     }
-                }
-                else if (strcmp(long_options[option_index].name, "sf") == 0) {
+                } else if (strcmp(long_options[option_index].name, "sf") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u < 7) || (arg_u > 12)) {
                         printf("ERROR: argument parsing of --sf argument. Use -h to print help\n");
                         return EXIT_FAILURE;
-                    }
-                    else {
+                    } else {
                         sf = (uint8_t)arg_u;
                     }
-                }
-                else if (strcmp(long_options[option_index].name, "bw") == 0) {
+                } else if (strcmp(long_options[option_index].name, "bw") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || ((arg_u != 125) && (arg_u != 250) && (arg_u != 500))) {
                         printf("ERROR: argument parsing of --bw argument. Use -h to print help\n");
                         return EXIT_FAILURE;
-                    }
-                    else {
+                    } else {
                         bw_khz = arg_u;
                     }
-                }
-                else if (strcmp(long_options[option_index].name, "br") == 0) {
+                } else if (strcmp(long_options[option_index].name, "br") == 0) {
                     i = sscanf(optarg, "%f", &arg_f);
                     if ((i != 1) || (arg_f < 0.5) || (arg_f > 250)) {
                         printf("ERROR: argument parsing of --br argument. Use -h to print help\n");
                         return EXIT_FAILURE;
-                    }
-                    else {
+                    } else {
                         br_kbps = arg_f;
                     }
-                }
-                else if (strcmp(long_options[option_index].name, "fdev") == 0) {
+                } else if (strcmp(long_options[option_index].name, "fdev") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u < 1) || (arg_u > 250)) {
                         printf("ERROR: argument parsing of --fdev argument. Use -h to print help\n");
                         return EXIT_FAILURE;
-                    }
-                    else {
+                    } else {
                         fdev_khz = (uint8_t)arg_u;
                     }
-                }
-                else if (strcmp(long_options[option_index].name, "bt") == 0) {
+                } else if (strcmp(long_options[option_index].name, "bt") == 0) {
                     i = sscanf(optarg, "%u", &arg_u);
                     if ((i != 1) || (arg_u > 3)) {
                         printf("ERROR: argument parsing of --bt argument. Use -h to print help\n");
                         return EXIT_FAILURE;
-                    }
-                    else {
+                    } else {
                         bt = (uint8_t)arg_u;
                     }
-                }
-                else if (strcmp(long_options[option_index].name, "notch") == 0) {
-                    i = sscanf(optarg, "%u", &arg_u);
-                    if ((i != 1) || ((arg_u < 126) || (arg_u > 250))) {
-                        printf("ERROR: argument parsing of --notch argument. Use -h to print help\n");
-                        return EXIT_FAILURE;
-                    }
-                    else {
-                        tx_notch_freq = (uint32_t)arg_u * 1000U;
-                    }
-                }
-                else {
+                } else {
                     printf("ERROR: argument parsing options. Use -h to print help\n");
                     return EXIT_FAILURE;
                 }
@@ -279,8 +244,7 @@ int main(int argc, char **argv)
                 if ((i != 1) || (arg_f < 1)) {
                     printf("ERROR: argument parsing of -f argument. Use -h to print help\n");
                     return EXIT_FAILURE;
-                }
-                else {
+                } else {
                     freq_hz = (uint32_t)((arg_f * 1e6) + 0.5);
                 }
                 break;
@@ -300,11 +264,20 @@ int main(int argc, char **argv)
                 }
                 break;
 
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
+                break;
+
             default:
                 printf("ERROR: argument parsing options. Use -h to print help\n");
                 return EXIT_FAILURE;
         }
     }
+
+    /* register function to be called for exit cleanups */
+    atexit(exit_cleanup);
 
     /* Configure signal handling */
     sigemptyset( &sigact.sa_mask );
@@ -313,6 +286,13 @@ int main(int argc, char **argv)
     sigaction( SIGQUIT, &sigact, NULL );
     sigaction( SIGINT, &sigact, NULL );
     sigaction( SIGTERM, &sigact, NULL );
+
+    /* Open communication bridge */
+    i = lgw_connect(com_path);
+    if (i == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
+        exit(EXIT_FAILURE);
+    }
 
     /* Board config */
     memset(&boardconf, 0, sizeof(boardconf));
@@ -327,15 +307,13 @@ int main(int argc, char **argv)
     rfconf.rssi_offset = DEFAULT_RSSI_OFFSET;
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
-    rfconf.tx_notch_freq = tx_notch_freq;
     lgw_rxrf_setconf(TX_RF_CHAIN, rfconf);
 
     /* Tx gain LUT */
     memset(&txlut, 0, sizeof txlut);
     txlut.size = 16;
     int kk;
-    for (kk = 0; kk < 16; kk++)
-    {
+    for (kk = 0; kk < 16; kk++) {
         txlut.lut[kk].dig_gain = g_dig;
         txlut.lut[kk].pa_gain = g_pa;
         txlut.lut[kk].dac_gain = g_dac;
@@ -350,7 +328,7 @@ int main(int argc, char **argv)
         MSG("INFO: concentrator started, packet can be sent\n");
     } else {
         MSG("ERROR: failed to start the concentrator\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     /* fill-up payload and parameters */
@@ -376,7 +354,7 @@ int main(int argc, char **argv)
                 break;
             default:
                 MSG("ERROR: invalid 'bw' variable\n");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
         switch (sf) {
             case  7:
@@ -399,7 +377,7 @@ int main(int argc, char **argv)
                 break;
             default:
                 MSG("ERROR: invalid 'sf' variable\n");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
     }
     txpkt.coderate = CR_LORA_4_5;
@@ -424,16 +402,18 @@ int main(int argc, char **argv)
 
     /* Send packet */
     i = lgw_send(txpkt);
+    if (i == -1) {
+        printf("ERROR: FAIL TO START TX...\n");
+        exit(EXIT_FAILURE);
+    }
 
     /* Recap all settings */
     printf("SX1301 library version: %s\n", lgw_version_info());
     if (strcmp(mod, "LORA") == 0) {
-        printf("Modulation: LORA SF:%d BW:%d kHz\n", sf, bw_khz);
-    }
-    else if (strcmp(mod, "FSK") == 0) {
+        printf("Modulation: LORA SF:%u BW:%u kHz\n", sf, bw_khz);
+    } else if (strcmp(mod, "FSK") == 0) {
         printf("Modulation: FSK BR:%3.3f kbps FDEV:%d kHz BT:%d\n", br_kbps, fdev_khz, bt);
-    }
-    else if (strcmp(mod, "CW") == 0) {
+    } else if (strcmp(mod, "CW") == 0) {
         printf("Modulation: CW\n");
     }
     switch(rfconf.type) {
@@ -460,21 +440,21 @@ int main(int argc, char **argv)
         wait_ms(100);
     }
 
-    /* clean up before leaving */
-    lgw_stop();
-
-    return 0;
+    exit(EXIT_SUCCESS);
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- SUBFUNCTIONS DEFINITION ---------------------------------------------- */
 
-static void sig_handler(int sigio)
-{
+static void exit_cleanup(void) {
+    printf("Stopping concentrator.\n");
+    lgw_stop();
+}
+
+static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
         quit_sig = 1;
-    }
-    else if((sigio == SIGINT) || (sigio == SIGTERM)) {
+    } else if((sigio == SIGINT) || (sigio == SIGTERM)) {
         exit_sig = 1;
     }
 }

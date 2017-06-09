@@ -7,16 +7,15 @@
   (C)2017 Semtech-Cycleo
 
 Description:
-A bridge layer to abstract os linux/windows or others
-The current project support only linux os.
+  A communication bridge layer to abstract linux/windows OS or others.
+  The current project support only linux os
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 
 */
 
-
-#ifndef _LORAGW_com_H
-#define _LORAGW_com_H
+#ifndef _LORAGW_COM_H
+#define _LORAGW_COM_H
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
@@ -34,23 +33,24 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_COM_MUX_MODE0   0x0     /* No FPGA */
 #define LGW_COM_MUX_TARGET_SX1301   0x0
 
-#define ACK_KO   0
-#define OK 1
-#define KO 0
-#define BURSTSIZE 1024
-#define BUFFERTXSIZE 4*(BURSTSIZE+2)
-#define BUFFERRXSIZE 2048
 #define ATOMICTX 600
 #define ATOMICRX 900
 
+#define CMD_HEADER_TX_SIZE 4 /* id + len_msb + len_lsb + address */
+#define CMD_HEADER_RX_SIZE 4 /* id + len_msb + len_lsb + status */
+
+#define CMD_DATA_TX_SIZE ATOMICTX
+#define CMD_DATA_RX_SIZE (1024 + 16 * 44) /* MAX_FIFO + 16 * METADATA_SIZE_ALIGNED */
+
+#define ACK_OK 1
+#define ACK_KO 0
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
+
 /**
-@brief cmd structure from host to stm32
-@param Cmd char  for cmd id
-@param length  : length (16 bits) of the full msg,  length = LenMsb<<8 + Len
-@param Adress  : adress parameter is used in case of read/wrtire registers cmd
-@param Value   : raw data data to transfer
+@struct lgw_com_cmd_t
+@brief structure for host to mcu commands
 */
 /********************************************************/
 /*   cmd name   |      description                      */
@@ -59,12 +59,12 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /*  s           |Read long burst First packet           */
 /*  t           |Read long burst Middle packet          */
 /*  u           |Read long burst End packet             */
-/*  p,e         |Read long Atomic packet                */
+/*  p           |Read atomic burst packet               */
 /*  w           |Write register                         */
 /*  x           |Write long burst First packet          */
-/*  y           |Write long burst First packet          */
-/*  z           |Write long burst First packet          */
-/*  a           |Write long burst First packet          */
+/*  y           |Write long burst Middle packet         */
+/*  z           |Write long burst End packet            */
+/*  a           |Write atomic burst packet              */
 /*------------------------------------------------------*/
 /*  b           |lgw_receive cmd                        */
 /*  c           |lgw_rxrf_setconf cmd                   */
@@ -76,29 +76,40 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /*  j           |lgw_calibration_snapshot               */
 /*  l           |lgw_check_fw_version                   */
 /*  m           |Reset STM32                            */
-/*  n           |GOTODFU                                */
+/*  n           |Go to bootloader                       */
 /********************************************************/
 
 typedef struct {
-    char Cmd;
-    int LenMsb;
-    int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
-    int Adress;
-    int Value[BURSTSIZE];
-} CmdSettings_t;
+    char id;                            /*!> command ID */
+    uint8_t len_msb;                    /*!> command length MSB */
+    uint8_t len_lsb;                    /*!> command length LSB */
+    uint8_t address;                    /*!> register address for register read/write commands */
+    uint8_t cmd_data[CMD_DATA_TX_SIZE]; /*!> raw data to be transfered */
+} lgw_com_cmd_t;
 
 /**
-@brief cmd structure response from stm32 to host
-@param Cmd char  for cmd id
-@param length  : length (8 bits) of the full msg
-@param Rxbuf   : raw data data to transfer
+@struct lgw_com_ans_t
+@brief structure for mcu to host command answers
 */
 typedef struct {
-    int Cmd; // w for write , r for read
-    int Id;
-    int Len;   // size of valid adresses . Example for a simple spi write set Len to 1 for a burst of 4 spi writes set Len = 4
-    int Rxbuf[BUFFERRXSIZE];
-} AnsSettings_t;
+    char id;                            /*!> command ID */
+    uint8_t len_msb;                    /*!> command length MSB */
+    uint8_t len_lsb;                    /*!> command length LSB */
+    uint8_t status;                     /*!> command acknoledge */
+    uint8_t ans_data[CMD_DATA_RX_SIZE]; /*!> raw answer data */
+} lgw_com_ans_t;
+
+/**
+@brief Generic file handle for communication bridge
+*/
+#ifdef _WIN32
+    typedef HANDLE lgw_handle_t;
+    #define LGW_GET_HANDLE(x) ((lgw_handle_t *)x)
+#elif __linux__
+    typedef int lgw_handle_t;
+    #define LGW_GET_HANDLE(x) (*(lgw_handle_t *)x)
+#endif
+
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
@@ -106,15 +117,15 @@ typedef struct {
 /**
 @brief LoRa concentrator USB setup
 @param com_target_ptr pointer on a generic pointer to USB target
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 
-int lgw_com_open(void **com_target_ptr);
+int lgw_com_open(void **com_target_ptr, const char *com_path);
 
 /**
 @brief LoRa concentrator USB close
 @param com_target generic pointer to USB target
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 
 int lgw_com_close(void *com_target);
@@ -124,10 +135,8 @@ int lgw_com_close(void *com_target);
 @param com_target generic pointer to USB target
 @param address 7-bit register address
 @param data data byte to write
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
-
-
 int lgw_com_w(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t data);
 
 /**
@@ -135,7 +144,7 @@ int lgw_com_w(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, ui
 @param com_target generic pointer to USB target
 @param address 7-bit register address
 @param data data byte to write
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 int lgw_com_r(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data);
 
@@ -145,7 +154,7 @@ int lgw_com_r(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, ui
 @param address 7-bit register address
 @param data pointer to byte array that will be sent to the LoRa concentrator
 @param size size of the transfer, in byte(s)
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 int lgw_com_wb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
@@ -155,129 +164,19 @@ int lgw_com_wb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, u
 @param address 7-bit register address
 @param data pointer to byte array that will be written from the LoRa concentrator
 @param size size of the transfer, in byte(s)
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 int lgw_com_rb(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
 /**
-@brief LoRa usb receive packet cmd for sx1308 concentrator
+@brief Send command to concentrator through MCU, and wait for answer
 @param com_target generic pointer to USB target
-@param max_packet : nbr of max receive packets
-@param data pointer to byte array that will be written by the LoRa concentrator
-@return nbr of current receive packets
+@param cmd command to be sent to the concentrator
+@param ans answer received from the concentrator
+@return status of operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
-int lgw_receive_cmd(void *com_target, uint8_t max_packet, uint8_t *data);
-/**
-@brief LoRa usb cmd to configure rf chain for LoRa concentrator
-@param com_target generic pointer to USB target
-@param rfchain : rfchain id
-@param data pointer to byte array that will be written to the LoRa concentrator
-@param size size of the transfer, in byte(s)
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int lgw_rxrf_setconfcmd(void *com_target, uint8_t rfchain, uint8_t *data, uint16_t size);
-/**
-@brief LoRa usb cmd to configure if chain for LoRa concentrator
-@param com_target generic pointer to USB target
-@param ifchain : rfchain id
-@param data pointer to byte array that will be written to the LoRa concentrator
-@param size size of the transfer, in byte(s)
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int lgw_rxif_setconfcmd(void *com_target, uint8_t ifchain, uint8_t *data, uint16_t size);
-/**
-@brief LoRa usb cmd to configure tx gain for LoRa concentrator
-@param com_target generic pointer to USB target
-@param data pointer to byte array that will be written to the LoRa concentrator
-@param size size of the transfer, in byte(s)
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int lgw_txgain_setconfcmd(void *com_target, uint8_t *data, uint16_t size);
-/**
-@brief LoRa usb cmd to configure  LoRa concentrator
-@param com_target generic pointer to USB target
-@param data pointer to byte array that will be written to the LoRa concentrator
-@param size size of the transfer, in byte(s)
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int lgw_sendconfcmd(void *com_target, uint8_t *data, uint16_t size);
-/**
-@brief LoRa usb cmd to configure trigger of the LoRa concentrator
-@param com_target generic pointer to USB target
-@param data pointer to byte array that will be read from the LoRa concentrator
-@param address 7-bit register address
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int lgw_trigger(void *com_target, uint8_t address, uint32_t *data);
-/**
-@brief LoRa usb cmd to configure  the board of the LoRa concentrator
-@param com_target generic pointer to USB target
-@param data pointer to byte array that will be written to the LoRa concentrator
-@param size size of the transfer, in byte(s)
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int lgw_boardconfcmd(void * com_target, uint8_t *data, uint16_t size);
-/**
-@brief LoRa usb cmd to store calibration parameters to the LoRa concentrator
-@param com_target generic pointer to USB target
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int lgw_calibration_snapshot(void * com_target);
-/**
-@brief LoRa usb cmd to reset STM32 of the LoRa concentrator
-@param com_target generic pointer to USB target
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int lgw_resetSTM32(void * com_target);
-/**
-@brief LoRa usb cmd to set STM32 in DFU mode
-@param com_target generic pointer to USB target
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int lgw_GOTODFU(void * com_target);
-/**
-@brief LoRa usb cmd to get the unique id of STM32
-@param com_target generic pointer to USB target
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int lgw_GetUniqueId(void * com_target, uint8_t * uid);
+int lgw_com_send_command(void *com_target, lgw_com_cmd_t cmd, lgw_com_ans_t *ans);
 
-/**
-@brief LoRa usb cmd to check the cmd response coming from the stm32
-@param cmd : cmd id
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int checkcmd(uint8_t cmd);
-/**
-@brief LoRa usb cmd to send a cmd to the stm32
-@param CmdSettings_t : cmd structure
-param com_target : USB target
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int SendCmdn(CmdSettings_t CmdSettings, int fd);
-/**
-@brief LoRa usb cmd to receive a cmd response from the stm32
-@param CmdSettings_t : cmd structure
-@param fd : USB target
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int ReceiveAns(AnsSettings_t *Ansbuffer, int fd);
-/**
-@brief configure the usb com
-@param fd : USB target
-@param speed : speed com port configuration
-@param parity : parity com port configuration
-@return status of register operation (LGW_com_SUCCESS/LGW_com_ERROR)
-*/
-int set_interface_attribs (int fd, int speed, int parity);
-/**
-@brief configure the usb com
-@param fd : USB target
-@param should_block : blocking wainting a usb com response
-@param parity : parity com port configuration
-@return
-*/
-void set_blocking (int fd, int should_block);
 #endif
 
 /* --- EOF ------------------------------------------------------------------ */

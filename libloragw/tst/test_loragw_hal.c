@@ -43,8 +43,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define COM_PATH_DEFAULT    "/dev/ttyACM0"
 #define DEFAULT_RSSI_OFFSET 0.0
-#define DEFAULT_NOTCH_FREQ  129000U
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -71,20 +71,21 @@ static void sig_handler(int sigio) {
 /* describe command line options */
 void usage(void) {
     printf("Library version information: %s\n", lgw_version_info());
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -a <float> Radio A RX frequency in MHz\n");
-    printf( " -b <float> Radio B RX frequency in MHz\n");
-    printf( " -t <float> Radio TX frequency in MHz\n");
-    printf( " -r <int> Radio type (SX1255:1255, SX1257:1257)\n");
-    printf( " -k <int> Concentrator clock source (0: radio_A, 1: radio_B(default))\n");
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -d <path> COM device to be used to access the concentrator board\n");
+    printf("            => default path: " COM_PATH_DEFAULT "\n");
+    printf(" -a <float> Radio A RX frequency in MHz\n");
+    printf(" -b <float> Radio B RX frequency in MHz\n");
+    printf(" -t <float> Radio TX frequency in MHz\n");
+    printf(" -r <int> Radio type (SX1255:1255, SX1257:1257)\n");
+    printf(" -k <int> Concentrator clock source (0: radio_A, 1: radio_B(default))\n");
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
 
     struct lgw_conf_board_s boardconf;
@@ -106,13 +107,22 @@ int main(int argc, char **argv)
     uint8_t status_var = 0;
     double xd = 0.0;
     int xi = 0;
-    lgw_connect(false);
+
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
+
     /* parse command line options */
-    while ((i = getopt (argc, argv, "ha:b:t:r:k:")) != -1) {
+    while ((i = getopt (argc, argv, "ha:b:t:r:k:d:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
+                break;
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
             case 'a': /* <float> Radio A RX frequency in MHz */
                 sscanf(optarg, "%lf", &xd);
@@ -181,6 +191,13 @@ int main(int argc, char **argv)
 
     printf("*** Library version information ***\n%s\n\n", lgw_version_info());
 
+    /* Open communication bridge */
+    i = lgw_connect(com_path);
+    if (i == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
+        return -1;
+    }
+
     /* set configuration for board */
     memset(&boardconf, 0, sizeof(boardconf));
 
@@ -196,7 +213,6 @@ int main(int argc, char **argv)
     rfconf.rssi_offset = DEFAULT_RSSI_OFFSET;
     rfconf.type = radio_type;
     rfconf.tx_enable = true;
-    rfconf.tx_notch_freq = DEFAULT_NOTCH_FREQ;
     lgw_rxrf_setconf(0, rfconf); /* radio A, f0 */
 
     rfconf.enable = true;
@@ -419,7 +435,7 @@ int main(int argc, char **argv)
             txpkt.payload[19] = 0xff & tx_cnt;
             i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
             j = 0;
-            printf("+++\nSending packet #%d, rf path %d, return %d\nstatus -> ", tx_cnt, txpkt.rf_chain, i);
+            printf("+++\nSending packet #%u, rf path %d, return %d\nstatus -> ", tx_cnt, txpkt.rf_chain, i);
             do {
                 ++j;
                 wait_ms(100);

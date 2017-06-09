@@ -1,16 +1,15 @@
 /*
-/ _____)             _              | |
+ / _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
-\____ \| ___ |    (_   _) ___ |/ ___)  _ \
-_____) ) ____| | | || |_| ____( (___| | | |
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
- (C)2013 Semtech-Cycleo
+  (C)2017 Semtech-Cycleo
 
 Description:
-   SPI stress test
+ Utility to jump to the PicoCell MCU bootloader
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
@@ -25,14 +24,11 @@ Maintainer: Sylvain Miermont
 #endif
 
 #include <stdint.h>     /* C99 types */
-#include <stdbool.h>    /* bool type */
 #include <stdio.h>      /* printf fprintf sprintf fopen fputs */
-
-#include <signal.h>     /* sigaction */
 #include <unistd.h>     /* getopt access */
-#include <stdlib.h>     /* rand */
+#include <stdlib.h>     /* EXIT_FAILURE */
 
-#include "loragw_reg.h"
+#include "loragw_com.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -43,72 +39,52 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define VERS                    103
-#define READS_WHEN_ERROR        16 /* number of times a read is repeated if there is a read error */
-#define BUFF_SIZE               1024 /* maximum number of bytes that we can write in sx1301 RX data buffer */
-#define DEFAULT_TX_NOTCH_FREQ   129E3
+#define COM_PATH_DEFAULT "/dev/ttyACM0"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
-/* signal handling variables */
-struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
-static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
+void *lgw_com_target = NULL; /*! generic pointer to the COM device */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
-
-static void sig_handler(int sigio);
 
 void usage (void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;;
-    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
-}
-
 /* describe command line options */
 void usage(void) {
-    MSG( "Available options:\n");
-    MSG( " -h print this help\n");
-    MSG( " -b to enter in DFU mode \n");
+    MSG("Available options:\n");
+    MSG(" -h print this help\n");
+    MSG(" -d <path> COM device to be used to access the concentrator board\n");
+    MSG("            => default path: " COM_PATH_DEFAULT "\n");
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
-    int i;
+int main(int argc, char **argv) {
+    int i, x;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
 
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL);
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
-
-    while ((i = getopt (argc, argv, "hblq:")) != -1) {
-        printf("cmd = %c\n", i);
+    while ((i = getopt (argc, argv, "hd:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
                 break;
-            case 'b':
-                lgw_connect(false);
-                lgw_reg_GOTODFU();
-                return EXIT_SUCCESS;
-                break;
 
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
+                break;
 
             default:
                 MSG("ERROR: argument parsing use -h option for help\n");
@@ -116,6 +92,34 @@ int main(int argc, char **argv)
                 return EXIT_FAILURE;
         }
     }
+
+    /* Open communication bridge */
+    x = lgw_com_open(&lgw_com_target, com_path);
+    if (x == LGW_COM_ERROR) {
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
+        return -1;
+    }
+
+    /* prepare command to jump to bootloader */
+    cmd.id = 'n';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 0;
+    cmd.address = 0;
+    /* send command to MCU */
+    x = lgw_com_send_command(lgw_com_target, cmd, &ans);
+    if (x == LGW_COM_ERROR) {
+        printf("ERROR: FAIL TO SEND COMMAND\n");
+        return -1;
+    }
+
+    /* Close communication bridge */
+    x = lgw_com_close(lgw_com_target);
+    if (x == LGW_COM_ERROR) {
+        printf("ERROR: FAIL TO DISCONNECT BOARD\n");
+        return -1;
+    }
+
+    return EXIT_SUCCESS;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -7,7 +7,7 @@
   (C)2017 Semtech-Cycleo
 
 Description:
-    Minimum test program for the loragw_hal 'library'
+    Minimum test program for the loragw_cal 'library'
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 
@@ -45,7 +45,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define DEFAULT_TX_NOTCH_FREQ   129E3
+#define COM_PATH_DEFAULT        "/dev/ttyACM0"
 #define DEFAULT_RSSI_OFFSET     0.0
 #define NB_CAL_MAX              100
 #define MCU_AGC                 1
@@ -98,21 +98,22 @@ void usage (void);
 /* describe command line options */
 void usage(void) {
     printf("Library version information: %s\n", lgw_version_info());
-    printf( "Available options:\n");
-    printf( " -h print this help\n");
-    printf( " -a <float> Radio A frequency in MHz\n");
-    printf( " -b <float> Radio B frequency in MHz\n");
-    printf( " -r <int> Radio type (SX1255:1255, SX1257:1257)\n");
-    printf( " -n <uint> Number of calibration iterations\n");
-    printf( " -k <int> Concentrator clock source (0:radio_A, 1:radio_B(default))\n");
-    printf( " -t <int> Radio to run TX calibration on (0:None(default), 1:radio_A, 2:radio_B, 3:both)\n");
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -d <path> COM device to be used to access the concentrator board\n");
+    printf("            => default path: " COM_PATH_DEFAULT "\n");
+    printf(" -a <float> Radio A frequency in MHz\n");
+    printf(" -b <float> Radio B frequency in MHz\n");
+    printf(" -r <int> Radio type (SX1255:1255, SX1257:1257)\n");
+    printf(" -n <uint> Number of calibration iterations\n");
+    printf(" -k <int> Concentrator clock source (0:radio_A, 1:radio_B(default))\n");
+    printf(" -t <int> Radio to run TX calibration on (0:None(default), 1:radio_A, 2:radio_B, 3:both)\n");
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int i, j, x;
     int32_t read_val;
     struct lgw_conf_board_s boardconf;
@@ -133,6 +134,10 @@ int main(int argc, char **argv)
     uint8_t img_rej_b_min;
     //FILE *file;
 
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
+
     /* command line options */
     int xi = 0;
     double xd = 0.0;
@@ -141,13 +146,18 @@ int main(int argc, char **argv)
     uint8_t clocksource = 1; /* Radio B is source by default */
     uint8_t tx_enable = 0;
     int nb_cal = 5;
-    lgw_connect(false);
+
     /* parse command line options */
-    while ((i = getopt (argc, argv, "ha:b:r:n:k:t:")) != -1) {
+    while ((i = getopt (argc, argv, "ha:b:r:n:k:t:d:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return -1;
+                break;
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
             case 'a': /* <float> Radio A frequency in MHz */
                 sscanf(optarg, "%lf", &xd);
@@ -213,6 +223,14 @@ int main(int argc, char **argv)
     }
 
     /* starting the concentrator */
+
+    /* Open communication bridge */
+    x = lgw_connect(com_path);
+    if (x == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
+        return -1;
+    }
+
     /* board config */
     memset(&boardconf, 0, sizeof(boardconf));
 
@@ -262,12 +280,6 @@ int main(int argc, char **argv)
     printf("Radio B frequency: %f MHz\n", fb / 1e6);
     printf("Number of calibration iterations: %d\n", nb_cal);
     printf("Calibration command: brd: %d, chip: %d, dac: %d\n\n", cal_cmd >> 6, 1257 - 2 * ((cal_cmd & 0x20) >> 5), 2 + ((cal_cmd & 0x10) >> 4));
-
-    x = lgw_connect(false);
-    if (x == -1) {
-        printf("ERROR: FAIL TO CONNECT BOARD\n");
-        return -1;
-    }
 
     /* reset the registers (also shuts the radios down) */
     lgw_soft_reset();

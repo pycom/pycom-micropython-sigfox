@@ -24,103 +24,82 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdint.h>     /* C99 types*/
 
 #include "config.h"     /* library configuration options _linux(dynamically generated) */
-#include "loragw_com.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
-
-#define LGW_com_SUCCESS     0
-#define LGW_com_ERROR       -1
-#define LGW_BURST_CHUNK     1024
-
-#define LGW_com_MUX_MODE0   0x0     /* No FPGA */
-#define LGW_com_MUX_MODE1   0x1     /* FPGA, with spi mux header */
-
-#define LGW_com_MUX_TARGET_SX1301   0x0
-#define LGW_com_MUX_TARGET_FPGA     0x1
-#define LGW_com_MUX_TARGET_EEPROM   0x2
-#define LGW_com_MUX_TARGET_SX127X   0x3
-#define ACK_KO   0
-#define OK 1
-#define KO 0
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
 /**
-@brief LoRa concentrator SPI setup _linux(configure I/O and peripherals)
-@param com_target_ptr pointer on a generic pointer to SPI target _linux(implementation dependant)
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@brief LoRa concentrator COM setup (configure I/O and peripherals)
+@param com_target_ptr pointer on a generic pointer to COM target
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 
-int lgw_com_open_linux(void **com_target_ptr);
+int lgw_com_open_linux(void **com_target_ptr, const char *com_path);
 
 /**
-@brief LoRa concentrator SPI close
-@param com_target generic pointer to SPI target _linux(implementation dependant)
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@brief LoRa concentrator COM close
+@param com_target generic pointer to COM target
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 
 int lgw_com_close_linux(void *com_target);
 
 /**
-@brief LoRa concentrator SPI single-byte write
-@param com_target generic pointer to SPI target _linux(implementation dependant)
+@brief LoRa concentrator COM single-byte write
+@param com_target generic pointer to COM target
 @param address 7-bit register address
 @param data data byte to write
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t data);
 
 /**
-@brief LoRa concentrator SPI single-byte read
-@param com_target generic pointer to SPI target _linux(implementation dependant)
+@brief LoRa concentrator COM single-byte read
+@param com_target generic pointer to COM target
 @param address 7-bit register address
 @param data data byte to write
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data);
 
 /**
-@brief LoRa concentrator SPI burst _linux(multiple-byte) write
-@param com_target generic pointer to SPI target _linux(implementation dependant)
+@brief LoRa concentrator COM burst (multiple-byte) write
+@param com_target generic pointer to COM target
 @param address 7-bit register address
 @param data pointer to byte array that will be sent to the LoRa concentrator
-@param size size of the transfer, in byte_linux(s)
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@param size size of the transfer, in byte(s)
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
 /**
-@brief LoRa concentrator SPI burst _linux(multiple-byte) read
-@param com_target generic pointer to SPI target _linux(implementation dependant)
+@brief LoRa concentrator COM burst (multiple-byte) read
+@param com_target generic pointer to COM target
 @param address 7-bit register address
 @param data pointer to byte array that will be written from the LoRa concentrator
-@param size size of the transfer, in byte_linux(s)
-@return status of register operation _linux(LGW_com_SUCCESS/LGW_com_ERROR)
+@param size size of the transfer, in byte(s)
+@return status of register operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
 */
 int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size);
 
+/**
+@brief Send command to LoRa concentrator through COM interface
+@param cmd command to be sent to the concentrator
+@param handle COM bridge handle
+@return status of operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
+*/
+int lgw_com_send_cmd_linux(lgw_com_cmd_t cmd, lgw_handle_t handle);
 
-int SendCmd_linux(CmdSettings_t CmdSettings, int file1);
-int SendCmdn_linux(CmdSettings_t CmdSettings, int file1);
-int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int file1);
-int ReceiveAnsCmd_linux(AnsSettings_t *Ansbuffer, int file1, uint8_t cmd);
-void WriteBurstRegister_linux(int file1, int adress, int *value, int size);
-int set_interface_attribs_linux(int fd, int speed, int parity);
-void set_blocking_linux(int fd, int should_block);
-int lgw_receive_cmd_linux(void *com_target, uint8_t max_packet, uint8_t *data);
-int lgw_rxrf_setconfcmd_linux(void *com_target, uint8_t rfchain, uint8_t *data, uint16_t size);
-int lgw_rxif_setconfcmd_linux(void *com_target, uint8_t ifchain, uint8_t *data, uint16_t size);
-int checkcmd_linux(uint8_t cmd);
-int lgw_txgain_setconfcmd_linux(void *com_target, uint8_t *data, uint16_t size);
-int lgw_sendconfcmd_linux(void *com_target, uint8_t *data, uint16_t size);
-int lgw_trigger_linux(void *com_target, uint8_t address, uint32_t *data);
-int lgw_boardconfcmd_linux(void * com_target, uint8_t *data, uint16_t size);
-int lgw_calibration_snapshot_linux(void * com_target);
-int lgw_resetSTM32_linux(void * com_target);
-int lgw_GOTODFU_linux(void * com_target);
-int lgw_GetUniqueId_linux(void * com_target, uint8_t * uid);
+/**
+@brief Receive answer to the previously sent command from the LoRa concentrator through COM interface
+@param ans answer received from to the concentrator
+@param handle COM bridge handle
+@return status of operation (LGW_COM_SUCCESS/LGW_COM_ERROR)
+*/
+int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle);
 
 #endif
 

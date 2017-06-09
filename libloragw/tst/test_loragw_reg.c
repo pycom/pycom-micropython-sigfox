@@ -7,37 +7,76 @@
   (C)2017 Semtech-Cycleo
 
 Description:
-    Minimum test program for the loragw_spi 'library'
+    Minimum test program for the loragw_reg 'library'
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-
 */
-
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>
 #include <stdio.h>
+#include <getopt.h>
 
 #include "loragw_reg.h"
 
 /* -------------------------------------------------------------------------- */
-/* --- MAIN FUNCTION -------------------------------------------------------- */
+/* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define COM_PATH_DEFAULT    "/dev/ttyACM0"
 #define BURST_TEST_LENGTH    8192
 
-int main()
-{
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+/* describe command line options */
+void usage(void) {
+    printf("Available options:\n");
+    printf(" -h print this help\n");
+    printf(" -d <path> COM device to be used to access the concentrator board\n");
+    printf("            => default path: " COM_PATH_DEFAULT "\n");
+}
+
+/* -------------------------------------------------------------------------- */
+/* --- MAIN FUNCTION -------------------------------------------------------- */
+
+int main(int argc, char **argv) {
     int32_t read_value, test_value;
     uint16_t lfsr;
     uint8_t burst_buffout[BURST_TEST_LENGTH];
     uint8_t burst_buffin[BURST_TEST_LENGTH];
     int i;
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
+
+    /* parse command line options */
+    while ((i = getopt (argc, argv, "hd:")) != -1) {
+        switch (i) {
+            case 'h':
+                usage();
+                return -1;
+                break;
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
+                break;
+            default:
+                printf("ERROR: argument parsing\n");
+                usage();
+                return -1;
+        }
+    }
 
     printf("Beginning of test for loragw_reg.c\n");
 
-    lgw_connect(false);
+    i = lgw_connect(com_path);
+    if (i == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
+        return -1;
+    }
 
     /* 2 SPI transactions:
     -> 0x80 0x00        <- 0x00 0x00        forcing page 0

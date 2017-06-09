@@ -8,21 +8,21 @@
 LoRa Gateway project
 =====================
 
-1. Core library: libloragw
----------------------------
+## 1. Core library: libloragw
+-----------------------------
 
 This directory contains the sources of the library to build a LoRa Picocell
 Gateway based on a Semtech LoRa multi-channel RF receiver (a.k.a. concentrator).
 Once compiled all the code is contained in the libloragw.a file that will be 
 statically linked (ie. integrated in the final executable).
-The library implements an USB CDC (virtual com port) to communicate with the
-embedded mcu.
+The library implements the communication with the concentrator embedded MCU
+through a serial port.
 
 The library also comes with a bunch of basic tests programs that are used to 
 test the different sub-modules of the library.
 
-2. Helper programs
--------------------
+## 2. Helper programs
+---------------------
 
 Those programs are included in the project to provide examples on how to use 
 the HAL library, and to help the system builder test different parts of it.
@@ -54,24 +54,42 @@ for spectral measurement.
 
 ### 2.5. util_boot ###
 
-This software is used to set PicoCell Gateway in dfu mode for download new FW MCU.
+This software is used to jump to the PicoCell Gateway bootloader for programming
+the MCU with a new firmware.
+Please refer to the readme of picoGW_mcu repository for more information about
+MCU flash programming.
 
 ### 2.6. util_chip_id ###
 
-This software is used to obtain the unique id of the PicoCell gateway.
-64 bits unique id extracts from the STM32 uinque id registers.
+This software is used to obtain the unique id of the PicoCell gateway (the
+64 bits unique id extracted from the STM32 unique id registers).
 
+## 4. User Guide
+----------------
 
-4. Changelog
--------------
+[A detailed PicoCell GW user guide is available here](http://www.semtech.com/images/datasheet/picocell_gateway_user_guide.pdf)
+
+## 5. Changelog
+---------------
+
+### v0.1.0  ###
+
+* HAL: code clean-up/refactoring
+* HAL: serial port configuration to handle both USB or UART communication with
+mcu.
+* util_boot: only used to jump to the MCU bootloader.
+* util_chip_id: no more command line parameter, just print the PicoCell GW
+unique ID on the console.
+* HAL/util_*: added a parameter to lgw_connect() function to specify the COM
+device path to be used to communicate with the concentrator board (tty...).
 
 ### v0.0.1  ###
 
 * Initial release
 
 
-5. Legal notice
-----------------
+## 6. Legal notice
+------------------
 
 The information presented in this project documentation does not form part of 
 any quotation or contract, is believed to be accurate and reliable and may be 

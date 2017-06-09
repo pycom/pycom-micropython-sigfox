@@ -1,16 +1,16 @@
-
 /*
-/ _____)             _              | |
+ / _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
-\____ \| ___ |    (_   _) ___ |/ ___)  _ \
-_____) ) ____| | | || |_| ____( (___| | | |
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
-(C)2017 Semtech-Cycleo
+  (C)2017 Semtech-Cycleo
 
 Description:
-this file contains the USB cmd to configure and communicate with
-the Sx1308 LoRA concentrator.
-An USB CDC drivers is required to establish the connection with the picogateway board.
+this file contains the USB commands to configure and communicate with the SX1308
+LoRA concentrator.
+A USB CDC drivers is required to establish the connection with the PicoCell
+board.
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 */
@@ -19,24 +19,25 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
-#include <stdint.h>        /* C99 types */
-#include <stdio.h>        /* printf fprintf */
-#include <stdlib.h>        /* malloc free */
-#include <unistd.h>        /* lseek, close */
-#include <fcntl.h>        /* open */
-#include <string.h>        /* memset */
-#include <errno.h>   /* Error number definitions */
-#include <termios.h> /* POSIX terminal control definitions */
+#include <stdint.h>     /* C99 types */
+#include <stdio.h>      /* printf fprintf */
+#include <stdlib.h>     /* malloc free */
+#include <unistd.h>     /* lseek, close */
+#include <fcntl.h>      /* open */
+#include <string.h>     /* memset */
+#include <errno.h>      /* Error number definitions */
+#include <termios.h>    /* POSIX terminal control definitions */
 #include <sys/ioctl.h>
 #include <pthread.h>
-#include "loragw_com_linux.h"
+#include <time.h>
+#include <sys/select.h>
+
 #include "loragw_com.h"
-#include "loragw_hal.h"
+#include "loragw_com_linux.h"
 #include "loragw_aux.h"
 #include "loragw_reg.h"
-#include <time.h>
+#include "loragw_mcu.h"
 
-#include <sys/select.h>
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -51,164 +52,276 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define CHECK_NULL(a)                if(a==NULL){return LGW_COM_ERROR;}
 #endif
 
+#define UNUSED(x) (void)(x)
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE SHARED VARIABLES (GLOBAL) ------------------------------------ */
 
-pthread_mutex_t mx_usbbridgesync = PTHREAD_MUTEX_INITIALIZER; /* control access to usbbridge sync offsets */
+extern pthread_mutex_t mx_usbbridgesync;
 
+/* -------------------------------------------------------------------------- */
+/* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
-
-
-int
-set_interface_attribs_linux(int fd, int speed, int parity)
-{
+int set_interface_attribs_linux(int fd, int speed) {
     struct termios tty;
+
     memset(&tty, 0, sizeof tty);
-    if (tcgetattr(fd, &tty) != 0)
-    {
-        DEBUG_PRINTF("error %d from tcgetattr", errno);
-        return -1;
+
+    /* Get current attributes */
+    if (tcgetattr(fd, &tty) != 0) {
+        DEBUG_PRINTF("ERROR: tcgetattr failed with %d - %s", errno, strerror(errno));
+        return LGW_COM_ERROR;
     }
 
     cfsetospeed(&tty, speed);
     cfsetispeed(&tty, speed);
 
-    tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8;     // 8-bit chars
-    // disable IGNBRK for mismatched speed tests; otherwise receive break
-    // as \000 chars
-    tty.c_iflag &= ~IGNBRK;         // disable break processing
-    tty.c_lflag = 0;                // no signaling chars, no echo,
-    // no canonical processing
-    tty.c_oflag = 0;                // no remapping, no delays
-    tty.c_cc[VMIN] = 0;            // read doesn't block
-    tty.c_cc[VTIME] = 50;            // 0.5 seconds read timeout
+    /* Control Modes */
+    tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8; /* set 8-bit characters */
+    tty.c_cflag |= CLOCAL;                      /* local connection, no modem control */
+    tty.c_cflag |= CREAD;                       /* enable receiving characters */
+    tty.c_cflag &= ~PARENB;                     /* no parity */
+    tty.c_cflag &= ~CSTOPB;                     /* one stop bit */
+    /* Input Modes */
+    tty.c_iflag &= ~IGNBRK;
+    tty.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL);
+    /* Output Modes */
+    tty.c_oflag &= ~IGNBRK;
+    tty.c_oflag &= ~(IXON | IXOFF | IXANY | ICRNL);
+    /* Local Modes */
+    tty.c_lflag = 0;
+    /* Settings for non-canonical mode */
+    tty.c_cc[VMIN] = 0;                         /* non-blocking mode */
+    tty.c_cc[VTIME] = 50;                       /* wait for (n * 0.1) seconds before returning */
 
-    tty.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL); // shut off xon/xoff ctrl
-
-    tty.c_cflag |= (CLOCAL | CREAD);// ignore modem controls,
-    // enable reading
-    tty.c_cflag &= ~(PARENB | PARODD);      // shut off parity
-    tty.c_cflag |= parity;
-    tty.c_cflag &= ~CSTOPB;
-    //  tty.c_cflag &= ~CRTSCTS;
-
-    if (tcsetattr(fd, TCSANOW, &tty) != 0)
-    {
-        DEBUG_PRINTF("error %d from tcsetattr", errno);
-        return -1;
+    /* Set attributes */
+    if (tcsetattr(fd, TCSANOW, &tty) != 0) {
+        DEBUG_PRINTF("ERROR: tcsetattr failed with %d - %s", errno, strerror(errno));
+        return LGW_COM_ERROR;
     }
-    return 0;
+
+    return LGW_COM_SUCCESS;
 }
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
 /* configure TTYACM0 read blocking or not*/
-void set_blocking_linux(int fd, int should_block)
-{
+int set_blocking_linux(int fd, bool blocking) {
     struct termios tty;
+
     memset(&tty, 0, sizeof tty);
-    if (tcgetattr(fd, &tty) != 0)
-    {
-        DEBUG_PRINTF("error %d from tggetattr", errno);
-        return;
+
+    /* Get current attributes */
+    if (tcgetattr(fd, &tty) != 0) {
+        DEBUG_PRINTF("ERROR: tcgetattr failed with %d - %s", errno, strerror(errno));
+        return LGW_COM_ERROR;
     }
 
-    tty.c_cc[VMIN] = should_block ? 1 : 0;
-    tty.c_cc[VTIME] = 1;            // 0.5 seconds read timeout
+    tty.c_cc[VMIN] = (blocking == true) ? 1 : 0;    /* set blocking or non-blocking mode */
+    tty.c_cc[VTIME] = 1;                            /* wait for (n * 0.1) seconds before returning */
 
-    if (tcsetattr(fd, TCSANOW, &tty) != 0)
-    {
-        DEBUG_PRINTF("error %d setting term attributes", errno);
+    /* Set attributes */
+    if (tcsetattr(fd, TCSANOW, &tty) != 0) {
+        DEBUG_PRINTF("ERROR: tcsetattr failed with %d - %s", errno, strerror(errno));
+        return LGW_COM_ERROR;
+    }
+
+    return LGW_COM_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+bool checkcmd_linux(uint8_t cmd) {
+    switch (cmd) {
+        case 'r': /* read register */
+        case 's': /* read burst - first chunk */
+        case 't': /* read burst - middle chunk */
+        case 'u': /* read burst - end chunk */
+        case 'p': /* read burst - atomic */
+        case 'w': /* write register */
+        case 'x': /* write burst - first chunk */
+        case 'y': /* write burst - middle chunk */
+        case 'z': /* write burst - end chunk */
+        case 'a': /* write burst - atomic */
+        case 'b': /* lgw_receive */
+        case 'c': /* lgw_rxrf_setconf */
+        case 'd': /* lgw_rxif_setconf */
+        case 'f': /* lgw_send */
+        case 'h': /* lgw_txgain_setconf */
+        case 'q': /* lgw_get_trigcnt */
+        case 'i': /* lgw_board_setconf */
+        case 'j': /* lgw_calibration_snapshot */
+        case 'l': /* lgw_check_fw_version */
+        case 'm': /* reset STM32 */
+        case 'n': /* Go to bootloader */
+            return true;
+        default:
+            return false;
     }
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
+int lgw_com_send_cmd_linux(lgw_com_cmd_t cmd, lgw_handle_t handle) {
+    int i;
+    uint8_t buffertx[CMD_HEADER_TX_SIZE + CMD_DATA_TX_SIZE];
+    uint16_t Clen = cmd.len_lsb + (cmd.len_msb << 8);
+    uint16_t Tlen = CMD_HEADER_TX_SIZE + Clen;
+    ssize_t lencheck;
 
+    /* Initialize buffer */
+    memset(buffertx, 0, sizeof buffertx);
 
-/* open USB port */
-int lgw_com_open_linux(void **com_target_ptr) {
+    /* Prepare command */
+    buffertx[0] = (uint8_t)cmd.id;
+    buffertx[1] = cmd.len_msb;
+    buffertx[2] = cmd.len_lsb;
+    buffertx[3] = cmd.address;
+    for (i = 0; i < Clen; i++) {
+        buffertx[i + 4] = cmd.cmd_data[i];
+    }
+
+    /* Send command */
+    lencheck = write(handle, buffertx, Tlen);
+    if (lencheck < 0) {
+        DEBUG_PRINTF("ERROR: failed to write cmd (%d - %s)\n", errno, strerror(errno));
+        return LGW_COM_ERROR;
+    }
+    if (lencheck != Tlen) {
+        DEBUG_PRINTF("WARNING: incomplete cmd written (%d)\n", (int)lencheck);
+    }
+
+    DEBUG_PRINTF("Note: sent cmd \'%c\', addr 0x%02X, length=%d\n", cmd.id, cmd.address, Clen);
+
+    return LGW_COM_SUCCESS;
+}
+
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
+
+int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
+    int i;
+    uint8_t bufferrx[CMD_HEADER_RX_SIZE + CMD_DATA_RX_SIZE];
+    unsigned int buffer_idx;
+    size_t cmd_size;
+    ssize_t buf_size = 0;
+    ssize_t lencheck;
+
+    /* Initialize variables */
+    memset(bufferrx, 0, sizeof bufferrx);
+
+    /* Wait for cmd answer header */
+    buffer_idx = 0;
+    while ((checkcmd_linux(bufferrx[0]) != true) || (buffer_idx < CMD_HEADER_RX_SIZE)) {
+        lencheck = read(handle, &bufferrx[buffer_idx], CMD_HEADER_RX_SIZE - buffer_idx);
+        if (lencheck < 0) {
+            DEBUG_PRINTF("WARNING: failed to read from communication bridge (%d - %s), retry...\n", errno, strerror(errno));
+            return LGW_COM_ERROR;
+        }
+        buffer_idx += lencheck;
+    }
+
+    cmd_size = (bufferrx[1] << 8) + bufferrx[2];
+
+    DEBUG_PRINTF("Note: received answer header for cmd \'%c\', length=%d, ack=%u\n", bufferrx[0], cmd_size, bufferrx[3]);
+
+    /* Read answer Data */
+    if (cmd_size > 0) {
+        /* Determine how much we need to read */
+        buf_size = cmd_size + CMD_HEADER_RX_SIZE;
+        if ((buf_size % 64) == 0) {
+            cmd_size = cmd_size + 1; /* one padding byte is added by USB driver, we need to read it */
+        }
+        /* Check that data size does not exceed buffer size */
+        if (cmd_size > CMD_DATA_RX_SIZE) {
+            DEBUG_PRINTF("ERROR: exceed read buffer size, abort. (%d)\n", cmd_size);
+            return LGW_COM_ERROR;
+        }
+        /* Read the answer */
+        buffer_idx = 0;
+        while (buffer_idx < cmd_size) {
+            lencheck = read(handle, &bufferrx[CMD_HEADER_RX_SIZE + buffer_idx], cmd_size - buffer_idx);
+            if (lencheck < 0) {
+                DEBUG_PRINTF("ERROR: failed to read cmd answer (%d - %s)\n", errno, strerror(errno));
+                return LGW_COM_ERROR;
+            }
+            buffer_idx += lencheck;
+        }
+    }
+    ans->id = (char)bufferrx[0];
+    ans->len_msb = bufferrx[1];
+    ans->len_lsb = bufferrx[2];
+    ans->status = bufferrx[3];
+    for (i = 0; i < (int)cmd_size; i++) {
+        ans->ans_data[i] = bufferrx[CMD_HEADER_RX_SIZE + i];
+    }
+
+    DEBUG_PRINTF("Note: received answer for cmd \'%c\', length=%d\n", bufferrx[0], cmd_size);
+
+    return LGW_COM_SUCCESS;
+}
+
+/* -------------------------------------------------------------------------- */
+/* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
+
+int lgw_com_open_linux(void **com_target_ptr, const char *com_path) {
 
     int *usb_device = NULL;
     char portname[50];
-    int i;
+    int x;
     int fd;
-    int fwversion = STM32FWVERSION;
+
     /*check input variables*/
     CHECK_NULL(com_target_ptr);
+
     usb_device = malloc(sizeof(int));
     if (usb_device == NULL) {
         DEBUG_MSG("ERROR : MALLOC FAIL\n");
         return LGW_COM_ERROR;
     }
 
-    for (i = 0; i < 10; i++) // try to open one of the 10 port ttyACM
-    {
-        sprintf(portname, "/dev/ttyACM%d", i);
-        fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
-
-        if (fd < 0)
-        {
-            DEBUG_PRINTF("ERROR: failed to open bridge USB  %s \n", portname);
+    /* open tty port */
+    sprintf(portname, "%s", com_path);
+    fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
+    if (fd < 0) {
+        DEBUG_PRINTF("ERROR: failed to open COM port %s - %s\n", portname, strerror(errno));
+    } else {
+        x = set_interface_attribs_linux(fd, B115200);
+        x |= set_blocking_linux(fd, true);
+        if (x != 0) {
+            DEBUG_PRINTF("ERROR: failed to configure COM port %s\n", portname);
+            free(usb_device);
+            return LGW_COM_ERROR;
         }
-        else
-        {
-            set_interface_attribs(fd, B921600, 0);  // set speed to 115,200 bps, 8n1 (no parity)
-            set_blocking(fd, 0);                // set  non blocking
-            *usb_device = fd;
-            *com_target_ptr = (void*)usb_device;
-            CmdSettings_t mystruct;
-            AnsSettings_t mystrctAns;
 
-            mystruct.Cmd = 'l';
-            mystruct.LenMsb = 0;
-            mystruct.Len = 4;
-            mystruct.Adress = 0;
-            mystruct.Value[0] = (uint8_t)((fwversion >> 24) & (0x000000ff));
-            mystruct.Value[1] = (uint8_t)((fwversion >> 16) & (0x000000ff));
-            mystruct.Value[2] = (uint8_t)((fwversion >> 8) & (0x000000ff));
-            mystruct.Value[3] = (uint8_t)((fwversion) & (0x000000ff));
+        *usb_device = fd;
+        *com_target_ptr = (void*)usb_device;
 
-            DEBUG_MSG("Note: USB write success\n");
-            pthread_mutex_lock(&mx_usbbridgesync);
-            SendCmdn(mystruct, fd);
-            if (ReceiveAns(&mystrctAns, fd))
-            {
-                if (mystrctAns.Rxbuf[0] == ACK_KO) {
-                    return LGW_COM_ERROR;
-                }
-                DEBUG_PRINTF("check fw version %d \n", mystrctAns.Rxbuf[0]);
-                DEBUG_MSG("Note: USB read config success\n");
-                pthread_mutex_unlock(&mx_usbbridgesync);
-                return LGW_COM_SUCCESS;
-            }
-            else
-            {
-                DEBUG_MSG("ERROR: USB read config FAILED\n");
-                pthread_mutex_unlock(&mx_usbbridgesync);
-                return LGW_COM_ERROR;
-            }
-            return LGW_COM_SUCCESS;
-        }
+        return LGW_COM_SUCCESS;
     }
 
+    free(usb_device);
     return LGW_COM_ERROR;
 }
 
-
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* COM release */
 int lgw_com_close_linux(void *com_target) {
     int usb_device;
     int a;
+
     /*check input variables*/
     CHECK_NULL(com_target);
-    usb_device = *(int*)com_target;
 
+    /* close file & deallocate file descriptor */
+    usb_device = *(int*)com_target;
     a = close(usb_device);
+    free(com_target);
+
+    /* determine return code */
     if (a < 0) {
-        DEBUG_MSG("ERROR : USB PORT FAILED TO CLOSE\n");
+        DEBUG_PRINTF("ERROR: failed to close COM port - %s\n", strerror(errno));
         return LGW_COM_ERROR;
-    }
-    else
-    {
+    } else {
         DEBUG_MSG("Note : USB port closed \n");
         return LGW_COM_SUCCESS;
     }
@@ -216,886 +329,231 @@ int lgw_com_close_linux(void *com_target) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* Simple write */
 int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t data) {
     int fd;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
+    UNUSED(com_mux_mode);
+    UNUSED(com_mux_target);
 
-    int temp4WARNING;
-    temp4WARNING = com_mux_mode;
-    temp4WARNING = com_mux_target;
-    temp4WARNING++;
+    /*check input variables*/
+    CHECK_NULL(com_target);
+
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
-    /*build the write cmd*/
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    cmd.id = 'w';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 1;
+    cmd.address = address;
+    cmd.cmd_data[0] = data;
 
-    mystruct.Cmd = 'w';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Adress = address;
-    mystruct.Value[0] = data;
     pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        DEBUG_MSG("Note: usb read success\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("ERROR: usb READ FAILURE\n");
+    lgw_com_send_cmd_linux(cmd, fd);
+    if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_ERROR) {
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_COM_ERROR;
     }
+    pthread_mutex_unlock(&mx_usbbridgesync);
+
+    return LGW_COM_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-/* Simple read */
 int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data) {
     int fd;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
+    UNUSED(com_mux_mode);
+    UNUSED(com_mux_target);
 
-    int temp4WARNING;
-    temp4WARNING = com_mux_mode;
-    temp4WARNING = com_mux_target;
-    temp4WARNING++;
     /* check input variables */
     CHECK_NULL(com_target);
     CHECK_NULL(data);
 
     fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-    mystruct.Cmd = 'r';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Adress = address;
-    mystruct.Value[0] = 0;
+    cmd.id = 'r';
+    cmd.len_msb = 0;
+    cmd.len_lsb = 1;
+    cmd.address = address;
+    cmd.cmd_data[0] = 0;
 
     pthread_mutex_lock(&mx_usbbridgesync);
-    DEBUG_MSG("Note: usb send cmd read success\n");
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        DEBUG_MSG("Note: usb read success\n");
-        *data = mystrctAns.Rxbuf[0];
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("ERROR: USB READ FAILURE\n");
+    lgw_com_send_cmd_linux(cmd, fd);
+    if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_ERROR) {
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_COM_ERROR;
     }
+    pthread_mutex_unlock(&mx_usbbridgesync);
 
+    *data = ans.ans_data[0];
+
+    return LGW_COM_SUCCESS;
 }
 
+/* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size) {
     int fd;
     int i;
-    int sizei = size;
+    uint16_t chunk_size = size;
     int cptalc = 0;
-    int temp4WARNING;
-    temp4WARNING = com_mux_mode;
-    temp4WARNING = com_mux_target;
-    temp4WARNING++;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
+    UNUSED(com_mux_mode);
+    UNUSED(com_mux_target);
 
     /* check input parameters */
     CHECK_NULL(com_target);
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
+    CHECK_NULL(data);
 
-    /* prepare command byte */
+    fd = *(int *)com_target;
+
+    /* lock for complete burst */
     pthread_mutex_lock(&mx_usbbridgesync);
-    while (sizei > ATOMICTX)
-    {
-        if (sizei == size)
-        {
-            mystruct.Cmd = 'x'; //first part of big packet
+
+    /* Split burst in multiple chunks if necessary */
+    while (chunk_size > ATOMICTX) {
+        /* Prepare command */
+        if (chunk_size == size) {
+            cmd.id = 'x'; /* write burst - first */
+        } else {
+            cmd.id = 'y'; /* write burst - middle */
         }
-        else
-        {
-            mystruct.Cmd = 'y';   //middle part of big packet
+        cmd.len_msb = (uint8_t)((ATOMICTX >> 8) & 0xFF);
+        cmd.len_lsb = (uint8_t)((ATOMICTX >> 0) & 0xFF);
+        cmd.address = address;
+        for (i = 0; i < ATOMICTX; i++) {
+            cmd.cmd_data[i] = data[i + cptalc];
         }
 
-        mystruct.LenMsb = (ATOMICTX >> 8);
-        mystruct.Len = ATOMICTX - ((ATOMICTX >> 8) << 8);
-        mystruct.Adress = address;
-
-        for (i = 0; i < ATOMICTX; i++)
-        {
-            mystruct.Value[i] = data[i + cptalc];
-        }
-
-        SendCmdn(mystruct, fd);
-        ReceiveAns(&mystrctAns, fd);
-        sizei = sizei - ATOMICTX;
-        cptalc = cptalc + ATOMICTX;
-    }
-    /*end of the transfer*/
-    if (sizei > 0)
-    {
-        if (size <= ATOMICTX)
-        {
-            mystruct.Cmd = 'a'; //  end part of big packet
-        }
-        else
-        {
-            mystruct.Cmd = 'z';   // case short packet
-        }
-        mystruct.LenMsb = (sizei >> 8);
-        mystruct.Len = sizei - ((sizei >> 8) << 8);
-        mystruct.Adress = address;
-        for (i = 0; i < ((mystruct.LenMsb << 8) + mystruct.Len); i++)
-        {
-
-            mystruct.Value[i] = data[i + cptalc];
-        }
-
-        SendCmdn(mystruct, fd);
-        if (ReceiveAns(&mystrctAns, fd))
-        {
-            DEBUG_MSG("Note: usb read success\n");
-            pthread_mutex_unlock(&mx_usbbridgesync);
-            return LGW_COM_SUCCESS;
-        }
-        else
-        {
-            DEBUG_MSG("ERROR: USB READ FAILURE\n");
+        /* Send command */
+        lgw_com_send_cmd_linux(cmd, fd);
+        if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_ERROR) {
             pthread_mutex_unlock(&mx_usbbridgesync);
             return LGW_COM_ERROR;
         }
+
+        chunk_size = chunk_size - ATOMICTX;
+        cptalc = cptalc + ATOMICTX;
     }
-    DEBUG_MSG("ERROR: USB READ FAILURE\n");
-    return LGW_COM_ERROR; //never reach
+
+    /* Complete multiple-chunk transfer, or send atomic one */
+    if (chunk_size > 0) {
+        /* Prepare command */
+        if (size <= ATOMICTX) {
+            cmd.id = 'a'; /* write burst - atomic */
+        } else {
+            cmd.id = 'z'; /* write burst - end */
+        }
+        cmd.len_msb = (uint8_t)((chunk_size >> 8) & 0xFF);
+        cmd.len_lsb = (uint8_t)((chunk_size >> 0) & 0xFF);
+        cmd.address = address;
+        for (i = 0; i < ((cmd.len_msb << 8) + cmd.len_lsb); i++) {
+            cmd.cmd_data[i] = data[i + cptalc];
+        }
+
+        /* Send command */
+        lgw_com_send_cmd_linux(cmd, fd);
+        if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_ERROR) {
+            pthread_mutex_unlock(&mx_usbbridgesync);
+            return LGW_COM_ERROR;
+        }
+    } else {
+        pthread_mutex_unlock(&mx_usbbridgesync);
+        return LGW_COM_ERROR;
+    }
+
+    /* unlock burst */
+    pthread_mutex_unlock(&mx_usbbridgesync);
+
+    return LGW_COM_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-
-/* Burst (multiple-byte) read */
 int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target, uint8_t address, uint8_t *data, uint16_t size) {
     int fd;
-    int temp4WARNING;
-    temp4WARNING = com_mux_mode;
-    temp4WARNING = com_mux_target;
-    temp4WARNING++;
+    int i;
+    uint16_t chunk_size = size;
+    int cptalc = 0;
+    lgw_com_cmd_t cmd;
+    lgw_com_ans_t ans;
+    UNUSED(com_mux_mode);
+    UNUSED(com_mux_target);
+
     /* check input parameters */
     CHECK_NULL(com_target);
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    int i;
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-    int sizei = size;
-    int cptalc = 0;
-    pthread_mutex_lock(&mx_usbbridgesync);
-    while (sizei > ATOMICRX)
-    {
-        if (sizei == size)
-        {
-            mystruct.Cmd = 's';
-        }
-        else
-        {
-            mystruct.Cmd = 't';
-        }
-        mystruct.LenMsb = 0;
-        mystruct.Len = 2;
-        mystruct.Value[0] = ATOMICRX >> 8;
-        mystruct.Value[1] = ATOMICRX - ((ATOMICRX >> 8) << 8);
-        mystruct.Adress = address;
-        SendCmdn(mystruct, fd);
-        if (ReceiveAns(&mystrctAns, fd))
-        {
-            for (i = 0; i < ATOMICRX; i++)
-            {
-                data[i + cptalc] = mystrctAns.Rxbuf[i];
-            }
-        }
-        else
-        {
-
-            for (i = 0; i < ATOMICRX; i++)
-            {
-                data[i + cptalc] = 0xFF;
-            }
-        }
-
-        sizei = sizei - ATOMICRX;
-        cptalc = cptalc + ATOMICRX;
-
-    }
-    if (sizei > 0) {
-        if (size <= ATOMICRX)
-        {
-            mystruct.Cmd = 'p';
-        }
-        else
-        {
-            mystruct.Cmd = 'u';
-        }
-        mystruct.LenMsb = 0;
-        mystruct.Len = 2;
-        mystruct.Value[0] = sizei >> 8;
-        mystruct.Value[1] = sizei - ((sizei >> 8) << 8);
-        mystruct.Adress = address;
-
-        DEBUG_MSG("Note: usb send cmd readburst success\n");
-        SendCmdn(mystruct, fd);
-
-        if (ReceiveAns(&mystrctAns, fd))
-        {
-            DEBUG_PRINTF("mystrctAns = %x et %x \n", mystrctAns.Len, mystrctAns.Id);
-            for (i = 0; i < sizei; i++)
-            {
-                data[i + cptalc] = mystrctAns.Rxbuf[i];
-            }
-            pthread_mutex_unlock(&mx_usbbridgesync);
-            return LGW_COM_SUCCESS;
-        }
-        else
-        {
-            DEBUG_MSG("ERROR: Cannot readburst stole  \n");
-            pthread_mutex_unlock(&mx_usbbridgesync);
-            return LGW_COM_ERROR;
-        }
-    }
-    else
-    {
-        return LGW_COM_ERROR;
-    }
-
-}
-
-int SendCmdn_linux(CmdSettings_t CmdSettings, int fd)
-{
-    char buffertx[BUFFERTXSIZE];
-    int Clen = CmdSettings.Len + (CmdSettings.LenMsb << 8);
-    int Tlen = 1 + 2 + 1 + Clen; // cmd  Length +adress
-    int i;
-    ssize_t lencheck;
-    for (i = 0; i < BUFFERTXSIZE; i++)
-    {
-        buffertx[i] = 0;
-    }
-    buffertx[0] = CmdSettings.Cmd;
-    buffertx[1] = CmdSettings.LenMsb;
-    buffertx[2] = CmdSettings.Len;
-    buffertx[3] = CmdSettings.Adress;
-    for (i = 0; i < Clen; i++)
-    {
-        buffertx[i + 4] = CmdSettings.Value[i];
-
-    }
-    lencheck = write(fd, buffertx, Tlen);
-    if (lencheck != Tlen)
-    {
-        DEBUG_PRINTF("WARNING : write cmd failed (%d)\n", (int) lencheck);
-    }
-    DEBUG_PRINTF("send burst done size %d\n", Tlen);
-    return(OK);
-}
-
-
-int ReceiveAns_linux(AnsSettings_t *Ansbuffer, int fd )
-{
-    uint8_t bufferrx[BUFFERRXSIZE];
-    int i;
-    int cpttimer = 0;
-    int sizet = 0;
-    ssize_t lencheck;
-    for (i = 0; i < BUFFERRXSIZE; i++)
-    {
-        bufferrx[i] = 0;
-    }
-    cpttimer = 0;
-
-    while (checkcmd(bufferrx[0]))
-    {
-        lencheck = read(fd, bufferrx, 3);
-        cpttimer++;
-        if (lencheck != 3)
-        {
-            DEBUG_PRINTF("WARNING : write  read  failed (%d) time buffer 0 = %d\n", (int) cpttimer, bufferrx[0]);
-        }
-        if (cpttimer > 15) // wait read error the read function isn't block but timeout of 0.1s
-        {
-            DEBUG_MSG("WARNING : deadlock usb");
-            return(OK); // deadlock
-        }
-    }
-    wait_ns(((bufferrx[1] << 8) + bufferrx[2] + 1) * 6000);
-    DEBUG_PRINTF("cmd = %d readburst size %d\n", bufferrx[0], (bufferrx[1] << 8) + bufferrx[2]);
-    sizet = (bufferrx[1] << 8) + bufferrx[2] + 3;
-    if ((sizet % 64) == 0) {
-        sizet = sizet - 2;
-    }
-    else {
-        sizet = sizet - 3;
-    }
-//lencheck = read(file1, &bufferrx[3], (bufferrx[1] << 8) + bufferrx[2]);
-    lencheck = read(fd, &bufferrx[3], sizet);
-    if (lencheck != (sizet))
-    {
-        DEBUG_PRINTF("WARNING : write  read  failed %d\n", lencheck);
-    }
-    Ansbuffer->Cmd = bufferrx[0];
-    Ansbuffer->Id = bufferrx[1];
-    Ansbuffer->Len = bufferrx[2];
-    for (i = 0; i < (bufferrx[1] << 8) + bufferrx[2]; i++)
-    {
-        Ansbuffer->Rxbuf[i] = bufferrx[3 + i];
-    }
-    return(OK);
-}
-
-
-/*Embedded HAL into STM32 part */
-
-int lgw_receive_cmd_linux(void *com_target, uint8_t max_packet, uint8_t *data) {
-    int fd;
-    int i;
-    int j;
-    int pt = 0;
-    int resp = 0;
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-
-    /*build the write cmd*/
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-    mystruct.Cmd = 'b';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Adress = 0;
-    mystruct.Value[0] = max_packet;
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmdn(mystruct, fd);
-
-    resp = ReceiveAns(&mystrctAns, fd);
-    DEBUG_MSG("Note: usb write success\n");
-    DEBUG_PRINTF("NOTE : Available packet %d  %d\n", mystrctAns.Rxbuf[0], (mystrctAns.Id << 8) + mystrctAns.Len);
-    DEBUG_PRINTF("NOTE : read structure %d %d %d %d %d\n", mystrctAns.Rxbuf[5], mystrctAns.Rxbuf[6], mystrctAns.Rxbuf[7], mystrctAns.Rxbuf[8], mystrctAns.Rxbuf[9]);
-
-    int cptalc = 0;
-    if (resp == KO)
-    {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return (0); // for 0 receive packet
-    }
-
-    for (i = 0; i < mystrctAns.Rxbuf[0]; i++) // over the number of packets
-    {
-        for (j = 0; j < mystrctAns.Rxbuf[cptalc + 43] + 44; j++) // for each packet
-        {
-            pt = mystrctAns.Rxbuf[cptalc + 43] + 44;
-            data[(i * 300) + j] = mystrctAns.Rxbuf[j + cptalc + 1];//300 size of struct target
-        }
-        cptalc = pt;
-
-    }
-    pthread_mutex_unlock(&mx_usbbridgesync);
-    return mystrctAns.Rxbuf[0];
-}
-
-
-
-/*Embedded HAL into STM32 part */
-
-int lgw_rxrf_setconfcmd_linux(void *com_target, uint8_t rfchain, uint8_t *data, uint16_t size) {
-    int fd;
-    int i;
-    DEBUG_MSG("Note: USB write success\n");
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB write success %d\n", fd);
-    /*build the write cmd*/
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-
-    mystruct.Cmd = 'c';
-    mystruct.LenMsb = (size >> 8);
-    mystruct.Len = size - ((size >> 8) << 8);
-    mystruct.Adress = rfchain;
-    DEBUG_PRINTF("Note: USB write success size = %d\n", size);
-    DEBUG_MSG("Note: USB write success\n");
-    for (i = 0; i < size; i++)
-    {
-        mystruct.Value[i] = data[i];
-    }
-    DEBUG_MSG("Note: USB write success\n");
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        DEBUG_MSG("Note: USB read config success\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("ERROR: USB read config FAILED\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-}
-
-int lgw_boardconfcmd_linux(void * com_target, uint8_t *data, uint16_t size)
-
-{
-    int fd;
-    int i;
-    DEBUG_MSG("Note: USB write success\n");
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB write success %d\n", fd);
-    /*build the write cmd*/
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-
-    mystruct.Cmd = 'i';
-    mystruct.LenMsb = (size >> 8);
-    mystruct.Len = size - ((size >> 8) << 8);
-    mystruct.Adress = 0;
-    DEBUG_PRINTF("Note: USB write success size = %d\n", size);
-    DEBUG_MSG("Note: USB write success\n");
-    for (i = 0; i < size; i++)
-    {
-        mystruct.Value[i] = data[i];
-    }
-    DEBUG_MSG("Note: USB write success\n");
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        DEBUG_MSG("Note: USB read config success\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("ERROR: USB read config FAILED\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-
-}
-int lgw_rxif_setconfcmd_linux(void *com_target, uint8_t ifchain, uint8_t *data, uint16_t size) {
-    int fd;
-    int i;
-    DEBUG_MSG("Note: USB write success\n");
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB write success %d\n", fd);
-    /*build the write cmd*/
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-
-    mystruct.Cmd = 'd';
-    mystruct.LenMsb = (size >> 8);
-    mystruct.Len = size - ((size >> 8) << 8);
-    mystruct.Adress = ifchain;
-    DEBUG_PRINTF("Note: USB write success size = %d\n", size);
-    DEBUG_MSG("Note: USB write success\n");
-    for (i = 0; i < size; i++)
-    {
-        mystruct.Value[i] = data[i];
-    }
-    DEBUG_MSG("Note: USB write success\n");
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        DEBUG_MSG("Note: USB read config success\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("ERROR: USB read config FAILED\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-}
-
-int lgw_txgain_setconfcmd_linux(void *com_target, uint8_t *data, uint16_t size)
-{
-    int fd;
-    int i;
-    DEBUG_MSG("Note: USB write success\n");
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB write success %d\n", fd);
-    /*build the write cmd*/
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-
-    mystruct.Cmd = 'h';
-    mystruct.LenMsb = (size >> 8);
-    mystruct.Len = size - ((size >> 8) << 8);
-    mystruct.Adress = 0;
-    DEBUG_PRINTF("Note: USB write success size = %d\n", size);
-    DEBUG_MSG("Note: USB write success\n");
-    for (i = 0; i < size; i++)
-    {
-        mystruct.Value[i] = data[i];
-
-    }
-    DEBUG_MSG("Note: USB write success\n");
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("ERROR: USB read config FAILED\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-}
-
-
-
-int lgw_sendconfcmd_linux(void *com_target, uint8_t *data, uint16_t size) {
-    int fd;
-    int i;
-    DEBUG_MSG("Note SEND A PACKET: USB write success\n");
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB write success %d\n", fd);
-    /*build the write cmd*/
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-
-    mystruct.Cmd = 'f';
-    mystruct.LenMsb = (size >> 8);
-    mystruct.Len = size - ((size >> 8) << 8);
-    mystruct.Adress = 0;
-    DEBUG_PRINTF("Note: USB write success size = %d\n", size);
-    DEBUG_MSG("Note: USB write success\n");
-    for (i = 0; i < size; i++)
-    {
-        mystruct.Value[i] = data[i];
-    }
-    DEBUG_MSG("Note: USB write success\n");
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("ERROR: USB read config FAILED\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-}
-
-
-
-int lgw_trigger_linux(void *com_target, uint8_t address, uint32_t *data) {
-    int fd;
-
-
-    /* check input variables */
-    CHECK_NULL(com_target);
     CHECK_NULL(data);
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-    mystruct.Cmd = 'q';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Adress = address;
-    mystruct.Value[0] = 0;
 
+    fd = *(int *)com_target;
+
+    /* lock for complete burst */
     pthread_mutex_lock(&mx_usbbridgesync);
-    DEBUG_MSG("Note: usb send cmd read success\n");
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        DEBUG_MSG("Note: usb read success\n");
-        *data = (mystrctAns.Rxbuf[0] << 24) + (mystrctAns.Rxbuf[1] << 16) + (mystrctAns.Rxbuf[2] << 8) + (mystrctAns.Rxbuf[3]);
-        DEBUG_PRINTF("timestampreceive %d\n", (mystrctAns.Rxbuf[0] << 24) + (mystrctAns.Rxbuf[1] << 16) + (mystrctAns.Rxbuf[2] << 8) + (mystrctAns.Rxbuf[3]));
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("ERROR: USB READ FAILURE\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
 
-}
+    /* Split burst in multiple chunks if necessary */
+    while (chunk_size > ATOMICRX) {
+        /* Prepare command */
+        if (chunk_size == size) {
+            cmd.id = 's'; /* read burst - first */
+        } else {
+            cmd.id = 't'; /* read burst - middle */
+        }
+        cmd.len_msb = 0;
+        cmd.len_lsb = 2;
+        cmd.cmd_data[0] = (uint8_t)((ATOMICRX >> 8) & 0xFF);
+        cmd.cmd_data[1] = (uint8_t)((ATOMICRX >> 0) & 0xFF);
+        cmd.address = address;
 
-int lgw_calibration_snapshot_linux(void * com_target)
-
-{
-    int fd;
-    int i;
-    DEBUG_MSG("Note: USB write success\n");
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB write success %d\n", fd);
-    /*build the write cmd*/
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-    int size = 1;
-    mystruct.Cmd = 'j';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Adress = 0;
-    DEBUG_MSG("Note: USB write success\n");
-    for (i = 0; i < size; i++)
-    {
-        mystruct.Value[i] = 0;
-    }
-    DEBUG_MSG("Note: USB write success\n");
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        DEBUG_MSG("Note: USB read config success\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("ERROR: USB read config FAILED\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-
-}
-
-int lgw_resetSTM32_linux(void * com_target)
-{
-    int fd;
-    int i;
-    DEBUG_MSG("Note: USB write success\n");
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB write success %d\n", fd);
-    /*build the write cmd*/
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-    int size = 1;
-    mystruct.Cmd = 'm';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Adress = 0;
-
-    DEBUG_MSG("Note: USB write success\n");
-    for (i = 0; i < size; i++)
-    {
-        mystruct.Value[i] = 0;
-    }
-    DEBUG_MSG("Note: USB write success\n");
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        DEBUG_MSG("Note: USB read config success\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("ERROR: USB read config FAILED\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-
-}
-
-int lgw_GOTODFU_linux(void * com_target)
-{
-    int fd;
-    int i;
-    DEBUG_MSG("Note: USB write success\n");
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB write success %d\n", fd);
-    /*build the write cmd*/
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-    int size = 1;
-    mystruct.Cmd = 'n';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 1;
-    mystruct.Adress = 0;
-
-    DEBUG_MSG("Note: USB write success\n");
-    for (i = 0; i < size; i++)
-    {
-        mystruct.Value[i] = 0;
-    }
-    DEBUG_MSG("Note: USB write success\n");
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        DEBUG_MSG("Note: USB read config success\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
-    }
-    else
-    {
-        DEBUG_MSG("ERROR: USB read config FAILED\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_ERROR;
-    }
-
-}
-
-int lgw_GetUniqueId_linux(void * com_target, uint8_t * uid)
-{
-    int fd;
-    int i;
-    int fwversion = STM32FWVERSION;
-    DEBUG_MSG("Note: USB write success\n");
-    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
-    DEBUG_PRINTF("Note: USB write success %d\n", fd);
-    CmdSettings_t mystruct;
-    AnsSettings_t mystrctAns;
-    mystruct.Cmd = 'l';
-    mystruct.LenMsb = 0;
-    mystruct.Len = 4;
-    mystruct.Adress = 0;
-    mystruct.Value[0] = (uint8_t)((fwversion >> 24) & (0x000000ff));
-    mystruct.Value[1] = (uint8_t)((fwversion >> 16) & (0x000000ff));
-    mystruct.Value[2] = (uint8_t)((fwversion >> 8) & (0x000000ff));
-    mystruct.Value[3] = (uint8_t)((fwversion) & (0x000000ff));
-
-    DEBUG_MSG("Note: USB write success\n");
-    pthread_mutex_lock(&mx_usbbridgesync);
-    SendCmdn(mystruct, fd);
-    if (ReceiveAns(&mystrctAns, fd))
-    {
-        if (mystrctAns.Rxbuf[0] == ACK_KO) {
+        /* Send command */
+        lgw_com_send_cmd_linux(cmd, fd);
+        if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_SUCCESS) {
+            for (i = 0; i < ATOMICRX; i++) {
+                data[i + cptalc] = ans.ans_data[i];
+            }
+        } else {
+            pthread_mutex_unlock(&mx_usbbridgesync);
             return LGW_COM_ERROR;
         }
-        for (i = 0; i < 7; i++)
-        {
-            uid[i] = mystrctAns.Rxbuf[i + 1];
-        }
-        DEBUG_MSG("Note: USB read config success\n");
-        pthread_mutex_unlock(&mx_usbbridgesync);
-        return LGW_COM_SUCCESS;
+
+        chunk_size = chunk_size - ATOMICRX;
+        cptalc = cptalc + ATOMICRX;
     }
-    else
-    {
-        DEBUG_MSG("ERROR: USB read config FAILED\n");
+
+    /* Complete multiple-chunk transfer, or send atomic one */
+    if (chunk_size > 0) {
+        /* Prepare command */
+        if (size <= ATOMICRX) {
+            cmd.id = 'p'; /* read burst - atomic */
+        } else {
+            cmd.id = 'u'; /* read burst - end */
+        }
+        cmd.len_msb = 0;
+        cmd.len_lsb = 2;
+        cmd.cmd_data[0] = (uint8_t)((chunk_size >> 8) & 0xFF);
+        cmd.cmd_data[1] = (uint8_t)((chunk_size >> 0) & 0xFF);
+        cmd.address = address;
+
+        /* Send command */
+        lgw_com_send_cmd_linux(cmd, fd);
+        if (lgw_com_receive_ans_linux(&ans, fd) == LGW_COM_SUCCESS) {
+            for (i = 0; i < chunk_size; i++) {
+                data[i + cptalc] = ans.ans_data[i];
+            }
+        } else {
+            pthread_mutex_unlock(&mx_usbbridgesync);
+            return LGW_COM_ERROR;
+        }
+    } else {
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_COM_ERROR;
     }
+
+    /* unlock burst */
+    pthread_mutex_unlock(&mx_usbbridgesync);
+
     return LGW_COM_SUCCESS;
 }
-
-
-/****************************/
-int checkcmd_linux(uint8_t cmd)
-{
-    switch (cmd)
-    {
-        case 'r': {
-                return(0);
-                break;
-            }
-        case 's': {
-                return(0);
-                break;
-            }
-        case 't': {
-                return(0);
-                break;
-            }
-        case 'u': {
-                return(0);
-                break;
-            }
-        case 'p': {
-                return(0);
-                break;
-            }
-        case 'e': {
-                return(0);
-                break;
-            }
-        case 'w': {
-                return(0);
-                break;
-            }
-        case 'x': {
-                return(0);
-                break;
-            }
-        case 'y': {
-                return(0);
-                break;
-            }
-        case 'z': {
-                return(0);
-                break;
-            }
-        case 'a': {
-                return(0);
-                break;
-            }
-        case 'b': {
-                return(0);
-                break;
-            }
-        case 'c': {
-                return(0);
-                break;
-            }
-        case 'd': {
-                return(0);
-                break;
-            }
-        case 'f': {
-                return(0);
-                break;
-            }
-        case 'h': {
-                return(0);
-                break;
-            }
-        case 'q': {
-                return(0);
-                break;
-            }
-        case 'i': {
-                return(0);
-                break;
-            }
-        case 'j': {
-                return(0);
-                break;
-            }
-        case 'l': {
-                return(0);
-                break;
-            }
-        case 'm': {
-                return(0);
-                break;
-            }
-        case 'n': {
-                return(0);
-                break;
-            }
-        //case 97 : return (1);
-
-        default:
-            return(OK);
-    }
-    return(OK);
-}
-
 
 /* --- EOF ------------------------------------------------------------------ */

@@ -1,16 +1,15 @@
 /*
-/ _____)             _              | |
+ / _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
-\____ \| ___ |    (_   _) ___ |/ ___)  _ \
-_____) ) ____| | | || |_| ____( (___| | | |
+ \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ _____) ) ____| | | || |_| ____( (___| | | |
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
- (C)2013 Semtech-Cycleo
+  (C)2017 Semtech-Cycleo
 
 Description:
-   SPI stress test
+   USB stress test
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
@@ -43,10 +42,10 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define COM_PATH_DEFAULT        "/dev/ttyACM0"
 #define VERS                    103
 #define READS_WHEN_ERROR        16 /* number of times a read is repeated if there is a read error */
 #define BUFF_SIZE               1024 /* maximum number of bytes that we can write in sx1301 RX data buffer */
-#define DEFAULT_TX_NOTCH_FREQ   129E3
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
@@ -76,16 +75,17 @@ static void sig_handler(int sigio) {
 
 /* describe command line options */
 void usage(void) {
-    MSG( "Available options:\n");
-    MSG( " -h print this help\n");
-    MSG( " -t <int> specify which test you want to run (1-4)\n");
+    MSG("Available options:\n");
+    MSG(" -d <path> COM device to be used to access the concentrator board\n");
+    MSG("            => default path: " COM_PATH_DEFAULT "\n");
+    MSG(" -h print this help\n");
+    MSG(" -t <int> specify which test you want to run (1-4)\n");
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int i;
     int xi = 0;
 
@@ -105,12 +105,22 @@ int main(int argc, char **argv)
     uint8_t test_buff[BUFF_SIZE];
     uint8_t read_buff[BUFF_SIZE];
 
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
+
     /* parse command line options */
-    while ((i = getopt (argc, argv, "ht:")) != -1) {
+    while ((i = getopt (argc, argv, "ht:d:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
+                break;
+
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
 
             case 't':
@@ -140,9 +150,9 @@ int main(int argc, char **argv)
     sigaction(SIGTERM, &sigact, NULL);
 
     /* start SPI link */
-    i = lgw_connect(false);
+    i = lgw_connect(com_path);
     if (i != LGW_REG_SUCCESS) {
-        MSG("ERROR: lgw_connect() did not return SUCCESS");
+        MSG("ERROR: lgw_connect() did not return SUCCESS ON %s\n", com_path);
         return EXIT_FAILURE;
     }
 
@@ -237,8 +247,7 @@ int main(int argc, char **argv)
         while ((quit_sig != 1) && (exit_sig != 1)) {
             if(bufftest < BUFF_SIZE) {
                 bufftest++;
-            }
-            else {
+            } else {
                 bufftest = 5;
             }
 
@@ -246,12 +255,11 @@ int main(int argc, char **argv)
                 test_buff[i] = rand() & 0xFF;
             }
             printf("Cycle %i > ", cycle_number);
-            test_addr = rand() & 0xFFFF;
+            test_addr = rand() & 0x0000FFFF;
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* write at random offset in memory */
             lgw_reg_wb(LGW_RX_DATA_BUF_DATA, test_buff, bufftest);
 
             lgw_reg_w(LGW_RX_DATA_BUF_ADDR, test_addr); /* go back to start of segment */
-
             lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, bufftest);
             for (i = 0; ((i < bufftest) && (test_buff[i] == read_buff[i])); ++i);
             if (i != bufftest) {
@@ -266,7 +274,7 @@ int main(int argc, char **argv)
                 printf("\n");
                 printf("Read values:\n");
                 for (i = 0; i < bufftest; ++i) {
-                    printf("%.2x ", test_buff[i] - read_buff[i]);
+                    printf(" %02X ", (uint8_t)(test_buff[i] - read_buff[i]));
                     if (i % 16 == 15) {
                         printf("\n");
                     }
@@ -276,7 +284,7 @@ int main(int argc, char **argv)
                 lgw_reg_rb(LGW_RX_DATA_BUF_DATA, read_buff, bufftest);
                 printf("Re-read values:\n");
                 for (i = 0; i < bufftest; ++i) {
-                    printf(" %02X ", read_buff[i]);
+                    printf(" %02X ", (uint8_t)(test_buff[i] - read_buff[i]));
                     if (i % 16 == 15) {
                         printf("\n");
                     }
@@ -290,14 +298,14 @@ int main(int argc, char **argv)
             }
         }
     } else {
-        MSG("ERROR: invalid test number");
+        MSG("ERROR: invalid test number\n");
         usage();
     }
 
     /* close SPI link */
     i = lgw_disconnect();
     if (i != LGW_REG_SUCCESS) {
-        MSG("ERROR: lgw_disconnect() did not return SUCCESS");
+        MSG("ERROR: lgw_disconnect() did not return SUCCESS\n");
         return EXIT_FAILURE;
     }
 

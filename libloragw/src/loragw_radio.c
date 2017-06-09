@@ -45,16 +45,6 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE TYPES -------------------------------------------------------- */
 
 /**
-@struct lgw_radio_FSK_bandwidth_s
-@brief Associate a bandwidth in kHz with its corresponding register values
-*/
-struct lgw_sx127x_FSK_bandwidth_s {
-    uint32_t    RxBwKHz;
-    uint8_t     RxBwMant;
-    uint8_t     RxBwExp;
-};
-
-/**
 @struct lgw_radio_type_version_s
 @brief Associate a radio type with its corresponding expected version value
         read in the radio version register.
@@ -71,8 +61,6 @@ struct lgw_radio_type_version_s {
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
-
-extern void *lgw_com_target; /*! generic pointer to the SPI device */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
@@ -99,15 +87,15 @@ void sx125x_write(uint8_t channel, uint8_t addr, uint8_t data) {
     /* selecting the target radio */
     switch (channel) {
         case 0:
-            reg_add = LGW_com_RADIO_A__ADDR;
-            reg_dat = LGW_com_RADIO_A__DATA;
-            reg_cs  = LGW_com_RADIO_A__CS;
+            reg_add = LGW_SPI_RADIO_A__ADDR;
+            reg_dat = LGW_SPI_RADIO_A__DATA;
+            reg_cs  = LGW_SPI_RADIO_A__CS;
             break;
 
         case 1:
-            reg_add = LGW_com_RADIO_B__ADDR;
-            reg_dat = LGW_com_RADIO_B__DATA;
-            reg_cs  = LGW_com_RADIO_B__CS;
+            reg_add = LGW_SPI_RADIO_B__ADDR;
+            reg_dat = LGW_SPI_RADIO_B__DATA;
+            reg_cs  = LGW_SPI_RADIO_B__CS;
             break;
 
         default:
@@ -144,17 +132,17 @@ uint8_t sx125x_read(uint8_t channel, uint8_t addr) {
     /* selecting the target radio */
     switch (channel) {
         case 0:
-            reg_add = LGW_com_RADIO_A__ADDR;
-            reg_dat = LGW_com_RADIO_A__DATA;
-            reg_cs  = LGW_com_RADIO_A__CS;
-            reg_rb  = LGW_com_RADIO_A__DATA_READBACK;
+            reg_add = LGW_SPI_RADIO_A__ADDR;
+            reg_dat = LGW_SPI_RADIO_A__DATA;
+            reg_cs  = LGW_SPI_RADIO_A__CS;
+            reg_rb  = LGW_SPI_RADIO_A__DATA_READBACK;
             break;
 
         case 1:
-            reg_add = LGW_com_RADIO_B__ADDR;
-            reg_dat = LGW_com_RADIO_B__DATA;
-            reg_cs  = LGW_com_RADIO_B__CS;
-            reg_rb  = LGW_com_RADIO_B__DATA_READBACK;
+            reg_add = LGW_SPI_RADIO_B__ADDR;
+            reg_dat = LGW_SPI_RADIO_B__DATA;
+            reg_cs  = LGW_SPI_RADIO_B__CS;
+            reg_rb  = LGW_SPI_RADIO_B__DATA_READBACK;
             break;
 
         default:

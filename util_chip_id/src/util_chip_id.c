@@ -7,10 +7,9 @@ _____) ) ____| | | || |_| ____( (___| | | |
  (C)2013 Semtech-Cycleo
 
 Description:
-   SPI stress test
+  Get unique ID of the PicoCell gateway board
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
@@ -33,6 +32,7 @@ Maintainer: Sylvain Miermont
 #include <stdlib.h>     /* rand */
 
 #include "loragw_reg.h"
+#include "loragw_mcu.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -43,85 +43,51 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
-#define VERS                    103
-#define READS_WHEN_ERROR        16 /* number of times a read is repeated if there is a read error */
-#define BUFF_SIZE               1024 /* maximum number of bytes that we can write in sx1301 RX data buffer */
-#define DEFAULT_TX_NOTCH_FREQ   129E3
+#define COM_PATH_DEFAULT "/dev/ttyACM0"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
-/* signal handling variables */
-struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
-static int exit_sig = 0; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-static int quit_sig = 0; /* 1 -> application terminates without shutting down the hardware */
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
-
-static void sig_handler(int sigio);
 
 void usage (void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
-static void sig_handler(int sigio) {
-    if (sigio == SIGQUIT) {
-        quit_sig = 1;;
-    } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
-        exit_sig = 1;
-    }
-}
-
 /* describe command line options */
 void usage(void) {
-    MSG( "Available options:\n");
-    MSG( " -h print this help\n");
-    MSG( " -l generate a new guid.json file\n");
-    MSG( " -p print the pico cell gateway id\n");
+    MSG("Available options:\n");
+    MSG(" -h print this help\n");
+    MSG(" -d <path> COM device to be used to access the concentrator board\n");
+    MSG("            => default path: " COM_PATH_DEFAULT "\n");
+    MSG(" -l generate a new guid.json file\n");
+    MSG(" -p print the ID of the PicoCell gateway\n");
 }
 
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
-    int i;
-    uint8_t uid[8];  //unique id
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL);
-    sigaction(SIGINT, &sigact, NULL);
-    sigaction(SIGTERM, &sigact, NULL);
+int main(int argc, char **argv) {
+    int i, x;
+    uint8_t uid[8];
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
 
-    while ((i = getopt (argc, argv, "hplq:")) != -1) {
+    while ((i = getopt (argc, argv, "hd:")) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
                 break;
 
-            case 'l':
-                lgw_connect(false);
-                lgw_reg_GetUniqueId(&uid[0]);
-                FILE *f;
-                f = fopen("guid.json", "w");
-                fprintf(f, "/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
-                fprintf(f, "{\"gateway_conf\": {\n     \"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n     }\n}", uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6], uid[7]);
-                fclose(f);
-                return EXIT_SUCCESS;
-
-            case 'p':
-                lgw_connect(false);
-                lgw_reg_GetUniqueId(&uid[0]);
-                printf("/* Put there parameters that are different for each gateway (eg. pointing one gateway to a test server while the others stay in production) */\n");
-                printf("{\"gateway_conf\": {\n     \"gateway_ID\": \"%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\" \n     }\n}", uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6], uid[7]);
-
-                return EXIT_SUCCESS;
-
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
+                break;
 
             default:
                 MSG("ERROR: argument parsing use -h option for help\n");
@@ -129,6 +95,23 @@ int main(int argc, char **argv)
                 return EXIT_FAILURE;
         }
     }
+
+    x = lgw_connect(com_path);
+    if (x == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
+        return -1;
+    }
+
+    lgw_mcu_get_unique_id(&uid[0]);
+    printf("%.2x%.2x%.2x%.2x%.2x%.2x%.2x%.2x\n", uid[0], uid[1], uid[2], uid[3], uid[4], uid[5], uid[6], uid[7]);
+
+    x = lgw_disconnect();
+    if (x == -1) {
+        printf("ERROR: FAIL TO DISCONNECT BOARD\n");
+        return -1;
+    }
+
+    return EXIT_SUCCESS;
 }
 
 /* --- EOF ------------------------------------------------------------------ */

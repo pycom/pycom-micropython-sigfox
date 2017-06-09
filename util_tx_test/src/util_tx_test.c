@@ -10,7 +10,6 @@ Description:
     Send a bunch of packets on a settable frequency
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
-Maintainer: Sylvain Miermont
 */
 
 
@@ -47,12 +46,12 @@ Maintainer: Sylvain Miermont
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
+#define COM_PATH_DEFAULT            "/dev/ttyACM0"
 #define TX_RF_CHAIN                 0 /* TX only supported on radio A */
 #define DEFAULT_RSSI_OFFSET         0.0
 #define DEFAULT_MODULATION          "LORA"
 #define DEFAULT_BR_KBPS             50
 #define DEFAULT_FDEV_KHZ            25
-#define DEFAULT_NOTCH_FREQ          129000U /* 129 kHz */
 #define DEFAULT_SX127X_RSSI_OFFSET  -4 /* dB */
 
 /* -------------------------------------------------------------------------- */
@@ -103,8 +102,6 @@ static struct lgw_tx_gain_lut_s txgain_lut = {
     }
 };
 
-
-
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
@@ -114,6 +111,13 @@ void usage (void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
+
+static void exit_cleanup(void) {
+    printf("Exiting LoRa concentrator TX test program\n");
+
+    /* clean up before leaving */
+    lgw_stop();
+}
 
 static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
@@ -130,6 +134,8 @@ void usage(void) {
     printf("*** Library version information ***\n%s\n\n", lgw_version_info());
     printf("Available options:\n");
     printf(" -h                 print this help\n");
+    printf(" -d         <path>  COM device to be used to access the concentrator board\n");
+    printf("                      => default path: " COM_PATH_DEFAULT "\n");
     printf(" -r         <int>   radio type (SX1255:1255, SX1257:1257)\n");
     printf(" -f         <float> target frequency in MHz\n");
     printf(" -k         <uint>  concentrator clock source (0:Radio A, 1:Radio B)\n");
@@ -137,7 +143,7 @@ void usage(void) {
     printf(" -b         <uint>  LoRa bandwidth in kHz [125, 250, 500]\n");
     printf(" -s         <uint>  LoRa Spreading Factor [7-12]\n");
     printf(" -c         <uint>  LoRa Coding Rate [1-4]\n");
-    printf(" -d         <uint>  FSK frequency deviation in kHz [1:250]\n");
+    printf(" -D         <uint>  FSK frequency deviation in kHz [1:250]\n");
     printf(" -q         <float> FSK bitrate in kbps [0.5:250]\n");
     printf(" -p         <int>   RF power (dBm) [ ");
     for (i = 0; i < txgain_lut.size; i++) {
@@ -154,8 +160,7 @@ void usage(void) {
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
     int i;
     uint8_t status_var;
 
@@ -192,19 +197,29 @@ int main(int argc, char **argv)
 
     /* loop variables (also use as counters in the packet payload) */
     uint16_t cycle_count = 0;
-    lgw_connect(false);
+
     /* Parameter parsing */
     int option_index = 0;
     static struct option long_options[] = {
         {0, 0, 0, 0}
     };
 
+    /* COM interfaces */
+    const char com_path_default[] = COM_PATH_DEFAULT;
+    const char *com_path = com_path_default;
+
     /* parse command line options */
-    while ((i = getopt_long (argc, argv, "hif:m:b:s:c:p:l:z:t:x:r:k:d:q:", long_options, &option_index)) != -1) {
+    while ((i = getopt_long (argc, argv, "hif:m:b:s:c:p:l:z:t:x:r:k:D:q:d:", long_options, &option_index)) != -1) {
         switch (i) {
             case 'h':
                 usage();
                 return EXIT_FAILURE;
+                break;
+
+            case 'd':
+                if (optarg != NULL) {
+                    com_path = optarg;
+                }
                 break;
 
             case 'f': /* <float> Target frequency in MHz */
@@ -219,7 +234,7 @@ int main(int argc, char **argv)
                 break;
 
             case 'm': /* <str> Modulation type */
-                i = sscanf(optarg, "%s", arg_s);
+                i = sscanf(optarg, "%63s", arg_s);
                 if ((i != 1) || ((strcmp(arg_s, "LORA") != 0) && (strcmp(arg_s, "FSK")))) {
                     MSG("ERROR: invalid modulation type\n");
                     usage();
@@ -273,7 +288,7 @@ int main(int argc, char **argv)
                 }
                 break;
 
-            case 'd': /* <uint> FSK frequency deviation */
+            case 'D': /* <uint> FSK frequency deviation */
                 i = sscanf(optarg, "%u", &xu);
                 if ((i != 1) || (xu < 1) || (xu > 250)) {
                     MSG("ERROR: invalid FSK frequency deviation\n");
@@ -389,6 +404,9 @@ int main(int argc, char **argv)
         printf("Sending %i LoRa packets on %u Hz (BW %i kHz, SF %i, CR %i, %i bytes payload, %i symbols preamble) at %i dBm, with %i ms between each\n", repeat, f_target, bw, sf, cr, pl_size, preamb, pow, delay);
     }
 
+    /* register function to be called for exit cleanups */
+    atexit(exit_cleanup);
+
     /* configure signal handling */
     sigemptyset(&sigact.sa_mask);
     sigact.sa_flags = 0;
@@ -397,7 +415,13 @@ int main(int argc, char **argv)
     sigaction(SIGINT, &sigact, NULL);
     sigaction(SIGTERM, &sigact, NULL);
 
-    /* starting the concentrator */
+    /* Open the communication bridge */
+    i = lgw_connect(com_path);
+    if (i == -1) {
+        printf("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
+        exit(EXIT_FAILURE);
+    }
+
     /* board config */
     memset(&boardconf, 0, sizeof(boardconf));
     boardconf.lorawan_public = true;
@@ -428,7 +452,7 @@ int main(int argc, char **argv)
         MSG("INFO: concentrator started, packet can be sent\n");
     } else {
         MSG("ERROR: failed to start the concentrator\n");
-        return EXIT_FAILURE;
+        exit(EXIT_FAILURE);
     }
 
     /* fill-up payload and parameters */
@@ -455,7 +479,7 @@ int main(int argc, char **argv)
                 break;
             default:
                 MSG("ERROR: invalid 'bw' variable\n");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
         switch (sf) {
             case  7:
@@ -478,7 +502,7 @@ int main(int argc, char **argv)
                 break;
             default:
                 MSG("ERROR: invalid 'sf' variable\n");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
         switch (cr) {
             case 1:
@@ -495,7 +519,7 @@ int main(int argc, char **argv)
                 break;
             default:
                 MSG("ERROR: invalid 'cr' variable\n");
-                return EXIT_FAILURE;
+                exit(EXIT_FAILURE);
         }
     }
     txpkt.invert_pol = invert;
@@ -517,9 +541,7 @@ int main(int argc, char **argv)
         i = lgw_send(txpkt); /* non-blocking scheduling of TX packet */
         if (i == LGW_HAL_ERROR) {
             printf("ERROR\n");
-            return EXIT_FAILURE;
-        } else if (i == LGW_LBT_ISSUE ) {
-            printf("Failed: Not allowed (LBT)\n");
+            exit(EXIT_FAILURE);
         } else {
             /* wait for packet to finish sending */
             do {
@@ -538,11 +560,8 @@ int main(int argc, char **argv)
         }
     }
 
-    /* clean up before leaving */
-    lgw_stop();
-
     printf("Exiting LoRa concentrator TX test program\n");
-    return EXIT_SUCCESS;
+    exit(EXIT_SUCCESS);
 }
 
 /* --- EOF ------------------------------------------------------------------ */

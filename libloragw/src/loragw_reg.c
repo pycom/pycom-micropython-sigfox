@@ -25,8 +25,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>      /* printf fprintf */
 
 #include "loragw_com.h"
+#include "loragw_mcu.h"
 #include "loragw_reg.h"
 #include "loragw_aux.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
@@ -303,14 +305,14 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS] = {
     {1, 81, 0, 0, 8, 0, 0},  /* FSK_BROADCAST */
     {1, 82, 0, 0, 1, 0, 1},  /* FSK_AUTO_AFC_ON */
     {1, 83, 0, 0, 10, 0, 0}, /* FSK_PATTERN_TIMEOUT_CFG */
-    {2, 33, 0, 0, 8, 0, 0},  /* com_RADIO_A__DATA */
-    {2, 34, 0, 0, 8, 1, 0},  /* com_RADIO_A__DATA_READBACK */
-    {2, 35, 0, 0, 8, 0, 0},  /* com_RADIO_A__ADDR */
-    {2, 37, 0, 0, 1, 0, 0},  /* com_RADIO_A__CS */
-    {2, 38, 0, 0, 8, 0, 0},  /* com_RADIO_B__DATA */
-    {2, 39, 0, 0, 8, 1, 0},  /* com_RADIO_B__DATA_READBACK */
-    {2, 40, 0, 0, 8, 0, 0},  /* com_RADIO_B__ADDR */
-    {2, 42, 0, 0, 1, 0, 0},  /* com_RADIO_B__CS */
+    {2, 33, 0, 0, 8, 0, 0},  /* SPI_RADIO_A__DATA */
+    {2, 34, 0, 0, 8, 1, 0},  /* SPI_RADIO_A__DATA_READBACK */
+    {2, 35, 0, 0, 8, 0, 0},  /* SPI_RADIO_A__ADDR */
+    {2, 37, 0, 0, 1, 0, 0},  /* SPI_RADIO_A__CS */
+    {2, 38, 0, 0, 8, 0, 0},  /* SPI_RADIO_B__DATA */
+    {2, 39, 0, 0, 8, 1, 0},  /* SPI_RADIO_B__DATA_READBACK */
+    {2, 40, 0, 0, 8, 0, 0},  /* SPI_RADIO_B__ADDR */
+    {2, 42, 0, 0, 1, 0, 0},  /* SPI_RADIO_B__CS */
     {2, 43, 0, 0, 1, 0, 0},  /* RADIO_A_EN */
     {2, 43, 1, 0, 1, 0, 0},  /* RADIO_B_EN */
     {2, 43, 2, 0, 1, 0, 1},  /* RADIO_RST */
@@ -385,7 +387,7 @@ const struct lgw_reg_s loregs[LGW_TOTALREGS] = {
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 
-void *lgw_com_target = NULL; /*! generic pointer to the SPI device */
+void *lgw_com_target = NULL; /*! generic pointer to the COM device */
 static int lgw_regpage = -1; /*! keep the value of the register page selected */
 uint8_t lgw_com_mux_mode = 0; /*! current SPI mux mode used */
 
@@ -479,50 +481,58 @@ int reg_r_align32(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_target
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-
-
-
 /* Concentrator connect */
-int lgw_connect(bool com_only) {
+int lgw_connect(const char *com_path) {
+    uint8_t uid[8];
     int com_stat = LGW_COM_SUCCESS;
     uint8_t u = 0;
 
+    printf("Note: Connecting to concentrator...\n");
 
-    /* check SPI link status */
+    /* check COM link status */
     if (lgw_com_target != NULL) {
         DEBUG_MSG("WARNING: concentrator was already connected\n");
         lgw_com_close(lgw_com_target);
     }
 
-    /* open the SPI link */
-    com_stat = lgw_com_open(&lgw_com_target);
+    /* open the COM link */
+    com_stat = lgw_com_open(&lgw_com_target, com_path);
     if (com_stat != LGW_COM_SUCCESS) {
-        DEBUG_MSG("ERROR CONNECTING CONCENTRATOR\n");
+        DEBUG_MSG("ERROR: FAIL TO CONNECT CONCENTRATOR\n");
         return LGW_REG_ERROR;
     }
-    wait_ms(10);
-    if (com_only == false ) {
-        lgw_com_mux_mode = LGW_COM_MUX_MODE0;
 
-        /* check SX1301 version */
-        com_stat = lgw_com_r(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
-        if (com_stat != LGW_COM_SUCCESS) {
-            DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
-            return LGW_REG_ERROR;
-        }
-        if (u != loregs[LGW_VERSION].dflt) {
-            DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
-            return LGW_REG_ERROR;
-        }
+    printf("Note: %s opened successfully\n", com_path);
 
-        /* write 0 to the page/reset register */
-        com_stat = lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
-        if (com_stat != LGW_COM_SUCCESS) {
-            DEBUG_MSG("ERROR WRITING PAGE REGISTER\n");
-            return LGW_REG_ERROR;
-        } else {
-            lgw_regpage = 0;
-        }
+    /* check MCU FW version */
+    com_stat = lgw_mcu_get_unique_id(&uid[0]);
+    if (com_stat != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR: MCU FW VERSION CHECK FAILED\n");
+        return LGW_REG_ERROR;
+    }
+
+    printf("Note: MCU firmware version checked: 0x%X\n", STM32FWVERSION);
+
+    lgw_com_mux_mode = LGW_COM_MUX_MODE0;
+
+    /* check SX1301 version */
+    com_stat = lgw_com_r(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
+    if (com_stat != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
+        return LGW_REG_ERROR;
+    }
+    if (u != loregs[LGW_VERSION].dflt) {
+        DEBUG_PRINTF("ERROR: NOT EXPECTED CHIP VERSION (v%u)\n", u);
+        return LGW_REG_ERROR;
+    }
+
+    /* write 0 to the page/reset register */
+    com_stat = lgw_com_w(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, loregs[LGW_PAGE_REG].addr, 0);
+    if (com_stat != LGW_COM_SUCCESS) {
+        DEBUG_MSG("ERROR WRITING PAGE REGISTER\n");
+        return LGW_REG_ERROR;
+    } else {
+        lgw_regpage = 0;
     }
 
     DEBUG_MSG("Note: success connecting the concentrator\n");
@@ -534,9 +544,7 @@ int lgw_connect(bool com_only) {
 /* Concentrator disconnect */
 int lgw_disconnect(void) {
     if (lgw_com_target != NULL) {
-
-
-        lgw_reg_resetSTM32();
+        lgw_mcu_reset();
         lgw_com_close(lgw_com_target);
         lgw_com_target = NULL;
         DEBUG_MSG("Note: success disconnecting the concentrator\n");
@@ -586,9 +594,8 @@ int lgw_reg_check(FILE *f) {
         ptr = (read_value == r.dflt) ? ok_msg : notok_msg;
         if (r.sign == true) {
             fprintf(f, "%s reg number %d read: %d (%x) default: %d (%x)\n", ptr, i, read_value, read_value, r.dflt, r.dflt);
-        }
-        else {
-            fprintf(f, "%s reg number %d read: %u (%x) default: %u (%x)\n", ptr, i, read_value, read_value, r.dflt, r.dflt);
+        } else {
+            fprintf(f, "%s reg number %d read: %d (%x) default: %d (%x)\n", ptr, i, read_value, read_value, r.dflt, r.dflt);
         }
     }
     fprintf(f, "End of register verification\n");
@@ -779,61 +786,6 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     } else {
         return LGW_REG_SUCCESS;
     }
-}
-
-
-
-
-
-/*Embedded HAL into STM32 part */
-int lgw_reg_receive_cmd( uint8_t max_packet, uint8_t *data) {
-
-    return(lgw_receive_cmd(lgw_com_target, max_packet, data));
-
-}
-
-int lgw_reg_rxrf_setconfcmd(  uint8_t rfchain, uint8_t *data, uint16_t size)
-{
-    return(lgw_rxrf_setconfcmd(lgw_com_target, rfchain, data, size));
-}
-int lgw_reg_rxif_setconfcmd(  uint8_t ifchain, uint8_t *data, uint16_t size)
-{
-    return (lgw_rxif_setconfcmd(lgw_com_target, ifchain, data, size));
-}
-int lgw_reg_sendconfcmd(uint8_t *data, uint16_t size)
-{
-    return(lgw_sendconfcmd(lgw_com_target, data, size));
-}
-int lgw_txgainreg_setconfcmd( uint8_t *data, uint16_t size)
-{
-    return(lgw_txgain_setconfcmd(lgw_com_target, data, size));
-}
-int lgw_regtrigger(uint32_t *data)
-{
-    return(lgw_trigger(lgw_com_target, 0, data));
-}
-int lgw_reg_board_setconfcmd(uint8_t *data, uint16_t size)
-{
-    return(lgw_boardconfcmd(lgw_com_target, data, size));
-}
-int lgw_reg_calibration_snapshot(void)
-{
-    return(lgw_calibration_snapshot(lgw_com_target));
-}
-
-int lgw_reg_resetSTM32(void)
-{
-    return(lgw_resetSTM32(lgw_com_target));
-}
-
-int lgw_reg_GOTODFU(void)
-{
-    return(lgw_GOTODFU(lgw_com_target));
-}
-
-int lgw_reg_GetUniqueId(uint8_t * uid)
-{
-    return( lgw_GetUniqueId(lgw_com_target, uid));
 }
 
 /* --- EOF ------------------------------------------------------------------ */
