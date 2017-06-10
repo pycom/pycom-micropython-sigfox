@@ -31,7 +31,8 @@ typedef enum {
     MODWLAN_ERROR_TIMEOUT = -2,
 	MODWLAN_ERROR_CERTIFICATE = -3,
 	MODWLAN_ERROR_MEMORY_ALLOCATION = -4,
-    MODWLAN_ERROR_UNKNOWN = -5,
+	MODWLAN_ERROR_OS_OPERATION_FAILED = -5,
+    MODWLAN_ERROR_UNKNOWN = -6,
 } modwlan_Status_t;
 
 typedef struct _wlan_obj_t {
@@ -61,6 +62,27 @@ typedef struct _wlan_obj_t {
     bool                pwrsave;
     bool                started;
 } wlan_obj_t;
+
+typedef enum {
+    MODWLAN_EAP_TLS = 0,
+	MODWLAN_EAP_PEAP,
+	MODWLAN_EAP_TTLS,
+	MODWLAN_EAP_UNKNOWN,
+} modwlan_Eap_method_t;
+
+typedef struct _WPA2_Enterprise_login_t {
+	const char * user_name;
+	const char * password;
+}WPA2_Enterprise_login_t;
+
+typedef struct _WPA2_Enterprise_t {
+	modwlan_Eap_method_t method;
+	const char * ca_certificate_path;
+	const char * private_key_path;
+	const char * public_key_path;
+	const char * identity;
+	WPA2_Enterprise_login_t up;
+}WPA2_Enterprise_t;
 
 /******************************************************************************
  DECLARE PUBLIC DATA
