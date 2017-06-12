@@ -459,8 +459,10 @@ STATIC void wlan_set_antenna (uint8_t antenna) {
 
 STATIC void wlan_validate_certificates (WPA2_Enterprise_t *wpa2_ent) {
 
-	if(wpa2_ent->private_key_path == NULL || wpa2_ent->public_key_path == NULL){
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+	if(wpa2_ent->method == MODWLAN_EAP_TLS) {
+		if(wpa2_ent->private_key_path == NULL || wpa2_ent->public_key_path == NULL){
+        	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+		}
 	}
 
 	if(wpa2_ent->identity == NULL){
@@ -501,7 +503,7 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
 
 		esp_err_t esp_ret;
 
-		/*ca certificate is not mandatory*/
+		/* CA Certificate is not necessary*/
 		if(wpa2_ent->ca_certificate_path != NULL){
 			(void)wlan_read_file(wpa2_ent->ca_certificate_path, &vstr_ca_cert);
 			esp_ret = esp_wifi_sta_wpa2_ent_set_ca_cert((unsigned char*)vstr_ca_cert.buf, (int)vstr_ca_cert.len);
@@ -511,18 +513,20 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
 			}
 		}
 
-		if(wlan_read_file(wpa2_ent->public_key_path, &vstr_public_key) == NULL) {
-			return MODWLAN_ERROR_OS_OPERATION_FAILED;
-		}
-		if (wlan_read_file(wpa2_ent->private_key_path, &vstr_private_key) == NULL) {
-			return MODWLAN_ERROR_OS_OPERATION_FAILED;
-		}
+		/* Client certificate is necessary only in EAP-TLS method, this is ensured by wlan_validate_certificates() function. */
+		if(wpa2_ent->public_key_path != NULL && wpa2_ent->private_key_path != NULL) {
+			if(wlan_read_file(wpa2_ent->public_key_path, &vstr_public_key) == NULL) {
+				return MODWLAN_ERROR_OS_OPERATION_FAILED;
+			}
+			if (wlan_read_file(wpa2_ent->private_key_path, &vstr_private_key) == NULL) {
+				return MODWLAN_ERROR_OS_OPERATION_FAILED;
+			}
 
-
-		esp_ret = esp_wifi_sta_wpa2_ent_set_cert_key((unsigned char*)vstr_public_key.buf, (int)vstr_public_key.len, (unsigned char*)vstr_private_key.buf, (int)vstr_private_key.len, NULL, 0);
-		if(esp_ret){
-			printf("Failed to set WPA2 Client Certificate and Key");
-			return MODWLAN_ERROR_CERTIFICATE;
+			esp_ret = esp_wifi_sta_wpa2_ent_set_cert_key((unsigned char*)vstr_public_key.buf, (int)vstr_public_key.len, (unsigned char*)vstr_private_key.buf, (int)vstr_private_key.len, NULL, 0);
+			if(esp_ret){
+				printf("Failed to set WPA2 Client Certificate and Key");
+				return MODWLAN_ERROR_CERTIFICATE;
+			}
 		}
 
 		esp_ret = esp_wifi_sta_wpa2_ent_set_identity((unsigned char*)wpa2_ent->identity, strlen(wpa2_ent->identity));
@@ -536,7 +540,7 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
 
 		}
 
-		if(wpa2_ent->method == MODWLAN_EAP_PEAP || wpa2_ent->method == MODWLAN_EAP_TTLS) {
+		if(wpa2_ent->up.user_name != NULL || wpa2_ent->up.password != NULL) {
 
 			esp_ret = esp_wifi_sta_wpa2_ent_set_username((unsigned char*)wpa2_ent->up.user_name, strlen(wpa2_ent->up.user_name));
 			if(esp_ret){
