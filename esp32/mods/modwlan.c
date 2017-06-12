@@ -467,6 +467,8 @@ STATIC void wlan_validate_certificates (WPA2_Enterprise_t *wpa2_ent) {
 
 	if(wpa2_ent->identity == NULL){
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+	} else if(strlen(wpa2_ent->identity) >= 128){
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
 	}
 
 	if(wpa2_ent->method == MODWLAN_EAP_PEAP || wpa2_ent->method == MODWLAN_EAP_TTLS){
