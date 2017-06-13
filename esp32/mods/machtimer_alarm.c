@@ -115,12 +115,11 @@ STATIC IRAM_ATTR void remove_alarm(uint32_t el) {
         if (CMP(temp, alarm_heap.data[swap])) {
             break; // If the biggest child is bigger than or equal to its parent, the heap is reordered
         }
-
         alarm_heap.data[index] = alarm_heap.data[swap];
         alarm_heap.data[index]->heap_index = index;
     }
-    alarm_heap.data[index] = temp;
-    if (alarm_heap.count) {
+    if (index < alarm_heap.count) {
+        alarm_heap.data[index] = temp;
         alarm_heap.data[index]->heap_index = index;
     }
     if (el == 0) {
@@ -130,7 +129,7 @@ STATIC IRAM_ATTR void remove_alarm(uint32_t el) {
 
 STATIC IRAM_ATTR void load_next_alarm(void) {
     // everything here done without calling any timers function, so it works inside the interrupts
-    if (alarm_heap.count != 0) {
+    if (alarm_heap.count > 0) {
         uint64_t when;
         when = alarm_heap.data[0]->when;
         TIMERG0.hw_timer[0].alarm_high = (uint32_t) (when >> 32);
@@ -243,8 +242,10 @@ STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj
 
     mp_irq_handler_add(handler);
     if (self->heap_index == -1) {
+        uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
         set_alarm_when(self, self->interval);
         insert_alarm(self);
+        MICROPY_END_ATOMIC_SECTION(state);
     }
 
     if (handler_arg == mp_const_none) {
@@ -274,9 +275,11 @@ MP_DEFINE_CONST_FUN_OBJ_KW(alarm_callback_obj, 1, alarm_callback);
 STATIC mp_obj_t alarm_delete(mp_obj_t self_in) {
     mp_obj_alarm_t *self = self_in;
 
+    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
     if (self->heap_index != -1) {
         remove_alarm(self->heap_index);
     }
+    MICROPY_END_ATOMIC_SECTION(state);
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_1(alarm_delete_obj, alarm_delete);
@@ -291,8 +294,8 @@ STATIC const mp_map_elem_t mach_timer_alarm_dict_table[] = {
 STATIC MP_DEFINE_CONST_DICT(mach_timer_alarm_dict, mach_timer_alarm_dict_table);
 
 const mp_obj_type_t mach_timer_alarm_type = {
-   { &mp_type_type },
-   .name = MP_QSTR_Alarm,
-   .make_new = alarm_make_new,
-   .locals_dict = (mp_obj_t)&mach_timer_alarm_dict,
+    { &mp_type_type },
+    .name = MP_QSTR_Alarm,
+    .make_new = alarm_make_new,
+    .locals_dict = (mp_obj_t)&mach_timer_alarm_dict,
 };
