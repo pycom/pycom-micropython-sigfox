@@ -39,11 +39,11 @@ STATIC mpirq_args_t mpirq_args;
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
 static void *TASK_Interrupts(void *pvParameters) {
+    mpirq_args_t *args = (mpirq_args_t *)pvParameters;
+
     mp_callback_obj_t cb;
     mp_state_thread_t ts;
     mp_thread_set_state(&ts);
-
-    mpirq_args_t *args = (mpirq_args_t *)pvParameters;
 
     mp_stack_set_top(&ts + 1); // need to include ts in root-pointer scan
     mp_stack_set_limit(INTERRUPTS_TASK_STACK_SIZE - 1024);
@@ -51,8 +51,10 @@ static void *TASK_Interrupts(void *pvParameters) {
     mp_locals_set(args->dict_locals);
     mp_globals_set(args->dict_globals);
 
-    // signal that we are set up and running
+    MP_THREAD_GIL_ENTER();
+    // signal that we are up and running
     mp_thread_start();
+    MP_THREAD_GIL_EXIT();
 
     for (;;) {
         xQueueReceive(InterruptsQueue, &cb, portMAX_DELAY);
@@ -81,6 +83,11 @@ static void *TASK_Interrupts(void *pvParameters) {
         }
         MP_THREAD_GIL_EXIT();
     }
+
+    MP_THREAD_GIL_ENTER();
+    // signal that we are finished
+    mp_thread_finish();
+    MP_THREAD_GIL_EXIT();
 
     mp_irq_is_alive = false;
 
