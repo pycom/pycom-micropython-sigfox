@@ -316,7 +316,7 @@ static void gap_events_handler (esp_gap_ble_cb_event_t event, esp_ble_gap_cb_par
         int32_t duration = bt_obj.scan_duration;
         // the unit of the duration is seconds
         if (duration < 0) {
-            duration = 0xFFFF;
+            duration = 0x0FFF;
         }
         esp_ble_gap_start_scanning(duration);
         break;
@@ -857,7 +857,9 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
 
     if (bt_obj.busy) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "operation already in progress"));
-    } else if (bt_obj.scanning) {
+    }
+
+    if (bt_obj.scanning) {
         esp_ble_gap_stop_scanning();
         bt_obj.scanning = false;
     }
