@@ -35,6 +35,8 @@
 #define CARD_VERSION_1              0
 #define CARD_VERSION_2              1
 
+#define SD_CARD_MAX_FREQUENCY_KHZ   10000
+
 //*****************************************************************************
 // Disk Info for attached disk
 //*****************************************************************************
@@ -54,7 +56,7 @@ DSTATUS sd_disk_init (void) {
     {
         .flags = SDMMC_HOST_FLAG_1BIT,
         .slot = SDMMC_HOST_SLOT_1,
-        .max_freq_khz = SDMMC_FREQ_DEFAULT,
+        .max_freq_khz = SD_CARD_MAX_FREQUENCY_KHZ,
         .io_voltage = 3.3f,
         .init = &sdmmc_host_init,
         .set_bus_width = &sdmmc_host_set_bus_width,
