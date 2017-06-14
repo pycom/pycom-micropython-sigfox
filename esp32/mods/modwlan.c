@@ -436,18 +436,18 @@ STATIC void wlan_validate_channel (uint8_t channel) {
 
 
 STATIC void wlan_validate_antenna (uint8_t antenna) {
-#if MICROPY_HW_ANTENNA_DIVERSITY
-    if (antenna != ANTENNA_TYPE_INTERNAL && antenna != ANTENNA_TYPE_EXTERNAL) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+    if (micropy_hw_antenna_diversity) {
+        if (antenna != ANTENNA_TYPE_INTERNAL && antenna != ANTENNA_TYPE_EXTERNAL) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+        }
     }
-#endif
 }
 
 STATIC void wlan_set_antenna (uint8_t antenna) {
-#if MICROPY_HW_ANTENNA_DIVERSITY
-    wlan_obj.antenna = antenna;
-    antenna_select(antenna);
-#endif
+    if (micropy_hw_antenna_diversity) {
+        wlan_obj.antenna = antenna;
+        antenna_select(antenna);
+    }
 }
 
 STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, const char* bssid,

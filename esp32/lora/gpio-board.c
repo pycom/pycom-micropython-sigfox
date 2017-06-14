@@ -31,33 +31,12 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "pins.h"
 
 pin_obj_t *gpio_board_map[NBR_GP_PINS] = {
-        &pin_GPIO3,
-        &pin_GPIO1,
-        &pin_GPIO0,
-        &pin_GPIO4,
-        &pin_GPIO15,
-        &pin_GPIO5,
-        &pin_GPIO27,
-        &pin_GPIO19,
-        &pin_GPIO2,
-        &pin_GPIO12,
-        &pin_GPIO13,
-        &pin_GPIO22,
-        &pin_GPIO21,
-        &pin_GPIO14,
-        &pin_GPIO25,
-        &pin_GPIO26,
-        &pin_GPIO33,
-        &pin_GPIO32,
-        &pin_GPI34,
-        &pin_GPI35,
-        &pin_GPI39,
-        &pin_GPI38,
-        &pin_GPI36,
-        &pin_GPI37,
         &pin_GPIO17,
         &pin_GPIO18,
         &pin_GPIO23,
+        &pin_GPIO5,
+        &pin_GPIO27,
+        &pin_GPIO19,
 };
 
 /*!

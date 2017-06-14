@@ -18,16 +18,20 @@
 
 #define MICROPY_HW_FLASH_SIZE                                   (4 * 1024 * 1024)
 
-#if defined(OEM_VERSION)
+extern uint32_t micropy_hw_flash_size;
 
-    #define MICROPY_HW_ANTENNA_DIVERSITY                            (0)
+extern bool micropy_hw_antenna_diversity;
+extern uint32_t micropy_hw_antenna_diversity_pin_num;
 
-#else
+extern bool micropy_lpwan_use_reset_pin;
+extern uint32_t micropy_lpwan_reset_pin_num;
+extern uint32_t micropy_lpwan_reset_pin_index;
+extern void * micropy_lpwan_reset_pin;
 
-    #define MICROPY_HW_ANTENNA_DIVERSITY                            (1)
-    #define MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM                    (16)
+extern uint32_t micropy_lpwan_dio_pin_num;
+extern uint32_t micropy_lpwan_dio_pin_index;
+extern void * micropy_lpwan_dio_pin;
 
-    #define MICROPY_LPWAN_DIO_PIN_NUM                               (23)
-    #define MICROPY_LPWAN_DIO_PIN                                   (pin_GPIO23)
-
-#endif
+extern uint32_t micropy_lpwan_ncs_pin_num;
+extern uint32_t micropy_lpwan_ncs_pin_index;
+extern void * micropy_lpwan_ncs_pin;

@@ -30,43 +30,41 @@ DEFINE CONSTANTS
 /******************************************************************************
 DEFINE PRIVATE DATA
 ******************************************************************************/
-#if MICROPY_HW_ANTENNA_DIVERSITY
 static antenna_type_t antenna_type_selected = ANTENNA_TYPE_INTERNAL;
-#endif
 
 /******************************************************************************
 DEFINE PUBLIC FUNCTIONS
 ******************************************************************************/
 void antenna_init0(void) {
-#if MICROPY_HW_ANTENNA_DIVERSITY
-    gpio_config_t gpioconf = {.pin_bit_mask = 1ull << MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM,
-                              .mode = GPIO_MODE_OUTPUT,
-                              .pull_up_en = GPIO_PULLUP_DISABLE,
-                              .pull_down_en = GPIO_PULLDOWN_DISABLE,
-                              .intr_type = GPIO_INTR_DISABLE};
-    gpio_config(&gpioconf);
+    if (micropy_hw_antenna_diversity) {
+        gpio_config_t gpioconf = {.pin_bit_mask = 1ull << micropy_hw_antenna_diversity_pin_num,
+                                  .mode = GPIO_MODE_OUTPUT,
+                                  .pull_up_en = GPIO_PULLUP_DISABLE,
+                                  .pull_down_en = GPIO_PULLDOWN_DISABLE,
+                                  .intr_type = GPIO_INTR_DISABLE};
+        gpio_config(&gpioconf);
 
-    // select the currently active antenna
-    antenna_select(ANTENNA_TYPE_INTERNAL);
-#endif
+        // select the currently active antenna
+        antenna_select(ANTENNA_TYPE_INTERNAL);
+    }
 }
 
 void antenna_select (antenna_type_t _antenna) {
-#if MICROPY_HW_ANTENNA_DIVERSITY
-    if (MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM < 32) {
-        // set the pin value
-        if (_antenna == ANTENNA_TYPE_EXTERNAL) {
-            GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM);
+    if (micropy_hw_antenna_diversity) {
+        if (micropy_hw_antenna_diversity_pin_num < 32) {
+            // set the pin value
+            if (_antenna == ANTENNA_TYPE_EXTERNAL) {
+                GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << micropy_hw_antenna_diversity_pin_num);
+            } else {
+                GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << micropy_hw_antenna_diversity_pin_num);
+            }
         } else {
-            GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM);
+            if (_antenna == ANTENNA_TYPE_EXTERNAL) {
+                GPIO_REG_WRITE(GPIO_OUT1_W1TS_REG, 1 << (micropy_hw_antenna_diversity_pin_num & 31));
+            } else {
+                GPIO_REG_WRITE(GPIO_OUT1_W1TC_REG, 1 << (micropy_hw_antenna_diversity_pin_num & 31));
+            }
         }
-    } else {
-        if (_antenna == ANTENNA_TYPE_EXTERNAL) {
-            GPIO_REG_WRITE(GPIO_OUT1_W1TS_REG, 1 << (MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM & 31));
-        } else {
-            GPIO_REG_WRITE(GPIO_OUT1_W1TC_REG, 1 << (MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM & 31));
-        }
+        antenna_type_selected = _antenna;
     }
-    antenna_type_selected = _antenna;
-#endif
 }

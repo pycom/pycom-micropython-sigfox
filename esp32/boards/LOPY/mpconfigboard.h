@@ -18,39 +18,22 @@
 
 #define MICROPY_HW_FLASH_SIZE                                   (4 * 1024 * 1024)
 
-#if defined(OEM_VERSION)
+#define MICROPY_LPWAN_DIO_PIN
 
-    #define MICROPY_HW_ANTENNA_DIVERSITY                            (0)
+extern uint32_t micropy_hw_flash_size;
 
-    #define MICROPY_LPWAN_RESET_PIN_NUM
-    #define MICROPY_LPWAN_RESET_PIN_NAME
-    #define MICROPY_LPWAN_RESET_PIN
-    #define MICROPY_LPWAN_USE_RESET_PIN                             0
+extern bool micropy_hw_antenna_diversity;
+extern uint32_t micropy_hw_antenna_diversity_pin_num;
 
-    #define MICROPY_LPWAN_DIO_PIN_NUM                               (23)
-    #define MICROPY_LPWAN_DIO_PIN_NAME                              GPIO23
-    #define MICROPY_LPWAN_DIO_PIN                                   (pin_GPIO23)
+extern bool micropy_lpwan_use_reset_pin;
+extern uint32_t micropy_lpwan_reset_pin_num;
+extern uint32_t micropy_lpwan_reset_pin_index;
+extern void * micropy_lpwan_reset_pin;
 
-    #define MICROPY_LPWAN_NCS_PIN_NUM                               (18)
-    #define MICROPY_LPWAN_NCS_PIN_NAME                              GPIO18
-    #define MICROPY_LPWAN_NCS_PIN                                   (pin_GPIO18)
+extern uint32_t micropy_lpwan_dio_pin_num;
+extern uint32_t micropy_lpwan_dio_pin_index;
+extern void * micropy_lpwan_dio_pin;
 
-#else
-
-    #define MICROPY_HW_ANTENNA_DIVERSITY                            (1)
-    #define MICROPY_HW_ANTENNA_DIVERSITY_PIN_NUM                    (16)
-
-    #define MICROPY_LPWAN_RESET_PIN_NUM                             (18)
-    #define MICROPY_LPWAN_RESET_PIN_NAME                            GPIO18
-    #define MICROPY_LPWAN_RESET_PIN                                 (pin_GPIO18)
-    #define MICROPY_LPWAN_USE_RESET_PIN                             1
-
-    #define MICROPY_LPWAN_DIO_PIN_NUM                               (23)
-    #define MICROPY_LPWAN_DIO_PIN_NAME                              GPIO23
-    #define MICROPY_LPWAN_DIO_PIN                                   (pin_GPIO23)
-
-    #define MICROPY_LPWAN_NCS_PIN_NUM                               (17)
-    #define MICROPY_LPWAN_NCS_PIN_NAME                              GPIO17
-    #define MICROPY_LPWAN_NCS_PIN                                   (pin_GPIO17)
-
-#endif
+extern uint32_t micropy_lpwan_ncs_pin_num;
+extern uint32_t micropy_lpwan_ncs_pin_index;
+extern void * micropy_lpwan_ncs_pin;
