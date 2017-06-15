@@ -277,15 +277,15 @@ STATIC IRAM_ATTR void machpin_intr_process (void* arg) {
     uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);
     uint32_t gpio_intr_status_h = READ_PERI_REG(GPIO_STATUS1_REG);
 
-#ifdef MICROPY_LPWAN_DIO_PIN_NUM
+#ifdef MICROPY_LPWAN_DIO_PIN
     // fast path for the LPWAN DIO interrupt
-    if (gpio_intr_status & (1 << MICROPY_LPWAN_DIO_PIN_NUM)) {
-        ((void(*)(void))MICROPY_LPWAN_DIO_PIN.handler)();
+    if (gpio_intr_status & (1 << micropy_lpwan_dio_pin_num)) {
+        ((void(*)(void))((pin_obj_t *)micropy_lpwan_dio_pin)->handler)();
 
         // clear this bit from the interrupt status
-        gpio_intr_status &= ~(1 << MICROPY_LPWAN_DIO_PIN_NUM);
+        gpio_intr_status &= ~(1 << micropy_lpwan_dio_pin_num);
         // clear the interrupt
-        SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, (1 << MICROPY_LPWAN_DIO_PIN_NUM));
+        SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, (1 << micropy_lpwan_dio_pin_num));
     }
 #endif
 

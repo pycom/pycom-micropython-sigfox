@@ -436,18 +436,18 @@ STATIC void wlan_validate_channel (uint8_t channel) {
 
 
 STATIC void wlan_validate_antenna (uint8_t antenna) {
-#if MICROPY_HW_ANTENNA_DIVERSITY
-    if (antenna != ANTENNA_TYPE_INTERNAL && antenna != ANTENNA_TYPE_EXTERNAL) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+    if (micropy_hw_antenna_diversity) {
+        if (antenna != ANTENNA_TYPE_INTERNAL && antenna != ANTENNA_TYPE_EXTERNAL) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+        }
     }
-#endif
 }
 
 STATIC void wlan_set_antenna (uint8_t antenna) {
-#if MICROPY_HW_ANTENNA_DIVERSITY
-    wlan_obj.antenna = antenna;
-    antenna_select(antenna);
-#endif
+    if (micropy_hw_antenna_diversity) {
+        wlan_obj.antenna = antenna;
+        antenna_select(antenna);
+    }
 }
 
 STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, const char* bssid,
@@ -1099,13 +1099,15 @@ static int wlan_socket_socket(mod_network_socket_obj_t *s, int *_errno) {
 static void wlan_socket_close(mod_network_socket_obj_t *s) {
     // this is to prevent the finalizer to close a socket that failed when being created
     if (s->sock_base.sd >= 0) {
-        modusocket_socket_delete(s->sock_base.sd);
         if (s->sock_base.is_ssl) {
             mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
             if (ss->sock_base.connected) {
-                mbedtls_ssl_close_notify(&ss->ssl);
+                while(mbedtls_ssl_close_notify(&ss->ssl) == MBEDTLS_ERR_SSL_WANT_WRITE);
             }
             mbedtls_net_free(&ss->context_fd);
+            mbedtls_x509_crt_free(&ss->cacert);
+            mbedtls_x509_crt_free(&ss->own_cert);
+            mbedtls_pk_free(&ss->pk_key);
             mbedtls_ssl_free(&ss->ssl);
             mbedtls_ssl_config_free(&ss->conf);
             mbedtls_ctr_drbg_free(&ss->ctr_drbg);
@@ -1113,6 +1115,7 @@ static void wlan_socket_close(mod_network_socket_obj_t *s) {
         } else {
             close(s->sock_base.sd);
         }
+        modusocket_socket_delete(s->sock_base.sd);
         s->sock_base.connected = false;
         s->sock_base.sd = -1;
     }
@@ -1162,17 +1165,30 @@ static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t 
     MAKE_SOCKADDR(addr, ip, port)
     int ret = connect(s->sock_base.sd, &addr, sizeof(addr));
 
+    if (ret != 0) {
+        // printf("Connect returned -0x%x\n", -ret);
+        *_errno = ret;
+        return -1;
+    }
+
     // printf("Connected.\n");
 
     if (s->sock_base.is_ssl && (ret == 0)) {
         mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-        mbedtls_ssl_set_bio(&ss->ssl, &ss->context_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+
+        if ((ret = mbedtls_net_set_block(&ss->context_fd)) != 0) {
+            // printf("failed! net_set_(non)block() returned -0x%x\n", -ret);
+            *_errno = ret;
+            return -1;
+        }
+
+        mbedtls_ssl_set_bio(&ss->ssl, &ss->context_fd, mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
 
         // printf("Performing the SSL/TLS handshake...\n");
 
         while ((ret = mbedtls_ssl_handshake(&ss->ssl)) != 0)
         {
-            if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
+            if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_TIMEOUT)
             {
                 // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
                 *_errno = ret;
@@ -1227,10 +1243,8 @@ static int wlan_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t le
         mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
         do {
             ret = mbedtls_ssl_read(&ss->ssl, (unsigned char *)buf, len);
-            if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE || ret == MBEDTLS_ERR_SSL_TIMEOUT || ret == -0x4C) { // FIXME
-                // printf("Nothing to read\n");
-                *_errno = MP_EAGAIN;
-                return -1;
+            if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE || ret == MBEDTLS_ERR_SSL_TIMEOUT) {
+                // do nothing
             } else if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
                 // printf("Close notify received\n");
                 ret = 0;
