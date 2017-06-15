@@ -58,14 +58,15 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
 
     int32_t ret;
     mbedtls_ssl_init(&ssl_sock->ssl);
-    mbedtls_x509_crt_init(&ssl_sock->cacert);
+    mbedtls_ssl_config_init(&ssl_sock->conf);
     mbedtls_ctr_drbg_init(&ssl_sock->ctr_drbg);
+    mbedtls_x509_crt_init(&ssl_sock->cacert);
+    mbedtls_x509_crt_init(&ssl_sock->own_cert);
+    mbedtls_pk_init(&ssl_sock->pk_key);
     // printf("Seeding the random number generator\n");
 
-    mbedtls_ssl_config_init(&ssl_sock->conf);
-
     mbedtls_entropy_init(&ssl_sock->entropy);
-    if ((ret = mbedtls_ctr_drbg_seed(&ssl_sock->ctr_drbg, mbedtls_entropy_func, &ssl_sock->entropy, NULL, 0)) != 0) {
+    if ((ret = mbedtls_ctr_drbg_seed(&ssl_sock->ctr_drbg, mbedtls_entropy_func, &ssl_sock->entropy, (const unsigned char *)"Pycom", strlen("Pycom"))) != 0) {
         return ret;
     }
 
@@ -75,7 +76,7 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
             // printf("Loading the CA root certificate...\n");
             ret = mbedtls_x509_crt_parse(&ssl_sock->cacert, (uint8_t *)ca_cert, strlen(ca_cert) + 1);
             if (ret < 0) {
-                //printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
+                // printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
                 return ret;
             }
         } else {
@@ -86,10 +87,10 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
     if (client_cert_path && key_path) {
         const char *client_cert = mod_ssl_read_file(client_cert_path, &ssl_sock->vstr_cert);
         if (client_cert) {
-            //printf("Loading the own certificate...\n");
+            // printf("Loading the own certificate...\n");
             ret = mbedtls_x509_crt_parse(&ssl_sock->own_cert, (uint8_t *)client_cert, strlen(client_cert) + 1);
             if (ret < 0) {
-                //printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
+                // printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
                 return ret;
             }
         } else {
@@ -98,9 +99,9 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
 
         const char *client_key = mod_ssl_read_file(key_path, &ssl_sock->vstr_key);
         if (client_key) {
-            ret = mbedtls_pk_parse_key(&ssl_sock->pk_key, (uint8_t *)client_key, strlen(client_key) + 1, NULL, 0);
+            ret = mbedtls_pk_parse_key(&ssl_sock->pk_key, (uint8_t *)client_key, strlen(client_key) + 1, (const unsigned char *)"", 0);
             if (ret < 0) {
-                //printf("mbedtls_pk_parse_key returned -0x%x\n\n", -ret);
+                // printf("mbedtls_pk_parse_key returned -0x%x\n\n", -ret);
                 return ret;
             }
         } else {
@@ -112,7 +113,7 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
                                           client_or_server,
                                           MBEDTLS_SSL_TRANSPORT_STREAM,
                                           MBEDTLS_SSL_PRESET_DEFAULT)) != 0) {
-        //printf("mbedtls_ssl_config_defaults returned %d\n", ret);
+        // printf("mbedtls_ssl_config_defaults returned %d\n", ret);
         return ret;
     }
 
@@ -123,21 +124,21 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
         if ((ret = mbedtls_ssl_conf_own_cert(&ssl_sock->conf,
                                              &ssl_sock->own_cert,
                                              &ssl_sock->pk_key)) != 0) {
-            //printf("mbedtls_ssl_conf_own_cert returned %d\n", ret);
+            // printf("mbedtls_ssl_conf_own_cert returned %d\n", ret);
             return ret;
         }
     }
 
     if ((ret = mbedtls_ssl_setup(&ssl_sock->ssl, &ssl_sock->conf)) != 0) {
-        //printf("mbedtls_ssl_setup returned -0x%x\n\n", -ret);
+        // printf("mbedtls_ssl_setup returned -0x%x\n\n", -ret);
         return ret;
     }
 
     if (host_name) {
-        //printf("Setting hostname for TLS session...\n");
+        // printf("Setting hostname for TLS session...\n");
         /* Hostname set here should match CN in server certificate */
         if ((ret = mbedtls_ssl_set_hostname(&ssl_sock->ssl, host_name)) != 0) {
-            //printf("mbedtls_ssl_set_hostname returned -0x%x\n", -ret);
+            // printf("mbedtls_ssl_set_hostname returned -0x%x\n", -ret);
             return ret;
         }
     }
@@ -147,20 +148,24 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
 
     // perform the handshake if already connected
     if (ssl_sock->sock_base.connected) {
-        mbedtls_ssl_set_bio(&ssl_sock->ssl, &ssl_sock->context_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
+
+        if ((ret = mbedtls_net_set_block(&ssl_sock->context_fd)) != 0) {
+            // printf("failed! net_set_(non)block() returned -0x%x\n", -ret);
+            return ret;
+        }
+
+        mbedtls_ssl_set_bio(&ssl_sock->ssl, &ssl_sock->context_fd, mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
 
         // printf("Performing the SSL/TLS handshake...\n");
-
         while ((ret = mbedtls_ssl_handshake(&ssl_sock->ssl)) != 0)
         {
-            if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+            if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_TIMEOUT) {
                 // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
                 return ret;
             }
         }
 
         // printf("Verifying peer X.509 certificate...\n");
-
         if ((ret = mbedtls_ssl_get_verify_result(&ssl_sock->ssl)) != 0) {
             /* In real life, we probably want to close connection if ret != 0 */
             // printf("Failed to verify peer certificate!\n");
@@ -169,6 +174,8 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
             // printf("Certificate verified.\n");
         }
     }
+    mbedtls_ssl_conf_read_timeout(&ssl_sock->conf, 10);
+
     return 0;
 }
 
