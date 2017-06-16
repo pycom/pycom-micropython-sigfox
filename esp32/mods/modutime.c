@@ -29,7 +29,7 @@
 #include "nvs_flash.h"
 #include "esp_event.h"
 
-// extern uint64_t get_time_since_boot();
+extern uint64_t system_get_rtc_time(void);
 
 static int32_t timezone_offset;
 
@@ -133,9 +133,7 @@ STATIC mp_obj_t time_ticks_ms(void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_ms_obj, time_ticks_ms);
 
 STATIC mp_obj_t time_ticks_us(void) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return mp_obj_new_int_from_uint(((uint64_t)(tv.tv_sec * 1000000ull) + tv.tv_usec));
+    return mp_obj_new_int_from_uint(system_get_rtc_time());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_us_obj, time_ticks_us);
 
