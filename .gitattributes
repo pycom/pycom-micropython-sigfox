@@ -16,6 +16,7 @@
 *.ttf binary
 *.svg binary
 *.gif binary
+*.zip binary
 
 # These should also not be modified by git.
 tests/basics/string_cr_conversion.py -text
