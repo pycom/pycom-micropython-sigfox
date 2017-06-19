@@ -472,7 +472,7 @@ STATIC void wlan_validate_certificates (WPA2_Enterprise_t *wpa2_ent) {
 	}
 
 	if(wpa2_ent->method == MODWLAN_EAP_PEAP || wpa2_ent->method == MODWLAN_EAP_TTLS){
-		if(wpa2_ent->up.user_name == NULL || wpa2_ent->up.password == NULL){
+		if(wpa2_ent->up.username == NULL || wpa2_ent->up.password == NULL){
 	        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
 		}
 	}
@@ -481,7 +481,13 @@ STATIC void wlan_validate_certificates (WPA2_Enterprise_t *wpa2_ent) {
 STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, const char* bssid,
 										 const wifi_auth_mode_t auth, const char* key, uint32_t key_len, int32_t timeout,
 										 const WPA2_Enterprise_t * const wpa2_ent) {
-    wifi_config_t config;
+
+    vstr_t vstr_ca_cert;
+    vstr_t vstr_public_key;
+    vstr_t vstr_private_key;
+	esp_err_t esp_ret;
+
+	wifi_config_t config;
     memset(&config, 0, sizeof(config));
 
     // first close any active connections
@@ -499,17 +505,12 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
 	}
 
 	if(auth == WIFI_AUTH_WPA2_ENTERPRISE) {
-	    vstr_t vstr_ca_cert;
-	    vstr_t vstr_public_key;
-	    vstr_t vstr_private_key;
-
-		esp_err_t esp_ret;
 
 		/* CA Certificate is not necessary*/
-		if(wpa2_ent->ca_certificate_path != NULL){
+		if(wpa2_ent->ca_certificate_path != NULL) {
 			(void)wlan_read_file(wpa2_ent->ca_certificate_path, &vstr_ca_cert);
 			esp_ret = esp_wifi_sta_wpa2_ent_set_ca_cert((unsigned char*)vstr_ca_cert.buf, (int)vstr_ca_cert.len);
-			if(esp_ret){
+			if(esp_ret) {
 				printf("Failed to set WPA2 CA Certificate\n");
 				return MODWLAN_ERROR_CERTIFICATE;
 			}
@@ -525,14 +526,14 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
 			}
 
 			esp_ret = esp_wifi_sta_wpa2_ent_set_cert_key((unsigned char*)vstr_public_key.buf, (int)vstr_public_key.len, (unsigned char*)vstr_private_key.buf, (int)vstr_private_key.len, NULL, 0);
-			if(esp_ret){
+			if(esp_ret) {
 				printf("Failed to set WPA2 Client Certificate and Key");
 				return MODWLAN_ERROR_CERTIFICATE;
 			}
 		}
 
 		esp_ret = esp_wifi_sta_wpa2_ent_set_identity((unsigned char*)wpa2_ent->identity, strlen(wpa2_ent->identity));
-		if(esp_ret){
+		if(esp_ret) {
 			printf("Failed to set WPA2 Identity");
 			if(esp_ret == ESP_ERR_WIFI_ARG) {
 				return MODWLAN_ERROR_INVALID_PARAMS;
@@ -542,10 +543,10 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
 
 		}
 
-		if(wpa2_ent->up.user_name != NULL || wpa2_ent->up.password != NULL) {
+		if(wpa2_ent->up.username != NULL || wpa2_ent->up.password != NULL) {
 
-			esp_ret = esp_wifi_sta_wpa2_ent_set_username((unsigned char*)wpa2_ent->up.user_name, strlen(wpa2_ent->up.user_name));
-			if(esp_ret){
+			esp_ret = esp_wifi_sta_wpa2_ent_set_username((unsigned char*)wpa2_ent->up.username, strlen(wpa2_ent->up.username));
+			if(esp_ret) {
 				printf("Failed to set WPA2 username\n");
 				if(esp_ret == ESP_ERR_WIFI_ARG) {
 					return MODWLAN_ERROR_INVALID_PARAMS;
@@ -555,7 +556,7 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
 			}
 
 			esp_ret = esp_wifi_sta_wpa2_ent_set_password((unsigned char*)wpa2_ent->up.password, strlen(wpa2_ent->up.password));
-			if(esp_ret){
+			if(esp_ret) {
 				printf("Failed to set WPA2 password\n");
 				if(esp_ret == ESP_ERR_WIFI_ARG) {
 					return MODWLAN_ERROR_INVALID_PARAMS;
@@ -565,7 +566,7 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
 			}
 		}
 
-		if(esp_wifi_sta_wpa2_ent_enable()){
+		if(esp_wifi_sta_wpa2_ent_enable()) {
 			printf("Failed to enable WPA2_ENT\n");
 			return MODWLAN_ERROR_MEMORY_ALLOCATION;
 		}
@@ -583,6 +584,10 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
     	//printf("esp_wifi_connect ret not ok: %d\n",ret);
         return MODWLAN_ERROR_INVALID_PARAMS;
     }
+
+    vstr_free(&vstr_ca_cert);
+    vstr_free(&vstr_private_key);
+    vstr_free(&vstr_public_key);
 
     wlan_obj.disconnected = false;
     return MODWLAN_OK;
@@ -893,7 +898,7 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
     if (args[9].u_obj != mp_const_none) {
            mp_obj_t *sec;
            mp_obj_get_array_fixed_n(args[9].u_obj, 2, &sec);
-           wpa2_ent.up.user_name = mp_obj_str_get_str(sec[0]);
+           wpa2_ent.up.username = mp_obj_str_get_str(sec[0]);
            wpa2_ent.up.password = mp_obj_str_get_str(sec[1]);
     }
 

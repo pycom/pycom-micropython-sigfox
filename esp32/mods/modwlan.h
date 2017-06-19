@@ -71,7 +71,7 @@ typedef enum {
 } modwlan_Eap_method_t;
 
 typedef struct _WPA2_Enterprise_login_t {
-	const char * user_name;
+	const char * username;
 	const char * password;
 }WPA2_Enterprise_login_t;
 
