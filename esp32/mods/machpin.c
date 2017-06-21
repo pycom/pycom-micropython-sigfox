@@ -184,16 +184,14 @@ void pin_extint_register(pin_obj_t *self, uint32_t trigger, uint32_t priority) {
 }
 
 void pin_deassign (pin_obj_t *self) {
-    // de-assign the alternate functions
     if (self->af_in >= 0) {
-        gpio_matrix_in(self->value ? MACHPIN_SIMPLE_IN_HIGH : MACHPIN_SIMPLE_IN_LOW, self->af_in, false);
-        self->af_in = -1;
+        gpio_matrix_in(self->af_in, self->value ? MACHPIN_SIMPLE_IN_HIGH : MACHPIN_SIMPLE_IN_LOW, false);
     }
-
     if (self->af_out >= 0) {
         gpio_matrix_out(self->pin_number, MACHPIN_SIMPLE_OUTPUT, false, false);
-        self->af_out = -1;
     }
+    self->af_in = -1;
+    self->af_out = -1;
 }
 
 IRAM_ATTR void pin_set_value (const pin_obj_t* self) {

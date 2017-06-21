@@ -406,6 +406,9 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     // and UART_IntrConfig() will enable them again
     CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(self->uart_id), UART_INTR_MASK);
 
+    self->intr_config.intr_enable_mask = 0;
+    uart_intr_config(self->uart_id, &self->intr_config);
+
     // assign the pins
     mp_obj_t pins_o = args[4].u_obj;
     uint32_t flowcontrol = UART_HW_FLOWCTRL_DISABLE;
@@ -435,6 +438,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
                 }
             }
         }
+        uart_deassign_pins_af (self);
         uart_assign_pins_af (self, pins, n_pins);
     }
 
@@ -455,6 +459,11 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     self->read_buf = MP_OBJ_NULL; // free the read buffer before allocating again
     MP_STATE_PORT(uart_buf[self->uart_id]) = m_new(byte, MACHUART_RX_BUFFER_LEN);
     self->read_buf = (volatile byte *)MP_STATE_PORT(uart_buf[self->uart_id]);
+
+    // clear the input buffer
+    while (READ_PERI_REG(UART_STATUS_REG(self->uart_id)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) {
+        self->read_buf[0] = READ_PERI_REG(UART_FIFO_AHB_REG(self->uart_id)) & 0xFF;
+    }
 
     // interrupts are enabled here
     machuart_isr_register(self->uart_id, uart_intr_handler, NULL);
