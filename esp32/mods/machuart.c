@@ -435,8 +435,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
                          UART_RXFIFO_FULL_INT_ENA | UART_TXFIFO_EMPTY_INT_ENA;
 
     // disable the delay between transfers
-    WRITE_PERI_REG(UART_IDLE_CONF_REG(self->uart_id),
-    READ_PERI_REG(UART_IDLE_CONF_REG(self->uart_id)) & (~UART_TX_IDLE_NUM_M));
+    WRITE_PERI_REG(UART_IDLE_CONF_REG(self->uart_id), READ_PERI_REG(UART_IDLE_CONF_REG(self->uart_id)) & (~UART_TX_IDLE_NUM_M));
 
     // disable interrupts on the current UART before re-configuring
     // and UART_IntrConfig() will enable them again
@@ -580,12 +579,42 @@ STATIC mp_obj_t mach_uart_any(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_any_obj, mach_uart_any);
 
+STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
+    mach_uart_obj_t *self = self_in;
+    uint32_t delay = (((mp_obj_get_int(bits) + 1) * 1000000) / self->config.baud_rate) & 0x7FFF;
+
+    if (self->n_pins == 1) {
+        pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
+        // make it an output
+        pin->value = 1;
+        pin_deassign(pin);
+        pin->mode = GPIO_MODE_OUTPUT;
+        pin->af_out = mach_uart_pin_af[self->uart_id][0];
+        gpio_matrix_out(pin->pin_number, pin->af_out, false, false);
+    }
+
+    WRITE_PERI_REG(UART_CONF0_REG(self->uart_id), READ_PERI_REG(UART_CONF0_REG(self->uart_id)) | UART_TXD_INV);
+    ets_delay_us((delay > 0) ? delay : 1);
+    WRITE_PERI_REG(UART_CONF0_REG(self->uart_id), READ_PERI_REG(UART_CONF0_REG(self->uart_id)) & (~UART_TXD_INV));
+
+    if (self->n_pins == 1) {
+        pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
+        // make it an input again
+        pin_deassign(pin);
+        pin->af_in = mach_uart_pin_af[self->uart_id][1];
+        pin_config(pin, pin->af_in, -1, GPIO_MODE_INPUT, MACHPIN_PULL_UP, 1);
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mach_uart_sendbreak_obj, mach_uart_sendbreak);
+
 STATIC const mp_map_elem_t mach_uart_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),        (mp_obj_t)&mach_uart_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),      (mp_obj_t)&mach_uart_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_any),         (mp_obj_t)&mach_uart_any_obj },
-    // { MP_OBJ_NEW_QSTR(MP_QSTR_sendbreak),   (mp_obj_t)&pyb_uart_sendbreak_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sendbreak),   (mp_obj_t)&mach_uart_sendbreak_obj },
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_irq),         (mp_obj_t)&pyb_uart_irq_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_read),        (mp_obj_t)&mp_stream_read_obj },
