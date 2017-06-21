@@ -86,7 +86,7 @@ Methods
 
     Disables the WiFi radio.
 
-.. method:: wlan.connect(ssid, \*, auth=None, bssid=None, timeout=None)
+.. method:: wlan.connect(ssid, \*, auth=None, bssid=None, timeout=None, wpa2_ent_method=None, ca_certificate_path=None, private_key_path=None, public_key_path=None, identity=None, wpa2_ent_auth=None)
 
    Connect to a wifi access point using the given SSID, and other security
    parameters.
@@ -95,9 +95,22 @@ Methods
         ``WLAN.WPA`` or ``WLAN.WPA2``. The key is a string with the network password.
         If ``sec`` is ``WLAN.WEP`` the key must be a string representing hexadecimal
         values (e.g. 'ABC1DE45BF').
+        If ``sec`` is ``WLAN.WPA2`` the key is not used, can be an empty string.
       - ``bssid`` is the MAC address of the AP to connect to. Useful when there are several
         APs with the same ssid.
       - ``timeout`` is the maximum time in milliseconds to wait for the connection to succeed.
+      - ``wpa2_ent_method`` is the WPA2-Enterprise authentication method which can be: ``None``, 
+        ``WLAN.EAP_TLS``, ``WLAN.EAP_PEAP``, ``WLAN.EAP_TTLS``.
+        ``WLAN.EAP_PEAP`` and ``WLAN.EAP_TTLS`` refer to PEAP-MSCHAPv2 and TTLS-MSCHAPv2 methods.
+      - ``ca_certificate_path`` is the path to the pre-copied CA-Certificate (chain) to be used.
+        If left empty, the server's certificate will not be validated. Can be encoded in PEM or DER.
+      - ``private_key_path`` is the path to the pre-copied private key. Only mandatory in case of
+        ``WLAN.EAP_TLS``. Can be encoded in PEM or DER.
+      - ``public_key_path`` is the path to the  pre-copied public key. Only mandatory in case of
+        ``WLAN.EAP_TLS``. Can be encoded in PEM or DER.
+      - ``identity`` is the EAP identity.
+      - ``wpa2_ent_auth`` is a tuple with (username, password) to be used in case of ``WLAN.EAP_PEAP``
+        and ``WLAN.EAP_TTLS``.
 
 .. method:: wlan.scan()
 
@@ -182,6 +195,12 @@ Constants
           WLAN.WPA2
 
    selects the network security
+
+.. data:: WLAN.EAP_TLS
+          WLAN.EAP_PEAP
+          WLAN.EAP_TTLS
+
+  selects the WPA2-Enterprise method
 
 .. data:: WLAN.INT_ANT
           WLAN.EXT_ANT
