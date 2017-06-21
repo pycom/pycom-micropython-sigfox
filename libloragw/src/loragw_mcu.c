@@ -481,7 +481,7 @@ int lgw_mcu_commit_radio_calibration(uint8_t idx_start, uint8_t idx_nb) {
     /* prepare command */
     cmd.id = 'j';
     cmd.len_msb = 0;
-    cmd.len_lsb = 1;
+    cmd.len_lsb = 2;
     cmd.address = 0;
     cmd.cmd_data[0] = idx_start;
     cmd.cmd_data[1] = idx_nb;
