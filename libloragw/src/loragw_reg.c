@@ -544,8 +544,15 @@ int lgw_connect(const char *com_path) {
 /* Concentrator disconnect */
 int lgw_disconnect(void) {
     if (lgw_com_target != NULL) {
+        /* reset MCU */
         lgw_mcu_reset();
+        /* close COM bridge immediatly after reset to avoid re-enumeration
+        before close */
         lgw_com_close(lgw_com_target);
+        /* Wait for MCU reset and COM initialization to be complete before
+        returning to avoid trying to restart while MCU is still starting up */
+        wait_ms(MCU_DELAY_COM_INIT + MCU_DELAY_RESET);
+        /* exit */
         lgw_com_target = NULL;
         DEBUG_MSG("Note: success disconnecting the concentrator\n");
         return LGW_REG_SUCCESS;

@@ -30,7 +30,10 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_MCU_SUCCESS 0
 #define LGW_MCU_ERROR   -1
 
-#define STM32FWVERSION  0x010a0004 /* incremement LSB for new version */
+#define STM32FWVERSION 0x010a0004 /* increment LSB for new version */
+
+#define MCU_DELAY_COM_INIT 1000
+#define MCU_DELAY_RESET 200
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC TYPES --------------------------------------------------------- */
