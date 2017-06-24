@@ -14,6 +14,10 @@
 #include "updater.h"
 #include "modled.h"
 
+#include "esp_system.h"
+#include "nvs_flash.h"
+#include "nvs.h"
+
 #include "mpexception.h"
 #include "machpin.h"
 #include "driver/rmt.h"
@@ -23,6 +27,17 @@
 #include "freertos/task.h"
 
 extern led_info_t led_info;
+
+
+#define NVS_NAMESPACE                           "PY_NVM"
+
+static nvs_handle pycom_nvs_handle;
+
+void modpycom_init0(void) {
+    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &pycom_nvs_handle) != ESP_OK) {
+        printf("Error while opening Pycom NVS name space\n");
+    }
+}
 
 /******************************************************************************/
 // Micro Python bindings
@@ -122,6 +137,33 @@ STATIC mp_obj_t mod_pycom_pulses_get (mp_obj_t gpio, mp_obj_t timeout) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_pycom_pulses_get_obj, mod_pycom_pulses_get);
 
+STATIC mp_obj_t mod_pycom_nvs_set (mp_obj_t _key, mp_obj_t _value) {
+    const char *key = mp_obj_str_get_str(_key);
+    uint32_t value = mp_obj_get_int_truncated(_value);
+
+    if (ESP_OK == nvs_set_u32(pycom_nvs_handle, key, value)) {
+        nvs_commit(pycom_nvs_handle);
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_pycom_nvs_set_obj, mod_pycom_nvs_set);
+
+STATIC mp_obj_t mod_pycom_nvs_get (mp_obj_t _key) {
+    const char *key = mp_obj_str_get_str(_key);
+    uint32_t value;
+
+    if (ESP_ERR_NVS_NOT_FOUND == nvs_get_u32(pycom_nvs_handle, key, &value)) {
+        // initialize the value to 0
+        value = 0;
+        if (ESP_OK == nvs_set_u32(pycom_nvs_handle, key, value)) {
+            nvs_commit(pycom_nvs_handle);
+        }
+    }
+    return mp_obj_new_int(value);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_nvs_get_obj, mod_pycom_nvs_get);
+
+
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat),           (mp_obj_t)&mod_pycom_heartbeat_obj },
@@ -130,6 +172,8 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_ota_write),           (mp_obj_t)&mod_pycom_ota_write_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ota_finish),          (mp_obj_t)&mod_pycom_ota_finish_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pulses_get),          (mp_obj_t)&mod_pycom_pulses_get_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_set),             (mp_obj_t)&mod_pycom_nvs_set_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_get),             (mp_obj_t)&mod_pycom_nvs_get_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(pycom_module_globals, pycom_module_globals_table);

@@ -73,6 +73,7 @@
 /******************************************************************************
  DECLARE EXTERNAL FUNCTIONS
  ******************************************************************************/
+extern void modpycom_init0(void);
 
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
@@ -173,6 +174,7 @@ soft_reset:
     mod_network_init0();
     modbt_init0();
     machtimer_init0();
+    modpycom_init0();
     bool safeboot = false;
     boot_info_t boot_info;
     uint32_t boot_info_offset;
