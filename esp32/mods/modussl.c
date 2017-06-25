@@ -53,8 +53,8 @@ STATIC const mp_obj_type_t ssl_socket_type = {
 };
 
 static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *host_name,
-                                  const char *ca_cert_path, const char *client_cert_path,
-                                  const char *key_path, uint32_t ssl_verify, uint32_t client_or_server) {
+                                     const char *ca_cert_path, const char *client_cert_path,
+                                     const char *key_path, uint32_t ssl_verify, uint32_t client_or_server) {
 
     int32_t ret;
     mbedtls_ssl_init(&ssl_sock->ssl);

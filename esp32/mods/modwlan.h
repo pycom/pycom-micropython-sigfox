@@ -25,39 +25,44 @@
 /******************************************************************************
  DEFINE TYPES
  ******************************************************************************/
-typedef enum {
-    MODWLAN_OK = 0,
-    MODWLAN_ERROR_INVALID_PARAMS = -1,
-    MODWLAN_ERROR_TIMEOUT = -2,
-    MODWLAN_ERROR_UNKNOWN = -3,
-} modwlan_Status_t;
+typedef struct _wlan_wpa2_ent_obj_t {
+    const char *ca_certs_path;
+    const char *client_key_path;
+    const char *client_cert_path;
+    const char *identity;
+    const char *username;
+} wlan_wpa2_ent_obj_t;
 
 typedef struct _wlan_obj_t {
-    mp_obj_base_t       base;
-    mp_obj_t            irq_obj;
-    uint32_t            status;
+    mp_obj_base_t           base;
+    wlan_wpa2_ent_obj_t     wpa2_ent;
+    vstr_t                  vstr_ca;
+    vstr_t                  vstr_cert;
+    vstr_t                  vstr_key;
 
-    uint32_t            ip;
+    uint32_t                status;
 
-    int8_t              mode;
-    uint8_t             auth;
-    uint8_t             channel;
-    uint8_t             antenna;
+    uint32_t                ip;
+
+    int8_t                  mode;
+    uint8_t                 auth;
+    uint8_t                 channel;
+    uint8_t                 antenna;
 
     // my own ssid, key and mac
-    uint8_t             ssid[(MODWLAN_SSID_LEN_MAX + 1)];
-    uint8_t             key[65];
-    uint8_t             mac[6];
+    uint8_t                 ssid[(MODWLAN_SSID_LEN_MAX + 1)];
+    uint8_t                 key[65];
+    uint8_t                 mac[6];
 
     // the sssid (or name) and mac of the other device
-    uint8_t             ssid_o[33];
-    uint8_t             bssid[6];
-    uint8_t             irq_flags;
-    bool                irq_enabled;
-    bool                enable_servers;
-    bool                disconnected;
-    bool                pwrsave;
-    bool                started;
+    uint8_t                 ssid_o[33];
+    uint8_t                 bssid[6];
+    uint8_t                 irq_flags;
+    bool                    irq_enabled;
+    bool                    enable_servers;
+    bool                    disconnected;
+    bool                    pwrsave;
+    bool                    started;
 } wlan_obj_t;
 
 /******************************************************************************
@@ -69,8 +74,7 @@ typedef struct _wlan_obj_t {
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
 extern void wlan_pre_init (void);
-extern void wlan_setup (int32_t mode, const char *ssid, uint32_t ssid_len, uint32_t auth, const char *key, uint32_t key_len,
-                        uint32_t channel, uint32_t antenna, bool add_mac);
+extern void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac);
 extern void wlan_update(void);
 extern void wlan_get_mac (uint8_t *macAddress);
 extern void wlan_get_ip (uint32_t *ip);

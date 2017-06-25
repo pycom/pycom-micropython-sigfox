@@ -119,3 +119,32 @@ The following script holds a list with nets and an optional list of wlan_config 
       except Exception as e:
           print("Failed to connect to any known network, going into AP mode")
           wl.init(mode=WLAN.AP, ssid=original_ssid, auth=original_auth, channel=6, antenna=WLAN.INT_ANT)
+
+
+Connecting to a WPA2-Enterprise network
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+**Connecting with EAP-TLS:**
+
+Before connecting, you have to copy the public and private keys to the device, e.g. under location ``/flash/cert``.
+If you would like to validate the server's public key, an appropiate CA certificate (chain) must also be provided.
+
+::
+
+    from network import WLAN
+
+    wlan = WLAN(mode=WLAN.STA)
+    wlan.connect(ssid='mywifi', auth=(WLAN.WPA2_ENT,), identity='myidentity', ca_certs='/flash/cert/ca.pem', keyfile='/flash/cert/client.key', certfile='/flash/cert/client.crt')
+
+
+**Connecting with EAP-PEAP or EAP-TTLS:**
+
+In case of EAP-PEAP (or EAP-TTLS), the client key and certificate are not necessary, only a username and password pair.
+If you would like to validate the server's public key, an appropiate CA certificate (chain) must also be provided.
+
+::
+
+    from network import WLAN
+
+    wlan = WLAN(mode=WLAN.STA)
+    wlan.connect(ssid='mywifi', auth=(WLAN.WPA2_ENT, 'username', 'password'), identity='myidentity', ca_certs='/flash/cert/ca.pem')

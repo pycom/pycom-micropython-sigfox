@@ -386,8 +386,7 @@ STATIC void mptask_update_lpwan_mac_address (void) {
 #endif
 
 STATIC void mptask_enter_ap_mode (void) {
-    wlan_setup (WIFI_MODE_AP, DEFAULT_AP_SSID, strlen(DEFAULT_AP_SSID), WIFI_AUTH_WPA2_PSK,
-                DEFAULT_AP_PASSWORD, strlen(DEFAULT_AP_PASSWORD),
+    wlan_setup (WIFI_MODE_AP, DEFAULT_AP_SSID, WIFI_AUTH_WPA2_PSK, DEFAULT_AP_PASSWORD,
                 DEFAULT_AP_CHANNEL, ANTENNA_TYPE_INTERNAL, true);
 }
 

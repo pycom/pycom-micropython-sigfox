@@ -19,6 +19,7 @@
 #include "py/stream.h"
 #include "py/mphal.h"
 #include "py/mperrno.h"
+#include "py/misc.h"
 
 #include "esp_heap_alloc_caps.h"
 #include "sdkconfig.h"
@@ -29,6 +30,8 @@
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
 #include "esp_event_loop.h"
+#include "ff.h"
+#include "esp_wpa2.h"
 
 //#include "timeutils.h"
 #include "netutils.h"
@@ -103,6 +106,8 @@
                                             ip[2] = addr.sa_data[3]; \
                                             ip[3] = addr.sa_data[2];
 
+#define FILE_READ_SIZE 512
+
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -144,18 +149,16 @@ STATIC void wlan_servers_stop (void);
 //STATIC void wlan_reset (void);
 STATIC void wlan_validate_mode (uint mode);
 STATIC void wlan_set_mode (uint mode);
-STATIC void wlan_setup_ap (const char *ssid, uint32_t ssid_len, uint32_t auth, const char *key, uint32_t key_len,
-                           uint32_t channel, bool add_mac);
+STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac);
 STATIC void wlan_validate_ssid_len (uint32_t len);
 STATIC uint32_t wlan_set_ssid_internal (const char *ssid, uint8_t len, bool add_mac);
 STATIC void wlan_validate_security (uint8_t auth, const char *key);
-STATIC void wlan_set_security_internal (uint8_t auth, const char *key, uint8_t len);
+STATIC void wlan_set_security_internal (uint8_t auth, const char *key);
 STATIC void wlan_validate_channel (uint8_t channel);
 STATIC void wlan_validate_antenna (uint8_t antenna);
 STATIC void wlan_set_antenna (uint8_t antenna);
 static esp_err_t wlan_event_handler(void *ctx, system_event_t *event);
-STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, const char* bssid,
-                                         const char* key, uint32_t key_len, int32_t timeout);
+STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key, int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent);
 //STATIC void wlan_get_sl_mac (void);
 //STATIC void wlan_wep_key_unhexlify (const char *key, char *key_out);
 //STATIC void wlan_lpds_irq_enable (mp_obj_t self_in);
@@ -179,7 +182,7 @@ static int wlan_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, 
 static int wlan_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno);
 static int wlan_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 
-
+static char *wlan_read_file (const char *file_path, vstr_t *vstr);
 //*****************************************************************************
 //
 //! \brief The Function Handles WLAN Events
@@ -196,8 +199,7 @@ void wlan_pre_init (void) {
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
 }
 
-void wlan_setup (int32_t mode, const char *ssid, uint32_t ssid_len, uint32_t auth, const char *key, uint32_t key_len,
-                 uint32_t channel, uint32_t antenna, bool add_mac) {
+void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac) {
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -213,7 +215,13 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t ssid_len, uint32_t aut
     wlan_set_mode(mode);
 
     if (mode != WIFI_MODE_STA) {
-        wlan_setup_ap (ssid, ssid_len, auth, key, key_len, channel, add_mac);
+        if (ssid == NULL) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "AP SSID not given"));
+        }
+        if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "WPA2_ENT not supported in AP mode"));
+        }
+        wlan_setup_ap (ssid, auth, key, channel, add_mac);
     }
 
     esp_wifi_start();
@@ -284,7 +292,12 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
         system_event_sta_disconnected_t *disconn = &event->event_info.disconnected;
         switch (disconn->reason) {
+            case WIFI_REASON_AUTH_EXPIRE:
             case WIFI_REASON_AUTH_FAIL:
+            case WIFI_REASON_GROUP_CIPHER_INVALID:
+            case WIFI_REASON_PAIRWISE_CIPHER_INVALID:
+            case WIFI_REASON_802_1X_AUTH_FAILED:
+            case WIFI_REASON_CIPHER_SUITE_REJECTED:
                 wlan_obj.disconnected = true;
                 break;
             default:
@@ -334,14 +347,14 @@ STATIC void wlan_servers_stop (void) {
     }
 }
 
-STATIC void wlan_setup_ap (const char *ssid, uint32_t ssid_len, uint32_t auth, const char *key, uint32_t key_len,
-                           uint32_t channel, bool add_mac) {
-    ssid_len = wlan_set_ssid_internal (ssid, ssid_len, add_mac);
-    wlan_set_security_internal(auth, key, key_len);
+STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac) {
+    uint32_t ssid_len = wlan_set_ssid_internal (ssid, strlen(ssid), add_mac);
+    wlan_set_security_internal(auth, key);
+
     // get the current config and then change it
     wifi_config_t config;
     esp_wifi_get_config(WIFI_IF_AP, &config);
-    memcpy((char *)config.ap.ssid, (char *)wlan_obj.ssid, ssid_len);
+    strcpy((char *)config.ap.ssid, (char *)wlan_obj.ssid);
     config.ap.ssid_len = ssid_len;
     config.ap.authmode = wlan_obj.auth;
     strcpy((char *)config.ap.password, (char *)wlan_obj.key);
@@ -396,7 +409,7 @@ STATIC uint32_t wlan_set_ssid_internal (const char *ssid, uint8_t len, bool add_
 }
 
 STATIC void wlan_validate_security (uint8_t auth, const char *key) {
-    if (auth < WIFI_AUTH_WEP && auth > WIFI_AUTH_WPA_WPA2_PSK) {
+    if (auth < WIFI_AUTH_WEP && auth > WIFI_AUTH_WPA2_ENTERPRISE) {
         goto invalid_args;
     }
 //    if (auth == AUTH_WEP) {
@@ -412,12 +425,11 @@ invalid_args:
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
 }
 
-STATIC void wlan_set_security_internal (uint8_t auth, const char *key, uint8_t len) {
+STATIC void wlan_set_security_internal (uint8_t auth, const char *key) {
     wlan_obj.auth = auth;
 //    uint8_t wep_key[32];
     if (key != NULL) {
-        memcpy(wlan_obj.key, key, len);
-        wlan_obj.key[len] = '\0';
+        strcpy((char *)wlan_obj.key, key);
 //        if (auth == SL_SEC_TYPE_WEP) {
 //            wlan_wep_key_unhexlify(key, (char *)&wep_key);
 //            key = (const char *)&wep_key;
@@ -450,8 +462,28 @@ STATIC void wlan_set_antenna (uint8_t antenna) {
     }
 }
 
-STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, const char* bssid,
-                                         const char* key, uint32_t key_len, int32_t timeout) {
+STATIC void wlan_validate_certificates (wlan_wpa2_ent_obj_t *wpa2_ent) {
+    if ((wpa2_ent->client_key_path == NULL || wpa2_ent->client_cert_path == NULL) && wpa2_ent->username == NULL) {
+        goto cred_error;
+    } else if (wpa2_ent->client_key_path != NULL && wpa2_ent->client_cert_path != NULL && wpa2_ent->username != NULL) {
+        goto cred_error;
+    }
+
+    if (wpa2_ent->identity == NULL) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "indentiy required for WPA2_ENT authentication"));
+    } else if (strlen(wpa2_ent->identity) > 127) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid identity length %d", strlen(wpa2_ent->identity)));
+    }
+
+    return;
+
+cred_error:
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid WAP2_ENT credentials"));
+}
+
+STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key,
+                             int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent) {
+
     wifi_config_t config;
     memset(&config, 0, sizeof(config));
 
@@ -459,36 +491,82 @@ STATIC modwlan_Status_t wlan_do_connect (const char* ssid, uint32_t ssid_len, co
     wlan_obj.disconnected = true;
     esp_wifi_disconnect();
 
-    memcpy(config.sta.ssid, ssid, ssid_len);
+    strcpy((char *)wlan_obj.ssid, ssid);
+    strcpy((char *)config.sta.ssid, ssid);
+
     if (key) {
-        memcpy(config.sta.password, key, key_len);
+        strcpy((char *)config.sta.password, key);
+        strcpy((char *)wlan_obj.key, key);
     }
     if (bssid) {
         memcpy(config.sta.bssid, bssid, sizeof(config.sta.bssid));
         config.sta.bssid_set = true;
     }
 
-    esp_wifi_set_config(WIFI_IF_STA, &config);
-    esp_wifi_connect();
+    if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
+        // CA Certificate is not mandatory
+        if (wpa2_ent->ca_certs_path != NULL) {
+            if (wlan_read_file(wpa2_ent->ca_certs_path, &wlan_obj.vstr_ca)) {
+                if (ESP_OK != esp_wifi_sta_wpa2_ent_set_ca_cert((unsigned char*)wlan_obj.vstr_ca.buf, (int)wlan_obj.vstr_ca.len)) {
+                    goto os_error;
+                }
+            } else {
+                goto invalid_file;
+            }
+        }
+
+        // Client certificate is necessary only in EAP-TLS method, this is ensured by wlan_validate_certificates() function
+        if (wpa2_ent->client_key_path != NULL && wpa2_ent->client_cert_path != NULL) {
+            if (wlan_read_file(wpa2_ent->client_key_path, &wlan_obj.vstr_cert) && wlan_read_file(wpa2_ent->client_cert_path, &wlan_obj.vstr_key)) {
+                if (ESP_OK != esp_wifi_sta_wpa2_ent_set_cert_key((unsigned char*)wlan_obj.vstr_cert.buf, (int)wlan_obj.vstr_cert.len,
+                                                                  (unsigned char*)wlan_obj.vstr_key.buf, (int)wlan_obj.vstr_key.len, NULL, 0)) {
+                    goto os_error;
+                }
+            } else {
+                goto invalid_file;
+            }
+        }
+
+        if (ESP_OK != esp_wifi_sta_wpa2_ent_set_identity((unsigned char *)wpa2_ent->identity, strlen(wpa2_ent->identity))) {
+            goto os_error;
+        }
+
+        if (wpa2_ent->username != NULL || key != NULL) {
+            if (ESP_OK != esp_wifi_sta_wpa2_ent_set_username((unsigned char *)wpa2_ent->username, strlen(wpa2_ent->username))) {
+                goto os_error;
+            }
+
+            if (ESP_OK != esp_wifi_sta_wpa2_ent_set_password((unsigned char *)key, strlen(key))) {
+                goto os_error;
+            }
+        }
+
+        if (ESP_OK != esp_wifi_sta_wpa2_ent_enable()) {
+            goto os_error;
+        }
+    }
+
+    if (ESP_OK != esp_wifi_set_config(WIFI_IF_STA, &config)) {
+        goto os_error;
+    }
+
+    if (ESP_OK != esp_wifi_connect()) {
+        goto os_error;
+    }
+
     wlan_obj.disconnected = false;
-    return MODWLAN_OK;
+    wlan_obj.auth = auth;
+    memcpy(&wlan_obj.wpa2_ent, wpa2_ent, sizeof(wlan_wpa2_ent_obj_t));
+
+    return;
+
+invalid_file:
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid file path"));
+
+os_error:
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
 
     // TODO Add timeout handling!!
-
-//    if (!sl_WlanConnect((_i8*)ssid, ssid_len, (uint8_t*)bssid, &secParams, NULL)) {
-//        // wait for the WLAN Event
-//        uint32_t waitForConnectionMs = 0;
-//        while (timeout && !IS_CONNECTED(wlan_obj.status)) {
-//            mp_hal_delay_ms(MODWLAN_CONNECTION_WAIT_MS);
-//            waitForConnectionMs += MODWLAN_CONNECTION_WAIT_MS;
-//            if (timeout > 0 && waitForConnectionMs > timeout) {
-//                return MODWLAN_ERROR_TIMEOUT;
-//            }
-//            wlan_update();
-//        }
-//        return MODWLAN_OK;
-//    }
-//    return MODWLAN_ERROR_INVALID_PARAMS;
 }
 
 //STATIC void wlan_get_sl_mac (void) {
@@ -547,22 +625,23 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
     wlan_validate_mode(mode);
 
     // get the ssid
-    mp_uint_t ssid_len = 0;
     const char *ssid = NULL;
     if (args[1].u_obj != NULL) {
-        ssid = mp_obj_str_get_data(args[1].u_obj, &ssid_len);
-        wlan_validate_ssid_len(ssid_len);
+        ssid = mp_obj_str_get_str(args[1].u_obj);
+        wlan_validate_ssid_len(strlen(ssid));
     }
 
     // get the auth config
     uint8_t auth = WIFI_AUTH_OPEN;
-    mp_uint_t key_len = 0;
     const char *key = NULL;
     if (args[2].u_obj != mp_const_none) {
         mp_obj_t *sec;
         mp_obj_get_array_fixed_n(args[2].u_obj, 2, &sec);
         auth = mp_obj_get_int(sec[0]);
-        key = mp_obj_str_get_data(sec[1], &key_len);
+        key = mp_obj_str_get_str(sec[1]);
+        if (strlen(key) < 8 || strlen(key) > 32) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid key length"));
+        }
         wlan_validate_security(auth, key);
     }
 
@@ -577,8 +656,7 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
     wlan_obj.pwrsave = args[5].u_bool;
 
     // initialize the wlan subsystem
-    wlan_setup(mode, (const char *)ssid, ssid_len, auth, (const char *)key, key_len, channel, antenna, false);
-
+    wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false);
     mod_network_register_nic(&wlan_obj);
 
     return mp_const_none;
@@ -616,7 +694,6 @@ STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_ui
         // start the peripheral
         wlan_init_helper(self, &args[1]);
     }
-
     return (mp_obj_t)self;
 }
 
@@ -689,10 +766,14 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_scan_obj, wlan_scan);
 
 STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     STATIC const mp_arg_t allowed_args[] = {
-        { MP_QSTR_ssid,     MP_ARG_REQUIRED | MP_ARG_OBJ, },
-        { MP_QSTR_auth,                       MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_bssid,    MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_timeout,  MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_ssid,                 MP_ARG_REQUIRED | MP_ARG_OBJ, },
+        { MP_QSTR_auth,                                   MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_bssid,                MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_timeout,              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_ca_certs,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_keyfile,              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_certfile,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_identity,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
 
     // check for the correct wlan mode
@@ -705,26 +786,46 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     // get the ssid
-    mp_uint_t ssid_len;
-    const char *ssid = mp_obj_str_get_data(args[0].u_obj, &ssid_len);
-    wlan_validate_ssid_len(ssid_len);
+    const char *ssid = mp_obj_str_get_str(args[0].u_obj);
+    wlan_validate_ssid_len(strlen(ssid));
+
+    wlan_wpa2_ent_obj_t wpa2_ent = {NULL, NULL, NULL, NULL, NULL};
 
     // get the auth
-    mp_uint_t key_len = 0;
     const char *key = NULL;
+    const char *user = NULL;
+    uint8_t auth = WIFI_AUTH_MAX;
     if (args[1].u_obj != mp_const_none) {
         mp_obj_t *sec;
-        mp_obj_get_array_fixed_n(args[1].u_obj, 2, &sec);
-        key = mp_obj_str_get_data(sec[1], &key_len);
-//        wlan_validate_security(auth, key); FIXME
-
-//        // convert the wep key if needed
-//        if (auth == SL_SEC_TYPE_WEP) {
-//            uint8_t wep_key[32];
-//            wlan_wep_key_unhexlify(key, (char *)&wep_key);
-//            key = (const char *)&wep_key;
-//            key_len /= 2;
-//        }
+        uint32_t a_len;
+        mp_obj_get_array(args[1].u_obj, &a_len, &sec);
+        if (a_len == 1) {
+            auth = mp_obj_get_int(sec[0]);
+            if (auth != WIFI_AUTH_WPA2_ENTERPRISE) {
+                goto auth_error;
+            }
+        } else if (a_len == 2) {
+            if (sec[0] != mp_const_none) {
+                auth = mp_obj_get_int(sec[0]);
+                if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
+                    goto auth_error;
+                }
+            }
+            key = mp_obj_str_get_str(sec[1]);
+        } else if (a_len == 3) {
+            auth = mp_obj_get_int(sec[0]);
+            if (auth != WIFI_AUTH_WPA2_ENTERPRISE) {
+                goto auth_error;
+            }
+            if (sec[1] != mp_const_none) {
+                user = mp_obj_str_get_str(sec[1]);
+            }
+            if (sec[2] != mp_const_none) {
+                key = mp_obj_str_get_str(sec[2]);
+            }
+        } else {
+            goto auth_error;
+        }
     }
 
     // get the bssid
@@ -739,18 +840,38 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
         timeout = mp_obj_get_int(args[3].u_obj);
     }
 
-    // copy the new ssid and connect to the requested access point
-    strcpy((char *)wlan_obj.ssid, ssid);
-    modwlan_Status_t status;
-    status = wlan_do_connect (ssid, ssid_len, bssid, key, key_len, timeout);
-    if (status == MODWLAN_ERROR_TIMEOUT) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
-    } else if (status == MODWLAN_ERROR_INVALID_PARAMS) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+    // get the ca_certificate
+    if (args[4].u_obj != mp_const_none) {
+        wpa2_ent.ca_certs_path = mp_obj_str_get_str(args[4].u_obj);
     }
-    memcpy(wlan_obj.key, key, key_len);
-    wlan_obj.key[key_len] = '\0';
+
+    // get the private key
+    if (args[5].u_obj != mp_const_none) {
+        wpa2_ent.client_key_path = mp_obj_str_get_str(args[5].u_obj);
+    }
+
+    // get the client certificate
+    if (args[6].u_obj != mp_const_none) {
+        wpa2_ent.client_cert_path = mp_obj_str_get_str(args[6].u_obj);
+    }
+
+    // get the identity
+    if (args[7].u_obj != mp_const_none) {
+        wpa2_ent.identity = mp_obj_str_get_str(args[7].u_obj);
+    }
+
+    if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
+        wpa2_ent.username = user;
+        wlan_validate_certificates(&wpa2_ent);
+    }
+
+    // connect to the requested access point
+    wlan_do_connect (ssid, bssid, auth, key, timeout, &wpa2_ent);
+
     return mp_const_none;
+
+auth_error:
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid authentication tuple"));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_connect_obj, 1, wlan_connect);
 
@@ -867,10 +988,9 @@ STATIC mp_obj_t wlan_ssid (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args == 1) {
         return mp_obj_new_str((const char *)self->ssid, strlen((const char *)self->ssid), false);
     } else {
-        mp_uint_t ssid_len;
-        const char *ssid = mp_obj_str_get_data(args[1], &ssid_len);
-        wlan_validate_ssid_len(ssid_len);
-        ssid_len = wlan_set_ssid_internal (ssid, ssid_len, false);
+        const char *ssid = mp_obj_str_get_str(args[1]);
+        wlan_validate_ssid_len(strlen(ssid));
+        mp_uint_t ssid_len = wlan_set_ssid_internal (ssid, strlen(ssid), false);
         // get the current config and then change it
         wifi_config_t config;
         esp_wifi_get_config(WIFI_IF_AP, &config);
@@ -902,16 +1022,15 @@ STATIC mp_obj_t wlan_auth (mp_uint_t n_args, const mp_obj_t *args) {
     } else {
         // get the auth config
         uint8_t auth = WIFI_AUTH_OPEN;
-        mp_uint_t key_len = 0;
         const char *key = NULL;
         if (args[1] != mp_const_none) {
             mp_obj_t *sec;
             mp_obj_get_array_fixed_n(args[1], 2, &sec);
             auth = mp_obj_get_int(sec[0]);
-            key = mp_obj_str_get_data(sec[1], &key_len);
+            key = mp_obj_str_get_str(sec[1]);
             wlan_validate_security(auth, key);
         }
-        wlan_set_security_internal(auth, key, key_len);
+        wlan_set_security_internal(auth, key);
         wifi_config_t config;
         esp_wifi_get_config(WIFI_IF_AP, &config);
         config.ap.authmode = wlan_obj.auth;
@@ -1026,6 +1145,7 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_WEP),                 MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WEP) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WPA),                 MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA_PSK) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WPA2),                MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA2_PSK) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_WPA2_ENT),            MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA2_ENTERPRISE) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_INT_ANT),             MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_INTERNAL) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_EXT_ANT),             MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_EXTERNAL) },
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_ANY_EVENT),           MP_OBJ_NEW_SMALL_INT(MODWLAN_WIFI_EVENT_ANY) },
@@ -1388,4 +1508,37 @@ static int wlan_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp
         ret = MP_STREAM_ERROR;
     }
     return ret;
+}
+
+
+static char *wlan_read_file (const char *file_path, vstr_t *vstr) {
+    vstr_init(vstr, FILE_READ_SIZE);
+    char *filebuf = vstr->buf;
+    mp_uint_t actualsize;
+    mp_uint_t totalsize = 0;
+
+    FIL fp;
+    FRESULT res = f_open(&fp, file_path, FA_READ);
+    if (res != FR_OK) {
+        return NULL;
+    }
+
+    while (true) {
+        FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
+        if (res != FR_OK) {
+            f_close(&fp);
+            return NULL;
+        }
+        totalsize += actualsize;
+        if (actualsize < FILE_READ_SIZE) {
+            break;
+        } else {
+            filebuf = vstr_extend(vstr, FILE_READ_SIZE);
+        }
+    }
+    f_close(&fp);
+
+    vstr->len = totalsize;
+    vstr_null_terminated_str(vstr);
+    return vstr->buf;
 }
