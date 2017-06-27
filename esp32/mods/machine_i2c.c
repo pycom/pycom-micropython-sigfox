@@ -79,22 +79,17 @@ typedef struct _machine_i2c_obj_t {
 #define I2C_ACK_VAL                             (0)
 #define I2C_NACK_VAL                            (1)
 
+
+STATIC void mp_hal_i2c_stop(machine_i2c_obj_t *self);
+
+
 STATIC const mp_obj_t mach_i2c_def_pin[2] = {&PIN_MODULE_P9, &PIN_MODULE_P10};
+STATIC uint32_t isrmask;
 
 STATIC void mp_hal_i2c_delay(machine_i2c_obj_t *self) {
     // We need to use an accurate delay to get acceptable I2C
     // speeds (eg 1us should be not much more than 1us).
     ets_delay_us(self->us_delay);
-}
-
-STATIC void mp_hal_i2c_scl_low(machine_i2c_obj_t *self) {
-    self->scl->value = 0;
-    pin_set_value(self->scl);
-}
-
-STATIC void mp_hal_i2c_scl_release(machine_i2c_obj_t *self) {
-    self->scl->value = 1;
-    pin_set_value(self->scl);
 }
 
 STATIC void mp_hal_i2c_sda_low(machine_i2c_obj_t *self) {
@@ -111,19 +106,51 @@ STATIC int mp_hal_i2c_sda_read(machine_i2c_obj_t *self) {
     return pin_get_value(self->sda);
 }
 
+STATIC int mp_hal_i2c_scl_read(machine_i2c_obj_t *self) {
+    return pin_get_value(self->scl);
+}
+
+STATIC bool mp_hal_i2c_wait_for_scl(machine_i2c_obj_t *self) {
+    uint32_t count = 0;
+    // clock stretching?
+    while (!mp_hal_i2c_scl_read(self)) {
+        ets_delay_us(1);
+        if (count++ > 5000) {       // timeout after 5ms
+            return false;
+        }
+    }
+    return true;
+}
+
+STATIC void mp_hal_i2c_scl_low(machine_i2c_obj_t *self) {
+    self->scl->value = 0;
+    pin_set_value(self->scl);
+}
+
+STATIC void mp_hal_i2c_scl_release(machine_i2c_obj_t *self) {
+    self->scl->value = 1;
+    pin_set_value(self->scl);
+    // wait until the slave releases the clock
+    if (!mp_hal_i2c_wait_for_scl(self)) {
+        MICROPY_END_ATOMIC_SECTION(isrmask);
+        mp_hal_i2c_stop(self);
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "I2C bus error"));
+    }
+}
+
 STATIC void mp_hal_i2c_start(machine_i2c_obj_t *self) {
-    uint32_t mask = MICROPY_BEGIN_ATOMIC_SECTION();
+    isrmask = MICROPY_BEGIN_ATOMIC_SECTION();
     mp_hal_i2c_sda_release(self);
     mp_hal_i2c_delay(self);
     mp_hal_i2c_scl_release(self);
     mp_hal_i2c_delay(self);
     mp_hal_i2c_sda_low(self);
     mp_hal_i2c_delay(self);
-    MICROPY_END_ATOMIC_SECTION(mask);
+    MICROPY_END_ATOMIC_SECTION(isrmask);
 }
 
 STATIC void mp_hal_i2c_stop(machine_i2c_obj_t *self) {
-    uint32_t mask = MICROPY_BEGIN_ATOMIC_SECTION();
+    isrmask = MICROPY_BEGIN_ATOMIC_SECTION();
     mp_hal_i2c_delay(self);
     mp_hal_i2c_sda_low(self);
     mp_hal_i2c_delay(self);
@@ -131,7 +158,7 @@ STATIC void mp_hal_i2c_stop(machine_i2c_obj_t *self) {
     mp_hal_i2c_delay(self);
     mp_hal_i2c_sda_release(self);
     mp_hal_i2c_delay(self);
-    MICROPY_END_ATOMIC_SECTION(mask);
+    MICROPY_END_ATOMIC_SECTION(isrmask);
 }
 
 STATIC void mp_hal_i2c_init(machine_i2c_obj_t *self) {
@@ -144,12 +171,11 @@ STATIC void mp_hal_i2c_init(machine_i2c_obj_t *self) {
 }
 
 STATIC int mp_hal_i2c_write_byte(machine_i2c_obj_t *self, uint8_t val) {
-    uint32_t mask;
 
     mp_hal_i2c_delay(self);
 
     for (int i = 7; i >= 0; i--) {
-        mask = MICROPY_BEGIN_ATOMIC_SECTION();
+        isrmask = MICROPY_BEGIN_ATOMIC_SECTION();
         mp_hal_i2c_scl_low(self);
         if ((val >> i) & 1) {
             mp_hal_i2c_sda_release(self);
@@ -159,20 +185,19 @@ STATIC int mp_hal_i2c_write_byte(machine_i2c_obj_t *self, uint8_t val) {
         mp_hal_i2c_delay(self);
         mp_hal_i2c_scl_release(self);
         mp_hal_i2c_delay(self);
-        MICROPY_END_ATOMIC_SECTION(mask);
+        MICROPY_END_ATOMIC_SECTION(isrmask);
     }
 
-    mask = MICROPY_BEGIN_ATOMIC_SECTION();
+    isrmask = MICROPY_BEGIN_ATOMIC_SECTION();
     mp_hal_i2c_scl_low(self);
     mp_hal_i2c_sda_release(self);
     mp_hal_i2c_delay(self);
     mp_hal_i2c_scl_release(self);
     mp_hal_i2c_delay(self);
     int ret = mp_hal_i2c_sda_read(self);
-
     mp_hal_i2c_delay(self);
     mp_hal_i2c_scl_low(self);
-    MICROPY_END_ATOMIC_SECTION(mask);
+    MICROPY_END_ATOMIC_SECTION(isrmask);
 
     return !ret;
 }
@@ -198,23 +223,22 @@ er:
 }
 
 STATIC int mp_hal_i2c_read_byte(machine_i2c_obj_t *self, uint8_t *val, int nack) {
-    uint32_t mask;
 
     mp_hal_i2c_delay(self);
 
     uint8_t data = 0;
     for (int i = 7; i >= 0; i--) {
-        mask = MICROPY_BEGIN_ATOMIC_SECTION();
+        isrmask = MICROPY_BEGIN_ATOMIC_SECTION();
         mp_hal_i2c_scl_low(self);
         mp_hal_i2c_delay(self);
         mp_hal_i2c_scl_release(self);
         mp_hal_i2c_delay(self);
         data = (data << 1) | mp_hal_i2c_sda_read(self);
-        MICROPY_END_ATOMIC_SECTION(mask);
+        MICROPY_END_ATOMIC_SECTION(isrmask);
     }
     *val = data;
 
-    mask = MICROPY_BEGIN_ATOMIC_SECTION();
+    isrmask = MICROPY_BEGIN_ATOMIC_SECTION();
     mp_hal_i2c_scl_low(self);
     mp_hal_i2c_delay(self);
     // send ack/nack bit
@@ -226,7 +250,7 @@ STATIC int mp_hal_i2c_read_byte(machine_i2c_obj_t *self, uint8_t *val, int nack)
     mp_hal_i2c_delay(self);
     mp_hal_i2c_scl_low(self);
     mp_hal_i2c_sda_release(self);
-    MICROPY_END_ATOMIC_SECTION(mask);
+    MICROPY_END_ATOMIC_SECTION(isrmask);
 
     return 1; // success
 }
