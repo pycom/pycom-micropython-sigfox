@@ -448,6 +448,12 @@ STATIC mp_obj_t machine_i2c_init_helper(machine_i2c_obj_t *self, const mp_arg_va
         }
         self->sda = pin_find(pins[0]);
         self->scl = pin_find(pins[1]);
+
+        // af values different from -1 so that deassign works
+        self->sda->af_in = 1;
+        self->sda->af_out = 1;
+        self->scl->af_in = 1;
+        self->scl->af_out = 1;
     }
 
     // before assigning the baudrate
