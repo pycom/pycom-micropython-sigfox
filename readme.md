@@ -72,6 +72,13 @@ This software is used to obtain the unique id of the PicoCell gateway (the
 ## 5. Changelog
 ---------------
 
+### v0.1.1  ###
+
+* HAL: fixed MCU command wrong size in lgw_mcu_commit_radio_calibration().
+* HAL: fixed MCU reset sequence to wait for MCU to complete reset and reinit
+the communication bridge before exiting. This is to avoid issues when restarting
+the concentrator after exit.
+
 ### v0.1.0  ###
 
 * HAL: code clean-up/refactoring

@@ -222,7 +222,7 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
 
     cmd_size = (bufferrx[1] << 8) + bufferrx[2];
 
-    DEBUG_PRINTF("Note: received answer header for cmd \'%c\', length=%d, ack=%u\n", bufferrx[0], cmd_size, bufferrx[3]);
+    DEBUG_PRINTF("Note: received answer header for cmd \'%c\', length=%zd, ack=%u\n", bufferrx[0], cmd_size, bufferrx[3]);
 
     /* Read answer Data */
     if (cmd_size > 0) {
@@ -233,7 +233,7 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
         }
         /* Check that data size does not exceed buffer size */
         if (cmd_size > CMD_DATA_RX_SIZE) {
-            DEBUG_PRINTF("ERROR: exceed read buffer size, abort. (%d)\n", cmd_size);
+            DEBUG_PRINTF("ERROR: exceed read buffer size, abort. (%zd)\n", cmd_size);
             return LGW_COM_ERROR;
         }
         /* Read the answer */
@@ -255,7 +255,7 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
         ans->ans_data[i] = bufferrx[CMD_HEADER_RX_SIZE + i];
     }
 
-    DEBUG_PRINTF("Note: received answer for cmd \'%c\', length=%d\n", bufferrx[0], cmd_size);
+    DEBUG_PRINTF("Note: received answer for cmd \'%c\', length=%zd\n", bufferrx[0], cmd_size);
 
     return LGW_COM_SUCCESS;
 }
@@ -283,12 +283,12 @@ int lgw_com_open_linux(void **com_target_ptr, const char *com_path) {
     sprintf(portname, "%s", com_path);
     fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0) {
-        DEBUG_PRINTF("ERROR: failed to open COM port %s - %s\n", portname, strerror(errno));
+        printf("ERROR: failed to open COM port %s - %s\n", portname, strerror(errno));
     } else {
         x = set_interface_attribs_linux(fd, B115200);
         x |= set_blocking_linux(fd, true);
         if (x != 0) {
-            DEBUG_PRINTF("ERROR: failed to configure COM port %s\n", portname);
+            printf("ERROR: failed to configure COM port %s\n", portname);
             free(usb_device);
             return LGW_COM_ERROR;
         }
@@ -319,10 +319,10 @@ int lgw_com_close_linux(void *com_target) {
 
     /* determine return code */
     if (a < 0) {
-        DEBUG_PRINTF("ERROR: failed to close COM port - %s\n", strerror(errno));
+        printf("ERROR: failed to close COM port - %s\n", strerror(errno));
         return LGW_COM_ERROR;
     } else {
-        DEBUG_MSG("Note : USB port closed \n");
+        printf("Note : USB port closed \n");
         return LGW_COM_SUCCESS;
     }
 }
