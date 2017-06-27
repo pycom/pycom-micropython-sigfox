@@ -61,8 +61,10 @@ Constructors
 
     .. class:: I2C(bus, ...)
 
-       Construct an I2C object on the given bus.  `bus` can only be 0.
-       If the bus is not given, the default one will be selected (0).
+       Construct an I2C object on the given bus.  `bus` can only be 0, 1 or 2.
+       If the bus is not given, the default one will be selected (0). Buses 0 and 1
+       use the ESP32 I2C hardware peripheral while bus 2 is implemented with a
+       bit-banged software driver.
 
 .. only:: port_esp8266
 
@@ -163,9 +165,12 @@ operations that target a given slave device.
 
    Return value is the number of bytes read.
 
-.. method:: i2c.writeto(addr, buf)
+.. method:: i2c.writeto(addr, buf, \*, stop=True)
 
    Write the bytes from `buf` to the slave specified by `addr`.
+   The argument `buf` can also be an integer which will be treated as a single byte.
+   If `stop` is set to `False` then the stop condition won't be sent
+   and the I2C operation may be continued (typically with a read transaction).
 
    Return value is the number of bytes written.
 
@@ -177,7 +182,7 @@ from and written to.  In this case there are two addresses associated with an
 I2C transaction: the slave address and the memory address.  The following
 methods are convenience functions to communicate with such devices.
 
-.. method:: i2c.readfrom_mem(addr, memaddr, nbytes,)
+.. method:: i2c.readfrom_mem(addr, memaddr, nbytes)
 
    Read `nbytes` from the slave specified by `addr` starting from the memory
    address specified by `memaddr`.
@@ -193,7 +198,8 @@ methods are convenience functions to communicate with such devices.
 .. method:: i2c.writeto_mem(addr, memaddr, buf)
 
    Write `buf` to the slave specified by `addr` starting from the
-   memory address specified by `memaddr`.
+   memory address specified by `memaddr`. The argument `buf` can also
+   be an integer which will be treated as a single byte.
 
    The return value is the number of bytes written.
 
