@@ -149,12 +149,41 @@ bool uart_tx_char(mach_uart_obj_t *self, int c) {
 }
 
 bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
+    bool ret = true;
+
+    if (self->n_pins == 1) {
+        pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
+        // make it an output
+        pin->value = 1;
+        pin_deassign(pin);
+        pin->mode = GPIO_MODE_OUTPUT;
+        pin->af_out = mach_uart_pin_af[self->uart_id][0];
+        gpio_matrix_out(pin->pin_number, pin->af_out, false, false);
+    }
+
     for (const char *top = str + len; str < top; str++) {
         if (!uart_tx_char(self, *str)) {
-            return false;
+            ret = false;
+            break;
         }
     }
-    return true;
+
+    if (self->n_pins == 1) {
+        pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
+
+        // wait for the output buffer to be empty
+        while (!(READ_PERI_REG(UART_INT_RAW_REG(self->uart_id)) & UART_TX_DONE_INT_RAW_M)) {
+            ets_delay_us(1);
+        }
+        WRITE_PERI_REG(UART_INT_CLR_REG(self->uart_id), UART_TX_DONE_INT_CLR);
+
+        // make it an input again
+        pin_deassign(pin);
+        pin->af_in = mach_uart_pin_af[self->uart_id][1];
+        pin_config(pin, pin->af_in, -1, GPIO_MODE_INPUT, MACHPIN_PULL_UP, 1);
+    }
+
+    return ret;
 }
 
 /******************************************************************************
@@ -179,24 +208,31 @@ static void uart_deassign_pins_af (mach_uart_obj_t *self) {
 }
 
 static void uart_assign_pins_af (mach_uart_obj_t *self, mp_obj_t *pins, uint32_t n_pins) {
-    for (int i = 0; i < n_pins; i++) {
-        if (pins[i] != mp_const_none) {
-            pin_obj_t *pin = pin_find(pins[i]);
-            int32_t af_in, af_out, mode, pull;
-            if (i % 2) {
-                af_in = mach_uart_pin_af[self->uart_id][i];
-                af_out = -1;
-                mode = GPIO_MODE_INPUT;
-                pull = MACHPIN_PULL_UP;
-            } else {
-                af_in = -1;
-                af_out = mach_uart_pin_af[self->uart_id][i];
-                mode = GPIO_MODE_OUTPUT;
-                pull = MACHPIN_PULL_NONE;
+    if (n_pins > 1) {
+        for (int i = 0; i < n_pins; i++) {
+            if (pins[i] != mp_const_none) {
+                pin_obj_t *pin = pin_find(pins[i]);
+                int32_t af_in, af_out, mode, pull;
+                if (i % 2) {
+                    af_in = mach_uart_pin_af[self->uart_id][i];
+                    af_out = -1;
+                    mode = GPIO_MODE_INPUT;
+                    pull = MACHPIN_PULL_UP;
+                } else {
+                    af_in = -1;
+                    af_out = mach_uart_pin_af[self->uart_id][i];
+                    mode = GPIO_MODE_OUTPUT;
+                    pull = MACHPIN_PULL_NONE;
+                }
+                pin_config(pin, af_in, af_out, mode, pull, 1);
+                self->pins[i] = pin;
             }
-            pin_config(pin, af_in, af_out, mode, pull, 1);
-            self->pins[i] = pin;
         }
+    } else {
+        pin_obj_t *pin = pin_find(pins[0]);
+        // make the pin Rx by default
+        pin_config(pin, mach_uart_pin_af[self->uart_id][1], -1, GPIO_MODE_INPUT, MACHPIN_PULL_UP, 1);
+        self->pins[0] = pin;
     }
     self->n_pins = n_pins;
 }
@@ -399,12 +435,14 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
                          UART_RXFIFO_FULL_INT_ENA | UART_TXFIFO_EMPTY_INT_ENA;
 
     // disable the delay between transfers
-    WRITE_PERI_REG(UART_IDLE_CONF_REG(self->uart_id),
-    READ_PERI_REG(UART_IDLE_CONF_REG(self->uart_id)) & (~UART_TX_IDLE_NUM_M));
+    WRITE_PERI_REG(UART_IDLE_CONF_REG(self->uart_id), READ_PERI_REG(UART_IDLE_CONF_REG(self->uart_id)) & (~UART_TX_IDLE_NUM_M));
 
     // disable interrupts on the current UART before re-configuring
     // and UART_IntrConfig() will enable them again
     CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(self->uart_id), UART_INTR_MASK);
+
+    self->intr_config.intr_enable_mask = 0;
+    uart_intr_config(self->uart_id, &self->intr_config);
 
     // assign the pins
     mp_obj_t pins_o = args[4].u_obj;
@@ -417,7 +455,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
             pins = (mp_obj_t *)mach_uart_def_pin[self->uart_id];
         } else {
             mp_obj_get_array(pins_o, &n_pins, &pins);
-            if (n_pins != 2 && n_pins != 4) {
+            if (n_pins != 1 && n_pins != 2 && n_pins != 4) {
                 goto error;
             }
             if (n_pins == 4) {
@@ -435,6 +473,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
                 }
             }
         }
+        uart_deassign_pins_af (self);
         uart_assign_pins_af (self, pins, n_pins);
     }
 
@@ -455,6 +494,11 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     self->read_buf = MP_OBJ_NULL; // free the read buffer before allocating again
     MP_STATE_PORT(uart_buf[self->uart_id]) = m_new(byte, MACHUART_RX_BUFFER_LEN);
     self->read_buf = (volatile byte *)MP_STATE_PORT(uart_buf[self->uart_id]);
+
+    // clear the input buffer
+    while (READ_PERI_REG(UART_STATUS_REG(self->uart_id)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) {
+        self->read_buf[0] = READ_PERI_REG(UART_FIFO_AHB_REG(self->uart_id)) & 0xFF;
+    }
 
     // interrupts are enabled here
     machuart_isr_register(self->uart_id, uart_intr_handler, NULL);
@@ -535,12 +579,46 @@ STATIC mp_obj_t mach_uart_any(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_any_obj, mach_uart_any);
 
+STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
+    mach_uart_obj_t *self = self_in;
+
+    // only if the bus is initialized
+    if (self->config.baud_rate > 0) {
+        uint32_t delay = (((mp_obj_get_int(bits) + 1) * 1000000) / self->config.baud_rate) & 0x7FFF;
+
+        if (self->n_pins == 1) {
+            pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
+            // make it an output
+            pin->value = 1;
+            pin_deassign(pin);
+            pin->mode = GPIO_MODE_OUTPUT;
+            pin->af_out = mach_uart_pin_af[self->uart_id][0];
+            gpio_matrix_out(pin->pin_number, pin->af_out, false, false);
+        }
+
+        WRITE_PERI_REG(UART_CONF0_REG(self->uart_id), READ_PERI_REG(UART_CONF0_REG(self->uart_id)) | UART_TXD_INV);
+        ets_delay_us((delay > 0) ? delay : 1);
+        WRITE_PERI_REG(UART_CONF0_REG(self->uart_id), READ_PERI_REG(UART_CONF0_REG(self->uart_id)) & (~UART_TXD_INV));
+
+        if (self->n_pins == 1) {
+            pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
+            // make it an input again
+            pin_deassign(pin);
+            pin->af_in = mach_uart_pin_af[self->uart_id][1];
+            pin_config(pin, pin->af_in, -1, GPIO_MODE_INPUT, MACHPIN_PULL_UP, 1);
+        }
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mach_uart_sendbreak_obj, mach_uart_sendbreak);
+
 STATIC const mp_map_elem_t mach_uart_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),        (mp_obj_t)&mach_uart_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),      (mp_obj_t)&mach_uart_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_any),         (mp_obj_t)&mach_uart_any_obj },
-    // { MP_OBJ_NEW_QSTR(MP_QSTR_sendbreak),   (mp_obj_t)&pyb_uart_sendbreak_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sendbreak),   (mp_obj_t)&mach_uart_sendbreak_obj },
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_irq),         (mp_obj_t)&pyb_uart_irq_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_read),        (mp_obj_t)&mp_stream_read_obj },

@@ -73,6 +73,7 @@
 /******************************************************************************
  DECLARE EXTERNAL FUNCTIONS
  ******************************************************************************/
+extern void modpycom_init0(void);
 
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
@@ -173,6 +174,7 @@ soft_reset:
     mod_network_init0();
     modbt_init0();
     machtimer_init0();
+    modpycom_init0();
     bool safeboot = false;
     boot_info_t boot_info;
     uint32_t boot_info_offset;
@@ -384,8 +386,7 @@ STATIC void mptask_update_lpwan_mac_address (void) {
 #endif
 
 STATIC void mptask_enter_ap_mode (void) {
-    wlan_setup (WIFI_MODE_AP, DEFAULT_AP_SSID, strlen(DEFAULT_AP_SSID), WIFI_AUTH_WPA2_PSK,
-                DEFAULT_AP_PASSWORD, strlen(DEFAULT_AP_PASSWORD),
+    wlan_setup (WIFI_MODE_AP, DEFAULT_AP_SSID, WIFI_AUTH_WPA2_PSK, DEFAULT_AP_PASSWORD,
                 DEFAULT_AP_CHANNEL, ANTENNA_TYPE_INTERNAL, true);
 }
 

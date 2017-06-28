@@ -3,30 +3,41 @@
 class WDT -- watchdog timer
 ===========================
 
-The WDT is used to restart the system when the application crashes and ends
-up into a non recoverable state. Once started it cannot be stopped or
-reconfigured in any way. After enabling, the application must "feed" the
-watchdog periodically to prevent it from expiring and resetting the system.
+.. only:: not port_pycom_esp32
+
+    The WDT is used to restart the system when the application crashes and ends
+    up into a non recoverable state. Once started it cannot be stopped or
+    reconfigured in any way. After enabling, the application must "feed" the
+    watchdog periodically to prevent it from expiring and resetting the system.
+
+.. only:: port_pycom_esp32
+
+    The WDT is used to restart the system when the application crashes and ends
+    up into a non recoverable state. After enabling, the application must "feed"
+    the watchdog periodically to prevent it from expiring and resetting the system.
 
 Example usage::
 
     from machine import WDT
-    wdt = WDT(timeout=2000)  # enable it with a timeout of 2s
+    wdt = WDT(timeout=2000)  # enable it with a timeout of 2 seconds
     wdt.feed()
-
-Availability of this class: pyboard, WiPy.
 
 Constructors
 ------------
 
-.. class:: WDT(id=0, timeout=5000)
+.. class:: WDT(id=0, timeout)
 
-   Create a WDT object and start it. The timeout must be given in seconds and
-   the minimum value that is accepted is 1 second. Once it is running the timeout
-   cannot be changed and the WDT cannot be stopped either.
+   Create a WDT object and start it. The ``id`` can only be 0.
+   See the ``init`` method for the parameters of initialisation.
 
 Methods
 -------
+
+.. class:: init(timeout)
+
+   Initializes the watchdog timer. The timeout must be given in milliseconds.
+   Once it is running the WDT cannot be stopped but the timeout can be re-configured
+   at any point in time.
 
 .. method:: wdt.feed()
 

@@ -9,3 +9,4 @@ Pysense is a sensor packed version of the Expansion Board, intended for use in e
    includes/pysense-start.rst
    includes/pysense-ref.rst
    includes/pysense-examples.rst
+   includes/windows-7.rst

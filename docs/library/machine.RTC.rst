@@ -30,11 +30,13 @@ Constructors
 Methods
 -------
 
-.. method:: rtc.init(datetime)
+.. method:: rtc.init(datetime=None, source=RTC.INTERNAL_RC)
 
-   Initialize the RTC. Datetime is a tuple of the form:
+   Initialize the RTC. The arguments are:
 
-      ``(year, month, day[, hour[, minute[, second[, microsecond[, tzinfo]]]]])``
+    - ``datetime`` when passed it sets the current time.
+      It is a tuple of the form: ``(year, month, day[, hour[, minute[, second[, microsecond[, tzinfo]]]]])``.
+    - ``source`` selects the oscillator that drives the RTC. The options are ``RTC.INTERNAL_RC`` and ``RTC.XTAL_32KHZ``
 
    For example: ::
 
@@ -63,65 +65,22 @@ Methods
 
         Can be used like: ::
 
-            
             rtc.ntp_sync("pool.ntp.org") # this is an example. You can select a more specific server according to your geographical location
 
-    .. method:: rtc.calibration([cal])
+    .. method:: rtc.synced()
 
-        Get or set RTC calibration.
+        Returns ``True`` if the last ntp_sync has been completed, ``False`` otherwise::
 
-        With no arguments, ``calibration()`` returns the current calibration
-        value, which is an integer in the range [-(2^27 - 1) : 2^27 -1].  With one
-        argument it sets the RTC calibration for long term counting.::
+        rtc.synced()
 
-            # returns current calibration
-            rtc.calibration()
 
-            # adjusts calibration to +1/128 of the counter tick.
-            rtc.calibration(1)
+    Constants
+    ---------
 
-        The RTC counter ticks at 5 MHz. Current crystal has an error of less than 10 ppm (5 minutes a year),
-        which is more than acceptable for most applications. Calibration is only needed if you want to achieve
-        errors lower than that.
+    .. data:: RTC.INTERNAL_RC
+              RTC.XTAL_32KHZ
 
-        The units of ``cal`` are in 1/128 of RTC tick.
-
-        Units added will slow down the clock. Conversely, negative values will speed it up.
-
-        Experienced users can see the note bellow on how the RTC keeps the count of time for more information
-        on how calibration works.
-
-    .. note::
-
-        Pycom's port of MicroPython for the ESP32 uses the UNIX epoch (1970-01-01).
-
-    .. note::
-
-        Internally, a 64 bit counter is used to keep microseconds, so the time will overflow
-        around year 586512 CE.
-
-    .. note::
-
-        The pseudocode for the RTC ISR is something like:
-
-        ::
-
-            # the 5 in the comments come from 5 ticks per us (@ 5 MHz)
-
-            bres_counter = 0
-
-            def rtc_isr():
-                global bres_counter
-                bres_limit = 128 * 8388605 + cal # 8388605 = 5 * ((2^23 - 1) // 5)
-                bres_counter += 128 * 8388607 # 128 * (2^23 - 1)
-                while bres_counter >= bres_limit:
-                    bres_counter -= bres_limit
-                    uptime_microseconds += 1677721 # 8388605 / 5
-
-        ``cal`` is the calibration parameter that can be set using the calibration method.
-
-        The idea was extracted from `here <http://www.romanblack.com/one_sec.htm>`_ , which in turn
-        is inspired on the `Bresenham's line algorithm <https://en.wikipedia.org/wiki/Bresenham's_line_algorithm>`_ .
+        clock source
 
 
 .. only:: not port_pycom_esp32

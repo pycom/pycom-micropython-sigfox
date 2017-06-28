@@ -1667,6 +1667,16 @@ STATIC mp_obj_t lora_events(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_events_obj, lora_events);
 
+STATIC mp_obj_t lora_ischannelfree(mp_obj_t self_in, mp_obj_t rssi) {
+    lora_obj_t *self = self_in;
+
+    if (Radio.IsChannelFree(MODEM_LORA, self->frequency, mp_obj_get_int(rssi))) {
+        return mp_const_true;
+    }
+    return mp_const_false;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_ischannelfree_obj, lora_ischannelfree);
+
 STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&lora_init_obj },
@@ -1686,6 +1696,7 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_compliance_test),     (mp_obj_t)&lora_compliance_test_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),            (mp_obj_t)&lora_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_events),              (mp_obj_t)&lora_events_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ischannelfree),       (mp_obj_t)&lora_ischannelfree_obj },
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_LORA),                MP_OBJ_NEW_SMALL_INT(E_LORA_STACK_MODE_LORA) },
