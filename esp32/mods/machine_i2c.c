@@ -366,8 +366,12 @@ STATIC void hw_i2c_master_writeto(machine_i2c_obj_t *i2c_obj, uint16_t slave_add
         ESP_ERROR_CHECK(i2c_master_stop(cmd));
     }
 
-    ESP_ERROR_CHECK(i2c_master_cmd_begin(i2c_obj->bus_id, cmd, 1000 / portTICK_RATE_MS));
+    esp_err_t ret = i2c_master_cmd_begin(i2c_obj->bus_id, cmd, (5000 + (1000 * len)) / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
+
+    if (ret != ESP_OK) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "I2C bus error"));
+    }
 }
 
 STATIC void hw_i2c_master_readfrom(machine_i2c_obj_t *i2c_obj, uint16_t slave_addr, bool memread, uint32_t memaddr, uint8_t *data, uint16_t len) {
@@ -389,15 +393,19 @@ STATIC void hw_i2c_master_readfrom(machine_i2c_obj_t *i2c_obj, uint16_t slave_ad
 
     ESP_ERROR_CHECK(i2c_master_write_byte(cmd, ( slave_addr << 1 ) | I2C_MASTER_READ, I2C_ACK_CHECK_EN));
 
-    if (len > 1){
+    if (len > 1) {
         ESP_ERROR_CHECK(i2c_master_read(cmd, data, len - 1, I2C_ACK_VAL));
     }
 
     ESP_ERROR_CHECK(i2c_master_read_byte(cmd, data + len - 1, I2C_NACK_VAL));
     ESP_ERROR_CHECK(i2c_master_stop(cmd));
 
-    ESP_ERROR_CHECK(i2c_master_cmd_begin(i2c_obj->bus_id, cmd, 1000 / portTICK_RATE_MS));
+    esp_err_t ret = i2c_master_cmd_begin(i2c_obj->bus_id, cmd, (5000 + (1000 * len)) / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
+
+    if (ret != ESP_OK) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "I2C bus error"));
+    }
 }
 
 STATIC bool hw_i2c_slave_ping (machine_i2c_obj_t *i2c_obj, uint16_t slave_addr) {
@@ -406,7 +414,7 @@ STATIC bool hw_i2c_slave_ping (machine_i2c_obj_t *i2c_obj, uint16_t slave_addr) 
     ESP_ERROR_CHECK(i2c_master_start(cmd));
     ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (slave_addr << 1) | I2C_MASTER_WRITE, I2C_ACK_CHECK_EN));
     ESP_ERROR_CHECK(i2c_master_stop(cmd));
-    esp_err_t ret = i2c_master_cmd_begin(i2c_obj->bus_id, cmd, 1000 / portTICK_RATE_MS);
+    esp_err_t ret = i2c_master_cmd_begin(i2c_obj->bus_id, cmd, 5000 / portTICK_RATE_MS);
     i2c_cmd_link_delete(cmd);
 
     return (ret == ESP_OK) ? true : false;
