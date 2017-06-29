@@ -80,4 +80,6 @@ void BoardGetUniqueId( uint8_t *id );
 
 uint8_t BoardGetBatteryLevel( void );
 
+void BoardSetBatteryLevel( uint8_t level );
+
 #endif // LORA_BOARD_H_
