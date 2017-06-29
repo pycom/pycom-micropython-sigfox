@@ -264,6 +264,19 @@ Methods
 
    An example of how this callback functions can be seen the in method :ref:`lora.events() <lora_events>`.
 
+.. method:: lora.ischannel_free(rssi_threshold)
+
+    This method is used to check for radio activity on the current LoRa channel, and if the rssi of the measured activity is lower than the `rssi_threshold` given, the return value will
+    be ``True``, otherwise ``False``. Example::
+
+        lora.ischannel_free(-100)
+
+.. method:: lora.set_battery_level(level)
+
+    Set the battery level value that will be sent when the LoRaWAN MAC command that retrieves the battery level is received. This command is sent by the network and handled
+    automatically by the LoRaWAN stack. Value should be in percentage, from 0 to 100. Values larger than 100 will be clipped.::
+
+        lora.set_battery_level(75)
 
 .. _lora_events:
 
