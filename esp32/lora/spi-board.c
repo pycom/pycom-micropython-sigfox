@@ -79,8 +79,8 @@ void SpiInit( Spi_t *obj, PinNames mosi, PinNames miso, PinNames sclk, PinNames 
     obj->Spi = (void *)SPIDEV;
 
     // this is SpiNum_SPI3
-    SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG,DPORT_SPI_CLK_EN_2);
-    CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG,DPORT_SPI_RST_2);
+    DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG,DPORT_SPI_CLK_EN_2);
+    DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG,DPORT_SPI_RST_2);
 
 #ifdef SIPY
     // configure the SPI port
@@ -92,22 +92,22 @@ void SpiInit( Spi_t *obj, PinNames mosi, PinNames miso, PinNames sclk, PinNames 
                            .bitOrder = SpiBitOrder_MSBFirst, .halfMode = SpiWorkMode_Full};
 #endif
     spi_init((uint32_t)obj->Spi, &spi_attr);
-    while (READ_PERI_REG(SPI_CMD_REG((uint32_t)obj->Spi)) & SPI_USR);  // wait for SPI not busy
+    while (DPORT_READ_PERI_REG(SPI_CMD_REG((uint32_t)obj->Spi)) & SPI_USR);  // wait for SPI not busy
 
     // set a NULL command
-    CLEAR_PERI_REG_MASK(SPI_USER_REG((uint32_t)obj->Spi), SPI_USR_COMMAND);
-    SET_PERI_REG_BITS(SPI_USER2_REG((uint32_t)obj->Spi), SPI_USR_COMMAND_BITLEN, 0, SPI_USR_COMMAND_BITLEN_S);
+    DPORT_CLEAR_PERI_REG_MASK(SPI_USER_REG((uint32_t)obj->Spi), SPI_USR_COMMAND);
+    DPORT_SET_PERI_REG_BITS(SPI_USER2_REG((uint32_t)obj->Spi), SPI_USR_COMMAND_BITLEN, 0, SPI_USR_COMMAND_BITLEN_S);
 
     // set a NULL address
-    CLEAR_PERI_REG_MASK(SPI_USER_REG((uint32_t)obj->Spi), SPI_USR_ADDR);
-    SET_PERI_REG_BITS(SPI_USER1_REG((uint32_t)obj->Spi), SPI_USR_ADDR_BITLEN,0, SPI_USR_ADDR_BITLEN_S);
+    DPORT_CLEAR_PERI_REG_MASK(SPI_USER_REG((uint32_t)obj->Spi), SPI_USR_ADDR);
+    DPORT_SET_PERI_REG_BITS(SPI_USER1_REG((uint32_t)obj->Spi), SPI_USR_ADDR_BITLEN,0, SPI_USR_ADDR_BITLEN_S);
 
     // enable MOSI
-    SET_PERI_REG_MASK(SPI_USER_REG((uint32_t)obj->Spi), SPI_USR_MOSI);
+    DPORT_SET_PERI_REG_MASK(SPI_USER_REG((uint32_t)obj->Spi), SPI_USR_MOSI);
 
     // set the data send buffer length. The max data length 64 bytes.
-    SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG((uint32_t)obj->Spi), SPI_USR_MOSI_DBITLEN, 7, SPI_USR_MOSI_DBITLEN_S);
-    SET_PERI_REG_BITS(SPI_MISO_DLEN_REG((uint32_t)obj->Spi), SPI_USR_MISO_DBITLEN, 7, SPI_USR_MISO_DBITLEN_S);
+    DPORT_SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG((uint32_t)obj->Spi), SPI_USR_MOSI_DBITLEN, 7, SPI_USR_MOSI_DBITLEN_S);
+    DPORT_SET_PERI_REG_BITS(SPI_MISO_DLEN_REG((uint32_t)obj->Spi), SPI_USR_MISO_DBITLEN, 7, SPI_USR_MISO_DBITLEN_S);
 
     // assign the SPI pins to the GPIO matrix and configure the AF
     pin_config(obj->Miso.pin_obj, VSPIQ_IN_IDX, -1, GPIO_MODE_INPUT, PIN_NO_PULL, 0);
@@ -166,28 +166,28 @@ void SpiFrequency( Spi_t *obj, uint32_t hz ) {
 IRAM_ATTR uint16_t SpiInOut(Spi_t *obj, uint16_t outData) {
     uint32_t spiNum = (uint32_t)obj->Spi;
     // load the send buffer
-    WRITE_PERI_REG(SPI_W0_REG(spiNum), outData);
+    DPORT_WRITE_PERI_REG(SPI_W0_REG(spiNum), outData);
     // start to send data
-    SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
-    while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
+    DPORT_SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
+    while (DPORT_READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
     // read data out
-    return READ_PERI_REG(SPI_W0_REG(spiNum));
+    return DPORT_READ_PERI_REG(SPI_W0_REG(spiNum));
 }
 #elif defined(SIPY)
 IRAM_ATTR uint8_t SpiInOut(uint32_t spiNum, uint32_t outData) {
     // set data send buffer length (1 byte)
-    SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 7, SPI_USR_MOSI_DBITLEN_S);
-    SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 7, SPI_USR_MISO_DBITLEN_S);
+    DPORT_SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 7, SPI_USR_MOSI_DBITLEN_S);
+    DPORT_SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 7, SPI_USR_MISO_DBITLEN_S);
 
     // load the send buffer
-    WRITE_PERI_REG(SPI_W0_REG(spiNum), outData);
+    DPORT_WRITE_PERI_REG(SPI_W0_REG(spiNum), outData);
 
     // start send data
-    SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
-    while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
+    DPORT_SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
+    while (DPORT_READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
 
     // read data out
-    return READ_PERI_REG(SPI_W0_REG(spiNum));
+    return DPORT_READ_PERI_REG(SPI_W0_REG(spiNum));
 }
 
 /*!
@@ -199,15 +199,15 @@ IRAM_ATTR uint8_t SpiInOut(uint32_t spiNum, uint32_t outData) {
  */
 IRAM_ATTR void SpiOut(uint32_t spiNum, uint32_t outData) {
     // set data send buffer length (2 bytes)
-    SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 15, SPI_USR_MOSI_DBITLEN_S);
-    SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 15, SPI_USR_MISO_DBITLEN_S);
+    DPORT_SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 15, SPI_USR_MOSI_DBITLEN_S);
+    DPORT_SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 15, SPI_USR_MISO_DBITLEN_S);
 
     // load send buffer
-    WRITE_PERI_REG(SPI_W0_REG(spiNum), outData);
-    WRITE_PERI_REG(SPI_W0_REG(spiNum) + 4, outData >> 8);  // the SPI FIFO is 4-byte wide
+    DPORT_WRITE_PERI_REG(SPI_W0_REG(spiNum), outData);
+    DPORT_WRITE_PERI_REG(SPI_W0_REG(spiNum) + 4, outData >> 8);  // the SPI FIFO is 4-byte wide
 
     // start send data
-    SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
-    while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
+    DPORT_SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
+    while (DPORT_READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
 }
 #endif

@@ -99,8 +99,8 @@ static const uint32_t mach_spi_pin_af[3] = {HSPICLK_OUT_IDX, HSPID_OUT_IDX, HSPI
  ******************************************************************************/
 // only master mode is available for the moment
 STATIC void pybspi_init (const mach_spi_obj_t *self) {
-    SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG,DPORT_SPI_CLK_EN_1);
-    CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG,DPORT_SPI_RST_1);
+    DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG,DPORT_SPI_CLK_EN_1);
+    DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG,DPORT_SPI_RST_1);
 
     // configure the SPI port
     spi_attr_t spi_attr = {.mode = SpiMode_Master, .subMode = self->submode, .speed = 80000000 / self->baudrate,
@@ -115,30 +115,30 @@ static int spi_master_send_recv_data(spi_num_e spiNum, spi_data_t* pData) {
         return -1;
     }
     uint32_t *value;// = pData->rx_data;
-    while (READ_PERI_REG(SPI_CMD_REG(spiNum))&SPI_USR);
+    while (DPORT_READ_PERI_REG(SPI_CMD_REG(spiNum))&SPI_USR);
     // Set command by user.
     if (pData->cmdLen != 0) {
         // Max command length 16 bits.
-        SET_PERI_REG_BITS(SPI_USER2_REG(spiNum), SPI_USR_COMMAND_BITLEN,((pData->cmdLen << 3) - 1), SPI_USR_COMMAND_BITLEN_S);
+        DPORT_SET_PERI_REG_BITS(SPI_USER2_REG(spiNum), SPI_USR_COMMAND_BITLEN,((pData->cmdLen << 3) - 1), SPI_USR_COMMAND_BITLEN_S);
         // Enable command
-        SET_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_COMMAND);
+        DPORT_SET_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_COMMAND);
         // Load command
         spi_master_cfg_cmd(spiNum, pData->cmd);
     } else {
-        CLEAR_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_COMMAND);
-        SET_PERI_REG_BITS(SPI_USER2_REG(spiNum), SPI_USR_COMMAND_BITLEN,0, SPI_USR_COMMAND_BITLEN_S);
+        DPORT_CLEAR_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_COMMAND);
+        DPORT_SET_PERI_REG_BITS(SPI_USER2_REG(spiNum), SPI_USR_COMMAND_BITLEN,0, SPI_USR_COMMAND_BITLEN_S);
     }
     // Set Address by user.
     if (pData->addrLen == 0) {
-        CLEAR_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_ADDR);
-        SET_PERI_REG_BITS(SPI_USER1_REG(spiNum), SPI_USR_ADDR_BITLEN,0, SPI_USR_ADDR_BITLEN_S);
+        DPORT_CLEAR_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_ADDR);
+        DPORT_SET_PERI_REG_BITS(SPI_USER1_REG(spiNum), SPI_USR_ADDR_BITLEN,0, SPI_USR_ADDR_BITLEN_S);
     } else {
         if (NULL == pData->addr) {
             return -1;
         }
-        SET_PERI_REG_BITS(SPI_USER1_REG(spiNum), SPI_USR_ADDR_BITLEN,((pData->addrLen << 3) - 1), SPI_USR_ADDR_BITLEN_S);
+        DPORT_SET_PERI_REG_BITS(SPI_USER1_REG(spiNum), SPI_USR_ADDR_BITLEN,((pData->addrLen << 3) - 1), SPI_USR_ADDR_BITLEN_S);
         // Enable address
-        SET_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_ADDR);
+        DPORT_SET_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_ADDR);
         // Load address
         spi_master_cfg_addr(spiNum, *pData->addr);
     }
@@ -148,29 +148,29 @@ static int spi_master_send_recv_data(spi_num_e spiNum, spi_data_t* pData) {
         if(NULL == value) {
             return -1;
         }
-        //CLEAR_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_MISO);
+        //DPORT_CLEAR_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_MISO);
         // Enable MOSI
-        SET_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_MOSI);
+        DPORT_SET_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_MOSI);
         // Load send buffer
         do {
-            WRITE_PERI_REG((SPI_W0_REG(spiNum) + (idx << 2)), *value++);
+            DPORT_WRITE_PERI_REG((SPI_W0_REG(spiNum) + (idx << 2)), *value++);
         } while(++idx < ((pData->txDataLen / 4) + ((pData->txDataLen % 4) ? 1 : 0)));
         // Set data send buffer length.Max data length 64 bytes.
-        SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, ((pData->txDataLen << 3) - 1),SPI_USR_MOSI_DBITLEN_S);
-        SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, ((pData->rxDataLen << 3) - 1),SPI_USR_MISO_DBITLEN_S);
+        DPORT_SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, ((pData->txDataLen << 3) - 1),SPI_USR_MOSI_DBITLEN_S);
+        DPORT_SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, ((pData->rxDataLen << 3) - 1),SPI_USR_MISO_DBITLEN_S);
     } else {
-        CLEAR_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_MOSI);
-        CLEAR_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_MISO);
-        SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN,0, SPI_USR_MOSI_DBITLEN_S);
+        DPORT_CLEAR_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_MOSI);
+        DPORT_CLEAR_PERI_REG_MASK(SPI_USER_REG(spiNum), SPI_USR_MISO);
+        DPORT_SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN,0, SPI_USR_MOSI_DBITLEN_S);
     }
     // Start send data
-    SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
-    while (READ_PERI_REG(SPI_CMD_REG(spiNum))&SPI_USR);
+    DPORT_SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
+    while (DPORT_READ_PERI_REG(SPI_CMD_REG(spiNum))&SPI_USR);
     value = pData->rxData;
     // Read data out
     idx = 0;
     do {
-        *value++ =  READ_PERI_REG(SPI_W0_REG(spiNum) + (idx << 2));
+        *value++ =  DPORT_READ_PERI_REG(SPI_W0_REG(spiNum) + (idx << 2));
     } while (++idx < ((pData->rxDataLen / 4) + ((pData->rxDataLen % 4) ? 1 : 0)));
     return 0;
 }
