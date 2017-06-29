@@ -376,13 +376,18 @@ STATIC void hw_i2c_master_readfrom(machine_i2c_obj_t *i2c_obj, uint16_t slave_ad
 
     ESP_ERROR_CHECK(i2c_master_start(cmd));
 
-    ESP_ERROR_CHECK(i2c_master_write_byte(cmd, ( slave_addr << 1 ) | I2C_MASTER_READ, I2C_ACK_CHECK_EN));
     if (memread) {
+        ESP_ERROR_CHECK(i2c_master_write_byte(cmd, ( slave_addr << 1 ) | I2C_MASTER_WRITE, I2C_ACK_CHECK_EN));
         if (memaddr > 0xFF) {
             ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (memaddr >> 8), I2C_ACK_CHECK_EN));
         }
         ESP_ERROR_CHECK(i2c_master_write_byte(cmd, memaddr, I2C_ACK_CHECK_EN));
+
+        // repeated start
+        ESP_ERROR_CHECK(i2c_master_start(cmd));
     }
+
+    ESP_ERROR_CHECK(i2c_master_write_byte(cmd, ( slave_addr << 1 ) | I2C_MASTER_READ, I2C_ACK_CHECK_EN));
 
     if (len > 1){
         ESP_ERROR_CHECK(i2c_master_read(cmd, data, len - 1, I2C_ACK_VAL));
@@ -619,7 +624,7 @@ STATIC mp_obj_t machine_i2c_writeto(mp_uint_t n_args, const mp_obj_t *pos_args, 
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_i2c_writeto_obj, 1, machine_i2c_writeto);
 
 STATIC mp_obj_t machine_i2c_readfrom_mem(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_addr, ARG_memaddr, ARG_n, ARG_addrsize };
+    enum { ARG_addr, ARG_memaddr, ARG_n };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_addr,    MP_ARG_REQUIRED | MP_ARG_INT, },
         { MP_QSTR_memaddr, MP_ARG_REQUIRED | MP_ARG_INT, },
@@ -647,11 +652,11 @@ STATIC mp_obj_t machine_i2c_readfrom_mem(size_t n_args, const mp_obj_t *pos_args
 MP_DEFINE_CONST_FUN_OBJ_KW(machine_i2c_readfrom_mem_obj, 1, machine_i2c_readfrom_mem);
 
 STATIC mp_obj_t machine_i2c_readfrom_mem_into(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_addr, ARG_memaddr, ARG_buf, ARG_addrsize };
+    enum { ARG_addr, ARG_memaddr, ARG_buf };
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_addr,    MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0} },
-        { MP_QSTR_memaddr, MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0} },
-        { MP_QSTR_buf,     MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        { MP_QSTR_addr,    MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_memaddr, MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_buf,     MP_ARG_REQUIRED | MP_ARG_OBJ, },
     };
     machine_i2c_obj_t *self = pos_args[0];
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
@@ -674,11 +679,11 @@ STATIC mp_obj_t machine_i2c_readfrom_mem_into(size_t n_args, const mp_obj_t *pos
 MP_DEFINE_CONST_FUN_OBJ_KW(machine_i2c_readfrom_mem_into_obj, 1, machine_i2c_readfrom_mem_into);
 
 STATIC mp_obj_t machine_i2c_writeto_mem(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_addr, ARG_memaddr, ARG_buf, ARG_addrsize };
+    enum { ARG_addr, ARG_memaddr, ARG_buf };
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_addr,    MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0} },
-        { MP_QSTR_memaddr, MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0} },
-        { MP_QSTR_buf,     MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        { MP_QSTR_addr,    MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_memaddr, MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_buf,     MP_ARG_REQUIRED | MP_ARG_OBJ, },
     };
     machine_i2c_obj_t *self = pos_args[0];
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
