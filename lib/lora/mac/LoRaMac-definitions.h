@@ -359,7 +359,7 @@ typedef enum
 #define BAND0              { 100 , TX_POWER_14_DBM, 0,  0 } //  1.0 %
 #define BAND1              { 100 , TX_POWER_14_DBM, 0,  0 } //  1.0 %
 #define BAND2              { 1000, TX_POWER_14_DBM, 0,  0 } //  0.1 %
-#define BAND3              { 10  , TX_POWER_14_DBM, 0,  0 } // 10.0 %
+#define BAND3              { 10  , TX_POWER_20_DBM, 0,  0 } // 10.0 %
 #define BAND4              { 100 , TX_POWER_14_DBM, 0,  0 } //  1.0 %
 
 /*!

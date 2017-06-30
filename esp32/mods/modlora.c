@@ -52,7 +52,7 @@
 #define RF_FREQUENCY_MIN                            863000000   // Hz
 #define RF_FREQUENCY_CENTER                         868000000   // Hz
 #define RF_FREQUENCY_MAX                            870000000   // Hz
-#define TX_OUTPUT_POWER_MAX                         14          // dBm
+#define TX_OUTPUT_POWER_MAX                         20          // dBm
 #define TX_OUTPUT_POWER_MIN                         2           // dBm
 #elif defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID)
 #define RF_FREQUENCY_MIN                            902000000   // Hz
