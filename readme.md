@@ -72,6 +72,11 @@ This software is used to obtain the unique id of the PicoCell gateway (the
 ## 5. Changelog
 ---------------
 
+### v0.1.2  ###
+
+* HAL: fixed a wrong copy size and position of MCU unique ID in lgw_mcu_get_unique_id().
+* HAL: disabled some logs.
+
 ### v0.1.1  ###
 
 * HAL: fixed MCU command wrong size in lgw_mcu_commit_radio_calibration().

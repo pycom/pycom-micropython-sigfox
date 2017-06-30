@@ -487,7 +487,7 @@ int lgw_connect(const char *com_path) {
     int com_stat = LGW_COM_SUCCESS;
     uint8_t u = 0;
 
-    printf("Note: Connecting to concentrator...\n");
+    DEBUG_MSG("Note: Connecting to concentrator...\n");
 
     /* check COM link status */
     if (lgw_com_target != NULL) {
@@ -502,7 +502,7 @@ int lgw_connect(const char *com_path) {
         return LGW_REG_ERROR;
     }
 
-    printf("Note: %s opened successfully\n", com_path);
+    DEBUG_PRINTF("Note: %s opened successfully\n", com_path);
 
     /* check MCU FW version */
     com_stat = lgw_mcu_get_unique_id(&uid[0]);
@@ -511,7 +511,7 @@ int lgw_connect(const char *com_path) {
         return LGW_REG_ERROR;
     }
 
-    printf("Note: MCU firmware version checked: 0x%X\n", STM32FWVERSION);
+    DEBUG_PRINTF("Note: MCU firmware version checked: 0x%X\n", STM32FWVERSION);
 
     lgw_com_mux_mode = LGW_COM_MUX_MODE0;
 
