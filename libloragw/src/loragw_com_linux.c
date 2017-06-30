@@ -322,7 +322,7 @@ int lgw_com_close_linux(void *com_target) {
         printf("ERROR: failed to close COM port - %s\n", strerror(errno));
         return LGW_COM_ERROR;
     } else {
-        printf("Note : USB port closed \n");
+        DEBUG_MSG("Note : USB port closed\n");
         return LGW_COM_SUCCESS;
     }
 }

@@ -538,8 +538,8 @@ int lgw_mcu_get_unique_id(uint8_t *uid) {
     }
 
     /* Get MCU unique ID */
-    for (i = 0; i < 7; i++) {
-        uid[i] = ans.ans_data[i + 1];
+    for (i = 0; i <= 7; i++) {
+        uid[i] = ans.ans_data[i];
     }
 
     return LGW_MCU_SUCCESS;
