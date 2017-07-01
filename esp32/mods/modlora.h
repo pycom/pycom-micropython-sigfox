@@ -64,6 +64,7 @@ typedef struct {
             uint8_t           DevEui[8];
             uint8_t           AppEui[8];
             uint8_t           AppKey[16];
+            uint8_t           data_rate;
         } otaa;
 
         struct {

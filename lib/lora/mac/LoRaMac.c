@@ -4095,6 +4095,16 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest )
     LoRaMacStatus_t status = LORAMAC_STATUS_SERVICE_UNKNOWN;
     LoRaMacHeader_t macHdr;
 
+    static uint16_t data_rate_to_counter_map[8] = {
+    		47,
+    		31,
+    		23,
+    		15,
+    		7,
+    		0,
+    		0
+    };
+
     if( mlmeRequest == NULL )
     {
         return LORAMAC_STATUS_PARAMETER_INVALID;
@@ -4136,6 +4146,12 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest )
             macHdr.Bits.MType  = FRAME_TYPE_JOIN_REQ;
 
             ResetMacParameters( );
+
+            if (JoinRequestTrials == 0 && mlmeRequest->Req.Join.data_rate <= LORAMAC_RX_MAX_DATARATE)
+            {
+            	int data_rate = mlmeRequest->Req.Join.data_rate;
+            	JoinRequestTrials = data_rate_to_counter_map[data_rate];
+            }
 
             JoinRequestTrials++;
             LoRaMacParams.ChannelsDatarate = AlternateDatarate( JoinRequestTrials );

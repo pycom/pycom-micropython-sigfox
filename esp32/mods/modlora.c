@@ -205,6 +205,7 @@ typedef struct {
           uint8_t           DevEui[8];
           uint8_t           AppEui[8];
           uint8_t           AppKey[16];
+          uint8_t           data_rate;
       } otaa;
 
       struct {
@@ -678,6 +679,8 @@ static void TASK_LoRa (void *pvParameters) {
                         memcpy((void *)lora_obj.otaa.DevEui, cmd_data.info.join.otaa.DevEui, sizeof(lora_obj.otaa.DevEui));
                         memcpy((void *)lora_obj.otaa.AppEui, cmd_data.info.join.otaa.AppEui, sizeof(lora_obj.otaa.AppEui));
                         memcpy((void *)lora_obj.otaa.AppKey, cmd_data.info.join.otaa.AppKey, sizeof(lora_obj.otaa.AppKey));
+                        lora_obj.otaa.data_rate = cmd_data.info.join.otaa.data_rate;
+
                     } else {
                         lora_obj.abp.DevAddr = cmd_data.info.join.abp.DevAddr;
                         memcpy((void *)lora_obj.abp.AppSKey, cmd_data.info.join.abp.AppSKey, sizeof(lora_obj.abp.AppSKey));
@@ -769,6 +772,7 @@ static void TASK_LoRa (void *pvParameters) {
                     mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.otaa.DevEui;
                     mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.otaa.AppEui;
                     mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.otaa.AppKey;
+                    mlmeReq.Req.Join.data_rate = (uint8_t) lora_obj.otaa.data_rate;
                     LoRaMacMlmeRequest(&mlmeReq);
                 } else {
                     mibReq.Type = MIB_NET_ID;
@@ -1290,7 +1294,8 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     STATIC const mp_arg_t allowed_args[] = {
         { MP_QSTR_activation,     MP_ARG_REQUIRED | MP_ARG_INT, },
         { MP_QSTR_auth,           MP_ARG_REQUIRED | MP_ARG_KW_ONLY | MP_ARG_OBJ, },
-        { MP_QSTR_timeout,        MP_ARG_KW_ONLY  | MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+        { MP_QSTR_dr,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none}},
+        { MP_QSTR_timeout,        MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
     lora_cmd_data_t cmd_data;
 
@@ -1336,10 +1341,23 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
         memcpy(cmd_data.info.join.abp.AppSKey, bufinfo_1.buf, sizeof(cmd_data.info.join.abp.AppSKey));
     }
 
+	/* Need a way to indicate an invalid data rate so the default approach is used */
+    int32_t data_rate = LORAMAC_RX_MAX_DATARATE + 1;
+
+    // get the data rate
+    if (args[2].u_obj != mp_const_none) {
+    	if (lora_validate_data_rate(mp_obj_get_int(args[2].u_obj)))
+    	{
+    		data_rate = mp_obj_get_int(args[2].u_obj);
+    	}
+    }
+
+	cmd_data.info.join.otaa.data_rate = data_rate;
+
     // get the timeout
     int32_t timeout = INT32_MAX;
-    if (args[2].u_obj != mp_const_none) {
-        timeout = mp_obj_get_int(args[2].u_obj);
+    if (args[3].u_obj != mp_const_none) {
+        timeout = mp_obj_get_int(args[3].u_obj);
     }
 
     // send a join request message
