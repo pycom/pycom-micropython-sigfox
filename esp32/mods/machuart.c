@@ -401,7 +401,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     if (args[2].u_obj == mp_const_none) {
         parity = UART_PARITY_DISABLE;
     } else {
-        uint parity = mp_obj_get_int(args[2].u_obj);
+        parity = mp_obj_get_int(args[2].u_obj);
         if (parity != UART_PARITY_ODD && parity != UART_PARITY_EVEN) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid parity %d", parity));
         }
