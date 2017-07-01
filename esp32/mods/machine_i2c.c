@@ -82,9 +82,12 @@ typedef struct _machine_i2c_obj_t {
 
 STATIC void mp_hal_i2c_stop(machine_i2c_obj_t *self);
 
-
+STATIC machine_i2c_obj_t mach_i2c_obj[3];
 STATIC const mp_obj_t mach_i2c_def_pin[2] = {&PIN_MODULE_P9, &PIN_MODULE_P10};
+STATIC const uint32_t mach_i2c_pin_af[2][4] = { { I2CEXT0_SDA_OUT_IDX, I2CEXT0_SDA_IN_IDX, I2CEXT0_SCL_OUT_IDX, I2CEXT0_SCL_IN_IDX },
+                                                { I2CEXT1_SDA_OUT_IDX, I2CEXT1_SDA_IN_IDX, I2CEXT1_SCL_OUT_IDX, I2CEXT1_SCL_IN_IDX } };
 STATIC uint32_t isrmask;
+
 
 STATIC void mp_hal_i2c_delay(machine_i2c_obj_t *self) {
     // We need to use an accurate delay to get acceptable I2C
@@ -421,13 +424,14 @@ STATIC bool hw_i2c_slave_ping (machine_i2c_obj_t *i2c_obj, uint16_t slave_addr) 
 }
 
 STATIC void i2c_deassign_pins_af (machine_i2c_obj_t *self) {
-    if (self->baudrate > 0) {
+    if (self->baudrate > 0 && self->sda && self->scl) {
         // we must set the value to 1 so that when Rx pins are deassigned, their are hardwired to 1
         self->sda->value = 1;
+        self->scl->value = 1;
         pin_deassign(self->sda);
         pin_deassign(self->scl);
-        self->sda = mp_const_none;
-        self->scl = mp_const_none;
+        self->sda = MP_OBJ_NULL;
+        self->scl = MP_OBJ_NULL;
     }
 }
 
@@ -449,6 +453,14 @@ STATIC mp_obj_t machine_i2c_init_helper(machine_i2c_obj_t *self, const mp_arg_va
         goto invalid_args;
     }
 
+    // before assigning the baudrate
+    if (self->bus_id < 2) {
+        if (self->baudrate > 0) {
+            i2c_driver_delete(self->bus_id);
+        }
+        i2c_deassign_pins_af(self);
+    }
+
     // assign the pins
     mp_obj_t pins_o = args[2].u_obj;
     if (pins_o != mp_const_none) {
@@ -461,17 +473,6 @@ STATIC mp_obj_t machine_i2c_init_helper(machine_i2c_obj_t *self, const mp_arg_va
         }
         self->sda = pin_find(pins[0]);
         self->scl = pin_find(pins[1]);
-
-        // af values different from -1 so that deassign works
-        self->sda->af_in = 1;
-        self->sda->af_out = 1;
-        self->scl->af_in = 1;
-        self->scl->af_out = 1;
-    }
-
-    // before assigning the baudrate
-    if (self->bus_id < 2) {
-        i2c_deassign_pins_af(self);
     }
 
     // get the baudrate
@@ -483,6 +484,13 @@ STATIC mp_obj_t machine_i2c_init_helper(machine_i2c_obj_t *self, const mp_arg_va
 
     if (self->bus_id < 2) {
         hw_i2c_initialise_master(self);
+        // set the af values, so that deassign works later on
+        if (self->sda && self->scl) {
+            self->sda->af_out = mach_i2c_pin_af[self->bus_id][0];
+            self->sda->af_in = mach_i2c_pin_af[self->bus_id][1];
+            self->scl->af_out = mach_i2c_pin_af[self->bus_id][2];
+            self->scl->af_in = mach_i2c_pin_af[self->bus_id][3];
+        }
     } else {
         mp_hal_i2c_init(self);
     }
@@ -509,15 +517,17 @@ STATIC mp_obj_t machine_i2c_make_new(const mp_obj_type_t *type, mp_uint_t n_args
     mp_arg_val_t args[MP_ARRAY_SIZE(machine_i2c_init_args)];
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(args), machine_i2c_init_args, args);
 
+    uint32_t bus_id = args[0].u_int;
+
     // check the peripheral id
-    if (args[0].u_int < 0 || args[0].u_int > 2) {
+    if (bus_id < 0 || bus_id > 2) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
     }
 
     // setup the object
-    machine_i2c_obj_t *self = m_new_obj(machine_i2c_obj_t);
+    machine_i2c_obj_t *self = &mach_i2c_obj[bus_id];
     self->base.type = &machine_i2c_type;
-    self->bus_id = args[0].u_int;
+    self->bus_id = bus_id;
 
     // start the peripheral
     machine_i2c_init_helper(self, &args[1]);
@@ -715,6 +725,8 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_i2c_writeto_mem_obj, 1, machine_i2c_wr
 
 STATIC mp_obj_t machine_i2c_deinit(mp_obj_t self_in) {
     machine_i2c_obj_t *self = self_in;
+
+    i2c_driver_delete(self->bus_id);
 
     // detach the pins
     if (self->bus_id < 2) {
