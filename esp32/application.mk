@@ -298,7 +298,7 @@ SHELL    = bash
 APP_SIGN = tools/appsign.sh
 
 BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
-ifeq ($(BOARD), LOPY)§
+ifeq ($(BOARD), LOPY)
     APP_BIN = $(BUILD)/lopy_$(LORA_FREQ).bin
 else
     ifeq ($(BOARD), SIPY)

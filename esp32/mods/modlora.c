@@ -771,6 +771,7 @@ static void TASK_LoRa (void *pvParameters) {
 
                         // init the radio
                         lora_radio_setup(&cmd_data.info.init);
+                        lora_obj.state = E_LORA_STATE_IDLE;
                     }
                     lora_obj.joined = false;
                     if (lora_obj.state == E_LORA_STATE_IDLE) {
