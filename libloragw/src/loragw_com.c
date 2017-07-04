@@ -216,7 +216,10 @@ int lgw_com_send_command(void *com_target, lgw_com_cmd_t cmd, lgw_com_ans_t *ans
 
     pthread_mutex_lock(&mx_usbbridgesync);
 
-    lgw_com_send_cmd(cmd, handle);
+    if (lgw_com_send_cmd(cmd, handle) == LGW_COM_ERROR) {
+        pthread_mutex_unlock(&mx_usbbridgesync);
+        return LGW_COM_ERROR;
+    }
     if (lgw_com_receive_ans(ans, handle) == LGW_COM_ERROR) {
         pthread_mutex_unlock(&mx_usbbridgesync);
         return LGW_COM_ERROR;
