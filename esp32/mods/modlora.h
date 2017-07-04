@@ -39,6 +39,17 @@ typedef enum {
     E_LORA_CMD_WAKE_UP,
 } lora_cmd_t;
 
+typedef enum {
+    E_LORA_NVS_ELE_JOINED = 0,
+    E_LORA_NVS_ELE_UPLINK,
+    E_LORA_NVS_ELE_DWLINK,
+    E_LORA_NVS_ELE_DEVADDR,
+    E_LORA_NVS_ELE_NWSKEY,
+    E_LORA_NVS_ELE_APPSKEY,
+    E_LORA_NVS_ELE_NET_ID,
+    E_LORA_NVS_NUM_KEYS
+} e_lora_nvs_key_t;
+
 typedef struct {
     uint32_t        frequency;
     DeviceClass_t   device_class;
@@ -118,5 +129,9 @@ typedef struct {
  DECLARE FUNCTIONS
  ******************************************************************************/
 extern void modlora_init0(void);
+extern bool modlora_nvs_set_uint(uint32_t key_idx, uint32_t value);
+extern bool modlora_nvs_set_blob(uint32_t key_idx, const void *value, uint32_t length);
+extern bool modlora_nvs_get_uint(uint32_t key_idx, uint32_t *value);
+extern bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length);
 
 #endif  // MODLORA_H_

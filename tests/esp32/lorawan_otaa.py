@@ -44,8 +44,8 @@ s.bind(1)
 print('Sending...')
 
 # try all the datarates from 0 to 6 and toggle confirmed and non confirmed messages
-for i in range(7):
-    s.setsockopt(socket.SOL_LORA, socket.SO_DR, i)
+for i in range(120):
+    s.setsockopt(socket.SOL_LORA, socket.SO_DR, i % 6)
     s.setsockopt(socket.SOL_LORA, socket.SO_CONFIRMED, (i % 2) == 0)
     print(s.send("Sending pk #%d" % i))
     time.sleep(0.5)

@@ -22,6 +22,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jä
 #include "LoRaMacCrypto.h"
 #include "LoRaMac.h"
 #include "LoRaMacTest.h"
+#include "modlora.h"
 
 /*!
  * Maximum PHY layer payload size
@@ -982,14 +983,21 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
             {
                 LoRaMacJoinComputeSKeys( LoRaMacAppKey, LoRaMacRxPayload + 1, LoRaMacDevNonce, LoRaMacNwkSKey, LoRaMacAppSKey );
 
+                modlora_nvs_set_blob(E_LORA_NVS_ELE_NWSKEY, LoRaMacNwkSKey, sizeof(LoRaMacNwkSKey));
+                modlora_nvs_set_blob(E_LORA_NVS_ELE_APPSKEY, LoRaMacAppSKey, sizeof(LoRaMacAppSKey));
+
                 LoRaMacNetID = ( uint32_t )LoRaMacRxPayload[4];
                 LoRaMacNetID |= ( ( uint32_t )LoRaMacRxPayload[5] << 8 );
                 LoRaMacNetID |= ( ( uint32_t )LoRaMacRxPayload[6] << 16 );
+
+                modlora_nvs_set_uint(E_LORA_NVS_ELE_NET_ID, LoRaMacNetID);
 
                 LoRaMacDevAddr = ( uint32_t )LoRaMacRxPayload[7];
                 LoRaMacDevAddr |= ( ( uint32_t )LoRaMacRxPayload[8] << 8 );
                 LoRaMacDevAddr |= ( ( uint32_t )LoRaMacRxPayload[9] << 16 );
                 LoRaMacDevAddr |= ( ( uint32_t )LoRaMacRxPayload[10] << 24 );
+
+                modlora_nvs_set_uint(E_LORA_NVS_ELE_DEVADDR, LoRaMacDevAddr);
 
                 // DLSettings
                 LoRaMacParams.Rx1DrOffset = ( LoRaMacRxPayload[11] >> 4 ) & 0x07;
@@ -2940,6 +2948,9 @@ static void ResetMacParameters( void )
 
     // Initialize channel index.
     Channel = LORA_MAX_NB_CHANNELS;
+
+    modlora_nvs_set_uint(E_LORA_NVS_ELE_UPLINK, UpLinkCounter);
+    modlora_nvs_set_uint(E_LORA_NVS_ELE_DWLINK, DownLinkCounter);
 }
 
 LoRaMacStatus_t PrepareFrame( LoRaMacHeader_t *macHdr, LoRaMacFrameCtrl_t *fCtrl, uint8_t fPort, void *fBuffer, uint16_t fBufferSize )
@@ -4269,6 +4280,22 @@ void LoRaMacTestSetMic( uint16_t txPacketCounter )
 {
     UpLinkCounter = txPacketCounter;
     IsUpLinkCounterFixed = true;
+    modlora_nvs_set_uint(E_LORA_NVS_ELE_UPLINK, UpLinkCounter);
+}
+
+static uint32_t prev_downlink = 0;
+static uint32_t prev_uplink = 0;
+
+void LoRaMacStoreUpAndDownLinkCountersInNvs( void )
+{
+    if (prev_downlink != DownLinkCounter) {
+        modlora_nvs_set_uint(E_LORA_NVS_ELE_DWLINK, DownLinkCounter);
+        prev_downlink = DownLinkCounter;
+    }
+    if (prev_uplink != UpLinkCounter) {
+        modlora_nvs_set_uint(E_LORA_NVS_ELE_UPLINK, UpLinkCounter);
+        prev_uplink = UpLinkCounter;
+    }
 }
 
 void LoRaMacTestSetDutyCycleOn( bool enable )
