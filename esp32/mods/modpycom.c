@@ -132,6 +132,7 @@ STATIC mp_obj_t mod_pycom_pulses_get (mp_obj_t gpio, mp_obj_t timeout) {
     }
 
     rmt_rx_stop(RMT_CHANNEL_0);
+    rmt_driver_uninstall(RMT_CHANNEL_0);
 
     return pulses_l;
 }
