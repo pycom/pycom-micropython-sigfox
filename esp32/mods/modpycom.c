@@ -37,6 +37,7 @@ void modpycom_init0(void) {
     if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &pycom_nvs_handle) != ESP_OK) {
         printf("Error while opening Pycom NVS name space\n");
     }
+    rmt_driver_install(RMT_CHANNEL_0, 1000, 0);
 }
 
 /******************************************************************************/
@@ -104,7 +105,6 @@ STATIC mp_obj_t mod_pycom_pulses_get (mp_obj_t gpio, mp_obj_t timeout) {
     rmt_rx.rx_config.filter_ticks_thresh = 100;
     rmt_rx.rx_config.idle_threshold = 20000;
     rmt_config(&rmt_rx);
-    rmt_driver_install(RMT_CHANNEL_0, 1000, 0);
 
     RingbufHandle_t rb = NULL;
     mp_obj_t pulses_l = mp_obj_new_list(0, NULL);
@@ -132,7 +132,6 @@ STATIC mp_obj_t mod_pycom_pulses_get (mp_obj_t gpio, mp_obj_t timeout) {
     }
 
     rmt_rx_stop(RMT_CHANNEL_0);
-    rmt_driver_uninstall(RMT_CHANNEL_0);
 
     return pulses_l;
 }
