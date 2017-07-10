@@ -126,5 +126,5 @@ void app_main(void) {
 
     // create the MicroPython task
     xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL,
-                                  MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 0);
+                                  MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
 }

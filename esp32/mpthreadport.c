@@ -148,7 +148,7 @@ void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, i
     mp_thread_mutex_lock(&thread_mutex, 1);
 
     // create thread
-    TaskHandle_t id = xTaskCreateStaticPinnedToCore(freertos_entry, name, *stack_size / sizeof(StackType_t), arg, priority, stack, tcb, 0);
+    TaskHandle_t id = xTaskCreateStaticPinnedToCore(freertos_entry, name, *stack_size / sizeof(StackType_t), arg, priority, stack, tcb, 1);
     if (id == NULL) {
         mp_thread_mutex_unlock(&thread_mutex);
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "can't create thread"));
