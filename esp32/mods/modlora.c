@@ -986,6 +986,12 @@ static void lora_validate_power (uint8_t tx_power) {
     }
 }
 
+static bool lora_validate_port(uint8_t port) {
+	if(port>0)
+		return true;
+	return false;
+}
+
 static bool lora_validate_data_rate (uint32_t data_rate) {
 #if defined(USE_BAND_868)
     if (data_rate > DR_6) {
@@ -1844,7 +1850,13 @@ static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, 
             return -1;
         }
         LORAWAN_SOCKET_SET_DR(s->sock_base.sd, *(uint8_t *)optval);
-    } else {
+    } else if(opt == SO_LORAWAN_PORT) {
+	if (!lora_validate_port(*(uint32_t *)optval)) {
+		*_errno = MP_EOPNOTSUPP;
+		return -1;
+	}
+	LORAWAN_SOCKET_SET_PORT(s->sock_base.sd, *(uint8_t *)optval);
+    }else {
         *_errno = MP_EOPNOTSUPP;
         return -1;
     }

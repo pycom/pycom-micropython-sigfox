@@ -47,6 +47,8 @@
 
 #define SO_LORAWAN_CONFIRMED                (0xF0002)
 #define SO_LORAWAN_DR                       (0xF0003)
+#define SO_LORAWAN_PORT			    (0xF0008)
+
 #define SO_SIGFOX_RX                        (0xF0004)
 #define SO_SIGFOX_TX_REPEAT                 (0xF0005)
 #define SO_SIGFOX_OOB                       (0xF0006)
