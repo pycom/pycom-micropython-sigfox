@@ -67,6 +67,7 @@
 #define MOD_BT_GATTS_READ_EVT                               (0x0008)
 #define MOD_BT_GATTS_WRITE_EVT                              (0x0010)
 #define MOD_BT_GATTC_NOTIFY_EVT                             (0x0020)
+#define MOD_BT_GATTC_INDICATE_EVT                           (0x0040)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -168,6 +169,7 @@ typedef struct {
     mp_obj_base_t         base;
     mp_obj_t              parent;
     esp_bt_uuid_t         uuid;
+    uint32_t              properties;
     uint16_t              handle;
     uint16_t              value_len;
     uint8_t               value[BT_CHAR_VALUE_SIZE_MAX];
@@ -417,8 +419,12 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         bt_char_obj_t *char_obj;
         char_obj = find_gattc_char (p_data->notify.conn_id, &p_data->notify.srvc_id, &p_data->notify.char_id);
         if (char_obj != NULL) {
-            char_obj->events |= MOD_BT_GATTC_NOTIFY_EVT;
-            if (char_obj->trigger & MOD_BT_GATTC_NOTIFY_EVT) {
+            if (p_data->notify.is_notify) {
+                char_obj->events |= MOD_BT_GATTC_NOTIFY_EVT;
+            } else {
+                char_obj->events |= MOD_BT_GATTC_INDICATE_EVT;
+            }
+            if ((char_obj->trigger & MOD_BT_GATTC_NOTIFY_EVT) || (char_obj->trigger & MOD_BT_GATTC_INDICATE_EVT)) {
                 mp_irq_queue_interrupt(gattc_char_callback_handler, char_obj);
             }
         }
@@ -1129,6 +1135,7 @@ STATIC mp_obj_t bt_characteristic (mp_uint_t n_args, const mp_obj_t *pos_args, m
     characteristic->attr_obj.base.type = (mp_obj_t)&mod_bt_gatts_char_type;
     characteristic->attr_obj.parent = self;
     characteristic->attr_obj.is_char = true;
+    characteristic->attr_obj.properties = properties;
     characteristic->trigger = 0;
     characteristic->events = 0;
 
@@ -1217,6 +1224,10 @@ STATIC mp_obj_t bt_characteristic_value (mp_uint_t n_args, const mp_obj_t *args)
         // set
         if (mp_obj_is_integer(args[1])) {
             uint32_t value = mp_obj_get_int_truncated(args[1]);
+            if ((self->attr_obj.value_len == sizeof(uint32_t)) && (memcmp(&value, &self->attr_obj.value, sizeof(uint32_t)) == 0)) {
+                // do not copy/notify/indicate
+                return mp_const_none;
+            }
             memcpy(self->attr_obj.value, &value, sizeof(value));
             if (value > 0xFF) {
                 self->attr_obj.value_len = 2;
@@ -1225,14 +1236,24 @@ STATIC mp_obj_t bt_characteristic_value (mp_uint_t n_args, const mp_obj_t *args)
             } else {
                 self->attr_obj.value_len = 1;
             }
-            esp_ble_gatts_send_indicate(bt_obj.gatts_if, bt_obj.gatts_conn_id, self->attr_obj.handle, 
-                                        self->attr_obj.value_len, self->attr_obj.value, false);
         } else {
             mp_buffer_info_t value_bufinfo;
             mp_get_buffer_raise(args[1], &value_bufinfo, MP_BUFFER_READ);
             uint8_t value_len = value_bufinfo.len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : value_bufinfo.len;
+
+            if ((value_len == self->attr_obj.value_len) && (memcmp(value_bufinfo.buf, self->attr_obj.value, value_len) == 0)) {
+                // do not copy/notify/indicate
+                return mp_const_none;
+            }
+
             memcpy(self->attr_obj.value, value_bufinfo.buf, value_len);
             self->attr_obj.value_len = value_len;
+        }
+
+        bool confirm = self->attr_obj.properties & ESP_GATT_CHAR_PROP_BIT_INDICATE;
+        if (ESP_OK != esp_ble_gatts_send_indicate(bt_obj.gatts_if, bt_obj.gatts_conn_id, self->attr_obj.handle,
+                                                  self->attr_obj.value_len, self->attr_obj.value, confirm)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Erorr while sending BLE indication/notification"));
         }
         return mp_const_none;
     }
@@ -1366,6 +1387,7 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_READ_EVENT),         MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_READ_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_WRITE_EVENT),        MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_WRITE_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_NOTIFY_EVENT),       MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_NOTIFY_EVT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_INDICATE_EVENT),     MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_INDICATE_EVT) },
 };
 STATIC MP_DEFINE_CONST_DICT(bt_locals_dict, bt_locals_dict_table);
 
