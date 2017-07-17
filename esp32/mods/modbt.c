@@ -77,6 +77,7 @@ typedef struct {
     int32_t               conn_id;          // current activity connection id
     mp_obj_t              handler;
     mp_obj_t              handler_arg;
+    esp_bd_addr_t         client_bda;
     int32_t               gatts_conn_id;
     uint32_t              trigger;
     int32_t               events;
@@ -590,6 +591,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         if (bt_obj.gatts_conn_id >= 0) {
             esp_ble_gatts_close(bt_obj.gatts_if, p->connect.conn_id);
         } else {
+            memcpy((void *)bt_obj.client_bda, p->connect.remote_bda, ESP_BD_ADDR_LEN);
             bt_obj.gatts_conn_id = p->connect.conn_id;
             bt_obj.events |= MOD_BT_GATTS_CONN_EVT;
             if (bt_obj.trigger & MOD_BT_GATTS_CONN_EVT) {
@@ -1295,6 +1297,7 @@ static const mp_obj_type_t mod_bt_gatts_char_type = {
 STATIC mp_obj_t bt_gatts_disconnect_client(mp_obj_t self_in) {
     if (bt_obj.gatts_conn_id >= 0) {
         esp_ble_gatts_close(bt_obj.gatts_if, bt_obj.gatts_conn_id);
+        esp_ble_gap_disconnect((void *)bt_obj.client_bda);
         bt_obj.gatts_conn_id = -1;
     }
     return mp_const_none;
@@ -1390,6 +1393,7 @@ STATIC mp_obj_t bt_conn_disconnect(mp_obj_t self_in) {
 
     if (self->conn_id >= 0) {
         esp_ble_gattc_close(bt_obj.gattc_if, self->conn_id);
+        esp_ble_gap_disconnect(self->srv_bda);
         self->conn_id = -1;
         bt_obj.conn_id = -1;
     }
