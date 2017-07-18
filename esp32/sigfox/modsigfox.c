@@ -62,23 +62,20 @@ static QueueHandle_t xRxQueue;
 static EventGroupHandle_t sigfoxEvents;
 
 static sigfox_partial_rx_packet_t sigfox_partial_rx_packet;
-static sfx_rcz_t all_rcz[] = {RCZ1, RCZ2, RCZ3, RCZ4};
+static sfx_rc_t all_rcz[] = {RC1, RC2, RC3, RC4};
 static uint32_t sfx_rcz_id;
 static uint8_t sigfox_id_rev[4];
-static sfx_rcz_t sfx_rcz;
+static sfx_rc_t sfx_rcz;
 
 static RTC_DATA_ATTR uint32_t tx_timestamp;
 
 STATIC sfx_u32 rcz_config_words[4][3] = {
     {0},
-    {RCZ2_SET_STD_CONFIG_WORD_0, RCZ2_SET_STD_CONFIG_WORD_1, RCZ2_SET_STD_CONFIG_WORD_2},
-    {3, 5000, 0},
-    {RCZ4_SET_STD_CONFIG_WORD_0, RCZ4_SET_STD_CONFIG_WORD_1, RCZ4_SET_STD_CONFIG_WORD_2},
+    RC2_SM_CONFIG,
+    RC3_CONFIG,
+    RC4_SM_CONFIG,
 };
 STATIC sfx_u32 rcz_current_config_words[3];
-
-STATIC sfx_u16 rcz_default_channel[4] = {0, RCZ2_SET_STD_DEFAULT_CHANNEL, 0, RCZ4_SET_STD_DEFAULT_CHANNEL};
-STATIC sfx_u16 rcz_current_channel;
 
 STATIC sfx_u32 rcz_frequencies[4][2] = {
     {868130000, 869525000},
@@ -290,7 +287,7 @@ static uint32_t modsigfox_api_init (void) {
     }
 
     if (sfx_rcz_id != E_SIGFOX_RCZ1) {
-        if (SFX_ERR_NONE != SIGFOX_API_set_std_config(rcz_config_words[sfx_rcz_id], rcz_default_channel[sfx_rcz_id])) {
+        if (SFX_ERR_NONE != SIGFOX_API_set_std_config(rcz_config_words[sfx_rcz_id], false)) {
             return SIGFOX_STATUS_ERR;
         }
 
@@ -298,7 +295,6 @@ static uint32_t modsigfox_api_init (void) {
             SIGFOX_API_reset();
         }
         memcpy(rcz_current_config_words, rcz_config_words[sfx_rcz_id], sizeof(rcz_current_config_words));
-        rcz_current_channel = rcz_default_channel[sfx_rcz_id];
     }
     return SFX_ERR_NONE;
 }
@@ -844,29 +840,26 @@ mp_obj_t sigfox_frequencies(mp_obj_t self_in) {
 mp_obj_t sigfox_config(mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args == 1) {
         if (sfx_rcz_id != E_SIGFOX_RCZ1) {
-            mp_obj_t tuple[4];
+            mp_obj_t tuple[3];
             tuple[0] = mp_obj_new_int_from_uint(rcz_current_config_words[0]);
             tuple[1] = mp_obj_new_int_from_uint(rcz_current_config_words[1]);
             tuple[2] = mp_obj_new_int_from_uint(rcz_current_config_words[2]);
-            tuple[3] = mp_obj_new_int_from_uint(rcz_current_channel);
-            return mp_obj_new_tuple(4, tuple);
+            return mp_obj_new_tuple(3, tuple);
         } else {
             return mp_const_none;
         }
     } else {
         if (sfx_rcz_id != E_SIGFOX_RCZ1) {
             mp_obj_t *config;
-            mp_obj_get_array_fixed_n(args[1], 4, &config);
+            mp_obj_get_array_fixed_n(args[1], 3, &config);
             sfx_u32 config_words[3];
             config_words[0] = mp_obj_get_int_truncated(config[0]);
             config_words[1] = mp_obj_get_int_truncated(config[1]);
             config_words[2] = mp_obj_get_int_truncated(config[2]);
-            sfx_u16 channel = mp_obj_get_int_truncated(config[3]);
-            if (SFX_ERR_NONE != SIGFOX_API_set_std_config(config_words, channel)) {
+            if (SFX_ERR_NONE != SIGFOX_API_set_std_config(config_words, false)) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             } else {
                 memcpy(rcz_current_config_words, config_words, sizeof(rcz_current_config_words));
-                rcz_current_channel = channel;
             }
             return mp_const_none;
         } else {

@@ -100,7 +100,7 @@ sfx_u8 DynamicMemoryTable[SFX_DYNAMIC_MEMORY];
  *****************************************************************************/
 sfx_error_t MANUF_API_rf_init(sfx_rf_mode_t rf_mode)
 {
-    if (( rf_mode == SFX_RF_MODE_TX ) || ( rf_mode == SFX_RF_MODE_RX ) || ( rf_mode == SFX_RF_MODE_CS_RX ) )
+    if (( rf_mode == SFX_RF_MODE_TX ) || ( rf_mode == SFX_RF_MODE_RX ) || ( rf_mode == SFX_RF_MODE_CS200K_RX ) || ( rf_mode == SFX_RF_MODE_CS300K_RX ) )
     {
         /* Initialize the radio in TX or RX mode */
         RADIO_init_chip(rf_mode);

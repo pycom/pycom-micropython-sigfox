@@ -1,4 +1,23 @@
 /*!
+ \if SIGFOX PATTERN
+ ----------------------------------------------
+
+   _____   _   _____   _____   _____  __    __      
+  /  ___/ | | /  ___| |  ___| /  _  \ \ \  / /      
+  | |___  | | | |     | |__   | | | |  \ \/ /       
+  \___  \ | | | |  _  |  __|  | | | |   }  {        
+   ___| | | | | |_| | | |     | |_| |  / /\ \
+  /_____/ |_| \_____/ |_|     \_____/ /_/  \_\
+
+  ----------------------------------------------
+
+    !!!!  DO NOT MODIFY THIS FILE !!!!
+
+  ----------------------------------------------
+ \endif
+  ----------------------------------------------*/
+
+/*!
  * \file manuf_api.h
  * \brief Sigfox manufacturer functions
  * \author $(SIGFOX_LIB_AUTHOR)
@@ -59,39 +78,7 @@
 #define SFX_ERR_MANUF_TIMER_STOP              0x78 /*!< Error on MANUF_API_timer_stop */
 #define SFX_ERR_MANUF_TIMER_END               0x80 /*!< Error on MANUF_API_timer_wait_for_end */
 #define SFX_ERR_MANUF_TEST_REPORT             0x88 /*!< Error on MANUF_API_report_test_result */
-
 /** @}*/
-
-/* Structure of the encrypted data block given as input of the SIGFOX_API_open() function */
-
-/* 16bits block 1 */
-#define MANUF_DEVICE_ID_LENGTH     4
-#define MANUF_MCU_SERIAL_LENGTH    8
-#define MANUF_RF_SERIAL_LENGTH     2
-#define MANUF_SPARE_1              2
-
-/* 16bits block 2 : Private Key */
-#define MANUF_DEVICE_KEY_LENGTH   16
-/* 16bits block 3 : Public Key  */
-
-/* 16bits block 4 */
-#define MANUF_PAC_LENGTH           8
-#define MANUF_SPARE_2              8
-
-/* 16bits block 5 */
-#define MANUF_CERTIFICATE_LENGTH  14
-#define MANUF_CRC_LENGTH           2
-
-/*!******************************************************************
- * \fn sfx_error_t MANUF_API_get_rf_serial(sfx_u8 ** ptr)
- * \brief This function retrieves the RF Serial Number of the RF chipset
- *
- * \param[out] sfx_u8** returned_pointer    pointer to RF serial buffer
- *
- * \retval SFX_ERR_MANUF_NONE:             No error
- * \retval SFX_ERR_MANUF_GET_RF_SERIAL:    RF Serial error
- *******************************************************************/
-sfx_error_t MANUF_API_get_rf_serial(sfx_u8 ** returned_pointer);
 
 /*!******************************************************************
  * \fn sfx_error_t MANUF_API_malloc(sfx_u16 size, sfx_u8 **returned_pointer)
@@ -184,10 +171,10 @@ sfx_error_t MANUF_API_rf_send(sfx_u8 *stream,
  * \fn sfx_error_t MANUF_API_delay(sfx_delay_t delay_type)
  * \brief Inter stream delay, called between each MANUF_API_rf_send
  * - SFX_DLY_INTER_FRAME_TX  : 0 to 2s in Uplink DC
- * - SFX_DLY_INTER_FRAME_TRX : 500 ms in Uplink/Downlink FH & Downlink DC
+ * - SFX_DLY_INTER_FRAME_TRX : 500 ms in Uplink/Downlink FH & Downlink DC 
  * - SFX_DLY_OOB_ACK :         1.4s to 4s for Downlink OOB
  * - SFX_DLY_SENSI :           4s for sensitivity test mode
- * - SFX_CS_SLEEP :            delay between several trials of Carrier Sense ( for the first frame only )
+ * - SFX_CS_SLEEP :            delay between several trials of Carrier Sense ( for the first frame only ) 
  *
  * \param[in] sfx_delay_t delay_type        Type of delay to call
  *
@@ -287,32 +274,33 @@ sfx_error_t MANUF_API_get_rssi(sfx_s8 *rssi);
  *******************************************************************/
 sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame);
 
+
 /*!******************************************************************
  * \fn sfx_error_t MANUF_API_wait_for_clear_channel ( sfx_u8 cs_min,
  *                                                    sfx_u8 cs_threshold);
  * \brief This function is used in ARIB standard for the Listen Before Talk
- *        feature. It listens the 200kHz Sigfox band during a sliding window set
+ *        feature. It listens the 200kHz Sigfox band during a sliding window set 
  *        in the MANUF_API_timer_start_carrier_sense().
  *        If the channel is clear during the minimum carrier sense
  *        value ( cs_min ), under the limit of the cs_threshold,
- *        the functions returns with SFX_ERR_MANUF_NONE (transmission
- *        allowed). Otherwise it continues to listen to the channel till the expiration of the
+ *        the functions returns with SFX_ERR_MANUF_NONE (transmission 
+ *        allowed). Otherwise it continues to listen to the channel till the expiration of the 
  *        carrier sense maximum window and then returns SFX_ERR_MANUF_WAIT_CS_TIMEOUT.
- *
+ *      
  * \param[out] sfx_u8 cs_min                  Minimum Carrier Sense time in ms.
  * \param[out] sfx_u8 cs_threshold            Power threshold limit to declare the channel clear.
  *                                            Value is a positive one but should be used as negative.
  *                                            i.e : cs_threshold value 80 means threshold of -80dBm
  *
  * \retval SFX_ERR_MANUF_NONE:                No error
- * \retval SFX_ERR_MANUF_WAIT_CS_TIMEOUT:     Wait Carrier Sense Timeout
+ * \retval SFX_ERR_MANUF_WAIT_CS_TIMEOUT:     Wait Carrier Sense Timeout 
  *******************************************************************/
 sfx_error_t MANUF_API_wait_for_clear_channel ( sfx_u8 cs_min,
                                                sfx_u8 cs_threshold);
 
 /*!******************************************************************
  * \fn sfx_error_t MANUF_API_timer_start_carrier_sense(sfx_u16 time_duration_in_ms)
- * \brief Start timer for :
+ * \brief Start timer for : 
  * - carrier sense maximum window ( used in ARIB standard )
  *
  * \param[in] sfx_u16 time_duration_in_ms    Timer value in milliseconds
@@ -324,7 +312,7 @@ sfx_error_t MANUF_API_timer_start_carrier_sense(sfx_u16 time_duration_in_ms);
 
 /*!******************************************************************
  * \fn sfx_error_t MANUF_API_timer_start(sfx_u16 time_duration_in_s)
- * \brief Start timer for :
+ * \brief Start timer for : 
  * - 20 seconds wait in downlink
  * - 25 seconds listening in downlink
  * - 6 seconds listening in sensitivity test mode

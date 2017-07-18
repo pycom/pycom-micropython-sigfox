@@ -181,7 +181,7 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode)
 			cc112xSpiWriteReg(HighPerfModeRx[i].addr, &writeByte, 1);
 		}
 	}
-    else if( rf_mode == SFX_RF_MODE_CS_RX )
+    else if ( rf_mode == SFX_RF_MODE_CS200K_RX || rf_mode == SFX_RF_MODE_CS300K_RX )
     {
         for( i = 0; i < (sizeof(CarrierSenseConfig)/sizeof(registerSetting_t)); i++ )
         {

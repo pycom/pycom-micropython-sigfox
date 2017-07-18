@@ -1,8 +1,27 @@
 /*!
-    \mainpage Sigfox Protocol V1 library API documentation
+ \if SIGFOX PATTERN
+ ----------------------------------------------
 
-    Library to talk Sigfox protocol V1.
-*/
+   _____   _   _____   _____   _____  __    __      
+  /  ___/ | | /  ___| |  ___| /  _  \ \ \  / /      
+  | |___  | | | |     | |__   | | | |  \ \/ /       
+  \___  \ | | | |  _  |  __|  | | | |   }  {        
+   ___| | | | | |_| | | |     | |_| |  / /\ \
+  /_____/ |_| \_____/ |_|     \_____/ /_/  \_\
+
+  ----------------------------------------------
+
+    !!!!  DO NOT MODIFY THIS FILE !!!!
+
+  ----------------------------------------------
+ \endif
+
+ \mainpage Sigfox Protocol V1 library API documentation
+
+ Library to talk Sigfox protocol V1.
+
+  ----------------------------------------------*/
+
 /*!
  * \file sigfox_api.h
  * \brief Sigfox user functions
@@ -25,7 +44,7 @@
 /********************************
  * \enum sfx_spectrum_access_t
  * \brief Data type for Spectrum Access
- * Define as bit mask value so that we can combine them
+ * Define as bit mask value so that we can combine them 
  * if needed
  *******************************/
 typedef enum
@@ -35,7 +54,26 @@ typedef enum
     SFX_DC   = 4, /*!< Index of Duty Cycle         */
 }sfx_spectrum_access_t;
 
-typedef struct sfx_rcz_t
+
+/********************************
+ * \struct sfx_rc_specific_t
+ * \brief Radio configuration substruture for specific radio configuration
+ * All parameters requested to define
+ * radio configuration subsctructure.
+ *******************************/
+typedef struct sfx_rc_specific_t
+{
+     sfx_u32 open_cs_frequency;  /*!< carrier sense center frequency : can be equal to uplink center frequency */
+     sfx_u32 open_cs_bandwidth;  /*!< carrier sense bandwidth to apply carrier sensing */
+}sfx_rc_specific_t;
+
+/********************************
+ * \struct sfx_rc_t
+ * \brief Radio configuration structure
+ * All parameters requested to define
+ * radio configuration.
+ *******************************/
+typedef struct sfx_rc_t
 {
     sfx_u32 open_tx_frequency;                /*!< Uplink frequency used to open the library
                                                    This is not necessary the Transmitter center frequency in Hz
@@ -45,66 +83,103 @@ typedef struct sfx_rcz_t
     sfx_u32 macro_channel_width;              /*!< Macro channel = SIGFOX Operational radio band */
     sfx_u16 uplink_baudrate;                  /*!< Uplink baudrate of the modulation */
     sfx_spectrum_access_t spectrum_access;    /*!< Spectrum access : can be Duty Cycle, Frequency Hopping or Listen Before Talk */
-}sfx_rcz_t;
+    sfx_rc_specific_t     specific_rc;        /*!< Specific radio conf for LBT feature */
+
+}sfx_rc_t;
 
 /*!
- * \defgroup SIGFOX_RCZ_CONFIGURATIONS Defines the SIGFOX RCZ configurations
+ * \defgroup SIGFOX_RC_CONFIGURATIONS Defines the SIGFOX RC configurations
  *
  *  @{
  */
 
 /* Define Radio Configuration Zone */
-#define RCZ1_OPEN_UPLINK_CENTER_FREQUENCY     (sfx_u32)(868130000) /* Hz */
-#define RCZ1_OPEN_DOWNLINK_CENTER_FREQUENCY   (sfx_u32)(869525000) /* Hz */
-#define RCZ1_MACRO_CHANNEL_WIDTH              (sfx_u32)(192000)    /* Hz */
-#define RCZ1_UPLINK_BAUDRATE                  (sfx_u16)(100)       /* bps */
-#define RCZ1_UPLINK_SPECTRUM_ACCESS           SFX_DC
+#define NA 0  /* used to store Not applicable values in config words or open parameters */
 
-#define RCZ2_OPEN_UPLINK_CENTER_FREQUENCY     (sfx_u32)(902200000) /* Hz */
-#define RCZ2_OPEN_DOWNLINK_CENTER_FREQUENCY   (sfx_u32)(905200000) /* Hz */
-#define RCZ2_MACRO_CHANNEL_WIDTH              (sfx_u32)(192000)    /* Hz */
-#define RCZ2_UPLINK_BAUDRATE                  (sfx_u16)(600)       /* bps */
-#define RCZ2_UPLINK_SPECTRUM_ACCESS           SFX_FH
-#define RCZ2_SET_STD_CONFIG_WORD_0            (sfx_u32)0x000001FF
-#define RCZ2_SET_STD_CONFIG_WORD_1            (sfx_u32)0x00000000
-#define RCZ2_SET_STD_CONFIG_WORD_2            (sfx_u32)0x00000000
-#define RCZ2_SET_STD_DEFAULT_CHANNEL          (sfx_u16)(1)
+#define RC1_OPEN_UPLINK_CENTER_FREQUENCY     (sfx_u32)(868130000) /* Hz */
+#define RC1_OPEN_DOWNLINK_CENTER_FREQUENCY   (sfx_u32)(869525000) /* Hz */
+#define RC1_MACRO_CHANNEL_WIDTH              (sfx_u32)(192000)    /* Hz */
+#define RC1_UPLINK_BAUDRATE                  (sfx_u16)(100)       /* bps */
+#define RC1_UPLINK_SPECTRUM_ACCESS           SFX_DC
 
-#define RCZ3_OPEN_UPLINK_CENTER_FREQUENCY     (sfx_u32)(923200000) /* Hz */
-#define RCZ3_OPEN_DOWNLINK_CENTER_FREQUENCY   (sfx_u32)(922200000) /* Hz */
-#define RCZ3_MACRO_CHANNEL_WIDTH              (sfx_u32)(36000)     /* Hz */
-#define RCZ3_UPLINK_BAUDRATE                  (sfx_u16)(100)       /* bps */
-#define RCZ3_UPLINK_SPECTRUM_ACCESS           SFX_LBT
+#define RC2_OPEN_UPLINK_START_OF_TABLE       (sfx_u32)(902200000) /* Hz, The center frequency of RC2 is defined by the activated channels in config words */
+#define RC2_OPEN_DOWNLINK_CENTER_FREQUENCY   (sfx_u32)(905200000) /* Hz */
+#define RC2_MACRO_CHANNEL_WIDTH              (sfx_u32)(192000)    /* Hz */
+#define RC2_UPLINK_BAUDRATE                  (sfx_u16)(600)       /* bps */
+#define RC2_UPLINK_SPECTRUM_ACCESS           SFX_FH 
+#define RC2_SET_STD_CONFIG_LM_WORD_0         (sfx_u32)0x000001FF  /* LM = Long message */
+#define RC2_SET_STD_CONFIG_LM_WORD_1         (sfx_u32)0x00000000
+#define RC2_SET_STD_CONFIG_LM_WORD_2         (sfx_u32)0x00000000
+#define RC2_SET_STD_TIMER_ENABLE             (sfx_bool)(SFX_TRUE) /* Enable Timer for FH duty cycle*/
+#define RC2_SET_STD_TIMER_DISABLE            (sfx_bool)(SFX_FALSE)/* Disable timer feature*/
+#define RC2_SET_STD_CONFIG_SM_WORD_0         (sfx_u32)0x00000001  /* SM = Short message */
+#define RC2_SET_STD_CONFIG_SM_WORD_1         (sfx_u32)0x00000000
+#define RC2_SET_STD_CONFIG_SM_WORD_2         (sfx_u32)0x00000000
 
-#define RCZ4_OPEN_UPLINK_CENTER_FREQUENCY     (sfx_u32)(902200000) /* Hz */
-#define RCZ4_OPEN_DOWNLINK_CENTER_FREQUENCY   (sfx_u32)(922300000) /* Hz */
-#define RCZ4_MACRO_CHANNEL_WIDTH              (sfx_u32)(192000)    /* Hz */
-#define RCZ4_UPLINK_BAUDRATE                  (sfx_u16)(600)       /* bps */
-#define RCZ4_UPLINK_SPECTRUM_ACCESS           SFX_FH
-#define RCZ4_SET_STD_CONFIG_WORD_0            (sfx_u32)0x00000000
-#define RCZ4_SET_STD_CONFIG_WORD_1            (sfx_u32)0xF0000000
-#define RCZ4_SET_STD_CONFIG_WORD_2            (sfx_u32)0x0000001F /* Value to be checked */
-#define RCZ4_SET_STD_DEFAULT_CHANNEL          (sfx_u16)(63)
+#define RC3_OPEN_CS_CENTER_FREQUENCY         (sfx_u32)(923200000) /* Hz */
+#define RC3_OPEN_CS_BANDWIDTH                (sfx_u32)(200000)    /* Hz */
+#define RC3_OPEN_UPLINK_CENTER_FREQUENCY     (sfx_u32)(923200000) /* Hz */
+#define RC3_OPEN_DOWNLINK_CENTER_FREQUENCY   (sfx_u32)(922200000) /* Hz */
+#define RC3_MACRO_CHANNEL_WIDTH              (sfx_u32)(36000)     /* Hz */
+#define RC3_UPLINK_BAUDRATE                  (sfx_u16)(100)       /* bps */
+#define RC3_UPLINK_SPECTRUM_ACCESS           SFX_LBT 
 
-#define RCZ101_OPEN_UPLINK_CENTER_FREQUENCY   (sfx_u32)(68862500)  /* Hz */
-#define RCZ101_OPEN_DOWNLINK_CENTER_FREQUENCY (sfx_u32)(72912500)  /* Hz */
-#define RCZ101_MACRO_CHANNEL_WIDTH            (sfx_u32)(12500)     /* Hz */
-#define RCZ101_UPLINK_BAUDRATE                (sfx_u16)(100)       /* bps */
-#define RCZ101_UPLINK_SPECTRUM_ACCESS         SFX_DC
+#define RC4_OPEN_UPLINK_START_OF_TABLE       (sfx_u32)(902200000) /* Hz, The center frequency of RC4 is defined by the activated channels in config words */
+#define RC4_OPEN_DOWNLINK_CENTER_FREQUENCY   (sfx_u32)(922300000) /* Hz */
+#define RC4_MACRO_CHANNEL_WIDTH              (sfx_u32)(192000)    /* Hz */
+#define RC4_UPLINK_BAUDRATE                  (sfx_u16)(600)       /* bps */
+#define RC4_UPLINK_SPECTRUM_ACCESS           SFX_FH 
+#define RC4_SET_STD_CONFIG_LM_WORD_0         (sfx_u32)0x00000000  /* LM = Long message */
+#define RC4_SET_STD_CONFIG_LM_WORD_1         (sfx_u32)0xF0000000
+#define RC4_SET_STD_CONFIG_LM_WORD_2         (sfx_u32)0x0000001F
+#define RC4_SET_STD_TIMER_ENABLE             (sfx_bool)(SFX_TRUE) /* Enable Timer for FH duty cycle*/
+#define RC4_SET_STD_TIMER_DISABLE            (sfx_bool)(SFX_FALSE)/* Disable timer feature*/
+#define RC4_SET_STD_CONFIG_SM_WORD_0         (sfx_u32)0x00000000  /* SM = Short message */
+#define RC4_SET_STD_CONFIG_SM_WORD_1         (sfx_u32)0x40000000
+#define RC4_SET_STD_CONFIG_SM_WORD_2         (sfx_u32)0x00000000
+
+#define RC5_OPEN_CS_CENTER_FREQUENCY         (sfx_u32)(923300000) /* Hz */
+#define RC5_OPEN_CS_BANDWIDTH                (sfx_u32)(200000)    /* Hz */
+#define RC5_OPEN_UPLINK_CENTER_FREQUENCY     (sfx_u32)(923250000) /* Hz */
+#define RC5_OPEN_DOWNLINK_CENTER_FREQUENCY   (sfx_u32)(922250000) /* Hz */
+#define RC5_MACRO_CHANNEL_WIDTH              (sfx_u32)(96000)     /* Hz */ 
+#define RC5_UPLINK_BAUDRATE                  (sfx_u16)(100)       /* bps */
+#define RC5_UPLINK_SPECTRUM_ACCESS           SFX_LBT 
+
+#define RC101_OPEN_UPLINK_CENTER_FREQUENCY   (sfx_u32)(68862500)  /* Hz */
+#define RC101_OPEN_DOWNLINK_CENTER_FREQUENCY (sfx_u32)(72912500)  /* Hz */
+#define RC101_MACRO_CHANNEL_WIDTH            (sfx_u32)(12500)     /* Hz */
+#define RC101_UPLINK_BAUDRATE                (sfx_u16)(100)       /* bps */
+#define RC101_UPLINK_SPECTRUM_ACCESS         SFX_DC 
 
 
-/* ----------------------------------------------
+/* ---------------------------------------------- 
    IMPORTANT INFORMATION :
    ----------------------------------------------
-   The SIGFOX Library needs to be opened with
+   The SIGFOX Library needs to be opened with 
    one of the below configurations.
    ----------------------------------------------
 */
-#define RCZ1 { RCZ1_OPEN_UPLINK_CENTER_FREQUENCY, RCZ1_OPEN_DOWNLINK_CENTER_FREQUENCY, RCZ1_MACRO_CHANNEL_WIDTH, RCZ1_UPLINK_BAUDRATE, RCZ1_UPLINK_SPECTRUM_ACCESS }
-#define RCZ2 { RCZ2_OPEN_UPLINK_CENTER_FREQUENCY, RCZ2_OPEN_DOWNLINK_CENTER_FREQUENCY, RCZ2_MACRO_CHANNEL_WIDTH, RCZ2_UPLINK_BAUDRATE, RCZ2_UPLINK_SPECTRUM_ACCESS }
-#define RCZ3 { RCZ3_OPEN_UPLINK_CENTER_FREQUENCY, RCZ3_OPEN_DOWNLINK_CENTER_FREQUENCY, RCZ3_MACRO_CHANNEL_WIDTH, RCZ3_UPLINK_BAUDRATE, RCZ3_UPLINK_SPECTRUM_ACCESS }
-#define RCZ4 { RCZ4_OPEN_UPLINK_CENTER_FREQUENCY, RCZ4_OPEN_DOWNLINK_CENTER_FREQUENCY, RCZ4_MACRO_CHANNEL_WIDTH, RCZ4_UPLINK_BAUDRATE, RCZ4_UPLINK_SPECTRUM_ACCESS }
-#define RCZ101 { RCZ101_OPEN_UPLINK_CENTER_FREQUENCY, RCZ101_OPEN_DOWNLINK_CENTER_FREQUENCY, RCZ101_MACRO_CHANNEL_WIDTH, RCZ101_UPLINK_BAUDRATE, RCZ101_UPLINK_SPECTRUM_ACCESS }
+#define RC1   { RC1_OPEN_UPLINK_CENTER_FREQUENCY,   RC1_OPEN_DOWNLINK_CENTER_FREQUENCY,   RC1_MACRO_CHANNEL_WIDTH,   RC1_UPLINK_BAUDRATE,   RC1_UPLINK_SPECTRUM_ACCESS, {NA,NA} }
+#define RC2   { RC2_OPEN_UPLINK_START_OF_TABLE,     RC2_OPEN_DOWNLINK_CENTER_FREQUENCY,   RC2_MACRO_CHANNEL_WIDTH,   RC2_UPLINK_BAUDRATE,   RC2_UPLINK_SPECTRUM_ACCESS, {NA,NA} }
+#define RC3   { RC3_OPEN_UPLINK_CENTER_FREQUENCY,   RC3_OPEN_DOWNLINK_CENTER_FREQUENCY,   RC3_MACRO_CHANNEL_WIDTH,   RC3_UPLINK_BAUDRATE,   RC3_UPLINK_SPECTRUM_ACCESS, {RC3_OPEN_CS_CENTER_FREQUENCY,RC3_OPEN_CS_BANDWIDTH} }
+#define RC4   { RC4_OPEN_UPLINK_START_OF_TABLE,     RC4_OPEN_DOWNLINK_CENTER_FREQUENCY,   RC4_MACRO_CHANNEL_WIDTH,   RC4_UPLINK_BAUDRATE,   RC4_UPLINK_SPECTRUM_ACCESS, {NA,NA} }
+#define RC5   { RC5_OPEN_UPLINK_CENTER_FREQUENCY,   RC5_OPEN_DOWNLINK_CENTER_FREQUENCY,   RC5_MACRO_CHANNEL_WIDTH,   RC5_UPLINK_BAUDRATE,   RC5_UPLINK_SPECTRUM_ACCESS, {RC5_OPEN_CS_CENTER_FREQUENCY,RC5_OPEN_CS_BANDWIDTH} }
+#define RC3D   { RC3_OPEN_UPLINK_CENTER_FREQUENCY,   RC3_OPEN_DOWNLINK_CENTER_FREQUENCY,   192000,   RC3_UPLINK_BAUDRATE,   RC3_UPLINK_SPECTRUM_ACCESS, {RC3_OPEN_CS_CENTER_FREQUENCY,300000} }
+
+#define RCX   { 923300000,   RC5_OPEN_DOWNLINK_CENTER_FREQUENCY, 192000,   RC5_UPLINK_BAUDRATE,   RC5_UPLINK_SPECTRUM_ACCESS, {RC5_OPEN_CS_CENTER_FREQUENCY,RC5_OPEN_CS_BANDWIDTH} }
+
+#define RC101 { RC101_OPEN_UPLINK_CENTER_FREQUENCY, RC101_OPEN_DOWNLINK_CENTER_FREQUENCY, RC101_MACRO_CHANNEL_WIDTH, RC101_UPLINK_BAUDRATE, RC101_UPLINK_SPECTRUM_ACCESS, {0,0} }
+
+#define RC2_LM_CONFIG  { RC2_SET_STD_CONFIG_LM_WORD_0, RC2_SET_STD_CONFIG_LM_WORD_1, RC2_SET_STD_CONFIG_LM_WORD_2 }   /*!< Config for full RC2 hopping */
+#define RC4_LM_CONFIG  { RC4_SET_STD_CONFIG_LM_WORD_0, RC4_SET_STD_CONFIG_LM_WORD_1, RC4_SET_STD_CONFIG_LM_WORD_2 }   /*!< Config for full RC4 hopping */
+
+#define RC2_SM_CONFIG  { RC2_SET_STD_CONFIG_SM_WORD_0, RC2_SET_STD_CONFIG_SM_WORD_1, RC2_SET_STD_CONFIG_SM_WORD_2 }   /*!< Config for normal RC2 operations */
+#define RC4_SM_CONFIG  { RC4_SET_STD_CONFIG_SM_WORD_0, RC4_SET_STD_CONFIG_SM_WORD_1, RC4_SET_STD_CONFIG_SM_WORD_2 }   /*!< Config for normal RC4 operations */
+
+
+#define RC3_CONFIG     {0x00000003,0x00001388,0x00000000}  /*!< Config word default value: 3 retries before 1st frame , 0x1288=5000ms max time between each frame>*/
+#define RC5_CONFIG     {0x00000003,0x00001388,0x00000000}  /*!< Config word default value: 3 retries before 1st frame , 0x1288=5000ms max time between each frame>*/
 
 /*!
  * \defgroup SFX_ERR_CODES Return Error codes definition for SIGFOX APIs
@@ -120,7 +195,7 @@ typedef struct sfx_rcz_t
 #define SFX_ERR_OPEN_STATE                    0x14 /*!< State is not idle, library should be closed before */
 #define SFX_ERR_OPEN_GET_FH                   0x15 /*!< Error on MANUF_API_get_nv_mem w/ SFX_NVMEM_FH */
 #define SFX_ERR_OPEN_MACRO_CHANNEL_WIDTH      0x16 /*!< Macro channel width not allowed */
-#define SFX_ERR_OPEN_RCZ_PTR                  0x17 /*!< RCZ pointer is NULL */
+#define SFX_ERR_OPEN_RC_PTR                  0x17 /*!< RC pointer is NULL */
 
 #define SFX_ERR_CLOSE_FREE                    0x20 /*!< Error on MANUF_API_free */
 #define SFX_ERR_CLOSE_RF_STOP                 0x21 /*!< Error on MANUF_API_rf_stop */
@@ -162,7 +237,7 @@ typedef struct sfx_rcz_t
 
 /* 0x006x to 0x008x codes available */
 
-#define SFX_ERR_SET_STD_CONFIG_SIGFOX_CHAN    0x90 /*!< Default SIGFOX channel out of range */
+#define SFX_ERR_SET_STD_CONFIG_SIGFOX_CHAN    0x90 /*!< Configword empty */
 #define SFX_ERR_SET_STD_CONFIG_SET            0x91 /*!< Unable to set configuration */
 
 #define SFX_ERR_TEST_MODE_0_RF_INIT           0xA0 /*!< Error on MANUF_API_rf_init */
@@ -219,7 +294,8 @@ typedef enum
 {
     SFX_RF_MODE_TX = 0,    /*!< Set RF chip as transmitter */
     SFX_RF_MODE_RX = 1,    /*!< Set RF chip as receiver */
-    SFX_RF_MODE_CS_RX = 2, /*!< Set RF chip as receiver for Carrier Sense */
+    SFX_RF_MODE_CS200K_RX = 2, /*!< Set RF chip as receiver for Carrier Sense on 200KHz */
+    SFX_RF_MODE_CS300K_RX = 3, /*!< Set RF chip as receiver for Carrier Sense on 300KHz */
 }sfx_rf_mode_t;
 
 /********************************
@@ -254,7 +330,7 @@ typedef enum
 /****************************************/
 
 /*!******************************************************************
- * \fn sfx_error_t SIGFOX_API_open(sfx_rcz_t *rcz, sfx_u8 *id_ptr)
+ * \fn sfx_error_t SIGFOX_API_open(sfx_rc_t *rc, sfx_u8 *id_ptr)
  * \brief This function initialises library (mandatory). The
  * SIGFOX_API_open function will :
  *  - Allocate memory for library
@@ -263,8 +339,8 @@ typedef enum
  *  - Set the global state to SFX_STATE_READY
  *  .
  *
- * \param[in] sfx_rcz_t *rcz                    Pointer on the Radio Configuration Zone :it is mandatory
- *                                              to use already existing RCZx define.
+ * \param[in] sfx_rc_t *rc                      Pointer on the Radio Configuration Zone :it is mandatory 
+ *                                              to use already existing RCx define.
  * \param[in] sfx_u8 *id_ptr                    Pointer for 32 bits ID
  *
  * \retval SFX_ERR_NONE:                        No error
@@ -274,7 +350,7 @@ typedef enum
  * \retval SFX_ERR_OPEN_GET_PN:                 Error on MANUF_API_get_nv_mem w/ SFX_NVMEM_PN
  * \retval SFX_ERR_OPEN_STATE:                  State is not idle, library should be closed before
  *******************************************************************/
-sfx_error_t SIGFOX_API_open(sfx_rcz_t *rcz, sfx_u8 *id_ptr);
+sfx_error_t SIGFOX_API_open(sfx_rc_t *rc, sfx_u8 *id_ptr);
 
 /*!******************************************************************
  * \fn sfx_error_t SIGFOX_API_close(void)
@@ -405,7 +481,7 @@ sfx_error_t SIGFOX_API_send_outofband(void);
 sfx_error_t SIGFOX_API_reset(void);
 
 /*!******************************************************************
- * \fn sfx_error_t SIGFOX_API_set_std_config(sfx_u32 config_words[3], sfx_u16 default_sigfox_channel)
+ * \fn sfx_error_t SIGFOX_API_set_std_config(sfx_u32 config_words[3], sfx_bool timer_enable)
  * \brief This function must be used to configure specific variables for standard.
  *        It is mandatory to call this function after SIGFOX_API_open() for FH and LBT.
  *
@@ -416,14 +492,16 @@ sfx_error_t SIGFOX_API_reset(void);
  * must be at least enabled in configuration word.<BR>
  * <B>WARNING : This function should be call each time you open the library
  * or your FCC configuration will not be applied</B><BR>
- * <B>WARNING : This example and the following table are only available
- * if you set DEFAULT_SIGFOX_FCC_CHANNEL_TABLE_1 in SIGFOX_API_open.</B><BR><BR>
+ *
+ * Use the RC defined above to configure the macro channels
+ *
+ * <B>The example below shows you the Long Message configuration
  * <B>Example :</B> To enable Macro channel 1 to 9, that is to say 902.2MHz
  * to 904.8MHz with 902.2MHz as main Macro channel, you must set :<BR>
  * <B>config_words[0]</B> = [0x000001FF]<BR>
  * <B>config_words[1]</B> = [0x00000000]<BR>
  * <B>config_words[2]</B> = [0x00000000]<BR>
- * <B>default_sigfox_channel</B> = 1<BR>
+ *
  * \verbatim
    Macro Channel Value MHz : | 902.2MHz | 902.5MHz | 902.8MHz | 903.1MHz | 903.4MHz | 903.7MHz | 904.0MHz | 904.3MHz | 904.6MHz | 904.9MHz | 905.2MHz | ...     ...      | 911.5MHz |
    Macro Channel Value     : | Chn 1    | Chn 2    | Chn 3    | Chn 4    | Chn 5    | Chn 6    | Chn 7    | Chn 8    | Chn 9    | Chn 10   | Chn 11   | ...     ...      | Chn 32   |
@@ -439,7 +517,7 @@ sfx_error_t SIGFOX_API_reset(void);
    \endverbatim
  *
  * <B>DC (Duty Cycle)</B>: This function has no effect in DC spectrum access ( used for the ETSI standard ).</B><BR>
- *
+ * 
  * <B>LBT (Listen Before Talk)</B> : Carrier Sense feature for the First frame can be configured.
  *           - config_word[0] : number of attempts to send the first frame [ has to be greater or equal to 1]
  *           - config_word[1] : maximum carrier sense sliding window (in ms) [ has to be greater than 6 ms ( CS_MIN_DURATION_IN_MS + 1 ) ]
@@ -447,19 +525,19 @@ sfx_error_t SIGFOX_API_reset(void);
  *                  . bit 8   : set the value to 1 to indicate that the device will use the full operationnal radio band.( 192kHz )
  *                  . bit 7-3 : number of Carrier Sense attempts.
  *                  . bit 2-0 : number of frames sent.
- *           - default_sigfox_channel : unused
+ *           - timer_enable : unused
  * <BR><BR>
  * The delay between several attempts of Carrier Sense for the first frame is set by SFX_DLY_CS_SLEEP
  *
  * \param[in] sfx_u32 config_words[3]           Meaning depends on the standard (as explained above)
- * \param[in] sfx_u16 default_sigfox_channel    Default SIGFOX FCC channel (1 to 82)
+ * \param[in] sfx_bool timer_enable             Enable timer feature for FH
  *
  * \retval SFX_ERR_NONE:                        No error
  * \retval SFX_ERR_SET_STD_CONFIG_SIGFOX_CHAN:  default_sigfox_channel is out of range
  * \retval SFX_ERR_SET_STD_CONFIG_SET:          Unable to set configuration
  *******************************************************************/
 sfx_error_t SIGFOX_API_set_std_config(sfx_u32 config_words[3],
-                                      sfx_u16 default_sigfox_channel);
+                                      sfx_bool timer_enable);
 /*!******************************************************************
  * \fn sfx_error_t SIGFOX_API_get_version(sfx_u8** version, sfx_u8* size)
  * \brief Returns current SIGFOX library version coded in ASCII
@@ -647,7 +725,7 @@ sfx_error_t SIGFOX_API_test_mode(sfx_test_mode_t test_mode,
   * returned_info[bit 7 - 4] = number of free micro channel in current FCC
   * macro channel.<BR>
   * <B> In LBT :</B> returned_info = bit[7-3]: Carrier Sense attempts
-  * and bit[2-0]: Number of frames sent
+  * and bit[2-0]: Number of frames sent 
   *
   * \param[out] sfx_u8* returned_info            Returned value by library
   *
