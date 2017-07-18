@@ -415,7 +415,11 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
             bt_obj.busy = false;
         }
         break;
+    case ESP_GATTC_REG_FOR_NOTIFY_EVT:
+
+        break;
     case ESP_GATTC_NOTIFY_EVT: {
+        printf("Notification/Indication event received\n");
         bt_char_obj_t *char_obj;
         char_obj = find_gattc_char (p_data->notify.conn_id, &p_data->notify.srvc_id, &p_data->notify.char_id);
         if (char_obj != NULL) {
@@ -1665,6 +1669,7 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
                                                              &self->characteristic.char_id)) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
+            printf("Registered for notifications/indications\n");
         } else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection already closed"));
         }
