@@ -31,7 +31,7 @@
 #include "targets/cc112x_spi.h"
 #include "radio.h"      // for packetSemaphore
 
-#include "esp_heap_alloc_caps.h"
+#include "esp_heap_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"

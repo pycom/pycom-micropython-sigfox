@@ -15,7 +15,7 @@
 #include "driver/sdmmc_defs.h"
 #include "sdmmc_cmd.h"
 #include "esp_log.h"
-#include "esp_heap_alloc_caps.h"
+#include "esp_heap_caps.h"
 #include "diskio.h"
 #include "sd_diskio.h"
 #include "stdcmd.h"
@@ -34,8 +34,6 @@
 
 #define CARD_VERSION_1              0
 #define CARD_VERSION_2              1
-
-#define SD_CARD_MAX_FREQUENCY_KHZ   10000
 
 //*****************************************************************************
 // Disk Info for attached disk
@@ -56,7 +54,7 @@ DSTATUS sd_disk_init (void) {
     {
         .flags = SDMMC_HOST_FLAG_1BIT,
         .slot = SDMMC_HOST_SLOT_1,
-        .max_freq_khz = SD_CARD_MAX_FREQUENCY_KHZ,
+        .max_freq_khz = SDMMC_FREQ_DEFAULT,
         .io_voltage = 3.3f,
         .init = &sdmmc_host_init,
         .set_bus_width = &sdmmc_host_set_bus_width,
@@ -75,11 +73,6 @@ DSTATUS sd_disk_init (void) {
     } else {
         sd_card_status = STA_NOINIT;
     }
-
-    // enable pull-ups on the SD card pins
-    gpio_set_pull_mode(2, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(14, GPIO_PULLUP_ONLY);
-    gpio_set_pull_mode(15, GPIO_PULLUP_ONLY);
 
     return sd_card_status;
 }
