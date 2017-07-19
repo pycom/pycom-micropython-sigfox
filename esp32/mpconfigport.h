@@ -203,8 +203,8 @@ extern const struct _mp_obj_module_t mp_module_ussl;
 
 #include "xtensa/xtruntime.h"                       // for the critical section routines
 
-#define MICROPY_BEGIN_ATOMIC_SECTION()              XTOS_DISABLE_ALL_INTERRUPTS
-#define MICROPY_END_ATOMIC_SECTION(state)           XTOS_RESTORE_INTLEVEL(state)
+#define MICROPY_BEGIN_ATOMIC_SECTION()              portENTER_CRITICAL_NESTED()
+#define MICROPY_END_ATOMIC_SECTION(state)           portEXIT_CRITICAL_NESTED(state)
 
 #define MICROPY_PORT_ROOT_POINTERS \
     const char *readline_hist[8];                               \

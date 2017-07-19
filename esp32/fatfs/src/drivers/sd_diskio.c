@@ -75,6 +75,12 @@ DSTATUS sd_disk_init (void) {
     } else {
         sd_card_status = STA_NOINIT;
     }
+
+    // enable pull-ups on the SD card pins
+    gpio_set_pull_mode(2, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(14, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(15, GPIO_PULLUP_ONLY);
+
     return sd_card_status;
 }
 

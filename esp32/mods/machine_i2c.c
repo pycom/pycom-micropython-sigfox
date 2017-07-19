@@ -117,8 +117,8 @@ STATIC bool mp_hal_i2c_wait_for_scl(machine_i2c_obj_t *self) {
     uint32_t count = 0;
     // clock stretching?
     while (!mp_hal_i2c_scl_read(self)) {
-        ets_delay_us(1);
-        if (count++ > 5000) {       // timeout after 5ms
+        ets_delay_us(2);
+        if (count++ > 5000) {       // timeout after 10ms
             return false;
         }
     }

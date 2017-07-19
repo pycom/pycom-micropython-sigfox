@@ -658,11 +658,11 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
         mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_srv_list), 0);
         mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_attr_list), 0);
 
+        esp_ble_gattc_app_register(MOD_BT_CLIENT_APP_ID);
+        esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
+
         self->init = true;
     }
-
-    esp_ble_gattc_app_register(MOD_BT_CLIENT_APP_ID);
-    esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
     bt_obj.gatts_conn_id = -1;
 
     return mp_const_none;
