@@ -75,7 +75,6 @@
 typedef struct {
     mp_obj_base_t         base;
     int32_t               scan_duration;
-    int32_t               conn_id;          // current activity connection id
     mp_obj_t              handler;
     mp_obj_t              handler_arg;
     esp_bd_addr_t         client_bda;
@@ -209,6 +208,14 @@ static esp_ble_adv_params_t bt_adv_params = {
     .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
     .channel_map        = ADV_CHNL_ALL,
     .adv_filter_policy  = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
+};
+
+static esp_gatt_id_t bt_notify_descr_id = {
+    .uuid = {
+        .len = ESP_UUID_LEN_16,
+        .uuid = {.uuid16 = GATT_UUID_CHAR_CLIENT_CONFIG,},
+    },
+    .inst_id = 0,
 };
 
 /******************************************************************************
@@ -410,16 +417,20 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
             memcpy(&bt_event_result.characteristic.char_id, char_id, sizeof(esp_gatt_id_t));
             bt_event_result.characteristic.char_prop = p_data->get_char.char_prop;
             xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
-            esp_ble_gattc_get_characteristic(gattc_if, bt_obj.conn_id, &p_data->get_char.srvc_id, char_id);
+            esp_ble_gattc_get_characteristic(gattc_if, p_data->get_char.conn_id, &p_data->get_char.srvc_id, char_id);
         } else {
             bt_obj.busy = false;
         }
         break;
-    case ESP_GATTC_REG_FOR_NOTIFY_EVT:
-
+    case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
+        // printf("Register for Notify event\n");
+        uint16_t notify_en = 1;
+        esp_ble_gattc_write_char_descr(gattc_if, conn_id, &p_data->reg_for_notify.srvc_id, &p_data->reg_for_notify.char_id, &bt_notify_descr_id,
+                                       sizeof(notify_en), (uint8_t *)&notify_en, ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
         break;
+        }
     case ESP_GATTC_NOTIFY_EVT: {
-        printf("Notification/Indication event received\n");
+        // printf("Notification/Indication event received\n");
         bt_char_obj_t *char_obj;
         char_obj = find_gattc_char (p_data->notify.conn_id, &p_data->notify.srvc_id, &p_data->notify.char_id);
         if (char_obj != NULL) {
@@ -441,7 +452,6 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         bt_obj.busy = false;
         // intentional fall through
     case ESP_GATTC_CLOSE_EVT:
-        bt_obj.conn_id = -1;
         close_connection(p_data->close.conn_id);
         break;
     default:
@@ -898,7 +908,6 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
         bt_connection_obj_t *conn = m_new_obj(bt_connection_obj_t);
         conn->base.type = (mp_obj_t)&mod_bt_connection_type;
         conn->conn_id = bt_event.connection.conn_id;
-        bt_obj.conn_id = bt_event.connection.conn_id;
         memcpy(conn->srv_bda, bt_event.connection.srv_bda, 6);
         mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), conn);
         return conn;
@@ -1228,10 +1237,6 @@ STATIC mp_obj_t bt_characteristic_value (mp_uint_t n_args, const mp_obj_t *args)
         // set
         if (mp_obj_is_integer(args[1])) {
             uint32_t value = mp_obj_get_int_truncated(args[1]);
-            if ((self->attr_obj.value_len == sizeof(uint32_t)) && (memcmp(&value, &self->attr_obj.value, sizeof(uint32_t)) == 0)) {
-                // do not copy/notify/indicate
-                return mp_const_none;
-            }
             memcpy(self->attr_obj.value, &value, sizeof(value));
             if (value > 0xFF) {
                 self->attr_obj.value_len = 2;
@@ -1244,12 +1249,6 @@ STATIC mp_obj_t bt_characteristic_value (mp_uint_t n_args, const mp_obj_t *args)
             mp_buffer_info_t value_bufinfo;
             mp_get_buffer_raise(args[1], &value_bufinfo, MP_BUFFER_READ);
             uint8_t value_len = value_bufinfo.len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : value_bufinfo.len;
-
-            if ((value_len == self->attr_obj.value_len) && (memcmp(value_bufinfo.buf, self->attr_obj.value, value_len) == 0)) {
-                // do not copy/notify/indicate
-                return mp_const_none;
-            }
-
             memcpy(self->attr_obj.value, value_bufinfo.buf, value_len);
             self->attr_obj.value_len = value_len;
         }
@@ -1421,7 +1420,6 @@ STATIC mp_obj_t bt_conn_disconnect(mp_obj_t self_in) {
         esp_ble_gattc_close(bt_obj.gattc_if, self->conn_id);
         esp_ble_gap_disconnect(self->srv_bda);
         self->conn_id = -1;
-        bt_obj.conn_id = -1;
     }
     return mp_const_none;
 }
@@ -1434,7 +1432,6 @@ STATIC mp_obj_t bt_conn_services (mp_obj_t self_in) {
     if (self->conn_id >= 0) {
         xQueueReset(xScanQueue);
         bt_obj.busy = true;
-        bt_obj.conn_id = self->conn_id;
         mp_obj_list_init(&self->srv_list, 0);
         if (ESP_OK != esp_ble_gattc_search_service(bt_obj.gattc_if, self->conn_id, NULL)) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
@@ -1506,7 +1503,6 @@ STATIC mp_obj_t bt_srv_characteristics(mp_obj_t self_in) {
     if (self->connection->conn_id >= 0) {
         xQueueReset(xScanQueue);
         bt_obj.busy = true;
-        bt_obj.conn_id = self->connection->conn_id;
         mp_obj_list_init(&self->char_list, 0);
         if (ESP_OK != esp_ble_gattc_get_characteristic(bt_obj.gattc_if, self->connection->conn_id, &self->srv_id, NULL)) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
@@ -1575,7 +1571,6 @@ STATIC mp_obj_t bt_char_read(mp_obj_t self_in) {
     if (self->service->connection->conn_id >= 0) {
         xQueueReset(xScanQueue);
         bt_obj.busy = true;
-        bt_obj.conn_id = self->service->connection->conn_id;
 
         if (ESP_OK != esp_ble_gattc_read_char (bt_obj.gattc_if, self->service->connection->conn_id,
                                                &self->service->srv_id,
@@ -1607,7 +1602,6 @@ STATIC mp_obj_t bt_char_write(mp_obj_t self_in, mp_obj_t value) {
     if (self->service->connection->conn_id >= 0) {
         xQueueReset(xScanQueue);
         bt_obj.busy = true;
-        bt_obj.conn_id = self->service->connection->conn_id;
 
         if (ESP_OK != esp_ble_gattc_write_char (bt_obj.gattc_if, self->service->connection->conn_id,
                                                 &self->service->srv_id,
@@ -1669,7 +1663,7 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
                                                              &self->characteristic.char_id)) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
-            printf("Registered for notifications/indications\n");
+            // printf("Registered for notifications/indications\n");
         } else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection already closed"));
         }

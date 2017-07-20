@@ -143,8 +143,6 @@ void TASK_Micropython (void *pvParameters) {
     alarm_preinit();
     pin_preinit();
 
-    printf("Test image for OTAA :-) 6\n");
-
 soft_reset:
 
     // Thread init

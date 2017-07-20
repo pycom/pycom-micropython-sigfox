@@ -19,7 +19,6 @@
 #include "esp_log.h"
 #include "rom/crc.h"
 
-static const char* TAG = "updater";
 
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
@@ -55,8 +54,7 @@ void updater_pre_init (void) {
 bool updater_read_boot_info (boot_info_t *boot_info, uint32_t *boot_info_offset) {
     esp_partition_info_t partition_info[8];
 
-    // ESP_LOGI(TAG, "Reading boot info");
-    printf("Reading boot info\n");
+    // printf("Reading boot info\n");
 
     if (ESP_OK != spi_flash_read(ESP_PARTITION_TABLE_ADDR, (void *)partition_info, sizeof(partition_info))) {
         return false;
@@ -90,16 +88,16 @@ bool updater_start (void) {
             updater_data.offset = IMG_UPDATE2_OFFSET;
         }
     }
-    // ESP_LOGI(TAG, "Updating image at offset=%x", updater_data.offset);
-    printf("Updating image at offset=%x\n", updater_data.offset);
+
+    // printf("Updating image at offset=%x\n", updater_data.offset);
 
     // erase the first 2 sectors
     if (ESP_OK != spi_flash_erase_sector(updater_data.offset / SPI_FLASH_SEC_SIZE)) {
-        printf("Erasing first sector failed!\n");
+        // printf("Erasing first sector failed!\n");
         return false;
     }
     if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
-        printf("Erasing second sector failed!\n");
+        // printf("Erasing second sector failed!\n");
         return false;
     }
 
@@ -113,7 +111,7 @@ bool updater_write (uint8_t *buf, uint32_t len) {
 //    sl_LockObjLock (&wlan_LockObj, SL_OS_WAIT_FOREVER);
     // printf("Writing %d bytes\n", len);
     if (ESP_OK != spi_flash_write(updater_data.offset, (void *)buf, len)) {
-        printf("SPI flash write failed\n");
+        // printf("SPI flash write failed\n");
         return false;
     }
 
@@ -125,7 +123,7 @@ bool updater_write (uint8_t *buf, uint32_t len) {
         updater_data.current_chunk -= SPI_FLASH_SEC_SIZE;
         // erase the next sector
         if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
-            printf("Erasing next sector failed!\n");
+            // printf("Erasing next sector failed!\n");
             return false;
         }
     }
@@ -135,13 +133,11 @@ bool updater_write (uint8_t *buf, uint32_t len) {
 
 bool updater_finish (void) {
     if (updater_data.offset > 0) {
-        // ESP_LOGI(TAG, "Updater finish");
-        printf("Updater finish\n");
+        // printf("Updater finish\n");
 //        sl_LockObjLock (&wlan_LockObj, SL_OS_WAIT_FOREVER);
         // if we still have an image pending for verification, leave the boot info as it is
         if (boot_info.Status != IMG_STATUS_CHECK) {
-            // ESP_LOGI(TAG, "Saving new boot info");
-            printf("Saving new boot info\n");
+            // printf("Saving new boot info\n");
             // save the new boot info
             boot_info.PrevImg = boot_info.ActiveImg;
             if (boot_info.ActiveImg == IMG_ACT_UPDATE1) {
@@ -155,15 +151,15 @@ bool updater_finish (void) {
                                                  sizeof(boot_info) - sizeof(boot_info.crc));
 
             if (ESP_OK != spi_flash_erase_sector(boot_info_offset / SPI_FLASH_SEC_SIZE)) {
-                printf("Erasing boot info failed\n");
+                // printf("Erasing boot info failed\n");
                 return false;
             }
 
             if (ESP_OK != spi_flash_write(boot_info_offset, (void *)&boot_info, sizeof(boot_info_t))) {
-                printf("Saving boot info failed\n");
+                // printf("Saving boot info failed\n");
                 return false;
             }
-            printf("Boot info saved OK\n");
+            // printf("Boot info saved OK\n");
         }
 //        sl_LockObjUnlock (&wlan_LockObj);
         updater_data.offset = 0;
