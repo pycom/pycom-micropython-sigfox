@@ -281,7 +281,7 @@ static IRAM_ATTR bool bootloader_verify (const esp_partition_pos_t *pos, uint32_
 
     ESP_LOGI(TAG, "Starting image verification %x %d", pos->offset, size);
 
-    size -= 32;
+    size -= 32; // substract the lenght of the MD5 hash
 
     MD5Init(&md5_context);
     ESP_LOGI(TAG, "md5 init");
@@ -360,10 +360,10 @@ static void bootloader_main()
 
     esp_image_header_t fhdr;
     bootloader_state_t bs;
+    uint32_t chip_revision = 0;
 
     memset(&bs, 0, sizeof(bs));
 
-    ESP_LOGI(TAG, "compile time " __TIME__ );
     ets_set_appcpu_boot_addr(0);
 
     /* disable watch dog here */
@@ -395,6 +395,11 @@ static void bootloader_main()
     print_flash_info(&fhdr);
 
     update_flash_config(&fhdr);
+
+    uint32_t reg = REG_READ(EFUSE_BLK0_RDATA3_REG);
+    if ((reg & EFUSE_RD_CHIP_VER_REV1_M) != 0) {
+        chip_revision = 1;
+    }
 
     if (!load_partition_table(&bs)) {
         ESP_LOGE(TAG, "load partition table error!");
@@ -441,6 +446,11 @@ static void bootloader_main()
 
             // do we have a new image that needs to be verified?
             if ((boot_info->ActiveImg != IMG_ACT_FACTORY) && (boot_info->Status == IMG_STATUS_CHECK)) {
+                if (chip_revision == 0) {
+                    if (boot_info->ActiveImg == IMG_ACT_UPDATE2) {
+                        boot_info->ActiveImg = IMG_ACT_FACTORY;    // we only have space for 1 OTAA image
+                    }
+                }
                 if (!bootloader_verify(&bs.image[boot_info->ActiveImg], boot_info->size)) {
                     // switch to the previous image
                     boot_info->ActiveImg = boot_info->PrevImg;
@@ -509,7 +519,7 @@ static void bootloader_main()
     bootloader_random_disable();
 
     // copy loaded segments to RAM, set up caches for mapped segments, and start application
-    ESP_LOGI(TAG, "Loading app partition at offset %08x", load_part_pos);
+    ESP_LOGI(TAG, "Loading app partition at offset %08x", load_part_pos.offset);
     unpack_load_app(&load_part_pos);
 }
 
@@ -798,10 +808,23 @@ void print_flash_info(const esp_image_header_t* phdr)
 static void clock_configure(void)
 {
     /* Set CPU to 80MHz. Keep other clocks unmodified. */
+    rtc_cpu_freq_t cpu_freq = RTC_CPU_FREQ_80M;
+
+    /* On ESP32 rev 0, switching to 80MHz if clock was previously set to
+     * 240 MHz may cause the chip to lock up (see section 3.5 of the errata
+     * document). For rev. 0, switch to 240 instead if it was chosen in
+     * menuconfig.
+     */
+    uint32_t chip_ver_reg = REG_READ(EFUSE_BLK0_RDATA3_REG);
+    if ((chip_ver_reg & EFUSE_RD_CHIP_VER_REV1_M) == 0 &&
+            CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ == 240) {
+        cpu_freq = RTC_CPU_FREQ_240M;
+    }
+
     uart_tx_wait_idle(0);
     rtc_clk_config_t clk_cfg = RTC_CLK_CONFIG_DEFAULT();
     clk_cfg.xtal_freq = CONFIG_ESP32_XTAL_FREQ;
-    clk_cfg.cpu_freq = RTC_CPU_FREQ_80M;
+    clk_cfg.cpu_freq = cpu_freq;
     clk_cfg.slow_freq = rtc_clk_slow_freq_get();
     clk_cfg.fast_freq = rtc_clk_fast_freq_get();
     rtc_clk_init(clk_cfg);
@@ -810,11 +833,9 @@ static void clock_configure(void)
      * part of the start up time by enabling 32k XTAL early.
      * App startup code will wait until the oscillator has started up.
      */
-#ifdef CONFIG_ESP32_RTC_CLOCK_SOURCE_EXTERNAL_CRYSTAL
     if (!rtc_clk_32k_enabled()) {
         rtc_clk_32k_bootstrap();
     }
-#endif
 }
 
 static void uart_console_configure(void)
@@ -865,10 +886,9 @@ static void uart_console_configure(void)
 
 static void wdt_reset_info_enable(void)
 {
+    // We do not reset core1 info here because it didn't work before cpu1 was up. So we put it into call_start_cpu1.
     DPORT_REG_SET_BIT(DPORT_PRO_CPU_RECORD_CTRL_REG, DPORT_PRO_CPU_PDEBUG_ENABLE | DPORT_PRO_CPU_RECORD_ENABLE);
     DPORT_REG_CLR_BIT(DPORT_PRO_CPU_RECORD_CTRL_REG, DPORT_PRO_CPU_RECORD_ENABLE);
-    DPORT_REG_SET_BIT(DPORT_APP_CPU_RECORD_CTRL_REG, DPORT_APP_CPU_PDEBUG_ENABLE | DPORT_APP_CPU_RECORD_ENABLE);
-    DPORT_REG_CLR_BIT(DPORT_APP_CPU_RECORD_CTRL_REG, DPORT_APP_CPU_RECORD_ENABLE);
 }
 
 static void wdt_reset_info_dump(int cpu)

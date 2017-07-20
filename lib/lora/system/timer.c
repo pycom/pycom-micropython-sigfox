@@ -83,7 +83,7 @@ IRAM_ATTR void TimerStart( TimerEvent_t *obj )
     uint32_t elapsedTime = 0;
     uint32_t remainingTime = 0;
 
-    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION()
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
 
     if( ( obj == NULL ) || ( TimerExists( obj ) == true ) )
     {
