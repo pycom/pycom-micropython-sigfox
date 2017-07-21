@@ -21,7 +21,7 @@
 #include "py/mperrno.h"
 #include "py/misc.h"
 
-#include "esp_heap_alloc_caps.h"
+#include "esp_heap_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
@@ -209,22 +209,21 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key,
     // stop the servers
     wlan_servers_stop();
 
+    MP_THREAD_GIL_EXIT();
+
     esp_wifi_get_mac(WIFI_IF_STA, wlan_obj.mac);
 
     wlan_set_antenna(antenna);
     wlan_set_mode(mode);
 
     if (mode != WIFI_MODE_STA) {
-        if (ssid == NULL) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "AP SSID not given"));
-        }
-        if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "WPA2_ENT not supported in AP mode"));
-        }
         wlan_setup_ap (ssid, auth, key, channel, add_mac);
     }
 
     esp_wifi_start();
+
+    MP_THREAD_GIL_ENTER();
+
     wlan_obj.started = true;
 
     // start the servers before returning
@@ -655,6 +654,15 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
 
     wlan_obj.pwrsave = args[5].u_bool;
 
+    if (mode != WIFI_MODE_STA) {
+        if (ssid == NULL) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "AP SSID not given"));
+        }
+        if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "WPA2_ENT not supported in AP mode"));
+        }
+    }
+
     // initialize the wlan subsystem
     wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false);
     mod_network_register_nic(&wlan_obj);
@@ -729,7 +737,9 @@ STATIC mp_obj_t wlan_scan(mp_obj_t self_in) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
 
+    MP_THREAD_GIL_EXIT();
     esp_wifi_scan_start(NULL, true);
+    MP_THREAD_GIL_ENTER();
 
     uint16_t ap_num;
     wifi_ap_record_t *ap_record_buffer;

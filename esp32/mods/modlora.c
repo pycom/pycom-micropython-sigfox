@@ -29,12 +29,13 @@
 #include "mpirq.h"
 #include "modlora.h"
 
-#include "esp_heap_alloc_caps.h"
+#include "esp_heap_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
 #include "esp_event.h"
+#include "nvs.h"
 
 #include "lwip/sockets.h"       // for the socket error codes
 
@@ -52,7 +53,7 @@
 #define RF_FREQUENCY_MIN                            863000000   // Hz
 #define RF_FREQUENCY_CENTER                         868000000   // Hz
 #define RF_FREQUENCY_MAX                            870000000   // Hz
-#define TX_OUTPUT_POWER_MAX                         14          // dBm
+#define TX_OUTPUT_POWER_MAX                         20          // dBm
 #define TX_OUTPUT_POWER_MIN                         2           // dBm
 #elif defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID)
 #define RF_FREQUENCY_MIN                            902000000   // Hz
@@ -118,6 +119,8 @@
 #define MODLORA_TX_EVENT                            (0x02)
 #define MODLORA_TX_FAILED_EVENT                     (0x04)
 
+#define MODLORA_NVS_NAMESPACE                       "LORA_NVM"
+
 /******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
@@ -177,6 +180,7 @@ typedef struct {
   uint32_t          tx_timeout;
   uint32_t          dev_addr;
   uint32_t          rx_timestamp;
+  uint32_t          net_id;
   int16_t           rssi;
   int8_t            snr;
   uint8_t           sfrx;
@@ -231,7 +235,6 @@ typedef struct {
     uint8_t     data[LORA_PAYLOAD_SIZE_MAX];
 } lora_partial_rx_packet_t;
 
-
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -246,6 +249,9 @@ static volatile lora_partial_rx_packet_t lora_partial_rx_packet;
 static volatile lora_rx_data_t rx_data_isr;
 
 static TimerEvent_t TxNextActReqTimer;
+
+static nvs_handle modlora_nvs_handle;
+static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR", "NWSKEY", "APPSKEY", "NETID" };
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -270,15 +276,17 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms);
 static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms);
 static bool lora_rx_any (void);
 static bool lora_tx_space (void);
-static void lora_callback_handler(void *arg);
+static void lora_callback_handler (void *arg);
+static bool lorawan_nvs_open (void);
+static bool modlora_nvs_commit(void);
 
 static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno);
 static void lora_socket_close (mod_network_socket_obj_t *s);
 static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno);
 static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno);
 static int lora_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno);
-static int lora_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno);
-static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
+static int lora_socket_bind (mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno);
+static int lora_socket_setsockopt (mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
 static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 
 /******************************************************************************
@@ -289,12 +297,72 @@ void modlora_init0(void) {
     xRxQueue = xQueueCreate(LORA_DATA_QUEUE_SIZE_MAX, sizeof(lora_rx_data_t));
     LoRaEvents = xEventGroupCreate();
 
+    if (!lorawan_nvs_open()) {
+        printf("Error opening LoRa NVS namespace!\n");
+    }
+
     xTaskCreatePinnedToCore(TASK_LoRa, "LoRa", LORA_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TASK_PRIORITY, NULL, 0);
+}
+
+bool modlora_nvs_set_uint(uint32_t key_idx, uint32_t value) {
+    if (ESP_OK == nvs_set_u32(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value)) {
+        return true;
+    }
+    printf("NVS set uint error\n");
+    return false;
+}
+
+bool modlora_nvs_set_blob(uint32_t key_idx, const void *value, uint32_t length) {
+    if (ESP_OK == nvs_set_blob(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value, length)) {
+        return true;
+    }
+    printf("NVS set blob error\n");
+    return false;
+}
+
+bool modlora_nvs_get_uint(uint32_t key_idx, uint32_t *value) {
+    if (ESP_OK == nvs_get_u32(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value)) {
+        return true;
+    }
+    return false;
+}
+
+bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length) {
+    uint32_t result = nvs_get_blob(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value, length);
+    if (ESP_OK == result) {
+        return true;
+    }
+    printf("NVS error=%d\n", result);
+    return false;
 }
 
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
+
+static bool lorawan_nvs_open (void) {
+    if (nvs_open(MODLORA_NVS_NAMESPACE, NVS_READWRITE, &modlora_nvs_handle) != ESP_OK) {
+        return false;
+    }
+
+    uint32_t data;
+    if (ESP_ERR_NVS_NOT_FOUND == nvs_get_u32(modlora_nvs_handle, "JOINED", &data)) {
+        // initialize the value to 0
+        nvs_set_u32(modlora_nvs_handle, "JOINED", false);
+        if (ESP_OK != nvs_commit(modlora_nvs_handle)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool modlora_nvs_commit(void) {
+    if (ESP_OK != nvs_commit(modlora_nvs_handle)) {
+        return false;
+    }
+    return true;
+}
+
 static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms, bool confirmed, uint32_t dr, uint32_t port) {
     lora_cmd_data_t cmd_data;
 
@@ -560,6 +628,7 @@ static void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
                 lora_obj.ComplianceTest.State = 1;
                 lora_obj.ComplianceTest.Running = false;
                 lora_obj.ComplianceTest.DownLinkCounter = 0;
+                modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, true);
                 break;
             case MLME_LINK_CHECK:
                 // Check DemodMargin
@@ -590,6 +659,7 @@ static void OnTxNextActReqTimerEvent(void) {
             lora_obj.ComplianceTest.State = 1;
             lora_obj.ComplianceTest.Running = false;
             lora_obj.ComplianceTest.DownLinkCounter = 0;
+            modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, true);
         } else {
             lora_obj.state = E_LORA_STATE_JOIN;
         }
@@ -652,7 +722,41 @@ static void TASK_LoRa (void *pvParameters) {
 
                         // change the frequency to be on the center of the band
                         lora_obj.frequency = RF_FREQUENCY_CENTER;
-                        lora_obj.state = E_LORA_STATE_IDLE;
+
+                        // check if we had previously joined a network
+                        uint32_t joined;
+                        if (modlora_nvs_get_uint(E_LORA_NVS_ELE_JOINED, &joined) && joined) {
+                            uint32_t length;
+                            bool result = true;
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_NET_ID, (uint32_t *)&lora_obj.net_id);
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DEVADDR, (uint32_t *)&lora_obj.abp.DevAddr);
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_NET_ID, (uint32_t *)&lora_obj.net_id);
+                            length = 16;
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_NWSKEY, (void *)lora_obj.abp.NwkSKey, &length);
+                            length = 16;
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_APPSKEY, (void *)lora_obj.abp.AppSKey, &length);
+
+                            uint32_t uplinks, downlinks;
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_UPLINK, &uplinks);
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DWLINK, &downlinks);
+
+                            if (result) {
+                                mibReq.Type = MIB_UPLINK_COUNTER;
+                                mibReq.Param.UpLinkCounter = uplinks;
+                                LoRaMacMibSetRequestConfirm( &mibReq );
+
+                                mibReq.Type = MIB_DOWNLINK_COUNTER;
+                                mibReq.Param.DownLinkCounter = downlinks;
+                                LoRaMacMibSetRequestConfirm( &mibReq );
+
+                                lora_obj.activation = E_LORA_ACTIVATION_ABP;
+                                lora_obj.state = E_LORA_STATE_JOIN;
+                            } else {
+                                lora_obj.state = E_LORA_STATE_IDLE;
+                            }
+                        } else {
+                            lora_obj.state = E_LORA_STATE_IDLE;
+                        }
                     } else {
                         if (!lora_obj.radio_init) {
                             // radio initialization
@@ -667,9 +771,13 @@ static void TASK_LoRa (void *pvParameters) {
 
                         // init the radio
                         lora_radio_setup(&cmd_data.info.init);
+                        lora_obj.state = E_LORA_STATE_IDLE;
                     }
                     lora_obj.joined = false;
-                    xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
+                    if (lora_obj.state == E_LORA_STATE_IDLE) {
+                        xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
+                    }
+                    modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, false);
                     break;
                 case E_LORA_CMD_JOIN:
                     lora_obj.joined = false;
@@ -679,6 +787,7 @@ static void TASK_LoRa (void *pvParameters) {
                         memcpy((void *)lora_obj.otaa.AppEui, cmd_data.info.join.otaa.AppEui, sizeof(lora_obj.otaa.AppEui));
                         memcpy((void *)lora_obj.otaa.AppKey, cmd_data.info.join.otaa.AppKey, sizeof(lora_obj.otaa.AppKey));
                     } else {
+                        lora_obj.net_id = DEF_LORAWAN_NETWORK_ID;
                         lora_obj.abp.DevAddr = cmd_data.info.join.abp.DevAddr;
                         memcpy((void *)lora_obj.abp.AppSKey, cmd_data.info.join.abp.AppSKey, sizeof(lora_obj.abp.AppSKey));
                         memcpy((void *)lora_obj.abp.NwkSKey, cmd_data.info.join.abp.NwkSKey, sizeof(lora_obj.abp.NwkSKey));
@@ -769,10 +878,10 @@ static void TASK_LoRa (void *pvParameters) {
                     mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.otaa.DevEui;
                     mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.otaa.AppEui;
                     mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.otaa.AppKey;
-                    LoRaMacMlmeRequest(&mlmeReq);
+                    LoRaMacMlmeRequest( &mlmeReq );
                 } else {
                     mibReq.Type = MIB_NET_ID;
-                    mibReq.Param.NetID = DEF_LORAWAN_NETWORK_ID;
+                    mibReq.Param.NetID = lora_obj.net_id;
                     LoRaMacMibSetRequestConfirm( &mibReq );
 
                     mibReq.Type = MIB_DEV_ADDR;
@@ -792,6 +901,7 @@ static void TASK_LoRa (void *pvParameters) {
                     LoRaMacMibSetRequestConfirm( &mibReq );
                     lora_obj.joined = true;
                     lora_obj.ComplianceTest.State = 1;
+                    modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, true);
                 }
             }
             xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
@@ -827,6 +937,8 @@ static void TASK_LoRa (void *pvParameters) {
             break;
         }
         TimerLowPowerHandler();
+        LoRaMacStoreUpAndDownLinkCountersInNvs();
+        modlora_nvs_commit();
     }
 }
 

@@ -83,11 +83,11 @@ IRAM_ATTR void TimerStart( TimerEvent_t *obj )
     uint32_t elapsedTime = 0;
     uint32_t remainingTime = 0;
 
-    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;;
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
 
     if( ( obj == NULL ) || ( TimerExists( obj ) == true ) )
     {
-        XTOS_RESTORE_INTLEVEL(ilevel);
+        MICROPY_END_ATOMIC_SECTION(ilevel);
         return;
     }
 
@@ -123,7 +123,7 @@ IRAM_ATTR void TimerStart( TimerEvent_t *obj )
              TimerInsertTimer( obj, remainingTime );
         }
     }
-    XTOS_RESTORE_INTLEVEL(ilevel);
+    MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 static IRAM_ATTR void TimerInsertTimer( TimerEvent_t *obj, uint32_t remainingTime )
@@ -243,7 +243,7 @@ IRAM_ATTR void TimerIrqHandler( void )
 
 IRAM_ATTR void TimerStop( TimerEvent_t *obj )
 {
-    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
 
     uint32_t elapsedTime = 0;
     uint32_t remainingTime = 0;
@@ -254,7 +254,7 @@ IRAM_ATTR void TimerStop( TimerEvent_t *obj )
     // List is empty or the Obj to stop does not exist
     if( ( TimerListHead == NULL ) || ( obj == NULL ) )
     {
-        XTOS_RESTORE_INTLEVEL(ilevel);
+        MICROPY_END_ATOMIC_SECTION(ilevel);
         return;
     }
 
@@ -325,7 +325,7 @@ IRAM_ATTR void TimerStop( TimerEvent_t *obj )
             }
         }
     }
-    XTOS_RESTORE_INTLEVEL(ilevel);
+    MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 static IRAM_ATTR bool TimerExists( TimerEvent_t *obj )

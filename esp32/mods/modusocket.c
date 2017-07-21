@@ -51,7 +51,7 @@
 #include "modusocket.h"
 #include "mpexception.h"
 
-#include "esp_heap_alloc_caps.h"
+#include "esp_heap_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_spi_flash.h"
@@ -291,8 +291,8 @@ STATIC mp_obj_t socket_accept(mp_obj_t self_in) {
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
     }
 
-    // add the socket to the list
     MP_THREAD_GIL_ENTER();
+    // add the socket to the list
     modusocket_socket_add(socket2->sock_base.sd, true);
 
     // make the return value
@@ -561,7 +561,9 @@ MP_DEFINE_CONST_DICT(raw_socket_locals_dict, raw_socket_locals_dict_table);
 
 STATIC mp_uint_t socket_read(mp_obj_t self_in, void *buf, mp_uint_t size, int *errcode) {
     mod_network_socket_obj_t *self = self_in;
+    MP_THREAD_GIL_EXIT();
     mp_int_t ret = self->sock_base.nic_type->n_recv(self, buf, size, errcode);
+    MP_THREAD_GIL_ENTER();
     if (ret < 0) {
 //        // we need to ignore the socket closed error here because a readall() or read() without params
 //        // only returns when the socket is closed by the other end
@@ -576,7 +578,9 @@ STATIC mp_uint_t socket_read(mp_obj_t self_in, void *buf, mp_uint_t size, int *e
 
 STATIC mp_uint_t socket_write(mp_obj_t self_in, const void *buf, mp_uint_t size, int *errcode) {
     mod_network_socket_obj_t *self = self_in;
+    MP_THREAD_GIL_EXIT();
     mp_int_t ret = self->sock_base.nic_type->n_send(self, buf, size, errcode);
+    MP_THREAD_GIL_ENTER();
     if (ret < 0) {
         ret = MP_STREAM_ERROR;
     }

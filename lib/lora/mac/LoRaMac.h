@@ -1772,6 +1772,8 @@ LoRaMacStatus_t LoRaMacMcpsRequest( McpsReq_t *mcpsRequest );
  */
 bool ValidatePayloadLength( uint8_t lenN, int8_t datarate, uint8_t fOptsLen );
 
+void LoRaMacStoreUpAndDownLinkCountersInNvs( void );
+
 /*! \} defgroup LORAMAC */
 
 #endif // __LORAMAC_H__

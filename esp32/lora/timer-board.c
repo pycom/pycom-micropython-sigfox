@@ -73,15 +73,15 @@ static IRAM_ATTR void TimerCallback (void) {
 }
 
 void TimerHwInit( void ) {
-    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
     HAL_set_tick_cb(TimerCallback);
-    XTOS_RESTORE_INTLEVEL(ilevel);
+    MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 void TimerHwDeInit( void ) {
-    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
     HAL_set_tick_cb(NULL);
-    XTOS_RESTORE_INTLEVEL(ilevel);
+    MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 IRAM_ATTR uint32_t TimerHwGetMinimumTimeout( void ) {
@@ -89,7 +89,7 @@ IRAM_ATTR uint32_t TimerHwGetMinimumTimeout( void ) {
 }
 
 IRAM_ATTR void TimerHwStart (uint32_t val) {
-    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
     TimerTickCounterContext = TimerHwGetTimerValue();
     if (val <= HW_TIMER_TIME_BASE) {
         TimeoutCntValue = TimerTickCounterContext + (HW_TIMER_TIME_BASE * 2);
@@ -97,7 +97,7 @@ IRAM_ATTR void TimerHwStart (uint32_t val) {
         TimeoutCntValue = TimerTickCounterContext + val;
     }
     TimerEnabled = true;
-    XTOS_RESTORE_INTLEVEL(ilevel);
+    MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 void IRAM_ATTR TimerHwStop( void ) {
@@ -109,12 +109,9 @@ void TimerHwDelayMs( uint32_t delay ) {
 }
 
 IRAM_ATTR TimerTime_t TimerHwGetTimerValue (void) {
-    TimerTime_t val;
-
-    uint32_t ilevel = XTOS_DISABLE_ALL_INTERRUPTS;
-    val = TimerTickCounter;
-    XTOS_RESTORE_INTLEVEL(ilevel);
-
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
+    TimerTime_t val = TimerTickCounter;
+    MICROPY_END_ATOMIC_SECTION(ilevel);
     return (val);
 }
 

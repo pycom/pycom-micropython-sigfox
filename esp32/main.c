@@ -31,7 +31,7 @@
 #include "freertos/timers.h"
 #include "freertos/xtensa_api.h"
 
-#include "esp_heap_alloc_caps.h"
+#include "esp_heap_caps.h"
 #include "sdkconfig.h"
 #include "esp_system.h"
 #include "esp_attr.h"
