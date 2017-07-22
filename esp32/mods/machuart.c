@@ -74,6 +74,7 @@
  ******************************************************************************/
 static bool uart_tx_fifo_space (mach_uart_obj_t *self);
 static void uart_intr_handler(void *para);
+STATIC esp_err_t machuart_isr_register(uart_port_t uart_num, void (*fn)(void*), void * arg);
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -90,6 +91,7 @@ struct _mach_uart_obj_t {
     uint8_t uart_id;
     uint8_t rx_timeout;
     uint8_t n_pins;
+    bool isr_registered;
 };
 
 /******************************************************************************
@@ -108,6 +110,7 @@ static const uint32_t mach_uart_pin_af[MACH_NUM_UARTS][4] = { { U0TXD_OUT_IDX, U
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 void uart_init0 (void) {
+
 }
 
 uint32_t uart_rx_any(mach_uart_obj_t *self) {
@@ -352,7 +355,7 @@ STATIC void mach_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_
     }
 }
 
-esp_err_t machuart_isr_register(uart_port_t uart_num, void (*fn)(void*), void * arg)
+STATIC esp_err_t machuart_isr_register(uart_port_t uart_num, void (*fn)(void*), void * arg)
 {
     int32_t source;
     switch(uart_num) {
@@ -501,8 +504,10 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     }
 
     // interrupts are enabled here
-    machuart_isr_register(self->uart_id, uart_intr_handler, NULL);
-
+    if (!self->isr_registered) {
+        machuart_isr_register(self->uart_id, uart_intr_handler, NULL);
+        self->isr_registered = true;
+    }
     self->intr_config.intr_enable_mask = intr_mask;
     self->intr_config.rx_timeout_thresh = 1;
     self->intr_config.txfifo_empty_intr_thresh = 2;
