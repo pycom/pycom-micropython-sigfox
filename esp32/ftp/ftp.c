@@ -60,7 +60,7 @@
 #define FTP_UNIX_TIME_20000101              946684800
 #define FTP_UNIX_TIME_20150101              1420070400
 #define FTP_UNIX_SECONDS_180_DAYS           15552000
-#define FTP_DATA_TIMEOUT_MS                 5000            // 5 seconds
+#define FTP_DATA_TIMEOUT_MS                 10000            // 10 seconds
 #define FTP_SOCKETFIFO_ELEMENTS_MAX         4
 #define FTP_CYCLE_TIME_MS                   (SERVERS_CYCLE_TIME_MS * 2)
 
