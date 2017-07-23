@@ -204,7 +204,7 @@ static void ftp_close_files (void);
 static void ftp_close_filesystem_on_error (void);
 static void ftp_close_cmd_data (void);
 static ftp_cmd_index_t ftp_pop_command (char **str);
-static void ftp_pop_param (char **str, char *param);
+static void ftp_pop_param (char **str, char *param, bool stop_on_space);
 static int ftp_print_eplf_item (char *dest, uint32_t destsize, FILINFO *fno);
 static int ftp_print_eplf_drive (char *dest, uint32_t destsize, char *name);
 static bool ftp_open_file (const char *path, int mode);
@@ -611,7 +611,7 @@ static ftp_result_t ftp_recv_non_blocking (int32_t sd, void *buff, int32_t Maxle
 }
 
 static void ftp_get_param_and_open_child (char **bufptr) {
-    ftp_pop_param (bufptr, ftp_scratch_buffer);
+    ftp_pop_param (bufptr, ftp_scratch_buffer, false);
     ftp_open_child (ftp_path, ftp_scratch_buffer);
     ftp_data.closechild = true;
 }
@@ -646,7 +646,7 @@ static void ftp_process_cmd (void) {
         case E_FTP_CMD_CWD:
             {
                 fres = FR_NO_PATH;
-                ftp_pop_param (&bufptr, ftp_scratch_buffer);
+                ftp_pop_param (&bufptr, ftp_scratch_buffer, false);
                 ftp_open_child (ftp_path, ftp_scratch_buffer);
                 if ((ftp_path[0] == '/' && ftp_path[1] == '\0') || ((fres = f_opendir (&ftp_data.dp, ftp_path)) == FR_OK)) {
                     if (fres == FR_OK) {
@@ -692,14 +692,14 @@ static void ftp_process_cmd (void) {
             ftp_send_reply(200, NULL);
             break;
         case E_FTP_CMD_USER:
-            ftp_pop_param (&bufptr, ftp_scratch_buffer);
+            ftp_pop_param (&bufptr, ftp_scratch_buffer, true);
             if (!memcmp(ftp_scratch_buffer, servers_user, MAX(strlen(ftp_scratch_buffer), strlen(servers_user)))) {
                 ftp_data.loggin.uservalid = true && (strlen(servers_user) == strlen(ftp_scratch_buffer));
             }
             ftp_send_reply(331, NULL);
             break;
         case E_FTP_CMD_PASS:
-            ftp_pop_param (&bufptr, ftp_scratch_buffer);
+            ftp_pop_param (&bufptr, ftp_scratch_buffer, true);
             if (!memcmp(ftp_scratch_buffer, servers_pass, MAX(strlen(ftp_scratch_buffer), strlen(servers_pass))) &&
                     ftp_data.loggin.uservalid) {
                 ftp_data.loggin.passvalid = true && (strlen(servers_pass) == strlen(ftp_scratch_buffer));
@@ -858,7 +858,7 @@ static void ftp_close_cmd_data (void) {
 
 static ftp_cmd_index_t ftp_pop_command (char **str) {
     char _cmd[FTP_CMD_SIZE_MAX];
-    ftp_pop_param (str, _cmd);
+    ftp_pop_param (str, _cmd, true);
     stoupper (_cmd);
     for (ftp_cmd_index_t i = 0; i < E_FTP_NUM_FTP_CMDS; i++) {
         if (!strcmp (_cmd, ftp_cmd_table[i].cmd)) {
@@ -870,8 +870,11 @@ static ftp_cmd_index_t ftp_pop_command (char **str) {
     return E_FTP_CMD_NOT_SUPPORTED;
 }
 
-static void ftp_pop_param (char **str, char *param) {
-    while (**str != ' ' && **str != '\r' && **str != '\n' && **str != '\0') {
+static void ftp_pop_param (char **str, char *param, bool stop_on_space) {
+    while (**str != '\r' && **str != '\n' && **str != '\0') {
+        if (stop_on_space && (**str == ' ')) {
+            break;
+        }
         *param++ = **str;
         (*str)++;
     }
