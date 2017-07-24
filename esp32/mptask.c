@@ -175,6 +175,7 @@ soft_reset:
     modbt_init0();
     machtimer_init0();
     modpycom_init0();
+
     bool safeboot = false;
     boot_info_t boot_info;
     uint32_t boot_info_offset;

@@ -22,6 +22,7 @@
 #include "machrtc.h"
 #include "soc/rtc.h"
 #include "esp_clk.h"
+#include "esp32_mphal.h"
 
 
 uint32_t sntp_update_period = 3600000; // in ms
@@ -65,6 +66,15 @@ uint64_t mach_rtc_get_us_since_epoch(void) {
     gettimeofday(&tv, NULL);
     return (uint64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + delta_from_epoch_til_boot;
 };
+
+
+void mach_rtc_get_time (uint32_t *msecs, uint16_t *usecs) {
+    //used usecs and msecs instead of msecs and secs because
+    //the boot time was generating always values with 1 msec of difference
+    //and the seed was always resulting amongst only 2 values
+    *usecs = mp_hal_ticks_us();
+    *msecs = mp_hal_ticks_ms();
+}
 
 STATIC uint64_t mach_rtc_datetime_us(const mp_obj_t datetime) {
     timeutils_struct_time_t tm;
