@@ -59,7 +59,7 @@
 #define BT_CHAR_VALUE_SIZE_MAX                              (20)
 
 #define MOD_BT_CLIENT_APP_ID                                (0)
-#define MOD_BT_SERVER_APP_ID                                (0)
+#define MOD_BT_SERVER_APP_ID                                (1)
 
 #define MOD_BT_GATTC_ADV_EVT                                (0x0001)
 #define MOD_BT_GATTS_CONN_EVT                               (0x0002)
@@ -118,6 +118,8 @@ typedef struct {
     mp_obj_t                handler_arg;
     uint32_t                trigger;
     uint32_t                events;
+    uint16_t                value_len;
+    uint8_t                 value[BT_CHAR_VALUE_SIZE_MAX];
     // mp_obj_list_t         desc_list;
 } bt_char_obj_t;
 
@@ -142,13 +144,18 @@ typedef struct {
     esp_gatt_if_t   gatt_if;
 } bt_connection_event_t;
 
+typedef struct {
+    esp_gatt_status_t status;
+} bt_register_for_notify_event_t;
+
 typedef union {
-    esp_ble_gap_cb_param_t      scan;
-    esp_gatt_srvc_id_t          service;
-    bt_char_t                   characteristic;
-    bt_read_value_t             read;
-    bt_write_value_t            write;
-    bt_connection_event_t       connection;
+    esp_ble_gap_cb_param_t          scan;
+    esp_gatt_srvc_id_t              service;
+    bt_char_t                       characteristic;
+    bt_read_value_t                 read;
+    bt_write_value_t                write;
+    bt_connection_event_t           connection;
+    bt_register_for_notify_event_t  register_for_notify;
 } bt_event_result_t;
 
 typedef union {
@@ -182,7 +189,6 @@ typedef struct {
     uint32_t              trigger;
     uint32_t              events;
     uint32_t              trans_id;
-    uint16_t              config;
     bool                  read_request;
 } bt_gatts_char_obj_t;
 
@@ -387,13 +393,17 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         } else {
             bt_event_result.connection.conn_id = -1;
         }
+        // esp_ble_gattc_config_mtu (bt_obj.gattc_if, conn_id, 200);
         xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
         bt_obj.busy = false;
         break;
+    case ESP_GATTC_CFG_MTU_EVT:
+        break;
     case ESP_GATTC_READ_CHAR_EVT:
         if (p_data->read.status == ESP_GATT_OK) {
-            memcpy(&bt_event_result.read.value, p_data->read.value, p_data->read.value_len);
-            bt_event_result.read.value_len = p_data->read.value_len;
+            uint16_t read_len = p_data->read.value_len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : p_data->read.value_len;
+            memcpy(&bt_event_result.read.value, p_data->read.value, read_len);
+            bt_event_result.read.value_len = read_len;
             bt_event_result.read.value_type = p_data->read.value_type;
             xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
         }
@@ -422,18 +432,19 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
             bt_obj.busy = false;
         }
         break;
-    case ESP_GATTC_REG_FOR_NOTIFY_EVT: {
-        // printf("Register for Notify event\n");
-        uint16_t notify_en = 1;
-        esp_ble_gattc_write_char_descr(gattc_if, conn_id, &p_data->reg_for_notify.srvc_id, &p_data->reg_for_notify.char_id, &bt_notify_descr_id,
-                                       sizeof(notify_en), (uint8_t *)&notify_en, ESP_GATT_WRITE_TYPE_NO_RSP, ESP_GATT_AUTH_REQ_NONE);
+    case ESP_GATTC_REG_FOR_NOTIFY_EVT:
+        bt_event_result.register_for_notify.status = p_data->reg_for_notify.status;
+        xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
         break;
-        }
     case ESP_GATTC_NOTIFY_EVT: {
-        // printf("Notification/Indication event received\n");
         bt_char_obj_t *char_obj;
         char_obj = find_gattc_char (p_data->notify.conn_id, &p_data->notify.srvc_id, &p_data->notify.char_id);
         if (char_obj != NULL) {
+            // copy the new value into the characteristic
+            memcpy(&char_obj->value, p_data->notify.value, p_data->notify.value_len);
+            char_obj->value_len = p_data->notify.value_len;
+
+            // register the event
             if (p_data->notify.is_notify) {
                 char_obj->events |= MOD_BT_GATTC_NOTIFY_EVT;
             } else {
@@ -542,7 +553,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                     break;
                 }
             }
-            // send the response immediatelly if not a characteristic or if there's no callback registered
+            // send the response immediatelly if it's not a characteristic or if there's no callback registered
             esp_gatt_rsp_t rsp;
             memset(&rsp, 0, sizeof(esp_gatt_rsp_t));
             rsp.attr_value.handle = p->read.handle;
@@ -553,24 +564,31 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         break;
     }
     case ESP_GATTS_WRITE_EVT: {
-        bt_gatts_attr_obj_t *attr_obj = find_gatts_attr_by_handle (p->write.handle);
-        if (attr_obj) {
-            esp_ble_gatts_send_response(gatts_if, p->write.conn_id, p->write.trans_id, ESP_GATT_OK, NULL);
-
-            if (attr_obj->is_char) {
+        if (!p->write.is_prep) {
+            bt_gatts_attr_obj_t *attr_obj = find_gatts_attr_by_handle (p->write.handle);
+            if (attr_obj) {
                 // only write up to the maximum allowed size
                 uint16_t write_len = p->write.len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : p->write.len;
                 memcpy(attr_obj->value, p->write.value, write_len);
                 attr_obj->value_len = write_len;
 
-                bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
-                char_obj->events |= MOD_BT_GATTS_WRITE_EVT;
-                if (char_obj->trigger & MOD_BT_GATTS_WRITE_EVT) {
-                    mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+                if (attr_obj->is_char) {    // characteristic
+                    bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
+                    char_obj->events |= MOD_BT_GATTS_WRITE_EVT;
+                    if (char_obj->trigger & MOD_BT_GATTS_WRITE_EVT) {
+                        mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+                    }
+                } else {    // descriptor
+                    if (attr_obj->uuid.len == ESP_UUID_LEN_16 && attr_obj->uuid.uuid.uuid16 == GATT_UUID_CHAR_CLIENT_CONFIG) {
+                        uint16_t value = param->write.value[1] << 8 | param->write.value[0];
+                        if (value == 0x0001) {  // notifications enabled
+                            bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj->parent;
+                            // the size of value[] need less than MTU size
+                            esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, char_obj->attr_obj.handle, char_obj->attr_obj.value_len, char_obj->attr_obj.value, false);
+                        }
+                    }
                 }
-            }  else {    // characteristic descriptor (only characteristic configuration is available ATM)
-                bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj->parent;
-                memcpy(&char_obj->config, p->write.value, 2);
+                esp_ble_gatts_send_response(gatts_if, p->write.conn_id, p->write.trans_id, ESP_GATT_OK, NULL);
             }
         }
         break;
@@ -908,6 +926,7 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
         bt_connection_obj_t *conn = m_new_obj(bt_connection_obj_t);
         conn->base.type = (mp_obj_t)&mod_bt_connection_type;
         conn->conn_id = bt_event.connection.conn_id;
+        conn->gatt_if = bt_event.connection.gatt_if;
         memcpy(conn->srv_bda, bt_event.connection.srv_bda, 6);
         mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), conn);
         return conn;
@@ -1390,7 +1409,7 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_READ_EVENT),         MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_READ_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_WRITE_EVENT),        MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_WRITE_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_NOTIFY_EVENT),       MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_NOTIFY_EVT) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_INDICATE_EVENT),     MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_INDICATE_EVT) },
+    // { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_INDICATE_EVENT),     MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_INDICATE_EVT) },
 };
 STATIC MP_DEFINE_CONST_DICT(bt_locals_dict, bt_locals_dict_table);
 
@@ -1514,6 +1533,8 @@ STATIC mp_obj_t bt_srv_characteristics(mp_obj_t self_in) {
                 chr->service = self;
                 memcpy(&chr->characteristic.char_id, &bt_event.characteristic.char_id, sizeof(esp_gatt_id_t));
                 chr->characteristic.char_prop = bt_event.characteristic.char_prop;
+                chr->value[0] = 0;
+                chr->value_len = 1;
                 mp_obj_list_append(&self->char_list, chr);
             }
         }
@@ -1582,6 +1603,8 @@ STATIC mp_obj_t bt_char_read(mp_obj_t self_in) {
             mp_hal_delay_ms(5);
         }
         if (xQueueReceive(xScanQueue, &bt_event, (TickType_t)5)) {
+            memcpy(self->value, bt_event.read.value, bt_event.read.value_len);
+            self->value_len = bt_event.read.value_len;
             return mp_obj_new_bytes(bt_event.read.value, bt_event.read.value_len);
         } else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
@@ -1645,10 +1668,15 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
     bt_char_obj_t *self = pos_args[0];
+    bt_event_result_t bt_event;
 
     // enable the callback
     if (args[0].u_obj != mp_const_none && args[1].u_obj != mp_const_none) {
-        self->trigger = mp_obj_get_int(args[0].u_obj);
+        uint32_t trigger = mp_obj_get_int(args[0].u_obj);
+        if (trigger != MOD_BT_GATTC_NOTIFY_EVT) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid trigger"));
+        }
+        self->trigger = trigger;
         self->handler = args[1].u_obj;
         if (args[2].u_obj == mp_const_none) {
             self->handler_arg = self;
@@ -1663,7 +1691,23 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
                                                              &self->characteristic.char_id)) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
-            // printf("Registered for notifications/indications\n");
+
+            if (xQueueReceive(xScanQueue, &bt_event, (TickType_t)(500 / portTICK_RATE_MS))) {
+                if (bt_event.register_for_notify.status != ESP_GATT_OK) {
+                    goto error;
+                }
+            } else {
+                goto error;
+            }
+
+            uint16_t notify_en = 1;
+            esp_ble_gattc_write_char_descr(self->service->connection->gatt_if,
+                                           self->service->connection->conn_id,
+                                           &self->service->srv_id,
+                                           &self->characteristic.char_id, &bt_notify_descr_id,
+                                           sizeof(notify_en), (uint8_t *)&notify_en,
+                                           ESP_GATT_WRITE_TYPE_RSP, ESP_GATT_AUTH_REQ_NONE);
+
         } else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection already closed"));
         }
@@ -1674,8 +1718,17 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
     mp_irq_handler_add(args[1].u_obj);
 
     return mp_const_none;
+
+error:
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_char_callback_obj, 1, bt_char_callback);
+
+STATIC mp_obj_t bt_char_value(mp_obj_t self_in) {
+    bt_char_obj_t *self = self_in;
+    return mp_obj_new_bytes(self->value, self->value_len);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_char_value_obj, bt_char_value);
 
 STATIC const mp_map_elem_t bt_characteristic_locals_dict_table[] = {
     // instance methods
@@ -1685,6 +1738,7 @@ STATIC const mp_map_elem_t bt_characteristic_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_read),                    (mp_obj_t)&bt_char_read_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_write),                   (mp_obj_t)&bt_char_write_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&bt_char_callback_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_value),                   (mp_obj_t)&bt_char_value_obj },
     // { MP_OBJ_NEW_QSTR(MP_QSTR_descriptors),             (mp_obj_t)&bt_char_descriptors_obj },
 };
 STATIC MP_DEFINE_CONST_DICT(bt_characteristic_locals_dict, bt_characteristic_locals_dict_table);
