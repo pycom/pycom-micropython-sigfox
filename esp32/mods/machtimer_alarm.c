@@ -16,8 +16,8 @@
 #include "machtimer_alarm.h"
 
 
-#define CMP(a, b) ((a)->when <= (b)->when)
-#define MIN_HEAP_ELEMENTS (8)
+#define CMP_ALARM_WHEN(a, b) ((a)->when <= (b)->when)
+#define ALARM_HEAP_MAX_ELEMENTS (16U)
 
 #define CLK_FREQ (APB_CLK_FREQ / 2)
 
@@ -32,7 +32,6 @@ typedef struct {
 } mp_obj_alarm_t;
 
 struct {
-    uint32_t size;
     uint32_t count;
     mp_obj_alarm_t **data;
 } alarm_heap;
@@ -41,16 +40,14 @@ IRAM_ATTR void timer_alarm_isr(void *arg);
 STATIC void load_next_alarm(void);
 STATIC mp_obj_t alarm_delete(mp_obj_t self_in);
 STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj_t handler_arg);
-// STATIC void tidy_alarm_memory(void);
 
 void alarm_preinit(void) {
     timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_alarm_isr, NULL, ESP_INTR_FLAG_IRAM, NULL);
 }
 
 void init_alarm_heap(void) {
-    alarm_heap.size = MIN_HEAP_ELEMENTS;
     alarm_heap.count = 0;
-    MP_STATE_PORT(mp_alarm_heap) = gc_alloc(MIN_HEAP_ELEMENTS * sizeof(mp_obj_alarm_t *), false);
+    MP_STATE_PORT(mp_alarm_heap) = gc_alloc(ALARM_HEAP_MAX_ELEMENTS * sizeof(mp_obj_alarm_t *), false);
     alarm_heap.data = MP_STATE_PORT(mp_alarm_heap);
     if (alarm_heap.data == NULL) {
         printf("ERROR: no enough memory for the alarms heap\n");
@@ -58,72 +55,59 @@ void init_alarm_heap(void) {
     }
 }
 
+/*
+ * Insert a new alarm into the heap
+ * Note: It has already been checked that there is at least 1 free space on the heap
+ * Note: The heap will remain ordered after the operation.
+ * Note: If the new element is placed at the first place, which means its timestamp is the smallest, it is loaded immediatelly
+ */
 STATIC IRAM_ATTR void insert_alarm(mp_obj_alarm_t *alarm) {
-    uint32_t index, parent;
 
-    if (alarm_heap.count == alarm_heap.size) {
-        // no need to panic, interrupt doesn't alter the heap size when re-inserting a periodic alarm
-        // so this is not going to be called from within the interrupt for a periodic alarm reinsertion
-        alarm_heap.size <<= 1;
+    uint32_t index = 0, index2;
 
-        void *new_data = gc_realloc(alarm_heap.data, alarm_heap.size * sizeof(mp_obj_alarm_t *), true);
-        if (!new_data) {
-            mp_raise_OSError(MP_ENOMEM);
+    /* The list is ordered at any given time. Find the place where the new element shall be inserted*/
+    if(alarm_heap.count != 0) {
+        for (; index < alarm_heap.count; ++index){
+            if (alarm->when <= alarm_heap.data[index]->when) {
+                break;
+            }
         }
-        MP_STATE_PORT(mp_alarm_heap) = new_data;
-        alarm_heap.data = MP_STATE_PORT(mp_alarm_heap);
+
+        /* Restructuring the list while keeping the order so the new element can be inserted at its correct place*/
+        for(index2 = alarm_heap.count; index2 > index; index2--) {
+            alarm_heap.data[index2] = alarm_heap.data[index2-1];
+            alarm_heap.data[index2]->heap_index = index2;
+        }
     }
 
-    // find out where to put the element and put it
-    for (index = alarm_heap.count++; index > 0; index = parent) {
-        parent = (index - 1) >> 1;
-        if (CMP(alarm_heap.data[parent], alarm)) {
-            break;
-        }
-        alarm_heap.data[index] = alarm_heap.data[parent];
-        alarm_heap.data[index]->heap_index = index;
-    }
+    /* Insert the new element */
     alarm_heap.data[index] = alarm;
     alarm->heap_index = index;
+    alarm_heap.count++;
 
-    if (index == 0) {
+    /* Start the newly added alarm if it is the first in the list*/
+    if(index == 0 ) {
         load_next_alarm();
     }
 }
 
-// remove top alarm from the heap
-STATIC IRAM_ATTR void remove_alarm(uint32_t el) {
-    uint32_t index, swap, other;
+/*
+ * Remove the alarm from the heap at position alarm_heap_index
+ * Note: The heap will remain ordered after the operation.
+ */
+STATIC IRAM_ATTR void remove_alarm(uint32_t alarm_heap_index) {
+    uint32_t index;
 
-    // mark as disabled
-    alarm_heap.data[el]->heap_index = -1;
+    /* Invalidate the element */
+    alarm_heap.data[alarm_heap_index]->heap_index = -1;
+    alarm_heap.data[alarm_heap_index] = NULL;
 
-    // Remove the biggest element
-    mp_obj_alarm_t *temp = alarm_heap.data[--alarm_heap.count];
+    alarm_heap.count--;
 
-    // Reorder the elements
-    for (index = el; 1; index = swap) {
-        // Find the child to swap with
-        swap = (index << 1) + 1;
-        if (swap >= alarm_heap.count) {
-            break; // If there are no children, the heap is reordered
-        }
-        other = swap + 1;
-        if ((other < alarm_heap.count) && CMP(alarm_heap.data[other], alarm_heap.data[swap])) {
-            swap = other;
-        }
-        if (CMP(temp, alarm_heap.data[swap])) {
-            break; // If the biggest child is bigger than or equal to its parent, the heap is reordered
-        }
-        alarm_heap.data[index] = alarm_heap.data[swap];
+    for (index = alarm_heap_index; index < alarm_heap.count; ++index){
+        alarm_heap.data[index] = alarm_heap.data[index+1];
         alarm_heap.data[index]->heap_index = index;
-    }
-    if (index < alarm_heap.count) {
-        alarm_heap.data[index] = temp;
-        alarm_heap.data[index]->heap_index = index;
-    }
-    if (el == 0) {
-        load_next_alarm();
+        alarm_heap.data[index+1] = NULL;
     }
 }
 
@@ -146,19 +130,6 @@ STATIC IRAM_ATTR void set_alarm_when(mp_obj_alarm_t *alarm, uint64_t delta) {
     alarm->when += delta;
 }
 
-// STATIC void tidy_alarm_memory(void) {
-//     // resize the heap if it's consuming too much memory
-//     if ((alarm_heap.count < (alarm_heap.size >> 2)) && (alarm_heap.size > MIN_HEAP_ELEMENTS)) {
-//         alarm_heap.size >>= 1;
-//         void *new_data = gc_realloc(alarm_heap.data, sizeof(mp_obj_alarm_t *) * alarm_heap.size, true);
-//         if (!new_data) {
-//             mp_raise_OSError(MP_ENOMEM);
-//         }
-//         MP_STATE_PORT(mp_alarm_heap) = alarm_heap.data;
-//         alarm_heap.data = new_data;
-//     }
-// }
-
 STATIC void alarm_handler(void *arg) {
     // this function will be called by the interrupt thread
     mp_obj_alarm_t *alarm = arg;
@@ -166,23 +137,27 @@ STATIC void alarm_handler(void *arg) {
     if (alarm->handler != mp_const_none) {
         mp_call_function_1(alarm->handler, alarm->handler_arg);
     }
-    // tidy_alarm_memory();
 }
 
 IRAM_ATTR void timer_alarm_isr(void *arg) {
     TIMERG0.int_clr_timers.t0 = 1; // acknowledge the interrupt
 
-    mp_obj_alarm_t *alarm;
-    alarm = alarm_heap.data[0];
+    /* Need to check whether all timer have been removed from the list or not since the last time the HW alarm was set up*/
+    if(alarm_heap.count > 0) {
+        mp_obj_alarm_t *alarm = alarm_heap.data[0];
 
-    remove_alarm(0);
+        remove_alarm(0);
 
-    if (alarm->periodic) {
-        set_alarm_when(alarm, alarm->interval);
-        insert_alarm(alarm);
+        if (alarm->periodic) {
+            set_alarm_when(alarm, alarm->interval);
+            insert_alarm(alarm);
+        }
+
+        /* Start the next alarm */
+        load_next_alarm();
+
+        mp_irq_queue_interrupt(alarm_handler, alarm);
     }
-
-    mp_irq_queue_interrupt(alarm_handler, alarm);
 }
 
 STATIC mp_obj_t alarm_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
@@ -231,27 +206,50 @@ STATIC mp_obj_t alarm_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_u
 }
 
 STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj_t handler_arg) {
+    bool error = false;
     mp_obj_alarm_t *self = self_in;
 
+    /* Do as much as possible outside the atomic section*/
     self->handler = handler;
-    if (handler == mp_const_none) {
-        alarm_delete(self_in);
-        return;
-    }
-
-    mp_irq_handler_add(handler);
-    if (self->heap_index == -1) {
-        uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
-        set_alarm_when(self, self->interval);
-        insert_alarm(self);
-        MICROPY_END_ATOMIC_SECTION(state);
-    }
 
     if (handler_arg == mp_const_none) {
         handler_arg = self_in;
     }
-
     self->handler_arg = handler_arg;
+
+    mp_irq_handler_add(handler);
+
+    /* Both remove_alarm and insert_alarm need to be guarded for the following reasons:
+     * remove_alarm: If the ISR removes the 0th alarm then then the whole heap is restructured the indexes are changed,
+     *               not the correct alarm would be deleted.
+     * insert_alarm: If the ISR removes (re-adds) the 0th alarm then then the whole heap is restructured the indexes are changed,
+     *               the current alarm may not be added to the correct position.
+     */
+
+    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
+    /* Remove the alarm from the active alarms list if the handler is none */
+    if(handler == mp_const_none){
+        /* Check whether this alarm is currently active so can be removed */
+        if(self->heap_index != -1) {
+            remove_alarm(self->heap_index);
+        }
+    } else {
+        /* Check whether this alarm is currently not active so it can be added */
+        if (self->heap_index == -1) {
+            if(alarm_heap.count == ALARM_HEAP_MAX_ELEMENTS) {
+                error = true;
+            } else {
+                set_alarm_when(self, self->interval);
+                insert_alarm(self);
+            }
+        }
+    }
+
+    MICROPY_END_ATOMIC_SECTION(state);
+
+    if(error == true) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_MemoryError, "Alarm cannot be scheduled currently, maximum 16 alarms can be ran in parallel !"));
+    }
 }
 
 STATIC mp_obj_t alarm_callback(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -274,14 +272,23 @@ MP_DEFINE_CONST_FUN_OBJ_KW(alarm_callback_obj, 1, alarm_callback);
 STATIC mp_obj_t alarm_delete(mp_obj_t self_in) {
     mp_obj_alarm_t *self = self_in;
 
-    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
+    /* Atomic section is placed here due to the following reasons:
+     * 1. If user calls "cancel" function it might be interrupted by the ISR when reordering the list because
+     *    in this case the alarm is an active alarm which means it is placed on the alarm_heap and its heap_index != -1.
+     * 2. When GC calls this function it is 100% percent sure that the heap_index is -1, because
+     *    GC will only collect this object if it is not referred from the alarm_heap, which means it is not active thus
+     *    its heap_index = 1.
+     */
     if (self->heap_index != -1) {
+        uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
         remove_alarm(self->heap_index);
+        MICROPY_END_ATOMIC_SECTION(state);
     }
-    MICROPY_END_ATOMIC_SECTION(state);
+
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_1(alarm_delete_obj, alarm_delete);
+
 
 STATIC const mp_map_elem_t mach_timer_alarm_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_alarm) },
