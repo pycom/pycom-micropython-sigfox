@@ -169,29 +169,26 @@ typedef enum {
 } lora_activation_t;
 
 typedef struct {
-  mp_obj_base_t     base;
-  mp_obj_t          handler;
-  mp_obj_t          handler_arg;
-  lora_stack_mode_t stack_mode;
-  DeviceClass_t     device_class;
-  lora_state_t      state;
-  uint32_t          frequency;
-  uint32_t          rx_timeout;
-  uint32_t          tx_timeout;
-  uint32_t          dev_addr;
-  uint32_t          rx_timestamp;
-  uint32_t          net_id;
-  int16_t           rssi;
-  int8_t            snr;
-  uint8_t           sfrx;
-  uint8_t           sftx;
-  uint8_t           preamble;
-  uint8_t           bandwidth;
-  uint8_t           coding_rate;
-  uint8_t           sf;
-  uint8_t           tx_power;
-  uint8_t           pwr_mode;
-  struct {
+    mp_obj_base_t     base;
+    mp_obj_t          handler;
+    mp_obj_t          handler_arg;
+    lora_stack_mode_t stack_mode;
+    DeviceClass_t     device_class;
+    lora_state_t      state;
+    uint32_t          frequency;
+    uint32_t          rx_timestamp;
+    uint32_t          net_id;
+    int16_t           rssi;
+    int8_t            snr;
+    uint8_t           sfrx;
+    uint8_t           sftx;
+    uint8_t           preamble;
+    uint8_t           bandwidth;
+    uint8_t           coding_rate;
+    uint8_t           sf;
+    uint8_t           tx_power;
+    uint8_t           pwr_mode;
+    struct {
     bool Enabled;
     bool Running;
     uint8_t State;
@@ -200,33 +197,32 @@ typedef struct {
     bool LinkCheck;
     uint8_t DemodMargin;
     uint8_t NbGateways;
-  } ComplianceTest;
-  uint8_t           activation;
-  uint8_t           tx_retries;
-  union {
-      struct {
-          // for OTAA
-          uint8_t           DevEui[8];
-          uint8_t           AppEui[8];
-          uint8_t           AppKey[16];
-      } otaa;
+    } ComplianceTest;
+    uint8_t           activation;
+    uint8_t           tx_retries;
+    union {
+        struct {
+            // for OTAA
+            uint8_t           DevEui[8];
+            uint8_t           AppEui[8];
+            uint8_t           AppKey[16];
+        } otaa;
 
-      struct {
-          // for ABP
-          uint32_t          DevAddr;
-          uint8_t           NwkSKey[16];
-          uint8_t           AppSKey[16];
-      } abp;
-  };
-  bool              txiq;
-  bool              rxiq;
-  bool              adr;
-  bool              public;
-  bool              joined;
-  bool              radio_init;
-  uint8_t           events;
-  uint8_t           trigger;
-  uint8_t           tx_trials;
+        struct {
+            // for ABP
+            uint32_t          DevAddr;
+            uint8_t           NwkSKey[16];
+            uint8_t           AppSKey[16];
+        } abp;
+    };
+    bool              txiq;
+    bool              rxiq;
+    bool              adr;
+    bool              public;
+    bool              joined;
+    uint8_t           events;
+    uint8_t           trigger;
+    uint8_t           tx_trials;
 } lora_obj_t;
 
 typedef struct {
@@ -278,7 +274,6 @@ static bool lora_rx_any (void);
 static bool lora_tx_space (void);
 static void lora_callback_handler (void *arg);
 static bool lorawan_nvs_open (void);
-static bool modlora_nvs_commit(void);
 
 static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno);
 static void lora_socket_close (mod_network_socket_obj_t *s);
@@ -352,13 +347,6 @@ static bool lorawan_nvs_open (void) {
         if (ESP_OK != nvs_commit(modlora_nvs_handle)) {
             return false;
         }
-    }
-    return true;
-}
-
-static bool modlora_nvs_commit(void) {
-    if (ESP_OK != nvs_commit(modlora_nvs_handle)) {
-        return false;
     }
     return true;
 }
@@ -628,7 +616,6 @@ static void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
                 lora_obj.ComplianceTest.State = 1;
                 lora_obj.ComplianceTest.Running = false;
                 lora_obj.ComplianceTest.DownLinkCounter = 0;
-                modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, true);
                 break;
             case MLME_LINK_CHECK:
                 // Check DemodMargin
@@ -659,7 +646,6 @@ static void OnTxNextActReqTimerEvent(void) {
             lora_obj.ComplianceTest.State = 1;
             lora_obj.ComplianceTest.Running = false;
             lora_obj.ComplianceTest.DownLinkCounter = 0;
-            modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, true);
         } else {
             lora_obj.state = E_LORA_STATE_JOIN;
         }
@@ -723,14 +709,12 @@ static void TASK_LoRa (void *pvParameters) {
                         // change the frequency to be on the center of the band
                         lora_obj.frequency = RF_FREQUENCY_CENTER;
 
-                        // check if we had previously joined a network
-                        uint32_t joined;
-                        if (modlora_nvs_get_uint(E_LORA_NVS_ELE_JOINED, &joined) && joined) {
+                        // check if we have already joined the network
+                        if (lora_obj.joined) {
                             uint32_t length;
                             bool result = true;
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_NET_ID, (uint32_t *)&lora_obj.net_id);
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DEVADDR, (uint32_t *)&lora_obj.abp.DevAddr);
-                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_NET_ID, (uint32_t *)&lora_obj.net_id);
                             length = 16;
                             result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_NWSKEY, (void *)lora_obj.abp.NwkSKey, &length);
                             length = 16;
@@ -758,18 +742,15 @@ static void TASK_LoRa (void *pvParameters) {
                             lora_obj.state = E_LORA_STATE_IDLE;
                         }
                     } else {
-                        if (!lora_obj.radio_init) {
-                            // radio initialization
-                            RadioEvents.TxDone = OnTxDone;
-                            RadioEvents.RxDone = OnRxDone;
-                            RadioEvents.TxTimeout = OnTxTimeout;
-                            RadioEvents.RxTimeout = OnRxTimeout;
-                            RadioEvents.RxError = OnRxError;
-                            Radio.Init(&RadioEvents);
-                            lora_obj.radio_init = true;
-                        }
+                        // radio initialization
+                        RadioEvents.TxDone = OnTxDone;
+                        RadioEvents.RxDone = OnRxDone;
+                        RadioEvents.TxTimeout = OnTxTimeout;
+                        RadioEvents.RxTimeout = OnRxTimeout;
+                        RadioEvents.RxError = OnRxError;
+                        Radio.Init(&RadioEvents);
 
-                        // init the radio
+                        // radio configuration
                         lora_radio_setup(&cmd_data.info.init);
                         lora_obj.state = E_LORA_STATE_IDLE;
                     }
@@ -777,7 +758,6 @@ static void TASK_LoRa (void *pvParameters) {
                     if (lora_obj.state == E_LORA_STATE_IDLE) {
                         xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
                     }
-                    modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, false);
                     break;
                 case E_LORA_CMD_JOIN:
                     lora_obj.joined = false;
@@ -901,7 +881,6 @@ static void TASK_LoRa (void *pvParameters) {
                     LoRaMacMibSetRequestConfirm( &mibReq );
                     lora_obj.joined = true;
                     lora_obj.ComplianceTest.State = 1;
-                    modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, true);
                 }
             }
             xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
@@ -937,8 +916,6 @@ static void TASK_LoRa (void *pvParameters) {
             break;
         }
         TimerLowPowerHandler();
-        LoRaMacStoreUpAndDownLinkCountersInNvs();
-        modlora_nvs_commit();
     }
 }
 
@@ -1795,6 +1772,31 @@ STATIC mp_obj_t lora_set_battery_level(mp_obj_t self_in, mp_obj_t battery) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_set_battery_level_obj, lora_set_battery_level);
 
+STATIC mp_obj_t lora_nvram_save (mp_obj_t self_in) {
+    modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, lora_obj.joined);
+    LoRaMacNvsSave();
+    if (ESP_OK != nvs_commit(modlora_nvs_handle)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_nvram_save_obj, lora_nvram_save);
+
+STATIC mp_obj_t lora_nvram_restore (mp_obj_t self_in) {
+    uint32_t joined = false;
+    if (modlora_nvs_get_uint(E_LORA_NVS_ELE_JOINED, &joined)) {
+        lora_obj.joined = joined;
+        lora_cmd_data_t cmd_data;
+        lora_get_config (&cmd_data);
+        cmd_data.cmd = E_LORA_CMD_INIT;
+        lora_send_cmd (&cmd_data);
+    } else {
+        lora_obj.joined = false;
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_nvram_restore_obj, lora_nvram_restore);
+
 STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&lora_init_obj },
@@ -1816,6 +1818,8 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_events),              (mp_obj_t)&lora_events_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ischannel_free),      (mp_obj_t)&lora_ischannel_free_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_set_battery_level),   (mp_obj_t)&lora_set_battery_level_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_save),          (mp_obj_t)&lora_nvram_save_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_restore),       (mp_obj_t)&lora_nvram_restore_obj },
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_LORA),                MP_OBJ_NEW_SMALL_INT(E_LORA_STACK_MODE_LORA) },

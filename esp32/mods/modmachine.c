@@ -187,15 +187,13 @@ STATIC mp_obj_t machine_wake_reason (void) {
     if (wake_reason == MPSLEEP_GPIO_WAKE) {
         pins = mp_obj_new_list(0, NULL);
         uint64_t wake_pins = esp_deep_sleep_get_ext1_wakeup_status();
-        printf("wake pins = %x:%x\n", (uint32_t)(wake_pins >> 32), (uint32_t)(wake_pins & 0xFFFFFFFF));
         uint64_t mask = 1;
 
-        for (int i = 0; i < 40; i++) {
+        for (int i = 0; i < GPIO_PIN_COUNT; i++) {
             if (mask & wake_pins) {
                 mp_obj_list_append(pins, pin_find_pin_by_num(&pin_cpu_pins_locals_dict, i));
             }
             mask <<= 1ull;
-            printf("mask = %x:%x\n", (uint32_t)(mask >> 32), (uint32_t)(mask & 0xFFFFFFFF));
         }
     }
     tuple[1] = pins;

@@ -427,16 +427,16 @@ STATIC mp_obj_t os_stat(mp_obj_t path_in) {
         (fno.ftime >> 5) & 0x3f,
         2 * (fno.ftime & 0x1f)
     );
-    t->items[0] = mp_obj_new_int(mode);      // st_mode
-    t->items[1] = MP_OBJ_NEW_SMALL_INT(0);   // st_ino
-    t->items[2] = MP_OBJ_NEW_SMALL_INT(0);   // st_dev
-    t->items[3] = MP_OBJ_NEW_SMALL_INT(0);   // st_nlink
-    t->items[4] = MP_OBJ_NEW_SMALL_INT(0);   // st_uid
-    t->items[5] = MP_OBJ_NEW_SMALL_INT(0);   // st_gid
-    t->items[6] = mp_obj_new_int(fno.fsize); // st_size
-    t->items[7] = mp_obj_new_int(seconds);   // st_atime
-    t->items[8] = t->items[7];               // st_mtime
-    t->items[9] = t->items[7];               // st_ctime
+    t->items[0] = mp_obj_new_int(mode);                 // st_mode
+    t->items[1] = MP_OBJ_NEW_SMALL_INT(0);              // st_ino
+    t->items[2] = MP_OBJ_NEW_SMALL_INT(0);              // st_dev
+    t->items[3] = MP_OBJ_NEW_SMALL_INT(0);              // st_nlink
+    t->items[4] = MP_OBJ_NEW_SMALL_INT(0);              // st_uid
+    t->items[5] = MP_OBJ_NEW_SMALL_INT(0);              // st_gid
+    t->items[6] = mp_obj_new_int_from_uint(fno.fsize);  // st_size
+    t->items[7] = mp_obj_new_int_from_uint(seconds);    // st_atime
+    t->items[8] = t->items[7];                          // st_mtime
+    t->items[9] = t->items[7];                          // st_ctime
     return t;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(os_stat_obj, os_stat);
