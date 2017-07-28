@@ -12,6 +12,7 @@
 #include "py/obj.h"
 #include "random.h"
 #include "esp_system.h"
+#include "machrtc.h"
 
 /******************************************************************************
 * LOCAL TYPES
@@ -51,13 +52,13 @@ MP_DEFINE_CONST_FUN_OBJ_0(machine_rng_get_obj, machine_rng_get);
 * PUBLIC FUNCTIONS
 ******************************************************************************/
 void rng_init0 (void) {
-// FIXME
+
     rng_id_t juggler;
-//    uint32_t seconds;
-//    uint16_t mseconds;
+    uint32_t mseconds;
+    uint16_t useconds;
 
     // get the seconds and the milliseconds from the RTC
-//    pyb_rtc_get_time(&seconds, &mseconds);
+    mach_rtc_get_time(&mseconds, &useconds);
 
     esp_efuse_mac_get_default(juggler.id8);
 
@@ -69,7 +70,10 @@ void rng_init0 (void) {
     juggler.id8[2]  ^= juggler.id8[5];
 
     s_seed = juggler.id32 & 0x00FFFFFF;
-//    s_seed += (seconds & 0x000FFFFF) + mseconds;
+    s_seed += (mseconds & 0x000FFFFF) + useconds;
+    printf("%s", "Generated seed: ");
+    printf("%u", s_seed); //debug
+    printf("%s", "\n"); //debug
 
     // the seed must never be zero
     if (s_seed == 0) {
