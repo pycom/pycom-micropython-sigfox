@@ -4276,7 +4276,6 @@ void LoRaMacNvsSave( void )
 {
     modlora_nvs_set_uint(E_LORA_NVS_ELE_DWLINK, DownLinkCounter);
     modlora_nvs_set_uint(E_LORA_NVS_ELE_UPLINK, UpLinkCounter);
-    modlora_nvs_set_uint(E_LORA_NVS_ELE_UPLINK, UpLinkCounter);
 
     modlora_nvs_set_blob(E_LORA_NVS_ELE_NWSKEY, LoRaMacNwkSKey, sizeof(LoRaMacNwkSKey));
     modlora_nvs_set_blob(E_LORA_NVS_ELE_APPSKEY, LoRaMacAppSKey, sizeof(LoRaMacAppSKey));

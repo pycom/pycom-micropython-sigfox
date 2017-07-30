@@ -1784,15 +1784,18 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_nvram_save_obj, lora_nvram_save);
 
 STATIC mp_obj_t lora_nvram_restore (mp_obj_t self_in) {
     uint32_t joined = false;
+    lora_cmd_data_t cmd_data;
+
     if (modlora_nvs_get_uint(E_LORA_NVS_ELE_JOINED, &joined)) {
         lora_obj.joined = joined;
-        lora_cmd_data_t cmd_data;
-        lora_get_config (&cmd_data);
-        cmd_data.cmd = E_LORA_CMD_INIT;
-        lora_send_cmd (&cmd_data);
     } else {
         lora_obj.joined = false;
     }
+
+    lora_get_config (&cmd_data);
+    cmd_data.cmd = E_LORA_CMD_INIT;
+    lora_send_cmd (&cmd_data);
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_nvram_restore_obj, lora_nvram_restore);
