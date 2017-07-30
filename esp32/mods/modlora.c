@@ -54,12 +54,14 @@
 #define RF_FREQUENCY_CENTER                         868000000   // Hz
 #define RF_FREQUENCY_MAX                            870000000   // Hz
 #define TX_OUTPUT_POWER_MAX                         20          // dBm
+#define TX_OUTPUT_POWER_DEAFULT                     13          // dBm
 #define TX_OUTPUT_POWER_MIN                         2           // dBm
 #elif defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID)
 #define RF_FREQUENCY_MIN                            902000000   // Hz
 #define RF_FREQUENCY_CENTER                         915000000   // Hz
 #define RF_FREQUENCY_MAX                            928000000   // Hz
 #define TX_OUTPUT_POWER_MAX                         20          // dBm
+#define TX_OUTPUT_POWER_DEAFULT                     20          // dBm
 #define TX_OUTPUT_POWER_MIN                         5           // dBm
 #else
     #error "Please define a frequency band in the compiler options."
@@ -1323,7 +1325,7 @@ STATIC const mp_arg_t lora_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,   {.u_int  = 0} },
     { MP_QSTR_mode,         MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_LORA_STACK_MODE_LORA} },
     { MP_QSTR_frequency,    MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = RF_FREQUENCY_CENTER} },
-    { MP_QSTR_tx_power,     MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = TX_OUTPUT_POWER_MAX} },
+    { MP_QSTR_tx_power,     MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = TX_OUTPUT_POWER_DEAFULT} },
     { MP_QSTR_bandwidth,    MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_LORA_BW_125_KHZ} },
     { MP_QSTR_sf,           MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = 7} },
     { MP_QSTR_preamble,     MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = 8} },
