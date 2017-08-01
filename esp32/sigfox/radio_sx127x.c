@@ -261,25 +261,21 @@ IRAM_ATTR void RADIO_modulate(void)
 	int16_t count;
 	uint8_t NewPhaseValue;
 
-	if (Phase_State == E_PHASE_0)
-	{
+	if (Phase_State == E_PHASE_0) {
 		Phase_State = E_PHASE_180;
 		NewPhaseValue = 128;
-	}
-	else
-	{
+	} else {
 		Phase_State = E_PHASE_0;
 		NewPhaseValue = 0;
 	}
 
 	/* decrease PA */
-	for (count = MAX_PA_VALUE; count > MIN_PA_VALUE; count--)
-	{
+	for (count = MAX_PA_VALUE; count > MIN_PA_VALUE; count--) {
 		SX1272Write(0x4C, count);
 		if (count > STEP_HIGH) {
-			__delay_cycles(400);
+			__delay_cycles(1000); //400
 		} else {
-            __delay_cycles(300);
+            __delay_cycles(750); //300
         }
 	}
     /* Set the MIN Value to the PA */
@@ -296,9 +292,9 @@ IRAM_ATTR void RADIO_modulate(void)
 	for (count = MIN_PA_VALUE + 1; count < MAX_PA_VALUE ; count++) {
 		SX1272Write(0x4C, count);
 		if (count > STEP_HIGH) {
-			__delay_cycles(400);
+			__delay_cycles(1000);   //400
 		} else {
-            __delay_cycles(300);
+            __delay_cycles(750);   //300
         }
 	}
 	SX1272Write(0x4C, MAX_PA_VALUE);
@@ -336,9 +332,9 @@ RADIO_start_rf_carrier(void)
     for (countStart = MIN_PA_VALUE; countStart < MAX_PA_VALUE; countStart++) {
         SX1272Write(0x4C, countStart);
         if (countStart > STEP_HIGH) {
-            __delay_cycles(800);// 800 for ETSI
+            __delay_cycles(2000);// 800 for ETSI
         }
-        __delay_cycles(400); // 400 for ETSI
+        __delay_cycles(1500); // 400 for ETSI
     }
 
     writebyte = MAX_PA_VALUE;
@@ -359,9 +355,9 @@ RADIO_stop_rf_carrier(void)
     for (count_stop = MAX_PA_VALUE; count_stop > MIN_PA_VALUE; count_stop--) {
         SX1272Write(0x4C, count_stop);
         if(count_stop > STEP_HIGH) {
-            __delay_cycles(800); // 800 for ETSI
+            __delay_cycles(2000); // 800 for ETSI
         }
-        __delay_cycles(400);//400 for ETSI 
+        __delay_cycles(1500);//400 for ETSI 
     }
 
     /* Set the MIN Value to the PA */

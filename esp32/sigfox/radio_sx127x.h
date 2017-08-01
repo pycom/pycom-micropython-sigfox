@@ -55,9 +55,9 @@ extern uint8_t  packetSemaphore;
 #define ISR_ACTION_REQUIRED 1
 #define ISR_IDLE            0
 
-#define MAX_PA_VALUE 150
+#define MAX_PA_VALUE 64//150
 #define MIN_PA_VALUE 0  
-#define STEP_HIGH    40
+#define STEP_HIGH    22//40
 
 static const registerSetting_t HighPerfModeTx[] =
 {
