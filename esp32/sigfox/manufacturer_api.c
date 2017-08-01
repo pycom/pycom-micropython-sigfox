@@ -33,7 +33,8 @@
  */
 
 /******* INCLUDES *************************************************************/
-#include "radio.h"
+#include <stdint.h>
+#include "radio_sx127x.h"
 #include "ti_aes_128.h"
 #include "transmission.h"
 #include "timer.h"

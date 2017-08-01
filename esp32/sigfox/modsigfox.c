@@ -26,7 +26,7 @@
 #include "modusocket.h"
 #include "sigfox/sigfox_api.h"
 #include "sigfox/timer.h"
-#include "sigfox/radio.h"
+#include "sigfox/radio_sx127x.h"
 #include "sigfox/manufacturer_api.h"
 #include "sigfox/manuf_api.h"
 
@@ -155,11 +155,14 @@ void modsigfox_init0 (void) {
     // setup the CC1125 control RESET pin
     gpio_config_t gpioconf = {.pin_bit_mask = 1 << 18,
                               .mode = GPIO_MODE_OUTPUT,
-                              .pull_up_en = GPIO_PULLUP_ENABLE,
+                              .pull_up_en = GPIO_PULLUP_DISABLE,
                               .pull_down_en = GPIO_PULLDOWN_DISABLE,
                               .intr_type = GPIO_INTR_DISABLE};
     gpio_config(&gpioconf);
     GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 18);
+    vTaskDelay(2 / portTICK_RATE_MS);
+    gpioconf.mode = GPIO_MODE_INPUT;
+    gpio_config(&gpioconf);
 
     SpiInit( &sigfox_spi, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, RADIO_NSS );
 

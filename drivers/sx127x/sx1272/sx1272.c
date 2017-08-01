@@ -81,13 +81,6 @@ void SX1272WriteFifo( uint8_t *buffer, uint8_t size );
  */
 void SX1272ReadFifo( uint8_t *buffer, uint8_t size );
 
-/*!
- * \brief Sets the SX1272 operating mode
- *
- * \param [IN] opMode New operating mode
- */
-void SX1272SetOpMode( uint8_t opMode );
-
 /*
  * SX1272 DIO IRQ callback functions prototype
  */

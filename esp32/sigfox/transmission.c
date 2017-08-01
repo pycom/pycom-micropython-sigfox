@@ -15,10 +15,11 @@
 /******************************************************************************
  * INCLUDES
  */
+#include <stdint.h>
 #include "sigfox_types.h"
 #include "stdlib.h"
 #include "stdbool.h"
-#include "radio.h"
+#include "radio_sx127x.h"
 #include "targets/hal_spi_rf_trxeb.h"
 #include "esp_attr.h"
 
