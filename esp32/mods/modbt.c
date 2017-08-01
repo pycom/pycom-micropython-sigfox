@@ -995,7 +995,7 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
             mp_get_buffer_raise(args[3].u_obj, &uuid_bufinfo, MP_BUFFER_READ);
             adv_data.service_uuid_len = uuid_bufinfo.len;
             adv_data.p_service_uuid = uuid_bufinfo.buf;
-            if (adv_data.service_uuid_len != 16) {
+            if (adv_data.service_uuid_len % 16) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "incorrect service UUID length"));
             }
         }
