@@ -202,18 +202,18 @@ IRAM_ATTR void TIMER_carrier_sense_isr (TimerHandle_t xTimer) {
 }
 
 IRAM_ATTR void TIMER_RxTx_done_isr (TimerHandle_t xTimer) {
-    uint8_t status;
-    cc112xSpiReadReg(CC112X_GPIO_STATUS, &status, 1);
-    if (rxtx_in_progress) {
-        if (!(status & 0x08)) {          // is GPIO3 de-asserted?
-            // transaction done, set the packet semaphore
-            rxtx_in_progress = false;
-            packetSemaphore = ISR_ACTION_REQUIRED;
-            xTimerStop (TIMER_RxTx_done, 0);
-        }
-    } else if (status & 0x08) {         // is GPIO3 asserted?
-        rxtx_in_progress = true;
-    }
+    // uint8_t status;
+    // cc112xSpiReadReg(CC112X_GPIO_STATUS, &status, 1);
+    // if (rxtx_in_progress) {
+    //     if (!(status & 0x08)) {          // is GPIO3 de-asserted?
+    //         // transaction done, set the packet semaphore
+    //         rxtx_in_progress = false;
+    //         packetSemaphore = ISR_ACTION_REQUIRED;
+    //         xTimerStop (TIMER_RxTx_done, 0);
+    //     }
+    // } else if (status & 0x08) {         // is GPIO3 asserted?
+    //     rxtx_in_progress = true;
+    // }
 }
 
 /*!****************************************************************************

@@ -315,10 +315,4 @@ demodulator : Once per chip
 
 };
 
-
-
-
-
 #endif
-
-

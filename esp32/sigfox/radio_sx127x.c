@@ -64,7 +64,6 @@
 
 extern sfx_u8 uplink_spectrum_access;
 uint8  packetSemaphore;
-sfx_u16 offset_value;
 
 
 extern Spi_t sigfox_spi;
@@ -141,6 +140,13 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
         } else {
             SX1272Write(REG_LR_PADAC, 0x84);
         }
+    } else if (rf_mode == SFX_RF_MODE_RX) {
+        /* Write registers of the radio chip for RX mode */
+        for(int i = 0; i < (sizeof(HighPerfModeRx)/sizeof(registerSetting_t)); i++) {
+            SX1272Write(HighPerfModeRx[i].addr, HighPerfModeRx[i].data);
+        }
+        /* Set the OPMODE to Standby Mode */
+        SX1272Write(REG_OPMODE, 0x01);
     }
 }
 

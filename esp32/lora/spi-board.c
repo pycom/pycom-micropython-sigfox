@@ -222,20 +222,17 @@ IRAM_ATTR void SpiOut(uint32_t spiNum, uint32_t outData) {
     while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
 }
 
-IRAM_ATTR void SX1272Write( uint8_t addr, uint8_t data )
-{
+IRAM_ATTR void SX1272Write(uint8_t addr, uint8_t data) {
     SX1272WriteBuffer( addr, &data, 1 );
 }
 
-IRAM_ATTR uint8_t SX1272Read( uint8_t addr )
-{
+IRAM_ATTR uint8_t SX1272Read(uint8_t addr) {
     uint8_t data;
     SX1272ReadBuffer( addr, &data, 1 );
     return data;
 }
 
-IRAM_ATTR void SX1272WriteBuffer( uint8_t addr, uint8_t *buffer, uint8_t size )
-{
+IRAM_ATTR void SX1272WriteBuffer(uint8_t addr, uint8_t *buffer, uint8_t size) {
     uint8_t i;
 
     //NSS = 0;
@@ -251,8 +248,7 @@ IRAM_ATTR void SX1272WriteBuffer( uint8_t addr, uint8_t *buffer, uint8_t size )
     GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 17);
 }
 
-IRAM_ATTR void SX1272ReadBuffer( uint8_t addr, uint8_t *buffer, uint8_t size )
-{
+IRAM_ATTR void SX1272ReadBuffer(uint8_t addr, uint8_t *buffer, uint8_t size) {
     uint8_t i;
 
     //NSS = 0;
@@ -269,9 +265,8 @@ IRAM_ATTR void SX1272ReadBuffer( uint8_t addr, uint8_t *buffer, uint8_t size )
     GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 17);
 }
 
-IRAM_ATTR void SX1272SetOpMode( uint8_t opMode )
-{
-    SX1272Write( REG_OPMODE, ( SX1272Read( REG_OPMODE ) & RF_OPMODE_MASK ) | opMode );
+IRAM_ATTR void SX1272SetOpMode(uint8_t opMode) {
+    SX1272Write(REG_OPMODE, (SX1272Read( REG_OPMODE ) & RF_OPMODE_MASK) | opMode);
 }
 
 #endif
