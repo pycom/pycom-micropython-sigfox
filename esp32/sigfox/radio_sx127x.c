@@ -59,6 +59,7 @@
 #include "esp_event.h"
 #include "esp_intr.h"
 #include "gpio.h"
+#include "spi.h"
 #include "sx1272/sx1272.h"
 
 extern sfx_u8 uplink_spectrum_access;
@@ -92,7 +93,7 @@ te_phaseState Phase_State = E_PHASE_0;
 #define SX12728BitWrite(register, data) \
 { \
   GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << 17); \
-  SpiOut((uint32_t)sigfox_spi.Spi, (data << 8) | SX1272X_WRITE_ACCESS | register); \
+  SpiOut(SpiNum_SPI3, (data << 8) | SX1272X_WRITE_ACCESS | register); \
   GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 17); \
 }
 
@@ -115,24 +116,6 @@ te_phaseState Phase_State = E_PHASE_0;
  * \param[in] param rf_mode  the mode ( RX or TX ) of RF programmation
  ******************************************************************************/
 void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
-//     SX1272Write( 0x01, 0x80 );      // Device in StandBy in LoRa mode
-//     SX1272Write( 0x06, 0xD9 );      // Freq = 868 MHz
-//     SX1272Write( 0x07, 0x00 );      // 
-//     SX1272Write( 0x08, 0x00 );      // 
-    
-//     SX1272Write( 0x1D, 0x00 );      // LoRa BW = 0
-//     SX1272Write( 0x09, 0xBF );      // PA Boost output 
-                                                
-//     SX1272Write( 0x3D, 0xAF );      // sd_max_freq_deviation
-
-//   //  SX1272Write( 0x58, 0x19 );      // Only valid if a TXCO is used
-
-//     SX1272Write( 0x4B, 0x3E );      // PA controlled manually
-//     SX1272Write( 0x4D, 0x03 );                                                                   
- 
-//     SX1272Write( 0x0A, 0x0F );      // PaRamp on 10us                                            
-//     SX1272Write( 0x5E, 0xD0 );      // PLL bandwidth 300 KHz                                             
-
     gpio_config_t gpioconf = {.pin_bit_mask = 1 << 18,
                             .mode = GPIO_MODE_OUTPUT,
                             .pull_up_en = GPIO_PULLUP_DISABLE,
@@ -144,12 +127,20 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
     gpioconf.mode = GPIO_MODE_INPUT;
     gpio_config(&gpioconf);
 
-    /* Set the OPMODE to LORA Mode : this is the only way to do Sigfox for the moment */
-    SX1272Write(REG_OPMODE, 0x80);
+    if (rf_mode == SFX_RF_MODE_TX) {
+        /* Set the OPMODE to LORA Mode : this is the only way to do Sigfox for the moment */
+        SX1272Write(REG_OPMODE, 0x80);
 
-    /* Write registers of the radio chip for TX mode */
-    for (int i = 0; i < (sizeof(HighPerfModeTx)/sizeof(registerSetting_t)); i++) {
-        SX1272Write(HighPerfModeTx[i].addr, HighPerfModeTx[i].data);
+        /* Write registers of the radio chip for TX mode */
+        for (int i = 0; i < (sizeof(HighPerfModeTx)/sizeof(registerSetting_t)); i++) {
+            SX1272Write(HighPerfModeTx[i].addr, HighPerfModeTx[i].data);
+        }
+
+        if (uplink_spectrum_access == SFX_FH) {
+            SX1272Write(REG_LR_PADAC, 0x87);    // Up tp +20dBm on the PA_BOOST pin
+        } else {
+            SX1272Write(REG_LR_PADAC, 0x84);
+        }
     }
 }
 
@@ -232,33 +223,58 @@ IRAM_ATTR void RADIO_modulate(void) {
 		NewPhaseValue = 0;
 	}
 
-	/* decrease PA */
-	for (count = MAX_PA_VALUE; count > MIN_PA_VALUE; count--) {
-		SX1272Write(0x4C, count);
-		if (count > STEP_HIGH) {
-			__delay_cycles(725); //400
-		} else {
-            __delay_cycles(550); //300
+    if (uplink_spectrum_access == SFX_FH) {
+        /* decrease PA */
+        for (count = MAX_PA_VALUE_FCC; count > MIN_PA_VALUE; count--) {
+            SX12728BitWrite(0x4C, count);
+            if (count > STEP_HIGH_FCC) {
+                __delay_cycles(16);
+            }  else {
+                __delay_cycles(10);
+            }
         }
-	}
-
-	/*Switch OFF PA*/
-	SX1272Write(0x63, 0x00);
-	/*Change signal phase*/
-	SX1272Write(REG_IRQFLAGS1, NewPhaseValue);
-	/*Switch ON PA*/	
-	SX1272Write(0x63, 0x60);
-
-	/* increase PA */
-	for (count = MIN_PA_VALUE + 1; count < MAX_PA_VALUE ; count++) {
-		SX1272Write(0x4C, count);
-		if (count > STEP_HIGH) {
-			__delay_cycles(725);   //400
-		} else {
-            __delay_cycles(550);   //300
+    } else {
+        /* decrease PA */
+        for (count = MAX_PA_VALUE_ETSI; count > MIN_PA_VALUE; count--) {
+            SX1272Write(0x4C, count);
+            if (count > STEP_HIGH_ETSI) {
+                __delay_cycles(725);
+            } else {
+                __delay_cycles(550);
+            }
         }
-	}
-	SX1272Write(0x4C, MAX_PA_VALUE);
+    }
+
+	/* Switch OFF PA */
+	SX12728BitWrite(0x63, 0x00);
+	/* Change signal phase */
+	SX12728BitWrite(REG_IRQFLAGS1, NewPhaseValue);
+	/* Switch ON PA */
+	SX12728BitWrite(0x63, 0x60);
+
+    if (uplink_spectrum_access == SFX_FH) {
+        /* increase PA */
+        for (count = MIN_PA_VALUE + 1; count < MAX_PA_VALUE_FCC ; count++) {
+            SX12728BitWrite(0x4C, count);
+            if (count > STEP_HIGH_FCC) {
+                __delay_cycles(16);
+            } else {
+                __delay_cycles(10);
+            }
+        }
+        SX12728BitWrite(0x4C, MAX_PA_VALUE_FCC);
+    } else {
+        /* increase PA */
+        for (count = MIN_PA_VALUE + 1; count < MAX_PA_VALUE_ETSI ; count++) {
+            SX1272Write(0x4C, count);
+            if (count > STEP_HIGH_ETSI) {
+                __delay_cycles(725);
+            } else {
+                __delay_cycles(550);
+            }
+        }
+        SX1272Write(0x4C, MAX_PA_VALUE_ETSI);
+    }
 }
 
 
@@ -267,37 +283,41 @@ IRAM_ATTR void RADIO_modulate(void) {
  ******************************************************************************/
 IRAM_ATTR void RADIO_start_rf_carrier(void) {
     /* implement the ramp-up */
-    uint8_t countStart;
-    uint8_t writebyte;
-
-    /* For TEST PURPOSE - check that we are in Transmission */
-    writebyte = SX1272Read(REG_OPMODE);
+    uint8_t count;
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
 
     /* Set TX continuous mode to 1 */
-    writebyte = 0x08;
-    SX1272Write(REG_LR_MODEMCONFIG2, writebyte);
+    SX1272Write(REG_LR_MODEMCONFIG2, 0x08);
 
     /* Start TX operation - Appli Note from Semtech for Sigfox */
-    writebyte = 0x83;
-    SX1272Write(REG_OPMODE, writebyte); 
-
-    /* For TEST PURPOSE - check that we are in Transmission */
-    SX1272Write(REG_OPMODE, writebyte);
+    SX1272Write(REG_OPMODE, 0x83);
 
     /* Enable manual PA - Switch ON PA - Appli Note from Semtech for Sigfox */
-    writebyte = 0x60;
-    SX1272Write(0x63, writebyte);
+    SX1272Write(0x63, 0x60);
 
-    for (countStart = MIN_PA_VALUE; countStart < MAX_PA_VALUE; countStart++) {
-        SX1272Write(0x4C, countStart);
-        if (countStart > STEP_HIGH) {
-            __delay_cycles(1400);// 800 for ETSI
+    if (uplink_spectrum_access == SFX_FH) {
+        for (count = MIN_PA_VALUE; count < MAX_PA_VALUE_FCC; count++) {
+            SX12728BitWrite(0x4C, count);
+            if (count > STEP_HIGH_FCC) {
+                __delay_cycles(150);
+            } else {
+                __delay_cycles(110);
+            }
         }
-        __delay_cycles(1200); // 400 for ETSI
+        SX12728BitWrite(0x4C, MAX_PA_VALUE_FCC);
+    } else {
+        for (count = MIN_PA_VALUE; count < MAX_PA_VALUE_ETSI; count++) {
+            SX1272Write(0x4C, count);
+            if (count > STEP_HIGH_ETSI) {
+                __delay_cycles(1700);
+            } else {
+                __delay_cycles(1300);
+            }
+        }
+        SX1272Write(0x4C, MAX_PA_VALUE_ETSI);
     }
 
-    writebyte = MAX_PA_VALUE;
-    SX1272Write(0x4C, writebyte);
+    MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 
@@ -306,32 +326,42 @@ IRAM_ATTR void RADIO_start_rf_carrier(void) {
  ******************************************************************************/
 IRAM_ATTR void RADIO_stop_rf_carrier(void) {
     /* implement the ramp-down */
-    uint8_t count_stop;
-    uint8_t writeByte;
+    uint8_t count;
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
 
-    for (count_stop = MAX_PA_VALUE; count_stop > MIN_PA_VALUE; count_stop--) {
-        SX1272Write(0x4C, count_stop);
-        if(count_stop > STEP_HIGH) {
-            __delay_cycles(1400); // 800 for ETSI
+    if (uplink_spectrum_access == SFX_FH) {
+        for (count = MAX_PA_VALUE_FCC; count > MIN_PA_VALUE; count--) {
+            SX12728BitWrite(0x4C, count);
+            if (count > STEP_HIGH_FCC) {
+                __delay_cycles(150);
+            } else {
+                __delay_cycles(110);
+            }
         }
-        __delay_cycles(1200);//400 for ETSI 
+    } else {
+        for (count = MAX_PA_VALUE_ETSI; count > MIN_PA_VALUE; count--) {
+            SX1272Write(0x4C, count);
+            if (count > STEP_HIGH_ETSI) {
+                __delay_cycles(1700);
+            } else {
+                __delay_cycles(1300);
+            }
+        }
     }
 
     /* Set the MIN Value to the PA */
-    writeByte = MIN_PA_VALUE;
-    SX1272Write(0x4C, writeByte);
+    SX1272Write(0x4C, MIN_PA_VALUE);
 
     /* Switch OFF PA */
-    writeByte = 0x00;
-    SX1272Write(0x63, writeByte);
+    SX1272Write(0x63, 0x00);
 
     /* Set TX continuous mode to 0 */
-    writeByte = 0x00;
-    SX1272Write(REG_LR_MODEMCONFIG2, writeByte);
+    SX1272Write(REG_LR_MODEMCONFIG2, 0x00);
 
     /* Go Back to LORA Sleep Mode */
-    writeByte = 0x80;
-    SX1272Write(REG_OPMODE, writeByte);
+    SX1272Write(REG_OPMODE, 0x80);
+
+    MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 

@@ -55,9 +55,12 @@ extern uint8_t  packetSemaphore;
 #define ISR_ACTION_REQUIRED          1
 #define ISR_IDLE                     0
 
-#define MAX_PA_VALUE                 86//150
+#define MAX_PA_VALUE_ETSI            86
+#define MAX_PA_VALUE_FCC             148
+#define STEP_HIGH_ETSI               34
+#define STEP_HIGH_FCC                56
 #define MIN_PA_VALUE                 0
-#define STEP_HIGH                    34//40
+
 
 static const registerSetting_t HighPerfModeTx[] =
 {
@@ -77,7 +80,7 @@ static const registerSetting_t HighPerfModeTx[] =
 									*/
 
 	{REG_LR_MODEMCONFIG2,  0x08},  /* RegModemConfig2
-									* SpreadingFactor = 0000b : reserved 
+									* SpreadingFactor = 0000b : reserved
 									* TxContinuousMode = 1b : continuous mode, send multiple packets across the FIFO
 									*/
 
@@ -89,7 +92,7 @@ static const registerSetting_t HighPerfModeTx[] =
 	{0x3D,                 0xAF},  /* RESERVED  (TBD)??
 									* [2:0] = 111b (7)- sd_max_freq_deviation ( TBD ) */
 
-	{0x4C,         MAX_PA_VALUE},  /* RESERVED (TBD)??
+	{0x4C,         MIN_PA_VALUE},  /* RESERVED (TBD)??
 									* Max Value for the PA */
 
 	// => (DO NOT GO OVER 0xE7 value for this register when using RFO pin)
@@ -97,17 +100,14 @@ static const registerSetting_t HighPerfModeTx[] =
 	{0x4D,                 0x03},  /* RESERVED (TBD)??
 									  default value */
 
-	{REG_LR_PADAC,         0x84},  /* RegPaDac
-									* reserved = 10000b 
-									* PaDac = 111B : 0x07 -> +20 dBm on PA_BOOST when OutputPower = 1111
-									* PaDac = 100B : 0x04 -> +14 dBm on PA_BOOST */
+	// {REG_LR_PADAC,         0x84},  /* RegPaDac
+	//								* reserved = 10000b
+	//								* PaDac = 111B : 0x07 -> +20 dBm on PA_BOOST when OutputPower = 1111
+	//								* PaDac = 100B : 0x04 -> +14 dBm on PA_BOOST */
 
 	//	{0x63,                 0x60},
 	/* RESERVED (TBD) ??? - SWITCH ON PA
 	 * Enable manual PA  with Increased output power */
-
-	{REG_DIOMAPPING2,      0x10 }, /* Mapped the DIO5 to ClkOut so that we can use that clock to get a precise bitrate timer */
-
 };
 
 static const registerSetting_t HighPerfModeRx[] =
