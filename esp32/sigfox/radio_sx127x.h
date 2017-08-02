@@ -52,12 +52,12 @@ void RADIO_modulate(void);
 
 extern uint8_t  packetSemaphore;
 
-#define ISR_ACTION_REQUIRED 1
-#define ISR_IDLE            0
+#define ISR_ACTION_REQUIRED          1
+#define ISR_IDLE                     0
 
-#define MAX_PA_VALUE 64//150
-#define MIN_PA_VALUE 0  
-#define STEP_HIGH    22//40
+#define MAX_PA_VALUE                 86//150
+#define MIN_PA_VALUE                 0
+#define STEP_HIGH                    34//40
 
 static const registerSetting_t HighPerfModeTx[] =
 {
@@ -97,9 +97,10 @@ static const registerSetting_t HighPerfModeTx[] =
 	{0x4D,                 0x03},  /* RESERVED (TBD)??
 									  default value */
 
-	{REG_LR_PADAC,         0x87},  /* RegPaDac
+	{REG_LR_PADAC,         0x84},  /* RegPaDac
 									* reserved = 10000b 
-									* PaDac = 111B : 0x07  +20 dBm on PA_BOOST when OutputPower = 1111 */
+									* PaDac = 111B : 0x07 -> +20 dBm on PA_BOOST when OutputPower = 1111
+									* PaDac = 100B : 0x04 -> +14 dBm on PA_BOOST */
 
 	//	{0x63,                 0x60},
 	/* RESERVED (TBD) ??? - SWITCH ON PA

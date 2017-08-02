@@ -61,8 +61,6 @@
 #include "gpio.h"
 #include "sx1272/sx1272.h"
 
-#define SX1272X_WRITE_ACCESS      
-
 extern sfx_u8 uplink_spectrum_access;
 uint8  packetSemaphore;
 sfx_u16 offset_value;
@@ -82,56 +80,25 @@ typedef enum{
 te_phaseState Phase_State = E_PHASE_0;
 
 /******************************************************************************
+* DEFINES
+*/
+
+#define SX1272X_WRITE_ACCESS                0x80
+
+/******************************************************************************
 * MACROS
 */
 // Fast write on SPI for modulation
-#define SX12728BitWrite(register, data)\
+#define SX12728BitWrite(register, data) \
 { \
   GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << 17); \
-  SpiOut((uint32_t)sigfox_spi.Spi, (data << 8) | SX1272X_WRITE_ACCESS | register);\
+  SpiOut((uint32_t)sigfox_spi.Spi, (data << 8) | SX1272X_WRITE_ACCESS | register); \
   GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 17); \
 }
 
 /******************************************************************************
-* DEFINES
-*/
-
-#define VCDAC_START_OFFSET  2
-#define FS_VCO2_INDEX       0
-#define FS_VCO4_INDEX       1
-#define FS_CHP_INDEX        2
-
-#define FOFF1	             0x02  // 0x0258 = 600 Value computed to be around
-#define FOFF0	             0x58  // the middle of the register value
-
-#define FREQ_STEP_LOW_FOFF1  0x00  // 0x00C8 = 200
-#define FREQ_STEP_LOW_FOFF0  0xC8  // delta_f = 600 - 200 = 400 rf step
-
-#define FREQ_STEP_HIGH_FOFF1 0x03  // 0x03E8 = 1000
-#define FREQ_STEP_HIGH_FOFF0 0xE8  // delta_f = 1000 - 600 = 400 rf step
-
-#define FOFF1_ETSI			 0x00  // 0x007F = 127
-#define FOFF0_ETSI			 0x7F  // the middle of the register value
-
-#define FREQ_OFFSET_BASE_FCC    0x0258  /* 0x0258 = 600 Value computed to be around the middle of the register value  */
-#define FREQ_OFFSET_BASE_ETSI   0x0080  /* 0x0080 = 128 Value computed to be around the middle of the register value  */
-
-#define SIGFOX_FREQ_STEP        400     // 400 rf step
-
-
-
-/* Delay constants. (Depend on MCU SMCLK value and SPI speed) */
-#define MODULATION_DELAY_CYCLES_100bps          305     // Calibrate the shape of 100 bps spectrum
-#define PHASE_ACCUMULATION_DELAY_CYCLES         225     // Calibrate time to accumulate the 180 degree phase change. Depends on FOFFx values declared above.
-
-#define FREQ_BIG_STEP   152.587890625    /* float ( 10000000)/float(2**16) = 152.587890625  */
-#define FREQ_FINE_STEP   38.14697265625  /* float ( 10000000)/float(2**18) = 38.14697265625 */
-
-
-/******************************************************************************
  * LOCAL VARIABLES
  */
-
 
 /******************************************************************************
  * FUNCTION PROTOTYPE
@@ -147,8 +114,7 @@ te_phaseState Phase_State = E_PHASE_0;
  *
  * \param[in] param rf_mode  the mode ( RX or TX ) of RF programmation
  ******************************************************************************/
-void RADIO_init_chip(sfx_rf_mode_t rf_mode)
-{
+void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
 //     SX1272Write( 0x01, 0x80 );      // Device in StandBy in LoRa mode
 //     SX1272Write( 0x06, 0xD9 );      // Freq = 868 MHz
 //     SX1272Write( 0x07, 0x00 );      // 
@@ -191,8 +157,7 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode)
 /**************************************************************************//**
  *  @brief 		This function puts the radio in Idle mode
  ******************************************************************************/
-void RADIO_close_chip(void)
-{
+void RADIO_close_chip(void) {
     SX1272SetOpMode(RF_OPMODE_SLEEP);
 }
 
@@ -212,8 +177,7 @@ void RADIO_close_chip(void)
  *  @note		\li FREQ = 0.0065536 * Freq_rf - 0.25 FREQOFF for 40 MHz XTAL
  *  @note		\li FREQ = 0.008192 * Freq_rf - 0.25 FREQOFF for 32 MHz XTAL
  ******************************************************************************/
-void RADIO_change_frequency(unsigned long ul_Freq)
-{
+void RADIO_change_frequency(unsigned long ul_Freq) {
     uint8_t tuc_Frequence[3];
     uint32_t CalibFrequency = 0;
     uint32_t freq_rf;
@@ -256,8 +220,7 @@ void RADIO_change_frequency(unsigned long ul_Freq)
  *  			the other we decrease it.
  *  @note       During the modulation time, the PA is OFF
  ******************************************************************************/
-IRAM_ATTR void RADIO_modulate(void)
-{
+IRAM_ATTR void RADIO_modulate(void) {
 	int16_t count;
 	uint8_t NewPhaseValue;
 
@@ -273,13 +236,11 @@ IRAM_ATTR void RADIO_modulate(void)
 	for (count = MAX_PA_VALUE; count > MIN_PA_VALUE; count--) {
 		SX1272Write(0x4C, count);
 		if (count > STEP_HIGH) {
-			__delay_cycles(1000); //400
+			__delay_cycles(725); //400
 		} else {
-            __delay_cycles(750); //300
+            __delay_cycles(550); //300
         }
 	}
-    /* Set the MIN Value to the PA */
-    SX1272Write(0x4C, MIN_PA_VALUE);
 
 	/*Switch OFF PA*/
 	SX1272Write(0x63, 0x00);
@@ -292,9 +253,9 @@ IRAM_ATTR void RADIO_modulate(void)
 	for (count = MIN_PA_VALUE + 1; count < MAX_PA_VALUE ; count++) {
 		SX1272Write(0x4C, count);
 		if (count > STEP_HIGH) {
-			__delay_cycles(1000);   //400
+			__delay_cycles(725);   //400
 		} else {
-            __delay_cycles(750);   //300
+            __delay_cycles(550);   //300
         }
 	}
 	SX1272Write(0x4C, MAX_PA_VALUE);
@@ -304,9 +265,7 @@ IRAM_ATTR void RADIO_modulate(void)
 /**************************************************************************//**
  *  @brief this function starts the oscillator, and generates the ramp-up
  ******************************************************************************/
-void IRAM_ATTR
-RADIO_start_rf_carrier(void)
-{
+IRAM_ATTR void RADIO_start_rf_carrier(void) {
     /* implement the ramp-up */
     uint8_t countStart;
     uint8_t writebyte;
@@ -332,9 +291,9 @@ RADIO_start_rf_carrier(void)
     for (countStart = MIN_PA_VALUE; countStart < MAX_PA_VALUE; countStart++) {
         SX1272Write(0x4C, countStart);
         if (countStart > STEP_HIGH) {
-            __delay_cycles(2000);// 800 for ETSI
+            __delay_cycles(1400);// 800 for ETSI
         }
-        __delay_cycles(1500); // 400 for ETSI
+        __delay_cycles(1200); // 400 for ETSI
     }
 
     writebyte = MAX_PA_VALUE;
@@ -345,9 +304,7 @@ RADIO_start_rf_carrier(void)
 /**************************************************************************//**
  *  @brief This function stops the radio and produces the ramp down
  ******************************************************************************/
-void IRAM_ATTR
-RADIO_stop_rf_carrier(void)
-{
+IRAM_ATTR void RADIO_stop_rf_carrier(void) {
     /* implement the ramp-down */
     uint8_t count_stop;
     uint8_t writeByte;
@@ -355,9 +312,9 @@ RADIO_stop_rf_carrier(void)
     for (count_stop = MAX_PA_VALUE; count_stop > MIN_PA_VALUE; count_stop--) {
         SX1272Write(0x4C, count_stop);
         if(count_stop > STEP_HIGH) {
-            __delay_cycles(2000); // 800 for ETSI
+            __delay_cycles(1400); // 800 for ETSI
         }
-        __delay_cycles(1500);//400 for ETSI 
+        __delay_cycles(1200);//400 for ETSI 
     }
 
     /* Set the MIN Value to the PA */
@@ -384,9 +341,7 @@ RADIO_stop_rf_carrier(void)
  *
  *  @param 		ul_Freq 		is the frequency to use
  ******************************************************************************/
-void
-RADIO_start_unmodulated_cw(unsigned long ul_Freq)
-{
+void RADIO_start_unmodulated_cw(unsigned long ul_Freq) {
     // Initialize the radio in TX mode
     RADIO_init_chip(SFX_RF_MODE_TX);
 
@@ -403,14 +358,12 @@ RADIO_start_unmodulated_cw(unsigned long ul_Freq)
  *
  *  @param 		ul_Freq 		is the frequency to use
  ******************************************************************************/
-void
-RADIO_stop_unmodulated_cw(unsigned long ul_Freq)
-{
+void RADIO_stop_unmodulated_cw(unsigned long ul_Freq) {
     // Stop TX carrier wave
     RADIO_stop_rf_carrier();
 
     // Reinitialize the radio in TX mode
-    RADIO_init_chip(SFX_RF_MODE_TX );
+    RADIO_init_chip(SFX_RF_MODE_TX);
 
     /* Update the frequency */
     RADIO_change_frequency(ul_Freq);
