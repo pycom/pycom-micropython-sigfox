@@ -967,6 +967,10 @@ typedef struct sMlmeReqJoin
      * LoRaWAN Specification V1.0.1, chapter 6.2.2
      */
     uint8_t *AppKey;
+    /*!
+     * To support initial data rate selection for the Join Request
+     */
+    uint8_t DR;
 }MlmeReqJoin_t;
 
 /*!

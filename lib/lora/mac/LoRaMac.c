@@ -2845,10 +2845,21 @@ static int8_t AlternateDatarate( uint16_t nbTrials )
     // Re-enable 500 kHz default channels
     ReenableChannels( LoRaMacParams.ChannelsMask[4], LoRaMacParams.ChannelsMask );
 #endif
-
-    if( ( nbTrials & 0x01 ) == 0x01 )
+    if( ( nbTrials % 32 ) == 0 )
     {
         datarate = DR_0;
+    }
+    else if( ( nbTrials % 24 ) == 0 )
+    {
+        datarate = DR_1;
+    }
+    else if( ( nbTrials % 16 ) == 0 )
+    {
+        datarate = DR_2;
+    }
+    else if( ( nbTrials % 8 ) == 0 )
+    {
+        datarate = DR_3;
     }
     else
     {
@@ -4096,6 +4107,12 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest )
     LoRaMacStatus_t status = LORAMAC_STATUS_SERVICE_UNKNOWN;
     LoRaMacHeader_t macHdr;
 
+#if defined(USE_BAND_868)
+    uint8_t DRToCounter[6] = { 47, 31, 23, 15, 7, 0 };
+#else
+    uint8_t DRToCounter[5] = { 31, 23, 15, 7, 0 };
+#endif
+
     if( mlmeRequest == NULL )
     {
         return LORAMAC_STATUS_PARAMETER_INVALID;
@@ -4137,6 +4154,11 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest )
             macHdr.Bits.MType  = FRAME_TYPE_JOIN_REQ;
 
             ResetMacParameters( );
+
+            if( JoinRequestTrials == 0 && mlmeRequest->Req.Join.DR < sizeof(DRToCounter) )
+            {
+                JoinRequestTrials = DRToCounter[mlmeRequest->Req.Join.DR];
+            }
 
             JoinRequestTrials++;
             LoRaMacParams.ChannelsDatarate = AlternateDatarate( JoinRequestTrials );
