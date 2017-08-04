@@ -497,9 +497,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
     // printf("MCPS indication!=%d :%d\n", mcpsIndication->BufferSize, mcpsIndication->Port);
 
     if (mcpsIndication->RxData && mcpsIndication->BufferSize > 0) {
-        switch (mcpsIndication->Port) {
-        case 1:
-        case 2:
+        if (mcpsIndication->Port > 0 && mcpsIndication->Port < 224) {
             if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
                 memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
                 rx_data_isr.len = mcpsIndication->BufferSize;
@@ -511,8 +509,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                 }
             }
             // printf("Data on port 1 or 2 received\n");
-            break;
-        case 224:
+        } else if (mcpsIndication->Port == 224) {
             if (lora_obj.ComplianceTest.Enabled == true) {
                 if (lora_obj.ComplianceTest.Running == false) {
                     // printf("Checking start test msg\n");
@@ -603,9 +600,6 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                     }
                 }
             }
-            break;
-        default:
-            break;
         }
     }
 }
