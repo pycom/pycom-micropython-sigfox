@@ -120,6 +120,7 @@ typedef struct {
 typedef struct {
     uint8_t data[LORA_PAYLOAD_SIZE_MAX + 1];
     uint8_t len;
+    uint8_t port;
 } lora_rx_data_t;
 
 /******************************************************************************

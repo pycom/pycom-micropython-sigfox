@@ -232,6 +232,7 @@ typedef struct {
     uint32_t    index;
     uint32_t    size;
     uint8_t     data[LORA_PAYLOAD_SIZE_MAX];
+    uint8_t     port;
 } lora_partial_rx_packet_t;
 
 /******************************************************************************
@@ -272,7 +273,7 @@ static void lora_set_config (lora_cmd_data_t *cmd_data);
 static void lora_get_config (lora_cmd_data_t *cmd_data);
 static void lora_send_cmd (lora_cmd_data_t *cmd_data);
 static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms);
-static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms);
+static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms, uint32_t *port);
 static bool lora_rx_any (void);
 static bool lora_tx_space (void);
 static void lora_callback_handler (void *arg);
@@ -281,6 +282,7 @@ static bool lorawan_nvs_open (void);
 static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno);
 static void lora_socket_close (mod_network_socket_obj_t *s);
 static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno);
+static int lora_socket_recvfrom (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno);
 static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno);
 static int lora_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno);
 static int lora_socket_bind (mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno);
@@ -501,6 +503,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
             if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
                 memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
                 rx_data_isr.len = mcpsIndication->BufferSize;
+                rx_data_isr.port = mcpsIndication->Port;
                 xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);
 
                 lora_obj.events |= MODLORA_RX_EVENT;
@@ -1200,7 +1203,7 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
     return len;
 }
 
-static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms) {
+static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms, uint32_t *port) {
     lora_rx_data_t rx_data;
 
     if (timeout_ms < 0) {
@@ -1218,6 +1221,9 @@ static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms) {
 
         // get the available data
         memcpy(buf, (void *)&lora_partial_rx_packet.data[lora_partial_rx_packet.index], len);
+        if (port != NULL) {
+            *port = rx_data.port;
+        }
 
         // update the index and size values
         lora_partial_rx_packet.index += len;
@@ -1235,6 +1241,9 @@ static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms) {
 
         // get the available data
         memcpy(buf, rx_data.data, len);
+        if (port != NULL) {
+            *port = rx_data.port;
+        }
 
         // copy the remainder to the partial data buffer
         int32_t r_len = rx_data.len - len;
@@ -1242,11 +1251,12 @@ static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms) {
             memcpy((void *)lora_partial_rx_packet.data, &rx_data.data[len], r_len);
             lora_partial_rx_packet.size = r_len;
             lora_partial_rx_packet.index = 0;
+            lora_partial_rx_packet.port = rx_data.port;
         }
         // return the number of bytes received
         return len;
     }
-    // non-blocking sockects do not thrown timeout error
+    // non-blocking sockects do not thrown timeout errors
     if (timeout_ms == 0) {
         return 0;
     }
@@ -1892,6 +1902,7 @@ const mod_network_nic_type_t mod_network_nic_type_lora = {
     .n_close = lora_socket_close,
     .n_send = lora_socket_send,
     .n_recv = lora_socket_recv,
+    .n_recvfrom = lora_socket_recvfrom,
     .n_settimeout = lora_socket_settimeout,
     .n_setsockopt = lora_socket_setsockopt,
     .n_bind = lora_socket_bind,
@@ -1962,9 +1973,20 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
 
 static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno) {
     LORA_CHECK_SOCKET(s);
-    int ret = lora_recv (buf, len, s->sock_base.timeout);
+    int ret = lora_recv (buf, len, s->sock_base.timeout, NULL);
     if (ret < 0) {
         *_errno = MP_EAGAIN;
+        return -1;
+    }
+    return ret;
+}
+
+static int lora_socket_recvfrom (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno) {
+    LORA_CHECK_SOCKET(s);
+    int ret = lora_recv (buf, len, s->sock_base.timeout, (uint32_t *)port);
+    if (ret < 0) {
+        *_errno = MP_EAGAIN;
+        *port = 0;
         return -1;
     }
     return ret;

@@ -424,7 +424,15 @@ STATIC mp_obj_t socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
         vstr.buf[vstr.len] = '\0';
         tuple[0] = mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
     }
+#ifdef LOPY
+    if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
+        tuple[1] = mp_obj_new_int(port);
+    } else {
+        tuple[1] = netutils_format_inet_addr(ip, port, NETUTILS_LITTLE);
+    }
+#else
     tuple[1] = netutils_format_inet_addr(ip, port, NETUTILS_LITTLE);
+#endif
     return mp_obj_new_tuple(2, tuple);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_recvfrom_obj, socket_recvfrom);
@@ -540,6 +548,7 @@ STATIC const mp_map_elem_t raw_socket_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_close),           (mp_obj_t)&socket_close_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_send),            (mp_obj_t)&socket_send_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_recv),            (mp_obj_t)&socket_recv_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_recvfrom),        (mp_obj_t)&socket_recvfrom_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_settimeout),      (mp_obj_t)&socket_settimeout_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_bind),            (mp_obj_t)&socket_bind_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_setblocking),     (mp_obj_t)&socket_setblocking_obj },
