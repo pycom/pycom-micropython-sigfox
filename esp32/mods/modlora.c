@@ -1644,15 +1644,25 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lora_power_mode_obj, 1, 2, lora_power
 
 STATIC mp_obj_t lora_stats(mp_obj_t self_in) {
     lora_obj_t *self = self_in;
+    float snr;
 
     static const qstr lora_stats_info_fields[] = {
         MP_QSTR_rx_timestamp, MP_QSTR_rssi, MP_QSTR_snr, MP_QSTR_sfrx, MP_QSTR_sftx, MP_QSTR_tx_trials
     };
 
+    if (self->snr & 0x80)  { // the SNR sign bit is 1
+        // invert and divide by 4
+        snr = ((~self->snr + 1 ) & 0xFF) / 4;
+        snr = -snr;
+    } else {
+        // divide by 4
+        snr = (self->snr & 0xFF) / 4;
+    }
+
     mp_obj_t stats_tuple[6];
     stats_tuple[0] = mp_obj_new_int_from_uint(self->rx_timestamp);
     stats_tuple[1] = mp_obj_new_int(self->rssi);
-    stats_tuple[2] = mp_obj_new_int(self->snr);
+    stats_tuple[2] = mp_obj_new_float(snr);
     stats_tuple[3] = mp_obj_new_int(self->sfrx);
     stats_tuple[4] = mp_obj_new_int(self->sftx);
     stats_tuple[5] = mp_obj_new_int(self->tx_trials);
