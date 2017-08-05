@@ -191,10 +191,11 @@ class EfuseField(object):
 
 class EfuseMacField(EfuseField):
     def get_raw(self):
-        words = [self.esp.read_efuse(self.data_reg_offs + word) for word in range(2)]
+        # MAC values are high half of second efuse word, then first efuse word
+        words = [self.esp.read_efuse(self.data_reg_offs + word) for word in [1,0]]
         # endian-swap into a bitstring
         bitstring = struct.pack(">II", *words)
-        return bitstring[:6]  # currently trims 2 byte CRC
+        return bitstring[2:]  # trim 2 byte CRC from the beginning (currently doesn't verify)
 
     def get(self):
         return hexify(self.get_raw(), ":")
@@ -368,7 +369,7 @@ def burn_key(esp, efuses, args):
     # check existing data
     efuse = [e for e in efuses if e.register_name == "BLK%d" % block_num][0]
     original = efuse.get_raw()
-    EMPTY_KEY = '\x00' * 32
+    EMPTY_KEY = b'\x00' * 32
     if original != EMPTY_KEY:
         if not args.force_write_always:
             raise esptool.FatalError("Key block already has value %s." % efuse.get())
@@ -508,6 +509,10 @@ def main():
 
     args = parser.parse_args()
     print('espefuse.py v%s' % esptool.__version__)
+    if args.operation is None:
+        parser.print_help()
+        parser.exit(1)
+
     # each 'operation' is a module-level function of the same name
     operation_func = globals()[args.operation]
 
