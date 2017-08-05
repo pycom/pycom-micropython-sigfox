@@ -26,7 +26,8 @@ typedef struct {
     uint8_t sigfox_pac[8];
     uint8_t sigfox_private_key[16];
     uint8_t sigfox_public_key[16];
-    uint8_t dummy[12];
+    uint8_t wifi_on_boot;
+    uint8_t dummy[11];
 
 } pycom_config_t;
 
@@ -54,5 +55,9 @@ void config_get_sigfox_public_key (uint8_t *public_key);
 bool config_set_sigfox_private_key (uint8_t *private_key);
 
 void config_get_sigfox_private_key (uint8_t *private_key);
+
+bool config_set_wifi_on_boot (uint8_t wifi_on_boot);
+
+bool config_get_wifi_on_boot (void);
 
 #endif /* PYCOM_CONFIG_H_ */
