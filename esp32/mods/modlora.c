@@ -308,7 +308,6 @@ bool modlora_nvs_set_uint(uint32_t key_idx, uint32_t value) {
     if (ESP_OK == nvs_set_u32(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value)) {
         return true;
     }
-    printf("NVS set uint error\n");
     return false;
 }
 
@@ -316,7 +315,6 @@ bool modlora_nvs_set_blob(uint32_t key_idx, const void *value, uint32_t length) 
     if (ESP_OK == nvs_set_blob(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value, length)) {
         return true;
     }
-    printf("NVS set blob error\n");
     return false;
 }
 
@@ -332,7 +330,6 @@ bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length) {
     if (ESP_OK == result) {
         return true;
     }
-    printf("NVS error=%d\n", result);
     return false;
 }
 
@@ -358,12 +355,6 @@ static bool lorawan_nvs_open (void) {
 
 static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms, bool confirmed, uint32_t dr, uint32_t port) {
     lora_cmd_data_t cmd_data;
-
-    // validate the message size with the requested data rate
-    if (false == ValidatePayloadLength(len, dr, 0)) {
-        // message too long
-        return -1;
-    }
 
     cmd_data.cmd = E_LORA_CMD_LORAWAN_TX;
     memcpy (cmd_data.info.tx.data, buf, len);
@@ -391,6 +382,12 @@ static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms,
     // just pass to the LoRa queue
     if (!xQueueSend(xCmdQueue, (void *)&cmd_data, (TickType_t)(timeout_ms / portTICK_PERIOD_MS))) {
         return 0;
+    }
+
+    // validate the message size with the requested data rate
+    if (false == ValidatePayloadLength(len, dr, 0)) {
+        // message too long
+        return -1;
     }
 
     if (timeout_ms != 0) {
@@ -795,6 +792,12 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacTxInfo_t txInfo;
                         EventBits_t status = 0;
                         bool empty_frame = false;
+
+                        // set the data rate before checking if Tx is possible
+                        MibRequestConfirm_t mibReq;
+                        mibReq.Type = MIB_CHANNELS_DATARATE;
+                        mibReq.Param.ChannelsDatarate = cmd_data.info.tx.dr;
+                        LoRaMacMibSetRequestConfirm( &mibReq );
 
                         if (LoRaMacQueryTxPossible (cmd_data.info.tx.len, &txInfo) != LORAMAC_STATUS_OK) {
                             // send an empty frame in order to flush MAC commands
