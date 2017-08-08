@@ -111,7 +111,7 @@
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
-/*STATIC*/ wlan_obj_t wlan_obj = {  // FIXME (need to find a better way to register the nic automatically)
+wlan_obj_t wlan_obj = {
 //        .mode = -1,
 //        .status = 0,
 //        .ip = 0,

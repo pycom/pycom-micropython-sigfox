@@ -128,8 +128,8 @@ STATIC IRAM_ATTR void remove_alarm(uint32_t el) {
 }
 
 STATIC IRAM_ATTR void load_next_alarm(void) {
-    TIMERG0.hw_timer[0].config.alarm_en = 0; // disable the alarm system
     // everything here done without calling any timers function, so it works inside the interrupts
+    TIMERG0.hw_timer[0].config.alarm_en = 0; // disable the alarm system
     if (alarm_heap.count > 0) {
         uint64_t when;
         when = alarm_heap.data[0]->when;

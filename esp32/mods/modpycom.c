@@ -18,6 +18,7 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 
+#include "pycom_config.h"
 #include "mpexception.h"
 #include "machpin.h"
 #include "driver/rmt.h"
@@ -37,6 +38,7 @@ void modpycom_init0(void) {
     if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &pycom_nvs_handle) != ESP_OK) {
         printf("Error while opening Pycom NVS name space\n");
     }
+    rmt_driver_install(RMT_CHANNEL_0, 1000, 0);
 }
 
 /******************************************************************************/
@@ -45,10 +47,10 @@ void modpycom_init0(void) {
 STATIC mp_obj_t mod_pycom_heartbeat (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
         mperror_enable_heartbeat (mp_obj_is_true(args[0]));
-        return mp_const_none;
     } else {
         return mp_obj_new_bool(mperror_is_heartbeat_enabled());
     }
+    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_heartbeat_obj, 0, 1, mod_pycom_heartbeat);
 
@@ -104,7 +106,6 @@ STATIC mp_obj_t mod_pycom_pulses_get (mp_obj_t gpio, mp_obj_t timeout) {
     rmt_rx.rx_config.filter_ticks_thresh = 100;
     rmt_rx.rx_config.idle_threshold = 20000;
     rmt_config(&rmt_rx);
-    rmt_driver_install(RMT_CHANNEL_0, 1000, 0);
 
     RingbufHandle_t rb = NULL;
     mp_obj_t pulses_l = mp_obj_new_list(0, NULL);
@@ -163,6 +164,15 @@ STATIC mp_obj_t mod_pycom_nvs_get (mp_obj_t _key) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_nvs_get_obj, mod_pycom_nvs_get);
 
+STATIC mp_obj_t mod_pycom_wifi_on_boot (mp_uint_t n_args, const mp_obj_t *args) {
+    if (n_args) {
+        config_set_wifi_on_boot (mp_obj_is_true(args[0]));
+    } else {
+        return mp_obj_new_bool(config_get_wifi_on_boot());
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_wifi_on_boot_obj, 0, 1, mod_pycom_wifi_on_boot);
 
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
@@ -174,6 +184,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_pulses_get),          (mp_obj_t)&mod_pycom_pulses_get_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_set),             (mp_obj_t)&mod_pycom_nvs_set_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_get),             (mp_obj_t)&mod_pycom_nvs_get_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_on_boot),        (mp_obj_t)&mod_pycom_wifi_on_boot_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(pycom_module_globals, pycom_module_globals_table);

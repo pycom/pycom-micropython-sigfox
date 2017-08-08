@@ -434,7 +434,7 @@ STATIC mp_obj_t os_stat(mp_obj_t path_in) {
     t->items[4] = MP_OBJ_NEW_SMALL_INT(0);              // st_uid
     t->items[5] = MP_OBJ_NEW_SMALL_INT(0);              // st_gid
     t->items[6] = mp_obj_new_int_from_uint(fno.fsize);  // st_size
-    t->items[7] = mp_obj_new_int_from_uint(seconds);    // st_atime
+    t->items[7] = mp_obj_new_int(seconds);              // st_atime
     t->items[8] = t->items[7];                          // st_mtime
     t->items[9] = t->items[7];                          // st_ctime
     return t;

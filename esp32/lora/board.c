@@ -34,7 +34,7 @@ Maintainer: Miguel Luis and Gregory Cristian
  * Flag to indicate if the MCU is Initialized
  */
 static bool McuInitialized = false;
-static uint8_t battery_level = 0;
+static uint8_t BatteryLevel = 255;
 
 void BoardInitPeriph( void )
 {
@@ -76,13 +76,10 @@ void BoardGetUniqueId( uint8_t *id )
 
 uint8_t BoardGetBatteryLevel( void )
 {
-    return battery_level;
+    return BatteryLevel;
 }
 
 void BoardSetBatteryLevel( uint8_t level )
 {
-    if (level > 100) {
-        level = 100;
-    }
-    battery_level = level;
+    BatteryLevel = level;
 }

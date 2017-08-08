@@ -18,7 +18,7 @@
  ******************************************************************************/
 #define LORA_PAYLOAD_SIZE_MAX                                   (255)
 #define LORA_CMD_QUEUE_SIZE_MAX                                 (2)
-#define LORA_DATA_QUEUE_SIZE_MAX                                (2)
+#define LORA_DATA_QUEUE_SIZE_MAX                                (3)
 #define LORA_STACK_SIZE                                         (3072)
 #define LORA_TASK_PRIORITY                                      (6)
 
@@ -75,6 +75,7 @@ typedef struct {
             uint8_t           DevEui[8];
             uint8_t           AppEui[8];
             uint8_t           AppKey[16];
+            uint8_t           dr;
         } otaa;
 
         struct {
@@ -119,6 +120,7 @@ typedef struct {
 typedef struct {
     uint8_t data[LORA_PAYLOAD_SIZE_MAX + 1];
     uint8_t len;
+    uint8_t port;
 } lora_rx_data_t;
 
 /******************************************************************************

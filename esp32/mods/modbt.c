@@ -54,7 +54,7 @@
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
-#define BT_SCAN_QUEUE_SIZE_MAX                              (8)
+#define BT_SCAN_QUEUE_SIZE_MAX                              (16)
 #define BT_GATTS_QUEUE_SIZE_MAX                             (2)
 #define BT_CHAR_VALUE_SIZE_MAX                              (20)
 
@@ -267,7 +267,7 @@ void modbt_init0(void) {
 static esp_gatt_status_t status = ESP_GATT_ERROR;
 
 static esp_ble_scan_params_t ble_scan_params = {
-    .scan_type              = BLE_SCAN_TYPE_PASSIVE,
+    .scan_type              = BLE_SCAN_TYPE_ACTIVE,
     .own_addr_type          = BLE_ADDR_TYPE_PUBLIC,
     .scan_filter_policy     = BLE_SCAN_FILTER_ALLOW_ALL,
     .scan_interval          = 0x50,
@@ -804,6 +804,28 @@ STATIC mp_obj_t bt_read_scan(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_read_scan_obj, bt_read_scan);
 
+STATIC mp_obj_t bt_get_advertisements(mp_obj_t self_in) {
+    bt_event_result_t bt_event;
+
+    STATIC const qstr bt_scan_info_fields[] = {
+        MP_QSTR_mac, MP_QSTR_addr_type, MP_QSTR_adv_type, MP_QSTR_rssi, MP_QSTR_data,
+    };
+
+    mp_obj_t advs = mp_obj_new_list(0, NULL);
+    while (xQueueReceive(xScanQueue, &bt_event, (TickType_t)0)) {
+        mp_obj_t tuple[5];
+        tuple[0] = mp_obj_new_bytes((const byte *)bt_event.scan.scan_rst.bda, 6);
+        tuple[1] = mp_obj_new_int(bt_event.scan.scan_rst.ble_addr_type);
+        tuple[2] = mp_obj_new_int(bt_event.scan.scan_rst.ble_evt_type & 0x03);    // FIXME
+        tuple[3] = mp_obj_new_int(bt_event.scan.scan_rst.rssi);
+        tuple[4] = mp_obj_new_bytes((const byte *)bt_event.scan.scan_rst.ble_adv, ESP_BLE_ADV_DATA_LEN_MAX);
+
+        mp_obj_list_append(advs, mp_obj_new_attrtuple(bt_scan_info_fields, 5, tuple));
+    }
+    return advs;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_get_advertisements_obj, bt_get_advertisements);
+
 STATIC mp_obj_t bt_resolve_adv_data(mp_obj_t self_in, mp_obj_t adv_data, mp_obj_t data_type) {
     mp_buffer_info_t bufinfo;
     uint8_t data_len;
@@ -995,7 +1017,7 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
             mp_get_buffer_raise(args[3].u_obj, &uuid_bufinfo, MP_BUFFER_READ);
             adv_data.service_uuid_len = uuid_bufinfo.len;
             adv_data.p_service_uuid = uuid_bufinfo.buf;
-            if (adv_data.service_uuid_len != 16) {
+            if (adv_data.service_uuid_len % 16) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "incorrect service UUID length"));
             }
         }
@@ -1355,6 +1377,7 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_isscanning),              (mp_obj_t)&bt_isscanning_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_stop_scan),               (mp_obj_t)&bt_stop_scan_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_get_adv),                 (mp_obj_t)&bt_read_scan_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_get_advertisements),      (mp_obj_t)&bt_get_advertisements_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_resolve_adv_data),        (mp_obj_t)&bt_resolve_adv_data_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_connect),                 (mp_obj_t)&bt_connect_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_set_advertisement),       (mp_obj_t)&bt_set_advertisement_obj },

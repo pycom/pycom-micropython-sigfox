@@ -54,12 +54,14 @@
 #define RF_FREQUENCY_CENTER                         868000000   // Hz
 #define RF_FREQUENCY_MAX                            870000000   // Hz
 #define TX_OUTPUT_POWER_MAX                         20          // dBm
+#define TX_OUTPUT_POWER_DEAFULT                     13          // dBm
 #define TX_OUTPUT_POWER_MIN                         2           // dBm
 #elif defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID)
 #define RF_FREQUENCY_MIN                            902000000   // Hz
 #define RF_FREQUENCY_CENTER                         915000000   // Hz
 #define RF_FREQUENCY_MAX                            928000000   // Hz
 #define TX_OUTPUT_POWER_MAX                         20          // dBm
+#define TX_OUTPUT_POWER_DEAFULT                     20          // dBm
 #define TX_OUTPUT_POWER_MIN                         5           // dBm
 #else
     #error "Please define a frequency band in the compiler options."
@@ -206,6 +208,7 @@ typedef struct {
             uint8_t           DevEui[8];
             uint8_t           AppEui[8];
             uint8_t           AppKey[16];
+            uint8_t           dr;
         } otaa;
 
         struct {
@@ -229,6 +232,7 @@ typedef struct {
     uint32_t    index;
     uint32_t    size;
     uint8_t     data[LORA_PAYLOAD_SIZE_MAX];
+    uint8_t     port;
 } lora_partial_rx_packet_t;
 
 /******************************************************************************
@@ -269,7 +273,7 @@ static void lora_set_config (lora_cmd_data_t *cmd_data);
 static void lora_get_config (lora_cmd_data_t *cmd_data);
 static void lora_send_cmd (lora_cmd_data_t *cmd_data);
 static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms);
-static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms);
+static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms, uint32_t *port);
 static bool lora_rx_any (void);
 static bool lora_tx_space (void);
 static void lora_callback_handler (void *arg);
@@ -278,6 +282,7 @@ static bool lorawan_nvs_open (void);
 static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno);
 static void lora_socket_close (mod_network_socket_obj_t *s);
 static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno);
+static int lora_socket_recvfrom (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno);
 static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno);
 static int lora_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno);
 static int lora_socket_bind (mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno);
@@ -303,7 +308,6 @@ bool modlora_nvs_set_uint(uint32_t key_idx, uint32_t value) {
     if (ESP_OK == nvs_set_u32(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value)) {
         return true;
     }
-    printf("NVS set uint error\n");
     return false;
 }
 
@@ -311,7 +315,6 @@ bool modlora_nvs_set_blob(uint32_t key_idx, const void *value, uint32_t length) 
     if (ESP_OK == nvs_set_blob(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value, length)) {
         return true;
     }
-    printf("NVS set blob error\n");
     return false;
 }
 
@@ -327,7 +330,6 @@ bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length) {
     if (ESP_OK == result) {
         return true;
     }
-    printf("NVS error=%d\n", result);
     return false;
 }
 
@@ -353,12 +355,6 @@ static bool lorawan_nvs_open (void) {
 
 static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms, bool confirmed, uint32_t dr, uint32_t port) {
     lora_cmd_data_t cmd_data;
-
-    // validate the message size with the requested data rate
-    if (false == ValidatePayloadLength(len, dr, 0)) {
-        // message too long
-        return -1;
-    }
 
     cmd_data.cmd = E_LORA_CMD_LORAWAN_TX;
     memcpy (cmd_data.info.tx.data, buf, len);
@@ -386,6 +382,12 @@ static int32_t lorawan_send (const byte *buf, uint32_t len, uint32_t timeout_ms,
     // just pass to the LoRa queue
     if (!xQueueSend(xCmdQueue, (void *)&cmd_data, (TickType_t)(timeout_ms / portTICK_PERIOD_MS))) {
         return 0;
+    }
+
+    // validate the message size with the requested data rate
+    if (false == ValidatePayloadLength(len, dr, 0)) {
+        // message too long
+        return -1;
     }
 
     if (timeout_ms != 0) {
@@ -494,12 +496,11 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
     // printf("MCPS indication!=%d :%d\n", mcpsIndication->BufferSize, mcpsIndication->Port);
 
     if (mcpsIndication->RxData && mcpsIndication->BufferSize > 0) {
-        switch (mcpsIndication->Port) {
-        case 1:
-        case 2:
+        if (mcpsIndication->Port > 0 && mcpsIndication->Port < 224) {
             if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
                 memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
                 rx_data_isr.len = mcpsIndication->BufferSize;
+                rx_data_isr.port = mcpsIndication->Port;
                 xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);
 
                 lora_obj.events |= MODLORA_RX_EVENT;
@@ -508,8 +509,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                 }
             }
             // printf("Data on port 1 or 2 received\n");
-            break;
-        case 224:
+        } else if (mcpsIndication->Port == 224) {
             if (lora_obj.ComplianceTest.Enabled == true) {
                 if (lora_obj.ComplianceTest.Running == false) {
                     // printf("Checking start test msg\n");
@@ -600,9 +600,6 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                     }
                 }
             }
-            break;
-        default:
-            break;
         }
     }
 }
@@ -766,6 +763,7 @@ static void TASK_LoRa (void *pvParameters) {
                         memcpy((void *)lora_obj.otaa.DevEui, cmd_data.info.join.otaa.DevEui, sizeof(lora_obj.otaa.DevEui));
                         memcpy((void *)lora_obj.otaa.AppEui, cmd_data.info.join.otaa.AppEui, sizeof(lora_obj.otaa.AppEui));
                         memcpy((void *)lora_obj.otaa.AppKey, cmd_data.info.join.otaa.AppKey, sizeof(lora_obj.otaa.AppKey));
+                        lora_obj.otaa.dr = cmd_data.info.join.otaa.dr;
                     } else {
                         lora_obj.net_id = DEF_LORAWAN_NETWORK_ID;
                         lora_obj.abp.DevAddr = cmd_data.info.join.abp.DevAddr;
@@ -794,6 +792,12 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacTxInfo_t txInfo;
                         EventBits_t status = 0;
                         bool empty_frame = false;
+
+                        // set the data rate before checking if Tx is possible
+                        MibRequestConfirm_t mibReq;
+                        mibReq.Type = MIB_CHANNELS_DATARATE;
+                        mibReq.Param.ChannelsDatarate = cmd_data.info.tx.dr;
+                        LoRaMacMibSetRequestConfirm( &mibReq );
 
                         if (LoRaMacQueryTxPossible (cmd_data.info.tx.len, &txInfo) != LORAMAC_STATUS_OK) {
                             // send an empty frame in order to flush MAC commands
@@ -858,6 +862,7 @@ static void TASK_LoRa (void *pvParameters) {
                     mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.otaa.DevEui;
                     mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.otaa.AppEui;
                     mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.otaa.AppKey;
+                    mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa.dr;
                     LoRaMacMlmeRequest( &mlmeReq );
                 } else {
                     mibReq.Type = MIB_NET_ID;
@@ -1201,7 +1206,7 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
     return len;
 }
 
-static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms) {
+static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms, uint32_t *port) {
     lora_rx_data_t rx_data;
 
     if (timeout_ms < 0) {
@@ -1219,6 +1224,9 @@ static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms) {
 
         // get the available data
         memcpy(buf, (void *)&lora_partial_rx_packet.data[lora_partial_rx_packet.index], len);
+        if (port != NULL) {
+            *port = rx_data.port;
+        }
 
         // update the index and size values
         lora_partial_rx_packet.index += len;
@@ -1236,6 +1244,9 @@ static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms) {
 
         // get the available data
         memcpy(buf, rx_data.data, len);
+        if (port != NULL) {
+            *port = rx_data.port;
+        }
 
         // copy the remainder to the partial data buffer
         int32_t r_len = rx_data.len - len;
@@ -1243,11 +1254,12 @@ static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms) {
             memcpy((void *)lora_partial_rx_packet.data, &rx_data.data[len], r_len);
             lora_partial_rx_packet.size = r_len;
             lora_partial_rx_packet.index = 0;
+            lora_partial_rx_packet.port = rx_data.port;
         }
         // return the number of bytes received
         return len;
     }
-    // non-blocking sockects do not thrown timeout error
+    // non-blocking sockects do not thrown timeout errors
     if (timeout_ms == 0) {
         return 0;
     }
@@ -1323,7 +1335,7 @@ STATIC const mp_arg_t lora_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,   {.u_int  = 0} },
     { MP_QSTR_mode,         MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_LORA_STACK_MODE_LORA} },
     { MP_QSTR_frequency,    MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = RF_FREQUENCY_CENTER} },
-    { MP_QSTR_tx_power,     MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = TX_OUTPUT_POWER_MAX} },
+    { MP_QSTR_tx_power,     MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = TX_OUTPUT_POWER_DEAFULT} },
     { MP_QSTR_bandwidth,    MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_LORA_BW_125_KHZ} },
     { MP_QSTR_sf,           MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = 7} },
     { MP_QSTR_preamble,     MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = 8} },
@@ -1379,7 +1391,8 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     STATIC const mp_arg_t allowed_args[] = {
         { MP_QSTR_activation,     MP_ARG_REQUIRED | MP_ARG_INT, },
         { MP_QSTR_auth,           MP_ARG_REQUIRED | MP_ARG_KW_ONLY | MP_ARG_OBJ, },
-        { MP_QSTR_timeout,        MP_ARG_KW_ONLY  | MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+        { MP_QSTR_dr,             MP_ARG_KW_ONLY  | MP_ARG_OBJ,                         {.u_obj = mp_const_none}},
+        { MP_QSTR_timeout,        MP_ARG_KW_ONLY  | MP_ARG_OBJ,                         {.u_obj = mp_const_none} },
     };
     lora_cmd_data_t cmd_data;
 
@@ -1425,10 +1438,26 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
         memcpy(cmd_data.info.join.abp.AppSKey, bufinfo_1.buf, sizeof(cmd_data.info.join.abp.AppSKey));
     }
 
+    // need a way to indicate an invalid data rate so the default approach is used
+    uint32_t dr = LORAMAC_TX_MAX_DATARATE;
+
+    // get the data rate
+    if (args[2].u_obj != mp_const_none) {
+        dr = mp_obj_get_int(args[2].u_obj);
+    #if defined(USE_BAND_868)
+        if (dr > DR_5) {
+    #else
+        if (dr > DR_4) {
+    #endif
+            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid join data rate %d", dr));
+        }
+    }
+    cmd_data.info.join.otaa.dr = dr;
+
     // get the timeout
     int32_t timeout = INT32_MAX;
-    if (args[2].u_obj != mp_const_none) {
-        timeout = mp_obj_get_int(args[2].u_obj);
+    if (args[3].u_obj != mp_const_none) {
+        timeout = mp_obj_get_int(args[3].u_obj);
     }
 
     // send a join request message
@@ -1628,15 +1657,25 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lora_power_mode_obj, 1, 2, lora_power
 
 STATIC mp_obj_t lora_stats(mp_obj_t self_in) {
     lora_obj_t *self = self_in;
+    float snr;
 
     static const qstr lora_stats_info_fields[] = {
         MP_QSTR_rx_timestamp, MP_QSTR_rssi, MP_QSTR_snr, MP_QSTR_sfrx, MP_QSTR_sftx, MP_QSTR_tx_trials
     };
 
+    if (self->snr & 0x80)  { // the SNR sign bit is 1
+        // invert and divide by 4
+        snr = ((~self->snr + 1 ) & 0xFF) / 4;
+        snr = -snr;
+    } else {
+        // divide by 4
+        snr = (self->snr & 0xFF) / 4;
+    }
+
     mp_obj_t stats_tuple[6];
     stats_tuple[0] = mp_obj_new_int_from_uint(self->rx_timestamp);
     stats_tuple[1] = mp_obj_new_int(self->rssi);
-    stats_tuple[2] = mp_obj_new_int(self->snr);
+    stats_tuple[2] = mp_obj_new_float(snr);
     stats_tuple[3] = mp_obj_new_int(self->sfrx);
     stats_tuple[4] = mp_obj_new_int(self->sftx);
     stats_tuple[5] = mp_obj_new_int(self->tx_trials);
@@ -1784,15 +1823,18 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_nvram_save_obj, lora_nvram_save);
 
 STATIC mp_obj_t lora_nvram_restore (mp_obj_t self_in) {
     uint32_t joined = false;
+    lora_cmd_data_t cmd_data;
+
     if (modlora_nvs_get_uint(E_LORA_NVS_ELE_JOINED, &joined)) {
         lora_obj.joined = joined;
-        lora_cmd_data_t cmd_data;
-        lora_get_config (&cmd_data);
-        cmd_data.cmd = E_LORA_CMD_INIT;
-        lora_send_cmd (&cmd_data);
     } else {
         lora_obj.joined = false;
     }
+
+    lora_get_config (&cmd_data);
+    cmd_data.cmd = E_LORA_CMD_INIT;
+    lora_send_cmd (&cmd_data);
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_nvram_restore_obj, lora_nvram_restore);
@@ -1863,6 +1905,7 @@ const mod_network_nic_type_t mod_network_nic_type_lora = {
     .n_close = lora_socket_close,
     .n_send = lora_socket_send,
     .n_recv = lora_socket_recv,
+    .n_recvfrom = lora_socket_recvfrom,
     .n_settimeout = lora_socket_settimeout,
     .n_setsockopt = lora_socket_setsockopt,
     .n_bind = lora_socket_bind,
@@ -1933,9 +1976,20 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
 
 static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno) {
     LORA_CHECK_SOCKET(s);
-    int ret = lora_recv (buf, len, s->sock_base.timeout);
+    int ret = lora_recv (buf, len, s->sock_base.timeout, NULL);
     if (ret < 0) {
         *_errno = MP_EAGAIN;
+        return -1;
+    }
+    return ret;
+}
+
+static int lora_socket_recvfrom (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno) {
+    LORA_CHECK_SOCKET(s);
+    int ret = lora_recv (buf, len, s->sock_base.timeout, (uint32_t *)port);
+    if (ret < 0) {
+        *_errno = MP_EAGAIN;
+        *port = 0;
         return -1;
     }
     return ret;
