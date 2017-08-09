@@ -69,13 +69,13 @@ typedef struct {
 
 typedef struct {
     uint8_t activation;
+    uint8_t otaa_dr;
     union {
         struct {
             // For over the air activation
             uint8_t           DevEui[8];
             uint8_t           AppEui[8];
             uint8_t           AppKey[16];
-            uint8_t           dr;
         } otaa;
 
         struct {
