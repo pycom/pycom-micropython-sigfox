@@ -202,13 +202,13 @@ typedef struct {
     } ComplianceTest;
     uint8_t           activation;
     uint8_t           tx_retries;
+    uint8_t           otaa_dr;
     union {
         struct {
             // for OTAA
             uint8_t           DevEui[8];
             uint8_t           AppEui[8];
             uint8_t           AppKey[16];
-            uint8_t           dr;
         } otaa;
 
         struct {
@@ -763,7 +763,7 @@ static void TASK_LoRa (void *pvParameters) {
                         memcpy((void *)lora_obj.otaa.DevEui, cmd_data.info.join.otaa.DevEui, sizeof(lora_obj.otaa.DevEui));
                         memcpy((void *)lora_obj.otaa.AppEui, cmd_data.info.join.otaa.AppEui, sizeof(lora_obj.otaa.AppEui));
                         memcpy((void *)lora_obj.otaa.AppKey, cmd_data.info.join.otaa.AppKey, sizeof(lora_obj.otaa.AppKey));
-                        lora_obj.otaa.dr = cmd_data.info.join.otaa.dr;
+                        lora_obj.otaa_dr = cmd_data.info.join.otaa_dr;
                     } else {
                         lora_obj.net_id = DEF_LORAWAN_NETWORK_ID;
                         lora_obj.abp.DevAddr = cmd_data.info.join.abp.DevAddr;
@@ -862,7 +862,7 @@ static void TASK_LoRa (void *pvParameters) {
                     mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.otaa.DevEui;
                     mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.otaa.AppEui;
                     mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.otaa.AppKey;
-                    mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa.dr;
+                    mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa_dr;
                     LoRaMacMlmeRequest( &mlmeReq );
                 } else {
                     mibReq.Type = MIB_NET_ID;
@@ -1452,7 +1452,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid join data rate %d", dr));
         }
     }
-    cmd_data.info.join.otaa.dr = dr;
+    cmd_data.info.join.otaa_dr = dr;
 
     // get the timeout
     int32_t timeout = INT32_MAX;
