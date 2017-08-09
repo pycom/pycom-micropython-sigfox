@@ -74,8 +74,11 @@ void config_get_sigfox_private_key (uint8_t *private_key) {
 }
 
 bool config_set_wifi_on_boot (uint8_t wifi_on_boot) {
-    pycom_config.wifi_on_boot = wifi_on_boot;
-    return config_write();
+    if (pycom_config.wifi_on_boot != wifi_on_boot) {
+        pycom_config.wifi_on_boot = wifi_on_boot;
+        return config_write();
+    }
+    return true;
 }
 
 bool config_get_wifi_on_boot (void) {
