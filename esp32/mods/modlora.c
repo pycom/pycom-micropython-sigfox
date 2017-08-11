@@ -1986,10 +1986,10 @@ static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t l
 
 static int lora_socket_recvfrom (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno) {
     LORA_CHECK_SOCKET(s);
+    *port = 0;      // in case there's no data received
     int ret = lora_recv (buf, len, s->sock_base.timeout, (uint32_t *)port);
     if (ret < 0) {
         *_errno = MP_EAGAIN;
-        *port = 0;
         return -1;
     }
     return ret;
