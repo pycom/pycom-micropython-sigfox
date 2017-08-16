@@ -317,7 +317,7 @@ ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
 
 FLASH_SIZE = detect
-ESPFLASHFREQ = 80m
+ESPFLASHFREQ = 40m
 ESPFLASHMODE = dio
 
 ESPTOOLPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/esptool.py --chip esp32
