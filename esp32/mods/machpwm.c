@@ -27,7 +27,6 @@
 #include "machpin.h"
 
 
-
 STATIC mp_obj_t pwm_channel_duty(mp_obj_t self_in, mp_obj_t duty_o) {
     mach_pwm_channel_obj_t *self = self_in;
     float duty = mp_obj_get_float(duty_o);
@@ -38,11 +37,11 @@ STATIC mp_obj_t pwm_channel_duty(mp_obj_t self_in, mp_obj_t duty_o) {
     }
 
     uint32_t max_duty = (0x1 << ((mach_pwm_timer_obj_t *) MP_STATE_PORT(mach_pwm_timer_obj[self->config.timer_sel]))->config.bit_num) - 1;
-    uint32_t duty_scaled =(uint32_t) (max_duty * 1.0f * duty);
+    uint32_t duty_scaled = (uint32_t) (max_duty * 1.0f * duty);
     if (ledc_set_duty(self->config.speed_mode, self->config.channel, duty_scaled) != ESP_OK) { //set speed mode, channel, and duty.
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Failed to set duty-cycle"));
     }
-    if (ledc_update_duty(self->config.speed_mode, self->config.channel) != ESP_OK){
+    if (ledc_update_duty(self->config.speed_mode, self->config.channel) != ESP_OK) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Failed to update duty-cycle"));
     }
     return mp_const_none;
@@ -51,8 +50,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(mach_pwm_channel_duty_obj, pwm_channel_duty);
 
 
 STATIC mp_obj_t mach_pwm_channel_init_helper(mach_pwm_channel_obj_t *self) {
-
-    if (ledc_channel_config(&self->config) != ESP_OK){
+    if (ledc_channel_config(&self->config) != ESP_OK) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "PWM channel configuration failed"));
     }
     return mp_const_none;
@@ -77,7 +75,7 @@ STATIC mp_obj_t mach_pwm_channel_make_new(mp_uint_t n_args, const mp_obj_t *pos_
     STATIC const mp_arg_t allowed_args[] = {
             { MP_QSTR_id,              MP_ARG_REQUIRED | MP_ARG_INT, },
             { MP_QSTR_pin,             MP_ARG_REQUIRED | MP_ARG_KW_ONLY  | MP_ARG_OBJ, },
-            { MP_QSTR_duty_cycle,      MP_ARG_OBJ,            {.u_obj = mp_const_none} }
+            { MP_QSTR_duty_cycle,      MP_ARG_OBJ,                                          {.u_obj = MP_OBJ_NULL} }
     };
 
     // parse args
@@ -102,8 +100,8 @@ STATIC mp_obj_t mach_pwm_channel_make_new(mp_uint_t n_args, const mp_obj_t *pos_
     mach_pwm_channel_obj_t *self = pwm->mach_pwm_channel_obj_t[pwm_channel_id];
 
     float duty = 0.5f;
-    if (args[2].u_obj != mp_const_none) {
-        //duty_cycle
+    if (args[2].u_obj != MP_OBJ_NULL) {
+        // duty_cycle
         duty = mp_obj_get_float(args[2].u_obj);
         if (duty > 1.0f) {
             duty = 1.0f;
@@ -111,11 +109,18 @@ STATIC mp_obj_t mach_pwm_channel_make_new(mp_uint_t n_args, const mp_obj_t *pos_
             duty = 0.0f;
         }
     }
+
     uint32_t max_duty = (0x1 << pwm->config.bit_num) - 1;
-    uint32_t duty_scaled = (uint32_t) (max_duty * 1.0f * duty);
+    uint32_t duty_scaled;
+    if (duty >= 0.999f) {
+        duty_scaled = max_duty;
+        // need to setup the pin as GPIO and set it high to avoid glitches
+    } else {
+        duty_scaled = (uint32_t) (max_duty * 1.0f * duty);
+    }
 
     self->base.type = &mach_pwm_channel_type;
-    self->config.channel = (ledc_timer_t) pwm_channel_id;
+    self->config.channel = (ledc_timer_t)pwm_channel_id;
     self->config.duty = duty_scaled;
     self->config.gpio_num = pin->pin_number;
     self->config.intr_type = LEDC_INTR_DISABLE;
@@ -128,7 +133,7 @@ STATIC mp_obj_t mach_pwm_channel_make_new(mp_uint_t n_args, const mp_obj_t *pos_
     if (ledc_set_duty(self->config.speed_mode, self->config.channel, duty_scaled) != ESP_OK) { // set speed mode, channel, and duty.
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Failed to set duty-cycle"));
     }
-    if (ledc_update_duty(self->config.speed_mode, self->config.channel) != ESP_OK){
+    if (ledc_update_duty(self->config.speed_mode, self->config.channel) != ESP_OK) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Failed to update duty-cycle"));
     }
 
@@ -137,10 +142,7 @@ STATIC mp_obj_t mach_pwm_channel_make_new(mp_uint_t n_args, const mp_obj_t *pos_
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_pwm_channel_obj, 1, mach_pwm_channel_make_new);
 
 STATIC mp_obj_t mach_pwm_timer_init_helper(mach_pwm_timer_obj_t *self) {
-
-    periph_module_enable(PERIPH_LEDC_MODULE);                //enable LEDC module, or you can not set any register of it.
     ledc_timer_config(&self->config);
-
     return mp_const_none;
 }
 
@@ -168,14 +170,25 @@ STATIC mp_obj_t mach_pwm_timer_make_new(const mp_obj_type_t *type, mp_uint_t n_a
     if (MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]) == NULL) {
         MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]) = gc_alloc(sizeof(mach_pwm_timer_obj_t), false);
         memset(((mach_pwm_timer_obj_t *) MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]))->mach_pwm_channel_obj_t,
-            0,
-            sizeof(((mach_pwm_timer_obj_t *) MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]))->mach_pwm_channel_obj_t));
+               0, sizeof(((mach_pwm_timer_obj_t *) MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]))->mach_pwm_channel_obj_t));
     }
     mach_pwm_timer_obj_t *self = MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]);
     self->base.type = &mach_pwm_timer_type;
-    self->config.timer_num = (ledc_timer_t) pwm_timer_id;
+    self->config.timer_num = (ledc_timer_t)pwm_timer_id;
     self->config.freq_hz = freq;
-    self->config.bit_num = LEDC_TIMER_12_BIT;
+    uint8_t bit_num;
+    if (freq < 4000) {
+        bit_num = LEDC_TIMER_14_BIT;
+    } else if (freq < 8000) {
+        bit_num = LEDC_TIMER_13_BIT;
+    } else if (freq < 16000) {
+        bit_num = LEDC_TIMER_12_BIT;
+    } else if (freq < 32000) {
+        bit_num = LEDC_TIMER_11_BIT;
+    } else {
+        bit_num = LEDC_TIMER_10_BIT;
+    }
+    self->config.bit_num = bit_num;
     self->config.speed_mode = LEDC_HIGH_SPEED_MODE;
 
     // start the peripheral
@@ -183,16 +196,13 @@ STATIC mp_obj_t mach_pwm_timer_make_new(const mp_obj_type_t *type, mp_uint_t n_a
     return self;
 }
 
-
 STATIC const mp_map_elem_t mach_pwm_timer_locals_dict_table[] = {
     // instance methods
-    //{ MP_OBJ_NEW_QSTR(MP_QSTR_init),        (mp_obj_t)&mach_pwm_init_obj },
-    //{ MP_OBJ_NEW_QSTR(MP_QSTR_deinit),      (mp_obj_t)&mach_pwm_deinit_obj },
+    // { MP_OBJ_NEW_QSTR(MP_QSTR_init),          (mp_obj_t)&mach_pwm_init_obj },
+    // { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),        (mp_obj_t)&mach_pwm_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_channel),       (mp_obj_t)&mach_pwm_channel_obj},
-
 };
 STATIC MP_DEFINE_CONST_DICT(mach_pwm_timer_locals_dict, mach_pwm_timer_locals_dict_table);
-
 
 const mp_obj_type_t mach_pwm_timer_type = {
     { &mp_type_type },
@@ -201,7 +211,3 @@ const mp_obj_type_t mach_pwm_timer_type = {
     .make_new = mach_pwm_timer_make_new,
     .locals_dict = (mp_obj_t)&mach_pwm_timer_locals_dict,
 };
-
-
-
-
