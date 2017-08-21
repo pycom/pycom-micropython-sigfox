@@ -1924,7 +1924,7 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
 #if defined(USE_BAND_868)
     LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_5);
 #else
-    LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_4);
+    LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_3);
 #endif
     // port number 2 is the default one
     LORAWAN_SOCKET_SET_PORT(s->sock_base.sd, 2);
