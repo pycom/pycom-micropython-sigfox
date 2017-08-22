@@ -13,7 +13,7 @@ Flash the ESP32 (bootloader, partitions table and factory app).
 
 How to call esptool:
 
-python esptool.py '--chip', 'esp32', '--port', /dev/ttyUSB0, '--baud', '921600', 'write_flash', '-z', '--flash_mode', 'qio', '--flash_freq', '40m', '--flash_size', '4MB', '0x1000', bootloader.bin, '0x8000', partitions.bin, '0x10000', application.bin
+python esptool.py '--chip', 'esp32', '--port', /dev/ttyUSB0, '--baud', '921600', 'write_flash', '-z', '--flash_mode', 'dio', '--flash_freq', '40m', '--flash_size', 'detect', '0x1000', bootloader.bin, '0x8000', partitions.bin, '0x10000', application.bin, '0x3FF000', 'config_no_wifi.bin'
 
 """
 
@@ -370,7 +370,7 @@ def main():
                     i += 1
             for port in cmd_args.ports:
                 cmd = ['python', cmd_args.esptool, '--chip', 'esp32', '--port', port, '--baud', '921600',
-                       'write_flash', '-z', '--flash_mode', 'qio', '--flash_freq', '80m', '--flash_size', '8MB', '0x1000', cmd_args.boot,
+                       'write_flash', '-z', '--flash_mode', 'dio', '--flash_freq', '80m', '--flash_size', 'detect', '0x1000', cmd_args.boot,
                        '0x8000', cmd_args.table, '0x10000', cmd_args.app]
                 working_threads[port] = threading.Thread(target=flash_firmware, args=(port, cmd))
                 working_threads[port].start()

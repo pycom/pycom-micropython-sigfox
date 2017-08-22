@@ -56,6 +56,7 @@
 #define TX_OUTPUT_POWER_MAX                         20          // dBm
 #define TX_OUTPUT_POWER_DEAFULT                     13          // dBm
 #define TX_OUTPUT_POWER_MIN                         2           // dBm
+#define LORAWAN_MAX_JOIN_DATARATE                   5
 #elif defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID)
 #define RF_FREQUENCY_MIN                            902000000   // Hz
 #define RF_FREQUENCY_CENTER                         915000000   // Hz
@@ -63,6 +64,7 @@
 #define TX_OUTPUT_POWER_MAX                         20          // dBm
 #define TX_OUTPUT_POWER_DEAFULT                     20          // dBm
 #define TX_OUTPUT_POWER_MIN                         5           // dBm
+#define LORAWAN_MAX_JOIN_DATARATE                   3
 #else
     #error "Please define a frequency band in the compiler options."
 #endif
@@ -1439,7 +1441,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     }
 
     // need a way to indicate an invalid data rate so the default approach is used
-    uint32_t dr = LORAMAC_TX_MAX_DATARATE;
+    uint32_t dr = LORAWAN_MAX_JOIN_DATARATE;
 
     // get the data rate
     if (args[2].u_obj != mp_const_none) {
@@ -1924,7 +1926,7 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
 #if defined(USE_BAND_868)
     LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_5);
 #else
-    LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_4);
+    LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_3);
 #endif
     // port number 2 is the default one
     LORAWAN_SOCKET_SET_PORT(s->sock_base.sd, 2);
