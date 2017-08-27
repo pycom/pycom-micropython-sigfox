@@ -216,6 +216,12 @@ STATIC mp_obj_t machine_enable_irq (uint n_args, const mp_obj_t *arg) {
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_enable_irq_obj, 0, 1, machine_enable_irq);
 
+STATIC mp_obj_t machine_setinterrupt (mp_obj_t int_chr_in) {
+    mp_hal_set_interrupt_char(mp_obj_get_int(int_chr_in));
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(machine_setinterrupt_obj, machine_setinterrupt);
+
 STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                MP_OBJ_NEW_QSTR(MP_QSTR_umachine) },
 
@@ -237,6 +243,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_disable_irq),             (mp_obj_t)&machine_disable_irq_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_enable_irq),              (mp_obj_t)&machine_enable_irq_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_setinterrupt),            (mp_obj_t)(&machine_setinterrupt_obj) },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_Pin),                     (mp_obj_t)&pin_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_UART),                    (mp_obj_t)&mach_uart_type },
