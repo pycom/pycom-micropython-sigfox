@@ -42,6 +42,7 @@
 #include <stdint.h>
 
 // options to control how Micro Python is built
+#define MICROPY_PERSISTENT_CODE_LOAD        (1)
 #define MICROPY_OBJ_REPR                            (MICROPY_OBJ_REPR_A)
 #define MICROPY_ALLOC_PATH_MAX                      (128)
 #define MICROPY_EMIT_X64                            (0)
