@@ -47,7 +47,7 @@ static void (*HAL_tick_user_cb)(void);
 #define TIMER_TICKS             160000        // 1 ms @160MHz
 
 #ifdef LOPY
-static void HAL_TimerCallback (TimerHandle_t xTimer) {
+IRAM_ATTR static void HAL_TimerCallback (TimerHandle_t xTimer) {
     if (HAL_tick_user_cb) {
         HAL_tick_user_cb();
     }
@@ -63,8 +63,7 @@ void mp_hal_init(bool soft_reset) {
     #ifdef LOPY
         // setup the HAL timer for LoRa
         HAL_tick_user_cb = NULL;
-        TimerHandle_t hal_timer =
-                xTimerCreate("HAL_Timer", 1 / portTICK_PERIOD_MS, pdTRUE, (void *) 0, HAL_TimerCallback);
+        TimerHandle_t hal_timer = xTimerCreate("HAL_Timer", 1 / portTICK_PERIOD_MS, pdTRUE, (void *) 0, HAL_TimerCallback);
         xTimerStart (hal_timer, 0);
     #endif
     }
