@@ -19,29 +19,14 @@
 
 #define INTERRUPTS_QUEUE_LEN                       (32)
 
+#define INTERRUPT_OBJ_CLEAN(obj)                   {\
+                                                       (obj)->handler = NULL; \
+                                                       (obj)->handler_arg = NULL; \
+                                                   }
+
 /******************************************************************************
  DEFINE TYPES
  ******************************************************************************/
-typedef mp_obj_t (*mp_irq_init_t) (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
-typedef void (*mp_irq_void_method_t) (mp_obj_t self);
-typedef int (*mp_irq_int_method_t)  (mp_obj_t self);
-
-typedef struct {
-    mp_irq_init_t init;
-    mp_irq_void_method_t enable;
-    mp_irq_void_method_t disable;
-    mp_irq_int_method_t flags;
-} mp_irq_methods_t;
-
-typedef struct {
-    mp_obj_base_t base;
-    mp_obj_t parent;
-    mp_obj_t handler;
-    mp_irq_methods_t *methods;
-    bool isenabled;
-    bool pyhandler;
-} mp_irq_obj_t;
-
 typedef struct {
     void (* handler)(void *);
     void *arg;
@@ -58,7 +43,9 @@ extern const mp_obj_type_t mp_irq_type;
  ******************************************************************************/
 void mp_irq_preinit(void);
 void mp_irq_init0 (void);
-void mp_irq_handler_add (mp_obj_t irq_handler);
+void mp_irq_add (mp_obj_t parent, mp_obj_t handler);
+void mp_irq_remove (mp_obj_t parent);
+mp_obj_tuple_t *mp_irq_find (mp_obj_t parent);
 void mp_irq_queue_interrupt(void (* handler)(void *), void *arg);
 void mp_irq_kill(void);
 #endif /* MPIRQ_H_ */

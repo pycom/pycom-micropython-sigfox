@@ -897,9 +897,11 @@ STATIC mp_obj_t bt_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
         }
     } else {  // disable the callback
         self->trigger = 0;
+        mp_irq_remove(self);
+        INTERRUPT_OBJ_CLEAN(self);
     }
 
-    mp_irq_handler_add(args[1].u_obj);
+    mp_irq_add(self, args[1].u_obj);
 
     return mp_const_none;
 }
@@ -1328,9 +1330,11 @@ STATIC mp_obj_t bt_characteristic_callback(mp_uint_t n_args, const mp_obj_t *pos
         }
     } else {
         self->trigger = 0;
+        mp_irq_remove(self);
+        INTERRUPT_OBJ_CLEAN(self);
     }
 
-    mp_irq_handler_add(args[1].u_obj);
+    mp_irq_add(self, args[1].u_obj);
 
     return mp_const_none;
 }
@@ -1736,9 +1740,11 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
         }
     } else {
         self->trigger = 0;
+        mp_irq_remove(self);
+        INTERRUPT_OBJ_CLEAN(self);
     }
 
-    mp_irq_handler_add(args[1].u_obj);
+    mp_irq_add(self, args[1].u_obj);
 
     return mp_const_none;
 

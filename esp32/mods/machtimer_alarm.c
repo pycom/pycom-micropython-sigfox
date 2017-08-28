@@ -111,7 +111,7 @@ STATIC IRAM_ATTR void remove_alarm(uint32_t alarm_heap_index) {
     for (index = alarm_heap_index; index < alarm_heap.count; ++index) {
         alarm_heap.data[index] = alarm_heap.data[index+1];
         alarm_heap.data[index]->heap_index = index;
-        alarm_heap.data[index+1] = NULL;
+        alarm_heap.data[index + 1] = NULL;
     }
 }
 
@@ -140,6 +140,10 @@ STATIC void alarm_handler(void *arg) {
 
     if (alarm->handler != mp_const_none) {
         mp_call_function_1(alarm->handler, alarm->handler_arg);
+    }
+    if (!alarm->periodic) {
+        mp_irq_remove(alarm);
+        INTERRUPT_OBJ_CLEAN(alarm);
     }
 }
 
@@ -217,7 +221,6 @@ STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj
         handler_arg = self_in;
     }
     self->handler_arg = handler_arg;
-    mp_irq_handler_add(handler);
 
     // Both remove_alarm and insert_alarm need to be guarded for the following reasons:
     // remove_alarm: If the ISR removes the 0th alarm then then the whole heap is restructured the indexes are changed,
@@ -232,8 +235,11 @@ STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj
         // Check whether this alarm is currently active so can be removed
         if (self->heap_index != -1) {
             remove_alarm(self->heap_index);
+            mp_irq_remove(self);
+            INTERRUPT_OBJ_CLEAN(self);
         }
     } else {
+        mp_irq_add(self, handler);
         // Check whether this alarm is currently not active so it can be added
         if (self->heap_index == -1) {
             if (alarm_heap.count == ALARM_HEAP_MAX_ELEMENTS) {
@@ -277,11 +283,13 @@ STATIC mp_obj_t alarm_delete(mp_obj_t self_in) {
     // 2. When GC calls this function it is 100% percent sure that the heap_index is -1, because
     //    GC will only collect this object if it is not referred from the alarm_heap, which means it is not active thus
     //    its heap_index = 1.
+    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
     if (self->heap_index != -1) {
-        uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
         remove_alarm(self->heap_index);
-        MICROPY_END_ATOMIC_SECTION(state);
     }
+    mp_irq_remove(self);
+    INTERRUPT_OBJ_CLEAN(self);
+    MICROPY_END_ATOMIC_SECTION(state);
 
     return mp_const_none;
 }

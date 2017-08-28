@@ -569,17 +569,11 @@ STATIC mp_obj_t pin_call(mp_obj_t self_in, mp_uint_t n_args, mp_uint_t n_kw, con
 
 STATIC void set_pin_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj_t handler_arg) {
     pin_obj_t *self = self_in;
-    if (handler == mp_const_none) {
-        self->handler = NULL;
-        return;
-    }
 
     self->handler = handler;
-
     if (handler_arg == mp_const_none) {
         handler_arg = self_in;
     }
-
     self->handler_arg = handler_arg;
 }
 
@@ -597,14 +591,16 @@ STATIC mp_obj_t pin_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
     pin_obj_t *self = pos_args[0];
 
     pin_irq_disable(self);
-    set_pin_callback_helper(self, args[1].u_obj, args[2].u_obj);
-    pin_extint_register(self, args[0].u_int, 0);
-
-    mp_irq_handler_add(args[1].u_obj);
 
     // enable the interrupt just before leaving
-    if (args[0].u_int != GPIO_INTR_DISABLE) {
+    if (args[0].u_int != GPIO_INTR_DISABLE && args[1].u_obj != mp_const_none) {
+        set_pin_callback_helper(self, args[1].u_obj, args[2].u_obj);
+        pin_extint_register(self, args[0].u_int, 0);
+        mp_irq_add(self, args[1].u_obj);
         pin_irq_enable(self);
+    } else {
+        mp_irq_remove(self);
+        INTERRUPT_OBJ_CLEAN(self);
     }
 
     return mp_const_none;

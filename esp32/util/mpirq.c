@@ -116,14 +116,30 @@ void mp_irq_init0(void) {
     mp_thread_create_ex(TASK_Interrupts, &mpirq_args, &stack_size, INTERRUPTS_TASK_PRIORITY, "IRQs");
 }
 
-void mp_irq_handler_add (mp_obj_t irq_handler) {
+void mp_irq_add (mp_obj_t parent, mp_obj_t handler) {
+    mp_obj_tuple_t *irq = mp_obj_new_tuple(2, NULL);
+    irq->items[0] = parent;
+    irq->items[1] = handler;
+    // remove it in case it was already registered
+    mp_irq_remove(parent);
+    mp_obj_list_append(&MP_STATE_PORT(mp_irq_obj_list), irq);
+}
+
+void mp_irq_remove (const mp_obj_t parent) {
+    mp_obj_tuple_t *irq;
+    if ((irq = mp_irq_find(parent))) {
+        mp_obj_list_remove(&MP_STATE_PORT(mp_irq_obj_list), irq);
+    }
+}
+
+mp_obj_tuple_t *mp_irq_find (mp_obj_t parent) {
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mp_irq_obj_list).len; i++) {
-        if (irq_handler == ((mp_irq_obj_t *)(MP_STATE_PORT(mp_irq_obj_list).items[i]))) {
-            // already in the list, do not add it again
-            return;
+        mp_obj_tuple_t *irq = ((mp_obj_tuple_t *)(MP_STATE_PORT(mp_irq_obj_list).items[i]));
+        if (irq->items[0] == parent) {
+            return irq;
         }
     }
-    mp_obj_list_append(&MP_STATE_PORT(mp_irq_obj_list), irq_handler);
+    return NULL;
 }
 
 void IRAM_ATTR mp_irq_queue_interrupt(void (* handler)(void *), void *arg) {
