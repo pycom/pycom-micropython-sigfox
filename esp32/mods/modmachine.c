@@ -162,7 +162,7 @@ STATIC mp_obj_t machine_pin_deepsleep_wakeup (mp_uint_t n_args, const mp_obj_t *
         mask |= (1ull << pin_find(pins[i])->pin_number);
     }
     if (ESP_OK != esp_deep_sleep_enable_ext1_wakeup(mask, mode)) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "the pin(s) selected do not support deepsleep wakeup"));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "deepsleep wake up is not supported on the selected pin(s)"));
     }
     if (args[2].u_bool) {
         esp_deep_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);

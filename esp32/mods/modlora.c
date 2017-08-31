@@ -1774,7 +1774,7 @@ STATIC mp_obj_t lora_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
     if (args[0].u_obj != mp_const_none && args[1].u_obj != mp_const_none) {
         self->trigger = mp_obj_get_int(args[0].u_obj);
         self->handler = args[1].u_obj;
-        mp_irq_handler_add(args[1].u_obj);
+        mp_irq_add(self, args[1].u_obj);
         if (args[2].u_obj == mp_const_none) {
             self->handler_arg = self;
         } else {
@@ -1782,6 +1782,8 @@ STATIC mp_obj_t lora_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
         }
     } else {
         self->trigger = 0;
+        mp_irq_remove(self);
+        INTERRUPT_OBJ_CLEAN(self);
     }
 
     return mp_const_none;

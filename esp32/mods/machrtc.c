@@ -214,7 +214,7 @@ STATIC mp_obj_t mach_rtc_ntp_sync(size_t n_args, const mp_obj_t *pos_args, mp_ma
         sntp_stop();
     }
 
-    if (self->sntp_server_name != mp_const_none) {
+    if (args[0].u_obj != mp_const_none) {
         self->sntp_server_name = args[0].u_obj;
         sntp_setservername(0, (char *) mp_obj_str_get_str(self->sntp_server_name));
         sntp_init();

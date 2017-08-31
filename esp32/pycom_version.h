@@ -10,7 +10,7 @@
 #ifndef VERSION_H_
 #define VERSION_H_
 
-#define SW_VERSION_NUMBER                              "1.7.9.b3"
+#define SW_VERSION_NUMBER                              "1.8.0.b1"
 
 #define LORAWAN_VERSION_NUMBER                         "1.0.0"
 

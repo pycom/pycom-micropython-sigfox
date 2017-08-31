@@ -105,6 +105,7 @@
 #define MICROPY_PY_SYS_EXC_INFO                     (1)
 #define MICROPY_MODULE_FROZEN_STR                   (0)
 #define MICROPY_MODULE_FROZEN_MPY                   (1)
+#define MICROPY_PERSISTENT_CODE_LOAD                (1)
 #define MICROPY_QSTR_EXTRA_POOL                     mp_qstr_frozen_const_pool
 #define MICROPY_PY_FRAMEBUF                         (1)
 
