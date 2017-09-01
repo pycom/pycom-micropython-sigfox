@@ -176,9 +176,15 @@ STATIC mp_obj_t dac_tone(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_a
         tone+=125;
         pyb_dac_obj[0].tone_step = (tone *(1<<16)) / 8000000 - 1;
 
-    }
-    else {
+    } else {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "DAC tone frequency out of range"));
+    }
+    uint16_t tone_scale =  args[1].u_int;
+    if (tone_scale >= 0 && tone_scale <= 3) {
+        self->tone_scale = tone_scale;
+
+    } else {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "DAC tone scale out of range"));
     }
     self->tone = true;
     self->dc_value = 0;
