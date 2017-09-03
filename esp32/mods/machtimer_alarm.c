@@ -138,7 +138,7 @@ STATIC void alarm_handler(void *arg) {
     // this function will be called by the interrupt thread
     mp_obj_alarm_t *alarm = arg;
 
-    if (alarm->handler != mp_const_none) {
+    if (alarm->handler && alarm->handler != mp_const_none) {
         mp_call_function_1(alarm->handler, alarm->handler_arg);
     }
     if (!alarm->periodic) {
@@ -230,17 +230,15 @@ STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj
     //
 
     uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
-    // Remove the alarm from the active alarms list if the handler is none
-    if (handler == mp_const_none) {
-        // Check whether this alarm is currently active so can be removed
-        if (self->heap_index != -1) {
-            remove_alarm(self->heap_index);
-            mp_irq_remove(self);
-            INTERRUPT_OBJ_CLEAN(self);
-        }
-    } else {
+    // Check whether this alarm is currently active so can be removed
+    if (self->heap_index != -1) {
+        remove_alarm(self->heap_index);
+        mp_irq_remove(self);
+        INTERRUPT_OBJ_CLEAN(self);
+    }
+    if (handler != mp_const_none) {
         mp_irq_add(self, handler);
-        // Check whether this alarm is currently not active so it can be added
+        // check whether this alarm is currently not active so it can be added
         if (self->heap_index == -1) {
             if (alarm_heap.count == ALARM_HEAP_MAX_ELEMENTS) {
                 error = true;
@@ -250,7 +248,6 @@ STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj
             }
         }
     }
-
     MICROPY_END_ATOMIC_SECTION(state);
 
     if (error) {

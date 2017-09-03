@@ -929,7 +929,7 @@ static void TASK_LoRa (void *pvParameters) {
 static void lora_callback_handler(void *arg) {
     lora_obj_t *self = arg;
 
-    if (self->handler != mp_const_none) {
+    if (self->handler && self->handler != mp_const_none) {
         mp_call_function_1(self->handler, self->handler_arg);
     }
 }

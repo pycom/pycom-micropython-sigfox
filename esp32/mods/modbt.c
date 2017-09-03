@@ -474,7 +474,7 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
 STATIC void bluetooth_callback_handler(void *arg) {
     bt_obj_t *self = arg;
 
-    if (self->handler != mp_const_none) {
+    if (self->handler && self->handler != mp_const_none) {
         mp_call_function_1(self->handler, self->handler_arg);
     }
 }
@@ -483,7 +483,7 @@ STATIC void bluetooth_callback_handler(void *arg) {
 STATIC void gattc_char_callback_handler(void *arg) {
     bt_char_obj_t *chr = arg;
 
-    if (chr->handler != mp_const_none) {
+    if (chr->handler && chr->handler != mp_const_none) {
         mp_call_function_1(chr->handler, chr->handler_arg);
     }
 }
@@ -492,7 +492,7 @@ STATIC void gattc_char_callback_handler(void *arg) {
 STATIC void gatts_char_callback_handler(void *arg) {
     bt_gatts_char_obj_t *chr = arg;
 
-    if (chr->handler != mp_const_none) {
+    if (chr->handler && chr->handler != mp_const_none) {
         mp_obj_t r_value = mp_call_function_1(chr->handler, chr->handler_arg);
 
         if (chr->read_request) {

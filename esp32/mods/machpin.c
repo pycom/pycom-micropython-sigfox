@@ -280,7 +280,7 @@ STATIC void pin_validate_pull (uint pull) {
 STATIC void pin_interrupt_queue_handler(void *arg) {
     // this function will be called by the interrupt thread
     pin_obj_t *pin = arg;
-    if (pin->handler != mp_const_none) {
+    if (pin->handler && pin->handler != mp_const_none) {
         mp_call_function_1(pin->handler, pin->handler_arg);
     }
 }

@@ -94,7 +94,7 @@ alarm2.callback(cb,arg="alarm2")
 alarm14.cancel()
 
 # Wait for the alarms to expire except alarm14
-time.sleep(11)
+time.sleep(12)
 
 # Activate the previous 16 alarms
 alarm1.callback(cb,arg="alarm1")
@@ -127,7 +127,7 @@ time.sleep(2)
 alarm6.callback(cb,arg="alarm6")
 
 # Wait 10 sec for all alarm to expire 
-time.sleep(11)
+time.sleep(12)
 
 # Check alarm expirations with milisec values
 alarm1 = Timer.Alarm(handler=cb, ms=136, arg="alarm1",  periodic=False)
