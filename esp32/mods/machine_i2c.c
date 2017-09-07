@@ -276,7 +276,7 @@ er:
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "I2C bus error"));
 }
 
-STATIC void mp_hal_i2c_write_mem(machine_i2c_obj_t *self, uint8_t addr, uint16_t memaddr, const uint8_t *src, size_t len) {
+STATIC void mp_hal_i2c_write_mem(machine_i2c_obj_t *self, uint8_t addr, uint16_t memaddr, uint8_t addr_size, const uint8_t *src, size_t len) {
     // start the I2C transaction
     mp_hal_i2c_start(self);
 
@@ -284,7 +284,7 @@ STATIC void mp_hal_i2c_write_mem(machine_i2c_obj_t *self, uint8_t addr, uint16_t
     if (!mp_hal_i2c_write_byte(self, addr << 1)) {
         goto er;
     }
-    if (memaddr > 0xFF) {
+    if (addr_size == 16) {
         if (!mp_hal_i2c_write_byte(self, memaddr >> 8)) {
             goto er;
         }
@@ -309,7 +309,7 @@ er:
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "I2C bus error"));
 }
 
-STATIC void mp_hal_i2c_read_mem(machine_i2c_obj_t *self, uint8_t addr, uint16_t memaddr, uint8_t *dest, size_t len) {
+STATIC void mp_hal_i2c_read_mem(machine_i2c_obj_t *self, uint8_t addr, uint16_t memaddr, uint8_t addr_size, uint8_t *dest, size_t len) {
     // start the I2C transaction
     mp_hal_i2c_start(self);
 
@@ -317,7 +317,7 @@ STATIC void mp_hal_i2c_read_mem(machine_i2c_obj_t *self, uint8_t addr, uint16_t 
     if (!mp_hal_i2c_write_byte(self, addr << 1)) {
         goto er;
     }
-    if (memaddr > 0xFF) {
+    if (addr_size == 16) {
         if (!mp_hal_i2c_write_byte(self, memaddr >> 8)) {
             goto er;
         }
@@ -350,15 +350,15 @@ STATIC void hw_i2c_initialise_master (machine_i2c_obj_t *i2c_obj) {
     i2c_driver_install(i2c_obj->bus_id, I2C_MODE_MASTER, 0, 0, 0);
 }
 
-STATIC void hw_i2c_master_writeto(machine_i2c_obj_t *i2c_obj, uint16_t slave_addr, bool memwrite, uint32_t memaddr, uint8_t *data, uint16_t len, bool stop) {
+STATIC void hw_i2c_master_writeto(machine_i2c_obj_t *i2c_obj, uint16_t slave_addr, uint32_t memaddr, uint8_t addr_size, uint8_t *data, uint16_t len, bool stop) {
 
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 
     ESP_ERROR_CHECK(i2c_master_start(cmd));
     ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (slave_addr << 1) | I2C_MASTER_WRITE, I2C_ACK_CHECK_EN));
 
-    if (memwrite) {
-        if (memaddr > 0xFF) {
+    if (addr_size > 0) {
+        if (addr_size == 16) {
             ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (memaddr >> 8), I2C_ACK_CHECK_EN));
         }
         ESP_ERROR_CHECK(i2c_master_write_byte(cmd, memaddr, I2C_ACK_CHECK_EN));
@@ -377,15 +377,15 @@ STATIC void hw_i2c_master_writeto(machine_i2c_obj_t *i2c_obj, uint16_t slave_add
     }
 }
 
-STATIC void hw_i2c_master_readfrom(machine_i2c_obj_t *i2c_obj, uint16_t slave_addr, bool memread, uint32_t memaddr, uint8_t *data, uint16_t len) {
+STATIC void hw_i2c_master_readfrom(machine_i2c_obj_t *i2c_obj, uint16_t slave_addr, uint32_t memaddr, uint8_t addr_size, uint8_t *data, uint16_t len) {
 
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
 
     ESP_ERROR_CHECK(i2c_master_start(cmd));
 
-    if (memread) {
+    if (addr_size > 0) {
         ESP_ERROR_CHECK(i2c_master_write_byte(cmd, ( slave_addr << 1 ) | I2C_MASTER_WRITE, I2C_ACK_CHECK_EN));
-        if (memaddr > 0xFF) {
+        if (addr_size == 16) {
             ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (memaddr >> 8), I2C_ACK_CHECK_EN));
         }
         ESP_ERROR_CHECK(i2c_master_write_byte(cmd, memaddr, I2C_ACK_CHECK_EN));
@@ -432,6 +432,12 @@ STATIC void i2c_deassign_pins_af (machine_i2c_obj_t *self) {
         pin_deassign(self->scl);
         self->sda = MP_OBJ_NULL;
         self->scl = MP_OBJ_NULL;
+    }
+}
+
+STATIC void i2c_validate_address_size(uint8_t addr_size) {
+    if (addr_size != 8 && addr_size != 16) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid memory address size %d", addr_size));
     }
 }
 
@@ -584,7 +590,7 @@ STATIC mp_obj_t machine_i2c_readfrom(mp_uint_t n_args, const mp_obj_t *pos_args,
     vstr_t vstr;
     vstr_init_len(&vstr, args[1].u_int);
     if (self->bus_id < 2) {
-        hw_i2c_master_readfrom(self, args[0].u_int, false, 0, (uint8_t*)vstr.buf, vstr.len);
+        hw_i2c_master_readfrom(self, args[0].u_int, 0, 0, (uint8_t*)vstr.buf, vstr.len);
     } else {
         mp_hal_i2c_read(self, args[0].u_int, (uint8_t*)vstr.buf, vstr.len);
     }
@@ -607,7 +613,7 @@ STATIC mp_obj_t machine_i2c_readfrom_into(mp_uint_t n_args, const mp_obj_t *pos_
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(args[1].u_obj, &bufinfo, MP_BUFFER_WRITE);
     if (self->bus_id < 2) {
-        hw_i2c_master_readfrom(self, args[0].u_int, false, 0, bufinfo.buf, bufinfo.len);
+        hw_i2c_master_readfrom(self, args[0].u_int, 0, 0, bufinfo.buf, bufinfo.len);
     } else {
         mp_hal_i2c_read(self, args[0].u_int, (uint8_t*)bufinfo.buf, bufinfo.len);
     }
@@ -633,7 +639,7 @@ STATIC mp_obj_t machine_i2c_writeto(mp_uint_t n_args, const mp_obj_t *pos_args, 
     pyb_buf_get_for_send(args[1].u_obj, &bufinfo, data);
 
     if (self->bus_id < 2) {
-        hw_i2c_master_writeto(self, args[0].u_int, false, 0x0, bufinfo.buf, bufinfo.len, args[2].u_bool);
+        hw_i2c_master_writeto(self, args[0].u_int, 0, 0, bufinfo.buf, bufinfo.len, args[2].u_bool);
     } else {
         mp_hal_i2c_write(self, args[0].u_int, bufinfo.buf, bufinfo.len, args[2].u_bool);
     }
@@ -642,15 +648,18 @@ STATIC mp_obj_t machine_i2c_writeto(mp_uint_t n_args, const mp_obj_t *pos_args, 
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_i2c_writeto_obj, 1, machine_i2c_writeto);
 
 STATIC mp_obj_t machine_i2c_readfrom_mem(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_addr, ARG_memaddr, ARG_n };
+    enum { ARG_addr, ARG_memaddr, ARG_n , ARG_addrsize };
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_addr,    MP_ARG_REQUIRED | MP_ARG_INT, },
-        { MP_QSTR_memaddr, MP_ARG_REQUIRED | MP_ARG_INT, },
-        { MP_QSTR_nbytes,  MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_addr,     MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_memaddr,  MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_nbytes,   MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_addrsize, MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 8} },
     };
     machine_i2c_obj_t *self = pos_args[0];
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    i2c_validate_address_size(args[ARG_addrsize].u_int);
 
     if (args[ARG_n].u_int > 0) {
         // create the buffer to store data into
@@ -659,9 +668,9 @@ STATIC mp_obj_t machine_i2c_readfrom_mem(size_t n_args, const mp_obj_t *pos_args
 
         // do the transfer
         if (self->bus_id < 2) {
-            hw_i2c_master_readfrom(self, args[ARG_addr].u_int, true, args[ARG_memaddr].u_int, (uint8_t *)vstr.buf, vstr.len);
+            hw_i2c_master_readfrom(self, args[ARG_addr].u_int, args[ARG_memaddr].u_int, args[ARG_addrsize].u_int, (uint8_t *)vstr.buf, vstr.len);
         } else {
-            mp_hal_i2c_read_mem(self, args[ARG_addr].u_int, args[ARG_memaddr].u_int, (uint8_t*)vstr.buf, vstr.len);
+            mp_hal_i2c_read_mem(self, args[ARG_addr].u_int, args[ARG_memaddr].u_int, args[ARG_addrsize].u_int, (uint8_t*)vstr.buf, vstr.len);
         }
         return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
     }
@@ -670,15 +679,18 @@ STATIC mp_obj_t machine_i2c_readfrom_mem(size_t n_args, const mp_obj_t *pos_args
 MP_DEFINE_CONST_FUN_OBJ_KW(machine_i2c_readfrom_mem_obj, 1, machine_i2c_readfrom_mem);
 
 STATIC mp_obj_t machine_i2c_readfrom_mem_into(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_addr, ARG_memaddr, ARG_buf };
+    enum { ARG_addr, ARG_memaddr, ARG_buf, ARG_addrsize };
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_addr,    MP_ARG_REQUIRED | MP_ARG_INT, },
-        { MP_QSTR_memaddr, MP_ARG_REQUIRED | MP_ARG_INT, },
-        { MP_QSTR_buf,     MP_ARG_REQUIRED | MP_ARG_OBJ, },
+        { MP_QSTR_addr,     MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_memaddr,  MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_buf,      MP_ARG_REQUIRED | MP_ARG_OBJ, },
+        { MP_QSTR_addrsize, MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 8} },
     };
     machine_i2c_obj_t *self = pos_args[0];
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    i2c_validate_address_size(args[ARG_addrsize].u_int);
 
     // get the buffer to store data into
     mp_buffer_info_t bufinfo;
@@ -687,9 +699,9 @@ STATIC mp_obj_t machine_i2c_readfrom_mem_into(size_t n_args, const mp_obj_t *pos
     if (bufinfo.len > 0) {
         // do the transfer
         if (self->bus_id < 2) {
-            hw_i2c_master_readfrom(self, args[ARG_addr].u_int, true, args[ARG_memaddr].u_int, bufinfo.buf, bufinfo.len);
+            hw_i2c_master_readfrom(self, args[ARG_addr].u_int, args[ARG_memaddr].u_int, args[ARG_addrsize].u_int, bufinfo.buf, bufinfo.len);
         } else {
-            mp_hal_i2c_read_mem(self, args[ARG_addr].u_int, args[ARG_memaddr].u_int, bufinfo.buf, bufinfo.len);
+            mp_hal_i2c_read_mem(self, args[ARG_addr].u_int, args[ARG_memaddr].u_int, args[ARG_addrsize].u_int, bufinfo.buf, bufinfo.len);
         }
     }
     return mp_obj_new_int(bufinfo.len);
@@ -697,15 +709,18 @@ STATIC mp_obj_t machine_i2c_readfrom_mem_into(size_t n_args, const mp_obj_t *pos
 MP_DEFINE_CONST_FUN_OBJ_KW(machine_i2c_readfrom_mem_into_obj, 1, machine_i2c_readfrom_mem_into);
 
 STATIC mp_obj_t machine_i2c_writeto_mem(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_addr, ARG_memaddr, ARG_buf };
+    enum { ARG_addr, ARG_memaddr, ARG_buf, ARG_addrsize };
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_addr,    MP_ARG_REQUIRED | MP_ARG_INT, },
-        { MP_QSTR_memaddr, MP_ARG_REQUIRED | MP_ARG_INT, },
-        { MP_QSTR_buf,     MP_ARG_REQUIRED | MP_ARG_OBJ, },
+        { MP_QSTR_addr,     MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_memaddr,  MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_buf,      MP_ARG_REQUIRED | MP_ARG_OBJ, },
+        { MP_QSTR_addrsize, MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 8} },
     };
     machine_i2c_obj_t *self = pos_args[0];
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    i2c_validate_address_size(args[ARG_addrsize].u_int);
 
     // get the buffer to write the data from
     mp_buffer_info_t bufinfo;
@@ -714,9 +729,9 @@ STATIC mp_obj_t machine_i2c_writeto_mem(size_t n_args, const mp_obj_t *pos_args,
 
     // do the transfer
     if (self->bus_id < 2) {
-        hw_i2c_master_writeto(self, args[ARG_addr].u_int, true, args[ARG_memaddr].u_int, bufinfo.buf, bufinfo.len, true);
+        hw_i2c_master_writeto(self, args[ARG_addr].u_int, args[ARG_memaddr].u_int, args[ARG_addrsize].u_int, bufinfo.buf, bufinfo.len, true);
     } else {
-        mp_hal_i2c_write_mem(self, args[ARG_addr].u_int, args[ARG_memaddr].u_int, bufinfo.buf, bufinfo.len);
+        mp_hal_i2c_write_mem(self, args[ARG_addr].u_int, args[ARG_memaddr].u_int, args[ARG_addrsize].u_int, bufinfo.buf, bufinfo.len);
     }
 
     return mp_obj_new_int(bufinfo.len);

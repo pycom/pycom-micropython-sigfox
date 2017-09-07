@@ -126,7 +126,7 @@ time.sleep(2)
 #Add alarm6 back which means alarm6 should expire between alarm12 and alarm13
 alarm6.callback(cb,arg="alarm6")
 
-# Wait 10 sec for all alarm to expire 
+# Wait 12 sec for all alarm to expire
 time.sleep(12)
 
 # Check alarm expirations with milisec values
