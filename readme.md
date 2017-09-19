@@ -72,6 +72,13 @@ This software is used to obtain the unique id of the PicoCell gateway (the
 ## 5. Changelog
 ---------------
 
+### v0.2.0  ###
+
+* HAL: reverted AGC FW to version 4, as v5 was necessary to fix a HW bug which
+has been fixed since rev V02A of the picoCell reference design.
+* HAL: fixed a bug lgw_com_send_command() function to prevent from hanging when
+writing on the COM link was not possible.
+
 ### v0.1.2  ###
 
 * HAL: fixed a wrong copy size and position of MCU unique ID in lgw_mcu_get_unique_id().
