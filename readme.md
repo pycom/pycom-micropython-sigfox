@@ -78,6 +78,7 @@ This software is used to obtain the unique id of the PicoCell gateway (the
 has been fixed since rev V02A of the picoCell reference design.
 * HAL: fixed a bug lgw_com_send_command() function to prevent from hanging when
 writing on the COM link was not possible.
+* HAL: fixed memory alignment on FSK syncword configuration.
 
 ### v0.1.2  ###
 
