@@ -192,34 +192,36 @@ typedef struct {
     uint8_t           sf;
     uint8_t           tx_power;
     uint8_t           pwr_mode;
+
     struct {
-    bool Enabled;
-    bool Running;
-    uint8_t State;
-    bool IsTxConfirmed;
-    uint16_t DownLinkCounter;
-    bool LinkCheck;
-    uint8_t DemodMargin;
-    uint8_t NbGateways;
+        bool Enabled;
+        bool Running;
+        uint8_t State;
+        bool IsTxConfirmed;
+        uint16_t DownLinkCounter;
+        bool LinkCheck;
+        uint8_t DemodMargin;
+        uint8_t NbGateways;
     } ComplianceTest;
+
     uint8_t           activation;
     uint8_t           tx_retries;
     uint8_t           otaa_dr;
-    union {
-        struct {
-            // for OTAA
-            uint8_t           DevEui[8];
-            uint8_t           AppEui[8];
-            uint8_t           AppKey[16];
-        } otaa;
 
-        struct {
-            // for ABP
-            uint32_t          DevAddr;
-            uint8_t           NwkSKey[16];
-            uint8_t           AppSKey[16];
-        } abp;
-    };
+    struct {
+        // for OTAA
+        uint8_t           DevEui[8];
+        uint8_t           AppEui[8];
+        uint8_t           AppKey[16];
+    } otaa;
+
+    struct {
+        // for ABP
+        uint32_t          DevAddr;
+        uint8_t           NwkSKey[16];
+        uint8_t           AppSKey[16];
+    } abp;
+
     bool              txiq;
     bool              rxiq;
     bool              adr;
@@ -253,7 +255,7 @@ static volatile lora_rx_data_t rx_data_isr;
 static TimerEvent_t TxNextActReqTimer;
 
 static nvs_handle modlora_nvs_handle;
-static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR", "NWSKEY", "APPSKEY", "NETID" };
+static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR", "NWSKEY", "APPSKEY", "NETID", "ADRACK", "CHNLMASK", "CHANNELS"};
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -321,15 +323,16 @@ bool modlora_nvs_set_blob(uint32_t key_idx, const void *value, uint32_t length) 
 }
 
 bool modlora_nvs_get_uint(uint32_t key_idx, uint32_t *value) {
-    if (ESP_OK == nvs_get_u32(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value)) {
+    esp_err_t err;
+    if (ESP_OK == (err = nvs_get_u32(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value))) {
         return true;
     }
     return false;
 }
 
 bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length) {
-    uint32_t result = nvs_get_blob(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value, length);
-    if (ESP_OK == result) {
+    esp_err_t err;
+    if (ESP_OK == (err = nvs_get_blob(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value, length))) {
         return true;
     }
     return false;
@@ -686,6 +689,7 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacCallbacks.GetBatteryLevel = BoardGetBatteryLevel;
                         LoRaMacInitialization(&LoRaMacPrimitives, &LoRaMacCallbacks);
 
+                        TimerStop(&TxNextActReqTimer);
                         TimerInit(&TxNextActReqTimer, OnTxNextActReqTimerEvent);
                         TimerSetValue(&TxNextActReqTimer, OVER_THE_AIR_ACTIVATION_DUTYCYCLE);
 
@@ -719,10 +723,18 @@ static void TASK_LoRa (void *pvParameters) {
                             length = 16;
                             result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_APPSKEY, (void *)lora_obj.abp.AppSKey, &length);
 
-                            uint32_t uplinks, downlinks;
+                            uint32_t uplinks, downlinks, adrAcks;
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_UPLINK, &uplinks);
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DWLINK, &downlinks);
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_ADR_ACKS, &adrAcks);
 
+                            uint16_t ChannelsMask[6];
+                            length = 6 * sizeof(uint16_t);
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNEL_MASK, (void *)ChannelsMask, &length);
+
+                            length = LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t);
+                            uint8_t channels[LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t)];
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNELS, (void *)channels, &length);
                             if (result) {
                                 mibReq.Type = MIB_UPLINK_COUNTER;
                                 mibReq.Param.UpLinkCounter = uplinks;
@@ -731,6 +743,18 @@ static void TASK_LoRa (void *pvParameters) {
                                 mibReq.Type = MIB_DOWNLINK_COUNTER;
                                 mibReq.Param.DownLinkCounter = downlinks;
                                 LoRaMacMibSetRequestConfirm( &mibReq );
+                                
+                                mibReq.Type = MIB_ADR_ACK_COUNTER;
+                                mibReq.Param.AdrAckCounter = adrAcks;
+                                LoRaMacMibSetRequestConfirm( &mibReq );
+                                
+                                mibReq.Type = MIB_CHANNELS_MASK;
+                                mibReq.Param.ChannelsMask = ChannelsMask;
+                                LoRaMacMibSetRequestConfirm( &mibReq );
+
+                                mibReq.Type = MIB_CHANNELS;
+                                memcpy(mibReq.Param.ChannelList, channels, sizeof(channels));
+                                LoRaMacMibGetRequestConfirm( &mibReq );
 
                                 lora_obj.activation = E_LORA_ACTIVATION_ABP;
                                 lora_obj.state = E_LORA_STATE_JOIN;
@@ -1816,7 +1840,7 @@ STATIC mp_obj_t lora_set_battery_level(mp_obj_t self_in, mp_obj_t battery) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_set_battery_level_obj, lora_set_battery_level);
 
 STATIC mp_obj_t lora_nvram_save (mp_obj_t self_in) {
-    modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, lora_obj.joined);
+    modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, (uint32_t)lora_obj.joined);
     LoRaMacNvsSave();
     if (ESP_OK != nvs_commit(modlora_nvs_handle)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
@@ -1826,18 +1850,19 @@ STATIC mp_obj_t lora_nvram_save (mp_obj_t self_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_nvram_save_obj, lora_nvram_save);
 
 STATIC mp_obj_t lora_nvram_restore (mp_obj_t self_in) {
-    uint32_t joined = false;
+    uint32_t joined = 0;
     lora_cmd_data_t cmd_data;
 
     if (modlora_nvs_get_uint(E_LORA_NVS_ELE_JOINED, &joined)) {
         lora_obj.joined = joined;
+        if (joined) {
+            lora_get_config (&cmd_data);
+            cmd_data.cmd = E_LORA_CMD_INIT;
+            lora_send_cmd (&cmd_data);
+        }
     } else {
         lora_obj.joined = false;
     }
-
-    lora_get_config (&cmd_data);
-    cmd_data.cmd = E_LORA_CMD_INIT;
-    lora_send_cmd (&cmd_data);
 
     return mp_const_none;
 }

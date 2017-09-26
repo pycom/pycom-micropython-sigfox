@@ -1122,7 +1122,7 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
                     PrepareRxDoneAbort( );
                     return;
                 }
-
+                
                 if( isMicOk == true )
                 {
                     McpsIndication.Status = LORAMAC_EVENT_INFO_STATUS_OK;
@@ -2100,7 +2100,7 @@ static bool AdrNextDr( bool adrEnabled, bool updateChannelMask, int8_t* datarate
 {
     bool adrAckReq = false;
     int8_t datarate = LoRaMacParams.ChannelsDatarate;
-
+    
     if( adrEnabled == true )
     {
         if( datarate == LORAMAC_TX_MIN_DATARATE )
@@ -2113,7 +2113,7 @@ static bool AdrNextDr( bool adrEnabled, bool updateChannelMask, int8_t* datarate
             if( AdrAckCounter > ADR_ACK_LIMIT )
             {
                 adrAckReq = true;
-
+      
                 if( AdrAckCounter >= ( ADR_ACK_LIMIT + ( 2 * ADR_ACK_DELAY ) ) )
                 {
                     if ( ( ( AdrAckCounter - ( ADR_ACK_LIMIT + 1 ) ) % ADR_ACK_DELAY ) == 0 )
@@ -3716,6 +3716,11 @@ LoRaMacStatus_t LoRaMacMibSetRequestConfirm( MibRequestConfirm_t *mibSet )
             DownLinkCounter = mibSet->Param.DownLinkCounter;
             break;
         }
+        case MIB_ADR_ACK_COUNTER:
+        {
+            AdrAckCounter = mibSet->Param.AdrAckCounter;
+            break;
+        }
         default:
             status = LORAMAC_STATUS_SERVICE_UNKNOWN;
             break;
@@ -4304,6 +4309,10 @@ void LoRaMacNvsSave( void )
 
     modlora_nvs_set_uint(E_LORA_NVS_ELE_NET_ID, LoRaMacNetID);
     modlora_nvs_set_uint(E_LORA_NVS_ELE_DEVADDR, LoRaMacDevAddr);
+
+    modlora_nvs_set_uint(E_LORA_NVS_ELE_ADR_ACKS, AdrAckCounter);
+    modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNEL_MASK, LoRaMacParams.ChannelsMask, sizeof(LoRaMacParams.ChannelsMask));
+    modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELS, Channels, LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t));
 }
 
 void LoRaMacTestSetDutyCycleOn( bool enable )

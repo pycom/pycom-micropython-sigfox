@@ -48,7 +48,7 @@ CFLAGS_XTENSA = -DESP_PLATFORM -g3 -Wpointer-arith -Werror -Wno-error=unused-fun
                 -mlongcalls -Wall -ffunction-sections -fdata-sections -fno-common
 
 ifeq ($(TARGET), app)
-CFLAGS_XTENSA += -O2
+CFLAGS_XTENSA += -Os
 else
 CFLAGS_XTENSA += -Og
 endif

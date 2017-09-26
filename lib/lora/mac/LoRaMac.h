@@ -1054,6 +1054,7 @@ typedef struct sMlmeConfirm
  * \ref MIB_UPLINK_COUNTER           | YES | YES
  * \ref MIB_DOWNLINK_COUNTER         | YES | YES
  * \ref MIB_MULTICAST_CHANNEL        | YES | NO
+ * \ref MIB_ADR_ACK_COUNTER          | YES | NO
  *
  * The following table provides links to the function implementations of the
  * related MIB primitives:
@@ -1233,6 +1234,12 @@ typedef enum eMib
      * NULL, the list is empty.
      */
     MIB_MULTICAST_CHANNEL,
+    /*!
+     * LoRaWAN Adr-ack counter
+     *
+     * LoRaWAN Specification V1.0.1, chapter 4.3.1.5
+     */
+    MIB_ADR_ACK_COUNTER,
 }Mib_t;
 
 /*!
@@ -1384,6 +1391,12 @@ typedef union uMibParam
      * Related MIB type: \ref MIB_MULTICAST_CHANNEL
      */
     MulticastParams_t* MulticastList;
+    /*!
+     * LoRaWAN Adr-ack counter
+     *
+     * Related MIB type: \ref MIB_ADR_ACK_COUNTER
+     */
+    uint32_t AdrAckCounter;
 }MibParam_t;
 
 /*!

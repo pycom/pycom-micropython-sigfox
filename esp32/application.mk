@@ -305,6 +305,9 @@ ifeq ($(BOARD), LOPY)
 else
     ifeq ($(BOARD), SIPY)
         APP_BIN = $(BUILD)/sipy.bin
+        $(BUILD)/sigfox/radio.o: CFLAGS += -O2
+        $(BUILD)/sigfox/timer.o: CFLAGS += -O2
+        $(BUILD)/sigfox/targets/%.o: CFLAGS += -O2
     else
         APP_BIN = $(BUILD)/wipy.bin
     endif
