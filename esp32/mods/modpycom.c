@@ -142,8 +142,13 @@ STATIC mp_obj_t mod_pycom_nvs_set (mp_obj_t _key, mp_obj_t _value) {
     const char *key = mp_obj_str_get_str(_key);
     uint32_t value = mp_obj_get_int_truncated(_value);
 
-    if (ESP_OK == nvs_set_u32(pycom_nvs_handle, key, value)) {
+    esp_err_t esp_err = nvs_set_u32(pycom_nvs_handle, key, value);
+    if (ESP_OK == esp_err) {
         nvs_commit(pycom_nvs_handle);
+    } else if (ESP_ERR_NVS_NOT_ENOUGH_SPACE == esp_err || ESP_ERR_NVS_PAGE_FULL == esp_err || ESP_ERR_NVS_NO_FREE_PAGES == esp_err) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no space available"));
+    } else if (ESP_ERR_NVS_INVALID_NAME == esp_err || ESP_ERR_NVS_KEY_TOO_LONG == esp_err) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid key (or too long)"));
     }
     return mp_const_none;
 }
@@ -154,15 +159,29 @@ STATIC mp_obj_t mod_pycom_nvs_get (mp_obj_t _key) {
     uint32_t value;
 
     if (ESP_ERR_NVS_NOT_FOUND == nvs_get_u32(pycom_nvs_handle, key, &value)) {
-        // initialize the value to 0
-        value = 0;
-        if (ESP_OK == nvs_set_u32(pycom_nvs_handle, key, value)) {
-            nvs_commit(pycom_nvs_handle);
-        }
+        return mp_const_none;
     }
     return mp_obj_new_int(value);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_nvs_get_obj, mod_pycom_nvs_get);
+
+STATIC mp_obj_t mod_pycom_nvs_erase (mp_obj_t _key) {
+    const char *key = mp_obj_str_get_str(_key);
+
+    if (ESP_ERR_NVS_NOT_FOUND == nvs_erase_key(pycom_nvs_handle, key)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_KeyError, "key not found"));
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_nvs_erase_obj, mod_pycom_nvs_erase);
+
+STATIC mp_obj_t mod_pycom_nvs_erase_all (void) {
+    if (ESP_OK != nvs_erase_all(pycom_nvs_handle)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_nvs_erase_all_obj, mod_pycom_nvs_erase_all);
 
 STATIC mp_obj_t mod_pycom_wifi_on_boot (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
@@ -184,6 +203,8 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_pulses_get),          (mp_obj_t)&mod_pycom_pulses_get_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_set),             (mp_obj_t)&mod_pycom_nvs_set_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_get),             (mp_obj_t)&mod_pycom_nvs_get_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_erase),           (mp_obj_t)&mod_pycom_nvs_erase_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_erase_all),       (mp_obj_t)&mod_pycom_nvs_erase_all_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_on_boot),        (mp_obj_t)&mod_pycom_wifi_on_boot_obj },
 };
 
