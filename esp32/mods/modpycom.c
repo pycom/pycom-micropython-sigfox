@@ -154,11 +154,8 @@ STATIC mp_obj_t mod_pycom_nvs_get (mp_obj_t _key) {
     uint32_t value;
 
     if (ESP_ERR_NVS_NOT_FOUND == nvs_get_u32(pycom_nvs_handle, key, &value)) {
-        // initialize the value to 0
-        value = 0;
-        if (ESP_OK == nvs_set_u32(pycom_nvs_handle, key, value)) {
-            nvs_commit(pycom_nvs_handle);
-        }
+        // return None
+        return mp_const_none;
     }
     return mp_obj_new_int(value);
 }
