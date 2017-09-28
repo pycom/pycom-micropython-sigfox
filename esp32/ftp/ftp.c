@@ -45,6 +45,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "machrtc.h"
+
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
@@ -52,7 +54,7 @@
 #define FTP_ACTIVE_DATA_PORT                20
 #define FTP_PASIVE_DATA_PORT                2024
 #define FTP_BUFFER_SIZE                     512
-#define FTP_TX_RETRIES_MAX                  25
+#define FTP_TX_RETRIES_MAX                  50
 #define FTP_CMD_SIZE_MAX                    6
 #define FTP_CMD_CLIENTS_MAX                 1
 #define FTP_DATA_CLIENTS_MAX                1
@@ -61,7 +63,7 @@
 #define FTP_UNIX_TIME_20150101              1420070400
 #define FTP_UNIX_SECONDS_180_DAYS           15552000
 #define FTP_DATA_TIMEOUT_MS                 10000            // 10 seconds
-#define FTP_SOCKETFIFO_ELEMENTS_MAX         4
+#define FTP_SOCKETFIFO_ELEMENTS_MAX         7
 #define FTP_CYCLE_TIME_MS                   (SERVERS_CYCLE_TIME_MS * 2)
 
 /******************************************************************************
@@ -187,6 +189,7 @@ static const ftp_month_t ftp_month[] = { { "Jan" }, { "Feb" }, { "Mar" }, { "Apr
 
 static SocketFifoElement_t ftp_fifoelements[FTP_SOCKETFIFO_ELEMENTS_MAX];
 static FIFO_t ftp_socketfifo;
+static uint32_t ftp_last_dir_idx;
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -235,6 +238,7 @@ void ftp_init (void) {
     ftp_data.substate = E_FTP_STE_SUB_DISCONNECTED;
     ftp_data.special_file = false;
     ftp_data.volcount = 0;
+    ftp_last_dir_idx = 0;
 }
 
 void ftp_run (void) {
@@ -882,44 +886,55 @@ static void ftp_pop_param (char **str, char *param, bool stop_on_space) {
 }
 
 static int ftp_print_eplf_item (char *dest, uint32_t destsize, FILINFO *fno) {
-
     char *type = (fno->fattrib & AM_DIR) ? "d" : "-";
     uint32_t tseconds;
+    uint32_t _len;
     uint mindex = (((fno->fdate >> 5) & 0x0f) > 0) ? (((fno->fdate >> 5) & 0x0f) - 1) : 0;
     uint day = ((fno->fdate & 0x1f) > 0) ? (fno->fdate & 0x1f) : 1;
-    uint fseconds = timeutils_seconds_since_epoch(1980 + ((fno->fdate >> 9) & 0x7f),
+    uint fseconds = timeutils_seconds_since_epoch(1970 + ((fno->fdate >> 9) & 0x7f),
                                                         (fno->fdate >> 5) & 0x0f,
                                                         fno->fdate & 0x1f,
                                                         (fno->ftime >> 11) & 0x1f,
                                                         (fno->ftime >> 5) & 0x3f,
                                                         2 * (fno->ftime & 0x1f));
-    tseconds = 3600; // pyb_rtc_get_seconds(); // FIXME
+    tseconds = mach_rtc_get_s_since_epoch();
     if (FTP_UNIX_SECONDS_180_DAYS < tseconds - fseconds) {
-        return snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %5u %s\r\n",
+        _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %5u %s\r\n",
                         type, (uint32_t)fno->fsize, ftp_month[mindex].month, day,
                         1980 + ((fno->fdate >> 9) & 0x7f), fno->fname);
     } else {
-        return snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %02u:%02u %s\r\n",
+        _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %02u:%02u %s\r\n",
                         type, (uint32_t)fno->fsize, ftp_month[mindex].month, day,
                         (fno->ftime >> 11) & 0x1f, (fno->ftime >> 5) & 0x3f, fno->fname);
     }
+
+    if (_len > 0 && _len < destsize) {
+        return _len;
+    }
+    return 0;
 }
 
 static int ftp_print_eplf_drive (char *dest, uint32_t destsize, char *name) {
     timeutils_struct_time_t tm;
     uint32_t tseconds;
     char *type = "d";
+    uint32_t _len;
 
     timeutils_seconds_since_epoch_to_struct_time((FTP_UNIX_TIME_20150101 - FTP_UNIX_TIME_20000101), &tm);
 
-    tseconds = 3600; // pyb_rtc_get_seconds(); // FIXME
+    tseconds = mach_rtc_get_s_since_epoch();
     if (FTP_UNIX_SECONDS_180_DAYS < tseconds - (FTP_UNIX_TIME_20150101 - FTP_UNIX_TIME_20000101)) {
-        return snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %5u %s\r\n",
+        _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %5u %s\r\n",
                         type, 0, ftp_month[(tm.tm_mon - 1)].month, tm.tm_mday, tm.tm_year, name);
     } else {
-        return snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %02u:%02u %s\r\n",
+        _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %02u:%02u %s\r\n",
                         type, 0, ftp_month[(tm.tm_mon - 1)].month, tm.tm_mday, tm.tm_hour, tm.tm_min, name);
     }
+
+    if (_len > 0 && _len < destsize) {
+        return _len;
+    }
+    return 0;
 }
 
 static bool ftp_open_file (const char *path, int mode) {
@@ -975,23 +990,38 @@ static ftp_result_t ftp_open_dir_for_listing (const char *path) {
 
 static ftp_result_t ftp_list_dir (char *list, uint32_t maxlistsize, uint32_t *listsize) {
     uint next = 0;
-    uint listcount = 0;
+    uint32_t _len;
     FRESULT res;
     ftp_result_t result = E_FTP_RESULT_CONTINUE;
     FILINFO fno;
 
-    // read up to 8 directory items
-    while (listcount < 8) {
+    // if we are resuming an incomplete list operation, go back to the item we left behind
+    if (!ftp_data.listroot) {
+        for (int i = 0; i < ftp_last_dir_idx; i++) {
+            f_readdir(&ftp_data.dp, &fno);
+        }
+    }
+
+    // read until we get all items are there's no more space in the buffer
+    while (true) {
         if (ftp_data.listroot) {
             // root directory "hack"
             if (0 == ftp_data.volcount) {
-                next += ftp_print_eplf_drive((list + next), (maxlistsize - next), "flash");
+                _len = ftp_print_eplf_drive((list + next), (maxlistsize - next - 1), "flash");
+                if (!_len) {    // no space available
+                    break;
+                }
+                next += _len;
             } else if (ftp_data.volcount <= MP_STATE_PORT(mount_obj_list).len) {
                 os_fs_mount_t *mount_obj = ((os_fs_mount_t *)(MP_STATE_PORT(mount_obj_list).items[(ftp_data.volcount - 1)]));
-                next += ftp_print_eplf_drive((list + next), (maxlistsize - next), (char *)&mount_obj->path[1]);
+                _len = ftp_print_eplf_drive((list + next), (maxlistsize - next - 1), (char *)&mount_obj->path[1]);
+                if (!_len) {    // no space available
+                    break;
+                }
+                next += _len;
             } else {
                 if (!next) {
-                    // no volume found this time, we are done
+                    // no volumes found this time, we are done
                     ftp_data.volcount = 0;
                 }
                 break;
@@ -1007,13 +1037,21 @@ static ftp_result_t ftp_list_dir (char *list, uint32_t maxlistsize, uint32_t *li
             if (fno.fname[0] == '.' && fno.fname[1] == 0) continue;                                    /* Ignore . entry */
             if (fno.fname[0] == '.' && fno.fname[1] == '.' && fno.fname[2] == 0) continue;             /* Ignore .. entry */
 
-            // add the entry to the list
-            next += ftp_print_eplf_item((list + next), (maxlistsize - next), &fno);
+            // add the entry to the list if space is available
+            _len = ftp_print_eplf_item((list + next), (maxlistsize - next - 1), &fno);
+            if (!_len) {
+                // close and open again, we will resume in the next iteration
+                ftp_close_files();
+                ftp_open_dir_for_listing(ftp_path);
+                break;
+            }
+            next += _len;
+            ftp_last_dir_idx++;
         }
-        listcount++;
     }
     if (result == E_FTP_RESULT_OK) {
         ftp_close_files();
+        ftp_last_dir_idx = 0;
     }
     *listsize = next;
     return result;
