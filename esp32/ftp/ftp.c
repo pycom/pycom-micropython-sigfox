@@ -59,9 +59,9 @@
 #define FTP_CMD_CLIENTS_MAX                 1
 #define FTP_DATA_CLIENTS_MAX                1
 #define FTP_MAX_PARAM_SIZE                  (MICROPY_ALLOC_PATH_MAX + 1)
-#define FTP_UNIX_TIME_20000101              946684800
-#define FTP_UNIX_TIME_20150101              1420070400
-#define FTP_UNIX_SECONDS_180_DAYS           15552000
+#define FTP_UNIX_TIME_20000101              946684800ll
+#define FTP_UNIX_TIME_20150101              1420070400ll
+#define FTP_UNIX_SECONDS_180_DAYS           15552000ll
 #define FTP_DATA_TIMEOUT_MS                 10000            // 10 seconds
 #define FTP_SOCKETFIFO_ELEMENTS_MAX         7
 #define FTP_CYCLE_TIME_MS                   (SERVERS_CYCLE_TIME_MS * 2)
@@ -887,18 +887,19 @@ static void ftp_pop_param (char **str, char *param, bool stop_on_space) {
 
 static int ftp_print_eplf_item (char *dest, uint32_t destsize, FILINFO *fno) {
     char *type = (fno->fattrib & AM_DIR) ? "d" : "-";
-    uint32_t tseconds;
+    uint64_t tseconds;
     uint32_t _len;
     uint mindex = (((fno->fdate >> 5) & 0x0f) > 0) ? (((fno->fdate >> 5) & 0x0f) - 1) : 0;
     uint day = ((fno->fdate & 0x1f) > 0) ? (fno->fdate & 0x1f) : 1;
-    uint fseconds = timeutils_seconds_since_epoch(1970 + ((fno->fdate >> 9) & 0x7f),
+    uint64_t fseconds = timeutils_seconds_since_epoch(1980 + ((fno->fdate >> 9) & 0x7f),
                                                         (fno->fdate >> 5) & 0x0f,
                                                         fno->fdate & 0x1f,
                                                         (fno->ftime >> 11) & 0x1f,
                                                         (fno->ftime >> 5) & 0x3f,
                                                         2 * (fno->ftime & 0x1f));
-    tseconds = mach_rtc_get_s_since_epoch();
-    if (FTP_UNIX_SECONDS_180_DAYS < tseconds - fseconds) {
+
+    tseconds = mach_rtc_get_us_since_epoch() / 1000000ll;
+    if (FTP_UNIX_SECONDS_180_DAYS < (int64_t)(tseconds - fseconds)) {
         _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %5u %s\r\n",
                         type, (uint32_t)fno->fsize, ftp_month[mindex].month, day,
                         1980 + ((fno->fdate >> 9) & 0x7f), fno->fname);
@@ -916,14 +917,14 @@ static int ftp_print_eplf_item (char *dest, uint32_t destsize, FILINFO *fno) {
 
 static int ftp_print_eplf_drive (char *dest, uint32_t destsize, char *name) {
     timeutils_struct_time_t tm;
-    uint32_t tseconds;
+    uint64_t tseconds;
     char *type = "d";
     uint32_t _len;
 
     timeutils_seconds_since_epoch_to_struct_time((FTP_UNIX_TIME_20150101 - FTP_UNIX_TIME_20000101), &tm);
 
-    tseconds = mach_rtc_get_s_since_epoch();
-    if (FTP_UNIX_SECONDS_180_DAYS < tseconds - (FTP_UNIX_TIME_20150101 - FTP_UNIX_TIME_20000101)) {
+    tseconds = mach_rtc_get_us_since_epoch() / 1000000ll;
+    if (FTP_UNIX_SECONDS_180_DAYS < (int64_t)(tseconds - (int64_t)(FTP_UNIX_TIME_20150101 - FTP_UNIX_TIME_20000101))) {
         _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %5u %s\r\n",
                         type, 0, ftp_month[(tm.tm_mon - 1)].month, tm.tm_mday, tm.tm_year, name);
     } else {
@@ -1097,4 +1098,3 @@ static void ftp_return_to_previous_path (char *pwd, char *dir) {
         }
     }
 }
-

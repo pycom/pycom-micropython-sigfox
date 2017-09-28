@@ -66,12 +66,6 @@ uint64_t mach_rtc_get_us_since_epoch(void) {
     return (uint64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + delta_from_epoch_til_boot;
 };
 
-uint64_t mach_rtc_get_s_since_epoch(void) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return (uint64_t)((uint64_t)tv.tv_sec + (delta_from_epoch_til_boot / 1000000ull));
-};
-
 STATIC uint64_t mach_rtc_datetime_us(const mp_obj_t datetime) {
     timeutils_struct_time_t tm;
     uint64_t useconds;
