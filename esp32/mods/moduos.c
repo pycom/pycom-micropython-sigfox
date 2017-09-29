@@ -441,6 +441,27 @@ STATIC mp_obj_t os_stat(mp_obj_t path_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(os_stat_obj, os_stat);
 
+STATIC mp_obj_t os_getfree(mp_obj_t path_in) {
+    const char *path = mp_obj_str_get_str(path_in);
+    FATFS *fs;
+    DWORD nclst;
+
+    FRESULT res = f_getfree(path, &nclst, &fs);
+    if (FR_OK != res) {
+        mp_raise_OSError(fresult_to_errno_table[res]);
+    }
+
+    uint32_t free_space = fs->csize * nclst
+#if _MAX_SS != _MIN_SS
+    *(fs->ssize);
+#else
+    *_MIN_SS;
+#endif
+
+    return MP_OBJ_NEW_SMALL_INT(free_space / 1024);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(os_getfree_obj, os_getfree);
+
 STATIC mp_obj_t os_sync(void) {
     sflash_disk_flush();
     return mp_const_none;
@@ -600,6 +621,7 @@ STATIC const mp_map_elem_t os_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_unlink),          (mp_obj_t)&os_remove_obj },     // unlink aliases to remove
     { MP_OBJ_NEW_QSTR(MP_QSTR_sync),            (mp_obj_t)&os_sync_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_urandom),         (mp_obj_t)&os_urandom_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_getfree),         (mp_obj_t)&os_getfree_obj },
 
     // MicroPython additions
     { MP_OBJ_NEW_QSTR(MP_QSTR_mount),           (mp_obj_t)&os_mount_obj },
