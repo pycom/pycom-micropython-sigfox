@@ -514,11 +514,11 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
             }
         }
 
-        // Client certificate is necessary only in EAP-TLS method, this is ensured by wlan_validate_certificates() function
+        // client certificate is necessary only in EAP-TLS method, this is ensured by wlan_validate_certificates() function
         if (wpa2_ent->client_key_path != NULL && wpa2_ent->client_cert_path != NULL) {
-            if (wlan_read_file(wpa2_ent->client_key_path, &wlan_obj.vstr_cert) && wlan_read_file(wpa2_ent->client_cert_path, &wlan_obj.vstr_key)) {
+            if (wlan_read_file(wpa2_ent->client_key_path, &wlan_obj.vstr_key) && wlan_read_file(wpa2_ent->client_cert_path, &wlan_obj.vstr_cert)) {
                 if (ESP_OK != esp_wifi_sta_wpa2_ent_set_cert_key((unsigned char*)wlan_obj.vstr_cert.buf, (int)wlan_obj.vstr_cert.len,
-                                                                  (unsigned char*)wlan_obj.vstr_key.buf, (int)wlan_obj.vstr_key.len, NULL, 0)) {
+                                                                 (unsigned char*)wlan_obj.vstr_key.buf, (int)wlan_obj.vstr_key.len, NULL, 0)) {
                     goto os_error;
                 }
             } else {

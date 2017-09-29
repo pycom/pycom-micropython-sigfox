@@ -40,7 +40,7 @@ typedef struct {
  DECLARE PRIVATE DATA
  ******************************************************************************/
 STATIC pyb_dac_obj_t pyb_dac_obj[PYB_DAC_NUM] = { {.id = 0, .enabled = false, .tone = false},
-                                                  { .id = 1, .enabled = false, .tone = false}};
+                                                  {.id = 1, .enabled = false, .tone = false} };
 
 
 /******************************************************************************
@@ -99,7 +99,6 @@ STATIC mp_obj_t dac_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
         else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
         }
-
     } else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
     }
@@ -108,7 +107,6 @@ STATIC mp_obj_t dac_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
     pyb_dac_obj_t *self = &pyb_dac_obj[id];
     self->base.type = &pyb_dac_type;
     pyb_dac_init(self);
-
     return self;
 }
 
@@ -117,7 +115,6 @@ STATIC mp_obj_t dac_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *k
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(pyb_dac_init_args) - 1];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &pyb_dac_init_args[1], args);
-
     pyb_dac_init(pos_args[0]);
     return mp_const_none;
 }
@@ -130,7 +127,6 @@ STATIC mp_obj_t dac_deinit(mp_obj_t self_in) {
     self->enabled = false;
     self->dc_value = 0;
     set_dac();
-
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(dac_deinit_obj, dac_deinit);
@@ -151,10 +147,9 @@ STATIC mp_obj_t dac_write(mp_obj_t self_in, mp_obj_t value_o) {
     self->tone_scale = 0;
     self->tone_step = 0;
 
-    if(set_dac()){
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Failed to set DAC value"));
+    if (set_dac()) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError, "failed to set DAC value"));
     }
-
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(dac_write_obj, dac_write);
@@ -163,7 +158,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(dac_write_obj, dac_write);
 STATIC mp_obj_t dac_tone(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_freq,    MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0} },
-        { MP_QSTR_scale, MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0} },
+        { MP_QSTR_scale,   MP_ARG_REQUIRED | MP_ARG_INT, {.u_int = 0} },
     };
 
     pyb_dac_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
@@ -173,21 +168,24 @@ STATIC mp_obj_t dac_tone(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_a
     //DAC1 and DAC2 use the same step value, tone_freq = 8M/(2^16/(tone_step+1)
     uint16_t tone =  args[0].u_int;
     if (tone >=125 && tone <= 20000) {
-        tone+=125;
-        pyb_dac_obj[0].tone_step = (tone *(1<<16)) / 8000000 - 1;
-
+        tone += 125;
+        pyb_dac_obj[0].tone_step = (tone * (1 << 16)) / 8000000 - 1;
+    } else {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "tone frequency out of range"));
     }
-    else {
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "DAC tone frequency out of range"));
+
+    uint16_t tone_scale =  args[1].u_int;
+    if (tone_scale >= 0 && tone_scale <= 3) {
+        self->tone_scale = tone_scale;
+    } else {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "tone scale out of range"));
     }
     self->tone = true;
     self->dc_value = 0;
 
-    if(set_dac()){
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Failed to set DAC value"));
+    if (set_dac()) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError, "failed to set DAC value"));
     }
-
-
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(dac_tone_obj, 1, dac_tone);
@@ -197,7 +195,7 @@ STATIC const mp_map_elem_t dac_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&dac_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&dac_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_write),               (mp_obj_t)&dac_write_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_tone),               (mp_obj_t)&dac_tone_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_tone),                (mp_obj_t)&dac_tone_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(dac_locals_dict, dac_locals_dict_table);

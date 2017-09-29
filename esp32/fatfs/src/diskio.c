@@ -192,12 +192,16 @@ DWORD get_fattime (
 )
 {
     timeutils_struct_time_t tm;
-    timeutils_seconds_since_epoch_to_struct_time(mach_rtc_get_us_since_epoch() / 1000000, &tm);
+    timeutils_seconds_since_epoch_to_struct_time(mach_rtc_get_us_since_epoch() / 1000000ull, &tm);
 
+    if (tm.tm_year < 1980) {
+        tm.tm_year = 1980;
+    }
+
+    // FatFs uses a fat time with 1980 as year of origin
     return ((tm.tm_year - 1980) << 25) | ((tm.tm_mon) << 21)  |
             ((tm.tm_mday) << 16)       | ((tm.tm_hour) << 11) |
             ((tm.tm_min) << 5)         | (tm.tm_sec >> 1);
-    return 0;
 }
 #endif
 
