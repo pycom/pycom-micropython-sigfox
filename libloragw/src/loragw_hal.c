@@ -58,7 +58,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define MCU_AGC_FW_BYTE     8192 /* size of the firmware IN BYTES (= twice the number of 14b words) */
 #define FW_VERSION_ADDR     0x20 /* Address of firmware version in data memory */
 #define FW_VERSION_CAL      2 /* Expected version of calibration firmware */
-#define FW_VERSION_AGC      5 /* Expected version of AGC firmware */
+#define FW_VERSION_AGC      4 /* Expected version of AGC firmware */
 #define FW_VERSION_ARB      1 /* Expected version of arbiter firmware */
 
 #define TX_METADATA_NB      16
@@ -764,7 +764,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf) {
                 fsk_sync_word_size = conf.sync_word_size;
                 fsk_sync_word = conf.sync_word;
             }
-            DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%u dr:%u (%u real dr) sync:0x%0*" PRIu64 "\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU / (LGW_XTAL_FREQU / fsk_rx_dr), 2 * fsk_sync_word_size, fsk_sync_word);
+            DEBUG_PRINTF("Note: FSK if_chain %d configuration; en:%d freq:%d bw:%u dr:%u (%u real dr) sync:0x%0*" PRIx64 "\n", if_chain, if_enable[if_chain], if_freq[if_chain], fsk_rx_bw, fsk_rx_dr, LGW_XTAL_FREQU / (LGW_XTAL_FREQU / fsk_rx_dr), 2 * fsk_sync_word_size, fsk_sync_word);
             break;
 
         default:

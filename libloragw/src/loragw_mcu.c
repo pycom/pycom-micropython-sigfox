@@ -165,7 +165,7 @@ int lgw_mcu_rxif_setconf(uint8_t ifchain, struct lgw_conf_rxif_s conf) {
     lgw_com_cmd_t cmd;
     lgw_com_ans_t ans;
     uint8_t PADDING = 0;
-    uint8_t data[28];
+    uint8_t data[32];
     uint16_t size;
 
     /* struct to byte array */
@@ -192,15 +192,19 @@ int lgw_mcu_rxif_setconf(uint8_t ifchain, struct lgw_conf_rxif_s conf) {
     data[17] = PADDING;
     data[18] = PADDING;
     data[19] = PADDING;
-    data[20] = *(((uint8_t *)(&conf.sync_word)));
-    data[21] = *(((uint8_t *)(&conf.sync_word)) + 1);
-    data[22] = *(((uint8_t *)(&conf.sync_word)) + 2);
-    data[23] = *(((uint8_t *)(&conf.sync_word)) + 3);
+    data[20] = PADDING;
+    data[21] = PADDING;
+    data[22] = PADDING;
+    data[23] = PADDING;
     /* --- 64-bits start --- */
-    data[24] = *(((uint8_t *)(&conf.sync_word)) + 4);
-    data[25] = *(((uint8_t *)(&conf.sync_word)) + 5);
-    data[26] = *(((uint8_t *)(&conf.sync_word)) + 6);
-    data[27] = *(((uint8_t *)(&conf.sync_word)) + 7);
+    data[24] = *(((uint8_t *)(&conf.sync_word)));
+    data[25] = *(((uint8_t *)(&conf.sync_word)) + 1);
+    data[26] = *(((uint8_t *)(&conf.sync_word)) + 2);
+    data[27] = *(((uint8_t *)(&conf.sync_word)) + 3);
+    data[28] = *(((uint8_t *)(&conf.sync_word)) + 4);
+    data[29] = *(((uint8_t *)(&conf.sync_word)) + 5);
+    data[30] = *(((uint8_t *)(&conf.sync_word)) + 6);
+    data[31] = *(((uint8_t *)(&conf.sync_word)) + 7);
     size = sizeof(data) / sizeof(uint8_t);
 
     /* prepare command */
