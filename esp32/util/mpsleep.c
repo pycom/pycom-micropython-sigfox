@@ -17,7 +17,7 @@
 #include "sdkconfig.h"
 #include "rom/rtc.h"
 #include "esp_system.h"
-#include "esp_deep_sleep.h"
+#include "esp_sleep.h"
 #include "mpsleep.h"
 
 /******************************************************************************
@@ -64,15 +64,15 @@ void mpsleep_init0 (void) {
     }
 
     // check the wakeup reason
-    switch (esp_deep_sleep_get_wakeup_cause()) {
-        case ESP_DEEP_SLEEP_WAKEUP_EXT0:
-        case ESP_DEEP_SLEEP_WAKEUP_EXT1:
+    switch (esp_sleep_get_wakeup_cause()) {
+        case ESP_SLEEP_WAKEUP_EXT0:
+        case ESP_SLEEP_WAKEUP_EXT1:
             mpsleep_wake_reason = MPSLEEP_GPIO_WAKE;
             break;
-        case ESP_DEEP_SLEEP_WAKEUP_TIMER:
+        case ESP_SLEEP_WAKEUP_TIMER:
             mpsleep_wake_reason = MPSLEEP_RTC_WAKE;
             break;
-        case ESP_DEEP_SLEEP_WAKEUP_UNDEFINED:
+        case ESP_SLEEP_WAKEUP_UNDEFINED:
         default:
             mpsleep_wake_reason = MPSLEEP_PWRON_WAKE;
             break;

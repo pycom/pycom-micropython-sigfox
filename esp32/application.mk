@@ -386,11 +386,11 @@ $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
 	$(Q) $(SIZE) $@
 endif
 
-# $(APP_BIN): $(BUILD)/application.elf $(PART_BIN)
-# 	$(ECHO) "IMAGE $@"
-# 	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
-# 	$(ECHO) "Signing OTA image"
-# 	$(Q)$(SHELL) $(APP_SIGN) $(APP_BIN) $(BUILD)
+$(APP_BIN): $(BUILD)/application.elf $(PART_BIN)
+	$(ECHO) "IMAGE $@"
+	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
+	$(ECHO) "Signing OTA image"
+	$(Q)$(SHELL) $(APP_SIGN) $(APP_BIN) $(BUILD)
 
 $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(ECHO) "CPP $@"
@@ -413,9 +413,9 @@ erase:
 	$(ECHO) "Exiting flash mode"
 	$(Q) $(EXIT_FLASHING_MODE)
 
-# $(PART_BIN): $(PART_CSV)
-# 	$(ECHO) "Building partitions from $(PART_CSV)..."
-# 	$(Q) $(GEN_ESP32PART) $< $@
+$(PART_BIN): $(PART_CSV)
+	$(ECHO) "Building partitions from $(PART_CSV)..."
+	$(Q) $(GEN_ESP32PART) $< $@
 
 show_partitions: $(PART_BIN)
 	$(ECHO) "Partition table binary generated. Contents:"

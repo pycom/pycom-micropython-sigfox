@@ -52,7 +52,7 @@
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
-StackType_t mpTaskStack[MICROPY_TASK_STACK_LEN] __attribute__((aligned (8)));
+StackType_t mpTaskStack[MICROPY_TASK_STACK_LEN] __attribute__((aligned (4)));
 
 // board configuration options from mpconfigboard.h
 uint32_t micropy_hw_flash_size;
@@ -86,7 +86,7 @@ static StaticTask_t mpTaskTCB;
 *******************************************************************************/
 void app_main(void) {
     // remove all the logs from the IDF
-    esp_log_level_set("*", ESP_LOG_NONE);
+    //esp_log_level_set("*", ESP_LOG_NONE);
     // initalize the non-volatile flash space
     nvs_flash_init();
 

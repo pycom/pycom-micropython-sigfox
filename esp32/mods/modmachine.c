@@ -51,7 +51,7 @@
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
 #include "esp_event.h"
-#include "esp_deep_sleep.h"
+#include "esp_sleep.h"
 #include "soc/timer_group_struct.h"
 
 #include "random.h"
@@ -152,7 +152,7 @@ STATIC mp_obj_t machine_pin_deepsleep_wakeup (mp_uint_t n_args, const mp_obj_t *
     mp_obj_t *pins;
     mp_obj_get_array(args[0].u_obj, &len, &pins);
 
-    esp_ext1_wakeup_mode_t mode = args[1].u_int;
+    esp_sleep_ext1_wakeup_mode_t mode = args[1].u_int;
     if (mode != ESP_EXT1_WAKEUP_ALL_LOW && mode != ESP_EXT1_WAKEUP_ANY_HIGH) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid wakeup mode %d", mode));
     }
@@ -161,13 +161,13 @@ STATIC mp_obj_t machine_pin_deepsleep_wakeup (mp_uint_t n_args, const mp_obj_t *
     for (int i = 0; i < len; i++) {
         mask |= (1ull << pin_find(pins[i])->pin_number);
     }
-    if (ESP_OK != esp_deep_sleep_enable_ext1_wakeup(mask, mode)) {
+    if (ESP_OK != esp_sleep_enable_ext1_wakeup(mask, mode)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "deepsleep wake up is not supported on the selected pin(s)"));
     }
     if (args[2].u_bool) {
-        esp_deep_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
+        esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
     } else {
-        esp_deep_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_AUTO);
+        esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_AUTO);
     }
     return mp_const_none;
 }
@@ -186,7 +186,7 @@ STATIC mp_obj_t machine_wake_reason (void) {
     tuple[0] = mp_obj_new_int(wake_reason);
     if (wake_reason == MPSLEEP_GPIO_WAKE) {
         pins = mp_obj_new_list(0, NULL);
-        uint64_t wake_pins = esp_deep_sleep_get_ext1_wakeup_status();
+        uint64_t wake_pins = esp_sleep_get_ext1_wakeup_status();
         uint64_t mask = 1;
 
         for (int i = 0; i < GPIO_PIN_COUNT; i++) {

@@ -60,7 +60,7 @@ bool led_set_color(led_info_t *led_info, bool synchronize)
     }
 
     if (synchronize) {
-        rmt_wait_tx_done(led_info->rmt_channel);
+        rmt_wait_tx_done(led_info->rmt_channel, portMAX_DELAY);
     }
 
     led_encode_color(led_info);

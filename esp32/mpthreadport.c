@@ -141,9 +141,9 @@ void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, i
     }
 
     // allocate TCB, stack and linked-list node (must be outside thread_mutex lock)
-    StaticTask_t *tcb = m_new(StaticTask_t, 1);
-    StackType_t *stack = m_new(StackType_t, *stack_size / sizeof(StackType_t));
-    thread_t *th = m_new_obj(thread_t);
+    StaticTask_t *tcb = heap_caps_malloc(sizeof(StaticTask_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    StackType_t *stack = heap_caps_malloc(*stack_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    thread_t *th = heap_caps_malloc(sizeof(thread_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
     mp_thread_mutex_lock(&thread_mutex, 1);
 
@@ -198,9 +198,9 @@ void vPortCleanUpTCB (void *tcb) {
                 thread = th->next;
             }
             // explicitely release all its memory
-            m_del(StaticTask_t, th->tcb, 1);
-            m_del(StackType_t, th->stack, th->stack_len);
-            m_del(thread_t, th, 1);
+            free(th->tcb);
+            free(th->stack);
+            free(th);
             break;
         }
     }

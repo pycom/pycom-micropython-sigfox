@@ -186,8 +186,7 @@ STATIC mp_obj_t AES_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
         mp_raise_ValueError("AES key must be either 16, 24, or 32 bytes long");
     }
 
-    esp_aes_setkey_enc(&self->ctx, bufinfo.buf, bufinfo.len * 8);
-    esp_aes_setkey_dec(&self->ctx, bufinfo.buf, bufinfo.len * 8);
+    esp_aes_setkey(&self->ctx, bufinfo.buf, bufinfo.len * 8);
 
     // store the mode
     crypt_mode_t mode;

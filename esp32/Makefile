@@ -47,7 +47,7 @@ CFLAGS_XTENSA = -DESP_PLATFORM -Wpointer-arith -Wall -Werror=all -Wno-error=unus
                 -Wno-error=unused-but-set-variable -Wno-error=unused-variable -Wl,-EL \
                 -mlongcalls -Wall -ffunction-sections -fdata-sections -fno-common \
                 -Wno-sign-compare -Wno-old-style-declaration -fstrict-volatile-bitfields \
-                -Wno-error=deprecated-declarations -Wextra -Wno-unused-parameter -DWITH_POSIX \
+                -Wno-error=deprecated-declarations -Wno-unused-parameter -DWITH_POSIX \
                 -mfix-esp32-psram-cache-issue
 
 ifeq ($(TARGET), app)
@@ -64,11 +64,13 @@ LDFLAGS += -Wl,-static -Wl,--undefined=uxTopUsedPriority -Wl,--gc-sections
 LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_IDF_COMP_PATH)/bt/lib \
        -L$(ESP_IDF_COMP_PATH)/esp32 -L$(ESP_IDF_COMP_PATH)/newlib/lib -Lbootloader \
        -Llib -lnvs_flash -ltcpip_adapter -L$(BUILD) -lhal -lcore -lwps -lcoexist \
-       -lnet80211 -lphy -lpp -lrtc -llog -lsmartconfig -lwpa -lwpa2 -lbtdm_app -lcxx -u __cxa_guard_dummy -lstdc++ \
-       -lsigfox -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat \
-       $(ESP_IDF_COMP_PATH)/newlib/lib/libm.a $(ESP_IDF_COMP_PATH)/newlib/lib/libc.a \
+       -lnet80211 -lphy -lpp -lrtc -llog -lsmartconfig -lwpa -lwpa2 -lbtdm_app -lcxx -u __cxa_guard_dummy \
+       -lsigfox -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat -lpthread \
+       $(ESP_IDF_COMP_PATH)/esp32/libstdcc++-cache-workaround.a \
+       $(ESP_IDF_COMP_PATH)/newlib/lib/libm-psram-workaround.a \
+       $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
-       -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap
+       -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -u ld_include_panic_highint_hdl \
 
 B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader \
          -L$(ESP_IDF_COMP_PATH)/esp32/lib -llog -lcore -lbootloader_support \

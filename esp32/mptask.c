@@ -78,7 +78,7 @@ extern void modpycom_init0(void);
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
-#define GC_POOL_SIZE_BYTES                                          (67 * 1024)
+#define GC_POOL_SIZE_BYTES                                          (256 * 1024)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -126,7 +126,7 @@ void TASK_Micropython (void *pvParameters) {
     mptask_preinit();
 #if MICROPY_PY_THREAD
     mp_thread_preinit(&mpTaskStack);
-    mp_irq_preinit();
+    // mp_irq_preinit();
 #endif
 
     // initialise the stack pointer for the main thread (must be done after mp_thread_preinit)
@@ -136,7 +136,7 @@ void TASK_Micropython (void *pvParameters) {
     // to recover from hiting the limit (the limit is measured in bytes)
     mp_stack_set_limit(MICROPY_TASK_STACK_LEN - 1024);
 
-    if (NULL == (gc_pool_upy = pvPortMalloc(GC_POOL_SIZE_BYTES))) {
+    if (NULL == (gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES, MALLOC_CAP_SPIRAM | MALLOC_CAP_32BIT))) {
         printf("GC pool malloc failed!\n");
         for ( ; ; );
     }
@@ -166,7 +166,7 @@ soft_reset:
     pin_init0();    // always before the rest of the peripherals
     mpexception_init0();
 #if MICROPY_PY_THREAD
-    mp_irq_init0();
+    // mp_irq_init0();
 #endif
     moduos_init0();
     uart_init0();
@@ -186,7 +186,7 @@ soft_reset:
     }
     if (!soft_reset) {
         if (wifi_on_boot) {
-            mptask_enable_wifi_ap();
+            // mptask_enable_wifi_ap();
         }
         // these ones are special because they need uPy running and they launch tasks
 #if defined(LOPY)
@@ -220,7 +220,7 @@ soft_reset:
 
     // enable telnet and ftp
     if (wifi_on_boot) {
-        servers_start();
+        // servers_start();
     }
 
     pyexec_frozen_module("_boot.py");
@@ -275,7 +275,7 @@ soft_reset_exit:
 
     machtimer_deinit();
 #if MICROPY_PY_THREAD
-    mp_irq_kill();
+    // mp_irq_kill();
     mp_thread_deinit();
 #endif
     mpsleep_signal_soft_reset();
@@ -292,7 +292,7 @@ soft_reset_exit:
 STATIC void mptask_preinit (void) {
     mperror_pre_init();
     wlan_pre_init();
-    xTaskCreatePinnedToCore(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, NULL, 0);
+    // xTaskCreatePinnedToCore(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, NULL, 0);
 }
 
 STATIC void mptask_init_sflash_filesystem (void) {
