@@ -28,6 +28,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
 APP_INC += -I$(ESP_IDF_COMP_PATH)/heap/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/freertos/include
@@ -265,7 +266,7 @@ endif
 # SRC_QSTR
 SRC_QSTR_AUTO_DEPS +=
 
-BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld
+BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld
 
 # add the application linker script(s)
 APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld
@@ -289,7 +290,7 @@ else
     endif
 endif
 
-$(BUILD)/bootloader/%.o: CFLAGS += -DBOOTLOADER_BUILD
+$(BUILD)/bootloader/%.o: CFLAGS += -D BOOTLOADER_BUILD=1
 
 BOOT_OFFSET = 0x1000
 PART_OFFSET = 0x8000
@@ -320,7 +321,7 @@ ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
 
 FLASH_SIZE = detect
-ESPFLASHFREQ = 40m
+ESPFLASHFREQ = 80m
 ESPFLASHMODE = dio
 
 PIC_TOOL = $(PYTHON) tools/pypic.py --port $(ESPPORT)
@@ -385,11 +386,11 @@ $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
 	$(Q) $(SIZE) $@
 endif
 
-$(APP_BIN): $(BUILD)/application.elf $(PART_BIN)
-	$(ECHO) "IMAGE $@"
-	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
-	$(ECHO) "Signing OTA image"
-	$(Q)$(SHELL) $(APP_SIGN) $(APP_BIN) $(BUILD)
+# $(APP_BIN): $(BUILD)/application.elf $(PART_BIN)
+# 	$(ECHO) "IMAGE $@"
+# 	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
+# 	$(ECHO) "Signing OTA image"
+# 	$(Q)$(SHELL) $(APP_SIGN) $(APP_BIN) $(BUILD)
 
 $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(ECHO) "CPP $@"
@@ -412,9 +413,9 @@ erase:
 	$(ECHO) "Exiting flash mode"
 	$(Q) $(EXIT_FLASHING_MODE)
 
-$(PART_BIN): $(PART_CSV)
-	$(ECHO) "Building partitions from $(PART_CSV)..."
-	$(Q) $(GEN_ESP32PART) $< $@
+# $(PART_BIN): $(PART_CSV)
+# 	$(ECHO) "Building partitions from $(PART_CSV)..."
+# 	$(Q) $(GEN_ESP32PART) $< $@
 
 show_partitions: $(PART_BIN)
 	$(ECHO) "Partition table binary generated. Contents:"
