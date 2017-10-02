@@ -7,7 +7,7 @@ node {
     stage('Checkout') { // get source
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --depth=1 --recursive -b master ssh://git@dev.pycom.io:2222/source/espidf2.git esp-idf'
+        sh 'git clone --depth=1 --recursive -b master git@github.com:pycom/pycom-esp-idf.git esp-idf'
     }
 
     // build the primary boards that we test
