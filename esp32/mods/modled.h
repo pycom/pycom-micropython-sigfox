@@ -45,6 +45,7 @@ typedef struct {
 
 bool led_set_color(led_info_t *led_info, bool synchronize);
 bool led_init(led_info_t *led_info);
+void rmt_deinit_rgb (void);
 
 #endif	/* MODLED_H */
 

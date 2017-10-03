@@ -43,6 +43,7 @@
 #include "modnetwork.h"
 #include "modwlan.h"
 #include "antenna.h"
+#include "modled.h"
 
 #if defined(LOPY)
 #include "modlora.h"
@@ -70,6 +71,7 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 
+
 /******************************************************************************
  DECLARE EXTERNAL FUNCTIONS
  ******************************************************************************/
@@ -78,7 +80,7 @@ extern void modpycom_init0(void);
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
-#define GC_POOL_SIZE_BYTES                                          (256 * 1024)
+#define GC_POOL_SIZE_BYTES                                          (3072 * 1024)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -126,7 +128,7 @@ void TASK_Micropython (void *pvParameters) {
     mptask_preinit();
 #if MICROPY_PY_THREAD
     mp_thread_preinit(&mpTaskStack);
-    // mp_irq_preinit();
+    mp_irq_preinit();
 #endif
 
     // initialise the stack pointer for the main thread (must be done after mp_thread_preinit)
@@ -166,7 +168,7 @@ soft_reset:
     pin_init0();    // always before the rest of the peripherals
     mpexception_init0();
 #if MICROPY_PY_THREAD
-    // mp_irq_init0();
+    mp_irq_init0();
 #endif
     moduos_init0();
     uart_init0();
@@ -186,7 +188,7 @@ soft_reset:
     }
     if (!soft_reset) {
         if (wifi_on_boot) {
-            // mptask_enable_wifi_ap();
+            mptask_enable_wifi_ap();
         }
         // these ones are special because they need uPy running and they launch tasks
 #if defined(LOPY)
@@ -220,7 +222,7 @@ soft_reset:
 
     // enable telnet and ftp
     if (wifi_on_boot) {
-        // servers_start();
+        servers_start();
     }
 
     pyexec_frozen_module("_boot.py");
@@ -275,13 +277,18 @@ soft_reset_exit:
 
     machtimer_deinit();
 #if MICROPY_PY_THREAD
-    // mp_irq_kill();
+    mp_irq_kill();
     mp_thread_deinit();
 #endif
     mpsleep_signal_soft_reset();
     mp_printf(&mp_plat_print, "PYB: soft reboot\n");
     // it needs to be this one in order to not mess with the GIL
     ets_delay_us(5000);
+
+    uart_deinit_all();
+    // TODO: rmt_deinit_all();
+    rmt_deinit_rgb();
+
     soft_reset = true;
     goto soft_reset;
 }
