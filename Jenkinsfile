@@ -7,7 +7,7 @@ node {
     stage('Checkout') { // get source
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --depth=1 --recursive -b master ssh://git@dev.pycom.io:2222/source/espidf2.git esp-idf'
+        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
     }
 
     // build the primary boards that we test
@@ -140,7 +140,8 @@ def boardBuild(name, name_short, lora_band) {
         make TARGET=app -j2 BOARD=''' + name_short + lora_band
 
         sh '''cd esp32/build/'''+ name +'''/release;
-        mkdir firmware_package;
+        rm -rf firmware_package;
+	mkdir -p firmware_package;
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
         cp ../lib/partitions.bin .;
