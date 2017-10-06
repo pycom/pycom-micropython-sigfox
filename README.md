@@ -168,6 +168,10 @@ After cloning, make sure to checkout all the submodules:
 Finally, before building, export the IDF_PATH variable
 
     $ export IDF_PATH=~/pycom-esp-idf
+	
+Prior to building the main firmware, you need to build mpy-cross
+
+	$ cd mpy-cross && make clean && make
 
 To build and flash your LoPy for 868MHz regions:
 
@@ -201,3 +205,6 @@ or the SiPy:
 
 Make sure that your board is placed into programming mode, otherwise flahing will fail.
 To do this, connect ``P2`` to ``GND`` and then reset the board.
+
+To specify a serial port other than /dev/ttyUSB0, use ESPPORT=<device>:
+	$ make BOARD=WIPY ESPPORT=/dev/tty.usbserial-DQ008HQY flash
