@@ -207,4 +207,5 @@ Make sure that your board is placed into programming mode, otherwise flahing wil
 To do this, connect ``P2`` to ``GND`` and then reset the board.
 
 To specify a serial port other than /dev/ttyUSB0, use ESPPORT variable:
+
 	$ make BOARD=WIPY ESPPORT=/dev/tty.usbserial-DQ008HQY flash
