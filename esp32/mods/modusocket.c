@@ -218,6 +218,12 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_
     return s;
 }
 
+STATIC mp_obj_t socket_fileno(mp_obj_t self_in) {
+    mod_network_socket_obj_t *self = self_in;
+    return MP_OBJ_NEW_SMALL_INT(self->sock_base.sd);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(socket_fileno_obj, socket_fileno);
+
 // method socket.close()
 STATIC mp_obj_t socket_close(mp_obj_t self_in) {
     mod_network_socket_obj_t *self = self_in;
@@ -531,6 +537,7 @@ STATIC const mp_map_elem_t socket_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_settimeout),      (mp_obj_t)&socket_settimeout_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_setblocking),     (mp_obj_t)&socket_setblocking_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_makefile),        (mp_obj_t)&socket_makefile_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_fileno),          (mp_obj_t)&socket_fileno_obj },
 
     // stream methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_read),            (mp_obj_t)&mp_stream_read_obj },
