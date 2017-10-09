@@ -251,6 +251,10 @@ APP_FTP_SRC_C = $(addprefix ftp/,\
 	updater.c \
 	)
 
+APP_CAN_SRC_C = $(addprefix can/,\
+	CAN.c \
+	)
+
 BOOT_SRC_C = $(addprefix bootloader/,\
 	bootloader.c \
 	bootmgr.c \
@@ -285,7 +289,7 @@ endif
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins.o
 
 BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
