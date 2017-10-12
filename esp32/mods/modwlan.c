@@ -1212,7 +1212,7 @@ static int wlan_gethostbyname(const char *name, mp_uint_t len, uint8_t *out_ip, 
 }
 
 static int wlan_socket_socket(mod_network_socket_obj_t *s, int *_errno) {
-    int32_t sd = socket(s->sock_base.u_param.domain, s->sock_base.u_param.type, s->sock_base.u_param.proto);
+    int32_t sd = socket(s->sock_base.u.u_param.domain, s->sock_base.u.u_param.type, s->sock_base.u.u_param.proto);
     if (sd < 0) {
         *_errno = errno;
         return -1;
@@ -1222,13 +1222,13 @@ static int wlan_socket_socket(mod_network_socket_obj_t *s, int *_errno) {
     uint32_t option = 1;
     setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
 
-    s->sock_base.sd = sd;
+    s->sock_base.u.sd = sd;
     return 0;
 }
 
 static void wlan_socket_close(mod_network_socket_obj_t *s) {
     // this is to prevent the finalizer to close a socket that failed when being created
-    if (s->sock_base.sd >= 0) {
+    if (s->sock_base.u.sd >= 0) {
         if (s->sock_base.is_ssl) {
             mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
             if (ss->sock_base.connected) {
@@ -1243,17 +1243,17 @@ static void wlan_socket_close(mod_network_socket_obj_t *s) {
             mbedtls_ctr_drbg_free(&ss->ctr_drbg);
             mbedtls_entropy_free(&ss->entropy);
         } else {
-            close(s->sock_base.sd);
+            close(s->sock_base.u.sd);
         }
-        modusocket_socket_delete(s->sock_base.sd);
+        modusocket_socket_delete(s->sock_base.u.sd);
         s->sock_base.connected = false;
-        s->sock_base.sd = -1;
+        s->sock_base.u.sd = -1;
     }
 }
 
 static int wlan_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
     MAKE_SOCKADDR(addr, ip, port)
-    int ret = bind(s->sock_base.sd, &addr, sizeof(addr));
+    int ret = bind(s->sock_base.u.sd, &addr, sizeof(addr));
     if (ret != 0) {
         *_errno = errno;
         return -1;
@@ -1262,7 +1262,7 @@ static int wlan_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t por
 }
 
 static int wlan_socket_listen(mod_network_socket_obj_t *s, mp_int_t backlog, int *_errno) {
-    int ret = listen(s->sock_base.sd, backlog);
+    int ret = listen(s->sock_base.u.sd, backlog);
     if (ret != 0) {
         *_errno = errno;
         return -1;
@@ -1276,9 +1276,9 @@ static int wlan_socket_accept(mod_network_socket_obj_t *s, mod_network_socket_ob
     struct sockaddr addr;
     socklen_t addr_len = sizeof(addr);
 
-    sd = accept(s->sock_base.sd, &addr, &addr_len);
+    sd = accept(s->sock_base.u.sd, &addr, &addr_len);
     // save the socket descriptor
-    s2->sock_base.sd = sd;
+    s2->sock_base.u.sd = sd;
     if (sd < 0) {
         *_errno = errno;
         return -1;
@@ -1293,7 +1293,7 @@ static int wlan_socket_accept(mod_network_socket_obj_t *s, mod_network_socket_ob
 
 static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
     MAKE_SOCKADDR(addr, ip, port)
-    int ret = connect(s->sock_base.sd, &addr, sizeof(addr));
+    int ret = connect(s->sock_base.u.sd, &addr, sizeof(addr));
 
     if (ret != 0) {
         // printf("Connect returned -0x%x\n", -ret);
@@ -1357,7 +1357,7 @@ static int wlan_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uin
                 }
             }
         } else {
-            bytes = send(s->sock_base.sd, (const void *)buf, len, 0);
+            bytes = send(s->sock_base.u.sd, (const void *)buf, len, 0);
         }
     }
     if (bytes <= 0) {
@@ -1395,7 +1395,7 @@ static int wlan_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t le
             return -1;
         }
     } else {
-        ret = recv(s->sock_base.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0);
+        ret = recv(s->sock_base.u.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0);
         if (ret < 0) {
             *_errno = errno;
             return -1;
@@ -1407,7 +1407,7 @@ static int wlan_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t le
 static int wlan_socket_sendto( mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port, int *_errno) {
     if (len > 0) {
         MAKE_SOCKADDR(addr, ip, port)
-        int ret = sendto(s->sock_base.sd, (byte*)buf, len, 0, (struct sockaddr*)&addr, sizeof(addr));
+        int ret = sendto(s->sock_base.u.sd, (byte*)buf, len, 0, (struct sockaddr*)&addr, sizeof(addr));
         if (ret < 0) {
             *_errno = errno;
             return -1;
@@ -1420,7 +1420,7 @@ static int wlan_socket_sendto( mod_network_socket_obj_t *s, const byte *buf, mp_
 static int wlan_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno) {
     struct sockaddr addr;
     socklen_t addr_len = sizeof(addr);
-    mp_int_t ret = recvfrom(s->sock_base.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0, &addr, &addr_len);
+    mp_int_t ret = recvfrom(s->sock_base.u.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0, &addr, &addr_len);
     if (ret < 0) {
         *_errno = errno;
         return -1;
@@ -1430,7 +1430,7 @@ static int wlan_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_
 }
 
 static int wlan_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno) {
-    int ret = setsockopt(s->sock_base.sd, level, opt, optval, optlen);
+    int ret = setsockopt(s->sock_base.u.sd, level, opt, optval, optlen);
     if (ret < 0) {
         *_errno = errno;
         return -1;
@@ -1441,7 +1441,7 @@ static int wlan_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, 
 static int wlan_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno) {
     int ret;
     if (timeout_ms <= 0) {
-        uint32_t option = fcntl(s->sock_base.sd, F_GETFL, 0);
+        uint32_t option = fcntl(s->sock_base.u.sd, F_GETFL, 0);
         if (timeout_ms == 0) {
             // set non-blocking mode
             option |= O_NONBLOCK;
@@ -1449,13 +1449,13 @@ static int wlan_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_
             // set blocking mode
             option &= ~O_NONBLOCK;
         }
-        ret = fcntl(s->sock_base.sd, F_SETFL, option);
+        ret = fcntl(s->sock_base.u.sd, F_SETFL, option);
     } else {
         // set timeout
         struct timeval tv;
         tv.tv_sec = timeout_ms / 1000;              // seconds
         tv.tv_usec = (timeout_ms % 1000) * 1000;    // microseconds
-        ret = setsockopt(s->sock_base.sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+        ret = setsockopt(s->sock_base.u.sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     }
 
     if (ret != 0) {
@@ -1472,7 +1472,7 @@ static int wlan_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp
     if (request == MP_IOCTL_POLL) {
         mp_uint_t flags = arg;
         ret = 0;
-        int32_t sd = s->sock_base.sd;
+        int32_t sd = s->sock_base.u.sd;
 
         // init fds
         fd_set rfds, wfds, xfds;

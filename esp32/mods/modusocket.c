@@ -126,7 +126,7 @@ void modusocket_socket_delete (int32_t sd) {
 //
 //    for (int i = 0; i < MOD_NETWORK_MAX_SOCKETS; i++) {
 //        int32_t sd;
-//        if ((sd = modusocket_sockets[i].sd) >= 0) {
+//        if ((sd = modusocket_sockets[i].u.sd) >= 0) {
 //            FD_SET(sd, &socketset);
 //            maxfd = (maxfd > sd) ? maxfd : sd;
 //        }
@@ -142,7 +142,7 @@ void modusocket_close_all_user_sockets (void) {
 //    sl_LockObjLock (&modusocket_LockObj, SL_OS_WAIT_FOREVER);
     for (int i = 0; i < MODUSOCKET_MAX_SOCKETS; i++) {
         if (modusocket_sockets[i].sd >= 0 && modusocket_sockets[i].user) {
-//            sl_Close(modusocket_sockets[i].sd); // FIXME
+//            sl_Close(modusocket_sockets[i].u.sd); // FIXME
             modusocket_sockets[i].sd = -1;
         }
     }
@@ -170,38 +170,38 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_
         (mp_obj_get_int(args[0]) == AF_LORA || mp_obj_get_int(args[0]) == AF_SIGFOX))
     {
         s->base.type = (mp_obj_t)&raw_socket_type;
-        s->sock_base.u_param.type = SOCK_RAW;
+        s->sock_base.u.u_param.type = SOCK_RAW;
     } else {
         s->base.type = (mp_obj_t)&socket_type;
-        s->sock_base.u_param.domain = AF_INET;
-        s->sock_base.u_param.type = SOCK_STREAM;
-        s->sock_base.u_param.proto = IPPROTO_TCP;
+        s->sock_base.u.u_param.domain = AF_INET;
+        s->sock_base.u.u_param.type = SOCK_STREAM;
+        s->sock_base.u.u_param.proto = IPPROTO_TCP;
     }
     s->sock_base.nic = MP_OBJ_NULL;
     s->sock_base.nic_type = NULL;
-    s->sock_base.u_param.fileno = -1;
+    s->sock_base.u.u_param.fileno = -1;
     s->sock_base.timeout = -1;      // sockets are blocking by default
     s->sock_base.is_ssl = false;
     s->sock_base.connected = false;
 
     if (n_args > 0) {
-        s->sock_base.u_param.domain = mp_obj_get_int(args[0]);
+        s->sock_base.u.u_param.domain = mp_obj_get_int(args[0]);
         if (n_args > 1) {
-            s->sock_base.u_param.type = mp_obj_get_int(args[1]);
+            s->sock_base.u.u_param.type = mp_obj_get_int(args[1]);
             if (n_args > 2) {
-                s->sock_base.u_param.proto = mp_obj_get_int(args[2]);
+                s->sock_base.u.u_param.proto = mp_obj_get_int(args[2]);
                 if (n_args > 3) {
-                    s->sock_base.u_param.fileno = mp_obj_get_int(args[3]);
+                    s->sock_base.u.u_param.fileno = mp_obj_get_int(args[3]);
                 }
             }
         }
     }
 
     // don't forget to select a network card
-    if (s->sock_base.u_param.domain == AF_INET) {
+    if (s->sock_base.u.u_param.domain == AF_INET) {
         socket_select_nic(s, (const byte *)"");
     } else {
-        if (s->sock_base.u_param.type != SOCK_RAW) {
+        if (s->sock_base.u.u_param.type != SOCK_RAW) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "incorrect socket type"));
         }
         socket_select_nic(s, NULL);
@@ -213,14 +213,14 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
     }
     // add the socket to the list
-    modusocket_socket_add(s->sock_base.sd, true);
+    modusocket_socket_add(s->sock_base.u.sd, true);
 
     return s;
 }
 
 STATIC mp_obj_t socket_fileno(mp_obj_t self_in) {
     mod_network_socket_obj_t *self = self_in;
-    return MP_OBJ_NEW_SMALL_INT(self->sock_base.sd);
+    return MP_OBJ_NEW_SMALL_INT(self->sock_base.u.sd);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(socket_fileno_obj, socket_fileno);
 
@@ -299,7 +299,7 @@ STATIC mp_obj_t socket_accept(mp_obj_t self_in) {
 
     MP_THREAD_GIL_ENTER();
     // add the socket to the list
-    modusocket_socket_add(socket2->sock_base.sd, true);
+    modusocket_socket_add(socket2->sock_base.u.sd, true);
 
     // make the return value
     mp_obj_tuple_t *client = mp_obj_new_tuple(2, NULL);

@@ -78,7 +78,7 @@
 #define LORA_SPREADING_FACTOR_MIN                   (6)
 #define LORA_SPREADING_FACTOR_MAX                   (12)
 
-#define LORA_CHECK_SOCKET(s)                        if (s->sock_base.sd < 0) {  \
+#define LORA_CHECK_SOCKET(s)                        if (s->sock_base.u.sd < 0) {  \
                                                         *_errno = MP_EBADF;     \
                                                         return -1;              \
                                                     }
@@ -1958,21 +1958,21 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
         *_errno = MP_ENETDOWN;
         return -1;
     }
-    s->sock_base.sd = 1;
+    s->sock_base.u.sd = 1;
 #if defined(USE_BAND_868)
-    LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_5);
+    LORAWAN_SOCKET_SET_DR(s->sock_base.u.sd, DR_5);
 #else
-    LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_3);
+    LORAWAN_SOCKET_SET_DR(s->sock_base.u.sd, DR_3);
 #endif
     // port number 2 is the default one
-    LORAWAN_SOCKET_SET_PORT(s->sock_base.sd, 2);
+    LORAWAN_SOCKET_SET_PORT(s->sock_base.u.sd, 2);
     return 0;
 }
 
 static void lora_socket_close (mod_network_socket_obj_t *s) {
     // this is to prevent the finalizer to close a socket that failed during creation
-    if (s->sock_base.sd > 0) {
-        s->sock_base.sd = -1;
+    if (s->sock_base.u.sd > 0) {
+        s->sock_base.u.sd = -1;
     }
 }
 
@@ -1992,9 +1992,9 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
         } else {
             if (lora_obj.joined) {
                 n_bytes = lorawan_send (buf, len, s->sock_base.timeout,
-                                        LORAWAN_SOCKET_IS_CONFIRMED(s->sock_base.sd),
-                                        LORAWAN_SOCKET_GET_DR(s->sock_base.sd),
-                                        LORAWAN_SOCKET_GET_PORT(s->sock_base.sd));
+                                        LORAWAN_SOCKET_IS_CONFIRMED(s->sock_base.u.sd),
+                                        LORAWAN_SOCKET_GET_DR(s->sock_base.u.sd),
+                                        LORAWAN_SOCKET_GET_PORT(s->sock_base.u.sd));
             } else {
                 *_errno = MP_ENETDOWN;
                 return -1;
@@ -2042,16 +2042,16 @@ static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, 
 
     if (opt == SO_LORAWAN_CONFIRMED) {
         if (*(uint8_t *)optval) {
-            LORAWAN_SOCKET_SET_CONFIRMED(s->sock_base.sd);
+            LORAWAN_SOCKET_SET_CONFIRMED(s->sock_base.u.sd);
         } else {
-            LORAWAN_SOCKET_CLR_CONFIRMED(s->sock_base.sd);
+            LORAWAN_SOCKET_CLR_CONFIRMED(s->sock_base.u.sd);
         }
     } else if (opt == SO_LORAWAN_DR) {
         if (!lora_validate_data_rate(*(uint32_t *)optval)) {
             *_errno = MP_EOPNOTSUPP;
             return -1;
         }
-        LORAWAN_SOCKET_SET_DR(s->sock_base.sd, *(uint8_t *)optval);
+        LORAWAN_SOCKET_SET_DR(s->sock_base.u.sd, *(uint8_t *)optval);
     } else {
         *_errno = MP_EOPNOTSUPP;
         return -1;
@@ -2071,7 +2071,7 @@ static int lora_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t por
         *_errno = MP_EOPNOTSUPP;
         return -1;
     }
-    LORAWAN_SOCKET_SET_PORT(s->sock_base.sd, port);
+    LORAWAN_SOCKET_SET_PORT(s->sock_base.u.sd, port);
     return 0;
 }
 

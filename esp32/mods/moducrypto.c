@@ -44,7 +44,7 @@ typedef struct _mp_obj_AES_t {
     union {
         uint8_t IV[16];
         uint8_t counter[16]; // used only in CTR
-    };
+    }u;
     uint8_t stream[16]; // used only in CTR
     uint32_t offset;
     crypt_func_t crypt_func;
@@ -84,7 +84,7 @@ STATIC mp_obj_t aes_do_cbc(mp_obj_AES_t *self, uint32_t operation, const unsigne
     int result;
     uint8_t *output = m_new(uint8_t, len);
 
-    result = esp_aes_crypt_cbc(&self->ctx, operation, len, self->IV, input, output);
+    result = esp_aes_crypt_cbc(&self->ctx, operation, len, self->u.IV, input, output);
 
     if (result == ERR_ESP_AES_INVALID_INPUT_LENGTH) {
         mp_raise_ValueError("Input strings must be a multiple of 16 in length");
@@ -98,9 +98,9 @@ STATIC mp_obj_t aes_do_cfb(mp_obj_AES_t *self, uint32_t operation, const unsigne
     uint8_t *output = m_new(uint8_t, len);
 
     if (self->segment_size == CRYPT_SEGMENT_128) {
-        result = esp_aes_crypt_cfb128(&self->ctx, operation, len, &self->offset, self->IV, input, output);
+        result = esp_aes_crypt_cfb128(&self->ctx, operation, len, &self->offset, self->u.IV, input, output);
     } else {
-        result = esp_aes_crypt_cfb8(&self->ctx, operation, len, self->IV, input, output);
+        result = esp_aes_crypt_cfb8(&self->ctx, operation, len, self->u.IV, input, output);
     }
 
     if (result == ERR_ESP_AES_INVALID_INPUT_LENGTH) {
@@ -113,7 +113,7 @@ STATIC mp_obj_t aes_do_cfb(mp_obj_AES_t *self, uint32_t operation, const unsigne
 STATIC mp_obj_t aes_do_ctr(mp_obj_AES_t *self, uint32_t operation, const unsigned char *input, uint32_t len) {
     uint8_t *output = m_new(uint8_t, len);
 
-    esp_aes_crypt_ctr(&self->ctx, len, &self->offset, self->counter, self->stream, input, output);
+    esp_aes_crypt_ctr(&self->ctx, len, &self->offset, self->u.counter, self->stream, input, output);
 
     return mp_obj_new_bytes(output, len);
 }
@@ -222,8 +222,8 @@ STATIC mp_obj_t AES_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
         args[2].u_obj != mp_const_none
     ) {
         mp_get_buffer_raise(args[2].u_obj, &bufinfo, MP_BUFFER_READ);
-        if(bufinfo.len == sizeof(self->IV)) {
-            memcpy(self->IV, bufinfo.buf, sizeof(self->IV));
+        if(bufinfo.len == sizeof(self->u.IV)) {
+            memcpy(self->u.IV, bufinfo.buf, sizeof(self->u.IV));
         } else {
             mp_raise_ValueError("IV must be 16 bytes long");
         }
@@ -235,7 +235,7 @@ STATIC mp_obj_t AES_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
         if (bufinfo.len != 16) {
             mp_raise_ValueError("Initial counter value must be 16 bytes long");
         }
-        memcpy(self->counter, bufinfo.buf, sizeof(self->counter));
+        memcpy(self->u.counter, bufinfo.buf, sizeof(self->u.counter));
         memset(self->stream, 0, sizeof(self->stream));
     } else {
         if(args[3].u_obj != mp_const_none) {

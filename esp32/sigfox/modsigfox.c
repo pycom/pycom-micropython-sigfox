@@ -99,7 +99,7 @@ static int32_t sigfox_recv (byte *buf, uint32_t len, int32_t timeout_ms);
  ******************************************************************************/
 #define RX_FIFO_ERROR                                 (0x11)
 
-#define SIGFOX_CHECK_SOCKET(s)                        if (s->sock_base.sd < 0) {  \
+#define SIGFOX_CHECK_SOCKET(s)                        if (s->sock_base.u.sd < 0) {  \
                                                           *_errno = MP_EBADF;        \
                                                           return -1;              \
                                                       }
@@ -971,17 +971,17 @@ int sigfox_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
         *_errno = MP_ENETDOWN;
         return -1;
     }
-    s->sock_base.sd = 1;
-    SIGFOX_SOCKET_SET_RX(s->sock_base.sd, false);
-    SIGFOX_SOCKET_SET_TX_REPEAT(s->sock_base.sd, 2);
-    SIGFOX_SOCKET_SET_OOB(s->sock_base.sd, false);
+    s->sock_base.u.sd = 1;
+    SIGFOX_SOCKET_SET_RX(s->sock_base.u.sd, false);
+    SIGFOX_SOCKET_SET_TX_REPEAT(s->sock_base.u.sd, 2);
+    SIGFOX_SOCKET_SET_OOB(s->sock_base.u.sd, false);
     return 0;
 }
 
 void sigfox_socket_close (mod_network_socket_obj_t *s) {
     // this is to prevent the finalizer to close a socket that failed during creation
-    if (s->sock_base.sd > 0) {
-        s->sock_base.sd = -1;
+    if (s->sock_base.u.sd > 0) {
+        s->sock_base.u.sd = -1;
     }
 }
 
@@ -998,13 +998,13 @@ int sigfox_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t l
 
     cmd_rx_data.cmd_u.cmd = E_SIGFOX_CMD_TX;
     cmd_rx_data.cmd_u.info.tx.len = len;
-    cmd_rx_data.cmd_u.info.tx.tx_repeat = SIGFOX_SOCKET_GET_TX_REPEAT(s->sock_base.sd);
-    cmd_rx_data.cmd_u.info.tx.receive = SIGFOX_SOCKET_GET_RX(s->sock_base.sd) ? SFX_TRUE : SFX_FALSE;
-    cmd_rx_data.cmd_u.info.tx.oob = SIGFOX_SOCKET_GET_OOB(s->sock_base.sd);
+    cmd_rx_data.cmd_u.info.tx.tx_repeat = SIGFOX_SOCKET_GET_TX_REPEAT(s->sock_base.u.sd);
+    cmd_rx_data.cmd_u.info.tx.receive = SIGFOX_SOCKET_GET_RX(s->sock_base.u.sd) ? SFX_TRUE : SFX_FALSE;
+    cmd_rx_data.cmd_u.info.tx.oob = SIGFOX_SOCKET_GET_OOB(s->sock_base.u.sd);
     if (len > 0) {
         memcpy(cmd_rx_data.cmd_u.info.tx.data, buf, len);
     } else {
-        if (SIGFOX_SOCKET_GET_BIT(s->sock_base.sd)) {
+        if (SIGFOX_SOCKET_GET_BIT(s->sock_base.u.sd)) {
             cmd_rx_data.cmd_u.info.tx.data[0] = 1;
         } else {
             cmd_rx_data.cmd_u.info.tx.data[0] = 0;
@@ -1058,18 +1058,18 @@ int sigfox_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_ui
     }
 
     if (opt == SO_SIGFOX_RX) {
-        SIGFOX_SOCKET_SET_RX(s->sock_base.sd, *(uint8_t *)optval);
+        SIGFOX_SOCKET_SET_RX(s->sock_base.u.sd, *(uint8_t *)optval);
     } else if (opt == SO_SIGFOX_TX_REPEAT) {
         uint8_t tx_repeat = *(uint8_t *)optval;
         if (tx_repeat > 2) {
             *_errno = MP_EOPNOTSUPP;
             return -1;
         }
-        SIGFOX_SOCKET_SET_TX_REPEAT(s->sock_base.sd, tx_repeat);
+        SIGFOX_SOCKET_SET_TX_REPEAT(s->sock_base.u.sd, tx_repeat);
     } else if (opt == SO_SIGFOX_OOB) {
-        SIGFOX_SOCKET_SET_OOB(s->sock_base.sd, *(uint8_t *)optval);
+        SIGFOX_SOCKET_SET_OOB(s->sock_base.u.sd, *(uint8_t *)optval);
     } else if (opt == SO_SIGFOX_BIT) {
-        SIGFOX_SOCKET_SET_BIT(s->sock_base.sd, *(uint8_t *)optval);
+        SIGFOX_SOCKET_SET_BIT(s->sock_base.u.sd, *(uint8_t *)optval);
     } else {
         *_errno = MP_EOPNOTSUPP;
         return -1;
