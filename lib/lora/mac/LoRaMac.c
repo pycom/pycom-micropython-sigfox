@@ -1494,6 +1494,15 @@ static void OnMacStateCheckTimerEvent( void )
             }
         }
     }
+
+    // Pycom: Call the MacMcpsIndication (Rx) handler here to make sure that
+    // the MacMcpsConfirm handler (Tx) is always called last
+    if( LoRaMacFlags.Bits.McpsInd == 1 )
+    {
+        LoRaMacPrimitives->MacMcpsIndication( &McpsIndication );
+        LoRaMacFlags.Bits.McpsInd = 0;
+    }
+
     // Handle reception for Class B and Class C
     if( ( LoRaMacState & MAC_RX ) == MAC_RX )
     {
@@ -1520,12 +1529,6 @@ static void OnMacStateCheckTimerEvent( void )
         // Operation not finished restart timer
         TimerSetValue( &MacStateCheckTimer, MAC_STATE_CHECK_TIMEOUT );
         TimerStart( &MacStateCheckTimer );
-    }
-
-    if( LoRaMacFlags.Bits.McpsInd == 1 )
-    {
-        LoRaMacPrimitives->MacMcpsIndication( &McpsIndication );
-        LoRaMacFlags.Bits.McpsInd = 0;
     }
 }
 
