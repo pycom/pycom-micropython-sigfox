@@ -114,7 +114,7 @@ typedef struct {
     union {
         DIR             dp;
         FIL             fp;
-    };
+    }u;
     int32_t             lc_sd;
     int32_t             ld_sd;
     int32_t             c_sd;
@@ -652,9 +652,9 @@ static void ftp_process_cmd (void) {
                 fres = FR_NO_PATH;
                 ftp_pop_param (&bufptr, ftp_scratch_buffer, false);
                 ftp_open_child (ftp_path, ftp_scratch_buffer);
-                if ((ftp_path[0] == '/' && ftp_path[1] == '\0') || ((fres = f_opendir (&ftp_data.dp, ftp_path)) == FR_OK)) {
+                if ((ftp_path[0] == '/' && ftp_path[1] == '\0') || ((fres = f_opendir (&ftp_data.u.dp, ftp_path)) == FR_OK)) {
                     if (fres == FR_OK) {
-                        f_closedir(&ftp_data.dp);
+                        f_closedir(&ftp_data.u.dp);
                     }
                     ftp_send_reply(250, NULL);
                 } else {
@@ -839,9 +839,9 @@ static void ftp_process_cmd (void) {
 
 static void ftp_close_files (void) {
     if (ftp_data.e_open == E_FTP_FILE_OPEN) {
-        f_close(&ftp_data.fp);
+        f_close(&ftp_data.u.fp);
     } else if (ftp_data.e_open == E_FTP_DIR_OPEN) {
-        f_closedir(&ftp_data.dp);
+        f_closedir(&ftp_data.u.dp);
     }
     ftp_data.e_open = E_FTP_NOTHING_OPEN;
 }
@@ -939,7 +939,7 @@ static int ftp_print_eplf_drive (char *dest, uint32_t destsize, char *name) {
 }
 
 static bool ftp_open_file (const char *path, int mode) {
-    FRESULT res = f_open(&ftp_data.fp, path, mode);
+    FRESULT res = f_open(&ftp_data.u.fp, path, mode);
     if (res != FR_OK) {
         return false;
     }
@@ -949,7 +949,7 @@ static bool ftp_open_file (const char *path, int mode) {
 
 static ftp_result_t ftp_read_file (char *filebuf, uint32_t desiredsize, uint32_t *actualsize) {
     ftp_result_t result = E_FTP_RESULT_CONTINUE;
-    FRESULT res = f_read(&ftp_data.fp, filebuf, desiredsize, (UINT *)actualsize);
+    FRESULT res = f_read(&ftp_data.u.fp, filebuf, desiredsize, (UINT *)actualsize);
     if (res != FR_OK) {
         ftp_close_files();
         result = E_FTP_RESULT_FAILED;
@@ -964,7 +964,7 @@ static ftp_result_t ftp_read_file (char *filebuf, uint32_t desiredsize, uint32_t
 static ftp_result_t ftp_write_file (char *filebuf, uint32_t size) {
     ftp_result_t result = E_FTP_RESULT_FAILED;
     uint32_t actualsize;
-    FRESULT res = f_write(&ftp_data.fp, filebuf, size, (UINT *)&actualsize);
+    FRESULT res = f_write(&ftp_data.u.fp, filebuf, size, (UINT *)&actualsize);
     if ((actualsize == size) && (FR_OK == res)) {
         result = E_FTP_RESULT_OK;
     } else {
@@ -979,7 +979,7 @@ static ftp_result_t ftp_open_dir_for_listing (const char *path) {
         ftp_data.listroot = true;
     } else {
         FRESULT res;
-        res = f_opendir(&ftp_data.dp, path);                       /* Open the directory */
+        res = f_opendir(&ftp_data.u.dp, path);                       /* Open the directory */
         if (res != FR_OK) {
             return E_FTP_RESULT_FAILED;
         }
@@ -999,7 +999,7 @@ static ftp_result_t ftp_list_dir (char *list, uint32_t maxlistsize, uint32_t *li
     // if we are resuming an incomplete list operation, go back to the item we left behind
     if (!ftp_data.listroot) {
         for (int i = 0; i < ftp_last_dir_idx; i++) {
-            f_readdir(&ftp_data.dp, &fno);
+            f_readdir(&ftp_data.u.dp, &fno);
         }
     }
 
@@ -1030,7 +1030,7 @@ static ftp_result_t ftp_list_dir (char *list, uint32_t maxlistsize, uint32_t *li
             ftp_data.volcount++;
         } else {
             // a "normal" directory
-            res = f_readdir(&ftp_data.dp, &fno);                                                       /* Read a directory item */
+            res = f_readdir(&ftp_data.u.dp, &fno);                                                       /* Read a directory item */
             if (res != FR_OK || fno.fname[0] == 0) {
                 result = E_FTP_RESULT_OK;
                 break;                                                                                 /* Break on error or end of dp */

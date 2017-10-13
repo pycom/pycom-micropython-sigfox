@@ -41,7 +41,7 @@ typedef struct _mp_obj_hash_t {
         mbedtls_sha1_context sha1_context;
         mbedtls_sha256_context sha256_context;
         mbedtls_sha512_context sha512_context;
-    };
+    }u;
 } mp_obj_hash_t;
 
 
@@ -59,21 +59,21 @@ STATIC mp_obj_t hash_read (mp_obj_t self_in);
 STATIC void generic_hash_update(mp_obj_hash_t *self, void *data, uint32_t len) {
     switch (self->base.type->name) {
     case MP_QSTR_sha1:
-        mbedtls_sha1_update(&self->sha1_context, data, len);
+        mbedtls_sha1_update(&self->u.sha1_context, data, len);
         break;
 
     case MP_QSTR_sha224:
     case MP_QSTR_sha256:
-        mbedtls_sha256_update(&self->sha256_context, data, len);
+        mbedtls_sha256_update(&self->u.sha256_context, data, len);
         break;
 
     case MP_QSTR_sha384:
     case MP_QSTR_sha512:
-        mbedtls_sha512_update(&self->sha512_context, data, len);
+        mbedtls_sha512_update(&self->u.sha512_context, data, len);
         break;
 
     case MP_QSTR_md5:
-        MD5Update(&self->md5_context, data, len);
+        MD5Update(&self->u.md5_context, data, len);
         break;
     }
 }
@@ -141,24 +141,24 @@ STATIC mp_obj_t hash_read(mp_obj_t self_in) {
 
         switch (self->base.type->name) {
         case MP_QSTR_sha1:
-            mbedtls_sha1_finish(&self->sha1_context, (uint8_t *)self->buffer);
-            mbedtls_sha1_free(&self->sha1_context);
+            mbedtls_sha1_finish(&self->u.sha1_context, (uint8_t *)self->buffer);
+            mbedtls_sha1_free(&self->u.sha1_context);
             break;
 
         case MP_QSTR_sha224:
         case MP_QSTR_sha256:
-            mbedtls_sha256_finish(&self->sha256_context, (uint8_t *)self->buffer);
-            mbedtls_sha256_free(&self->sha256_context);
+            mbedtls_sha256_finish(&self->u.sha256_context, (uint8_t *)self->buffer);
+            mbedtls_sha256_free(&self->u.sha256_context);
             break;
 
         case MP_QSTR_sha384:
         case MP_QSTR_sha512:
-            mbedtls_sha512_finish(&self->sha512_context, (uint8_t *)self->buffer);
-            mbedtls_sha512_free(&self->sha512_context);
+            mbedtls_sha512_finish(&self->u.sha512_context, (uint8_t *)self->buffer);
+            mbedtls_sha512_free(&self->u.sha512_context);
             break;
 
         case MP_QSTR_md5:
-            MD5Final((uint8_t *)self->buffer, &self->md5_context);
+            MD5Final((uint8_t *)self->buffer, &self->u.md5_context);
             break;
         }
 
@@ -195,42 +195,42 @@ STATIC mp_obj_t hash_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
     case MP_QSTR_sha1:
         self->h_size = 20;
         self->b_size = 64;
-        mbedtls_sha1_init(&self->sha1_context);
-        mbedtls_sha1_starts(&self->sha1_context);
+        mbedtls_sha1_init(&self->u.sha1_context);
+        mbedtls_sha1_starts(&self->u.sha1_context);
         break;
 
     case MP_QSTR_sha224:
         self->h_size = 28;
         self->b_size = 64;
-        mbedtls_sha256_init(&self->sha256_context);
-        mbedtls_sha256_starts(&self->sha256_context, 1);
+        mbedtls_sha256_init(&self->u.sha256_context);
+        mbedtls_sha256_starts(&self->u.sha256_context, 1);
         break;
 
     case MP_QSTR_sha256:
         self->h_size = 32;
         self->b_size = 64;
-        mbedtls_sha256_init(&self->sha256_context);
-        mbedtls_sha256_starts(&self->sha256_context, 0);
+        mbedtls_sha256_init(&self->u.sha256_context);
+        mbedtls_sha256_starts(&self->u.sha256_context, 0);
         break;
 
     case MP_QSTR_sha384:
         self->h_size = 48;
         self->b_size = 128;
-        mbedtls_sha512_init(&self->sha512_context);
-        mbedtls_sha512_starts(&self->sha512_context, 1);
+        mbedtls_sha512_init(&self->u.sha512_context);
+        mbedtls_sha512_starts(&self->u.sha512_context, 1);
         break;
 
     case MP_QSTR_sha512:
         self->h_size = 64;
         self->b_size = 128;
-        mbedtls_sha512_init(&self->sha512_context);
-        mbedtls_sha512_starts(&self->sha512_context, 0);
+        mbedtls_sha512_init(&self->u.sha512_context);
+        mbedtls_sha512_starts(&self->u.sha512_context, 0);
         break;
 
     case MP_QSTR_md5:
         self->h_size = 16;
         self->b_size = 64;
-        MD5Init(&self->md5_context);
+        MD5Init(&self->u.md5_context);
         break;
     }
 

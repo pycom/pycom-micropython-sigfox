@@ -451,14 +451,14 @@ STATIC mp_obj_t os_getfree(mp_obj_t path_in) {
         mp_raise_OSError(fresult_to_errno_table[res]);
     }
 
-    uint32_t free_space = fs->csize * nclst
+    uint64_t free_space = ((uint64_t)fs->csize * nclst)
 #if _MAX_SS != _MIN_SS
-    *(fs->ssize);
+    * fs->ssize;
 #else
-    *_MIN_SS;
+    * _MIN_SS;
 #endif
 
-    return MP_OBJ_NEW_SMALL_INT(free_space / 1024);
+    return mp_obj_new_int_from_ull(free_space / 1024);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(os_getfree_obj, os_getfree);
 

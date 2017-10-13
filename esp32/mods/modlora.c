@@ -78,7 +78,7 @@
 #define LORA_SPREADING_FACTOR_MIN                   (6)
 #define LORA_SPREADING_FACTOR_MAX                   (12)
 
-#define LORA_CHECK_SOCKET(s)                        if (s->sock_base.sd < 0) {  \
+#define LORA_CHECK_SOCKET(s)                        if (s->sock_base.u.sd < 0) {  \
                                                         *_errno = MP_EBADF;     \
                                                         return -1;              \
                                                     }
@@ -192,19 +192,22 @@ typedef struct {
     uint8_t           sf;
     uint8_t           tx_power;
     uint8_t           pwr_mode;
+
     struct {
-    bool Enabled;
-    bool Running;
-    uint8_t State;
-    bool IsTxConfirmed;
-    uint16_t DownLinkCounter;
-    bool LinkCheck;
-    uint8_t DemodMargin;
-    uint8_t NbGateways;
+        bool Enabled;
+        bool Running;
+        uint8_t State;
+        bool IsTxConfirmed;
+        uint16_t DownLinkCounter;
+        bool LinkCheck;
+        uint8_t DemodMargin;
+        uint8_t NbGateways;
     } ComplianceTest;
+
     uint8_t           activation;
     uint8_t           tx_retries;
     uint8_t           otaa_dr;
+
     union {
         struct {
             // for OTAA
@@ -219,13 +222,15 @@ typedef struct {
             uint8_t           NwkSKey[16];
             uint8_t           AppSKey[16];
         } abp;
-    };
+    } u;
+
     bool              txiq;
     bool              rxiq;
     bool              adr;
     bool              public;
     bool              joined;
     uint8_t           events;
+    uint8_t           h_events;
     uint8_t           trigger;
     uint8_t           tx_trials;
 } lora_obj_t;
@@ -245,15 +250,18 @@ static QueueHandle_t xRxQueue;
 static EventGroupHandle_t LoRaEvents;
 
 static RadioEvents_t RadioEvents;
+static lora_cmd_data_t task_cmd_data;
+static LoRaMacPrimitives_t LoRaMacPrimitives;
+static LoRaMacCallback_t LoRaMacCallbacks;
 
-static volatile lora_obj_t lora_obj;
-static volatile lora_partial_rx_packet_t lora_partial_rx_packet;
-static volatile lora_rx_data_t rx_data_isr;
+static lora_obj_t lora_obj;
+static lora_partial_rx_packet_t lora_partial_rx_packet;
+static lora_rx_data_t rx_data_isr;
 
 static TimerEvent_t TxNextActReqTimer;
 
 static nvs_handle modlora_nvs_handle;
-static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR", "NWSKEY", "APPSKEY", "NETID" };
+static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR", "NWSKEY", "APPSKEY", "NETID", "ADRACK", "CHNLMASK", "CHANNELS"};
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -321,15 +329,16 @@ bool modlora_nvs_set_blob(uint32_t key_idx, const void *value, uint32_t length) 
 }
 
 bool modlora_nvs_get_uint(uint32_t key_idx, uint32_t *value) {
-    if (ESP_OK == nvs_get_u32(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value)) {
+    esp_err_t err;
+    if (ESP_OK == (err = nvs_get_u32(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value))) {
         return true;
     }
     return false;
 }
 
 bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length) {
-    uint32_t result = nvs_get_blob(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value, length);
-    if (ESP_OK == result) {
+    esp_err_t err;
+    if (ESP_OK == (err = nvs_get_blob(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value, length))) {
         return true;
     }
     return false;
@@ -413,16 +422,16 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
     uint32_t status = LORA_STATUS_COMPLETED;
     if (McpsConfirm->Status == LORAMAC_EVENT_INFO_STATUS_OK) {
         switch (McpsConfirm->McpsRequest) {
-            case MCPS_UNCONFIRMED:
+            case MCPS_UNCONFIRMED: {
                 // Check Datarate
                 // Check TxPower
-                lora_obj.events |= MODLORA_TX_EVENT;
-                if (lora_obj.trigger & MODLORA_TX_EVENT) {
-                    mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
-                }
+                uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
+                lora_obj.h_events |= MODLORA_TX_EVENT;
+                MICROPY_END_ATOMIC_SECTION(ilevel);
                 lora_obj.state = E_LORA_STATE_IDLE;
                 xEventGroupSetBits(LoRaEvents, status);
                 break;
+            }
             case MCPS_CONFIRMED:
                 // Check Datarate
                 // Check TxPower
@@ -431,10 +440,9 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
                 lora_obj.sftx = McpsConfirm->Datarate;
                 lora_obj.tx_trials = McpsConfirm->NbRetries;
                 if (McpsConfirm->AckReceived) {
-                    lora_obj.events |= MODLORA_TX_EVENT;
-                    if (lora_obj.trigger & MODLORA_TX_EVENT) {
-                        mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
-                    }
+                    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
+                    lora_obj.h_events |= MODLORA_TX_EVENT;
+                    MICROPY_END_ATOMIC_SECTION(ilevel);
                     lora_obj.state = E_LORA_STATE_IDLE;
                     xEventGroupSetBits(LoRaEvents, status);
                 } else {
@@ -448,11 +456,10 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
         }
     } else {
         lora_obj.tx_trials = McpsConfirm->NbRetries;
+        uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
+        lora_obj.h_events |= MODLORA_TX_FAILED_EVENT;
+        MICROPY_END_ATOMIC_SECTION(ilevel);
         lora_obj.state = E_LORA_STATE_IDLE;
-        lora_obj.events |= MODLORA_TX_FAILED_EVENT;
-        if (lora_obj.trigger & MODLORA_TX_FAILED_EVENT) {
-            mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
-        }
         status |= LORA_STATUS_ERROR;
         xEventGroupSetBits(LoRaEvents, status);
     }
@@ -504,11 +511,9 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                 rx_data_isr.len = mcpsIndication->BufferSize;
                 rx_data_isr.port = mcpsIndication->Port;
                 xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);
-
-                lora_obj.events |= MODLORA_RX_EVENT;
-                if (lora_obj.trigger & MODLORA_RX_EVENT) {
-                    mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
-                }
+                uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
+                lora_obj.h_events |= MODLORA_RX_EVENT;
+                MICROPY_END_ATOMIC_SECTION(ilevel);
             }
             // printf("Data on port 1 or 2 received\n");
         } else if (mcpsIndication->Port == 224) {
@@ -652,14 +657,12 @@ static void OnTxNextActReqTimerEvent(void) {
 }
 
 static void TASK_LoRa (void *pvParameters) {
-    lora_cmd_data_t cmd_data;
-    lora_obj.state = E_LORA_STATE_NOINIT;
-    lora_obj.pwr_mode = E_LORA_MODE_ALWAYS_ON;
-
-    LoRaMacPrimitives_t LoRaMacPrimitives;
-    LoRaMacCallback_t LoRaMacCallbacks;
     MibRequestConfirm_t mibReq;
     MlmeReq_t mlmeReq;
+    McpsReq_t mcpsReq;
+
+    lora_obj.state = E_LORA_STATE_NOINIT;
+    lora_obj.pwr_mode = E_LORA_MODE_ALWAYS_ON;
 
     // target board initialisation
     BoardInitMcu();
@@ -674,31 +677,32 @@ static void TASK_LoRa (void *pvParameters) {
         case E_LORA_STATE_RX:
         case E_LORA_STATE_SLEEP:
             // receive from the command queue and act accordingly
-            if (xQueueReceive(xCmdQueue, &cmd_data, 0)) {
-                switch (cmd_data.cmd) {
+            if (xQueueReceive(xCmdQueue, &task_cmd_data, 0)) {
+                switch (task_cmd_data.cmd) {
                 case E_LORA_CMD_INIT:
                     // save the new configuration first
-                    lora_set_config(&cmd_data);
-                    if (cmd_data.info.init.stack_mode == E_LORA_STACK_MODE_LORAWAN) {
+                    lora_set_config(&task_cmd_data);
+                    if (task_cmd_data.info.init.stack_mode == E_LORA_STACK_MODE_LORAWAN) {
                         LoRaMacPrimitives.MacMcpsConfirm = McpsConfirm;
                         LoRaMacPrimitives.MacMcpsIndication = McpsIndication;
                         LoRaMacPrimitives.MacMlmeConfirm = MlmeConfirm;
                         LoRaMacCallbacks.GetBatteryLevel = BoardGetBatteryLevel;
                         LoRaMacInitialization(&LoRaMacPrimitives, &LoRaMacCallbacks);
 
+                        TimerStop(&TxNextActReqTimer);
                         TimerInit(&TxNextActReqTimer, OnTxNextActReqTimerEvent);
                         TimerSetValue(&TxNextActReqTimer, OVER_THE_AIR_ACTIVATION_DUTYCYCLE);
 
                         mibReq.Type = MIB_ADR;
-                        mibReq.Param.AdrEnable = cmd_data.info.init.adr;
+                        mibReq.Param.AdrEnable = task_cmd_data.info.init.adr;
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
                         mibReq.Type = MIB_PUBLIC_NETWORK;
-                        mibReq.Param.EnablePublicNetwork = cmd_data.info.init.public;
+                        mibReq.Param.EnablePublicNetwork = task_cmd_data.info.init.public;
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
                         mibReq.Type = MIB_DEVICE_CLASS;
-                        mibReq.Param.Class = cmd_data.info.init.device_class;
+                        mibReq.Param.Class = task_cmd_data.info.init.device_class;
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
                     #if defined(USE_BAND_868)
@@ -713,16 +717,24 @@ static void TASK_LoRa (void *pvParameters) {
                             uint32_t length;
                             bool result = true;
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_NET_ID, (uint32_t *)&lora_obj.net_id);
-                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DEVADDR, (uint32_t *)&lora_obj.abp.DevAddr);
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DEVADDR, (uint32_t *)&lora_obj.u.abp.DevAddr);
                             length = 16;
-                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_NWSKEY, (void *)lora_obj.abp.NwkSKey, &length);
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_NWSKEY, (void *)lora_obj.u.abp.NwkSKey, &length);
                             length = 16;
-                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_APPSKEY, (void *)lora_obj.abp.AppSKey, &length);
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_APPSKEY, (void *)lora_obj.u.abp.AppSKey, &length);
 
-                            uint32_t uplinks, downlinks;
+                            uint32_t uplinks, downlinks, adrAcks;
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_UPLINK, &uplinks);
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DWLINK, &downlinks);
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_ADR_ACKS, &adrAcks);
 
+                            uint16_t ChannelsMask[6];
+                            length = 6 * sizeof(uint16_t);
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNEL_MASK, (void *)ChannelsMask, &length);
+
+                            length = LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t);
+                            uint8_t channels[LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t)];
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNELS, (void *)channels, &length);
                             if (result) {
                                 mibReq.Type = MIB_UPLINK_COUNTER;
                                 mibReq.Param.UpLinkCounter = uplinks;
@@ -731,6 +743,18 @@ static void TASK_LoRa (void *pvParameters) {
                                 mibReq.Type = MIB_DOWNLINK_COUNTER;
                                 mibReq.Param.DownLinkCounter = downlinks;
                                 LoRaMacMibSetRequestConfirm( &mibReq );
+                                
+                                mibReq.Type = MIB_ADR_ACK_COUNTER;
+                                mibReq.Param.AdrAckCounter = adrAcks;
+                                LoRaMacMibSetRequestConfirm( &mibReq );
+                                
+                                mibReq.Type = MIB_CHANNELS_MASK;
+                                mibReq.Param.ChannelsMask = ChannelsMask;
+                                LoRaMacMibSetRequestConfirm( &mibReq );
+
+                                mibReq.Type = MIB_CHANNELS;
+                                memcpy(mibReq.Param.ChannelList, channels, sizeof(channels));
+                                LoRaMacMibGetRequestConfirm( &mibReq );
 
                                 lora_obj.activation = E_LORA_ACTIVATION_ABP;
                                 lora_obj.state = E_LORA_STATE_JOIN;
@@ -750,7 +774,7 @@ static void TASK_LoRa (void *pvParameters) {
                         Radio.Init(&RadioEvents);
 
                         // radio configuration
-                        lora_radio_setup(&cmd_data.info.init);
+                        lora_radio_setup(&task_cmd_data.info.init);
                         lora_obj.state = E_LORA_STATE_IDLE;
                     }
                     lora_obj.joined = false;
@@ -760,69 +784,66 @@ static void TASK_LoRa (void *pvParameters) {
                     break;
                 case E_LORA_CMD_JOIN:
                     lora_obj.joined = false;
-                    lora_obj.activation = cmd_data.info.join.activation;
+                    lora_obj.activation = task_cmd_data.info.join.activation;
                     if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
-                        memcpy((void *)lora_obj.otaa.DevEui, cmd_data.info.join.otaa.DevEui, sizeof(lora_obj.otaa.DevEui));
-                        memcpy((void *)lora_obj.otaa.AppEui, cmd_data.info.join.otaa.AppEui, sizeof(lora_obj.otaa.AppEui));
-                        memcpy((void *)lora_obj.otaa.AppKey, cmd_data.info.join.otaa.AppKey, sizeof(lora_obj.otaa.AppKey));
-                        lora_obj.otaa_dr = cmd_data.info.join.otaa_dr;
+                        memcpy((void *)lora_obj.u.otaa.DevEui, task_cmd_data.info.join.u.otaa.DevEui, sizeof(lora_obj.u.otaa.DevEui));
+                        memcpy((void *)lora_obj.u.otaa.AppEui, task_cmd_data.info.join.u.otaa.AppEui, sizeof(lora_obj.u.otaa.AppEui));
+                        memcpy((void *)lora_obj.u.otaa.AppKey, task_cmd_data.info.join.u.otaa.AppKey, sizeof(lora_obj.u.otaa.AppKey));
+                        lora_obj.otaa_dr = task_cmd_data.info.join.otaa_dr;
                     } else {
                         lora_obj.net_id = DEF_LORAWAN_NETWORK_ID;
-                        lora_obj.abp.DevAddr = cmd_data.info.join.abp.DevAddr;
-                        memcpy((void *)lora_obj.abp.AppSKey, cmd_data.info.join.abp.AppSKey, sizeof(lora_obj.abp.AppSKey));
-                        memcpy((void *)lora_obj.abp.NwkSKey, cmd_data.info.join.abp.NwkSKey, sizeof(lora_obj.abp.NwkSKey));
+                        lora_obj.u.abp.DevAddr = task_cmd_data.info.join.u.abp.DevAddr;
+                        memcpy((void *)lora_obj.u.abp.AppSKey, task_cmd_data.info.join.u.abp.AppSKey, sizeof(lora_obj.u.abp.AppSKey));
+                        memcpy((void *)lora_obj.u.abp.NwkSKey, task_cmd_data.info.join.u.abp.NwkSKey, sizeof(lora_obj.u.abp.NwkSKey));
                     }
                     lora_obj.state = E_LORA_STATE_JOIN;
                     break;
                 case E_LORA_CMD_TX:
-                    Radio.Send(cmd_data.info.tx.data, cmd_data.info.tx.len);
+                    Radio.Send(task_cmd_data.info.tx.data, task_cmd_data.info.tx.len);
                     lora_obj.state = E_LORA_STATE_TX;
                     break;
                 case E_LORA_CMD_CONFIG_CHANNEL:
-                    if (cmd_data.info.channel.add) {
+                    if (task_cmd_data.info.channel.add) {
                         ChannelParams_t channel =
-                        { cmd_data.info.channel.frequency, {((cmd_data.info.channel.dr_max << 4) | cmd_data.info.channel.dr_min)}, 0};
-                        LoRaMacChannelManualAdd(cmd_data.info.channel.index, channel);
+                        { task_cmd_data.info.channel.frequency, {((task_cmd_data.info.channel.dr_max << 4) | task_cmd_data.info.channel.dr_min)}, 0};
+                        LoRaMacChannelManualAdd(task_cmd_data.info.channel.index, channel);
                     } else {
-                        LoRaMacChannelManualRemove(cmd_data.info.channel.index);
+                        LoRaMacChannelManualRemove(task_cmd_data.info.channel.index);
                     }
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
                     break;
-                case E_LORA_CMD_LORAWAN_TX:
-                    {
-                        McpsReq_t mcpsReq;
+                case E_LORA_CMD_LORAWAN_TX: {
                         LoRaMacTxInfo_t txInfo;
                         EventBits_t status = 0;
                         bool empty_frame = false;
 
                         // set the data rate before checking if Tx is possible
-                        MibRequestConfirm_t mibReq;
                         mibReq.Type = MIB_CHANNELS_DATARATE;
-                        mibReq.Param.ChannelsDatarate = cmd_data.info.tx.dr;
+                        mibReq.Param.ChannelsDatarate = task_cmd_data.info.tx.dr;
                         LoRaMacMibSetRequestConfirm( &mibReq );
 
-                        if (LoRaMacQueryTxPossible (cmd_data.info.tx.len, &txInfo) != LORAMAC_STATUS_OK) {
+                        if (LoRaMacQueryTxPossible (task_cmd_data.info.tx.len, &txInfo) != LORAMAC_STATUS_OK) {
                             // send an empty frame in order to flush MAC commands
                             mcpsReq.Type = MCPS_UNCONFIRMED;
                             mcpsReq.Req.Unconfirmed.fBuffer = NULL;
                             mcpsReq.Req.Unconfirmed.fBufferSize = 0;
-                            mcpsReq.Req.Unconfirmed.Datarate = cmd_data.info.tx.dr;
+                            mcpsReq.Req.Unconfirmed.Datarate = task_cmd_data.info.tx.dr;
                             empty_frame = true;
                             status |= LORA_STATUS_MSG_SIZE;
                         } else {
-                            if (cmd_data.info.tx.confirmed) {
+                            if (task_cmd_data.info.tx.confirmed) {
                                 mcpsReq.Type = MCPS_CONFIRMED;
-                                mcpsReq.Req.Confirmed.fPort = cmd_data.info.tx.port;
-                                mcpsReq.Req.Confirmed.fBuffer = cmd_data.info.tx.data;
-                                mcpsReq.Req.Confirmed.fBufferSize = cmd_data.info.tx.len;
+                                mcpsReq.Req.Confirmed.fPort = task_cmd_data.info.tx.port;
+                                mcpsReq.Req.Confirmed.fBuffer = task_cmd_data.info.tx.data;
+                                mcpsReq.Req.Confirmed.fBufferSize = task_cmd_data.info.tx.len;
                                 mcpsReq.Req.Confirmed.NbTrials = lora_obj.tx_retries + 1;
-                                mcpsReq.Req.Confirmed.Datarate = cmd_data.info.tx.dr;
+                                mcpsReq.Req.Confirmed.Datarate = task_cmd_data.info.tx.dr;
                             } else {
                                 mcpsReq.Type = MCPS_UNCONFIRMED;
-                                mcpsReq.Req.Unconfirmed.fPort = cmd_data.info.tx.port;
-                                mcpsReq.Req.Unconfirmed.fBuffer = cmd_data.info.tx.data;
-                                mcpsReq.Req.Unconfirmed.fBufferSize = cmd_data.info.tx.len;
-                                mcpsReq.Req.Unconfirmed.Datarate = cmd_data.info.tx.dr;
+                                mcpsReq.Req.Unconfirmed.fPort = task_cmd_data.info.tx.port;
+                                mcpsReq.Req.Unconfirmed.fBuffer = task_cmd_data.info.tx.data;
+                                mcpsReq.Req.Unconfirmed.fBufferSize = task_cmd_data.info.tx.len;
+                                mcpsReq.Req.Unconfirmed.Datarate = task_cmd_data.info.tx.dr;
                             }
                         }
 
@@ -861,9 +882,9 @@ static void TASK_LoRa (void *pvParameters) {
                 if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
                     TimerStart( &TxNextActReqTimer );
                     mlmeReq.Type = MLME_JOIN;
-                    mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.otaa.DevEui;
-                    mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.otaa.AppEui;
-                    mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.otaa.AppKey;
+                    mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.u.otaa.DevEui;
+                    mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.u.otaa.AppEui;
+                    mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.u.otaa.AppKey;
                     mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa_dr;
                     LoRaMacMlmeRequest( &mlmeReq );
                 } else {
@@ -872,15 +893,15 @@ static void TASK_LoRa (void *pvParameters) {
                     LoRaMacMibSetRequestConfirm( &mibReq );
 
                     mibReq.Type = MIB_DEV_ADDR;
-                    mibReq.Param.DevAddr = (uint32_t)lora_obj.abp.DevAddr;
+                    mibReq.Param.DevAddr = (uint32_t)lora_obj.u.abp.DevAddr;
                     LoRaMacMibSetRequestConfirm( &mibReq );
 
                     mibReq.Type = MIB_NWK_SKEY;
-                    mibReq.Param.NwkSKey = (uint8_t *)lora_obj.abp.NwkSKey;
+                    mibReq.Param.NwkSKey = (uint8_t *)lora_obj.u.abp.NwkSKey;
                     LoRaMacMibSetRequestConfirm( &mibReq );
 
                     mibReq.Type = MIB_APP_SKEY;
-                    mibReq.Param.AppSKey = (uint8_t *)lora_obj.abp.AppSKey;
+                    mibReq.Param.AppSKey = (uint8_t *)lora_obj.u.abp.AppSKey;
                     LoRaMacMibSetRequestConfirm( &mibReq );
 
                     mibReq.Type = MIB_NETWORK_JOINED;
@@ -922,7 +943,19 @@ static void TASK_LoRa (void *pvParameters) {
         default:
             break;
         }
+
         TimerLowPowerHandler();
+
+        uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
+        // queue an interrupt if we have events on hold
+        if (lora_obj.h_events) {
+            lora_obj.events = lora_obj.h_events;
+            lora_obj.h_events = 0;
+            if (lora_obj.trigger & lora_obj.events) {
+                mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+            }
+        }
+        MICROPY_END_ATOMIC_SECTION(ilevel);
     }
 }
 
@@ -1422,22 +1455,22 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
         if (auth_len == 2) {
             mp_get_buffer_raise(auth[0], &bufinfo_1, MP_BUFFER_READ);
             mp_get_buffer_raise(auth[1], &bufinfo_2, MP_BUFFER_READ);
-            config_get_lpwan_mac(cmd_data.info.join.otaa.DevEui);
+            config_get_lpwan_mac(cmd_data.info.join.u.otaa.DevEui);
         } else {
             mp_get_buffer_raise(auth[0], &bufinfo_0, MP_BUFFER_READ);
-            memcpy(cmd_data.info.join.otaa.DevEui, bufinfo_0.buf, sizeof(cmd_data.info.join.otaa.DevEui));
+            memcpy(cmd_data.info.join.u.otaa.DevEui, bufinfo_0.buf, sizeof(cmd_data.info.join.u.otaa.DevEui));
             mp_get_buffer_raise(auth[1], &bufinfo_1, MP_BUFFER_READ);
             mp_get_buffer_raise(auth[2], &bufinfo_2, MP_BUFFER_READ);
         }
-        memcpy(cmd_data.info.join.otaa.AppEui, bufinfo_1.buf, sizeof(cmd_data.info.join.otaa.AppEui));
-        memcpy(cmd_data.info.join.otaa.AppKey, bufinfo_2.buf, sizeof(cmd_data.info.join.otaa.AppKey));
+        memcpy(cmd_data.info.join.u.otaa.AppEui, bufinfo_1.buf, sizeof(cmd_data.info.join.u.otaa.AppEui));
+        memcpy(cmd_data.info.join.u.otaa.AppKey, bufinfo_2.buf, sizeof(cmd_data.info.join.u.otaa.AppKey));
     } else {
         mp_obj_get_array_fixed_n(args[1].u_obj, 3, &auth);
         mp_get_buffer_raise(auth[1], &bufinfo_0, MP_BUFFER_READ);
         mp_get_buffer_raise(auth[2], &bufinfo_1, MP_BUFFER_READ);
-        cmd_data.info.join.abp.DevAddr = mp_obj_int_get_truncated(auth[0]);
-        memcpy(cmd_data.info.join.abp.NwkSKey, bufinfo_0.buf, sizeof(cmd_data.info.join.abp.NwkSKey));
-        memcpy(cmd_data.info.join.abp.AppSKey, bufinfo_1.buf, sizeof(cmd_data.info.join.abp.AppSKey));
+        cmd_data.info.join.u.abp.DevAddr = mp_obj_int_get_truncated(auth[0]);
+        memcpy(cmd_data.info.join.u.abp.NwkSKey, bufinfo_0.buf, sizeof(cmd_data.info.join.u.abp.NwkSKey));
+        memcpy(cmd_data.info.join.u.abp.AppSKey, bufinfo_1.buf, sizeof(cmd_data.info.join.u.abp.AppSKey));
     }
 
     // need a way to indicate an invalid data rate so the default approach is used
@@ -1816,7 +1849,7 @@ STATIC mp_obj_t lora_set_battery_level(mp_obj_t self_in, mp_obj_t battery) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_set_battery_level_obj, lora_set_battery_level);
 
 STATIC mp_obj_t lora_nvram_save (mp_obj_t self_in) {
-    modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, lora_obj.joined);
+    modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, (uint32_t)lora_obj.joined);
     LoRaMacNvsSave();
     if (ESP_OK != nvs_commit(modlora_nvs_handle)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
@@ -1826,18 +1859,19 @@ STATIC mp_obj_t lora_nvram_save (mp_obj_t self_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_nvram_save_obj, lora_nvram_save);
 
 STATIC mp_obj_t lora_nvram_restore (mp_obj_t self_in) {
-    uint32_t joined = false;
+    uint32_t joined = 0;
     lora_cmd_data_t cmd_data;
 
     if (modlora_nvs_get_uint(E_LORA_NVS_ELE_JOINED, &joined)) {
         lora_obj.joined = joined;
+        if (joined) {
+            lora_get_config (&cmd_data);
+            cmd_data.cmd = E_LORA_CMD_INIT;
+            lora_send_cmd (&cmd_data);
+        }
     } else {
         lora_obj.joined = false;
     }
-
-    lora_get_config (&cmd_data);
-    cmd_data.cmd = E_LORA_CMD_INIT;
-    lora_send_cmd (&cmd_data);
 
     return mp_const_none;
 }
@@ -1924,21 +1958,21 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
         *_errno = MP_ENETDOWN;
         return -1;
     }
-    s->sock_base.sd = 1;
+    s->sock_base.u.sd = 1;
 #if defined(USE_BAND_868)
-    LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_5);
+    LORAWAN_SOCKET_SET_DR(s->sock_base.u.sd, DR_5);
 #else
-    LORAWAN_SOCKET_SET_DR(s->sock_base.sd, DR_3);
+    LORAWAN_SOCKET_SET_DR(s->sock_base.u.sd, DR_3);
 #endif
     // port number 2 is the default one
-    LORAWAN_SOCKET_SET_PORT(s->sock_base.sd, 2);
+    LORAWAN_SOCKET_SET_PORT(s->sock_base.u.sd, 2);
     return 0;
 }
 
 static void lora_socket_close (mod_network_socket_obj_t *s) {
     // this is to prevent the finalizer to close a socket that failed during creation
-    if (s->sock_base.sd > 0) {
-        s->sock_base.sd = -1;
+    if (s->sock_base.u.sd > 0) {
+        s->sock_base.u.sd = -1;
     }
 }
 
@@ -1958,9 +1992,9 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
         } else {
             if (lora_obj.joined) {
                 n_bytes = lorawan_send (buf, len, s->sock_base.timeout,
-                                        LORAWAN_SOCKET_IS_CONFIRMED(s->sock_base.sd),
-                                        LORAWAN_SOCKET_GET_DR(s->sock_base.sd),
-                                        LORAWAN_SOCKET_GET_PORT(s->sock_base.sd));
+                                        LORAWAN_SOCKET_IS_CONFIRMED(s->sock_base.u.sd),
+                                        LORAWAN_SOCKET_GET_DR(s->sock_base.u.sd),
+                                        LORAWAN_SOCKET_GET_PORT(s->sock_base.u.sd));
             } else {
                 *_errno = MP_ENETDOWN;
                 return -1;
@@ -2008,16 +2042,16 @@ static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, 
 
     if (opt == SO_LORAWAN_CONFIRMED) {
         if (*(uint8_t *)optval) {
-            LORAWAN_SOCKET_SET_CONFIRMED(s->sock_base.sd);
+            LORAWAN_SOCKET_SET_CONFIRMED(s->sock_base.u.sd);
         } else {
-            LORAWAN_SOCKET_CLR_CONFIRMED(s->sock_base.sd);
+            LORAWAN_SOCKET_CLR_CONFIRMED(s->sock_base.u.sd);
         }
     } else if (opt == SO_LORAWAN_DR) {
         if (!lora_validate_data_rate(*(uint32_t *)optval)) {
             *_errno = MP_EOPNOTSUPP;
             return -1;
         }
-        LORAWAN_SOCKET_SET_DR(s->sock_base.sd, *(uint8_t *)optval);
+        LORAWAN_SOCKET_SET_DR(s->sock_base.u.sd, *(uint8_t *)optval);
     } else {
         *_errno = MP_EOPNOTSUPP;
         return -1;
@@ -2037,7 +2071,7 @@ static int lora_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t por
         *_errno = MP_EOPNOTSUPP;
         return -1;
     }
-    LORAWAN_SOCKET_SET_PORT(s->sock_base.sd, port);
+    LORAWAN_SOCKET_SET_PORT(s->sock_base.u.sd, port);
     return 0;
 }
 

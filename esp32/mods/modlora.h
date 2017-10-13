@@ -47,7 +47,10 @@ typedef enum {
     E_LORA_NVS_ELE_NWSKEY,
     E_LORA_NVS_ELE_APPSKEY,
     E_LORA_NVS_ELE_NET_ID,
-    E_LORA_NVS_NUM_KEYS
+    E_LORA_NVS_ELE_ADR_ACKS,
+    E_LORA_NVS_ELE_CHANNEL_MASK,
+    E_LORA_NVS_ELE_CHANNELS, 
+    E_LORA_NVS_NUM_KEYS 
 } e_lora_nvs_key_t;
 
 typedef struct {
@@ -84,7 +87,7 @@ typedef struct {
             uint8_t           NwkSKey[16];
             uint8_t           AppSKey[16];
         } abp;
-    };
+    } u;
 } lora_join_cmd_data_t;
 
 typedef struct {

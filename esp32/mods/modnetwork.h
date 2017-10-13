@@ -85,7 +85,7 @@ typedef struct _mod_network_socket_base_t {
             uint8_t proto;
         } u_param;
         int32_t sd;
-    };
+    }u;
     int32_t timeout;
     bool is_ssl;
     bool connected;

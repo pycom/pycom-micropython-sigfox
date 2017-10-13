@@ -48,16 +48,16 @@ CFLAGS_XTENSA = -DESP_PLATFORM -g3 -Wpointer-arith -Werror -Wno-error=unused-fun
                 -mlongcalls -Wall -ffunction-sections -fdata-sections -fno-common
 
 ifeq ($(TARGET), app)
-CFLAGS_XTENSA += -O2
+CFLAGS_XTENSA_OPT = -Os
 else
-CFLAGS_XTENSA += -Og
+CFLAGS_XTENSA_OPT = -Og
 endif
 
 ifeq ($(OEM), 1)
 CFLAGS_XTENSA += -mfix-esp32-psram-cache-issue
 endif
 
-CFLAGS = $(CFLAGS_XTENSA) -nostdlib -std=gnu99 -g3 -fstrict-volatile-bitfields -Iboards/$(BOARD)
+CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -fstrict-volatile-bitfields -Iboards/$(BOARD)
 
 LDFLAGS = -nostdlib -Wl,-Map=$(@:.elf=.map) -Wl,--no-check-sections -u call_user_start_cpu0
 LDFLAGS += -Wl,-static -Wl,--undefined=uxTopUsedPriority -Wl,--gc-sections
