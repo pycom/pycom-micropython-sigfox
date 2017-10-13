@@ -1373,9 +1373,18 @@ static int wlan_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t le
         mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
         do {
             ret = mbedtls_ssl_read(&ss->ssl, (unsigned char *)buf, len);
-            if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE || ret == MBEDTLS_ERR_SSL_TIMEOUT) {
+            if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE ) {
                 // do nothing
-            } else if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
+            } else if (ret == MBEDTLS_ERR_SSL_TIMEOUT) {
+                // printf("SSL timeout recieved\n");
+                // non-blocking return
+                if (s->sock_base.timeout == 0) {
+                    ret = 0;
+                    break;
+                }
+                // blocking do nothing
+            }
+            else if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
                 // printf("Close notify received\n");
                 ret = 0;
                 break;
