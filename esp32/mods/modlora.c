@@ -208,19 +208,21 @@ typedef struct {
     uint8_t           tx_retries;
     uint8_t           otaa_dr;
 
-    struct {
-        // for OTAA
-        uint8_t           DevEui[8];
-        uint8_t           AppEui[8];
-        uint8_t           AppKey[16];
-    } otaa;
+    union {
+        struct {
+            // for OTAA
+            uint8_t           DevEui[8];
+            uint8_t           AppEui[8];
+            uint8_t           AppKey[16];
+        } otaa;
 
-    struct {
-        // for ABP
-        uint32_t          DevAddr;
-        uint8_t           NwkSKey[16];
-        uint8_t           AppSKey[16];
-    } abp;
+        struct {
+            // for ABP
+            uint32_t          DevAddr;
+            uint8_t           NwkSKey[16];
+            uint8_t           AppSKey[16];
+        } abp;
+    } u;
 
     bool              txiq;
     bool              rxiq;
@@ -248,10 +250,13 @@ static QueueHandle_t xRxQueue;
 static EventGroupHandle_t LoRaEvents;
 
 static RadioEvents_t RadioEvents;
+static lora_cmd_data_t task_cmd_data;
+static LoRaMacPrimitives_t LoRaMacPrimitives;
+static LoRaMacCallback_t LoRaMacCallbacks;
 
-static volatile lora_obj_t lora_obj;
-static volatile lora_partial_rx_packet_t lora_partial_rx_packet;
-static volatile lora_rx_data_t rx_data_isr;
+static lora_obj_t lora_obj;
+static lora_partial_rx_packet_t lora_partial_rx_packet;
+static lora_rx_data_t rx_data_isr;
 
 static TimerEvent_t TxNextActReqTimer;
 
@@ -652,14 +657,12 @@ static void OnTxNextActReqTimerEvent(void) {
 }
 
 static void TASK_LoRa (void *pvParameters) {
-    lora_cmd_data_t cmd_data;
-    lora_obj.state = E_LORA_STATE_NOINIT;
-    lora_obj.pwr_mode = E_LORA_MODE_ALWAYS_ON;
-
-    LoRaMacPrimitives_t LoRaMacPrimitives;
-    LoRaMacCallback_t LoRaMacCallbacks;
     MibRequestConfirm_t mibReq;
     MlmeReq_t mlmeReq;
+    McpsReq_t mcpsReq;
+
+    lora_obj.state = E_LORA_STATE_NOINIT;
+    lora_obj.pwr_mode = E_LORA_MODE_ALWAYS_ON;
 
     // target board initialisation
     BoardInitMcu();
@@ -674,12 +677,12 @@ static void TASK_LoRa (void *pvParameters) {
         case E_LORA_STATE_RX:
         case E_LORA_STATE_SLEEP:
             // receive from the command queue and act accordingly
-            if (xQueueReceive(xCmdQueue, &cmd_data, 0)) {
-                switch (cmd_data.cmd) {
+            if (xQueueReceive(xCmdQueue, &task_cmd_data, 0)) {
+                switch (task_cmd_data.cmd) {
                 case E_LORA_CMD_INIT:
                     // save the new configuration first
-                    lora_set_config(&cmd_data);
-                    if (cmd_data.info.init.stack_mode == E_LORA_STACK_MODE_LORAWAN) {
+                    lora_set_config(&task_cmd_data);
+                    if (task_cmd_data.info.init.stack_mode == E_LORA_STACK_MODE_LORAWAN) {
                         LoRaMacPrimitives.MacMcpsConfirm = McpsConfirm;
                         LoRaMacPrimitives.MacMcpsIndication = McpsIndication;
                         LoRaMacPrimitives.MacMlmeConfirm = MlmeConfirm;
@@ -691,15 +694,15 @@ static void TASK_LoRa (void *pvParameters) {
                         TimerSetValue(&TxNextActReqTimer, OVER_THE_AIR_ACTIVATION_DUTYCYCLE);
 
                         mibReq.Type = MIB_ADR;
-                        mibReq.Param.AdrEnable = cmd_data.info.init.adr;
+                        mibReq.Param.AdrEnable = task_cmd_data.info.init.adr;
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
                         mibReq.Type = MIB_PUBLIC_NETWORK;
-                        mibReq.Param.EnablePublicNetwork = cmd_data.info.init.public;
+                        mibReq.Param.EnablePublicNetwork = task_cmd_data.info.init.public;
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
                         mibReq.Type = MIB_DEVICE_CLASS;
-                        mibReq.Param.Class = cmd_data.info.init.device_class;
+                        mibReq.Param.Class = task_cmd_data.info.init.device_class;
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
                     #if defined(USE_BAND_868)
@@ -714,11 +717,11 @@ static void TASK_LoRa (void *pvParameters) {
                             uint32_t length;
                             bool result = true;
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_NET_ID, (uint32_t *)&lora_obj.net_id);
-                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DEVADDR, (uint32_t *)&lora_obj.abp.DevAddr);
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DEVADDR, (uint32_t *)&lora_obj.u.abp.DevAddr);
                             length = 16;
-                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_NWSKEY, (void *)lora_obj.abp.NwkSKey, &length);
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_NWSKEY, (void *)lora_obj.u.abp.NwkSKey, &length);
                             length = 16;
-                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_APPSKEY, (void *)lora_obj.abp.AppSKey, &length);
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_APPSKEY, (void *)lora_obj.u.abp.AppSKey, &length);
 
                             uint32_t uplinks, downlinks, adrAcks;
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_UPLINK, &uplinks);
@@ -771,7 +774,7 @@ static void TASK_LoRa (void *pvParameters) {
                         Radio.Init(&RadioEvents);
 
                         // radio configuration
-                        lora_radio_setup(&cmd_data.info.init);
+                        lora_radio_setup(&task_cmd_data.info.init);
                         lora_obj.state = E_LORA_STATE_IDLE;
                     }
                     lora_obj.joined = false;
@@ -781,69 +784,66 @@ static void TASK_LoRa (void *pvParameters) {
                     break;
                 case E_LORA_CMD_JOIN:
                     lora_obj.joined = false;
-                    lora_obj.activation = cmd_data.info.join.activation;
+                    lora_obj.activation = task_cmd_data.info.join.activation;
                     if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
-                        memcpy((void *)lora_obj.otaa.DevEui, cmd_data.info.join.otaa.DevEui, sizeof(lora_obj.otaa.DevEui));
-                        memcpy((void *)lora_obj.otaa.AppEui, cmd_data.info.join.otaa.AppEui, sizeof(lora_obj.otaa.AppEui));
-                        memcpy((void *)lora_obj.otaa.AppKey, cmd_data.info.join.otaa.AppKey, sizeof(lora_obj.otaa.AppKey));
-                        lora_obj.otaa_dr = cmd_data.info.join.otaa_dr;
+                        memcpy((void *)lora_obj.u.otaa.DevEui, task_cmd_data.info.join.u.otaa.DevEui, sizeof(lora_obj.u.otaa.DevEui));
+                        memcpy((void *)lora_obj.u.otaa.AppEui, task_cmd_data.info.join.u.otaa.AppEui, sizeof(lora_obj.u.otaa.AppEui));
+                        memcpy((void *)lora_obj.u.otaa.AppKey, task_cmd_data.info.join.u.otaa.AppKey, sizeof(lora_obj.u.otaa.AppKey));
+                        lora_obj.otaa_dr = task_cmd_data.info.join.otaa_dr;
                     } else {
                         lora_obj.net_id = DEF_LORAWAN_NETWORK_ID;
-                        lora_obj.abp.DevAddr = cmd_data.info.join.abp.DevAddr;
-                        memcpy((void *)lora_obj.abp.AppSKey, cmd_data.info.join.abp.AppSKey, sizeof(lora_obj.abp.AppSKey));
-                        memcpy((void *)lora_obj.abp.NwkSKey, cmd_data.info.join.abp.NwkSKey, sizeof(lora_obj.abp.NwkSKey));
+                        lora_obj.u.abp.DevAddr = task_cmd_data.info.join.u.abp.DevAddr;
+                        memcpy((void *)lora_obj.u.abp.AppSKey, task_cmd_data.info.join.u.abp.AppSKey, sizeof(lora_obj.u.abp.AppSKey));
+                        memcpy((void *)lora_obj.u.abp.NwkSKey, task_cmd_data.info.join.u.abp.NwkSKey, sizeof(lora_obj.u.abp.NwkSKey));
                     }
                     lora_obj.state = E_LORA_STATE_JOIN;
                     break;
                 case E_LORA_CMD_TX:
-                    Radio.Send(cmd_data.info.tx.data, cmd_data.info.tx.len);
+                    Radio.Send(task_cmd_data.info.tx.data, task_cmd_data.info.tx.len);
                     lora_obj.state = E_LORA_STATE_TX;
                     break;
                 case E_LORA_CMD_CONFIG_CHANNEL:
-                    if (cmd_data.info.channel.add) {
+                    if (task_cmd_data.info.channel.add) {
                         ChannelParams_t channel =
-                        { cmd_data.info.channel.frequency, {((cmd_data.info.channel.dr_max << 4) | cmd_data.info.channel.dr_min)}, 0};
-                        LoRaMacChannelManualAdd(cmd_data.info.channel.index, channel);
+                        { task_cmd_data.info.channel.frequency, {((task_cmd_data.info.channel.dr_max << 4) | task_cmd_data.info.channel.dr_min)}, 0};
+                        LoRaMacChannelManualAdd(task_cmd_data.info.channel.index, channel);
                     } else {
-                        LoRaMacChannelManualRemove(cmd_data.info.channel.index);
+                        LoRaMacChannelManualRemove(task_cmd_data.info.channel.index);
                     }
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
                     break;
-                case E_LORA_CMD_LORAWAN_TX:
-                    {
-                        McpsReq_t mcpsReq;
+                case E_LORA_CMD_LORAWAN_TX: {
                         LoRaMacTxInfo_t txInfo;
                         EventBits_t status = 0;
                         bool empty_frame = false;
 
                         // set the data rate before checking if Tx is possible
-                        MibRequestConfirm_t mibReq;
                         mibReq.Type = MIB_CHANNELS_DATARATE;
-                        mibReq.Param.ChannelsDatarate = cmd_data.info.tx.dr;
+                        mibReq.Param.ChannelsDatarate = task_cmd_data.info.tx.dr;
                         LoRaMacMibSetRequestConfirm( &mibReq );
 
-                        if (LoRaMacQueryTxPossible (cmd_data.info.tx.len, &txInfo) != LORAMAC_STATUS_OK) {
+                        if (LoRaMacQueryTxPossible (task_cmd_data.info.tx.len, &txInfo) != LORAMAC_STATUS_OK) {
                             // send an empty frame in order to flush MAC commands
                             mcpsReq.Type = MCPS_UNCONFIRMED;
                             mcpsReq.Req.Unconfirmed.fBuffer = NULL;
                             mcpsReq.Req.Unconfirmed.fBufferSize = 0;
-                            mcpsReq.Req.Unconfirmed.Datarate = cmd_data.info.tx.dr;
+                            mcpsReq.Req.Unconfirmed.Datarate = task_cmd_data.info.tx.dr;
                             empty_frame = true;
                             status |= LORA_STATUS_MSG_SIZE;
                         } else {
-                            if (cmd_data.info.tx.confirmed) {
+                            if (task_cmd_data.info.tx.confirmed) {
                                 mcpsReq.Type = MCPS_CONFIRMED;
-                                mcpsReq.Req.Confirmed.fPort = cmd_data.info.tx.port;
-                                mcpsReq.Req.Confirmed.fBuffer = cmd_data.info.tx.data;
-                                mcpsReq.Req.Confirmed.fBufferSize = cmd_data.info.tx.len;
+                                mcpsReq.Req.Confirmed.fPort = task_cmd_data.info.tx.port;
+                                mcpsReq.Req.Confirmed.fBuffer = task_cmd_data.info.tx.data;
+                                mcpsReq.Req.Confirmed.fBufferSize = task_cmd_data.info.tx.len;
                                 mcpsReq.Req.Confirmed.NbTrials = lora_obj.tx_retries + 1;
-                                mcpsReq.Req.Confirmed.Datarate = cmd_data.info.tx.dr;
+                                mcpsReq.Req.Confirmed.Datarate = task_cmd_data.info.tx.dr;
                             } else {
                                 mcpsReq.Type = MCPS_UNCONFIRMED;
-                                mcpsReq.Req.Unconfirmed.fPort = cmd_data.info.tx.port;
-                                mcpsReq.Req.Unconfirmed.fBuffer = cmd_data.info.tx.data;
-                                mcpsReq.Req.Unconfirmed.fBufferSize = cmd_data.info.tx.len;
-                                mcpsReq.Req.Unconfirmed.Datarate = cmd_data.info.tx.dr;
+                                mcpsReq.Req.Unconfirmed.fPort = task_cmd_data.info.tx.port;
+                                mcpsReq.Req.Unconfirmed.fBuffer = task_cmd_data.info.tx.data;
+                                mcpsReq.Req.Unconfirmed.fBufferSize = task_cmd_data.info.tx.len;
+                                mcpsReq.Req.Unconfirmed.Datarate = task_cmd_data.info.tx.dr;
                             }
                         }
 
@@ -882,9 +882,9 @@ static void TASK_LoRa (void *pvParameters) {
                 if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
                     TimerStart( &TxNextActReqTimer );
                     mlmeReq.Type = MLME_JOIN;
-                    mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.otaa.DevEui;
-                    mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.otaa.AppEui;
-                    mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.otaa.AppKey;
+                    mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.u.otaa.DevEui;
+                    mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.u.otaa.AppEui;
+                    mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.u.otaa.AppKey;
                     mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa_dr;
                     LoRaMacMlmeRequest( &mlmeReq );
                 } else {
@@ -893,15 +893,15 @@ static void TASK_LoRa (void *pvParameters) {
                     LoRaMacMibSetRequestConfirm( &mibReq );
 
                     mibReq.Type = MIB_DEV_ADDR;
-                    mibReq.Param.DevAddr = (uint32_t)lora_obj.abp.DevAddr;
+                    mibReq.Param.DevAddr = (uint32_t)lora_obj.u.abp.DevAddr;
                     LoRaMacMibSetRequestConfirm( &mibReq );
 
                     mibReq.Type = MIB_NWK_SKEY;
-                    mibReq.Param.NwkSKey = (uint8_t *)lora_obj.abp.NwkSKey;
+                    mibReq.Param.NwkSKey = (uint8_t *)lora_obj.u.abp.NwkSKey;
                     LoRaMacMibSetRequestConfirm( &mibReq );
 
                     mibReq.Type = MIB_APP_SKEY;
-                    mibReq.Param.AppSKey = (uint8_t *)lora_obj.abp.AppSKey;
+                    mibReq.Param.AppSKey = (uint8_t *)lora_obj.u.abp.AppSKey;
                     LoRaMacMibSetRequestConfirm( &mibReq );
 
                     mibReq.Type = MIB_NETWORK_JOINED;
@@ -1455,22 +1455,22 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
         if (auth_len == 2) {
             mp_get_buffer_raise(auth[0], &bufinfo_1, MP_BUFFER_READ);
             mp_get_buffer_raise(auth[1], &bufinfo_2, MP_BUFFER_READ);
-            config_get_lpwan_mac(cmd_data.info.join.otaa.DevEui);
+            config_get_lpwan_mac(cmd_data.info.join.u.otaa.DevEui);
         } else {
             mp_get_buffer_raise(auth[0], &bufinfo_0, MP_BUFFER_READ);
-            memcpy(cmd_data.info.join.otaa.DevEui, bufinfo_0.buf, sizeof(cmd_data.info.join.otaa.DevEui));
+            memcpy(cmd_data.info.join.u.otaa.DevEui, bufinfo_0.buf, sizeof(cmd_data.info.join.u.otaa.DevEui));
             mp_get_buffer_raise(auth[1], &bufinfo_1, MP_BUFFER_READ);
             mp_get_buffer_raise(auth[2], &bufinfo_2, MP_BUFFER_READ);
         }
-        memcpy(cmd_data.info.join.otaa.AppEui, bufinfo_1.buf, sizeof(cmd_data.info.join.otaa.AppEui));
-        memcpy(cmd_data.info.join.otaa.AppKey, bufinfo_2.buf, sizeof(cmd_data.info.join.otaa.AppKey));
+        memcpy(cmd_data.info.join.u.otaa.AppEui, bufinfo_1.buf, sizeof(cmd_data.info.join.u.otaa.AppEui));
+        memcpy(cmd_data.info.join.u.otaa.AppKey, bufinfo_2.buf, sizeof(cmd_data.info.join.u.otaa.AppKey));
     } else {
         mp_obj_get_array_fixed_n(args[1].u_obj, 3, &auth);
         mp_get_buffer_raise(auth[1], &bufinfo_0, MP_BUFFER_READ);
         mp_get_buffer_raise(auth[2], &bufinfo_1, MP_BUFFER_READ);
-        cmd_data.info.join.abp.DevAddr = mp_obj_int_get_truncated(auth[0]);
-        memcpy(cmd_data.info.join.abp.NwkSKey, bufinfo_0.buf, sizeof(cmd_data.info.join.abp.NwkSKey));
-        memcpy(cmd_data.info.join.abp.AppSKey, bufinfo_1.buf, sizeof(cmd_data.info.join.abp.AppSKey));
+        cmd_data.info.join.u.abp.DevAddr = mp_obj_int_get_truncated(auth[0]);
+        memcpy(cmd_data.info.join.u.abp.NwkSKey, bufinfo_0.buf, sizeof(cmd_data.info.join.u.abp.NwkSKey));
+        memcpy(cmd_data.info.join.u.abp.AppSKey, bufinfo_1.buf, sizeof(cmd_data.info.join.u.abp.AppSKey));
     }
 
     // need a way to indicate an invalid data rate so the default approach is used
