@@ -43,6 +43,7 @@ typedef struct _boot_info_t
 
 #define IMG_SIZE                            ((1024 + 512) * 1024)
 #define OTAA_DATA_SIZE                      (4 * 1024)
+#define OTA_DATA_INDEX                      2
 #define IMG_FACTORY_OFFSET                  (64 * 1024)
 #define IMG_UPDATE1_OFFSET                  (1664 * 1024)  // taken from the partitions table
 #define IMG_UPDATE2_OFFSET                  (IMG_FACTORY_OFFSET)
@@ -54,19 +55,21 @@ typedef struct _boot_info_t
 #define IMG_ACT_UPDATE1                     1
 #define IMG_ACT_UPDATE2                     2
 
-#define BOOT_VERSION "V0.2"
-#define SPI_SEC_SIZE 0x1000
+#define BOOT_VERSION                        "V0.2"
+#define SPI_SEC_SIZE                        0x1000
 
-#define PART_TYPE_APP 0x00
-#define PART_SUBTYPE_FACTORY  0x00
-#define PART_SUBTYPE_OTA_FLAG 0x10
-#define PART_SUBTYPE_OTA_MASK 0x0f
-#define PART_SUBTYPE_TEST     0x20
+#define PARTITIONS_COUNT                    7
 
-#define PART_TYPE_DATA 0x01
-#define PART_SUBTYPE_DATA_OTA 0x00
-#define PART_SUBTYPE_DATA_RF  0x01
-#define PART_SUBTYPE_DATA_WIFI 0x02
+#define PART_TYPE_APP                       0x00
+#define PART_SUBTYPE_FACTORY                0x00
+#define PART_SUBTYPE_OTA_FLAG               0x10
+#define PART_SUBTYPE_OTA_MASK               0x0f
+#define PART_SUBTYPE_TEST                   0x20
+
+#define PART_TYPE_DATA                      0x01
+#define PART_SUBTYPE_DATA_OTA               0x00
+#define PART_SUBTYPE_DATA_RF                0x01
+#define PART_SUBTYPE_DATA_WIFI              0x02
 
 #define SPI_ERROR_LOG "spi flash error"
 
