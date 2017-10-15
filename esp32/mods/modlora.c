@@ -729,12 +729,9 @@ static void TASK_LoRa (void *pvParameters) {
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_ADR_ACKS, &adrAcks);
 
                             uint16_t ChannelsMask[6];
-                            length = 6 * sizeof(uint16_t);
+                            length = sizeof(ChannelsMask);
                             result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNEL_MASK, (void *)ChannelsMask, &length);
 
-                            length = LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t);
-                            uint8_t channels[LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t)];
-                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNELS, (void *)channels, &length);
                             if (result) {
                                 mibReq.Type = MIB_UPLINK_COUNTER;
                                 mibReq.Param.UpLinkCounter = uplinks;
@@ -743,18 +740,18 @@ static void TASK_LoRa (void *pvParameters) {
                                 mibReq.Type = MIB_DOWNLINK_COUNTER;
                                 mibReq.Param.DownLinkCounter = downlinks;
                                 LoRaMacMibSetRequestConfirm( &mibReq );
-                                
+
                                 mibReq.Type = MIB_ADR_ACK_COUNTER;
                                 mibReq.Param.AdrAckCounter = adrAcks;
                                 LoRaMacMibSetRequestConfirm( &mibReq );
-                                
+
                                 mibReq.Type = MIB_CHANNELS_MASK;
                                 mibReq.Param.ChannelsMask = ChannelsMask;
                                 LoRaMacMibSetRequestConfirm( &mibReq );
 
-                                mibReq.Type = MIB_CHANNELS;
-                                memcpy(mibReq.Param.ChannelList, channels, sizeof(channels));
-                                LoRaMacMibGetRequestConfirm( &mibReq );
+                                // write the channel list directly from the NVRAM
+                                length = LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t);
+                                modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNELS, (void *)LoRaMacGetChannelList(), &length);
 
                                 lora_obj.activation = E_LORA_ACTIVATION_ABP;
                                 lora_obj.state = E_LORA_STATE_JOIN;

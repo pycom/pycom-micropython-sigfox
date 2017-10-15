@@ -1791,6 +1791,8 @@ bool ValidatePayloadLength( uint8_t lenN, int8_t datarate, uint8_t fOptsLen );
 
 void LoRaMacNvsSave( void );
 
+ChannelParams_t * LoRaMacGetChannelList(void);
+
 /*! \} defgroup LORAMAC */
 
 #endif // __LORAMAC_H__
