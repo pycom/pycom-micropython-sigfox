@@ -12,7 +12,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 Maintainer: Miguel Luis and Gregory Cristian
 */
+
 #include "board.h"
+
+#if defined(LOPY)
+
 #include "radio.h"
 #include "sx1272/sx1272.h"
 #include "sx1272-board.h"
@@ -37,12 +41,14 @@ const struct Radio_s Radio =
     SX1272SetStby,
     SX1272SetRx,
     SX1272StartCad,
+    SX1272SetTxContinuousWave,
     SX1272ReadRssi,
     SX1272Write,
     SX1272Read,
     SX1272WriteBuffer,
     SX1272ReadBuffer,
-    SX1272SetMaxPayloadLength
+    SX1272SetMaxPayloadLength,
+    SX1272SetPublicNetwork
 };
 
 /*!
@@ -75,3 +81,5 @@ bool SX1272CheckRfFrequency( uint32_t frequency )
     // Implement check. Currently all frequencies are supportted
     return true;
 }
+
+#endif
