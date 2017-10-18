@@ -323,6 +323,10 @@ FLASH_SIZE = detect
 ESPFLASHFREQ = 40m
 ESPFLASHMODE = dio
 
+PIC_TOOL = $(PYTHON) tools/pypic.py --port $(ESPPORT)
+ENTER_FLASHING_MODE = $(PIC_TOOL) --enter
+EXIT_FLASHING_MODE = $(PIC_TOOL) --exit
+
 ESPTOOLPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/esptool.py --chip esp32
 ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD) --before default_reset --after hard_reset
 
@@ -394,7 +398,9 @@ endif
 
 flash: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "Flashing project"
+	$(Q) $(ENTER_FLASHING_MODE)
 	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)
+	$(Q) $(EXIT_FLASHING_MODE)
 
 erase:
 	$(ECHO) "Erasing flash"
