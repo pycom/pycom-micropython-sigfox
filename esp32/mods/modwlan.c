@@ -106,7 +106,7 @@
                                             ip[2] = addr.sa_data[3]; \
                                             ip[3] = addr.sa_data[2];
 
-#define FILE_READ_SIZE 512
+#define FILE_READ_SIZE 256
 
 /******************************************************************************
  DECLARE PRIVATE DATA

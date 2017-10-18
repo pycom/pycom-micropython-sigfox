@@ -4315,10 +4315,14 @@ void LoRaMacNvsSave( void )
 
     modlora_nvs_set_uint(E_LORA_NVS_ELE_ADR_ACKS, AdrAckCounter);
     modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNEL_MASK, LoRaMacParams.ChannelsMask, sizeof(LoRaMacParams.ChannelsMask));
-    modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELS, Channels, LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t));
+    modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELS, Channels, sizeof(Channels));
 }
 
 void LoRaMacTestSetDutyCycleOn( bool enable )
 {
     DutyCycleOn = enable;
+}
+
+ChannelParams_t * LoRaMacGetChannelList(void) {
+    return Channels;
 }
