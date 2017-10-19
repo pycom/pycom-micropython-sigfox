@@ -9,7 +9,7 @@ import serial
 import struct
 import time
 
-__version__ = '0.9.0'
+__version__ = '0.9.1'
 
 CMD_PEEK = (0x0)
 CMD_POKE = (0x01)
@@ -74,17 +74,16 @@ class Pypic:
 
     def __init__(self, port):
         # we need bytesize to be 5 bits in order for the PIC to process the commands
-        self.serial = serial.Serial(port, baudrate=115200, bytesize=serial.FIVEBITS, timeout=1)
+        self.serial = serial.Serial(port, baudrate=115200, bytesize=serial.FIVEBITS, timeout=0.25)
+        self.detected = False
 
         try:
-            self.read_fw_version()
+            if self.read_fw_version() < 6:
+                raise ValueError('PIC firmware out of date')
+            else:
+                self.detected = True
         except Exception:
-            time.sleep(0.01)
-        try:
-             if self.read_fw_version() < 6:
-                 raise ValueError('PIC firmware out of date')
-        except Exception:
-            raise Exception('PIC board not detected')
+            pass
 
     def _write(self, data, read=True):
         self.serial.write(data)
@@ -151,6 +150,9 @@ class Pypic:
         self.set_bits_in_memory(PORTC_ADDR, 1 << 0)
         self.reset_pycom_module()
 
+    def isdetected(self):
+        return self.detected
+
     def close(self):
         self.serial.close()
 
@@ -170,10 +172,11 @@ def main(args):
 
     pic = Pypic(args.port)
 
-    if args.enter:
-        pic.enter_pycom_programming_mode()
-    elif args.exit:
-        pic.exit_pycom_programming_mode()
+    if pic.isdetected():
+        if args.enter:
+            pic.enter_pycom_programming_mode()
+        elif args.exit:
+            pic.exit_pycom_programming_mode()
 
     pic.close()
 

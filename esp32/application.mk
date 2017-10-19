@@ -397,14 +397,20 @@ $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 endif
 
 flash: $(APP_BIN) $(BOOT_BIN)
-	$(ECHO) "Flashing project"
+	$(ECHO) "Entering flash mode"
 	$(Q) $(ENTER_FLASHING_MODE)
+	$(ECHO) "Flashing project"
 	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)
+	$(ECHO) "Exiting flash mode"
 	$(Q) $(EXIT_FLASHING_MODE)
 
 erase:
+	$(ECHO) "Entering flash mode"
+	$(Q) $(ENTER_FLASHING_MODE)
 	$(ECHO) "Erasing flash"
 	$(Q) $(ESPTOOLPY_ERASE_FLASH)
+	$(ECHO) "Exiting flash mode"
+	$(Q) $(EXIT_FLASHING_MODE)
 
 $(PART_BIN): $(PART_CSV)
 	$(ECHO) "Building partitions from $(PART_CSV)..."
