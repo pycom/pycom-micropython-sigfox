@@ -15,6 +15,7 @@ APP_INC += -Imods
 APP_INC += -Itelnet
 APP_INC += -Iftp
 APP_INC += -Ilora
+APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
 APP_INC += -I$(BUILD)
@@ -113,6 +114,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machspi.c \
 	machine_i2c.c \
 	machpwm.c \
+	machcan.c \
 	modmachine.c \
 	moduos.c \
 	modusocket.c \

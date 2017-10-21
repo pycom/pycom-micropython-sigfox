@@ -42,7 +42,7 @@
 #include "CAN_config.h"
 
 
-static void CAN_read_frame();
+static void CAN_read_frame(void);
 static void CAN_isr(void *arg_p);
 
 
@@ -75,7 +75,7 @@ static void CAN_isr(void *arg_p){
     }
 }
 
-static void CAN_read_frame(){
+static void CAN_read_frame(void) {
 
 	//byte iterator
 	uint8_t __byte_i;
@@ -161,7 +161,7 @@ int CAN_write_frame(const CAN_frame_t* p_frame){
     return 0;
 }
 
-int CAN_init(){
+int CAN_init(void) {
 
 	//Time quantum
 	double __tq;
@@ -246,9 +246,9 @@ int CAN_init(){
     return 0;
 }
 
-int CAN_stop(){
+int CAN_stop(void) {
 
-	//enter reset mode
+	// enter reset mode
 	MODULE_CAN->MOD.B.RM = 1;
 
 	return 0;
