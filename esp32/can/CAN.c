@@ -45,6 +45,7 @@
 static void CAN_read_frame(void);
 static void CAN_isr(void *arg_p);
 
+static bool isr_installed = false;
 
 static void CAN_isr(void *arg_p){
 
@@ -161,7 +162,7 @@ int CAN_write_frame(const CAN_frame_t* p_frame){
     return 0;
 }
 
-int CAN_init(void) {
+int CAN_init(CAN_mode_t mode) {
 
 	//Time quantum
 	double __tq;
@@ -237,8 +238,17 @@ int CAN_init(void) {
     //clear interrupt flags
     (void)MODULE_CAN->IR.U;
 
-    //install CAN ISR
-    esp_intr_alloc(ETS_CAN_INTR_SOURCE,0,CAN_isr,NULL,NULL);
+    if (!isr_installed) {
+        //install CAN ISR
+        esp_intr_alloc(ETS_CAN_INTR_SOURCE,0,CAN_isr,NULL,NULL);
+        isr_installed = true;
+    }
+
+    // configure the mode
+    MODULE_CAN->MOD.B.LOM = (mode == CAN_mode_listen_only) ? 1 : 0;
+    MODULE_CAN->MOD.B.STM = 0;
+    MODULE_CAN->MOD.B.AFM = 0;
+    MODULE_CAN->MOD.B.SM = 0;
 
     //Showtime. Release Reset Mode.
     MODULE_CAN->MOD.B.RM = 0;

@@ -33,6 +33,14 @@
 #include "CAN_config.h"
 
 /**
+ * \brief CAN mode
+ */
+typedef enum {
+	CAN_mode_normal=0, 						/**< Normal mode */
+	CAN_mode_listen_only=1 					/**< Listen only mode */
+}CAN_mode_t;
+
+/**
  * \brief CAN frame type (standard/extended)
  */
 typedef enum {
@@ -76,7 +84,7 @@ typedef struct {
  *
  * \return 0 CAN Module had been initialized
  */
-int CAN_init(void);
+int CAN_init(CAN_mode_t mode);
 
 /**
  * \brief Send a can frame
