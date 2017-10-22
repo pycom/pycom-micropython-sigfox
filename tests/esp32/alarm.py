@@ -1,6 +1,7 @@
 import machine
 from machine import Timer
 import time
+import utime
 
 def cb(word):
     print(word)
@@ -88,7 +89,7 @@ alarm15.callback(cb,arg="alarm15")
 
 # Wait 5 sec, which means alarm1-5 should expire, but alarm6-16 not
 time.sleep(5)
-# Acticate alarm2 which means it has to expire between alarm7 and alarm8
+# Activate alarm2 which means it has to expire between alarm7 and alarm8
 alarm2.callback(cb,arg="alarm2")
 # Cancel alarm14
 alarm14.cancel()
@@ -158,4 +159,18 @@ time.sleep(0.5)
 alarm1.callback(handler=cb, arg="alarm1")
 
 # Wait for expiration
+time.sleep(2)
+
+#Verify Issue89
+#Load 2 alarms
+alarm2.callback(cb,arg="alarm2")
+alarm5.callback(cb,arg="alarm5")
+#Remove alarm2 manually
+alarm2.cancel()
+time.sleep(2)
+#According to Issue89 alarm5 should expire somewhere here, when alarm2 would have expired
+time.sleep(2)
+print("4 seconds have expired!")
+#Callback of alarm5 should be called after this point
+#Wait until end
 time.sleep(2)
