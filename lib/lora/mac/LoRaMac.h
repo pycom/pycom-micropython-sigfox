@@ -95,14 +95,14 @@
 #define ADR_ACK_DELAY                               32
 
 /*!
- * Number of seconds after the start of the second reception window without
+ * Number of milliseconds after the start of the second reception window without
  * receiving an acknowledge.
  * AckTimeout = \ref ACK_TIMEOUT + Random( -\ref ACK_TIMEOUT_RND, \ref ACK_TIMEOUT_RND )
  */
 #define ACK_TIMEOUT                                 2000
 
 /*!
- * Random number of seconds after the start of the second reception window without
+ * Random number of milliseconds after the start of the second reception window without
  * receiving an acknowledge
  * AckTimeout = \ref ACK_TIMEOUT + Random( -\ref ACK_TIMEOUT_RND, \ref ACK_TIMEOUT_RND )
  */
@@ -111,7 +111,9 @@
 /*!
  * Check the Mac layer state every MAC_STATE_CHECK_TIMEOUT in ms
  */
-#define MAC_STATE_CHECK_TIMEOUT                     1000
+// PYCOM: The default value of the StackForce code is 1000, but this
+//        makes the stack really slow
+#define MAC_STATE_CHECK_TIMEOUT                     50
 
 /*!
  * Maximum number of times the MAC layer tries to get an acknowledge.
