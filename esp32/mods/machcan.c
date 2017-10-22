@@ -225,9 +225,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_can_deinit_obj, mach_can_deinit);
 
 STATIC mp_obj_t mach_can_send(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_id,       MP_ARG_REQUIRED | MP_ARG_INT, },
-        { MP_QSTR_data,     MP_ARG_REQUIRED | MP_ARG_OBJ, },
-        { MP_QSTR_rtr,      MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
+        { MP_QSTR_id,           MP_ARG_REQUIRED | MP_ARG_INT,  },
+        { MP_QSTR_data,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+        { MP_QSTR_rtr,          MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
+        { MP_QSTR_extended,     MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
     };
 
     // parse args
@@ -239,16 +240,29 @@ STATIC mp_obj_t mach_can_send(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
     // get the buffer to send from
     mp_buffer_info_t bufinfo;
     uint8_t data[1];
-    pyb_buf_get_for_send(args[1].u_obj, &bufinfo, data);
+    if (args[1].u_obj == mp_const_none) {
+        bufinfo.len = 0;
+    } else {
+        pyb_buf_get_for_send(args[1].u_obj, &bufinfo, data);
+    }
 
-    if (bufinfo.len == 0 || bufinfo.len > 8) {
+    uint32_t msg_id = args[0].u_int;
+    if (msg_id > 2047 && !args[3].u_bool) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid message id %d", msg_id));
+    }
+
+    if (args[2].u_bool) {
+        if (bufinfo.len > 0) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "data given for RTR message"));
+        }
+    } else if (bufinfo.len == 0 || bufinfo.len > 8) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid data length %d", bufinfo.len));
     }
 
     tx_frame.FIR.B.DLC = bufinfo.len;
-    tx_frame.FIR.B.RTR = args[1].u_bool ? CAN_RTR : CAN_no_RTR;
-    tx_frame.FIR.B.FF = CAN_frame_std;
-    tx_frame.MsgID = args[0].u_int;
+    tx_frame.FIR.B.RTR = args[2].u_bool ? CAN_RTR : CAN_no_RTR;
+    tx_frame.FIR.B.FF = args[3].u_bool ? CAN_frame_ext : CAN_frame_std;
+    tx_frame.MsgID = msg_id;
     memcpy(tx_frame.data.u8, bufinfo.buf, bufinfo.len);
 
     CAN_write_frame(&tx_frame);
@@ -258,14 +272,36 @@ STATIC mp_obj_t mach_can_send(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_can_send_obj, 1, mach_can_send);
 
-STATIC mp_obj_t mach_can_recv(mp_obj_t self_in) {
-    STATIC const qstr can_recv_info_fields[] = {
-        MP_QSTR_id, MP_QSTR_data, MP_QSTR_rtr
+STATIC mp_obj_t mach_can_recv(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_timeout,      MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
     };
 
+    static const qstr can_recv_info_fields[] = {
+        MP_QSTR_id, MP_QSTR_data, MP_QSTR_rtr, MP_QSTR_extended
+    };
+
+    // parse args
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
+
+    uint64_t timeout = 0;
+    if (args[0].u_obj == mp_const_none) {
+        timeout = portMAX_DELAY;
+    } else {
+        if (args[0].u_obj != MP_OBJ_NULL) {
+            timeout = mp_obj_get_float(args[0].u_obj) * 1000;
+            if (timeout < 0 || timeout > portMAX_DELAY) {
+                timeout = portMAX_DELAY;
+            }
+        }
+    }
+
     CAN_frame_t rx_frame;
-    if (xQueueReceive(CAN_cfg.rx_queue, &rx_frame, 5 * portTICK_PERIOD_MS) == pdTRUE) {
-        mp_obj_t tuple[3];
+    MP_THREAD_GIL_EXIT();
+    if (xQueueReceive(CAN_cfg.rx_queue, &rx_frame, (uint32_t)timeout * portTICK_PERIOD_MS) == pdTRUE) {
+        MP_THREAD_GIL_ENTER();
+        mp_obj_t tuple[4];
         tuple[0] = mp_obj_new_int(rx_frame.MsgID);
         if (rx_frame.FIR.B.RTR == CAN_RTR) {
             tuple[1] = mp_const_empty_bytes;
@@ -274,13 +310,15 @@ STATIC mp_obj_t mach_can_recv(mp_obj_t self_in) {
             tuple[1] = mp_obj_new_bytes((const byte *)rx_frame.data.u8, rx_frame.FIR.B.DLC);
             tuple[2] = mp_const_false;
         }
+        tuple[3] = rx_frame.FIR.B.FF ? mp_const_true : mp_const_false;
 
         // return the attribute tuple
-        return mp_obj_new_attrtuple(can_recv_info_fields, 3, tuple);
+        return mp_obj_new_attrtuple(can_recv_info_fields, 4, tuple);
     }
+    MP_THREAD_GIL_ENTER();
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_can_recv_obj, mach_can_recv);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_can_recv_obj, 1, mach_can_recv);
 
 
 STATIC const mp_map_elem_t mach_can_locals_dict_table[] = {
