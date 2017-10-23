@@ -59,7 +59,7 @@ void init_alarm_heap(void) {
     MP_STATE_PORT(mp_alarm_heap) = gc_alloc(ALARM_HEAP_MAX_ELEMENTS * sizeof(mp_obj_alarm_t *), false);
     alarm_heap.data = MP_STATE_PORT(mp_alarm_heap);
     if (alarm_heap.data == NULL) {
-        printf("FATAL ERROR: no enough memory for the alarms heap\n");
+        printf("FATAL ERROR: not enough memory for the alarms heap\n");
         for (;;);
     }
 }
