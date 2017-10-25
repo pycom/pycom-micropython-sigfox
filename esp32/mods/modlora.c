@@ -230,7 +230,6 @@ typedef struct {
     bool              public;
     bool              joined;
     uint8_t           events;
-    uint8_t           h_events;
     uint8_t           trigger;
     uint8_t           tx_trials;
 } lora_obj_t;
@@ -425,9 +424,10 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
             case MCPS_UNCONFIRMED: {
                 // Check Datarate
                 // Check TxPower
-                uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
-                lora_obj.h_events |= MODLORA_TX_EVENT;
-                MICROPY_END_ATOMIC_SECTION(ilevel);
+                lora_obj.events |= MODLORA_TX_EVENT;
+                if (lora_obj.trigger & MODLORA_TX_EVENT) {
+                    mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+                }
                 lora_obj.state = E_LORA_STATE_IDLE;
                 xEventGroupSetBits(LoRaEvents, status);
                 break;
@@ -440,9 +440,10 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
                 lora_obj.sftx = McpsConfirm->Datarate;
                 lora_obj.tx_trials = McpsConfirm->NbRetries;
                 if (McpsConfirm->AckReceived) {
-                    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
-                    lora_obj.h_events |= MODLORA_TX_EVENT;
-                    MICROPY_END_ATOMIC_SECTION(ilevel);
+                    lora_obj.events |= MODLORA_TX_EVENT;
+                    if (lora_obj.trigger & MODLORA_TX_EVENT) {
+                        mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+                    }
                     lora_obj.state = E_LORA_STATE_IDLE;
                     xEventGroupSetBits(LoRaEvents, status);
                 } else {
@@ -455,10 +456,10 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
                 break;
         }
     } else {
-        lora_obj.tx_trials = McpsConfirm->NbRetries;
-        uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
-        lora_obj.h_events |= MODLORA_TX_FAILED_EVENT;
-        MICROPY_END_ATOMIC_SECTION(ilevel);
+        lora_obj.events |= MODLORA_TX_FAILED_EVENT;
+        if (lora_obj.trigger & MODLORA_TX_FAILED_EVENT) {
+            mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+        }
         lora_obj.state = E_LORA_STATE_IDLE;
         status |= LORA_STATUS_ERROR;
         xEventGroupSetBits(LoRaEvents, status);
@@ -511,9 +512,10 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                 rx_data_isr.len = mcpsIndication->BufferSize;
                 rx_data_isr.port = mcpsIndication->Port;
                 xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);
-                uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
-                lora_obj.h_events |= MODLORA_RX_EVENT;
-                MICROPY_END_ATOMIC_SECTION(ilevel);
+                lora_obj.events |= MODLORA_RX_EVENT;
+                if (lora_obj.trigger & MODLORA_RX_EVENT) {
+                    mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
+                }
             }
             // printf("Data on port 1 or 2 received\n");
         } else if (mcpsIndication->Port == 224) {
@@ -942,17 +944,6 @@ static void TASK_LoRa (void *pvParameters) {
         }
 
         TimerLowPowerHandler();
-
-        uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
-        // queue an interrupt if we have events on hold
-        if (lora_obj.h_events) {
-            lora_obj.events = lora_obj.h_events;
-            lora_obj.h_events = 0;
-            if (lora_obj.trigger & lora_obj.events) {
-                mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
-            }
-        }
-        MICROPY_END_ATOMIC_SECTION(ilevel);
     }
 }
 
