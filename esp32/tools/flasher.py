@@ -143,6 +143,8 @@ def run_initial_test(port, board):
 
     if board == 'LoPy':
         import run_initial_lopy_test as run_test
+    elif board == 'LoPy4':
+        import run_initial_lopy4_test as run_test
     elif board == 'SiPy':
         import run_initial_sipy_test as run_test
     else:
@@ -169,6 +171,8 @@ def flash_lpwan_mac(port, mac):
 def run_final_test(port, board, mac):
     if board == 'LoPy':
         import run_final_lopy_test as run_test
+    elif board == 'LoPy4':
+        import run_final_lopy4_test as run_test
     else:
         import run_final_sipy_test as run_test
 
@@ -184,6 +188,8 @@ def run_qa_test(port, board):
 
     if board == 'LoPy':
         import run_qa_lopy_test as run_test
+    elif board == 'LoPy4':
+        import run_qa_lopy4_test as run_test
     elif board == 'SiPy':
         import run_qa_sipy_test as run_test
     else:
@@ -357,7 +363,7 @@ def main():
             working_threads = {}
 
         try:
-            if cmd_args.board == 'LoPy' or cmd_args.board == 'SiPy':
+            if cmd_args.board == 'LoPy' or cmd_args.board == 'SiPy' or cmd_args.board == 'LoPy4':
                 open_macs_db(cmd_args.macs)
                 macs_list = fetch_MACs(len(cmd_args.ports))
                 if len(macs_list) < len(cmd_args.ports):
@@ -370,7 +376,7 @@ def main():
                     i += 1
             for port in cmd_args.ports:
                 cmd = ['python', cmd_args.esptool, '--chip', 'esp32', '--port', port, '--baud', '921600',
-                       'write_flash', '-z', '--flash_mode', 'dio', '--flash_freq', '80m', '--flash_size', 'detect', '0x1000', cmd_args.boot,
+                       'write_flash', '-z', '--flash_mode', 'dio', '--flash_freq', '40m', '--flash_size', 'detect', '0x1000', cmd_args.boot,
                        '0x8000', cmd_args.table, '0x10000', cmd_args.app]
                 working_threads[port] = threading.Thread(target=flash_firmware, args=(port, cmd))
                 working_threads[port].start()
@@ -439,8 +445,8 @@ def main():
             global_ret = 1
 
 
-        # only do the MAC programming and MAC verificacion for the LoPy and SiPy
-        if cmd_args.board == 'LoPy' or cmd_args.board == 'SiPy':
+        # only do the MAC programming and MAC verificacion for the LoPy, SiPy and LoPy4
+        if cmd_args.board == 'LoPy' or cmd_args.board == 'SiPy' or cmd_args.board == 'LoPy4':
             print("Waiting before programming the LPWAN MAC address...")
             time.sleep(3.5)   # wait for the board to reset
 

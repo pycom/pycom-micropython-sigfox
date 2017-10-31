@@ -71,11 +71,13 @@ test_lora_434(s)
 
 if wifi_passed and lora_868_passed and lora_434_passed:
     pycom.heartbeat(False)
+    time.sleep(0.05)
     pycom.rgbled(0x008000)   # green
     green_led(1)
     print('Test OK')
 else:
     pycom.heartbeat(False)
+    time.sleep(0.05)
     pycom.rgbled(0x800000)   # red
     red_led(1)
     print('Test failed')

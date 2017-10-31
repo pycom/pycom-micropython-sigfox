@@ -50,7 +50,7 @@
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
 #if defined(USE_BAND_868)
-#define RF_FREQUENCY_MIN                            863000000   // Hz
+#define RF_FREQUENCY_MIN                            410000000   // Hz
 #define RF_FREQUENCY_CENTER                         868000000   // Hz
 #define RF_FREQUENCY_MAX                            870000000   // Hz
 #define TX_OUTPUT_POWER_MAX                         20          // dBm
