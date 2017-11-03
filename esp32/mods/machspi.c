@@ -89,9 +89,7 @@ typedef struct _mach_spi_obj_t {
  DECLARE PRIVATE DATA
  ******************************************************************************/
 STATIC mach_spi_obj_t mach_spi_obj = {.baudrate = 0};
-
 STATIC const mp_obj_t mach_spi_def_pin[3] = {&PIN_MODULE_P10, &PIN_MODULE_P11, &PIN_MODULE_P12};
-
 static const uint32_t mach_spi_pin_af[3] = {HSPICLK_OUT_IDX, HSPID_OUT_IDX, HSPIQ_IN_IDX};
 
 /******************************************************************************
@@ -99,8 +97,8 @@ static const uint32_t mach_spi_pin_af[3] = {HSPICLK_OUT_IDX, HSPID_OUT_IDX, HSPI
  ******************************************************************************/
 // only master mode is available for the moment
 STATIC void pybspi_init (const mach_spi_obj_t *self) {
-    SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG,DPORT_SPI_CLK_EN_1);
-    CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG,DPORT_SPI_RST_1);
+    DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_SPI_CLK_EN);
+    DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_SPI_RST);
 
     // configure the SPI port
     spi_attr_t spi_attr = {.mode = SpiMode_Master, .subMode = self->submode, .speed = 80000000 / self->baudrate,
@@ -348,13 +346,8 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(pyb_spi_init_obj, 1, pyb_spi_init);
 /// Turn off the spi bus.
 STATIC mp_obj_t pyb_spi_deinit(mp_obj_t self_in) {
     mach_spi_obj_t *self = self_in;
-    // disable the peripheral
-    // MAP_SPIDisable(GSPI_BASE);
-    // MAP_PRCMPeripheralClkDisable(PRCM_GSPI, PRCM_RUN_MODE_CLK | PRCM_SLP_MODE_CLK);
-    // invalidate the baudrate
     self->baudrate = 0;
-    // // unregister it with the sleep module
-    // pyb_sleep_remove((const mp_obj_t)self_in);
+    // TODO: deassign the pins
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(pyb_spi_deinit_obj, pyb_spi_deinit);

@@ -16,7 +16,6 @@
 #include "esp_types.h"
 #include "esp_err.h"
 #include "soc/soc.h"
-#include "adc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,31 +38,6 @@ typedef enum {
     TOUCH_SENSOR_MAX,
 } touch_sensor_pad;
 
-// ************
-// ADC
-// ************
-typedef enum {
-    ADC1_CH0_GPIO36 = 0,              //GPIO36
-    ADC1_CH1_GPIO37 = 1,              //GPIO37
-    ADC1_CH2_GPIO38 = 2,              //GPIO38
-    ADC1_CH3_GPIO39 = 3,              //GPIO39
-    ADC1_CH4_GPIO32 = 4,              //GPIO32
-    ADC1_CH5_GPIO33 = 5,              //GPIO33
-    ADC1_CH6_GPIO34 = 6,              //GPIO34
-    ADC1_CH7_GPIO35 = 7,              //GPIO35
-    ADC1_CH_MAX,
-} adc_channel_t;
-
-// typedef enum {
-//     ADC_ATTEN_0DB = 0,
-//     ADC_ATTEN_3DB,
-//     ADC_ATTEN_6DB,
-//     ADC_ATTEN_12DB,
-//     ADC_ATTEN_MAX,
-// } adc_atten_t;
-
-#define ADC_ATTEN_MAX 4
-
 typedef enum {
     DAC1_DIS_DAC2_DIS = 0,     /*DAC1 disable, DAC2 disable*/
     DAC1_EN_DAC2_DIS,          /*DAC1 enable,  DAC2 disable*/
@@ -77,35 +51,6 @@ typedef enum {
     DAC1_DC_DAC2_TONE,        /*DAC1 is DC,   DAC2 is TONE*/
     DAC1_TONE_DAC2_TONE,      /*DAC1 is TONE, DAC2 is TONE*/
 } dac_tone_t;
-
-/**
-  * @brief  Initialize touch pad sensor.
-  *
-  * @param  touch_sensor_pad pad : enable the corresponding touch_pad[9:0]
-  *
-  * @return  ESP_OK : success
-  *          ESP_ERR_INVALID_ARG:  parameter error
-  */
-esp_err_t analog_touch_init(touch_sensor_pad pad);
-
-/**
-  * @brief  Read value from touch pad sensor.
-  *
-  * Example:
-  * <pre>
-  *         uint16 pad_out[10];
-  *         uint16 sample_num = 10000;
-  *         rtc_touch_read(pad_out, sample_num);
-  * </pre>
-  *
-  * @param  uint16 *pad_out : pointer of the start address of uint16 pad_out[10], to get the value
-  *                                        from touch pad sensor (touch_pad[9:0]).
-  * @param  uint16 sample_num : range [0, 65535],
-  *                                        meaturing time of touch pad = sample_num*(1/RTC_CLK)
-  *
-  * @return null
-  */
-void analog_touch_read(uint16_t *pad_out, uint16_t sample_num);
 
 /**
   * @brief  Read value from temperature sensor.
@@ -122,22 +67,6 @@ uint8_t analog_temperature_read(void);
   * @return uint16_t : range[0, 65535]
   */
 uint16_t analog_hall_read(void);
-
-/**
-  * @brief  Get ADC1 measure value, 12bit ADC.
-  *
-  * @param  uint8_t channel   : adc channel
-  * @param  uint8_t atten : input atten range[0,3]
-  *                         0: 0db
-  *                         1: 3db
-  *                         2: 6db
-  *                         3: 12db
-  *
-  * @return int adc_value   -1    : error
-  *                         others: range[0, 4095]
-  *                              when atten == 0db, voltage is 0 ~ 1V
-  */
-int analog_adc1_read(adc_channel_t channel, adc_atten_t atten);
 
 // ************
 // DAC

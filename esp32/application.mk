@@ -28,6 +28,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
 APP_INC += -I$(ESP_IDF_COMP_PATH)/heap/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_adc_cal/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
@@ -42,6 +43,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/spi_flash/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/tcpip_adapter/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/log/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/sdmmc/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/vfs/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/device/include
@@ -320,8 +322,8 @@ PART_BIN = $(BUILD)/lib/partitions.bin
 ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
 
-FLASH_SIZE = detect
-ESPFLASHFREQ = 80m
+FLASH_SIZE = 4MB
+ESPFLASHFREQ = 40m
 ESPFLASHMODE = dio
 
 PIC_TOOL = $(PYTHON) tools/pypic.py --port $(ESPPORT)
