@@ -116,6 +116,11 @@ void pin_init0(void) {
     for (uint i = 0; i < named_map->used - 1; i++) {
         pin_obj_t *self = (pin_obj_t *)named_map->table[i].value;
         if (self != &PIN_MODULE_P1) {  // temporal while we remove all the IDF logs
+    		    if (self == &PIN_MODULE_P4 || self == &PIN_MODULE_P9 || self == &PIN_MODULE_P10 || self == &PIN_MODULE_P23) {
+		    #ifdef PYCOM_DEBUG
+    			    return;
+            #endif
+    		    }
             pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0);
         }
     }

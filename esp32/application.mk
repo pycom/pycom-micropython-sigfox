@@ -280,7 +280,7 @@ BOOT_LIBS = -Wl,--start-group $(B_LIBS) $(BUILD)/bootloader/bootloader.a -Wl,--e
 
 # debug / optimization options
 ifeq ($(BTYPE), debug)
-    CFLAGS += -DDEBUG_B -DNDEBUG
+    CFLAGS += -DDEBUG_B -DNDEBUG -DPYCOM_DEBUG
 else
     ifeq ($(BTYPE), release)
         CFLAGS += -DNDEBUG
