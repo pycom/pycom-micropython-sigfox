@@ -75,6 +75,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/timers.h"
 #include "freertos/xtensa_api.h"
 
 
@@ -83,6 +84,28 @@
 
 /******************************************************************************/
 // Micro Python bindings;
+
+extern TaskHandle_t mpTaskHandle;
+extern TaskHandle_t svTaskHandle;
+extern TaskHandle_t xLoRaTaskHndl;
+
+STATIC mp_obj_t machine_info(void) {
+    // FreeRTOS info
+    {
+        printf("---------------------------------------------\n");
+        printf("FreeRTOS\n");
+        printf("---------------------------------------------\n");
+        printf("MpTask min free stack: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)mpTaskHandle));
+        printf("ServersTask min free stack: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)svTaskHandle));
+        printf("LoRa min free stack: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)xLoRaTaskHndl));
+        printf("Timer min free stack: %d\n", (unsigned int)uxTaskGetStackHighWaterMark(xTimerGetTimerDaemonTaskHandle()));
+        printf("IdleTask min free stack: %d\n", (unsigned int)uxTaskGetStackHighWaterMark(xTaskGetIdleTaskHandle()));
+        printf("---------------------------------------------\n");
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_info_obj, machine_info);
 
 STATIC mp_obj_t NORETURN machine_reset(void) {
     machtimer_deinit();
@@ -237,6 +260,8 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_disable_irq),             (mp_obj_t)&machine_disable_irq_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_enable_irq),              (mp_obj_t)&machine_enable_irq_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_info),                    (mp_obj_t)&machine_info_obj },
+
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_Pin),                     (mp_obj_t)&pin_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_UART),                    (mp_obj_t)&mach_uart_type },

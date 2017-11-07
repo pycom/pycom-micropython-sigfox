@@ -43,6 +43,9 @@
 #include "py/mpthread.h"
 #include "mptask.h"
 
+#include "sdkconfig.h"
+#include "esp_system.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
@@ -50,7 +53,7 @@
 
 #if MICROPY_PY_THREAD
 
-#define MP_THREAD_MIN_STACK_SIZE                        (5 * 1024)
+#define MP_THREAD_MIN_STACK_SIZE                        (4 * 1024)
 #define MP_THREAD_DEFAULT_STACK_SIZE                    (MP_THREAD_MIN_STACK_SIZE)
 
 // this structure forms a linked list, one node per active thread
@@ -140,10 +143,22 @@ void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, i
         *stack_size = MP_THREAD_MIN_STACK_SIZE; // minimum stack size
     }
 
+    StaticTask_t *tcb;
+    StackType_t *stack;
+    thread_t *th;
+
     // allocate TCB, stack and linked-list node (must be outside thread_mutex lock)
-    StaticTask_t *tcb = heap_caps_malloc(sizeof(StaticTask_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    StackType_t *stack = heap_caps_malloc(*stack_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    thread_t *th = heap_caps_malloc(sizeof(thread_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    if (esp_get_revision() > 0) {
+        // for revision 1 devices we allocate from the internal memory of the malloc heap
+        tcb = heap_caps_malloc(sizeof(StaticTask_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        stack = heap_caps_malloc(*stack_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        th = heap_caps_malloc(sizeof(thread_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    } else {
+        // for revision 0 devices we allocate from the MicroPython heap which is all in the internal memory
+        tcb = m_new(StaticTask_t, 1);
+        stack = m_new(StackType_t, *stack_size / sizeof(StackType_t));
+        th = m_new_obj(thread_t);
+    }
 
     mp_thread_mutex_lock(&thread_mutex, 1);
 
@@ -198,9 +213,15 @@ void vPortCleanUpTCB (void *tcb) {
                 thread = th->next;
             }
             // explicitely release all its memory
-            free(th->tcb);
-            free(th->stack);
-            free(th);
+            if (esp_get_revision() > 0) {
+                free(th->tcb);
+                free(th->stack);
+                free(th);
+            } else {
+                m_del(StaticTask_t, th->tcb, 1);
+                m_del(StackType_t, th->stack, th->stack_len);
+                m_del(thread_t, th, 1);
+            }
             break;
         }
     }

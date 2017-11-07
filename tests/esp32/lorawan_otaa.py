@@ -31,7 +31,10 @@ def otaa_join(lora):
         if join_wait < 2:
             print('Waiting to join')
 
-    print('Network joined!')
+    if lora.has_joined():
+        print('Network joined!')
+    else:
+        raise OSError('LoRa join failed')
 
 lora = LoRa(mode=LoRa.LORAWAN)
 

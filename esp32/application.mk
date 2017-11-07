@@ -376,17 +376,13 @@ $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
-ifeq ($(BOARD), SIPY)
+
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/bluetooth/gatt_server/build
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
 	$(Q) $(SIZE) $@
-else
-$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
-	$(ECHO) "LINK $@"
-	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
-	$(Q) $(SIZE) $@
-endif
 
 $(APP_BIN): $(BUILD)/application.elf $(PART_BIN)
 	$(ECHO) "IMAGE $@"

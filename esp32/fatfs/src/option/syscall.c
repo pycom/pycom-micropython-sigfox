@@ -132,7 +132,7 @@ void* ff_memalloc ( /* Returns pointer to the allocated memory block */
     UINT msize      /* Number of bytes to allocate */
 )
 {
-    return pvPortMalloc(msize);   /* Allocate a new memory block with POSIX API */
+	return heap_caps_malloc(msize, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);   /* Allocate a new memory block with POSIX API */
 }
 
 

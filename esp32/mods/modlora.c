@@ -298,6 +298,8 @@ static int lora_socket_bind (mod_network_socket_obj_t *s, byte *ip, mp_uint_t po
 static int lora_socket_setsockopt (mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
 static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 
+extern TaskHandle_t xLoRaTaskHndl;
+
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -309,8 +311,7 @@ void modlora_init0(void) {
     if (!lorawan_nvs_open()) {
         printf("Error opening LoRa NVS namespace!\n");
     }
-
-    xTaskCreatePinnedToCore(TASK_LoRa, "LoRa", LORA_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TASK_PRIORITY, NULL, 0);
+    xTaskCreatePinnedToCore(TASK_LoRa, "LoRa", LORA_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TASK_PRIORITY, &xLoRaTaskHndl, 0);
 }
 
 bool modlora_nvs_set_uint(uint32_t key_idx, uint32_t value) {

@@ -16,7 +16,7 @@
  DEFINE CONSTANTS
  ******************************************************************************/
 #define MICROPY_TASK_PRIORITY                   MP_THREAD_PRIORITY
-#define MICROPY_TASK_STACK_SIZE                 (8 * 1024)
+#define MICROPY_TASK_STACK_SIZE                 (7 * 1024)
 #define MICROPY_TASK_STACK_LEN                  (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t))
 
 /******************************************************************************

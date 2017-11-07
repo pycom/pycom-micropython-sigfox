@@ -258,6 +258,8 @@ void modbt_init0(void) {
     mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(btc_conn_list), 0);
     mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_srv_list), 0);
     mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_attr_list), 0);
+
+    esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
 }
 
 /******************************************************************************
@@ -648,7 +650,7 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
             self->controller_active = true;
         }
 
-        esp_bt_controller_enable(ESP_BT_MODE_BTDM);
+        esp_bt_controller_enable(ESP_BT_MODE_BLE);
 
         if (ESP_OK != esp_bluedroid_init()) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Bluetooth init failed"));

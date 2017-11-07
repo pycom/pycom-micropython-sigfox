@@ -49,6 +49,12 @@
 #include "machpin.h"
 #include "pins.h"
 
+
+TaskHandle_t mpTaskHandle;
+TaskHandle_t svTaskHandle;
+TaskHandle_t xLoRaTaskHndl;
+// TaskHandle_t xTimerTaskHndl;
+
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
@@ -125,6 +131,7 @@ void app_main(void) {
     micropy_hw_flash_size = spi_flash_get_chip_size();
 
     // create the MicroPython task
-    xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL,
+    mpTaskHandle = 
+    (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL,
                                   MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 0);
 }
