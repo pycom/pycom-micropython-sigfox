@@ -50,6 +50,8 @@
 
 #define SFX_RESET_FCC_MIN_DELAY_S                    23
 
+extern TaskHandle_t xSigfoxTaskHndl;
+
 Spi_t sigfox_spi = {};
 sigfox_settings_t sigfox_settings = {};
 
@@ -100,8 +102,8 @@ static int32_t sigfox_recv (byte *buf, uint32_t len, int32_t timeout_ms);
 #define RX_FIFO_ERROR                                 (0x11)
 
 #define SIGFOX_CHECK_SOCKET(s)                        if (s->sock_base.u.sd < 0) {  \
-                                                          *_errno = MP_EBADF;        \
-                                                          return -1;              \
+                                                          *_errno = MP_EBADF;       \
+                                                          return -1;                \
                                                       }
 
 #define SIGFOX_SOCKET_GET_FD(sd)                      (sd & 0xFF)
@@ -161,7 +163,7 @@ void modsigfox_init0 (void) {
 
     SpiInit( &sigfox_spi, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, RADIO_NSS );
 
-    xTaskCreate(TASK_Sigfox, "Sigfox", SIGFOX_STACK_SIZE, NULL, SIGFOX_TASK_PRIORITY, NULL);
+    xTaskCreate(TASK_Sigfox, "Sigfox", SIGFOX_STACK_SIZE, NULL, SIGFOX_TASK_PRIORITY, &xSigfoxTaskHndl);
 }
 
 void sigfox_update_id (void) {

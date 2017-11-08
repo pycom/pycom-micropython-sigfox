@@ -80,7 +80,7 @@ extern void modpycom_init0(void);
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
-#define GC_POOL_SIZE_BYTES                                          (65 * 1024)
+#define GC_POOL_SIZE_BYTES                                          (67 * 1024)
 #define GC_POOL_SIZE_BYTES_PSRAM                                    (3072 * 1024)
 
 /******************************************************************************
@@ -141,8 +141,6 @@ void TASK_Micropython (void *pvParameters) {
     // to recover from hiting the limit (the limit is measured in bytes)
     mp_stack_set_limit(MICROPY_TASK_STACK_LEN - 1024);
 
-    printf("Free Heap 0 = %d\n", esp_get_free_heap_size());
-
     if (esp_get_revision() > 0) {
         gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
         gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES_PSRAM, MALLOC_CAP_SPIRAM | MALLOC_CAP_32BIT);
@@ -155,8 +153,6 @@ void TASK_Micropython (void *pvParameters) {
         printf("GC pool malloc failed!\n");
         for ( ; ; );
     }
-
-    printf("Free Heap 1 = %d\n", esp_get_free_heap_size());
 
     alarm_preinit();
     pin_preinit();
@@ -192,9 +188,7 @@ soft_reset:
     mp_hal_init(soft_reset);
     readline_init0();
     mod_network_init0();
-    printf("Free Heap 2 = %d\n", esp_get_free_heap_size());
     modbt_init0();
-    printf("Free Heap 3 = %d\n", esp_get_free_heap_size());
     machtimer_init0();
     modpycom_init0();
     bool safeboot = false;
@@ -207,7 +201,6 @@ soft_reset:
         if (wifi_on_boot) {
             mptask_enable_wifi_ap();
         }
-        printf("Free Heap 4 = %d\n", esp_get_free_heap_size());
         // these ones are special because they need uPy running and they launch tasks
 #if defined(LOPY)
         modlora_init0();

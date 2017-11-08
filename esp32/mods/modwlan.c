@@ -1297,45 +1297,45 @@ static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t 
     int ret = connect(s->sock_base.u.sd, &addr, sizeof(addr));
 
     if (ret != 0) {
-        printf("Connect returned -0x%x\n", -ret);
+        // printf("Connect returned -0x%x\n", -ret);
         *_errno = ret;
         return -1;
     }
 
-    printf("Connected.\n");
+    // printf("Connected.\n");
 
     if (s->sock_base.is_ssl && (ret == 0)) {
         mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
 
         if ((ret = mbedtls_net_set_block(&ss->context_fd)) != 0) {
-            printf("failed! net_set_(non)block() returned -0x%x\n", -ret);
+            // printf("failed! net_set_(non)block() returned -0x%x\n", -ret);
             *_errno = ret;
             return -1;
         }
 
         mbedtls_ssl_set_bio(&ss->ssl, &ss->context_fd, mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
 
-        printf("Performing the SSL/TLS handshake...\n");
+        // printf("Performing the SSL/TLS handshake...\n");
 
         while ((ret = mbedtls_ssl_handshake(&ss->ssl)) != 0)
         {
             if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_TIMEOUT)
             {
-                printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
+                // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
                 *_errno = ret;
                 return -1;
             }
         }
 
-        printf("Verifying peer X.509 certificate...\n");
+        // printf("Verifying peer X.509 certificate...\n");
 
         if ((ret = mbedtls_ssl_get_verify_result(&ss->ssl)) != 0) {
             /* In real life, we probably want to close connection if ret != 0 */
-            printf("Failed to verify peer certificate!\n");
+            // printf("Failed to verify peer certificate!\n");
             *_errno = ret;
             return -1;
         } else {
-            printf("Certificate verified.\n");
+            // printf("Certificate verified.\n");
         }
     }
 

@@ -719,6 +719,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_init_obj, 1, bt_init);
 
 mp_obj_t bt_deinit(mp_obj_t self_in) {
     if (bt_obj.init) {
+        if (bt_obj.scanning) {
+            esp_ble_gap_stop_scanning();
+            bt_obj.scanning = false;
+        }
         esp_bluedroid_disable();
         esp_bluedroid_deinit();
         esp_bt_controller_disable();
@@ -1541,7 +1545,7 @@ STATIC mp_obj_t bt_srv_characteristics(mp_obj_t self_in) {
                                      &attr_count);
 
         if (attr_count > 0) {
-            esp_gattc_char_elem_t *char_elems = (esp_gattc_char_elem_t *)malloc(sizeof(esp_gattc_char_elem_t) * attr_count);
+            esp_gattc_char_elem_t *char_elems = (esp_gattc_char_elem_t *)heap_caps_malloc(sizeof(esp_gattc_char_elem_t) * attr_count, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
             if (!char_elems) {
                 mp_raise_OSError(MP_ENOMEM);
             } else {
@@ -1734,7 +1738,7 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
                                          self->characteristic.char_handle,
                                          &attr_count);
             if (attr_count > 0) {
-                esp_gattc_descr_elem_t *descr_elems = (esp_gattc_descr_elem_t *)malloc(sizeof(esp_gattc_descr_elem_t) * attr_count);
+                esp_gattc_descr_elem_t *descr_elems = (esp_gattc_descr_elem_t *)heap_caps_malloc(sizeof(esp_gattc_descr_elem_t) * attr_count, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
                 if (!descr_elems) {
                     mp_raise_OSError(MP_ENOMEM);
                 } else {

@@ -44,6 +44,7 @@
 #include "esp_log.h"
 
 #include "py/mpstate.h"
+#include "py/mpconfig.h"
 #include "py/runtime.h"
 #include "mptask.h"
 #include "machpin.h"
@@ -52,8 +53,11 @@
 
 TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
+#if defined(LOPY)
 TaskHandle_t xLoRaTaskHndl;
-// TaskHandle_t xTimerTaskHndl;
+#elif defined(SIPY)
+TaskHandle_t xSigfoxTaskHndl;
+#endif
 
 /******************************************************************************
  DECLARE PUBLIC DATA
@@ -92,7 +96,7 @@ static StaticTask_t mpTaskTCB;
 *******************************************************************************/
 void app_main(void) {
     // remove all the logs from the IDF
-    // esp_log_level_set("*", ESP_LOG_NONE);
+    esp_log_level_set("*", ESP_LOG_NONE);
     // initalize the non-volatile flash space
     nvs_flash_init();
 

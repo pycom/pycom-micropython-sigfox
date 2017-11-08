@@ -282,6 +282,13 @@ STATIC void mach_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_
     }
 }
 
+STATIC IRAM_ATTR void UARTRxCallback(int uart_id, int rx_byte) {
+    if (MP_STATE_PORT(mp_os_stream_o) && MP_STATE_PORT(mp_os_stream_o) == &mach_uart_obj[uart_id] && mp_interrupt_char == rx_byte) {
+        // raise an exception when interrupts are finished
+        mp_keyboard_interrupt();
+    }
+}
+
 STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t *args) {
     // get the baudrate
     if (args[0].u_int <= 0) {
@@ -392,7 +399,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     uart_param_config(self->uart_id, &self->config);
 
     // install the UART driver
-    uart_driver_install(self->uart_id, MACHUART_RX_BUFFER_LEN, 0, 0, NULL, 0);
+    uart_driver_install(self->uart_id, MACHUART_RX_BUFFER_LEN, 0, 0, NULL, 0, UARTRxCallback);
 
     // disable the delay between transfers
     self->uart_reg->idle_conf.tx_idle_num = 0;
