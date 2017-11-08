@@ -250,9 +250,10 @@ soft_reset:
         }
     }
 
-    pyexec_frozen_module("_main.py");
-
     if (!safeboot) {
+        // execute the frozen main first
+        pyexec_frozen_module("_main.py");
+
         // run the main script from the current directory.
         if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
             const char *main_py;
