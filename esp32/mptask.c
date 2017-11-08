@@ -250,6 +250,8 @@ soft_reset:
         }
     }
 
+    pyexec_frozen_module("_main.py");
+
     if (!safeboot) {
         // run the main script from the current directory.
         if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
