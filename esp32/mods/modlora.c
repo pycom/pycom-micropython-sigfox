@@ -54,7 +54,7 @@
 #define RF_FREQUENCY_CENTER                         868000000   // Hz
 #define RF_FREQUENCY_MAX                            870000000   // Hz
 #define TX_OUTPUT_POWER_MAX                         20          // dBm
-#define TX_OUTPUT_POWER_DEAFULT                     13          // dBm
+#define TX_OUTPUT_POWER_DEAFULT                     14          // dBm
 #define TX_OUTPUT_POWER_MIN                         2           // dBm
 #define LORAWAN_MAX_JOIN_DATARATE                   5
 #elif defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID)
