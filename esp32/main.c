@@ -59,6 +59,8 @@ TaskHandle_t xLoRaTaskHndl;
 TaskHandle_t xSigfoxTaskHndl;
 #endif
 
+extern void machine_init0(void);
+
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
@@ -97,6 +99,10 @@ static StaticTask_t mpTaskTCB;
 void app_main(void) {
     // remove all the logs from the IDF
     esp_log_level_set("*", ESP_LOG_NONE);
+
+    // this one gets the remaining sleep time
+    machine_init0();
+
     // initalize the non-volatile flash space
     nvs_flash_init();
 

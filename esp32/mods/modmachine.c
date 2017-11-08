@@ -79,6 +79,23 @@
 #include "freertos/xtensa_api.h"
 
 
+static RTC_DATA_ATTR int64_t mach_expected_wakeup_time;
+static int64_t mach_remaining_sleep_time;
+
+
+void machine_init0(void) {
+    if (mach_expected_wakeup_time > 0) {
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        mach_remaining_sleep_time = (mach_expected_wakeup_time - (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec)) / 1000;
+        if (mach_remaining_sleep_time < 0) {
+            mach_remaining_sleep_time = 0;
+        }
+    } else {
+        mach_remaining_sleep_time = 0;
+    }
+}
+
 /// \module machine - functions related to the SoC
 ///
 
@@ -157,12 +174,22 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     bt_deinit(NULL);
     wlan_deinit(NULL);
     if (n_args == 0) {
+        mach_expected_wakeup_time = 0;
         esp_deep_sleep_start();
     } else {
-        esp_deep_sleep((uint64_t)mp_obj_get_int(arg[0]) * 1000);
+        int64_t sleep_time = (int64_t)mp_obj_get_int(arg[0]) * 1000;
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
+        esp_deep_sleep(sleep_time);
     }
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsleep);
+
+STATIC mp_obj_t machine_remaining_sleep_time (void) {
+    return mp_obj_new_int_from_uint(mach_remaining_sleep_time);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_remaining_sleep_time_obj, machine_remaining_sleep_time);
 
 STATIC mp_obj_t machine_pin_deepsleep_wakeup (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
@@ -198,7 +225,7 @@ STATIC mp_obj_t machine_pin_deepsleep_wakeup (mp_uint_t n_args, const mp_obj_t *
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_deepsleep_wakeup_obj, 2, machine_pin_deepsleep_wakeup);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_deepsleep_wakeup_obj, 0, machine_pin_deepsleep_wakeup);
 
 STATIC mp_obj_t machine_reset_cause (void) {
     return mp_obj_new_int(mpsleep_get_reset_cause());
@@ -258,6 +285,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_idle),                    (mp_obj_t)(&machine_idle_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sleep),                   (mp_obj_t)(&machine_sleep_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deepsleep),               (mp_obj_t)(&machine_deepsleep_obj) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_remaining_sleep_time),    (mp_obj_t)(&machine_remaining_sleep_time_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pin_deepsleep_wakeup),    (mp_obj_t)(&machine_pin_deepsleep_wakeup_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset_cause),             (mp_obj_t)(&machine_reset_cause_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_wake_reason),             (mp_obj_t)(&machine_wake_reason_obj) },
