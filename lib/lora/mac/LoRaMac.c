@@ -1558,7 +1558,7 @@ static void OnTxDelayedTimerEvent( void )
 
 IRAM_ATTR static void OnRxWindow1TimerEvent( void )
 {
-    uint16_t symbTimeout = 24; // DR_2, DR_1, DR_0
+    uint16_t symbTimeout = 12; // DR_2, DR_1, DR_0
     int8_t datarate = 0;
     uint32_t bandwidth = 0; // LoRa 125 kHz
 
@@ -1580,16 +1580,16 @@ IRAM_ATTR static void OnRxWindow1TimerEvent( void )
     // For higher datarates, we increase the number of symbols generating a Rx Timeout
     if( ( datarate == DR_3 ) || ( datarate == DR_4 ) )
     { // DR_4, DR_3
-        symbTimeout = 48;
+        symbTimeout = 24;
     }
     else if( datarate == DR_5 )
     {
-        symbTimeout = 72;
+        symbTimeout = 36;
     }
     else if( datarate == DR_6 )
     {// LoRa 250 kHz
         bandwidth  = 1;
-        symbTimeout = 96;
+        symbTimeout = 48;
     }
     RxWindowSetup( Channels[Channel].Frequency, datarate, bandwidth, symbTimeout, false );
 #elif ( defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID ) )
@@ -1602,7 +1602,7 @@ IRAM_ATTR static void OnRxWindow1TimerEvent( void )
     switch( datarate )
     {
         case DR_0:       // SF10 - BW125
-            symbTimeout = 24;
+            symbTimeout = 12;
             break;
 
         case DR_1:       // SF9  - BW125
@@ -1610,21 +1610,21 @@ IRAM_ATTR static void OnRxWindow1TimerEvent( void )
         case DR_8:       // SF12 - BW500
         case DR_9:       // SF11 - BW500
         case DR_10:      // SF10 - BW500
-            symbTimeout = 48;
+            symbTimeout = 24;
             break;
 
         case DR_3:       // SF7  - BW125
         case DR_11:      // SF9  - BW500
-            symbTimeout = 72;
+            symbTimeout = 36;
             break;
 
         case DR_4:       // SF8  - BW500
         case DR_12:      // SF8  - BW500
-            symbTimeout = 96;
+            symbTimeout = 48;
             break;
 
         case DR_13:      // SF7  - BW500
-            symbTimeout = 120;
+            symbTimeout = 60;
             break;
         default:
             break;
@@ -1641,7 +1641,7 @@ IRAM_ATTR static void OnRxWindow1TimerEvent( void )
 
 IRAM_ATTR static void OnRxWindow2TimerEvent( void )
 {
-    uint16_t symbTimeout = 48; // DR_2, DR_1, DR_0
+    uint16_t symbTimeout = 12; // DR_2, DR_1, DR_0
     uint32_t bandwidth = 0; // LoRa 125 kHz
 
     TimerStop( &RxWindowTimer2 );
@@ -1651,23 +1651,23 @@ IRAM_ATTR static void OnRxWindow2TimerEvent( void )
     // For higher datarates, we increase the number of symbols generating a Rx Timeout
     if( ( LoRaMacParams.Rx2Channel.Datarate == DR_3 ) || ( LoRaMacParams.Rx2Channel.Datarate == DR_4 ) )
     { // DR_4, DR_3
-        symbTimeout = 96;
+        symbTimeout = 24;
     }
     else if( LoRaMacParams.Rx2Channel.Datarate == DR_5 )
     {
-        symbTimeout = 144;
+        symbTimeout = 36;
     }
     else if( LoRaMacParams.Rx2Channel.Datarate == DR_6 )
     {// LoRa 250 kHz
         bandwidth  = 1;
-        symbTimeout = 192;
+        symbTimeout = 48;
     }
 #elif ( defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID ) )
     // For higher datarates, we increase the number of symbols generating a Rx Timeout
     switch( LoRaMacParams.Rx2Channel.Datarate )
     {
         case DR_0:       // SF10 - BW125
-            symbTimeout = 48;
+            symbTimeout = 12;
             break;
 
         case DR_1:       // SF9  - BW125
@@ -1675,21 +1675,21 @@ IRAM_ATTR static void OnRxWindow2TimerEvent( void )
         case DR_8:       // SF12 - BW500
         case DR_9:       // SF11 - BW500
         case DR_10:      // SF10 - BW500
-            symbTimeout = 96;
+            symbTimeout = 24;
             break;
 
         case DR_3:       // SF7  - BW125
         case DR_11:      // SF9  - BW500
-            symbTimeout = 144;
+            symbTimeout = 36;
             break;
 
         case DR_4:       // SF8  - BW500
         case DR_12:      // SF8  - BW500
-            symbTimeout = 192;
+            symbTimeout = 48;
             break;
 
         case DR_13:      // SF7  - BW500
-            symbTimeout = 240;
+            symbTimeout = 60;
             break;
         default:
             break;

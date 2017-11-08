@@ -52,6 +52,10 @@ bool led_init(led_info_t *led_info)
     return true;
 }
 
+void rmt_deinit_rgb (void) {
+    rmt_driver_uninstall(RMT_CHANNEL_1);
+}
+
 bool led_set_color(led_info_t *led_info, bool synchronize)
 {
     if ((led_info == NULL) ||
@@ -60,7 +64,7 @@ bool led_set_color(led_info_t *led_info, bool synchronize)
     }
 
     if (synchronize) {
-        rmt_wait_tx_done(led_info->rmt_channel);
+        rmt_wait_tx_done(led_info->rmt_channel, portMAX_DELAY);
     }
 
     led_encode_color(led_info);

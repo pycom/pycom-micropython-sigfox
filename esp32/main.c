@@ -44,10 +44,22 @@
 #include "esp_log.h"
 
 #include "py/mpstate.h"
+#include "py/mpconfig.h"
 #include "py/runtime.h"
 #include "mptask.h"
 #include "machpin.h"
 #include "pins.h"
+
+
+TaskHandle_t mpTaskHandle;
+TaskHandle_t svTaskHandle;
+#if defined(LOPY)
+TaskHandle_t xLoRaTaskHndl;
+#elif defined(SIPY)
+TaskHandle_t xSigfoxTaskHndl;
+#endif
+
+extern void machine_init0(void);
 
 /******************************************************************************
  DECLARE PUBLIC DATA
@@ -87,6 +99,10 @@ static StaticTask_t mpTaskTCB;
 void app_main(void) {
     // remove all the logs from the IDF
     esp_log_level_set("*", ESP_LOG_NONE);
+
+    // this one gets the remaining sleep time
+    machine_init0();
+
     // initalize the non-volatile flash space
     nvs_flash_init();
 
@@ -125,6 +141,7 @@ void app_main(void) {
     micropy_hw_flash_size = spi_flash_get_chip_size();
 
     // create the MicroPython task
-    xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL,
+    mpTaskHandle = 
+    (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL,
                                   MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 0);
 }

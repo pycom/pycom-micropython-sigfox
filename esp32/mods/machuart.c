@@ -60,7 +60,7 @@
 #define MACHUART_TX_WAIT_US(baud)               ((MACHUART_FRAME_TIME_US(baud)) + 1)
 #define MACHUART_TX_MAX_TIMEOUT_MS              (5)
 
-#define MACHUART_RX_BUFFER_LEN                  (256)
+#define MACHUART_RX_BUFFER_LEN                  (512)
 #define MACHUART_TX_FIFO_LEN                    (UART_FIFO_LEN)
 
 // interrupt triggers
@@ -73,34 +73,29 @@
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
 static bool uart_tx_fifo_space (mach_uart_obj_t *self);
-static void uart_intr_handler(void *para);
-STATIC esp_err_t machuart_isr_register(uart_port_t uart_num, void (*fn)(void*), void * arg);
+STATIC mp_obj_t mach_uart_deinit(mp_obj_t self_in);
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
 struct _mach_uart_obj_t {
     mp_obj_base_t base;
+    uart_dev_t* uart_reg;
     mp_obj_t pins[4];
-    volatile byte *read_buf;            // read buffer pointer
     uart_config_t config;
-    uart_intr_config_t intr_config;
-    volatile uint32_t read_buf_head;    // indexes the first empty slot
-    volatile uint32_t read_buf_tail;    // indexes the first full slot (not full if equals head)
     uint8_t irq_flags;
     uint8_t uart_id;
     uint8_t rx_timeout;
     uint8_t n_pins;
-    bool isr_registered;
 };
 
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
-static mach_uart_obj_t mach_uart_obj[MACH_NUM_UARTS];
-static const mp_obj_t mach_uart_def_pin[MACH_NUM_UARTS][2] = { {&PIN_MODULE_P1,  &PIN_MODULE_P0},
-                                                               {&PIN_MODULE_P3,  &PIN_MODULE_P4},
-                                                               {&PIN_MODULE_P8,  &PIN_MODULE_P9} };
+static mach_uart_obj_t mach_uart_obj[MACH_NUM_UARTS] = { {.uart_reg = &UART0}, {.uart_reg = &UART1}, {.uart_reg = &UART2} };
+static const mp_obj_t mach_uart_def_pin[MACH_NUM_UARTS][2] = { { &PIN_MODULE_P1,  &PIN_MODULE_P0 },
+                                                               { &PIN_MODULE_P3,  &PIN_MODULE_P4 },
+                                                               { &PIN_MODULE_P8,  &PIN_MODULE_P9 } };
 
 static const uint32_t mach_uart_pin_af[MACH_NUM_UARTS][4] = { { U0TXD_OUT_IDX, U0RXD_IN_IDX, U0RTS_OUT_IDX, U0CTS_IN_IDX},
                                                               { U1TXD_OUT_IDX, U1RXD_IN_IDX, U1RTS_OUT_IDX, U1CTS_IN_IDX},
@@ -113,33 +108,30 @@ void uart_init0 (void) {
 
 }
 
-uint32_t uart_rx_any(mach_uart_obj_t *self) {
-    if (self->read_buf_tail != self->read_buf_head) {
-        // buffering via irq
-        return (self->read_buf_head > self->read_buf_tail) ? self->read_buf_head - self->read_buf_tail :
-                MACHUART_RX_BUFFER_LEN - self->read_buf_tail + self->read_buf_head;
+void uart_deinit_all (void) {
+    for (int i = 0; i < MACH_NUM_UARTS; i++) {
+        mach_uart_deinit(&mach_uart_obj[i]);
     }
-    return 0;
+}
+
+uint32_t uart_rx_any(mach_uart_obj_t *self) {
+    size_t len = 0;
+    uart_get_buffered_data_len(self->uart_id, &len);
+    return len;
 }
 
 int uart_rx_char(mach_uart_obj_t *self) {
-    // disable UART Rx interrupts
-    CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(self->uart_id), UART_RXFIFO_TOUT_INT_ENA | UART_RXFIFO_FULL_INT_ENA);
-    if (self->read_buf_tail != self->read_buf_head) {
-        // buffering via irq
-        int data = self->read_buf[self->read_buf_tail];
-        self->read_buf_tail = (self->read_buf_tail + 1) % MACHUART_RX_BUFFER_LEN;
-        // enable interrupts back
-        SET_PERI_REG_MASK(UART_INT_ENA_REG(self->uart_id), UART_RXFIFO_TOUT_INT_ENA | UART_RXFIFO_FULL_INT_ENA);
-        return data;
+    uint8_t rx_byte;
+    int32_t len = uart_read_bytes(self->uart_id, &rx_byte, 1, 0);
+    if (len > 0) {
+        return rx_byte;
     }
-    // enable interrupts back
-    SET_PERI_REG_MASK(UART_INT_ENA_REG(self->uart_id), UART_RXFIFO_TOUT_INT_ENA | UART_RXFIFO_FULL_INT_ENA);
     return -1;
 }
 
 bool uart_tx_char(mach_uart_obj_t *self, int c) {
     uint32_t timeout = 0;
+    char chr = c;
     while (!uart_tx_fifo_space(self)) {
         if (timeout > (MACHUART_TX_MAX_TIMEOUT_MS * 1000)) {
             return false;
@@ -147,7 +139,7 @@ bool uart_tx_char(mach_uart_obj_t *self, int c) {
         ets_delay_us(MACHUART_TX_WAIT_US(self->config.baud_rate));
         timeout += MACHUART_TX_WAIT_US(self->config.baud_rate);
     }
-    WRITE_PERI_REG(UART_FIFO_AHB_REG(self->uart_id), c);
+    uart_tx_chars(self->uart_id, &chr, 1);
     return true;
 }
 
@@ -174,11 +166,8 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
     if (self->n_pins == 1) {
         pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
 
-        // wait for the output buffer to be empty
-        while (!(READ_PERI_REG(UART_INT_RAW_REG(self->uart_id)) & UART_TX_DONE_INT_RAW_M)) {
-            ets_delay_us(1);
-        }
-        WRITE_PERI_REG(UART_INT_CLR_REG(self->uart_id), UART_TX_DONE_INT_CLR);
+        // wait for the TX FIFO to be empty
+        uart_wait_tx_done(self->uart_id, portMAX_DELAY);
 
         // make it an input again
         pin_deassign(pin);
@@ -193,8 +182,8 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
 static bool uart_tx_fifo_space (mach_uart_obj_t *self) {
-    uint32_t tx_fifo_cnt = READ_PERI_REG(UART_STATUS_REG(self->uart_id)) & UART_TXFIFO_CNT_M;
-    if (((tx_fifo_cnt >> UART_TXFIFO_CNT_S) & UART_TXFIFO_CNT) < MACHUART_TX_FIFO_LEN) {
+    uint32_t tx_fifo_cnt = (self->uart_reg->mem_cnt_status.tx_cnt << 8) + self->uart_reg->status.txfifo_cnt;
+    if (tx_fifo_cnt < MACHUART_TX_FIFO_LEN) {
         return true;
     }
     return false;
@@ -239,68 +228,6 @@ static void uart_assign_pins_af (mach_uart_obj_t *self, mp_obj_t *pins, uint32_t
     }
     self->n_pins = n_pins;
 }
-
-STATIC IRAM_ATTR void UARTGenericIntHandler(uint32_t uart_id, uint32_t status) {
-    mach_uart_obj_t *self = &mach_uart_obj[uart_id];
-
-    while (status) {
-        if (UART_FRM_ERR_INT_ST == (status & UART_FRM_ERR_INT_ST)) {
-            // frame error
-            WRITE_PERI_REG(UART_INT_CLR_REG(uart_id), UART_FRM_ERR_INT_CLR);
-        } else if (UART_RXFIFO_FULL_INT_ST == (status & UART_RXFIFO_FULL_INT_ST) ||
-                   UART_RXFIFO_TOUT_INT_ST == (status & UART_RXFIFO_TOUT_INT_ST)) {
-            // Rx data present
-            while (READ_PERI_REG(UART_STATUS_REG(uart_id)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) {
-                int data = READ_PERI_REG(UART_FIFO_AHB_REG(uart_id)) & 0xFF;
-                if (MP_STATE_PORT(mp_os_stream_o) && MP_STATE_PORT(mp_os_stream_o) == self && data == mp_interrupt_char) {
-                    // raise an exception when interrupts are finished
-                    mp_keyboard_interrupt();
-                } else { // there's always a read buffer available
-                    uint16_t next_head = (self->read_buf_head + 1) % MACHUART_RX_BUFFER_LEN;
-                    if (self->read_buf && next_head != self->read_buf_tail) {
-                        // only store data if there's room in the buffer
-                        self->read_buf[self->read_buf_head] = data;
-                        self->read_buf_head = next_head;
-                    }
-                }
-            }
-            // clear the interrupt
-            WRITE_PERI_REG(UART_INT_CLR_REG(uart_id), UART_RXFIFO_TOUT_INT_CLR | UART_RXFIFO_FULL_INT_ST);
-        } else if (UART_TXFIFO_EMPTY_INT_ST == (status & UART_TXFIFO_EMPTY_INT_ST)) {
-            // Tx FIFO empty
-            WRITE_PERI_REG(UART_INT_CLR_REG(uart_id), UART_TXFIFO_EMPTY_INT_CLR);
-            // this one needs to be re-enabled every time we send
-            CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(uart_id), UART_TXFIFO_EMPTY_INT_ENA);
-        } else if (UART_RXFIFO_OVF_INT_ST == (status & UART_RXFIFO_OVF_INT_ST)) {
-            WRITE_PERI_REG(UART_INT_CLR_REG(uart_id), UART_RXFIFO_OVF_INT_CLR);
-        }
-        status = READ_PERI_REG(UART_INT_ST_REG(uart_id)) ;
-    }
-
-//    // check the flags to see if the user handler should be called
-//    if ((self->irq_trigger & self->irq_flags) && self->irq_enabled) {
-//        // call the user defined handler
-//        mp_irq_handler(mp_irq_find(self));
-//    }
-
-    // clear the flags
-    self->irq_flags = 0;
-}
-
-static IRAM_ATTR void uart_intr_handler(void *para) {
-    uint32_t status;
-
-    if ((status = READ_PERI_REG(UART_INT_ST_REG(UART_NUM_0)))) {
-        UARTGenericIntHandler(UART_NUM_0, status);
-    }
-    if ((status = READ_PERI_REG(UART_INT_ST_REG(UART_NUM_1)))) {
-        UARTGenericIntHandler(UART_NUM_1, status);
-    }
-    if ((status = READ_PERI_REG(UART_INT_ST_REG(UART_NUM_2)))) {
-        UARTGenericIntHandler(UART_NUM_2, status);
-    }
-}
-
 
 // waits at most timeout microseconds for at least 1 char to become ready for
 // reading (from buf or for direct reading).
@@ -355,22 +282,11 @@ STATIC void mach_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_
     }
 }
 
-STATIC esp_err_t machuart_isr_register(uart_port_t uart_num, void (*fn)(void*), void * arg)
-{
-    int32_t source;
-    switch(uart_num) {
-    case 1:
-        source = ETS_UART1_INTR_SOURCE;
-        break;
-    case 2:
-        source = ETS_UART2_INTR_SOURCE;
-        break;
-    case 0:
-        default:
-        source = ETS_UART0_INTR_SOURCE;
-        break;
+STATIC IRAM_ATTR void UARTRxCallback(int uart_id, int rx_byte) {
+    if (MP_STATE_PORT(mp_os_stream_o) && MP_STATE_PORT(mp_os_stream_o) == &mach_uart_obj[uart_id] && mp_interrupt_char == rx_byte) {
+        // raise an exception when interrupts are finished
+        mp_keyboard_interrupt();
     }
-    return esp_intr_alloc(source, 0, fn, arg, NULL);
 }
 
 STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t *args) {
@@ -418,7 +334,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     } else {
         _stop = mp_obj_get_float(args[3].u_obj);
     }
-    if (_stop == 1.5) {
+    if (_stop >= 1.5 && _stop < 2.0) {
         stop_bits = UART_STOP_BITS_1_5;
     } else {
         switch ((int)_stop) {
@@ -434,18 +350,9 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
         }
     }
 
-    uint32_t intr_mask = UART_RXFIFO_TOUT_INT_ENA | UART_FRM_ERR_INT_ENA |
-                         UART_RXFIFO_FULL_INT_ENA | UART_TXFIFO_EMPTY_INT_ENA;
-
-    // disable the delay between transfers
-    WRITE_PERI_REG(UART_IDLE_CONF_REG(self->uart_id), READ_PERI_REG(UART_IDLE_CONF_REG(self->uart_id)) & (~UART_TX_IDLE_NUM_M));
-
-    // disable interrupts on the current UART before re-configuring
-    // and UART_IntrConfig() will enable them again
-    CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(self->uart_id), UART_INTR_MASK);
-
-    self->intr_config.intr_enable_mask = 0;
-    uart_intr_config(self->uart_id, &self->intr_config);
+    // disable the interupts while we reconfigure
+    self->uart_reg->int_clr.val = UART_INTR_MASK;
+    self->uart_reg->int_ena.val = 0;
 
     // assign the pins
     mp_obj_t pins_o = args[4].u_obj;
@@ -491,28 +398,14 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     self->config.rx_flow_ctrl_thresh = 64;
     uart_param_config(self->uart_id, &self->config);
 
-    // re-allocate the read buffer after resetting the uart
-    self->read_buf_head = 0;
-    self->read_buf_tail = 0;
-    self->read_buf = MP_OBJ_NULL; // free the read buffer before allocating again
-    MP_STATE_PORT(uart_buf[self->uart_id]) = m_new(byte, MACHUART_RX_BUFFER_LEN);
-    self->read_buf = (volatile byte *)MP_STATE_PORT(uart_buf[self->uart_id]);
+    // install the UART driver
+    uart_driver_install(self->uart_id, MACHUART_RX_BUFFER_LEN, 0, 0, NULL, 0, UARTRxCallback);
 
-    // clear the input buffer
-    while (READ_PERI_REG(UART_STATUS_REG(self->uart_id)) & (UART_RXFIFO_CNT << UART_RXFIFO_CNT_S)) {
-        self->read_buf[0] = READ_PERI_REG(UART_FIFO_AHB_REG(self->uart_id)) & 0xFF;
-    }
+    // disable the delay between transfers
+    self->uart_reg->idle_conf.tx_idle_num = 0;
 
-    // interrupts are enabled here
-    if (!self->isr_registered) {
-        machuart_isr_register(self->uart_id, uart_intr_handler, NULL);
-        self->isr_registered = true;
-    }
-    self->intr_config.intr_enable_mask = intr_mask;
-    self->intr_config.rx_timeout_thresh = 1;
-    self->intr_config.txfifo_empty_intr_thresh = 2;
-    self->intr_config.rxfifo_full_thresh = 20;
-    uart_intr_config(self->uart_id, &self->intr_config);
+    // configure the rx timeout threshold
+    self->uart_reg->conf1.rx_tout_thrhd = self->rx_timeout & UART_RX_TOUT_THRHD_V;
 
     return mp_const_none;
 
@@ -565,14 +458,14 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_uart_init_obj, 1, mach_uart_init);
 STATIC mp_obj_t mach_uart_deinit(mp_obj_t self_in) {
     mach_uart_obj_t *self = self_in;
 
-    // detach the pins
-    uart_deassign_pins_af(self);
-    // invalidate the baudrate
-    self->config.baud_rate = 0;
-    // disable the interrupt
-    CLEAR_PERI_REG_MASK(UART_INT_ENA_REG(self->uart_id), UART_INTR_MASK);
-    // free the read buffer
-    m_del(byte, (void *)self->read_buf, MACHUART_RX_BUFFER_LEN);
+    if (self->config.baud_rate > 0) {
+        // invalidate the baudrate
+        self->config.baud_rate = 0;
+        // detach the pins
+        uart_deassign_pins_af(self);
+        // uninstall the driver
+        uart_driver_delete(self->uart_id);
+    }
 
     return mp_const_none;
 }

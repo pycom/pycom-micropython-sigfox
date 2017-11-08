@@ -30,7 +30,7 @@ static bool sflash_write (void) {
 
 DRESULT sflash_disk_init (void) {
     if (!sflash_init_done) {
-        sflash_block_cache = (uint8_t *)pvPortMalloc(SFLASH_BLOCK_SIZE);
+        sflash_block_cache = (uint8_t *)heap_caps_malloc(SFLASH_BLOCK_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
         sflash_prev_block_addr = UINT32_MAX;
         sflash_cache_is_dirty = false;
         sflash_init_done = true;

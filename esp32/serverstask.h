@@ -14,7 +14,7 @@
  DEFINE CONSTANTS
  ******************************************************************************/
 #define SERVERS_PRIORITY                            (5)
-#define SERVERS_STACK_SIZE                          (3072)
+#define SERVERS_STACK_SIZE                          (2048)
 #define SERVERS_STACK_LEN                           (SERVERS_STACK_SIZE / sizeof(StackType_t))
 
 #define SERVERS_SSID_LEN_MAX                        16

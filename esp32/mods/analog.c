@@ -17,11 +17,8 @@
 #include "freertos/portmacro.h"
 
 //Internal functions that are not thread-safe, you should not call these functions directly without lock.
-extern void touch_init(touch_sensor_pad pad);
-extern void touch_read(uint16_t *pad_out, uint16_t sample_num);
 extern uint8_t temprature_sens_read(void);
 extern uint16_t hall_sens_read(void);
-extern uint16_t adc1_read(uint8_t pad, uint8_t atten);
 extern void dac_out(uint8_t dac_en, uint8_t tone_en, uint16_t dc_value, uint16_t tone_scale, uint16_t tone_step);
 
 //Mutex to protect each API
@@ -38,25 +35,6 @@ static portMUX_TYPE analog_mux = portMUX_INITIALIZER_UNLOCKED;
 #define ANALOG_ERROR(...)
 #endif
 
-esp_err_t analog_touch_init(touch_sensor_pad pad)
-{
-    if(pad >= TOUCH_SENSOR_MAX) {
-        ANALOG_ERROR("SENSOR PAD ERROR\n");
-        return ESP_ERR_INVALID_ARG;
-    }
-    portENTER_CRITICAL(&analog_mux);
-    touch_init(pad);
-    portEXIT_CRITICAL(&analog_mux);
-    return ESP_OK;
-}
-
-void analog_touch_read(uint16_t *pad_out, uint16_t sample_num)
-{
-    portENTER_CRITICAL(&analog_mux);
-    touch_read(pad_out, sample_num);
-    portEXIT_CRITICAL(&analog_mux);
-}
-
 uint8_t analog_temperature_read(void)
 {
     portENTER_CRITICAL(&analog_mux);
@@ -71,22 +49,6 @@ uint16_t analog_hall_read(void)
     uint16_t hall_val = hall_sens_read();
     portEXIT_CRITICAL(&analog_mux);
     return hall_val;
-}
-
-int analog_adc1_read(adc_channel_t channel, adc_atten_t atten)
-{
-    if(channel >= ADC1_CH_MAX) {
-        ANALOG_ERROR("ADC CHANNEL ERROR\n");
-        return -1;
-    }
-    if(atten >= ADC_ATTEN_MAX) {
-        ANALOG_ERROR("ADC ATTENUATION ERROR\n");
-        return -1;
-    }
-    portENTER_CRITICAL(&analog_mux);
-    uint16_t adc_value = adc1_read(channel, atten);
-    portEXIT_CRITICAL(&analog_mux);
-    return adc_value;
 }
 
 esp_err_t analog_dac_out(dac_enable_t dac_en, dac_tone_t tone_en, uint16_t dc_value, uint16_t tone_scale, uint16_t tone_step)

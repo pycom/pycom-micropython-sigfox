@@ -43,6 +43,7 @@
 #include "modnetwork.h"
 #include "modwlan.h"
 #include "antenna.h"
+#include "modled.h"
 
 #if defined(LOPY)
 #include "modlora.h"
@@ -70,6 +71,7 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 
+
 /******************************************************************************
  DECLARE EXTERNAL FUNCTIONS
  ******************************************************************************/
@@ -79,6 +81,7 @@ extern void modpycom_init0(void);
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
 #define GC_POOL_SIZE_BYTES                                          (67 * 1024)
+#define GC_POOL_SIZE_BYTES_PSRAM                                    (3072 * 1024)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -95,6 +98,7 @@ STATIC void mptask_create_main_py (void);
  DECLARE PUBLIC DATA
  ******************************************************************************/
 extern StackType_t mpTaskStack;
+extern TaskHandle_t svTaskHandle;
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -111,6 +115,7 @@ static char fresh_boot_py[] = "# boot.py -- run on boot-up\r\n";
 void TASK_Micropython (void *pvParameters) {
     // initialize the garbage collector with the top of our stack
     volatile uint32_t sp = (uint32_t)get_sp();
+    uint32_t gc_pool_size;
     bool soft_reset = false;
     bool wifi_on_boot;
 
@@ -136,7 +141,15 @@ void TASK_Micropython (void *pvParameters) {
     // to recover from hiting the limit (the limit is measured in bytes)
     mp_stack_set_limit(MICROPY_TASK_STACK_LEN - 1024);
 
-    if (NULL == (gc_pool_upy = pvPortMalloc(GC_POOL_SIZE_BYTES))) {
+    if (esp_get_revision() > 0) {
+        gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
+        gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES_PSRAM, MALLOC_CAP_SPIRAM | MALLOC_CAP_32BIT);
+    } else {
+        gc_pool_size = GC_POOL_SIZE_BYTES;
+        gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES, MALLOC_CAP_32BIT);
+    }
+
+    if (NULL == gc_pool_upy) {
         printf("GC pool malloc failed!\n");
         for ( ; ; );
     }
@@ -154,7 +167,7 @@ soft_reset:
 #endif
 
     // GC init
-    gc_init((void *)gc_pool_upy, (void *)(gc_pool_upy + GC_POOL_SIZE_BYTES));
+    gc_init((void *)gc_pool_upy, (void *)(gc_pool_upy + gc_pool_size));
 
     // MicroPython init
     mp_init();
@@ -238,6 +251,9 @@ soft_reset:
     }
 
     if (!safeboot) {
+        // execute the frozen main first
+        pyexec_frozen_module("_main.py");
+
         // run the main script from the current directory.
         if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
             const char *main_py;
@@ -282,6 +298,11 @@ soft_reset_exit:
     mp_printf(&mp_plat_print, "PYB: soft reboot\n");
     // it needs to be this one in order to not mess with the GIL
     ets_delay_us(5000);
+
+    uart_deinit_all();
+    // TODO: rmt_deinit_all();
+    rmt_deinit_rgb();
+
     soft_reset = true;
     goto soft_reset;
 }
@@ -292,7 +313,7 @@ soft_reset_exit:
 STATIC void mptask_preinit (void) {
     mperror_pre_init();
     wlan_pre_init();
-    xTaskCreatePinnedToCore(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, NULL, 0);
+    xTaskCreatePinnedToCore(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 0);
 }
 
 STATIC void mptask_init_sflash_filesystem (void) {

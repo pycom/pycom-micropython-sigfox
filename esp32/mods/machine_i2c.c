@@ -425,6 +425,8 @@ STATIC bool hw_i2c_slave_ping (machine_i2c_obj_t *i2c_obj, uint16_t slave_addr) 
 
 STATIC void i2c_deassign_pins_af (machine_i2c_obj_t *self) {
     if (self->baudrate > 0 && self->sda && self->scl) {
+        // TODO: disable the pin pull-ups here too.
+
         // we must set the value to 1 so that when Rx pins are deassigned, their are hardwired to 1
         self->sda->value = 1;
         self->scl->value = 1;

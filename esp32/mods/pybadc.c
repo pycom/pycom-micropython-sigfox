@@ -28,6 +28,7 @@
 #include "soc/gpio_sig_map.h"
 
 #include "adc.h"
+#include "esp_adc_cal.h"
 #include "pybadc.h"
 #include "mpexception.h"
 #include "mpsleep.h"
@@ -39,21 +40,26 @@
  DECLARE CONSTANTS
  ******************************************************************************/
 #define PYB_ADC_NUM_CHANNELS                (ADC1_CHANNEL_MAX)
+#define V_REF_NOM                           1100
 
 /******************************************************************************
  DEFINE TYPES
  ******************************************************************************/
 typedef struct {
     mp_obj_base_t base;
+    uint16_t vref;
     uint8_t width;
     bool enabled;
 } pyb_adc_obj_t;
 
 typedef struct {
     mp_obj_base_t base;
+    esp_adc_cal_characteristics_t characteristics;
+    pyb_adc_obj_t *adc;
     pin_obj_t *pin;
     uint8_t channel;
     uint8_t attn;
+    bool calibrate;
     bool enabled;
 } pyb_adc_channel_obj_t;
 
@@ -68,8 +74,7 @@ STATIC pyb_adc_channel_obj_t pyb_adc_channel_obj[PYB_ADC_NUM_CHANNELS] = { {.pin
                                                                            {.pin = &PIN_MODULE_P20, .channel = ADC1_CHANNEL_5, .enabled = false},
                                                                            {.pin = &PIN_MODULE_P18, .channel = ADC1_CHANNEL_6, .enabled = false},
                                                                            {.pin = &PIN_MODULE_P17, .channel = ADC1_CHANNEL_7, .enabled = false}, };
-STATIC pyb_adc_obj_t pyb_adc_obj = {.enabled = false};
-
+STATIC pyb_adc_obj_t pyb_adc_obj = {.vref = V_REF_NOM, .enabled = false};
 STATIC const mp_obj_type_t pyb_adc_channel_type;
 
 /******************************************************************************
@@ -96,6 +101,7 @@ STATIC void pyb_adc_channel_init (pyb_adc_channel_obj_t *self) {
     // the ADC block must be enabled first
     pyb_adc_check_init();
     adc1_config_channel_atten(self->channel, self->attn);
+    esp_adc_cal_get_characteristics(self->adc->vref, self->attn, self->adc->width - 9, &self->characteristics);
     self->enabled = true;
 }
 
@@ -155,6 +161,33 @@ STATIC mp_obj_t adc_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *k
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(adc_init_obj, 1, adc_init);
 
+STATIC mp_obj_t adc_vref_to_pin(mp_obj_t self_in, mp_obj_t pin_o) {
+    // get the verf out pin
+    pin_obj_t *pin = pin_find(pin_o);
+    if (pin->pin_number != 25 && pin->pin_number != 26 && pin->pin_number != 27) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "only pins P6, P21 and P22 are able to output VREF"));
+    }
+    adc2_vref_to_gpio(pin->pin_number);
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(adc_vref_to_pin_obj, adc_vref_to_pin);
+
+STATIC mp_obj_t adc_vref(uint n_args, const mp_obj_t *arg) {
+    pyb_adc_obj_t *self = arg[0];
+    if (n_args == 1) {
+        return MP_OBJ_NEW_SMALL_INT(self->vref);
+    } else {
+        self->vref = mp_obj_get_int(arg[1]);
+        // all active channels must be reinitialized next time .voltage() is called
+        for (int i = 0; i < PYB_ADC_NUM_CHANNELS; i++) {
+            pyb_adc_channel_obj[i].calibrate = true;
+        }
+        return mp_const_none;
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(adc_vref_obj, 1, 2, adc_vref);
+
 STATIC mp_obj_t adc_deinit(mp_obj_t self_in) {
     pyb_adc_obj_t *self = self_in;
     self->enabled = false;
@@ -168,6 +201,8 @@ STATIC mp_obj_t adc_channel(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
         { MP_QSTR_attn,       MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = ADC_ATTEN_0db} },
         { MP_QSTR_pin,        MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
+
+    pyb_adc_obj_t *adc_o = pos_args[0];
 
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(pyb_adc_channel_args)];
@@ -204,6 +239,7 @@ STATIC mp_obj_t adc_channel(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
     pyb_adc_channel_obj_t *self = &pyb_adc_channel_obj[ch_id];
     self->base.type = &pyb_adc_channel_type;
     self->attn = args[1].u_int;
+    self->adc = adc_o;
     pyb_adc_channel_init (self);
     return self;
 }
@@ -213,6 +249,8 @@ STATIC const mp_map_elem_t adc_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&adc_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&adc_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_channel),             (mp_obj_t)&adc_channel_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_vref),                (mp_obj_t)&adc_vref_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_vref_to_pin),         (mp_obj_t)&adc_vref_to_pin_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_ATTN_0DB),            MP_OBJ_NEW_SMALL_INT(ADC_ATTEN_0db) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ATTN_2_5DB),          MP_OBJ_NEW_SMALL_INT(ADC_ATTEN_2_5db) },
@@ -241,7 +279,7 @@ STATIC void adc_channel_print(const mp_print_t *print, mp_obj_t self_in, mp_prin
 
 STATIC mp_obj_t adc_channel_init(mp_obj_t self_in) {
     pyb_adc_channel_obj_t *self = self_in;
-    // re-enable it
+    // re-init the channel
     pyb_adc_channel_init(self);
     return mp_const_none;
 }
@@ -256,14 +294,37 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_deinit_obj, adc_channel_deinit);
 
 STATIC mp_obj_t adc_channel_value(mp_obj_t self_in) {
     pyb_adc_channel_obj_t *self = self_in;
-
     // the channel must be enabled
     if (!self->enabled) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
-    return MP_OBJ_NEW_SMALL_INT(adc1_get_voltage(self->channel));
+    return MP_OBJ_NEW_SMALL_INT(adc1_get_raw(self->channel));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_value_obj, adc_channel_value);
+
+STATIC mp_obj_t adc_channel_voltage(mp_obj_t self_in) {
+    pyb_adc_channel_obj_t *self = self_in;
+    // the channel must be enabled
+    if (!self->enabled) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+    }
+    if (self->calibrate) {
+        self->calibrate = false;
+        esp_adc_cal_get_characteristics(self->adc->vref, self->attn, self->adc->width - 9, &self->characteristics);
+    }
+    return MP_OBJ_NEW_SMALL_INT(adc1_to_voltage(self->channel, &self->characteristics));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_voltage_obj, adc_channel_voltage);
+
+STATIC mp_obj_t adc_channel_value_to_voltage(mp_obj_t self_in, mp_obj_t value_o) {
+    pyb_adc_channel_obj_t *self = self_in;
+    // the channel must be enabled
+    if (!self->enabled) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+    }
+    return MP_OBJ_NEW_SMALL_INT(esp_adc_cal_raw_to_voltage(mp_obj_get_int(value_o), &self->characteristics));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(adc_channel_value_to_voltage_obj, adc_channel_value_to_voltage);
 
 STATIC mp_obj_t adc_channel_call(mp_obj_t self_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 0, false);
@@ -274,6 +335,8 @@ STATIC const mp_map_elem_t adc_channel_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&adc_channel_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&adc_channel_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_value),               (mp_obj_t)&adc_channel_value_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_voltage),             (mp_obj_t)&adc_channel_voltage_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_value_to_voltage),    (mp_obj_t)&adc_channel_value_to_voltage_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(adc_channel_locals_dict, adc_channel_locals_dict_table);

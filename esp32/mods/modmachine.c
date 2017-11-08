@@ -51,7 +51,7 @@
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
 #include "esp_event.h"
-#include "esp_deep_sleep.h"
+#include "esp_sleep.h"
 #include "soc/timer_group_struct.h"
 
 #include "random.h"
@@ -75,14 +75,58 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/queue.h"
+#include "freertos/timers.h"
 #include "freertos/xtensa_api.h"
 
+
+static RTC_DATA_ATTR int64_t mach_expected_wakeup_time;
+static int64_t mach_remaining_sleep_time;
+
+
+void machine_init0(void) {
+    if (mach_expected_wakeup_time > 0) {
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        mach_remaining_sleep_time = (mach_expected_wakeup_time - (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec)) / 1000;
+        if (mach_remaining_sleep_time < 0) {
+            mach_remaining_sleep_time = 0;
+        }
+    } else {
+        mach_remaining_sleep_time = 0;
+    }
+}
 
 /// \module machine - functions related to the SoC
 ///
 
 /******************************************************************************/
 // Micro Python bindings;
+
+extern TaskHandle_t mpTaskHandle;
+extern TaskHandle_t svTaskHandle;
+extern TaskHandle_t xLoRaTaskHndl;
+extern TaskHandle_t xSigfoxTaskHndl;
+
+STATIC mp_obj_t machine_info(void) {
+    // FreeRTOS info
+    printf("---------------------------------------------\n");
+    printf("System memory info (in bytes)\n");
+    printf("---------------------------------------------\n");
+    printf("MPTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)mpTaskHandle));
+    printf("ServersTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)svTaskHandle));
+#if defined(LOPY)
+    printf("LoRaTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)xLoRaTaskHndl));
+#elif defined(SIPY)
+    printf("SigfoxTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)xSigfoxTaskHndl));
+#endif
+    printf("TimerTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark(xTimerGetTimerDaemonTaskHandle()));
+    printf("IdleTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark(xTaskGetIdleTaskHandle()));
+    printf("System free heap: %d\n", (unsigned int)esp_get_free_heap_size());
+    printf("---------------------------------------------\n");
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_info_obj, machine_info);
 
 STATIC mp_obj_t NORETURN machine_reset(void) {
     machtimer_deinit();
@@ -130,12 +174,22 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     bt_deinit(NULL);
     wlan_deinit(NULL);
     if (n_args == 0) {
+        mach_expected_wakeup_time = 0;
         esp_deep_sleep_start();
     } else {
-        esp_deep_sleep((uint64_t)mp_obj_get_int(arg[0]) * 1000);
+        int64_t sleep_time = (int64_t)mp_obj_get_int(arg[0]) * 1000;
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
+        esp_deep_sleep(sleep_time);
     }
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsleep);
+
+STATIC mp_obj_t machine_remaining_sleep_time (void) {
+    return mp_obj_new_int_from_uint(mach_remaining_sleep_time);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_remaining_sleep_time_obj, machine_remaining_sleep_time);
 
 STATIC mp_obj_t machine_pin_deepsleep_wakeup (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
@@ -152,7 +206,7 @@ STATIC mp_obj_t machine_pin_deepsleep_wakeup (mp_uint_t n_args, const mp_obj_t *
     mp_obj_t *pins;
     mp_obj_get_array(args[0].u_obj, &len, &pins);
 
-    esp_ext1_wakeup_mode_t mode = args[1].u_int;
+    esp_sleep_ext1_wakeup_mode_t mode = args[1].u_int;
     if (mode != ESP_EXT1_WAKEUP_ALL_LOW && mode != ESP_EXT1_WAKEUP_ANY_HIGH) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid wakeup mode %d", mode));
     }
@@ -161,17 +215,17 @@ STATIC mp_obj_t machine_pin_deepsleep_wakeup (mp_uint_t n_args, const mp_obj_t *
     for (int i = 0; i < len; i++) {
         mask |= (1ull << pin_find(pins[i])->pin_number);
     }
-    if (ESP_OK != esp_deep_sleep_enable_ext1_wakeup(mask, mode)) {
+    if (ESP_OK != esp_sleep_enable_ext1_wakeup(mask, mode)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "deepsleep wake up is not supported on the selected pin(s)"));
     }
     if (args[2].u_bool) {
-        esp_deep_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
+        esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
     } else {
-        esp_deep_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_AUTO);
+        esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_AUTO);
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_deepsleep_wakeup_obj, 2, machine_pin_deepsleep_wakeup);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_deepsleep_wakeup_obj, 0, machine_pin_deepsleep_wakeup);
 
 STATIC mp_obj_t machine_reset_cause (void) {
     return mp_obj_new_int(mpsleep_get_reset_cause());
@@ -186,7 +240,7 @@ STATIC mp_obj_t machine_wake_reason (void) {
     tuple[0] = mp_obj_new_int(wake_reason);
     if (wake_reason == MPSLEEP_GPIO_WAKE) {
         pins = mp_obj_new_list(0, NULL);
-        uint64_t wake_pins = esp_deep_sleep_get_ext1_wakeup_status();
+        uint64_t wake_pins = esp_sleep_get_ext1_wakeup_status();
         uint64_t mask = 1;
 
         for (int i = 0; i < GPIO_PIN_COUNT; i++) {
@@ -231,12 +285,15 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_idle),                    (mp_obj_t)(&machine_idle_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sleep),                   (mp_obj_t)(&machine_sleep_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deepsleep),               (mp_obj_t)(&machine_deepsleep_obj) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_remaining_sleep_time),    (mp_obj_t)(&machine_remaining_sleep_time_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pin_deepsleep_wakeup),    (mp_obj_t)(&machine_pin_deepsleep_wakeup_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset_cause),             (mp_obj_t)(&machine_reset_cause_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_wake_reason),             (mp_obj_t)(&machine_wake_reason_obj) },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_disable_irq),             (mp_obj_t)&machine_disable_irq_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_enable_irq),              (mp_obj_t)&machine_enable_irq_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_info),                    (mp_obj_t)&machine_info_obj },
+
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_Pin),                     (mp_obj_t)&pin_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_UART),                    (mp_obj_t)&mach_uart_type },

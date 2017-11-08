@@ -28,6 +28,8 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
 APP_INC += -I$(ESP_IDF_COMP_PATH)/heap/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_adc_cal/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/freertos/include
@@ -41,6 +43,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/spi_flash/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/tcpip_adapter/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/log/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/sdmmc/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/vfs/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/device/include
@@ -263,7 +266,7 @@ endif
 # SRC_QSTR
 SRC_QSTR_AUTO_DEPS +=
 
-BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld
+BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld
 
 # add the application linker script(s)
 APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld
@@ -278,7 +281,7 @@ BOOT_LIBS = -Wl,--start-group $(B_LIBS) $(BUILD)/bootloader/bootloader.a -Wl,--e
 
 # debug / optimization options
 ifeq ($(BTYPE), debug)
-    CFLAGS += -DDEBUG_B -DNDEBUG
+    CFLAGS += -DDEBUG_B -DNDEBUG -DPYCOM_DEBUG
 else
     ifeq ($(BTYPE), release)
         CFLAGS += -DNDEBUG
@@ -287,7 +290,7 @@ else
     endif
 endif
 
-$(BUILD)/bootloader/%.o: CFLAGS += -DBOOTLOADER_BUILD
+$(BUILD)/bootloader/%.o: CFLAGS += -D BOOTLOADER_BUILD=1
 
 BOOT_OFFSET = 0x1000
 PART_OFFSET = 0x8000
@@ -317,12 +320,16 @@ PART_BIN = $(BUILD)/lib/partitions.bin
 ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
 
-FLASH_SIZE = detect
+FLASH_SIZE = 4MB
 ESPFLASHFREQ = 40m
 ESPFLASHMODE = dio
 
+PIC_TOOL = $(PYTHON) tools/pypic.py --port $(ESPPORT)
+ENTER_FLASHING_MODE = $(PIC_TOOL) --enter
+EXIT_FLASHING_MODE = $(PIC_TOOL) --exit
+
 ESPTOOLPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/esptool.py --chip esp32
-ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD) --before default_reset --after hard_reset
+ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD) --before no_reset --after no_reset
 
 ESPTOOLPY_WRITE_FLASH  = $(ESPTOOLPY_SERIAL) write_flash -z --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE)
 ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash
@@ -382,12 +389,20 @@ $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 endif
 
 flash: $(APP_BIN) $(BOOT_BIN)
+	$(ECHO) "Entering flash mode"
+	$(Q) $(ENTER_FLASHING_MODE)
 	$(ECHO) "Flashing project"
 	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)
+	$(ECHO) "Exiting flash mode"
+	$(Q) $(EXIT_FLASHING_MODE)
 
 erase:
+	$(ECHO) "Entering flash mode"
+	$(Q) $(ENTER_FLASHING_MODE)
 	$(ECHO) "Erasing flash"
 	$(Q) $(ESPTOOLPY_ERASE_FLASH)
+	$(ECHO) "Exiting flash mode"
+	$(Q) $(EXIT_FLASHING_MODE)
 
 $(PART_BIN): $(PART_CSV)
 	$(ECHO) "Building partitions from $(PART_CSV)..."

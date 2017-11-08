@@ -483,23 +483,28 @@ cred_error:
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key,
                              int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent) {
 
-    wifi_config_t config;
-    memset(&config, 0, sizeof(config));
+    esp_wpa2_config_t wpa2_config = WPA2_CONFIG_INIT_DEFAULT();
+    wifi_config_t wifi_config;
+    memset(&wifi_config, 0, sizeof(wifi_config));
 
     // first close any active connections
     wlan_obj.disconnected = true;
     esp_wifi_disconnect();
 
     strcpy((char *)wlan_obj.ssid, ssid);
-    strcpy((char *)config.sta.ssid, ssid);
+    strcpy((char *)wifi_config.sta.ssid, ssid);
 
     if (key) {
-        strcpy((char *)config.sta.password, key);
+        strcpy((char *)wifi_config.sta.password, key);
         strcpy((char *)wlan_obj.key, key);
     }
     if (bssid) {
-        memcpy(config.sta.bssid, bssid, sizeof(config.sta.bssid));
-        config.sta.bssid_set = true;
+        memcpy(wifi_config.sta.bssid, bssid, sizeof(wifi_config.sta.bssid));
+        wifi_config.sta.bssid_set = true;
+    }
+
+    if (ESP_OK != esp_wifi_set_config(WIFI_IF_STA, &wifi_config)) {
+        goto os_error;
     }
 
     if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
@@ -540,13 +545,9 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
             }
         }
 
-        if (ESP_OK != esp_wifi_sta_wpa2_ent_enable()) {
+        if (ESP_OK != esp_wifi_sta_wpa2_ent_enable(&wpa2_config)) {
             goto os_error;
         }
-    }
-
-    if (ESP_OK != esp_wifi_set_config(WIFI_IF_STA, &config)) {
-        goto os_error;
     }
 
     if (ESP_OK != esp_wifi_connect()) {
@@ -747,8 +748,8 @@ STATIC mp_obj_t wlan_scan(mp_obj_t self_in) {
 
     esp_wifi_scan_get_ap_num(&ap_num); // get the number of scanned APs
     ap_record_buffer = pvPortMalloc(ap_num * sizeof(wifi_ap_record_t));
-    if (ap_record_buffer == NULL){
-        return mp_const_none;
+    if (ap_record_buffer == NULL) {
+        mp_raise_OSError(MP_ENOMEM);
     }
 
     mp_obj_t nets = mp_const_none;
