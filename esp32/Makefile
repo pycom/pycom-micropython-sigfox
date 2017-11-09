@@ -50,11 +50,7 @@ CFLAGS_XTENSA = -DESP_PLATFORM -Wpointer-arith -Wall -Werror=all -Wno-error=unus
                 -Wno-error=deprecated-declarations -Wno-unused-parameter -DWITH_POSIX \
                 -mfix-esp32-psram-cache-issue
 
-ifeq ($(TARGET), app)
 CFLAGS_XTENSA_OPT = -Os
-else
-CFLAGS_XTENSA_OPT = -Og
-endif
 
 CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 

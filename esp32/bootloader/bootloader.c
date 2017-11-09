@@ -23,6 +23,7 @@
 #include "esp_system.h"
 
 #include "rom/cache.h"
+#include "rom/efuse.h"
 #include "rom/ets_sys.h"
 #include "rom/spi_flash.h"
 #include "rom/crc.h"
@@ -84,6 +85,8 @@ static void set_cache_and_start_app(uint32_t drom_addr,
     uint32_t irom_size,
     uint32_t entry_addr);
 static void update_flash_config(const esp_image_header_t* pfhdr);
+static void vddsdio_configure();
+static void flash_gpio_configure();
 static void clock_configure(void);
 static void uart_console_configure(void);
 static void wdt_reset_check(void);
@@ -106,6 +109,7 @@ void call_start_cpu0()
     cpu_configure_region_protection();
 
     /* Sanity check that static RAM is after the stack */
+#ifndef NDEBUG
     {
         int *sp = get_sp();
         assert(&_bss_start <= &_bss_end);
@@ -113,6 +117,7 @@ void call_start_cpu0()
         assert(sp < &_bss_start);
         assert(sp < &_data_start);
     }
+#endif
 
     //Clear bss
     memset(&_bss_start, 0, (&_bss_end - &_bss_start) * sizeof(_bss_start));
@@ -272,13 +277,10 @@ static IRAM_ATTR void calculate_signature (uint8_t *signature) {
     MD5Init(&md5_context);
     ESP_LOGI(TAG, "md5 init sig");
     while (total_len < 0x7000) {
-        // Cache_Read_Disable(0);
         if (ESP_ROM_SPIFLASH_RESULT_OK != bootloader_flash_read(0x1000 + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, false)) {
             ESP_LOGE(TAG, SPI_ERROR_LOG);
-            // Cache_Read_Enable(0);
             return;
         }
-        // Cache_Read_Enable(0);
         total_len += SPI_SEC_SIZE;
         MD5Update(&md5_context, (void *)bootloader_buf, SPI_SEC_SIZE);
     }
@@ -372,15 +374,8 @@ static bool get_image_from_partition(const esp_partition_pos_t *partition, esp_i
 
 static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *partition)
 {
-    uint32_t chip_revision = 0;
     boot_info_t *boot_info;
     boot_info_t _boot_info;
-
-    // TODO
-    // uint32_t reg = REG_READ(EFUSE_BLK0_RDATA3_REG);
-    // if ((reg & EFUSE_RD_CHIP_VER_REV1_M) != 0) {
-    //     chip_revision = 1;
-    // }
 
     if (bs->ota_info.size < 2 * sizeof(esp_ota_select_entry_t)) {
         ESP_LOGE(TAG, "ERROR: ota_info partition size %d is too small (minimum %d bytes)", bs->ota_info.size, sizeof(esp_ota_select_entry_t));
@@ -440,10 +435,8 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
 
         // do we have a new image that needs to be verified?
         if ((boot_info->ActiveImg != IMG_ACT_FACTORY) && (boot_info->Status == IMG_STATUS_CHECK)) {
-            if (chip_revision == 0) {
-                if (boot_info->ActiveImg == IMG_ACT_UPDATE2) {
-                    boot_info->ActiveImg = IMG_ACT_FACTORY;    // we only have space for 1 OTAA image
-                }
+            if (boot_info->ActiveImg == IMG_ACT_UPDATE2) {
+                boot_info->ActiveImg = IMG_ACT_FACTORY;    // we only have space for 1 OTAA image
             }
             if (!bootloader_verify(&bs->image[boot_info->ActiveImg], boot_info->size)) {
                 // switch to the previous image
@@ -494,15 +487,17 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
 
 static void bootloader_main()
 {
+    vddsdio_configure();
+    flash_gpio_configure();
     clock_configure();
     uart_console_configure();
     wdt_reset_check();
     ESP_LOGI(TAG, "ESP-IDF %s 2nd stage bootloader");
 
-    esp_image_header_t fhdr;
-    bootloader_state_t bootloader_state;
-    esp_partition_pos_t partition;
-    esp_image_metadata_t image_data;
+    esp_image_header_t fhdr __attribute__((aligned (4)));
+    bootloader_state_t bootloader_state __attribute__((aligned (4)));
+    esp_partition_pos_t partition __attribute__((aligned (4)));
+    esp_image_metadata_t image_data __attribute__((aligned (4)));
 
     memset(&bootloader_state, 0, sizeof(bootloader_state));
     ets_set_appcpu_boot_addr(0);
@@ -754,6 +749,105 @@ static void print_flash_info(const esp_image_header_t* phdr)
 #endif
 }
 
+
+static void vddsdio_configure()
+{
+#if CONFIG_BOOTLOADER_VDDSDIO_BOOST
+    rtc_vddsdio_config_t cfg = rtc_vddsdio_get_config();
+    if (cfg.tieh == 0) {    // 1.8V is used
+        cfg.drefh = 3;
+        cfg.drefm = 3;
+        cfg.drefl = 3;
+        cfg.force = 1;
+        cfg.enable = 1;
+        rtc_vddsdio_set_config(cfg);
+        ets_delay_us(10); // wait for regulator to become stable
+    }
+#endif // CONFIG_BOOTLOADER_VDDSDIO_BOOST
+}
+
+
+#define FLASH_CLK_IO      6
+#define FLASH_CS_IO       11
+#define FLASH_SPIQ_IO     7
+#define FLASH_SPID_IO     8
+#define FLASH_SPIWP_IO    10
+#define FLASH_SPIHD_IO    9
+#define FLASH_IO_MATRIX_DUMMY_40M   1
+#define FLASH_IO_MATRIX_DUMMY_80M   2
+static void IRAM_ATTR flash_gpio_configure()
+{
+    int spi_cache_dummy = 0;
+    int drv = 2;
+#if CONFIG_FLASHMODE_QIO
+    spi_cache_dummy = SPI0_R_QIO_DUMMY_CYCLELEN;   //qio 3
+#elif CONFIG_FLASHMODE_QOUT
+    spi_cache_dummy = SPI0_R_FAST_DUMMY_CYCLELEN;  //qout 7
+#elif CONFIG_FLASHMODE_DIO
+    spi_cache_dummy = SPI0_R_DIO_DUMMY_CYCLELEN;   //dio 3
+#elif CONFIG_FLASHMODE_DOUT
+    spi_cache_dummy = SPI0_R_FAST_DUMMY_CYCLELEN;  //dout 7
+#endif
+    /* dummy_len_plus values defined in ROM for SPI flash configuration */
+    extern uint8_t g_rom_spiflash_dummy_len_plus[];
+#if CONFIG_ESPTOOLPY_FLASHFREQ_40M
+    g_rom_spiflash_dummy_len_plus[0] = FLASH_IO_MATRIX_DUMMY_40M;
+    g_rom_spiflash_dummy_len_plus[1] = FLASH_IO_MATRIX_DUMMY_40M;
+    SET_PERI_REG_BITS(SPI_USER1_REG(0), SPI_USR_DUMMY_CYCLELEN_V, spi_cache_dummy + FLASH_IO_MATRIX_DUMMY_40M, SPI_USR_DUMMY_CYCLELEN_S);  //DUMMY
+#elif CONFIG_ESPTOOLPY_FLASHFREQ_80M
+    g_rom_spiflash_dummy_len_plus[0] = FLASH_IO_MATRIX_DUMMY_80M;
+    g_rom_spiflash_dummy_len_plus[1] = FLASH_IO_MATRIX_DUMMY_80M;
+    SET_PERI_REG_BITS(SPI_USER1_REG(0), SPI_USR_DUMMY_CYCLELEN_V, spi_cache_dummy + FLASH_IO_MATRIX_DUMMY_80M, SPI_USR_DUMMY_CYCLELEN_S);  //DUMMY
+    drv = 3;
+#endif
+
+    uint32_t chip_ver = REG_GET_FIELD(EFUSE_BLK0_RDATA3_REG, EFUSE_RD_CHIP_VER_PKG);
+    uint32_t pkg_ver = chip_ver & 0x7;
+
+    if (pkg_ver == EFUSE_RD_CHIP_VER_PKG_ESP32D2WDQ5) {
+        // For ESP32D2WD the SPI pins are already configured
+        ESP_LOGI(TAG, "Detected ESP32D2WD");
+        //flash clock signal should come from IO MUX.
+        PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U, FUNC_SD_CLK_SPICLK);
+        SET_PERI_REG_BITS(PERIPHS_IO_MUX_SD_CLK_U, FUN_DRV, drv, FUN_DRV_S);
+    } else if (pkg_ver == EFUSE_RD_CHIP_VER_PKG_ESP32PICOD2) {
+        // For ESP32PICOD2 the SPI pins are already configured
+        ESP_LOGI(TAG, "Detected ESP32PICOD2");
+        //flash clock signal should come from IO MUX.
+        PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U, FUNC_SD_CLK_SPICLK);
+        SET_PERI_REG_BITS(PERIPHS_IO_MUX_SD_CLK_U, FUN_DRV, drv, FUN_DRV_S);
+    } else if (pkg_ver == EFUSE_RD_CHIP_VER_PKG_ESP32PICOD4) {
+        // For ESP32PICOD4 the SPI pins are already configured
+        ESP_LOGI(TAG, "Detected ESP32PICOD4");
+        //flash clock signal should come from IO MUX.
+        PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U, FUNC_SD_CLK_SPICLK);
+        SET_PERI_REG_BITS(PERIPHS_IO_MUX_SD_CLK_U, FUN_DRV, drv, FUN_DRV_S);
+    } else {
+        ESP_LOGI(TAG, "Detected ESP32");
+        const uint32_t spiconfig = ets_efuse_get_spiconfig();
+        if (spiconfig == EFUSE_SPICONFIG_SPI_DEFAULTS) {
+            gpio_matrix_out(FLASH_CS_IO, SPICS0_OUT_IDX, 0, 0);
+            gpio_matrix_out(FLASH_SPIQ_IO, SPIQ_OUT_IDX, 0, 0);
+            gpio_matrix_in(FLASH_SPIQ_IO, SPIQ_IN_IDX, 0);
+            gpio_matrix_out(FLASH_SPID_IO, SPID_OUT_IDX, 0, 0);
+            gpio_matrix_in(FLASH_SPID_IO, SPID_IN_IDX, 0);
+            gpio_matrix_out(FLASH_SPIWP_IO, SPIWP_OUT_IDX, 0, 0);
+            gpio_matrix_in(FLASH_SPIWP_IO, SPIWP_IN_IDX, 0);
+            gpio_matrix_out(FLASH_SPIHD_IO, SPIHD_OUT_IDX, 0, 0);
+            gpio_matrix_in(FLASH_SPIHD_IO, SPIHD_IN_IDX, 0);
+            //select pin function gpio
+            PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA0_U, PIN_FUNC_GPIO);
+            PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA1_U, PIN_FUNC_GPIO);
+            PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA2_U, PIN_FUNC_GPIO);
+            PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_DATA3_U, PIN_FUNC_GPIO);
+            PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CMD_U, PIN_FUNC_GPIO);
+            // flash clock signal should come from IO MUX.
+            // set drive ability for clock
+            PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U, FUNC_SD_CLK_SPICLK);
+            SET_PERI_REG_BITS(PERIPHS_IO_MUX_SD_CLK_U, FUN_DRV, drv, FUN_DRV_S);
+        }
+    }
+}
 
 static void clock_configure(void)
 {

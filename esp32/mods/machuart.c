@@ -350,9 +350,10 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
         }
     }
 
-    // disable the interupts while we reconfigure
-    self->uart_reg->int_clr.val = UART_INTR_MASK;
-    self->uart_reg->int_ena.val = 0;
+    if (self->config.baud_rate > 0) {
+        // uninstall the driver
+        uart_driver_delete(self->uart_id);
+    }
 
     // assign the pins
     mp_obj_t pins_o = args[4].u_obj;

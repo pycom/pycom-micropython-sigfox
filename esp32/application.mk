@@ -283,7 +283,7 @@ BOOT_LIBS = -Wl,--start-group $(B_LIBS) $(BUILD)/bootloader/bootloader.a -Wl,--e
 
 # debug / optimization options
 ifeq ($(BTYPE), debug)
-    CFLAGS += -DDEBUG_B -DNDEBUG -DPYCOM_DEBUG
+    CFLAGS += -DDEBUG
 else
     ifeq ($(BTYPE), release)
         CFLAGS += -DNDEBUG
@@ -323,7 +323,7 @@ ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
 
 FLASH_SIZE = 4MB
-ESPFLASHFREQ = 40m
+ESPFLASHFREQ = 80m
 ESPFLASHMODE = dio
 
 PIC_TOOL = $(PYTHON) tools/pypic.py --port $(ESPPORT)
@@ -354,6 +354,8 @@ $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(Q) $(AR) cru $@ $^
 
 $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a
+#	$(ECHO) "COPY IDF LIBRARIES $@"
+#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@

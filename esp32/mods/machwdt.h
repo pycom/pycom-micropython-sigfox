@@ -12,6 +12,6 @@
 
 extern const mp_obj_type_t mach_wdt_type;
 
-extern void machine_wdt_start (timg_dev_t *timer, uint32_t timeout_ms);
+extern void machine_wdt_start (uint32_t timeout_ms);
 
 #endif // MACHWDT_H_

@@ -11,6 +11,18 @@ def main():
     cmd_args = cmd_parser.parse_args()
 
     src = cmd_args.idflibs
+
+    # copy the bootloader libraries
+    dst = os.getcwd() + '/bootloader/lib'
+
+    shutil.copy(src + '/bootloader/bootloader_support/libbootloader_support.a', dst)
+    shutil.copy(src + '/bootloader/log/liblog.a', dst)
+    shutil.copy(src + '/bootloader/micro-ecc/libmicro-ecc.a', dst)
+    shutil.copy(src + '/bootloader/soc/libsoc.a', dst)
+    shutil.copy(src + '/bootloader/spi_flash/libspi_flash.a', dst)
+
+
+    # copy the application libraries
     dst = os.getcwd() + '/lib'
 
     shutil.copy(src + '/bt/libbt.a', dst)

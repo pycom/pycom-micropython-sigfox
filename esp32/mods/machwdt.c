@@ -38,10 +38,8 @@
 
 typedef struct _mach_wdt_obj_t {
     mp_obj_base_t base;
-    timg_dev_t *timer;
     uint32_t timeout_ms;
-    bool t0_started;
-    bool t1_started;
+    bool started;
 } mach_wdt_obj_t;
 
 
@@ -58,40 +56,34 @@ const mp_obj_type_t mach_wdt_type;
  ******************************************************************************/
 
 static void task_wdt_isr (void *arg) {
-    timg_dev_t *timer = (timg_dev_t *)arg;
     // ack the interrupt
-    timer->int_clr_timers.wdt = 1;
+    TIMERG0.int_clr_timers.wdt = 1;
 }
 
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
 
-void machine_wdt_start (timg_dev_t *timer, uint32_t timeout_ms) {
+void machine_wdt_start (uint32_t timeout_ms) {
     uint32_t timeout = (timeout_ms > 0) ? timeout_ms : 1;
 
-    timer->wdt_wprotect = TIMG_WDT_WKEY_VALUE;
-    timer->wdt_config0.sys_reset_length = 7;                   // 3.2uS
-    timer->wdt_config0.cpu_reset_length = 7;                   // 3.2uS
-    timer->wdt_config0.level_int_en = 1;
-    timer->wdt_config0.stg0 = TIMG_WDT_STG_SEL_INT;            // 1st stage timeout: interrupt
-    timer->wdt_config0.stg1 = TIMG_WDT_STG_SEL_RESET_SYSTEM;   // 2nd stage timeout: reset system
-    timer->wdt_config1.clk_prescale = 80 * 500;                // Prescaler: wdt counts in ticks of 0.5mS
-    timer->wdt_config2 = timeout;                              // Set timeout before interrupt
-    timer->wdt_config3 = timeout;                              // Set timeout before reset
-    timer->wdt_config0.en = 1;
-    timer->wdt_feed = 1;
-    timer->wdt_wprotect = 0;
-    if (timer == &TIMERG0) {
-        if (!mach_wdt_obj.t0_started) {
-            esp_intr_alloc(ETS_TG0_WDT_LEVEL_INTR_SOURCE, 0, task_wdt_isr, (void *)timer, NULL);
-            mach_wdt_obj.t0_started = true;
-        }
-    } else {
-        if (!mach_wdt_obj.t1_started) {
-            esp_intr_alloc(ETS_TG1_WDT_LEVEL_INTR_SOURCE, 0, task_wdt_isr, (void *)timer, NULL);
-            mach_wdt_obj.t1_started = true;
-        }
+    TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
+    TIMERG0.wdt_config0.en = 0;
+    TIMERG0.wdt_config0.sys_reset_length = 7;                   // 3.2uS
+    TIMERG0.wdt_config0.cpu_reset_length = 7;                   // 3.2uS
+    TIMERG0.wdt_config0.level_int_en = 1;
+    TIMERG0.wdt_config0.stg0 = TIMG_WDT_STG_SEL_INT;            // 1st stage timeout: interrupt
+    TIMERG0.wdt_config0.stg1 = TIMG_WDT_STG_SEL_RESET_SYSTEM;   // 2nd stage timeout: reset system
+    TIMERG0.wdt_config1.clk_prescale = 80 * 500;                // Prescaler: wdt counts in ticks of 0.5mS
+    TIMERG0.wdt_config2 = timeout;                              // Set timeout before interrupt
+    TIMERG0.wdt_config3 = timeout;                              // Set timeout before reset
+    TIMERG0.wdt_config0.en = 1;
+    TIMERG0.wdt_feed = 1;
+    TIMERG0.wdt_wprotect = 0;
+    TIMERG0.int_clr_timers.wdt = 1;
+    if (!mach_wdt_obj.started) {
+        esp_intr_alloc(ETS_TG0_WDT_LEVEL_INTR_SOURCE, 0, task_wdt_isr, NULL, NULL);
+        mach_wdt_obj.started = true;
     }
 }
 
@@ -117,32 +109,27 @@ STATIC mp_obj_t mach_wdt_make_new(const mp_obj_type_t *type, mp_uint_t n_args, m
     // setup the object
     mach_wdt_obj_t *self = &mach_wdt_obj;
     self->base.type = &mach_wdt_type;
-    self->timer = &TIMERG0;
 
     // setup the WDT and timeout
-    machine_wdt_start(self->timer, args[1].u_int);
+    machine_wdt_start(args[1].u_int);
 
     // return constant object
     return (mp_obj_t)&mach_wdt_obj;
 }
 
 STATIC mp_obj_t mach_wdt_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    mach_wdt_obj_t *self = pos_args[0];
-
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(mach_wdt_init_args) - 1];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &mach_wdt_init_args[1], args);
-    machine_wdt_start(self->timer, args[0].u_int);
+    machine_wdt_start(args[0].u_int);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_wdt_init_obj, 1, mach_wdt_init);
 
 STATIC mp_obj_t mach_wdt_feed (mp_obj_t self_in) {
-    mach_wdt_obj_t *self = self_in;
-
-    self->timer->wdt_wprotect = TIMG_WDT_WKEY_VALUE;
-    self->timer->wdt_feed = 1;
-    self->timer->wdt_wprotect = 0;
+    TIMERG0.wdt_wprotect = TIMG_WDT_WKEY_VALUE;
+    TIMERG0.wdt_feed = 1;
+    TIMERG0.wdt_wprotect = 0;
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_wdt_feed_obj, mach_wdt_feed);
