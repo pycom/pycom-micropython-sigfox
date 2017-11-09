@@ -23,6 +23,7 @@ class MsgHandler:
         self._poll = select.poll()
         self._output_queue=[]
         self._out_packet_mutex=_thread.allocate_lock()
+        _thread.stack_size(5120)
         _thread.start_new_thread(self._io_thread_func,())
         self._recv_callback = receive_callback
         self._pingSent=False
