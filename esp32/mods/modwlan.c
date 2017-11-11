@@ -53,6 +53,9 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 
+#include "tcpip_adapter.h"
+
+
 /******************************************************************************
  DEFINE TYPES
  ******************************************************************************/
@@ -218,6 +221,10 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key,
 
     if (mode != WIFI_MODE_STA) {
         wlan_setup_ap (ssid, auth, key, channel, add_mac);
+        tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, "Dickmunch_STA");
+    }
+    else { 
+        tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, "Dickmunch_AP");
     }
 
     esp_wifi_start();
