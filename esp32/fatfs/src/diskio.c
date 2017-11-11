@@ -145,7 +145,7 @@ DRESULT disk_ioctl (
         case CTRL_SYNC:
             return sflash_disk_flush();
         case GET_SECTOR_COUNT:
-            *((DWORD*)buff) = SFLASH_FS_SECTOR_COUNT;
+            *((DWORD*)buff) = sflash_get_sector_count();
             return RES_OK;
         case GET_SECTOR_SIZE:
             *((DWORD*)buff) = SFLASH_FS_SECTOR_SIZE;

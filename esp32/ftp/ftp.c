@@ -219,6 +219,7 @@ static void ftp_open_child (char *pwd, char *dir);
 static void ftp_close_child (char *pwd);
 static void ftp_return_to_previous_path (char *pwd, char *dir);
 
+
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -335,8 +336,7 @@ void ftp_run (void) {
                         ftp_send_reply(426, NULL);
                         ftp_data.state = E_FTP_STE_END_TRANSFER;
                     }
-                }
-                else {
+                } else {
                     if (ftp_data.special_file) {
                         ftp_data.special_file = false;
                         updater_finish();
