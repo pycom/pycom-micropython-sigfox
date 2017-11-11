@@ -424,7 +424,7 @@ STATIC bool hw_i2c_slave_ping (machine_i2c_obj_t *i2c_obj, uint16_t slave_addr) 
 }
 
 STATIC void i2c_deassign_pins_af (machine_i2c_obj_t *self) {
-    if (self->baudrate > 0 && self->sda && self->scl) {
+    if (self->sda && self->scl) {
         // we must set the value to 1 so that when Rx pins are deassigned, their are hardwired to 1
         self->sda->value = 1;
         self->scl->value = 1;
@@ -740,15 +740,18 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_i2c_writeto_mem_obj, 1, machine_i2c_wr
 STATIC mp_obj_t machine_i2c_deinit(mp_obj_t self_in) {
     machine_i2c_obj_t *self = self_in;
 
-    i2c_driver_delete(self->bus_id);
+    if (self->baudrate > 0) {
 
-    // detach the pins
-    if (self->bus_id < 2) {
-        i2c_deassign_pins_af(self);
+        i2c_driver_delete(self->bus_id);
+
+        // detach the pins
+        if (self->bus_id < 2) {
+            i2c_deassign_pins_af(self);
+        }
+
+        // invalidate the baudrate
+        self->baudrate = 0;
     }
-
-    // invalidate the baudrate
-    self->baudrate = 0;
 
     return mp_const_none;
 }

@@ -234,10 +234,12 @@ static void spi_assign_pins_af (mach_spi_obj_t *self, mp_obj_t *pins) {
 
 static void spi_deassign_pins_af (mach_spi_obj_t *self) {
     for (int i = 0; i < 3; i++) {
-        // we must set the value to 0 so that when Rx pins are deassigned, their are hardwired to 0
-        self->pins[i]->value = 0;
-        pin_deassign(self->pins[i]);
-        self->pins[i] = MP_OBJ_NULL;
+        if (self->pins[i]) {
+            // we must set the value to 0 so that when Rx pins are deassigned, their are hardwired to 0
+            self->pins[i]->value = 0;
+            pin_deassign(self->pins[i]);
+            self->pins[i] = MP_OBJ_NULL;
+        }
     }
 }
 
@@ -257,11 +259,6 @@ STATIC void pyb_spi_print(const mp_print_t *print, mp_obj_t self_in, mp_print_ki
 STATIC mp_obj_t pyb_spi_init_helper(mach_spi_obj_t *self, const mp_arg_val_t *args) {
     // verify that the mode is master
     if (args[0].u_int != SpiMode_Master) {
-        goto invalid_args;
-    }
-
-    self->baudrate = args[1].u_int;
-    if (!self->baudrate) {
         goto invalid_args;
     }
 
@@ -300,10 +297,12 @@ STATIC mp_obj_t pyb_spi_init_helper(mach_spi_obj_t *self, const mp_arg_val_t *ar
         self->submode = SpiSubMode_3;
     }
 
-    if (self->baudrate > 0) {
-        spi_deassign_pins_af(self);
+    self->baudrate = args[1].u_int;
+    if (!self->baudrate) {
+        goto invalid_args;
     }
 
+    spi_deassign_pins_af(self);
     // assign the pins
     mp_obj_t pins_o = args[6].u_obj;
     if (pins_o != mp_const_none) {
