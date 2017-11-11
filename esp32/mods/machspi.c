@@ -71,6 +71,7 @@
  ******************************************************************************/
 typedef struct _mach_spi_obj_t {
     mp_obj_base_t base;
+    pin_obj_t *pins[3];
     uint baudrate;
     uint config;
     uint spi_num;
@@ -91,9 +92,9 @@ typedef struct _mach_spi_obj_t {
 #if defined(WIPY)
 STATIC mach_spi_obj_t mach_spi_obj[2] = { {.baudrate = 0}, {.baudrate = 0} };
 STATIC const mp_obj_t mach_spi_def_pin[2][3] = { {&PIN_MODULE_P10, &PIN_MODULE_P11, &PIN_MODULE_P12},
-                                                 {&PIN_MODULE_P19, &PIN_MODULE_P20, &PIN_MODULE_P21} }
+                                                 {&PIN_MODULE_P19, &PIN_MODULE_P20, &PIN_MODULE_P21} };
 static const uint32_t mach_spi_pin_af[2][3] = { {HSPICLK_OUT_IDX, HSPID_OUT_IDX, HSPIQ_IN_IDX},
-                                                {VSPICLK_OUT_IDX, VSPID_OUT_IDX, VSPIQ_IN_IDX} }
+                                                {VSPICLK_OUT_IDX, VSPID_OUT_IDX, VSPIQ_IN_IDX} };
 #else
 STATIC mach_spi_obj_t mach_spi_obj[1] = { {.baudrate = 0} };
 STATIC const mp_obj_t mach_spi_def_pin[1][3] = { {&PIN_MODULE_P10, &PIN_MODULE_P11, &PIN_MODULE_P12} };
@@ -226,7 +227,17 @@ static void spi_assign_pins_af (mach_spi_obj_t *self, mp_obj_t *pins) {
                 mode = GPIO_MODE_OUTPUT;
             }
             pin_config(pin, af_in, af_out, mode, MACHPIN_PULL_NONE, 0);
+            self->pins[i] = pin;
         }
+    }
+}
+
+static void spi_deassign_pins_af (mach_spi_obj_t *self) {
+    for (int i = 0; i < 3; i++) {
+        // we must set the value to 0 so that when Rx pins are deassigned, their are hardwired to 0
+        self->pins[i]->value = 0;
+        pin_deassign(self->pins[i]);
+        self->pins[i] = MP_OBJ_NULL;
     }
 }
 
@@ -287,6 +298,10 @@ STATIC mp_obj_t pyb_spi_init_helper(mach_spi_obj_t *self, const mp_arg_val_t *ar
         self->submode = SpiSubMode_2;
     } else {
         self->submode = SpiSubMode_3;
+    }
+
+    if (self->baudrate > 0) {
+        spi_deassign_pins_af(self);
     }
 
     // assign the pins
@@ -360,8 +375,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(pyb_spi_init_obj, 1, pyb_spi_init);
 /// Turn off the spi bus.
 STATIC mp_obj_t pyb_spi_deinit(mp_obj_t self_in) {
     mach_spi_obj_t *self = self_in;
-    self->baudrate = 0;
-    // TODO: deassign the pins
+    if (self->baudrate > 0) {
+        self->baudrate = 0;
+        spi_deassign_pins_af(self);
+    }
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(pyb_spi_deinit_obj, pyb_spi_deinit);

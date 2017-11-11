@@ -166,9 +166,6 @@ void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, i
     self->irq_trigger = GPIO_INTR_DISABLE;
 
     pin_obj_configure ((const pin_obj_t *)self);
-
-//    // register it with the sleep module
-//    pyb_sleep_add ((const mp_obj_t)self, (WakeUpCB_t)pin_obj_configure);
 }
 
 void pin_irq_enable (mp_obj_t self_in) {

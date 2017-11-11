@@ -425,13 +425,13 @@ STATIC bool hw_i2c_slave_ping (machine_i2c_obj_t *i2c_obj, uint16_t slave_addr) 
 
 STATIC void i2c_deassign_pins_af (machine_i2c_obj_t *self) {
     if (self->baudrate > 0 && self->sda && self->scl) {
-        // TODO: disable the pin pull-ups here too.
-
         // we must set the value to 1 so that when Rx pins are deassigned, their are hardwired to 1
         self->sda->value = 1;
         self->scl->value = 1;
         pin_deassign(self->sda);
         pin_deassign(self->scl);
+        gpio_pullup_dis(self->sda->pin_number);
+        gpio_pullup_dis(self->scl->pin_number);
         self->sda = MP_OBJ_NULL;
         self->scl = MP_OBJ_NULL;
     }
@@ -502,9 +502,6 @@ STATIC mp_obj_t machine_i2c_init_helper(machine_i2c_obj_t *self, const mp_arg_va
     } else {
         mp_hal_i2c_init(self);
     }
-
-    // register it with the sleep module
-    // pyb_sleep_add ((const mp_obj_t)self, (WakeUpCB_t)i2c_init);
 
     return mp_const_none;
 

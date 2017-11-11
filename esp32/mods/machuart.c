@@ -81,7 +81,7 @@ STATIC mp_obj_t mach_uart_deinit(mp_obj_t self_in);
 struct _mach_uart_obj_t {
     mp_obj_base_t base;
     uart_dev_t* uart_reg;
-    mp_obj_t pins[4];
+    pin_obj_t *pins[4];
     uart_config_t config;
     uint8_t irq_flags;
     uint8_t uart_id;
@@ -192,9 +192,10 @@ static bool uart_tx_fifo_space (mach_uart_obj_t *self) {
 static void uart_deassign_pins_af (mach_uart_obj_t *self) {
     for (int i = 0; i < self->n_pins; i++) {
         // We must set the value to 1 so that when Rx pins are deassigned, their are hardwired to 1
-        ((pin_obj_t *)((mp_obj_t *)self->pins)[i])->value = 1;
-        pin_deassign((pin_obj_t *)((mp_obj_t *)self->pins)[i]);
-        self->pins[i] = mp_const_none;
+        self->pins[i]->value = 1;
+        pin_deassign(self->pins[i]);
+        gpio_pullup_dis(self->pins[i]->pin_number);
+        self->pins[i] = MP_OBJ_NULL;
     }
     self->n_pins = 0;
 }
@@ -353,6 +354,8 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     if (self->config.baud_rate > 0) {
         // uninstall the driver
         uart_driver_delete(self->uart_id);
+        // de-assign the pins
+        uart_deassign_pins_af (self);
     }
 
     // assign the pins
@@ -384,7 +387,6 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
                 }
             }
         }
-        uart_deassign_pins_af (self);
         uart_assign_pins_af (self, pins, n_pins);
     }
 
