@@ -190,6 +190,7 @@ void pin_deassign (pin_obj_t *self) {
         gpio_matrix_in(self->af_in, self->value ? MACHPIN_SIMPLE_IN_HIGH : MACHPIN_SIMPLE_IN_LOW, false);
     }
     if (self->af_out >= 0) {
+        pin_set_value(self);
         gpio_matrix_out(self->pin_number, MACHPIN_SIMPLE_OUTPUT, false, false);
     }
     self->af_in = -1;
