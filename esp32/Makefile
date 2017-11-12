@@ -48,11 +48,12 @@ CFLAGS_XTENSA = -DESP_PLATFORM -Wpointer-arith -Wall -Werror=all -Wno-error=unus
                 -mlongcalls -Wall -ffunction-sections -fdata-sections -fno-common \
                 -Wno-sign-compare -Wno-old-style-declaration -fstrict-volatile-bitfields \
                 -Wno-error=deprecated-declarations -Wno-unused-parameter -DWITH_POSIX \
-                -mfix-esp32-psram-cache-issue
 
 CFLAGS_XTENSA_OPT = -Os
+CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue
 
-CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
+CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
+CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 
 LDFLAGS = -nostdlib -Wl,-Map=$(@:.elf=.map) -Wl,--no-check-sections -u call_user_start_cpu0
 LDFLAGS += -Wl,-static -Wl,--undefined=uxTopUsedPriority -Wl,--gc-sections

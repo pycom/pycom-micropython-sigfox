@@ -275,6 +275,7 @@ APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T 
 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -D$(LORA_BAND) -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
+CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -D$(LORA_BAND) -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
 
 # add the application archive, this order is very important
 APP_LIBS = -Wl,--start-group $(LIBS) $(BUILD)/application.a -Wl,--end-group -Wl,-EL
@@ -284,15 +285,18 @@ BOOT_LIBS = -Wl,--start-group $(B_LIBS) $(BUILD)/bootloader/bootloader.a -Wl,--e
 # debug / optimization options
 ifeq ($(BTYPE), debug)
     CFLAGS += -DDEBUG
+    CFLAGS_SIGFOX += -DDEBUG
 else
     ifeq ($(BTYPE), release)
         CFLAGS += -DNDEBUG
+        CFLAGS_SIGFOX += -DNDEBUG
     else
         $(error Invalid BTYPE specified)
     endif
 endif
 
 $(BUILD)/bootloader/%.o: CFLAGS += -D BOOTLOADER_BUILD=1
+$(BUILD)/bootloader/%.o: CFLAGS_SIGFOX += -D BOOTLOADER_BUILD=1
 
 BOOT_OFFSET = 0x1000
 PART_OFFSET = 0x8000
@@ -308,9 +312,10 @@ ifeq ($(BOARD), LOPY)
 else
     ifeq ($(BOARD), SIPY)
         APP_BIN = $(BUILD)/sipy.bin
-        $(BUILD)/sigfox/radio.o: CFLAGS += -O2
-        $(BUILD)/sigfox/timer.o: CFLAGS += -O2
-        $(BUILD)/sigfox/targets/%.o: CFLAGS += -O2
+        $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
     else
         APP_BIN = $(BUILD)/wipy.bin
     endif

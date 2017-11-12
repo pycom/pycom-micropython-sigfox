@@ -150,7 +150,7 @@ static bool b_Diff;
  *
  * \param[in] param rf_mode  the mode ( RX or TX ) of RF programmation
  ******************************************************************************/
-void RADIO_init_chip(sfx_rf_mode_t rf_mode)
+void IRAM_ATTR RADIO_init_chip(sfx_rf_mode_t rf_mode)
 {
 	uint8 writeByte;
 	uint16 i;
@@ -196,12 +196,12 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode)
 /**************************************************************************//**
  *  @brief 		This function puts the radio in Idle mode
  ******************************************************************************/
-void RADIO_close_chip(void)
+void IRAM_ATTR RADIO_close_chip(void)
 {
     trxSpiCmdStrobe(CC112X_SIDLE);
 }
 
-static void RADIO_manual_calibration(void)
+static void IRAM_ATTR RADIO_manual_calibration(void)
 {
     uint8 original_fs_cal2;
     uint8 calResults_for_vcdac_start_high[3];
@@ -293,7 +293,7 @@ static void RADIO_manual_calibration(void)
  *  @note		\li FREQ = 0.0065536 * Freq_rf - 0.25 FREQOFF for 40 MHz XTAL
  *  @note		\li FREQ = 0.008192 * Freq_rf - 0.25 FREQOFF for 32 MHz XTAL
  ******************************************************************************/
-void RADIO_change_frequency(unsigned long ul_Freq)
+void IRAM_ATTR RADIO_change_frequency(unsigned long ul_Freq)
 {
     uint8 tuc_Frequence[3];
     signed long CalibFrequency = FREQ_ADJUST_VALUE;
@@ -331,8 +331,8 @@ void RADIO_change_frequency(unsigned long ul_Freq)
     tuc_Frequence[2]= (sfx_u8) ((freq_reg_value & 0x00FF0000)>> 16u);
 
     /* send the FREQOFF register settings */
-    cc112xSpiWriteReg(CC112X_FREQOFF1, &writeByte_FOFF1,1);
-    cc112xSpiWriteReg(CC112X_FREQOFF0, &writeByte_FOFF0,1);
+    cc112xSpiWriteReg(CC112X_FREQOFF1, &writeByte_FOFF1, 1);
+    cc112xSpiWriteReg(CC112X_FREQOFF0, &writeByte_FOFF0, 1);
 
     /* send frequency registers value to the chip */
     cc112xSpiWriteReg(CC112X_FREQ2, tuc_Frequence + 2, 1);
@@ -368,7 +368,7 @@ IRAM_ATTR void RADIO_modulate(void)
     sfx_s8 sign;
     uint8 writeByte_FOFF0_pi_shifting;
     uint8 writeByte_FOFF1_pi_shifting;
-    sfx_u8 writeByte_FOFF1_init = offset_value >>8;
+    sfx_u8 writeByte_FOFF1_init = offset_value >> 8;
     sfx_u8 writeByte_FOFF0_init = offset_value & 0x00FF;
 
 	if (b_Diff == false)
@@ -394,7 +394,7 @@ IRAM_ATTR void RADIO_modulate(void)
         {
             // Write the PA ramp levels to PA_CFG2 register
             trx8BitWrite(CC112X_PA_CFG2, Table_Pa_600bps[NB_PTS_PA-count-1]);
-            __delay_cycles(MODULATION_DELAY_CYCLES_100bps / 45);
+            __delay_cycles(MODULATION_DELAY_CYCLES_100bps / 65);
         }
     } else {
         for (count = (NB_PTS_PA-1); count >= 0; count--)
@@ -433,7 +433,7 @@ IRAM_ATTR void RADIO_modulate(void)
         for (count = NB_PTS_PA-1; count >= (0); count--)
         {
             trx8BitWrite(CC112X_PA_CFG2, Table_Pa_600bps[count]);
-            __delay_cycles(MODULATION_DELAY_CYCLES_100bps / 45);
+            __delay_cycles(MODULATION_DELAY_CYCLES_100bps / 65);
         }
     } else {
         for (count = NB_PTS_PA-1; count >= (0); count--)
@@ -516,7 +516,7 @@ RADIO_stop_rf_carrier(void)
  *
  *  @param 		ul_Freq 		is the frequency to use
  ******************************************************************************/
-void
+void IRAM_ATTR
 RADIO_start_unmodulated_cw(unsigned long ul_Freq)
 {
     // Initialize the radio in TX mode
@@ -535,7 +535,7 @@ RADIO_start_unmodulated_cw(unsigned long ul_Freq)
  *
  *  @param 		ul_Freq 		is the frequency to use
  ******************************************************************************/
-void
+void IRAM_ATTR
 RADIO_stop_unmodulated_cw(unsigned long ul_Freq)
 {
     // Stop TX carrier wave
