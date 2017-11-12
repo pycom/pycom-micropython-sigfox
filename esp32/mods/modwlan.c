@@ -673,8 +673,8 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
 
     // get the hostname
     const char *hostname = NULL;
-    if (args[7].u_obj != NULL) {
-        hostname = mp_obj_str_get_str(args[7].u_obj);
+    if (args[6].u_obj != NULL) {
+        hostname = mp_obj_str_get_str(args[6].u_obj);
         wlan_validate_hostname_len(strlen(hostname));
     }
 
