@@ -148,7 +148,7 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
 
     if (self->n_pins == 1) {
         pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
-        // make it an output
+        // make it UART Tx
         pin->value = 1;
         pin_deassign(pin);
         pin->mode = GPIO_MODE_OUTPUT;
@@ -217,7 +217,7 @@ static void uart_assign_pins_af (mach_uart_obj_t *self, mp_obj_t *pins, uint32_t
                     af_in = -1;
                     af_out = mach_uart_pin_af[self->uart_id][i];
                     mode = GPIO_MODE_OUTPUT;
-                    pull = MACHPIN_PULL_NONE;
+                    pull = MACHPIN_PULL_UP;
                 }
                 pin_config(pin, af_in, af_out, mode, pull, 1);
                 self->pins[i] = pin;
@@ -486,13 +486,15 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_any_obj, mach_uart_any);
 STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
     mach_uart_obj_t *self = self_in;
 
+    uint32_t isrmask = MICROPY_BEGIN_ATOMIC_SECTION();
+
     // only if the bus is initialized
     if (self->config.baud_rate > 0) {
         uint32_t delay = (((mp_obj_get_int(bits) + 1) * 1000000) / self->config.baud_rate) & 0x7FFF;
 
         if (self->n_pins == 1) {
             pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
-            // make it an output
+            // make it UART Tx
             pin->value = 1;
             pin_deassign(pin);
             pin->mode = GPIO_MODE_OUTPUT;
@@ -512,6 +514,8 @@ STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
             pin_config(pin, pin->af_in, -1, GPIO_MODE_INPUT, MACHPIN_PULL_UP, 1);
         }
     }
+
+    MICROPY_END_ATOMIC_SECTION(isrmask);
 
     return mp_const_none;
 }
