@@ -53,6 +53,7 @@ typedef struct _wlan_obj_t {
     uint8_t                 ssid[(MODWLAN_SSID_LEN_MAX + 1)];
     uint8_t                 key[65];
     uint8_t                 mac[6];
+    uint8_t                 hostname[16];
 
     // the sssid (or name) and mac of the other device
     uint8_t                 ssid_o[33];
@@ -74,7 +75,7 @@ extern wlan_obj_t wlan_obj;
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
 extern void wlan_pre_init (void);
-extern void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac);
+extern void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac, char *hostname);
 extern void wlan_update(void);
 extern void wlan_get_mac (uint8_t *macAddress);
 extern void wlan_get_ip (uint32_t *ip);
