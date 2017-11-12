@@ -412,7 +412,6 @@ STATIC void hw_i2c_master_readfrom(machine_i2c_obj_t *i2c_obj, uint16_t slave_ad
 }
 
 STATIC bool hw_i2c_slave_ping (machine_i2c_obj_t *i2c_obj, uint16_t slave_addr) {
-
     i2c_cmd_handle_t cmd = i2c_cmd_link_create();
     ESP_ERROR_CHECK(i2c_master_start(cmd));
     ESP_ERROR_CHECK(i2c_master_write_byte(cmd, (slave_addr << 1) | I2C_MASTER_WRITE, I2C_ACK_CHECK_EN));
@@ -741,14 +740,11 @@ STATIC mp_obj_t machine_i2c_deinit(mp_obj_t self_in) {
     machine_i2c_obj_t *self = self_in;
 
     if (self->baudrate > 0) {
-
-        i2c_driver_delete(self->bus_id);
-
-        // detach the pins
+        // before assigning the baudrate
         if (self->bus_id < 2) {
+            i2c_driver_delete(self->bus_id);
             i2c_deassign_pins_af(self);
         }
-
         // invalidate the baudrate
         self->baudrate = 0;
     }
