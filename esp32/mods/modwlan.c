@@ -202,7 +202,7 @@ void wlan_pre_init (void) {
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
 }
 
-void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac) {
+void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac, char *hostname) {
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
