@@ -4316,6 +4316,8 @@ void LoRaMacNvsSave( void )
     modlora_nvs_set_uint(E_LORA_NVS_ELE_ADR_ACKS, AdrAckCounter);
     modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNEL_MASK, LoRaMacParams.ChannelsMask, sizeof(LoRaMacParams.ChannelsMask));
     modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELS, Channels, sizeof(Channels));
+    
+    modlora_nvs_set_blob(E_LORA_NVS_ELE_RX2_CHANNEL, &LoRaMacParams.Rx2Channel, sizeof(LoRaMacParams.Rx2Channel));
 }
 
 void LoRaMacTestSetDutyCycleOn( bool enable )
