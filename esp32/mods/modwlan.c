@@ -274,7 +274,6 @@ void wlan_off_on (void) {
 STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
     switch(event->event_id) {
     case SYSTEM_EVENT_STA_START:
-        esp_wifi_connect();
         break;
     case SYSTEM_EVENT_STA_CONNECTED:
     {
@@ -291,16 +290,11 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
         system_event_sta_disconnected_t *disconn = &event->event_info.disconnected;
         switch (disconn->reason) {
-            case WIFI_REASON_AUTH_EXPIRE:
             case WIFI_REASON_AUTH_FAIL:
-            case WIFI_REASON_GROUP_CIPHER_INVALID:
-            case WIFI_REASON_PAIRWISE_CIPHER_INVALID:
-            case WIFI_REASON_802_1X_AUTH_FAILED:
-            case WIFI_REASON_CIPHER_SUITE_REJECTED:
                 wlan_obj.disconnected = true;
                 break;
             default:
-                // Let other errors through and try to reconnect.
+                // let other errors through and try to reconnect.
                 break;
         }
         if (!wlan_obj.disconnected) {
@@ -906,78 +900,79 @@ STATIC mp_obj_t wlan_isconnected(mp_obj_t self_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_isconnected_obj, wlan_isconnected);
 
 STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-   STATIC const mp_arg_t wlan_ifconfig_args[] = {
-       { MP_QSTR_id,               MP_ARG_INT,     {.u_int = 0} },
-       { MP_QSTR_config,           MP_ARG_OBJ,     {.u_obj = MP_OBJ_NULL} },
-   };
+    STATIC const mp_arg_t wlan_ifconfig_args[] = {
+        { MP_QSTR_id,               MP_ARG_INT,     {.u_int = 0} },
+        { MP_QSTR_config,           MP_ARG_OBJ,     {.u_obj = MP_OBJ_NULL} },
+    };
 
-   // parse args
-   mp_arg_val_t args[MP_ARRAY_SIZE(wlan_ifconfig_args)];
-   mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), wlan_ifconfig_args, args);
+    // parse args
+    mp_arg_val_t args[MP_ARRAY_SIZE(wlan_ifconfig_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), wlan_ifconfig_args, args);
 
-   // check the interface id
-   tcpip_adapter_if_t adapter_if;
-   if (args[0].u_int > 1) {
-       nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
-   } else if (args[0].u_int == 0) {
+    // check the interface id
+    tcpip_adapter_if_t adapter_if;
+    if (args[0].u_int > 1) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
+    } else if (args[0].u_int == 0) {
         adapter_if = TCPIP_ADAPTER_IF_STA;
-   } else {
+    } else {
         adapter_if = TCPIP_ADAPTER_IF_AP;
-   }
+    }
 
-   ip_addr_t dns_addr;
-   // get the configuration
-   if (args[1].u_obj == MP_OBJ_NULL) {
+    tcpip_adapter_dns_info_t dns_info;
+    // get the configuration
+    if (args[1].u_obj == MP_OBJ_NULL) {
         // get
         tcpip_adapter_ip_info_t ip_info;
-        dns_addr = dns_getserver(0);
+        tcpip_adapter_get_dns_info(adapter_if, TCPIP_ADAPTER_DNS_MAIN, &dns_info);
         if (ESP_OK == tcpip_adapter_get_ip_info(adapter_if, &ip_info)) {
             mp_obj_t ifconfig[4] = {
                 netutils_format_ipv4_addr((uint8_t *)&ip_info.ip.addr, NETUTILS_BIG),
                 netutils_format_ipv4_addr((uint8_t *)&ip_info.netmask.addr, NETUTILS_BIG),
                 netutils_format_ipv4_addr((uint8_t *)&ip_info.gw.addr, NETUTILS_BIG),
-                netutils_format_ipv4_addr((uint8_t *)&dns_addr.u_addr.ip4.addr, NETUTILS_BIG)
+                netutils_format_ipv4_addr((uint8_t *)&dns_info.ip, NETUTILS_BIG)
             };
             return mp_obj_new_tuple(4, ifconfig);
         } else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
         }
-   } else { // set the configuration
-       if (MP_OBJ_IS_TYPE(args[1].u_obj, &mp_type_tuple)) {
-           // set a static ip
-           mp_obj_t *items;
-           mp_obj_get_array_fixed_n(args[1].u_obj, 4, &items);
+    } else { // set the configuration
+        if (MP_OBJ_IS_TYPE(args[1].u_obj, &mp_type_tuple)) {
+            // set a static ip
+            mp_obj_t *items;
+            mp_obj_get_array_fixed_n(args[1].u_obj, 4, &items);
 
-           tcpip_adapter_ip_info_t ip_info;
-           netutils_parse_ipv4_addr(items[0], (uint8_t *)&ip_info.ip.addr, NETUTILS_BIG);
-           netutils_parse_ipv4_addr(items[1], (uint8_t *)&ip_info.netmask.addr, NETUTILS_BIG);
-           netutils_parse_ipv4_addr(items[2], (uint8_t *)&ip_info.gw.addr, NETUTILS_BIG);
-           netutils_parse_ipv4_addr(items[3], (uint8_t *)&dns_addr.u_addr.ip4.addr, NETUTILS_BIG);
+            tcpip_adapter_ip_info_t ip_info;
+            netutils_parse_ipv4_addr(items[0], (uint8_t *)&ip_info.ip.addr, NETUTILS_BIG);
+            netutils_parse_ipv4_addr(items[1], (uint8_t *)&ip_info.netmask.addr, NETUTILS_BIG);
+            netutils_parse_ipv4_addr(items[2], (uint8_t *)&ip_info.gw.addr, NETUTILS_BIG);
+            netutils_parse_ipv4_addr(items[3], (uint8_t *)&dns_info.ip, NETUTILS_BIG);
 
-           if (adapter_if == TCPIP_ADAPTER_IF_STA) {
-               // first close any active connections
-               esp_wifi_disconnect();
-               tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
-               tcpip_adapter_set_ip_info(adapter_if, &ip_info);
-           } else {
-               tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP);
-               tcpip_adapter_set_ip_info(adapter_if, &ip_info);
-               tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP);
-           }
-           dns_setserver(0, &dns_addr);
-       } else {
-           // check for the correct string
-           const char *mode = mp_obj_str_get_str(args[1].u_obj);
-           if (strcmp("dhcp", mode) && strcmp("auto", mode)) {
-               nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
-           }
+            if (adapter_if == TCPIP_ADAPTER_IF_STA) {
+                // first close any active connections
+                esp_wifi_disconnect();
+                tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
+                tcpip_adapter_set_ip_info(adapter_if, &ip_info);
+                tcpip_adapter_set_dns_info(adapter_if, TCPIP_ADAPTER_DNS_MAIN, &dns_info);
+            } else {
+                tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP);
+                tcpip_adapter_set_ip_info(adapter_if, &ip_info);
+                tcpip_adapter_set_dns_info(adapter_if, TCPIP_ADAPTER_DNS_MAIN, &dns_info);
+                tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP);
+            }
+        } else {
+            // check for the correct string
+            const char *mode = mp_obj_str_get_str(args[1].u_obj);
+            if (strcmp("dhcp", mode) && strcmp("auto", mode)) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+            }
 
-           if (ESP_OK != tcpip_adapter_dhcpc_start(adapter_if)) {
-               nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
-           }
-       }
-       return mp_const_none;
-   }
+            if (ESP_OK != tcpip_adapter_dhcpc_start(adapter_if)) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+            }
+        }
+        return mp_const_none;
+    }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_ifconfig_obj, 1, wlan_ifconfig);
 
