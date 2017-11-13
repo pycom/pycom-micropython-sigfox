@@ -64,7 +64,7 @@ extern void machine_init0(void);
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
-StackType_t mpTaskStack[MICROPY_TASK_STACK_LEN] __attribute__((aligned (8)));
+StackType_t *mpTaskStack;
 
 // board configuration options from mpconfigboard.h
 uint32_t micropy_hw_flash_size;
@@ -120,6 +120,9 @@ void app_main(void) {
         micropy_lpwan_dio_pin_index = 2;
         micropy_lpwan_dio_pin_num = 23;
         micropy_lpwan_dio_pin = &pin_GPIO23;
+
+        mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE_PSRAM, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
     } else {
         micropy_hw_antenna_diversity = true;
         micropy_hw_antenna_diversity_pin_num = 16;
@@ -136,6 +139,8 @@ void app_main(void) {
         micropy_lpwan_dio_pin_index = 2;
         micropy_lpwan_dio_pin_num = 23;
         micropy_lpwan_dio_pin = &pin_GPIO23;
+
+        mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     }
 
     micropy_hw_flash_size = spi_flash_get_chip_size();
