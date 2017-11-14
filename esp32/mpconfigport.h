@@ -231,7 +231,8 @@ extern const struct _mp_obj_module_t mp_module_ussl;
 // board specifics
 #define MICROPY_MPHALPORT_H                                     "esp32_mphal.h"
 #define MICROPY_HW_MCU_NAME                                     "ESP32"
-#define MICROPY_PORT_SFLASH_BLOCK_COUNT                         127
+#define MICROPY_PORT_SFLASH_BLOCK_COUNT_4MB                     127
+#define MICROPY_PORT_SFLASH_BLOCK_COUNT_8MB                     1024
 
 #define DEFAULT_AP_PASSWORD                                     "www.pycom.io"
 #define DEFAULT_AP_CHANNEL                                      (6)

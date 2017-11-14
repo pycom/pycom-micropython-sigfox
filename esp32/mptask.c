@@ -97,7 +97,7 @@ STATIC void mptask_create_main_py (void);
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
-extern StackType_t mpTaskStack;
+extern StackType_t *mpTaskStack;
 extern TaskHandle_t svTaskHandle;
 
 /******************************************************************************
@@ -130,7 +130,7 @@ void TASK_Micropython (void *pvParameters) {
     // initialization that must not be repeted after a soft reset
     mptask_preinit();
 #if MICROPY_PY_THREAD
-    mp_thread_preinit(&mpTaskStack);
+    mp_thread_preinit(mpTaskStack);
     mp_irq_preinit();
 #endif
 

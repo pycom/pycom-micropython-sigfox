@@ -116,7 +116,7 @@ void pin_init0(void) {
     for (uint i = 0; i < named_map->used - 1; i++) {
         pin_obj_t *self = (pin_obj_t *)named_map->table[i].value;
         if (self != &PIN_MODULE_P1) {  // temporal while we remove all the IDF logs
-        #ifdef PYCOM_DEBUG
+        #ifdef DEBUG
             if (self == &PIN_MODULE_P4 || self == &PIN_MODULE_P9 || self == &PIN_MODULE_P10 || self == &PIN_MODULE_P23) {
                continue;
             }
@@ -166,9 +166,6 @@ void pin_config (pin_obj_t *self, int af_in, int af_out, uint mode, uint pull, i
     self->irq_trigger = GPIO_INTR_DISABLE;
 
     pin_obj_configure ((const pin_obj_t *)self);
-
-//    // register it with the sleep module
-//    pyb_sleep_add ((const mp_obj_t)self, (WakeUpCB_t)pin_obj_configure);
 }
 
 void pin_irq_enable (mp_obj_t self_in) {
@@ -193,6 +190,7 @@ void pin_deassign (pin_obj_t *self) {
         gpio_matrix_in(self->af_in, self->value ? MACHPIN_SIMPLE_IN_HIGH : MACHPIN_SIMPLE_IN_LOW, false);
     }
     if (self->af_out >= 0) {
+        pin_set_value(self);
         gpio_matrix_out(self->pin_number, MACHPIN_SIMPLE_OUTPUT, false, false);
     }
     self->af_in = -1;

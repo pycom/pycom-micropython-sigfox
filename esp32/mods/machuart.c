@@ -81,7 +81,7 @@ STATIC mp_obj_t mach_uart_deinit(mp_obj_t self_in);
 struct _mach_uart_obj_t {
     mp_obj_base_t base;
     uart_dev_t* uart_reg;
-    mp_obj_t pins[4];
+    pin_obj_t *pins[4];
     uart_config_t config;
     uint8_t irq_flags;
     uint8_t uart_id;
@@ -148,7 +148,7 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
 
     if (self->n_pins == 1) {
         pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
-        // make it an output
+        // make it UART Tx
         pin->value = 1;
         pin_deassign(pin);
         pin->mode = GPIO_MODE_OUTPUT;
@@ -191,10 +191,13 @@ static bool uart_tx_fifo_space (mach_uart_obj_t *self) {
 
 static void uart_deassign_pins_af (mach_uart_obj_t *self) {
     for (int i = 0; i < self->n_pins; i++) {
-        // We must set the value to 1 so that when Rx pins are deassigned, their are hardwired to 1
-        ((pin_obj_t *)((mp_obj_t *)self->pins)[i])->value = 1;
-        pin_deassign((pin_obj_t *)((mp_obj_t *)self->pins)[i]);
-        self->pins[i] = mp_const_none;
+        if (self->pins[i]) {
+            // We must set the value to 1 so that when Rx pins are deassigned, their are hardwired to 1
+            self->pins[i]->value = 1;
+            pin_deassign(self->pins[i]);
+            gpio_pullup_dis(self->pins[i]->pin_number);
+            self->pins[i] = MP_OBJ_NULL;
+        }
     }
     self->n_pins = 0;
 }
@@ -214,7 +217,7 @@ static void uart_assign_pins_af (mach_uart_obj_t *self, mp_obj_t *pins, uint32_t
                     af_in = -1;
                     af_out = mach_uart_pin_af[self->uart_id][i];
                     mode = GPIO_MODE_OUTPUT;
-                    pull = MACHPIN_PULL_NONE;
+                    pull = MACHPIN_PULL_UP;
                 }
                 pin_config(pin, af_in, af_out, mode, pull, 1);
                 self->pins[i] = pin;
@@ -350,9 +353,13 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
         }
     }
 
-    // disable the interupts while we reconfigure
-    self->uart_reg->int_clr.val = UART_INTR_MASK;
-    self->uart_reg->int_ena.val = 0;
+    if (self->config.baud_rate > 0) {
+        // uninstall the driver
+        uart_driver_delete(self->uart_id);
+    }
+
+    // de-assign the pins
+    uart_deassign_pins_af (self);
 
     // assign the pins
     mp_obj_t pins_o = args[4].u_obj;
@@ -383,7 +390,6 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
                 }
             }
         }
-        uart_deassign_pins_af (self);
         uart_assign_pins_af (self, pins, n_pins);
     }
 
@@ -480,13 +486,15 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_any_obj, mach_uart_any);
 STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
     mach_uart_obj_t *self = self_in;
 
+    uint32_t isrmask = MICROPY_BEGIN_ATOMIC_SECTION();
+
     // only if the bus is initialized
     if (self->config.baud_rate > 0) {
         uint32_t delay = (((mp_obj_get_int(bits) + 1) * 1000000) / self->config.baud_rate) & 0x7FFF;
 
         if (self->n_pins == 1) {
             pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
-            // make it an output
+            // make it UART Tx
             pin->value = 1;
             pin_deassign(pin);
             pin->mode = GPIO_MODE_OUTPUT;
@@ -506,6 +514,8 @@ STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
             pin_config(pin, pin->af_in, -1, GPIO_MODE_INPUT, MACHPIN_PULL_UP, 1);
         }
     }
+
+    MICROPY_END_ATOMIC_SECTION(isrmask);
 
     return mp_const_none;
 }
