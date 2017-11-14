@@ -260,7 +260,7 @@ static lora_rx_data_t rx_data_isr;
 static TimerEvent_t TxNextActReqTimer;
 
 static nvs_handle modlora_nvs_handle;
-static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR", "NWSKEY", "APPSKEY", "NETID", "ADRACK", "CHNLMASK", "CHANNELS"};
+static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR", "NWSKEY", "APPSKEY", "NETID", "ADRACK", "CHNLMASK", "CHANNELS", "RX2CHANNEL"};
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -331,6 +331,14 @@ bool modlora_nvs_set_blob(uint32_t key_idx, const void *value, uint32_t length) 
 bool modlora_nvs_get_uint(uint32_t key_idx, uint32_t *value) {
     esp_err_t err;
     if (ESP_OK == (err = nvs_get_u32(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value))) {
+        return true;
+    }
+    return false;
+}
+
+bool modlora_nvs_get_uint8(uint32_t key_idx, uint8_t *value) {
+    esp_err_t err;
+    if (ESP_OK == (err = nvs_get_u8(modlora_nvs_handle, modlora_nvs_data_key[key_idx], value))) {
         return true;
     }
     return false;
@@ -734,6 +742,11 @@ static void TASK_LoRa (void *pvParameters) {
                             uint16_t ChannelsMask[6];
                             length = sizeof(ChannelsMask);
                             result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNEL_MASK, (void *)ChannelsMask, &length);
+                            
+                            
+                            Rx2ChannelParams_t rx2Channel;
+                            length = sizeof(Rx2ChannelParams_t);
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_RX2_CHANNEL, &rx2Channel, &length);
 
                             if (result) {
                                 mibReq.Type = MIB_UPLINK_COUNTER;
@@ -755,6 +768,11 @@ static void TASK_LoRa (void *pvParameters) {
                                 // write the channel list directly from the NVRAM
                                 length = LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t);
                                 modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNELS, (void *)LoRaMacGetChannelList(), &length);
+                                
+                                // Write RX2 window parameters from NVRAM
+                                mibReq.Type = MIB_RX2_CHANNEL;
+                                mibReq.Param.Rx2Channel = rx2Channel;
+                                LoRaMacMibSetRequestConfirm( &mibReq );
 
                                 lora_obj.activation = E_LORA_ACTIVATION_ABP;
                                 lora_obj.state = E_LORA_STATE_JOIN;
