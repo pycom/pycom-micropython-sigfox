@@ -497,6 +497,9 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
         wifi_config.sta.bssid_set = true;
     }
 
+    wifi_config.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+    wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
+
     if (ESP_OK != esp_wifi_set_config(WIFI_IF_STA, &wifi_config)) {
         goto os_error;
     }
