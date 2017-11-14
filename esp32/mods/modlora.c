@@ -260,7 +260,7 @@ static lora_rx_data_t rx_data_isr;
 static TimerEvent_t TxNextActReqTimer;
 
 static nvs_handle modlora_nvs_handle;
-static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR", "NWSKEY", "APPSKEY", "NETID", "ADRACK", "CHNLMASK", "CHANNELS"};
+static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR", "NWSKEY", "APPSKEY", "NETID", "ADRACK", "MACPARAMS", "CHANNELS"};
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -731,10 +731,6 @@ static void TASK_LoRa (void *pvParameters) {
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DWLINK, &downlinks);
                             result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_ADR_ACKS, &adrAcks);
 
-                            uint16_t ChannelsMask[6];
-                            length = sizeof(ChannelsMask);
-                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNEL_MASK, (void *)ChannelsMask, &length);
-
                             if (result) {
                                 mibReq.Type = MIB_UPLINK_COUNTER;
                                 mibReq.Param.UpLinkCounter = uplinks;
@@ -748,9 +744,9 @@ static void TASK_LoRa (void *pvParameters) {
                                 mibReq.Param.AdrAckCounter = adrAcks;
                                 LoRaMacMibSetRequestConfirm( &mibReq );
 
-                                mibReq.Type = MIB_CHANNELS_MASK;
-                                mibReq.Param.ChannelsMask = ChannelsMask;
-                                LoRaMacMibSetRequestConfirm( &mibReq );
+                                // write the MAC params directly from the NVRAM
+                                length = sizeof(LoRaMacParams_t);
+                                modlora_nvs_get_blob(E_LORA_NVS_ELE_MAC_PARAMS, (void *)LoRaMacGetMacParams(), &length);
 
                                 // write the channel list directly from the NVRAM
                                 length = LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t);

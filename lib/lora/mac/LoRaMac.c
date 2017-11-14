@@ -4304,6 +4304,9 @@ void LoRaMacTestSetMic( uint16_t txPacketCounter )
 
 void LoRaMacNvsSave( void )
 {
+    modlora_nvs_set_blob(E_LORA_NVS_ELE_MAC_PARAMS, &LoRaMacParams, sizeof(LoRaMacParams));
+    modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELS, Channels, sizeof(Channels));
+
     modlora_nvs_set_uint(E_LORA_NVS_ELE_DWLINK, DownLinkCounter);
     modlora_nvs_set_uint(E_LORA_NVS_ELE_UPLINK, UpLinkCounter);
 
@@ -4314,8 +4317,6 @@ void LoRaMacNvsSave( void )
     modlora_nvs_set_uint(E_LORA_NVS_ELE_DEVADDR, LoRaMacDevAddr);
 
     modlora_nvs_set_uint(E_LORA_NVS_ELE_ADR_ACKS, AdrAckCounter);
-    modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNEL_MASK, LoRaMacParams.ChannelsMask, sizeof(LoRaMacParams.ChannelsMask));
-    modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELS, Channels, sizeof(Channels));
 }
 
 void LoRaMacTestSetDutyCycleOn( bool enable )
@@ -4325,4 +4326,8 @@ void LoRaMacTestSetDutyCycleOn( bool enable )
 
 ChannelParams_t * LoRaMacGetChannelList(void) {
     return Channels;
+}
+
+LoRaMacParams_t * LoRaMacGetMacParams(void) {
+    return &LoRaMacParams;
 }
