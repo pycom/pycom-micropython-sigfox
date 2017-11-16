@@ -145,17 +145,19 @@ bool uart_tx_char(mach_uart_obj_t *self, int c) {
 
 bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
     bool ret = true;
+    uint32_t isrmask = 0;
+    pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
 
     if (self->n_pins == 1) {
-        pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
         // make it UART Tx
         pin->value = 1;
         pin_deassign(pin);
-        pin->mode = GPIO_MODE_OUTPUT;
         pin->af_out = mach_uart_pin_af[self->uart_id][0];
         gpio_matrix_out(pin->pin_number, pin->af_out, false, false);
-        WRITE_PERI_REG(UART_INT_CLR_REG(self->uart_id), UART_TX_DONE_INT_CLR);
+        // clear the Tx FIFO empty flag
         self->uart_reg->int_clr.tx_done = 1;
+
+        isrmask = MICROPY_BEGIN_ATOMIC_SECTION();
     }
 
     for (const char *top = str + len; str < top; str++) {
@@ -166,23 +168,17 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
     }
 
     if (self->n_pins == 1) {
-        pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
-
         // wait for the TX FIFO to be empty
-        while (!(READ_PERI_REG(UART_INT_RAW_REG(self->uart_id)) & UART_TX_DONE_INT_RAW_M)) {
-            ets_delay_us(1);
-        }
-        WRITE_PERI_REG(UART_INT_CLR_REG(self->uart_id), UART_TX_DONE_INT_CLR);
-
         while (!self->uart_reg->int_raw.tx_done) {
             ets_delay_us(1);
         }
-        self->uart_reg->int_clr.tx_done = 1;
 
         // make it an input again
         pin_deassign(pin);
         pin->af_in = mach_uart_pin_af[self->uart_id][1];
-        pin_config(pin, pin->af_in, -1, GPIO_MODE_INPUT, MACHPIN_PULL_UP, 1);
+        gpio_matrix_in(pin->pin_number, pin->af_in, false);
+        MICROPY_END_ATOMIC_SECTION(isrmask);
+        self->uart_reg->int_clr.tx_done = 1;
     }
 
     return ret;
@@ -495,6 +491,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_any_obj, mach_uart_any);
 
 STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
     mach_uart_obj_t *self = self_in;
+    pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
 
     uint32_t isrmask = MICROPY_BEGIN_ATOMIC_SECTION();
 
@@ -503,7 +500,6 @@ STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
         uint32_t delay = (((mp_obj_get_int(bits) + 1) * 1000000) / self->config.baud_rate) & 0x7FFF;
 
         if (self->n_pins == 1) {
-            pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
             // make it UART Tx
             pin->value = 1;
             pin_deassign(pin);
@@ -517,7 +513,6 @@ STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
         WRITE_PERI_REG(UART_CONF0_REG(self->uart_id), READ_PERI_REG(UART_CONF0_REG(self->uart_id)) & (~UART_TXD_INV));
 
         if (self->n_pins == 1) {
-            pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
             // make it an input again
             pin_deassign(pin);
             pin->af_in = mach_uart_pin_af[self->uart_id][1];
