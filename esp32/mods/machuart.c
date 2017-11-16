@@ -154,6 +154,8 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
         pin->mode = GPIO_MODE_OUTPUT;
         pin->af_out = mach_uart_pin_af[self->uart_id][0];
         gpio_matrix_out(pin->pin_number, pin->af_out, false, false);
+        WRITE_PERI_REG(UART_INT_CLR_REG(self->uart_id), UART_TX_DONE_INT_CLR);
+        self->uart_reg->int_clr.tx_done = 1;
     }
 
     for (const char *top = str + len; str < top; str++) {
@@ -167,7 +169,15 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
         pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
 
         // wait for the TX FIFO to be empty
-        uart_wait_tx_done(self->uart_id, portMAX_DELAY);
+        while (!(READ_PERI_REG(UART_INT_RAW_REG(self->uart_id)) & UART_TX_DONE_INT_RAW_M)) {
+            ets_delay_us(1);
+        }
+        WRITE_PERI_REG(UART_INT_CLR_REG(self->uart_id), UART_TX_DONE_INT_CLR);
+
+        while (!self->uart_reg->int_raw.tx_done) {
+            ets_delay_us(1);
+        }
+        self->uart_reg->int_clr.tx_done = 1;
 
         // make it an input again
         pin_deassign(pin);
