@@ -53,6 +53,9 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 
+#include "tcpip_adapter.h"
+
+
 /******************************************************************************
  DEFINE TYPES
  ******************************************************************************/
@@ -151,6 +154,7 @@ STATIC void wlan_validate_mode (uint mode);
 STATIC void wlan_set_mode (uint mode);
 STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac);
 STATIC void wlan_validate_ssid_len (uint32_t len);
+STATIC void wlan_validate_hostname_len (uint32_t len); 
 STATIC uint32_t wlan_set_ssid_internal (const char *ssid, uint8_t len, bool add_mac);
 STATIC void wlan_validate_security (uint8_t auth, const char *key);
 STATIC void wlan_set_security_internal (uint8_t auth, const char *key);
@@ -199,7 +203,7 @@ void wlan_pre_init (void) {
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
 }
 
-void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac) {
+void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac, const char *hostname) {
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -216,8 +220,14 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key,
     wlan_set_antenna(antenna);
     wlan_set_mode(mode);
 
+    // Add hostname
+ 
     if (mode != WIFI_MODE_STA) {
         wlan_setup_ap (ssid, auth, key, channel, add_mac);
+        tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_AP, hostname);
+    }
+    else { 
+        tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname);
     }
 
     esp_wifi_start();
@@ -384,6 +394,12 @@ STATIC void wlan_set_mode (uint mode) {
 
 STATIC void wlan_validate_ssid_len (uint32_t len) {
     if (len > MODWLAN_SSID_LEN_MAX) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+    }
+}
+
+STATIC void wlan_validate_hostname_len (uint32_t len) {
+    if (len > 16) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
     }
 }
@@ -652,6 +668,13 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
 
     wlan_obj.pwrsave = args[5].u_bool;
 
+    // get the hostname
+    const char *hostname = NULL;
+    if (args[6].u_obj != NULL) {
+        hostname = mp_obj_str_get_str(args[6].u_obj);
+        wlan_validate_hostname_len(strlen(hostname));
+    }
+
     if (mode != WIFI_MODE_STA) {
         if (ssid == NULL) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "AP SSID not given"));
@@ -662,7 +685,7 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
     }
 
     // initialize the wlan subsystem
-    wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false);
+    wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false, (const char *)hostname);
     mod_network_register_nic(&wlan_obj);
 
     return mp_const_none;
@@ -676,7 +699,9 @@ STATIC const mp_arg_t wlan_init_args[] = {
     { MP_QSTR_channel,      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 1} },
     { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = ANTENNA_TYPE_INTERNAL} },
     { MP_QSTR_power_save,   MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
+    { MP_QSTR_hostname,     MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
 };
+
 STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
     mp_map_t kw_args;
