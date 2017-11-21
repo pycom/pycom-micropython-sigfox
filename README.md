@@ -92,24 +92,25 @@ After cloning, make sure to checkout all the submodules:
 Finally, before building, export the IDF_PATH variable
 
     $ export IDF_PATH=~/pycom-esp-idf
-	
+
 Prior to building the main firmware, you need to build mpy-cross
 
 	$ cd mpy-cross && make clean && make
 
 To build and flash your LoPy for 868MHz regions:
 
+    $ # LORA_BAND defaults to USE_BAND_868
     $ cd esp32
     $ make BOARD=LOPY TARGET=boot clean
     $ make BOARD=LOPY TARGET=boot
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_868 TARGET=app
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_868 flash
+    $ make BOARD=LOPY TARGET=app
+    $ make BOARD=LOPY flash
 
 or for 915MHz regions:
 
     $ cd esp32
-    $ make BOARD=LOPY TARGET=boot clean
-    $ make BOARD=LOPY TARGET=boot
+    $ make BOARD=LOPY LORA_BAND=USE_BAND_915  clean
+    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=boot
     $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=app
     $ make BOARD=LOPY LORA_BAND=USE_BAND_915 flash
 
