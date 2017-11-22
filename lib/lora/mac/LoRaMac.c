@@ -3776,7 +3776,7 @@ LoRaMacStatus_t LoRaMacChannelAdd( uint8_t id, ChannelParams_t params )
         {
             datarateInvalid = true;
         }
-        if( ValueInRange( params.DrRange.Fields.Max, DR_5, LORAMAC_TX_MAX_DATARATE ) == false )
+        if( ValueInRange( params.DrRange.Fields.Max, DR_0, LORAMAC_TX_MAX_DATARATE ) == false )
         {
             datarateInvalid = true;
         }
@@ -3876,7 +3876,7 @@ LoRaMacStatus_t LoRaMacChannelManualAdd( uint8_t id, ChannelParams_t params )
         {
             datarateInvalid = true;
         }
-        if( ValueInRange( params.DrRange.Fields.Max, DR_5, LORAMAC_TX_MAX_DATARATE ) == false )
+        if( ValueInRange( params.DrRange.Fields.Max, DR_0, LORAMAC_TX_MAX_DATARATE ) == false )
         {
             datarateInvalid = true;
         }
