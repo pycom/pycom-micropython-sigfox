@@ -23,13 +23,8 @@ class MsgHandler:
         self._poll = select.poll()
         self._output_queue=[]
         self._out_packet_mutex=_thread.allocate_lock()
-<<<<<<< HEAD
-	_thread.stack_size(5120)
-        _thread.start_new_thread(self._io_thread_func,())
-=======
         _thread.stack_size(8192)
         _thread.start_new_thread(self._io_thread_func, ())
->>>>>>> esp32: Update with master up to release 1.10.1.b1
         self._recv_callback = receive_callback
         self._connect_helper = connect_helper
         self._pingSent=False
