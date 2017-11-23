@@ -179,6 +179,7 @@ STATIC mp_obj_t mod_pycom_nvs_erase_all (void) {
     if (ESP_OK != nvs_erase_all(pycom_nvs_handle)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
+    nvs_commit(pycom_nvs_handle);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_nvs_erase_all_obj, mod_pycom_nvs_erase_all);

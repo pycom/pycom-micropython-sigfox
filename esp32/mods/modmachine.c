@@ -78,9 +78,17 @@
 #include "freertos/timers.h"
 #include "freertos/xtensa_api.h"
 
+#include "rom/ets_sys.h"
+#include "soc/rtc_cntl_reg.h"
+#include "soc/sens_reg.h"
+
 
 static RTC_DATA_ATTR int64_t mach_expected_wakeup_time;
 static int64_t mach_remaining_sleep_time;
+
+
+// Function name is not a typo - undocumented ESP-IDF to get die temperature
+uint8_t temprature_sens_read(); 
 
 
 void machine_init0(void) {
@@ -270,6 +278,29 @@ STATIC mp_obj_t machine_enable_irq (uint n_args, const mp_obj_t *arg) {
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_enable_irq_obj, 0, 1, machine_enable_irq);
 
+
+/*
+ Implement ESP32 core temperature read
+ Uses largely undocumented method from https://github.com/espressif/esp-idf/blob/master/components/esp32/test/test_tsens.c
+ This is a bad HACK until temperature is officially supported by ESP-IDF
+*/
+STATIC mp_obj_t machine_temperature (void) {
+    SET_PERI_REG_BITS(SENS_SAR_MEAS_WAIT2_REG, SENS_FORCE_XPD_SAR, 3, SENS_FORCE_XPD_SAR_S);
+    SET_PERI_REG_BITS(SENS_SAR_TSENS_CTRL_REG, SENS_TSENS_CLK_DIV, 10, SENS_TSENS_CLK_DIV_S);
+    CLEAR_PERI_REG_MASK(SENS_SAR_TSENS_CTRL_REG, SENS_TSENS_POWER_UP);
+    CLEAR_PERI_REG_MASK(SENS_SAR_TSENS_CTRL_REG, SENS_TSENS_DUMP_OUT);
+    SET_PERI_REG_MASK(SENS_SAR_TSENS_CTRL_REG, SENS_TSENS_POWER_UP_FORCE);
+    SET_PERI_REG_MASK(SENS_SAR_TSENS_CTRL_REG, SENS_TSENS_POWER_UP);
+    ets_delay_us(100);
+    SET_PERI_REG_MASK(SENS_SAR_TSENS_CTRL_REG, SENS_TSENS_DUMP_OUT);
+    ets_delay_us(5);
+    int res = GET_PERI_REG_BITS2(SENS_SAR_SLAVE_ADDR3_REG, SENS_TSENS_OUT, SENS_TSENS_OUT_S);
+
+    return mp_obj_new_int(res);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_temperature_obj, machine_temperature);
+
+
 STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                MP_OBJ_NEW_QSTR(MP_QSTR_umachine) },
 
@@ -293,6 +324,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_disable_irq),             (mp_obj_t)&machine_disable_irq_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_enable_irq),              (mp_obj_t)&machine_enable_irq_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_info),                    (mp_obj_t)&machine_info_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_temperature),             (mp_obj_t)&machine_temperature_obj },
 
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_Pin),                     (mp_obj_t)&pin_type },

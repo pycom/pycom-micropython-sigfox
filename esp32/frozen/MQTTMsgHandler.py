@@ -100,6 +100,11 @@ class MsgHandler:
 
         return True
 
+    def disconnect(self):
+        if self._sock:
+            self._sock.close()
+            self._sock = None
+
     def isConnected(self):
         connected=False
         self._conn_state_mutex.acquire()
