@@ -104,7 +104,10 @@ void app_main(void) {
     machine_init0();
 
     // initalize the non-volatile flash space
-    nvs_flash_init();
+    if (nvs_flash_init() == ESP_ERR_NVS_NO_FREE_PAGES) {
+        nvs_flash_erase();
+        nvs_flash_init();
+    }
 
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
@@ -148,5 +151,5 @@ void app_main(void) {
     // create the MicroPython task
     mpTaskHandle = 
     (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL,
-                                  MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 0);
+                                                MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 0);
 }
