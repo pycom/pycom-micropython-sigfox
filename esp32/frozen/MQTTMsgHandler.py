@@ -8,7 +8,7 @@ import struct
 
 class MsgHandler:
 
-    def __init__(self, receive_callback):
+    def __init__(self, receive_callback, connect_helper):
         self._host = ""
         self._port = -1
         self._cafile = ""
@@ -23,9 +23,10 @@ class MsgHandler:
         self._poll = select.poll()
         self._output_queue=[]
         self._out_packet_mutex=_thread.allocate_lock()
-        _thread.stack_size(5120)
-        _thread.start_new_thread(self._io_thread_func,())
+        _thread.stack_size(8192)
+        _thread.start_new_thread(self._io_thread_func, ())
         self._recv_callback = receive_callback
+        self._connect_helper = connect_helper
         self._pingSent=False
         self._ping_interval=20
         self._waiting_ping_resp=False
@@ -106,7 +107,6 @@ class MsgHandler:
 
     def isConnected(self):
         connected=False
-
         self._conn_state_mutex.acquire()
         if self._connection_state == mqttConst.STATE_CONNECTED:
             connected = True
@@ -146,7 +146,6 @@ class MsgHandler:
 
     def priority_send(self, packet):
         msg_sent = False
-
         self._out_packet_mutex.acquire()
         msg_sent = self._send_packet(packet)
         self._out_packet_mutex.release()
@@ -233,7 +232,7 @@ class MsgHandler:
                 self._send_pingreq()
                 self._waiting_ping_resp=True
             elif self._connection_state == mqttConst.STATE_DISCONNECTED:
-                self.connect()
+                self._connect_helper()
 
             self._start_time = time.time()
         elif self._waiting_ping_resp and (self._connection_state == mqttConst.STATE_CONNECTED or elapsed > self._mqttOperationTimeout):
@@ -241,12 +240,12 @@ class MsgHandler:
                 if self._ping_failures <= self._ping_cutoff:
                     self._ping_failures+=1
                 else:
-                    self.connect()
+                    self._connect_helper()
             else:
                 self._ping_failures=0
 
             self._start_time = time.time()
-            self._waiting_ping_resp=False
+            self._waiting_ping_resp = False
 
     def _io_thread_func(self):
         time.sleep(5.0)
