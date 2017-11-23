@@ -952,8 +952,6 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
             netutils_parse_ipv4_addr(items[3], (uint8_t *)&dns_info.ip, NETUTILS_BIG);
 
             if (adapter_if == TCPIP_ADAPTER_IF_STA) {
-                // first close any active connections
-                esp_wifi_disconnect();
                 tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
                 tcpip_adapter_set_ip_info(adapter_if, &ip_info);
                 tcpip_adapter_set_dns_info(adapter_if, TCPIP_ADAPTER_DNS_MAIN, &dns_info);
