@@ -86,43 +86,27 @@
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
-lte_obj_t lte_obj = {
-//        .mode = -1,
-//        .status = 0,
-//        .ip = 0,
-//        .auth = MICROPY_PORT_WLAN_AP_SECURITY,
-//        .channel = MICROPY_PORT_WLAN_AP_CHANNEL,
-//        .ssid = MICROPY_PORT_WLAN_AP_SSID,
-//        .key = MICROPY_PORT_WLAN_AP_KEY,
-//        .mac = {0},
-//        //.ssid_o = {0},
-//        //.bssid = {0},
-//    #if (MICROPY_PORT_HAS_TELNET || MICROPY_PORT_HAS_FTP)
-//        .servers_enabled = false,
-//    #endif
-};
+lte_obj_t lte_obj;
+
 
 static EventGroupHandle_t gsm_event_group;
 
 // Event bits
 #define CONNECTED_BIT BIT0
 
+
+
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
-//OsiLockObj_t wlan_LockObj; TODO
-
-
 
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-STATIC void lte_reset (void);
-//static esp_err_t wlan_event_handler(void *ctx, system_event_t *event);
-STATIC void lte_do_connect ();
+static void lte_reset(void);
 
-//STATIC void wlan_event_handler_cb (System_Event_t *event);
+static void lte_do_connect();
 
 static int lte_gethostbyname(const char *name, mp_uint_t len, uint8_t *out_ip, mp_uint_t family);
 static int lte_socket_socket(mod_network_socket_obj_t *s, int *_errno);
@@ -139,66 +123,15 @@ static int lte_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, m
 static int lte_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno);
 static int lte_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 
-void lte_setup () {
-// TODO
-}
-
-
 //*****************************************************************************
 // DEFINE STATIC FUNCTIONS
 //*****************************************************************************
 
-STATIC esp_err_t gsm_event_handler(void *ctx, system_event_t *event) {
-/*
-    switch(event->event_id) {
-    case SYSTEM_EVENT_STA_START:
-        esp_wifi_connect();
-        break;
-    case SYSTEM_EVENT_STA_CONNECTED:
-    {
-        system_event_sta_connected_t *_event = (system_event_sta_connected_t *)&event->event_info;
-        memcpy(wlan_obj.bssid, _event->bssid, 6);
-        wlan_obj.channel = _event->channel;
-        wlan_obj.auth = _event->authmode;
-    }
-        break;
-    case SYSTEM_EVENT_STA_GOT_IP:
-        xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-        break;
-    case SYSTEM_EVENT_STA_DISCONNECTED:
-        xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-        system_event_sta_disconnected_t *disconn = &event->event_info.disconnected;
-        switch (disconn->reason) {
-            case WIFI_REASON_AUTH_EXPIRE:
-            case WIFI_REASON_AUTH_FAIL:
-            case WIFI_REASON_GROUP_CIPHER_INVALID:
-            case WIFI_REASON_PAIRWISE_CIPHER_INVALID:
-            case WIFI_REASON_802_1X_AUTH_FAILED:
-            case WIFI_REASON_CIPHER_SUITE_REJECTED:
-                wlan_obj.disconnected = true;
-                break;
-            default:
-                // Let other errors through and try to reconnect.
-                break;
-        }
-        if (!wlan_obj.disconnected) {
-            wifi_mode_t mode;
-            if (esp_wifi_get_mode(&mode) == ESP_OK) {
-                if (mode & WIFI_MODE_STA) {
-                    esp_wifi_connect();
-                }
-            }
-        }
-        break;
-    default:
-        break;
-    }
-    */
-    return ESP_OK;
-    
+static esp_err_t gsm_event_handler(void *ctx, system_event_t *event) {
+    return ESP_OK;    
 }
 
-STATIC void lte_do_connect () {
+static void lte_do_connect() {
 
     // first close any active connections
     lte_obj.disconnected = true;
@@ -210,123 +143,22 @@ STATIC void lte_do_connect () {
     lte_obj.disconnected = false;
 
     return;
-
-    // TODO Add timeout handling!!
+    // TODO Add timeout handling!!}
 }
-
-
-
-/* 
-static void uart_assign_pins_af (mach_uart_obj_t *self, mp_obj_t *pins, uint32_t n_pins) {
-    if (n_pins > 1) {
-        for (int i = 0; i < n_pins; i++) {
-            if (pins[i] != mp_const_none) {
-                pin_obj_t *pin = pin_find(pins[i]);
-                int32_t af_in, af_out, mode, pull;
-                if (i % 2) {
-                    af_in = mach_uart_pin_af[self->uart_id][i];
-                    af_out = -1;
-                    mode = GPIO_MODE_INPUT;
-                    pull = MACHPIN_PULL_UP;
-                } else {
-                    af_in = -1;
-                    af_out = mach_uart_pin_af[self->uart_id][i];
-                    mode = GPIO_MODE_OUTPUT;
-                    pull = MACHPIN_PULL_UP;
-                }
-                pin_config(pin, af_in, af_out, mode, pull, 1);
-                self->pins[i] = pin;
-            }
-        }
-    } else {
-        pin_obj_t *pin = pin_find(pins[0]);
-        // make the pin Rx by default
-        pin_config(pin, mach_uart_pin_af[self->uart_id][1], -1, GPIO_MODE_INPUT, MACHPIN_PULL_UP, 1);
-        self->pins[0] = pin;
-    }
-    self->n_pins = n_pins;
-}
- */
-
 
 /******************************************************************************/
 // Micro Python bindings; LTE class
 
-STATIC mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
-
-
-
-    //mp_obj_t pins_o = args[1].u_obj;
-    //uart_assign_pins(self, pins, n_pins);
-    
-    
-    /*
-    
-    // get the mode
-    int8_t mode = args[0].u_int;
-    wlan_validate_mode(mode);
-
-    // get the ssid
-    const char *ssid = NULL;
-    if (args[1].u_obj != NULL) {
-        ssid = mp_obj_str_get_str(args[1].u_obj);
-        wlan_validate_ssid_len(strlen(ssid));
-    }
-
-    // get the auth config
-    uint8_t auth = WIFI_AUTH_OPEN;
-    const char *key = NULL;
-    if (args[2].u_obj != mp_const_none) {
-        mp_obj_t *sec;
-        mp_obj_get_array_fixed_n(args[2].u_obj, 2, &sec);
-        auth = mp_obj_get_int(sec[0]);
-        key = mp_obj_str_get_str(sec[1]);
-        if (strlen(key) < 8 || strlen(key) > 32) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid key length"));
-        }
-        wlan_validate_security(auth, key);
-    }
-
-    // get the channel
-    uint8_t channel = args[3].u_int;
-    wlan_validate_channel(channel);
-
-    // get the antenna type
-    uint8_t antenna = args[4].u_int;
-    wlan_validate_antenna(antenna);
-
-    wlan_obj.pwrsave = args[5].u_bool;
-
-    if (mode != WIFI_MODE_STA) {
-        if (ssid == NULL) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "AP SSID not given"));
-        }
-        if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "WPA2_ENT not supported in AP mode"));
-        }
-    }
-
-    // initialize the wlan subsystem
-    wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false);
-    mod_network_register_nic(&wlan_obj);
-
-	*/
+static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
     return mp_const_none;
 }
 
-STATIC const mp_arg_t lte_init_args[] = {
+static const mp_arg_t lte_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,  {.u_int = 0} },
-    { MP_QSTR_baudrate,                        MP_ARG_INT,  {.u_int = 921600} },
-    { MP_QSTR_pins,           MP_ARG_KW_ONLY | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
-    // { MP_QSTR_mode,         MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = WIFI_MODE_STA} },
-    // { MP_QSTR_ssid,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
-    // { MP_QSTR_auth,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
-    // { MP_QSTR_channel,      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 1} },
-    // { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = ANTENNA_TYPE_INTERNAL} },
-    // { MP_QSTR_power_save,   MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_cid),             MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 1} }  
 };
 
-STATIC mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
+static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
     mp_map_t kw_args;
     mp_map_init_fixed_table(&kw_args, n_kw, all_args + n_args);
@@ -337,11 +169,6 @@ STATIC mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
     // setup the object
     lte_obj_t *self = &lte_obj;
     self->base.type = (mp_obj_t)&mod_network_nic_type_lte;
-
-
-    // FIXME work out the uart id
-    uint uart_id = mp_obj_get_int(args[0].u_obj);
-
 
     if (n_kw > 0) {
         // check the peripheral id
@@ -365,7 +192,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_init_obj, 1, lte_init);
 mp_obj_t lte_deinit(mp_obj_t self_in) {
 
     if (lte_obj.started) {
-        //esp_wifi_stop();
+        ppposDisconnect(1,1);
         lte_obj.started = false;
     }
     return mp_const_none;
@@ -398,18 +225,22 @@ STATIC mp_obj_t lte_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_connect_obj, 1, lte_connect);
 
+
+
+
 STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
-//TODO
+    ppposDisconnect(1, 1);
     lte_obj.disconnected = true;
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_disconnect_obj, lte_disconnect);
 
+
 STATIC mp_obj_t lte_isconnected(mp_obj_t self_in) {
-    //if (xEventGroupGetBits(gsm_event_group) & CONNECTED_BIT) {
-    //    return mp_const_true;
-    //}
-    return mp_const_false;
+    if (ppposStatus() > 0)
+        return mp_const_true;
+    else 
+        return mp_const_false;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_isconnected_obj, lte_isconnected);
 
@@ -779,19 +610,4 @@ static int lte_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_
         ret = MP_STREAM_ERROR;
     }
     return ret;
-}
-
-/******************************************************************************
- DEFINE PUBLIC FUNCTIONS
- ******************************************************************************/
-void modlte_init0(void) {
-    //xCmdQueue = xQueueCreate(LORA_CMD_QUEUE_SIZE_MAX, sizeof(lora_cmd_data_t));
-    //xRxQueue = xQueueCreate(LORA_DATA_QUEUE_SIZE_MAX, sizeof(lora_rx_data_t));
-    //GSMEvents = xEventGroupCreate();
-
-    //if (!lorawan_nvs_open()) {
-    //    printf("Error opening LoRa NVS namespace!\n");
-    //}
-
-    //xTaskCreatePinnedToCore(TASK_LTE, "LTE", LORA_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TASK_PRIORITY, NULL, 0);
 }

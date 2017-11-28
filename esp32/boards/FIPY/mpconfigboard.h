@@ -7,19 +7,20 @@
  * available at https://www.pycom.io/opensource/licensing
  */
 
-#define GPY
+#define FIPY
 
-#define MICROPY_HW_BOARD_NAME                                   "GPy"
-#define MICROPY_PY_SYS_PLATFORM                                 "GPy"
+#define MICROPY_HW_BOARD_NAME                                   "FiPy"
+#define MICROPY_PY_SYS_PLATFORM                                 "FiPy"
 #define MICROPY_HW_HB_PIN_NUM                                   (0)
 #define MICROPY_HW_SAFE_PIN_NUM                                 (21)
 
-#define DEFAULT_AP_SSID                                         "gpy-wlan"
+#define DEFAULT_AP_SSID                                         "fipy-wlan"
 
-#define CONFIG_GSM_TX 5
-#define CONFIG_GSM_RX 23
-#define CONFIG_GSM_CTS 18
-#define CONFIG_GSM_RTS 19
+#define CONFIG_GSM_TX 33
+#define CONFIG_GSM_RX 34
+
+#define CONFIG_GSM_CTS 35
+#define CONFIG_GSM_RTS 32
 
 extern uint32_t micropy_hw_flash_size;
 

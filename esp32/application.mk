@@ -275,6 +275,9 @@ endif
 ifeq ($(BOARD), SIPY)
 SRC_QSTR += $(APP_SIGFOX_MOD_SRC_C)
 endif
+ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
+SRC_QSTR += $(APP_MODS_LTE_SRC_C)
+endif
 
 # Append any auto-generated sources that are needed by sources listed in
 # SRC_QSTR
