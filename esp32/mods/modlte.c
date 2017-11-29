@@ -100,6 +100,13 @@ static EventGroupHandle_t gsm_event_group;
  DECLARE PUBLIC DATA
  ******************************************************************************/
 
+/******************************************************************************
+ DECLARE PUBLIC FUNCTIONS
+ ******************************************************************************/
+
+void modlte_init0(void) {
+}
+
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -126,10 +133,6 @@ static int lte_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_
 //*****************************************************************************
 // DEFINE STATIC FUNCTIONS
 //*****************************************************************************
-
-static esp_err_t gsm_event_handler(void *ctx, system_event_t *event) {
-    return ESP_OK;    
-}
 
 static void lte_do_connect() {
 

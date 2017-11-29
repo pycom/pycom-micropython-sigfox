@@ -49,6 +49,8 @@
 #include "modlora.h"
 #elif defined(SIPY)
 #include "sigfox/modsigfox.h"
+#elif defined(GPY) || defined(FIPY)
+#include "modlte.h"
 #endif
 
 #include "random.h"
@@ -206,6 +208,8 @@ soft_reset:
         modlora_init0();
 #elif defined(SIPY)
         modsigfox_init0();
+#elif defined(GPY) || defined (FIPY)
+        modlte_init0();
 #endif
     }
 
