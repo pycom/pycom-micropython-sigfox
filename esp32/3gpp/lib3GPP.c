@@ -168,7 +168,7 @@ static GSM_Cmd cmd_Reg =
 static GSM_Cmd cmd_CMEE =
 {
 	.cmd = "AT+CMEE=2\r\n",
-	.cmdSize = sizeof("AT+COPS=0\r\n")-1,
+	.cmdSize = sizeof("AT+CMEE=2\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
 	.timeoutMs = 1000,
 	.delayMs = 0,
@@ -525,6 +525,10 @@ static void enableAllInitCmd()
 		GSM_Init[idx]->skip = 0;
 	}
 }
+
+
+
+
 
 /*
  * PPPoS TASK

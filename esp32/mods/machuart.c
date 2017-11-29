@@ -444,7 +444,11 @@ STATIC mp_obj_t mach_uart_make_new(const mp_obj_type_t *type, mp_uint_t n_args, 
     // work out the uart id
     uint uart_id = mp_obj_get_int(args[0].u_obj);
 
+#if defined(GPY) || defined(FIPY)
+    if (uart_id > MACH_UART_1) {
+#else
     if (uart_id > MACH_UART_2) {
+#endif
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
     }
 
