@@ -88,12 +88,19 @@ STATIC mp_obj_t mod_pycom_ota_write (mp_obj_t data) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_ota_write_obj, mod_pycom_ota_write);
 
 STATIC mp_obj_t mod_pycom_ota_finish (void) {
-    if (!updater_finish()) {
+    if (!updater_verify()) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_ota_finish_obj, mod_pycom_ota_finish);
+
+STATIC mp_obj_t mod_pycom_ota_verify (void) {
+    bool ret_val = updater_verify();
+    return mp_obj_new_bool(ret_val);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_ota_verify_obj, mod_pycom_ota_verify);
+
 
 STATIC mp_obj_t mod_pycom_pulses_get (mp_obj_t gpio, mp_obj_t timeout) {
     rmt_config_t rmt_rx;
@@ -201,6 +208,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_ota_start),           (mp_obj_t)&mod_pycom_ota_start_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ota_write),           (mp_obj_t)&mod_pycom_ota_write_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ota_finish),          (mp_obj_t)&mod_pycom_ota_finish_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ota_verify),          (mp_obj_t)&mod_pycom_ota_verify_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pulses_get),          (mp_obj_t)&mod_pycom_pulses_get_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_set),             (mp_obj_t)&mod_pycom_nvs_set_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_get),             (mp_obj_t)&mod_pycom_nvs_get_obj },

@@ -18,12 +18,13 @@
 #include "esp_spi_flash.h"
 #include "esp_log.h"
 #include "rom/crc.h"
-
+#include "rom/md5_hash.h"
 
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
 #define UPDATER_IMG_PATH                                "/flash/sys/appimg.bin"
+#define UPDATER_MD5_SIZE_BYTES                          32
 
 /******************************************************************************
  DEFINE TYPES
@@ -31,6 +32,7 @@
 typedef struct {
     uint32_t size;
     uint32_t offset;
+    uint32_t offset_start_upd;
     uint32_t chunk_size;
     uint32_t current_chunk;
 } updater_data_t;
@@ -38,10 +40,24 @@ typedef struct {
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
-static updater_data_t updater_data = { .size = 0, .offset = 0, .chunk_size = 0, .current_chunk = 0 };
+static updater_data_t updater_data = { 
+    .size = 0, 
+    .offset = 0, 
+    .offset_start_upd = 0,
+    .chunk_size = 0, 
+    .current_chunk = 0 };
+
 //static OsiLockObj_t updater_LockObj;
 static boot_info_t boot_info;
 static uint32_t boot_info_offset;
+
+// must be 32-bit aligned
+static uint32_t updater_verif_buff[SPI_SEC_SIZE / sizeof(uint32_t)];
+
+/******************************************************************************
+ DECLARE PRIVATE FUNCTIONS
+ ******************************************************************************/
+static void md5_to_ascii(unsigned char *md5, unsigned char *hex);
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
@@ -78,7 +94,8 @@ bool updater_check_path (void *path) {
 
 bool updater_start (void) {
     updater_data.size = IMG_SIZE;
-    updater_data.offset = IMG_UPDATE1_OFFSET;
+    updater_data.offset_start_upd = IMG_UPDATE1_OFFSET;
+    updater_data.offset = updater_data.offset_start_upd;
 
     // check which one should be the next active image
     if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
@@ -89,7 +106,7 @@ bool updater_start (void) {
         }
     }
 
-    // printf("Updating image at offset=%x\n", updater_data.offset);
+    printf("Updating image at offset=%x\n", updater_data.offset);
 
     // erase the first 2 sectors
     if (ESP_OK != spi_flash_erase_sector(updater_data.offset / SPI_FLASH_SEC_SIZE)) {
@@ -133,11 +150,11 @@ bool updater_write (uint8_t *buf, uint32_t len) {
 
 bool updater_finish (void) {
     if (updater_data.offset > 0) {
-        // printf("Updater finish\n");
+        printf("Updater finish\n");
 //        sl_LockObjLock (&wlan_LockObj, SL_OS_WAIT_FOREVER);
         // if we still have an image pending for verification, leave the boot info as it is
         if (boot_info.Status != IMG_STATUS_CHECK) {
-            // printf("Saving new boot info\n");
+            printf("Saving new boot info\n");
             // save the new boot info
             boot_info.PrevImg = boot_info.ActiveImg;
             if (boot_info.ActiveImg == IMG_ACT_UPDATE1) {
@@ -151,15 +168,15 @@ bool updater_finish (void) {
                                                  sizeof(boot_info) - sizeof(boot_info.crc));
 
             if (ESP_OK != spi_flash_erase_sector(boot_info_offset / SPI_FLASH_SEC_SIZE)) {
-                // printf("Erasing boot info failed\n");
+                printf("Erasing boot info failed\n");
                 return false;
             }
 
             if (ESP_OK != spi_flash_write(boot_info_offset, (void *)&boot_info, sizeof(boot_info_t))) {
-                // printf("Saving boot info failed\n");
+                printf("Saving boot info failed\n");
                 return false;
             }
-            // printf("Boot info saved OK\n");
+            printf("Boot info saved OK\n");
         }
 //        sl_LockObjUnlock (&wlan_LockObj);
         updater_data.offset = 0;
@@ -168,3 +185,74 @@ bool updater_finish (void) {
     return true;
 }
 
+bool updater_verify (void) {
+    // bootloader verifies anyway the image, but the user can check himself
+    // so, the next code ia adapted from bootloader/bootloader.c, 
+    // function: bool bootloader_verify (const esp_partition_pos_t *pos, uint32_t size)
+    
+    // the last image written stats at updater_data.offset_start_upd and 
+    // has the lenght boot_info.size
+    
+    uint32_t size = boot_info.size;
+    uint32_t offset = updater_data.offset_start_upd;
+
+    uint32_t total_len = 0, read_len;
+    uint8_t hash[16];
+    uint8_t hash_hex[33];
+    struct MD5Context md5_context;
+    
+    //printf("updater_verify starts at %X, len is %d\n", offset, size);
+
+    size -= UPDATER_MD5_SIZE_BYTES; // substract the lenght of the MD5 hash
+
+    MD5Init(&md5_context);
+
+    while (total_len < size) {
+        read_len = (size - total_len) > SPI_SEC_SIZE ? SPI_SEC_SIZE : (size - total_len);
+
+        if (ESP_OK != spi_flash_read(offset + total_len, (void *)updater_verif_buff, read_len)) {
+            //printf("error in spi_flash_read\n");
+            return false;
+        }
+        total_len += read_len;
+        MD5Update(&md5_context, (void *)updater_verif_buff, read_len);
+    }
+    //printf("Reading done total len=%d\n", total_len);
+    MD5Final(hash, &md5_context);
+
+    //printf("Hash calculated\n");
+    md5_to_ascii(hash, hash_hex);
+    //printf("Converted to hex\n");
+
+    if (ESP_OK != spi_flash_read(offset + total_len, (void *)updater_verif_buff, UPDATER_MD5_SIZE_BYTES)) {
+        //printf("error in md5 spi_flash_read\n");
+        return false;
+    }
+
+    hash_hex[32] = '\0';
+
+    // updater_verif_buff is uint32_t type,
+    updater_verif_buff[UPDATER_MD5_SIZE_BYTES / sizeof(uint32_t)] = '\0';
+    // compare both hashes
+    if (!strcmp((const char *)hash_hex, (const char *)updater_verif_buff)) {
+        //printf("MD5 hash OK!\n");
+        // it's a match
+        return true;
+    }
+
+    //printf("MD5 hash failed %s : %s\n", hash_hex, (char*)updater_verif_buff);
+    return false;
+}
+
+/******************************************************************************
+ DEFINE PRIVATE FUNCTIONS
+ ******************************************************************************/
+
+static void md5_to_ascii(unsigned char *md5, unsigned char *hex) {
+    #define nibble2ascii(x) ((x) < 10 ? (x) + '0' : (x) - 10 + 'a')
+
+    for (int i = 0; i < 16; i++) {
+        hex[(i * 2)] = nibble2ascii(md5[i] >> 4);
+        hex[(i * 2) + 1] = nibble2ascii(md5[i] & 0xF);
+    }
+}
