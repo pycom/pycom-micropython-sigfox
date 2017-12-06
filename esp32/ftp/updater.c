@@ -1,4 +1,4 @@
-/*
+	/*
  * Copyright (c) 2016, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
@@ -51,9 +51,6 @@ static updater_data_t updater_data = {
 static boot_info_t boot_info;
 static uint32_t boot_info_offset;
 
-// must be 32-bit aligned
-static uint32_t updater_verif_buff[SPI_SEC_SIZE / sizeof(uint32_t)];
-
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -94,8 +91,7 @@ bool updater_check_path (void *path) {
 
 bool updater_start (void) {
     updater_data.size = IMG_SIZE;
-    updater_data.offset_start_upd = IMG_UPDATE1_OFFSET;
-    updater_data.offset = updater_data.offset_start_upd;
+    updater_data.offset = IMG_UPDATE1_OFFSET;
 
     // check which one should be the next active image
     if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
@@ -106,7 +102,8 @@ bool updater_start (void) {
         }
     }
 
-    printf("Updating image at offset=%x\n", updater_data.offset);
+    // printf("Updating image at offset=%x\n", updater_data.offset);
+    updater_data.offset_start_upd = updater_data.offset;
 
     // erase the first 2 sectors
     if (ESP_OK != spi_flash_erase_sector(updater_data.offset / SPI_FLASH_SEC_SIZE)) {
@@ -150,11 +147,11 @@ bool updater_write (uint8_t *buf, uint32_t len) {
 
 bool updater_finish (void) {
     if (updater_data.offset > 0) {
-        printf("Updater finish\n");
+        // printf("Updater finish\n");
 //        sl_LockObjLock (&wlan_LockObj, SL_OS_WAIT_FOREVER);
         // if we still have an image pending for verification, leave the boot info as it is
         if (boot_info.Status != IMG_STATUS_CHECK) {
-            printf("Saving new boot info\n");
+            // printf("Saving new boot info\n");
             // save the new boot info
             boot_info.PrevImg = boot_info.ActiveImg;
             if (boot_info.ActiveImg == IMG_ACT_UPDATE1) {
@@ -168,15 +165,15 @@ bool updater_finish (void) {
                                                  sizeof(boot_info) - sizeof(boot_info.crc));
 
             if (ESP_OK != spi_flash_erase_sector(boot_info_offset / SPI_FLASH_SEC_SIZE)) {
-                printf("Erasing boot info failed\n");
+                // printf("Erasing boot info failed\n");
                 return false;
             }
 
             if (ESP_OK != spi_flash_write(boot_info_offset, (void *)&boot_info, sizeof(boot_info_t))) {
-                printf("Saving boot info failed\n");
+                // printf("Saving boot info failed\n");
                 return false;
             }
-            printf("Boot info saved OK\n");
+            // printf("Boot info saved OK\n");
         }
 //        sl_LockObjUnlock (&wlan_LockObj);
         updater_data.offset = 0;
@@ -197,11 +194,19 @@ bool updater_verify (void) {
     uint32_t offset = updater_data.offset_start_upd;
 
     uint32_t total_len = 0, read_len;
-    uint8_t hash[16];
-    uint8_t hash_hex[33];
+    uint8_t hash[UPDATER_MD5_SIZE_BYTES / 2];
+    uint8_t hash_hex[UPDATER_MD5_SIZE_BYTES + 1];
     struct MD5Context md5_context;
+    uint32_t *updater_verif_buff;
     
-    //printf("updater_verify starts at %X, len is %d\n", offset, size);
+    // must be 32-bit aligned
+    updater_verif_buff = (uint32_t *) malloc(SPI_SEC_SIZE);
+    // don't forget to free(updater_verif_buff)
+    if (!updater_verif_buff) {
+    		// printf("Can't allocate 4KB buffer\n");
+    		return false;
+    }
+    // printf("updater_verify starts at %X, len is %d, 4KB dynamic buff starts at %X\n", offset, size, (uint32_t)updater_verif_buff);
 
     size -= UPDATER_MD5_SIZE_BYTES; // substract the lenght of the MD5 hash
 
@@ -211,36 +216,40 @@ bool updater_verify (void) {
         read_len = (size - total_len) > SPI_SEC_SIZE ? SPI_SEC_SIZE : (size - total_len);
 
         if (ESP_OK != spi_flash_read(offset + total_len, (void *)updater_verif_buff, read_len)) {
-            //printf("error in spi_flash_read\n");
+            // printf("error in spi_flash_read\n");
+        		free(updater_verif_buff);
             return false;
         }
         total_len += read_len;
         MD5Update(&md5_context, (void *)updater_verif_buff, read_len);
     }
-    //printf("Reading done total len=%d\n", total_len);
+    // printf("Reading done total len=%d\n", total_len);
     MD5Final(hash, &md5_context);
 
-    //printf("Hash calculated\n");
+    // printf("Hash calculated\n");
     md5_to_ascii(hash, hash_hex);
-    //printf("Converted to hex\n");
+    // printf("Converted to hex\n");
 
     if (ESP_OK != spi_flash_read(offset + total_len, (void *)updater_verif_buff, UPDATER_MD5_SIZE_BYTES)) {
-        //printf("error in md5 spi_flash_read\n");
-        return false;
+        // printf("error in md5 spi_flash_read\n");
+    		free(updater_verif_buff);
+    		return false;
     }
 
-    hash_hex[32] = '\0';
+    hash_hex[UPDATER_MD5_SIZE_BYTES] = '\0';
 
     // updater_verif_buff is uint32_t type,
     updater_verif_buff[UPDATER_MD5_SIZE_BYTES / sizeof(uint32_t)] = '\0';
     // compare both hashes
     if (!strcmp((const char *)hash_hex, (const char *)updater_verif_buff)) {
-        //printf("MD5 hash OK!\n");
+        // printf("MD5 hash OK!\n");
         // it's a match
+        free(updater_verif_buff);
         return true;
     }
 
-    //printf("MD5 hash failed %s : %s\n", hash_hex, (char*)updater_verif_buff);
+    // printf("MD5 hash failed %s : %s\n", hash_hex, (char*)updater_verif_buff);
+    free(updater_verif_buff);
     return false;
 }
 
