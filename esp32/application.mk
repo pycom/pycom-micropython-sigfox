@@ -322,19 +322,30 @@ APP_SIGN = tools/appsign.sh
 
 BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
 
+ifeq ($(BOARD), WIPY)
+    APP_BIN = $(BUILD)/wipy.bin
+endif
 ifeq ($(BOARD), LOPY)
     APP_BIN = $(BUILD)/lopy_$(LORA_FREQ).bin
-else
-    ifeq ($(BOARD), SIPY)
-        APP_BIN = $(BUILD)/sipy.bin
-        $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
-        $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
-        $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
-        $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
-    else
-        APP_BIN = $(BUILD)/wipy.bin
-    endif
 endif
+ifeq ($(BOARD), SIPY)
+    APP_BIN = $(BUILD)/sipy.bin
+    $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+endif
+ifeq ($(BOARD), GPY)
+		 APP_BIN = $(BUILD)/gpy.bin
+endif
+ifeq ($(BOARD), FIPY)
+		 APP_BIN = $(BUILD)/fipy_$(LORA_FREQ).bin
+#		 $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
+#		 $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+     $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+endif
+
 APP_IMG  = $(BUILD)/appimg.bin
 PART_CSV = lib/partitions.csv
 PART_BIN = $(BUILD)/lib/partitions.bin
