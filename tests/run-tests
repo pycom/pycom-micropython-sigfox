@@ -247,7 +247,7 @@ def run_tests(pyb, tests, args):
             skip_tests.add('misc/rge_sm.py')                # requires floating point
             skip_tests.update({'extmod/uctypes_%s.py' % t for t in 'bytearray le native_le ptr_le ptr_native_le sizeof sizeof_native array_assign_le array_assign_native_le'.split()}) # requires uctypes
             skip_tests.add('extmod/zlibd_decompress.py')    # requires zlib
-        elif args.target == 'esp32-WIPY' or args.target == 'esp32-LOPY':
+        elif args.target.split('-')[0] == 'esp32':
             skip_tests.add('extmod/uheapq1.py')             # requires uheapq
             skip_tests.add('extmod/urandom_basic.py')       # requires urandom
             skip_tests.add('extmod/urandom_extra.py')       # requires urandom
@@ -388,8 +388,8 @@ def main():
     cmd_parser.add_argument('files', nargs='*', help='input test files')
     args = cmd_parser.parse_args()
 
-    EXTERNAL_TARGETS = ('pyboard', 'wipy1','esp32-WIPY', 'esp8266', 'esp32-LOPY')
-    if args.target in EXTERNAL_TARGETS:
+    EXTERNAL_TARGETS = ('pyboard', 'wipy1','esp32', 'esp8266')
+    if args.target.split('-')[0] in EXTERNAL_TARGETS:
         import pyboard
         pyb = pyboard.Pyboard(args.device, args.baudrate, args.user, args.password)
         pyb.enter_raw_repl()
@@ -408,11 +408,8 @@ def main():
             elif args.target == 'wipy1':
                 # run WiPy tests
                 test_dirs = ('basics', 'micropython', 'misc', 'extmod', 'wipy')
-            elif args.target == 'esp32-WIPY':
-                # run on the WiPy 2.0
-                test_dirs = ('basics', 'micropython', 'esp32', 'float', 'misc', 'extmod', 'thread')
-            elif args.target == 'esp32-LOPY':
-                # run on the LoPy
+            elif args.target.split('-')[0] == 'esp32':
+                # run on the esp32
                 test_dirs = ('basics', 'micropython', 'esp32', 'float', 'misc', 'extmod', 'thread')
             else:
                 # run PC tests

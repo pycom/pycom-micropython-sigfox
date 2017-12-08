@@ -1,9 +1,11 @@
 def buildVersion
 def boards_to_build_1 = ["LoPy_868", "WiPy"]
 def boards_to_build_2 = ["LopY_915", "SiPy"]
-def boards_to_build_3 = ["FiPy_868", "GPy"]
-def boards_to_build_4 = ["FiPy_868"]
-def boards_to_test = []
+// def boards_to_build_3 = ["FiPy_868", "GPy"]
+// def boards_to_build_4 = ["FiPy_915"]
+def boards_to_build_3 = ["GPy"]
+def boards_to_build_4 = []
+def boards_to_test = ["GPy"]
 def node_name = "UDOO"
 
 node {
@@ -16,16 +18,17 @@ node {
     stage('mpy-cross') {
         // build the cross compiler first
         sh '''cd mpy-cross;
+        make clean;
         make all'''
     }
 
     // build the boards in four cycles
-    // Todo: run in a loop
+    // Todo: run in a loop if possible
 
     stage('Build1') {
         def parallelSteps = [:]
         for (x in boards_to_build_1) {
-          def name = x.toUpperCase()
+          def name = x
           parallelSteps[name] = boardBuild(name)
         }
         parallel parallelSteps
@@ -34,7 +37,7 @@ node {
     stage('Build2') {
         def parallelSteps = [:]
         for (x in boards_to_build_2) {
-          def name = x.toUpperCase()
+          def name = x
           parallelSteps[name] = boardBuild(name)
         }
         parallel parallelSteps
@@ -43,7 +46,7 @@ node {
     stage('Build3') {
         def parallelSteps = [:]
         for (x in boards_to_build_3) {
-          def name = x.toUpperCase()
+          def name = x
           parallelSteps[name] = boardBuild(name)
         }
         parallel parallelSteps
@@ -52,7 +55,7 @@ node {
     stage('Build4') {
         def parallelSteps = [:]
         for (x in boards_to_build_4) {
-          def name = x.toUpperCase()
+          def name = x
           parallelSteps[name] = boardBuild(name)
         }
         parallel parallelSteps
@@ -93,7 +96,7 @@ def testBuild(name) {
             sleep(5) //Delay to skip all bootlog
             dir('tests') {
                 timeout(30) {
-                    sh '''./run-tests --target=esp32-''' + name +''' --device /dev/ttyUSB0'''
+                    sh '''./run-tests --target=esp32-''' + GPy +''' --device /dev/ttyACM1'''
                 }
             }
             sh 'python esp32/tools/resetBoard.py reset'
@@ -111,12 +114,11 @@ def flashBuild(name) {
             unstash 'esp32Tools'
             unstash 'tests'
             unstash 'tools'
-            sh 'python esp32/tools/resetBoard.py bootloader'
-            sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 921600 erase_flash'
-            sh 'python esp32/tools/resetBoard.py bootloader'
-            sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
-            sh 'python esp32/tools/resetBoard.py reset'
-            sh 'python esp32/tools/resetBoard.py releasePins'
+            sh 'python esp32/tools/pypic.py --port /dev/ttyACM1 --enter'
+            sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyACM1 --baud 921600 erase_flash'
+            sh 'python esp32/tools/pypic.py --port /dev/ttyACM1 --enter'
+            sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyACM1 --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
+            sh 'python esp32/tools/pypic.py --port /dev/ttyACM1 --exit'
         }
     }
 }
