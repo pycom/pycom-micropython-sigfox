@@ -247,10 +247,10 @@ BOOT_SRC_C = $(addprefix bootloader/,\
 SFX_OBJ =
 
 OBJ = $(PY_O)
-ifeq ($(BOARD), LOPY)
+ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1272_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
 endif
-ifeq ($(BOARD), SIPY)
+ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY))
 SFX_OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_C:.c=.o) $(APP_SIGFOX_TARGET_SRC_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o))
 OBJ += $(SFX_OBJ)
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
@@ -269,10 +269,10 @@ BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
 
 # List of sources for qstr extraction
 SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C)
-ifeq ($(BOARD), LOPY)
+ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
 SRC_QSTR += $(APP_MODS_LORA_SRC_C)
 endif
-ifeq ($(BOARD), SIPY)
+ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY))
 SRC_QSTR += $(APP_SIGFOX_MOD_SRC_C)
 endif
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
@@ -340,8 +340,8 @@ ifeq ($(BOARD), GPY)
 endif
 ifeq ($(BOARD), FIPY)
 		 APP_BIN = $(BUILD)/fipy_$(LORA_FREQ).bin
-#		 $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
-#		 $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+     $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
+     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
      $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
      $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif

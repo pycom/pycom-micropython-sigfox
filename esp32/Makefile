@@ -22,7 +22,7 @@ OEM ?= 0
 BTYPE ?= release
 
 LORA_BAND ?= USE_BAND_868
-ifeq ($(BOARD), LOPY)
+ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
     ifeq ($(LORA_BAND), USE_BAND_868)
         LORA_FREQ = 868
     else
