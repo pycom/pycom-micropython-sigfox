@@ -260,9 +260,9 @@ def run_tests(pyb, tests, args):
             skip_tests.add('thread/thread_exc2.py')         # needs an updated run-test script
             skip_tests.add('misc/recursive_iternext.py')    # requires at least 80KB of GC heap
             skip_tests.add('esp32/_pin.py')
-            skip_tests.add('esp32/i2c')
-            skip_tests.add('esp32/onewire')
-            skip_tests.add('esp32/uart')
+            skip_tests.add('esp32/i2c.py')
+            skip_tests.add('esp32/onewire.py')
+            skip_tests.add('esp32/uart.py')
         elif args.target == 'esp8266':
             skip_tests.add('float/float2int.py')            # requires at least fp32, there's float2int_fp30.py instead
             skip_tests.add('float/string_format.py')        # requires at least fp32, there's string_format_fp30.py instead
