@@ -114,7 +114,7 @@ void SpiInit( Spi_t *obj, PinNames mosi, PinNames miso, PinNames sclk, PinNames 
     pin_config(obj->Mosi.pin_obj, -1, VSPID_OUT_IDX, GPIO_MODE_OUTPUT, PIN_NO_PULL, 0);
     pin_config(obj->Sclk.pin_obj, -1, VSPICLK_OUT_IDX, GPIO_MODE_OUTPUT, PIN_NO_PULL, 0);
 
-#if defined (SIPY) || defined (FIPY)
+#if defined (SIPY)
     // configure the chip select pin
     obj->Nss.pin_obj = gpio_board_map[nss];
     pin_config(obj->Nss.pin_obj, -1, -1, GPIO_MODE_OUTPUT, PIN_PULL_UP, 1);
