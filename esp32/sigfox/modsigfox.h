@@ -18,6 +18,10 @@
 #include "lora/system/spi.h"
 #include "modnetwork.h"
 
+#if defined (FIPY)
+#include "../lora/board.h"
+#endif
+
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
@@ -135,6 +139,8 @@ typedef union {
 /******************************************************************************
  EXPORTED DATA
  ******************************************************************************/
+
+#if defined (SIPY) // For FIPY this is set as part of the LORA stack
 #define RADIO_RESET                                 GPIO18
 
 #define RADIO_MOSI                                  GPIO27
@@ -143,7 +149,7 @@ typedef union {
 #define RADIO_NSS                                   GPIO17
 
 #define RADIO_DIO                                   GPIO23
-
+#endif
 /******************************************************************************
  EXPORTED DATA
  ******************************************************************************/

@@ -6,5 +6,5 @@
     ["e", "0x37F000", "0x1000"],
     ["w", "0x1000", "bootloader.bin"],
     ["w", "0x8000", "partitions.bin"],
-    ["w", "0x10000", "gpy.bin"]
+    ["w", "0x10000", "fipy_915.bin"]
 ]

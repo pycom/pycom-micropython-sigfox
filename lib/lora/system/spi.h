@@ -74,9 +74,9 @@ void SpiFrequency( Spi_t *obj, uint32_t hz );
  */
 #if defined(LOPY)
 uint16_t SpiInOut( Spi_t *obj, uint16_t outData );
-#elif defined(SIPY)
-uint8_t SpiInOut(uint32_t spiNum, uint32_t outData );
-
+#elif defined(SIPY) || defined(FIPY)
+uint16_t SpiInOut_S(Spi_t *obj, uint16_t outData);
+uint8_t SpiInOut(uint32_t spiNum, uint32_t outData);
 /*!
  * \brief Sends outData
  *

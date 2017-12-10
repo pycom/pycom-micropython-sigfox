@@ -122,9 +122,9 @@ STATIC mp_obj_t machine_info(void) {
     printf("---------------------------------------------\n");
     printf("MPTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)mpTaskHandle));
     printf("ServersTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)svTaskHandle));
-#if defined(LOPY)
+#if defined(LOPY) || defined (FIPY)
     printf("LoRaTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)xLoRaTaskHndl));
-#elif defined(SIPY)
+#elif defined(SIPY) || defined (FIPY)
     printf("SigfoxTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)xSigfoxTaskHndl));
 #endif
     printf("TimerTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark(xTimerGetTimerDaemonTaskHandle()));

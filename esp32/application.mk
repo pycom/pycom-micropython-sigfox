@@ -339,11 +339,11 @@ ifeq ($(BOARD), GPY)
 		 APP_BIN = $(BUILD)/gpy.bin
 endif
 ifeq ($(BOARD), FIPY)
-		 APP_BIN = $(BUILD)/fipy_$(LORA_FREQ).bin
-     $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
-     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
-     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
-     $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+    APP_BIN = $(BUILD)/fipy_$(LORA_FREQ).bin
+    $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 
 APP_IMG  = $(BUILD)/appimg.bin

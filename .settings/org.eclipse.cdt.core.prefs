@@ -1,0 +1,12 @@
+eclipse.preferences.version=1
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.1824439445/BOARD/delimiter=\:
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.1824439445/BOARD/operation=append
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.1824439445/BOARD/value=FIPY
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.1824439445/IDF_PATH/delimiter=\:
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.1824439445/IDF_PATH/operation=append
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.1824439445/IDF_PATH/value=${HOME}/pycom/pycom-esp-idf
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.1824439445/PATH/delimiter=\:
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.1824439445/PATH/operation=replace
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.1824439445/PATH/value=/bin\:/usr/bin\:/usr/sbin\:/sbin\:${HOME}/pycom/xtensa-esp32-elf/bin
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.1824439445/append=true
+environment/project/cdt.managedbuild.toolchain.gnu.cross.base.1824439445/appendContributed=true

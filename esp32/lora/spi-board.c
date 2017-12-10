@@ -82,7 +82,7 @@ void SpiInit( Spi_t *obj, PinNames mosi, PinNames miso, PinNames sclk, PinNames 
     DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG,DPORT_SPI_CLK_EN_2);
     DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG,DPORT_SPI_RST_2);
 
-#ifdef SIPY
+#if defined (SIPY) || defined (FIPY)
     // configure the SPI port
     spi_attr_t spi_attr = {.mode = SpiMode_Master, .subMode = SpiSubMode_0, .speed = SpiSpeed_8MHz,
                            .bitOrder = SpiBitOrder_MSBFirst, .halfMode = SpiWorkMode_Full};
@@ -114,7 +114,7 @@ void SpiInit( Spi_t *obj, PinNames mosi, PinNames miso, PinNames sclk, PinNames 
     pin_config(obj->Mosi.pin_obj, -1, VSPID_OUT_IDX, GPIO_MODE_OUTPUT, PIN_NO_PULL, 0);
     pin_config(obj->Sclk.pin_obj, -1, VSPICLK_OUT_IDX, GPIO_MODE_OUTPUT, PIN_NO_PULL, 0);
 
-#ifdef SIPY
+#if defined (SIPY) || defined (FIPY)
     // configure the chip select pin
     obj->Nss.pin_obj = gpio_board_map[nss];
     pin_config(obj->Nss.pin_obj, -1, -1, GPIO_MODE_OUTPUT, PIN_PULL_UP, 1);
@@ -173,7 +173,7 @@ IRAM_ATTR uint16_t SpiInOut(Spi_t *obj, uint16_t outData) {
     // read data out
     return READ_PERI_REG(SPI_W0_REG(spiNum));
 }
-#elif defined(SIPY)
+#elif defined(SIPY) || defined(FIPY)
 IRAM_ATTR uint16_t SpiInOut_S(Spi_t *obj, uint16_t outData) {
     uint32_t spiNum = (uint32_t)obj->Spi;
     // load the send buffer
@@ -221,7 +221,8 @@ IRAM_ATTR void SpiOut(uint32_t spiNum, uint32_t outData) {
     SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
     while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
 }
-
+#endif
+#if defined(SIPY)
 IRAM_ATTR void SX1272Write(uint8_t addr, uint8_t data) {
     SX1272WriteBuffer( addr, &data, 1 );
 }
@@ -264,9 +265,10 @@ IRAM_ATTR void SX1272ReadBuffer(uint8_t addr, uint8_t *buffer, uint8_t size) {
     //NSS = 1;
     GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 17);
 }
-
 IRAM_ATTR void SX1272SetOpMode(uint8_t opMode) {
     SX1272Write(REG_OPMODE, (SX1272Read( REG_OPMODE ) & RF_OPMODE_MASK) | opMode);
 }
-
 #endif
+
+
+

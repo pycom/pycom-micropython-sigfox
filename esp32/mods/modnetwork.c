@@ -86,12 +86,12 @@ mp_obj_t mod_network_find_nic(const uint8_t *ip) {
         mp_obj_t nic = MP_STATE_PORT(mod_network_nic_list).items[i];
         // we want a raw network card
         if (ip == NULL) {
-        #ifdef LOPY
+		#if defined (LOPY) || defined (FIPY)
             if (mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_lora) {
                 return nic;
             }
         #endif
-        #ifdef SIPY
+        #if defined (SIPY) || defined (FIPY)
             if (mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_sigfox) {
                 return nic;
             }
@@ -195,10 +195,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(network_server_deinit_obj, network_server_deini
 STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_network) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WLAN),                (mp_obj_t)&mod_network_nic_type_wlan },
-#ifdef LOPY
+#if defined (LOPY) || defined (FIPY)
     { MP_OBJ_NEW_QSTR(MP_QSTR_LoRa),                (mp_obj_t)&mod_network_nic_type_lora },
 #endif
-#ifdef SIPY
+#if defined (SIPY) || defined (FIPY)
     { MP_OBJ_NEW_QSTR(MP_QSTR_Sigfox),              (mp_obj_t)&mod_network_nic_type_sigfox },
 #endif
 #if defined(FIPY) || defined(GPY)
