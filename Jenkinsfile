@@ -101,8 +101,8 @@ node {
               sh '''./run-tests --target=esp32-''' + name + ''' --device /dev/ttyACM1'''
             }
           }
-          sh 'python esp32/tools/resetBoard.py reset'
-          sh 'python esp32/tools/resetBoard.py releasePins'
+          sh 'python esp32/tools/pypic.py --port /dev/ttyACM1 --enter'
+          sh 'python esp32/tools/pypic.py --port /dev/ttyACM1 --exit'
         }
       }
     }
