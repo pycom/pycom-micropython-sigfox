@@ -1,12 +1,8 @@
 def buildVersion
-//def boards_to_build_1 = ["LoPy_868", "WiPy"]
-//def boards_to_build_2 = ["LopY_915", "SiPy"]
-// def boards_to_build_3 = ["FiPy_868", "GPy"]
-// def boards_to_build_4 = ["FiPy_915"]
-def boards_to_build_1 = []
-def boards_to_build_2 = []
-def boards_to_build_3 = ["GPy"]
-def boards_to_build_4 = []
+def boards_to_build_1 = ["LoPy_868", "WiPy"]
+def boards_to_build_2 = ["LopY_915", "SiPy"]
+def boards_to_build_3 = ["FiPy_868", "GPy"]
+def boards_to_build_4 = ["FiPy_915"]
 def boards_to_test = ["GPy"]
 def remote_node = "UDOO"
 
