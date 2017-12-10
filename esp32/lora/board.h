@@ -58,7 +58,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 /*!
  * Board MCU pins definitions
  */
-#ifdef FIPY
+#if defined (LOPY) || defined (FIPY)
  #define RADIO_RESET                                 micropy_lpwan_reset_pin_index
 
  #define RADIO_MOSI                                  GPIO27
