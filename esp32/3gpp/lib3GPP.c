@@ -112,6 +112,17 @@ static GSM_Cmd cmd_Reset =
 	.skip = 0,
 };
 
+static GSM_Cmd cmd_Freq =
+{
+	.cmd = "AT!=\"addscanfreq band=28 dl-earfcn=9435\"\r\n",
+	.cmdSize = sizeof("AT!=\"addscanfreq band=28 dl-earfcn=9435\"\r\n")-1,
+	.cmdResponseOnOk = GSM_OK_Str,
+	.timeoutMs = 10000,
+	.delayMs = 1000,
+	.skip = 0,
+};
+
+
 static GSM_Cmd cmd_RFOn =
 {
 	.cmd = "AT+CFUN=1\r\n",
@@ -219,6 +230,7 @@ static GSM_Cmd *GSM_Init[] =
 		//&cmd_COPS,
 		//&cmd_EchoOff,
 		&cmd_Pin,
+		&cmd_Freq,
 		&cmd_RFOn,
 		&cmd_Reg,
 		// &cmd_APN,
@@ -494,7 +506,7 @@ static void _disconnect(uint8_t rfOff)
 	res = atCmd_waitResponse("ATH\r\n", GSM_OK_Str, "NO CARRIER", 5, 3000, NULL, 0);
 	while (res == 0) {
 		n++;
-		if (n > 10) {
+		if (n > 3) {
 			#if GSM_DEBUG
 			printf("STILL CONNECTED.");
 			#endif
@@ -525,10 +537,6 @@ static void enableAllInitCmd()
 		GSM_Init[idx]->skip = 0;
 	}
 }
-
-
-
-
 
 /*
  * PPPoS TASK
@@ -824,8 +832,8 @@ exit:
 int ppposInit()
 {
 	if (pppos_mutex != NULL) xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
-	do_pppos_connect = 1;
-	int gstat = 0;
+	do_pppos_connect = 0;
+
 	int task_s = pppos_task_started;
 	if (pppos_mutex != NULL) xSemaphoreGive(pppos_mutex);
 
@@ -844,8 +852,28 @@ int ppposInit()
 			task_s = pppos_task_started;
 			xSemaphoreGive(pppos_mutex);
 		}
+	} else {
+	
+	    // PPPoS task already running	    		
+	    if (tcpip_adapter_initialized == 0) {
+			tcpip_adapter_init();
+			tcpip_adapter_initialized = 1;
+		}
+	
 	}
+	return 0;
+}
 
+//=============
+int ppposConnect()
+{
+    if (pppos_mutex != NULL) xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
+	do_pppos_connect = 1;
+	int gstat = 0;
+	int task_s = pppos_task_started;
+	if (pppos_mutex != NULL) xSemaphoreGive(pppos_mutex);
+
+    // Hold until connection is obtained TODO make it as "blocking" flag
 	while (gstat != 1) {
 		vTaskDelay(10 / portTICK_RATE_MS);
 		xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
@@ -854,8 +882,8 @@ int ppposInit()
 		xSemaphoreGive(pppos_mutex);
 		if (task_s == 0) return 0;
 	}
-
-	return 1;
+	
+	return 0;
 }
 
 //===================================================

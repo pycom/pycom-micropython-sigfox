@@ -89,13 +89,6 @@
 lte_obj_t lte_obj;
 
 
-static EventGroupHandle_t gsm_event_group;
-
-// Event bits
-#define CONNECTED_BIT BIT0
-
-
-
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
@@ -104,15 +97,26 @@ static EventGroupHandle_t gsm_event_group;
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
 
+#define UART_GPIO_TX CONFIG_GSM_TX
+#define UART_GPIO_RX CONFIG_GSM_RX
+#define UART_PIN_CTS CONFIG_GSM_CTS
+#define UART_PIN_RTS CONFIG_GSM_RTS
+
 void modlte_init0(void) {
+    if (gpio_set_direction(UART_GPIO_TX, GPIO_MODE_OUTPUT)) return;
+	if (gpio_set_direction(UART_GPIO_RX, GPIO_MODE_INPUT)) return;
+	if (gpio_set_direction(UART_PIN_CTS, GPIO_MODE_INPUT)) return;
+	if (gpio_set_direction(UART_PIN_RTS, GPIO_MODE_OUTPUT)) return;
+	if (gpio_set_pull_mode(UART_GPIO_RX, GPIO_PULLUP_ONLY)) return;
+	
+	
+	ppposInit();
 }
 
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-static void lte_reset(void);
-
 static void lte_do_connect();
 
 static int lte_gethostbyname(const char *name, mp_uint_t len, uint8_t *out_ip, mp_uint_t family);
@@ -139,14 +143,11 @@ static void lte_do_connect() {
     // first close any active connections
     lte_obj.disconnected = true;
 
-	int res = ppposInit();
+	int res = ppposConnect();
 	
-    //TODO
-
-    lte_obj.disconnected = false;
+    if (!res) lte_obj.disconnected = false;
 
     return;
-    // TODO Add timeout handling!!}
 }
 
 /******************************************************************************/
@@ -194,7 +195,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_init_obj, 1, lte_init);
 
 mp_obj_t lte_deinit(mp_obj_t self_in) {
 
-    if (lte_obj.started) {
+    if (!lte_obj.disconnected) {
         ppposDisconnect(1,1);
         lte_obj.started = false;
     }
@@ -205,31 +206,21 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_deinit_obj, lte_deinit);
 
 STATIC mp_obj_t lte_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     STATIC const mp_arg_t allowed_args[] = {
-    	/*
-        { MP_QSTR_ssid,                 MP_ARG_REQUIRED | MP_ARG_OBJ, },
-        { MP_QSTR_auth,                                   MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_bssid,                MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_timeout,              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_ca_certs,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_keyfile,              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_certfile,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_identity,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        */
+        { MP_QSTR_cid,              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
 
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    // connect to the requested access point
+    //TODO: Pick out cid and use it for the connection
+
+    // connect to the network
     lte_do_connect ();
 
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_connect_obj, 1, lte_connect);
-
-
-
 
 STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
     ppposDisconnect(1, 1);
@@ -240,7 +231,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_disconnect_obj, lte_disconnect);
 
 
 STATIC mp_obj_t lte_isconnected(mp_obj_t self_in) {
-    if (ppposStatus() > 0)
+    if (ppposStatus() == GSM_STATE_CONNECTED)
         return mp_const_true;
     else 
         return mp_const_false;
@@ -267,8 +258,13 @@ const mod_network_nic_type_t mod_network_nic_type_lte = {
         .locals_dict = (mp_obj_t)&lte_locals_dict,
      },
 
+    .n_gethostbyname = lte_gethostbyname,
+    .n_listen = lte_socket_listen,
+    .n_accept = lte_socket_accept,
     .n_socket = lte_socket_socket,
     .n_close = lte_socket_close,
+    .n_connect = lte_socket_connect,
+    .n_sendto =  lte_socket_sendto,
     .n_send = lte_socket_send,
     .n_recv = lte_socket_recv,
     .n_recvfrom = lte_socket_recvfrom,
@@ -398,8 +394,6 @@ static int lte_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t p
         }
 
         mbedtls_ssl_set_bio(&ss->ssl, &ss->context_fd, mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
-
-        // printf("Performing the SSL/TLS handshake...\n");
 
         while ((ret = mbedtls_ssl_handshake(&ss->ssl)) != 0)
         {

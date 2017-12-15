@@ -17,6 +17,8 @@ extern struct netif ppp_netif;
 //==============
 int ppposInit();
 
+int ppposConnect();
+
 /*
  * Disconnect from Internet
  * If 'end_task' = 1 also terminate GSM/PPPoS task
