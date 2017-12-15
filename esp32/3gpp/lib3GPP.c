@@ -169,7 +169,7 @@ static GSM_Cmd cmd_Pin =
 static GSM_Cmd cmd_Reg =
 {
 	.cmd = "AT+CEREG?\r\n",
-	.cmdSize = sizeof("AT+CREG?\r\n")-1,
+	.cmdSize = sizeof("AT+CEREG?\r\n")-1,
 	.cmdResponseOnOk = "+CEREG: 2,1",
 	.timeoutMs = 3000,
 	.delayMs = 2000,
@@ -196,8 +196,6 @@ static GSM_Cmd cmd_COPS =
 	.skip = 0,
 };
 
-
-
 static GSM_Cmd cmd_APN =
 {
 	.cmd = NULL,
@@ -212,8 +210,6 @@ static GSM_Cmd cmd_Connect =
 {
 	.cmd = "AT+CGDATA=\"PPP\",1\r\n",
 	.cmdSize = sizeof("AT+CGDATA=\"PPP\",1\r\n")-1,
-	//.cmd = "ATDT*99***1#\r\n",
-	//.cmdSize = sizeof("ATDT*99***1#\r\n")-1,
 	.cmdResponseOnOk = "CONNECT",
 	.timeoutMs = 30000,
 	.delayMs = 1000,
@@ -227,13 +223,8 @@ static GSM_Cmd *GSM_Init[] =
 		&cmd_Reset,
 		&cmd_CMEE,
 		&cmd_PowerSave,
-		//&cmd_COPS,
-		//&cmd_EchoOff,
-		&cmd_Pin,
-		&cmd_Freq,
 		&cmd_RFOn,
 		&cmd_Reg,
-		// &cmd_APN,
 		&cmd_Connect,
 };
 
@@ -616,6 +607,8 @@ static void pppos_client_task()
 		vTaskDelay(500 / portTICK_PERIOD_MS);
 
     	if (do_pppos_connect <= 0) {
+    	    cmd_RFOn.skip = 1; 
+		    cmd_Reg.skip = 1;
 			cmd_Connect.skip = 1;
 			cmd_APN.skip = 1;
 		}

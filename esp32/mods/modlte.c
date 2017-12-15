@@ -196,7 +196,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_init_obj, 1, lte_init);
 mp_obj_t lte_deinit(mp_obj_t self_in) {
 
     if (!lte_obj.disconnected) {
-        ppposDisconnect(1,1);
+        ppposDisconnect(0,1);
         lte_obj.started = false;
     }
     return mp_const_none;
