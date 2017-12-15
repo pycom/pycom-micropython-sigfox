@@ -95,6 +95,10 @@ STATIC const mp_obj_t mach_spi_def_pin[2][3] = { {&PIN_MODULE_P10, &PIN_MODULE_P
                                                  {&PIN_MODULE_P19, &PIN_MODULE_P20, &PIN_MODULE_P21} };
 static const uint32_t mach_spi_pin_af[2][3] = { {HSPICLK_OUT_IDX, HSPID_OUT_IDX, HSPIQ_IN_IDX},
                                                 {VSPICLK_OUT_IDX, VSPID_OUT_IDX, VSPIQ_IN_IDX} };
+#elif defined(GPY) || defined (FIPY)
+STATIC mach_spi_obj_t mach_spi_obj[1] = { {.baudrate = 0} };
+STATIC const mp_obj_t mach_spi_def_pin[1][3] = { {&PIN_MODULE_P10, &PIN_MODULE_P11, &PIN_MODULE_P14} };
+static const uint32_t mach_spi_pin_af[1][3] = { {HSPICLK_OUT_IDX, HSPID_OUT_IDX, HSPIQ_IN_IDX} };
 #else
 STATIC mach_spi_obj_t mach_spi_obj[1] = { {.baudrate = 0} };
 STATIC const mp_obj_t mach_spi_def_pin[1][3] = { {&PIN_MODULE_P10, &PIN_MODULE_P11, &PIN_MODULE_P12} };
