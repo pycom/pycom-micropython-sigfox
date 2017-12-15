@@ -330,7 +330,7 @@ int lgw_mcu_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         for (j = 0; j < (LGW_PKT_RX_METADATA_SIZE_ALIGNED + pkt_size); j++) {
             data[(i * LGW_PKT_RX_STRUCT_SIZE_ALIGNED) + j] = ans.ans_data[j + cptalc + 1]; /* +1 because ans.ans_data[0] is nb_packet */
         }
-        cptalc = j;
+        cptalc += j;
     }
 
     /* byte array to struct - the following code is done to work both with 32 or 64 bits host */

@@ -72,6 +72,11 @@ This software is used to obtain the unique id of the PicoCell gateway (the
 ## 5. Changelog
 ---------------
 
+### v0.2.1  ###
+
+* HAL: Fixed bug in lgw_mcu_receive() which was preventing from fetching more
+than 2 packets simultaneously.
+
 ### v0.2.0  ###
 
 * HAL: reverted AGC FW to version 4, as v5 was necessary to fix a HW bug which
