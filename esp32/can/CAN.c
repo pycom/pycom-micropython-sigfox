@@ -46,10 +46,11 @@ static void CAN_read_frame(void);
 static void CAN_isr(void *arg_p);
 
 static bool isr_installed = false;
+static CAN_frame_format_t CAN_frame_format;
 
 static void CAN_isr(void *arg_p){
 
-	//Interrupt flag buffer
+	// Interrupt flag buffer
 	__CAN_IRQ_t interrupt;
 
     // Read interrupt status and clear flags
@@ -85,10 +86,8 @@ static void CAN_read_frame(void) {
 	CAN_frame_t __frame;
 
     //check if we have a queue. If not, operation is aborted.
-    if (CAN_cfg.rx_queue == NULL){
-        // Let the hardware know the frame has been read.
-        MODULE_CAN->CMR.B.RRB=1;
-        return;
+    if (CAN_cfg.rx_queue == NULL) {
+        goto drop_frame;
     }
 
 	//get FIR
@@ -97,6 +96,11 @@ static void CAN_read_frame(void) {
     //check if this is a standard or extended CAN frame
     //standard frame
     if(__frame.FIR.B.FF==CAN_frame_std){
+
+        // drop it
+        if (CAN_frame_format == CAN_frame_ext) {
+            goto drop_frame;
+        }
 
         //Get Message ID
         __frame.MsgID = _CAN_GET_STD_ID;
@@ -109,6 +113,11 @@ static void CAN_read_frame(void) {
     //extended frame
     else{
 
+        // drop it
+        if (CAN_frame_format == CAN_frame_std) {
+            goto drop_frame;
+        }
+
         //Get Message ID
         __frame.MsgID = _CAN_GET_EXT_ID;
 
@@ -120,6 +129,8 @@ static void CAN_read_frame(void) {
 
     //send frame to input queue
     xQueueSendFromISR(CAN_cfg.rx_queue,&__frame,0);
+
+drop_frame:
 
     //Let the hardware know the frame has been read.
     MODULE_CAN->CMR.B.RRB=1;
@@ -162,7 +173,7 @@ int CAN_write_frame(const CAN_frame_t* p_frame){
     return 0;
 }
 
-int CAN_init(CAN_mode_t mode) {
+int CAN_init(CAN_mode_t mode, CAN_frame_format_t frame_format) {
 
 	//Time quantum
 	double __tq;
@@ -180,6 +191,8 @@ int CAN_init(CAN_mode_t mode) {
 	gpio_set_direction(CAN_cfg.rx_pin_id,GPIO_MODE_INPUT);
 	gpio_matrix_in(CAN_cfg.rx_pin_id,CAN_RX_IDX,0);
 	gpio_pad_select_gpio(CAN_cfg.rx_pin_id);
+
+    CAN_frame_format = frame_format;
 
     //set to PELICAN mode
 	MODULE_CAN->CDR.B.CAN_M=0x1;

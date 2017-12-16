@@ -32,6 +32,8 @@
 #include <stdint.h>
 #include "CAN_config.h"
 
+#define CAN_frame_both			2			/**< Support both frame types, only used for Rx filtering. */
+
 /**
  * \brief CAN mode
  */
@@ -84,7 +86,7 @@ typedef struct {
  *
  * \return 0 CAN Module had been initialized
  */
-int CAN_init(CAN_mode_t mode);
+int CAN_init(CAN_mode_t mode, CAN_frame_format_t frame_format);
 
 /**
  * \brief Send a can frame

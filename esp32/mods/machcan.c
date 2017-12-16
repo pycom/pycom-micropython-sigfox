@@ -45,9 +45,11 @@ CAN_device_t CAN_cfg;
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
-#define MACH_CAN_ID_11BIT                       (1)
-#define MACH_CAN_ID_29BIT                       (2)
-#define MACH_CAN_ID_BOTH                        (MACH_CAN_ID_11BIT | MACH_CAN_ID_29BIT)
+#define MACH_CAN_FORMAT_STD                         (1)
+#define MACH_CAN_FORMAT_XTD                         (2)
+#define MACH_CAN_FORMAT_BOTH                        (MACH_CAN_FORMAT_STD | MACH_CAN_FORMAT_XTD)
+
+#define MACH_CAN_DEF_RX_QUEUE_LEN                   (128)
 
 /******************************************************************************
  DEFINE TYPES
@@ -55,10 +57,11 @@ CAN_device_t CAN_cfg;
 typedef struct {
     mp_obj_base_t base;
     uint32_t baudrate;
+    uint32_t rx_queue_len;
     pin_obj_t *tx;
     pin_obj_t *rx;
     uint8_t mode;
-    uint8_t identifier;
+    uint8_t frame_format;
 } mach_can_obj_t;
 
 /******************************************************************************
@@ -94,7 +97,19 @@ STATIC void can_deassign_pins_af (mach_can_obj_t *self) {
 STATIC void mach_can_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     mach_can_obj_t *self = self_in;
     if (self->baudrate > 0) {
-        mp_printf(print, "CAN(0, mode=%d, baudrate=%d, identifier=%d)", self->mode, self->baudrate, self->identifier);
+        qstr frame_format = MP_QSTR_BOTH;
+        switch (self->frame_format) {
+            case MACH_CAN_FORMAT_STD:
+                frame_format = MP_QSTR_STANDARD;
+                break;
+            case MACH_CAN_FORMAT_XTD:
+                frame_format = MP_QSTR_EXTENDED;
+                break;
+            default:
+                break;
+        }
+        mp_printf(print, "CAN(0, mode=%d, baudrate=%d, frame_format=%q, rx_queue_len=%d)",
+                  self->mode, self->baudrate, frame_format, self->rx_queue_len);
     } else {
         mp_printf(print, "CAN(0)");
     }
@@ -118,11 +133,11 @@ STATIC mp_obj_t mach_can_init_helper(mach_can_obj_t *self, const mp_arg_val_t *a
     }
 
     // get the identifier mode
-    uint32_t identifier = args[2].u_int;
-    if (identifier > MACH_CAN_ID_BOTH) {
+    uint32_t frame_format = args[2].u_int;
+    if (frame_format > MACH_CAN_FORMAT_BOTH) {
         goto invalid_args;
     }
-    self->identifier = identifier;
+    self->frame_format = frame_format;
 
     // before assigning the baudrate
     can_deassign_pins_af(self);
@@ -147,6 +162,7 @@ STATIC mp_obj_t mach_can_init_helper(mach_can_obj_t *self, const mp_arg_val_t *a
     CAN_cfg.rx_pin_id = self->rx->pin_number;
 
     if (args[4].u_int > 0) {
+        self->rx_queue_len = args[4].u_int;
         // create the CAN RX Queue
         CAN_cfg.rx_queue = xQueueCreate(args[4].u_int, sizeof(CAN_frame_t));
     } else {
@@ -154,7 +170,7 @@ STATIC mp_obj_t mach_can_init_helper(mach_can_obj_t *self, const mp_arg_val_t *a
     }
 
     // start the CAN Module
-    CAN_init(mode);
+    CAN_init(mode, frame_format - 1);
 
     // set the af values, so that deassign works later on
     if (self->tx && self->rx) {
@@ -174,9 +190,9 @@ STATIC const mp_arg_t mach_can_init_args[] = {
     { MP_QSTR_bus,                               MP_ARG_INT,        {.u_int = 0} },
     { MP_QSTR_mode,                              MP_ARG_INT,        {.u_int = CAN_mode_normal} },
     { MP_QSTR_baudrate,                          MP_ARG_INT,        {.u_int = CAN_SPEED_500KBPS} },
-    { MP_QSTR_identifier,       MP_ARG_KW_ONLY | MP_ARG_INT,        {.u_int = MACH_CAN_ID_11BIT} },
+    { MP_QSTR_frame_format,     MP_ARG_KW_ONLY | MP_ARG_INT,        {.u_int = MACH_CAN_FORMAT_STD} },
     { MP_QSTR_pins,             MP_ARG_KW_ONLY | MP_ARG_OBJ,        {.u_obj = MP_OBJ_NULL} },
-    { MP_QSTR_rx_queue_len,     MP_ARG_KW_ONLY | MP_ARG_INT,        {.u_int = 128} },
+    { MP_QSTR_rx_queue_len,     MP_ARG_KW_ONLY | MP_ARG_INT,        {.u_int = MACH_CAN_DEF_RX_QUEUE_LEN} },
 };
 
 STATIC mp_obj_t mach_can_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
@@ -330,9 +346,9 @@ STATIC const mp_map_elem_t mach_can_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_NORMAL),              MP_OBJ_NEW_SMALL_INT(CAN_mode_normal) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SILENT),              MP_OBJ_NEW_SMALL_INT(CAN_mode_listen_only) },
 
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ID_11bit),            MP_OBJ_NEW_SMALL_INT(MACH_CAN_ID_11BIT) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ID_29bit),            MP_OBJ_NEW_SMALL_INT(MACH_CAN_ID_11BIT) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ID_BOTH),             MP_OBJ_NEW_SMALL_INT(MACH_CAN_ID_BOTH) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_STANDARD),            MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_STD) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EXTENDED),            MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_XTD) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_BOTH),                MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_BOTH) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mach_can_locals_dict, mach_can_locals_dict_table);
