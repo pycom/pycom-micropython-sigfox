@@ -49,6 +49,8 @@ static bool isr_installed = false;
 static CAN_frame_format_t CAN_frame_format;
 static CAN_filters_t *CAN_filters;
 
+extern void can_queue_interrupt(uint32_t events);
+
 static void CAN_isr(void *arg_p){
 
 	// Interrupt flag buffer
@@ -101,6 +103,8 @@ static void CAN_read_frame(void) {
 	//frame read buffer
 	CAN_frame_t __frame;
 
+    uint32_t events;
+
     //check if we have a queue. If not, operation is aborted.
     if (CAN_cfg.rx_queue == NULL) {
         goto drop_frame;
@@ -150,6 +154,14 @@ static void CAN_read_frame(void) {
             __frame.data.u8[__byte_i]=MODULE_CAN->MBX_CTRL.FCTRL.TX_RX.EXT.data[__byte_i];
 
     }
+
+    events = CAN_RX_FRAME_EVENT;
+    if (!uxQueueMessagesWaiting(CAN_cfg.rx_queue)) {
+        events |= CAN_FIFO_NOT_EMPTY_EVENT;
+    } else if (!uxQueueSpacesAvailable(CAN_cfg.rx_queue)) {
+        events |= CAN_RX_FIFO_OVERRRUN_EVENT;
+    }
+    can_queue_interrupt(events);
 
     //send frame to input queue
     xQueueSendFromISR(CAN_cfg.rx_queue,&__frame,0);

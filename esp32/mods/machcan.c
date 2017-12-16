@@ -34,6 +34,7 @@
 #include "machcan.h"
 #include "mpexception.h"
 #include "machpin.h"
+#include "mpirq.h"
 #include "CAN.h"
 #include "CAN_config.h"
 
@@ -56,6 +57,8 @@ CAN_device_t CAN_cfg;
  ******************************************************************************/
 typedef struct {
     mp_obj_base_t base;
+    mp_obj_t handler;
+    mp_obj_t handler_arg;
     uint32_t baudrate;
     uint32_t rx_queue_len;
     pin_obj_t *tx;
@@ -63,6 +66,8 @@ typedef struct {
     CAN_filters_t filters;
     uint8_t mode;
     uint8_t frame_format;
+    uint8_t trigger;
+    uint8_t events;
 } mach_can_obj_t;
 
 /******************************************************************************
@@ -71,10 +76,17 @@ typedef struct {
 STATIC mach_can_obj_t mach_can_obj = { .baudrate = 0 };
 STATIC const mp_obj_t mach_can_def_pin[2] = {&PIN_MODULE_P22, &PIN_MODULE_P23};
 
+STATIC void can_callback_handler(void *arg);
+
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
-
+void can_queue_interrupt(uint32_t events) {
+    mach_can_obj.events |= events;
+    if (events & mach_can_obj.trigger) {
+        mp_irq_queue_interrupt(can_callback_handler, (void *)&mach_can_obj);
+    }
+}
 
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
@@ -89,6 +101,13 @@ STATIC void can_deassign_pins_af (mach_can_obj_t *self) {
         pin_deassign(self->rx);
         self->tx = MP_OBJ_NULL;
         self->rx = MP_OBJ_NULL;
+    }
+}
+
+STATIC void can_callback_handler(void *arg) {
+    mach_can_obj_t *self = arg;
+    if (self->handler && self->handler != mp_const_none) {
+        mp_call_function_1(self->handler, self->handler_arg);
     }
 }
 
@@ -368,6 +387,48 @@ STATIC mp_obj_t mach_can_filter(mp_obj_t self_in, mp_obj_t filters_l) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(mach_can_filter_obj, mach_can_filter);
 
+/// \method callback(trigger, handler, arg)
+STATIC mp_obj_t mach_can_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    STATIC const mp_arg_t allowed_args[] = {
+        { MP_QSTR_trigger,      MP_ARG_REQUIRED | MP_ARG_OBJ,   },
+        { MP_QSTR_handler,      MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+        { MP_QSTR_arg,          MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+    };
+
+    // parse arguments
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
+    mach_can_obj_t *self = pos_args[0];
+
+    // enable the callback
+    if (args[0].u_obj != mp_const_none && args[1].u_obj != mp_const_none) {
+        self->trigger = mp_obj_get_int(args[0].u_obj);
+        self->handler = args[1].u_obj;
+        mp_irq_add(self, args[1].u_obj);
+        if (args[2].u_obj == mp_const_none) {
+            self->handler_arg = self;
+        } else {
+            self->handler_arg = args[2].u_obj;
+        }
+    } else {
+        self->trigger = 0;
+        mp_irq_remove(self);
+        INTERRUPT_OBJ_CLEAN(self);
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_can_callback_obj, 1, mach_can_callback);
+
+STATIC mp_obj_t mach_can_events(mp_obj_t self_in) {
+    mach_can_obj_t *self = self_in;
+
+    int32_t events = self->events;
+    self->events = 0;
+    return mp_obj_new_int(events);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_can_events_obj, mach_can_events);
+
 STATIC const mp_map_elem_t mach_can_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&mach_can_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&mach_can_deinit_obj },
@@ -375,12 +436,19 @@ STATIC const mp_map_elem_t mach_can_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_recv),                (mp_obj_t)&mach_can_recv_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_filter),              (mp_obj_t)&mach_can_filter_obj },
 
+    { MP_OBJ_NEW_QSTR(MP_QSTR_callback),            (mp_obj_t)&mach_can_callback_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_events),              (mp_obj_t)&mach_can_events_obj },
+
     { MP_OBJ_NEW_QSTR(MP_QSTR_NORMAL),              MP_OBJ_NEW_SMALL_INT(CAN_mode_normal) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SILENT),              MP_OBJ_NEW_SMALL_INT(CAN_mode_listen_only) },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_FORMAT_STD),          MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_STD) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_FORMAT_EXT),          MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_EXT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_FORMAT_BOTH),         MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_BOTH) },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_RX_FRAME),            MP_OBJ_NEW_SMALL_INT(CAN_RX_FRAME_EVENT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_RX_FIFO_NOT_EMPTY),   MP_OBJ_NEW_SMALL_INT(CAN_FIFO_NOT_EMPTY_EVENT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_RX_FIFO_OVERRRUN),    MP_OBJ_NEW_SMALL_INT(CAN_RX_FIFO_OVERRRUN_EVENT) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mach_can_locals_dict, mach_can_locals_dict_table);
