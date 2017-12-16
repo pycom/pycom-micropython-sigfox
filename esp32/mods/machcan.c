@@ -63,7 +63,8 @@ typedef struct {
     uint32_t rx_queue_len;
     pin_obj_t *tx;
     pin_obj_t *rx;
-    CAN_filters_t filters;
+    CAN_sw_filters_t swfilters;
+    CAN_hw_filters_t hwfilters;
     uint8_t mode;
     uint8_t frame_format;
     uint8_t trigger;
@@ -193,8 +194,8 @@ STATIC mp_obj_t mach_can_init_helper(mach_can_obj_t *self, const mp_arg_val_t *a
     CAN_init(mode, frame_format - 1);
 
     // remove the software filters
-    self->filters.num_filters = 0;
-    CAN_setup_filters(&self->filters);
+    self->swfilters.num_filters = 0;
+    CAN_setup_sw_filters(&self->swfilters);
 
     // set the af values, so that deassign works later on
     if (self->tx && self->rx) {
@@ -360,7 +361,7 @@ STATIC mp_obj_t mach_can_recv(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_can_recv_obj, 1, mach_can_recv);
 
-STATIC mp_obj_t mach_can_filter(mp_obj_t self_in, mp_obj_t filters_l) {
+STATIC mp_obj_t mach_can_soft_filter(mp_obj_t self_in, mp_obj_t filters_l) {
     mach_can_obj_t *self = self_in;
 
     mp_obj_t *filters;
@@ -368,24 +369,51 @@ STATIC mp_obj_t mach_can_filter(mp_obj_t self_in, mp_obj_t filters_l) {
     if (filters_l != mp_const_none) {
         mp_obj_get_array(filters_l, &n_filters, &filters);
         if (n_filters < 1 || n_filters > 32) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "between 1 and 32 filters are allowed"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "between 1 and 32 software filters are possible"));
         }
         for (int i = 0; i < n_filters; i++) {
             mp_obj_t *fromto;
             mp_obj_get_array_fixed_n(filters[i], 2, &fromto);
-            self->filters.fromto[i][0] = mp_obj_get_int(fromto[0]);
-            self->filters.fromto[i][1] = mp_obj_get_int(fromto[1]);
+            self->swfilters.fromto[i][0] = mp_obj_get_int(fromto[0]);
+            self->swfilters.fromto[i][1] = mp_obj_get_int(fromto[1]);
         }
-        self->filters.num_filters = n_filters;
+        self->swfilters.num_filters = n_filters;
     } else {
-        self->filters.num_filters = 0;
+        self->swfilters.num_filters = 0;
     }
 
-    CAN_setup_filters(&self->filters);
+    CAN_setup_sw_filters(&self->swfilters);
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(mach_can_filter_obj, mach_can_filter);
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mach_can_soft_filter_obj, mach_can_soft_filter);
+
+STATIC mp_obj_t mach_can_hard_filter(mp_obj_t self_in, mp_obj_t filters_l) {
+    mach_can_obj_t *self = self_in;
+
+    mp_obj_t *filters;
+    mp_uint_t n_filters;
+    if (filters_l != mp_const_none) {
+        mp_obj_get_array(filters_l, &n_filters, &filters);
+        if (n_filters < 1 || n_filters > 2) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "between 1 and 2 hardware filters are possible"));
+        }
+        for (int i = 0; i < n_filters; i++) {
+            mp_obj_t *fromto;
+            mp_obj_get_array_fixed_n(filters[i], 2, &fromto);
+            self->hwfilters.codemask[i][0] = mp_obj_get_int(fromto[0]);
+            self->hwfilters.codemask[i][1] = mp_obj_get_int(fromto[1]);
+        }
+        self->hwfilters.num_filters = n_filters;
+    } else {
+        self->hwfilters.num_filters = 0;
+    }
+
+    CAN_setup_hw_filters(&self->hwfilters);
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mach_can_hard_filter_obj, mach_can_hard_filter);
 
 /// \method callback(trigger, handler, arg)
 STATIC mp_obj_t mach_can_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -434,7 +462,8 @@ STATIC const mp_map_elem_t mach_can_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&mach_can_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_send),                (mp_obj_t)&mach_can_send_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_recv),                (mp_obj_t)&mach_can_recv_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_filter),              (mp_obj_t)&mach_can_filter_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_soft_filter),         (mp_obj_t)&mach_can_soft_filter_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_hard_filter),         (mp_obj_t)&mach_can_hard_filter_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),            (mp_obj_t)&mach_can_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_events),              (mp_obj_t)&mach_can_events_obj },

@@ -47,7 +47,7 @@ static void CAN_isr(void *arg_p);
 
 static bool isr_installed = false;
 static CAN_frame_format_t CAN_frame_format;
-static CAN_filters_t *CAN_filters;
+static CAN_sw_filters_t *CAN_sw_filters;
 
 extern void can_queue_interrupt(uint32_t events);
 
@@ -82,9 +82,9 @@ static void CAN_isr(void *arg_p){
 
 static bool CAN_filter_message(uint32_t msg_id) {
     bool accept = false;
-    if (CAN_filters && CAN_filters->num_filters > 0) {
-        for (int i = 0; i < CAN_filters->num_filters; i++) {
-            if (msg_id >= CAN_filters->fromto[i][0] && msg_id <= CAN_filters->fromto[i][1]) {
+    if (CAN_sw_filters && CAN_sw_filters->num_filters > 0) {
+        for (int i = 0; i < CAN_sw_filters->num_filters; i++) {
+            if (msg_id >= CAN_sw_filters->fromto[i][0] && msg_id <= CAN_sw_filters->fromto[i][1]) {
                 accept = true;
                 break;
             }
@@ -278,7 +278,7 @@ int CAN_init(CAN_mode_t mode, CAN_frame_format_t frame_format) {
     MODULE_CAN->MBX_CTRL.ACC.MASK[3] = 0xff;
 
     //no software filters
-    CAN_filters = NULL;
+    CAN_sw_filters = NULL;
 
     //set to normal mode
     MODULE_CAN->OCR.B.OCMODE=__CAN_OC_NOM;
@@ -317,6 +317,40 @@ int CAN_stop(void) {
 	return 0;
 }
 
-void CAN_setup_filters(CAN_filters_t *filters) {
-    CAN_filters = filters;
+void CAN_setup_sw_filters(CAN_sw_filters_t *swfilters) {
+    CAN_sw_filters = swfilters;
+}
+
+void CAN_setup_hw_filters(CAN_hw_filters_t *hwfilters) {
+    uint32_t code, mask;
+    if (hwfilters->num_filters == 1) {
+        MODULE_CAN->MOD.B.AFM = 1;
+
+        code = hwfilters->codemask[0][0];
+        mask = hwfilters->codemask[0][1];
+        MODULE_CAN->MBX_CTRL.ACC.CODE[0] = (code >> 24) & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.CODE[1] = (code >> 16) & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.CODE[2] = (code >> 8) & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.CODE[3] = code & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[0] = (mask >> 24) & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[1] = (mask >> 16) & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[2] = (mask >> 8) & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[3] = mask & 0xFF;
+    } else {
+        MODULE_CAN->MOD.B.AFM = 0;
+
+        code = hwfilters->codemask[0][0];
+        mask = hwfilters->codemask[0][1];
+        MODULE_CAN->MBX_CTRL.ACC.CODE[0] = (code >> 8) & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.CODE[1] = code & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[0] = (mask >> 8) & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[1] = mask & 0xFF;
+
+        code = hwfilters->codemask[1][0];
+        mask = hwfilters->codemask[1][1];
+        MODULE_CAN->MBX_CTRL.ACC.CODE[2] = (code >> 8) & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.CODE[3] = code & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[2] = (mask >> 8) & 0xFF;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[3] = mask & 0xFF;
+    }
 }

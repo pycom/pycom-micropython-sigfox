@@ -83,7 +83,12 @@ typedef struct {
 typedef struct {
     uint32_t fromto[32][2];
     uint8_t num_filters;
-}CAN_filters_t;
+}CAN_sw_filters_t;
+
+typedef struct {
+    uint32_t codemask[2][2];
+    uint8_t num_filters;
+}CAN_hw_filters_t;
 
 typedef enum {
     CAN_RX_FRAME_EVENT = 1,
@@ -114,6 +119,8 @@ int CAN_write_frame(const CAN_frame_t* p_frame);
  */
 int CAN_stop(void);
 
-void CAN_setup_filters(CAN_filters_t *filters);
+void CAN_setup_sw_filters(CAN_sw_filters_t *swfilters);
+
+void CAN_setup_hw_filters(CAN_hw_filters_t *hwfilters);
 
 #endif
