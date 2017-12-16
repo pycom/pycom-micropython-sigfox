@@ -47,6 +47,7 @@ static void CAN_isr(void *arg_p);
 
 static bool isr_installed = false;
 static CAN_frame_format_t CAN_frame_format;
+static CAN_filters_t *CAN_filters;
 
 static void CAN_isr(void *arg_p){
 
@@ -77,6 +78,21 @@ static void CAN_isr(void *arg_p){
     }
 }
 
+static bool CAN_filter_message(uint32_t msg_id) {
+    bool accept = false;
+    if (CAN_filters && CAN_filters->num_filters > 0) {
+        for (int i = 0; i < CAN_filters->num_filters; i++) {
+            if (msg_id >= CAN_filters->fromto[i][0] && msg_id <= CAN_filters->fromto[i][1]) {
+                accept = true;
+                break;
+            }
+        }
+    } else {
+        accept = true;
+    }
+    return accept;
+}
+
 static void CAN_read_frame(void) {
 
 	//byte iterator
@@ -105,9 +121,13 @@ static void CAN_read_frame(void) {
         //Get Message ID
         __frame.MsgID = _CAN_GET_STD_ID;
 
+        if (!CAN_filter_message(__frame.MsgID)) {
+            goto drop_frame;
+        }
+
         //deep copy data bytes
         for(__byte_i=0;__byte_i<__frame.FIR.B.DLC;__byte_i++)
-        	__frame.data.u8[__byte_i]=MODULE_CAN->MBX_CTRL.FCTRL.TX_RX.STD.data[__byte_i];
+            __frame.data.u8[__byte_i]=MODULE_CAN->MBX_CTRL.FCTRL.TX_RX.STD.data[__byte_i];
 
     }
     //extended frame
@@ -121,9 +141,13 @@ static void CAN_read_frame(void) {
         //Get Message ID
         __frame.MsgID = _CAN_GET_EXT_ID;
 
+        if (!CAN_filter_message(__frame.MsgID)) {
+            goto drop_frame;
+        }
+
         //deep copy data bytes
         for(__byte_i=0;__byte_i<__frame.FIR.B.DLC;__byte_i++)
-        	__frame.data.u8[__byte_i]=MODULE_CAN->MBX_CTRL.FCTRL.TX_RX.EXT.data[__byte_i];
+            __frame.data.u8[__byte_i]=MODULE_CAN->MBX_CTRL.FCTRL.TX_RX.EXT.data[__byte_i];
 
     }
 
@@ -183,6 +207,7 @@ int CAN_init(CAN_mode_t mode, CAN_frame_format_t frame_format) {
     DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_CAN_RST);
 
     //configure TX pin
+    gpio_set_level(CAN_cfg.tx_pin_id, 1);
     gpio_set_direction(CAN_cfg.tx_pin_id,GPIO_MODE_OUTPUT);
     gpio_matrix_out(CAN_cfg.tx_pin_id,CAN_TX_IDX,0,0);
     gpio_pad_select_gpio(CAN_cfg.tx_pin_id);
@@ -240,6 +265,9 @@ int CAN_init(CAN_mode_t mode, CAN_frame_format_t frame_format) {
     MODULE_CAN->MBX_CTRL.ACC.MASK[2] = 0xff;
     MODULE_CAN->MBX_CTRL.ACC.MASK[3] = 0xff;
 
+    //no software filters
+    CAN_filters = NULL;
+
     //set to normal mode
     MODULE_CAN->OCR.B.OCMODE=__CAN_OC_NOM;
 
@@ -275,4 +303,8 @@ int CAN_stop(void) {
 	MODULE_CAN->MOD.B.RM = 1;
 
 	return 0;
+}
+
+void CAN_setup_filters(CAN_filters_t *filters) {
+    CAN_filters = filters;
 }

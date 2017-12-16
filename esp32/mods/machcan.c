@@ -46,8 +46,8 @@ CAN_device_t CAN_cfg;
  DEFINE CONSTANTS
  ******************************************************************************/
 #define MACH_CAN_FORMAT_STD                         (1)
-#define MACH_CAN_FORMAT_XTD                         (2)
-#define MACH_CAN_FORMAT_BOTH                        (MACH_CAN_FORMAT_STD | MACH_CAN_FORMAT_XTD)
+#define MACH_CAN_FORMAT_EXT                         (2)
+#define MACH_CAN_FORMAT_BOTH                        (MACH_CAN_FORMAT_STD | MACH_CAN_FORMAT_EXT)
 
 #define MACH_CAN_DEF_RX_QUEUE_LEN                   (128)
 
@@ -60,6 +60,7 @@ typedef struct {
     uint32_t rx_queue_len;
     pin_obj_t *tx;
     pin_obj_t *rx;
+    CAN_filters_t filters;
     uint8_t mode;
     uint8_t frame_format;
 } mach_can_obj_t;
@@ -97,13 +98,13 @@ STATIC void can_deassign_pins_af (mach_can_obj_t *self) {
 STATIC void mach_can_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     mach_can_obj_t *self = self_in;
     if (self->baudrate > 0) {
-        qstr frame_format = MP_QSTR_BOTH;
+        qstr frame_format = MP_QSTR_FORMAT_BOTH;
         switch (self->frame_format) {
             case MACH_CAN_FORMAT_STD:
-                frame_format = MP_QSTR_STANDARD;
+                frame_format = MP_QSTR_FORMAT_STD;
                 break;
-            case MACH_CAN_FORMAT_XTD:
-                frame_format = MP_QSTR_EXTENDED;
+            case MACH_CAN_FORMAT_EXT:
+                frame_format = MP_QSTR_FORMAT_EXT;
                 break;
             default:
                 break;
@@ -171,6 +172,10 @@ STATIC mp_obj_t mach_can_init_helper(mach_can_obj_t *self, const mp_arg_val_t *a
 
     // start the CAN Module
     CAN_init(mode, frame_format - 1);
+
+    // remove the software filters
+    self->filters.num_filters = 0;
+    CAN_setup_filters(&self->filters);
 
     // set the af values, so that deassign works later on
     if (self->tx && self->rx) {
@@ -336,19 +341,46 @@ STATIC mp_obj_t mach_can_recv(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_can_recv_obj, 1, mach_can_recv);
 
+STATIC mp_obj_t mach_can_filter(mp_obj_t self_in, mp_obj_t filters_l) {
+    mach_can_obj_t *self = self_in;
+
+    mp_obj_t *filters;
+    mp_uint_t n_filters;
+    if (filters_l != mp_const_none) {
+        mp_obj_get_array(filters_l, &n_filters, &filters);
+        if (n_filters < 1 || n_filters > 32) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "between 1 and 32 filters are allowed"));
+        }
+        for (int i = 0; i < n_filters; i++) {
+            mp_obj_t *fromto;
+            mp_obj_get_array_fixed_n(filters[i], 2, &fromto);
+            self->filters.fromto[i][0] = mp_obj_get_int(fromto[0]);
+            self->filters.fromto[i][1] = mp_obj_get_int(fromto[1]);
+        }
+        self->filters.num_filters = n_filters;
+    } else {
+        self->filters.num_filters = 0;
+    }
+
+    CAN_setup_filters(&self->filters);
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mach_can_filter_obj, mach_can_filter);
 
 STATIC const mp_map_elem_t mach_can_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&mach_can_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&mach_can_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_send),                (mp_obj_t)&mach_can_send_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_recv),                (mp_obj_t)&mach_can_recv_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_filter),              (mp_obj_t)&mach_can_filter_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_NORMAL),              MP_OBJ_NEW_SMALL_INT(CAN_mode_normal) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SILENT),              MP_OBJ_NEW_SMALL_INT(CAN_mode_listen_only) },
 
-    { MP_OBJ_NEW_QSTR(MP_QSTR_STANDARD),            MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_STD) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_EXTENDED),            MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_XTD) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_BOTH),                MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_BOTH) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FORMAT_STD),          MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_STD) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FORMAT_EXT),          MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_EXT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FORMAT_BOTH),         MP_OBJ_NEW_SMALL_INT(MACH_CAN_FORMAT_BOTH) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mach_can_locals_dict, mach_can_locals_dict_table);

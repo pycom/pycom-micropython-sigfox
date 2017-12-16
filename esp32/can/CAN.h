@@ -80,6 +80,11 @@ typedef struct {
     } data;
 }CAN_frame_t;
 
+typedef struct {
+    uint32_t fromto[32][2];
+    uint8_t num_filters;
+}CAN_filters_t;
+
 
 /**
  * \brief Initialize the CAN Module
@@ -102,5 +107,7 @@ int CAN_write_frame(const CAN_frame_t* p_frame);
  * \return 0 CAN Module was stopped
  */
 int CAN_stop(void);
+
+void CAN_setup_filters(CAN_filters_t *filters);
 
 #endif
