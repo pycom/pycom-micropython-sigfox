@@ -177,6 +177,10 @@ int CAN_write_frame(const CAN_frame_t* p_frame){
 	//byte iterator
 	uint8_t __byte_i;
 
+    while (MODULE_CAN->SR.B.TS && !MODULE_CAN->SR.B.TBS) {
+        ets_delay_us(50);
+    }
+
 	//copy frame information record
 	MODULE_CAN->MBX_CTRL.FCTRL.FIR.U=p_frame->FIR.U;
 
