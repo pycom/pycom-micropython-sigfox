@@ -401,8 +401,8 @@ STATIC mp_obj_t mach_can_hard_filter(mp_obj_t self_in, mp_obj_t filters_l) {
         for (int i = 0; i < n_filters; i++) {
             mp_obj_t *fromto;
             mp_obj_get_array_fixed_n(filters[i], 2, &fromto);
-            self->hwfilters.codemask[i][0] = mp_obj_get_int(fromto[0]);
-            self->hwfilters.codemask[i][1] = mp_obj_get_int(fromto[1]);
+            self->hwfilters.codemask[i][0] = mp_obj_get_int_truncated(fromto[0]);
+            self->hwfilters.codemask[i][1] = mp_obj_get_int_truncated(fromto[1]);
         }
         self->hwfilters.num_filters = n_filters;
     } else {

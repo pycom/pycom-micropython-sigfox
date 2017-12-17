@@ -327,10 +327,13 @@ void CAN_setup_sw_filters(CAN_sw_filters_t *swfilters) {
 
 void CAN_setup_hw_filters(CAN_hw_filters_t *hwfilters) {
     uint32_t code, mask;
+
+    // enter reset mode
+    MODULE_CAN->MOD.B.RM = 1;
     if (hwfilters->num_filters == 1) {
         MODULE_CAN->MOD.B.AFM = 1;
 
-        code = hwfilters->codemask[0][0];
+        code = hwfilters->codemask[0][0] << 21;
         mask = hwfilters->codemask[0][1];
         MODULE_CAN->MBX_CTRL.ACC.CODE[0] = (code >> 24) & 0xFF;
         MODULE_CAN->MBX_CTRL.ACC.CODE[1] = (code >> 16) & 0xFF;
@@ -340,7 +343,7 @@ void CAN_setup_hw_filters(CAN_hw_filters_t *hwfilters) {
         MODULE_CAN->MBX_CTRL.ACC.MASK[1] = (mask >> 16) & 0xFF;
         MODULE_CAN->MBX_CTRL.ACC.MASK[2] = (mask >> 8) & 0xFF;
         MODULE_CAN->MBX_CTRL.ACC.MASK[3] = mask & 0xFF;
-    } else {
+    } else if (hwfilters->num_filters == 2) {
         MODULE_CAN->MOD.B.AFM = 0;
 
         code = hwfilters->codemask[0][0];
@@ -356,5 +359,17 @@ void CAN_setup_hw_filters(CAN_hw_filters_t *hwfilters) {
         MODULE_CAN->MBX_CTRL.ACC.CODE[3] = code & 0xFF;
         MODULE_CAN->MBX_CTRL.ACC.MASK[2] = (mask >> 8) & 0xFF;
         MODULE_CAN->MBX_CTRL.ACC.MASK[3] = mask & 0xFF;
+    } else {
+        // no acceptance filtering, as we want to fetch all messages
+        MODULE_CAN->MBX_CTRL.ACC.CODE[0] = 0;
+        MODULE_CAN->MBX_CTRL.ACC.CODE[1] = 0;
+        MODULE_CAN->MBX_CTRL.ACC.CODE[2] = 0;
+        MODULE_CAN->MBX_CTRL.ACC.CODE[3] = 0;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[0] = 0xff;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[1] = 0xff;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[2] = 0xff;
+        MODULE_CAN->MBX_CTRL.ACC.MASK[3] = 0xff;
     }
+    // exit reset mode
+    MODULE_CAN->MOD.B.RM = 0;
 }
