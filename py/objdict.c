@@ -35,7 +35,7 @@
 #include "py/builtin.h"
 #include "py/objtype.h"
 
-#if defined(LOPY) || defined (WIPY) || defined(SIPY)  || defined(GPY)  || defined(FIPY)
+#if defined(LOPY) || defined (WIPY) || defined(SIPY) || defined(GPY) || defined(FIPY)
 #include "esp_attr.h"
 #endif
 

@@ -890,24 +890,7 @@ IRAM_ATTR uint8_t SX1272Read( uint8_t addr )
     SX1272ReadBuffer( addr, &data, 1 );
     return data;
 }
-#if defined (FIPY)
-IRAM_ATTR void SX1272WriteBuffer( uint8_t addr, uint8_t *buffer, uint8_t size )
-{
-    uint8_t i;
 
-    //NSS = 0;
-    GpioWrite( &SX1272.Spi.Nss, 0 );
-
-    SpiInOut_S( &SX1272.Spi, addr | 0x80 );
-    for( i = 0; i < size; i++ )
-    {
-        SpiInOut_S( &SX1272.Spi, buffer[i] );
-    }
-
-    //NSS = 1;
-    GpioWrite( &SX1272.Spi.Nss, 1 );
-}
-#else
 IRAM_ATTR void SX1272WriteBuffer( uint8_t addr, uint8_t *buffer, uint8_t size )
 {
     uint8_t i;
@@ -924,28 +907,7 @@ IRAM_ATTR void SX1272WriteBuffer( uint8_t addr, uint8_t *buffer, uint8_t size )
     //NSS = 1;
     GpioWrite( &SX1272.Spi.Nss, 1 );
 }
-#endif
 
-#if defined (FIPY)
-
-IRAM_ATTR void SX1272ReadBuffer( uint8_t addr, uint8_t *buffer, uint8_t size )
-{
-    uint8_t i;
-
-    //NSS = 0;
-    GpioWrite( &SX1272.Spi.Nss, 0 );
-
-    SpiInOut_S( &SX1272.Spi, addr & 0x7F );
-
-    for( i = 0; i < size; i++ )
-    {
-        buffer[i] = SpiInOut_S( &SX1272.Spi, 0 );
-    }
-
-    //NSS = 1;
-    GpioWrite( &SX1272.Spi.Nss, 1 );
-}
-#else
 IRAM_ATTR void SX1272ReadBuffer( uint8_t addr, uint8_t *buffer, uint8_t size )
 {
     uint8_t i;
@@ -963,7 +925,6 @@ IRAM_ATTR void SX1272ReadBuffer( uint8_t addr, uint8_t *buffer, uint8_t size )
     //NSS = 1;
     GpioWrite( &SX1272.Spi.Nss, 1 );
 }
-#endif
 
 IRAM_ATTR void SX1272WriteFifo( uint8_t *buffer, uint8_t size )
 {

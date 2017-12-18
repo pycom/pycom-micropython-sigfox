@@ -5,7 +5,7 @@ import time
 import os
 
 # only execute this test on the LoPy
-if os.uname().sysname != 'LoPy':
+if os.uname().sysname != 'LoPy' and os.uname().sysname != 'FiPy':
     print("SKIP")
     import sys
     sys.exit()

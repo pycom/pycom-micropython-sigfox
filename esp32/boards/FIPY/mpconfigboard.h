@@ -16,6 +16,8 @@
 
 #define DEFAULT_AP_SSID                                         "fipy-wlan"
 
+#define MICROPY_LPWAN_DIO_PIN
+
 #define CONFIG_GSM_TX 33
 #define CONFIG_GSM_RX 34
 

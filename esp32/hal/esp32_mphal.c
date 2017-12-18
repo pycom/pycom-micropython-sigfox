@@ -60,7 +60,7 @@ void HAL_set_tick_cb (void *cb) {
 
 void mp_hal_init(bool soft_reset) {
     if (!soft_reset) {
-		#if defined (LOPY) || defined(FIPY)
+    #if defined (LOPY) || defined(FIPY)
         // setup the HAL timer for LoRa
         HAL_tick_user_cb = NULL;
         TimerHandle_t hal_timer = xTimerCreate("HAL_Timer", 1 / portTICK_PERIOD_MS, pdTRUE, (void *) 0, HAL_TimerCallback);

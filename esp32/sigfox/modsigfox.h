@@ -18,10 +18,6 @@
 #include "lora/system/spi.h"
 #include "modnetwork.h"
 
-#if defined (FIPY)
-#include "../lora/board.h"
-#endif
-
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/

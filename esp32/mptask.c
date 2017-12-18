@@ -48,7 +48,7 @@
 #if defined (LOPY) || defined (FIPY)
 #include "modlora.h"
 #endif
-#if defined (SIPY) || defined (FIPY)
+#if defined (SIPY)
 #include "sigfox/modsigfox.h"
 #endif
 #if defined (GPY) || defined (FIPY)
@@ -209,7 +209,7 @@ soft_reset:
 #if defined(LOPY) || defined (FIPY)
         modlora_init0();
 #endif
-#if defined(SIPY) || defined (FIPY)
+#if defined(SIPY)
         modsigfox_init0();
 #endif
 #if defined(GPY) || defined (FIPY)
@@ -225,7 +225,7 @@ soft_reset:
     mptask_update_lpwan_mac_address();
 #endif
 
-#if defined(SIPY) || defined(FIPY)
+#if defined(SIPY)
     sigfox_update_id();
     sigfox_update_pac();
     sigfox_update_private_key();

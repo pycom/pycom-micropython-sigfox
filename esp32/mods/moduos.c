@@ -227,9 +227,9 @@ STATIC const qstr os_uname_info_fields[] = {
     MP_QSTR_release, MP_QSTR_version,
     MP_QSTR_machine,
 #if defined(LOPY) || defined(FIPY)
-	MP_QSTR_lorawan
-#elif defined(SIPY) || defined(FIPY)
-	MP_QSTR_sigfox
+    MP_QSTR_lorawan
+#elif defined(SIPY)
+    MP_QSTR_sigfox
 #endif
 };
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_sysname_obj, MICROPY_PY_SYS_PLATFORM);
@@ -239,13 +239,13 @@ STATIC const MP_DEFINE_STR_OBJ(os_uname_info_version_obj, MICROPY_GIT_TAG " on "
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_machine_obj, MICROPY_HW_BOARD_NAME " with " MICROPY_HW_MCU_NAME);
 #if defined(LOPY) || defined(FIPY)
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lpwan_obj, LORAWAN_VERSION_NUMBER);
-#elif defined(SIPY) || defined(FIPY)
+#elif defined(SIPY) // TODO: change this constant name and include the FiPy here
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lpwan_obj, SIGFOX_VERSION_NUMBER);
 #endif
 STATIC MP_DEFINE_ATTRTUPLE(
     os_uname_info_obj
     ,os_uname_info_fields
-#if defined(LOPY) || defined(SIPY)  || defined(FIPY)
+#if defined(LOPY) || defined(SIPY) || defined(FIPY)
     ,6
 #else
     ,5
