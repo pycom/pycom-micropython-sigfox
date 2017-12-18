@@ -392,27 +392,27 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
     boot_info = &_boot_info;
     mperror_init0();
 
-    // check the signature fot he bootloader first
-    uint8_t signature[16];
-    calculate_signature(signature);
-    if (!memcmp(boot_info->signature, empty_signature, sizeof(boot_info->signature))) {
-        ESP_LOGI(TAG, "Writing the signature");
-        // write the signature
-        memcpy(boot_info->signature, signature, sizeof(boot_info->signature));
-        if (!ota_write_boot_info (boot_info, bs->ota_info.offset)) {
-            ESP_LOGE(TAG, "Error writing boot info");
-            mperror_fatal_error();
-            return false;
-        }
-    } else {
-        ESP_LOGI(TAG, "Comparing the signature");
-        // compare the signatures
-        if (memcmp(boot_info->signature, signature, sizeof(boot_info->signature))) {
-            // signature check failed, don't load the app!
-            mperror_fatal_error();
-            return false;
-        }
-    }
+    // // check the signature fot he bootloader first
+    // uint8_t signature[16];
+    // calculate_signature(signature);
+    // if (!memcmp(boot_info->signature, empty_signature, sizeof(boot_info->signature))) {
+    //     ESP_LOGI(TAG, "Writing the signature");
+    //     // write the signature
+    //     memcpy(boot_info->signature, signature, sizeof(boot_info->signature));
+    //     if (!ota_write_boot_info (boot_info, bs->ota_info.offset)) {
+    //         ESP_LOGE(TAG, "Error writing boot info");
+    //         mperror_fatal_error();
+    //         return false;
+    //     }
+    // } else {
+    //     ESP_LOGI(TAG, "Comparing the signature");
+    //     // compare the signatures
+    //     if (memcmp(boot_info->signature, signature, sizeof(boot_info->signature))) {
+    //         // signature check failed, don't load the app!
+    //         mperror_fatal_error();
+    //         return false;
+    //     }
+    // }
 
     if (!ota_select_valid(boot_info)) {
         ESP_LOGI(TAG, "Initializing OTA partition info");
