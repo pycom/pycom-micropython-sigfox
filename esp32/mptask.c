@@ -212,7 +212,7 @@ soft_reset:
 #if defined(SIPY) || defined (FIPY)
         modsigfox_init0();
 #endif
-#if defined(GPY)
+#if defined(GPY) || defined (FIPY)
         modlte_init0();
 #endif
     }
