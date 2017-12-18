@@ -372,13 +372,19 @@ GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py
 
 ifeq ($(TARGET), app)
 all: $(APP_BIN)
-else
+endif
+ifeq ($(TARGET), boot)
 all: $(BOOT_BIN)
 endif
 
+ifeq ($(TARGET), boot_app)
+all: $(BOOT_BIN) $(APP_BIN)
+endif
+
+
 .PHONY: all
 
-ifeq ($(TARGET), boot)
+ifeq ($(TARGET), $(filter $(TARGET), boot boot_app))
 $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
@@ -394,8 +400,9 @@ $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a
 $(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
 	$(ECHO) "IMAGE $@"
 	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
-else
+endif
 
+ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
 ifeq ($(BOARD), SIPY)
 $(BUILD)/sigfox/sigfox.a: $(SFX_OBJ)
 	$(ECHO) "AR $@"
