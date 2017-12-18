@@ -30,7 +30,7 @@
 
 #define SIGFOX_CMD_QUEUE_SIZE_MAX                     (2)
 #define SIGFOX_DATA_QUEUE_SIZE_MAX                    (3)
-#define SIGFOX_STACK_SIZE                             (3072)
+#define SIGFOX_STACK_SIZE                             (3584)
 #define SIGFOX_TASK_PRIORITY                          (6)
 
 /******************************************************************************
@@ -135,6 +135,8 @@ typedef union {
 /******************************************************************************
  EXPORTED DATA
  ******************************************************************************/
+
+#if defined (SIPY) // For FIPY this is set as part of the LORA stack
 #define RADIO_RESET                                 GPIO18
 
 #define RADIO_MOSI                                  GPIO27
@@ -143,7 +145,7 @@ typedef union {
 #define RADIO_NSS                                   GPIO17
 
 #define RADIO_DIO                                   GPIO23
-
+#endif
 /******************************************************************************
  EXPORTED DATA
  ******************************************************************************/

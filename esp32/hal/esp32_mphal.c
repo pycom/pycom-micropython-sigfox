@@ -40,13 +40,13 @@
 #include "freertos/xtensa_api.h"
 
 
-#ifdef LOPY
+#if defined (LOPY) || defined(FIPY)
 static void (*HAL_tick_user_cb)(void);
 #endif
 
 #define TIMER_TICKS             160000        // 1 ms @160MHz
 
-#ifdef LOPY
+#if defined (LOPY) || defined(FIPY)
 IRAM_ATTR static void HAL_TimerCallback (TimerHandle_t xTimer) {
     if (HAL_tick_user_cb) {
         HAL_tick_user_cb();
@@ -60,7 +60,7 @@ void HAL_set_tick_cb (void *cb) {
 
 void mp_hal_init(bool soft_reset) {
     if (!soft_reset) {
-    #ifdef LOPY
+    #if defined (LOPY) || defined(FIPY)
         // setup the HAL timer for LoRa
         HAL_tick_user_cb = NULL;
         TimerHandle_t hal_timer = xTimerCreate("HAL_Timer", 1 / portTICK_PERIOD_MS, pdTRUE, (void *) 0, HAL_TimerCallback);

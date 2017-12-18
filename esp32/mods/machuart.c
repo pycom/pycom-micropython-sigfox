@@ -444,7 +444,11 @@ STATIC mp_obj_t mach_uart_make_new(const mp_obj_type_t *type, mp_uint_t n_args, 
     // work out the uart id
     uint uart_id = mp_obj_get_int(args[0].u_obj);
 
+#if defined(GPY) || defined(FIPY)
+    if (uart_id > MACH_UART_1) {
+#else
     if (uart_id > MACH_UART_2) {
+#endif
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
     }
 
@@ -489,6 +493,15 @@ STATIC mp_obj_t mach_uart_any(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_any_obj, mach_uart_any);
 
+STATIC mp_obj_t mach_uart_tx_done(mp_obj_t self_in) {
+    mach_uart_obj_t *self = self_in;
+    if (uart_tx_done(self->uart_id)) {
+        return mp_const_true;
+    }
+    return mp_const_false;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_tx_done_obj, mach_uart_tx_done);
+
 STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
     mach_uart_obj_t *self = self_in;
     pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
@@ -531,6 +544,7 @@ STATIC const mp_map_elem_t mach_uart_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),        (mp_obj_t)&mach_uart_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),      (mp_obj_t)&mach_uart_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_any),         (mp_obj_t)&mach_uart_any_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_tx_done),     (mp_obj_t)&mach_uart_tx_done_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sendbreak),   (mp_obj_t)&mach_uart_sendbreak_obj },
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_irq),         (mp_obj_t)&pyb_uart_irq_obj },
 

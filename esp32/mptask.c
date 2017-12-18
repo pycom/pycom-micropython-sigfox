@@ -45,10 +45,14 @@
 #include "antenna.h"
 #include "modled.h"
 
-#if defined(LOPY)
+#if defined (LOPY) || defined (FIPY)
 #include "modlora.h"
-#elif defined(SIPY)
+#endif
+#if defined (SIPY)
 #include "sigfox/modsigfox.h"
+#endif
+#if defined (GPY) || defined (FIPY)
+#include "modlte.h"
 #endif
 
 #include "random.h"
@@ -88,7 +92,7 @@ extern void modpycom_init0(void);
  ******************************************************************************/
 STATIC void mptask_preinit (void);
 STATIC void mptask_init_sflash_filesystem (void);
-#if defined(LOPY) || defined(SIPY)
+#if defined (LOPY) || defined (SIPY) || defined (FIPY)
 STATIC void mptask_update_lpwan_mac_address (void);
 #endif
 STATIC void mptask_enable_wifi_ap (void);
@@ -202,17 +206,21 @@ soft_reset:
             mptask_enable_wifi_ap();
         }
         // these ones are special because they need uPy running and they launch tasks
-#if defined(LOPY)
+#if defined(LOPY) || defined (FIPY)
         modlora_init0();
-#elif defined(SIPY)
+#endif
+#if defined(SIPY)
         modsigfox_init0();
+#endif
+#if defined(GPY) || defined (FIPY)
+        modlte_init0();
 #endif
     }
 
     // initialize the serial flash file system
     mptask_init_sflash_filesystem();
 
-#if defined(LOPY) || defined(SIPY)
+#if defined(LOPY) || defined(SIPY) || defined(FIPY)
     // must be done after initializing the file system
     mptask_update_lpwan_mac_address();
 #endif
@@ -379,7 +387,7 @@ STATIC void mptask_init_sflash_filesystem (void) {
     }
 }
 
-#if defined(LOPY) || defined(SIPY)
+#if defined(LOPY) || defined(SIPY) || defined(FIPY)
 STATIC void mptask_update_lpwan_mac_address (void) {
     #define LPWAN_MAC_ADDR_PATH          "/flash/sys/lpwan.mac"
 

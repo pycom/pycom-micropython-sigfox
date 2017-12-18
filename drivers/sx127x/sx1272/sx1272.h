@@ -379,4 +379,11 @@ void SX1272ReadBuffer( uint8_t addr, uint8_t *buffer, uint8_t size );
  */
 void SX1272SetMaxPayloadLength( RadioModems_t modem, uint8_t max );
 
+/*!
+ * \brief Sets the SX1272 operating mode
+ *
+ * \param [IN] opMode New operating mode
+ */
+void SX1272SetOpMode( uint8_t opMode );
+
 #endif // __SX1272_H__

@@ -35,7 +35,7 @@
 #include "py/builtin.h"
 #include "py/objtype.h"
 
-#if defined(LOPY) || defined (WIPY) || defined(SIPY)
+#if defined(LOPY) || defined (WIPY) || defined(SIPY) || defined(GPY) || defined(FIPY)
 #include "esp_attr.h"
 #endif
 
@@ -625,7 +625,7 @@ mp_obj_t mp_obj_dict_delete(mp_obj_t self_in, mp_obj_t key) {
     return self_in;
 }
 
-#if defined(LOPY) || defined (WIPY) || defined(SIPY)
+#if defined(LOPY) || defined (WIPY) || defined(SIPY) || defined(GPY) || defined(FIPY)
 IRAM_ATTR
 #endif
 mp_map_t *mp_obj_dict_get_map(mp_obj_t self_in) {

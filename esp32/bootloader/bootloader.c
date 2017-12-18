@@ -265,29 +265,29 @@ void md5_to_ascii(unsigned char *md5, unsigned char *hex) {
 // must be 32-bit aligned
 static uint32_t bootloader_buf[1024];
 
-static IRAM_ATTR void calculate_signature (uint8_t *signature) {
-    uint32_t total_len = 0;
-    uint8_t mac[6];
-    read_mac(mac);
+// static IRAM_ATTR void calculate_signature (uint8_t *signature) {
+//     uint32_t total_len = 0;
+//     uint8_t mac[6];
+//     read_mac(mac);
 
-    struct MD5Context md5_context;
+//     struct MD5Context md5_context;
 
-    ESP_LOGI(TAG, "Starting signature calculation");
+//     ESP_LOGI(TAG, "Starting signature calculation");
 
-    MD5Init(&md5_context);
-    ESP_LOGI(TAG, "md5 init sig");
-    while (total_len < 0x7000) {
-        if (ESP_ROM_SPIFLASH_RESULT_OK != bootloader_flash_read(0x1000 + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, false)) {
-            ESP_LOGE(TAG, SPI_ERROR_LOG);
-            return;
-        }
-        total_len += SPI_SEC_SIZE;
-        MD5Update(&md5_context, (void *)bootloader_buf, SPI_SEC_SIZE);
-    }
-    // add the mac address
-    MD5Update(&md5_context, (void *)mac, sizeof(mac));
-    MD5Final(signature, &md5_context);
-}
+//     MD5Init(&md5_context);
+//     ESP_LOGI(TAG, "md5 init sig");
+//     while (total_len < 0x7000) {
+//         if (ESP_ROM_SPIFLASH_RESULT_OK != bootloader_flash_read(0x1000 + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, false)) {
+//             ESP_LOGE(TAG, SPI_ERROR_LOG);
+//             return;
+//         }
+//         total_len += SPI_SEC_SIZE;
+//         MD5Update(&md5_context, (void *)bootloader_buf, SPI_SEC_SIZE);
+//     }
+//     // add the mac address
+//     MD5Update(&md5_context, (void *)mac, sizeof(mac));
+//     MD5Final(signature, &md5_context);
+// }
 
 static IRAM_ATTR bool bootloader_verify (const esp_partition_pos_t *pos, uint32_t size) {
     uint32_t total_len = 0, read_len;
@@ -392,27 +392,27 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
     boot_info = &_boot_info;
     mperror_init0();
 
-    // check the signature fot he bootloader first
-    uint8_t signature[16];
-    calculate_signature(signature);
-    if (!memcmp(boot_info->signature, empty_signature, sizeof(boot_info->signature))) {
-        ESP_LOGI(TAG, "Writing the signature");
-        // write the signature
-        memcpy(boot_info->signature, signature, sizeof(boot_info->signature));
-        if (!ota_write_boot_info (boot_info, bs->ota_info.offset)) {
-            ESP_LOGE(TAG, "Error writing boot info");
-            mperror_fatal_error();
-            return false;
-        }
-    } else {
-        ESP_LOGI(TAG, "Comparing the signature");
-        // compare the signatures
-        if (memcmp(boot_info->signature, signature, sizeof(boot_info->signature))) {
-            // signature check failed, don't load the app!
-            mperror_fatal_error();
-            return false;
-        }
-    }
+    // // check the signature fot he bootloader first
+    // uint8_t signature[16];
+    // calculate_signature(signature);
+    // if (!memcmp(boot_info->signature, empty_signature, sizeof(boot_info->signature))) {
+    //     ESP_LOGI(TAG, "Writing the signature");
+    //     // write the signature
+    //     memcpy(boot_info->signature, signature, sizeof(boot_info->signature));
+    //     if (!ota_write_boot_info (boot_info, bs->ota_info.offset)) {
+    //         ESP_LOGE(TAG, "Error writing boot info");
+    //         mperror_fatal_error();
+    //         return false;
+    //     }
+    // } else {
+    //     ESP_LOGI(TAG, "Comparing the signature");
+    //     // compare the signatures
+    //     if (memcmp(boot_info->signature, signature, sizeof(boot_info->signature))) {
+    //         // signature check failed, don't load the app!
+    //         mperror_fatal_error();
+    //         return false;
+    //     }
+    // }
 
     if (!ota_select_valid(boot_info)) {
         ESP_LOGI(TAG, "Initializing OTA partition info");

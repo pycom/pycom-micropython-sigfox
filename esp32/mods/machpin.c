@@ -121,6 +121,12 @@ void pin_init0(void) {
                continue;
             }
         #endif
+        
+        #if defined (FIPY)
+            if (self == &PIN_MODULE_P17 || self == &PIN_MODULE_P18 || self == &PIN_MODULE_P19 || self == &PIN_MODULE_P20) {
+               continue;
+            }
+        #endif
             pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0);
         }
     }

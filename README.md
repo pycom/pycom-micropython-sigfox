@@ -92,33 +92,45 @@ After cloning, make sure to checkout all the submodules:
 Finally, before building, export the IDF_PATH variable
 
     $ export IDF_PATH=~/pycom-esp-idf
-	
+
 Prior to building the main firmware, you need to build mpy-cross
 
-	$ cd mpy-cross && make clean && make
+	$ cd mpy-cross && make clean && make && cd ..
 
-To build and flash your LoPy for 868MHz regions:
+By default the firmware is built for the WIPY2:
 
     $ cd esp32
-    $ make BOARD=LOPY TARGET=boot clean
+    $ make clean
+    $ make TARGET=boot
+    $ make TARGET=app
+    $ make flash
+
+To specify a serial port other than /dev/ttyUSB0, use ESPPORT variable:
+
+    $ # On MacOS
+    $ make ESPPORT=/dev/tty.usbserial-DQ008HQY flash
+    $ # On Windows
+    $ make ESPPORT=COM3 flash
+    $ # On linux
+    $ # make ESPPORT=/dev/ttyUSB1 flash
+
+To build and flash your LoPy for the default region (868 MHz):
+
+    $ # LORA_BAND defaults to USE_BAND_868
+    $ cd esp32
+    $ make BOARD=LOPY clean
     $ make BOARD=LOPY TARGET=boot
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_868 TARGET=app
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_868 flash
+    $ make BOARD=LOPY TARGET=app
+    $ make BOARD=LOPY flash
+
 
 or for 915MHz regions:
 
     $ cd esp32
-    $ make BOARD=LOPY TARGET=boot clean
-    $ make BOARD=LOPY TARGET=boot
+    $ make BOARD=LOPY LORA_BAND=USE_BAND_915  clean
+    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=boot
     $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=app
     $ make BOARD=LOPY LORA_BAND=USE_BAND_915 flash
-
-or the WiPy 2.0:
-
-    $ cd esp32
-    $ make BOARD=WIPY TARGET=boot
-    $ make BOARD=WIPY TARGET=app
-    $ make BOARD=WIPY flash
 
 or the SiPy:
 
@@ -129,7 +141,3 @@ or the SiPy:
 
 Make sure that your board is placed into programming mode, otherwise flahing will fail.
 To do this, connect ``P2`` to ``GND`` and then reset the board.
-
-To specify a serial port other than /dev/ttyUSB0, use ESPPORT variable:
-
-    $ make BOARD=WIPY ESPPORT=/dev/tty.usbserial-DQ008HQY flash

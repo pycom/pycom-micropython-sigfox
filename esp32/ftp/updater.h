@@ -18,7 +18,8 @@ extern bool updater_check_path (void *path);
 extern bool updater_start (void);
 extern bool updater_write (uint8_t *buf, uint32_t len);
 extern bool updater_finish (void);
-extern bool updater_verify (uint8_t *rbuff, uint8_t *hasbuff);
+//extern bool updater_verify (uint8_t *rbuff, uint8_t *hasbuff);
+extern bool updater_verify (void);
 extern bool updater_read_boot_info (boot_info_t *boot_info, uint32_t *boot_info_offset);
 
 #endif /* UPDATER_H_ */
