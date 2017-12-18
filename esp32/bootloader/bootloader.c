@@ -265,29 +265,29 @@ void md5_to_ascii(unsigned char *md5, unsigned char *hex) {
 // must be 32-bit aligned
 static uint32_t bootloader_buf[1024];
 
-static IRAM_ATTR void calculate_signature (uint8_t *signature) {
-    uint32_t total_len = 0;
-    uint8_t mac[6];
-    read_mac(mac);
+// static IRAM_ATTR void calculate_signature (uint8_t *signature) {
+//     uint32_t total_len = 0;
+//     uint8_t mac[6];
+//     read_mac(mac);
 
-    struct MD5Context md5_context;
+//     struct MD5Context md5_context;
 
-    ESP_LOGI(TAG, "Starting signature calculation");
+//     ESP_LOGI(TAG, "Starting signature calculation");
 
-    MD5Init(&md5_context);
-    ESP_LOGI(TAG, "md5 init sig");
-    while (total_len < 0x7000) {
-        if (ESP_ROM_SPIFLASH_RESULT_OK != bootloader_flash_read(0x1000 + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, false)) {
-            ESP_LOGE(TAG, SPI_ERROR_LOG);
-            return;
-        }
-        total_len += SPI_SEC_SIZE;
-        MD5Update(&md5_context, (void *)bootloader_buf, SPI_SEC_SIZE);
-    }
-    // add the mac address
-    MD5Update(&md5_context, (void *)mac, sizeof(mac));
-    MD5Final(signature, &md5_context);
-}
+//     MD5Init(&md5_context);
+//     ESP_LOGI(TAG, "md5 init sig");
+//     while (total_len < 0x7000) {
+//         if (ESP_ROM_SPIFLASH_RESULT_OK != bootloader_flash_read(0x1000 + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, false)) {
+//             ESP_LOGE(TAG, SPI_ERROR_LOG);
+//             return;
+//         }
+//         total_len += SPI_SEC_SIZE;
+//         MD5Update(&md5_context, (void *)bootloader_buf, SPI_SEC_SIZE);
+//     }
+//     // add the mac address
+//     MD5Update(&md5_context, (void *)mac, sizeof(mac));
+//     MD5Final(signature, &md5_context);
+// }
 
 static IRAM_ATTR bool bootloader_verify (const esp_partition_pos_t *pos, uint32_t size) {
     uint32_t total_len = 0, read_len;

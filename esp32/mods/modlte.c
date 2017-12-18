@@ -158,8 +158,8 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
 }
 
 static const mp_arg_t lte_init_args[] = {
-    { MP_QSTR_id,                             MP_ARG_INT,  {.u_int = 0} },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_cid),             MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 1} }  
+    { MP_QSTR_id,                             MP_ARG_INT, {.u_int = 0} },
+    { MP_QSTR_cid,          MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 1} }
 };
 
 static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
