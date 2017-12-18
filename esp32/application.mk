@@ -219,6 +219,14 @@ APP_SIGFOX_SPI_SRC_C = $(addprefix lora/,\
 	gpio-board.c \
 	)
 
+APP_LTE_SRC_C = $(addprefix 3gpp/,\
+    lib3GPP.c \
+    )
+
+APP_MODS_LTE_SRC_C = $(addprefix mods/,\
+    modlte.c \
+    )
+
 APP_TELNET_SRC_C = $(addprefix telnet/,\
 	telnet.c \
 	)
@@ -247,6 +255,10 @@ SFX_OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_C:.c=.o) $(APP_SIGFOX_TARGET_
 OBJ += $(SFX_OBJ)
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
+ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
+OBJ += $(addprefix $(BUILD)/, $(APP_LTE_SRC_C:.c=.o) $(APP_MODS_LTE_SRC_C:.c=.o))
+endif
+
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
@@ -359,8 +371,8 @@ $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(Q) $(AR) cru $@ $^
 
 $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a
-#	$(ECHO) "COPY IDF LIBRARIES $@"
-#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
@@ -385,8 +397,8 @@ $(BUILD)/application.a: $(OBJ)
 	$(Q) $(AR) cru $@ $^
 
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
-#	$(ECHO) "COPY IDF LIBRARIES $@"
-#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
 	$(Q) $(SIZE) $@
