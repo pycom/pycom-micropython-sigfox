@@ -29,7 +29,7 @@
 #include "sigfox/sigfox_types.h"
 #include "transmission.h"
 #include "targets/cc112x_spi.h"
-#include "radio_sx127x.h"      // for packetSemaphore
+#include "radio.h"      // for packetSemaphore
 
 #include "esp_heap_caps.h"
 #include "sdkconfig.h"
@@ -128,9 +128,9 @@ IRAM_ATTR void TIMER_bitrate_isr (void* para) {
         break;
     case E_TIMER_MODE_RSSI:
     {
-        // sfx_u8 gpio_status;
+        sfx_u8 gpio_status;
         // Read the GPIO_STATUS register to get CCA_STATUS
-        // cc112xSpiReadReg(CC112X_GPIO_STATUS , &gpio_status, 1);
+        cc112xSpiReadReg(CC112X_GPIO_STATUS , &gpio_status, 1);
 
         /* ---------- START DEBUG  -------------------------- */
         /* Read the RSSI */
@@ -148,12 +148,12 @@ IRAM_ATTR void TIMER_bitrate_isr (void* para) {
         /* ---------- END DEBUG  -------------------------- */
 
         // Check on the GPIO3 */
-        // if ((gpio_status & 0x08) == 0x08) {
+        if ((gpio_status & 0x08) == 0x08) {
             // The CCA_STATUS is asserted
             TIMER_bitrate_interrupt_count++;
-        // } else {
-        //     TIMER_bitrate_interrupt_count = 0;
-        // }
+        } else {
+            TIMER_bitrate_interrupt_count = 0;
+        }
 
         if (TIMER_bitrate_interrupt_count == TIMER_bitrate_nb_interrupt_to_wait_for) {
             TIMER_rssi_end = true;
@@ -202,18 +202,18 @@ IRAM_ATTR void TIMER_carrier_sense_isr (TimerHandle_t xTimer) {
 }
 
 IRAM_ATTR void TIMER_RxTx_done_isr (TimerHandle_t xTimer) {
-    // uint8_t status;
-    // cc112xSpiReadReg(CC112X_GPIO_STATUS, &status, 1);
-    // if (rxtx_in_progress) {
-    //     if (!(status & 0x08)) {          // is GPIO3 de-asserted?
-    //         // transaction done, set the packet semaphore
-    //         rxtx_in_progress = false;
-    //         packetSemaphore = ISR_ACTION_REQUIRED;
-    //         xTimerStop (TIMER_RxTx_done, 0);
-    //     }
-    // } else if (status & 0x08) {         // is GPIO3 asserted?
-    //     rxtx_in_progress = true;
-    // }
+    uint8_t status;
+    cc112xSpiReadReg(CC112X_GPIO_STATUS, &status, 1);
+    if (rxtx_in_progress) {
+        if (!(status & 0x08)) {          // is GPIO3 de-asserted?
+            // transaction done, set the packet semaphore
+            rxtx_in_progress = false;
+            packetSemaphore = ISR_ACTION_REQUIRED;
+            xTimerStop (TIMER_RxTx_done, 0);
+        }
+    } else if (status & 0x08) {         // is GPIO3 asserted?
+        rxtx_in_progress = true;
+    }
 }
 
 /*!****************************************************************************

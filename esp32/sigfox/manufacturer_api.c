@@ -33,8 +33,7 @@
  */
 
 /******* INCLUDES *************************************************************/
-#include <stdint.h>
-#include "radio_sx127x.h"
+#include "radio.h"
 #include "ti_aes_128.h"
 #include "transmission.h"
 #include "timer.h"
@@ -46,7 +45,6 @@
 #include "manuf_api.h"
 #include "manufacturer_api.h"
 #include "pycom_config.h"
-#include "board.h"
 
 #include "esp_system.h"
 #include "nvs_flash.h"
@@ -629,113 +627,99 @@ sfx_error_t MANUF_API_timer_start(sfx_u16 time_duration_in_s)
  ******************************************************************************/
 sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame)
 {
-    // sfx_error_t status;
-    // sfx_u8 rxlastindex;
-    // sfx_u8 marcStatus;
-    // sfx_u8 End_Reception = SFX_FALSE;
-    // sfx_u8 iter;
-    // sfx_u8 rx_last;
-
     sfx_error_t status;
-    sfx_u8 PayloadReady;
-    sfx_u8 LocalRssi = 0;
-
-    /* Set the radio in sleep mode */
-    SX1272Write( REG_OPMODE, 0x00);
-
-    /* Set the radio in standby mode */
-    SX1272Write( REG_OPMODE, 0x09);
+    sfx_u8 rxlastindex;
+    sfx_u8 marcStatus;
+    sfx_u8 End_Reception = SFX_FALSE;
+    sfx_u8 iter;
+    sfx_u8 rx_last;
 
     /* Set radio in RX */
-    SX1272Write( REG_OPMODE, 0x0D);
+    trxSpiCmdStrobe(CC112X_SRX);
 
-    // TIMER_RxTx_done_start();
+    TIMER_RxTx_done_start();
 
     /* Loop till end of Reception */
-    PayloadReady = 0x00;
-    while(( ( PayloadReady & 0x04) != 0x04  ) && ( TIMER_downlink_timeout == SFX_FALSE ))
+    while( ( End_Reception == SFX_FALSE ) && ( TIMER_downlink_timeout == SFX_FALSE ))
     {
-        // /* Reception frame management */
-        // switch(packetSemaphore)
-        // {
-        // case ISR_IDLE:
-        //     /* Wait */
-        //     break;
+        /* Reception frame management */
+        switch(packetSemaphore)
+        {
+        case ISR_IDLE:
+            /* Wait */
+            break;
 
-        // case ISR_ACTION_REQUIRED:
-        //     /* Reinitialize the packetSemaphore */
-        //     packetSemaphore = ISR_IDLE;
+        case ISR_ACTION_REQUIRED:
+            /* Reinitialize the packetSemaphore */
+            packetSemaphore = ISR_IDLE;
 
-        //     /* A SigFox frame has been received */
-        //     /* Read number of bytes in rx fifo */
-        //     /* IMPORTANT : using the register CC112X_NUM_RXBYTES gives wrong values concerning the packet length
-        //      * DO NOT USE THIS REGISTER, use RXLAST instead which give the last index in the RX FIFO
-        //      * and flush the FIFO after reading it   */
+            /* A SigFox frame has been received */
+            /* Read number of bytes in rx fifo */
+            /* IMPORTANT : using the register CC112X_NUM_RXBYTES gives wrong values concerning the packet length
+             * DO NOT USE THIS REGISTER, use RXLAST instead which give the last index in the RX FIFO
+             * and flush the FIFO after reading it   */
 
-        //     rxlastindex = 0;
+            rxlastindex = 0;
 
-        //     // Read 10 times to get around a bug
-        //     for (iter=0; iter<10; iter++)
-        //     {
-        //         cc112xSpiReadReg(CC112X_RXLAST, &rx_last, 1);
-        //         rxlastindex |= rx_last;
-        //     }
+            // Read 10 times to get around a bug
+            for (iter=0; iter<10; iter++)
+            {
+                cc112xSpiReadReg(CC112X_RXLAST, &rx_last, 1);
+                rxlastindex |= rx_last;
+            }
 
-        //     /* Check that we have bytes in fifo */
-        //     if(rxlastindex != 0)
-        //     {
-        //         /* Read marcstate to check for RX FIFO error */
-        //         cc112xSpiReadReg(CC112X_MARCSTATE, &marcStatus, 1);
+            /* Check that we have bytes in fifo */
+            if(rxlastindex != 0)
+            {
+                /* Read marcstate to check for RX FIFO error */
+                cc112xSpiReadReg(CC112X_MARCSTATE, &marcStatus, 1);
 
-        //         /* Mask out marcstate bits and check if we have a RX FIFO error */
-        //         if((marcStatus & 0x1F) == RX_FIFO_ERROR)
-        //         {
-        //             /* Flush RX Fifo */
-        //             trxSpiCmdStrobe(CC112X_SFRX);
+                /* Mask out marcstate bits and check if we have a RX FIFO error */
+                if((marcStatus & 0x1F) == RX_FIFO_ERROR)
+                {
+                    /* Flush RX Fifo */
+                    trxSpiCmdStrobe(CC112X_SFRX);
 
-        //             /* We go back to reception */
-        //         }
-        //         else
-        //         {
-        //             /* Read n bytes from rx fifo */
-        //             cc112xSpiReadRxFifo(frame, rxlastindex+1);
-        //             cc112xSpiReadReg(CC112X_MARCSTATE, &marcStatus, 1);
+                    /* We go back to reception */
+                }
+                else
+                {
+                    /* Read n bytes from rx fifo */
+                    cc112xSpiReadRxFifo(frame, rxlastindex+1);
+                    cc112xSpiReadReg(CC112X_MARCSTATE, &marcStatus, 1);
 
-        //             /* Once read, Flush RX Fifo */
-        //             trxSpiCmdStrobe(CC112X_SFRX);
+                    /* Once read, Flush RX Fifo */
+                    trxSpiCmdStrobe(CC112X_SFRX);
 
-        //             /* Check CRC ok (CRC_OK: bit7 in second status byte)
-        //              * This assumes status bytes are appended in RX_FIFO
-        //              * (PKT_CFG1.APPEND_STATUS = 1.)
-        //              * If CRC is disabled the CRC_OK field will read 1
-        //              */
-        //             if(frame[rxlastindex] & 0x80)
-        //             {
-        //                 /* isolate the RSSI value */
-        //                 RSSI = frame[15];
-        //             }
+                    /* Check CRC ok (CRC_OK: bit7 in second status byte)
+                     * This assumes status bytes are appended in RX_FIFO
+                     * (PKT_CFG1.APPEND_STATUS = 1.)
+                     * If CRC is disabled the CRC_OK field will read 1
+                     */
+                    if(frame[rxlastindex] & 0x80)
+                    {
+                        /* isolate the RSSI value */
+                        RSSI = frame[15];
+                    }
 
-        //             status = SFX_ERR_MANUF_NONE;
+                    status = SFX_ERR_MANUF_NONE;
 
-        //             /* End of Reception, as a frame has been received.
-        //                The frame will be analysed by the Sigfox library to check it was for the device.
-        //                In case the received frame is not for the device, the SigFox library will call
-        //                the SIGFOX_API_wait_frame() function again */
-        //             End_Reception = SFX_TRUE;
+                    /* End of Reception, as a frame has been received.
+                       The frame will be analysed by the Sigfox library to check it was for the device.
+                       In case the received frame is not for the device, the SigFox library will call
+                       the SIGFOX_API_wait_frame() function again */
+                    End_Reception = SFX_TRUE;
 
-        //             /* Set radio back in RX - as when a packet has been received, the radio is back to IDLE */
-        //             trxSpiCmdStrobe(CC112X_SRX);
-        //         }
-        //     }
-        //     break;
+                    /* Set radio back in RX - as when a packet has been received, the radio is back to IDLE */
+                    trxSpiCmdStrobe(CC112X_SRX);
+                }
+            }
+            break;
 
-        // default:
-        //     break;
-        // }/* End of switch */
+        default:
+            break;
+        }/* End of switch */
 
-        PayloadReady = SX1272Read(REG_IRQFLAGS2);
-        SX1272Read(REG_OPMODE);
-        // vTaskDelay(1 / portTICK_PERIOD_MS);
         vTaskDelay(2 / portTICK_PERIOD_MS);
 
     } /* End of while */
@@ -747,15 +731,6 @@ sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame)
         MANUF_API_timer_stop();
 
         status = SFX_ERR_MANUF_WAIT_FRAME_TIMEOUT;
-    }
-    else
-    {
-        /* Read the FIFO to get the payload */
-        SX1272ReadBuffer(REG_FIFO, frame, 15);
-        LocalRssi = SX1272Read(REG_RSSIVALUE);
-        RSSI = LocalRssi;
-
-        status = SFX_ERR_MANUF_NONE;
     }
 
     return status;

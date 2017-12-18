@@ -196,7 +196,7 @@ APP_SX1272_SRC_C = $(addprefix drivers/sx127x/,\
 
 APP_SIGFOX_SRC_C = $(addprefix sigfox/,\
 	manufacturer_api.c \
-	radio_sx127x.c \
+	radio.c \
 	ti_aes_128.c \
 	timer.c \
 	transmission.c \

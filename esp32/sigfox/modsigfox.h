@@ -30,7 +30,7 @@
 
 #define SIGFOX_CMD_QUEUE_SIZE_MAX                     (2)
 #define SIGFOX_DATA_QUEUE_SIZE_MAX                    (3)
-#define SIGFOX_STACK_SIZE                             (3072)
+#define SIGFOX_STACK_SIZE                             (3584)
 #define SIGFOX_TASK_PRIORITY                          (6)
 
 /******************************************************************************

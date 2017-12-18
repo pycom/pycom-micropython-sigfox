@@ -188,7 +188,6 @@ void IRAM_ATTR RADIO_init_chip(sfx_rf_mode_t rf_mode)
             writeByte = CarrierSenseConfig[i].data;
             cc112xSpiWriteReg(CarrierSenseConfig[i].addr, &writeByte, 1);
         }
-        // printf("carrier sense mode init\n");
     }
 }
 
