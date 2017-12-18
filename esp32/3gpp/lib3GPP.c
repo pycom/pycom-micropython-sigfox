@@ -36,7 +36,7 @@
 #define UART_PIN_CTS CONFIG_GSM_CTS
 #define UART_PIN_RTS CONFIG_GSM_RTS
 #define UART_BDRATE CONFIG_GSM_BDRATE
-#define GSM_DEBUG 1
+#define GSM_DEBUG 0
 
 #define BUF_SIZE (1024)
 #define GSM_OK_Str "OK"
