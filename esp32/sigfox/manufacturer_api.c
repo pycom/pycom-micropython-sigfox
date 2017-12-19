@@ -33,7 +33,13 @@
  */
 
 /******* INCLUDES *************************************************************/
+#include "py/mpconfig.h"
+#ifdef FIPY
+#include <stdint.h>
+#include "radio_sx127x.h"
+#else
 #include "radio.h"
+#endif
 #include "ti_aes_128.h"
 #include "transmission.h"
 #include "timer.h"
@@ -45,6 +51,9 @@
 #include "manuf_api.h"
 #include "manufacturer_api.h"
 #include "pycom_config.h"
+#ifdef FIPY
+#include "board.h"
+#endif
 
 #include "esp_system.h"
 #include "nvs_flash.h"
@@ -577,11 +586,17 @@ sfx_error_t MANUF_API_timer_wait_for_end(void)
 sfx_error_t MANUF_API_get_rssi(sfx_s8 *rssi)
 {
     int16_t rssi_offset;
+    int16_t _rssi;
     if (SFX_ERR_MANUF_NONE != MANUF_API_get_nv_mem(SFX_NVMEM_RSSI, (sfx_u16 *)&rssi_offset)) {
         rssi_offset = 0;
     }
-    *rssi = (sfx_s8)((RSSI - 102) + 100 + rssi_offset);
+#ifdef FIPY
+    _rssi = RSSI + 100 + rssi_offset;
+#else
+    _rssi = (RSSI - 102) + 100 + rssi_offset;
+#endif
 
+    *rssi = (sfx_s8)_rssi;
     return SFX_ERR_MANUF_NONE;
 }
 
@@ -628,12 +643,45 @@ sfx_error_t MANUF_API_timer_start(sfx_u16 time_duration_in_s)
 sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame)
 {
     sfx_error_t status;
+#ifdef FIPY
+    sfx_u8 PayloadReady;
+#else
     sfx_u8 rxlastindex;
     sfx_u8 marcStatus;
     sfx_u8 End_Reception = SFX_FALSE;
     sfx_u8 iter;
     sfx_u8 rx_last;
+#endif
 
+
+#ifdef FIPY
+    /* Set the radio in sleep mode */
+    SX1272Write( REG_OPMODE, 0x00);
+    /* Set the radio in standby mode */
+    SX1272Write( REG_OPMODE, 0x09);
+    /* Set radio in RX */
+    SX1272Write( REG_OPMODE, 0x0D);
+
+    PayloadReady = 0x00;
+
+    /* Loop till end of Reception */
+    while (( ( PayloadReady & 0x04) != 0x04  ) && ( TIMER_downlink_timeout == SFX_FALSE )) {
+        PayloadReady = SX1272Read(REG_IRQFLAGS2);
+        SX1272Read(REG_OPMODE);
+        vTaskDelay(5 / portTICK_PERIOD_MS);
+    } /* End of while */
+
+    if ( TIMER_downlink_timeout == SFX_TRUE ) {
+        /* Stop the timeout */
+        MANUF_API_timer_stop();
+        status = SFX_ERR_MANUF_WAIT_FRAME_TIMEOUT;
+    } else {
+        /* Read the FIFO to get the payload */
+        SX1272ReadBuffer(REG_FIFO, frame, 15);
+        RSSI = -(SX1272Read(REG_RSSIVALUE) >> 1);
+        status = SFX_ERR_MANUF_NONE;
+    }
+#else
     /* Set radio in RX */
     trxSpiCmdStrobe(CC112X_SRX);
 
@@ -732,6 +780,7 @@ sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame)
 
         status = SFX_ERR_MANUF_WAIT_FRAME_TIMEOUT;
     }
+#endif
 
     return status;
 }
@@ -758,10 +807,13 @@ sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame)
  ******************************************************************************/
 sfx_error_t MANUF_API_wait_for_clear_channel(sfx_u8 cs_min, sfx_u8 cs_threshold)
 {
+    sfx_error_t status = SFX_ERR_MANUF_NONE;
+
+#ifdef FIPY
+
+#else
     /* TO BE IMPLEMENTED FOR ARIB STANDARD only */
     sfx_u8 writeByte;
-
-    sfx_error_t status = SFX_ERR_MANUF_NONE;
 
     /* Set the power threshold */
     /* Power is set in the register as a Two's complement value */
@@ -805,6 +857,7 @@ sfx_error_t MANUF_API_wait_for_clear_channel(sfx_u8 cs_min, sfx_u8 cs_threshold)
         /* Stop the timer   */
         MANUF_API_timer_stop_carrier_sense();
     }
+#endif
 
     return status;
 }

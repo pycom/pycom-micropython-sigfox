@@ -189,7 +189,9 @@ IRAM_ATTR uint8_t SpiInOut(uint32_t spiNum, uint32_t outData) {
     // read data out
     return READ_PERI_REG(SPI_W0_REG(spiNum));
 }
+#endif
 
+#if defined(SIPY) || defined(FIPY)
 /*!
  * \brief Sends outData
  *

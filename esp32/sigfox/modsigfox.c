@@ -26,7 +26,11 @@
 #include "modusocket.h"
 #include "sigfox/sigfox_api.h"
 #include "sigfox/timer.h"
+#ifdef FIPY
+#include "sigfox/radio_sx127x.h"
+#else
 #include "sigfox/radio.h"
+#endif
 #include "sigfox/manufacturer_api.h"
 #include "sigfox/manuf_api.h"
 
@@ -90,7 +94,9 @@ static void TASK_Sigfox (void *pvParameters);
 
 static void fsk_register_config (void);
 static void fsk_manual_calibration (void);
+#ifndef FIPY
 static void fsk_cc112x_tx (uint8_t *data, uint32_t len);
+#endif
 static void fsk_cc112x_rx (void);
 static void fsk_tx_register_config(void);
 static void fsk_rx_register_config(void);
@@ -152,6 +158,7 @@ void modsigfox_init0 (void) {
     Table_200bytes.memory_ptr = (sfx_u8 *)(DynamicMemoryTable) ;
     Table_200bytes.allocated = SFX_FALSE;
 
+#ifndef FIPY
     // setup the CC1125 control RESET pin
     gpio_config_t gpioconf = {.pin_bit_mask = 1 << 18,
                               .mode = GPIO_MODE_OUTPUT,
@@ -160,8 +167,8 @@ void modsigfox_init0 (void) {
                               .intr_type = GPIO_INTR_DISABLE};
     gpio_config(&gpioconf);
     GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 18);
-
     SpiInit( &sigfox_spi, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, RADIO_NSS );
+#endif
 
     xTaskCreate(TASK_Sigfox, "Sigfox", SIGFOX_STACK_SIZE, NULL, SIGFOX_TASK_PRIORITY, &xSigfoxTaskHndl);
 }
@@ -325,6 +332,10 @@ static sfx_error_t modsigfox_sfx_send(sigfox_cmd_rx_data_t *cmd_rx_data, sigfox_
 
     tx_timestamp = now;     // save the current timestamp
 
+#ifdef FIPY
+    RADIO_warm_up_crystal(rcz_frequencies[sfx_rcz_id][0]);
+#endif
+
     if (cmd_rx_data->cmd_u.info.tx.oob) {
         return SIGFOX_API_send_outofband();
     } else {
@@ -354,7 +365,9 @@ static void TASK_Sigfox(void *pvParameters) {
                 case E_SIGFOX_CMD_INIT:
                     {
                         uint32_t status = SIGFOX_STATUS_COMPLETED;
+                     #ifndef FIPY
                         TIMER_RxTx_done_stop();   // stop the RxTx timer while reconfiguring
+                     #endif
                         if (cmd_rx_data.cmd_u.info.init.mode == E_SIGFOX_MODE_SIGFOX) {
                             sfx_rcz_id = cmd_rx_data.cmd_u.info.init.rcz;
                             memcpy(&sfx_rcz, &all_rcz[cmd_rx_data.cmd_u.info.init.rcz], sizeof(sfx_rcz));
@@ -415,6 +428,7 @@ static void TASK_Sigfox(void *pvParameters) {
                             sigfox_obj.state = E_SIGFOX_STATE_IDLE;
                             xEventGroupSetBits(sigfoxEvents, status);
                         } else {
+                        #ifndef FIPY
                             // stop the TxRx timer before reconfiguring for Tx
                             TIMER_RxTx_done_stop();
                             trxSpiCmdStrobe(CC112X_SIDLE);
@@ -422,11 +436,15 @@ static void TASK_Sigfox(void *pvParameters) {
                             TIMER_RxTx_done_start();
                             fsk_cc112x_tx (cmd_rx_data.cmd_u.info.tx.data, cmd_rx_data.cmd_u.info.tx.len);
                             sigfox_obj.state = E_SIGFOX_STATE_TX;
+                        #endif
                         }
                     }
                     break;
                 case E_SIGFOX_CMD_TEST:
-                    if (cmd_rx_data.cmd_u.info.test.mode <= SFX_TEST_MODE_TX_SYNTH) {
+                #ifdef FIPY
+                    RADIO_warm_up_crystal(rcz_frequencies[sfx_rcz_id][0]);
+                #endif
+                if (cmd_rx_data.cmd_u.info.test.mode <= SFX_TEST_MODE_TX_SYNTH) {
                         SIGFOX_API_test_mode(cmd_rx_data.cmd_u.info.test.mode, cmd_rx_data.cmd_u.info.test.config);
                     } else { // start or stop CW
                         if (cmd_rx_data.cmd_u.info.test.mode == E_MODSIGOFX_TEST_MODE_START_CW) {
@@ -457,7 +475,9 @@ static void TASK_Sigfox(void *pvParameters) {
                     RADIO_change_frequency(sigfox_obj.frequency);
                     trxSpiCmdStrobe(CC112X_SRX);
                     sigfox_obj.state = E_SIGFOX_STATE_RX;
+                 #ifndef FIPY
                     TIMER_RxTx_done_start();
+                 #endif
                 } else if (sigfox_obj.state == E_SIGFOX_STATE_RX) {
                     fsk_cc112x_rx();
                 }
@@ -482,6 +502,7 @@ static void TASK_Sigfox(void *pvParameters) {
     }
 }
 
+#ifndef FIPY
 static void fsk_cc112x_tx (uint8_t *data, uint32_t len) {
     uint8 packet[FSK_TX_PAYLOAD_SIZE_MAX + 4];
 
@@ -502,6 +523,7 @@ static void fsk_cc112x_tx (uint8_t *data, uint32_t len) {
     // strobe TX to send packet
     trxSpiCmdStrobe(CC112X_STX);
 }
+#endif
 
 static void fsk_cc112x_rx (void) {
     sigfox_rx_data_t rx_data;
@@ -743,11 +765,13 @@ static bool sigfox_tx_space (void) {
     return false;
 }
 
+#ifndef FIPY
 static void sigfox_validate_frequency (uint32_t frequency) {
     if (frequency < FSK_FREQUENCY_MIN || frequency > FSK_FREQUENCY_MAX) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "frequency %d out of range", frequency));
     }
 }
+#endif
 
 /******************************************************************************/
 // Micro Python bindings; Sigfox class
@@ -758,17 +782,25 @@ mp_obj_t sigfox_init_helper(sigfox_obj_t *self, const mp_arg_val_t *args) {
     uint8_t rcz = args[1].u_int;
     uint32_t frequency = 0;
 
+#ifndef FIPY
     if (mode > E_SIGFOX_MODE_FSK) {
+#else
+    if (mode != E_SIGFOX_MODE_SIGFOX) {
+#endif
         mp_raise_ValueError("invalid mode");
     } else if (mode == E_SIGFOX_MODE_SIGFOX) {
         if (rcz > E_SIGFOX_RCZ4) {
             mp_raise_ValueError("invalid RCZ");
+    #ifndef FIPY
         } else if (args[2].u_obj != mp_const_none) {
             mp_raise_ValueError("frequency is only valid in FSK mode");
+    #endif
         }
+#ifndef FIPY
     } else {
         frequency = mp_obj_get_int(args[2].u_obj);
         sigfox_validate_frequency(frequency);
+#endif
     }
 
     cmd_rx_data.cmd_u.cmd = E_SIGFOX_CMD_INIT;
@@ -888,9 +920,10 @@ mp_obj_t sigfox_public_key(mp_uint_t n_args, const mp_obj_t *args) {
 
 mp_obj_t sigfox_rssi(mp_obj_t self_in) {
     int8_t rssi;
+    int16_t f_rssi;
     MANUF_API_get_rssi(&rssi);
-    rssi -= 100;   // Sigfox backend compatibility
-    return MP_OBJ_NEW_SMALL_INT(rssi);
+    f_rssi = rssi - 100;   // Sigfox backend compatibility
+    return MP_OBJ_NEW_SMALL_INT(f_rssi);
 }
 
 mp_obj_t sigfox_rssi_offset(mp_uint_t n_args, const mp_obj_t *args) {

@@ -49,6 +49,7 @@ void RADIO_stop_rf_carrier(void);
 void RADIO_stop_unmodulated_cw(unsigned long ul_Freq);
 void RADIO_start_unmodulated_cw(unsigned long ul_Freq);
 void RADIO_modulate(void);
+void RADIO_warm_up_crystal (unsigned long ul_Freq);
 
 extern uint8_t  packetSemaphore;
 
@@ -61,54 +62,6 @@ extern uint8_t  packetSemaphore;
 #define STEP_HIGH_FCC                56
 #define MIN_PA_VALUE                 0
 
-
-static const registerSetting_t HighPerfModeTx[] =
-{
-	/* Register address  , Value */
-	{REG_PACONFIG,         0x80},  /* RegPaConfig
-									* PaSelect = 1b : PA_BOOST pin. Maximum power of +20 dBm
-									* Unused = 000b
-									* OutputPower = 0000b : Output power setting, with 1dB steps
-									=> Pout = 2 + OutputPower [dBm], on PA_BOOST pin*/
-
-	{REG_LR_MODEMCONFIG1,  0x00},  /* RegModemConfig1 
-									* Bw = 00b : Signal bandwidth: = 125kHz
-									* CodingRate = 000b reserved
-									* ImplicitHeaderModeOn = 0b : Explicit Header mode
-									* RxPayloadCrcOn = 0b : CRC disable
-									* LowDataRateOptimize = 0b : Disabled
-									*/
-
-	{REG_LR_MODEMCONFIG2,  0x08},  /* RegModemConfig2
-									* SpreadingFactor = 0000b : reserved
-									* TxContinuousMode = 1b : continuous mode, send multiple packets across the FIFO
-									*/
-
-	{REG_PLLHOP,           0x7B},  /* RegPllHop
-									* FastHopOn = 0b : Frf is validated when FSTx or FSRx is requested
-									* reserved = 7E : PA controlled mannually ?? ( TBD ) 
-									*/
-
-	{0x3D,                 0xAF},  /* RESERVED  (TBD)??
-									* [2:0] = 111b (7)- sd_max_freq_deviation ( TBD ) */
-
-	{0x4C,         MIN_PA_VALUE},  /* RESERVED (TBD)??
-									* Max Value for the PA */
-
-	// => (DO NOT GO OVER 0xE7 value for this register when using RFO pin)
-	// => 0xE7 is the max value for RFO out pin
-	{0x4D,                 0x03},  /* RESERVED (TBD)??
-									  default value */
-
-	// {REG_LR_PADAC,         0x84},  /* RegPaDac
-	//								* reserved = 10000b
-	//								* PaDac = 111B : 0x07 -> +20 dBm on PA_BOOST when OutputPower = 1111
-	//								* PaDac = 100B : 0x04 -> +14 dBm on PA_BOOST */
-
-	//	{0x63,                 0x60},
-	/* RESERVED (TBD) ??? - SWITCH ON PA
-	 * Enable manual PA  with Increased output power */
-};
 
 static const registerSetting_t HighPerfModeRx[] =
 {
@@ -163,8 +116,7 @@ static const registerSetting_t HighPerfModeRx[] =
 									  * RxBwMantAfc = 10b : RxBwMant parameter used during the AFC : RxBwMan = 24
 									  * RxBwExpAfc = 111b : RxBwExp parameter used during the AFC RxBwExp = 7 */
 	{ REG_OOKAVG,            0x11 }, /* RegOokAvg
-									  * OokPeakThreshDec = 000b : Period of decrement of the RSSI threshold in the OOK
-demodulator : Once per chip 
+									  * OokPeakThreshDec = 000b : Period of decrement of the RSSI threshold in the OOK demodulator : Once per chip
 									  * reserved = 1b
 									  * OokAverageOffset = 00b : Static offset added to the threshold in average mode in order to
 									  reduce glitching activity (OOK only) : 0 dbB
@@ -234,8 +186,8 @@ demodulator : Once per chip
 	{ REG_TIMER1COEF,         0xF5 }, /* RegTimer1Coef - TBD Karine not sure this is needed */
 	{ REG_TIMER2COEF,         0x20 }, /* RegTimer2Coef - TBD Karine not sure this is needed */
 	{ REG_IMAGECAL,           0x02 }, 
-	{ REG_TEMP, 0xF2 },
-	{ REG_LOWBAT, 0x02 },
+	{ REG_TEMP, 			  0xF2 },
+	{ REG_LOWBAT, 			  0x02 },
 
 	{ REG_IRQFLAGS1,          0x18 }, /* RegIrqFlags1
 									   * bit7 - read bit : ModeReady  
@@ -259,60 +211,15 @@ demodulator : Once per chip
 									   * bit1 - read bit : CrcOk
 									   * bit0 : LowBat */	
 
-	{ REG_DIOMAPPING1, 0x00 },
-	{ REG_DIOMAPPING2, 0x00 },
-	{ REG_VERSION, 0x21 },
-	{ REG_AGCREF, 0x1C },
-	{ REG_AGCTHRESH1, 0x0E },
-	{ REG_AGCTHRESH2, 0x5B },
-	{ REG_AGCTHRESH3, 0xDB },
-
-	{ 0x47, 0x24 },
-	{ 0x48, 0x0E },
-	{ 0x49, 0x41 },
-	{ 0x4A, 0x3A },
-
-	{ 0x4B, 0x2E }, // Added to test - TO BE REMOVED
-
-	{ 0x4C, 0x00 },
-	{ 0x4D, 0x03 },
-	{ 0x4E, 0x00 },
-	{ 0x4F, 0x00 },
-	{ 0x50, 0x00 },
-	{ 0x51, 0x00 },
-	{ 0x52, 0x04 },
-	{ 0x53, 0x23 },
-	{ 0x54, 0x3F },
-	{ 0x55, 0xC2 },
-	{ 0x56, 0x3F },
-	{ 0x57, 0xF6 },
-/*	{ REG_TCXO,             0x19 },*/ /* RegTcxo
-									 * reserved = 000b
-									 * TcxoInputOn = 1b : Controls the crystal oscillator : 1 = External clipped sine TCXO AC-connected to XTA pin  
-									 * reserved = 1001b Default value */
-	{ 0x59, 0x05 },
-	{ 0x5A, 0x87 },
-	{ 0x5B, 0x0B },
-	{ 0x5D, 0x0B },
-	{ 0x5F, 0x32 },
-	{ 0x60, 0x2B },
-	{ 0x61, 0x14 },
-	{ 0x62, 0x00 },
-	{ 0x63, 0x00 },
-	{ 0x64, 0x11 },
-	{ 0x65, 0x00 },
-	{ 0x66, 0x00 },
-	{ 0x67, 0x00 },
-	{ 0x68, 0x0F },
-	{ 0x69, 0xE0 },
-	{ 0x6A, 0x00 },
-	{ 0x6B, 0x0C },
-	{ 0x6D, 0x10 },
-	{ 0x6E, 0x25 },
-	{ 0x6F, 0x07 },
-	{ REG_BITRATEFRAC,      0x00 }, /* BitRateFrac used with bitrate - TBD Karine why is it initially set to 9 ?? => Set it to 0 to have a 600 bps */
-	{ 0x71, 0x5C },
-
+	{ REG_DIOMAPPING1, 			0x00 },
+	{ REG_DIOMAPPING2, 			0x00 },
+	{ REG_VERSION, 				0x21 },
+	{ REG_AGCREF, 				0x1C },
+	{ REG_AGCTHRESH1, 			0x0E },
+	{ REG_AGCTHRESH2, 			0x5B },
+	{ REG_AGCTHRESH3, 			0xDB },
+	{ REG_TCXO,             	0x09 }, /* RegTcxo */
+	{ REG_BITRATEFRAC,      	0x00 }, /* BitRateFrac used with bitrate - TBD Karine why is it initially set to 9 ?? => Set it to 0 to have a 600 bps */
 };
 
 #endif

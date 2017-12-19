@@ -23,13 +23,18 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "py/mpconfig.h"
 #include "sigfox_api.h"
 #include "targets/hal_spi_rf_trxeb.h"
 #include "manufacturer_api.h"
 #include "sigfox/sigfox_types.h"
 #include "transmission.h"
 #include "targets/cc112x_spi.h"
+#ifdef FIPY
+#include "radio_sx127x.h"      // for packetSemaphore
+#else
 #include "radio.h"      // for packetSemaphore
+#endif
 
 #include "esp_heap_caps.h"
 #include "sdkconfig.h"
@@ -128,6 +133,7 @@ IRAM_ATTR void TIMER_bitrate_isr (void* para) {
         break;
     case E_TIMER_MODE_RSSI:
     {
+    #ifndef FIPY
         sfx_u8 gpio_status;
         // Read the GPIO_STATUS register to get CCA_STATUS
         cc112xSpiReadReg(CC112X_GPIO_STATUS , &gpio_status, 1);
@@ -154,6 +160,9 @@ IRAM_ATTR void TIMER_bitrate_isr (void* para) {
         } else {
             TIMER_bitrate_interrupt_count = 0;
         }
+    #else
+        TIMER_bitrate_interrupt_count++;
+    #endif
 
         if (TIMER_bitrate_interrupt_count == TIMER_bitrate_nb_interrupt_to_wait_for) {
             TIMER_rssi_end = true;
@@ -201,6 +210,7 @@ IRAM_ATTR void TIMER_carrier_sense_isr (TimerHandle_t xTimer) {
     }
 }
 
+#ifndef FIPY
 IRAM_ATTR void TIMER_RxTx_done_isr (TimerHandle_t xTimer) {
     uint8_t status;
     cc112xSpiReadReg(CC112X_GPIO_STATUS, &status, 1);
@@ -215,6 +225,7 @@ IRAM_ATTR void TIMER_RxTx_done_isr (TimerHandle_t xTimer) {
         rxtx_in_progress = true;
     }
 }
+#endif
 
 /*!****************************************************************************
  * \fn void TIMER_bitrate_init(void)
@@ -259,6 +270,7 @@ void TIMER_carrier_sense_timer_create (void) {
                                          (void *)0, TIMER_carrier_sense_isr);
 }
 
+#ifndef FIPY
 void TIMER_RxTx_done_timer_create (void) {
      TIMER_RxTx_done =  xTimerCreate("RxTxTimer", 5 / portTICK_PERIOD_MS, pdTRUE,
                                      (void *)0, TIMER_RxTx_done_isr);
@@ -273,6 +285,7 @@ void TIMER_RxTx_done_stop (void) {
     rxtx_in_progress = false;
     xTimerStop (TIMER_RxTx_done, 0);
 }
+#endif
 
 /*!****************************************************************************
  * \fn void TIMER_downlink_timing_init(u16 time_in_seconds)

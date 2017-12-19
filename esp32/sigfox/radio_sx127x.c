@@ -91,9 +91,9 @@ te_phaseState Phase_State = E_PHASE_0;
 // Fast write on SPI for modulation
 #define SX12728BitWrite(register, data) \
 { \
-  GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << 17); \
+  GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << 18); \
   SpiOut(SpiNum_SPI3, (data << 8) | SX1272X_WRITE_ACCESS | register); \
-  GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 17); \
+  GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 18); \
 }
 
 /******************************************************************************
@@ -115,25 +115,20 @@ te_phaseState Phase_State = E_PHASE_0;
  * \param[in] param rf_mode  the mode ( RX or TX ) of RF programmation
  ******************************************************************************/
 void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
-    gpio_config_t gpioconf = {.pin_bit_mask = 1 << 18,
-                            .mode = GPIO_MODE_OUTPUT,
-                            .pull_up_en = GPIO_PULLUP_DISABLE,
-                            .pull_down_en = GPIO_PULLDOWN_DISABLE,
-                            .intr_type = GPIO_INTR_DISABLE};
-    gpio_config(&gpioconf);
-    GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 18);
-    vTaskDelay(2 / portTICK_RATE_MS);
-    gpioconf.mode = GPIO_MODE_INPUT;
-    gpio_config(&gpioconf);
-
     if (rf_mode == SFX_RF_MODE_TX) {
-        /* Set the OPMODE to LORA Mode : this is the only way to do Sigfox for the moment */
-        SX1272Write(REG_OPMODE, 0x80);
+        SX1272Write( 0x01, 0x80 );      // Device in StandBy in LoRa mode
+        SX1272Write( 0x1D, 0x00 );      // LoRa BW = 0
+        SX1272Write( 0x09, 0xBF );      // PA Boost output
 
-        /* Write registers of the radio chip for TX mode */
-        for (int i = 0; i < (sizeof(HighPerfModeTx)/sizeof(registerSetting_t)); i++) {
-            SX1272Write(HighPerfModeTx[i].addr, HighPerfModeTx[i].data);
-        }
+        SX1272Write( 0x3D, 0xAF );      // sd_max_freq_deviation
+
+        SX1272Write( 0x58, 0x09 );      // Only valid if a TXCO is used
+
+        SX1272Write( 0x4B, 0x3E );      // PA controlled manually
+        SX1272Write( 0x4D, 0x03 );
+
+        SX1272Write( 0x0A, 0x0F );      // PaRamp on 10us
+        SX1272Write( 0x5E, 0xD0 );      // PLL bandwidth 300 KHz
 
         if (uplink_spectrum_access == SFX_FH) {
             SX1272Write(REG_LR_PADAC, 0x87);    // Up tp +20dBm on the PA_BOOST pin
@@ -141,12 +136,27 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
             SX1272Write(REG_LR_PADAC, 0x84);
         }
     } else if (rf_mode == SFX_RF_MODE_RX) {
+        SX1272Write( 0x01, 0x00 );      // Device in Sleep mode
+        SX1272Write( 0x3D, 0xA1 );
+        SX1272Write( 0x4B, 0x2E );
+        SX1272Write( 0x4D, 0x03 );
+        SX1272Write( 0x63, 0x00 );
+        SX1272Write( 0x3E, 0x00 );
+        SX1272Write( 0x4C, 0x00 );
+        SX1272Write( 0x1E, 0x74 );
+        SX1272Write( 0x0A, 0x09 );
+        SX1272Write( 0x1D, 0x08 );
+        SX1272Write( 0x0A, 0x19 );
+        SX1272Write( 0x5E, 0xD0 );
+        SX1272Write(REG_LR_PADAC, 0x84);
+
         /* Write registers of the radio chip for RX mode */
         for(int i = 0; i < (sizeof(HighPerfModeRx)/sizeof(registerSetting_t)); i++) {
             SX1272Write(HighPerfModeRx[i].addr, HighPerfModeRx[i].data);
         }
-        /* Set the OPMODE to Standby Mode */
-        SX1272Write(REG_OPMODE, 0x01);
+
+        /* Set radio in RX */
+        SX1272Write( REG_OPMODE, 0x0D);
     }
 }
 
@@ -288,26 +298,24 @@ IRAM_ATTR void RADIO_modulate(void) {
  *  @brief this function starts the oscillator, and generates the ramp-up
  ******************************************************************************/
 IRAM_ATTR void RADIO_start_rf_carrier(void) {
-    /* implement the ramp-up */
+    /* Implement the ramp-up */
     uint8_t count;
-    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
 
-    /* Set TX continuous mode to 1 */
-    SX1272Write(REG_LR_MODEMCONFIG2, 0x08);
+    SX1272Write( 0x63, 0x20 );      // Enable manual PA
+    SX1272Write( 0x3E, 0x00 );      // phase = 0
+    SX1272Write( 0x4C, 0x00 );      // Max value for the PA is 0xE7 DO NOT GOT OVER OR IT MAY DAMAGE THE CHIPSET
+    SX1272Write( 0x1e, 0x78 );      // Tx Continuous mode
+    SX1272Write( 0x01, 0x83 );      // Device in Tx mode
 
-    /* Start TX operation - Appli Note from Semtech for Sigfox */
-    SX1272Write(REG_OPMODE, 0x83);
-
-    /* Enable manual PA - Switch ON PA - Appli Note from Semtech for Sigfox */
-    SX1272Write(0x63, 0x60);
+    vTaskDelay(550);                // Warm up the crystal and the PLL
 
     if (uplink_spectrum_access == SFX_FH) {
         for (count = MIN_PA_VALUE; count < MAX_PA_VALUE_FCC; count++) {
             SX12728BitWrite(0x4C, count);
             if (count > STEP_HIGH_FCC) {
-                __delay_cycles(150);
+                __delay_cycles(200);
             } else {
-                __delay_cycles(110);
+                __delay_cycles(140);
             }
         }
         SX12728BitWrite(0x4C, MAX_PA_VALUE_FCC);
@@ -315,15 +323,13 @@ IRAM_ATTR void RADIO_start_rf_carrier(void) {
         for (count = MIN_PA_VALUE; count < MAX_PA_VALUE_ETSI; count++) {
             SX1272Write(0x4C, count);
             if (count > STEP_HIGH_ETSI) {
-                __delay_cycles(1700);
+                __delay_cycles(3000);
             } else {
-                __delay_cycles(1300);
+                __delay_cycles(1600);
             }
         }
         SX1272Write(0x4C, MAX_PA_VALUE_ETSI);
     }
-
-    MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 
@@ -331,7 +337,7 @@ IRAM_ATTR void RADIO_start_rf_carrier(void) {
  *  @brief This function stops the radio and produces the ramp down
  ******************************************************************************/
 IRAM_ATTR void RADIO_stop_rf_carrier(void) {
-    /* implement the ramp-down */
+    /* Implement the ramp-down */
     uint8_t count;
     uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
 
@@ -339,18 +345,18 @@ IRAM_ATTR void RADIO_stop_rf_carrier(void) {
         for (count = MAX_PA_VALUE_FCC; count > MIN_PA_VALUE; count--) {
             SX12728BitWrite(0x4C, count);
             if (count > STEP_HIGH_FCC) {
-                __delay_cycles(150);
+                __delay_cycles(200);
             } else {
-                __delay_cycles(110);
+                __delay_cycles(140);
             }
         }
     } else {
         for (count = MAX_PA_VALUE_ETSI; count > MIN_PA_VALUE; count--) {
             SX1272Write(0x4C, count);
             if (count > STEP_HIGH_ETSI) {
-                __delay_cycles(1700);
+                __delay_cycles(3000);
             } else {
-                __delay_cycles(1300);
+                __delay_cycles(1600);
             }
         }
     }
@@ -358,14 +364,9 @@ IRAM_ATTR void RADIO_stop_rf_carrier(void) {
     /* Set the MIN Value to the PA */
     SX1272Write(0x4C, MIN_PA_VALUE);
 
-    /* Switch OFF PA */
-    SX1272Write(0x63, 0x00);
-
-    /* Set TX continuous mode to 0 */
-    SX1272Write(REG_LR_MODEMCONFIG2, 0x00);
-
-    /* Go Back to LORA Sleep Mode */
-    SX1272Write(REG_OPMODE, 0x80);
+    SX1272Write( 0x63, 0x00 );      // switch off the PA
+    SX1272Write( 0x01, 0x80 );      // Device in Sleep mode
+    SX1272Write( 0x1e, 0x70 );      // Tx Continuous mode
 
     MICROPY_END_ATOMIC_SECTION(ilevel);
 }
@@ -388,7 +389,6 @@ void RADIO_start_unmodulated_cw(unsigned long ul_Freq) {
     RADIO_start_rf_carrier();
 }
 
-
 /**************************************************************************//**
  *  @brief 		This function turns off the CW transmission at the given frequency
  *
@@ -403,6 +403,26 @@ void RADIO_stop_unmodulated_cw(unsigned long ul_Freq) {
 
     /* Update the frequency */
     RADIO_change_frequency(ul_Freq);
+}
+
+void RADIO_warm_up_crystal (unsigned long ul_Freq) {
+    // Initialize the radio in TX mode
+    RADIO_init_chip(SFX_RF_MODE_TX);
+
+    /* Update the frequency */
+    RADIO_change_frequency(ul_Freq);
+
+    SX1272Write( 0x63, 0x20 );      // Enable manual PA
+    SX1272Write( 0x3E, 0x00 );      // phase = 0
+    SX1272Write( 0x4C, 0x00 );      // Max value for the PA is 0xE7 DO NOT GOT OVER OR IT MAY DAMAGE THE CHIPSET
+    SX1272Write( 0x1e, 0x78 );      // Tx Continuous mode
+    SX1272Write( 0x01, 0x83 );      // Device in Tx mode
+
+    vTaskDelay(500);               // Wait for the crystal and the PLL to warm up
+
+    SX1272Write( 0x63, 0x00 );      // switch off the PA
+    SX1272Write( 0x01, 0x80 );      // Device in Sleep mode
+    SX1272Write( 0x1e, 0x70 );      // Tx Continuous mode
 }
 
 /**************************************************************************//**
