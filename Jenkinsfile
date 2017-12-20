@@ -16,7 +16,7 @@ node {
 
     stage('mpy-cross') {
         // build the cross compiler first
-        sh '''GIT_TAG=$(git rev-parse --short HEAD) git tag -fa v1.8.6-849-$GIT_TAG -m "v1.8.6-849-$GIT_TAG”;
+        sh '''GIT_TAG=$(git rev-parse --short HEAD) git tag -fa v1.8.6-849-$GIT_TAG -m \\"v1.8.6-849-$GIT_TAG\\”;
           cd mpy-cross;
           make clean;
           make all'''
