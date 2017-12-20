@@ -159,22 +159,22 @@ def boardBuild(name) {
         make TARGET=app -j2 BOARD=''' + name_short + lora_band
 
         sh '''cd esp32/build/'''+ name_u +'''/release;
-        export PYCOM_VERSION=$(cat ../../../../pycom_version.h |grep SW_VERSION_NUMBER|cut -d\\" -f2);
+        export PYCOM_VERSION=$(cat ../../../pycom_version.h |grep SW_VERSION_NUMBER|cut -d\\" -f2);
         echo $PYCOM_VERSION;
         echo ${PYCOM_VERSION};
         export GIT_TAG=$(git rev-parse --short HEAD);
         echo $GIT_TAG;
         echo ${GIT_TAG};
 	      mkdir -p firmware_package;
-        mkdir -p /var/lib/jenkins/release/\\$PYCOM_VERSION/\\$GIT_TAG;
+        mkdir -p /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG;
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
-        mv ../application.elf /var/lib/jenkins/release/$PYCOM_VERSION/$GIT_TAG''' + name + '''-$PYCOM_VERSION-application.elf;
+        mv ../application.elf /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG''' + name + '''-\$PYCOM_VERSION-application.elf;
         cp ../appimg.bin .;
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
         cp ../''' + app_bin + ''' .;
-        tar -cvzf /var/lib/jenkins/release/$PYCOM_VERSION/$GIT_TAG''' + name + '''-$PYCOM_VERSION.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
+        tar -cvzf /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG''' + name + '''-\$PYCOM_VERSION.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
