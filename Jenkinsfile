@@ -169,12 +169,12 @@ def boardBuild(name) {
         mkdir -p /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG;
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
-        mv ../application.elf /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG''' + name + '''-\$PYCOM_VERSION-application.elf;
+        mv ../application.elf /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION-application.elf;
         cp ../appimg.bin .;
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
         cp ../''' + app_bin + ''' .;
-        tar -cvzf /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG''' + name + '''-\$PYCOM_VERSION.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
+        tar -cvzf /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
