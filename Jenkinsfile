@@ -156,9 +156,13 @@ def boardBuild(name) {
 
         sh '''cd esp32/build/'''+ name_u +'''/release;
         export PYCOM_VERSION=$(cat ../../../../pycom_version.h |grep SW_VERSION_NUMBER|cut -d\\" -f2);
+        echo $PYCOM_VERSION;
+        echo ${PYCOM_VERSION};
         export GIT_TAG=$(git rev-parse --short HEAD);
+        echo $GIT_TAG;
+        echo ${GIT_TAG};
 	      mkdir -p firmware_package;
-        mkdir -p /var/lib/jenkins/release/$PYCOM_VERSION/$GIT_TAG;
+        mkdir -p /var/lib/jenkins/release/\\$PYCOM_VERSION/\\$GIT_TAG;
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
         mv ../application.elf /var/lib/jenkins/release/$PYCOM_VERSION/$GIT_TAG''' + name + '''-$PYCOM_VERSION-application.elf;
