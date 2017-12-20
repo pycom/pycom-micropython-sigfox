@@ -100,11 +100,11 @@ node {
           sleep(5) //Delay to skip all bootlog
           dir('tests') {
             timeout(30) {
-              sh '''./run-tests --target=esp32-''' + name + ''' --device /dev/pycom_exp3'''
+              sh '''./run-tests --target=esp32-''' + name + ''' --device /dev/ttyACM0'''
             }
           }
-          sh 'python esp32/tools/pypic.py --port /dev/pycom_exp3 --enter'
-          sh 'python esp32/tools/pypic.py --port /dev/pycom_exp3 --exit'
+          sh 'python esp32/tools/pypic.py --port /dev/ttyACM0 --enter'
+          sh 'python esp32/tools/pypic.py --port /dev/ttyACM0 --exit'
         }
       }
     }
@@ -118,11 +118,11 @@ def flashBuild(name) {
       unstash 'esp32Tools'
       unstash 'tests'
       unstash 'tools'
-      sh 'python esp32/tools/pypic.py --port /dev/pycom_exp3 --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/pycom_exp3 --baud 921600 erase_flash'
-      sh 'python esp32/tools/pypic.py --port /dev/pycom_exp3 --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/pycom_exp3 --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
-      sh 'python esp32/tools/pypic.py --port /dev/pycom_exp3 --exit'
+      sh 'python esp32/tools/pypic.py --port /dev/ttyACM0 --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyACM0 --baud 921600 erase_flash'
+      sh 'python esp32/tools/pypic.py --port /dev/ttyACM0 --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyACM0 --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
+      sh 'python esp32/tools/pypic.py --port /dev/ttyACM0 --exit'
     }
   }
 }
