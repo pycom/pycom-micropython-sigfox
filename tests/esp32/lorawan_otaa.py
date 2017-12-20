@@ -15,9 +15,9 @@ else:
 print('Starting LoRaWAN OTAA test')
 
 def otaa_join(lora):
-    dev_eui = binascii.unhexlify('70B3D5499230B6B4')
-    app_eui = binascii.unhexlify('70B3D57ED0007971')
-    app_key = binascii.unhexlify('2E3A6F9CB22647688E8FF3FFB282F9A8')
+    dev_eui = binascii.unhexlify('11 22 33 44 55 66 77 88'.replace(' ',''))
+    app_eui = binascii.unhexlify('AD A4 DA E3 AC 12 67 6B'.replace(' ',''))
+    app_key = binascii.unhexlify('11 B0 28 2A 18 9B 75 B0 B4 D2 D8 C7 FA 38 54 8B'.replace(' ',''))
 
     lora.join(activation=LoRa.OTAA, auth=(dev_eui, app_eui, app_key), timeout=0)
 
