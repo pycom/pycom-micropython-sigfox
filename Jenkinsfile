@@ -1,8 +1,12 @@
 def buildVersion
-def boards_to_build_1 = ["LoPy_868", "WiPy"]
-def boards_to_build_2 = ["LoPy_915", "SiPy"]
-def boards_to_build_3 = ["FiPy_868", "GPy"]
-def boards_to_build_4 = ["FiPy_915"]
+// def boards_to_build_1 = ["LoPy_868", "WiPy"]
+// def boards_to_build_2 = ["LoPy_915", "SiPy"]
+// def boards_to_build_3 = ["FiPy_868", "GPy"]
+// def boards_to_build_4 = ["FiPy_915"]
+def boards_to_build_1 = []
+def boards_to_build_2 = []
+def boards_to_build_3 = ["FiPy_868"]
+def boards_to_build_4 = []
 def boards_to_test = ["FiPy_868"]
 def remote_node = "UDOO"
 
@@ -10,8 +14,8 @@ node {
     // get pycom-esp-idf source
     stage('Checkout') {
         checkout scm
-        sh 'rm -rf esp-idf'
-        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
+//        sh 'rm -rf esp-idf'
+//        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
     }
 
     stage('mpy-cross') {
