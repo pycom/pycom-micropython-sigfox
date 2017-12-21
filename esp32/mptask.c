@@ -48,7 +48,7 @@
 #if defined (LOPY) || defined (FIPY)
 #include "modlora.h"
 #endif
-#if defined (SIPY)
+#if defined (SIPY) || defined (FIPY)
 #include "sigfox/modsigfox.h"
 #endif
 #if defined (GPY) || defined (FIPY)
@@ -209,7 +209,7 @@ soft_reset:
 #if defined(LOPY) || defined (FIPY)
         modlora_init0();
 #endif
-#if defined(SIPY)
+#if defined(SIPY) || defined (FIPY)
         modsigfox_init0();
 #endif
 #if defined(GPY) || defined (FIPY)

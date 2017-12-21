@@ -311,6 +311,11 @@ void modlora_init0(void) {
     if (!lorawan_nvs_open()) {
         printf("Error opening LoRa NVS namespace!\n");
     }
+
+    // target board initialisation
+    BoardInitMcu();
+    BoardInitPeriph();
+
     xTaskCreatePinnedToCore(TASK_LoRa, "LoRa", LORA_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TASK_PRIORITY, &xLoRaTaskHndl, 0);
 }
 
@@ -666,10 +671,6 @@ static void TASK_LoRa (void *pvParameters) {
 
     lora_obj.state = E_LORA_STATE_NOINIT;
     lora_obj.pwr_mode = E_LORA_MODE_ALWAYS_ON;
-
-    // target board initialisation
-    BoardInitMcu();
-    BoardInitPeriph();
 
     for ( ; ; ) {
         vTaskDelay (1 / portTICK_PERIOD_MS);
