@@ -72,6 +72,10 @@ This software is used to obtain the unique id of the PicoCell gateway (the
 ## 5. Changelog
 ---------------
 
+### v0.2.2  ###
+
+* HAL: updated MCU firmware version to match with picoGW_mcu V0.2.1 release.
+
 ### v0.2.1  ###
 
 * HAL: Fixed bug in lgw_mcu_receive() which was preventing from fetching more
