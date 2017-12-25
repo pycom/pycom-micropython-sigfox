@@ -155,26 +155,43 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(time_sleep_us_obj, time_sleep_us);
 STATIC mp_obj_t time_ticks_ms(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return mp_obj_new_int_from_uint(((tv.tv_sec * 1000) + tv.tv_usec / 1000));
+    return mp_obj_new_int_from_uint(((tv.tv_sec * 1000) + tv.tv_usec / 1000)
+        & (MICROPY_PY_UTIME_TICKS_PERIOD - 1));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_ms_obj, time_ticks_ms);
 
 STATIC mp_obj_t time_ticks_us(void) {
-    return mp_obj_new_int_from_uint(system_get_rtc_time());
+    return mp_obj_new_int_from_uint(system_get_rtc_time()
+        & (MICROPY_PY_UTIME_TICKS_PERIOD - 1));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_us_obj, time_ticks_us);
 
 STATIC mp_obj_t time_ticks_cpu(void) {
-   return mp_obj_new_int_from_uint(get_timer_counter_value());
+   return mp_obj_new_int_from_uint(get_timer_counter_value() 
+        & (MICROPY_PY_UTIME_TICKS_PERIOD - 1));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_cpu_obj, time_ticks_cpu);
 
 STATIC mp_obj_t time_ticks_diff(mp_obj_t start_in, mp_obj_t end_in) {
-   uint32_t start = mp_obj_get_int(start_in);
-   uint32_t end = mp_obj_get_int(end_in);
-   return mp_obj_new_int_from_uint((end - start));
+    // we assume that the arguments come from ticks_xx so are small ints
+    mp_uint_t start = MP_OBJ_SMALL_INT_VALUE(start_in);
+    mp_uint_t end = MP_OBJ_SMALL_INT_VALUE(end_in);
+    // Optimized formula avoiding if conditions. We adjust difference "forward",
+    // wrap it around and adjust back.
+    mp_int_t diff = ((end - start + MICROPY_PY_UTIME_TICKS_PERIOD / 2) 
+        & (MICROPY_PY_UTIME_TICKS_PERIOD - 1))
+                   - MICROPY_PY_UTIME_TICKS_PERIOD / 2;
+    return MP_OBJ_NEW_SMALL_INT(diff);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(time_ticks_diff_obj, time_ticks_diff);
+
+STATIC mp_obj_t time_ticks_add(mp_obj_t ticks_in, mp_obj_t delta_in) {
+    // we assume that first argument come from ticks_xx so is small int
+    mp_uint_t ticks = MP_OBJ_SMALL_INT_VALUE(ticks_in);
+    mp_uint_t delta = mp_obj_get_int(delta_in);
+    return MP_OBJ_NEW_SMALL_INT((ticks + delta) & (MICROPY_PY_UTIME_TICKS_PERIOD - 1));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(time_ticks_add_obj, time_ticks_add);
 
 /// \function time()
 /// Returns the number of seconds, as an integer, since 1/1/1970.
@@ -208,6 +225,7 @@ STATIC const mp_map_elem_t time_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_ms),            (mp_obj_t)&time_ticks_ms_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_us),            (mp_obj_t)&time_ticks_us_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_cpu),           (mp_obj_t)&time_ticks_cpu_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_add),           (mp_obj_t)&time_ticks_add_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_diff),          (mp_obj_t)&time_ticks_diff_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_time),                (mp_obj_t)&time_time_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_timezone),            (mp_obj_t)&time_timezone_obj },
