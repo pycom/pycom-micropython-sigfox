@@ -376,19 +376,23 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         bt_obj.gattc_if = gattc_if;
         break;
     case ESP_GATTC_OPEN_EVT:
-        conn_id = p_data->open.conn_id;
-        if (p_data->open.status == ESP_GATT_OK) {
-            bt_event_result.connection.conn_id = conn_id;
-            bt_event_result.connection.gatt_if = gattc_if;
-            memcpy(bt_event_result.connection.srv_bda, p_data->open.remote_bda, ESP_BD_ADDR_LEN);
-        } else {
+        if (p_data->open.status != ESP_GATT_OK) {
             bt_event_result.connection.conn_id = -1;
+            xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
+            bt_obj.busy = false;
         }
-        esp_ble_gattc_send_mtu_req (gattc_if, p_data->open.conn_id);
+        break;
+    case ESP_GATTC_CONNECT_EVT:
+        conn_id = p_data->connect.conn_id;
+        bt_event_result.connection.conn_id = conn_id;
+        bt_event_result.connection.gatt_if = gattc_if;
+        memcpy(bt_event_result.connection.srv_bda, p_data->connect.remote_bda, ESP_BD_ADDR_LEN);
+        esp_ble_gattc_send_mtu_req (gattc_if, p_data->connect.conn_id);
         xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
-        bt_obj.busy = false;
         break;
     case ESP_GATTC_CFG_MTU_EVT:
+        // connection process and MTU request complete
+        bt_obj.busy = false;
         break;
     case ESP_GATTC_READ_CHAR_EVT:
         if (p_data->read.status == ESP_GATT_OK) {
@@ -912,6 +916,7 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
 
     if (bt_obj.scanning) {
         esp_ble_gap_stop_scanning();
+        mp_hal_delay_ms(50);
         bt_obj.scanning = false;
     }
 
