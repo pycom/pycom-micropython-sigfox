@@ -104,13 +104,12 @@ lte_obj_t lte_obj;
 
 void modlte_init0(void) {
     if (gpio_set_direction(UART_GPIO_TX, GPIO_MODE_OUTPUT)) return;
-	if (gpio_set_direction(UART_GPIO_RX, GPIO_MODE_INPUT)) return;
-	if (gpio_set_direction(UART_PIN_CTS, GPIO_MODE_INPUT)) return;
-	if (gpio_set_direction(UART_PIN_RTS, GPIO_MODE_OUTPUT)) return;
-	if (gpio_set_pull_mode(UART_GPIO_RX, GPIO_PULLUP_ONLY)) return;
-	
-	
-	ppposInit();
+    if (gpio_set_direction(UART_GPIO_RX, GPIO_MODE_INPUT)) return;
+    if (gpio_set_direction(UART_PIN_CTS, GPIO_MODE_INPUT)) return;
+    if (gpio_set_direction(UART_PIN_RTS, GPIO_MODE_OUTPUT)) return;
+    if (gpio_set_pull_mode(UART_GPIO_RX, GPIO_PULLUP_ONLY)) return;
+
+    ppposInit();
 }
 
 
