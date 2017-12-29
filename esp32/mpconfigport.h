@@ -91,6 +91,7 @@
 #define MICROPY_PY_URE                              (1)
 #define MICROPY_PY_MACHINE                          (1)
 #define MICROPY_PY_MICROPYTHON_MEM_INFO             (1)
+#define MICROPY_PY_UTIMEQ                           (1)
 #define MICROPY_CPYTHON_COMPAT                      (1)
 #define MICROPY_LONGINT_IMPL                        (MICROPY_LONGINT_IMPL_MPZ)
 #define MICROPY_FLOAT_IMPL                          (MICROPY_FLOAT_IMPL_FLOAT)
