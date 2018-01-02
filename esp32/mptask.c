@@ -225,7 +225,7 @@ soft_reset:
     mptask_update_lpwan_mac_address();
 #endif
 
-#if defined(SIPY)
+#if defined(SIPY) || defined(FIPY)
     sigfox_update_id();
     sigfox_update_pac();
     sigfox_update_private_key();

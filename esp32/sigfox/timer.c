@@ -74,7 +74,9 @@ extern e_SystemState SysState;
 bool TIMER_downlink_timeout;
 bool TIMER_carrier_sense_timeout;
 bool TIMER_rssi_end;
+#ifndef FIPY
 static bool rxtx_in_progress;
+#endif
 static sfx_u32   TIMER_bitrate_interrupt_count;
 static sfx_u32   TIMER_downlink_interrupt_count;
 static sfx_u32   TIMER_carrier_sense_interrupt_count;
@@ -85,7 +87,9 @@ static e_timer_mode TIMER_bitrate_mode;
 static uint32_t TIMER_bitrate_ticks;
 static TimerHandle_t TIMER_downlink;
 static TimerHandle_t TIMER_clear_channel;
+#ifndef FIPY
 static TimerHandle_t TIMER_RxTx_done;
+#endif
 
 #define TIMER_BITRATE_NUM                   1
 

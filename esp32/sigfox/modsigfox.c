@@ -92,14 +92,14 @@ STATIC sfx_u32 rcz_frequencies[4][2] = {
 
 static void TASK_Sigfox (void *pvParameters);
 
+#ifndef FIPY
 static void fsk_register_config (void);
 static void fsk_manual_calibration (void);
-#ifndef FIPY
 static void fsk_cc112x_tx (uint8_t *data, uint32_t len);
-#endif
 static void fsk_cc112x_rx (void);
 static void fsk_tx_register_config(void);
 static void fsk_rx_register_config(void);
+#endif
 static int32_t sigfox_recv (byte *buf, uint32_t len, int32_t timeout_ms);
 
 /******************************************************************************
@@ -150,7 +150,9 @@ void modsigfox_init0 (void) {
 
     TIMER_downlinnk_timer_create();
     TIMER_carrier_sense_timer_create();
+#ifndef FIPY
     TIMER_RxTx_done_timer_create();
+#endif
 
     MANUF_API_nvs_open();
 
@@ -382,10 +384,12 @@ static void TASK_Sigfox(void *pvParameters) {
 
                             status |= modsigfox_api_init();
                         } else {
+                        #ifndef FIPY
                             // write radio registers
                             fsk_register_config();
                             // calibrate radio according to errata
                             fsk_manual_calibration();
+                        #endif
                         }
                         sigfox_obj.mode = cmd_rx_data.cmd_u.info.init.mode;
                         sigfox_obj.frequency = cmd_rx_data.cmd_u.info.init.frequency;
@@ -468,21 +472,23 @@ static void TASK_Sigfox(void *pvParameters) {
                 default:
                     break;
                 }
-            } else {
+            }
+        #ifndef FIPY
+            else {
                 if (sigfox_obj.state == E_SIGFOX_STATE_IDLE) {
                     // set radio in RX
                     fsk_rx_register_config();
                     RADIO_change_frequency(sigfox_obj.frequency);
                     trxSpiCmdStrobe(CC112X_SRX);
                     sigfox_obj.state = E_SIGFOX_STATE_RX;
-                 #ifndef FIPY
                     TIMER_RxTx_done_start();
-                 #endif
                 } else if (sigfox_obj.state == E_SIGFOX_STATE_RX) {
                     fsk_cc112x_rx();
                 }
             }
+        #endif
             break;
+    #ifndef FIPY
         case E_SIGFOX_STATE_TX:
             // wait for interrupt that packet has been sent (assumes the GPIO
             // connected to the radioRxTxISR function is set to GPIOx_CFG = 0x06)
@@ -496,6 +502,7 @@ static void TASK_Sigfox(void *pvParameters) {
                 xEventGroupSetBits(sigfoxEvents, SIGFOX_STATUS_COMPLETED);
             }
             break;
+    #endif
         default:
             break;
         }
@@ -523,7 +530,6 @@ static void fsk_cc112x_tx (uint8_t *data, uint32_t len) {
     // strobe TX to send packet
     trxSpiCmdStrobe(CC112X_STX);
 }
-#endif
 
 static void fsk_cc112x_rx (void) {
     sigfox_rx_data_t rx_data;
@@ -677,6 +683,7 @@ static void fsk_manual_calibration(void) {
         cc112xSpiWriteReg(CC112X_FS_CHP, &writeByte, 1);
     }
 }
+#endif
 
 static void sigfox_send_cmd (sigfox_cmd_rx_data_t *cmd_rx_data) {
     xEventGroupClearBits(sigfoxEvents, SIGFOX_STATUS_COMPLETED | SIGFOX_STATUS_ERR);

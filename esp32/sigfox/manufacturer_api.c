@@ -51,13 +51,16 @@
 #include "manuf_api.h"
 #include "manufacturer_api.h"
 #include "pycom_config.h"
-#ifdef FIPY
-#include "board.h"
-#endif
 
+#include "sdkconfig.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
 #include "nvs.h"
+
+#ifdef FIPY
+#include "board.h"
+#include "spi.h"
+#endif
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -656,11 +659,11 @@ sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame)
 
 #ifdef FIPY
     /* Set the radio in sleep mode */
-    SX1272Write( REG_OPMODE, 0x00);
+    SX12728BitWrite(REG_OPMODE, 0x00);
     /* Set the radio in standby mode */
-    SX1272Write( REG_OPMODE, 0x09);
+    SX12728BitWrite(REG_OPMODE, 0x09);
     /* Set radio in RX */
-    SX1272Write( REG_OPMODE, 0x0D);
+    SX12728BitWrite(REG_OPMODE, 0x0D);
 
     PayloadReady = 0x00;
 

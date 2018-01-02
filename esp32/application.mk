@@ -354,7 +354,7 @@ ifeq ($(BOARD), GPY)
 endif
 ifeq ($(BOARD), FIPY)
     APP_BIN = $(BUILD)/fipy_$(LORA_FREQ).bin
-    $(BUILD)/sigfox/radio_sx1272.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)

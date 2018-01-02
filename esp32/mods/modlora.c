@@ -316,7 +316,7 @@ void modlora_init0(void) {
     BoardInitMcu();
     BoardInitPeriph();
 
-    xTaskCreatePinnedToCore(TASK_LoRa, "LoRa", LORA_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TASK_PRIORITY, &xLoRaTaskHndl, 0);
+    // xTaskCreatePinnedToCore(TASK_LoRa, "LoRa", LORA_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TASK_PRIORITY, &xLoRaTaskHndl, 0);
 }
 
 bool modlora_nvs_set_uint(uint32_t key_idx, uint32_t value) {

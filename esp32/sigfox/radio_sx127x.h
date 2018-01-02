@@ -41,6 +41,23 @@
 #include "targets/hal_spi_rf_trxeb.h"
 
 
+
+/******************************************************************************
+* DEFINES
+*/
+#define SX1272X_WRITE_ACCESS                0x80
+
+/******************************************************************************
+* MACROS
+*/
+// Fast write on SPI for modulation
+#define SX12728BitWrite(register, data) \
+{ \
+  GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << 18); \
+  SpiOut(SpiNum_SPI3, (data << 8) | SX1272X_WRITE_ACCESS | register); \
+  GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << 18); \
+}
+
 void RADIO_init_chip(sfx_rf_mode_t rf_mode);
 void RADIO_close_chip(void);
 void RADIO_change_frequency(unsigned long ul_Freq);
