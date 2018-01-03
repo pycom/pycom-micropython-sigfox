@@ -238,25 +238,33 @@ STATIC const MP_DEFINE_STR_OBJ(os_uname_info_release_obj, SW_VERSION_NUMBER);
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_version_obj, MICROPY_GIT_TAG " on " MICROPY_BUILD_DATE);
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_machine_obj, MICROPY_HW_BOARD_NAME " with " MICROPY_HW_MCU_NAME);
 #if defined(LOPY) || defined(FIPY)
-STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lpwan_obj, LORAWAN_VERSION_NUMBER);
-#elif defined(SIPY) // TODO: change this constant name and include the FiPy here
-STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lpwan_obj, SIGFOX_VERSION_NUMBER);
+STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lorawan_obj, LORAWAN_VERSION_NUMBER);
+#endif
+#if defined(SIPY) || defined (FIPY)
+STATIC const MP_DEFINE_STR_OBJ(os_uname_info_sigfox_obj, SIGFOX_VERSION_NUMBER);
 #endif
 STATIC MP_DEFINE_ATTRTUPLE(
     os_uname_info_obj
     ,os_uname_info_fields
-#if defined(LOPY) || defined(SIPY) || defined(FIPY)
-    ,6
+#if defined(FIPY)
+    ,7
 #else
+    #if defined(LOPY) || defined(SIPY)
+    ,6
+    #else
     ,5
+    #endif
 #endif
     ,(mp_obj_t)&os_uname_info_sysname_obj
     ,(mp_obj_t)&os_uname_info_nodename_obj
     ,(mp_obj_t)&os_uname_info_release_obj
     ,(mp_obj_t)&os_uname_info_version_obj
     ,(mp_obj_t)&os_uname_info_machine_obj
-#if defined(LOPY) || defined(SIPY) || defined(FIPY)
-    ,(mp_obj_t)&os_uname_info_lpwan_obj
+#if defined(LOPY) || defined(FIPY)
+    ,(mp_obj_t)&os_uname_info_lorawan_obj
+#endif
+#if defined(SIPY) || defined(FIPY)
+    ,(mp_obj_t)&os_uname_info_sigfox_obj
 #endif
 );
 

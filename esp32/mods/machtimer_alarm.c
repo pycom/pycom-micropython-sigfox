@@ -51,7 +51,7 @@ STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 void alarm_preinit(void) {
-    timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_alarm_isr, NULL, ESP_INTR_FLAG_IRAM, NULL);
+    timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_alarm_isr, NULL, 0, NULL);
 }
 
 void init_alarm_heap(void) {
@@ -256,7 +256,7 @@ STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj
 
     if (alarm_heap.count == ALARM_HEAP_MAX_ELEMENTS) {
         error = true;
-    } else {
+    } else if (self->handler != mp_const_none) {
         mp_irq_add(self, handler);
         set_alarm_when(self, self->interval);
         insert_alarm(self);

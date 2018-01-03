@@ -154,8 +154,8 @@ void modusocket_close_all_user_sockets (void) {
 
 STATIC void socket_select_nic(mod_network_socket_obj_t *self, const byte *ip) {
     if (self->sock_base.nic == MP_OBJ_NULL) {
-        // select a nic (based on some criteria TBD)
-        self->sock_base.nic = mod_network_find_nic(ip);
+        // select a nic
+        self->sock_base.nic = mod_network_find_nic(self, ip);
         self->sock_base.nic_type = (mod_network_nic_type_t*)mp_obj_get_type(self->sock_base.nic);
     }
 }
@@ -688,7 +688,7 @@ STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_AF_LORA),         MP_OBJ_NEW_SMALL_INT(AF_LORA) },
 #endif
 
-#if defined (SIPY)
+#if defined (SIPY) || defined (FIPY)
     { MP_OBJ_NEW_QSTR(MP_QSTR_AF_SIGFOX),       MP_OBJ_NEW_SMALL_INT(AF_SIGFOX) },
 #endif
 
@@ -706,7 +706,7 @@ STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_SIGFOX),      MP_OBJ_NEW_SMALL_INT(SOL_SIGFOX) },
 #elif defined(FIPY)
     { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_LORA),        MP_OBJ_NEW_SMALL_INT(SOL_LORA) },
-    // { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_SIGFOX),      MP_OBJ_NEW_SMALL_INT(SOL_SIGFOX) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_SIGFOX),      MP_OBJ_NEW_SMALL_INT(SOL_SIGFOX) },
 #endif
     { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_SOCKET),      MP_OBJ_NEW_SMALL_INT(SOL_SOCKET) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SO_REUSEADDR),    MP_OBJ_NEW_SMALL_INT(SO_REUSEADDR) },
@@ -715,7 +715,7 @@ STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_SO_CONFIRMED),    MP_OBJ_NEW_SMALL_INT(SO_LORAWAN_CONFIRMED) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SO_DR),           MP_OBJ_NEW_SMALL_INT(SO_LORAWAN_DR) },
 #endif
-#if defined(SIPY)
+#if defined(SIPY) || defined(FIPY)
      { MP_OBJ_NEW_QSTR(MP_QSTR_SO_RX),          MP_OBJ_NEW_SMALL_INT(SO_SIGFOX_RX) },
      { MP_OBJ_NEW_QSTR(MP_QSTR_SO_TX_REPEAT),   MP_OBJ_NEW_SMALL_INT(SO_SIGFOX_TX_REPEAT) },
      { MP_OBJ_NEW_QSTR(MP_QSTR_SO_OOB),         MP_OBJ_NEW_SMALL_INT(SO_SIGFOX_OOB) },

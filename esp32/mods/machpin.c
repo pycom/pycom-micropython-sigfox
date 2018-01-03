@@ -107,7 +107,7 @@ DECLARE PRIVATE DATA
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 void pin_preinit(void) {
-    gpio_isr_register(machpin_intr_process, NULL, 0, NULL);
+    gpio_isr_register(machpin_intr_process, NULL, ESP_INTR_FLAG_IRAM, NULL);
 }
 
 void pin_init0(void) {

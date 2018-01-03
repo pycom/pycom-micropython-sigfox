@@ -104,13 +104,12 @@ lte_obj_t lte_obj;
 
 void modlte_init0(void) {
     if (gpio_set_direction(UART_GPIO_TX, GPIO_MODE_OUTPUT)) return;
-	if (gpio_set_direction(UART_GPIO_RX, GPIO_MODE_INPUT)) return;
-	if (gpio_set_direction(UART_PIN_CTS, GPIO_MODE_INPUT)) return;
-	if (gpio_set_direction(UART_PIN_RTS, GPIO_MODE_OUTPUT)) return;
-	if (gpio_set_pull_mode(UART_GPIO_RX, GPIO_PULLUP_ONLY)) return;
-	
-	
-	ppposInit();
+    if (gpio_set_direction(UART_GPIO_RX, GPIO_MODE_INPUT)) return;
+    if (gpio_set_direction(UART_PIN_CTS, GPIO_MODE_INPUT)) return;
+    if (gpio_set_direction(UART_PIN_RTS, GPIO_MODE_OUTPUT)) return;
+    if (gpio_set_pull_mode(UART_GPIO_RX, GPIO_PULLUP_ONLY)) return;
+
+    ppposInit();
 }
 
 
@@ -159,7 +158,7 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
 
 static const mp_arg_t lte_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT, {.u_int = 0} },
-    { MP_QSTR_cid,          MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 1} }  
+    { MP_QSTR_cid,          MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 1} }
 };
 
 static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
