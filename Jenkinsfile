@@ -3,10 +3,6 @@ def boards_to_build_1 = ["LoPy_868", "WiPy"]
 def boards_to_build_2 = ["LoPy_915", "SiPy"]
 def boards_to_build_3 = ["FiPy_868", "GPy"]
 def boards_to_build_4 = ["FiPy_915"]
-// def boards_to_build_1 = []
-// def boards_to_build_2 = []
-// def boards_to_build_3 = ["FiPy_868"]
-// def boards_to_build_4 = []
 def boards_to_test = ["FiPy_868"]
 def remote_node = "UDOO"
 
@@ -160,12 +156,8 @@ def boardBuild(name) {
 
         sh '''cd esp32/build/'''+ name_u +'''/release;
         export PYCOM_VERSION=$(cat ../../../pycom_version.h |grep SW_VERSION_NUMBER|cut -d\\" -f2);
-        echo $PYCOM_VERSION;
-        echo ${PYCOM_VERSION};
         export GIT_TAG=$(git rev-parse --short HEAD);
-        echo $GIT_TAG;
-        echo ${GIT_TAG};
-	      mkdir -p firmware_package;
+        mkdir -p firmware_package;
         mkdir -p /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG;
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
