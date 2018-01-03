@@ -495,6 +495,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_any_obj, mach_uart_any);
 
 STATIC mp_obj_t mach_uart_tx_done(mp_obj_t self_in) {
     mach_uart_obj_t *self = self_in;
+    ets_delay_us(MACHUART_TX_WAIT_US(self->config.baud_rate));
     if (uart_tx_done(self->uart_id)) {
         return mp_const_true;
     }
