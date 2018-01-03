@@ -194,9 +194,18 @@ APP_SX1272_SRC_C = $(addprefix drivers/sx127x/,\
 	sx1272/sx1272.c \
 	)
 
-APP_SIGFOX_SRC_C = $(addprefix sigfox/,\
+APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/,\
 	manufacturer_api.c \
 	radio.c \
+	ti_aes_128.c \
+	timer.c \
+	transmission.c \
+	modsigfox.c \
+	)
+
+APP_SIGFOX_SRC_FIPY_C = $(addprefix sigfox/,\
+	manufacturer_api.c \
+	radio_sx127x.c \
 	ti_aes_128.c \
 	timer.c \
 	transmission.c \
@@ -251,7 +260,12 @@ ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1272_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
 endif
 ifeq ($(BOARD), $(filter $(BOARD), SIPY))
-SFX_OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_C:.c=.o) $(APP_SIGFOX_TARGET_SRC_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o))
+SFX_OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_SIPY_C:.c=.o) $(APP_SIGFOX_TARGET_SRC_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o))
+OBJ += $(SFX_OBJ)
+OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
+endif
+ifeq ($(BOARD), $(filter $(BOARD), FIPY))
+SFX_OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_FIPY_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o))
 OBJ += $(SFX_OBJ)
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
@@ -272,7 +286,7 @@ SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C)
 ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
 SRC_QSTR += $(APP_MODS_LORA_SRC_C)
 endif
-ifeq ($(BOARD), $(filter $(BOARD), SIPY))
+ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY))
 SRC_QSTR += $(APP_SIGFOX_MOD_SRC_C)
 endif
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
@@ -336,14 +350,14 @@ ifeq ($(BOARD), SIPY)
     $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 ifeq ($(BOARD), GPY)
-		 APP_BIN = $(BUILD)/gpy.bin
+    APP_BIN = $(BUILD)/gpy.bin
 endif
 ifeq ($(BOARD), FIPY)
     APP_BIN = $(BUILD)/fipy_$(LORA_FREQ).bin
-#     $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
-#     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
-#     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
-#     $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 
 APP_IMG  = $(BUILD)/appimg.bin
@@ -396,7 +410,7 @@ $(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
 	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
 else
 
-ifeq ($(BOARD), SIPY)
+ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY))
 $(BUILD)/sigfox/sigfox.a: $(SFX_OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@

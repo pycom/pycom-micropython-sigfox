@@ -110,6 +110,6 @@ extern const mod_network_nic_type_t mod_network_nic_type_lte;
  ******************************************************************************/
 void mod_network_init0(void);
 void mod_network_register_nic(mp_obj_t nic);
-mp_obj_t mod_network_find_nic(const uint8_t *ip);
+mp_obj_t mod_network_find_nic(const mod_network_socket_obj_t *s, const uint8_t *ip);
 
 #endif  // MODNETWORK_H_

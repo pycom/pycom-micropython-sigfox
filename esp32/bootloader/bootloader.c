@@ -91,18 +91,18 @@ static void clock_configure(void);
 static void uart_console_configure(void);
 static void wdt_reset_check(void);
 
-static void read_mac(uint8_t* mac)
-{
-    uint32_t mac_low = REG_READ(EFUSE_BLK0_RDATA1_REG);
-    uint32_t mac_high = REG_READ(EFUSE_BLK0_RDATA2_REG);
+// static void read_mac(uint8_t* mac)
+// {
+//     uint32_t mac_low = REG_READ(EFUSE_BLK0_RDATA1_REG);
+//     uint32_t mac_high = REG_READ(EFUSE_BLK0_RDATA2_REG);
 
-    mac[0] = mac_high >> 8;
-    mac[1] = mac_high;
-    mac[2] = mac_low >> 24;
-    mac[3] = mac_low >> 16;
-    mac[4] = mac_low >> 8;
-    mac[5] = mac_low;
-}
+//     mac[0] = mac_high >> 8;
+//     mac[1] = mac_high;
+//     mac[2] = mac_low >> 24;
+//     mac[3] = mac_low >> 16;
+//     mac[4] = mac_low >> 8;
+//     mac[5] = mac_low;
+// }
 
 void call_start_cpu0()
 {

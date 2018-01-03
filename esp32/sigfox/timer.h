@@ -13,6 +13,7 @@
 #define TIMER_H
 
 #include <stdbool.h>
+#include "py/mpconfig.h"
 
 /******************************************************************************
  * FUNCTION PROTOTYPES
@@ -25,9 +26,11 @@ void TIMER_get_rssi_stop(void);
 void TIMER_get_rssi_init(sfx_u8 time_in_milliseconds);
 void TIMER_downlinnk_timer_create (void);
 void TIMER_carrier_sense_timer_create (void);
+#ifndef FIPY
 void TIMER_RxTx_done_timer_create (void);
 void TIMER_RxTx_done_start (void);
 void TIMER_RxTx_done_stop (void);
+#endif
 void TIMER_downlink_timing_init(sfx_u16 time_in_seconds);
 void TIMER_downlink_timing_stop(void);
 void TIMER_carrier_sense_init(sfx_u16 time_in_milliseconds);

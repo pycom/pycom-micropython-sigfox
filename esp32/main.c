@@ -53,14 +53,10 @@
 
 TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
-#if defined(LOPY)
+#if defined(LOPY) || defined (FIPY)
 TaskHandle_t xLoRaTaskHndl;
 #endif
-#if defined(SIPY)
-TaskHandle_t xSigfoxTaskHndl;
-#endif
-#if defined(FIPY)
-TaskHandle_t xLoRaTaskHndl;
+#if defined(SIPY) || defined (FIPY)
 TaskHandle_t xSigfoxTaskHndl;
 #endif
 

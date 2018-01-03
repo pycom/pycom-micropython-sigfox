@@ -15,10 +15,16 @@
 /******************************************************************************
  * INCLUDES
  */
+#include <stdint.h>
+#include "py/mpconfig.h"
 #include "sigfox_types.h"
 #include "stdlib.h"
 #include "stdbool.h"
+#ifdef FIPY
+#include "radio_sx127x.h"
+#else
 #include "radio.h"
+#endif
 #include "targets/hal_spi_rf_trxeb.h"
 #include "esp_attr.h"
 

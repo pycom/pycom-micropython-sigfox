@@ -165,6 +165,13 @@ void SpiFrequency( Spi_t *obj, uint32_t hz ) {
 #if defined(LOPY) || defined(FIPY)
 IRAM_ATTR uint16_t SpiInOut(Spi_t *obj, uint16_t outData) {
     uint32_t spiNum = (uint32_t)obj->Spi;
+
+#if defined(FIPY)
+    // set data send buffer length (1 byte)
+    SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 7, SPI_USR_MOSI_DBITLEN_S);
+    SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 7, SPI_USR_MISO_DBITLEN_S);
+#endif
+
     // load the send buffer
     WRITE_PERI_REG(SPI_W0_REG(spiNum), outData);
     // start to send data
@@ -189,7 +196,9 @@ IRAM_ATTR uint8_t SpiInOut(uint32_t spiNum, uint32_t outData) {
     // read data out
     return READ_PERI_REG(SPI_W0_REG(spiNum));
 }
+#endif
 
+#if defined(SIPY) || defined(FIPY)
 /*!
  * \brief Sends outData
  *

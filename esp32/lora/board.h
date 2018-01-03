@@ -59,15 +59,16 @@ Maintainer: Miguel Luis and Gregory Cristian
  * Board MCU pins definitions
  */
 #if defined (LOPY) || defined (FIPY)
- #define RADIO_RESET                                 micropy_lpwan_reset_pin_index
+#define RADIO_RESET                                 micropy_lpwan_reset_pin_index
 
- #define RADIO_MOSI                                  GPIO27
- #define RADIO_MISO                                  GPIO19
- #define RADIO_SCLK                                  GPIO5
- #define RADIO_NSS                                   micropy_lpwan_ncs_pin_index
+#define RADIO_MOSI                                  GPIO27
+#define RADIO_MISO                                  GPIO19
+#define RADIO_SCLK                                  GPIO5
+#define RADIO_NSS                                   micropy_lpwan_ncs_pin_index
 
- #define RADIO_DIO                                   micropy_lpwan_dio_pin_index
+#define RADIO_DIO                                   micropy_lpwan_dio_pin_index
 #endif
+
 void BoardInitPeriph( void );
 
 void BoardInitMcu( void );

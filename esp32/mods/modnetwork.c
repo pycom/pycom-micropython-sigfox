@@ -46,6 +46,9 @@
 #include "modnetwork.h"
 #include "mpexception.h"
 #include "serverstask.h"
+#include "modusocket.h"
+
+#include "lwip/sockets.h"
 
 
 /******************************************************************************
@@ -80,24 +83,23 @@ void mod_network_register_nic(mp_obj_t nic) {
     mp_obj_list_append(&MP_STATE_PORT(mod_network_nic_list), nic);
 }
 
-mp_obj_t mod_network_find_nic(const uint8_t *ip) {
-    // find a NIC that is suited to given IP address
+mp_obj_t mod_network_find_nic(const mod_network_socket_obj_t *s, const uint8_t *ip) {
+    // find a NIC that is suited to a given IP address
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
         mp_obj_t nic = MP_STATE_PORT(mod_network_nic_list).items[i];
         // we want a raw network card
         if (ip == NULL) {
         #if defined (LOPY) || defined (FIPY)
-            if (mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_lora) {
+            if (mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_lora && s->sock_base.u.u_param.domain == AF_LORA) {
                 return nic;
             }
         #endif
-        #if defined (SIPY)
-            if (mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_sigfox) {
+        #if defined (SIPY) || defined (FIPY)
+            if (mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_sigfox && s->sock_base.u.u_param.domain == AF_SIGFOX) {
                 return nic;
             }
         #endif
-        } else {
-            // TODO check IP suitability here
+        } else if (s->sock_base.u.u_param.domain == AF_INET) {
             return nic;
         }
     }
@@ -198,7 +200,7 @@ STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
 #if defined (LOPY) || defined (FIPY)
     { MP_OBJ_NEW_QSTR(MP_QSTR_LoRa),                (mp_obj_t)&mod_network_nic_type_lora },
 #endif
-#if defined (SIPY)
+#if defined (SIPY) || defined (FIPY)
     { MP_OBJ_NEW_QSTR(MP_QSTR_Sigfox),              (mp_obj_t)&mod_network_nic_type_sigfox },
 #endif
 #if defined(FIPY) || defined(GPY)

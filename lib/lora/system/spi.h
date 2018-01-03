@@ -83,6 +83,8 @@ uint8_t SpiInOut(uint32_t spiNum, uint32_t outData);
  * \param [IN] outData Byte to be sent
  * \retval void
  */
+#endif
+#if defined(SIPY) || defined(FIPY)
 void SpiOut(uint32_t spiNum, uint32_t outData );
 #endif
 
