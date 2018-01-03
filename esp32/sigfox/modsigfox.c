@@ -55,7 +55,9 @@
 #define SFX_RESET_FCC_MIN_DELAY_S                    23
 
 extern TaskHandle_t xSigfoxTaskHndl;
+#ifdef FIPY
 extern SemaphoreHandle_t xLoRaSigfoxSem;
+#endif
 
 Spi_t sigfox_spi = {};
 sigfox_settings_t sigfox_settings = {};
@@ -312,7 +314,9 @@ static uint32_t modsigfox_api_init (void) {
 }
 
 static sfx_error_t modsigfox_sfx_send(sigfox_cmd_rx_data_t *cmd_rx_data, sigfox_rx_data_t *rx_data) {
+#ifdef FIPY
     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
+#endif
     uint32_t now = mp_hal_ticks_s();
     sfx_error_t sfx_error;
 
@@ -356,8 +360,10 @@ static sfx_error_t modsigfox_sfx_send(sigfox_cmd_rx_data_t *cmd_rx_data, sigfox_
         goto end_send;
     }
 end_send:
+#ifdef FIPY
     RADIO_reset_registers();
     xSemaphoreGive(xLoRaSigfoxSem);
+#endif
     return sfx_error;
 }
 
@@ -455,8 +461,8 @@ static void TASK_Sigfox(void *pvParameters) {
                     }
                     break;
                 case E_SIGFOX_CMD_TEST:
-                    xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                 #ifdef FIPY
+                    xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                     RADIO_warm_up_crystal(rcz_frequencies[sfx_rcz_id][0]);
                 #endif
                 if (cmd_rx_data.cmd_u.info.test.mode <= SFX_TEST_MODE_TX_SYNTH) {
@@ -479,8 +485,10 @@ static void TASK_Sigfox(void *pvParameters) {
                     }
                     sigfox_obj.state = E_SIGFOX_STATE_TEST;
                     xEventGroupSetBits(sigfoxEvents, SIGFOX_STATUS_COMPLETED);
+                #ifdef FIPY
                     RADIO_reset_registers();
                     xSemaphoreGive(xLoRaSigfoxSem);
+                #endif
                     break;
                 default:
                     break;
