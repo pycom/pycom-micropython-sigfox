@@ -368,7 +368,7 @@ ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
 
 FLASH_SIZE = detect
-ESPFLASHFREQ = 40m
+ESPFLASHFREQ = 80m
 ESPFLASHMODE = dio
 
 PIC_TOOL = $(PYTHON) tools/pypic.py --port $(ESPPORT)
