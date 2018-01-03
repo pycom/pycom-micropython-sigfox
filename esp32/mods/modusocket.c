@@ -154,8 +154,8 @@ void modusocket_close_all_user_sockets (void) {
 
 STATIC void socket_select_nic(mod_network_socket_obj_t *self, const byte *ip) {
     if (self->sock_base.nic == MP_OBJ_NULL) {
-        // select a nic (based on some criteria TBD)
-        self->sock_base.nic = mod_network_find_nic(ip);
+        // select a nic
+        self->sock_base.nic = mod_network_find_nic(self, ip);
         self->sock_base.nic_type = (mod_network_nic_type_t*)mp_obj_get_type(self->sock_base.nic);
     }
 }

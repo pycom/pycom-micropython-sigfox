@@ -98,6 +98,7 @@ te_phaseState Phase_State = E_PHASE_0;
  * \param[in] param rf_mode  the mode ( RX or TX ) of RF programmation
  ******************************************************************************/
 void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
+    RADIO_reset_registers();
     if (rf_mode == SFX_RF_MODE_TX) {
         SX12728BitWrite( 0x01, 0x80 );      // Device in StandBy in LoRa mode
         SX12728BitWrite( 0x1D, 0x00 );      // LoRa BW = 0
@@ -119,20 +120,6 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
             SX12728BitWrite(REG_LR_PADAC, 0x84);
         }
     } else if (rf_mode == SFX_RF_MODE_RX) {
-        SX12728BitWrite( 0x01, 0x00 );      // Device in Sleep mode
-        SX12728BitWrite( 0x3D, 0xA1 );
-        SX12728BitWrite( 0x4B, 0x2E );
-        SX12728BitWrite( 0x4D, 0x03 );
-        SX12728BitWrite( 0x63, 0x00 );
-        SX12728BitWrite( 0x3E, 0x00 );
-        SX12728BitWrite( 0x4C, 0x00 );
-        SX12728BitWrite( 0x1E, 0x74 );
-        SX12728BitWrite( 0x0A, 0x09 );
-        SX12728BitWrite( 0x1D, 0x08 );
-        SX12728BitWrite( 0x0A, 0x19 );
-        SX12728BitWrite( 0x5E, 0xD0 );
-        SX12728BitWrite(REG_LR_PADAC, 0x84);
-
         /* Write registers of the radio chip for RX mode */
         for(int i = 0; i < (sizeof(HighPerfModeRx)/sizeof(registerSetting_t)); i++) {
             SX12728BitWrite(HighPerfModeRx[i].addr, HighPerfModeRx[i].data);
@@ -244,12 +231,12 @@ IRAM_ATTR void RADIO_modulate(void) {
         }
     }
 
-	/* Switch OFF PA */
-	SX12728BitWrite(0x63, 0x00);
-	/* Change signal phase */
-	SX12728BitWrite(REG_IRQFLAGS1, NewPhaseValue);
-	/* Switch ON PA */
-	SX12728BitWrite(0x63, 0x60);
+    /* Switch OFF PA */
+    SX12728BitWrite(0x63, 0x00);
+    /* Change signal phase */
+    SX12728BitWrite(REG_IRQFLAGS1, NewPhaseValue);
+    /* Switch ON PA */
+    SX12728BitWrite(0x63, 0x60);
 
     if (uplink_spectrum_access == SFX_FH) {
         /* increase PA */
@@ -349,7 +336,7 @@ IRAM_ATTR void RADIO_stop_rf_carrier(void) {
     SX12728BitWrite(0x4C, MIN_PA_VALUE);
 
     SX12728BitWrite( 0x63, 0x00 );      // switch off the PA
-    SX12728BitWrite( 0x01, 0x80 );      // Device in Sleep mode
+    SX12728BitWrite( 0x01, 0x80 );      // Device in LoRa standby mode
     SX12728BitWrite( 0x1e, 0x70 );      // Tx Continuous mode
 
     MICROPY_END_ATOMIC_SECTION(ilevel);
@@ -402,11 +389,29 @@ void RADIO_warm_up_crystal (unsigned long ul_Freq) {
     SX12728BitWrite( 0x1e, 0x78 );      // Tx Continuous mode
     SX12728BitWrite( 0x01, 0x83 );      // Device in Tx mode
 
-    vTaskDelay(500);                // Wait for the crystal and the PLL to warm up
+    vTaskDelay(500);                    // Wait for the crystal and the PLL to warm up
 
     SX12728BitWrite( 0x63, 0x00 );      // switch off the PA
-    SX12728BitWrite( 0x01, 0x80 );      // Device in Sleep mode
+    SX12728BitWrite( 0x01, 0x80 );      // Device in standby in LoRa mode
     SX12728BitWrite( 0x1e, 0x70 );      // Tx Continuous mode
+}
+
+void RADIO_reset_registers (void) {
+        SX12728BitWrite( 0x3D, 0xA1 );
+        SX12728BitWrite( 0x4B, 0x2E );
+        SX12728BitWrite( 0x4D, 0x03 );
+        SX12728BitWrite( 0x63, 0x00 );
+        SX12728BitWrite( 0x3E, 0x00 );
+        SX12728BitWrite( 0x4C, 0x00 );
+        SX12728BitWrite( 0x1E, 0x70 );
+        SX12728BitWrite( 0x0A, 0x09 );
+        SX12728BitWrite( 0x1D, 0x08 );
+        SX12728BitWrite( 0x0A, 0x19 );
+        SX12728BitWrite( 0x5E, 0xD0 );
+        SX12728BitWrite(REG_LR_PADAC, 0x84);
+        SX12728BitWrite(REG_IRQFLAGS1, 0x80);
+        SX12728BitWrite( 0x01, 0x80 );      // Device in StandBy in LoRa mode
+        SX12728BitWrite( 0x01, 0x00 );      // Device in sleep mode
 }
 
 /**************************************************************************//**

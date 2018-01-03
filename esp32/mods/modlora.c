@@ -301,12 +301,18 @@ static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp
 extern TaskHandle_t xLoRaTaskHndl;
 
 /******************************************************************************
+ DECLARE PUBLIC DATA
+ ******************************************************************************/
+SemaphoreHandle_t xLoRaSigfoxSem;
+
+/******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 void modlora_init0(void) {
     xCmdQueue = xQueueCreate(LORA_CMD_QUEUE_SIZE_MAX, sizeof(lora_cmd_data_t));
     xRxQueue = xQueueCreate(LORA_DATA_QUEUE_SIZE_MAX, sizeof(lora_rx_data_t));
     LoRaEvents = xEventGroupCreate();
+    xLoRaSigfoxSem = xSemaphoreCreateMutex();
 
     if (!lorawan_nvs_open()) {
         printf("Error opening LoRa NVS namespace!\n");
@@ -316,7 +322,7 @@ void modlora_init0(void) {
     BoardInitMcu();
     BoardInitPeriph();
 
-    // xTaskCreatePinnedToCore(TASK_LoRa, "LoRa", LORA_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TASK_PRIORITY, &xLoRaTaskHndl, 0);
+    xTaskCreatePinnedToCore(TASK_LoRa, "LoRa", LORA_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TASK_PRIORITY, &xLoRaTaskHndl, 0);
 }
 
 bool modlora_nvs_set_uint(uint32_t key_idx, uint32_t value) {
@@ -470,6 +476,8 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
         status |= LORA_STATUS_ERROR;
         xEventGroupSetBits(LoRaEvents, status);
     }
+
+    xSemaphoreGive(xLoRaSigfoxSem);
 }
 
 static void McpsIndication (McpsIndication_t *mcpsIndication) {
@@ -643,6 +651,7 @@ static void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
                 break;
         }
     }
+    xSemaphoreGive(xLoRaSigfoxSem);
 }
 
 static void OnTxNextActReqTimerEvent(void) {
@@ -796,6 +805,7 @@ static void TASK_LoRa (void *pvParameters) {
                     lora_obj.state = E_LORA_STATE_JOIN;
                     break;
                 case E_LORA_CMD_TX:
+                    xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                     Radio.Send(task_cmd_data.info.tx.data, task_cmd_data.info.tx.len);
                     lora_obj.state = E_LORA_STATE_TX;
                     break;
@@ -844,11 +854,13 @@ static void TASK_LoRa (void *pvParameters) {
                             }
                         }
 
+                        xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                         if (LoRaMacMcpsRequest(&mcpsReq) != LORAMAC_STATUS_OK || empty_frame) {
                             // the command has failed, send the response now
                             lora_obj.state = E_LORA_STATE_IDLE;
                             status |= LORA_STATUS_ERROR;
                             xEventGroupSetBits(LoRaEvents, status);
+                            xSemaphoreGive(xLoRaSigfoxSem);
                         } else {
                             lora_obj.state = E_LORA_STATE_TX;
                         }
@@ -858,12 +870,14 @@ static void TASK_LoRa (void *pvParameters) {
                     Radio.Sleep();
                     lora_obj.state = E_LORA_STATE_SLEEP;
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
+                    xSemaphoreGive(xLoRaSigfoxSem);
                     break;
                 case E_LORA_CMD_WAKE_UP:
                     // just enable the receiver again
                     Radio.Rx(LORA_RX_TIMEOUT);
                     lora_obj.state = E_LORA_STATE_RX;
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
+                    xSemaphoreGive(xLoRaSigfoxSem);
                     break;
                 default:
                     break;
@@ -877,6 +891,7 @@ static void TASK_LoRa (void *pvParameters) {
             TimerStop( &TxNextActReqTimer );
             if (!lora_obj.joined) {
                 if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
+                    xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                     TimerStart( &TxNextActReqTimer );
                     mlmeReq.Type = MLME_JOIN;
                     mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.u.otaa.DevEui;
@@ -930,12 +945,14 @@ static void TASK_LoRa (void *pvParameters) {
             Radio.Sleep();
             xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
             lora_obj.state = E_LORA_STATE_IDLE;
+            xSemaphoreGive(xLoRaSigfoxSem);
             break;
         case E_LORA_STATE_TX_TIMEOUT:
             // we need to perform a mode transition in order to clear the TxRx FIFO
             Radio.Sleep();
             xEventGroupSetBits(LoRaEvents, LORA_STATUS_ERROR);
             lora_obj.state = E_LORA_STATE_IDLE;
+            xSemaphoreGive(xLoRaSigfoxSem);
             break;
         default:
             break;

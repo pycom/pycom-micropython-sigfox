@@ -67,6 +67,7 @@ void RADIO_stop_unmodulated_cw(unsigned long ul_Freq);
 void RADIO_start_unmodulated_cw(unsigned long ul_Freq);
 void RADIO_modulate(void);
 void RADIO_warm_up_crystal (unsigned long ul_Freq);
+void RADIO_reset_registers (void);
 
 extern uint8_t  packetSemaphore;
 
