@@ -155,7 +155,14 @@ STATIC mp_obj_t mach_rtc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, m
     if (args[2].u_obj != mp_const_none) {
         struct timeval now;
         gettimeofday(&now, NULL);
-        select_rtc_slow_clk(mp_obj_get_int(args[2].u_obj));
+
+        uint32_t clk_src = mp_obj_get_int(args[2].u_obj);
+        if (clk_src == RTC_SOURCE_EXTERNAL_XTAL) {
+            if (!rtc_clk_32k_enabled()) {
+                rtc_clk_32k_bootstrap();
+            }
+        }
+        select_rtc_slow_clk(clk_src);
         settimeofday(&now, NULL);
     }
 

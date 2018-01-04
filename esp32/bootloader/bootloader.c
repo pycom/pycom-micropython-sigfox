@@ -878,14 +878,6 @@ static void clock_configure(void)
     clk_cfg.slow_freq = rtc_clk_slow_freq_get();
     clk_cfg.fast_freq = rtc_clk_fast_freq_get();
     rtc_clk_init(clk_cfg);
-    /* As a slight optimization, if 32k XTAL was enabled in sdkconfig, we enable
-     * it here. Usually it needs some time to start up, so we amortize at least
-     * part of the start up time by enabling 32k XTAL early.
-     * App startup code will wait until the oscillator has started up.
-     */
-    if (!rtc_clk_32k_enabled()) {
-        rtc_clk_32k_bootstrap();
-    }
 }
 
 static void uart_console_configure(void)

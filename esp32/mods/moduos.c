@@ -224,12 +224,13 @@ STATIC void unmount (os_fs_mount_t *mount_obj) {
 
 STATIC const qstr os_uname_info_fields[] = {
     MP_QSTR_sysname, MP_QSTR_nodename,
-    MP_QSTR_release, MP_QSTR_version,
-    MP_QSTR_machine,
+    MP_QSTR_release, MP_QSTR_version
+    ,MP_QSTR_machine
 #if defined(LOPY) || defined(FIPY)
-    MP_QSTR_lorawan
-#elif defined(SIPY)
-    MP_QSTR_sigfox
+    ,MP_QSTR_lorawan
+#endif
+#if defined(SIPY) || defined(FIPY)
+    ,MP_QSTR_sigfox
 #endif
 };
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_sysname_obj, MICROPY_PY_SYS_PLATFORM);
