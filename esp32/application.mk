@@ -415,8 +415,8 @@ $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(Q) $(AR) cru $@ $^
 
 $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a
-#	$(ECHO) "COPY IDF LIBRARIES $@"
-#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
