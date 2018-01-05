@@ -260,7 +260,9 @@ static lora_rx_data_t rx_data_isr;
 static TimerEvent_t TxNextActReqTimer;
 
 static nvs_handle modlora_nvs_handle;
-static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR", "NWSKEY", "APPSKEY", "NETID", "ADRACK", "MACPARAMS", "CHANNELS"};
+static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR",
+                                                                 "NWSKEY", "APPSKEY", "NETID", "ADRACK",
+                                                                 "MACPARAMS", "CHANNELS", "SRVACK" };
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -769,8 +771,19 @@ static void TASK_LoRa (void *pvParameters) {
                                 length = LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t);
                                 modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNELS, (void *)LoRaMacGetChannelList(), &length);
 
+                                uint32_t srv_ack_req;
+                                modlora_nvs_get_uint(E_LORA_NVS_ELE_ACK_REQ, (uint32_t *)&srv_ack_req);
+                                bool *ack_req = LoRaMacGetSrvAckRequested();
+                                if (srv_ack_req) {
+                                    *ack_req = true;
+                                } else {
+                                    *ack_req = false;
+                                }
+
                                 lora_obj.activation = E_LORA_ACTIVATION_ABP;
                                 lora_obj.state = E_LORA_STATE_JOIN;
+                                // clear the joined flag until the nvram_save method is called again
+                                modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, (uint32_t)false);
                             } else {
                                 lora_obj.state = E_LORA_STATE_IDLE;
                             }

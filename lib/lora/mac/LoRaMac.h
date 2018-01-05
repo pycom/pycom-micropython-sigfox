@@ -1797,6 +1797,8 @@ ChannelParams_t * LoRaMacGetChannelList(void);
 
 LoRaMacParams_t * LoRaMacGetMacParams(void);
 
+bool * LoRaMacGetSrvAckRequested(void);
+
 /*! \} defgroup LORAMAC */
 
 #endif // __LORAMAC_H__
