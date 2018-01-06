@@ -18,6 +18,7 @@
 #include "pybioctl.h"
 #include "py/mperrno.h"
 #include "readline.h"
+#include "serverstask.h"
 
 #include "esp_heap_caps.h"
 #include "sdkconfig.h"
@@ -298,7 +299,7 @@ STATIC IRAM_ATTR void UARTRxCallback(int uart_id, int rx_byte) {
             // raise an exception when interrupts are finished
             mp_keyboard_interrupt();
         } else if (CHAR_CTRL_F == rx_byte) {
-            mp_hal_reset_safe_and_boot();
+            servers_reset_and_safe_boot();
         }
     }
 }

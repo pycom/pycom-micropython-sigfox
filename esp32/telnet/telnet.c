@@ -15,6 +15,7 @@
 #include "py/mphal.h"
 #include "readline.h"
 #include "telnet.h"
+#include "serverstask.h"
 
 #include "esp_heap_caps.h"
 #include "sdkconfig.h"
@@ -538,7 +539,7 @@ static void telnet_parse_input (uint8_t *str, int32_t *len) {
             if (ch == mp_interrupt_char) {
                 mp_keyboard_interrupt();
             } else if (ch == CHAR_CTRL_F) {
-                mp_hal_reset_safe_and_boot();
+                servers_reset_and_safe_boot();
             }
             // skip this char
             (*len)--;
