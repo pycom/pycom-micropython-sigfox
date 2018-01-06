@@ -31,6 +31,8 @@
 #include "serverstask.h"
 #include "moduos.h"
 #include "mpexception.h"
+#include "modmachine.h"
+#include "updater.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -91,7 +93,7 @@ void mp_hal_delay_us(uint32_t us) {
 }
 
 int mp_hal_stdin_rx_chr(void) {
-    for ( ;; ) {
+    for ( ; ; ) {
         // read telnet first
         if (telnet_rx_any()) {
             return telnet_rx_char();
@@ -174,4 +176,14 @@ void mp_hal_delay_ms(uint32_t delay) {
     MP_THREAD_GIL_EXIT();
     vTaskDelay (delay / portTICK_PERIOD_MS);
     MP_THREAD_GIL_ENTER();
+}
+
+void mp_hal_reset_safe_and_boot(void) {
+    boot_info_t boot_info;
+    uint32_t boot_info_offset;
+    if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
+        boot_info.safeboot = true;
+        updater_write_boot_info (&boot_info, boot_info_offset);
+    }
+    machine_reset();
 }

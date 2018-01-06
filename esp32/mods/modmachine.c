@@ -138,7 +138,7 @@ STATIC mp_obj_t machine_info(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_info_obj, machine_info);
 
-STATIC mp_obj_t NORETURN machine_reset(void) {
+mp_obj_t NORETURN machine_reset(void) {
     machtimer_deinit();
     machine_wdt_start(1);
     for ( ; ; );

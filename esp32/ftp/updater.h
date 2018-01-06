@@ -21,5 +21,6 @@ extern bool updater_finish (void);
 //extern bool updater_verify (uint8_t *rbuff, uint8_t *hasbuff);
 extern bool updater_verify (void);
 extern bool updater_read_boot_info (boot_info_t *boot_info, uint32_t *boot_info_offset);
+extern bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset);
 
 #endif /* UPDATER_H_ */
