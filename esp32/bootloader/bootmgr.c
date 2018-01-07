@@ -95,8 +95,8 @@ static bool safe_boot_request_start (uint32_t wait_time) {
 //*****************************************************************************
 //! Check for the safe mode pin
 //*****************************************************************************
-bool wait_for_safe_boot (const boot_info_t *boot_info, uint32_t *ActiveImg) {
-    bool ret = false;
+uint32_t wait_for_safe_boot (const boot_info_t *boot_info, uint32_t *ActiveImg) {
+    uint32_t ret = 0;
 
     // configure the safeboot pin
     gpio_config_t gpioconf = {.pin_bit_mask = 1ull << MICROPY_HW_SAFE_PIN_NUM,
@@ -118,8 +118,8 @@ bool wait_for_safe_boot (const boot_info_t *boot_info, uint32_t *ActiveImg) {
         }
         // turn off the heartbeat led
         mperror_set_rgb_color(0);
-        // request a safe boot
-        ret = true;
+        // request a HW safe boot
+        ret = SAFE_BOOT_HW;
     }
     // deinit the safe boot pin
     gpioconf.pull_down_en = GPIO_PULLDOWN_DISABLE;

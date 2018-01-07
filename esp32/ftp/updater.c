@@ -159,10 +159,7 @@ bool updater_finish (void) {
             } else {
                 boot_info.ActiveImg = IMG_ACT_UPDATE1;
             }
-
             boot_info.Status = IMG_STATUS_CHECK;
-            boot_info.crc = crc32_le(UINT32_MAX, (uint8_t*)&boot_info.ActiveImg,
-                                                 sizeof(boot_info) - sizeof(boot_info.crc));
 
             if (!updater_write_boot_info(&boot_info, boot_info_offset)) {
                 return false;
@@ -247,16 +244,18 @@ bool updater_verify (void) {
 }
 
 bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset) {
+    boot_info->crc = crc32_le(UINT32_MAX, (uint8_t *)boot_info, sizeof(boot_info_t) - sizeof(boot_info->crc));
+
     if (ESP_OK != spi_flash_erase_sector(boot_info_offset / SPI_FLASH_SEC_SIZE)) {
-        // printf("Erasing boot info failed\n");
+        printf("Erasing boot info failed\n");
         return false;
     }
 
-    if (ESP_OK != spi_flash_write(boot_info_offset, (void *)&boot_info, sizeof(boot_info_t))) {
-        // printf("Saving boot info failed\n");
+    if (ESP_OK != spi_flash_write(boot_info_offset, (void *)boot_info, sizeof(boot_info_t))) {
+        printf("Saving boot info failed\n");
         return false;
     }
-    // printf("Boot info saved OK\n");
+    printf("Boot info saved OK\n");
     return true;
 }
 

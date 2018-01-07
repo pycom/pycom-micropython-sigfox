@@ -29,7 +29,6 @@
 #include "modusocket.h"
 //#include "debug.h"
 #include "utils/interrupt_char.h"
-#include "serverstask.h"
 #include "genhdr/mpversion.h"
 
 #include "lwip/sockets.h"
@@ -539,7 +538,10 @@ static void telnet_parse_input (uint8_t *str, int32_t *len) {
             if (ch == mp_interrupt_char) {
                 mp_keyboard_interrupt();
             } else if (ch == CHAR_CTRL_F) {
-                servers_reset_and_safe_boot();
+                *str++ = CHAR_CTRL_D;
+                mp_hal_reset_safe_and_boot(false);
+                _str++;
+                continue;
             }
             // skip this char
             (*len)--;

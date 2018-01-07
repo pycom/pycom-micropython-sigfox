@@ -71,6 +71,9 @@ typedef struct _boot_info_t
 #define PART_SUBTYPE_DATA_RF                0x01
 #define PART_SUBTYPE_DATA_WIFI              0x02
 
+#define SAFE_BOOT_HW                        0x01
+#define SAFE_BOOT_SW                        0x02
+
 #define SPI_ERROR_LOG "spi flash error"
 
 typedef struct {

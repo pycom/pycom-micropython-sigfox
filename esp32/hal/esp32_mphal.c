@@ -33,6 +33,7 @@
 #include "mpexception.h"
 #include "modmachine.h"
 #include "updater.h"
+#include "bootloader.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -178,12 +179,14 @@ void mp_hal_delay_ms(uint32_t delay) {
     MP_THREAD_GIL_ENTER();
 }
 
-void mp_hal_reset_safe_and_boot(void) {
+void mp_hal_reset_safe_and_boot(bool reset) {
     boot_info_t boot_info;
     uint32_t boot_info_offset;
     if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
-        boot_info.safeboot = true;
+        boot_info.safeboot = SAFE_BOOT_SW;
         updater_write_boot_info (&boot_info, boot_info_offset);
     }
-    machine_reset();
+    if (reset) {
+        machine_reset();
+    }
 }

@@ -121,7 +121,7 @@ void TASK_Servers (void *pvParameters) {
 //        pybwdt_srv_alive(); // FIXME
 
         if (servers_data.reset_and_safe_boot) {
-            mp_hal_reset_safe_and_boot();
+            mp_hal_reset_safe_and_boot(true);
         }
 
         // move to the next cycle

@@ -25,6 +25,6 @@ uint32_t mp_hal_ticks_ms(void);
 uint32_t mp_hal_ticks_us(void);
 void mp_hal_delay_ms(uint32_t delay);
 void mp_hal_set_interrupt_char(int c);
-void mp_hal_reset_safe_and_boot(void);
+void mp_hal_reset_safe_and_boot(bool reset);
 
 #endif // _INCLUDED_MPHAL_H_
