@@ -43,7 +43,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "lora/system/spi.h"
 #include "lora/system/delay.h"
 #include "radio.h"
-#if defined(LOPY)
+#if defined(LOPY) || defined (FIPY)
 #include "sx1272/sx1272.h"
 #include "sx1272-board.h"
 #elif defined(LOPY4)

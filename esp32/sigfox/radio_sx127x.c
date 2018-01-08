@@ -279,7 +279,7 @@ IRAM_ATTR void RADIO_modulate(void) {
     #if defined(FIPY)
         SX127X8BitWrite(0x63, 0x20);
     #elif defined(LOPY4)
-        SX127X8BitWrite(0x52, 0x20);
+        SX127X8BitWrite(0x52, 0x10);
     #endif
 
     if (uplink_spectrum_access == SFX_FH) {
@@ -331,34 +331,58 @@ IRAM_ATTR void RADIO_start_rf_carrier(void) {
     /* Implement the ramp-up */
     uint8_t count;
 
+#if defined(FIPY)
     SX127X8BitWrite( 0x63, 0x20 );      // Enable manual PA
     SX127X8BitWrite( 0x3E, 0x00 );      // phase = 0
     SX127X8BitWrite( 0x4C, 0x00 );      // Max value for the PA is 0xE7 DO NOT GOT OVER OR IT MAY DAMAGE THE CHIPSET
     SX127X8BitWrite( 0x1e, 0x78 );      // Tx Continuous mode
     SX127X8BitWrite( 0x01, 0x83 );      // Device in Tx mode
+#elif defined(LOPY4)
+    SX127X8BitWrite( 0x52, 0x10 );      // Enable manual PA
+    SX127X8BitWrite( 0x3E, 0x00 );      // phase = 0
+    SX127X8BitWrite( 0x45, 0x00 );      // Max value for the PA is 0xE7 DO NOT GOT OVER OR IT MAY DAMAGE THE CHIPSET
+    SX127X8BitWrite( 0x1e, 0x78 );      // Tx Continuous mode
+    SX127X8BitWrite( 0x01, 0x83 );      // Device in Tx mode
+#endif
 
     if (uplink_spectrum_access == SFX_FH) {
         vTaskDelay(50);                 // Warm up the crystal and the PLL
         for (count = MIN_PA_VALUE; count < MAX_PA_VALUE_FCC; count++) {
+        #if defined(FIPY)
             SX127X8BitWrite(0x4C, count);
+        #elif defined(LOPY4)
+            SX127X8BitWrite(0x45, count);
+        #endif
             if (count > STEP_HIGH_FCC) {
                 __delay_cycles(200);
             } else {
                 __delay_cycles(140);
             }
         }
+    #if defined(FIPY)
         SX127X8BitWrite(0x4C, MAX_PA_VALUE_FCC);
+    #elif defined(LOPY4)
+        SX127X8BitWrite(0x45, MAX_PA_VALUE_FCC);
+    #endif
     } else {
         vTaskDelay(550);                // Warm up the crystal and the PLL
         for (count = MIN_PA_VALUE; count < MAX_PA_VALUE_ETSI; count++) {
+        #if defined(FIPY)
             SX127X8BitWrite(0x4C, count);
+        #elif defined(LOPY4)
+            SX127X8BitWrite(0x45, count);
+        #endif
             if (count > STEP_HIGH_ETSI) {
                 __delay_cycles(3000);
             } else {
                 __delay_cycles(1600);
             }
         }
+    #if defined(FIPY)
         SX127X8BitWrite(0x4C, MAX_PA_VALUE_ETSI);
+    #elif defined(LOPY4)
+        SX127X8BitWrite(0x45, MAX_PA_VALUE_ETSI);
+    #endif
     }
 }
 
@@ -374,7 +398,11 @@ IRAM_ATTR void RADIO_stop_rf_carrier(void) {
 
     if (uplink_spectrum_access == SFX_FH) {
         for (count = MAX_PA_VALUE_FCC; count > MIN_PA_VALUE; count--) {
+        #if defined(FIPY)
             SX127X8BitWrite(0x4C, count);
+        #elif defined(LOPY4)
+            SX127X8BitWrite(0x45, count);
+        #endif
             if (count > STEP_HIGH_FCC) {
                 __delay_cycles(200);
             } else {
@@ -383,7 +411,11 @@ IRAM_ATTR void RADIO_stop_rf_carrier(void) {
         }
     } else {
         for (count = MAX_PA_VALUE_ETSI; count > MIN_PA_VALUE; count--) {
+        #if defined(FIPY)
             SX127X8BitWrite(0x4C, count);
+        #elif defined(LOPY4)
+            SX127X8BitWrite(0x45, count);
+        #endif
             if (count > STEP_HIGH_ETSI) {
                 __delay_cycles(3000);
             } else {
@@ -393,11 +425,21 @@ IRAM_ATTR void RADIO_stop_rf_carrier(void) {
     }
 
     /* Set the MIN Value to the PA */
-    SX127X8BitWrite(0x4C, MIN_PA_VALUE);
+    #if defined(FIPY)
+        SX127X8BitWrite(0x4C, MIN_PA_VALUE);
+    #elif defined(LOPY4)
+        SX127X8BitWrite(0x45, MIN_PA_VALUE);
+    #endif
 
+#if defined(FIPY)
     SX127X8BitWrite( 0x63, 0x00 );      // switch off the PA
     SX127X8BitWrite( 0x01, 0x80 );      // Device in LoRa standby mode
     SX127X8BitWrite( 0x1e, 0x70 );      // Tx Continuous mode
+#elif defined(LOPY4)
+    SX127X8BitWrite( 0x52, 0x00 );      // switch off the PA
+    SX127X8BitWrite( 0x01, 0x80 );      // Device in LoRa standby mode
+    SX127X8BitWrite( 0x1e, 0x70 );      // Tx Continuous mode
+#endif
 
     MICROPY_END_ATOMIC_SECTION(ilevel);
 }
@@ -437,6 +479,7 @@ void RADIO_stop_unmodulated_cw(unsigned long ul_Freq) {
 }
 
 void RADIO_warm_up_crystal (unsigned long ul_Freq) {
+#if defined(FIPY)
     // Initialize the radio in TX mode
     RADIO_init_chip(SFX_RF_MODE_TX);
 
@@ -454,24 +497,27 @@ void RADIO_warm_up_crystal (unsigned long ul_Freq) {
     SX127X8BitWrite( 0x63, 0x00 );      // switch off the PA
     SX127X8BitWrite( 0x01, 0x80 );      // Device in standby in LoRa mode
     SX127X8BitWrite( 0x1e, 0x70 );      // Tx Continuous mode
+#endif
 }
 
 void RADIO_reset_registers (void) {
-        SX127X8BitWrite( 0x3D, 0xA1 );
-        SX127X8BitWrite( 0x4B, 0x2E );
-        SX127X8BitWrite( 0x4D, 0x03 );
-        SX127X8BitWrite( 0x63, 0x00 );
-        SX127X8BitWrite( 0x3E, 0x00 );
-        SX127X8BitWrite( 0x4C, 0x00 );
-        SX127X8BitWrite( 0x1E, 0x70 );
-        SX127X8BitWrite( 0x0A, 0x09 );
-        SX127X8BitWrite( 0x1D, 0x08 );
-        SX127X8BitWrite( 0x0A, 0x19 );
-        SX127X8BitWrite( 0x5E, 0xD0 );
-        SX127X8BitWrite(REG_LR_PADAC, 0x84);
-        SX127X8BitWrite(REG_IRQFLAGS1, 0x80);
-        SX127X8BitWrite( 0x01, 0x80 );      // Device in StandBy in LoRa mode
-        SX127X8BitWrite( 0x01, 0x00 );      // Device in sleep mode
+#if defined(FIPY)
+    SX127X8BitWrite( 0x3D, 0xA1 );
+    SX127X8BitWrite( 0x4B, 0x2E );
+    SX127X8BitWrite( 0x4D, 0x03 );
+    SX127X8BitWrite( 0x63, 0x00 );
+    SX127X8BitWrite( 0x3E, 0x00 );
+    SX127X8BitWrite( 0x4C, 0x00 );
+    SX127X8BitWrite( 0x1E, 0x70 );
+    SX127X8BitWrite( 0x0A, 0x09 );
+    SX127X8BitWrite( 0x1D, 0x08 );
+    SX127X8BitWrite( 0x0A, 0x19 );
+    SX127X8BitWrite( 0x5E, 0xD0 );
+    SX127X8BitWrite(REG_LR_PADAC, 0x84);
+    SX127X8BitWrite(REG_IRQFLAGS1, 0x80);
+    SX127X8BitWrite( 0x01, 0x80 );      // Device in StandBy in LoRa mode
+    SX127X8BitWrite( 0x01, 0x00 );      // Device in sleep mode
+#endif
 }
 
 /**************************************************************************//**

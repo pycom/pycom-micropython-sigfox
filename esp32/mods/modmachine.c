@@ -186,7 +186,7 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
         mach_expected_wakeup_time = 0;
         esp_deep_sleep_start();
     } else {
-        int64_t sleep_time = (int64_t)mp_obj_get_int(arg[0]) * 1000;
+        int64_t sleep_time = (int64_t)mp_obj_get_int_truncated(arg[0]) * 1000;
         struct timeval tv;
         gettimeofday(&tv, NULL);
         mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
