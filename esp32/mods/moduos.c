@@ -241,16 +241,16 @@ STATIC const MP_DEFINE_STR_OBJ(os_uname_info_machine_obj, MICROPY_HW_BOARD_NAME 
 #if defined(LOPY) || defined(LOPY4) || defined(FIPY)
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lorawan_obj, LORAWAN_VERSION_NUMBER);
 #endif
-#if defined(SIPY) || defined (FIPY)
+#if defined(SIPY) || defined (LOPY4) || defined (FIPY)
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_sigfox_obj, SIGFOX_VERSION_NUMBER);
 #endif
 STATIC MP_DEFINE_ATTRTUPLE(
     os_uname_info_obj
     ,os_uname_info_fields
-#if defined(FIPY)
+#if defined(FIPY) || defined (LOPY4)
     ,7
 #else
-#if defined(LOPY) || defined(SIPY) || defined(LOPY4)
+#if defined(LOPY) || defined(SIPY)
     ,6
     #else
     ,5
@@ -264,7 +264,7 @@ STATIC MP_DEFINE_ATTRTUPLE(
 #if defined(LOPY) || defined(LOPY4) || defined(FIPY)
     ,(mp_obj_t)&os_uname_info_lorawan_obj
 #endif
-#if defined(SIPY) || defined(FIPY)
+#if defined(SIPY) || defined (LOPY4) || defined(FIPY)
     ,(mp_obj_t)&os_uname_info_sigfox_obj
 #endif
 );

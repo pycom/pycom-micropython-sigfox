@@ -26,7 +26,7 @@
 #include "modusocket.h"
 #include "sigfox/sigfox_api.h"
 #include "sigfox/timer.h"
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
 #include "sigfox/radio_sx127x.h"
 #else
 #include "sigfox/radio.h"
@@ -55,7 +55,7 @@
 #define SFX_RESET_FCC_MIN_DELAY_S                    23
 
 extern TaskHandle_t xSigfoxTaskHndl;
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
 extern SemaphoreHandle_t xLoRaSigfoxSem;
 #endif
 
@@ -95,7 +95,7 @@ STATIC sfx_u32 rcz_frequencies[4][2] = {
 
 static void TASK_Sigfox (void *pvParameters);
 
-#ifndef FIPY
+#if !defined(FIPY) && !defined(LOPY4)
 static void fsk_register_config (void);
 static void fsk_manual_calibration (void);
 static void fsk_cc112x_tx (uint8_t *data, uint32_t len);
@@ -153,7 +153,7 @@ void modsigfox_init0 (void) {
 
     TIMER_downlinnk_timer_create();
     TIMER_carrier_sense_timer_create();
-#ifndef FIPY
+#if !defined(FIPY) && !defined(LOPY4)
     TIMER_RxTx_done_timer_create();
 #endif
 
@@ -163,7 +163,7 @@ void modsigfox_init0 (void) {
     Table_200bytes.memory_ptr = (sfx_u8 *)(DynamicMemoryTable) ;
     Table_200bytes.allocated = SFX_FALSE;
 
-#ifndef FIPY
+#if !defined(FIPY) && !defined(LOPY4)
     // setup the CC1125 control RESET pin
     gpio_config_t gpioconf = {.pin_bit_mask = 1 << 18,
                               .mode = GPIO_MODE_OUTPUT,
@@ -314,7 +314,7 @@ static uint32_t modsigfox_api_init (void) {
 }
 
 static sfx_error_t modsigfox_sfx_send(sigfox_cmd_rx_data_t *cmd_rx_data, sigfox_rx_data_t *rx_data) {
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
 #endif
     uint32_t now = mp_hal_ticks_s();
@@ -341,7 +341,7 @@ static sfx_error_t modsigfox_sfx_send(sigfox_cmd_rx_data_t *cmd_rx_data, sigfox_
 
     tx_timestamp = now;     // save the current timestamp
 
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
     RADIO_warm_up_crystal(rcz_frequencies[sfx_rcz_id][0]);
 #endif
 
@@ -360,7 +360,7 @@ static sfx_error_t modsigfox_sfx_send(sigfox_cmd_rx_data_t *cmd_rx_data, sigfox_
         goto end_send;
     }
 end_send:
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
     RADIO_reset_registers();
     xSemaphoreGive(xLoRaSigfoxSem);
 #endif
@@ -383,7 +383,7 @@ static void TASK_Sigfox(void *pvParameters) {
                 case E_SIGFOX_CMD_INIT:
                     {
                         uint32_t status = SIGFOX_STATUS_COMPLETED;
-                     #ifndef FIPY
+                     #if !defined(FIPY) && !defined(LOPY4)
                         TIMER_RxTx_done_stop();   // stop the RxTx timer while reconfiguring
                      #endif
                         if (cmd_rx_data.cmd_u.info.init.mode == E_SIGFOX_MODE_SIGFOX) {
@@ -400,7 +400,7 @@ static void TASK_Sigfox(void *pvParameters) {
 
                             status |= modsigfox_api_init();
                         } else {
-                        #ifndef FIPY
+                        #if !defined(FIPY) && !defined(LOPY4)
                             // write radio registers
                             fsk_register_config();
                             // calibrate radio according to errata
@@ -448,7 +448,7 @@ static void TASK_Sigfox(void *pvParameters) {
                             sigfox_obj.state = E_SIGFOX_STATE_IDLE;
                             xEventGroupSetBits(sigfoxEvents, status);
                         } else {
-                        #ifndef FIPY
+                        #if !defined(FIPY) && !defined(LOPY4)
                             // stop the TxRx timer before reconfiguring for Tx
                             TIMER_RxTx_done_stop();
                             trxSpiCmdStrobe(CC112X_SIDLE);
@@ -461,7 +461,7 @@ static void TASK_Sigfox(void *pvParameters) {
                     }
                     break;
                 case E_SIGFOX_CMD_TEST:
-                #ifdef FIPY
+                #if defined(FIPY) || defined(LOPY4)
                     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                     RADIO_warm_up_crystal(rcz_frequencies[sfx_rcz_id][0]);
                 #endif
@@ -485,7 +485,7 @@ static void TASK_Sigfox(void *pvParameters) {
                     }
                     sigfox_obj.state = E_SIGFOX_STATE_TEST;
                     xEventGroupSetBits(sigfoxEvents, SIGFOX_STATUS_COMPLETED);
-                #ifdef FIPY
+                #if defined(FIPY) || defined(LOPY4)
                     RADIO_reset_registers();
                     xSemaphoreGive(xLoRaSigfoxSem);
                 #endif
@@ -494,7 +494,7 @@ static void TASK_Sigfox(void *pvParameters) {
                     break;
                 }
             }
-        #ifndef FIPY
+        #if !defined(FIPY) && !defined(LOPY4)
             else {
                 if (sigfox_obj.state == E_SIGFOX_STATE_IDLE) {
                     // set radio in RX
@@ -509,7 +509,7 @@ static void TASK_Sigfox(void *pvParameters) {
             }
         #endif
             break;
-    #ifndef FIPY
+    #if !defined(FIPY) && !defined(LOPY4)
         case E_SIGFOX_STATE_TX:
             // wait for interrupt that packet has been sent (assumes the GPIO
             // connected to the radioRxTxISR function is set to GPIOx_CFG = 0x06)
@@ -530,7 +530,7 @@ static void TASK_Sigfox(void *pvParameters) {
     }
 }
 
-#ifndef FIPY
+#if !defined(FIPY) && !defined(LOPY4)
 static void fsk_cc112x_tx (uint8_t *data, uint32_t len) {
     uint8 packet[FSK_TX_PAYLOAD_SIZE_MAX + 4];
 
@@ -793,7 +793,7 @@ static bool sigfox_tx_space (void) {
     return false;
 }
 
-#ifndef FIPY
+#if !defined(FIPY) && !defined(LOPY4)
 static void sigfox_validate_frequency (uint32_t frequency) {
     if (frequency < FSK_FREQUENCY_MIN || frequency > FSK_FREQUENCY_MAX) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "frequency %d out of range", frequency));
@@ -810,7 +810,7 @@ mp_obj_t sigfox_init_helper(sigfox_obj_t *self, const mp_arg_val_t *args) {
     uint8_t rcz = args[1].u_int;
     uint32_t frequency = 0;
 
-#ifndef FIPY
+#if !defined(FIPY) && !defined(LOPY4)
     if (mode > E_SIGFOX_MODE_FSK) {
 #else
     if (mode != E_SIGFOX_MODE_SIGFOX) {
@@ -819,12 +819,12 @@ mp_obj_t sigfox_init_helper(sigfox_obj_t *self, const mp_arg_val_t *args) {
     } else if (mode == E_SIGFOX_MODE_SIGFOX) {
         if (rcz > E_SIGFOX_RCZ4) {
             mp_raise_ValueError("invalid RCZ");
-    #ifndef FIPY
+    #if !defined(FIPY) && !defined(LOPY4)
         } else if (args[2].u_obj != mp_const_none) {
             mp_raise_ValueError("frequency is only valid in FSK mode");
     #endif
         }
-#ifndef FIPY
+#if !defined(FIPY) && !defined(LOPY4)
     } else {
         frequency = mp_obj_get_int(args[2].u_obj);
         sigfox_validate_frequency(frequency);

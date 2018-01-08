@@ -30,7 +30,7 @@
 #include "sigfox/sigfox_types.h"
 #include "transmission.h"
 #include "targets/cc112x_spi.h"
-#ifdef FIPY
+#if defined (FIPY) || defined (LOPY)
 #include "radio_sx127x.h"      // for packetSemaphore
 #else
 #include "radio.h"      // for packetSemaphore
@@ -74,7 +74,7 @@ extern e_SystemState SysState;
 bool TIMER_downlink_timeout;
 bool TIMER_carrier_sense_timeout;
 bool TIMER_rssi_end;
-#ifndef FIPY
+#if !defined(FIPY) && !defined(LOPY4)
 static bool rxtx_in_progress;
 #endif
 static sfx_u32   TIMER_bitrate_interrupt_count;
@@ -87,7 +87,7 @@ static e_timer_mode TIMER_bitrate_mode;
 static uint32_t TIMER_bitrate_ticks;
 static TimerHandle_t TIMER_downlink;
 static TimerHandle_t TIMER_clear_channel;
-#ifndef FIPY
+#if !defined(FIPY) && !defined(LOPY4)
 static TimerHandle_t TIMER_RxTx_done;
 #endif
 
@@ -137,7 +137,7 @@ IRAM_ATTR void TIMER_bitrate_isr (void* para) {
         break;
     case E_TIMER_MODE_RSSI:
     {
-    #ifndef FIPY
+    #if !defined(FIPY) && !defined(LOPY4)
         sfx_u8 gpio_status;
         // Read the GPIO_STATUS register to get CCA_STATUS
         cc112xSpiReadReg(CC112X_GPIO_STATUS , &gpio_status, 1);
@@ -214,7 +214,7 @@ IRAM_ATTR void TIMER_carrier_sense_isr (TimerHandle_t xTimer) {
     }
 }
 
-#ifndef FIPY
+#if !defined(FIPY) && !defined(LOPY4)
 IRAM_ATTR void TIMER_RxTx_done_isr (TimerHandle_t xTimer) {
     uint8_t status;
     cc112xSpiReadReg(CC112X_GPIO_STATUS, &status, 1);
@@ -274,7 +274,7 @@ void TIMER_carrier_sense_timer_create (void) {
                                          (void *)0, TIMER_carrier_sense_isr);
 }
 
-#ifndef FIPY
+#if !defined(FIPY) && !defined(LOPY4)
 void TIMER_RxTx_done_timer_create (void) {
      TIMER_RxTx_done =  xTimerCreate("RxTxTimer", 5 / portTICK_PERIOD_MS, pdTRUE,
                                      (void *)0, TIMER_RxTx_done_isr);

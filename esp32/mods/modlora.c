@@ -305,7 +305,7 @@ extern TaskHandle_t xLoRaTaskHndl;
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
 SemaphoreHandle_t xLoRaSigfoxSem;
 #endif
 
@@ -316,7 +316,7 @@ void modlora_init0(void) {
     xCmdQueue = xQueueCreate(LORA_CMD_QUEUE_SIZE_MAX, sizeof(lora_cmd_data_t));
     xRxQueue = xQueueCreate(LORA_DATA_QUEUE_SIZE_MAX, sizeof(lora_rx_data_t));
     LoRaEvents = xEventGroupCreate();
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
     xLoRaSigfoxSem = xSemaphoreCreateMutex();
 #endif
 
@@ -482,7 +482,7 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
         status |= LORA_STATUS_ERROR;
         xEventGroupSetBits(LoRaEvents, status);
     }
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
     xSemaphoreGive(xLoRaSigfoxSem);
 #endif
 }
@@ -658,7 +658,7 @@ static void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
                 break;
         }
     }
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
     xSemaphoreGive(xLoRaSigfoxSem);
 #endif
 }
@@ -825,7 +825,7 @@ static void TASK_LoRa (void *pvParameters) {
                     lora_obj.state = E_LORA_STATE_JOIN;
                     break;
                 case E_LORA_CMD_TX:
-                #ifdef FIPY
+                #if defined(FIPY) || defined(LOPY4)
                     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                 #endif
                     Radio.Send(task_cmd_data.info.tx.data, task_cmd_data.info.tx.len);
@@ -875,7 +875,7 @@ static void TASK_LoRa (void *pvParameters) {
                                 mcpsReq.Req.Unconfirmed.Datarate = task_cmd_data.info.tx.dr;
                             }
                         }
-                    #ifdef FIPY
+                    #if defined(FIPY) || defined(LOPY4)
                         xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                     #endif
                         if (LoRaMacMcpsRequest(&mcpsReq) != LORAMAC_STATUS_OK || empty_frame) {
@@ -883,7 +883,7 @@ static void TASK_LoRa (void *pvParameters) {
                             lora_obj.state = E_LORA_STATE_IDLE;
                             status |= LORA_STATUS_ERROR;
                             xEventGroupSetBits(LoRaEvents, status);
-                        #ifdef FIPY
+                        #if defined(FIPY) || defined(LOPY4)
                             xSemaphoreGive(xLoRaSigfoxSem);
                         #endif
                         } else {
@@ -895,7 +895,7 @@ static void TASK_LoRa (void *pvParameters) {
                     Radio.Sleep();
                     lora_obj.state = E_LORA_STATE_SLEEP;
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
-                #ifdef FIPY
+                #if defined(FIPY) || defined(LOPY4)
                     xSemaphoreGive(xLoRaSigfoxSem);
                 #endif
                     break;
@@ -904,7 +904,7 @@ static void TASK_LoRa (void *pvParameters) {
                     Radio.Rx(LORA_RX_TIMEOUT);
                     lora_obj.state = E_LORA_STATE_RX;
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
-                #ifdef FIPY
+                #if defined(FIPY) || defined(LOPY4)
                     xSemaphoreGive(xLoRaSigfoxSem);
                 #endif
                     break;
@@ -920,7 +920,7 @@ static void TASK_LoRa (void *pvParameters) {
             TimerStop( &TxNextActReqTimer );
             if (!lora_obj.joined) {
                 if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
-                #ifdef FIPY
+                #if defined(FIPY) || defined(LOPY4)
                     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                 #endif
                     TimerStart( &TxNextActReqTimer );
@@ -976,7 +976,7 @@ static void TASK_LoRa (void *pvParameters) {
             Radio.Sleep();
             xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
             lora_obj.state = E_LORA_STATE_IDLE;
-        #ifdef FIPY
+        #if defined(FIPY) || defined(LOPY4)
             xSemaphoreGive(xLoRaSigfoxSem);
         #endif
             break;
@@ -985,7 +985,7 @@ static void TASK_LoRa (void *pvParameters) {
             Radio.Sleep();
             xEventGroupSetBits(LoRaEvents, LORA_STATUS_ERROR);
             lora_obj.state = E_LORA_STATE_IDLE;
-        #ifdef FIPY
+        #if defined(FIPY) || defined(LOPY4)
             xSemaphoreGive(xLoRaSigfoxSem);
         #endif
             break;
@@ -1250,7 +1250,7 @@ static void lora_send_cmd (lora_cmd_data_t *cmd_data) {
 static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
     lora_cmd_data_t cmd_data;
 
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
     lora_get_config (&cmd_data);
     cmd_data.cmd = E_LORA_CMD_INIT;

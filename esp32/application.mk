@@ -208,7 +208,7 @@ APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/,\
 	modsigfox.c \
 	)
 
-APP_SIGFOX_SRC_FIPY_C = $(addprefix sigfox/,\
+APP_SIGFOX_SRC_FIPY_LOPY4_C = $(addprefix sigfox/,\
 	manufacturer_api.c \
 	radio_sx127x.c \
 	ti_aes_128.c \
@@ -272,8 +272,8 @@ SFX_OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_SIPY_C:.c=.o) $(APP_SIGFOX_TA
 OBJ += $(SFX_OBJ)
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
-ifeq ($(BOARD), $(filter $(BOARD), FIPY))
-SFX_OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_FIPY_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o))
+ifeq ($(BOARD), $(filter $(BOARD), LOPY4 FIPY))
+SFX_OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_FIPY_LOPY4_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o))
 OBJ += $(SFX_OBJ)
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
@@ -294,7 +294,7 @@ SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C)
 ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
 SRC_QSTR += $(APP_MODS_LORA_SRC_C)
 endif
-ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
 SRC_QSTR += $(APP_SIGFOX_MOD_SRC_C)
 endif
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
@@ -352,6 +352,10 @@ ifeq ($(BOARD), LOPY)
 endif
 ifeq ($(BOARD), LOPY4)
     APP_BIN = $(BUILD)/lopy4_$(LORA_FREQ).bin
+    $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 ifeq ($(BOARD), SIPY)
     APP_BIN = $(BUILD)/sipy.bin
@@ -421,7 +425,7 @@ $(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
 	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
 else
 
-ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
 $(BUILD)/sigfox/sigfox.a: $(SFX_OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@

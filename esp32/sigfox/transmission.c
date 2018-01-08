@@ -20,7 +20,7 @@
 #include "sigfox_types.h"
 #include "stdlib.h"
 #include "stdbool.h"
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
 #include "radio_sx127x.h"
 #else
 #include "radio.h"

@@ -36,8 +36,13 @@
 
 
 #include "sigfox_api.h"
+#if defined (FIPY)
 #include "sx1272/sx1272Regs-Fsk.h"
 #include "sx1272/sx1272Regs-LoRa.h"
+#elif defined (LOPY4)
+#include "sx1276/sx1276Regs-Fsk.h"
+#include "sx1276/sx1276Regs-LoRa.h"
+#endif
 #include "targets/hal_spi_rf_trxeb.h"
 
 
@@ -51,7 +56,7 @@
 * MACROS
 */
 // Fast write on SPI for modulation
-#define SX12728BitWrite(register, data) \
+#define SX127X8BitWrite(register, data) \
 { \
   GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << 18); \
   SpiOut(SpiNum_SPI3, (data << 8) | SX1272X_WRITE_ACCESS | register); \

@@ -34,7 +34,7 @@
 
 /******* INCLUDES *************************************************************/
 #include "py/mpconfig.h"
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
 #include <stdint.h>
 #include "radio_sx127x.h"
 #else
@@ -57,7 +57,7 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
 #include "board.h"
 #include "spi.h"
 #endif
@@ -593,7 +593,7 @@ sfx_error_t MANUF_API_get_rssi(sfx_s8 *rssi)
     if (SFX_ERR_MANUF_NONE != MANUF_API_get_nv_mem(SFX_NVMEM_RSSI, (sfx_u16 *)&rssi_offset)) {
         rssi_offset = 0;
     }
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
     _rssi = RSSI + 100 + rssi_offset;
 #else
     _rssi = (RSSI - 102) + 100 + rssi_offset;
@@ -646,7 +646,7 @@ sfx_error_t MANUF_API_timer_start(sfx_u16 time_duration_in_s)
 sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame)
 {
     sfx_error_t status;
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
     sfx_u8 PayloadReady;
 #else
     sfx_u8 rxlastindex;
@@ -657,20 +657,25 @@ sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame)
 #endif
 
 
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
     /* Set the radio in sleep mode */
-    SX12728BitWrite(REG_OPMODE, 0x00);
+    SX127X8BitWrite(REG_OPMODE, 0x00);
     /* Set the radio in standby mode */
-    SX12728BitWrite(REG_OPMODE, 0x09);
+    SX127X8BitWrite(REG_OPMODE, 0x09);
     /* Set radio in RX */
-    SX12728BitWrite(REG_OPMODE, 0x0D);
+    SX127X8BitWrite(REG_OPMODE, 0x0D);
 
     PayloadReady = 0x00;
 
     /* Loop till end of Reception */
     while (( ( PayloadReady & 0x04) != 0x04  ) && ( TIMER_downlink_timeout == SFX_FALSE )) {
-        PayloadReady = SX1272Read(REG_IRQFLAGS2);
-        SX1272Read(REG_OPMODE);
+        #if defined(FIPY)
+            PayloadReady = SX1272Read(REG_IRQFLAGS2);
+            SX1272Read(REG_OPMODE);
+        #elif defined(LOPY4)
+            PayloadReady = SX1276Read(REG_IRQFLAGS2);
+            SX1276Read(REG_OPMODE);
+        #endif
         vTaskDelay(5 / portTICK_PERIOD_MS);
     } /* End of while */
 
@@ -680,8 +685,13 @@ sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame)
         status = SFX_ERR_MANUF_WAIT_FRAME_TIMEOUT;
     } else {
         /* Read the FIFO to get the payload */
-        SX1272ReadBuffer(REG_FIFO, frame, 15);
-        RSSI = -(SX1272Read(REG_RSSIVALUE) >> 1);
+        #if defined(FIPY)
+            SX1272ReadBuffer(REG_FIFO, frame, 15);
+            RSSI = -(SX1272Read(REG_RSSIVALUE) >> 1);
+        #elif defined(LOPY4)
+            SX1276ReadBuffer(REG_FIFO, frame, 15);
+            RSSI = -(SX1276Read(REG_RSSIVALUE) >> 1);
+        #endif
         status = SFX_ERR_MANUF_NONE;
     }
 #else
@@ -812,7 +822,7 @@ sfx_error_t MANUF_API_wait_for_clear_channel(sfx_u8 cs_min, sfx_u8 cs_threshold)
 {
     sfx_error_t status = SFX_ERR_MANUF_NONE;
 
-#ifdef FIPY
+#if defined(FIPY) || defined(LOPY4)
 
 #else
     /* TO BE IMPLEMENTED FOR ARIB STANDARD only */
