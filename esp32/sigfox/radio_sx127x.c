@@ -105,13 +105,14 @@ te_phaseState Phase_State = E_PHASE_0;
 void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
     RADIO_reset_registers();
     if (rf_mode == SFX_RF_MODE_TX) {
+    #if defined(FIPY)
         SX127X8BitWrite( 0x01, 0x80 );      // Device in StandBy in LoRa mode
         SX127X8BitWrite( 0x1D, 0x00 );      // LoRa BW = 0
         SX127X8BitWrite( 0x09, 0xBF );      // PA Boost output
 
         SX127X8BitWrite( 0x3D, 0xAF );      // sd_max_freq_deviation
 
-        SX127X8BitWrite( 0x58, 0x09 );      // Only valid if a TXCO is used
+        SX127X8BitWrite( 0x58, 0x09 );      // Select crystal vs TCXO
 
         SX127X8BitWrite( 0x4B, 0x3E );      // PA controlled manually
         SX127X8BitWrite( 0x4D, 0x03 );
@@ -124,6 +125,28 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
         } else {
             SX127X8BitWrite(REG_LR_PADAC, 0x84);
         }
+    #elif defined(LOPY4)
+        SX127X8BitWrite( 0x01, 0x80 );      // Device in StandBy in LoRa mode
+        SX127X8BitWrite( 0x1D, 0x00 );      // LoRa BW = 0
+        SX127X8BitWrite( 0x09, 0xBF );      // PA Boost output
+
+        SX127X8BitWrite( 0x3D, 0xA1 );      // sd_max_freq_deviation
+        SX127X8BitWrite( 0x36, 0x01 );      // sd_max_freq_deviation
+
+        SX127X8BitWrite( 0x4B, 0x19 );      // Select TCXO vs Crystal
+
+        SX127X8BitWrite( 0x44, 0x7A );      // PA controlled manually
+        SX127X8BitWrite( 0x46, 0x03 );
+
+        SX127X8BitWrite( 0x0A, 0x0F );      // PaRamp on 10us
+        SX127X8BitWrite( 0x70, 0xD0 );      // PLL bandwidth 300 KHz
+
+        if (uplink_spectrum_access == SFX_FH) {
+            SX127X8BitWrite(REG_LR_PADAC, 0x87);    // Up tp +20dBm on the PA_BOOST pin
+        } else {
+            SX127X8BitWrite(REG_LR_PADAC, 0x84);
+        }
+    #endif
     } else if (rf_mode == SFX_RF_MODE_RX) {
         /* Write registers of the radio chip for RX mode */
         for(int i = 0; i < (sizeof(HighPerfModeRx)/sizeof(registerSetting_t)); i++) {
@@ -217,7 +240,11 @@ IRAM_ATTR void RADIO_modulate(void) {
     if (uplink_spectrum_access == SFX_FH) {
         /* decrease PA */
         for (count = MAX_PA_VALUE_FCC; count > MIN_PA_VALUE; count--) {
+        #if defined(FIPY)
             SX127X8BitWrite(0x4C, count);
+        #elif defined(LOPY4)
+            SX127X8BitWrite(0x45, count);
+        #endif
             if (count > STEP_HIGH_FCC) {
                 __delay_cycles(16);
             }  else {
@@ -227,7 +254,11 @@ IRAM_ATTR void RADIO_modulate(void) {
     } else {
         /* decrease PA */
         for (count = MAX_PA_VALUE_ETSI; count > MIN_PA_VALUE; count--) {
+        #if defined(FIPY)
             SX127X8BitWrite(0x4C, count);
+        #elif defined(LOPY4)
+            SX127X8BitWrite(0x45, count);
+        #endif
             if (count > STEP_HIGH_ETSI) {
                 __delay_cycles(725);
             } else {
@@ -237,34 +268,58 @@ IRAM_ATTR void RADIO_modulate(void) {
     }
 
     /* Switch OFF PA */
-    SX127X8BitWrite(0x63, 0x00);
+    #if defined(FIPY)
+        SX127X8BitWrite(0x63, 0x00);
+    #elif defined(LOPY4)
+        SX127X8BitWrite(0x52, 0x00);
+    #endif
     /* Change signal phase */
     SX127X8BitWrite(REG_IRQFLAGS1, NewPhaseValue);
     /* Switch ON PA */
-    SX127X8BitWrite(0x63, 0x60);
+    #if defined(FIPY)
+        SX127X8BitWrite(0x63, 0x20);
+    #elif defined(LOPY4)
+        SX127X8BitWrite(0x52, 0x20);
+    #endif
 
     if (uplink_spectrum_access == SFX_FH) {
         /* increase PA */
         for (count = MIN_PA_VALUE + 1; count < MAX_PA_VALUE_FCC ; count++) {
+        #if defined(FIPY)
             SX127X8BitWrite(0x4C, count);
+        #elif defined(LOPY4)
+            SX127X8BitWrite(0x45, count);
+        #endif
             if (count > STEP_HIGH_FCC) {
                 __delay_cycles(16);
             } else {
                 __delay_cycles(10);
             }
         }
+    #if defined(FIPY)
         SX127X8BitWrite(0x4C, MAX_PA_VALUE_FCC);
+    #elif defined(LOPY4)
+        SX127X8BitWrite(0x45, MAX_PA_VALUE_FCC);
+    #endif
     } else {
         /* increase PA */
         for (count = MIN_PA_VALUE + 1; count < MAX_PA_VALUE_ETSI ; count++) {
+        #if defined(FIPY)
             SX127X8BitWrite(0x4C, count);
+        #elif defined(LOPY4)
+            SX127X8BitWrite(0x45, count);
+        #endif
             if (count > STEP_HIGH_ETSI) {
                 __delay_cycles(725);
             } else {
                 __delay_cycles(550);
             }
         }
+    #if defined(FIPY)
         SX127X8BitWrite(0x4C, MAX_PA_VALUE_ETSI);
+    #elif defined(LOPY4)
+        SX127X8BitWrite(0x45, MAX_PA_VALUE_ETSI);
+    #endif
     }
 }
 
