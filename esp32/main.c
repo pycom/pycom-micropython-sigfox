@@ -53,7 +53,7 @@
 
 TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
-#if defined(LOPY) || defined (FIPY)
+#if defined(LOPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xLoRaTaskHndl;
 #endif
 #if defined(SIPY) || defined (FIPY)

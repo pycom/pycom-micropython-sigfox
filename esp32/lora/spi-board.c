@@ -162,7 +162,7 @@ void SpiFrequency( Spi_t *obj, uint32_t hz ) {
  * \param [IN] outData Byte to be sent
  * \retval inData      Received byte.
  */
-#if defined(LOPY) || defined(FIPY)
+#if defined(LOPY) || defined(LOPY4) || defined(FIPY)
 IRAM_ATTR uint16_t SpiInOut(Spi_t *obj, uint16_t outData) {
     uint32_t spiNum = (uint32_t)obj->Spi;
 
