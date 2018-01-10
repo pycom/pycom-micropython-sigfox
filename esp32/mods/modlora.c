@@ -12,6 +12,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "py/mpconfig.h"
 #include "py/mpstate.h"
 #include "py/obj.h"
 #include "py/nlr.h"
@@ -50,7 +51,11 @@
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
 #if defined(USE_BAND_868)
+#if defined(LOPY4)
 #define RF_FREQUENCY_MIN                            410000000   // Hz
+#else
+#define RF_FREQUENCY_MIN                            863000000   // Hz
+#endif
 #define RF_FREQUENCY_CENTER                         868000000   // Hz
 #define RF_FREQUENCY_MAX                            870000000   // Hz
 #define TX_OUTPUT_POWER_MAX                         20          // dBm
