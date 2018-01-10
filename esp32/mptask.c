@@ -45,10 +45,10 @@
 #include "antenna.h"
 #include "modled.h"
 
-#if defined (LOPY) || defined (FIPY)
+#if defined (LOPY) || defined (LOPY4) || defined (FIPY)
 #include "modlora.h"
 #endif
-#if defined (SIPY) || defined (FIPY)
+#if defined (SIPY) || defined(LOPY4) || defined (FIPY)
 #include "sigfox/modsigfox.h"
 #endif
 #if defined (GPY) || defined (FIPY)
@@ -92,7 +92,7 @@ extern void modpycom_init0(void);
  ******************************************************************************/
 STATIC void mptask_preinit (void);
 STATIC void mptask_init_sflash_filesystem (void);
-#if defined (LOPY) || defined (SIPY) || defined (FIPY)
+#if defined (LOPY) || defined (SIPY) || defined (LOPY4) || defined (FIPY)
 STATIC void mptask_update_lpwan_mac_address (void);
 #endif
 STATIC void mptask_enable_wifi_ap (void);
@@ -206,10 +206,10 @@ soft_reset:
             mptask_enable_wifi_ap();
         }
         // these ones are special because they need uPy running and they launch tasks
-#if defined(LOPY) || defined (FIPY)
+#if defined(LOPY) || defined (LOPY4) || defined (FIPY)
         modlora_init0();
 #endif
-#if defined(SIPY) || defined (FIPY)
+#if defined(SIPY) || defined(LOPY4) || defined (FIPY)
         modsigfox_init0();
 #endif
 #if defined(GPY) || defined (FIPY)
@@ -220,12 +220,12 @@ soft_reset:
     // initialize the serial flash file system
     mptask_init_sflash_filesystem();
 
-#if defined(LOPY) || defined(SIPY) || defined(FIPY)
+#if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY)
     // must be done after initializing the file system
     mptask_update_lpwan_mac_address();
 #endif
 
-#if defined(SIPY) || defined(FIPY)
+#if defined(SIPY) || defined(LOPY4) || defined(FIPY)
     sigfox_update_id();
     sigfox_update_pac();
     sigfox_update_private_key();
@@ -387,7 +387,7 @@ STATIC void mptask_init_sflash_filesystem (void) {
     }
 }
 
-#if defined(LOPY) || defined(SIPY) || defined(FIPY)
+#if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY)
 STATIC void mptask_update_lpwan_mac_address (void) {
     #define LPWAN_MAC_ADDR_PATH          "/flash/sys/lpwan.mac"
 

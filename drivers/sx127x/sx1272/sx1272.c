@@ -781,6 +781,16 @@ void SX1272SetTx( uint32_t timeout )
     SX1272SetOpMode( RF_OPMODE_TRANSMITTER );
 }
 
+void SX1272SetTxContinuousWave( uint32_t freq, int8_t power, uint16_t time )
+{
+
+}
+
+void SX1272SetPublicNetwork( bool enable )
+{
+
+}
+
 void SX1272StartCad( void )
 {
     switch( SX1272.Settings.Modem )

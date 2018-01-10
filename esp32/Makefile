@@ -34,6 +34,18 @@ else
     BUILD = build/$(BOARD)/$(BTYPE)
 endif
 
+ifeq ($(BOARD), LOPY4)
+    ifeq ($(LORA_BAND), USE_BAND_868)
+        LORA_FREQ = 868
+    else
+        LORA_FREQ = 915
+    endif
+    BUILD = build/$(BOARD)_$(LORA_FREQ)/$(BTYPE)
+else
+    LORA_FREQ =
+    BUILD = build/$(BOARD)/$(BTYPE)
+endif
+
 FROZEN_MPY_DIR = frozen
 
 include ../py/mkenv.mk
@@ -71,6 +83,10 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
 
 ifeq ($(BOARD), $(filter $(BOARD), FIPY))
     LIBS += sigfox/modsigfox_fipy.a
+endif
+
+ifeq ($(BOARD), $(filter $(BOARD), LOPY4))
+    LIBS += sigfox/modsigfox_lopy4.a
 endif
 
 ifeq ($(BOARD), $(filter $(BOARD), SIPY))

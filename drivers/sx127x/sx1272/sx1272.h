@@ -33,10 +33,6 @@ Maintainer: Miguel Luis and Gregory Cristian
  */
 #define RADIO_WAKEUP_TIME                           ( RADIO_OSC_STARTUP + RADIO_SLEEP_TO_RX )
 
-#define RADIO_IRQ_FLAG_RX_TIMEOUT                   ( 0x01 )
-#define RADIO_IRQ_FLAG_RX_DONE                      ( 0x02 )
-#define RADIO_IRQ_FLAG_RX_ERROR                     ( 0x04 )
-
 /*!
  * Radio FSK modem parameters
  */
@@ -385,5 +381,9 @@ void SX1272SetMaxPayloadLength( RadioModems_t modem, uint8_t max );
  * \param [IN] opMode New operating mode
  */
 void SX1272SetOpMode( uint8_t opMode );
+
+void SX1272SetTxContinuousWave( uint32_t freq, int8_t power, uint16_t time );
+
+void SX1272SetPublicNetwork( bool enable );
 
 #endif // __SX1272_H__

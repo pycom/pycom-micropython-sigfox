@@ -4317,6 +4317,7 @@ void LoRaMacNvsSave( void )
     modlora_nvs_set_uint(E_LORA_NVS_ELE_DEVADDR, LoRaMacDevAddr);
 
     modlora_nvs_set_uint(E_LORA_NVS_ELE_ADR_ACKS, AdrAckCounter);
+    modlora_nvs_set_uint(E_LORA_NVS_ELE_ACK_REQ, SrvAckRequested);
 }
 
 void LoRaMacTestSetDutyCycleOn( bool enable )
@@ -4330,4 +4331,8 @@ ChannelParams_t * LoRaMacGetChannelList(void) {
 
 LoRaMacParams_t * LoRaMacGetMacParams(void) {
     return &LoRaMacParams;
+}
+
+bool * LoRaMacGetSrvAckRequested(void) {
+    return &SrvAckRequested;
 }

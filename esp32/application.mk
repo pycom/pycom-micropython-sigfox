@@ -176,6 +176,7 @@ APP_LORA_SRC_C = $(addprefix lora/,\
 	timer-board.c \
 	gpio-board.c \
 	spi-board.c \
+	sx1276-board.c \
 	sx1272-board.c \
 	board.c \
 	)
@@ -194,6 +195,10 @@ APP_SX1272_SRC_C = $(addprefix drivers/sx127x/,\
 	sx1272/sx1272.c \
 	)
 
+APP_SX1276_SRC_C = $(addprefix drivers/sx127x/,\
+	sx1276/sx1276.c \
+	)
+
 APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/,\
 	manufacturer_api.c \
 	radio.c \
@@ -203,7 +208,7 @@ APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/,\
 	modsigfox.c \
 	)
 
-APP_SIGFOX_SRC_FIPY_C = $(addprefix sigfox/,\
+APP_SIGFOX_SRC_FIPY_LOPY4_C = $(addprefix sigfox/,\
 	manufacturer_api.c \
 	radio_sx127x.c \
 	ti_aes_128.c \
@@ -259,10 +264,13 @@ OBJ = $(PY_O)
 ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1272_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
 endif
-ifeq ($(BOARD), SIPY)
+ifeq ($(BOARD), $(filter $(BOARD), LOPY4))
+OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1276_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
+endif
+ifeq ($(BOARD), $(filter $(BOARD), SIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
-ifeq ($(BOARD), $(filter $(BOARD), FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), LOPY4 FIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
@@ -279,10 +287,10 @@ BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
 
 # List of sources for qstr extraction
 SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C)
-ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
 SRC_QSTR += $(APP_MODS_LORA_SRC_C)
 endif
-ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
 SRC_QSTR += $(APP_SIGFOX_MOD_SRC_C)
 endif
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
@@ -337,6 +345,13 @@ ifeq ($(BOARD), WIPY)
 endif
 ifeq ($(BOARD), LOPY)
     APP_BIN = $(BUILD)/lopy_$(LORA_FREQ).bin
+endif
+ifeq ($(BOARD), LOPY4)
+    APP_BIN = $(BUILD)/lopy4_$(LORA_FREQ).bin
+    $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 ifeq ($(BOARD), SIPY)
     APP_BIN = $(BUILD)/sipy.bin
@@ -408,7 +423,7 @@ $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
-ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY LOPY4))
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
