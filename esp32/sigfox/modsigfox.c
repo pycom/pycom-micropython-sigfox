@@ -341,7 +341,7 @@ static sfx_error_t modsigfox_sfx_send(sigfox_cmd_rx_data_t *cmd_rx_data, sigfox_
 
     tx_timestamp = now;     // save the current timestamp
 
-#if defined(FIPY) || defined(LOPY4)
+#if defined(FIPY)
     RADIO_warm_up_crystal(rcz_frequencies[sfx_rcz_id][0]);
 #endif
 
@@ -461,7 +461,7 @@ static void TASK_Sigfox(void *pvParameters) {
                     }
                     break;
                 case E_SIGFOX_CMD_TEST:
-                #if defined(FIPY) || defined(LOPY4)
+                #if defined(FIPY)
                     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                     RADIO_warm_up_crystal(rcz_frequencies[sfx_rcz_id][0]);
                 #endif

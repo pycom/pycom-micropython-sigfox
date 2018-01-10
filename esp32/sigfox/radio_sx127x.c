@@ -135,8 +135,9 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
 
         SX127X8BitWrite( 0x4B, 0x19 );      // Select TCXO vs Crystal
 
-        SX127X8BitWrite( 0x44, 0x7A );      // PA controlled manually
+        SX127X8BitWrite( 0x44, 0x7B );      // PA controlled manually
         SX127X8BitWrite( 0x46, 0x03 );
+        SX127X8BitWrite( 0x4D, 0x03 );
 
         SX127X8BitWrite( 0x0A, 0x0F );      // PaRamp on 10us
         SX127X8BitWrite( 0x70, 0xD0 );      // PLL bandwidth 300 KHz
@@ -226,16 +227,16 @@ void RADIO_change_frequency(unsigned long ul_Freq) {
  *  @note       During the modulation time, the PA is OFF
  ******************************************************************************/
 IRAM_ATTR void RADIO_modulate(void) {
-	int16_t count;
-	uint8_t NewPhaseValue;
+    int16_t count;
+    uint8_t NewPhaseValue;
 
-	if (Phase_State == E_PHASE_0) {
-		Phase_State = E_PHASE_180;
-		NewPhaseValue = 128;
-	} else {
-		Phase_State = E_PHASE_0;
-		NewPhaseValue = 0;
-	}
+    if (Phase_State == E_PHASE_0) {
+        Phase_State = E_PHASE_180;
+        NewPhaseValue = 128;
+    } else {
+        Phase_State = E_PHASE_0;
+        NewPhaseValue = 0;
+    }
 
     if (uplink_spectrum_access == SFX_FH) {
         /* decrease PA */
@@ -279,7 +280,7 @@ IRAM_ATTR void RADIO_modulate(void) {
     #if defined(FIPY)
         SX127X8BitWrite(0x63, 0x20);
     #elif defined(LOPY4)
-        SX127X8BitWrite(0x52, 0x10);
+        SX127X8BitWrite(0x52, 0x60);
     #endif
 
     if (uplink_spectrum_access == SFX_FH) {
@@ -338,15 +339,17 @@ IRAM_ATTR void RADIO_start_rf_carrier(void) {
     SX127X8BitWrite( 0x1e, 0x78 );      // Tx Continuous mode
     SX127X8BitWrite( 0x01, 0x83 );      // Device in Tx mode
 #elif defined(LOPY4)
-    SX127X8BitWrite( 0x52, 0x10 );      // Enable manual PA
+    SX127X8BitWrite( 0x52, 0x60 );      // Enable manual PA
     SX127X8BitWrite( 0x3E, 0x00 );      // phase = 0
     SX127X8BitWrite( 0x45, 0x00 );      // Max value for the PA is 0xE7 DO NOT GOT OVER OR IT MAY DAMAGE THE CHIPSET
-    SX127X8BitWrite( 0x1e, 0x78 );      // Tx Continuous mode
+    SX127X8BitWrite( 0x1e, 0x08 );      // Tx Continuous mode
     SX127X8BitWrite( 0x01, 0x83 );      // Device in Tx mode
 #endif
 
     if (uplink_spectrum_access == SFX_FH) {
+    #if defined(FIPY)
         vTaskDelay(50);                 // Warm up the crystal and the PLL
+    #endif
         for (count = MIN_PA_VALUE; count < MAX_PA_VALUE_FCC; count++) {
         #if defined(FIPY)
             SX127X8BitWrite(0x4C, count);
@@ -365,7 +368,9 @@ IRAM_ATTR void RADIO_start_rf_carrier(void) {
         SX127X8BitWrite(0x45, MAX_PA_VALUE_FCC);
     #endif
     } else {
+    #if defined(FIPY)
         vTaskDelay(550);                // Warm up the crystal and the PLL
+    #endif
         for (count = MIN_PA_VALUE; count < MAX_PA_VALUE_ETSI; count++) {
         #if defined(FIPY)
             SX127X8BitWrite(0x4C, count);
@@ -434,11 +439,11 @@ IRAM_ATTR void RADIO_stop_rf_carrier(void) {
 #if defined(FIPY)
     SX127X8BitWrite( 0x63, 0x00 );      // switch off the PA
     SX127X8BitWrite( 0x01, 0x80 );      // Device in LoRa standby mode
-    SX127X8BitWrite( 0x1e, 0x70 );      // Tx Continuous mode
+    SX127X8BitWrite( 0x1e, 0x70 );      // Tx Continuous mode OFF
 #elif defined(LOPY4)
     SX127X8BitWrite( 0x52, 0x00 );      // switch off the PA
     SX127X8BitWrite( 0x01, 0x80 );      // Device in LoRa standby mode
-    SX127X8BitWrite( 0x1e, 0x70 );      // Tx Continuous mode
+    SX127X8BitWrite( 0x1e, 0x00 );      // Tx Continuous mode OFF
 #endif
 
     MICROPY_END_ATOMIC_SECTION(ilevel);
@@ -496,7 +501,7 @@ void RADIO_warm_up_crystal (unsigned long ul_Freq) {
 
     SX127X8BitWrite( 0x63, 0x00 );      // switch off the PA
     SX127X8BitWrite( 0x01, 0x80 );      // Device in standby in LoRa mode
-    SX127X8BitWrite( 0x1e, 0x70 );      // Tx Continuous mode
+    SX127X8BitWrite( 0x1e, 0x70 );      // Tx Continuous mode OFF
 #endif
 }
 

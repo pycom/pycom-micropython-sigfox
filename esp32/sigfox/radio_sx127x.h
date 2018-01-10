@@ -79,8 +79,8 @@ extern uint8_t  packetSemaphore;
 #define ISR_ACTION_REQUIRED          1
 #define ISR_IDLE                     0
 
-#define MAX_PA_VALUE_ETSI            86
-#define MAX_PA_VALUE_FCC             148
+#define MAX_PA_VALUE_ETSI            90
+#define MAX_PA_VALUE_FCC             150
 #define STEP_HIGH_ETSI               34
 #define STEP_HIGH_FCC                56
 #define MIN_PA_VALUE                 0
