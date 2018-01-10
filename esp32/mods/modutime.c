@@ -155,41 +155,31 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(time_sleep_us_obj, time_sleep_us);
 STATIC mp_obj_t time_ticks_ms(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return mp_obj_new_int_from_uint(((tv.tv_sec * 1000) + tv.tv_usec / 1000)
-        & (MICROPY_PY_UTIME_TICKS_PERIOD - 1));
+    return mp_obj_new_int_from_uint(((tv.tv_sec * 1000) + tv.tv_usec / 1000));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_ms_obj, time_ticks_ms);
 
 STATIC mp_obj_t time_ticks_us(void) {
-    return mp_obj_new_int_from_uint(system_get_rtc_time()
-        & (MICROPY_PY_UTIME_TICKS_PERIOD - 1));
+    return mp_obj_new_int_from_uint(system_get_rtc_time());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_us_obj, time_ticks_us);
 
 STATIC mp_obj_t time_ticks_cpu(void) {
-   return mp_obj_new_int_from_uint(get_timer_counter_value() 
-        & (MICROPY_PY_UTIME_TICKS_PERIOD - 1));
+   return mp_obj_new_int_from_uint(get_timer_counter_value());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_cpu_obj, time_ticks_cpu);
 
 STATIC mp_obj_t time_ticks_diff(mp_obj_t start_in, mp_obj_t end_in) {
-    // we assume that the arguments come from ticks_xx so are small ints
-    mp_uint_t start = MP_OBJ_SMALL_INT_VALUE(start_in);
-    mp_uint_t end = MP_OBJ_SMALL_INT_VALUE(end_in);
-    // Optimized formula avoiding if conditions. We adjust difference "forward",
-    // wrap it around and adjust back.
-    mp_int_t diff = ((end - start + MICROPY_PY_UTIME_TICKS_PERIOD / 2) 
-        & (MICROPY_PY_UTIME_TICKS_PERIOD - 1))
-                   - MICROPY_PY_UTIME_TICKS_PERIOD / 2;
-    return MP_OBJ_NEW_SMALL_INT(diff);
+    int32_t start = mp_obj_get_int_truncated(start_in);
+    int32_t end = mp_obj_get_int_truncated(end_in);
+    return mp_obj_new_int((end - start));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(time_ticks_diff_obj, time_ticks_diff);
 
-STATIC mp_obj_t time_ticks_add(mp_obj_t ticks_in, mp_obj_t delta_in) {
-    // we assume that first argument come from ticks_xx so is small int
-    mp_uint_t ticks = MP_OBJ_SMALL_INT_VALUE(ticks_in);
-    mp_uint_t delta = mp_obj_get_int(delta_in);
-    return MP_OBJ_NEW_SMALL_INT((ticks + delta) & (MICROPY_PY_UTIME_TICKS_PERIOD - 1));
+STATIC mp_obj_t time_ticks_add(mp_obj_t start_in, mp_obj_t delta_in) {
+    uint32_t start = mp_obj_get_int_truncated(start_in);
+    uint32_t delta = mp_obj_get_int_truncated(delta_in);
+    return mp_obj_new_int_from_uint((start + delta));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(time_ticks_add_obj, time_ticks_add);
 
