@@ -22,6 +22,8 @@ OEM ?= 0
 BTYPE ?= release
 
 LORA_BAND ?= USE_BAND_868
+
+BUILD = build/$(BOARD)/$(BTYPE)
 ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
     ifeq ($(LORA_BAND), USE_BAND_868)
         LORA_FREQ = 868
@@ -29,9 +31,6 @@ ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
         LORA_FREQ = 915
     endif
     BUILD = build/$(BOARD)_$(LORA_FREQ)/$(BTYPE)
-else
-    LORA_FREQ =
-    BUILD = build/$(BOARD)/$(BTYPE)
 endif
 
 ifeq ($(BOARD), LOPY4)
@@ -41,9 +40,6 @@ ifeq ($(BOARD), LOPY4)
         LORA_FREQ = 915
     endif
     BUILD = build/$(BOARD)_$(LORA_FREQ)/$(BTYPE)
-else
-    LORA_FREQ =
-    BUILD = build/$(BOARD)/$(BTYPE)
 endif
 
 FROZEN_MPY_DIR = frozen
@@ -80,18 +76,6 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -u ld_include_panic_highint_hdl \
-
-ifeq ($(BOARD), $(filter $(BOARD), FIPY))
-    LIBS += sigfox/modsigfox_fipy.a
-endif
-
-ifeq ($(BOARD), $(filter $(BOARD), LOPY4))
-    LIBS += sigfox/modsigfox_lopy4.a
-endif
-
-ifeq ($(BOARD), $(filter $(BOARD), SIPY))
-    LIBS += sigfox/modsigfox.a
-endif
 
 B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader \
          -L$(ESP_IDF_COMP_PATH)/esp32/lib -llog -lcore -lbootloader_support \

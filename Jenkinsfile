@@ -1,8 +1,8 @@
 def buildVersion
 def boards_to_build_1 = ["LoPy_868", "WiPy"]
 def boards_to_build_2 = ["LoPy_915", "SiPy"]
-def boards_to_build_3 = ["FiPy_868", "GPy"]
-def boards_to_build_4 = ["FiPy_915"]
+def boards_to_build_3 = ["FiPy_868", "GPy" , "LoPy4_868"]
+def boards_to_build_4 = ["FiPy_915" , "LoPy4_915"]
 def boards_to_test = ["FiPy_868"]
 def remote_node = "UDOO"
 
@@ -131,10 +131,10 @@ def boardBuild(name) {
     def name_u = name.toUpperCase()
     def name_short = name_u.split('_')[0]
     def lora_band = ""
-    if (name_u == "LOPY_868" || name_u == "FIPY_868") {
+    if (name_u == "LOPY_868" || name_u == "FIPY_868"  || name_u == "LOPY4_868") {
         lora_band = " LORA_BAND=USE_BAND_868"
     }
-    else if (name_u == "LOPY_915" || name_u == "FIPY_915") {
+    else if (name_u == "LOPY_915" || name_u == "FIPY_915" || name_u == "LOPY4_915") {
         lora_band = " LORA_BAND=USE_BAND_915"
     }
     def app_bin = name.toLowerCase() + '.bin'
