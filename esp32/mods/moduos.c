@@ -229,7 +229,7 @@ STATIC const qstr os_uname_info_fields[] = {
 #if defined(LOPY) || defined(LOPY4) || defined(FIPY)
     ,MP_QSTR_lorawan
 #endif
-#if defined(SIPY) || defined(FIPY)
+#if defined(SIPY) || defined(FIPY) || defined(LOPY4)
     ,MP_QSTR_sigfox
 #endif
 };
