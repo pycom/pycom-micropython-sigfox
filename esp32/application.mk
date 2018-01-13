@@ -121,6 +121,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	moduselect.c \
 	modutime.c \
 	modpycom.c \
+	moduqueue.c \
 	moduhashlib.c \
 	moducrypto.c \
 	machtimer.c \
