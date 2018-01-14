@@ -99,7 +99,7 @@ static StaticTask_t mpTaskTCB;
 *******************************************************************************/
 void app_main(void) {
     // remove all the logs from the IDF
-    esp_log_level_set("*", ESP_LOG_NONE);
+    // esp_log_level_set("*", ESP_LOG_NONE);
 
     // this one gets the remaining sleep time
     machine_init0();

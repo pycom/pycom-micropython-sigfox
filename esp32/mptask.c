@@ -85,7 +85,7 @@ extern void modpycom_init0(void);
  DECLARE PRIVATE CONSTANTS
  ******************************************************************************/
 #define GC_POOL_SIZE_BYTES                                          (67 * 1024)
-#define GC_POOL_SIZE_BYTES_PSRAM                                    (3072 * 1024)
+#define GC_POOL_SIZE_BYTES_PSRAM                                    ((2048 + 512) * 1024)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -146,11 +146,12 @@ void TASK_Micropython (void *pvParameters) {
     mp_stack_set_limit(MICROPY_TASK_STACK_LEN - 1024);
 
     if (esp_get_revision() > 0) {
+        printf("Allocating from PSRAM\n");
         gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
-        gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES_PSRAM, MALLOC_CAP_SPIRAM | MALLOC_CAP_32BIT);
+        gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES_PSRAM, MALLOC_CAP_SPIRAM);
     } else {
         gc_pool_size = GC_POOL_SIZE_BYTES;
-        gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES, MALLOC_CAP_32BIT);
+        gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES, MALLOC_CAP_INTERNAL);
     }
 
     if (NULL == gc_pool_upy) {
