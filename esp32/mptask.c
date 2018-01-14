@@ -146,7 +146,6 @@ void TASK_Micropython (void *pvParameters) {
     mp_stack_set_limit(MICROPY_TASK_STACK_LEN - 1024);
 
     if (esp_get_revision() > 0) {
-        printf("Allocating from PSRAM\n");
         gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
         gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES_PSRAM, MALLOC_CAP_SPIRAM);
     } else {
@@ -322,7 +321,7 @@ soft_reset_exit:
 STATIC void mptask_preinit (void) {
     mperror_pre_init();
     wlan_pre_init();
-    xTaskCreatePinnedToCore(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 0);
+    xTaskCreatePinnedToCore(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 1);
 }
 
 STATIC void mptask_init_sflash_filesystem (void) {

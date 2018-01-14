@@ -175,7 +175,7 @@ void modsigfox_init0 (void) {
     SpiInit( &sigfox_spi, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, RADIO_NSS );
 #endif
 
-    xTaskCreate(TASK_Sigfox, "Sigfox", SIGFOX_STACK_SIZE, NULL, SIGFOX_TASK_PRIORITY, &xSigfoxTaskHndl);
+    xTaskCreatePinnedToCore(TASK_Sigfox, "Sigfox", SIGFOX_STACK_SIZE, NULL, SIGFOX_TASK_PRIORITY, &xSigfoxTaskHndl, 1);
 }
 
 void sigfox_update_id (void) {

@@ -838,7 +838,7 @@ int ppposInit()
 			tcpip_adapter_init();
 			tcpip_adapter_initialized = 1;
 		}
-		xTaskCreate(&pppos_client_task, "pppos_client_task", PPPOS_CLIENT_STACK_SIZE, NULL, 10, NULL);
+		xTaskCreatePinnedToCore(&pppos_client_task, "pppos_client_task", PPPOS_CLIENT_STACK_SIZE, NULL, 10, NULL, 1);
 		while (task_s == 0) {
 			vTaskDelay(10 / portTICK_RATE_MS);
 			xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);

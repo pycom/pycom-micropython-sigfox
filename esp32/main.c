@@ -99,7 +99,7 @@ static StaticTask_t mpTaskTCB;
 *******************************************************************************/
 void app_main(void) {
     // remove all the logs from the IDF
-    // esp_log_level_set("*", ESP_LOG_NONE);
+    esp_log_level_set("*", ESP_LOG_NONE);
 
     // this one gets the remaining sleep time
     machine_init0();
@@ -152,5 +152,5 @@ void app_main(void) {
     // create the MicroPython task
     mpTaskHandle = 
     (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL,
-                                                MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 0);
+                                                MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
 }
