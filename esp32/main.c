@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include "controller.h"
 
-#include "bt.h"
+#include "esp_bt.h"
 #include "bt_trace.h"
 #include "bt_types.h"
 #include "btm_api.h"
