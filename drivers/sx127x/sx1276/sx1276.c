@@ -971,7 +971,7 @@ void SX1276Reset( void )
         // Wait 6 ms
         DelayMs( 6 );
     } else {
-        DelayMs( 1 );
+        DelayMs( 2 );
     }
 }
 
@@ -1001,6 +1001,11 @@ IRAM_ATTR void SX1276SetModem( RadioModems_t modem )
     {
     default:
     case MODEM_FSK:
+        SX1276SetSleep( );
+        SX1276Write( REG_OPMODE, ( SX1276Read( REG_OPMODE ) & RFLR_OPMODE_LONGRANGEMODE_MASK ) | RFLR_OPMODE_LONGRANGEMODE_OFF );
+
+        SX1276Write( REG_DIOMAPPING1, 0x00 );
+        SX1276Write( REG_DIOMAPPING2, 0x30 ); // DIO5=ModeReady
         break;
     case MODEM_LORA:
         SX1276SetSleep( );
@@ -1120,7 +1125,7 @@ void SX1276OnTimeoutIrq( void )
     }
 }
 
-void SX1276RadioFlagsIrq (void) {
+IRAM_ATTR void SX1276RadioFlagsIrq (void) {
     if (SX1276.irqFlags & RADIO_IRQ_FLAG_RX_TIMEOUT) {
         SX1276.irqFlags &= ~RADIO_IRQ_FLAG_RX_TIMEOUT;
         if( ( RadioEvents != NULL ) && ( RadioEvents->RxTimeout != NULL ) )
@@ -1183,7 +1188,6 @@ IRAM_ATTR void SX1276OnDio0Irq( void )
     switch( SX1276.Settings.State )
     {
         case RF_RX_RUNNING:
-            //TimerStop( &RxTimeoutTimer );
             // RxDone interrupt
             switch( SX1276.Settings.Modem )
             {

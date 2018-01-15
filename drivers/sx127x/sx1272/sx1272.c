@@ -853,7 +853,7 @@ void SX1272Reset( void )
         // Wait 6 ms
         DelayMs( 6 );
     } else {
-        DelayMs( 1 );
+        DelayMs( 2 );
     }
 }
 
