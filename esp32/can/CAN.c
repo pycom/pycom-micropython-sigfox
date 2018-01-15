@@ -83,10 +83,19 @@ static void CAN_isr(void *arg_p){
 static bool CAN_filter_message(uint32_t msg_id) {
     bool accept = false;
     if (CAN_sw_filters && CAN_sw_filters->num_filters > 0) {
-        for (int i = 0; i < CAN_sw_filters->num_filters; i++) {
-            if (msg_id >= CAN_sw_filters->fromto[i][0] && msg_id <= CAN_sw_filters->fromto[i][1]) {
-                accept = true;
-                break;
+        if (CAN_sw_filters->mode == CAN_FILTER_MASK) {
+            for (int i = 0; i < CAN_sw_filters->num_filters; i++) {
+                if ((msg_id & CAN_sw_filters->fromto[i][1]) == (CAN_sw_filters->fromto[i][0] & CAN_sw_filters->fromto[i][1])) {
+                    accept = true;
+                    break;
+                }
+            }
+        } else {
+            for (int i = 0; i < CAN_sw_filters->num_filters; i++) {
+                if (msg_id >= CAN_sw_filters->fromto[i][0] && msg_id <= CAN_sw_filters->fromto[i][1]) {
+                    accept = true;
+                    break;
+                }
             }
         }
     } else {

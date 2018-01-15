@@ -80,7 +80,14 @@ typedef struct {
     } data;
 }CAN_frame_t;
 
+typedef enum {
+    CAN_FILTER_LIST = 0,
+    CAN_FILTER_RANGE = 1,
+    CAN_FILTER_MASK = 2
+} CAN_sw_filter_mode_t;
+
 typedef struct {
+    CAN_sw_filter_mode_t mode;
     uint32_t fromto[32][2];
     uint8_t num_filters;
 }CAN_sw_filters_t;
