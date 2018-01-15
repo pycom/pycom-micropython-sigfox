@@ -787,7 +787,7 @@ STATIC mp_obj_t bt_read_scan(mp_obj_t self_in) {
         tuple[1] = mp_obj_new_int(bt_event.scan.scan_rst.ble_addr_type);
         tuple[2] = mp_obj_new_int(bt_event.scan.scan_rst.ble_evt_type & 0x03);    // FIXME
         tuple[3] = mp_obj_new_int(bt_event.scan.scan_rst.rssi);
-        tuple[4] = mp_obj_new_bytes((const byte *)bt_event.scan.scan_rst.ble_adv, ESP_BLE_ADV_DATA_LEN_MAX);
+        tuple[4] = mp_obj_new_bytes((const byte *)bt_event.scan.scan_rst.ble_adv, sizeof(bt_event.scan.scan_rst.ble_adv));
 
         return mp_obj_new_attrtuple(bt_scan_info_fields, 5, tuple);
     }
@@ -809,7 +809,7 @@ STATIC mp_obj_t bt_get_advertisements(mp_obj_t self_in) {
         tuple[1] = mp_obj_new_int(bt_event.scan.scan_rst.ble_addr_type);
         tuple[2] = mp_obj_new_int(bt_event.scan.scan_rst.ble_evt_type & 0x03);    // FIXME
         tuple[3] = mp_obj_new_int(bt_event.scan.scan_rst.rssi);
-        tuple[4] = mp_obj_new_bytes((const byte *)bt_event.scan.scan_rst.ble_adv, ESP_BLE_ADV_DATA_LEN_MAX);
+        tuple[4] = mp_obj_new_bytes((const byte *)bt_event.scan.scan_rst.ble_adv, sizeof(bt_event.scan.scan_rst.ble_adv));
 
         mp_obj_list_append(advs, mp_obj_new_attrtuple(bt_scan_info_fields, 5, tuple));
     }
