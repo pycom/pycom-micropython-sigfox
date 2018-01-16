@@ -412,6 +412,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
 
     // install the UART driver
     uart_driver_install(self->uart_id, MACHUART_RX_BUFFER_LEN, 0, 0, NULL, 0, UARTRxCallback);
+    uart_enable_intr_mask(self->uart_id, UART_TX_DONE_INT_ENA_M);
 
     // disable the delay between transfers
     self->uart_reg->idle_conf.tx_idle_num = 0;
@@ -495,7 +496,6 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_any_obj, mach_uart_any);
 
 STATIC mp_obj_t mach_uart_tx_done(mp_obj_t self_in) {
     mach_uart_obj_t *self = self_in;
-    ets_delay_us(MACHUART_TX_WAIT_US(self->config.baud_rate));
     if (uart_tx_done(self->uart_id)) {
         return mp_const_true;
     }

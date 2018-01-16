@@ -853,7 +853,7 @@ void SX1272Reset( void )
         // Wait 6 ms
         DelayMs( 6 );
     } else {
-        DelayMs( 1 );
+        DelayMs( 2 );
     }
 }
 
@@ -998,7 +998,7 @@ void SX1272OnTimeoutIrq( void )
     }
 }
 
-void SX1272RadioFlagsIrq (void) {
+IRAM_ATTR void SX1272RadioFlagsIrq (void) {
     if (SX1272.irqFlags & RADIO_IRQ_FLAG_RX_TIMEOUT) {
         SX1272.irqFlags &= ~RADIO_IRQ_FLAG_RX_TIMEOUT;
         if( ( RadioEvents != NULL ) && ( RadioEvents->RxTimeout != NULL ) )

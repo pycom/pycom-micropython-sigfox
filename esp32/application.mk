@@ -15,6 +15,7 @@ APP_INC += -Imods
 APP_INC += -Itelnet
 APP_INC += -Iftp
 APP_INC += -Ilora
+APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
 APP_INC += -I$(BUILD)
@@ -113,6 +114,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machspi.c \
 	machine_i2c.c \
 	machpwm.c \
+	machcan.c \
 	modmachine.c \
 	moduos.c \
 	modusocket.c \
@@ -121,6 +123,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	moduselect.c \
 	modutime.c \
 	modpycom.c \
+	moduqueue.c \
 	moduhashlib.c \
 	moducrypto.c \
 	machtimer.c \
@@ -250,6 +253,10 @@ APP_FTP_SRC_C = $(addprefix ftp/,\
 	updater.c \
 	)
 
+APP_CAN_SRC_C = $(addprefix can/,\
+	CAN.c \
+	)
+
 BOOT_SRC_C = $(addprefix bootloader/,\
 	bootloader.c \
 	bootmgr.c \
@@ -280,7 +287,7 @@ endif
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins.o
 
 BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))

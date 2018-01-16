@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include "controller.h"
 
-#include "bt.h"
+#include "esp_bt.h"
 #include "bt_trace.h"
 #include "bt_types.h"
 #include "btm_api.h"
@@ -152,5 +152,5 @@ void app_main(void) {
     // create the MicroPython task
     mpTaskHandle = 
     (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL,
-                                                MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 0);
+                                                MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
 }

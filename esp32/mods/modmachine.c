@@ -71,6 +71,7 @@
 #include "modbt.h"
 #include "modwlan.h"
 #include "machwdt.h"
+#include "machcan.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -339,6 +340,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_Timer),                   (mp_obj_t)&mach_timer_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_RTC),                     (mp_obj_t)&mach_rtc_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WDT),                     (mp_obj_t)&mach_wdt_type },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CAN),                     (mp_obj_t)&mach_can_type },
 
     // constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_PWRON_RESET),         MP_OBJ_NEW_SMALL_INT(MPSLEEP_PWRON_RESET) },

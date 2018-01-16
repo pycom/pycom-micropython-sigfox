@@ -50,6 +50,7 @@
 #include "bootloader_flash.h"
 #include "bootmgr.h"
 #include "bootloader_random.h"
+#include "bootloader_clock.h"
 
 #include "flash_qio_mode.h"
 #include "mperror.h"
@@ -87,7 +88,6 @@ static void set_cache_and_start_app(uint32_t drom_addr,
 static void update_flash_config(const esp_image_header_t* pfhdr);
 static void vddsdio_configure();
 static void flash_gpio_configure();
-static void clock_configure(void);
 static void uart_console_configure(void);
 static void wdt_reset_check(void);
 
@@ -104,6 +104,11 @@ static void wdt_reset_check(void);
 //     mac[5] = mac_low;
 // }
 
+/*
+ * We arrive here after the ROM bootloader finished loading this second stage bootloader from flash.
+ * The hardware is mostly uninitialized, flash cache is down and the app CPU is in reset.
+ * We do have a stack, so we can do the initialization in C.
+ */
 void call_start_cpu0()
 {
     cpu_configure_region_protection();
@@ -489,7 +494,7 @@ static void bootloader_main()
 {
     vddsdio_configure();
     flash_gpio_configure();
-    clock_configure();
+    bootloader_clock_configure();
     uart_console_configure();
     wdt_reset_check();
     ESP_LOGI(TAG, "ESP-IDF %s 2nd stage bootloader");
@@ -754,12 +759,11 @@ static void vddsdio_configure()
 {
 #if CONFIG_BOOTLOADER_VDDSDIO_BOOST
     rtc_vddsdio_config_t cfg = rtc_vddsdio_get_config();
-    if (cfg.tieh == 0) {    // 1.8V is used
+    if (cfg.enable == 1 && cfg.tieh == 0) {    // VDDSDIO regulator is enabled @ 1.8V
         cfg.drefh = 3;
         cfg.drefm = 3;
         cfg.drefl = 3;
         cfg.force = 1;
-        cfg.enable = 1;
         rtc_vddsdio_set_config(cfg);
         ets_delay_us(10); // wait for regulator to become stable
     }
@@ -806,24 +810,20 @@ static void IRAM_ATTR flash_gpio_configure()
 
     if (pkg_ver == EFUSE_RD_CHIP_VER_PKG_ESP32D2WDQ5) {
         // For ESP32D2WD the SPI pins are already configured
-        ESP_LOGI(TAG, "Detected ESP32D2WD");
-        //flash clock signal should come from IO MUX.
+        // flash clock signal should come from IO MUX.
         PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U, FUNC_SD_CLK_SPICLK);
         SET_PERI_REG_BITS(PERIPHS_IO_MUX_SD_CLK_U, FUN_DRV, drv, FUN_DRV_S);
     } else if (pkg_ver == EFUSE_RD_CHIP_VER_PKG_ESP32PICOD2) {
         // For ESP32PICOD2 the SPI pins are already configured
-        ESP_LOGI(TAG, "Detected ESP32PICOD2");
-        //flash clock signal should come from IO MUX.
+        // flash clock signal should come from IO MUX.
         PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U, FUNC_SD_CLK_SPICLK);
         SET_PERI_REG_BITS(PERIPHS_IO_MUX_SD_CLK_U, FUN_DRV, drv, FUN_DRV_S);
     } else if (pkg_ver == EFUSE_RD_CHIP_VER_PKG_ESP32PICOD4) {
         // For ESP32PICOD4 the SPI pins are already configured
-        ESP_LOGI(TAG, "Detected ESP32PICOD4");
-        //flash clock signal should come from IO MUX.
+        // flash clock signal should come from IO MUX.
         PIN_FUNC_SELECT(PERIPHS_IO_MUX_SD_CLK_U, FUNC_SD_CLK_SPICLK);
         SET_PERI_REG_BITS(PERIPHS_IO_MUX_SD_CLK_U, FUN_DRV, drv, FUN_DRV_S);
     } else {
-        ESP_LOGI(TAG, "Detected ESP32");
         const uint32_t spiconfig = ets_efuse_get_spiconfig();
         if (spiconfig == EFUSE_SPICONFIG_SPI_DEFAULTS) {
             gpio_matrix_out(FLASH_CS_IO, SPICS0_OUT_IDX, 0, 0);
@@ -849,36 +849,6 @@ static void IRAM_ATTR flash_gpio_configure()
     }
 }
 
-static void clock_configure(void)
-{
-    // ROM bootloader may have put a lot of text into UART0 FIFO.
-    // Wait for it to be printed.
-    // This is not needed on power on reset, when ROM bootloader is running at
-    // 40 MHz. But in case of TG WDT reset, CPU may still be running at >80 MHZ,
-    // and will be done with the bootloader much earlier than UART FIFO is empty.
-    uart_tx_wait_idle(0);
-
-    /* Set CPU to 80MHz. Keep other clocks unmodified. */
-    rtc_cpu_freq_t cpu_freq = RTC_CPU_FREQ_80M;
-
-    /* On ESP32 rev 0, switching to 80MHz if clock was previously set to
-     * 240 MHz may cause the chip to lock up (see section 3.5 of the errata
-     * document). For rev. 0, switch to 240 instead if it was chosen in
-     * menuconfig.
-     */
-    uint32_t chip_ver_reg = REG_READ(EFUSE_BLK0_RDATA3_REG);
-    if ((chip_ver_reg & EFUSE_RD_CHIP_VER_REV1_M) == 0 &&
-            CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ == 240) {
-        cpu_freq = RTC_CPU_FREQ_240M;
-    }
-
-    rtc_clk_config_t clk_cfg = RTC_CLK_CONFIG_DEFAULT();
-    clk_cfg.xtal_freq = CONFIG_ESP32_XTAL_FREQ;
-    clk_cfg.cpu_freq = cpu_freq;
-    clk_cfg.slow_freq = rtc_clk_slow_freq_get();
-    clk_cfg.fast_freq = rtc_clk_fast_freq_get();
-    rtc_clk_init(clk_cfg);
-}
 
 static void uart_console_configure(void)
 {

@@ -36,8 +36,8 @@ STATIC mp_obj_t pwm_channel_duty(mp_obj_t self_in, mp_obj_t duty_o) {
         duty = 0.0f;
     }
 
-    uint8_t bit_num = ((mach_pwm_timer_obj_t *)MP_STATE_PORT(mach_pwm_timer_obj[self->config.timer_sel]))->config.bit_num;
-    uint32_t max_duty = (0x1 << bit_num) - 1;
+    uint8_t duty_resolution = ((mach_pwm_timer_obj_t *)MP_STATE_PORT(mach_pwm_timer_obj[self->config.timer_sel]))->config.duty_resolution;
+    uint32_t max_duty = (0x1 << duty_resolution) - 1;
     uint32_t duty_scaled;
     if (duty >= 0.999f) {
         duty_scaled = max_duty;
@@ -118,7 +118,7 @@ STATIC mp_obj_t mach_pwm_channel_make_new(mp_uint_t n_args, const mp_obj_t *pos_
         }
     }
 
-    uint32_t max_duty = (0x1 << pwm->config.bit_num) - 1;
+    uint32_t max_duty = (0x1 << pwm->config.duty_resolution) - 1;
     uint32_t duty_scaled;
     if (duty >= 0.999f) {
         duty_scaled = max_duty;
@@ -147,7 +147,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_pwm_channel_obj, 1, mach_pwm_channel_make
 
 STATIC mp_obj_t mach_pwm_timer_init_helper(mach_pwm_timer_obj_t *self, const mp_arg_val_t *args) {
     uint32_t freq = args[0].u_int;
-    uint8_t bit_num;
+    uint8_t duty_resolution;
 
     if (freq > 78000) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid frequency %d", freq));
@@ -156,17 +156,17 @@ STATIC mp_obj_t mach_pwm_timer_init_helper(mach_pwm_timer_obj_t *self, const mp_
     self->config.freq_hz = freq;
 
     if (freq < 4000) {
-        bit_num = LEDC_TIMER_14_BIT;
+        duty_resolution = LEDC_TIMER_14_BIT;
     } else if (freq < 8000) {
-        bit_num = LEDC_TIMER_13_BIT;
+        duty_resolution = LEDC_TIMER_13_BIT;
     } else if (freq < 16000) {
-        bit_num = LEDC_TIMER_12_BIT;
+        duty_resolution = LEDC_TIMER_12_BIT;
     } else if (freq < 32000) {
-        bit_num = LEDC_TIMER_11_BIT;
+        duty_resolution = LEDC_TIMER_11_BIT;
     } else {
-        bit_num = LEDC_TIMER_10_BIT;
+        duty_resolution = LEDC_TIMER_10_BIT;
     }
-    self->config.bit_num = bit_num;
+    self->config.duty_resolution = duty_resolution;
     self->config.speed_mode = LEDC_HIGH_SPEED_MODE;
     ledc_timer_config(&self->config);
     return mp_const_none;
