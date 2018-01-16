@@ -32,9 +32,6 @@ ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
         LORA_FREQ = 915
     endif
     BUILD = build/$(BOARD)_$(LORA_FREQ)/$(BTYPE)
-else
-    LORA_FREQ =
-    BUILD = build/$(BOARD)/$(BTYPE)
 endif
 
 ifeq ($(BOARD), LOPY4)
