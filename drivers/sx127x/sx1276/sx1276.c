@@ -214,6 +214,10 @@ void SX1276Init( RadioEvents_t *events )
 
     SX1276Reset( );
 
+    SX1276SetOpMode( RF_OPMODE_SLEEP );
+
+    SX1276SetModem( MODEM_FSK );
+
     RxChainCalibration( );
 
     SX1276SetOpMode( RF_OPMODE_SLEEP );
