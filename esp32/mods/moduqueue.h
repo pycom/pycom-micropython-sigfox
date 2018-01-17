@@ -19,6 +19,8 @@
  ******************************************************************************/
 typedef struct _mp_obj_queue_t {
     mp_obj_base_t base;
+    mp_obj_t storage;
+    StaticQueue_t *buffer;
     QueueHandle_t handle;
     uint32_t maxsize;
 } mp_obj_queue_t;
