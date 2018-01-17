@@ -151,8 +151,17 @@ void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, i
     if (esp_get_revision() > 0) {
         // for revision 1 devices we allocate from the internal memory of the malloc heap
         tcb = heap_caps_malloc(sizeof(StaticTask_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        if (!tcb) {
+            goto memory_error;
+        }
         stack = heap_caps_malloc(*stack_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        if (!stack) {
+            goto memory_error;
+        }
         th = heap_caps_malloc(sizeof(thread_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        if (!th) {
+            goto memory_error;
+        }
     } else {
         // for revision 0 devices we allocate from the MicroPython heap which is all in the internal memory
         tcb = m_new(StaticTask_t, 1);
@@ -183,6 +192,11 @@ void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, i
     thread = th;
 
     mp_thread_mutex_unlock(&thread_mutex);
+
+    return;
+
+memory_error:
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_MemoryError, "can't create thread"));
 }
 
 void mp_thread_create(void *(*entry)(void*), void *arg, size_t *stack_size) {
@@ -226,6 +240,17 @@ void vPortCleanUpTCB (void *tcb) {
         }
     }
     mp_thread_mutex_unlock(&thread_mutex);
+}
+
+mp_obj_thread_lock_t *mp_thread_new_thread_lock(void) {
+    mp_obj_thread_lock_t *self = m_new_obj(mp_obj_thread_lock_t);
+    self->mutex = heap_caps_malloc(sizeof(mp_thread_mutex_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    if (NULL == self->mutex) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_MemoryError, "can't create lock"));
+    }
+    mp_thread_mutex_init(self->mutex);
+    self->locked = false;
+    return self;
 }
 
 void mp_thread_mutex_init(mp_thread_mutex_t *mutex) {

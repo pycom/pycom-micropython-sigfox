@@ -38,22 +38,28 @@
 #ifndef __MICROPY_INCLUDED_ESP32_MPTHREADPORT_H__
 #define __MICROPY_INCLUDED_ESP32_MPTHREADPORT_H__
 
-#ifndef BOOTLOADER
+#include "py/mpconfig.h"
+#include "py/mpstate.h"
+#include "py/obj.h"
 #include "freertos/FreeRTOS.h"
-#endif
 
 #define MP_THREAD_PRIORITY                  5
 
 typedef struct _mp_thread_mutex_t {
-    #ifndef BOOTLOADER
     SemaphoreHandle_t handle;
     StaticSemaphore_t buffer;
-    #endif
 } mp_thread_mutex_t;
+
+typedef struct _mp_obj_thread_lock_t {
+    mp_obj_base_t base;
+    mp_thread_mutex_t *mutex;
+    volatile bool locked;
+} mp_obj_thread_lock_t;
 
 void mp_thread_preinit(void *stack);
 void mp_thread_init(void);
 void mp_thread_gc_others(void);
 void mp_thread_deinit(void);
+mp_obj_thread_lock_t *mp_thread_new_thread_lock(void);
 
 #endif // __MICROPY_INCLUDED_ESP32_MPTHREADPORT_H__
