@@ -72,7 +72,9 @@ const mp_obj_module_t mp_module_uqueue = {
 
 STATIC mp_obj_t mp_queue_delete(mp_obj_t self_in) {
     mp_obj_queue_t *self = self_in;
-    free(self->buffer);
+    if (self->buffer) {
+        free(self->buffer);
+    }
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mp_queue_delete_obj, mp_queue_delete);
