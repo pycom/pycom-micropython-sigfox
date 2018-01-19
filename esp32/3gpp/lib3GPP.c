@@ -87,8 +87,8 @@ static GSM_Cmd cmd_AT =
 	.cmd = "AT\r\n",
 	.cmdSize = sizeof("AT\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
-	.timeoutMs = 500,
-	.delayMs = 0,
+	.timeoutMs = 1000,
+	.delayMs = 500,
 	.skip = 0,
 };
 
@@ -97,7 +97,7 @@ static GSM_Cmd cmd_HardReset =
 	.cmd = "AT^RESET\r\n",
 	.cmdSize = sizeof("AT^RESET\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
-	.timeoutMs = 500,
+	.timeoutMs = 1000,
 	.delayMs = 0,
 	.skip = 0,
 };
@@ -107,7 +107,7 @@ static GSM_Cmd cmd_Reset =
 	.cmd = "ATZ\r\n",
 	.cmdSize = sizeof("ATZ\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
-	.timeoutMs = 300,
+	.timeoutMs = 1000,
 	.delayMs = 0,
 	.skip = 0,
 };
@@ -149,7 +149,7 @@ static GSM_Cmd cmd_PowerSave =
 	.cmd = "AT+CPSMS=1\r\n",
 	.cmdSize = sizeof("AT+CPSMS=1\r\n")-1,
 	.cmdResponseOnOk = GSM_OK_Str,
-	.timeoutMs = 300,
+	.timeoutMs = 1000,
 	.delayMs = 0,
 	.skip = 0,
 };
@@ -211,7 +211,7 @@ static GSM_Cmd cmd_Connect =
 	.cmd = "AT+CGDATA=\"PPP\",1\r\n",
 	.cmdSize = sizeof("AT+CGDATA=\"PPP\",1\r\n")-1,
 	.cmdResponseOnOk = "CONNECT",
-	.timeoutMs = 30000,
+	.timeoutMs = 60000,
 	.delayMs = 1000,
 	.skip = 0,
 };
@@ -414,6 +414,7 @@ static int atCmd_waitResponse(char * cmd, char *resp, char * resp1, int cmdSize,
 	}
 
     // ** Wait for and check the response
+	
 	idx = 0;
 	while(1)
 	{
@@ -570,10 +571,10 @@ static void pppos_client_task()
 			.flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS
 	};
 
-	//Configure UART1 parameters
+	//Configure UART2 parameters
 	if (uart_param_config(uart_num, &uart_config)) goto exit;
 	
-	//Set UART1 pins(TX, RX, RTS, CTS)
+	//Set UART pins(TX, RX, RTS, CTS)
 	if (uart_set_pin(uart_num, UART_GPIO_TX, UART_GPIO_RX, UART_PIN_RTS, UART_PIN_CTS)) goto exit;
 	#if GSM_DEBUG	
 	printf("uart_set_pin done \n");
@@ -651,6 +652,9 @@ static void pppos_client_task()
 		printf("GSM initialized.");
 		#endif
 
+        // ENTER MODEM SLEEP
+        int res = atCmd_waitResponse("AT!=\"setlpm airplane=1 enable=1\"\r\n", GSM_OK_Str, NULL, -1, 10000, NULL, 0);
+
 		xSemaphoreTake(pppos_mutex, PPPOSMUTEX_TIMEOUT);
 		if (gsm_status == GSM_STATE_FIRSTINIT) {
 			xSemaphoreGive(pppos_mutex);
@@ -681,6 +685,9 @@ static void pppos_client_task()
             gsm_status = GSM_STATE_IDLE;
             xSemaphoreGive(pppos_mutex);
             
+            uart_set_hw_flow_ctrl(uart_num, UART_HW_FLOWCTRL_DISABLE, 0);
+            uart_set_rts(uart_num, 0);
+            
             // === Wait for connect request ===
 			gstat = 0;
 			while (gstat == 0) {
@@ -689,6 +696,11 @@ static void pppos_client_task()
 				gstat = do_pppos_connect;
 				xSemaphoreGive(pppos_mutex);
 			}
+			
+			// Reenable UART RTS pin to wake modem
+			uart_set_rts(uart_num, 1);
+		    uart_set_hw_flow_ctrl(uart_num, UART_HW_FLOWCTRL_CTS_RTS, 0);
+		    
 			if (gstat < 0) break;  // terminate task
 			gsmCmdIter = 0;
             enableAllInitCmd();
@@ -703,7 +715,6 @@ static void pppos_client_task()
 			continue;
 		}		
 		if (gstat < 0) break;  // terminate task
-		
 		
 		pppapi_set_default(ppp);
 		pppapi_set_auth(ppp, PPPAUTHTYPE_PAP, PPP_User, PPP_Pass);
