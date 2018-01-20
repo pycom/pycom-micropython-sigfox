@@ -453,6 +453,15 @@ $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(Q) $(CC) -I. -C -P -x c -E $< -o $@
 endif
 
+ifeq ($(TARGET), app)
+flash: $(APP_BIN)
+	$(ECHO) "Flashing app"
+	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(APP_OFFSET) $(APP_BIN)
+else ifeq ($(TARGET), boot)
+flash: $(BOOT_BIN)
+	$(ECHO) "Flashing boot and partition"
+	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN)
+else
 flash: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "Entering flash mode"
 	$(Q) $(ENTER_FLASHING_MODE)
@@ -460,6 +469,7 @@ flash: $(APP_BIN) $(BOOT_BIN)
 	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)
 	$(ECHO) "Exiting flash mode"
 	$(Q) $(EXIT_FLASHING_MODE)
+endif
 
 erase:
 	$(ECHO) "Entering flash mode"
