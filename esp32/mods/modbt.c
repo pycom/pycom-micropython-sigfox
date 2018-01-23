@@ -69,6 +69,8 @@
 #define MOD_BT_GATTS_WRITE_EVT                              (0x0010)
 #define MOD_BT_GATTC_NOTIFY_EVT                             (0x0020)
 #define MOD_BT_GATTC_INDICATE_EVT                           (0x0040)
+#define MOD_BT_GATTS_SUBSCRIBE_EVT                          (0x0080)
+#define MOD_BT_GATTC_ASYNC_CONN_EVT                         (0x0100)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -93,10 +95,12 @@ typedef struct {
 
 typedef struct {
     mp_obj_base_t         base;
+    bool                  async_disconnect;
     mp_obj_list_t         srv_list;
     esp_bd_addr_t         srv_bda;
     int32_t               conn_id;
     esp_gatt_if_t         gatt_if;
+
 } bt_connection_obj_t;
 
 typedef struct {
@@ -382,14 +386,69 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
             bt_obj.busy = false;
         }
         break;
+
     case ESP_GATTC_CONNECT_EVT:
+        bt_obj.busy = true;
+        bool async_connect = false;
         conn_id = p_data->connect.conn_id;
-        bt_event_result.connection.conn_id = conn_id;
-        bt_event_result.connection.gatt_if = gattc_if;
-        memcpy(bt_event_result.connection.srv_bda, p_data->connect.remote_bda, ESP_BD_ADDR_LEN);
-        esp_ble_gattc_send_mtu_req (gattc_if, p_data->connect.conn_id);
-        xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
+
+        // printf("gattc_events_handler: ESP_GATTC_CONNECT_EVT\n");
+
+        bt_connection_obj_t *connection_obj;
+        for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++) {
+            connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
+
+            // printf("gattc_events_handler: loop \n");
+
+            if (memcmp(connection_obj->srv_bda, p_data->connect.remote_bda, ESP_BD_ADDR_LEN) == 0) {
+
+                // printf("gattc_events_handler: found match\n");
+
+                // Copy remaining data into connection_obj
+                connection_obj->base.type = (mp_obj_t)&mod_bt_connection_type;
+                connection_obj->conn_id = conn_id;
+                connection_obj->gatt_if = gattc_if;
+                memcpy(connection_obj->srv_bda, p_data->connect.remote_bda, ESP_BD_ADDR_LEN);
+                // mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
+                // mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), conn);
+
+                async_connect = true;
+                break;
+            }
+        }
+
+        // Via bt_async_connect
+        if (async_connect) {
+            // async_disconnect is set interactively by bt_conn_disconnect
+            if (connection_obj->async_disconnect) {
+                // printf("gattc_events_handler: async_disconnect true: closing\n");
+                esp_ble_gattc_close(bt_obj.gattc_if, connection_obj->conn_id);
+                esp_ble_gap_disconnect(connection_obj->srv_bda);
+                connection_obj->conn_id = -1;
+                mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
+
+            } else {
+                // Send Callback
+                esp_ble_gattc_send_mtu_req (gattc_if, p_data->connect.conn_id);
+                // printf("gattc_events_handler: async_disconnect false: sending callback\n");
+                xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
+                bt_obj.events |= MOD_BT_GATTC_ASYNC_CONN_EVT;
+                if (bt_obj.trigger & MOD_BT_GATTC_ASYNC_CONN_EVT) {
+                    mp_irq_queue_interrupt(bluetooth_callback_handler, (void *)&bt_obj);
+                }
+            }
+
+        // Via bt_connect
+        } else {
+            // printf("gattc_events_handler: standard connect\n");
+            bt_event_result.connection.conn_id = conn_id;
+            bt_event_result.connection.gatt_if = gattc_if;
+            memcpy(bt_event_result.connection.srv_bda, p_data->connect.remote_bda, ESP_BD_ADDR_LEN);
+            esp_ble_gattc_send_mtu_req (gattc_if, p_data->connect.conn_id);
+            xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
+        }
         break;
+
     case ESP_GATTC_CFG_MTU_EVT:
         // connection process and MTU request complete
         bt_obj.busy = false;
@@ -445,10 +504,10 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         bt_obj.busy = false;
         break;
     case ESP_GATTC_CANCEL_OPEN_EVT:
-        bt_obj.busy = false;
         // intentional fall through
     case ESP_GATTC_CLOSE_EVT:
         close_connection(p_data->close.conn_id);
+        bt_obj.busy = false;
         break;
     default:
         break;
@@ -952,6 +1011,41 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_connect_obj, bt_connect);
 
+STATIC mp_obj_t bt_async_connect(mp_obj_t self_in, mp_obj_t addr) {
+    // bt_event_result_t bt_event;
+
+    if (bt_obj.busy) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "operation already in progress"));
+    }
+
+    if (bt_obj.scanning) {
+        esp_ble_gap_stop_scanning();
+        mp_hal_delay_ms(50);
+        bt_obj.scanning = false;
+    }
+
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(addr, &bufinfo, MP_BUFFER_READ);
+
+    xQueueReset(xScanQueue);
+    bt_obj.busy = true;
+    if (ESP_OK != esp_ble_gattc_open(bt_obj.gattc_if, bufinfo.buf, true)) { // False causes auto-connect
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+    }
+
+    // printf("bt_async_connect: creating connection object\n");
+    bt_connection_obj_t *conn = m_new_obj(bt_connection_obj_t);
+    conn->base.type = (mp_obj_t)&mod_bt_connection_type;
+    conn->async_disconnect = false;
+    conn->conn_id = -1;
+    conn->gatt_if = 0;
+    memcpy(conn->srv_bda, bufinfo.buf, 6);  // Usually bt_event.connection.srv_bda, but no bt_event, yet
+
+    mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), conn);
+    return conn;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_async_connect_obj, bt_async_connect);
+
 STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_name,                     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
@@ -1376,6 +1470,7 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_get_advertisements),      (mp_obj_t)&bt_get_advertisements_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_resolve_adv_data),        (mp_obj_t)&bt_resolve_adv_data_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_connect),                 (mp_obj_t)&bt_connect_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_async_connect),           (mp_obj_t)&bt_async_connect_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_set_advertisement),       (mp_obj_t)&bt_set_advertisement_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_advertise),               (mp_obj_t)&bt_advertise_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_service),                 (mp_obj_t)&bt_service_obj },
@@ -1428,6 +1523,8 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_READ_EVENT),         MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_READ_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_WRITE_EVENT),        MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_WRITE_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_NOTIFY_EVENT),       MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_NOTIFY_EVT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_SUBSCRIBE_EVENT),    MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_SUBSCRIBE_EVT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_SERVER_ASYNC_CONNECTED),  MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_ASYNC_CONN_EVT) },
     // { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_INDICATE_EVENT),     MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_INDICATE_EVT) },
 };
 STATIC MP_DEFINE_CONST_DICT(bt_locals_dict, bt_locals_dict_table);
@@ -1458,6 +1555,10 @@ STATIC mp_obj_t bt_conn_disconnect(mp_obj_t self_in) {
         esp_ble_gattc_close(bt_obj.gattc_if, self->conn_id);
         esp_ble_gap_disconnect(self->srv_bda);
         self->conn_id = -1;
+
+    } else if(self->conn_id == -1 && self->async_disconnect == false) {
+        // printf("close_connection: async_disconnect: true");
+        self->async_disconnect = true; // A conn_id of -1 means it isn't connected, keep obj in list, setting async_disconnect will cause immediate disconnection when connected.
     }
     return mp_const_none;
 }
@@ -1487,7 +1588,7 @@ STATIC mp_obj_t bt_conn_services (mp_obj_t self_in) {
         }
         return &self->srv_list;
     } else {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection already closed"));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection closed"));
     }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_conn_services_obj, bt_conn_services);
