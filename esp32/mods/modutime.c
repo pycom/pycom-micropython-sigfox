@@ -177,9 +177,9 @@ STATIC mp_obj_t time_ticks_diff(mp_obj_t start_in, mp_obj_t end_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(time_ticks_diff_obj, time_ticks_diff);
 
 STATIC mp_obj_t time_ticks_add(mp_obj_t start_in, mp_obj_t delta_in) {
-    int32_t start = mp_obj_get_int_truncated(start_in);
-    int32_t delta = mp_obj_get_int_truncated(delta_in);
-    return mp_obj_new_int(start + delta);
+    uint32_t start = mp_obj_get_int_truncated(start_in);
+    uint32_t delta = mp_obj_get_int_truncated(delta_in);
+    return mp_obj_new_int_from_uint(start + delta);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(time_ticks_add_obj, time_ticks_add);
 
