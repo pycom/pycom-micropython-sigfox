@@ -146,7 +146,7 @@ STATIC mp_obj_t mod_utimeq_heappop(mp_obj_t heap_in, mp_obj_t list_ref) {
     }
     mp_obj_list_t *ret = MP_OBJ_TO_PTR(list_ref);
     if (!MP_OBJ_IS_TYPE(list_ref, &mp_type_list) || ret->len < 3) {
-        mp_raise_TypeError(NULL);
+        mp_raise_TypeError("Not a list or length is less than 3!");
     }
 
     struct qentry *item = &heap->items[0];
