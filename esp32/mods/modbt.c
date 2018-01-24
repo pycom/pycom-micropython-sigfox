@@ -69,6 +69,7 @@
 #define MOD_BT_GATTS_WRITE_EVT                              (0x0010)
 #define MOD_BT_GATTC_NOTIFY_EVT                             (0x0020)
 #define MOD_BT_GATTC_INDICATE_EVT                           (0x0040)
+#define MOD_BT_GATTS_SUBSCRIBE_EVT                          (0x0080)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -197,6 +198,7 @@ typedef struct {
     uint32_t              events;
     uint32_t              trans_id;
     bool                  read_request;
+    uint16_t              config;
 } bt_gatts_char_obj_t;
 
 /******************************************************************************
@@ -566,6 +568,13 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                 } else {    // descriptor
                     if (attr_obj->uuid.len == ESP_UUID_LEN_16 && attr_obj->uuid.uuid.uuid16 == GATT_UUID_CHAR_CLIENT_CONFIG) {
                         uint16_t value = param->write.value[1] << 8 | param->write.value[0];
+                        bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj->parent;
+                        char_obj->config = value;
+                        char_obj->events |= MOD_BT_GATTS_SUBSCRIBE_EVT;
+                        if (char_obj->trigger & MOD_BT_GATTS_SUBSCRIBE_EVT) {
+                            mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+                        }
+
                         if (value == 0x0001) {  // notifications enabled
                             bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj->parent;
                             // the size of value[] needs to be less than MTU size
@@ -1341,11 +1350,18 @@ STATIC mp_obj_t bt_characteristic_events(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_characteristic_events_obj, bt_characteristic_events);
 
+STATIC mp_obj_t bt_characteristic_config(mp_obj_t self_in) {
+    bt_gatts_char_obj_t *self = self_in;
+    return mp_obj_new_int(self->config);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_characteristic_config_obj, bt_characteristic_config);
+
 STATIC const mp_map_elem_t bt_gatts_char_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_value),          (mp_obj_t)&bt_characteristic_value_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),       (mp_obj_t)&bt_characteristic_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_events),         (mp_obj_t)&bt_characteristic_events_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_config),         (mp_obj_t)&bt_characteristic_config_obj },
 };
 STATIC MP_DEFINE_CONST_DICT(bt_gatts_char_locals_dict, bt_gatts_char_locals_dict_table);
 
@@ -1422,12 +1438,17 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_PROP_AUTH),               MP_OBJ_NEW_SMALL_INT(ESP_GATT_CHAR_PROP_BIT_AUTH) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_PROP_EXT_PROP),           MP_OBJ_NEW_SMALL_INT(ESP_GATT_CHAR_PROP_BIT_EXT_PROP) },
 
+    // Defined at https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_CONFIG_NOTIFY),      MP_OBJ_NEW_SMALL_INT(1 << 0) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_CONFIG_INDICATE),    MP_OBJ_NEW_SMALL_INT(1 << 1) },
+
     { MP_OBJ_NEW_QSTR(MP_QSTR_NEW_ADV_EVENT),           MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_ADV_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CLIENT_CONNECTED),        MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_CONN_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CLIENT_DISCONNECTED),     MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_DISCONN_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_READ_EVENT),         MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_READ_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_WRITE_EVENT),        MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_WRITE_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_NOTIFY_EVENT),       MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_NOTIFY_EVT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_SUBSCRIBE_EVENT),    MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_SUBSCRIBE_EVT) },
     // { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_INDICATE_EVENT),     MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_INDICATE_EVT) },
 };
 STATIC MP_DEFINE_CONST_DICT(bt_locals_dict, bt_locals_dict_table);
