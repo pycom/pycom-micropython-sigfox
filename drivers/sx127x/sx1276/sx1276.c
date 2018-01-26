@@ -694,7 +694,7 @@ void SX1276Send( uint8_t *buffer, uint8_t size )
     SX1276SetTx( txTimeout );
 }
 
-void SX1276SetSleep( void )
+IRAM_ATTR void SX1276SetSleep( void )
 {
     TimerStop( &RxTimeoutTimer );
     TimerStop( &TxTimeoutTimer );
