@@ -1664,49 +1664,30 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_char_read_obj, bt_char_read);
 STATIC mp_obj_t bt_char_read_format(mp_obj_t self_in) {
     bt_char_obj_t *self = self_in;
     bt_event_result_t bt_event;
-    bool read_requested = false;
 
     if (self->service->connection->conn_id >= 0) {
         xQueueReset(xScanQueue);
 
-        uint16_t attr_count = 0;
-        esp_ble_gattc_get_attr_count(bt_obj.gattc_if,
-                                     self->service->connection->conn_id,
-                                     ESP_GATT_DB_DESCRIPTOR,
-                                     self->service->start_handle,
-                                     self->service->end_handle,
-                                     self->characteristic.char_handle,
-                                     &attr_count);
-        if (attr_count > 0) {
-            esp_gattc_descr_elem_t *descr_elems = (esp_gattc_descr_elem_t *)heap_caps_malloc(sizeof(esp_gattc_descr_elem_t) * attr_count, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-            if (!descr_elems) {
-                mp_raise_OSError(MP_ENOMEM);
-            } else {
-                esp_ble_gattc_get_all_descr(bt_obj.gattc_if,
-                                            self->service->connection->conn_id,
-                                            self->characteristic.char_handle,
-                                            descr_elems,
-                                            &attr_count,
-                                            0);
-                for (int i = 0; i < attr_count; ++i) {
-                    if (descr_elems[i].uuid.len == ESP_UUID_LEN_16 && descr_elems[i].uuid.uuid.uuid16 == ESP_GATT_UUID_CHAR_PRESENT_FORMAT) {
+        esp_gattc_descr_elem_t format_descriptor;
+        uint16_t count = 1;
+        esp_bt_uuid_t descr_uuid = {.len = ESP_UUID_LEN_16, .uuid.uuid16 = ESP_GATT_UUID_CHAR_PRESENT_FORMAT};
+        esp_gatt_status_t ret_val = esp_ble_gattc_get_descr_by_uuid(bt_obj.gattc_if,
+                                                                    self->service->connection->conn_id,
+                                                                    self->service->start_handle,
+                                                                    self->service->end_handle,
+                                                                    self->characteristic.uuid,
+                                                                    descr_uuid,
+                                                                    &format_descriptor,
+                                                                    &count);
+        if(ret_val == ESP_OK && count == 1) {
+            bt_obj.busy = true;
 
-                        bt_obj.busy = true;
-                        read_requested = true;
-                        esp_ble_gattc_read_char_descr(bt_obj.gattc_if,
-                                                      self->service->connection->conn_id,
-                                                      descr_elems[i].handle,
-                                                      ESP_GATT_AUTH_REQ_NONE);
-
-                        break;
-                    }
-                }
-
-                free(descr_elems);
+            if (ESP_OK != esp_ble_gattc_read_char_descr(bt_obj.gattc_if,
+                                                        self->service->connection->conn_id,
+                                                        format_descriptor.handle,
+                                                        ESP_GATT_AUTH_REQ_NONE)) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
-        }
-
-        if (read_requested) {
             while (bt_obj.busy) {
                 mp_hal_delay_ms(5);
             }
