@@ -421,8 +421,8 @@ $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(Q) $(AR) cru $@ $^
 
 $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a
-#	$(ECHO) "COPY IDF LIBRARIES $@"
-#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
@@ -447,8 +447,8 @@ $(BUILD)/application.a: $(OBJ)
 	$(Q) $(AR) cru $@ $^
 
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
-#	$(ECHO) "COPY IDF LIBRARIES $@"
-#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
 	$(Q) $(SIZE) $@
