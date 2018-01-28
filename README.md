@@ -128,6 +128,10 @@ To specify a serial port other than /dev/ttyUSB0, use ESPPORT variable:
     $ # On linux
     $ # make ESPPORT=/dev/ttyUSB1 flash
 
+To flash at full speed, use ESPSPEED variable:
+
+	$ make ESPSPEED=921600 flash
+
 To build and flash a LoPy for the default region (868 MHz):
 
     $ # LORA_BAND defaults to USE_BAND_868
@@ -141,13 +145,13 @@ To build and flash a LoPy for the default region (868 MHz):
 For 915MHz regions add the `LORA_BAND=USE_BAND_915` variable:
 
     $ cd esp32
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_915  clean
+    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 clean
     $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=boot
     $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=app
     $ make BOARD=LOPY LORA_BAND=USE_BAND_915 flash
 
 The above also applies to the FiPy and LoPy4
 
-Make sure that your board is placed into programming mode, otherwise flashing will fail.
-PyTrack and PySense boards will automatically switch into programming mode (currently supported on MacOS and Linux only!)
+Make sure that your board is placed into programming mode, otherwise flashing will fail.<br>
+PyTrack and PySense boards will automatically switch into programming mode (currently supported on MacOS and Linux only!)<br>
 Expansion Board 2.0 users, please connect ``P2`` to ``GND`` and then reset the board.
