@@ -1799,6 +1799,16 @@ LoRaMacParams_t * LoRaMacGetMacParams(void);
 
 bool * LoRaMacGetSrvAckRequested(void);
 
+bool * LoRaMacGetMacCmdNextTx(void);
+
+uint8_t * LoRaMacGetMacCmdBufferIndex(void);
+
+uint8_t * LoRaMacGetMacCmdBufferRepeatIndex(void);
+
+uint8_t * LoRaMacGetMacCmdBuffer(void);
+
+uint8_t * LoRaMacGetMacCmdBufferRepeat(void);
+
 /*! \} defgroup LORAMAC */
 
 #endif // __LORAMAC_H__

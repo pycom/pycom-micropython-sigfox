@@ -267,7 +267,8 @@ static TimerEvent_t TxNextActReqTimer;
 static nvs_handle modlora_nvs_handle;
 static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR",
                                                                  "NWSKEY", "APPSKEY", "NETID", "ADRACK",
-                                                                 "MACPARAMS", "CHANNELS", "SRVACK" };
+                                                                 "MACPARAMS", "CHANNELS", "SRVACK", "MACNXTTX",
+                                                                 "MACBUFIDX", "MACRPTIDX", "MACBUF", "MACRPTBUF" };
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -784,6 +785,32 @@ static void TASK_LoRa (void *pvParameters) {
                                 } else {
                                     *ack_req = false;
                                 }
+
+                                uint32_t mac_cmd_next_tx;
+                                modlora_nvs_get_uint(E_LORA_NVS_MAC_NXT_TX, (uint32_t *)&mac_cmd_next_tx);
+                                bool *next_tx = LoRaMacGetMacCmdNextTx();
+                                if (mac_cmd_next_tx) {
+                                    *next_tx = true;
+                                } else {
+                                    *next_tx = false;
+                                }
+
+                                uint32_t mac_cmd_buffer_idx;
+                                modlora_nvs_get_uint(E_LORA_NVS_MAC_CMD_BUF_IDX, (uint32_t *)&mac_cmd_buffer_idx);
+                                uint8_t *buffer_idx = LoRaMacGetMacCmdBufferIndex();
+                                *buffer_idx = mac_cmd_buffer_idx;
+
+                                modlora_nvs_get_uint(E_LORA_NVS_MAC_CMD_BUF_RPT_IDX, (uint32_t *)&mac_cmd_buffer_idx);
+                                buffer_idx = LoRaMacGetMacCmdBufferRepeatIndex();
+                                *buffer_idx = mac_cmd_buffer_idx;
+
+                                // write the buffered MAC commads directly from NVRAM
+                                length = 15;
+                                modlora_nvs_get_blob(E_LORA_NVS_ELE_MAC_BUF, (void *)LoRaMacGetMacCmdBuffer(), &length);
+
+                                // write the buffered MAC commads to repeat directly from NVRAM
+                                length = 15;
+                                modlora_nvs_get_blob(E_LORA_NVS_ELE_MAC_RPT_BUF, (void *)LoRaMacGetMacCmdBufferRepeat(), &length);
 
                                 lora_obj.activation = E_LORA_ACTIVATION_ABP;
                                 lora_obj.state = E_LORA_STATE_JOIN;

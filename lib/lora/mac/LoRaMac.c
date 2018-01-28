@@ -4307,6 +4307,15 @@ void LoRaMacNvsSave( void )
     modlora_nvs_set_blob(E_LORA_NVS_ELE_MAC_PARAMS, &LoRaMacParams, sizeof(LoRaMacParams));
     modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELS, Channels, sizeof(Channels));
 
+    modlora_nvs_set_uint(E_LORA_NVS_ELE_ACK_REQ, SrvAckRequested);
+
+    modlora_nvs_set_uint(E_LORA_NVS_MAC_NXT_TX, MacCommandsInNextTx);
+    modlora_nvs_set_uint(E_LORA_NVS_MAC_CMD_BUF_IDX, MacCommandsBufferIndex);
+    modlora_nvs_set_uint(E_LORA_NVS_MAC_CMD_BUF_RPT_IDX, MacCommandsBufferToRepeatIndex);
+
+    modlora_nvs_set_blob(E_LORA_NVS_ELE_MAC_BUF, MacCommandsBuffer, sizeof(MacCommandsBuffer));
+    modlora_nvs_set_blob(E_LORA_NVS_ELE_MAC_RPT_BUF, MacCommandsBufferToRepeat, sizeof(MacCommandsBufferToRepeat));
+
     modlora_nvs_set_uint(E_LORA_NVS_ELE_DWLINK, DownLinkCounter);
     modlora_nvs_set_uint(E_LORA_NVS_ELE_UPLINK, UpLinkCounter);
 
@@ -4317,7 +4326,6 @@ void LoRaMacNvsSave( void )
     modlora_nvs_set_uint(E_LORA_NVS_ELE_DEVADDR, LoRaMacDevAddr);
 
     modlora_nvs_set_uint(E_LORA_NVS_ELE_ADR_ACKS, AdrAckCounter);
-    modlora_nvs_set_uint(E_LORA_NVS_ELE_ACK_REQ, SrvAckRequested);
 }
 
 void LoRaMacTestSetDutyCycleOn( bool enable )
@@ -4335,4 +4343,24 @@ LoRaMacParams_t * LoRaMacGetMacParams(void) {
 
 bool * LoRaMacGetSrvAckRequested(void) {
     return &SrvAckRequested;
+}
+
+bool * LoRaMacGetMacCmdNextTx(void) {
+    return &MacCommandsInNextTx;
+}
+
+uint8_t * LoRaMacGetMacCmdBufferIndex(void) {
+    return &MacCommandsBufferIndex;
+}
+
+uint8_t * LoRaMacGetMacCmdBufferRepeatIndex(void) {
+    return &MacCommandsBufferToRepeatIndex;
+}
+
+uint8_t * LoRaMacGetMacCmdBuffer(void) {
+    return MacCommandsBuffer;
+}
+
+uint8_t * LoRaMacGetMacCmdBufferRepeat(void) {
+    return MacCommandsBufferToRepeat;
 }
