@@ -86,7 +86,7 @@ ifeq ($(BOARD), $(filter $(BOARD), LOPY4))
 endif
 
 ifeq ($(BOARD), $(filter $(BOARD), SIPY))
-    LIBS += sigfox/modsigfox.a
+    LIBS += sigfox/modsigfox_sipy.a
 endif
 
 B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader \
