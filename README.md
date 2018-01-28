@@ -59,15 +59,15 @@ the Espressif website:
 
 - for 64-bit Linux::
 
-    https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-73-ge28a011-5.2.0.tar.gz
+    https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz
 
 - for 32-bit Linux::
 
-    https://dl.espressif.com/dl/xtensa-esp32-elf-linux32-1.22.0-73-ge28a011-5.2.0.tar.gz
+    https://dl.espressif.com/dl/xtensa-esp32-elf-linux32-1.22.0-80-g6c4433a-5.2.0.tar.gz
 
 - for Mac OS:
 
-    https://dl.espressif.com/dl/xtensa-esp32-elf-osx-1.22.0-73-ge28a011-5.2.0.tar.gz
+    https://dl.espressif.com/dl/xtensa-esp32-elf-osx-1.22.0-80-g6c4433a-5.2.0.tar.gz
 
 To use it, you will need to update your ``PATH`` environment variable in ``~/.bash_profile`` file. To make ``xtensa-esp32-elf`` available for all terminal sessions, add the following line to your ``~/.bash_profile`` file::
 
@@ -105,6 +105,20 @@ By default the firmware is built for the WIPY2:
     $ make TARGET=app
     $ make flash
 
+You can change the board type by using the BOARD variable:
+
+    $ cd esp32
+    $ make BOARD=GPY clean
+    $ make BOARD=GPY TARGET=boot
+    $ make BOARD=GPY TARGET=app
+    $ make flash
+
+We currently support the following BOARD types:
+
+	WIPY LOPY SIPY GPY FIPY LOPY4
+
+For LoRa, you may need to specify the `LORA_BAND` as explained below.
+
 To specify a serial port other than /dev/ttyUSB0, use ESPPORT variable:
 
     $ # On MacOS
@@ -114,7 +128,11 @@ To specify a serial port other than /dev/ttyUSB0, use ESPPORT variable:
     $ # On linux
     $ # make ESPPORT=/dev/ttyUSB1 flash
 
-To build and flash your LoPy for the default region (868 MHz):
+To flash at full speed, use ESPSPEED variable:
+
+	$ make ESPSPEED=921600 flash
+
+To build and flash a LoPy for the default region (868 MHz):
 
     $ # LORA_BAND defaults to USE_BAND_868
     $ cd esp32
@@ -124,20 +142,16 @@ To build and flash your LoPy for the default region (868 MHz):
     $ make BOARD=LOPY flash
 
 
-or for 915MHz regions:
+For 915MHz regions add the `LORA_BAND=USE_BAND_915` variable:
 
     $ cd esp32
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_915  clean
+    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 clean
     $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=boot
     $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=app
     $ make BOARD=LOPY LORA_BAND=USE_BAND_915 flash
 
-or the SiPy:
+The above also applies to the FiPy and LoPy4
 
-    $ cd esp32
-    $ make BOARD=SIPY TARGET=boot
-    $ make BOARD=SIPY TARGET=app
-    $ make BOARD=SIPY flash
-
-Make sure that your board is placed into programming mode, otherwise flahing will fail.
-To do this, connect ``P2`` to ``GND`` and then reset the board.
+Make sure that your board is placed into programming mode, otherwise flashing will fail.<br>
+PyTrack and PySense boards will automatically switch into programming mode (currently supported on MacOS and Linux only!)<br>
+Expansion Board 2.0 users, please connect ``P2`` to ``GND`` and then reset the board.

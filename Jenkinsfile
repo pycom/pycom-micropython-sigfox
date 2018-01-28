@@ -3,7 +3,7 @@ def boards_to_build_1 = ["LoPy_868", "WiPy"]
 def boards_to_build_2 = ["LoPy_915", "SiPy"]
 def boards_to_build_3 = ["FiPy_868", "GPy" , "LoPy4_868"]
 def boards_to_build_4 = ["FiPy_915" , "LoPy4_915"]
-def boards_to_test = ["FiPy_868"]
+def boards_to_test = ["FiPy_868", "LoPy_868"]
 def remote_node = "UDOO"
 
 node {
@@ -80,16 +80,8 @@ node {
 
     stage ('Test'){
       def parallelTests = [:]
-      for (x in boards_to_test) {
-        def name = x
-        def board_name = name.toUpperCase()
-        if (board_name == "LOPY_868" || board_name == "LOPY_915") {
-            board_name = "LOPY"
-        }
-        if (board_name == "FIPY_868" || board_name == "FIPY_915") {
-            board_name = "FIPY"
-        }
-        parallelTests[board_name] = testBuild(board_name)
+      for (board_name in boards_to_test) {
+        parallelTests[board_name] = testBuild(board_name.toUpperCase())
       }
     parallel parallelTests
     }
@@ -100,11 +92,11 @@ node {
           sleep(5) //Delay to skip all bootlog
           dir('tests') {
             timeout(30) {
-              sh '''./run-tests --target=esp32-''' + name + ''' --device /dev/serial/by-id/usb-Pycom_Pytrack_Py000000-if00'''
+              sh '''./run-tests --target=esp32-''' + name + ''' --device /dev/''' +name
             }
           }
-          sh 'python esp32/tools/pypic.py --port /dev/serial/by-id/usb-Pycom_Pytrack_Py000000-if00 --enter'
-          sh 'python esp32/tools/pypic.py --port /dev/serial/by-id/usb-Pycom_Pytrack_Py000000-if00 --exit'
+          sh 'python esp32/tools/pypic.py --port /dev/' + name +' --enter'
+          sh 'python esp32/tools/pypic.py --port /dev/' + name +' --exit'
         }
       }
     }
@@ -118,11 +110,11 @@ def flashBuild(name) {
       unstash 'esp32Tools'
       unstash 'tests'
       unstash 'tools'
-      sh 'python esp32/tools/pypic.py --port /dev/serial/by-id/usb-Pycom_Pytrack_Py000000-if00 --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/serial/by-id/usb-Pycom_Pytrack_Py000000-if00 --baud 921600 erase_flash'
-      sh 'python esp32/tools/pypic.py --port /dev/serial/by-id/usb-Pycom_Pytrack_Py000000-if00 --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/serial/by-id/usb-Pycom_Pytrack_Py000000-if00 --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
-      sh 'python esp32/tools/pypic.py --port /dev/serial/by-id/usb-Pycom_Pytrack_Py000000-if00 --exit'
+      sh 'python esp32/tools/pypic.py --port /dev/' + name +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + name +' --baud 921600 erase_flash'
+      sh 'python esp32/tools/pypic.py --port /dev/' + name +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + name +' --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
+      sh 'python esp32/tools/pypic.py --port /dev/' + name +' --exit'
     }
   }
 }
@@ -139,6 +131,7 @@ def boardBuild(name) {
     }
     def app_bin = name.toLowerCase() + '.bin'
     return {
+    		release_dir = "${JENKINS_HOME}/release/${JOB_BASE_NAME}"
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
@@ -158,15 +151,15 @@ def boardBuild(name) {
         export PYCOM_VERSION=$(cat ../../../pycom_version.h |grep SW_VERSION_NUMBER|cut -d\\" -f2);
         export GIT_TAG=$(git rev-parse --short HEAD);
         mkdir -p firmware_package;
-        mkdir -p /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG;
+        mkdir -p '''+ release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG;
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
-        mv ../application.elf /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION-application.elf;
+        mv ../application.elf ''' + release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION-application.elf;
         cp ../appimg.bin .;
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
         cp ../''' + app_bin + ''' .;
-        tar -cvzf /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
+        tar -cvzf ''' + release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
