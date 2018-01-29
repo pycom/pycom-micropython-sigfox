@@ -22,7 +22,15 @@ node {
           make clean;
           make all'''
     }
-
+    
+    stage('IDF-LIBS') {
+        // build the libs from esp-idf
+       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+        		 export IDF_PATH=${WORKSPACE}/esp-idf;
+        		 cd $IDF_PATH/examples/wifi/scan;
+        		 make all'''
+    }
+    
     // build the boards in four cycles
     // Todo: run in a loop if possible
 
