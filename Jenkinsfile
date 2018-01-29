@@ -28,7 +28,7 @@ node {
        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         		 export IDF_PATH=${WORKSPACE}/esp-idf;
         		 cd $IDF_PATH/examples/wifi/scan;
-        		 make all'''
+        		 make clean && make all'''
     }
     
     // build the boards in four cycles
