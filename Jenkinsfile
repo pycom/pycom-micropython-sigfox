@@ -167,14 +167,3 @@ def version() {
     def matcher = readFile('esp32/build/LOPY/release/genhdr/mpversion.h') =~ 'MICROPY_GIT_TAG (.+)'
     matcher ? matcher[0][1] : null
 }
-;
-        cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
-        cp ../''' + app_bin + ''' .;
-        tar -cvzf /var/lib/jenkins/release/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
-    }
-}
-
-def version() {
-    def matcher = readFile('esp32/build/LOPY/release/genhdr/mpversion.h') =~ 'MICROPY_GIT_TAG (.+)'
-    matcher ? matcher[0][1] : null
-}
