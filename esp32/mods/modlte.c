@@ -83,7 +83,7 @@
 
 #define FILE_READ_SIZE 512
 
-#define LTE_DEBUG 1
+#define LTE_DEBUG 0
 
 /******************************************************************************
  DECLARE PRIVATE DATA
