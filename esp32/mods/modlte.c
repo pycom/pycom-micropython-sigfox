@@ -83,6 +83,8 @@
 
 #define FILE_READ_SIZE 512
 
+#define LTE_DEBUG 1
+
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -376,18 +378,24 @@ static int lte_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t p
     int ret = connect(s->sock_base.u.sd, &addr, sizeof(addr));
 
     if (ret != 0) {
-        // printf("Connect returned -0x%x\n", -ret);
+        #if LTE_DEBUG
+        printf("Connect returned -0x%x\n", -ret);
+        #endif
         *_errno = ret;
         return -1;
     }
 
-    // printf("Connected.\n");
+    #if LTE_DEBUG
+    printf("Connected.\n");
+    #endif
 
     if (s->sock_base.is_ssl && (ret == 0)) {
         mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
 
         if ((ret = mbedtls_net_set_block(&ss->context_fd)) != 0) {
-            // printf("failed! net_set_(non)block() returned -0x%x\n", -ret);
+            #if LTE_DEBUG
+            printf("failed! net_set_(non)block() returned -0x%x\n", -ret);
+            #endif
             *_errno = ret;
             return -1;
         }
@@ -398,21 +406,29 @@ static int lte_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t p
         {
             if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_TIMEOUT)
             {
-                // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
+                #if LTE_DEBUG
+                printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
+                #endif
                 *_errno = ret;
                 return -1;
             }
         }
 
-        // printf("Verifying peer X.509 certificate...\n");
+        #if LTE_DEBUG
+        printf("Verifying peer X.509 certificate...\n");
+        #endif
 
         if ((ret = mbedtls_ssl_get_verify_result(&ss->ssl)) != 0) {
             /* In real life, we probably want to close connection if ret != 0 */
-            // printf("Failed to verify peer certificate!\n");
+            #if LTE_DEBUG
+            printf("Failed to verify peer certificate!\n");
+            #endif
             *_errno = ret;
             return -1;
         } else {
-            // printf("Certificate verified.\n");
+            #if LTE_DEBUG
+            printf("Certificate verified.\n");
+            #endif
         }
     }
 
@@ -427,7 +443,9 @@ static int lte_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uint
             mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
             while ((bytes = mbedtls_ssl_write(&ss->ssl, (const unsigned char *)buf, len)) <= 0) {
                 if (bytes != MBEDTLS_ERR_SSL_WANT_READ && bytes != MBEDTLS_ERR_SSL_WANT_WRITE) {
-                    // printf("mbedtls_ssl_write returned -0x%x\n", -bytes);
+                    #if LTE_DEBUG
+                    printf("mbedtls_ssl_write returned -0x%x\n", -bytes);
+                    #endif
                     break;
                 } else {
                     *_errno = MP_EAGAIN;
@@ -455,7 +473,9 @@ static int lte_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len
             if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE ) {
                 // do nothing
             } else if (ret == MBEDTLS_ERR_SSL_TIMEOUT) {
-                // printf("SSL timeout recieved\n");
+                #if LTE_DEBUG
+                printf("SSL timeout recieved\n");
+                #endif
                 // non-blocking return
                 if (s->sock_base.timeout == 0) {
                     ret = 0;
@@ -464,17 +484,25 @@ static int lte_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len
                 // blocking do nothing
             }
             else if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
-                // printf("Close notify received\n");
+                #if LTE_DEBUG
+                printf("Close notify received\n");
+                #endif
                 ret = 0;
                 break;
             } else if (ret < 0) {
-                // printf("mbedtls_ssl_read returned -0x%x\n", -ret);
+                #if LTE_DEBUG
+                printf("mbedtls_ssl_read returned -0x%x\n", -ret);
+                #endif
                 break;
             } else if (ret == 0) {
-                // printf("Connection closed\n");
+                #if LTE_DEBUG
+                printf("Connection closed\n");
+                #endif
                 break;
             } else {
-                // printf("Data read OK = %d\n", ret);
+                #if LTE_DEBUG
+                printf("Data read OK = %d\n", ret);
+                #endif
                 break;
             }
         } while (true);
