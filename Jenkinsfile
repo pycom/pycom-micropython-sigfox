@@ -1,8 +1,9 @@
 def buildVersion
 def boards_to_build_1 = ["LoPy_868", "WiPy"]
 def boards_to_build_2 = ["LoPy_915", "SiPy"]
-def boards_to_build_3 = ["FiPy_868", "GPy" , "LoPy4_868"]
+def boards_to_build_3 = ["FiPy_868", "LoPy4_868"]
 def boards_to_build_4 = ["FiPy_915" , "LoPy4_915"]
+def boards_to_build_5 = ["GPy"]
 def boards_to_test = ["FiPy_868", "LoPy_868"]
 def remote_node = "UDOO"
 
@@ -22,7 +23,7 @@ node {
           make clean;
           make all'''
     }
-    
+
     stage('IDF-LIBS') {
         // build the libs from esp-idf
        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
@@ -30,7 +31,7 @@ node {
         		 cd $IDF_PATH/examples/wifi/scan;
         		 make clean && make all'''
     }
-    
+
     // build the boards in four cycles
     // Todo: run in a loop if possible
 
@@ -64,6 +65,15 @@ node {
     stage('Build4') {
         def parallelSteps = [:]
         for (x in boards_to_build_4) {
+          def name = x
+          parallelSteps[name] = boardBuild(name)
+        }
+        parallel parallelSteps
+    }
+
+    stage('Build5') {
+        def parallelSteps = [:]
+        for (x in boards_to_build_5) {
           def name = x
           parallelSteps[name] = boardBuild(name)
         }
