@@ -43,6 +43,7 @@ node {
     			else{
         			parallelSteps[board] = boardBuild(board)
         		}
+        		echo 'ParallelSteps: ' + parallelSteps
         		parallel parallelSteps
   		}
   	}
