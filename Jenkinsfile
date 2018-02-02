@@ -59,8 +59,10 @@ stage ('Flash') {
 	for (board in boards_to_test) {
 		String board_name = board.key.toUpperCase()
 		String device_name = board.value
+		echo 'Flashing ' + board_name + ' on /dev/' + device_name
 		parallelFlash[board_name] = flashBuild(board_name,device_name)
 	}
+	echo 'ParallelFlash: ' + parallelFlash
 	parallel parallelFlash
 }
 
@@ -92,7 +94,6 @@ def testBuild(board) {
 
 def flashBuild(board_name,device_name) {
   return {
-    echo 'Flashing ' + board_name + ' on /dev/' + device_name
     node("UDOO") {
     	  echo 'Flashing ' + board_name + ' on /dev/' + device_name
       sh 'rm -rf *'
