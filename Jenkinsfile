@@ -43,7 +43,7 @@ node {
     			else{
         			parallelSteps[board] = boardBuild(board)
         		}
-        		//parallel parallelSteps
+        		parallel parallelSteps
   		}
   	}
 
@@ -60,7 +60,7 @@ stage ('Flash') {
 		String board_name = board.key.toUpperCase()
 		String device_name = board.value
 		echo 'Flashing ' + board_name + ' on /dev/' + device_name
-		parallelFlash[board_name] = flashBuild(board_name,device_name)
+		parallelFlash[board_name] = flashBuild(board)
 	}
 	echo 'ParallelFlash: ' + parallelFlash
 	parallel parallelFlash
@@ -92,9 +92,11 @@ def testBuild(board) {
 	}
 }
 
-def flashBuild(board_name,device_name) {
+def flashBuild(board) {
   return {
     node("UDOO") {
+    	  String board_name = board.key.toUpperCase()
+      String device_name = board.value
     	  echo 'Flashing ' + board_name + ' on /dev/' + device_name
       sh 'rm -rf *'
       unstash 'binary'
