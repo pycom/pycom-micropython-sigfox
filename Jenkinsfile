@@ -17,8 +17,8 @@ node {
 
     stage('mpy-cross') {
         // build the cross compiler first
-        sh 'git tag -fa v1.8.6-849-' + GIT_TAG + ' -m \\"v1.8.6-849-' + GIT_TAG + '''\\";
-          cd mpy-cross;
+//        sh 'git tag -fa v1.8.6-849-' + GIT_TAG + ' -m \\"v1.8.6-849-' + GIT_TAG + '''\\";
+//          cd mpy-cross;
 //          make clean;
 //          make all'''
     }
