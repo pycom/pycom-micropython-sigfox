@@ -1,8 +1,8 @@
 def buildVersion
 //def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def boards_to_build = ["WiPy", "LoPy"]
-//def boards_to_test = ["FiPy_868":"FIPY_868", "LoPy_868":"LOPY_868"]
-def boards_to_test = ["LoPy_868":"LOPY_868"]
+def boards_devices = ["FiPy_868":"FIPY_868", "LoPy_868":"LOPY_868"]
+def boards_to_test = ["LoPy_868"]
 String remote_node = "UDOO"
 
 node {
@@ -58,8 +58,7 @@ node {
 stage ('Flash') {
 	def parallelFlash = [:]
 	for (board in boards_to_test) {
-		echo 'Flashing ' + board.key.toUpperCase() + ' on /dev/' + board.value
-		parallelFlash[board.key] = flashBuild(board.key)
+		parallelFlash[board] = flashBuild(board)
 	}
 	echo 'ParallelFlash: ' + parallelFlash
 	parallel parallelFlash
@@ -68,8 +67,7 @@ stage ('Flash') {
 stage ('Test'){
 	def parallelTests = [:]
 	for (board in boards_to_test) {
-		echo 'Testing ' + board.key.toUpperCase() + ' on /dev/' + board.value
-		parallelTests[board.key] = testBuild(board.key)
+		parallelTests[board] = testBuild(board)
 	}
 	parallel parallelTests
 }
@@ -124,7 +122,7 @@ def flashBuild(board_name) {
   return {
     node("UDOO") {
     	  String board_name_u = board_name.toUpperCase()
-      String device_name = boards_to_test[board_name].value
+      String device_name = boards_devices[board_name].value
     	  echo 'Flashing ' + board_name_u + ' on /dev/' + device_name
       sh 'rm -rf *'
       unstash 'binary'
@@ -144,7 +142,7 @@ def flashBuild(board_name) {
 def testBuild(board_name) {
 	return {
 		node("UDOO") {
-			String device_name = boards_to_test[board_name].value
+			String device_name = boards_devices[board_name].value
 			sleep(5) //Delay to skip all bootlog
 			dir('tests') {
 				timeout(30) {
