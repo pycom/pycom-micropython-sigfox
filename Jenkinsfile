@@ -112,13 +112,14 @@ def boardBuild(name) {
     }
     def app_bin = name.toLowerCase() + '.bin'
     return {
-    		pycom_version=version()
-    		sh 'echo version: ' + pycom_version
-    		git_tag = sh 'git rev-parse --short HEAD'
-    		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + pycom_version + "/" + git_tag + "/"
-    		sh 'echo git_tag: ' + git_tag
-    		sh 'echo release_dir: ' + release_dir
-    		sh 'echo version_result: ' +pycom_version[1]
+    		pycom_version=version().trim()
+    		echo 'version: ' + pycom_version
+    		GIT_TAG = sh (
+    			script: 'git rev-parse --short HEAD',
+    			returnStdout: true).trim()
+    		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + pycom_version + "/" + GIT_TAG + "/"
+    		echo 'git_tag: ' + git_tag
+    		echo 'release_dir: ' + release_dir
 //        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
 //        export IDF_PATH=${WORKSPACE}/esp-idf;
 //        cd esp32;
