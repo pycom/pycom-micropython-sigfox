@@ -3,6 +3,9 @@ def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def boards_to_test = ["FiPy_868":"FIPY_868", "LoPy_868":"LOPY_868"]
 String remote_node = "UDOO"
 
+PYCOM_VERSION=version().trim()
+GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+
 node {
     // get pycom-esp-idf source
 //    stage('Checkout') {
@@ -112,13 +115,9 @@ def boardBuild(name) {
     }
     def app_bin = name.toLowerCase() + '.bin'
     return {
-    		pycom_version=version().trim()
-    		echo 'version: ' + pycom_version
-    		GIT_TAG = sh (
-    			script: 'git rev-parse --short HEAD',
-    			returnStdout: true).trim()
-    		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + pycom_version + "/" + GIT_TAG + "/"
-    		echo 'git_tag: ' + git_tag
+    		echo 'version: ' + PYCOM_VERSION
+    		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + PYCOM_VERSION + "/" + GIT_TAG + "/"
+    		echo 'git_tag: ' + GIT_TAG
     		echo 'release_dir: ' + release_dir
 //        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
 //        export IDF_PATH=${WORKSPACE}/esp-idf;
