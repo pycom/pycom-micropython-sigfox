@@ -16,15 +16,14 @@ node {
 //        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
 //    }
 //
-//    stage('mpy-cross') {
-//        // build the cross compiler first
-//        sh '''export GIT_TAG=$(git rev-parse --short HEAD)
-//          git tag -fa v1.8.6-849-$GIT_TAG -m \\"v1.8.6-849-$GIT_TAG\\";
-//          cd mpy-cross;
-//          make clean;
-//          make all'''
-//    }
-//
+    stage('mpy-cross') {
+        // build the cross compiler first
+        sh 'git tag -fa v1.8.6-849-' + GIT_TAG + ' -m \\"v1.8.6-849-' + GIT_TAG + '''\\";
+          cd mpy-cross;
+          make clean;
+          make all'''
+    }
+
 //    stage('IDF-LIBS') {
 //        // build the libs from esp-idf
 //       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
@@ -55,27 +54,30 @@ node {
     stash includes: 'esp32/tools/**', name: 'esp32Tools'
 }
 
-    stage ('Flash') {
-      def parallelFlash = [:]
-      for (board in boards_to_test) {
-        echo 'Flashing ' + board.key.toUpperCase() + 'at /dev/' + board.value
-        parallelFlash[board.key] = flashBuild(board.key.toUpperCase(),board.value)
-      }
-    parallel parallelFlash
-    }
+stage ('Flash') {
+	def parallelFlash = [:]
+	for (board in boards_to_test) {
+		def board_name = board.key.toUpperCase()
+		echo 'Flashing ' + board_name + ' on /dev/' + board.value
+		parallelFlash[board_name] = flashBuild(board_name,board.value)
+	}
+	parallel parallelFlash
+}
 
-    stage ('Test'){
-      def parallelTests = [:]
-      for (board in boards_to_test) {
-        echo 'Testing ' + board.key.toUpperCase() + 'at /dev/' + board.value
-        parallelTests[board.key] = testBuild(board.key.toUpperCase(),board.value)
-      }
-    parallel parallelTests
-    }
+stage ('Test'){
+	def parallelTests = [:]
+	for (board in boards_to_test) {
+		def board_name = board.key.toUpperCase()
+		echo 'Testing ' + board.key.toUpperCase() + ' on /dev/' + board.value
+		parallelTests[board.key] = testBuild(board.key.toUpperCase(),board.value)
+	}
+	parallel parallelTests
+}
+
 
 def testBuild(name, device) {
 	return {
-		node(remote_node) {
+		node("UDOO") {
 			sleep(5) //Delay to skip all bootlog
 			dir('tests') {
 				timeout(30) {
@@ -90,7 +92,7 @@ def testBuild(name, device) {
 
 def flashBuild(name,device) {
   return {
-    node(remote_node) {
+    node("UDOO") {
       sh 'rm -rf *'
       unstash 'binary'
       unstash 'esp-idfTools'
