@@ -112,7 +112,11 @@ def boardBuild(name) {
     }
     def app_bin = name.toLowerCase() + '.bin'
     return {
-    		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}"
+    		pycom_version = sh 'cat ${WORKSPACE}/esp32/pycom_version.h |grep SW_VERSION_NUMBER|cut -d\\" -f2'
+    		pycom_test_version=version()
+    		sh 'echo '+pycom_test_version
+    		git_tag = sh 'git rev-parse --short HEAD'
+    		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + pycom_version + "/" + git_tag + "/"
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
@@ -129,22 +133,20 @@ def boardBuild(name) {
         make TARGET=app -j2 BOARD=''' + name_short + lora_band
 
         sh '''cd esp32/build/'''+ name_u +'''/release;
-        export PYCOM_VERSION=$(cat ../../../pycom_version.h |grep SW_VERSION_NUMBER|cut -d\\" -f2);
-        export GIT_TAG=$(git rev-parse --short HEAD);
         mkdir -p firmware_package;
         mkdir -p '''+ release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG;
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
-        mv ../application.elf ''' + release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION-application.elf;
+        mv ../application.elf ''' + release_dir + name + "-" + pycom_version + '''-application.elf;
         cp ../appimg.bin .;
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
         cp ../''' + app_bin + ''' .;'''
-        sh '''tar -cvzf ''' + release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
+        sh '''tar -cvzf ''' + release_dir + name + "-" + pycom_version + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
 def version() {
-    def matcher = readFile('esp32/build/LOPY/release/genhdr/mpversion.h') =~ 'MICROPY_GIT_TAG (.+)'
-    matcher ? matcher[0][1] : null
+    def matcher = readFile('/esp32/pycom_version.h') =~ 'SW_VERSION_NUMBER (.+)'
+    matcher ? matcher[1] : null
 }
