@@ -1,5 +1,6 @@
 def buildVersion
-def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
+//def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
+def boards_to_build = ["WiPy", "LoPy"]
 def boards_to_test = ["FiPy_868":"FIPY_868", "LoPy_868":"LOPY_868"]
 String remote_node = "UDOO"
 
@@ -46,11 +47,11 @@ node {
   		}
   	}
 
-//    stash includes: '**/*.bin', name: 'binary'
-//    stash includes: 'tests/**', name: 'tests'
-//    stash includes: 'esp-idf/components/esptool_py/**', name: 'esp-idfTools'
-//    stash includes: 'tools/**', name: 'tools'
-//    stash includes: 'esp32/tools/**', name: 'esp32Tools'
+    stash includes: '**/*.bin', name: 'binary'
+    stash includes: 'tests/**', name: 'tests'
+    stash includes: 'esp-idf/components/esptool_py/**', name: 'esp-idfTools'
+    stash includes: 'tools/**', name: 'tools'
+    stash includes: 'esp32/tools/**', name: 'esp32Tools'
 }
 
 //    stage ('Flash') {
@@ -119,32 +120,32 @@ def boardBuild(name) {
     		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + PYCOM_VERSION + "/" + GIT_TAG + "/"
     		echo 'git_tag: ' + GIT_TAG
     		echo 'release_dir: ' + release_dir
-//        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-//        export IDF_PATH=${WORKSPACE}/esp-idf;
-//        cd esp32;
-//        make clean BOARD=''' + name_short + lora_band
-//
-//        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-//        export IDF_PATH=${WORKSPACE}/esp-idf;
-//        cd esp32;
-//        make TARGET=boot -j2 BOARD=''' + name_short + lora_band
-//
-//        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-//        export IDF_PATH=${WORKSPACE}/esp-idf;
-//        cd esp32;
-//        make TARGET=app -j2 BOARD=''' + name_short + lora_band
-//
-//        sh '''cd esp32/build/'''+ name_u +'''/release;
-//        mkdir -p firmware_package;
-//        mkdir -p '''+ release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG;
-//        cd firmware_package;
-//        cp ../bootloader/bootloader.bin .;
-//        mv ../application.elf ''' + release_dir + name + "-" + pycom_version + '''-application.elf;
-//        cp ../appimg.bin .;
-//        cp ../lib/partitions.bin .;
-//        cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
-//        cp ../''' + app_bin + ''' .;'''
-//        sh '''tar -cvzf ''' + release_dir + name + "-" + pycom_version + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
+        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+        export IDF_PATH=${WORKSPACE}/esp-idf;
+        cd esp32;
+        make clean BOARD=''' + name_short + lora_band
+
+        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+        export IDF_PATH=${WORKSPACE}/esp-idf;
+        cd esp32;
+        make TARGET=boot -j2 BOARD=''' + name_short + lora_band
+
+        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+        export IDF_PATH=${WORKSPACE}/esp-idf;
+        cd esp32;
+        make TARGET=app -j2 BOARD=''' + name_short + lora_band
+
+        sh '''cd esp32/build/'''+ name_u +'''/release;
+        mkdir -p firmware_package;
+        mkdir -p '''+ release_dir + ''';
+        cd firmware_package;
+        cp ../bootloader/bootloader.bin .;
+        mv ../application.elf ''' + release_dir + name + "-" + pycom _version + '''-application.elf;
+        cp ../appimg.bin .;
+        cp ../lib/partitions.bin .;
+        cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
+        cp ../''' + app_bin + ''' .;'''
+        sh '''tar -cvzf ''' + release_dir + name + "-" + pycom_version + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
