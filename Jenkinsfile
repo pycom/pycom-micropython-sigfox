@@ -119,10 +119,10 @@ def boardBuild(name) {
 
 def flashBuild(board_name) {
   return {
+    String device_name = get_device_name(board_name)
     node("UDOO") {
     	  String board_name_u = board_name.toUpperCase()
 	  //String device_name = boards_devices[board_name].value
-	  String device_name = get_device_name(board_name)
     	  echo 'Flashing ' + board_name_u + ' on /dev/' + device_name
       sh 'rm -rf *'
       unstash 'binary'
@@ -141,9 +141,9 @@ def flashBuild(board_name) {
 
 def testBuild(board_name) {
   return {
+    String device_name = get_device_name(board_name)
 	node("UDOO") {
     	  String board_name_u = board_name.toUpperCase()
-	  String device_name = get_device_name(board_name)
 	  echo 'Testing ' + board_name_u + ' on /dev/' + device_name
 		sleep(5) //Delay to skip all bootlog
 		dir('tests') {
