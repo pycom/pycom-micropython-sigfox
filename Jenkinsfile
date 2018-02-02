@@ -5,11 +5,11 @@ String remote_node = "UDOO"
 
 node {
     // get pycom-esp-idf source
-    stage('Checkout') {
-        checkout scm
-        sh 'rm -rf esp-idf'
-        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
-    }
+//    stage('Checkout') {
+//        checkout scm
+//        sh 'rm -rf esp-idf'
+//        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
+//    }
 
     stage('mpy-cross') {
         // build the cross compiler first
@@ -20,13 +20,13 @@ node {
           make all'''
     }
 
-    stage('IDF-LIBS') {
+//    stage('IDF-LIBS') {
         // build the libs from esp-idf
-       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-        		 export IDF_PATH=${WORKSPACE}/esp-idf;
-        		 cd $IDF_PATH/examples/wifi/scan;
-        		 make clean && make all'''
-    }
+//       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+//        		 export IDF_PATH=${WORKSPACE}/esp-idf;
+//        		 cd $IDF_PATH/examples/wifi/scan;
+//        		 make clean && make all'''
+//    }
 
  	for (board in boards_to_build) {
 		stage(board) {
@@ -112,9 +112,8 @@ def boardBuild(name) {
     }
     def app_bin = name.toLowerCase() + '.bin'
     return {
-    		pycom_version = sh 'cat ${WORKSPACE}/esp32/pycom_version.h |grep SW_VERSION_NUMBER|cut -d\\" -f2'
-    		pycom_test_version=version()
-    		sh 'echo '+pycom_test_version
+    		pycom_version=version()
+    		sh 'echo ' + pycom_version
     		git_tag = sh 'git rev-parse --short HEAD'
     		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + pycom_version + "/" + git_tag + "/"
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
