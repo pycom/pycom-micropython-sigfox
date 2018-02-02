@@ -1,7 +1,8 @@
 def buildVersion
 //def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def boards_to_build = ["WiPy", "LoPy"]
-def boards_to_test = ["FiPy_868":"FIPY_868", "LoPy_868":"LOPY_868"]
+//def boards_to_test = ["FiPy_868":"FIPY_868", "LoPy_868":"LOPY_868"]
+def boards_to_test = ["LoPy_868":"LOPY_868"]
 String remote_node = "UDOO"
 
 node {
@@ -9,28 +10,28 @@ node {
 	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 
     // get pycom-esp-idf source
-//    stage('Checkout') {
-//        checkout scm
-//        sh 'rm -rf esp-idf'
-//        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
-//    }
+    stage('Checkout') {
+        checkout scm
+        sh 'rm -rf esp-idf'
+        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
+    }
 
-//    stage('mpy-cross') {
-//        // build the cross compiler first
-//        sh '''export GIT_TAG=$(git rev-parse --short HEAD)
-//          git tag -fa v1.8.6-849-$GIT_TAG -m \\"v1.8.6-849-$GIT_TAG\\";
-//          cd mpy-cross;
-//          make clean;
-//          make all'''
-//    }
+    stage('mpy-cross') {
+        // build the cross compiler first
+        sh '''export GIT_TAG=$(git rev-parse --short HEAD)
+          git tag -fa v1.8.6-849-$GIT_TAG -m \\"v1.8.6-849-$GIT_TAG\\";
+          cd mpy-cross;
+          make clean;
+          make all'''
+    }
 
-//    stage('IDF-LIBS') {
+    stage('IDF-LIBS') {
         // build the libs from esp-idf
-//       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-//        		 export IDF_PATH=${WORKSPACE}/esp-idf;
-//        		 cd $IDF_PATH/examples/wifi/scan;
-//        		 make clean && make all'''
-//    }
+       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+        		 export IDF_PATH=${WORKSPACE}/esp-idf;
+        		 cd $IDF_PATH/examples/wifi/scan;
+        		 make clean && make all'''
+    }
 
  	for (board in boards_to_build) {
 		stage(board) {
@@ -54,22 +55,22 @@ node {
     stash includes: 'esp32/tools/**', name: 'esp32Tools'
 }
 
-//    stage ('Flash') {
-//      def parallelFlash = [:]
-//      for (board in boards_to_test) {
-//        def name = board.name.toUpperCase()
-//        parallelFlash[name] = flashBuild(name,board.value)
-//      }
-//    parallel parallelFlash
-//    }
-//
-//    stage ('Test'){
-//      def parallelTests = [:]
-//      for (board in boards_to_test) {
-//        parallelTests[board.name] = testBuild(board.name.toUpperCase(),board.value)
-//      }
-//    parallel parallelTests
-//    }
+    stage ('Flash') {
+      def parallelFlash = [:]
+      for (board in boards_to_test) {
+        def name = board.name.toUpperCase()
+        parallelFlash[name] = flashBuild(name,board.value)
+      }
+    parallel parallelFlash
+    }
+
+    stage ('Test'){
+      def parallelTests = [:]
+      for (board in boards_to_test) {
+        parallelTests[board.name] = testBuild(board.name.toUpperCase(),board.value)
+      }
+    parallel parallelTests
+    }
 
 def testBuild(name, device) {
 	return {
