@@ -144,7 +144,7 @@ def boardBuild(name) {
 //        cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
 //        cp ../''' + app_bin + ''' .;'''
 //        sh '''tar -cvzf ''' + release_dir + name + "-" + pycom_version + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
-//    }
+    }
 }
 
 def version() {
