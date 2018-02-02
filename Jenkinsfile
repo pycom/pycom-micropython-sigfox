@@ -58,7 +58,6 @@ stage ('Flash') {
 	def parallelFlash = [:]
 	for (board in boards_to_test) {
 		def board_name = board.key.toUpperCase()
-		echo 'Flashing ' + board_name + ' on /dev/' + board.value
 		parallelFlash[board_name] = flashBuild(board)
 	}
 	parallel parallelFlash
@@ -92,8 +91,10 @@ def testBuild(board) {
 
 def flashBuild(board) {
   return {
+    echo 'Flashing ' + board_name + ' on /dev/' + board.value
     node("UDOO") {
     	  def name = board.key.toUpperCase()
+    	  echo 'Flashing ' + board_name + ' on /dev/' + board.value
       sh 'rm -rf *'
       unstash 'binary'
       unstash 'esp-idfTools'
