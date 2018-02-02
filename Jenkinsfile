@@ -163,7 +163,9 @@ def get_version() {
 }
 
 def get_device_name(name) {
+  node {
 	def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
 	def matcher = node_info =~ name + ':(.+)'
     matcher ? matcher[0][1] : name.toUpperCase()
+  }
 }
