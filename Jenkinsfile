@@ -58,10 +58,8 @@ node {
     stage ('Flash') {
       def parallelFlash = [:]
       for (board in boards_to_test) {
-      	echo 'board: ' + board.key
-      	echo 'board value: ' + board.value
-        def name = board.toUpperCase()
-        parallelFlash[name] = flashBuild(name,board.value)
+        echo 'Flashing ' + board.key.toUpperCase() + 'at /dev/' + board.value
+        parallelFlash[board.key] = flashBuild(board.key.toUpperCase(),board.value)
       }
     parallel parallelFlash
     }
@@ -69,7 +67,8 @@ node {
     stage ('Test'){
       def parallelTests = [:]
       for (board in boards_to_test) {
-        parallelTests[board.name] = testBuild(board.name.toUpperCase(),board.value)
+        echo 'Testing ' + board.key.toUpperCase() + 'at /dev/' + board.value
+        parallelTests[board.key] = testBuild(board.key.toUpperCase(),board.value)
       }
     parallel parallelTests
     }
