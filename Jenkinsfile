@@ -39,6 +39,7 @@ node {
     			else{
         			parallelSteps[board] = boardBuild(board)
         		}
+        		parallel parallelSteps
   		}
   	}
 
@@ -51,17 +52,17 @@ node {
 
     stage ('Flash') {
       def parallelFlash = [:]
-      for (x in boards_to_test) {
-        def name = x.toUpperCase()
-        parallelFlash[name] = flashBuild(name,x.value)
+      for (board in boards_to_test) {
+        def name = board.name.toUpperCase()
+        parallelFlash[name] = flashBuild(name,board.value)
       }
     parallel parallelFlash
     }
 
     stage ('Test'){
       def parallelTests = [:]
-      for (board_name in boards_to_test) {
-        parallelTests[board_name] = testBuild(board_name.toUpperCase(),board_name.value)
+      for (board in boards_to_test) {
+        parallelTests[board.name] = testBuild(board.name.toUpperCase(),board.value)
       }
     parallel parallelTests
     }
