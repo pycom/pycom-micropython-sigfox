@@ -146,6 +146,6 @@ def boardBuild(name) {
 }
 
 def version() {
-    def matcher = readFile('/esp32/pycom_version.h') =~ 'SW_VERSION_NUMBER (.+)'
+    def matcher = readFile('${WORKSPACE}/esp32/pycom_version.h') =~ 'SW_VERSION_NUMBER (.+)'
     matcher ? matcher[1] : null
 }
