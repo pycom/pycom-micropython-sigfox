@@ -19,8 +19,8 @@ node {
         // build the cross compiler first
         sh 'git tag -fa v1.8.6-849-' + GIT_TAG + ' -m \\"v1.8.6-849-' + GIT_TAG + '''\\";
           cd mpy-cross;
-          make clean;
-          make all'''
+//          make clean;
+//          make all'''
     }
 
 //    stage('IDF-LIBS') {
@@ -43,7 +43,7 @@ node {
         			parallelSteps[board] = boardBuild(board)
         		}
         		echo 'ParallelSteps: ' + parallelSteps
-        		parallel parallelSteps
+//        		parallel parallelSteps
   		}
   	}
 
@@ -142,10 +142,9 @@ def flashBuild(board_name) {
 def testBuild(board_name) {
   return {
 	node("UDOO") {
-	  echo 'Testing ' + board_name_u + ' on /dev/' + device_name
     	  String board_name_u = board_name.toUpperCase()
-	  //String device_name = boards_devices[board_name].value
 	  String device_name = get_device_name(board_name)
+	  echo 'Testing ' + board_name_u + ' on /dev/' + device_name
 		sleep(5) //Delay to skip all bootlog
 		dir('tests') {
 			timeout(30) {
@@ -164,7 +163,7 @@ def get_version() {
 }
 
 def get_device_name(name) {
-	def node_info = sh (script: 'cat /etc/node_info/pycom-ic.conf || exit 0', returnStdout: true).trim()
+	def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
 	def matcher = node_info =~ name + ':(.+)'
     matcher ? matcher[0][1] : name.toUpperCase()
 }
