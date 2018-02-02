@@ -140,9 +140,7 @@ def boardBuild(name) {
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
         cp ../''' + app_bin + ''' .;'''
-        if (${BRANCH_NAME} == "master") {
-          sh '''tar -cvzf ''' + release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
-        }
+        sh '''tar -cvzf ''' + release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
