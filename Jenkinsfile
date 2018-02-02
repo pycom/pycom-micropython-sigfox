@@ -59,7 +59,7 @@ stage ('Flash') {
 	for (board in boards_to_test) {
 		def board_name = board.key.toUpperCase()
 		echo 'Flashing ' + board_name + ' on /dev/' + board.value
-		parallelFlash[board_name] = flashBuild(board_name,board.value)
+		parallelFlash[board_name] = flashBuild(board)
 	}
 	parallel parallelFlash
 }
@@ -69,41 +69,42 @@ stage ('Test'){
 	for (board in boards_to_test) {
 		def board_name = board.key.toUpperCase()
 		echo 'Testing ' + board.key.toUpperCase() + ' on /dev/' + board.value
-		parallelTests[board.key] = testBuild(board.key.toUpperCase(),board.value)
+		parallelTests[board.key] = testBuild(board)
 	}
 	parallel parallelTests
 }
 
 
-def testBuild(name, device) {
+def testBuild(board) {
 	return {
 		node("UDOO") {
 			sleep(5) //Delay to skip all bootlog
 			dir('tests') {
 				timeout(30) {
-              		sh '''./run-tests --target=esp32-''' + name + ''' --device /dev/''' + device
+              		sh './run-tests --target=esp32-' + board.key.toUpperCase() + ' --device /dev/' + board.value
             		}
           	}
-          	sh 'python esp32/tools/pypic.py --port /dev/' + device +' --enter'
-          	sh 'python esp32/tools/pypic.py --port /dev/' + device +' --exit'
+          	sh 'python esp32/tools/pypic.py --port /dev/' + board.value +' --enter'
+          	sh 'python esp32/tools/pypic.py --port /dev/' + board.value +' --exit'
 			}
 	}
 }
 
-def flashBuild(name,device) {
+def flashBuild(board) {
   return {
     node("UDOO") {
+    	  def name = board.key.toUpperCase()
       sh 'rm -rf *'
       unstash 'binary'
       unstash 'esp-idfTools'
       unstash 'esp32Tools'
       unstash 'tests'
       unstash 'tools'
-      sh 'python esp32/tools/pypic.py --port /dev/' + device +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device +' --baud 921600 erase_flash'
-      sh 'python esp32/tools/pypic.py --port /dev/' + device +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device +' --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
-      sh 'python esp32/tools/pypic.py --port /dev/' + device +' --exit'
+      sh 'python esp32/tools/pypic.py --port /dev/' + board.value +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + board.value +' --baud 921600 erase_flash'
+      sh 'python esp32/tools/pypic.py --port /dev/' + board.value +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + board.value +' --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
+      sh 'python esp32/tools/pypic.py --port /dev/' + board.value +' --exit'
     }
   }
 }
