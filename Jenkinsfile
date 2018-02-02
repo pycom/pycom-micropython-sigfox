@@ -122,7 +122,8 @@ def flashBuild(board_name) {
   return {
     node("UDOO") {
     	  String board_name_u = board_name.toUpperCase()
-      String device_name = boards_devices[board_name].value
+	  //String device_name = boards_devices[board_name].value
+	  String device_name = board_name_u
     	  echo 'Flashing ' + board_name_u + ' on /dev/' + device_name
       sh 'rm -rf *'
       unstash 'binary'
@@ -140,19 +141,21 @@ def flashBuild(board_name) {
 }
 
 def testBuild(board_name) {
-	return {
-		node("UDOO") {
-			String device_name = boards_devices[board_name].value
-			sleep(5) //Delay to skip all bootlog
-			dir('tests') {
-				timeout(30) {
-              		sh './run-tests --target=esp32-' + board_name.toUpperCase() + ' --device /dev/' + device_name
-            		}
-          	}
-          	sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
-          	sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --exit'
-			}
+  return {
+	node("UDOO") {
+    	  String board_name_u = board_name.toUpperCase()
+	  //String device_name = boards_devices[board_name].value
+	  String device_name = board_name_u
+		sleep(5) //Delay to skip all bootlog
+		dir('tests') {
+			timeout(30) {
+            		sh './run-tests --target=esp32-' + board_name_u + ' --device /dev/' + device_name
+        		}
+        	}
+        	sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
+        	sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --exit'
 	}
+  }
 }
 
 def version() {
