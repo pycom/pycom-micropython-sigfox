@@ -1,12 +1,11 @@
 def buildVersion
 //def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def boards_to_build = ["WiPy", "LoPy"]
-def boards_devices = ["FiPy_868":"FIPY_868", "LoPy_868":"LOPY_868"]
 def boards_to_test = ["LoPy_868"]
 String remote_node = "UDOO"
 
 node {
-	PYCOM_VERSION=version().trim().replace('"','')
+	PYCOM_VERSION=get_version()
 	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 
     // get pycom-esp-idf source
@@ -123,7 +122,7 @@ def flashBuild(board_name) {
     node("UDOO") {
     	  String board_name_u = board_name.toUpperCase()
 	  //String device_name = boards_devices[board_name].value
-	  String device_name = board_name_u
+	  String device_name = get_device_name(board_name)
     	  echo 'Flashing ' + board_name_u + ' on /dev/' + device_name
       sh 'rm -rf *'
       unstash 'binary'
@@ -143,9 +142,10 @@ def flashBuild(board_name) {
 def testBuild(board_name) {
   return {
 	node("UDOO") {
+	  echo 'Testing ' + board_name_u + ' on /dev/' + device_name
     	  String board_name_u = board_name.toUpperCase()
 	  //String device_name = boards_devices[board_name].value
-	  String device_name = board_name_u
+	  String device_name = get_device_name(board_name)
 		sleep(5) //Delay to skip all bootlog
 		dir('tests') {
 			timeout(30) {
@@ -158,7 +158,13 @@ def testBuild(board_name) {
   }
 }
 
-def version() {
+def get_version() {
     def matcher = readFile('esp32/pycom_version.h') =~ 'SW_VERSION_NUMBER (.+)'
-    matcher ? matcher[0][1] : null
+    matcher ? matcher[0][1].trim().replace('"','') : null
+}
+
+def get_device_name(name) {
+	def node_info = sh (script: 'cat /etc/node_info/pycom-ic.conf || exit 0', returnStdout: true).trim()
+	def matcher = node_info =~ name + ':(.+)'
+    matcher ? matcher[0][1] : name.toUpperCase()
 }
