@@ -58,7 +58,7 @@ node {
     stage ('Flash') {
       def parallelFlash = [:]
       for (board in boards_to_test) {
-      	echo 'board: ' + board
+      	echo 'board: ' + board.key
       	echo 'board value: ' + board.value
         def name = board.toUpperCase()
         parallelFlash[name] = flashBuild(name,board.value)
