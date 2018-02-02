@@ -9,30 +9,30 @@ node {
 	PYCOM_VERSION=version().trim().replace('"','')
 	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 
-    // get pycom-esp-idf source
-    stage('Checkout') {
-        checkout scm
-        sh 'rm -rf esp-idf'
-        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
-    }
-
-    stage('mpy-cross') {
-        // build the cross compiler first
-        sh '''export GIT_TAG=$(git rev-parse --short HEAD)
-          git tag -fa v1.8.6-849-$GIT_TAG -m \\"v1.8.6-849-$GIT_TAG\\";
-          cd mpy-cross;
-          make clean;
-          make all'''
-    }
-
-    stage('IDF-LIBS') {
-        // build the libs from esp-idf
-       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-        		 export IDF_PATH=${WORKSPACE}/esp-idf;
-        		 cd $IDF_PATH/examples/wifi/scan;
-        		 make clean && make all'''
-    }
-
+//    // get pycom-esp-idf source
+//    stage('Checkout') {
+//        checkout scm
+//        sh 'rm -rf esp-idf'
+//        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
+//    }
+//
+//    stage('mpy-cross') {
+//        // build the cross compiler first
+//        sh '''export GIT_TAG=$(git rev-parse --short HEAD)
+//          git tag -fa v1.8.6-849-$GIT_TAG -m \\"v1.8.6-849-$GIT_TAG\\";
+//          cd mpy-cross;
+//          make clean;
+//          make all'''
+//    }
+//
+//    stage('IDF-LIBS') {
+//        // build the libs from esp-idf
+//       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+//        		 export IDF_PATH=${WORKSPACE}/esp-idf;
+//        		 cd $IDF_PATH/examples/wifi/scan;
+//        		 make clean && make all'''
+//    }
+//
  	for (board in boards_to_build) {
 		stage(board) {
 			def parallelSteps = [:]
@@ -44,7 +44,7 @@ node {
     			else{
         			parallelSteps[board] = boardBuild(board)
         		}
-        		parallel parallelSteps
+        		//parallel parallelSteps
   		}
   	}
 
@@ -58,7 +58,9 @@ node {
     stage ('Flash') {
       def parallelFlash = [:]
       for (board in boards_to_test) {
-        def name = board.name.toUpperCase()
+      	echo 'board: ' + board
+      	echo 'board value: ' + board.value
+        def name = board.toUpperCase()
         parallelFlash[name] = flashBuild(name,board.value)
       }
     parallel parallelFlash
