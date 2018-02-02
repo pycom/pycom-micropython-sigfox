@@ -9,13 +9,13 @@ node {
 	PYCOM_VERSION=version().trim().replace('"','')
 	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 
-//    // get pycom-esp-idf source
-//    stage('Checkout') {
-//        checkout scm
+    // get pycom-esp-idf source
+    stage('Checkout') {
+        checkout scm
 //        sh 'rm -rf esp-idf'
 //        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
-//    }
-//
+    }
+
     stage('mpy-cross') {
         // build the cross compiler first
         sh 'git tag -fa v1.8.6-849-' + GIT_TAG + ' -m \\"v1.8.6-849-' + GIT_TAG + '''\\";
