@@ -1,11 +1,7 @@
 def buildVersion
-def boards_to_build_1 = ["LoPy_868", "WiPy"]
-def boards_to_build_2 = ["LoPy_915", "SiPy"]
-def boards_to_build_3 = ["FiPy_868", "LoPy4_868"]
-def boards_to_build_4 = ["FiPy_915" , "LoPy4_915"]
-def boards_to_build_5 = ["GPy"]
-def boards_to_test = ["FiPy_868", "LoPy_868"]
-def remote_node = "UDOO"
+def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
+def boards_to_test = ["FiPy_868":"FIPY_868", "LoPy_868":"LOPY_868"]
+String remote_node = "UDOO"
 
 node {
     // get pycom-esp-idf source
@@ -32,53 +28,18 @@ node {
         		 make clean && make all'''
     }
 
-    // build the boards in four cycles
-    // Todo: run in a loop if possible
-
-    stage('Build1') {
-        def parallelSteps = [:]
-        for (x in boards_to_build_1) {
-          def name = x
-          parallelSteps[name] = boardBuild(name)
-        }
-        parallel parallelSteps
-    }
-
-    stage('Build2') {
-        def parallelSteps = [:]
-        for (x in boards_to_build_2) {
-          def name = x
-          parallelSteps[name] = boardBuild(name)
-        }
-        parallel parallelSteps
-    }
-
-    stage('Build3') {
-        def parallelSteps = [:]
-        for (x in boards_to_build_3) {
-          def name = x
-          parallelSteps[name] = boardBuild(name)
-        }
-        parallel parallelSteps
-    }
-
-    stage('Build4') {
-        def parallelSteps = [:]
-        for (x in boards_to_build_4) {
-          def name = x
-          parallelSteps[name] = boardBuild(name)
-        }
-        parallel parallelSteps
-    }
-
-    stage('Build5') {
-        def parallelSteps = [:]
-        for (x in boards_to_build_5) {
-          def name = x
-          parallelSteps[name] = boardBuild(name)
-        }
-        parallel parallelSteps
-    }
+ 	for (board in boards_to_build) {
+		stage(board) {
+            def board_u = board.toUpperCase()
+            if (board_u == "LOPY" || board_u == "FIPY"  || board_u == "LOPY4") {
+        			parallelSteps[board+"_868"] = boardBuild(board+"_868")
+        			parallelSteps[board+"_915"] = boardBuild(board+"_915")
+        		}
+    			else{
+        			parallelSteps[board] = boardBuild(board)
+        		}
+  		}
+  	}
 
     stash includes: '**/*.bin', name: 'binary'
     stash includes: 'tests/**', name: 'tests'
@@ -91,7 +52,7 @@ node {
       def parallelFlash = [:]
       for (x in boards_to_test) {
         def name = x.toUpperCase()
-        parallelFlash[name] = flashBuild(name)
+        parallelFlash[name] = flashBuild(name,x.value)
       }
     parallel parallelFlash
     }
@@ -99,40 +60,40 @@ node {
     stage ('Test'){
       def parallelTests = [:]
       for (board_name in boards_to_test) {
-        parallelTests[board_name] = testBuild(board_name.toUpperCase())
+        parallelTests[board_name] = testBuild(board_name.toUpperCase(),board_name.value)
       }
     parallel parallelTests
     }
 
-    def testBuild(name) {
+    def testBuild(name, device) {
       return {
-        node("UDOO") {
+        node(remote_node) {
           sleep(5) //Delay to skip all bootlog
           dir('tests') {
             timeout(30) {
-              sh '''./run-tests --target=esp32-''' + name + ''' --device /dev/''' +name
+              sh '''./run-tests --target=esp32-''' + name + ''' --device /dev/''' + device
             }
           }
-          sh 'python esp32/tools/pypic.py --port /dev/' + name +' --enter'
-          sh 'python esp32/tools/pypic.py --port /dev/' + name +' --exit'
+          sh 'python esp32/tools/pypic.py --port /dev/' + device +' --enter'
+          sh 'python esp32/tools/pypic.py --port /dev/' + device +' --exit'
         }
       }
     }
 
-def flashBuild(name) {
+def flashBuild(name,device) {
   return {
-    node("UDOO") {
+    node(remote_node) {
       sh 'rm -rf *'
       unstash 'binary'
       unstash 'esp-idfTools'
       unstash 'esp32Tools'
       unstash 'tests'
       unstash 'tools'
-      sh 'python esp32/tools/pypic.py --port /dev/' + name +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + name +' --baud 921600 erase_flash'
-      sh 'python esp32/tools/pypic.py --port /dev/' + name +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + name +' --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
-      sh 'python esp32/tools/pypic.py --port /dev/' + name +' --exit'
+      sh 'python esp32/tools/pypic.py --port /dev/' + device +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device +' --baud 921600 erase_flash'
+      sh 'python esp32/tools/pypic.py --port /dev/' + device +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device +' --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
+      sh 'python esp32/tools/pypic.py --port /dev/' + device +' --exit'
     }
   }
 }
@@ -149,7 +110,7 @@ def boardBuild(name) {
     }
     def app_bin = name.toLowerCase() + '.bin'
     return {
-    		release_dir = "${JENKINS_HOME}/release/${JOB_BASE_NAME}"
+    		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}"
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
@@ -177,7 +138,7 @@ def boardBuild(name) {
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
         cp ../''' + app_bin + ''' .;'''
-        if (${JOB_BASE_NAME} != "pyupython") {
+        if (${BRANCH_NAME} == "master") {
           sh '''tar -cvzf ''' + release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG/''' + name + '''-\$PYCOM_VERSION.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
         }
     }
