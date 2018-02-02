@@ -11,14 +11,14 @@ node {
 //        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
 //    }
 
-    stage('mpy-cross') {
-        // build the cross compiler first
-        sh '''export GIT_TAG=$(git rev-parse --short HEAD)
-          git tag -fa v1.8.6-849-$GIT_TAG -m \\"v1.8.6-849-$GIT_TAG\\";
-          cd mpy-cross;
-          make clean;
-          make all'''
-    }
+//    stage('mpy-cross') {
+//        // build the cross compiler first
+//        sh '''export GIT_TAG=$(git rev-parse --short HEAD)
+//          git tag -fa v1.8.6-849-$GIT_TAG -m \\"v1.8.6-849-$GIT_TAG\\";
+//          cd mpy-cross;
+//          make clean;
+//          make all'''
+//    }
 
 //    stage('IDF-LIBS') {
         // build the libs from esp-idf
@@ -113,11 +113,12 @@ def boardBuild(name) {
     def app_bin = name.toLowerCase() + '.bin'
     return {
     		pycom_version=version()
-    		sh 'echo ' + pycom_version
+    		sh 'echo version: ' + pycom_version
     		git_tag = sh 'git rev-parse --short HEAD'
     		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + pycom_version + "/" + git_tag + "/"
-    		sh 'echo ' + git_tag
-    		sh 'echo ' + release_dir
+    		sh 'echo git_tag: ' + git_tag
+    		sh 'echo release_dir: ' + release_dir
+    		sh 'echo version_result: ' +pycom_version[1]
 //        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
 //        export IDF_PATH=${WORKSPACE}/esp-idf;
 //        cd esp32;
@@ -149,5 +150,5 @@ def boardBuild(name) {
 
 def version() {
     def matcher = readFile('esp32/pycom_version.h') =~ 'SW_VERSION_NUMBER (.+)'
-    matcher ? matcher[-1] : null
+    matcher ? matcher[0][1] : null
 }
