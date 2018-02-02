@@ -4,7 +4,7 @@ def boards_to_test = ["FiPy_868":"FIPY_868", "LoPy_868":"LOPY_868"]
 String remote_node = "UDOO"
 
 node {
-	PYCOM_VERSION=version().trim()
+	PYCOM_VERSION=version().trim().replace('"','')
 	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 
     // get pycom-esp-idf source
