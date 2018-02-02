@@ -58,10 +58,8 @@ node {
 stage ('Flash') {
 	def parallelFlash = [:]
 	for (board in boards_to_test) {
-		String board_name = board.key.toUpperCase()
-		String device_name = board.value
-		echo 'Flashing ' + board_name + ' on /dev/' + device_name
-		parallelFlash[board_name] = flashBuild(board)
+		echo 'Flashing ' + board.key.toUpperCase() + ' on /dev/' + board.value
+		parallelFlash[board.key] = flashBuild(board.key)
 	}
 	echo 'ParallelFlash: ' + parallelFlash
 	parallel parallelFlash
@@ -70,49 +68,12 @@ stage ('Flash') {
 stage ('Test'){
 	def parallelTests = [:]
 	for (board in boards_to_test) {
-		def board_name = board.key.toUpperCase()
 		echo 'Testing ' + board.key.toUpperCase() + ' on /dev/' + board.value
-		parallelTests[board.key] = testBuild(board)
+		parallelTests[board.key] = testBuild(board.key)
 	}
 	parallel parallelTests
 }
 
-
-def testBuild(board) {
-	return {
-		node("UDOO") {
-			sleep(5) //Delay to skip all bootlog
-			dir('tests') {
-				timeout(30) {
-              		sh './run-tests --target=esp32-' + board.key.toUpperCase() + ' --device /dev/' + board.value
-            		}
-          	}
-          	sh 'python esp32/tools/pypic.py --port /dev/' + board.value +' --enter'
-          	sh 'python esp32/tools/pypic.py --port /dev/' + board.value +' --exit'
-			}
-	}
-}
-
-def flashBuild(board) {
-  return {
-    node("UDOO") {
-    	  String board_name = board.key.toUpperCase()
-      String device_name = board.value
-    	  echo 'Flashing ' + board_name + ' on /dev/' + device_name
-      sh 'rm -rf *'
-      unstash 'binary'
-      unstash 'esp-idfTools'
-      unstash 'esp32Tools'
-      unstash 'tests'
-      unstash 'tools'
-      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device_name +' --baud 921600 erase_flash'
-      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name +'/release/appimg.bin'
-      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --exit'
-    }
-  }
-}
 
 def boardBuild(name) {
     def name_u = name.toUpperCase()
@@ -157,6 +118,43 @@ def boardBuild(name) {
         cp ../''' + app_bin + ''' .;
         tar -cvzf ''' + release_dir + name + "-" + PYCOM_VERSION + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
     }
+}
+
+def flashBuild(board_name) {
+  return {
+    node("UDOO") {
+    	  String board_name_u = board_name.toUpperCase()
+      String device_name = boards_to_test[board_name].value
+    	  echo 'Flashing ' + board_name_u + ' on /dev/' + device_name
+      sh 'rm -rf *'
+      unstash 'binary'
+      unstash 'esp-idfTools'
+      unstash 'esp32Tools'
+      unstash 'tests'
+      unstash 'tools'
+      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device_name +' --baud 921600 erase_flash'
+      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name_u +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name_u +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name_u +'/release/appimg.bin'
+      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --exit'
+    }
+  }
+}
+
+def testBuild(board_name) {
+	return {
+		node("UDOO") {
+			String device_name = boards_to_test[board_name].value
+			sleep(5) //Delay to skip all bootlog
+			dir('tests') {
+				timeout(30) {
+              		sh './run-tests --target=esp32-' + board_name.toUpperCase() + ' --device /dev/' + device_name
+            		}
+          	}
+          	sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
+          	sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --exit'
+			}
+	}
 }
 
 def version() {
