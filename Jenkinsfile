@@ -3,10 +3,10 @@ def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def boards_to_test = ["FiPy_868":"FIPY_868", "LoPy_868":"LOPY_868"]
 String remote_node = "UDOO"
 
-PYCOM_VERSION=version().trim()
-GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-
 node {
+	PYCOM_VERSION=version().trim()
+	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+
     // get pycom-esp-idf source
 //    stage('Checkout') {
 //        checkout scm
@@ -70,20 +70,20 @@ node {
 //    parallel parallelTests
 //    }
 
-    def testBuild(name, device) {
-      return {
-        node(remote_node) {
-          sleep(5) //Delay to skip all bootlog
-          dir('tests') {
-            timeout(30) {
-              sh '''./run-tests --target=esp32-''' + name + ''' --device /dev/''' + device
-            }
-          }
-          sh 'python esp32/tools/pypic.py --port /dev/' + device +' --enter'
-          sh 'python esp32/tools/pypic.py --port /dev/' + device +' --exit'
-        }
-      }
-    }
+def testBuild(name, device) {
+	return {
+		node(remote_node) {
+			sleep(5) //Delay to skip all bootlog
+			dir('tests') {
+				timeout(30) {
+              		sh '''./run-tests --target=esp32-''' + name + ''' --device /dev/''' + device
+            		}
+          	}
+          	sh 'python esp32/tools/pypic.py --port /dev/' + device +' --enter'
+          	sh 'python esp32/tools/pypic.py --port /dev/' + device +' --exit'
+			}
+	}
+}
 
 def flashBuild(name,device) {
   return {
