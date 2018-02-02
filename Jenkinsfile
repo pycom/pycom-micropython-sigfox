@@ -43,29 +43,29 @@ node {
   		}
   	}
 
-    stash includes: '**/*.bin', name: 'binary'
-    stash includes: 'tests/**', name: 'tests'
-    stash includes: 'esp-idf/components/esptool_py/**', name: 'esp-idfTools'
-    stash includes: 'tools/**', name: 'tools'
-    stash includes: 'esp32/tools/**', name: 'esp32Tools'
+//    stash includes: '**/*.bin', name: 'binary'
+//    stash includes: 'tests/**', name: 'tests'
+//    stash includes: 'esp-idf/components/esptool_py/**', name: 'esp-idfTools'
+//    stash includes: 'tools/**', name: 'tools'
+//    stash includes: 'esp32/tools/**', name: 'esp32Tools'
 }
 
-    stage ('Flash') {
-      def parallelFlash = [:]
-      for (board in boards_to_test) {
-        def name = board.name.toUpperCase()
-        parallelFlash[name] = flashBuild(name,board.value)
-      }
-    parallel parallelFlash
-    }
-
-    stage ('Test'){
-      def parallelTests = [:]
-      for (board in boards_to_test) {
-        parallelTests[board.name] = testBuild(board.name.toUpperCase(),board.value)
-      }
-    parallel parallelTests
-    }
+//    stage ('Flash') {
+//      def parallelFlash = [:]
+//      for (board in boards_to_test) {
+//        def name = board.name.toUpperCase()
+//        parallelFlash[name] = flashBuild(name,board.value)
+//      }
+//    parallel parallelFlash
+//    }
+//
+//    stage ('Test'){
+//      def parallelTests = [:]
+//      for (board in boards_to_test) {
+//        parallelTests[board.name] = testBuild(board.name.toUpperCase(),board.value)
+//      }
+//    parallel parallelTests
+//    }
 
     def testBuild(name, device) {
       return {
@@ -116,36 +116,38 @@ def boardBuild(name) {
     		sh 'echo ' + pycom_version
     		git_tag = sh 'git rev-parse --short HEAD'
     		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + pycom_version + "/" + git_tag + "/"
-        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-        export IDF_PATH=${WORKSPACE}/esp-idf;
-        cd esp32;
-        make clean BOARD=''' + name_short + lora_band
-
-        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-        export IDF_PATH=${WORKSPACE}/esp-idf;
-        cd esp32;
-        make TARGET=boot -j2 BOARD=''' + name_short + lora_band
-
-        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-        export IDF_PATH=${WORKSPACE}/esp-idf;
-        cd esp32;
-        make TARGET=app -j2 BOARD=''' + name_short + lora_band
-
-        sh '''cd esp32/build/'''+ name_u +'''/release;
-        mkdir -p firmware_package;
-        mkdir -p '''+ release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG;
-        cd firmware_package;
-        cp ../bootloader/bootloader.bin .;
-        mv ../application.elf ''' + release_dir + name + "-" + pycom_version + '''-application.elf;
-        cp ../appimg.bin .;
-        cp ../lib/partitions.bin .;
-        cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
-        cp ../''' + app_bin + ''' .;'''
-        sh '''tar -cvzf ''' + release_dir + name + "-" + pycom_version + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
-    }
+    		sh 'echo ' + git_tag
+    		sh 'echo ' + release_dir
+//        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+//        export IDF_PATH=${WORKSPACE}/esp-idf;
+//        cd esp32;
+//        make clean BOARD=''' + name_short + lora_band
+//
+//        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+//        export IDF_PATH=${WORKSPACE}/esp-idf;
+//        cd esp32;
+//        make TARGET=boot -j2 BOARD=''' + name_short + lora_band
+//
+//        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+//        export IDF_PATH=${WORKSPACE}/esp-idf;
+//        cd esp32;
+//        make TARGET=app -j2 BOARD=''' + name_short + lora_band
+//
+//        sh '''cd esp32/build/'''+ name_u +'''/release;
+//        mkdir -p firmware_package;
+//        mkdir -p '''+ release_dir + '''/\$PYCOM_VERSION/\$GIT_TAG;
+//        cd firmware_package;
+//        cp ../bootloader/bootloader.bin .;
+//        mv ../application.elf ''' + release_dir + name + "-" + pycom_version + '''-application.elf;
+//        cp ../appimg.bin .;
+//        cp ../lib/partitions.bin .;
+//        cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
+//        cp ../''' + app_bin + ''' .;'''
+//        sh '''tar -cvzf ''' + release_dir + name + "-" + pycom_version + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
+//    }
 }
 
 def version() {
     def matcher = readFile('esp32/pycom_version.h') =~ 'SW_VERSION_NUMBER (.+)'
-    matcher ? matcher[1] : null
+    matcher ? matcher[-1] : null
 }
