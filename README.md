@@ -153,5 +153,6 @@ For 915MHz regions add the `LORA_BAND=USE_BAND_915` variable:
 The above also applies to the FiPy and LoPy4
 
 Make sure that your board is placed into programming mode, otherwise flashing will fail.<br>
-PyTrack and PySense boards will automatically switch into programming mode (currently supported on MacOS and Linux only!)<br>
+PyTrack and PySense boards will automatically switch into programming mode<br>
+(currently supported on MacOS and Linux only!)<br><br>
 Expansion Board 2.0 users, please connect ``P2`` to ``GND`` and then reset the board.
