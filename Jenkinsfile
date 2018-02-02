@@ -57,8 +57,9 @@ node {
 stage ('Flash') {
 	def parallelFlash = [:]
 	for (board in boards_to_test) {
-		def board_name = board.key.toUpperCase()
-		parallelFlash[board_name] = flashBuild(board)
+		String board_name = board.key.toUpperCase()
+		String device_name = board.value
+		parallelFlash[board_name] = flashBuild(board_name,device_name)
 	}
 	parallel parallelFlash
 }
@@ -89,23 +90,22 @@ def testBuild(board) {
 	}
 }
 
-def flashBuild(board) {
+def flashBuild(board_name,device_name) {
   return {
-    echo 'Flashing ' + board_name + ' on /dev/' + board.value
+    echo 'Flashing ' + board_name + ' on /dev/' + device_name
     node("UDOO") {
-    	  def name = board.key.toUpperCase()
-    	  echo 'Flashing ' + board_name + ' on /dev/' + board.value
+    	  echo 'Flashing ' + board_name + ' on /dev/' + device_name
       sh 'rm -rf *'
       unstash 'binary'
       unstash 'esp-idfTools'
       unstash 'esp32Tools'
       unstash 'tests'
       unstash 'tools'
-      sh 'python esp32/tools/pypic.py --port /dev/' + board.value +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + board.value +' --baud 921600 erase_flash'
-      sh 'python esp32/tools/pypic.py --port /dev/' + board.value +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + board.value +' --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ name +'/release/appimg.bin'
-      sh 'python esp32/tools/pypic.py --port /dev/' + board.value +' --exit'
+      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device_name +' --baud 921600 erase_flash'
+      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name +'/release/appimg.bin'
+      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --exit'
     }
   }
 }
