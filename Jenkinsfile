@@ -144,8 +144,8 @@ def boardBuild(name) {
         cp ../appimg.bin .;
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
-        cp ../''' + app_bin + ''' .;'''
-        sh '''tar -cvzf ''' + release_dir + name + "-" + PYCOM_VERSION + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
+        cp ../''' + app_bin + ''' .;
+        tar -cvzf ''' + release_dir + name + "-" + PYCOM_VERSION + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
