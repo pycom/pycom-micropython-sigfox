@@ -41,5 +41,4 @@ user.props
 .cproject
 .project
 .pydevproject
-.settings/language.settings.xml
-.settings/org.eclipse.cdt.core.prefs
+.settings
