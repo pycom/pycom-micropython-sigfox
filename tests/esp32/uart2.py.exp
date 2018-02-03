@@ -15,10 +15,10 @@ True
 False
 False
 True
-False
-bytearray(b'\x00\x00\x00')
-False
-bytearray(b'\x00\x00\x00')
+True
+bytearray(b'3\x00\x00')
+True
+bytearray(b'12\x00')
 Exception
 Exception
 None
