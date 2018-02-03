@@ -1,7 +1,6 @@
 def buildVersion
 def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def boards_to_test = ["Pycom_Expansion3_Py00ec5f", "Pycom_Expansion3_Py9f8bf5"]
-String remote_node = "RPI3" // Need to update functions below to use this variable (which failed in the past)
 
 node {
 	PYCOM_VERSION=get_version()
@@ -115,7 +114,7 @@ def flashBuild(short_name) {
   return {
     String device_name = get_device_name(short_name)
     String board_name_u = get_firmware_name(short_name)
-    node(remote_node) {
+    node(get_remote_name(short_name)) {
       sh 'rm -rf *'
       unstash 'binary'
       unstash 'esp-idfTools'
@@ -135,7 +134,7 @@ def testBuild(short_name) {
   return {
     String device_name = get_device_name(short_name)
     String board_name_u = get_firmware_name(short_name)
-	node(remote_node) {
+	node(get_remote_name(short_name)) {
 		sleep(5) //Delay to skip all bootlog
 		dir('tests') {
 			timeout(30) {
@@ -156,8 +155,16 @@ def get_version() {
 def get_firmware_name(short_name) {
   node {
 	def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
-	def matcher = node_info =~ short_name + ':(.+)'
+	def matcher = node_info =~ short_name + ':(.+):.*'
     matcher ? matcher[0][1] : "WIPY"
+  }
+}
+
+def get_remote_name(short_name) {
+  node {
+	def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
+	def matcher = node_info =~ short_name + ':.*:(.+)'
+    matcher ? matcher[0][1] : "RPI3"
   }
 }
 
