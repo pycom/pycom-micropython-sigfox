@@ -137,9 +137,9 @@ def flashBuild(short_name) {
   }
 }
 
-def testBuild(board_name) {
+def testBuild(short_name) {
   return {
-    String device_name = get_device_name(board_name)
+    String device_name = get_device_name(short_name)
     String board_name_u = get_firmware_name(short_name)
 	node("UDOO") {
  	  echo 'Testing ' + board_name_u + ' on /dev/' + device_name
