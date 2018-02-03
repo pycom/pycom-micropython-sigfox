@@ -42,3 +42,4 @@ user.props
 .project
 .pydevproject
 .settings/language.settings.xml
+.settings/org.eclipse.cdt.core.prefs

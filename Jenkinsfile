@@ -41,7 +41,6 @@ node {
     			else{
         			parallelSteps[board] = boardBuild(board)
         		}
-        		echo 'ParallelSteps: ' + parallelSteps
         		parallel parallelSteps
   		}
   	}
@@ -58,7 +57,6 @@ stage ('Flash') {
 	for (board in boards_to_test) {
 		parallelFlash[board] = flashBuild(board)
 	}
-	echo 'ParallelFlash: ' + parallelFlash
 	parallel parallelFlash
 }
 
@@ -83,10 +81,7 @@ def boardBuild(name) {
     }
     def app_bin = name.toLowerCase() + '.bin'
     return {
-    		echo 'version: ' + PYCOM_VERSION
     		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + PYCOM_VERSION + "/" + GIT_TAG + "/"
-    		echo 'git_tag: ' + GIT_TAG
-    		echo 'release_dir: ' + release_dir
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
@@ -120,8 +115,7 @@ def flashBuild(short_name) {
   return {
     String device_name = get_device_name(short_name)
     String board_name_u = get_firmware_name(short_name)
-    node("UDOO") {
-    	  echo 'Flashing ' + board_name_u + ' on ' + device_name
+    node(remote_node) {
       sh 'rm -rf *'
       unstash 'binary'
       unstash 'esp-idfTools'
@@ -141,8 +135,7 @@ def testBuild(short_name) {
   return {
     String device_name = get_device_name(short_name)
     String board_name_u = get_firmware_name(short_name)
-	node("UDOO") {
- 	  echo 'Testing ' + board_name_u + ' on /dev/' + device_name
+	node(remote_node) {
 		sleep(5) //Delay to skip all bootlog
 		dir('tests') {
 			timeout(30) {
