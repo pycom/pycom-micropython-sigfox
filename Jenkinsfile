@@ -1,7 +1,7 @@
 def buildVersion
 //def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def boards_to_build = ["WiPy", "LoPy"]
-def boards_to_test = ["LoPy_868"]
+def boards_to_test = ["Pycom_Expansion3_Py00ec5f"]
 String remote_node = "UDOO"
 
 node {
@@ -117,24 +117,23 @@ def boardBuild(name) {
     }
 }
 
-def flashBuild(board_name) {
+def flashBuild(short_name) {
   return {
-    String device_name = get_device_name(board_name)
+    String device_name = get_device_name(short_name)
+    String board_name_u = get_firmware_name(short_name)
     node("UDOO") {
-    	  String board_name_u = board_name.toUpperCase()
-	  //String device_name = boards_devices[board_name].value
-    	  echo 'Flashing ' + board_name_u + ' on /dev/' + device_name
+    	  echo 'Flashing ' + board_name_u + ' on ' + device_name
       sh 'rm -rf *'
       unstash 'binary'
       unstash 'esp-idfTools'
       unstash 'esp32Tools'
       unstash 'tests'
       unstash 'tools'
-      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device_name +' --baud 921600 erase_flash'
-      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name_u +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name_u +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name_u +'/release/appimg.bin'
-      sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --exit'
+      sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 erase_flash'
+      sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name_u +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name_u +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name_u +'/release/appimg.bin'
+      sh 'python esp32/tools/pypic.py --port ' + device_name +' --exit'
     }
   }
 }
@@ -142,17 +141,17 @@ def flashBuild(board_name) {
 def testBuild(board_name) {
   return {
     String device_name = get_device_name(board_name)
+    String board_name_u = get_firmware_name(short_name)
 	node("UDOO") {
-    	  String board_name_u = board_name.toUpperCase()
-	  echo 'Testing ' + board_name_u + ' on /dev/' + device_name
+ 	  echo 'Testing ' + board_name_u + ' on /dev/' + device_name
 		sleep(5) //Delay to skip all bootlog
 		dir('tests') {
 			timeout(30) {
-            		sh './run-tests --target=esp32-' + board_name_u + ' --device /dev/' + device_name
+            		sh './run-tests --target=esp32-' + board_name_u + ' --device ' + device_name
         		}
         	}
-        	sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --enter'
-        	sh 'python esp32/tools/pypic.py --port /dev/' + device_name +' --exit'
+        	sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
+        	sh 'python esp32/tools/pypic.py --port ' + device_name +' --exit'
 	}
   }
 }
@@ -162,10 +161,15 @@ def get_version() {
     matcher ? matcher[0][1].trim().replace('"','') : null
 }
 
-def get_device_name(name) {
+def get_firmware_name(short_name) {
   node {
 	def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
-	def matcher = node_info =~ name + ':(.+)'
-    matcher ? matcher[0][1] : name.toUpperCase()
+	def matcher = node_info =~ short_name + ':(.+)'
+    matcher ? matcher[0][1] : "WIPY"
   }
 }
+
+def get_device_name(short_name) {
+    return "/dev/serial/by-id/usb-" +  short_name + "-if00"   
+}
+
