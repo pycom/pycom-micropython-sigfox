@@ -3,15 +3,15 @@ def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def boards_to_test = ["Pycom_Expansion3_Py00ec5f", "Pycom_Expansion3_Py9f8bf5"]
 
 node {
-	PYCOM_VERSION=get_version()
-	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-
     // get pycom-esp-idf source
     stage('Checkout') {
         checkout scm
         sh 'rm -rf esp-idf'
         sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
     }
+    
+	PYCOM_VERSION=get_version()
+	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 
     stage('mpy-cross') {
         // build the cross compiler first
