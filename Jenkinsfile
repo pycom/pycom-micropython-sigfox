@@ -1,28 +1,17 @@
 def buildVersion
-<<<<<<< HEAD
 def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def boards_to_test = ["Pycom_Expansion3_Py00ec5f", "Pycom_Expansion3_Py9f8bf5"]
-=======
-def boards_to_build_1 = ["LoPy_868", "WiPy"]
-def boards_to_build_2 = ["LoPy_915", "SiPy"]
-def boards_to_build_3 = ["FiPy_868", "LoPy4_868"]
-def boards_to_build_4 = ["FiPy_915" ,"LoPy4_915"]
-def boards_to_build_5 = ["GPy"]
-
-def boards_to_test = ["FiPy_868", "LoPy_868"]
-def remote_node = "UDOO"
->>>>>>> master
 
 node {
-	PYCOM_VERSION=get_version()
-	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-
     // get pycom-esp-idf source
     stage('Checkout') {
         checkout scm
         sh 'rm -rf esp-idf'
         sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
     }
+    
+	PYCOM_VERSION=get_version()
+	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 
     stage('mpy-cross') {
         // build the cross compiler first
@@ -32,51 +21,12 @@ node {
           make all'''
     }
 
-<<<<<<< HEAD
     stage('IDF-LIBS') {
         // build the libs from esp-idf
        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         		 export IDF_PATH=${WORKSPACE}/esp-idf;
         		 cd $IDF_PATH/examples/wifi/scan;
         		 make clean && make all'''
-=======
-//    stage('IDF-LIBS') {
-//        // build the libs from esp-idf
-//       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-//        		 export IDF_PATH=${WORKSPACE}/esp-idf;
-//        		 cd $IDF_PATH/examples/wifi/scan;
-//        		 make clean && make all'''
-//    }
-
-    // build the boards in four cycles
-    // Todo: run in a loop if possible
-
-    stage('Build1') {
-        def parallelSteps = [:]
-        for (x in boards_to_build_1) {
-          def name = x
-          parallelSteps[name] = boardBuild(name)
-        }
-        parallel parallelSteps
-    }
-
-    stage('Build2') {
-        def parallelSteps = [:]
-        for (x in boards_to_build_2) {
-          def name = x
-          parallelSteps[name] = boardBuild(name)
-        }
-        parallel parallelSteps
-    }
-
-    stage('Build3') {
-        def parallelSteps = [:]
-        for (x in boards_to_build_3) {
-          def name = x
-          parallelSteps[name] = boardBuild(name)
-        }
-        parallel parallelSteps
->>>>>>> master
     }
 
  	for (board in boards_to_build) {
@@ -94,15 +44,6 @@ node {
   		}
   	}
 
-    stage('Build5') {
-        def parallelSteps = [:]
-        for (x in boards_to_build_5) {
-          def name = x
-          parallelSteps[name] = boardBuild(name)
-        }
-        parallel parallelSteps
-    }
-    
     stash includes: '**/*.bin', name: 'binary'
     stash includes: 'tests/**', name: 'tests'
     stash includes: 'esp-idf/components/esptool_py/**', name: 'esp-idfTools'
