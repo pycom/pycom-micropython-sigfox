@@ -43,6 +43,8 @@
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 
+#include "mptask.h"
+
 #include "modsigfox.h"
 #include "pycom_config.h"
 
@@ -173,13 +175,13 @@ void modsigfox_init0 (void) {
 }
 
 void sigfox_update_id (void) {
-    #define SFX_ID_PATH          "/flash/sys/sfx.id"
+    #define SFX_ID_PATH          "/sys/sfx.id"
 
     FILINFO fno;
 
-    if (FR_OK == f_stat(SFX_ID_PATH, &fno)) {
+    if (FR_OK == f_stat(&sflash_vfs_fat.fatfs, SFX_ID_PATH, &fno)) {
         FIL fp;
-        f_open(&fp, SFX_ID_PATH, FA_READ);
+        f_open(&sflash_vfs_fat.fatfs, &fp, SFX_ID_PATH, FA_READ);
         UINT sz_out;
         uint8_t id[4];
         FRESULT res = f_read(&fp, id, sizeof(id), &sz_out);
@@ -194,19 +196,19 @@ void sigfox_update_id (void) {
         f_close(&fp);
         if (res == FR_OK) {
             // delete the mac address file
-            f_unlink(SFX_ID_PATH);
+            f_unlink(&sflash_vfs_fat.fatfs, SFX_ID_PATH);
         }
     }
 }
 
 void sigfox_update_pac (void) {
-    #define SFX_PAC_PATH          "/flash/sys/sfx.pac"
+    #define SFX_PAC_PATH          "/sys/sfx.pac"
 
     FILINFO fno;
 
-    if (FR_OK == f_stat(SFX_PAC_PATH, &fno)) {
+    if (FR_OK == f_stat(&sflash_vfs_fat.fatfs, SFX_PAC_PATH, &fno)) {
         FIL fp;
-        f_open(&fp, SFX_PAC_PATH, FA_READ);
+        f_open(&sflash_vfs_fat.fatfs, &fp, SFX_PAC_PATH, FA_READ);
         UINT sz_out;
         uint8_t pac[8];
         FRESULT res = f_read(&fp, pac, sizeof(pac), &sz_out);
@@ -221,19 +223,19 @@ void sigfox_update_pac (void) {
         f_close(&fp);
         if (res == FR_OK) {
             // delete the mac address file
-            f_unlink(SFX_PAC_PATH);
+            f_unlink(&sflash_vfs_fat.fatfs, SFX_PAC_PATH);
         }
     }
 }
 
 void sigfox_update_private_key (void) {
-    #define SFX_PRIVATE_KEY_PATH          "/flash/sys/sfx_private.key"
+    #define SFX_PRIVATE_KEY_PATH          "/sys/sfx_private.key"
 
     FILINFO fno;
 
-    if (FR_OK == f_stat(SFX_PRIVATE_KEY_PATH, &fno)) {
+    if (FR_OK == f_stat(&sflash_vfs_fat.fatfs, SFX_PRIVATE_KEY_PATH, &fno)) {
         FIL fp;
-        f_open(&fp, SFX_PRIVATE_KEY_PATH, FA_READ);
+        f_open(&sflash_vfs_fat.fatfs, &fp, SFX_PRIVATE_KEY_PATH, FA_READ);
         UINT sz_out;
         uint8_t key[16];
         FRESULT res = f_read(&fp, key, sizeof(key), &sz_out);
@@ -248,19 +250,19 @@ void sigfox_update_private_key (void) {
         f_close(&fp);
         if (res == FR_OK) {
             // delete the mac address file
-            f_unlink(SFX_PRIVATE_KEY_PATH);
+            f_unlink(&sflash_vfs_fat.fatfs, SFX_PRIVATE_KEY_PATH);
         }
     }
 }
 
 void sigfox_update_public_key (void) {
-    #define SFX_PUBLIC_KEY_PATH          "/flash/sys/sfx_public.key"
+    #define SFX_PUBLIC_KEY_PATH          "/sys/sfx_public.key"
 
     FILINFO fno;
 
-    if (FR_OK == f_stat(SFX_PUBLIC_KEY_PATH, &fno)) {
+    if (FR_OK == f_stat(&sflash_vfs_fat.fatfs, SFX_PUBLIC_KEY_PATH, &fno)) {
         FIL fp;
-        f_open(&fp, SFX_PUBLIC_KEY_PATH, FA_READ);
+        f_open(&sflash_vfs_fat.fatfs, &fp, SFX_PUBLIC_KEY_PATH, FA_READ);
         UINT sz_out;
         uint8_t key[16];
         FRESULT res = f_read(&fp, key, sizeof(key), &sz_out);
@@ -275,7 +277,7 @@ void sigfox_update_public_key (void) {
         f_close(&fp);
         if (res == FR_OK) {
             // delete the mac address file
-            f_unlink(SFX_PUBLIC_KEY_PATH);
+            f_unlink(&sflash_vfs_fat.fatfs, SFX_PUBLIC_KEY_PATH);
         }
     }
 }

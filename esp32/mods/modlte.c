@@ -41,7 +41,7 @@
 #include "netutils.h"
 #include "modnetwork.h"
 #include "modusocket.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 //#include "pybrtc.h"
 #include "serverstask.h"
 #include "mpexception.h"
