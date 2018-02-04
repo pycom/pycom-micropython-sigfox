@@ -19,7 +19,7 @@
 #include "py/stream.h"
 #include "py/mperrno.h"
 #include "mpexception.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 #include "esp32_mphal.h"
 
 #include "modnetwork.h"

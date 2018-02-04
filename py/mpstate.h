@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -23,8 +23,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef __MICROPY_INCLUDED_PY_MPSTATE_H__
-#define __MICROPY_INCLUDED_PY_MPSTATE_H__
+#ifndef MICROPY_INCLUDED_PY_MPSTATE_H
+#define MICROPY_INCLUDED_PY_MPSTATE_H
 
 #include <stdint.h>
 
@@ -36,7 +36,7 @@
 #include "py/objlist.h"
 #include "py/objexcept.h"
 
-// This file contains structures defining the state of the Micro Python
+// This file contains structures defining the state of the MicroPython
 // memory system, runtime and virtual machine.  The state is a global
 // variable, but in the future it is hoped that the state can become local.
 
@@ -49,6 +49,16 @@ typedef struct mp_dynamic_compiler_t {
 } mp_dynamic_compiler_t;
 extern mp_dynamic_compiler_t mp_dynamic_compiler;
 #endif
+
+// These are the values for sched_state
+#define MP_SCHED_IDLE (1)
+#define MP_SCHED_LOCKED (-1)
+#define MP_SCHED_PENDING (0) // 0 so it's a quick check in the VM
+
+typedef struct _mp_sched_item_t {
+    mp_obj_t func;
+    mp_obj_t arg;
+} mp_sched_item_t;
 
 // This structure hold information about the memory allocation system.
 typedef struct _mp_state_mem_t {
@@ -110,12 +120,17 @@ typedef struct _mp_state_vm_t {
     // memory for exception arguments if we can't allocate RAM
     #if MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF
     #if MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE > 0
-    // statically allocated buf
-    byte mp_emergency_exception_buf[MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE];
+    // statically allocated buf (needs to be aligned to mp_obj_t)
+    mp_obj_t mp_emergency_exception_buf[MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE / sizeof(mp_obj_t)];
     #else
     // dynamically allocated buf
     byte *mp_emergency_exception_buf;
     #endif
+    #endif
+
+    #if MICROPY_KBD_EXCEPTION
+    // exception object of type KeyboardInterrupt
+    mp_obj_exception_t mp_kbd_exception;
     #endif
 
     // dictionary with loaded modules (may be exposed as sys.modules)
@@ -123,6 +138,12 @@ typedef struct _mp_state_vm_t {
 
     // pending exception object (MP_OBJ_NULL if not pending)
     volatile mp_obj_t mp_pending_exception;
+
+    #if MICROPY_ENABLE_SCHEDULER
+    volatile int16_t sched_state;
+    uint16_t sched_sp;
+    mp_sched_item_t sched_stack[MICROPY_SCHEDULER_DEPTH];
+    #endif
 
     // current exception being handled, for sys.exc_info()
     #if MICROPY_PY_SYS_EXC_INFO
@@ -147,7 +168,7 @@ typedef struct _mp_state_vm_t {
     // root pointers for extmod
 
     #if MICROPY_PY_OS_DUPTERM
-    mp_obj_t term_obj;
+    mp_obj_t dupterm_objs[MICROPY_PY_OS_DUPTERM];
     mp_obj_t dupterm_arr_obj;
     #endif
 
@@ -155,9 +176,9 @@ typedef struct _mp_state_vm_t {
     mp_obj_t lwip_slip_stream;
     #endif
 
-    #if MICROPY_FSUSERMOUNT
-    // for user-mountable block device (max fixed at compile time)
-    struct _fs_user_mount_t *fs_user_mount[MICROPY_FATFS_VOLUMES];
+    #if MICROPY_VFS
+    struct _mp_vfs_mount_t *vfs_cur;
+    struct _mp_vfs_mount_t *vfs_mount_table;
     #endif
 
     //
@@ -198,7 +219,6 @@ typedef struct _mp_state_thread_t {
     nlr_buf_t *nlr_top; // ROOT POINTER
 
     // Stack top at the start of program
-    // Note: this entry is used to locate the end of the root pointer section.
     char *stack_top;
 
     #if MICROPY_STACK_CHECK
@@ -218,7 +238,6 @@ typedef struct _mp_state_ctx_t {
 
 extern mp_state_ctx_t mp_state_ctx;
 
-#define MP_STATE_CTX(x) MP_STATE_THREAD(x)
 #define MP_STATE_VM(x) (mp_state_ctx.vm.x)
 #define MP_STATE_MEM(x) (mp_state_ctx.mem.x)
 
@@ -229,4 +248,4 @@ extern mp_state_thread_t *mp_thread_get_state(void);
 #define MP_STATE_THREAD(x) (mp_state_ctx.thread.x)
 #endif
 
-#endif // __MICROPY_INCLUDED_PY_MPSTATE_H__
+#endif // MICROPY_INCLUDED_PY_MPSTATE_H

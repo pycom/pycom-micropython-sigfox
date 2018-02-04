@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -202,6 +202,11 @@ STATIC int mp_print_int(const mp_print_t *print, mp_uint_t x, int sgn, int base,
 }
 
 int mp_print_mp_int(const mp_print_t *print, mp_obj_t x, int base, int base_char, int flags, char fill, int width, int prec) {
+    // These are the only values for "base" that are required to be supported by this
+    // function, since Python only allows the user to format integers in these bases.
+    // If needed this function could be generalised to handle other values.
+    assert(base == 2 || base == 8 || base == 10 || base == 16);
+
     if (!MP_OBJ_IS_INT(x)) {
         // This will convert booleans to int, or raise an error for
         // non-integer types.
@@ -217,7 +222,7 @@ int mp_print_mp_int(const mp_print_t *print, mp_obj_t x, int base, int base_char
     char prefix_buf[4];
     char *prefix = prefix_buf;
 
-    if (mp_obj_int_sign(x) > 0) {
+    if (mp_obj_int_sign(x) >= 0) {
         if (flags & PF_FLAG_SHOW_SIGN) {
             *prefix++ = '+';
         } else if (flags & PF_FLAG_SPACE_SIGN) {
@@ -349,9 +354,6 @@ int mp_print_float(const mp_print_t *print, mp_float_t f, char fmt, int flags, c
     }
 
     int len = mp_format_float(f, buf, sizeof(buf), fmt, prec, sign);
-    if (len < 0) {
-        len = 0;
-    }
 
     char *s = buf;
 
@@ -483,14 +485,17 @@ int mp_vprintf(const mp_print_t *print, const char *fmt, va_list args) {
             case 's':
             {
                 const char *str = va_arg(args, const char*);
-                if (str) {
-                    if (prec < 0) {
-                        prec = strlen(str);
-                    }
-                    chrs += mp_print_strn(print, str, prec, flags, fill, width);
-                } else {
+                #ifndef NDEBUG
+                // With debugging enabled, catch printing of null string pointers
+                if (prec != 0 && str == NULL) {
                     chrs += mp_print_strn(print, "(null)", 6, flags, fill, width);
+                    break;
                 }
+                #endif
+                if (prec < 0) {
+                    prec = strlen(str);
+                }
+                chrs += mp_print_strn(print, str, prec, flags, fill, width);
                 break;
             }
             case 'u':

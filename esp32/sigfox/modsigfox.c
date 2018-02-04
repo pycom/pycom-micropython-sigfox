@@ -19,7 +19,7 @@
 #include "py/stream.h"
 #include "py/mperrno.h"
 #include "mpexception.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 #include "esp32_mphal.h"
 
 #include "modnetwork.h"
@@ -1154,13 +1154,13 @@ int sigfox_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint
     mp_int_t ret = 0;
 
     SIGFOX_CHECK_SOCKET(s);
-    if (request == MP_IOCTL_POLL) {
+    if (request == MP_STREAM_POLL) {
         mp_uint_t flags = arg;
-        if ((flags & MP_IOCTL_POLL_RD) && sigfox_rx_any()) {
-            ret |= MP_IOCTL_POLL_RD;
+        if ((flags & MP_STREAM_POLL_RD) && sigfox_rx_any()) {
+            ret |= MP_STREAM_POLL_RD;
         }
-        if ((flags & MP_IOCTL_POLL_WR) && sigfox_tx_space()) {
-            ret |= MP_IOCTL_POLL_WR;
+        if ((flags & MP_STREAM_POLL_WR) && sigfox_tx_space()) {
+            ret |= MP_STREAM_POLL_WR;
         }
     } else {
         *_errno = MP_EINVAL;

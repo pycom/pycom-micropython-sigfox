@@ -16,6 +16,4 @@ extern const char mpexception_os_request_not_possible[];
 extern const char mpexception_value_invalid_arguments[];
 extern const char mpexception_num_type_invalid_arguments[];
 
-extern void mpexception_init0 (void);
-
 #endif /* MPEXCEPTION_H_ */

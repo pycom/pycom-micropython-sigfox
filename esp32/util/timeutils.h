@@ -28,22 +28,9 @@
 #ifndef __MICROPY_INCLUDED_LIB_TIMEUTILS_H__
 #define __MICROPY_INCLUDED_LIB_TIMEUTILS_H__
 
+#include "lib/timeutils/timeutils.h"
+
 typedef int64_t mp_time_t;
-
-typedef struct _timeutils_struct_time_t {
-    uint16_t    tm_year;    // i.e. 2014
-    uint8_t     tm_mon;     // 1..12
-    uint8_t     tm_mday;    // 1..31
-    uint8_t     tm_hour;    // 0..23
-    uint8_t     tm_min;     // 0..59
-    uint8_t     tm_sec;     // 0..59
-    uint8_t     tm_wday;    // 0..6  0 = Monday
-    uint16_t    tm_yday;    // 1..366
-} timeutils_struct_time_t;
-
-bool timeutils_is_leap_year(mp_uint_t year);
-mp_uint_t timeutils_days_in_month(mp_uint_t year, mp_uint_t month);
-mp_uint_t timeutils_year_day(mp_uint_t year, mp_uint_t month, mp_uint_t date);
 
 void timeutils_seconds_since_epoch_to_struct_time(mp_time_t t,
     timeutils_struct_time_t *tm);
@@ -51,7 +38,7 @@ void timeutils_seconds_since_epoch_to_struct_time(mp_time_t t,
 mp_time_t timeutils_seconds_since_epoch(mp_uint_t year, mp_uint_t month,
     mp_uint_t date, mp_uint_t hour, mp_uint_t minute, mp_uint_t second);
 
-mp_time_t timeutils_mktime(mp_uint_t year, mp_int_t month, mp_int_t mday,
+mp_time_t timeutils_mktime_since_epoch(mp_uint_t year, mp_int_t month, mp_int_t mday,
     mp_int_t hours, mp_int_t minutes, mp_int_t seconds);
 
 #endif // __MICROPY_INCLUDED_LIB_TIMEUTILS_H__

@@ -25,7 +25,7 @@
 #include "bufhelper.h"
 #include "mpexception.h"
 #include "modnetwork.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 #include "modusocket.h"
 #include "pycom_config.h"
 #include "modbt.h"

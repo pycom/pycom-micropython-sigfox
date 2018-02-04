@@ -1,0 +1,46 @@
+Welcome to MicroPython!
+For online help please visit http://micropython.org/help/.
+For further help on a specific object, type help(obj)
+<function>object  is of type function
+<class 'int'>object  is of type type
+  from_bytes -- <classmethod>
+  to_bytes -- <function>
+1object  is of type int
+  from_bytes -- <classmethod>
+  to_bytes -- <function>
+<module 'micropython'>object  is of type module
+  __name__ -- micropython
+  const -- <function>
+  opt_level -- <function>
+  mem_info -- <function>
+  qstr_info -- <function>
+  stack_use -- <function>
+  alloc_emergency_exception_buf -- <function>
+  heap_lock -- <function>
+  heap_unlock -- <function>
+  kbd_intr -- <function>
+modulesobject  is of type str
+  encode -- <function>
+  find -- <function>
+  rfind -- <function>
+  index -- <function>
+  rindex -- <function>
+  join -- <function>
+  split -- <function>
+  rsplit -- <function>
+  startswith -- <function>
+  endswith -- <function>
+  strip -- <function>
+  lstrip -- <function>
+  rstrip -- <function>
+  format -- <function>
+  replace -- <function>
+  count -- <function>
+  lower -- <function>
+  upper -- <function>
+  isspace -- <function>
+  isalpha -- <function>
+  isdigit -- <function>
+  isupper -- <function>
+  islower -- <function>
+done

@@ -38,7 +38,7 @@
 #include "modnetwork.h"
 #include "modusocket.h"
 #include "modwlan.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 //#include "pybrtc.h"
 #include "serverstask.h"
 #include "mpexception.h"
@@ -53,6 +53,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+
+#include "mptask.h"
 
 /******************************************************************************
  DEFINE TYPES
@@ -531,7 +533,7 @@ STATIC char *wlan_read_file (const char *file_path, vstr_t *vstr) {
     mp_uint_t totalsize = 0;
 
     FIL fp;
-    FRESULT res = f_open(&fp, file_path, FA_READ);
+    FRESULT res = f_open(&sflash_vfs_fat.fatfs,&fp, file_path, FA_READ);
     if (res != FR_OK) {
         return NULL;
     }
@@ -555,7 +557,6 @@ STATIC char *wlan_read_file (const char *file_path, vstr_t *vstr) {
     vstr_null_terminated_str(vstr);
     return vstr->buf;
 }
-
 
 //STATIC void wlan_get_sl_mac (void) {
 //    // Get the MAC address

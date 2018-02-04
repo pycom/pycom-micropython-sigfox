@@ -21,6 +21,7 @@ print(float("INF"))
 print(float("infinity"))
 print(float("INFINITY"))
 print(float("nan"))
+print(float("-nan"))
 print(float("NaN"))
 try:
     float("")
@@ -60,6 +61,11 @@ print(1.2 <= -3.4)
 print(1.2 >= 3.4)
 print(1.2 >= -3.4)
 
+# comparison of nan is special
+nan = float('nan')
+print(nan == 1.2)
+print(nan == nan)
+
 try:
     1.0 / 0
 except ZeroDivisionError:
@@ -75,6 +81,11 @@ try:
 except ZeroDivisionError:
     print("ZeroDivisionError")
 
+try:
+    0.0 ** -1
+except ZeroDivisionError:
+    print("ZeroDivisionError")
+
 # unsupported unary ops
 
 try:
@@ -86,6 +97,12 @@ try:
     1.2 in 3.4
 except TypeError:
     print("TypeError")
+
+# small int on LHS, float on RHS, unsupported op
+try:
+    print(1 | 1.0)
+except TypeError:
+    print('TypeError')
 
 # can't convert list to float
 try:

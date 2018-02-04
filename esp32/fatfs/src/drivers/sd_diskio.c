@@ -16,7 +16,8 @@
 #include "sdmmc_cmd.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
-#include "diskio.h"
+#include "lib/oofatfs/ff.h"
+#include "lib/oofatfs/diskio.h"
 #include "sd_diskio.h"
 #include "stdcmd.h"
 

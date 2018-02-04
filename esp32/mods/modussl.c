@@ -27,6 +27,7 @@
 #include "modusocket.h"
 #include "modussl.h"
 #include "ff.h"
+#include "mptask.h"
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -186,7 +187,7 @@ static char *mod_ssl_read_file (const char *file_path, vstr_t *vstr) {
     mp_uint_t totalsize = 0;
 
     FIL fp;
-    FRESULT res = f_open(&fp, file_path, FA_READ);
+    FRESULT res = f_open(&sflash_vfs_fat.fatfs, &fp, file_path, FA_READ);
     if (res != FR_OK) {
         return NULL;
     }
