@@ -1,0 +1,26 @@
+UART(2, baudrate=115200, bits=8, parity=None, stop=1)
+None
+None
+None
+None
+0
+1
+UART(2, baudrate=1000000, bits=8, parity=None, stop=1)
+True
+False
+UART(2, baudrate=1000000, bits=8, parity=None, stop=1)
+True
+False
+True
+False
+False
+True
+True
+bytearray(b'3\x00\x00')
+True
+bytearray(b'12\x00')
+Exception
+Exception
+None
+True
+False
