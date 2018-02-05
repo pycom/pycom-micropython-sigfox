@@ -79,6 +79,9 @@ static void *TASK_Interrupts(void *pvParameters) {
                 // print the exception out
                 mp_printf(&mp_plat_print, "Unhandled exception in callback handler\n");
                 mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(exc));
+                // kill this thread
+                MP_THREAD_GIL_EXIT();
+                break;
             }
         }
         MP_THREAD_GIL_EXIT();
