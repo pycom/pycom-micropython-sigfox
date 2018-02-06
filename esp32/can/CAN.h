@@ -100,7 +100,7 @@ typedef struct {
 typedef enum {
     CAN_RX_FRAME_EVENT = 1,
     CAN_FIFO_NOT_EMPTY_EVENT = 2,
-    CAN_RX_FIFO_OVERRRUN_EVENT = 4
+    CAN_RX_FIFO_OVERRUN_EVENT = 4
 }CAN_callback_trigger_t;
 
 
