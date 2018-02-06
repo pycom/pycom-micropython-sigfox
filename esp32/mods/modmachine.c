@@ -118,21 +118,21 @@ extern TaskHandle_t xSigfoxTaskHndl;
 
 STATIC mp_obj_t machine_info(void) {
     // FreeRTOS info
-    printf("---------------------------------------------\n");
-    printf("System memory info (in bytes)\n");
-    printf("---------------------------------------------\n");
-    printf("MPTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)mpTaskHandle));
-    printf("ServersTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)svTaskHandle));
+    mp_printf(&mp_plat_print, "---------------------------------------------\n");
+    mp_printf(&mp_plat_print, "System memory info (in bytes)\n");
+    mp_printf(&mp_plat_print, "---------------------------------------------\n");
+    mp_printf(&mp_plat_print, "MPTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)mpTaskHandle));
+    mp_printf(&mp_plat_print, "ServersTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)svTaskHandle));
 #if defined (LOPY) || defined (LOPY4) || defined (FIPY)
-    printf("LoRaTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)xLoRaTaskHndl));
+    mp_printf(&mp_plat_print, "LoRaTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)xLoRaTaskHndl));
 #endif
 #if defined (SIPY) || defined (LOPY4) || defined (FIPY)
-    printf("SigfoxTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)xSigfoxTaskHndl));
+    mp_printf(&mp_plat_print, "SigfoxTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)xSigfoxTaskHndl));
 #endif
-    printf("TimerTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark(xTimerGetTimerDaemonTaskHandle()));
-    printf("IdleTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark(xTaskGetIdleTaskHandle()));
-    printf("System free heap: %d\n", (unsigned int)esp_get_free_heap_size());
-    printf("---------------------------------------------\n");
+    mp_printf(&mp_plat_print, "TimerTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark(xTimerGetTimerDaemonTaskHandle()));
+    mp_printf(&mp_plat_print, "IdleTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark(xTaskGetIdleTaskHandle()));
+    mp_printf(&mp_plat_print, "System free heap: %d\n", (unsigned int)esp_get_free_heap_size());
+    mp_printf(&mp_plat_print, "---------------------------------------------\n");
 
     return mp_const_none;
 }

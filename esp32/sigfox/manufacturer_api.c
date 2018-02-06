@@ -34,6 +34,7 @@
 
 /******* INCLUDES *************************************************************/
 #include "py/mpconfig.h"
+#include "py/obj.h"
 #if defined(FIPY) || defined(LOPY4)
 #include <stdint.h>
 #include "radio_sx127x.h"
@@ -908,7 +909,7 @@ sfx_error_t MANUF_API_report_test_result(sfx_bool status)
 {
     int8_t rssi;
     MANUF_API_get_rssi(&rssi);
-    printf("Test result = %d, RSSI = %d\n", status ? 1 : 0, (int16_t)(rssi - 100));
+    mp_printf(&mp_plat_print, "Test result = %d, RSSI = %d\n", status ? 1 : 0, (int16_t)(rssi - 100));
     return SFX_ERR_MANUF_NONE;
 }
 

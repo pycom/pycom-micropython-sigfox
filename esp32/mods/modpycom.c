@@ -36,7 +36,7 @@ static nvs_handle pycom_nvs_handle;
 
 void modpycom_init0(void) {
     if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &pycom_nvs_handle) != ESP_OK) {
-        printf("Error while opening Pycom NVS name space\n");
+        mp_printf(&mp_plat_print, "Error while opening Pycom NVS name space\n");
     }
     rmt_driver_install(RMT_CHANNEL_0, 1000, 0);
 }

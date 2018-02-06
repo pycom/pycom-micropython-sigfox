@@ -327,7 +327,7 @@ void modlora_init0(void) {
 #endif
 
     if (!lorawan_nvs_open()) {
-        printf("Error opening LoRa NVS namespace!\n");
+        mp_printf(&mp_plat_print, "Error opening LoRa NVS namespace!\n");
     }
 
     // target board initialisation

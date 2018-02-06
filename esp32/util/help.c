@@ -55,13 +55,13 @@ STATIC void pyb_help_print_info_about_object(mp_obj_t name_o, mp_obj_t value) {
 STATIC mp_obj_t pyb_help(uint n_args, const mp_obj_t *args) {
     if (n_args == 0) {
         // print a general help message
-        printf("%s", help_text);
+        mp_printf(&mp_plat_print, "%s", help_text);
     }
     else {
         // try to print something sensible about the given object
-        printf("object ");
+        mp_printf(&mp_plat_print, "object ");
         mp_obj_print(args[0], PRINT_STR);
-        printf(" is of type %s\n", mp_obj_get_type_str(args[0]));
+        mp_printf(&mp_plat_print, " is of type %s\n", mp_obj_get_type_str(args[0]));
 
         mp_map_t *map = NULL;
         if (MP_OBJ_IS_TYPE(args[0], &mp_type_module)) {
