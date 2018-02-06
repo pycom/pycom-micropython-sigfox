@@ -250,9 +250,11 @@ IRAM_ATTR void SX1276SetChannel( uint32_t freq )
     SX1276Write( REG_FRFLSB, ( uint8_t )( freq & 0xFF ) );
 }
 
-bool SX1276IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh )
+bool SX1276IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh, uint32_t maxCarrierSenseTime )
 {
+    bool status = true;
     int16_t rssi = 0;
+    uint32_t carrierSenseTime = 0;
 
     SX1276SetModem( modem );
 
@@ -262,15 +264,21 @@ bool SX1276IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh
 
     DelayMs( 2 );
 
-    rssi = SX1276ReadRssi( modem );
+    carrierSenseTime = TimerGetCurrentTime( );
 
-    SX1276SetSleep( );
-
-    if( rssi > rssiThresh )
+    // Perform carrier sense for maxCarrierSenseTime
+    while( TimerGetElapsedTime( carrierSenseTime ) < maxCarrierSenseTime )
     {
-        return false;
+        rssi = SX1276ReadRssi( modem );
+
+        if( rssi > rssiThresh )
+        {
+            status = false;
+            break;
+        }
     }
-    return true;
+    SX1276SetSleep( );
+    return status;
 }
 
 uint32_t SX1276Random( void )
@@ -593,34 +601,34 @@ uint32_t SX1276GetTimeOnAir( RadioModems_t modem, uint8_t pktLen )
             switch( SX1276.Settings.LoRa.Bandwidth )
             {
             //case 0: // 7.8 kHz
-            //    bw = 78e2;
+            //    bw = 7800;
             //    break;
             //case 1: // 10.4 kHz
-            //    bw = 104e2;
+            //    bw = 10400;
             //    break;
             //case 2: // 15.6 kHz
-            //    bw = 156e2;
+            //    bw = 15600;
             //    break;
             //case 3: // 20.8 kHz
-            //    bw = 208e2;
+            //    bw = 20800;
             //    break;
             //case 4: // 31.2 kHz
-            //    bw = 312e2;
+            //    bw = 31200;
             //    break;
             //case 5: // 41.4 kHz
-            //    bw = 414e2;
+            //    bw = 41400;
             //    break;
             //case 6: // 62.5 kHz
-            //    bw = 625e2;
+            //    bw = 62500;
             //    break;
             case 7: // 125 kHz
-                bw = 125e3;
+                bw = 125000;
                 break;
             case 8: // 250 kHz
-                bw = 250e3;
+                bw = 250000;
                 break;
             case 9: // 500 kHz
-                bw = 500e3;
+                bw = 500000;
                 break;
             }
 
@@ -641,7 +649,7 @@ uint32_t SX1276GetTimeOnAir( RadioModems_t modem, uint8_t pktLen )
             // Time on air
             double tOnAir = tPreamble + tPayload;
             // return ms secs
-            airTime = floor( tOnAir * 1e3 + 0.999 );
+            airTime = floor( tOnAir * 1000 + 0.999 );
         }
         break;
     }
@@ -742,27 +750,27 @@ IRAM_ATTR void SX1276SetRx( uint32_t timeout )
                 {
                 case 0: // 7.8 kHz
                     SX1276Write( REG_LR_TEST2F, 0x48 );
-                    SX1276SetChannel(SX1276.Settings.Channel + 7.81e3 );
+                    SX1276SetChannel(SX1276.Settings.Channel + 7810 );
                     break;
                 case 1: // 10.4 kHz
                     SX1276Write( REG_LR_TEST2F, 0x44 );
-                    SX1276SetChannel(SX1276.Settings.Channel + 10.42e3 );
+                    SX1276SetChannel(SX1276.Settings.Channel + 10420 );
                     break;
                 case 2: // 15.6 kHz
                     SX1276Write( REG_LR_TEST2F, 0x44 );
-                    SX1276SetChannel(SX1276.Settings.Channel + 15.62e3 );
+                    SX1276SetChannel(SX1276.Settings.Channel + 15620 );
                     break;
                 case 3: // 20.8 kHz
                     SX1276Write( REG_LR_TEST2F, 0x44 );
-                    SX1276SetChannel(SX1276.Settings.Channel + 20.83e3 );
+                    SX1276SetChannel(SX1276.Settings.Channel + 20830 );
                     break;
                 case 4: // 31.2 kHz
                     SX1276Write( REG_LR_TEST2F, 0x44 );
-                    SX1276SetChannel(SX1276.Settings.Channel + 31.25e3 );
+                    SX1276SetChannel(SX1276.Settings.Channel + 31250 );
                     break;
                 case 5: // 41.4 kHz
                     SX1276Write( REG_LR_TEST2F, 0x44 );
-                    SX1276SetChannel(SX1276.Settings.Channel + 41.67e3 );
+                    SX1276SetChannel(SX1276.Settings.Channel + 41670 );
                     break;
                 case 6: // 62.5 kHz
                     SX1276Write( REG_LR_TEST2F, 0x40 );
@@ -917,7 +925,7 @@ void SX1276StartCad( void )
 
 void SX1276SetTxContinuousWave( uint32_t freq, int8_t power, uint16_t time )
 {
-    uint32_t timeout = ( uint32_t )( time * 1e3 );
+    uint32_t timeout = ( uint32_t )( time * 1000 );
 
     SX1276SetChannel( freq );
 
@@ -937,7 +945,7 @@ void SX1276SetTxContinuousWave( uint32_t freq, int8_t power, uint16_t time )
 
 int16_t SX1276ReadRssi( RadioModems_t modem )
 {
-    int16_t rssi = 0;
+    int16_t rssi = -1;
 
     switch( modem )
     {
@@ -954,7 +962,6 @@ int16_t SX1276ReadRssi( RadioModems_t modem )
         }
         break;
     default:
-        rssi = -1;
         break;
     }
     return rssi;
@@ -1095,6 +1102,7 @@ IRAM_ATTR void SX1276SetMaxPayloadLength( RadioModems_t modem, uint8_t max )
 void SX1276SetPublicNetwork( bool enable )
 {
     SX1276SetModem( MODEM_LORA );
+    SX1276.Settings.LoRa.PublicNetwork = enable;
     if( enable == true )
     {
         // Change LoRa modem SyncWord
@@ -1118,6 +1126,34 @@ void SX1276OnTimeoutIrq( void )
         }
         break;
     case RF_TX_RUNNING:
+        // Tx timeout shouldn't happen.
+        // But it has been observed that when it happens it is a result of a corrupted SPI transfer
+        // it depends on the platform design.
+        //
+        // The workaround is to put the radio in a known state. Thus, we re-initialize it.
+
+        // BEGIN WORKAROUND
+
+        // Reset the radio
+        SX1276Reset( );
+
+        // Calibrate Rx chain
+        RxChainCalibration( );
+
+        // Initialize radio default values
+        SX1276SetOpMode( RF_OPMODE_SLEEP );
+
+        for( uint8_t i = 0; i < sizeof( RadioRegsInit ) / sizeof( RadioRegisters_t ); i++ )
+        {
+            SX1276SetModem( RadioRegsInit[i].Modem );
+            SX1276Write( RadioRegsInit[i].Addr, RadioRegsInit[i].Value );
+        }
+        SX1276SetModem( MODEM_FSK );
+
+        // Restore previous network type setting.
+        SX1276SetPublicNetwork( SX1276.Settings.LoRa.PublicNetwork );
+        // END WORKAROUND
+
         SX1276.Settings.State = RF_IDLE;
         if( ( RadioEvents != NULL ) && ( RadioEvents->TxTimeout != NULL ) )
         {
@@ -1265,6 +1301,7 @@ IRAM_ATTR void SX1276OnDio0Irq( void )
                     }
 
                     SX1276.Settings.LoRaPacketHandler.Size = SX1276Read( REG_LR_RXNBBYTES );
+                    SX1276Write( REG_LR_FIFOADDRPTR, SX1276Read( REG_LR_FIFORXCURRENTADDR ) );
                     SX1276ReadFifo( RxTxBuffer, SX1276.Settings.LoRaPacketHandler.Size );
 
                     if( SX1276.Settings.LoRa.RxContinuous == false )
