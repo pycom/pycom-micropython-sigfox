@@ -54,11 +54,18 @@ void SX1272IoInit( void );
 void SX1272IoIrqInit( DioIrqHandler **irqHandlers );
 
 /*!
- * \brief De-initializes the radio I/Os pins interface. 
+ * \brief De-initializes the radio I/Os pins interface.
  *
- * \remark Useful when going in MCU lowpower modes
+ * \remark Useful when going in MCU low power modes
  */
 void SX1272IoDeInit( void );
+
+/*!
+ * \brief Sets the radio output power.
+ *
+ * \param [IN] power Sets the RF output power
+ */
+void SX1272SetRfTxPower( int8_t power );
 
 /*!
  * \brief Gets the board PA selection configuration

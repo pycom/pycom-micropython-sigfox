@@ -21,6 +21,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "sx1272/sx1272.h"
 #include "sx1272-board.h"
 
+
 /*!
  * Radio driver structure initialization
  */
@@ -69,6 +70,67 @@ void SX1272IoDeInit( void )
 {
     GpioInit( &SX1272.Spi.Nss, RADIO_NSS, PIN_OUTPUT, PIN_PUSH_PULL, PIN_PULL_UP, 1 );
     GpioInit( &SX1272.DIO, RADIO_DIO, PIN_INPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
+}
+
+void SX1272SetRfTxPower( int8_t power )
+{
+    uint8_t paConfig = 0;
+    uint8_t paDac = 0;
+
+    paConfig = SX1272Read( REG_PACONFIG );
+    paDac = SX1272Read( REG_PADAC );
+
+    paConfig = ( paConfig & RF_PACONFIG_PASELECT_MASK ) | SX1272GetPaSelect( SX1272.Settings.Channel );
+
+    if( ( paConfig & RF_PACONFIG_PASELECT_PABOOST ) == RF_PACONFIG_PASELECT_PABOOST )
+    {
+        if( power > 17 )
+        {
+            paDac = ( paDac & RF_PADAC_20DBM_MASK ) | RF_PADAC_20DBM_ON;
+        }
+        else
+        {
+            paDac = ( paDac & RF_PADAC_20DBM_MASK ) | RF_PADAC_20DBM_OFF;
+        }
+        if( ( paDac & RF_PADAC_20DBM_ON ) == RF_PADAC_20DBM_ON )
+        {
+            if( power < 5 )
+            {
+                power = 5;
+            }
+            if( power > 20 )
+            {
+                power = 20;
+            }
+            paConfig = ( paConfig & RFLR_PACONFIG_OUTPUTPOWER_MASK ) | ( uint8_t )( ( uint16_t )( power - 5 ) & 0x0F );
+        }
+        else
+        {
+            if( power < 2 )
+            {
+                power = 2;
+            }
+            if( power > 17 )
+            {
+                power = 17;
+            }
+            paConfig = ( paConfig & RFLR_PACONFIG_OUTPUTPOWER_MASK ) | ( uint8_t )( ( uint16_t )( power - 2 ) & 0x0F );
+        }
+    }
+    else
+    {
+        if( power < -1 )
+        {
+            power = -1;
+        }
+        if( power > 14 )
+        {
+            power = 14;
+        }
+        paConfig = ( paConfig & RFLR_PACONFIG_OUTPUTPOWER_MASK ) | ( uint8_t )( ( uint16_t )( power + 1 ) & 0x0F );
+    }
+    SX1272Write( REG_PACONFIG, paConfig );
+    SX1272Write( REG_PADAC, paDac );
 }
 
 uint8_t SX1272GetPaSelect( uint32_t channel )

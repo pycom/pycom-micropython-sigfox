@@ -61,6 +61,7 @@ typedef enum {
 
 typedef struct {
     uint32_t        frequency;
+    LoRaMacRegion_t region;
     DeviceClass_t   device_class;
     uint8_t         stack_mode;
     uint8_t         preamble;
