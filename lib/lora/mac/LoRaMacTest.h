@@ -26,7 +26,7 @@
  *
  * \author    Gregory Cristian ( Semtech )
  *
- * \author    Daniel Jäckle ( STACKFORCE )
+ * \author    Daniel Jaeckle ( STACKFORCE )
  *
  * \defgroup  LORAMACTEST LoRa MAC layer test function implementation
  *            This module specifies the API implementation of test function of the LoRaMAC layer.
@@ -65,6 +65,16 @@ void LoRaMacTestSetMic( uint16_t txPacketCounter );
  * \param   [IN] enable - Enabled or disables the duty cycle
  */
 void LoRaMacTestSetDutyCycleOn( bool enable );
+
+/*!
+ * \brief   Sets the channel index
+ *
+ * \details This is a test function. It shall be used for testing purposes only.
+ *          Changing this attribute may lead to a non-conformance LoRaMac operation.
+ *
+ * \param   [IN] channel - Channel index
+ */
+void LoRaMacTestSetChannel( uint8_t channel );
 
 /*! \} defgroup LORAMACTEST */
 
