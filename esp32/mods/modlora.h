@@ -56,6 +56,7 @@ typedef enum {
     E_LORA_NVS_MAC_CMD_BUF_RPT_IDX,
     E_LORA_NVS_ELE_MAC_BUF,
     E_LORA_NVS_ELE_MAC_RPT_BUF,
+    E_LORA_NVS_ELE_REGION,
     E_LORA_NVS_NUM_KEYS 
 } e_lora_nvs_key_t;
 

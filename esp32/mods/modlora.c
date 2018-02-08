@@ -270,7 +270,8 @@ static nvs_handle modlora_nvs_handle;
 static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLNK", "DWLNK", "DEVADDR",
                                                                  "NWSKEY", "APPSKEY", "NETID", "ADRACK",
                                                                  "MACPARAMS", "CHANNELS", "SRVACK", "MACNXTTX",
-                                                                 "MACBUFIDX", "MACRPTIDX", "MACBUF", "MACRPTBUF" };
+                                                                 "MACBUFIDX", "MACRPTIDX", "MACBUF", "MACRPTBUF",
+                                                                 "REGION" };
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -744,87 +745,84 @@ static void TASK_LoRa (void *pvParameters) {
                         lora_obj.frequency = RF_FREQUENCY_CENTER;
 
                         // check if we have already joined the network
-                        // if (lora_obj.joined) {
-                        //     uint32_t length;
-                        //     bool result = true;
-                        //     result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_NET_ID, (uint32_t *)&lora_obj.net_id);
-                        //     result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DEVADDR, (uint32_t *)&lora_obj.u.abp.DevAddr);
-                        //     length = 16;
-                        //     result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_NWSKEY, (void *)lora_obj.u.abp.NwkSKey, &length);
-                        //     length = 16;
-                        //     result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_APPSKEY, (void *)lora_obj.u.abp.AppSKey, &length);
+                        if (lora_obj.joined) {
+                            uint32_t length;
+                            bool result = true;
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_NET_ID, (uint32_t *)&lora_obj.net_id);
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DEVADDR, (uint32_t *)&lora_obj.u.abp.DevAddr);
+                            length = 16;
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_NWSKEY, (void *)lora_obj.u.abp.NwkSKey, &length);
+                            length = 16;
+                            result &= modlora_nvs_get_blob(E_LORA_NVS_ELE_APPSKEY, (void *)lora_obj.u.abp.AppSKey, &length);
 
-                        //     uint32_t uplinks, downlinks, adrAcks;
-                        //     result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_UPLINK, &uplinks);
-                        //     result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DWLINK, &downlinks);
-                        //     result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_ADR_ACKS, &adrAcks);
+                            uint32_t uplinks, downlinks;
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_UPLINK, &uplinks);
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_DWLINK, &downlinks);
+                            result &= modlora_nvs_get_uint(E_LORA_NVS_ELE_ADR_ACKS, LoRaMacGetAdrAckCounter());
 
-                        //     if (result) {
-                        //         mibReq.Type = MIB_UPLINK_COUNTER;
-                        //         mibReq.Param.UpLinkCounter = uplinks;
-                        //         LoRaMacMibSetRequestConfirm( &mibReq );
+                            if (result) {
+                                mibReq.Type = MIB_UPLINK_COUNTER;
+                                mibReq.Param.UpLinkCounter = uplinks;
+                                LoRaMacMibSetRequestConfirm( &mibReq );
 
-                        //         mibReq.Type = MIB_DOWNLINK_COUNTER;
-                        //         mibReq.Param.DownLinkCounter = downlinks;
-                        //         LoRaMacMibSetRequestConfirm( &mibReq );
+                                mibReq.Type = MIB_DOWNLINK_COUNTER;
+                                mibReq.Param.DownLinkCounter = downlinks;
+                                LoRaMacMibSetRequestConfirm( &mibReq );
 
-                        //         mibReq.Type = MIB_ADR_ACK_COUNTER;
-                        //         mibReq.Param.AdrAckCounter = adrAcks;
-                        //         LoRaMacMibSetRequestConfirm( &mibReq );
+                                // write the MAC params directly from the NVRAM
+                                length = sizeof(LoRaMacParams_t);
+                                modlora_nvs_get_blob(E_LORA_NVS_ELE_MAC_PARAMS, (void *)LoRaMacGetMacParams(), &length);
 
-                        //         // write the MAC params directly from the NVRAM
-                        //         length = sizeof(LoRaMacParams_t);
-                        //         modlora_nvs_get_blob(E_LORA_NVS_ELE_MAC_PARAMS, (void *)LoRaMacGetMacParams(), &length);
+                                // write the channel list directly from the NVRAM
+                                ChannelParams_t *channels;
+                                LoRaMacGetChannelList(&channels, &length);
+                                modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNELS, channels, &length);
 
-                        //         // write the channel list directly from the NVRAM
-                        //         length = LORA_MAX_NB_CHANNELS * sizeof(ChannelParams_t);
-                        //         modlora_nvs_get_blob(E_LORA_NVS_ELE_CHANNELS, (void *)LoRaMacGetChannelList(), &length);
+                                uint32_t srv_ack_req;
+                                modlora_nvs_get_uint(E_LORA_NVS_ELE_ACK_REQ, (uint32_t *)&srv_ack_req);
+                                bool *ack_req = LoRaMacGetSrvAckRequested();
+                                if (srv_ack_req) {
+                                    *ack_req = true;
+                                } else {
+                                    *ack_req = false;
+                                }
 
-                        //         uint32_t srv_ack_req;
-                        //         modlora_nvs_get_uint(E_LORA_NVS_ELE_ACK_REQ, (uint32_t *)&srv_ack_req);
-                        //         bool *ack_req = LoRaMacGetSrvAckRequested();
-                        //         if (srv_ack_req) {
-                        //             *ack_req = true;
-                        //         } else {
-                        //             *ack_req = false;
-                        //         }
+                                uint32_t mac_cmd_next_tx;
+                                modlora_nvs_get_uint(E_LORA_NVS_MAC_NXT_TX, (uint32_t *)&mac_cmd_next_tx);
+                                bool *next_tx = LoRaMacGetMacCmdNextTx();
+                                if (mac_cmd_next_tx) {
+                                    *next_tx = true;
+                                } else {
+                                    *next_tx = false;
+                                }
 
-                        //         uint32_t mac_cmd_next_tx;
-                        //         modlora_nvs_get_uint(E_LORA_NVS_MAC_NXT_TX, (uint32_t *)&mac_cmd_next_tx);
-                        //         bool *next_tx = LoRaMacGetMacCmdNextTx();
-                        //         if (mac_cmd_next_tx) {
-                        //             *next_tx = true;
-                        //         } else {
-                        //             *next_tx = false;
-                        //         }
+                                uint32_t mac_cmd_buffer_idx;
+                                modlora_nvs_get_uint(E_LORA_NVS_MAC_CMD_BUF_IDX, (uint32_t *)&mac_cmd_buffer_idx);
+                                uint8_t *buffer_idx = LoRaMacGetMacCmdBufferIndex();
+                                *buffer_idx = mac_cmd_buffer_idx;
 
-                        //         uint32_t mac_cmd_buffer_idx;
-                        //         modlora_nvs_get_uint(E_LORA_NVS_MAC_CMD_BUF_IDX, (uint32_t *)&mac_cmd_buffer_idx);
-                        //         uint8_t *buffer_idx = LoRaMacGetMacCmdBufferIndex();
-                        //         *buffer_idx = mac_cmd_buffer_idx;
+                                modlora_nvs_get_uint(E_LORA_NVS_MAC_CMD_BUF_RPT_IDX, (uint32_t *)&mac_cmd_buffer_idx);
+                                buffer_idx = LoRaMacGetMacCmdBufferRepeatIndex();
+                                *buffer_idx = mac_cmd_buffer_idx;
 
-                        //         modlora_nvs_get_uint(E_LORA_NVS_MAC_CMD_BUF_RPT_IDX, (uint32_t *)&mac_cmd_buffer_idx);
-                        //         buffer_idx = LoRaMacGetMacCmdBufferRepeatIndex();
-                        //         *buffer_idx = mac_cmd_buffer_idx;
+                                // write the buffered MAC commads directly from NVRAM
+                                length = 15;
+                                modlora_nvs_get_blob(E_LORA_NVS_ELE_MAC_BUF, (void *)LoRaMacGetMacCmdBuffer(), &length);
 
-                        //         // write the buffered MAC commads directly from NVRAM
-                        //         length = 15;
-                        //         modlora_nvs_get_blob(E_LORA_NVS_ELE_MAC_BUF, (void *)LoRaMacGetMacCmdBuffer(), &length);
+                                // write the buffered MAC commads to repeat directly from NVRAM
+                                length = 15;
+                                modlora_nvs_get_blob(E_LORA_NVS_ELE_MAC_RPT_BUF, (void *)LoRaMacGetMacCmdBufferRepeat(), &length);
 
-                        //         // write the buffered MAC commads to repeat directly from NVRAM
-                        //         length = 15;
-                        //         modlora_nvs_get_blob(E_LORA_NVS_ELE_MAC_RPT_BUF, (void *)LoRaMacGetMacCmdBufferRepeat(), &length);
-
-                        //         lora_obj.activation = E_LORA_ACTIVATION_ABP;
-                        //         lora_obj.state = E_LORA_STATE_JOIN;
-                        //         // clear the joined flag until the nvram_save method is called again
-                        //         modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, (uint32_t)false);
-                        //     } else {
-                        //         lora_obj.state = E_LORA_STATE_IDLE;
-                        //     }
-                        // } else {
+                                lora_obj.activation = E_LORA_ACTIVATION_ABP;
+                                lora_obj.state = E_LORA_STATE_JOIN;
+                                // clear the joined flag until the nvram_save method is called again
+                                modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, (uint32_t)false);
+                            } else {
+                                lora_obj.state = E_LORA_STATE_IDLE;
+                            }
+                        } else {
                             lora_obj.state = E_LORA_STATE_IDLE;
-                        // }
+                        }
                     } else {
                         // radio initialization
                         RadioEvents.TxDone = OnTxDone;
@@ -963,7 +961,7 @@ static void TASK_LoRa (void *pvParameters) {
                     mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.u.otaa.DevEui;
                     mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.u.otaa.AppEui;
                     mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.u.otaa.AppKey;
-                    mlmeReq.Req.Join.NbTrials = 3;
+                    mlmeReq.Req.Join.NbTrials = 1;
                     // mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa_dr;
                     LoRaMacMlmeRequest( &mlmeReq );
                 } else {
@@ -1941,8 +1939,9 @@ STATIC mp_obj_t lora_set_battery_level(mp_obj_t self_in, mp_obj_t battery) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_set_battery_level_obj, lora_set_battery_level);
 
 STATIC mp_obj_t lora_nvram_save (mp_obj_t self_in) {
+    LoRaMacNvsSave();
+    modlora_nvs_set_uint(E_LORA_NVS_ELE_REGION, (uint32_t)lora_obj.region);
     modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, (uint32_t)lora_obj.joined);
-    // LoRaMacNvsSave();
     if (ESP_OK != nvs_commit(modlora_nvs_handle)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
@@ -1952,14 +1951,20 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_nvram_save_obj, lora_nvram_save);
 
 STATIC mp_obj_t lora_nvram_restore (mp_obj_t self_in) {
     uint32_t joined = 0;
+    LoRaMacRegion_t region;
     lora_cmd_data_t cmd_data;
 
     if (modlora_nvs_get_uint(E_LORA_NVS_ELE_JOINED, &joined)) {
         lora_obj.joined = joined;
-        if (joined) {
-            lora_get_config (&cmd_data);
-            cmd_data.cmd = E_LORA_CMD_INIT;
-            lora_send_cmd (&cmd_data);
+        if (modlora_nvs_get_uint(E_LORA_NVS_ELE_REGION, &region)) {
+            // only restore from NVRAM if the region matches
+            if (joined && region == lora_obj.region) {
+                lora_get_config (&cmd_data);
+                cmd_data.cmd = E_LORA_CMD_INIT;
+                lora_send_cmd (&cmd_data);
+            } else {
+                lora_obj.joined = false;
+            }
         }
     } else {
         lora_obj.joined = false;
