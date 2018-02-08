@@ -1020,6 +1020,10 @@ typedef struct sMlmeReqJoin
      * Number of trials for the join request.
      */
     uint8_t NbTrials;
+    /*!
+     * To support initial data rate selection for the Join Request
+     */
+    uint8_t DR;
 }MlmeReqJoin_t;
 
 /*!

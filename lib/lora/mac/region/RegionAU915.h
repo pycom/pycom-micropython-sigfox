@@ -452,6 +452,8 @@ uint8_t RegionAU915ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t d
 
 bool RegionAU915GetChannels( ChannelParams_t** channels, uint32_t *size );
 
+bool RegionAU915ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr );
+
 /*! \} defgroup REGIONAU915 */
 
 #endif // __REGION_AU915_H__

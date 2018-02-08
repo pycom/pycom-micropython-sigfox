@@ -3146,6 +3146,9 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest )
 
             altDr.NbTrials = JoinRequestTrials + 1;
 
+            // Pycom: Add Join DR selection as and when the region permits
+            RegionForceJoinDataRate( LoRaMacRegion, mlmeRequest->Req.Join.DR, &altDr );
+
             LoRaMacParams.ChannelsDatarate = RegionAlternateDr( LoRaMacRegion, &altDr );
 
             status = Send( &macHdr, 0, NULL, 0 );

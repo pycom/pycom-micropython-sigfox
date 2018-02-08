@@ -718,7 +718,6 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacPrimitives.MacMcpsIndication = McpsIndication;
                         LoRaMacPrimitives.MacMlmeConfirm = MlmeConfirm;
                         LoRaMacCallbacks.GetBatteryLevel = BoardGetBatteryLevel;
-                        printf("Initializing LoRa with region=%d\n", task_cmd_data.info.init.region);
                         LoRaMacInitialization(&LoRaMacPrimitives, &LoRaMacCallbacks, task_cmd_data.info.init.region);
 
                         TimerStop(&TxNextActReqTimer);
@@ -872,7 +871,7 @@ static void TASK_LoRa (void *pvParameters) {
                     // } else {
                     //     LoRaMacChannelManualRemove(task_cmd_data.info.channel.index);
                     // }
-                    // xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
+                    xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
                     break;
                 case E_LORA_CMD_LORAWAN_TX: {
                         LoRaMacTxInfo_t txInfo;
@@ -962,7 +961,7 @@ static void TASK_LoRa (void *pvParameters) {
                     mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.u.otaa.AppEui;
                     mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.u.otaa.AppKey;
                     mlmeReq.Req.Join.NbTrials = 1;
-                    // mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa_dr;
+                    mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa_dr;
                     LoRaMacMlmeRequest( &mlmeReq );
                 } else {
                     mibReq.Type = MIB_NET_ID;

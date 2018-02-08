@@ -870,3 +870,13 @@ bool RegionUS915GetChannels( ChannelParams_t** channels, uint32_t *size )
     *size = sizeof(Channels);
     return true;
 }
+
+bool RegionUS915ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr )
+{
+    if (joinDr == DR_4) {
+        alternateDr->NbTrials = 1;
+    } else {
+        alternateDr->NbTrials = 0;
+    }
+    return true;
+}

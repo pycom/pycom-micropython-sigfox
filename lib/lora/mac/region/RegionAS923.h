@@ -500,6 +500,8 @@ uint8_t RegionAS923ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t d
 
 bool RegionAS923GetChannels( ChannelParams_t** channels, uint32_t *size );
 
+bool RegionAS923ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr );
+
 /*! \} defgroup REGIONAS923 */
 
 #endif // __REGION_AS923_H__

@@ -445,6 +445,8 @@ uint8_t RegionUS915HybridApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, in
 
 bool RegionUS915HybridGetChannels( ChannelParams_t** channels, uint32_t *size );
 
+bool RegionUS915HybridForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr );
+
 /*! \} defgroup REGIONUS915HYB */
 
 #endif // __REGION_US915_HYBRID_H__

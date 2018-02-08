@@ -1081,3 +1081,12 @@ bool RegionEU868GetChannels( ChannelParams_t** channels, uint32_t *size )
     *size = sizeof(Channels);
     return true;
 }
+
+bool RegionEU868ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr )
+{
+    uint8_t DRToCounter[6] = { 48, 32, 24, 16, 8, 1 };
+    if (joinDr < sizeof(DRToCounter)) {
+        alternateDr->NbTrials = DRToCounter[joinDr];
+    }
+    return true;
+}
