@@ -131,23 +131,13 @@ To flash at full speed, use ESPSPEED variable:
 
 	$ make ESPSPEED=921600 flash
 
-To build and flash a LoPy for the default region (868 MHz):
+To build and flash a LoPy:
 
-    $ # LORA_BAND defaults to USE_BAND_868
     $ cd esp32
     $ make BOARD=LOPY clean
     $ make BOARD=LOPY TARGET=boot
     $ make BOARD=LOPY TARGET=app
     $ make BOARD=LOPY flash
-
-
-For 915MHz regions add the `LORA_BAND=USE_BAND_915` variable:
-
-    $ cd esp32
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 clean
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=boot
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=app
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 flash
 
 The above also applies to the FiPy and LoPy4
 

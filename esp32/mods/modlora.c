@@ -91,16 +91,6 @@
 
 #define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           15000  // 15 [s] value in ms
 
-#if defined( USE_BAND_868 )
-#define LC4                                         { 867100000, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
-#define LC5                                         { 867300000, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
-#define LC6                                         { 867500000, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
-#define LC7                                         { 867700000, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
-#define LC8                                         { 867900000, { ( ( DR_5 << 4 ) | DR_0 ) }, 0 }
-#define LC9                                         { 868800000, { ( ( DR_7 << 4 ) | DR_7 ) }, 2 }
-#define LC10                                        { 868300000, { ( ( DR_6 << 4 ) | DR_6 ) }, 1 }
-#endif
-
 #define DEF_LORAWAN_NETWORK_ID                      0
 #define DEF_LORAWAN_APP_PORT                        2
 
@@ -576,10 +566,9 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                         mibReq.Param.AdrEnable = true;
                         LoRaMacMibSetRequestConfirm( &mibReq );
 
-                    #if defined(USE_BAND_868)
                         // always disable duty cycle limitation during test mode
                         LoRaMacTestSetDutyCycleOn(false);
-                    #endif
+
                         // printf("Compliance enabled\n");
                     }
                 } else {
@@ -595,9 +584,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                         mibReq.Type = MIB_ADR;
                         mibReq.Param.AdrEnable = lora_obj.adr;
                         LoRaMacMibSetRequestConfirm(&mibReq);
-                    #if defined( USE_BAND_868 )
                         LoRaMacTestSetDutyCycleOn(true);
-                    #endif
                         // printf("Compliance disabled\n");
                         break;
                     case 1: // (iii, iv)
@@ -736,9 +723,7 @@ static void TASK_LoRa (void *pvParameters) {
                         mibReq.Param.Class = task_cmd_data.info.init.device_class;
                         LoRaMacMibSetRequestConfirm(&mibReq);
 
-                    #if defined(USE_BAND_868)
                         LoRaMacTestSetDutyCycleOn(false);
-                    #endif
 
                         // change the frequency to be on the center of the band
                         lora_obj.frequency = RF_FREQUENCY_CENTER;
