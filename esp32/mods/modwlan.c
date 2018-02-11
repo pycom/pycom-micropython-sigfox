@@ -742,31 +742,33 @@ STATIC mp_obj_t wlan_scan(mp_obj_t self_in) {
     uint16_t ap_num;
     wifi_ap_record_t *ap_record_buffer;
     wifi_ap_record_t *ap_record;
+    mp_obj_t nets = mp_obj_new_list(0, NULL);
 
     esp_wifi_scan_get_ap_num(&ap_num); // get the number of scanned APs
-    ap_record_buffer = pvPortMalloc(ap_num * sizeof(wifi_ap_record_t));
-    if (ap_record_buffer == NULL) {
-        mp_raise_OSError(MP_ENOMEM);
-    }
 
-    mp_obj_t nets = mp_const_none;
-    // get the scanned AP list
-    if (ESP_OK == esp_wifi_scan_get_ap_records(&ap_num, (wifi_ap_record_t *)ap_record_buffer)) {
-        nets = mp_obj_new_list(0, NULL);
-        for (int i = 0; i < ap_num; i++) {
-            ap_record = &ap_record_buffer[i];
-            mp_obj_t tuple[5];
-            tuple[0] = mp_obj_new_str((const char *)ap_record->ssid, strlen((char *)ap_record->ssid), false);
-            tuple[1] = mp_obj_new_bytes((const byte *)ap_record->bssid, sizeof(ap_record->bssid));
-            tuple[2] = mp_obj_new_int(ap_record->authmode);
-            tuple[3] = mp_obj_new_int(ap_record->primary);
-            tuple[4] = mp_obj_new_int(ap_record->rssi);
-
-            // add the network to the list
-            mp_obj_list_append(nets, mp_obj_new_attrtuple(wlan_scan_info_fields, 5, tuple));
+    if (ap_num > 0) {
+        ap_record_buffer = pvPortMalloc(ap_num * sizeof(wifi_ap_record_t));
+        if (ap_record_buffer == NULL) {
+            mp_raise_OSError(MP_ENOMEM);
         }
+
+        // get the scanned AP list
+        if (ESP_OK == esp_wifi_scan_get_ap_records(&ap_num, (wifi_ap_record_t *)ap_record_buffer)) {
+            for (int i = 0; i < ap_num; i++) {
+                ap_record = &ap_record_buffer[i];
+                mp_obj_t tuple[5];
+                tuple[0] = mp_obj_new_str((const char *)ap_record->ssid, strlen((char *)ap_record->ssid), false);
+                tuple[1] = mp_obj_new_bytes((const byte *)ap_record->bssid, sizeof(ap_record->bssid));
+                tuple[2] = mp_obj_new_int(ap_record->authmode);
+                tuple[3] = mp_obj_new_int(ap_record->primary);
+                tuple[4] = mp_obj_new_int(ap_record->rssi);
+
+                // add the network to the list
+                mp_obj_list_append(nets, mp_obj_new_attrtuple(wlan_scan_info_fields, 5, tuple));
+            }
+        }
+        vPortFree(ap_record_buffer);
     }
-    vPortFree(ap_record_buffer);
 
     return nets;
 }
