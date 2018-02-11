@@ -24,6 +24,7 @@
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "modled.h"
+#include "pycom_config.h"
 
 #include "gpio.h"
 #include "machpin.h"
@@ -85,8 +86,8 @@ void mperror_init0 (void) {
     // configure the heartbeat led pin
     pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
     led_init(&led_info);
-    mperror_heart_beat.enabled = true;
-    mperror_heart_beat.do_disable = false;
+    mperror_heart_beat.enabled = (config_get_heartbeat_on_boot()) ? true:false;
+    mperror_heart_beat.do_disable = (config_get_heartbeat_on_boot()) ? false:true;
     mperror_heartbeat_switch_off();
 }
 
@@ -174,7 +175,12 @@ void nlr_jump_fail(void *val) {
 void mperror_enable_heartbeat (bool enable) {
     if (enable) {
         led_info.color.value = MPERROR_HEARTBEAT_COLOR;
-        mperror_init0();
+        pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
+        led_init(&led_info);
+        mperror_heart_beat.enabled = true;
+        mperror_heart_beat.do_disable = false;
+        mperror_heartbeat_switch_off();
+        //mperror_init0();
     } else {
         led_info.color.value = 0;
         mperror_heart_beat.do_disable = true;

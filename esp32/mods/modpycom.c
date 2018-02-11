@@ -27,6 +27,10 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include "antenna.h"
+
+#include <string.h>
+
 extern led_info_t led_info;
 
 
@@ -200,20 +204,73 @@ STATIC mp_obj_t mod_pycom_wifi_on_boot (mp_uint_t n_args, const mp_obj_t *args) 
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_wifi_on_boot_obj, 0, 1, mod_pycom_wifi_on_boot);
 
+STATIC mp_obj_t mod_pycom_wifi_ssid (mp_uint_t n_args, const mp_obj_t *args) {
+    if (n_args) {
+    		const char *wifi_ssid = mp_obj_str_get_str(args[0]);
+    		config_set_wifi_ssid ((const uint8_t*)wifi_ssid);
+    } else {
+    		uint8_t wifi_ssid[32];
+    		config_get_wifi_ssid(wifi_ssid);
+    		return mp_obj_new_str((const char*)wifi_ssid,strlen((const char*)wifi_ssid),false);
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_wifi_ssid_obj, 0, 1, mod_pycom_wifi_ssid);
+
+STATIC mp_obj_t mod_pycom_wifi_pwd (mp_uint_t n_args, const mp_obj_t *args) {
+    if (n_args) {
+    		const char *wifi_pwd = mp_obj_str_get_str(args[0]);
+    		config_set_wifi_pwd ((const uint8_t*)wifi_pwd);
+    } else {
+    		uint8_t wifi_pwd[64];
+    		config_get_wifi_pwd(wifi_pwd);
+    		return mp_obj_new_str((const char*)wifi_pwd,strlen((const char*)wifi_pwd),false);
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_wifi_pwd_obj, 0, 1, mod_pycom_wifi_pwd);
+
+STATIC mp_obj_t mod_pycom_lora_country (mp_uint_t n_args, const mp_obj_t *args) {
+    if (n_args) {
+    		const char *lora_country = mp_obj_str_get_str(args[0]);
+    		config_set_lora_country ((const uint8_t*)lora_country);
+    } else {
+    		uint8_t lora_country[32];
+    		config_get_lora_country(lora_country);
+    		return mp_obj_new_str((const char*)lora_country,strlen((const char*)lora_country),false);
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_lora_country_obj, 0, 1, mod_pycom_lora_country);
+
+STATIC mp_obj_t mod_pycom_heartbeat_on_boot (mp_uint_t n_args, const mp_obj_t *args) {
+    if (n_args) {
+    		config_set_heartbeat_on_boot (mp_obj_is_true(args[0]));
+    } else {
+        return mp_obj_new_bool(config_get_heartbeat_on_boot());
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_heartbeat_on_boot_obj, 0, 1, mod_pycom_heartbeat_on_boot);
+
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat),           (mp_obj_t)&mod_pycom_heartbeat_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_rgbled),              (mp_obj_t)&mod_pycom_rgb_led_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ota_start),           (mp_obj_t)&mod_pycom_ota_start_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ota_write),           (mp_obj_t)&mod_pycom_ota_write_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ota_finish),          (mp_obj_t)&mod_pycom_ota_finish_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ota_verify),          (mp_obj_t)&mod_pycom_ota_verify_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_pulses_get),          (mp_obj_t)&mod_pycom_pulses_get_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_set),             (mp_obj_t)&mod_pycom_nvs_set_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_get),             (mp_obj_t)&mod_pycom_nvs_get_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_erase),           (mp_obj_t)&mod_pycom_nvs_erase_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_erase_all),       (mp_obj_t)&mod_pycom_nvs_erase_all_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_on_boot),        (mp_obj_t)&mod_pycom_wifi_on_boot_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            			MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat),           			(mp_obj_t)&mod_pycom_heartbeat_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_rgbled),              			(mp_obj_t)&mod_pycom_rgb_led_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ota_start),           			(mp_obj_t)&mod_pycom_ota_start_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ota_write),           			(mp_obj_t)&mod_pycom_ota_write_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ota_finish),          			(mp_obj_t)&mod_pycom_ota_finish_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ota_verify),          			(mp_obj_t)&mod_pycom_ota_verify_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pulses_get),          			(mp_obj_t)&mod_pycom_pulses_get_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_set),             			(mp_obj_t)&mod_pycom_nvs_set_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_get),             			(mp_obj_t)&mod_pycom_nvs_get_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_erase),           			(mp_obj_t)&mod_pycom_nvs_erase_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_erase_all),       			(mp_obj_t)&mod_pycom_nvs_erase_all_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_on_boot),        			(mp_obj_t)&mod_pycom_wifi_on_boot_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_ssid),        	   			(mp_obj_t)&mod_pycom_wifi_ssid_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd),        	   			(mp_obj_t)&mod_pycom_wifi_pwd_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_lora_country),  				(mp_obj_t)&mod_pycom_lora_country_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat_on_boot),        		(mp_obj_t)&mod_pycom_heartbeat_on_boot_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(pycom_module_globals, pycom_module_globals_table);
