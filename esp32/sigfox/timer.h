@@ -24,6 +24,7 @@ void TIMER_bitrate_stop(void);
 void TIMER_get_rssi_start(void);
 void TIMER_get_rssi_stop(void);
 void TIMER_get_rssi_init(sfx_u8 time_in_milliseconds);
+void TIMER_bitrate_create (void);
 void TIMER_downlinnk_timer_create (void);
 void TIMER_carrier_sense_timer_create (void);
 #if !defined(FIPY) && !defined(LOPY4)

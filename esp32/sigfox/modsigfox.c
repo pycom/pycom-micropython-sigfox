@@ -151,6 +151,7 @@ void modsigfox_init0 (void) {
     xRxQueue = xQueueCreate(SIGFOX_DATA_QUEUE_SIZE_MAX, sizeof(sigfox_rx_data_t));
     sigfoxEvents = xEventGroupCreate();
 
+    TIMER_bitrate_create();
     TIMER_downlinnk_timer_create();
     TIMER_carrier_sense_timer_create();
 #if !defined(FIPY) && !defined(LOPY4)

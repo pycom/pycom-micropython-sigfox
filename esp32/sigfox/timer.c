@@ -51,6 +51,7 @@
 #include "freertos/queue.h"
 #include "freertos/timers.h"
 #include "freertos/xtensa_api.h"
+#include "xtensa/core-macros.h"
 
 
 /******************************************************************************
@@ -87,6 +88,7 @@ static e_timer_mode TIMER_bitrate_mode;
 static uint32_t TIMER_bitrate_ticks;
 static TimerHandle_t TIMER_downlink;
 static TimerHandle_t TIMER_clear_channel;
+static intr_handle_t bitrate_isr_handle;
 #if !defined(FIPY) && !defined(LOPY4)
 static TimerHandle_t TIMER_RxTx_done;
 #endif
@@ -124,12 +126,12 @@ IRAM_ATTR void TIMER_bitrate_isr (void* para) {
     // sfx_s16 rssi;
     // sfx_s16 rssiConverted;
     // sfx_s16 rssi2Converted;
-    xthal_set_ccompare(TIMER_BITRATE_NUM, xthal_get_ccount() + TIMER_bitrate_ticks);
+    XTHAL_SET_CCOMPARE(TIMER_BITRATE_NUM, XTHAL_GET_CCOUNT() + TIMER_bitrate_ticks);
 
     switch (TIMER_bitrate_mode) {
     case E_TIMER_MODE_MODULATION:
         // execute the modulation into the interrupt context
-        if(TxProcess() == 1) {
+        if (TxProcess() == 1) {
            SysState = TxEnd;
         } else {
            SysState = TxWaiting;
@@ -244,9 +246,7 @@ void TIMER_bitrate_init(void) {
     } else {
         TIMER_bitrate_ticks = ETSI_TIMER_TICKS;
     }
-    xt_set_interrupt_handler(XCHAL_TIMER_INTERRUPT(TIMER_BITRATE_NUM), TIMER_bitrate_isr, NULL);
 }
-
 
 /*!****************************************************************************
  * \fn void TIMER_get_rssi_init(void)
@@ -257,11 +257,14 @@ void TIMER_get_rssi_init(sfx_u8 time_in_milliseconds) {
     TIMER_bitrate_ticks = RSSI_TIMER_TICKS;
     TIMER_bitrate_nb_interrupt_to_wait_for = ((time_in_milliseconds * 1000) / RSSI_TIMER_US) + 1;
 
-    xt_set_interrupt_handler(XCHAL_TIMER_INTERRUPT(TIMER_BITRATE_NUM), TIMER_bitrate_isr, NULL);
-
     // reset the counter
     TIMER_bitrate_interrupt_count = 0;
     TIMER_rssi_end =  false;
+}
+
+void TIMER_bitrate_create (void) {
+    esp_intr_alloc(ETS_INTERNAL_TIMER1_INTR_SOURCE, ESP_INTR_FLAG_IRAM, TIMER_bitrate_isr, NULL, &bitrate_isr_handle);
+    esp_intr_disable(bitrate_isr_handle);
 }
 
 void TIMER_downlinnk_timer_create (void) {
@@ -326,16 +329,15 @@ void TIMER_carrier_sense_init(sfx_u16 time_in_milliseconds) {
 *   @brief  Start the bitrate Timer
 *******************************************************************************/
 void TIMER_bitrate_start (void) {
-    xt_ints_on(1 << XCHAL_TIMER_INTERRUPT(TIMER_BITRATE_NUM));
-    xthal_set_ccompare(TIMER_BITRATE_NUM, xthal_get_ccount() + TIMER_bitrate_ticks);
+    XTHAL_SET_CCOMPARE(TIMER_BITRATE_NUM, XTHAL_GET_CCOUNT() + TIMER_bitrate_ticks);
+    esp_intr_enable(bitrate_isr_handle);
 }
-
 
 /***************************************************************************//**
 *   @brief Stop the bitrate timer
 *******************************************************************************/
 void TIMER_bitrate_stop(void) {
-    xt_ints_off(1 << XCHAL_TIMER_INTERRUPT(TIMER_BITRATE_NUM));
+    esp_intr_disable(bitrate_isr_handle);
 }
 
 /*!****************************************************************************
@@ -362,8 +364,8 @@ void TIMER_carrier_sense_stop(void) {
  * \brief  Start the RSSI Timer
  ******************************************************************************/
 void TIMER_get_rssi_start(void) {
-    xt_ints_on(1 << XCHAL_TIMER_INTERRUPT(TIMER_BITRATE_NUM));
-    xthal_set_ccompare(TIMER_BITRATE_NUM, xthal_get_ccount() + TIMER_bitrate_ticks);
+    XTHAL_SET_CCOMPARE(TIMER_BITRATE_NUM, XTHAL_GET_CCOUNT() + TIMER_bitrate_ticks);
+    esp_intr_enable(bitrate_isr_handle);
 }
 
 /*!****************************************************************************
@@ -371,7 +373,7 @@ void TIMER_get_rssi_start(void) {
  * \brief Stop the RSSI timer
  ******************************************************************************/
 void TIMER_get_rssi_stop(void) {
-    xt_ints_off(1 << XCHAL_TIMER_INTERRUPT(TIMER_BITRATE_NUM));
+    esp_intr_disable(bitrate_isr_handle);
 }
 
 /**************************************************************************//**

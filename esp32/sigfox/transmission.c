@@ -82,7 +82,7 @@ TxProcess(void)
         //
     	// If a 0 is read in the frame, call the modulation function
         //
-    	if(0 ==  Read_Bit(frame))
+    	if (0 == Read_Bit(frame))
         {
         	RADIO_modulate();
         }
