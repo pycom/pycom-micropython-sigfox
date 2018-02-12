@@ -1225,27 +1225,24 @@ static int wlan_socket_socket(mod_network_socket_obj_t *s, int *_errno) {
 
 static void wlan_socket_close(mod_network_socket_obj_t *s) {
     // this is to prevent the finalizer to close a socket that failed when being created
-    if (s->sock_base.u.sd >= 0) {
-        if (s->sock_base.is_ssl) {
-            mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-            if (ss->sock_base.connected) {
-                while(mbedtls_ssl_close_notify(&ss->ssl) == MBEDTLS_ERR_SSL_WANT_WRITE);
-            }
-            mbedtls_net_free(&ss->context_fd);
-            mbedtls_x509_crt_free(&ss->cacert);
-            mbedtls_x509_crt_free(&ss->own_cert);
-            mbedtls_pk_free(&ss->pk_key);
-            mbedtls_ssl_free(&ss->ssl);
-            mbedtls_ssl_config_free(&ss->conf);
-            mbedtls_ctr_drbg_free(&ss->ctr_drbg);
-            mbedtls_entropy_free(&ss->entropy);
-        } else {
-            close(s->sock_base.u.sd);
+    if (s->sock_base.is_ssl) {
+        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
+        if (ss->sock_base.connected) {
+            while(mbedtls_ssl_close_notify(&ss->ssl) == MBEDTLS_ERR_SSL_WANT_WRITE);
         }
-        modusocket_socket_delete(s->sock_base.u.sd);
-        s->sock_base.connected = false;
-        s->sock_base.u.sd = -1;
+        mbedtls_net_free(&ss->context_fd);
+        mbedtls_x509_crt_free(&ss->cacert);
+        mbedtls_x509_crt_free(&ss->own_cert);
+        mbedtls_pk_free(&ss->pk_key);
+        mbedtls_ssl_free(&ss->ssl);
+        mbedtls_ssl_config_free(&ss->conf);
+        mbedtls_ctr_drbg_free(&ss->ctr_drbg);
+        mbedtls_entropy_free(&ss->entropy);
+    } else {
+        close(s->sock_base.u.sd);
     }
+    modusocket_socket_delete(s->sock_base.u.sd);
+    s->sock_base.connected = false;
 }
 
 static int wlan_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {

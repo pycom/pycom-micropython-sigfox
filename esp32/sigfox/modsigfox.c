@@ -1043,10 +1043,6 @@ int sigfox_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
 }
 
 void sigfox_socket_close (mod_network_socket_obj_t *s) {
-    // this is to prevent the finalizer to close a socket that failed during creation
-    if (s->sock_base.u.sd > 0) {
-        s->sock_base.u.sd = -1;
-    }
 }
 
 int sigfox_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno) {

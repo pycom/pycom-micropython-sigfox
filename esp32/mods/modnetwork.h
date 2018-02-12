@@ -77,8 +77,6 @@ typedef struct _mod_network_socket_base_t {
     mod_network_nic_type_t *nic_type;
     union {
         struct {
-            // this order is important so that fileno gets > 0 once
-            // the socket descriptor is assigned after being created.
             uint8_t domain;
             int8_t fileno;
             uint8_t type;
