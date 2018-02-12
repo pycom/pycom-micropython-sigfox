@@ -413,6 +413,7 @@ bool RegionUS915HybridNextChannel( NextChanParams_t* nextChanParams, uint8_t* ch
  * \retval Status of the operation.
  */
 LoRaMacStatus_t RegionUS915HybridChannelAdd( ChannelAddParams_t* channelAdd );
+LoRaMacStatus_t RegionUS915HybridChannelManualAdd( ChannelAddParams_t* channelAdd );
 
 /*!
  * \brief Removes a channel.
@@ -422,6 +423,7 @@ LoRaMacStatus_t RegionUS915HybridChannelAdd( ChannelAddParams_t* channelAdd );
  * \retval Returns true, if the channel was removed successfully.
  */
 bool RegionUS915HybridChannelsRemove( ChannelRemoveParams_t* channelRemove  );
+bool RegionUS915HybridChannelsManualRemove( ChannelRemoveParams_t* channelRemove  );
 
 /*!
  * \brief Sets the radio into continuous wave mode.

@@ -836,9 +836,79 @@ LoRaMacStatus_t RegionUS915ChannelAdd( ChannelAddParams_t* channelAdd )
     return LORAMAC_STATUS_PARAMETER_INVALID;
 }
 
+LoRaMacStatus_t RegionUS915ChannelManualAdd( ChannelAddParams_t* channelAdd )
+{
+    uint8_t band = 0;
+    bool drInvalid = false;
+    bool freqInvalid = false;
+    uint8_t id = channelAdd->ChannelId;
+
+    if( id >= US915_MAX_NB_CHANNELS )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
+    }
+
+    // Validate the datarate range for min: must be DR_0
+    if( channelAdd->NewChannel->DrRange.Fields.Min > DR_0 )
+    {
+        drInvalid = true;
+    }
+    // Validate the datarate range for max: must be <= TX_MAX_DATARATE
+    if( channelAdd->NewChannel->DrRange.Fields.Max != US915_TX_MAX_DATARATE )
+    {
+        drInvalid = true;
+    }
+
+    // Check frequency
+    if( ( channelAdd->NewChannel->Frequency < 902000000 ) || ( channelAdd->NewChannel->Frequency > 928000000 ) )
+    {
+        freqInvalid = true;
+    }
+
+    // Check status
+    if( ( drInvalid == true ) && ( freqInvalid == true ) )
+    {
+        return LORAMAC_STATUS_FREQ_AND_DR_INVALID;
+    }
+    if( drInvalid == true )
+    {
+        return LORAMAC_STATUS_DATARATE_INVALID;
+    }
+    if( freqInvalid == true )
+    {
+        return LORAMAC_STATUS_FREQUENCY_INVALID;
+    }
+
+    memcpy( &(Channels[id]), channelAdd->NewChannel, sizeof( Channels[id] ) );
+    Channels[id].Band = band;
+    ChannelsMask[ (id / 16) ] |= (1 << (id % 16));
+    // activate the channel in the remaining ones
+    ChannelsMaskRemaining[id / 16] |= ChannelsMask[id / 16];
+
+    return LORAMAC_STATUS_OK;
+}
+
 bool RegionUS915ChannelsRemove( ChannelRemoveParams_t* channelRemove  )
 {
-    return LORAMAC_STATUS_PARAMETER_INVALID;
+    return false;
+}
+
+bool RegionUS915ChannelsManualRemove( ChannelRemoveParams_t* channelRemove  )
+{
+    uint8_t id = channelRemove->ChannelId;
+
+    // Disable the channel as it doesn't exist anymore
+    if ( !RegionCommonChanDisable( ChannelsMask, id, US915_MAX_NB_CHANNELS ) ) {
+        return false;
+    }
+
+    // Remove the channel from the list of channels
+    Channels[id] = ( ChannelParams_t ){ 0, 0, { 0 }, 0 };
+
+    // Set the channel mask remaining accordingly
+    ChannelsMaskRemaining[id / 16] &= ChannelsMask[id / 16];
+
+    return true;
 }
 
 void RegionUS915SetContinuousWave( ContinuousWaveParams_t* continuousWave )

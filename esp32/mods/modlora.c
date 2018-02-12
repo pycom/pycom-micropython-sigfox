@@ -51,29 +51,8 @@
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
-#if defined(USE_BAND_868)
-#if defined(LOPY4)
-#define RF_FREQUENCY_MIN                            410000000   // Hz
-#else
-#define RF_FREQUENCY_MIN                            863000000   // Hz
-#endif
-#define RF_FREQUENCY_CENTER                         868000000   // Hz
-#define RF_FREQUENCY_MAX                            870000000   // Hz
 #define TX_OUTPUT_POWER_MAX                         20          // dBm
-#define TX_OUTPUT_POWER_DEAFULT                     14          // dBm
-#define TX_OUTPUT_POWER_MIN                         2           // dBm
-#define LORAWAN_MAX_JOIN_DATARATE                   5
-#elif defined(USE_BAND_915) || defined(USE_BAND_915_HYBRID)
-#define RF_FREQUENCY_MIN                            902000000   // Hz
-#define RF_FREQUENCY_CENTER                         915000000   // Hz
-#define RF_FREQUENCY_MAX                            928000000   // Hz
-#define TX_OUTPUT_POWER_MAX                         20          // dBm
-#define TX_OUTPUT_POWER_DEAFULT                     20          // dBm
 #define TX_OUTPUT_POWER_MIN                         5           // dBm
-#define LORAWAN_MAX_JOIN_DATARATE                   3
-#else
-    #error "Please define a frequency band in the compiler options."
-#endif
 
 #define LORA_FIX_LENGTH_PAYLOAD_ON                  (true)
 #define LORA_FIX_LENGTH_PAYLOAD_OFF                 (false)
@@ -725,9 +704,6 @@ static void TASK_LoRa (void *pvParameters) {
 
                         LoRaMacTestSetDutyCycleOn(false);
 
-                        // change the frequency to be on the center of the band
-                        lora_obj.frequency = RF_FREQUENCY_CENTER;
-
                         // check if we have already joined the network
                         if (lora_obj.joined) {
                             uint32_t length;
@@ -849,13 +825,15 @@ static void TASK_LoRa (void *pvParameters) {
                     lora_obj.state = E_LORA_STATE_TX;
                     break;
                 case E_LORA_CMD_CONFIG_CHANNEL:
-                    // if (task_cmd_data.info.channel.add) {
-                    //     ChannelParams_t channel =
-                    //     { task_cmd_data.info.channel.frequency, {((task_cmd_data.info.channel.dr_max << 4) | task_cmd_data.info.channel.dr_min)}, 0};
-                    //     LoRaMacChannelManualAdd(task_cmd_data.info.channel.index, channel);
-                    // } else {
-                    //     LoRaMacChannelManualRemove(task_cmd_data.info.channel.index);
-                    // }
+                    if (task_cmd_data.info.channel.add) {
+                        ChannelParams_t channel =
+                        { task_cmd_data.info.channel.frequency, 0, {((task_cmd_data.info.channel.dr_max << 4) | task_cmd_data.info.channel.dr_min)}, 0};
+                        ChannelAddParams_t channelAdd = { &channel, task_cmd_data.info.channel.index };
+                        RegionChannelManualAdd(lora_obj.region, &channelAdd);
+                    } else {
+                        ChannelRemoveParams_t channelRemove = { task_cmd_data.info.channel.index };
+                        RegionChannelsManualRemove(lora_obj.region, &channelRemove);
+                    }
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
                     break;
                 case E_LORA_CMD_LORAWAN_TX: {
@@ -1065,62 +1043,6 @@ static IRAM_ATTR void OnRxError (void) {
 static void lora_radio_setup (lora_init_cmd_data_t *init_data) {
     uint16_t symbol_to = 8;
 
-#if defined( USE_BAND_868 )
-    // For higher datarates, we increase the number of symbols generating a Rx Timeout
-    if (init_data->sf == 9 || init_data->sf == 8) {
-        symbol_to = 12;
-    } else if(init_data->sf == 7) {
-        if (init_data->bandwidth >= E_LORA_BW_250_KHZ) {
-            symbol_to = 20;
-        } else {
-            symbol_to = 15;
-        }
-    } else if (init_data->sf == 6) {
-        if (init_data->bandwidth >= E_LORA_BW_250_KHZ) {
-            symbol_to = 30;
-        } else {
-            symbol_to = 25;
-        }
-    }
-#else
-    // For higher datarates, we increase the number of symbols generating a Rx Timeout
-    if (init_data->bandwidth == E_LORA_BW_125_KHZ) {
-        switch(init_data->sf) {
-            case 10:      // SF10 - BW125
-                symbol_to = 8;
-                break;
-            case 9:       // SF9  - BW125
-            case 8:       // SF8  - BW125
-                symbol_to = 12;
-                break;
-            case 7:       // SF7  - BW125
-                symbol_to = 15;
-                break;
-            default:
-                break;
-        }
-    } else {
-        switch(init_data->sf) {
-            case 12:       // SF12 - BW500
-            case 11:       // SF11 - BW500
-            case 10:       // SF10 - BW500
-                symbol_to = 12;
-                break;
-            case 9:        // SF9  - BW500
-                symbol_to = 15;
-                break;
-            case 8:        // SF8  - BW500
-                symbol_to = 20;
-                break;
-            case 7:        // SF7  - BW500
-                symbol_to = 24;
-                break;
-            default:
-                break;
-        }
-    }
-#endif
-
     Radio.SetModem(MODEM_LORA);
 
     if (init_data->public) {
@@ -1160,9 +1082,41 @@ static void lora_validate_mode (uint32_t mode) {
 }
 
 static void lora_validate_frequency (uint32_t frequency) {
-    if (frequency < RF_FREQUENCY_MIN || frequency > RF_FREQUENCY_MAX) {
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "frequency %d out of range", frequency));
+    switch (lora_obj.region) {
+        case LORAMAC_REGION_AS923:
+            if (frequency < 915000000 || frequency > 928000000) {
+                goto freq_error;
+            }
+            break;
+        case LORAMAC_REGION_AU915:
+            if (frequency < 915000000 || frequency > 928000000) {
+                goto freq_error;
+            }
+            break;
+        case LORAMAC_REGION_US915:
+            if (frequency < 902000000 || frequency > 928000000) {
+                goto freq_error;
+            }
+            break;
+        case LORAMAC_REGION_US915_HYBRID:
+            if (frequency < 902000000 || frequency > 928000000) {
+                goto freq_error;
+            }
+            break;
+        case LORAMAC_REGION_EU868:
+        #if defined(LOPY4)
+            if (frequency < 410000000 || frequency > 870000000) {
+        #else
+            if (frequency < 863000000 || frequency > 870000000) {
+        #endif
+                goto freq_error;
+            }
+            break;
+        default:
+            break;
     }
+freq_error:
+    nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "frequency %d out of range", frequency));
 }
 
 static void lora_validate_power (uint8_t tx_power) {
@@ -1172,15 +1126,24 @@ static void lora_validate_power (uint8_t tx_power) {
 }
 
 static bool lora_validate_data_rate (uint32_t data_rate) {
-#if defined(USE_BAND_868)
-    if (data_rate > DR_6) {
-        return false;
+
+    switch (lora_obj.region) {
+    case LORAMAC_REGION_AS923:
+    case LORAMAC_REGION_EU868:
+    case LORAMAC_REGION_AU915:
+        if (data_rate > DR_6) {
+            return false;
+        }
+        break;
+    case LORAMAC_REGION_US915:
+    case LORAMAC_REGION_US915_HYBRID:
+        if (data_rate > DR_4) {
+            return false;
+        }
+        break;
+    default:
+        break;
     }
-#else
-    if (data_rate > DR_4) {
-        return false;
-    }
-#endif
     return true;
 }
 
@@ -1402,11 +1365,49 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
     cmd_data.info.init.stack_mode = args[0].u_int;
     lora_validate_mode (cmd_data.info.init.stack_mode);
 
-    cmd_data.info.init.frequency = args[1].u_int;
-    lora_validate_frequency (cmd_data.info.init.frequency);
+    // we need to know the region first
+    cmd_data.info.init.region = args[14].u_int;
+    lora_validate_region(cmd_data.info.init.region);
 
-    cmd_data.info.init.tx_power = args[2].u_int;
-    lora_validate_power (cmd_data.info.init.tx_power);
+    if (args[1].u_obj == MP_OBJ_NULL) {
+        switch (cmd_data.info.init.region) {
+        case LORAMAC_REGION_AS923:
+            cmd_data.info.init.frequency = 923000000;
+            break;
+        case LORAMAC_REGION_AU915:
+        case LORAMAC_REGION_US915:
+        case LORAMAC_REGION_US915_HYBRID:
+            cmd_data.info.init.frequency = 915000000;
+            break;
+        case LORAMAC_REGION_EU868:
+            cmd_data.info.init.frequency = 868000000;
+            break;
+        default:
+            break;
+        }
+    } else {
+        cmd_data.info.init.frequency = mp_obj_get_int(args[1].u_obj);
+        lora_validate_frequency (cmd_data.info.init.frequency);
+    }
+
+        if (args[2].u_obj == MP_OBJ_NULL) {
+        switch (cmd_data.info.init.region) {
+        case LORAMAC_REGION_AS923:
+        case LORAMAC_REGION_AU915:
+        case LORAMAC_REGION_US915:
+        case LORAMAC_REGION_US915_HYBRID:
+            cmd_data.info.init.tx_power = 20;
+            break;
+        case LORAMAC_REGION_EU868:
+            cmd_data.info.init.tx_power = 14;
+            break;
+        default:
+            break;
+        }
+    } else {
+        cmd_data.info.init.tx_power = mp_obj_get_int(args[2].u_obj);
+        lora_validate_power (cmd_data.info.init.tx_power);
+    }
 
     cmd_data.info.init.bandwidth = args[3].u_int;
     lora_validate_bandwidth (cmd_data.info.init.bandwidth);
@@ -1432,9 +1433,6 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
     cmd_data.info.init.device_class = args[13].u_int;
     lora_validate_device_class(cmd_data.info.init.device_class);
 
-    cmd_data.info.init.region = args[14].u_int;
-    lora_validate_region(cmd_data.info.init.region);
-
     // send message to the lora task
     cmd_data.cmd = E_LORA_CMD_INIT;
     lora_send_cmd(&cmd_data);
@@ -1445,8 +1443,8 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
 STATIC const mp_arg_t lora_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,   {.u_int  = 0} },
     { MP_QSTR_mode,         MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_LORA_STACK_MODE_LORA} },
-    { MP_QSTR_frequency,    MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = RF_FREQUENCY_CENTER} },
-    { MP_QSTR_tx_power,     MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = TX_OUTPUT_POWER_DEAFULT} },
+    { MP_QSTR_frequency,    MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
+    { MP_QSTR_tx_power,     MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
     { MP_QSTR_bandwidth,    MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_LORA_BW_125_KHZ} },
     { MP_QSTR_sf,           MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = 7} },
     { MP_QSTR_preamble,     MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = 8} },
@@ -1548,17 +1546,58 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     }
 
     // need a way to indicate an invalid data rate so the default approach is used
-    uint32_t dr = LORAWAN_MAX_JOIN_DATARATE;
+    uint32_t dr = DR_0;
+    switch (lora_obj.region) {
+    case LORAMAC_REGION_AS923:
+        dr = DR_2;
+        break;
+    case LORAMAC_REGION_AU915:
+        dr = DR_6;
+        break;
+    case LORAMAC_REGION_US915:
+        dr = DR_4;
+        break;
+    case LORAMAC_REGION_US915_HYBRID:
+        dr = DR_4;
+        break;
+    case LORAMAC_REGION_EU868:
+        dr = DR_5;
+        break;
+    default:
+        break;
+    }
 
     // get the data rate
     if (args[2].u_obj != mp_const_none) {
         dr = mp_obj_get_int(args[2].u_obj);
-    #if defined(USE_BAND_868)
-        if (dr > DR_5) {
-    #else
-        if (dr > DR_4) {
-    #endif
-            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid join data rate %d", dr));
+        switch (lora_obj.region) {
+        case LORAMAC_REGION_AS923:
+            if (dr != DR_2) {
+                goto dr_error;
+            }
+            break;
+        case LORAMAC_REGION_AU915:
+            if (dr != DR_0 && dr != DR_6) {
+                goto dr_error;
+            }
+            break;
+        case LORAMAC_REGION_US915:
+            if (dr != DR_0 && dr != DR_4) {
+                goto dr_error;
+            }
+            break;
+        case LORAMAC_REGION_US915_HYBRID:
+            if (dr != DR_0 && dr != DR_4) {
+                goto dr_error;
+            }
+            break;
+        case LORAMAC_REGION_EU868:
+            if (dr > DR_5) {
+                goto dr_error;
+            }
+            break;
+        default:
+            break;
         }
     }
     cmd_data.info.join.otaa_dr = dr;
@@ -1584,6 +1623,9 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
         }
     }
     return mp_const_none;
+
+dr_error:
+    nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid join data rate %d", dr));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lora_join_obj, 1, lora_join);
 
@@ -1909,9 +1951,9 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_events_obj, lora_events);
 STATIC mp_obj_t lora_ischannel_free(mp_obj_t self_in, mp_obj_t rssi) {
     lora_obj_t *self = self_in;
 
-    // if (Radio.IsChannelFree(MODEM_LORA, self->frequency, mp_obj_get_int(rssi))) {
-    //     return mp_const_true;
-    // }
+    if (Radio.IsChannelFree(MODEM_LORA, self->frequency, mp_obj_get_int(rssi), 2)) {
+        return mp_const_true;
+    }
     return mp_const_false;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_ischannel_free_obj, lora_ischannel_free);
@@ -2055,11 +2097,22 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
         return -1;
     }
     s->sock_base.u.sd = 1;
-#if defined(USE_BAND_868)
-    LORAWAN_SOCKET_SET_DR(s->sock_base.u.sd, DR_5);
-#else
-    LORAWAN_SOCKET_SET_DR(s->sock_base.u.sd, DR_3);
-#endif
+    uint32_t dr = DR_0;
+    switch (lora_obj.region) {
+    case LORAMAC_REGION_AS923:
+    case LORAMAC_REGION_EU868:
+        dr = DR_5;
+        break;
+    case LORAMAC_REGION_AU915:
+    case LORAMAC_REGION_US915:
+    case LORAMAC_REGION_US915_HYBRID:
+        dr = DR_4;
+        break;
+    default:
+        break;
+    }
+    LORAWAN_SOCKET_SET_DR(s->sock_base.u.sd, dr);
+
     // port number 2 is the default one
     LORAWAN_SOCKET_SET_PORT(s->sock_base.u.sd, 2);
     return 0;

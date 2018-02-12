@@ -246,16 +246,14 @@ bool SX1272IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh
     carrierSenseTime = TimerGetCurrentTime( );
 
     // Perform carrier sense for maxCarrierSenseTime
-    while( TimerGetElapsedTime( carrierSenseTime ) < maxCarrierSenseTime )
-    {
+    do {
         rssi = SX1272ReadRssi( modem );
 
-        if( rssi > rssiThresh )
-        {
+        if( rssi > rssiThresh ) {
             status = false;
             break;
         }
-    }
+    } while( TimerGetElapsedTime( carrierSenseTime ) < maxCarrierSenseTime );
     SX1272SetSleep( );
     return status;
 }

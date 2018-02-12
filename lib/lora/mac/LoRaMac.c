@@ -2982,6 +2982,25 @@ LoRaMacStatus_t LoRaMacChannelAdd( uint8_t id, ChannelParams_t params )
     return RegionChannelAdd( LoRaMacRegion, &channelAdd );
 }
 
+LoRaMacStatus_t LoRaMacChannelManualAdd( uint8_t id, ChannelParams_t params )
+{
+    ChannelAddParams_t channelAdd;
+
+    // Validate if the MAC is in a correct state
+    if( ( LoRaMacState & LORAMAC_TX_RUNNING ) == LORAMAC_TX_RUNNING )
+    {
+        if( ( LoRaMacState & LORAMAC_TX_CONFIG ) != LORAMAC_TX_CONFIG )
+        {
+            return LORAMAC_STATUS_BUSY;
+        }
+    }
+
+    channelAdd.NewChannel = &params;
+    channelAdd.ChannelId = id;
+
+    return RegionChannelManualAdd( LoRaMacRegion, &channelAdd );
+}
+
 LoRaMacStatus_t LoRaMacChannelRemove( uint8_t id )
 {
     ChannelRemoveParams_t channelRemove;
@@ -2997,6 +3016,27 @@ LoRaMacStatus_t LoRaMacChannelRemove( uint8_t id )
     channelRemove.ChannelId = id;
 
     if( RegionChannelsRemove( LoRaMacRegion, &channelRemove ) == false )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
+    }
+    return LORAMAC_STATUS_OK;
+}
+
+LoRaMacStatus_t LoRaMacChannelManualRemove( uint8_t id )
+{
+    ChannelRemoveParams_t channelRemove;
+
+    if( ( LoRaMacState & LORAMAC_TX_RUNNING ) == LORAMAC_TX_RUNNING )
+    {
+        if( ( LoRaMacState & LORAMAC_TX_CONFIG ) != LORAMAC_TX_CONFIG )
+        {
+            return LORAMAC_STATUS_BUSY;
+        }
+    }
+
+    channelRemove.ChannelId = id;
+
+    if( RegionChannelsManualRemove( LoRaMacRegion, &channelRemove ) == false )
     {
         return LORAMAC_STATUS_PARAMETER_INVALID;
     }

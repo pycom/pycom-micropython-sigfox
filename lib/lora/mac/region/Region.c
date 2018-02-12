@@ -56,6 +56,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define AS923_NEXT_CHANNEL( )                      AS923_CASE { return RegionAS923NextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define AS923_CHANNEL_ADD( )                       AS923_CASE { return RegionAS923ChannelAdd( channelAdd ); }
 #define AS923_CHANNEL_REMOVE( )                    AS923_CASE { return RegionAS923ChannelsRemove( channelRemove ); }
+#define AS923_CHANNEL_MANUAL_ADD( )                AS923_CASE { return RegionAS923ChannelManualAdd( channelAdd ); }
+#define AS923_CHANNEL_MANUAL_REMOVE( )             AS923_CASE { return RegionAS923ChannelsRemove( channelRemove ); }
 #define AS923_SET_CONTINUOUS_WAVE( )               AS923_CASE { RegionAS923SetContinuousWave( continuousWave ); break; }
 #define AS923_APPLY_DR_OFFSET( )                   AS923_CASE { return RegionAS923ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define AS923_GET_CHANNELS( )                      AS923_CASE { return RegionAS923GetChannels( channels, size ); }
@@ -82,6 +84,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define AS923_NEXT_CHANNEL( )
 #define AS923_CHANNEL_ADD( )
 #define AS923_CHANNEL_REMOVE( )
+#define AS923_CHANNEL_MANUAL_ADD( )
+#define AS923_CHANNEL_MANUAL_REMOVE( )
 #define AS923_SET_CONTINUOUS_WAVE( )
 #define AS923_APPLY_DR_OFFSET( )
 #define AS923_GET_CHANNELS( )
@@ -112,6 +116,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define AU915_NEXT_CHANNEL( )                      AU915_CASE { return RegionAU915NextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define AU915_CHANNEL_ADD( )                       AU915_CASE { return RegionAU915ChannelAdd( channelAdd ); }
 #define AU915_CHANNEL_REMOVE( )                    AU915_CASE { return RegionAU915ChannelsRemove( channelRemove ); }
+#define AU915_CHANNEL_MANUAL_ADD( )                AU915_CASE { return RegionAU915ChannelManualAdd( channelAdd ); }
+#define AU915_CHANNEL_MANUAL_REMOVE( )             AU915_CASE { return RegionAU915ChannelsManualRemove( channelRemove ); }
 #define AU915_SET_CONTINUOUS_WAVE( )               AU915_CASE { RegionAU915SetContinuousWave( continuousWave ); break; }
 #define AU915_APPLY_DR_OFFSET( )                   AU915_CASE { return RegionAU915ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define AU915_GET_CHANNELS( )                      AU915_CASE { return RegionAU915GetChannels( channels, size ); }
@@ -138,6 +144,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define AU915_NEXT_CHANNEL( )
 #define AU915_CHANNEL_ADD( )
 #define AU915_CHANNEL_REMOVE( )
+#define AU915_CHANNEL_MANUAL_ADD( )
+#define AU915_CHANNEL_MANUAL_REMOVE( )
 #define AU915_SET_CONTINUOUS_WAVE( )
 #define AU915_APPLY_DR_OFFSET( )
 #define AU915_GET_CHANNELS( )
@@ -324,6 +332,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU868_NEXT_CHANNEL( )                      EU868_CASE { return RegionEU868NextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define EU868_CHANNEL_ADD( )                       EU868_CASE { return RegionEU868ChannelAdd( channelAdd ); }
 #define EU868_CHANNEL_REMOVE( )                    EU868_CASE { return RegionEU868ChannelsRemove( channelRemove ); }
+#define EU868_CHANNEL_MANUAL_ADD( )                EU868_CASE { return RegionEU868ChannelManualAdd( channelAdd ); }
+#define EU868_CHANNEL_MANUAL_REMOVE( )             EU868_CASE { return RegionEU868ChannelsRemove( channelRemove ); }
 #define EU868_SET_CONTINUOUS_WAVE( )               EU868_CASE { RegionEU868SetContinuousWave( continuousWave ); break; }
 #define EU868_APPLY_DR_OFFSET( )                   EU868_CASE { return RegionEU868ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define EU868_GET_CHANNELS( )                      EU868_CASE { return RegionEU868GetChannels( channels, size ); }
@@ -350,6 +360,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU868_NEXT_CHANNEL( )
 #define EU868_CHANNEL_ADD( )
 #define EU868_CHANNEL_REMOVE( )
+#define EU868_CHANNEL_MANUAL_ADD( )
+#define EU868_CHANNEL_MANUAL_REMOVE( )
 #define EU868_SET_CONTINUOUS_WAVE( )
 #define EU868_APPLY_DR_OFFSET( )
 #define EU868_GET_CHANNELS( )
@@ -484,6 +496,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define US915_NEXT_CHANNEL( )                      US915_CASE { return RegionUS915NextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define US915_CHANNEL_ADD( )                       US915_CASE { return RegionUS915ChannelAdd( channelAdd ); }
 #define US915_CHANNEL_REMOVE( )                    US915_CASE { return RegionUS915ChannelsRemove( channelRemove ); }
+#define US915_CHANNEL_MANUAL_ADD( )                US915_CASE { return RegionUS915ChannelManualAdd( channelAdd ); }
+#define US915_CHANNEL_MANUAL_REMOVE( )             US915_CASE { return RegionUS915ChannelsManualRemove( channelRemove ); }
 #define US915_SET_CONTINUOUS_WAVE( )               US915_CASE { RegionUS915SetContinuousWave( continuousWave ); break; }
 #define US915_APPLY_DR_OFFSET( )                   US915_CASE { return RegionUS915ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define US915_GET_CHANNELS( )                      US915_CASE { return RegionUS915GetChannels( channels, size ); }
@@ -510,6 +524,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define US915_NEXT_CHANNEL( )
 #define US915_CHANNEL_ADD( )
 #define US915_CHANNEL_REMOVE( )
+#define US915_CHANNEL_MANUAL_ADD( )
+#define US915_CHANNEL_MANUAL_REMOVE( )
 #define US915_SET_CONTINUOUS_WAVE( )
 #define US915_APPLY_DR_OFFSET( )
 #define US915_GET_CHANNELS( )
@@ -540,6 +556,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define US915_HYBRID_NEXT_CHANNEL( )                      US915_HYBRID_CASE { return RegionUS915HybridNextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define US915_HYBRID_CHANNEL_ADD( )                       US915_HYBRID_CASE { return RegionUS915HybridChannelAdd( channelAdd ); }
 #define US915_HYBRID_CHANNEL_REMOVE( )                    US915_HYBRID_CASE { return RegionUS915HybridChannelsRemove( channelRemove ); }
+#define US915_HYBRID_CHANNEL_MANUAL_ADD( )                US915_HYBRID_CASE { return RegionUS915HybridChannelManualAdd( channelAdd ); }
+#define US915_HYBRID_CHANNEL_MANUAL_REMOVE( )             US915_HYBRID_CASE { return RegionUS915HybridChannelsManualRemove( channelRemove ); }
 #define US915_HYBRID_SET_CONTINUOUS_WAVE( )               US915_HYBRID_CASE { RegionUS915HybridSetContinuousWave( continuousWave ); break; }
 #define US915_HYBRID_APPLY_DR_OFFSET( )                   US915_HYBRID_CASE { return RegionUS915HybridApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define US915_HYBRID_GET_CHANNELS( )                      US915_HYBRID_CASE { return RegionUS915HybridGetChannels( channels, size ); }
@@ -566,6 +584,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define US915_HYBRID_NEXT_CHANNEL( )
 #define US915_HYBRID_CHANNEL_ADD( )
 #define US915_HYBRID_CHANNEL_REMOVE( )
+#define US915_HYBRID_CHANNEL_MANUAL_ADD( )
+#define US915_HYBRID_CHANNEL_MANUAL_REMOVE( )
 #define US915_HYBRID_SET_CONTINUOUS_WAVE( )
 #define US915_HYBRID_APPLY_DR_OFFSET( )
 #define US915_HYBRID_GET_CHANNELS( )
@@ -993,6 +1013,22 @@ LoRaMacStatus_t RegionChannelAdd( LoRaMacRegion_t region, ChannelAddParams_t* ch
     }
 }
 
+LoRaMacStatus_t RegionChannelManualAdd( LoRaMacRegion_t region, ChannelAddParams_t* channelAdd )
+{
+    switch( region )
+    {
+        AS923_CHANNEL_MANUAL_ADD( );
+        AU915_CHANNEL_MANUAL_ADD( );
+        EU868_CHANNEL_MANUAL_ADD( );
+        US915_CHANNEL_MANUAL_ADD( );
+        US915_HYBRID_CHANNEL_MANUAL_ADD( );
+        default:
+        {
+            return LORAMAC_STATUS_PARAMETER_INVALID;
+        }
+    }
+}
+
 bool RegionChannelsRemove( LoRaMacRegion_t region, ChannelRemoveParams_t* channelRemove )
 {
     switch( region )
@@ -1007,6 +1043,22 @@ bool RegionChannelsRemove( LoRaMacRegion_t region, ChannelRemoveParams_t* channe
         IN865_CHANNEL_REMOVE( );
         US915_CHANNEL_REMOVE( );
         US915_HYBRID_CHANNEL_REMOVE( );
+        default:
+        {
+            return false;
+        }
+    }
+}
+
+bool RegionChannelsManualRemove( LoRaMacRegion_t region, ChannelRemoveParams_t* channelRemove )
+{
+    switch( region )
+    {
+        AS923_CHANNEL_MANUAL_REMOVE( );
+        AU915_CHANNEL_MANUAL_REMOVE( );
+        EU868_CHANNEL_MANUAL_REMOVE( );
+        US915_CHANNEL_MANUAL_REMOVE( );
+        US915_HYBRID_CHANNEL_MANUAL_REMOVE( );
         default:
         {
             return false;

@@ -58,7 +58,7 @@
 /*!
  * Maximal datarate that can be used by the node
  */
-#define EU868_TX_MAX_DATARATE                       DR_7
+#define EU868_TX_MAX_DATARATE                       DR_6
 
 /*!
  * Minimal datarate that can be used by the node
@@ -68,7 +68,7 @@
 /*!
  * Maximal datarate that can be used by the node
  */
-#define EU868_RX_MAX_DATARATE                       DR_7
+#define EU868_RX_MAX_DATARATE                       DR_6
 
 /*!
  * Default datarate used by the node
@@ -452,6 +452,7 @@ bool RegionEU868NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel,
  * \retval Status of the operation.
  */
 LoRaMacStatus_t RegionEU868ChannelAdd( ChannelAddParams_t* channelAdd );
+LoRaMacStatus_t RegionEU868ChannelManualAdd( ChannelAddParams_t* channelAdd );
 
 /*!
  * \brief Removes a channel.

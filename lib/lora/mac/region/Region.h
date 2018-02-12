@@ -1453,6 +1453,7 @@ bool RegionNextChannel( LoRaMacRegion_t region, NextChanParams_t* nextChanParams
  * \retval Status of the operation.
  */
 LoRaMacStatus_t RegionChannelAdd( LoRaMacRegion_t region, ChannelAddParams_t* channelAdd );
+LoRaMacStatus_t RegionChannelManualAdd( LoRaMacRegion_t region, ChannelAddParams_t* channelAdd );
 
 /*!
  * \brief Removes a channel.
@@ -1464,6 +1465,7 @@ LoRaMacStatus_t RegionChannelAdd( LoRaMacRegion_t region, ChannelAddParams_t* ch
  * \retval Returns true, if the channel was removed successfully.
  */
 bool RegionChannelsRemove( LoRaMacRegion_t region, ChannelRemoveParams_t* channelRemove );
+bool RegionChannelsManualRemove( LoRaMacRegion_t region, ChannelRemoveParams_t* channelRemove );
 
 /*!
  * \brief Sets the radio into continuous wave mode.

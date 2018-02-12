@@ -1053,6 +1053,76 @@ LoRaMacStatus_t RegionAS923ChannelAdd( ChannelAddParams_t* channelAdd )
     return LORAMAC_STATUS_OK;
 }
 
+LoRaMacStatus_t RegionAS923ChannelManualAdd( ChannelAddParams_t* channelAdd )
+{
+    uint8_t band = 0;
+    bool drInvalid = false;
+    bool freqInvalid = false;
+    uint8_t id = channelAdd->ChannelId;
+
+    if( id >= AS923_MAX_NB_CHANNELS )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
+    }
+
+    // Validate the datarate range
+    if( RegionCommonValueInRange( channelAdd->NewChannel->DrRange.Fields.Min, AS923_TX_MIN_DATARATE, AS923_TX_MAX_DATARATE ) == false )
+    {
+        drInvalid = true;
+    }
+    if( RegionCommonValueInRange( channelAdd->NewChannel->DrRange.Fields.Max, AS923_TX_MIN_DATARATE, AS923_TX_MAX_DATARATE ) == false )
+    {
+        drInvalid = true;
+    }
+    if( channelAdd->NewChannel->DrRange.Fields.Min > channelAdd->NewChannel->DrRange.Fields.Max )
+    {
+        drInvalid = true;
+    }
+
+    // Default channels don't accept all values
+    if( id < AS923_NUMB_DEFAULT_CHANNELS )
+    {
+        // Validate the datarate range for min: must be DR_0
+        if( channelAdd->NewChannel->DrRange.Fields.Min > DR_0 )
+        {
+            drInvalid = true;
+        }
+        // Validate the datarate range for max: must be DR_5 <= Max <= TX_MAX_DATARATE
+        if( RegionCommonValueInRange( channelAdd->NewChannel->DrRange.Fields.Max, DR_5, AS923_TX_MAX_DATARATE ) == false )
+        {
+            drInvalid = true;
+        }
+    }
+
+    // Check frequency
+    if( freqInvalid == false )
+    {
+        if( VerifyTxFreq( channelAdd->NewChannel->Frequency ) == false )
+        {
+            freqInvalid = true;
+        }
+    }
+
+    // Check status
+    if( ( drInvalid == true ) && ( freqInvalid == true ) )
+    {
+        return LORAMAC_STATUS_FREQ_AND_DR_INVALID;
+    }
+    if( drInvalid == true )
+    {
+        return LORAMAC_STATUS_DATARATE_INVALID;
+    }
+    if( freqInvalid == true )
+    {
+        return LORAMAC_STATUS_FREQUENCY_INVALID;
+    }
+
+    memcpy( &(Channels[id]), channelAdd->NewChannel, sizeof( Channels[id] ) );
+    Channels[id].Band = band;
+    ChannelsMask[0] |= ( 1 << id );
+    return LORAMAC_STATUS_OK;
+}
+
 bool RegionAS923ChannelsRemove( ChannelRemoveParams_t* channelRemove  )
 {
     uint8_t id = channelRemove->ChannelId;
