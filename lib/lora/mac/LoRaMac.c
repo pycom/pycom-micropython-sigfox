@@ -1230,16 +1230,18 @@ static void OnMacStateCheckTimerEvent( void )
                     }
                     else
                     {
-                        if( JoinRequestTrials >= MaxJoinRequestTrials )
-                        {
+                        // Pycom: Do not resend join requests
+
+                        // if( JoinRequestTrials >= MaxJoinRequestTrials )
+                        // {
                             LoRaMacState &= ~LORAMAC_TX_RUNNING;
-                        }
-                        else
-                        {
-                            LoRaMacFlags.Bits.MacDone = 0;
-                            // Sends the same frame again
-                            OnTxDelayedTimerEvent( );
-                        }
+                        // }
+                        // else
+                        // {
+                        //     LoRaMacFlags.Bits.MacDone = 0;
+                        //     // Sends the same frame again
+                        //     OnTxDelayedTimerEvent( );
+                        // }
                     }
                 }
                 else

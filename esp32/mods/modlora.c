@@ -47,6 +47,11 @@
 
 #include "lora/mac/LoRaMacTest.h"
 #include "lora/mac/region/Region.h"
+#include "lora/mac/region/RegionAS923.h"
+#include "lora/mac/region/RegionAU915.h"
+#include "lora/mac/region/RegionUS915.h"
+#include "lora/mac/region/RegionUS915-Hybrid.h"
+#include "lora/mac/region/RegionEU868.h"
 
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
@@ -1115,8 +1120,46 @@ static void lora_validate_frequency (uint32_t frequency) {
         default:
             break;
     }
+    return;
+
 freq_error:
     nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "frequency %d out of range", frequency));
+}
+
+static void lora_validate_channel (uint32_t index) {
+    switch (lora_obj.region) {
+        case LORAMAC_REGION_AS923:
+            if (index >= AS923_MAX_NB_CHANNELS) {
+                goto channel_error;
+            }
+            break;
+        case LORAMAC_REGION_AU915:
+            if (index >= AU915_MAX_NB_CHANNELS) {
+                goto channel_error;
+            }
+            break;
+        case LORAMAC_REGION_US915:
+            if (index >= US915_MAX_NB_CHANNELS) {
+                goto channel_error;
+            }
+            break;
+        case LORAMAC_REGION_US915_HYBRID:
+            if (index >= US915_HYBRID_MAX_NB_CHANNELS) {
+                goto channel_error;
+            }
+            break;
+        case LORAMAC_REGION_EU868:
+            if (index >= EU868_MAX_NB_CHANNELS) {
+                goto channel_error;
+            }
+            break;
+        default:
+            break;
+    }
+    return;
+
+channel_error:
+    nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "channel %d out of range", index));
 }
 
 static void lora_validate_power (uint8_t tx_power) {
@@ -1368,6 +1411,8 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
     // we need to know the region first
     cmd_data.info.init.region = args[14].u_int;
     lora_validate_region(cmd_data.info.init.region);
+    // we need to do it here in advance for the rest of the validation to work
+    lora_obj.region = cmd_data.info.init.region;
 
     if (args[1].u_obj == MP_OBJ_NULL) {
         switch (cmd_data.info.init.region) {
@@ -1390,7 +1435,7 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
         lora_validate_frequency (cmd_data.info.init.frequency);
     }
 
-        if (args[2].u_obj == MP_OBJ_NULL) {
+    if (args[2].u_obj == MP_OBJ_NULL) {
         switch (cmd_data.info.init.region) {
         case LORAMAC_REGION_AS923:
         case LORAMAC_REGION_AU915:
@@ -1855,9 +1900,7 @@ STATIC mp_obj_t lora_add_channel (mp_uint_t n_args, const mp_obj_t *pos_args, mp
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
 
     uint32_t index = args[0].u_int;
-    // if (index >= LORA_MAX_NB_CHANNELS) {
-    //     goto error;
-    // }
+    lora_validate_channel(index);
 
     uint32_t frequency = args[1].u_int;
     uint32_t dr_min = args[2].u_int;
@@ -1885,9 +1928,7 @@ STATIC mp_obj_t lora_remove_channel (mp_obj_t self_in, mp_obj_t idx) {
     lora_cmd_data_t cmd_data;
 
     uint32_t index = mp_obj_get_int(idx);
-    // if (index >= LORA_MAX_NB_CHANNELS) {
-    //     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
-    // }
+    lora_validate_channel(index);
 
     cmd_data.info.channel.index = index;
     cmd_data.info.channel.add = false;

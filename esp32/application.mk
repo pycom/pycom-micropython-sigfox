@@ -362,10 +362,10 @@ ifeq ($(BOARD), WIPY)
     APP_BIN = $(BUILD)/wipy.bin
 endif
 ifeq ($(BOARD), LOPY)
-    APP_BIN = $(BUILD)/lopy_$(LORA_FREQ).bin
+    APP_BIN = $(BUILD)/lopy.bin
 endif
 ifeq ($(BOARD), LOPY4)
-    APP_BIN = $(BUILD)/lopy4_$(LORA_FREQ).bin
+    APP_BIN = $(BUILD)/lopy4.bin
     $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
@@ -382,7 +382,7 @@ ifeq ($(BOARD), GPY)
     APP_BIN = $(BUILD)/gpy.bin
 endif
 ifeq ($(BOARD), FIPY)
-    APP_BIN = $(BUILD)/fipy_$(LORA_FREQ).bin
+    APP_BIN = $(BUILD)/fipy.bin
     $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
