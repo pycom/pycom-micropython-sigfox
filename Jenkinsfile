@@ -33,13 +33,7 @@ node {
 		stage(board) {
 			def parallelSteps = [:]
             def board_u = board.toUpperCase()
-            if (board_u == "LOPY" || board_u == "FIPY"  || board_u == "LOPY4") {
-        			parallelSteps[board+"_868"] = boardBuild(board+"_868")
-        			parallelSteps[board+"_915"] = boardBuild(board+"_915")
-        		}
-    			else{
-        			parallelSteps[board] = boardBuild(board)
-        		}
+        		parallelSteps[board] = boardBuild(board)
         		parallel parallelSteps
   		}
   	}
@@ -71,30 +65,23 @@ stage ('Test'){
 def boardBuild(name) {
     def name_u = name.toUpperCase()
     def name_short = name_u.split('_')[0]
-    def lora_band = ""
-    if (name_u == "LOPY_868" || name_u == "FIPY_868"  || name_u == "LOPY4_868") {
-        lora_band = " LORA_BAND=USE_BAND_868"
-    }
-    else if (name_u == "LOPY_915" || name_u == "FIPY_915" || name_u == "LOPY4_915") {
-        lora_band = " LORA_BAND=USE_BAND_915"
-    }
     def app_bin = name.toLowerCase() + '.bin'
     return {
     		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + PYCOM_VERSION + "/" + GIT_TAG + "/"
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make clean BOARD=''' + name_short + lora_band
+        make clean BOARD=''' + name_short
 
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=boot -j2 BOARD=''' + name_short + lora_band
+        make TARGET=boot -j2 BOARD=''' + name_short
 
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=app -j2 BOARD=''' + name_short + lora_band
+        make TARGET=app -j2 BOARD=''' + name_short
 
         sh '''cd esp32/build/'''+ name_u +'''/release;
         mkdir -p firmware_package;
@@ -172,3 +159,4 @@ def get_remote_name(short_name) {
 def get_device_name(short_name) {
     return "/dev/serial/by-id/usb-" +  short_name + "-if00"   
 }
+

@@ -27,7 +27,7 @@ typedef struct {
 	uint8_t sigfox_pac[8];
 	uint8_t sigfox_private_key[16];
 	uint8_t sigfox_public_key[16];
-	uint8_t lora_country[33];
+	uint8_t lora_region;
 } pycom_lpwan_config_t;
 
 typedef struct {
@@ -50,7 +50,7 @@ typedef struct {
 	uint8_t pycom_hw_version;
 	uint8_t pycom_sw_version[12];
 	uint8_t pycom_reserved[335];
-	uint8_t pycom_dummy[228];
+	uint8_t pycom_dummy[258];
 } pycom_config_t;
 
 typedef struct {
@@ -101,9 +101,9 @@ bool config_set_wifi_pwd(const uint8_t *wifi_pwd);
 
 void config_get_wifi_pwd(uint8_t *wifi_pwd);
 
-bool config_set_lora_country(const uint8_t *lpwan_country);
+bool config_set_lora_region (uint8_t lora_region);
 
-void config_get_lora_country(uint8_t *lpwan_country);
+uint8_t config_get_lora_region (void);
 
 int config_size(void);
 

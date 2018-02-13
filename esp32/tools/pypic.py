@@ -9,7 +9,7 @@ import serial
 import struct
 import time
 
-__version__ = '0.9.1'
+__version__ = '0.9.2'
 
 CMD_PEEK = (0x0)
 CMD_POKE = (0x01)
@@ -131,24 +131,27 @@ class Pypic:
         self.mask_bits_in_memory(TRISC_ADDR, ~(1 << 5))
         # drive RC5 low
         self.mask_bits_in_memory(PORTC_ADDR, ~(1 << 5))
-        time.sleep(0.25)
+        time.sleep(0.2)
         # drive RC5 high
         self.set_bits_in_memory(PORTC_ADDR, 1 << 5)
         time.sleep(0.1)
+        # make RC5 an input
+        self.set_bits_in_memory(TRISC_ADDR, 1 << 5)
 
     def enter_pycom_programming_mode(self):
         # make RC0 an output
         self.mask_bits_in_memory(TRISC_ADDR, ~(1 << 0))
         # set RC0 low
         self.mask_bits_in_memory(PORTC_ADDR, ~(1 << 0))
+        # perform reset
         self.reset_pycom_module()
+        # We should keep RC0 low at this point in case someone
+        # presses the reset button before the firmware upgrade
+        # as this is mandatory for the regular expansion board
 
     def exit_pycom_programming_mode(self):
-       # make RC0 an output
-        self.mask_bits_in_memory(TRISC_ADDR, ~(1 << 0))
-        # set RC0 high
-        self.set_bits_in_memory(PORTC_ADDR, 1 << 0)
         # make RC0 an input
+        # This will prevent issues with the RGB LED
         self.set_bits_in_memory(TRISC_ADDR, 1 << 0)
         self.reset_pycom_module()
 
@@ -160,7 +163,7 @@ class Pypic:
 
 
 def main(args):
-    parser = argparse.ArgumentParser(description='Sends internal commands to pu the Pycom module in programming mode')
+    parser = argparse.ArgumentParser(description='Sends internal commands to put the Pycom module in programming mode')
     parser.add_argument('-p', '--port', metavar='PORT', help='the serial port used to communicate with the PIC')
     parser.add_argument('--enter', action='store_true', help='enter programming mode')
     parser.add_argument('--exit', action='store_true', help='exit programming mode')
