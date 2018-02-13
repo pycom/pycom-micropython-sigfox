@@ -59,6 +59,9 @@ TaskHandle_t xLoRaTaskHndl;
 #if defined(SIPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xSigfoxTaskHndl;
 #endif
+#if defined(GPY) || defined (FIPY)
+TaskHandle_t xLTETaskHndl;
+#endif
 
 extern void machine_init0(void);
 

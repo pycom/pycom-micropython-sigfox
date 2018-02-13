@@ -25,9 +25,9 @@ typedef struct _lte_obj_t {
 
     pin_obj_t *pins[4];
     
-	bool                    started;
-	bool                    disconnected;
-	uint32_t                ip4;
+    bool                    started;
+    bool                    connected;
+    uint32_t                ip4;
 } lte_obj_t;
 
 
