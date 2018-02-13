@@ -1409,7 +1409,11 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
     lora_validate_mode (cmd_data.info.init.stack_mode);
 
     // we need to know the region first
-    cmd_data.info.init.region = args[14].u_int;
+    if (args[14].u_obj == MP_OBJ_NULL) {
+        cmd_data.info.init.region = config_get_lora_region();
+    } else {
+        cmd_data.info.init.region = mp_obj_get_int(args[14].u_obj);
+    }
     lora_validate_region(cmd_data.info.init.region);
     // we need to do it here in advance for the rest of the validation to work
     lora_obj.region = cmd_data.info.init.region;
@@ -1501,7 +1505,7 @@ STATIC const mp_arg_t lora_init_args[] = {
     { MP_QSTR_public,       MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = true} },
     { MP_QSTR_tx_retries,   MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = 2} },
     { MP_QSTR_device_class, MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = CLASS_A} },
-    { MP_QSTR_region,       MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = LORAMAC_REGION_EU868} },
+    { MP_QSTR_region,       MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj = MP_OBJ_NULL} },
 };
 STATIC mp_obj_t lora_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args

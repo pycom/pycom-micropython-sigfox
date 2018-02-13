@@ -103,7 +103,7 @@ void config_get_wifi_pwd(uint8_t *wifi_pwd);
 
 bool config_set_lora_region (uint8_t lora_region);
 
-uint8_t config_get_lora_region ();
+uint8_t config_get_lora_region (void);
 
 int config_size(void);
 

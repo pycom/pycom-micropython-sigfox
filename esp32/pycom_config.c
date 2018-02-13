@@ -74,12 +74,12 @@ void config_get_sigfox_private_key (uint8_t *private_key) {
 
 bool config_set_lora_region (uint8_t lora_region) {
     if (pycom_config_block.lpwan_config.lora_region != lora_region) {
-    		pycom_config_block.lpwan_config.lora_region = lora_region;
+        pycom_config_block.lpwan_config.lora_region = lora_region;
     }
-	return config_write();
+    return config_write();
 }
 
-uint8_t config_get_lora_region () {
+uint8_t config_get_lora_region (void) {
     return pycom_config_block.lpwan_config.lora_region;
 }
 
@@ -115,7 +115,7 @@ bool config_set_wifi_ssid (const uint8_t *wifi_ssid) {
 void config_get_wifi_ssid (uint8_t *wifi_ssid) {
     memcpy( wifi_ssid, pycom_config_block.wifi_config.wifi_ssid, sizeof(pycom_config_block.wifi_config.wifi_ssid));
     if (wifi_ssid[0]==0xff) {
-    		wifi_ssid[0]=0x0;
+        wifi_ssid[0]=0x0;
     }
 }
 
@@ -127,7 +127,7 @@ bool config_set_wifi_pwd (const uint8_t *wifi_pwd) {
 void config_get_wifi_pwd (uint8_t *wifi_pwd) {
     memcpy( wifi_pwd, pycom_config_block.wifi_config.wifi_pwd, sizeof(pycom_config_block.wifi_config.wifi_pwd));
     if (wifi_pwd[0]==0xff) {
-    		wifi_pwd[0]=0x0;
+        wifi_pwd[0]=0x0;
     }
 }
 
