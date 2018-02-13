@@ -16,10 +16,13 @@
 
 #define DEFAULT_AP_SSID                                         "gpy-wlan"
 
-#define CONFIG_GSM_TX 5
-#define CONFIG_GSM_RX 23
-#define CONFIG_GSM_CTS 18
-#define CONFIG_GSM_RTS 19
+#define MICROPY_LTE_TX_PIN                                      (&PIN_MODULE_P5)
+#define MICROPY_LTE_RX_PIN                                      (&PIN_MODULE_P98)
+#define MICROPY_LTE_CTS_PIN                                     (&PIN_MODULE_P7)
+#define MICROPY_LTE_RTS_PIN                                     (&PIN_MODULE_P99)
+
+#define MICROPY_LTE_UART_ID                                     2
+#define MICROPY_LTE_UART_BAUDRATE                               921600
 
 extern uint32_t micropy_hw_flash_size;
 

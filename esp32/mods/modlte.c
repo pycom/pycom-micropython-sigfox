@@ -47,8 +47,8 @@
 #include "mpexception.h"
 #include "modussl.h"
 
+#include "lteppp.h"
 #include "modlte.h"
-#include "3gpp/lib3GPP.h"
 
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
@@ -88,30 +88,9 @@
  ******************************************************************************/
 lte_obj_t lte_obj;
 
-
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
-
-/******************************************************************************
- DECLARE PUBLIC FUNCTIONS
- ******************************************************************************/
-
-#define UART_GPIO_TX CONFIG_GSM_TX
-#define UART_GPIO_RX CONFIG_GSM_RX
-#define UART_PIN_CTS CONFIG_GSM_CTS
-#define UART_PIN_RTS CONFIG_GSM_RTS
-
-void modlte_init0(void) {
-    if (gpio_set_direction(UART_GPIO_TX, GPIO_MODE_OUTPUT)) return;
-    if (gpio_set_direction(UART_GPIO_RX, GPIO_MODE_INPUT)) return;
-    if (gpio_set_direction(UART_PIN_CTS, GPIO_MODE_INPUT)) return;
-    if (gpio_set_direction(UART_PIN_RTS, GPIO_MODE_OUTPUT)) return;
-    if (gpio_set_pull_mode(UART_GPIO_RX, GPIO_PULLUP_ONLY)) return;
-
-    ppposInit();
-}
-
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -132,6 +111,14 @@ static int lte_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t
 static int lte_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
 static int lte_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno);
 static int lte_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
+
+/******************************************************************************
+ DEFINE PUBLIC FUNCTIONS
+ ******************************************************************************/
+
+void modlte_init0(void) {
+    lteppp_init();
+}
 
 //*****************************************************************************
 // DEFINE STATIC FUNCTIONS
@@ -307,28 +294,25 @@ static int lte_socket_socket(mod_network_socket_obj_t *s, int *_errno) {
 }
 
 static void lte_socket_close(mod_network_socket_obj_t *s) {
-    // this is to prevent the finalizer to close a socket that failed when being created
-    if (s->sock_base.u.sd >= 0) {
-        if (s->sock_base.is_ssl) {
-            mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-            if (ss->sock_base.connected) {
-                while(mbedtls_ssl_close_notify(&ss->ssl) == MBEDTLS_ERR_SSL_WANT_WRITE);
-            }
-            mbedtls_net_free(&ss->context_fd);
-            mbedtls_x509_crt_free(&ss->cacert);
-            mbedtls_x509_crt_free(&ss->own_cert);
-            mbedtls_pk_free(&ss->pk_key);
-            mbedtls_ssl_free(&ss->ssl);
-            mbedtls_ssl_config_free(&ss->conf);
-            mbedtls_ctr_drbg_free(&ss->ctr_drbg);
-            mbedtls_entropy_free(&ss->entropy);
-        } else {
-            close(s->sock_base.u.sd);
+    if (s->sock_base.is_ssl) {
+        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
+        if (ss->sock_base.connected) {
+            while(mbedtls_ssl_close_notify(&ss->ssl) == MBEDTLS_ERR_SSL_WANT_WRITE);
         }
-        modusocket_socket_delete(s->sock_base.u.sd);
-        s->sock_base.connected = false;
-        s->sock_base.u.sd = -1;
+        mbedtls_net_free(&ss->context_fd);
+        mbedtls_x509_crt_free(&ss->cacert);
+        mbedtls_x509_crt_free(&ss->own_cert);
+        mbedtls_pk_free(&ss->pk_key);
+        mbedtls_ssl_free(&ss->ssl);
+        mbedtls_ssl_config_free(&ss->conf);
+        mbedtls_ctr_drbg_free(&ss->ctr_drbg);
+        mbedtls_entropy_free(&ss->entropy);
+    } else {
+        close(s->sock_base.u.sd);
     }
+    modusocket_socket_delete(s->sock_base.u.sd);
+    s->sock_base.connected = false;
+    s->sock_base.u.sd = -1;
 }
 
 static int lte_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {

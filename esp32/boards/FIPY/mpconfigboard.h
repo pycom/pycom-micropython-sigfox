@@ -18,11 +18,13 @@
 
 #define MICROPY_LPWAN_DIO_PIN
 
-#define CONFIG_GSM_TX 33
-#define CONFIG_GSM_RX 34
+#define MICROPY_LTE_TX_PIN                                      (&PIN_MODULE_P20)
+#define MICROPY_LTE_RX_PIN                                      (&PIN_MODULE_P18)
+#define MICROPY_LTE_CTS_PIN                                     (&PIN_MODULE_P19)
+#define MICROPY_LTE_RTS_PIN                                     (&PIN_MODULE_P17)
 
-#define CONFIG_GSM_CTS 35
-#define CONFIG_GSM_RTS 32
+#define MICROPY_LTE_UART_ID                                     2
+#define MICROPY_LTE_DEF_BAUDRATE                                921600
 
 extern uint32_t micropy_hw_flash_size;
 

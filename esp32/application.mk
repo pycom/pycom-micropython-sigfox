@@ -15,6 +15,7 @@ APP_INC += -Imods
 APP_INC += -Itelnet
 APP_INC += -Iftp
 APP_INC += -Ilora
+APP_INC += -Ilte
 APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
@@ -243,8 +244,8 @@ APP_SIGFOX_SPI_SRC_C = $(addprefix lora/,\
 	gpio-board.c \
 	)
 
-APP_LTE_SRC_C = $(addprefix 3gpp/,\
-    lib3GPP.c \
+APP_LTE_SRC_C = $(addprefix lte/,\
+    lteppp.c \
     )
 
 APP_MODS_LTE_SRC_C = $(addprefix mods/,\
