@@ -33,13 +33,7 @@ node {
 		stage(board) {
 			def parallelSteps = [:]
             def board_u = board.toUpperCase()
-            if (board_u == "LOPY" || board_u == "FIPY"  || board_u == "LOPY4") {
-        			parallelSteps[board+"_868"] = boardBuild(board+"_868")
-        			parallelSteps[board+"_915"] = boardBuild(board+"_915")
-        		}
-    			else{
-        			parallelSteps[board] = boardBuild(board)
-        		}
+        		parallelSteps[board] = boardBuild(board)
         		parallel parallelSteps
   		}
   	}
