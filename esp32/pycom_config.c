@@ -25,7 +25,6 @@ static pycom_config_block_t pycom_config_block;
 void config_init0 (void) {
     // read the config struct from flash
     spi_flash_read(CONFIG_DATA_FLASH_ADDR, (void *)&pycom_config_block, sizeof(pycom_config_block));
-    printf("Size of configuration block: %d\n",sizeof(pycom_config_block));
 }
 
 bool config_set_lpwan_mac (const uint8_t *mac) {
@@ -73,16 +72,15 @@ void config_get_sigfox_private_key (uint8_t *private_key) {
     memcpy(private_key, pycom_config_block.lpwan_config.sigfox_private_key, sizeof(pycom_config_block.lpwan_config.sigfox_private_key));
 }
 
-bool config_set_lora_country (const uint8_t *lora_country) {
-	memcpy(pycom_config_block.lpwan_config.lora_country, lora_country, sizeof(pycom_config_block.lpwan_config.lora_country));
-    return config_write();
+bool config_set_lora_region (uint8_t lora_region) {
+    if (pycom_config_block.lpwan_config.lora_region != lora_region) {
+    		pycom_config_block.lpwan_config.lora_region = lora_region;
+    }
+	return config_write();
 }
 
-void config_get_lora_country (uint8_t *lora_country) {
-    memcpy( lora_country, pycom_config_block.lpwan_config.lora_country, sizeof(pycom_config_block.lpwan_config.lora_country));
-    if (lora_country[0]==0xFF) {
-    		lora_country[0]=0x00;
-    }
+uint8_t config_get_lora_region () {
+    return pycom_config_block.lpwan_config.lora_region;
 }
 
 bool config_set_wifi_on_boot (uint8_t wifi_on_boot) {
@@ -134,7 +132,6 @@ void config_get_wifi_pwd (uint8_t *wifi_pwd) {
 }
 
 static bool config_write (void) {
-	printf("Size of configuration block: %d\n",sizeof(pycom_config_block));
     // erase the block first
     if (ESP_OK == spi_flash_erase_sector(CONFIG_DATA_FLASH_BLOCK)) {
         // then write it
