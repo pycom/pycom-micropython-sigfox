@@ -168,7 +168,7 @@ static void CAN_read_frame(void) {
     if (!uxQueueMessagesWaiting(CAN_cfg.rx_queue)) {
         events |= CAN_FIFO_NOT_EMPTY_EVENT;
     } else if (!uxQueueSpacesAvailable(CAN_cfg.rx_queue)) {
-        events |= CAN_RX_FIFO_OVERRRUN_EVENT;
+        events |= CAN_RX_FIFO_OVERRUN_EVENT;
     }
     can_queue_interrupt(events);
 

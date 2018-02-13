@@ -187,6 +187,12 @@ APP_LORA_SRC_C = $(addprefix lora/,\
 APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/LoRaMac.c \
 	mac/LoRaMacCrypto.c \
+	mac/region/Region.c \
+	mac/region/RegionAS923.c \
+	mac/region/RegionAU915.c \
+	mac/region/RegionCommon.c \
+	mac/region/RegionEU868.c \
+	mac/region/RegionUS915.c \
 	system/delay.c \
 	system/gpio.c \
 	system/timer.c \
@@ -314,8 +320,9 @@ BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.periph
 APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld
 
 # add the application specific CFLAGS
-CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -D$(LORA_BAND) -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
-CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -D$(LORA_BAND) -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
+CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
+CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
+CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915
 
 # add the application archive, this order is very important
 APP_LIBS = -Wl,--start-group $(LIBS) $(BUILD)/application.a -Wl,--end-group -Wl,-EL
@@ -351,10 +358,10 @@ ifeq ($(BOARD), WIPY)
     APP_BIN = $(BUILD)/wipy.bin
 endif
 ifeq ($(BOARD), LOPY)
-    APP_BIN = $(BUILD)/lopy_$(LORA_FREQ).bin
+    APP_BIN = $(BUILD)/lopy.bin
 endif
 ifeq ($(BOARD), LOPY4)
-    APP_BIN = $(BUILD)/lopy4_$(LORA_FREQ).bin
+    APP_BIN = $(BUILD)/lopy4.bin
     $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
@@ -371,7 +378,7 @@ ifeq ($(BOARD), GPY)
     APP_BIN = $(BUILD)/gpy.bin
 endif
 ifeq ($(BOARD), FIPY)
-    APP_BIN = $(BUILD)/fipy_$(LORA_FREQ).bin
+    APP_BIN = $(BUILD)/fipy.bin
     $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)

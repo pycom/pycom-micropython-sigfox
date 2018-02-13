@@ -166,6 +166,7 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_
 
     // create socket object
     mod_network_socket_obj_t *s = m_new_obj_with_finaliser(mod_network_socket_obj_t);
+    s->sock_base.nic_type = MP_OBJ_NULL;
     if (n_args > 0 &&
         (mp_obj_get_int(args[0]) == AF_LORA || mp_obj_get_int(args[0]) == AF_SIGFOX))
     {
@@ -227,7 +228,11 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(socket_fileno_obj, socket_fileno);
 // method socket.close()
 STATIC mp_obj_t socket_close(mp_obj_t self_in) {
     mod_network_socket_obj_t *self = self_in;
-    self->sock_base.nic_type->n_close(self);
+    // this is to prevent the finalizer to close a socket that failed during creation
+    if (self->sock_base.nic_type && self->sock_base.u.sd >= 0) {
+        self->sock_base.nic_type->n_close(self);
+        self->sock_base.u.sd = -1;
+    }
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(socket_close_obj, socket_close);

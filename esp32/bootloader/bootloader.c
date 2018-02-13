@@ -463,11 +463,15 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
         ESP_LOGI(TAG, "Checking safe boot pin");
         uint32_t ActiveImg = boot_info->ActiveImg;
         uint32_t safeboot = wait_for_safe_boot (boot_info, &ActiveImg);
-        if (safeboot) {
+        if (safeboot > 0) {
             ESP_LOGI(TAG, "Safe boot requested!");
         }
         if (safeboot != boot_info->safeboot) {
-            boot_info->safeboot = safeboot;
+            if (boot_info->safeboot == SAFE_BOOT_SW) {
+                boot_info->safeboot = SAFE_BOOT_HW;
+            } else {
+                boot_info->safeboot = safeboot;
+            }
             // write the new boot info
             if (!ota_write_boot_info (boot_info, bs->ota_info.offset)) {
                 ESP_LOGE(TAG, "Error writing boot info");

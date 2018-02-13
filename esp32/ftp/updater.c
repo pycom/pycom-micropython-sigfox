@@ -159,21 +159,11 @@ bool updater_finish (void) {
             } else {
                 boot_info.ActiveImg = IMG_ACT_UPDATE1;
             }
-
             boot_info.Status = IMG_STATUS_CHECK;
-            boot_info.crc = crc32_le(UINT32_MAX, (uint8_t*)&boot_info.ActiveImg,
-                                                 sizeof(boot_info) - sizeof(boot_info.crc));
 
-            if (ESP_OK != spi_flash_erase_sector(boot_info_offset / SPI_FLASH_SEC_SIZE)) {
-                // printf("Erasing boot info failed\n");
+            if (!updater_write_boot_info(&boot_info, boot_info_offset)) {
                 return false;
             }
-
-            if (ESP_OK != spi_flash_write(boot_info_offset, (void *)&boot_info, sizeof(boot_info_t))) {
-                // printf("Saving boot info failed\n");
-                return false;
-            }
-            // printf("Boot info saved OK\n");
         }
 //        sl_LockObjUnlock (&wlan_LockObj);
         updater_data.offset = 0;
@@ -203,8 +193,8 @@ bool updater_verify (void) {
     updater_verif_buff = (uint32_t *) malloc(SPI_SEC_SIZE);
     // don't forget to free(updater_verif_buff)
     if (!updater_verif_buff) {
-    		// printf("Can't allocate 4KB buffer\n");
-    		return false;
+        // printf("Can't allocate 4KB buffer\n");
+        return false;
     }
     // printf("updater_verify starts at %X, len is %d, 4KB dynamic buff starts at %X\n", offset, size, (uint32_t)updater_verif_buff);
 
@@ -217,7 +207,7 @@ bool updater_verify (void) {
 
         if (ESP_OK != spi_flash_read(offset + total_len, (void *)updater_verif_buff, read_len)) {
             // printf("error in spi_flash_read\n");
-        		free(updater_verif_buff);
+            free(updater_verif_buff);
             return false;
         }
         total_len += read_len;
@@ -232,8 +222,8 @@ bool updater_verify (void) {
 
     if (ESP_OK != spi_flash_read(offset + total_len, (void *)updater_verif_buff, UPDATER_MD5_SIZE_BYTES)) {
         // printf("error in md5 spi_flash_read\n");
-    		free(updater_verif_buff);
-    		return false;
+        free(updater_verif_buff);
+        return false;
     }
 
     hash_hex[UPDATER_MD5_SIZE_BYTES] = '\0';
@@ -251,6 +241,22 @@ bool updater_verify (void) {
     // printf("MD5 hash failed %s : %s\n", hash_hex, (char*)updater_verif_buff);
     free(updater_verif_buff);
     return false;
+}
+
+bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset) {
+    boot_info->crc = crc32_le(UINT32_MAX, (uint8_t *)boot_info, sizeof(boot_info_t) - sizeof(boot_info->crc));
+
+    if (ESP_OK != spi_flash_erase_sector(boot_info_offset / SPI_FLASH_SEC_SIZE)) {
+        printf("Erasing boot info failed\n");
+        return false;
+    }
+
+    if (ESP_OK != spi_flash_write(boot_info_offset, (void *)boot_info, sizeof(boot_info_t))) {
+        printf("Saving boot info failed\n");
+        return false;
+    }
+    printf("Boot info saved OK\n");
+    return true;
 }
 
 /******************************************************************************

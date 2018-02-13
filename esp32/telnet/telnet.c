@@ -13,7 +13,9 @@
 #include "py/mpconfig.h"
 #include "py/obj.h"
 #include "py/mphal.h"
+#include "readline.h"
 #include "telnet.h"
+#include "serverstask.h"
 
 #include "esp_heap_caps.h"
 #include "sdkconfig.h"
@@ -27,7 +29,6 @@
 #include "modusocket.h"
 //#include "debug.h"
 #include "utils/interrupt_char.h"
-#include "serverstask.h"
 #include "genhdr/mpversion.h"
 
 #include "lwip/sockets.h"
@@ -531,10 +532,16 @@ static void telnet_parse_input (uint8_t *str, int32_t *len) {
             continue;
         }
 
-        // in this case the server is not operating on binary mode
-        if (ch > 127 || ch == 0 || (telnet_data.state == E_TELNET_STE_LOGGED_IN && ch == mp_interrupt_char)) {
+        // in this case the server is not operating in binary mode
+        if (ch > 127 || ch == 0 || (telnet_data.state == E_TELNET_STE_LOGGED_IN &&
+            (ch == mp_interrupt_char || ch == CHAR_CTRL_F))) {
             if (ch == mp_interrupt_char) {
                 mp_keyboard_interrupt();
+            } else if (ch == CHAR_CTRL_F) {
+                *str++ = CHAR_CTRL_D;
+                mp_hal_reset_safe_and_boot(false);
+                _str++;
+                continue;
             }
             // skip this char
             (*len)--;

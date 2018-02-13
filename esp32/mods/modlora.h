@@ -56,11 +56,13 @@ typedef enum {
     E_LORA_NVS_MAC_CMD_BUF_RPT_IDX,
     E_LORA_NVS_ELE_MAC_BUF,
     E_LORA_NVS_ELE_MAC_RPT_BUF,
+    E_LORA_NVS_ELE_REGION,
     E_LORA_NVS_NUM_KEYS 
 } e_lora_nvs_key_t;
 
 typedef struct {
     uint32_t        frequency;
+    LoRaMacRegion_t region;
     DeviceClass_t   device_class;
     uint8_t         stack_mode;
     uint8_t         preamble;

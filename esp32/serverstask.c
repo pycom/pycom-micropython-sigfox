@@ -38,6 +38,7 @@ typedef struct {
     bool do_enable;
     bool do_reset;
     bool do_wlan_cycle_power;
+    bool reset_and_safe_boot;
 } servers_data_t;
 
 /******************************************************************************
@@ -119,6 +120,10 @@ void TASK_Servers (void *pvParameters) {
         // set the alive flag for the wdt
 //        pybwdt_srv_alive(); // FIXME
 
+        if (servers_data.reset_and_safe_boot) {
+            mp_hal_reset_safe_and_boot(true);
+        }
+
         // move to the next cycle
         cycle = cycle ? false : true;
         vTaskDelay (SERVERS_CYCLE_TIME_MS / portTICK_PERIOD_MS);
@@ -144,6 +149,10 @@ void servers_reset (void) {
 
 void servers_wlan_cycle_power (void) {
     servers_data.do_wlan_cycle_power = true;
+}
+
+void servers_reset_and_safe_boot (void) {
+    servers_data.reset_and_safe_boot = true;
 }
 
 bool servers_are_enabled (void) {

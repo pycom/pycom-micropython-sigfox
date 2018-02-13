@@ -19,11 +19,11 @@ After that, build the ESP32 port for one of Pycom boards (first the bootloader, 
 
     $ cd ../esp32
     $ make BOARD=LOPY -j5 TARGET=boot
-    $ make BOARD=LOPY -j5 LORA_BAND=USE_BAND_868 TARGET=app
+    $ make BOARD=LOPY -j5 TARGET=app
 
 Flash the board (connect P2 to GND and reset before starting):
 
-    $ make BOARD=LOPY -j5 LORA_BAND=USE_BAND_868 flash
+    $ make BOARD=LOPY -j5 flash
 
 Using frozen modules
 --------------------

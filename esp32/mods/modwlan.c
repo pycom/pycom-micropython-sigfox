@@ -742,31 +742,33 @@ STATIC mp_obj_t wlan_scan(mp_obj_t self_in) {
     uint16_t ap_num;
     wifi_ap_record_t *ap_record_buffer;
     wifi_ap_record_t *ap_record;
+    mp_obj_t nets = mp_obj_new_list(0, NULL);
 
     esp_wifi_scan_get_ap_num(&ap_num); // get the number of scanned APs
-    ap_record_buffer = pvPortMalloc(ap_num * sizeof(wifi_ap_record_t));
-    if (ap_record_buffer == NULL) {
-        mp_raise_OSError(MP_ENOMEM);
-    }
 
-    mp_obj_t nets = mp_const_none;
-    // get the scanned AP list
-    if (ESP_OK == esp_wifi_scan_get_ap_records(&ap_num, (wifi_ap_record_t *)ap_record_buffer)) {
-        nets = mp_obj_new_list(0, NULL);
-        for (int i = 0; i < ap_num; i++) {
-            ap_record = &ap_record_buffer[i];
-            mp_obj_t tuple[5];
-            tuple[0] = mp_obj_new_str((const char *)ap_record->ssid, strlen((char *)ap_record->ssid), false);
-            tuple[1] = mp_obj_new_bytes((const byte *)ap_record->bssid, sizeof(ap_record->bssid));
-            tuple[2] = mp_obj_new_int(ap_record->authmode);
-            tuple[3] = mp_obj_new_int(ap_record->primary);
-            tuple[4] = mp_obj_new_int(ap_record->rssi);
-
-            // add the network to the list
-            mp_obj_list_append(nets, mp_obj_new_attrtuple(wlan_scan_info_fields, 5, tuple));
+    if (ap_num > 0) {
+        ap_record_buffer = pvPortMalloc(ap_num * sizeof(wifi_ap_record_t));
+        if (ap_record_buffer == NULL) {
+            mp_raise_OSError(MP_ENOMEM);
         }
+
+        // get the scanned AP list
+        if (ESP_OK == esp_wifi_scan_get_ap_records(&ap_num, (wifi_ap_record_t *)ap_record_buffer)) {
+            for (int i = 0; i < ap_num; i++) {
+                ap_record = &ap_record_buffer[i];
+                mp_obj_t tuple[5];
+                tuple[0] = mp_obj_new_str((const char *)ap_record->ssid, strlen((char *)ap_record->ssid), false);
+                tuple[1] = mp_obj_new_bytes((const byte *)ap_record->bssid, sizeof(ap_record->bssid));
+                tuple[2] = mp_obj_new_int(ap_record->authmode);
+                tuple[3] = mp_obj_new_int(ap_record->primary);
+                tuple[4] = mp_obj_new_int(ap_record->rssi);
+
+                // add the network to the list
+                mp_obj_list_append(nets, mp_obj_new_attrtuple(wlan_scan_info_fields, 5, tuple));
+            }
+        }
+        vPortFree(ap_record_buffer);
     }
-    vPortFree(ap_record_buffer);
 
     return nets;
 }
@@ -1225,27 +1227,24 @@ static int wlan_socket_socket(mod_network_socket_obj_t *s, int *_errno) {
 
 static void wlan_socket_close(mod_network_socket_obj_t *s) {
     // this is to prevent the finalizer to close a socket that failed when being created
-    if (s->sock_base.u.sd >= 0) {
-        if (s->sock_base.is_ssl) {
-            mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-            if (ss->sock_base.connected) {
-                while(mbedtls_ssl_close_notify(&ss->ssl) == MBEDTLS_ERR_SSL_WANT_WRITE);
-            }
-            mbedtls_net_free(&ss->context_fd);
-            mbedtls_x509_crt_free(&ss->cacert);
-            mbedtls_x509_crt_free(&ss->own_cert);
-            mbedtls_pk_free(&ss->pk_key);
-            mbedtls_ssl_free(&ss->ssl);
-            mbedtls_ssl_config_free(&ss->conf);
-            mbedtls_ctr_drbg_free(&ss->ctr_drbg);
-            mbedtls_entropy_free(&ss->entropy);
-        } else {
-            close(s->sock_base.u.sd);
+    if (s->sock_base.is_ssl) {
+        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
+        if (ss->sock_base.connected) {
+            while(mbedtls_ssl_close_notify(&ss->ssl) == MBEDTLS_ERR_SSL_WANT_WRITE);
         }
-        modusocket_socket_delete(s->sock_base.u.sd);
-        s->sock_base.connected = false;
-        s->sock_base.u.sd = -1;
+        mbedtls_net_free(&ss->context_fd);
+        mbedtls_x509_crt_free(&ss->cacert);
+        mbedtls_x509_crt_free(&ss->own_cert);
+        mbedtls_pk_free(&ss->pk_key);
+        mbedtls_ssl_free(&ss->ssl);
+        mbedtls_ssl_config_free(&ss->conf);
+        mbedtls_ctr_drbg_free(&ss->ctr_drbg);
+        mbedtls_entropy_free(&ss->entropy);
+    } else {
+        close(s->sock_base.u.sd);
     }
+    modusocket_socket_delete(s->sock_base.u.sd);
+    s->sock_base.connected = false;
 }
 
 static int wlan_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {

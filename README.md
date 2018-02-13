@@ -23,19 +23,17 @@ implemented for the data types and modules.
 See the repository www.github.com/micropython/pyboard for the MicroPython
 board (PyBoard), the officially supported reference electronic circuit board.
 
-Major components in this repository:
+The following components are actively maintained by Pycom:
 - py/ -- the core Python implementation, including compiler, runtime, and
   core library.
-- unix/ -- a version of MicroPython that runs on Unix.
 - exp32/ -- a version of MicroPython that runs on the ESP32 based boards from Pycom.
+- tests/ -- test framework and test scripts.
+
+Additional components:
 - stmhal/ -- a version of MicroPython that runs on the PyBoard and similar
   STM32 boards (using ST's Cube HAL drivers).
 - minimal/ -- a minimal MicroPython port. Start with this if you want
   to port MicroPython to another microcontroller.
-- tests/ -- test framework and test scripts.
-- docs/ -- user documentation in Sphinx reStructuredText format.
-
-Additional components:
 - bare-arm/ -- a bare minimum version of MicroPython for ARM MCUs. Used
   mostly to control code size.
 - teensy/ -- a version of MicroPython that runs on the Teensy 3.1
@@ -45,6 +43,7 @@ Additional components:
 - esp8266/ -- an experimental port for ESP8266 WiFi modules.
 - tools/ -- various tools, including the pyboard.py module.
 - examples/ -- a few example Python scripts.
+- docs/ -- user documentation in Sphinx reStructuredText format.
 
 The subdirectories above may include READMEs with additional info.
 
@@ -104,6 +103,8 @@ By default the firmware is built for the WIPY2:
     $ make TARGET=boot
     $ make TARGET=app
     $ make flash
+    
+You can change the board type by using the BOARD variable:
 
 You can change the board type by using the BOARD variable:
 
@@ -111,7 +112,6 @@ You can change the board type by using the BOARD variable:
     $ make BOARD=GPY clean
     $ make BOARD=GPY TARGET=boot
     $ make BOARD=GPY TARGET=app
-    $ make BOARD=GPY flash
 
 We currently support the following BOARD types:
 
@@ -132,26 +132,23 @@ To flash at full speed, use ESPSPEED variable:
 
 	$ make ESPSPEED=921600 flash
 
-To build and flash a LoPy for the default region (868 MHz):
+To build and flash your LoPy for the default region (868 MHz):
+	$ make ESPSPEED=921600 flash
 
-    $ # LORA_BAND defaults to USE_BAND_868
+To build and flash a LoPy:
+
     $ cd esp32
     $ make BOARD=LOPY clean
     $ make BOARD=LOPY TARGET=boot
     $ make BOARD=LOPY TARGET=app
     $ make BOARD=LOPY flash
 
-
-For 915MHz regions add the `LORA_BAND=USE_BAND_915` variable:
-
-    $ cd esp32
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 clean
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=boot
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 TARGET=app
-    $ make BOARD=LOPY LORA_BAND=USE_BAND_915 flash
-
 The above also applies to the FiPy and LoPy4
+or for 915MHz regions:
 
 Make sure that your board is placed into programming mode, otherwise flashing will fail.<br>
-PyTrack and PySense boards will automatically switch into programming mode (currently supported on MacOS and Linux only!)<br>
+
+
+
+Make sure that your board is placed into programming mode, otherwise flahing will fail.
 Expansion Board 2.0 users, please connect ``P2`` to ``GND`` and then reset the board.

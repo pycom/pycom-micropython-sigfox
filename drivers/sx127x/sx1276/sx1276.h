@@ -19,19 +19,9 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "sx1276Regs-LoRa.h"
 
 /*!
- * Radio wakeup time from SLEEP mode
+ * Radio wake-up time from sleep
  */
-#define RADIO_OSC_STARTUP                           1 // [ms]
-
-/*!
- * Radio PLL lock and Mode Ready delay which can vary with the temperature
- */
-#define RADIO_SLEEP_TO_RX                           2 // [ms]
-
-/*!
- * Radio complete Wake-up Time with margin for temperature compensation
- */
-#define RADIO_WAKEUP_TIME                           ( RADIO_OSC_STARTUP + RADIO_SLEEP_TO_RX )
+#define RADIO_WAKEUP_TIME                           1 // [ms]
 
 /*!
  * Sync word for Private LoRa networks
@@ -61,6 +51,7 @@ typedef struct
     bool     TxIqInverted;
     bool     RxContinuous;
     uint32_t TxTimeout;
+    uint32_t RxSingleTimeout;
 }RadioFskSettings_t;
 
 /*!
@@ -99,6 +90,7 @@ typedef struct
     bool     TxIqInverted;
     bool     RxContinuous;
     uint32_t TxTimeout;
+    bool     PublicNetwork;
 }RadioLoRaSettings_t;
 
 /*!
@@ -177,22 +169,23 @@ RadioState_t SX1276GetStatus( void );
 void SX1276SetModem( RadioModems_t modem );
 
 /*!
- * \brief Sets the channels configuration
+ * \brief Sets the channel configuration
  *
  * \param [IN] freq         Channel RF frequency
  */
 void SX1276SetChannel( uint32_t freq );
 
 /*!
- * \brief Sets the channels configuration
+ * \brief Checks if the channel is free for the given time
  *
  * \param [IN] modem      Radio modem to be used [0: FSK, 1: LoRa]
  * \param [IN] freq       Channel RF frequency
  * \param [IN] rssiThresh RSSI threshold
+ * \param [IN] maxCarrierSenseTime Max time while the RSSI is measured
  *
  * \retval isFree         [true: Channel is free, false: Channel is not free]
  */
-bool SX1276IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh );
+bool SX1276IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh, uint32_t maxCarrierSenseTime );
 
 /*!
  * \brief Generates a 32 bits random value based on the RSSI readings
@@ -229,16 +222,16 @@ uint32_t SX1276Random( void );
  * \param [IN] preambleLen  Sets the Preamble length
  *                          FSK : Number of bytes
  *                          LoRa: Length in symbols (the hardware adds 4 more symbols)
- * \param [IN] symbTimeout  Sets the RxSingle timeout value (LoRa only)
- *                          FSK : N/A ( set to 0 )
+ * \param [IN] symbTimeout  Sets the RxSingle timeout value
+ *                          FSK : timeout number of bytes
  *                          LoRa: timeout in symbols
  * \param [IN] fixLen       Fixed length packets [0: variable, 1: fixed]
  * \param [IN] payloadLen   Sets payload length when fixed length is used
  * \param [IN] crcOn        Enables/Disables the CRC [0: OFF, 1: ON]
- * \param [IN] FreqHopOn    Enables disables the intra-packet frequency hopping
+ * \param [IN] freqHopOn    Enables disables the intra-packet frequency hopping
  *                          FSK : N/A ( set to 0 )
  *                          LoRa: [0: OFF, 1: ON]
- * \param [IN] HopPeriod    Number of symbols between each hop
+ * \param [IN] hopPeriod    Number of symbols between each hop
  *                          FSK : N/A ( set to 0 )
  *                          LoRa: Number of symbols
  * \param [IN] iqInverted   Inverts IQ signals (LoRa only)
@@ -252,7 +245,7 @@ void SX1276SetRxConfig( RadioModems_t modem, uint32_t bandwidth,
                          uint32_t bandwidthAfc, uint16_t preambleLen,
                          uint16_t symbTimeout, bool fixLen,
                          uint8_t payloadLen,
-                         bool crcOn, bool FreqHopOn, uint8_t HopPeriod,
+                         bool crcOn, bool freqHopOn, uint8_t hopPeriod,
                          bool iqInverted, bool rxContinuous );
 
 /*!
@@ -281,10 +274,10 @@ void SX1276SetRxConfig( RadioModems_t modem, uint32_t bandwidth,
  *                          LoRa: Length in symbols (the hardware adds 4 more symbols)
  * \param [IN] fixLen       Fixed length packets [0: variable, 1: fixed]
  * \param [IN] crcOn        Enables disables the CRC [0: OFF, 1: ON]
- * \param [IN] FreqHopOn    Enables disables the intra-packet frequency hopping
+ * \param [IN] freqHopOn    Enables disables the intra-packet frequency hopping
  *                          FSK : N/A ( set to 0 )
  *                          LoRa: [0: OFF, 1: ON]
- * \param [IN] HopPeriod    Number of symbols between each hop
+ * \param [IN] hopPeriod    Number of symbols between each hop
  *                          FSK : N/A ( set to 0 )
  *                          LoRa: Number of symbols
  * \param [IN] iqInverted   Inverts IQ signals (LoRa only)
@@ -295,8 +288,8 @@ void SX1276SetRxConfig( RadioModems_t modem, uint32_t bandwidth,
 void SX1276SetTxConfig( RadioModems_t modem, int8_t power, uint32_t fdev,
                         uint32_t bandwidth, uint32_t datarate,
                         uint8_t coderate, uint16_t preambleLen,
-                        bool fixLen, bool crcOn, bool FreqHopOn,
-                        uint8_t HopPeriod, bool iqInverted, uint32_t timeout );
+                        bool fixLen, bool crcOn, bool freqHopOn,
+                        uint8_t hopPeriod, bool iqInverted, uint32_t timeout );
 
 /*!
  * \brief Computes the packet time on air in ms for the given payload

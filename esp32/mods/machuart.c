@@ -17,6 +17,8 @@
 #include "py/mphal.h"
 #include "pybioctl.h"
 #include "py/mperrno.h"
+#include "readline.h"
+#include "serverstask.h"
 
 #include "esp_heap_caps.h"
 #include "sdkconfig.h"
@@ -292,9 +294,13 @@ STATIC void mach_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_
 }
 
 STATIC IRAM_ATTR void UARTRxCallback(int uart_id, int rx_byte) {
-    if (MP_STATE_PORT(mp_os_stream_o) && MP_STATE_PORT(mp_os_stream_o) == &mach_uart_obj[uart_id] && mp_interrupt_char == rx_byte) {
-        // raise an exception when interrupts are finished
-        mp_keyboard_interrupt();
+    if (MP_STATE_PORT(mp_os_stream_o) && MP_STATE_PORT(mp_os_stream_o) == &mach_uart_obj[uart_id]) {
+        if (mp_interrupt_char == rx_byte) {
+            // raise an exception when interrupts are finished
+            mp_keyboard_interrupt();
+        } else if (CHAR_CTRL_F == rx_byte) {
+            servers_reset_and_safe_boot();
+        }
     }
 }
 

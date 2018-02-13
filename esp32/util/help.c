@@ -40,9 +40,20 @@
 #include "py/mpconfig.h"
 #include "py/obj.h"
 
-STATIC const char help_text[] = "Welcome to MicroPython!\n"
-                                "For online help please visit http://micropython.org/help/.\n"
-                                "For further help on a specific object, type help(obj)\n";
+
+STATIC const char help_text[] =
+    "Welcome to MicroPython!\n"
+    "For online docs please visit http://docs.pycom.io\n"
+    "\n"
+    "Control commands:\n"
+    "  CTRL-A        -- on a blank line, enter raw REPL mode\n"
+    "  CTRL-B        -- on a blank line, enter normal REPL mode\n"
+    "  CTRL-C        -- interrupt a running program\n"
+    "  CTRL-D        -- on a blank line, do a soft reset of the board\n"
+    "  CTRL-E        -- on a blank line, enter paste mode\n"
+    "  CTRL-F        -- on a blank line, do a hard reset of the board and enter safe boot\n"
+    "\n"
+    "For further help on a specific object, type help(obj)\n";
 
 STATIC void pyb_help_print_info_about_object(mp_obj_t name_o, mp_obj_t value) {
     mp_printf(&mp_plat_print, "  ");
@@ -55,13 +66,13 @@ STATIC void pyb_help_print_info_about_object(mp_obj_t name_o, mp_obj_t value) {
 STATIC mp_obj_t pyb_help(uint n_args, const mp_obj_t *args) {
     if (n_args == 0) {
         // print a general help message
-        printf("%s", help_text);
+        mp_printf(&mp_plat_print, "%s", help_text);
     }
     else {
         // try to print something sensible about the given object
-        printf("object ");
+        mp_printf(&mp_plat_print, "object ");
         mp_obj_print(args[0], PRINT_STR);
-        printf(" is of type %s\n", mp_obj_get_type_str(args[0]));
+        mp_printf(&mp_plat_print, " is of type %s\n", mp_obj_get_type_str(args[0]));
 
         mp_map_t *map = NULL;
         if (MP_OBJ_IS_TYPE(args[0], &mp_type_module)) {
