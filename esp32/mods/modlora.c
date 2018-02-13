@@ -1223,7 +1223,7 @@ static void lora_validate_device_class (DeviceClass_t device_class) {
 
 static void lora_validate_region (LoRaMacRegion_t region) {
     if (region != LORAMAC_REGION_AS923 && region != LORAMAC_REGION_AU915
-        && region != LORAMAC_REGION_EU868 && region != LORAMAC_REGION_US915_HYBRID) {
+        && region != LORAMAC_REGION_EU868 && region != LORAMAC_REGION_US915) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid region %d", region));
     }
 }
@@ -2109,7 +2109,7 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_AS923),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_AS923) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_AU915),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_AU915) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_EU868),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_EU868) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_US915),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_US915_HYBRID) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_US915),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_US915) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(lora_locals_dict, lora_locals_dict_table);

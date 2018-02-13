@@ -80,7 +80,7 @@ bool config_set_lora_region (uint8_t lora_region) {
 }
 
 uint8_t config_get_lora_region (void) {
-    return pycom_config_block.lpwan_config.lora_region;
+    return (pycom_config_block.lpwan_config.lora_region == 0xff) ? 5:pycom_config_block.lpwan_config.lora_region;
 }
 
 bool config_set_wifi_on_boot (uint8_t wifi_on_boot) {
