@@ -103,8 +103,6 @@ By default the firmware is built for the WIPY2:
     $ make TARGET=boot
     $ make TARGET=app
     $ make flash
-    
-You can change the board type by using the BOARD variable:
 
 You can change the board type by using the BOARD variable:
 
@@ -112,6 +110,7 @@ You can change the board type by using the BOARD variable:
     $ make BOARD=GPY clean
     $ make BOARD=GPY TARGET=boot
     $ make BOARD=GPY TARGET=app
+    $ make BOARD=GPY flash
 
 We currently support the following BOARD types:
 
@@ -132,9 +131,6 @@ To flash at full speed, use ESPSPEED variable:
 
 	$ make ESPSPEED=921600 flash
 
-To build and flash your LoPy for the default region (868 MHz):
-	$ make ESPSPEED=921600 flash
-
 To build and flash a LoPy:
 
     $ cd esp32
@@ -144,11 +140,7 @@ To build and flash a LoPy:
     $ make BOARD=LOPY flash
 
 The above also applies to the FiPy and LoPy4
-or for 915MHz regions:
 
 Make sure that your board is placed into programming mode, otherwise flashing will fail.<br>
-
-
-
-Make sure that your board is placed into programming mode, otherwise flahing will fail.
+PyTrack and PySense boards will automatically switch into programming mode (currently supported on MacOS and Linux only!)<br>
 Expansion Board 2.0 users, please connect ``P2`` to ``GND`` and then reset the board.
