@@ -96,8 +96,11 @@ static lte_task_rsp_data_t modlte_rsp;
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-static void lte_do_connect();
 static bool lte_push_at_command (char *cmd_str, uint32_t timeout);
+static bool lte_push_enter_ppp_command (char *cmd_str, uint32_t timeout);
+static bool lte_push_exit_ppp_command (char *cmd_str, uint32_t timeout);
+
+STATIC mp_obj_t lte_disconnect(mp_obj_t self_in);
 
 static int lte_gethostbyname(const char *name, mp_uint_t len, uint8_t *out_ip, mp_uint_t family);
 static int lte_socket_socket(mod_network_socket_obj_t *s, int *_errno);
@@ -119,7 +122,6 @@ static int lte_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_
  ******************************************************************************/
 
 void modlte_init0(void) {
-    lte_obj.connected = false;
     lteppp_init();
     // TODO: release RTS
 }
@@ -128,28 +130,31 @@ void modlte_init0(void) {
 // DEFINE STATIC FUNCTIONS
 //*****************************************************************************
 
-static void lte_do_connect() {
-
-    // // first close any active connections
-    // lte_obj.disconnected = true;
-
-	// int res = ppposConnect();
-	
-    // if (!res) lte_obj.disconnected = false;
-
-    // return;
-}
-
 static bool lte_push_at_command (char *cmd_str, uint32_t timeout) {
     lte_task_cmd_data_t cmd = {
         .cmd = E_LTE_CMD_AT,
         .timeout = timeout
     };
     memcpy(cmd.data, cmd_str, strlen(cmd_str));
-    if (lteppp_send_at_command (&cmd, &modlte_rsp)) {
-        return true;
-    }
-    return false;
+    return lteppp_send_at_command (&cmd, &modlte_rsp);
+}
+
+static bool lte_push_enter_ppp_command (char *cmd_str, uint32_t timeout) {
+    lte_task_cmd_data_t cmd = {
+        .cmd = E_LTE_CMD_PPP_ENTER,
+        .timeout = timeout
+    };
+    memcpy(cmd.data, cmd_str, strlen(cmd_str));
+    return lteppp_send_at_command (&cmd, &modlte_rsp);
+}
+
+static bool lte_push_exit_ppp_command (char *cmd_str, uint32_t timeout) {
+    lte_task_cmd_data_t cmd = {
+        .cmd = E_LTE_CMD_PPP_EXIT,
+        .timeout = timeout
+    };
+    memcpy(cmd.data, cmd_str, strlen(cmd_str));
+    return lteppp_send_at_command (&cmd, &modlte_rsp);
 }
 
 /******************************************************************************/
@@ -158,13 +163,15 @@ static bool lte_push_at_command (char *cmd_str, uint32_t timeout) {
 static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
     lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS);
     if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+        vTaskDelay(550 / portTICK_RATE_MS);
         if (!lte_push_at_command("+++", LTE_RX_TIMEOUT_MIN_MS)) {
-            vTaskDelay(1000 / portTICK_RATE_MS);
+            vTaskDelay(550 / portTICK_RATE_MS);
+            if (!lte_push_at_command("+++", LTE_RX_TIMEOUT_MIN_MS)) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+            }
         }
-        if (!lte_push_at_command("+++", LTE_RX_TIMEOUT_MIN_MS)) {
-            printf("LTE modem doesn't respond!\n");
-            return;
-        }
+        vTaskDelay(550 / portTICK_RATE_MS);
+        lte_push_at_command("ATH", LTE_RX_TIMEOUT_MIN_MS);
     }
     lte_push_at_command("AT+SQNCTM?", LTE_RX_TIMEOUT_DEF_MS);
     if (!strstr(modlte_rsp.data, "verizon")) {
@@ -172,6 +179,7 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         lte_push_at_command("AT", LTE_RX_TIMEOUT_DEF_MS);
         lte_push_at_command("AT", LTE_RX_TIMEOUT_DEF_MS);
     }
+    lteppp_start();
     return mp_const_none;
 }
 
@@ -197,9 +205,9 @@ static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
         if (args[0].u_int != 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
         }
-        // start the peripheral
-        lte_init_helper(self, &args[1]);
     }
+    // start the peripheral
+    lte_init_helper(self, &args[1]);
     return (mp_obj_t)self;
 }
 
@@ -212,11 +220,11 @@ STATIC mp_obj_t lte_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *k
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_init_obj, 1, lte_init);
 
 mp_obj_t lte_deinit(mp_obj_t self_in) {
-
-    // if (!lte_obj.disconnected) {
-    //     // ppposDisconnect(0,1);
-    //     lte_obj.started = false;
-    // }
+    lte_obj_t *self = self_in;
+    if (lteppp_get_state() == E_LTE_PPP) {
+        lte_disconnect(self);
+    }
+    lte_push_at_command("AT+CFUN=0", LTE_RX_TIMEOUT_DEF_MS);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_deinit_obj, lte_deinit);
@@ -241,12 +249,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_deinit_obj, lte_deinit);
 // STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_connect_obj, 1, lte_connect);
 
 STATIC mp_obj_t lte_connect(mp_obj_t self_in) {
-    lte_push_at_command("AT+CGDATA=\"PPP\",3", LTE_RX_TIMEOUT_DEF_MS);
-    if (strstr(modlte_rsp.data, "CONNECT")) {
-        lte_obj.connected = true;
-    } else {
-        lte_obj.connected = false;
-    }
+    lte_push_enter_ppp_command("AT+CGDATA=\"PPP\",3", LTE_RX_TIMEOUT_DEF_MS);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_connect_obj, lte_connect);
@@ -268,14 +271,22 @@ STATIC mp_obj_t lte_isattached(mp_obj_t self_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_isattached_obj, lte_isattached);
 
 STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
-    // ppposDisconnect(1, 1);
-    // lte_obj.disconnected = true;
+    lteppp_stop();
+    vTaskDelay(550 / portTICK_RATE_MS);
+    if (!lte_push_exit_ppp_command("+++", 500)) {
+        vTaskDelay(550 / portTICK_RATE_MS);
+        if (!lte_push_exit_ppp_command("+++", 500)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+    }
+    vTaskDelay(550 / portTICK_RATE_MS);
+    lte_push_at_command("ATH", LTE_RX_TIMEOUT_MIN_MS);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_disconnect_obj, lte_disconnect);
 
 STATIC mp_obj_t lte_isconnected(mp_obj_t self_in) {
-    if (lte_obj.connected) {
+    if (lteppp_get_state() == E_LTE_PPP) {
         return mp_const_true;
     }
     return mp_const_false;

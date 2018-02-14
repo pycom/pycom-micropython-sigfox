@@ -18,15 +18,7 @@
 
 typedef struct _lte_obj_t {
     mp_obj_base_t           base;
-    
-    uint32_t                status;
-
     uint32_t                ip;
-
-    pin_obj_t *pins[4];
-    
-    bool                    started;
-    bool                    connected;
     uint32_t                ip4;
 } lte_obj_t;
 

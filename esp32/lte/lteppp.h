@@ -30,7 +30,8 @@
  DEFINE TYPES
  ******************************************************************************/
 typedef enum {
-    E_LTE_IDLE = 0,
+    E_LTE_INIT = 0,
+    E_LTE_IDLE,
     E_LTE_ATTACHED,
     E_LTE_PPP
 } lte_state_t;
@@ -58,7 +59,11 @@ typedef struct {
 
 extern void lteppp_init(void);
 
+extern void lteppp_start (void);
+
 extern lte_state_t lteppp_get_state(void);
+
+extern void lteppp_stop(void) ;
 
 extern bool lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp);
 

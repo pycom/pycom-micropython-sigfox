@@ -50,17 +50,24 @@ static uart_dev_t* lteppp_uart_reg;
 static QueueHandle_t xCmdQueue;
 static QueueHandle_t xRxQueue;
 static lte_state_t lte_state;
+static SemaphoreHandle_t xLTESem;
+static ppp_pcb *lteppp_pcb;         // PPP control block
+struct netif lteppp_netif;          // PPP net interface
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
 static void TASK_LTE (void *pvParameters);
 static bool lte_send_at_cmd(const char *cmd, uint32_t timeout);
+static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx);
+static uint32_t lteppp_output_callback(ppp_pcb *pcb, u8_t *data, u32_t len, void *ctx);
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 void lteppp_init(void) {
+    lte_state = E_LTE_INIT;
+
     // configure the UART pins
     pin_config(MICROPY_LTE_TX_PIN, -1, U2TXD_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 1);
     pin_config(MICROPY_LTE_RX_PIN, U2RXD_IN_IDX, -1, GPIO_MODE_INPUT, MACHPIN_PULL_NONE, 1);
@@ -85,12 +92,24 @@ void lteppp_init(void) {
     lteppp_uart_reg->idle_conf.tx_idle_num = 0;
 
     // configure the rx timeout threshold
-    lteppp_uart_reg->conf1.rx_tout_thrhd = 10 & UART_RX_TOUT_THRHD_V;
+    lteppp_uart_reg->conf1.rx_tout_thrhd = 20 & UART_RX_TOUT_THRHD_V;
 
     xCmdQueue = xQueueCreate(LTE_CMD_QUEUE_SIZE_MAX, sizeof(lte_task_cmd_data_t));
     xRxQueue = xQueueCreate(LTE_RSP_QUEUE_SIZE_MAX, LTE_AT_RSP_SIZE_MAX);
 
+    xLTESem = xSemaphoreCreateMutex();
+
+    lteppp_pcb = pppapi_pppos_create(&lteppp_netif, lteppp_output_callback, lteppp_status_cb, NULL);
+
     xTaskCreatePinnedToCore(TASK_LTE, "LTE", LTE_TASK_STACK_SIZE / sizeof(StackType_t), NULL, LTE_TASK_PRIORITY, &xLTETaskHndl, 1);
+}
+
+void lteppp_start (void) {
+    xSemaphoreTake(xLTESem, portMAX_DELAY);
+    if (E_LTE_INIT == lte_state) {
+        lte_state = E_LTE_IDLE;
+    }
+    xSemaphoreGive(xLTESem);
 }
 
 bool lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp) {
@@ -103,7 +122,15 @@ bool lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp)
 }
 
 lte_state_t lteppp_get_state(void) {
-    return lte_state;
+    lte_state_t state;
+    xSemaphoreTake(xLTESem, portMAX_DELAY);
+    state = lte_state;
+    xSemaphoreGive(xLTESem);
+    return state;
+}
+
+void lteppp_stop(void) {
+    pppapi_close(lteppp_pcb, 0);
 }
 
 /******************************************************************************
@@ -114,35 +141,58 @@ static void TASK_LTE (void *pvParameters) {
     lte_task_cmd_data_t *lte_task_cmd = (lte_task_cmd_data_t *)lteppp_trx_buffer;
     lte_task_rsp_data_t *lte_task_rsp = (lte_task_rsp_data_t *)lteppp_trx_buffer;
 
-    lte_state = E_LTE_IDLE;
-
     for (;;) {
         vTaskDelay(2);
 
         if (xQueueReceive(xCmdQueue, lteppp_trx_buffer, 0)) {
             switch (lte_task_cmd->cmd) {
             case E_LTE_CMD_AT:
+            case E_LTE_CMD_PPP_EXIT:
                 if (lte_send_at_cmd(lte_task_cmd->data, lte_task_cmd->timeout)) {
                     lte_task_rsp->ok = true;
+                    if (E_LTE_CMD_PPP_EXIT == lte_task_cmd->cmd) {
+                        xSemaphoreTake(xLTESem, portMAX_DELAY);
+                        lte_state = E_LTE_ATTACHED;
+                        xSemaphoreGive(xLTESem);
+                    }
                 } else {
                     lte_task_rsp->ok = false;
                 }
                 xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
                 break;
             case E_LTE_CMD_PPP_ENTER:
-                break;
-            case E_LTE_CMD_PPP_EXIT:
+                lte_send_at_cmd(lte_task_cmd->data, lte_task_cmd->timeout);
+                if (strstr(lteppp_trx_buffer, "CONNECT") != NULL) {
+                    xSemaphoreTake(xLTESem, portMAX_DELAY);
+                    lte_state = E_LTE_PPP;
+                    xSemaphoreGive(xLTESem);
+                    pppapi_set_default(lteppp_pcb);
+                    pppapi_set_auth(lteppp_pcb, PPPAUTHTYPE_PAP, "", "");
+                    pppapi_connect(lteppp_pcb, 0);
+                }
+                xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
                 break;
             default:
                 break;
             }
         } else {
-            lte_send_at_cmd("AT+CEREG?", LTE_RX_TIMEOUT_DEF_MS);
-            char *pos;
-            if ((pos = strstr(lteppp_trx_buffer, "+CEREG: 2,1,")) && (strlen(pos) >= 21)) { // FIXME
-                lte_state = E_LTE_ATTACHED;
+            xSemaphoreTake(xLTESem, portMAX_DELAY);
+            if (lte_state >= E_LTE_IDLE && lte_state < E_LTE_PPP) {
+                lte_send_at_cmd("AT+CEREG?", LTE_RX_TIMEOUT_DEF_MS);
+                char *pos;
+                if ((pos = strstr(lteppp_trx_buffer, "+CEREG: 2,1,")) && (strlen(pos) >= 21)) {
+                    lte_state = E_LTE_ATTACHED;
+                } else {
+                    lte_state = E_LTE_IDLE;
+                }
+                xSemaphoreGive(xLTESem);
             } else {
-                lte_state = E_LTE_IDLE;
+                xSemaphoreGive(xLTESem);
+                uint32_t // try to read up to the size of the buffer
+                rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, sizeof(lteppp_trx_buffer), LTE_TRX_WAIT_MS(sizeof(lteppp_trx_buffer)) / portTICK_RATE_MS);
+                if (rx_len > 0) {
+                    pppos_input_tcpip(lteppp_pcb, (uint8_t *)lteppp_trx_buffer, rx_len);
+                }
             }
         }
     }
@@ -154,7 +204,10 @@ static bool lte_send_at_cmd(const char *cmd, uint32_t timeout) {
     uart_flush(LTE_UART_ID);
     // then send the command
     uart_write_bytes(LTE_UART_ID, cmd, cmd_len);
-    uart_write_bytes(LTE_UART_ID, "\r\n", 2);
+    if (strcmp(cmd, "+++")) {
+        uart_write_bytes(LTE_UART_ID, "\r\n", 2);
+        // printf("NL\n");
+    }
     uart_wait_tx_done(LTE_UART_ID, LTE_TRX_WAIT_MS(cmd_len) / portTICK_RATE_MS);
     vTaskDelay(1 / portTICK_RATE_MS);
 
@@ -181,4 +234,71 @@ static bool lte_send_at_cmd(const char *cmd, uint32_t timeout) {
         }
     }
     return false;
+}
+
+// PPP output callback
+static uint32_t lteppp_output_callback(ppp_pcb *pcb, u8_t *data, u32_t len, void *ctx) {
+    LWIP_UNUSED_ARG(ctx);
+    uint32_t tx_bytes = uart_write_bytes(LTE_UART_ID, (const char*)data, len);
+    uart_wait_tx_done(LTE_UART_ID, LTE_TRX_WAIT_MS(len) / portTICK_RATE_MS);
+    return tx_bytes;
+}
+
+// PPP status callback
+static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx) {
+    struct netif *pppif = ppp_netif(pcb);
+    LWIP_UNUSED_ARG(ctx);
+
+    switch (err_code) {
+    case PPPERR_NONE:
+        printf("status_cb: Connected\n");
+        #if PPP_IPV4_SUPPORT
+        printf("ipaddr    = %s\n", ipaddr_ntoa(&pppif->ip_addr));
+        printf("gateway   = %s\n", ipaddr_ntoa(&pppif->gw));
+        printf("netmask   = %s\n", ipaddr_ntoa(&pppif->netmask));
+        #endif
+        #if PPP_IPV6_SUPPORT
+        printf("ip6addr   = %s\n", ip6addr_ntoa(netif_ip6_addr(pppif, 0)));
+        #endif
+        break;
+    case PPPERR_PARAM:
+        printf("status_cb: Invalid parameter\n");
+        break;
+    case PPPERR_OPEN:
+        printf("status_cb: Unable to open PPP session\n");
+        break;
+    case PPPERR_DEVICE:
+        printf("status_cb: Invalid I/O device for PPP\n");
+        break;
+    case PPPERR_ALLOC:
+        printf("status_cb: Unable to allocate resources\n");
+        break;
+    case PPPERR_USER:
+        printf("status_cb: User interrupt (disconnected)\n");
+        break;
+    case PPPERR_CONNECT:
+        printf("status_cb: Connection lost\n");
+        break;
+    case PPPERR_AUTHFAIL:
+        printf("status_cb: Failed authentication challenge\n");
+        break;
+    case PPPERR_PROTOCOL:
+        printf("status_cb: Failed to meet protocol\n");
+        break;
+    case PPPERR_PEERDEAD:
+        printf("status_cb: Connection timeout\n");
+        break;
+    case PPPERR_IDLETIMEOUT:
+        printf("status_cb: Idle Timeout\n");
+        break;
+    case PPPERR_CONNECTTIME:
+        printf("status_cb: Max connect time reached\n");
+        break;
+    case PPPERR_LOOPBACK:
+        printf("status_cb: Loopback detected\n");
+        break;
+    default:
+        printf("status_cb: Unknown error code %d\n", err_code);
+        break;
+    }
 }
