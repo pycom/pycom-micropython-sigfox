@@ -30,8 +30,10 @@
  DEFINE CONSTANTS
  ******************************************************************************/
 
-#define LTE_UART_ID                                             2
 #define LTE_TRX_WAIT_MS(len)                                    (((len + 1) * 12 * 1000) / MICROPY_LTE_UART_BAUDRATE)
+
+#define LTE_CEREG_CHECK_PERIOD_MS                               (500)
+#define LTE_TASK_PERIOD_MS                                      (2)
 
 /******************************************************************************
  DEFINE TYPES
@@ -138,11 +140,45 @@ void lteppp_stop(void) {
  ******************************************************************************/
 
 static void TASK_LTE (void *pvParameters) {
+    uint32_t reg_check_count = 0;
+
     lte_task_cmd_data_t *lte_task_cmd = (lte_task_cmd_data_t *)lteppp_trx_buffer;
     lte_task_rsp_data_t *lte_task_rsp = (lte_task_rsp_data_t *)lteppp_trx_buffer;
 
+    vTaskDelay(1050 / portTICK_RATE_MS);
+    if (lte_send_at_cmd("+++", 1050)) {
+        lte_send_at_cmd("ATH", LTE_RX_TIMEOUT_MIN_MS);
+        while (true) {
+            if (lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+                break;
+            }
+        }
+    } else {
+        lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS);
+        if (!lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+            vTaskDelay(1050 / portTICK_RATE_MS);
+            if (!lte_send_at_cmd("+++", 1050)) {
+                if (!lte_send_at_cmd("+++", 1050)) {
+                    // nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+                }
+            }
+            vTaskDelay(550 / portTICK_RATE_MS);
+        }
+        lte_send_at_cmd("AT+SQNCTM?", LTE_RX_TIMEOUT_DEF_MS);
+        if (!strstr(lteppp_trx_buffer, "verizon")) {
+            lte_send_at_cmd("AT+SQNCTM=\"verizon\"", LTE_RX_TIMEOUT_DEF_MS);
+            lte_send_at_cmd("AT", LTE_RX_TIMEOUT_DEF_MS);
+            lte_send_at_cmd("AT", LTE_RX_TIMEOUT_DEF_MS);
+        }
+    }
+
+    // enter low power mode
+    lte_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MIN_MS);
+    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
+    uart_set_rts(LTE_UART_ID, 0);
+
     for (;;) {
-        vTaskDelay(2);
+        vTaskDelay(LTE_TASK_PERIOD_MS);
 
         if (xQueueReceive(xCmdQueue, lteppp_trx_buffer, 0)) {
             switch (lte_task_cmd->cmd) {
@@ -158,10 +194,12 @@ static void TASK_LTE (void *pvParameters) {
                 } else {
                     lte_task_rsp->ok = false;
                 }
+                printf("%s\n", lteppp_trx_buffer);
                 xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
                 break;
             case E_LTE_CMD_PPP_ENTER:
                 lte_send_at_cmd(lte_task_cmd->data, lte_task_cmd->timeout);
+                printf("%s\n", lteppp_trx_buffer);
                 if (strstr(lteppp_trx_buffer, "CONNECT") != NULL) {
                     xSemaphoreTake(xLTESem, portMAX_DELAY);
                     lte_state = E_LTE_PPP;
@@ -176,12 +214,17 @@ static void TASK_LTE (void *pvParameters) {
                 break;
             }
         } else {
+            reg_check_count += LTE_TASK_PERIOD_MS;
             xSemaphoreTake(xLTESem, portMAX_DELAY);
-            if (lte_state >= E_LTE_IDLE && lte_state < E_LTE_PPP) {
-                lte_send_at_cmd("AT+CEREG?", LTE_RX_TIMEOUT_DEF_MS);
-                char *pos;
-                if ((pos = strstr(lteppp_trx_buffer, "+CEREG: 2,1,")) && (strlen(pos) >= 21)) {
-                    lte_state = E_LTE_ATTACHED;
+            if (reg_check_count >= LTE_CEREG_CHECK_PERIOD_MS && lte_state >= E_LTE_IDLE && lte_state < E_LTE_PPP) {
+                reg_check_count = 0;
+                if (lte_send_at_cmd("AT+CEREG?", LTE_RX_TIMEOUT_DEF_MS)) {
+                    char *pos;
+                    if ((pos = strstr(lteppp_trx_buffer, "+CEREG: 2,1,")) && (strlen(pos) >= 21)) {
+                        lte_state = E_LTE_ATTACHED;
+                    } else {
+                        lte_state = E_LTE_IDLE;
+                    }
                 } else {
                     lte_state = E_LTE_IDLE;
                 }
@@ -199,6 +242,11 @@ static void TASK_LTE (void *pvParameters) {
 }
 
 static bool lte_send_at_cmd(const char *cmd, uint32_t timeout) {
+    bool ret = false;
+    uint32_t rx_len = 0;
+
+    // uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 0);
+
     uint32_t cmd_len = strlen(cmd);
     // flush the rx buffer first
     uart_flush(LTE_UART_ID);
@@ -206,12 +254,10 @@ static bool lte_send_at_cmd(const char *cmd, uint32_t timeout) {
     uart_write_bytes(LTE_UART_ID, cmd, cmd_len);
     if (strcmp(cmd, "+++")) {
         uart_write_bytes(LTE_UART_ID, "\r\n", 2);
-        // printf("NL\n");
     }
     uart_wait_tx_done(LTE_UART_ID, LTE_TRX_WAIT_MS(cmd_len) / portTICK_RATE_MS);
     vTaskDelay(1 / portTICK_RATE_MS);
 
-    uint32_t rx_len = 0;
     // wait until characters start arriving
     do {
         vTaskDelay(1 / portTICK_RATE_MS);
@@ -221,6 +267,7 @@ static bool lte_send_at_cmd(const char *cmd, uint32_t timeout) {
         }
     } while (timeout > 0 && 0 == rx_len);
 
+    memset(lteppp_trx_buffer, 0, sizeof(lteppp_trx_buffer));
     if (rx_len > 0) {
         // try to read up to the size of the buffer minus null terminator (minus 2 because we store the OK status in the last byte)
         rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, sizeof(lteppp_trx_buffer) - 2, LTE_TRX_WAIT_MS(sizeof(lteppp_trx_buffer)) / portTICK_RATE_MS);
@@ -228,12 +275,15 @@ static bool lte_send_at_cmd(const char *cmd, uint32_t timeout) {
             // NULL terminate the string
             lteppp_trx_buffer[rx_len] = '\0';
             if (strstr(lteppp_trx_buffer, LTE_OK_RSP) != NULL) {
-                return true;
+                ret = true;
             }
-            return false;
+            ret = false;
         }
     }
-    return false;
+    // uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
+    // uart_set_rts(LTE_UART_ID, 0);
+
+    return ret;
 }
 
 // PPP output callback

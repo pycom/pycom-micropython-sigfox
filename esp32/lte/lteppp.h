@@ -13,6 +13,8 @@
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
+#define LTE_UART_ID                                             2
+
 #define LTE_UART_BUFFER_SIZE                                            (2048)
 #define LTE_CMD_QUEUE_SIZE_MAX                                          (1)
 #define LTE_RSP_QUEUE_SIZE_MAX                                          (1)
@@ -21,7 +23,7 @@
 
 #define LTE_OK_RSP                                                      "OK"
 #define LTE_RX_TIMEOUT_DEF_MS                                           (5000)
-#define LTE_RX_TIMEOUT_MIN_MS                                           (50)
+#define LTE_RX_TIMEOUT_MIN_MS                                           (100)
 #define LTE_MUTEX_TIMEOUT                                               (5050 / portTICK_RATE_MS)
 #define LTE_TASK_STACK_SIZE                                             (3072)
 #define LTE_TASK_PRIORITY                                               (6)
