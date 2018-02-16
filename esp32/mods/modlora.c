@@ -1411,6 +1411,10 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
     // we need to know the region first
     if (args[14].u_obj == MP_OBJ_NULL) {
         cmd_data.info.init.region = config_get_lora_region();
+        if (cmd_data.info.init.region == 0xff) {
+    			nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "no region specified and no default found in config block"));
+    		}
+
     } else {
         cmd_data.info.init.region = mp_obj_get_int(args[14].u_obj);
     }
