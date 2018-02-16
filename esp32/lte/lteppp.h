@@ -65,7 +65,11 @@ extern void lteppp_start (void);
 
 extern lte_state_t lteppp_get_state(void);
 
+extern uint32_t lteppp_ipv4(void);
+
 extern void lteppp_stop(void) ;
+
+extern void lteppp_deinit (void);
 
 extern bool lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp);
 

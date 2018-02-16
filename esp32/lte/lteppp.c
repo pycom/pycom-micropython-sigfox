@@ -56,6 +56,11 @@ static SemaphoreHandle_t xLTESem;
 static ppp_pcb *lteppp_pcb;         // PPP control block
 struct netif lteppp_netif;          // PPP net interface
 
+static uint32_t lte_ipv4addr;
+static uint32_t lte_gw;
+static uint32_t lte_netmask;
+static ip6_addr_t lte_ipv6addr;
+
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -107,6 +112,7 @@ void lteppp_init(void) {
 }
 
 void lteppp_start (void) {
+    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 0);
     xSemaphoreTake(xLTESem, portMAX_DELAY);
     if (E_LTE_INIT == lte_state) {
         lte_state = E_LTE_IDLE;
@@ -135,6 +141,18 @@ void lteppp_stop(void) {
     pppapi_close(lteppp_pcb, 0);
 }
 
+void lteppp_deinit (void) {
+    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
+    uart_set_rts(LTE_UART_ID, false);
+    xSemaphoreTake(xLTESem, portMAX_DELAY);
+    lte_state = E_LTE_INIT;
+    xSemaphoreGive(xLTESem);
+}
+
+uint32_t lteppp_ipv4(void) {
+    return lte_ipv4addr;
+}
+
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -145,25 +163,17 @@ static void TASK_LTE (void *pvParameters) {
     lte_task_cmd_data_t *lte_task_cmd = (lte_task_cmd_data_t *)lteppp_trx_buffer;
     lte_task_rsp_data_t *lte_task_rsp = (lte_task_rsp_data_t *)lteppp_trx_buffer;
 
-    vTaskDelay(1050 / portTICK_RATE_MS);
-    if (lte_send_at_cmd("+++", 1050)) {
-        lte_send_at_cmd("ATH", LTE_RX_TIMEOUT_MIN_MS);
-        while (true) {
-            if (lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-                break;
+    if (!lte_send_at_cmd("AT", 150)) {
+        vTaskDelay(1150 / portTICK_RATE_MS);
+        if (lte_send_at_cmd("+++", 1150)) {
+            lte_send_at_cmd("ATH", LTE_RX_TIMEOUT_MIN_MS);
+            while (true) {
+                if (lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+                    break;
+                }
             }
         }
     } else {
-        lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS);
-        if (!lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-            vTaskDelay(1050 / portTICK_RATE_MS);
-            if (!lte_send_at_cmd("+++", 1050)) {
-                if (!lte_send_at_cmd("+++", 1050)) {
-                    // nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
-                }
-            }
-            vTaskDelay(550 / portTICK_RATE_MS);
-        }
         lte_send_at_cmd("AT+SQNCTM?", LTE_RX_TIMEOUT_DEF_MS);
         if (!strstr(lteppp_trx_buffer, "verizon")) {
             lte_send_at_cmd("AT+SQNCTM=\"verizon\"", LTE_RX_TIMEOUT_DEF_MS);
@@ -172,10 +182,12 @@ static void TASK_LTE (void *pvParameters) {
         }
     }
 
+    lte_send_at_cmd("AT+CFUN=0", LTE_RX_TIMEOUT_DEF_MS);
+
     // enter low power mode
     lte_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MIN_MS);
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
-    uart_set_rts(LTE_UART_ID, 0);
+    uart_set_rts(LTE_UART_ID, false);
 
     for (;;) {
         vTaskDelay(LTE_TASK_PERIOD_MS);
@@ -216,7 +228,7 @@ static void TASK_LTE (void *pvParameters) {
         } else {
             reg_check_count += LTE_TASK_PERIOD_MS;
             xSemaphoreTake(xLTESem, portMAX_DELAY);
-            if (reg_check_count >= LTE_CEREG_CHECK_PERIOD_MS && lte_state >= E_LTE_IDLE && lte_state < E_LTE_PPP) {
+            if (lte_state >= E_LTE_IDLE && lte_state < E_LTE_PPP && reg_check_count >= LTE_CEREG_CHECK_PERIOD_MS) {
                 reg_check_count = 0;
                 if (lte_send_at_cmd("AT+CEREG?", LTE_RX_TIMEOUT_DEF_MS)) {
                     char *pos;
@@ -242,12 +254,9 @@ static void TASK_LTE (void *pvParameters) {
 }
 
 static bool lte_send_at_cmd(const char *cmd, uint32_t timeout) {
-    bool ret = false;
     uint32_t rx_len = 0;
-
-    // uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 0);
-
     uint32_t cmd_len = strlen(cmd);
+
     // flush the rx buffer first
     uart_flush(LTE_UART_ID);
     // then send the command
@@ -275,15 +284,13 @@ static bool lte_send_at_cmd(const char *cmd, uint32_t timeout) {
             // NULL terminate the string
             lteppp_trx_buffer[rx_len] = '\0';
             if (strstr(lteppp_trx_buffer, LTE_OK_RSP) != NULL) {
-                ret = true;
+                return true;
             }
-            ret = false;
+            return false;
         }
     }
-    // uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
-    // uart_set_rts(LTE_UART_ID, 0);
 
-    return ret;
+    return false;
 }
 
 // PPP output callback
@@ -303,11 +310,15 @@ static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx) {
     case PPPERR_NONE:
         printf("status_cb: Connected\n");
         #if PPP_IPV4_SUPPORT
+        lte_gw = pppif->gw.u_addr.ip4.addr;
+        lte_netmask = pppif->netmask.u_addr.ip4.addr;
+        lte_ipv4addr = pppif->ip_addr.u_addr.ip4.addr;
         printf("ipaddr    = %s\n", ipaddr_ntoa(&pppif->ip_addr));
         printf("gateway   = %s\n", ipaddr_ntoa(&pppif->gw));
         printf("netmask   = %s\n", ipaddr_ntoa(&pppif->netmask));
         #endif
         #if PPP_IPV6_SUPPORT
+        memcpy(lte_ipv6addr.addr, netif_ip6_addr(pppif, 0), sizeof(lte_ipv4addr));
         printf("ip6addr   = %s\n", ip6addr_ntoa(netif_ip6_addr(pppif, 0)));
         #endif
         break;
@@ -325,9 +336,13 @@ static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx) {
         break;
     case PPPERR_USER:
         printf("status_cb: User interrupt (disconnected)\n");
+        lte_ipv4addr = 0;
+        memset(lte_ipv6addr.addr, 0, sizeof(lte_ipv4addr));
         break;
     case PPPERR_CONNECT:
         printf("status_cb: Connection lost\n");
+        lte_ipv4addr = 0;
+        memset(lte_ipv6addr.addr, 0, sizeof(lte_ipv4addr));
         break;
     case PPPERR_AUTHFAIL:
         printf("status_cb: Failed authentication challenge\n");
@@ -349,6 +364,8 @@ static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx) {
         break;
     default:
         printf("status_cb: Unknown error code %d\n", err_code);
+        lte_ipv4addr = 0;
+        memset(lte_ipv6addr.addr, 0, sizeof(lte_ipv4addr));
         break;
     }
 }
