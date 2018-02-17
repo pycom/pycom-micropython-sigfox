@@ -537,7 +537,7 @@ static void telnet_parse_input (uint8_t *str, int32_t *len) {
             (ch == mp_interrupt_char || ch == CHAR_CTRL_F))) {
             if (ch == mp_interrupt_char) {
                 mp_keyboard_interrupt();
-            } else if (ch == CHAR_CTRL_F) {
+            } else if (ch == mp_reset_char) {
                 *str++ = CHAR_CTRL_D;
                 mp_hal_reset_safe_and_boot(false);
                 _str++;

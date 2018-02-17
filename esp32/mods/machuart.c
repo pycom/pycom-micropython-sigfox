@@ -302,7 +302,7 @@ STATIC IRAM_ATTR void UARTRxCallback(int uart_id, int rx_byte) {
         if (mp_interrupt_char == rx_byte) {
             // raise an exception when interrupts are finished
             mp_keyboard_interrupt();
-        } else if (CHAR_CTRL_F == rx_byte) {
+        } else if (mp_reset_char == rx_byte) {
             servers_reset_and_safe_boot();
         }
     }

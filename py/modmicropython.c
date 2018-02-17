@@ -130,11 +130,19 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mp_alloc_emergency_exception_buf_obj, mp_alloc_
 #endif
 
 #if MICROPY_KBD_EXCEPTION
-STATIC mp_obj_t mp_micropython_kbd_intr(mp_obj_t int_chr_in) {
-    mp_hal_set_interrupt_char(mp_obj_get_int(int_chr_in));
+STATIC mp_obj_t mp_micropython_kbd_intr(size_t n_args, const mp_obj_t *args) {
+    int c = mp_obj_get_int(args[0]);
+    mp_hal_set_interrupt_char(c);
+    if (n_args == 1) {
+        if (c == -1) {
+            mp_hal_set_reset_char(-1);
+        }
+    } else {
+        mp_hal_set_reset_char(mp_obj_get_int(args[1]));
+    }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mp_micropython_kbd_intr_obj, mp_micropython_kbd_intr);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mp_micropython_kbd_intr_obj, 1, 2, mp_micropython_kbd_intr);
 #endif
 
 STATIC const mp_rom_map_elem_t mp_module_micropython_globals_table[] = {
