@@ -137,6 +137,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modbt.c \
 	modled.c \
 	machwdt.c \
+	machrmt.c \
 	)
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
