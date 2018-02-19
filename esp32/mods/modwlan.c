@@ -763,7 +763,7 @@ STATIC mp_obj_t wlan_scan(mp_obj_t self_in) {
             for (int i = 0; i < ap_num; i++) {
                 ap_record = &ap_record_buffer[i];
                 mp_obj_t tuple[5];
-                tuple[0] = mp_obj_new_str((const char *)ap_record->ssid, strlen((char *)ap_record->ssid), false);
+                tuple[0] = mp_obj_new_str((const char *)ap_record->ssid, strlen((char *)ap_record->ssid));
                 tuple[1] = mp_obj_new_bytes((const byte *)ap_record->bssid, sizeof(ap_record->bssid));
                 tuple[2] = mp_obj_new_int(ap_record->authmode);
                 tuple[3] = mp_obj_new_int(ap_record->primary);
@@ -1001,7 +1001,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_mode_obj, 1, 2, wlan_mode);
 STATIC mp_obj_t wlan_ssid (mp_uint_t n_args, const mp_obj_t *args) {
     wlan_obj_t *self = args[0];
     if (n_args == 1) {
-        return mp_obj_new_str((const char *)self->ssid, strlen((const char *)self->ssid), false);
+        return mp_obj_new_str((const char *)self->ssid, strlen((const char *)self->ssid));
     } else {
         const char *ssid = mp_obj_str_get_str(args[1]);
         wlan_validate_ssid_len(strlen(ssid));
@@ -1031,7 +1031,7 @@ STATIC mp_obj_t wlan_auth (mp_uint_t n_args, const mp_obj_t *args) {
         } else {
             mp_obj_t security[2];
             security[0] = mp_obj_new_int(self->auth);
-            security[1] = mp_obj_new_str((const char *)self->key, strlen((const char *)self->key), false);
+            security[1] = mp_obj_new_str((const char *)self->key, strlen((const char *)self->key));
             return mp_obj_new_tuple(2, security);
         }
     } else {

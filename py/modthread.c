@@ -47,12 +47,6 @@
 
 STATIC const mp_obj_type_t mp_type_thread_lock;
 
-typedef struct _mp_obj_thread_lock_t {
-    mp_obj_base_t base;
-    mp_thread_mutex_t mutex;
-    volatile bool locked;
-} mp_obj_thread_lock_t;
-
 STATIC mp_obj_thread_lock_t *mp_obj_new_thread_lock(void) {
     mp_obj_thread_lock_t *self = m_new_obj(mp_obj_thread_lock_t);
     self->base.type = &mp_type_thread_lock;

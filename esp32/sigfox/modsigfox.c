@@ -1003,7 +1003,7 @@ mp_obj_t sigfox_version(mp_obj_t self_in) {
     sfx_u8 size;
 
     if (SFX_ERR_NONE == SIGFOX_API_get_version(&ptr, &size)) {
-        return mp_obj_new_str((char *)ptr, size - 1, false);
+        return mp_obj_new_str((char *)ptr, size - 1);
     }
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
 }

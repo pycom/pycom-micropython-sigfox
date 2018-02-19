@@ -61,5 +61,6 @@ void mp_thread_init(void);
 void mp_thread_gc_others(void);
 void mp_thread_deinit(void);
 mp_obj_thread_lock_t *mp_thread_new_thread_lock(void);
+void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, int priority, char *name);
 
 #endif // __MICROPY_INCLUDED_ESP32_MPTHREADPORT_H__

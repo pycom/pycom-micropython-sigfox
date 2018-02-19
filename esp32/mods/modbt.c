@@ -868,7 +868,7 @@ STATIC mp_obj_t bt_resolve_adv_data(mp_obj_t self_in, mp_obj_t adv_data, mp_obj_
                 return mp_obj_new_bytes(data, data_len);
             case ESP_BLE_AD_TYPE_NAME_SHORT:
             case ESP_BLE_AD_TYPE_NAME_CMPL:
-                return mp_obj_new_str((char *)data, data_len, false);
+                return mp_obj_new_str((char *)data, data_len);
             case ESP_BLE_AD_TYPE_TX_PWR:
                 return mp_obj_new_int(*(int8_t *)data);
             case ESP_BLE_AD_TYPE_DEV_CLASS:

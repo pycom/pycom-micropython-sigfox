@@ -14,6 +14,7 @@
 #include "mpexception.h"
 #include "mperror.h"
 #include "mpirq.h"
+#include "mpthreadport.h"
 #include "py/stackctrl.h"
 
 #include "freertos/FreeRTOS.h"
