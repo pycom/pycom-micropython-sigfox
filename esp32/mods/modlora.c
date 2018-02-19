@@ -248,6 +248,11 @@ static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLN
                                                                  "REGION" };
 
 /******************************************************************************
+ DECLARE PUBLIC DATA
+ ******************************************************************************/
+extern TaskHandle_t xLoRaTaskHndl;
+
+/******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
 static void TASK_LoRa (void *pvParameters);
@@ -283,7 +288,7 @@ static int lora_socket_bind (mod_network_socket_obj_t *s, byte *ip, mp_uint_t po
 static int lora_socket_setsockopt (mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
 static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 
-extern TaskHandle_t xLoRaTaskHndl;
+STATIC mp_obj_t lora_nvram_erase (mp_obj_t self_in);
 
 /******************************************************************************
  DECLARE PUBLIC DATA
@@ -1608,8 +1613,6 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
         dr = DR_6;
         break;
     case LORAMAC_REGION_US915:
-        dr = DR_4;
-        break;
     case LORAMAC_REGION_US915_HYBRID:
         dr = DR_4;
         break;
@@ -2014,6 +2017,12 @@ STATIC mp_obj_t lora_set_battery_level(mp_obj_t self_in, mp_obj_t battery) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_set_battery_level_obj, lora_set_battery_level);
 
 STATIC mp_obj_t lora_nvram_save (mp_obj_t self_in) {
+    LoRaMacRegion_t region = 0xFF;
+    modlora_nvs_get_uint(E_LORA_NVS_ELE_REGION, &region);
+    // if the region doesn't match, erase the previos stored data
+    if (region != lora_obj.region) {
+        lora_nvram_erase(NULL);
+    }
     LoRaMacNvsSave();
     modlora_nvs_set_uint(E_LORA_NVS_ELE_REGION, (uint32_t)lora_obj.region);
     modlora_nvs_set_uint(E_LORA_NVS_ELE_JOINED, (uint32_t)lora_obj.joined);
@@ -2031,14 +2040,18 @@ STATIC mp_obj_t lora_nvram_restore (mp_obj_t self_in) {
 
     if (modlora_nvs_get_uint(E_LORA_NVS_ELE_JOINED, &joined)) {
         lora_obj.joined = joined;
-        if (modlora_nvs_get_uint(E_LORA_NVS_ELE_REGION, &region)) {
-            // only restore from NVRAM if the region matches
-            if (joined && region == lora_obj.region) {
-                lora_get_config (&cmd_data);
-                cmd_data.cmd = E_LORA_CMD_INIT;
-                lora_send_cmd (&cmd_data);
-            } else {
-                lora_obj.joined = false;
+        if (joined) {
+            if (modlora_nvs_get_uint(E_LORA_NVS_ELE_REGION, &region)) {
+                // only restore from NVRAM if the region matches
+                if (region == lora_obj.region) {
+                    lora_get_config (&cmd_data);
+                    cmd_data.cmd = E_LORA_CMD_INIT;
+                    lora_send_cmd (&cmd_data);
+                } else {
+                    // erase the previous NVRAM data
+                    lora_nvram_erase(NULL);
+                    lora_obj.joined = false;
+                }
             }
         }
     } else {
