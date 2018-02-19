@@ -692,7 +692,7 @@ STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_ui
     // give it to the sleep module
     //pyb_sleep_set_wlan_obj(self); // FIXME
 
-    if (n_kw > 0) {
+    if (n_kw > 0 || !wlan_obj.started) {
         // check the peripheral id
         if (args[0].u_int != 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
