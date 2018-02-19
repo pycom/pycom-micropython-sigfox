@@ -65,6 +65,9 @@ STATIC void machine_hspi_transfer(mp_obj_base_t *self_in, size_t len, const uint
             spi_tx8fast(HSPI, src[i]);
             ++i;
         }
+        // wait for SPI transaction to complete
+        while (spi_busy(HSPI)) {
+        }
     } else {
         // we need to read and write data
 
@@ -149,7 +152,7 @@ mp_obj_t machine_hspi_make_new(const mp_obj_type_t *type, size_t n_args, size_t 
     // args[0] holds the id of the peripheral
     if (args[0] != MP_OBJ_NEW_SMALL_INT(1)) {
         // FlashROM is on SPI0, so far we don't support its usage
-        mp_raise_ValueError("");
+        mp_raise_ValueError(NULL);
     }
 
     machine_hspi_obj_t *self = m_new_obj(machine_hspi_obj_t);

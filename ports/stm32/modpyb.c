@@ -27,13 +27,14 @@
 #include <stdint.h>
 #include <stdio.h>
 
-#include "py/obj.h"
+#include "py/runtime.h"
 #include "py/gc.h"
 #include "py/builtin.h"
 #include "py/mphal.h"
 #include "lib/utils/pyexec.h"
 #include "lib/oofatfs/ff.h"
 #include "lib/oofatfs/diskio.h"
+#include "drivers/dht/dht.h"
 #include "gccollect.h"
 #include "stm32_it.h"
 #include "irq.h"
@@ -104,6 +105,28 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(pyb_elapsed_micros_obj, pyb_elapsed_micros);
 
 MP_DECLARE_CONST_FUN_OBJ_KW(pyb_main_obj); // defined in main.c
 
+// Get or set the UART object that the REPL is repeated on.
+// This is a legacy function, use of uos.dupterm is preferred.
+STATIC mp_obj_t pyb_repl_uart(size_t n_args, const mp_obj_t *args) {
+    if (n_args == 0) {
+        if (MP_STATE_PORT(pyb_stdio_uart) == NULL) {
+            return mp_const_none;
+        } else {
+            return MP_STATE_PORT(pyb_stdio_uart);
+        }
+    } else {
+        if (args[0] == mp_const_none) {
+            MP_STATE_PORT(pyb_stdio_uart) = NULL;
+        } else if (mp_obj_get_type(args[0]) == &pyb_uart_type) {
+            MP_STATE_PORT(pyb_stdio_uart) = args[0];
+        } else {
+            mp_raise_ValueError("need a UART object");
+        }
+        return mp_const_none;
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_repl_uart_obj, 0, 1, pyb_repl_uart);
+
 STATIC const mp_rom_map_elem_t pyb_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_pyb) },
 
@@ -126,8 +149,9 @@ STATIC const mp_rom_map_elem_t pyb_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_stop), MP_ROM_PTR(&machine_sleep_obj) },
     { MP_ROM_QSTR(MP_QSTR_standby), MP_ROM_PTR(&machine_deepsleep_obj) },
     { MP_ROM_QSTR(MP_QSTR_main), MP_ROM_PTR(&pyb_main_obj) },
-    { MP_ROM_QSTR(MP_QSTR_repl_uart), MP_ROM_PTR(&mod_os_dupterm_obj) },
+    { MP_ROM_QSTR(MP_QSTR_repl_uart), MP_ROM_PTR(&pyb_repl_uart_obj) },
 
+    #if MICROPY_HW_ENABLE_USB
     { MP_ROM_QSTR(MP_QSTR_usb_mode), MP_ROM_PTR(&pyb_usb_mode_obj) },
     { MP_ROM_QSTR(MP_QSTR_hid_mouse), MP_ROM_PTR(&pyb_usb_hid_mouse_obj) },
     { MP_ROM_QSTR(MP_QSTR_hid_keyboard), MP_ROM_PTR(&pyb_usb_hid_keyboard_obj) },
@@ -136,6 +160,7 @@ STATIC const mp_rom_map_elem_t pyb_module_globals_table[] = {
     // these 2 are deprecated; use USB_VCP.isconnected and USB_HID.send instead
     { MP_ROM_QSTR(MP_QSTR_have_cdc), MP_ROM_PTR(&pyb_have_cdc_obj) },
     { MP_ROM_QSTR(MP_QSTR_hid), MP_ROM_PTR(&pyb_hid_send_report_obj) },
+    #endif
 
     { MP_ROM_QSTR(MP_QSTR_millis), MP_ROM_PTR(&mp_utime_ticks_ms_obj) },
     { MP_ROM_QSTR(MP_QSTR_elapsed_millis), MP_ROM_PTR(&pyb_elapsed_millis_obj) },
@@ -145,6 +170,9 @@ STATIC const mp_rom_map_elem_t pyb_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_udelay), MP_ROM_PTR(&mp_utime_sleep_us_obj) },
     { MP_ROM_QSTR(MP_QSTR_sync), MP_ROM_PTR(&mod_os_sync_obj) },
     { MP_ROM_QSTR(MP_QSTR_mount), MP_ROM_PTR(&mp_vfs_mount_obj) },
+
+    // This function is not intended to be public and may be moved elsewhere
+    { MP_ROM_QSTR(MP_QSTR_dht_readinto), MP_ROM_PTR(&dht_readinto_obj) },
 
     { MP_ROM_QSTR(MP_QSTR_Timer), MP_ROM_PTR(&pyb_timer_type) },
 
@@ -181,7 +209,9 @@ STATIC const mp_rom_map_elem_t pyb_module_globals_table[] = {
 #if defined(MICROPY_HW_LED1)
     { MP_ROM_QSTR(MP_QSTR_LED), MP_ROM_PTR(&pyb_led_type) },
 #endif
+    #if MICROPY_HW_ENABLE_HW_I2C
     { MP_ROM_QSTR(MP_QSTR_I2C), MP_ROM_PTR(&pyb_i2c_type) },
+    #endif
     { MP_ROM_QSTR(MP_QSTR_SPI), MP_ROM_PTR(&pyb_spi_type) },
     { MP_ROM_QSTR(MP_QSTR_UART), MP_ROM_PTR(&pyb_uart_type) },
 #if MICROPY_HW_ENABLE_CAN

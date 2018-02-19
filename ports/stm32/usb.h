@@ -23,8 +23,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef MICROPY_INCLUDED_STMHAL_USB_H
-#define MICROPY_INCLUDED_STMHAL_USB_H
+#ifndef MICROPY_INCLUDED_STM32_USB_H
+#define MICROPY_INCLUDED_STM32_USB_H
 
 #include "usbd_cdc_msc_hid0.h"
 
@@ -35,6 +35,7 @@
 #define USBD_PID_CDC_MSC (0x9800)
 #define USBD_PID_CDC_HID (0x9801)
 #define USBD_PID_CDC     (0x9802)
+#define USBD_PID_MSC     (0x9803)
 
 typedef enum {
     PYB_USB_STORAGE_MEDIUM_NONE = 0,
@@ -63,10 +64,9 @@ void pyb_usb_dev_deinit(void);
 bool usb_vcp_is_enabled(void);
 int usb_vcp_recv_byte(uint8_t *c); // if a byte is available, return 1 and put the byte in *c, else return 0
 void usb_vcp_send_strn(const char* str, int len);
-void usb_vcp_send_strn_cooked(const char *str, int len);
 
 void pyb_usb_host_init(void);
 void pyb_usb_host_process(void);
 uint pyb_usb_host_get_keyboard(void);
 
-#endif // MICROPY_INCLUDED_STMHAL_USB_H
+#endif // MICROPY_INCLUDED_STM32_USB_H

@@ -47,14 +47,19 @@
 
 STATIC const mp_obj_type_t mp_type_thread_lock;
 
-STATIC mp_obj_t thread_lock_delete(mp_obj_t self_in) {
-    mp_obj_thread_lock_t *self = MP_OBJ_TO_PTR(self_in);
-    if (self->mutex) {
-        free(self->mutex);
-    }
-    return mp_const_none;
+typedef struct _mp_obj_thread_lock_t {
+    mp_obj_base_t base;
+    mp_thread_mutex_t mutex;
+    volatile bool locked;
+} mp_obj_thread_lock_t;
+
+STATIC mp_obj_thread_lock_t *mp_obj_new_thread_lock(void) {
+    mp_obj_thread_lock_t *self = m_new_obj(mp_obj_thread_lock_t);
+    self->base.type = &mp_type_thread_lock;
+    mp_thread_mutex_init(&self->mutex);
+    self->locked = false;
+    return self;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(thread_lock_delete_obj, thread_lock_delete);
 
 STATIC mp_obj_t thread_lock_acquire(size_t n_args, const mp_obj_t *args) {
     mp_obj_thread_lock_t *self = MP_OBJ_TO_PTR(args[0]);
@@ -64,7 +69,7 @@ STATIC mp_obj_t thread_lock_acquire(size_t n_args, const mp_obj_t *args) {
         // TODO support timeout arg
     }
     MP_THREAD_GIL_EXIT();
-    int ret = mp_thread_mutex_lock(self->mutex, wait);
+    int ret = mp_thread_mutex_lock(&self->mutex, wait);
     MP_THREAD_GIL_ENTER();
     if (ret == 0) {
         return mp_const_false;
@@ -84,7 +89,7 @@ STATIC mp_obj_t thread_lock_release(mp_obj_t self_in) {
     }
     self->locked = false;
     MP_THREAD_GIL_EXIT();
-    mp_thread_mutex_unlock(self->mutex);
+    mp_thread_mutex_unlock(&self->mutex);
     MP_THREAD_GIL_ENTER();
     return mp_const_none;
 }
@@ -103,7 +108,6 @@ STATIC mp_obj_t thread_lock___exit__(size_t n_args, const mp_obj_t *args) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(thread_lock___exit___obj, 4, 4, thread_lock___exit__);
 
 STATIC const mp_rom_map_elem_t thread_lock_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&thread_lock_delete_obj) },
     { MP_ROM_QSTR(MP_QSTR_acquire), MP_ROM_PTR(&thread_lock_acquire_obj) },
     { MP_ROM_QSTR(MP_QSTR_release), MP_ROM_PTR(&thread_lock_release_obj) },
     { MP_ROM_QSTR(MP_QSTR_locked), MP_ROM_PTR(&thread_lock_locked_obj) },
@@ -160,6 +164,12 @@ STATIC void *thread_entry(void *args_in) {
 
     mp_stack_set_top(&ts + 1); // need to include ts in root-pointer scan
     mp_stack_set_limit(args->stack_size);
+
+    #if MICROPY_ENABLE_PYSTACK
+    // TODO threading and pystack is not fully supported, for now just make a small stack
+    mp_obj_t mini_pystack[128];
+    mp_pystack_init(mini_pystack, &mini_pystack[128]);
+    #endif
 
     // set locals and globals from the calling context
     mp_locals_set(args->dict_locals);
@@ -266,9 +276,7 @@ STATIC mp_obj_t mod_thread_exit(void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_thread_exit_obj, mod_thread_exit);
 
 STATIC mp_obj_t mod_thread_allocate_lock(void) {
-    mp_obj_thread_lock_t *self = mp_thread_new_thread_lock();
-    self->base.type = &mp_type_thread_lock;
-    return MP_OBJ_FROM_PTR(self);
+    return MP_OBJ_FROM_PTR(mp_obj_new_thread_lock());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_thread_allocate_lock_obj, mod_thread_allocate_lock);
 
