@@ -422,6 +422,13 @@ ESPSECUREPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espsecure.py
 # actual command for signing a binary
 SIGN_BINARY = $(ESPSECUREPY) sign_data --keyfile $(SECURE_KEY)
 
+# actual command for signing a binary
+# it should be used as:
+# $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o image_encrypt.bin image.bin 
+ENCRYPT_BINARY = $(ESPSECUREPY) encrypt_flash_data --keyfile $(ENCRYPT_KEY)
+ENCRYPT_0x10000 = --address 0x10000
+ENCRYPT_0x1A0000 = --address 0x1A0000
+
 GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py -q
 
 ifeq ($(TARGET), app)
@@ -433,7 +440,13 @@ endif
 .PHONY: all
 
 ifeq ($(SECURE), on)
+
+# add #define CONFIG_FLASH_ENCRYPTION_ENABLE 1 used for Flash Encryption
+# it can also be added permanently in sdkconfig.h
 CFLAGS += -DCONFIG_FLASH_ENCRYPTION_ENABLED=1
+
+# add #define CONFIG_SECURE_BOOT_ENABLED 1 used for Secure Boot
+# it can also be added permanently in sdkconfig.h
 CFLAGS += -DCONFIG_SECURE_BOOT_ENABLED=1
 
 # find the configured private key file
@@ -455,6 +468,18 @@ else #ifeq ($(SECURE), on)
 SECURE_BOOT_VERIFICATION_KEY = 
 endif #ifeq ($(SECURE), on)
 
+ifeq ($(ENCRYPT), on)
+# find absolute path of the configured Encryption key
+ORIG_ENCRYPT_KEY := $(call resolvepath,$(call dequote,$(ENCRYPT_KEY)),$(PROJECT_PATH))
+$(ORIG_ENCRYPT_KEY): 
+	$(ECHO) "WARNING: Encryption key '$@' missing. It can be created using: "
+	$(ECHO) "espsecure.py generate_flash_encryption_key flash_encryption_key.bin"
+	exit 1
+else #ifeq ($(ENCRYPT), on)
+ORIG_ENCRYPT_KEY = 
+endif #ifeq ($(ENCRYPT), on)
+
+
 ifeq ($(TARGET), boot)
 $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(ECHO) "AR $@"
@@ -467,10 +492,10 @@ $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a $(SECURE_BO
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
-	$(RM) -f ./bootloader/lib/bootloader_support_temp
-	$(MKDIR)  ./bootloader/lib/bootloader_support_temp
-	$(CP) ./bootloader/lib/libbootloader_support.a ./bootloader/lib/bootloader_support_temp/
-	$(CD) bootloader/lib/bootloader_support_temp/ ; pwd ;\
+	$(Q) $(RM) -f ./bootloader/lib/bootloader_support_temp
+	$(Q) $(MKDIR)  ./bootloader/lib/bootloader_support_temp
+	$(Q) $(CP) ./bootloader/lib/libbootloader_support.a ./bootloader/lib/bootloader_support_temp/
+	$(Q) $(CD) bootloader/lib/bootloader_support_temp/ ; pwd ;\
 	$(AR) x libbootloader_support.a ;\
 	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(CP) ../../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
@@ -478,7 +503,7 @@ ifeq ($(SECURE), on)
 	$(OBJCOPY) $(OBJCOPY_EMBED_ARGS) $(SECURE_BOOT_VERIFICATION_KEY) $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(AR) cru libbootloader_support.a *.o ;\
 	$(CP) libbootloader_support.a ../
-	$(RM) -rf ./bootloader/lib/bootloader_support_temp 
+	$(Q) $(RM) -rf ./bootloader/lib/bootloader_support_temp 
 endif	
 	$(ECHO) "LINK $(CC) *** $(BOOT_LDFLAGS) *** $(BOOT_LIBS) -o $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
@@ -509,10 +534,10 @@ $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
-	$(RM) -rf ./lib/bootloader_support_temp
-	$(MKDIR)  ./lib/bootloader_support_temp
-	$(CP) ./lib/libbootloader_support.a ./lib/bootloader_support_temp/
-	$(CD) lib/bootloader_support_temp/ ; pwd ;\
+	$(Q) $(RM) -rf ./lib/bootloader_support_temp
+	$(Q) $(MKDIR)  ./lib/bootloader_support_temp
+	$(Q) $(CP) ./lib/libbootloader_support.a ./lib/bootloader_support_temp/
+	$(Q) $(CD) lib/bootloader_support_temp/ ; pwd ;\
 	$(AR) x libbootloader_support.a ;\
 	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(CP) ../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
@@ -520,19 +545,26 @@ ifeq ($(SECURE), on)
 	$(OBJCOPY) $(OBJCOPY_EMBED_ARGS) $(SECURE_BOOT_VERIFICATION_KEY) $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(AR) cru libbootloader_support.a *.o ;\
 	$(CP) libbootloader_support.a ../
-	$(RM) -rf lib/bootloader_support_temp 
-endif
+	$(Q) $(RM) -rf lib/bootloader_support_temp
+endif #ifeq ($(SECURE), on)
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
 	$(Q) $(SIZE) $@
 
-$(APP_BIN): $(BUILD)/application.elf $(PART_BIN)
+$(APP_BIN): $(BUILD)/application.elf $(PART_BIN) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "IMAGE $@"
 	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
 ifeq ($(SECURE), on)
 	$(ECHO) "Signing $@"
 	$(Q) $(SIGN_BINARY) $@
-endif
+ifeq ($(ENCRYPT), on)
+	$(ECHO) "Encrypt image into $@_enc_0x10000 (0x10000 offset) and $@_enc_0x1A0000 (0x1A0000 offset)"
+	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o $@_enc_0x10000 $@
+	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x1A0000) -o $@_enc_0x1A0000 $@
+	$(ECHO) "WARNING: Please don't forget to write the encryption key into ESP32 efuse, using:"
+	$(ECHO) "espefuse.py --port PORT burn_key flash_encryption flash_encryption_key.bin"
+endif #ifeq ($(ENCRYPT), on)
+endif #ifeq ($(SECURE), on)
 	
 $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(ECHO) "CPP $@"
@@ -555,13 +587,19 @@ erase:
 	$(ECHO) "Exiting flash mode"
 	$(Q) $(EXIT_FLASHING_MODE)
 
-$(PART_BIN): $(PART_CSV)
+$(PART_BIN): $(PART_CSV) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "Building partitions from $(PART_CSV)..."
 	$(Q) $(GEN_ESP32PART) $< $@
 ifeq ($(SECURE), on)
 	$(ECHO) "Signing $@"
 	$(Q) $(SIGN_BINARY) $@
-endif
+ifeq ($(ENCRYPT), on)
+	$(ECHO) "Encrypt paritions table image into $@_enc (by default 0x8000 offset)"
+	$(Q) $(ENCRYPT_BINARY) --address 0x8000 -o $@_enc $@
+	$(ECHO) "WARNING: Please don't forget to write the encryption key into ESP32 efuse, using:"
+	$(ECHO) "espefuse.py --port PORT burn_key flash_encryption flash_encryption_key.bin"
+endif #ifeq ($(ENCRYPT), on)
+endif #ifeq ($(SECURE), on)
 
 show_partitions: $(PART_BIN)
 	$(ECHO) "Partition table binary generated. Contents:"

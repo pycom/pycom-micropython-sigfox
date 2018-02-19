@@ -18,15 +18,15 @@
 #include "esp_spi_flash.h"
 #include "esp_flash_encrypt.h"
 #include "esp_image_format.h"
+//#define LOG_LOCAL_LEVEL ESP_LOG_INFO
 #include "esp_log.h"
 #include "rom/crc.h"
-#include "rom/md5_hash.h"
 
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
+static const char *TAG = "updater";
 #define UPDATER_IMG_PATH                                "/flash/sys/appimg.bin"
-//#define UPDATER_MD5_SIZE_BYTES                          32
 
 /* if flash is encrypted, it requires the flash_write operation to be done in 16 Bytes chunks */
 #define ENCRYP_FLASH_MIN_CHUNK							16
@@ -65,28 +65,24 @@ static esp_err_t updater_spi_flash_write(size_t dest_addr, void *src, size_t siz
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
-void updater_pre_init (void) {
-//    // create the updater lock
-//    ASSERT(OSI_OK == sl_LockObjCreate(&updater_LockObj, "UpdaterLock"));
-}
 
 bool updater_read_boot_info (boot_info_t *boot_info, uint32_t *boot_info_offset) {
     esp_partition_info_t partition_info[PARTITIONS_COUNT];
 
-    // printf("Reading boot info\n");
+    ESP_LOGV(TAG, "Reading boot info\n");
 
     if (ESP_OK != updater_spi_flash_read(ESP_PARTITION_TABLE_ADDR, (void *)partition_info, sizeof(partition_info), true)) {
-        printf("err1\n");
+    		ESP_LOGE(TAG, "err1\n");
     		return false;
     }
-    // get the data from the boot info partition, also unencrypted
-    printf("read data from: 0x%X\n", partition_info[OTA_DATA_INDEX].pos.offset);
+    // get the data from the boot info partition
+    ESP_LOGI(TAG, "read data from: 0x%X\n", partition_info[OTA_DATA_INDEX].pos.offset);
     if (ESP_OK != updater_spi_flash_read(partition_info[OTA_DATA_INDEX].pos.offset, (void *)boot_info, sizeof(boot_info_t), true)) {
-    		printf("err2\n");
+    		ESP_LOGE(TAG, "err2\n");
     		return false;
     }
     *boot_info_offset = partition_info[OTA_DATA_INDEX].pos.offset;
-    printf("off: %d, status:%d, %d\n", *boot_info_offset, boot_info->Status,  boot_info->ActiveImg);
+    ESP_LOGD(TAG, "off: %d, status:%d, %d\n", *boot_info_offset, boot_info->Status,  boot_info->ActiveImg);
     return true;
 }
 
@@ -101,27 +97,19 @@ bool updater_check_path (void *path) {
 
 bool updater_start (void) {
     updater_data.size = IMG_SIZE;
-    updater_data.offset = IMG_UPDATE1_OFFSET;
-
     // check which one should be the next active image
-    if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
-        // if we still have an image pending for verification, keep overwriting it
-        if ((boot_info.Status == IMG_STATUS_CHECK && boot_info.ActiveImg == IMG_ACT_UPDATE2) ||
-            (boot_info.ActiveImg == IMG_ACT_UPDATE1 && boot_info.Status != IMG_STATUS_CHECK)) {
-            updater_data.offset = IMG_UPDATE2_OFFSET;
-        }
-    }
+    updater_data.offset = updater_ota_next_slot_address();
 
-    printf("Updating image at offset=%x\n", updater_data.offset);
+    ESP_LOGD(TAG, "Updating image at offset = 0x%6X\n", updater_data.offset);
     updater_data.offset_start_upd = updater_data.offset;
 
     // erase the first 2 sectors
     if (ESP_OK != spi_flash_erase_sector(updater_data.offset / SPI_FLASH_SEC_SIZE)) {
-        //printf("Erasing first sector failed!\n");
+        ESP_LOGE(TAG, "Erasing first sector failed!\n");
         return false;
     }
     if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
-        // printf("Erasing second sector failed!\n");
+        ESP_LOGE(TAG, "Erasing second sector failed!\n");
         return false;
     }
 
@@ -139,17 +127,19 @@ bool updater_write (uint8_t *buf, uint32_t len) {
 //    sl_LockObjLock (&wlan_LockObj, SL_OS_WAIT_FOREVER);
 
     if (len != len_aligned_16) {
-    		printf("Writing %d bytes, actually %d\n", len, len_aligned_16);
+    		ESP_LOGD(TAG, "Writing %d bytes, actually %d\n", len, len_aligned_16);
     }
 
     // check if starting address is 16bytes aligned
     if (updater_data.offset % 16) {
-        printf("Start address, not 16 aligned, %X\n", updater_data.offset);
+        ESP_LOGE(TAG, "Start address, not 16 aligned, %X\n", updater_data.offset);
         return false;
     }
 
-    if (ESP_OK != updater_spi_flash_write(updater_data.offset, (void *)buf, len_aligned_16, true)) {
-        printf("SPI flash write failed\n");
+    // the actual writing into flash, not-encrypted,
+    // because it already came encrypted from OTA server
+    if (ESP_OK != updater_spi_flash_write(updater_data.offset, (void *)buf, len_aligned_16, false)) {
+        ESP_LOGE(TAG, "SPI flash write failed\n");
         return false;
     }
 
@@ -161,7 +151,7 @@ bool updater_write (uint8_t *buf, uint32_t len) {
         updater_data.current_chunk -= SPI_FLASH_SEC_SIZE;
         // erase the next sector
         if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
-            printf("Erasing next sector failed!\n");
+            ESP_LOGE(TAG, "Erasing next sector failed!\n");
             return false;
         }
     }
@@ -171,11 +161,11 @@ bool updater_write (uint8_t *buf, uint32_t len) {
 
 bool updater_finish (void) {
     if (updater_data.offset > 0) {
-        printf("Updater finished, boot status: %d\n", boot_info.Status);
+        ESP_LOGI(TAG, "Updater finished, boot status: %d\n", boot_info.Status);
 //        sl_LockObjLock (&wlan_LockObj, SL_OS_WAIT_FOREVER);
         // if we still have an image pending for verification, leave the boot info as it is
         if (boot_info.Status != IMG_STATUS_CHECK) {
-            printf("Saving new boot info\n");
+            ESP_LOGI(TAG, "Saving new boot info\n");
             // save the new boot info
             boot_info.PrevImg = boot_info.ActiveImg;
             if (boot_info.ActiveImg == IMG_ACT_UPDATE1) {
@@ -186,10 +176,10 @@ bool updater_finish (void) {
             boot_info.Status = IMG_STATUS_CHECK;
             boot_info.crc = crc32_le(UINT32_MAX, (uint8_t*)&boot_info.ActiveImg,
                                                  sizeof(boot_info) - sizeof(boot_info.crc));
-            printf("Wr crc=0x%x\n", boot_info.crc);
+            ESP_LOGI(TAG, "Wr crc=0x%x\n", boot_info.crc);
 
             if (ESP_OK != spi_flash_erase_sector(boot_info_offset / SPI_FLASH_SEC_SIZE)) {
-                printf("Erasing boot info failed\n");
+                ESP_LOGE(TAG, "Erasing boot info failed\n");
                 return false;
             }
 
@@ -204,11 +194,10 @@ bool updater_finish (void) {
 				buff = (uint8_t *)malloc(len_aligned_16);
 
 				if (!buff) {
-					printf("Can't allocate %d\n", len_aligned_16);
+					ESP_LOGE(TAG, "Can't allocate %d\n", len_aligned_16);
 					return false;
 				}
 
-				//printf("buff addr: 0x%p\n", buff);
 				// put the first sizeof(boot_info_t)
 				memcpy(buff, (void *)&boot_info, sizeof(boot_info_t));
 
@@ -217,32 +206,17 @@ bool updater_finish (void) {
 										(void *)(buff + sizeof(boot_info_t)),
 										len_aligned_16 - sizeof(boot_info_t) );
 
-	/*            for (int i = 0; i< 40; i++) {
-						printf("%d ", buff[i]);
-				}
-				printf("\n");
-	*/
 				ret = spi_flash_write_encrypted(boot_info_offset, (void *)buff, len_aligned_16);
             } else { // not-encrypted flash, just write directly boot_info
             		ret = spi_flash_write(boot_info_offset, (void *)&boot_info, sizeof(boot_info_t));
             }
 
 			if (ESP_OK != ret) {
-                printf("Saving boot info failed\n");
+                ESP_LOGE(TAG, "Saving boot info failed\n");
                 return false;
             }
-/*
-            // some debugging, try to read
-            if (ESP_OK != spi_flash_read_encrypted(boot_info_offset, (void *)(buff), 64 )) {
-                printf("Reading back boot info failed\n");
-                return false;
-            }
-            for (int i = 0; i< 40; i++) {
-            		printf("%d ", buff[i]);
-            }
-            printf("\n");
-*/
-            printf("Boot info saved OK\n");
+
+            ESP_LOGI(TAG, "Boot info saved OK\n");
         }
 //        sl_LockObjUnlock (&wlan_LockObj);
         updater_data.offset = 0;
@@ -267,10 +241,11 @@ bool updater_verify (void) {
 
     ret = esp_image_load(ESP_IMAGE_VERIFY, &part_pos, &data);
 
-    printf("esp_image_load: %d\n", ret);
+    ESP_LOGI(TAG, "esp_image_load: %d\n", ret);
 
     return (ret == ESP_OK);
 }
+
 
 bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset) {
     boot_info->crc = crc32_le(UINT32_MAX, (uint8_t *)boot_info, sizeof(boot_info_t) - sizeof(boot_info->crc));
@@ -286,6 +261,24 @@ bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset) 
     }
     printf("Boot info saved OK\n");
     return true;
+}
+
+int updater_ota_next_slot_address() {
+
+	int ota_offset = IMG_UPDATE1_OFFSET;
+
+	// check which one should be the next active image
+    if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
+        // if we still have an image pending for verification, keep overwriting it
+        if ((boot_info.Status == IMG_STATUS_CHECK && boot_info.ActiveImg == IMG_ACT_UPDATE2) ||
+            (boot_info.ActiveImg == IMG_ACT_UPDATE1 && boot_info.Status != IMG_STATUS_CHECK)) {
+        		ota_offset = IMG_UPDATE2_OFFSET;
+        }
+    }
+
+    ESP_LOGI(TAG, "Next slot address: 0x%6X\n", ota_offset);
+
+	return ota_offset;
 }
 
 /******************************************************************************

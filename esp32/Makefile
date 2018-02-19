@@ -33,6 +33,14 @@ ifeq ($(SECURE), on)
 	SECURE_KEY ?= secure_boot_signing_key.pem
 endif
 
+ENCRYPT ?= off
+ifeq ($(ENCRYPT), on)
+	# filename of the flash encryption key, 2 things:
+	# 1. signing partitions.bin and board.bin
+	# 2. extracting public key, which is embedded into bootloader.bin 
+	ENCRYPT_KEY ?= flash_encryption_key.bin
+endif
+
 # Default path to the project: we assume the Makefile including this file
 # is in the project directory
 ifndef PROJECT_PATH

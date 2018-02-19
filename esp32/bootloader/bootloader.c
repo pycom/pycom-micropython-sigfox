@@ -19,7 +19,7 @@
 
 #include "bootloader.h"
 #include "esp_attr.h"
-#define LOG_LOCAL_LEVEL ESP_LOG_INFO
+//#define LOG_LOCAL_LEVEL ESP_LOG_INFO
 #include "esp_log.h"
 #include "esp_system.h"
 
@@ -272,92 +272,6 @@ static bool ota_select_valid(const boot_info_t *s)
     return s->Status != UINT32_MAX && s->crc == _crc;
 }
 
-/*
-void md5_to_ascii(unsigned char *md5, unsigned char *hex) {
-    #define nibble2ascii(x) ((x) < 10 ? (x) + '0' : (x) - 10 + 'a')
-
-    for (int i = 0; i < 16; i++) {
-        hex[(i * 2)] = nibble2ascii(md5[i] >> 4);
-        hex[(i * 2) + 1] = nibble2ascii(md5[i] & 0xF);
-    }
-}
-
-// must be 32-bit aligned
-static uint32_t bootloader_buf[1024];
-*/
-
-// static IRAM_ATTR void calculate_signature (uint8_t *signature) {
-//     uint32_t total_len = 0;
-//     uint8_t mac[6];
-//     read_mac(mac);
-
-//     struct MD5Context md5_context;
-
-//     ESP_LOGI(TAG, "Starting signature calculation");
-
-//     MD5Init(&md5_context);
-//     ESP_LOGI(TAG, "md5 init sig");
-//     while (total_len < 0x7000) {
-//         if (ESP_ROM_SPIFLASH_RESULT_OK != bootloader_flash_read(0x1000 + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, true)) {
-//             ESP_LOGE(TAG, SPI_ERROR_LOG);
-//             return;
-//         }
-//         total_len += SPI_SEC_SIZE;
-//         MD5Update(&md5_context, (void *)bootloader_buf, SPI_SEC_SIZE);
-//     }
-//     // add the mac address
-//     MD5Update(&md5_context, (void *)mac, sizeof(mac));
-//     MD5Final(signature, &md5_context);
-// }
-/*
-static IRAM_ATTR bool bootloader_verify (const esp_partition_pos_t *pos, uint32_t size) {
-    uint32_t total_len = 0, read_len;
-    uint8_t hash[16];
-    uint8_t hash_hex[33];
-    struct MD5Context md5_context;
-
-    ESP_LOGI(TAG, "Starting image verification %x %d", pos->offset, size);
-
-    size -= 32; // substract the lenght of the MD5 hash
-
-    MD5Init(&md5_context);
-    ESP_LOGI(TAG, "md5 init");
-    while (total_len < size) {
-        read_len = (size - total_len) > SPI_SEC_SIZE ? SPI_SEC_SIZE : (size - total_len);
-        if (ESP_OK != bootloader_flash_read(pos->offset + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, true)) {
-            ESP_LOGE(TAG, SPI_ERROR_LOG);
-            return false;
-        }
-        total_len += read_len;
-        MD5Update(&md5_context, (void *)bootloader_buf, read_len);
-    }
-    ESP_LOGI(TAG, "Reading done total len=%d", total_len);
-    MD5Final(hash, &md5_context);
-
-    ESP_LOGI(TAG, "Hash calculated");
-    md5_to_ascii(hash, hash_hex);
-    ESP_LOGI(TAG, "Converted to hex");
-
-    if (ESP_OK != bootloader_flash_read(pos->offset + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, true)) {
-        ESP_LOGE(TAG, SPI_ERROR_LOG);
-        return false;
-    }
-
-    hash_hex[32] = '\0';
-    // this one is uint32_t type, remember?
-    bootloader_buf[32 / sizeof(uint32_t)] = '\0';
-    // compare both hashes
-    if (!strcmp((const char *)hash_hex, (const char *)bootloader_buf)) {
-        ESP_LOGI(TAG, "MD5 hash OK!");
-        // it's a match
-        return true;
-    }
-
-    ESP_LOGI(TAG, "MD5 hash failed %s : %s", hash_hex, bootloader_buf);
-    return false;
-}
-*/
-
 static IRAM_ATTR bool ota_write_boot_info (boot_info_t *boot_info, uint32_t offset) {
 	esp_rom_spiflash_result_t write_result;
 
@@ -568,16 +482,11 @@ static void bootloader_main()
     bootloader_enable_qio_mode();
 #endif
 
-    ets_printf("hello\n");
-
     if (bootloader_flash_read(ESP_BOOTLOADER_OFFSET, &fhdr,
                               sizeof(esp_image_header_t), true) != ESP_OK) {
         ESP_LOGE(TAG, "failed to load bootloader header!");
         return;
     }
-
-    // force 4MB flash size
-    fhdr.spi_size = 3;
 
     print_flash_info(&fhdr);
     update_flash_config(&fhdr);
@@ -598,20 +507,18 @@ static void bootloader_main()
     get_image_from_partition(&partition, &image_data);
 
 #ifdef CONFIG_SECURE_BOOT_ENABLED
-    /* Generate secure digest from this bootloader to protect future
-       modifications */
+    // Generate secure digest from this bootloader to protect future modifications
     ESP_LOGI(TAG, "Checking secure boot...");
     err = esp_secure_boot_permanently_enable();
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Bootloader digest generation failed (%d). SECURE BOOT IS NOT ENABLED.", err);
-        /* Allow booting to continue, as the failure is probably
-           due to user-configured EFUSEs for testing...
-        */
+        // Stop booting, as this could next Encrypt the whole Flash
+        return;
     }
 #endif
 
 #ifdef CONFIG_FLASH_ENCRYPTION_ENABLED
-    /* encrypt flash */
+    // encrypt flash
     ESP_LOGI(TAG, "Checking flash encryption...");
     bool flash_encryption_enabled = esp_flash_encryption_enabled();
     err = esp_flash_encrypt_check_and_update();
