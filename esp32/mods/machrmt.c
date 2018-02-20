@@ -10,6 +10,7 @@
 #include "py/mpstate.h"
 #include "py/runtime.h"
 #include "py/obj.h"
+#include "py/objtuple.h"
 #include "esp_err.h"
 #include "machpin.h"
 #include "rmt.h"
@@ -243,8 +244,8 @@ STATIC mp_obj_t mach_rmt_pulses_send(mp_uint_t n_args, const mp_obj_t *pos_args,
 
     STATIC const mp_arg_t mach_rmt_pulses_send_args[] = {
         { MP_QSTR_id,                     MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
-        { MP_QSTR_data,                   MP_ARG_OBJ | MP_ARG_REQUIRED, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_duration,               MP_ARG_OBJ | MP_ARG_REQUIRED, {.u_obj = MP_OBJ_NULL} },
+        { MP_QSTR_data,                   MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_start_level,            MP_ARG_OBJ | MP_ARG_KW_ONLY,  {.u_obj = MP_OBJ_NULL} },
     };
 
@@ -264,70 +265,110 @@ STATIC mp_obj_t mach_rmt_pulses_send(mp_uint_t n_args, const mp_obj_t *pos_args,
 
     mp_uint_t start_level = 0;
     mp_uint_t data_length = 0;
+    bool start_level_needed = false;
     mp_uint_t duration_length = 0;
+    mp_int_t duration = 0;
     mp_obj_t* data_ptr = NULL;
     mp_obj_t* duration_ptr = NULL;
-    rmt_item32_t* items_to_send = NULL;
 
-    if(MP_OBJ_IS_INT(args[1].u_obj) == true) {
-
-        /* In this case the data parameter is interpreted as a number indicating how many pulses will be sent out */
-        data_length = mp_obj_get_int(args[1].u_obj);
-
-        if(args[3].u_obj != MP_OBJ_NULL) {
-            start_level = mp_obj_get_int(args[3].u_obj);
-            if(start_level > 1) {
-                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Level of the first pulse can be 0 or 1"));
-            }
-        }
-        else {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Level of the first pulse must be defined!"));
-        }
-
-        mp_obj_tuple_t* tmp_tuple = mp_obj_new_tuple(data_length, NULL);
-        data_ptr = tmp_tuple->items;
-
-        /* Compose an list of 0/1 up to number of "data" parameter and starting value of "start_level" parameter */
-        for(mp_uint_t i = 0; i < data_length; i++) {
-            if(start_level == 0) {
-                data_ptr[i] = mp_obj_new_int(0);
-                start_level = 1;
-            }
-            else {
-                data_ptr[i] = mp_obj_new_int(1);
-                start_level = 0;
-            }
-        }
+    /* Get the "duration" mandatory parameter */
+    if(MP_OBJ_IS_SMALL_INT(args[1].u_obj) == true) {
+        /* Duration is given as a single number */
+        duration_length = 1;
+        duration = mp_obj_get_int(args[1].u_obj);
     }
     else {
+        if(MP_OBJ_IS_TYPE(args[1].u_obj, &mp_type_tuple) == true) {
+            /* Duration is given as a tuple */
+            mp_obj_tuple_get(args[1].u_obj, &duration_length, &duration_ptr);
+        }
+        else
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "\"Duration\" can be a single integer or a tuple!"));
+        }
+    }
+
+    if(args[2].u_obj == MP_OBJ_NULL)
+    {
+        /* If duration is not a tuple */
+        if(duration_length == 1)
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "\"Duration\" must be a tuple if \"data\" parameter left empty!"));
+        }
+        else
+        {
+            /* If the "data" was not given use the length of the duration if it is a tuple*/
+            data_length = duration_length;
+            start_level_needed = true;
+        }
+    }
+    else if(MP_OBJ_IS_TYPE(args[2].u_obj, &mp_type_tuple) == true) {
         /* In this case the data parameter is a tuple containing the pulses to be sent out */
-        mp_obj_tuple_get(args[1].u_obj, &data_length, &data_ptr);
+        mp_obj_tuple_get(args[2].u_obj, &data_length, &data_ptr);
 
         for(mp_uint_t i = 0; i < data_length; i++) {
             if( mp_obj_get_int(data_ptr[i]) > 1){
-                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Only 0 or 1 can be given if the data is provided as a tuple!"));
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Only 0 or 1 can be given if the \"data\" is provided as a tuple!"));
             }
         }
     }
-
-    if(MP_OBJ_IS_SMALL_INT(args[2].u_obj) == true) {
-        duration_length = 1;
+    else if(MP_OBJ_IS_INT(args[2].u_obj) == true) {
+        /* In this case the data parameter is interpreted as a number indicating how many pulses will be sent out */
+        data_length = mp_obj_get_int(args[2].u_obj);
+        start_level_needed = true;
     }
-    else {
-        mp_obj_tuple_get(args[2].u_obj, &duration_length, &duration_ptr);
-        if(duration_length != data_length) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Number of the given data and duration values must be equal!"));
+    else
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "\"data\" parameter must be a single integer, a tuple or left empty!"));
+    }
+
+    /* If both duration and data are given as a tuple, their length must be equal */
+    if((duration_length != 1) && (duration_length != data_length)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Number of the given \"duration\" and \"data\" values must be equal!"));
+    }
+
+    if(start_level_needed == true)
+    {
+        /* Get the start_level as the "data" is not given, or given as a single number indicating the length */
+        if(args[3].u_obj == MP_OBJ_NULL) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "\"start_level\" parameter must be given!"));
+        }
+        else if(MP_OBJ_IS_INT(args[3].u_obj))
+        {
+            start_level = mp_obj_get_int(args[3].u_obj);
+            if(start_level > 1) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "\"start_level\" can be 0 or 1"));
+            }
+
+            mp_obj_tuple_t* tmp_tuple = mp_obj_new_tuple(data_length, NULL);
+            data_ptr = tmp_tuple->items;
+
+            /* Compose a list of 0/1 up to number of "data" parameter and starting value of "start_level" parameter */
+            for(mp_uint_t i = 0; i < data_length; i++) {
+                if(start_level == 0) {
+                    data_ptr[i] = mp_obj_new_int(0);
+                    start_level = 1;
+                }
+                else {
+                    data_ptr[i] = mp_obj_new_int(1);
+                    start_level = 0;
+                }
+            }
+        }
+        else
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "\"start_level\" can be 0 or 1"));
         }
     }
 
     /* An rmt_item32_t can contain 2 bits, calculate the number of the necessary objects needed to store the input data */
     mp_uint_t items_to_send_count = (data_length / 2) + (data_length % 2);
-    items_to_send = (rmt_item32_t*)m_malloc(items_to_send_count * sizeof(rmt_item32_t));
+    rmt_item32_t* items_to_send = (rmt_item32_t*)m_malloc(items_to_send_count * sizeof(rmt_item32_t));
     for(mp_uint_t i = 0, j = 0; i < items_to_send_count; i++, j++) {
 
         items_to_send[i].level0 = mp_obj_get_int(data_ptr[j]);
         if(duration_length == 1) {
-            items_to_send[i].duration0 = mp_obj_get_int(args[2].u_obj);
+            items_to_send[i].duration0 = duration;
         }
         else {
             items_to_send[i].duration0 = mp_obj_get_int(duration_ptr[j]);
@@ -341,7 +382,7 @@ STATIC mp_obj_t mach_rmt_pulses_send(mp_uint_t n_args, const mp_obj_t *pos_args,
         else {
             items_to_send[i].level1 = mp_obj_get_int(data_ptr[j]);
             if(duration_length == 1) {
-                items_to_send[i].duration1 = mp_obj_get_int(args[2].u_obj);
+                items_to_send[i].duration1 = duration;
             }
             else {
                 items_to_send[i].duration1 = mp_obj_get_int(duration_ptr[j]);
@@ -360,7 +401,7 @@ STATIC mp_obj_t mach_rmt_pulses_send(mp_uint_t n_args, const mp_obj_t *pos_args,
 
     return mp_const_none;
 }
-MP_DEFINE_CONST_FUN_OBJ_KW(mach_rmt_pulses_send_obj, 2, mach_rmt_pulses_send);
+MP_DEFINE_CONST_FUN_OBJ_KW(mach_rmt_pulses_send_obj, 1, mach_rmt_pulses_send);
 
 
 STATIC mp_obj_t mach_rmt_pulses_get(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
