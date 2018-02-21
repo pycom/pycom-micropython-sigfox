@@ -378,6 +378,7 @@ ifeq ($(BOARD), SIPY)
     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 ifeq ($(BOARD), GPY)
     APP_BIN = $(BUILD)/gpy.bin

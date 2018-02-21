@@ -151,13 +151,6 @@ void modsigfox_init0 (void) {
     xRxQueue = xQueueCreate(SIGFOX_DATA_QUEUE_SIZE_MAX, sizeof(sigfox_rx_data_t));
     sigfoxEvents = xEventGroupCreate();
 
-    TIMER_bitrate_create();
-    TIMER_downlinnk_timer_create();
-    TIMER_carrier_sense_timer_create();
-#if !defined(FIPY) && !defined(LOPY4)
-    TIMER_RxTx_done_timer_create();
-#endif
-
     MANUF_API_nvs_open();
 
     // there is only One block of memory to allocate
@@ -176,7 +169,7 @@ void modsigfox_init0 (void) {
     SpiInit( &sigfox_spi, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, RADIO_NSS );
 #endif
 
-    xTaskCreatePinnedToCore(TASK_Sigfox, "Sigfox", SIGFOX_STACK_SIZE, NULL, SIGFOX_TASK_PRIORITY, &xSigfoxTaskHndl, 1);
+    xTaskCreatePinnedToCore(TASK_Sigfox, "Sigfox", SIGFOX_STACK_SIZE, NULL, SIGFOX_TASK_PRIORITY, &xSigfoxTaskHndl, 0);
 }
 
 void sigfox_update_id (void) {
@@ -370,6 +363,13 @@ end_send:
 
 static void TASK_Sigfox(void *pvParameters) {
     sigfox_cmd_rx_data_t cmd_rx_data;
+
+    TIMER_bitrate_create();
+    TIMER_downlinnk_timer_create();
+    TIMER_carrier_sense_timer_create();
+#if !defined(FIPY) && !defined(LOPY4)
+    TIMER_RxTx_done_timer_create();
+#endif
 
     for ( ; ; ) {
         vTaskDelay(2 / portTICK_RATE_MS);

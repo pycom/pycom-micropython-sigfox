@@ -263,8 +263,11 @@ void TIMER_get_rssi_init(sfx_u8 time_in_milliseconds) {
 }
 
 void TIMER_bitrate_create (void) {
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
+    XTHAL_SET_CCOMPARE(TIMER_BITRATE_NUM, XTHAL_GET_CCOUNT() + ETSI_TIMER_TICKS);
     esp_intr_alloc(ETS_INTERNAL_TIMER1_INTR_SOURCE, ESP_INTR_FLAG_IRAM, TIMER_bitrate_isr, NULL, &bitrate_isr_handle);
     esp_intr_disable(bitrate_isr_handle);
+    MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 void TIMER_downlinnk_timer_create (void) {
@@ -329,8 +332,10 @@ void TIMER_carrier_sense_init(sfx_u16 time_in_milliseconds) {
 *   @brief  Start the bitrate Timer
 *******************************************************************************/
 void TIMER_bitrate_start (void) {
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
     XTHAL_SET_CCOMPARE(TIMER_BITRATE_NUM, XTHAL_GET_CCOUNT() + TIMER_bitrate_ticks);
     esp_intr_enable(bitrate_isr_handle);
+    MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 /***************************************************************************//**
@@ -364,8 +369,10 @@ void TIMER_carrier_sense_stop(void) {
  * \brief  Start the RSSI Timer
  ******************************************************************************/
 void TIMER_get_rssi_start(void) {
+    uint32_t ilevel = MICROPY_BEGIN_ATOMIC_SECTION();
     XTHAL_SET_CCOMPARE(TIMER_BITRATE_NUM, XTHAL_GET_CCOUNT() + TIMER_bitrate_ticks);
     esp_intr_enable(bitrate_isr_handle);
+    MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 /*!****************************************************************************
