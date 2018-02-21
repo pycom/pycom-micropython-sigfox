@@ -162,6 +162,63 @@ STATIC mp_obj_t mod_os_mkdir(mp_obj_t path_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_os_mkdir_obj, mod_os_mkdir);
 
+STATIC mp_obj_t mod_os_fdopen(mp_obj_t fd, mp_obj_t mode)
+{
+	/* type conversion for getting the fd and flags as integers */
+	mp_int_t fd_int = mp_obj_get_int(fd);
+
+	const char * mode_s = mp_obj_str_get_str(mode);
+
+    return fdopen(fd_int, mode_s);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_os_fdopen_obj, mod_os_fdopen);
+
+STATIC mp_obj_t mod_os_fclose(mp_obj_t fd)
+{
+	/* type conversion for getting the fd as integer */
+	mp_int_t fd_int = mp_obj_get_int(fd);
+
+    int r = close(fd_int);
+
+    return MP_OBJ_NEW_SMALL_INT(r);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_os_fclose_obj, mod_os_fclose);
+
+STATIC mp_obj_t mod_os_fchmod(mp_obj_t fd, mp_obj_t mode)
+{
+	/* type conversion for getting the fd as integer */
+	mp_int_t fd_int = mp_obj_get_int(fd);
+	mp_int_t mode_int =  mp_obj_get_int(mode);
+
+	mp_int_t err = fchmod(fd_int, mode_int);
+
+	if(err < 0)
+	{
+		RAISE_ERRNO(err, errno);
+	}
+
+	return MP_OBJ_NEW_SMALL_INT(err);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_os_fchmod_obj, mod_os_fchmod);
+
+STATIC mp_obj_t mod_os_fchown(mp_obj_t fd, mp_obj_t uid, mp_obj_t gid)
+{
+	/* type conversion for getting the fd as integer */
+	mp_int_t fd_int = mp_obj_get_int(fd);
+	mp_int_t uid_int =  mp_obj_get_int(uid);
+	mp_int_t gid_int =  mp_obj_get_int(gid);
+
+	mp_int_t err = fchown(fd_int, uid_int, gid_int);
+
+	if(err < 0)
+	{
+		RAISE_ERRNO(err, errno);
+	}
+
+	return MP_OBJ_NEW_SMALL_INT(err);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(mod_os_fchown_obj, mod_os_fchown);
+
 typedef struct _mp_obj_listdir_t {
     mp_obj_base_t base;
     mp_fun_1_t iternext;
@@ -232,6 +289,10 @@ STATIC const mp_rom_map_elem_t mp_module_os_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_unlink), MP_ROM_PTR(&mod_os_unlink_obj) },
     { MP_ROM_QSTR(MP_QSTR_getenv), MP_ROM_PTR(&mod_os_getenv_obj) },
     { MP_ROM_QSTR(MP_QSTR_mkdir), MP_ROM_PTR(&mod_os_mkdir_obj) },
+	{ MP_ROM_QSTR(MP_QSTR_fdopen), MP_ROM_PTR(&mod_os_fdopen_obj) },
+	{ MP_ROM_QSTR(MP_QSTR_fclose), MP_ROM_PTR(&mod_os_fclose_obj) },
+	{ MP_ROM_QSTR(MP_QSTR_fchmod), MP_ROM_PTR(&mod_os_fchmod_obj) },
+	{ MP_ROM_QSTR(MP_QSTR_fchown), MP_ROM_PTR(&mod_os_fchown_obj) },
     { MP_ROM_QSTR(MP_QSTR_ilistdir), MP_ROM_PTR(&mod_os_ilistdir_obj) },
     #if MICROPY_FSUSERMOUNT
     { MP_ROM_QSTR(MP_QSTR_vfs_mount), MP_ROM_PTR(&fsuser_mount_obj) },
