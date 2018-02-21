@@ -169,7 +169,7 @@ STATIC mp_obj_t mod_os_fdopen(mp_obj_t fd, mp_obj_t mode)
 
 	const char * mode_s = mp_obj_str_get_str(mode);
 
-    return fdopen(fd_int, mode_s);
+    return (mp_obj_t)fdopen(fd_int, mode_s);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_os_fdopen_obj, mod_os_fdopen);
 
