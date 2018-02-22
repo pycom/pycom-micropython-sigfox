@@ -698,6 +698,8 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
         } else {
             antenna = ANTENNA_TYPE_MANUAL;
         }
+    } else if (args[1].u_obj == mp_const_none) {
+        antenna = ANTENNA_TYPE_MANUAL;
     } else {
         antenna = mp_obj_get_int(args[1].u_obj);
     }
@@ -1468,6 +1470,9 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_NOTIFY_EVENT),       MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_NOTIFY_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_SUBSCRIBE_EVENT),    MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_SUBSCRIBE_EVT) },
     // { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_INDICATE_EVENT),     MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_INDICATE_EVT) },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INT_ANT),                 MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_INTERNAL) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EXT_ANT),                 MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_EXTERNAL) },
 };
 STATIC MP_DEFINE_CONST_DICT(bt_locals_dict, bt_locals_dict_table);
 

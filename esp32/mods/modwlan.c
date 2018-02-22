@@ -644,6 +644,8 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
         } else {
             antenna = ANTENNA_TYPE_MANUAL;
         }
+    } else if (args[4].u_obj == mp_const_none) {
+        antenna = ANTENNA_TYPE_MANUAL;
     } else {
         antenna = mp_obj_get_int(args[4].u_obj);
     }
@@ -1156,7 +1158,6 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_WPA2_ENT),            MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA2_ENTERPRISE) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_INT_ANT),             MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_INTERNAL) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_EXT_ANT),             MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_EXTERNAL) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_MAN_ANT),             MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_MANUAL) },
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_ANY_EVENT),           MP_OBJ_NEW_SMALL_INT(MODWLAN_WIFI_EVENT_ANY) },
 };
 STATIC MP_DEFINE_CONST_DICT(wlan_locals_dict, wlan_locals_dict_table);
