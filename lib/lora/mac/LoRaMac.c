@@ -1349,6 +1349,21 @@ static void OnMacStateCheckTimerEvent( void )
     {
         LoRaMacState &= ~LORAMAC_RX;
     }
+
+    if( LoRaMacFlags.Bits.McpsInd == 1 )
+    {
+        if( LoRaMacDeviceClass == CLASS_C )
+        {// Activate RX2 window for Class C
+            OnRxWindow2TimerEvent( );
+        }
+        if( LoRaMacFlags.Bits.McpsIndSkip == 0 )
+        {
+            LoRaMacPrimitives->MacMcpsIndication( &McpsIndication );
+        }
+        LoRaMacFlags.Bits.McpsIndSkip = 0;
+        LoRaMacFlags.Bits.McpsInd = 0;
+    }
+
     if( LoRaMacState == LORAMAC_IDLE )
     {
         if( LoRaMacFlags.Bits.McpsReq == 1 )
@@ -1371,20 +1386,6 @@ static void OnMacStateCheckTimerEvent( void )
         // Operation not finished restart timer
         TimerSetValue( &MacStateCheckTimer, MAC_STATE_CHECK_TIMEOUT );
         TimerStart( &MacStateCheckTimer );
-    }
-
-    if( LoRaMacFlags.Bits.McpsInd == 1 )
-    {
-        if( LoRaMacDeviceClass == CLASS_C )
-        {// Activate RX2 window for Class C
-            OnRxWindow2TimerEvent( );
-        }
-        if( LoRaMacFlags.Bits.McpsIndSkip == 0 )
-        {
-            LoRaMacPrimitives->MacMcpsIndication( &McpsIndication );
-        }
-        LoRaMacFlags.Bits.McpsIndSkip = 0;
-        LoRaMacFlags.Bits.McpsInd = 0;
     }
 }
 
@@ -3188,8 +3189,10 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest )
 
             altDr.NbTrials = JoinRequestTrials + 1;
 
-            // Pycom: Add Join DR selection as and when the region permits
-            RegionForceJoinDataRate( LoRaMacRegion, mlmeRequest->Req.Join.DR, &altDr );
+            if (mlmeRequest->Req.Join.DR != 0xFF) {
+                // Pycom: Add Join DR selection as and when the region permits
+                RegionForceJoinDataRate( LoRaMacRegion, mlmeRequest->Req.Join.DR, &altDr );
+            }
 
             LoRaMacParams.ChannelsDatarate = RegionAlternateDr( LoRaMacRegion, &altDr );
 
