@@ -488,6 +488,9 @@ static void bootloader_main()
         return;
     }
 
+    // force 4MB flash size for all boards
+    fhdr.spi_size = ESP_IMAGE_FLASH_SIZE_4MB;
+
     print_flash_info(&fhdr);
     update_flash_config(&fhdr);
 

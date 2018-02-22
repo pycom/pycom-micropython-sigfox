@@ -9,7 +9,7 @@ node {
         sh 'rm -rf esp-idf'
         sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
     }
-    
+
 	PYCOM_VERSION=get_version()
 	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 
@@ -89,11 +89,10 @@ def boardBuild(name) {
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
         mv ../application.elf ''' + release_dir + name + "-" + PYCOM_VERSION + '''-application.elf;
-        cp ../appimg.bin .;
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
         cp ../''' + app_bin + ''' .;
-        tar -cvzf ''' + release_dir + name + "-" + PYCOM_VERSION + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
+        tar -cvzf ''' + release_dir + name + "-" + PYCOM_VERSION + '''.tar.gz  bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
@@ -111,7 +110,7 @@ def flashBuild(short_name) {
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
       sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 erase_flash'
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -pz --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name_u +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name_u +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name_u +'/release/appimg.bin'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -pz --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name_u +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name_u +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name_u +'/release/' + board_name_u.toLowerCase() + '.bin'
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --exit'
     }
   }
@@ -157,6 +156,5 @@ def get_remote_name(short_name) {
 }
 
 def get_device_name(short_name) {
-    return "/dev/serial/by-id/usb-" +  short_name + "-if00"   
+    return "/dev/serial/by-id/usb-" +  short_name + "-if00"
 }
-
