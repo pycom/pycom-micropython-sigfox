@@ -70,7 +70,6 @@ StackType_t *mpTaskStack;
 // board configuration options from mpconfigboard.h
 uint32_t micropy_hw_flash_size;
 
-bool micropy_hw_antenna_diversity;
 uint32_t micropy_hw_antenna_diversity_pin_num;
 
 uint32_t micropy_lpwan_reset_pin_num;
@@ -114,12 +113,13 @@ void app_main(void) {
     esp_chip_info(&chip_info);
 
     if (chip_info.revision > 0) {
-        micropy_hw_antenna_diversity = false;
-        micropy_lpwan_use_reset_pin = false;
+        micropy_hw_antenna_diversity_pin_num = MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM;
 
         micropy_lpwan_ncs_pin_index = 1;
         micropy_lpwan_ncs_pin_num = 18;
         micropy_lpwan_ncs_pin = &pin_GPIO18;
+
+        micropy_lpwan_use_reset_pin = false;
 
         micropy_lpwan_dio_pin_index = 2;
         micropy_lpwan_dio_pin_num = 23;
@@ -128,8 +128,7 @@ void app_main(void) {
         mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE_PSRAM, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
     } else {
-        micropy_hw_antenna_diversity = true;
-        micropy_hw_antenna_diversity_pin_num = 16;
+        micropy_hw_antenna_diversity_pin_num = MICROPY_FIRST_GEN_ANT_SELECT_PIN_NUM;
 
         micropy_lpwan_ncs_pin_index = 0;
         micropy_lpwan_ncs_pin_num = 17;

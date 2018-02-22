@@ -124,7 +124,7 @@ void TASK_Micropython (void *pvParameters) {
     bool soft_reset = false;
     bool wifi_on_boot;
 
-    // init the antenna select switch here
+    // configure the antenna select switch here
     antenna_init0();
     config_init0();
     mpsleep_init0();

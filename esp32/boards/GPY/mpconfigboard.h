@@ -23,7 +23,6 @@
 
 extern uint32_t micropy_hw_flash_size;
 
-extern bool micropy_hw_antenna_diversity;
 extern uint32_t micropy_hw_antenna_diversity_pin_num;
 
 extern bool micropy_lpwan_use_reset_pin;

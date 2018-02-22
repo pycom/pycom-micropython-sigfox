@@ -242,6 +242,9 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
 #define DEFAULT_AP_PASSWORD                                     "www.pycom.io"
 #define DEFAULT_AP_CHANNEL                                      (6)
 
+#define MICROPY_FIRST_GEN_ANT_SELECT_PIN_NUM                    (16)
+#define MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM                   (21)
+
 #define _assert(expr)   ((expr) ? (void)0 : __assert_func(__FILE__, __LINE__, __func__, #expr))
 
 #include "mpconfigboard.h"
