@@ -388,6 +388,28 @@ STATIC mp_obj_t lte_send_raw_at(mp_obj_t self_in, mp_obj_t cmd_o) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lte_send_raw_at_obj, lte_send_raw_at);
 
+STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
+    if (lteppp_get_state() == E_LTE_PPP) {
+        lte_pause_ppp();
+        while (true) {
+            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+            if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+                break;
+            }
+        }
+    }
+    lte_push_at_command("AT^RESET", LTE_RX_TIMEOUT_MIN_MS);
+    lteppp_set_state(E_LTE_IDLE);
+    while (true) {
+        vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+        if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+            break;
+        }
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_reset_obj, lte_reset);
+
 STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&lte_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&lte_deinit_obj },
@@ -398,6 +420,7 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_send_at),             (mp_obj_t)&lte_send_raw_at_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect),          (mp_obj_t)&lte_disconnect_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_isconnected),         (mp_obj_t)&lte_isconnected_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_reset),               (mp_obj_t)&lte_reset_obj },
 
     // class constants
 };
