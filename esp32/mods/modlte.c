@@ -102,9 +102,10 @@ static lte_task_rsp_data_t modlte_rsp;
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
+static bool lte_push_at_command_ext (char *cmd_str, uint32_t timeout, const char *expected_rsp);
 static bool lte_push_at_command (char *cmd_str, uint32_t timeout);
-static bool lte_push_enter_ppp_command (char *cmd_str, uint32_t timeout);
-static bool lte_push_exit_ppp_command (char *cmd_str, uint32_t timeout);
+static void lte_pause_ppp(void);
+static bool lte_check_attached(void);
 
 STATIC mp_obj_t lte_disconnect(mp_obj_t self_in);
 
@@ -135,39 +136,85 @@ void modlte_init0(void) {
 // DEFINE STATIC FUNCTIONS
 //*****************************************************************************
 
+static bool lte_push_at_command_ext (char *cmd_str, uint32_t timeout, const char *expected_rsp) {
+    lte_task_cmd_data_t cmd = {
+        .timeout = timeout
+    };
+    memcpy(cmd.data, cmd_str, strlen(cmd_str));
+    // printf("%s\n",  cmd_str);
+    lteppp_send_at_command (&cmd, &modlte_rsp);
+    if (strstr(modlte_rsp.data, expected_rsp) != NULL) {
+        return true;
+    }
+    return false;
+}
+
 static bool lte_push_at_command (char *cmd_str, uint32_t timeout) {
-    lte_task_cmd_data_t cmd = {
-        .cmd = E_LTE_CMD_AT,
-        .timeout = timeout
-    };
-    memcpy(cmd.data, cmd_str, strlen(cmd_str));
-    printf("%s\n",  cmd_str);
-    return lteppp_send_at_command (&cmd, &modlte_rsp);
+    return lte_push_at_command_ext(cmd_str, timeout, LTE_OK_RSP);
 }
 
-static bool lte_push_enter_ppp_command (char *cmd_str, uint32_t timeout) {
-    lte_task_cmd_data_t cmd = {
-        .cmd = E_LTE_CMD_PPP_ENTER,
-        .timeout = timeout
-    };
-    memcpy(cmd.data, cmd_str, strlen(cmd_str));
-    return lteppp_send_at_command (&cmd, &modlte_rsp);
+static void lte_pause_ppp(void) {
+    vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
+    if (!lte_push_at_command("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
+        vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
+        if (!lte_push_at_command("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+    }
 }
 
-static bool lte_push_exit_ppp_command (char *cmd_str, uint32_t timeout) {
-    lte_task_cmd_data_t cmd = {
-        .cmd = E_LTE_CMD_PPP_EXIT,
-        .timeout = timeout
-    };
-    memcpy(cmd.data, cmd_str, strlen(cmd_str));
-    return lteppp_send_at_command (&cmd, &modlte_rsp);
+static bool lte_check_attached(void) {
+    char *pos;
+    bool inppp = false;;
+    bool attached = false;
+
+    if (lteppp_get_state() == E_LTE_PPP) {
+        inppp = true;
+        lte_pause_ppp();
+    }
+
+    while (true) {
+        vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+        if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+            break;
+        }
+    }
+
+    lte_push_at_command("AT+CEREG?", LTE_RX_TIMEOUT_MIN_MS);
+    if ((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) && (strlen(pos) >= 31) && pos[30] == '7') {
+        lteppp_set_state(E_LTE_ATTACHED);
+        attached = true;
+    } else {
+        lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
+        if (strstr(modlte_rsp.data, "+CFUN: 1")) {
+            lteppp_set_state(E_LTE_ATTACHING);
+        } else {
+            lteppp_set_state(E_LTE_IDLE);
+        }
+    }
+
+    if (inppp) {
+        lte_push_at_command("ATO", LTE_RX_TIMEOUT_MIN_MS);
+    }
+
+    return attached;
 }
 
 /******************************************************************************/
 // Micro Python bindings; LTE class
 
 static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
+    // wake up the radio
     lteppp_start();
+    lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
+    lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
+    // if the radio is OFF, at least enable access to the SIM
+    lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
+    if (strstr(modlte_rsp.data, "+CFUN: 0")) {
+        lte_push_at_command("AT+CFUN=4", LTE_RX_TIMEOUT_MAX_MS);
+        lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
+    }
+    lteppp_set_state(E_LTE_IDLE);
     mod_network_register_nic(&lte_obj);
     return mp_const_none;
 }
@@ -213,41 +260,19 @@ mp_obj_t lte_deinit(mp_obj_t self_in) {
     if (lteppp_get_state() == E_LTE_PPP) {
         lte_disconnect(self);
     }
-    lte_push_at_command("AT+CFUN=0", LTE_RX_TIMEOUT_DEF_MS);
+    if (!lte_push_at_command("AT+CFUN=0", LTE_RX_TIMEOUT_MAX_MS)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+    }
     lteppp_deinit();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_deinit_obj, lte_deinit);
 
-
-// STATIC mp_obj_t lte_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-//     STATIC const mp_arg_t allowed_args[] = {
-//         { MP_QSTR_cid,              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-//     };
-
-//     // parse args
-//     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
-//     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
-
-//     //TODO: Pick out cid and use it for the connection
-
-//     // connect to the network
-//     // lte_do_connect ();
-
-//     return mp_const_none;
-// }
-// STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_connect_obj, 1, lte_connect);
-
-STATIC mp_obj_t lte_connect(mp_obj_t self_in) {
-    lte_push_enter_ppp_command("AT+CGDATA=\"PPP\",3", LTE_RX_TIMEOUT_DEF_MS);
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_connect_obj, lte_connect);
-
 STATIC mp_obj_t lte_attach(mp_obj_t self_in) {
-    if (!lte_push_at_command("AT+CFUN=1", LTE_RX_TIMEOUT_DEF_MS)) {
+    if (!lte_push_at_command("AT+CFUN=1", LTE_RX_TIMEOUT_MAX_MS)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
+    lteppp_set_state(E_LTE_ATTACHING);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_attach_obj, lte_attach);
@@ -257,54 +282,89 @@ mp_obj_t lte_dettach(mp_obj_t self_in) {
     if (lteppp_get_state() == E_LTE_PPP) {
         lte_disconnect(self);
     }
-    lte_push_at_command("AT+CFUN=4", LTE_RX_TIMEOUT_DEF_MS);
+    if (!lte_push_at_command("AT+CFUN=4", LTE_RX_TIMEOUT_MAX_MS)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+    }
+    lteppp_set_state(E_LTE_IDLE);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_dettach_obj, lte_dettach);
 
 STATIC mp_obj_t lte_isattached(mp_obj_t self_in) {
-    if (lteppp_get_state() >= E_LTE_ATTACHED) {
+    if (lte_check_attached()) {
         return mp_const_true;
     }
     return mp_const_false;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_isattached_obj, lte_isattached);
 
-STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
-    lteppp_stop();
-    vTaskDelay(1050 / portTICK_RATE_MS);
-    if (!lte_push_exit_ppp_command("+++", 1050)) {
-        vTaskDelay(1050 / portTICK_RATE_MS);
-        if (!lte_push_exit_ppp_command("+++", 1050)) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
-        }
+STATIC mp_obj_t lte_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    STATIC const mp_arg_t allowed_args[] = {
+        { MP_QSTR_cid,      MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 1} },
+    };
+
+    // parse args
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    char at_cmd[LTE_AT_CMD_SIZE_MAX - 4];
+    lte_obj.cid = args[0].u_int;
+    sprintf(at_cmd, "AT+CGDATA=\"PPP\",%d", lte_obj.cid);
+    // set the PPP state in advance, to avoid CEREG? to be sent right after PPP is entered
+    if (lte_push_at_command_ext(at_cmd, LTE_RX_TIMEOUT_MIN_MS, LTE_CONNECT_RSP) || lte_push_at_command_ext("ATO", LTE_RX_TIMEOUT_MIN_MS, LTE_CONNECT_RSP)) {
+        lteppp_connect();
+        lteppp_set_state(E_LTE_PPP);
+    } else {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
-    lte_push_at_command("ATH", LTE_RX_TIMEOUT_MIN_MS);
-    while (true) {
-        if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-            break;
-        }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_connect_obj, 1, lte_connect);
+
+STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
+    if (lteppp_get_state() == E_LTE_PPP) {
+        lteppp_disconnect();
+        lte_pause_ppp();
+        lteppp_set_state(E_LTE_ATTACHED);
+        lte_check_attached();
     }
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_disconnect_obj, lte_disconnect);
 
 STATIC mp_obj_t lte_isconnected(mp_obj_t self_in) {
-    if (lteppp_get_state() == E_LTE_PPP & lteppp_ipv4() > 0) {
+    if (lteppp_get_state() == E_LTE_PPP && lteppp_ipv4() > 0) {
         return mp_const_true;
     }
     return mp_const_false;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_isconnected_obj, lte_isconnected);
 
-STATIC mp_obj_t lte_send_raw(mp_obj_t self_in, mp_obj_t cmd_o) {
-    const char *cmd = mp_obj_str_get_str(cmd_o);
-    if (!lte_push_at_command((char *)cmd, 500)) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+STATIC mp_obj_t lte_send_raw_at(mp_obj_t self_in, mp_obj_t cmd_o) {
+    bool inppp = false;
+    if (lteppp_get_state() == E_LTE_PPP) {
+        inppp = true;
+        lte_pause_ppp();
     }
-    return mp_const_none;
+
+    while (true) {
+        vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+        if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+            break;
+        }
+    }
+
+    const char *cmd = mp_obj_str_get_str(cmd_o);
+    lte_push_at_command((char *)cmd, LTE_RX_TIMEOUT_MAX_MS);
+    vstr_t vstr;
+    vstr_init_len(&vstr, strlen(modlte_rsp.data));
+    strcpy(vstr.buf, modlte_rsp.data);
+    if (inppp) {
+        lte_push_at_command("ATO", LTE_RX_TIMEOUT_MIN_MS);
+    }
+    return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(lte_send_raw_obj, lte_send_raw);
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(lte_send_raw_at_obj, lte_send_raw_at);
 
 STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&lte_init_obj },
@@ -313,7 +373,7 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_dettach),             (mp_obj_t)&lte_dettach_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_isattached),          (mp_obj_t)&lte_isattached_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_connect),             (mp_obj_t)&lte_connect_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_send_raw),            (mp_obj_t)&lte_send_raw_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_send_at),             (mp_obj_t)&lte_send_raw_at_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect),          (mp_obj_t)&lte_disconnect_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_isconnected),         (mp_obj_t)&lte_isconnected_obj },
 

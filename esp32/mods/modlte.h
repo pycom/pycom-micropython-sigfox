@@ -20,6 +20,7 @@ typedef struct _lte_obj_t {
     mp_obj_base_t           base;
     uint32_t                ip;
     uint32_t                ip4;
+    uint8_t                 cid;
 } lte_obj_t;
 
 
