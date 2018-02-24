@@ -185,6 +185,7 @@ static void TASK_LTE (void *pvParameters) {
         }
     }
 
+    lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
     lte_send_at_cmd("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS);
     if (!strstr(lteppp_trx_buffer, "standard")) {
         lte_send_at_cmd("AT+SQNCTM=\"standard\"", LTE_RX_TIMEOUT_MAX_MS);
@@ -192,21 +193,20 @@ static void TASK_LTE (void *pvParameters) {
         lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
     }
 
-    // if we are coming from a power on reset, disable the LTE radio and scan all bands
-    if (mpsleep_get_reset_cause() < MPSLEEP_WDT_RESET) {
-        lte_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
-        if (!strstr(lteppp_trx_buffer, "+CFUN: 0")) {
-            lte_send_at_cmd("AT+CFUN=0", LTE_RX_TIMEOUT_MAX_MS);
-            lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
-        }
+    // // if we are coming from a power on reset, disable the LTE radio and scan all bands
+    // if (mpsleep_get_reset_cause() < MPSLEEP_WDT_RESET) {
+    //     lte_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
+    //     if (!strstr(lteppp_trx_buffer, "+CFUN: 0")) {
+    //         lte_send_at_cmd("AT+CFUN=0", LTE_RX_TIMEOUT_MAX_MS);
+    //         lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
+    //     }
+    // }
 
-        // lte_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
-        // AT!=”clearscanconfig”
-        //  AT!=”RRC::addscandfreq band=xx dl-earfcn=xx”
+    // enable PSM if not already enabled
+    lte_send_at_cmd("AT+CPSMS?", LTE_RX_TIMEOUT_MAX_MS);
+    if (!strstr(lteppp_trx_buffer, "+CPSMS: 1")) {
+        lte_send_at_cmd("AT+CPSMS=1", LTE_RX_TIMEOUT_MIN_MS);
     }
-
-    // enable PSM
-    lte_send_at_cmd("AT+CPSMS=1", LTE_RX_TIMEOUT_MAX_MS);
     // enable low power mode
     lte_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
 

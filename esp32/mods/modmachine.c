@@ -73,6 +73,9 @@
 #include "machwdt.h"
 #include "machcan.h"
 #include "machrmt.h"
+#if defined (GPY) || defined (FIPY)
+#include "lteppp.h"
+#endif
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -184,6 +187,9 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     mperror_enable_heartbeat(false);
     bt_deinit(NULL);
     wlan_deinit(NULL);
+#if defined(FIPY) || defined(GPY)
+    lteppp_deinit();
+#endif
     if (n_args == 0) {
         mach_expected_wakeup_time = 0;
         esp_deep_sleep_start();
