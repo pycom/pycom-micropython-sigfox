@@ -60,12 +60,15 @@ static uint32_t lte_gw;
 static uint32_t lte_netmask;
 static ip6_addr_t lte_ipv6addr;
 
+static bool lteppp_init_complete = false;
+
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
 static void TASK_LTE (void *pvParameters);
-static bool lte_send_at_cmd_exp(const char *cmd, uint32_t timeout, const char *expected_rsp);
-static bool lte_send_at_cmd(const char *cmd, uint32_t timeout);
+static bool lteppp_send_at_cmd_exp(const char *cmd, uint32_t timeout, const char *expected_rsp);
+static bool lteppp_send_at_cmd(const char *cmd, uint32_t timeout);
+static bool lteppp_check_sim_present(void);
 static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx);
 static uint32_t lteppp_output_callback(ppp_pcb *pcb, u8_t *data, u32_t len, void *ctx);
 
@@ -187,64 +190,83 @@ uint32_t lteppp_ipv4(void) {
     return lte_ipv4addr;
 }
 
+bool lteppp_task_ready(void) {
+    return lteppp_init_complete;
+}
+
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
 static void TASK_LTE (void *pvParameters) {
+    bool sim_present;
     lte_task_cmd_data_t *lte_task_cmd = (lte_task_cmd_data_t *)lteppp_trx_buffer;
     lte_task_rsp_data_t *lte_task_rsp = (lte_task_rsp_data_t *)lteppp_trx_buffer;
 
-    lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS);
-    if (!lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+    lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS);
+    if (!lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
         vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
-        if (lte_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
+        if (lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
             vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
             while (true) {
                 vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
-                if (lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+                if (lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
                     break;
                 }
             }
         } else {
             while (true) {
                 vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
-                if (lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+                if (lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
                     break;
                 }
             }
         }
     }
 
-    lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
-    lte_send_at_cmd("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS);
+    lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
+    lteppp_send_at_cmd("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS);
     if (!strstr(lteppp_trx_buffer, "standard")) {
-        lte_send_at_cmd("AT+SQNCTM=\"standard\"", LTE_RX_TIMEOUT_MAX_MS);
-        lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
-        lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
+        lteppp_send_at_cmd("AT+SQNCTM=\"standard\"", LTE_RX_TIMEOUT_MAX_MS);
+        lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
+        lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
     }
 
-    // // if we are coming from a power on reset, disable the LTE radio and scan all bands
-    // if (mpsleep_get_reset_cause() < MPSLEEP_WDT_RESET) {
-    //     lte_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
-    //     if (!strstr(lteppp_trx_buffer, "+CFUN: 0")) {
-    //         lte_send_at_cmd("AT+CFUN=0", LTE_RX_TIMEOUT_MAX_MS);
-    //         lte_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
-    //     }
-    // }
+    // check for SIM card inserted
+    sim_present = lteppp_check_sim_present();
+
+    // if we are coming from a power on reset, disable the LTE radio and scan all bands
+    if (mpsleep_get_reset_cause() < MPSLEEP_WDT_RESET) {
+        lteppp_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
+        if (sim_present) {
+            if (!strstr(lteppp_trx_buffer, "+CFUN: 4")) {
+                lteppp_send_at_cmd("AT+CFUN=4", LTE_RX_TIMEOUT_MAX_MS);
+            }
+        } else {
+            if (!strstr(lteppp_trx_buffer, "+CFUN: 0")) {
+                lteppp_send_at_cmd("AT+CFUN=0", LTE_RX_TIMEOUT_MAX_MS);
+            }
+        }
+    }
 
     // enable PSM if not already enabled
-    lte_send_at_cmd("AT+CPSMS?", LTE_RX_TIMEOUT_MAX_MS);
+    lteppp_send_at_cmd("AT+CPSMS?", LTE_RX_TIMEOUT_MAX_MS);
     if (!strstr(lteppp_trx_buffer, "+CPSMS: 1")) {
-        lte_send_at_cmd("AT+CPSMS=1", LTE_RX_TIMEOUT_MIN_MS);
+        lteppp_send_at_cmd("AT+CPSMS=1", LTE_RX_TIMEOUT_MIN_MS);
     }
     // enable low power mode
-    lte_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
+    lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
+
+    if (!sim_present) {
+        // uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
+        // uart_set_rts(LTE_UART_ID, false);
+    }
+
+    lteppp_init_complete = true;
 
     for (;;) {
         vTaskDelay(LTE_TASK_PERIOD_MS);
         if (xQueueReceive(xCmdQueue, lteppp_trx_buffer, 0)) {
-            lte_send_at_cmd_exp(lte_task_cmd->data, lte_task_cmd->timeout, NULL);
-            // printf("%s\n", lteppp_trx_buffer);
+            lteppp_send_at_cmd_exp(lte_task_cmd->data, lte_task_cmd->timeout, NULL);
             xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
         } else {
             lte_state_t state = lteppp_get_state();
@@ -265,7 +287,7 @@ static void TASK_LTE (void *pvParameters) {
     }
 }
 
-static bool lte_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *expected_rsp) {
+static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *expected_rsp) {
     uint32_t cmd_len = strlen(cmd);
 
     // printf("%s\n", cmd);
@@ -283,8 +305,17 @@ static bool lte_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *
     return lteppp_wait_at_rsp(expected_rsp, timeout);
 }
 
-static bool lte_send_at_cmd(const char *cmd, uint32_t timeout) {
-    return lte_send_at_cmd_exp (cmd, timeout, LTE_OK_RSP);
+static bool lteppp_send_at_cmd(const char *cmd, uint32_t timeout) {
+    return lteppp_send_at_cmd_exp (cmd, timeout, LTE_OK_RSP);
+}
+
+static bool lteppp_check_sim_present(void) {
+    lteppp_send_at_cmd("AT+CPIN?", LTE_RX_TIMEOUT_MAX_MS);
+    if (strstr(lteppp_trx_buffer, "ERROR")) {
+        return false;
+    } else {
+        return true;
+    }
 }
 
 // PPP output callback

@@ -13,7 +13,7 @@
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
-#define LTE_UART_ID                                             2
+#define LTE_UART_ID                                                     (2)
 
 #define LTE_UART_BUFFER_SIZE                                            (2048)
 #define LTE_CMD_QUEUE_SIZE_MAX                                          (1)
@@ -23,7 +23,7 @@
 
 #define LTE_OK_RSP                                                      "OK"
 #define LTE_CONNECT_RSP                                                 "CONNECT"
-#define LTE_RX_TIMEOUT_MAX_MS                                           (7500)
+#define LTE_RX_TIMEOUT_MAX_MS                                           (9500)
 #define LTE_RX_TIMEOUT_MIN_MS                                           (250)
 #define LTE_PPP_BACK_OFF_TIME_MS                                        (1150)
 
@@ -80,5 +80,7 @@ extern void lteppp_deinit (void);
 extern void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp);
 
 extern bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout);
+
+extern bool lteppp_task_ready(void);
 
 #endif  // _LTEPPP_H_
