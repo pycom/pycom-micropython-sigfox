@@ -464,7 +464,6 @@ static void TASK_Sigfox(void *pvParameters) {
                 case E_SIGFOX_CMD_TEST:
                 #if defined(FIPY)
                     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
-                    RADIO_warm_up_crystal(rcz_frequencies[sfx_rcz_id][0]);
                 #endif
                 if (cmd_rx_data.cmd_u.info.test.mode <= SFX_TEST_MODE_TX_SYNTH) {
                         SIGFOX_API_test_mode(cmd_rx_data.cmd_u.info.test.mode, cmd_rx_data.cmd_u.info.test.config);
@@ -473,7 +472,13 @@ static void TASK_Sigfox(void *pvParameters) {
                             RADIO_start_unmodulated_cw (cmd_rx_data.cmd_u.info.test.config);
                         } else if (cmd_rx_data.cmd_u.info.test.mode == E_MODSIGOFX_TEST_MODE_STOP_CW) {
                             RADIO_stop_unmodulated_cw (cmd_rx_data.cmd_u.info.test.config);
+                        #if defined(FIPY) || defined(LOPY4)
+                            RADIO_reset_registers();
+                        #endif
                         } else {
+                        #if defined(FIPY)
+                            RADIO_warm_up_crystal(rcz_frequencies[sfx_rcz_id][0]);
+                        #endif
                             for (int i = 0; i < 20; i++) {
                                 uint8_t tx_frame[18] = { 0xAA, 0xAA, 0xA3, 0x5F, 0x8D, 0xC3, 0x74, 0x7D, 0x18,
                                                          0x00, 0xAA, 0xAA, 0xB8, 0x01, 0x5A, 0x5F, 0x53, 0x4C };
@@ -482,12 +487,14 @@ static void TASK_Sigfox(void *pvParameters) {
                                 MANUF_API_rf_send(tx_frame, sizeof(tx_frame));
                                 vTaskDelay(50 / portTICK_RATE_MS);
                             }
+                        #if defined(FIPY) || defined(LOPY4)
+                            RADIO_reset_registers();
+                        #endif
                         }
                     }
                     sigfox_obj.state = E_SIGFOX_STATE_TEST;
                     xEventGroupSetBits(sigfoxEvents, SIGFOX_STATUS_COMPLETED);
                 #if defined(FIPY) || defined(LOPY4)
-                    RADIO_reset_registers();
                     xSemaphoreGive(xLoRaSigfoxSem);
                 #endif
                     break;

@@ -34,6 +34,7 @@
 #ifndef RADIO_H
 #define RADIO_H
 
+#include "py/mpconfig.h"
 
 #include "sigfox_api.h"
 #if defined (FIPY)
@@ -79,10 +80,15 @@ extern uint8_t  packetSemaphore;
 #define ISR_ACTION_REQUIRED          1
 #define ISR_IDLE                     0
 
-#define MAX_PA_VALUE_ETSI            99
-#define MAX_PA_VALUE_FCC             145
-#define STEP_HIGH_ETSI               53
-#define STEP_HIGH_FCC                56
+#if defined (FIPY)
+#define MAX_PA_VALUE_ETSI            88
+#define STEP_HIGH_ETSI               44
+#elif defined (LOPY4)
+#define MAX_PA_VALUE_ETSI            72
+#define STEP_HIGH_ETSI               4
+#endif
+#define MAX_PA_VALUE_FCC             170
+#define STEP_HIGH_FCC                65
 #define MIN_PA_VALUE                 0
 
 

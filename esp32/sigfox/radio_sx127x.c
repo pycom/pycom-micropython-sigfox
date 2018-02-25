@@ -119,12 +119,6 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
 
         SX127X8BitWrite( 0x0A, 0x0F );      // PaRamp on 10us
         SX127X8BitWrite( 0x5E, 0xD0 );      // PLL bandwidth 300 KHz
-
-        if (uplink_spectrum_access == SFX_FH) {
-            SX127X8BitWrite(REG_LR_PADAC, 0x87);    // Up tp +20dBm on the PA_BOOST pin
-        } else {
-            SX127X8BitWrite(REG_LR_PADAC, 0x84);
-        }
     #elif defined(LOPY4)
         SX127X8BitWrite( 0x01, 0x80 );      // Device in StandBy in LoRa mode
         SX127X8BitWrite( 0x1D, 0x00 );      // LoRa BW = 0
@@ -141,13 +135,8 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
 
         SX127X8BitWrite( 0x0A, 0x0F );      // PaRamp on 10us
         SX127X8BitWrite( 0x70, 0xD0 );      // PLL bandwidth 300 KHz
-
-        if (uplink_spectrum_access == SFX_FH) {
-            SX127X8BitWrite(REG_LR_PADAC, 0x87);    // Up tp +20dBm on the PA_BOOST pin
-        } else {
-            SX127X8BitWrite(REG_LR_PADAC, 0x84);
-        }
     #endif
+        SX127X8BitWrite(REG_LR_PADAC, 0x87);    // Up tp +20dBm on the PA_BOOST pin
     } else if (rf_mode == SFX_RF_MODE_RX) {
         /* Write registers of the radio chip for RX mode */
         for(int i = 0; i < (sizeof(HighPerfModeRx)/sizeof(registerSetting_t)); i++) {
@@ -278,7 +267,7 @@ IRAM_ATTR void RADIO_modulate(void) {
     SX127X8BitWrite(REG_IRQFLAGS1, NewPhaseValue);
     /* Switch ON PA */
     #if defined(FIPY)
-        SX127X8BitWrite(0x63, 0x20);
+        SX127X8BitWrite(0x63, 0x60);
     #elif defined(LOPY4)
         SX127X8BitWrite(0x52, 0x60);
     #endif
@@ -333,7 +322,7 @@ IRAM_ATTR void RADIO_start_rf_carrier(void) {
     uint8_t count;
 
 #if defined(FIPY)
-    SX127X8BitWrite( 0x63, 0x20 );      // Enable manual PA
+    SX127X8BitWrite( 0x63, 0x60 );      // Enable manual PA
     SX127X8BitWrite( 0x3E, 0x00 );      // phase = 0
     SX127X8BitWrite( 0x4C, 0x00 );      // Max value for the PA is 0xE7 DO NOT GOT OVER OR IT MAY DAMAGE THE CHIPSET
     SX127X8BitWrite( 0x1e, 0x78 );      // Tx Continuous mode
@@ -491,7 +480,7 @@ void RADIO_warm_up_crystal (unsigned long ul_Freq) {
     /* Update the frequency */
     RADIO_change_frequency(ul_Freq);
 
-    SX127X8BitWrite( 0x63, 0x20 );      // Enable manual PA
+    SX127X8BitWrite( 0x63, 0x60 );      // Enable manual PA
     SX127X8BitWrite( 0x3E, 0x00 );      // phase = 0
     SX127X8BitWrite( 0x4C, 0x00 );      // Max value for the PA is 0xE7 DO NOT GOT OVER OR IT MAY DAMAGE THE CHIPSET
     SX127X8BitWrite( 0x1e, 0x78 );      // Tx Continuous mode
