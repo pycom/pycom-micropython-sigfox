@@ -12,7 +12,7 @@
 
 #define SW_VERSION_NUMBER                              "1.16.0.b1"
 
-#define LORAWAN_VERSION_NUMBER                         "1.0.0"
+#define LORAWAN_VERSION_NUMBER                         "1.0.2"
 
 #define SIGFOX_VERSION_NUMBER                          "1.0.1"
 
