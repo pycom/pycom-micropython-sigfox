@@ -66,7 +66,6 @@ static ip6_addr_t lte_ipv6addr;
 static void TASK_LTE (void *pvParameters);
 static bool lte_send_at_cmd_exp(const char *cmd, uint32_t timeout, const char *expected_rsp);
 static bool lte_send_at_cmd(const char *cmd, uint32_t timeout);
-static bool lte_wait_at_rsp (const char *expected_rsp, uint32_t timeout);
 static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx);
 static uint32_t lteppp_output_callback(ppp_pcb *pcb, u8_t *data, u32_t len, void *ctx);
 
@@ -135,6 +134,37 @@ void lteppp_disconnect(void) {
 void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp) {
     xQueueSend(xCmdQueue, (void *)cmd, (TickType_t)portMAX_DELAY);
     xQueueReceive(xRxQueue, rsp, (TickType_t)portMAX_DELAY);
+}
+
+bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout) {
+    uint32_t rx_len = 0;
+
+    // wait until characters start arriving
+    do {
+        vTaskDelay(1 / portTICK_RATE_MS);
+        uart_get_buffered_data_len(LTE_UART_ID, &rx_len);
+        if (timeout > 0) {
+            timeout--;
+        }
+    } while (timeout > 0 && 0 == rx_len);
+
+    memset(lteppp_trx_buffer, 0, sizeof(lteppp_trx_buffer));
+    if (rx_len > 0) {
+        // try to read up to the size of the buffer minus null terminator (minus 2 because we store the OK status in the last byte)
+        rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, sizeof(lteppp_trx_buffer) - 2, LTE_TRX_WAIT_MS(sizeof(lteppp_trx_buffer)) / portTICK_RATE_MS);
+        if (rx_len > 0) {
+            // NULL terminate the string
+            lteppp_trx_buffer[rx_len] = '\0';
+            // printf("%s\n", lteppp_trx_buffer);
+            if (expected_rsp != NULL) {
+                if (strstr(lteppp_trx_buffer, expected_rsp) != NULL) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+    return false;
 }
 
 lte_state_t lteppp_get_state(void) {
@@ -250,42 +280,11 @@ static bool lte_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *
     uart_wait_tx_done(LTE_UART_ID, LTE_TRX_WAIT_MS(cmd_len) / portTICK_RATE_MS);
     vTaskDelay(2 / portTICK_RATE_MS);
 
-    return lte_wait_at_rsp(expected_rsp, timeout);
+    return lteppp_wait_at_rsp(expected_rsp, timeout);
 }
 
 static bool lte_send_at_cmd(const char *cmd, uint32_t timeout) {
     return lte_send_at_cmd_exp (cmd, timeout, LTE_OK_RSP);
-}
-
-static bool lte_wait_at_rsp (const char *expected_rsp, uint32_t timeout) {
-    uint32_t rx_len = 0;
-
-    // wait until characters start arriving
-    do {
-        vTaskDelay(1 / portTICK_RATE_MS);
-        uart_get_buffered_data_len(LTE_UART_ID, &rx_len);
-        if (timeout > 0) {
-            timeout--;
-        }
-    } while (timeout > 0 && 0 == rx_len);
-
-    memset(lteppp_trx_buffer, 0, sizeof(lteppp_trx_buffer));
-    if (rx_len > 0) {
-        // try to read up to the size of the buffer minus null terminator (minus 2 because we store the OK status in the last byte)
-        rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, sizeof(lteppp_trx_buffer) - 2, LTE_TRX_WAIT_MS(sizeof(lteppp_trx_buffer)) / portTICK_RATE_MS);
-        if (rx_len > 0) {
-            // NULL terminate the string
-            lteppp_trx_buffer[rx_len] = '\0';
-            // printf("%s\n", lteppp_trx_buffer);
-            if (expected_rsp != NULL) {
-                if (strstr(lteppp_trx_buffer, expected_rsp) != NULL) {
-                    return true;
-                }
-            }
-            return false;
-        }
-    }
-    return false;
 }
 
 // PPP output callback

@@ -400,11 +400,10 @@ STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     }
     lte_push_at_command("AT^RESET", LTE_RX_TIMEOUT_MIN_MS);
     lteppp_set_state(E_LTE_IDLE);
-    while (true) {
-        vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
-        if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-            break;
-        }
+    vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+    lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS);
+    if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
     return mp_const_none;
 }
