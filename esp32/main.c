@@ -112,6 +112,8 @@ void app_main(void) {
         nvs_flash_init();
     }
 
+    micropy_hw_flash_size = spi_flash_get_chip_size();
+
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
 
@@ -130,6 +132,11 @@ void app_main(void) {
 
         mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE_PSRAM, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
+        // create the MicroPython task
+        mpTaskHandle =
+        (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", (MICROPY_TASK_STACK_SIZE_PSRAM / sizeof(StackType_t)), NULL,
+                                                    MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
+
     } else {
         micropy_hw_antenna_diversity_pin_num = MICROPY_FIRST_GEN_ANT_SELECT_PIN_NUM;
 
@@ -147,12 +154,10 @@ void app_main(void) {
         micropy_lpwan_dio_pin = &pin_GPIO23;
 
         mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
+        // create the MicroPython task
+        mpTaskHandle =
+        (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t)), NULL,
+                                                    MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
     }
-
-    micropy_hw_flash_size = spi_flash_get_chip_size();
-
-    // create the MicroPython task
-    mpTaskHandle = 
-    (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL,
-                                                MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
 }

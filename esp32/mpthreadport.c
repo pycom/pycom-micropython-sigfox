@@ -41,7 +41,6 @@
 #include "py/mpstate.h"
 #include "py/gc.h"
 #include "py/mpthread.h"
-#include "mptask.h"
 
 #include "sdkconfig.h"
 #include "esp_system.h"
@@ -72,7 +71,7 @@ STATIC mp_thread_mutex_t thread_mutex;
 STATIC thread_t thread_entry0;
 STATIC thread_t *thread; // root pointer, handled by mp_thread_gc_others
 
-void mp_thread_preinit(void *stack) {
+void mp_thread_preinit(void *stack, uint32_t stack_len) {
     mp_thread_set_state(&mp_state_ctx.thread);
     // create first entry in linked list of all threads
     thread = &thread_entry0;
@@ -80,7 +79,7 @@ void mp_thread_preinit(void *stack) {
     thread->ready = 1;
     thread->arg = NULL;
     thread->stack = stack;
-    thread->stack_len = MICROPY_TASK_STACK_LEN;
+    thread->stack_len = stack_len;
     thread->next = NULL;
 }
 

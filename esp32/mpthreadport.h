@@ -56,7 +56,7 @@ typedef struct _mp_obj_thread_lock_t {
     volatile bool locked;
 } mp_obj_thread_lock_t;
 
-void mp_thread_preinit(void *stack);
+void mp_thread_preinit(void *stack, uint32_t stack_len);
 void mp_thread_init(void);
 void mp_thread_gc_others(void);
 void mp_thread_deinit(void);
