@@ -78,32 +78,6 @@ static uint32_t lteppp_output_callback(ppp_pcb *pcb, u8_t *data, u32_t len, void
 void lteppp_init(void) {
     lteppp_lte_state = E_LTE_INIT;
 
-    // configure the UART pins
-    pin_config(MICROPY_LTE_TX_PIN, -1, U2TXD_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 1);
-    pin_config(MICROPY_LTE_RX_PIN, U2RXD_IN_IDX, -1, GPIO_MODE_INPUT, MACHPIN_PULL_NONE, 1);
-    pin_config(MICROPY_LTE_RTS_PIN, -1, U2RTS_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 1);
-    pin_config(MICROPY_LTE_CTS_PIN, U2CTS_IN_IDX, -1, GPIO_MODE_INPUT, MACHPIN_PULL_NONE, 1);
-
-    // initialize the UART interface
-    uart_config_t config;
-    config.baud_rate = MICROPY_LTE_UART_BAUDRATE;
-    config.data_bits = UART_DATA_8_BITS;
-    config.parity = UART_PARITY_DISABLE;
-    config.stop_bits = UART_STOP_BITS_1;
-    config.flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS;
-    config.rx_flow_ctrl_thresh = 64;
-    uart_param_config(LTE_UART_ID, &config);
-
-    // install the UART driver
-    uart_driver_install(LTE_UART_ID, LTE_UART_BUFFER_SIZE, LTE_UART_BUFFER_SIZE, 0, NULL, 0, NULL);
-    lteppp_uart_reg = &UART2;
-
-    // disable the delay between transfers
-    lteppp_uart_reg->idle_conf.tx_idle_num = 0;
-
-    // configure the rx timeout threshold
-    lteppp_uart_reg->conf1.rx_tout_thrhd = 20 & UART_RX_TOUT_THRHD_V;
-
     xCmdQueue = xQueueCreate(LTE_CMD_QUEUE_SIZE_MAX, sizeof(lte_task_cmd_data_t));
     xRxQueue = xQueueCreate(LTE_RSP_QUEUE_SIZE_MAX, LTE_AT_RSP_SIZE_MAX);
 
@@ -115,7 +89,7 @@ void lteppp_init(void) {
 }
 
 void lteppp_start (void) {
-    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 0);
+    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
 }
 
 void lteppp_set_state(lte_state_t state) {
@@ -201,6 +175,32 @@ static void TASK_LTE (void *pvParameters) {
     bool sim_present;
     lte_task_cmd_data_t *lte_task_cmd = (lte_task_cmd_data_t *)lteppp_trx_buffer;
     lte_task_rsp_data_t *lte_task_rsp = (lte_task_rsp_data_t *)lteppp_trx_buffer;
+
+    // initialize the UART interface
+    uart_config_t config;
+    config.baud_rate = MICROPY_LTE_UART_BAUDRATE;
+    config.data_bits = UART_DATA_8_BITS;
+    config.parity = UART_PARITY_DISABLE;
+    config.stop_bits = UART_STOP_BITS_1;
+    config.flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS;
+    config.rx_flow_ctrl_thresh = 64;
+    uart_param_config(LTE_UART_ID, &config);
+
+    // configure the UART pins
+    pin_config(MICROPY_LTE_TX_PIN, -1, U2TXD_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 1);
+    pin_config(MICROPY_LTE_RX_PIN, U2RXD_IN_IDX, -1, GPIO_MODE_INPUT, MACHPIN_PULL_NONE, 1);
+    pin_config(MICROPY_LTE_RTS_PIN, -1, U2RTS_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 1);
+    pin_config(MICROPY_LTE_CTS_PIN, U2CTS_IN_IDX, -1, GPIO_MODE_INPUT, MACHPIN_PULL_NONE, 1);
+
+    // install the UART driver
+    uart_driver_install(LTE_UART_ID, LTE_UART_BUFFER_SIZE, LTE_UART_BUFFER_SIZE, 0, NULL, 0, NULL);
+    lteppp_uart_reg = &UART2;
+
+    // disable the delay between transfers
+    lteppp_uart_reg->idle_conf.tx_idle_num = 0;
+
+    // configure the rx timeout threshold
+    lteppp_uart_reg->conf1.rx_tout_thrhd = 20 & UART_RX_TOUT_THRHD_V;
 
     lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS);
     if (!lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
