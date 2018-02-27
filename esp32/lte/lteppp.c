@@ -90,6 +90,7 @@ void lteppp_init(void) {
 
 void lteppp_start (void) {
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
+    vTaskDelay(5 / portTICK_RATE_MS);
 }
 
 void lteppp_set_state(lte_state_t state) {
@@ -202,7 +203,11 @@ static void TASK_LTE (void *pvParameters) {
     // configure the rx timeout threshold
     lteppp_uart_reg->conf1.rx_tout_thrhd = 20 & UART_RX_TOUT_THRHD_V;
 
-    vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
+    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
+    uart_set_rts(LTE_UART_ID, false);
+    vTaskDelay(5 / portTICK_RATE_MS);
+    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
+    vTaskDelay(5 / portTICK_RATE_MS);
     if (lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
         vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
         while (true) {
@@ -242,20 +247,21 @@ static void TASK_LTE (void *pvParameters) {
         lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
     }
 
+    // at least enable access to the SIM
+    lteppp_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
+    char *pos = strstr(lteppp_trx_buffer, "+CFUN: ");
+    if (pos && (pos[7] != '1') && (pos[7] != '4')) {
+        lteppp_send_at_cmd("AT+CFUN=4", LTE_RX_TIMEOUT_MAX_MS);
+        lteppp_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
+    }
     // check for SIM card inserted
     sim_present = lteppp_check_sim_present();
 
-    // if we are coming from a power on reset, disable the LTE radio and scan all bands
+    // if we are coming from a power on reset, disable the LTE radio
     if (mpsleep_get_reset_cause() < MPSLEEP_WDT_RESET) {
         lteppp_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
-        if (sim_present) {
-            if (!strstr(lteppp_trx_buffer, "+CFUN: 4")) {
-                lteppp_send_at_cmd("AT+CFUN=4", LTE_RX_TIMEOUT_MAX_MS);
-            }
-        } else {
-            if (!strstr(lteppp_trx_buffer, "+CFUN: 0")) {
-                lteppp_send_at_cmd("AT+CFUN=0", LTE_RX_TIMEOUT_MAX_MS);
-            }
+        if (!sim_present) {
+            lteppp_send_at_cmd("AT+CFUN=0", LTE_RX_TIMEOUT_MAX_MS);
         }
     }
 
@@ -301,7 +307,7 @@ static void TASK_LTE (void *pvParameters) {
 static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *expected_rsp) {
     uint32_t cmd_len = strlen(cmd);
 
-    // printf("%s\n", cmd);
+    // printf("cmd: %s\n", cmd);
 
     // flush the rx buffer first
     uart_flush(LTE_UART_ID);

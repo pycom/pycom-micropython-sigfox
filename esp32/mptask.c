@@ -222,9 +222,6 @@ soft_reset:
 #if defined(SIPY) || defined(LOPY4) || defined (FIPY)
         modsigfox_init0();
 #endif
-#if defined(GPY) || defined (FIPY)
-        modlte_init0();
-#endif
     }
 
     // initialize the serial flash file system
@@ -257,6 +254,9 @@ soft_reset:
     pyexec_frozen_module("_boot.py");
 
     if (!safeboot) {
+    #if defined(GPY) || defined (FIPY)
+        modlte_init0();
+    #endif
         // run boot.py
         int ret = pyexec_file("boot.py");
         if (ret & PYEXEC_FORCED_EXIT) {
