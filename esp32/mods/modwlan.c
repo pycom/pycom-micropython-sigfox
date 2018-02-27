@@ -125,6 +125,7 @@ wlan_obj_t wlan_obj = {
 //    #if (MICROPY_PORT_HAS_TELNET || MICROPY_PORT_HAS_FTP)
 //        .servers_enabled = false,
 //    #endif
+    .started = false
 };
 //
 //STATIC const mp_irq_methods_t wlan_irq_methods;
@@ -155,7 +156,6 @@ STATIC uint32_t wlan_set_ssid_internal (const char *ssid, uint8_t len, bool add_
 STATIC void wlan_validate_security (uint8_t auth, const char *key);
 STATIC void wlan_set_security_internal (uint8_t auth, const char *key);
 STATIC void wlan_validate_channel (uint8_t channel);
-STATIC void wlan_validate_antenna (uint8_t antenna);
 STATIC void wlan_set_antenna (uint8_t antenna);
 static esp_err_t wlan_event_handler(void *ctx, system_event_t *event);
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key, int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent);
@@ -439,20 +439,9 @@ STATIC void wlan_validate_channel (uint8_t channel) {
     }
 }
 
-
-STATIC void wlan_validate_antenna (uint8_t antenna) {
-    if (micropy_hw_antenna_diversity) {
-        if (antenna != ANTENNA_TYPE_INTERNAL && antenna != ANTENNA_TYPE_EXTERNAL) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
-        }
-    }
-}
-
 STATIC void wlan_set_antenna (uint8_t antenna) {
-    if (micropy_hw_antenna_diversity) {
-        wlan_obj.antenna = antenna;
-        antenna_select(antenna);
-    }
+    wlan_obj.antenna = antenna;
+    antenna_select(antenna);
 }
 
 STATIC void wlan_validate_certificates (wlan_wpa2_ent_obj_t *wpa2_ent) {
@@ -647,8 +636,20 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
     wlan_validate_channel(channel);
 
     // get the antenna type
-    uint8_t antenna = args[4].u_int;
-    wlan_validate_antenna(antenna);
+    uint8_t antenna;
+    if (args[4].u_obj == MP_OBJ_NULL) {
+        // first gen module, so select the internal antenna
+        if (micropy_hw_antenna_diversity_pin_num == MICROPY_FIRST_GEN_ANT_SELECT_PIN_NUM) {
+            antenna = ANTENNA_TYPE_INTERNAL;
+        } else {
+            antenna = ANTENNA_TYPE_MANUAL;
+        }
+    } else if (args[4].u_obj == mp_const_none) {
+        antenna = ANTENNA_TYPE_MANUAL;
+    } else {
+        antenna = mp_obj_get_int(args[4].u_obj);
+    }
+    antenna_validate_antenna(antenna);
 
     wlan_obj.pwrsave = args[5].u_bool;
 
@@ -674,7 +675,7 @@ STATIC const mp_arg_t wlan_init_args[] = {
     { MP_QSTR_ssid,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_auth,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
     { MP_QSTR_channel,      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 1} },
-    { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = ANTENNA_TYPE_INTERNAL} },
+    { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_power_save,   MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
 };
 STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
@@ -692,7 +693,7 @@ STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_ui
     // give it to the sleep module
     //pyb_sleep_set_wlan_obj(self); // FIXME
 
-    if (n_kw > 0) {
+    if (n_kw > 0 || !wlan_obj.started) {
         // check the peripheral id
         if (args[0].u_int != 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
@@ -1073,7 +1074,7 @@ STATIC mp_obj_t wlan_antenna (mp_uint_t n_args, const mp_obj_t *args) {
         return mp_obj_new_int(self->antenna);
     } else {
         uint8_t antenna  = mp_obj_get_int(args[1]);
-        wlan_validate_antenna(antenna);
+        antenna_validate_antenna(antenna);
         wlan_set_antenna(antenna);
         return mp_const_none;
     }

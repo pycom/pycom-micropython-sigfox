@@ -69,7 +69,7 @@ ifeq ($(BOARD), $(filter $(BOARD), SIPY))
     LIBS += sigfox/modsigfox_sipy.a
 endif
 
-B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader \
+B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader -L$(ESP_IDF_COMP_PATH)/esp32/ld \
          -L$(ESP_IDF_COMP_PATH)/esp32/lib -llog -lcore -lbootloader_support \
          -lspi_flash -lsoc -lmicro-ecc -lgcc -lstdc++ -lgcov
 

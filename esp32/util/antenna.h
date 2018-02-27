@@ -12,10 +12,12 @@
 
 typedef enum {
     ANTENNA_TYPE_INTERNAL = 0,
-    ANTENNA_TYPE_EXTERNAL
+    ANTENNA_TYPE_EXTERNAL,
+    ANTENNA_TYPE_MANUAL,
 } antenna_type_t;
 
 extern void antenna_init0 (void);
 extern void antenna_select (antenna_type_t antenna_type);
+extern void antenna_validate_antenna (uint8_t antenna);
 
 #endif /* _ANTENNA_H_ */

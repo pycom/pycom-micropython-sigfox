@@ -15,6 +15,7 @@ APP_INC += -Imods
 APP_INC += -Itelnet
 APP_INC += -Iftp
 APP_INC += -Ilora
+APP_INC += -Ilte
 APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
@@ -137,6 +138,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modbt.c \
 	modled.c \
 	machwdt.c \
+	machrmt.c \
 	)
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
@@ -242,8 +244,8 @@ APP_SIGFOX_SPI_SRC_C = $(addprefix lora/,\
 	gpio-board.c \
 	)
 
-APP_LTE_SRC_C = $(addprefix 3gpp/,\
-    lib3GPP.c \
+APP_LTE_SRC_C = $(addprefix lte/,\
+    lteppp.c \
     )
 
 APP_MODS_LTE_SRC_C = $(addprefix mods/,\
@@ -366,6 +368,7 @@ ifeq ($(BOARD), LOPY4)
     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 ifeq ($(BOARD), SIPY)
     APP_BIN = $(BUILD)/sipy.bin
@@ -373,6 +376,7 @@ ifeq ($(BOARD), SIPY)
     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 ifeq ($(BOARD), GPY)
     APP_BIN = $(BUILD)/gpy.bin
@@ -383,6 +387,7 @@ ifeq ($(BOARD), FIPY)
     $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
     $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 
 APP_IMG  = $(BUILD)/appimg.bin

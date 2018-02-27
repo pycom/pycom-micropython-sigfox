@@ -30,6 +30,7 @@
 #include "pycom_config.h"
 #include "modbt.h"
 #include "mpirq.h"
+#include "antenna.h"
 
 #include "esp_bt.h"
 #include "bt_trace.h"
@@ -687,6 +688,24 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
 
         self->init = true;
     }
+
+    // get the antenna type
+    uint8_t antenna;
+    if (args[1].u_obj == MP_OBJ_NULL) {
+        // first gen module, so select the internal antenna
+        if (micropy_hw_antenna_diversity_pin_num == MICROPY_FIRST_GEN_ANT_SELECT_PIN_NUM) {
+            antenna = ANTENNA_TYPE_INTERNAL;
+        } else {
+            antenna = ANTENNA_TYPE_MANUAL;
+        }
+    } else if (args[1].u_obj == mp_const_none) {
+        antenna = ANTENNA_TYPE_MANUAL;
+    } else {
+        antenna = mp_obj_get_int(args[1].u_obj);
+    }
+    antenna_validate_antenna(antenna);
+    antenna_select(antenna);
+
     bt_obj.gatts_conn_id = -1;
 
     return mp_const_none;
@@ -695,6 +714,7 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
 STATIC const mp_arg_t bt_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,   {.u_int  = 0} },
     { MP_QSTR_mode,         MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_BT_STACK_MODE_BLE} },
+    { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
 };
 STATIC mp_obj_t bt_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -1450,6 +1470,9 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_NOTIFY_EVENT),       MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_NOTIFY_EVT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_SUBSCRIBE_EVENT),    MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTS_SUBSCRIBE_EVT) },
     // { MP_OBJ_NEW_QSTR(MP_QSTR_CHAR_INDICATE_EVENT),     MP_OBJ_NEW_SMALL_INT(MOD_BT_GATTC_INDICATE_EVT) },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INT_ANT),                 MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_INTERNAL) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EXT_ANT),                 MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_EXTERNAL) },
 };
 STATIC MP_DEFINE_CONST_DICT(bt_locals_dict, bt_locals_dict_table);
 

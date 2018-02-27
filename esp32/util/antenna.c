@@ -11,6 +11,8 @@
 #include <stdio.h>
 
 #include "py/mpconfig.h"
+#include "py/obj.h"
+#include "py/runtime.h"
 
 #include "esp_heap_caps.h"
 #include "sdkconfig.h"
@@ -36,7 +38,8 @@ static antenna_type_t antenna_type_selected = ANTENNA_TYPE_INTERNAL;
 DEFINE PUBLIC FUNCTIONS
 ******************************************************************************/
 void antenna_init0(void) {
-    if (micropy_hw_antenna_diversity) {
+    // the second gen modules have a pull-down to select the internal antenna by default
+    if (micropy_hw_antenna_diversity_pin_num == MICROPY_FIRST_GEN_ANT_SELECT_PIN_NUM) {
         gpio_config_t gpioconf = {.pin_bit_mask = 1ull << micropy_hw_antenna_diversity_pin_num,
                                   .mode = GPIO_MODE_OUTPUT,
                                   .pull_up_en = GPIO_PULLUP_DISABLE,
@@ -50,21 +53,25 @@ void antenna_init0(void) {
 }
 
 void antenna_select (antenna_type_t _antenna) {
-    if (micropy_hw_antenna_diversity) {
-        if (micropy_hw_antenna_diversity_pin_num < 32) {
-            // set the pin value
-            if (_antenna == ANTENNA_TYPE_EXTERNAL) {
-                GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << micropy_hw_antenna_diversity_pin_num);
-            } else {
-                GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << micropy_hw_antenna_diversity_pin_num);
-            }
-        } else {
-            if (_antenna == ANTENNA_TYPE_EXTERNAL) {
-                GPIO_REG_WRITE(GPIO_OUT1_W1TS_REG, 1 << (micropy_hw_antenna_diversity_pin_num & 31));
-            } else {
-                GPIO_REG_WRITE(GPIO_OUT1_W1TC_REG, 1 << (micropy_hw_antenna_diversity_pin_num & 31));
-            }
+    if (micropy_hw_antenna_diversity_pin_num < 32) {
+        // set the pin value
+        if (_antenna == ANTENNA_TYPE_EXTERNAL) {
+            GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << micropy_hw_antenna_diversity_pin_num);
+        } else if (_antenna == ANTENNA_TYPE_INTERNAL) {
+            GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << micropy_hw_antenna_diversity_pin_num);
         }
-        antenna_type_selected = _antenna;
+    } else {
+        if (_antenna == ANTENNA_TYPE_EXTERNAL) {
+            GPIO_REG_WRITE(GPIO_OUT1_W1TS_REG, 1 << (micropy_hw_antenna_diversity_pin_num & 31));
+        } else if (_antenna == ANTENNA_TYPE_INTERNAL) {
+            GPIO_REG_WRITE(GPIO_OUT1_W1TC_REG, 1 << (micropy_hw_antenna_diversity_pin_num & 31));
+        }
+    }
+    antenna_type_selected = _antenna;
+}
+
+void antenna_validate_antenna (uint8_t antenna) {
+    if (antenna > ANTENNA_TYPE_MANUAL) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid antenna type %d", antenna));
     }
 }

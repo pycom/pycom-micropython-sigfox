@@ -123,8 +123,17 @@ void TASK_Micropython (void *pvParameters) {
     uint32_t gc_pool_size;
     bool soft_reset = false;
     bool wifi_on_boot;
+    esp_chip_info_t chip_info;
+    uint32_t stack_len;
 
-    // init the antenna select switch here
+    esp_chip_info(&chip_info);
+    if (chip_info.revision > 0) {
+        stack_len = (MICROPY_TASK_STACK_SIZE_PSRAM / sizeof(StackType_t));
+    } else {
+        stack_len = (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t));
+    }
+
+    // configure the antenna select switch here
     antenna_init0();
     config_init0();
     mpsleep_init0();
@@ -135,7 +144,7 @@ void TASK_Micropython (void *pvParameters) {
     // initialization that must not be repeted after a soft reset
     mptask_preinit();
 #if MICROPY_PY_THREAD
-    mp_thread_preinit(mpTaskStack);
+    mp_thread_preinit(mpTaskStack, stack_len);
     mp_irq_preinit();
 #endif
 
@@ -144,7 +153,7 @@ void TASK_Micropython (void *pvParameters) {
 
     // the stack limit should be less than real stack size, so we have a chance
     // to recover from hiting the limit (the limit is measured in bytes)
-    mp_stack_set_limit(MICROPY_TASK_STACK_LEN - 1024);
+    mp_stack_set_limit(stack_len - 1024);
 
     if (esp_get_revision() > 0) {
         gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
@@ -213,9 +222,6 @@ soft_reset:
 #if defined(SIPY) || defined(LOPY4) || defined (FIPY)
         modsigfox_init0();
 #endif
-#if defined(GPY) || defined (FIPY)
-        modlte_init0();
-#endif
     }
 
     // initialize the serial flash file system
@@ -248,6 +254,9 @@ soft_reset:
     pyexec_frozen_module("_boot.py");
 
     if (!safeboot) {
+    #if defined(GPY) || defined (FIPY)
+        modlte_init0();
+    #endif
         // run boot.py
         int ret = pyexec_file("boot.py");
         if (ret & PYEXEC_FORCED_EXIT) {

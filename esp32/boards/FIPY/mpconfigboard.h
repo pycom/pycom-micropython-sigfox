@@ -18,15 +18,15 @@
 
 #define MICROPY_LPWAN_DIO_PIN
 
-#define CONFIG_GSM_TX 33
-#define CONFIG_GSM_RX 34
+#define MICROPY_LTE_TX_PIN                                      (&PIN_MODULE_P20)
+#define MICROPY_LTE_RX_PIN                                      (&PIN_MODULE_P18)
+#define MICROPY_LTE_RTS_PIN                                     (&PIN_MODULE_P19)
+#define MICROPY_LTE_CTS_PIN                                     (&PIN_MODULE_P17)
 
-#define CONFIG_GSM_CTS 35
-#define CONFIG_GSM_RTS 32
+#define MICROPY_LTE_UART_BAUDRATE                               921600
 
 extern uint32_t micropy_hw_flash_size;
 
-extern bool micropy_hw_antenna_diversity;
 extern uint32_t micropy_hw_antenna_diversity_pin_num;
 
 extern bool micropy_lpwan_use_reset_pin;
