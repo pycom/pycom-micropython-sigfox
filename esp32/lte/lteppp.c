@@ -202,6 +202,17 @@ static void TASK_LTE (void *pvParameters) {
     // configure the rx timeout threshold
     lteppp_uart_reg->conf1.rx_tout_thrhd = 20 & UART_RX_TOUT_THRHD_V;
 
+    vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
+    if (lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
+        vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
+        while (true) {
+            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+            if (lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+                break;
+            }
+        }
+    }
+
     lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS);
     if (!lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
         vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
