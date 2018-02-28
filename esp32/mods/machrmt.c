@@ -247,6 +247,7 @@ STATIC mp_obj_t mach_rmt_pulses_send(mp_uint_t n_args, const mp_obj_t *pos_args,
         { MP_QSTR_duration,               MP_ARG_OBJ | MP_ARG_REQUIRED, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_data,                   MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_start_level,            MP_ARG_OBJ | MP_ARG_KW_ONLY,  {.u_obj = MP_OBJ_NULL} },
+        { MP_QSTR_wait_tx_done,           MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_obj = mp_const_true} },
     };
 
     // parse args
@@ -270,6 +271,7 @@ STATIC mp_obj_t mach_rmt_pulses_send(mp_uint_t n_args, const mp_obj_t *pos_args,
     mp_int_t duration = 0;
     mp_obj_t* data_ptr = NULL;
     mp_obj_t* duration_ptr = NULL;
+    bool wait_tx_done = args[4].u_bool;
 
     /* Get the "duration" mandatory parameter */
     if(MP_OBJ_IS_SMALL_INT(args[1].u_obj) == true) {
@@ -390,8 +392,14 @@ STATIC mp_obj_t mach_rmt_pulses_send(mp_uint_t n_args, const mp_obj_t *pos_args,
         }
     }
 
-    /* Do not return until transmission is done */
-    esp_err_t retval = rmt_write_items(self->config.channel, items_to_send, items_to_send_count, true);
+    MP_THREAD_GIL_EXIT();
+
+    /* Wait for any asynchronous transmissions to be done */
+    rmt_wait_tx_done(self->config.channel, portMAX_DELAY);
+
+    esp_err_t retval = rmt_write_items(self->config.channel, items_to_send, items_to_send_count, wait_tx_done);
+
+    MP_THREAD_GIL_ENTER();
 
     m_free(items_to_send);
 
