@@ -393,12 +393,7 @@ STATIC mp_obj_t mach_rmt_pulses_send(mp_uint_t n_args, const mp_obj_t *pos_args,
     }
 
     MP_THREAD_GIL_EXIT();
-
-    /* Wait for any asynchronous transmissions to be done */
-    rmt_wait_tx_done(self->config.channel, portMAX_DELAY);
-
     esp_err_t retval = rmt_write_items(self->config.channel, items_to_send, items_to_send_count, wait_tx_done);
-
     MP_THREAD_GIL_ENTER();
 
     m_free(items_to_send);
