@@ -516,7 +516,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
         lora_obj.ComplianceTest.DownLinkCounter++;
     }
 
-    printf("MCPS indication!=%d :%d\n", mcpsIndication->BufferSize, mcpsIndication->Port);
+    // printf("MCPS indication!=%d :%d\n", mcpsIndication->BufferSize, mcpsIndication->Port);
 
     if (mcpsIndication->RxData && mcpsIndication->BufferSize > 0) {
         if (mcpsIndication->Port > 0 && mcpsIndication->Port < 224) {
@@ -530,11 +530,11 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                     mp_irq_queue_interrupt(lora_callback_handler, (void *)&lora_obj);
                 }
             }
-            printf("Data on port 1 or 2 received\n");
+            // printf("Data on port 1 or 2 received\n");
         } else if (mcpsIndication->Port == 224) {
             if (lora_obj.ComplianceTest.Enabled == true) {
                 if (lora_obj.ComplianceTest.Running == false) {
-                    printf("Checking start test msg\n");
+                    // printf("Checking start test msg\n");
                     // Check compliance test enable command (i)
                     if( ( mcpsIndication->BufferSize == 4 ) &&
                         ( mcpsIndication->Buffer[0] == 0x01 ) &&
@@ -562,7 +562,7 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                         // always disable duty cycle limitation during test mode
                         LoRaMacTestSetDutyCycleOn(false);
 
-                        printf("Compliance enabled\n");
+                        // printf("Compliance enabled\n");
                     }
                 } else {
                     lora_obj.ComplianceTest.State = mcpsIndication->Buffer[0];
@@ -578,21 +578,21 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                         mibReq.Param.AdrEnable = lora_obj.adr;
                         LoRaMacMibSetRequestConfirm(&mibReq);
                         LoRaMacTestSetDutyCycleOn(true);
-                        printf("Compliance disabled\n");
+                        // printf("Compliance disabled\n");
                         break;
                     case 1: // (iii, iv)
                         lora_obj.ComplianceTest.Running = true;
-                        printf("Compliance running\n");
+                        // printf("Compliance running\n");
                         break;
                     case 2: // Enable confirmed messages (v)
                         lora_obj.ComplianceTest.IsTxConfirmed = true;
                         lora_obj.ComplianceTest.State = 1;
-                        printf("Confirmed messages enabled\n");
+                        // printf("Confirmed messages enabled\n");
                         break;
                     case 3:  // Disable confirmed messages (vi)
                         lora_obj.ComplianceTest.IsTxConfirmed = false;
                         lora_obj.ComplianceTest.State = 1;
-                        printf("Confirmed messages disabled\n");
+                        // printf("Confirmed messages disabled\n");
                         break;
                     case 4: // (vii)
                         // return the payload
@@ -601,18 +601,18 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                             rx_data_isr.len = mcpsIndication->BufferSize;
                             xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);
                         }
-                        printf("Crypto message received\n");
+                        // printf("Crypto message received\n");
                         break;
                     case 5: // (viii)
                         // trigger a link check
                         lora_obj.state = E_LORA_STATE_LINK_CHECK;
-                        printf("Link check\n");
+                        // printf("Link check\n");
                         break;
                     case 6: // (ix)
                         // trigger a join request
                         lora_obj.joined = false;
                         lora_obj.ComplianceTest.State = 6;
-                        printf("Trigger join\n");
+                        // printf("Trigger join\n");
                         break;
                     default:
                         break;
@@ -641,7 +641,7 @@ static void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
                     lora_obj.ComplianceTest.DemodMargin = MlmeConfirm->DemodMargin;
                     lora_obj.ComplianceTest.NbGateways = MlmeConfirm->NbGateways;
                 }
-                printf("Link check confirm\n");
+                // printf("Link check confirm\n");
                 break;
             default:
                 break;
