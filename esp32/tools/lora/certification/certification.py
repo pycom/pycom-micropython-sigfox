@@ -24,6 +24,7 @@ APP_SWKEY = '2B 7E 15 16 28 AE D2 A6 AB F7 15 88 09 CF 4F 3C'
 
 ACTIVATE_MSG = 'READY'
 
+
 class Compliance:
     def __init__(self, region=LoRa.EU868, activation=LoRa.OTAA):
         self.lora = LoRa(mode=LoRa.LORAWAN, region=region)
@@ -44,7 +45,7 @@ class Compliance:
 
         # wait until the module has joined the network
         while not self.lora.has_joined():
-            time.sleep(2.5)
+            time.sleep(3)
             print("Joining...")
 
         print("Network joined!")
@@ -60,7 +61,7 @@ class Compliance:
 
         while True:
             if not self.rejoined:
-                time.sleep(0.5)
+                time.sleep(1)
                 self._join()
             else:
                 self.rejoined = False
@@ -101,10 +102,10 @@ class Compliance:
                                                       self.lora.compliance_test().downlink_counter & 0xFF])
                 else:
                     self.rejoined = True
-                    time.sleep(2.5)
+                    time.sleep(3)
                     self._join()
 
             # the test has been disabled, 1 more message and then wait 5 seconds before trying to join again
-            time.sleep(2.5)
+            time.sleep(3)
             self.s.send(ACTIVATE_MSG)
-            time.sleep(5.5)
+            time.sleep(6)
