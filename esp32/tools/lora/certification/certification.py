@@ -22,18 +22,14 @@ DEV_ADDR = '00 00 00 0A'
 NWK_SWKEY = '2B 7E 15 16 28 AE D2 A6 AB F7 15 88 09 CF 4F 3C'
 APP_SWKEY = '2B 7E 15 16 28 AE D2 A6 AB F7 15 88 09 CF 4F 3C'
 
+ACTIVATE_MSG = 'READY'
 
 class Compliance:
-    def __init__(self, activation=LoRa.OTAA):
-        self.lora = LoRa(mode=LoRa.LORAWAN)
+    def __init__(self, region=LoRa.EU868, activation=LoRa.OTAA):
+        self.lora = LoRa(mode=LoRa.LORAWAN, region=region)
         self.lora.compliance_test(True, 0, False)  # enable testing
         self.activation = activation
-
-        self._join()
-
-        self.s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
-        self.s.setsockopt(socket.SOL_LORA, socket.SO_DR, 3)
-        self.s.setsockopt(socket.SOL_LORA, socket.SO_CONFIRMED, False)
+        self.rejoined = False
 
     def _join(self):
         if self.activation == LoRa.OTAA:
@@ -48,20 +44,32 @@ class Compliance:
 
         # wait until the module has joined the network
         while not self.lora.has_joined():
-            time.sleep(5)
+            time.sleep(2.5)
             print("Joining...")
 
         print("Network joined!")
 
+        self.s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
+        self.s.setsockopt(socket.SOL_LORA, socket.SO_DR, 3)
+        self.s.setsockopt(socket.SOL_LORA, socket.SO_CONFIRMED, False)
+        self.s.setblocking(True)
+
+        print('Waiting for test activation...')
+
     def run(self):
+
         while True:
+            if not self.rejoined:
+                time.sleep(0.5)
+                self._join()
+            else:
+                self.rejoined = False
+
             while not self.lora.compliance_test().running:
-                time.sleep(5)
-                self.s.send('Ready')
+                time.sleep(1)
+                self.s.send(ACTIVATE_MSG)
 
             print('Test running!')
-
-            self.s.setblocking(True)
 
             self.tx_payload = bytes([(self.lora.compliance_test().downlink_counter >> 8) & 0xFF,
                                       self.lora.compliance_test().downlink_counter & 0xFF])
@@ -71,9 +79,9 @@ class Compliance:
                 if self.lora.compliance_test().state < 6: # re-join
                     try:
                         self.s.send(self.tx_payload)
-                        time.sleep(2)
                     except Exception:
-                        time.sleep(1)
+                        pass
+                    time.sleep(1)
 
                     if self.lora.compliance_test().link_check:
                         self.tx_payload = bytes([5, self.lora.compliance_test().demod_margin,
@@ -92,5 +100,11 @@ class Compliance:
                             self.tx_payload = bytes([(self.lora.compliance_test().downlink_counter >> 8) & 0xFF,
                                                       self.lora.compliance_test().downlink_counter & 0xFF])
                 else:
-                    time.sleep(2)
+                    self.rejoined = True
+                    time.sleep(2.5)
                     self._join()
+
+            # the test has been disabled, 1 more message and then wait 5 seconds before trying to join again
+            time.sleep(2.5)
+            self.s.send(ACTIVATE_MSG)
+            time.sleep(5.5)
