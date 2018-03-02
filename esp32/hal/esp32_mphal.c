@@ -161,7 +161,7 @@ uint32_t mp_hal_ticks_s(void) {
     return now.tv_sec;
 }
 
-uint32_t mp_hal_ticks_ms(void) {
+IRAM_ATTR uint32_t mp_hal_ticks_ms(void) {
     struct timeval now;
     gettimeofday(&now, NULL);
     return now.tv_sec * 1000 + now.tv_usec / 1000;
