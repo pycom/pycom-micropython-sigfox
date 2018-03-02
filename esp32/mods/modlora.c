@@ -73,7 +73,7 @@
                                                         return -1;              \
                                                     }
 
-#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           15000  // 15 [s] value in ms
+#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           10000  // 10 [s] value in ms
 
 #define DEF_LORAWAN_NETWORK_ID                      0
 #define DEF_LORAWAN_APP_PORT                        2
