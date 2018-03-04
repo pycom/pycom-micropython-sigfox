@@ -168,7 +168,7 @@ void TASK_Micropython (void *pvParameters) {
         for ( ; ; );
     }
 
-    alarm_preinit();
+    mach_timer_alarm_preinit();
     pin_preinit();
 
     wifi_on_boot = config_get_wifi_on_boot();

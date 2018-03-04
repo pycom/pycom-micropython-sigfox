@@ -50,11 +50,11 @@ STATIC void alarm_set_callback_helper(mp_obj_t self_in, mp_obj_t handler, mp_obj
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
-void alarm_preinit(void) {
+void mach_timer_alarm_preinit(void) {
     timer_isr_register(TIMER_GROUP_0, TIMER_0, timer_alarm_isr, NULL, 0, NULL);
 }
 
-void init_alarm_heap(void) {
+void mach_timer_alarm_init_heap(void) {
     alarm_heap.count = 0;
     MP_STATE_PORT(mp_alarm_heap) = gc_alloc(ALARM_HEAP_MAX_ELEMENTS * sizeof(mp_obj_alarm_t *), false);
     alarm_heap.data = MP_STATE_PORT(mp_alarm_heap);
