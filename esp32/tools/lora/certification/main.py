@@ -11,7 +11,9 @@ region = None
 activation = None
 
 print('<<< Device ready for LoRaWAN certification testing >>>')
+print('Press ENTER to continue')
 print('')
+input()
 
 while True:
     print('Please select the region:')
@@ -19,7 +21,11 @@ while True:
     print('     (2) AS923')
     print('     (3) US915')
     print('     (4) AU915')
-    region_in = int(input()) - 1
+
+    try:
+        region_in = int(input()) - 1
+    except Exception:
+        region_in = 0
 
     if region_in >= 0:
         try:
@@ -32,7 +38,11 @@ while True:
     print('Please select an activation method:')
     print('     (1) OTAA')
     print('     (2) ABP')
-    activation_in = int(input()) - 1
+
+    try:
+        activation_in = int(input()) - 1
+    except Exception:
+        activation_in = 0
 
     if activation_in >= 0:
         try:
