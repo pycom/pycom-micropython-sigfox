@@ -146,7 +146,7 @@ STATIC mp_obj_t mach_can_init_helper(mach_can_obj_t *self, const mp_arg_val_t *a
 
     // get the baudrate
     uint32_t speed = args[1].u_int / 1000;
-    if (speed > 0 && speed < CAN_SPEED_1000KBPS) {
+    if (speed > 0 && speed <= CAN_SPEED_1000KBPS) {
         self->baudrate = args[1].u_int;
         CAN_cfg.speed = speed;
     } else {
@@ -491,7 +491,7 @@ STATIC const mp_map_elem_t mach_can_locals_dict_table[] = {
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_RX_FRAME),            MP_OBJ_NEW_SMALL_INT(CAN_RX_FRAME_EVENT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_RX_FIFO_NOT_EMPTY),   MP_OBJ_NEW_SMALL_INT(CAN_FIFO_NOT_EMPTY_EVENT) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_RX_FIFO_OVERRUN),    MP_OBJ_NEW_SMALL_INT(CAN_RX_FIFO_OVERRUN_EVENT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_RX_FIFO_OVERRUN),     MP_OBJ_NEW_SMALL_INT(CAN_RX_FIFO_OVERRUN_EVENT) },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_LIST),         MP_OBJ_NEW_SMALL_INT(CAN_FILTER_LIST) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_RANGE),        MP_OBJ_NEW_SMALL_INT(CAN_FILTER_RANGE) },
