@@ -28,7 +28,8 @@ ACTIVATE_MSG = 'READY'
 class Compliance:
     def __init__(self, region=LoRa.EU868, activation=LoRa.OTAA):
         self.lora = LoRa(mode=LoRa.LORAWAN, region=region)
-        self.lora.compliance_test(True, 0, False)  # enable testing
+        # enable testing
+        self.lora.compliance_test(True, 0, False)
         self.activation = activation
         self.rejoined = False
 
@@ -38,17 +39,19 @@ class Compliance:
             app_key = binascii.unhexlify(APP_KEY.replace(' ',''))
             self.lora.join(activation=LoRa.OTAA, auth=(app_eui, app_key), timeout=0)
         else:
-            dev_addr = struct.unpack(">l", binascii.unhexlify(DEV_ADDR.replace(' ','')))[0]
+            dev_addr = struct.unpack('>l', binascii.unhexlify(DEV_ADDR.replace(' ','')))[0]
             nwk_swkey = binascii.unhexlify(NWK_SWKEY.replace(' ',''))
             app_swkey = binascii.unhexlify(APP_SWKEY.replace(' ',''))
             self.lora.join(activation=LoRa.ABP, auth=(dev_addr, nwk_swkey, app_swkey))
 
         # wait until the module has joined the network
+        print('Joining.', end='', flush=True)
         while not self.lora.has_joined():
-            time.sleep(3)
-            print("Joining...")
+            time.sleep(0.5)
+            print('.', end='', flush=True)
 
-        print("Network joined!")
+        print('')
+        print('Network joined!')
 
         self.s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
         self.s.setsockopt(socket.SOL_LORA, socket.SO_DR, 3)
@@ -77,7 +80,8 @@ class Compliance:
 
             while self.lora.compliance_test().running:
 
-                if self.lora.compliance_test().state < 6: # re-join
+                # re-join
+                if self.lora.compliance_test().state < 6:
                     try:
                         self.s.send(self.tx_payload)
                     except Exception:
@@ -96,7 +100,8 @@ class Compliance:
                                 self.tx_payload = bytes([rx_payload[0]])
                                 for i in range(1, len(rx_payload)):
                                     self.tx_payload += bytes([(rx_payload[i] + 1) & 0xFF])
-                            self.lora.compliance_test(True, 1)  # set the state to 1
+                            # set the state to 1
+                            self.lora.compliance_test(True, 1)
                         else:
                             self.tx_payload = bytes([(self.lora.compliance_test().downlink_counter >> 8) & 0xFF,
                                                       self.lora.compliance_test().downlink_counter & 0xFF])
