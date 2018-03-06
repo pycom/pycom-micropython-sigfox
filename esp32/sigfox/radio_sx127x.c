@@ -346,9 +346,9 @@ IRAM_ATTR void RADIO_start_rf_carrier(void) {
             SX127X8BitWrite(0x45, count);
         #endif
             if (count > STEP_HIGH_FCC) {
-                __delay_cycles(200);
+                __delay_cycles(110);
             } else {
-                __delay_cycles(140);
+                __delay_cycles(70);
             }
         }
     #if defined(FIPY)
@@ -398,9 +398,9 @@ IRAM_ATTR void RADIO_stop_rf_carrier(void) {
             SX127X8BitWrite(0x45, count);
         #endif
             if (count > STEP_HIGH_FCC) {
-                __delay_cycles(200);
+                __delay_cycles(170);
             } else {
-                __delay_cycles(140);
+                __delay_cycles(110);
             }
         }
     } else {
