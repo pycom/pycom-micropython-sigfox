@@ -182,7 +182,7 @@ void RADIO_change_frequency(unsigned long ul_Freq) {
     freq_rf = ul_Freq + CalibFrequency;
 
     /* adding Frequency register offset value to compute new frequency value */
-    freq_reg_value = (uint32_t)((freq_rf) / 61.035);
+    freq_reg_value = (uint32_t)((double)freq_rf / (double)FREQ_STEP);
 
     /* save the value into table */
     tuc_Frequence[0] = (uint8_t)(freq_reg_value & 0x000000FF);
@@ -367,9 +367,9 @@ IRAM_ATTR void RADIO_start_rf_carrier(void) {
             SX127X8BitWrite(0x45, count);
         #endif
             if (count > STEP_HIGH_ETSI) {
-                __delay_cycles(3000);
+                __delay_cycles(2400);
             } else {
-                __delay_cycles(1600);
+                __delay_cycles(1200);
             }
         }
     #if defined(FIPY)
