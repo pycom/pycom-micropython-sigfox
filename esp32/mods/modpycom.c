@@ -51,6 +51,11 @@ void modpycom_init0(void) {
 STATIC mp_obj_t mod_pycom_heartbeat (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
         mperror_enable_heartbeat (mp_obj_is_true(args[0]));
+        if (!mp_obj_is_true(args[0])) {
+            do {
+                vTaskDelay(2);
+            } while (!mperror_heartbeat_disable_done());
+       }
     } else {
         return mp_obj_new_bool(mperror_is_heartbeat_enabled());
     }

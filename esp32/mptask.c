@@ -329,7 +329,6 @@ soft_reset_exit:
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
 STATIC void mptask_preinit (void) {
-    mperror_pre_init();
     wlan_pre_init();
     xTaskCreatePinnedToCore(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 1);
 }
