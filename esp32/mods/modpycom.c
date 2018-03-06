@@ -28,6 +28,7 @@
 #include "freertos/task.h"
 
 #include "antenna.h"
+#include "py/mphal.h"
 
 #include <string.h>
 
@@ -53,7 +54,7 @@ STATIC mp_obj_t mod_pycom_heartbeat (mp_uint_t n_args, const mp_obj_t *args) {
         mperror_enable_heartbeat (mp_obj_is_true(args[0]));
         if (!mp_obj_is_true(args[0])) {
             do {
-                vTaskDelay(2);
+                mp_hal_delay_ms(1);
             } while (!mperror_heartbeat_disable_done());
        }
     } else {
