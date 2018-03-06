@@ -1,14 +1,23 @@
 Welcome to MicroPython!
-For online help please visit http://micropython.org/help/.
+For online docs please visit http://docs.pycom.io
+
+Control commands:
+  CTRL-A        -- on a blank line, enter raw REPL mode
+  CTRL-B        -- on a blank line, enter normal REPL mode
+  CTRL-C        -- interrupt a running program
+  CTRL-D        -- on a blank line, do a soft reset of the board
+  CTRL-E        -- on a blank line, enter paste mode
+  CTRL-F        -- on a blank line, do a hard reset of the board and enter safe boot
+
 For further help on a specific object, type help(obj)
-<function>object  is of type function
-<class 'int'>object  is of type type
+object <function> is of type function
+object <class 'int'> is of type type
   from_bytes -- <classmethod>
   to_bytes -- <function>
-1object  is of type int
+object 1 is of type int
   from_bytes -- <classmethod>
   to_bytes -- <function>
-<module 'micropython'>object  is of type module
+object <module 'micropython'> is of type module
   __name__ -- micropython
   const -- <function>
   opt_level -- <function>
@@ -19,7 +28,7 @@ For further help on a specific object, type help(obj)
   heap_lock -- <function>
   heap_unlock -- <function>
   kbd_intr -- <function>
-modulesobject  is of type str
+object modules is of type str
   encode -- <function>
   find -- <function>
   rfind -- <function>

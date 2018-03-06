@@ -25,12 +25,20 @@
  */
 
 #include "py/obj.h"
+#include "systick.h"
+#include "led.h"
 #include "storage.h"
 
 #if defined(MICROPY_HW_SPIFLASH_SIZE_BITS)
 
 #include "drivers/memory/spiflash.h"
 #include "genhdr/pins.h"
+
+static uint32_t flash_tick_counter_last_write;
+
+#if defined(MICROPY_HW_SPIFLASH_MOSI)
+
+// External SPI flash uses standard SPI interface
 
 STATIC const mp_machine_soft_spi_obj_t spiflash_spi_bus = {
     .base = {&mp_machine_soft_spi_type},
@@ -42,37 +50,81 @@ STATIC const mp_machine_soft_spi_obj_t spiflash_spi_bus = {
     .miso = &MICROPY_HW_SPIFLASH_MISO,
 };
 
-STATIC const mp_spiflash_t spiflash = {
-    .cs = &MICROPY_HW_SPIFLASH_CS,
-    .spi = (mp_obj_base_t*)&spiflash_spi_bus.base,
+STATIC const mp_spiflash_config_t spiflash_config = {
+    .bus_kind = MP_SPIFLASH_BUS_SPI,
+    .bus.u_spi.cs = &MICROPY_HW_SPIFLASH_CS,
+    .bus.u_spi.data = (void*)&spiflash_spi_bus,
+    .bus.u_spi.proto = &mp_machine_soft_spi_p,
 };
 
+#elif defined(MICROPY_HW_SPIFLASH_IO0)
+
+// External SPI flash uses quad SPI interface
+
+#include "drivers/bus/qspi.h"
+
+STATIC const mp_soft_qspi_obj_t soft_qspi_bus = {
+    .cs = &MICROPY_HW_SPIFLASH_CS,
+    .clk = &MICROPY_HW_SPIFLASH_SCK,
+    .io0 = &MICROPY_HW_SPIFLASH_IO0,
+    .io1 = &MICROPY_HW_SPIFLASH_IO1,
+    .io2 = &MICROPY_HW_SPIFLASH_IO2,
+    .io3 = &MICROPY_HW_SPIFLASH_IO3,
+};
+
+STATIC const mp_spiflash_config_t spiflash_config = {
+    .bus_kind = MP_SPIFLASH_BUS_QSPI,
+    .bus.u_qspi.data = (void*)&soft_qspi_bus,
+    .bus.u_qspi.proto = &mp_soft_qspi_proto,
+};
+
+#endif
+
+STATIC mp_spiflash_t spiflash;
+
 void spi_bdev_init(void) {
-    mp_spiflash_init((mp_spiflash_t*)&spiflash);
+    spiflash.config = &spiflash_config;
+    mp_spiflash_init(&spiflash);
+    flash_tick_counter_last_write = 0;
 }
 
-bool spi_bdev_readblock(uint8_t *dest, uint32_t block) {
-    // we must disable USB irqs to prevent MSC contention with SPI flash
-    uint32_t basepri = raise_irq_pri(IRQ_PRI_OTG_FS);
-
-    mp_spiflash_read((mp_spiflash_t*)&spiflash,
-        block * FLASH_BLOCK_SIZE, FLASH_BLOCK_SIZE, dest);
-
-    restore_irq_pri(basepri);
-
-    return true;
+void spi_bdev_irq_handler(void) {
+    if ((spiflash.flags & 1) && sys_tick_has_passed(flash_tick_counter_last_write, 1000)) {
+        mp_spiflash_flush(&spiflash);
+        led_state(PYB_LED_RED, 0); // indicate a clean cache with LED off
+    }
 }
 
-bool spi_bdev_writeblock(const uint8_t *src, uint32_t block) {
+void spi_bdev_flush(void) {
+    if (spiflash.flags & 1) {
+        // we must disable USB irqs to prevent MSC contention with SPI flash
+        uint32_t basepri = raise_irq_pri(IRQ_PRI_OTG_FS);
+        mp_spiflash_flush(&spiflash);
+        led_state(PYB_LED_RED, 0); // indicate a clean cache with LED off
+        restore_irq_pri(basepri);
+    }
+}
+
+int spi_bdev_readblocks(uint8_t *dest, uint32_t block_num, uint32_t num_blocks) {
     // we must disable USB irqs to prevent MSC contention with SPI flash
     uint32_t basepri = raise_irq_pri(IRQ_PRI_OTG_FS);
-
-    int ret = mp_spiflash_write((mp_spiflash_t*)&spiflash,
-        block * FLASH_BLOCK_SIZE, FLASH_BLOCK_SIZE, src);
-
+    mp_spiflash_read(&spiflash, block_num * FLASH_BLOCK_SIZE, num_blocks * FLASH_BLOCK_SIZE, dest);
     restore_irq_pri(basepri);
 
-    return ret == 0;
+    return 0;
+}
+
+int spi_bdev_writeblocks(const uint8_t *src, uint32_t block_num, uint32_t num_blocks) {
+    // we must disable USB irqs to prevent MSC contention with SPI flash
+    uint32_t basepri = raise_irq_pri(IRQ_PRI_OTG_FS);
+    int ret = mp_spiflash_write(&spiflash, block_num * FLASH_BLOCK_SIZE, num_blocks * FLASH_BLOCK_SIZE, src);
+    if (spiflash.flags & 1) {
+        led_state(PYB_LED_RED, 1); // indicate a dirty cache with LED on
+        flash_tick_counter_last_write = HAL_GetTick();
+    }
+    restore_irq_pri(basepri);
+
+    return ret;
 }
 
 #endif // defined(MICROPY_HW_SPIFLASH_SIZE_BITS)

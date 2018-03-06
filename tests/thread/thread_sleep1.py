@@ -27,5 +27,5 @@ for i in range(n_thread):
 
 # wait for threads to finish
 while n_finished < n_thread:
-    pass
+    sleep_ms(100)
 print('done', n_thread)
