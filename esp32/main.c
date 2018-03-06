@@ -49,6 +49,7 @@
 #include "mptask.h"
 #include "machpin.h"
 #include "pins.h"
+#include "mperror.h"
 
 
 TaskHandle_t mpTaskHandle;
@@ -111,6 +112,9 @@ void app_main(void) {
         nvs_flash_erase();
         nvs_flash_init();
     }
+
+    // Initialise heartbeat on Core0
+    mperror_pre_init();
 
     micropy_hw_flash_size = spi_flash_get_chip_size();
 
