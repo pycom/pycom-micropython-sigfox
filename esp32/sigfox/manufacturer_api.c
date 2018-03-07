@@ -684,6 +684,7 @@ sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame)
         /* Stop the timeout */
         MANUF_API_timer_stop();
         status = SFX_ERR_MANUF_WAIT_FRAME_TIMEOUT;
+        RSSI = 0;
     } else {
         /* Read the FIFO to get the payload */
         #if defined(FIPY)
@@ -791,6 +792,7 @@ sfx_error_t MANUF_API_wait_frame(sfx_u8 *frame)
         /* Stop the timeout */
         TIMER_RxTx_done_stop();
         MANUF_API_timer_stop();
+        RSSI = 0;
 
         status = SFX_ERR_MANUF_WAIT_FRAME_TIMEOUT;
     }
