@@ -105,6 +105,7 @@ te_phaseState Phase_State = E_PHASE_0;
 void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
     RADIO_reset_registers();
     if (rf_mode == SFX_RF_MODE_TX) {
+        printf("Radio in TX mode\n");
     #if defined(FIPY)
         SX127X8BitWrite( 0x01, 0x80 );      // Device in StandBy in LoRa mode
         SX127X8BitWrite( 0x1D, 0x00 );      // LoRa BW = 0
@@ -138,6 +139,7 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
     #endif
         SX127X8BitWrite(REG_LR_PADAC, 0x87);    // Up tp +20dBm on the PA_BOOST pin
     } else if (rf_mode == SFX_RF_MODE_RX) {
+        printf("Radio in RX mode\n");
         /* Write registers of the radio chip for RX mode */
         for(int i = 0; i < (sizeof(HighPerfModeRx)/sizeof(registerSetting_t)); i++) {
             SX127X8BitWrite(HighPerfModeRx[i].addr, HighPerfModeRx[i].data);
@@ -145,6 +147,10 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
 
         /* Set radio in RX */
         SX127X8BitWrite( REG_OPMODE, 0x0D);
+
+        for (int i = 0; i < 255; i++) {
+            printf("Reg: 0x%X, Value: 0x%X\n", i, SX1276Read(i));
+        }
     }
 }
 
@@ -153,7 +159,7 @@ void RADIO_init_chip(sfx_rf_mode_t rf_mode) {
  *  @brief 		This function puts the radio in Idle mode
  ******************************************************************************/
 void RADIO_close_chip(void) {
-    SX127X8BitWrite( 0x01, 0x00 );
+    // SX127X8BitWrite( 0x01, 0x00 );
 }
 
 /**************************************************************************//**
@@ -495,23 +501,66 @@ void RADIO_warm_up_crystal (unsigned long ul_Freq) {
 }
 
 void RADIO_reset_registers (void) {
+    // uint8_t regs[] = {0x1D, 0x09, 0x3D, 0x3E, 0x36, 0x4B, 0x44, 0x46, 0x4D, 0x0A, 0x70, 0x1E, 0x52, 0x5A};
+    printf("Resettting registers\n");
+    // // for (int i = 0; i < 255; i++) {
+    // //     printf("SX127X8BitWrite( 0x%X, 0x%X )\n", i, SX1276Read(i));
+    // // }
+    // for (int i = 0; i < sizeof(regs); i++) {
+    //     printf("SX127X8BitWrite( 0x%X, 0x%X )\n", regs[i], SX1276Read(regs[i]));
+    // }
 #if defined(FIPY)
-    SX127X8BitWrite( 0x3D, 0xA1 );
-    SX127X8BitWrite( 0x4B, 0x2E );
-    SX127X8BitWrite( 0x4D, 0x03 );
-    SX127X8BitWrite( 0x63, 0x00 );
-    SX127X8BitWrite( 0x3E, 0x00 );
-    SX127X8BitWrite( 0x4C, 0x00 );
-    SX127X8BitWrite( 0x1E, 0x70 );
-    SX127X8BitWrite( 0x0A, 0x09 );
-    SX127X8BitWrite( 0x1D, 0x08 );
-    SX127X8BitWrite( 0x0A, 0x19 );
-    SX127X8BitWrite( 0x5E, 0xD0 );
-    SX127X8BitWrite(REG_LR_PADAC, 0x84);
-    SX127X8BitWrite(REG_IRQFLAGS1, 0x80);
+    // SX127X8BitWrite( 0x3D, 0xA1 );
+    // SX127X8BitWrite( 0x4B, 0x2E );
+    // SX127X8BitWrite( 0x4D, 0x03 );
+    // SX127X8BitWrite( 0x63, 0x00 );
+    // SX127X8BitWrite( 0x3E, 0x00 );
+    // SX127X8BitWrite( 0x4C, 0x00 );
+    // SX127X8BitWrite( 0x1E, 0x70 );
+    // SX127X8BitWrite( 0x0A, 0x09 );
+    // SX127X8BitWrite( 0x1D, 0x08 );
+    // SX127X8BitWrite( 0x0A, 0x19 );
+    // SX127X8BitWrite( 0x5E, 0xD0 );
+    // SX127X8BitWrite(REG_LR_PADAC, 0x84);
+    // SX127X8BitWrite(REG_IRQFLAGS1, 0x80);
+#elif defined(LOPY4)
+    // SX127X8BitWrite( 0x3D, 0xA1 );
+    // SX127X8BitWrite( 0x36, 0x03 );
+    // SX127X8BitWrite( 0x44, 0x2D );
+    // SX127X8BitWrite( 0x46, 0x03 );
+    // SX127X8BitWrite( 0x52, 0x00 );
+    // SX127X8BitWrite( 0x3E, 0x00 );
+    // SX127X8BitWrite( 0x45, 0x00 );
+    // SX127X8BitWrite( 0x1E, 0x70 );
+    // SX127X8BitWrite( 0x0A, 0x09 );
+    // SX127X8BitWrite( 0x1D, 0x72 );
+    // SX127X8BitWrite( 0x70, 0xD0 );
+    // SX127X8BitWrite( 0x4B, 0x19 );      // Select TCXO vs Crystal
+
+        // [0x1D, 0x09, 0x3D, 0x3E, 0x36, 0x4B, 0x44, 0x46, 0x4D, 0x0A, 0x70, 0x1E, 0x52, 0x5A]
+
+        // SX127X8BitWrite( 0x01, 0x80 );      // Device in StandBy in LoRa mode
+        // SX127X8BitWrite( 0x01, 0x00 );      // Device in sleep mode
+
+        // SX127X8BitWrite( 0x1D, 0x00 );      // LoRa BW = 0
+        // SX127X8BitWrite( 0x09, 0xBF );      // PA Boost output
+
+        // SX127X8BitWrite( 0x3D, 0xA1 );      // sd_max_freq_deviation
+        // SX127X8BitWrite( 0x36, 0x01 );      // sd_max_freq_deviation
+
+        // SX127X8BitWrite( 0x4B, 0x19 );      // Select TCXO vs Crystal
+
+        // SX127X8BitWrite( 0x44, 0x7B );      // PA controlled manually
+        // SX127X8BitWrite( 0x46, 0x03 );
+        // SX127X8BitWrite( 0x4D, 0x03 );
+
+        // SX127X8BitWrite( 0x0A, 0x0F );      // PaRamp on 10us
+        // 0x52
+        // SX127X8BitWrite( 0x70, 0xD0 );      // PLL bandwidth 300 KHz
+        // SX127X8BitWrite( 0x5A, 0x87);    // Up tp +20dBm on the PA_BOOST pin
+#endif
     SX127X8BitWrite( 0x01, 0x80 );      // Device in StandBy in LoRa mode
     SX127X8BitWrite( 0x01, 0x00 );      // Device in sleep mode
-#endif
 }
 
 /**************************************************************************//**
