@@ -95,6 +95,30 @@ bool config_get_wifi_on_boot (void) {
     return pycom_config_block.wifi_config.wifi_on_boot;
 }
 
+bool config_set_wdt_on_boot (uint8_t wdt_on_boot) {
+    if (pycom_config_block.wdt_config.wdt_on_boot != wdt_on_boot) {
+        pycom_config_block.wdt_config.wdt_on_boot = wdt_on_boot;
+        return config_write();
+    }
+    return true;
+}
+
+bool config_get_wdt_on_boot (void) {
+    return pycom_config_block.wdt_config.wdt_on_boot;
+}
+
+bool config_set_wdt_on_boot_timeout (uint32_t wdt_on_boot_timeout) {
+    if (pycom_config_block.wdt_config.wdt_on_boot_timeout != wdt_on_boot_timeout) {
+        pycom_config_block.wdt_config.wdt_on_boot_timeout = wdt_on_boot_timeout;
+        return config_write();
+    }
+    return true;
+}
+
+bool config_get_wdt_on_boot_timeout (void) {
+    return pycom_config_block.wdt_config.wdt_on_boot_timeout;
+}
+
 bool config_set_heartbeat_on_boot (uint8_t hb_on_boot) {
     if (pycom_config_block.rgbled_config.heartbeat_on_boot != hb_on_boot) {
         pycom_config_block.rgbled_config.heartbeat_on_boot = hb_on_boot;
