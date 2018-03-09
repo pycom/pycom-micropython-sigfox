@@ -115,7 +115,7 @@ bool config_set_wdt_on_boot_timeout (uint32_t wdt_on_boot_timeout) {
     return true;
 }
 
-bool config_get_wdt_on_boot_timeout (void) {
+uint32_t config_get_wdt_on_boot_timeout (void) {
     return pycom_config_block.wdt_config.wdt_on_boot_timeout;
 }
 

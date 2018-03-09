@@ -34,6 +34,7 @@
 #include "readline.h"
 #include "esp32_mphal.h"
 #include "machuart.h"
+#include "machwdt.h"
 #include "machpin.h"
 #include "mpexception.h"
 #include "moduos.h"
@@ -212,6 +213,13 @@ soft_reset:
         safeboot = boot_info.safeboot;
     }
     if (!soft_reset) {
+        if (config_get_wdt_on_boot()) {
+            uint32_t timeout_ms = config_get_wdt_on_boot_timeout();
+            if (timeout_ms < 0xFFFFFFFF) {
+                printf("Starting the WDT on boot\n");
+                machine_wdt_start(timeout_ms);
+            }
+        }
         if (wifi_on_boot) {
             mptask_enable_wifi_ap();
         }

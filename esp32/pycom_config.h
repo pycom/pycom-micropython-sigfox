@@ -101,7 +101,7 @@ bool config_get_wdt_on_boot (void);
 
 bool config_set_wdt_on_boot_timeout (uint32_t wdt_on_boot_timeout);
 
-bool config_get_wdt_on_boot_timeout (void);
+uint32_t config_get_wdt_on_boot_timeout (void);
 
 bool config_set_heartbeat_on_boot(uint8_t wifi_on_boot);
 

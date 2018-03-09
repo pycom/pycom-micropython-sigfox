@@ -73,6 +73,7 @@
 #include "machwdt.h"
 #include "machcan.h"
 #include "machrmt.h"
+#include "pycom_config.h"
 #if defined (GPY) || defined (FIPY)
 #include "lteppp.h"
 #endif

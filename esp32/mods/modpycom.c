@@ -37,6 +37,8 @@ extern led_info_t led_info;
 
 #define NVS_NAMESPACE                           "PY_NVM"
 
+#define WDT_ON_BOOT_MIN_TIMEOUT_MS              (5000)
+
 static nvs_handle pycom_nvs_handle;
 
 void modpycom_init0(void) {
@@ -222,7 +224,11 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_wdt_on_boot_obj, 0, 1, mod_
 
 STATIC mp_obj_t mod_pycom_wdt_on_boot_timeout (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
-        config_set_wdt_on_boot_timeout (mp_obj_get_int(args[0]));
+        uint32_t timeout_ms = mp_obj_get_int(args[0]);
+        if (timeout_ms < WDT_ON_BOOT_MIN_TIMEOUT_MS) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "WDT on boot timeout must be >= 5000 ms"));
+        }
+        config_set_wdt_on_boot_timeout (timeout_ms);
     } else {
         return mp_obj_new_int_from_uint(config_get_wdt_on_boot_timeout());
     }
