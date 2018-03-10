@@ -30,7 +30,9 @@
 #include "py/runtime.h"
 #include "lib/oofatfs/ff.h"
 #include "lib/oofatfs/diskio.h"
+#include "extmod/vfs.h"
 #include "extmod/vfs_fat.h"
+#include "vfs_littlefs.h"
 
 #include "fatfs/src/drivers/sflash_diskio.h"
 #include "mods/pybflash.h"
@@ -98,7 +100,23 @@ const mp_obj_type_t pyb_flash_type = {
 void pyb_flash_init_vfs(fs_user_mount_t *vfs) {
     vfs->base.type = &mp_fat_vfs_type;
     vfs->flags |= FSUSER_NATIVE | FSUSER_HAVE_IOCTL;
-    vfs->fatfs.drv = vfs;
+    vfs->fs.fatfs.drv = vfs;
+    vfs->drv = vfs;
+    vfs->readblocks[0] = (mp_obj_t)&pyb_flash_readblocks_obj;
+    vfs->readblocks[1] = (mp_obj_t)&pyb_flash_obj;
+    vfs->readblocks[2] = (mp_obj_t)sflash_disk_read; // native version
+    vfs->writeblocks[0] = (mp_obj_t)&pyb_flash_writeblocks_obj;
+    vfs->writeblocks[1] = (mp_obj_t)&pyb_flash_obj;
+    vfs->writeblocks[2] = (mp_obj_t)sflash_disk_write; // native version
+    vfs->u.ioctl[0] = (mp_obj_t)&pyb_flash_ioctl_obj;
+    vfs->u.ioctl[1] = (mp_obj_t)&pyb_flash_obj;
+}
+
+void pyb_flash_init_vfs_littlefs(fs_user_mount_t *vfs) {
+    vfs->base.type = &mp_littlefs_vfs_type;
+    vfs->flags |= FSUSER_NATIVE | FSUSER_HAVE_IOCTL;
+    /*TODO: check whether these are needed */
+    vfs->drv = vfs;
     vfs->readblocks[0] = (mp_obj_t)&pyb_flash_readblocks_obj;
     vfs->readblocks[1] = (mp_obj_t)&pyb_flash_obj;
     vfs->readblocks[2] = (mp_obj_t)sflash_disk_read; // native version

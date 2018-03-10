@@ -28,6 +28,8 @@
 
 #include "py/lexer.h"
 #include "py/obj.h"
+#include "lib/oofatfs/ff.h"
+#include "esp32/littlefs/lfs.h"
 
 // return values of mp_vfs_lookup_path
 // ROOT is 0 so that the default current directory is the root directory
@@ -44,6 +46,28 @@
 #define BP_IOCTL_SYNC           (3)
 #define BP_IOCTL_SEC_COUNT      (4)
 #define BP_IOCTL_SEC_SIZE       (5)
+
+typedef struct _fs_user_mount_t {
+    mp_obj_base_t base;
+    uint16_t flags;
+    mp_obj_t readblocks[4];
+    mp_obj_t writeblocks[4];
+    // new protocol uses just ioctl, old uses sync (optional) and count
+    union {
+        mp_obj_t ioctl[4];
+        struct {
+            mp_obj_t sync[2];
+            mp_obj_t count[2];
+        } old;
+    } u;
+    //Block device underlying this filesystem
+    //TODO: FATFS has its own drv, needed by other file systems
+    void* drv;
+    union {
+        FATFS fatfs;
+        lfs_t littlefs;
+    } fs;
+} fs_user_mount_t;
 
 typedef struct _mp_vfs_mount_t {
     const char *str; // mount point with leading /

@@ -26,6 +26,7 @@
  DECLARE PUBLIC VARIABLES
  ******************************************************************************/
 extern fs_user_mount_t sflash_vfs_fat;
+extern fs_user_mount_t sflash_vfs_littlefs;
 
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS

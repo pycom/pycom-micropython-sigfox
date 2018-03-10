@@ -52,6 +52,7 @@
 #include "sflash_diskio.h"
 #include "extmod/vfs.h"
 #include "extmod/vfs_fat.h"
+#include "vfs_littlefs.h"
 #include "random.h"
 #include "mpexception.h"
 #include "pybsd.h"
@@ -128,14 +129,14 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_0(os_uname_obj, os_uname);
 STATIC mp_obj_t os_getfree() {
     DWORD nclst;
 
-    FRESULT res = f_getfree(&sflash_vfs_fat.fatfs, &nclst);
+    FRESULT res = f_getfree(&sflash_vfs_fat.fs.fatfs, &nclst);
     if (FR_OK != res) {
         mp_raise_OSError(fresult_to_errno_table[res]);
     }
 
-    uint32_t free_space = sflash_vfs_fat.fatfs.csize * nclst
+    uint32_t free_space = sflash_vfs_fat.fs.fatfs.csize * nclst
 #if _MAX_SS != _MIN_SS
-    * sflash_vfs_fat.fatfs.ssize;
+    * sflash_vfs_fat.fs.fatfs.ssize;
 #else
     * _MIN_SS;
 #endif
@@ -217,6 +218,7 @@ STATIC const mp_rom_map_elem_t os_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_mount),           MP_ROM_PTR(&mp_vfs_mount_obj) },
     { MP_ROM_QSTR(MP_QSTR_umount),          MP_ROM_PTR(&mp_vfs_umount_obj) },
     { MP_ROM_QSTR(MP_QSTR_VfsFat),          MP_ROM_PTR(&mp_fat_vfs_type) },
+    { MP_ROM_QSTR(MP_QSTR_VfsLittleFs),     MP_ROM_PTR(&mp_littlefs_vfs_type) },
     { MP_ROM_QSTR(MP_QSTR_dupterm),         MP_ROM_PTR(&os_dupterm_obj) },
 };
 

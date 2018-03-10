@@ -1,73 +1,49 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2013, 2014 Damien P. George
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
-
 #include "py/mpconfig.h"
-#if MICROPY_VFS && MICROPY_VFS_FAT
+//#if MICROPY_VFS && MICROPY_VFS_FAT
 
 #include <stdio.h>
 
 #include "py/runtime.h"
 #include "py/stream.h"
 #include "py/mperrno.h"
-#include "lib/oofatfs/ff.h"
-#include "extmod/vfs_fat.h"
+#include "extmod/vfs.h"
+#include "littlefs/lfs.h"
 
-#define mp_type_fileio fatfs_type_fileio
-#define mp_type_textio fatfs_type_textio
+#define mp_type_fileio littlefs_type_fileio
+#define mp_type_textio littlefs_type_textio
 
 extern const mp_obj_type_t mp_type_fileio;
 extern const mp_obj_type_t mp_type_textio;
 
 // this table converts from FRESULT to POSIX errno
-const byte fresult_to_errno_table[20] = {
-    [FR_OK] = 0,
-    [FR_DISK_ERR] = MP_EIO,
-    [FR_INT_ERR] = MP_EIO,
-    [FR_NOT_READY] = MP_EBUSY,
-    [FR_NO_FILE] = MP_ENOENT,
-    [FR_NO_PATH] = MP_ENOENT,
-    [FR_INVALID_NAME] = MP_EINVAL,
-    [FR_DENIED] = MP_EACCES,
-    [FR_EXIST] = MP_EEXIST,
-    [FR_INVALID_OBJECT] = MP_EINVAL,
-    [FR_WRITE_PROTECTED] = MP_EROFS,
-    [FR_INVALID_DRIVE] = MP_ENODEV,
-    [FR_NOT_ENABLED] = MP_ENODEV,
-    [FR_NO_FILESYSTEM] = MP_ENODEV,
-    [FR_MKFS_ABORTED] = MP_EIO,
-    [FR_TIMEOUT] = MP_EIO,
-    [FR_LOCKED] = MP_EIO,
-    [FR_NOT_ENOUGH_CORE] = MP_ENOMEM,
-    [FR_TOO_MANY_OPEN_FILES] = MP_EMFILE,
-    [FR_INVALID_PARAMETER] = MP_EINVAL,
-};
+//TODO: port this to littfs
+//const byte fresult_to_errno_table[20] = {
+//    [FR_OK] = 0,
+//    [FR_DISK_ERR] = MP_EIO,
+//    [FR_INT_ERR] = MP_EIO,
+//    [FR_NOT_READY] = MP_EBUSY,
+//    [FR_NO_FILE] = MP_ENOENT,
+//    [FR_NO_PATH] = MP_ENOENT,
+//    [FR_INVALID_NAME] = MP_EINVAL,
+//    [FR_DENIED] = MP_EACCES,
+//    [FR_EXIST] = MP_EEXIST,
+//    [FR_INVALID_OBJECT] = MP_EINVAL,
+//    [FR_WRITE_PROTECTED] = MP_EROFS,
+//    [FR_INVALID_DRIVE] = MP_ENODEV,
+//    [FR_NOT_ENABLED] = MP_ENODEV,
+//    [FR_NO_FILESYSTEM] = MP_ENODEV,
+//    [FR_MKFS_ABORTED] = MP_EIO,
+//    [FR_TIMEOUT] = MP_EIO,
+//    [FR_LOCKED] = MP_EIO,
+//    [FR_NOT_ENOUGH_CORE] = MP_ENOMEM,
+//    [FR_TOO_MANY_OPEN_FILES] = MP_EMFILE,
+//    [FR_INVALID_PARAMETER] = MP_EINVAL,
+//};
 
 typedef struct _pyb_file_obj_t {
     mp_obj_base_t base;
-    FIL fp;
+    lfs_file_t fp;
+    lfs_t* lfs;
 } pyb_file_obj_t;
 
 STATIC void file_obj_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
@@ -76,26 +52,28 @@ STATIC void file_obj_print(const mp_print_t *print, mp_obj_t self_in, mp_print_k
 }
 
 STATIC mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int *errcode) {
+
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    UINT sz_out;
-    FRESULT res = f_read(&self->fp, buf, size, &sz_out);
-    if (res != FR_OK) {
-        *errcode = fresult_to_errno_table[res];
+    lfs_ssize_t sz_out = lfs_file_read(self->lfs ,&self->fp, buf, size);
+    if (sz_out < 0) {
+        //TODO: return with POSIX error code
+        *errcode = sz_out;
         return MP_STREAM_ERROR;
     }
     return sz_out;
 }
 
 STATIC mp_uint_t file_obj_write(mp_obj_t self_in, const void *buf, mp_uint_t size, int *errcode) {
+
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    UINT sz_out;
-    FRESULT res = f_write(&self->fp, buf, size, &sz_out);
-    if (res != FR_OK) {
-        *errcode = fresult_to_errno_table[res];
+    lfs_ssize_t sz_out = lfs_file_write(self->lfs, &self->fp, buf, size);
+    if (sz_out < 0) {
+        //TODO: return with POSIX error code
+        *errcode = sz_out;
         return MP_STREAM_ERROR;
     }
     if (sz_out != size) {
-        // The FatFS documentation says that this means disk full.
+        //TODO: return with correct error code
         *errcode = MP_ENOSPC;
         return MP_STREAM_ERROR;
     }
@@ -104,12 +82,14 @@ STATIC mp_uint_t file_obj_write(mp_obj_t self_in, const void *buf, mp_uint_t siz
 
 
 STATIC mp_obj_t file_obj_close(mp_obj_t self_in) {
+
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    // if fs==NULL then the file is closed and in that case this method is a no-op
-    if (self->fp.obj.fs != NULL) {
-        FRESULT res = f_close(&self->fp);
-        if (res != FR_OK) {
-            mp_raise_OSError(fresult_to_errno_table[res]);
+    //TODO: check whether this condition is needed
+    if (self->lfs != NULL) {
+        int res = lfs_file_close(self->lfs, &self->fp);
+        if (res < 0) {
+            //TODO: return correct error
+            mp_raise_OSError(res);
         }
     }
     return mp_const_none;
@@ -123,32 +103,34 @@ STATIC mp_obj_t file_obj___exit__(size_t n_args, const mp_obj_t *args) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(file_obj___exit___obj, 4, 4, file_obj___exit__);
 
 STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg, int *errcode) {
+
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(o_in);
 
     if (request == MP_STREAM_SEEK) {
         struct mp_stream_seek_t *s = (struct mp_stream_seek_t*)(uintptr_t)arg;
 
         switch (s->whence) {
-            case 0: // SEEK_SET
-                f_lseek(&self->fp, s->offset);
+            case LFS_SEEK_SET: // SEEK_SET
+                lfs_file_seek(self->lfs, &self->fp, s->offset, s->whence);
                 break;
 
-            case 1: // SEEK_CUR
-                f_lseek(&self->fp, f_tell(&self->fp) + s->offset);
+            case LFS_SEEK_CUR: // SEEK_CUR
+                lfs_file_seek(self->lfs, &self->fp, s->offset, s->whence);
                 break;
 
-            case 2: // SEEK_END
-                f_lseek(&self->fp, f_size(&self->fp) + s->offset);
+            case LFS_SEEK_END: // SEEK_END
+                lfs_file_seek(self->lfs, &self->fp, s->offset, s->whence);
                 break;
         }
 
-        s->offset = f_tell(&self->fp);
+        s->offset = lfs_file_tell(self->lfs, &self->fp);
         return 0;
 
     } else if (request == MP_STREAM_FLUSH) {
-        FRESULT res = f_sync(&self->fp);
-        if (res != FR_OK) {
-            *errcode = fresult_to_errno_table[res];
+        int res = lfs_file_sync(self->lfs, &self->fp);
+        if (res < 0) {
+            //TODO: return with POSIX error code
+            *errcode = res;
             return MP_STREAM_ERROR;
         }
         return 0;
@@ -175,19 +157,19 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
     while (*mode_s) {
         switch (*mode_s++) {
             case 'r':
-                mode |= FA_READ;
+                mode |= LFS_O_RDONLY;
                 break;
             case 'w':
-                mode |= FA_WRITE | FA_CREATE_ALWAYS;
+                mode |= LFS_O_WRONLY | LFS_O_CREAT;
                 break;
             case 'x':
-                mode |= FA_WRITE | FA_CREATE_NEW;
+                mode |= LFS_O_WRONLY | LFS_O_TRUNC | LFS_O_CREAT;
                 break;
             case 'a':
-                mode |= FA_WRITE | FA_OPEN_ALWAYS;
+                mode |= LFS_O_WRONLY | LFS_O_APPEND | LFS_O_CREAT;
                 break;
             case '+':
-                mode |= FA_READ | FA_WRITE;
+                mode |= LFS_O_RDWR;
                 break;
             #if MICROPY_PY_IO_FILEIO
             case 'b':
@@ -205,17 +187,19 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
 
     const char *fname = mp_obj_str_get_str(args[0].u_obj);
     assert(vfs != NULL);
-    FRESULT res = f_open(&vfs->fs.fatfs, &o->fp, fname, mode);
-    if (res != FR_OK) {
+    int res = lfs_file_open(&vfs->fs.littlefs, &o->fp, fname, mode);
+    if (res < 0) {
         m_del_obj(pyb_file_obj_t, o);
-        mp_raise_OSError(fresult_to_errno_table[res]);
+        //TODO: return with POSIX error code
+        mp_raise_OSError(res);
     }
 
-    // for 'a' mode, we must begin at the end of the file
-    if ((mode & FA_OPEN_ALWAYS) != 0) {
-        f_lseek(&o->fp, f_size(&o->fp));
-    }
+    o->lfs = &vfs->fs.littlefs;
 
+//    // for 'a' mode, we must begin at the end of the file
+//    if ((mode & FA_OPEN_ALWAYS) != 0) {
+//        f_lseek(&o->fp, f_size(&o->fp));
+//    }
     return MP_OBJ_FROM_PTR(o);
 }
 
@@ -282,7 +266,7 @@ const mp_obj_type_t mp_type_textio = {
 };
 
 // Factory function for I/O stream classes
-STATIC mp_obj_t fatfs_builtin_open_self(mp_obj_t self_in, mp_obj_t path, mp_obj_t mode) {
+STATIC mp_obj_t littlefs_builtin_open_self(mp_obj_t self_in, mp_obj_t path, mp_obj_t mode) {
     // TODO: analyze buffering args and instantiate appropriate type
     fs_user_mount_t *self = MP_OBJ_TO_PTR(self_in);
     mp_arg_val_t arg_vals[FILE_OPEN_NUM_ARGS];
@@ -291,6 +275,6 @@ STATIC mp_obj_t fatfs_builtin_open_self(mp_obj_t self_in, mp_obj_t path, mp_obj_
     arg_vals[2].u_obj = mp_const_none;
     return file_open(self, &mp_type_textio, arg_vals);
 }
-MP_DEFINE_CONST_FUN_OBJ_3(fat_vfs_open_obj, fatfs_builtin_open_self);
+MP_DEFINE_CONST_FUN_OBJ_3(littlefs_vfs_open_obj, littlefs_builtin_open_self);
 
-#endif // MICROPY_VFS && MICROPY_VFS_FAT
+//#endif // MICROPY_VFS && MICROPY_VFS_FAT

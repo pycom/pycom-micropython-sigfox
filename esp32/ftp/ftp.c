@@ -209,7 +209,7 @@ STATIC FATFS *lookup_path(const TCHAR **path) {
         return NULL;
     }
     // here we assume that the mounted device is FATFS
-    return &((fs_user_mount_t*)MP_OBJ_TO_PTR(fs->obj))->fatfs;
+    return &((fs_user_mount_t*)MP_OBJ_TO_PTR(fs->obj))->fs.fatfs;
 }
 
 STATIC FRESULT f_open_helper(FIL *fp, const TCHAR *path, BYTE mode) {
