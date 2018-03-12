@@ -12,8 +12,6 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 
-#include "esp_spi_flash.h"
-
 
 static uint8_t *sflash_block_cache;
 static bool sflash_cache_is_dirty;
@@ -35,7 +33,8 @@ static bool sflash_write (void) {
 
 DRESULT sflash_disk_init (void) {
     if (!sflash_init_done) {
-        if (spi_flash_get_chip_size() > (4 * 1024 * 1024)) {
+        // this is how we diferentiate flash sizes in Pycom modules
+        if (esp_get_revision() > 0) {
             sflash_start_address = SFLASH_START_ADDR_8MB;
             sflash_fs_sector_count = SFLASH_FS_SECTOR_COUNT_8MB;
         } else {
