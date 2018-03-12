@@ -190,7 +190,7 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     wlan_deinit(NULL);
 #if defined(FIPY) || defined(GPY)
     while (!lteppp_task_ready()) {
-        vTaskDelay(2 / portTICK_RATE_MS);
+        mp_hal_delay_ms(2);
     }
     lteppp_deinit();
 #endif

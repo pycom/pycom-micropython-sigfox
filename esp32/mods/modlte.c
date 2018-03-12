@@ -155,9 +155,9 @@ static bool lte_push_at_command (char *cmd_str, uint32_t timeout) {
 }
 
 static void lte_pause_ppp(void) {
-    vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
+    mp_hal_delay_ms(LTE_PPP_BACK_OFF_TIME_MS);
     if (!lte_push_at_command("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
-        vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
+        mp_hal_delay_ms(LTE_PPP_BACK_OFF_TIME_MS);
         if (!lte_push_at_command("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
         }
@@ -173,7 +173,7 @@ static bool lte_check_attached(void) {
         inppp = true;
         lte_pause_ppp();
         while (true) {
-            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
             if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
                 break;
             }
@@ -415,7 +415,7 @@ STATIC mp_obj_t lte_send_raw_at(mp_obj_t self_in, mp_obj_t cmd_o) {
         inppp = true;
         lte_pause_ppp();
         while (true) {
-            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
             if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
                 break;
             }
@@ -439,7 +439,7 @@ STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     if (lteppp_get_state() == E_LTE_PPP) {
         lte_pause_ppp();
         while (true) {
-            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
             if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
                 break;
             }
@@ -447,8 +447,8 @@ STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     }
     lte_push_at_command("AT^RESET", LTE_RX_TIMEOUT_MIN_MS);
     lteppp_set_state(E_LTE_IDLE);
-    vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
-    lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS);
+    mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
+    lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true);
     if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }

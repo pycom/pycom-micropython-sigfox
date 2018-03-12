@@ -323,7 +323,7 @@ static sfx_error_t modsigfox_sfx_send(sigfox_cmd_rx_data_t *cmd_rx_data, sigfox_
                 if (tx_timestamp > 0) {
                     // We must wait in order to respect FCC regulations
                     if (tx_delay >= 0 && tx_delay < SFX_RESET_FCC_MIN_DELAY_S) {
-                        vTaskDelay(((SFX_RESET_FCC_MIN_DELAY_S - tx_delay) * 1000) / portTICK_RATE_MS);
+                        mp_hal_delay_ms((SFX_RESET_FCC_MIN_DELAY_S - tx_delay) * 1000);
                     }
                 }
             }

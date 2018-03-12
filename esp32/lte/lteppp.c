@@ -90,7 +90,7 @@ void lteppp_init(void) {
 
 void lteppp_start (void) {
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
-    vTaskDelay(5 / portTICK_RATE_MS);
+    mp_hal_delay_ms(5);
 }
 
 void lteppp_set_state(lte_state_t state) {
@@ -114,12 +114,18 @@ void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp)
     xQueueReceive(xRxQueue, rsp, (TickType_t)portMAX_DELAY);
 }
 
-bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout) {
+bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_mp) {
     uint32_t rx_len = 0;
 
     // wait until characters start arriving
     do {
-        vTaskDelay(1 / portTICK_RATE_MS);
+        // being called from the MicroPython interpreter
+        if (from_mp) {
+            mp_hal_delay_ms(1);
+        }
+        else {
+            vTaskDelay(1 / portTICK_RATE_MS);
+        }
         uart_get_buffered_data_len(LTE_UART_ID, &rx_len);
         if (timeout > 0) {
             timeout--;
@@ -319,7 +325,7 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
     uart_wait_tx_done(LTE_UART_ID, LTE_TRX_WAIT_MS(cmd_len) / portTICK_RATE_MS);
     vTaskDelay(2 / portTICK_RATE_MS);
 
-    return lteppp_wait_at_rsp(expected_rsp, timeout);
+    return lteppp_wait_at_rsp(expected_rsp, timeout, false);
 }
 
 static bool lteppp_send_at_cmd(const char *cmd, uint32_t timeout) {

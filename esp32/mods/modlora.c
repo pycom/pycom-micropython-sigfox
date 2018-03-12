@@ -682,7 +682,7 @@ static void TASK_LoRa (void *pvParameters) {
     lora_obj.pwr_mode = E_LORA_MODE_ALWAYS_ON;
 
     for ( ; ; ) {
-        vTaskDelay (1 / portTICK_PERIOD_MS);
+        vTaskDelay (2 / portTICK_PERIOD_MS);
 
         switch (lora_obj.state) {
         case E_LORA_STATE_NOINIT:
