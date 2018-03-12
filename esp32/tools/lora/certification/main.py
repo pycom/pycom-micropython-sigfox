@@ -46,7 +46,7 @@ while True:
 
     if activation_in >= 0:
         try:
-            activation = regions[activation_in]
+            activation = activations[activation_in]
             break
         except Exception:
             pass
