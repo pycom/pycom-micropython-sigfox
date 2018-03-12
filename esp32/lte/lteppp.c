@@ -26,6 +26,7 @@
 #include "lteppp.h"
 #include "pins.h"
 #include "mpsleep.h"
+#include "esp32_mphal.h"
 
 /******************************************************************************
  DEFINE CONSTANTS
