@@ -103,7 +103,7 @@ By default the firmware is built for the WIPY2:
     $ make TARGET=boot
     $ make TARGET=app
     $ make flash
-    
+
 You can change the board type by using the BOARD variable:
 
     $ cd esp32
@@ -145,3 +145,70 @@ Make sure that your board is placed into programming mode, otherwise flashing wi
 PyTrack and PySense boards will automatically switch into programming mode<br>
 (currently supported on MacOS and Linux only!)<br><br>
 Expansion Board 2.0 users, please connect ``P2`` to ``GND`` and then reset the board.
+
+## Steps for using Secure Boot and Flash Encryption
+
+### Summary
+
+1. Obtain keys
+2. Flash keys in efuses
+3. Compile bootloader and application with `make SECURE=on`
+4. First flash: all not-encrypted binaries
+5. Re-flash: bootloader-digest at address 0x0 and encrypted; all the others (partitions and application) encrypted, too.
+
+### Prerequisites
+
+    $ export $IDF_PATH=<pycom-esp-idf_PATH>
+    $ cd esp32
+
+Hold valid keys for Flash Encryption and Secure Boot; they can be generated with the following commands:
+
+    python $IDF_PATH/components/esptool_py/esptool/espsecure.py generate_flash_encryption_key flash_encryption_key.bin
+    python $IDF_PATH/components/esptool_py/esptool/espsecure.py generate_signing_key secure_boot_signing_key.pem
+
+Flash keys into the efuses (write and read protected):
+
+    python $IDF_PATH/components/esptool_py/esptool/espefuse.py --port /dev/ttyUSB0 burn_key flash_encryption flash_encryption_key.bin
+    python $IDF_PATH/components/esptool_py/esptool/espefuse.py --port /dev/ttyUSB0 burn_key secure_boot secure-bootloader-key.bin
+
+### Makefile options:
+
+    make BOARD=GPY SECURE=on SECURE_KEY=secure_boot_signing_key.pem ENCRYPT=on ENCRYPT_KEY=flash_encryption_key.bin TARGET=[boot|app]
+
+- `SECURE=on` is the main flag; it's not optional
+- if `SECURE=on` by default:
+    - encryption is enabled, `ENCRYPT=on`
+        - optionally, `ENCRYPT=off` can be made to not enable Flash Encryption
+    - secure_boot_signing_key.pem is the secure boot key, located next to Makefile
+    - flash_encryption_key.bin is the flash encryption key, located next to Makefile
+
+For flashing the bootloader digest and the encrypted versions of all binaries:
+
+    make BOARD=GPY SECURE=on flash
+
+### First Flash
+
+Flash bootloader + partition + application NOT Encrypted (as they will be encrypted by the ESP32 automatically).
+
+    make BOARD=GPY SECURE=on TARGET=boot
+    make BOARD=GPY SECURE=on TARGET=app
+
+*Hint: 'make BOARD=GPY flash' can be used (without SECURE=on), after 'make BOARD=GPY TARGET=app SECURE=on'*
+
+**_!!!!!! First boot, can take up to 1 minute, to auto-encrypt whole Flash ( DO NOT UNPLUG THE BOARD) !!!!!!_**
+
+Manual flash command:
+
+    python $IDF_PATH/components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 build/GPY/release/bootloader/bootloader.bin 0x8000 build/GPY/release/lib/partitions.bin 0x10000 build/GPY/release/gpy.bin
+
+### To reflash the bootloader after initial flash
+
+For reflashing the bootloader-reflash-digest.bin has to be written at address 0x0, instead of the bootloader.bin (at address 0x1000).
+
+*Additionally, all the binaries have to be pre-encrypted*
+
+    make BOARD=GPY SECURE=on flash
+
+Manual flash command:
+
+    python $IDF_PATH//components/esptool_py/esptool/esptool.py --chip esp32 --port /dev/ttyUSB0 --baud 921600 --before no_reset --after no_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size detect 0x0 build/GPY/release/bootloader/bootloader-reflash-digest.bin_enc 0x8000 build/GPY/release/lib/partitions.bin_enc 0x10000 build/GPY/release/gpy.bin_enc_0x10000
