@@ -33,8 +33,10 @@ ifeq ($(SECURE), on)
 	# Generation is done using command:
 	# espsecure.py generate_signing_key secure_boot_signing_key.pem
 	SECURE_KEY ?= secure_boot_signing_key.pem
-
-    ENCRYPT ?= off
+	
+	# by default, if SECURE=on then Flash Encryption is enabled
+    ENCRYPT ?= on
+    
     ifeq ($(ENCRYPT), on)
     	# filename of the flash encryption key, 2 things:
     	# 1. signing partitions.bin and board.bin
