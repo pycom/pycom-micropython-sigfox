@@ -252,6 +252,7 @@ static uint8_t MaxDCycle = 0;
 static uint16_t AggregatedDCycle;
 static TimerTime_t AggregatedLastTxDoneTime;
 static TimerTime_t AggregatedTimeOff;
+static TimerEvent_t RadioTxDoneClassCTimer;
 
 /*!
  * Enables/Disables duty cycle management (Test only)
@@ -596,8 +597,7 @@ static IRAM_ATTR void OnRadioTxDone( void )
     }
     else
     {
-        // TODO: Here setup a 1ms timer to call this function below out of interrupt context instead
-        OnRxWindow2TimerEvent( );
+        TimerStart(&RadioTxDoneClassCTimer);
     }
 
     // Setup timers
@@ -2397,6 +2397,8 @@ LoRaMacStatus_t LoRaMacInitialization( LoRaMacPrimitives_t *primitives, LoRaMacC
     TimerInit( &RxWindowTimer1, OnRxWindow1TimerEvent );
     TimerInit( &RxWindowTimer2, OnRxWindow2TimerEvent );
     TimerInit( &AckTimeoutTimer, OnAckTimeoutTimerEvent );
+    TimerInit( &RadioTxDoneClassCTimer, OnRxWindow2TimerEvent );
+    TimerSetValue( &RadioTxDoneClassCTimer, 1 );
 
     // Store the current initialization time
     LoRaMacInitializationTime = TimerGetCurrentTime( );
