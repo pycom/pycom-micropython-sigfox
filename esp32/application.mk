@@ -458,7 +458,8 @@ CFLAGS += -DCONFIG_SECURE_BOOT_ENABLED=1
 ORIG_SECURE_KEY := $(call resolvepath,$(call dequote,$(SECURE_KEY)),$(PROJECT_PATH))
 
 $(ORIG_SECURE_KEY): 
-	$(ECHO) "Secure boot signing key '$@' missing."
+	$(ECHO) "Secure boot signing key '$@' missing. It can be generated using: "
+	$(ECHO) "$(ESPSECUREPY) generate_signing_key $(SECURE_KEY)"
 	exit 1
 
 # public key name; the name is important 
@@ -489,7 +490,7 @@ ifeq ($(ENCRYPT), on)
 ORIG_ENCRYPT_KEY := $(call resolvepath,$(call dequote,$(ENCRYPT_KEY)),$(PROJECT_PATH))
 $(ORIG_ENCRYPT_KEY): 
 	$(ECHO) "WARNING: Encryption key '$@' missing. It can be created using: "
-	$(ECHO) "espsecure.py generate_flash_encryption_key flash_encryption_key.bin"
+	$(ECHO) "$(ESPSECUREPY) generate_flash_encryption_key $(ENCRYPT_KEY)"
 	exit 1
 else #ifeq ($(ENCRYPT), on)
 ORIG_ENCRYPT_KEY = 
@@ -533,25 +534,33 @@ ifeq ($(SECURE), on)
 	$(Q) $(ESPSECUREPY) digest_secure_bootloader -k $(SECURE_BOOTLOADER_KEY)  -o $(BOOTLOADER_REFLASH_DIGEST) $@
 ifeq ($(ENCRYPT), on)
 	$(ECHO) "Encrypt Bootloader digest (for offset 0x0)"
-	$(ECHO) "$(ENCRYPT_BINARY) --address 0x0 -o $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOTLOADER_REFLASH_DIGEST)"
 	$(Q) $(ENCRYPT_BINARY) --address 0x0 -o $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOTLOADER_REFLASH_DIGEST)
-	$(ECHO) $(SEPARATOR)
-	$(ECHO) "WARNING: Please don't forget to write the encryption key into ESP32 efuse, using:"
-	$(ECHO) "$(ESPEFUSE) burn_key flash_encryption $(ORIG_ENCRYPT_KEY)"
 endif #ifeq ($(ENCRYPT), on)
 	$(ECHO) $(SEPARATOR)
-	$(ECHO) "Secure boot enabled. Bootloader built and secure digest generated. First time flash command is:"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Prerequisites: hold valid keys for Flash Encryption and Secure Boot"
+	$(ECHO) "$(ESPSECUREPY) generate_flash_encryption_key $(ENCRYPT_KEY)"
+	$(ECHO) "$(ESPSECUREPY) generate_signing_key $(SECURE_KEY)"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Step1: write encryption and secure boot EFUSEs"
+	$(ECHO) "$(ESPEFUSE) burn_key flash_encryption $(ENCRYPT_KEY)"
 	$(ECHO) "$(ESPEFUSE) burn_key secure_boot $(SECURE_BOOTLOADER_KEY)"
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x1000 $(BOOT_BIN)"
 	$(ECHO) $(SEPARATOR)
-	$(ECHO) "To reflash the bootloader after initial flash:"
+	$(ECHO) "* First Flash: write bootloader + partition + app not encrypted"
+	$(ECHO) "Hint: 'make BOARD=$(BOARD) flash' can be used (without SECURE=on), after 'make BOARD=$(BOARD) TARGET=app SECURE=on'"
+	$(ECHO) "!!!!!! ***** First boot, can take up to 1 minute, to auto-encrypt whole Flash ***** !!!!!! "
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Re-Flash: write bootloader_digest + partition + app all encrypted"
+	$(ECHO) "Hint: 'make BOARD=$(BOARD) SECURE=on flash' can be used"
 ifeq ($(ENCRYPT), on)
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC)"
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
 else
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST)"
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)"
 endif #ifeq ($(ENCRYPT), on)
 	$(ECHO) $(SEPARATOR)
-	$(ECHO) "* After first boot, only re-flashes of this kind (with same key) will be accepted."
 	$(ECHO) $(SEPARATOR)
 endif #ifeq ($(SECURE), on)
 else
@@ -604,11 +613,33 @@ ifeq ($(ENCRYPT), on)
 	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2) (0x1A0000 offset)"
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o $(APP_BIN_ENCRYPT) $@
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x1A0000) -o $(APP_BIN_ENCRYPT_2) $@
-	$(ECHO) $(SEPARATOR)
-	$(ECHO) "WARNING: Please don't forget to write the encryption key into ESP32 efuse, using:"
-	$(ECHO) "$(ESPEFUSE) burn_key flash_encryption $(ORIG_ENCRYPT_KEY)"
-	$(ECHO) $(SEPARATOR)
 endif # ifeq ($(ENCRYPT), on)
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Prerequisites: hold valid keys for Flash Encryption and Secure Boot"
+	$(ECHO) "$(ESPSECUREPY) generate_flash_encryption_key $(ENCRYPT_KEY)"
+	$(ECHO) "$(ESPSECUREPY) generate_signing_key $(SECURE_KEY)"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Step1: write encryption and secure boot EFUSEs"
+	$(ECHO) "$(ESPEFUSE) burn_key flash_encryption $(ENCRYPT_KEY)"
+	$(ECHO) "$(ESPEFUSE) burn_key secure_boot $(SECURE_BOOTLOADER_KEY)"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* First Flash: write bootloader + partition + app not encrypted"
+	$(ECHO) "Hint: 'make BOARD=$(BOARD) flash' can be used (without SECURE=on), after 'make BOARD=$(BOARD) TARGET=app SECURE=on'"
+	$(ECHO) "!!!!!! ***** First boot, can take up to 1 minute, to auto-encrypt whole Flash ***** !!!!!! "
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Re-Flash: write bootloader_digest + partition + app all encrypted"
+	$(ECHO) "Hint: 'make BOARD=$(BOARD) SECURE=on flash' can be used"
+ifeq ($(ENCRYPT), on)
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+else
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)"
+endif #ifeq ($(ENCRYPT), on)
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) $(SEPARATOR)
 endif # feq ($(SECURE), on)
 	
 $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
@@ -622,14 +653,14 @@ flash: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "Flashing project"
 ifeq ($(SECURE), on)
 	$(ECHO) $(SEPARATOR)
-	$(ECHO) "(Secure boot enabled, so bootloader not flashed automatically. See 'make TARGET=boot SECURE=on' output)"
+	$(ECHO) "(Secure boot enabled, so bootloader + digest is flashed)"
 	$(ECHO) $(SEPARATOR)
 ifeq ($(ENCRYPT), on)
-	$(ECHO) "$(Q) $(ESPTOOLPY_WRITE_FLASH) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
-	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)
+	$(ECHO) "$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)
 else # ($(ENCRYPT), on)
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)"
-	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)"
+	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)
 endif # ifeq ($(ENCRYPT), on)
 else # ifeq ($(SECURE), on)
 	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)"
@@ -655,8 +686,6 @@ ifeq ($(SECURE), on)
 ifeq ($(ENCRYPT), on)
 	$(ECHO) "Encrypt paritions table image into $(PART_BIN_ENCRYPT) (by default 0x8000 offset)"
 	$(Q) $(ENCRYPT_BINARY) --address 0x8000 -o $(PART_BIN_ENCRYPT) $@
-	$(ECHO) "WARNING: Please don't forget to write the encryption key into ESP32 efuse, using:"
-	$(ECHO) "$(ESPEFUSE) burn_key flash_encryption $(ORIG_ENCRYPT_KEY)"
 endif # ifeq ($(ENCRYPT), on)
 endif # ifeq ($(SECURE), on)
 

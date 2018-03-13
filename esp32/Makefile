@@ -36,6 +36,7 @@ ifeq ($(SECURE), on)
 	
 	# by default, if SECURE=on then Flash Encryption is enabled
     ENCRYPT ?= on
+    	$(info Flash Encryption is enabled by default; due to SECURE=on.)
     
     ifeq ($(ENCRYPT), on)
     	# filename of the flash encryption key, 2 things:
@@ -47,6 +48,8 @@ ifeq ($(SECURE), on)
 	# espefuse.py --port PORT burn_key flash_encryption flash_encryption_key.bin
     	ENCRYPT_KEY ?= flash_encryption_key.bin
     endif # ifeq ($(ENCRYPT), on)
+else
+$(info Use make SECURE=on [optionally SECURE_KEY ?= secure_boot_signing_key.pem] to enable Secure Boot and Flash Encryption mechanisms.)
 endif # ifeq ($(SECURE), on)
 
 # Default path to the project: we assume the Makefile including this file
