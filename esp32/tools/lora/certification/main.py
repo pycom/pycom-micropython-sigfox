@@ -25,7 +25,7 @@ while True:
     try:
         region_in = int(input()) - 1
     except Exception:
-        region_in = 0
+        region_in = -1
 
     if region_in >= 0:
         try:
@@ -42,7 +42,7 @@ while True:
     try:
         activation_in = int(input()) - 1
     except Exception:
-        activation_in = 0
+        activation_in = -1
 
     if activation_in >= 0:
         try:
