@@ -24,6 +24,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 
 #include "board.h"
 #include "lora/mac/LoRaMac.h"
+#include "esp_attr.h"
 
 #include "utilities.h"
 
@@ -330,7 +331,7 @@ PhyParam_t RegionEU868GetPhyParam( GetPhyParams_t* getPhy )
     return phyParam;
 }
 
-void RegionEU868SetBandTxDone( SetBandTxDoneParams_t* txDone )
+IRAM_ATTR void RegionEU868SetBandTxDone( SetBandTxDoneParams_t* txDone )
 {
     RegionCommonSetBandTxDone( txDone->Joined, &Bands[Channels[txDone->Channel].Band], txDone->LastTxDoneTime );
 }

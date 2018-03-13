@@ -583,7 +583,7 @@ LoRaMacStatus_t SetTxContinuousWave1( uint16_t timeout, uint32_t frequency, uint
  */
 static void ResetMacParameters( void );
 
-static void OnRadioTxDone( void )
+static IRAM_ATTR void OnRadioTxDone( void )
 {
     GetPhyParams_t getPhy;
     PhyParam_t phyParam;
@@ -596,6 +596,7 @@ static void OnRadioTxDone( void )
     }
     else
     {
+        // TODO: Here setup a 1ms timer to call this function below out of interrupt context instead
         OnRxWindow2TimerEvent( );
     }
 

@@ -27,6 +27,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #include "utilities.h"
 #include "lora/mac/LoRaMac.h"
 #include "RegionCommon.h"
+#include "esp_attr.h"
 
 
 
@@ -148,7 +149,7 @@ void RegionCommonChanMaskCopy( uint16_t* channelsMaskDest, uint16_t* channelsMas
     }
 }
 
-void RegionCommonSetBandTxDone( bool joined, Band_t* band, TimerTime_t lastTxDone )
+IRAM_ATTR void RegionCommonSetBandTxDone( bool joined, Band_t* band, TimerTime_t lastTxDone )
 {
     if( joined == true )
     {

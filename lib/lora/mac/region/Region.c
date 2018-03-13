@@ -23,7 +23,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 
 #include "lora/system/timer.h"
 #include "lora/mac/LoRaMac.h"
-
+#include "esp_attr.h"
 
 
 // Regional includes
@@ -635,7 +635,7 @@ PhyParam_t RegionGetPhyParam( LoRaMacRegion_t region, GetPhyParams_t* getPhy )
     }
 }
 
-void RegionSetBandTxDone( LoRaMacRegion_t region, SetBandTxDoneParams_t* txDone )
+IRAM_ATTR void RegionSetBandTxDone( LoRaMacRegion_t region, SetBandTxDoneParams_t* txDone )
 {
     switch( region )
     {
