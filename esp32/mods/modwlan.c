@@ -1446,23 +1446,29 @@ static int wlan_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, 
 
 static int wlan_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno) {
     int ret;
+    uint32_t option = fcntl(s->sock_base.u.sd, F_GETFL, 0);
+
     if (timeout_ms <= 0) {
-        uint32_t option = fcntl(s->sock_base.u.sd, F_GETFL, 0);
         if (timeout_ms == 0) {
             // set non-blocking mode
             option |= O_NONBLOCK;
         } else {
             // set blocking mode
             option &= ~O_NONBLOCK;
+            timeout_ms = UINT32_MAX;
         }
-        ret = fcntl(s->sock_base.u.sd, F_SETFL, option);
     } else {
-        // set timeout
-        struct timeval tv;
-        tv.tv_sec = timeout_ms / 1000;              // seconds
-        tv.tv_usec = (timeout_ms % 1000) * 1000;    // microseconds
-        ret = setsockopt(s->sock_base.u.sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+        // set blocking mode
+        option &= ~O_NONBLOCK;
     }
+
+    // set the timeout
+    struct timeval tv;
+    tv.tv_sec = timeout_ms / 1000;              // seconds
+    tv.tv_usec = (timeout_ms % 1000) * 1000;    // microseconds
+    ret = setsockopt(s->sock_base.u.sd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+    ret |= setsockopt(s->sock_base.u.sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    ret |= fcntl(s->sock_base.u.sd, F_SETFL, option);
 
     if (ret != 0) {
         *_errno = errno;
