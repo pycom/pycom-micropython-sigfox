@@ -151,7 +151,8 @@ static bool lte_check_attached(void) {
     }
 
     lte_push_at_command("AT+CEREG?", LTE_RX_TIMEOUT_MIN_MS);
-    if ((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) && (strlen(pos) >= 31) && pos[30] == '7') {
+    if (((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,")))
+        && (strlen(pos) >= 31) && pos[30] == '7') {
         lteppp_set_state(E_LTE_ATTACHED);
         attached = true;
     } else {
@@ -196,16 +197,37 @@ static bool lte_check_sim_present(void) {
 // Micro Python bindings; LTE class
 
 static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
+    char at_cmd[LTE_AT_CMD_SIZE_MAX - 4];
+
     // wake up the radio
     lteppp_start();
     lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
     lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
-    // if the radio is OFF, at least enable access to the SIM
+
     lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
     if (strstr(modlte_rsp.data, "+CFUN: 0")) {
+        const char *carrier = "standard";
+        if (args[0].u_obj != mp_const_none) {
+            carrier = mp_obj_str_get_str(args[0].u_obj);
+            if ((!strstr(carrier, "standard")) && (!strstr(carrier, "verizon")) && (!strstr(carrier, "at&t"))) {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid carrier %s", carrier));
+            }
+        }
+
+        // configure the carrier
+        lte_push_at_command("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS);
+        if (!strstr(modlte_rsp.data, carrier)) {
+            sprintf(at_cmd, "AT+SQNCTM=\"%s\"", carrier);
+            lte_push_at_command(at_cmd, LTE_RX_TIMEOUT_MAX_MS);
+            lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
+            lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
+        }
+
+        // at least enable access to the SIM
         lte_push_at_command("AT+CFUN=4", LTE_RX_TIMEOUT_MAX_MS);
         lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
     }
+
     lteppp_set_state(E_LTE_IDLE);
     mod_network_register_nic(&lte_obj);
     lte_obj.init = true;
@@ -213,8 +235,8 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
 }
 
 static const mp_arg_t lte_init_args[] = {
-    { MP_QSTR_id,                             MP_ARG_INT, {.u_int = 0} },
-    { MP_QSTR_cid,          MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 1} }
+    { MP_QSTR_id,                                      MP_ARG_INT, {.u_int = 0} },
+    { MP_QSTR_carrier,               MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} }
 };
 
 static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {

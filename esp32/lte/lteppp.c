@@ -247,12 +247,6 @@ static void TASK_LTE (void *pvParameters) {
     }
 
     lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
-    lteppp_send_at_cmd("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS);
-    if (!strstr(lteppp_trx_buffer, "standard")) {
-        lteppp_send_at_cmd("AT+SQNCTM=\"standard\"", LTE_RX_TIMEOUT_MAX_MS);
-        lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
-        lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
-    }
 
     // at least enable access to the SIM
     lteppp_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
