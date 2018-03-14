@@ -33,21 +33,12 @@ ifeq ($(SECURE), on)
 	# Generation is done using command:
 	# espsecure.py generate_signing_key secure_boot_signing_key.pem
 	SECURE_KEY ?= secure_boot_signing_key.pem
-	
-	# by default, if SECURE=on then Flash Encryption is enabled
-    ENCRYPT ?= on
-    	$(info Flash Encryption is enabled by default; due to SECURE=on.)
-    
-    ifeq ($(ENCRYPT), on)
-    	# filename of the flash encryption key, 2 things:
-    	# 1. signing partitions.bin and board.bin
-    	# 2. extracting public key, which is embedded into bootloader.bin
-    	# Generation is done using command:
+
+    # Flash Encryption key is generated using command:
 	# espsecure.py generate_flash_encryption_key flash_encryption_key.bin
 	# Writing it is done using:
 	# espefuse.py --port PORT burn_key flash_encryption flash_encryption_key.bin
     	ENCRYPT_KEY ?= flash_encryption_key.bin
-    endif # ifeq ($(ENCRYPT), on)
 else
 $(info Use make SECURE=on [optionally SECURE_KEY ?= secure_boot_signing_key.pem] to enable Secure Boot and Flash Encryption mechanisms.)
 endif # ifeq ($(SECURE), on)

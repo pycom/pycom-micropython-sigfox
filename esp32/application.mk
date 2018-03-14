@@ -444,11 +444,9 @@ endif
 
 ifeq ($(SECURE), on)
 
-ifeq ($(ENCRYPT), on)
 # add #define CONFIG_FLASH_ENCRYPTION_ENABLE 1 used for Flash Encryption
 # it can also be added permanently in sdkconfig.h
 CFLAGS += -DCONFIG_FLASH_ENCRYPTION_ENABLED=1
-endif #ifeq ($(ENCRYPT), on)
 
 # add #define CONFIG_SECURE_BOOT_ENABLED 1 used for Secure Boot
 # it can also be added permanently in sdkconfig.h
@@ -480,21 +478,17 @@ $(SECURE_BOOTLOADER_KEY): $(ORIG_SECURE_KEY)
 BOOTLOADER_REFLASH_DIGEST = 	$(BUILD)/bootloader/bootloader-reflash-digest.bin
 BOOTLOADER_REFLASH_DIGEST_ENC = $(BOOTLOADER_REFLASH_DIGEST)_enc
 
-else #ifeq ($(SECURE), on)
-SECURE_BOOT_VERIFICATION_KEY = 
-SECURE_BOOTLOADER_KEY = 
-endif #ifeq ($(SECURE), on)
-
-ifeq ($(ENCRYPT), on)
-# find absolute path of the configured Encryption key
 ORIG_ENCRYPT_KEY := $(call resolvepath,$(call dequote,$(ENCRYPT_KEY)),$(PROJECT_PATH))
 $(ORIG_ENCRYPT_KEY): 
 	$(ECHO) "WARNING: Encryption key '$@' missing. It can be created using: "
 	$(ECHO) "$(ESPSECUREPY) generate_flash_encryption_key $(ENCRYPT_KEY)"
 	exit 1
-else #ifeq ($(ENCRYPT), on)
+	
+else #ifeq ($(SECURE), on)
+SECURE_BOOT_VERIFICATION_KEY = 
+SECURE_BOOTLOADER_KEY = 
 ORIG_ENCRYPT_KEY = 
-endif #ifeq ($(ENCRYPT), on)
+endif #ifeq ($(SECURE), on)
 
 
 ifeq ($(TARGET), boot)
@@ -532,10 +526,10 @@ $(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf $(SECURE_BOOTLOADER_KEY) $(ORIG_
 ifeq ($(SECURE), on)
 	# obtain the bootloader digest
 	$(Q) $(ESPSECUREPY) digest_secure_bootloader -k $(SECURE_BOOTLOADER_KEY)  -o $(BOOTLOADER_REFLASH_DIGEST) $@
-ifeq ($(ENCRYPT), on)
 	$(ECHO) "Encrypt Bootloader digest (for offset 0x0)"
 	$(Q) $(ENCRYPT_BINARY) --address 0x0 -o $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOTLOADER_REFLASH_DIGEST)
-endif #ifeq ($(ENCRYPT), on)
+	$(RM) -f $(BOOTLOADER_REFLASH_DIGEST)
+	$(MV) -f $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOT_BIN)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
@@ -544,22 +538,16 @@ endif #ifeq ($(ENCRYPT), on)
 	$(ECHO) "$(ESPSECUREPY) generate_flash_encryption_key $(ENCRYPT_KEY)"
 	$(ECHO) "$(ESPSECUREPY) generate_signing_key $(SECURE_KEY)"
 	$(ECHO) $(SEPARATOR)
-	$(ECHO) "* Step1: write encryption and secure boot EFUSEs"
+	$(ECHO) "* Flash keys: write encryption and secure boot EFUSEs (Irreversible operation)"
 	$(ECHO) "$(ESPEFUSE) burn_key flash_encryption $(ENCRYPT_KEY)"
 	$(ECHO) "$(ESPEFUSE) burn_key secure_boot $(SECURE_BOOTLOADER_KEY)"
+	$(ECHO) "$(ESPEFUSE) burn_efuse FLASH_CRYPT_CNT"
+	$(ECHO) "$(ESPEFUSE) burn_efuse FLASH_CRYPT_CONFIG 0x0F"
+	$(ECHO) "$(ESPEFUSE) burn_efuse ABS_DONE_0"
 	$(ECHO) $(SEPARATOR)
-	$(ECHO) "* First Flash: write bootloader + partition + app not encrypted"
-	$(ECHO) "Hint: 'make BOARD=$(BOARD) flash' can be used (without SECURE=on), after 'make BOARD=$(BOARD) TARGET=app SECURE=on'"
-	$(ECHO) "!!!!!! ***** First boot, can take up to 1 minute, to auto-encrypt whole Flash ***** !!!!!! "
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)"
-	$(ECHO) $(SEPARATOR)
-	$(ECHO) "* Re-Flash: write bootloader_digest + partition + app all encrypted"
+	$(ECHO) "* Flash: write bootloader_digest + partition + app all encrypted"
 	$(ECHO) "Hint: 'make BOARD=$(BOARD) SECURE=on flash' can be used"
-ifeq ($(ENCRYPT), on)
 	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
-else
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)"
-endif #ifeq ($(ENCRYPT), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 endif #ifeq ($(SECURE), on)
@@ -608,12 +596,12 @@ $(APP_BIN): $(BUILD)/application.elf $(PART_BIN) $(ORIG_ENCRYPT_KEY)
 ifeq ($(SECURE), on)
 	$(ECHO) "Signing $@"
 	$(Q) $(SIGN_BINARY) $@
-ifeq ($(ENCRYPT), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2) (0x1A0000 offset)"
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o $(APP_BIN_ENCRYPT) $@
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x1A0000) -o $(APP_BIN_ENCRYPT_2) $@
-endif # ifeq ($(ENCRYPT), on)
+	$(ECHO) "Overwrite $(APP_BIN) with $(APP_BIN_ENCRYPT)"
+	$(MV) -f $(APP_BIN_ENCRYPT) $(APP_BIN)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
@@ -622,22 +610,16 @@ endif # ifeq ($(ENCRYPT), on)
 	$(ECHO) "$(ESPSECUREPY) generate_flash_encryption_key $(ENCRYPT_KEY)"
 	$(ECHO) "$(ESPSECUREPY) generate_signing_key $(SECURE_KEY)"
 	$(ECHO) $(SEPARATOR)
-	$(ECHO) "* Step1: write encryption and secure boot EFUSEs"
+	$(ECHO) "* Flash keys: write encryption and secure boot EFUSEs (Irreversible operation)"
 	$(ECHO) "$(ESPEFUSE) burn_key flash_encryption $(ENCRYPT_KEY)"
 	$(ECHO) "$(ESPEFUSE) burn_key secure_boot $(SECURE_BOOTLOADER_KEY)"
+	$(ECHO) "$(ESPEFUSE) burn_efuse FLASH_CRYPT_CNT"
+	$(ECHO) "$(ESPEFUSE) burn_efuse FLASH_CRYPT_CONFIG 0x0F"
+	$(ECHO) "$(ESPEFUSE) burn_efuse ABS_DONE_0"
 	$(ECHO) $(SEPARATOR)
-	$(ECHO) "* First Flash: write bootloader + partition + app not encrypted"
-	$(ECHO) "Hint: 'make BOARD=$(BOARD) flash' can be used (without SECURE=on), after 'make BOARD=$(BOARD) TARGET=app SECURE=on'"
-	$(ECHO) "!!!!!! ***** First boot, can take up to 1 minute, to auto-encrypt whole Flash ***** !!!!!! "
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)"
-	$(ECHO) $(SEPARATOR)
-	$(ECHO) "* Re-Flash: write bootloader_digest + partition + app all encrypted"
+	$(ECHO) "* Flash: write bootloader_digest + partition + app all encrypted"
 	$(ECHO) "Hint: 'make BOARD=$(BOARD) SECURE=on flash' can be used"
-ifeq ($(ENCRYPT), on)
 	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
-else
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)"
-endif #ifeq ($(ENCRYPT), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 endif # feq ($(SECURE), on)
@@ -655,13 +637,8 @@ ifeq ($(SECURE), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "(Secure boot enabled, so bootloader + digest is flashed)"
 	$(ECHO) $(SEPARATOR)
-ifeq ($(ENCRYPT), on)
 	$(ECHO) "$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
 	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)
-else # ($(ENCRYPT), on)
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)"
-	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)
-endif # ifeq ($(ENCRYPT), on)
 else # ifeq ($(SECURE), on)
 	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)"
 	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)
@@ -683,10 +660,8 @@ $(PART_BIN): $(PART_CSV) $(ORIG_ENCRYPT_KEY)
 ifeq ($(SECURE), on)
 	$(ECHO) "Signing $@"
 	$(Q) $(SIGN_BINARY) $@
-ifeq ($(ENCRYPT), on)
 	$(ECHO) "Encrypt paritions table image into $(PART_BIN_ENCRYPT) (by default 0x8000 offset)"
 	$(Q) $(ENCRYPT_BINARY) --address 0x8000 -o $(PART_BIN_ENCRYPT) $@
-endif # ifeq ($(ENCRYPT), on)
 endif # ifeq ($(SECURE), on)
 
 show_partitions: $(PART_BIN)
