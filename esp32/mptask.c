@@ -348,7 +348,8 @@ soft_reset_exit:
  ******************************************************************************/
 STATIC void mptask_preinit (void) {
     wlan_pre_init();
-    xTaskCreatePinnedToCore(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 1);
+    //TODO: increased stack is needed by modified FTP implementation due to LittleFS vs FatFs
+    xTaskCreatePinnedToCore(TASK_Servers, "Servers", 2*SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 1);
 }
 
 STATIC void init_sflash_fatfs(void) {

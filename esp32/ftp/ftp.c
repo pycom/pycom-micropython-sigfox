@@ -26,6 +26,7 @@
 #include "lib/oofatfs/ff.h"
 #include "extmod/vfs.h"
 #include "extmod/vfs_fat.h"
+#include "lfs.h"
 #include "fifo.h"
 #include "socketfifo.h"
 #include "timeutils.h"
@@ -111,11 +112,32 @@ typedef enum {
 } ftp_e_closesocket_t;
 
 typedef struct {
+    union {
+    FIL             fp_fat;
+    lfs_file_t      fp_lfs;
+    } u;
+}ftp_file_t;
+
+typedef struct {
+    union {
+        FF_DIR          dp_fat;
+        lfs_dir_t       dp_lfs;
+    } u;
+}ftp_dir_t;
+
+typedef struct {
+    union {
+    FILINFO              fpinfo_fat;
+    struct lfs_info      fpinfo_lfs;
+    } u;
+}ftp_fileinfo_t;
+
+typedef struct {
     uint8_t             *dBuffer;
     uint32_t            ctimeout;
     union {
-        FF_DIR             dp;
-        FIL             fp;
+        ftp_file_t fp;
+        ftp_dir_t  dp;
     }u;
     int32_t             lc_sd;
     int32_t             ld_sd;
@@ -192,10 +214,90 @@ static const ftp_month_t ftp_month[] = { { "Jan" }, { "Feb" }, { "Mar" }, { "Apr
 static SocketFifoElement_t ftp_fifoelements[FTP_SOCKETFIFO_ELEMENTS_MAX];
 static FIFO_t ftp_socketfifo;
 static uint32_t ftp_last_dir_idx;
+static const TCHAR *path_relative;
 
 /******************************************************************************
  DEFINE VFS WRAPPER FUNCTIONS
  ******************************************************************************/
+
+STATIC bool isLittleFs(const TCHAR *path)
+{
+    char flash[] = "/flash";
+
+    if(strncmp(flash, path, sizeof(flash)-1) == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+STATIC FRESULT lfsErrorToFatFsError(int lfs_error)
+{
+    switch (lfs_error)
+    {
+        case LFS_ERR_OK:
+            return FR_OK;
+        break;
+        case LFS_ERR_IO:
+            return FR_DISK_ERR;
+        break;
+        case LFS_ERR_CORRUPT:
+            return FR_NO_FILESYSTEM;
+        break;
+        case LFS_ERR_NOENT:
+            return FR_NO_FILE;
+        break;
+        case LFS_ERR_NOTDIR:
+            return FR_INT_ERR;
+        break;
+        case LFS_ERR_ISDIR:
+            return FR_INT_ERR;
+        break;
+        case LFS_ERR_NOTEMPTY:
+            return FR_INT_ERR;
+        break;
+        case LFS_ERR_BADF:
+            return FR_INVALID_OBJECT;
+        break;
+        case LFS_ERR_INVAL:
+            return FR_INVALID_PARAMETER;
+        break;
+        case LFS_ERR_NOSPC:
+            return FR_DISK_ERR;
+        break;
+        case LFS_ERR_NOMEM:
+            return FR_INT_ERR;
+        break;
+        default:
+            if(lfs_error > 0) return FR_OK; // positive value means good thing happened, transform it to OK result
+            else return FR_INT_ERR;
+        break;
+    }
+}
+
+STATIC int fatFsModetoLittleFsMode(int FatFsMode)
+{
+    int mode = 0;
+
+    if(FatFsMode & FA_READ) mode |= LFS_O_RDONLY;
+
+    if(FatFsMode & FA_WRITE) mode |= LFS_O_WRONLY;
+
+    if(FatFsMode & FA_CREATE_NEW) mode |= LFS_O_CREAT | LFS_O_EXCL;
+
+    if(FatFsMode & FA_CREATE_ALWAYS) mode |= LFS_O_CREAT | LFS_O_TRUNC;
+
+    if(FatFsMode & FA_OPEN_ALWAYS) mode |= LFS_O_CREAT;
+
+    if(FatFsMode & FA_OPEN_APPEND) mode |= LFS_O_CREAT | LFS_O_APPEND;
+
+    return mode;
+}
+
+
 
 // These wrapper functions are used so that the FTP server can access the
 // mounted FATFS devices directly without going through the costly mp_vfs_XXX
@@ -203,8 +305,8 @@ static uint32_t ftp_last_dir_idx;
 // all calls in an nlr handler.  The wrapper functions below assume that there
 // are only FATFS filesystems mounted.
 
-STATIC FATFS *lookup_path(const TCHAR **path) {
-    mp_vfs_mount_t *fs = mp_vfs_lookup_path(*path, path);
+STATIC FATFS *lookup_path(const TCHAR *path, const TCHAR **path_out) {
+    mp_vfs_mount_t *fs = mp_vfs_lookup_path(path, path_out);
     if (fs == MP_VFS_NONE || fs == MP_VFS_ROOT) {
         return NULL;
     }
@@ -212,59 +314,272 @@ STATIC FATFS *lookup_path(const TCHAR **path) {
     return &((fs_user_mount_t*)MP_OBJ_TO_PTR(fs->obj))->fs.fatfs;
 }
 
-STATIC FRESULT f_open_helper(FIL *fp, const TCHAR *path, BYTE mode) {
-    FATFS *fs = lookup_path(&path);
-    if (fs == NULL) {
-        return FR_NO_PATH;
+STATIC lfs_t *lookup_path_littlefs(const TCHAR *path, const TCHAR **path_out) {
+    mp_vfs_mount_t *fs = mp_vfs_lookup_path(path, path_out);
+    if (fs == MP_VFS_NONE || fs == MP_VFS_ROOT) {
+        return NULL;
     }
-    return f_open(fs, fp, path, mode);
+    // here we assume that the mounted device is LittleFs
+    return &((fs_user_mount_t*)MP_OBJ_TO_PTR(fs->obj))->fs.littlefs;
 }
 
-STATIC FRESULT f_opendir_helper(FF_DIR *dp, const TCHAR *path) {
-    FATFS *fs = lookup_path(&path);
-    if (fs == NULL) {
-        return FR_NO_PATH;
+STATIC FRESULT f_open_helper(ftp_file_t *fp, const TCHAR *path, BYTE mode) {
+
+    if(isLittleFs(path))
+    {
+        lfs_t* fs = lookup_path_littlefs(path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        int lfs_ret = lfs_file_open(fs, &fp->u.fp_lfs, path_relative, fatFsModetoLittleFsMode(mode));
+        return lfsErrorToFatFsError(lfs_ret);
     }
-    return f_opendir(fs, dp, path);
+    else
+    {
+        FATFS *fs = lookup_path(path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        return f_open(fs, &fp->u.fp_fat, path_relative, mode);
+    }
 }
 
-STATIC FRESULT f_stat_helper(const TCHAR *path, FILINFO *fno) {
-    FATFS *fs = lookup_path(&path);
-    if (fs == NULL) {
-        return FR_NO_PATH;
+STATIC FRESULT f_read_helper(ftp_file_t *fp, void* buff, uint32_t desiredsize, uint32_t *actualsize ) {
+
+    if(isLittleFs(ftp_path))
+    {
+        lfs_t* fs = lookup_path_littlefs(ftp_path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        *actualsize = lfs_file_read(fs, &fp->u.fp_lfs,buff, desiredsize);
+        return lfsErrorToFatFsError(*actualsize);
     }
-    return f_stat(fs, path, fno);
+    else
+    {
+        FATFS *fs = lookup_path(ftp_path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        return f_read(&fp->u.fp_fat, buff, desiredsize, actualsize);
+    }
+}
+
+STATIC FRESULT f_write_helper(ftp_file_t *fp, void* buff, uint32_t desiredsize, uint32_t *actualsize ) {
+
+    if(isLittleFs(ftp_path))
+    {
+        lfs_t* fs = lookup_path_littlefs(ftp_path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        *actualsize = lfs_file_write(fs, &fp->u.fp_lfs, buff, desiredsize);
+        return lfsErrorToFatFsError(*actualsize);
+    }
+    else
+    {
+        FATFS *fs = lookup_path(ftp_path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        return f_write(&fp->u.fp_fat, buff, desiredsize, actualsize);
+    }
+}
+
+STATIC FRESULT f_readdir_helper(ftp_dir_t *dp, ftp_fileinfo_t *fno ) {
+
+    if(isLittleFs(ftp_path))
+    {
+        lfs_t* fs = lookup_path_littlefs(ftp_path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        int lfs_ret = lfs_dir_read(fs, &dp->u.dp_lfs, &fno->u.fpinfo_lfs);
+        return lfsErrorToFatFsError(lfs_ret);
+    }
+    else
+    {
+        FATFS *fs = lookup_path(ftp_path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        return f_readdir(&dp->u.dp_fat, &fno->u.fpinfo_fat);
+    }
+}
+
+STATIC FRESULT f_opendir_helper(ftp_dir_t *dp, const TCHAR *path) {
+
+    if(isLittleFs(path))
+    {
+        lfs_t* fs = lookup_path_littlefs(path, &path_relative);
+
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        int lfs_ret = lfs_dir_open(fs, &dp->u.dp_lfs, path_relative);
+        return lfsErrorToFatFsError(lfs_ret);
+    }
+    else
+    {
+        FATFS *fs = lookup_path(path, &path_relative);
+
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        return f_opendir(fs, &dp->u.dp_fat, path_relative);
+    }
+}
+
+STATIC FRESULT f_closefile_helper(ftp_file_t *fp) {
+
+    if(isLittleFs(ftp_path))
+    {
+        lfs_t* fs = lookup_path_littlefs(ftp_path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        int lfs_ret = lfs_file_close(fs, &fp->u.fp_lfs);
+        return lfsErrorToFatFsError(lfs_ret);
+    }
+    else
+    {
+        FATFS *fs = lookup_path(ftp_path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        return f_close(&fp->u.fp_fat);
+    }
+}
+
+STATIC FRESULT f_closedir_helper(ftp_dir_t *dp) {
+
+    if(isLittleFs(ftp_path))
+    {
+        lfs_t* fs = lookup_path_littlefs(ftp_path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        int lfs_ret = lfs_dir_close(fs, &dp->u.dp_lfs);
+        return lfsErrorToFatFsError(lfs_ret);
+    }
+    else
+    {
+        FATFS *fs = lookup_path(ftp_path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        return f_closedir(&dp->u.dp_fat);
+    }
+}
+
+STATIC FRESULT f_stat_helper(const TCHAR *path, ftp_fileinfo_t *fno) {
+
+    if(isLittleFs(path))
+    {
+        lfs_t* fs = lookup_path_littlefs(path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        int lfs_ret = lfs_stat(fs, path_relative, &fno->u.fpinfo_lfs);
+        return lfsErrorToFatFsError(lfs_ret);
+    }
+    else
+    {
+        FATFS *fs = lookup_path(path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        return f_stat(fs, path_relative, &fno->u.fpinfo_fat);
+    }
 }
 
 STATIC FRESULT f_mkdir_helper(const TCHAR *path) {
-    FATFS *fs = lookup_path(&path);
-    if (fs == NULL) {
-        return FR_NO_PATH;
+
+    if(isLittleFs(path))
+    {
+        lfs_t* fs = lookup_path_littlefs(path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+
+        int lfs_ret = lfs_mkdir(fs, path_relative);
+        return lfsErrorToFatFsError(lfs_ret);
     }
-    return f_mkdir(fs, path);
+    else
+    {
+        FATFS *fs = lookup_path(path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        return f_mkdir(fs, path_relative);
+    }
+
 }
 
 STATIC FRESULT f_unlink_helper(const TCHAR *path) {
-    FATFS *fs = lookup_path(&path);
-    if (fs == NULL) {
-        return FR_NO_PATH;
+
+    if(isLittleFs(path))
+    {
+        lfs_t* fs = lookup_path_littlefs(path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+
+        int lfs_ret = lfs_remove(fs, path_relative);
+        return lfsErrorToFatFsError(lfs_ret);
     }
-    return f_unlink(fs, path);
+    else
+    {
+        FATFS *fs = lookup_path(path, &path_relative);
+        if (fs == NULL) {
+            return FR_NO_PATH;
+        }
+        return f_unlink(fs, path_relative);
+    }
 }
 
 STATIC FRESULT f_rename_helper(const TCHAR *path_old, const TCHAR *path_new) {
-    FATFS *fs_old = lookup_path(&path_old);
-    if (fs_old == NULL) {
-        return FR_NO_PATH;
+
+    const TCHAR *path_relative_old;
+    const TCHAR *path_relative_new;
+
+    if(isLittleFs(path_old))
+    {
+        lfs_t* fs_old = lookup_path_littlefs(path_old, &path_relative_old);
+        lfs_t* fs_new = lookup_path_littlefs(path_new, &path_relative_new);
+
+        if (fs_old == NULL) {
+            return FR_NO_PATH;
+        }
+        if (fs_new == NULL) {
+            return FR_NO_PATH;
+        }
+        if (fs_old != fs_new) {
+            return FR_NO_PATH;
+        }
+
+        int lfs_ret = lfs_rename(fs_new, path_relative_old, path_relative_new);
+        return lfsErrorToFatFsError(lfs_ret);
     }
-    FATFS *fs_new = lookup_path(&path_new);
-    if (fs_new == NULL) {
-        return FR_NO_PATH;
+    else
+    {
+        FATFS *fs_old = lookup_path(path_old, &path_relative_old);
+
+        FATFS *fs_new = lookup_path(path_new, &path_relative_new);
+
+        if (fs_old == NULL) {
+            return FR_NO_PATH;
+        }
+        if (fs_new == NULL) {
+            return FR_NO_PATH;
+        }
+        if (fs_old != fs_new) {
+            return FR_NO_PATH;
+        }
+
+        return f_rename(fs_new, path_relative_old, path_relative_new);
     }
-    if (fs_old != fs_new) {
-        return FR_NO_PATH;
-    }
-    return f_rename(fs_new, path_old, path_new);
+
 }
 
 
@@ -285,7 +600,7 @@ static void ftp_close_filesystem_on_error (void);
 static void ftp_close_cmd_data (void);
 static ftp_cmd_index_t ftp_pop_command (char **str);
 static void ftp_pop_param (char **str, char *param, bool stop_on_space);
-static int ftp_print_eplf_item (char *dest, uint32_t destsize, FILINFO *fno);
+static int ftp_print_eplf_item (char *dest, uint32_t destsize, ftp_fileinfo_t *fno);
 static int ftp_print_eplf_drive (char *dest, uint32_t destsize, const char *name);
 static bool ftp_open_file (const char *path, int mode);
 static ftp_result_t ftp_read_file (char *filebuf, uint32_t desiredsize, uint32_t *actualsize);
@@ -709,7 +1024,7 @@ static void ftp_process_cmd (void) {
     char *bufptr = (char *)ftp_cmd_buffer;
     ftp_result_t result;
     FRESULT fres;
-    FILINFO fno;
+    ftp_fileinfo_t fno;
 
     ftp_data.closechild = false;
     // also use the reply buffer to receive new commands
@@ -738,7 +1053,7 @@ static void ftp_process_cmd (void) {
                 ftp_open_child (ftp_path, ftp_scratch_buffer);
                 if ((ftp_path[0] == '/' && ftp_path[1] == '\0') || ((fres = f_opendir_helper (&ftp_data.u.dp, ftp_path)) == FR_OK)) {
                     if (fres == FR_OK) {
-                        f_closedir(&ftp_data.u.dp);
+                        f_closedir_helper(&ftp_data.u.dp);
                     }
                     ftp_send_reply(250, NULL);
                 } else {
@@ -756,7 +1071,15 @@ static void ftp_process_cmd (void) {
                 ftp_get_param_and_open_child (&bufptr);
                 if (FR_OK == f_stat_helper (ftp_path, &fno)) {
                     // send the size
-                    snprintf((char *)ftp_data.dBuffer, FTP_BUFFER_SIZE, "%u", (uint32_t)fno.fsize);
+                    if(isLittleFs(ftp_path))
+                    {
+                        snprintf((char *)ftp_data.dBuffer, FTP_BUFFER_SIZE, "%u", (uint32_t)fno.u.fpinfo_lfs.size);
+                    }
+                    else
+                    {
+                        snprintf((char *)ftp_data.dBuffer, FTP_BUFFER_SIZE, "%u", (uint32_t)fno.u.fpinfo_fat.fsize);
+                    }
+
                     ftp_send_reply(213, (char *)ftp_data.dBuffer);
                 } else {
                     ftp_send_reply(550, NULL);
@@ -767,10 +1090,21 @@ static void ftp_process_cmd (void) {
             ftp_get_param_and_open_child (&bufptr);
             if (FR_OK == f_stat_helper (ftp_path, &fno)) {
                 // send the last modified time
-                snprintf((char *)ftp_data.dBuffer, FTP_BUFFER_SIZE, "%u%02u%02u%02u%02u%02u",
-                         1980 + ((fno.fdate >> 9) & 0x7f), (fno.fdate >> 5) & 0x0f,
-                         fno.fdate & 0x1f, (fno.ftime >> 11) & 0x1f,
-                         (fno.ftime >> 5) & 0x3f, 2 * (fno.ftime & 0x1f));
+                if(isLittleFs(ftp_path))
+                {
+                    snprintf((char *)ftp_data.dBuffer, FTP_BUFFER_SIZE, "%u%02u%02u%02u%02u%02u",
+                                             0, 0, 0 , 0, 0, 0); //TODO: LittleFS does not handle time
+                }
+                else
+                {
+                    snprintf((char *)ftp_data.dBuffer, FTP_BUFFER_SIZE, "%u%02u%02u%02u%02u%02u",
+                                             1980 + ((fno.u.fpinfo_fat.fdate >> 9) & 0x7f), (fno.u.fpinfo_fat.fdate >> 5) & 0x0f,
+                                             fno.u.fpinfo_fat.fdate & 0x1f, (fno.u.fpinfo_fat.ftime >> 11) & 0x1f,
+                                             (fno.u.fpinfo_fat.ftime >> 5) & 0x3f, 2 * (fno.u.fpinfo_fat.ftime & 0x1f));
+                }
+
+
+
                 ftp_send_reply(213, (char *)ftp_data.dBuffer);
             } else {
                 ftp_send_reply(550, NULL);
@@ -923,9 +1257,9 @@ static void ftp_process_cmd (void) {
 
 static void ftp_close_files (void) {
     if (ftp_data.e_open == E_FTP_FILE_OPEN) {
-        f_close(&ftp_data.u.fp);
+        f_closefile_helper(&ftp_data.u.fp);
     } else if (ftp_data.e_open == E_FTP_DIR_OPEN) {
-        f_closedir(&ftp_data.u.dp);
+        f_closedir_helper(&ftp_data.u.dp);
     }
     ftp_data.e_open = E_FTP_NOTHING_OPEN;
 }
@@ -969,28 +1303,48 @@ static void ftp_pop_param (char **str, char *param, bool stop_on_space) {
     *param = '\0';
 }
 
-static int ftp_print_eplf_item (char *dest, uint32_t destsize, FILINFO *fno) {
-    char *type = (fno->fattrib & AM_DIR) ? "d" : "-";
-    uint64_t tseconds;
-    uint32_t _len;
-    uint mindex = (((fno->fdate >> 5) & 0x0f) > 0) ? (((fno->fdate >> 5) & 0x0f) - 1) : 0;
-    uint day = ((fno->fdate & 0x1f) > 0) ? (fno->fdate & 0x1f) : 1;
-    uint64_t fseconds = timeutils_seconds_since_epoch(1980 + ((fno->fdate >> 9) & 0x7f),
-                                                        (fno->fdate >> 5) & 0x0f,
-                                                        fno->fdate & 0x1f,
-                                                        (fno->ftime >> 11) & 0x1f,
-                                                        (fno->ftime >> 5) & 0x3f,
-                                                        2 * (fno->ftime & 0x1f));
+static int ftp_print_eplf_item (char *dest, uint32_t destsize, ftp_fileinfo_t *fno) {
 
-    tseconds = mach_rtc_get_us_since_epoch() / 1000000ll;
-    if (FTP_UNIX_SECONDS_180_DAYS < (int64_t)(tseconds - fseconds)) {
+    char *type;
+    uint64_t tseconds = 0;
+    uint32_t _len;
+    uint mindex = 0;
+    uint day = 1;
+    uint64_t fseconds = 0;
+
+    if(isLittleFs(ftp_path))
+    {
+        type = (fno->u.fpinfo_lfs.type == LFS_TYPE_DIR) ? "d" : "-";
+
+        //TODO: as LittleFs does not store timestamp, cannot provide it
         _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %5u %s\r\n",
-                        type, (uint32_t)fno->fsize, ftp_month[mindex].month, day,
-                        1980 + ((fno->fdate >> 9) & 0x7f), fno->fname);
-    } else {
-        _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %02u:%02u %s\r\n",
-                        type, (uint32_t)fno->fsize, ftp_month[mindex].month, day,
-                        (fno->ftime >> 11) & 0x1f, (fno->ftime >> 5) & 0x3f, fno->fname);
+                        type, (uint32_t)fno->u.fpinfo_lfs.size, ftp_month[mindex].month, day,
+                        0, fno->u.fpinfo_lfs.name);
+
+    }
+    else
+    {
+        type = (fno->u.fpinfo_fat.fattrib & AM_DIR) ? "d" : "-";
+
+        mindex = (((fno->u.fpinfo_fat.fdate >> 5) & 0x0f) > 0) ? (((fno->u.fpinfo_fat.fdate >> 5) & 0x0f) - 1) : 0;
+        day = ((fno->u.fpinfo_fat.fdate & 0x1f) > 0) ? (fno->u.fpinfo_fat.fdate & 0x1f) : 1;
+        fseconds = timeutils_seconds_since_epoch(1980 + ((fno->u.fpinfo_fat.fdate >> 9) & 0x7f),
+                                                         (fno->u.fpinfo_fat.fdate >> 5) & 0x0f,
+                                                         fno->u.fpinfo_fat.fdate & 0x1f,
+                                                         (fno->u.fpinfo_fat.ftime >> 11) & 0x1f,
+                                                         (fno->u.fpinfo_fat.ftime >> 5) & 0x3f,
+                                                         2 * (fno->u.fpinfo_fat.ftime & 0x1f));
+
+        tseconds = mach_rtc_get_us_since_epoch() / 1000000ll;
+        if (FTP_UNIX_SECONDS_180_DAYS < (int64_t)(tseconds - fseconds)) {
+            _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %5u %s\r\n",
+                            type, (uint32_t)fno->u.fpinfo_fat.fsize, ftp_month[mindex].month, day,
+                            1980 + ((fno->u.fpinfo_fat.fdate >> 9) & 0x7f), fno->u.fpinfo_fat.fname);
+        } else {
+            _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %02u:%02u %s\r\n",
+                            type, (uint32_t)fno->u.fpinfo_fat.fsize, ftp_month[mindex].month, day,
+                            (fno->u.fpinfo_fat.ftime >> 11) & 0x1f, (fno->u.fpinfo_fat.ftime >> 5) & 0x3f, fno->u.fpinfo_fat.fname);
+        }
     }
 
     if (_len > 0 && _len < destsize) {
@@ -1033,7 +1387,9 @@ static bool ftp_open_file (const char *path, int mode) {
 
 static ftp_result_t ftp_read_file (char *filebuf, uint32_t desiredsize, uint32_t *actualsize) {
     ftp_result_t result = E_FTP_RESULT_CONTINUE;
-    FRESULT res = f_read(&ftp_data.u.fp, filebuf, desiredsize, (UINT *)actualsize);
+
+
+    FRESULT res = f_read_helper(&ftp_data.u.fp, filebuf, desiredsize, (UINT *)actualsize);
     if (res != FR_OK) {
         ftp_close_files();
         result = E_FTP_RESULT_FAILED;
@@ -1048,7 +1404,7 @@ static ftp_result_t ftp_read_file (char *filebuf, uint32_t desiredsize, uint32_t
 static ftp_result_t ftp_write_file (char *filebuf, uint32_t size) {
     ftp_result_t result = E_FTP_RESULT_FAILED;
     uint32_t actualsize;
-    FRESULT res = f_write(&ftp_data.u.fp, filebuf, size, (UINT *)&actualsize);
+    FRESULT res = f_write_helper(&ftp_data.u.fp, filebuf, size, (UINT *)&actualsize);
     if ((actualsize == size) && (FR_OK == res)) {
         result = E_FTP_RESULT_OK;
     } else {
@@ -1058,6 +1414,7 @@ static ftp_result_t ftp_write_file (char *filebuf, uint32_t size) {
 }
 
 static ftp_result_t ftp_open_dir_for_listing (const char *path) {
+
     // "hack" to detect the root directory
     if (path[0] == '/' && path[1] == '\0') {
         ftp_data.listroot = true;
@@ -1078,12 +1435,12 @@ static ftp_result_t ftp_list_dir (char *list, uint32_t maxlistsize, uint32_t *li
     uint32_t _len;
     FRESULT res;
     ftp_result_t result = E_FTP_RESULT_CONTINUE;
-    FILINFO fno;
+    ftp_fileinfo_t fno;
 
     // if we are resuming an incomplete list operation, go back to the item we left behind
     if (!ftp_data.listroot) {
         for (int i = 0; i < ftp_last_dir_idx; i++) {
-            f_readdir(&ftp_data.u.dp, &fno);
+            f_readdir_helper(&ftp_data.u.dp, &fno);
         }
     }
 
@@ -1109,13 +1466,25 @@ static ftp_result_t ftp_list_dir (char *list, uint32_t maxlistsize, uint32_t *li
             ftp_data.volcount++;
         } else {
             // a "normal" directory
-            res = f_readdir(&ftp_data.u.dp, &fno);                                                       /* Read a directory item */
-            if (res != FR_OK || fno.fname[0] == 0) {
-                result = E_FTP_RESULT_OK;
-                break;                                                                                 /* Break on error or end of dp */
+            res = f_readdir_helper(&ftp_data.u.dp, &fno);                                                       /* Read a directory item */
+            if(isLittleFs(ftp_path))
+            {
+                if (res != FR_OK || fno.u.fpinfo_lfs.name[0] == 0) {
+                    result = E_FTP_RESULT_OK;
+                    break;                                                                                 /* Break on error or end of dp */
+                }
+                if (fno.u.fpinfo_lfs.name[0] == '.' && fno.u.fpinfo_lfs.name[1] == 0) continue;                                    /* Ignore . entry */
+                if (fno.u.fpinfo_lfs.name[0] == '.' && fno.u.fpinfo_lfs.name[1] == '.' && fno.u.fpinfo_lfs.name[2] == 0) continue;             /* Ignore .. entry */
             }
-            if (fno.fname[0] == '.' && fno.fname[1] == 0) continue;                                    /* Ignore . entry */
-            if (fno.fname[0] == '.' && fno.fname[1] == '.' && fno.fname[2] == 0) continue;             /* Ignore .. entry */
+            else
+            {
+                if (res != FR_OK || fno.u.fpinfo_fat.fname[0] == 0) {
+                    result = E_FTP_RESULT_OK;
+                    break;                                                                                 /* Break on error or end of dp */
+                }
+                if (fno.u.fpinfo_fat.fname[0] == '.' && fno.u.fpinfo_fat.fname[1] == 0) continue;                                    /* Ignore . entry */
+                if (fno.u.fpinfo_fat.fname[0] == '.' && fno.u.fpinfo_fat.fname[1] == '.' && fno.u.fpinfo_fat.fname[2] == 0) continue;             /* Ignore .. entry */
+            }
 
             // add the entry to the list if space is available
             _len = ftp_print_eplf_item((list + next), (maxlistsize - next - 1), &fno);
@@ -1129,6 +1498,7 @@ static ftp_result_t ftp_list_dir (char *list, uint32_t maxlistsize, uint32_t *li
             ftp_last_dir_idx++;
         }
     }
+
     if (result == E_FTP_RESULT_OK) {
         ftp_close_files();
         ftp_last_dir_idx = 0;
