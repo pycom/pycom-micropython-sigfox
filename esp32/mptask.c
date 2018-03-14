@@ -512,6 +512,7 @@ STATIC void mptask_init_sflash_filesystem (void) {
 }
 
 #if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY)
+//TODO: rewrite it to be able to work with littlefs
 STATIC void mptask_update_lpwan_mac_address (void) {
     #define LPWAN_MAC_ADDR_PATH          "/sys/lpwan.mac"
 
