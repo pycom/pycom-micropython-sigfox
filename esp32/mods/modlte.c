@@ -296,18 +296,37 @@ error:
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_deinit_obj, lte_deinit);
 
-STATIC mp_obj_t lte_attach(mp_obj_t self_in) {
+STATIC mp_obj_t lte_attach(mp_obj_t self_in, mp_obj_t band_o) {
     lte_check_init();
     lte_check_attached();
     if (lteppp_get_state() < E_LTE_ATTACHING) {
         // configuring scanning in all 6 bands
         lte_push_at_command("AT!=\"clearscanconfig\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=3 dl-earfcn=1575\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=4 dl-earfcn=2175\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=12 dl-earfcn=5095\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=13 dl-earfcn=5230\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=20 dl-earfcn=6300\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=28 dl-earfcn=9435\"", LTE_RX_TIMEOUT_MIN_MS);
+        if (band_o == mp_const_none) {
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=3 dl-earfcn=1575\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=4 dl-earfcn=2175\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=12 dl-earfcn=5095\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=13 dl-earfcn=5230\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=20 dl-earfcn=6300\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=28 dl-earfcn=9435\"", LTE_RX_TIMEOUT_MIN_MS);
+        } else {
+            uint32_t band = mp_obj_get_int(band_o);
+            if (band == 3) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=3 dl-earfcn=1575\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else if (band == 4) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=4 dl-earfcn=2175\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else if (band == 12) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=12 dl-earfcn=5095\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else if (band == 13) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=13 dl-earfcn=5230\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else if (band == 20) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=20 dl-earfcn=6300\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else if (band == 28) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=28 dl-earfcn=9435\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported", band));
+            }
+        }
         lteppp_set_state(E_LTE_ATTACHING);
         if (!lte_push_at_command("AT+CFUN=1", LTE_RX_TIMEOUT_MAX_MS)) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
@@ -315,7 +334,7 @@ STATIC mp_obj_t lte_attach(mp_obj_t self_in) {
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_attach_obj, lte_attach);
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(lte_attach_obj, lte_attach);
 
 mp_obj_t lte_dettach(mp_obj_t self_in) {
     lte_check_init();
