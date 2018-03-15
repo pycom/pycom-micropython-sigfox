@@ -357,7 +357,7 @@ PART_OFFSET = 0x8000
 APP_OFFSET  = 0x10000
 
 SHELL    = bash
-APP_SIGN = tools/appsign.sh
+#APP_SIGN = tools/appsign.sh
 
 BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
 
@@ -417,6 +417,11 @@ ESPTOOLPY_WRITE_FLASH  = $(ESPTOOLPY_SERIAL) write_flash -z --flash_mode $(ESPFL
 ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash
 ESPTOOL_ALL_FLASH_ARGS = $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)
 
+ESPSECUREPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espsecure.py
+
+# actual command for signing a binary
+SIGN_BINARY = $(ESPSECUREPY) sign_data --keyfile $(SECURE_KEY)
+
 GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py -q
 
 ifeq ($(TARGET), app)
@@ -427,16 +432,55 @@ endif
 
 .PHONY: all
 
+ifeq ($(SECURE), on)
+CFLAGS += -DCONFIG_FLASH_ENCRYPTION_ENABLED=1
+CFLAGS += -DCONFIG_SECURE_BOOT_ENABLED=1
+
+# find the configured private key file
+ORIG_SECURE_KEY := $(call resolvepath,$(call dequote,$(SECURE_KEY)),$(PROJECT_PATH))
+
+$(ORIG_SECURE_KEY): 
+	$(ECHO) "Secure boot signing key '$@' missing."
+	exit 1
+
+# public key name; the name is important 
+# because it will go into the elf with symbols having name derived out of this one
+SECURE_BOOT_VERIFICATION_KEY = signature_verification_key.bin
+
+# verification key derived from signing key.
+$(SECURE_BOOT_VERIFICATION_KEY): $(ORIG_SECURE_KEY)
+	$(ESPSECUREPY) extract_public_key --keyfile $< $@
+	
+else #ifeq ($(SECURE), on)
+SECURE_BOOT_VERIFICATION_KEY = 
+endif #ifeq ($(SECURE), on)
+
 ifeq ($(TARGET), boot)
 $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
 
-$(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a
-#	$(ECHO) "COPY IDF LIBRARIES $@"
-#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
-	$(ECHO) "LINK $@"
+$(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a $(SECURE_BOOT_VERIFICATION_KEY)
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+ifeq ($(SECURE), on)
+# unpack libbootloader_support.a, and archive again using the right key for verifying signatures
+	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
+	$(RM) -f ./bootloader/lib/bootloader_support_temp
+	$(MKDIR)  ./bootloader/lib/bootloader_support_temp
+	$(CP) ./bootloader/lib/libbootloader_support.a ./bootloader/lib/bootloader_support_temp/
+	$(CD) bootloader/lib/bootloader_support_temp/ ; pwd ;\
+	$(AR) x libbootloader_support.a ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
+	$(CP) ../../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o  libbootloader_support.a ;\
+	$(OBJCOPY) $(OBJCOPY_EMBED_ARGS) $(SECURE_BOOT_VERIFICATION_KEY) $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
+	$(AR) cru libbootloader_support.a *.o ;\
+	$(CP) libbootloader_support.a ../
+	$(RM) -rf ./bootloader/lib/bootloader_support_temp 
+endif	
+	$(ECHO) "LINK $(CC) *** $(BOOT_LDFLAGS) *** $(BOOT_LIBS) -o $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
 
@@ -459,9 +503,25 @@ $(BUILD)/application.a: $(OBJ)
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
 
-$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
-#	$(ECHO) "COPY IDF LIBRARIES $@"
-#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_BOOT_VERIFICATION_KEY)
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+ifeq ($(SECURE), on)
+# unpack libbootloader_support.a, and archive again using the right key for verifying signatures
+	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
+	$(RM) -rf ./lib/bootloader_support_temp
+	$(MKDIR)  ./lib/bootloader_support_temp
+	$(CP) ./lib/libbootloader_support.a ./lib/bootloader_support_temp/
+	$(CD) lib/bootloader_support_temp/ ; pwd ;\
+	$(AR) x libbootloader_support.a ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
+	$(CP) ../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o  libbootloader_support.a ;\
+	$(OBJCOPY) $(OBJCOPY_EMBED_ARGS) $(SECURE_BOOT_VERIFICATION_KEY) $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
+	$(AR) cru libbootloader_support.a *.o ;\
+	$(CP) libbootloader_support.a ../
+	$(RM) -rf lib/bootloader_support_temp 
+endif
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
 	$(Q) $(SIZE) $@
@@ -469,9 +529,11 @@ $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
 $(APP_BIN): $(BUILD)/application.elf $(PART_BIN)
 	$(ECHO) "IMAGE $@"
 	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
-	$(ECHO) "Signing OTA image"
-	$(Q)$(SHELL) $(APP_SIGN) $(APP_BIN) $(BUILD)
-
+ifeq ($(SECURE), on)
+	$(ECHO) "Signing $@"
+	$(Q) $(SIGN_BINARY) $@
+endif
+	
 $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(ECHO) "CPP $@"
 	$(Q) $(CC) -I. -C -P -x c -E $< -o $@
@@ -496,6 +558,10 @@ erase:
 $(PART_BIN): $(PART_CSV)
 	$(ECHO) "Building partitions from $(PART_CSV)..."
 	$(Q) $(GEN_ESP32PART) $< $@
+ifeq ($(SECURE), on)
+	$(ECHO) "Signing $@"
+	$(Q) $(SIGN_BINARY) $@
+endif
 
 show_partitions: $(PART_BIN)
 	$(ECHO) "Partition table binary generated. Contents:"

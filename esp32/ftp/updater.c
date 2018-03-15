@@ -16,6 +16,8 @@
 #include "bootloader.h"
 #include "updater.h"
 #include "esp_spi_flash.h"
+#include "esp_flash_encrypt.h"
+#include "esp_image_format.h"
 #include "esp_log.h"
 #include "rom/crc.h"
 #include "rom/md5_hash.h"
@@ -24,7 +26,10 @@
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
 #define UPDATER_IMG_PATH                                "/flash/sys/appimg.bin"
-#define UPDATER_MD5_SIZE_BYTES                          32
+//#define UPDATER_MD5_SIZE_BYTES                          32
+
+/* if flash is encrypted, it requires the flash_write operation to be done in 16 Bytes chunks */
+#define ENCRYP_FLASH_MIN_CHUNK							16
 
 /******************************************************************************
  DEFINE TYPES
@@ -40,11 +45,11 @@ typedef struct {
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
-static updater_data_t updater_data = { 
-    .size = 0, 
-    .offset = 0, 
+static updater_data_t updater_data = {
+    .size = 0,
+    .offset = 0,
     .offset_start_upd = 0,
-    .chunk_size = 0, 
+    .chunk_size = 0,
     .current_chunk = 0 };
 
 //static OsiLockObj_t updater_LockObj;
@@ -54,7 +59,8 @@ static uint32_t boot_info_offset;
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-static void md5_to_ascii(unsigned char *md5, unsigned char *hex);
+static esp_err_t updater_spi_flash_read(size_t src, void *dest, size_t size, bool allow_decrypt);
+static esp_err_t updater_spi_flash_write(size_t dest_addr, void *src, size_t size, bool write_encrypted);
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
@@ -69,14 +75,18 @@ bool updater_read_boot_info (boot_info_t *boot_info, uint32_t *boot_info_offset)
 
     // printf("Reading boot info\n");
 
-    if (ESP_OK != spi_flash_read(ESP_PARTITION_TABLE_ADDR, (void *)partition_info, sizeof(partition_info))) {
-        return false;
+    if (ESP_OK != updater_spi_flash_read(ESP_PARTITION_TABLE_ADDR, (void *)partition_info, sizeof(partition_info), true)) {
+        printf("err1\n");
+    		return false;
     }
-    // get the data from the boot info partition
-    if (ESP_OK != spi_flash_read(partition_info[OTA_DATA_INDEX].pos.offset, (void *)boot_info, sizeof(boot_info_t))) {
-        return false;
+    // get the data from the boot info partition, also unencrypted
+    printf("read data from: 0x%X\n", partition_info[OTA_DATA_INDEX].pos.offset);
+    if (ESP_OK != updater_spi_flash_read(partition_info[OTA_DATA_INDEX].pos.offset, (void *)boot_info, sizeof(boot_info_t), true)) {
+    		printf("err2\n");
+    		return false;
     }
     *boot_info_offset = partition_info[OTA_DATA_INDEX].pos.offset;
+    printf("off: %d, status:%d, %d\n", *boot_info_offset, boot_info->Status,  boot_info->ActiveImg);
     return true;
 }
 
@@ -102,12 +112,12 @@ bool updater_start (void) {
         }
     }
 
-    // printf("Updating image at offset=%x\n", updater_data.offset);
+    printf("Updating image at offset=%x\n", updater_data.offset);
     updater_data.offset_start_upd = updater_data.offset;
 
     // erase the first 2 sectors
     if (ESP_OK != spi_flash_erase_sector(updater_data.offset / SPI_FLASH_SEC_SIZE)) {
-        // printf("Erasing first sector failed!\n");
+        //printf("Erasing first sector failed!\n");
         return false;
     }
     if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
@@ -122,10 +132,24 @@ bool updater_start (void) {
 }
 
 bool updater_write (uint8_t *buf, uint32_t len) {
+
+	// the len has to be round-up to multiple of 16
+	// so, actually up to 15Bytes(garbage) could be written to flash
+	uint32_t len_aligned_16 = ((len + ENCRYP_FLASH_MIN_CHUNK - 1) / ENCRYP_FLASH_MIN_CHUNK) * ENCRYP_FLASH_MIN_CHUNK;
 //    sl_LockObjLock (&wlan_LockObj, SL_OS_WAIT_FOREVER);
-    // printf("Writing %d bytes\n", len);
-    if (ESP_OK != spi_flash_write(updater_data.offset, (void *)buf, len)) {
-        // printf("SPI flash write failed\n");
+
+    if (len != len_aligned_16) {
+    		printf("Writing %d bytes, actually %d\n", len, len_aligned_16);
+    }
+
+    // check if starting address is 16bytes aligned
+    if (updater_data.offset % 16) {
+        printf("Start address, not 16 aligned, %X\n", updater_data.offset);
+        return false;
+    }
+
+    if (ESP_OK != updater_spi_flash_write(updater_data.offset, (void *)buf, len_aligned_16, true)) {
+        printf("SPI flash write failed\n");
         return false;
     }
 
@@ -137,7 +161,7 @@ bool updater_write (uint8_t *buf, uint32_t len) {
         updater_data.current_chunk -= SPI_FLASH_SEC_SIZE;
         // erase the next sector
         if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
-            // printf("Erasing next sector failed!\n");
+            printf("Erasing next sector failed!\n");
             return false;
         }
     }
@@ -147,11 +171,11 @@ bool updater_write (uint8_t *buf, uint32_t len) {
 
 bool updater_finish (void) {
     if (updater_data.offset > 0) {
-        // printf("Updater finish\n");
+        printf("Updater finished, boot status: %d\n", boot_info.Status);
 //        sl_LockObjLock (&wlan_LockObj, SL_OS_WAIT_FOREVER);
         // if we still have an image pending for verification, leave the boot info as it is
         if (boot_info.Status != IMG_STATUS_CHECK) {
-            // printf("Saving new boot info\n");
+            printf("Saving new boot info\n");
             // save the new boot info
             boot_info.PrevImg = boot_info.ActiveImg;
             if (boot_info.ActiveImg == IMG_ACT_UPDATE1) {
@@ -160,10 +184,65 @@ bool updater_finish (void) {
                 boot_info.ActiveImg = IMG_ACT_UPDATE1;
             }
             boot_info.Status = IMG_STATUS_CHECK;
+            boot_info.crc = crc32_le(UINT32_MAX, (uint8_t*)&boot_info.ActiveImg,
+                                                 sizeof(boot_info) - sizeof(boot_info.crc));
+            printf("Wr crc=0x%x\n", boot_info.crc);
 
-            if (!updater_write_boot_info(&boot_info, boot_info_offset)) {
+            if (ESP_OK != spi_flash_erase_sector(boot_info_offset / SPI_FLASH_SEC_SIZE)) {
+                printf("Erasing boot info failed\n");
                 return false;
             }
+
+            // saving boot info, encrypted
+            esp_err_t ret; // return code of the flash_write operation
+            if (esp_flash_encryption_enabled()) {
+				// sizeof(boot_info_t) is 40 bytes, and we have to write multiple of 16
+				// so read next 48-40 bytes from flash, and write back 48 B
+
+				uint32_t len_aligned_16 = ((sizeof(boot_info_t) + 15) / 16) * 16;
+				uint8_t *buff; // buffer used for filling boot_info data
+				buff = (uint8_t *)malloc(len_aligned_16);
+
+				if (!buff) {
+					printf("Can't allocate %d\n", len_aligned_16);
+					return false;
+				}
+
+				//printf("buff addr: 0x%p\n", buff);
+				// put the first sizeof(boot_info_t)
+				memcpy(buff, (void *)&boot_info, sizeof(boot_info_t));
+
+				// read the next bytes
+				spi_flash_read_encrypted(boot_info_offset + sizeof(boot_info_t),
+										(void *)(buff + sizeof(boot_info_t)),
+										len_aligned_16 - sizeof(boot_info_t) );
+
+	/*            for (int i = 0; i< 40; i++) {
+						printf("%d ", buff[i]);
+				}
+				printf("\n");
+	*/
+				ret = spi_flash_write_encrypted(boot_info_offset, (void *)buff, len_aligned_16);
+            } else { // not-encrypted flash, just write directly boot_info
+            		ret = spi_flash_write(boot_info_offset, (void *)&boot_info, sizeof(boot_info_t));
+            }
+
+			if (ESP_OK != ret) {
+                printf("Saving boot info failed\n");
+                return false;
+            }
+/*
+            // some debugging, try to read
+            if (ESP_OK != spi_flash_read_encrypted(boot_info_offset, (void *)(buff), 64 )) {
+                printf("Reading back boot info failed\n");
+                return false;
+            }
+            for (int i = 0; i< 40; i++) {
+            		printf("%d ", buff[i]);
+            }
+            printf("\n");
+*/
+            printf("Boot info saved OK\n");
         }
 //        sl_LockObjUnlock (&wlan_LockObj);
         updater_data.offset = 0;
@@ -174,73 +253,23 @@ bool updater_finish (void) {
 
 bool updater_verify (void) {
     // bootloader verifies anyway the image, but the user can check himself
-    // so, the next code ia adapted from bootloader/bootloader.c, 
-    // function: bool bootloader_verify (const esp_partition_pos_t *pos, uint32_t size)
-    
-    // the last image written stats at updater_data.offset_start_upd and 
+    // so, the next code is adapted from bootloader/bootloader.c,
+
+	// the last image written stats at updater_data.offset_start_upd and
     // has the lenght boot_info.size
-    
-    uint32_t size = boot_info.size;
-    uint32_t offset = updater_data.offset_start_upd;
 
-    uint32_t total_len = 0, read_len;
-    uint8_t hash[UPDATER_MD5_SIZE_BYTES / 2];
-    uint8_t hash_hex[UPDATER_MD5_SIZE_BYTES + 1];
-    struct MD5Context md5_context;
-    uint32_t *updater_verif_buff;
-    
-    // must be 32-bit aligned
-    updater_verif_buff = (uint32_t *) malloc(SPI_SEC_SIZE);
-    // don't forget to free(updater_verif_buff)
-    if (!updater_verif_buff) {
-        // printf("Can't allocate 4KB buffer\n");
-        return false;
-    }
-    // printf("updater_verify starts at %X, len is %d, 4KB dynamic buff starts at %X\n", offset, size, (uint32_t)updater_verif_buff);
+	esp_err_t ret;
+    esp_image_metadata_t data;
+    const esp_partition_pos_t part_pos = {
+      .offset = updater_data.offset_start_upd,
+      .size = boot_info.size,
+    };
 
-    size -= UPDATER_MD5_SIZE_BYTES; // substract the lenght of the MD5 hash
+    ret = esp_image_load(ESP_IMAGE_VERIFY, &part_pos, &data);
 
-    MD5Init(&md5_context);
+    printf("esp_image_load: %d\n", ret);
 
-    while (total_len < size) {
-        read_len = (size - total_len) > SPI_SEC_SIZE ? SPI_SEC_SIZE : (size - total_len);
-
-        if (ESP_OK != spi_flash_read(offset + total_len, (void *)updater_verif_buff, read_len)) {
-            // printf("error in spi_flash_read\n");
-            free(updater_verif_buff);
-            return false;
-        }
-        total_len += read_len;
-        MD5Update(&md5_context, (void *)updater_verif_buff, read_len);
-    }
-    // printf("Reading done total len=%d\n", total_len);
-    MD5Final(hash, &md5_context);
-
-    // printf("Hash calculated\n");
-    md5_to_ascii(hash, hash_hex);
-    // printf("Converted to hex\n");
-
-    if (ESP_OK != spi_flash_read(offset + total_len, (void *)updater_verif_buff, UPDATER_MD5_SIZE_BYTES)) {
-        // printf("error in md5 spi_flash_read\n");
-        free(updater_verif_buff);
-        return false;
-    }
-
-    hash_hex[UPDATER_MD5_SIZE_BYTES] = '\0';
-
-    // updater_verif_buff is uint32_t type,
-    updater_verif_buff[UPDATER_MD5_SIZE_BYTES / sizeof(uint32_t)] = '\0';
-    // compare both hashes
-    if (!strcmp((const char *)hash_hex, (const char *)updater_verif_buff)) {
-        // printf("MD5 hash OK!\n");
-        // it's a match
-        free(updater_verif_buff);
-        return true;
-    }
-
-    // printf("MD5 hash failed %s : %s\n", hash_hex, (char*)updater_verif_buff);
-    free(updater_verif_buff);
-    return false;
+    return (ret == ESP_OK);
 }
 
 bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset) {
@@ -263,11 +292,25 @@ bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset) 
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
 
-static void md5_to_ascii(unsigned char *md5, unsigned char *hex) {
-    #define nibble2ascii(x) ((x) < 10 ? (x) + '0' : (x) - 10 + 'a')
+static esp_err_t updater_spi_flash_read(size_t src, void *dest, size_t size, bool allow_decrypt)
+{
+    if (allow_decrypt && esp_flash_encryption_enabled()) {
+        return spi_flash_read_encrypted(src, dest, size);
+    } else {
+        return spi_flash_read(src, dest, size);
+    }
+}
 
-    for (int i = 0; i < 16; i++) {
-        hex[(i * 2)] = nibble2ascii(md5[i] >> 4);
-        hex[(i * 2) + 1] = nibble2ascii(md5[i] & 0xF);
+/* @note Both dest_addr and size must be multiples of 16 bytes. For
+ * absolute best performance, both dest_addr and size arguments should
+ * be multiples of 32 bytes.
+*/
+static esp_err_t updater_spi_flash_write(size_t dest_addr, void *src, size_t size,
+										bool write_encrypted)
+{
+    if (write_encrypted && esp_flash_encryption_enabled()) {
+        return spi_flash_write_encrypted(dest_addr, src, size);
+    } else {
+        return spi_flash_write(dest_addr, src, size);
     }
 }

@@ -25,6 +25,7 @@ def main():
     # copy the application libraries
     dst = os.getcwd() + '/lib'
 
+    shutil.copy(src + '/bootloader_support/libbootloader_support.a', dst)
     shutil.copy(src + '/bt/libbt.a', dst)
     shutil.copy(src + '/cxx/libcxx.a', dst)
     shutil.copy(src + '/driver/libdriver.a', dst)
