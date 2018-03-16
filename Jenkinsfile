@@ -21,21 +21,13 @@ node {
           make all'''
     }
 
-    stage('IDF-LIBS') {
-        // build the libs from esp-idf
-       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-        		 export IDF_PATH=${WORKSPACE}/esp-idf;
-        		 cd $IDF_PATH/examples/wifi/scan;
-        		 make clean && make all'''
-    }
-
- 	for (board in boards_to_build) {
-		stage(board) {
-			def parallelSteps = [:]
+    stage('firmware-build') {
+        def parallelSteps = [:]
+ 	    for (board in boards_to_build) {
             def board_u = board.toUpperCase()
         		parallelSteps[board] = boardBuild(board)
-        		parallel parallelSteps
   		}
+  		parallel parallelSteps
   	}
 
     stash includes: '**/*.bin', name: 'binary'
@@ -89,7 +81,7 @@ def boardBuild(name) {
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
         mv ../application.elf ''' + release_dir + name + "-" + PYCOM_VERSION + '''-application.elf;
-        cp ../appimg.bin .;
+        cp ../''' + app_bin + ''' appimg.bin;
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
         cp ../''' + app_bin + ''' .;
@@ -111,7 +103,7 @@ def flashBuild(short_name) {
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
       sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 erase_flash'
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -pz --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name_u +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name_u +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name_u +'/release/appimg.bin'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -pz --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name_u +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name_u +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name_u +'/release/' + board_name_u.toLowerCase() + '.bin'
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --exit'
     }
   }

@@ -39,9 +39,12 @@ void calibrate_us_timer(void) {
 }
 
 void machtimer_init0(void) {
-    timer_config_t config = {.alarm_en = false, .counter_en = false, .counter_dir = TIMER_COUNT_UP, .intr_type = TIMER_INTR_LEVEL, .auto_reload = false, .divider = 2};
+    timer_config_t config = {.alarm_en = false, .counter_en = false,
+                             .counter_dir = TIMER_COUNT_UP,
+                             .intr_type = TIMER_INTR_LEVEL,
+                             .auto_reload = false, .divider = 2};
 
-    init_alarm_heap();
+    mach_timer_alarm_init_heap();
 
     timer_init(TIMER_GROUP_0, TIMER_0, &config);
     timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0);
@@ -55,9 +58,8 @@ void machtimer_deinit(void) {
     timer_disable_intr(TIMER_GROUP_0, TIMER_0);
 }
 
-uint64_t get_timer_counter_value(void) {
+uint64_t machtimer_get_timer_counter_value(void) {
     uint64_t t;
-
     timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &t);
     return t;
 }

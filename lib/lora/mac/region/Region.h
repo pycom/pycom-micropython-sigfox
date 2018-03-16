@@ -1491,6 +1491,10 @@ uint8_t RegionApplyDrOffset( LoRaMacRegion_t region, uint8_t downlinkDwellTime, 
 
 bool RegionGetChannels( LoRaMacRegion_t region, ChannelParams_t** channels, uint32_t *size);
 
+bool RegionGetChannelMask(LoRaMacRegion_t region, uint16_t **channelmask, uint32_t *size );
+
+bool RegionGetChannelMaskRemaining(LoRaMacRegion_t region, uint16_t **channelmask, uint32_t *size );
+
 bool RegionForceJoinDataRate( LoRaMacRegion_t region, int8_t joinDr, AlternateDrParams_t* alternateDr );
 
 /*! \} defgroup REGION */

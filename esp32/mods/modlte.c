@@ -53,6 +53,7 @@
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
+#include "lwipsocket.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -71,22 +72,6 @@
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
-
-#define MAKE_SOCKADDR(addr, ip, port)       struct sockaddr addr; \
-                                            addr.sa_family = AF_INET; \
-                                            addr.sa_data[0] = port >> 8; \
-                                            addr.sa_data[1] = port; \
-                                            addr.sa_data[2] = ip[3]; \
-                                            addr.sa_data[3] = ip[2]; \
-                                            addr.sa_data[4] = ip[1]; \
-                                            addr.sa_data[5] = ip[0];
-
-#define UNPACK_SOCKADDR(addr, ip, port)     port = (addr.sa_data[0] << 8) | addr.sa_data[1]; \
-                                            ip[0] = addr.sa_data[5]; \
-                                            ip[1] = addr.sa_data[4]; \
-                                            ip[2] = addr.sa_data[3]; \
-                                            ip[3] = addr.sa_data[2];
-
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -109,21 +94,6 @@ static void lte_check_init(void);
 static bool lte_check_sim_present(void);
 
 STATIC mp_obj_t lte_disconnect(mp_obj_t self_in);
-
-static int lte_gethostbyname(const char *name, mp_uint_t len, uint8_t *out_ip, mp_uint_t family);
-static int lte_socket_socket(mod_network_socket_obj_t *s, int *_errno);
-static void lte_socket_close(mod_network_socket_obj_t *s);
-static int lte_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno);
-static int lte_socket_listen(mod_network_socket_obj_t *s, mp_int_t backlog, int *_errno);
-static int lte_socket_accept(mod_network_socket_obj_t *s, mod_network_socket_obj_t *s2, byte *ip, mp_uint_t *port, int *_errno);
-static int lte_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno);
-static int lte_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno);
-static int lte_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno);
-static int lte_socket_sendto( mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port, int *_errno);
-static int lte_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno);
-static int lte_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
-static int lte_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno);
-static int lte_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
@@ -155,9 +125,9 @@ static bool lte_push_at_command (char *cmd_str, uint32_t timeout) {
 }
 
 static void lte_pause_ppp(void) {
-    vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
+    mp_hal_delay_ms(LTE_PPP_BACK_OFF_TIME_MS);
     if (!lte_push_at_command("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
-        vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
+        mp_hal_delay_ms(LTE_PPP_BACK_OFF_TIME_MS);
         if (!lte_push_at_command("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
         }
@@ -173,7 +143,7 @@ static bool lte_check_attached(void) {
         inppp = true;
         lte_pause_ppp();
         while (true) {
-            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
             if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
                 break;
             }
@@ -181,7 +151,8 @@ static bool lte_check_attached(void) {
     }
 
     lte_push_at_command("AT+CEREG?", LTE_RX_TIMEOUT_MIN_MS);
-    if ((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) && (strlen(pos) >= 31) && pos[30] == '7') {
+    if (((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,")))
+        && (strlen(pos) >= 31) && pos[30] == '7') {
         lteppp_set_state(E_LTE_ATTACHED);
         attached = true;
     } else {
@@ -226,16 +197,37 @@ static bool lte_check_sim_present(void) {
 // Micro Python bindings; LTE class
 
 static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
+    char at_cmd[LTE_AT_CMD_SIZE_MAX - 4];
+
     // wake up the radio
     lteppp_start();
     lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
     lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
-    // if the radio is OFF, at least enable access to the SIM
+
     lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
     if (strstr(modlte_rsp.data, "+CFUN: 0")) {
+        const char *carrier = "standard";
+        if (args[0].u_obj != mp_const_none) {
+            carrier = mp_obj_str_get_str(args[0].u_obj);
+            if ((!strstr(carrier, "standard")) && (!strstr(carrier, "verizon")) && (!strstr(carrier, "at&t"))) {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid carrier %s", carrier));
+            }
+        }
+
+        // configure the carrier
+        lte_push_at_command("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS);
+        if (!strstr(modlte_rsp.data, carrier)) {
+            sprintf(at_cmd, "AT+SQNCTM=\"%s\"", carrier);
+            lte_push_at_command(at_cmd, LTE_RX_TIMEOUT_MAX_MS);
+            lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
+            lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
+        }
+
+        // at least enable access to the SIM
         lte_push_at_command("AT+CFUN=4", LTE_RX_TIMEOUT_MAX_MS);
         lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
     }
+
     lteppp_set_state(E_LTE_IDLE);
     mod_network_register_nic(&lte_obj);
     lte_obj.init = true;
@@ -243,8 +235,8 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
 }
 
 static const mp_arg_t lte_init_args[] = {
-    { MP_QSTR_id,                             MP_ARG_INT, {.u_int = 0} },
-    { MP_QSTR_cid,          MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 1} }
+    { MP_QSTR_id,                                      MP_ARG_INT, {.u_int = 0} },
+    { MP_QSTR_carrier,               MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} }
 };
 
 static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
@@ -304,18 +296,46 @@ error:
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_deinit_obj, lte_deinit);
 
-STATIC mp_obj_t lte_attach(mp_obj_t self_in) {
+STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     lte_check_init();
+
+    STATIC const mp_arg_t allowed_args[] = {
+        { MP_QSTR_band,      MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+    };
+
+    // parse args
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
     lte_check_attached();
     if (lteppp_get_state() < E_LTE_ATTACHING) {
         // configuring scanning in all 6 bands
         lte_push_at_command("AT!=\"clearscanconfig\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=3 dl-earfcn=1575\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=4 dl-earfcn=2175\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=12 dl-earfcn=5095\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=13 dl-earfcn=5230\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=20 dl-earfcn=6300\"", LTE_RX_TIMEOUT_MIN_MS);
-        lte_push_at_command("AT!=\"RRC::addscanfreq band=28 dl-earfcn=9435\"", LTE_RX_TIMEOUT_MIN_MS);
+        if (args[0].u_obj == mp_const_none) {
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=3 dl-earfcn=1575\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=4 dl-earfcn=2175\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=12 dl-earfcn=5095\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=13 dl-earfcn=5230\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=20 dl-earfcn=6300\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addscanfreq band=28 dl-earfcn=9435\"", LTE_RX_TIMEOUT_MIN_MS);
+        } else {
+            uint32_t band = mp_obj_get_int(args[0].u_obj);
+            if (band == 3) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=3 dl-earfcn=1575\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else if (band == 4) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=4 dl-earfcn=2175\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else if (band == 12) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=12 dl-earfcn=5095\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else if (band == 13) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=13 dl-earfcn=5230\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else if (band == 20) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=20 dl-earfcn=6300\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else if (band == 28) {
+                lte_push_at_command("AT!=\"RRC::addscanfreq band=28 dl-earfcn=9435\"", LTE_RX_TIMEOUT_MIN_MS);
+            } else {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported", band));
+            }
+        }
         lteppp_set_state(E_LTE_ATTACHING);
         if (!lte_push_at_command("AT+CFUN=1", LTE_RX_TIMEOUT_MAX_MS)) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
@@ -323,7 +343,7 @@ STATIC mp_obj_t lte_attach(mp_obj_t self_in) {
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_attach_obj, lte_attach);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_attach_obj, 1, lte_attach);
 
 mp_obj_t lte_dettach(mp_obj_t self_in) {
     lte_check_init();
@@ -415,7 +435,7 @@ STATIC mp_obj_t lte_send_raw_at(mp_obj_t self_in, mp_obj_t cmd_o) {
         inppp = true;
         lte_pause_ppp();
         while (true) {
-            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
             if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
                 break;
             }
@@ -434,12 +454,42 @@ STATIC mp_obj_t lte_send_raw_at(mp_obj_t self_in, mp_obj_t cmd_o) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lte_send_raw_at_obj, lte_send_raw_at);
 
+STATIC mp_obj_t lte_imei(mp_obj_t self_in) {
+    char *pos;
+    vstr_t vstr;
+    vstr_init_len(&vstr, strlen("AT+CGSN"));
+    strcpy(vstr.buf, "AT+CGSN");
+    lte_send_raw_at(MP_OBJ_NULL, mp_obj_new_str_from_vstr(&mp_type_str, &vstr));
+    if ((pos = strstr(modlte_rsp.data, "35434")) && (strlen(pos) > 20)) {
+        vstr_init_len(&vstr, 15);
+        memcpy(vstr.buf, pos, 15);
+        return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_imei_obj, lte_imei);
+
+STATIC mp_obj_t lte_iccid(mp_obj_t self_in) {
+    char *pos;
+    vstr_t vstr;
+    vstr_init_len(&vstr, strlen("AT+SQNCCID?"));
+    strcpy(vstr.buf, "AT+SQNCCID?");
+    lte_send_raw_at(MP_OBJ_NULL, mp_obj_new_str_from_vstr(&mp_type_str, &vstr));
+    if ((pos = strstr(modlte_rsp.data, "SQNCCID:")) && (strlen(pos) > 25)) {
+        vstr_init_len(&vstr, 20);
+        memcpy(vstr.buf, &pos[10], 20);
+        return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_iccid_obj, lte_iccid);
+
 STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     lte_check_init();
     if (lteppp_get_state() == E_LTE_PPP) {
         lte_pause_ppp();
         while (true) {
-            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
             if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
                 break;
             }
@@ -447,8 +497,8 @@ STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     }
     lte_push_at_command("AT^RESET", LTE_RX_TIMEOUT_MIN_MS);
     lteppp_set_state(E_LTE_IDLE);
-    vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
-    lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS);
+    mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
+    lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true);
     if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
@@ -465,6 +515,8 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_connect),             (mp_obj_t)&lte_connect_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect),          (mp_obj_t)&lte_disconnect_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_isconnected),         (mp_obj_t)&lte_isconnected_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_imei),                (mp_obj_t)&lte_imei_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_iccid),               (mp_obj_t)&lte_iccid_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_send_at_cmd),         (mp_obj_t)&lte_send_raw_at_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset),               (mp_obj_t)&lte_reset_obj },
 
@@ -480,350 +532,18 @@ const mod_network_nic_type_t mod_network_nic_type_lte = {
         .locals_dict = (mp_obj_t)&lte_locals_dict,
      },
 
-    .n_gethostbyname = lte_gethostbyname,
-    .n_listen = lte_socket_listen,
-    .n_accept = lte_socket_accept,
-    .n_socket = lte_socket_socket,
-    .n_close = lte_socket_close,
-    .n_connect = lte_socket_connect,
-    .n_sendto =  lte_socket_sendto,
-    .n_send = lte_socket_send,
-    .n_recv = lte_socket_recv,
-    .n_recvfrom = lte_socket_recvfrom,
-    .n_settimeout = lte_socket_settimeout,
-    .n_setsockopt = lte_socket_setsockopt,
-    .n_bind = lte_socket_bind,
-    .n_ioctl = lte_socket_ioctl,
+    .n_gethostbyname = lwipsocket_gethostbyname,
+    .n_listen = lwipsocket_socket_listen,
+    .n_accept = lwipsocket_socket_accept,
+    .n_socket = lwipsocket_socket_socket,
+    .n_close = lwipsocket_socket_close,
+    .n_connect = lwipsocket_socket_connect,
+    .n_sendto =  lwipsocket_socket_sendto,
+    .n_send = lwipsocket_socket_send,
+    .n_recv = lwipsocket_socket_recv,
+    .n_recvfrom = lwipsocket_socket_recvfrom,
+    .n_settimeout = lwipsocket_socket_settimeout,
+    .n_setsockopt = lwipsocket_socket_setsockopt,
+    .n_bind = lwipsocket_socket_bind,
+    .n_ioctl = lwipsocket_socket_ioctl,
 };
-
-///******************************************************************************/
-//// Micro Python bindings; GSM socket
-
-static int lte_gethostbyname(const char *name, mp_uint_t len, uint8_t *out_ip, mp_uint_t family) {
-    uint32_t ip;
-    struct hostent *h = gethostbyname(name);
-    if (h == NULL) {
-        // CPython: socket.herror
-        return -errno;
-    }
-    ip = *(uint32_t*)*h->h_addr_list;
-    out_ip[0] = ip;
-    out_ip[1] = ip >> 8;
-    out_ip[2] = ip >> 16;
-    out_ip[3] = ip >> 24;
-    return 0;
-}
-
-static int lte_socket_socket(mod_network_socket_obj_t *s, int *_errno) {
-    int32_t sd = socket(s->sock_base.u.u_param.domain, s->sock_base.u.u_param.type, s->sock_base.u.u_param.proto);
-    if (sd < 0) {
-        *_errno = errno;
-        return -1;
-    }
-
-    // enable address reusing
-    uint32_t option = 1;
-    setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
-
-    s->sock_base.u.sd = sd;
-    return 0;
-}
-
-static void lte_socket_close(mod_network_socket_obj_t *s) {
-    if (s->sock_base.is_ssl) {
-        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-        if (ss->sock_base.connected) {
-            while(mbedtls_ssl_close_notify(&ss->ssl) == MBEDTLS_ERR_SSL_WANT_WRITE);
-        }
-        mbedtls_net_free(&ss->context_fd);
-        mbedtls_x509_crt_free(&ss->cacert);
-        mbedtls_x509_crt_free(&ss->own_cert);
-        mbedtls_pk_free(&ss->pk_key);
-        mbedtls_ssl_free(&ss->ssl);
-        mbedtls_ssl_config_free(&ss->conf);
-        mbedtls_ctr_drbg_free(&ss->ctr_drbg);
-        mbedtls_entropy_free(&ss->entropy);
-    } else {
-        close(s->sock_base.u.sd);
-    }
-    modusocket_socket_delete(s->sock_base.u.sd);
-    s->sock_base.connected = false;
-    s->sock_base.u.sd = -1;
-}
-
-static int lte_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
-    MAKE_SOCKADDR(addr, ip, port)
-    int ret = bind(s->sock_base.u.sd, &addr, sizeof(addr));
-    if (ret != 0) {
-        *_errno = errno;
-        return -1;
-    }
-    return 0;
-}
-
-static int lte_socket_listen(mod_network_socket_obj_t *s, mp_int_t backlog, int *_errno) {
-    int ret = listen(s->sock_base.u.sd, backlog);
-    if (ret != 0) {
-        *_errno = errno;
-        return -1;
-    }
-    return 0;
-}
-
-static int lte_socket_accept(mod_network_socket_obj_t *s, mod_network_socket_obj_t *s2, byte *ip, mp_uint_t *port, int *_errno) {
-    // accept incoming connection
-    int32_t sd;
-    struct sockaddr addr;
-    socklen_t addr_len = sizeof(addr);
-
-    sd = accept(s->sock_base.u.sd, &addr, &addr_len);
-    // save the socket descriptor
-    s2->sock_base.u.sd = sd;
-    if (sd < 0) {
-        *_errno = errno;
-        return -1;
-    }
-
-    s2->sock_base.connected = true;
-
-    // return ip and port
-    UNPACK_SOCKADDR(addr, ip, *port);
-    return 0;
-}
-
-static int lte_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
-    MAKE_SOCKADDR(addr, ip, port)
-    int ret = connect(s->sock_base.u.sd, &addr, sizeof(addr));
-
-    if (ret != 0) {
-        // printf("Connect returned -0x%x\n", -ret);
-        *_errno = ret;
-        return -1;
-    }
-
-    // printf("Connected.\n");
-
-    if (s->sock_base.is_ssl && (ret == 0)) {
-        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-
-        if ((ret = mbedtls_net_set_block(&ss->context_fd)) != 0) {
-            // printf("failed! net_set_(non)block() returned -0x%x\n", -ret);
-            *_errno = ret;
-            return -1;
-        }
-
-        mbedtls_ssl_set_bio(&ss->ssl, &ss->context_fd, mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
-
-        while ((ret = mbedtls_ssl_handshake(&ss->ssl)) != 0)
-        {
-            if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_TIMEOUT)
-            {
-                // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
-                *_errno = ret;
-                return -1;
-            }
-        }
-
-        // printf("Verifying peer X.509 certificate...\n");
-
-        if ((ret = mbedtls_ssl_get_verify_result(&ss->ssl)) != 0) {
-            /* In real life, we probably want to close connection if ret != 0 */
-            // printf("Failed to verify peer certificate!\n");
-            *_errno = ret;
-            return -1;
-        } else {
-            // printf("Certificate verified.\n");
-        }
-    }
-
-    s->sock_base.connected = true;
-    return 0;
-}
-
-static int lte_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno) {
-    mp_int_t bytes = 0;
-    if (len > 0) {
-        if (s->sock_base.is_ssl) {
-            mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-            while ((bytes = mbedtls_ssl_write(&ss->ssl, (const unsigned char *)buf, len)) <= 0) {
-                if (bytes != MBEDTLS_ERR_SSL_WANT_READ && bytes != MBEDTLS_ERR_SSL_WANT_WRITE) {
-                    // printf("mbedtls_ssl_write returned -0x%x\n", -bytes);
-                    break;
-                } else {
-                    *_errno = MP_EAGAIN;
-                    return -1;
-                }
-            }
-        } else {
-            bytes = send(s->sock_base.u.sd, (const void *)buf, len, 0);
-        }
-    }
-    if (bytes <= 0) {
-        *_errno = errno;
-        return -1;
-    }
-    return bytes;
-}
-
-
-static int lte_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno) {
-    int ret;
-    if (s->sock_base.is_ssl) {
-        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-        do {
-            ret = mbedtls_ssl_read(&ss->ssl, (unsigned char *)buf, len);
-            if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE ) {
-                // do nothing
-            } else if (ret == MBEDTLS_ERR_SSL_TIMEOUT) {
-                // printf("SSL timeout recieved\n");
-                // non-blocking return
-                if (s->sock_base.timeout == 0) {
-                    ret = 0;
-                    break;
-                }
-                // blocking do nothing
-            }
-            else if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
-                // printf("Close notify received\n");
-                ret = 0;
-                break;
-            } else if (ret < 0) {
-                // printf("mbedtls_ssl_read returned -0x%x\n", -ret);
-                break;
-            } else if (ret == 0) {
-                // printf("Connection closed\n");
-                break;
-            } else {
-                // printf("Data read OK = %d\n", ret);
-                break;
-            }
-        } while (true);
-        if (ret < 0) {
-            *_errno = ret;
-            return -1;
-        }
-    } else {
-        ret = recv(s->sock_base.u.sd, buf, MIN(len, LTE_MAX_RX_SIZE), 0);
-        if (ret < 0) {
-            *_errno = errno;
-            return -1;
-        }
-    }
-    return ret;
-}
-
-static int lte_socket_sendto( mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port, int *_errno) {
-    if (len > 0) {
-        MAKE_SOCKADDR(addr, ip, port)
-        int ret = sendto(s->sock_base.u.sd, (byte*)buf, len, 0, (struct sockaddr*)&addr, sizeof(addr));
-        if (ret < 0) {
-            *_errno = errno;
-            return -1;
-        }
-        return ret;
-    }
-    return 0;
-}
-
-static int lte_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno) {
-    struct sockaddr addr;
-    socklen_t addr_len = sizeof(addr);
-    mp_int_t ret = recvfrom(s->sock_base.u.sd, buf, MIN(len, LTE_MAX_RX_SIZE), 0, &addr, &addr_len);
-    if (ret < 0) {
-        *_errno = errno;
-        return -1;
-    }
-    UNPACK_SOCKADDR(addr, ip, *port);
-    return ret;
-}
-
-static int lte_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno) {
-    int ret = setsockopt(s->sock_base.u.sd, level, opt, optval, optlen);
-    if (ret < 0) {
-        *_errno = errno;
-        return -1;
-    }
-    return 0;
-}
-
-static int lte_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno) {
-    int ret;
-    if (timeout_ms <= 0) {
-        uint32_t option = fcntl(s->sock_base.u.sd, F_GETFL, 0);
-        if (timeout_ms == 0) {
-            // set non-blocking mode
-            option |= O_NONBLOCK;
-        } else {
-            // set blocking mode
-            option &= ~O_NONBLOCK;
-        }
-        ret = fcntl(s->sock_base.u.sd, F_SETFL, option);
-    } else {
-        // set timeout
-        struct timeval tv;
-        tv.tv_sec = timeout_ms / 1000;              // seconds
-        tv.tv_usec = (timeout_ms % 1000) * 1000;    // microseconds
-        ret = setsockopt(s->sock_base.u.sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-    }
-
-    if (ret != 0) {
-        *_errno = errno;
-        return -1;
-    }
-
-    s->sock_base.timeout = timeout_ms;
-    return 0;
-}
-
-static int lte_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno) {
-    mp_int_t ret;
-    if (request == MP_IOCTL_POLL) {
-        mp_uint_t flags = arg;
-        ret = 0;
-        int32_t sd = s->sock_base.u.sd;
-
-        // init fds
-        fd_set rfds, wfds, xfds;
-        FD_ZERO(&rfds);
-        FD_ZERO(&wfds);
-        FD_ZERO(&xfds);
-
-        // set fds if needed
-        if (flags & MP_IOCTL_POLL_RD) {
-            FD_SET(sd, &rfds);
-        }
-        if (flags & MP_IOCTL_POLL_WR) {
-            FD_SET(sd, &wfds);
-        }
-        if (flags & MP_IOCTL_POLL_HUP) {
-            FD_SET(sd, &xfds);
-        }
-
-        // call select with the smallest possible timeout
-        struct timeval tv;
-        tv.tv_sec = 0;
-        tv.tv_usec = 10;
-        int32_t nfds = select(sd + 1, &rfds, &wfds, &xfds, &tv);
-
-        // check for errors
-        if (nfds < 0) {
-            *_errno = errno;
-            return MP_STREAM_ERROR;
-        }
-
-        // check return of select
-        if (FD_ISSET(sd, &rfds)) {
-            ret |= MP_IOCTL_POLL_RD;
-        }
-        if (FD_ISSET(sd, &wfds)) {
-            ret |= MP_IOCTL_POLL_WR;
-        }
-        if (FD_ISSET(sd, &xfds)) {
-            ret |= MP_IOCTL_POLL_HUP;
-        }
-    } else {
-        *_errno = MP_EINVAL;
-        ret = MP_STREAM_ERROR;
-    }
-    return ret;
-}

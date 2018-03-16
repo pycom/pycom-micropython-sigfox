@@ -252,6 +252,7 @@ static uint8_t MaxDCycle = 0;
 static uint16_t AggregatedDCycle;
 static TimerTime_t AggregatedLastTxDoneTime;
 static TimerTime_t AggregatedTimeOff;
+static TimerEvent_t RadioTxDoneClassCTimer;
 
 /*!
  * Enables/Disables duty cycle management (Test only)
@@ -583,7 +584,7 @@ LoRaMacStatus_t SetTxContinuousWave1( uint16_t timeout, uint32_t frequency, uint
  */
 static void ResetMacParameters( void );
 
-static void OnRadioTxDone( void )
+static IRAM_ATTR void OnRadioTxDone( void )
 {
     GetPhyParams_t getPhy;
     PhyParam_t phyParam;
@@ -596,7 +597,7 @@ static void OnRadioTxDone( void )
     }
     else
     {
-        OnRxWindow2TimerEvent( );
+        TimerStart(&RadioTxDoneClassCTimer);
     }
 
     // Setup timers
@@ -778,7 +779,6 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
 
                 MlmeConfirm.Status = LORAMAC_EVENT_INFO_STATUS_OK;
                 IsLoRaMacNetworkJoined = true;
-                LoRaMacParams.ChannelsDatarate = LoRaMacParamsDefaults.ChannelsDatarate;
             }
             else
             {
@@ -1349,6 +1349,21 @@ static void OnMacStateCheckTimerEvent( void )
     {
         LoRaMacState &= ~LORAMAC_RX;
     }
+
+    if( LoRaMacFlags.Bits.McpsInd == 1 )
+    {
+        if( LoRaMacDeviceClass == CLASS_C )
+        {// Activate RX2 window for Class C
+            OnRxWindow2TimerEvent( );
+        }
+        if( LoRaMacFlags.Bits.McpsIndSkip == 0 )
+        {
+            LoRaMacPrimitives->MacMcpsIndication( &McpsIndication );
+        }
+        LoRaMacFlags.Bits.McpsIndSkip = 0;
+        LoRaMacFlags.Bits.McpsInd = 0;
+    }
+
     if( LoRaMacState == LORAMAC_IDLE )
     {
         if( LoRaMacFlags.Bits.McpsReq == 1 )
@@ -1371,20 +1386,6 @@ static void OnMacStateCheckTimerEvent( void )
         // Operation not finished restart timer
         TimerSetValue( &MacStateCheckTimer, MAC_STATE_CHECK_TIMEOUT );
         TimerStart( &MacStateCheckTimer );
-    }
-
-    if( LoRaMacFlags.Bits.McpsInd == 1 )
-    {
-        if( LoRaMacDeviceClass == CLASS_C )
-        {// Activate RX2 window for Class C
-            OnRxWindow2TimerEvent( );
-        }
-        if( LoRaMacFlags.Bits.McpsIndSkip == 0 )
-        {
-            LoRaMacPrimitives->MacMcpsIndication( &McpsIndication );
-        }
-        LoRaMacFlags.Bits.McpsIndSkip = 0;
-        LoRaMacFlags.Bits.McpsInd = 0;
     }
 }
 
@@ -2396,6 +2397,8 @@ LoRaMacStatus_t LoRaMacInitialization( LoRaMacPrimitives_t *primitives, LoRaMacC
     TimerInit( &RxWindowTimer1, OnRxWindow1TimerEvent );
     TimerInit( &RxWindowTimer2, OnRxWindow2TimerEvent );
     TimerInit( &AckTimeoutTimer, OnAckTimeoutTimerEvent );
+    TimerInit( &RadioTxDoneClassCTimer, OnRxWindow2TimerEvent );
+    TimerSetValue( &RadioTxDoneClassCTimer, 1 );
 
     // Store the current initialization time
     LoRaMacInitializationTime = TimerGetCurrentTime( );
@@ -3374,11 +3377,20 @@ void LoRaMacTestSetChannel( uint8_t channel )
 void LoRaMacNvsSave( void )
 {
     ChannelParams_t *channels;
+    uint16_t *channelmask;
     uint32_t size;
 
     modlora_nvs_set_blob(E_LORA_NVS_ELE_MAC_PARAMS, &LoRaMacParams, sizeof(LoRaMacParams));
     RegionGetChannels(LoRaMacRegion, &channels, &size);
     modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELS, channels, size);
+
+    if (RegionGetChannelMask(LoRaMacRegion, &channelmask, &size)) {
+        modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELMASK, channelmask, size);
+    }
+
+    if (RegionGetChannelMaskRemaining(LoRaMacRegion, &channelmask, &size)) {
+        modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELMASK_REMAINING, channelmask, size);
+    }
 
     modlora_nvs_set_uint(E_LORA_NVS_ELE_ACK_REQ, SrvAckRequested);
 
@@ -3403,6 +3415,14 @@ void LoRaMacNvsSave( void )
 
 void LoRaMacGetChannelList(ChannelParams_t **channels, uint32_t *size) {
     RegionGetChannels(LoRaMacRegion, channels, size);
+}
+
+bool LoRaMacGetChannelsMask(uint16_t **channelmask, uint32_t *size) {
+    return RegionGetChannelMask(LoRaMacRegion, channelmask, size);
+}
+
+bool LoRaMacGetChannelsMaskRemaining(uint16_t **channelmask, uint32_t *size) {
+    return RegionGetChannelMaskRemaining(LoRaMacRegion, channelmask, size);
 }
 
 LoRaMacParams_t * LoRaMacGetMacParams(void) {

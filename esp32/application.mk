@@ -139,6 +139,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modled.c \
 	machwdt.c \
 	machrmt.c \
+	lwipsocket.c \
 	)
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
@@ -352,7 +353,6 @@ PART_OFFSET = 0x8000
 APP_OFFSET  = 0x10000
 
 SHELL    = bash
-APP_SIGN = tools/appsign.sh
 
 BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
 
@@ -393,6 +393,9 @@ endif
 APP_IMG  = $(BUILD)/appimg.bin
 PART_CSV = lib/partitions.csv
 PART_BIN = $(BUILD)/lib/partitions.bin
+PART_BIN_ENCRYPT = $(PART_BIN)_enc
+APP_BIN_ENCRYPT = $(APP_BIN)_enc_0x10000
+APP_BIN_ENCRYPT_2 = $(APP_BIN)_enc_0x1A0000
 
 ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
@@ -412,6 +415,19 @@ ESPTOOLPY_WRITE_FLASH  = $(ESPTOOLPY_SERIAL) write_flash -z --flash_mode $(ESPFL
 ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash
 ESPTOOL_ALL_FLASH_ARGS = $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)
 
+ESPSECUREPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espsecure.py
+ESPEFUSE = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espefuse.py --port $(ESPPORT)
+
+# actual command for signing a binary
+SIGN_BINARY = $(ESPSECUREPY) sign_data --keyfile $(SECURE_KEY)
+
+# actual command for signing a binary
+# it should be used as:
+# $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o image_encrypt.bin image.bin 
+ENCRYPT_BINARY = $(ESPSECUREPY) encrypt_flash_data --keyfile $(ENCRYPT_KEY)
+ENCRYPT_0x10000 = --address 0x10000
+ENCRYPT_0x1A0000 = --address 0x1A0000
+
 GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py -q
 
 ifeq ($(TARGET), app)
@@ -422,21 +438,117 @@ endif
 
 .PHONY: all
 
+ifeq ($(SECURE), on)
+
+# add #define CONFIG_FLASH_ENCRYPTION_ENABLE 1 used for Flash Encryption
+# it can also be added permanently in sdkconfig.h
+CFLAGS += -DCONFIG_FLASH_ENCRYPTION_ENABLED=1
+
+# add #define CONFIG_SECURE_BOOT_ENABLED 1 used for Secure Boot
+# it can also be added permanently in sdkconfig.h
+CFLAGS += -DCONFIG_SECURE_BOOT_ENABLED=1
+
+# find the configured private key file
+ORIG_SECURE_KEY := $(call resolvepath,$(call dequote,$(SECURE_KEY)),$(PROJECT_PATH))
+
+$(ORIG_SECURE_KEY): 
+	$(ECHO) "Secure boot signing key '$@' missing. It can be generated using: "
+	$(ECHO) "$(ESPSECUREPY) generate_signing_key $(SECURE_KEY)"
+	exit 1
+
+# public key name; the name is important 
+# because it will go into the elf with symbols having name derived out of this one
+SECURE_BOOT_VERIFICATION_KEY = signature_verification_key.bin
+
+# verification key derived from signing key.
+$(SECURE_BOOT_VERIFICATION_KEY): $(ORIG_SECURE_KEY)
+	$(ESPSECUREPY) extract_public_key --keyfile $< $@
+
+# key used for bootloader digest 
+SECURE_BOOTLOADER_KEY = secure-bootloader-key.bin
+
+$(SECURE_BOOTLOADER_KEY): $(ORIG_SECURE_KEY)
+	$(ESPSECUREPY) digest_private_key --keyfile $< $@
+
+# the actual digest+bootloader, that needs to be flashed at address 0x0
+BOOTLOADER_REFLASH_DIGEST = 	$(BUILD)/bootloader/bootloader-reflash-digest.bin
+BOOTLOADER_REFLASH_DIGEST_ENC = $(BOOTLOADER_REFLASH_DIGEST)_enc
+
+ORIG_ENCRYPT_KEY := $(call resolvepath,$(call dequote,$(ENCRYPT_KEY)),$(PROJECT_PATH))
+$(ORIG_ENCRYPT_KEY): 
+	$(ECHO) "WARNING: Encryption key '$@' missing. It can be created using: "
+	$(ECHO) "$(ESPSECUREPY) generate_flash_encryption_key $(ENCRYPT_KEY)"
+	exit 1
+	
+else #ifeq ($(SECURE), on)
+SECURE_BOOT_VERIFICATION_KEY = 
+SECURE_BOOTLOADER_KEY = 
+ORIG_ENCRYPT_KEY = 
+endif #ifeq ($(SECURE), on)
+
+
 ifeq ($(TARGET), boot)
 $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
 
-$(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a
-	$(ECHO) "LINK $@"
+$(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a $(SECURE_BOOT_VERIFICATION_KEY)
+#	$(ECHO) "COPY IDF LIBRARIES $@"
+#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+ifeq ($(SECURE), on)
+# unpack libbootloader_support.a, and archive again using the right key for verifying signatures
+	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
+	$(Q) $(RM) -f ./bootloader/lib/bootloader_support_temp
+	$(Q) $(MKDIR)  ./bootloader/lib/bootloader_support_temp
+	$(Q) $(CP) ./bootloader/lib/libbootloader_support.a ./bootloader/lib/bootloader_support_temp/
+	$(Q) $(CD) bootloader/lib/bootloader_support_temp/ ; pwd ;\
+	$(AR) x libbootloader_support.a ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
+	$(CP) ../../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o  libbootloader_support.a ;\
+	$(OBJCOPY) $(OBJCOPY_EMBED_ARGS) $(SECURE_BOOT_VERIFICATION_KEY) $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
+	$(AR) cru libbootloader_support.a *.o ;\
+	$(CP) libbootloader_support.a ../
+	$(Q) $(RM) -rf ./bootloader/lib/bootloader_support_temp 
+endif #ifeq ($(SECURE), on)
+	$(ECHO) "LINK $(CC) *** $(BOOT_LDFLAGS) *** $(BOOT_LIBS) -o $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
 
-$(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf
+$(BOOT_BIN): $(BUILD)/bootloader/bootloader.elf $(SECURE_BOOTLOADER_KEY) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "IMAGE $@"
 	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
+ifeq ($(SECURE), on)
+	# obtain the bootloader digest
+	$(Q) $(ESPSECUREPY) digest_secure_bootloader -k $(SECURE_BOOTLOADER_KEY)  -o $(BOOTLOADER_REFLASH_DIGEST) $@
+	$(ECHO) "Encrypt Bootloader digest (for offset 0x0)"
+	$(Q) $(ENCRYPT_BINARY) --address 0x0 -o $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOTLOADER_REFLASH_DIGEST)
+	$(RM) -f $(BOOTLOADER_REFLASH_DIGEST)
+	$(MV) -f $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOT_BIN)
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Prerequisites: hold valid keys for Flash Encryption and Secure Boot"
+	$(ECHO) "$(ESPSECUREPY) generate_flash_encryption_key $(ENCRYPT_KEY)"
+	$(ECHO) "$(ESPSECUREPY) generate_signing_key $(SECURE_KEY)"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Flash keys: write encryption and secure boot EFUSEs (Irreversible operation)"
+	$(ECHO) "$(ESPEFUSE) burn_key flash_encryption $(ENCRYPT_KEY)"
+	$(ECHO) "$(ESPEFUSE) burn_key secure_boot $(SECURE_BOOTLOADER_KEY)"
+	$(ECHO) "$(ESPEFUSE) burn_efuse FLASH_CRYPT_CNT"
+	$(ECHO) "$(ESPEFUSE) burn_efuse FLASH_CRYPT_CONFIG 0x0F"
+	$(ECHO) "$(ESPEFUSE) burn_efuse ABS_DONE_0"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Flash: write bootloader_digest + partition + app all encrypted"
+	$(ECHO) "Hint: 'make BOARD=$(BOARD) SECURE=on flash' can be used"
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) $(SEPARATOR)
+endif #ifeq ($(SECURE), on)
 else
+
 
 $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
@@ -448,18 +560,64 @@ $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
 	$(Q) $(SIZE) $@
 else
-$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
+$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_BOOT_VERIFICATION_KEY)
+#	$(ECHO) "COPY IDF LIBRARIES $@"
+#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+ifeq ($(SECURE), on)
+# unpack libbootloader_support.a, and archive again using the right key for verifying signatures
+	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
+	$(Q) $(RM) -rf ./lib/bootloader_support_temp
+	$(Q) $(MKDIR)  ./lib/bootloader_support_temp
+	$(Q) $(CP) ./lib/libbootloader_support.a ./lib/bootloader_support_temp/
+	$(Q) $(CD) lib/bootloader_support_temp/ ; pwd ;\
+	$(AR) x libbootloader_support.a ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
+	$(CP) ../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o  libbootloader_support.a ;\
+	$(OBJCOPY) $(OBJCOPY_EMBED_ARGS) $(SECURE_BOOT_VERIFICATION_KEY) $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
+	$(AR) cru libbootloader_support.a *.o ;\
+	$(CP) libbootloader_support.a ../
+	$(Q) $(RM) -rf lib/bootloader_support_temp
+endif #ifeq ($(SECURE), on)
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
 	$(Q) $(SIZE) $@
 endif
 
-$(APP_BIN): $(BUILD)/application.elf $(PART_BIN)
+$(APP_BIN): $(BUILD)/application.elf $(PART_BIN) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "IMAGE $@"
 	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
-	$(ECHO) "Signing OTA image"
-	$(Q)$(SHELL) $(APP_SIGN) $(APP_BIN) $(BUILD)
-
+ifeq ($(SECURE), on)
+	$(ECHO) "Signing $@"
+	$(Q) $(SIGN_BINARY) $@
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2) (0x1A0000 offset)"
+	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o $(APP_BIN_ENCRYPT) $@
+	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x1A0000) -o $(APP_BIN_ENCRYPT_2) $@
+	$(ECHO) "Overwrite $(APP_BIN) with $(APP_BIN_ENCRYPT)"
+	$(MV) -f $(APP_BIN_ENCRYPT) $(APP_BIN)
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Prerequisites: hold valid keys for Flash Encryption and Secure Boot"
+	$(ECHO) "$(ESPSECUREPY) generate_flash_encryption_key $(ENCRYPT_KEY)"
+	$(ECHO) "$(ESPSECUREPY) generate_signing_key $(SECURE_KEY)"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Flash keys: write encryption and secure boot EFUSEs (Irreversible operation)"
+	$(ECHO) "$(ESPEFUSE) burn_key flash_encryption $(ENCRYPT_KEY)"
+	$(ECHO) "$(ESPEFUSE) burn_key secure_boot $(SECURE_BOOTLOADER_KEY)"
+	$(ECHO) "$(ESPEFUSE) burn_efuse FLASH_CRYPT_CNT"
+	$(ECHO) "$(ESPEFUSE) burn_efuse FLASH_CRYPT_CONFIG 0x0F"
+	$(ECHO) "$(ESPEFUSE) burn_efuse ABS_DONE_0"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "* Flash: write bootloader_digest + partition + app all encrypted"
+	$(ECHO) "Hint: 'make BOARD=$(BOARD) SECURE=on flash' can be used"
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) $(SEPARATOR)
+endif # feq ($(SECURE), on)
+	
 $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(ECHO) "CPP $@"
 	$(Q) $(CC) -I. -C -P -x c -E $< -o $@
@@ -469,7 +627,16 @@ flash: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "Entering flash mode"
 	$(Q) $(ENTER_FLASHING_MODE)
 	$(ECHO) "Flashing project"
+ifeq ($(SECURE), on)
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "(Secure boot enabled, so bootloader + digest is flashed)"
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)
+else # ifeq ($(SECURE), on)
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)"
 	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)
+endif #ifeq ($(SECURE), on)
 	$(ECHO) "Exiting flash mode"
 	$(Q) $(EXIT_FLASHING_MODE)
 
@@ -481,9 +648,15 @@ erase:
 	$(ECHO) "Exiting flash mode"
 	$(Q) $(EXIT_FLASHING_MODE)
 
-$(PART_BIN): $(PART_CSV)
+$(PART_BIN): $(PART_CSV) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "Building partitions from $(PART_CSV)..."
 	$(Q) $(GEN_ESP32PART) $< $@
+ifeq ($(SECURE), on)
+	$(ECHO) "Signing $@"
+	$(Q) $(SIGN_BINARY) $@
+	$(ECHO) "Encrypt paritions table image into $(PART_BIN_ENCRYPT) (by default 0x8000 offset)"
+	$(Q) $(ENCRYPT_BINARY) --address 0x8000 -o $(PART_BIN_ENCRYPT) $@
+endif # ifeq ($(SECURE), on)
 
 show_partitions: $(PART_BIN)
 	$(ECHO) "Partition table binary generated. Contents:"

@@ -49,6 +49,7 @@
 #include "mptask.h"
 #include "machpin.h"
 #include "pins.h"
+#include "mperror.h"
 
 
 TaskHandle_t mpTaskHandle;
@@ -112,7 +113,14 @@ void app_main(void) {
         nvs_flash_init();
     }
 
-    micropy_hw_flash_size = spi_flash_get_chip_size();
+    // Initialise heartbeat on Core0
+    mperror_pre_init();
+
+    // differentiate the Flash Size (either 8MB or 4MB) based on ESP32 rev id
+    micropy_hw_flash_size = (esp_get_revision() > 0 ? 0x800000 : 0x400000);
+
+    // propagating the Flash Size in the global variable (used in multiple IDF modules)
+    g_rom_flashchip.chip_size = micropy_hw_flash_size;
 
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);

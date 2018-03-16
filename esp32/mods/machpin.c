@@ -53,6 +53,7 @@
 #include "nvs_flash.h"
 #include "esp_event.h"
 #include "esp_intr.h"
+#include "driver/rtc_io.h"
 
 #include "gpio.h"
 #include "machpin.h"
@@ -547,12 +548,20 @@ STATIC mp_obj_t pin_hold(mp_uint_t n_args, const mp_obj_t *args) {
     } else {
         self->hold = mp_obj_is_true(args[1]);
         if (self->hold == true) {
-            gpio_pad_hold(self->pin_number);
+            if (ESP_OK != rtc_gpio_hold_en(self->pin_number)) {
+                goto error;
+            }
         } else {
-            gpio_pad_unhold(self->pin_number);
+            if (ESP_OK != rtc_gpio_hold_dis(self->pin_number)) {
+                goto error;
+            }
         }
     }
     return mp_const_none;
+
+error:
+    mp_raise_msg(&mp_type_OSError, "the hold functionality is only available for GPIO pins in the RTC domain");
+
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pin_hold_obj, 1, 2, pin_hold);
 

@@ -153,19 +153,17 @@ STATIC mp_obj_t time_sleep_us(mp_obj_t arg) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(time_sleep_us_obj, time_sleep_us);
 
 STATIC mp_obj_t time_ticks_ms(void) {
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    return mp_obj_new_int_from_uint(((tv.tv_sec * 1000) + tv.tv_usec / 1000));
+    return mp_obj_new_int_from_uint(mp_hal_ticks_ms());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_ms_obj, time_ticks_ms);
 
 STATIC mp_obj_t time_ticks_us(void) {
-    return mp_obj_new_int_from_uint(system_get_rtc_time());
+    return mp_obj_new_int_from_uint(mp_hal_ticks_us());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_us_obj, time_ticks_us);
 
 STATIC mp_obj_t time_ticks_cpu(void) {
-   return mp_obj_new_int_from_uint(get_timer_counter_value());
+   return mp_obj_new_int_from_uint(machtimer_get_timer_counter_value());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_cpu_obj, time_ticks_cpu);
 

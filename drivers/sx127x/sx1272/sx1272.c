@@ -33,6 +33,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "sx1272.h"
 #include "sx1272-board.h"
 #include "esp_attr.h"
+#include "esp32_mphal.h"
 
 /*
  * Local types definition
@@ -1054,8 +1055,6 @@ static IRAM_ATTR void SX1272OnDioIrq (void) {
     }
 }
 
-extern uint64_t system_get_rtc_time(void);
-
 IRAM_ATTR void SX1272OnDio0Irq( void )
 {
     volatile uint8_t irqFlags = 0;
@@ -1073,7 +1072,7 @@ IRAM_ATTR void SX1272OnDio0Irq( void )
                     int8_t snr = 0;
 
                     // Store the packet timestamp
-                    SX1272.Settings.LoRaPacketHandler.TimeStamp = system_get_rtc_time();
+                    SX1272.Settings.LoRaPacketHandler.TimeStamp = mp_hal_ticks_us();
 
                     // Clear Irq
                     SX1272Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXDONE );
