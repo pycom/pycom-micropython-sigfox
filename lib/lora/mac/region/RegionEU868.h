@@ -485,6 +485,8 @@ uint8_t RegionEU868ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t d
 
 bool RegionEU868GetChannels( ChannelParams_t** channels, uint32_t *size );
 
+bool RegionEU868GetChannelMask( uint16_t** channelmask, uint32_t *size );
+
 bool RegionEU868ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr );
 
 /*! \} defgroup REGIONEU868 */

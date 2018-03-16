@@ -1035,6 +1035,20 @@ bool RegionUS915HybridGetChannels( ChannelParams_t** channels, uint32_t *size )
     return true;
 }
 
+bool RegionUS915HybridGetChannelMask( uint16_t** channelmask, uint32_t *size )
+{
+    *channelmask = ChannelsMask;
+    *size = sizeof(ChannelsMask);
+    return true;
+}
+
+bool RegionUS915HybridGetChannelMaskRemaining( uint16_t** channelmask, uint32_t *size )
+{
+    *channelmask = ChannelsMaskRemaining;
+    *size = sizeof(ChannelsMaskRemaining);
+    return true;
+}
+
 bool RegionUS915HybridForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr )
 {
     if (joinDr == DR_4) {

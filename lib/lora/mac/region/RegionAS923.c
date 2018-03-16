@@ -1173,6 +1173,13 @@ bool RegionAS923GetChannels( ChannelParams_t** channels, uint32_t *size )
     return true;
 }
 
+bool RegionAS923GetChannelMask( uint16_t** channelmask, uint32_t *size )
+{
+    *channelmask = ChannelsMask;
+    *size = sizeof(ChannelsMask);
+    return true;
+}
+
 bool RegionAS923ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr )
 {
     // Only AS923_DWELL_LIMIT_DATARATE is supported
