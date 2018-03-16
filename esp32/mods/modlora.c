@@ -666,8 +666,6 @@ static void OnTxNextActReqTimerEvent(void) {
             lora_obj.ComplianceTest.Running = false;
             lora_obj.ComplianceTest.DownLinkCounter = 0;
         } else {
-            // Since this is a retry, let the stack choose the DR from this moment onwards
-            lora_obj.otaa_dr = 0xFF;
             lora_obj.state = E_LORA_STATE_JOIN;
         }
     }
