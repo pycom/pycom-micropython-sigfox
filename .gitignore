@@ -49,3 +49,4 @@ signature_verification_key.bin
 secure-bootloader-key.bin
 flash_encryption_key.bin
  
+.DS_Store

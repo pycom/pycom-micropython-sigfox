@@ -25,6 +25,7 @@ static pycom_config_block_t pycom_config_block;
 void config_init0 (void) {
     // read the config struct from flash
     spi_flash_read(CONFIG_DATA_FLASH_ADDR, (void *)&pycom_config_block, sizeof(pycom_config_block));
+    // printf("Config block has size: %d\n", sizeof(pycom_config_block));
 }
 
 bool config_set_lpwan_mac (const uint8_t *mac) {
@@ -156,6 +157,7 @@ void config_get_wifi_pwd (uint8_t *wifi_pwd) {
 }
 
 static bool config_write (void) {
+// printf("Config block has size: %d\n", sizeof(pycom_config_block));
     // erase the block first
     if (ESP_OK == spi_flash_erase_sector(CONFIG_DATA_FLASH_BLOCK)) {
         // then write it

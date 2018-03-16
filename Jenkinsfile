@@ -9,7 +9,7 @@ node {
         sh 'rm -rf esp-idf'
         sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
     }
-
+    
 	PYCOM_VERSION=get_version()
 	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 
@@ -29,13 +29,13 @@ node {
         		 make clean && make all'''
     }
 
- 	for (board in boards_to_build) {
-		stage(board) {
-			def parallelSteps = [:]
+    stage('firmware-build') {
+        def parallelSteps = [:]
+ 	    for (board in boards_to_build) {
             def board_u = board.toUpperCase()
         		parallelSteps[board] = boardBuild(board)
-        		parallel parallelSteps
   		}
+  		parallel parallelSteps
   	}
 
     stash includes: '**/*.bin', name: 'binary'
@@ -89,10 +89,11 @@ def boardBuild(name) {
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
         mv ../application.elf ''' + release_dir + name + "-" + PYCOM_VERSION + '''-application.elf;
+        cp ../appimg.bin .;
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
         cp ../''' + app_bin + ''' .;
-        tar -cvzf ''' + release_dir + name + "-" + PYCOM_VERSION + '''.tar.gz  bootloader.bin   partitions.bin   script ''' + app_bin
+        tar -cvzf ''' + release_dir + name + "-" + PYCOM_VERSION + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
@@ -156,5 +157,6 @@ def get_remote_name(short_name) {
 }
 
 def get_device_name(short_name) {
-    return "/dev/serial/by-id/usb-" +  short_name + "-if00"
+    return "/dev/serial/by-id/usb-" +  short_name + "-if00"   
 }
+
