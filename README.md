@@ -110,7 +110,7 @@ You can change the board type by using the BOARD variable:
     $ make BOARD=GPY clean
     $ make BOARD=GPY TARGET=boot
     $ make BOARD=GPY TARGET=app
-    $ make flash
+    $ make BOARD=GPY flash
 
 We currently support the following BOARD types:
 
