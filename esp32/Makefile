@@ -23,6 +23,32 @@ BTYPE ?= release
 
 BUILD = build/$(BOARD)/$(BTYPE)
 
+# by default Secure Boot and Flash Encryption are disabled
+SECURE ?= off
+
+ifeq ($(SECURE), on)
+	# filename of the private key, used for 2 things:
+	# 1. signing partitions.bin and board.bin
+	# 2. extracting public key, which is embedded into bootloader.bin
+	# Generation is done using command:
+	# espsecure.py generate_signing_key secure_boot_signing_key.pem
+	SECURE_KEY ?= secure_boot_signing_key.pem
+
+    # Flash Encryption key is generated using command:
+	# espsecure.py generate_flash_encryption_key flash_encryption_key.bin
+	# Writing it is done using:
+	# espefuse.py --port PORT burn_key flash_encryption flash_encryption_key.bin
+    	ENCRYPT_KEY ?= flash_encryption_key.bin
+else
+$(info Use make SECURE=on [optionally SECURE_KEY ?= secure_boot_signing_key.pem] to enable Secure Boot and Flash Encryption mechanisms.)
+endif # ifeq ($(SECURE), on)
+
+# Default path to the project: we assume the Makefile including this file
+# is in the project directory
+ifndef PROJECT_PATH
+PROJECT_PATH := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
+endif
+
 FROZEN_MPY_DIR = frozen
 
 include ../py/mkenv.mk
@@ -55,11 +81,14 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        $(ESP_IDF_COMP_PATH)/newlib/lib/libm-psram-workaround.a \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
-       -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -u ld_include_panic_highint_hdl \
+       -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -lbootloader_support -lmicro-ecc -u ld_include_panic_highint_hdl \
 
 B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader -L$(ESP_IDF_COMP_PATH)/esp32/ld \
          -L$(ESP_IDF_COMP_PATH)/esp32/lib -llog -lcore -lbootloader_support \
          -lspi_flash -lsoc -lmicro-ecc -lgcc -lstdc++ -lgcov
+
+# objcopy paramters, to transform a binary file into an object file
+OBJCOPY_EMBED_ARGS = --input-target binary --output-target elf32-xtensa-le --binary-architecture xtensa --rename-section .data=.rodata.embedded
 
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h $(BUILD)/pins_qstr.h
