@@ -454,6 +454,36 @@ STATIC mp_obj_t lte_send_raw_at(mp_obj_t self_in, mp_obj_t cmd_o) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lte_send_raw_at_obj, lte_send_raw_at);
 
+STATIC mp_obj_t lte_imei(mp_obj_t self_in) {
+    char *pos;
+    vstr_t vstr;
+    vstr_init_len(&vstr, strlen("AT+CGSN"));
+    strcpy(vstr.buf, "AT+CGSN");
+    lte_send_raw_at(MP_OBJ_NULL, mp_obj_new_str_from_vstr(&mp_type_str, &vstr));
+    if ((pos = strstr(modlte_rsp.data, "35434")) && (strlen(pos) > 20)) {
+        vstr_init_len(&vstr, 15);
+        memcpy(vstr.buf, pos, 15);
+        return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_imei_obj, lte_imei);
+
+STATIC mp_obj_t lte_iccid(mp_obj_t self_in) {
+    char *pos;
+    vstr_t vstr;
+    vstr_init_len(&vstr, strlen("AT+SQNCCID?"));
+    strcpy(vstr.buf, "AT+SQNCCID?");
+    lte_send_raw_at(MP_OBJ_NULL, mp_obj_new_str_from_vstr(&mp_type_str, &vstr));
+    if ((pos = strstr(modlte_rsp.data, "SQNCCID:")) && (strlen(pos) > 25)) {
+        vstr_init_len(&vstr, 20);
+        memcpy(vstr.buf, &pos[10], 20);
+        return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_iccid_obj, lte_iccid);
+
 STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     lte_check_init();
     if (lteppp_get_state() == E_LTE_PPP) {
@@ -485,6 +515,8 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_connect),             (mp_obj_t)&lte_connect_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect),          (mp_obj_t)&lte_disconnect_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_isconnected),         (mp_obj_t)&lte_isconnected_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_imei),                (mp_obj_t)&lte_imei_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_iccid),               (mp_obj_t)&lte_iccid_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_send_at_cmd),         (mp_obj_t)&lte_send_raw_at_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset),               (mp_obj_t)&lte_reset_obj },
 
