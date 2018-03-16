@@ -1150,6 +1150,13 @@ bool RegionEU868GetChannels( ChannelParams_t** channels, uint32_t *size )
     return true;
 }
 
+bool RegionEU868GetChannelMask( uint16_t** channelmask, uint32_t *size )
+{
+    *channelmask = ChannelsMask;
+    *size = sizeof(ChannelsMask);
+    return true;
+}
+
 bool RegionEU868ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr )
 {
     uint8_t DRToCounter[6] = { 48, 32, 24, 16, 8, 1 };

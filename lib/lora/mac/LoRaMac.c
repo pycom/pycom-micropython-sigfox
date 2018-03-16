@@ -3379,11 +3379,20 @@ void LoRaMacTestSetChannel( uint8_t channel )
 void LoRaMacNvsSave( void )
 {
     ChannelParams_t *channels;
+    uint16_t *channelmask;
     uint32_t size;
 
     modlora_nvs_set_blob(E_LORA_NVS_ELE_MAC_PARAMS, &LoRaMacParams, sizeof(LoRaMacParams));
     RegionGetChannels(LoRaMacRegion, &channels, &size);
     modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELS, channels, size);
+
+    if (RegionGetChannelMask(LoRaMacRegion, &channelmask, &size)) {
+        modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELMASK, channelmask, size);
+    }
+
+    if (RegionGetChannelMaskRemaining(LoRaMacRegion, &channelmask, &size)) {
+        modlora_nvs_set_blob(E_LORA_NVS_ELE_CHANNELMASK_REMAINING, channelmask, size);
+    }
 
     modlora_nvs_set_uint(E_LORA_NVS_ELE_ACK_REQ, SrvAckRequested);
 
@@ -3408,6 +3417,14 @@ void LoRaMacNvsSave( void )
 
 void LoRaMacGetChannelList(ChannelParams_t **channels, uint32_t *size) {
     RegionGetChannels(LoRaMacRegion, channels, size);
+}
+
+bool LoRaMacGetChannelsMask(uint16_t **channelmask, uint32_t *size) {
+    return RegionGetChannelMask(LoRaMacRegion, channelmask, size);
+}
+
+bool LoRaMacGetChannelsMaskRemaining(uint16_t **channelmask, uint32_t *size) {
+    return RegionGetChannelMaskRemaining(LoRaMacRegion, channelmask, size);
 }
 
 LoRaMacParams_t * LoRaMacGetMacParams(void) {

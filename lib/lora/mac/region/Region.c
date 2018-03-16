@@ -61,6 +61,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define AS923_SET_CONTINUOUS_WAVE( )               AS923_CASE { RegionAS923SetContinuousWave( continuousWave ); break; }
 #define AS923_APPLY_DR_OFFSET( )                   AS923_CASE { return RegionAS923ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define AS923_GET_CHANNELS( )                      AS923_CASE { return RegionAS923GetChannels( channels, size ); }
+#define AS923_GET_CHANNEL_MASK( )                  AS923_CASE { return RegionAS923GetChannelMask( channelmask, size ); }
 #define AS923_FORCE_JOIN_DATARATE( )               AS923_CASE { return RegionAS923ForceJoinDataRate( joinDr, alternateDr ); }
 #else
 #define AS923_IS_ACTIVE( )
@@ -89,6 +90,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define AS923_SET_CONTINUOUS_WAVE( )
 #define AS923_APPLY_DR_OFFSET( )
 #define AS923_GET_CHANNELS( )
+#define AS923_GET_CHANNEL_MASK( )
 #define AS923_FORCE_JOIN_DATARATE( )
 #endif
 
@@ -121,6 +123,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define AU915_SET_CONTINUOUS_WAVE( )               AU915_CASE { RegionAU915SetContinuousWave( continuousWave ); break; }
 #define AU915_APPLY_DR_OFFSET( )                   AU915_CASE { return RegionAU915ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define AU915_GET_CHANNELS( )                      AU915_CASE { return RegionAU915GetChannels( channels, size ); }
+#define AU915_GET_CHANNEL_MASK( )                  AU915_CASE { return RegionAU915GetChannelMask( channelmask, size ); }
+#define AU915_GET_CHANNEL_MASK_REMAINING( )        AU915_CASE { return RegionAU915GetChannelMaskRemaining( channelmask, size ); }
 #define AU915_FORCE_JOIN_DATARATE( )               AU915_CASE { return RegionAU915ForceJoinDataRate( joinDr, alternateDr ); }
 #else
 #define AU915_IS_ACTIVE( )
@@ -149,6 +153,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define AU915_SET_CONTINUOUS_WAVE( )
 #define AU915_APPLY_DR_OFFSET( )
 #define AU915_GET_CHANNELS( )
+#define AU915_GET_CHANNEL_MASK( )
+#define AU915_GET_CHANNEL_MASK_REMAINING( )
 #define AU915_FORCE_JOIN_DATARATE( )
 #endif
 
@@ -337,6 +343,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU868_SET_CONTINUOUS_WAVE( )               EU868_CASE { RegionEU868SetContinuousWave( continuousWave ); break; }
 #define EU868_APPLY_DR_OFFSET( )                   EU868_CASE { return RegionEU868ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define EU868_GET_CHANNELS( )                      EU868_CASE { return RegionEU868GetChannels( channels, size ); }
+#define EU868_GET_CHANNEL_MASK( )                  EU868_CASE { return RegionEU868GetChannelMask( channelmask, size ); }
 #define EU868_FORCE_JOIN_DATARATE( )               EU868_CASE { return RegionEU868ForceJoinDataRate( joinDr, alternateDr ); }
 #else
 #define EU868_IS_ACTIVE( )
@@ -365,6 +372,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU868_SET_CONTINUOUS_WAVE( )
 #define EU868_APPLY_DR_OFFSET( )
 #define EU868_GET_CHANNELS( )
+#define EU868_GET_CHANNEL_MASK( )
 #define EU868_FORCE_JOIN_DATARATE( )
 #endif
 
@@ -501,6 +509,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define US915_SET_CONTINUOUS_WAVE( )               US915_CASE { RegionUS915SetContinuousWave( continuousWave ); break; }
 #define US915_APPLY_DR_OFFSET( )                   US915_CASE { return RegionUS915ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define US915_GET_CHANNELS( )                      US915_CASE { return RegionUS915GetChannels( channels, size ); }
+#define US915_GET_CHANNEL_MASK( )                  US915_CASE { return RegionUS915GetChannelMask( channelmask, size ); }
+#define US915_GET_CHANNEL_MASK_REMAINING( )        US915_CASE { return RegionUS915GetChannelMaskRemaining( channelmask, size ); }
 #define US915_FORCE_JOIN_DATARATE( )               US915_CASE { return RegionUS915ForceJoinDataRate( joinDr, alternateDr ); }
 #else
 #define US915_IS_ACTIVE( )
@@ -529,6 +539,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define US915_SET_CONTINUOUS_WAVE( )
 #define US915_APPLY_DR_OFFSET( )
 #define US915_GET_CHANNELS( )
+#define US915_GET_CHANNEL_MASK( )
+#define US915_GET_CHANNEL_MASK_REMAINING( )
 #define US915_FORCE_JOIN_DATARATE( )
 #endif
 
@@ -561,6 +573,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define US915_HYBRID_SET_CONTINUOUS_WAVE( )               US915_HYBRID_CASE { RegionUS915HybridSetContinuousWave( continuousWave ); break; }
 #define US915_HYBRID_APPLY_DR_OFFSET( )                   US915_HYBRID_CASE { return RegionUS915HybridApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define US915_HYBRID_GET_CHANNELS( )                      US915_HYBRID_CASE { return RegionUS915HybridGetChannels( channels, size ); }
+#define US915_HYBRID_GET_CHANNEL_MASK( )                  US915_HYBRID_CASE { return RegionUS915HybridGetChannelMask( channelmask, size ); }
+#define US915_HYBRID_GET_CHANNEL_MASK_REMAINING( )        US915_HYBRID_CASE { return RegionUS915HybridGetChannelMaskRemaining( channelmask, size ); }
 #define US915_HYBRID_FORCE_JOIN_DATARATE( )               US915_HYBRID_CASE { return RegionUS915HybridForceJoinDataRate( joinDr, alternateDr ); }
 #else
 #define US915_HYBRID_IS_ACTIVE( )
@@ -589,6 +603,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define US915_HYBRID_SET_CONTINUOUS_WAVE( )
 #define US915_HYBRID_APPLY_DR_OFFSET( )
 #define US915_HYBRID_GET_CHANNELS( )
+#define US915_HYBRID_GET_CHANNEL_MASK( )
+#define US915_HYBRID_GET_CHANNEL_MASK_REMAINING( )
 #define US915_HYBRID_FORCE_JOIN_DATARATE( )
 #endif
 
@@ -1117,6 +1133,34 @@ bool RegionGetChannels( LoRaMacRegion_t region, ChannelParams_t** channels, uint
         EU868_GET_CHANNELS( );
         US915_GET_CHANNELS( );
         US915_HYBRID_GET_CHANNELS( );
+        default:
+        {
+            return false;
+        }
+    }
+}
+
+bool RegionGetChannelMask(LoRaMacRegion_t region, uint16_t **channelmask, uint32_t *size ) {
+    switch( region )
+    {
+        AS923_GET_CHANNEL_MASK( );
+        AU915_GET_CHANNEL_MASK( );
+        EU868_GET_CHANNEL_MASK( );
+        US915_GET_CHANNEL_MASK( );
+        US915_HYBRID_GET_CHANNEL_MASK( );
+        default:
+        {
+            return false;
+        }
+    }
+}
+
+bool RegionGetChannelMaskRemaining(LoRaMacRegion_t region, uint16_t **channelmask, uint32_t *size ) {
+    switch( region )
+    {
+        AU915_GET_CHANNEL_MASK_REMAINING( );
+        US915_GET_CHANNEL_MASK_REMAINING( );
+        US915_HYBRID_GET_CHANNEL_MASK_REMAINING( );
         default:
         {
             return false;
