@@ -21,14 +21,6 @@ node {
           make all'''
     }
 
-    stage('IDF-LIBS') {
-        // build the libs from esp-idf
-       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-        		 export IDF_PATH=${WORKSPACE}/esp-idf;
-        		 cd $IDF_PATH/examples/wifi/scan;
-        		 make clean && make all'''
-    }
-
     stage('firmware-build') {
         def parallelSteps = [:]
  	    for (board in boards_to_build) {
@@ -89,7 +81,7 @@ def boardBuild(name) {
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
         mv ../application.elf ''' + release_dir + name + "-" + PYCOM_VERSION + '''-application.elf;
-        cp ../appimg.bin .;
+        cp ../ ''' + app_bin + '''appimg.bin .;
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
         cp ../''' + app_bin + ''' .;
