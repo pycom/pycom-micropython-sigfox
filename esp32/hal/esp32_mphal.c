@@ -34,6 +34,7 @@
 #include "modmachine.h"
 #include "updater.h"
 #include "bootloader.h"
+#include "machtimer.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -171,6 +172,14 @@ IRAM_ATTR uint32_t mp_hal_ticks_us(void) {
     struct timeval now;
     gettimeofday(&now, NULL);
     return now.tv_sec * 1000000 + now.tv_usec;
+}
+
+IRAM_ATTR uint64_t mp_hal_ticks_ms_non_blocking(void) {
+    return machtimer_get_timer_counter_value() / (CLK_FREQ / 1000);
+}
+
+IRAM_ATTR uint64_t mp_hal_ticks_us_non_blocking(void) {
+    return machtimer_get_timer_counter_value() / (CLK_FREQ / 1000000);
 }
 
 void mp_hal_delay_ms(uint32_t delay) {

@@ -111,7 +111,12 @@ void uart_init0 (void) {
 }
 
 void uart_deinit_all (void) {
-    for (int i = 0; i < MACH_NUM_UARTS; i++) {
+#if defined(GPY) || defined(FIPY)
+    uint32_t num_uarts = MACH_NUM_UARTS;
+#else
+    uint32_t num_uarts = MACH_NUM_UARTS - 1;
+#endif
+    for (int i = 0; i < num_uarts; i++) {
         mach_uart_deinit(&mach_uart_obj[i]);
     }
 }

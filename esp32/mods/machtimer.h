@@ -10,8 +10,12 @@
 #ifndef MACHTIMER_H_
 #define MACHTIMER_H_
 
+#define CLK_FREQ                                    (APB_CLK_FREQ / 2)
+
 extern const mp_obj_type_t mach_timer_type;
 
+
+extern void machtimer_preinit(void);
 
 extern void machtimer_init0(void);
 

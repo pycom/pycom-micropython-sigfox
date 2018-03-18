@@ -163,7 +163,7 @@ STATIC mp_obj_t time_ticks_us(void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_us_obj, time_ticks_us);
 
 STATIC mp_obj_t time_ticks_cpu(void) {
-   return mp_obj_new_int_from_uint(machtimer_get_timer_counter_value());
+   return mp_obj_new_int_from_uint(mp_hal_ticks_us_non_blocking());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_cpu_obj, time_ticks_cpu);
 

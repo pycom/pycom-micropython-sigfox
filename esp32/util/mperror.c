@@ -68,8 +68,8 @@ led_info_t led_info = {
 #endif
 
 struct mperror_heart_beat {
-    uint32_t off_time;
-    uint32_t on_time;
+    uint64_t off_time;
+    uint64_t on_time;
     bool beating;
     bool enabled;
     bool do_disable;
@@ -79,15 +79,15 @@ struct mperror_heart_beat {
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 void mperror_pre_init(void) {
+    // configure the heartbeat led pin
+    pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
+    led_init(&led_info);
+    mperror_heart_beat.enabled = (config_get_heartbeat_on_boot()) ? true : false;
+    mperror_heart_beat.do_disable = (config_get_heartbeat_on_boot()) ? false : true;
     esp_register_freertos_idle_hook(mperror_heartbeat_signal);
 }
 
 void mperror_init0 (void) {
-    // configure the heartbeat led pin
-    pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
-    led_init(&led_info);
-    mperror_heart_beat.enabled = (config_get_heartbeat_on_boot()) ? true:false;
-    mperror_heart_beat.do_disable = (config_get_heartbeat_on_boot()) ? false:true;
     mperror_heartbeat_switch_off();
 }
 
@@ -109,11 +109,12 @@ void mperror_signal_error (void) {
 
 void mperror_heartbeat_switch_off (void) {
     if (mperror_heart_beat.enabled) {
-        mperror_heart_beat.on_time = 0;
-        mperror_heart_beat.off_time = 0;
         led_info.color.value = 0;
         led_set_color(&led_info, false);
     }
+    mperror_heart_beat.on_time = 0;
+    mperror_heart_beat.off_time = 0;
+    mperror_heart_beat.beating = false;
 }
 
 bool mperror_heartbeat_signal (void) {
@@ -121,13 +122,13 @@ bool mperror_heartbeat_signal (void) {
         mperror_heart_beat.do_disable = false;
     } else if (mperror_heart_beat.enabled) {
         if (!mperror_heart_beat.beating) {
-            if ((mperror_heart_beat.on_time = mp_hal_ticks_ms()) - mperror_heart_beat.off_time > MPERROR_HEARTBEAT_OFF_MS) {
+            if ((mperror_heart_beat.on_time = mp_hal_ticks_ms_non_blocking()) - mperror_heart_beat.off_time > MPERROR_HEARTBEAT_OFF_MS) {
                 led_info.color.value = MPERROR_HEARTBEAT_COLOR;
                 led_set_color(&led_info, false);
                 mperror_heart_beat.beating = true;
             }
         } else {
-            if ((mperror_heart_beat.off_time = mp_hal_ticks_ms()) - mperror_heart_beat.on_time > MPERROR_HEARTBEAT_ON_MS) {
+            if ((mperror_heart_beat.off_time = mp_hal_ticks_ms_non_blocking()) - mperror_heart_beat.on_time > MPERROR_HEARTBEAT_ON_MS) {
                 led_info.color.value = 0;
                 led_set_color(&led_info, false);
                 mperror_heart_beat.beating = false;
@@ -180,7 +181,6 @@ void mperror_enable_heartbeat (bool enable) {
         mperror_heart_beat.enabled = true;
         mperror_heart_beat.do_disable = false;
         mperror_heartbeat_switch_off();
-        //mperror_init0();
     } else {
         led_info.color.value = 0;
         mperror_heart_beat.do_disable = true;

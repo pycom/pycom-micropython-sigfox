@@ -50,6 +50,7 @@
 #include "machpin.h"
 #include "pins.h"
 #include "mperror.h"
+#include "machtimer.h"
 
 
 TaskHandle_t mpTaskHandle;
@@ -103,6 +104,9 @@ static StaticTask_t mpTaskTCB;
 void app_main(void) {
     // remove all the logs from the IDF
     esp_log_level_set("*", ESP_LOG_NONE);
+
+    // setup the timer used as a reference in mphal
+    machtimer_preinit();
 
     // this one gets the remaining sleep time
     machine_init0();
