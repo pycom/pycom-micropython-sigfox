@@ -117,7 +117,7 @@ void app_main(void) {
         nvs_flash_init();
     }
 
-    // Initialise heartbeat on Core0
+    // initialise heartbeat on Core 0
     mperror_pre_init();
 
     // differentiate the Flash Size (either 8MB or 4MB) based on ESP32 rev id

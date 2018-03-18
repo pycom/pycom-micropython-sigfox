@@ -38,24 +38,24 @@ void calibrate_us_timer(void) {
 }
 
 void machtimer_preinit(void) {
-    timer_config_t config = {.alarm_en = false, .counter_en = false,
-                             .counter_dir = TIMER_COUNT_UP,
-                             .intr_type = TIMER_INTR_LEVEL,
-                             .auto_reload = false, .divider = 2};
+    timer_config_t config = { .alarm_en = false,
+                              .counter_en = false,
+                              .counter_dir = TIMER_COUNT_UP,
+                              .intr_type = TIMER_INTR_LEVEL,
+                              .auto_reload = false, .divider = 2};
 
     timer_init(TIMER_GROUP_0, TIMER_0, &config);
     timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0);
-    timer_enable_intr(TIMER_GROUP_0, TIMER_0);
     timer_start(TIMER_GROUP_0, TIMER_0);
     calibrate_us_timer();
 }
 
 void machtimer_init0(void) {
     mach_timer_alarm_init_heap();
+    timer_enable_intr(TIMER_GROUP_0, TIMER_0);
 }
 
 void machtimer_deinit(void) {
-    timer_pause(TIMER_GROUP_0, TIMER_0);
     timer_disable_intr(TIMER_GROUP_0, TIMER_0);
 }
 

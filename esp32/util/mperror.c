@@ -75,20 +75,25 @@ struct mperror_heart_beat {
     bool do_disable;
 } mperror_heart_beat;
 
+static void disable_and_wait (void);
+
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 void mperror_pre_init(void) {
-    // configure the heartbeat led pin
-    pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
-    led_init(&led_info);
-    mperror_heart_beat.enabled = (config_get_heartbeat_on_boot()) ? true : false;
-    mperror_heart_beat.do_disable = (config_get_heartbeat_on_boot()) ? false : true;
+    mperror_heart_beat.enabled = false;
     esp_register_freertos_idle_hook(mperror_heartbeat_signal);
 }
 
 void mperror_init0 (void) {
-    mperror_heartbeat_switch_off();
+    // configure the heartbeat led pin
+    pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
+    led_init(&led_info);
+    mperror_heart_beat.on_time = 0;
+    mperror_heart_beat.off_time = 0;
+    mperror_heart_beat.beating = false;
+    mperror_heart_beat.enabled = (config_get_heartbeat_on_boot()) ? true : false;
+    mperror_heart_beat.do_disable = (config_get_heartbeat_on_boot()) ? false : true;
 }
 
 void mperror_signal_error (void) {
@@ -101,6 +106,7 @@ void mperror_signal_error (void) {
         } else {
             led_info.color.value = 0;
         }
+        disable_and_wait();
         led_set_color(&led_info, false);
         toggle = ~toggle;
         mp_hal_delay_ms(MPERROR_TOOGLE_MS);
@@ -110,6 +116,7 @@ void mperror_signal_error (void) {
 void mperror_heartbeat_switch_off (void) {
     if (mperror_heart_beat.enabled) {
         led_info.color.value = 0;
+        disable_and_wait();
         led_set_color(&led_info, false);
     }
     mperror_heart_beat.on_time = 0;
@@ -174,19 +181,21 @@ void nlr_jump_fail(void *val) {
 #endif
 
 void mperror_enable_heartbeat (bool enable) {
-    if (enable) {
+    if (enable && !mperror_heart_beat.enabled) {
+        mperror_heart_beat.enabled = true;
+        mperror_heart_beat.do_disable = false;
+        mperror_heart_beat.on_time = 0;
+        mperror_heart_beat.off_time = 0;
+        mperror_heart_beat.beating = false;
         led_info.color.value = MPERROR_HEARTBEAT_COLOR;
         pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
         led_init(&led_info);
-        mperror_heart_beat.enabled = true;
-        mperror_heart_beat.do_disable = false;
-        mperror_heartbeat_switch_off();
-    } else {
+        led_set_color(&led_info, false);
+    } else if (!enable) {
         led_info.color.value = 0;
-        mperror_heart_beat.do_disable = true;
-        mperror_heart_beat.enabled = false;
+        disable_and_wait();
+        led_set_color(&led_info, false);
     }
-    led_set_color(&led_info, false);
 }
 
 bool mperror_is_heartbeat_enabled (void) {
@@ -195,4 +204,16 @@ bool mperror_is_heartbeat_enabled (void) {
 
 bool mperror_heartbeat_disable_done (void) {
     return mperror_heart_beat.do_disable == false;
+}
+
+/******************************************************************************
+ DEFINE PRIVATE FUNCTIONS
+ ******************************************************************************/
+
+static void disable_and_wait (void) {
+    mperror_heart_beat.enabled = false;
+    mperror_heart_beat.do_disable = true;
+    while (!mperror_heartbeat_disable_done()) {
+        mp_hal_delay_ms(2);
+    }
 }
