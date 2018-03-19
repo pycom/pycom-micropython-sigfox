@@ -35,11 +35,11 @@ extern bool updater_start(void);
  * @brief  OTA Write next chunk to Flash.
  *
  * @note The OTA process has to be previously initialized with updater_start().
- *   	 The buf is written as it is (not-encrypted) into Flash.
- *   	 If Flash Encryption is enabled, the buf must be already encrypted (by the OTA server).
+ *        The buf is written as it is (not-encrypted) into Flash.
+ *        If Flash Encryption is enabled, the buf must be already encrypted (by the OTA server).
  *
- * @param  buf buffer with the data-chunk which needs to be written into Flash
- * @param  len       length of the buf data.
+ * @param  buf  buffer with the data-chunk which needs to be written into Flash
+ * @param  len  length of the buf data.
  *
  * @return true if write into Flash succeeded.
  */
@@ -56,7 +56,7 @@ extern bool updater_finish(void);
  * @brief  Verifies the newly written OTA image.
  *
  * @note If Secure Boot is enabled the signature is checked.
- * 		 Anyway the image integrity (SHA256) is checked.
+ *          Anyway the image integrity (SHA256) is checked.
  *
  * @return true if boot info was saved successful; false otherwise.
  */
@@ -65,8 +65,8 @@ extern bool updater_verify(void);
 /**
  * @brief  Reads the boot information, what partition is going to be booted from.
  *
- * @param  boot_info 		[in/out] filled with boot info
- * @param  boot_info_offset	[in/out] filled with the address in Flash, of the boot_info (otadata partition)
+ * @param  boot_info        [in/out] filled with boot info
+ * @param  boot_info_offset [in/out] filled with the address in Flash, of the boot_info (otadata partition)
  *
  * @return true if reading was done successful.
  */
@@ -79,6 +79,14 @@ extern bool updater_read_boot_info(boot_info_t *boot_info, uint32_t *boot_info_o
  */
 extern int updater_ota_next_slot_address();
 
+/**
+ * @brief  Writes the boot information into the otadata partition.
+ *
+ * @param  boot_info        [in] the boot info data structure
+ * @param  boot_info_offset [in] the address in Flash, of the boot_info (otadata partition)
+ *
+ * @return true if reading was done successful.
+ */
 extern bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset);
 
 #endif /* UPDATER_H_ */
