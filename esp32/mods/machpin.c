@@ -127,6 +127,10 @@ void pin_init0(void) {
             if (self == &PIN_MODULE_P17 || self == &PIN_MODULE_P18 || self == &PIN_MODULE_P19 || self == &PIN_MODULE_P20) {
                continue;
             }
+        #elif defined (GPY)
+            if (self == &PIN_MODULE_P5 || self == &PIN_MODULE_P6 || self == &PIN_MODULE_P7) {
+               continue;
+            }
         #endif
             pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0);
         }

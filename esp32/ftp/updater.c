@@ -121,24 +121,9 @@ bool updater_start (void) {
 
 bool updater_write (uint8_t *buf, uint32_t len) {
 
-	// the len has to be round-up to multiple of 16
-	// so, actually up to 15Bytes(garbage) could be written to flash
-	uint32_t len_aligned_16 = ((len + ENCRYP_FLASH_MIN_CHUNK - 1) / ENCRYP_FLASH_MIN_CHUNK) * ENCRYP_FLASH_MIN_CHUNK;
-//    sl_LockObjLock (&wlan_LockObj, SL_OS_WAIT_FOREVER);
-
-    if (len != len_aligned_16) {
-    		ESP_LOGD(TAG, "Writing %d bytes, actually %d\n", len, len_aligned_16);
-    }
-
-    // check if starting address is 16bytes aligned
-    if (updater_data.offset % 16) {
-        ESP_LOGE(TAG, "Start address, not 16 aligned, %X\n", updater_data.offset);
-        return false;
-    }
-
     // the actual writing into flash, not-encrypted,
     // because it already came encrypted from OTA server
-    if (ESP_OK != updater_spi_flash_write(updater_data.offset, (void *)buf, len_aligned_16, false)) {
+    if (ESP_OK != updater_spi_flash_write(updater_data.offset, (void *)buf, len, false)) {
         ESP_LOGE(TAG, "SPI flash write failed\n");
         return false;
     }

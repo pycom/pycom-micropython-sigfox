@@ -1237,7 +1237,7 @@ IRAM_ATTR void SX1276OnDio0Irq( void )
                     int8_t snr = 0;
 
                     // Store the packet timestamp
-                    SX1276.Settings.LoRaPacketHandler.TimeStamp = mp_hal_ticks_us();
+                    SX1276.Settings.LoRaPacketHandler.TimeStamp = mp_hal_ticks_us_non_blocking();
 
                     // Clear Irq
                     SX1276Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXDONE );

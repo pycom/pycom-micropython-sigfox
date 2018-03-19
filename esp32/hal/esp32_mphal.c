@@ -173,6 +173,14 @@ IRAM_ATTR uint32_t mp_hal_ticks_us(void) {
     return now.tv_sec * 1000000 + now.tv_usec;
 }
 
+IRAM_ATTR uint64_t mp_hal_ticks_ms_non_blocking(void) {
+    return esp_timer_get_time() / 1000;
+}
+
+IRAM_ATTR uint64_t mp_hal_ticks_us_non_blocking(void) {
+    return esp_timer_get_time();
+}
+
 void mp_hal_delay_ms(uint32_t delay) {
     MP_THREAD_GIL_EXIT();
     vTaskDelay (delay / portTICK_PERIOD_MS);

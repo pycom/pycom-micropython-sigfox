@@ -13,13 +13,13 @@
 #include "util/mpirq.h"
 
 #include "esp_system.h"
+#include "machtimer.h"
 #include "machtimer_alarm.h"
 
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
 #define ALARM_HEAP_MAX_ELEMENTS                     (16U)
-#define CLK_FREQ                                    (APB_CLK_FREQ / 2)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
