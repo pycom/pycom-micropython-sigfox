@@ -34,7 +34,6 @@
 #include "modmachine.h"
 #include "updater.h"
 #include "bootloader.h"
-#include "machtimer.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -175,11 +174,11 @@ IRAM_ATTR uint32_t mp_hal_ticks_us(void) {
 }
 
 IRAM_ATTR uint64_t mp_hal_ticks_ms_non_blocking(void) {
-    return machtimer_get_timer_counter_value() / (CLK_FREQ / 1000);
+    return esp_timer_get_time() / 1000;
 }
 
 IRAM_ATTR uint64_t mp_hal_ticks_us_non_blocking(void) {
-    return machtimer_get_timer_counter_value() / (CLK_FREQ / 1000000);
+    return esp_timer_get_time();
 }
 
 void mp_hal_delay_ms(uint32_t delay) {
