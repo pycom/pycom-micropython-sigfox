@@ -9,36 +9,52 @@
 #include "extmod/vfs.h"
 #include "littlefs/lfs.h"
 
-#define mp_type_fileio littlefs_type_fileio
-#define mp_type_textio littlefs_type_textio
-
-extern const mp_obj_type_t mp_type_fileio;
-extern const mp_obj_type_t mp_type_textio;
+extern const mp_obj_type_t littlefs_type_fileio;
+extern const mp_obj_type_t littlefs_type_textio;
 
 // this table converts from FRESULT to POSIX errno
-//TODO: port this to littfs
-//const byte fresult_to_errno_table[20] = {
-//    [FR_OK] = 0,
-//    [FR_DISK_ERR] = MP_EIO,
-//    [FR_INT_ERR] = MP_EIO,
-//    [FR_NOT_READY] = MP_EBUSY,
-//    [FR_NO_FILE] = MP_ENOENT,
-//    [FR_NO_PATH] = MP_ENOENT,
-//    [FR_INVALID_NAME] = MP_EINVAL,
-//    [FR_DENIED] = MP_EACCES,
-//    [FR_EXIST] = MP_EEXIST,
-//    [FR_INVALID_OBJECT] = MP_EINVAL,
-//    [FR_WRITE_PROTECTED] = MP_EROFS,
-//    [FR_INVALID_DRIVE] = MP_ENODEV,
-//    [FR_NOT_ENABLED] = MP_ENODEV,
-//    [FR_NO_FILESYSTEM] = MP_ENODEV,
-//    [FR_MKFS_ABORTED] = MP_EIO,
-//    [FR_TIMEOUT] = MP_EIO,
-//    [FR_LOCKED] = MP_EIO,
-//    [FR_NOT_ENOUGH_CORE] = MP_ENOMEM,
-//    [FR_TOO_MANY_OPEN_FILES] = MP_EMFILE,
-//    [FR_INVALID_PARAMETER] = MP_EINVAL,
-//};
+byte littleFsErrorToErrno(enum lfs_error littleFsError)
+{
+    switch(littleFsError)
+    {
+        case LFS_ERR_OK:
+            return 0;
+        break;
+        case LFS_ERR_CORRUPT:
+            return MP_ENOEXEC;
+        break;
+        case LFS_ERR_NOENT:
+            return MP_ENOENT;
+        break;
+        case LFS_ERR_EXIST:
+            return MP_EEXIST;
+        break;
+        case LFS_ERR_NOTDIR:
+            return MP_ENOTDIR;
+        break;
+        case LFS_ERR_ISDIR:
+            return MP_EISDIR;
+        break;
+        case LFS_ERR_NOTEMPTY:
+            return MP_ENOTEMPTY;
+        break;
+        case LFS_ERR_BADF:
+            return MP_EBADF;
+        break;
+        case LFS_ERR_INVAL:
+            return MP_EINVAL;
+        break;
+        case LFS_ERR_NOSPC:
+            return MP_ENOSPC;
+        break;
+        case LFS_ERR_NOMEM:
+            return MP_ENOMEM;
+        break;
+        default:
+            return 0;
+        break;
+    }
+};
 
 typedef struct _pyb_file_obj_t {
     mp_obj_base_t base;
@@ -56,8 +72,7 @@ STATIC mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int 
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
     lfs_ssize_t sz_out = lfs_file_read(self->lfs ,&self->fp, buf, size);
     if (sz_out < 0) {
-        //TODO: return with POSIX error code
-        *errcode = sz_out;
+        *errcode = littleFsErrorToErrno(sz_out);
         return MP_STREAM_ERROR;
     }
     return sz_out;
@@ -68,12 +83,10 @@ STATIC mp_uint_t file_obj_write(mp_obj_t self_in, const void *buf, mp_uint_t siz
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
     lfs_ssize_t sz_out = lfs_file_write(self->lfs, &self->fp, buf, size);
     if (sz_out < 0) {
-        //TODO: return with POSIX error code
-        *errcode = sz_out;
+        *errcode = littleFsErrorToErrno(sz_out);
         return MP_STREAM_ERROR;
     }
     if (sz_out != size) {
-        //TODO: return with correct error code
         *errcode = MP_ENOSPC;
         return MP_STREAM_ERROR;
     }
@@ -88,8 +101,7 @@ STATIC mp_obj_t file_obj_close(mp_obj_t self_in) {
     if (self->lfs != NULL) {
         int res = lfs_file_close(self->lfs, &self->fp);
         if (res < 0) {
-            //TODO: return correct error
-            mp_raise_OSError(res);
+            mp_raise_OSError(littleFsErrorToErrno(res));
         }
     }
     return mp_const_none;
@@ -129,8 +141,7 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
     } else if (request == MP_STREAM_FLUSH) {
         int res = lfs_file_sync(self->lfs, &self->fp);
         if (res < 0) {
-            //TODO: return with POSIX error code
-            *errcode = res;
+            *errcode = littleFsErrorToErrno(res);
             return MP_STREAM_ERROR;
         }
         return 0;
@@ -173,11 +184,11 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
                 break;
             #if MICROPY_PY_IO_FILEIO
             case 'b':
-                type = &mp_type_fileio;
+                type = &littlefs_type_fileio;
                 break;
             #endif
             case 't':
-                type = &mp_type_textio;
+                type = &littlefs_type_textio;
                 break;
         }
     }
@@ -190,16 +201,11 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
     int res = lfs_file_open(&vfs->fs.littlefs, &o->fp, fname, mode);
     if (res < 0) {
         m_del_obj(pyb_file_obj_t, o);
-        //TODO: return with POSIX error code
-        mp_raise_OSError(res);
+        mp_raise_OSError(littleFsErrorToErrno(res));
     }
 
     o->lfs = &vfs->fs.littlefs;
 
-//    // for 'a' mode, we must begin at the end of the file
-//    if ((mode & FA_OPEN_ALWAYS) != 0) {
-//        f_lseek(&o->fp, f_size(&o->fp));
-//    }
     return MP_OBJ_FROM_PTR(o);
 }
 
@@ -235,7 +241,7 @@ STATIC const mp_stream_p_t fileio_stream_p = {
     .ioctl = file_obj_ioctl,
 };
 
-const mp_obj_type_t mp_type_fileio = {
+const mp_obj_type_t littlefs_type_fileio = {
     { &mp_type_type },
     .name = MP_QSTR_FileIO,
     .print = file_obj_print,
@@ -254,7 +260,7 @@ STATIC const mp_stream_p_t textio_stream_p = {
     .is_text = true,
 };
 
-const mp_obj_type_t mp_type_textio = {
+const mp_obj_type_t littlefs_type_textio = {
     { &mp_type_type },
     .name = MP_QSTR_TextIOWrapper,
     .print = file_obj_print,
@@ -273,7 +279,7 @@ STATIC mp_obj_t littlefs_builtin_open_self(mp_obj_t self_in, mp_obj_t path, mp_o
     arg_vals[0].u_obj = path;
     arg_vals[1].u_obj = mode;
     arg_vals[2].u_obj = mp_const_none;
-    return file_open(self, &mp_type_textio, arg_vals);
+    return file_open(self, &littlefs_type_textio, arg_vals);
 }
 MP_DEFINE_CONST_FUN_OBJ_3(littlefs_vfs_open_obj, littlefs_builtin_open_self);
 

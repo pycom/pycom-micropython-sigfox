@@ -68,6 +68,7 @@
 #define MP_EDOM              (33) // Math argument out of domain of func
 #define MP_ERANGE            (34) // Math result not representable
 #define MP_EWOULDBLOCK  MP_EAGAIN // Operation would block
+#define MP_ENOTEMPTY         (39) // Directory not empty
 #define MP_EMSGSIZE          (90) // Message too long
 #define MP_EOPNOTSUPP        (95) // Operation not supported on transport endpoint
 #define MP_EAFNOSUPPORT      (97) // Address family not supported by protocol

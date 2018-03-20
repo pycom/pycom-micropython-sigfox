@@ -348,7 +348,7 @@ soft_reset_exit:
  ******************************************************************************/
 STATIC void mptask_preinit (void) {
     wlan_pre_init();
-    //TODO: increased stack is needed by modified FTP implementation due to LittleFS vs FatFs
+    //TODO: Re-check this: increased stack is needed by modified FTP implementation due to LittleFS vs FatFs
     xTaskCreatePinnedToCore(TASK_Servers, "Servers", 2*SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 1);
 }
 
@@ -483,23 +483,28 @@ STATIC void init_sflash_littlefs(void) {
     lfs_ssize_t n = 0;
     if(LFS_ERR_OK == lfs_file_open(littlefsptr, &fp, "/main.py", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL))
     {
-        //TODO: check return values
         //Create empty main.py if does not exist
         n = lfs_file_write(littlefsptr, &fp, fresh_main_py, sizeof(fresh_main_py) - 1 /* don't count null terminator */);
         lfs_file_close(littlefsptr, &fp);
+        if(n != sizeof(fresh_main_py) - 1)
+        {
+            __fatal_error("failed to create main.py");
+        }
     }
 
 
     // create empty boot.py if does not exist
     if(LFS_ERR_OK == lfs_file_open(littlefsptr, &fp, "/boot.py", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL))
     {
-        //TODO: check return values
         //Create empty boot.py if does not exist
         n = lfs_file_write(littlefsptr, &fp, fresh_boot_py, sizeof(fresh_boot_py) - 1 /* don't count null terminator */);
         lfs_file_close(littlefsptr, &fp);
+        if(n != sizeof(fresh_main_py) - 1)
+        {
+            __fatal_error("failed to create boot.py");
+        }
     }
 
-    //TODO: check return values
     // create /flash/sys, /flash/lib and /flash/cert if they don't exist
     lfs_mkdir(littlefsptr,"/sys");
     lfs_mkdir(littlefsptr,"/lib");
