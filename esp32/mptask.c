@@ -481,22 +481,23 @@ STATIC void init_sflash_littlefs(void) {
     // create empty main.py if does not exist
     lfs_file_t fp;
     lfs_ssize_t n = 0;
-    if(LFS_ERR_OK != lfs_file_open(littlefsptr, &fp, "/main.py", LFS_O_CREAT))
+    if(LFS_ERR_OK == lfs_file_open(littlefsptr, &fp, "/main.py", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL))
     {
         //TODO: check return values
         //Create empty main.py if does not exist
         n = lfs_file_write(littlefsptr, &fp, fresh_main_py, sizeof(fresh_main_py) - 1 /* don't count null terminator */);
+        lfs_file_close(littlefsptr, &fp);
     }
-    lfs_file_close(littlefsptr, &fp);
+
 
     // create empty boot.py if does not exist
-    if(LFS_ERR_OK != lfs_file_open(littlefsptr, &fp, "/boot.py", LFS_O_CREAT))
+    if(LFS_ERR_OK == lfs_file_open(littlefsptr, &fp, "/boot.py", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL))
     {
         //TODO: check return values
         //Create empty boot.py if does not exist
         n = lfs_file_write(littlefsptr, &fp, fresh_boot_py, sizeof(fresh_boot_py) - 1 /* don't count null terminator */);
+        lfs_file_close(littlefsptr, &fp);
     }
-    lfs_file_close(littlefsptr, &fp);
 
     //TODO: check return values
     // create /flash/sys, /flash/lib and /flash/cert if they don't exist
