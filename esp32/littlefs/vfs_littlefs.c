@@ -9,6 +9,7 @@
 #include "vfs_littlefs.h"
 #include "lib/timeutils/timeutils.h"
 
+extern byte littleFsErrorToErrno(enum lfs_error littleFsError);
 
 STATIC mp_obj_t littlefs_vfs_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     return mp_const_none;
@@ -85,8 +86,7 @@ STATIC mp_obj_t littlefs_vfs_ilistdir_func(size_t n_args, const mp_obj_t *args) 
     iter->is_str = is_str_type;
     int res = lfs_dir_open(&self->fs.littlefs, &iter->dir, path);
     if (res != LFS_ERR_OK) {
-        //TODO: return with proper error code
-        mp_raise_OSError(res);
+        mp_raise_OSError(littleFsErrorToErrno(res));
     }
 
     return MP_OBJ_FROM_PTR(iter);
@@ -100,8 +100,7 @@ STATIC mp_obj_t littlefs_vfs_mkdir(mp_obj_t vfs_in, mp_obj_t path_o) {
     if (res == LFS_ERR_OK) {
         return mp_const_none;
     } else {
-        //TODO: return with proper error code
-        mp_raise_OSError(res);
+        mp_raise_OSError(littleFsErrorToErrno(res));
     }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(littlefs_vfs_mkdir_obj, littlefs_vfs_mkdir);
@@ -114,8 +113,7 @@ STATIC mp_obj_t littlefs_vfs_remove(mp_obj_t vfs_in, mp_obj_t path_in) {
     int res = lfs_remove(&self->fs.littlefs, path);
 
     if (res != LFS_ERR_OK) {
-        //TODO: return with proper error code
-        mp_raise_OSError(res);
+        mp_raise_OSError(littleFsErrorToErrno(res));
     }
 
     return mp_const_none;
@@ -129,8 +127,7 @@ STATIC mp_obj_t littlefs_vfs_rename(mp_obj_t vfs_in, mp_obj_t path_in, mp_obj_t 
     const char *new_path = mp_obj_str_get_str(path_out);
     int res = lfs_rename(&self->fs.littlefs, old_path, new_path);
     if (res != LFS_ERR_OK) {
-        //TODO: return with proper error code
-        mp_raise_OSError(res);
+        mp_raise_OSError(littleFsErrorToErrno(res));
     }
 
     return mp_const_none;
@@ -171,8 +168,7 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_in) {
 //    } else {
         int res = lfs_stat(&self->fs.littlefs, path, &fno);
         if (res < LFS_ERR_OK) {
-            //TODO: return correct error code
-            mp_raise_OSError(res);
+            mp_raise_OSError(littleFsErrorToErrno(res));
         }
 //    }
 
