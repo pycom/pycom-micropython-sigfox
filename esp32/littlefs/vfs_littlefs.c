@@ -25,7 +25,6 @@ typedef struct _mp_vfs_littlefs_ilistdir_it_t {
 STATIC mp_obj_t mp_vfs_littlefs_ilistdir_it_iternext(mp_obj_t self_in) {
     mp_vfs_littlefs_ilistdir_it_t *self = MP_OBJ_TO_PTR(self_in);
 
-    //TODO: check whether this for loop is needed here, seems no sense to have it
     for (;;) {
         struct lfs_info fno;
         int res = lfs_dir_read(self->lfs, &self->dir, &fno);
@@ -35,7 +34,9 @@ STATIC mp_obj_t mp_vfs_littlefs_ilistdir_it_iternext(mp_obj_t self_in) {
             break;
         }
 
-        // TODO: filter . and ..
+        //Filter . and ..
+        if(fn[0] == '.' && fn[1] == '\0') continue;
+        if(fn[0] == '.' && fn[1] == '.' && fn[2] == '\0') continue;
 
         // make 3-tuple with info about this entry
         mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(3, NULL));
