@@ -160,13 +160,13 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
                 mode |= LFS_O_RDONLY;
                 break;
             case 'w':
-                mode |= LFS_O_WRONLY | LFS_O_CREAT;
+                mode |= LFS_O_WRONLY | LFS_O_CREAT | LFS_O_TRUNC;
                 break;
             case 'x':
-                mode |= LFS_O_WRONLY | LFS_O_TRUNC | LFS_O_CREAT;
+                mode |= LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL;
                 break;
             case 'a':
-                mode |= LFS_O_WRONLY | LFS_O_APPEND | LFS_O_CREAT;
+                mode |= LFS_O_WRONLY | LFS_O_CREAT | LFS_O_APPEND;
                 break;
             case '+':
                 mode |= LFS_O_RDWR;
