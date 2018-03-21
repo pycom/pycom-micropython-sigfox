@@ -26,6 +26,7 @@
 #include "lib/oofatfs/ff.h"
 #include "extmod/vfs.h"
 #include "extmod/vfs_fat.h"
+#include "vfs_littlefs.h"
 #include "lfs.h"
 #include "fifo.h"
 #include "socketfifo.h"
@@ -220,108 +221,12 @@ static const TCHAR *path_relative;
  DEFINE VFS WRAPPER FUNCTIONS
  ******************************************************************************/
 
-STATIC bool isLittleFs(const TCHAR *path)
-{
-    char flash[] = "/flash";
-
-    if(strncmp(flash, path, sizeof(flash)-1) == 0)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
-
-STATIC FRESULT lfsErrorToFatFsError(int lfs_error)
-{
-    switch (lfs_error)
-    {
-        case LFS_ERR_OK:
-            return FR_OK;
-        break;
-        case LFS_ERR_IO:
-            return FR_DISK_ERR;
-        break;
-        case LFS_ERR_CORRUPT:
-            return FR_NO_FILESYSTEM;
-        break;
-        case LFS_ERR_NOENT:
-            return FR_NO_FILE;
-        break;
-        case LFS_ERR_NOTDIR:
-            return FR_INT_ERR;
-        break;
-        case LFS_ERR_ISDIR:
-            return FR_INT_ERR;
-        break;
-        case LFS_ERR_NOTEMPTY:
-            return FR_INT_ERR;
-        break;
-        case LFS_ERR_BADF:
-            return FR_INVALID_OBJECT;
-        break;
-        case LFS_ERR_INVAL:
-            return FR_INVALID_PARAMETER;
-        break;
-        case LFS_ERR_NOSPC:
-            return FR_DISK_ERR;
-        break;
-        case LFS_ERR_NOMEM:
-            return FR_INT_ERR;
-        break;
-        default:
-            if(lfs_error > 0) return FR_OK; // positive value means good thing happened, transform it to OK result
-            else return FR_INT_ERR;
-        break;
-    }
-}
-
-STATIC int fatFsModetoLittleFsMode(int FatFsMode)
-{
-    int mode = 0;
-
-    if(FatFsMode & FA_READ) mode |= LFS_O_RDONLY;
-
-    if(FatFsMode & FA_WRITE) mode |= LFS_O_WRONLY;
-
-    if(FatFsMode & FA_CREATE_NEW) mode |= LFS_O_CREAT | LFS_O_EXCL;
-
-    if(FatFsMode & FA_CREATE_ALWAYS) mode |= LFS_O_CREAT | LFS_O_TRUNC;
-
-    if(FatFsMode & FA_OPEN_ALWAYS) mode |= LFS_O_CREAT;
-
-    if(FatFsMode & FA_OPEN_APPEND) mode |= LFS_O_CREAT | LFS_O_APPEND;
-
-    return mode;
-}
-
-
-
 // These wrapper functions are used so that the FTP server can access the
 // mounted FATFS devices directly without going through the costly mp_vfs_XXX
 // functions.  The latter may raise exceptions and we would then need to wrap
 // all calls in an nlr handler.  The wrapper functions below assume that there
 // are only FATFS filesystems mounted.
 
-STATIC FATFS *lookup_path(const TCHAR *path, const TCHAR **path_out) {
-    mp_vfs_mount_t *fs = mp_vfs_lookup_path(path, path_out);
-    if (fs == MP_VFS_NONE || fs == MP_VFS_ROOT) {
-        return NULL;
-    }
-    // here we assume that the mounted device is FATFS
-    return &((fs_user_mount_t*)MP_OBJ_TO_PTR(fs->obj))->fs.fatfs;
-}
-
-STATIC lfs_t *lookup_path_littlefs(const TCHAR *path, const TCHAR **path_out) {
-    mp_vfs_mount_t *fs = mp_vfs_lookup_path(path, path_out);
-    if (fs == MP_VFS_NONE || fs == MP_VFS_ROOT) {
-        return NULL;
-    }
-    // here we assume that the mounted device is LittleFs
-    return &((fs_user_mount_t*)MP_OBJ_TO_PTR(fs->obj))->fs.littlefs;
-}
 
 STATIC FRESULT f_open_helper(ftp_file_t *fp, const TCHAR *path, BYTE mode) {
 
@@ -336,7 +241,7 @@ STATIC FRESULT f_open_helper(ftp_file_t *fp, const TCHAR *path, BYTE mode) {
     }
     else
     {
-        FATFS *fs = lookup_path(path, &path_relative);
+        FATFS *fs = lookup_path_fatfs(path, &path_relative);
         if (fs == NULL) {
             return FR_NO_PATH;
         }
@@ -357,7 +262,7 @@ STATIC FRESULT f_read_helper(ftp_file_t *fp, void* buff, uint32_t desiredsize, u
     }
     else
     {
-        FATFS *fs = lookup_path(ftp_path, &path_relative);
+        FATFS *fs = lookup_path_fatfs(ftp_path, &path_relative);
         if (fs == NULL) {
             return FR_NO_PATH;
         }
@@ -378,7 +283,7 @@ STATIC FRESULT f_write_helper(ftp_file_t *fp, void* buff, uint32_t desiredsize, 
     }
     else
     {
-        FATFS *fs = lookup_path(ftp_path, &path_relative);
+        FATFS *fs = lookup_path_fatfs(ftp_path, &path_relative);
         if (fs == NULL) {
             return FR_NO_PATH;
         }
@@ -399,7 +304,7 @@ STATIC FRESULT f_readdir_helper(ftp_dir_t *dp, ftp_fileinfo_t *fno ) {
     }
     else
     {
-        FATFS *fs = lookup_path(ftp_path, &path_relative);
+        FATFS *fs = lookup_path_fatfs(ftp_path, &path_relative);
         if (fs == NULL) {
             return FR_NO_PATH;
         }
@@ -421,7 +326,7 @@ STATIC FRESULT f_opendir_helper(ftp_dir_t *dp, const TCHAR *path) {
     }
     else
     {
-        FATFS *fs = lookup_path(path, &path_relative);
+        FATFS *fs = lookup_path_fatfs(path, &path_relative);
 
         if (fs == NULL) {
             return FR_NO_PATH;
@@ -443,7 +348,7 @@ STATIC FRESULT f_closefile_helper(ftp_file_t *fp) {
     }
     else
     {
-        FATFS *fs = lookup_path(ftp_path, &path_relative);
+        FATFS *fs = lookup_path_fatfs(ftp_path, &path_relative);
         if (fs == NULL) {
             return FR_NO_PATH;
         }
@@ -464,7 +369,7 @@ STATIC FRESULT f_closedir_helper(ftp_dir_t *dp) {
     }
     else
     {
-        FATFS *fs = lookup_path(ftp_path, &path_relative);
+        FATFS *fs = lookup_path_fatfs(ftp_path, &path_relative);
         if (fs == NULL) {
             return FR_NO_PATH;
         }
@@ -485,7 +390,7 @@ STATIC FRESULT f_stat_helper(const TCHAR *path, ftp_fileinfo_t *fno) {
     }
     else
     {
-        FATFS *fs = lookup_path(path, &path_relative);
+        FATFS *fs = lookup_path_fatfs(path, &path_relative);
         if (fs == NULL) {
             return FR_NO_PATH;
         }
@@ -507,7 +412,7 @@ STATIC FRESULT f_mkdir_helper(const TCHAR *path) {
     }
     else
     {
-        FATFS *fs = lookup_path(path, &path_relative);
+        FATFS *fs = lookup_path_fatfs(path, &path_relative);
         if (fs == NULL) {
             return FR_NO_PATH;
         }
@@ -530,7 +435,7 @@ STATIC FRESULT f_unlink_helper(const TCHAR *path) {
     }
     else
     {
-        FATFS *fs = lookup_path(path, &path_relative);
+        FATFS *fs = lookup_path_fatfs(path, &path_relative);
         if (fs == NULL) {
             return FR_NO_PATH;
         }
@@ -563,9 +468,9 @@ STATIC FRESULT f_rename_helper(const TCHAR *path_old, const TCHAR *path_new) {
     }
     else
     {
-        FATFS *fs_old = lookup_path(path_old, &path_relative_old);
+        FATFS *fs_old = lookup_path_fatfs(path_old, &path_relative_old);
 
-        FATFS *fs_new = lookup_path(path_new, &path_relative_new);
+        FATFS *fs_new = lookup_path_fatfs(path_new, &path_relative_new);
 
         if (fs_old == NULL) {
             return FR_NO_PATH;

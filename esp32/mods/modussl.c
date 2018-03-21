@@ -26,8 +26,12 @@
 #include "modnetwork.h"
 #include "modusocket.h"
 #include "modussl.h"
-#include "ff.h"
 #include "mptask.h"
+
+#include "ff.h"
+#include "lfs.h"
+#include "extmod/vfs.h"
+#include "vfs_littlefs.h"
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -185,27 +189,64 @@ static char *mod_ssl_read_file (const char *file_path, vstr_t *vstr) {
     char *filebuf = vstr->buf;
     mp_uint_t actualsize;
     mp_uint_t totalsize = 0;
+    static const TCHAR *path_relative;
 
-    FIL fp;
-    FRESULT res = f_open(&sflash_vfs_fat.fs.fatfs, &fp, file_path, FA_READ);
-    if (res != FR_OK) {
-        return NULL;
-    }
-
-    while (true) {
-        FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
-        if (res != FR_OK) {
-            f_close(&fp);
+    if(isLittleFs(file_path))
+    {
+        lfs_t* fs = lookup_path_littlefs(file_path, &path_relative);
+        if (fs == NULL) {
             return NULL;
         }
-        totalsize += actualsize;
-        if (actualsize < FILE_READ_SIZE) {
-            break;
-        } else {
-            filebuf = vstr_extend(vstr, FILE_READ_SIZE);
+
+        lfs_file_t fp;
+        int res = lfs_file_open(fs, &fp, path_relative, LFS_O_RDONLY);
+        if(res < LFS_ERR_OK)
+        {
+            return NULL;
         }
+
+        while (true) {
+            actualsize = lfs_file_read(fs, &fp, filebuf, FILE_READ_SIZE);
+            if (actualsize < LFS_ERR_OK) {
+                return NULL;
+            }
+            totalsize += actualsize;
+            if (actualsize < FILE_READ_SIZE) {
+                break;
+            } else {
+                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
+            }
+        }
+        lfs_file_close(fs, &fp);
+
     }
-    f_close(&fp);
+    else
+    {
+        FATFS *fs = lookup_path_fatfs(file_path, &path_relative);
+        if (fs == NULL) {
+            return NULL;
+        }
+        FIL fp;
+        FRESULT res = f_open(fs, &fp, path_relative, FA_READ);
+        if (res != FR_OK) {
+            return NULL;
+        }
+
+        while (true) {
+            FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
+            if (res != FR_OK) {
+                f_close(&fp);
+                return NULL;
+            }
+            totalsize += actualsize;
+            if (actualsize < FILE_READ_SIZE) {
+                break;
+            } else {
+                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
+            }
+        }
+        f_close(&fp);
+    }
 
     vstr->len = totalsize;
     vstr_null_terminated_str(vstr);

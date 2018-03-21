@@ -42,6 +42,26 @@
 // A fixed maximum size is used to avoid the need for a costly variable array.
 #define PROXY_MAX_ARGS (2)
 
+/* Returns a Fat Files System object based on the input path */
+FATFS *lookup_path_fatfs(const TCHAR *path, const TCHAR **path_out) {
+    mp_vfs_mount_t *fs = mp_vfs_lookup_path(path, path_out);
+    if (fs == MP_VFS_NONE || fs == MP_VFS_ROOT) {
+        return NULL;
+    }
+    // here we assume that the mounted device is FATFS
+    return &((fs_user_mount_t*)MP_OBJ_TO_PTR(fs->obj))->fs.fatfs;
+}
+
+/* Returns a LittleFs Files System object based on the input path */
+lfs_t *lookup_path_littlefs(const TCHAR *path, const TCHAR **path_out) {
+    mp_vfs_mount_t *fs = mp_vfs_lookup_path(path, path_out);
+    if (fs == MP_VFS_NONE || fs == MP_VFS_ROOT) {
+        return NULL;
+    }
+    // here we assume that the mounted device is LittleFs
+    return &((fs_user_mount_t*)MP_OBJ_TO_PTR(fs->obj))->fs.littlefs;
+}
+
 // path is the path to lookup and *path_out holds the path within the VFS
 // object (starts with / if an absolute path).
 // Returns MP_VFS_ROOT for root dir (and then path_out is undefined) and

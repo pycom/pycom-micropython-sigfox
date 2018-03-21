@@ -9,7 +9,128 @@
 #include "vfs_littlefs.h"
 #include "lib/timeutils/timeutils.h"
 
-extern byte littleFsErrorToErrno(enum lfs_error littleFsError);
+
+bool isLittleFs(const TCHAR *path)
+{
+    char flash[] = "/flash";
+
+    if(strncmp(flash, path, sizeof(flash)-1) == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+// this table converts from FRESULT to POSIX errno
+byte littleFsErrorToErrno(enum lfs_error littleFsError)
+{
+    switch(littleFsError)
+    {
+        case LFS_ERR_OK:
+            return 0;
+        break;
+        case LFS_ERR_CORRUPT:
+            return MP_ENOEXEC;
+        break;
+        case LFS_ERR_NOENT:
+            return MP_ENOENT;
+        break;
+        case LFS_ERR_EXIST:
+            return MP_EEXIST;
+        break;
+        case LFS_ERR_NOTDIR:
+            return MP_ENOTDIR;
+        break;
+        case LFS_ERR_ISDIR:
+            return MP_EISDIR;
+        break;
+        case LFS_ERR_NOTEMPTY:
+            return MP_ENOTEMPTY;
+        break;
+        case LFS_ERR_BADF:
+            return MP_EBADF;
+        break;
+        case LFS_ERR_INVAL:
+            return MP_EINVAL;
+        break;
+        case LFS_ERR_NOSPC:
+            return MP_ENOSPC;
+        break;
+        case LFS_ERR_NOMEM:
+            return MP_ENOMEM;
+        break;
+        default:
+            return 0;
+        break;
+    }
+};
+
+// convert LittleFs return values/error code to the FatFs version
+FRESULT lfsErrorToFatFsError(int lfs_error)
+{
+    switch (lfs_error)
+    {
+        case LFS_ERR_OK:
+            return FR_OK;
+        break;
+        case LFS_ERR_IO:
+            return FR_DISK_ERR;
+        break;
+        case LFS_ERR_CORRUPT:
+            return FR_NO_FILESYSTEM;
+        break;
+        case LFS_ERR_NOENT:
+            return FR_NO_FILE;
+        break;
+        case LFS_ERR_NOTDIR:
+            return FR_INT_ERR;
+        break;
+        case LFS_ERR_ISDIR:
+            return FR_INT_ERR;
+        break;
+        case LFS_ERR_NOTEMPTY:
+            return FR_INT_ERR;
+        break;
+        case LFS_ERR_BADF:
+            return FR_INVALID_OBJECT;
+        break;
+        case LFS_ERR_INVAL:
+            return FR_INVALID_PARAMETER;
+        break;
+        case LFS_ERR_NOSPC:
+            return FR_DISK_ERR;
+        break;
+        case LFS_ERR_NOMEM:
+            return FR_INT_ERR;
+        break;
+        default:
+            if(lfs_error > 0) return FR_OK; // positive value means good thing happened, transform it to OK result
+            else return FR_INT_ERR;
+        break;
+    }
+}
+
+int fatFsModetoLittleFsMode(int FatFsMode)
+{
+    int mode = 0;
+
+    if(FatFsMode & FA_READ) mode |= LFS_O_RDONLY;
+
+    if(FatFsMode & FA_WRITE) mode |= LFS_O_WRONLY;
+
+    if(FatFsMode & FA_CREATE_NEW) mode |= LFS_O_CREAT | LFS_O_EXCL;
+
+    if(FatFsMode & FA_CREATE_ALWAYS) mode |= LFS_O_CREAT | LFS_O_TRUNC;
+
+    if(FatFsMode & FA_OPEN_ALWAYS) mode |= LFS_O_CREAT;
+
+    if(FatFsMode & FA_OPEN_APPEND) mode |= LFS_O_CREAT | LFS_O_APPEND;
+
+    return mode;
+}
 
 STATIC mp_obj_t littlefs_vfs_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     return mp_const_none;
@@ -158,19 +279,16 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_in) {
     const char *path = mp_obj_str_get_str(path_in);
 
     struct lfs_info fno;
-    //TODO: is this needed ?
-//    if (path[0] == 0 || (path[0] == '/' && path[1] == 0)) {
-//        // stat root directory
-//        fno.fsize = 0;
-//        fno.fdate = 0x2821; // Jan 1, 2000
-//        fno.ftime = 0;
-//        fno.fattrib = AM_DIR;
-//    } else {
+    if (path[0] == 0 || (path[0] == '/' && path[1] == 0)) {
+        // stat root directory
+        fno.size = 0;
+        fno.type = LFS_TYPE_DIR;
+    } else {
         int res = lfs_stat(&self->fs.littlefs, path, &fno);
         if (res < LFS_ERR_OK) {
             mp_raise_OSError(littleFsErrorToErrno(res));
         }
-//    }
+    }
 
     mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(10, NULL));
     mp_int_t mode = 0;
@@ -179,7 +297,8 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_in) {
     } else {
         mode |= MP_S_IFREG;
     }
-    //TODO: LittleFS does not store the time
+
+//TODO: LittleFS does not store the time
 //    mp_int_t seconds = timeutils_seconds_since_2000(
 //        1980 + ((fno.fdate >> 9) & 0x7f),
 //        (fno.fdate >> 5) & 0x0f,

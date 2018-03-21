@@ -519,34 +519,28 @@ STATIC void mptask_init_sflash_filesystem (void) {
 }
 
 #if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY)
-//TODO: rewrite it to be able to work with littlefs
 STATIC void mptask_update_lpwan_mac_address (void) {
     #define LPWAN_MAC_ADDR_PATH          "/sys/lpwan.mac"
 
-    FILINFO fno;
-    FATFS* fsptr = &sflash_vfs_fat.fs.fatfs;
+    lfs_file_t fp;
+    lfs_t* fsptr = &sflash_vfs_fat.fs.littlefs;
 
-    if (FR_OK == f_stat(fsptr, LPWAN_MAC_ADDR_PATH, &fno)) {
-        FIL fp;
-        f_open(fsptr, &fp, LPWAN_MAC_ADDR_PATH, FA_READ);
-        UINT sz_out;
+    if(LFS_ERR_OK == lfs_file_open(fsptr, &fp, LPWAN_MAC_ADDR_PATH, LFS_O_RDONLY)){
         uint8_t mac[8];
-        FRESULT res = f_read(&fp, mac, sizeof(mac), &sz_out);
-        if (res == FR_OK) {
-            // file found, update the MAC address
-            if (config_set_lpwan_mac(mac)) {
-                mp_hal_delay_ms(250);
-                ets_printf("LPWAN MAC write OK\n");
-            } else {
-                res = FR_DENIED;    // just anything different than FR_OK
-            }
-        }
-        f_close(&fp);
-        if (res == FR_OK) {
-            // delete the mac address file
-            f_unlink(fsptr, LPWAN_MAC_ADDR_PATH);
-        }
-    }
+       int sz_out = lfs_file_read(fsptr, &fp, mac, sizeof(mac));
+       if (sz_out > LFS_ERR_OK) {
+           // file found, update the MAC address
+           if (config_set_lpwan_mac(mac)) {
+               mp_hal_delay_ms(250);
+               ets_printf("LPWAN MAC write OK\n");
+           }
+       }
+       lfs_file_close(fsptr, &fp);
+       if (sz_out > LFS_ERR_OK) {
+           // delete the mac address file
+           lfs_remove(fsptr, LPWAN_MAC_ADDR_PATH);
+       }
+   }
 }
 #endif
 

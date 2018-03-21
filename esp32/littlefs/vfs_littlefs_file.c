@@ -6,55 +6,13 @@
 #include "py/runtime.h"
 #include "py/stream.h"
 #include "py/mperrno.h"
+#include "lfs.h"
 #include "extmod/vfs.h"
-#include "littlefs/lfs.h"
+#include "vfs_littlefs.h"
 
 extern const mp_obj_type_t littlefs_type_fileio;
 extern const mp_obj_type_t littlefs_type_textio;
 
-// this table converts from FRESULT to POSIX errno
-byte littleFsErrorToErrno(enum lfs_error littleFsError)
-{
-    switch(littleFsError)
-    {
-        case LFS_ERR_OK:
-            return 0;
-        break;
-        case LFS_ERR_CORRUPT:
-            return MP_ENOEXEC;
-        break;
-        case LFS_ERR_NOENT:
-            return MP_ENOENT;
-        break;
-        case LFS_ERR_EXIST:
-            return MP_EEXIST;
-        break;
-        case LFS_ERR_NOTDIR:
-            return MP_ENOTDIR;
-        break;
-        case LFS_ERR_ISDIR:
-            return MP_EISDIR;
-        break;
-        case LFS_ERR_NOTEMPTY:
-            return MP_ENOTEMPTY;
-        break;
-        case LFS_ERR_BADF:
-            return MP_EBADF;
-        break;
-        case LFS_ERR_INVAL:
-            return MP_EINVAL;
-        break;
-        case LFS_ERR_NOSPC:
-            return MP_ENOSPC;
-        break;
-        case LFS_ERR_NOMEM:
-            return MP_ENOMEM;
-        break;
-        default:
-            return 0;
-        break;
-    }
-};
 
 typedef struct _pyb_file_obj_t {
     mp_obj_base_t base;
