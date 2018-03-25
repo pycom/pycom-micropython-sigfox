@@ -59,7 +59,7 @@ lfs_t *lookup_path_littlefs(const TCHAR *path, const TCHAR **path_out) {
         return NULL;
     }
     // here we assume that the mounted device is LittleFs
-    return &((fs_user_mount_t*)MP_OBJ_TO_PTR(fs->obj))->fs.littlefs;
+    return &((fs_user_mount_t*)MP_OBJ_TO_PTR(fs->obj))->fs.littlefs.lfs;
 }
 
 // path is the path to lookup and *path_out holds the path within the VFS

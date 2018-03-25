@@ -438,7 +438,7 @@ STATIC void init_sflash_littlefs(void) {
 
     fs_user_mount_t* vfs_littlefs = &sflash_vfs_littlefs;
     vfs_littlefs->flags = 0;
-    lfs_t *littlefsptr = &(vfs_littlefs->fs.littlefs);
+    lfs_t *littlefsptr = &(vfs_littlefs->fs.littlefs.lfs);
 
     //Initialize the block device
     sflash_disk_init();
@@ -477,6 +477,11 @@ STATIC void init_sflash_littlefs(void) {
     // The current directory is used as the boot up directory.
     // It is set to the internal flash filesystem by default.
     MP_STATE_PORT(vfs_cur) = vfs;
+
+    //Initialize the current working directory (cwd)
+    vfs_littlefs->fs.littlefs.cwd = (char*)m_malloc(2);
+    vfs_littlefs->fs.littlefs.cwd[0] = '/';
+    vfs_littlefs->fs.littlefs.cwd[1] = '\0';
 
     // create empty main.py if does not exist
     lfs_file_t fp;
@@ -523,7 +528,7 @@ STATIC void mptask_update_lpwan_mac_address (void) {
     #define LPWAN_MAC_ADDR_PATH          "/sys/lpwan.mac"
 
     lfs_file_t fp;
-    lfs_t* fsptr = &sflash_vfs_fat.fs.littlefs;
+    lfs_t* fsptr = &sflash_vfs_fat.fs.littlefs.lfs;
 
     if(LFS_ERR_OK == lfs_file_open(fsptr, &fp, LPWAN_MAC_ADDR_PATH, LFS_O_RDONLY)){
         uint8_t mac[8];

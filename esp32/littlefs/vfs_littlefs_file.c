@@ -154,15 +154,16 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
     pyb_file_obj_t *o = m_new_obj_with_finaliser(pyb_file_obj_t);
     o->base.type = type;
 
-    const char *fname = mp_obj_str_get_str(args[0].u_obj);
+    const char *fname = concat_with_cwd(&vfs->fs.littlefs, mp_obj_str_get_str(args[0].u_obj));
     assert(vfs != NULL);
-    int res = lfs_file_open(&vfs->fs.littlefs, &o->fp, fname, mode);
+    int res = lfs_file_open(&vfs->fs.littlefs.lfs, &o->fp, fname, mode);
+    m_free((void*)fname);
     if (res < 0) {
         m_del_obj(pyb_file_obj_t, o);
         mp_raise_OSError(littleFsErrorToErrno(res));
     }
 
-    o->lfs = &vfs->fs.littlefs;
+    o->lfs = &vfs->fs.littlefs.lfs;
 
     return MP_OBJ_FROM_PTR(o);
 }

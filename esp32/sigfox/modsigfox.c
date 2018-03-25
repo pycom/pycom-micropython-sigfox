@@ -180,20 +180,20 @@ void sigfox_update_id (void) {
 
     lfs_file_t fp;
 
-    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs, &fp, SFX_ID_PATH, LFS_O_RDONLY)){
+    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_ID_PATH, LFS_O_RDONLY)){
         uint8_t id[4];
-        int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs, &fp, id, sizeof(id));
+        int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, id, sizeof(id));
         if (sz_out > LFS_ERR_OK) {
             if (config_set_sigfox_id(id)) {
                 mp_hal_delay_ms(250);
                 ets_printf("SFX ID write OK\n");
             }
         }
-        lfs_file_close(&sflash_vfs_littlefs.fs.littlefs, &fp);
+        lfs_file_close(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp);
 
         if (sz_out > LFS_ERR_OK) {
             // delete the mac address file
-            lfs_remove(&sflash_vfs_littlefs.fs.littlefs, SFX_ID_PATH);
+            lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_ID_PATH);
         }
     }
 }
@@ -203,20 +203,20 @@ void sigfox_update_pac (void) {
 
     lfs_file_t fp;
 
-    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs, &fp, SFX_PAC_PATH, LFS_O_RDONLY)){
+    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PAC_PATH, LFS_O_RDONLY)){
         uint8_t pac[8];
-        int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs, &fp, pac, sizeof(pac));
+        int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, pac, sizeof(pac));
         if (sz_out > LFS_ERR_OK) {
             if (config_set_sigfox_pac(pac)) {
                 mp_hal_delay_ms(250);
                 ets_printf("SFX PAC write OK\n");
             }
         }
-        lfs_file_close(&sflash_vfs_littlefs.fs.littlefs, &fp);
+        lfs_file_close(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp);
 
         if (sz_out > LFS_ERR_OK) {
             // delete the mac address file
-            lfs_remove(&sflash_vfs_littlefs.fs.littlefs, SFX_PAC_PATH);
+            lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_PAC_PATH);
         }
     }
 }
@@ -226,20 +226,20 @@ void sigfox_update_private_key (void) {
 
     lfs_file_t fp;
 
-    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs, &fp, SFX_PRIVATE_KEY_PATH, LFS_O_RDONLY)){
+    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PRIVATE_KEY_PATH, LFS_O_RDONLY)){
        uint8_t key[16];
-       int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs, &fp, key, sizeof(key));
+       int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, key, sizeof(key));
        if (sz_out > LFS_ERR_OK) {
            if (config_set_sigfox_private_key(key)) {
                mp_hal_delay_ms(250);
                ets_printf("SFX private key write OK\n");
            }
        }
-       lfs_file_close(&sflash_vfs_littlefs.fs.littlefs, &fp);
+       lfs_file_close(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp);
 
        if (sz_out > LFS_ERR_OK) {
            // delete the mac address file
-           lfs_remove(&sflash_vfs_littlefs.fs.littlefs, SFX_PRIVATE_KEY_PATH);
+           lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_PRIVATE_KEY_PATH);
        }
    }
 }
@@ -249,20 +249,20 @@ void sigfox_update_public_key (void) {
 
     lfs_file_t fp;
 
-    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs, &fp, SFX_PUBLIC_KEY_PATH, LFS_O_RDONLY)){
+    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PUBLIC_KEY_PATH, LFS_O_RDONLY)){
        uint8_t key[16];
-       int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs, &fp, key, sizeof(key));
+       int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, key, sizeof(key));
        if (sz_out > LFS_ERR_OK) {
            if (config_set_sigfox_public_key(key)) {
                mp_hal_delay_ms(250);
                ets_printf("SFX public key write OK\n");
            }
        }
-       lfs_file_close(&sflash_vfs_littlefs.fs.littlefs, &fp);
+       lfs_file_close(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp);
 
        if (sz_out > LFS_ERR_OK) {
            // delete the mac address file
-           lfs_remove(&sflash_vfs_littlefs.fs.littlefs, SFX_PUBLIC_KEY_PATH);
+           lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_PUBLIC_KEY_PATH);
        }
    }
 }

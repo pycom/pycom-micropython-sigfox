@@ -29,7 +29,7 @@
 #include "py/lexer.h"
 #include "py/obj.h"
 #include "lib/oofatfs/ff.h"
-#include "esp32/littlefs/lfs.h"
+#include "esp32/littlefs/vfs_littlefs.h"
 
 // return values of mp_vfs_lookup_path
 // ROOT is 0 so that the default current directory is the root directory
@@ -65,7 +65,7 @@ typedef struct _fs_user_mount_t {
     void* drv;
     union {
         FATFS fatfs;
-        lfs_t littlefs;
+        vfs_lfs_struct_t littlefs;
     } fs;
 } fs_user_mount_t;
 
