@@ -12,7 +12,7 @@
 
 bool isLittleFs(const TCHAR *path)
 {
-    char flash[] = "/flash";
+    const char *flash = "/flash";
 
     if(strncmp(flash, path, sizeof(flash)-1) == 0)
     {
@@ -132,9 +132,6 @@ int fatFsModetoLittleFsMode(int FatFsMode)
     return mode;
 }
 
-STATIC mp_obj_t littlefs_vfs_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
-    return mp_const_none;
-}
 
 typedef struct _mp_vfs_littlefs_ilistdir_it_t {
     mp_obj_base_t base;
@@ -217,12 +214,14 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(littlefs_vfs_ilistdir_obj, 1, 2, litt
 STATIC mp_obj_t littlefs_vfs_mkdir(mp_obj_t vfs_in, mp_obj_t path_o) {
     fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
     const char *path = mp_obj_str_get_str(path_o);
+
     int res = lfs_mkdir(&self->fs.littlefs, path);
-    if (res == LFS_ERR_OK) {
-        return mp_const_none;
-    } else {
+
+    if (res != LFS_ERR_OK) {
         mp_raise_OSError(littleFsErrorToErrno(res));
     }
+
+    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(littlefs_vfs_mkdir_obj, littlefs_vfs_mkdir);
 
@@ -246,7 +245,9 @@ STATIC mp_obj_t littlefs_vfs_rename(mp_obj_t vfs_in, mp_obj_t path_in, mp_obj_t 
     fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
     const char *old_path = mp_obj_str_get_str(path_in);
     const char *new_path = mp_obj_str_get_str(path_out);
+
     int res = lfs_rename(&self->fs.littlefs, old_path, new_path);
+
     if (res != LFS_ERR_OK) {
         mp_raise_OSError(littleFsErrorToErrno(res));
     }
@@ -272,8 +273,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(littlefs_vfs_rename_obj, littlefs_vfs_rename);
 //}
 //STATIC MP_DEFINE_CONST_FUN_OBJ_2(littlefs_vfs_chdir_obj, littlefs_vfs_chdir);
 
-/// \function stat(path)
-/// Get the status of a file or directory.
+
 STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_in) {
     fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
     const char *path = mp_obj_str_get_str(path_in);
@@ -328,7 +328,7 @@ STATIC const mp_rom_map_elem_t littlefs_vfs_locals_dict_table[] = {
     #if _FS_REENTRANT
 //    { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&littlefs_vfs_del_obj) },
     #endif
-    //{ MP_ROM_QSTR(MP_QSTR_mkfs), MP_ROM_PTR(&littlefs_vfs_mkfs_obj) },
+//    { MP_ROM_QSTR(MP_QSTR_mkfs), MP_ROM_PTR(&littlefs_vfs_mkfs_obj) },
     { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&littlefs_vfs_open_obj) },
     { MP_ROM_QSTR(MP_QSTR_ilistdir), MP_ROM_PTR(&littlefs_vfs_ilistdir_obj) },
     { MP_ROM_QSTR(MP_QSTR_mkdir), MP_ROM_PTR(&littlefs_vfs_mkdir_obj) },
@@ -346,9 +346,6 @@ STATIC MP_DEFINE_CONST_DICT(littlefs_vfs_locals_dict, littlefs_vfs_locals_dict_t
 
 const mp_obj_type_t mp_littlefs_vfs_type = {
     { &mp_type_type },
-    .name = MP_QSTR_VfsLittleFs,
-    //TODO: do not allow to instantiate it
-    .make_new = littlefs_vfs_make_new,
     .locals_dict = (mp_obj_dict_t*)&littlefs_vfs_locals_dict,
 };
 

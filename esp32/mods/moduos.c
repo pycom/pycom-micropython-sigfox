@@ -218,7 +218,7 @@ STATIC const mp_rom_map_elem_t os_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_mount),           MP_ROM_PTR(&mp_vfs_mount_obj) },
     { MP_ROM_QSTR(MP_QSTR_umount),          MP_ROM_PTR(&mp_vfs_umount_obj) },
     { MP_ROM_QSTR(MP_QSTR_VfsFat),          MP_ROM_PTR(&mp_fat_vfs_type) },
-    { MP_ROM_QSTR(MP_QSTR_VfsLittleFs),     MP_ROM_PTR(&mp_littlefs_vfs_type) },
+    //{ MP_ROM_QSTR(MP_QSTR_VfsLittleFs),     MP_ROM_PTR(&mp_littlefs_vfs_type) }, Do not allow to instantiate LittleFsVFS
     { MP_ROM_QSTR(MP_QSTR_dupterm),         MP_ROM_PTR(&os_dupterm_obj) },
 };
 
