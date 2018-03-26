@@ -126,25 +126,6 @@ STATIC mp_obj_t os_uname(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(os_uname_obj, os_uname);
 
-STATIC mp_obj_t os_getfree() {
-    DWORD nclst;
-
-    FRESULT res = f_getfree(&sflash_vfs_fat.fs.fatfs, &nclst);
-    if (FR_OK != res) {
-        mp_raise_OSError(fresult_to_errno_table[res]);
-    }
-
-    uint32_t free_space = sflash_vfs_fat.fs.fatfs.csize * nclst
-#if _MAX_SS != _MIN_SS
-    * sflash_vfs_fat.fs.fatfs.ssize;
-#else
-    * _MIN_SS;
-#endif
-
-    return MP_OBJ_NEW_SMALL_INT(free_space / 1024);
-    return 0;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(os_getfree_obj, os_getfree);
 
 STATIC mp_obj_t os_sync(void) {
     for (mp_vfs_mount_t *vfs = MP_STATE_VM(vfs_mount_table); vfs != NULL; vfs = vfs->next) {
@@ -210,7 +191,6 @@ STATIC const mp_rom_map_elem_t os_module_globals_table[] = {
 
     { MP_ROM_QSTR(MP_QSTR_sync),            MP_ROM_PTR(&mod_os_sync_obj) },
     { MP_ROM_QSTR(MP_QSTR_urandom),         MP_ROM_PTR(&os_urandom_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_getfree),         (mp_obj_t)&os_getfree_obj },
 
     // MicroPython additions
     // removed: mkfs
