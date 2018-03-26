@@ -23,7 +23,7 @@
 
 #define LTE_OK_RSP                                                      "OK"
 #define LTE_CONNECT_RSP                                                 "CONNECT"
-#define LTE_RX_TIMEOUT_MAX_MS                                           (9500)
+#define LTE_RX_TIMEOUT_MAX_MS                                           (20000)
 #define LTE_RX_TIMEOUT_MIN_MS                                           (250)
 #define LTE_PPP_BACK_OFF_TIME_MS                                        (1150)
 

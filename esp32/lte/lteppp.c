@@ -268,8 +268,8 @@ static void TASK_LTE (void *pvParameters) {
 
     // enable PSM if not already enabled
     lteppp_send_at_cmd("AT+CPSMS?", LTE_RX_TIMEOUT_MAX_MS);
-    if (!strstr(lteppp_trx_buffer, "+CPSMS: 1")) {
-        lteppp_send_at_cmd("AT+CPSMS=1", LTE_RX_TIMEOUT_MIN_MS);
+    if (!strstr(lteppp_trx_buffer, "+CPSMS: 0")) {
+        lteppp_send_at_cmd("AT+CPSMS=0", LTE_RX_TIMEOUT_MIN_MS);
     }
     // enable low power mode
     lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);

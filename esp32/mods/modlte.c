@@ -93,6 +93,7 @@ static bool lte_check_attached(void);
 static void lte_check_init(void);
 static bool lte_check_sim_present(void);
 
+STATIC mp_obj_t lte_isconnected(mp_obj_t self_in);
 STATIC mp_obj_t lte_disconnect(mp_obj_t self_in);
 
 /******************************************************************************
@@ -139,7 +140,7 @@ static bool lte_check_attached(void) {
     bool inppp = false;;
     bool attached = false;
 
-    if (lteppp_get_state() == E_LTE_PPP) {
+    if (lte_isconnected(NULL) == mp_const_true) {
         inppp = true;
         lte_pause_ppp();
         while (true) {
@@ -273,7 +274,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_init_obj, 1, lte_init);
 mp_obj_t lte_deinit(mp_obj_t self_in) {
     lte_check_init();
     lte_obj_t *self = self_in;
-    if (lteppp_get_state() == E_LTE_PPP) {
+    if (lte_isconnected(self) == mp_const_true) {
         lte_disconnect(self);
     }
 
@@ -348,7 +349,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_attach_obj, 1, lte_attach);
 mp_obj_t lte_dettach(mp_obj_t self_in) {
     lte_check_init();
     lte_obj_t *self = self_in;
-    if (lteppp_get_state() == E_LTE_PPP) {
+    if (lte_isconnected(self) == mp_const_true) {
         lte_disconnect(self);
     }
     if (lte_check_sim_present()) {
@@ -392,32 +393,43 @@ STATIC mp_obj_t lte_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
         char at_cmd[LTE_AT_CMD_SIZE_MAX - 4];
         lte_obj.cid = args[0].u_int;
         sprintf(at_cmd, "AT+CGDATA=\"PPP\",%d", lte_obj.cid);
-        // set the PPP state in advance, to avoid CEREG? to be sent right after PPP is entered
-        if (lte_push_at_command_ext(at_cmd, LTE_RX_TIMEOUT_MIN_MS, LTE_CONNECT_RSP) ||
-            lte_push_at_command_ext("ATO", LTE_RX_TIMEOUT_MIN_MS, LTE_CONNECT_RSP)) {
-            lteppp_connect();
-            lteppp_set_state(E_LTE_PPP);
+        // try to stablish a new connection first
+        if (lte_push_at_command_ext(at_cmd, LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP)) {
+            if (!lte_push_at_command_ext("AT", LTE_RX_TIMEOUT_MIN_MS, "ERROR")) {
+                mp_hal_delay_ms(LTE_PPP_BACK_OFF_TIME_MS);
+                goto connect;
+            }
+        }
+        // that failed, so try to resume the connection
+        if (lte_push_at_command_ext("ATO", LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP)) {
+            if (!lte_push_at_command_ext("AT", LTE_RX_TIMEOUT_MIN_MS, "ERROR")) {
+                mp_hal_delay_ms(LTE_PPP_BACK_OFF_TIME_MS);
+                goto connect;
+            }
         } else {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+            // try a new connection once again..
+            if (lte_push_at_command_ext(at_cmd, LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP)) {
+                if (!lte_push_at_command_ext("AT", LTE_RX_TIMEOUT_MIN_MS, "ERROR")) {
+                    mp_hal_delay_ms(LTE_PPP_BACK_OFF_TIME_MS);
+                    goto connect;
+                }
+            } else {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+            }
         }
     } else {
+        if (lte_isconnected(NULL) == mp_const_true) {
+            return mp_const_none;
+        }
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "modem not attached"));
     }
+
+connect:
+    lteppp_connect();
+    lteppp_set_state(E_LTE_PPP);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_connect_obj, 1, lte_connect);
-
-STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
-    lte_check_init();
-    if (lteppp_get_state() == E_LTE_PPP) {
-        lteppp_disconnect();
-        lte_pause_ppp();
-        lteppp_set_state(E_LTE_ATTACHED);
-        lte_check_attached();
-    }
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_disconnect_obj, lte_disconnect);
 
 STATIC mp_obj_t lte_isconnected(mp_obj_t self_in) {
     lte_check_init();
@@ -428,10 +440,24 @@ STATIC mp_obj_t lte_isconnected(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_isconnected_obj, lte_isconnected);
 
+STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
+    lte_check_init();
+    lte_obj_t *self = self_in;
+    if (lte_isconnected(self) == mp_const_true) {
+        lteppp_disconnect();
+        lte_pause_ppp();
+        lteppp_set_state(E_LTE_ATTACHED);
+        lte_check_attached();
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_disconnect_obj, lte_disconnect);
+
 STATIC mp_obj_t lte_send_raw_at(mp_obj_t self_in, mp_obj_t cmd_o) {
     lte_check_init();
+    lte_obj_t *self = self_in;
     bool inppp = false;
-    if (lteppp_get_state() == E_LTE_PPP) {
+    if (lte_isconnected(self) == mp_const_true) {
         inppp = true;
         lte_pause_ppp();
         while (true) {
@@ -486,7 +512,8 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_iccid_obj, lte_iccid);
 
 STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     lte_check_init();
-    if (lteppp_get_state() == E_LTE_PPP) {
+    lte_obj_t *self = self_in;
+    if (lte_isconnected(self) == mp_const_true) {
         lte_pause_ppp();
         while (true) {
             mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
