@@ -154,7 +154,9 @@ static bool lte_check_attached(void) {
     lte_push_at_command("AT+CEREG?", LTE_RX_TIMEOUT_MIN_MS);
     if (((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,")))
         && (strlen(pos) >= 31) && pos[30] == '7') {
-        lteppp_set_state(E_LTE_ATTACHED);
+        if (E_LTE_PPP != lteppp_get_state()) {
+            lteppp_set_state(E_LTE_ATTACHED);
+        }
         attached = true;
     } else {
         lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
