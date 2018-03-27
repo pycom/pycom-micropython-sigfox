@@ -82,7 +82,7 @@ int lwipsocket_socket_socket(mod_network_socket_obj_t *s, int *_errno) {
 
     // enable address reusing
     uint32_t option = 1;
-    setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
+    lwip_setsockopt_r(sd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
 
     s->sock_base.u.sd = sd;
     return 0;
@@ -104,7 +104,7 @@ void lwipsocket_socket_close(mod_network_socket_obj_t *s) {
         mbedtls_ctr_drbg_free(&ss->ctr_drbg);
         mbedtls_entropy_free(&ss->entropy);
     } else {
-        close(s->sock_base.u.sd);
+        lwip_close_r(s->sock_base.u.sd);
     }
     modusocket_socket_delete(s->sock_base.u.sd);
     s->sock_base.connected = false;
@@ -112,7 +112,7 @@ void lwipsocket_socket_close(mod_network_socket_obj_t *s) {
 
 int lwipsocket_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
     MAKE_SOCKADDR(addr, ip, port)
-    int ret = bind(s->sock_base.u.sd, &addr, sizeof(addr));
+    int ret = lwip_bind_r(s->sock_base.u.sd, &addr, sizeof(addr));
     if (ret != 0) {
         *_errno = errno;
         return -1;
@@ -121,7 +121,7 @@ int lwipsocket_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port
 }
 
 int lwipsocket_socket_listen(mod_network_socket_obj_t *s, mp_int_t backlog, int *_errno) {
-    int ret = listen(s->sock_base.u.sd, backlog);
+    int ret = lwip_listen_r(s->sock_base.u.sd, backlog);
     if (ret != 0) {
         *_errno = errno;
         return -1;
@@ -135,7 +135,7 @@ int lwipsocket_socket_accept(mod_network_socket_obj_t *s, mod_network_socket_obj
     struct sockaddr addr;
     socklen_t addr_len = sizeof(addr);
 
-    sd = accept(s->sock_base.u.sd, &addr, &addr_len);
+    sd = lwip_accept_r(s->sock_base.u.sd, &addr, &addr_len);
     // save the socket descriptor
     s2->sock_base.u.sd = sd;
     if (sd < 0) {
@@ -152,7 +152,7 @@ int lwipsocket_socket_accept(mod_network_socket_obj_t *s, mod_network_socket_obj
 
 int lwipsocket_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
     MAKE_SOCKADDR(addr, ip, port)
-    int ret = connect(s->sock_base.u.sd, &addr, sizeof(addr));
+    int ret = lwip_connect_r(s->sock_base.u.sd, &addr, sizeof(addr));
 
     if (ret != 0) {
         // printf("Connect returned -0x%x\n", -ret);
@@ -216,7 +216,7 @@ int lwipsocket_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uint
                 }
             }
         } else {
-            bytes = send(s->sock_base.u.sd, (const void *)buf, len, 0);
+            bytes = lwip_send_r(s->sock_base.u.sd, (const void *)buf, len, 0);
         }
     }
     if (bytes <= 0) {
@@ -263,7 +263,7 @@ int lwipsocket_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len
             return -1;
         }
     } else {
-        ret = recv(s->sock_base.u.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0);
+        ret = lwip_recv_r(s->sock_base.u.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0);
         if (ret < 0) {
             *_errno = errno;
             return -1;
@@ -275,7 +275,7 @@ int lwipsocket_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len
 int lwipsocket_socket_sendto( mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port, int *_errno) {
     if (len > 0) {
         MAKE_SOCKADDR(addr, ip, port)
-        int ret = sendto(s->sock_base.u.sd, (byte*)buf, len, 0, (struct sockaddr*)&addr, sizeof(addr));
+        int ret = lwip_sendto_r(s->sock_base.u.sd, (byte*)buf, len, 0, (struct sockaddr*)&addr, sizeof(addr));
         if (ret < 0) {
             *_errno = errno;
             return -1;
@@ -288,7 +288,7 @@ int lwipsocket_socket_sendto( mod_network_socket_obj_t *s, const byte *buf, mp_u
 int lwipsocket_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno) {
     struct sockaddr addr;
     socklen_t addr_len = sizeof(addr);
-    mp_int_t ret = recvfrom(s->sock_base.u.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0, &addr, &addr_len);
+    mp_int_t ret = lwip_recvfrom_r(s->sock_base.u.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0, &addr, &addr_len);
     if (ret < 0) {
         *_errno = errno;
         return -1;
@@ -298,7 +298,7 @@ int lwipsocket_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t
 }
 
 int lwipsocket_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno) {
-    int ret = setsockopt(s->sock_base.u.sd, level, opt, optval, optlen);
+    int ret = lwip_setsockopt_r(s->sock_base.u.sd, level, opt, optval, optlen);
     if (ret < 0) {
         *_errno = errno;
         return -1;
@@ -308,7 +308,7 @@ int lwipsocket_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, m
 
 int lwipsocket_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno) {
     int ret;
-    uint32_t option = fcntl(s->sock_base.u.sd, F_GETFL, 0);
+    uint32_t option = lwip_fcntl_r(s->sock_base.u.sd, F_GETFL, 0);
 
     if (timeout_ms <= 0) {
         if (timeout_ms == 0) {
@@ -328,9 +328,9 @@ int lwipsocket_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_m
     struct timeval tv;
     tv.tv_sec = timeout_ms / 1000;              // seconds
     tv.tv_usec = (timeout_ms % 1000) * 1000;    // microseconds
-    ret = setsockopt(s->sock_base.u.sd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
-    ret |= setsockopt(s->sock_base.u.sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-    ret |= fcntl(s->sock_base.u.sd, F_SETFL, option);
+    ret = lwip_setsockopt_r(s->sock_base.u.sd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+    ret |= lwip_setsockopt_r(s->sock_base.u.sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    ret |= lwip_fcntl_r(s->sock_base.u.sd, F_SETFL, option);
 
     if (ret != 0) {
         *_errno = errno;
@@ -369,7 +369,7 @@ int lwipsocket_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_
         struct timeval tv;
         tv.tv_sec = 0;
         tv.tv_usec = 10;
-        int32_t nfds = select(sd + 1, &rfds, &wfds, &xfds, &tv);
+        int32_t nfds = lwip_select(sd + 1, &rfds, &wfds, &xfds, &tv);
 
         // check for errors
         if (nfds < 0) {

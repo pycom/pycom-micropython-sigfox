@@ -230,8 +230,8 @@ STATIC mp_obj_t socket_close(mp_obj_t self_in) {
     mod_network_socket_obj_t *self = self_in;
     // this is to prevent the finalizer to close a socket that failed during creation
     if (self->sock_base.nic_type && self->sock_base.u.sd >= 0) {
-        self->sock_base.nic_type->n_close(self);
         self->sock_base.u.sd = -1;
+        self->sock_base.nic_type->n_close(self);
     }
     return mp_const_none;
 }
