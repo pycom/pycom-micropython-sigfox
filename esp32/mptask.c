@@ -507,7 +507,7 @@ STATIC void init_sflash_littlefs(void) {
         //Create empty boot.py if does not exist
         n = lfs_file_write(littlefsptr, &fp, fresh_boot_py, sizeof(fresh_boot_py) - 1 /* don't count null terminator */);
         lfs_file_close(littlefsptr, &fp);
-        if(n != sizeof(fresh_main_py) - 1)
+        if(n != sizeof(fresh_boot_py) - 1)
         {
             __fatal_error("failed to create boot.py");
         }
