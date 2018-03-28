@@ -557,14 +557,25 @@ static bool telnet_send_with_retries (int32_t sd, const void *pBuf, int32_t len)
     uint32_t delay = TELNET_WAIT_TIME_MS;
 
     do {
+        // make it blocking
+        uint32_t option = fcntl(sd, F_GETFL, 0);
+        option &= ~O_NONBLOCK;
+        fcntl(sd, F_SETFL, option);
         if (send(sd, pBuf, len, 0) > 0) {
+            // make it non-blocking again
+            option |= O_NONBLOCK;
+            fcntl(sd, F_SETFL, option);
             return true;
         } else if (EAGAIN != errno) {
+            // make it non-blocking again
+            option |= O_NONBLOCK;
+            fcntl(sd, F_SETFL, option);
             return false;
         }
         // start with the default delay and increment it on each retry
         mp_hal_delay_ms(delay++);
     } while (++retries <= TELNET_TX_RETRIES_MAX);
+
     return false;
 }
 

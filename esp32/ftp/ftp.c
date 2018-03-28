@@ -512,7 +512,14 @@ static ftp_result_t ftp_wait_for_connection (int32_t l_sd, int32_t *n_sd, uint32
 }
 
 static ftp_result_t ftp_send_non_blocking (int32_t sd, void *data, int32_t Len) {
+    // make it blocking
+    uint32_t option = fcntl(sd, F_GETFL, 0);
+    option &= ~O_NONBLOCK;
+    fcntl(sd, F_SETFL, option);
     int32_t result = send(sd, data, Len, 0);
+    // make it non-blocking again
+    option |= O_NONBLOCK;
+    fcntl(sd, F_SETFL, option);
 
     if (result > 0) {
         ftp_data.txRetries = 0;
