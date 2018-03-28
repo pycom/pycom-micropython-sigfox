@@ -483,6 +483,9 @@ STATIC void init_sflash_littlefs(void) {
     vfs_littlefs->fs.littlefs.cwd[0] = '/';
     vfs_littlefs->fs.littlefs.cwd[1] = '\0';
 
+    vfs_littlefs->fs.littlefs.sem_cwd = xSemaphoreCreateBinary();
+    xSemaphoreGive(vfs_littlefs->fs.littlefs.sem_cwd);
+
     // create empty main.py if does not exist
     lfs_file_t fp;
     lfs_ssize_t n = 0;
