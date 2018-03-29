@@ -534,10 +534,10 @@ static void telnet_parse_input (uint8_t *str, int32_t *len) {
 
         // in this case the server is not operating in binary mode
         if (ch > 127 || ch == 0 || (telnet_data.state == E_TELNET_STE_LOGGED_IN &&
-            (ch == mp_interrupt_char || ch == CHAR_CTRL_F))) {
+            (ch == mp_interrupt_char || ch == mp_reset_char))) {
             if (ch == mp_interrupt_char) {
                 mp_keyboard_interrupt();
-            } else if (ch == CHAR_CTRL_F) {
+            } else if (ch == mp_reset_char) {
                 *str++ = CHAR_CTRL_D;
                 mp_hal_reset_safe_and_boot(false);
                 _str++;
