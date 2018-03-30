@@ -2,9 +2,10 @@
 #define MICROPY_INCLUDED_VFS_LITTLEFS_H
 
 #include "py/obj.h"
-#include "freertos/semphr.h"
-#include "ff.h" //Needed for FatFs types
+#include "lib/oofatfs/ff.h" //Needed for FatFs types
 #include "lfs.h"
+
+typedef void* SemaphoreHandle_t;
 
 typedef struct vfs_lfs_struct_s
 {
