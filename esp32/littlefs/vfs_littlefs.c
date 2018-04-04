@@ -461,6 +461,13 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(littlefs_vfs_stat_obj, littlefs_vfs_stat);
 
 
+STATIC mp_obj_t littlefs_vfs_umount(mp_obj_t self_in) {
+    (void)self_in;
+    // keep the LittleFs filesystem mounted internally so the VFS methods can still be used
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(littlefs_vfs_umount_obj, littlefs_vfs_umount);
+
 STATIC const mp_rom_map_elem_t littlefs_vfs_locals_dict_table[] = {
     #if _FS_REENTRANT
 //    { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&littlefs_vfs_del_obj) },
@@ -476,7 +483,7 @@ STATIC const mp_rom_map_elem_t littlefs_vfs_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_rename), MP_ROM_PTR(&littlefs_vfs_rename_obj) },
     { MP_ROM_QSTR(MP_QSTR_stat), MP_ROM_PTR(&littlefs_vfs_stat_obj) },
 //    { MP_ROM_QSTR(MP_QSTR_mount), MP_ROM_PTR(&vfs_littlefs_mount_obj) },
-//    { MP_ROM_QSTR(MP_QSTR_umount), MP_ROM_PTR(&littlefs_vfs_umount_obj) },
+    { MP_ROM_QSTR(MP_QSTR_umount), MP_ROM_PTR(&littlefs_vfs_umount_obj) },
 
 };
 STATIC MP_DEFINE_CONST_DICT(littlefs_vfs_locals_dict, littlefs_vfs_locals_dict_table);

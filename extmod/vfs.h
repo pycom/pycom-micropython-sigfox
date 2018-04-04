@@ -61,8 +61,6 @@ typedef struct _fs_user_mount_t {
         } old;
     } u;
     //Block device underlying this filesystem
-    //TODO: FATFS has its own drv, needed by other file systems
-    void* drv;
     union {
         FATFS fatfs;
         vfs_lfs_struct_t littlefs;

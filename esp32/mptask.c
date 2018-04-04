@@ -437,7 +437,6 @@ STATIC void init_sflash_fatfs(void) {
 STATIC void init_sflash_littlefs(void) {
 
     fs_user_mount_t* vfs_littlefs = &sflash_vfs_littlefs;
-    vfs_littlefs->flags = 0;
     lfs_t *littlefsptr = &(vfs_littlefs->fs.littlefs.lfs);
 
     //Initialize the block device
