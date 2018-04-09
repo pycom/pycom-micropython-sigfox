@@ -444,6 +444,17 @@ STATIC void init_sflash_littlefs(void) {
     //Initialize the VFS object with the block device's functions
     pyb_flash_init_vfs_littlefs(vfs_littlefs);
 
+    if(spi_flash_get_chip_size() > (4* 1024 * 1024))
+    {
+        lfscfg.block_count = SFLASH_BLOCK_COUNT_8MB;
+        lfscfg.lookahead = SFLASH_BLOCK_COUNT_8MB;
+    }
+    else
+    {
+        lfscfg.block_count = SFLASH_BLOCK_COUNT_4MB;
+        lfscfg.lookahead = SFLASH_BLOCK_COUNT_4MB;
+    }
+
     // Mount the file system if exists
     if(LFS_ERR_OK != lfs_mount(littlefsptr, &lfscfg))
     {
