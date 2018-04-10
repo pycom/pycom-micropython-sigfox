@@ -10,6 +10,12 @@
 #include "lib/timeutils/timeutils.h"
 
 
+int lfs_statvfs_count(void *p, lfs_block_t b)
+{
+    *(lfs_size_t *)p += 1;
+    return 0;
+}
+
 // After this function m_free() must be called on the returned address after usage!!
 const char* concat_with_cwd(vfs_lfs_struct_t* littlefs, const char* path)
 {
@@ -460,6 +466,36 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(littlefs_vfs_stat_obj, littlefs_vfs_stat);
 
+// Get the status of a VFS.
+STATIC mp_obj_t littlefs_vfs_statvfs(mp_obj_t vfs_in, mp_obj_t path_in) {
+    fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
+    (void)path_in;
+
+    lfs_t* lfs = &self->fs.littlefs.lfs;
+
+    mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(10, NULL));
+
+    lfs_size_t in_use = 0;
+    int res = lfs_traverse(lfs, lfs_statvfs_count, &in_use);
+    if (res != LFS_ERR_OK) {
+        mp_raise_OSError(littleFsErrorToErrno(res));
+    }
+
+    t->items[0] = MP_OBJ_NEW_SMALL_INT(lfs->cfg->block_size); // f_bsize
+    t->items[1] = t->items[0]; // f_frsize
+    t->items[2] = MP_OBJ_NEW_SMALL_INT(lfs->cfg->block_count); // f_blocks
+    t->items[3] = MP_OBJ_NEW_SMALL_INT(lfs->cfg->block_count - in_use); // f_bfree
+    t->items[4] = t->items[3]; // f_bavail
+    t->items[5] = MP_OBJ_NEW_SMALL_INT(0); // f_files
+    t->items[6] = MP_OBJ_NEW_SMALL_INT(0); // f_ffree
+    t->items[7] = MP_OBJ_NEW_SMALL_INT(0); // f_favail
+    t->items[8] = MP_OBJ_NEW_SMALL_INT(0); // f_flags
+    t->items[9] = MP_OBJ_NEW_SMALL_INT(LFS_NAME_MAX); // f_namemax
+
+    return MP_OBJ_FROM_PTR(t);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(littlefs_vfs_statvfs_obj, littlefs_vfs_statvfs);
+
 
 STATIC mp_obj_t littlefs_vfs_umount(mp_obj_t self_in) {
     (void)self_in;
@@ -482,6 +518,7 @@ STATIC const mp_rom_map_elem_t littlefs_vfs_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_remove), MP_ROM_PTR(&littlefs_vfs_remove_obj) },
     { MP_ROM_QSTR(MP_QSTR_rename), MP_ROM_PTR(&littlefs_vfs_rename_obj) },
     { MP_ROM_QSTR(MP_QSTR_stat), MP_ROM_PTR(&littlefs_vfs_stat_obj) },
+    { MP_ROM_QSTR(MP_QSTR_statvfs), MP_ROM_PTR(&littlefs_vfs_statvfs_obj) },
 //    { MP_ROM_QSTR(MP_QSTR_mount), MP_ROM_PTR(&vfs_littlefs_mount_obj) },
     { MP_ROM_QSTR(MP_QSTR_umount), MP_ROM_PTR(&littlefs_vfs_umount_obj) },
 
