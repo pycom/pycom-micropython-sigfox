@@ -193,20 +193,23 @@ static char *mod_ssl_read_file (const char *file_path, vstr_t *vstr) {
 
     if(isLittleFs(file_path))
     {
-        lfs_t* fs = lookup_path_littlefs(file_path, &path_relative);
-        if (fs == NULL) {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(file_path, &path_relative);
+        if (littlefs == NULL) {
             return NULL;
         }
 
         lfs_file_t fp;
-        int res = lfs_file_open(fs, &fp, path_relative, LFS_O_RDONLY);
+
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+
+        int res = lfs_file_open(&littlefs->lfs, &fp, path_relative, LFS_O_RDONLY);
         if(res < LFS_ERR_OK)
         {
             return NULL;
         }
 
         while (true) {
-            actualsize = lfs_file_read(fs, &fp, filebuf, FILE_READ_SIZE);
+            actualsize = lfs_file_read(&littlefs->lfs, &fp, filebuf, FILE_READ_SIZE);
             if (actualsize < LFS_ERR_OK) {
                 return NULL;
             }
@@ -217,7 +220,9 @@ static char *mod_ssl_read_file (const char *file_path, vstr_t *vstr) {
                 filebuf = vstr_extend(vstr, FILE_READ_SIZE);
             }
         }
-        lfs_file_close(fs, &fp);
+        lfs_file_close(&littlefs->lfs, &fp);
+
+        xSemaphoreGive(littlefs->mutex);
 
     }
     else

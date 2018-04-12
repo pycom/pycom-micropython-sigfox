@@ -17,7 +17,7 @@ extern const mp_obj_type_t littlefs_type_textio;
 typedef struct _pyb_file_obj_t {
     mp_obj_base_t base;
     lfs_file_t fp;
-    lfs_t* lfs;
+    vfs_lfs_struct_t* littlefs;
 } pyb_file_obj_t;
 
 STATIC void file_obj_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
@@ -28,7 +28,11 @@ STATIC void file_obj_print(const mp_print_t *print, mp_obj_t self_in, mp_print_k
 STATIC mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int *errcode) {
 
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    lfs_ssize_t sz_out = lfs_file_read(self->lfs ,&self->fp, buf, size);
+
+    xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
+        lfs_ssize_t sz_out = lfs_file_read(&self->littlefs->lfs ,&self->fp, buf, size);
+    xSemaphoreGive(self->littlefs->mutex);
+
     if (sz_out < 0) {
         *errcode = littleFsErrorToErrno(sz_out);
         return MP_STREAM_ERROR;
@@ -39,7 +43,11 @@ STATIC mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int 
 STATIC mp_uint_t file_obj_write(mp_obj_t self_in, const void *buf, mp_uint_t size, int *errcode) {
 
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    lfs_ssize_t sz_out = lfs_file_write(self->lfs, &self->fp, buf, size);
+
+    xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
+        lfs_ssize_t sz_out = lfs_file_write(&self->littlefs->lfs, &self->fp, buf, size);
+    xSemaphoreGive(self->littlefs->mutex);
+
     if (sz_out < 0) {
         *errcode = littleFsErrorToErrno(sz_out);
         return MP_STREAM_ERROR;
@@ -56,8 +64,12 @@ STATIC mp_obj_t file_obj_close(mp_obj_t self_in) {
 
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
     //TODO: check whether this condition is needed
-    if (self->lfs != NULL) {
-        int res = lfs_file_close(self->lfs, &self->fp);
+    if (self->littlefs != NULL) {
+
+        xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
+            int res = lfs_file_close(&self->littlefs->lfs, &self->fp);
+        xSemaphoreGive(self->littlefs->mutex);
+
         if (res < 0) {
             mp_raise_OSError(littleFsErrorToErrno(res));
         }
@@ -79,25 +91,32 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
     if (request == MP_STREAM_SEEK) {
         struct mp_stream_seek_t *s = (struct mp_stream_seek_t*)(uintptr_t)arg;
 
+        xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
         switch (s->whence) {
             case LFS_SEEK_SET: // SEEK_SET
-                lfs_file_seek(self->lfs, &self->fp, s->offset, s->whence);
+                lfs_file_seek(&self->littlefs->lfs, &self->fp, s->offset, s->whence);
                 break;
 
             case LFS_SEEK_CUR: // SEEK_CUR
-                lfs_file_seek(self->lfs, &self->fp, s->offset, s->whence);
+                lfs_file_seek(&self->littlefs->lfs, &self->fp, s->offset, s->whence);
                 break;
 
             case LFS_SEEK_END: // SEEK_END
-                lfs_file_seek(self->lfs, &self->fp, s->offset, s->whence);
+                lfs_file_seek(&self->littlefs->lfs, &self->fp, s->offset, s->whence);
                 break;
         }
 
-        s->offset = lfs_file_tell(self->lfs, &self->fp);
+        s->offset = lfs_file_tell(&self->littlefs->lfs, &self->fp);
+        xSemaphoreGive(self->littlefs->mutex);;
+
         return 0;
 
     } else if (request == MP_STREAM_FLUSH) {
-        int res = lfs_file_sync(self->lfs, &self->fp);
+
+        xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
+            int res = lfs_file_sync(&self->littlefs->lfs, &self->fp);
+        xSemaphoreGive(self->littlefs->mutex);;
+
         if (res < 0) {
             *errcode = littleFsErrorToErrno(res);
             return MP_STREAM_ERROR;
@@ -122,6 +141,9 @@ STATIC const mp_arg_t file_open_args[] = {
 STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_arg_val_t *args) {
     int mode = 0;
     const char *mode_s = mp_obj_str_get_str(args[1].u_obj);
+
+    assert(vfs != NULL);
+
     // TODO make sure only one of r, w, x, a, and b, t are specified
     while (*mode_s) {
         switch (*mode_s++) {
@@ -154,16 +176,18 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
     pyb_file_obj_t *o = m_new_obj_with_finaliser(pyb_file_obj_t);
     o->base.type = type;
 
-    const char *fname = concat_with_cwd(&vfs->fs.littlefs, mp_obj_str_get_str(args[0].u_obj));
-    assert(vfs != NULL);
-    int res = lfs_file_open(&vfs->fs.littlefs.lfs, &o->fp, fname, mode);
+    xSemaphoreTake(vfs->fs.littlefs.mutex, portMAX_DELAY);
+        const char *fname = concat_with_cwd(&vfs->fs.littlefs, mp_obj_str_get_str(args[0].u_obj));
+        int res = lfs_file_open(&vfs->fs.littlefs.lfs, &o->fp, fname, mode);
+    xSemaphoreGive(vfs->fs.littlefs.mutex);
+
     m_free((void*)fname);
     if (res < 0) {
         m_del_obj(pyb_file_obj_t, o);
         mp_raise_OSError(littleFsErrorToErrno(res));
     }
 
-    o->lfs = &vfs->fs.littlefs.lfs;
+    o->littlefs = &vfs->fs.littlefs;
 
     return MP_OBJ_FROM_PTR(o);
 }

@@ -232,11 +232,15 @@ STATIC FRESULT f_open_helper(ftp_file_t *fp, const TCHAR *path, BYTE mode) {
 
     if(isLittleFs(path))
     {
-        lfs_t* fs = lookup_path_littlefs(path, &path_relative);
-        if (fs == NULL) {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(path, &path_relative);
+        if (littlefs == NULL) {
             return FR_NO_PATH;
         }
-        int lfs_ret = lfs_file_open(fs, &fp->u.fp_lfs, path_relative, fatFsModetoLittleFsMode(mode));
+
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+            int lfs_ret = lfs_file_open(&littlefs->lfs, &fp->u.fp_lfs, path_relative, fatFsModetoLittleFsMode(mode));
+        xSemaphoreGive(littlefs->mutex);
+
         return lfsErrorToFatFsError(lfs_ret);
     }
     else
@@ -253,11 +257,15 @@ STATIC FRESULT f_read_helper(ftp_file_t *fp, void* buff, uint32_t desiredsize, u
 
     if(isLittleFs(ftp_path))
     {
-        lfs_t* fs = lookup_path_littlefs(ftp_path, &path_relative);
-        if (fs == NULL) {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(ftp_path, &path_relative);
+        if (littlefs == NULL) {
             return FR_NO_PATH;
         }
-        *actualsize = lfs_file_read(fs, &fp->u.fp_lfs,buff, desiredsize);
+
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+            *actualsize = lfs_file_read(&littlefs->lfs, &fp->u.fp_lfs,buff, desiredsize);
+        xSemaphoreGive(littlefs->mutex);
+
         return lfsErrorToFatFsError(*actualsize);
     }
     else
@@ -274,11 +282,15 @@ STATIC FRESULT f_write_helper(ftp_file_t *fp, void* buff, uint32_t desiredsize, 
 
     if(isLittleFs(ftp_path))
     {
-        lfs_t* fs = lookup_path_littlefs(ftp_path, &path_relative);
-        if (fs == NULL) {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(ftp_path, &path_relative);
+        if (littlefs == NULL) {
             return FR_NO_PATH;
         }
-        *actualsize = lfs_file_write(fs, &fp->u.fp_lfs, buff, desiredsize);
+
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+            *actualsize = lfs_file_write(&littlefs->lfs, &fp->u.fp_lfs, buff, desiredsize);
+        xSemaphoreGive(littlefs->mutex);
+
         return lfsErrorToFatFsError(*actualsize);
     }
     else
@@ -295,11 +307,15 @@ STATIC FRESULT f_readdir_helper(ftp_dir_t *dp, ftp_fileinfo_t *fno ) {
 
     if(isLittleFs(ftp_path))
     {
-        lfs_t* fs = lookup_path_littlefs(ftp_path, &path_relative);
-        if (fs == NULL) {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(ftp_path, &path_relative);
+        if (littlefs == NULL) {
             return FR_NO_PATH;
         }
-        int lfs_ret = lfs_dir_read(fs, &dp->u.dp_lfs, &fno->u.fpinfo_lfs);
+
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+            int lfs_ret = lfs_dir_read(&littlefs->lfs, &dp->u.dp_lfs, &fno->u.fpinfo_lfs);
+        xSemaphoreGive(littlefs->mutex);
+
         return lfsErrorToFatFsError(lfs_ret);
     }
     else
@@ -316,12 +332,16 @@ STATIC FRESULT f_opendir_helper(ftp_dir_t *dp, const TCHAR *path) {
 
     if(isLittleFs(path))
     {
-        lfs_t* fs = lookup_path_littlefs(path, &path_relative);
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(path, &path_relative);
 
-        if (fs == NULL) {
+        if (littlefs == NULL) {
             return FR_NO_PATH;
         }
-        int lfs_ret = lfs_dir_open(fs, &dp->u.dp_lfs, path_relative);
+
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+            int lfs_ret = lfs_dir_open(&littlefs->lfs, &dp->u.dp_lfs, path_relative);
+        xSemaphoreGive(littlefs->mutex);
+
         return lfsErrorToFatFsError(lfs_ret);
     }
     else
@@ -339,11 +359,15 @@ STATIC FRESULT f_closefile_helper(ftp_file_t *fp) {
 
     if(isLittleFs(ftp_path))
     {
-        lfs_t* fs = lookup_path_littlefs(ftp_path, &path_relative);
-        if (fs == NULL) {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(ftp_path, &path_relative);
+        if (littlefs == NULL) {
             return FR_NO_PATH;
         }
-        int lfs_ret = lfs_file_close(fs, &fp->u.fp_lfs);
+
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+            int lfs_ret = lfs_file_close(&littlefs->lfs, &fp->u.fp_lfs);
+        xSemaphoreGive(littlefs->mutex);
+
         return lfsErrorToFatFsError(lfs_ret);
     }
     else
@@ -360,11 +384,15 @@ STATIC FRESULT f_closedir_helper(ftp_dir_t *dp) {
 
     if(isLittleFs(ftp_path))
     {
-        lfs_t* fs = lookup_path_littlefs(ftp_path, &path_relative);
-        if (fs == NULL) {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(ftp_path, &path_relative);
+        if (littlefs == NULL) {
             return FR_NO_PATH;
         }
-        int lfs_ret = lfs_dir_close(fs, &dp->u.dp_lfs);
+
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+            int lfs_ret = lfs_dir_close(&littlefs->lfs, &dp->u.dp_lfs);
+        xSemaphoreGive(littlefs->mutex);
+
         return lfsErrorToFatFsError(lfs_ret);
     }
     else
@@ -381,11 +409,15 @@ STATIC FRESULT f_stat_helper(const TCHAR *path, ftp_fileinfo_t *fno) {
 
     if(isLittleFs(path))
     {
-        lfs_t* fs = lookup_path_littlefs(path, &path_relative);
-        if (fs == NULL) {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(path, &path_relative);
+        if (littlefs == NULL) {
             return FR_NO_PATH;
         }
-        int lfs_ret = lfs_stat(fs, path_relative, &fno->u.fpinfo_lfs);
+
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+            int lfs_ret = lfs_stat(&littlefs->lfs, path_relative, &fno->u.fpinfo_lfs);
+        xSemaphoreGive(littlefs->mutex);
+
         return lfsErrorToFatFsError(lfs_ret);
     }
     else
@@ -402,12 +434,15 @@ STATIC FRESULT f_mkdir_helper(const TCHAR *path) {
 
     if(isLittleFs(path))
     {
-        lfs_t* fs = lookup_path_littlefs(path, &path_relative);
-        if (fs == NULL) {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(path, &path_relative);
+        if (littlefs == NULL) {
             return FR_NO_PATH;
         }
 
-        int lfs_ret = lfs_mkdir(fs, path_relative);
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+            int lfs_ret = lfs_mkdir(&littlefs->lfs, path_relative);
+        xSemaphoreGive(littlefs->mutex);
+
         return lfsErrorToFatFsError(lfs_ret);
     }
     else
@@ -425,12 +460,15 @@ STATIC FRESULT f_unlink_helper(const TCHAR *path) {
 
     if(isLittleFs(path))
     {
-        lfs_t* fs = lookup_path_littlefs(path, &path_relative);
-        if (fs == NULL) {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(path, &path_relative);
+        if (littlefs == NULL) {
             return FR_NO_PATH;
         }
 
-        int lfs_ret = lfs_remove(fs, path_relative);
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+            int lfs_ret = lfs_remove(&littlefs->lfs, path_relative);
+        xSemaphoreGive(littlefs->mutex);
+
         return lfsErrorToFatFsError(lfs_ret);
     }
     else
@@ -450,20 +488,23 @@ STATIC FRESULT f_rename_helper(const TCHAR *path_old, const TCHAR *path_new) {
 
     if(isLittleFs(path_old))
     {
-        lfs_t* fs_old = lookup_path_littlefs(path_old, &path_relative_old);
-        lfs_t* fs_new = lookup_path_littlefs(path_new, &path_relative_new);
+        vfs_lfs_struct_t* littlefs_old = lookup_path_littlefs(path_old, &path_relative_old);
+        vfs_lfs_struct_t* littlefs_new = lookup_path_littlefs(path_new, &path_relative_new);
 
-        if (fs_old == NULL) {
+        if (littlefs_old == NULL) {
             return FR_NO_PATH;
         }
-        if (fs_new == NULL) {
+        if (littlefs_new == NULL) {
             return FR_NO_PATH;
         }
-        if (fs_old != fs_new) {
+        if (littlefs_old != littlefs_new) {
             return FR_NO_PATH;
         }
 
-        int lfs_ret = lfs_rename(fs_new, path_relative_old, path_relative_new);
+        xSemaphoreTake(littlefs_new->mutex, portMAX_DELAY);
+            int lfs_ret = lfs_rename(&littlefs_new->lfs, path_relative_old, path_relative_new);
+        xSemaphoreGive(littlefs_new->mutex);
+
         return lfsErrorToFatFsError(lfs_ret);
     }
     else

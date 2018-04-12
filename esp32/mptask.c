@@ -493,12 +493,14 @@ STATIC void init_sflash_littlefs(void) {
     vfs_littlefs->fs.littlefs.cwd[0] = '/';
     vfs_littlefs->fs.littlefs.cwd[1] = '\0';
 
-    vfs_littlefs->fs.littlefs.sem_cwd = xSemaphoreCreateBinary();
-    xSemaphoreGive(vfs_littlefs->fs.littlefs.sem_cwd);
+    vfs_littlefs->fs.littlefs.mutex = xSemaphoreCreateMutex();
+
+    xSemaphoreTake(vfs_littlefs->fs.littlefs.mutex, portMAX_DELAY);
 
     // create empty main.py if does not exist
     lfs_file_t fp;
     lfs_ssize_t n = 0;
+
     if(LFS_ERR_OK == lfs_file_open(littlefsptr, &fp, "/main.py", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL))
     {
         //Create empty main.py if does not exist
@@ -509,7 +511,6 @@ STATIC void init_sflash_littlefs(void) {
             __fatal_error("failed to create main.py");
         }
     }
-
 
     // create empty boot.py if does not exist
     if(LFS_ERR_OK == lfs_file_open(littlefsptr, &fp, "/boot.py", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL))
@@ -527,6 +528,8 @@ STATIC void init_sflash_littlefs(void) {
     lfs_mkdir(littlefsptr,"/sys");
     lfs_mkdir(littlefsptr,"/lib");
     lfs_mkdir(littlefsptr,"/cert");
+
+    xSemaphoreGive(vfs_littlefs->fs.littlefs.mutex);
 }
 
 
@@ -542,6 +545,8 @@ STATIC void mptask_update_lpwan_mac_address (void) {
 
     lfs_file_t fp;
     lfs_t* fsptr = &sflash_vfs_fat.fs.littlefs.lfs;
+
+    xSemaphoreTake(sflash_vfs_fat.fs.littlefs.mutex, portMAX_DELAY);
 
     if(LFS_ERR_OK == lfs_file_open(fsptr, &fp, LPWAN_MAC_ADDR_PATH, LFS_O_RDONLY)){
         uint8_t mac[8];
@@ -559,6 +564,8 @@ STATIC void mptask_update_lpwan_mac_address (void) {
            lfs_remove(fsptr, LPWAN_MAC_ADDR_PATH);
        }
    }
+
+    xSemaphoreGive(sflash_vfs_fat.fs.littlefs.mutex);
 }
 #endif
 

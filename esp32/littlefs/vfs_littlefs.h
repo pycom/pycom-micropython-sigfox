@@ -11,7 +11,7 @@ typedef struct vfs_lfs_struct_s
 {
     lfs_t lfs;
     char* cwd; // Needs to be initialized to point to: "/\0"
-    SemaphoreHandle_t sem_cwd; // Needs to be created
+    SemaphoreHandle_t mutex; // Needs to be created
 }vfs_lfs_struct_t;
 
 extern bool isLittleFs(const TCHAR *path);

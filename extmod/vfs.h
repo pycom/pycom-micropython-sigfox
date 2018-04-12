@@ -75,7 +75,7 @@ typedef struct _mp_vfs_mount_t {
 } mp_vfs_mount_t;
 
 extern FATFS *lookup_path_fatfs(const TCHAR *path, const TCHAR **path_out);
-extern lfs_t *lookup_path_littlefs(const TCHAR *path, const TCHAR **path_out);
+extern vfs_lfs_struct_t *lookup_path_littlefs(const TCHAR *path, const TCHAR **path_out);
 
 mp_vfs_mount_t *mp_vfs_lookup_path(const char *path, const char **path_out);
 mp_import_stat_t mp_vfs_import_stat(const char *path);

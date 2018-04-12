@@ -180,6 +180,8 @@ void sigfox_update_id (void) {
 
     lfs_file_t fp;
 
+    xSemaphoreTake(sflash_vfs_fat.fs.littlefs.mutex, portMAX_DELAY);
+
     if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_ID_PATH, LFS_O_RDONLY)){
         uint8_t id[4];
         int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, id, sizeof(id));
@@ -196,12 +198,16 @@ void sigfox_update_id (void) {
             lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_ID_PATH);
         }
     }
+
+    xSemaphoreGive(sflash_vfs_fat.fs.littlefs.mutex);
 }
 
 void sigfox_update_pac (void) {
     #define SFX_PAC_PATH          "/sys/sfx.pac"
 
     lfs_file_t fp;
+
+    xSemaphoreTake(sflash_vfs_fat.fs.littlefs.mutex, portMAX_DELAY);
 
     if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PAC_PATH, LFS_O_RDONLY)){
         uint8_t pac[8];
@@ -219,12 +225,16 @@ void sigfox_update_pac (void) {
             lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_PAC_PATH);
         }
     }
+
+    xSemaphoreGive(sflash_vfs_fat.fs.littlefs.mutex);
 }
 
 void sigfox_update_private_key (void) {
     #define SFX_PRIVATE_KEY_PATH          "/sys/sfx_private.key"
 
     lfs_file_t fp;
+
+    xSemaphoreTake(sflash_vfs_fat.fs.littlefs.mutex, portMAX_DELAY);
 
     if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PRIVATE_KEY_PATH, LFS_O_RDONLY)){
        uint8_t key[16];
@@ -242,12 +252,16 @@ void sigfox_update_private_key (void) {
            lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_PRIVATE_KEY_PATH);
        }
    }
+
+    xSemaphoreGive(sflash_vfs_fat.fs.littlefs.mutex);
 }
 
 void sigfox_update_public_key (void) {
     #define SFX_PUBLIC_KEY_PATH          "/sys/sfx_public.key"
 
     lfs_file_t fp;
+
+    xSemaphoreTake(sflash_vfs_fat.fs.littlefs.mutex, portMAX_DELAY);
 
     if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PUBLIC_KEY_PATH, LFS_O_RDONLY)){
        uint8_t key[16];
@@ -265,6 +279,8 @@ void sigfox_update_public_key (void) {
            lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_PUBLIC_KEY_PATH);
        }
    }
+
+    xSemaphoreGive(sflash_vfs_fat.fs.littlefs.mutex);
 }
 
 /******************************************************************************
