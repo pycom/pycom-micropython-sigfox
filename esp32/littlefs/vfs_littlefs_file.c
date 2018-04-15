@@ -92,21 +92,8 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
         struct mp_stream_seek_t *s = (struct mp_stream_seek_t*)(uintptr_t)arg;
 
         xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
-        switch (s->whence) {
-            case LFS_SEEK_SET: // SEEK_SET
-                lfs_file_seek(&self->littlefs->lfs, &self->fp, s->offset, s->whence);
-                break;
-
-            case LFS_SEEK_CUR: // SEEK_CUR
-                lfs_file_seek(&self->littlefs->lfs, &self->fp, s->offset, s->whence);
-                break;
-
-            case LFS_SEEK_END: // SEEK_END
-                lfs_file_seek(&self->littlefs->lfs, &self->fp, s->offset, s->whence);
-                break;
-        }
-
-        s->offset = lfs_file_tell(&self->littlefs->lfs, &self->fp);
+            lfs_file_seek(&self->littlefs->lfs, &self->fp, s->offset, s->whence);
+            s->offset = lfs_file_tell(&self->littlefs->lfs, &self->fp);
         xSemaphoreGive(self->littlefs->mutex);;
 
         return 0;
