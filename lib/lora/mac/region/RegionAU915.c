@@ -842,12 +842,12 @@ LoRaMacStatus_t RegionAU915ChannelManualAdd( ChannelAddParams_t* channelAdd )
     }
 
     // Validate the datarate range for min: must be DR_0
-    if( channelAdd->NewChannel->DrRange.Fields.Min > DR_0 )
+    if( channelAdd->NewChannel->DrRange.Fields.Min != DR_0 )
     {
         drInvalid = true;
     }
     // Validate the datarate range for max: must be <= TX_MAX_DATARATE
-    if( channelAdd->NewChannel->DrRange.Fields.Max != AU915_TX_MAX_DATARATE )
+    if( channelAdd->NewChannel->DrRange.Fields.Max > AU915_TX_MAX_DATARATE )
     {
         drInvalid = true;
     }
