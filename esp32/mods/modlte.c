@@ -93,6 +93,7 @@ static bool lte_check_attached(void);
 static void lte_check_init(void);
 static bool lte_check_sim_present(void);
 
+STATIC mp_obj_t lte_deinit(mp_obj_t self_in);
 STATIC mp_obj_t lte_disconnect(mp_obj_t self_in);
 
 /******************************************************************************
@@ -136,51 +137,46 @@ static void lte_pause_ppp(void) {
 
 static bool lte_check_attached(void) {
     char *pos;
-    bool inppp = false;;
     bool attached = false;
 
     if (lteppp_get_state() == E_LTE_PPP) {
-        inppp = true;
-        lte_pause_ppp();
-        while (true) {
-            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-            if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-                break;
-            }
-        }
-    }
-
-    lte_push_at_command("AT+CEREG?", LTE_RX_TIMEOUT_MIN_MS);
-    if (((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,")))
-        && (strlen(pos) >= 31) && pos[30] == '7') {
-        lteppp_set_state(E_LTE_ATTACHED);
         attached = true;
     } else {
-        lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
-        if (E_LTE_ATTACHING == lteppp_get_state()) {
-            // for some reason the modem has crashed, enabled the radios again...
-            if (!strstr(modlte_rsp.data, "+CFUN: 1")) {
-                lte_push_at_command("AT+CFUN=1", LTE_RX_TIMEOUT_MIN_MS);
+        lte_push_at_command("AT+CEREG?", LTE_RX_TIMEOUT_MIN_MS);
+        if (((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,")))
+            && (strlen(pos) >= 31) && pos[30] == '7') {
+            if (lteppp_get_state() != E_LTE_PPP) {
+                lteppp_set_state(E_LTE_ATTACHED);
             }
+            attached = true;
         } else {
-            if (strstr(modlte_rsp.data, "+CFUN: 1")) {
-                lteppp_set_state(E_LTE_ATTACHING);
+            lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
+            if (E_LTE_ATTACHING == lteppp_get_state()) {
+                // for some reason the modem has crashed, enabled the radios again...
+                if (!strstr(modlte_rsp.data, "+CFUN: 1")) {
+                    lte_push_at_command("AT+CFUN=1", LTE_RX_TIMEOUT_MIN_MS);
+                }
             } else {
-                lteppp_set_state(E_LTE_IDLE);
+                if (strstr(modlte_rsp.data, "+CFUN: 1")) {
+                    lteppp_set_state(E_LTE_ATTACHING);
+                } else {
+                    lteppp_set_state(E_LTE_IDLE);
+                }
             }
         }
     }
-
-    if (inppp) {
-        lte_push_at_command("ATO", LTE_RX_TIMEOUT_MIN_MS);
-    }
-
     return attached;
 }
 
 static void lte_check_init(void) {
     if (!lte_obj.init) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "LTE modem not initialized"));
+    }
+}
+
+static void lte_check_inppp(void) {
+    if (lteppp_get_state() == E_LTE_PPP) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "LTE modem is in data state, cannot send AT commands"));
     }
 }
 
@@ -200,7 +196,11 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
     char at_cmd[LTE_AT_CMD_SIZE_MAX - 4];
 
     // wake up the radio
-    lteppp_start();
+    if (!lte_obj.init) {
+        lteppp_start();
+    } else {
+        lte_deinit(self);
+    }
     lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
     lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
 
@@ -270,7 +270,7 @@ STATIC mp_obj_t lte_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *k
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_init_obj, 1, lte_init);
 
-mp_obj_t lte_deinit(mp_obj_t self_in) {
+STATIC mp_obj_t lte_deinit(mp_obj_t self_in) {
     lte_check_init();
     lte_obj_t *self = self_in;
     if (lteppp_get_state() == E_LTE_PPP) {
@@ -308,30 +308,31 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     lte_check_attached();
+
     if (lteppp_get_state() < E_LTE_ATTACHING) {
         // configuring scanning in all 6 bands
         lte_push_at_command("AT!=\"clearscanconfig\"", LTE_RX_TIMEOUT_MIN_MS);
         if (args[0].u_obj == mp_const_none) {
-            lte_push_at_command("AT!=\"RRC::addscanfreq band=3 dl-earfcn=1575\"", LTE_RX_TIMEOUT_MIN_MS);
-            lte_push_at_command("AT!=\"RRC::addscanfreq band=4 dl-earfcn=2175\"", LTE_RX_TIMEOUT_MIN_MS);
-            lte_push_at_command("AT!=\"RRC::addscanfreq band=12 dl-earfcn=5095\"", LTE_RX_TIMEOUT_MIN_MS);
-            lte_push_at_command("AT!=\"RRC::addscanfreq band=13 dl-earfcn=5230\"", LTE_RX_TIMEOUT_MIN_MS);
-            lte_push_at_command("AT!=\"RRC::addscanfreq band=20 dl-earfcn=6300\"", LTE_RX_TIMEOUT_MIN_MS);
-            lte_push_at_command("AT!=\"RRC::addscanfreq band=28 dl-earfcn=9435\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addScanBand band=12\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addScanBand band=13\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addScanBand band=20\"", LTE_RX_TIMEOUT_MIN_MS);
+            lte_push_at_command("AT!=\"RRC::addScanBand band=28\"", LTE_RX_TIMEOUT_MIN_MS);
         } else {
             uint32_t band = mp_obj_get_int(args[0].u_obj);
             if (band == 3) {
-                lte_push_at_command("AT!=\"RRC::addscanfreq band=3 dl-earfcn=1575\"", LTE_RX_TIMEOUT_MIN_MS);
+                lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
             } else if (band == 4) {
-                lte_push_at_command("AT!=\"RRC::addscanfreq band=4 dl-earfcn=2175\"", LTE_RX_TIMEOUT_MIN_MS);
+                lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
             } else if (band == 12) {
-                lte_push_at_command("AT!=\"RRC::addscanfreq band=12 dl-earfcn=5095\"", LTE_RX_TIMEOUT_MIN_MS);
+                lte_push_at_command("AT!=\"RRC::addScanBand band=12\"", LTE_RX_TIMEOUT_MIN_MS);
             } else if (band == 13) {
-                lte_push_at_command("AT!=\"RRC::addscanfreq band=13 dl-earfcn=5230\"", LTE_RX_TIMEOUT_MIN_MS);
+                lte_push_at_command("AT!=\"RRC::addScanBand band=13\"", LTE_RX_TIMEOUT_MIN_MS);
             } else if (band == 20) {
-                lte_push_at_command("AT!=\"RRC::addscanfreq band=20 dl-earfcn=6300\"", LTE_RX_TIMEOUT_MIN_MS);
+                lte_push_at_command("AT!=\"RRC::addScanBand band=20\"", LTE_RX_TIMEOUT_MIN_MS);
             } else if (band == 28) {
-                lte_push_at_command("AT!=\"RRC::addscanfreq band=28 dl-earfcn=9435\"", LTE_RX_TIMEOUT_MIN_MS);
+                lte_push_at_command("AT!=\"RRC::addScanBand band=28\"", LTE_RX_TIMEOUT_MIN_MS);
             } else {
                 nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported", band));
             }
@@ -388,18 +389,21 @@ STATIC mp_obj_t lte_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     lte_check_attached();
+
     if (lteppp_get_state() == E_LTE_ATTACHED) {
         char at_cmd[LTE_AT_CMD_SIZE_MAX - 4];
         lte_obj.cid = args[0].u_int;
         sprintf(at_cmd, "AT+CGDATA=\"PPP\",%d", lte_obj.cid);
         // set the PPP state in advance, to avoid CEREG? to be sent right after PPP is entered
-        if (lte_push_at_command_ext(at_cmd, LTE_RX_TIMEOUT_MIN_MS, LTE_CONNECT_RSP) ||
-            lte_push_at_command_ext("ATO", LTE_RX_TIMEOUT_MIN_MS, LTE_CONNECT_RSP)) {
+        if (lte_push_at_command_ext(at_cmd, LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP)) {
             lteppp_connect();
             lteppp_set_state(E_LTE_PPP);
+            vTaskDelay(750);
         } else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
         }
+    } else if (lteppp_get_state() == E_LTE_PPP) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "modem already connected"));
     } else {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "modem not attached"));
     }
@@ -413,6 +417,13 @@ STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
         lteppp_disconnect();
         lte_pause_ppp();
         lteppp_set_state(E_LTE_ATTACHED);
+        lte_push_at_command("ATH", LTE_RX_TIMEOUT_MIN_MS);
+        while (true) {
+            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
+            if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+                break;
+            }
+        }
         lte_check_attached();
     }
     return mp_const_none;
@@ -430,26 +441,12 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_isconnected_obj, lte_isconnected);
 
 STATIC mp_obj_t lte_send_raw_at(mp_obj_t self_in, mp_obj_t cmd_o) {
     lte_check_init();
-    bool inppp = false;
-    if (lteppp_get_state() == E_LTE_PPP) {
-        inppp = true;
-        lte_pause_ppp();
-        while (true) {
-            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-            if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-                break;
-            }
-        }
-    }
-
+    lte_check_inppp();
     const char *cmd = mp_obj_str_get_str(cmd_o);
     lte_push_at_command((char *)cmd, LTE_RX_TIMEOUT_MAX_MS);
     vstr_t vstr;
     vstr_init_len(&vstr, strlen(modlte_rsp.data));
     strcpy(vstr.buf, modlte_rsp.data);
-    if (inppp) {
-        lte_push_at_command("ATO", LTE_RX_TIMEOUT_MIN_MS);
-    }
     return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lte_send_raw_at_obj, lte_send_raw_at);
@@ -486,15 +483,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_iccid_obj, lte_iccid);
 
 STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     lte_check_init();
-    if (lteppp_get_state() == E_LTE_PPP) {
-        lte_pause_ppp();
-        while (true) {
-            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-            if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-                break;
-            }
-        }
-    }
+    lte_disconnect(self_in);
     lte_push_at_command("AT^RESET", LTE_RX_TIMEOUT_MIN_MS);
     lteppp_set_state(E_LTE_IDLE);
     mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
