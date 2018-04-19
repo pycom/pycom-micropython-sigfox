@@ -91,7 +91,7 @@ void lteppp_init(void) {
 
 void lteppp_start (void) {
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
-    mp_hal_delay_ms(5);
+    vTaskDelay(5);
 }
 
 void lteppp_set_state(lte_state_t state) {
@@ -101,6 +101,8 @@ void lteppp_set_state(lte_state_t state) {
 }
 
 void lteppp_connect (void) {
+    uart_flush(LTE_UART_ID);
+    vTaskDelay(25);
     pppapi_set_default(lteppp_pcb);
     pppapi_set_auth(lteppp_pcb, PPPAUTHTYPE_PAP, "", "");
     pppapi_connect(lteppp_pcb, 0);
@@ -108,6 +110,7 @@ void lteppp_connect (void) {
 
 void lteppp_disconnect(void) {
     pppapi_close(lteppp_pcb, 0);
+    vTaskDelay(150);
 }
 
 void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp) {
@@ -223,6 +226,14 @@ static void TASK_LTE (void *pvParameters) {
                 break;
             }
         }
+
+        lteppp_send_at_cmd("ATH", LTE_RX_TIMEOUT_MIN_MS);
+        while (true) {
+            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS);
+            if (lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+                break;
+            }
+        }
     }
 
     lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS);
@@ -239,6 +250,13 @@ static void TASK_LTE (void *pvParameters) {
         } else {
             while (true) {
                 vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
+                if (lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+                    break;
+                }
+            }
+            lteppp_send_at_cmd("ATH", LTE_RX_TIMEOUT_MIN_MS);
+            while (true) {
+                vTaskDelay(LTE_RX_TIMEOUT_MIN_MS);
                 if (lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
                     break;
                 }
@@ -268,16 +286,11 @@ static void TASK_LTE (void *pvParameters) {
 
     // enable PSM if not already enabled
     lteppp_send_at_cmd("AT+CPSMS?", LTE_RX_TIMEOUT_MAX_MS);
-    if (!strstr(lteppp_trx_buffer, "+CPSMS: 0")) {
-        lteppp_send_at_cmd("AT+CPSMS=0", LTE_RX_TIMEOUT_MIN_MS);
+    if (!strstr(lteppp_trx_buffer, "+CPSMS: 1")) {
+        lteppp_send_at_cmd("AT+CPSMS=1", LTE_RX_TIMEOUT_MIN_MS);
     }
     // enable low power mode
     lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
-
-    if (!sim_present) {
-        // uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
-        // uart_set_rts(LTE_UART_ID, false);
-    }
 
     lteppp_init_complete = true;
 
@@ -307,11 +320,13 @@ static void TASK_LTE (void *pvParameters) {
 
 static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *expected_rsp) {
     uint32_t cmd_len = strlen(cmd);
+    // char tmp_buf[128];
 
     // printf("cmd: %s\n", cmd);
 
     // flush the rx buffer first
     uart_flush(LTE_UART_ID);
+    // uart_read_bytes(LTE_UART_ID, (uint8_t *)tmp_buf, sizeof(tmp_buf), 5 / portTICK_RATE_MS);
     // then send the command
     uart_write_bytes(LTE_UART_ID, cmd, cmd_len);
     if (strcmp(cmd, "+++")) {

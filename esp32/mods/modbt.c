@@ -219,7 +219,7 @@ static const mp_obj_type_t mod_bt_gatts_char_type;
 
 static esp_ble_adv_params_t bt_adv_params = {
     .adv_int_min        = 0x20,
-    .adv_int_max        = 0x40,
+    .adv_int_max        = 0x20,
     .adv_type           = ADV_TYPE_IND,
     .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
     .channel_map        = ADV_CHNL_ALL,
