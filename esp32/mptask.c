@@ -222,6 +222,9 @@ soft_reset:
             if (timeout_ms < 0xFFFFFFFF) {
                 printf("Starting the WDT on boot\n");
                 machine_wdt_start(timeout_ms);
+            } else {
+                // disable the WDT on boot flag
+                config_set_wdt_on_boot(false);
             }
         }
         if (wifi_on_boot) {
