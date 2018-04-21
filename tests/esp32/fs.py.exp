@@ -1,0 +1,68 @@
+LittleFs: os.mkdir("/flash/test") - OSError(17,)
+LittleFs: os.mkdir("/flash/inv/test") - OSError(2,)
+FatFs: os.mkdir("/sd/test") - OSError(17,)
+FatFs: os.mkdir("/sd/inv/test") - OSError(2,)
+LittleFs: /flash
+LittleFs: os.getcwd() - /flash
+LittleFs: os.getcwd() - /
+LittleFs: os.getcwd() - /flash/test/myfolder
+LittleFs: os.getcwd() - /flash/test
+LittleFs: os.getcwd() - /flash/test/myfolder
+LittleFs: os.chdir("/flash/inv") - OSError(2,)
+LittleFs: os.getcwd() - /flash/test/myfolder
+FatFs: /sd
+FatFs: os.getcwd() - /sd
+FatFs: os.getcwd() - /
+FatFs: os.getcwd() - /sd/test/myfolder
+FatFs: os.getcwd() - /sd/test
+FatFs: os.getcwd() - /sd/test/myfolder
+FatFs: os.chdir("/sd/inv") - OSError(2,)
+FatFs: os.getcwd() - /sd/test/myfolder
+LittleFs: os.listdir("") - myfolder, dir, file1, file2
+LittleFs: os.listdir(".") - main.py, boot.py, sys, lib, cert, test
+LittleFs: os.listdir("..") - main.py, boot.py, sys, lib, cert, test
+LittleFs: os.listdir("myfolder") - dir1, file3
+LittleFs: os.listdir("myfolder/dir1") - 
+LittleFs: os.listdir("") - 
+LittleFs: os.rmdir("dir_inv") - OSError(2,)
+LittleFs: os.rmdir("file_inv") - OSError(2,)
+FatFs: os.listdir("") - myfolder, dir, file1, file2
+FatFs: os.listdir(".") - myfolder, dir, file1, file2
+FatFs: os.listdir("..") - test
+FatFs: os.listdir("myfolder") - dir1, file3
+FatFs: os.listdir("myfolder/dir1") - 
+FatFs: os.listdir("") - 
+FatFs: os.rmdir("dir_inv") - OSError(2,)
+FatFs: os.rmdir("file_inv") - OSError(2,)
+LittleFs: os.listdir("") - myfolder, dir, file2, file_renamed
+LittleFs: os.listdir("dir") - file_renamed
+LittleFs: os.listdir("") - myfolder, dir, file2, file_renamed, file4
+LittleFs: os.listdir("") - myfolder, dir, file2, file_renamed, file4, dir_renamed
+LittleFs: os.listdir("dir") - 
+FatFs: os.listdir("") - myfolder, dir, file2, file_renamed
+FatFs: os.listdir("dir") - file_renamed
+FatFs: os.listdir("") - myfolder, dir, file4, file2, file_renamed
+FatFs: os.listdir("") - myfolder, dir, file4, file2, file_renamed, dir_renamed
+FatFs: os.listdir("dir") - 
+LittleFs: type of a directory: 16384
+LittleFs: size of the directory: 0
+LittleFs:  type of a file: 32768
+LittleFs: size of the file: 4
+LittleFs: os.stat("inv_file") - OSError(2,)
+FatFs: type of a directory: 16384
+FatFs: size of the directory: 0
+FatFs:  type of a file: 32768
+FatFs: size of the file: 4
+FatFs: os.stat("inv_file") - OSError(2,)
+Removing: /sd/test/myfolder
+Removing: /sd/test/dir
+Removing: /sd/test/file4
+Removing: /sd/test/file2
+Removing: /sd/test/file_renamed
+Removing: /sd/test/dir_renamed
+Removing: /flash/test/myfolder
+Removing: /flash/test/dir
+Removing: /flash/test/file2
+Removing: /flash/test/file_renamed
+Removing: /flash/test/file4
+Removing: /flash/test/dir_renamed
