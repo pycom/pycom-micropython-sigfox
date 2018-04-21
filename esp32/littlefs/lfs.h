@@ -259,9 +259,9 @@ typedef struct lfs_superblock {
 } lfs_superblock_t;
 
 typedef struct lfs_free {
-    lfs_block_t begin;
-    lfs_block_t size;
     lfs_block_t off;
+    lfs_block_t size;
+    lfs_block_t i;
     lfs_block_t ack;
     uint32_t *buffer;
 } lfs_free_t;
@@ -319,10 +319,6 @@ int lfs_remove(lfs_t *lfs, const char *path);
 //
 // If the destination exists, it must match the source in type.
 // If the destination is a directory, the directory must be empty.
-//
-// Note: If power loss occurs, it is possible that the file or directory
-// will exist in both the oldpath and newpath simultaneously after the
-// next mount.
 //
 // Returns a negative error code on failure.
 int lfs_rename(lfs_t *lfs, const char *oldpath, const char *newpath);
