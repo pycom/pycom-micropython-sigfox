@@ -266,6 +266,7 @@ typedef struct _mp_vfs_littlefs_ilistdir_it_t {
 STATIC mp_obj_t mp_vfs_littlefs_ilistdir_it_iternext(mp_obj_t self_in) {
     mp_vfs_littlefs_ilistdir_it_t *self = MP_OBJ_TO_PTR(self_in);
 
+    //cycle is needed to filter out "." and ".."
     for (;;) {
         struct lfs_info fno;
 
