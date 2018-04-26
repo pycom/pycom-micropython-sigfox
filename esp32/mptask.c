@@ -493,6 +493,7 @@ STATIC void init_sflash_littlefs(void) {
     vfs_littlefs->fs.littlefs.cwd[0] = '/';
     vfs_littlefs->fs.littlefs.cwd[1] = '\0';
 
+    MP_STATE_PORT(lfs_cwd) = vfs_littlefs->fs.littlefs.cwd;
     vfs_littlefs->fs.littlefs.mutex = xSemaphoreCreateMutex();
 
     xSemaphoreTake(vfs_littlefs->fs.littlefs.mutex, portMAX_DELAY);

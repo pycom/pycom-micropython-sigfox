@@ -30,8 +30,8 @@ const char* concat_with_cwd(vfs_lfs_struct_t* littlefs, const char* path)
     {
         path_out = (char*)m_malloc(strlen(littlefs->cwd) + 1 + strlen(path) + 1);
         strcpy(path_out, littlefs->cwd);
-        if (strlen(path_out) > 1) strcat (path_out, "/"); //if not root append / to the end
-        strcat (path_out, path);
+        if (strlen(path_out) > 1) strcat(path_out, "/"); //if not root append / to the end
+        strcat(path_out, path);
         uint len = strlen(path_out);
         if ((len > 1) && (path_out[len - 1] == '/')) //Remove trailing "/" from the end if any
         {
@@ -51,7 +51,7 @@ static int is_valid_directory(vfs_lfs_struct_t* littlefs, const char* path)
 
     if(LFS_ERR_OK == r)
     {
-        if(fi.type == LFS_TYPE_DIR)  return true;
+        if(fi.type == LFS_TYPE_DIR) return true;
         else return false;
     }
     else
@@ -97,6 +97,7 @@ static int change_cwd(vfs_lfs_struct_t* littlefs, const char* path_in)
         {
             m_free(littlefs->cwd);
             littlefs->cwd = (char*)new_path;
+            MP_STATE_PORT(lfs_cwd) = littlefs->cwd;
 
             res = LFS_ERR_OK;
         }

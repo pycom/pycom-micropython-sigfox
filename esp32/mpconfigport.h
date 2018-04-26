@@ -242,6 +242,7 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
     mp_obj_list_t btc_conn_list;                                \
     mp_obj_list_t bts_srv_list;                                 \
     mp_obj_list_t bts_attr_list;                                \
+    char* lfs_cwd;                                              \
 
 // we need to provide a declaration/definition of alloca()
 #include <alloca.h>
