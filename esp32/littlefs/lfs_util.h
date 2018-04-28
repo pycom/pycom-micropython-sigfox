@@ -32,6 +32,7 @@
 
 #include "py/mpconfig.h"
 #include "py/misc.h"
+#include "py/gc.h"
 
 // System includes
 #include <stdint.h>
@@ -170,7 +171,7 @@ void lfs_crc(uint32_t *crc, const void *buffer, size_t size);
 // Allocate memory, only used if buffers are not provided to littlefs
 static inline void *lfs_malloc(size_t size) {
 #ifndef LFS_NO_MALLOC
-    return m_malloc(size);
+    return gc_alloc(size, false);
 #else
     return NULL;
 #endif

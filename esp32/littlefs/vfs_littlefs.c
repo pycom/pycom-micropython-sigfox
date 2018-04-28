@@ -4,6 +4,7 @@
 #include <string.h>
 #include "py/runtime.h"
 #include "py/mperrno.h"
+#include "py/gc.h"
 #include "lib/oofatfs/ff.h"
 #include "extmod/vfs.h"
 #include "vfs_littlefs.h"
@@ -19,23 +20,29 @@ int lfs_statvfs_count(void *p, lfs_block_t b)
 // After this function m_free() must be called on the returned address after usage!!
 const char* concat_with_cwd(vfs_lfs_struct_t* littlefs, const char* path)
 {
-    char* path_out;
+    char* path_out = NULL;
 
     if (path[0] == '/') /* Absolute path */
     {
-        path_out = (char*)m_malloc(strlen(path) + 1); // Count the \0 too
-        strcpy(path_out, path);
+        path_out = (char*)gc_alloc(strlen(path) + 1, false); // Count the \0 too
+        if(path_out != NULL)
+        {
+            strcpy(path_out, path);
+        }
     }
     else
     {
-        path_out = (char*)m_malloc(strlen(littlefs->cwd) + 1 + strlen(path) + 1);
-        strcpy(path_out, littlefs->cwd);
-        if (strlen(path_out) > 1) strcat(path_out, "/"); //if not root append / to the end
-        strcat(path_out, path);
-        uint len = strlen(path_out);
-        if ((len > 1) && (path_out[len - 1] == '/')) //Remove trailing "/" from the end if any
+        path_out = (char*)gc_alloc(strlen(littlefs->cwd) + 1 + strlen(path) + 1, false);
+        if(path_out != NULL)
         {
-            path_out[len - 1] = '\0';
+            strcpy(path_out, littlefs->cwd);
+            if (strlen(path_out) > 1) strcat(path_out, "/"); //if not root append / to the end
+            strcat(path_out, path);
+            uint len = strlen(path_out);
+            if ((len > 1) && (path_out[len - 1] == '/')) //Remove trailing "/" from the end if any
+            {
+                path_out[len - 1] = '\0';
+            }
         }
 
     }
@@ -93,7 +100,11 @@ static int change_cwd(vfs_lfs_struct_t* littlefs, const char* path_in)
     {
         const char* new_path = concat_with_cwd(littlefs, path_in);
 
-        if(is_valid_directory(littlefs, new_path))
+        if(new_path == NULL)
+        {
+            res = LFS_ERR_NOMEM;
+        }
+        else if(is_valid_directory(littlefs, new_path))
         {
             m_free(littlefs->cwd);
             littlefs->cwd = (char*)new_path;
@@ -317,6 +328,8 @@ STATIC mp_obj_t littlefs_vfs_ilistdir_func(size_t n_args, const mp_obj_t *args) 
     fs_user_mount_t *self = MP_OBJ_TO_PTR(args[0]);
     bool is_str_type = true;
     const char *path_in;
+    int res = LFS_ERR_OK;
+
     if (n_args == 2) {
         if (mp_obj_get_type(args[1]) == &mp_type_bytes) {
             is_str_type = false;
@@ -335,7 +348,14 @@ STATIC mp_obj_t littlefs_vfs_ilistdir_func(size_t n_args, const mp_obj_t *args) 
 
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
         const char* path = concat_with_cwd(&self->fs.littlefs, path_in);
-        int res = lfs_dir_open(&self->fs.littlefs.lfs, &iter->dir, path);
+        if(path == NULL)
+        {
+            res = LFS_ERR_NOMEM;
+        }
+        else
+        {
+            res = lfs_dir_open(&self->fs.littlefs.lfs, &iter->dir, path);
+        }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
     m_free((void*)path);
@@ -350,12 +370,20 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(littlefs_vfs_ilistdir_obj, 1, 2, litt
 
 STATIC mp_obj_t littlefs_vfs_mkdir(mp_obj_t vfs_in, mp_obj_t path_param) {
 
+    int res = LFS_ERR_OK;
     fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
     const char *path_in = mp_obj_str_get_str(path_param);
 
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
         const char* path = concat_with_cwd(&self->fs.littlefs, path_in);
-        int res = lfs_mkdir(&self->fs.littlefs.lfs, path);
+        if(path == NULL)
+        {
+            res = LFS_ERR_NOMEM;
+        }
+        else
+        {
+            res = lfs_mkdir(&self->fs.littlefs.lfs, path);
+        }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
     m_free((void*)path);
@@ -371,12 +399,20 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(littlefs_vfs_mkdir_obj, littlefs_vfs_mkdir);
 
 STATIC mp_obj_t littlefs_vfs_remove(mp_obj_t vfs_in, mp_obj_t path_param) {
 
+    int res = LFS_ERR_OK;
     fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
     const char *path_in = mp_obj_str_get_str(path_param);
 
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
         const char* path = concat_with_cwd(&self->fs.littlefs, path_in);
-        int res = lfs_remove(&self->fs.littlefs.lfs, path);
+        if(path == NULL)
+        {
+            res = LFS_ERR_NOMEM;
+        }
+        else
+        {
+            res = lfs_remove(&self->fs.littlefs.lfs, path);
+        }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
     m_free((void*)path);
@@ -392,6 +428,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(littlefs_vfs_rmdir_obj, littlefs_vfs_remove);
 
 STATIC mp_obj_t littlefs_vfs_rename(mp_obj_t vfs_in, mp_obj_t path_param_in, mp_obj_t path_param_out) {
 
+    int res = LFS_ERR_OK;
     fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
     const char *path_in = mp_obj_str_get_str(path_param_in);
     const char *path_out = mp_obj_str_get_str(path_param_out);
@@ -399,7 +436,15 @@ STATIC mp_obj_t littlefs_vfs_rename(mp_obj_t vfs_in, mp_obj_t path_param_in, mp_
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
         const char* old_path = concat_with_cwd(&self->fs.littlefs, path_in);
         const char* new_path = concat_with_cwd(&self->fs.littlefs, path_out);
-        int res = lfs_rename(&self->fs.littlefs.lfs, old_path, new_path);
+
+        if(old_path == NULL || new_path == NULL)
+        {
+            res = LFS_ERR_NOMEM;
+        }
+        else
+        {
+            res = lfs_rename(&self->fs.littlefs.lfs, old_path, new_path);
+        }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
     m_free((void*)old_path);
@@ -416,11 +461,12 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(littlefs_vfs_rename_obj, littlefs_vfs_rename);
 
 STATIC mp_obj_t littlefs_vfs_chdir(mp_obj_t vfs_in, mp_obj_t path_param) {
 
+    int res = LFS_ERR_OK;
     fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
     const char *path_in = mp_obj_str_get_str(path_param);
 
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
-        int res = parse_and_append_to_cwd(&self->fs.littlefs, path_in);
+        res = parse_and_append_to_cwd(&self->fs.littlefs, path_in);
     xSemaphoreGive(self->fs.littlefs.mutex);
 
     if (res != LFS_ERR_OK) {
@@ -444,17 +490,20 @@ STATIC mp_obj_t littlefs_vfs_getcwd(mp_obj_t vfs_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(littlefs_vfs_getcwd_obj, littlefs_vfs_getcwd);
 
 STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_param) {
-    fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
 
-    const char* path_in = mp_obj_str_get_str(path_param);
-
-    struct lfs_info fno;
     int res = LFS_ERR_OK;
+    fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
+    const char* path_in = mp_obj_str_get_str(path_param);
+    struct lfs_info fno;
 
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
         const char* path = concat_with_cwd(&self->fs.littlefs, path_in);
-
-        if (path[0] == 0 || (path[0] == '/' && path[1] == 0)) {
+        if(path == NULL)
+        {
+            res = LFS_ERR_NOMEM;
+        }
+        else if (path[0] == 0 || (path[0] == '/' && path[1] == 0))
+        {
             // stat root directory
             fno.size = 0;
             fno.type = LFS_TYPE_DIR;
@@ -505,6 +554,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(littlefs_vfs_stat_obj, littlefs_vfs_stat);
 
 // Get the status of a VFS.
 STATIC mp_obj_t littlefs_vfs_statvfs(mp_obj_t vfs_in, mp_obj_t path_in) {
+
     fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
     (void)path_in;
 
