@@ -369,7 +369,7 @@ STATIC void OTG_CMD_WKUP_Handler(PCD_HandleTypeDef *pcd_handle) {
     /* Configures system clock after wake-up from STOP: enable HSE, PLL and select
     PLL as system clock source (HSE and PLL are disabled in STOP mode) */
 
-    __HAL_RCC_HSE_CONFIG(RCC_HSE_ON);
+    __HAL_RCC_HSE_CONFIG(MICROPY_HW_CLK_HSE_STATE);
 
     /* Wait till HSE is ready */
     while(__HAL_RCC_GET_FLAG(RCC_FLAG_HSERDY) == RESET)
@@ -385,8 +385,13 @@ STATIC void OTG_CMD_WKUP_Handler(PCD_HandleTypeDef *pcd_handle) {
     /* Select PLL as SYSCLK */
     MODIFY_REG(RCC->CFGR, RCC_CFGR_SW, RCC_SYSCLKSOURCE_PLLCLK);
 
+    #if defined(STM32H7)
+    while (__HAL_RCC_GET_SYSCLK_SOURCE() != RCC_CFGR_SWS_PLL1)
+    {}
+    #else
     while (__HAL_RCC_GET_SYSCLK_SOURCE() != RCC_CFGR_SWS_PLL)
     {}
+    #endif
 
     /* ungate PHY clock */
      __HAL_PCD_UNGATE_PHYCLOCK(pcd_handle);
@@ -517,7 +522,7 @@ void PVD_IRQHandler(void) {
     IRQ_EXIT(PVD_IRQn);
 }
 
-#if defined(MCU_SERIES_L4)
+#if defined(STM32L4)
 void PVD_PVM_IRQHandler(void) {
     IRQ_ENTER(PVD_PVM_IRQn);
     Handle_EXTI_Irq(EXTI_PVD_OUTPUT);
@@ -558,7 +563,7 @@ void TIM1_BRK_TIM9_IRQHandler(void) {
     IRQ_EXIT(TIM1_BRK_TIM9_IRQn);
 }
 
-#if defined(MCU_SERIES_L4)
+#if defined(STM32L4)
 void TIM1_BRK_TIM15_IRQHandler(void) {
     IRQ_ENTER(TIM1_BRK_TIM15_IRQn);
     timer_irq_handler(15);
@@ -573,7 +578,7 @@ void TIM1_UP_TIM10_IRQHandler(void) {
     IRQ_EXIT(TIM1_UP_TIM10_IRQn);
 }
 
-#if defined(MCU_SERIES_L4)
+#if defined(STM32L4)
 void TIM1_UP_TIM16_IRQHandler(void) {
     IRQ_ENTER(TIM1_UP_TIM16_IRQn);
     timer_irq_handler(1);
@@ -588,7 +593,7 @@ void TIM1_TRG_COM_TIM11_IRQHandler(void) {
     IRQ_EXIT(TIM1_TRG_COM_TIM11_IRQn);
 }
 
-#if defined(MCU_SERIES_L4)
+#if defined(STM32L4)
 void TIM1_TRG_COM_TIM17_IRQHandler(void) {
     IRQ_ENTER(TIM1_TRG_COM_TIM17_IRQn);
     timer_irq_handler(17);
@@ -657,7 +662,7 @@ void TIM8_UP_TIM13_IRQHandler(void) {
     IRQ_EXIT(TIM8_UP_TIM13_IRQn);
 }
 
-#if defined(MCU_SERIES_L4)
+#if defined(STM32L4)
 void TIM8_UP_IRQHandler(void) {
     IRQ_ENTER(TIM8_UP_IRQn);
     timer_irq_handler(8);
@@ -731,7 +736,7 @@ void UART8_IRQHandler(void) {
 }
 #endif
 
-#if MICROPY_HW_ENABLE_CAN
+#if defined(MICROPY_HW_CAN1_TX)
 void CAN1_RX0_IRQHandler(void) {
     IRQ_ENTER(CAN1_RX0_IRQn);
     can_rx_irq_handler(PYB_CAN_1, CAN_FIFO0);
@@ -744,6 +749,14 @@ void CAN1_RX1_IRQHandler(void) {
     IRQ_EXIT(CAN1_RX1_IRQn);
 }
 
+void CAN1_SCE_IRQHandler(void) {
+    IRQ_ENTER(CAN1_SCE_IRQn);
+    can_sce_irq_handler(PYB_CAN_1);
+    IRQ_EXIT(CAN1_SCE_IRQn);
+}
+#endif
+
+#if defined(MICROPY_HW_CAN2_TX)
 void CAN2_RX0_IRQHandler(void) {
     IRQ_ENTER(CAN2_RX0_IRQn);
     can_rx_irq_handler(PYB_CAN_2, CAN_FIFO0);
@@ -755,7 +768,13 @@ void CAN2_RX1_IRQHandler(void) {
     can_rx_irq_handler(PYB_CAN_2, CAN_FIFO1);
     IRQ_EXIT(CAN2_RX1_IRQn);
 }
-#endif // MICROPY_HW_ENABLE_CAN
+
+void CAN2_SCE_IRQHandler(void) {
+    IRQ_ENTER(CAN2_SCE_IRQn);
+    can_sce_irq_handler(PYB_CAN_2);
+    IRQ_EXIT(CAN2_SCE_IRQn);
+}
+#endif
 
 #if defined(MICROPY_HW_I2C1_SCL)
 void I2C1_EV_IRQHandler(void) {
@@ -798,3 +817,17 @@ void I2C3_ER_IRQHandler(void) {
     IRQ_EXIT(I2C3_ER_IRQn);
 }
 #endif // defined(MICROPY_HW_I2C3_SCL)
+
+#if defined(MICROPY_HW_I2C4_SCL)
+void I2C4_EV_IRQHandler(void) {
+    IRQ_ENTER(I2C4_EV_IRQn);
+    i2c_ev_irq_handler(4);
+    IRQ_EXIT(I2C4_EV_IRQn);
+}
+
+void I2C4_ER_IRQHandler(void) {
+    IRQ_ENTER(I2C4_ER_IRQn);
+    i2c_er_irq_handler(4);
+    IRQ_EXIT(I2C4_ER_IRQn);
+}
+#endif // defined(MICROPY_HW_I2C4_SCL)

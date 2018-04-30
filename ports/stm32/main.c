@@ -136,8 +136,10 @@ static const char fresh_boot_py[] =
 "import machine\r\n"
 "import pyb\r\n"
 "#pyb.main('main.py') # main script to run after this one\r\n"
+#if MICROPY_HW_ENABLE_USB
 "#pyb.usb_mode('VCP+MSC') # act as a serial and a storage device\r\n"
 "#pyb.usb_mode('VCP+HID') # act as a serial device and a mouse\r\n"
+#endif
 ;
 
 static const char fresh_main_py[] =
@@ -190,7 +192,7 @@ MP_NOINLINE STATIC bool init_flash_fs(uint reset_mode) {
         }
 
         // set label
-        f_setlabel(&vfs_fat->fatfs, "pybflash");
+        f_setlabel(&vfs_fat->fatfs, MICROPY_HW_FLASH_FS_LABEL);
 
         // create empty main.py
         FIL fp;
@@ -338,6 +340,7 @@ STATIC bool init_sdcard_fs(void) {
 }
 #endif
 
+#if !MICROPY_HW_USES_BOOTLOADER
 STATIC uint update_reset_mode(uint reset_mode) {
 #if MICROPY_HW_HAS_SWITCH
     if (switch_get()) {
@@ -412,8 +415,9 @@ STATIC uint update_reset_mode(uint reset_mode) {
 #endif
     return reset_mode;
 }
+#endif
 
-int main(void) {
+void stm32_main(uint32_t reset_mode) {
     // TODO disable JTAG
 
     /* STM32F4xx HAL library initialization:
@@ -433,7 +437,7 @@ int main(void) {
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOD_CLK_ENABLE();
 
-    #if defined(MCU_SERIES_F4) ||  defined(MCU_SERIES_F7)
+    #if defined(STM32F4) ||  defined(STM32F7)
         #if defined(__HAL_RCC_DTCMRAMEN_CLK_ENABLE)
         // The STM32F746 doesn't really have CCM memory, but it does have DTCM,
         // which behaves more or less like normal SRAM.
@@ -442,7 +446,13 @@ int main(void) {
         // enable the CCM RAM
         __HAL_RCC_CCMDATARAMEN_CLK_ENABLE();
         #endif
+    #elif defined(STM32H7)
+        // Enable D2 SRAM1/2/3 clocks.
+        __HAL_RCC_D2SRAM1_CLK_ENABLE();
+        __HAL_RCC_D2SRAM2_CLK_ENABLE();
+        __HAL_RCC_D2SRAM3_CLK_ENABLE();
     #endif
+
 
     #if defined(MICROPY_BOARD_EARLY_INIT)
     MICROPY_BOARD_EARLY_INIT();
@@ -472,7 +482,6 @@ int main(void) {
 
 soft_reset:
 
-    // check if user switch held to select the reset mode
 #if defined(MICROPY_HW_LED2)
     led_state(1, 0);
     led_state(2, 1);
@@ -482,7 +491,11 @@ soft_reset:
 #endif
     led_state(3, 0);
     led_state(4, 0);
-    uint reset_mode = update_reset_mode(1);
+
+    #if !MICROPY_HW_USES_BOOTLOADER
+    // check if user switch held to select the reset mode
+    reset_mode = update_reset_mode(1);
+    #endif
 
     // Python threading init
     #if MICROPY_PY_THREAD
