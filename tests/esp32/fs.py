@@ -76,16 +76,17 @@ def list_files_folders_test(fs):
 
     create_files_folders()
     
-    print(fs_text + "os.listdir(\"\") - " + ', '.join(os.listdir("")))
-    print(fs_text + "os.listdir(\".\") - " + ', '.join(os.listdir(".")))
-    print(fs_text + "os.listdir(\"..\") - " + ', '.join(os.listdir("..")))
-    print(fs_text + "os.listdir(\"myfolder/.\") - " + ', '.join(os.listdir("myfolder/.")))
-    print(fs_text + "os.listdir(\"myfolder/..\") - " + ', '.join(os.listdir("myfolder/..")))
-    print(fs_text + "os.listdir(\"myfolder/./dir1\") - " + ', '.join(os.listdir("myfolder/./dir1")))
-    print(fs_text + "os.listdir(\"myfolder/../myfolder\") - " + ', '.join(os.listdir("myfolder/../myfolder")))
-    print(fs_text + "os.listdir(\"myfolder/../myfolder/dir1\") - " + ', '.join(os.listdir("myfolder/../myfolder/dir1")))
-    print(fs_text + "os.listdir(\"myfolder\") - " + ', '.join(os.listdir("myfolder")))
-    print(fs_text + "os.listdir(\"myfolder/dir1\") - " + ', '.join(os.listdir("myfolder/dir1")))
+    print(fs_text + "os.listdir(\"\") - {}".format(os.listdir("")))
+    print(fs_text + "os.listdir(\".\") - {}".format(os.listdir(".")))
+    print(fs_text + "os.listdir(\"..\") - {}".format(os.listdir("..")))
+    print(fs_text + "os.listdir(\"myfolder/.\") - {}".format(os.listdir("myfolder/.")))
+    print(fs_text + "os.listdir(\"myfolder/..\") - {}".format(os.listdir("myfolder/..")))
+    print(fs_text + "os.listdir(\"myfolder/./dir1\") - {}".format(os.listdir("myfolder/./dir1")))
+    print(fs_text + "os.listdir(\"myfolder/../myfolder\") - {}".format(os.listdir("myfolder/../myfolder")))
+    print(fs_text + "os.listdir(\"myfolder/../myfolder/dir1\") - {}".format(os.listdir("myfolder/../myfolder/dir1")))
+    print(fs_text + "os.listdir(\"myfolder\") - {}".format("myfolder"))
+    print(fs_text + "os.listdir(\"myfolder/dir1\") - {}".format(os.listdir("myfolder/dir1")))
+    print(fs_text + "os.ilistdir(\"myfolder\") - {}".format(list(os.ilistdir("myfolder"))))
 
 def remove_files_folders_exception_test(fs):
     
@@ -114,7 +115,7 @@ def remove_files_folders_test(fs):
     os.rmdir("myfolder/dir1")
     os.remove("myfolder/file3")
     os.rmdir("myfolder")
-    print(fs_text + "os.listdir(\"\") - " + ', '.join(os.listdir("")))
+    print(fs_text + "os.listdir(\"\") - {}".format(os.listdir("")))
     remove_files_folders_exception_test(fs)
 
 def rename_files_folders_test(fs):
@@ -125,17 +126,17 @@ def rename_files_folders_test(fs):
     create_files_folders()
 
     os.rename("file1", "file_renamed")
-    print(fs_text + "os.listdir(\"\") - " + ', '.join(os.listdir("")))
+    print(fs_text + "os.listdir(\"\") - {}".format(os.listdir("")))
 
     os.rename("myfolder/file3", "dir/file_renamed")
-    print(fs_text + "os.listdir(\"dir\") - " + ', '.join(os.listdir("dir")))
+    print(fs_text + "os.listdir(\"dir\") - {}".format(os.listdir("dir")))
 
     os.rename("dir/file_renamed", "file4")
-    print(fs_text + "os.listdir(\"\") - " + ', '.join(os.listdir("")))
+    print(fs_text + "os.listdir(\"\") - {}".format(os.listdir("")))
 
     os.rename("myfolder/dir1", "dir_renamed")
-    print(fs_text + "os.listdir(\"\") - " + ', '.join(os.listdir("")))
-    print(fs_text + "os.listdir(\"dir\") - " + ', '.join(os.listdir("dir")))
+    print(fs_text + "os.listdir(\"\") - {}".format(os.listdir("")))
+    print(fs_text + "os.listdir(\"dir\") - {}".format(os.listdir("dir")))
 
 def stat_files_folders_test(fs):
     fs_text = fs + ": "

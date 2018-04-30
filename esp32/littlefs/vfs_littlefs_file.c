@@ -60,27 +60,9 @@ STATIC mp_uint_t file_obj_write(mp_obj_t self_in, const void *buf, mp_uint_t siz
 }
 
 
-STATIC mp_obj_t file_obj_close(mp_obj_t self_in) {
-
-    pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
-    //TODO: check whether this condition is needed
-    if (self->littlefs != NULL) {
-
-        xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
-            int res = lfs_file_close(&self->littlefs->lfs, &self->fp);
-        xSemaphoreGive(self->littlefs->mutex);
-
-        if (res < 0) {
-            mp_raise_OSError(littleFsErrorToErrno(res));
-        }
-    }
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(file_obj_close_obj, file_obj_close);
-
 STATIC mp_obj_t file_obj___exit__(size_t n_args, const mp_obj_t *args) {
     (void)n_args;
-    return file_obj_close(args[0]);
+    return mp_stream_close(args[0]);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(file_obj___exit___obj, 4, 4, file_obj___exit__);
 
@@ -94,7 +76,7 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
         xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
             lfs_file_seek(&self->littlefs->lfs, &self->fp, s->offset, s->whence);
             s->offset = lfs_file_tell(&self->littlefs->lfs, &self->fp);
-        xSemaphoreGive(self->littlefs->mutex);;
+        xSemaphoreGive(self->littlefs->mutex);
 
         return 0;
 
@@ -110,6 +92,15 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
         }
         return 0;
 
+    } else if (request == MP_STREAM_CLOSE) {
+        xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
+            int res = lfs_file_close(&self->littlefs->lfs, &self->fp);
+        xSemaphoreGive(self->littlefs->mutex);;
+        if (res < 0) {
+            *errcode = littleFsErrorToErrno(res);
+            return MP_STREAM_ERROR;
+        }
+        return 0;
     } else {
         *errcode = MP_EINVAL;
         return MP_STREAM_ERROR;
@@ -194,10 +185,10 @@ STATIC const mp_rom_map_elem_t rawfile_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_readlines), MP_ROM_PTR(&mp_stream_unbuffered_readlines_obj) },
     { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_stream_write_obj) },
     { MP_ROM_QSTR(MP_QSTR_flush), MP_ROM_PTR(&mp_stream_flush_obj) },
-    { MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&file_obj_close_obj) },
+    { MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&mp_stream_close_obj) },
     { MP_ROM_QSTR(MP_QSTR_seek), MP_ROM_PTR(&mp_stream_seek_obj) },
     { MP_ROM_QSTR(MP_QSTR_tell), MP_ROM_PTR(&mp_stream_tell_obj) },
-    { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&file_obj_close_obj) },
+    { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&mp_stream_close_obj) },
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&mp_identity_obj) },
     { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&file_obj___exit___obj) },
 };
