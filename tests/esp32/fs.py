@@ -77,13 +77,13 @@ def list_files_folders_test(fs):
     create_files_folders()
     
     print(fs_text + "os.listdir(\"\") - " + ', '.join(os.listdir("")))
-    # On LittleFs listdir(".") and listdir("..") is buggy: https://github.com/geky/littlefs/issues/51
     print(fs_text + "os.listdir(\".\") - " + ', '.join(os.listdir(".")))
     print(fs_text + "os.listdir(\"..\") - " + ', '.join(os.listdir("..")))
     print(fs_text + "os.listdir(\"myfolder/.\") - " + ', '.join(os.listdir("myfolder/.")))
     print(fs_text + "os.listdir(\"myfolder/..\") - " + ', '.join(os.listdir("myfolder/..")))
     print(fs_text + "os.listdir(\"myfolder/./dir1\") - " + ', '.join(os.listdir("myfolder/./dir1")))
     print(fs_text + "os.listdir(\"myfolder/../myfolder\") - " + ', '.join(os.listdir("myfolder/../myfolder")))
+    print(fs_text + "os.listdir(\"myfolder/../myfolder/dir1\") - " + ', '.join(os.listdir("myfolder/../myfolder/dir1")))
     print(fs_text + "os.listdir(\"myfolder\") - " + ', '.join(os.listdir("myfolder")))
     print(fs_text + "os.listdir(\"myfolder/dir1\") - " + ', '.join(os.listdir("myfolder/dir1")))
 

@@ -19,12 +19,13 @@ FatFs: os.getcwd() - /sd/test/myfolder
 FatFs: os.chdir("/sd/inv") - OSError(2,)
 FatFs: os.getcwd() - /sd/test/myfolder
 LittleFs: os.listdir("") - myfolder, dir, file1, file2
-LittleFs: os.listdir(".") - main.py, boot.py, sys, lib, cert, test
+LittleFs: os.listdir(".") - myfolder, dir, file1, file2
 LittleFs: os.listdir("..") - main.py, boot.py, sys, lib, cert, test
-LittleFs: os.listdir("myfolder/.") - main.py, boot.py, sys, lib, cert, test
-LittleFs: os.listdir("myfolder/..") - main.py, boot.py, sys, lib, cert, test
+LittleFs: os.listdir("myfolder/.") - dir1, file3
+LittleFs: os.listdir("myfolder/..") - myfolder, dir, file1, file2
 LittleFs: os.listdir("myfolder/./dir1") - 
 LittleFs: os.listdir("myfolder/../myfolder") - dir1, file3
+LittleFs: os.listdir("myfolder/../myfolder/dir1") - 
 LittleFs: os.listdir("myfolder") - dir1, file3
 LittleFs: os.listdir("myfolder/dir1") - 
 LittleFs: os.listdir("") - 
@@ -37,6 +38,7 @@ FatFs: os.listdir("myfolder/.") - dir1, file3
 FatFs: os.listdir("myfolder/..") - myfolder, dir, file1, file2
 FatFs: os.listdir("myfolder/./dir1") - 
 FatFs: os.listdir("myfolder/../myfolder") - dir1, file3
+FatFs: os.listdir("myfolder/../myfolder/dir1") - 
 FatFs: os.listdir("myfolder") - dir1, file3
 FatFs: os.listdir("myfolder/dir1") - 
 FatFs: os.listdir("") - 
