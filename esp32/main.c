@@ -52,6 +52,8 @@
 #include "mperror.h"
 #include "machtimer.h"
 
+#include "esp_spi_flash.h"
+
 
 TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
@@ -123,7 +125,8 @@ void app_main(void) {
     mperror_pre_init();
 
     // differentiate the Flash Size (either 8MB or 4MB) based on ESP32 rev id
-    micropy_hw_flash_size = (esp_get_revision() > 0 ? 0x800000 : 0x400000);
+    // micropy_hw_flash_size = (esp_get_revision() > 0 ? 0x800000 : 0x400000);
+    micropy_hw_flash_size = spi_flash_get_chip_size();
 
     // propagating the Flash Size in the global variable (used in multiple IDF modules)
     g_rom_flashchip.chip_size = micropy_hw_flash_size;
