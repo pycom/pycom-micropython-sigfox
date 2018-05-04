@@ -631,7 +631,7 @@ endif # feq ($(SECURE), on)
 $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(ECHO) "CPP $@"
 	$(Q) $(CC) -I. -C -P -x c -E $< -o $@
-endif
+endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
 
 flash: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "Entering flash mode"
