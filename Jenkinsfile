@@ -21,13 +21,10 @@ node {
           make all'''
     }
 
-    stage('firmware-build') {
-        def parallelSteps = [:]
- 	    for (board in boards_to_build) {
-            def board_u = board.toUpperCase()
-        		parallelSteps[board] = boardBuild(board)
+	for (board in boards_to_build) {
+    	stage(board) {
+			boardBuild(board)
   		}
-  		parallel parallelSteps
   	}
 
     stash includes: '**/*.bin', name: 'binary'
@@ -65,15 +62,15 @@ def boardBuild(name) {
         cd esp32;
         make clean BOARD=''' + name_short
 
-        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-        export IDF_PATH=${WORKSPACE}/esp-idf;
-        cd esp32;
-        make TARGET=boot -j2 BOARD=''' + name_short
+//        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+//        export IDF_PATH=${WORKSPACE}/esp-idf;
+//        cd esp32;
+//        make TARGET=boot -j2 BOARD=''' + name_short
 
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=app -j2 BOARD=''' + name_short
+        make -j2 BOARD=''' + name_short
 
         sh '''cd esp32/build/'''+ name_u +'''/release;
         mkdir -p firmware_package;
@@ -101,7 +98,7 @@ def flashBuild(short_name) {
       unstash 'tests'
       unstash 'tools'
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 erase_flash'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash erase_flash'
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
       sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -pz --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name_u +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name_u +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name_u +'/release/' + board_name_u.toLowerCase() + '.bin'
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --exit'
