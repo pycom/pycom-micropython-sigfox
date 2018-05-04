@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-TARGET ?= app
+TARGET ?= boot_app
 
 OEM ?= 0
 
