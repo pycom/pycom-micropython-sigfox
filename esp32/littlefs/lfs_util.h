@@ -45,6 +45,11 @@
 #ifndef LFS_NO_ASSERT
 #include <assert.h>
 #endif
+
+#define LFS_NO_DEBUG
+#define LFS_NO_WARN
+#define LFS_NO_ERROR
+
 #if !defined(LFS_NO_DEBUG) || !defined(LFS_NO_WARN) || !defined(LFS_NO_ERROR)
 #include <stdio.h>
 #endif
