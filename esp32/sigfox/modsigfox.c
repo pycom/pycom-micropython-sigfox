@@ -180,7 +180,7 @@ void sigfox_update_id (void) {
 
     lfs_file_t fp;
 
-    xSemaphoreTake(sflash_vfs_fat.fs.littlefs.mutex, portMAX_DELAY);
+    xSemaphoreTake(sflash_vfs_littlefs.fs.littlefs.mutex, portMAX_DELAY);
 
     if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_ID_PATH, LFS_O_RDONLY)){
         uint8_t id[4];
@@ -199,7 +199,7 @@ void sigfox_update_id (void) {
         }
     }
 
-    xSemaphoreGive(sflash_vfs_fat.fs.littlefs.mutex);
+    xSemaphoreGive(sflash_vfs_littlefs.fs.littlefs.mutex);
 }
 
 void sigfox_update_pac (void) {
@@ -207,7 +207,7 @@ void sigfox_update_pac (void) {
 
     lfs_file_t fp;
 
-    xSemaphoreTake(sflash_vfs_fat.fs.littlefs.mutex, portMAX_DELAY);
+    xSemaphoreTake(sflash_vfs_littlefs.fs.littlefs.mutex, portMAX_DELAY);
 
     if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PAC_PATH, LFS_O_RDONLY)){
         uint8_t pac[8];
@@ -226,7 +226,7 @@ void sigfox_update_pac (void) {
         }
     }
 
-    xSemaphoreGive(sflash_vfs_fat.fs.littlefs.mutex);
+    xSemaphoreGive(sflash_vfs_littlefs.fs.littlefs.mutex);
 }
 
 void sigfox_update_private_key (void) {
@@ -234,7 +234,7 @@ void sigfox_update_private_key (void) {
 
     lfs_file_t fp;
 
-    xSemaphoreTake(sflash_vfs_fat.fs.littlefs.mutex, portMAX_DELAY);
+    xSemaphoreTake(sflash_vfs_littlefs.fs.littlefs.mutex, portMAX_DELAY);
 
     if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PRIVATE_KEY_PATH, LFS_O_RDONLY)){
        uint8_t key[16];
@@ -253,7 +253,7 @@ void sigfox_update_private_key (void) {
        }
    }
 
-    xSemaphoreGive(sflash_vfs_fat.fs.littlefs.mutex);
+    xSemaphoreGive(sflash_vfs_littlefs.fs.littlefs.mutex);
 }
 
 void sigfox_update_public_key (void) {
@@ -261,7 +261,7 @@ void sigfox_update_public_key (void) {
 
     lfs_file_t fp;
 
-    xSemaphoreTake(sflash_vfs_fat.fs.littlefs.mutex, portMAX_DELAY);
+    xSemaphoreTake(sflash_vfs_littlefs.fs.littlefs.mutex, portMAX_DELAY);
 
     if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PUBLIC_KEY_PATH, LFS_O_RDONLY)){
        uint8_t key[16];
@@ -280,7 +280,7 @@ void sigfox_update_public_key (void) {
        }
    }
 
-    xSemaphoreGive(sflash_vfs_fat.fs.littlefs.mutex);
+    xSemaphoreGive(sflash_vfs_littlefs.fs.littlefs.mutex);
 }
 
 /******************************************************************************
