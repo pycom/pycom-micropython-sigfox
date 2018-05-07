@@ -78,7 +78,6 @@ def list_files_folders_test(fs):
     
     print(fs_text + "os.listdir(\"\") - {}".format(os.listdir("")))
     print(fs_text + "os.listdir(\".\") - {}".format(os.listdir(".")))
-    print(fs_text + "os.listdir(\"..\") - {}".format(os.listdir("..")))
     print(fs_text + "os.listdir(\"myfolder/.\") - {}".format(os.listdir("myfolder/.")))
     print(fs_text + "os.listdir(\"myfolder/..\") - {}".format(os.listdir("myfolder/..")))
     print(fs_text + "os.listdir(\"myfolder/./dir1\") - {}".format(os.listdir("myfolder/./dir1")))
@@ -87,6 +86,9 @@ def list_files_folders_test(fs):
     print(fs_text + "os.listdir(\"myfolder\") - {}".format("myfolder"))
     print(fs_text + "os.listdir(\"myfolder/dir1\") - {}".format(os.listdir("myfolder/dir1")))
     print(fs_text + "os.ilistdir(\"myfolder\") - {}".format(list(os.ilistdir("myfolder"))))
+    os.chdir("myfolder")
+    print(fs_text + "os.listdir(\"..\") - {}".format(os.listdir("..")))
+    os.chdir("..")
 
 def remove_files_folders_exception_test(fs):
     

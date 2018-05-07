@@ -19,7 +19,7 @@ def file_read_size_test(path):
     f.write("0123456789")
     f.close()
 
-    f = open(f_path, "r")
+    f = open(path, "r")
     b = bytearray() 
     for c in range(0,10):
         b.append(ord(f.read(1)))
@@ -27,7 +27,7 @@ def file_read_size_test(path):
     print(b)
     f.close()
 
-    f = open(f_path, "r")
+    f = open(path, "r")
     print("{0}, f.read(2): {1}".format(path, f.read(2)))
     print("{0}, f.read(3): {1}".format(path, f.read(3)))
     print("{0}, f.read(5): {1}".format(path, f.read(5)))

@@ -20,7 +20,6 @@ FatFs: os.chdir("/sd/inv") - OSError(2,)
 FatFs: os.getcwd() - /sd/test/myfolder
 LittleFs: os.listdir("") - ['myfolder', 'dir', 'file1', 'file2']
 LittleFs: os.listdir(".") - ['myfolder', 'dir', 'file1', 'file2']
-LittleFs: os.listdir("..") - ['main.py', 'boot.py', 'sys', 'lib', 'cert', 'test']
 LittleFs: os.listdir("myfolder/.") - ['dir1', 'file3']
 LittleFs: os.listdir("myfolder/..") - ['myfolder', 'dir', 'file1', 'file2']
 LittleFs: os.listdir("myfolder/./dir1") - []
@@ -29,12 +28,12 @@ LittleFs: os.listdir("myfolder/../myfolder/dir1") - []
 LittleFs: os.listdir("myfolder") - myfolder
 LittleFs: os.listdir("myfolder/dir1") - []
 LittleFs: os.ilistdir("myfolder") - [('dir1', 16384, 0, 0), ('file3', 32768, 0, 15)]
+LittleFs: os.listdir("..") - ['myfolder', 'dir', 'file1', 'file2']
 LittleFs: os.listdir("") - []
 LittleFs: os.rmdir("dir_inv") - OSError(2,)
 LittleFs: os.rmdir("file_inv") - OSError(2,)
 FatFs: os.listdir("") - ['myfolder', 'dir', 'file1', 'file2']
 FatFs: os.listdir(".") - ['myfolder', 'dir', 'file1', 'file2']
-FatFs: os.listdir("..") - ['test']
 FatFs: os.listdir("myfolder/.") - ['dir1', 'file3']
 FatFs: os.listdir("myfolder/..") - ['myfolder', 'dir', 'file1', 'file2']
 FatFs: os.listdir("myfolder/./dir1") - []
@@ -43,6 +42,7 @@ FatFs: os.listdir("myfolder/../myfolder/dir1") - []
 FatFs: os.listdir("myfolder") - myfolder
 FatFs: os.listdir("myfolder/dir1") - []
 FatFs: os.ilistdir("myfolder") - [('dir1', 16384, 0, 0), ('file3', 32768, 0, 15)]
+FatFs: os.listdir("..") - ['myfolder', 'dir', 'file1', 'file2']
 FatFs: os.listdir("") - []
 FatFs: os.rmdir("dir_inv") - OSError(2,)
 FatFs: os.rmdir("file_inv") - OSError(2,)
