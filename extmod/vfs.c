@@ -476,4 +476,24 @@ mp_obj_t mp_vfs_statvfs(mp_obj_t path_in) {
 }
 MP_DEFINE_CONST_FUN_OBJ_1(mp_vfs_statvfs_obj, mp_vfs_statvfs);
 
+mp_obj_t mp_vfs_getfree(mp_obj_t path_in) {
+    mp_obj_t path_out;
+    mp_vfs_mount_t *vfs = lookup_path(path_in, &path_out);
+    if (vfs == MP_VFS_ROOT) {
+        // getfree called on the root directory, see if there's anything mounted there
+        for (vfs = MP_STATE_VM(vfs_mount_table); vfs != NULL; vfs = vfs->next) {
+            if (vfs->len == 1) {
+                break;
+            }
+        }
+        // If there's nothing mounted at root then return error
+        if (vfs == NULL) {
+            mp_raise_OSError(MP_ENODEV);
+        }
+    }
+
+    return mp_vfs_proxy_call(vfs, MP_QSTR_getfree, 0, NULL);
+}
+MP_DEFINE_CONST_FUN_OBJ_1(mp_vfs_getfree_obj, mp_vfs_getfree);
+
 #endif // MICROPY_VFS

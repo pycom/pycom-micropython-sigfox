@@ -588,6 +588,28 @@ STATIC mp_obj_t littlefs_vfs_statvfs(mp_obj_t vfs_in, mp_obj_t path_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(littlefs_vfs_statvfs_obj, littlefs_vfs_statvfs);
 
+// Get the free space in KByte
+STATIC mp_obj_t littlefs_vfs_getfree(mp_obj_t vfs_in) {
+
+    fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
+
+    lfs_t* lfs = &self->fs.littlefs.lfs;
+
+    lfs_size_t in_use = 0;
+
+    xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
+        int res = lfs_traverse(lfs, lfs_statvfs_count, &in_use);
+    xSemaphoreGive(self->fs.littlefs.mutex);
+
+    if (res != LFS_ERR_OK) {
+        mp_raise_OSError(littleFsErrorToErrno(res));
+    }
+
+    uint32_t free_space = (lfs->cfg->block_count - in_use) * lfs->cfg->block_size;
+
+    return MP_OBJ_NEW_SMALL_INT(free_space / 1024);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(littlefs_vfs_getfree_obj, littlefs_vfs_getfree);
 
 STATIC mp_obj_t littlefs_vfs_umount(mp_obj_t self_in) {
     (void)self_in;
@@ -607,7 +629,7 @@ STATIC const mp_rom_map_elem_t littlefs_vfs_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_rename), MP_ROM_PTR(&littlefs_vfs_rename_obj) },
     { MP_ROM_QSTR(MP_QSTR_stat), MP_ROM_PTR(&littlefs_vfs_stat_obj) },
     { MP_ROM_QSTR(MP_QSTR_statvfs), MP_ROM_PTR(&littlefs_vfs_statvfs_obj) },
-//    { MP_ROM_QSTR(MP_QSTR_mount), MP_ROM_PTR(&vfs_littlefs_mount_obj) },
+    { MP_ROM_QSTR(MP_QSTR_getfree), MP_ROM_PTR(&littlefs_vfs_getfree_obj) },
     { MP_ROM_QSTR(MP_QSTR_umount), MP_ROM_PTR(&littlefs_vfs_umount_obj) },
 
 };

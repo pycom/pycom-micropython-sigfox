@@ -126,21 +126,6 @@ STATIC mp_obj_t os_uname(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(os_uname_obj, os_uname);
 
-STATIC mp_obj_t os_getfree() {
-
-    lfs_t* lfs = &sflash_vfs_littlefs.fs.littlefs.lfs;
-    lfs_size_t in_use = 0;
-    int res = lfs_traverse(lfs, lfs_statvfs_count, &in_use);
-    if (res != LFS_ERR_OK) {
-        mp_raise_OSError(littleFsErrorToErrno(res));
-    }
-
-    uint32_t free_space = (lfs->cfg->block_count - in_use) * lfs->cfg->block_size;
-
-    return MP_OBJ_NEW_SMALL_INT(free_space / 1024);
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(os_getfree_obj, os_getfree);
-
 STATIC mp_obj_t os_sync(void) {
     for (mp_vfs_mount_t *vfs = MP_STATE_VM(vfs_mount_table); vfs != NULL; vfs = vfs->next) {
         // this assumes that vfs->obj is fs_user_mount_t with block device functions
@@ -200,11 +185,11 @@ STATIC const mp_rom_map_elem_t os_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_rmdir),           MP_ROM_PTR(&mp_vfs_rmdir_obj) },
     { MP_ROM_QSTR(MP_QSTR_stat),            MP_ROM_PTR(&mp_vfs_stat_obj) },
     { MP_ROM_QSTR(MP_QSTR_statvfs),         MP_ROM_PTR(&mp_vfs_statvfs_obj) },
+    { MP_ROM_QSTR(MP_QSTR_getfree),         MP_ROM_PTR(&mp_vfs_getfree_obj) },
     { MP_ROM_QSTR(MP_QSTR_unlink),          MP_ROM_PTR(&mp_vfs_remove_obj) },
 
     { MP_ROM_QSTR(MP_QSTR_sync),            MP_ROM_PTR(&mod_os_sync_obj) },
     { MP_ROM_QSTR(MP_QSTR_urandom),         MP_ROM_PTR(&os_urandom_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_getfree),         (mp_obj_t)&os_getfree_obj },
 
     // MicroPython additions
     // removed: mkfs

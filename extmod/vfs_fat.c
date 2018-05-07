@@ -368,6 +368,30 @@ STATIC mp_obj_t fat_vfs_statvfs(mp_obj_t vfs_in, mp_obj_t path_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(fat_vfs_statvfs_obj, fat_vfs_statvfs);
 
+// Get the free space in KByte
+STATIC mp_obj_t fat_vfs_getfree(mp_obj_t vfs_in) {
+
+    fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
+
+    FATFS *fatfs = &self->fs.fatfs;
+    DWORD nclst;
+
+    FRESULT res = f_getfree(fatfs, &nclst);
+    if (FR_OK != res) {
+        mp_raise_OSError(fresult_to_errno_table[res]);
+    }
+
+    uint64_t free_space = ((uint64_t)fatfs->csize * nclst)
+    #if _MAX_SS != _MIN_SS
+        * fatfs->ssize;
+    #else
+        * _MIN_SS;
+    #endif
+
+    return MP_OBJ_NEW_SMALL_INT(free_space / 1024);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_getfree_obj, fat_vfs_getfree);
+
 STATIC mp_obj_t vfs_fat_mount(mp_obj_t self_in, mp_obj_t readonly, mp_obj_t mkfs) {
     fs_user_mount_t *self = MP_OBJ_TO_PTR(self_in);
 
@@ -416,6 +440,7 @@ STATIC const mp_rom_map_elem_t fat_vfs_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_rename), MP_ROM_PTR(&fat_vfs_rename_obj) },
     { MP_ROM_QSTR(MP_QSTR_stat), MP_ROM_PTR(&fat_vfs_stat_obj) },
     { MP_ROM_QSTR(MP_QSTR_statvfs), MP_ROM_PTR(&fat_vfs_statvfs_obj) },
+    { MP_ROM_QSTR(MP_QSTR_getfree), MP_ROM_PTR(&fat_vfs_getfree_obj) },
     { MP_ROM_QSTR(MP_QSTR_mount), MP_ROM_PTR(&vfs_fat_mount_obj) },
     { MP_ROM_QSTR(MP_QSTR_umount), MP_ROM_PTR(&fat_vfs_umount_obj) },
 };

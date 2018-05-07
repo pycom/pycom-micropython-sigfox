@@ -92,6 +92,7 @@ mp_obj_t mp_vfs_rename(mp_obj_t old_path_in, mp_obj_t new_path_in);
 mp_obj_t mp_vfs_rmdir(mp_obj_t path_in);
 mp_obj_t mp_vfs_stat(mp_obj_t path_in);
 mp_obj_t mp_vfs_statvfs(mp_obj_t path_in);
+mp_obj_t mp_vfs_getfree(mp_obj_t path_in);
 
 MP_DECLARE_CONST_FUN_OBJ_KW(mp_vfs_mount_obj);
 MP_DECLARE_CONST_FUN_OBJ_1(mp_vfs_umount_obj);
@@ -106,5 +107,6 @@ MP_DECLARE_CONST_FUN_OBJ_2(mp_vfs_rename_obj);
 MP_DECLARE_CONST_FUN_OBJ_1(mp_vfs_rmdir_obj);
 MP_DECLARE_CONST_FUN_OBJ_1(mp_vfs_stat_obj);
 MP_DECLARE_CONST_FUN_OBJ_1(mp_vfs_statvfs_obj);
+MP_DECLARE_CONST_FUN_OBJ_1(mp_vfs_getfree_obj);
 
 #endif // MICROPY_INCLUDED_EXTMOD_VFS_H
