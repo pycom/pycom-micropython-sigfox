@@ -1,5 +1,5 @@
 '''
-P9 and P23 must be connected together for this test to pass.
+P11 and P12 must be connected together for this test to pass.
 '''
 
 from machine import UART
@@ -9,11 +9,11 @@ import time
 
 uart = UART(1, 115200)
 print(uart)
-uart.init(57600, 8, None, 1, pins=('P23', 'P9'))
-uart.init(baudrate=9600, stop=2, parity=UART.EVEN, pins=('P23', 'P9'))
-uart.init(baudrate=115200, parity=UART.ODD, stop=1, pins=('P23', 'P9'))
+uart.init(57600, 8, None, 1, pins=('P11', 'P12'))
+uart.init(baudrate=9600, stop=2, parity=UART.EVEN, pins=('P11', 'P12'))
+uart.init(baudrate=115200, parity=UART.ODD, stop=1, pins=('P11', 'P12'))
 uart.read()
-print (uart.readall())
+print (uart.read())
 print (uart.readline())
 buff = bytearray(1)
 print (uart.readinto(buff, 1))
@@ -22,20 +22,20 @@ print (uart.any())
 print (uart.write('a'))
 uart.deinit()
 
-uart = UART(1, 1000000, pins=('P9', 'P23'))
+uart = UART(1, 1000000, pins=('P12', 'P11'))
 print(uart)
 uart.read()
 print(uart.write(b'123456') == 6)
 print(uart.read() == b'123456')
 uart.deinit()
-uart = UART(1, 1000000, pins=('P23', 'P9'))
+uart = UART(1, 1000000, pins=('P11', 'P12'))
 print(uart)
 uart.read()
 print(uart.write(b'123456') == 6)
 print(uart.read() == b'123456')
 uart.deinit()
 
-uart = UART(1, 1000000, pins=('P23', 'P9'))
+uart = UART(1, 1000000, pins=('P11', 'P12'))
 print(uart.write(b'123') == 3)
 print(uart.read(1) == b'1')
 print(uart.read(2) == b'23')
@@ -66,12 +66,12 @@ except Exception:
     print('Exception')
 
 # buffer overflow
-uart = UART(1, 1000000, pins=('P9', 'P23'))
+uart = UART(1, 1000000, pins=('P12', 'P11'))
 buf = bytearray([0x55AA] * 567)
 for i in range(200):
     r = uart.write(buf)
-r = uart.readall()
-r = uart.readall()
+r = uart.read()
+r = uart.read()
 print(r)
 print(uart.write(b'123456') == 6)
 print(uart.read() == b'123456')
