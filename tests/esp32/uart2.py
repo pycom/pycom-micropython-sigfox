@@ -72,7 +72,7 @@ except Exception:
     print('Exception')
 
 # buffer overflow
-uart = UART(2, 1000000, pins=('P9', 'P23'))
+uart = UART(2, 1000000, pins=('P11', 'P12'))
 buf = bytearray([0x55AA] * 567)
 for i in range(200):
     r = uart.write(buf)
