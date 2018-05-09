@@ -133,6 +133,11 @@ STATIC void wlan_servers_stop (void);
 //STATIC void wlan_reset (void);
 STATIC void wlan_validate_mode (uint mode);
 STATIC void wlan_set_mode (uint mode);
+STATIC void wlan_validate_bandwidth (wifi_bandwidth_t mode);
+STATIC bool wlan_set_bandwidth (wifi_bandwidth_t mode);
+STATIC void wlan_validate_hostname (const char *hostname);
+STATIC bool wlan_set_hostname (const char *hostname);
+STATIC esp_err_t wlan_update_hostname ();
 STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac, bool hidden);
 STATIC void wlan_validate_ssid_len (uint32_t len);
 STATIC uint32_t wlan_set_ssid_internal (const char *ssid, uint8_t len, bool add_mac);
@@ -141,7 +146,7 @@ STATIC void wlan_set_security_internal (uint8_t auth, const char *key);
 STATIC void wlan_validate_channel (uint8_t channel);
 STATIC void wlan_set_antenna (uint8_t antenna);
 static esp_err_t wlan_event_handler(void *ctx, system_event_t *event);
-STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key, int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent);
+STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key, int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent, const char *hostname);
 //STATIC void wlan_get_sl_mac (void);
 //STATIC void wlan_wep_key_unhexlify (const char *key, char *key_out);
 //STATIC void wlan_lpds_irq_enable (mp_obj_t self_in);
@@ -167,7 +172,7 @@ void wlan_pre_init (void) {
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
 }
 
-void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac, bool hidden) {
+void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac, bool hidden, wifi_bandwidth_t bandwidth) {
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -183,6 +188,7 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key,
 
     wlan_set_antenna(antenna);
     wlan_set_mode(mode);
+    wlan_set_bandwidth(bandwidth);
 
     if (mode != WIFI_MODE_STA) {
         wlan_setup_ap (ssid, auth, key, channel, add_mac, hidden);
@@ -351,6 +357,66 @@ STATIC void wlan_set_mode (uint mode) {
     esp_wifi_set_ps(wifi_ps_type);
 }
 
+STATIC void wlan_validate_bandwidth (wifi_bandwidth_t bandwidth) {
+    if (bandwidth < WIFI_BW_HT20 || bandwidth > WIFI_BW_HT40) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+    }
+}
+
+STATIC bool wlan_set_bandwidth (wifi_bandwidth_t bandwidth)
+{
+    if (wlan_obj.mode == WIFI_MODE_STA)
+    {
+        if(esp_wifi_set_bandwidth(WIFI_IF_STA, bandwidth) != ESP_OK)
+            return false;
+    } else
+    {
+        if(esp_wifi_set_bandwidth(WIFI_IF_AP, bandwidth) != ESP_OK)
+            return false;
+    }
+    wlan_obj.bandwidth = bandwidth;
+    return true;
+}
+
+STATIC void wlan_validate_hostname (const char *hostname) {
+    //dont set hostname it if is null, so its a valid hostname
+    if (hostname == NULL) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+    }
+
+    uint8_t len = strlen(hostname);
+    if(len == 0 || len > TCPIP_HOSTNAME_MAX_SIZE){
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+    }
+}
+
+STATIC bool wlan_set_hostname (const char *hostname) {
+    if (wlan_obj.mode == WIFI_MODE_STA)
+    {
+        if(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname) != ESP_OK)
+            return false;
+    } else
+    {
+        if(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_AP, hostname) != ESP_OK)
+            return false;
+    }
+
+    strlcpy((char*)wlan_obj.hostname, hostname, TCPIP_HOSTNAME_MAX_SIZE);
+    return true;
+}
+
+STATIC esp_err_t wlan_update_hostname () {
+    char* hostname = NULL;
+    tcpip_adapter_if_t interface = wlan_obj.mode == WIFI_MODE_STA ? TCPIP_ADAPTER_IF_STA : TCPIP_ADAPTER_IF_AP;
+
+    esp_err_t err = tcpip_adapter_get_hostname(interface, (const char**)&hostname);
+    if(err != ESP_OK)
+        return err;
+
+    strlcpy((char*)wlan_obj.hostname, hostname, TCPIP_HOSTNAME_MAX_SIZE);
+    return err;
+}
+
 STATIC void wlan_validate_ssid_len (uint32_t len) {
     if (len > MODWLAN_SSID_LEN_MAX) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
@@ -433,7 +499,7 @@ cred_error:
 }
 
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key,
-                             int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent) {
+                             int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent, const char* hostname) {
 
     esp_wpa2_config_t wpa2_config = WPA2_CONFIG_INIT_DEFAULT();
     wifi_config_t wifi_config;
@@ -504,6 +570,11 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
             goto os_error;
         }
     }
+
+    if(hostname != NULL)
+        wlan_set_hostname(hostname);
+    else
+        wlan_update_hostname();
 
     if (ESP_OK != esp_wifi_connect()) {
         goto os_error;
@@ -665,8 +736,11 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
         }
     }
 
+    int32_t bandwidth = args[7].u_int;
+    wlan_validate_bandwidth(bandwidth);
+
     // initialize the wlan subsystem
-    wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false, hidden);
+    wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false, hidden, bandwidth);
     mod_network_register_nic(&wlan_obj);
 
     return mp_const_none;
@@ -681,6 +755,7 @@ STATIC const mp_arg_t wlan_init_args[] = {
     { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_power_save,   MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
     { MP_QSTR_hidden,       MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
+    { MP_QSTR_bandwidth,    MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = WIFI_BW_HT40} },
 };
 STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -789,6 +864,7 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
         { MP_QSTR_keyfile,              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_certfile,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_identity,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_hostname,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
 
     // check for the correct wlan mode
@@ -875,13 +951,19 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
         wpa2_ent.identity = mp_obj_str_get_str(args[7].u_obj);
     }
 
+    const char *hostname = NULL;
+    if (args[8].u_obj != mp_const_none) {
+        hostname = mp_obj_str_get_str(args[8].u_obj);
+        wlan_validate_hostname(hostname);
+    }
+
     if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
         wpa2_ent.username = user;
         wlan_validate_certificates(&wpa2_ent);
     }
 
     // connect to the requested access point
-    wlan_do_connect (ssid, bssid, auth, key, timeout, &wpa2_ent);
+    wlan_do_connect (ssid, bssid, auth, key, timeout, &wpa2_ent, hostname);
 
     return mp_const_none;
 
@@ -997,6 +1079,18 @@ STATIC mp_obj_t wlan_mode (mp_uint_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_mode_obj, 1, 2, wlan_mode);
 
+STATIC mp_obj_t wlan_bandwidth (mp_uint_t n_args, const mp_obj_t *args) {
+    wlan_obj_t *self = args[0];
+    if (n_args == 1) {
+        return mp_obj_new_int(self->bandwidth);
+    } else {
+        uint bandwidth = mp_obj_get_int(args[1]);
+        wlan_validate_bandwidth(bandwidth);
+        return mp_obj_new_bool(wlan_set_bandwidth(bandwidth));
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_bandwidth_obj, 1, 2, wlan_bandwidth);
+
 STATIC mp_obj_t wlan_ssid (mp_uint_t n_args, const mp_obj_t *args) {
     wlan_obj_t *self = args[0];
     if (n_args == 1) {
@@ -1054,6 +1148,21 @@ STATIC mp_obj_t wlan_auth (mp_uint_t n_args, const mp_obj_t *args) {
     }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_auth_obj, 1, 2, wlan_auth);
+
+STATIC mp_obj_t wlan_hostname (mp_uint_t n_args, const mp_obj_t *args) {
+    wlan_obj_t *self = args[0];
+    if (n_args == 1) {
+        return mp_obj_new_str((const char *)self->hostname, strlen((const char *)self->hostname), false);
+    } else {
+        const char *hostname = mp_obj_str_get_str(args[1]);
+        if(hostname == NULL)
+            return mp_obj_new_bool(false);
+
+        wlan_validate_hostname(hostname);
+        return mp_obj_new_bool(wlan_set_hostname(hostname));
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_hostname_obj, 1, 2, wlan_hostname);
 
 STATIC mp_obj_t wlan_channel (mp_uint_t n_args, const mp_obj_t *args) {
     wlan_obj_t *self = args[0];
@@ -1142,9 +1251,11 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_isconnected),         (mp_obj_t)&wlan_isconnected_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ifconfig),            (mp_obj_t)&wlan_ifconfig_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mode),                (mp_obj_t)&wlan_mode_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_bandwidth),           (mp_obj_t)&wlan_bandwidth_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ssid),                (mp_obj_t)&wlan_ssid_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_bssid),               (mp_obj_t)&wlan_bssid_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_auth),                (mp_obj_t)&wlan_auth_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_hostname),            (mp_obj_t)&wlan_hostname_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_channel),             (mp_obj_t)&wlan_channel_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_antenna),             (mp_obj_t)&wlan_antenna_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&wlan_mac_obj },
@@ -1162,6 +1273,8 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_WPA2_ENT),            MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA2_ENTERPRISE) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_INT_ANT),             MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_INTERNAL) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_EXT_ANT),             MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_EXTERNAL) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_HT20),                MP_OBJ_NEW_SMALL_INT(WIFI_BW_HT20) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_HT40),                MP_OBJ_NEW_SMALL_INT(WIFI_BW_HT40) },
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_ANY_EVENT),           MP_OBJ_NEW_SMALL_INT(MODWLAN_WIFI_EVENT_ANY) },
 };
 STATIC MP_DEFINE_CONST_DICT(wlan_locals_dict, wlan_locals_dict_table);
