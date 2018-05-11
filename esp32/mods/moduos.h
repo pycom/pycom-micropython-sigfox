@@ -65,9 +65,7 @@ typedef struct _os_term_dup_obj_t {
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
-void moduos_init0 (void);
 os_fs_mount_t *osmount_find_by_path (const char *path);
 os_fs_mount_t *osmount_find_by_volume (uint8_t vol);
-void osmount_unmount_all (void);
 
 #endif // MODUOS_H_

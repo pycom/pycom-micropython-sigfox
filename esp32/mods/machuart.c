@@ -15,7 +15,7 @@
 #include "py/objlist.h"
 #include "py/stream.h"
 #include "py/mphal.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 #include "py/mperrno.h"
 #include "readline.h"
 #include "serverstask.h"
@@ -557,7 +557,6 @@ STATIC const mp_map_elem_t mach_uart_locals_dict_table[] = {
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_irq),         (mp_obj_t)&pyb_uart_irq_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_read),            (mp_obj_t)&mp_stream_read_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readall),         (mp_obj_t)&mp_stream_readall_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_readline),        (mp_obj_t)&mp_stream_unbuffered_readline_obj},
     { MP_OBJ_NEW_QSTR(MP_QSTR_readinto),        (mp_obj_t)&mp_stream_readinto_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_write),           (mp_obj_t)&mp_stream_write_obj },
@@ -611,14 +610,14 @@ STATIC mp_uint_t mach_uart_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint_t 
     mach_uart_obj_t *self = self_in;
     mp_uint_t ret;
 
-    if (request == MP_IOCTL_POLL) {
+    if (request == MP_STREAM_POLL) {
         mp_uint_t flags = arg;
         ret = 0;
-        if ((flags & MP_IOCTL_POLL_RD) && uart_rx_any(self)) {
-            ret |= MP_IOCTL_POLL_RD;
+        if ((flags & MP_STREAM_POLL_RD) && uart_rx_any(self)) {
+            ret |= MP_STREAM_POLL_RD;
         }
-        if ((flags & MP_IOCTL_POLL_WR) && uart_tx_fifo_space(self)) {
-            ret |= MP_IOCTL_POLL_WR;
+        if ((flags & MP_STREAM_POLL_WR) && uart_tx_fifo_space(self)) {
+            ret |= MP_STREAM_POLL_WR;
         }
     } else {
         *errcode = EINVAL;
@@ -646,7 +645,7 @@ const mp_obj_type_t mach_uart_type = {
     .name = MP_QSTR_UART,
     .print = mach_uart_print,
     .make_new = mach_uart_make_new,
-    .getiter = mp_identity,
+    .getiter = mp_identity_getiter,
     .iternext = mp_stream_unbuffered_iter,
     .protocol = &uart_stream_p,
     .locals_dict = (mp_obj_t)&mach_uart_locals_dict,

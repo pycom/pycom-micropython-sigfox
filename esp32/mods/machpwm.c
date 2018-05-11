@@ -19,7 +19,7 @@
 #include "py/stream.h"
 #include "py/mphal.h"
 #include "py/gc.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 #include "mpexception.h"
 #include "machpwm.h"
 #include "ledc.h"

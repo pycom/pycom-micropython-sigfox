@@ -1,0 +1,68 @@
+/flash/t.txt, f.write(mode=w): 10
+/sd/t.txt, f.write(mode=w): 10
+/flash/t.txt, f.read(mode=r): Test text.
+/sd/t.txt, f.read(mode=r): Test text.
+/flash/t.txt, f.write(mode=a): 14
+/sd/t.txt, f.write(mode=a): 14
+/flash/t.txt, f.read(mode=r): Test text.Appended text!
+/sd/t.txt, f.read(mode=r): Test text.Appended text!
+/flash/t.txt, f.write(mode=w): 0
+/sd/t.txt, f.write(mode=w): 0
+/flash/t.txt, f.read(mode=r): 
+/sd/t.txt, f.read(mode=r): 
+/flash/t.txt, f.write(mode=x): 10
+/sd/t.txt, f.write(mode=x): 10
+/flash/t.txt, f.read(mode=r): Test text.
+/sd/t.txt, f.read(mode=r): Test text.
+OSError(17,)
+OSError(17,)
+/flash/t.txt, f.read(mode=r): Test text.
+/sd/t.txt, f.read(mode=r): Test text.
+/flash/t.txt, f.write(mode=w+): 11
+/flash/t.txt, f.read(mode=w+): New text 1.
+/sd/t.txt, f.write(mode=w+): 11
+/sd/t.txt, f.read(mode=w+): New text 1.
+/flash/t.txt, f.write(mode=r+): 11
+/flash/t.txt, f.read(mode=r+): New text 2.
+/sd/t.txt, f.write(mode=r+): 11
+/sd/t.txt, f.read(mode=r+): New text 2.
+OSError(17,)
+OSError(17,)
+/flash/t.txt, f.write(mode=x+): 11
+/flash/t.txt, f.read(mode=x+): New text 3.
+/sd/t.txt, f.write(mode=x+): 11
+/sd/t.txt, f.read(mode=x+): New text 3.
+/flash/t.txt, f.write(mode=a+): 14
+/flash/t.txt, f.read(mode=a+): New text 3.Appended text!
+/sd/t.txt, f.write(mode=a+): 14
+/sd/t.txt, f.read(mode=a+): New text 3.Appended text!
+bytearray(b'0123456789')
+/flash/t.txt, f.read(2): 01
+/flash/t.txt, f.read(3): 234
+/flash/t.txt, f.read(5): 56789
+bytearray(b'0123456789')
+/sd/t.txt, f.read(2): 01
+/sd/t.txt, f.read(3): 234
+/sd/t.txt, f.read(5): 56789
+/flash/t.txt, f.seek(3, 0): 3
+/flash/t.txt, f.tell(): 4
+/flash/t.txt, f.seek(2, 1): 6
+/flash/t.txt, f.tell(): 7
+/flash/t.txt, f.seek(1, 2): 9
+/flash/t.txt, f.tell(): 10
+/sd/t.txt, f.seek(3, 0): 3
+/sd/t.txt, f.tell(): 4
+/sd/t.txt, f.seek(2, 1): 6
+/sd/t.txt, f.tell(): 7
+/sd/t.txt, f.seek(1, 2): 9
+/sd/t.txt, f.tell(): 10
+/flash/t.txt, f.readinto(b): bytearray(b'01234'), length: 5
+/flash/t.txt, f.readinto(b,2): bytearray(b'56'), length: 2
+/sd/t.txt, f.readinto(b): bytearray(b'01234'), length: 5
+/sd/t.txt, f.readinto(b,2): bytearray(b'56'), length: 2
+/flash/t.txt, f.readline(10): 01234
+
+/flash/t.txt, f.readlines(): ['01234\n', '56789']
+/sd/t.txt, f.readline(10): 01234
+
+/sd/t.txt, f.readlines(): ['01234\n', '56789']

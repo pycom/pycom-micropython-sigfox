@@ -1,4 +1,3 @@
-import sys
 try:
     import uhashlib as hashlib
 except ImportError:
@@ -8,7 +7,7 @@ except ImportError:
         # This is neither uPy, nor cPy, so must be uPy with
         # uhashlib module disabled.
         print("SKIP")
-        sys.exit()
+        raise SystemExit
 
 
 h = hashlib.sha256()
@@ -23,6 +22,9 @@ h.update(b"abcd" * 1000)
 print(h.digest())
 
 print(hashlib.sha256(b"\xff" * 64).digest())
+
+# 56 bytes is a boundary case in the algorithm
+print(hashlib.sha256(b"\xff" * 56).digest())
 
 # TODO: running .digest() several times in row is not supported()
 #h = hashlib.sha256(b'123')

@@ -24,7 +24,7 @@
 #include "mpexception.h"
 #include "radio.h"
 #include "modnetwork.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 #include "modusocket.h"
 #include "pycom_config.h"
 #include "mpirq.h"
@@ -2325,13 +2325,13 @@ static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp
     mp_int_t ret = 0;
 
     LORA_CHECK_SOCKET(s);
-    if (request == MP_IOCTL_POLL) {
+    if (request == MP_STREAM_POLL) {
         mp_uint_t flags = arg;
-        if ((flags & MP_IOCTL_POLL_RD) && lora_rx_any()) {
-            ret |= MP_IOCTL_POLL_RD;
+        if ((flags & MP_STREAM_POLL_RD) && lora_rx_any()) {
+            ret |= MP_STREAM_POLL_RD;
         }
-        if ((flags & MP_IOCTL_POLL_WR) && lora_tx_space()) {
-            ret |= MP_IOCTL_POLL_WR;
+        if ((flags & MP_STREAM_POLL_WR) && lora_tx_space()) {
+            ret |= MP_STREAM_POLL_WR;
         }
     } else {
         *_errno = MP_EINVAL;

@@ -15,7 +15,10 @@
 #include "py/mpconfig.h"
 #include "py/obj.h"
 #include "py/runtime.h"
-
+#include "py/mperrno.h"
+#include "lib/oofatfs/ff.h"
+#include "lib/oofatfs/diskio.h"
+#include "extmod/vfs_fat.h"
 #include "driver/gpio.h"
 #include "driver/sdmmc_host.h"
 #include "driver/sdmmc_defs.h"
@@ -76,7 +79,6 @@ STATIC mp_obj_t pyb_sd_init_helper (pybsd_obj_t *self, const mp_arg_val_t *args)
         mp_raise_msg(&mp_type_OSError, mpexception_os_operation_failed);
     }
 
-    // register it with the sleep module
     return mp_const_none;
 }
 
@@ -122,15 +124,54 @@ STATIC mp_obj_t pyb_sd_deinit (mp_obj_t self_in) {
     sdmmc_host_deinit();
     // disable the peripheral
     self->enabled = false;
-    // unregister it from the sleep module
-    // pyb_sleep_remove (self);
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(pyb_sd_deinit_obj, pyb_sd_deinit);
 
+STATIC mp_obj_t pyb_sd_readblocks(mp_obj_t self, mp_obj_t block_num, mp_obj_t buf) {
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(buf, &bufinfo, MP_BUFFER_WRITE);
+    DRESULT res = sd_disk_read(bufinfo.buf, mp_obj_get_int(block_num), bufinfo.len / SD_SECTOR_SIZE);
+    return MP_OBJ_NEW_SMALL_INT(res != RES_OK); // return of 0 means success
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(pyb_sd_readblocks_obj, pyb_sd_readblocks);
+
+STATIC mp_obj_t pyb_sd_writeblocks(mp_obj_t self, mp_obj_t block_num, mp_obj_t buf) {
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(buf, &bufinfo, MP_BUFFER_READ);
+    DRESULT res = sd_disk_write(bufinfo.buf, mp_obj_get_int(block_num), bufinfo.len / SD_SECTOR_SIZE);
+    return MP_OBJ_NEW_SMALL_INT(res != RES_OK); // return of 0 means success
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(pyb_sd_writeblocks_obj, pyb_sd_writeblocks);
+STATIC mp_obj_t pyb_sd_ioctl(mp_obj_t self, mp_obj_t cmd_in, mp_obj_t arg_in) {
+    mp_int_t cmd = mp_obj_get_int(cmd_in);
+    switch (cmd) {
+        case BP_IOCTL_INIT:
+        case BP_IOCTL_DEINIT:
+        case BP_IOCTL_SYNC:
+            // nothing to do
+            return MP_OBJ_NEW_SMALL_INT(0); // success
+
+        case BP_IOCTL_SEC_COUNT:
+            return MP_OBJ_NEW_SMALL_INT(sdmmc_card_info.csd.capacity);
+
+        case BP_IOCTL_SEC_SIZE:
+            return MP_OBJ_NEW_SMALL_INT(sdmmc_card_info.csd.sector_size);
+
+        default: // unknown command
+            return MP_OBJ_NEW_SMALL_INT(-1); // error
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(pyb_sd_ioctl_obj, pyb_sd_ioctl);
+
 STATIC const mp_map_elem_t pyb_sd_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),            (mp_obj_t)&pyb_sd_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),          (mp_obj_t)&pyb_sd_deinit_obj },
+    // block device protocol
+    { MP_OBJ_NEW_QSTR(MP_QSTR_readblocks), (mp_obj_t)&pyb_sd_readblocks_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_writeblocks), (mp_obj_t)&pyb_sd_writeblocks_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ioctl), (mp_obj_t)&pyb_sd_ioctl_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(pyb_sd_locals_dict, pyb_sd_locals_dict_table);

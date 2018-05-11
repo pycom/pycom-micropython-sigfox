@@ -31,6 +31,8 @@
 #include "esp_wifi_types.h"
 #include "esp_event_loop.h"
 #include "ff.h"
+#include "lfs.h"
+#include "vfs_littlefs.h"
 #include "esp_wpa2.h"
 
 //#include "timeutils.h"
@@ -38,7 +40,7 @@
 #include "modnetwork.h"
 #include "modusocket.h"
 #include "modwlan.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 //#include "pybrtc.h"
 #include "serverstask.h"
 #include "mpexception.h"
@@ -53,6 +55,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
+
+#include "mptask.h"
 
 /******************************************************************************
  DEFINE TYPES
@@ -529,33 +533,73 @@ STATIC char *wlan_read_file (const char *file_path, vstr_t *vstr) {
     char *filebuf = vstr->buf;
     mp_uint_t actualsize;
     mp_uint_t totalsize = 0;
+    static const TCHAR *path_relative;
 
-    FIL fp;
-    FRESULT res = f_open(&fp, file_path, FA_READ);
-    if (res != FR_OK) {
-        return NULL;
-    }
-
-    while (true) {
-        FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
-        if (res != FR_OK) {
-            f_close(&fp);
+    if(isLittleFs(file_path))
+    {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(file_path, &path_relative);
+        if (littlefs == NULL) {
             return NULL;
         }
-        totalsize += actualsize;
-        if (actualsize < FILE_READ_SIZE) {
-            break;
-        } else {
-            filebuf = vstr_extend(vstr, FILE_READ_SIZE);
+
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+
+        lfs_file_t fp;
+        int res = lfs_file_open(&littlefs->lfs, &fp, path_relative, LFS_O_RDONLY);
+        if(res < LFS_ERR_OK)
+        {
+            return NULL;
         }
+
+        while (true) {
+            actualsize = lfs_file_read(&littlefs->lfs, &fp, filebuf, FILE_READ_SIZE);
+            if (actualsize < LFS_ERR_OK) {
+                return NULL;
+            }
+            totalsize += actualsize;
+            if (actualsize < FILE_READ_SIZE) {
+                break;
+            } else {
+                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
+            }
+        }
+        lfs_file_close(&littlefs->lfs, &fp);
+
+        xSemaphoreGive(littlefs->mutex);
+
     }
-    f_close(&fp);
+    else
+    {
+        FATFS *fs = lookup_path_fatfs(file_path, &path_relative);
+        if (fs == NULL) {
+            return NULL;
+        }
+        FIL fp;
+        FRESULT res = f_open(fs, &fp, path_relative, FA_READ);
+        if (res != FR_OK) {
+            return NULL;
+        }
+
+        while (true) {
+            FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
+            if (res != FR_OK) {
+                f_close(&fp);
+                return NULL;
+            }
+            totalsize += actualsize;
+            if (actualsize < FILE_READ_SIZE) {
+                break;
+            } else {
+                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
+            }
+        }
+        f_close(&fp);
+    }
 
     vstr->len = totalsize;
     vstr_null_terminated_str(vstr);
     return vstr->buf;
 }
-
 
 //STATIC void wlan_get_sl_mac (void) {
 //    // Get the MAC address
@@ -762,7 +806,7 @@ STATIC mp_obj_t wlan_scan(mp_obj_t self_in) {
             for (int i = 0; i < ap_num; i++) {
                 ap_record = &ap_record_buffer[i];
                 mp_obj_t tuple[5];
-                tuple[0] = mp_obj_new_str((const char *)ap_record->ssid, strlen((char *)ap_record->ssid), false);
+                tuple[0] = mp_obj_new_str((const char *)ap_record->ssid, strlen((char *)ap_record->ssid));
                 tuple[1] = mp_obj_new_bytes((const byte *)ap_record->bssid, sizeof(ap_record->bssid));
                 tuple[2] = mp_obj_new_int(ap_record->authmode);
                 tuple[3] = mp_obj_new_int(ap_record->primary);
@@ -1000,7 +1044,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_mode_obj, 1, 2, wlan_mode);
 STATIC mp_obj_t wlan_ssid (mp_uint_t n_args, const mp_obj_t *args) {
     wlan_obj_t *self = args[0];
     if (n_args == 1) {
-        return mp_obj_new_str((const char *)self->ssid, strlen((const char *)self->ssid), false);
+        return mp_obj_new_str((const char *)self->ssid, strlen((const char *)self->ssid));
     } else {
         const char *ssid = mp_obj_str_get_str(args[1]);
         wlan_validate_ssid_len(strlen(ssid));
@@ -1030,7 +1074,7 @@ STATIC mp_obj_t wlan_auth (mp_uint_t n_args, const mp_obj_t *args) {
         } else {
             mp_obj_t security[2];
             security[0] = mp_obj_new_int(self->auth);
-            security[1] = mp_obj_new_str((const char *)self->key, strlen((const char *)self->key), false);
+            security[1] = mp_obj_new_str((const char *)self->key, strlen((const char *)self->key));
             return mp_obj_new_tuple(2, security);
         }
     } else {

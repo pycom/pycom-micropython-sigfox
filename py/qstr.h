@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -23,8 +23,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef __MICROPY_INCLUDED_PY_QSTR_H__
-#define __MICROPY_INCLUDED_PY_QSTR_H__
+#ifndef MICROPY_INCLUDED_PY_QSTR_H
+#define MICROPY_INCLUDED_PY_QSTR_H
 
 #include "py/mpconfig.h"
 #include "py/misc.h"
@@ -56,6 +56,7 @@ typedef struct _qstr_pool_t {
 } qstr_pool_t;
 
 #define QSTR_FROM_STR_STATIC(s) (qstr_from_strn((s), strlen(s)))
+#define QSTR_TOTAL() (MP_STATE_VM(last_pool)->total_prev_len + MP_STATE_VM(last_pool)->len)
 
 void qstr_init(void);
 
@@ -65,9 +66,6 @@ qstr qstr_find_strn(const char *str, size_t str_len); // returns MP_QSTR_NULL if
 qstr qstr_from_str(const char *str);
 qstr qstr_from_strn(const char *str, size_t len);
 
-byte *qstr_build_start(size_t len, byte **q_ptr);
-qstr qstr_build_end(byte *q_ptr);
-
 mp_uint_t qstr_hash(qstr q);
 const char *qstr_str(qstr q);
 size_t qstr_len(qstr q);
@@ -76,4 +74,4 @@ const byte *qstr_data(qstr q, size_t *len);
 void qstr_pool_info(size_t *n_pool, size_t *n_qstr, size_t *n_str_data_bytes, size_t *n_total_bytes);
 void qstr_dump_data(void);
 
-#endif // __MICROPY_INCLUDED_PY_QSTR_H__
+#endif // MICROPY_INCLUDED_PY_QSTR_H

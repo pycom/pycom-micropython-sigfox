@@ -9,6 +9,15 @@ try:
 except TypeError:
     print('TypeError')
 
+# this class has no __next__ implementation
+class NotIterable:
+    def __iter__(self):
+        return self
+try:
+    print(all(NotIterable()))
+except TypeError:
+    print('TypeError')
+
 class MyStopIteration(StopIteration):
     pass
 
@@ -59,3 +68,12 @@ except StopIteration:
 
 for i in myiter(32):
     print(i)
+
+# repeat some of the above tests but use tuple() to walk the iterator (tests mp_iternext)
+print(tuple(myiter(5)))
+print(tuple(myiter(12)))
+print(tuple(myiter(32)))
+try:
+    tuple(myiter(22))
+except TypeError:
+    print('raised TypeError')

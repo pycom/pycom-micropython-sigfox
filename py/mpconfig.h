@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -23,8 +23,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef __MICROPY_INCLUDED_PY_MPCONFIG_H__
-#define __MICROPY_INCLUDED_PY_MPCONFIG_H__
+#ifndef MICROPY_INCLUDED_PY_MPCONFIG_H
+#define MICROPY_INCLUDED_PY_MPCONFIG_H
 
 // This file contains default configuration settings for MicroPython.
 // You can override any of the options below using mpconfigport.h file
@@ -32,7 +32,7 @@
 
 // mpconfigport.h is a file containing configuration settings for a
 // particular port. mpconfigport.h is actually a default name for
-// such config, and it can be overriden using MP_CONFIGFILE preprocessor
+// such config, and it can be overridden using MP_CONFIGFILE preprocessor
 // define (you can do that by passing CFLAGS_EXTRA='-DMP_CONFIGFILE="<file.h>"'
 // argument to make when using standard MicroPython makefiles).
 // This is useful to have more than one config per port, for example,
@@ -51,13 +51,13 @@
 /*****************************************************************************/
 /* Object representation                                                     */
 
-// A Micro Python object is a machine word having the following form:
+// A MicroPython object is a machine word having the following form:
 //  - xxxx...xxx1 : a small int, bits 1 and above are the value
 //  - xxxx...xx10 : a qstr, bits 2 and above are the value
 //  - xxxx...xx00 : a pointer to an mp_obj_base_t (unless a fake object)
 #define MICROPY_OBJ_REPR_A (0)
 
-// A Micro Python object is a machine word having the following form:
+// A MicroPython object is a machine word having the following form:
 //  - xxxx...xx01 : a small int, bits 2 and above are the value
 //  - xxxx...xx11 : a qstr, bits 2 and above are the value
 //  - xxxx...xxx0 : a pointer to an mp_obj_base_t (unless a fake object)
@@ -73,14 +73,13 @@
 // Str and float stored as O = R + 0x80800000, retrieved as R = O - 0x80800000.
 // This makes strs easier to encode/decode as they have zeros in the top 9 bits.
 // This scheme only works with 32-bit word size and float enabled.
-
 #define MICROPY_OBJ_REPR_C (2)
 
 // A MicroPython object is a 64-bit word having the following form (called R):
 //  - seeeeeee eeeeffff ffffffff ffffffff ffffffff ffffffff ffffffff ffffffff 64-bit fp, e != 0x7ff
 //  - s1111111 11110000 00000000 00000000 00000000 00000000 00000000 00000000 +/- inf
 //  - 01111111 11111000 00000000 00000000 00000000 00000000 00000000 00000000 normalised nan
-//  - 01111111 11111101 00000000 00000000 iiiiiiii iiiiiiii iiiiiiii iiiiiii1 small int
+//  - 01111111 11111101 iiiiiiii iiiiiiii iiiiiiii iiiiiiii iiiiiiii iiiiiii1 small int
 //  - 01111111 11111110 00000000 00000000 qqqqqqqq qqqqqqqq qqqqqqqq qqqqqqq1 str
 //  - 01111111 11111100 00000000 00000000 pppppppp pppppppp pppppppp pppppp00 ptr (4 byte alignment)
 // Stored as O = R + 0x8004000000000000, retrieved as R = O - 0x8004000000000000.
@@ -235,7 +234,7 @@
 #endif
 
 /*****************************************************************************/
-/* Micro Python emitters                                                     */
+/* MicroPython emitters                                                     */
 
 // Whether to support loading of persistent code
 #ifndef MICROPY_PERSISTENT_CODE_LOAD
@@ -288,8 +287,21 @@
 #define MICROPY_EMIT_ARM (0)
 #endif
 
+// Whether to emit Xtensa native code
+#ifndef MICROPY_EMIT_XTENSA
+#define MICROPY_EMIT_XTENSA (0)
+#endif
+
+// Whether to enable the Xtensa inline assembler
+#ifndef MICROPY_EMIT_INLINE_XTENSA
+#define MICROPY_EMIT_INLINE_XTENSA (0)
+#endif
+
 // Convenience definition for whether any native emitter is enabled
-#define MICROPY_EMIT_NATIVE (MICROPY_EMIT_X64 || MICROPY_EMIT_X86 || MICROPY_EMIT_THUMB || MICROPY_EMIT_ARM)
+#define MICROPY_EMIT_NATIVE (MICROPY_EMIT_X64 || MICROPY_EMIT_X86 || MICROPY_EMIT_THUMB || MICROPY_EMIT_ARM || MICROPY_EMIT_XTENSA)
+
+// Convenience definition for whether any inline assembler emitter is enabled
+#define MICROPY_EMIT_INLINE_ASM (MICROPY_EMIT_INLINE_THUMB || MICROPY_EMIT_INLINE_XTENSA)
 
 /*****************************************************************************/
 /* Compiler configuration                                                    */
@@ -335,9 +347,15 @@
 #endif
 
 // Whether to enable optimisation of: a, b, c = d, e, f
-// Cost 156 bytes (Thumb2)
+// Requires MICROPY_COMP_DOUBLE_TUPLE_ASSIGN and costs 68 bytes (Thumb2)
 #ifndef MICROPY_COMP_TRIPLE_TUPLE_ASSIGN
 #define MICROPY_COMP_TRIPLE_TUPLE_ASSIGN (0)
+#endif
+
+// Whether to enable optimisation of: return a if b else c
+// Costs about 80 bytes (Thumb2) and saves 2 bytes of bytecode for each use
+#ifndef MICROPY_COMP_RETURN_IF_EXPR
+#define MICROPY_COMP_RETURN_IF_EXPR (0)
 #endif
 
 /*****************************************************************************/
@@ -349,11 +367,15 @@
 #endif
 
 // Whether to build functions that print debugging info:
-//   mp_lexer_show_token
 //   mp_bytecode_print
 //   mp_parse_node_print
 #ifndef MICROPY_DEBUG_PRINTERS
 #define MICROPY_DEBUG_PRINTERS (0)
+#endif
+
+// Whether to enable all debugging outputs (it will be extremely verbose)
+#ifndef MICROPY_DEBUG_VERBOSE
+#define MICROPY_DEBUG_VERBOSE (0)
 #endif
 
 /*****************************************************************************/
@@ -361,6 +383,8 @@
 
 // Whether to use computed gotos in the VM, or a switch
 // Computed gotos are roughly 10% faster, and increase VM code size by a little
+// Note: enabling this will use the gcc-specific extensions of ranged designated
+// initialisers and addresses of labels, which are not part of the C99 standard.
 #ifndef MICROPY_OPT_COMPUTED_GOTO
 #define MICROPY_OPT_COMPUTED_GOTO (0)
 #endif
@@ -380,6 +404,23 @@
 
 /*****************************************************************************/
 /* Python internal features                                                  */
+
+// Whether to enable import of external modules
+// When disabled, only importing of built-in modules is supported
+// When enabled, a port must implement mp_import_stat (among other things)
+#ifndef MICROPY_ENABLE_EXTERNAL_IMPORT
+#define MICROPY_ENABLE_EXTERNAL_IMPORT (1)
+#endif
+
+// Whether to use the POSIX reader for importing files
+#ifndef MICROPY_READER_POSIX
+#define MICROPY_READER_POSIX (0)
+#endif
+
+// Whether to use the VFS reader for importing files
+#ifndef MICROPY_READER_VFS
+#define MICROPY_READER_VFS (0)
+#endif
 
 // Hook for the VM at the start of the opcode loop (can contain variable
 // definitions usable by the other hook functions)
@@ -407,6 +448,17 @@
 #define MICROPY_ENABLE_FINALISER (0)
 #endif
 
+// Whether to enable a separate allocator for the Python stack.
+// If enabled then the code must call mp_pystack_init before mp_init.
+#ifndef MICROPY_ENABLE_PYSTACK
+#define MICROPY_ENABLE_PYSTACK (0)
+#endif
+
+// Number of bytes that memory returned by mp_pystack_alloc will be aligned by.
+#ifndef MICROPY_PYSTACK_ALIGN
+#define MICROPY_PYSTACK_ALIGN (8)
+#endif
+
 // Whether to check C stack usage. C stack used for calling Python functions,
 // etc. Not checking means segfault on overflow.
 #ifndef MICROPY_STACK_CHECK
@@ -421,6 +473,11 @@
 #   ifndef MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE
 #   define MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE (0)   // 0 - implies dynamic allocation
 #   endif
+#endif
+
+// Whether to provide the mp_kbd_exception object, and micropython.kbd_intr function
+#ifndef MICROPY_KBD_EXCEPTION
+#define MICROPY_KBD_EXCEPTION (0)
 #endif
 
 // Prefer to raise KeyboardInterrupt asynchronously (from signal or interrupt
@@ -494,6 +551,11 @@ typedef long long mp_longint_impl_t;
 #define MICROPY_WARNINGS (0)
 #endif
 
+// This macro is used when printing runtime warnings and errors
+#ifndef MICROPY_ERROR_PRINTER
+#define MICROPY_ERROR_PRINTER (&mp_plat_print)
+#endif
+
 // Float and complex implementation
 #define MICROPY_FLOAT_IMPL_NONE (0)
 #define MICROPY_FLOAT_IMPL_FLOAT (1)
@@ -521,12 +583,27 @@ typedef double mp_float_t;
 #define MICROPY_PY_BUILTINS_COMPLEX (MICROPY_PY_BUILTINS_FLOAT)
 #endif
 
+// Whether to provide a high-quality hash for float and complex numbers.
+// Otherwise the default is a very simple but correct hashing function.
+#ifndef MICROPY_FLOAT_HIGH_QUALITY_HASH
+#define MICROPY_FLOAT_HIGH_QUALITY_HASH (0)
+#endif
+
 // Enable features which improve CPython compatibility
 // but may lead to more code size/memory usage.
 // TODO: Originally intended as generic category to not
 // add bunch of once-off options. May need refactoring later
 #ifndef MICROPY_CPYTHON_COMPAT
 #define MICROPY_CPYTHON_COMPAT (1)
+#endif
+
+// Perform full checks as done by CPython. Disabling this
+// may produce incorrect results, if incorrect data is fed,
+// but should not lead to MicroPython crashes or similar
+// grave issues (in other words, only user app should be,
+// affected, not system).
+#ifndef MICROPY_FULL_CHECKS
+#define MICROPY_FULL_CHECKS (1)
 #endif
 
 // Whether POSIX-semantics non-blocking streams are supported
@@ -589,13 +666,30 @@ typedef double mp_float_t;
 #define MICROPY_USE_INTERNAL_PRINTF (1)
 #endif
 
-// Support for user-space VFS mount (selected ports)
-#ifndef MICROPY_FSUSERMOUNT
-#define MICROPY_FSUSERMOUNT (0)
+// Support for internal scheduler
+#ifndef MICROPY_ENABLE_SCHEDULER
+#define MICROPY_ENABLE_SCHEDULER (0)
+#endif
+
+// Maximum number of entries in the scheduler
+#ifndef MICROPY_SCHEDULER_DEPTH
+#define MICROPY_SCHEDULER_DEPTH (4)
+#endif
+
+// Support for generic VFS sub-system
+#ifndef MICROPY_VFS
+#define MICROPY_VFS (0)
 #endif
 
 /*****************************************************************************/
 /* Fine control over Python builtins, classes, modules, etc                  */
+
+// Whether to support multiple inheritance of Python classes.  Multiple
+// inheritance makes some C functions inherently recursive, and adds a bit of
+// code overhead.
+#ifndef MICROPY_MULTIPLE_INHERITANCE
+#define MICROPY_MULTIPLE_INHERITANCE (1)
+#endif
 
 // Whether to implement attributes on functions
 #ifndef MICROPY_PY_FUNCTION_ATTRS
@@ -608,9 +702,24 @@ typedef double mp_float_t;
 #define MICROPY_PY_DESCRIPTORS (0)
 #endif
 
+// Whether to support class __delattr__ and __setattr__ methods
+// This costs some code size and makes all del attrs and store attrs slow
+#ifndef MICROPY_PY_DELATTR_SETATTR
+#define MICROPY_PY_DELATTR_SETATTR (0)
+#endif
+
 // Support for async/await/async for/async with
 #ifndef MICROPY_PY_ASYNC_AWAIT
 #define MICROPY_PY_ASYNC_AWAIT (1)
+#endif
+
+// Non-standard .pend_throw() method for generators, allowing for
+// Future-like behavior with respect to exception handling: an
+// exception set with .pend_throw() will activate on the next call
+// to generator's .send() or .__next__(). (This is useful to implement
+// async schedulers.)
+#ifndef MICROPY_PY_GENERATOR_PEND_THROW
+#define MICROPY_PY_GENERATOR_PEND_THROW (1)
 #endif
 
 // Issue a warning when comparing str and bytes objects
@@ -621,6 +730,11 @@ typedef double mp_float_t;
 // Whether str object is proper unicode
 #ifndef MICROPY_PY_BUILTINS_STR_UNICODE
 #define MICROPY_PY_BUILTINS_STR_UNICODE (0)
+#endif
+
+// Whether to check for valid UTF-8 when converting bytes to str
+#ifndef MICROPY_PY_BUILTINS_STR_UNICODE_CHECK
+#define MICROPY_PY_BUILTINS_STR_UNICODE_CHECK (MICROPY_PY_BUILTINS_STR_UNICODE)
 #endif
 
 // Whether str.center() method provided
@@ -680,15 +794,39 @@ typedef double mp_float_t;
 #define MICROPY_PY_BUILTINS_RANGE_ATTRS (1)
 #endif
 
+// Whether to support binary ops [only (in)equality is defined] between range
+// objects.  With this option disabled all range objects that are not exactly
+// the same object will compare as not-equal.  With it enabled the semantics
+// match CPython and ranges are equal if they yield the same sequence of items.
+#ifndef MICROPY_PY_BUILTINS_RANGE_BINOP
+#define MICROPY_PY_BUILTINS_RANGE_BINOP (0)
+#endif
+
 // Whether to support timeout exceptions (like socket.timeout)
 #ifndef MICROPY_PY_BUILTINS_TIMEOUTERROR
 #define MICROPY_PY_BUILTINS_TIMEOUTERROR (0)
 #endif
 
-// Whether to support complete set of special methods
-// for user classes, otherwise only the most used
+// Whether to support complete set of special methods for user
+// classes, or only the most used ones. "Inplace" methods are
+// controlled by MICROPY_PY_ALL_INPLACE_SPECIAL_METHODS below.
+// "Reverse" methods are controlled by
+// MICROPY_PY_REVERSE_SPECIAL_METHODS below.
 #ifndef MICROPY_PY_ALL_SPECIAL_METHODS
 #define MICROPY_PY_ALL_SPECIAL_METHODS (0)
+#endif
+
+// Whether to support all inplace arithmetic operarion methods
+// (__imul__, etc.)
+#ifndef MICROPY_PY_ALL_INPLACE_SPECIAL_METHODS
+#define MICROPY_PY_ALL_INPLACE_SPECIAL_METHODS (0)
+#endif
+
+// Whether to support reverse arithmetic operarion methods
+// (__radd__, etc.). Additionally gated by
+// MICROPY_PY_ALL_SPECIAL_METHODS.
+#ifndef MICROPY_PY_REVERSE_SPECIAL_METHODS
+#define MICROPY_PY_REVERSE_SPECIAL_METHODS (0)
 #endif
 
 // Whether to support compile function
@@ -727,9 +865,36 @@ typedef double mp_float_t;
 #define MICROPY_PY_BUILTINS_NOTIMPLEMENTED (0)
 #endif
 
+// Whether to provide the built-in input() function. The implementation of this
+// uses mp-readline, so can only be enabled if the port uses this readline.
+#ifndef MICROPY_PY_BUILTINS_INPUT
+#define MICROPY_PY_BUILTINS_INPUT (0)
+#endif
+
 // Whether to support min/max functions
 #ifndef MICROPY_PY_BUILTINS_MIN_MAX
 #define MICROPY_PY_BUILTINS_MIN_MAX (1)
+#endif
+
+// Support for calls to pow() with 3 integer arguments
+#ifndef MICROPY_PY_BUILTINS_POW3
+#define MICROPY_PY_BUILTINS_POW3 (0)
+#endif
+
+// Whether to provide the help function
+#ifndef MICROPY_PY_BUILTINS_HELP
+#define MICROPY_PY_BUILTINS_HELP (0)
+#endif
+
+// Use this to configure the help text shown for help().  It should be a
+// variable with the type "const char*".  A sensible default is provided.
+#ifndef MICROPY_PY_BUILTINS_HELP_TEXT
+#define MICROPY_PY_BUILTINS_HELP_TEXT mp_help_default_text
+#endif
+
+// Add the ability to list the available modules when executing help('modules')
+#ifndef MICROPY_PY_BUILTINS_HELP_MODULES
+#define MICROPY_PY_BUILTINS_HELP_MODULES (0)
 #endif
 
 // Whether to set __file__ for imported modules
@@ -740,6 +905,11 @@ typedef double mp_float_t;
 // Whether to provide mem-info related functions in micropython module
 #ifndef MICROPY_PY_MICROPYTHON_MEM_INFO
 #define MICROPY_PY_MICROPYTHON_MEM_INFO (0)
+#endif
+
+// Whether to provide "micropython.stack_use" function
+#ifndef MICROPY_PY_MICROPYTHON_STACK_USE
+#define MICROPY_PY_MICROPYTHON_STACK_USE (MICROPY_PY_MICROPYTHON_MEM_INFO)
 #endif
 
 // Whether to provide "array" module. Note that large chunk of the
@@ -766,9 +936,19 @@ typedef double mp_float_t;
 #define MICROPY_PY_COLLECTIONS (1)
 #endif
 
+// Whether to provide "ucollections.deque" type
+#ifndef MICROPY_PY_COLLECTIONS_DEQUE
+#define MICROPY_PY_COLLECTIONS_DEQUE (0)
+#endif
+
 // Whether to provide "collections.OrderedDict" type
 #ifndef MICROPY_PY_COLLECTIONS_ORDEREDDICT
 #define MICROPY_PY_COLLECTIONS_ORDEREDDICT (0)
+#endif
+
+// Whether to provide the _asdict function for namedtuple
+#ifndef MICROPY_PY_COLLECTIONS_NAMEDTUPLE__ASDICT
+#define MICROPY_PY_COLLECTIONS_NAMEDTUPLE__ASDICT (0)
 #endif
 
 // Whether to provide "math" module
@@ -799,6 +979,17 @@ typedef double mp_float_t;
 // Whether to provide "io" module
 #ifndef MICROPY_PY_IO
 #define MICROPY_PY_IO (1)
+#endif
+
+// Whether to provide "uio.resource_stream()" function with
+// the semantics of CPython's pkg_resources.resource_stream()
+// (allows to access binary resources in frozen source packages).
+// Note that the same functionality can be achieved in "pure
+// Python" by prepocessing binary resources into Python source
+// and bytecode-freezing it (with a simple helper module available
+// e.g. in micropython-lib).
+#ifndef MICROPY_PY_IO_RESOURCE_STREAM
+#define MICROPY_PY_IO_RESOURCE_STREAM (0)
 #endif
 
 // Whether to provide "io.FileIO" class
@@ -844,7 +1035,12 @@ typedef double mp_float_t;
 
 // Whether to provide "sys.exit" function
 #ifndef MICROPY_PY_SYS_EXIT
-#define MICROPY_PY_SYS_EXIT (0)
+#define MICROPY_PY_SYS_EXIT (1)
+#endif
+
+// Whether to provide "sys.getsizeof" function
+#ifndef MICROPY_PY_SYS_GETSIZEOF
+#define MICROPY_PY_SYS_GETSIZEOF (0)
 #endif
 
 // Whether to provide sys.{stdin,stdout,stderr} objects
@@ -861,6 +1057,16 @@ typedef double mp_float_t;
 // Whether to provide "uerrno" module
 #ifndef MICROPY_PY_UERRNO
 #define MICROPY_PY_UERRNO (0)
+#endif
+
+// Whether to provide the uerrno.errorcode dict
+#ifndef MICROPY_PY_UERRNO_ERRORCODE
+#define MICROPY_PY_UERRNO_ERRORCODE (1)
+#endif
+
+// Whether to provide "uselect" module (baremetal implementation)
+#ifndef MICROPY_PY_USELECT
+#define MICROPY_PY_USELECT (0)
 #endif
 
 // Whether to provide "utime" module functions implementation
@@ -890,10 +1096,10 @@ typedef double mp_float_t;
 #define MICROPY_PY_THREAD_GIL (MICROPY_PY_THREAD)
 #endif
 
-// The GIL will be released and acquired every MICROPY_PY_THREAD_GIL_DIVISOR
-// number of jump opcodes
-#ifndef MICROPY_PY_THREAD_GIL_DIVISOR
-#define MICROPY_PY_THREAD_GIL_DIVISOR (2)
+// Number of VM jump-loops to do before releasing the GIL.
+// Set this to 0 to disable the divisor.
+#ifndef MICROPY_PY_THREAD_GIL_VM_DIVISOR
+#define MICROPY_PY_THREAD_GIL_VM_DIVISOR (32)
 #endif
 
 // Extended modules
@@ -918,6 +1124,7 @@ typedef double mp_float_t;
 #define MICROPY_PY_UHEAPQ (0)
 #endif
 
+// Optimized heap queue for relative timestamps
 #ifndef MICROPY_PY_UTIMEQ
 #define MICROPY_PY_UTIMEQ (0)
 #endif
@@ -963,6 +1170,8 @@ typedef double mp_float_t;
 
 #ifndef MICROPY_PY_USSL
 #define MICROPY_PY_USSL (0)
+// Whether to add finaliser code to ussl objects
+#define MICROPY_PY_USSL_FINALISER (0)
 #endif
 
 #ifndef MICROPY_PY_WEBSOCKET
@@ -1028,6 +1237,11 @@ typedef double mp_float_t;
 // object code analysis tools which don't support static symbols.
 #ifndef STATIC
 #define STATIC static
+#endif
+
+// Number of bytes in a word
+#ifndef BYTES_PER_WORD
+#define BYTES_PER_WORD (sizeof(mp_uint_t))
 #endif
 
 #define BITS_PER_BYTE (8)
@@ -1140,4 +1354,24 @@ typedef double mp_float_t;
 #define MP_UNLIKELY(x) __builtin_expect((x), 0)
 #endif
 
-#endif // __MICROPY_INCLUDED_PY_MPCONFIG_H__
+#ifndef MP_HTOBE16
+#if MP_ENDIANNESS_LITTLE
+# define MP_HTOBE16(x) ((uint16_t)( (((x) & 0xff) << 8) | (((x) >> 8) & 0xff) ))
+# define MP_BE16TOH(x) MP_HTOBE16(x)
+#else
+# define MP_HTOBE16(x) (x)
+# define MP_BE16TOH(x) (x)
+#endif
+#endif
+
+#ifndef MP_HTOBE32
+#if MP_ENDIANNESS_LITTLE
+# define MP_HTOBE32(x) ((uint32_t)( (((x) & 0xff) << 24) | (((x) & 0xff00) << 8) | (((x) >> 8)  & 0xff00) | (((x) >> 24) & 0xff) ))
+# define MP_BE32TOH(x) MP_HTOBE32(x)
+#else
+# define MP_HTOBE32(x) (x)
+# define MP_BE32TOH(x) (x)
+#endif
+#endif
+
+#endif // MICROPY_INCLUDED_PY_MPCONFIG_H

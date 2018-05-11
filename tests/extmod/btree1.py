@@ -4,8 +4,7 @@ try:
     import uerrno
 except ImportError:
     print("SKIP")
-    import sys
-    sys.exit()
+    raise SystemExit
 
 #f = open("_test.db", "w+b")
 f = uio.BytesIO()
@@ -85,5 +84,6 @@ try:
 except TypeError:
     print("TypeError")
 
+db.flush()
 db.close()
 f.close()

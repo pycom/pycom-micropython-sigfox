@@ -6,6 +6,12 @@ import utime
 def cb(word):
     print(word)
 
+def cb_with_next_alarm(arg):
+    (word, next_alarm, alarm_arg) = arg
+    print(word)
+    next_alarm.callback(cb,arg=alarm_arg)
+
+	
 # Create 16 alarms randomly with timing: 1sec - 16sec
 # They have to expire starting the one with 1sec expiration up to the one with 16 sec
 alarm1 = Timer.Alarm(handler=cb, s=1,  arg="alarm1",  periodic=False)
@@ -74,7 +80,8 @@ alarm1.callback(cb,arg="alarm1")
 alarm3.callback(cb,arg="alarm3")
 alarm4.callback(cb,arg="alarm4")
 alarm12.callback(cb,arg="alarm12")
-alarm5.callback(cb,arg="alarm5")
+# When alarm5 expires it activates alarm2 which means it has to expire between alarm7 and alarm8
+alarm5.callback(cb_with_next_alarm,arg=("alarm5", alarm2, "alarm2"))
 alarm6.callback(cb,arg="alarm6")
 alarm7.callback(cb,arg="alarm7")
 alarm8.callback(cb,arg="alarm8")
@@ -89,8 +96,7 @@ alarm15.callback(cb,arg="alarm15")
 
 # Wait 5 sec, which means alarm1-5 should expire, but alarm6-16 not
 time.sleep(5)
-# Activate alarm2 which means it has to expire between alarm7 and alarm8
-alarm2.callback(cb,arg="alarm2")
+
 # Cancel alarm14
 alarm14.cancel()
 
@@ -104,7 +110,8 @@ alarm4.callback(cb,arg="alarm4")
 alarm12.callback(cb,arg="alarm12")
 alarm5.callback(cb,arg="alarm5")
 alarm6.callback(cb,arg="alarm6")
-alarm7.callback(cb,arg="alarm7")
+# When alarm7 expires it activates alarm6 which means it has to expire between alarm13 and alarm14
+alarm7.callback(cb_with_next_alarm, arg=("alarm7", alarm6, "alarm6"))
 alarm8.callback(cb,arg="alarm8")
 alarm16.callback(cb,arg="alarm16")
 alarm9.callback(cb,arg="alarm9")
@@ -118,17 +125,14 @@ alarm15.callback(cb,arg="alarm15")
 # Wait 4 sec, which means alarm1-4 should expire, but alarm5-16 not
 time.sleep(4)
 
-# Cancel alarm6
+# Cancel alarm6, will be activated by alarm7 when it expires
 alarm6.cancel()
 
-# Wait 2 sec, which means alarm5 and alarm7 should expire, but alarm6 not
-time.sleep(2)
+# Wait 3 sec, which means alarm5 and alarm7 should expire, but alarm6 not
+time.sleep(3)
 
-#Add alarm6 back which means alarm6 should expire between alarm12 and alarm13
-alarm6.callback(cb,arg="alarm6")
-
-# Wait 12 sec for all alarm to expire
-time.sleep(12)
+# Wait 10 sec for all alarm to expire
+time.sleep(10)
 
 # Check alarm expirations with milisec values
 alarm1 = Timer.Alarm(handler=cb, ms=136, arg="alarm1",  periodic=False)

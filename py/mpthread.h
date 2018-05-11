@@ -23,8 +23,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef __MICROPY_INCLUDED_PY_MPTHREAD_H__
-#define __MICROPY_INCLUDED_PY_MPTHREAD_H__
+#ifndef MICROPY_INCLUDED_PY_MPTHREAD_H
+#define MICROPY_INCLUDED_PY_MPTHREAD_H
 
 #include "py/mpconfig.h"
 
@@ -41,7 +41,6 @@ struct _mp_state_thread_t;
 struct _mp_state_thread_t *mp_thread_get_state(void);
 void mp_thread_set_state(void *state);
 void mp_thread_create(void *(*entry)(void*), void *arg, size_t *stack_size);
-void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, int priority, char *name);
 void mp_thread_start(void);
 void mp_thread_finish(void);
 void mp_thread_mutex_init(mp_thread_mutex_t *mutex);
@@ -59,4 +58,4 @@ void mp_thread_mutex_unlock(mp_thread_mutex_t *mutex);
 #define MP_THREAD_GIL_EXIT()
 #endif
 
-#endif // __MICROPY_INCLUDED_PY_MPTHREAD_H__
+#endif // MICROPY_INCLUDED_PY_MPTHREAD_H

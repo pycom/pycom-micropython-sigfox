@@ -33,11 +33,19 @@ print(range(1, 4)[0:])
 print(range(1, 4)[1:])
 print(range(1, 4)[:-1])
 print(range(7, -2, -4)[:])
+print(range(1, 100, 5)[5:15:3])
+print(range(1, 100, 5)[15:5:-3])
+print(range(100, 1, -5)[5:15:3])
+print(range(100, 1, -5)[15:5:-3])
 
-# attrs
-print(range(1, 2, 3).start)
-print(range(1, 2, 3).stop)
-print(range(1, 2, 3).step)
+# for this case uPy gives a different stop value but the listed elements are still correct
+print(list(range(7, -2, -4)[2:-2:]))
+
+# zero step
+try:
+    range(1, 2, 0)
+except ValueError:
+    print("ValueError")
 
 # bad unary op
 try:
@@ -50,9 +58,3 @@ try:
     range(1)[0] = 1
 except TypeError:
     print("TypeError")
-
-# bad attr (can't store)
-try:
-    range(4).start = 0
-except AttributeError:
-    print('AttributeError')

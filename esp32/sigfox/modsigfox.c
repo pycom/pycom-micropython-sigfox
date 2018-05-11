@@ -19,7 +19,7 @@
 #include "py/stream.h"
 #include "py/mperrno.h"
 #include "mpexception.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 #include "esp32_mphal.h"
 
 #include "modnetwork.h"
@@ -35,6 +35,7 @@
 #include "sigfox/manuf_api.h"
 
 #include "ff.h"
+#include "lfs.h"
 #include "diskio.h"
 #include "sflash_diskio.h"
 
@@ -42,6 +43,8 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
+
+#include "mptask.h"
 
 #include "modsigfox.h"
 #include "pycom_config.h"
@@ -173,111 +176,111 @@ void modsigfox_init0 (void) {
 }
 
 void sigfox_update_id (void) {
-    #define SFX_ID_PATH          "/flash/sys/sfx.id"
+    #define SFX_ID_PATH          "/sys/sfx.id"
 
-    FILINFO fno;
+    lfs_file_t fp;
 
-    if (FR_OK == f_stat(SFX_ID_PATH, &fno)) {
-        FIL fp;
-        f_open(&fp, SFX_ID_PATH, FA_READ);
-        UINT sz_out;
+    xSemaphoreTake(sflash_vfs_littlefs.fs.littlefs.mutex, portMAX_DELAY);
+
+    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_ID_PATH, LFS_O_RDONLY)){
         uint8_t id[4];
-        FRESULT res = f_read(&fp, id, sizeof(id), &sz_out);
-        if (res == FR_OK) {
+        int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, id, sizeof(id));
+        if (sz_out > LFS_ERR_OK) {
             if (config_set_sigfox_id(id)) {
                 mp_hal_delay_ms(250);
                 ets_printf("SFX ID write OK\n");
-            } else {
-                res = FR_DENIED;    // just anything different than FR_OK
             }
         }
-        f_close(&fp);
-        if (res == FR_OK) {
+        lfs_file_close(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp);
+
+        if (sz_out > LFS_ERR_OK) {
             // delete the mac address file
-            f_unlink(SFX_ID_PATH);
+            lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_ID_PATH);
         }
     }
+
+    xSemaphoreGive(sflash_vfs_littlefs.fs.littlefs.mutex);
 }
 
 void sigfox_update_pac (void) {
-    #define SFX_PAC_PATH          "/flash/sys/sfx.pac"
+    #define SFX_PAC_PATH          "/sys/sfx.pac"
 
-    FILINFO fno;
+    lfs_file_t fp;
 
-    if (FR_OK == f_stat(SFX_PAC_PATH, &fno)) {
-        FIL fp;
-        f_open(&fp, SFX_PAC_PATH, FA_READ);
-        UINT sz_out;
+    xSemaphoreTake(sflash_vfs_littlefs.fs.littlefs.mutex, portMAX_DELAY);
+
+    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PAC_PATH, LFS_O_RDONLY)){
         uint8_t pac[8];
-        FRESULT res = f_read(&fp, pac, sizeof(pac), &sz_out);
-        if (res == FR_OK) {
+        int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, pac, sizeof(pac));
+        if (sz_out > LFS_ERR_OK) {
             if (config_set_sigfox_pac(pac)) {
                 mp_hal_delay_ms(250);
                 ets_printf("SFX PAC write OK\n");
-            } else {
-                res = FR_DENIED;    // just anything different than FR_OK
             }
         }
-        f_close(&fp);
-        if (res == FR_OK) {
+        lfs_file_close(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp);
+
+        if (sz_out > LFS_ERR_OK) {
             // delete the mac address file
-            f_unlink(SFX_PAC_PATH);
+            lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_PAC_PATH);
         }
     }
+
+    xSemaphoreGive(sflash_vfs_littlefs.fs.littlefs.mutex);
 }
 
 void sigfox_update_private_key (void) {
-    #define SFX_PRIVATE_KEY_PATH          "/flash/sys/sfx_private.key"
+    #define SFX_PRIVATE_KEY_PATH          "/sys/sfx_private.key"
 
-    FILINFO fno;
+    lfs_file_t fp;
 
-    if (FR_OK == f_stat(SFX_PRIVATE_KEY_PATH, &fno)) {
-        FIL fp;
-        f_open(&fp, SFX_PRIVATE_KEY_PATH, FA_READ);
-        UINT sz_out;
-        uint8_t key[16];
-        FRESULT res = f_read(&fp, key, sizeof(key), &sz_out);
-        if (res == FR_OK) {
-            if (config_set_sigfox_private_key(key)) {
-                mp_hal_delay_ms(250);
-                ets_printf("SFX private key write OK\n");
-            } else {
-                res = FR_DENIED;    // just anything different than FR_OK
-            }
-        }
-        f_close(&fp);
-        if (res == FR_OK) {
-            // delete the mac address file
-            f_unlink(SFX_PRIVATE_KEY_PATH);
-        }
-    }
+    xSemaphoreTake(sflash_vfs_littlefs.fs.littlefs.mutex, portMAX_DELAY);
+
+    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PRIVATE_KEY_PATH, LFS_O_RDONLY)){
+       uint8_t key[16];
+       int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, key, sizeof(key));
+       if (sz_out > LFS_ERR_OK) {
+           if (config_set_sigfox_private_key(key)) {
+               mp_hal_delay_ms(250);
+               ets_printf("SFX private key write OK\n");
+           }
+       }
+       lfs_file_close(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp);
+
+       if (sz_out > LFS_ERR_OK) {
+           // delete the mac address file
+           lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_PRIVATE_KEY_PATH);
+       }
+   }
+
+    xSemaphoreGive(sflash_vfs_littlefs.fs.littlefs.mutex);
 }
 
 void sigfox_update_public_key (void) {
-    #define SFX_PUBLIC_KEY_PATH          "/flash/sys/sfx_public.key"
+    #define SFX_PUBLIC_KEY_PATH          "/sys/sfx_public.key"
 
-    FILINFO fno;
+    lfs_file_t fp;
 
-    if (FR_OK == f_stat(SFX_PUBLIC_KEY_PATH, &fno)) {
-        FIL fp;
-        f_open(&fp, SFX_PUBLIC_KEY_PATH, FA_READ);
-        UINT sz_out;
-        uint8_t key[16];
-        FRESULT res = f_read(&fp, key, sizeof(key), &sz_out);
-        if (res == FR_OK) {
-            if (config_set_sigfox_public_key(key)) {
-                mp_hal_delay_ms(250);
-                ets_printf("SFX public key write OK\n");
-            } else {
-                res = FR_DENIED;    // just anything different than FR_OK
-            }
-        }
-        f_close(&fp);
-        if (res == FR_OK) {
-            // delete the mac address file
-            f_unlink(SFX_PUBLIC_KEY_PATH);
-        }
-    }
+    xSemaphoreTake(sflash_vfs_littlefs.fs.littlefs.mutex, portMAX_DELAY);
+
+    if(LFS_ERR_OK == lfs_file_open(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, SFX_PUBLIC_KEY_PATH, LFS_O_RDONLY)){
+       uint8_t key[16];
+       int sz_out = lfs_file_read(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp, key, sizeof(key));
+       if (sz_out > LFS_ERR_OK) {
+           if (config_set_sigfox_public_key(key)) {
+               mp_hal_delay_ms(250);
+               ets_printf("SFX public key write OK\n");
+           }
+       }
+       lfs_file_close(&sflash_vfs_littlefs.fs.littlefs.lfs, &fp);
+
+       if (sz_out > LFS_ERR_OK) {
+           // delete the mac address file
+           lfs_remove(&sflash_vfs_littlefs.fs.littlefs.lfs, SFX_PUBLIC_KEY_PATH);
+       }
+   }
+
+    xSemaphoreGive(sflash_vfs_littlefs.fs.littlefs.mutex);
 }
 
 /******************************************************************************
@@ -1001,7 +1004,7 @@ mp_obj_t sigfox_version(mp_obj_t self_in) {
     sfx_u8 size;
 
     if (SFX_ERR_NONE == SIGFOX_API_get_version(&ptr, &size)) {
-        return mp_obj_new_str((char *)ptr, size - 1, false);
+        return mp_obj_new_str((char *)ptr, size - 1);
     }
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
 }
@@ -1154,13 +1157,13 @@ int sigfox_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint
     mp_int_t ret = 0;
 
     SIGFOX_CHECK_SOCKET(s);
-    if (request == MP_IOCTL_POLL) {
+    if (request == MP_STREAM_POLL) {
         mp_uint_t flags = arg;
-        if ((flags & MP_IOCTL_POLL_RD) && sigfox_rx_any()) {
-            ret |= MP_IOCTL_POLL_RD;
+        if ((flags & MP_STREAM_POLL_RD) && sigfox_rx_any()) {
+            ret |= MP_STREAM_POLL_RD;
         }
-        if ((flags & MP_IOCTL_POLL_WR) && sigfox_tx_space()) {
-            ret |= MP_IOCTL_POLL_WR;
+        if ((flags & MP_STREAM_POLL_WR) && sigfox_tx_space()) {
+            ret |= MP_STREAM_POLL_WR;
         }
     } else {
         *_errno = MP_EINVAL;

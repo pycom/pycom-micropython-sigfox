@@ -11,6 +11,8 @@
 #define MPTASK_H_
 
 #include "mpthreadport.h"
+#include "ff.h"
+#include "extmod/vfs_fat.h"
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -18,6 +20,13 @@
 #define MICROPY_TASK_PRIORITY                   MP_THREAD_PRIORITY
 #define MICROPY_TASK_STACK_SIZE                 (8 * 1024)
 #define MICROPY_TASK_STACK_SIZE_PSRAM           (12 * 1024)
+
+
+/******************************************************************************
+ DECLARE PUBLIC VARIABLES
+ ******************************************************************************/
+extern fs_user_mount_t sflash_vfs_fat;
+extern fs_user_mount_t sflash_vfs_littlefs;
 
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS
