@@ -67,6 +67,29 @@ static int is_valid_directory(vfs_lfs_struct_t* littlefs, const char* path)
     }
 }
 
+extern mp_import_stat_t littleFS_vfs_import_stat(fs_user_mount_t *vfs, const char *path)
+{
+	struct lfs_info lfs_info_stat;
+	assert(vfs != NULL);
+	/* check if path exists */
+	if((int)LFS_ERR_OK == lfs_stat(&(vfs->fs.littlefs.lfs), path, &lfs_info_stat))
+	{
+		if(lfs_info_stat.type == LFS_TYPE_DIR)
+		{
+			return MP_IMPORT_STAT_DIR;
+		}
+		else
+		{
+			return MP_IMPORT_STAT_FILE;
+		}
+	}
+	else
+	{
+		return MP_IMPORT_STAT_NO_EXIST;
+	}
+
+}
+
 static int change_cwd(vfs_lfs_struct_t* littlefs, const char* path_in)
 {
     int res;
