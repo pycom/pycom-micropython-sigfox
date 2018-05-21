@@ -78,3 +78,9 @@ Removing: /flash/test/file2
 Removing: /flash/test/file_renamed
 Removing: /flash/test/file4
 Removing: /flash/test/dir_renamed
+OSError('Cannot format root dir',)
+OSError(19,)
+OSError('sd is not an absolute or invalid path',)
+OSError(' is not an absolute or invalid path',)
+['dummy']
+[]

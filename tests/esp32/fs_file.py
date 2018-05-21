@@ -76,7 +76,7 @@ def file_seek_test(path):
 
 
 sd = SD()
-sd_fat_fs = os.VfsFat(sd)
+sd_fat_fs = os.mkfat(sd)
 os.mount(sd_fat_fs, "/sd")
 
 #Test modes of file opening 
