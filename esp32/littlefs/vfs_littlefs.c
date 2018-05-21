@@ -9,6 +9,7 @@
 #include "extmod/vfs.h"
 #include "vfs_littlefs.h"
 #include "lib/timeutils/timeutils.h"
+#include "sflash_diskio_littlefs.h"
 
 
 int lfs_statvfs_count(void *p, lfs_block_t b)
@@ -641,6 +642,16 @@ STATIC mp_obj_t littlefs_vfs_umount(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(littlefs_vfs_umount_obj, littlefs_vfs_umount);
 
+STATIC mp_obj_t littlefs_vfs_fsformat(mp_obj_t vfs_in)
+{
+	fs_user_mount_t * vfs = MP_OBJ_TO_PTR(vfs_in);
+
+    lfs_format(&vfs->fs.littlefs.lfs, &lfscfg);
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(littlefs_vfs_fsformat_obj, littlefs_vfs_fsformat);
+
 STATIC const mp_rom_map_elem_t littlefs_vfs_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&littlefs_vfs_open_obj) },
     { MP_ROM_QSTR(MP_QSTR_ilistdir), MP_ROM_PTR(&littlefs_vfs_ilistdir_obj) },
@@ -654,6 +665,7 @@ STATIC const mp_rom_map_elem_t littlefs_vfs_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_statvfs), MP_ROM_PTR(&littlefs_vfs_statvfs_obj) },
     { MP_ROM_QSTR(MP_QSTR_getfree), MP_ROM_PTR(&littlefs_vfs_getfree_obj) },
     { MP_ROM_QSTR(MP_QSTR_umount), MP_ROM_PTR(&littlefs_vfs_umount_obj) },
+	{ MP_ROM_QSTR(MP_QSTR_fsformat), MP_ROM_PTR(&littlefs_vfs_fsformat_obj) }
 
 };
 STATIC MP_DEFINE_CONST_DICT(littlefs_vfs_locals_dict, littlefs_vfs_locals_dict_table);

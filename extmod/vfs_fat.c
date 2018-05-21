@@ -425,6 +425,24 @@ STATIC mp_obj_t vfs_fat_umount(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_umount_obj, vfs_fat_umount);
 
+STATIC mp_obj_t fat_vfs_fsformat(mp_obj_t vfs_in)
+{
+	FRESULT res = 0;
+	uint8_t working_buf[_MAX_SS];
+	fs_user_mount_t * vfs = MP_OBJ_TO_PTR(vfs_in);
+
+	res = f_mkfs(&vfs->fs.fatfs, FM_FAT32, 0, working_buf, sizeof(working_buf));
+
+    if (res != FR_OK)
+    {
+        mp_raise_OSError(fresult_to_errno_table[res]);
+    }
+    vfs->flags &= ~FSUSER_NO_FILESYSTEM;
+
+	return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_fsformat_obj, fat_vfs_fsformat);
+
 STATIC const mp_rom_map_elem_t fat_vfs_locals_dict_table[] = {
     #if _FS_REENTRANT
     { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&fat_vfs_del_obj) },
@@ -443,6 +461,7 @@ STATIC const mp_rom_map_elem_t fat_vfs_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_getfree), MP_ROM_PTR(&fat_vfs_getfree_obj) },
     { MP_ROM_QSTR(MP_QSTR_mount), MP_ROM_PTR(&vfs_fat_mount_obj) },
     { MP_ROM_QSTR(MP_QSTR_umount), MP_ROM_PTR(&fat_vfs_umount_obj) },
+	{ MP_ROM_QSTR(MP_QSTR_fsformat), MP_ROM_PTR(&fat_vfs_fsformat_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(fat_vfs_locals_dict, fat_vfs_locals_dict_table);
 
