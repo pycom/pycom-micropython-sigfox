@@ -501,4 +501,43 @@ mp_obj_t mp_vfs_getfree(mp_obj_t path_in) {
 }
 MP_DEFINE_CONST_FUN_OBJ_1(mp_vfs_getfree_obj, mp_vfs_getfree);
 
+mp_obj_t mp_vfs_fsformat(mp_obj_t path_in)
+{
+	if (path_in != NULL)
+	{
+		if (MP_OBJ_IS_STR_OR_BYTES(path_in))
+		{
+			const char  *path = mp_obj_str_get_str(path_in);
+
+			int len = strlen(path);
+			if(*path == '\0' || path[0] != '/')
+			{
+				nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError, "%s is not an absolute or invalid path", path));
+			}
+			else if (len == 1 && path[0] == '/')
+			{
+				nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError, "Cannot format root dir"));
+			}
+			else
+			{
+				for (mp_vfs_mount_t *vfs = MP_STATE_VM(vfs_mount_table); vfs != NULL; vfs = vfs->next)
+				{
+					if(!strcmp(vfs->str, path))
+					{
+						return mp_vfs_proxy_call(vfs, MP_QSTR_fsformat, 0, NULL);
+					}
+				}
+				mp_raise_OSError(MP_ENODEV);
+			}
+		}
+		else
+		{
+			nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError, "please specify correct fs mount path"));
+		}
+	}
+
+	return MP_VFS_NONE;
+}
+MP_DEFINE_CONST_FUN_OBJ_1(mp_vfs_fsformat_obj, mp_vfs_fsformat);
+
 #endif // MICROPY_VFS

@@ -165,7 +165,7 @@ def stat_files_folders_test(fs):
 
 
 sd = SD()
-sd_fat_fs = os.VfsFat(sd)
+sd_fat_fs = os.mkfat(sd)
 os.mount(sd_fat_fs, "/sd")
 
 #Test mkdir
@@ -195,12 +195,41 @@ os.chdir("/flash")
 stat_files_folders_test("LittleFs")
 os.chdir("/sd")
 stat_files_folders_test("FatFs")
- 
+
 #Clean up
 os.chdir("/flash")
 remove_files_recursive("/sd/test")
 os.rmdir("/sd/test")
 remove_files_recursive("/flash/test")
 os.rmdir("/flash/test")
+
+#Test formating SD
+try:
+    os.fsformat('/')
+except OSError as e:
+    print(repr(e))
+
+try:
+    os.fsformat('/invalid')
+except OSError as e:
+    print(repr(e))
+
+try:
+    os.fsformat('sd')
+except OSError as e:
+    print(repr(e))
+
+try:
+    os.fsformat('')
+except OSError as e:
+    print(repr(e))
+
+os.chdir('/sd')
+os.mkdir('dummy')
+print(os.listdir())
+os.fsformat('/sd')
+print(os.listdir())
+
+
 os.umount("/sd")
 sd.deinit()
