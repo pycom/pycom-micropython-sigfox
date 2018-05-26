@@ -207,10 +207,13 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
     lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
     if (strstr(modlte_rsp.data, "+CFUN: 0")) {
         const char *carrier = "standard";
+        lte_obj.carrier = false;
         if (args[0].u_obj != mp_const_none) {
             carrier = mp_obj_str_get_str(args[0].u_obj);
             if ((!strstr(carrier, "standard")) && (!strstr(carrier, "verizon")) && (!strstr(carrier, "at&t"))) {
                 nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid carrier %s", carrier));
+            } else if (!strstr(carrier, "standard")) {
+                lte_obj.carrier = true;
             }
         }
 
@@ -313,12 +316,14 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         // configuring scanning in all 6 bands
         lte_push_at_command("AT!=\"clearscanconfig\"", LTE_RX_TIMEOUT_MIN_MS);
         if (args[0].u_obj == mp_const_none) {
-            lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
-            lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
-            lte_push_at_command("AT!=\"RRC::addScanBand band=12\"", LTE_RX_TIMEOUT_MIN_MS);
-            lte_push_at_command("AT!=\"RRC::addScanBand band=13\"", LTE_RX_TIMEOUT_MIN_MS);
-            lte_push_at_command("AT!=\"RRC::addScanBand band=20\"", LTE_RX_TIMEOUT_MIN_MS);
-            lte_push_at_command("AT!=\"RRC::addScanBand band=28\"", LTE_RX_TIMEOUT_MIN_MS);
+            if (!lte_obj.carrier) {
+                lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
+                lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
+                lte_push_at_command("AT!=\"RRC::addScanBand band=12\"", LTE_RX_TIMEOUT_MIN_MS);
+                lte_push_at_command("AT!=\"RRC::addScanBand band=13\"", LTE_RX_TIMEOUT_MIN_MS);
+                lte_push_at_command("AT!=\"RRC::addScanBand band=20\"", LTE_RX_TIMEOUT_MIN_MS);
+                lte_push_at_command("AT!=\"RRC::addScanBand band=28\"", LTE_RX_TIMEOUT_MIN_MS);
+            }
         } else {
             uint32_t band = mp_obj_get_int(args[0].u_obj);
             if (band == 3) {
