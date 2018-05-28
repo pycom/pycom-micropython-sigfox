@@ -33,17 +33,17 @@
 #include "antenna.h"
 
 #include "esp_bt.h"
-#include "bt_trace.h"
-#include "bt_types.h"
-#include "btm_api.h"
-#include "bta_api.h"
-#include "bta_gatt_api.h"
-#include "esp_gap_ble_api.h"
-#include "esp_gattc_api.h"
-#include "esp_gatts_api.h"
-#include "esp_gatt_defs.h"
-#include "esp_bt_main.h"
-#include "esp_gatt_common_api.h"
+#include "common/bt_trace.h"
+#include "stack/bt_types.h"
+#include "stack/btm_api.h"
+#include "bta/bta_api.h"
+#include "bta/bta_gatt_api.h"
+#include "api/esp_gap_ble_api.h"
+#include "api/esp_gattc_api.h"
+#include "api/esp_gatts_api.h"
+#include "api/esp_gatt_defs.h"
+#include "api/esp_bt_main.h"
+#include "api/esp_gatt_common_api.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -954,7 +954,7 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
 
     xQueueReset(xScanQueue);
     bt_obj.busy = true;
-    if (ESP_OK != esp_ble_gattc_open(bt_obj.gattc_if, bufinfo.buf, true)) {
+    if (ESP_OK != esp_ble_gattc_open(bt_obj.gattc_if, bufinfo.buf, BLE_ADDR_TYPE_PUBLIC, true)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
 

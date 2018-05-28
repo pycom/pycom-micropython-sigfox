@@ -184,7 +184,7 @@ soft_reset:
 
     // thread init
 #if MICROPY_PY_THREAD
-    mp_thread_init();
+    //mp_thread_init();
 #endif
 
     // GC init

@@ -24,7 +24,7 @@ APP_INC += -I$(BUILD)
 APP_INC += -I$(BUILD)/genhdr
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include_priv
-APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/mbedtls/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
@@ -48,12 +48,13 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/log/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/sdmmc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/vfs/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/device/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/device/include/device
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/dm
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/hh
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/sys/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/common/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/stack/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/stack/gatt/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/stack/gap/include
@@ -506,8 +507,8 @@ $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(Q) $(AR) cru $@ $^
 
 $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a $(SECURE_BOOT_VERIFICATION_KEY)
-#	$(ECHO) "COPY IDF LIBRARIES $@"
-#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"

@@ -14,15 +14,15 @@
 #include "controller.h"
 
 #include "esp_bt.h"
-#include "bt_trace.h"
-#include "bt_types.h"
-#include "btm_api.h"
-#include "bta_api.h"
-#include "bta_gatt_api.h"
-#include "esp_gap_ble_api.h"
-#include "esp_gattc_api.h"
-#include "esp_gatt_defs.h"
-#include "esp_bt_main.h"
+#include "common/bt_trace.h"
+#include "stack/bt_types.h"
+#include "stack/btm_api.h"
+#include "bta/bta_api.h"
+#include "bta/bta_gatt_api.h"
+#include "api/esp_gap_ble_api.h"
+#include "api/esp_gattc_api.h"
+#include "api/esp_gatt_defs.h"
+#include "api/esp_bt_main.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -102,6 +102,7 @@ static StaticTask_t mpTaskTCB;
  * Returns      : none
 *******************************************************************************/
 void app_main(void) {
+	mp_thread_init();
     // remove all the logs from the IDF
     esp_log_level_set("*", ESP_LOG_NONE);
 

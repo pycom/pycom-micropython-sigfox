@@ -22,6 +22,7 @@
 #include "machrtc.h"
 #include "soc/rtc.h"
 #include "esp_clk.h"
+#include "esp_clk_internal.h"
 
 
 uint32_t sntp_update_period = 3600000; // in ms
@@ -159,10 +160,10 @@ STATIC mp_obj_t mach_rtc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, m
         uint32_t clk_src = mp_obj_get_int(args[2].u_obj);
         if (clk_src == RTC_SOURCE_EXTERNAL_XTAL) {
             if (!rtc_clk_32k_enabled()) {
-                rtc_clk_32k_bootstrap();
+                rtc_clk_32k_bootstrap(5);
             }
         }
-        select_rtc_slow_clk(clk_src);
+        rtc_clk_select_rtc_slow_clk(clk_src);
         settimeofday(&now, NULL);
     }
 
