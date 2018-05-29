@@ -9,7 +9,7 @@ except ImportError:
     raise SystemExit
 
 try:
-    uos.VfsFat
+    uos.mkfat
 except AttributeError:
     print("SKIP")
     raise SystemExit
@@ -44,8 +44,8 @@ except MemoryError:
     print("SKIP")
     raise SystemExit
 
-uos.VfsFat.mkfs(bdev)
-vfs = uos.VfsFat(bdev)
+uos.mkfat.mkfs(bdev)
+vfs = uos.mkfat(bdev)
 uos.mount(vfs, "/ramdisk")
 
 # file io

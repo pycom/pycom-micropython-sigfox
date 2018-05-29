@@ -10,7 +10,7 @@ except ImportError:
     raise SystemExit
 
 try:
-    uos.VfsFat
+    uos.mkfat
 except AttributeError:
     print("SKIP")
     raise SystemExit
@@ -56,7 +56,7 @@ except OSError:
 for path in uos.listdir('/'):
     uos.umount('/' + path)
 
-uos.VfsFat.mkfs(bdev)
+uos.mkfat.mkfs(bdev)
 uos.mount(bdev, '/')
 
 print(uos.getcwd())
@@ -100,7 +100,7 @@ for exist in ('', '/', 'dir', '/dir', 'dir/subdir'):
 uos.chdir('/')
 print(uos.stat('test5.txt')[:-3])
 
-uos.VfsFat.mkfs(bdev2)
+uos.mkfat.mkfs(bdev2)
 uos.mount(bdev2, '/sys')
 print(uos.listdir())
 print(uos.listdir('sys'))
