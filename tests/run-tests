@@ -321,9 +321,6 @@ def run_tests(pyb, tests, args, base_path="."):
             skip_tests.add('extmod/uheapq1.py')             # requires uheapq
             skip_tests.add('extmod/urandom_basic.py')       # requires urandom
             skip_tests.add('extmod/urandom_extra.py')       # requires urandom
-            skip_tests.add('extmod/uzlib_decompio_gz.py')   # requires zlib
-            skip_tests.add('extmod/uzlib_decompio.py')      # requires zlib
-            skip_tests.add('extmod/uzlib_decompress.py')    # requires zlib
             skip_tests.add('extmod/ticks_diff.py')          # ticks_diff() implemented as (start_in, end_in), the test expects (end_in, start_in) function prototype
             skip_tests.add('extmod/ussl_basic.py')          # vendor specific implementation fully differes from micropython implementation under extmod/modussl_axtls.c and modussl_mbedtls.c
             skip_tests.add('extmod/utimeq1.py')             # turn off as the test would need a full rewrite because seems incorrect

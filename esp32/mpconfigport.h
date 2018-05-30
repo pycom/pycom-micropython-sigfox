@@ -110,6 +110,7 @@
 #define MICROPY_PERSISTENT_CODE_LOAD                (1)
 #define MICROPY_QSTR_EXTRA_POOL                     mp_qstr_frozen_const_pool
 #define MICROPY_PY_FRAMEBUF                         (1)
+#define MICROPY_PY_UZLIB                            (1)
 
 #define MICROPY_STREAMS_NON_BLOCK                   (1)
 #define MICROPY_PY_BUILTINS_TIMEOUTERROR            (1)
