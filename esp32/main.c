@@ -102,7 +102,7 @@ static StaticTask_t mpTaskTCB;
  * Returns      : none
 *******************************************************************************/
 void app_main(void) {
-	mp_thread_init();
+
     // remove all the logs from the IDF
     esp_log_level_set("*", ESP_LOG_NONE);
 
@@ -173,4 +173,9 @@ void app_main(void) {
         (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t)), NULL,
                                                     MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
     }
+}
+/*TODO: Disabled untill Mesh wifi is supported */
+bool esp_mesh_is_scan_allowed()
+{
+	return false;
 }
