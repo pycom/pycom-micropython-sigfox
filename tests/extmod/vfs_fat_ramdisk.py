@@ -9,7 +9,7 @@ except ImportError:
     raise SystemExit
 
 try:
-    uos.VfsFat
+    uos.mkfat
 except AttributeError:
     print("SKIP")
     raise SystemExit
@@ -46,12 +46,12 @@ except MemoryError:
     print("SKIP")
     raise SystemExit
 
-uos.VfsFat.mkfs(bdev)
+uos.mkfat.mkfs(bdev)
 
 print(b"FOO_FILETXT" not in bdev.data)
 print(b"hello!" not in bdev.data)
 
-vfs = uos.VfsFat(bdev)
+vfs = uos.mkfat(bdev)
 uos.mount(vfs, "/ramdisk")
 
 print("statvfs:", vfs.statvfs("/ramdisk"))
@@ -90,7 +90,7 @@ print("getcwd:", vfs.getcwd())
 
 uos.umount(vfs)
 
-vfs = uos.VfsFat(bdev)
+vfs = uos.mkfat(bdev)
 print(list(vfs.ilistdir(b"")))
 
 # list a non-existent directory
