@@ -217,6 +217,7 @@ SRC_C = \
 	bufhelper.c \
 	dma.c \
 	i2c.c \
+	pyb_i2c.c \
 	spi.c \
 	qspi.c \
 	uart.c \
@@ -348,6 +349,11 @@ OBJ += $(addprefix $(BUILD)/, $(SRC_HAL:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_USBDEV:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(SRC_MOD:.c=.o))
 OBJ += $(BUILD)/pins_$(BOARD).o
+
+# This file contains performance critical functions so turn up the optimisation
+# level.  It doesn't add much to the code size and improves performance a bit.
+# Don't use -O3 with this file because gcc tries to optimise memset in terms of itself.
+$(BUILD)/lib/libc/string0.o: COPT += -O2
 
 # We put several files into the first 16K section with the ISRs.
 # If we compile these using -O0 then it won't fit. So if you really want these
