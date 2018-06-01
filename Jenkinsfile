@@ -7,7 +7,9 @@ node {
     stage('Checkout') {
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
+        sh 'git clone --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
+        sh 'git -C esp-idf checkout 4eab4e1b0e47c73b858c6b29d357f3d30a69c074'
+        sh 'git -C esp-idf submodule update'
     }
     
     PYCOM_VERSION=get_version()
