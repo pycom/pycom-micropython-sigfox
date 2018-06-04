@@ -155,7 +155,7 @@ mp_import_stat_t mp_vfs_import_stat(const char *path) {
     {
         return littleFS_vfs_import_stat(MP_OBJ_TO_PTR(vfs->obj), path_out);
     }
-    // TODO delegate to vfs.stat() method
+
     return MP_IMPORT_STAT_NO_EXIST;
 }
 
