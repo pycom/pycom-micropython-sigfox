@@ -22,6 +22,7 @@ typedef struct _lte_obj_t {
     uint32_t                ip4;
     uint8_t                 cid;
     bool                    init;
+    bool                    carrier;
 } lte_obj_t;
 
 

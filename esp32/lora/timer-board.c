@@ -57,18 +57,11 @@ static TimerTime_t TimerTickCounterContext = 0;
  */
 volatile TimerTime_t TimeoutCntValue = 0;
 
-/*!
- * Timer enabled/disabled flag
- */
-volatile bool TimerEnabled = false;
-
 
 static IRAM_ATTR void TimerCallback (void) {
-    if (TimerEnabled) {
-        TimerTickCounter++;
-        if (TimerTickCounter == TimeoutCntValue) {
-            TimerIrqHandler();
-        }
+    TimerTickCounter++;
+    if (TimeoutCntValue > 0 && TimerTickCounter == TimeoutCntValue) {
+        TimerIrqHandler();
     }
 }
 
@@ -96,12 +89,11 @@ IRAM_ATTR void TimerHwStart (uint32_t val) {
     } else {
         TimeoutCntValue = TimerTickCounterContext + val;
     }
-    TimerEnabled = true;
     MICROPY_END_ATOMIC_SECTION(ilevel);
 }
 
 void IRAM_ATTR TimerHwStop( void ) {
-    TimerEnabled = false;
+
 }
 
 void TimerHwDelayMs( uint32_t delay ) {
@@ -125,10 +117,6 @@ IRAM_ATTR TimerTime_t TimerHwGetElapsedTime (void) {
 
 IRAM_ATTR TimerTime_t TimerHwComputeTimeDifference( TimerTime_t eventInTime ) {
     TimerTime_t currTime = TimerHwGetTime();
-
-    if (eventInTime == 0) {
-        return 0;
-    }
 
     if (eventInTime <= currTime) {
         return currTime - eventInTime;
