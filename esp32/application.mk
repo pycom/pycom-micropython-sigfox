@@ -538,7 +538,7 @@ ifeq ($(SECURE), on)
 	$(ECHO) "Encrypt Bootloader digest (for offset 0x0)"
 	$(Q) $(ENCRYPT_BINARY) --address 0x0 -o $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOTLOADER_REFLASH_DIGEST)
 	$(RM) -f $(BOOTLOADER_REFLASH_DIGEST)
-	$(MV) -f $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOT_BIN)
+	$(CP) -f $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOT_BIN)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
@@ -611,7 +611,7 @@ ifeq ($(SECURE), on)
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o $(APP_BIN_ENCRYPT) $@
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x1A0000) -o $(APP_BIN_ENCRYPT_2) $@
 	$(ECHO) "Overwrite $(APP_BIN) with $(APP_BIN_ENCRYPT)"
-	$(MV) -f $(APP_BIN_ENCRYPT) $(APP_BIN)
+	$(CP) -f $(APP_BIN_ENCRYPT) $(APP_BIN)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
