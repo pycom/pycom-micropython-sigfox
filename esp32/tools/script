@@ -1,0 +1,5 @@
+[
+    ["w", "bootloader", "bootloader.bin"],
+    ["w", "partitions", "partitions.bin"],
+    ["w", "factory", "appimg.bin"]
+]
