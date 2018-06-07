@@ -69,7 +69,7 @@ def boardBuild(name) {
         cd esp32;
         make -j3 release BOARD=''' + name_short + ' RELEASE_DIR=' + release_dir
 
-        sh 'mv esp32/build/'+ name_u + '/release/application.elf' release_dir + name + "-" + PYCOM_VERSION + '-application.elf;'
+        sh 'mv esp32/build/'+ name_u + '/release/application.elf ' + release_dir + name + "-" + PYCOM_VERSION + '-application.elf'
     }
 }
 
