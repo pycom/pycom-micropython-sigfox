@@ -639,6 +639,9 @@ $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(Q) $(CC) -I. -C -P -x c -E $< -o $@
 endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
 
+release: $(APP_BIN) $(BOOT_BIN)
+	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR)
+
 flash: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "Entering flash mode"
 	$(Q) $(ENTER_FLASHING_MODE)

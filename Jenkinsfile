@@ -64,27 +64,12 @@ def boardBuild(name) {
         cd esp32;
         make clean BOARD=''' + name_short
 
-//        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-//        export IDF_PATH=${WORKSPACE}/esp-idf;
-//        cd esp32;
-//        make TARGET=boot -j2 BOARD=''' + name_short
-
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make -j2 BOARD=''' + name_short
+        make -j3 release BOARD=''' + name_short + ' RELEASE_DIR=' + release_dir
 
-        sh '''cd esp32/build/'''+ name_u +'''/release;
-        mkdir -p firmware_package;
-        mkdir -p '''+ release_dir + ''';
-        cd firmware_package;
-        cp ../bootloader/bootloader.bin .;
-        mv ../application.elf ''' + release_dir + name + "-" + PYCOM_VERSION + '''-application.elf;
-        cp ../''' + app_bin + ''' appimg.bin;
-        cp ../lib/partitions.bin .;
-        cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
-        cp ../''' + app_bin + ''' .;
-        tar -cvzf ''' + release_dir + name + "-" + PYCOM_VERSION + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
+        sh 'mv esp32/build/'+ name_u + '/release/application.elf ' + release_dir + name + "-" + PYCOM_VERSION + '-application.elf'
     }
 }
 
