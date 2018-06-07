@@ -9,10 +9,13 @@ ${REALPATH} --help >/dev/null 2>&1 || { REALPATH="echo"; }
 if [ -z $2 ]; then
   RELEASE_DIR="$(pwd)/build"
 else
-  if [ -w $2 ]; then
-    RELEASE_DIR=$($REALPATH $2)
-  else
-    echo >&2 "Invalid release directory specified!"; exit 1
+  RELEASE_DIR=$($REALPATH $2)
+  if ! [ -d $RELEASE_DIR ]; then
+    mkdir -p $RELEASE_DIR >/dev/null 2>&1 || { echo >&2 "Cannot create release directory! Aborting."; exit 1; }
+  fi
+  if ! [ -w $RELEASE_DIR ]; then
+    echo >&2 "Cannot write to ${RELEASE_DIR}! Aborting."
+    exit 1
   fi
 fi
 echo "Creating release package in ${RELEASE_DIR}"
