@@ -11,6 +11,6 @@ cp ../bootloader/bootloader.bin .
 cp ../lib/partitions.bin .
 cp ../${BOARD_NAME_L}.bin .
 cat ../../../../tools/script | sed s/"appimg.bin"/"${BOARD_NAME_L}.bin"/g > ./script
-tar -cvzf ../../../../${FILE_NAME} bootloader.bin partitions.bin ${BOARD_NAME_L}.bin script
+tar -cvzf ../../../${FILE_NAME} bootloader.bin partitions.bin ${BOARD_NAME_L}.bin script
 cd ..
 rm -rf release_package
