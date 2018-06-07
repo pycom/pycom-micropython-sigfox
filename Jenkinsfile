@@ -67,7 +67,7 @@ def boardBuild(name) {
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make -j3 release BOARD=''' + name_short + 'RELEASE_DIR=' + release_dir
+        make -j3 release BOARD=''' + name_short + ' RELEASE_DIR=' + release_dir
 
         sh 'mv esp32/build/'+ name_u + '/release/application.elf' release_dir + name + "-" + PYCOM_VERSION + '-application.elf;'
     }
