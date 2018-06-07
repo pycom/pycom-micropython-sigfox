@@ -148,5 +148,7 @@ extern bool modlora_nvs_set_uint(uint32_t key_idx, uint32_t value);
 extern bool modlora_nvs_set_blob(uint32_t key_idx, const void *value, uint32_t length);
 extern bool modlora_nvs_get_uint(uint32_t key_idx, uint32_t *value);
 extern bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length);
+extern void modlora_sleep_module(void);
+extern bool modlora_is_module_sleep(void);
 
 #endif  // MODLORA_H_
