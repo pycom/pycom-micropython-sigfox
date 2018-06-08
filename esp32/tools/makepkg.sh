@@ -9,7 +9,7 @@ ${REALPATH} --help >/dev/null 2>&1 || { REALPATH="echo"; }
 if [ -z $2 ]; then
   RELEASE_DIR="$(pwd)/build"
 else
-  RELEASE_DIR=$($REALPATH $2)
+  RELEASE_DIR=$($REALPATH $2 || echo $2)
   if ! [ -d $RELEASE_DIR ]; then
     mkdir -p $RELEASE_DIR >/dev/null 2>&1 || { echo >&2 "Cannot create release directory! Aborting."; exit 1; }
   fi
@@ -18,6 +18,7 @@ else
     exit 1
   fi
 fi
+RELEASE_DIR=$($REALPATH $2 || echo $2)
 echo "Creating release package in ${RELEASE_DIR}"
 BOARD_NAME=$(echo $1 | tr '[IOY]' '[ioy]')
 BOARD_NAME_L=$(echo ${BOARD_NAME} | tr '[A-Z]' '[a-z]')
