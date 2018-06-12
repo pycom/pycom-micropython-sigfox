@@ -47,6 +47,8 @@
 
 #define mp_obj_fat_vfs_t fs_user_mount_t
 
+STATIC FRESULT fat_format(fs_user_mount_t* vfs);
+
 mp_import_stat_t fat_vfs_import_stat(fs_user_mount_t *vfs, const char *path) {
     FILINFO fno;
     assert(vfs != NULL);
@@ -107,19 +109,50 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_del_obj, fat_vfs_del);
 
 STATIC mp_obj_t fat_vfs_mkfs(mp_obj_t bdev_in) {
     // create new object
-    fs_user_mount_t *vfs = MP_OBJ_TO_PTR(fat_vfs_make_new(&mp_fat_vfs_type, 1, 0, &bdev_in));
+	fs_user_mount_t* vfs = MP_OBJ_TO_PTR(fat_vfs_make_new(&mp_fat_vfs_type, 1, 0, &bdev_in));
+	FRESULT res = fat_format(vfs);
 
-    // make the filesystem
-    uint8_t working_buf[_MAX_SS];
-    FRESULT res = f_mkfs(&vfs->fs.fatfs, FM_FAT | FM_SFD, 0, working_buf, sizeof(working_buf));
-    if (res != FR_OK) {
-        mp_raise_OSError(fresult_to_errno_table[res]);
-    }
+	if (FR_OK != res)
+	{
+		mp_raise_OSError(fresult_to_errno_table[res]);
+	}
+	vfs->flags &= ~FSUSER_NO_FILESYSTEM;
 
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_mkfs_fun_obj, fat_vfs_mkfs);
 STATIC MP_DEFINE_CONST_STATICMETHOD_OBJ(fat_vfs_mkfs_obj, MP_ROM_PTR(&fat_vfs_mkfs_fun_obj));
+
+STATIC FRESULT fat_format(fs_user_mount_t* vfs)
+{
+    uint32_t blockcount = 0;
+    uint8_t options = FM_FAT;
+    uint8_t working_buf[_MAX_SS];
+
+    if ((vfs->flags & FSUSER_HAVE_IOCTL))
+    {
+        // device supports new block protocol, so indicate it
+        vfs->u.ioctl[2] = MP_OBJ_NEW_SMALL_INT(BP_IOCTL_SEC_COUNT);
+        vfs->u.ioctl[3] = MP_OBJ_NEW_SMALL_INT(0); // unused
+        blockcount = mp_obj_get_int(mp_call_method_n_kw(2, 0, vfs->u.ioctl));
+    }
+    else
+    {
+        // no ioctl method, so assume the device uses the old block protocol
+        blockcount = mp_obj_get_int(mp_call_method_n_kw(0, 0, vfs->u.old.count));
+    }
+
+	if (blockcount < 32768)
+	{
+		options |= FM_SFD;
+	}
+	else
+	{
+		options = FM_FAT32;
+	}
+	// make the filesystem
+	return f_mkfs(&vfs->fs.fatfs, options, 0, working_buf, sizeof(working_buf));
+}
 
 typedef struct _mp_vfs_fat_ilistdir_it_t {
     mp_obj_base_t base;
@@ -405,12 +438,13 @@ STATIC mp_obj_t vfs_fat_mount(mp_obj_t self_in, mp_obj_t readonly, mp_obj_t mkfs
 
     // check if we need to make the filesystem
     FRESULT res = (self->flags & FSUSER_NO_FILESYSTEM) ? FR_NO_FILESYSTEM : FR_OK;
-    if (res == FR_NO_FILESYSTEM && mp_obj_is_true(mkfs)) {
-        uint8_t working_buf[_MAX_SS];
-        res = f_mkfs(&self->fs.fatfs, FM_FAT | FM_SFD, 0, working_buf, sizeof(working_buf));
-    }
-    if (res != FR_OK) {
-        mp_raise_OSError(fresult_to_errno_table[res]);
+    if (res == FR_NO_FILESYSTEM && mp_obj_is_true(mkfs))
+    {
+    	res = fat_format(self);
+    	if (FR_OK != res)
+    	{
+    		mp_raise_OSError(fresult_to_errno_table[res]);
+    	}
     }
     self->flags &= ~FSUSER_NO_FILESYSTEM;
 
@@ -427,16 +461,13 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_umount_obj, vfs_fat_umount);
 
 STATIC mp_obj_t fat_vfs_fsformat(mp_obj_t vfs_in)
 {
-	FRESULT res = 0;
-	uint8_t working_buf[_MAX_SS];
 	fs_user_mount_t * vfs = MP_OBJ_TO_PTR(vfs_in);
+	FRESULT res = fat_format(vfs);
+	if (FR_OK != res)
+	{
+		mp_raise_OSError(fresult_to_errno_table[res]);
+	}
 
-	res = f_mkfs(&vfs->fs.fatfs, FM_FAT32, 0, working_buf, sizeof(working_buf));
-
-    if (res != FR_OK)
-    {
-        mp_raise_OSError(fresult_to_errno_table[res]);
-    }
     vfs->flags &= ~FSUSER_NO_FILESYSTEM;
 
 	return mp_const_none;
