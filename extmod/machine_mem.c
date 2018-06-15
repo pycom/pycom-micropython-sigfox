@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -24,14 +24,14 @@
  * THE SOFTWARE.
  */
 
+#include "py/runtime.h"
 #include "extmod/machine_mem.h"
-#include "py/nlr.h"
 
 #if MICROPY_PY_MACHINE
 
 // If you wish to override the functions for mapping the machine_mem read/write
 // address, then add a #define for MICROPY_MACHINE_MEM_GET_READ_ADDR and/or
-// MICROPY_MACHINE_MEM_GET_WRITE_ADDR in yopur mpconfigport.h. Since the
+// MICROPY_MACHINE_MEM_GET_WRITE_ADDR in your mpconfigport.h. Since the
 // prototypes are identical, it is allowable for both of the macros to evaluate
 // the to same function.
 //

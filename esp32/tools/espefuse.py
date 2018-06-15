@@ -22,6 +22,7 @@ import argparse
 import sys
 import os
 import struct
+import time
 
 # Table of efuse values - (category, block, word in block, mask, write disable bit, read disable bit, register name, type, description)
 # Match values in efuse_reg.h & Efuse technical reference chapter
@@ -73,11 +74,14 @@ EFUSE_CMD_READ  = 0x1
 # address of first word of write registers for each efuse
 EFUSE_REG_WRITE = [0x3FF5A01C, 0x3FF5A098, 0x3FF5A0B8, 0x3FF5A0D8]
 
+EFUSE_BURN_TIMEOUT = 0.250  # seconds
+
 
 def confirm(action, args):
     print("%s%sThis is an irreversible operation." % (action, "" if action.endswith("\n") else ". "))
     if not args.do_not_confirm:
         print("Type 'BURN' (all capitals) to continue.")
+        sys.stdout.flush()  # required for Pythons which disable line buffering, ie mingw in mintty
         try:
             yes = raw_input()  # raw_input renamed to input in Python 3
         except NameError:
@@ -103,7 +107,8 @@ def efuse_perform_write(esp):
     esp.write_reg(EFUSE_REG_CMD, EFUSE_CMD_WRITE)
 
     def wait_idle():
-        for _ in range(10):
+        deadline = time.time() + EFUSE_BURN_TIMEOUT
+        while time.time() < deadline:
             if esp.read_reg(EFUSE_REG_CMD) == 0:
                 return
         raise esptool.FatalError("Timed out waiting for Efuse controller command to complete")

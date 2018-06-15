@@ -3,4 +3,7 @@ print(i >> 1)
 print(i >> 1000)
 
 # result needs rounding up
-print(-(1<<70) >> 80)
+i = -(1 << 70)
+print(i >> 80)
+i = -0xffffffffffffffff
+print(i >> 32)

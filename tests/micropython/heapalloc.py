@@ -2,6 +2,15 @@
 
 import micropython
 
+# Check for stackless build, which can't call functions without
+# allocating a frame on heap.
+try:
+    def stackless(): pass
+    micropython.heap_lock(); stackless(); micropython.heap_unlock()
+except RuntimeError:
+    print("SKIP")
+    raise SystemExit
+
 def f1(a):
     print(a)
 
@@ -18,7 +27,7 @@ def f3(a, b, c, d):
 global_var = 1
 
 def test():
-    global global_var
+    global global_var, global_exc
     global_var = 2      # set an existing global variable
     for i in range(2):  # for loop
         f1(i)           # function call

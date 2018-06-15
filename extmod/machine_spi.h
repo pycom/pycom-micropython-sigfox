@@ -23,29 +23,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
 #ifndef MICROPY_INCLUDED_EXTMOD_MACHINE_SPI_H
 #define MICROPY_INCLUDED_EXTMOD_MACHINE_SPI_H
 
 #include "py/obj.h"
 #include "py/mphal.h"
+#include "drivers/bus/spi.h"
 
 // SPI protocol
 typedef struct _mp_machine_spi_p_t {
+    void (*init)(mp_obj_base_t *obj, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
+    void (*deinit)(mp_obj_base_t *obj); // can be NULL
     void (*transfer)(mp_obj_base_t *obj, size_t len, const uint8_t *src, uint8_t *dest);
 } mp_machine_spi_p_t;
 
 typedef struct _mp_machine_soft_spi_obj_t {
     mp_obj_base_t base;
-    uint32_t delay_half; // microsecond delay for half SCK period
-    uint8_t polarity;
-    uint8_t phase;
-    mp_hal_pin_obj_t sck;
-    mp_hal_pin_obj_t mosi;
-    mp_hal_pin_obj_t miso;
+    mp_soft_spi_obj_t spi;
 } mp_machine_soft_spi_obj_t;
 
-void mp_machine_soft_spi_transfer(mp_obj_base_t *self, size_t len, const uint8_t *src, uint8_t *dest);
+extern const mp_machine_spi_p_t mp_machine_soft_spi_p;
+extern const mp_obj_type_t mp_machine_soft_spi_type;
+extern const mp_obj_dict_t mp_machine_spi_locals_dict;
+
+mp_obj_t mp_machine_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args);
 
 MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(mp_machine_spi_read_obj);
 MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(mp_machine_spi_readinto_obj);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -24,7 +24,7 @@
 #include "mpexception.h"
 #include "radio.h"
 #include "modnetwork.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 #include "modusocket.h"
 #include "pycom_config.h"
 #include "mpirq.h"
@@ -350,6 +350,28 @@ bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length) {
         return true;
     }
     return false;
+}
+
+void modlora_sleep_module(void)
+{
+    lora_cmd_data_t cmd_data;
+    /* Set Modem mode to LORA in order to got to Sleep Mode */
+    Radio.SetModem(MODEM_LORA);
+    cmd_data.cmd = E_LORA_CMD_SLEEP;
+    /* Send Sleep Command to Lora Task */
+    lora_send_cmd (&cmd_data);
+}
+
+bool modlora_is_module_sleep(void)
+{
+	if (lora_obj.state == E_LORA_STATE_SLEEP)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
 }
 
 /******************************************************************************
@@ -2325,13 +2347,13 @@ static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp
     mp_int_t ret = 0;
 
     LORA_CHECK_SOCKET(s);
-    if (request == MP_IOCTL_POLL) {
+    if (request == MP_STREAM_POLL) {
         mp_uint_t flags = arg;
-        if ((flags & MP_IOCTL_POLL_RD) && lora_rx_any()) {
-            ret |= MP_IOCTL_POLL_RD;
+        if ((flags & MP_STREAM_POLL_RD) && lora_rx_any()) {
+            ret |= MP_STREAM_POLL_RD;
         }
-        if ((flags & MP_IOCTL_POLL_WR) && lora_tx_space()) {
-            ret |= MP_IOCTL_POLL_WR;
+        if ((flags & MP_STREAM_POLL_WR) && lora_tx_space()) {
+            ret |= MP_STREAM_POLL_WR;
         }
     } else {
         *_errno = MP_EINVAL;

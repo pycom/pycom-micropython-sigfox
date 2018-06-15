@@ -25,12 +25,12 @@ all_pins = [
     #'G28','P12',  #Pin used for factory reset
     'G5','P13',
     'G4','P14',
-    'G0','P15',
+    #'G0','P15',   #Pin used for LTE_WAKE
     'G3','P16',
-    'G31','P17',
-    'G30','P18',
-    'G6','P19',
-    'G7','P20',
+    #'G31','P17',  #Pin used for LTE_CTS
+    #'G30','P18'  #Pin used for LTE_RX
+    #'G6','P19',  #Pin used for LTE_RTS
+    #'G7','P20',  #Pin used for LTE_TX
     'G8','P21',
     #'G9','P22'    #Pin used for the onewire sensor
     #'G10','P23'   #Pin used for I2C SDA loop
@@ -50,6 +50,7 @@ used_pins = [
              'G12','P5',   #Pin used for Lora CLK
              'G13','P6',   #Pin used for Lora MOSI
              'G14','P7'    #Pin used for Lora MISO
+             ''
 ]
 
 pin_map = list(set(all_pins) - set(used_pins))

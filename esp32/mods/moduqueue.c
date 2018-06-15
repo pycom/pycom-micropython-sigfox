@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -92,9 +92,12 @@ STATIC mp_obj_t mp_queue_put(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
 
     uint32_t timeout_ms = (args[2].u_obj == mp_const_none) ? portMAX_DELAY : mp_obj_get_int_truncated(args[2].u_obj);
+    MP_THREAD_GIL_EXIT();
     if (!xQueueSend(self->handle, (void *)&args[0].u_obj, args[1].u_bool ? (TickType_t)(timeout_ms / portTICK_PERIOD_MS) : 0)) {
+        MP_THREAD_GIL_ENTER();
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Full"));
     }
+    MP_THREAD_GIL_ENTER();
 
     return mp_const_none;
 }
@@ -113,9 +116,12 @@ STATIC mp_obj_t mp_queue_get(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
 
     uint32_t timeout_ms = (args[1].u_obj == mp_const_none) ? portMAX_DELAY : mp_obj_get_int_truncated(args[1].u_obj);
     mp_obj_t item;
+    MP_THREAD_GIL_EXIT();
     if (!xQueueReceive(self->handle, (void *)&item, args[0].u_bool ? (TickType_t)(timeout_ms / portTICK_PERIOD_MS) : 0)) {
+        MP_THREAD_GIL_ENTER();
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Empty"));
     }
+    MP_THREAD_GIL_ENTER();
 
     return item;
 }

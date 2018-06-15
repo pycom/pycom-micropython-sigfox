@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -249,7 +249,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid (mp_uint_t n_args, const mp_obj_t *args) {
     } else {
         uint8_t wifi_ssid[32];
         config_get_wifi_ssid(wifi_ssid);
-        return mp_obj_new_str((const char*)wifi_ssid,strlen((const char*)wifi_ssid),false);
+        return mp_obj_new_str((const char*)wifi_ssid,strlen((const char*)wifi_ssid));
     }
     return mp_const_none;
 }
@@ -262,7 +262,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd (mp_uint_t n_args, const mp_obj_t *args) {
     } else {
         uint8_t wifi_pwd[64];
         config_get_wifi_pwd(wifi_pwd);
-        return mp_obj_new_str((const char*)wifi_pwd,strlen((const char*)wifi_pwd),false);
+        return mp_obj_new_str((const char*)wifi_pwd,strlen((const char*)wifi_pwd));
     }
     return mp_const_none;
 }

@@ -1,5 +1,5 @@
 #
-# Copyright © 2016, Pycom Limited.
+# Copyright © 2018, Pycom Limited.
 #
 # This software is licensed under the GNU GPL version 3 or any
 # later version, with permitted additional terms. For more information
@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-TARGET ?= app
+TARGET ?= boot_app
 
 OEM ?= 0
 
@@ -22,6 +22,8 @@ OEM ?= 0
 BTYPE ?= release
 
 BUILD = build/$(BOARD)/$(BTYPE)
+
+RELEASE_DIR ?= build/
 
 # by default Secure Boot and Flash Encryption are disabled
 SECURE ?= off

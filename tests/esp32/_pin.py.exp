@@ -21,21 +21,7 @@ True
 <class 'Pin'>
 <class 'Pin'>
 <class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
-<class 'Pin'>
 PULL-UP
-True
-True
-True
-True
 True
 True
 True
@@ -54,11 +40,7 @@ True
 True
 PULL-DOWN
 False
-True
 False
-True
-True
-True
 False
 False
 False
@@ -83,8 +65,8 @@ Exception
 Exception
 Exception
 Exception
-Pin('P18', mode=Pin.IN, pull=None, alt=-1)
-P18
+Pin('P16', mode=Pin.IN, pull=None, alt=-1)
+P16
 1
 None
 0

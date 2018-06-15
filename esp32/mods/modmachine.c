@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2016, Pycom Limited and its licensors.
+ * Copyright (c) 2018, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -71,7 +71,11 @@
 #include "pybdac.h"
 #include "pybsd.h"
 #include "modbt.h"
+/* Uncomment to Enable Wifi AP after wakeup from light sleep
+#include "modnetwork.h"
+#include "antenna.h"*/
 #include "modwlan.h"
+#include "modlora.h"
 #include "machwdt.h"
 #include "machcan.h"
 #include "machrmt.h"
@@ -180,11 +184,60 @@ STATIC mp_obj_t machine_idle(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_idle_obj, machine_idle);
 
-STATIC mp_obj_t machine_sleep (void) {
-    // TODO
-    return mp_const_none;
+STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
+	bt_deinit(NULL);
+	wlan_deinit(NULL);
+#if defined(FIPY) || defined(GPY)
+	while (!lteppp_task_ready()) {
+		mp_hal_delay_ms(2);
+	}
+	lteppp_deinit();
+#endif
+
+#if defined(LOPY) || defined(LOPY4) || defined(FIPY)
+	/* Send LoRa module to Sleep Mode */
+    modlora_sleep_module();
+	while(!modlora_is_module_sleep())
+	{
+		mp_hal_delay_ms(2);
+	}
+#endif
+
+	if (n_args == 0)
+	{
+		mach_expected_wakeup_time = 0;
+		esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);
+	}
+	else
+	{
+		int64_t sleep_time = (int64_t)mp_obj_get_int_truncated(arg[0]) * 1000;
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
+		esp_sleep_enable_timer_wakeup(sleep_time);
+	}
+
+	if(ESP_OK != esp_light_sleep_start())
+	{
+		nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Wifi or BT not stopped before sleep"));
+	}
+/* Uncomment to Enable Wifi AP after wakeup from light sleep
+	mp_hal_delay_ms(5);
+
+	if(config_get_wifi_on_boot())
+	{
+		uint8_t wifi_ssid[32];
+		config_get_wifi_ssid(wifi_ssid);
+		uint8_t wifi_pwd[64];
+		config_get_wifi_pwd(wifi_pwd);
+	    wlan_setup (WIFI_MODE_AP, (wifi_ssid[0]==0x00) ? DEFAULT_AP_SSID : (const char*) wifi_ssid , WIFI_AUTH_WPA2_PSK, (wifi_pwd[0]==0x00) ? DEFAULT_AP_PASSWORD : (const char*) wifi_pwd ,
+	                DEFAULT_AP_CHANNEL, ANTENNA_TYPE_INTERNAL, (wifi_ssid[0]==0x00) ? true:false, false);
+	    mod_network_register_nic(&wlan_obj);
+	}*/
+
+	return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_sleep_obj, machine_sleep);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_sleep_obj,0, 1, machine_sleep);
 
 STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     mperror_enable_heartbeat(false);
@@ -214,7 +267,7 @@ STATIC mp_obj_t machine_remaining_sleep_time (void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_remaining_sleep_time_obj, machine_remaining_sleep_time);
 
-STATIC mp_obj_t machine_pin_deepsleep_wakeup (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t machine_pin_sleep_wakeup (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_pins,             MP_ARG_REQUIRED | MP_ARG_OBJ, },
         { MP_QSTR_mode,             MP_ARG_REQUIRED | MP_ARG_INT, },
@@ -248,7 +301,7 @@ STATIC mp_obj_t machine_pin_deepsleep_wakeup (mp_uint_t n_args, const mp_obj_t *
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_deepsleep_wakeup_obj, 0, machine_pin_deepsleep_wakeup);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_pin_sleep_wakeup_obj, 0, machine_pin_sleep_wakeup);
 
 STATIC mp_obj_t machine_reset_cause (void) {
     return mp_obj_new_int(mpsleep_get_reset_cause());
@@ -341,7 +394,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_sleep),                   (mp_obj_t)(&machine_sleep_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deepsleep),               (mp_obj_t)(&machine_deepsleep_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_remaining_sleep_time),    (mp_obj_t)(&machine_remaining_sleep_time_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_pin_deepsleep_wakeup),    (mp_obj_t)(&machine_pin_deepsleep_wakeup_obj) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pin_sleep_wakeup),    (mp_obj_t)(&machine_pin_sleep_wakeup_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset_cause),             (mp_obj_t)(&machine_reset_cause_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_wake_reason),             (mp_obj_t)(&machine_wake_reason_obj) },
 

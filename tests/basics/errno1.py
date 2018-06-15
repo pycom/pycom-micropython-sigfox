@@ -4,8 +4,7 @@ try:
     import uerrno
 except ImportError:
     print("SKIP")
-    import sys
-    sys.exit()
+    raise SystemExit
 
 # check that constants exist and are integers
 print(type(uerrno.EIO))
@@ -16,3 +15,7 @@ print(msg[:7], msg[-5:])
 
 # check that unknown errno is still rendered
 print(str(OSError(9999)))
+
+# this tests a failed constant lookup in errno
+errno = uerrno
+print(errno.__name__)

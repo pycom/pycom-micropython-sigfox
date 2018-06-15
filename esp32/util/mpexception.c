@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -26,16 +26,3 @@ const char mpexception_os_operation_failed[]        = "the requested operation f
 const char mpexception_os_request_not_possible[]    = "the requested operation is not possible";
 const char mpexception_value_invalid_arguments[]    = "invalid argument(s) value";
 const char mpexception_num_type_invalid_arguments[] = "invalid argument(s) num/type";
-
-/******************************************************************************
-DECLARE PRIVATE DATA
- ******************************************************************************/
-
-/******************************************************************************
-DEFINE PUBLIC FUNCTIONS
- ******************************************************************************/
-
-void mpexception_init0 (void) {
-    // Create an exception object for interrupting through the stdin uart
-    MP_STATE_PORT(mp_kbd_exception) = mp_obj_new_exception(&mp_type_KeyboardInterrupt);
-}

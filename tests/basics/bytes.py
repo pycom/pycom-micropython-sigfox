@@ -8,6 +8,9 @@ print(b'\u1234')
 print(bytes())
 print(bytes(b'abc'))
 
+# make sure empty bytes is converted correctly
+print(str(bytes(), 'utf-8'))
+
 a = b"123"
 print(a)
 print(str(a))
@@ -53,3 +56,9 @@ print(x[0], x[1], x[2], x[3])
 print(bytes([128, 255]))
 # For sequence of unknown len
 print(bytes(iter([128, 255])))
+
+# Shouldn't be able to make bytes with negative length
+try:
+    bytes(-1)
+except ValueError:
+    print('ValueError')

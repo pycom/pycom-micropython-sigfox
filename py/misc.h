@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -23,8 +23,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef __MICROPY_INCLUDED_PY_MISC_H__
-#define __MICROPY_INCLUDED_PY_MISC_H__
+#ifndef MICROPY_INCLUDED_PY_MISC_H
+#define MICROPY_INCLUDED_PY_MISC_H
 
 // a mini library of useful types and functions
 
@@ -46,7 +46,11 @@ typedef unsigned int uint;
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
-/** memomry allocation ******************************************/
+// Classical double-indirection stringification of preprocessor macro's value
+#define _MP_STRINGIFY(x) #x
+#define MP_STRINGIFY(x) _MP_STRINGIFY(x)
+
+/** memory allocation ******************************************/
 
 // TODO make a lazy m_renew that can increase by a smaller amount than requested (but by at least 1 more element)
 
@@ -59,8 +63,10 @@ typedef unsigned int uint;
 #define m_new_obj_var_maybe(obj_type, var_type, var_num) ((obj_type*)m_malloc_maybe(sizeof(obj_type) + sizeof(var_type) * (var_num)))
 #if MICROPY_ENABLE_FINALISER
 #define m_new_obj_with_finaliser(type) ((type*)(m_malloc_with_finaliser(sizeof(type))))
+#define m_new_obj_var_with_finaliser(type, var_type, var_num) ((type*)m_malloc_with_finaliser(sizeof(type) + sizeof(var_type) * (var_num)))
 #else
 #define m_new_obj_with_finaliser(type) m_new_obj(type)
+#define m_new_obj_var_with_finaliser(type, var_type, var_num) m_new_obj_var(type, var_type, var_num)
 #endif
 #if MICROPY_MALLOC_USES_ALLOCATED_SIZE
 #define m_renew(type, ptr, old_num, new_num) ((type*)(m_realloc((ptr), sizeof(type) * (old_num), sizeof(type) * (new_num))))
@@ -88,7 +94,7 @@ void *m_realloc(void *ptr, size_t new_num_bytes);
 void *m_realloc_maybe(void *ptr, size_t new_num_bytes, bool allow_move);
 void m_free(void *ptr);
 #endif
-void *m_malloc_fail(size_t num_bytes);
+NORETURN void m_malloc_fail(size_t num_bytes);
 
 #if MICROPY_MEM_STATS
 size_t m_get_total_bytes_allocated(void);
@@ -115,8 +121,15 @@ typedef uint32_t unichar;
 typedef uint unichar;
 #endif
 
+#if MICROPY_PY_BUILTINS_STR_UNICODE
 unichar utf8_get_char(const byte *s);
 const byte *utf8_next_char(const byte *s);
+size_t utf8_charlen(const byte *str, size_t len);
+#else
+static inline unichar utf8_get_char(const byte *s) { return *s; }
+static inline const byte *utf8_next_char(const byte *s) { return s + 1; }
+static inline size_t utf8_charlen(const byte *str, size_t len) { (void)str; return len; }
+#endif
 
 bool unichar_isspace(unichar c);
 bool unichar_isalpha(unichar c);
@@ -129,7 +142,6 @@ bool unichar_islower(unichar c);
 unichar unichar_tolower(unichar c);
 unichar unichar_toupper(unichar c);
 mp_uint_t unichar_xdigit_value(unichar c);
-mp_uint_t unichar_charlen(const char *str, mp_uint_t len);
 #define UTF8_IS_NONASCII(ch) ((ch) & 0x80)
 #define UTF8_IS_CONT(ch) (((ch) & 0xC0) == 0x80)
 
@@ -192,20 +204,6 @@ int DEBUG_printf(const char *fmt, ...);
 
 extern mp_uint_t mp_verbose_flag;
 
-// This is useful for unicode handling. Some CPU archs has
-// special instructions for efficient implentation of this
-// function (e.g. CLZ on ARM).
-// NOTE: this function is unused at the moment
-#ifndef count_lead_ones
-static inline mp_uint_t count_lead_ones(byte val) {
-    mp_uint_t c = 0;
-    for (byte mask = 0x80; val & mask; mask >>= 1) {
-        c++;
-    }
-    return c;
-}
-#endif
-
 /** float internals *************/
 
 #if MICROPY_PY_BUILTINS_FLOAT
@@ -219,4 +217,4 @@ static inline mp_uint_t count_lead_ones(byte val) {
 #define MP_FLOAT_EXP_BIAS ((1 << (MP_FLOAT_EXP_BITS - 1)) - 1)
 #endif // MICROPY_PY_BUILTINS_FLOAT
 
-#endif // __MICROPY_INCLUDED_PY_MISC_H__
+#endif // MICROPY_INCLUDED_PY_MISC_H

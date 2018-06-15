@@ -7,6 +7,8 @@
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
 #include "esp_event.h"
+#include "ff.h"
+#include "littlefs/lfs.h"
 
 #include "mpconfigport.h"
 
@@ -32,5 +34,9 @@ DRESULT sflash_disk_read(BYTE *buff, DWORD sector, UINT count);
 DRESULT sflash_disk_write(const BYTE *buff, DWORD sector, UINT count);
 DRESULT sflash_disk_flush(void);
 uint32_t sflash_get_sector_count(void);
+
+extern int sflash_disk_read_littlefs(const struct lfs_config *lfscfg, void* buff, uint32_t block, uint32_t size);
+extern int sflash_disk_write_littlefs(const struct lfs_config *lfscfg, const void* buff, uint32_t block, uint32_t size);
+extern int sflash_disk_erase_littlefs(const struct lfs_config *lfscfg, uint32_t block);
 
 #endif /* SFLASH_DISKIO_H_ */

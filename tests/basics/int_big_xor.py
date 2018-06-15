@@ -19,6 +19,8 @@ print((-a) ^ (1 << 100))
 print((-a) ^ (1 << 200))
 print((-a) ^ a == 0)
 print(bool((-a) ^ a))
+i = -1
+print(i ^ 0xffffffffffffffff) # carry overflows to higher digit
 
 # test + - 
 

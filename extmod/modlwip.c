@@ -1,10 +1,11 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
  * Copyright (c) 2013, 2014 Damien P. George
  * Copyright (c) 2015 Galen Hazelwood
+ * Copyright (c) 2015-2017 Paul Sokolovsky
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,14 +29,13 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "py/nlr.h"
 #include "py/objlist.h"
 #include "py/runtime.h"
 #include "py/stream.h"
 #include "py/mperrno.h"
 #include "py/mphal.h"
 
-#include "netutils.h"
+#include "lib/netutils/netutils.h"
 
 #include "lwip/init.h"
 #include "lwip/timers.h"
@@ -44,12 +44,17 @@
 //#include "lwip/raw.h"
 #include "lwip/dns.h"
 #include "lwip/tcp_impl.h"
+#include "lwip/igmp.h"
 
 #if 0 // print debugging info
 #define DEBUG_printf DEBUG_printf
 #else // don't print debugging info
 #define DEBUG_printf(...) (void)0
 #endif
+
+// All socket options should be globally distinct,
+// because we ignore option levels for efficiency.
+#define IP_ADD_MEMBERSHIP 0x400
 
 // For compatibilily with older lwIP versions.
 #ifndef ip_set_option
@@ -114,7 +119,7 @@ u32_t sio_tryread(sio_fd_t fd, u8_t *data, u32_t len) {
 }
 
 // constructor lwip.slip(device=integer, iplocal=string, ipremote=string)
-STATIC mp_obj_t lwip_slip_make_new(mp_obj_t type_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t lwip_slip_make_new(mp_obj_t type_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 3, 3, false);
 
     lwip_slip_obj.base.type = &lwip_slip_type;
@@ -123,15 +128,15 @@ STATIC mp_obj_t lwip_slip_make_new(mp_obj_t type_in, mp_uint_t n_args, mp_uint_t
 
     ip_addr_t iplocal, ipremote;
     if (!ipaddr_aton(mp_obj_str_get_str(args[1]), &iplocal)) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid local IP"));
+        mp_raise_ValueError("not a valid local IP");
     }
     if (!ipaddr_aton(mp_obj_str_get_str(args[2]), &ipremote)) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "not a valid remote IP"));
+        mp_raise_ValueError("not a valid remote IP");
     }
 
     struct netif *n = &lwip_slip_obj.lwip_netif;
     if (netif_add(n, &iplocal, IP_ADDR_BROADCAST, &ipremote, NULL, slipif_init, ip_input) == NULL) {
-       nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "out of memory"));
+       mp_raise_ValueError("out of memory");
     }
     netif_set_up(n);
     netif_set_default(n);
@@ -147,8 +152,8 @@ STATIC mp_obj_t lwip_slip_status(mp_obj_t self_in) {
 
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lwip_slip_status_obj, lwip_slip_status);
 
-STATIC const mp_map_elem_t lwip_slip_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_status), (mp_obj_t)&lwip_slip_status_obj },
+STATIC const mp_rom_map_elem_t lwip_slip_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_status), MP_ROM_PTR(&lwip_slip_status_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(lwip_slip_locals_dict, lwip_slip_locals_dict_table);
@@ -157,7 +162,7 @@ STATIC const mp_obj_type_t lwip_slip_type = {
     { &mp_type_type },
     .name = MP_QSTR_slip,
     .make_new = lwip_slip_make_new,
-    .locals_dict = (mp_obj_t)&lwip_slip_locals_dict,
+    .locals_dict = (mp_obj_dict_t*)&lwip_slip_locals_dict,
 };
 
 #endif // MICROPY_PY_LWIP_SLIP
@@ -372,7 +377,7 @@ STATIC err_t _lwip_tcp_recv(void *arg, struct tcp_pcb *tcpb, struct pbuf *p, err
 }
 
 /*******************************************************************************/
-// Functions for socket send/recieve operations. Socket send/recv and friends call
+// Functions for socket send/receive operations. Socket send/recv and friends call
 // these to do the work.
 
 // Helper function for send/sendto to handle UDP packets.
@@ -493,6 +498,11 @@ STATIC mp_uint_t lwip_tcp_send(lwip_socket_obj_t *socket, const byte *buf, mp_ui
 
     err_t err = tcp_write(socket->pcb.tcp, buf, write_len, TCP_WRITE_FLAG_COPY);
 
+    // If the output buffer is getting full then send the data to the lower layers
+    if (err == ERR_OK && tcp_sndbuf(socket->pcb.tcp) < TCP_SND_BUF / 4) {
+        err = tcp_output(socket->pcb.tcp);
+    }
+
     if (err != ERR_OK) {
         *_errno = error_lookup_table[-err];
         return MP_STREAM_ERROR;
@@ -578,8 +588,7 @@ STATIC void lwip_socket_print(const mp_print_t *print, mp_obj_t self_in, mp_prin
 }
 
 // FIXME: Only supports two arguments at present
-STATIC mp_obj_t lwip_socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args,
-    mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t lwip_socket_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 4, false);
 
     lwip_socket_obj_t *socket = m_new_obj_with_finaliser(lwip_socket_obj_t);
@@ -627,42 +636,6 @@ STATIC mp_obj_t lwip_socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args
     socket->recv_offset = 0;
     return socket;
 }
-
-STATIC mp_obj_t lwip_socket_close(mp_obj_t self_in) {
-    lwip_socket_obj_t *socket = self_in;
-    bool socket_is_listener = false;
-
-    if (socket->pcb.tcp == NULL) {
-        return mp_const_none;
-    }
-    switch (socket->type) {
-        case MOD_NETWORK_SOCK_STREAM: {
-            if (socket->pcb.tcp->state == LISTEN) {
-                socket_is_listener = true;
-            }
-            if (tcp_close(socket->pcb.tcp) != ERR_OK) {
-                DEBUG_printf("lwip_close: had to call tcp_abort()\n");
-                tcp_abort(socket->pcb.tcp);
-            }
-            break;
-        }
-        case MOD_NETWORK_SOCK_DGRAM: udp_remove(socket->pcb.udp); break;
-        //case MOD_NETWORK_SOCK_RAW: raw_remove(socket->pcb.raw); break;
-    }
-    socket->pcb.tcp = NULL;
-    socket->state = _ERR_BADF;
-    if (socket->incoming.pbuf != NULL) {
-        if (!socket_is_listener) {
-            pbuf_free(socket->incoming.pbuf);
-        } else {
-            tcp_abort(socket->incoming.connection);
-        }
-        socket->incoming.pbuf = NULL;
-    }
-
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(lwip_socket_close_obj, lwip_socket_close);
 
 STATIC mp_obj_t lwip_socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
     lwip_socket_obj_t *socket = self_in;
@@ -732,7 +705,9 @@ STATIC mp_obj_t lwip_socket_accept(mp_obj_t self_in) {
 
     // accept incoming connection
     if (socket->incoming.connection == NULL) {
-        if (socket->timeout != -1) {
+        if (socket->timeout == 0) {
+            mp_raise_OSError(MP_EAGAIN);
+        } else if (socket->timeout != -1) {
             for (mp_uint_t retries = socket->timeout / 100; retries--;) {
                 mp_hal_delay_ms(100);
                 if (socket->incoming.connection != NULL) break;
@@ -800,12 +775,12 @@ STATIC mp_obj_t lwip_socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
         case MOD_NETWORK_SOCK_STREAM: {
             if (socket->state != STATE_NEW) {
                 if (socket->state == STATE_CONNECTED) {
-                    mp_raise_OSError(MP_EALREADY);
+                    mp_raise_OSError(MP_EISCONN);
                 } else {
-                    mp_raise_OSError(MP_EINPROGRESS);
+                    mp_raise_OSError(MP_EALREADY);
                 }
             }
-            // Register our recieve callback.
+            // Register our receive callback.
             tcp_recv(socket->pcb.tcp, _lwip_tcp_recv);
             socket->state = STATE_CONNECTING;
             err = tcp_connect(socket->pcb.tcp, &dest, port, _lwip_tcp_connected);
@@ -822,7 +797,7 @@ STATIC mp_obj_t lwip_socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
                     if (socket->state != STATE_CONNECTING) break;
                 }
                 if (socket->state == STATE_CONNECTING) {
-                    mp_raise_OSError(MP_ETIMEDOUT);
+                    mp_raise_OSError(MP_EINPROGRESS);
                 }
             } else {
                 while (socket->state == STATE_CONNECTING) {
@@ -1026,7 +1001,7 @@ STATIC mp_obj_t lwip_socket_sendall(mp_obj_t self_in, mp_obj_t buf_in) {
             break;
         }
         case MOD_NETWORK_SOCK_DGRAM:
-            mp_not_implemented("");
+            mp_raise_NotImplementedError(NULL);
             break;
     }
 
@@ -1063,7 +1038,7 @@ STATIC mp_obj_t lwip_socket_setblocking(mp_obj_t self_in, mp_obj_t flag_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lwip_socket_setblocking_obj, lwip_socket_setblocking);
 
-STATIC mp_obj_t lwip_socket_setsockopt(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t lwip_socket_setsockopt(size_t n_args, const mp_obj_t *args) {
     (void)n_args; // always 4
     lwip_socket_obj_t *socket = args[0];
 
@@ -1077,10 +1052,10 @@ STATIC mp_obj_t lwip_socket_setsockopt(mp_uint_t n_args, const mp_obj_t *args) {
         return mp_const_none;
     }
 
-    // Integer options
-    mp_int_t val = mp_obj_get_int(args[3]);
     switch (opt) {
-        case SOF_REUSEADDR:
+        // level: SOL_SOCKET
+        case SOF_REUSEADDR: {
+            mp_int_t val = mp_obj_get_int(args[3]);
             // Options are common for UDP and TCP pcb's.
             if (val) {
                 ip_set_option(socket->pcb.tcp, SOF_REUSEADDR);
@@ -1088,6 +1063,24 @@ STATIC mp_obj_t lwip_socket_setsockopt(mp_uint_t n_args, const mp_obj_t *args) {
                 ip_reset_option(socket->pcb.tcp, SOF_REUSEADDR);
             }
             break;
+        }
+
+        // level: IPPROTO_IP
+        case IP_ADD_MEMBERSHIP: {
+            mp_buffer_info_t bufinfo;
+            mp_get_buffer_raise(args[3], &bufinfo, MP_BUFFER_READ);
+            if (bufinfo.len != sizeof(ip_addr_t) * 2) {
+                mp_raise_ValueError(NULL);
+            }
+
+            // POSIX setsockopt has order: group addr, if addr, lwIP has it vice-versa
+            err_t err = igmp_joingroup((ip_addr_t*)bufinfo.buf + 1, bufinfo.buf);
+            if (err != ERR_OK) {
+                mp_raise_OSError(error_lookup_table[-err]);
+            }
+            break;
+        }
+
         default:
             printf("Warning: lwip.setsockopt() not implemented\n");
     }
@@ -1095,7 +1088,7 @@ STATIC mp_obj_t lwip_socket_setsockopt(mp_uint_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lwip_socket_setsockopt_obj, 4, 4, lwip_socket_setsockopt);
 
-STATIC mp_obj_t lwip_socket_makefile(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t lwip_socket_makefile(size_t n_args, const mp_obj_t *args) {
     (void)n_args;
     return args[0];
 }
@@ -1127,32 +1120,105 @@ STATIC mp_uint_t lwip_socket_write(mp_obj_t self_in, const void *buf, mp_uint_t 
     return MP_STREAM_ERROR;
 }
 
-STATIC const mp_map_elem_t lwip_socket_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR___del__), (mp_obj_t)&lwip_socket_close_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_close), (mp_obj_t)&lwip_socket_close_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_bind), (mp_obj_t)&lwip_socket_bind_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_listen), (mp_obj_t)&lwip_socket_listen_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_accept), (mp_obj_t)&lwip_socket_accept_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_connect), (mp_obj_t)&lwip_socket_connect_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_send), (mp_obj_t)&lwip_socket_send_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_recv), (mp_obj_t)&lwip_socket_recv_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_sendto), (mp_obj_t)&lwip_socket_sendto_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_recvfrom), (mp_obj_t)&lwip_socket_recvfrom_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_sendall), (mp_obj_t)&lwip_socket_sendall_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_settimeout), (mp_obj_t)&lwip_socket_settimeout_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_setblocking), (mp_obj_t)&lwip_socket_setblocking_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_setsockopt), (mp_obj_t)&lwip_socket_setsockopt_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_makefile), (mp_obj_t)&lwip_socket_makefile_obj },
+STATIC mp_uint_t lwip_socket_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
+    lwip_socket_obj_t *socket = self_in;
+    mp_uint_t ret;
 
-    { MP_OBJ_NEW_QSTR(MP_QSTR_read), (mp_obj_t)&mp_stream_read_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readline), (mp_obj_t)&mp_stream_unbuffered_readline_obj},
-    { MP_OBJ_NEW_QSTR(MP_QSTR_write), (mp_obj_t)&mp_stream_write_obj },
+    if (request == MP_STREAM_POLL) {
+        uintptr_t flags = arg;
+        ret = 0;
+
+        if (flags & MP_STREAM_POLL_RD && socket->incoming.pbuf != NULL) {
+            ret |= MP_STREAM_POLL_RD;
+        }
+
+        // Note: pcb.tcp==NULL if state<0, and in this case we can't call tcp_sndbuf
+        if (flags & MP_STREAM_POLL_WR && socket->pcb.tcp != NULL && tcp_sndbuf(socket->pcb.tcp) > 0) {
+            ret |= MP_STREAM_POLL_WR;
+        }
+
+        if (socket->state == STATE_PEER_CLOSED) {
+            // Peer-closed socket is both readable and writable: read will
+            // return EOF, write - error. Without this poll will hang on a
+            // socket which was closed by peer.
+            ret |= flags & (MP_STREAM_POLL_RD | MP_STREAM_POLL_WR);
+        } else if (socket->state == ERR_RST) {
+            // Socket was reset by peer, a write will return an error
+            ret |= flags & (MP_STREAM_POLL_WR | MP_STREAM_POLL_HUP);
+        } else if (socket->state < 0) {
+            // Socket in some other error state, use catch-all ERR flag
+            // TODO: may need to set other return flags here
+            ret |= flags & MP_STREAM_POLL_ERR;
+        }
+
+    } else if (request == MP_STREAM_CLOSE) {
+        bool socket_is_listener = false;
+
+        if (socket->pcb.tcp == NULL) {
+            return 0;
+        }
+        switch (socket->type) {
+            case MOD_NETWORK_SOCK_STREAM: {
+                if (socket->pcb.tcp->state == LISTEN) {
+                    socket_is_listener = true;
+                }
+                if (tcp_close(socket->pcb.tcp) != ERR_OK) {
+                    DEBUG_printf("lwip_close: had to call tcp_abort()\n");
+                    tcp_abort(socket->pcb.tcp);
+                }
+                break;
+            }
+            case MOD_NETWORK_SOCK_DGRAM: udp_remove(socket->pcb.udp); break;
+            //case MOD_NETWORK_SOCK_RAW: raw_remove(socket->pcb.raw); break;
+        }
+        socket->pcb.tcp = NULL;
+        socket->state = _ERR_BADF;
+        if (socket->incoming.pbuf != NULL) {
+            if (!socket_is_listener) {
+                pbuf_free(socket->incoming.pbuf);
+            } else {
+                tcp_abort(socket->incoming.connection);
+            }
+            socket->incoming.pbuf = NULL;
+        }
+        ret = 0;
+
+    } else {
+        *errcode = MP_EINVAL;
+        ret = MP_STREAM_ERROR;
+    }
+
+    return ret;
+}
+
+STATIC const mp_rom_map_elem_t lwip_socket_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&mp_stream_close_obj) },
+    { MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&mp_stream_close_obj) },
+    { MP_ROM_QSTR(MP_QSTR_bind), MP_ROM_PTR(&lwip_socket_bind_obj) },
+    { MP_ROM_QSTR(MP_QSTR_listen), MP_ROM_PTR(&lwip_socket_listen_obj) },
+    { MP_ROM_QSTR(MP_QSTR_accept), MP_ROM_PTR(&lwip_socket_accept_obj) },
+    { MP_ROM_QSTR(MP_QSTR_connect), MP_ROM_PTR(&lwip_socket_connect_obj) },
+    { MP_ROM_QSTR(MP_QSTR_send), MP_ROM_PTR(&lwip_socket_send_obj) },
+    { MP_ROM_QSTR(MP_QSTR_recv), MP_ROM_PTR(&lwip_socket_recv_obj) },
+    { MP_ROM_QSTR(MP_QSTR_sendto), MP_ROM_PTR(&lwip_socket_sendto_obj) },
+    { MP_ROM_QSTR(MP_QSTR_recvfrom), MP_ROM_PTR(&lwip_socket_recvfrom_obj) },
+    { MP_ROM_QSTR(MP_QSTR_sendall), MP_ROM_PTR(&lwip_socket_sendall_obj) },
+    { MP_ROM_QSTR(MP_QSTR_settimeout), MP_ROM_PTR(&lwip_socket_settimeout_obj) },
+    { MP_ROM_QSTR(MP_QSTR_setblocking), MP_ROM_PTR(&lwip_socket_setblocking_obj) },
+    { MP_ROM_QSTR(MP_QSTR_setsockopt), MP_ROM_PTR(&lwip_socket_setsockopt_obj) },
+    { MP_ROM_QSTR(MP_QSTR_makefile), MP_ROM_PTR(&lwip_socket_makefile_obj) },
+
+    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_stream_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_readinto), MP_ROM_PTR(&mp_stream_readinto_obj) },
+    { MP_ROM_QSTR(MP_QSTR_readline), MP_ROM_PTR(&mp_stream_unbuffered_readline_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_stream_write_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(lwip_socket_locals_dict, lwip_socket_locals_dict_table);
 
 STATIC const mp_stream_p_t lwip_socket_stream_p = {
     .read = lwip_socket_read,
     .write = lwip_socket_write,
+    .ioctl = lwip_socket_ioctl,
 };
 
 STATIC const mp_obj_type_t lwip_socket_type = {
@@ -1161,7 +1227,7 @@ STATIC const mp_obj_type_t lwip_socket_type = {
     .print = lwip_socket_print,
     .make_new = lwip_socket_make_new,
     .protocol = &lwip_socket_stream_p,
-    .locals_dict = (mp_obj_t)&lwip_socket_locals_dict,
+    .locals_dict = (mp_obj_dict_t*)&lwip_socket_locals_dict,
 };
 
 /******************************************************************************/
@@ -1233,10 +1299,33 @@ STATIC void lwip_getaddrinfo_cb(const char *name, ip_addr_t *ipaddr, void *arg) 
 }
 
 // lwip.getaddrinfo
-STATIC mp_obj_t lwip_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
-    mp_uint_t hlen;
-    const char *host = mp_obj_str_get_data(host_in, &hlen);
+STATIC mp_obj_t lwip_getaddrinfo(size_t n_args, const mp_obj_t *args) {
+    mp_obj_t host_in = args[0], port_in = args[1];
+    const char *host = mp_obj_str_get_str(host_in);
     mp_int_t port = mp_obj_get_int(port_in);
+
+    // If constraints were passed then check they are compatible with the supported params
+    if (n_args > 2) {
+        mp_int_t family = mp_obj_get_int(args[2]);
+        mp_int_t type = 0;
+        mp_int_t proto = 0;
+        mp_int_t flags = 0;
+        if (n_args > 3) {
+            type = mp_obj_get_int(args[3]);
+            if (n_args > 4) {
+                proto = mp_obj_get_int(args[4]);
+                if (n_args > 5) {
+                    flags = mp_obj_get_int(args[5]);
+                }
+            }
+        }
+        if (!((family == 0 || family == MOD_NETWORK_AF_INET)
+            && (type == 0 || type == MOD_NETWORK_SOCK_STREAM)
+            && proto == 0
+            && flags == 0)) {
+            mp_warning("unsupported getaddrinfo constraints");
+        }
+    }
 
     getaddrinfo_state_t state;
     state.status = 0;
@@ -1270,7 +1359,7 @@ STATIC mp_obj_t lwip_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
     tuple->items[4] = netutils_format_inet_addr((uint8_t*)&state.ipaddr, port, NETUTILS_BIG);
     return mp_obj_new_list(1, (mp_obj_t*)&tuple);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(lwip_getaddrinfo_obj, lwip_getaddrinfo);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(lwip_getaddrinfo_obj, 2, 6, lwip_getaddrinfo);
 
 // Debug functions
 
@@ -1282,27 +1371,30 @@ MP_DEFINE_CONST_FUN_OBJ_0(lwip_print_pcbs_obj, lwip_print_pcbs);
 
 #ifdef MICROPY_PY_LWIP
 
-STATIC const mp_map_elem_t mp_module_lwip_globals_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_lwip) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_reset), (mp_obj_t)&mod_lwip_reset_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_callback), (mp_obj_t)&mod_lwip_callback_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_getaddrinfo), (mp_obj_t)&lwip_getaddrinfo_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_print_pcbs), (mp_obj_t)&lwip_print_pcbs_obj },
+STATIC const mp_rom_map_elem_t mp_module_lwip_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_lwip) },
+    { MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&mod_lwip_reset_obj) },
+    { MP_ROM_QSTR(MP_QSTR_callback), MP_ROM_PTR(&mod_lwip_callback_obj) },
+    { MP_ROM_QSTR(MP_QSTR_getaddrinfo), MP_ROM_PTR(&lwip_getaddrinfo_obj) },
+    { MP_ROM_QSTR(MP_QSTR_print_pcbs), MP_ROM_PTR(&lwip_print_pcbs_obj) },
     // objects
-    { MP_OBJ_NEW_QSTR(MP_QSTR_socket), (mp_obj_t)&lwip_socket_type },
+    { MP_ROM_QSTR(MP_QSTR_socket), MP_ROM_PTR(&lwip_socket_type) },
 #ifdef MICROPY_PY_LWIP_SLIP
-    { MP_OBJ_NEW_QSTR(MP_QSTR_slip), (mp_obj_t)&lwip_slip_type },
+    { MP_ROM_QSTR(MP_QSTR_slip), MP_ROM_PTR(&lwip_slip_type) },
 #endif
     // class constants
-    { MP_OBJ_NEW_QSTR(MP_QSTR_AF_INET), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_AF_INET) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_AF_INET6), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_AF_INET6) },
+    { MP_ROM_QSTR(MP_QSTR_AF_INET), MP_ROM_INT(MOD_NETWORK_AF_INET) },
+    { MP_ROM_QSTR(MP_QSTR_AF_INET6), MP_ROM_INT(MOD_NETWORK_AF_INET6) },
 
-    { MP_OBJ_NEW_QSTR(MP_QSTR_SOCK_STREAM), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_SOCK_STREAM) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_SOCK_DGRAM), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_SOCK_DGRAM) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_SOCK_RAW), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_SOCK_RAW) },
+    { MP_ROM_QSTR(MP_QSTR_SOCK_STREAM), MP_ROM_INT(MOD_NETWORK_SOCK_STREAM) },
+    { MP_ROM_QSTR(MP_QSTR_SOCK_DGRAM), MP_ROM_INT(MOD_NETWORK_SOCK_DGRAM) },
+    { MP_ROM_QSTR(MP_QSTR_SOCK_RAW), MP_ROM_INT(MOD_NETWORK_SOCK_RAW) },
 
-    { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_SOCKET), MP_OBJ_NEW_SMALL_INT(1) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_SO_REUSEADDR), MP_OBJ_NEW_SMALL_INT(SOF_REUSEADDR) },
+    { MP_ROM_QSTR(MP_QSTR_SOL_SOCKET), MP_ROM_INT(1) },
+    { MP_ROM_QSTR(MP_QSTR_SO_REUSEADDR), MP_ROM_INT(SOF_REUSEADDR) },
+
+    { MP_ROM_QSTR(MP_QSTR_IPPROTO_IP), MP_ROM_INT(0) },
+    { MP_ROM_QSTR(MP_QSTR_IP_ADD_MEMBERSHIP), MP_ROM_INT(IP_ADD_MEMBERSHIP) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mp_module_lwip_globals, mp_module_lwip_globals_table);

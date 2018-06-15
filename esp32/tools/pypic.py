@@ -74,7 +74,7 @@ class Pypic:
 
     def __init__(self, port):
         # we need bytesize to be 5 bits in order for the PIC to process the commands
-        self.serial = serial.Serial(port, baudrate=115200, bytesize=serial.FIVEBITS, timeout=0.25)
+        self.serial = serial.Serial(port, baudrate=115200, bytesize=serial.FIVEBITS, timeout=0.25, exclusive=True)
         self.detected = False
 
         try:
@@ -150,10 +150,16 @@ class Pypic:
         # as this is mandatory for the regular expansion board
 
     def exit_pycom_programming_mode(self):
+        # make RC0 an output
+        self.mask_bits_in_memory(TRISC_ADDR, ~(1 << 0))
+        # set RC0 high
+        self.set_bits_in_memory(PORTC_ADDR, 1 << 0)
+        # perform reset
+        self.reset_pycom_module()
+        time.sleep(0.1)
         # make RC0 an input
         # This will prevent issues with the RGB LED
         self.set_bits_in_memory(TRISC_ADDR, 1 << 0)
-        self.reset_pycom_module()
 
     def isdetected(self):
         return self.detected
