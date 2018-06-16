@@ -645,10 +645,13 @@ STATIC const mp_obj_type_t raw_socket_type = {
 
 // function usocket.getaddrinfo(host, port)
 /// \function getaddrinfo(host, port)
-STATIC mp_obj_t mod_usocket_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
+STATIC mp_obj_t mod_usocket_getaddrinfo(size_t n_args, const mp_obj_t *args) {
+
     mp_uint_t hlen;
-    const char *host = mp_obj_str_get_data(host_in, &hlen);
-    mp_int_t port = mp_obj_get_int(port_in);
+
+    // TODO support additional args beyond the first two
+    const char *host = mp_obj_str_get_data(args[0], &hlen);
+    mp_int_t port = mp_obj_get_int(args[1]);
 
     // find a nic that can do a name lookup
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
@@ -674,7 +677,8 @@ STATIC mp_obj_t mod_usocket_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
 
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_usocket_getaddrinfo_obj, mod_usocket_getaddrinfo);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_usocket_getaddrinfo_obj, 2, 6, mod_usocket_getaddrinfo);
+
 
 STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),        MP_OBJ_NEW_QSTR(MP_QSTR_usocket) },
