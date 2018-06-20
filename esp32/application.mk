@@ -355,10 +355,10 @@ ifeq ($(BTYPE), debug)
     CFLAGS_SIGFOX += -DDEBUG
 else
     ifeq ($(BTYPE), release)
-        CFLAGS += -DNDEBUG
-        CFLAGS_SIGFOX += -DNDEBUG
+	CFLAGS += -DNDEBUG
+	CFLAGS_SIGFOX += -DNDEBUG
     else
-        $(error Invalid BTYPE specified)
+	$(error Invalid BTYPE specified)
     endif
 endif
 
@@ -369,11 +369,14 @@ BOOT_OFFSET = 0x1000
 PART_OFFSET = 0x8000
 APP_OFFSET  = 0x10000
 
-SHELL    = bash
+SHELL	 = bash
 
 BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
 
 ifeq ($(BOARD), WIPY)
+    APP_BIN = $(BUILD)/wipy.bin
+endif
+ifeq ($(BOARD), ESP32)
     APP_BIN = $(BUILD)/wipy.bin
 endif
 ifeq ($(BOARD), LOPY)
@@ -426,7 +429,8 @@ ENTER_FLASHING_MODE = $(PIC_TOOL) --enter
 EXIT_FLASHING_MODE = $(PIC_TOOL) --exit
 
 ESPTOOLPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/esptool.py --chip esp32
-ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD) --before no_reset --after no_reset
+ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD)
+#ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD) --before no_reset --after no_reset
 
 ESPTOOLPY_WRITE_FLASH  = $(ESPTOOLPY_SERIAL) write_flash -z --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE)
 ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash
@@ -491,7 +495,7 @@ $(SECURE_BOOTLOADER_KEY): $(ORIG_SECURE_KEY)
 	$(ESPSECUREPY) digest_private_key --keyfile $< $@
 
 # the actual digest+bootloader, that needs to be flashed at address 0x0
-BOOTLOADER_REFLASH_DIGEST = 	$(BUILD)/bootloader/bootloader-reflash-digest.bin
+BOOTLOADER_REFLASH_DIGEST =	$(BUILD)/bootloader/bootloader-reflash-digest.bin
 BOOTLOADER_REFLASH_DIGEST_ENC = $(BOOTLOADER_REFLASH_DIGEST)_enc
 
 ORIG_ENCRYPT_KEY := $(call resolvepath,$(call dequote,$(ENCRYPT_KEY)),$(PROJECT_PATH))
@@ -526,7 +530,7 @@ ifeq ($(SECURE), on)
 	$(AR) x libbootloader_support.a ;\
 	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(CP) ../../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
-	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o  libbootloader_support.a ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o	libbootloader_support.a ;\
 	$(OBJCOPY) $(OBJCOPY_EMBED_ARGS) $(SECURE_BOOT_VERIFICATION_KEY) $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(AR) cru libbootloader_support.a *.o ;\
 	$(CP) libbootloader_support.a ../
@@ -588,7 +592,7 @@ ifeq ($(SECURE), on)
 	$(AR) x libbootloader_support.a ;\
 	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(CP) ../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
-	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o  libbootloader_support.a ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o	libbootloader_support.a ;\
 	$(OBJCOPY) $(OBJCOPY_EMBED_ARGS) $(SECURE_BOOT_VERIFICATION_KEY) $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(AR) cru libbootloader_support.a *.o ;\
 	$(CP) libbootloader_support.a ../
