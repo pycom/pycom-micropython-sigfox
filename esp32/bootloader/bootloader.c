@@ -745,7 +745,7 @@ static void print_flash_info(const esp_image_header_t* phdr)
 
 static void vddsdio_configure()
 {
-#if CONFIG_BOOTLOADER_VDDSDIO_BOOST
+#if CONFIG_BOOTLOADER_VDDSDIO_BOOST_1_9V
     rtc_vddsdio_config_t cfg = rtc_vddsdio_get_config();
     if (cfg.enable == 1 && cfg.tieh == 0) {    // VDDSDIO regulator is enabled @ 1.8V
         cfg.drefh = 3;
@@ -755,7 +755,7 @@ static void vddsdio_configure()
         rtc_vddsdio_set_config(cfg);
         ets_delay_us(10); // wait for regulator to become stable
     }
-#endif // CONFIG_BOOTLOADER_VDDSDIO_BOOST
+#endif // CONFIG_BOOTLOADER_VDDSDIO_BOOST_1_9V
 }
 
 
