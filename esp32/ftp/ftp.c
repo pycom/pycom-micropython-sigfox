@@ -1419,8 +1419,16 @@ static ftp_result_t ftp_list_dir (char *list, uint32_t maxlistsize, uint32_t *li
                     result = E_FTP_RESULT_OK;
                     break;                                                                                 /* Break on error or end of dp */
                 }
-                if (fno.u.fpinfo_lfs.name[0] == '.' && fno.u.fpinfo_lfs.name[1] == 0) continue;                                    /* Ignore . entry */
-                if (fno.u.fpinfo_lfs.name[0] == '.' && fno.u.fpinfo_lfs.name[1] == '.' && fno.u.fpinfo_lfs.name[2] == 0) continue;             /* Ignore .. entry */
+                if (fno.u.fpinfo_lfs.name[0] == '.' && fno.u.fpinfo_lfs.name[1] == 0)
+                {
+                    ftp_last_dir_idx++;
+                    continue;            /* Ignore . entry, but need to count it as LittleFs does not filter it out opposed to FatFs */
+                }
+                if (fno.u.fpinfo_lfs.name[0] == '.' && fno.u.fpinfo_lfs.name[1] == '.' && fno.u.fpinfo_lfs.name[2] == 0)
+                {
+                    ftp_last_dir_idx++;
+                    continue;            /* Ignore .. entry, but need to count it as LittleFs does not filter it out opposed to FatFs */
+                }
             }
             else
             {
