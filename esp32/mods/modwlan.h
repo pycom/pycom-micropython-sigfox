@@ -86,5 +86,6 @@ extern bool wlan_is_connected (void);
 extern void wlan_set_current_time (uint32_t seconds_since_2000);
 extern void wlan_off_on (void);
 extern mp_obj_t wlan_deinit(mp_obj_t self_in);
+extern void wlan_resume (bool reconnect);
 
 #endif /* MODWLAN_H_ */

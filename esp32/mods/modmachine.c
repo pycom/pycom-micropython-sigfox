@@ -71,9 +71,6 @@
 #include "pybdac.h"
 #include "pybsd.h"
 #include "modbt.h"
-/* Uncomment to Enable Wifi AP after wakeup from light sleep
-#include "modnetwork.h"
-#include "antenna.h"*/
 #include "modwlan.h"
 #include "modlora.h"
 #include "machwdt.h"
@@ -185,6 +182,8 @@ STATIC mp_obj_t machine_idle(void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_idle_obj, machine_idle);
 
 STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
+
+	bool reconnect = false;
 	bt_deinit(NULL);
 	wlan_deinit(NULL);
 #if defined(FIPY) || defined(GPY)
@@ -215,29 +214,29 @@ STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
 		gettimeofday(&tv, NULL);
 		mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
 		esp_sleep_enable_timer_wakeup(sleep_time);
+		if(n_args == 2)
+		{
+			reconnect = (bool)mp_obj_is_true(arg[1]);
+		}
+		else
+		{
+			reconnect = false;
+		}
 	}
 
 	if(ESP_OK != esp_light_sleep_start())
 	{
 		nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Wifi or BT not stopped before sleep"));
 	}
-/* Uncomment to Enable Wifi AP after wakeup from light sleep
-	mp_hal_delay_ms(5);
 
-	if(config_get_wifi_on_boot())
-	{
-		uint8_t wifi_ssid[32];
-		config_get_wifi_ssid(wifi_ssid);
-		uint8_t wifi_pwd[64];
-		config_get_wifi_pwd(wifi_pwd);
-	    wlan_setup (WIFI_MODE_AP, (wifi_ssid[0]==0x00) ? DEFAULT_AP_SSID : (const char*) wifi_ssid , WIFI_AUTH_WPA2_PSK, (wifi_pwd[0]==0x00) ? DEFAULT_AP_PASSWORD : (const char*) wifi_pwd ,
-	                DEFAULT_AP_CHANNEL, ANTENNA_TYPE_INTERNAL, (wifi_ssid[0]==0x00) ? true:false, false);
-	    mod_network_register_nic(&wlan_obj);
-	}*/
+	/* resume wlan */
+	wlan_resume(reconnect);
+	/* resume bt */
+	bt_resume(reconnect);
 
 	return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_sleep_obj,0, 1, machine_sleep);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_sleep_obj,0, 2, machine_sleep);
 
 STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     mperror_enable_heartbeat(false);
