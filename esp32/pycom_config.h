@@ -47,8 +47,11 @@ typedef struct {
 } pycom_rgbled_config_t;
 
 typedef struct {
-    uint8_t pycom_hw_version;
-    uint8_t pycom_sw_version[12];
+    uint8_t hw_type;
+    uint8_t sw_version[12];
+    uint8_t boot_fs_type;
+    uint8_t boot_partition;
+    uint8_t pycom_reserved[488];
 } pycom_config_t;
 
 typedef struct {
@@ -60,10 +63,9 @@ typedef struct {
     pycom_lpwan_config_t lpwan_config;
     pycom_wifi_config_t wifi_config;
     pycom_rgbled_config_t rgbled_config;
-    uint8_t pycom_reserved[335];
-    pycom_config_t pycom_config;
+    uint8_t pycom_reserved[348];
     pycom_wdt_config_t wdt_config;
-    uint8_t pycom_dummy[248];
+    pycom_config_t pycom_config;
 } pycom_config_block_t;
 
 /******************************************************************************
@@ -118,5 +120,13 @@ void config_get_wifi_pwd(uint8_t *wifi_pwd);
 bool config_set_lora_region (uint8_t lora_region);
 
 uint8_t config_get_lora_region (void);
+
+uint8_t config_get_boot_fs_type (void);
+
+bool config_set_boot_fs_type (const uint8_t boot_fs_type);
+
+uint8_t config_get_boot_partition (void);
+
+bool config_set_boot_partition (const uint8_t boot_partition);
 
 #endif /* PYCOM_CONFIG_H_ */

@@ -31,8 +31,8 @@
 #include "ff.h"
 #include "lfs.h"
 #include "extmod/vfs.h"
-#include "vfs_littlefs.h"
 
+#include "mptask.h"
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/

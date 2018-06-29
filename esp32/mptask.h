@@ -25,12 +25,12 @@
 /******************************************************************************
  DECLARE PUBLIC VARIABLES
  ******************************************************************************/
-extern fs_user_mount_t sflash_vfs_fat;
-extern fs_user_mount_t sflash_vfs_littlefs;
+extern fs_user_mount_t sflash_vfs_flash;
 
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
 extern void TASK_Micropython (void *pvParameters);
+extern bool isLittleFs(const TCHAR *path);
 
 #endif /* MPTASK_H_ */

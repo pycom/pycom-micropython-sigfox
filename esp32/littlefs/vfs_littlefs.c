@@ -168,19 +168,6 @@ static int parse_and_append_to_cwd(vfs_lfs_struct_t* littlefs, const char* path_
     return LFS_ERR_OK;
 }
 
-bool isLittleFs(const TCHAR *path)
-{
-    const char *flash = "/flash";
-
-    if(strncmp(flash, path, sizeof(flash)-1) == 0)
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
-}
 
 // this table converts from FRESULT to POSIX errno
 byte littleFsErrorToErrno(enum lfs_error littleFsError)
