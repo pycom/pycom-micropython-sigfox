@@ -26,7 +26,6 @@ static pycom_config_block_t pycom_config_block;
 void config_init0 (void) {
     // read the config struct from flash
     spi_flash_read(CONFIG_DATA_FLASH_ADDR, (void *)&pycom_config_block, sizeof(pycom_config_block));
-    // printf("Config block has size: %d\n", sizeof(pycom_config_block));
 }
 
 bool config_set_lpwan_mac (const uint8_t *mac) {
@@ -157,8 +156,34 @@ void config_get_wifi_pwd (uint8_t *wifi_pwd) {
     }
 }
 
+uint8_t config_get_boot_partition (void) {
+    if (pycom_config_block.pycom_config.boot_partition==0xff) {
+        return 0x00;
+    }
+    return pycom_config_block.pycom_config.boot_partition;
+}
+
+bool config_set_boot_partition (const uint8_t boot_partition) {
+    pycom_config_block.pycom_config.boot_partition=boot_partition;
+    return config_write();
+}
+
+uint8_t config_get_boot_fs_type (void) {
+#ifdef FS_USE_LITTLEFS
+    return 0x01;
+#endif
+    if (pycom_config_block.pycom_config.boot_fs_type==0xff) {
+        return 0x00;
+    }
+    return pycom_config_block.pycom_config.boot_fs_type;
+}
+
+bool config_set_boot_fs_type (const uint8_t boot_fs_type) {
+    pycom_config_block.pycom_config.boot_fs_type=boot_fs_type;
+    return config_write();
+}
+
 static bool config_write (void) {
-// printf("Config block has size: %d\n", sizeof(pycom_config_block));
     // erase the block first
     if (ESP_OK == spi_flash_erase_sector(CONFIG_DATA_FLASH_BLOCK)) {
         // then write it

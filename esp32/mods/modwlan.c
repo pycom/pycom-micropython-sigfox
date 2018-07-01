@@ -94,6 +94,8 @@
 //#define IPV4_ADDR_STR_LEN_MAX           (16)
 
 #define FILE_READ_SIZE                      256
+#define BSSID_MAX_SIZE						6
+#define MAX_WLAN_KEY_SIZE					65
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -119,6 +121,23 @@ wlan_obj_t wlan_obj = {
 
 static EventGroupHandle_t wifi_event_group;
 
+static bool mod_wlan_is_deinit = false;
+static bool mod_wlan_was_servers_stopped = false;
+static bool mod_wlan_was_sta_disconnected;
+
+/* Variables holding wlan conn params for sleep recovery of connections */
+static uint8_t wlan_conn_recover_ssid[(MODWLAN_SSID_LEN_MAX + 1)];
+static uint8_t wlan_conn_recover_bssid[BSSID_MAX_SIZE];
+static uint8_t wlan_conn_recover_key[MAX_WLAN_KEY_SIZE];
+static uint8_t wlan_conn_recover_hostname[TCPIP_HOSTNAME_MAX_SIZE];
+static uint8_t wlan_conn_recover_auth;
+static int32_t wlan_conn_recover_timeout;
+static wlan_wpa2_ent_obj_t wlan_wpa2_ent;
+static uint8_t wlan_conn_recover_channel;
+static uint8_t wlan_conn_recover_antenna;
+static bool wlan_conn_recover_hidden = false;
+static int32_t wlan_conn_recover_bandwidth;
+static uint8_t wlan_conn_recover_mode;
 
 // Event bits
 const int CONNECTED_BIT = BIT0;
@@ -151,6 +170,7 @@ STATIC void wlan_validate_channel (uint8_t channel);
 STATIC void wlan_set_antenna (uint8_t antenna);
 static esp_err_t wlan_event_handler(void *ctx, system_event_t *event);
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key, int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent, const char *hostname);
+static void wlan_init_wlan_recover_params(void);
 //STATIC void wlan_get_sl_mac (void);
 //STATIC void wlan_wep_key_unhexlify (const char *key, char *key_out);
 //STATIC void wlan_lpds_irq_enable (mp_obj_t self_in);
@@ -174,6 +194,62 @@ void wlan_pre_init (void) {
     wifi_event_group = xEventGroupCreate();
     ESP_ERROR_CHECK(esp_event_loop_init(wlan_event_handler, NULL));
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
+    wlan_wpa2_ent.ca_certs_path = NULL;
+    wlan_wpa2_ent.client_cert_path = NULL;
+    wlan_wpa2_ent.client_key_path = NULL;
+    wlan_wpa2_ent.identity = NULL;
+    wlan_wpa2_ent.username = NULL;
+    mod_wlan_was_sta_disconnected = false;
+    wlan_init_wlan_recover_params();
+}
+
+void wlan_resume (bool reconnect)
+{
+    if (!servers_are_enabled() && mod_wlan_was_servers_stopped) {
+       wlan_servers_start();
+       mod_wlan_was_servers_stopped = false;
+    }
+
+    if (!wlan_obj.started && mod_wlan_is_deinit) {
+
+        esp_wifi_start();
+        mod_wlan_is_deinit = false;
+
+        if(reconnect)
+        {
+    		const char* bssid = NULL;
+    		const char* key = NULL;
+    		const char* hostname = NULL;
+
+    		if(wlan_conn_recover_bssid[0] != '\0')
+    		{
+    			bssid = (const char*)wlan_conn_recover_bssid;
+    		}
+    		if(wlan_conn_recover_key[0] != '\0')
+    		{
+    			key = (const char*)wlan_conn_recover_key;
+    		}
+    		if(wlan_conn_recover_hostname[0] != '\0')
+    		{
+    			hostname = (const char*)wlan_conn_recover_hostname;
+    		}
+
+    	    // initialize the wlan subsystem
+    	    wlan_setup(wlan_conn_recover_mode, (const char *)wlan_conn_recover_ssid, wlan_conn_recover_auth, key, wlan_conn_recover_channel, wlan_conn_recover_antenna,
+    	    																																	false, wlan_conn_recover_hidden, wlan_conn_recover_bandwidth);
+
+
+    		if (mod_wlan_was_sta_disconnected) {
+    			/* re-establish connection */
+    			wlan_do_connect ((const char*)wlan_conn_recover_ssid, bssid, wlan_conn_recover_auth, (const char*)wlan_conn_recover_key,
+    																										wlan_conn_recover_timeout, &wlan_wpa2_ent, hostname);
+
+    			mod_wlan_was_sta_disconnected = false;
+    		}
+
+    		wlan_init_wlan_recover_params();
+        }
+    }
 }
 
 void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac, bool hidden, wifi_bandwidth_t bandwidth) {
@@ -672,6 +748,21 @@ STATIC char *wlan_read_file (const char *file_path, vstr_t *vstr) {
     return vstr->buf;
 }
 
+static void wlan_init_wlan_recover_params(void)
+{
+	wlan_conn_recover_ssid[0] = '\0';
+	wlan_conn_recover_bssid[0] = '\0';
+	wlan_conn_recover_key[0] = '\0';
+	wlan_conn_recover_hostname[0] = '\0';
+	wlan_conn_recover_auth = WIFI_AUTH_MAX;
+	wlan_conn_recover_timeout = -1;
+	wlan_conn_recover_channel = 0;
+	wlan_conn_recover_antenna = ANTENNA_TYPE_INTERNAL;
+	wlan_conn_recover_hidden = false;
+	wlan_conn_recover_bandwidth = 0;
+	wlan_conn_recover_mode = WIFI_MODE_NULL;
+}
+
 //STATIC void wlan_get_sl_mac (void) {
 //    // Get the MAC address
 ////    uint8_t macAddrLen = SL_MAC_ADDR_LEN;
@@ -783,6 +874,12 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
     int32_t bandwidth = args[7].u_int;
     wlan_validate_bandwidth(bandwidth);
 
+    wlan_conn_recover_channel = channel;
+    wlan_conn_recover_antenna = antenna;
+    wlan_conn_recover_hidden = hidden;
+    wlan_conn_recover_bandwidth = bandwidth;
+    wlan_conn_recover_mode = mode;
+
     // initialize the wlan subsystem
     wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false, hidden, bandwidth);
     mod_network_register_nic(&wlan_obj);
@@ -839,11 +936,19 @@ mp_obj_t wlan_deinit(mp_obj_t self_in) {
 
     if (servers_are_enabled()) {
        wlan_servers_stop();
+       mod_wlan_was_servers_stopped = true;
     }
 
     if (wlan_obj.started) {
         esp_wifi_stop();
         wlan_obj.started = false;
+        mod_wlan_is_deinit = true;
+        if(wlan_obj.mode == WIFI_MODE_STA)
+        {
+            esp_wifi_disconnect();
+            wlan_obj.disconnected = true;
+            mod_wlan_was_sta_disconnected = true;
+        }
     }
     return mp_const_none;
 }
@@ -923,8 +1028,14 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
     // get the ssid
     const char *ssid = mp_obj_str_get_str(args[0].u_obj);
     wlan_validate_ssid_len(strlen(ssid));
+    /* Save connection params for sleep connection recovery */
+    strcpy((char *)wlan_conn_recover_ssid, (char *)ssid);
 
-    wlan_wpa2_ent_obj_t wpa2_ent = {NULL, NULL, NULL, NULL, NULL};
+    wlan_wpa2_ent.ca_certs_path = NULL;
+    wlan_wpa2_ent.client_cert_path = NULL;
+    wlan_wpa2_ent.client_key_path = NULL;
+    wlan_wpa2_ent.identity = NULL;
+    wlan_wpa2_ent.username = NULL;
 
     // get the auth
     const char *key = NULL;
@@ -961,12 +1072,16 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
         } else {
             goto auth_error;
         }
+        /* Save connection params for sleep connection recovery */
+        strcpy((char *)wlan_conn_recover_key, (char *)key);
     }
 
     // get the bssid
     const char *bssid = NULL;
     if (args[2].u_obj != mp_const_none) {
         bssid = mp_obj_str_get_str(args[2].u_obj);
+        /* Save connection params for sleep connection recovery */
+        strcpy((char *)wlan_conn_recover_bssid, (char *)bssid);
     }
 
     // get the timeout
@@ -977,37 +1092,42 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
 
     // get the ca_certificate
     if (args[4].u_obj != mp_const_none) {
-        wpa2_ent.ca_certs_path = mp_obj_str_get_str(args[4].u_obj);
+    	wlan_wpa2_ent.ca_certs_path = mp_obj_str_get_str(args[4].u_obj);
     }
 
     // get the private key
     if (args[5].u_obj != mp_const_none) {
-        wpa2_ent.client_key_path = mp_obj_str_get_str(args[5].u_obj);
+    	wlan_wpa2_ent.client_key_path = mp_obj_str_get_str(args[5].u_obj);
     }
 
     // get the client certificate
     if (args[6].u_obj != mp_const_none) {
-        wpa2_ent.client_cert_path = mp_obj_str_get_str(args[6].u_obj);
+    	wlan_wpa2_ent.client_cert_path = mp_obj_str_get_str(args[6].u_obj);
     }
 
     // get the identity
     if (args[7].u_obj != mp_const_none) {
-        wpa2_ent.identity = mp_obj_str_get_str(args[7].u_obj);
+    	wlan_wpa2_ent.identity = mp_obj_str_get_str(args[7].u_obj);
     }
 
     const char *hostname = NULL;
     if (args[8].u_obj != mp_const_none) {
         hostname = mp_obj_str_get_str(args[8].u_obj);
         wlan_validate_hostname(hostname);
+        /* Save connection params for sleep connection recovery */
+        strcpy((char *)wlan_conn_recover_hostname, (char *)hostname);
     }
 
     if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
-        wpa2_ent.username = user;
-        wlan_validate_certificates(&wpa2_ent);
+    	wlan_wpa2_ent.username = user;
+        wlan_validate_certificates(&wlan_wpa2_ent);
     }
 
+    wlan_conn_recover_auth = auth;
+    wlan_conn_recover_timeout = timeout;
+
     // connect to the requested access point
-    wlan_do_connect (ssid, bssid, auth, key, timeout, &wpa2_ent, hostname);
+    wlan_do_connect (ssid, bssid, auth, key, timeout, &wlan_wpa2_ent, hostname);
 
     return mp_const_none;
 

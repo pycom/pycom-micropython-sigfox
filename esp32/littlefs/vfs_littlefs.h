@@ -14,7 +14,6 @@ typedef struct vfs_lfs_struct_s
     SemaphoreHandle_t mutex; // Needs to be created
 }vfs_lfs_struct_t;
 
-extern bool isLittleFs(const TCHAR *path);
 extern byte littleFsErrorToErrno(enum lfs_error littleFsError);
 extern FRESULT lfsErrorToFatFsError(int lfs_error);
 extern int fatFsModetoLittleFsMode(int FatFsMode);

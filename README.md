@@ -109,6 +109,14 @@ By default the firmware is built for the WIPY2:
     $ make
     $ make flash
 
+You can force the firmware to use LittleFS (the default is FatFS if not configured via pycom.bootmgr() or firmware updater):
+
+    $ cd esp32
+    $ make clean
+    $ make FS=LFS
+    $ make flash
+
+
 By default, both bootloader and application are built. To build them separately:
 
     $ cd esp32
