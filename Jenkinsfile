@@ -8,8 +8,6 @@ node {
         checkout scm
         sh 'rm -rf esp-idf'
         sh 'git clone --depth=1 --recursive -b idf_dev https://github.com/pycom/pycom-esp-idf.git esp-idf'
-        sh 'cd esp-idf'
-        sh 'git submodule update'
     }
     
 	PYCOM_VERSION=get_version()
