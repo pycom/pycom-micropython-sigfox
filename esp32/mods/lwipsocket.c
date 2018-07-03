@@ -155,7 +155,7 @@ int lwipsocket_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t p
 
     if (ret != 0) {
         // printf("Connect returned -0x%x\n", -ret);
-        *_errno = ret;
+        *_errno = errno;
         return -1;
     }
 
@@ -166,7 +166,7 @@ int lwipsocket_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t p
 
         if ((ret = mbedtls_net_set_block(&ss->context_fd)) != 0) {
             // printf("failed! net_set_(non)block() returned -0x%x\n", -ret);
-            *_errno = ret;
+            *_errno = errno;
             return -1;
         }
 
@@ -179,7 +179,7 @@ int lwipsocket_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t p
             if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_TIMEOUT)
             {
                 // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
-                *_errno = ret;
+                *_errno = errno;
                 return -1;
             }
         }
@@ -189,7 +189,7 @@ int lwipsocket_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t p
         if ((ret = mbedtls_ssl_get_verify_result(&ss->ssl)) != 0) {
             /* In real life, we probably want to close connection if ret != 0 */
             // printf("Failed to verify peer certificate!\n");
-            *_errno = ret;
+            *_errno = errno;
             return -1;
         } else {
             // printf("Certificate verified.\n");
