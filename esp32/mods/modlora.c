@@ -1220,7 +1220,7 @@ static void lora_validate_frequency (uint32_t frequency) {
             }
             break;
         case LORAMAC_REGION_EU433:
-            if (frequency < 433000000 || frequency > 435000000) { // LoRa 433 - 434 
+            if (frequency < 433000000 || frequency > 435000000) { // LoRa 433 - 434
                 goto freq_error;
             }
             break;
