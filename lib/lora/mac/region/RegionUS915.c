@@ -849,11 +849,12 @@ LoRaMacStatus_t RegionUS915ChannelManualAdd( ChannelAddParams_t* channelAdd )
         return LORAMAC_STATUS_PARAMETER_INVALID;
     }
 
-    // Validate the datarate range for min: must be DR_0
-    if( channelAdd->NewChannel->DrRange.Fields.Min != DR_0 )
+    // Validate the datarate range for min: must be DR_0 for channels 0-63
+    if( id < 64 && channelAdd->NewChannel->DrRange.Fields.Min != DR_0 )
     {
         drInvalid = true;
     }
+
     // Validate the datarate range for max: must be <= TX_MAX_DATARATE
     if( channelAdd->NewChannel->DrRange.Fields.Max > US915_TX_MAX_DATARATE )
     {
