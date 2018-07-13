@@ -52,7 +52,7 @@ def main():
     shutil.copy(src + '/vfs/libvfs.a', dst)
     shutil.copy(src + '/wpa_supplicant/libwpa_supplicant.a', dst)
     shutil.copy(src + '/xtensa-debug-module/libxtensa-debug-module.a', dst)
-
+    shutil.copy(src + '/openthread/libopenthread.a', dst)
 
 if __name__ == "__main__":
     main()

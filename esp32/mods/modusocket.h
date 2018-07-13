@@ -52,6 +52,10 @@
 #define SO_SIGFOX_OOB                       (0xF0006)
 #define SO_SIGFOX_BIT                       (0xF0007)
 
+/* chars for storing an IPv6 address 39 chars + zero end string
+* ex: ABCD:ABCD:ABCD:ABCD:ABCD:ABCD:ABCD:ABCD 4*8+7=39 chars */
+#define MOD_USOCKET_IPV6_CHARS_MAX					40
+
 extern const mp_obj_dict_t socket_locals_dict;
 extern const mp_stream_p_t socket_stream_p;
 

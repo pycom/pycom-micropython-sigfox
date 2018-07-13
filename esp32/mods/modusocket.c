@@ -392,8 +392,24 @@ STATIC mp_obj_t socket_sendto(mp_obj_t self_in, mp_obj_t data_in, mp_obj_t addr_
     mp_get_buffer_raise(data_in, &bufinfo, MP_BUFFER_READ);
 
     // get address
-    uint8_t ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
-    mp_uint_t port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
+    uint8_t ip[MOD_USOCKET_IPV6_CHARS_MAX];
+    mp_uint_t port = 0;
+
+#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+    if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
+        mp_obj_t *addr_items;
+		mp_obj_get_array_fixed_n(addr_in, 2, &addr_items);
+		size_t addr_len;
+		const char *addr_str = mp_obj_str_get_data(addr_items[0], &addr_len);
+		addr_len++; //string end null char
+		memcpy(ip, addr_str, (addr_len< MOD_USOCKET_IPV6_CHARS_MAX)?addr_len:MOD_USOCKET_IPV6_CHARS_MAX);
+		port = mp_obj_get_int(addr_items[1]);
+    } else {
+    		port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
+    }
+#else
+    port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
+#endif
 
     // call the nic to sendto
     int _errno;
@@ -415,9 +431,11 @@ STATIC mp_obj_t socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
     mod_network_socket_obj_t *self = self_in;
     vstr_t vstr;
     vstr_init_len(&vstr, mp_obj_get_int(len_in));
-    byte ip[4];
+    byte ip[MOD_USOCKET_IPV6_CHARS_MAX];
     mp_uint_t port;
     int _errno;
+
+    ip[0] = 0;// init IP with null
     MP_THREAD_GIL_EXIT();
     mp_int_t ret = self->sock_base.nic_type->n_recvfrom(self, (byte*)vstr.buf, vstr.len, ip, &port, &_errno);
     MP_THREAD_GIL_ENTER();
@@ -436,8 +454,18 @@ STATIC mp_obj_t socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
         tuple[0] = mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
     }
 #if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+    // check if lora NIC and IP is not set (so Lora Raw or LoraWAN, but no Lora Mesh)
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
-        tuple[1] = mp_obj_new_int(port);
+    		if (ip[0] == 0) {
+            tuple[1] = mp_obj_new_int(port);
+    		} else {
+    			// Lora Mesh
+    			mp_obj_t addr[2] = {
+				addr[0] = mp_obj_new_str((char*)ip, strlen((char*)ip)),
+				addr[1] = mp_obj_new_int(port),
+    			};
+    			tuple[1] = mp_obj_new_tuple(2, addr);
+    		}
     } else {
         tuple[1] = netutils_format_inet_addr(ip, port, NETUTILS_LITTLE);
     }
@@ -558,6 +586,7 @@ STATIC const mp_map_elem_t raw_socket_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___del__),         (mp_obj_t)&socket_close_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_close),           (mp_obj_t)&socket_close_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_send),            (mp_obj_t)&socket_send_obj },
+	{ MP_OBJ_NEW_QSTR(MP_QSTR_sendto),          (mp_obj_t)&socket_sendto_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_recv),            (mp_obj_t)&socket_recv_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_recvfrom),        (mp_obj_t)&socket_recvfrom_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_settimeout),      (mp_obj_t)&socket_settimeout_obj },
@@ -645,10 +674,13 @@ STATIC const mp_obj_type_t raw_socket_type = {
 
 // function usocket.getaddrinfo(host, port)
 /// \function getaddrinfo(host, port)
-STATIC mp_obj_t mod_usocket_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
+STATIC mp_obj_t mod_usocket_getaddrinfo(size_t n_args, const mp_obj_t *args) {
+
     mp_uint_t hlen;
-    const char *host = mp_obj_str_get_data(host_in, &hlen);
-    mp_int_t port = mp_obj_get_int(port_in);
+
+    // TODO support additional args beyond the first two
+    const char *host = mp_obj_str_get_data(args[0], &hlen);
+    mp_int_t port = mp_obj_get_int(args[1]);
 
     // find a nic that can do a name lookup
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
@@ -674,7 +706,8 @@ STATIC mp_obj_t mod_usocket_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
 
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_usocket_getaddrinfo_obj, mod_usocket_getaddrinfo);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_usocket_getaddrinfo_obj, 2, 6, mod_usocket_getaddrinfo);
+
 
 STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),        MP_OBJ_NEW_QSTR(MP_QSTR_usocket) },

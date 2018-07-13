@@ -126,6 +126,7 @@
 #define MP_EDOM             EDOM
 #define MP_ERANGE           ERANGE
 #define MP_EWOULDBLOCK      EAGAIN
+#define MP_ENOTEMPTY        ENOTEMPTY
 #define MP_EMSGSIZE         EMSGSIZE
 #define MP_EOPNOTSUPP       EOPNOTSUPP
 #define MP_EAFNOSUPPORT     EAFNOSUPPORT

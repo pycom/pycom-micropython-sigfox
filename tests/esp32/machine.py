@@ -43,3 +43,13 @@ try:
     machine.main("other_main.py")
 except:
     print('Exception')
+
+# Test machine.RTC
+from machine import RTC
+
+rtc = RTC()
+#reset memory
+rtc.memory(b'')
+print(rtc.memory())
+rtc.memory(b'10101010')
+print(rtc.memory())
