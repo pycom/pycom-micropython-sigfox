@@ -1342,7 +1342,10 @@ static void lora_validate_device_class (DeviceClass_t device_class) {
 static void lora_validate_region (LoRaMacRegion_t region) {
     if (region != LORAMAC_REGION_AS923 && region != LORAMAC_REGION_AU915
         && region != LORAMAC_REGION_EU868 && region != LORAMAC_REGION_US915
-        && region != LORAMAC_REGION_EU433) {
+#if defined(LOOPY4)
+        && region != LORAMAC_REGION_EU433
+#endif
+        ) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid region %d", region));
     }
 }
