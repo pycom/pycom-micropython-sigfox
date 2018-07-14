@@ -433,6 +433,15 @@ bool RegionEU433NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel,
 LoRaMacStatus_t RegionEU433ChannelAdd( ChannelAddParams_t* channelAdd );
 
 /*!
+ * \brief Adds a channel.
+ *
+ * \param [IN] channelAdd Pointer to the function parameters.
+ *
+ * \retval Status of the operation.
+ */
+LoRaMacStatus_t RegionEU433ChannelManualAdd( ChannelAddParams_t* channelAdd );
+
+/*!
  * \brief Removes a channel.
  *
  * \param [IN] channelRemove Pointer to the function parameters.

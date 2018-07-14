@@ -286,6 +286,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU433_NEXT_CHANNEL( )                      EU433_CASE { return RegionEU433NextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define EU433_CHANNEL_ADD( )                       EU433_CASE { return RegionEU433ChannelAdd( channelAdd ); }
 #define EU433_CHANNEL_REMOVE( )                    EU433_CASE { return RegionEU433ChannelsRemove( channelRemove ); }
+#define EU433_CHANNEL_MANUAL_ADD( )                EU433_CASE { return RegionEU433ChannelManualAdd( channelAdd ); }
+#define EU433_CHANNEL_MANUAL_REMOVE( )             EU433_CASE { return RegionEU433ChannelsRemove( channelRemove ); }
 #define EU433_SET_CONTINUOUS_WAVE( )               EU433_CASE { RegionEU433SetContinuousWave( continuousWave ); break; }
 #define EU433_APPLY_DR_OFFSET( )                   EU433_CASE { return RegionEU433ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #else
@@ -1035,6 +1037,7 @@ LoRaMacStatus_t RegionChannelManualAdd( LoRaMacRegion_t region, ChannelAddParams
     {
         AS923_CHANNEL_MANUAL_ADD( );
         AU915_CHANNEL_MANUAL_ADD( );
+        EU433_CHANNEL_MANUAL_ADD( );
         EU868_CHANNEL_MANUAL_ADD( );
         US915_CHANNEL_MANUAL_ADD( );
         US915_HYBRID_CHANNEL_MANUAL_ADD( );
