@@ -1,4 +1,8 @@
-import array
+try:
+    import array
+except ImportError:
+    print("SKIP")
+    raise SystemExit
 
 a = array.array('B', [1, 2, 3])
 print(a, len(a))

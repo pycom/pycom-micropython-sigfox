@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, Pycom Limited.
+# Copyright (c) 2018, Pycom Limited.
 #
 # This software is licensed under the GNU GPL version 3 or any
 # later version, with permitted additional terms. For more information
@@ -19,11 +19,12 @@ APP_INC += -Ilte
 APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
+APP_INC += -Ilittlefs
 APP_INC += -I$(BUILD)
 APP_INC += -I$(BUILD)/genhdr
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include_priv
-APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/mbedtls/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
@@ -47,12 +48,13 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/log/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/sdmmc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/vfs/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/device/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/device/include/device
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/dm
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/hh
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/bta/sys/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/common/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/stack/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/stack/gatt/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/stack/gap/include
@@ -65,15 +67,17 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
-APP_INC += -I../lib/fatfs
+APP_INC += -I../lib/oofatfs
 APP_INC += -I../lib
 APP_INC += -I../drivers/sx127x
-APP_INC += -I../stmhal
+APP_INC += -I../ports/stm32
+APP_INC += -I$(ESP_IDF_COMP_PATH)/openthread/src
 
 APP_MAIN_SRC_C = \
 	main.c \
 	mptask.c \
 	serverstask.c \
+	fatfs_port.c \
 	pycom_config.c \
 	mpthreadport.c \
 
@@ -104,14 +108,17 @@ APP_LIB_SRC_C = $(addprefix lib/,\
 	netutils/netutils.c \
 	utils/pyexec.c \
 	utils/interrupt_char.c \
-	fatfs/ff.c \
-	fatfs/option/ccsbcs.c \
+	utils/sys_stdio_mphal.c \
+	oofatfs/ff.c \
+	oofatfs/option/ccsbcs.c \
+	timeutils/timeutils.c \
 	)
 
 APP_MODS_SRC_C = $(addprefix mods/,\
 	machuart.c \
 	machpin.c \
 	machrtc.c \
+	pybflash.c \
 	machspi.c \
 	machine_i2c.c \
 	machpwm.c \
@@ -121,7 +128,6 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modusocket.c \
 	modnetwork.c \
 	modwlan.c \
-	moduselect.c \
 	modutime.c \
 	modpycom.c \
 	moduqueue.c \
@@ -146,13 +152,8 @@ APP_MODS_LORA_SRC_C = $(addprefix mods/,\
 	modlora.c \
 	)
 
-APP_STM_SRC_C = $(addprefix stmhal/,\
+APP_STM_SRC_C = $(addprefix ports/stm32/,\
 	bufhelper.c \
-	builtin_open.c \
-	import.c \
-	input.c \
-	lexerfatfs.c \
-	pybstdio.c \
 	)
 
 APP_UTIL_SRC_C = $(addprefix util/,\
@@ -172,9 +173,14 @@ APP_UTIL_SRC_C = $(addprefix util/,\
 APP_FATFS_SRC_C = $(addprefix fatfs/src/,\
 	drivers/sflash_diskio.c \
 	drivers/sd_diskio.c \
-	option/syscall.c \
-	diskio.c \
-	ffconf.c \
+	)
+
+APP_LITTLEFS_SRC_C = $(addprefix littlefs/,\
+	lfs.c \
+	lfs_util.c \
+	vfs_littlefs.c \
+	vfs_littlefs_file.c \
+	sflash_diskio_littlefs.c \
 	)
 
 APP_LORA_SRC_C = $(addprefix lora/,\
@@ -185,6 +191,11 @@ APP_LORA_SRC_C = $(addprefix lora/,\
 	sx1276-board.c \
 	sx1272-board.c \
 	board.c \
+	otplat_alarm.c \
+	otplat_radio.c \
+	ot-settings.c \
+	ot-log.c \
+	ot-task.c \
 	)
 
 APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
@@ -195,6 +206,7 @@ APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/region/RegionAU915.c \
 	mac/region/RegionCommon.c \
 	mac/region/RegionEU868.c \
+	mac/region/RegionEU433.c \
 	mac/region/RegionUS915.c \
 	system/delay.c \
 	system/gpio.c \
@@ -295,14 +307,14 @@ endif
 
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins.o
 
 BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
 
 # List of sources for qstr extraction
-SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C)
+SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C) $(APP_LIB_SRC_C)
 ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
 SRC_QSTR += $(APP_MODS_LORA_SRC_C)
 endif
@@ -323,9 +335,15 @@ BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.periph
 APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld
 
 # add the application specific CFLAGS
-CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
+CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\"
 CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
-CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915
+CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_EU433 -DREGION_US915
+
+# Give the possibility to use LittleFs on /flash, otherwise  FatFs is used
+FS ?= ""
+ifeq ($(FS), LFS)
+    CFLAGS += -DFS_USE_LITTLEFS
+endif
 
 # add the application archive, this order is very important
 APP_LIBS = -Wl,--start-group $(LIBS) $(BUILD)/application.a -Wl,--end-group -Wl,-EL
@@ -338,10 +356,10 @@ ifeq ($(BTYPE), debug)
     CFLAGS_SIGFOX += -DDEBUG
 else
     ifeq ($(BTYPE), release)
-        CFLAGS += -DNDEBUG
-        CFLAGS_SIGFOX += -DNDEBUG
+	CFLAGS += -DNDEBUG
+	CFLAGS_SIGFOX += -DNDEBUG
     else
-        $(error Invalid BTYPE specified)
+	$(error Invalid BTYPE specified)
     endif
 endif
 
@@ -352,11 +370,14 @@ BOOT_OFFSET = 0x1000
 PART_OFFSET = 0x8000
 APP_OFFSET  = 0x10000
 
-SHELL    = bash
+SHELL	 = bash
 
 BOOT_BIN = $(BUILD)/bootloader/bootloader.bin
 
 ifeq ($(BOARD), WIPY)
+    APP_BIN = $(BUILD)/wipy.bin
+endif
+ifeq ($(BOARD), ESP32)
     APP_BIN = $(BUILD)/wipy.bin
 endif
 ifeq ($(BOARD), LOPY)
@@ -423,7 +444,7 @@ SIGN_BINARY = $(ESPSECUREPY) sign_data --keyfile $(SECURE_KEY)
 
 # actual command for signing a binary
 # it should be used as:
-# $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o image_encrypt.bin image.bin 
+# $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o image_encrypt.bin image.bin
 ENCRYPT_BINARY = $(ESPSECUREPY) encrypt_flash_data --keyfile $(ENCRYPT_KEY)
 ENCRYPT_0x10000 = --address 0x10000
 ENCRYPT_0x1A0000 = --address 0x1A0000
@@ -432,10 +453,13 @@ GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py
 
 ifeq ($(TARGET), app)
 all: $(APP_BIN)
-else
+endif
+ifeq ($(TARGET), boot)
 all: $(BOOT_BIN)
 endif
-
+ifeq ($(TARGET), boot_app)
+all: $(BOOT_BIN) $(APP_BIN)
+endif
 .PHONY: all
 
 ifeq ($(SECURE), on)
@@ -451,12 +475,12 @@ CFLAGS += -DCONFIG_SECURE_BOOT_ENABLED=1
 # find the configured private key file
 ORIG_SECURE_KEY := $(call resolvepath,$(call dequote,$(SECURE_KEY)),$(PROJECT_PATH))
 
-$(ORIG_SECURE_KEY): 
+$(ORIG_SECURE_KEY):
 	$(ECHO) "Secure boot signing key '$@' missing. It can be generated using: "
 	$(ECHO) "$(ESPSECUREPY) generate_signing_key $(SECURE_KEY)"
 	exit 1
 
-# public key name; the name is important 
+# public key name; the name is important
 # because it will go into the elf with symbols having name derived out of this one
 SECURE_BOOT_VERIFICATION_KEY = signature_verification_key.bin
 
@@ -464,30 +488,30 @@ SECURE_BOOT_VERIFICATION_KEY = signature_verification_key.bin
 $(SECURE_BOOT_VERIFICATION_KEY): $(ORIG_SECURE_KEY)
 	$(ESPSECUREPY) extract_public_key --keyfile $< $@
 
-# key used for bootloader digest 
+# key used for bootloader digest
 SECURE_BOOTLOADER_KEY = secure-bootloader-key.bin
 
 $(SECURE_BOOTLOADER_KEY): $(ORIG_SECURE_KEY)
 	$(ESPSECUREPY) digest_private_key --keyfile $< $@
 
 # the actual digest+bootloader, that needs to be flashed at address 0x0
-BOOTLOADER_REFLASH_DIGEST = 	$(BUILD)/bootloader/bootloader-reflash-digest.bin
+BOOTLOADER_REFLASH_DIGEST =	$(BUILD)/bootloader/bootloader-reflash-digest.bin
 BOOTLOADER_REFLASH_DIGEST_ENC = $(BOOTLOADER_REFLASH_DIGEST)_enc
 
 ORIG_ENCRYPT_KEY := $(call resolvepath,$(call dequote,$(ENCRYPT_KEY)),$(PROJECT_PATH))
-$(ORIG_ENCRYPT_KEY): 
+$(ORIG_ENCRYPT_KEY):
 	$(ECHO) "WARNING: Encryption key '$@' missing. It can be created using: "
 	$(ECHO) "$(ESPSECUREPY) generate_flash_encryption_key $(ENCRYPT_KEY)"
 	exit 1
-	
+
 else #ifeq ($(SECURE), on)
-SECURE_BOOT_VERIFICATION_KEY = 
-SECURE_BOOTLOADER_KEY = 
-ORIG_ENCRYPT_KEY = 
+SECURE_BOOT_VERIFICATION_KEY =
+SECURE_BOOTLOADER_KEY =
+ORIG_ENCRYPT_KEY =
 endif #ifeq ($(SECURE), on)
 
 
-ifeq ($(TARGET), boot)
+ifeq ($(TARGET), $(filter $(TARGET), boot boot_app))
 $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
@@ -506,11 +530,11 @@ ifeq ($(SECURE), on)
 	$(AR) x libbootloader_support.a ;\
 	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(CP) ../../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
-	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o  libbootloader_support.a ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o	libbootloader_support.a ;\
 	$(OBJCOPY) $(OBJCOPY_EMBED_ARGS) $(SECURE_BOOT_VERIFICATION_KEY) $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(AR) cru libbootloader_support.a *.o ;\
 	$(CP) libbootloader_support.a ../
-	$(Q) $(RM) -rf ./bootloader/lib/bootloader_support_temp 
+	$(Q) $(RM) -rf ./bootloader/lib/bootloader_support_temp
 endif #ifeq ($(SECURE), on)
 	$(ECHO) "LINK $(CC) *** $(BOOT_LDFLAGS) *** $(BOOT_LIBS) -o $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
@@ -525,7 +549,7 @@ ifeq ($(SECURE), on)
 	$(ECHO) "Encrypt Bootloader digest (for offset 0x0)"
 	$(Q) $(ENCRYPT_BINARY) --address 0x0 -o $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOTLOADER_REFLASH_DIGEST)
 	$(RM) -f $(BOOTLOADER_REFLASH_DIGEST)
-	$(MV) -f $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOT_BIN)
+	$(CP) -f $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOT_BIN)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
@@ -547,19 +571,14 @@ ifeq ($(SECURE), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 endif #ifeq ($(SECURE), on)
-else
-
+endif #ifeq ($(TARGET), $(filter $(TARGET), boot boot_app))
+ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
 
 $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
-ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY LOPY4))
-$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
-	$(ECHO) "LINK $@"
-	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
-	$(Q) $(SIZE) $@
-else
+
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_BOOT_VERIFICATION_KEY)
 #	$(ECHO) "COPY IDF LIBRARIES $@"
 #	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
@@ -573,7 +592,7 @@ ifeq ($(SECURE), on)
 	$(AR) x libbootloader_support.a ;\
 	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(CP) ../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
-	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o  libbootloader_support.a ;\
+	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o	libbootloader_support.a ;\
 	$(OBJCOPY) $(OBJCOPY_EMBED_ARGS) $(SECURE_BOOT_VERIFICATION_KEY) $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(AR) cru libbootloader_support.a *.o ;\
 	$(CP) libbootloader_support.a ../
@@ -581,8 +600,7 @@ ifeq ($(SECURE), on)
 endif #ifeq ($(SECURE), on)
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
-	$(Q) $(SIZE) $@
-endif
+	$(SIZE) $@
 
 $(APP_BIN): $(BUILD)/application.elf $(PART_BIN) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "IMAGE $@"
@@ -595,7 +613,7 @@ ifeq ($(SECURE), on)
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o $(APP_BIN_ENCRYPT) $@
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x1A0000) -o $(APP_BIN_ENCRYPT_2) $@
 	$(ECHO) "Overwrite $(APP_BIN) with $(APP_BIN_ENCRYPT)"
-	$(MV) -f $(APP_BIN_ENCRYPT) $(APP_BIN)
+	$(CP) -f $(APP_BIN_ENCRYPT) $(APP_BIN)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
@@ -617,11 +635,14 @@ ifeq ($(SECURE), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 endif # feq ($(SECURE), on)
-	
+
 $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(ECHO) "CPP $@"
 	$(Q) $(CC) -I. -C -P -x c -E $< -o $@
-endif
+endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
+
+release: $(APP_BIN) $(BOOT_BIN)
+	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR)
 
 flash: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "Entering flash mode"

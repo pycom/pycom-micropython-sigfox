@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -55,7 +55,7 @@ mp_obj_t mp_parse_num_integer(const char *restrict str_, size_t len, int base, m
     // check radix base
     if ((base != 0 && base < 2) || base > 36) {
         // this won't be reached if lex!=NULL
-        mp_raise_msg(&mp_type_ValueError, "int() arg 2 must be >= 2 and <= 36");
+        mp_raise_ValueError("int() arg 2 must be >= 2 and <= 36");
     }
 
     // skip leading space
@@ -81,20 +81,18 @@ mp_obj_t mp_parse_num_integer(const char *restrict str_, size_t len, int base, m
     for (; str < top; str++) {
         // get next digit as a value
         mp_uint_t dig = *str;
-        if (unichar_isdigit(dig) && (int)dig - '0' < base) {
-            // 0-9 digit
-            dig = dig - '0';
-        } else if (base == 16) {
-            dig |= 0x20;
-            if ('a' <= dig && dig <= 'f') {
-                // a-f hex digit
-                dig = dig - 'a' + 10;
+        if ('0' <= dig && dig <= '9') {
+            dig -= '0';
+        } else {
+            dig |= 0x20; // make digit lower-case
+            if ('a' <= dig && dig <= 'z') {
+                dig -= 'a' - 10;
             } else {
                 // unknown character
                 break;
             }
-        } else {
-            // unknown character
+        }
+        if (dig >= (mp_uint_t)base) {
             break;
         }
 
@@ -172,6 +170,19 @@ typedef enum {
 
 mp_obj_t mp_parse_num_decimal(const char *str, size_t len, bool allow_imag, bool force_complex, mp_lexer_t *lex) {
 #if MICROPY_PY_BUILTINS_FLOAT
+
+// DEC_VAL_MAX only needs to be rough and is used to retain precision while not overflowing
+// SMALL_NORMAL_VAL is the smallest power of 10 that is still a normal float
+#if MICROPY_FLOAT_IMPL == MICROPY_FLOAT_IMPL_FLOAT
+#define DEC_VAL_MAX 1e20F
+#define SMALL_NORMAL_VAL (1e-37F)
+#define SMALL_NORMAL_EXP (-37)
+#elif MICROPY_FLOAT_IMPL == MICROPY_FLOAT_IMPL_DOUBLE
+#define DEC_VAL_MAX 1e200
+#define SMALL_NORMAL_VAL (1e-307)
+#define SMALL_NORMAL_EXP (-307)
+#endif
+
     const char *top = str + len;
     mp_float_t dec_val = 0;
     bool dec_neg = false;
@@ -216,8 +227,8 @@ mp_obj_t mp_parse_num_decimal(const char *str, size_t len, bool allow_imag, bool
         // string should be a decimal number
         parse_dec_in_t in = PARSE_DEC_IN_INTG;
         bool exp_neg = false;
-        mp_float_t frac_mult = 0.1;
         mp_int_t exp_val = 0;
+        mp_int_t exp_extra = 0;
         while (str < top) {
             mp_uint_t dig = *str++;
             if ('0' <= dig && dig <= '9') {
@@ -225,11 +236,18 @@ mp_obj_t mp_parse_num_decimal(const char *str, size_t len, bool allow_imag, bool
                 if (in == PARSE_DEC_IN_EXP) {
                     exp_val = 10 * exp_val + dig;
                 } else {
-                    if (in == PARSE_DEC_IN_FRAC) {
-                        dec_val += dig * frac_mult;
-                        frac_mult *= MICROPY_FLOAT_CONST(0.1);
-                    } else {
+                    if (dec_val < DEC_VAL_MAX) {
+                        // dec_val won't overflow so keep accumulating
                         dec_val = 10 * dec_val + dig;
+                        if (in == PARSE_DEC_IN_FRAC) {
+                            --exp_extra;
+                        }
+                    } else {
+                        // dec_val might overflow and we anyway can't represent more digits
+                        // of precision, so ignore the digit and just adjust the exponent
+                        if (in == PARSE_DEC_IN_INTG) {
+                            ++exp_extra;
+                        }
                     }
                 }
             } else if (in == PARSE_DEC_IN_INTG && dig == '.') {
@@ -262,7 +280,12 @@ mp_obj_t mp_parse_num_decimal(const char *str, size_t len, bool allow_imag, bool
             exp_val = -exp_val;
         }
 
-        // apply the exponent
+        // apply the exponent, making sure it's not a subnormal value
+        exp_val += exp_extra;
+        if (exp_val < SMALL_NORMAL_EXP) {
+            exp_val -= SMALL_NORMAL_EXP;
+            dec_val *= SMALL_NORMAL_VAL;
+        }
         dec_val *= MICROPY_FLOAT_C_FUN(pow)(10, exp_val);
     }
 

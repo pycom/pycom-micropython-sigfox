@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -22,12 +22,20 @@
 #include "machrtc.h"
 #include "soc/rtc.h"
 #include "esp_clk.h"
+#include "esp_clk_internal.h"
 
 
 uint32_t sntp_update_period = 3600000; // in ms
 
 #define RTC_SOURCE_INTERNAL_RC                  RTC_SLOW_FREQ_RTC
 #define RTC_SOURCE_EXTERNAL_XTAL                RTC_SLOW_FREQ_32K_XTAL
+/* There is 8K of rtc_slow_memory, but some is used by the system software
+    If the USER_MAXLEN is set to high, the following compile error will happen:
+        region `rtc_slow_seg' overflowed by N bytes
+    The current system software allows almost 4096 to be used.
+    To avoid running into issues if the system software uses more, 2048 was picked as a max length
+*/
+#define MEM_USER_MAXLEN     2048
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -40,6 +48,8 @@ typedef struct _mach_rtc_obj_t {
 } mach_rtc_obj_t;
 
 static RTC_DATA_ATTR uint64_t delta_from_epoch_til_boot;
+static RTC_DATA_ATTR uint32_t rtc_user_mem_len;
+static RTC_DATA_ATTR uint8_t rtc_user_mem_data[MEM_USER_MAXLEN];
 
 STATIC mach_rtc_obj_t mach_rtc_obj;
 const mp_obj_type_t mach_rtc_type;
@@ -159,10 +169,10 @@ STATIC mp_obj_t mach_rtc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, m
         uint32_t clk_src = mp_obj_get_int(args[2].u_obj);
         if (clk_src == RTC_SOURCE_EXTERNAL_XTAL) {
             if (!rtc_clk_32k_enabled()) {
-                rtc_clk_32k_bootstrap();
+                rtc_clk_32k_bootstrap(5);
             }
         }
-        select_rtc_slow_clk(clk_src);
+        rtc_clk_select_rtc_slow_clk(clk_src);
         settimeofday(&now, NULL);
     }
 
@@ -240,11 +250,35 @@ STATIC mp_obj_t mach_rtc_has_synced (mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_rtc_has_synced_obj, mach_rtc_has_synced);
 
+STATIC mp_obj_t machine_rtc_memory (size_t n_args, const mp_obj_t *args) {
+
+    if (n_args == 1) {
+        // read RTC memory
+        uint32_t len = rtc_user_mem_len;
+        uint8_t rtcram[MEM_USER_MAXLEN];
+        memcpy( (char *) rtcram, (char *) rtc_user_mem_data, len);
+        return mp_obj_new_bytes(rtcram,  len);
+    } else {
+        // write RTC memory
+        mp_buffer_info_t bufinfo;
+        mp_get_buffer_raise(args[1], &bufinfo, MP_BUFFER_READ);
+
+        if (bufinfo.len > MEM_USER_MAXLEN) {
+            mp_raise_ValueError("buffer too long");
+        }
+        memcpy( (char *) rtc_user_mem_data, (char *) bufinfo.buf, bufinfo.len);
+        rtc_user_mem_len = bufinfo.len;
+        return mp_const_none;
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_rtc_memory_obj, 1, 2, machine_rtc_memory);
+
 STATIC const mp_map_elem_t mach_rtc_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&mach_rtc_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_now),                 (mp_obj_t)&mach_rtc_now_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ntp_sync),            (mp_obj_t)&mach_rtc_ntp_sync_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_synced),              (mp_obj_t)&mach_rtc_has_synced_obj },
+	{ MP_OBJ_NEW_QSTR(MP_QSTR_memory), 				(mp_obj_t)&machine_rtc_memory_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_INTERNAL_RC),         MP_OBJ_NEW_SMALL_INT(RTC_SOURCE_INTERNAL_RC) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_XTAL_32KHZ),          MP_OBJ_NEW_SMALL_INT(RTC_SOURCE_EXTERNAL_XTAL) },

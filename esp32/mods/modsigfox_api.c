@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -19,7 +19,7 @@
 #include "py/stream.h"
 #include "py/mperrno.h"
 #include "mpexception.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 #include "esp32_mphal.h"
 
 #include "modnetwork.h"

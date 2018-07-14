@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2016, Pycom Limited and its licensors.
+ * Copyright (c) 2018, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -71,6 +71,7 @@
 #define MICROPY_PY_ARRAY                            (1)
 #define MICROPY_PY_ARRAY_SLICE_ASSIGN               (1)
 #define MICROPY_PY_COLLECTIONS                      (1)
+#define MICROPY_PY_COLLECTIONS_DEQUE                (1)
 #define MICROPY_PY_MATH                             (1)
 #define MICROPY_PY_CMATH                            (1)
 #define MICROPY_PY_IO                               (1)
@@ -90,6 +91,7 @@
 #define MICROPY_PY_UHASHLIB_SHA1                    (0)
 #define MICROPY_PY_UJSON                            (1)
 #define MICROPY_PY_URE                              (1)
+#define MICROPY_PY_USELECT                          (1)
 #define MICROPY_PY_MACHINE                          (1)
 #define MICROPY_PY_MICROPYTHON_MEM_INFO             (1)
 #define MICROPY_PY_UTIMEQ                           (1)
@@ -110,11 +112,11 @@
 #define MICROPY_PERSISTENT_CODE_LOAD                (1)
 #define MICROPY_QSTR_EXTRA_POOL                     mp_qstr_frozen_const_pool
 #define MICROPY_PY_FRAMEBUF                         (1)
+#define MICROPY_PY_UZLIB                            (1)
 
 #define MICROPY_STREAMS_NON_BLOCK                   (1)
 #define MICROPY_PY_BUILTINS_TIMEOUTERROR            (1)
 #define MICROPY_PY_ALL_SPECIAL_METHODS              (1)
-#define MICROPY_USE_INTERNAL_ERRNO                  (1)
 
 #define MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF      (1)
 #define MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE        (0)
@@ -130,11 +132,25 @@
 #define MICROPY_FATFS_MAX_LFN                       (MICROPY_ALLOC_PATH_MAX)
 #define MICROPY_FATFS_LFN_CODE_PAGE                 (437) // 1=SFN/ANSI 437=LFN/U.S.(OEM)
 #define MICROPY_FATFS_RPATH                         (2)
-#define MICROPY_FATFS_VOLUMES                       (2)
 #define MICROPY_FATFS_REENTRANT                     (1)
 #define MICROPY_FATFS_TIMEOUT                       (5000)
 #define MICROPY_FATFS_SYNC_T                        SemaphoreHandle_t
-#define MICROPY_FSUSERMOUNT_ADHOC                   (1)
+
+#define MICROPY_VFS                                 (1)
+#define MICROPY_VFS_FAT                             (1)
+
+#define MICROPY_READER_VFS                          (1)
+#define MICROPY_PY_BUILTINS_INPUT                   (1)
+
+// TODO these should be generic, not bound to fatfs
+#define mp_type_fileio fatfs_type_fileio
+#define mp_type_textio fatfs_type_textio
+
+// use vfs's functions for import stat and builtin open
+#define mp_import_stat mp_vfs_import_stat
+#define mp_builtin_open mp_vfs_open
+#define mp_builtin_open_obj mp_vfs_open_obj
+
 
 // type definitions for the specific machine
 #define BYTES_PER_WORD                              (4)
@@ -214,12 +230,12 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
 #define MICROPY_BEGIN_ATOMIC_SECTION()              portENTER_CRITICAL_NESTED()
 #define MICROPY_END_ATOMIC_SECTION(state)           portEXIT_CRITICAL_NESTED(state)
 
+#define MICROPY_EVENT_POLL_HOOK                     mp_hal_delay_ms(1);
+
 #define MICROPY_PORT_ROOT_POINTERS \
     const char *readline_hist[8];                               \
-    mp_obj_t mp_kbd_exception;                                  \
     mp_obj_t machine_config_main;                               \
     mp_obj_t uart_buf[3];                                       \
-    mp_obj_list_t mount_obj_list;                               \
     mp_obj_list_t mp_irq_obj_list;                              \
     mp_obj_list_t mod_network_nic_list;                         \
     mp_obj_t mp_os_stream_o;                                    \
@@ -230,6 +246,7 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
     mp_obj_list_t btc_conn_list;                                \
     mp_obj_list_t bts_srv_list;                                 \
     mp_obj_list_t bts_attr_list;                                \
+    char* lfs_cwd;                                              \
 
 // we need to provide a declaration/definition of alloca()
 #include <alloca.h>

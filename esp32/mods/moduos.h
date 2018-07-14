@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2016, Pycom Limited and its licensors.
+ * Copyright (c) 2018, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -65,9 +65,7 @@ typedef struct _os_term_dup_obj_t {
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
-void moduos_init0 (void);
 os_fs_mount_t *osmount_find_by_path (const char *path);
 os_fs_mount_t *osmount_find_by_volume (uint8_t vol);
-void osmount_unmount_all (void);
 
 #endif // MODUOS_H_

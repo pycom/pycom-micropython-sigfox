@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2016, Pycom Limited and its licensors.
+ * Copyright (c) 2018, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -51,6 +51,10 @@
 #define SO_SIGFOX_TX_REPEAT                 (0xF0005)
 #define SO_SIGFOX_OOB                       (0xF0006)
 #define SO_SIGFOX_BIT                       (0xF0007)
+
+/* chars for storing an IPv6 address 39 chars + zero end string
+* ex: ABCD:ABCD:ABCD:ABCD:ABCD:ABCD:ABCD:ABCD 4*8+7=39 chars */
+#define MOD_USOCKET_IPV6_CHARS_MAX					40
 
 extern const mp_obj_dict_t socket_locals_dict;
 extern const mp_stream_p_t socket_stream_p;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -10,7 +10,7 @@
 #ifndef VERSION_H_
 #define VERSION_H_
 
-#define SW_VERSION_NUMBER                              "1.18.0"
+#define SW_VERSION_NUMBER                              "1.19.0.b4"
 
 #define LORAWAN_VERSION_NUMBER                         "1.0.2"
 

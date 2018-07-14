@@ -289,18 +289,12 @@ Constants
 
     Characteristic properties (bit values that can be combined)
 
-.. data:: Bluetooth.CHAR_CONFIG_NOTIFY
-          Bluetooth.CHAR_CONFIG_INDICATE
-
-    Characteristic configurations representing the current value of the characteristic's configuration descriptor.
-
 .. data:: Bluetooth.CHAR_READ_EVENT
           Bluetooth.CHAR_WRITE_EVENT
           Bluetooth.NEW_ADV_EVENT
           Bluetooth.CLIENT_CONNECTED
           Bluetooth.CLIENT_DISCONNECTED
           Bluetooth.CHAR_NOTIFY_EVENT
-          Bluetooth.CHAR_SUBSCRIBE_EVENT
 
     Charactertistic callback events
 
@@ -424,12 +418,6 @@ The following class allows you to manage characteristics from a **Client**.
 
      characteristic.properties()
 
-.. method:: characteristic.config()
-
-    Returns an integer indicating the client configuration of the characteristic. Configurations are represented by bit values that can be ORed together. The configuration is often updated when the CHAR_SUBSCRIBE_EVENT is generated. See the constants section for more details. ::
-
-     characteristic.config()
-
 .. method:: characteristic.read()
 
     Read the value of the characteristic. For now it always returns a bytes object representing the characteristic value. In the future a specific type (integer, string, bytes) will be returned depending on the characteristic in question. ::
@@ -503,7 +491,7 @@ The following class allows you to manage **Server** characteristics.
 
     Creates a callback that will be executed when any of the triggers occurs. The arguments are:
 
-       - ``trigger`` can be either ``Bluetooth.CHAR_READ_EVENT`` or ``Bluetooth.CHAR_WRITE_EVENT`` or ``Bluetooth.CHAR_SUBSCRIBE_EVENT``.
+       - ``trigger`` can be either ``Bluetooth.CHAR_READ_EVENT`` or ``Bluetooth.CHAR_WRITE_EVENT``.
        - ``handler`` is the function that will be executed when the callback is triggered.
        - ``arg`` is the argument that gets passed to the callback. If nothing is given, the characteristic object that owns the callback will be used.
 

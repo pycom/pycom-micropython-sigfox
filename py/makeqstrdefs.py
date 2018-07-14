@@ -5,8 +5,10 @@ qstr. Each qstr is transformed into a qstr definition of the form 'Q(...)'.
 This script works with Python 2.6, 2.7, 3.3 and 3.4.
 """
 
+from __future__ import print_function
+
 import re
-import argparse
+import sys
 import os
 
 # Blacklist of qstrings that are specially handled in further
@@ -22,12 +24,16 @@ def write_out(fname, output):
             f.write("\n".join(output) + "\n")
 
 def process_file(f):
+    re_line = re.compile(r"#[line]*\s\d+\s\"([^\"]+)\"")
+    re_qstr = re.compile(r'MP_QSTR_[_a-zA-Z0-9]+')
     output = []
     last_fname = None
     for line in f:
+        if line.isspace():
+            continue
         # match gcc-like output (# n "file") and msvc-like output (#line n "file")
-        if line and (line[0:2] == "# " or line[0:5] == "#line"):
-            m = re.match(r"#[line]*\s\d+\s\"([^\"]+)\"", line)
+        if line.startswith(('# ', '#line')):
+            m = re_line.match(line)
             assert m is not None
             fname = m.group(1)
             if not fname.endswith(".c"):
@@ -37,7 +43,7 @@ def process_file(f):
                 output = []
                 last_fname = fname
             continue
-        for match in re.findall(r'MP_QSTR_[_a-zA-Z0-9]+', line):
+        for match in re_qstr.findall(line):
             name = match.replace('MP_QSTR_', '')
             if name not in QSTRING_BLACK_LIST:
                 output.append('Q(' + name + ')')
@@ -84,18 +90,18 @@ def cat_together():
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Generates qstr definitions from a specified source')
+    if len(sys.argv) != 5:
+        print('usage: %s command input_filename output_dir output_file' % sys.argv[0])
+        sys.exit(2)
 
-    parser.add_argument('command',
-        help='Command (split/cat)')
-    parser.add_argument('input_filename',
-        help='Name of the input file (when not specified, the script reads standard input)')
-    parser.add_argument('output_dir',
-        help='Output directory to store individual qstr files')
-    parser.add_argument('output_file',
-        help='Name of the output file with collected qstrs')
+    class Args:
+        pass
+    args = Args()
+    args.command = sys.argv[1]
+    args.input_filename = sys.argv[2]
+    args.output_dir = sys.argv[3]
+    args.output_file = sys.argv[4]
 
-    args = parser.parse_args()
     try:
         os.makedirs(args.output_dir)
     except OSError:

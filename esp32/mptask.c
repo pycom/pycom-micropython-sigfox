@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -36,7 +36,6 @@
 #include "machuart.h"
 #include "machwdt.h"
 #include "machpin.h"
-#include "mpexception.h"
 #include "moduos.h"
 #include "mperror.h"
 #include "mpirq.h"
@@ -46,9 +45,11 @@
 #include "antenna.h"
 #include "modled.h"
 #include "esp_log.h"
+#include "mods/pybflash.h"
 
 #if defined (LOPY) || defined (LOPY4) || defined (FIPY)
 #include "modlora.h"
+#include "lora/ot-task.h"
 #endif
 #if defined (SIPY) || defined(LOPY4) || defined (FIPY)
 #include "sigfox/modsigfox.h"
@@ -68,20 +69,31 @@
 #include "machtimer_alarm.h"
 #include "mptask.h"
 
-#include "ff.h"
-#include "diskio.h"
-#include "sflash_diskio.h"
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
+
+#include "extmod/vfs_fat.h"
+
+#include "ff.h"
+#include "diskio.h"
+#include "sflash_diskio.h"
+
+#include "lfs.h"
+#include "sflash_diskio_littlefs.h"
 
 
 /******************************************************************************
  DECLARE EXTERNAL FUNCTIONS
  ******************************************************************************/
 extern void modpycom_init0(void);
+
+/******************************************************************************
+ DECLARE EXTERNAL DATA
+ ******************************************************************************/
+extern StackType_t *mpTaskStack;
+extern TaskHandle_t svTaskHandle;
 
 /******************************************************************************
  DECLARE PRIVATE CONSTANTS
@@ -94,22 +106,23 @@ extern void modpycom_init0(void);
  ******************************************************************************/
 STATIC void mptask_preinit (void);
 STATIC void mptask_init_sflash_filesystem (void);
+STATIC void mptask_init_sflash_filesystem_fatfs(void);
+STATIC void mptask_create_main_py (void);
+STATIC void mptask_init_sflash_filesystem_littlefs(void);
 #if defined (LOPY) || defined (SIPY) || defined (LOPY4) || defined (FIPY)
 STATIC void mptask_update_lpwan_mac_address (void);
 #endif
 STATIC void mptask_enable_wifi_ap (void);
-STATIC void mptask_create_main_py (void);
 
 /******************************************************************************
  DECLARE PUBLIC DATA
- ******************************************************************************/
-extern StackType_t *mpTaskStack;
-extern TaskHandle_t svTaskHandle;
+ ***********************************pybflash*******************************************/
+
+fs_user_mount_t sflash_vfs_flash;
 
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
-static FATFS sflash_fatfs;
 static uint8_t *gc_pool_upy;
 
 static char fresh_main_py[] = "# main.py -- put your code here!\r\n";
@@ -178,7 +191,7 @@ soft_reset:
 
     // thread init
 #if MICROPY_PY_THREAD
-    mp_thread_init();
+    //mp_thread_init();
 #endif
 
     // GC init
@@ -192,11 +205,9 @@ soft_reset:
 
     // execute all basic initializations
     pin_init0();    // always before the rest of the peripherals
-    mpexception_init0();
 #if MICROPY_PY_THREAD
     mp_irq_init0();
 #endif
-    moduos_init0();
     uart_init0();
     mperror_init0();
     rng_init0();
@@ -216,8 +227,10 @@ soft_reset:
         if (config_get_wdt_on_boot()) {
             uint32_t timeout_ms = config_get_wdt_on_boot_timeout();
             if (timeout_ms < 0xFFFFFFFF) {
-                printf("Starting the WDT on boot\n");
                 machine_wdt_start(timeout_ms);
+            } else {
+                // disable the WDT on boot flag
+                config_set_wdt_on_boot(false);
             }
         }
         if (wifi_on_boot) {
@@ -226,6 +239,7 @@ soft_reset:
         // these ones are special because they need uPy running and they launch tasks
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
         modlora_init0();
+        openthread_task_init();
 #endif
 #if defined(SIPY) || defined(LOPY4) || defined (FIPY)
         modsigfox_init0();
@@ -336,23 +350,55 @@ soft_reset_exit:
     goto soft_reset;
 }
 
+bool isLittleFs(const TCHAR *path){
+#ifndef FS_USE_LITTLEFS
+    if (config_get_boot_fs_type() == 0x01) {
+#endif
+        const char *flash = "/flash";
+        if(strncmp(flash, path, sizeof(flash)-1) == 0) {
+            return true;
+        }
+#ifndef FS_USE_LITTLEFS
+    }
+#endif
+    return false;
+}
+
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
 STATIC void mptask_preinit (void) {
     wlan_pre_init();
-    xTaskCreatePinnedToCore(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 1);
+    //TODO: Re-check this: increased stack is needed by modified FTP implementation due to LittleFS vs FatFs
+    xTaskCreatePinnedToCore(TASK_Servers, "Servers", 2*SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 1);
 }
 
-STATIC void mptask_init_sflash_filesystem (void) {
+STATIC void mptask_init_sflash_filesystem(void) {
+    if (config_get_boot_fs_type() == 0x01) {
+        printf("Initializing filesystem as LittleFS!\n");
+        mptask_init_sflash_filesystem_littlefs();
+    }
+    else {
+        printf("Initializing filesystem as FatFS!\n");
+        mptask_init_sflash_filesystem_fatfs();
+    }
+}
+
+STATIC void mptask_init_sflash_filesystem_fatfs(void) {
+    // Initialise the local flash filesystem.
+    // init the vfs object
+    fs_user_mount_t *vfs_fat = &sflash_vfs_flash;
+    vfs_fat->flags = 0;
+    pyb_flash_init_vfs(vfs_fat);
+
     FILINFO fno;
 
-    // Initialise the local flash filesystem.
-    // Create it if needed, and mount in on /flash.
-    FRESULT res = f_mount(&sflash_fatfs, "/flash", 1);
+    // Create it if needed, and mount it on /flash.
+    FRESULT res = f_mount(&vfs_fat->fs.fatfs);
     if (res == FR_NO_FILESYSTEM) {
         // no filesystem, so create a fresh one
-        res = f_mkfs("/flash", FM_SFD | FM_FAT, 0, NULL, 0);
+        uint8_t working_buf[_MAX_SS];
+        res = f_mkfs(&vfs_fat->fs.fatfs, FM_SFD | FM_FAT, 0, working_buf, sizeof(working_buf));
         if (res != FR_OK) {
             __fatal_error("failed to create /flash");
         }
@@ -361,7 +407,7 @@ STATIC void mptask_init_sflash_filesystem (void) {
     }
     else if (res == FR_OK) {
         // mount sucessful
-        if (FR_OK != f_stat("/flash/main.py", &fno)) {
+        if (FR_OK != f_stat(&vfs_fat->fs.fatfs, "/main.py", &fno)) {
             // create empty main.py
             mptask_create_main_py();
         }
@@ -369,25 +415,37 @@ STATIC void mptask_init_sflash_filesystem (void) {
         __fatal_error("failed to create /flash");
     }
 
+    // mount the flash device (there should be no other devices mounted at this point)
+    // we allocate this structure on the heap because vfs->next is a root pointer
+    mp_vfs_mount_t *vfs = m_new_obj_maybe(mp_vfs_mount_t);
+    if (vfs == NULL) {
+        __fatal_error("failed to create /flash");
+    }
+    vfs->str = "/flash";
+    vfs->len = 6;
+    vfs->obj = MP_OBJ_FROM_PTR(vfs_fat);
+    vfs->next = NULL;
+    MP_STATE_VM(vfs_mount_table) = vfs;
+
     // The current directory is used as the boot up directory.
     // It is set to the internal flash filesystem by default.
-    f_chdrive("/flash");
+    MP_STATE_PORT(vfs_cur) = vfs;
 
     // create /flash/sys, /flash/lib and /flash/cert if they don't exist
-    if (FR_OK != f_chdir ("/flash/sys")) {
-        f_mkdir("/flash/sys");
+    if (FR_OK != f_chdir (&vfs_fat->fs.fatfs, "/sys")) {
+        f_mkdir(&vfs_fat->fs.fatfs, "/sys");
     }
-    if (FR_OK != f_chdir ("/flash/lib")) {
-        f_mkdir("/flash/lib");
+    if (FR_OK != f_chdir (&vfs_fat->fs.fatfs, "/lib")) {
+        f_mkdir(&vfs_fat->fs.fatfs, "/lib");
     }
-    if (FR_OK != f_chdir ("/flash/cert")) {
-        f_mkdir("/flash/cert");
+    if (FR_OK != f_chdir (&vfs_fat->fs.fatfs, "/cert")) {
+        f_mkdir(&vfs_fat->fs.fatfs, "/cert");
     }
 
-    f_chdir ("/flash");
+    f_chdir(&vfs_fat->fs.fatfs, "/");
 
     // make sure we have a /flash/boot.py. Create it if needed.
-    res = f_stat("/flash/boot.py", &fno);
+    res = f_stat(&vfs_fat->fs.fatfs, "/boot.py", &fno);
     if (res == FR_OK) {
         if (fno.fattrib & AM_DIR) {
             // exists as a directory
@@ -399,7 +457,7 @@ STATIC void mptask_init_sflash_filesystem (void) {
     } else {
         // doesn't exist, create fresh file
         FIL fp;
-        f_open(&fp, "/flash/boot.py", FA_WRITE | FA_CREATE_ALWAYS);
+        f_open(&vfs_fat->fs.fatfs, &fp, "/boot.py", FA_WRITE | FA_CREATE_ALWAYS);
         UINT n;
         f_write(&fp, fresh_boot_py, sizeof(fresh_boot_py) - 1 /* don't count null terminator */, &n);
         // TODO check we could write n bytes
@@ -407,32 +465,163 @@ STATIC void mptask_init_sflash_filesystem (void) {
     }
 }
 
-#if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY)
-STATIC void mptask_update_lpwan_mac_address (void) {
-    #define LPWAN_MAC_ADDR_PATH          "/flash/sys/lpwan.mac"
+STATIC void mptask_init_sflash_filesystem_littlefs(void) {
 
-    FILINFO fno;
+    fs_user_mount_t* vfs_littlefs = &sflash_vfs_flash;
+    lfs_t *littlefsptr = &(vfs_littlefs->fs.littlefs.lfs);
 
-    if (FR_OK == f_stat(LPWAN_MAC_ADDR_PATH, &fno)) {
-        FIL fp;
-        f_open(&fp, LPWAN_MAC_ADDR_PATH, FA_READ);
-        UINT sz_out;
-        uint8_t mac[8];
-        FRESULT res = f_read(&fp, mac, sizeof(mac), &sz_out);
-        if (res == FR_OK) {
-            // file found, update the MAC address
-            if (config_set_lpwan_mac(mac)) {
-                mp_hal_delay_ms(250);
-                ets_printf("LPWAN MAC write OK\n");
-            } else {
-                res = FR_DENIED;    // just anything different than FR_OK
+    //Initialize the block device
+    sflash_disk_init();
+    //Initialize the VFS object with the block device's functions
+    pyb_flash_init_vfs_littlefs(vfs_littlefs);
+
+    if(spi_flash_get_chip_size() > (4* 1024 * 1024))
+    {
+        lfscfg.block_count = SFLASH_BLOCK_COUNT_8MB;
+        lfscfg.lookahead = SFLASH_BLOCK_COUNT_8MB;
+    }
+    else
+    {
+        lfscfg.block_count = SFLASH_BLOCK_COUNT_4MB;
+        lfscfg.lookahead = SFLASH_BLOCK_COUNT_4MB;
+    }
+
+    // Mount the file system if exists
+    if(LFS_ERR_OK != lfs_mount(littlefsptr, &lfscfg))
+    {
+        // File system does not exist, create it and mount
+        if(LFS_ERR_OK == lfs_format(littlefsptr, &lfscfg))
+        {
+            if(LFS_ERR_OK != lfs_mount(littlefsptr, &lfscfg))
+            {
+                __fatal_error("failed to create /flash");
             }
         }
-        f_close(&fp);
-        if (res == FR_OK) {
-            // delete the mac address file
-            f_unlink(LPWAN_MAC_ADDR_PATH);
+        else
+        {
+            __fatal_error("failed to create /flash");
         }
+    }
+
+    // mount the flash device (there should be no other devices mounted at this point)
+    // we allocate this structure on the heap because vfs->next is a root pointer
+    mp_vfs_mount_t *vfs = m_new_obj_maybe(mp_vfs_mount_t);
+    if (vfs == NULL) {
+        __fatal_error("failed to create /flash");
+    }
+    vfs->str = "/flash";
+    vfs->len = 6;
+    vfs->obj = MP_OBJ_FROM_PTR(vfs_littlefs);
+    vfs->next = NULL;
+    MP_STATE_VM(vfs_mount_table) = vfs;
+
+    // The current directory is used as the boot up directory.
+    // It is set to the internal flash filesystem by default.
+    MP_STATE_PORT(vfs_cur) = vfs;
+
+    //Initialize the current working directory (cwd)
+    vfs_littlefs->fs.littlefs.cwd = (char*)m_malloc(2);
+    vfs_littlefs->fs.littlefs.cwd[0] = '/';
+    vfs_littlefs->fs.littlefs.cwd[1] = '\0';
+
+    MP_STATE_PORT(lfs_cwd) = vfs_littlefs->fs.littlefs.cwd;
+    vfs_littlefs->fs.littlefs.mutex = xSemaphoreCreateMutex();
+
+    xSemaphoreTake(vfs_littlefs->fs.littlefs.mutex, portMAX_DELAY);
+
+    // create empty main.py if does not exist
+    lfs_file_t fp;
+    lfs_ssize_t n = 0;
+
+    if(LFS_ERR_OK == lfs_file_open(littlefsptr, &fp, "/main.py", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL))
+    {
+        //Create empty main.py if does not exist
+        n = lfs_file_write(littlefsptr, &fp, fresh_main_py, sizeof(fresh_main_py) - 1 /* don't count null terminator */);
+        lfs_file_close(littlefsptr, &fp);
+        if(n != sizeof(fresh_main_py) - 1)
+        {
+            __fatal_error("failed to create main.py");
+        }
+    }
+
+    // create empty boot.py if does not exist
+    if(LFS_ERR_OK == lfs_file_open(littlefsptr, &fp, "/boot.py", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL))
+    {
+        //Create empty boot.py if does not exist
+        n = lfs_file_write(littlefsptr, &fp, fresh_boot_py, sizeof(fresh_boot_py) - 1 /* don't count null terminator */);
+        lfs_file_close(littlefsptr, &fp);
+        if(n != sizeof(fresh_boot_py) - 1)
+        {
+            __fatal_error("failed to create boot.py");
+        }
+    }
+
+    // create /flash/sys, /flash/lib and /flash/cert if they don't exist
+    lfs_mkdir(littlefsptr,"/sys");
+    lfs_mkdir(littlefsptr,"/lib");
+    lfs_mkdir(littlefsptr,"/cert");
+
+    xSemaphoreGive(vfs_littlefs->fs.littlefs.mutex);
+}
+
+
+#if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY)
+STATIC void mptask_update_lpwan_mac_address (void) {
+    #define LPWAN_MAC_ADDR_PATH          "/sys/lpwan.mac"
+
+    if (config_get_boot_fs_type() == 0x00) {
+
+        FILINFO fno;
+        FATFS* fsptr = &sflash_vfs_flash.fs.fatfs;
+
+        if (FR_OK == f_stat(fsptr, LPWAN_MAC_ADDR_PATH, &fno)) {
+            FIL fp;
+            f_open(fsptr, &fp, LPWAN_MAC_ADDR_PATH, FA_READ);
+            UINT sz_out;
+            uint8_t mac[8];
+            FRESULT res = f_read(&fp, mac, sizeof(mac), &sz_out);
+            if (res == FR_OK) {
+                // file found, update the MAC address
+                if (config_set_lpwan_mac(mac)) {
+                    mp_hal_delay_ms(250);
+                    ets_printf("LPWAN MAC write OK\n");
+                } else {
+                    res = FR_DENIED;    // just anything different than FR_OK
+                }
+            }
+            f_close(&fp);
+            if (res == FR_OK) {
+                // delete the mac address file
+                f_unlink(fsptr, LPWAN_MAC_ADDR_PATH);
+            }
+        }
+    }
+    else {
+
+        lfs_file_t fp;
+        lfs_t* fsptr = &sflash_vfs_flash.fs.littlefs.lfs;
+
+        xSemaphoreTake(sflash_vfs_flash.fs.littlefs.mutex, portMAX_DELAY);
+
+        if(LFS_ERR_OK == lfs_file_open(fsptr, &fp, LPWAN_MAC_ADDR_PATH, LFS_O_RDONLY)){
+            uint8_t mac[8];
+           int sz_out = lfs_file_read(fsptr, &fp, mac, sizeof(mac));
+           if (sz_out > LFS_ERR_OK) {
+               // file found, update the MAC address
+               if (config_set_lpwan_mac(mac)) {
+                   mp_hal_delay_ms(250);
+                   ets_printf("LPWAN MAC write OK\n");
+               }
+           }
+           lfs_file_close(fsptr, &fp);
+           if (sz_out > LFS_ERR_OK) {
+               // delete the mac address file
+               lfs_remove(fsptr, LPWAN_MAC_ADDR_PATH);
+           }
+       }
+
+        xSemaphoreGive(sflash_vfs_flash.fs.littlefs.mutex);
+
     }
 }
 #endif
@@ -442,15 +631,16 @@ STATIC void mptask_enable_wifi_ap (void) {
 	config_get_wifi_ssid(wifi_ssid);
 	uint8_t wifi_pwd[64];
 	config_get_wifi_pwd(wifi_pwd);
-    wlan_setup (WIFI_MODE_AP, (wifi_ssid[0]==0x00) ? DEFAULT_AP_SSID : (const char*) wifi_ssid , WIFI_AUTH_WPA2_PSK, (wifi_pwd[0]==0x00) ? DEFAULT_AP_PASSWORD : (const char*) wifi_pwd ,
-                DEFAULT_AP_CHANNEL, ANTENNA_TYPE_INTERNAL, (wifi_ssid[0]==0x00) ? true:false, false);
+
+    wlan_setup (WIFI_MODE_AP, (wifi_ssid[0]==0x00) ? DEFAULT_AP_SSID : (const char*) wifi_ssid, WIFI_AUTH_WPA2_PSK, (wifi_pwd[0]==0x00) ? DEFAULT_AP_PASSWORD : (const char*) wifi_pwd ,
+                DEFAULT_AP_CHANNEL, ANTENNA_TYPE_INTERNAL, (wifi_ssid[0]==0x00) ? true:false, false, WIFI_BW_HT40);
     mod_network_register_nic(&wlan_obj);
 }
 
 STATIC void mptask_create_main_py (void) {
     // create empty main.py
     FIL fp;
-    f_open(&fp, "/flash/main.py", FA_WRITE | FA_CREATE_ALWAYS);
+    f_open(&sflash_vfs_flash.fs.fatfs, &fp, "/main.py", FA_WRITE | FA_CREATE_ALWAYS);
     UINT n;
     f_write(&fp, fresh_main_py, sizeof(fresh_main_py) - 1 /* don't count null terminator */, &n);
     f_close(&fp);

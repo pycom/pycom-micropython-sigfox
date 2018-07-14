@@ -1,5 +1,5 @@
 #
-# Copyright © 2016, Pycom Limited.
+# Copyright © 2018, Pycom Limited.
 #
 # This software is licensed under the GNU GPL version 3 or any
 # later version, with permitted additional terms. For more information
@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-TARGET ?= app
+TARGET ?= boot_app
 
 OEM ?= 0
 
@@ -22,6 +22,8 @@ OEM ?= 0
 BTYPE ?= release
 
 BUILD = build/$(BOARD)/$(BTYPE)
+
+RELEASE_DIR ?= build/
 
 # by default Secure Boot and Flash Encryption are disabled
 SECURE ?= off
@@ -81,8 +83,8 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        $(ESP_IDF_COMP_PATH)/newlib/lib/libm-psram-workaround.a \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
-       -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -lbootloader_support -lmicro-ecc -u ld_include_panic_highint_hdl \
-
+       -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -lbootloader_support -lmicro-ecc -lopenthread \
+			 -u ld_include_panic_highint_hdl
 ifeq ($(BOARD), $(filter $(BOARD), FIPY))
     LIBS += sigfox/modsigfox_fipy.a
 endif

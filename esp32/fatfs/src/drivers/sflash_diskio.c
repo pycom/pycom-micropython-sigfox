@@ -4,7 +4,9 @@
 
 #include "py/mpconfig.h"
 #include "py/obj.h"
-#include "diskio.h"
+#include "lib/oofatfs/ff.h"
+#include "lib/oofatfs/diskio.h"
+#include "littlefs/lfs.h"
 #include "sflash_diskio.h"
 
 #include "freertos/FreeRTOS.h"
@@ -43,7 +45,7 @@ static bool sflash_write (void) {
 DRESULT sflash_disk_init (void) {
     if (!sflash_init_done) {
         // this is how we diferentiate flash sizes in Pycom modules
-        if (esp_get_revision() > 0) {
+        if (spi_flash_get_chip_size() > (4 * 1024 * 1024)) {
             sflash_start_address = SFLASH_START_ADDR_8MB;
             sflash_fs_sector_count = SFLASH_FS_SECTOR_COUNT_8MB;
         } else {
@@ -135,6 +137,54 @@ DRESULT sflash_disk_write(const BYTE *buff, DWORD sector, UINT count) {
 
     // TODO sl_LockObjUnlock (&flash_LockObj);
     return RES_OK;
+}
+
+int sflash_disk_read_littlefs(const struct lfs_config *lfscfg, void* buff, uint32_t block, uint32_t size)
+{
+    // TODO sl_LockObjLock (&flash_LockObj, SL_OS_WAIT_FOREVER);
+    int ret = LFS_ERR_OK;
+
+    if(block >= lfscfg->block_count) {
+        ret = LFS_ERR_IO;
+    }
+    else if (ESP_OK != spi_flash_read(sflash_start_address + block*SFLASH_BLOCK_SIZE, buff, size)) {
+        ret = LFS_ERR_IO;
+    }
+
+    // TODO sl_LockObjUnlock (&flash_LockObj);
+    return ret;
+}
+
+int sflash_disk_erase_littlefs(const struct lfs_config *lfscfg, uint32_t block) {
+
+    // TODO sl_LockObjLock (&flash_LockObj, SL_OS_WAIT_FOREVER);
+    int ret = LFS_ERR_OK;
+
+    if(block >= lfscfg->block_count) {
+        ret = LFS_ERR_IO;
+    }
+    else if(ESP_OK != spi_flash_erase_sector((sflash_start_address + block*SFLASH_BLOCK_SIZE)/SFLASH_BLOCK_SIZE)) {
+        ret = LFS_ERR_IO;
+    }
+
+    // TODO sl_LockObjUnlock (&flash_LockObj);
+    return ret;
+}
+
+int sflash_disk_write_littlefs(const struct lfs_config *lfscfg, const void *buff, uint32_t block, uint32_t size) {
+
+    // TODO sl_LockObjLock (&flash_LockObj, SL_OS_WAIT_FOREVER);
+    int ret = LFS_ERR_OK;
+
+    if(block >= lfscfg->block_count) {
+        ret = LFS_ERR_IO;
+    }
+    else if(ESP_OK != spi_flash_write((sflash_start_address + block*SFLASH_BLOCK_SIZE), buff, size)) {
+        ret = LFS_ERR_IO;
+    }
+
+    // TODO sl_LockObjUnlock (&flash_LockObj);
+    return ret;
 }
 
 DRESULT sflash_disk_flush (void) {

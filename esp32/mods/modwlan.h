@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -9,6 +9,8 @@
 
 #ifndef MODWLAN_H_
 #define MODWLAN_H_
+
+#include <tcpip_adapter.h>
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -45,6 +47,7 @@ typedef struct _wlan_obj_t {
     uint32_t                ip;
 
     int8_t                  mode;
+    int8_t                  bandwidth;
     uint8_t                 auth;
     uint8_t                 channel;
     uint8_t                 antenna;
@@ -53,6 +56,7 @@ typedef struct _wlan_obj_t {
     uint8_t                 ssid[(MODWLAN_SSID_LEN_MAX + 1)];
     uint8_t                 key[65];
     uint8_t                 mac[6];
+    uint8_t                 hostname[TCPIP_HOSTNAME_MAX_SIZE];
 
     // the sssid (or name) and mac of the other device
     uint8_t                 ssid_o[33];
@@ -74,7 +78,7 @@ extern wlan_obj_t wlan_obj;
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
 extern void wlan_pre_init (void);
-extern void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac, bool ssid_hidden);
+extern void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac, bool ssid_hidden, wifi_bandwidth_t bandwidth);
 extern void wlan_update(void);
 extern void wlan_get_mac (uint8_t *macAddress);
 extern void wlan_get_ip (uint32_t *ip);
@@ -82,5 +86,6 @@ extern bool wlan_is_connected (void);
 extern void wlan_set_current_time (uint32_t seconds_since_2000);
 extern void wlan_off_on (void);
 extern mp_obj_t wlan_deinit(mp_obj_t self_in);
+extern void wlan_resume (bool reconnect);
 
 #endif /* MODWLAN_H_ */

@@ -34,7 +34,7 @@
 
 #include "py/mpthread.h"
 
-#if 0 // print debugging info
+#if MICROPY_DEBUG_VERBOSE // print debugging info
 #define DEBUG_PRINT (1)
 #define DEBUG_printf DEBUG_printf
 #else // don't print debugging info
@@ -79,7 +79,9 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(thread_lock_acquire_obj, 1, 3, thread
 
 STATIC mp_obj_t thread_lock_release(mp_obj_t self_in) {
     mp_obj_thread_lock_t *self = MP_OBJ_TO_PTR(self_in);
-    // TODO check if already unlocked
+    if (!self->locked) {
+        mp_raise_msg(&mp_type_RuntimeError, NULL);
+    }
     self->locked = false;
     MP_THREAD_GIL_EXIT();
     mp_thread_mutex_unlock(self->mutex);
@@ -159,6 +161,13 @@ STATIC void *thread_entry(void *args_in) {
     mp_stack_set_top(&ts + 1); // need to include ts in root-pointer scan
     mp_stack_set_limit(args->stack_size);
 
+    #if MICROPY_ENABLE_PYSTACK
+    // TODO threading and pystack is not fully supported, for now just make a small stack
+    mp_obj_t mini_pystack[128];
+    mp_pystack_init(mini_pystack, &mini_pystack[128]);
+    #endif
+
+    // set locals and globals from the calling context
     mp_locals_set(args->dict_locals);
     mp_globals_set(args->dict_globals);
 
@@ -185,10 +194,10 @@ STATIC void *thread_entry(void *args_in) {
             // swallow exception silently
         } else {
             // print exception out
-            mp_printf(&mp_plat_print, "Unhandled exception in thread started by ");
-            mp_obj_print_helper(&mp_plat_print, args->fun, PRINT_REPR);
-            mp_printf(&mp_plat_print, "\n");
-            mp_obj_print_exception(&mp_plat_print, MP_OBJ_FROM_PTR(exc));
+            mp_printf(MICROPY_ERROR_PRINTER, "Unhandled exception in thread started by ");
+            mp_obj_print_helper(MICROPY_ERROR_PRINTER, args->fun, PRINT_REPR);
+            mp_printf(MICROPY_ERROR_PRINTER, "\n");
+            mp_obj_print_exception(MICROPY_ERROR_PRINTER, MP_OBJ_FROM_PTR(exc));
         }
     }
 
@@ -210,7 +219,7 @@ STATIC mp_obj_t mod_thread_start_new_thread(size_t n_args, const mp_obj_t *args)
     thread_entry_args_t *th_args;
 
     // get positional arguments
-    mp_uint_t pos_args_len;
+    size_t pos_args_len;
     mp_obj_t *pos_args_items;
     mp_obj_get_array(args[1], &pos_args_len, &pos_args_items);
 
@@ -222,7 +231,7 @@ STATIC mp_obj_t mod_thread_start_new_thread(size_t n_args, const mp_obj_t *args)
     } else {
         // positional and keyword arguments
         if (mp_obj_get_type(args[2]) != &mp_type_dict) {
-            mp_raise_msg(&mp_type_TypeError, "expecting a dict for keyword args");
+            mp_raise_TypeError("expecting a dict for keyword args");
         }
         mp_map_t *map = &((mp_obj_dict_t*)MP_OBJ_TO_PTR(args[2]))->map;
         th_args = m_new_obj_var(thread_entry_args_t, mp_obj_t, pos_args_len + 2 * map->used);
@@ -236,10 +245,11 @@ STATIC mp_obj_t mod_thread_start_new_thread(size_t n_args, const mp_obj_t *args)
         }
     }
 
-    // copy across the positional arguments
+    // copy agross the positional arguments
     th_args->n_args = pos_args_len;
     memcpy(th_args->args, pos_args_items, pos_args_len * sizeof(mp_obj_t));
 
+    // pass our locals and globals into the new thread
     th_args->dict_locals = mp_locals_get();
     th_args->dict_globals = mp_globals_get();
 

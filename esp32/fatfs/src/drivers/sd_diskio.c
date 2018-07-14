@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -16,7 +16,8 @@
 #include "sdmmc_cmd.h"
 #include "esp_log.h"
 #include "esp_heap_caps.h"
-#include "diskio.h"
+#include "lib/oofatfs/ff.h"
+#include "lib/oofatfs/diskio.h"
 #include "sd_diskio.h"
 #include "stdcmd.h"
 
@@ -58,6 +59,7 @@ DSTATUS sd_disk_init (void) {
         .io_voltage = 3.3f,
         .init = &sdmmc_host_init,
         .set_bus_width = &sdmmc_host_set_bus_width,
+		.get_bus_width = &sdmmc_host_get_slot_width,
         .set_card_clk = &sdmmc_host_set_card_clk,
         .do_transaction = &sdmmc_host_do_transaction,
         .deinit = &sdmmc_host_deinit,

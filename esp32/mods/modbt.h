@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -27,5 +27,5 @@
  ******************************************************************************/
 extern void modbt_init0(void);
 extern mp_obj_t bt_deinit(mp_obj_t self_in);
-
+extern void bt_resume(bool reconnect);
 #endif  // MODBT_H_

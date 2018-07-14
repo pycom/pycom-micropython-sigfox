@@ -3,8 +3,8 @@ I2C(0, I2C.MASTER, baudrate=100000)
 I2C(0, I2C.MASTER, baudrate=100000)
 I2C(0, I2C.MASTER, baudrate=20000)
 [104]
+[]
 [104]
-[104]
 True
 True
 True
@@ -40,6 +40,4 @@ True
 True
 True
 True
-Exception
-Exception
 I2C(0, I2C.MASTER, baudrate=400000)

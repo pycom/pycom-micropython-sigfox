@@ -29,8 +29,8 @@ alarm3
 alarm4
 alarm5
 alarm6
-alarm2
 alarm7
+alarm2
 alarm8
 alarm9
 alarm10
@@ -49,9 +49,9 @@ alarm8
 alarm9
 alarm10
 alarm11
-alarm6
 alarm12
 alarm13
+alarm6
 alarm14
 alarm15
 alarm16
@@ -66,3 +66,5 @@ alarm3
 alarm1
 alarm1
 alarm3
+4 seconds have expired!
+alarm5

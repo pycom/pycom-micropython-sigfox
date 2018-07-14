@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -15,7 +15,7 @@
 #include "py/objlist.h"
 #include "py/stream.h"
 #include "py/mphal.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 #include "py/mperrno.h"
 #include "readline.h"
 #include "serverstask.h"
@@ -158,6 +158,7 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
         // make it UART Tx
         pin->value = 1;
         pin_deassign(pin);
+        pin->mode = GPIO_MODE_OUTPUT;
         pin->af_out = mach_uart_pin_af[self->uart_id][0];
         gpio_matrix_out(pin->pin_number, pin->af_out, false, false);
         // clear the Tx FIFO empty flag
@@ -182,7 +183,7 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
         // make it an input again
         pin_deassign(pin);
         pin->af_in = mach_uart_pin_af[self->uart_id][1];
-        gpio_matrix_in(pin->pin_number, pin->af_in, false);
+        pin_config(pin, pin->af_in, -1, GPIO_MODE_INPUT, MACHPIN_PULL_UP, 1);
         MICROPY_END_ATOMIC_SECTION(isrmask);
         self->uart_reg->int_clr.tx_done = 1;
     }
@@ -302,7 +303,7 @@ STATIC IRAM_ATTR void UARTRxCallback(int uart_id, int rx_byte) {
         if (mp_interrupt_char == rx_byte) {
             // raise an exception when interrupts are finished
             mp_keyboard_interrupt();
-        } else if (CHAR_CTRL_F == rx_byte) {
+        } else if (mp_reset_char == rx_byte) {
             servers_reset_and_safe_boot();
         }
     }
@@ -557,7 +558,6 @@ STATIC const mp_map_elem_t mach_uart_locals_dict_table[] = {
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_irq),         (mp_obj_t)&pyb_uart_irq_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_read),            (mp_obj_t)&mp_stream_read_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readall),         (mp_obj_t)&mp_stream_readall_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_readline),        (mp_obj_t)&mp_stream_unbuffered_readline_obj},
     { MP_OBJ_NEW_QSTR(MP_QSTR_readinto),        (mp_obj_t)&mp_stream_readinto_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_write),           (mp_obj_t)&mp_stream_write_obj },
@@ -611,14 +611,14 @@ STATIC mp_uint_t mach_uart_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint_t 
     mach_uart_obj_t *self = self_in;
     mp_uint_t ret;
 
-    if (request == MP_IOCTL_POLL) {
+    if (request == MP_STREAM_POLL) {
         mp_uint_t flags = arg;
         ret = 0;
-        if ((flags & MP_IOCTL_POLL_RD) && uart_rx_any(self)) {
-            ret |= MP_IOCTL_POLL_RD;
+        if ((flags & MP_STREAM_POLL_RD) && uart_rx_any(self)) {
+            ret |= MP_STREAM_POLL_RD;
         }
-        if ((flags & MP_IOCTL_POLL_WR) && uart_tx_fifo_space(self)) {
-            ret |= MP_IOCTL_POLL_WR;
+        if ((flags & MP_STREAM_POLL_WR) && uart_tx_fifo_space(self)) {
+            ret |= MP_STREAM_POLL_WR;
         }
     } else {
         *errcode = EINVAL;
@@ -646,7 +646,7 @@ const mp_obj_type_t mach_uart_type = {
     .name = MP_QSTR_UART,
     .print = mach_uart_print,
     .make_new = mach_uart_make_new,
-    .getiter = mp_identity,
+    .getiter = mp_identity_getiter,
     .iternext = mp_stream_unbuffered_iter,
     .protocol = &uart_stream_p,
     .locals_dict = (mp_obj_t)&mach_uart_locals_dict,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -101,7 +101,7 @@ STATIC void pyb_adc_channel_init (pyb_adc_channel_obj_t *self) {
     // the ADC block must be enabled first
     pyb_adc_check_init();
     adc1_config_channel_atten(self->channel, self->attn);
-    esp_adc_cal_get_characteristics(self->adc->vref, self->attn, self->adc->width - 9, &self->characteristics);
+    esp_adc_cal_characterize(ADC_UNIT_1, self->attn, self->adc->width - 9,self->adc->vref, &self->characteristics);
     self->enabled = true;
 }
 
@@ -304,15 +304,17 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_value_obj, adc_channel_value);
 
 STATIC mp_obj_t adc_channel_voltage(mp_obj_t self_in) {
     pyb_adc_channel_obj_t *self = self_in;
+    uint32_t voltage;
     // the channel must be enabled
     if (!self->enabled) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
     if (self->calibrate) {
         self->calibrate = false;
-        esp_adc_cal_get_characteristics(self->adc->vref, self->attn, self->adc->width - 9, &self->characteristics);
+        esp_adc_cal_characterize(ADC_UNIT_1, self->attn, self->adc->width - 9,self->adc->vref, &self->characteristics);
     }
-    return MP_OBJ_NEW_SMALL_INT(adc1_to_voltage(self->channel, &self->characteristics));
+    esp_adc_cal_get_voltage(self->channel, &self->characteristics, &voltage);
+    return MP_OBJ_NEW_SMALL_INT(voltage);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_voltage_obj, adc_channel_voltage);
 

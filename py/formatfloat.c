@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -30,6 +30,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <math.h>
 #include "py/formatfloat.h"
 
 /***********************************************************************
@@ -68,12 +69,10 @@ union floatbits {
     uint32_t u;
 };
 static inline int fp_signbit(float x) { union floatbits fb = {x}; return fb.u & FLT_SIGN_MASK; }
-static inline int fp_isspecial(float x) { union floatbits fb = {x}; return (fb.u & FLT_EXP_MASK) == FLT_EXP_MASK; }
-static inline int fp_isinf(float x) { union floatbits fb = {x}; return (fb.u & FLT_MAN_MASK) == 0; }
+#define fp_isnan(x) isnan(x)
+#define fp_isinf(x) isinf(x)
 static inline int fp_iszero(float x) { union floatbits fb = {x}; return fb.u == 0; }
 static inline int fp_isless1(float x) { union floatbits fb = {x}; return fb.u < 0x3f800000; }
-// Assumes both fp_isspecial() and fp_isinf() were applied before
-#define fp_isnan(x) 1
 
 #elif MICROPY_FLOAT_IMPL == MICROPY_FLOAT_IMPL_DOUBLE
 
@@ -82,9 +81,7 @@ static inline int fp_isless1(float x) { union floatbits fb = {x}; return fb.u < 
 #define FPROUND_TO_ONE 0.999999999995
 #define FPDECEXP 256
 #define FPMIN_BUF_SIZE 7 // +9e+199
-#include <math.h>
 #define fp_signbit(x) signbit(x)
-#define fp_isspecial(x) 1
 #define fp_isnan(x) isnan(x)
 #define fp_isinf(x) isinf(x)
 #define fp_iszero(x) (x == 0)
@@ -118,11 +115,11 @@ int mp_format_float(FPTYPE f, char *buf, size_t buf_size, char fmt, int prec, ch
             *s++ = '?';
         }
         if (buf_size >= 1) {
-            *s++ = '\0';
+            *s = '\0';
         }
         return buf_size >= 2;
     }
-    if (fp_signbit(f)) {
+    if (fp_signbit(f) && !fp_isnan(f)) {
         *s++ = '-';
         f = -f;
     } else {
@@ -135,7 +132,7 @@ int mp_format_float(FPTYPE f, char *buf, size_t buf_size, char fmt, int prec, ch
     // It is buf_size minus room for the sign and null byte.
     int buf_remaining = buf_size - 1 - (s - buf);
 
-    if (fp_isspecial(f)) {
+    {
         char uc = fmt & 0x20;
         if (fp_isinf(f)) {
             *s++ = 'I' ^ uc;
@@ -161,7 +158,7 @@ int mp_format_float(FPTYPE f, char *buf, size_t buf_size, char fmt, int prec, ch
     if (fmt == 'g' && prec == 0) {
         prec = 1;
     }
-    int e, e1; 
+    int e, e1;
     int dec = 0;
     char e_sign = '\0';
     int num_digits = 0;
@@ -209,7 +206,7 @@ int mp_format_float(FPTYPE f, char *buf, size_t buf_size, char fmt, int prec, ch
                 e_sign_char = '+';
             }
         } else if (fp_isless1(f)) {
-            e++; 
+            e++;
             f *= FPCONST(10.0);
         }
 
@@ -232,7 +229,7 @@ int mp_format_float(FPTYPE f, char *buf, size_t buf_size, char fmt, int prec, ch
 
             num_digits = prec;
             if (num_digits) {
-                *s++ = '.'; 
+                *s++ = '.';
                 while (--e && num_digits) {
                     *s++ = '0';
                     num_digits--;
@@ -261,12 +258,12 @@ int mp_format_float(FPTYPE f, char *buf, size_t buf_size, char fmt, int prec, ch
         }
 
         // It can be that f was right on the edge of an entry in pos_pow needs to be reduced
-        if (f >= FPCONST(10.0)) {
+        if ((int)f >= 10) {
             e += 1;
             f *= FPCONST(0.1);
         }
 
-        // If the user specified fixed format (fmt == 'f') and e makes the 
+        // If the user specified fixed format (fmt == 'f') and e makes the
         // number too big to fit into the available buffer, then we'll
         // switch to the 'e' format.
 
@@ -327,13 +324,17 @@ int mp_format_float(FPTYPE f, char *buf, size_t buf_size, char fmt, int prec, ch
         if (prec == 0) {
             prec = 1;
         }
-        num_digits = prec; 
+        num_digits = prec;
     }
 
     // Print the digits of the mantissa
     for (int i = 0; i < num_digits; ++i, --dec) {
-        int32_t d = f;
-        *s++ = '0' + d;
+        int32_t d = (int32_t)f;
+        if (d < 0) {
+            *s++ = '0';
+        } else {
+            *s++ = '0' + d;
+        }
         if (dec == 0 && prec > 0) {
             *s++ = '.';
         }
@@ -344,7 +345,7 @@ int mp_format_float(FPTYPE f, char *buf, size_t buf_size, char fmt, int prec, ch
     // Round
     // If we print non-exponential format (i.e. 'f'), but a digit we're going
     // to round by (e) is too far away, then there's nothing to round.
-    if ((org_fmt != 'f' || e <= 1) && f >= FPCONST(5.0)) {
+    if ((org_fmt != 'f' || e <= num_digits) && f >= FPCONST(5.0)) {
         char *rs = s;
         rs--;
         while (1) {
@@ -365,7 +366,7 @@ int mp_format_float(FPTYPE f, char *buf, size_t buf_size, char fmt, int prec, ch
             if (rs == buf) {
                 break;
             }
-            rs--; 
+            rs--;
         }
         if (*rs == '0') {
             // We need to insert a 1
@@ -376,21 +377,22 @@ int mp_format_float(FPTYPE f, char *buf, size_t buf_size, char fmt, int prec, ch
                 rs[1] = '0';
                 if (e_sign == '-') {
                     e--;
+                    if (e == 0) {
+                        e_sign = '+';
+                    }
                 } else {
-                    e++; 
+                    e++;
                 }
+            } else {
+                // Need at extra digit at the end to make room for the leading '1'
+                s++;
             }
-            s++;
-            char *ss = s; 
+            char *ss = s;
             while (ss > rs) {
                 *ss = ss[-1];
                 ss--;
             }
             *rs = '1';
-        }
-        if (fp_isless1(f) && fmt == 'f') {
-            // We rounded up to 1.0
-            prec--;
         }
     }
 

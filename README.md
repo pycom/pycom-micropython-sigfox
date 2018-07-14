@@ -30,20 +30,13 @@ The following components are actively maintained by Pycom:
 - tests/ -- test framework and test scripts.
 
 Additional components:
-- stmhal/ -- a version of MicroPython that runs on the PyBoard and similar
-  STM32 boards (using ST's Cube HAL drivers).
-- minimal/ -- a minimal MicroPython port. Start with this if you want
-  to port MicroPython to another microcontroller.
-- bare-arm/ -- a bare minimum version of MicroPython for ARM MCUs. Used
-  mostly to control code size.
-- teensy/ -- a version of MicroPython that runs on the Teensy 3.1
-  (preliminary but functional).
-- pic16bit/ -- a version of MicroPython for 16-bit PIC microcontrollers.
-- cc3200/ -- a version of MicroPython that runs on the CC3200 from TI.
-- esp8266/ -- an experimental port for ESP8266 WiFi modules.
+- ports/ -- versions of MicroPython that runs on other hardware
+- drivers/ -- hardware drivers
 - tools/ -- various tools, including the pyboard.py module.
 - examples/ -- a few example Python scripts.
 - docs/ -- user documentation in Sphinx reStructuredText format.
+- mpy-cross/ -- micropython cross-compiler
+- extmod/ -- external micropython modules
 
 The subdirectories above may include READMEs with additional info.
 
@@ -81,9 +74,9 @@ Then when you need the toolchain you can type ``get_esp32`` on the command line 
 You also need the ESP IDF along side this repository in order to build the ESP32 port.
 To get it:
 
-    $ git clone https://github.com/pycom/pycom-esp-idf.git
+    $ git clone --recursive -b idf_dev https://github.com/pycom/pycom-esp-idf.git
 
-After cloning, make sure to checkout all the submodules:
+After cloning, if you did not specify the --recursive option, make sure to checkout all the submodules:
 
     $ cd pycom-esp-idf
     $ git submodule update --init
@@ -92,11 +85,39 @@ Finally, before building, export the IDF_PATH variable
 
     $ export IDF_PATH=~/pycom-esp-idf
 
+This repository contains submodules! Either clone using the --recursive option:
+
+    $ git clone --recursive https://github.com/pycom/pycom-micropython-sigfox.git
+    
+Alternative checkout the modules manually:
+
+    $ cd pycom-micropython-sigfox
+    $ git submodule update --init
+
+If you updated the repository from a previous version and/or if switching to the development branch,<br>
+make sure to also update the submodules with the command above as a new submodule has been added<br>
+in the development branch!
+
 Prior to building the main firmware, you need to build mpy-cross
 
 	$ cd mpy-cross && make clean && make && cd ..
 
 By default the firmware is built for the WIPY2:
+
+    $ cd esp32
+    $ make clean
+    $ make
+    $ make flash
+
+You can force the firmware to use LittleFS (the default is FatFS if not configured via pycom.bootmgr() or firmware updater):
+
+    $ cd esp32
+    $ make clean
+    $ make FS=LFS
+    $ make flash
+
+
+By default, both bootloader and application are built. To build them separately:
 
     $ cd esp32
     $ make clean
@@ -108,15 +129,21 @@ You can change the board type by using the BOARD variable:
 
     $ cd esp32
     $ make BOARD=GPY clean
-    $ make BOARD=GPY TARGET=boot
-    $ make BOARD=GPY TARGET=app
+    $ make BOARD=GPY
     $ make BOARD=GPY flash
 
 We currently support the following BOARD types:
 
 	WIPY LOPY SIPY GPY FIPY LOPY4
+	
+For OEM modules, please use the following BOARD type:
 
-For LoRa, you may need to specify the `LORA_BAND` as explained below.
+``` text
+W01: WIPY
+L01: LOPY
+L04: LOPY4
+G01: GPY
+```
 
 To specify a serial port other than /dev/ttyUSB0, use ESPPORT variable:
 
@@ -125,26 +152,40 @@ To specify a serial port other than /dev/ttyUSB0, use ESPPORT variable:
     $ # On Windows
     $ make ESPPORT=COM3 flash
     $ # On linux
-    $ # make ESPPORT=/dev/ttyUSB1 flash
+    $ make ESPPORT=/dev/ttyUSB1 flash
 
 To flash at full speed, use ESPSPEED variable:
 
 	$ make ESPSPEED=921600 flash
 
-To build and flash a LoPy:
+Make sure that your board is placed into <b>programming mode</b>, otherwise <b>flashing will fail</b>.<br>
+All boards except Expansion Board 2.0 will automatically switch into programming mode<br><br>
+Expansion Board 2.0 users, please connect ``P2`` to ``GND`` and then reset the board.
+
+
+To create a release package that can be flashed with the Pycom firmware tool:
 
     $ cd esp32
-    $ make BOARD=LOPY clean
-    $ make BOARD=LOPY TARGET=boot
-    $ make BOARD=LOPY TARGET=app
-    $ make BOARD=LOPY flash
+    $ make clean
+    $ make release
+    
+To create a release package for all currently supported Pycom boards:
 
-The above also applies to the FiPy and LoPy4
+    $ cd esp32
+    $ for BOARD in WIPY LOPY SIPY GPY FIPY LOPY4; do make BOARD=$BOARD clean && make BOARD=$BOARD release; done
 
-Make sure that your board is placed into programming mode, otherwise flashing will fail.<br>
-PyTrack and PySense boards will automatically switch into programming mode<br>
-(currently supported on MacOS and Linux only!)<br><br>
-Expansion Board 2.0 users, please connect ``P2`` to ``GND`` and then reset the board.
+To specify a directory other than the default build/ directory:
+
+    $ cd esp32
+    $ make clean
+    $ make RELEASE_DIR=~/pycom-packages release
+    
+To create a release package for all currently supported Pycom boards in a directory other than the default build/ directory:
+
+    $ cd esp32
+    $ for BOARD in WIPY LOPY SIPY GPY FIPY LOPY4; do make BOARD=$BOARD clean && make BOARD=$BOARD RELEASE_DIR=~/pycom-packages release; done
+
+
 
 ## Steps for using Secure Boot and Flash Encryption
 
@@ -157,7 +198,7 @@ Expansion Board 2.0 users, please connect ``P2`` to ``GND`` and then reset the b
 
 ### Prerequisites
 
-    $ export $IDF_PATH=<pycom-esp-idf_PATH>
+    $ export IDF_PATH=<pycom-esp-idf_PATH>
     $ cd esp32
 
 Hold valid keys for Flash Encryption and Secure Boot; they can be generated randomly with the following commands:
@@ -191,7 +232,7 @@ Flash keys (`flash_encryption_key.bin` and `secure-bootloader-key.bin`) into the
 
 ### Makefile options:
 
-    make BOARD=GPY SECURE=on SECURE_KEY=secure_boot_signing_key.pem ENCRYPT_KEY=flash_encryption_key.bin TARGET=[boot|app]
+    make BOARD=GPY SECURE=on SECURE_KEY=secure_boot_signing_key.pem ENCRYPT_KEY=flash_encryption_key.bin
 
 - `SECURE=on` is the main flag; it's not optional
 - if `SECURE=on` by default:
@@ -210,8 +251,7 @@ For flashing the bootloader-reflash-digest.bin has to be written at address 0x0,
 Build is done using `SECURE=on` option; additionally, all the binaries are pre-encrypted.
 
     make BOARD=GPY clean
-    make BOARD=GPY SECURE=on TARGET=boot
-    make BOARD=GPY SECURE=on TARGET=app
+    make BOARD=GPY SECURE=on
     make BOARD=GPY SECURE=on flash
 
 Manual flash command:

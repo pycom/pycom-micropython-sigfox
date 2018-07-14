@@ -23,7 +23,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifndef MICROPY_INCLUDED_LIB_UTILS_INTERRUPT_CHAR_H
+#define MICROPY_INCLUDED_LIB_UTILS_INTERRUPT_CHAR_H
 
 extern int mp_interrupt_char;
+extern int mp_reset_char;
 void mp_hal_set_interrupt_char(int c);
+void mp_hal_set_reset_char(int c);
 void mp_keyboard_interrupt(void);
+
+#endif // MICROPY_INCLUDED_LIB_UTILS_INTERRUPT_CHAR_H

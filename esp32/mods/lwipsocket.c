@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -25,7 +25,6 @@
 #include "modnetwork.h"
 #include "modusocket.h"
 #include "modwlan.h"
-#include "pybioctl.h"
 #include "serverstask.h"
 #include "mpexception.h"
 #include "antenna.h"
@@ -156,7 +155,7 @@ int lwipsocket_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t p
 
     if (ret != 0) {
         // printf("Connect returned -0x%x\n", -ret);
-        *_errno = ret;
+        *_errno = errno;
         return -1;
     }
 
@@ -167,7 +166,7 @@ int lwipsocket_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t p
 
         if ((ret = mbedtls_net_set_block(&ss->context_fd)) != 0) {
             // printf("failed! net_set_(non)block() returned -0x%x\n", -ret);
-            *_errno = ret;
+            *_errno = errno;
             return -1;
         }
 
@@ -180,7 +179,7 @@ int lwipsocket_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t p
             if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_TIMEOUT)
             {
                 // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
-                *_errno = ret;
+                *_errno = errno;
                 return -1;
             }
         }
@@ -190,7 +189,7 @@ int lwipsocket_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t p
         if ((ret = mbedtls_ssl_get_verify_result(&ss->ssl)) != 0) {
             /* In real life, we probably want to close connection if ret != 0 */
             // printf("Failed to verify peer certificate!\n");
-            *_errno = ret;
+            *_errno = errno;
             return -1;
         } else {
             // printf("Certificate verified.\n");
@@ -343,7 +342,7 @@ int lwipsocket_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_m
 
 int lwipsocket_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno) {
     mp_int_t ret;
-    if (request == MP_IOCTL_POLL) {
+    if (request == MP_STREAM_POLL) {
         mp_uint_t flags = arg;
         ret = 0;
         int32_t sd = s->sock_base.u.sd;
@@ -355,13 +354,13 @@ int lwipsocket_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_
         FD_ZERO(&xfds);
 
         // set fds if needed
-        if (flags & MP_IOCTL_POLL_RD) {
+        if (flags & MP_STREAM_POLL_RD) {
             FD_SET(sd, &rfds);
         }
-        if (flags & MP_IOCTL_POLL_WR) {
+        if (flags & MP_STREAM_POLL_WR) {
             FD_SET(sd, &wfds);
         }
-        if (flags & MP_IOCTL_POLL_HUP) {
+        if (flags & MP_STREAM_POLL_HUP) {
             FD_SET(sd, &xfds);
         }
 
@@ -379,13 +378,13 @@ int lwipsocket_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_
 
         // check return of select
         if (FD_ISSET(sd, &rfds)) {
-            ret |= MP_IOCTL_POLL_RD;
+            ret |= MP_STREAM_POLL_RD;
         }
         if (FD_ISSET(sd, &wfds)) {
-            ret |= MP_IOCTL_POLL_WR;
+            ret |= MP_STREAM_POLL_WR;
         }
         if (FD_ISSET(sd, &xfds)) {
-            ret |= MP_IOCTL_POLL_HUP;
+            ret |= MP_STREAM_POLL_HUP;
         }
     } else {
         *_errno = MP_EINVAL;

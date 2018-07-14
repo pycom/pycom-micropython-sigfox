@@ -4,8 +4,7 @@ try:
     import gc
 except ImportError:
     print("SKIP")
-    import sys
-    sys.exit()
+    raise SystemExit
 
 print(gc.isenabled())
 gc.disable()
@@ -28,3 +27,8 @@ if hasattr(gc, 'threshold'):
     assert(gc.threshold() == 0)
     assert(gc.threshold(-1) is None)
     assert(gc.threshold() == -1)
+
+    # Setting a low threshold should trigger collection at the list alloc
+    gc.threshold(1)
+    [[], []]
+    gc.threshold(-1)

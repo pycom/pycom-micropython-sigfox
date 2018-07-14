@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -14,15 +14,15 @@
 #include "controller.h"
 
 #include "esp_bt.h"
-#include "bt_trace.h"
-#include "bt_types.h"
-#include "btm_api.h"
-#include "bta_api.h"
-#include "bta_gatt_api.h"
-#include "esp_gap_ble_api.h"
-#include "esp_gattc_api.h"
-#include "esp_gatt_defs.h"
-#include "esp_bt_main.h"
+#include "common/bt_trace.h"
+#include "stack/bt_types.h"
+#include "stack/btm_api.h"
+#include "bta/bta_api.h"
+#include "bta/bta_gatt_api.h"
+#include "api/esp_gap_ble_api.h"
+#include "api/esp_gattc_api.h"
+#include "api/esp_gatt_defs.h"
+#include "api/esp_bt_main.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -52,11 +52,14 @@
 #include "mperror.h"
 #include "machtimer.h"
 
+#include "esp_spi_flash.h"
+
 
 TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xLoRaTaskHndl;
+TaskHandle_t xMeshTaskHndl;
 #endif
 #if defined(SIPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xSigfoxTaskHndl;
@@ -102,6 +105,7 @@ static StaticTask_t mpTaskTCB;
  * Returns      : none
 *******************************************************************************/
 void app_main(void) {
+
     // remove all the logs from the IDF
     esp_log_level_set("*", ESP_LOG_NONE);
 
@@ -121,7 +125,7 @@ void app_main(void) {
     mperror_pre_init();
 
     // differentiate the Flash Size (either 8MB or 4MB) based on ESP32 rev id
-    micropy_hw_flash_size = (esp_get_revision() > 0 ? 0x800000 : 0x400000);
+    micropy_hw_flash_size = (spi_flash_get_chip_size() > (4 * 1024 * 1024) ? 0x800000 : 0x400000);
 
     // propagating the Flash Size in the global variable (used in multiple IDF modules)
     g_rom_flashchip.chip_size = micropy_hw_flash_size;
@@ -172,4 +176,9 @@ void app_main(void) {
         (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t)), NULL,
                                                     MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
     }
+}
+/*TODO: Disabled untill Mesh wifi is supported */
+bool esp_mesh_is_scan_allowed()
+{
+	return false;
 }

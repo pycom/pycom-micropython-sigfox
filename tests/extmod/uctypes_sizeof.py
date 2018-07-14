@@ -1,4 +1,8 @@
-import uctypes
+try:
+    import uctypes
+except ImportError:
+    print("SKIP")
+    raise SystemExit
 
 desc = {
     # arr is array at offset 0, of UINT8 elements, array size is 2
@@ -36,3 +40,8 @@ assert uctypes.sizeof(S.arr4) == 6
 print(uctypes.sizeof(S.sub))
 assert uctypes.sizeof(S.sub) == 1
 
+# invalid descriptor
+try:
+    print(uctypes.sizeof([]))
+except TypeError:
+    print("TypeError")

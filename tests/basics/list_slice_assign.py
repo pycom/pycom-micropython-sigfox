@@ -1,4 +1,4 @@
-# test slices; only 2 argument version supported by Micro Python at the moment
+# test slices; only 2 argument version supported by MicroPython at the moment
 x = list(range(10))
 
 # Assignment
@@ -34,3 +34,14 @@ print(l)
 l = list(x)
 del l[:-3]
 print(l)
+
+# assign a tuple
+l = [1, 2, 3]
+l[0:1] = (10, 11, 12)
+print(l)
+
+# RHS of slice must be an iterable
+try:
+    [][0:1] = 123
+except TypeError:
+    print('TypeError')

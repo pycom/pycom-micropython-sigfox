@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -24,7 +24,7 @@
 #include "mpexception.h"
 #include "radio.h"
 #include "modnetwork.h"
-#include "pybioctl.h"
+#include "py/stream.h"
 #include "modusocket.h"
 #include "pycom_config.h"
 #include "mpirq.h"
@@ -52,6 +52,25 @@
 #include "lora/mac/region/RegionUS915.h"
 #include "lora/mac/region/RegionUS915-Hybrid.h"
 #include "lora/mac/region/RegionEU868.h"
+#include "lora/mac/region/RegionEU433.h"
+
+// openThread includes
+#include <openthread/udp.h>
+#include <openthread/instance.h>
+#include <openthread/ip6.h>
+#include <openthread/thread.h>
+#include <openthread/thread_ftd.h>
+#include <openthread/platform/alarm-milli.h>
+#include <openthread/tasklet.h>
+#include <openthread/platform/radio.h>
+#include <openthread/cli.h>
+#include <openthread/platform/uart.h>
+
+#include "lora/otplat_alarm.h"
+#include "lora/otplat_radio.h"
+#include "lora/ot-settings.h"
+#include "lora/ot-log.h"
+#include "lora/ot-task.h"
 
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
@@ -104,6 +123,8 @@
 #define MODLORA_TX_FAILED_EVENT                     (0x04)
 
 #define MODLORA_NVS_NAMESPACE                       "LORA_NVM"
+
+#define MESH_CLI_OUTPUT_SIZE                            (256)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -250,6 +271,16 @@ static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLN
                                                                  "MACBUFIDX", "MACRPTIDX", "MACBUF", "MACRPTBUF",
                                                                  "REGION", "CHANMASK", "CHANMASKREM" };
 
+static otInstance *ot = NULL;
+bool ot_ready = false;
+
+char otCliBuffer[128];
+int otCliBufferLen = 0;
+
+static char meshCliOutput[MESH_CLI_OUTPUT_SIZE];
+static int meshCliOutputLen = 0;
+static bool meshCliOutputDone = false;
+
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
@@ -290,6 +321,7 @@ static int lora_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout
 static int lora_socket_bind (mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno);
 static int lora_socket_setsockopt (mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
 static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
+static int lora_socket_sendto (struct _mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port, int *_errno);
 
 STATIC mp_obj_t lora_nvram_erase (mp_obj_t self_in);
 
@@ -350,6 +382,53 @@ bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length) {
         return true;
     }
     return false;
+}
+
+void modlora_sleep_module(void)
+{
+    lora_cmd_data_t cmd_data;
+    /* Set Modem mode to LORA in order to got to Sleep Mode */
+    Radio.SetModem(MODEM_LORA);
+    cmd_data.cmd = E_LORA_CMD_SLEEP;
+    /* Send Sleep Command to Lora Task */
+    lora_send_cmd (&cmd_data);
+}
+
+bool modlora_is_module_sleep(void)
+{
+    if (lora_obj.state == E_LORA_STATE_SLEEP)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+int lora_ot_recv(uint8_t *buf, int8_t *rssi) {
+
+    // put Lora into RX mode
+    int len = lora_recv (buf, OT_RADIO_FRAME_MAX_SIZE, 0, NULL);
+
+    if (len > 0) {
+        otPlatLog(OT_LOG_LEVEL_INFO, 0, "radio rcv: %d", len);
+        if (lora_obj.rssi < INT8_MIN)
+        	    *rssi = INT8_MIN;
+        else
+        	    *rssi = lora_obj.rssi;
+    }
+    return len;
+}
+
+void lora_ot_send(const uint8_t *buf, uint16_t len) {
+
+    // send max 255 bytes
+    len = LORA_PAYLOAD_SIZE_MAX < len ? LORA_PAYLOAD_SIZE_MAX : len;
+
+    lora_send(buf, len, 0);
+
+    otPlatLog(OT_LOG_LEVEL_INFO, 0, "radio TX: %d", len);
 }
 
 /******************************************************************************
@@ -1140,12 +1219,13 @@ static void lora_validate_frequency (uint32_t frequency) {
                 goto freq_error;
             }
             break;
+        case LORAMAC_REGION_EU433:
+            if (frequency < 433000000 || frequency > 435000000) { // LoRa 433 - 434
+                goto freq_error;
+            }
+            break;
         case LORAMAC_REGION_EU868:
-        #if defined(LOPY4)
-            if (frequency < 410000000 || frequency > 870000000) {
-        #else
             if (frequency < 863000000 || frequency > 870000000) {
-        #endif
                 goto freq_error;
             }
             break;
@@ -1180,6 +1260,11 @@ static void lora_validate_channel (uint32_t index) {
                 goto channel_error;
             }
             break;
+        case LORAMAC_REGION_EU433:
+            if (index >= EU433_MAX_NB_CHANNELS) {
+                goto channel_error;
+            }
+            break;
         case LORAMAC_REGION_EU868:
             if (index >= EU868_MAX_NB_CHANNELS) {
                 goto channel_error;
@@ -1204,6 +1289,7 @@ static bool lora_validate_data_rate (uint32_t data_rate) {
 
     switch (lora_obj.region) {
     case LORAMAC_REGION_AS923:
+    case LORAMAC_REGION_EU433:
     case LORAMAC_REGION_EU868:
     case LORAMAC_REGION_AU915:
         if (data_rate > DR_6) {
@@ -1255,7 +1341,11 @@ static void lora_validate_device_class (DeviceClass_t device_class) {
 
 static void lora_validate_region (LoRaMacRegion_t region) {
     if (region != LORAMAC_REGION_AS923 && region != LORAMAC_REGION_AU915
-        && region != LORAMAC_REGION_EU868 && region != LORAMAC_REGION_US915) {
+        && region != LORAMAC_REGION_EU868 && region != LORAMAC_REGION_US915
+#if defined(LOOPY4)
+        && region != LORAMAC_REGION_EU433
+#endif
+        ) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid region %d", region));
     }
 }
@@ -1470,7 +1560,10 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
             cmd_data.info.init.frequency = 915000000;
             break;
         case LORAMAC_REGION_EU868:
-            cmd_data.info.init.frequency = 868000000;
+            cmd_data.info.init.frequency = 868100000;
+            break;
+        case LORAMAC_REGION_EU433:
+            cmd_data.info.init.frequency = 433175000;
             break;
         default:
             break;
@@ -1490,6 +1583,9 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
             break;
         case LORAMAC_REGION_EU868:
             cmd_data.info.init.tx_power = 14;
+            break;
+        case LORAMAC_REGION_EU433:
+            cmd_data.info.init.tx_power = 12;
             break;
         default:
             break;
@@ -1649,6 +1745,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
         dr = DR_4;
         break;
     case LORAMAC_REGION_EU868:
+    case LORAMAC_REGION_EU433:
         dr = DR_5;
         break;
     default:
@@ -1680,6 +1777,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
             }
             break;
         case LORAMAC_REGION_EU868:
+        case LORAMAC_REGION_EU433:
             if (dr > DR_5) {
                 goto dr_error;
             }
@@ -2109,6 +2207,112 @@ STATIC mp_obj_t lora_nvram_erase (mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_nvram_erase_obj, lora_nvram_erase);
 
+/*
+ * openthread CLI callback, triggered when an response from openthread has to be published on REPL
+ */
+void otConsoleCb(const char *aBuf, uint16_t aBufLength, void *aContext){
+
+    // check if "Done" was sent
+    if (strncmp(aBuf, "Done", 4) != 0) {
+
+        // Done not received
+
+        if (MESH_CLI_OUTPUT_SIZE - meshCliOutputLen < aBufLength)
+            aBufLength = MESH_CLI_OUTPUT_SIZE - meshCliOutputLen;
+
+        memcpy(&meshCliOutput[meshCliOutputLen], aBuf, aBufLength);
+
+        meshCliOutputLen += aBufLength;
+
+        // if Error received also signal done
+        if ((strncmp(aBuf, "Error", 5) == 0) ||
+            // a PING response, should signal done, too
+            (NULL != strstr(aBuf, "icmp_seq=")))
+        {
+            meshCliOutputDone = true;
+        }
+    }
+    else {
+        // "Done" received
+        // cut the last 2 chars \r\n
+        if (meshCliOutputLen>2) meshCliOutputLen-=2;
+        meshCliOutputDone = true;
+    }
+}
+
+/*
+ * start Lora Mesh openthread
+ */
+STATIC mp_obj_t lora_mesh (mp_obj_t self_in) {
+
+    if (ot_ready){
+        printf("Mesh already enabled\n");
+        return mp_obj_new_bool(false);
+    }
+
+    ot = NULL;
+
+    if (NULL != (ot = openthread_init())) {
+
+        // init CLI and send and \n
+        meshCliOutput[0] = 0;
+        meshCliOutputLen = 0;
+        otCliConsoleInit(ot, (void*)&otConsoleCb, NULL);
+        otCliBufferLen = 0;
+    }
+    ot_ready = (ot != NULL);
+
+    return mp_obj_new_bool(ot_ready);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_mesh_obj, lora_mesh);
+
+/*
+ * openthread CLI, console interface
+ * commands available: https://github.com/openthread/openthread/blob/master/src/cli/README.md
+ */
+
+STATIC mp_obj_t lora_cli(mp_obj_t self_in, mp_obj_t data) {
+    //lora_obj_t *self = self_in;
+    int timeout = 5000;
+
+    if (!ot_ready){
+        printf("Mesh not enabled\n");
+        return mp_const_none;
+    }
+
+    if (otCliBufferLen == 0) {
+        char *cmdstr = (char *)mp_obj_str_get_str(data);
+        int len = strlen(cmdstr);
+
+        otCliBuffer[0] = 0;
+        strcpy(otCliBuffer, cmdstr);
+        otCliBuffer[len] = (char)'\n';
+        len++;
+
+        otCliBufferLen = len;
+        meshCliOutputDone = false;
+        while (!meshCliOutputDone && timeout >= 0) {
+            mp_hal_delay_ms(300);
+            timeout -= 300;
+        }
+        
+        if (meshCliOutputDone) {
+            // micropy needs to output meshCliOutput string in size of meshCliOutputLen
+            mp_obj_t res = mp_obj_new_str(meshCliOutput, meshCliOutputLen);
+            //mp_obj_new_str_from_vstr()
+            meshCliOutput[0] = 0;
+            meshCliOutputLen = 0;
+            return res;
+        }
+    }
+    else {
+        printf("no prev cmd\n");
+    }
+    return mp_obj_new_str("", 0);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_cli_obj, lora_cli);
+
+
 STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&lora_init_obj },
@@ -2133,6 +2337,9 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_save),          (mp_obj_t)&lora_nvram_save_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_restore),       (mp_obj_t)&lora_nvram_restore_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_erase),         (mp_obj_t)&lora_nvram_erase_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_mesh),                     (mp_obj_t)&lora_mesh_obj },
+      { MP_OBJ_NEW_QSTR(MP_QSTR_cli),                       (mp_obj_t)&lora_cli_obj },
+
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_LORA),                MP_OBJ_NEW_SMALL_INT(E_LORA_STACK_MODE_LORA) },
@@ -2164,6 +2371,7 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_AS923),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_AS923) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_AU915),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_AU915) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_EU868),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_EU868) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EU433),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_EU433) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_US915),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_US915) },
 };
 
@@ -2180,6 +2388,7 @@ const mod_network_nic_type_t mod_network_nic_type_lora = {
     .n_socket = lora_socket_socket,
     .n_close = lora_socket_close,
     .n_send = lora_socket_send,
+    .n_sendto = lora_socket_sendto,
     .n_recv = lora_socket_recv,
     .n_recvfrom = lora_socket_recvfrom,
     .n_settimeout = lora_socket_settimeout,
@@ -2197,10 +2406,17 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
         return -1;
     }
     s->sock_base.u.sd = 1;
+
+    // if mesh is enabled, assume socket is for mesh, not for LoraWAN
+    if (ot_ready) {
+        return mesh_socket_open(_errno);
+    }
+
     uint32_t dr = DR_0;
     switch (lora_obj.region) {
     case LORAMAC_REGION_AS923:
     case LORAMAC_REGION_EU868:
+    case LORAMAC_REGION_EU433:
         dr = DR_5;
         break;
     case LORAMAC_REGION_AU915:
@@ -2220,12 +2436,18 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
 
 static void lora_socket_close (mod_network_socket_obj_t *s) {
     s->sock_base.u.sd = -1;
+    mesh_socket_close();
 }
 
 static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno) {
     mp_int_t n_bytes = -1;
 
     LORA_CHECK_SOCKET(s);
+
+    if (ot_ready) {
+            *_errno = MP_EOPNOTSUPP;
+            return -1;
+    }
 
     // is the radio able to transmit
     if (lora_obj.pwr_mode == E_LORA_MODE_SLEEP) {
@@ -2260,6 +2482,12 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
 
 static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno) {
     LORA_CHECK_SOCKET(s);
+
+    if (ot_ready) {
+        *_errno = MP_EOPNOTSUPP;
+        return -1;
+    }
+
     int ret = lora_recv (buf, len, s->sock_base.timeout, NULL);
     if (ret < 0) {
         *_errno = MP_EAGAIN;
@@ -2270,6 +2498,11 @@ static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t l
 
 static int lora_socket_recvfrom (mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno) {
     LORA_CHECK_SOCKET(s);
+
+    if (ot_ready) {
+        return mesh_socket_recvfrom(buf, len, ip, port, _errno);
+    }
+
     *port = 0;      // in case there's no data received
     int ret = lora_recv (buf, len, s->sock_base.timeout, (uint32_t *)port);
     if (ret < 0) {
@@ -2281,6 +2514,12 @@ static int lora_socket_recvfrom (mod_network_socket_obj_t *s, byte *buf, mp_uint
 
 static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno) {
     LORA_CHECK_SOCKET(s);
+
+    if (ot_ready) {
+        *_errno = MP_EOPNOTSUPP;
+        return -1;
+    }
+
     if (level != SOL_LORA) {
         *_errno = MP_EOPNOTSUPP;
         return -1;
@@ -2307,12 +2546,23 @@ static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, 
 
 static int lora_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno) {
     LORA_CHECK_SOCKET(s);
+
+    if (ot_ready) {
+        *_errno = MP_EOPNOTSUPP;
+        return -1;
+    }
+
     s->sock_base.timeout = timeout_ms;
     return 0;
 }
 
 static int lora_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
     LORA_CHECK_SOCKET(s);
+
+    if (ot_ready) {
+        return mesh_socket_bind(ip, port, _errno);
+    }
+
     if (port > 224) {
         *_errno = MP_EOPNOTSUPP;
         return -1;
@@ -2325,17 +2575,35 @@ static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp
     mp_int_t ret = 0;
 
     LORA_CHECK_SOCKET(s);
-    if (request == MP_IOCTL_POLL) {
+
+    if (ot_ready) {
+        *_errno = MP_EOPNOTSUPP;
+        return -1;
+    }
+
+    if (request == MP_STREAM_POLL) {
         mp_uint_t flags = arg;
-        if ((flags & MP_IOCTL_POLL_RD) && lora_rx_any()) {
-            ret |= MP_IOCTL_POLL_RD;
+        if ((flags & MP_STREAM_POLL_RD) && lora_rx_any()) {
+            ret |= MP_STREAM_POLL_RD;
         }
-        if ((flags & MP_IOCTL_POLL_WR) && lora_tx_space()) {
-            ret |= MP_IOCTL_POLL_WR;
+        if ((flags & MP_STREAM_POLL_WR) && lora_tx_space()) {
+            ret |= MP_STREAM_POLL_WR;
         }
     } else {
         *_errno = MP_EINVAL;
         ret = MP_STREAM_ERROR;
     }
     return ret;
+}
+
+static int lora_socket_sendto(struct _mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port, int *_errno) {
+    LORA_CHECK_SOCKET(s);
+
+    if (ot_ready) {
+        return mesh_socket_sendto(buf, len, ip, port, _errno);
+    }
+
+    // not implemented for LoraWAN
+    *_errno = MP_EOPNOTSUPP;
+    return -1;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -14,6 +14,7 @@
 #include "mpexception.h"
 #include "mperror.h"
 #include "mpirq.h"
+#include "mpthreadport.h"
 #include "py/stackctrl.h"
 
 #include "freertos/FreeRTOS.h"
