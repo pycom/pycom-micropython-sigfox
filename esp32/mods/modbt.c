@@ -131,6 +131,8 @@ typedef struct {
     uint32_t                events;
     uint16_t                value_len;
     uint8_t                 value[BT_CHAR_VALUE_SIZE_MAX];
+    uint16_t                format_len;
+    uint8_t                 format[BT_CHAR_VALUE_SIZE_MAX];
     // mp_obj_list_t         desc_list;
 } bt_char_obj_t;
 
@@ -420,6 +422,15 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         bt_obj.busy = false;
         break;
     }
+    case ESP_GATTC_READ_DESCR_EVT:
+      if (p_data->read.status == ESP_GATT_OK) {
+          uint16_t read_len = p_data->read.value_len > BT_CHAR_VALUE_SIZE_MAX ? BT_CHAR_VALUE_SIZE_MAX : p_data->read.value_len;
+          memcpy(&bt_event_result.read.value, p_data->read.value, read_len);
+          bt_event_result.read.value_len = read_len;
+          xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
+      }
+      bt_obj.busy = false;
+      break;
     case ESP_GATTC_REG_FOR_NOTIFY_EVT:
         bt_event_result.register_for_notify.status = p_data->reg_for_notify.status;
         xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
@@ -1694,6 +1705,52 @@ STATIC mp_obj_t bt_char_read(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_char_read_obj, bt_char_read);
 
+STATIC mp_obj_t bt_char_read_format(mp_obj_t self_in) {
+    bt_char_obj_t *self = self_in;
+    bt_event_result_t bt_event;
+
+    if (self->service->connection->conn_id >= 0) {
+        xQueueReset(xScanQueue);
+
+        esp_gattc_descr_elem_t format_descriptor;
+        uint16_t count = 1;
+        esp_bt_uuid_t descr_uuid = {.len = ESP_UUID_LEN_16, .uuid.uuid16 = ESP_GATT_UUID_CHAR_PRESENT_FORMAT};
+        esp_gatt_status_t ret_val = esp_ble_gattc_get_descr_by_uuid(bt_obj.gattc_if,
+                                                                    self->service->connection->conn_id,
+                                                                    self->service->start_handle,
+                                                                    self->service->end_handle,
+                                                                    self->characteristic.uuid,
+                                                                    descr_uuid,
+                                                                    &format_descriptor,
+                                                                    &count);
+        if(ret_val == ESP_OK && count == 1) {
+            bt_obj.busy = true;
+
+            if (ESP_OK != esp_ble_gattc_read_char_descr(bt_obj.gattc_if,
+                                                        self->service->connection->conn_id,
+                                                        format_descriptor.handle,
+                                                        ESP_GATT_AUTH_REQ_NONE)) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+            }
+            while (bt_obj.busy) {
+                mp_hal_delay_ms(5);
+            }
+            if (xQueueReceive(xScanQueue, &bt_event, (TickType_t)5)) {
+                memcpy(self->format, bt_event.read.value, bt_event.read.value_len);
+                self->format_len = bt_event.read.value_len;
+                return mp_obj_new_bytes(bt_event.read.value, bt_event.read.value_len);
+            } else {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+            }
+        } else {
+            return mp_const_none; // Descriptor not found, no read
+        }
+    } else {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection already closed"));
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_char_read_format_obj, bt_char_read_format);
+
 STATIC mp_obj_t bt_char_write(mp_obj_t self_in, mp_obj_t value) {
     bt_char_obj_t *self = self_in;
     bt_event_result_t bt_event;
@@ -1843,6 +1900,7 @@ STATIC const mp_map_elem_t bt_characteristic_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_instance),                (mp_obj_t)&bt_char_instance_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_properties),              (mp_obj_t)&bt_char_properties_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_read),                    (mp_obj_t)&bt_char_read_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_read_format),             (mp_obj_t)&bt_char_read_format_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_write),                   (mp_obj_t)&bt_char_write_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&bt_char_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_value),                   (mp_obj_t)&bt_char_value_obj },
