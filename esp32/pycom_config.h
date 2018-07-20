@@ -47,8 +47,19 @@ typedef struct {
 } pycom_rgbled_config_t;
 
 typedef struct {
-    uint8_t pycom_hw_version;
-    uint8_t pycom_sw_version[12];
+    uint8_t device_token[40];
+    uint8_t mqttServiceAddress[40];
+    uint8_t userId[100];
+    uint8_t network_preferences[55];
+    uint8_t extra_preferences[100];
+    uint8_t force_update;
+    uint8_t reserved[12];
+} pycom_pybytes_config_t;
+
+typedef struct {
+    uint8_t hw_version;
+    uint8_t sw_version[12];
+    uint8_t reserved[235];
 } pycom_config_t;
 
 typedef struct {
@@ -60,10 +71,9 @@ typedef struct {
     pycom_lpwan_config_t lpwan_config;
     pycom_wifi_config_t wifi_config;
     pycom_rgbled_config_t rgbled_config;
-    uint8_t pycom_reserved[335];
-    pycom_config_t pycom_config;
+    pycom_pybytes_config_t pybytes_config;
     pycom_wdt_config_t wdt_config;
-    uint8_t pycom_dummy[248];
+    pycom_config_t pycom_config;
 } pycom_config_block_t;
 
 /******************************************************************************
@@ -118,5 +128,19 @@ void config_get_wifi_pwd(uint8_t *wifi_pwd);
 bool config_set_lora_region (uint8_t lora_region);
 
 uint8_t config_get_lora_region (void);
+
+void config_get_pybytes_device_token (uint8_t *pybytes_device_token);
+
+void config_get_pybytes_mqttServiceAddress (uint8_t *pybytes_mqttServiceAddress);
+
+void config_get_pybytes_userId (uint8_t *pybytes_userId);
+
+void config_get_pybytes_network_preferences (uint8_t *pybytes_userId);
+
+void config_get_pybytes_extra_preferences (uint8_t *pybytes_userId);
+
+bool config_set_pybytes_force_update (uint8_t force_update);
+
+bool config_get_pybytes_force_update (void);
 
 #endif /* PYCOM_CONFIG_H_ */

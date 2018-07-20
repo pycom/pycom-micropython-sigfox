@@ -25,7 +25,6 @@ static pycom_config_block_t pycom_config_block;
 void config_init0 (void) {
     // read the config struct from flash
     spi_flash_read(CONFIG_DATA_FLASH_ADDR, (void *)&pycom_config_block, sizeof(pycom_config_block));
-    // printf("Config block has size: %d\n", sizeof(pycom_config_block));
 }
 
 bool config_set_lpwan_mac (const uint8_t *mac) {
@@ -120,6 +119,20 @@ uint32_t config_get_wdt_on_boot_timeout (void) {
     return pycom_config_block.wdt_config.wdt_on_boot_timeout;
 }
 
+bool config_set_pybytes_force_update (uint8_t force_update) {
+    if (pycom_config_block.pybytes_config.force_update != force_update) {
+        pycom_config_block.pybytes_config.force_update = force_update;
+        return config_write();
+    }
+    return true;
+}
+
+bool config_get_pybytes_force_update (void) {
+    if (pycom_config_block.pybytes_config.force_update == 0xFF) {
+        pycom_config_block.pybytes_config.force_update = 0x00;
+    }
+    return pycom_config_block.pybytes_config.force_update;
+}
 bool config_set_heartbeat_on_boot (uint8_t hb_on_boot) {
     if (pycom_config_block.rgbled_config.heartbeat_on_boot != hb_on_boot) {
         pycom_config_block.rgbled_config.heartbeat_on_boot = hb_on_boot;
@@ -153,6 +166,41 @@ void config_get_wifi_pwd (uint8_t *wifi_pwd) {
     memcpy( wifi_pwd, pycom_config_block.wifi_config.wifi_pwd, sizeof(pycom_config_block.wifi_config.wifi_pwd));
     if (wifi_pwd[0]==0xff) {
         wifi_pwd[0]=0x0;
+    }
+}
+
+void config_get_pybytes_userId (uint8_t *pybytes_userId) {
+    memcpy( pybytes_userId, pycom_config_block.pybytes_config.userId, sizeof(pycom_config_block.pybytes_config.userId));
+    if (pybytes_userId[0]==0xff) {
+        pybytes_userId[0]=0x0;
+    }
+}
+
+void config_get_pybytes_mqttServiceAddress (uint8_t *pybytes_mqttServiceAddress) {
+    memcpy( pybytes_mqttServiceAddress, pycom_config_block.pybytes_config.mqttServiceAddress, sizeof(pycom_config_block.pybytes_config.mqttServiceAddress));
+    if (pybytes_mqttServiceAddress[0]==0xff) {
+        pybytes_mqttServiceAddress[0]=0x0;
+    }
+}
+
+void config_get_pybytes_device_token (uint8_t *pybytes_device_token) {
+    memcpy( pybytes_device_token, pycom_config_block.pybytes_config.device_token, sizeof(pycom_config_block.pybytes_config.device_token));
+    if (pybytes_device_token[0]==0xff) {
+        pybytes_device_token[0]=0x0;
+    }
+}
+
+void config_get_pybytes_network_preferences (uint8_t *pybytes_network_preferences) {
+    memcpy( pybytes_network_preferences, pycom_config_block.pybytes_config.network_preferences, sizeof(pycom_config_block.pybytes_config.network_preferences));
+    if (pybytes_network_preferences[0]==0xff) {
+        pybytes_network_preferences[0]=0x0;
+    }
+}
+
+void config_get_pybytes_extra_preferences (uint8_t *pybytes_extra_preferences) {
+    memcpy( pybytes_extra_preferences, pycom_config_block.pybytes_config.extra_preferences, sizeof(pycom_config_block.pybytes_config.extra_preferences));
+    if (pybytes_extra_preferences[0]==0xff) {
+        pybytes_extra_preferences[0]=0x0;
     }
 }
 

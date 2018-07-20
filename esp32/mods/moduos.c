@@ -232,6 +232,9 @@ STATIC const qstr os_uname_info_fields[] = {
 #if defined(SIPY) || defined(FIPY) || defined(LOPY4)
     ,MP_QSTR_sigfox
 #endif
+#if defined(PYBYTES_VERSION_NUMBER)
+    ,MP_QSTR_pybytes
+#endif
 };
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_sysname_obj, MICROPY_PY_SYS_PLATFORM);
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_nodename_obj, MICROPY_PY_SYS_PLATFORM);
@@ -244,9 +247,23 @@ STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lorawan_obj, LORAWAN_VERSION_NUMBER
 #if defined(SIPY) || defined (LOPY4) || defined (FIPY)
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_sigfox_obj, SIGFOX_VERSION_NUMBER);
 #endif
+#if defined(PYBYTES_VERSION_NUMBER)
+STATIC const MP_DEFINE_STR_OBJ(os_uname_info_pybytes_obj, PYBYTES_VERSION_NUMBER);
+#endif
 STATIC MP_DEFINE_ATTRTUPLE(
     os_uname_info_obj
     ,os_uname_info_fields
+#if defined(PYBYTES_VERSION_NUMBER)
+#if defined(FIPY) || defined (LOPY4)
+    ,8
+#else
+#if defined(LOPY) || defined(SIPY)
+    ,7
+    #else
+    ,6
+    #endif
+#endif
+#else
 #if defined(FIPY) || defined (LOPY4)
     ,7
 #else
@@ -255,6 +272,7 @@ STATIC MP_DEFINE_ATTRTUPLE(
     #else
     ,5
     #endif
+#endif
 #endif
     ,(mp_obj_t)&os_uname_info_sysname_obj
     ,(mp_obj_t)&os_uname_info_nodename_obj
@@ -266,6 +284,9 @@ STATIC MP_DEFINE_ATTRTUPLE(
 #endif
 #if defined(SIPY) || defined (LOPY4) || defined(FIPY)
     ,(mp_obj_t)&os_uname_info_sigfox_obj
+#endif
+#if defined(PYBYTES_VERSION_NUMBER)
+    ,(mp_obj_t)&os_uname_info_pybytes_obj
 #endif
 );
 

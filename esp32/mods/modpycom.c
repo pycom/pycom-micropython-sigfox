@@ -19,6 +19,7 @@
 #include "nvs.h"
 
 #include "pycom_config.h"
+#include "pycom_version.h"
 #include "mpexception.h"
 #include "machpin.h"
 #include "driver/rmt.h"
@@ -278,6 +279,54 @@ STATIC mp_obj_t mod_pycom_heartbeat_on_boot (mp_uint_t n_args, const mp_obj_t *a
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_heartbeat_on_boot_obj, 0, 1, mod_pycom_heartbeat_on_boot);
 
+#if defined(PYBYTES_VERSION_NUMBER)
+STATIC mp_obj_t mod_pycom_pybytes_device_token (void) {
+        uint8_t pybytes_device_token[39];
+        config_get_pybytes_device_token(pybytes_device_token);
+        return mp_obj_new_str((const char*)pybytes_device_token,strlen((const char*)pybytes_device_token),false);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_pybytes_device_token_obj, mod_pycom_pybytes_device_token);
+
+
+STATIC mp_obj_t mod_pycom_pybytes_mqttServiceAddress (void) {
+        uint8_t pybytes_mqttServiceAddress[39];
+        config_get_pybytes_mqttServiceAddress(pybytes_mqttServiceAddress);
+        return mp_obj_new_str((const char*)pybytes_mqttServiceAddress,strlen((const char*)pybytes_mqttServiceAddress),false);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_pybytes_mqttServiceAddress_obj, mod_pycom_pybytes_mqttServiceAddress);
+
+STATIC mp_obj_t mod_pycom_pybytes_userId (void) {
+        uint8_t pybytes_userId[254];
+        config_get_pybytes_userId(pybytes_userId);
+        return mp_obj_new_str((const char*)pybytes_userId,strlen((const char*)pybytes_userId),false);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_pybytes_userId_obj, mod_pycom_pybytes_userId);
+
+STATIC mp_obj_t mod_pycom_pybytes_network_preferences (void) {
+        uint8_t pybytes_network_preferences[54];
+        config_get_pybytes_network_preferences(pybytes_network_preferences);
+        return mp_obj_new_str((const char*)pybytes_network_preferences,strlen((const char*)pybytes_network_preferences),false);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_pybytes_network_preferences_obj, mod_pycom_pybytes_network_preferences);
+
+STATIC mp_obj_t mod_pycom_pybytes_extra_preferences (void) {
+        uint8_t pybytes_extra_preferences[99];
+        config_get_pybytes_extra_preferences(pybytes_extra_preferences);
+        return mp_obj_new_str((const char*)pybytes_extra_preferences,strlen((const char*)pybytes_extra_preferences),false);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_pybytes_extra_preferences_obj, mod_pycom_pybytes_extra_preferences);
+
+STATIC mp_obj_t mod_pycom_pybytes_force_update (mp_uint_t n_args, const mp_obj_t *args) {
+    if (n_args) {
+        config_set_pybytes_force_update (mp_obj_is_true(args[0]));
+    } else {
+        return mp_obj_new_bool(config_get_pybytes_force_update());
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_pybytes_force_update_obj, 0, 1, mod_pycom_pybytes_force_update);
+#endif
+
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat),                       (mp_obj_t)&mod_pycom_heartbeat_obj },
@@ -298,6 +347,14 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_ssid),                       (mp_obj_t)&mod_pycom_wifi_ssid_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd),                        (mp_obj_t)&mod_pycom_wifi_pwd_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat_on_boot),               (mp_obj_t)&mod_pycom_heartbeat_on_boot_obj },
+#if defined(PYBYTES_VERSION_NUMBER)
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_device_token),            (mp_obj_t)&mod_pycom_pybytes_device_token_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_mqttServiceAddress),      (mp_obj_t)&mod_pycom_pybytes_mqttServiceAddress_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_userId),                  (mp_obj_t)&mod_pycom_pybytes_userId_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_network_preferences),     (mp_obj_t)&mod_pycom_pybytes_network_preferences_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_extra_preferences),       (mp_obj_t)&mod_pycom_pybytes_extra_preferences_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_force_update),            (mp_obj_t)&mod_pycom_pybytes_force_update_obj },
+#endif
 };
 
 STATIC MP_DEFINE_CONST_DICT(pycom_module_globals, pycom_module_globals_table);
