@@ -311,6 +311,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU433_CALC_BACKOFF( )
 #define EU433_NEXT_CHANNEL( )
 #define EU433_CHANNEL_ADD( )
+#define EU433_CHANNEL_MANUAL_ADD( )
 #define EU433_CHANNEL_REMOVE( )
 #define EU433_SET_CONTINUOUS_WAVE( )
 #define EU433_APPLY_DR_OFFSET( )
