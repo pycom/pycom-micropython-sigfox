@@ -167,7 +167,7 @@ STATIC mp_obj_t time_ticks_cpu(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_cpu_obj, time_ticks_cpu);
 
-STATIC mp_obj_t time_ticks_diff(mp_obj_t end_in, mp_obj_t start_in) {
+STATIC mp_obj_t time_ticks_diff(mp_obj_t start_in, mp_obj_t end_in) {
     int32_t start = mp_obj_get_int_truncated(start_in);
     int32_t end = mp_obj_get_int_truncated(end_in);
     return mp_obj_new_int(end - start);
