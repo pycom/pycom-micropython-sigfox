@@ -433,6 +433,7 @@ bool RegionIN865NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel,
  * \retval Status of the operation.
  */
 LoRaMacStatus_t RegionIN865ChannelAdd( ChannelAddParams_t* channelAdd );
+LoRaMacStatus_t RegionIN865ChannelManualAdd( ChannelAddParams_t* channelAdd );
 
 /*!
  * \brief Removes a channel.

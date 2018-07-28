@@ -52,6 +52,7 @@
 #include "lora/mac/region/RegionUS915.h"
 #include "lora/mac/region/RegionUS915-Hybrid.h"
 #include "lora/mac/region/RegionEU868.h"
+#include "lora/mac/region/RegionIN865.h"
 
 // openThread includes
 #include <openthread/udp.h>
@@ -1227,6 +1228,11 @@ static void lora_validate_frequency (uint32_t frequency) {
                 goto freq_error;
             }
             break;
+        case LORAMAC_REGION_IN865:
+            if (frequency < 865000000 || frequency > 867000000) {
+                goto freq_error;
+            }
+            break;
         default:
             break;
     }
@@ -1263,6 +1269,11 @@ static void lora_validate_channel (uint32_t index) {
                 goto channel_error;
             }
             break;
+        case LORAMAC_REGION_IN865:
+            if (index >= IN865_MAX_NB_CHANNELS) {
+                goto channel_error;
+            }
+            break;
         default:
             break;
     }
@@ -1283,6 +1294,7 @@ static bool lora_validate_data_rate (uint32_t data_rate) {
     switch (lora_obj.region) {
     case LORAMAC_REGION_AS923:
     case LORAMAC_REGION_EU868:
+    case LORAMAC_REGION_IN865:
     case LORAMAC_REGION_AU915:
         if (data_rate > DR_6) {
             return false;
@@ -1333,7 +1345,8 @@ static void lora_validate_device_class (DeviceClass_t device_class) {
 
 static void lora_validate_region (LoRaMacRegion_t region) {
     if (region != LORAMAC_REGION_AS923 && region != LORAMAC_REGION_AU915
-        && region != LORAMAC_REGION_EU868 && region != LORAMAC_REGION_US915) {
+        && region != LORAMAC_REGION_EU868 && region != LORAMAC_REGION_US915
+        && region != LORAMAC_REGION_IN865) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid region %d", region));
     }
 }
@@ -1550,6 +1563,9 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
         case LORAMAC_REGION_EU868:
             cmd_data.info.init.frequency = 868000000;
             break;
+        case LORAMAC_REGION_IN865:
+            cmd_data.info.init.frequency = 865000000;
+            break;
         default:
             break;
         }
@@ -1568,6 +1584,9 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
             break;
         case LORAMAC_REGION_EU868:
             cmd_data.info.init.tx_power = 14;
+            break;
+        case LORAMAC_REGION_IN865:
+            cmd_data.info.init.tx_power = 12;
             break;
         default:
             break;
@@ -1727,6 +1746,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
         dr = DR_4;
         break;
     case LORAMAC_REGION_EU868:
+    case LORAMAC_REGION_IN865:
         dr = DR_5;
         break;
     default:
@@ -1758,6 +1778,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
             }
             break;
         case LORAMAC_REGION_EU868:
+        case LORAMAC_REGION_IN865:
             if (dr > DR_5) {
                 goto dr_error;
             }
@@ -2351,6 +2372,7 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_AS923),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_AS923) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_AU915),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_AU915) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_EU868),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_EU868) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_IN865),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_IN865) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_US915),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_US915) },
 };
 
@@ -2395,6 +2417,7 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
     switch (lora_obj.region) {
     case LORAMAC_REGION_AS923:
     case LORAMAC_REGION_EU868:
+    case LORAMAC_REGION_IN865:
         dr = DR_5;
         break;
     case LORAMAC_REGION_AU915:

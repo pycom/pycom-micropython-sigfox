@@ -286,6 +286,8 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU433_NEXT_CHANNEL( )                      EU433_CASE { return RegionEU433NextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define EU433_CHANNEL_ADD( )                       EU433_CASE { return RegionEU433ChannelAdd( channelAdd ); }
 #define EU433_CHANNEL_REMOVE( )                    EU433_CASE { return RegionEU433ChannelsRemove( channelRemove ); }
+#define EU433_CHANNEL_MANUAL_ADD( )                EU433_CASE { return RegionEU433ChannelManualAdd( channelAdd ); }
+#define EU433_CHANNEL_MANUAL_REMOVE( )             EU433_CASE { return RegionEU433ChannelsRemove( channelRemove ); }
 #define EU433_SET_CONTINUOUS_WAVE( )               EU433_CASE { RegionEU433SetContinuousWave( continuousWave ); break; }
 #define EU433_APPLY_DR_OFFSET( )                   EU433_CASE { return RegionEU433ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #else
@@ -309,6 +311,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU433_CALC_BACKOFF( )
 #define EU433_NEXT_CHANNEL( )
 #define EU433_CHANNEL_ADD( )
+#define EU433_CHANNEL_MANUAL_ADD( )
 #define EU433_CHANNEL_REMOVE( )
 #define EU433_SET_CONTINUOUS_WAVE( )
 #define EU433_APPLY_DR_OFFSET( )
@@ -451,7 +454,9 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define IN865_CALC_BACKOFF( )                      IN865_CASE { RegionIN865CalcBackOff( calcBackOff ); break; }
 #define IN865_NEXT_CHANNEL( )                      IN865_CASE { return RegionIN865NextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define IN865_CHANNEL_ADD( )                       IN865_CASE { return RegionIN865ChannelAdd( channelAdd ); }
+#define IN865_CHANNEL_MANUAL_ADD( )                IN865_CASE { return RegionIN865ChannelManualAdd( channelAdd ); }
 #define IN865_CHANNEL_REMOVE( )                    IN865_CASE { return RegionIN865ChannelsRemove( channelRemove ); }
+#define IN865_CHANNEL_MANUAL_REMOVE( )             IN865_CASE { return RegionIN865ChannelsRemove( channelRemove ); }
 #define IN865_SET_CONTINUOUS_WAVE( )               IN865_CASE { RegionIN865SetContinuousWave( continuousWave ); break; }
 #define IN865_APPLY_DR_OFFSET( )                   IN865_CASE { return RegionIN865ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #else
@@ -475,7 +480,9 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define IN865_CALC_BACKOFF( )
 #define IN865_NEXT_CHANNEL( )
 #define IN865_CHANNEL_ADD( )
+#define IN865_CHANNEL_MANUAL_ADD( )
 #define IN865_CHANNEL_REMOVE( )
+#define IN865_CHANNEL_MANUAL_REMOVE( )
 #define IN865_SET_CONTINUOUS_WAVE( )
 #define IN865_APPLY_DR_OFFSET( )
 #endif
@@ -1035,7 +1042,9 @@ LoRaMacStatus_t RegionChannelManualAdd( LoRaMacRegion_t region, ChannelAddParams
     {
         AS923_CHANNEL_MANUAL_ADD( );
         AU915_CHANNEL_MANUAL_ADD( );
+        EU433_CHANNEL_MANUAL_ADD( );
         EU868_CHANNEL_MANUAL_ADD( );
+        IN865_CHANNEL_MANUAL_ADD( );
         US915_CHANNEL_MANUAL_ADD( );
         US915_HYBRID_CHANNEL_MANUAL_ADD( );
         default:
