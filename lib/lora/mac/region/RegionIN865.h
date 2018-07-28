@@ -464,6 +464,12 @@ void RegionIN865SetContinuousWave( ContinuousWaveParams_t* continuousWave );
  */
 uint8_t RegionIN865ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t drOffset );
 
+bool RegionIN865GetChannels( ChannelParams_t** channels, uint32_t *size );
+
+bool RegionIN865GetChannelMask( uint16_t** channelmask, uint32_t *size );
+
+bool RegionIN865ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr );
+
 /*! \} defgroup REGIONIN865 */
 
 #endif // __REGION_IN865_H__
