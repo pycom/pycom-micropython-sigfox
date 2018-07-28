@@ -1113,3 +1113,25 @@ uint8_t RegionEU433ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t d
     }
     return datarate;
 }
+bool RegionEU433GetChannels( ChannelParams_t** channels, uint32_t *size )
+{
+    *channels = Channels;
+    *size = sizeof(Channels);
+    return true;
+}
+
+bool RegionEU433GetChannelMask( uint16_t** channelmask, uint32_t *size )
+{
+    *channelmask = ChannelsMask;
+    *size = sizeof(ChannelsMask);
+    return true;
+}
+
+bool RegionEU433ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr )
+{
+    uint8_t DRToCounter[6] = { 48, 32, 24, 16, 8, 1 };
+    if (joinDr < sizeof(DRToCounter)) {
+        alternateDr->NbTrials = DRToCounter[joinDr];
+    }
+    return true;
+}

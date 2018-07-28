@@ -290,6 +290,9 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU433_CHANNEL_MANUAL_REMOVE( )             EU433_CASE { return RegionEU433ChannelsRemove( channelRemove ); }
 #define EU433_SET_CONTINUOUS_WAVE( )               EU433_CASE { RegionEU433SetContinuousWave( continuousWave ); break; }
 #define EU433_APPLY_DR_OFFSET( )                   EU433_CASE { return RegionEU433ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
+#define EU433_GET_CHANNELS( )                      EU433_CASE { return RegionEU433GetChannels( channels, size ); }
+#define EU433_GET_CHANNEL_MASK( )                  EU433_CASE { return RegionEU433GetChannelMask( channelmask, size ); }
+#define EU433_FORCE_JOIN_DATARATE( )               EU433_CASE { return RegionEU433ForceJoinDataRate( joinDr, alternateDr ); }
 #else
 #define EU433_IS_ACTIVE( )
 #define EU433_GET_PHY_PARAM( )
@@ -313,8 +316,12 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU433_CHANNEL_ADD( )
 #define EU433_CHANNEL_MANUAL_ADD( )
 #define EU433_CHANNEL_REMOVE( )
+#define EU433_CHANNEL_MANUAL_REMOVE( )
 #define EU433_SET_CONTINUOUS_WAVE( )
 #define EU433_APPLY_DR_OFFSET( )
+#define EU433_GET_CHANNELS( )
+#define EU433_GET_CHANNEL_MASK( )
+#define EU433_FORCE_JOIN_DATARATE( )
 #endif
 
 #ifdef REGION_EU868
@@ -1077,6 +1084,7 @@ bool RegionChannelsManualRemove( LoRaMacRegion_t region, ChannelRemoveParams_t* 
         AS923_CHANNEL_MANUAL_REMOVE( );
         AU915_CHANNEL_MANUAL_REMOVE( );
         EU868_CHANNEL_MANUAL_REMOVE( );
+        EU433_CHANNEL_MANUAL_REMOVE( );
         US915_CHANNEL_MANUAL_REMOVE( );
         US915_HYBRID_CHANNEL_MANUAL_REMOVE( );
         default:
@@ -1135,6 +1143,7 @@ bool RegionGetChannels( LoRaMacRegion_t region, ChannelParams_t** channels, uint
         AS923_GET_CHANNELS( );
         AU915_GET_CHANNELS( );
         EU868_GET_CHANNELS( );
+        EU433_GET_CHANNELS( );
         US915_GET_CHANNELS( );
         US915_HYBRID_GET_CHANNELS( );
         default:
@@ -1150,6 +1159,7 @@ bool RegionGetChannelMask(LoRaMacRegion_t region, uint16_t **channelmask, uint32
         AS923_GET_CHANNEL_MASK( );
         AU915_GET_CHANNEL_MASK( );
         EU868_GET_CHANNEL_MASK( );
+        EU433_GET_CHANNEL_MASK( );
         US915_GET_CHANNEL_MASK( );
         US915_HYBRID_GET_CHANNEL_MASK( );
         default:
@@ -1179,6 +1189,7 @@ bool RegionForceJoinDataRate( LoRaMacRegion_t region, int8_t joinDr, AlternateDr
         AS923_FORCE_JOIN_DATARATE( );
         AU915_FORCE_JOIN_DATARATE( );
         EU868_FORCE_JOIN_DATARATE( );
+        EU433_FORCE_JOIN_DATARATE( );
         US915_FORCE_JOIN_DATARATE( );
         US915_HYBRID_FORCE_JOIN_DATARATE( );
         default:
