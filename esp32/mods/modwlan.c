@@ -48,6 +48,7 @@
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
+#include "lwipsocket.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -88,25 +89,7 @@
 //
 //#define IPV4_ADDR_STR_LEN_MAX           (16)
 
-#define WLAN_MAX_RX_SIZE                1024
-#define WLAN_MAX_TX_SIZE                1476
-
-#define MAKE_SOCKADDR(addr, ip, port)       struct sockaddr addr; \
-                                            addr.sa_family = AF_INET; \
-                                            addr.sa_data[0] = port >> 8; \
-                                            addr.sa_data[1] = port; \
-                                            addr.sa_data[2] = ip[3]; \
-                                            addr.sa_data[3] = ip[2]; \
-                                            addr.sa_data[4] = ip[1]; \
-                                            addr.sa_data[5] = ip[0];
-
-#define UNPACK_SOCKADDR(addr, ip, port)     port = (addr.sa_data[0] << 8) | addr.sa_data[1]; \
-                                            ip[0] = addr.sa_data[5]; \
-                                            ip[1] = addr.sa_data[4]; \
-                                            ip[2] = addr.sa_data[3]; \
-                                            ip[3] = addr.sa_data[2];
-
-#define FILE_READ_SIZE 256
+#define FILE_READ_SIZE                      256
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -125,6 +108,7 @@ wlan_obj_t wlan_obj = {
 //    #if (MICROPY_PORT_HAS_TELNET || MICROPY_PORT_HAS_FTP)
 //        .servers_enabled = false,
 //    #endif
+    .started = false
 };
 //
 //STATIC const mp_irq_methods_t wlan_irq_methods;
@@ -149,13 +133,12 @@ STATIC void wlan_servers_stop (void);
 //STATIC void wlan_reset (void);
 STATIC void wlan_validate_mode (uint mode);
 STATIC void wlan_set_mode (uint mode);
-STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac);
+STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac, bool hidden);
 STATIC void wlan_validate_ssid_len (uint32_t len);
 STATIC uint32_t wlan_set_ssid_internal (const char *ssid, uint8_t len, bool add_mac);
 STATIC void wlan_validate_security (uint8_t auth, const char *key);
 STATIC void wlan_set_security_internal (uint8_t auth, const char *key);
 STATIC void wlan_validate_channel (uint8_t channel);
-STATIC void wlan_validate_antenna (uint8_t antenna);
 STATIC void wlan_set_antenna (uint8_t antenna);
 static esp_err_t wlan_event_handler(void *ctx, system_event_t *event);
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key, int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent);
@@ -166,21 +149,6 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
 //STATIC bool wlan_scan_result_is_unique (const mp_obj_list_t *nets, uint8_t *bssid);
 
 //STATIC void wlan_event_handler_cb (System_Event_t *event);
-
-static int wlan_gethostbyname(const char *name, mp_uint_t len, uint8_t *out_ip, mp_uint_t family);
-static int wlan_socket_socket(mod_network_socket_obj_t *s, int *_errno);
-static void wlan_socket_close(mod_network_socket_obj_t *s);
-static int wlan_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno);
-static int wlan_socket_listen(mod_network_socket_obj_t *s, mp_int_t backlog, int *_errno);
-static int wlan_socket_accept(mod_network_socket_obj_t *s, mod_network_socket_obj_t *s2, byte *ip, mp_uint_t *port, int *_errno);
-static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno);
-static int wlan_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno);
-static int wlan_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno);
-static int wlan_socket_sendto( mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port, int *_errno);
-static int wlan_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno);
-static int wlan_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
-static int wlan_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno);
-static int wlan_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 
 static char *wlan_read_file (const char *file_path, vstr_t *vstr);
 //*****************************************************************************
@@ -199,7 +167,7 @@ void wlan_pre_init (void) {
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
 }
 
-void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac) {
+void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac, bool hidden) {
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -217,7 +185,7 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key,
     wlan_set_mode(mode);
 
     if (mode != WIFI_MODE_STA) {
-        wlan_setup_ap (ssid, auth, key, channel, add_mac);
+        wlan_setup_ap (ssid, auth, key, channel, add_mac, hidden);
     }
 
     esp_wifi_start();
@@ -340,7 +308,7 @@ STATIC void wlan_servers_stop (void) {
     }
 }
 
-STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac) {
+STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac, bool hidden) {
     uint32_t ssid_len = wlan_set_ssid_internal (ssid, strlen(ssid), add_mac);
     wlan_set_security_internal(auth, key);
 
@@ -354,6 +322,7 @@ STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uin
     config.ap.channel = channel;
     wlan_obj.channel = channel;
     config.ap.max_connection = 4;
+    config.ap.ssid_hidden = (uint8_t)hidden;
     esp_wifi_set_config(WIFI_IF_AP, &config);
 }
 
@@ -439,20 +408,9 @@ STATIC void wlan_validate_channel (uint8_t channel) {
     }
 }
 
-
-STATIC void wlan_validate_antenna (uint8_t antenna) {
-    if (micropy_hw_antenna_diversity) {
-        if (antenna != ANTENNA_TYPE_INTERNAL && antenna != ANTENNA_TYPE_EXTERNAL) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
-        }
-    }
-}
-
 STATIC void wlan_set_antenna (uint8_t antenna) {
-    if (micropy_hw_antenna_diversity) {
-        wlan_obj.antenna = antenna;
-        antenna_select(antenna);
-    }
+    wlan_obj.antenna = antenna;
+    antenna_select(antenna);
 }
 
 STATIC void wlan_validate_certificates (wlan_wpa2_ent_obj_t *wpa2_ent) {
@@ -566,6 +524,39 @@ os_error:
     // TODO Add timeout handling!!
 }
 
+STATIC char *wlan_read_file (const char *file_path, vstr_t *vstr) {
+    vstr_init(vstr, FILE_READ_SIZE);
+    char *filebuf = vstr->buf;
+    mp_uint_t actualsize;
+    mp_uint_t totalsize = 0;
+
+    FIL fp;
+    FRESULT res = f_open(&fp, file_path, FA_READ);
+    if (res != FR_OK) {
+        return NULL;
+    }
+
+    while (true) {
+        FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
+        if (res != FR_OK) {
+            f_close(&fp);
+            return NULL;
+        }
+        totalsize += actualsize;
+        if (actualsize < FILE_READ_SIZE) {
+            break;
+        } else {
+            filebuf = vstr_extend(vstr, FILE_READ_SIZE);
+        }
+    }
+    f_close(&fp);
+
+    vstr->len = totalsize;
+    vstr_null_terminated_str(vstr);
+    return vstr->buf;
+}
+
+
 //STATIC void wlan_get_sl_mac (void) {
 //    // Get the MAC address
 ////    uint8_t macAddrLen = SL_MAC_ADDR_LEN;
@@ -647,10 +638,23 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
     wlan_validate_channel(channel);
 
     // get the antenna type
-    uint8_t antenna = args[4].u_int;
-    wlan_validate_antenna(antenna);
+    uint8_t antenna;
+    if (args[4].u_obj == MP_OBJ_NULL) {
+        // first gen module, so select the internal antenna
+        if (micropy_hw_antenna_diversity_pin_num == MICROPY_FIRST_GEN_ANT_SELECT_PIN_NUM) {
+            antenna = ANTENNA_TYPE_INTERNAL;
+        } else {
+            antenna = ANTENNA_TYPE_MANUAL;
+        }
+    } else if (args[4].u_obj == mp_const_none) {
+        antenna = ANTENNA_TYPE_MANUAL;
+    } else {
+        antenna = mp_obj_get_int(args[4].u_obj);
+    }
+    antenna_validate_antenna(antenna);
 
     wlan_obj.pwrsave = args[5].u_bool;
+    bool hidden = args[6].u_bool;
 
     if (mode != WIFI_MODE_STA) {
         if (ssid == NULL) {
@@ -662,7 +666,7 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
     }
 
     // initialize the wlan subsystem
-    wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false);
+    wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false, hidden);
     mod_network_register_nic(&wlan_obj);
 
     return mp_const_none;
@@ -674,8 +678,9 @@ STATIC const mp_arg_t wlan_init_args[] = {
     { MP_QSTR_ssid,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_auth,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
     { MP_QSTR_channel,      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 1} },
-    { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = ANTENNA_TYPE_INTERNAL} },
+    { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_power_save,   MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
+    { MP_QSTR_hidden,       MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
 };
 STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -692,7 +697,7 @@ STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_ui
     // give it to the sleep module
     //pyb_sleep_set_wlan_obj(self); // FIXME
 
-    if (n_kw > 0) {
+    if (n_kw > 0 || !wlan_obj.started) {
         // check the peripheral id
         if (args[0].u_int != 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
@@ -1073,7 +1078,7 @@ STATIC mp_obj_t wlan_antenna (mp_uint_t n_args, const mp_obj_t *args) {
         return mp_obj_new_int(self->antenna);
     } else {
         uint8_t antenna  = mp_obj_get_int(args[1]);
-        wlan_validate_antenna(antenna);
+        antenna_validate_antenna(antenna);
         wlan_set_antenna(antenna);
         return mp_const_none;
     }
@@ -1169,20 +1174,20 @@ const mod_network_nic_type_t mod_network_nic_type_wlan = {
         .locals_dict = (mp_obj_t)&wlan_locals_dict,
     },
 
-    .n_gethostbyname = wlan_gethostbyname,
-    .n_socket = wlan_socket_socket,
-    .n_close = wlan_socket_close,
-    .n_bind = wlan_socket_bind,
-    .n_listen = wlan_socket_listen,
-    .n_accept = wlan_socket_accept,
-    .n_connect = wlan_socket_connect,
-    .n_send = wlan_socket_send,
-    .n_recv = wlan_socket_recv,
-    .n_sendto = wlan_socket_sendto,
-    .n_recvfrom = wlan_socket_recvfrom,
-    .n_setsockopt = wlan_socket_setsockopt,
-    .n_settimeout = wlan_socket_settimeout,
-    .n_ioctl = wlan_socket_ioctl,
+    .n_gethostbyname = lwipsocket_gethostbyname,
+    .n_socket = lwipsocket_socket_socket,
+    .n_close = lwipsocket_socket_close,
+    .n_bind = lwipsocket_socket_bind,
+    .n_listen = lwipsocket_socket_listen,
+    .n_accept = lwipsocket_socket_accept,
+    .n_connect = lwipsocket_socket_connect,
+    .n_send = lwipsocket_socket_send,
+    .n_recv = lwipsocket_socket_recv,
+    .n_sendto = lwipsocket_socket_sendto,
+    .n_recvfrom = lwipsocket_socket_recvfrom,
+    .n_setsockopt = lwipsocket_socket_setsockopt,
+    .n_settimeout = lwipsocket_socket_settimeout,
+    .n_ioctl = lwipsocket_socket_ioctl,
 };
 
 //STATIC const mp_irq_methods_t wlan_irq_methods = {
@@ -1191,369 +1196,3 @@ const mod_network_nic_type_t mod_network_nic_type_wlan = {
 //    .disable = wlan_lpds_irq_disable,
 //    .flags = wlan_irq_flags,
 //};
-//
-///******************************************************************************/
-//// Micro Python bindings; WLAN socket
-
-static int wlan_gethostbyname(const char *name, mp_uint_t len, uint8_t *out_ip, mp_uint_t family) {
-    uint32_t ip;
-    struct hostent *h = gethostbyname(name);
-    if (h == NULL) {
-        // CPython: socket.herror
-        return -errno;
-    }
-    ip = *(uint32_t*)*h->h_addr_list;
-    out_ip[0] = ip;
-    out_ip[1] = ip >> 8;
-    out_ip[2] = ip >> 16;
-    out_ip[3] = ip >> 24;
-    return 0;
-}
-
-static int wlan_socket_socket(mod_network_socket_obj_t *s, int *_errno) {
-    int32_t sd = socket(s->sock_base.u.u_param.domain, s->sock_base.u.u_param.type, s->sock_base.u.u_param.proto);
-    if (sd < 0) {
-        *_errno = errno;
-        return -1;
-    }
-
-    // enable address reusing
-    uint32_t option = 1;
-    setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option));
-
-    s->sock_base.u.sd = sd;
-    return 0;
-}
-
-static void wlan_socket_close(mod_network_socket_obj_t *s) {
-    // this is to prevent the finalizer to close a socket that failed when being created
-    if (s->sock_base.is_ssl) {
-        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-        if (ss->sock_base.connected) {
-            while(mbedtls_ssl_close_notify(&ss->ssl) == MBEDTLS_ERR_SSL_WANT_WRITE);
-        }
-        mbedtls_net_free(&ss->context_fd);
-        mbedtls_x509_crt_free(&ss->cacert);
-        mbedtls_x509_crt_free(&ss->own_cert);
-        mbedtls_pk_free(&ss->pk_key);
-        mbedtls_ssl_free(&ss->ssl);
-        mbedtls_ssl_config_free(&ss->conf);
-        mbedtls_ctr_drbg_free(&ss->ctr_drbg);
-        mbedtls_entropy_free(&ss->entropy);
-    } else {
-        close(s->sock_base.u.sd);
-    }
-    modusocket_socket_delete(s->sock_base.u.sd);
-    s->sock_base.connected = false;
-}
-
-static int wlan_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
-    MAKE_SOCKADDR(addr, ip, port)
-    int ret = bind(s->sock_base.u.sd, &addr, sizeof(addr));
-    if (ret != 0) {
-        *_errno = errno;
-        return -1;
-    }
-    return 0;
-}
-
-static int wlan_socket_listen(mod_network_socket_obj_t *s, mp_int_t backlog, int *_errno) {
-    int ret = listen(s->sock_base.u.sd, backlog);
-    if (ret != 0) {
-        *_errno = errno;
-        return -1;
-    }
-    return 0;
-}
-
-static int wlan_socket_accept(mod_network_socket_obj_t *s, mod_network_socket_obj_t *s2, byte *ip, mp_uint_t *port, int *_errno) {
-    // accept incoming connection
-    int32_t sd;
-    struct sockaddr addr;
-    socklen_t addr_len = sizeof(addr);
-
-    sd = accept(s->sock_base.u.sd, &addr, &addr_len);
-    // save the socket descriptor
-    s2->sock_base.u.sd = sd;
-    if (sd < 0) {
-        *_errno = errno;
-        return -1;
-    }
-
-    s2->sock_base.connected = true;
-
-    // return ip and port
-    UNPACK_SOCKADDR(addr, ip, *port);
-    return 0;
-}
-
-static int wlan_socket_connect(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
-    MAKE_SOCKADDR(addr, ip, port)
-    int ret = connect(s->sock_base.u.sd, &addr, sizeof(addr));
-
-    if (ret != 0) {
-        // printf("Connect returned -0x%x\n", -ret);
-        *_errno = ret;
-        return -1;
-    }
-
-    // printf("Connected.\n");
-
-    if (s->sock_base.is_ssl && (ret == 0)) {
-        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-
-        if ((ret = mbedtls_net_set_block(&ss->context_fd)) != 0) {
-            // printf("failed! net_set_(non)block() returned -0x%x\n", -ret);
-            *_errno = ret;
-            return -1;
-        }
-
-        mbedtls_ssl_set_bio(&ss->ssl, &ss->context_fd, mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
-
-        // printf("Performing the SSL/TLS handshake...\n");
-
-        while ((ret = mbedtls_ssl_handshake(&ss->ssl)) != 0)
-        {
-            if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_TIMEOUT)
-            {
-                // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
-                *_errno = ret;
-                return -1;
-            }
-        }
-
-        // printf("Verifying peer X.509 certificate...\n");
-
-        if ((ret = mbedtls_ssl_get_verify_result(&ss->ssl)) != 0) {
-            /* In real life, we probably want to close connection if ret != 0 */
-            // printf("Failed to verify peer certificate!\n");
-            *_errno = ret;
-            return -1;
-        } else {
-            // printf("Certificate verified.\n");
-        }
-    }
-
-    s->sock_base.connected = true;
-    return 0;
-}
-
-static int wlan_socket_send(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, int *_errno) {
-    mp_int_t bytes = 0;
-    if (len > 0) {
-        if (s->sock_base.is_ssl) {
-            mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-            while ((bytes = mbedtls_ssl_write(&ss->ssl, (const unsigned char *)buf, len)) <= 0) {
-                if (bytes != MBEDTLS_ERR_SSL_WANT_READ && bytes != MBEDTLS_ERR_SSL_WANT_WRITE) {
-                    // printf("mbedtls_ssl_write returned -0x%x\n", -bytes);
-                    break;
-                } else {
-                    *_errno = MP_EAGAIN;
-                    return -1;
-                }
-            }
-        } else {
-            bytes = send(s->sock_base.u.sd, (const void *)buf, len, 0);
-        }
-    }
-    if (bytes <= 0) {
-        *_errno = errno;
-        return -1;
-    }
-    return bytes;
-}
-
-static int wlan_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, int *_errno) {
-    int ret;
-    if (s->sock_base.is_ssl) {
-        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
-        do {
-            ret = mbedtls_ssl_read(&ss->ssl, (unsigned char *)buf, len);
-            if (ret == MBEDTLS_ERR_SSL_WANT_READ || ret == MBEDTLS_ERR_SSL_WANT_WRITE ) {
-                // do nothing
-            } else if (ret == MBEDTLS_ERR_SSL_TIMEOUT) {
-                // printf("SSL timeout recieved\n");
-                // non-blocking return
-                if (s->sock_base.timeout == 0) {
-                    ret = 0;
-                    break;
-                }
-                // blocking do nothing
-            }
-            else if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
-                // printf("Close notify received\n");
-                ret = 0;
-                break;
-            } else if (ret < 0) {
-                // printf("mbedtls_ssl_read returned -0x%x\n", -ret);
-                break;
-            } else if (ret == 0) {
-                // printf("Connection closed\n");
-                break;
-            } else {
-                // printf("Data read OK = %d\n", ret);
-                break;
-            }
-        } while (true);
-        if (ret < 0) {
-            *_errno = ret;
-            return -1;
-        }
-    } else {
-        ret = recv(s->sock_base.u.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0);
-        if (ret < 0) {
-            *_errno = errno;
-            return -1;
-        }
-    }
-    return ret;
-}
-
-static int wlan_socket_sendto( mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port, int *_errno) {
-    if (len > 0) {
-        MAKE_SOCKADDR(addr, ip, port)
-        int ret = sendto(s->sock_base.u.sd, (byte*)buf, len, 0, (struct sockaddr*)&addr, sizeof(addr));
-        if (ret < 0) {
-            *_errno = errno;
-            return -1;
-        }
-        return ret;
-    }
-    return 0;
-}
-
-static int wlan_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port, int *_errno) {
-    struct sockaddr addr;
-    socklen_t addr_len = sizeof(addr);
-    mp_int_t ret = recvfrom(s->sock_base.u.sd, buf, MIN(len, WLAN_MAX_RX_SIZE), 0, &addr, &addr_len);
-    if (ret < 0) {
-        *_errno = errno;
-        return -1;
-    }
-    UNPACK_SOCKADDR(addr, ip, *port);
-    return ret;
-}
-
-static int wlan_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno) {
-    int ret = setsockopt(s->sock_base.u.sd, level, opt, optval, optlen);
-    if (ret < 0) {
-        *_errno = errno;
-        return -1;
-    }
-    return 0;
-}
-
-static int wlan_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno) {
-    int ret;
-    if (timeout_ms <= 0) {
-        uint32_t option = fcntl(s->sock_base.u.sd, F_GETFL, 0);
-        if (timeout_ms == 0) {
-            // set non-blocking mode
-            option |= O_NONBLOCK;
-        } else {
-            // set blocking mode
-            option &= ~O_NONBLOCK;
-        }
-        ret = fcntl(s->sock_base.u.sd, F_SETFL, option);
-    } else {
-        // set timeout
-        struct timeval tv;
-        tv.tv_sec = timeout_ms / 1000;              // seconds
-        tv.tv_usec = (timeout_ms % 1000) * 1000;    // microseconds
-        ret = setsockopt(s->sock_base.u.sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-    }
-
-    if (ret != 0) {
-        *_errno = errno;
-        return -1;
-    }
-
-    s->sock_base.timeout = timeout_ms;
-    return 0;
-}
-
-static int wlan_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno) {
-    mp_int_t ret;
-    if (request == MP_IOCTL_POLL) {
-        mp_uint_t flags = arg;
-        ret = 0;
-        int32_t sd = s->sock_base.u.sd;
-
-        // init fds
-        fd_set rfds, wfds, xfds;
-        FD_ZERO(&rfds);
-        FD_ZERO(&wfds);
-        FD_ZERO(&xfds);
-
-        // set fds if needed
-        if (flags & MP_IOCTL_POLL_RD) {
-            FD_SET(sd, &rfds);
-        }
-        if (flags & MP_IOCTL_POLL_WR) {
-            FD_SET(sd, &wfds);
-        }
-        if (flags & MP_IOCTL_POLL_HUP) {
-            FD_SET(sd, &xfds);
-        }
-
-        // call select with the smallest possible timeout
-        struct timeval tv;
-        tv.tv_sec = 0;
-        tv.tv_usec = 10;
-        int32_t nfds = select(sd + 1, &rfds, &wfds, &xfds, &tv);
-
-        // check for errors
-        if (nfds < 0) {
-            *_errno = errno;
-            return MP_STREAM_ERROR;
-        }
-
-        // check return of select
-        if (FD_ISSET(sd, &rfds)) {
-            ret |= MP_IOCTL_POLL_RD;
-        }
-        if (FD_ISSET(sd, &wfds)) {
-            ret |= MP_IOCTL_POLL_WR;
-        }
-        if (FD_ISSET(sd, &xfds)) {
-            ret |= MP_IOCTL_POLL_HUP;
-        }
-    } else {
-        *_errno = MP_EINVAL;
-        ret = MP_STREAM_ERROR;
-    }
-    return ret;
-}
-
-
-static char *wlan_read_file (const char *file_path, vstr_t *vstr) {
-    vstr_init(vstr, FILE_READ_SIZE);
-    char *filebuf = vstr->buf;
-    mp_uint_t actualsize;
-    mp_uint_t totalsize = 0;
-
-    FIL fp;
-    FRESULT res = f_open(&fp, file_path, FA_READ);
-    if (res != FR_OK) {
-        return NULL;
-    }
-
-    while (true) {
-        FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
-        if (res != FR_OK) {
-            f_close(&fp);
-            return NULL;
-        }
-        totalsize += actualsize;
-        if (actualsize < FILE_READ_SIZE) {
-            break;
-        } else {
-            filebuf = vstr_extend(vstr, FILE_READ_SIZE);
-        }
-    }
-    f_close(&fp);
-
-    vstr->len = totalsize;
-    vstr_null_terminated_str(vstr);
-    return vstr->buf;
-}

@@ -61,8 +61,12 @@
 
 #define MACHUART_TX_WAIT_US(baud)               ((MACHUART_FRAME_TIME_US(baud)) + 1)
 #define MACHUART_TX_MAX_TIMEOUT_MS              (5)
+#if defined(FIPY) || defined(GPY)
+	#define MACHUART_RX_BUFFER_LEN                  (4096)
+#else
+	#define MACHUART_RX_BUFFER_LEN                  (512)
+#endif
 
-#define MACHUART_RX_BUFFER_LEN                  (512)
 #define MACHUART_TX_FIFO_LEN                    (UART_FIFO_LEN)
 
 // interrupt triggers
@@ -111,7 +115,11 @@ void uart_init0 (void) {
 }
 
 void uart_deinit_all (void) {
-    for (int i = 0; i < MACH_NUM_UARTS; i++) {
+    uint32_t num_uarts = MACH_NUM_UARTS;
+#if defined(GPY) || defined(FIPY)
+    num_uarts -= 1;
+#endif
+    for (int i = 0; i < num_uarts; i++) {
         mach_uart_deinit(&mach_uart_obj[i]);
     }
 }
@@ -418,7 +426,6 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
 
     // install the UART driver
     uart_driver_install(self->uart_id, MACHUART_RX_BUFFER_LEN, 0, 0, NULL, 0, UARTRxCallback);
-    uart_enable_intr_mask(self->uart_id, UART_TX_DONE_INT_ENA_M);
 
     // disable the delay between transfers
     self->uart_reg->idle_conf.tx_idle_num = 0;

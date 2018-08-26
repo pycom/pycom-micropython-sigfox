@@ -33,6 +33,7 @@ Maintainer: Miguel Luis, Gregory Cristian and Wael Guibene
 #include "sx1276.h"
 #include "sx1276-board.h"
 #include "esp_attr.h"
+#include "esp32_mphal.h"
 
 /*
  * Local types definition
@@ -267,16 +268,14 @@ bool SX1276IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh
     carrierSenseTime = TimerGetCurrentTime( );
 
     // Perform carrier sense for maxCarrierSenseTime
-    while( TimerGetElapsedTime( carrierSenseTime ) < maxCarrierSenseTime )
-    {
+    do {
         rssi = SX1276ReadRssi( modem );
 
-        if( rssi > rssiThresh )
-        {
+        if ( rssi > rssiThresh ) {
             status = false;
             break;
         }
-    }
+    } while( TimerGetElapsedTime( carrierSenseTime ) < maxCarrierSenseTime );
     SX1276SetSleep( );
     return status;
 }
@@ -1219,8 +1218,6 @@ static IRAM_ATTR void SX1276OnDioIrq (void) {
     }
 }
 
-extern uint64_t system_get_rtc_time(void);
-
 IRAM_ATTR void SX1276OnDio0Irq( void )
 {
     volatile uint8_t irqFlags = 0;
@@ -1238,7 +1235,7 @@ IRAM_ATTR void SX1276OnDio0Irq( void )
                     int8_t snr = 0;
 
                     // Store the packet timestamp
-                    SX1276.Settings.LoRaPacketHandler.TimeStamp = system_get_rtc_time();
+                    SX1276.Settings.LoRaPacketHandler.TimeStamp = mp_hal_ticks_us_non_blocking();
 
                     // Clear Irq
                     SX1276Write( REG_LR_IRQFLAGS, RFLR_IRQFLAGS_RXDONE );

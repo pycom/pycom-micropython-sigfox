@@ -22,42 +22,48 @@
  ******************************************************************************/
 
 typedef struct {
-	uint8_t lpwan_mac[8];
-	uint8_t sigfox_id[4];
-	uint8_t sigfox_pac[8];
-	uint8_t sigfox_private_key[16];
-	uint8_t sigfox_public_key[16];
-	uint8_t lora_region;
+    uint8_t lpwan_mac[8];
+    uint8_t sigfox_id[4];
+    uint8_t sigfox_pac[8];
+    uint8_t sigfox_private_key[16];
+    uint8_t sigfox_public_key[16];
+    uint8_t lora_region;
 } pycom_lpwan_config_t;
 
 typedef struct {
-	uint8_t wifi_on_boot :1;
-	uint8_t wifi_mode :3;
-	uint8_t wifi_auth :3;
-	uint8_t wifi_antenna :1;
-	uint8_t wifi_ssid[33];
-	uint8_t wifi_pwd[65];
+    uint8_t wifi_on_boot :1;
+    uint8_t wifi_mode :3;
+    uint8_t wifi_auth :3;
+    uint8_t wifi_antenna :1;
+    uint8_t wifi_ssid[33];
+    uint8_t wifi_pwd[65];
 } pycom_wifi_config_t;
 
 typedef struct {
-	uint8_t heartbeat_on_boot :1;
-	uint8_t rgb_error_color[3];
-	uint8_t rgb_safeboot_color[3];
-	uint8_t rgb_heartbeat_color[3];
+    uint8_t heartbeat_on_boot :1;
+    uint8_t rgb_error_color[3];
+    uint8_t rgb_safeboot_color[3];
+    uint8_t rgb_heartbeat_color[3];
 } pycom_rgbled_config_t;
 
 typedef struct {
-	uint8_t pycom_hw_version;
-	uint8_t pycom_sw_version[12];
-	uint8_t pycom_reserved[335];
-	uint8_t pycom_dummy[258];
+    uint8_t pycom_hw_version;
+    uint8_t pycom_sw_version[12];
 } pycom_config_t;
 
 typedef struct {
-	pycom_lpwan_config_t lpwan_config;
-	pycom_wifi_config_t wifi_config;
-	pycom_rgbled_config_t rgbled_config;
-	pycom_config_t pycom_config;
+    uint8_t wdt_on_boot;
+    uint32_t wdt_on_boot_timeout;
+} pycom_wdt_config_t;
+
+typedef struct {
+    pycom_lpwan_config_t lpwan_config;
+    pycom_wifi_config_t wifi_config;
+    pycom_rgbled_config_t rgbled_config;
+    uint8_t pycom_reserved[335];
+    pycom_config_t pycom_config;
+    pycom_wdt_config_t wdt_config;
+    uint8_t pycom_dummy[248];
 } pycom_config_block_t;
 
 /******************************************************************************
@@ -89,6 +95,14 @@ bool config_set_wifi_on_boot(uint8_t wifi_on_boot);
 
 bool config_get_wifi_on_boot(void);
 
+bool config_set_wdt_on_boot (uint8_t wdt_on_boot);
+
+bool config_get_wdt_on_boot (void);
+
+bool config_set_wdt_on_boot_timeout (uint32_t wdt_on_boot_timeout);
+
+uint32_t config_get_wdt_on_boot_timeout (void);
+
 bool config_set_heartbeat_on_boot(uint8_t wifi_on_boot);
 
 bool config_get_heartbeat_on_boot(void);
@@ -104,7 +118,5 @@ void config_get_wifi_pwd(uint8_t *wifi_pwd);
 bool config_set_lora_region (uint8_t lora_region);
 
 uint8_t config_get_lora_region (void);
-
-int config_size(void);
 
 #endif /* PYCOM_CONFIG_H_ */

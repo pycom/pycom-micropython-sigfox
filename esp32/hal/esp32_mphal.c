@@ -161,16 +161,24 @@ uint32_t mp_hal_ticks_s(void) {
     return now.tv_sec;
 }
 
-uint32_t mp_hal_ticks_ms(void) {
+IRAM_ATTR uint32_t mp_hal_ticks_ms(void) {
     struct timeval now;
     gettimeofday(&now, NULL);
     return now.tv_sec * 1000 + now.tv_usec / 1000;
 }
 
-uint32_t mp_hal_ticks_us(void) {
+IRAM_ATTR uint32_t mp_hal_ticks_us(void) {
     struct timeval now;
     gettimeofday(&now, NULL);
     return now.tv_sec * 1000000 + now.tv_usec;
+}
+
+IRAM_ATTR uint64_t mp_hal_ticks_ms_non_blocking(void) {
+    return esp_timer_get_time() / 1000;
+}
+
+IRAM_ATTR uint64_t mp_hal_ticks_us_non_blocking(void) {
+    return esp_timer_get_time();
 }
 
 void mp_hal_delay_ms(uint32_t delay) {

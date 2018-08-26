@@ -42,3 +42,11 @@ user.props
 .project
 .pydevproject
 .settings
+
+# Key files (for Flash Encryption and Secure Boot)
+secure_boot_signing_key.pem
+signature_verification_key.bin
+secure-bootloader-key.bin
+flash_encryption_key.bin
+ 
+.DS_Store

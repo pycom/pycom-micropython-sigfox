@@ -12,6 +12,7 @@
 
 #include "py/mpstate.h"
 #include "py/runtime.h"
+#include "py/mperrno.h"
 #include "bufhelper.h"
 
 #include "esp_heap_caps.h"
@@ -41,7 +42,7 @@
 /******************************************************************************
  DECLARE EXPORTED DATA
  ******************************************************************************/
-CAN_device_t CAN_cfg;
+CAN_device_t CAN_cfg = { .rx_queue = NULL };
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -146,7 +147,7 @@ STATIC mp_obj_t mach_can_init_helper(mach_can_obj_t *self, const mp_arg_val_t *a
 
     // get the baudrate
     uint32_t speed = args[1].u_int / 1000;
-    if (speed > 0 && speed < CAN_SPEED_1000KBPS) {
+    if (speed > 0 && speed <= CAN_SPEED_1000KBPS) {
         self->baudrate = args[1].u_int;
         CAN_cfg.speed = speed;
     } else {
@@ -184,8 +185,15 @@ STATIC mp_obj_t mach_can_init_helper(mach_can_obj_t *self, const mp_arg_val_t *a
 
     if (args[4].u_int > 0) {
         self->rx_queue_len = args[4].u_int;
+        if (CAN_cfg.rx_queue) {
+            vQueueDelete(CAN_cfg.rx_queue);
+            CAN_cfg.rx_queue = NULL;
+        }
         // create the CAN RX Queue
         CAN_cfg.rx_queue = xQueueCreate(args[4].u_int, sizeof(CAN_frame_t));
+        if (!CAN_cfg.rx_queue) {
+            mp_raise_OSError(MP_ENOMEM);
+        }
     } else {
         goto invalid_args;
     }
@@ -259,6 +267,11 @@ STATIC mp_obj_t mach_can_deinit(mp_obj_t self_in) {
 
     // de-assign the pins
     can_deassign_pins_af(self);
+
+    if (CAN_cfg.rx_queue) {
+        vQueueDelete(CAN_cfg.rx_queue);
+        CAN_cfg.rx_queue = NULL;
+    }
 
     return mp_const_none;
 }
@@ -491,7 +504,7 @@ STATIC const mp_map_elem_t mach_can_locals_dict_table[] = {
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_RX_FRAME),            MP_OBJ_NEW_SMALL_INT(CAN_RX_FRAME_EVENT) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_RX_FIFO_NOT_EMPTY),   MP_OBJ_NEW_SMALL_INT(CAN_FIFO_NOT_EMPTY_EVENT) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_RX_FIFO_OVERRUN),    MP_OBJ_NEW_SMALL_INT(CAN_RX_FIFO_OVERRUN_EVENT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_RX_FIFO_OVERRUN),     MP_OBJ_NEW_SMALL_INT(CAN_RX_FIFO_OVERRUN_EVENT) },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_LIST),         MP_OBJ_NEW_SMALL_INT(CAN_FILTER_LIST) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_RANGE),        MP_OBJ_NEW_SMALL_INT(CAN_FILTER_RANGE) },

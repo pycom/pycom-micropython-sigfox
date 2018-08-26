@@ -1986,6 +1986,10 @@ void LoRaMacNvsSave( void );
 
 void LoRaMacGetChannelList(ChannelParams_t **channels, uint32_t *size);
 
+bool LoRaMacGetChannelsMask(uint16_t **channelmask, uint32_t *size);
+
+bool LoRaMacGetChannelsMaskRemaining(uint16_t **channelmask, uint32_t *size);
+
 LoRaMacParams_t * LoRaMacGetMacParams(void);
 
 bool * LoRaMacGetSrvAckRequested(void);

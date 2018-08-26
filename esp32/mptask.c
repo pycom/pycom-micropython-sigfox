@@ -34,6 +34,7 @@
 #include "readline.h"
 #include "esp32_mphal.h"
 #include "machuart.h"
+#include "machwdt.h"
 #include "machpin.h"
 #include "mpexception.h"
 #include "moduos.h"
@@ -123,8 +124,17 @@ void TASK_Micropython (void *pvParameters) {
     uint32_t gc_pool_size;
     bool soft_reset = false;
     bool wifi_on_boot;
+    esp_chip_info_t chip_info;
+    uint32_t stack_len;
 
-    // init the antenna select switch here
+    esp_chip_info(&chip_info);
+    if (chip_info.revision > 0) {
+        stack_len = (MICROPY_TASK_STACK_SIZE_PSRAM / sizeof(StackType_t));
+    } else {
+        stack_len = (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t));
+    }
+
+    // configure the antenna select switch here
     antenna_init0();
     config_init0();
     mpsleep_init0();
@@ -135,7 +145,7 @@ void TASK_Micropython (void *pvParameters) {
     // initialization that must not be repeted after a soft reset
     mptask_preinit();
 #if MICROPY_PY_THREAD
-    mp_thread_preinit(mpTaskStack);
+    mp_thread_preinit(mpTaskStack, stack_len);
     mp_irq_preinit();
 #endif
 
@@ -144,7 +154,7 @@ void TASK_Micropython (void *pvParameters) {
 
     // the stack limit should be less than real stack size, so we have a chance
     // to recover from hiting the limit (the limit is measured in bytes)
-    mp_stack_set_limit(MICROPY_TASK_STACK_LEN - 1024);
+    mp_stack_set_limit(stack_len - 1024);
 
     if (esp_get_revision() > 0) {
         gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
@@ -159,7 +169,7 @@ void TASK_Micropython (void *pvParameters) {
         for ( ; ; );
     }
 
-    alarm_preinit();
+    mach_timer_alarm_preinit();
     pin_preinit();
 
     wifi_on_boot = config_get_wifi_on_boot();
@@ -203,6 +213,13 @@ soft_reset:
         safeboot = boot_info.safeboot;
     }
     if (!soft_reset) {
+        if (config_get_wdt_on_boot()) {
+            uint32_t timeout_ms = config_get_wdt_on_boot_timeout();
+            if (timeout_ms < 0xFFFFFFFF) {
+                printf("Starting the WDT on boot\n");
+                machine_wdt_start(timeout_ms);
+            }
+        }
         if (wifi_on_boot) {
             mptask_enable_wifi_ap();
         }
@@ -212,9 +229,6 @@ soft_reset:
 #endif
 #if defined(SIPY) || defined(LOPY4) || defined (FIPY)
         modsigfox_init0();
-#endif
-#if defined(GPY) || defined (FIPY)
-        modlte_init0();
 #endif
     }
 
@@ -246,6 +260,12 @@ soft_reset:
     }
 
     pyexec_frozen_module("_boot.py");
+
+    if (!soft_reset) {
+    #if defined(GPY) || defined (FIPY)
+        modlte_init0();
+    #endif
+    }
 
     if (!safeboot) {
         // run boot.py
@@ -320,7 +340,6 @@ soft_reset_exit:
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
 STATIC void mptask_preinit (void) {
-    mperror_pre_init();
     wlan_pre_init();
     xTaskCreatePinnedToCore(TASK_Servers, "Servers", SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 1);
 }
@@ -424,7 +443,7 @@ STATIC void mptask_enable_wifi_ap (void) {
 	uint8_t wifi_pwd[64];
 	config_get_wifi_pwd(wifi_pwd);
     wlan_setup (WIFI_MODE_AP, (wifi_ssid[0]==0x00) ? DEFAULT_AP_SSID : (const char*) wifi_ssid , WIFI_AUTH_WPA2_PSK, (wifi_pwd[0]==0x00) ? DEFAULT_AP_PASSWORD : (const char*) wifi_pwd ,
-                DEFAULT_AP_CHANNEL, ANTENNA_TYPE_INTERNAL, (wifi_ssid[0]==0x00) ? true:false);
+                DEFAULT_AP_CHANNEL, ANTENNA_TYPE_INTERNAL, (wifi_ssid[0]==0x00) ? true:false, false);
     mod_network_register_nic(&wlan_obj);
 }
 

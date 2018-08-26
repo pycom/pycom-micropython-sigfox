@@ -24,6 +24,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 
 #include "board.h"
 #include "lora/mac/LoRaMac.h"
+#include "esp_attr.h"
 
 #include "utilities.h"
 
@@ -291,7 +292,7 @@ PhyParam_t RegionUS915GetPhyParam( GetPhyParams_t* getPhy )
     return phyParam;
 }
 
-void RegionUS915SetBandTxDone( SetBandTxDoneParams_t* txDone )
+IRAM_ATTR void RegionUS915SetBandTxDone( SetBandTxDoneParams_t* txDone )
 {
     RegionCommonSetBandTxDone( txDone->Joined, &Bands[Channels[txDone->Channel].Band], txDone->LastTxDoneTime );
 }
@@ -849,12 +850,12 @@ LoRaMacStatus_t RegionUS915ChannelManualAdd( ChannelAddParams_t* channelAdd )
     }
 
     // Validate the datarate range for min: must be DR_0
-    if( channelAdd->NewChannel->DrRange.Fields.Min > DR_0 )
+    if( channelAdd->NewChannel->DrRange.Fields.Min != DR_0 )
     {
         drInvalid = true;
     }
     // Validate the datarate range for max: must be <= TX_MAX_DATARATE
-    if( channelAdd->NewChannel->DrRange.Fields.Max != US915_TX_MAX_DATARATE )
+    if( channelAdd->NewChannel->DrRange.Fields.Max > US915_TX_MAX_DATARATE )
     {
         drInvalid = true;
     }
@@ -938,6 +939,20 @@ bool RegionUS915GetChannels( ChannelParams_t** channels, uint32_t *size )
 {
     *channels = Channels;
     *size = sizeof(Channels);
+    return true;
+}
+
+bool RegionUS915GetChannelMask( uint16_t** channelmask, uint32_t *size )
+{
+    *channelmask = ChannelsMask;
+    *size = sizeof(ChannelsMask);
+    return true;
+}
+
+bool RegionUS915GetChannelMaskRemaining( uint16_t** channelmask, uint32_t *size )
+{
+    *channelmask = ChannelsMaskRemaining;
+    *size = sizeof(ChannelsMaskRemaining);
     return true;
 }
 

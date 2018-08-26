@@ -23,6 +23,8 @@ void mp_hal_stdout_tx_strn_cooked(const char *str, uint32_t len);
 uint32_t mp_hal_ticks_s(void);
 uint32_t mp_hal_ticks_ms(void);
 uint32_t mp_hal_ticks_us(void);
+uint64_t mp_hal_ticks_ms_non_blocking(void);
+uint64_t mp_hal_ticks_us_non_blocking(void);
 void mp_hal_delay_ms(uint32_t delay);
 void mp_hal_set_interrupt_char(int c);
 void mp_hal_reset_safe_and_boot(bool reset);

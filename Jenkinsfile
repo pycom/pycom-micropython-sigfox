@@ -7,11 +7,13 @@ node {
     stage('Checkout') {
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
+        sh 'git clone --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
+        sh 'git -C esp-idf checkout 4eab4e1b0e47c73b858c6b29d357f3d30a69c074'
+        sh 'git -C esp-idf submodule update'
     }
     
-	PYCOM_VERSION=get_version()
-	GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+    PYCOM_VERSION=get_version()
+    GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 
     stage('mpy-cross') {
         // build the cross compiler first
@@ -21,22 +23,13 @@ node {
           make all'''
     }
 
-    stage('IDF-LIBS') {
-        // build the libs from esp-idf
-       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-        		 export IDF_PATH=${WORKSPACE}/esp-idf;
-        		 cd $IDF_PATH/examples/wifi/scan;
-        		 make clean && make all'''
+    for (board in boards_to_build) {
+        stage(board) {
+            def parallelSteps = [:]
+            parallelSteps[board] = boardBuild(board)
+            parallel parallelSteps
+        }
     }
-
- 	for (board in boards_to_build) {
-		stage(board) {
-			def parallelSteps = [:]
-            def board_u = board.toUpperCase()
-        		parallelSteps[board] = boardBuild(board)
-        		parallel parallelSteps
-  		}
-  	}
 
     stash includes: '**/*.bin', name: 'binary'
     stash includes: 'tests/**', name: 'tests'
@@ -46,19 +39,19 @@ node {
 }
 
 stage ('Flash') {
-	def parallelFlash = [:]
-	for (board in boards_to_test) {
-		parallelFlash[board] = flashBuild(board)
-	}
-	parallel parallelFlash
+    def parallelFlash = [:]
+    for (board in boards_to_test) {
+        parallelFlash[board] = flashBuild(board)
+    }
+    parallel parallelFlash
 }
 
 stage ('Test'){
-	def parallelTests = [:]
-	for (board in boards_to_test) {
-		parallelTests[board] = testBuild(board)
-	}
-	parallel parallelTests
+    def parallelTests = [:]
+    for (board in boards_to_test) {
+        parallelTests[board] = testBuild(board)
+    }
+    parallel parallelTests
 }
 
 
@@ -67,7 +60,7 @@ def boardBuild(name) {
     def name_short = name_u.split('_')[0]
     def app_bin = name.toLowerCase() + '.bin'
     return {
-    		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + PYCOM_VERSION + "/" + GIT_TAG + "/"
+            release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + PYCOM_VERSION + "/" + GIT_TAG + "/"
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
@@ -89,7 +82,7 @@ def boardBuild(name) {
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
         mv ../application.elf ''' + release_dir + name + "-" + PYCOM_VERSION + '''-application.elf;
-        cp ../appimg.bin .;
+        cp ../''' + app_bin + ''' appimg.bin;
         cp ../lib/partitions.bin .;
         cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
         cp ../''' + app_bin + ''' .;
@@ -109,9 +102,9 @@ def flashBuild(short_name) {
       unstash 'tests'
       unstash 'tools'
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 erase_flash'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 --before no_reset --after no_reset erase_flash'
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
-      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -pz --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name_u +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name_u +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name_u +'/release/appimg.bin'
+      sh 'esp-idf/components/esptool_py/esptool/esptool.py --chip esp32 --port ' + device_name +' --baud 921600 --before no_reset --after no_reset write_flash -pz --flash_mode dio --flash_freq 80m --flash_size detect 0x1000 esp32/build/'+ board_name_u +'/release/bootloader/bootloader.bin 0x8000 esp32/build/'+ board_name_u +'/release/lib/partitions.bin 0x10000 esp32/build/'+ board_name_u +'/release/' + board_name_u.toLowerCase() + '.bin'
       sh 'python esp32/tools/pypic.py --port ' + device_name +' --exit'
     }
   }
@@ -121,17 +114,17 @@ def testBuild(short_name) {
   return {
     String device_name = get_device_name(short_name)
     String board_name_u = get_firmware_name(short_name)
-	node(get_remote_name(short_name)) {
-		sleep(5) //Delay to skip all bootlog
-		dir('tests') {
-			timeout(30) {
-				// As some tests are randomly failing... enforce script always returns 0 (OK)
-            		sh './run-tests --target=esp32-' + board_name_u + ' --device ' + device_name + ' || exit 0'
-        		}
-        	}
-        	sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
-        	sh 'python esp32/tools/pypic.py --port ' + device_name +' --exit'
-	}
+    node(get_remote_name(short_name)) {
+        sleep(5) //Delay to skip all bootlog
+        dir('tests') {
+            timeout(30) {
+                // As some tests are randomly failing... enforce script always returns 0 (OK)
+                    sh './run-tests --target=esp32-' + board_name_u + ' --device ' + device_name + ' || exit 0'
+                }
+            }
+            sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
+            sh 'python esp32/tools/pypic.py --port ' + device_name +' --exit'
+    }
   }
 }
 
@@ -142,16 +135,16 @@ def get_version() {
 
 def get_firmware_name(short_name) {
   node {
-	def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
-	def matcher = node_info =~ short_name + ':(.+):.*'
+    def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
+    def matcher = node_info =~ short_name + ':(.+):.*'
     matcher ? matcher[0][1] : "WIPY"
   }
 }
 
 def get_remote_name(short_name) {
   node {
-	def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
-	def matcher = node_info =~ short_name + ':.*:(.+)'
+    def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
+    def matcher = node_info =~ short_name + ':.*:(.+)'
     matcher ? matcher[0][1] : "RPI3"
   }
 }

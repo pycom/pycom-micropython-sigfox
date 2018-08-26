@@ -24,6 +24,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 
 #include "board.h"
 #include "lora/mac/LoRaMac.h"
+#include "esp_attr.h"
 
 #include "utilities.h"
 
@@ -340,7 +341,7 @@ PhyParam_t RegionAS923GetPhyParam( GetPhyParams_t* getPhy )
     return phyParam;
 }
 
-void RegionAS923SetBandTxDone( SetBandTxDoneParams_t* txDone )
+IRAM_ATTR void RegionAS923SetBandTxDone( SetBandTxDoneParams_t* txDone )
 {
     RegionCommonSetBandTxDone( txDone->Joined, &Bands[Channels[txDone->Channel].Band], txDone->LastTxDoneTime );
 }
@@ -1169,6 +1170,13 @@ bool RegionAS923GetChannels( ChannelParams_t** channels, uint32_t *size )
 {
     *channels = Channels;
     *size = sizeof(Channels);
+    return true;
+}
+
+bool RegionAS923GetChannelMask( uint16_t** channelmask, uint32_t *size )
+{
+    *channelmask = ChannelsMask;
+    *size = sizeof(ChannelsMask);
     return true;
 }
 

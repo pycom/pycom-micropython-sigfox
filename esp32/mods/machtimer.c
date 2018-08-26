@@ -14,10 +14,9 @@
 #include "py/nlr.h"
 #include "py/runtime.h"
 
-#include "mods/machtimer_alarm.h"
-#include "mods/machtimer_chrono.h"
-
-#define CLK_FREQ (APB_CLK_FREQ / 2)
+#include "machtimer.h"
+#include "machtimer_alarm.h"
+#include "machtimer_chrono.h"
 
 static uint64_t us_timer_calibration;
 
@@ -38,26 +37,30 @@ void calibrate_us_timer(void) {
     us_timer_calibration = t2 - t1;
 }
 
-void machtimer_init0(void) {
-    timer_config_t config = {.alarm_en = false, .counter_en = false, .counter_dir = TIMER_COUNT_UP, .intr_type = TIMER_INTR_LEVEL, .auto_reload = false, .divider = 2};
-
-    init_alarm_heap();
+void machtimer_preinit(void) {
+    timer_config_t config = { .alarm_en = false,
+                              .counter_en = false,
+                              .counter_dir = TIMER_COUNT_UP,
+                              .intr_type = TIMER_INTR_LEVEL,
+                              .auto_reload = false, .divider = 2};
 
     timer_init(TIMER_GROUP_0, TIMER_0, &config);
     timer_set_counter_value(TIMER_GROUP_0, TIMER_0, 0);
-    timer_enable_intr(TIMER_GROUP_0, TIMER_0);
     timer_start(TIMER_GROUP_0, TIMER_0);
     calibrate_us_timer();
 }
 
+void machtimer_init0(void) {
+    mach_timer_alarm_init_heap();
+    timer_enable_intr(TIMER_GROUP_0, TIMER_0);
+}
+
 void machtimer_deinit(void) {
-    timer_pause(TIMER_GROUP_0, TIMER_0);
     timer_disable_intr(TIMER_GROUP_0, TIMER_0);
 }
 
-uint64_t get_timer_counter_value(void) {
+IRAM_ATTR uint64_t machtimer_get_timer_counter_value(void) {
     uint64_t t;
-
     timer_get_counter_value(TIMER_GROUP_0, TIMER_0, &t);
     return t;
 }

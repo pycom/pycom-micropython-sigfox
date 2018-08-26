@@ -49,6 +49,8 @@
 #include "mptask.h"
 #include "machpin.h"
 #include "pins.h"
+#include "mperror.h"
+#include "machtimer.h"
 
 
 TaskHandle_t mpTaskHandle;
@@ -58,6 +60,9 @@ TaskHandle_t xLoRaTaskHndl;
 #endif
 #if defined(SIPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xSigfoxTaskHndl;
+#endif
+#if defined(GPY) || defined (FIPY)
+TaskHandle_t xLTETaskHndl;
 #endif
 
 extern void machine_init0(void);
@@ -70,7 +75,6 @@ StackType_t *mpTaskStack;
 // board configuration options from mpconfigboard.h
 uint32_t micropy_hw_flash_size;
 
-bool micropy_hw_antenna_diversity;
 uint32_t micropy_hw_antenna_diversity_pin_num;
 
 uint32_t micropy_lpwan_reset_pin_num;
@@ -101,6 +105,9 @@ void app_main(void) {
     // remove all the logs from the IDF
     esp_log_level_set("*", ESP_LOG_NONE);
 
+    // setup the timer used as a reference in mphal
+    machtimer_preinit();
+
     // this one gets the remaining sleep time
     machine_init0();
 
@@ -110,16 +117,26 @@ void app_main(void) {
         nvs_flash_init();
     }
 
+    // initialise heartbeat on Core 0
+    mperror_pre_init();
+
+    // differentiate the Flash Size (either 8MB or 4MB) based on ESP32 rev id
+    micropy_hw_flash_size = (esp_get_revision() > 0 ? 0x800000 : 0x400000);
+
+    // propagating the Flash Size in the global variable (used in multiple IDF modules)
+    g_rom_flashchip.chip_size = micropy_hw_flash_size;
+
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
 
     if (chip_info.revision > 0) {
-        micropy_hw_antenna_diversity = false;
-        micropy_lpwan_use_reset_pin = false;
+        micropy_hw_antenna_diversity_pin_num = MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM;
 
         micropy_lpwan_ncs_pin_index = 1;
         micropy_lpwan_ncs_pin_num = 18;
         micropy_lpwan_ncs_pin = &pin_GPIO18;
+
+        micropy_lpwan_use_reset_pin = false;
 
         micropy_lpwan_dio_pin_index = 2;
         micropy_lpwan_dio_pin_num = 23;
@@ -127,9 +144,13 @@ void app_main(void) {
 
         mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE_PSRAM, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
+        // create the MicroPython task
+        mpTaskHandle =
+        (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", (MICROPY_TASK_STACK_SIZE_PSRAM / sizeof(StackType_t)), NULL,
+                                                    MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
+
     } else {
-        micropy_hw_antenna_diversity = true;
-        micropy_hw_antenna_diversity_pin_num = 16;
+        micropy_hw_antenna_diversity_pin_num = MICROPY_FIRST_GEN_ANT_SELECT_PIN_NUM;
 
         micropy_lpwan_ncs_pin_index = 0;
         micropy_lpwan_ncs_pin_num = 17;
@@ -145,12 +166,10 @@ void app_main(void) {
         micropy_lpwan_dio_pin = &pin_GPIO23;
 
         mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
+        // create the MicroPython task
+        mpTaskHandle =
+        (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t)), NULL,
+                                                    MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
     }
-
-    micropy_hw_flash_size = spi_flash_get_chip_size();
-
-    // create the MicroPython task
-    mpTaskHandle = 
-    (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", MICROPY_TASK_STACK_LEN, NULL,
-                                                MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
 }

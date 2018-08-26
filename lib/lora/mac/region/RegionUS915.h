@@ -447,6 +447,10 @@ uint8_t RegionUS915ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t d
 
 bool RegionUS915GetChannels( ChannelParams_t** channels, uint32_t *size );
 
+bool RegionUS915GetChannelMask( uint16_t** channelmask, uint32_t *size );
+
+bool RegionUS915GetChannelMaskRemaining( uint16_t** channelmask, uint32_t *size );
+
 bool RegionUS915ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr );
 
 /*! \} defgroup REGIONUS915 */

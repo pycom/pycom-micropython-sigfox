@@ -53,6 +53,8 @@
 #include "esp_event.h"
 #include "esp_sleep.h"
 #include "soc/timer_group_struct.h"
+#include "esp_flash_encrypt.h"
+#include "esp_secure_boot.h"
 
 #include "random.h"
 #include "extmod/machine_mem.h"
@@ -72,6 +74,11 @@
 #include "modwlan.h"
 #include "machwdt.h"
 #include "machcan.h"
+#include "machrmt.h"
+#include "pycom_config.h"
+#if defined (GPY) || defined (FIPY)
+#include "lteppp.h"
+#endif
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -183,6 +190,12 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     mperror_enable_heartbeat(false);
     bt_deinit(NULL);
     wlan_deinit(NULL);
+#if defined(FIPY) || defined(GPY)
+    while (!lteppp_task_ready()) {
+        mp_hal_delay_ms(2);
+    }
+    lteppp_deinit();
+#endif
     if (n_args == 0) {
         mach_expected_wakeup_time = 0;
         esp_deep_sleep_start();
@@ -302,6 +315,15 @@ STATIC mp_obj_t machine_temperature (void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_temperature_obj, machine_temperature);
 
+STATIC mp_obj_t flash_encrypt (void) {
+	return mp_obj_new_int(esp_flash_encryption_enabled());
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_flash_encrypt_obj, flash_encrypt);
+
+STATIC mp_obj_t secure_boot (void) {
+	return mp_obj_new_int(esp_secure_boot_enabled());
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_secure_boot_obj, secure_boot);
 
 STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                MP_OBJ_NEW_QSTR(MP_QSTR_umachine) },
@@ -327,7 +349,8 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_enable_irq),              (mp_obj_t)&machine_enable_irq_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_info),                    (mp_obj_t)&machine_info_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_temperature),             (mp_obj_t)&machine_temperature_obj },
-
+    { MP_OBJ_NEW_QSTR(MP_QSTR_flash_encrypt),           (mp_obj_t)&machine_flash_encrypt_obj },
+	{ MP_OBJ_NEW_QSTR(MP_QSTR_secure_boot),           	(mp_obj_t)&machine_secure_boot_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_Pin),                     (mp_obj_t)&pin_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_UART),                    (mp_obj_t)&mach_uart_type },
@@ -341,6 +364,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_RTC),                     (mp_obj_t)&mach_rtc_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WDT),                     (mp_obj_t)&mach_wdt_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CAN),                     (mp_obj_t)&mach_can_type },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_RMT),                     (mp_obj_t)&mach_rmt_type },
 
     // constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_PWRON_RESET),         MP_OBJ_NEW_SMALL_INT(MPSLEEP_PWRON_RESET) },

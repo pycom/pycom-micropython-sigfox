@@ -19,6 +19,7 @@
 
 #include "bootloader.h"
 #include "esp_attr.h"
+//#define LOG_LOCAL_LEVEL ESP_LOG_INFO
 #include "esp_log.h"
 #include "esp_system.h"
 
@@ -46,6 +47,8 @@
 #include "sdkconfig.h"
 #include "mpconfigboard.h"
 #include "esp_image_format.h"
+#include "esp_secure_boot.h"
+#include "esp_flash_encrypt.h"
 #include "esp_flash_partitions.h"
 #include "bootloader_flash.h"
 #include "bootmgr.h"
@@ -170,6 +173,17 @@ bool load_partition_table(bootloader_state_t* bs)
     esp_err_t err;
     int num_partitions;
 
+#ifdef CONFIG_SECURE_BOOT_ENABLED
+    if(esp_secure_boot_enabled()) {
+        ESP_LOGI(TAG, "Verifying partition table signature...");
+        err = esp_secure_boot_verify_signature(ESP_PARTITION_TABLE_ADDR, ESP_PARTITION_TABLE_DATA_LEN);
+        if (err != ESP_OK) {
+            ESP_LOGE(TAG, "Failed to verify partition table signature.");
+            return false;
+        }
+        ESP_LOGD(TAG, "Partition table signature verified");
+    }
+#endif
 
     partitions = bootloader_mmap(ESP_PARTITION_TABLE_ADDR, ESP_PARTITION_TABLE_DATA_LEN);
     if (!partitions) {
@@ -258,90 +272,9 @@ static bool ota_select_valid(const boot_info_t *s)
     return s->Status != UINT32_MAX && s->crc == _crc;
 }
 
-void md5_to_ascii(unsigned char *md5, unsigned char *hex) {
-    #define nibble2ascii(x) ((x) < 10 ? (x) + '0' : (x) - 10 + 'a')
-
-    for (int i = 0; i < 16; i++) {
-        hex[(i * 2)] = nibble2ascii(md5[i] >> 4);
-        hex[(i * 2) + 1] = nibble2ascii(md5[i] & 0xF);
-    }
-}
-
-// must be 32-bit aligned
-static uint32_t bootloader_buf[1024];
-
-// static IRAM_ATTR void calculate_signature (uint8_t *signature) {
-//     uint32_t total_len = 0;
-//     uint8_t mac[6];
-//     read_mac(mac);
-
-//     struct MD5Context md5_context;
-
-//     ESP_LOGI(TAG, "Starting signature calculation");
-
-//     MD5Init(&md5_context);
-//     ESP_LOGI(TAG, "md5 init sig");
-//     while (total_len < 0x7000) {
-//         if (ESP_ROM_SPIFLASH_RESULT_OK != bootloader_flash_read(0x1000 + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, false)) {
-//             ESP_LOGE(TAG, SPI_ERROR_LOG);
-//             return;
-//         }
-//         total_len += SPI_SEC_SIZE;
-//         MD5Update(&md5_context, (void *)bootloader_buf, SPI_SEC_SIZE);
-//     }
-//     // add the mac address
-//     MD5Update(&md5_context, (void *)mac, sizeof(mac));
-//     MD5Final(signature, &md5_context);
-// }
-
-static IRAM_ATTR bool bootloader_verify (const esp_partition_pos_t *pos, uint32_t size) {
-    uint32_t total_len = 0, read_len;
-    uint8_t hash[16];
-    uint8_t hash_hex[33];
-    struct MD5Context md5_context;
-
-    ESP_LOGI(TAG, "Starting image verification %x %d", pos->offset, size);
-
-    size -= 32; // substract the lenght of the MD5 hash
-
-    MD5Init(&md5_context);
-    ESP_LOGI(TAG, "md5 init");
-    while (total_len < size) {
-        read_len = (size - total_len) > SPI_SEC_SIZE ? SPI_SEC_SIZE : (size - total_len);
-        if (ESP_OK != bootloader_flash_read(pos->offset + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, false)) {
-            ESP_LOGE(TAG, SPI_ERROR_LOG);
-            return false;
-        }
-        total_len += read_len;
-        MD5Update(&md5_context, (void *)bootloader_buf, read_len);
-    }
-    ESP_LOGI(TAG, "Reading done total len=%d", total_len);
-    MD5Final(hash, &md5_context);
-
-    ESP_LOGI(TAG, "Hash calculated");
-    md5_to_ascii(hash, hash_hex);
-    ESP_LOGI(TAG, "Converted to hex");
-
-    if (ESP_OK != bootloader_flash_read(pos->offset + total_len, (void *)bootloader_buf, SPI_SEC_SIZE, false)) {
-        ESP_LOGE(TAG, SPI_ERROR_LOG);
-        return false;
-    }
-
-    hash_hex[32] = '\0';
-    // this one is uint32_t type, remember?
-    bootloader_buf[32 / sizeof(uint32_t)] = '\0';
-    // compare both hashes
-    if (!strcmp((const char *)hash_hex, (const char *)bootloader_buf)) {
-        ESP_LOGI(TAG, "MD5 hash OK!");
-        // it's a match
-        return true;
-    }
-
-    ESP_LOGI(TAG, "MD5 hash failed %s : %s", hash_hex, bootloader_buf);
-    return false;
-}
-
 static IRAM_ATTR bool ota_write_boot_info (boot_info_t *boot_info, uint32_t offset) {
+	esp_rom_spiflash_result_t write_result;
+
     boot_info->crc = ota_select_crc(boot_info);
     Cache_Read_Disable(0);
     if (ESP_ROM_SPIFLASH_RESULT_OK != esp_rom_spiflash_erase_sector(offset / 0x1000)) {
@@ -350,7 +283,17 @@ static IRAM_ATTR bool ota_write_boot_info (boot_info_t *boot_info, uint32_t offs
         return false;
     }
 
-    if (ESP_ROM_SPIFLASH_RESULT_OK != esp_rom_spiflash_write(offset, (void *)boot_info, sizeof(boot_info_t))) {
+    if (esp_flash_encryption_enabled()) {
+    		// if flash is encrypted, then Write is done 32B chunks
+		uint8_t buff[64] __attribute__((aligned (32)));
+		memcpy(buff, (void *)boot_info, sizeof(boot_info_t));
+		write_result = esp_rom_spiflash_write_encrypted(offset, (void *)boot_info, 64);
+    }
+    else {
+    		write_result = esp_rom_spiflash_write(offset, (void *)boot_info, sizeof(boot_info_t));
+    }
+
+    if (ESP_ROM_SPIFLASH_RESULT_OK != write_result) {
         ESP_LOGE(TAG, SPI_ERROR_LOG);
         Cache_Read_Enable(0);
         return false;
@@ -441,13 +384,18 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
         // do we have a new image that needs to be verified?
         if ((boot_info->ActiveImg != IMG_ACT_FACTORY) && (boot_info->Status == IMG_STATUS_CHECK)) {
             if (boot_info->ActiveImg == IMG_ACT_UPDATE2) {
-                boot_info->ActiveImg = IMG_ACT_FACTORY;    // we only have space for 1 OTAA image
+                boot_info->ActiveImg = IMG_ACT_FACTORY;    // we only have space for 1 OTA image
             }
-            if (!bootloader_verify(&bs->image[boot_info->ActiveImg], boot_info->size)) {
-                // switch to the previous image
+
+            // verify the active image (ota partition)
+            esp_image_metadata_t data;
+            if (ESP_OK != esp_image_load(ESP_IMAGE_VERIFY, &bs->image[boot_info->ActiveImg], &data)) {
+            		ESP_LOGD(TAG, "Switch to the previous image");
+            		// switch to the previous image
                 boot_info->ActiveImg = boot_info->PrevImg;
                 boot_info->PrevImg = IMG_ACT_FACTORY;
             }
+
             // in any case, change the status to "READY"
             boot_info->Status = IMG_STATUS_READY;
             // write the new boot info
@@ -500,9 +448,11 @@ static void bootloader_main()
     flash_gpio_configure();
     bootloader_clock_configure();
     uart_console_configure();
+    ESP_LOGI(TAG, "ESP-IDF 2nd stage bootloader");
     wdt_reset_check();
-    ESP_LOGI(TAG, "ESP-IDF %s 2nd stage bootloader");
-
+#if defined(CONFIG_SECURE_BOOT_ENABLED) || defined(CONFIG_FLASH_ENCRYPTION_ENABLED)
+    esp_err_t err;
+#endif
     esp_image_header_t fhdr __attribute__((aligned (4)));
     bootloader_state_t bootloader_state __attribute__((aligned (4)));
     esp_partition_pos_t partition __attribute__((aligned (4)));
@@ -538,6 +488,9 @@ static void bootloader_main()
         return;
     }
 
+    // force 4MB flash size for all boards
+    fhdr.spi_size = ESP_IMAGE_FLASH_SIZE_4MB;
+
     print_flash_info(&fhdr);
     update_flash_config(&fhdr);
 
@@ -555,6 +508,37 @@ static void bootloader_main()
     }
 
     get_image_from_partition(&partition, &image_data);
+
+#ifdef CONFIG_SECURE_BOOT_ENABLED
+    // Generate secure digest from this bootloader to protect future modifications
+    ESP_LOGI(TAG, "Checking secure boot...");
+    err = esp_secure_boot_permanently_enable();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Bootloader digest generation failed (%d). SECURE BOOT IS NOT ENABLED.", err);
+        // Stop booting, as this could next Encrypt the whole Flash
+        return;
+    }
+#endif
+
+#ifdef CONFIG_FLASH_ENCRYPTION_ENABLED
+    // encrypt flash
+    ESP_LOGI(TAG, "Checking flash encryption...");
+    bool flash_encryption_enabled = esp_flash_encryption_enabled();
+    err = esp_flash_encrypt_check_and_update();
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Flash encryption check failed (%d).", err);
+        return;
+    }
+
+    if (!flash_encryption_enabled && esp_flash_encryption_enabled()) {
+        /* Flash encryption was just enabled for the first time,
+           so issue a system reset to ensure flash encryption
+           cache resets properly */
+        ESP_LOGI(TAG, "Resetting with flash encryption enabled...");
+        REG_WRITE(RTC_CNTL_OPTIONS0_REG, RTC_CNTL_SW_SYS_RST);
+        return;
+    }
+#endif
 
     ESP_LOGI(TAG, "Disabling RNG early entropy source...");
     bootloader_random_disable();

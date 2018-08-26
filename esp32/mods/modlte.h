@@ -18,23 +18,13 @@
 
 typedef struct _lte_obj_t {
     mp_obj_base_t           base;
-    
-    uint32_t                status;
-
     uint32_t                ip;
-
-    pin_obj_t *pins[4];
-    
-	bool                    started;
-	bool                    disconnected;
-	uint32_t                ip4;
+    uint32_t                ip4;
+    uint8_t                 cid;
+    bool                    init;
+    bool                    carrier;
 } lte_obj_t;
 
-
-/******************************************************************************
- DECLARE PUBLIC DATA
- ******************************************************************************/
-extern lte_obj_t lte_obj;
 
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS

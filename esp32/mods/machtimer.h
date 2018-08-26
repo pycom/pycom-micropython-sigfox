@@ -10,10 +10,17 @@
 #ifndef MACHTIMER_H_
 #define MACHTIMER_H_
 
-extern void machtimer_init0(void);
-extern void machtimer_deinit(void);
-extern uint64_t get_timer_counter_value(void);
+#define CLK_FREQ                                    (APB_CLK_FREQ / 2)
 
 extern const mp_obj_type_t mach_timer_type;
+
+
+extern void machtimer_preinit(void);
+
+extern void machtimer_init0(void);
+
+extern void machtimer_deinit(void);
+
+extern uint64_t machtimer_get_timer_counter_value(void);
 
 #endif  // MACHTIMER_H_
