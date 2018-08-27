@@ -120,6 +120,17 @@ uint32_t config_get_wdt_on_boot_timeout (void) {
     return pycom_config_block.wdt_config.wdt_on_boot_timeout;
 }
 
+bool config_set_lte_modem_enable_on_boot (bool lte_modem_en_on_boot) {
+    if (pycom_config_block.lte_config.lte_modem_en_on_boot != (uint8_t)lte_modem_en_on_boot) {
+        pycom_config_block.lte_config.lte_modem_en_on_boot = (uint8_t)lte_modem_en_on_boot;
+        return config_write();
+    }
+    return true;
+}
+
+bool config_get_lte_modem_enable_on_boot (void) {
+    return (bool)pycom_config_block.lte_config.lte_modem_en_on_boot;
+}
 bool config_set_heartbeat_on_boot (uint8_t hb_on_boot) {
     if (pycom_config_block.rgbled_config.heartbeat_on_boot != hb_on_boot) {
         pycom_config_block.rgbled_config.heartbeat_on_boot = hb_on_boot;

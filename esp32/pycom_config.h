@@ -57,13 +57,18 @@ typedef struct {
 } pycom_wdt_config_t;
 
 typedef struct {
+	uint8_t lte_modem_en_on_boot;
+}pycom_lte_config_t;
+
+typedef struct {
     pycom_lpwan_config_t lpwan_config;
     pycom_wifi_config_t wifi_config;
     pycom_rgbled_config_t rgbled_config;
     uint8_t pycom_reserved[335];
     pycom_config_t pycom_config;
     pycom_wdt_config_t wdt_config;
-    uint8_t pycom_dummy[248];
+	pycom_lte_config_t lte_config;
+    uint8_t pycom_dummy[247];
 } pycom_config_block_t;
 
 /******************************************************************************
@@ -119,4 +124,7 @@ bool config_set_lora_region (uint8_t lora_region);
 
 uint8_t config_get_lora_region (void);
 
+bool config_set_lte_modem_enable_on_boot (bool lte_modem_en_on_boot);
+
+bool config_get_lte_modem_enable_on_boot (void);
 #endif /* PYCOM_CONFIG_H_ */

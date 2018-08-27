@@ -63,6 +63,8 @@ static ip6_addr_t lte_ipv6addr;
 
 static bool lteppp_init_complete = false;
 
+static bool lteppp_enabled = false;
+
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -86,12 +88,25 @@ void lteppp_init(void) {
 
     lteppp_pcb = pppapi_pppos_create(&lteppp_netif, lteppp_output_callback, lteppp_status_cb, NULL);
 
+    //wait on connecting modem until it is allowed
+    lteppp_enabled = false;
+
     xTaskCreatePinnedToCore(TASK_LTE, "LTE", LTE_TASK_STACK_SIZE / sizeof(StackType_t), NULL, LTE_TASK_PRIORITY, &xLTETaskHndl, 1);
 }
 
 void lteppp_start (void) {
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
     vTaskDelay(5);
+}
+
+void lteppp_connect_modem (void) {
+
+	lteppp_enabled = true;
+}
+
+bool lteppp_is_modem_connected(void)
+{
+	return lteppp_enabled;
 }
 
 void lteppp_set_state(lte_state_t state) {
@@ -218,6 +233,13 @@ static void TASK_LTE (void *pvParameters) {
     vTaskDelay(5 / portTICK_RATE_MS);
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
     vTaskDelay(5 / portTICK_RATE_MS);
+
+    while (!lteppp_enabled)
+    {
+    	// wait till connection is enabled
+    	vTaskDelay(LTE_TASK_PERIOD_MS/portTICK_PERIOD_MS);
+    }
+
     if (lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
         vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
         while (true) {
@@ -284,12 +306,12 @@ static void TASK_LTE (void *pvParameters) {
         }
     }
 
-    // enable PSM if not already enabled
+    // disable PSM if enabled by default
     lteppp_send_at_cmd("AT+CPSMS?", LTE_RX_TIMEOUT_MAX_MS);
     if (!strstr(lteppp_trx_buffer, "+CPSMS: 0")) {
         lteppp_send_at_cmd("AT+CPSMS=0", LTE_RX_TIMEOUT_MIN_MS);
     }
-    // enable low power mode
+    // enable airplane low power mode
     lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
 
     lteppp_init_complete = true;

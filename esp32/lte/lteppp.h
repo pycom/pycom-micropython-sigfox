@@ -83,4 +83,8 @@ extern bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool
 
 extern bool lteppp_task_ready(void);
 
+void lteppp_connect_modem (void);
+
+bool lteppp_is_modem_connected(void);
+
 #endif  // _LTEPPP_H_
