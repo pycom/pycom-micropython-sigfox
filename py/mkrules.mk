@@ -122,6 +122,7 @@ FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Common/ -type f -name '
 ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
 FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/LTE/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/LTE\//==')
 endif
+endif
 
 FROZEN_MPY_MPY_FILES := $(addprefix $(BUILD)/frozen_mpy/,$(FROZEN_MPY_PY_FILES:.py=.mpy))
 
@@ -143,8 +144,6 @@ $(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/LTE/%.py
 	@$(ECHO) "MPY $<"
 	$(Q)$(MKDIR) -p $(dir $@)
 	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/LTE/%=%) $(MPY_CROSS_FLAGS) $^
-endif
-	
 endif
 
 # to build frozen_mpy.c from all .mpy files
