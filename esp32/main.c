@@ -63,6 +63,7 @@ TaskHandle_t xSigfoxTaskHndl;
 #endif
 #if defined(GPY) || defined (FIPY)
 TaskHandle_t xLTETaskHndl;
+TaskHandle_t xLTEUpgradeTaskHndl;
 #endif
 
 extern void machine_init0(void);
