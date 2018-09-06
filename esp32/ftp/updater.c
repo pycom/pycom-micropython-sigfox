@@ -123,6 +123,14 @@ bool updater_write (uint8_t *buf, uint32_t len) {
 
     // the actual writing into flash, not-encrypted,
     // because it already came encrypted from OTA server
+    if (updater_data.offset == 0) {
+        ESP_LOGE(TAG, "OTA start not called\n");
+        return false;
+    }
+    if ((boot_info.size + len) > IMG_SIZE) {
+        ESP_LOGE(TAG, "OTA write attempt > partition\n");
+        return false;
+    }
     if (ESP_OK != updater_spi_flash_write(updater_data.offset, (void *)buf, len, false)) {
         ESP_LOGE(TAG, "SPI flash write failed\n");
         return false;
@@ -132,7 +140,8 @@ bool updater_write (uint8_t *buf, uint32_t len) {
     updater_data.current_chunk += len;
     boot_info.size += len;
 
-    if (updater_data.current_chunk >= SPI_FLASH_SEC_SIZE) {
+    if ((updater_data.current_chunk >= SPI_FLASH_SEC_SIZE) &&
+        (boot_info.size <= (IMG_SIZE - SPI_FLASH_SEC_SIZE))) {
         updater_data.current_chunk -= SPI_FLASH_SEC_SIZE;
         // erase the next sector
         if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
