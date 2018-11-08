@@ -50,6 +50,8 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 
+#include  "py/gc.h"
+
 #include "mpirq.h"
 
 #if MICROPY_PY_THREAD
@@ -260,7 +262,7 @@ void vPortCleanUpTCB (void *tcb) {
 
 mp_obj_thread_lock_t *mp_thread_new_thread_lock(void) {
     mp_obj_thread_lock_t *self = m_new_obj(mp_obj_thread_lock_t);
-    self->mutex = heap_caps_malloc(sizeof(mp_thread_mutex_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    self->mutex = gc_alloc(sizeof(mp_thread_mutex_t), false);
     if (NULL == self->mutex) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_MemoryError, "can't create lock"));
     }
