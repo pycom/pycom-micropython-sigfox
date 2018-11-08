@@ -77,24 +77,12 @@ class sqnsupgrade:
 
 
     def return_pretty_response(self, rsp):
-        ret_str = ''
+        ret_str = ""
         lines = rsp.decode('ascii').split('\r\n')
         for line in lines:
             if 'OK' not in line:
                 ret_str += line
         return ret_str
-
-    def return_code(self, rsp):
-        ret_str = b''
-        lines = rsp.decode('ascii').split('\r\n')
-        for line in lines:
-            if 'OK' not in line:
-                ret_str += line
-        try:
-            return int(ret_str)
-        except:
-            return -1
-
 
     def wait_for_modem(self, send=True, expected=b'OK'):
         rsp = b''
@@ -142,51 +130,6 @@ class sqnsupgrade:
         else:
             return self.__check_file(ffile, debug)
 
-    def detect_modem_state(self, retry=10, initial_delay=5):
-        if 'FiPy' or 'GPy' in self.__sysname:
-
-            if 'GPy' in self.__sysname:
-                pins = ('P5', 'P98', 'P7', 'P99')
-            else:
-                pins = ('P20', 'P18', 'P19', 'P17')
-        count = 0
-        while count < retry:
-            count += 1
-            delay = initial_delay * count
-            s = UART(1, baudrate=921600, pins=pins, timeout_chars=10)
-            s.read()
-            s.write(b"AT\r\n")
-            time.sleep_ms(delay)
-            resp = s.read()
-            s.write(b"AT\r\n")
-            time.sleep_ms(delay)
-            resp = s.read()
-            if resp is not None and b'OK' in resp:
-                s.write(b"AT+SMOD?\r\n")
-                time.sleep_ms(delay)
-                resp = s.read()
-                try:
-                    return self.return_code(resp)
-                except:
-                    continue
-            else:
-                s = UART(1, baudrate=115200, pins=pins, timeout_chars=10)
-                s.write(b"AT\r\n")
-                time.sleep_ms(delay)
-                resp = s.read()
-                s.write(b"AT\r\n")
-                time.sleep_ms(delay)
-                resp = s.read()
-                if resp is not None and b'OK' in resp:
-                    s.write(b"AT+SMOD?\r\n")
-                    time.sleep_ms(delay)
-                    resp = s.read()
-                    try:
-                        return self.return_code(resp)
-                    except:
-                        continue
-
-
     def __run(self, file_path=None, baudrate=921600, port=None, resume=False, load_ffh=False, mirror=False, switch_ffh=False, bootrom=False, rgbled=0x050505, debug=False, pkgdebug=False, atneg=True, max_try=10, direct=True, atneg_only=False, version_only=False):
         mirror = True if atneg_only else mirror
         recover = True if atneg_only else load_ffh
@@ -203,6 +146,7 @@ class sqnsupgrade:
             else:
                 self.__pins = ('P20', 'P18', 'P19', 'P17')
 
+            #s = UART(1, baudrate=921600, pins=pins, timeout_chars=100)
             self.__serial = UART(1, baudrate=115200 if recover else baudrate, pins=self.__pins, timeout_chars=100)
             self.__serial.read()
         else:
@@ -537,58 +481,13 @@ class sqnsupgrade:
 
 if 'FiPy' in sysname or 'GPy' in sysname:
     def run(ffile, mfile=None, baudrate=921600, retry=False, resume=False, debug=False):
-        fretry = False
-        fresume = False
         sqnup = sqnsupgrade()
         if sqnup.check_files(ffile, mfile, debug):
-            state = sqnup.detect_modem_state(initial_delay = 10)
-            if debug: print('Modem state: {}'.format(state))
-            if (not retry) and (not resume):
-                if state == 0:
-                    fretry = True
-                    if mfile is None:
-                        print('Your modem is in recovery mode. Please specify updater.elf file')
-                        sys.exit(1)
-                elif state == 4:
-                    fresume = True
-                elif state == -1:
-                    print('Cannot detect modem state...Resuming regardless')
-                    promt = input("please Enter 0 to Retry or 1 to Resume operation\n")
-                    if promt:
-                        fresume = True
-                    else:
-                        fretry = True
-                if debug: print('Resume: {} Retry: {}'.format(fresume, fretry))
-            else:
-                fretry = retry
-                fresume = resume
-
-            sqnup.upgrade_sd(ffile, mfile, baudrate, fretry, fresume, debug, False)
+            sqnup.upgrade_sd(ffile, mfile, baudrate, retry, resume, debug, False)
 
     def uart(ffh_mode=False, mfile=None, retry=False, resume=False, color=0x050505, debug=False):
-        fretry = False
-        fresume = False
         sqnup = sqnsupgrade()
-        state = sqnup.detect_modem_state(initial_delay = 10)
-        if (not retry) and (not resume):
-            if state == 0:
-                print('Your modem is in recovery mode. You will need to use updater.elf file to upgrade.')
-                fretry = True
-            elif state == 4:
-                fresume = True
-            elif state == -1:
-                print('Cannot detect modem state...Resuming regardless')
-                promt = input("please Enter 0 to Retry or 1 to Resume operation\n")
-                if promt:
-                    fresume = True
-                else:
-                    fretry = True
-            if debug: print('Resume: {} Retry: {}'.format(fresume, fretry))
-        else:
-            fretry = retry
-            fresume = resume
-
-        sqnup.upgrade_uart(ffh_mode, mfile, fretry, fresume, color, debug, False)
+        sqnup.upgrade_uart(ffh_mode, mfile, retry, resume, color, debug, False)
 
     def version(debug=False):
         sqnup = sqnsupgrade()
