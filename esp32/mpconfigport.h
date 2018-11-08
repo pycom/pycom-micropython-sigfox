@@ -115,7 +115,6 @@
 #define MICROPY_STREAMS_NON_BLOCK                   (1)
 #define MICROPY_PY_BUILTINS_TIMEOUTERROR            (1)
 #define MICROPY_PY_ALL_SPECIAL_METHODS              (1)
-#define MICROPY_USE_INTERNAL_ERRNO                  (1)
 
 #define MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF      (1)
 #define MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE        (0)
