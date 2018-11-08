@@ -228,8 +228,10 @@ soft_reset:
         if (config_get_wdt_on_boot()) {
             uint32_t timeout_ms = config_get_wdt_on_boot_timeout();
             if (timeout_ms < 0xFFFFFFFF) {
-                printf("Starting the WDT on boot\n");
                 machine_wdt_start(timeout_ms);
+            } else {
+                // disable the WDT on boot flag
+                config_set_wdt_on_boot(false);
             }
         }
         if (wifi_on_boot) {
@@ -634,8 +636,22 @@ STATIC void mptask_enable_wifi_ap (void) {
 	config_get_wifi_ssid(wifi_ssid);
 	uint8_t wifi_pwd[64];
 	config_get_wifi_pwd(wifi_pwd);
-    wlan_setup (WIFI_MODE_AP, (wifi_ssid[0]==0x00) ? DEFAULT_AP_SSID : (const char*) wifi_ssid , WIFI_AUTH_WPA2_PSK, (wifi_pwd[0]==0x00) ? DEFAULT_AP_PASSWORD : (const char*) wifi_pwd ,
-                DEFAULT_AP_CHANNEL, ANTENNA_TYPE_INTERNAL, (wifi_ssid[0]==0x00) ? true:false, false);
+
+    wlan_internal_setup_t setup = {
+    		WIFI_MODE_AP,
+			(wifi_ssid[0]==0x00) ? DEFAULT_AP_SSID : (const char*) wifi_ssid,
+			(wifi_pwd[0]==0x00) ? DEFAULT_AP_PASSWORD : (const char*) wifi_pwd,
+			(uint32_t)WIFI_AUTH_WPA2_PSK,
+			DEFAULT_AP_CHANNEL,
+			ANTENNA_TYPE_INTERNAL,
+			(wifi_ssid[0]==0x00) ? true:false,
+			false,
+			WIFI_BW_HT40,
+			NULL,
+			NULL
+    };
+
+    wlan_setup (&setup);
     mod_network_register_nic(&wlan_obj);
 }
 
