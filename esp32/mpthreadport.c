@@ -50,6 +50,8 @@
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 
+#include "mpirq.h"
+
 #if MICROPY_PY_THREAD
 
 #define MP_THREAD_MIN_STACK_SIZE                        (5 * 1024)
@@ -131,6 +133,14 @@ STATIC void freertos_entry(void *arg) {
     if (ext_thread_entry) {
         ext_thread_entry(arg);
     }
+
+    /* Free up the resources of this task from the task running the interrupt handlers
+     * as it can happen that calling here a vTaskDelete(NULL) will not have effect as the Idle Task which frees up
+     * the resources of the deleted task does not have the chance to run as higher priority tasks keep the
+     * processor busy and as a result we can run out of memory.
+     * */
+    mp_irq_queue_interrupt_immediate_thread_delete(xTaskGetCurrentTaskHandle());
+    // Execution will only reach this point when the Interrupt handler task is about to be deleted
     vTaskDelete(NULL);
     for (;;);
 }

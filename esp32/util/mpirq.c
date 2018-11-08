@@ -151,6 +151,15 @@ void IRAM_ATTR mp_irq_queue_interrupt(void (* handler)(void *), void *arg) {
     xQueueSendFromISR(InterruptsQueue, &cb, NULL);
 }
 
+void IRAM_ATTR mp_irq_queue_interrupt_immediate_thread_delete(TaskHandle_t id) {
+
+    // Check if IRQ task is not being shutdown
+    if(mp_irq_is_alive == true){
+        mp_callback_obj_t cb = {.handler = vTaskDelete, .arg = id};
+        (void)xQueueSend(InterruptsQueue, &cb, 0);
+    }
+}
+
 void mp_irq_kill(void) {
     // sending a NULL handler will kill the interrupt task
     mp_irq_queue_interrupt(NULL, NULL);

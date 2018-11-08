@@ -10,6 +10,8 @@
 #ifndef MPIRQ_H_
 #define MPIRQ_H_
 
+#include "freertos/task.h"
+
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
@@ -47,5 +49,6 @@ void mp_irq_add (mp_obj_t parent, mp_obj_t handler);
 void mp_irq_remove (mp_obj_t parent);
 mp_obj_tuple_t *mp_irq_find (mp_obj_t parent);
 void mp_irq_queue_interrupt(void (* handler)(void *), void *arg);
+void mp_irq_queue_interrupt_immediate_thread_delete(TaskHandle_t id);
 void mp_irq_kill(void);
 #endif /* MPIRQ_H_ */
