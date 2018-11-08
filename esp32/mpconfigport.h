@@ -71,6 +71,7 @@
 #define MICROPY_PY_ARRAY                            (1)
 #define MICROPY_PY_ARRAY_SLICE_ASSIGN               (1)
 #define MICROPY_PY_COLLECTIONS                      (1)
+#define MICROPY_PY_COLLECTIONS_DEQUE                (1)
 #define MICROPY_PY_MATH                             (1)
 #define MICROPY_PY_CMATH                            (1)
 #define MICROPY_PY_IO                               (1)
@@ -90,6 +91,7 @@
 #define MICROPY_PY_UHASHLIB_SHA1                    (0)
 #define MICROPY_PY_UJSON                            (1)
 #define MICROPY_PY_URE                              (1)
+#define MICROPY_PY_USELECT                          (1)
 #define MICROPY_PY_MACHINE                          (1)
 #define MICROPY_PY_MICROPYTHON_MEM_INFO             (1)
 #define MICROPY_PY_UTIMEQ                           (1)
@@ -227,6 +229,8 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
 
 #define MICROPY_BEGIN_ATOMIC_SECTION()              portENTER_CRITICAL_NESTED()
 #define MICROPY_END_ATOMIC_SECTION(state)           portEXIT_CRITICAL_NESTED(state)
+
+#define MICROPY_EVENT_POLL_HOOK                     mp_hal_delay_ms(1);
 
 #define MICROPY_PORT_ROOT_POINTERS \
     const char *readline_hist[8];                               \

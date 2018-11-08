@@ -127,7 +127,6 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modusocket.c \
 	modnetwork.c \
 	modwlan.c \
-	moduselect.c \
 	modutime.c \
 	modpycom.c \
 	moduqueue.c \
@@ -434,7 +433,7 @@ SIGN_BINARY = $(ESPSECUREPY) sign_data --keyfile $(SECURE_KEY)
 
 # actual command for signing a binary
 # it should be used as:
-# $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o image_encrypt.bin image.bin 
+# $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o image_encrypt.bin image.bin
 ENCRYPT_BINARY = $(ESPSECUREPY) encrypt_flash_data --keyfile $(ENCRYPT_KEY)
 ENCRYPT_0x10000 = --address 0x10000
 ENCRYPT_0x1A0000 = --address 0x1A0000
@@ -462,12 +461,12 @@ CFLAGS += -DCONFIG_SECURE_BOOT_ENABLED=1
 # find the configured private key file
 ORIG_SECURE_KEY := $(call resolvepath,$(call dequote,$(SECURE_KEY)),$(PROJECT_PATH))
 
-$(ORIG_SECURE_KEY): 
+$(ORIG_SECURE_KEY):
 	$(ECHO) "Secure boot signing key '$@' missing. It can be generated using: "
 	$(ECHO) "$(ESPSECUREPY) generate_signing_key $(SECURE_KEY)"
 	exit 1
 
-# public key name; the name is important 
+# public key name; the name is important
 # because it will go into the elf with symbols having name derived out of this one
 SECURE_BOOT_VERIFICATION_KEY = signature_verification_key.bin
 
@@ -475,7 +474,7 @@ SECURE_BOOT_VERIFICATION_KEY = signature_verification_key.bin
 $(SECURE_BOOT_VERIFICATION_KEY): $(ORIG_SECURE_KEY)
 	$(ESPSECUREPY) extract_public_key --keyfile $< $@
 
-# key used for bootloader digest 
+# key used for bootloader digest
 SECURE_BOOTLOADER_KEY = secure-bootloader-key.bin
 
 $(SECURE_BOOTLOADER_KEY): $(ORIG_SECURE_KEY)
@@ -486,15 +485,15 @@ BOOTLOADER_REFLASH_DIGEST = 	$(BUILD)/bootloader/bootloader-reflash-digest.bin
 BOOTLOADER_REFLASH_DIGEST_ENC = $(BOOTLOADER_REFLASH_DIGEST)_enc
 
 ORIG_ENCRYPT_KEY := $(call resolvepath,$(call dequote,$(ENCRYPT_KEY)),$(PROJECT_PATH))
-$(ORIG_ENCRYPT_KEY): 
+$(ORIG_ENCRYPT_KEY):
 	$(ECHO) "WARNING: Encryption key '$@' missing. It can be created using: "
 	$(ECHO) "$(ESPSECUREPY) generate_flash_encryption_key $(ENCRYPT_KEY)"
 	exit 1
-	
+
 else #ifeq ($(SECURE), on)
-SECURE_BOOT_VERIFICATION_KEY = 
-SECURE_BOOTLOADER_KEY = 
-ORIG_ENCRYPT_KEY = 
+SECURE_BOOT_VERIFICATION_KEY =
+SECURE_BOOTLOADER_KEY =
+ORIG_ENCRYPT_KEY =
 endif #ifeq ($(SECURE), on)
 
 
@@ -521,7 +520,7 @@ ifeq ($(SECURE), on)
 	$(OBJCOPY) $(OBJCOPY_EMBED_ARGS) $(SECURE_BOOT_VERIFICATION_KEY) $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(AR) cru libbootloader_support.a *.o ;\
 	$(CP) libbootloader_support.a ../
-	$(Q) $(RM) -rf ./bootloader/lib/bootloader_support_temp 
+	$(Q) $(RM) -rf ./bootloader/lib/bootloader_support_temp
 endif #ifeq ($(SECURE), on)
 	$(ECHO) "LINK $(CC) *** $(BOOT_LDFLAGS) *** $(BOOT_LIBS) -o $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
