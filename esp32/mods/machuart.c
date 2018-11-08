@@ -61,12 +61,8 @@
 
 #define MACHUART_TX_WAIT_US(baud)               ((MACHUART_FRAME_TIME_US(baud)) + 1)
 #define MACHUART_TX_MAX_TIMEOUT_MS              (5)
-#if defined(FIPY) || defined(GPY)
-	#define MACHUART_RX_BUFFER_LEN                  (4096)
-#else
-	#define MACHUART_RX_BUFFER_LEN                  (512)
-#endif
 
+#define MACHUART_RX_BUFFER_LEN                  (512)
 #define MACHUART_TX_FIFO_LEN                    (UART_FIFO_LEN)
 
 // interrupt triggers
@@ -307,7 +303,7 @@ STATIC IRAM_ATTR void UARTRxCallback(int uart_id, int rx_byte) {
         if (mp_interrupt_char == rx_byte) {
             // raise an exception when interrupts are finished
             mp_keyboard_interrupt();
-        } else if (CHAR_CTRL_F == rx_byte) {
+        } else if (mp_reset_char == rx_byte) {
             servers_reset_and_safe_boot();
         }
     }

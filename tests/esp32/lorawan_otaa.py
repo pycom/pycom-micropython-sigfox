@@ -5,7 +5,7 @@ import time
 import os
 
 # only execute this test on the LoPy
-if os.uname().sysname != 'LoPy':
+if os.uname().sysname != 'LoPy' and os.uname().sysname != 'FiPy':
     print("SKIP")
     import sys
     sys.exit()
@@ -19,7 +19,7 @@ def otaa_join(lora):
     app_eui = binascii.unhexlify('AD A4 DA E3 AC 12 67 6B'.replace(' ',''))
     app_key = binascii.unhexlify('11 B0 28 2A 18 9B 75 B0 B4 D2 D8 C7 FA 38 54 8B'.replace(' ',''))
 
-    lora.join(activation=LoRa.OTAA, auth=(app_eui, app_key), timeout=0)
+    lora.join(activation=LoRa.OTAA, auth=(dev_eui, app_eui, app_key), timeout=0)
 
     time.sleep(0.5)
 
@@ -31,7 +31,10 @@ def otaa_join(lora):
         if join_wait < 2:
             print('Waiting to join')
 
-    print('Network joined!')
+    if lora.has_joined():
+        print('Network joined!')
+    else:
+        raise OSError('LoRa join failed')
 
 lora = LoRa(mode=LoRa.LORAWAN)
 

@@ -457,12 +457,16 @@ GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py
 
 ifeq ($(TARGET), app)
 all: $(APP_BIN)
-else
+endif
+ifeq ($(TARGET), boot)
 all: $(BOOT_BIN)
 endif
-
+ifeq ($(TARGET), boot_app)
+all: $(BOOT_BIN) $(APP_BIN)
+endif
 .PHONY: all
 
+$(info $(VARIANT) Variant) 
 ifeq ($(SECURE), on)
 
 # add #define CONFIG_FLASH_ENCRYPTION_ENABLE 1 used for Flash Encryption
@@ -512,7 +516,7 @@ ORIG_ENCRYPT_KEY =
 endif #ifeq ($(SECURE), on)
 
 
-ifeq ($(TARGET), boot)
+ifeq ($(TARGET), $(filter $(TARGET), boot boot_app))
 $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
@@ -550,7 +554,7 @@ ifeq ($(SECURE), on)
 	$(ECHO) "Encrypt Bootloader digest (for offset 0x0)"
 	$(Q) $(ENCRYPT_BINARY) --address 0x0 -o $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOTLOADER_REFLASH_DIGEST)
 	$(RM) -f $(BOOTLOADER_REFLASH_DIGEST)
-	$(MV) -f $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOT_BIN)
+	$(CP) -f $(BOOTLOADER_REFLASH_DIGEST_ENC) $(BOOT_BIN)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
@@ -572,7 +576,9 @@ ifeq ($(SECURE), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 endif #ifeq ($(SECURE), on)
-else
+endif #ifeq ($(TARGET), $(filter $(TARGET), boot boot_app))
+ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
+
 
 
 $(BUILD)/application.a: $(OBJ)
@@ -619,7 +625,7 @@ ifeq ($(SECURE), on)
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o $(APP_BIN_ENCRYPT) $@
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x1A0000) -o $(APP_BIN_ENCRYPT_2) $@
 	$(ECHO) "Overwrite $(APP_BIN) with $(APP_BIN_ENCRYPT)"
-	$(MV) -f $(APP_BIN_ENCRYPT) $(APP_BIN)
+	$(CP) -f $(APP_BIN_ENCRYPT) $(APP_BIN)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "Steps for using Secure Boot and Flash Encryption:"
@@ -641,11 +647,12 @@ ifeq ($(SECURE), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 endif # feq ($(SECURE), on)
-	
+
 $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(ECHO) "CPP $@"
 	$(Q) $(CC) -I. -C -P -x c -E $< -o $@
-endif
+endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
+
 release: $(APP_BIN) $(BOOT_BIN)
 	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR)
 

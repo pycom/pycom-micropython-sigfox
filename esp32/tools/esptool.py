@@ -29,8 +29,10 @@ import time
 import base64
 import zlib
 import shlex
+import copy
+import io
 
-__version__ = "2.0.1"
+__version__ = "2.1"
 
 MAX_UINT32 = 0xffffffff
 MAX_UINT24 = 0xffffff
@@ -914,7 +916,7 @@ class ESP32ROM(ESPLoader):
     IROM_MAP_START = 0x400d0000
     IROM_MAP_END   = 0x40400000
     DROM_MAP_START = 0x3F400000
-    DROM_MAP_END   = 0x3F700000
+    DROM_MAP_END   = 0x3F800000
 
     # ESP32 uses a 4 byte status reply
     STATUS_BYTES_LENGTH = 4
@@ -1035,6 +1037,18 @@ class ImageSegment(object):
         """ Return a new ImageSegment with same data, but mapped at
         a new address. """
         return ImageSegment(new_addr, self.data, 0)
+
+    def split_image(self, split_len):
+        """ Return a new ImageSegment which splits "split_len" bytes
+        from the beginning of the data. Remaining bytes are kept in
+        this segment object (and the start address is adjusted to match.) """
+        result = copy.copy(self)
+        result.data = self.data[:split_len]
+        self.data = self.data[split_len:]
+        self.addr += split_len
+        self.file_offs = None
+        result.file_offs = None
+        return result
 
     def __repr__(self):
         r = "len 0x%05x load 0x%08x" % (len(self.data), self.addr)
@@ -1265,11 +1279,12 @@ class ESP32FirmwareImage(BaseFirmwareImage):
 
     ROM_LOADER = ESP32ROM
 
-    # 16 byte extended header contains WP pin number (byte), then 6 half-byte drive stength
-    # config fields, then 12 reserved bytes. None of this is exposed in esptool.py right now,
-    # but we need to set WP to 0xEE (disabled) to avoid problems when remapping SPI flash
-    # pins via efuse (for example on ESP32-D2WD).
-    EXTENDED_HEADER = [0xEE] + ([0] * 15)
+    # ROM bootloader will read the wp_pin field if SPI flash
+    # pins are remapped via flash. IDF actually enables QIO only
+    # from software bootloader, so this can be ignored. But needs
+    # to be set to this value so ROM bootloader will skip it.
+    WP_PIN_DISABLED = 0xEE
+
     EXTENDED_HEADER_STRUCT_FMT = "B" * 16
 
     def __init__(self, load_file=None):
@@ -1277,18 +1292,34 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         self.flash_mode = 0
         self.flash_size_freq = 0
         self.version = 1
+        self.wp_pin = self.WP_PIN_DISABLED
+        # SPI pin drive levels
+        self.clk_drv = 0
+        self.q_drv = 0
+        self.d_drv = 0
+        self.cs_drv = 0
+        self.hd_drv = 0
+        self.wp_drv = 0
+
+        self.append_digest = True
 
         if load_file is not None:
-            segments = self.load_common_header(load_file, ESPLoader.ESP_IMAGE_MAGIC)
-            additional_header = list(struct.unpack(self.EXTENDED_HEADER_STRUCT_FMT, load_file.read(16)))
+            start = load_file.tell()
 
-            # check these bytes are unused
-            if additional_header != self.EXTENDED_HEADER:
-                print("WARNING: ESP32 image header contains unknown flags. Possibly this image is from a different version of esptool.py")
+            segments = self.load_common_header(load_file, ESPLoader.ESP_IMAGE_MAGIC)
+            self.load_extended_header(load_file)
 
             for _ in range(segments):
                 self.load_segment(load_file)
             self.checksum = self.read_checksum(load_file)
+
+            if self.append_digest:
+                end = load_file.tell()
+                self.stored_digest = load_file.read(32)
+                load_file.seek(start)
+                calc_digest = hashlib.sha256()
+                calc_digest.update(load_file.read(end - start))
+                self.calc_digest = calc_digest.digest()  # TODO: decide what to do here?
 
     def is_flash_addr(self, addr):
         return (ESP32ROM.IROM_MAP_START <= addr < ESP32ROM.IROM_MAP_END) \
@@ -1302,64 +1333,136 @@ class ESP32FirmwareImage(BaseFirmwareImage):
         pass  # TODO: add warnings for ESP32 segment offset/size combinations that are wrong
 
     def save(self, filename):
-        padding_segments = 0
-        with open(filename, 'wb') as f:
+        total_segments = 0
+        with io.BytesIO() as f:  # write file to memory first
             self.write_common_header(f, self.segments)
 
             # first 4 bytes of header are read by ROM bootloader for SPI
             # config, but currently unused
-            f.write(struct.pack(self.EXTENDED_HEADER_STRUCT_FMT, *self.EXTENDED_HEADER))
+            self.save_extended_header(f)
 
             checksum = ESPLoader.ESP_CHECKSUM_MAGIC
-            last_addr = None
-            for segment in sorted(self.segments, key=lambda s:s.addr):
-                # IROM/DROM segment flash mappings need to align on
-                # 64kB boundaries.
+
+            # split segments into flash-mapped vs ram-loaded, and take copies so we can mutate them
+            flash_segments = [copy.deepcopy(s) for s in sorted(self.segments, key=lambda s:s.addr) if self.is_flash_addr(s.addr)]
+            ram_segments = [copy.deepcopy(s) for s in sorted(self.segments, key=lambda s:s.addr) if not self.is_flash_addr(s.addr)]
+
+            IROM_ALIGN = 65536
+
+            # check for multiple ELF sections that are mapped in the same flash mapping region.
+            # this is usually a sign of a broken linker script, but if you have a legitimate
+            # use case then let us know (we can merge segments here, but as a rule you probably
+            # want to merge them in your linker script.)
+            if len(flash_segments) > 0:
+                last_addr = flash_segments[0].addr
+                for segment in flash_segments[1:]:
+                    if segment.addr // IROM_ALIGN == last_addr // IROM_ALIGN:
+                        raise FatalError(("Segment loaded at 0x%08x lands in same 64KB flash mapping as segment loaded at 0x%08x. " +
+                                          "Can't generate binary. Suggest changing linker script or ELF to merge sections.") %
+                                         (segment.addr, last_addr))
+                    last_addr = segment.addr
+
+            def get_alignment_data_needed(segment):
+                # Actual alignment (in data bytes) required for a segment header: positioned so that
+                # after we write the next 8 byte header, file_offs % IROM_ALIGN == segment.addr % IROM_ALIGN
                 #
-                # TODO: intelligently order segments to reduce wastage
-                # by squeezing smaller DRAM/IRAM segments into the
-                # 64kB padding space.
-                IROM_ALIGN = 65536
+                # (this is because the segment's vaddr may not be IROM_ALIGNed, more likely is aligned
+                # IROM_ALIGN+0x18 to account for the binary file header
+                align_past = (segment.addr % IROM_ALIGN) - self.SEG_HEADER_LEN
+                pad_len = (IROM_ALIGN - (f.tell() % IROM_ALIGN)) + align_past
+                if pad_len == 0 or pad_len == IROM_ALIGN:
+                    return 0  # already aligned
 
-                # check for multiple ELF sections that live in the same flash mapping region.
-                # this is usually a sign of a broken linker script, but if you have a legitimate
-                # use case then let us know (we can merge segments here, but as a rule you probably
-                # want to merge them in your linker script.)
-                if last_addr is not None and self.is_flash_addr(last_addr) \
-                   and self.is_flash_addr(segment.addr) and segment.addr // IROM_ALIGN == last_addr // IROM_ALIGN:
-                    raise FatalError(("Segment loaded at 0x%08x lands in same 64KB flash mapping as segment loaded at 0x%08x. " +
-                                     "Can't generate binary. Suggest changing linker script or ELF to merge sections.") %
-                                     (segment.addr, last_addr))
-                last_addr = segment.addr
+                # subtract SEG_HEADER_LEN a second time, as the padding block has a header as well
+                pad_len -= self.SEG_HEADER_LEN
+                if pad_len < 0:
+                    pad_len += IROM_ALIGN
+                return pad_len
 
-                if self.is_flash_addr(segment.addr):
-                    # Actual alignment required for the segment header: positioned so that
-                    # after we write the next 8 byte header, file_offs % IROM_ALIGN == segment.addr % IROM_ALIGN
-                    #
-                    # (this is because the segment's vaddr may not be IROM_ALIGNed, more likely is aligned
-                    # IROM_ALIGN+0x10 to account for longest possible header.
-                    align_past = (segment.addr % IROM_ALIGN) - self.SEG_HEADER_LEN
-                    assert (align_past + self.SEG_HEADER_LEN) == (segment.addr % IROM_ALIGN)
-
-                    # subtract SEG_HEADER_LEN a second time, as the padding block has a header as well
-                    pad_len = (IROM_ALIGN - (f.tell() % IROM_ALIGN)) + align_past - self.SEG_HEADER_LEN
-                    if pad_len < 0:
-                        pad_len += IROM_ALIGN
-                    if pad_len > 0:
-                        null = ImageSegment(0, b'\x00' * pad_len, f.tell())
-                        checksum = self.save_segment(f, null, checksum)
-                        padding_segments += 1
-                    # verify that after the 8 byte header is added, were are at the correct offset relative to the segment's vaddr
+            # try to fit each flash segment on a 64kB aligned boundary
+            # by padding with parts of the non-flash segments...
+            while len(flash_segments) > 0:
+                segment = flash_segments[0]
+                pad_len = get_alignment_data_needed(segment)
+                if pad_len > 0:  # need to pad
+                    if len(ram_segments) > 0 and pad_len > self.SEG_HEADER_LEN:
+                        pad_segment = ram_segments[0].split_image(pad_len)
+                        if len(ram_segments[0].data) == 0:
+                            ram_segments.pop(0)
+                    else:
+                        pad_segment = ImageSegment(0, b'\x00' * pad_len, f.tell())
+                    checksum = self.save_segment(f, pad_segment, checksum)
+                    total_segments += 1
+                else:
+                    # write the flash segment
                     assert (f.tell() + 8) % IROM_ALIGN == segment.addr % IROM_ALIGN
+                    checksum = self.save_segment(f, segment, checksum)
+                    flash_segments.pop(0)
+                    total_segments += 1
+
+            # flash segments all written, so write any remaining RAM segments
+            for segment in ram_segments:
                 checksum = self.save_segment(f, segment, checksum)
+                total_segments += 1
+
+            # done writing segments
             self.append_checksum(f, checksum)
             # kinda hacky: go back to the initial header and write the new segment count
-            # that includes padding segments. Luckily(?) this header is not checksummed
+            # that includes padding segments. This header is not checksummed
+            image_length = f.tell()
             f.seek(1)
             try:
-                f.write(chr(len(self.segments) + padding_segments))
+                f.write(chr(total_segments))
             except TypeError:  # Python 3
-                f.write(bytes([len(self.segments) + padding_segments]))
+                f.write(bytes([total_segments]))
+
+            if self.append_digest:
+                # calculate the SHA256 of the whole file and append it
+                f.seek(0)
+                digest = hashlib.sha256()
+                digest.update(f.read(image_length))
+                f.write(digest.digest())
+
+            with open(filename, 'wb') as real_file:
+                real_file.write(f.getvalue())
+
+    def load_extended_header(self, load_file):
+        def split_byte(n):
+            return (n & 0x0F, (n >> 4) & 0x0F)
+
+        fields = list(struct.unpack(self.EXTENDED_HEADER_STRUCT_FMT, load_file.read(16)))
+
+        self.wp_pin = fields[0]
+
+        # SPI pin drive stengths are two per byte
+        self.clk_drv, self.q_drv = split_byte(fields[1])
+        self.d_drv, self.cs_drv = split_byte(fields[2])
+        self.hd_drv, self.wp_drv = split_byte(fields[3])
+
+        if fields[15] in [0, 1]:
+            self.append_digest = (fields[15] == 1)
+        else:
+            raise RuntimeError("Invalid value for append_digest field (0x%02x). Should be 0 or 1.", fields[15])
+
+        # remaining fields in the middle should all be zero
+        if any(f for f in fields[4:15] if f != 0):
+            print("Warning: some reserved header fields have non-zero values. This image may be from a newer esptool.py?")
+
+    def save_extended_header(self, save_file):
+        def join_byte(ln,hn):
+            return (ln & 0x0F) + ((hn & 0x0F) << 4)
+
+        append_digest = 1 if self.append_digest else 0
+
+        fields = [self.wp_pin,
+                  join_byte(self.clk_drv, self.q_drv),
+                  join_byte(self.d_drv, self.cs_drv),
+                  join_byte(self.hd_drv, self.wp_drv)]
+        fields += [0] * 11
+        fields += [append_digest]
+
+        packed = struct.pack(self.EXTENDED_HEADER_STRUCT_FMT, *fields)
+        save_file.write(packed)
 
 
 class ELFFile(object):
@@ -1761,6 +1864,15 @@ def image_info(args):
     calc_checksum = image.calculate_checksum()
     print('Checksum: %02x (%s)' % (image.checksum,
                                    'valid' if image.checksum == calc_checksum else 'invalid - calculated %02x' % calc_checksum))
+    try:
+        digest_msg = 'Not appended'
+        if image.append_digest:
+            is_valid = image.stored_digest == image.calc_digest
+            digest_msg = "%s (%s)" % (hexify(image.calc_digest).lower(),
+                                      "valid" if is_valid else "invalid")
+            print('Validation Hash: %s' % digest_msg)
+    except AttributeError:
+        pass  # ESP8266 image has no append_digest field
 
 
 def make_image(args):
