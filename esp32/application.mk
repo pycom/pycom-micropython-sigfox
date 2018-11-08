@@ -336,8 +336,17 @@ APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\"
 CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
-CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915
-
+CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DBASE=0 -DPYBYTES=1 
+# Specify if this is base or Pybytes Firmware
+ifeq ($(VARIANT),BASE)
+CFLAGS += -DVARIANT=0
+else
+	ifeq ($(VARIANT),PYBYTES)
+	CFLAGS += -DVARIANT=1
+	else
+	$(error Invalid Variant specified)
+	endif
+endif  
 # Give the possibility to use LittleFs on /flash, otherwise  FatFs is used
 FS ?= ""
 ifeq ($(FS), LFS)

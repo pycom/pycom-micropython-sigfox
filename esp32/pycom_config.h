@@ -47,6 +47,15 @@ typedef struct {
 } pycom_rgbled_config_t;
 
 typedef struct {
+    uint8_t device_token[40];
+    uint8_t mqttServiceAddress[40];
+    uint8_t userId[100];
+    uint8_t network_preferences[55];
+    uint8_t extra_preferences[100];
+    uint8_t force_update;
+    uint8_t reserved[12];
+} pycom_pybytes_config_t;
+
 typedef struct {
     uint8_t hw_type;
     uint8_t sw_version[12];
@@ -128,6 +137,22 @@ bool config_set_lora_region (uint8_t lora_region);
 
 uint8_t config_get_lora_region (void);
 
+void config_get_pybytes_device_token (uint8_t *pybytes_device_token);
+
+void config_get_pybytes_mqttServiceAddress (uint8_t *pybytes_mqttServiceAddress);
+
+#if (VARIANT == PYBYTES)
+void config_get_pybytes_userId (uint8_t *pybytes_userId);
+
+void config_get_pybytes_network_preferences (uint8_t *pybytes_userId);
+
+void config_get_pybytes_extra_preferences (uint8_t *pybytes_userId);
+
+bool config_set_pybytes_force_update (uint8_t force_update);
+
+bool config_get_pybytes_force_update (void);
+#endif
+
 uint8_t config_get_boot_fs_type (void);
 
 bool config_set_boot_fs_type (const uint8_t boot_fs_type);
@@ -135,7 +160,9 @@ bool config_set_boot_fs_type (const uint8_t boot_fs_type);
 uint8_t config_get_boot_partition (void);
 
 bool config_set_boot_partition (const uint8_t boot_partition);
+
 bool config_set_lte_modem_enable_on_boot (bool lte_modem_en_on_boot);
 
 bool config_get_lte_modem_enable_on_boot (void);
+
 #endif /* PYCOM_CONFIG_H_ */

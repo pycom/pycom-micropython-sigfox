@@ -21,6 +21,9 @@ OEM ?= 0
 # make 'release' the default build type
 BTYPE ?= release
 
+# make Non-Pybytes firmware default
+VARIANT ?=BASE
+
 BUILD = build/$(BOARD)/$(BTYPE)
 RELEASE_DIR ?= build/
 
