@@ -13,7 +13,7 @@ machine.idle()
 if machine.freq() < 80000000 or machine.freq() > 240000000:
     print("CPU frequency out of range")
 
-print(machine.unique_id() == wifi.mac())
+print(machine.unique_id() == wifi.mac()[0])
 
 machine.main('main.py')
 
@@ -43,3 +43,13 @@ try:
     machine.main("other_main.py")
 except:
     print('Exception')
+
+# Test machine.RTC
+from machine import RTC
+
+rtc = RTC()
+#reset memory
+rtc.memory(b'')
+print(rtc.memory())
+rtc.memory(b'10101010')
+print(rtc.memory())
