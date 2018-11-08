@@ -43,7 +43,7 @@ typedef struct {
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
 
-bool led_set_color(led_info_t *led_info, bool synchronize);
+bool led_set_color(led_info_t *led_info, bool synchronize, bool wait_tx);
 bool led_init(led_info_t *led_info);
 void rmt_deinit_rgb (void);
 

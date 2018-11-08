@@ -56,7 +56,7 @@ void rmt_deinit_rgb (void) {
     rmt_driver_uninstall(RMT_CHANNEL_1);
 }
 
-bool led_set_color(led_info_t *led_info, bool synchronize)
+bool led_set_color(led_info_t *led_info, bool synchronize, bool wait_tx)
 {
     if ((led_info == NULL) ||
         (led_info->rmt_grb_buf == NULL)){
@@ -68,7 +68,7 @@ bool led_set_color(led_info_t *led_info, bool synchronize)
     }
 
     led_encode_color(led_info);
-    if (rmt_write_items(led_info->rmt_channel, led_info->rmt_grb_buf, COLOR_BITS, false) != ESP_OK) {
+    if (rmt_write_items(led_info->rmt_channel, led_info->rmt_grb_buf, COLOR_BITS, wait_tx) != ESP_OK) {
         return false;
     }
 

@@ -90,7 +90,7 @@ void mperror_init0 (void) {
     pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
     led_init(&led_info);
     led_info.color.value = 0;
-    led_set_color(&led_info, false);
+    led_set_color(&led_info, false, false);
     mperror_heart_beat.on_time = 0;
     mperror_heart_beat.off_time = 0;
     mperror_heart_beat.beating = false;
@@ -109,7 +109,7 @@ void mperror_signal_error (void) {
             led_info.color.value = 0;
         }
         disable_and_wait();
-        led_set_color(&led_info, false);
+        led_set_color(&led_info, false, false);
         toggle = ~toggle;
         mp_hal_delay_ms(MPERROR_TOOGLE_MS);
     }
@@ -119,7 +119,7 @@ void mperror_heartbeat_switch_off (void) {
     if (mperror_heart_beat.enabled) {
         led_info.color.value = 0;
         disable_and_wait();
-        led_set_color(&led_info, false);
+        led_set_color(&led_info, false, false);
     }
     mperror_heart_beat.on_time = 0;
     mperror_heart_beat.off_time = 0;
@@ -133,13 +133,13 @@ bool mperror_heartbeat_signal (void) {
         if (!mperror_heart_beat.beating) {
             if ((mperror_heart_beat.on_time = mp_hal_ticks_ms_non_blocking()) - mperror_heart_beat.off_time > MPERROR_HEARTBEAT_OFF_MS) {
                 led_info.color.value = MPERROR_HEARTBEAT_COLOR;
-                led_set_color(&led_info, false);
+                led_set_color(&led_info, false, false);
                 mperror_heart_beat.beating = true;
             }
         } else {
             if ((mperror_heart_beat.off_time = mp_hal_ticks_ms_non_blocking()) - mperror_heart_beat.on_time > MPERROR_HEARTBEAT_ON_MS) {
                 led_info.color.value = 0;
-                led_set_color(&led_info, false);
+                led_set_color(&led_info, false, false);
                 mperror_heart_beat.beating = false;
             }
         }
@@ -161,7 +161,7 @@ void NORETURN __fatal_error(const char *msg) {
 #endif
     // signal the crash with the system led
     led_info.color.value = MPERROR_FATAL_COLOR;
-    led_set_color(&led_info, false);
+    led_set_color(&led_info, false, false);
     for ( ;; ); //{__WFI();}
 }
 
@@ -192,11 +192,11 @@ void mperror_enable_heartbeat (bool enable) {
         led_info.color.value = MPERROR_HEARTBEAT_COLOR;
         pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
         led_init(&led_info);
-        led_set_color(&led_info, false);
+        led_set_color(&led_info, false, false);
     } else if (!enable) {
         led_info.color.value = 0;
         disable_and_wait();
-        led_set_color(&led_info, false);
+        led_set_color(&led_info, false, false);
     }
 }
 
