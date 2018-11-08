@@ -157,7 +157,7 @@ Expansion Board 2.0 users, please connect ``P2`` to ``GND`` and then reset the b
 
 ### Prerequisites
 
-    $ export $IDF_PATH=<pycom-esp-idf_PATH>
+    $ export IDF_PATH=<pycom-esp-idf_PATH>
     $ cd esp32
 
 Hold valid keys for Flash Encryption and Secure Boot; they can be generated randomly with the following commands:
