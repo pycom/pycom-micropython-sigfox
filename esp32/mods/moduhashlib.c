@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -23,6 +23,9 @@
 #include "rom/md5_hash.h"
 #include "hwcrypto/sha.h"
 #include "mpexception.h"
+#include "mbedtls/sha1.h"
+#include "mbedtls/sha256.h"
+#include "mbedtls/sha512.h"
 
 STATIC bool hash_busy = false;
 
@@ -59,17 +62,17 @@ STATIC mp_obj_t hash_read (mp_obj_t self_in);
 STATIC void generic_hash_update(mp_obj_hash_t *self, void *data, uint32_t len) {
     switch (self->base.type->name) {
     case MP_QSTR_sha1:
-        mbedtls_sha1_update(&self->u.sha1_context, data, len);
+        mbedtls_sha1_update_ret(&self->u.sha1_context, data, len);
         break;
 
     case MP_QSTR_sha224:
     case MP_QSTR_sha256:
-        mbedtls_sha256_update(&self->u.sha256_context, data, len);
+        mbedtls_sha256_update_ret(&self->u.sha256_context, data, len);
         break;
 
     case MP_QSTR_sha384:
     case MP_QSTR_sha512:
-        mbedtls_sha512_update(&self->u.sha512_context, data, len);
+        mbedtls_sha512_update_ret(&self->u.sha512_context, data, len);
         break;
 
     case MP_QSTR_md5:
@@ -141,19 +144,19 @@ STATIC mp_obj_t hash_read(mp_obj_t self_in) {
 
         switch (self->base.type->name) {
         case MP_QSTR_sha1:
-            mbedtls_sha1_finish(&self->u.sha1_context, (uint8_t *)self->buffer);
+            mbedtls_sha1_finish_ret(&self->u.sha1_context, (uint8_t *)self->buffer);
             mbedtls_sha1_free(&self->u.sha1_context);
             break;
 
         case MP_QSTR_sha224:
         case MP_QSTR_sha256:
-            mbedtls_sha256_finish(&self->u.sha256_context, (uint8_t *)self->buffer);
+            mbedtls_sha256_finish_ret(&self->u.sha256_context, (uint8_t *)self->buffer);
             mbedtls_sha256_free(&self->u.sha256_context);
             break;
 
         case MP_QSTR_sha384:
         case MP_QSTR_sha512:
-            mbedtls_sha512_finish(&self->u.sha512_context, (uint8_t *)self->buffer);
+            mbedtls_sha512_finish_ret(&self->u.sha512_context, (uint8_t *)self->buffer);
             mbedtls_sha512_free(&self->u.sha512_context);
             break;
 
@@ -196,35 +199,35 @@ STATIC mp_obj_t hash_make_new(const mp_obj_type_t *type, size_t n_args, size_t n
         self->h_size = 20;
         self->b_size = 64;
         mbedtls_sha1_init(&self->u.sha1_context);
-        mbedtls_sha1_starts(&self->u.sha1_context);
+        mbedtls_sha1_starts_ret(&self->u.sha1_context);
         break;
 
     case MP_QSTR_sha224:
         self->h_size = 28;
         self->b_size = 64;
         mbedtls_sha256_init(&self->u.sha256_context);
-        mbedtls_sha256_starts(&self->u.sha256_context, 1);
+        mbedtls_sha256_starts_ret(&self->u.sha256_context, 1);
         break;
 
     case MP_QSTR_sha256:
         self->h_size = 32;
         self->b_size = 64;
         mbedtls_sha256_init(&self->u.sha256_context);
-        mbedtls_sha256_starts(&self->u.sha256_context, 0);
+        mbedtls_sha256_starts_ret(&self->u.sha256_context, 0);
         break;
 
     case MP_QSTR_sha384:
         self->h_size = 48;
         self->b_size = 128;
         mbedtls_sha512_init(&self->u.sha512_context);
-        mbedtls_sha512_starts(&self->u.sha512_context, 1);
+        mbedtls_sha512_starts_ret(&self->u.sha512_context, 1);
         break;
 
     case MP_QSTR_sha512:
         self->h_size = 64;
         self->b_size = 128;
         mbedtls_sha512_init(&self->u.sha512_context);
-        mbedtls_sha512_starts(&self->u.sha512_context, 0);
+        mbedtls_sha512_starts_ret(&self->u.sha512_context, 0);
         break;
 
     case MP_QSTR_md5:
