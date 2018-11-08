@@ -82,11 +82,10 @@ def boardBuild(name) {
         cd firmware_package;
         cp ../bootloader/bootloader.bin .;
         mv ../application.elf ''' + release_dir + name + "-" + PYCOM_VERSION + '''-application.elf;
-        cp ../''' + app_bin + ''' appimg.bin;
         cp ../lib/partitions.bin .;
-        cp ../../../../boards/''' + name_short + '''/''' + name_u + '''/script .;
+        cat ../../../../tools/script | sed s/\\"appimg.bin\\"/\\"''' + app_bin + '''\\"/g > ./script;
         cp ../''' + app_bin + ''' .;
-        tar -cvzf ''' + release_dir + name + "-" + PYCOM_VERSION + '''.tar.gz  appimg.bin  bootloader.bin   partitions.bin   script ''' + app_bin
+        tar -cvzf ''' + release_dir + name + "-" + PYCOM_VERSION + '''.tar.gz  bootloader.bin   partitions.bin   script ''' + app_bin
     }
 }
 
