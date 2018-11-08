@@ -226,6 +226,9 @@ static esp_ble_adv_params_t bt_adv_params = {
     .adv_filter_policy  = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY,
 };
 
+static bool mod_bt_is_deinit;
+static bool mod_bt_is_conn_restore_available;
+
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -237,6 +240,9 @@ static void close_connection(int32_t conn_id);
 STATIC void bluetooth_callback_handler(void *arg);
 STATIC void gattc_char_callback_handler(void *arg);
 STATIC void gatts_char_callback_handler(void *arg);
+static mp_obj_t modbt_start_scan(mp_obj_t timeout);
+static mp_obj_t modbt_conn_disconnect(mp_obj_t self_in);
+static mp_obj_t modbt_connect(mp_obj_t addr);
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
@@ -263,6 +269,69 @@ void modbt_init0(void) {
     mp_obj_list_init((mp_obj_t)&MP_STATE_PORT(bts_attr_list), 0);
 
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
+
+    mod_bt_is_deinit = false;
+    mod_bt_is_conn_restore_available = false;
+}
+
+void bt_resume(bool reconnect)
+{
+    if(mod_bt_is_deinit && !bt_obj.init)
+    {
+        esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
+        esp_bt_controller_init(&bt_cfg);
+
+        esp_bt_controller_enable(ESP_BT_MODE_BLE);
+
+        if (ESP_OK != esp_bluedroid_init()) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Bluetooth init failed"));
+        }
+        if (ESP_OK != esp_bluedroid_enable()) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Bluetooth enable failed"));
+        }
+
+        esp_ble_gattc_app_register(MOD_BT_CLIENT_APP_ID);
+        esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
+
+        esp_ble_gatt_set_local_mtu(200);
+
+        bt_connection_obj_t *connection_obj = NULL;
+
+        if(MP_STATE_PORT(btc_conn_list).len > 0)
+        {
+            /* Get the Last gattc connection obj before sleep */
+            connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[MP_STATE_PORT(btc_conn_list).len - 1]));
+        }
+
+        if (reconnect)
+        {
+            /* Check if there was a gattc connection Active before sleep */
+            if (connection_obj != NULL) {
+                if (connection_obj->conn_id >= 0) {
+                    /* Enable Scan */
+                    modbt_start_scan(MP_OBJ_NEW_SMALL_INT(-1));
+                    mp_hal_delay_ms(50);
+                    while(!bt_obj.scanning){
+                        /* Wait for scanning to start */
+                    }
+                    /* re-connect to Last Connection */
+                    mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
+                    mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), modbt_connect(mp_obj_new_bytes((const byte *)connection_obj->srv_bda, 6)));
+
+                    mod_bt_is_conn_restore_available = true;
+                }
+            }
+
+            /* See if there was an averstisment active before Sleep */
+            if(bt_obj.advertising)
+            {
+                esp_ble_gap_start_advertising(&bt_adv_params);
+            }
+        }
+
+        bt_obj.init = true;
+        mod_bt_is_deinit = false;
+    }
 }
 
 /******************************************************************************
@@ -282,7 +351,8 @@ static esp_ble_scan_params_t ble_scan_params = {
 static void close_connection (int32_t conn_id) {
     for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++) {
         bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
-        if (connection_obj->conn_id == conn_id) {
+        /* Only reset Conn Id if it is a normal disconnect not module de-init to mark conn obj to be restored */
+        if (connection_obj->conn_id == conn_id && (!mod_bt_is_deinit)) {
             connection_obj->conn_id = -1;
             mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
         }
@@ -461,6 +531,7 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         // intentional fall through
     case ESP_GATTC_CLOSE_EVT:
         close_connection(p_data->close.conn_id);
+        bt_obj.busy = false;
         break;
     default:
         break;
@@ -765,10 +836,23 @@ mp_obj_t bt_deinit(mp_obj_t self_in) {
             esp_ble_gap_stop_scanning();
             bt_obj.scanning = false;
         }
+        /* Indicate module is de-initializing */
+        mod_bt_is_deinit = true;
+
+        bt_connection_obj_t *connection_obj;
+
+        for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++)
+        {
+            // loop through the connections
+            connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
+            //close connections
+            modbt_conn_disconnect(connection_obj);
+        }
         esp_bluedroid_disable();
         esp_bluedroid_deinit();
         esp_bt_controller_disable();
         bt_obj.init = false;
+        mod_bt_is_conn_restore_available = false;
     }
     return mp_const_none;
 }
@@ -794,6 +878,11 @@ STATIC mp_obj_t bt_start_scan(mp_obj_t self_in, mp_obj_t timeout) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_start_scan_obj, bt_start_scan);
+
+static mp_obj_t modbt_start_scan(mp_obj_t timeout)
+{
+    return bt_start_scan(NULL, timeout);
+}
 
 STATIC mp_obj_t bt_isscanning(mp_obj_t self_in) {
     if (bt_obj.scanning) {
@@ -991,6 +1080,10 @@ STATIC mp_obj_t bt_connect(mp_obj_t self_in, mp_obj_t addr) {
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection failed"));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_connect_obj, bt_connect);
+static mp_obj_t modbt_connect(mp_obj_t addr)
+{
+    return bt_connect(NULL, addr);
+}
 
 STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
@@ -1512,11 +1605,20 @@ STATIC mp_obj_t bt_conn_disconnect(mp_obj_t self_in) {
     if (self->conn_id >= 0) {
         esp_ble_gattc_close(bt_obj.gattc_if, self->conn_id);
         esp_ble_gap_disconnect(self->srv_bda);
-        self->conn_id = -1;
+        /* Only reset Conn Id if it is a normal disconnect not module de-init to mark conn obj to be restored */
+        if(!mod_bt_is_deinit)
+        {
+            self->conn_id = -1;
+        }
     }
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_conn_disconnect_obj, bt_conn_disconnect);
+
+static mp_obj_t modbt_conn_disconnect(mp_obj_t self_in)
+{
+    return bt_conn_disconnect(self_in);
+}
 
 STATIC mp_obj_t bt_conn_services (mp_obj_t self_in) {
     bt_connection_obj_t *self = self_in;
