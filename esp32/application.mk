@@ -628,6 +628,8 @@ $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(ECHO) "CPP $@"
 	$(Q) $(CC) -I. -C -P -x c -E $< -o $@
 endif
+release: $(APP_BIN) $(BOOT_BIN)
+	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR)
 
 flash: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "Entering flash mode"
