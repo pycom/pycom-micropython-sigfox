@@ -352,6 +352,29 @@ bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length) {
     return false;
 }
 
+void modlora_sleep_module(void)
+{
+    lora_cmd_data_t cmd_data;
+    /* Set Modem mode to LORA in order to got to Sleep Mode */
+    Radio.SetModem(MODEM_LORA);
+    cmd_data.cmd = E_LORA_CMD_SLEEP;
+    /* Send Sleep Command to Lora Task */
+    lora_send_cmd (&cmd_data);
+}
+
+bool modlora_is_module_sleep(void)
+{
+    if (lora_obj.state == E_LORA_STATE_SLEEP)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+}
+
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
