@@ -652,6 +652,7 @@ $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(ECHO) "CPP $@"
 	$(Q) $(CC) -I. -C -P -x c -E $< -o $@
 endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
+endif #ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY LOPY4))
 
 release: $(APP_BIN) $(BOOT_BIN)
 	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR)
