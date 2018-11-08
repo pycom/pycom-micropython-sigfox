@@ -71,6 +71,7 @@ APP_INC += -I../lib/oofatfs
 APP_INC += -I../lib
 APP_INC += -I../drivers/sx127x
 APP_INC += -I../ports/stm32
+APP_INC += -I$(ESP_IDF_COMP_PATH)/openthread/src
 
 APP_MAIN_SRC_C = \
 	main.c \
@@ -190,6 +191,11 @@ APP_LORA_SRC_C = $(addprefix lora/,\
 	sx1276-board.c \
 	sx1272-board.c \
 	board.c \
+	otplat_alarm.c \
+	otplat_radio.c \
+	ot-settings.c \
+	ot-log.c \
+	ot-task.c \
 	)
 
 APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
@@ -591,8 +597,7 @@ ifeq ($(SECURE), on)
 endif #ifeq ($(SECURE), on)
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
-	$(Q) $(SIZE) $@
-endif
+	$(SIZE) $@
 
 $(APP_BIN): $(BUILD)/application.elf $(PART_BIN) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "IMAGE $@"

@@ -49,6 +49,7 @@
 
 #if defined (LOPY) || defined (LOPY4) || defined (FIPY)
 #include "modlora.h"
+#include "lora/ot-task.h"
 #endif
 #if defined (SIPY) || defined(LOPY4) || defined (FIPY)
 #include "sigfox/modsigfox.h"
@@ -237,6 +238,7 @@ soft_reset:
         // these ones are special because they need uPy running and they launch tasks
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
         modlora_init0();
+        openthread_task_init();
 #endif
 #if defined(SIPY) || defined(LOPY4) || defined (FIPY)
         modsigfox_init0();

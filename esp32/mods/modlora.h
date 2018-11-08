@@ -151,4 +151,7 @@ extern bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length
 extern void modlora_sleep_module(void);
 extern bool modlora_is_module_sleep(void);
 
+extern int lora_ot_recv(uint8_t *buf, int8_t *rssi);
+extern void lora_ot_send(const uint8_t *buf, uint16_t len);
+
 #endif  // MODLORA_H_
