@@ -30,6 +30,12 @@
 #include "antenna.h"
 #include "py/mphal.h"
 
+#include "bootmgr.h"
+#include "updater.h"
+
+#include "modmachine.h"
+
+
 #include <string.h>
 
 extern led_info_t led_info;
@@ -40,16 +46,59 @@ extern led_info_t led_info;
 #define WDT_ON_BOOT_MIN_TIMEOUT_MS              (5000)
 
 static nvs_handle pycom_nvs_handle;
+boot_info_t boot_info;
+uint32_t boot_info_offset;
+
+static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t safeboot);
 
 void modpycom_init0(void) {
     if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &pycom_nvs_handle) != ESP_OK) {
         mp_printf(&mp_plat_print, "Error while opening Pycom NVS name space\n");
     }
     rmt_driver_install(RMT_CHANNEL_0, 1000, 0);
+    if (updater_read_boot_info (&boot_info, &boot_info_offset) == false) {
+        mp_printf(&mp_plat_print, "Error reading bootloader information!\n");
+    }
+}
+
+static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t safeboot) {
+    bool update_boot = false;
+
+    if (boot_partition < 255) {
+        if (boot_partition <= 1) {
+            boot_info.ActiveImg = (uint32_t)boot_partition;
+            boot_info.Status = 0;
+            update_boot = true;
+        } else {
+        	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error invalid boot partition!"));
+        }
+    }
+    if (safeboot < 255) {
+        if (safeboot <= 1) {
+            boot_info.safeboot = (uint32_t)safeboot;
+            update_boot = true;
+        } else {
+        	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error safeboot must be True or False!"));
+        }
+    }
+    if (fs_type < 255) {
+        if (fs_type <= 1) {
+            config_set_boot_fs_type(fs_type);
+        }
+        else {
+        	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error invalid filesystem type!"));
+        }
+    }
+    if (update_boot) {
+        if (updater_write_boot_info (&boot_info, boot_info_offset) == false) {
+        	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error writing bootloader information!"));
+        }
+    }
 }
 
 /******************************************************************************/
 // Micro Python bindings
+
 
 STATIC mp_obj_t mod_pycom_heartbeat (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
@@ -74,7 +123,7 @@ STATIC mp_obj_t mod_pycom_rgb_led (mp_obj_t o_color) {
 
     uint32_t color = mp_obj_get_int(o_color);
     led_info.color.value = color;
-    led_set_color(&led_info, true);
+    led_set_color(&led_info, true, false);
 
     return mp_const_none;
 }
@@ -287,6 +336,64 @@ STATIC mp_obj_t mod_pycom_lte_modem_on_boot (mp_uint_t n_args, const mp_obj_t *a
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_lte_modem_on_boot_obj, 0, 1, mod_pycom_lte_modem_on_boot);
+
+STATIC mp_obj_t mod_pycom_bootmgr (size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    enum { ARG_boot_partition, ARG_fs_type, ARG_safeboot, ARG_reset };
+    STATIC const mp_arg_t allowed_args[] = {
+        { MP_QSTR_boot_partition,   MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 255} },
+        { MP_QSTR_fs_type,          MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 255} },
+        { MP_QSTR_safeboot,         MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 255} },
+        { MP_QSTR_reset,            MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = false} },
+    };
+
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    if (args[ARG_boot_partition].u_int == 255 && args[ARG_fs_type].u_int == 255 && args[ARG_safeboot].u_int == 255) {
+    	mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(3, NULL));
+
+        if(boot_info.ActiveImg == 0x00)
+		{
+			t->items[ARG_boot_partition] = mp_obj_new_str("Factory", strlen("Factory"));
+		}
+        else
+        {
+        	t->items[ARG_boot_partition] = mp_obj_new_str("ota_0", strlen("ota_0"));
+        }
+
+        if(config_get_boot_fs_type() == 0x00)
+		{
+			t->items[ARG_fs_type] = mp_obj_new_str("FAT", strlen("FAT"));
+		}
+        else
+        {
+        	t->items[ARG_fs_type] = mp_obj_new_str("LittleFS", strlen("LittleFS"));
+        }
+
+        if(boot_info.safeboot == 0x00)
+		{
+        	t->items[ARG_safeboot] = mp_obj_new_str("False", strlen("False"));
+		}
+        else
+        {
+        	t->items[ARG_safeboot] = mp_obj_new_str("True", strlen("True"));
+        }
+
+        return MP_OBJ_FROM_PTR(t);
+
+    } else {
+        	modpycom_bootmgr(args[ARG_boot_partition].u_int, args[ARG_fs_type].u_int, args[ARG_safeboot].u_int);
+
+            if (args[ARG_reset].u_bool == true) {
+                machine_reset();
+            }
+    }
+
+    return mp_const_none;
+}
+
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_bootmgr_obj, 0, mod_pycom_bootmgr);
+
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat),                       (mp_obj_t)&mod_pycom_heartbeat_obj },
@@ -308,6 +415,14 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd),                        (mp_obj_t)&mod_pycom_wifi_pwd_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat_on_boot),               (mp_obj_t)&mod_pycom_heartbeat_on_boot_obj },
 	{ MP_OBJ_NEW_QSTR(MP_QSTR_lte_modem_en_on_boot),            (mp_obj_t)&mod_pycom_lte_modem_on_boot_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_bootmgr),                         (mp_obj_t)&mod_pycom_bootmgr_obj },
+
+    // class constants
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FACTORY),                         MP_OBJ_NEW_SMALL_INT(0) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_OTA_0),                           MP_OBJ_NEW_SMALL_INT(1) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FAT),                           MP_OBJ_NEW_SMALL_INT(0) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_LittleFS),                        MP_OBJ_NEW_SMALL_INT(1) },
+
 };
 
 STATIC MP_DEFINE_CONST_DICT(pycom_module_globals, pycom_module_globals_table);

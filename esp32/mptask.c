@@ -68,19 +68,22 @@
 #include "machtimer_alarm.h"
 #include "mptask.h"
 
-#include "extmod/vfs_fat.h"
-#include "diskio.h"
-#include "sflash_diskio.h"
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "freertos/queue.h"
 
+#include "extmod/vfs_fat.h"
+
+#include "ff.h"
+#include "diskio.h"
+#include "sflash_diskio.h"
 
 #include "lfs.h"
 #include "sflash_diskio_littlefs.h"
 #include "lteppp.h"
+
+
 /******************************************************************************
  DECLARE EXTERNAL FUNCTIONS
  ******************************************************************************/
@@ -103,6 +106,9 @@ extern TaskHandle_t svTaskHandle;
  ******************************************************************************/
 STATIC void mptask_preinit (void);
 STATIC void mptask_init_sflash_filesystem (void);
+STATIC void mptask_init_sflash_filesystem_fatfs(void);
+STATIC void mptask_create_main_py (void);
+STATIC void mptask_init_sflash_filesystem_littlefs(void);
 #if defined (LOPY) || defined (SIPY) || defined (LOPY4) || defined (FIPY)
 STATIC void mptask_update_lpwan_mac_address (void);
 #endif
@@ -345,6 +351,20 @@ soft_reset_exit:
     goto soft_reset;
 }
 
+bool isLittleFs(const TCHAR *path){
+#ifndef FS_USE_LITTLEFS
+    if (config_get_boot_fs_type() == 0x01) {
+#endif
+        const char *flash = "/flash";
+        if(strncmp(flash, path, sizeof(flash)-1) == 0) {
+            return true;
+        }
+#ifndef FS_USE_LITTLEFS
+    }
+#endif
+    return false;
+}
+
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -446,6 +466,106 @@ STATIC void mptask_init_sflash_filesystem_fatfs(void) {
     }
 }
 
+STATIC void mptask_init_sflash_filesystem_littlefs(void) {
+
+    fs_user_mount_t* vfs_littlefs = &sflash_vfs_flash;
+    lfs_t *littlefsptr = &(vfs_littlefs->fs.littlefs.lfs);
+
+    //Initialize the block device
+    sflash_disk_init();
+    //Initialize the VFS object with the block device's functions
+    pyb_flash_init_vfs_littlefs(vfs_littlefs);
+
+    if(spi_flash_get_chip_size() > (4* 1024 * 1024))
+    {
+        lfscfg.block_count = SFLASH_BLOCK_COUNT_8MB;
+        lfscfg.lookahead = SFLASH_BLOCK_COUNT_8MB;
+    }
+    else
+    {
+        lfscfg.block_count = SFLASH_BLOCK_COUNT_4MB;
+        lfscfg.lookahead = SFLASH_BLOCK_COUNT_4MB;
+    }
+
+    // Mount the file system if exists
+    if(LFS_ERR_OK != lfs_mount(littlefsptr, &lfscfg))
+    {
+        // File system does not exist, create it and mount
+        if(LFS_ERR_OK == lfs_format(littlefsptr, &lfscfg))
+        {
+            if(LFS_ERR_OK != lfs_mount(littlefsptr, &lfscfg))
+            {
+                __fatal_error("failed to create /flash");
+            }
+        }
+        else
+        {
+            __fatal_error("failed to create /flash");
+        }
+    }
+
+    // mount the flash device (there should be no other devices mounted at this point)
+    // we allocate this structure on the heap because vfs->next is a root pointer
+    mp_vfs_mount_t *vfs = m_new_obj_maybe(mp_vfs_mount_t);
+    if (vfs == NULL) {
+        __fatal_error("failed to create /flash");
+    }
+    vfs->str = "/flash";
+    vfs->len = 6;
+    vfs->obj = MP_OBJ_FROM_PTR(vfs_littlefs);
+    vfs->next = NULL;
+    MP_STATE_VM(vfs_mount_table) = vfs;
+
+    // The current directory is used as the boot up directory.
+    // It is set to the internal flash filesystem by default.
+    MP_STATE_PORT(vfs_cur) = vfs;
+
+    //Initialize the current working directory (cwd)
+    vfs_littlefs->fs.littlefs.cwd = (char*)m_malloc(2);
+    vfs_littlefs->fs.littlefs.cwd[0] = '/';
+    vfs_littlefs->fs.littlefs.cwd[1] = '\0';
+
+    MP_STATE_PORT(lfs_cwd) = vfs_littlefs->fs.littlefs.cwd;
+    vfs_littlefs->fs.littlefs.mutex = xSemaphoreCreateMutex();
+
+    xSemaphoreTake(vfs_littlefs->fs.littlefs.mutex, portMAX_DELAY);
+
+    // create empty main.py if does not exist
+    lfs_file_t fp;
+    lfs_ssize_t n = 0;
+
+    if(LFS_ERR_OK == lfs_file_open(littlefsptr, &fp, "/main.py", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL))
+    {
+        //Create empty main.py if does not exist
+        n = lfs_file_write(littlefsptr, &fp, fresh_main_py, sizeof(fresh_main_py) - 1 /* don't count null terminator */);
+        lfs_file_close(littlefsptr, &fp);
+        if(n != sizeof(fresh_main_py) - 1)
+        {
+            __fatal_error("failed to create main.py");
+        }
+    }
+
+    // create empty boot.py if does not exist
+    if(LFS_ERR_OK == lfs_file_open(littlefsptr, &fp, "/boot.py", LFS_O_WRONLY | LFS_O_CREAT | LFS_O_EXCL))
+    {
+        //Create empty boot.py if does not exist
+        n = lfs_file_write(littlefsptr, &fp, fresh_boot_py, sizeof(fresh_boot_py) - 1 /* don't count null terminator */);
+        lfs_file_close(littlefsptr, &fp);
+        if(n != sizeof(fresh_boot_py) - 1)
+        {
+            __fatal_error("failed to create boot.py");
+        }
+    }
+
+    // create /flash/sys, /flash/lib and /flash/cert if they don't exist
+    lfs_mkdir(littlefsptr,"/sys");
+    lfs_mkdir(littlefsptr,"/lib");
+    lfs_mkdir(littlefsptr,"/cert");
+
+    xSemaphoreGive(vfs_littlefs->fs.littlefs.mutex);
+}
+
+
 #if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY)
 STATIC void mptask_update_lpwan_mac_address (void) {
     #define LPWAN_MAC_ADDR_PATH          "/sys/lpwan.mac"
@@ -517,6 +637,14 @@ STATIC void mptask_enable_wifi_ap (void) {
     mod_network_register_nic(&wlan_obj);
 }
 
+STATIC void mptask_create_main_py (void) {
+    // create empty main.py
+    FIL fp;
+    f_open(&sflash_vfs_flash.fs.fatfs, &fp, "/main.py", FA_WRITE | FA_CREATE_ALWAYS);
+    UINT n;
+    f_write(&fp, fresh_main_py, sizeof(fresh_main_py) - 1 /* don't count null terminator */, &n);
+    f_close(&fp);
+}
 
 void stoupper (char *str) {
     while (str && *str != '\0') {
