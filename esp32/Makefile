@@ -24,7 +24,12 @@ BTYPE ?= release
 # make Non-Pybytes firmware default
 VARIANT ?=BASE
 
-BUILD = build/$(BOARD)/$(BTYPE)
+ifeq ($(VARIANT), BASE)
+	BUILD = build/$(BOARD)/$(BTYPE)
+else
+	BUILD = build-variant/$(BOARD)/$(BTYPE)
+endif
+
 RELEASE_DIR ?= build/
 
 # by default Secure Boot and Flash Encryption are disabled
