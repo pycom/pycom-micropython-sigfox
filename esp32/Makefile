@@ -22,6 +22,7 @@ OEM ?= 0
 BTYPE ?= release
 
 BUILD = build/$(BOARD)/$(BTYPE)
+RELEASE_DIR ?= build/
 
 # by default Secure Boot and Flash Encryption are disabled
 SECURE ?= off

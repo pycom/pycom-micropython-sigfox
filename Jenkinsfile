@@ -60,7 +60,7 @@ def boardBuild(name) {
     def name_short = name_u.split('_')[0]
     def app_bin = name.toLowerCase() + '.bin'
     return {
-            release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + PYCOM_VERSION + "/" + GIT_TAG + "/"
+    		release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + PYCOM_VERSION + "/" + GIT_TAG + "/"
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
@@ -69,23 +69,9 @@ def boardBuild(name) {
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         cd esp32;
-        make TARGET=boot -j2 BOARD=''' + name_short
+        make -j3 release BOARD=''' + name_short + ' RELEASE_DIR=' + release_dir
 
-        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-        export IDF_PATH=${WORKSPACE}/esp-idf;
-        cd esp32;
-        make TARGET=app -j2 BOARD=''' + name_short
-
-        sh '''cd esp32/build/'''+ name_u +'''/release;
-        mkdir -p firmware_package;
-        mkdir -p '''+ release_dir + ''';
-        cd firmware_package;
-        cp ../bootloader/bootloader.bin .;
-        mv ../application.elf ''' + release_dir + name + "-" + PYCOM_VERSION + '''-application.elf;
-        cp ../lib/partitions.bin .;
-        cat ../../../../tools/script | sed s/\\"appimg.bin\\"/\\"''' + app_bin + '''\\"/g > ./script;
-        cp ../''' + app_bin + ''' .;
-        tar -cvzf ''' + release_dir + name + "-" + PYCOM_VERSION + '''.tar.gz  bootloader.bin   partitions.bin   script ''' + app_bin
+        sh 'mv esp32/build/'+ name_u + '/release/application.elf ' + release_dir + name + "-" + PYCOM_VERSION + '-application.elf'
     }
 }
 
