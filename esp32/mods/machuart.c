@@ -162,6 +162,7 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
         // make it UART Tx
         pin->value = 1;
         pin_deassign(pin);
+        pin->mode = GPIO_MODE_OUTPUT;
         pin->af_out = mach_uart_pin_af[self->uart_id][0];
         gpio_matrix_out(pin->pin_number, pin->af_out, false, false);
         // clear the Tx FIFO empty flag
@@ -186,7 +187,7 @@ bool uart_tx_strn(mach_uart_obj_t *self, const char *str, uint len) {
         // make it an input again
         pin_deassign(pin);
         pin->af_in = mach_uart_pin_af[self->uart_id][1];
-        gpio_matrix_in(pin->pin_number, pin->af_in, false);
+        pin_config(pin, pin->af_in, -1, GPIO_MODE_INPUT, MACHPIN_PULL_UP, 1);
         MICROPY_END_ATOMIC_SECTION(isrmask);
         self->uart_reg->int_clr.tx_done = 1;
     }
