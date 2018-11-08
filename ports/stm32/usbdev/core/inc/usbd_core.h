@@ -88,7 +88,7 @@ USBD_StatusTypeDef USBD_Init(USBD_HandleTypeDef *pdev, USBD_DescriptorsTypeDef *
 USBD_StatusTypeDef USBD_DeInit(USBD_HandleTypeDef *pdev);
 USBD_StatusTypeDef USBD_Start  (USBD_HandleTypeDef *pdev);
 USBD_StatusTypeDef USBD_Stop   (USBD_HandleTypeDef *pdev);
-USBD_StatusTypeDef USBD_RegisterClass(USBD_HandleTypeDef *pdev, USBD_ClassTypeDef *pclass);
+USBD_StatusTypeDef USBD_RegisterClass(USBD_HandleTypeDef *pdev, const USBD_ClassTypeDef *pclass);
 
 USBD_StatusTypeDef USBD_RunTestMode (USBD_HandleTypeDef  *pdev); 
 USBD_StatusTypeDef USBD_SetClassConfig(USBD_HandleTypeDef  *pdev, uint8_t cfgidx);
@@ -111,7 +111,7 @@ USBD_StatusTypeDef USBD_LL_DevConnected(USBD_HandleTypeDef  *pdev);
 USBD_StatusTypeDef USBD_LL_DevDisconnected(USBD_HandleTypeDef  *pdev);
 
 /* USBD Low Level Driver */
-USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev);
+USBD_StatusTypeDef  USBD_LL_Init (USBD_HandleTypeDef *pdev, int high_speed);
 USBD_StatusTypeDef  USBD_LL_DeInit (USBD_HandleTypeDef *pdev);
 USBD_StatusTypeDef  USBD_LL_Start(USBD_HandleTypeDef *pdev);
 USBD_StatusTypeDef  USBD_LL_Stop (USBD_HandleTypeDef *pdev);

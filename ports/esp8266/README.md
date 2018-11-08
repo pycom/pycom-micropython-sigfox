@@ -49,7 +49,7 @@ $ make -C mpy-cross
 
 Then, to build MicroPython for the ESP8266, just run:
 ```bash
-$ cd esp8266
+$ cd ports/esp8266
 $ make axtls
 $ make
 ```
@@ -79,8 +79,20 @@ $ make PORT=/dev/ttyUSB0 FLASH_MODE=qio FLASH_SIZE=32m deploy
 
 The image produced is `build/firmware-combined.bin`, to be flashed at 0x00000.
 
+__512KB FlashROM version__
+
+The normal build described above requires modules with at least 1MB of FlashROM
+onboard. There's a special configuration for 512KB modules, which can be
+built with `make 512k`. This configuration is highly limited, lacks filesystem
+support, WebREPL, and has many other features disabled. It's mostly suitable
+for advanced users who are interested to fine-tune options to achieve a required
+setup. If you are an end user, please consider using a module with at least 1MB
+of FlashROM.
+
 First start
 -----------
+
+Be sure to change ESP8266's WiFi access point password ASAP, see below.
 
 __Serial prompt__
 
@@ -88,29 +100,54 @@ You can access the REPL (Python prompt) over UART (the same as used for
 programming).
 - Baudrate: 115200
 
+Run `help()` for some basic information.
+
 __WiFi__
 
-Initally, the device configures itself as a WiFi access point (AP).
+Initially, the device configures itself as a WiFi access point (AP).
 - ESSID: MicroPython-xxxxxx (x’s are replaced with part of the MAC address).
 - Password: micropythoN (note the upper-case N).
 - IP address of the board: 192.168.4.1.
 - DHCP-server is activated.
+- Please be sure to change the password to something non-guessable
+  immediately. `help()` gives information how.
 
 __WebREPL__
 
 Python prompt over WiFi, connecting through a browser.
 - Hosted at http://micropython.org/webrepl.
 - GitHub repository https://github.com/micropython/webrepl.
+  Please follow the instructions there.
 
-Please follow the instructions there.
+__upip__
 
-More detailed instructions can be found at
-http://docs.micropython.org/en/latest/esp8266/esp8266/tutorial/intro.html
+The ESP8266 port comes with builtin `upip` package manager, which can
+be used to install additional modules (see the main README for more
+information):
+
+```
+>>> import upip
+>>> upip.install("micropython-pystone_lowmem")
+[...]
+>>> import pystone_lowmem
+>>> pystone_lowmem.main()
+```
+
+Downloading and installing packages may requite a lot of free memory,
+if you get an error, retry immediately after the hard reset.
+
+Documentation
+-------------
+
+More detailed documentation and instructions can be found at
+http://docs.micropython.org/en/latest/esp8266/ , which includes Quick
+Reference, Tutorial, General Information related to ESP8266 port, and
+to MicroPython in general.
 
 Troubleshooting
 ---------------
 
-While the port is still in alpha, it's known to be generally stable. If you
+While the port is in beta, it's known to be generally stable. If you
 experience strange bootloops, crashes, lockups, here's a list to check against:
 
 - You didn't erase flash before programming MicroPython firmware.
@@ -122,3 +159,5 @@ experience strange bootloops, crashes, lockups, here's a list to check against:
 
 Please consult dedicated ESP8266 forums/resources for hardware-related
 problems.
+
+Additional information may be available by the documentation links above.

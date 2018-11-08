@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -32,7 +32,6 @@
 #include <zephyr.h>
 #include <gpio.h>
 
-#include "py/nlr.h"
 #include "py/runtime.h"
 #include "py/gc.h"
 #include "py/mphal.h"
@@ -46,7 +45,7 @@ STATIC void machine_pin_print(const mp_print_t *print, mp_obj_t self_in, mp_prin
 }
 
 // pin.init(mode, pull=None, *, value)
-STATIC mp_obj_t machine_pin_obj_init_helper(machine_pin_obj_t *self, mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t machine_pin_obj_init_helper(machine_pin_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_mode, ARG_pull, ARG_value };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_mode, MP_ARG_REQUIRED | MP_ARG_INT },
@@ -81,7 +80,7 @@ STATIC mp_obj_t machine_pin_obj_init_helper(machine_pin_obj_t *self, mp_uint_t n
 }
 
 // constructor(drv_name, pin, ...)
-STATIC mp_obj_t machine_pin_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+mp_obj_t mp_pin_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 1, MP_OBJ_FUN_ARGS_MAX, true);
 
     // get the wanted port
@@ -117,7 +116,7 @@ STATIC mp_obj_t machine_pin_call(mp_obj_t self_in, size_t n_args, size_t n_kw, c
     mp_arg_check_num(n_args, n_kw, 0, 1, false);
     machine_pin_obj_t *self = self_in;
     if (n_args == 0) {
-        uint32_t pin_val;
+        u32_t pin_val;
         (void)gpio_pin_read(self->port, self->pin, &pin_val);
         return MP_OBJ_NEW_SMALL_INT(pin_val);
     } else {
@@ -138,43 +137,64 @@ STATIC mp_obj_t machine_pin_value(size_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_pin_value_obj, 1, 2, machine_pin_value);
 
-// pin.low()
-STATIC mp_obj_t machine_pin_low(mp_obj_t self_in) {
+STATIC mp_obj_t machine_pin_off(mp_obj_t self_in) {
     machine_pin_obj_t *self = self_in;
     (void)gpio_pin_write(self->port, self->pin, 0);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_low_obj, machine_pin_low);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_off_obj, machine_pin_off);
 
-// pin.high()
-STATIC mp_obj_t machine_pin_high(mp_obj_t self_in) {
+STATIC mp_obj_t machine_pin_on(mp_obj_t self_in) {
     machine_pin_obj_t *self = self_in;
     (void)gpio_pin_write(self->port, self->pin, 1);
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_high_obj, machine_pin_high);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pin_on_obj, machine_pin_on);
 
-STATIC const mp_map_elem_t machine_pin_locals_dict_table[] = {
+STATIC mp_uint_t machine_pin_ioctl(mp_obj_t self_in, mp_uint_t request, uintptr_t arg, int *errcode) {
+    (void)errcode;
+    machine_pin_obj_t *self = self_in;
+
+    switch (request) {
+        case MP_PIN_READ: {
+            u32_t pin_val;
+            gpio_pin_read(self->port, self->pin, &pin_val);
+            return pin_val;
+        }
+        case MP_PIN_WRITE: {
+            gpio_pin_write(self->port, self->pin, arg);
+            return 0;
+        }
+    }
+    return -1;
+}
+
+STATIC const mp_rom_map_elem_t machine_pin_locals_dict_table[] = {
     // instance methods
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init),    (mp_obj_t)&machine_pin_init_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_value),   (mp_obj_t)&machine_pin_value_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_low),     (mp_obj_t)&machine_pin_low_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_high),    (mp_obj_t)&machine_pin_high_obj },
+    { MP_ROM_QSTR(MP_QSTR_init),    MP_ROM_PTR(&machine_pin_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_value),   MP_ROM_PTR(&machine_pin_value_obj) },
+    { MP_ROM_QSTR(MP_QSTR_off),     MP_ROM_PTR(&machine_pin_off_obj) },
+    { MP_ROM_QSTR(MP_QSTR_on),      MP_ROM_PTR(&machine_pin_on_obj) },
 
     // class constants
-    { MP_OBJ_NEW_QSTR(MP_QSTR_IN),        MP_OBJ_NEW_SMALL_INT(GPIO_DIR_IN) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_OUT),       MP_OBJ_NEW_SMALL_INT(GPIO_DIR_OUT) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_PULL_UP),   MP_OBJ_NEW_SMALL_INT(GPIO_PUD_PULL_UP) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_PULL_DOWN), MP_OBJ_NEW_SMALL_INT(GPIO_PUD_PULL_DOWN) },
+    { MP_ROM_QSTR(MP_QSTR_IN),        MP_ROM_INT(GPIO_DIR_IN) },
+    { MP_ROM_QSTR(MP_QSTR_OUT),       MP_ROM_INT(GPIO_DIR_OUT) },
+    { MP_ROM_QSTR(MP_QSTR_PULL_UP),   MP_ROM_INT(GPIO_PUD_PULL_UP) },
+    { MP_ROM_QSTR(MP_QSTR_PULL_DOWN), MP_ROM_INT(GPIO_PUD_PULL_DOWN) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(machine_pin_locals_dict, machine_pin_locals_dict_table);
+
+STATIC const mp_pin_p_t machine_pin_pin_p = {
+    .ioctl = machine_pin_ioctl,
+};
 
 const mp_obj_type_t machine_pin_type = {
     { &mp_type_type },
     .name = MP_QSTR_Pin,
     .print = machine_pin_print,
-    .make_new = machine_pin_make_new,
+    .make_new = mp_pin_make_new,
     .call = machine_pin_call,
+    .protocol = &machine_pin_pin_p,
     .locals_dict = (mp_obj_t)&machine_pin_locals_dict,
 };

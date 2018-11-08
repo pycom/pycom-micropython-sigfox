@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -27,12 +27,12 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "py/nlr.h"
 #include "py/objtuple.h"
 #include "py/objlist.h"
 #include "py/runtime.h"
+#include "py/stream.h"
 #include "py/mperrno.h"
-#include "netutils.h"
+#include "lib/netutils/netutils.h"
 #include "modnetwork.h"
 
 #if MICROPY_PY_USOCKET
@@ -43,7 +43,7 @@
 STATIC const mp_obj_type_t socket_type;
 
 // constructor socket(family=AF_INET, type=SOCK_STREAM, proto=0, fileno=None)
-STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 4, false);
 
     // create socket object (not bound to any NIC yet)
@@ -80,16 +80,6 @@ STATIC void socket_select_nic(mod_network_socket_obj_t *self, const byte *ip) {
         }
     }
 }
-// method socket.close()
-STATIC mp_obj_t socket_close(mp_obj_t self_in) {
-    mod_network_socket_obj_t *self = self_in;
-    if (self->nic != MP_OBJ_NULL) {
-        self->nic_type->close(self);
-        self->nic = MP_OBJ_NULL;
-    }
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(socket_close_obj, socket_close);
 
 // method socket.bind(address)
 STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
@@ -280,7 +270,7 @@ STATIC mp_obj_t socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_recvfrom_obj, socket_recvfrom);
 
 // method socket.setsockopt(level, optname, value)
-STATIC mp_obj_t socket_setsockopt(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t socket_setsockopt(size_t n_args, const mp_obj_t *args) {
     mod_network_socket_obj_t *self = args[0];
 
     mp_int_t level = mp_obj_get_int(args[1]);
@@ -347,26 +337,33 @@ STATIC mp_obj_t socket_setblocking(mp_obj_t self_in, mp_obj_t blocking) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_setblocking_obj, socket_setblocking);
 
-STATIC const mp_map_elem_t socket_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR___del__), (mp_obj_t)&socket_close_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_close), (mp_obj_t)&socket_close_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_bind), (mp_obj_t)&socket_bind_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_listen), (mp_obj_t)&socket_listen_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_accept), (mp_obj_t)&socket_accept_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_connect), (mp_obj_t)&socket_connect_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_send), (mp_obj_t)&socket_send_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_recv), (mp_obj_t)&socket_recv_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_sendto), (mp_obj_t)&socket_sendto_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_recvfrom), (mp_obj_t)&socket_recvfrom_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_setsockopt), (mp_obj_t)&socket_setsockopt_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_settimeout), (mp_obj_t)&socket_settimeout_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_setblocking), (mp_obj_t)&socket_setblocking_obj },
+STATIC const mp_rom_map_elem_t socket_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___del__), MP_ROM_PTR(&mp_stream_close_obj) },
+    { MP_ROM_QSTR(MP_QSTR_close), MP_ROM_PTR(&mp_stream_close_obj) },
+    { MP_ROM_QSTR(MP_QSTR_bind), MP_ROM_PTR(&socket_bind_obj) },
+    { MP_ROM_QSTR(MP_QSTR_listen), MP_ROM_PTR(&socket_listen_obj) },
+    { MP_ROM_QSTR(MP_QSTR_accept), MP_ROM_PTR(&socket_accept_obj) },
+    { MP_ROM_QSTR(MP_QSTR_connect), MP_ROM_PTR(&socket_connect_obj) },
+    { MP_ROM_QSTR(MP_QSTR_send), MP_ROM_PTR(&socket_send_obj) },
+    { MP_ROM_QSTR(MP_QSTR_recv), MP_ROM_PTR(&socket_recv_obj) },
+    { MP_ROM_QSTR(MP_QSTR_sendto), MP_ROM_PTR(&socket_sendto_obj) },
+    { MP_ROM_QSTR(MP_QSTR_recvfrom), MP_ROM_PTR(&socket_recvfrom_obj) },
+    { MP_ROM_QSTR(MP_QSTR_setsockopt), MP_ROM_PTR(&socket_setsockopt_obj) },
+    { MP_ROM_QSTR(MP_QSTR_settimeout), MP_ROM_PTR(&socket_settimeout_obj) },
+    { MP_ROM_QSTR(MP_QSTR_setblocking), MP_ROM_PTR(&socket_setblocking_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(socket_locals_dict, socket_locals_dict_table);
 
 mp_uint_t socket_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint_t arg, int *errcode) {
     mod_network_socket_obj_t *self = self_in;
+    if (request == MP_STREAM_CLOSE) {
+        if (self->nic != MP_OBJ_NULL) {
+            self->nic_type->close(self);
+            self->nic = MP_OBJ_NULL;
+        }
+        return 0;
+    }
     return self->nic_type->ioctl(self, request, arg, errcode);
 }
 
@@ -380,7 +377,7 @@ STATIC const mp_obj_type_t socket_type = {
     .name = MP_QSTR_socket,
     .make_new = socket_make_new,
     .protocol = &socket_stream_p,
-    .locals_dict = (mp_obj_t)&socket_locals_dict,
+    .locals_dict = (mp_obj_dict_t*)&socket_locals_dict,
 };
 
 /******************************************************************************/
@@ -388,57 +385,76 @@ STATIC const mp_obj_type_t socket_type = {
 
 // function usocket.getaddrinfo(host, port)
 STATIC mp_obj_t mod_usocket_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
-    mp_uint_t hlen;
+    size_t hlen;
     const char *host = mp_obj_str_get_data(host_in, &hlen);
     mp_int_t port = mp_obj_get_int(port_in);
+    uint8_t out_ip[MOD_NETWORK_IPADDR_BUF_SIZE];
+    bool have_ip = false;
 
-    // find a NIC that can do a name lookup
-    for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
-        mp_obj_t nic = MP_STATE_PORT(mod_network_nic_list).items[i];
-        mod_network_nic_type_t *nic_type = (mod_network_nic_type_t*)mp_obj_get_type(nic);
-        if (nic_type->gethostbyname != NULL) {
-            uint8_t out_ip[MOD_NETWORK_IPADDR_BUF_SIZE];
-            int ret = nic_type->gethostbyname(nic, host, hlen, out_ip);
-            if (ret != 0) {
-                // TODO CPython raises: socket.gaierror: [Errno -2] Name or service not known
-                mp_raise_OSError(ret);
-            }
-            mp_obj_tuple_t *tuple = mp_obj_new_tuple(5, NULL);
-            tuple->items[0] = MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_AF_INET);
-            tuple->items[1] = MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_SOCK_STREAM);
-            tuple->items[2] = MP_OBJ_NEW_SMALL_INT(0);
-            tuple->items[3] = MP_OBJ_NEW_QSTR(MP_QSTR_);
-            tuple->items[4] = netutils_format_inet_addr(out_ip, port, NETUTILS_BIG);
-            return mp_obj_new_list(1, (mp_obj_t*)&tuple);
+    if (hlen > 0) {
+        // check if host is already in IP form
+        nlr_buf_t nlr;
+        if (nlr_push(&nlr) == 0) {
+            netutils_parse_ipv4_addr(host_in, out_ip, NETUTILS_BIG);
+            have_ip = true;
+            nlr_pop();
+        } else {
+            // swallow exception: host was not in IP form so need to do DNS lookup
         }
     }
 
-    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
+    if (!have_ip) {
+        // find a NIC that can do a name lookup
+        for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
+            mp_obj_t nic = MP_STATE_PORT(mod_network_nic_list).items[i];
+            mod_network_nic_type_t *nic_type = (mod_network_nic_type_t*)mp_obj_get_type(nic);
+            if (nic_type->gethostbyname != NULL) {
+                int ret = nic_type->gethostbyname(nic, host, hlen, out_ip);
+                if (ret != 0) {
+                    mp_raise_OSError(ret);
+                }
+                have_ip = true;
+                break;
+            }
+        }
+    }
+
+    if (!have_ip) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
+    }
+
+    mp_obj_tuple_t *tuple = mp_obj_new_tuple(5, NULL);
+    tuple->items[0] = MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_AF_INET);
+    tuple->items[1] = MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_SOCK_STREAM);
+    tuple->items[2] = MP_OBJ_NEW_SMALL_INT(0);
+    tuple->items[3] = MP_OBJ_NEW_QSTR(MP_QSTR_);
+    tuple->items[4] = netutils_format_inet_addr(out_ip, port, NETUTILS_BIG);
+    return mp_obj_new_list(1, (mp_obj_t*)&tuple);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_usocket_getaddrinfo_obj, mod_usocket_getaddrinfo);
 
-STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_usocket) },
+STATIC const mp_rom_map_elem_t mp_module_usocket_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_usocket) },
 
-    { MP_OBJ_NEW_QSTR(MP_QSTR_socket), (mp_obj_t)&socket_type },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_getaddrinfo), (mp_obj_t)&mod_usocket_getaddrinfo_obj },
+    { MP_ROM_QSTR(MP_QSTR_socket), MP_ROM_PTR(&socket_type) },
+    { MP_ROM_QSTR(MP_QSTR_getaddrinfo), MP_ROM_PTR(&mod_usocket_getaddrinfo_obj) },
 
     // class constants
-    { MP_OBJ_NEW_QSTR(MP_QSTR_AF_INET), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_AF_INET) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_AF_INET6), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_AF_INET6) },
+    { MP_ROM_QSTR(MP_QSTR_AF_INET), MP_ROM_INT(MOD_NETWORK_AF_INET) },
+    { MP_ROM_QSTR(MP_QSTR_AF_INET6), MP_ROM_INT(MOD_NETWORK_AF_INET6) },
 
-    { MP_OBJ_NEW_QSTR(MP_QSTR_SOCK_STREAM), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_SOCK_STREAM) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_SOCK_DGRAM), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_SOCK_DGRAM) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_SOCK_RAW), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_SOCK_RAW) },
+    { MP_ROM_QSTR(MP_QSTR_SOCK_STREAM), MP_ROM_INT(MOD_NETWORK_SOCK_STREAM) },
+    { MP_ROM_QSTR(MP_QSTR_SOCK_DGRAM), MP_ROM_INT(MOD_NETWORK_SOCK_DGRAM) },
+    { MP_ROM_QSTR(MP_QSTR_SOCK_RAW), MP_ROM_INT(MOD_NETWORK_SOCK_RAW) },
 
     /*
-    { MP_OBJ_NEW_QSTR(MP_QSTR_IPPROTO_IP), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_IPPROTO_IP) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_IPPROTO_ICMP), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_IPPROTO_ICMP) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_IPPROTO_IPV4), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_IPPROTO_IPV4) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_IPPROTO_TCP), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_IPPROTO_TCP) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_IPPROTO_UDP), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_IPPROTO_UDP) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_IPPROTO_IPV6), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_IPPROTO_IPV6) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_IPPROTO_RAW), MP_OBJ_NEW_SMALL_INT(MOD_NETWORK_IPPROTO_RAW) },
+    { MP_ROM_QSTR(MP_QSTR_IPPROTO_IP), MP_ROM_INT(MOD_NETWORK_IPPROTO_IP) },
+    { MP_ROM_QSTR(MP_QSTR_IPPROTO_ICMP), MP_ROM_INT(MOD_NETWORK_IPPROTO_ICMP) },
+    { MP_ROM_QSTR(MP_QSTR_IPPROTO_IPV4), MP_ROM_INT(MOD_NETWORK_IPPROTO_IPV4) },
+    { MP_ROM_QSTR(MP_QSTR_IPPROTO_TCP), MP_ROM_INT(MOD_NETWORK_IPPROTO_TCP) },
+    { MP_ROM_QSTR(MP_QSTR_IPPROTO_UDP), MP_ROM_INT(MOD_NETWORK_IPPROTO_UDP) },
+    { MP_ROM_QSTR(MP_QSTR_IPPROTO_IPV6), MP_ROM_INT(MOD_NETWORK_IPPROTO_IPV6) },
+    { MP_ROM_QSTR(MP_QSTR_IPPROTO_RAW), MP_ROM_INT(MOD_NETWORK_IPPROTO_RAW) },
     */
 };
 

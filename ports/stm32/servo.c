@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -26,28 +26,29 @@
 
 #include <stdio.h>
 
-#include STM32_HAL_H
-
-#include "py/nlr.h"
 #include "py/runtime.h"
+#include "py/mphal.h"
+#include "pin.h"
 #include "timer.h"
 #include "servo.h"
 
-/// \moduleref pyb
-/// \class Servo - 3-wire hobby servo driver
-///
-/// Servo controls standard hobby servos with 3-wires (ground, power, signal).
+#if MICROPY_HW_ENABLE_SERVO
 
-// this servo driver uses hardware PWM to drive servos on PA0, PA1, PA2, PA3 = X1, X2, X3, X4
-// TIM2 and TIM5 have CH1, CH2, CH3, CH4 on PA0-PA3 respectively
-// they are both 32-bit counters with 16-bit prescaler
-// we use TIM5
+// This file implements the pyb.Servo class which controls standard hobby servo
+// motors that have 3-wires (ground, power, signal).
+//
+// The driver uses hardware PWM to drive servos on pins X1, X2, X3, X4 which are
+// assumed to be on PA0, PA1, PA2, PA3 but not necessarily in that order (the
+// pins PA0-PA3 are used directly if the X pins are not defined).
+//
+// TIM2 and TIM5 have CH1-CH4 on PA0-PA3 respectively.  They are both 32-bit
+// counters with 16-bit prescaler.  TIM5 is used by this driver.
 
 #define PYB_SERVO_NUM (4)
 
 typedef struct _pyb_servo_obj_t {
     mp_obj_base_t base;
-    uint8_t servo_id;
+    const pin_obj_t *pin;
     uint8_t pulse_min;          // units of 10us
     uint8_t pulse_max;          // units of 10us
     uint8_t pulse_centre;       // units of 10us
@@ -67,7 +68,6 @@ void servo_init(void) {
     // reset servo objects
     for (int i = 0; i < PYB_SERVO_NUM; i++) {
         pyb_servo_obj[i].base.type = &pyb_servo_type;
-        pyb_servo_obj[i].servo_id = i + 1;
         pyb_servo_obj[i].pulse_min = 64;
         pyb_servo_obj[i].pulse_max = 242;
         pyb_servo_obj[i].pulse_centre = 150;
@@ -77,6 +77,19 @@ void servo_init(void) {
         pyb_servo_obj[i].pulse_dest = 0;
         pyb_servo_obj[i].time_left = 0;
     }
+
+    // assign servo objects to specific pins (must be some permutation of PA0-PA3)
+    #ifdef pyb_pin_X1
+    pyb_servo_obj[0].pin = pyb_pin_X1;
+    pyb_servo_obj[1].pin = pyb_pin_X2;
+    pyb_servo_obj[2].pin = pyb_pin_X3;
+    pyb_servo_obj[3].pin = pyb_pin_X4;
+    #else
+    pyb_servo_obj[0].pin = pin_A0;
+    pyb_servo_obj[1].pin = pin_A1;
+    pyb_servo_obj[2].pin = pin_A2;
+    pyb_servo_obj[3].pin = pin_A3;
+    #endif
 }
 
 void servo_timer_irq_callback(void) {
@@ -102,12 +115,7 @@ void servo_timer_irq_callback(void) {
                 need_it = true;
             }
             // set the pulse width
-            switch (s->servo_id) {
-                case 1: TIM5->CCR1 = s->pulse_cur; break;
-                case 2: TIM5->CCR2 = s->pulse_cur; break;
-                case 3: TIM5->CCR3 = s->pulse_cur; break;
-                case 4: TIM5->CCR4 = s->pulse_cur; break;
-            }
+            *(&TIM5->CCR1 + s->pin->pin) = s->pulse_cur;
         }
     }
     if (need_it) {
@@ -118,24 +126,12 @@ void servo_timer_irq_callback(void) {
 }
 
 STATIC void servo_init_channel(pyb_servo_obj_t *s) {
-    uint32_t pin;
-    uint32_t channel;
-    switch (s->servo_id) {
-        case 1: pin = GPIO_PIN_0; channel = TIM_CHANNEL_1; break;
-        case 2: pin = GPIO_PIN_1; channel = TIM_CHANNEL_2; break;
-        case 3: pin = GPIO_PIN_2; channel = TIM_CHANNEL_3; break;
-        case 4: pin = GPIO_PIN_3; channel = TIM_CHANNEL_4; break;
-        default: return;
-    }
+    static const uint8_t channel_table[4] =
+        {TIM_CHANNEL_1, TIM_CHANNEL_2, TIM_CHANNEL_3, TIM_CHANNEL_4};
+    uint32_t channel = channel_table[s->pin->pin];
 
     // GPIO configuration
-    GPIO_InitTypeDef GPIO_InitStructure;
-    GPIO_InitStructure.Pin = pin;
-    GPIO_InitStructure.Mode = GPIO_MODE_AF_PP;
-    GPIO_InitStructure.Speed = GPIO_SPEED_FAST;
-    GPIO_InitStructure.Pull = GPIO_NOPULL;
-    GPIO_InitStructure.Alternate = GPIO_AF2_TIM5;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
+    mp_hal_pin_config(s->pin, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, GPIO_AF2_TIM5);
 
     // PWM mode configuration
     TIM_OC_InitTypeDef oc_init;
@@ -150,7 +146,7 @@ STATIC void servo_init_channel(pyb_servo_obj_t *s) {
 }
 
 /******************************************************************************/
-// Micro Python bindings
+// MicroPython bindings
 
 STATIC mp_obj_t pyb_servo_set(mp_obj_t port, mp_obj_t value) {
     int p = mp_obj_get_int(port);
@@ -180,12 +176,12 @@ MP_DEFINE_CONST_FUN_OBJ_2(pyb_pwm_set_obj, pyb_pwm_set);
 
 STATIC void pyb_servo_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     pyb_servo_obj_t *self = self_in;
-    mp_printf(print, "<Servo %lu at %luus>", self->servo_id, 10 * self->pulse_cur);
+    mp_printf(print, "<Servo %u at %uus>", self - &pyb_servo_obj[0] + 1, 10 * self->pulse_cur);
 }
 
 /// \classmethod \constructor(id)
 /// Create a servo object.  `id` is 1-4.
-STATIC mp_obj_t pyb_servo_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t pyb_servo_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     // check arguments
     mp_arg_check_num(n_args, n_kw, 1, 1, false);
 
@@ -194,7 +190,7 @@ STATIC mp_obj_t pyb_servo_make_new(const mp_obj_type_t *type, mp_uint_t n_args, 
 
     // check servo number
     if (!(0 <= servo_id && servo_id < PYB_SERVO_NUM)) {
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Servo %d does not exist", servo_id + 1));
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Servo(%d) doesn't exist", servo_id + 1));
     }
 
     // get and init servo object
@@ -208,7 +204,7 @@ STATIC mp_obj_t pyb_servo_make_new(const mp_obj_type_t *type, mp_uint_t n_args, 
 
 /// \method pulse_width([value])
 /// Get or set the pulse width in milliseconds.
-STATIC mp_obj_t pyb_servo_pulse_width(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t pyb_servo_pulse_width(size_t n_args, const mp_obj_t *args) {
     pyb_servo_obj_t *self = args[0];
     if (n_args == 1) {
         // get pulse width, in us
@@ -226,7 +222,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_servo_pulse_width_obj, 1, 2, pyb_
 /// \method calibration([pulse_min, pulse_max, pulse_centre, [pulse_angle_90, pulse_speed_100]])
 /// Get or set the calibration of the servo timing.
 // TODO should accept 1 arg, a 5-tuple of values to set
-STATIC mp_obj_t pyb_servo_calibration(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t pyb_servo_calibration(size_t n_args, const mp_obj_t *args) {
     pyb_servo_obj_t *self = args[0];
     if (n_args == 1) {
         // get calibration values
@@ -261,7 +257,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_servo_calibration_obj, 1, 6, pyb_
 ///
 ///   - `angle` is the angle to move to in degrees.
 ///   - `time` is the number of milliseconds to take to get to the specified angle.
-STATIC mp_obj_t pyb_servo_angle(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t pyb_servo_angle(size_t n_args, const mp_obj_t *args) {
     pyb_servo_obj_t *self = args[0];
     if (n_args == 1) {
         // get angle
@@ -291,7 +287,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_servo_angle_obj, 1, 3, pyb_servo_
 ///
 ///   - `speed` is the speed to move to change to, between -100 and 100.
 ///   - `time` is the number of milliseconds to take to get to the specified speed.
-STATIC mp_obj_t pyb_servo_speed(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t pyb_servo_speed(size_t n_args, const mp_obj_t *args) {
     pyb_servo_obj_t *self = args[0];
     if (n_args == 1) {
         // get speed
@@ -317,11 +313,11 @@ STATIC mp_obj_t pyb_servo_speed(mp_uint_t n_args, const mp_obj_t *args) {
 
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_servo_speed_obj, 1, 3, pyb_servo_speed);
 
-STATIC const mp_map_elem_t pyb_servo_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_pulse_width), (mp_obj_t)&pyb_servo_pulse_width_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_calibration), (mp_obj_t)&pyb_servo_calibration_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_angle), (mp_obj_t)&pyb_servo_angle_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_speed), (mp_obj_t)&pyb_servo_speed_obj },
+STATIC const mp_rom_map_elem_t pyb_servo_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_pulse_width), MP_ROM_PTR(&pyb_servo_pulse_width_obj) },
+    { MP_ROM_QSTR(MP_QSTR_calibration), MP_ROM_PTR(&pyb_servo_calibration_obj) },
+    { MP_ROM_QSTR(MP_QSTR_angle), MP_ROM_PTR(&pyb_servo_angle_obj) },
+    { MP_ROM_QSTR(MP_QSTR_speed), MP_ROM_PTR(&pyb_servo_speed_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(pyb_servo_locals_dict, pyb_servo_locals_dict_table);
@@ -331,5 +327,7 @@ const mp_obj_type_t pyb_servo_type = {
     .name = MP_QSTR_Servo,
     .print = pyb_servo_print,
     .make_new = pyb_servo_make_new,
-    .locals_dict = (mp_obj_t)&pyb_servo_locals_dict,
+    .locals_dict = (mp_obj_dict_t*)&pyb_servo_locals_dict,
 };
+
+#endif // MICROPY_HW_ENABLE_SERVO

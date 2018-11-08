@@ -1,5 +1,5 @@
-#ifndef __MICROPY_INCLUDED_ESP8266_MODPYB_H__
-#define __MICROPY_INCLUDED_ESP8266_MODPYB_H__
+#ifndef MICROPY_INCLUDED_ESP8266_MODMACHINE_H
+#define MICROPY_INCLUDED_ESP8266_MODMACHINE_H
 
 #include "py/obj.h"
 
@@ -9,9 +9,7 @@ extern const mp_obj_type_t pyb_adc_type;
 extern const mp_obj_type_t pyb_rtc_type;
 extern const mp_obj_type_t pyb_uart_type;
 extern const mp_obj_type_t pyb_i2c_type;
-extern const mp_obj_type_t pyb_spi_type;
-extern const mp_obj_type_t pyb_hspi_type;
-extern const mp_obj_type_t machine_spi_type;
+extern const mp_obj_type_t machine_hspi_type;
 
 MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_info_obj);
 
@@ -40,4 +38,4 @@ void pyb_rtc_set_us_since_2000(uint64_t nowus);
 uint64_t pyb_rtc_get_us_since_2000();
 void rtc_prepare_deepsleep(uint64_t sleep_us);
 
-#endif // __MICROPY_INCLUDED_ESP8266_MODPYB_H__
+#endif // MICROPY_INCLUDED_ESP8266_MODMACHINE_H

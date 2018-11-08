@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -23,9 +23,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-
-#ifndef _INCLUDED_MPHAL_H_
-#define _INCLUDED_MPHAL_H_
 
 #include "py/ringbuf.h"
 #include "lib/utils/interrupt_char.h"
@@ -75,9 +72,11 @@ void ets_event_poll(void);
 // C-level pin HAL
 #include "etshal.h"
 #include "gpio.h"
-#include "esp8266/modmachine.h"
+#include "modmachine.h"
+#define MP_HAL_PIN_FMT "%u"
 #define mp_hal_pin_obj_t uint32_t
 #define mp_hal_get_pin_obj(o) mp_obj_get_pin(o)
+#define mp_hal_pin_name(p) (p)
 void mp_hal_pin_input(mp_hal_pin_obj_t pin);
 void mp_hal_pin_output(mp_hal_pin_obj_t pin);
 void mp_hal_pin_open_drain(mp_hal_pin_obj_t pin);
@@ -87,12 +86,10 @@ void mp_hal_pin_open_drain(mp_hal_pin_obj_t pin);
     } while (0)
 #define mp_hal_pin_od_high(p) do { \
         if ((p) == 16) { WRITE_PERI_REG(RTC_GPIO_ENABLE, (READ_PERI_REG(RTC_GPIO_ENABLE) & ~1)); } \
-        else { gpio_output_set(1 << (p), 0, 1 << (p), 0); } \
+        else { gpio_output_set(0, 0, 0, 1 << (p)); /* set as input to avoid glitches */ } \
     } while (0)
 #define mp_hal_pin_read(p) pin_get(p)
 #define mp_hal_pin_write(p, v) pin_set((p), (v))
 
 void *ets_get_esf_buf_ctlblk(void);
 int ets_esf_free_bufs(int idx);
-
-#endif // _INCLUDED_MPHAL_H_

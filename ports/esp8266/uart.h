@@ -1,5 +1,5 @@
-#ifndef _INCLUDED_UART_H_
-#define _INCLUDED_UART_H_
+#ifndef MICROPY_INCLUDED_ESP8266_UART_H
+#define MICROPY_INCLUDED_ESP8266_UART_H
 
 #include <eagle_soc.h>
 
@@ -14,9 +14,9 @@ typedef enum {
 } UartBitsNum4Char;
 
 typedef enum {
-    UART_ONE_STOP_BIT             = 0,
-    UART_ONE_HALF_STOP_BIT        = BIT2,
-    UART_TWO_STOP_BIT             = BIT2
+    UART_ONE_STOP_BIT             = 0x1,
+    UART_ONE_HALF_STOP_BIT        = 0x2,
+    UART_TWO_STOP_BIT             = 0x3
 } UartStopBitsNum;
 
 typedef enum {
@@ -99,5 +99,8 @@ void uart_tx_one_char(uint8 uart, uint8 TxChar);
 void uart_flush(uint8 uart);
 void uart_os_config(int uart);
 void uart_setup(uint8 uart);
+// check status of rx/tx
+int uart_rx_any(uint8 uart);
+int uart_tx_any_room(uint8 uart);
 
-#endif // _INCLUDED_UART_H_
+#endif // MICROPY_INCLUDED_ESP8266_UART_H

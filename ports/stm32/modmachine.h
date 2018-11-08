@@ -23,15 +23,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifndef MICROPY_INCLUDED_STM32_MODMACHINE_H
+#define MICROPY_INCLUDED_STM32_MODMACHINE_H
 
-#ifndef __MICROPY_INCLUDED_STMHAL_MODMACHINE_H__
-#define __MICROPY_INCLUDED_STMHAL_MODMACHINE_H__
-
-#include "py/mpstate.h"
-#include "py/nlr.h"
 #include "py/obj.h"
 
 void machine_init(void);
+void machine_deinit(void);
 
 MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(machine_info_obj);
 MP_DECLARE_CONST_FUN_OBJ_0(machine_unique_id_obj);
@@ -41,4 +39,4 @@ MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(machine_freq_obj);
 MP_DECLARE_CONST_FUN_OBJ_0(machine_sleep_obj);
 MP_DECLARE_CONST_FUN_OBJ_0(machine_deepsleep_obj);
 
-#endif // __MICROPY_INCLUDED_STMHAL_MODMACHINE_H__
+#endif // MICROPY_INCLUDED_STM32_MODMACHINE_H

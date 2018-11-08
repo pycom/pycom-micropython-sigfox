@@ -31,6 +31,7 @@
 #include "py/obj.h"
 #include "py/runtime.h"
 #include "extmod/machine_mem.h"
+#include "extmod/machine_signal.h"
 #include "extmod/machine_pulse.h"
 #include "extmod/machine_i2c.h"
 #include "modmachine.h"
@@ -50,7 +51,7 @@
 
 extern const mp_obj_type_t esp_wdt_type;
 
-STATIC mp_obj_t machine_freq(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t machine_freq(size_t n_args, const mp_obj_t *args) {
     if (n_args == 0) {
         // get
         return mp_obj_new_int(system_get_cpu_freq() * 1000000);
@@ -58,8 +59,7 @@ STATIC mp_obj_t machine_freq(mp_uint_t n_args, const mp_obj_t *args) {
         // set
         mp_int_t freq = mp_obj_get_int(args[0]) / 1000000;
         if (freq != 80 && freq != 160) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError,
-                    "frequency can only be either 80Mhz or 160MHz"));
+            mp_raise_ValueError("frequency can only be either 80Mhz or 160MHz");
         }
         system_update_cpu_freq(freq);
         return mp_const_none;
@@ -147,7 +147,7 @@ STATIC void esp_timer_print(const mp_print_t *print, mp_obj_t self_in, mp_print_
     mp_printf(print, "Timer(%p)", &self->timer);
 }
 
-STATIC mp_obj_t esp_timer_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t esp_timer_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 1, 1, false);
     esp_timer_obj_t *tim = m_new_obj(esp_timer_obj_t);
     tim->base.type = &esp_timer_type;
@@ -156,10 +156,10 @@ STATIC mp_obj_t esp_timer_make_new(const mp_obj_type_t *type, mp_uint_t n_args, 
 
 STATIC void esp_timer_cb(void *arg) {
     esp_timer_obj_t *self = arg;
-    mp_call_function_1_protected(self->callback, self);
+    mp_sched_schedule(self->callback, self);
 }
 
-STATIC mp_obj_t esp_timer_init_helper(esp_timer_obj_t *self, mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t esp_timer_init_helper(esp_timer_obj_t *self, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
 //        { MP_QSTR_freq,         MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_period,       MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 0xffffffff} },
@@ -180,7 +180,7 @@ STATIC mp_obj_t esp_timer_init_helper(esp_timer_obj_t *self, mp_uint_t n_args, c
     return mp_const_none;
 }
 
-STATIC mp_obj_t esp_timer_init(mp_uint_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
+STATIC mp_obj_t esp_timer_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
     return esp_timer_init_helper(args[0], n_args - 1, args + 1, kw_args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(esp_timer_init_obj, 1, esp_timer_init);
@@ -192,12 +192,12 @@ STATIC mp_obj_t esp_timer_deinit(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(esp_timer_deinit_obj, esp_timer_deinit);
 
-STATIC const mp_map_elem_t esp_timer_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_deinit), (mp_obj_t)&esp_timer_deinit_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init), (mp_obj_t)&esp_timer_init_obj },
-//    { MP_OBJ_NEW_QSTR(MP_QSTR_callback), (mp_obj_t)&esp_timer_callback_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ONE_SHOT), MP_OBJ_NEW_SMALL_INT(false) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_PERIODIC), MP_OBJ_NEW_SMALL_INT(true) },
+STATIC const mp_rom_map_elem_t esp_timer_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&esp_timer_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&esp_timer_init_obj) },
+//    { MP_ROM_QSTR(MP_QSTR_callback), MP_ROM_PTR(&esp_timer_callback_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ONE_SHOT), MP_ROM_INT(false) },
+    { MP_ROM_QSTR(MP_QSTR_PERIODIC), MP_ROM_INT(true) },
 };
 STATIC MP_DEFINE_CONST_DICT(esp_timer_locals_dict, esp_timer_locals_dict_table);
 
@@ -206,7 +206,7 @@ const mp_obj_type_t esp_timer_type = {
     .name = MP_QSTR_Timer,
     .print = esp_timer_print,
     .make_new = esp_timer_make_new,
-    .locals_dict = (mp_obj_t)&esp_timer_locals_dict,
+    .locals_dict = (mp_obj_dict_t*)&esp_timer_locals_dict,
 };
 
 // this bit is unused in the Xtensa PS register
@@ -251,11 +251,12 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_Timer), MP_ROM_PTR(&esp_timer_type) },
     { MP_ROM_QSTR(MP_QSTR_WDT), MP_ROM_PTR(&esp_wdt_type) },
     { MP_ROM_QSTR(MP_QSTR_Pin), MP_ROM_PTR(&pyb_pin_type) },
+    { MP_ROM_QSTR(MP_QSTR_Signal), MP_ROM_PTR(&machine_signal_type) },
     { MP_ROM_QSTR(MP_QSTR_PWM), MP_ROM_PTR(&pyb_pwm_type) },
     { MP_ROM_QSTR(MP_QSTR_ADC), MP_ROM_PTR(&pyb_adc_type) },
     { MP_ROM_QSTR(MP_QSTR_UART), MP_ROM_PTR(&pyb_uart_type) },
     { MP_ROM_QSTR(MP_QSTR_I2C), MP_ROM_PTR(&machine_i2c_type) },
-    { MP_ROM_QSTR(MP_QSTR_SPI), MP_ROM_PTR(&pyb_hspi_type) },
+    { MP_ROM_QSTR(MP_QSTR_SPI), MP_ROM_PTR(&machine_hspi_type) },
 
     // wake abilities
     { MP_ROM_QSTR(MP_QSTR_DEEPSLEEP), MP_ROM_INT(MACHINE_WAKE_DEEPSLEEP) },

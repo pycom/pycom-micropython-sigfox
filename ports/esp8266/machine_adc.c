@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -27,8 +27,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "py/nlr.h"
-#include "py/obj.h"
 #include "py/runtime.h"
 #include "user_interface.h"
 
@@ -42,7 +40,7 @@ typedef struct _pyb_adc_obj_t {
 STATIC pyb_adc_obj_t pyb_adc_vdd3 = {{&pyb_adc_type}, true};
 STATIC pyb_adc_obj_t pyb_adc_adc = {{&pyb_adc_type}, false};
 
-STATIC mp_obj_t pyb_adc_make_new(const mp_obj_type_t *type_in, mp_uint_t n_args, mp_uint_t n_kw,
+STATIC mp_obj_t pyb_adc_make_new(const mp_obj_type_t *type_in, size_t n_args, size_t n_kw,
     const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 1, 1, false);
 
@@ -70,8 +68,8 @@ STATIC mp_obj_t pyb_adc_read(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(pyb_adc_read_obj, pyb_adc_read);
 
-STATIC const mp_map_elem_t pyb_adc_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_read), (mp_obj_t)&pyb_adc_read_obj }
+STATIC const mp_rom_map_elem_t pyb_adc_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&pyb_adc_read_obj) }
 };
 STATIC MP_DEFINE_CONST_DICT(pyb_adc_locals_dict, pyb_adc_locals_dict_table);
 
@@ -79,5 +77,5 @@ const mp_obj_type_t pyb_adc_type = {
     { &mp_type_type },
     .name = MP_QSTR_ADC,
     .make_new = pyb_adc_make_new,
-    .locals_dict = (mp_obj_t)&pyb_adc_locals_dict,
+    .locals_dict = (mp_obj_dict_t*)&pyb_adc_locals_dict,
 };

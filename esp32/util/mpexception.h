@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -15,7 +15,5 @@ extern const char mpexception_os_operation_failed[];
 extern const char mpexception_os_request_not_possible[];
 extern const char mpexception_value_invalid_arguments[];
 extern const char mpexception_num_type_invalid_arguments[];
-
-extern void mpexception_init0 (void);
 
 #endif /* MPEXCEPTION_H_ */

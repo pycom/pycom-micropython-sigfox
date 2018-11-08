@@ -1,5 +1,11 @@
 # test syntax errors
 
+try:
+    exec
+except NameError:
+    print("SKIP")
+    raise SystemExit
+
 def test_syntax(code):
     try:
         exec(code)
@@ -29,6 +35,10 @@ test_syntax(" a\n")
 # malformed integer literal (parser error)
 test_syntax("123z")
 
+# input doesn't match the grammar (parser error)
+test_syntax('1 or 2 or')
+test_syntax('{1:')
+
 # can't assign to literals
 test_syntax("1 = 2")
 test_syntax("'' = 1")
@@ -45,9 +55,6 @@ test_syntax("f**2 = 1")
 
 # can't assign to power of composite
 test_syntax("f[0]**2 = 1")
-
-# can't assign to empty tuple
-test_syntax("() = 1")
 
 # can't have *x on RHS
 test_syntax("x = *x")
@@ -66,7 +73,6 @@ test_syntax("[a, b] += c")
 test_syntax("def f(a=1, b): pass")
 
 # can't delete these things
-test_syntax("del ()")
 test_syntax("del f()")
 test_syntax("del f[0]**2")
 test_syntax("del (a for a in a)")

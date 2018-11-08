@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -26,8 +26,13 @@
 #include "modnetwork.h"
 #include "modusocket.h"
 #include "modussl.h"
-#include "ff.h"
+#include "mptask.h"
 
+#include "ff.h"
+#include "lfs.h"
+#include "extmod/vfs.h"
+
+#include "mptask.h"
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
@@ -184,27 +189,69 @@ static char *mod_ssl_read_file (const char *file_path, vstr_t *vstr) {
     char *filebuf = vstr->buf;
     mp_uint_t actualsize;
     mp_uint_t totalsize = 0;
+    static const TCHAR *path_relative;
 
-    FIL fp;
-    FRESULT res = f_open(&fp, file_path, FA_READ);
-    if (res != FR_OK) {
-        return NULL;
-    }
-
-    while (true) {
-        FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
-        if (res != FR_OK) {
-            f_close(&fp);
+    if(isLittleFs(file_path))
+    {
+        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(file_path, &path_relative);
+        if (littlefs == NULL) {
             return NULL;
         }
-        totalsize += actualsize;
-        if (actualsize < FILE_READ_SIZE) {
-            break;
-        } else {
-            filebuf = vstr_extend(vstr, FILE_READ_SIZE);
+
+        lfs_file_t fp;
+
+        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
+
+        int res = lfs_file_open(&littlefs->lfs, &fp, path_relative, LFS_O_RDONLY);
+        if(res < LFS_ERR_OK)
+        {
+            return NULL;
         }
+
+        while (true) {
+            actualsize = lfs_file_read(&littlefs->lfs, &fp, filebuf, FILE_READ_SIZE);
+            if (actualsize < LFS_ERR_OK) {
+                return NULL;
+            }
+            totalsize += actualsize;
+            if (actualsize < FILE_READ_SIZE) {
+                break;
+            } else {
+                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
+            }
+        }
+        lfs_file_close(&littlefs->lfs, &fp);
+
+        xSemaphoreGive(littlefs->mutex);
+
     }
-    f_close(&fp);
+    else
+    {
+        FATFS *fs = lookup_path_fatfs(file_path, &path_relative);
+        if (fs == NULL) {
+            return NULL;
+        }
+        FIL fp;
+        FRESULT res = f_open(fs, &fp, path_relative, FA_READ);
+        if (res != FR_OK) {
+            return NULL;
+        }
+
+        while (true) {
+            FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
+            if (res != FR_OK) {
+                f_close(&fp);
+                return NULL;
+            }
+            totalsize += actualsize;
+            if (actualsize < FILE_READ_SIZE) {
+                break;
+            } else {
+                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
+            }
+        }
+        f_close(&fp);
+    }
 
     vstr->len = totalsize;
     vstr_null_terminated_str(vstr);

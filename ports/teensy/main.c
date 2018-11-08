@@ -3,8 +3,6 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "py/nlr.h"
-#include "py/parse.h"
 #include "py/lexer.h"
 #include "py/runtime.h"
 #include "py/stackctrl.h"
@@ -12,7 +10,7 @@
 #include "py/mphal.h"
 #include "gccollect.h"
 #include "lib/utils/pyexec.h"
-#include "readline.h"
+#include "lib/mp-readline/readline.h"
 #include "lexermemzip.h"
 
 #include "Arduino.h"
@@ -268,7 +266,7 @@ soft_reset:
     // GC init
     gc_init(&_heap_start, (void*)HEAP_END);
 
-    // Micro Python init
+    // MicroPython init
     mp_init();
     mp_obj_list_init(mp_sys_path, 0);
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR_)); // current dir (or base dir of the script)

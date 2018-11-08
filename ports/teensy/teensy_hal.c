@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "py/mpstate.h"
+#include "py/runtime.h"
 #include "py/mphal.h"
 #include "usb.h"
 #include "uart.h"
@@ -49,6 +49,7 @@ void mp_hal_stdout_tx_strn(const char *str, size_t len) {
 void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
     // send stdout to UART and USB CDC VCP
     if (MP_STATE_PORT(pyb_stdio_uart) != NULL) {
+        void uart_tx_strn_cooked(pyb_uart_obj_t *uart_obj, const char *str, uint len);
         uart_tx_strn_cooked(MP_STATE_PORT(pyb_stdio_uart), str, len);
     }
     if (usb_vcp_is_enabled()) {
@@ -57,4 +58,8 @@ void mp_hal_stdout_tx_strn_cooked(const char *str, size_t len) {
 }
 
 void mp_hal_gpio_clock_enable(GPIO_TypeDef *gpio) {
+}
+
+void extint_register_pin(const void *pin, uint32_t mode, int hard_irq, mp_obj_t callback_obj) {
+    mp_raise_NotImplementedError(NULL);
 }

@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -29,11 +29,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "py/mpconfig.h"
-#include "py/obj.h"
-#include "py/nlr.h"
 #include "py/runtime.h"
 #include "py/gc.h"
+#include "py/mperrno.h"
 #include "py/mphal.h"
 #include "inc/hw_types.h"
 #include "inc/hw_ints.h"
@@ -110,7 +108,7 @@ STATIC const mp_obj_t pyb_timer_pwm_pin[8] = {&pin_GP24, MP_OBJ_NULL, &pin_GP25,
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-STATIC mp_obj_t pyb_timer_channel_irq (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
+STATIC mp_obj_t pyb_timer_channel_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
 STATIC void timer_disable (pyb_timer_obj_t *tim);
 STATIC void timer_channel_init (pyb_timer_channel_obj_t *ch);
 STATIC void TIMER0AIntHandler(void);
@@ -263,7 +261,7 @@ STATIC void timer_channel_init (pyb_timer_channel_obj_t *ch) {
 }
 
 /******************************************************************************/
-/* Micro Python bindings                                                      */
+/* MicroPython bindings                                                      */
 
 STATIC void pyb_timer_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     pyb_timer_obj_t *tim = self_in;
@@ -284,7 +282,7 @@ STATIC void pyb_timer_print(const mp_print_t *print, mp_obj_t self_in, mp_print_
     mp_printf(print, "Timer(%u, mode=Timer.%q)", tim->id, mode_qst);
 }
 
-STATIC mp_obj_t pyb_timer_init_helper(pyb_timer_obj_t *tim, mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t pyb_timer_init_helper(pyb_timer_obj_t *tim, size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_mode,         MP_ARG_REQUIRED | MP_ARG_INT, },
         { MP_QSTR_width,        MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 16} },
@@ -322,14 +320,14 @@ error:
     mp_raise_ValueError(mpexception_value_invalid_arguments);
 }
 
-STATIC mp_obj_t pyb_timer_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t pyb_timer_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     // check arguments
     mp_arg_check_num(n_args, n_kw, 1, MP_OBJ_FUN_ARGS_MAX, true);
 
     // create a new Timer object
     int32_t timer_idx = mp_obj_get_int(args[0]);
     if (timer_idx < 0 || timer_idx > (PYBTIMER_NUM_TIMERS - 1)) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable);
+        mp_raise_OSError(MP_ENODEV);
     }
 
     pyb_timer_obj_t *tim = &pyb_timer_obj[timer_idx];
@@ -345,7 +343,7 @@ STATIC mp_obj_t pyb_timer_make_new(const mp_obj_type_t *type, mp_uint_t n_args, 
     return (mp_obj_t)tim;
 }
 
-STATIC mp_obj_t pyb_timer_init(mp_uint_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
+STATIC mp_obj_t pyb_timer_init(size_t n_args, const mp_obj_t *args, mp_map_t *kw_args) {
     return pyb_timer_init_helper(args[0], n_args - 1, args + 1, kw_args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(pyb_timer_init_obj, 1, pyb_timer_init);
@@ -357,7 +355,7 @@ STATIC mp_obj_t pyb_timer_deinit(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(pyb_timer_deinit_obj, pyb_timer_deinit);
 
-STATIC mp_obj_t pyb_timer_channel(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t pyb_timer_channel(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_freq,                MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 0} },
         { MP_QSTR_period,              MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 0} },
@@ -370,7 +368,7 @@ STATIC mp_obj_t pyb_timer_channel(mp_uint_t n_args, const mp_obj_t *pos_args, mp
 
     // verify that the timer has been already initialized
     if (!tim->config) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_request_not_possible);
+        mp_raise_OSError(MP_EPERM);
     }
     if (channel_n != TIMER_A && channel_n != TIMER_B && channel_n != (TIMER_A | TIMER_B)) {
         // invalid channel
@@ -444,22 +442,22 @@ error:
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(pyb_timer_channel_obj, 2, pyb_timer_channel);
 
-STATIC const mp_map_elem_t pyb_timer_locals_dict_table[] = {
+STATIC const mp_rom_map_elem_t pyb_timer_locals_dict_table[] = {
     // instance methods
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init),                    (mp_obj_t)&pyb_timer_init_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),                  (mp_obj_t)&pyb_timer_deinit_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_channel),                 (mp_obj_t)&pyb_timer_channel_obj },
+    { MP_ROM_QSTR(MP_QSTR_init),                    MP_ROM_PTR(&pyb_timer_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_deinit),                  MP_ROM_PTR(&pyb_timer_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_channel),                 MP_ROM_PTR(&pyb_timer_channel_obj) },
 
     // class constants
-    { MP_OBJ_NEW_QSTR(MP_QSTR_A),                       MP_OBJ_NEW_SMALL_INT(TIMER_A) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_B),                       MP_OBJ_NEW_SMALL_INT(TIMER_B) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ONE_SHOT),                MP_OBJ_NEW_SMALL_INT(TIMER_CFG_A_ONE_SHOT_UP) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_PERIODIC),                MP_OBJ_NEW_SMALL_INT(TIMER_CFG_A_PERIODIC_UP) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_PWM),                     MP_OBJ_NEW_SMALL_INT(TIMER_CFG_A_PWM) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_POSITIVE),                MP_OBJ_NEW_SMALL_INT(PYBTIMER_POLARITY_POS) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_NEGATIVE),                MP_OBJ_NEW_SMALL_INT(PYBTIMER_POLARITY_NEG) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_TIMEOUT),                 MP_OBJ_NEW_SMALL_INT(PYBTIMER_TIMEOUT_TRIGGER) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_MATCH),                   MP_OBJ_NEW_SMALL_INT(PYBTIMER_MATCH_TRIGGER) },
+    { MP_ROM_QSTR(MP_QSTR_A),                       MP_ROM_INT(TIMER_A) },
+    { MP_ROM_QSTR(MP_QSTR_B),                       MP_ROM_INT(TIMER_B) },
+    { MP_ROM_QSTR(MP_QSTR_ONE_SHOT),                MP_ROM_INT(TIMER_CFG_A_ONE_SHOT_UP) },
+    { MP_ROM_QSTR(MP_QSTR_PERIODIC),                MP_ROM_INT(TIMER_CFG_A_PERIODIC_UP) },
+    { MP_ROM_QSTR(MP_QSTR_PWM),                     MP_ROM_INT(TIMER_CFG_A_PWM) },
+    { MP_ROM_QSTR(MP_QSTR_POSITIVE),                MP_ROM_INT(PYBTIMER_POLARITY_POS) },
+    { MP_ROM_QSTR(MP_QSTR_NEGATIVE),                MP_ROM_INT(PYBTIMER_POLARITY_NEG) },
+    { MP_ROM_QSTR(MP_QSTR_TIMEOUT),                 MP_ROM_INT(PYBTIMER_TIMEOUT_TRIGGER) },
+    { MP_ROM_QSTR(MP_QSTR_MATCH),                   MP_ROM_INT(PYBTIMER_MATCH_TRIGGER) },
 };
 STATIC MP_DEFINE_CONST_DICT(pyb_timer_locals_dict, pyb_timer_locals_dict_table);
 
@@ -551,7 +549,7 @@ STATIC void pyb_timer_channel_print(const mp_print_t *print, mp_obj_t self_in, m
     mp_printf(print, ")");
 }
 
-STATIC mp_obj_t pyb_timer_channel_freq(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t pyb_timer_channel_freq(size_t n_args, const mp_obj_t *args) {
     pyb_timer_channel_obj_t *ch = args[0];
     if (n_args == 1) {
         // get
@@ -570,7 +568,7 @@ STATIC mp_obj_t pyb_timer_channel_freq(mp_uint_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_timer_channel_freq_obj, 1, 2, pyb_timer_channel_freq);
 
-STATIC mp_obj_t pyb_timer_channel_period(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t pyb_timer_channel_period(size_t n_args, const mp_obj_t *args) {
     pyb_timer_channel_obj_t *ch = args[0];
     if (n_args == 1) {
         // get
@@ -589,7 +587,7 @@ STATIC mp_obj_t pyb_timer_channel_period(mp_uint_t n_args, const mp_obj_t *args)
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_timer_channel_period_obj, 1, 2, pyb_timer_channel_period);
 
-STATIC mp_obj_t pyb_timer_channel_duty_cycle(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t pyb_timer_channel_duty_cycle(size_t n_args, const mp_obj_t *args) {
     pyb_timer_channel_obj_t *ch = args[0];
     if (n_args == 1) {
         // get
@@ -613,7 +611,7 @@ STATIC mp_obj_t pyb_timer_channel_duty_cycle(mp_uint_t n_args, const mp_obj_t *a
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_timer_channel_duty_cycle_obj, 1, 3, pyb_timer_channel_duty_cycle);
 
-STATIC mp_obj_t pyb_timer_channel_irq (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t pyb_timer_channel_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     mp_arg_val_t args[mp_irq_INIT_NUM_ARGS];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, mp_irq_INIT_NUM_ARGS, mp_irq_init_args, args);
     pyb_timer_channel_obj_t *ch = pos_args[0];
@@ -716,12 +714,12 @@ invalid_args:
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(pyb_timer_channel_irq_obj, 1, pyb_timer_channel_irq);
 
-STATIC const mp_map_elem_t pyb_timer_channel_locals_dict_table[] = {
+STATIC const mp_rom_map_elem_t pyb_timer_channel_locals_dict_table[] = {
     // instance methods
-    { MP_OBJ_NEW_QSTR(MP_QSTR_freq),                 (mp_obj_t)&pyb_timer_channel_freq_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_period),               (mp_obj_t)&pyb_timer_channel_period_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_duty_cycle),           (mp_obj_t)&pyb_timer_channel_duty_cycle_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_irq),                  (mp_obj_t)&pyb_timer_channel_irq_obj },
+    { MP_ROM_QSTR(MP_QSTR_freq),                 MP_ROM_PTR(&pyb_timer_channel_freq_obj) },
+    { MP_ROM_QSTR(MP_QSTR_period),               MP_ROM_PTR(&pyb_timer_channel_period_obj) },
+    { MP_ROM_QSTR(MP_QSTR_duty_cycle),           MP_ROM_PTR(&pyb_timer_channel_duty_cycle_obj) },
+    { MP_ROM_QSTR(MP_QSTR_irq),                  MP_ROM_PTR(&pyb_timer_channel_irq_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(pyb_timer_channel_locals_dict, pyb_timer_channel_locals_dict_table);
 

@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2016, Pycom Limited and its licensors.
+ * Copyright (c) 2018, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -61,5 +61,6 @@ void mp_thread_init(void);
 void mp_thread_gc_others(void);
 void mp_thread_deinit(void);
 mp_obj_thread_lock_t *mp_thread_new_thread_lock(void);
+void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, int priority, char *name);
 
 #endif // __MICROPY_INCLUDED_ESP32_MPTHREADPORT_H__

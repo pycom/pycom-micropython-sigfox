@@ -1,18 +1,12 @@
 #define MICROPY_HW_BOARD_NAME       "CustomPCB"
 #define MICROPY_HW_MCU_NAME         "STM32F439"
 
-#define MICROPY_HW_HAS_SWITCH       (0)
 #define MICROPY_HW_HAS_FLASH        (1)
 #define MICROPY_HW_HAS_SDCARD       (1) //works with no SD card too
-#define MICROPY_HW_HAS_MMA7660      (0)
-#define MICROPY_HW_HAS_LIS3DSH      (0)
-#define MICROPY_HW_HAS_LCD          (0)
 #define MICROPY_HW_ENABLE_RNG       (1)
 #define MICROPY_HW_ENABLE_RTC       (1)
-#define MICROPY_HW_ENABLE_TIMER     (1)
-#define MICROPY_HW_ENABLE_SERVO     (0)
 #define MICROPY_HW_ENABLE_DAC       (1)
-#define MICROPY_HW_ENABLE_CAN       (1)
+#define MICROPY_HW_ENABLE_USB       (1)
 
 // SD card detect switch
 #if MICROPY_HW_HAS_SDCARD
@@ -27,21 +21,24 @@
 #define MICROPY_HW_CLK_PLLP (RCC_PLLP_DIV2) //divide PLL clock by this to get core clock
 #define MICROPY_HW_CLK_PLLQ (8) //divide core clock by this to get 48MHz
 
+// USB config
+#define MICROPY_HW_USB_FS (1)
+
 // UART config
-#define MICROPY_HW_UART1_PORT (GPIOA)
-#define MICROPY_HW_UART1_PINS (GPIO_PIN_9 | GPIO_PIN_10)
-#define MICROPY_HW_UART2_PORT (GPIOD)
-#define MICROPY_HW_UART2_PINS (GPIO_PIN_5 | GPIO_PIN_6)
-#define MICROPY_HW_UART2_RTS  (GPIO_PIN_1)
-#define MICROPY_HW_UART2_CTS  (GPIO_PIN_0)
-#define MICROPY_HW_UART3_PORT (GPIOD)
-#define MICROPY_HW_UART3_PINS (GPIO_PIN_8 | GPIO_PIN_9)
-#define MICROPY_HW_UART3_RTS  (GPIO_PIN_12)
-#define MICROPY_HW_UART3_CTS  (GPIO_PIN_11)
-#define MICROPY_HW_UART4_PORT (GPIOA)
-#define MICROPY_HW_UART4_PINS (GPIO_PIN_0 | GPIO_PIN_1)
-#define MICROPY_HW_UART6_PORT (GPIOC)
-#define MICROPY_HW_UART6_PINS (GPIO_PIN_6 | GPIO_PIN_7)
+#define MICROPY_HW_UART1_TX     (pin_A9)
+#define MICROPY_HW_UART1_RX     (pin_A10)
+#define MICROPY_HW_UART2_TX     (pin_D5)
+#define MICROPY_HW_UART2_RX     (pin_D6)
+#define MICROPY_HW_UART2_RTS    (pin_D1)
+#define MICROPY_HW_UART2_CTS    (pin_D0)
+#define MICROPY_HW_UART3_TX     (pin_D8)
+#define MICROPY_HW_UART3_RX     (pin_D9)
+#define MICROPY_HW_UART3_RTS    (pin_D12)
+#define MICROPY_HW_UART3_CTS    (pin_D11)
+#define MICROPY_HW_UART4_TX     (pin_A0)
+#define MICROPY_HW_UART4_RX     (pin_A1)
+#define MICROPY_HW_UART6_TX     (pin_C6)
+#define MICROPY_HW_UART6_RX     (pin_C7)
 
 // I2C busses
 #define MICROPY_HW_I2C1_SCL (pin_A8)
@@ -52,7 +49,7 @@
 #define MICROPY_HW_SPI1_SCK     (pin_A5)
 #define MICROPY_HW_SPI1_MISO    (pin_A6)
 #define MICROPY_HW_SPI1_MOSI    (pin_A7)
-#if defined(USE_USB_HS_IN_FS)
+#if MICROPY_HW_USB_HS_IN_FS
 // The HS USB uses B14 & B15 for D- and D+
 #else
 #define MICROPY_HW_SPI2_NSS  (pin_B12)
@@ -76,6 +73,12 @@
 //#define MICROPY_HW_SPI6_SCK     (pin_G13)
 //#define MICROPY_HW_SPI6_MISO    (pin_G12)
 //#define MICROPY_HW_SPI6_MOSI    (pin_G14)
+
+// CAN busses
+#define MICROPY_HW_CAN1_TX (pin_B9)
+#define MICROPY_HW_CAN1_RX (pin_B8)
+#define MICROPY_HW_CAN2_TX (pin_B13)
+#define MICROPY_HW_CAN2_RX (pin_B12)
 
 // USRSW is pulled low. Pressing the button makes the input go high.
 #define MICROPY_HW_USRSW_PIN        (pin_A0)

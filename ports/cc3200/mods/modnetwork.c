@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -25,12 +25,8 @@
  * THE SOFTWARE.
  */
 
-#include <std.h>
-
-#include "py/mpstate.h"
-#include "py/obj.h"
-#include "py/nlr.h"
 #include "py/runtime.h"
+#include "py/mperrno.h"
 #include "py/mphal.h"
 #include "modnetwork.h"
 #include "mpexception.h"
@@ -91,7 +87,7 @@ STATIC const mp_arg_t network_server_args[] = {
     { MP_QSTR_login,        MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_timeout,      MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
 };
-STATIC mp_obj_t network_server_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
+STATIC mp_obj_t network_server_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     // parse args
     mp_map_t kw_args;
     mp_map_init_fixed_table(&kw_args, n_kw, all_args + n_args);
@@ -101,7 +97,7 @@ STATIC mp_obj_t network_server_make_new(const mp_obj_type_t *type, mp_uint_t n_a
     // check the server id
     if (args[0].u_obj != MP_OBJ_NULL) {
         if (mp_obj_get_int(args[0].u_obj) != 0) {
-            mp_raise_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable);
+            mp_raise_OSError(MP_ENODEV);
         }
     }
 
@@ -113,7 +109,7 @@ STATIC mp_obj_t network_server_make_new(const mp_obj_type_t *type, mp_uint_t n_a
     return (mp_obj_t)self;
 }
 
-STATIC mp_obj_t network_server_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t network_server_init(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(network_server_args) - 1];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &network_server_args[1], args);
@@ -122,7 +118,7 @@ STATIC mp_obj_t network_server_init(mp_uint_t n_args, const mp_obj_t *pos_args, 
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(network_server_init_obj, 1, network_server_init);
 
 // timeout value given in seconds
-STATIC mp_obj_t network_server_timeout(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t network_server_timeout(size_t n_args, const mp_obj_t *args) {
     if (n_args > 1) {
         uint32_t timeout = mp_obj_get_int(args[1]);
         servers_set_timeout(timeout * 1000);
@@ -148,12 +144,12 @@ STATIC mp_obj_t network_server_deinit(mp_obj_t self_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(network_server_deinit_obj, network_server_deinit);
 #endif
 
-STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_network) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_WLAN),                (mp_obj_t)&mod_network_nic_type_wlan },
+STATIC const mp_rom_map_elem_t mp_module_network_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__),            MP_ROM_QSTR(MP_QSTR_network) },
+    { MP_ROM_QSTR(MP_QSTR_WLAN),                MP_ROM_PTR(&mod_network_nic_type_wlan) },
 
 #if (MICROPY_PORT_HAS_TELNET || MICROPY_PORT_HAS_FTP)
-    { MP_OBJ_NEW_QSTR(MP_QSTR_Server),              (mp_obj_t)&network_server_type },
+    { MP_ROM_QSTR(MP_QSTR_Server),              MP_ROM_PTR(&network_server_type) },
 #endif
 };
 
@@ -165,11 +161,11 @@ const mp_obj_module_t mp_module_network = {
 };
 
 #if (MICROPY_PORT_HAS_TELNET || MICROPY_PORT_HAS_FTP)
-STATIC const mp_map_elem_t network_server_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&network_server_init_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&network_server_deinit_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_timeout),             (mp_obj_t)&network_server_timeout_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_isrunning),           (mp_obj_t)&network_server_running_obj },
+STATIC const mp_rom_map_elem_t network_server_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_init),                MP_ROM_PTR(&network_server_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_deinit),              MP_ROM_PTR(&network_server_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_timeout),             MP_ROM_PTR(&network_server_timeout_obj) },
+    { MP_ROM_QSTR(MP_QSTR_isrunning),           MP_ROM_PTR(&network_server_running_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(network_server_locals_dict, network_server_locals_dict_table);

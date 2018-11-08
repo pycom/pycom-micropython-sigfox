@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -28,8 +28,8 @@
 #include <stdint.h>
 #include <string.h>
 
-#include "py/mpstate.h"
 #include "py/runtime.h"
+#include "py/mperrno.h"
 #include "bufhelper.h"
 #include "inc/hw_types.h"
 #include "inc/hw_mcspi.h"
@@ -131,7 +131,7 @@ STATIC void pybspi_rx (pyb_spi_obj_t *self, void *data) {
 
 STATIC void pybspi_transfer (pyb_spi_obj_t *self, const char *txdata, char *rxdata, uint32_t len, uint32_t *txchar) {
     if (!self->baudrate) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_request_not_possible);
+        mp_raise_OSError(MP_EPERM);
     }
     // send and receive the data
     MAP_SPICSEnable(GSPI_BASE);
@@ -143,12 +143,12 @@ STATIC void pybspi_transfer (pyb_spi_obj_t *self, const char *txdata, char *rxda
 }
 
 /******************************************************************************/
-/* Micro Python bindings                                                      */
+/* MicroPython bindings                                                      */
 /******************************************************************************/
 STATIC void pyb_spi_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     pyb_spi_obj_t *self = self_in;
     if (self->baudrate > 0) {
-        mp_printf(print, "SPI(0, SPI.MASTER, baudrate=%u, bits=%u, polarity=%u, phase=%u, firstbit=SPI.MSB)",
+        mp_printf(print, "SPI(0, baudrate=%u, bits=%u, polarity=%u, phase=%u, firstbit=SPI.MSB)",
                   self->baudrate, (self->wlen * 8), self->polarity, self->phase);
     } else {
         mp_print_str(print, "SPI(0)");
@@ -156,13 +156,8 @@ STATIC void pyb_spi_print(const mp_print_t *print, mp_obj_t self_in, mp_print_ki
 }
 
 STATIC mp_obj_t pyb_spi_init_helper(pyb_spi_obj_t *self, const mp_arg_val_t *args) {
-    // verify that mode is master
-    if (args[0].u_int != SPI_MODE_MASTER) {
-        goto invalid_args;
-    }
-
     uint bits;
-    switch (args[2].u_int) {
+    switch (args[1].u_int) {
     case 8:
         bits = SPI_WL_8;
         break;
@@ -177,27 +172,27 @@ STATIC mp_obj_t pyb_spi_init_helper(pyb_spi_obj_t *self, const mp_arg_val_t *arg
         break;
     }
 
-    uint polarity = args[3].u_int;
-    uint phase = args[4].u_int;
+    uint polarity = args[2].u_int;
+    uint phase = args[3].u_int;
     if (polarity > 1 || phase > 1) {
         goto invalid_args;
     }
 
-    uint firstbit = args[5].u_int;
+    uint firstbit = args[4].u_int;
     if (firstbit != PYBSPI_FIRST_BIT_MSB) {
         goto invalid_args;
     }
 
     // build the configuration
-    self->baudrate = args[1].u_int;
-    self->wlen = args[2].u_int >> 3;
+    self->baudrate = args[0].u_int;
+    self->wlen = args[1].u_int >> 3;
     self->config = bits | SPI_CS_ACTIVELOW | SPI_SW_CTRL_CS | SPI_4PIN_MODE | SPI_TURBO_OFF;
     self->polarity = polarity;
     self->phase = phase;
     self->submode = (polarity << 1) | phase;
 
     // assign the pins
-    mp_obj_t pins_o = args[6].u_obj;
+    mp_obj_t pins_o = args[5].u_obj;
     if (pins_o != mp_const_none) {
         mp_obj_t *pins;
         if (pins_o == MP_OBJ_NULL) {
@@ -223,7 +218,6 @@ invalid_args:
 
 static const mp_arg_t pyb_spi_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,  {.u_int = 0} },
-    { MP_QSTR_mode,                           MP_ARG_INT,  {.u_int = SPI_MODE_MASTER} },
     { MP_QSTR_baudrate,     MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 1000000} },    // 1MHz
     { MP_QSTR_bits,         MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 8} },
     { MP_QSTR_polarity,     MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 0} },
@@ -231,7 +225,7 @@ static const mp_arg_t pyb_spi_init_args[] = {
     { MP_QSTR_firstbit,     MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = PYBSPI_FIRST_BIT_MSB} },
     { MP_QSTR_pins,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
 };
-STATIC mp_obj_t pyb_spi_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
+STATIC mp_obj_t pyb_spi_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     // parse args
     mp_map_t kw_args;
     mp_map_init_fixed_table(&kw_args, n_kw, all_args + n_args);
@@ -240,7 +234,7 @@ STATIC mp_obj_t pyb_spi_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp
 
     // check the peripheral id
     if (args[0].u_int != 0) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable);
+        mp_raise_OSError(MP_ENODEV);
     }
 
     // setup the object
@@ -253,7 +247,7 @@ STATIC mp_obj_t pyb_spi_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp
     return self;
 }
 
-STATIC mp_obj_t pyb_spi_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t pyb_spi_init(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(pyb_spi_init_args) - 1];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &pyb_spi_init_args[1], args);
@@ -292,7 +286,7 @@ STATIC mp_obj_t pyb_spi_write (mp_obj_t self_in, mp_obj_t buf) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(pyb_spi_write_obj, pyb_spi_write);
 
-STATIC mp_obj_t pyb_spi_read(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t pyb_spi_read(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_nbytes,    MP_ARG_REQUIRED | MP_ARG_OBJ, },
         { MP_QSTR_write,     MP_ARG_INT, {.u_int = 0x00} },
@@ -316,7 +310,7 @@ STATIC mp_obj_t pyb_spi_read(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(pyb_spi_read_obj, 1, pyb_spi_read);
 
-STATIC mp_obj_t pyb_spi_readinto(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t pyb_spi_readinto(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_buf,       MP_ARG_REQUIRED | MP_ARG_OBJ, },
         { MP_QSTR_write,     MP_ARG_INT, {.u_int = 0x00} },
@@ -369,18 +363,17 @@ STATIC mp_obj_t pyb_spi_write_readinto (mp_obj_t self, mp_obj_t writebuf, mp_obj
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(pyb_spi_write_readinto_obj, pyb_spi_write_readinto);
 
-STATIC const mp_map_elem_t pyb_spi_locals_dict_table[] = {
+STATIC const mp_rom_map_elem_t pyb_spi_locals_dict_table[] = {
     // instance methods
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&pyb_spi_init_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&pyb_spi_deinit_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_write),               (mp_obj_t)&pyb_spi_write_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_read),                (mp_obj_t)&pyb_spi_read_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readinto),            (mp_obj_t)&pyb_spi_readinto_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_write_readinto),      (mp_obj_t)&pyb_spi_write_readinto_obj },
+    { MP_ROM_QSTR(MP_QSTR_init),                MP_ROM_PTR(&pyb_spi_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_deinit),              MP_ROM_PTR(&pyb_spi_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write),               MP_ROM_PTR(&pyb_spi_write_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read),                MP_ROM_PTR(&pyb_spi_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_readinto),            MP_ROM_PTR(&pyb_spi_readinto_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write_readinto),      MP_ROM_PTR(&pyb_spi_write_readinto_obj) },
 
     // class constants
-    { MP_OBJ_NEW_QSTR(MP_QSTR_MASTER),              MP_OBJ_NEW_SMALL_INT(SPI_MODE_MASTER) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_MSB),                 MP_OBJ_NEW_SMALL_INT(PYBSPI_FIRST_BIT_MSB) },
+    { MP_ROM_QSTR(MP_QSTR_MSB),                 MP_ROM_INT(PYBSPI_FIRST_BIT_MSB) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(pyb_spi_locals_dict, pyb_spi_locals_dict_table);

@@ -1,5 +1,5 @@
 APP_INC =  -I.
-APP_INC += -I..
+APP_INC += -I$(TOP)
 APP_INC += -Ifatfs/src
 APP_INC += -Ifatfs/src/drivers
 APP_INC += -IFreeRTOS
@@ -10,7 +10,7 @@ APP_INC += -Ihal
 APP_INC += -Ihal/inc
 APP_INC += -Imisc
 APP_INC += -Imods
-APP_INC += -I../drivers/cc3100/inc
+APP_INC += -I$(TOP)/drivers/cc3100/inc
 APP_INC += -Isimplelink
 APP_INC += -Isimplelink/oslib
 APP_INC += -Itelnet
@@ -18,20 +18,13 @@ APP_INC += -Iutil
 APP_INC += -Ibootmgr
 APP_INC += -I$(BUILD)
 APP_INC += -I$(BUILD)/genhdr
-APP_INC += -I../lib/fatfs
-APP_INC += -I../lib/mp-readline
-APP_INC += -I../lib/netutils
-APP_INC += -I../lib/timeutils
-APP_INC += -I../stmhal
+APP_INC += -I$(TOP)/ports/stm32
 
 APP_CPPDEFINES = -Dgcc -DTARGET_IS_CC3200 -DSL_FULL -DUSE_FREERTOS
 
 APP_FATFS_SRC_C = $(addprefix fatfs/src/,\
 	drivers/sflash_diskio.c \
 	drivers/sd_diskio.c \
-	option/syscall.c \
-	diskio.c \
-	ffconf.c \
 	)
 
 APP_RTOS_SRC_C = $(addprefix FreeRTOS/Source/,\
@@ -81,7 +74,6 @@ APP_MISC_SRC_C = $(addprefix misc/,\
 	mpirq.c \
 	mperror.c \
 	mpexception.c \
-	mpsystick.c \
 	)
 
 APP_MODS_SRC_C = $(addprefix mods/,\
@@ -98,6 +90,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	pybpin.c \
 	pybi2c.c \
 	pybrtc.c \
+	pybflash.c \
 	pybsd.c \
 	pybsleep.c \
 	pybspi.c \
@@ -143,28 +136,24 @@ APP_MAIN_SRC_C = \
 	main.c \
 	mptask.c \
 	mpthreadport.c \
-	serverstask.c
+	serverstask.c \
+	fatfs_port.c \
 	
 APP_LIB_SRC_C = $(addprefix lib/,\
-	fatfs/ff.c \
-	fatfs/option/ccsbcs.c \
+	oofatfs/ff.c \
+	oofatfs/option/unicode.c \
 	libc/string0.c \
 	mp-readline/readline.c \
 	netutils/netutils.c \
 	timeutils/timeutils.c \
 	utils/pyexec.c \
-	utils/pyhelp.c \
+	utils/interrupt_char.c \
+	utils/sys_stdio_mphal.c \
 	)
 	
-APP_STM_SRC_C = $(addprefix stmhal/,\
+APP_STM_SRC_C = $(addprefix ports/stm32/,\
 	bufhelper.c \
-	builtin_open.c \
-	import.c \
-	input.c \
 	irq.c \
-	lexerfatfs.c \
-	moduselect.c \
-	pybstdio.c \
 	)
 
 OBJ = $(PY_O) $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_RTOS_SRC_C:.c=.o) $(APP_FTP_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_MISC_SRC_C:.c=.o))
@@ -208,9 +197,9 @@ WIPY_PWD ?= 'python'
 
 all: $(BUILD)/mcuimg.bin
 
-.PHONY: deploy
+.PHONY: deploy-ota
 
-deploy: $(BUILD)/mcuimg.bin
+deploy-ota: $(BUILD)/mcuimg.bin
 	$(ECHO) "Writing $< to the board"
 	$(Q)$(PYTHON) $(UPDATE_WIPY) --verify --ip $(WIPY_IP) --user $(WIPY_USER) --password $(WIPY_PWD) --file $<
 

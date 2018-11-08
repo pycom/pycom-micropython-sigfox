@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -23,8 +23,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifndef MICROPY_INCLUDED_STM32_RNG_H
+#define MICROPY_INCLUDED_STM32_RNG_H
 
-void rng_init0(void);
+#include "py/obj.h"
+
 uint32_t rng_get(void);
 
 MP_DECLARE_CONST_FUN_OBJ_0(pyb_rng_get_obj);
+
+#endif // MICROPY_INCLUDED_STM32_RNG_H

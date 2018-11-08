@@ -1,9 +1,9 @@
 MicroPython port to STM32 MCUs
 ==============================
 
-This directory contains the port of MicroPython to ST's line of STM32Fxxx
-microcontrollers.  It is based on the STM32Cube HAL library and currently
-supports: STM32F401, STM32F405, STM32F411, STM32F429, STM32F746.
+This directory contains the port of MicroPython to ST's line of STM32
+microcontrollers.  Supported MCU series are: STM32F4, STM32F7 and STM32L4.
+Parts of the code here utilise the STM32Cube HAL library.
 
 The officially supported boards are the line of pyboards: PYBv1.0 and PYBv1.1
 (both with STM32F405), and PYBLITEv1.0 (with STM32F411).  See
@@ -14,8 +14,23 @@ Other boards that are supported include ST Discovery and Nucleo boards.
 See the boards/ subdirectory, which contains the configuration files used
 to build each individual board.
 
+The STM32H7 series has preliminary support: there is a working REPL via
+USB and UART, as well as very basic peripheral support, but some things do
+not work and none of the advanced features of the STM32H7 are yet supported,
+such as the clock tree.  At this point the STM32H7 should be considered as a
+fast version of the STM32F7.
+
 Build instructions
 ------------------
+
+Before building the firmware for a given board the MicroPython cross-compiler
+must be built; it will be used to pre-compile some of the built-in scripts to
+bytecode.  The cross-compiler is built and run on the host machine, using:
+```bash
+$ make -C mpy-cross
+```
+This command should be executed from the root directory of this repository.
+All other commands below should be executed from the ports/stm32/ directory.
 
 An ARM compiler is required for the build, along with the associated binary
 utilities.  The default compiler is `arm-none-eabi-gcc`, which is available for
@@ -62,7 +77,7 @@ Or using `dfu-util` directly:
 
 ST Discovery or Nucleo boards have a builtin programmer called ST-LINK. With
 these boards and using Linux or OS X, you have the option to upload the
-`stmhal` firmware using the `st-flash` utility from the
+`stm32` firmware using the `st-flash` utility from the
 [stlink](https://github.com/texane/stlink) project. To do so, connect the board
 with a mini USB cable to its ST-LINK USB port and then use the make target
 `deploy-stlink`. For example, if you have the STM32F4DISCOVERY board, you can
@@ -92,7 +107,7 @@ a mini USB cable to its ST-LINK USB port and then use the make target
     $ make BOARD=STM32F4DISC deploy-openocd
 
 The `openocd` program, which writes the firmware to the target board's flash,
-is configured via the file `stmhal/boards/openocd_stm32f4.cfg`. This
+is configured via the file `ports/stm32/boards/openocd_stm32f4.cfg`. This
 configuration should work for all boards based on a STM32F4xx MCU with a
 ST-LINKv2 interface. You can override the path to this configuration by setting
 `OPENOCD_CONFIG` in your Makefile or on the command line.

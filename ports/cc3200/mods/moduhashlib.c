@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -30,7 +30,6 @@
 
 #include "py/mpconfig.h"
 #include MICROPY_HAL_H
-#include "py/nlr.h"
 #include "py/runtime.h"
 #include "inc/hw_types.h"
 #include "inc/hw_ints.h"
@@ -93,7 +92,7 @@ STATIC void hash_update_internal(mp_obj_t self_in, mp_obj_t data, bool digest) {
             self->digested = false;
         }
     } else {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_request_not_possible);
+        mp_raise_OSError(MP_EPERM);
     }
 }
 
@@ -106,7 +105,7 @@ STATIC mp_obj_t hash_read (mp_obj_t self_in) {
         }
     } else if (self->c_size < self->b_size) {
         // it's a fixed len block which is still incomplete
-        mp_raise_msg(&mp_type_OSError, mpexception_os_request_not_possible);
+        mp_raise_OSError(MP_EPERM);
     }
 
     if (!self->digested) {
@@ -117,11 +116,11 @@ STATIC mp_obj_t hash_read (mp_obj_t self_in) {
 }
 
 /******************************************************************************/
-// Micro Python bindings
+// MicroPython bindings
 
 /// \classmethod \constructor([data[, block_size]])
 /// initial data must be given if block_size wants to be passed
-STATIC mp_obj_t hash_make_new(mp_obj_t type_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t hash_make_new(mp_obj_t type_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 2, false);
     mp_obj_hash_t *self = m_new0(mp_obj_hash_t, 1);
     self->base.type = type_in;
@@ -165,9 +164,9 @@ STATIC mp_obj_t hash_digest(mp_obj_t self_in) {
 }
 MP_DEFINE_CONST_FUN_OBJ_1(hash_digest_obj, hash_digest);
 
-STATIC const mp_map_elem_t hash_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_update),    (mp_obj_t) &hash_update_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_digest),    (mp_obj_t) &hash_digest_obj },
+STATIC const mp_rom_map_elem_t hash_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_update),    MP_ROM_PTR(&hash_update_obj) },
+    { MP_ROM_QSTR(MP_QSTR_digest),    MP_ROM_PTR(&hash_digest_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(hash_locals_dict, hash_locals_dict_table);
@@ -193,11 +192,11 @@ STATIC const mp_obj_type_t sha256_type = {
     .locals_dict = (mp_obj_t)&hash_locals_dict,
 };
 
-STATIC const mp_map_elem_t mp_module_hashlib_globals_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR___name__),    MP_OBJ_NEW_QSTR(MP_QSTR_uhashlib) },
-//    { MP_OBJ_NEW_QSTR(MP_QSTR_md5),         (mp_obj_t)&md5_type },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_sha1),        (mp_obj_t)&sha1_type },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_sha256),      (mp_obj_t)&sha256_type },
+STATIC const mp_rom_map_elem_t mp_module_hashlib_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__),    MP_ROM_QSTR(MP_QSTR_uhashlib) },
+    //{ MP_ROM_QSTR(MP_QSTR_md5),         MP_ROM_PTR(&md5_type) },
+    { MP_ROM_QSTR(MP_QSTR_sha1),        MP_ROM_PTR(&sha1_type) },
+    { MP_ROM_QSTR(MP_QSTR_sha256),      MP_ROM_PTR(&sha256_type) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mp_module_hashlib_globals, mp_module_hashlib_globals_table);

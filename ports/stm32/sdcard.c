@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -26,26 +26,43 @@
 
 #include <string.h>
 
-#include "py/nlr.h"
 #include "py/runtime.h"
-#include "lib/fatfs/ff.h"
-#include "extmod/fsusermount.h"
+#include "py/mphal.h"
+#include "lib/oofatfs/ff.h"
+#include "extmod/vfs_fat.h"
 
 #include "sdcard.h"
 #include "pin.h"
-#include "genhdr/pins.h"
 #include "bufhelper.h"
 #include "dma.h"
 #include "irq.h"
 
 #if MICROPY_HW_HAS_SDCARD
 
-#if defined(MCU_SERIES_F7) || defined(MCU_SERIES_L4)
+#if defined(STM32F7) || defined(STM32H7) || defined(STM32L4)
+
+// The F7 has 2 SDMMC units but at the moment we only support using one of them in
+// a given build.  If a boards config file defines MICROPY_HW_SDMMC2_CK then SDMMC2
+// is used, otherwise SDMMC1 is used.
+
+#if defined(MICROPY_HW_SDMMC2_CK)
+#define SDIO SDMMC2
+#define SDMMC_CLK_ENABLE() __HAL_RCC_SDMMC2_CLK_ENABLE()
+#define SDMMC_CLK_DISABLE() __HAL_RCC_SDMMC2_CLK_DISABLE()
+#define SDMMC_IRQn SDMMC2_IRQn
+#define SDMMC_TX_DMA dma_SDMMC_2_TX
+#define SDMMC_RX_DMA dma_SDMMC_2_RX
+#else
+#define SDIO SDMMC1
+#define SDMMC_CLK_ENABLE() __HAL_RCC_SDMMC1_CLK_ENABLE()
+#define SDMMC_CLK_DISABLE() __HAL_RCC_SDMMC1_CLK_DISABLE()
+#define SDMMC_IRQn SDMMC1_IRQn
+#define SDMMC_TX_DMA dma_SDIO_0_TX
+#define SDMMC_RX_DMA dma_SDIO_0_RX
+#endif
 
 // The F7 & L4 series calls the peripheral SDMMC rather than SDIO, so provide some
 // #defines for backwards compatability.
-
-#define SDIO    SDMMC1
 
 #define SDIO_CLOCK_EDGE_RISING              SDMMC_CLOCK_EDGE_RISING
 #define SDIO_CLOCK_EDGE_FALLING             SDMMC_CLOCK_EDGE_FALLING
@@ -63,7 +80,38 @@
 #define SDIO_HARDWARE_FLOW_CONTROL_DISABLE  SDMMC_HARDWARE_FLOW_CONTROL_DISABLE
 #define SDIO_HARDWARE_FLOW_CONTROL_ENABLE   SDMMC_HARDWARE_FLOW_CONTROL_ENABLE
 
+#if defined(STM32H7)
+#define GPIO_AF12_SDIO                      GPIO_AF12_SDIO1
+#define SDIO_IRQHandler                     SDMMC1_IRQHandler
+#define SDIO_TRANSFER_CLK_DIV               SDMMC_NSpeed_CLK_DIV
+#define SDIO_USE_GPDMA                      0
+#else
 #define SDIO_TRANSFER_CLK_DIV               SDMMC_TRANSFER_CLK_DIV
+#define SDIO_USE_GPDMA                      1
+#endif
+
+#else
+
+// These are definitions for F4 MCUs so there is a common macro across all MCUs.
+
+#define SDMMC_CLK_ENABLE() __SDIO_CLK_ENABLE()
+#define SDMMC_CLK_DISABLE() __SDIO_CLK_DISABLE()
+#define SDMMC_IRQn SDIO_IRQn
+#define SDMMC_TX_DMA dma_SDIO_0_TX
+#define SDMMC_RX_DMA dma_SDIO_0_RX
+#define SDIO_USE_GPDMA 1
+
+#endif
+
+// If no custom SDIO pins defined, use the default ones
+#ifndef MICROPY_HW_SDMMC_CK
+
+#define MICROPY_HW_SDMMC_D0 (pin_C8)
+#define MICROPY_HW_SDMMC_D1 (pin_C9)
+#define MICROPY_HW_SDMMC_D2 (pin_C10)
+#define MICROPY_HW_SDMMC_D3 (pin_C11)
+#define MICROPY_HW_SDMMC_CK (pin_C12)
+#define MICROPY_HW_SDMMC_CMD (pin_D2)
 
 #endif
 
@@ -77,53 +125,67 @@
 //       if an sd card is detected. This will save approx 260 bytes of RAM
 //       when no sdcard was being used.
 static SD_HandleTypeDef sd_handle;
+#if SDIO_USE_GPDMA
 static DMA_HandleTypeDef sd_rx_dma, sd_tx_dma;
+#endif
 
 void sdcard_init(void) {
-    GPIO_InitTypeDef GPIO_Init_Structure;
-
     // invalidate the sd_handle
     sd_handle.Instance = NULL;
 
     // configure SD GPIO
     // we do this here an not in HAL_SD_MspInit because it apparently
     // makes it more robust to have the pins always pulled high
-    GPIO_Init_Structure.Mode = GPIO_MODE_AF_PP;
-    GPIO_Init_Structure.Pull = GPIO_PULLUP;
-    GPIO_Init_Structure.Speed = GPIO_SPEED_HIGH;
-    GPIO_Init_Structure.Alternate = GPIO_AF12_SDIO;
-    GPIO_Init_Structure.Pin = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12;
-    HAL_GPIO_Init(GPIOC, &GPIO_Init_Structure);
-    GPIO_Init_Structure.Pin = GPIO_PIN_2;
-    HAL_GPIO_Init(GPIOD, &GPIO_Init_Structure);
+    // Note: the mp_hal_pin_config function will configure the GPIO in
+    // fast mode which can do up to 50MHz.  This should be plenty for SDIO
+    // which clocks up to 25MHz maximum.
+    #if defined(MICROPY_HW_SDMMC2_CK)
+    // Use SDMMC2 peripheral with pins provided by the board's config
+    mp_hal_pin_config_alt(MICROPY_HW_SDMMC2_CK, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, AF_FN_SDMMC, 2);
+    mp_hal_pin_config_alt(MICROPY_HW_SDMMC2_CMD, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, AF_FN_SDMMC, 2);
+    mp_hal_pin_config_alt(MICROPY_HW_SDMMC2_D0, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, AF_FN_SDMMC, 2);
+    mp_hal_pin_config_alt(MICROPY_HW_SDMMC2_D1, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, AF_FN_SDMMC, 2);
+    mp_hal_pin_config_alt(MICROPY_HW_SDMMC2_D2, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, AF_FN_SDMMC, 2);
+    mp_hal_pin_config_alt(MICROPY_HW_SDMMC2_D3, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, AF_FN_SDMMC, 2);
+    #else
+    // Default SDIO/SDMMC1 config
+    mp_hal_pin_config(MICROPY_HW_SDMMC_D0, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, GPIO_AF12_SDIO);
+    mp_hal_pin_config(MICROPY_HW_SDMMC_D1, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, GPIO_AF12_SDIO);
+    mp_hal_pin_config(MICROPY_HW_SDMMC_D2, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, GPIO_AF12_SDIO);
+    mp_hal_pin_config(MICROPY_HW_SDMMC_D3, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, GPIO_AF12_SDIO);
+    mp_hal_pin_config(MICROPY_HW_SDMMC_CK, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, GPIO_AF12_SDIO);
+    mp_hal_pin_config(MICROPY_HW_SDMMC_CMD, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_UP, GPIO_AF12_SDIO);
+    #endif
 
     // configure the SD card detect pin
     // we do this here so we can detect if the SD card is inserted before powering it on
-    GPIO_Init_Structure.Mode = GPIO_MODE_INPUT;
-    GPIO_Init_Structure.Pull = MICROPY_HW_SDCARD_DETECT_PULL;
-    GPIO_Init_Structure.Speed = GPIO_SPEED_HIGH;
-    GPIO_Init_Structure.Pin = MICROPY_HW_SDCARD_DETECT_PIN.pin_mask;
-    HAL_GPIO_Init(MICROPY_HW_SDCARD_DETECT_PIN.gpio, &GPIO_Init_Structure);
+    mp_hal_pin_config(MICROPY_HW_SDCARD_DETECT_PIN, MP_HAL_PIN_MODE_INPUT, MICROPY_HW_SDCARD_DETECT_PULL, 0);
 }
 
 void HAL_SD_MspInit(SD_HandleTypeDef *hsd) {
     // enable SDIO clock
-    __SDIO_CLK_ENABLE();
+    SDMMC_CLK_ENABLE();
+
+    #if defined(STM32H7)
+    // Reset SDMMC
+    __HAL_RCC_SDMMC1_FORCE_RESET();
+    __HAL_RCC_SDMMC1_RELEASE_RESET();
+    #endif
 
     // NVIC configuration for SDIO interrupts
-    HAL_NVIC_SetPriority(SDIO_IRQn, IRQ_PRI_SDIO, IRQ_SUBPRI_SDIO);
-    HAL_NVIC_EnableIRQ(SDIO_IRQn);
+    NVIC_SetPriority(SDMMC_IRQn, IRQ_PRI_SDIO);
+    HAL_NVIC_EnableIRQ(SDMMC_IRQn);
 
     // GPIO have already been initialised by sdcard_init
 }
 
 void HAL_SD_MspDeInit(SD_HandleTypeDef *hsd) {
-    HAL_NVIC_DisableIRQ(SDIO_IRQn);
-    __SDIO_CLK_DISABLE();
+    HAL_NVIC_DisableIRQ(SDMMC_IRQn);
+    SDMMC_CLK_DISABLE();
 }
 
 bool sdcard_is_present(void) {
-    return HAL_GPIO_ReadPin(MICROPY_HW_SDCARD_DETECT_PIN.gpio, MICROPY_HW_SDCARD_DETECT_PIN.pin_mask) == MICROPY_HW_SDCARD_DETECT_PRESENT;
+    return HAL_GPIO_ReadPin(MICROPY_HW_SDCARD_DETECT_PIN->gpio, MICROPY_HW_SDCARD_DETECT_PIN->pin_mask) == MICROPY_HW_SDCARD_DETECT_PRESENT;
 }
 
 bool sdcard_power_on(void) {
@@ -137,23 +199,28 @@ bool sdcard_power_on(void) {
     // SD device interface configuration
     sd_handle.Instance = SDIO;
     sd_handle.Init.ClockEdge           = SDIO_CLOCK_EDGE_RISING;
+    #ifndef STM32H7
     sd_handle.Init.ClockBypass         = SDIO_CLOCK_BYPASS_DISABLE;
+    #endif
     sd_handle.Init.ClockPowerSave      = SDIO_CLOCK_POWER_SAVE_ENABLE;
     sd_handle.Init.BusWide             = SDIO_BUS_WIDE_1B;
     sd_handle.Init.HardwareFlowControl = SDIO_HARDWARE_FLOW_CONTROL_DISABLE;
     sd_handle.Init.ClockDiv            = SDIO_TRANSFER_CLK_DIV;
 
     // init the SD interface, with retry if it's not ready yet
-    HAL_SD_CardInfoTypedef cardinfo;
-    for (int retry = 10; HAL_SD_Init(&sd_handle, &cardinfo) != SD_OK; retry--) {
+    for (int retry = 10; HAL_SD_Init(&sd_handle) != HAL_OK; retry--) {
         if (retry == 0) {
             goto error;
         }
-        HAL_Delay(50);
+        mp_hal_delay_ms(50);
     }
 
     // configure the SD bus width for wide operation
-    if (HAL_SD_WideBusOperation_Config(&sd_handle, SDIO_BUS_WIDE_4B) != SD_OK) {
+    #if defined(STM32F7)
+    // use maximum SDMMC clock speed on F7 MCUs
+    sd_handle.Init.ClockBypass = SDMMC_CLOCK_BYPASS_ENABLE;
+    #endif
+    if (HAL_SD_ConfigWideBusOperation(&sd_handle, SDIO_BUS_WIDE_4B) != HAL_OK) {
         HAL_SD_DeInit(&sd_handle);
         goto error;
     }
@@ -169,7 +236,7 @@ void sdcard_power_off(void) {
     if (!sd_handle.Instance) {
         return;
     }
-    HAL_SD_DeInit(&sd_handle); 
+    HAL_SD_DeInit(&sd_handle);
     sd_handle.Instance = NULL;
 }
 
@@ -177,24 +244,68 @@ uint64_t sdcard_get_capacity_in_bytes(void) {
     if (sd_handle.Instance == NULL) {
         return 0;
     }
-    HAL_SD_CardInfoTypedef cardinfo;
-    HAL_SD_Get_CardInfo(&sd_handle, &cardinfo);
-    return cardinfo.CardCapacity;
+    HAL_SD_CardInfoTypeDef cardinfo;
+    HAL_SD_GetCardInfo(&sd_handle, &cardinfo);
+    return (uint64_t)cardinfo.LogBlockNbr * (uint64_t)cardinfo.LogBlockSize;
 }
 
+#if !defined(MICROPY_HW_SDMMC2_CK)
 void SDIO_IRQHandler(void) {
     IRQ_ENTER(SDIO_IRQn);
     HAL_SD_IRQHandler(&sd_handle);
     IRQ_EXIT(SDIO_IRQn);
 }
+#endif
+
+#if defined(STM32F7)
+void SDMMC2_IRQHandler(void) {
+    IRQ_ENTER(SDMMC2_IRQn);
+    HAL_SD_IRQHandler(&sd_handle);
+    IRQ_EXIT(SDMMC2_IRQn);
+}
+#endif
+
+STATIC HAL_StatusTypeDef sdcard_wait_finished(SD_HandleTypeDef *sd, uint32_t timeout) {
+    // Wait for HAL driver to be ready (eg for DMA to finish)
+    uint32_t start = HAL_GetTick();
+    for (;;) {
+        // Do an atomic check of the state; WFI will exit even if IRQs are disabled
+        uint32_t irq_state = disable_irq();
+        if (sd->State != HAL_SD_STATE_BUSY) {
+            enable_irq(irq_state);
+            break;
+        }
+        __WFI();
+        enable_irq(irq_state);
+        if (HAL_GetTick() - start >= timeout) {
+            return HAL_TIMEOUT;
+        }
+    }
+
+    // Wait for SD card to complete the operation
+    for (;;) {
+        HAL_SD_CardStateTypedef state = HAL_SD_GetCardState(sd);
+        if (state == HAL_SD_CARD_TRANSFER) {
+            return HAL_OK;
+        }
+        if (!(state == HAL_SD_CARD_SENDING || state == HAL_SD_CARD_RECEIVING || state == HAL_SD_CARD_PROGRAMMING)) {
+            return HAL_ERROR;
+        }
+        if (HAL_GetTick() - start >= timeout) {
+            return HAL_TIMEOUT;
+        }
+        __WFI();
+    }
+    return HAL_OK;
+}
 
 mp_uint_t sdcard_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blocks) {
     // check that SD card is initialised
     if (sd_handle.Instance == NULL) {
-        return SD_ERROR;
+        return HAL_ERROR;
     }
 
-    HAL_SD_ErrorTypedef err = SD_OK;
+    HAL_StatusTypeDef err = HAL_OK;
 
     // check that dest pointer is aligned on a 4-byte boundary
     uint8_t *orig_dest = NULL;
@@ -218,21 +329,31 @@ mp_uint_t sdcard_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blo
         // we must disable USB irqs to prevent MSC contention with SD card
         uint32_t basepri = raise_irq_pri(IRQ_PRI_OTG_FS);
 
-        dma_init(&sd_rx_dma, &dma_SDIO_0_RX, &sd_handle);
+        #if SDIO_USE_GPDMA
+        dma_init(&sd_rx_dma, &SDMMC_RX_DMA, &sd_handle);
         sd_handle.hdmarx = &sd_rx_dma;
+        #endif
 
-        err = HAL_SD_ReadBlocks_BlockNumber_DMA(&sd_handle, (uint32_t*)dest, block_num, SDCARD_BLOCK_SIZE, num_blocks);
-        if (err == SD_OK) {
-            // wait for DMA transfer to finish, with a large timeout
-            err = HAL_SD_CheckReadOperation(&sd_handle, 100000000);
+        // make sure cache is flushed and invalidated so when DMA updates the RAM
+        // from reading the peripheral the CPU then reads the new data
+        MP_HAL_CLEANINVALIDATE_DCACHE(dest, num_blocks * SDCARD_BLOCK_SIZE);
+
+        err = HAL_SD_ReadBlocks_DMA(&sd_handle, dest, block_num, num_blocks);
+        if (err == HAL_OK) {
+            err = sdcard_wait_finished(&sd_handle, 60000);
         }
 
-        dma_deinit(&dma_SDIO_0_RX);
+        #if SDIO_USE_GPDMA
+        dma_deinit(&SDMMC_RX_DMA);
         sd_handle.hdmarx = NULL;
+        #endif
 
         restore_irq_pri(basepri);
     } else {
-        err = HAL_SD_ReadBlocks_BlockNumber(&sd_handle, (uint32_t*)dest, block_num, SDCARD_BLOCK_SIZE, num_blocks);
+        err = HAL_SD_ReadBlocks(&sd_handle, dest, block_num, num_blocks, 60000);
+        if (err == HAL_OK) {
+            err = sdcard_wait_finished(&sd_handle, 60000);
+        }
     }
 
     if (orig_dest != NULL) {
@@ -247,22 +368,22 @@ mp_uint_t sdcard_read_blocks(uint8_t *dest, uint32_t block_num, uint32_t num_blo
 mp_uint_t sdcard_write_blocks(const uint8_t *src, uint32_t block_num, uint32_t num_blocks) {
     // check that SD card is initialised
     if (sd_handle.Instance == NULL) {
-        return SD_ERROR;
+        return HAL_ERROR;
     }
 
-    HAL_SD_ErrorTypedef err = SD_OK;
+    HAL_StatusTypeDef err = HAL_OK;
 
     // check that src pointer is aligned on a 4-byte boundary
     if (((uint32_t)src & 3) != 0) {
         // pointer is not aligned, so allocate a temporary block to do the write
         uint8_t *src_aligned = m_new_maybe(uint8_t, SDCARD_BLOCK_SIZE);
         if (src_aligned == NULL) {
-            return SD_ERROR;
+            return HAL_ERROR;
         }
         for (size_t i = 0; i < num_blocks; ++i) {
             memcpy(src_aligned, src + i * SDCARD_BLOCK_SIZE, SDCARD_BLOCK_SIZE);
             err = sdcard_write_blocks(src_aligned, block_num + i, 1);
-            if (err != SD_OK) {
+            if (err != HAL_OK) {
                 break;
             }
         }
@@ -274,27 +395,37 @@ mp_uint_t sdcard_write_blocks(const uint8_t *src, uint32_t block_num, uint32_t n
         // we must disable USB irqs to prevent MSC contention with SD card
         uint32_t basepri = raise_irq_pri(IRQ_PRI_OTG_FS);
 
-        dma_init(&sd_tx_dma, &dma_SDIO_0_TX, &sd_handle);
+        #if SDIO_USE_GPDMA
+        dma_init(&sd_tx_dma, &SDMMC_TX_DMA, &sd_handle);
         sd_handle.hdmatx = &sd_tx_dma;
+        #endif
 
-        err = HAL_SD_WriteBlocks_BlockNumber_DMA(&sd_handle, (uint32_t*)src, block_num, SDCARD_BLOCK_SIZE, num_blocks);
-        if (err == SD_OK) {
-            // wait for DMA transfer to finish, with a large timeout
-            err = HAL_SD_CheckWriteOperation(&sd_handle, 100000000);
+        // make sure cache is flushed to RAM so the DMA can read the correct data
+        MP_HAL_CLEAN_DCACHE(src, num_blocks * SDCARD_BLOCK_SIZE);
+
+        err = HAL_SD_WriteBlocks_DMA(&sd_handle, (uint8_t*)src, block_num, num_blocks);
+        if (err == HAL_OK) {
+            err = sdcard_wait_finished(&sd_handle, 60000);
         }
-        dma_deinit(&dma_SDIO_0_TX);
+
+        #if SDIO_USE_GPDMA
+        dma_deinit(&SDMMC_TX_DMA);
         sd_handle.hdmatx = NULL;
+        #endif
 
         restore_irq_pri(basepri);
     } else {
-        err = HAL_SD_WriteBlocks_BlockNumber(&sd_handle, (uint32_t*)src, block_num, SDCARD_BLOCK_SIZE, num_blocks);
+        err = HAL_SD_WriteBlocks(&sd_handle, (uint8_t*)src, block_num, num_blocks, 60000);
+        if (err == HAL_OK) {
+            err = sdcard_wait_finished(&sd_handle, 60000);
+        }
     }
 
     return err;
 }
 
 /******************************************************************************/
-// Micro Python bindings
+// MicroPython bindings
 //
 // Expose the SD card as an object with the block protocol.
 
@@ -330,12 +461,12 @@ STATIC mp_obj_t sd_info(mp_obj_t self) {
     if (sd_handle.Instance == NULL) {
         return mp_const_none;
     }
-    HAL_SD_CardInfoTypedef cardinfo;
-    HAL_SD_Get_CardInfo(&sd_handle, &cardinfo);
+    HAL_SD_CardInfoTypeDef cardinfo;
+    HAL_SD_GetCardInfo(&sd_handle, &cardinfo);
     // cardinfo.SD_csd and cardinfo.SD_cid have lots of info but we don't use them
     mp_obj_t tuple[3] = {
-        mp_obj_new_int_from_ull(cardinfo.CardCapacity),
-        mp_obj_new_int_from_uint(cardinfo.CardBlockSize),
+        mp_obj_new_int_from_ull((uint64_t)cardinfo.LogBlockNbr * (uint64_t)cardinfo.LogBlockSize),
+        mp_obj_new_int_from_uint(cardinfo.LogBlockSize),
         mp_obj_new_int(cardinfo.CardType),
     };
     return mp_obj_new_tuple(3, tuple);
@@ -408,7 +539,7 @@ STATIC mp_obj_t pyb_sdcard_ioctl(mp_obj_t self, mp_obj_t cmd_in, mp_obj_t arg_in
             return MP_OBJ_NEW_SMALL_INT(0); // success
 
         case BP_IOCTL_SEC_COUNT:
-            return MP_OBJ_NEW_SMALL_INT(0); // TODO
+            return MP_OBJ_NEW_SMALL_INT(sdcard_get_capacity_in_bytes() / SDCARD_BLOCK_SIZE);
 
         case BP_IOCTL_SEC_SIZE:
             return MP_OBJ_NEW_SMALL_INT(SDCARD_BLOCK_SIZE);
@@ -419,16 +550,16 @@ STATIC mp_obj_t pyb_sdcard_ioctl(mp_obj_t self, mp_obj_t cmd_in, mp_obj_t arg_in
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(pyb_sdcard_ioctl_obj, pyb_sdcard_ioctl);
 
-STATIC const mp_map_elem_t pyb_sdcard_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_present), (mp_obj_t)&sd_present_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_power), (mp_obj_t)&sd_power_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_info), (mp_obj_t)&sd_info_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_read), (mp_obj_t)&sd_read_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_write), (mp_obj_t)&sd_write_obj },
+STATIC const mp_rom_map_elem_t pyb_sdcard_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_present), MP_ROM_PTR(&sd_present_obj) },
+    { MP_ROM_QSTR(MP_QSTR_power), MP_ROM_PTR(&sd_power_obj) },
+    { MP_ROM_QSTR(MP_QSTR_info), MP_ROM_PTR(&sd_info_obj) },
+    { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&sd_read_obj) },
+    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&sd_write_obj) },
     // block device protocol
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readblocks), (mp_obj_t)&pyb_sdcard_readblocks_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_writeblocks), (mp_obj_t)&pyb_sdcard_writeblocks_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ioctl), (mp_obj_t)&pyb_sdcard_ioctl_obj },
+    { MP_ROM_QSTR(MP_QSTR_readblocks), MP_ROM_PTR(&pyb_sdcard_readblocks_obj) },
+    { MP_ROM_QSTR(MP_QSTR_writeblocks), MP_ROM_PTR(&pyb_sdcard_writeblocks_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ioctl), MP_ROM_PTR(&pyb_sdcard_ioctl_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(pyb_sdcard_locals_dict, pyb_sdcard_locals_dict_table);
@@ -437,11 +568,14 @@ const mp_obj_type_t pyb_sdcard_type = {
     { &mp_type_type },
     .name = MP_QSTR_SDCard,
     .make_new = pyb_sdcard_make_new,
-    .locals_dict = (mp_obj_t)&pyb_sdcard_locals_dict,
+    .locals_dict = (mp_obj_dict_t*)&pyb_sdcard_locals_dict,
 };
 
-void sdcard_init_vfs(fs_user_mount_t *vfs) {
+void sdcard_init_vfs(fs_user_mount_t *vfs, int part) {
+    vfs->base.type = &mp_fat_vfs_type;
     vfs->flags |= FSUSER_NATIVE | FSUSER_HAVE_IOCTL;
+    vfs->fatfs.drv = vfs;
+    vfs->fatfs.part = part;
     vfs->readblocks[0] = (mp_obj_t)&pyb_sdcard_readblocks_obj;
     vfs->readblocks[1] = (mp_obj_t)&pyb_sdcard_obj;
     vfs->readblocks[2] = (mp_obj_t)sdcard_read_blocks; // native version

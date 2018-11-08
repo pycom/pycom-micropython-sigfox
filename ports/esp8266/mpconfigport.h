@@ -1,6 +1,6 @@
 #include <stdint.h>
 
-// options to control how Micro Python is built
+// options to control how MicroPython is built
 
 #define MICROPY_OBJ_REPR            (MICROPY_OBJ_REPR_C)
 #define MICROPY_ALLOC_PATH_MAX      (128)
@@ -10,15 +10,17 @@
 #define MICROPY_ALLOC_PARSE_RESULT_INC  (8)
 #define MICROPY_ALLOC_PARSE_CHUNK_INIT  (64)
 #define MICROPY_PERSISTENT_CODE_LOAD (1)
-#define MICROPY_EMIT_X64            (0)
-#define MICROPY_EMIT_THUMB          (0)
-#define MICROPY_EMIT_INLINE_THUMB   (0)
+#define MICROPY_EMIT_XTENSA         (1)
+#define MICROPY_EMIT_INLINE_XTENSA  (1)
 #define MICROPY_MEM_STATS           (0)
 #define MICROPY_DEBUG_PRINTERS      (1)
 #define MICROPY_DEBUG_PRINTER_DEST  mp_debug_print
+#define MICROPY_READER_VFS          (MICROPY_VFS)
 #define MICROPY_ENABLE_GC           (1)
+#define MICROPY_ENABLE_FINALISER    (1)
 #define MICROPY_STACK_CHECK         (1)
 #define MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF (1)
+#define MICROPY_KBD_EXCEPTION       (1)
 #define MICROPY_REPL_EVENT_DRIVEN   (0)
 #define MICROPY_REPL_AUTO_INDENT    (1)
 #define MICROPY_HELPER_REPL         (1)
@@ -27,6 +29,7 @@
 #define MICROPY_MODULE_WEAK_LINKS   (1)
 #define MICROPY_CAN_OVERRIDE_BUILTINS (1)
 #define MICROPY_USE_INTERNAL_ERRNO  (1)
+#define MICROPY_ENABLE_SCHEDULER    (1)
 #define MICROPY_PY_ALL_SPECIAL_METHODS (1)
 #define MICROPY_PY_BUILTINS_COMPLEX (0)
 #define MICROPY_PY_BUILTINS_STR_UNICODE (1)
@@ -37,11 +40,16 @@
 #define MICROPY_PY_BUILTINS_SLICE   (1)
 #define MICROPY_PY_BUILTINS_SLICE_ATTRS (1)
 #define MICROPY_PY_BUILTINS_PROPERTY (1)
+#define MICROPY_PY_BUILTINS_INPUT   (1)
+#define MICROPY_PY_BUILTINS_HELP    (1)
+#define MICROPY_PY_BUILTINS_HELP_TEXT esp_help_text
+#define MICROPY_PY_BUILTINS_HELP_MODULES (1)
 #define MICROPY_PY___FILE__         (0)
 #define MICROPY_PY_GC               (1)
 #define MICROPY_PY_ARRAY            (1)
 #define MICROPY_PY_ARRAY_SLICE_ASSIGN (1)
 #define MICROPY_PY_COLLECTIONS      (1)
+#define MICROPY_PY_COLLECTIONS_DEQUE (1)
 #define MICROPY_PY_COLLECTIONS_ORDEREDDICT (1)
 #define MICROPY_PY_MATH             (1)
 #define MICROPY_PY_CMATH            (0)
@@ -59,16 +67,20 @@
 #define MICROPY_PY_UHASHLIB         (1)
 #define MICROPY_PY_UHASHLIB_SHA1    (MICROPY_PY_USSL && MICROPY_SSL_AXTLS)
 #define MICROPY_PY_UHEAPQ           (1)
+#define MICROPY_PY_UTIMEQ           (1)
 #define MICROPY_PY_UJSON            (1)
 #define MICROPY_PY_URANDOM          (1)
 #define MICROPY_PY_URE              (1)
+#define MICROPY_PY_USELECT          (1)
 #define MICROPY_PY_UTIME_MP_HAL     (1)
 #define MICROPY_PY_UZLIB            (1)
 #define MICROPY_PY_LWIP             (1)
 #define MICROPY_PY_MACHINE          (1)
+#define MICROPY_PY_MACHINE_PIN_MAKE_NEW mp_pin_make_new
 #define MICROPY_PY_MACHINE_PULSE    (1)
 #define MICROPY_PY_MACHINE_I2C      (1)
 #define MICROPY_PY_MACHINE_SPI      (1)
+#define MICROPY_PY_MACHINE_SPI_MAKE_NEW machine_hspi_make_new
 #define MICROPY_PY_WEBSOCKET        (1)
 #define MICROPY_PY_WEBREPL          (1)
 #define MICROPY_PY_WEBREPL_DELAY    (20)
@@ -88,12 +100,11 @@
 #define MICROPY_MODULE_FROZEN_LEXER mp_lexer_new_from_str32
 #define MICROPY_QSTR_EXTRA_POOL     mp_qstr_frozen_const_pool
 
+#define MICROPY_VFS                    (1)
 #define MICROPY_FATFS_ENABLE_LFN       (1)
 #define MICROPY_FATFS_RPATH            (2)
-#define MICROPY_FATFS_VOLUMES          (2)
 #define MICROPY_FATFS_MAX_SS           (4096)
 #define MICROPY_FATFS_LFN_CODE_PAGE    (437) /* 1=SFN/ANSI 437=LFN/U.S.(OEM) */
-#define MICROPY_FSUSERMOUNT            (1)
 #define MICROPY_VFS_FAT                (1)
 #define MICROPY_ESP8266_APA102         (1)
 #define MICROPY_ESP8266_NEOPIXEL       (1)
@@ -111,8 +122,6 @@
 
 // type definitions for the specific machine
 
-#define BYTES_PER_WORD (4)
-
 #define MICROPY_MAKE_POINTER_CALLABLE(p) ((void*)((mp_uint_t)(p)))
 
 #define MP_SSIZE_MAX (0x7fffffff)
@@ -128,15 +137,20 @@ typedef uint32_t sys_prot_t; // for modlwip
 #include <sys/types.h>
 
 #define MP_PLAT_PRINT_STRN(str, len) mp_hal_stdout_tx_strn_cooked(str, len)
+void *esp_native_code_commit(void*, size_t);
+#define MP_PLAT_COMMIT_EXEC(buf, len) esp_native_code_commit(buf, len)
 
 #define mp_type_fileio fatfs_type_fileio
 #define mp_type_textio fatfs_type_textio
 
+// use vfs's functions for import stat and builtin open
+#define mp_import_stat mp_vfs_import_stat
+#define mp_builtin_open mp_vfs_open
+#define mp_builtin_open_obj mp_vfs_open_obj
+
 // extra built in names to add to the global namespace
 #define MICROPY_PORT_BUILTINS \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_help), (mp_obj_t)&mp_builtin_help_obj }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_input), (mp_obj_t)&mp_builtin_input_obj }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_open), (mp_obj_t)&mp_builtin_open_obj },
+    { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) },
 
 // extra built in modules to add to the list of known ones
 extern const struct _mp_obj_module_t esp_module;
@@ -145,31 +159,29 @@ extern const struct _mp_obj_module_t utime_module;
 extern const struct _mp_obj_module_t uos_module;
 extern const struct _mp_obj_module_t mp_module_lwip;
 extern const struct _mp_obj_module_t mp_module_machine;
-extern const struct _mp_obj_module_t onewire_module;
+extern const struct _mp_obj_module_t mp_module_onewire;
 
 #define MICROPY_PORT_BUILTIN_MODULES \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_esp), (mp_obj_t)&esp_module }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_lwip), (mp_obj_t)&mp_module_lwip }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_socket), (mp_obj_t)&mp_module_lwip }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_usocket), (mp_obj_t)&mp_module_lwip }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_network), (mp_obj_t)&network_module }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_utime), (mp_obj_t)&utime_module }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_uos), (mp_obj_t)&uos_module }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_machine), (mp_obj_t)&mp_module_machine }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR__onewire), (mp_obj_t)&onewire_module }, \
+    { MP_ROM_QSTR(MP_QSTR_esp), MP_ROM_PTR(&esp_module) }, \
+    { MP_ROM_QSTR(MP_QSTR_usocket), MP_ROM_PTR(&mp_module_lwip) }, \
+    { MP_ROM_QSTR(MP_QSTR_network), MP_ROM_PTR(&network_module) }, \
+    { MP_ROM_QSTR(MP_QSTR_utime), MP_ROM_PTR(&utime_module) }, \
+    { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&uos_module) }, \
+    { MP_ROM_QSTR(MP_QSTR_machine), MP_ROM_PTR(&mp_module_machine) }, \
+    { MP_ROM_QSTR(MP_QSTR__onewire), MP_ROM_PTR(&mp_module_onewire) }, \
 
 #define MICROPY_PORT_BUILTIN_MODULE_WEAK_LINKS \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_time), (mp_obj_t)&utime_module }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_os), (mp_obj_t)&uos_module }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_json), (mp_obj_t)&mp_module_ujson }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_errno), (mp_obj_t)&mp_module_uerrno }, \
+    { MP_ROM_QSTR(MP_QSTR_time), MP_ROM_PTR(&utime_module) }, \
+    { MP_ROM_QSTR(MP_QSTR_os), MP_ROM_PTR(&uos_module) }, \
+    { MP_ROM_QSTR(MP_QSTR_json), MP_ROM_PTR(&mp_module_ujson) }, \
+    { MP_ROM_QSTR(MP_QSTR_errno), MP_ROM_PTR(&mp_module_uerrno) }, \
+    { MP_ROM_QSTR(MP_QSTR_select), MP_ROM_PTR(&mp_module_uselect) }, \
+    { MP_ROM_QSTR(MP_QSTR_socket), MP_ROM_PTR(&mp_module_lwip) }, \
 
 #define MP_STATE_PORT MP_STATE_VM
 
 #define MICROPY_PORT_ROOT_POINTERS \
     const char *readline_hist[8]; \
-    vstr_t *repl_line; \
-    mp_obj_t mp_kbd_exception; \
     mp_obj_t pin_irq_handler[16]; \
 
 // We need to provide a declaration/definition of alloca()

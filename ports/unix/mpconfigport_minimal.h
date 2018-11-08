@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -24,7 +24,7 @@
  * THE SOFTWARE.
  */
 
-// options to control how Micro Python is built
+// options to control how MicroPython is built
 
 #define MICROPY_ALLOC_QSTR_CHUNK_INIT (64)
 #define MICROPY_ALLOC_PARSE_RULE_INIT (8)
@@ -40,12 +40,14 @@
 #define MICROPY_COMP_CONST          (0)
 #define MICROPY_MEM_STATS           (0)
 #define MICROPY_DEBUG_PRINTERS      (0)
+#define MICROPY_READER_POSIX        (1)
 #define MICROPY_HELPER_REPL         (1)
 #define MICROPY_HELPER_LEXER_UNIX   (1)
 #define MICROPY_ENABLE_SOURCE_LINE  (0)
 #define MICROPY_ERROR_REPORTING     (MICROPY_ERROR_REPORTING_TERSE)
 #define MICROPY_WARNINGS            (0)
 #define MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF   (0)
+#define MICROPY_KBD_EXCEPTION       (1)
 #define MICROPY_FLOAT_IMPL          (MICROPY_FLOAT_IMPL_NONE)
 #define MICROPY_LONGINT_IMPL        (MICROPY_LONGINT_IMPL_NONE)
 #define MICROPY_STREAMS_NON_BLOCK   (0)
@@ -95,10 +97,9 @@
 extern const struct _mp_obj_module_t mp_module_os;
 
 #define MICROPY_PORT_BUILTIN_MODULES \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_uos), (mp_obj_t)&mp_module_os }, \
+    { MP_ROM_QSTR(MP_QSTR_uos), MP_ROM_PTR(&mp_module_os) }, \
 
 #define MICROPY_PORT_ROOT_POINTERS \
-    mp_obj_t keyboard_interrupt_obj;
 
 //////////////////////////////////////////
 // Do not change anything beyond this line
@@ -125,8 +126,6 @@ typedef unsigned long mp_uint_t; // must be pointer size
 typedef int mp_int_t; // must be pointer size
 typedef unsigned int mp_uint_t; // must be pointer size
 #endif
-
-#define BYTES_PER_WORD sizeof(mp_int_t)
 
 // Cannot include <sys/types.h>, as it may lead to symbol name clashes
 #if _FILE_OFFSET_BITS == 64 && !defined(__LP64__)

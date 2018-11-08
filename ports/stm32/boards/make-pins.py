@@ -14,17 +14,19 @@ SUPPORTED_FN = {
     'I2S'   : ['CK', 'MCK', 'SD', 'WS', 'EXTSD'],
     'USART' : ['RX', 'TX', 'CTS', 'RTS', 'CK'],
     'UART'  : ['RX', 'TX', 'CTS', 'RTS'],
-    'SPI'   : ['NSS', 'SCK', 'MISO', 'MOSI']
+    'SPI'   : ['NSS', 'SCK', 'MISO', 'MOSI'],
+    'SDMMC' : ['CK', 'CMD', 'D0', 'D1', 'D2', 'D3'],
+    'CAN'   : ['TX', 'RX'],
 }
 
 CONDITIONAL_VAR = {
     'I2C'   : 'MICROPY_HW_I2C{num}_SCL',
     'I2S'   : 'MICROPY_HW_ENABLE_I2S{num}',
     'SPI'   : 'MICROPY_HW_SPI{num}_SCK',
-    'UART'  : 'MICROPY_HW_UART{num}_PORT',
-    'UART5' : 'MICROPY_HW_UART5_TX_PORT',
-    'USART' : 'MICROPY_HW_UART{num}_PORT',
-    'USART1': 'MICROPY_HW_UART1_TX_PORT',
+    'UART'  : 'MICROPY_HW_UART{num}_TX',
+    'USART' : 'MICROPY_HW_UART{num}_TX',
+    'SDMMC' : 'MICROPY_HW_SDMMC{num}_CK',
+    'CAN'   : 'MICROPY_HW_CAN{num}_TX',
 }
 
 def parse_port_pin(name_str):
@@ -207,18 +209,18 @@ class Pin(object):
             print("// ",  end='')
         print('};')
         print('')
-        print('const pin_obj_t pin_{:s} = PIN({:s}, {:d}, {:s}, {:s}, {:d});'.format(
+        print('const pin_obj_t pin_{:s}_obj = PIN({:s}, {:d}, {:s}, {:s}, {:d});'.format(
             self.cpu_pin_name(), self.port_letter(), self.pin,
             self.alt_fn_name(null_if_0=True),
             self.adc_num_str(), self.adc_channel))
         print('')
 
     def print_header(self, hdr_file):
-        hdr_file.write('extern const pin_obj_t pin_{:s};\n'.
-                       format(self.cpu_pin_name()))
+        n = self.cpu_pin_name()
+        hdr_file.write('extern const pin_obj_t pin_{:s}_obj;\n'.format(n))
+        hdr_file.write('#define pin_{:s} (&pin_{:s}_obj)\n'.format(n, n))
         if self.alt_fn_count > 0:
-            hdr_file.write('extern const pin_af_obj_t pin_{:s}_af[];\n'.
-                           format(self.cpu_pin_name()))
+            hdr_file.write('extern const pin_af_obj_t pin_{:s}_af[];\n'.format(n))
 
     def qstr_list(self):
         result = []
@@ -283,11 +285,11 @@ class Pins(object):
                     self.board_pins.append(NamedPin(row[0], pin))
 
     def print_named(self, label, named_pins):
-        print('STATIC const mp_map_elem_t pin_{:s}_pins_locals_dict_table[] = {{'.format(label))
+        print('STATIC const mp_rom_map_elem_t pin_{:s}_pins_locals_dict_table[] = {{'.format(label))
         for named_pin in named_pins:
             pin = named_pin.pin()
             if pin.is_board_pin():
-                print('  {{ MP_OBJ_NEW_QSTR(MP_QSTR_{:s}), (mp_obj_t)&pin_{:s} }},'.format(named_pin.name(),  pin.cpu_pin_name()))
+                print('  {{ MP_ROM_QSTR(MP_QSTR_{:s}), MP_ROM_PTR(&pin_{:s}_obj) }},'.format(named_pin.name(),  pin.cpu_pin_name()))
         print('};')
         print('MP_DEFINE_CONST_DICT(pin_{:s}_pins_locals_dict, pin_{:s}_pins_locals_dict_table);'.format(label, label));
 
@@ -305,13 +307,13 @@ class Pins(object):
         print('const pin_obj_t * const pin_adc{:d}[] = {{'.format(adc_num))
         for channel in range(17):
             if channel == 16:
-                print('#if defined(MCU_SERIES_L4)')
+                print('#if defined(STM32L4)')
             adc_found = False
             for named_pin in self.cpu_pins:
                 pin = named_pin.pin()
                 if (pin.is_board_pin() and
                     (pin.adc_num & (1 << (adc_num - 1))) and (pin.adc_channel == channel)):
-                    print('  &pin_{:s}, // {:d}'.format(pin.cpu_pin_name(), channel))
+                    print('  &pin_{:s}_obj, // {:d}'.format(pin.cpu_pin_name(), channel))
                     adc_found = True
                     break
             if not adc_found:
@@ -370,8 +372,8 @@ class Pins(object):
                 af_words = mux_name.split('_')  # ex mux_name: AF9_I2C2
                 cond_var = conditional_var(af_words[1])
                 print_conditional_if(cond_var, file=af_const_file)
-                key = 'MP_OBJ_NEW_QSTR(MP_QSTR_{}),'.format(mux_name)
-                val = 'MP_OBJ_NEW_SMALL_INT(GPIO_{})'.format(mux_name)
+                key = 'MP_ROM_QSTR(MP_QSTR_{}),'.format(mux_name)
+                val = 'MP_ROM_INT(GPIO_{})'.format(mux_name)
                 print('    { %-*s %s },' % (mux_name_width + 26, key, val),
                       file=af_const_file)
                 print_conditional_endif(cond_var, file=af_const_file)

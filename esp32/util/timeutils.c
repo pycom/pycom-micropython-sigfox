@@ -37,30 +37,6 @@
 #define DAYS_PER_100Y (365*100 + 24)
 #define DAYS_PER_4Y   (365*4   + 1)
 
-STATIC const uint16_t days_since_jan1[]= { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
-
-bool timeutils_is_leap_year(mp_uint_t year) {
-    return (year % 4 == 0 && year % 100 != 0) || year % 400 == 0;
-}
-
-// month is one based
-mp_uint_t timeutils_days_in_month(mp_uint_t year, mp_uint_t month) {
-    mp_uint_t mdays = days_since_jan1[month] - days_since_jan1[month - 1];
-    if (month == 2 && timeutils_is_leap_year(year)) {
-        mdays++;
-    }
-    return mdays;
-}
-
-// compute the day of the year, between 1 and 366
-// month should be between 1 and 12, date should start at 1
-mp_uint_t timeutils_year_day(mp_uint_t year, mp_uint_t month, mp_uint_t date) {
-    mp_uint_t yday = days_since_jan1[month - 1] + date;
-    if (month >= 3 && timeutils_is_leap_year(year)) {
-        yday += 1;
-    }
-    return yday;
-}
 
 void timeutils_seconds_since_epoch_to_struct_time(mp_time_t t, timeutils_struct_time_t *tm)
 {
@@ -154,7 +130,7 @@ mp_time_t timeutils_seconds_since_epoch(mp_uint_t year, mp_uint_t month,
         + ((mp_time_t) (year - 1970)) * 31536000;
 }
 
-mp_time_t timeutils_mktime(mp_uint_t year, mp_int_t month, mp_int_t mday,
+mp_time_t timeutils_mktime_since_epoch(mp_uint_t year, mp_int_t month, mp_int_t mday,
     mp_int_t hours, mp_int_t minutes, mp_int_t seconds) {
 
     // Normalize the tuple. This allows things like:

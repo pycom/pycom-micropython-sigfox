@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -27,15 +27,13 @@
 
 #include <stdint.h>
 #include <stdio.h>
-#include <errno.h>
 #include <string.h>
 
-#include "py/mpconfig.h"
-#include "py/obj.h"
 #include "py/runtime.h"
 #include "py/objlist.h"
 #include "py/stream.h"
 #include "py/mphal.h"
+#include "lib/utils/interrupt_char.h"
 #include "inc/hw_types.h"
 #include "inc/hw_ints.h"
 #include "inc/hw_memmap.h"
@@ -46,10 +44,8 @@
 #include "uart.h"
 #include "pybuart.h"
 #include "mpirq.h"
-#include "pybioctl.h"
 #include "pybsleep.h"
 #include "mpexception.h"
-#include "py/mpstate.h"
 #include "osi.h"
 #include "utils.h"
 #include "pin.h"
@@ -253,9 +249,9 @@ STATIC void UARTGenericIntHandler(uint32_t uart_id) {
         MAP_UARTIntClear(self->reg, UART_INT_RX | UART_INT_RT);
         while (UARTCharsAvail(self->reg)) {
             int data = MAP_UARTCharGetNonBlocking(self->reg);
-            if (MP_STATE_PORT(os_term_dup_obj) && MP_STATE_PORT(os_term_dup_obj)->stream_o == self && data == user_interrupt_char) {
+            if (MP_STATE_PORT(os_term_dup_obj) && MP_STATE_PORT(os_term_dup_obj)->stream_o == self && data == mp_interrupt_char) {
                 // raise an exception when interrupts are finished
-                mpexception_keyboard_nlr_jump();
+                mp_keyboard_interrupt();
             } else { // there's always a read buffer available
                 uint16_t next_head = (self->read_buf_head + 1) % PYBUART_RX_BUFFER_LEN;
                 if (next_head != self->read_buf_tail) {
@@ -280,7 +276,7 @@ STATIC void UARTGenericIntHandler(uint32_t uart_id) {
 STATIC void uart_check_init(pyb_uart_obj_t *self) {
     // not initialized
     if (!self->baudrate) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_request_not_possible);
+        mp_raise_OSError(MP_EPERM);
     }
 }
 
@@ -313,7 +309,7 @@ STATIC int uart_irq_flags (mp_obj_t self_in) {
 }
 
 /******************************************************************************/
-/* Micro Python bindings                                                      */
+/* MicroPython bindings                                                      */
 
 STATIC void pyb_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     pyb_uart_obj_t *self = self_in;
@@ -376,10 +372,13 @@ STATIC mp_obj_t pyb_uart_init_helper(pyb_uart_obj_t *self, const mp_arg_val_t *a
         config |= UART_CONFIG_PAR_NONE;
     } else {
         uint parity = mp_obj_get_int(args[2].u_obj);
-        if (parity != UART_CONFIG_PAR_ODD && parity != UART_CONFIG_PAR_EVEN) {
+        if (parity == 0) {
+            config |= UART_CONFIG_PAR_EVEN;
+        } else if (parity == 1) {
+            config |= UART_CONFIG_PAR_ODD;
+        } else {
             goto error;
         }
-        config |= parity;
     }
     // stop bits
     config |= (args[3].u_int == 1 ? UART_CONFIG_STOP_ONE : UART_CONFIG_STOP_TWO);
@@ -389,7 +388,7 @@ STATIC mp_obj_t pyb_uart_init_helper(pyb_uart_obj_t *self, const mp_arg_val_t *a
     uint flowcontrol = UART_FLOWCONTROL_NONE;
     if (pins_o != mp_const_none) {
         mp_obj_t *pins;
-        mp_uint_t n_pins = 2;
+        size_t n_pins = 2;
         if (pins_o == MP_OBJ_NULL) {
             // use the default pins
             pins = (mp_obj_t *)pyb_uart_def_pin[self->uart_id];
@@ -443,7 +442,7 @@ STATIC const mp_arg_t pyb_uart_init_args[] = {
     { MP_QSTR_stop,                           MP_ARG_INT,  {.u_int = 1} },
     { MP_QSTR_pins,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
 };
-STATIC mp_obj_t pyb_uart_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
+STATIC mp_obj_t pyb_uart_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     // parse args
     mp_map_t kw_args;
     mp_map_init_fixed_table(&kw_args, n_kw, all_args + n_args);
@@ -455,7 +454,7 @@ STATIC mp_obj_t pyb_uart_make_new(const mp_obj_type_t *type, mp_uint_t n_args, m
     if (args[0].u_obj == MP_OBJ_NULL) {
         if (args[5].u_obj != MP_OBJ_NULL) {
             mp_obj_t *pins;
-            mp_uint_t n_pins = 2;
+            size_t n_pins = 2;
             mp_obj_get_array(args[5].u_obj, &n_pins, &pins);
             // check the Tx pin (or the Rx if Tx is None)
             if (pins[0] == mp_const_none) {
@@ -472,7 +471,7 @@ STATIC mp_obj_t pyb_uart_make_new(const mp_obj_type_t *type, mp_uint_t n_args, m
     }
 
     if (uart_id > PYB_UART_1) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable);
+        mp_raise_OSError(MP_ENODEV);
     }
 
     // get the correct uart instance
@@ -486,7 +485,7 @@ STATIC mp_obj_t pyb_uart_make_new(const mp_obj_type_t *type, mp_uint_t n_args, m
     return self;
 }
 
-STATIC mp_obj_t pyb_uart_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t pyb_uart_init(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(pyb_uart_init_args) - 1];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &pyb_uart_init_args[1], args);
@@ -529,7 +528,7 @@ STATIC mp_obj_t pyb_uart_sendbreak(mp_obj_t self_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(pyb_uart_sendbreak_obj, pyb_uart_sendbreak);
 
 /// \method irq(trigger, priority, handler, wake)
-STATIC mp_obj_t pyb_uart_irq (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t pyb_uart_irq(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     mp_arg_val_t args[mp_irq_INIT_NUM_ARGS];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, mp_irq_INIT_NUM_ARGS, mp_irq_init_args, args);
 
@@ -560,29 +559,25 @@ invalid_args:
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(pyb_uart_irq_obj, 1, pyb_uart_irq);
 
-STATIC const mp_map_elem_t pyb_uart_locals_dict_table[] = {
+STATIC const mp_rom_map_elem_t pyb_uart_locals_dict_table[] = {
     // instance methods
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init),        (mp_obj_t)&pyb_uart_init_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),      (mp_obj_t)&pyb_uart_deinit_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_any),         (mp_obj_t)&pyb_uart_any_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_sendbreak),   (mp_obj_t)&pyb_uart_sendbreak_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_irq),         (mp_obj_t)&pyb_uart_irq_obj },
+    { MP_ROM_QSTR(MP_QSTR_init),        MP_ROM_PTR(&pyb_uart_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_deinit),      MP_ROM_PTR(&pyb_uart_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_any),         MP_ROM_PTR(&pyb_uart_any_obj) },
+    { MP_ROM_QSTR(MP_QSTR_sendbreak),   MP_ROM_PTR(&pyb_uart_sendbreak_obj) },
+    { MP_ROM_QSTR(MP_QSTR_irq),         MP_ROM_PTR(&pyb_uart_irq_obj) },
 
     /// \method read([nbytes])
-    { MP_OBJ_NEW_QSTR(MP_QSTR_read),        (mp_obj_t)&mp_stream_read_obj },
-    /// \method readall()
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readall),     (mp_obj_t)&mp_stream_readall_obj },
+    { MP_ROM_QSTR(MP_QSTR_read),        MP_ROM_PTR(&mp_stream_read_obj) },
     /// \method readline()
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readline),    (mp_obj_t)&mp_stream_unbuffered_readline_obj},
+    { MP_ROM_QSTR(MP_QSTR_readline),    MP_ROM_PTR(&mp_stream_unbuffered_readline_obj) },
     /// \method readinto(buf[, nbytes])
-    { MP_OBJ_NEW_QSTR(MP_QSTR_readinto),    (mp_obj_t)&mp_stream_readinto_obj },
+    { MP_ROM_QSTR(MP_QSTR_readinto),    MP_ROM_PTR(&mp_stream_readinto_obj) },
     /// \method write(buf)
-    { MP_OBJ_NEW_QSTR(MP_QSTR_write),       (mp_obj_t)&mp_stream_write_obj },
+    { MP_ROM_QSTR(MP_QSTR_write),       MP_ROM_PTR(&mp_stream_write_obj) },
 
     // class constants
-    { MP_OBJ_NEW_QSTR(MP_QSTR_EVEN),        MP_OBJ_NEW_SMALL_INT(UART_CONFIG_PAR_EVEN) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ODD),         MP_OBJ_NEW_SMALL_INT(UART_CONFIG_PAR_ODD) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_RX_ANY),      MP_OBJ_NEW_SMALL_INT(UART_TRIGGER_RX_ANY) },
+    { MP_ROM_QSTR(MP_QSTR_RX_ANY),      MP_ROM_INT(UART_TRIGGER_RX_ANY) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(pyb_uart_locals_dict, pyb_uart_locals_dict_table);
@@ -599,8 +594,8 @@ STATIC mp_uint_t pyb_uart_read(mp_obj_t self_in, void *buf_in, mp_uint_t size, i
 
     // wait for first char to become available
     if (!uart_rx_wait(self)) {
-        // return EAGAIN error to indicate non-blocking (then read() method returns None)
-        *errcode = EAGAIN;
+        // return MP_EAGAIN error to indicate non-blocking (then read() method returns None)
+        *errcode = MP_EAGAIN;
         return MP_STREAM_ERROR;
     }
 
@@ -622,7 +617,7 @@ STATIC mp_uint_t pyb_uart_write(mp_obj_t self_in, const void *buf_in, mp_uint_t 
 
     // write the data
     if (!uart_tx_strn(self, buf, size)) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_operation_failed);
+        mp_raise_OSError(MP_EIO);
     }
     return size;
 }
@@ -632,17 +627,17 @@ STATIC mp_uint_t pyb_uart_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint_t a
     mp_uint_t ret;
     uart_check_init(self);
 
-    if (request == MP_IOCTL_POLL) {
+    if (request == MP_STREAM_POLL) {
         mp_uint_t flags = arg;
         ret = 0;
-        if ((flags & MP_IOCTL_POLL_RD) && uart_rx_any(self)) {
-            ret |= MP_IOCTL_POLL_RD;
+        if ((flags & MP_STREAM_POLL_RD) && uart_rx_any(self)) {
+            ret |= MP_STREAM_POLL_RD;
         }
-        if ((flags & MP_IOCTL_POLL_WR) && MAP_UARTSpaceAvail(self->reg)) {
-            ret |= MP_IOCTL_POLL_WR;
+        if ((flags & MP_STREAM_POLL_WR) && MAP_UARTSpaceAvail(self->reg)) {
+            ret |= MP_STREAM_POLL_WR;
         }
     } else {
-        *errcode = EINVAL;
+        *errcode = MP_EINVAL;
         ret = MP_STREAM_ERROR;
     }
     return ret;
@@ -667,7 +662,7 @@ const mp_obj_type_t pyb_uart_type = {
     .name = MP_QSTR_UART,
     .print = pyb_uart_print,
     .make_new = pyb_uart_make_new,
-    .getiter = mp_identity,
+    .getiter = mp_identity_getiter,
     .iternext = mp_stream_unbuffered_iter,
     .protocol = &uart_stream_p,
     .locals_dict = (mp_obj_t)&pyb_uart_locals_dict,

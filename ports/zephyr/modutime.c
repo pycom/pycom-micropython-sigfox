@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -36,11 +36,11 @@
 #include "extmod/utime_mphal.h"
 
 STATIC mp_obj_t mod_time_time(void) {
-    /* The absense of FP support is deliberate. The Zephyr port uses
+    /* The absence of FP support is deliberate. The Zephyr port uses
      * single precision floats so the fraction component will start to
      * lose precision on devices with a long uptime.
      */
-    return mp_obj_new_int(sys_tick_get() / sys_clock_ticks_per_sec);
+    return mp_obj_new_int(k_uptime_get() / 1000);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_time_time_obj, mod_time_time);
 

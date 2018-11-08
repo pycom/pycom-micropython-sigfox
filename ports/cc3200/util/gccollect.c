@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -28,8 +28,6 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "py/mpconfig.h"
-#include "py/mpstate.h"
 #include "py/gc.h"
 #include "py/mpthread.h"
 #include "gccollect.h"

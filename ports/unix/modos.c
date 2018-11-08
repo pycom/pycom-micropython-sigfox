@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -34,19 +34,10 @@
 #include <dirent.h>
 #include "py/mpconfig.h"
 
-#include "py/nlr.h"
 #include "py/runtime.h"
 #include "py/objtuple.h"
 #include "py/mphal.h"
 #include "extmod/misc.h"
-
-// Can't include this, as FATFS structure definition is required,
-// and FatFs header defining it conflicts with POSIX.
-//#include "extmod/fsusermount.h"
-MP_DECLARE_CONST_FUN_OBJ_KW(fsuser_mount_obj);
-MP_DECLARE_CONST_FUN_OBJ_1(fsuser_umount_obj);
-MP_DECLARE_CONST_FUN_OBJ_KW(fsuser_mkfs_obj);
-extern const mp_obj_type_t mp_fat_vfs_type;
 
 #ifdef __ANDROID__
 #define USE_STATFS 1
@@ -54,8 +45,7 @@ extern const mp_obj_type_t mp_fat_vfs_type;
 
 STATIC mp_obj_t mod_os_stat(mp_obj_t path_in) {
     struct stat sb;
-    mp_uint_t len;
-    const char *path = mp_obj_str_get_data(path_in, &len);
+    const char *path = mp_obj_str_get_str(path_in);
 
     int res = stat(path, &sb);
     RAISE_ERRNO(res, errno);
@@ -67,7 +57,7 @@ STATIC mp_obj_t mod_os_stat(mp_obj_t path_in) {
     t->items[3] = MP_OBJ_NEW_SMALL_INT(sb.st_nlink);
     t->items[4] = MP_OBJ_NEW_SMALL_INT(sb.st_uid);
     t->items[5] = MP_OBJ_NEW_SMALL_INT(sb.st_gid);
-    t->items[6] = MP_OBJ_NEW_SMALL_INT(sb.st_size);
+    t->items[6] = mp_obj_new_int_from_uint(sb.st_size);
     t->items[7] = MP_OBJ_NEW_SMALL_INT(sb.st_atime);
     t->items[8] = MP_OBJ_NEW_SMALL_INT(sb.st_mtime);
     t->items[9] = MP_OBJ_NEW_SMALL_INT(sb.st_ctime);
@@ -95,8 +85,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_os_stat_obj, mod_os_stat);
 
 STATIC mp_obj_t mod_os_statvfs(mp_obj_t path_in) {
     STRUCT_STATVFS sb;
-    mp_uint_t len;
-    const char *path = mp_obj_str_get_data(path_in, &len);
+    const char *path = mp_obj_str_get_str(path_in);
 
     int res = STATVFS(path, &sb);
     RAISE_ERRNO(res, errno);
@@ -118,8 +107,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_os_statvfs_obj, mod_os_statvfs);
 #endif
 
 STATIC mp_obj_t mod_os_unlink(mp_obj_t path_in) {
-    mp_uint_t len;
-    const char *path = mp_obj_str_get_data(path_in, &len);
+    const char *path = mp_obj_str_get_str(path_in);
 
     int r = unlink(path);
 
@@ -145,7 +133,7 @@ STATIC mp_obj_t mod_os_getenv(mp_obj_t var_in) {
     if (s == NULL) {
         return mp_const_none;
     }
-    return mp_obj_new_str(s, strlen(s), false);
+    return mp_obj_new_str(s, strlen(s));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_os_getenv_obj, mod_os_getenv);
 
@@ -183,7 +171,7 @@ STATIC mp_obj_t listdir_next(mp_obj_t self_in) {
     }
 
     mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(3, NULL));
-    t->items[0] = mp_obj_new_str(dirent->d_name, strlen(dirent->d_name), false);
+    t->items[0] = mp_obj_new_str(dirent->d_name, strlen(dirent->d_name));
     #ifdef _DIRENT_HAVE_D_TYPE
     t->items[1] = MP_OBJ_NEW_SMALL_INT(dirent->d_type);
     #else
@@ -233,14 +221,6 @@ STATIC const mp_rom_map_elem_t mp_module_os_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_getenv), MP_ROM_PTR(&mod_os_getenv_obj) },
     { MP_ROM_QSTR(MP_QSTR_mkdir), MP_ROM_PTR(&mod_os_mkdir_obj) },
     { MP_ROM_QSTR(MP_QSTR_ilistdir), MP_ROM_PTR(&mod_os_ilistdir_obj) },
-    #if MICROPY_FSUSERMOUNT
-    { MP_ROM_QSTR(MP_QSTR_vfs_mount), MP_ROM_PTR(&fsuser_mount_obj) },
-    { MP_ROM_QSTR(MP_QSTR_vfs_umount), MP_ROM_PTR(&fsuser_umount_obj) },
-    { MP_ROM_QSTR(MP_QSTR_vfs_mkfs), MP_ROM_PTR(&fsuser_mkfs_obj) },
-    #endif
-    #if MICROPY_VFS_FAT
-    { MP_ROM_QSTR(MP_QSTR_VfsFat), MP_ROM_PTR(&mp_fat_vfs_type) },
-    #endif
     #if MICROPY_PY_OS_DUPTERM
     { MP_ROM_QSTR(MP_QSTR_dupterm), MP_ROM_PTR(&mp_uos_dupterm_obj) },
     #endif

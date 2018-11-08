@@ -119,7 +119,7 @@ USBD_StatusTypeDef USBD_Init(USBD_HandleTypeDef *pdev, USBD_DescriptorsTypeDef *
   pdev->dev_state  = USBD_STATE_DEFAULT;
   pdev->id = id;
   /* Initialize low level driver */
-  USBD_LL_Init(pdev);
+  USBD_LL_Init(pdev, 0);
   
   return USBD_OK; 
 }
@@ -155,7 +155,7 @@ USBD_StatusTypeDef USBD_DeInit(USBD_HandleTypeDef *pdev)
   * @param  pclass: Class handle
   * @retval USBD Status
   */
-USBD_StatusTypeDef  USBD_RegisterClass(USBD_HandleTypeDef *pdev, USBD_ClassTypeDef *pclass)
+USBD_StatusTypeDef  USBD_RegisterClass(USBD_HandleTypeDef *pdev, const USBD_ClassTypeDef *pclass)
 {
   USBD_StatusTypeDef   status = USBD_OK;
   if(pclass != 0)

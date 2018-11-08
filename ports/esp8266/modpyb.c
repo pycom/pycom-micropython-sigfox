@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -35,7 +35,7 @@
 // only remaining function is pyb.info() which has been moved to the
 // esp module, pending deletion/renaming/moving elsewhere.
 
-STATIC mp_obj_t pyb_info(mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t pyb_info(size_t n_args, const mp_obj_t *args) {
     // print info about memory
     {
         printf("_text_start=%p\n", &_text_start);

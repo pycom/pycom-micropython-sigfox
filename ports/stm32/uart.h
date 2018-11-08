@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -23,6 +23,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifndef MICROPY_INCLUDED_STM32_UART_H
+#define MICROPY_INCLUDED_STM32_UART_H
 
 typedef enum {
     PYB_UART_NONE = 0,
@@ -32,6 +34,8 @@ typedef enum {
     PYB_UART_4 = 4,
     PYB_UART_5 = 5,
     PYB_UART_6 = 6,
+    PYB_UART_7 = 7,
+    PYB_UART_8 = 8,
 } pyb_uart_t;
 
 typedef struct _pyb_uart_obj_t pyb_uart_obj_t;
@@ -41,7 +45,9 @@ void uart_init0(void);
 void uart_deinit(void);
 void uart_irq_handler(mp_uint_t uart_id);
 
+void uart_attach_to_repl(pyb_uart_obj_t *self, bool attached);
 mp_uint_t uart_rx_any(pyb_uart_obj_t *uart_obj);
 int uart_rx_char(pyb_uart_obj_t *uart_obj);
 void uart_tx_strn(pyb_uart_obj_t *uart_obj, const char *str, uint len);
-void uart_tx_strn_cooked(pyb_uart_obj_t *uart_obj, const char *str, uint len);
+
+#endif // MICROPY_INCLUDED_STM32_UART_H

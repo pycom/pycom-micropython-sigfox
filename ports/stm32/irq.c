@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -24,7 +24,6 @@
  * THE SOFTWARE.
  */
 
-#include "py/nlr.h"
 #include "py/obj.h"
 #include "py/mphal.h"
 #include "irq.h"

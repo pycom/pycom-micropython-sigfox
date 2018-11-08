@@ -4,13 +4,13 @@ BOOT_INC  = -Ibootmgr
 BOOT_INC += -Ibootmgr/sl
 BOOT_INC += -Ihal
 BOOT_INC += -Ihal/inc
-BOOT_INC += -I../drivers/cc3100/inc
+BOOT_INC += -I$(TOP)/drivers/cc3100/inc
 BOOT_INC += -Imisc
 BOOT_INC += -Imods
 BOOT_INC += -Isimplelink
 BOOT_INC += -Isimplelink/oslib
 BOOT_INC += -Iutil
-BOOT_INC += -I..
+BOOT_INC += -I$(TOP)
 BOOT_INC += -I.
 BOOT_INC += -I$(BUILD)
 
@@ -98,7 +98,7 @@ $(BUILD)/misc/%.o: CFLAGS += -Os
 $(BUILD)/simplelink/%.o: CFLAGS += -Os
 $(BUILD)/drivers/cc3100/%.o: CFLAGS += -Os
 $(BUILD)/py/%.o: CFLAGS += -Os
-$(BUILD)/stmhal/%.o: CFLAGS += -Os
+$(BUILD)/ports/stm32/%.o: CFLAGS += -Os
 else
 $(error Invalid BTYPE specified)
 endif

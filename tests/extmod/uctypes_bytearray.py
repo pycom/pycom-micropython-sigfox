@@ -1,4 +1,8 @@
-import uctypes
+try:
+    import uctypes
+except ImportError:
+    print("SKIP")
+    raise SystemExit
 
 desc = {
     "arr": (uctypes.ARRAY | 0, uctypes.UINT8 | 2),
@@ -13,3 +17,6 @@ S = uctypes.struct(uctypes.addressof(data), desc, uctypes.LITTLE_ENDIAN)
 print(S.arr)
 # But not INT8, because value range is different
 print(type(S.arr2))
+
+# convert to buffer
+print(bytearray(S))

@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -23,6 +23,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+#ifndef MICROPY_INCLUDED_STM32_SDCARD_H
+#define MICROPY_INCLUDED_STM32_SDCARD_H
 
 // this is a fixed size and should not be changed
 #define SDCARD_BLOCK_SIZE (512)
@@ -41,4 +43,6 @@ extern const struct _mp_obj_type_t pyb_sdcard_type;
 extern const struct _mp_obj_base_t pyb_sdcard_obj;
 
 struct _fs_user_mount_t;
-void sdcard_init_vfs(struct _fs_user_mount_t *vfs);
+void sdcard_init_vfs(struct _fs_user_mount_t *vfs, int part);
+
+#endif // MICROPY_INCLUDED_STM32_SDCARD_H

@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -28,11 +28,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "py/mpconfig.h"
-#include "py/nlr.h"
 #include "py/runtime.h"
 #include "py/binary.h"
 #include "py/gc.h"
+#include "py/mperrno.h"
 #include "bufhelper.h"
 #include "inc/hw_types.h"
 #include "inc/hw_adc.h"
@@ -104,7 +103,7 @@ STATIC void pyb_adc_init (pyb_adc_obj_t *self) {
 STATIC void pyb_adc_check_init(void) {
     // not initialized
     if (!pyb_adc_obj.enabled) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_request_not_possible);
+        mp_raise_OSError(MP_EPERM);
     }
 }
 
@@ -125,7 +124,7 @@ STATIC void pyb_adc_deinit_all_channels (void) {
 }
 
 /******************************************************************************/
-/* Micro Python bindings : adc object                                         */
+/* MicroPython bindings : adc object                                         */
 
 STATIC void adc_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     pyb_adc_obj_t *self = self_in;
@@ -140,7 +139,7 @@ STATIC const mp_arg_t pyb_adc_init_args[] = {
     { MP_QSTR_id,                          MP_ARG_INT, {.u_int = 0} },
     { MP_QSTR_bits,       MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 12} },
 };
-STATIC mp_obj_t adc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
+STATIC mp_obj_t adc_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     // parse args
     mp_map_t kw_args;
     mp_map_init_fixed_table(&kw_args, n_kw, all_args + n_args);
@@ -149,7 +148,7 @@ STATIC mp_obj_t adc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
 
     // check the peripheral id
     if (args[0].u_int != 0) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable);
+        mp_raise_OSError(MP_ENODEV);
     }
 
     // check the number of bits
@@ -167,7 +166,7 @@ STATIC mp_obj_t adc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
     return self;
 }
 
-STATIC mp_obj_t adc_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t adc_init(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(pyb_adc_init_args) - 1];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &pyb_adc_init_args[1], args);
@@ -192,7 +191,7 @@ STATIC mp_obj_t adc_deinit(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_deinit_obj, adc_deinit);
 
-STATIC mp_obj_t adc_channel(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t adc_channel(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     STATIC const mp_arg_t pyb_adc_channel_args[] = {
         { MP_QSTR_id,                          MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_pin,        MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
@@ -206,7 +205,7 @@ STATIC mp_obj_t adc_channel(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
     if (args[0].u_obj != MP_OBJ_NULL) {
         ch_id = mp_obj_get_int(args[0].u_obj);
         if (ch_id >= PYB_ADC_NUM_CHANNELS) {
-            mp_raise_ValueError(mpexception_os_resource_not_avaliable);
+            mp_raise_ValueError(mpexception_value_invalid_arguments);
         } else if (args[1].u_obj != mp_const_none) {
             uint pin_ch_id = pin_find_peripheral_type (args[1].u_obj, PIN_FN_ADC, 0);
             if (ch_id != pin_ch_id) {
@@ -227,10 +226,10 @@ STATIC mp_obj_t adc_channel(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(adc_channel_obj, 1, adc_channel);
 
-STATIC const mp_map_elem_t adc_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&adc_init_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&adc_deinit_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_channel),             (mp_obj_t)&adc_channel_obj },
+STATIC const mp_rom_map_elem_t adc_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_init),                MP_ROM_PTR(&adc_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_deinit),              MP_ROM_PTR(&adc_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_channel),             MP_ROM_PTR(&adc_channel_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(adc_locals_dict, adc_locals_dict_table);
@@ -277,7 +276,7 @@ STATIC mp_obj_t adc_channel_value(mp_obj_t self_in) {
 
     // the channel must be enabled
     if (!self->enabled) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_request_not_possible);
+        mp_raise_OSError(MP_EPERM);
     }
 
     // wait until a new value is available
@@ -289,15 +288,15 @@ STATIC mp_obj_t adc_channel_value(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(adc_channel_value_obj, adc_channel_value);
 
-STATIC mp_obj_t adc_channel_call(mp_obj_t self_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t adc_channel_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_arg_check_num(n_args, n_kw, 0, 0, false);
     return adc_channel_value (self_in);
 }
 
-STATIC const mp_map_elem_t adc_channel_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&adc_channel_init_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&adc_channel_deinit_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_value),               (mp_obj_t)&adc_channel_value_obj },
+STATIC const mp_rom_map_elem_t adc_channel_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_init),                MP_ROM_PTR(&adc_channel_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_deinit),              MP_ROM_PTR(&adc_channel_deinit_obj) },
+    { MP_ROM_QSTR(MP_QSTR_value),               MP_ROM_PTR(&adc_channel_value_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(adc_channel_locals_dict, adc_channel_locals_dict_table);

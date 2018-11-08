@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -29,6 +29,7 @@
 #include "py/mpconfig.h"
 #include "py/obj.h"
 #include "py/runtime.h"
+#include "py/mperrno.h"
 #include "py/mphal.h"
 #include "inc/hw_types.h"
 #include "inc/hw_gpio.h"
@@ -86,13 +87,13 @@ void pybwdt_sl_alive (void) {
 }
 
 /******************************************************************************/
-// Micro Python bindings
+// MicroPython bindings
 
 STATIC const mp_arg_t pyb_wdt_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_OBJ,  {.u_obj = mp_const_none} },
     { MP_QSTR_timeout,                        MP_ARG_INT,  {.u_int = 5000} },   // 5 s
 };
-STATIC mp_obj_t pyb_wdt_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
+STATIC mp_obj_t pyb_wdt_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     // check the arguments
     mp_map_t kw_args;
     mp_map_init_fixed_table(&kw_args, n_kw, all_args + n_args);
@@ -100,14 +101,14 @@ STATIC mp_obj_t pyb_wdt_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(args), pyb_wdt_init_args, args);
 
     if (args[0].u_obj != mp_const_none && mp_obj_get_int(args[0].u_obj) > 0) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable);
+        mp_raise_OSError(MP_ENODEV);
     }
     uint timeout_ms = args[1].u_int;
     if (timeout_ms < PYBWDT_MIN_TIMEOUT_MS) {
         mp_raise_ValueError(mpexception_value_invalid_arguments);
     }
     if (pyb_wdt_obj.running) {
-        mp_raise_msg(&mp_type_OSError, mpexception_os_request_not_possible);
+        mp_raise_OSError(MP_EPERM);
     }
 
     // Enable the WDT peripheral clock
@@ -145,8 +146,8 @@ STATIC mp_obj_t pyb_wdt_feed(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(pyb_wdt_feed_obj, pyb_wdt_feed);
 
-STATIC const mp_map_elem_t pybwdt_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_feed),   (mp_obj_t)&pyb_wdt_feed_obj },
+STATIC const mp_rom_map_elem_t pybwdt_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_feed), MP_ROM_PTR(&pyb_wdt_feed_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(pybwdt_locals_dict, pybwdt_locals_dict_table);
 

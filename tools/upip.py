@@ -1,3 +1,10 @@
+#
+# upip - Package manager for MicroPython
+#
+# Copyright (c) 2015-2018 Paul Sokolovsky
+#
+# Licensed under the MIT license.
+#
 import sys
 import gc
 import uos as os
@@ -104,48 +111,62 @@ import usocket
 warn_ussl = True
 def url_open(url):
     global warn_ussl
+
+    if debug:
+        print(url)
+
     proto, _, host, urlpath = url.split('/', 3)
-    ai = usocket.getaddrinfo(host, 443)
+    try:
+        ai = usocket.getaddrinfo(host, 443, 0, usocket.SOCK_STREAM)
+    except OSError as e:
+        fatal("Unable to resolve %s (no Internet?)" % host, e)
     #print("Address infos:", ai)
-    addr = ai[0][4]
+    ai = ai[0]
 
-    s = usocket.socket(ai[0][0])
-    #print("Connect address:", addr)
-    s.connect(addr)
+    s = usocket.socket(ai[0], ai[1], ai[2])
+    try:
+        #print("Connect address:", addr)
+        s.connect(ai[-1])
 
-    if proto == "https:":
-        s = ussl.wrap_socket(s)
-        if warn_ussl:
-            print("Warning: %s SSL certificate is not validated" % host)
-            warn_ussl = False
+        if proto == "https:":
+            s = ussl.wrap_socket(s, server_hostname=host)
+            if warn_ussl:
+                print("Warning: %s SSL certificate is not validated" % host)
+                warn_ussl = False
 
-    # MicroPython rawsocket module supports file interface directly
-    s.write("GET /%s HTTP/1.0\r\nHost: %s\r\n\r\n" % (urlpath, host))
-    l = s.readline()
-    protover, status, msg = l.split(None, 2)
-    if status != b"200":
-        if status == b"404":
-            print("Package not found")
-        raise ValueError(status)
-    while 1:
+        # MicroPython rawsocket module supports file interface directly
+        s.write("GET /%s HTTP/1.0\r\nHost: %s\r\n\r\n" % (urlpath, host))
         l = s.readline()
-        if not l:
-            raise ValueError("Unexpected EOF")
-        if l == b'\r\n':
-            break
+        protover, status, msg = l.split(None, 2)
+        if status != b"200":
+            if status == b"404" or status == b"301":
+                raise NotFoundError("Package not found")
+            raise ValueError(status)
+        while 1:
+            l = s.readline()
+            if not l:
+                raise ValueError("Unexpected EOF in HTTP headers")
+            if l == b'\r\n':
+                break
+    except Exception as e:
+        s.close()
+        raise e
 
     return s
 
 
 def get_pkg_metadata(name):
-    f = url_open("https://pypi.python.org/pypi/%s/json" % name)
-    s = f.read()
-    f.close()
-    return json.loads(s)
+    f = url_open("https://pypi.org/pypi/%s/json" % name)
+    try:
+        return json.load(f)
+    finally:
+        f.close()
 
 
-def fatal(msg):
-    print(msg)
+def fatal(msg, exc=None):
+    print("Error:", msg)
+    if exc and debug:
+        raise exc
     sys.exit(1)
 
 def install_pkg(pkg_spec, install_path):
@@ -160,10 +181,12 @@ def install_pkg(pkg_spec, install_path):
     print("Installing %s %s from %s" % (pkg_spec, latest_ver, package_url))
     package_fname = op_basename(package_url)
     f1 = url_open(package_url)
-    f2 = uzlib.DecompIO(f1, gzdict_sz)
-    f3 = tarfile.TarFile(fileobj=f2)
-    meta = install_tar(f3, install_path)
-    f1.close()
+    try:
+        f2 = uzlib.DecompIO(f1, gzdict_sz)
+        f3 = tarfile.TarFile(fileobj=f2)
+        meta = install_tar(f3, install_path)
+    finally:
+        f1.close()
     del f3
     del f2
     gc.collect()
@@ -200,9 +223,10 @@ def install(to_install, install_path=None):
             if deps:
                 deps = deps.decode("utf-8").split("\n")
                 to_install.extend(deps)
-    except NotFoundError:
-        print("Error: cannot find '%s' package (or server error), packages may be partially installed" \
-            % pkg_spec, file=sys.stderr)
+    except Exception as e:
+        print("Error installing '{}': {}, packages may be partially installed".format(
+                pkg_spec, e),
+            file=sys.stderr)
 
 def get_install_path():
     global install_path
@@ -267,6 +291,8 @@ def main():
                     l = f.readline()
                     if not l:
                         break
+                    if l[0] == "#":
+                        continue
                     to_install.append(l.rstrip())
         elif opt == "--debug":
             debug = True

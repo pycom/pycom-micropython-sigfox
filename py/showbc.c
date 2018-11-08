@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -82,7 +82,6 @@ const mp_uint_t *mp_showbc_const_table;
 
 void mp_bytecode_print(const void *descr, const byte *ip, mp_uint_t len, const mp_uint_t *const_table) {
     mp_showbc_code_start = ip;
-    mp_showbc_const_table = const_table;
 
     // get bytecode parameters
     mp_uint_t n_state = mp_decode_uint(&ip);
@@ -159,7 +158,7 @@ void mp_bytecode_print(const void *descr, const byte *ip, mp_uint_t len, const m
             printf("  bc=" INT_FMT " line=" UINT_FMT "\n", bc, source_line);
         }
     }
-    mp_bytecode_print2(ip, len - 0);
+    mp_bytecode_print2(ip, len - 0, const_table);
 }
 
 const byte *mp_bytecode_print_str(const byte *ip) {
@@ -244,6 +243,11 @@ const byte *mp_bytecode_print_str(const byte *ip) {
         case MP_BC_LOAD_METHOD:
             DECODE_QSTR;
             printf("LOAD_METHOD %s", qstr_str(qst));
+            break;
+
+        case MP_BC_LOAD_SUPER_METHOD:
+            DECODE_QSTR;
+            printf("LOAD_SUPER_METHOD %s", qstr_str(qst));
             break;
 
         case MP_BC_LOAD_BUILD_CLASS:
@@ -386,6 +390,10 @@ const byte *mp_bytecode_print_str(const byte *ip) {
 
         case MP_BC_GET_ITER:
             printf("GET_ITER");
+            break;
+
+        case MP_BC_GET_ITER_STACK:
+            printf("GET_ITER_STACK");
             break;
 
         case MP_BC_FOR_ITER:
@@ -531,9 +539,9 @@ const byte *mp_bytecode_print_str(const byte *ip) {
                 printf("LOAD_FAST " UINT_FMT, (mp_uint_t)ip[-1] - MP_BC_LOAD_FAST_MULTI);
             } else if (ip[-1] < MP_BC_STORE_FAST_MULTI + 16) {
                 printf("STORE_FAST " UINT_FMT, (mp_uint_t)ip[-1] - MP_BC_STORE_FAST_MULTI);
-            } else if (ip[-1] < MP_BC_UNARY_OP_MULTI + 7) {
+            } else if (ip[-1] < MP_BC_UNARY_OP_MULTI + MP_UNARY_OP_NUM_BYTECODE) {
                 printf("UNARY_OP " UINT_FMT, (mp_uint_t)ip[-1] - MP_BC_UNARY_OP_MULTI);
-            } else if (ip[-1] < MP_BC_BINARY_OP_MULTI + 36) {
+            } else if (ip[-1] < MP_BC_BINARY_OP_MULTI + MP_BINARY_OP_NUM_BYTECODE) {
                 mp_uint_t op = ip[-1] - MP_BC_BINARY_OP_MULTI;
                 printf("BINARY_OP " UINT_FMT " %s", op, qstr_str(mp_binary_op_method_name[op]));
             } else {
@@ -547,8 +555,9 @@ const byte *mp_bytecode_print_str(const byte *ip) {
     return ip;
 }
 
-void mp_bytecode_print2(const byte *ip, mp_uint_t len) {
+void mp_bytecode_print2(const byte *ip, size_t len, const mp_uint_t *const_table) {
     mp_showbc_code_start = ip;
+    mp_showbc_const_table = const_table;
     while (ip < len + mp_showbc_code_start) {
         printf("%02u ", (uint)(ip - mp_showbc_code_start));
         ip = mp_bytecode_print_str(ip);

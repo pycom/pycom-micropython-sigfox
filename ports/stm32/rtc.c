@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -26,12 +26,9 @@
 
 #include <stdio.h>
 
-#include STM32_HAL_H
-
 #include "py/runtime.h"
 #include "rtc.h"
 #include "irq.h"
-#include "mphalport.h"
 
 /// \moduleref pyb
 /// \class RTC - real time clock
@@ -135,13 +132,14 @@ void rtc_init_start(bool force_init) {
             // provide some status information
             rtc_info |= 0x40000 | (RCC->BDCR & 7) | (RCC->CSR & 3) << 8;
             return;
-        } else if (((RCC->BDCR & RCC_BDCR_RTCSEL) == RCC_BDCR_RTCSEL_1) && ((RCC->CSR & 3) == 3)) {
-            // LSI configured & enabled & ready --> no need to (re-)init RTC
+        } else if ((RCC->BDCR & RCC_BDCR_RTCSEL) == RCC_BDCR_RTCSEL_1) {
+            // LSI configured as the RTC clock source --> no need to (re-)init RTC
             // remove Backup Domain write protection
             HAL_PWR_EnableBkUpAccess();
             // Clear source Reset Flag
             __HAL_RCC_CLEAR_RESET_FLAGS();
-            RCC->CSR |= 1;
+            // Turn the LSI on (it may need this even if the RTC is running)
+            RCC->CSR |= RCC_CSR_LSION;
             // provide some status information
             rtc_info |= 0x80000 | (RCC->BDCR & 7) | (RCC->CSR & 3) << 8;
             return;
@@ -165,7 +163,7 @@ void rtc_init_finalise() {
         return;
     }
 
-    rtc_info = 0x20000000 | (rtc_use_lse << 28);
+    rtc_info = 0x20000000;
     if (PYB_RTC_Init(&RTCHandle) != HAL_OK) {
         if (rtc_use_lse) {
             // fall back to LSI...
@@ -185,12 +183,15 @@ void rtc_init_finalise() {
         }
     }
 
+    // record if LSE or LSI is used
+    rtc_info |= (rtc_use_lse << 28);
+
     // record how long it took for the RTC to start up
     rtc_info |= (HAL_GetTick() - rtc_startup_tick) & 0xffff;
 
     // fresh reset; configure RTC Calendar
     RTC_CalendarConfig();
-    #if defined(MCU_SERIES_L4)
+    #if defined(STM32L4)
     if(__HAL_RCC_GET_FLAG(RCC_FLAG_BORRST) != RESET) {
     #else
     if(__HAL_RCC_GET_FLAG(RCC_FLAG_PORRST) != RESET) {
@@ -222,12 +223,16 @@ STATIC HAL_StatusTypeDef PYB_RCC_OscConfig(RCC_OscInitTypeDef  *RCC_OscInitStruc
 
     /*------------------------------ LSE Configuration -------------------------*/
     if ((RCC_OscInitStruct->OscillatorType & RCC_OSCILLATORTYPE_LSE) == RCC_OSCILLATORTYPE_LSE) {
+        #if !defined(STM32H7)
         // Enable Power Clock
-        __PWR_CLK_ENABLE();
+        __HAL_RCC_PWR_CLK_ENABLE();
+        #endif
+
+        // Enable access to the backup domain
         HAL_PWR_EnableBkUpAccess();
         uint32_t tickstart = HAL_GetTick();
 
-        #if defined(MCU_SERIES_F7) || defined(MCU_SERIES_L4)
+        #if defined(STM32F7) || defined(STM32L4) || defined(STM32H7)
         //__HAL_RCC_PWR_CLK_ENABLE();
         // Enable write access to Backup domain
         //PWR->CR1 |= PWR_CR1_DBP;
@@ -242,7 +247,7 @@ STATIC HAL_StatusTypeDef PYB_RCC_OscConfig(RCC_OscInitTypeDef  *RCC_OscInitStruc
         //PWR->CR |= PWR_CR_DBP;
         // Wait for Backup domain Write protection disable
         while ((PWR->CR & PWR_CR_DBP) == RESET) {
-            if (HAL_GetTick() - tickstart > DBP_TIMEOUT_VALUE) {
+            if (HAL_GetTick() - tickstart > RCC_DBP_TIMEOUT_VALUE) {
                 return HAL_TIMEOUT;
             }
         }
@@ -297,10 +302,10 @@ STATIC HAL_StatusTypeDef PYB_RTC_Init(RTC_HandleTypeDef *hrtc) {
         // Exit Initialization mode
         hrtc->Instance->ISR &= (uint32_t)~RTC_ISR_INIT;
 
-        #if defined(MCU_SERIES_L4)
+        #if defined(STM32L4) || defined(STM32H7)
         hrtc->Instance->OR &= (uint32_t)~RTC_OR_ALARMOUTTYPE;
         hrtc->Instance->OR |= (uint32_t)(hrtc->Init.OutPutType);
-        #elif defined(MCU_SERIES_F7)
+        #elif defined(STM32F7)
         hrtc->Instance->OR &= (uint32_t)~RTC_OR_ALARMTYPE;
         hrtc->Instance->OR |= (uint32_t)(hrtc->Init.OutPutType);
         #else
@@ -334,7 +339,11 @@ STATIC void PYB_RTC_MspInit_Kick(RTC_HandleTypeDef *hrtc, bool rtc_use_lse) {
     RCC_OscInitStruct.OscillatorType =  RCC_OSCILLATORTYPE_LSI | RCC_OSCILLATORTYPE_LSE;
     RCC_OscInitStruct.PLL.PLLState = RCC_PLL_NONE;
     if (rtc_use_lse) {
+        #if MICROPY_HW_RTC_USE_BYPASS
+        RCC_OscInitStruct.LSEState = RCC_LSE_BYPASS;
+        #else
         RCC_OscInitStruct.LSEState = RCC_LSE_ON;
+        #endif
         RCC_OscInitStruct.LSIState = RCC_LSI_OFF;
     } else {
         RCC_OscInitStruct.LSEState = RCC_LSE_OFF;
@@ -394,7 +403,7 @@ STATIC void RTC_CalendarConfig(void) {
     date.Date = 1;
     date.WeekDay = RTC_WEEKDAY_THURSDAY;
 
-    if(HAL_RTC_SetDate(&RTCHandle, &date, FORMAT_BIN) != HAL_OK) {
+    if(HAL_RTC_SetDate(&RTCHandle, &date, RTC_FORMAT_BIN) != HAL_OK) {
         // init error
         return;
     }
@@ -408,14 +417,14 @@ STATIC void RTC_CalendarConfig(void) {
     time.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
     time.StoreOperation = RTC_STOREOPERATION_RESET;
 
-    if (HAL_RTC_SetTime(&RTCHandle, &time, FORMAT_BIN) != HAL_OK) {
+    if (HAL_RTC_SetTime(&RTCHandle, &time, RTC_FORMAT_BIN) != HAL_OK) {
         // init error
         return;
     }
 }
 
 /******************************************************************************/
-// Micro Python bindings
+// MicroPython bindings
 
 typedef struct _pyb_rtc_obj_t {
     mp_obj_base_t base;
@@ -425,7 +434,7 @@ STATIC const pyb_rtc_obj_t pyb_rtc_obj = {{&pyb_rtc_type}};
 
 /// \classmethod \constructor()
 /// Create an RTC object.
-STATIC mp_obj_t pyb_rtc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t pyb_rtc_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     // check arguments
     mp_arg_check_num(n_args, n_kw, 0, 0, false);
 
@@ -484,15 +493,15 @@ uint32_t rtc_us_to_subsec(uint32_t us) {
 #define rtc_subsec_to_us
 #endif
 
-mp_obj_t pyb_rtc_datetime(mp_uint_t n_args, const mp_obj_t *args) {
+mp_obj_t pyb_rtc_datetime(size_t n_args, const mp_obj_t *args) {
     rtc_init_finalise();
     if (n_args == 1) {
         // get date and time
         // note: need to call get time then get date to correctly access the registers
         RTC_DateTypeDef date;
         RTC_TimeTypeDef time;
-        HAL_RTC_GetTime(&RTCHandle, &time, FORMAT_BIN);
-        HAL_RTC_GetDate(&RTCHandle, &date, FORMAT_BIN);
+        HAL_RTC_GetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
+        HAL_RTC_GetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
         mp_obj_t tuple[8] = {
             mp_obj_new_int(2000 + date.Year),
             mp_obj_new_int(date.Month),
@@ -514,7 +523,7 @@ mp_obj_t pyb_rtc_datetime(mp_uint_t n_args, const mp_obj_t *args) {
         date.Month = mp_obj_get_int(items[1]);
         date.Date = mp_obj_get_int(items[2]);
         date.WeekDay = mp_obj_get_int(items[3]);
-        HAL_RTC_SetDate(&RTCHandle, &date, FORMAT_BIN);
+        HAL_RTC_SetDate(&RTCHandle, &date, RTC_FORMAT_BIN);
 
         RTC_TimeTypeDef time;
         time.Hours = mp_obj_get_int(items[4]);
@@ -524,7 +533,7 @@ mp_obj_t pyb_rtc_datetime(mp_uint_t n_args, const mp_obj_t *args) {
         time.TimeFormat = RTC_HOURFORMAT12_AM;
         time.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
         time.StoreOperation = RTC_STOREOPERATION_SET;
-        HAL_RTC_SetTime(&RTCHandle, &time, FORMAT_BIN);
+        HAL_RTC_SetTime(&RTCHandle, &time, RTC_FORMAT_BIN);
 
         return mp_const_none;
     }
@@ -534,7 +543,7 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_rtc_datetime_obj, 1, 2, pyb_rtc_datetime
 // wakeup(None)
 // wakeup(ms, callback=None)
 // wakeup(wucksel, wut, callback)
-mp_obj_t pyb_rtc_wakeup(mp_uint_t n_args, const mp_obj_t *args) {
+mp_obj_t pyb_rtc_wakeup(size_t n_args, const mp_obj_t *args) {
     // wut is wakeup counter start value, wucksel is clock source
     // counter is decremented at wucksel rate, and wakes the MCU when it gets to 0
     // wucksel=0b000 is RTC/16 (RTC runs at 32768Hz)
@@ -578,7 +587,7 @@ mp_obj_t pyb_rtc_wakeup(mp_uint_t n_args, const mp_obj_t *args) {
                     wut -= 0x10000;
                     if (wut > 0x10000) {
                         // wut still too large
-                        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "wakeup value too large"));
+                        mp_raise_ValueError("wakeup value too large");
                     }
                 }
             }
@@ -626,9 +635,12 @@ mp_obj_t pyb_rtc_wakeup(mp_uint_t n_args, const mp_obj_t *args) {
         RTC->WPR = 0xff;
 
         // enable external interrupts on line 22
-        #if defined(MCU_SERIES_L4)
+        #if defined(STM32L4)
         EXTI->IMR1 |= 1 << 22;
         EXTI->RTSR1 |= 1 << 22;
+        #elif defined(STM32H7)
+        EXTI_D1->IMR1 |= 1 << 22;
+        EXTI->RTSR1   |= 1 << 22;
         #else
         EXTI->IMR |= 1 << 22;
         EXTI->RTSR |= 1 << 22;
@@ -636,13 +648,15 @@ mp_obj_t pyb_rtc_wakeup(mp_uint_t n_args, const mp_obj_t *args) {
 
         // clear interrupt flags
         RTC->ISR &= ~(1 << 10);
-        #if defined(MCU_SERIES_L4)
+        #if defined(STM32L4)
         EXTI->PR1 = 1 << 22;
+        #elif defined(STM32H7)
+        EXTI_D1->PR1 = 1 << 22;
         #else
         EXTI->PR = 1 << 22;
         #endif
 
-        HAL_NVIC_SetPriority(RTC_WKUP_IRQn, IRQ_PRI_RTC_WKUP, IRQ_SUBPRI_RTC_WKUP);
+        NVIC_SetPriority(RTC_WKUP_IRQn, IRQ_PRI_RTC_WKUP);
         HAL_NVIC_EnableIRQ(RTC_WKUP_IRQn);
 
         //printf("wut=%d wucksel=%d\n", wut, wucksel);
@@ -654,8 +668,10 @@ mp_obj_t pyb_rtc_wakeup(mp_uint_t n_args, const mp_obj_t *args) {
         RTC->WPR = 0xff;
 
         // disable external interrupts on line 22
-        #if defined(MCU_SERIES_L4)
+        #if defined(STM32L4)
         EXTI->IMR1 &= ~(1 << 22);
+        #elif defined(STM32H7)
+        EXTI_D1->IMR1 |= 1 << 22;
         #else
         EXTI->IMR &= ~(1 << 22);
         #endif
@@ -669,7 +685,7 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_rtc_wakeup_obj, 2, 4, pyb_rtc_wakeup);
 // calibration(cal)
 // When an integer argument is provided, check that it falls in the range [-511 to 512]
 // and set the calibration value; otherwise return calibration value
-mp_obj_t pyb_rtc_calibration(mp_uint_t n_args, const mp_obj_t *args) {
+mp_obj_t pyb_rtc_calibration(size_t n_args, const mp_obj_t *args) {
     rtc_init_finalise();
     mp_int_t cal;
     if (n_args == 2) {
@@ -688,12 +704,10 @@ mp_obj_t pyb_rtc_calibration(mp_uint_t n_args, const mp_obj_t *args) {
                 }
                 return mp_obj_new_int(cal & 1);
             } else {
-                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError,
-                               "calibration value out of range"));
+                mp_raise_ValueError("calibration value out of range");
             }
 #else
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError,
-                "calibration value out of range"));
+            mp_raise_ValueError("calibration value out of range");
 #endif
         }
         if (cal > 0) {
@@ -718,12 +732,12 @@ mp_obj_t pyb_rtc_calibration(mp_uint_t n_args, const mp_obj_t *args) {
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(pyb_rtc_calibration_obj, 1, 2, pyb_rtc_calibration);
 
-STATIC const mp_map_elem_t pyb_rtc_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init), (mp_obj_t)&pyb_rtc_init_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_info), (mp_obj_t)&pyb_rtc_info_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_datetime), (mp_obj_t)&pyb_rtc_datetime_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_wakeup), (mp_obj_t)&pyb_rtc_wakeup_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_calibration), (mp_obj_t)&pyb_rtc_calibration_obj },
+STATIC const mp_rom_map_elem_t pyb_rtc_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&pyb_rtc_init_obj) },
+    { MP_ROM_QSTR(MP_QSTR_info), MP_ROM_PTR(&pyb_rtc_info_obj) },
+    { MP_ROM_QSTR(MP_QSTR_datetime), MP_ROM_PTR(&pyb_rtc_datetime_obj) },
+    { MP_ROM_QSTR(MP_QSTR_wakeup), MP_ROM_PTR(&pyb_rtc_wakeup_obj) },
+    { MP_ROM_QSTR(MP_QSTR_calibration), MP_ROM_PTR(&pyb_rtc_calibration_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(pyb_rtc_locals_dict, pyb_rtc_locals_dict_table);
 
@@ -731,5 +745,5 @@ const mp_obj_type_t pyb_rtc_type = {
     { &mp_type_type },
     .name = MP_QSTR_RTC,
     .make_new = pyb_rtc_make_new,
-    .locals_dict = (mp_obj_t)&pyb_rtc_locals_dict,
+    .locals_dict = (mp_obj_dict_t*)&pyb_rtc_locals_dict,
 };

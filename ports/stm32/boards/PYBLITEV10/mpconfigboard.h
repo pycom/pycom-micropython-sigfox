@@ -1,19 +1,14 @@
 #define MICROPY_HW_BOARD_NAME       "PYBLITEv1.0"
 #define MICROPY_HW_MCU_NAME         "STM32F411RE"
-#define MICROPY_PY_SYS_PLATFORM     "pyboard"
 
 #define MICROPY_HW_HAS_SWITCH       (1)
 #define MICROPY_HW_HAS_FLASH        (1)
 #define MICROPY_HW_HAS_SDCARD       (1)
 #define MICROPY_HW_HAS_MMA7660      (1)
-#define MICROPY_HW_HAS_LIS3DSH      (0)
 #define MICROPY_HW_HAS_LCD          (1)
-#define MICROPY_HW_ENABLE_RNG       (0)
 #define MICROPY_HW_ENABLE_RTC       (1)
-#define MICROPY_HW_ENABLE_TIMER     (1)
+#define MICROPY_HW_ENABLE_USB       (1)
 #define MICROPY_HW_ENABLE_SERVO     (1)
-#define MICROPY_HW_ENABLE_DAC       (0)
-#define MICROPY_HW_ENABLE_CAN       (0)
 
 // HSE is 12MHz
 #define MICROPY_HW_CLK_PLLM (12)
@@ -28,17 +23,17 @@
 #define MICROPY_HW_RTC_USE_CALOUT   (1)
 
 // UART config
-#define MICROPY_HW_UART1_NAME "XB"
-#define MICROPY_HW_UART1_PORT (GPIOB)
-#define MICROPY_HW_UART1_PINS (GPIO_PIN_6 | GPIO_PIN_7)
-#define MICROPY_HW_UART2_NAME "XA"
-#define MICROPY_HW_UART2_PORT (GPIOA)
-#define MICROPY_HW_UART2_PINS (GPIO_PIN_2 | GPIO_PIN_3)
-#define MICROPY_HW_UART2_RTS  (GPIO_PIN_1)
-#define MICROPY_HW_UART2_CTS  (GPIO_PIN_0)
-#define MICROPY_HW_UART6_NAME "YA"
-#define MICROPY_HW_UART6_PORT (GPIOC)
-#define MICROPY_HW_UART6_PINS (GPIO_PIN_6 | GPIO_PIN_7)
+#define MICROPY_HW_UART1_NAME   "XB"
+#define MICROPY_HW_UART1_TX     (pin_B6)
+#define MICROPY_HW_UART1_RX     (pin_B7)
+#define MICROPY_HW_UART2_NAME   "XA"
+#define MICROPY_HW_UART2_TX     (pin_A2)
+#define MICROPY_HW_UART2_RX     (pin_A3)
+#define MICROPY_HW_UART2_RTS    (pin_A1)
+#define MICROPY_HW_UART2_CTS    (pin_A0)
+#define MICROPY_HW_UART6_NAME   "YA"
+#define MICROPY_HW_UART6_TX     (pin_C6)
+#define MICROPY_HW_UART6_RX     (pin_C7)
 
 // I2C busses
 #define MICROPY_HW_I2C1_NAME "X"
@@ -82,6 +77,7 @@
 #define MICROPY_HW_SDCARD_DETECT_PRESENT    (GPIO_PIN_RESET)
 
 // USB config
+#define MICROPY_HW_USB_FS              (1)
 #define MICROPY_HW_USB_VBUS_DETECT_PIN (pin_A9)
 
 // MMA accelerometer config

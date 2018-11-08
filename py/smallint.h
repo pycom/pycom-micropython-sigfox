@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -23,8 +23,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef __MICROPY_INCLUDED_PY_SMALLINT_H__
-#define __MICROPY_INCLUDED_PY_SMALLINT_H__
+#ifndef MICROPY_INCLUDED_PY_SMALLINT_H
+#define MICROPY_INCLUDED_PY_SMALLINT_H
 
 #include "py/mpconfig.h"
 #include "py/misc.h"
@@ -50,10 +50,10 @@
 
 #elif MICROPY_OBJ_REPR == MICROPY_OBJ_REPR_D
 
-#define MP_SMALL_INT_MIN ((mp_int_t)(((mp_int_t)0xffffffff80000000) >> 1))
-#define MP_SMALL_INT_FITS(n) ((((n) ^ ((n) << 1)) & 0xffffffff80000000) == 0)
+#define MP_SMALL_INT_MIN ((mp_int_t)(((mp_int_t)0xffff800000000000) >> 1))
+#define MP_SMALL_INT_FITS(n) ((((n) ^ ((n) << 1)) & 0xffff800000000000) == 0)
 // Mask to truncate mp_int_t to positive value
-#define MP_SMALL_INT_POSITIVE_MASK ~(0xffffffff80000000 | (0xffffffff80000000 >> 1))
+#define MP_SMALL_INT_POSITIVE_MASK ~(0xffff800000000000 | (0xffff800000000000 >> 1))
 
 #endif
 
@@ -65,4 +65,4 @@ bool mp_small_int_mul_overflow(mp_int_t x, mp_int_t y);
 mp_int_t mp_small_int_modulo(mp_int_t dividend, mp_int_t divisor);
 mp_int_t mp_small_int_floor_divide(mp_int_t num, mp_int_t denom);
 
-#endif // __MICROPY_INCLUDED_PY_SMALLINT_H__
+#endif // MICROPY_INCLUDED_PY_SMALLINT_H

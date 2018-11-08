@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -27,11 +27,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "py/nlr.h"
 #include "py/compile.h"
-#include "py/runtime0.h"
 #include "py/runtime.h"
 #include "py/stackctrl.h"
+#include "py/mperrno.h"
 #include "py/mphal.h"
 #include "py/gc.h"
 #include "lib/mp-readline/readline.h"
@@ -52,19 +51,19 @@ STATIC void mp_reset(void) {
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_lib));
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_));
     mp_obj_list_init(mp_sys_argv, 0);
-    #if MICROPY_VFS_FAT
-    memset(MP_STATE_PORT(fs_user_mount), 0, sizeof(MP_STATE_PORT(fs_user_mount)));
+    #if MICROPY_EMIT_XTENSA || MICROPY_EMIT_INLINE_XTENSA
+    extern void esp_native_code_init(void);
+    esp_native_code_init();
     #endif
-    MP_STATE_PORT(mp_kbd_exception) = mp_obj_new_exception(&mp_type_KeyboardInterrupt);
-    MP_STATE_PORT(term_obj) = MP_OBJ_NULL;
-    MP_STATE_PORT(dupterm_arr_obj) = MP_OBJ_NULL;
     pin_init0();
     readline_init0();
     dupterm_task_init();
 #if MICROPY_MODULE_FROZEN
     pyexec_frozen_module("_boot.py");
     pyexec_file("boot.py");
-    pyexec_file("main.py");
+    if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
+        pyexec_file("main.py");
+    }
 #endif
 }
 
@@ -109,37 +108,22 @@ void user_init(void) {
     system_init_done_cb(init_done);
 }
 
-mp_lexer_t *fat_vfs_lexer_new_from_file(const char *filename);
-mp_import_stat_t fat_vfs_import_stat(const char *path);
-
+#if !MICROPY_VFS
 mp_lexer_t *mp_lexer_new_from_file(const char *filename) {
-    #if MICROPY_VFS_FAT
-    return fat_vfs_lexer_new_from_file(filename);
-    #else
-    (void)filename;
-    return NULL;
-    #endif
+    mp_raise_OSError(MP_ENOENT);
 }
 
 mp_import_stat_t mp_import_stat(const char *path) {
-    #if MICROPY_VFS_FAT
-    return fat_vfs_import_stat(path);
-    #else
     (void)path;
     return MP_IMPORT_STAT_NO_EXIST;
-    #endif
 }
 
-mp_obj_t vfs_proxy_call(qstr method_name, mp_uint_t n_args, const mp_obj_t *args);
-mp_obj_t mp_builtin_open(uint n_args, const mp_obj_t *args, mp_map_t *kwargs) {
-    #if MICROPY_VFS_FAT
-    // TODO: Handle kwargs!
-    return vfs_proxy_call(MP_QSTR_open, n_args, args);
-    #else
+mp_obj_t mp_builtin_open(size_t n_args, const mp_obj_t *args, mp_map_t *kwargs) {
     return mp_const_none;
-    #endif
 }
 MP_DEFINE_CONST_FUN_OBJ_KW(mp_builtin_open_obj, 1, mp_builtin_open);
+
+#endif
 
 void MP_FASTCODE(nlr_jump_fail)(void *val) {
     printf("NLR jump failed\n");
@@ -153,3 +137,17 @@ void __assert(const char *file, int line, const char *expr) {
     for (;;) {
     }
 }
+
+#if !MICROPY_DEBUG_PRINTERS
+// With MICROPY_DEBUG_PRINTERS disabled DEBUG_printf is not defined but it
+// is still needed by esp-open-lwip for debugging output, so define it here.
+#include <stdarg.h>
+int mp_vprintf(const mp_print_t *print, const char *fmt, va_list args);
+int DEBUG_printf(const char *fmt, ...) {
+    va_list ap;
+    va_start(ap, fmt);
+    int ret = mp_vprintf(&MICROPY_DEBUG_PRINTER_DEST, fmt, ap);
+    va_end(ap);
+    return ret;
+}
+#endif

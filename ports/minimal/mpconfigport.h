@@ -1,6 +1,11 @@
 #include <stdint.h>
 
-// options to control how Micro Python is built
+// options to control how MicroPython is built
+
+// You can disable the built-in MicroPython compiler by setting the following
+// config option to 0.  If you do this then you won't get a REPL prompt, but you
+// will still be able to execute pre-compiled scripts, compiled with mpy-cross.
+#define MICROPY_ENABLE_COMPILER     (1)
 
 #define MICROPY_QSTR_BYTES_IN_HASH  (1)
 #define MICROPY_QSTR_EXTRA_POOL     mp_qstr_frozen_const_pool
@@ -52,8 +57,6 @@
 
 // type definitions for the specific machine
 
-#define BYTES_PER_WORD (4)
-
 #define MICROPY_MAKE_POINTER_CALLABLE(p) ((void*)((mp_uint_t)(p) | 1))
 
 // This port is intended to be 32-bit, but unfortunately, int32_t for
@@ -71,7 +74,7 @@ typedef long mp_off_t;
 
 // extra built in names to add to the global namespace
 #define MICROPY_PORT_BUILTINS \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_open), (mp_obj_t)&mp_builtin_open_obj },
+    { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&mp_builtin_open_obj) },
 
 // We need to provide a declaration/definition of alloca()
 #include <alloca.h>

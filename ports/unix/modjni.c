@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -30,8 +30,6 @@
 #include <dlfcn.h>
 #include <ctype.h>
 
-#include "py/nlr.h"
-#include "py/runtime0.h"
 #include "py/runtime.h"
 #include "py/binary.h"
 
@@ -64,7 +62,7 @@ STATIC const mp_obj_type_t jmethod_type;
 
 STATIC mp_obj_t new_jobject(jobject jo);
 STATIC mp_obj_t new_jclass(jclass jc);
-STATIC mp_obj_t call_method(jobject obj, const char *name, jarray methods, bool is_constr, mp_uint_t n_args, const mp_obj_t *args);
+STATIC mp_obj_t call_method(jobject obj, const char *name, jarray methods, bool is_constr, size_t n_args, const mp_obj_t *args);
 STATIC bool py2jvalue(const char **jtypesig, mp_obj_t arg, jvalue *out);
 
 typedef struct _mp_obj_jclass_t {
@@ -157,9 +155,9 @@ STATIC void jclass_attr(mp_obj_t self_in, qstr attr_in, mp_obj_t *dest) {
     }
 }
 
-STATIC mp_obj_t jclass_call(mp_obj_t self_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t jclass_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     if (n_kw != 0) {
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_TypeError, "kwargs not supported"));
+        mp_raise_TypeError("kwargs not supported");
     }
     mp_obj_jclass_t *self = self_in;
 
@@ -168,9 +166,9 @@ STATIC mp_obj_t jclass_call(mp_obj_t self_in, mp_uint_t n_args, mp_uint_t n_kw, 
     return call_method(self->cls, NULL, methods, true, n_args, args);
 }
 
-STATIC const mp_map_elem_t jclass_locals_dict_table[] = {
-//    { MP_OBJ_NEW_QSTR(MP_QSTR_get), (mp_obj_t)&ffivar_get_obj },
-//    { MP_OBJ_NEW_QSTR(MP_QSTR_set), (mp_obj_t)&ffivar_set_obj },
+STATIC const mp_rom_map_elem_t jclass_locals_dict_table[] = {
+//    { MP_ROM_QSTR(MP_QSTR_get), MP_ROM_PTR(&ffivar_get_obj) },
+//    { MP_ROM_QSTR(MP_QSTR_set), MP_ROM_PTR(&ffivar_set_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(jclass_locals_dict, jclass_locals_dict_table);
@@ -181,7 +179,7 @@ STATIC const mp_obj_type_t jclass_type = {
     .print = jclass_print,
     .attr = jclass_attr,
     .call = jclass_call,
-    .locals_dict = (mp_obj_t)&jclass_locals_dict,
+    .locals_dict = (mp_obj_dict_t*)&jclass_locals_dict,
 };
 
 STATIC mp_obj_t new_jclass(jclass jc) {
@@ -268,7 +266,7 @@ STATIC mp_obj_t jobject_subscr(mp_obj_t self_in, mp_obj_t index, mp_obj_t value)
                 return mp_const_none;
             }
         }
-        mp_not_implemented("");
+        mp_raise_NotImplementedError(NULL);
     }
 
     if (!JJ(IsInstanceOf, self->obj, List_class)) {
@@ -293,7 +291,7 @@ STATIC mp_obj_t jobject_subscr(mp_obj_t self_in, mp_obj_t index, mp_obj_t value)
 return MP_OBJ_NULL;
 }
 
-STATIC mp_obj_t jobject_unary_op(mp_uint_t op, mp_obj_t self_in) {
+STATIC mp_obj_t jobject_unary_op(mp_unary_op_t op, mp_obj_t self_in) {
     mp_obj_jobject_t *self = self_in;
     switch (op) {
         case MP_UNARY_OP_BOOL:
@@ -331,7 +329,7 @@ STATIC const mp_obj_type_t jobject_type = {
     .attr = jobject_attr,
     .subscr = jobject_subscr,
     .getiter = subscr_getiter,
-//    .locals_dict = (mp_obj_t)&jobject_locals_dict,
+//    .locals_dict = (mp_obj_dict_t*)&jobject_locals_dict,
 };
 
 STATIC mp_obj_t new_jobject(jobject jo) {
@@ -339,7 +337,7 @@ STATIC mp_obj_t new_jobject(jobject jo) {
         return mp_const_none;
     } else if (JJ(IsInstanceOf, jo, String_class)) {
         const char *s = JJ(GetStringUTFChars, jo, NULL);
-        mp_obj_t ret = mp_obj_new_str(s, strlen(s), false);
+        mp_obj_t ret = mp_obj_new_str(s, strlen(s));
         JJ(ReleaseStringUTFChars, jo, s);
         return ret;
     } else if (JJ(IsInstanceOf, jo, Class_class)) {
@@ -433,7 +431,7 @@ STATIC bool py2jvalue(const char **jtypesig, mp_obj_t arg, jvalue *out) {
         }
         out->l = NULL;
     } else {
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_TypeError, "arg type not supported"));
+        mp_raise_TypeError("arg type not supported");
     }
 
     *jtypesig = arg_type;
@@ -463,7 +461,7 @@ STATIC mp_obj_t jvalue2py(const char *jtypesig, jobject arg) {
 }
 #endif
 
-STATIC mp_obj_t call_method(jobject obj, const char *name, jarray methods, bool is_constr, mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t call_method(jobject obj, const char *name, jarray methods, bool is_constr, size_t n_args, const mp_obj_t *args) {
     jvalue jargs[n_args];
 //    printf("methods=%p\n", methods);
     jsize num_methods = JJ(GetArrayLength, methods);
@@ -534,7 +532,7 @@ STATIC mp_obj_t call_method(jobject obj, const char *name, jarray methods, bool 
                     ret = new_jobject(res);
                 } else {
                     JJ(ReleaseStringUTFChars, name_o, decl);
-                    nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_TypeError, "cannot handle return type"));
+                    mp_raise_TypeError("cannot handle return type");
                 }
 
                 JJ(ReleaseStringUTFChars, name_o, decl);
@@ -550,13 +548,13 @@ next_method:
         JJ(DeleteLocalRef, meth);
     }
 
-    nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_TypeError, "method not found"));
+    mp_raise_TypeError("method not found");
 }
 
 
-STATIC mp_obj_t jmethod_call(mp_obj_t self_in, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t jmethod_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     if (n_kw != 0) {
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_TypeError, "kwargs not supported"));
+        mp_raise_TypeError("kwargs not supported");
     }
     mp_obj_jmethod_t *self = self_in;
 
@@ -578,7 +576,7 @@ STATIC const mp_obj_type_t jmethod_type = {
     .print = jmethod_print,
     .call = jmethod_call,
 //    .attr = jobject_attr,
-//    .locals_dict = (mp_obj_t)&jobject_locals_dict,
+//    .locals_dict = (mp_obj_dict_t*)&jobject_locals_dict,
 };
 
 #ifdef __ANDROID__
@@ -602,13 +600,13 @@ STATIC void create_jvm() {
 
     void *libjvm = dlopen(LIBJVM_SO, RTLD_NOW | RTLD_GLOBAL);
     if (!libjvm) {
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError, "unable to load libjvm.so, use LD_LIBRARY_PATH"));
+        mp_raise_msg(&mp_type_OSError, "unable to load libjvm.so, use LD_LIBRARY_PATH");
     }
     int (*_JNI_CreateJavaVM)(void*, void**, void*) = dlsym(libjvm, "JNI_CreateJavaVM");
 
     int st = _JNI_CreateJavaVM(&jvm, (void**)&env, &args);
     if (st < 0 || !env) {
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError, "unable to create JVM"));
+        mp_raise_msg(&mp_type_OSError, "unable to create JVM");
     }
 
     Class_class = JJ(FindClass, "java/lang/Class");
@@ -707,11 +705,11 @@ STATIC mp_obj_t mod_jni_env() {
 }
 MP_DEFINE_CONST_FUN_OBJ_0(mod_jni_env_obj, mod_jni_env);
 
-STATIC const mp_map_elem_t mp_module_jni_globals_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR___name__), MP_OBJ_NEW_QSTR(MP_QSTR_jni) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_cls), (mp_obj_t)&mod_jni_cls_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_array), (mp_obj_t)&mod_jni_array_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_env), (mp_obj_t)&mod_jni_env_obj },
+STATIC const mp_rom_map_elem_t mp_module_jni_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_jni) },
+    { MP_ROM_QSTR(MP_QSTR_cls), MP_ROM_PTR(&mod_jni_cls_obj) },
+    { MP_ROM_QSTR(MP_QSTR_array), MP_ROM_PTR(&mod_jni_array_obj) },
+    { MP_ROM_QSTR(MP_QSTR_env), MP_ROM_PTR(&mod_jni_env_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mp_module_jni_globals, mp_module_jni_globals_table);

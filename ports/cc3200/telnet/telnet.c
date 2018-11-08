@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -29,6 +29,7 @@
 #include "py/mpconfig.h"
 #include "py/obj.h"
 #include "py/mphal.h"
+#include "lib/utils/interrupt_char.h"
 #include "telnet.h"
 #include "simplelink.h"
 #include "modnetwork.h"
@@ -296,23 +297,23 @@ static void telnet_wait_for_enabled (void) {
 
 static bool telnet_create_socket (void) {
     SlSockNonblocking_t nonBlockingOption;
-    sockaddr_in         sServerAddress;
+    SlSockAddrIn_t sServerAddress;
     _i16 result;
 
     // Open a socket for telnet
-    ASSERT ((telnet_data.sd = sl_Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) > 0);
+    ASSERT ((telnet_data.sd = sl_Socket(SL_AF_INET, SL_SOCK_STREAM, SL_IPPROTO_TCP)) > 0);
     if (telnet_data.sd > 0) {
         // add the socket to the network administration
         modusocket_socket_add(telnet_data.sd, false);
 
         // Enable non-blocking mode
         nonBlockingOption.NonblockingEnabled = 1;
-        ASSERT ((result = sl_SetSockOpt(telnet_data.sd, SOL_SOCKET, SL_SO_NONBLOCKING, &nonBlockingOption, sizeof(nonBlockingOption))) == SL_SOC_OK);
+        ASSERT ((result = sl_SetSockOpt(telnet_data.sd, SL_SOL_SOCKET, SL_SO_NONBLOCKING, &nonBlockingOption, sizeof(nonBlockingOption))) == SL_SOC_OK);
 
         // Bind the socket to a port number
-        sServerAddress.sin_family = AF_INET;
-        sServerAddress.sin_addr.s_addr = INADDR_ANY;
-        sServerAddress.sin_port = htons(TELNET_PORT);
+        sServerAddress.sin_family = SL_AF_INET;
+        sServerAddress.sin_addr.s_addr = SL_INADDR_ANY;
+        sServerAddress.sin_port = sl_Htons(TELNET_PORT);
 
         ASSERT ((result |= sl_Bind(telnet_data.sd, (const SlSockAddr_t *)&sServerAddress, sizeof(sServerAddress))) == SL_SOC_OK);
 
@@ -330,7 +331,7 @@ static bool telnet_create_socket (void) {
 
 static void telnet_wait_for_connection (void) {
     SlSocklen_t  in_addrSize;
-    sockaddr_in  sClientAddress;
+    SlSockAddrIn_t sClientAddress;
 
     // accepts a connection from a TCP client, if there is any, otherwise returns SL_EAGAIN
     telnet_data.n_sd = sl_Accept(telnet_data.sd, (SlSockAddr_t *)&sClientAddress, (SlSocklen_t *)&in_addrSize);
@@ -445,9 +446,9 @@ static void telnet_parse_input (uint8_t *str, int16_t *len) {
 
     for (uint8_t *_str = b_str; _str < b_str + b_len; ) {
         if (*_str <= 127) {
-            if (telnet_data.state == E_TELNET_STE_LOGGED_IN && *_str == user_interrupt_char) {
+            if (telnet_data.state == E_TELNET_STE_LOGGED_IN && *_str == mp_interrupt_char) {
                 // raise a keyboard exception
-                mpexception_keyboard_nlr_jump();
+                mp_keyboard_interrupt();
                 (*len)--;
                 _str++;
             }

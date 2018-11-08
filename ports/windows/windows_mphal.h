@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -25,7 +25,7 @@
  */
 
 #include "sleep.h"
-#include "unix/mphalport.h"
+#include "ports/unix/mphalport.h"
 
 #define MICROPY_HAL_HAS_VT100 (0)
 

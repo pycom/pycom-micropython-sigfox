@@ -19,6 +19,7 @@ APP_INC += -Ilte
 APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
+APP_INC += -Ilittlefs
 APP_INC += -I$(BUILD)
 APP_INC += -I$(BUILD)/genhdr
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include
@@ -65,10 +66,10 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
-APP_INC += -I../lib/fatfs
+APP_INC += -I../lib/oofatfs
 APP_INC += -I../lib
 APP_INC += -I../drivers/sx127x
-APP_INC += -I../stmhal
+APP_INC += -I../ports/stm32
 
 APP_MAIN_SRC_C = \
 	main.c \
@@ -104,14 +105,17 @@ APP_LIB_SRC_C = $(addprefix lib/,\
 	netutils/netutils.c \
 	utils/pyexec.c \
 	utils/interrupt_char.c \
-	fatfs/ff.c \
-	fatfs/option/ccsbcs.c \
+	utils/sys_stdio_mphal.c \
+	oofatfs/ff.c \
+	oofatfs/option/ccsbcs.c \
+	timeutils/timeutils.c \
 	)
 
 APP_MODS_SRC_C = $(addprefix mods/,\
 	machuart.c \
 	machpin.c \
 	machrtc.c \
+	pybflash.c \
 	machspi.c \
 	machine_i2c.c \
 	machpwm.c \
@@ -146,13 +150,8 @@ APP_MODS_LORA_SRC_C = $(addprefix mods/,\
 	modlora.c \
 	)
 
-APP_STM_SRC_C = $(addprefix stmhal/,\
+APP_STM_SRC_C = $(addprefix ports/stm32/,\
 	bufhelper.c \
-	builtin_open.c \
-	import.c \
-	input.c \
-	lexerfatfs.c \
-	pybstdio.c \
 	)
 
 APP_UTIL_SRC_C = $(addprefix util/,\
@@ -172,9 +171,14 @@ APP_UTIL_SRC_C = $(addprefix util/,\
 APP_FATFS_SRC_C = $(addprefix fatfs/src/,\
 	drivers/sflash_diskio.c \
 	drivers/sd_diskio.c \
-	option/syscall.c \
-	diskio.c \
-	ffconf.c \
+	)
+
+APP_LITTLEFS_SRC_C = $(addprefix littlefs/,\
+	lfs.c \
+	lfs_util.c \
+	vfs_littlefs.c \
+	vfs_littlefs_file.c \
+	sflash_diskio_littlefs.c \
 	)
 
 APP_LORA_SRC_C = $(addprefix lora/,\
@@ -295,14 +299,14 @@ endif
 
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins.o
 
 BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
 
 # List of sources for qstr extraction
-SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C)
+SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C) $(APP_LIB_SRC_C)
 ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
 SRC_QSTR += $(APP_MODS_LORA_SRC_C)
 endif
@@ -323,7 +327,7 @@ BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.periph
 APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld
 
 # add the application specific CFLAGS
-CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
+CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\"
 CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
 CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915
 

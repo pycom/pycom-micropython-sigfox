@@ -6,7 +6,7 @@ endif
 
 # This file expects that OBJ contains a list of all of the object files.
 # The directory portion of each object file is used to locate the source
-# and should not contain any ..'s but rather be relative to the top of the 
+# and should not contain any ..'s but rather be relative to the top of the
 # tree.
 #
 # So for example, py/map.c would have an object file name py/map.o
@@ -46,10 +46,7 @@ vpath %.c . $(TOP)
 $(BUILD)/%.o: %.c
 	$(call compile_c)
 
-# List all native flags since the current build system doesn't have
-# the micropython configuration available. However, these flags are
-# needed to extract all qstrings
-QSTR_GEN_EXTRA_CFLAGS += -DNO_QSTR -DN_X64 -DN_X86 -DN_THUMB -DN_ARM -DN_XTENSA
+QSTR_GEN_EXTRA_CFLAGS += -DNO_QSTR
 QSTR_GEN_EXTRA_CFLAGS += -I$(BUILD)/tmp
 
 vpath %.c . $(TOP)
@@ -71,12 +68,7 @@ $(OBJ): | $(HEADER_BUILD)/qstrdefs.generated.h $(HEADER_BUILD)/mpversion.h
 
 $(HEADER_BUILD)/qstr.i.last: $(SRC_QSTR) | $(HEADER_BUILD)/mpversion.h
 	$(ECHO) "GEN $@"
-	$(Q)if [ "$?" = "" ]; then \
-	    echo "QSTR Looks like -B used, trying to emulate"; \
-	    $(CPP) $(QSTR_GEN_EXTRA_CFLAGS) $(CFLAGS) $^ >$(HEADER_BUILD)/qstr.i.last; \
-	else \
-	    $(CPP) $(QSTR_GEN_EXTRA_CFLAGS) $(CFLAGS) $? >$(HEADER_BUILD)/qstr.i.last; \
-	fi
+	$(Q)$(CPP) $(QSTR_GEN_EXTRA_CFLAGS) $(CFLAGS) $(if $?,$?,$^) >$(HEADER_BUILD)/qstr.i.last;
 
 $(HEADER_BUILD)/qstr.split: $(HEADER_BUILD)/qstr.i.last
 	$(ECHO) "GEN $@"
@@ -102,12 +94,53 @@ $(HEADER_BUILD):
 
 ifneq ($(FROZEN_DIR),)
 $(BUILD)/frozen.c: $(wildcard $(FROZEN_DIR)/*) $(HEADER_BUILD) $(FROZEN_EXTRA_DEPS)
-	$(ECHO) "Generating $@"
+	$(ECHO) "GEN $@"
 	$(Q)$(MAKE_FROZEN) $(FROZEN_DIR) > $@
 endif
 
 ifneq ($(FROZEN_MPY_DIR),)
 OS_NAME := $(shell uname -s)
+ifeq ($(VARIANT), PYBYTES)
+ifeq ($(OS_NAME), Linux)
+# make a list of all the .py files that need compiling and freezing
+FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR)/Pybytes/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Pybytes\///')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Common/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Common\///')
+ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/LTE/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/LTE\///')
+endif
+else
+# make a list of all the .py files that need compiling and freezing
+FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR)/Pybytes/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/Pybytes\//==')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Common/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/Common\//==')
+ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/LTE/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/LTE\//==')
+endif
+endif
+
+FROZEN_MPY_MPY_FILES := $(addprefix $(BUILD)/frozen_mpy/,$(FROZEN_MPY_PY_FILES:.py=.mpy))
+
+# to build .mpy files from .py files
+$(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/Pybytes/%.py
+	@$(ECHO) "MPY $<"
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/Pybytes/%=%) $(MPY_CROSS_FLAGS) $^
+
+# to build .mpy files from .py files
+$(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/Common/%.py
+	@$(ECHO) "MPY $<"
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/Common/%=%) $(MPY_CROSS_FLAGS) $^
+
+ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
+# to build .mpy files from .py files
+$(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/LTE/%.py
+	@$(ECHO) "MPY $<"
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/LTE/%=%) $(MPY_CROSS_FLAGS) $^
+endif
+	
+endif
+ifeq ($(VARIANT), BASE)
 ifeq ($(OS_NAME), Linux)
 # make a list of all the .py files that need compiling and freezing
 FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR)/Base/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Base\///')
@@ -146,10 +179,12 @@ $(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/LTE/%.py
 	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/LTE/%=%) $(MPY_CROSS_FLAGS) $^
 endif
 
+endif
+
 # to build frozen_mpy.c from all .mpy files
 $(BUILD)/frozen_mpy.c: $(FROZEN_MPY_MPY_FILES) $(BUILD)/genhdr/qstrdefs.generated.h
-	@$(ECHO) "Creating $@"
-	$(Q)$(PYTHON) $(MPY_TOOL) -f -q $(BUILD)/genhdr/qstrdefs.preprocessed.h $(FROZEN_MPY_MPY_FILES) > $@
+	@$(ECHO) "GEN $@"
+	$(Q)$(MPY_TOOL) -f -q $(BUILD)/genhdr/qstrdefs.preprocessed.h $(FROZEN_MPY_MPY_FILES) > $@
 endif
 
 ifneq ($(PROG),)
@@ -165,7 +200,7 @@ $(PROG): $(OBJ)
 ifndef DEBUG
 	$(Q)$(STRIP) $(STRIPFLAGS_EXTRA) $(PROG)
 endif
-	$(Q)$(SIZE) $(PROG)
+	$(Q)$(SIZE) $$(find $(BUILD) -path "$(BUILD)/build/frozen*.o") $(PROG)
 
 clean: clean-prog
 clean-prog:
@@ -176,12 +211,40 @@ clean-prog:
 endif
 
 LIBMICROPYTHON = libmicropython.a
+
+# We can execute extra commands after library creation using
+# LIBMICROPYTHON_EXTRA_CMD. This may be needed e.g. to integrate
+# with 3rd-party projects which don't have proper dependency
+# tracking. Then LIBMICROPYTHON_EXTRA_CMD can e.g. touch some
+# other file to cause needed effect, e.g. relinking with new lib.
 lib $(LIBMICROPYTHON): $(OBJ)
 	$(AR) rcs $(LIBMICROPYTHON) $^
+	$(LIBMICROPYTHON_EXTRA_CMD)
 
 clean:
 	$(RM) -rf $(BUILD) $(CLEAN_EXTRA)
 .PHONY: clean
+
+# Clean every non-git file from FROZEN_DIR/FROZEN_MPY_DIR, but making a backup.
+# We run rmdir below to avoid empty backup dir (it will silently fail if backup
+# is non-empty).
+clean-frozen:
+	if [ -n "$(FROZEN_MPY_DIR)" ]; then \
+	backup_dir=$(FROZEN_MPY_DIR).$$(date +%Y%m%dT%H%M%S); mkdir $$backup_dir; \
+	cd $(FROZEN_MPY_DIR); git status --ignored -u all -s . | awk ' {print $$2}' \
+	| xargs --no-run-if-empty cp --parents -t ../$$backup_dir; \
+	rmdir ../$$backup_dir 2>/dev/null || true; \
+	git clean -d -f .; \
+	fi
+
+	if [ -n "$(FROZEN_DIR)" ]; then \
+	backup_dir=$(FROZEN_DIR).$$(date +%Y%m%dT%H%M%S); mkdir $$backup_dir; \
+	cd $(FROZEN_DIR); git status --ignored -u all -s . | awk ' {print $$2}' \
+	| xargs --no-run-if-empty cp --parents -t ../$$backup_dir; \
+	rmdir ../$$backup_dir 2>/dev/null || true; \
+	git clean -d -f .; \
+	fi
+.PHONY: clean-frozen
 
 print-cfg:
 	$(ECHO) "PY_SRC = $(PY_SRC)"

@@ -1,10 +1,10 @@
-include ../py/mkenv.mk
+include ../../py/mkenv.mk
 
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h
 
 # include py core make definitions
-include ../py/py.mk
+include $(TOP)/py/py.mk
 
 XC16 = /opt/microchip/xc16/v1.24
 CROSS_COMPILE = $(XC16)/bin/xc16-
@@ -13,15 +13,13 @@ PARTFAMILY = dsPIC33F
 PART = 33FJ256GP506
 
 INC += -I.
-INC += -I..
-INC += -I../lib/mp-readline
-INC += -I../stmhal
+INC += -I$(TOP)
 INC += -I$(BUILD)
 INC += -I$(XC16)/include
 INC += -I$(XC16)/support/$(PARTFAMILY)/h
 
 CFLAGS_PIC16BIT = -mcpu=$(PART) -mlarge-code
-CFLAGS = $(INC) -Wall -Werror -ansi -std=gnu99 -nostdlib $(CFLAGS_PIC16BIT) $(COPT)
+CFLAGS = $(INC) -Wall -Werror -std=gnu99 -nostdlib $(CFLAGS_PIC16BIT) $(COPT)
 
 #Debugging/Optimization
 ifeq ($(DEBUG), 1)
@@ -40,8 +38,8 @@ SRC_C = \
 	modpyb.c \
 	modpybled.c \
 	modpybswitch.c \
-	stmhal/pybstdio.c \
 	lib/utils/pyexec.c \
+	lib/utils/sys_stdio_mphal.c \
 	lib/mp-readline/readline.c \
 
 SRC_S = \
@@ -69,4 +67,4 @@ $(BUILD)/firmware.elf: $(OBJ)
 $(PY_BUILD)/gc.o: CFLAGS += -O1
 $(PY_BUILD)/vm.o: CFLAGS += -O1
 
-include ../py/mkrules.mk
+include $(TOP)/py/mkrules.mk

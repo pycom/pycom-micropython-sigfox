@@ -1,4 +1,4 @@
-include ../py/mkenv.mk
+include ../../py/mkenv.mk
 -include mpconfigport.mk
 
 # define main target
@@ -8,14 +8,14 @@ PROG = micropython.exe
 QSTR_DEFS = ../unix/qstrdefsport.h
 
 # include py core make definitions
-include ../py/py.mk
+include $(TOP)/py/py.mk
 
 INC += -I.
-INC += -I..
+INC += -I$(TOP)
 INC += -I$(BUILD)
 
 # compiler settings
-CFLAGS = $(INC) -Wall -Wpointer-arith -Werror -ansi -std=gnu99 -DUNIX -D__USE_MINGW_ANSI_STDIO=1 $(CFLAGS_MOD) $(COPT)
+CFLAGS = $(INC) -Wall -Wpointer-arith -Werror -std=gnu99 -DUNIX -D__USE_MINGW_ANSI_STDIO=1 $(CFLAGS_MOD) $(COPT)
 LDFLAGS = $(LDFLAGS_MOD) -lm
 
 # Debugging/Optimization
@@ -28,13 +28,13 @@ endif
 
 # source files
 SRC_C = \
-	unix/main.c \
-	unix/file.c \
-	unix/input.c \
-	unix/modos.c \
-	unix/modmachine.c \
-	unix/modtime.c \
-	unix/gccollect.c \
+	ports/unix/main.c \
+	ports/unix/file.c \
+	ports/unix/input.c \
+	ports/unix/modos.c \
+	ports/unix/modmachine.c \
+	ports/unix/modtime.c \
+	ports/unix/gccollect.c \
 	windows_mphal.c \
 	realpath.c \
 	init.c \
@@ -50,10 +50,6 @@ CFLAGS_MOD += -DMICROPY_USE_READLINE=2
 LDFLAGS_MOD += -lreadline
 endif
 
-ifeq ($(CROSS_COMPILE),x86_64-w64-mingw32-)
-CFLAGS_MOD += -DMICROPY_NLR_SETJMP=1
-endif
-
 LIB += -lws2_32
 
 # List of sources for qstr extraction
@@ -62,4 +58,4 @@ SRC_QSTR += $(SRC_C)
 # SRC_QSTR
 SRC_QSTR_AUTO_DEPS +=
 
-include ../py/mkrules.mk
+include $(TOP)/py/mkrules.mk

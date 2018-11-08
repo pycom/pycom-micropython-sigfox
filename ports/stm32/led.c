@@ -26,13 +26,11 @@
 
 #include <stdio.h>
 
-#include "py/nlr.h"
 #include "py/runtime.h"
 #include "py/mphal.h"
 #include "timer.h"
 #include "led.h"
 #include "pin.h"
-#include "genhdr/pins.h"
 
 #if defined(MICROPY_HW_LED1)
 
@@ -53,13 +51,13 @@ typedef struct _pyb_led_obj_t {
 } pyb_led_obj_t;
 
 STATIC const pyb_led_obj_t pyb_led_obj[] = {
-    {{&pyb_led_type}, 1, &MICROPY_HW_LED1},
+    {{&pyb_led_type}, 1, MICROPY_HW_LED1},
 #if defined(MICROPY_HW_LED2)
-    {{&pyb_led_type}, 2, &MICROPY_HW_LED2},
+    {{&pyb_led_type}, 2, MICROPY_HW_LED2},
 #if defined(MICROPY_HW_LED3)
-    {{&pyb_led_type}, 3, &MICROPY_HW_LED3},
+    {{&pyb_led_type}, 3, MICROPY_HW_LED3},
 #if defined(MICROPY_HW_LED4)
-    {{&pyb_led_type}, 4, &MICROPY_HW_LED4},
+    {{&pyb_led_type}, 4, MICROPY_HW_LED4},
 #endif
 #endif
 #endif
@@ -133,13 +131,7 @@ STATIC void led_pwm_init(int led) {
     const led_pwm_config_t *pwm_cfg = &led_pwm_config[led - 1];
 
     // GPIO configuration
-    GPIO_InitTypeDef gpio_init;
-    gpio_init.Pin = led_pin->pin_mask;
-    gpio_init.Mode = GPIO_MODE_AF_PP;
-    gpio_init.Speed = GPIO_SPEED_FAST;
-    gpio_init.Pull = GPIO_NOPULL;
-    gpio_init.Alternate = pwm_cfg->alt_func;
-    HAL_GPIO_Init(led_pin->gpio, &gpio_init);
+    mp_hal_pin_config(led_pin, MP_HAL_PIN_MODE_ALT, MP_HAL_PIN_PULL_NONE, pwm_cfg->alt_func);
 
     // TIM configuration
     switch (pwm_cfg->tim_id) {
@@ -148,7 +140,7 @@ STATIC void led_pwm_init(int led) {
         case 3: __TIM3_CLK_ENABLE(); break;
         default: assert(0);
     }
-    TIM_HandleTypeDef tim;
+    TIM_HandleTypeDef tim = {0};
     tim.Instance = pwm_cfg->tim;
     tim.Init.Period = LED_PWM_TIM_PERIOD - 1;
     tim.Init.Prescaler = timer_get_source_freq(pwm_cfg->tim_id) / 1000000 - 1; // TIM runs at 1MHz
@@ -281,22 +273,22 @@ void led_debug(int n, int delay) {
     led_state(2, n & 2);
     led_state(3, n & 4);
     led_state(4, n & 8);
-    HAL_Delay(delay);
+    mp_hal_delay_ms(delay);
 }
 
 /******************************************************************************/
-/* Micro Python bindings                                                      */
+/* MicroPython bindings                                                       */
 
 void led_obj_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     pyb_led_obj_t *self = self_in;
-    mp_printf(print, "LED(%lu)", self->led_id);
+    mp_printf(print, "LED(%u)", self->led_id);
 }
 
 /// \classmethod \constructor(id)
 /// Create an LED object associated with the given LED:
 ///
 ///   - `id` is the LED number, 1-4.
-STATIC mp_obj_t led_obj_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *args) {
+STATIC mp_obj_t led_obj_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     // check arguments
     mp_arg_check_num(n_args, n_kw, 1, 1, false);
 
@@ -305,7 +297,7 @@ STATIC mp_obj_t led_obj_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp
 
     // check led number
     if (!(1 <= led_id && led_id <= NUM_LEDS)) {
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "LED(%d) does not exist", led_id));
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "LED(%d) doesn't exist", led_id));
     }
 
     // return static led object
@@ -340,7 +332,7 @@ mp_obj_t led_obj_toggle(mp_obj_t self_in) {
 /// Get or set the LED intensity.  Intensity ranges between 0 (off) and 255 (full on).
 /// If no argument is given, return the LED intensity.
 /// If an argument is given, set the LED intensity and return `None`.
-mp_obj_t led_obj_intensity(mp_uint_t n_args, const mp_obj_t *args) {
+mp_obj_t led_obj_intensity(size_t n_args, const mp_obj_t *args) {
     pyb_led_obj_t *self = args[0];
     if (n_args == 1) {
         return mp_obj_new_int(led_get_intensity(self->led_id));
@@ -355,11 +347,11 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(led_obj_off_obj, led_obj_off);
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(led_obj_toggle_obj, led_obj_toggle);
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(led_obj_intensity_obj, 1, 2, led_obj_intensity);
 
-STATIC const mp_map_elem_t led_locals_dict_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR_on), (mp_obj_t)&led_obj_on_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_off), (mp_obj_t)&led_obj_off_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_toggle), (mp_obj_t)&led_obj_toggle_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_intensity), (mp_obj_t)&led_obj_intensity_obj },
+STATIC const mp_rom_map_elem_t led_locals_dict_table[] = {
+    { MP_ROM_QSTR(MP_QSTR_on), MP_ROM_PTR(&led_obj_on_obj) },
+    { MP_ROM_QSTR(MP_QSTR_off), MP_ROM_PTR(&led_obj_off_obj) },
+    { MP_ROM_QSTR(MP_QSTR_toggle), MP_ROM_PTR(&led_obj_toggle_obj) },
+    { MP_ROM_QSTR(MP_QSTR_intensity), MP_ROM_PTR(&led_obj_intensity_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(led_locals_dict, led_locals_dict_table);
@@ -369,7 +361,7 @@ const mp_obj_type_t pyb_led_type = {
     .name = MP_QSTR_LED,
     .print = led_obj_print,
     .make_new = led_obj_make_new,
-    .locals_dict = (mp_obj_t)&led_locals_dict,
+    .locals_dict = (mp_obj_dict_t*)&led_locals_dict,
 };
 
 #else

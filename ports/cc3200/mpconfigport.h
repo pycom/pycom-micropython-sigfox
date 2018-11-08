@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -25,9 +25,6 @@
  * THE SOFTWARE.
  */
 
-#ifndef __INCLUDED_MPCONFIGPORT_H
-#define __INCLUDED_MPCONFIGPORT_H
-
 #include <stdint.h>
 
 #ifndef BOOTLOADER
@@ -35,7 +32,7 @@
 #include "semphr.h"
 #endif
 
-// options to control how Micro Python is built
+// options to control how MicroPython is built
 
 #define MICROPY_ALLOC_PATH_MAX                      (128)
 #define MICROPY_PERSISTENT_CODE_LOAD                (1)
@@ -55,6 +52,7 @@
 #define MICROPY_FLOAT_IMPL                          (MICROPY_FLOAT_IMPL_NONE)
 #define MICROPY_OPT_COMPUTED_GOTO                   (0)
 #define MICROPY_OPT_CACHE_MAP_LOOKUP_IN_BYTECODE    (0)
+#define MICROPY_READER_VFS                          (1)
 #ifndef DEBUG // we need ram on the launchxl while debugging
 #define MICROPY_CPYTHON_COMPAT                      (1)
 #else
@@ -67,18 +65,21 @@
 #define MICROPY_FATFS_MAX_LFN                       (MICROPY_ALLOC_PATH_MAX)
 #define MICROPY_FATFS_LFN_CODE_PAGE                 (437) // 1=SFN/ANSI 437=LFN/U.S.(OEM)
 #define MICROPY_FATFS_RPATH                         (2)
-#define MICROPY_FATFS_VOLUMES                       (2)
 #define MICROPY_FATFS_REENTRANT                     (1)
 #define MICROPY_FATFS_TIMEOUT                       (2500)
 #define MICROPY_FATFS_SYNC_T                        SemaphoreHandle_t
-#define MICROPY_FSUSERMOUNT_ADHOC                   (1)
 
 #define MICROPY_STREAMS_NON_BLOCK                   (1)
 #define MICROPY_MODULE_WEAK_LINKS                   (1)
 #define MICROPY_CAN_OVERRIDE_BUILTINS               (1)
+#define MICROPY_USE_INTERNAL_ERRNO                  (1)
+#define MICROPY_VFS                                 (1)
+#define MICROPY_VFS_FAT                             (1)
 #define MICROPY_PY_ASYNC_AWAIT (0)
-#define MICROPY_PY_BUILTINS_TIMEOUTERROR            (1)
 #define MICROPY_PY_ALL_SPECIAL_METHODS              (1)
+#define MICROPY_PY_BUILTINS_INPUT                   (1)
+#define MICROPY_PY_BUILTINS_HELP                    (1)
+#define MICROPY_PY_BUILTINS_HELP_TEXT               cc3200_help_text
 #ifndef DEBUG
 #define MICROPY_PY_BUILTINS_STR_UNICODE             (1)
 #define MICROPY_PY_BUILTINS_STR_SPLITLINES          (1)
@@ -103,6 +104,8 @@
 #define MICROPY_PY_CMATH                            (0)
 #define MICROPY_PY_IO                               (1)
 #define MICROPY_PY_IO_FILEIO                        (1)
+#define MICROPY_PY_UERRNO                           (1)
+#define MICROPY_PY_UERRNO_ERRORCODE                 (0)
 #define MICROPY_PY_THREAD                           (1)
 #define MICROPY_PY_THREAD_GIL                       (1)
 #define MICROPY_PY_UBINASCII                        (0)
@@ -112,15 +115,33 @@
 #define MICROPY_PY_URE                              (1)
 #define MICROPY_PY_UHEAPQ                           (0)
 #define MICROPY_PY_UHASHLIB                         (0)
+#define MICROPY_PY_USELECT                          (1)
+#define MICROPY_PY_UTIME_MP_HAL                     (1)
 
 #define MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF      (1)
 #define MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE        (0)
+#define MICROPY_KBD_EXCEPTION                       (1)
+
+// We define our own list of errno constants to include in uerrno module
+#define MICROPY_PY_UERRNO_LIST \
+    X(EPERM) \
+    X(EIO) \
+    X(ENODEV) \
+    X(EINVAL) \
+    X(ETIMEDOUT) \
+
+// TODO these should be generic, not bound to fatfs
+#define mp_type_fileio fatfs_type_fileio
+#define mp_type_textio fatfs_type_textio
+
+// use vfs's functions for import stat and builtin open
+#define mp_import_stat mp_vfs_import_stat
+#define mp_builtin_open mp_vfs_open
+#define mp_builtin_open_obj mp_vfs_open_obj
 
 // extra built in names to add to the global namespace
 #define MICROPY_PORT_BUILTINS \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_help),  (mp_obj_t)&mp_builtin_help_obj },   \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_input), (mp_obj_t)&mp_builtin_input_obj },  \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_open),  (mp_obj_t)&mp_builtin_open_obj },   \
+    { MP_ROM_QSTR(MP_QSTR_open),  MP_ROM_PTR(&mp_builtin_open_obj) },   \
 
 // extra built in modules to add to the list of known ones
 extern const struct _mp_obj_module_t machine_module;
@@ -136,31 +157,32 @@ extern const struct _mp_obj_module_t mp_module_ubinascii;
 extern const struct _mp_obj_module_t mp_module_ussl;
 
 #define MICROPY_PORT_BUILTIN_MODULES \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_umachine),     (mp_obj_t)&machine_module },      \
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_wipy),        (mp_obj_t)&wipy_module },         \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_uos),         (mp_obj_t)&mp_module_uos },       \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_utime),       (mp_obj_t)&mp_module_utime },     \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_uselect),     (mp_obj_t)&mp_module_uselect },   \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_usocket),     (mp_obj_t)&mp_module_usocket },   \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_network),     (mp_obj_t)&mp_module_network },   \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ubinascii),   (mp_obj_t)&mp_module_ubinascii }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ussl),        (mp_obj_t)&mp_module_ussl },      \
+    { MP_ROM_QSTR(MP_QSTR_umachine),    MP_ROM_PTR(&machine_module) },      \
+    { MP_ROM_QSTR(MP_QSTR_wipy),        MP_ROM_PTR(&wipy_module) },         \
+    { MP_ROM_QSTR(MP_QSTR_uos),         MP_ROM_PTR(&mp_module_uos) },       \
+    { MP_ROM_QSTR(MP_QSTR_utime),       MP_ROM_PTR(&mp_module_utime) },     \
+    { MP_ROM_QSTR(MP_QSTR_uselect),     MP_ROM_PTR(&mp_module_uselect) },   \
+    { MP_ROM_QSTR(MP_QSTR_usocket),     MP_ROM_PTR(&mp_module_usocket) },   \
+    { MP_ROM_QSTR(MP_QSTR_network),     MP_ROM_PTR(&mp_module_network) },   \
+    { MP_ROM_QSTR(MP_QSTR_ubinascii),   MP_ROM_PTR(&mp_module_ubinascii) }, \
+    { MP_ROM_QSTR(MP_QSTR_ussl),        MP_ROM_PTR(&mp_module_ussl) },      \
 
 #define MICROPY_PORT_BUILTIN_MODULE_WEAK_LINKS \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_struct),      (mp_obj_t)&mp_module_ustruct },   \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_re),          (mp_obj_t)&mp_module_ure },       \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_json),        (mp_obj_t)&mp_module_ujson },     \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_os),          (mp_obj_t)&mp_module_uos },       \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_time),        (mp_obj_t)&mp_module_utime },     \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_select),      (mp_obj_t)&mp_module_uselect },   \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_socket),      (mp_obj_t)&mp_module_usocket },   \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_binascii),    (mp_obj_t)&mp_module_ubinascii }, \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ssl),         (mp_obj_t)&mp_module_ussl },      \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_machine),     (mp_obj_t)&machine_module },      \
+    { MP_ROM_QSTR(MP_QSTR_errno),       MP_ROM_PTR(&mp_module_uerrno) },    \
+    { MP_ROM_QSTR(MP_QSTR_struct),      MP_ROM_PTR(&mp_module_ustruct) },   \
+    { MP_ROM_QSTR(MP_QSTR_re),          MP_ROM_PTR(&mp_module_ure) },       \
+    { MP_ROM_QSTR(MP_QSTR_json),        MP_ROM_PTR(&mp_module_ujson) },     \
+    { MP_ROM_QSTR(MP_QSTR_os),          MP_ROM_PTR(&mp_module_uos) },       \
+    { MP_ROM_QSTR(MP_QSTR_time),        MP_ROM_PTR(&mp_module_utime) },     \
+    { MP_ROM_QSTR(MP_QSTR_select),      MP_ROM_PTR(&mp_module_uselect) },   \
+    { MP_ROM_QSTR(MP_QSTR_socket),      MP_ROM_PTR(&mp_module_usocket) },   \
+    { MP_ROM_QSTR(MP_QSTR_binascii),    MP_ROM_PTR(&mp_module_ubinascii) }, \
+    { MP_ROM_QSTR(MP_QSTR_ssl),         MP_ROM_PTR(&mp_module_ussl) },      \
+    { MP_ROM_QSTR(MP_QSTR_machine),     MP_ROM_PTR(&machine_module) },      \
 
 // extra constants
 #define MICROPY_PORT_CONSTANTS \
-    { MP_OBJ_NEW_QSTR(MP_QSTR_umachine),     (mp_obj_t)&machine_module },      \
+    { MP_ROM_QSTR(MP_QSTR_umachine),     MP_ROM_PTR(&machine_module) },      \
 
 // vm state and root pointers for the gc
 #define MP_STATE_PORT MP_STATE_VM
@@ -171,13 +193,11 @@ extern const struct _mp_obj_module_t mp_module_ussl;
     mp_obj_list_t pyb_sleep_obj_list;                                     \
     mp_obj_list_t mp_irq_obj_list;                                        \
     mp_obj_list_t pyb_timer_channel_obj_list;                             \
-    mp_obj_list_t mount_obj_list;                                         \
     struct _pyb_uart_obj_t *pyb_uart_objs[2];                             \
     struct _os_term_dup_obj_t *os_term_dup_obj;                           \
 
 
 // type definitions for the specific machine
-#define BYTES_PER_WORD                              (4)
 #define MICROPY_MAKE_POINTER_CALLABLE(p)            ((void*)((mp_uint_t)(p) | 1))
 #define MP_SSIZE_MAX                                (0x7FFFFFFF)
 
@@ -192,6 +212,7 @@ typedef long            mp_off_t;
 
 #define MICROPY_BEGIN_ATOMIC_SECTION()              disable_irq()
 #define MICROPY_END_ATOMIC_SECTION(state)           enable_irq(state)
+#define MICROPY_EVENT_POLL_HOOK                     __WFI();
 
 // assembly functions to handle critical sections, interrupt
 // disabling/enabling and sleep mode enter/exit
@@ -212,5 +233,3 @@ typedef long            mp_off_t;
 #define MICROPY_PORT_WLAN_AP_KEY                    "www.wipy.io"
 #define MICROPY_PORT_WLAN_AP_SECURITY               SL_SEC_TYPE_WPA_WPA2
 #define MICROPY_PORT_WLAN_AP_CHANNEL                5
-
-#endif // __INCLUDED_MPCONFIGPORT_H

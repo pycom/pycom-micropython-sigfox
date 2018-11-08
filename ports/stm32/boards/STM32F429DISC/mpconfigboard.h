@@ -1,20 +1,11 @@
-#include STM32_HAL_H
-
 #define MICROPY_HW_BOARD_NAME       "F429I-DISCO"
 #define MICROPY_HW_MCU_NAME         "STM32F429"
 
 #define MICROPY_HW_HAS_SWITCH       (1)
 #define MICROPY_HW_HAS_FLASH        (1)
-#define MICROPY_HW_HAS_SDCARD       (0)
-#define MICROPY_HW_HAS_MMA7660      (0)
-#define MICROPY_HW_HAS_LIS3DSH      (0)
-#define MICROPY_HW_HAS_LCD          (0)
 #define MICROPY_HW_ENABLE_RNG       (1)
 #define MICROPY_HW_ENABLE_RTC       (1)
-#define MICROPY_HW_ENABLE_TIMER     (1)
-#define MICROPY_HW_ENABLE_SERVO     (0)
-#define MICROPY_HW_ENABLE_DAC       (0)
-#define MICROPY_HW_ENABLE_CAN       (1)
+#define MICROPY_HW_ENABLE_USB       (1)
 
 // HSE is 8MHz
 #define MICROPY_HW_CLK_PLLM (8)
@@ -23,10 +14,10 @@
 #define MICROPY_HW_CLK_PLLQ (7)
 
 // UART config
-#define MICROPY_HW_UART1_PORT (GPIOA)
-#define MICROPY_HW_UART1_PINS (GPIO_PIN_9 | GPIO_PIN_10)
-#define MICROPY_HW_UART2_PORT (GPIOD)
-#define MICROPY_HW_UART2_PINS (GPIO_PIN_8 | GPIO_PIN_9)
+#define MICROPY_HW_UART1_TX     (pin_A9)
+#define MICROPY_HW_UART1_RX     (pin_A10)
+#define MICROPY_HW_UART2_TX     (pin_D8)
+#define MICROPY_HW_UART2_RX     (pin_D9)
 
 // I2C busses
 #define MICROPY_HW_I2C3_SCL (pin_A8)
@@ -58,6 +49,12 @@
 //#define MICROPY_HW_SPI6_MISO    (pin_G12)
 //#define MICROPY_HW_SPI6_MOSI    (pin_G14)
 
+// CAN busses
+#define MICROPY_HW_CAN1_TX (pin_B9)
+#define MICROPY_HW_CAN1_RX (pin_B8)
+#define MICROPY_HW_CAN2_TX (pin_B13)
+#define MICROPY_HW_CAN2_RX (pin_B12)
+
 // USRSW is pulled low. Pressing the button makes the input go high.
 #define MICROPY_HW_USRSW_PIN        (pin_A0)
 #define MICROPY_HW_USRSW_PULL       (GPIO_NOPULL)
@@ -71,5 +68,7 @@
 #define MICROPY_HW_LED_OFF(pin)     (mp_hal_pin_low(pin))
 
 // USB config
+#define MICROPY_HW_USB_HS              (1)
+#define MICROPY_HW_USB_HS_IN_FS        (1)
 #define MICROPY_HW_USB_VBUS_DETECT_PIN (pin_B13)
 #define MICROPY_HW_USB_OTG_ID_PIN      (pin_B12)

@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -25,8 +25,8 @@
  */
 
 #include "py/obj.h"
-#include "lib/fatfs/ff.h"
-#include "timeutils.h"
+#include "lib/timeutils/timeutils.h"
+#include "lib/oofatfs/ff.h"
 #include "modmachine.h"
 
 DWORD get_fattime(void) {
