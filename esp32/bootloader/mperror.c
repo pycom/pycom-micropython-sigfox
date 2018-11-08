@@ -47,6 +47,7 @@ struct mperror_heart_beat {
 } mperror_heart_beat = {.off_time = 0, .on_time = 0, .beating = false, .enabled = false, .do_disable = false};
 
 void TASK_Heartbeat (void *pvParameters);
+
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -60,6 +61,8 @@ void mperror_init0 (void) {
     gpio_config(&gpioconf);
 
     mperror_heart_beat.enabled = true;
+    //delay introduced to separate last falling edge of signal and next color code
+    ets_delay_us(150);
     mperror_heartbeat_switch_off();
 }
 
