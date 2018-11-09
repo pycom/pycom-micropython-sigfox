@@ -61,7 +61,6 @@ typedef struct {
     uint8_t sw_version[12];
     uint8_t boot_fs_type;
     uint8_t boot_partition;
-    uint8_t pycom_reserved[488];
 } pycom_config_t;
 
 typedef struct {
@@ -77,11 +76,11 @@ typedef struct {
     pycom_lpwan_config_t lpwan_config;
     pycom_wifi_config_t wifi_config;
     pycom_rgbled_config_t rgbled_config;
-    uint8_t pycom_reserved[335];
-    pycom_config_t pycom_config;
+    pycom_pybytes_config_t pybytes_config;
     pycom_wdt_config_t wdt_config;
 	pycom_lte_config_t lte_config;
-    uint8_t pycom_dummy[247];
+	pycom_config_t pycom_config;
+	uint8_t pycom_reserved[488];
 } pycom_config_block_t;
 
 /******************************************************************************
