@@ -59,7 +59,7 @@ PROJECT_PATH := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
 endif
 
 #check Frozen files changes
-$(shell bash tools/mpy-build-check.sh $(BOARD) $(BTYPE))
+$(shell bash tools/mpy-build-check.sh $(BOARD) $(BTYPE) $(VARIANT))
 
 FROZEN_MPY_DIR = frozen
 

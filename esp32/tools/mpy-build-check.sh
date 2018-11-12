@@ -2,9 +2,11 @@
 
 BOARD="$1"
 RELEASE_TYP="$2"
+VARIANT="$3"
 PY_PATH="./frozen"
 PY_DIRS="$(ls ${PY_PATH})"
 OS="$(uname)"
+BUILD_DIR="build"
 
 #Script Has to be called from esp32 Dir
 if ! [ $0 = "tools/mpy-build-check.sh" ]; then
@@ -18,14 +20,18 @@ if [ "${BOARD}" != "WIPY" -a "${BOARD}" != "SIPY" -a "${BOARD}" != "LOPY" -a "${
   exit 1
 fi
 
-MPY_PATH=./build/"${BOARD}"/"${RELEASE_TYP}"/frozen_mpy
+if [ "${VARIANT}" == "PYBYTES" ] ; then
+	BUILD_DIR="build-variant"
+fi
+
+MPY_PATH=./"${BUILD_DIR}"/"${BOARD}"/"${RELEASE_TYP}"/frozen_mpy
 
 if ! [ -d ${MPY_PATH} ] ; then
   #Build Directory not created yet
   exit 0
 fi
 
-BUILD_TIMESTAMP=./build/${BOARD}"/"${RELEASE_TYP}"/"mpy_last_build_timestamp.TS
+BUILD_TIMESTAMP=./"${BUILD_DIR}"/${BOARD}"/"${RELEASE_TYP}"/"mpy_last_build_timestamp.TS
 
 #If Last mpy Build Timestamp Not avialable create it
 if [ ! -f  ${BUILD_TIMESTAMP} ] ; then
@@ -51,7 +57,7 @@ do
   fi
 
   if [[ ${TS} -gt ${LAST_BUILD} ]] ; then
-    echo "Number of Frozen Code files changed!" >&2
+    echo "Rebuilding frozen Code!" >&2
     #Remove all MPY out files to be rubuild again by Makefile
     $(rm -rf ${MPY_PATH})
     #Update Last Build Timestamp
