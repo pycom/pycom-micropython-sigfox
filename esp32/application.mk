@@ -41,6 +41,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/json/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip
 APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip/port
+APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip/posix
 APP_INC += -I$(ESP_IDF_COMP_PATH)/newlib/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/newlib/platform_include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/nvs_flash/include
@@ -67,6 +68,9 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/hci/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/gki/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include/coap
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include/coap
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
 APP_INC += -I../lib/oofatfs
@@ -149,6 +153,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machrmt.c \
 	lwipsocket.c \
 	machtouch.c \
+	modcoap.c \
 	)
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
@@ -294,6 +299,26 @@ BOOT_SRC_C = $(addprefix bootloader/,\
 	flash_qio_mode.c \
 	)
 
+APP_COAP_SRC_C = $(addprefix $(ESP_IDF_COMP_PATH)/coap/,\
+	libcoap/src/address.c \
+	libcoap/src/async.c \
+	libcoap/src/block.c \
+	libcoap/src/coap_io.c \
+	libcoap/src/coap_time.c \
+	libcoap/src/debug.c \
+	libcoap/src/encode.c \
+	libcoap/src/hashkey.c \
+	libcoap/src/mem.c \
+	libcoap/src/net.c \
+	libcoap/src/option.c \
+	libcoap/src/pdu.c \
+	libcoap/src/resource.c \
+	libcoap/src/str.c \
+	libcoap/src/subscribe.c \
+	libcoap/src/uri.c \
+	port/coap_io_socket.c \
+	)
+
 SFX_OBJ =
 
 OBJ = $(PY_O)
@@ -323,7 +348,7 @@ endif # ifeq ($(OPENTHREAD), on)
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o) $(APP_COAP_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins.o
 
 BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
@@ -356,7 +381,7 @@ BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.periph
 APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld
 
 # add the application specific CFLAGS
-CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\"
+CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
 CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
 CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DBASE=0 -DPYBYTES=1 
 # Specify if this is base or Pybytes Firmware
@@ -369,7 +394,7 @@ else
 	$(error Invalid Variant specified)
 	endif
 endif  
-# Give the possibility to use LittleFs on /flash, otherwise  FatFs is used
+# Give the possibility to use LittleFs on /flash, otherwise FatFs is used
 FS ?= ""
 ifeq ($(FS), LFS)
     CFLAGS += -DFS_USE_LITTLEFS
