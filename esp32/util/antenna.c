@@ -53,14 +53,14 @@ void antenna_init0(void) {
 }
 
 void antenna_select (antenna_type_t _antenna) {
-	static bool init_done = false;
+    static bool init_done = false;
 
     if (micropy_hw_antenna_diversity_pin_num < 32) {
         // set the pin value
         if (_antenna == ANTENNA_TYPE_EXTERNAL) {
-        	// config the pin for first time if is the second generation as it was already ulled down by default
-        	if((micropy_hw_antenna_diversity_pin_num == MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM) && (!init_done))
-    		{
+            // config the pin for first time if is the second generation as it was already ulled down by default
+            if((micropy_hw_antenna_diversity_pin_num == MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM) && (!init_done))
+            {
                 gpio_config_t gpioconf = {.pin_bit_mask = 1ull << MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM,
                                           .mode = GPIO_MODE_OUTPUT,
                                           .pull_up_en = GPIO_PULLUP_DISABLE,
@@ -68,9 +68,9 @@ void antenna_select (antenna_type_t _antenna) {
                                           .intr_type = GPIO_INTR_DISABLE};
                 if(ESP_OK == gpio_config(&gpioconf))
                 {
-                	init_done = true;
+                    init_done = true;
                 }
-    		}
+            }
 
             GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << micropy_hw_antenna_diversity_pin_num);
         } else if (_antenna == ANTENNA_TYPE_INTERNAL) {
@@ -78,9 +78,9 @@ void antenna_select (antenna_type_t _antenna) {
         }
     } else {
         if (_antenna == ANTENNA_TYPE_EXTERNAL) {
-        	// config the pin for first time if is the second generation as it was already ulled down by default
-        	if((micropy_hw_antenna_diversity_pin_num == MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM) && (!init_done))
-    		{
+            // config the pin for first time if is the second generation as it was already ulled down by default
+            if((micropy_hw_antenna_diversity_pin_num == MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM) && (!init_done))
+            {
                 gpio_config_t gpioconf = {.pin_bit_mask = 1ull << (MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM & 31),
                                           .mode = GPIO_MODE_OUTPUT,
                                           .pull_up_en = GPIO_PULLUP_DISABLE,
@@ -88,9 +88,9 @@ void antenna_select (antenna_type_t _antenna) {
                                           .intr_type = GPIO_INTR_DISABLE};
                 if(ESP_OK == gpio_config(&gpioconf))
                 {
-                	init_done = true;
+                    init_done = true;
                 }
-    		}
+            }
             GPIO_REG_WRITE(GPIO_OUT1_W1TS_REG, 1 << (micropy_hw_antenna_diversity_pin_num & 31));
         } else if (_antenna == ANTENNA_TYPE_INTERNAL) {
             GPIO_REG_WRITE(GPIO_OUT1_W1TC_REG, 1 << (micropy_hw_antenna_diversity_pin_num & 31));

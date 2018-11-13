@@ -27,17 +27,17 @@ static uint32_t sflash_fs_sector_count;
 
 
 static bool sflash_write (void) {
-	esp_err_t wr_result = ESP_FAIL;
+    esp_err_t wr_result = ESP_FAIL;
 
-	// erase the block first
+    // erase the block first
     if (ESP_OK == spi_flash_erase_sector(sflash_prev_block_addr / SFLASH_BLOCK_SIZE)) {
-    		// then write it
-    		if (esp_flash_encryption_enabled()) {
-    			// sflash_prev_block_addr being 4KB block address is aligned 32B
-    			wr_result = spi_flash_write_encrypted(sflash_prev_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE);
-    		} else {
-    			wr_result = spi_flash_write(sflash_prev_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE);
-    		}
+            // then write it
+            if (esp_flash_encryption_enabled()) {
+                // sflash_prev_block_addr being 4KB block address is aligned 32B
+                wr_result = spi_flash_write_encrypted(sflash_prev_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE);
+            } else {
+                wr_result = spi_flash_write(sflash_prev_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE);
+            }
     }
     return (wr_result == ESP_OK);
 }

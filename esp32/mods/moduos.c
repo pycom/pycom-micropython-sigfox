@@ -207,7 +207,7 @@ STATIC const mp_rom_map_elem_t os_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_stat),            MP_ROM_PTR(&mp_vfs_stat_obj) },
     { MP_ROM_QSTR(MP_QSTR_statvfs),         MP_ROM_PTR(&mp_vfs_statvfs_obj) },
     { MP_ROM_QSTR(MP_QSTR_getfree),         MP_ROM_PTR(&mp_vfs_getfree_obj) },
-	{ MP_ROM_QSTR(MP_QSTR_fsformat),        MP_ROM_PTR(&mp_vfs_fsformat_obj) },
+    { MP_ROM_QSTR(MP_QSTR_fsformat),        MP_ROM_PTR(&mp_vfs_fsformat_obj) },
     { MP_ROM_QSTR(MP_QSTR_unlink),          MP_ROM_PTR(&mp_vfs_remove_obj) },
 
     { MP_ROM_QSTR(MP_QSTR_sync),            MP_ROM_PTR(&mod_os_sync_obj) },

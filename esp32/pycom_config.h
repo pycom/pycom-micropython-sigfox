@@ -69,7 +69,7 @@ typedef struct {
 } pycom_wdt_config_t;
 
 typedef struct {
-	uint8_t lte_modem_en_on_boot;
+    uint8_t lte_modem_en_on_boot;
 }pycom_lte_config_t;
 
 typedef struct {
@@ -78,9 +78,9 @@ typedef struct {
     pycom_rgbled_config_t rgbled_config;
     pycom_pybytes_config_t pybytes_config;
     pycom_wdt_config_t wdt_config;
-	pycom_lte_config_t lte_config;
-	pycom_config_t pycom_config;
-	uint8_t pycom_reserved[488];
+    pycom_lte_config_t lte_config;
+    pycom_config_t pycom_config;
+    uint8_t pycom_reserved[488];
 } pycom_config_block_t;
 
 /******************************************************************************

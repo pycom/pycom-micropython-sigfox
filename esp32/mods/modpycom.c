@@ -70,7 +70,7 @@ static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t sa
             boot_info.Status = 0;
             update_boot = true;
         } else {
-        	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error invalid boot partition!"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error invalid boot partition!"));
         }
     }
     if (safeboot < 255) {
@@ -78,7 +78,7 @@ static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t sa
             boot_info.safeboot = (uint32_t)safeboot;
             update_boot = true;
         } else {
-        	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error safeboot must be True or False!"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error safeboot must be True or False!"));
         }
     }
     if (fs_type < 255) {
@@ -86,12 +86,12 @@ static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t sa
             config_set_boot_fs_type(fs_type);
         }
         else {
-        	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error invalid filesystem type!"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error invalid filesystem type!"));
         }
     }
     if (update_boot) {
         if (updater_write_boot_info (&boot_info, boot_info_offset) == false) {
-        	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error writing bootloader information!"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error writing bootloader information!"));
         }
     }
 }
@@ -350,39 +350,39 @@ STATIC mp_obj_t mod_pycom_bootmgr (size_t n_args, const mp_obj_t *pos_args, mp_m
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     if (args[ARG_boot_partition].u_int == 255 && args[ARG_fs_type].u_int == 255 && args[ARG_safeboot].u_int == 255) {
-    	mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(3, NULL));
+        mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(3, NULL));
 
         if(boot_info.ActiveImg == 0x00)
-		{
-			t->items[ARG_boot_partition] = mp_obj_new_str("Factory", strlen("Factory"));
-		}
+        {
+            t->items[ARG_boot_partition] = mp_obj_new_str("Factory", strlen("Factory"));
+        }
         else
         {
-        	t->items[ARG_boot_partition] = mp_obj_new_str("ota_0", strlen("ota_0"));
+            t->items[ARG_boot_partition] = mp_obj_new_str("ota_0", strlen("ota_0"));
         }
 
         if(config_get_boot_fs_type() == 0x00)
-		{
-			t->items[ARG_fs_type] = mp_obj_new_str("FAT", strlen("FAT"));
-		}
+        {
+            t->items[ARG_fs_type] = mp_obj_new_str("FAT", strlen("FAT"));
+        }
         else
         {
-        	t->items[ARG_fs_type] = mp_obj_new_str("LittleFS", strlen("LittleFS"));
+            t->items[ARG_fs_type] = mp_obj_new_str("LittleFS", strlen("LittleFS"));
         }
 
         if(boot_info.safeboot == 0x00)
-		{
-        	t->items[ARG_safeboot] = mp_obj_new_str("False", strlen("False"));
-		}
+        {
+            t->items[ARG_safeboot] = mp_obj_new_str("False", strlen("False"));
+        }
         else
         {
-        	t->items[ARG_safeboot] = mp_obj_new_str("True", strlen("True"));
+            t->items[ARG_safeboot] = mp_obj_new_str("True", strlen("True"));
         }
 
         return MP_OBJ_FROM_PTR(t);
 
     } else {
-        	modpycom_bootmgr(args[ARG_boot_partition].u_int, args[ARG_fs_type].u_int, args[ARG_safeboot].u_int);
+            modpycom_bootmgr(args[ARG_boot_partition].u_int, args[ARG_fs_type].u_int, args[ARG_safeboot].u_int);
 
             if (args[ARG_reset].u_bool == true) {
                 machine_reset();
@@ -461,7 +461,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_ssid),                       (mp_obj_t)&mod_pycom_wifi_ssid_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd),                        (mp_obj_t)&mod_pycom_wifi_pwd_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat_on_boot),               (mp_obj_t)&mod_pycom_heartbeat_on_boot_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_lte_modem_en_on_boot),            (mp_obj_t)&mod_pycom_lte_modem_on_boot_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_lte_modem_en_on_boot),            (mp_obj_t)&mod_pycom_lte_modem_on_boot_obj },
 #if (VARIANT == PYBYTES)
     { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_device_token),            (mp_obj_t)&mod_pycom_pybytes_device_token_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_mqttServiceAddress),      (mp_obj_t)&mod_pycom_pybytes_mqttServiceAddress_obj },

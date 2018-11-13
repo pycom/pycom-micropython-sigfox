@@ -8,7 +8,7 @@
  */
 
 #ifndef MODLED_H
-#define	MODLED_H
+#define    MODLED_H
 
 #include "driver/rmt.h"
 #include "driver/gpio.h"
@@ -47,5 +47,5 @@ bool led_set_color(led_info_t *led_info, bool synchronize, bool wait_tx);
 bool led_init(led_info_t *led_info);
 void rmt_deinit_rgb (void);
 
-#endif	/* MODLED_H */
+#endif    /* MODLED_H */
 

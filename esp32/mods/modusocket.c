@@ -398,14 +398,14 @@ STATIC mp_obj_t socket_sendto(mp_obj_t self_in, mp_obj_t data_in, mp_obj_t addr_
 #if defined (LOPY) || defined(LOPY4) || defined(FIPY)
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
         mp_obj_t *addr_items;
-		mp_obj_get_array_fixed_n(addr_in, 2, &addr_items);
-		size_t addr_len;
-		const char *addr_str = mp_obj_str_get_data(addr_items[0], &addr_len);
-		addr_len++; //string end null char
-		memcpy(ip, addr_str, (addr_len< MOD_USOCKET_IPV6_CHARS_MAX)?addr_len:MOD_USOCKET_IPV6_CHARS_MAX);
-		port = mp_obj_get_int(addr_items[1]);
+        mp_obj_get_array_fixed_n(addr_in, 2, &addr_items);
+        size_t addr_len;
+        const char *addr_str = mp_obj_str_get_data(addr_items[0], &addr_len);
+        addr_len++; //string end null char
+        memcpy(ip, addr_str, (addr_len< MOD_USOCKET_IPV6_CHARS_MAX)?addr_len:MOD_USOCKET_IPV6_CHARS_MAX);
+        port = mp_obj_get_int(addr_items[1]);
     } else {
-    		port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
+            port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
     }
 #else
     port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
@@ -456,16 +456,16 @@ STATIC mp_obj_t socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
 #if defined (LOPY) || defined(LOPY4) || defined(FIPY)
     // check if lora NIC and IP is not set (so Lora Raw or LoraWAN, but no Lora Mesh)
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
-    		if (ip[0] == 0) {
+            if (ip[0] == 0) {
             tuple[1] = mp_obj_new_int(port);
-    		} else {
-    			// Lora Mesh
-    			mp_obj_t addr[2] = {
-				addr[0] = mp_obj_new_str((char*)ip, strlen((char*)ip)),
-				addr[1] = mp_obj_new_int(port),
-    			};
-    			tuple[1] = mp_obj_new_tuple(2, addr);
-    		}
+            } else {
+                // Lora Mesh
+                mp_obj_t addr[2] = {
+                addr[0] = mp_obj_new_str((char*)ip, strlen((char*)ip)),
+                addr[1] = mp_obj_new_int(port),
+                };
+                tuple[1] = mp_obj_new_tuple(2, addr);
+            }
     } else {
         tuple[1] = netutils_format_inet_addr(ip, port, NETUTILS_LITTLE);
     }
@@ -586,7 +586,7 @@ STATIC const mp_map_elem_t raw_socket_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___del__),         (mp_obj_t)&socket_close_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_close),           (mp_obj_t)&socket_close_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_send),            (mp_obj_t)&socket_send_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_sendto),          (mp_obj_t)&socket_sendto_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sendto),          (mp_obj_t)&socket_sendto_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_recv),            (mp_obj_t)&socket_recv_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_recvfrom),        (mp_obj_t)&socket_recvfrom_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_settimeout),      (mp_obj_t)&socket_settimeout_obj },

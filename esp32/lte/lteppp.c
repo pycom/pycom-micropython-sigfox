@@ -101,12 +101,12 @@ void lteppp_start (void) {
 
 void lteppp_connect_modem (void) {
 
-	lteppp_enabled = true;
+    lteppp_enabled = true;
 }
 
 bool lteppp_is_modem_connected(void)
 {
-	return lteppp_enabled;
+    return lteppp_enabled;
 }
 
 void lteppp_set_state(lte_state_t state) {
@@ -236,8 +236,8 @@ static void TASK_LTE (void *pvParameters) {
 
     while (!lteppp_enabled)
     {
-    	// wait till connection is enabled
-    	vTaskDelay(LTE_TASK_PERIOD_MS/portTICK_PERIOD_MS);
+        // wait till connection is enabled
+        vTaskDelay(LTE_TASK_PERIOD_MS/portTICK_PERIOD_MS);
     }
 
     if (lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS)) {

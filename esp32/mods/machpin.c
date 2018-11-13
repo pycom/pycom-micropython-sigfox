@@ -136,12 +136,12 @@ void pin_init0(void) {
             /* exclude the antenna switch pin from initialization as it is already initialized */
             if((micropy_hw_antenna_diversity_pin_num == MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM) && (self == &PIN_MODULE_P12))
             {
-            	continue;
+                continue;
             }
             /* exclude RGB led from initialization as it is already initialized by mperror */
             if (self == &PIN_MODULE_P2)
             {
-            	continue;
+                continue;
             }
             pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0);
         }

@@ -413,9 +413,9 @@ int lora_ot_recv(uint8_t *buf, int8_t *rssi) {
     if (len > 0) {
         otPlatLog(OT_LOG_LEVEL_INFO, 0, "radio rcv: %d", len);
         if (lora_obj.rssi < INT8_MIN)
-        	    *rssi = INT8_MIN;
+                *rssi = INT8_MIN;
         else
-        	    *rssi = lora_obj.rssi;
+                *rssi = lora_obj.rssi;
     }
     return len;
 }

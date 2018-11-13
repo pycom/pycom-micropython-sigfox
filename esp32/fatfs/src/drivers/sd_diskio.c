@@ -59,7 +59,7 @@ DSTATUS sd_disk_init (void) {
         .io_voltage = 3.3f,
         .init = &sdmmc_host_init,
         .set_bus_width = &sdmmc_host_set_bus_width,
-		.get_bus_width = &sdmmc_host_get_slot_width,
+        .get_bus_width = &sdmmc_host_get_slot_width,
         .set_card_clk = &sdmmc_host_set_card_clk,
         .do_transaction = &sdmmc_host_do_transaction,
         .deinit = &sdmmc_host_deinit,

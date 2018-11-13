@@ -70,24 +70,24 @@ static int is_valid_directory(vfs_lfs_struct_t* littlefs, const char* path)
 
 extern mp_import_stat_t littleFS_vfs_import_stat(fs_user_mount_t *vfs, const char *path)
 {
-	struct lfs_info lfs_info_stat;
-	assert(vfs != NULL);
-	/* check if path exists */
-	if((int)LFS_ERR_OK == lfs_stat(&(vfs->fs.littlefs.lfs), path, &lfs_info_stat))
-	{
-		if(lfs_info_stat.type == LFS_TYPE_DIR)
-		{
-			return MP_IMPORT_STAT_DIR;
-		}
-		else
-		{
-			return MP_IMPORT_STAT_FILE;
-		}
-	}
-	else
-	{
-		return MP_IMPORT_STAT_NO_EXIST;
-	}
+    struct lfs_info lfs_info_stat;
+    assert(vfs != NULL);
+    /* check if path exists */
+    if((int)LFS_ERR_OK == lfs_stat(&(vfs->fs.littlefs.lfs), path, &lfs_info_stat))
+    {
+        if(lfs_info_stat.type == LFS_TYPE_DIR)
+        {
+            return MP_IMPORT_STAT_DIR;
+        }
+        else
+        {
+            return MP_IMPORT_STAT_FILE;
+        }
+    }
+    else
+    {
+        return MP_IMPORT_STAT_NO_EXIST;
+    }
 
 }
 
@@ -631,7 +631,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(littlefs_vfs_umount_obj, littlefs_vfs_umount);
 
 STATIC mp_obj_t littlefs_vfs_fsformat(mp_obj_t vfs_in)
 {
-	fs_user_mount_t * vfs = MP_OBJ_TO_PTR(vfs_in);
+    fs_user_mount_t * vfs = MP_OBJ_TO_PTR(vfs_in);
 
     lfs_format(&vfs->fs.littlefs.lfs, &lfscfg);
 
@@ -652,7 +652,7 @@ STATIC const mp_rom_map_elem_t littlefs_vfs_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_statvfs), MP_ROM_PTR(&littlefs_vfs_statvfs_obj) },
     { MP_ROM_QSTR(MP_QSTR_getfree), MP_ROM_PTR(&littlefs_vfs_getfree_obj) },
     { MP_ROM_QSTR(MP_QSTR_umount), MP_ROM_PTR(&littlefs_vfs_umount_obj) },
-	{ MP_ROM_QSTR(MP_QSTR_fsformat), MP_ROM_PTR(&littlefs_vfs_fsformat_obj) }
+    { MP_ROM_QSTR(MP_QSTR_fsformat), MP_ROM_PTR(&littlefs_vfs_fsformat_obj) }
 
 };
 STATIC MP_DEFINE_CONST_DICT(littlefs_vfs_locals_dict, littlefs_vfs_locals_dict_table);

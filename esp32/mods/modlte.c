@@ -72,8 +72,8 @@
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
-#define LTE_NUM_UARTS				2
-#define UART_TRANSFER_MAX_LEN		1
+#define LTE_NUM_UARTS                2
+#define UART_TRANSFER_MAX_LEN        1
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -207,45 +207,45 @@ static bool lte_check_sim_present(void) {
 
 static void TASK_LTE_UPGRADE (void *pvParameters) {
 
-	size_t len = 0;
-	uint8_t rx_buff[UART_TRANSFER_MAX_LEN];
-	// Suspend All tasks
-	vTaskSuspend(mpTaskHandle);
-	vTaskSuspend(svTaskHandle);
+    size_t len = 0;
+    uint8_t rx_buff[UART_TRANSFER_MAX_LEN];
+    // Suspend All tasks
+    vTaskSuspend(mpTaskHandle);
+    vTaskSuspend(svTaskHandle);
 #if defined(FIPY)
-	vTaskSuspend(xLoRaTaskHndl);
-	vTaskSuspend(xMeshTaskHndl);
-	vTaskSuspend(xSigfoxTaskHndl);
+    vTaskSuspend(xLoRaTaskHndl);
+    vTaskSuspend(xMeshTaskHndl);
+    vTaskSuspend(xSigfoxTaskHndl);
 #endif
-	vTaskSuspend(xLTETaskHndl);
+    vTaskSuspend(xLTETaskHndl);
 
-	for(;;)
-	{
-		uart_get_buffered_data_len(0, &len);
+    for(;;)
+    {
+        uart_get_buffered_data_len(0, &len);
 
-		if(len)
-		{
-			if(len > UART_TRANSFER_MAX_LEN)
-			{
-				len = UART_TRANSFER_MAX_LEN;
-			}
-			uart_read_bytes(0,rx_buff,len,0);
-			uart_write_bytes(1,(char*)(rx_buff),len);
-		}
+        if(len)
+        {
+            if(len > UART_TRANSFER_MAX_LEN)
+            {
+                len = UART_TRANSFER_MAX_LEN;
+            }
+            uart_read_bytes(0,rx_buff,len,0);
+            uart_write_bytes(1,(char*)(rx_buff),len);
+        }
 
-		len = 0;
-		uart_get_buffered_data_len(1, &len);
+        len = 0;
+        uart_get_buffered_data_len(1, &len);
 
-		if(len)
-		{
-			if(len > UART_TRANSFER_MAX_LEN)
-			{
-				len = UART_TRANSFER_MAX_LEN;
-			}
-			uart_read_bytes(1,rx_buff,len,0);
-			uart_write_bytes(0,(char*)(rx_buff),len);
-		}
-	}
+        if(len)
+        {
+            if(len > UART_TRANSFER_MAX_LEN)
+            {
+                len = UART_TRANSFER_MAX_LEN;
+            }
+            uart_read_bytes(1,rx_buff,len,0);
+            uart_write_bytes(0,(char*)(rx_buff),len);
+        }
+    }
 }
 
 /******************************************************************************/
@@ -309,16 +309,16 @@ static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
     mp_arg_val_t args[MP_ARRAY_SIZE(lte_init_args)];
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(args), lte_init_args, args);
 
-	if (!lteppp_is_modem_connected()) {
-		//Enable Lte modem connection
-		lteppp_connect_modem();
-	}
+    if (!lteppp_is_modem_connected()) {
+        //Enable Lte modem connection
+        lteppp_connect_modem();
+    }
 
-	while(!lteppp_is_modem_connected())
-	{
-		//wait till modem is start-up
-		vTaskDelay(1/portTICK_PERIOD_MS);
-	}
+    while(!lteppp_is_modem_connected())
+    {
+        //wait till modem is start-up
+        vTaskDelay(1/portTICK_PERIOD_MS);
+    }
 
     // setup the object
     lte_obj_t *self = &lte_obj;
@@ -574,7 +574,7 @@ STATIC mp_obj_t lte_upgrade_mode(void) {
 
     if(lte_obj.init)
     {
-    	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Modem not disabled"));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Modem not disabled"));
     }
 
     // uninstall the driver
@@ -621,13 +621,13 @@ STATIC mp_obj_t lte_upgrade_mode(void) {
 
 
     lte_uart_config0.baud_rate = MICROPY_LTE_UART_BAUDRATE;
-	lte_uart_config0.data_bits = UART_DATA_8_BITS;
-	lte_uart_config0.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
-	lte_uart_config0.parity = UART_PARITY_DISABLE;
-	lte_uart_config0.rx_flow_ctrl_thresh = 64;
-	lte_uart_config0.stop_bits = 1.0;
+    lte_uart_config0.data_bits = UART_DATA_8_BITS;
+    lte_uart_config0.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
+    lte_uart_config0.parity = UART_PARITY_DISABLE;
+    lte_uart_config0.rx_flow_ctrl_thresh = 64;
+    lte_uart_config0.stop_bits = 1.0;
 
-	uart_param_config(0, &lte_uart_config0);
+    uart_param_config(0, &lte_uart_config0);
 
     pin_config(&PIN_MODULE_P1, -1, U0TXD_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 1);
     pin_config(&PIN_MODULE_P0, U0RXD_IN_IDX, -1, GPIO_MODE_INPUT, MACHPIN_PULL_NONE, 1);
@@ -660,7 +660,7 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_iccid),               (mp_obj_t)&lte_iccid_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_send_at_cmd),         (mp_obj_t)&lte_send_raw_at_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset),               (mp_obj_t)&lte_reset_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_modem_upgrade_mode),  (mp_obj_t)&lte_upgrade_mode_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_modem_upgrade_mode),  (mp_obj_t)&lte_upgrade_mode_obj },
 
     // class constants
 };

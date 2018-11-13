@@ -88,10 +88,10 @@ void mp_thread_preinit(void *stack, uint32_t stack_len) {
 }
 
 void mp_thread_init(void) {
-	if(thread_mutex.handle == NULL)
-	{
-		mp_thread_mutex_init(&thread_mutex);
-	}
+    if(thread_mutex.handle == NULL)
+    {
+        mp_thread_mutex_init(&thread_mutex);
+    }
 }
 
 void mp_thread_gc_others(void) {
@@ -232,7 +232,7 @@ void vPortCleanUpTCB (void *tcb) {
     thread_t *prev = NULL;
     if(thread_mutex.handle == NULL)
     {
-    	mp_thread_mutex_init(&thread_mutex);
+        mp_thread_mutex_init(&thread_mutex);
     }
     mp_thread_mutex_lock(&thread_mutex, 1);
     for (thread_t *th = thread; th != NULL; prev = th, th = th->next) {

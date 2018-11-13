@@ -179,5 +179,5 @@ void app_main(void) {
 /*TODO: Disabled untill Mesh wifi is supported */
 bool esp_mesh_is_scan_allowed()
 {
-	return false;
+    return false;
 }

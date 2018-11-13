@@ -67,29 +67,29 @@
  ******************************************************************************/
 
 #define FILE_READ_SIZE                      256
-#define BSSID_MAX_SIZE						6
-#define MAX_WLAN_KEY_SIZE					65
-#define MAX_AP_CONNECTED_STA				4
-#define MAX_WIFI_CHANNELS					14
+#define BSSID_MAX_SIZE                        6
+#define MAX_WLAN_KEY_SIZE                    65
+#define MAX_AP_CONNECTED_STA                4
+#define MAX_WIFI_CHANNELS                    14
 
-#define MAX_WIFI_PROM_PKT_SIZE				4096
+#define MAX_WIFI_PROM_PKT_SIZE                4096
 
-#define MAX_WIFI_PKT_PARAMS					18
+#define MAX_WIFI_PKT_PARAMS                    18
 
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
 wlan_obj_t wlan_obj = {
     .started = false,
-	.soft_ap_stopped = true,
-	.sta_stopped = true,
-	.disconnected = true,
-	.irq_flags = 0,
-	.irq_enabled = false,
-	.enable_servers = false,
-	.pwrsave = false,
-	.max_tx_pwr = CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER, /*FIXME: This value is configured in sdkconfig but the max_tx_power is always init to 78 at startup by idf*/
-	.is_promiscuous = false
+    .soft_ap_stopped = true,
+    .sta_stopped = true,
+    .disconnected = true,
+    .irq_flags = 0,
+    .irq_enabled = false,
+    .enable_servers = false,
+    .pwrsave = false,
+    .max_tx_pwr = CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER, /*FIXME: This value is configured in sdkconfig but the max_tx_power is always init to 78 at startup by idf*/
+    .is_promiscuous = false
 };
 
 /* TODO: Maybe we can add possibility to create IRQs for wifi events */
@@ -194,50 +194,50 @@ void wlan_resume (bool reconnect)
 
         if(reconnect)
         {
-    		const char* bssid = NULL;
-    		const char* key = NULL;
-    		const char* hostname = NULL;
+            const char* bssid = NULL;
+            const char* key = NULL;
+            const char* hostname = NULL;
 
-    		if(wlan_conn_recover_bssid[0] != '\0')
-    		{
-    			bssid = (const char*)wlan_conn_recover_bssid;
-    		}
-    		if(wlan_conn_recover_key[0] != '\0')
-    		{
-    			key = (const char*)wlan_conn_recover_key;
-    		}
-    		if(wlan_conn_recover_hostname[0] != '\0')
-    		{
-    			hostname = (const char*)wlan_conn_recover_hostname;
-    		}
+            if(wlan_conn_recover_bssid[0] != '\0')
+            {
+                bssid = (const char*)wlan_conn_recover_bssid;
+            }
+            if(wlan_conn_recover_key[0] != '\0')
+            {
+                key = (const char*)wlan_conn_recover_key;
+            }
+            if(wlan_conn_recover_hostname[0] != '\0')
+            {
+                hostname = (const char*)wlan_conn_recover_hostname;
+            }
 
-    		wlan_internal_setup_t setup_config = {
-    				wlan_conn_recover_mode,
-					(const char *)wlan_conn_recover_ssid,
-					key,
-					wlan_conn_recover_auth,
-					wlan_conn_recover_ap_channel,
-					wlan_conn_recover_antenna,
-					false,
-					wlan_conn_recover_hidden,
-					wlan_conn_recover_bandwidth,
-					NULL,
-					NULL
-    		};
+            wlan_internal_setup_t setup_config = {
+                    wlan_conn_recover_mode,
+                    (const char *)wlan_conn_recover_ssid,
+                    key,
+                    wlan_conn_recover_auth,
+                    wlan_conn_recover_ap_channel,
+                    wlan_conn_recover_antenna,
+                    false,
+                    wlan_conn_recover_hidden,
+                    wlan_conn_recover_bandwidth,
+                    NULL,
+                    NULL
+            };
 
-    	    // initialize the wlan subsystem
-    	    wlan_setup(&setup_config);
+            // initialize the wlan subsystem
+            wlan_setup(&setup_config);
 
 
-    		if (mod_wlan_was_sta_disconnected) {
-    			/* re-establish connection */
-    			wlan_do_connect ((const char*)wlan_conn_recover_ssid, bssid, wlan_conn_recover_auth, (const char*)wlan_conn_recover_key,
-    																										wlan_conn_recover_timeout, &wlan_wpa2_ent, hostname, wlan_conn_recover_scan_channel);
+            if (mod_wlan_was_sta_disconnected) {
+                /* re-establish connection */
+                wlan_do_connect ((const char*)wlan_conn_recover_ssid, bssid, wlan_conn_recover_auth, (const char*)wlan_conn_recover_key,
+                                                                                                            wlan_conn_recover_timeout, &wlan_wpa2_ent, hostname, wlan_conn_recover_scan_channel);
 
-    			mod_wlan_was_sta_disconnected = false;
-    		}
+                mod_wlan_was_sta_disconnected = false;
+            }
 
-    		wlan_init_wlan_recover_params();
+            wlan_init_wlan_recover_params();
         }
     }
 }
@@ -266,11 +266,11 @@ void wlan_setup (wlan_internal_setup_t *config) {
 
     if (config->country != NULL) {
 
-		if(ESP_OK != esp_wifi_set_country(config->country))
-		{
-			nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
-		}
-	}
+        if(ESP_OK != esp_wifi_set_country(config->country))
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+    }
 
     esp_wifi_start();
 
@@ -278,8 +278,8 @@ void wlan_setup (wlan_internal_setup_t *config) {
 
     if(config->max_tx_pr != NULL)
     {
-    	// set the max_tx_power
-    	esp_wifi_set_max_tx_power(*(config->max_tx_pr));
+        // set the max_tx_power
+        esp_wifi_set_max_tx_power(*(config->max_tx_pr));
     }
 
     wlan_obj.started = true;
@@ -297,7 +297,7 @@ void wlan_get_mac (uint8_t *macAddress) {
 void wlan_off_on (void) {
     // no need to lock the WLAN object on every API call since the servers and the MicroPtyhon
     // task have the same priority
-	/* TODO: */
+    /* TODO: */
 }
 
 //*****************************************************************************
@@ -306,93 +306,93 @@ void wlan_off_on (void) {
 
 STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
     switch(event->event_id) {
-		case SYSTEM_EVENT_STA_START: /**< ESP32 station start */
-			wlan_obj.sta_stopped = false;
-			break;
-		case SYSTEM_EVENT_STA_STOP:                 /**< ESP32 station stop */
-			wlan_obj.sta_stopped = true;
-			break;
-		case SYSTEM_EVENT_STA_CONNECTED: /**< ESP32 station connected to AP */
-		{
-			system_event_sta_connected_t *_event = (system_event_sta_connected_t *)&event->event_info;
-			memcpy(wlan_obj.bssid, _event->bssid, 6);
-			memcpy(wlan_obj.ssid_o, _event->ssid, 32);
-			wlan_obj.channel = _event->channel;
-			wlan_obj.auth = _event->authmode;
-			wlan_obj.disconnected = false;
-		}
-			break;
-		case SYSTEM_EVENT_STA_GOT_IP: /**< ESP32 station got IP from connected AP */
-			xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-			break;
-		case SYSTEM_EVENT_STA_DISCONNECTED: /**< ESP32 station disconnected from AP */
-			xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-			system_event_sta_disconnected_t *disconn = &event->event_info.disconnected;
-			switch (disconn->reason) {
-				case WIFI_REASON_AUTH_FAIL:
-				case WIFI_REASON_ASSOC_LEAVE:
-					wlan_obj.disconnected = true;
-					break;
-				default:
-					// let other errors through and try to reconnect.
-					break;
-			}
-			if (!wlan_obj.disconnected) {
-				wifi_mode_t mode;
-				if (esp_wifi_get_mode(&mode) == ESP_OK) {
-					if (mode & WIFI_MODE_STA) {
-						esp_wifi_connect();
-					}
-				}
-			}
-			break;
+        case SYSTEM_EVENT_STA_START: /**< ESP32 station start */
+            wlan_obj.sta_stopped = false;
+            break;
+        case SYSTEM_EVENT_STA_STOP:                 /**< ESP32 station stop */
+            wlan_obj.sta_stopped = true;
+            break;
+        case SYSTEM_EVENT_STA_CONNECTED: /**< ESP32 station connected to AP */
+        {
+            system_event_sta_connected_t *_event = (system_event_sta_connected_t *)&event->event_info;
+            memcpy(wlan_obj.bssid, _event->bssid, 6);
+            memcpy(wlan_obj.ssid_o, _event->ssid, 32);
+            wlan_obj.channel = _event->channel;
+            wlan_obj.auth = _event->authmode;
+            wlan_obj.disconnected = false;
+        }
+            break;
+        case SYSTEM_EVENT_STA_GOT_IP: /**< ESP32 station got IP from connected AP */
+            xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+            break;
+        case SYSTEM_EVENT_STA_DISCONNECTED: /**< ESP32 station disconnected from AP */
+            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+            system_event_sta_disconnected_t *disconn = &event->event_info.disconnected;
+            switch (disconn->reason) {
+                case WIFI_REASON_AUTH_FAIL:
+                case WIFI_REASON_ASSOC_LEAVE:
+                    wlan_obj.disconnected = true;
+                    break;
+                default:
+                    // let other errors through and try to reconnect.
+                    break;
+            }
+            if (!wlan_obj.disconnected) {
+                wifi_mode_t mode;
+                if (esp_wifi_get_mode(&mode) == ESP_OK) {
+                    if (mode & WIFI_MODE_STA) {
+                        esp_wifi_connect();
+                    }
+                }
+            }
+            break;
 
-		case SYSTEM_EVENT_AP_START:                 /**< ESP32 soft-AP start */
-			wlan_obj.soft_ap_stopped = false;
-			break;
-		case SYSTEM_EVENT_AP_STOP:                  /**< ESP32 soft-AP stop */
-			wlan_obj.soft_ap_stopped = true;
-			break;
-		case SYSTEM_EVENT_WIFI_READY:				/**< ESP32 WiFi ready */
-		case SYSTEM_EVENT_SCAN_DONE:                /**< ESP32 finish scanning AP */
-		case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:      /**< the auth mode of AP connected by ESP32 station changed */
-		case SYSTEM_EVENT_STA_LOST_IP:              /**< ESP32 station lost IP and the IP is reset to 0 */
-		case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:       /**< ESP32 station wps succeeds in enrollee mode */
-		case SYSTEM_EVENT_STA_WPS_ER_FAILED:        /**< ESP32 station wps fails in enrollee mode */
-		case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:       /**< ESP32 station wps timeout in enrollee mode */
-		case SYSTEM_EVENT_STA_WPS_ER_PIN:           /**< ESP32 station wps pin code in enrollee mode */
+        case SYSTEM_EVENT_AP_START:                 /**< ESP32 soft-AP start */
+            wlan_obj.soft_ap_stopped = false;
+            break;
+        case SYSTEM_EVENT_AP_STOP:                  /**< ESP32 soft-AP stop */
+            wlan_obj.soft_ap_stopped = true;
+            break;
+        case SYSTEM_EVENT_WIFI_READY:                /**< ESP32 WiFi ready */
+        case SYSTEM_EVENT_SCAN_DONE:                /**< ESP32 finish scanning AP */
+        case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:      /**< the auth mode of AP connected by ESP32 station changed */
+        case SYSTEM_EVENT_STA_LOST_IP:              /**< ESP32 station lost IP and the IP is reset to 0 */
+        case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:       /**< ESP32 station wps succeeds in enrollee mode */
+        case SYSTEM_EVENT_STA_WPS_ER_FAILED:        /**< ESP32 station wps fails in enrollee mode */
+        case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:       /**< ESP32 station wps timeout in enrollee mode */
+        case SYSTEM_EVENT_STA_WPS_ER_PIN:           /**< ESP32 station wps pin code in enrollee mode */
 
-		case SYSTEM_EVENT_AP_STACONNECTED:          /**< a station connected to ESP32 soft-AP */
-		case SYSTEM_EVENT_AP_STADISCONNECTED:       /**< a station disconnected from ESP32 soft-AP */
-		case SYSTEM_EVENT_AP_STAIPASSIGNED:         /**< ESP32 soft-AP assign an IP to a connected station */
-		case SYSTEM_EVENT_AP_PROBEREQRECVED:        /**< Receive probe request packet in soft-AP interface */
-		case SYSTEM_EVENT_GOT_IP6:                  /**< ESP32 station or ap or ethernet interface v6IP addr is preferred */
-		case SYSTEM_EVENT_ETH_START:                /**< ESP32 ethernet start */
-		case SYSTEM_EVENT_ETH_STOP:                 /**< ESP32 ethernet stop */
-		case SYSTEM_EVENT_ETH_CONNECTED:            /**< ESP32 ethernet phy link up */
-		case SYSTEM_EVENT_ETH_DISCONNECTED:         /**< ESP32 ethernet phy link down */
-		case SYSTEM_EVENT_ETH_GOT_IP:               /**< ESP32 ethernet got IP from connected AP */
+        case SYSTEM_EVENT_AP_STACONNECTED:          /**< a station connected to ESP32 soft-AP */
+        case SYSTEM_EVENT_AP_STADISCONNECTED:       /**< a station disconnected from ESP32 soft-AP */
+        case SYSTEM_EVENT_AP_STAIPASSIGNED:         /**< ESP32 soft-AP assign an IP to a connected station */
+        case SYSTEM_EVENT_AP_PROBEREQRECVED:        /**< Receive probe request packet in soft-AP interface */
+        case SYSTEM_EVENT_GOT_IP6:                  /**< ESP32 station or ap or ethernet interface v6IP addr is preferred */
+        case SYSTEM_EVENT_ETH_START:                /**< ESP32 ethernet start */
+        case SYSTEM_EVENT_ETH_STOP:                 /**< ESP32 ethernet stop */
+        case SYSTEM_EVENT_ETH_CONNECTED:            /**< ESP32 ethernet phy link up */
+        case SYSTEM_EVENT_ETH_DISCONNECTED:         /**< ESP32 ethernet phy link down */
+        case SYSTEM_EVENT_ETH_GOT_IP:               /**< ESP32 ethernet got IP from connected AP */
 
-				/*  TODO: some of These events will be a good candidate for Diagnostics log send to Pybytes*/
+                /*  TODO: some of These events will be a good candidate for Diagnostics log send to Pybytes*/
 
-			break;
-		default:
-			break;
+            break;
+        default:
+            break;
     }
     return ESP_OK;
 }
 
 STATIC void wlan_timer_callback( TimerHandle_t xTimer )
 {
-	//if still disconnected
-	if (wlan_obj.disconnected) {
-		/* Terminate connection */
-		esp_wifi_disconnect();
-	}
+    //if still disconnected
+    if (wlan_obj.disconnected) {
+        /* Terminate connection */
+        esp_wifi_disconnect();
+    }
 
-	/* Stop Timer*/
-	xTimerStop(wlan_conn_timeout_timer, 0);
-	xTimerDelete(wlan_conn_timeout_timer, 0);
+    /* Stop Timer*/
+    xTimerStop(wlan_conn_timeout_timer, 0);
+    xTimerDelete(wlan_conn_timeout_timer, 0);
 }
 STATIC void wlan_servers_start (void) {
     // start the servers if they were enabled before
@@ -403,9 +403,9 @@ STATIC void wlan_servers_start (void) {
 }
 
 STATIC void wlan_servers_stop (void) {
-	// stop the servers if they are enabled
+    // stop the servers if they are enabled
     if (servers_are_enabled()) {
-    	servers_stop();
+        servers_stop();
         wlan_obj.enable_servers = false;
     }
 }
@@ -592,19 +592,19 @@ cred_error:
 
 static void wlan_validate_country(const char * country)
 {
-	uint8_t str_len = strlen(country);
-	if(str_len > 2)
-	{
-		nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Wrong Country string length!"));
-	}
+    uint8_t str_len = strlen(country);
+    if(str_len > 2)
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Wrong Country string length!"));
+    }
 }
 
 static void wlan_validate_country_policy(uint8_t policy)
 {
-	if(policy > (uint8_t)WIFI_COUNTRY_POLICY_MANUAL)
-	{
-		nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid Country Policy!"));
-	}
+    if(policy > (uint8_t)WIFI_COUNTRY_POLICY_MANUAL)
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid Country Policy!"));
+    }
 }
 
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key,
@@ -631,11 +631,11 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
     wifi_config.sta.channel = channel;
     if(channel > 0)
     {
-    	wifi_config.sta.sort_method = WIFI_FAST_SCAN;
+        wifi_config.sta.sort_method = WIFI_FAST_SCAN;
     }
     else
     {
-    	wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
+        wifi_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
     }
 
     if (ESP_OK != esp_wifi_set_config(WIFI_IF_STA, &wifi_config)) {
@@ -790,18 +790,18 @@ STATIC char *wlan_read_file (const char *file_path, vstr_t *vstr) {
 
 static void wlan_init_wlan_recover_params(void)
 {
-	wlan_conn_recover_ssid[0] = '\0';
-	wlan_conn_recover_bssid[0] = '\0';
-	wlan_conn_recover_key[0] = '\0';
-	wlan_conn_recover_hostname[0] = '\0';
-	wlan_conn_recover_auth = WIFI_AUTH_MAX;
-	wlan_conn_recover_timeout = -1;
-	wlan_conn_recover_ap_channel = 0;
-	wlan_conn_recover_scan_channel = 0;
-	wlan_conn_recover_antenna = ANTENNA_TYPE_INTERNAL;
-	wlan_conn_recover_hidden = false;
-	wlan_conn_recover_bandwidth = 0;
-	wlan_conn_recover_mode = WIFI_MODE_NULL;
+    wlan_conn_recover_ssid[0] = '\0';
+    wlan_conn_recover_bssid[0] = '\0';
+    wlan_conn_recover_key[0] = '\0';
+    wlan_conn_recover_hostname[0] = '\0';
+    wlan_conn_recover_auth = WIFI_AUTH_MAX;
+    wlan_conn_recover_timeout = -1;
+    wlan_conn_recover_ap_channel = 0;
+    wlan_conn_recover_scan_channel = 0;
+    wlan_conn_recover_antenna = ANTENNA_TYPE_INTERNAL;
+    wlan_conn_recover_hidden = false;
+    wlan_conn_recover_bandwidth = 0;
+    wlan_conn_recover_mode = WIFI_MODE_NULL;
 }
 
 STATIC void wlan_callback_handler(void* arg)
@@ -817,86 +817,86 @@ STATIC void wlan_callback_handler(void* arg)
 STATIC void promiscuous_callback(void *buf, wifi_promiscuous_pkt_type_t type)
 {
 
-	wifi_pkt_rx_ctrl_t* wlan_ctrl_pkt = (wifi_pkt_rx_ctrl_t*)buf;
+    wifi_pkt_rx_ctrl_t* wlan_ctrl_pkt = (wifi_pkt_rx_ctrl_t*)buf;
 
-	bool trigger = false;
-	static uint8_t old_token = 0xFF;
+    bool trigger = false;
+    static uint8_t old_token = 0xFF;
 
-	switch (type)
-	{
-	case WIFI_PKT_MGMT:
-		wlan_obj.events |= MOD_WLAN_TRIGGER_PKT_MGMT;
-		if(((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_MGMT)
-			|| (((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_ANY) == MOD_WLAN_TRIGGER_PKT_ANY))
-		{
-			trigger = true;
-		}
-		break;
-	case WIFI_PKT_CTRL:
-		wlan_obj.events |= MOD_WLAN_TRIGGER_PKT_CTRL;
-		if(((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_CTRL)
-			|| (((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_ANY) == MOD_WLAN_TRIGGER_PKT_ANY))
-		{
-			trigger = true;
-		}
-		break;
-	case WIFI_PKT_DATA:
-		wlan_obj.events |= MOD_WLAN_TRIGGER_PKT_DATA;
-		if(((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_DATA)
-			|| (((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_ANY) == MOD_WLAN_TRIGGER_PKT_ANY))
-		{
-			trigger = true;
-		}
-		break;
-	case WIFI_PKT_MISC:
-		wlan_obj.events |= MOD_WLAN_TRIGGER_PKT_MISC;
-		if(((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_MISC)
-			|| (((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_ANY) == MOD_WLAN_TRIGGER_PKT_ANY))
-		{
-			trigger = true;
-		}
-		break;
-	default:
-		break;
-	}
+    switch (type)
+    {
+    case WIFI_PKT_MGMT:
+        wlan_obj.events |= MOD_WLAN_TRIGGER_PKT_MGMT;
+        if(((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_MGMT)
+            || (((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_ANY) == MOD_WLAN_TRIGGER_PKT_ANY))
+        {
+            trigger = true;
+        }
+        break;
+    case WIFI_PKT_CTRL:
+        wlan_obj.events |= MOD_WLAN_TRIGGER_PKT_CTRL;
+        if(((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_CTRL)
+            || (((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_ANY) == MOD_WLAN_TRIGGER_PKT_ANY))
+        {
+            trigger = true;
+        }
+        break;
+    case WIFI_PKT_DATA:
+        wlan_obj.events |= MOD_WLAN_TRIGGER_PKT_DATA;
+        if(((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_DATA)
+            || (((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_ANY) == MOD_WLAN_TRIGGER_PKT_ANY))
+        {
+            trigger = true;
+        }
+        break;
+    case WIFI_PKT_MISC:
+        wlan_obj.events |= MOD_WLAN_TRIGGER_PKT_MISC;
+        if(((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_MISC)
+            || (((wlan_obj.trigger) & MOD_WLAN_TRIGGER_PKT_ANY) == MOD_WLAN_TRIGGER_PKT_ANY))
+        {
+            trigger = true;
+        }
+        break;
+    default:
+        break;
+    }
 
-	if (trigger && (token != old_token))
-	{
-		xSemaphoreTake(wlan_obj.mutex, portMAX_DELAY);
+    if (trigger && (token != old_token))
+    {
+        xSemaphoreTake(wlan_obj.mutex, portMAX_DELAY);
 
-		wlan_prom_packet[token].rx_ctrl.rssi = wlan_ctrl_pkt->rssi;
-		wlan_prom_packet[token].rx_ctrl.rate = wlan_ctrl_pkt->rate;
-		wlan_prom_packet[token].rx_ctrl.sig_mode = wlan_ctrl_pkt->sig_mode;
-		wlan_prom_packet[token].rx_ctrl.mcs = wlan_ctrl_pkt->mcs;
-		wlan_prom_packet[token].rx_ctrl.cwb = wlan_ctrl_pkt->cwb;
-		wlan_prom_packet[token].rx_ctrl.aggregation = wlan_ctrl_pkt->aggregation;
-		wlan_prom_packet[token].rx_ctrl.stbc = wlan_ctrl_pkt->stbc;
-		wlan_prom_packet[token].rx_ctrl.fec_coding = wlan_ctrl_pkt->fec_coding;
-		wlan_prom_packet[token].rx_ctrl.sgi = wlan_ctrl_pkt->sgi;
-		wlan_prom_packet[token].rx_ctrl.noise_floor = wlan_ctrl_pkt->noise_floor;
-		wlan_prom_packet[token].rx_ctrl.ampdu_cnt = wlan_ctrl_pkt->ampdu_cnt;
-		wlan_prom_packet[token].rx_ctrl.channel = wlan_ctrl_pkt->channel;
-		wlan_prom_packet[token].rx_ctrl.second_channel = wlan_ctrl_pkt->second_channel;
-		wlan_prom_packet[token].rx_ctrl.timestamp = wlan_ctrl_pkt->timestamp;
-		wlan_prom_packet[token].rx_ctrl.ant = wlan_ctrl_pkt->ant;
-		wlan_prom_packet[token].rx_ctrl.sig_len = wlan_ctrl_pkt->sig_len;
-		wlan_prom_packet[token].rx_ctrl.rx_state = wlan_ctrl_pkt->rx_state;
+        wlan_prom_packet[token].rx_ctrl.rssi = wlan_ctrl_pkt->rssi;
+        wlan_prom_packet[token].rx_ctrl.rate = wlan_ctrl_pkt->rate;
+        wlan_prom_packet[token].rx_ctrl.sig_mode = wlan_ctrl_pkt->sig_mode;
+        wlan_prom_packet[token].rx_ctrl.mcs = wlan_ctrl_pkt->mcs;
+        wlan_prom_packet[token].rx_ctrl.cwb = wlan_ctrl_pkt->cwb;
+        wlan_prom_packet[token].rx_ctrl.aggregation = wlan_ctrl_pkt->aggregation;
+        wlan_prom_packet[token].rx_ctrl.stbc = wlan_ctrl_pkt->stbc;
+        wlan_prom_packet[token].rx_ctrl.fec_coding = wlan_ctrl_pkt->fec_coding;
+        wlan_prom_packet[token].rx_ctrl.sgi = wlan_ctrl_pkt->sgi;
+        wlan_prom_packet[token].rx_ctrl.noise_floor = wlan_ctrl_pkt->noise_floor;
+        wlan_prom_packet[token].rx_ctrl.ampdu_cnt = wlan_ctrl_pkt->ampdu_cnt;
+        wlan_prom_packet[token].rx_ctrl.channel = wlan_ctrl_pkt->channel;
+        wlan_prom_packet[token].rx_ctrl.second_channel = wlan_ctrl_pkt->second_channel;
+        wlan_prom_packet[token].rx_ctrl.timestamp = wlan_ctrl_pkt->timestamp;
+        wlan_prom_packet[token].rx_ctrl.ant = wlan_ctrl_pkt->ant;
+        wlan_prom_packet[token].rx_ctrl.sig_len = wlan_ctrl_pkt->sig_len;
+        wlan_prom_packet[token].rx_ctrl.rx_state = wlan_ctrl_pkt->rx_state;
 
-		wlan_prom_packet[token].pkt_type = type;
+        wlan_prom_packet[token].pkt_type = type;
 
 
-		if(type != WIFI_PKT_CTRL)
-		{
-			memcpy(&(wlan_prom_packet[token].data[0]), &(((wifi_promiscuous_pkt_t*)buf)->payload), wlan_prom_packet[token].rx_ctrl.sig_len);
-		}
+        if(type != WIFI_PKT_CTRL)
+        {
+            memcpy(&(wlan_prom_packet[token].data[0]), &(((wifi_promiscuous_pkt_t*)buf)->payload), wlan_prom_packet[token].rx_ctrl.sig_len);
+        }
 
-		xSemaphoreGive(wlan_obj.mutex);
+        xSemaphoreGive(wlan_obj.mutex);
 
-		old_token = token;
+        old_token = token;
 
-		mp_irq_queue_interrupt(wlan_callback_handler, &wlan_obj);
+        mp_irq_queue_interrupt(wlan_callback_handler, &wlan_obj);
 
-	}
+    }
 }
 
 //STATIC void wlan_get_sl_mac (void) {
@@ -1019,31 +1019,31 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
 
     if(args[9].u_obj != mp_const_none)
     {
-    	if(!MP_OBJ_IS_TYPE(args[9].u_obj, &mp_type_tuple))
-    	{
-    		nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_num_type_invalid_arguments));
-    	}
-    	size_t tuple_len = 4;
-    	mp_obj_t *tuple = NULL;
-    	mp_obj_tuple_get(args[9].u_obj, &tuple_len, &tuple);
+        if(!MP_OBJ_IS_TYPE(args[9].u_obj, &mp_type_tuple))
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_num_type_invalid_arguments));
+        }
+        size_t tuple_len = 4;
+        mp_obj_t *tuple = NULL;
+        mp_obj_tuple_get(args[9].u_obj, &tuple_len, &tuple);
 
-    	const char* country = mp_obj_str_get_str(tuple[0]);
-    	uint8_t start_chn = mp_obj_get_int(tuple[1]);
-    	uint8_t num_chn = mp_obj_get_int(tuple[2]);
-    	wifi_country_policy_t policy =  mp_obj_get_int(tuple[3]);
+        const char* country = mp_obj_str_get_str(tuple[0]);
+        uint8_t start_chn = mp_obj_get_int(tuple[1]);
+        uint8_t num_chn = mp_obj_get_int(tuple[2]);
+        wifi_country_policy_t policy =  mp_obj_get_int(tuple[3]);
 
-    	//validate data
-    	wlan_validate_country(country);
-    	wlan_validate_channel(start_chn);
-    	wlan_validate_channel(num_chn);
-    	wlan_validate_country_policy(policy);
+        //validate data
+        wlan_validate_country(country);
+        wlan_validate_channel(start_chn);
+        wlan_validate_channel(num_chn);
+        wlan_validate_country_policy(policy);
 
-    	memcpy(&(country_info.cc[0]), country, strlen(country));
-    	country_info.schan = start_chn;
-    	country_info.nchan = num_chn;
-    	country_info.policy = policy;
+        memcpy(&(country_info.cc[0]), country, strlen(country));
+        country_info.schan = start_chn;
+        country_info.nchan = num_chn;
+        country_info.policy = policy;
 
-    	ptrcountry_info = &country_info;
+        ptrcountry_info = &country_info;
     }
 
     wlan_conn_recover_ap_channel = channel;
@@ -1053,17 +1053,17 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
     wlan_conn_recover_mode = mode;
 
     wlan_internal_setup_t setup = {
-    		mode,
-			(const char *)ssid,
-			(const char *)key,
-			auth,
-			channel,
-			antenna,
-			false,
-			hidden,
-			bandwidth,
-			ptrcountry_info,
-			&max_tx_pwr
+            mode,
+            (const char *)ssid,
+            (const char *)key,
+            auth,
+            channel,
+            antenna,
+            false,
+            hidden,
+            bandwidth,
+            ptrcountry_info,
+            &max_tx_pwr
     };
 
     // initialize the wlan subsystem
@@ -1083,8 +1083,8 @@ STATIC const mp_arg_t wlan_init_args[] = {
     { MP_QSTR_power_save,   MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
     { MP_QSTR_hidden,       MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
     { MP_QSTR_bandwidth,    MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = WIFI_BW_HT40} },
-	{ MP_QSTR_max_tx_pwr,   MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER} },
-	{ MP_QSTR_country,    	MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+    { MP_QSTR_max_tx_pwr,   MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER} },
+    { MP_QSTR_country,        MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
 };
 STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -1138,7 +1138,7 @@ mp_obj_t wlan_deinit(mp_obj_t self_in) {
         /* wait for sta and Soft-AP to stop */
         while(!wlan_obj.sta_stopped || !wlan_obj.soft_ap_stopped)
         {
-        	vTaskDelay(1 / portTICK_PERIOD_MS);
+            vTaskDelay(1 / portTICK_PERIOD_MS);
         }
 
         /* stop and free wifi resource */
@@ -1160,7 +1160,7 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
         { MP_QSTR_bssid,                MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_channel,              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_show_hidden,          MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_type,             	MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_type,                 MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_scantime,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
 
@@ -1170,106 +1170,106 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
 
     /* Scan Config */
     wifi_scan_config_t scan_config =
-	{
-		NULL,
-		NULL,
-		0,
-		false,
-		WIFI_SCAN_TYPE_ACTIVE,
-	};
+    {
+        NULL,
+        NULL,
+        0,
+        false,
+        WIFI_SCAN_TYPE_ACTIVE,
+    };
     wifi_scan_config_t * ptr_config;
     mp_buffer_info_t bufinfo;
     mp_obj_t *stime;
     size_t stimelen;
     if(args[0].u_obj == mp_const_none && args[1].u_obj == mp_const_none && args[2].u_obj == mp_const_none && args[3].u_obj == mp_const_none && args[4].u_obj == mp_const_none && args[5].u_obj == mp_const_none)
     {
-    	ptr_config = NULL;
+        ptr_config = NULL;
     }
     else
     {
-    	if(args[0].u_obj != mp_const_none)
-    	{
-    		scan_config.ssid = (uint8_t*)mp_obj_str_get_str(args[0].u_obj);
-    	}
+        if(args[0].u_obj != mp_const_none)
+        {
+            scan_config.ssid = (uint8_t*)mp_obj_str_get_str(args[0].u_obj);
+        }
 
-    	if(args[1].u_obj != mp_const_none)
-    	{
-    		if(MP_OBJ_IS_TYPE(args[1].u_obj, &mp_type_bytes))
-    		{
-    			mp_get_buffer_raise(args[1].u_obj, &bufinfo, MP_BUFFER_READ);
-    			scan_config.bssid = bufinfo.buf;
-    		}
-    		else
-    		{
-    			nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid bssid"));
-    		}
-    	}
+        if(args[1].u_obj != mp_const_none)
+        {
+            if(MP_OBJ_IS_TYPE(args[1].u_obj, &mp_type_bytes))
+            {
+                mp_get_buffer_raise(args[1].u_obj, &bufinfo, MP_BUFFER_READ);
+                scan_config.bssid = bufinfo.buf;
+            }
+            else
+            {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid bssid"));
+            }
+        }
 
-    	if(args[2].u_obj != mp_const_none)
-    	{
-    		scan_config.channel = mp_obj_get_int(args[2].u_obj);
-    	}
+        if(args[2].u_obj != mp_const_none)
+        {
+            scan_config.channel = mp_obj_get_int(args[2].u_obj);
+        }
 
-    	if(args[3].u_obj != mp_const_none)
-    	{
-    		scan_config.show_hidden = mp_obj_get_int(args[3].u_obj) >= 1;
-    	}
+        if(args[3].u_obj != mp_const_none)
+        {
+            scan_config.show_hidden = mp_obj_get_int(args[3].u_obj) >= 1;
+        }
 
-    	if(args[4].u_obj != mp_const_none)
-    	{
-    		if((wifi_scan_type_t)(mp_obj_get_int(args[4].u_obj)) == WIFI_SCAN_TYPE_PASSIVE)
-    		{
-    			scan_config.scan_type = WIFI_SCAN_TYPE_PASSIVE;
-    		}
-    		else
-    		{
-    			scan_config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
-    		}
-    	}
+        if(args[4].u_obj != mp_const_none)
+        {
+            if((wifi_scan_type_t)(mp_obj_get_int(args[4].u_obj)) == WIFI_SCAN_TYPE_PASSIVE)
+            {
+                scan_config.scan_type = WIFI_SCAN_TYPE_PASSIVE;
+            }
+            else
+            {
+                scan_config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+            }
+        }
 
-    	if(args[5].u_obj != mp_const_none)
-    	{
-    		if(MP_OBJ_IS_TYPE(args[5].u_obj, &mp_type_tuple) && scan_config.scan_type == WIFI_SCAN_TYPE_ACTIVE)
-    		{
-        		mp_obj_get_array(args[5].u_obj, &stimelen, &stime);
+        if(args[5].u_obj != mp_const_none)
+        {
+            if(MP_OBJ_IS_TYPE(args[5].u_obj, &mp_type_tuple) && scan_config.scan_type == WIFI_SCAN_TYPE_ACTIVE)
+            {
+                mp_obj_get_array(args[5].u_obj, &stimelen, &stime);
 
-        		if(stimelen != 0 && stimelen <= 2)
-        		{
-        			if(stimelen == 2 && scan_config.scan_type == WIFI_SCAN_TYPE_ACTIVE)
-        			{
-        				scan_config.scan_time.active.min = mp_obj_get_int(stime[0]);
-        				scan_config.scan_time.active.max = mp_obj_get_int(stime[1]);
-        			}
-        			else
-        			{
-        				goto scan_time_err;
-        			}
-        		}
-        		else
-        		{
-        			goto scan_time_err;
-        		}
-    		}
-    		else if(MP_OBJ_IS_INT(args[5].u_obj) && scan_config.scan_type == WIFI_SCAN_TYPE_PASSIVE)
-    		{
-    			uint32_t passive = mp_obj_get_int(args[5].u_obj);
+                if(stimelen != 0 && stimelen <= 2)
+                {
+                    if(stimelen == 2 && scan_config.scan_type == WIFI_SCAN_TYPE_ACTIVE)
+                    {
+                        scan_config.scan_time.active.min = mp_obj_get_int(stime[0]);
+                        scan_config.scan_time.active.max = mp_obj_get_int(stime[1]);
+                    }
+                    else
+                    {
+                        goto scan_time_err;
+                    }
+                }
+                else
+                {
+                    goto scan_time_err;
+                }
+            }
+            else if(MP_OBJ_IS_INT(args[5].u_obj) && scan_config.scan_type == WIFI_SCAN_TYPE_PASSIVE)
+            {
+                uint32_t passive = mp_obj_get_int(args[5].u_obj);
 
-    			if(passive >= 0)
-    			{
-    				scan_config.scan_time.passive = mp_obj_get_int(args[5].u_obj);
-    			}
-    			else
-    			{
-    				goto scan_time_err;
-    			}
-    		}
-    		else
-    		{
-    			goto scan_time_err;
-    		}
-    	}
+                if(passive >= 0)
+                {
+                    scan_config.scan_time.passive = mp_obj_get_int(args[5].u_obj);
+                }
+                else
+                {
+                    goto scan_time_err;
+                }
+            }
+            else
+            {
+                goto scan_time_err;
+            }
+        }
 
-    	ptr_config = &scan_config;
+        ptr_config = &scan_config;
     }
 
     // check for the correct wlan mode
@@ -1284,14 +1284,14 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     switch(err)
     {
     case ESP_OK:
-    	/* Success */
-    	break;
+        /* Success */
+        break;
     case ESP_ERR_WIFI_TIMEOUT:
-    	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Scan operation timed out!"));
-    	break;
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Scan operation timed out!"));
+        break;
     default:
-    	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Scan operation Failed!"));
-    	break;
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Scan operation Failed!"));
+        break;
     }
 
     uint16_t ap_num;
@@ -1328,8 +1328,8 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     return nets;
 
 scan_time_err:
-	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid scan timings"));
-	return mp_const_none;
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid scan timings"));
+    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_scan_obj, 1, wlan_scan);
 
@@ -1344,7 +1344,7 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
         { MP_QSTR_certfile,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_identity,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_hostname,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-		{ MP_QSTR_channel,              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_channel,              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
 
     // check for the correct wlan mode
@@ -1423,22 +1423,22 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
 
     // get the ca_certificate
     if (args[4].u_obj != mp_const_none) {
-    	wlan_wpa2_ent.ca_certs_path = mp_obj_str_get_str(args[4].u_obj);
+        wlan_wpa2_ent.ca_certs_path = mp_obj_str_get_str(args[4].u_obj);
     }
 
     // get the private key
     if (args[5].u_obj != mp_const_none) {
-    	wlan_wpa2_ent.client_key_path = mp_obj_str_get_str(args[5].u_obj);
+        wlan_wpa2_ent.client_key_path = mp_obj_str_get_str(args[5].u_obj);
     }
 
     // get the client certificate
     if (args[6].u_obj != mp_const_none) {
-    	wlan_wpa2_ent.client_cert_path = mp_obj_str_get_str(args[6].u_obj);
+        wlan_wpa2_ent.client_cert_path = mp_obj_str_get_str(args[6].u_obj);
     }
 
     // get the identity
     if (args[7].u_obj != mp_const_none) {
-    	wlan_wpa2_ent.identity = mp_obj_str_get_str(args[7].u_obj);
+        wlan_wpa2_ent.identity = mp_obj_str_get_str(args[7].u_obj);
     }
 
     const char *hostname = NULL;
@@ -1450,15 +1450,15 @@ STATIC mp_obj_t wlan_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
     }
 
     if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
-    	wlan_wpa2_ent.username = user;
+        wlan_wpa2_ent.username = user;
         wlan_validate_certificates(&wlan_wpa2_ent);
     }
 
     uint8_t channel = 0;
     if(args[9].u_obj != mp_const_none)
     {
-    	channel = mp_obj_get_int(args[9].u_obj);
-    	wlan_conn_recover_scan_channel = channel;
+        channel = mp_obj_get_int(args[9].u_obj);
+        wlan_conn_recover_scan_channel = channel;
     }
 
     wlan_conn_recover_auth = auth;
@@ -1595,42 +1595,42 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_bandwidth_obj, 1, 2, wlan_bandwi
 STATIC mp_obj_t wlan_ssid (mp_uint_t n_args, const mp_obj_t *args) {
     wlan_obj_t *self = args[0];
     if (n_args == 1) {
-		if (self->mode == WIFI_MODE_STA && !wlan_obj.disconnected)
-		{
-			return mp_obj_new_str((const char *)wlan_obj.ssid_o, strlen((const char *)wlan_obj.ssid_o));
-		}
-		else if(self->mode == WIFI_MODE_AP && !wlan_obj.soft_ap_stopped)
-		{
-			return mp_obj_new_str((const char *)wlan_obj.ssid, strlen((const char *)wlan_obj.ssid));
-		}
-		else if(self->mode == WIFI_MODE_APSTA)
-		{
+        if (self->mode == WIFI_MODE_STA && !wlan_obj.disconnected)
+        {
+            return mp_obj_new_str((const char *)wlan_obj.ssid_o, strlen((const char *)wlan_obj.ssid_o));
+        }
+        else if(self->mode == WIFI_MODE_AP && !wlan_obj.soft_ap_stopped)
+        {
+            return mp_obj_new_str((const char *)wlan_obj.ssid, strlen((const char *)wlan_obj.ssid));
+        }
+        else if(self->mode == WIFI_MODE_APSTA)
+        {
             mp_obj_t wlanssid[2];
 
             if(!wlan_obj.disconnected)
             {
-            	wlanssid[0] = mp_obj_new_str((const char *)wlan_obj.ssid_o, strlen((const char *)wlan_obj.ssid_o));
+                wlanssid[0] = mp_obj_new_str((const char *)wlan_obj.ssid_o, strlen((const char *)wlan_obj.ssid_o));
             }
             else
             {
-            	wlanssid[0] = mp_const_none;
+                wlanssid[0] = mp_const_none;
             }
 
             if(!wlan_obj.soft_ap_stopped)
             {
-            	wlanssid[1] = mp_obj_new_str((const char *)wlan_obj.ssid, strlen((const char *)wlan_obj.ssid));
+                wlanssid[1] = mp_obj_new_str((const char *)wlan_obj.ssid, strlen((const char *)wlan_obj.ssid));
             }
             else
             {
-            	wlanssid[1] = mp_const_none;
+                wlanssid[1] = mp_const_none;
             }
 
             return mp_obj_new_tuple(2, wlanssid);
-		}
-		else
-		{
-			return mp_const_none;
-		}
+        }
+        else
+        {
+            return mp_const_none;
+        }
     }
     else
     {
@@ -1661,92 +1661,92 @@ STATIC mp_obj_t wlan_wifi_protocol (mp_uint_t n_args, const mp_obj_t *args)
         MP_QSTR_protocol_11B, MP_QSTR_protocol_11G, MP_QSTR_protocol_11N
     };
 
-	wlan_obj_t *self = args[0];
-	wifi_interface_t interface;
-	uint8_t bitmap;
+    wlan_obj_t *self = args[0];
+    wifi_interface_t interface;
+    uint8_t bitmap;
 
-	switch(self->mode)
-	{
-	case WIFI_MODE_STA:
-		interface = ESP_IF_WIFI_STA;
-		break;
-	case WIFI_MODE_AP:
-		interface  = ESP_IF_WIFI_AP;
-		break;
-	default:
-		nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
-		break;
-	}
+    switch(self->mode)
+    {
+    case WIFI_MODE_STA:
+        interface = ESP_IF_WIFI_STA;
+        break;
+    case WIFI_MODE_AP:
+        interface  = ESP_IF_WIFI_AP;
+        break;
+    default:
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+        break;
+    }
 
-	if(n_args == 1)
-	{
+    if(n_args == 1)
+    {
 
-		if(ESP_OK != esp_wifi_get_protocol(interface, &bitmap))
-		{
-			nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
-		}
+        if(ESP_OK != esp_wifi_get_protocol(interface, &bitmap))
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
 
-		mp_obj_t tuple[3] =
-		{
-			mp_obj_new_bool(0),
-			mp_obj_new_bool(0),
-			mp_obj_new_bool(0)
-		};
+        mp_obj_t tuple[3] =
+        {
+            mp_obj_new_bool(0),
+            mp_obj_new_bool(0),
+            mp_obj_new_bool(0)
+        };
 
-		if(bitmap & WIFI_PROTOCOL_11B)
-		{
-			tuple[0] = mp_obj_new_bool(1);
-		}
+        if(bitmap & WIFI_PROTOCOL_11B)
+        {
+            tuple[0] = mp_obj_new_bool(1);
+        }
 
-		if(bitmap & WIFI_PROTOCOL_11G)
-		{
-			tuple[1] = mp_obj_new_bool(1);
-		}
+        if(bitmap & WIFI_PROTOCOL_11G)
+        {
+            tuple[1] = mp_obj_new_bool(1);
+        }
 
-		if(bitmap & WIFI_PROTOCOL_11N)
-		{
-			tuple[2] = mp_obj_new_bool(1);
-		}
+        if(bitmap & WIFI_PROTOCOL_11N)
+        {
+            tuple[2] = mp_obj_new_bool(1);
+        }
 
-		return mp_obj_new_attrtuple(wlan_protocol_fields, 3, tuple);
-	}
-	else
-	{
-    	if(!MP_OBJ_IS_TYPE(args[1], &mp_type_tuple))
-    	{
-    		nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_num_type_invalid_arguments));
-    	}
+        return mp_obj_new_attrtuple(wlan_protocol_fields, 3, tuple);
+    }
+    else
+    {
+        if(!MP_OBJ_IS_TYPE(args[1], &mp_type_tuple))
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_num_type_invalid_arguments));
+        }
 
-    	size_t tuple_len = 3;
-		mp_obj_t *tuple = NULL;
-		mp_obj_tuple_get(args[1], &tuple_len, &tuple);
+        size_t tuple_len = 3;
+        mp_obj_t *tuple = NULL;
+        mp_obj_tuple_get(args[1], &tuple_len, &tuple);
 
-		bitmap = 0;
+        bitmap = 0;
 
-		if(mp_obj_is_true(tuple[0]))
-		{
-			bitmap |= WIFI_PROTOCOL_11B;
-		}
+        if(mp_obj_is_true(tuple[0]))
+        {
+            bitmap |= WIFI_PROTOCOL_11B;
+        }
 
-		if(mp_obj_is_true(tuple[1]))
-		{
-			bitmap |= WIFI_PROTOCOL_11G;
-		}
+        if(mp_obj_is_true(tuple[1]))
+        {
+            bitmap |= WIFI_PROTOCOL_11G;
+        }
 
-		if(mp_obj_is_true(tuple[2]))
-		{
-			bitmap |= WIFI_PROTOCOL_11N;
-		}
+        if(mp_obj_is_true(tuple[2]))
+        {
+            bitmap |= WIFI_PROTOCOL_11N;
+        }
 
-		esp_err_t err = esp_wifi_set_protocol(interface, bitmap);
+        esp_err_t err = esp_wifi_set_protocol(interface, bitmap);
 
-		if(ESP_OK != err)
-		{
-			nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
-		}
+        if(ESP_OK != err)
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
 
-		return mp_const_none;
-	}
+        return mp_const_none;
+    }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_wifi_protocol_obj, 1, 2, wlan_wifi_protocol);
 
@@ -1760,44 +1760,44 @@ STATIC mp_obj_t wlan_ap_sta_list (mp_obj_t self_in) {
 
     mp_obj_t sta_out_list = mp_obj_new_list(0, NULL);
     /* Check if AP mode is enabled */
-	if (self->mode == WIFI_MODE_AP || self->mode == WIFI_MODE_APSTA) {
-		/* Get STAs connected to AP*/
-		esp_wifi_ap_get_sta_list(&sta_list);
+    if (self->mode == WIFI_MODE_AP || self->mode == WIFI_MODE_APSTA) {
+        /* Get STAs connected to AP*/
+        esp_wifi_ap_get_sta_list(&sta_list);
 
-		mp_obj_t tuple[3];
-		for(index = 0; index < MAX_AP_CONNECTED_STA && index < sta_list.num; index++)
-		{
-			tuple[0] = mp_obj_new_bytes((const byte *)sta_list.sta[index].mac, 6);
-			tuple[1] = MP_OBJ_NEW_SMALL_INT(sta_list.sta[index].rssi);
-			if(sta_list.sta[index].phy_11b)
-			{
-				tuple[2] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_B);
-			}
-			else if(sta_list.sta[index].phy_11g)
-			{
-				tuple[2] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_G);
-			}
-			else if(sta_list.sta[index].phy_11n)
-			{
-				tuple[2] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_N);
-			}
-			else if(sta_list.sta[index].phy_lr)
-			{
-				tuple[2] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_LOW_RATE);
-			}
-			else
-			{
-				tuple[2] = mp_const_none;
-			}
+        mp_obj_t tuple[3];
+        for(index = 0; index < MAX_AP_CONNECTED_STA && index < sta_list.num; index++)
+        {
+            tuple[0] = mp_obj_new_bytes((const byte *)sta_list.sta[index].mac, 6);
+            tuple[1] = MP_OBJ_NEW_SMALL_INT(sta_list.sta[index].rssi);
+            if(sta_list.sta[index].phy_11b)
+            {
+                tuple[2] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_B);
+            }
+            else if(sta_list.sta[index].phy_11g)
+            {
+                tuple[2] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_G);
+            }
+            else if(sta_list.sta[index].phy_11n)
+            {
+                tuple[2] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_N);
+            }
+            else if(sta_list.sta[index].phy_lr)
+            {
+                tuple[2] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_LOW_RATE);
+            }
+            else
+            {
+                tuple[2] = mp_const_none;
+            }
 
-			/*insert tuple */
-			mp_obj_list_append(sta_out_list, mp_obj_new_attrtuple(wlan_sta_ifo_fields, 3, tuple));
-		}
-	}
-	else
-	{
-		nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
-	}
+            /*insert tuple */
+            mp_obj_list_append(sta_out_list, mp_obj_new_attrtuple(wlan_sta_ifo_fields, 3, tuple));
+        }
+    }
+    else
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+    }
 
     return sta_out_list;
 }
@@ -1813,7 +1813,7 @@ STATIC mp_obj_t wlan_joined_ap_info (mp_obj_t self_in)
 
     if(ESP_OK != esp_wifi_sta_get_ap_info(&record_ap))
     {
-    	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
 
     mp_obj_t tuple[6];
@@ -1825,23 +1825,23 @@ STATIC mp_obj_t wlan_joined_ap_info (mp_obj_t self_in)
     tuple[4] = MP_OBJ_NEW_SMALL_INT(record_ap.authmode);
     if(record_ap.phy_11b)
     {
-    	tuple[5] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_B);
+        tuple[5] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_B);
     }
     else if(record_ap.phy_11g)
     {
-    	tuple[5] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_G);
+        tuple[5] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_G);
     }
     else if(record_ap.phy_11n)
     {
-    	tuple[5] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_N);
+        tuple[5] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_N);
     }
     else if(record_ap.phy_lr)
     {
-    	tuple[5] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_LOW_RATE);
+        tuple[5] = MP_OBJ_NEW_SMALL_INT(WLAN_PHY_LOW_RATE);
     }
     else
     {
-    	tuple[5] = mp_const_none;
+        tuple[5] = mp_const_none;
     }
 
     return mp_obj_new_attrtuple(wlan_sta_ifo_fields, 6, tuple);
@@ -1899,64 +1899,64 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_hostname_obj, 1, 2, wlan_hostnam
 STATIC mp_obj_t wlan_send_raw (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
     STATIC const mp_arg_t allowed_args[] = {
-        { MP_QSTR_Buffer,                 	MP_ARG_KW_ONLY  | MP_ARG_REQUIRED	|MP_ARG_OBJ,},
-		{ MP_QSTR_interface,              	MP_ARG_KW_ONLY  | MP_ARG_INT,	{.u_int = WIFI_MODE_STA}},
-        { MP_QSTR_use_sys_seq,              MP_ARG_KW_ONLY  | MP_ARG_BOOL,	{.u_bool = true}},
+        { MP_QSTR_Buffer,                     MP_ARG_KW_ONLY  | MP_ARG_REQUIRED    |MP_ARG_OBJ,},
+        { MP_QSTR_interface,                  MP_ARG_KW_ONLY  | MP_ARG_INT,    {.u_int = WIFI_MODE_STA}},
+        { MP_QSTR_use_sys_seq,              MP_ARG_KW_ONLY  | MP_ARG_BOOL,    {.u_bool = true}},
     };
 
-	mp_buffer_info_t value_bufinfo;
-	wifi_interface_t ifx;
+    mp_buffer_info_t value_bufinfo;
+    wifi_interface_t ifx;
 
-	wlan_obj_t* self = (wlan_obj_t*)pos_args[0];
+    wlan_obj_t* self = (wlan_obj_t*)pos_args[0];
 
     // parse args
-	mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
-	mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-	switch(self->mode)
-	{
-	case WIFI_MODE_STA:
-		ifx = ESP_IF_WIFI_STA;
-		break;
-	case WIFI_MODE_AP:
-		ifx  = ESP_IF_WIFI_AP;
-		break;
-	case WIFI_MODE_APSTA:
-		if(args[1].u_int == WIFI_MODE_AP)
-		{
-			ifx  = ESP_IF_WIFI_AP;
-		}
-		else
-		{
-			ifx = ESP_IF_WIFI_STA;
-		}
-		break;
-	default:
-		ifx = ESP_IF_WIFI_STA;
-		break;
-	}
+    switch(self->mode)
+    {
+    case WIFI_MODE_STA:
+        ifx = ESP_IF_WIFI_STA;
+        break;
+    case WIFI_MODE_AP:
+        ifx  = ESP_IF_WIFI_AP;
+        break;
+    case WIFI_MODE_APSTA:
+        if(args[1].u_int == WIFI_MODE_AP)
+        {
+            ifx  = ESP_IF_WIFI_AP;
+        }
+        else
+        {
+            ifx = ESP_IF_WIFI_STA;
+        }
+        break;
+    default:
+        ifx = ESP_IF_WIFI_STA;
+        break;
+    }
 
-	if(!MP_OBJ_IS_TYPE(args[0].u_obj, &mp_type_bytes))
-	{
-		nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_num_type_invalid_arguments));
-	}
-	else
-	{
-    	mp_get_buffer_raise(args[0].u_obj, &value_bufinfo, MP_BUFFER_READ);
+    if(!MP_OBJ_IS_TYPE(args[0].u_obj, &mp_type_bytes))
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_num_type_invalid_arguments));
+    }
+    else
+    {
+        mp_get_buffer_raise(args[0].u_obj, &value_bufinfo, MP_BUFFER_READ);
 
-    	if(value_bufinfo.len > 1500 || value_bufinfo.len < 24)
-    	{
-    		nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Buffer size should be between 24 and 1500 bytes!"));
-    	}
-	}
+        if(value_bufinfo.len > 1500 || value_bufinfo.len < 24)
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Buffer size should be between 24 and 1500 bytes!"));
+        }
+    }
 
-	//send packet
-	if(ESP_OK != esp_wifi_80211_tx(ifx, value_bufinfo.buf, value_bufinfo.len, args[2].u_bool))
-	{
-		nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
-	}
+    //send packet
+    if(ESP_OK != esp_wifi_80211_tx(ifx, value_bufinfo.buf, value_bufinfo.len, args[2].u_bool))
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+    }
 
-	return mp_const_none;
+    return mp_const_none;
 
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_send_raw_obj, 1, wlan_send_raw);
@@ -1968,56 +1968,56 @@ STATIC mp_obj_t wlan_channel (mp_uint_t n_args, const mp_obj_t *args) {
     }
     else
     {
-    	uint8_t channel;
+        uint8_t channel;
 
-		if (self->mode == WIFI_MODE_AP)
-		{
-			channel  = mp_obj_get_int(args[1]);
-			wlan_validate_channel(channel);
-			wifi_config_t config;
-			esp_wifi_get_config(WIFI_IF_AP, &config);
-			config.ap.channel = channel;
-			wlan_obj.channel = channel;
-			esp_wifi_set_config(WIFI_IF_AP, &config);
-		}
-		else if (self->mode == WIFI_MODE_STA)
-		{
-			if(!self->is_promiscuous)
-			{
-				nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Wifi is not in promiscuous mode!"));
-			}
+        if (self->mode == WIFI_MODE_AP)
+        {
+            channel  = mp_obj_get_int(args[1]);
+            wlan_validate_channel(channel);
+            wifi_config_t config;
+            esp_wifi_get_config(WIFI_IF_AP, &config);
+            config.ap.channel = channel;
+            wlan_obj.channel = channel;
+            esp_wifi_set_config(WIFI_IF_AP, &config);
+        }
+        else if (self->mode == WIFI_MODE_STA)
+        {
+            if(!self->is_promiscuous)
+            {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Wifi is not in promiscuous mode!"));
+            }
 
-			if(self->bandwidth == WIFI_BW_HT20)
-			{
-				channel = mp_obj_get_int(args[1]);
-				wlan_validate_channel(channel);
-				esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
-			}
-			else
-			{
-				uint8_t secondary_chn;
+            if(self->bandwidth == WIFI_BW_HT20)
+            {
+                channel = mp_obj_get_int(args[1]);
+                wlan_validate_channel(channel);
+                esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
+            }
+            else
+            {
+                uint8_t secondary_chn;
 
-				if(n_args < 3)
-				{
-					secondary_chn = WIFI_SECOND_CHAN_NONE;
-				}
-				else
-				{
-					secondary_chn = mp_obj_get_int(args[2]);
+                if(n_args < 3)
+                {
+                    secondary_chn = WIFI_SECOND_CHAN_NONE;
+                }
+                else
+                {
+                    secondary_chn = mp_obj_get_int(args[2]);
 
-					if(secondary_chn > WIFI_SECOND_CHAN_BELOW)
-					{
-						nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid Secondary Channel position!"));
-					}
-				}
+                    if(secondary_chn > WIFI_SECOND_CHAN_BELOW)
+                    {
+                        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid Secondary Channel position!"));
+                    }
+                }
 
-				channel = mp_obj_get_int(args[1]);
+                channel = mp_obj_get_int(args[1]);
 
-				wlan_validate_channel(channel);
+                wlan_validate_channel(channel);
 
-				esp_wifi_set_channel(channel, secondary_chn);
-			}
-		}
+                esp_wifi_set_channel(channel, secondary_chn);
+            }
+        }
         return mp_const_none;
     }
 }
@@ -2044,139 +2044,139 @@ STATIC mp_obj_t wlan_mac (mp_uint_t n_args, const mp_obj_t *args) {
 
     if (n_args == 1)
     {
-    	mp_obj_t tuple[2] =
-		{
-				mp_obj_new_bytes((const byte *)self->mac, sizeof(self->mac)),
-				mp_obj_new_bytes((const byte *)self->mac_ap, sizeof(self->mac_ap))
-		};
+        mp_obj_t tuple[2] =
+        {
+                mp_obj_new_bytes((const byte *)self->mac, sizeof(self->mac)),
+                mp_obj_new_bytes((const byte *)self->mac_ap, sizeof(self->mac_ap))
+        };
 
-		return mp_obj_new_attrtuple(wlan_mac_fields, 2, tuple);
+        return mp_obj_new_attrtuple(wlan_mac_fields, 2, tuple);
     }
     else if(n_args == 3)
     {
-		wifi_interface_t interface;
+        wifi_interface_t interface;
 
-		switch(mp_obj_get_int(args[2]))
-		{
-		case WIFI_MODE_STA:
-			interface = ESP_IF_WIFI_STA;
-			break;
-		case WIFI_MODE_AP:
-			interface  = ESP_IF_WIFI_AP;
-			break;
-		default:
-			goto op_not_possible;
-		}
+        switch(mp_obj_get_int(args[2]))
+        {
+        case WIFI_MODE_STA:
+            interface = ESP_IF_WIFI_STA;
+            break;
+        case WIFI_MODE_AP:
+            interface  = ESP_IF_WIFI_AP;
+            break;
+        default:
+            goto op_not_possible;
+        }
 
-    	if(!MP_OBJ_IS_TYPE(args[1], &mp_type_bytearray))
-    	{
-    		nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_num_type_invalid_arguments));
-    	}
+        if(!MP_OBJ_IS_TYPE(args[1], &mp_type_bytearray))
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_num_type_invalid_arguments));
+        }
 
-    	mp_buffer_info_t value_bufinfo;
-    	mp_get_buffer_raise(args[1], &value_bufinfo, MP_BUFFER_READ);
+        mp_buffer_info_t value_bufinfo;
+        mp_get_buffer_raise(args[1], &value_bufinfo, MP_BUFFER_READ);
 
-    	if(value_bufinfo.len != 6 )
-    	{
-    		goto invalid_value;
-    	}
+        if(value_bufinfo.len != 6 )
+        {
+            goto invalid_value;
+        }
 
-    	uint8_t mac[6];
-    	// Check if we have STA and AP with same mac
-    	if(mp_obj_get_int(args[2]) == WIFI_MODE_STA)
-    	{
-    		esp_wifi_get_mac(ESP_IF_WIFI_AP, mac);
-    	}
-    	else
-    	{
-    		esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);
-    	}
+        uint8_t mac[6];
+        // Check if we have STA and AP with same mac
+        if(mp_obj_get_int(args[2]) == WIFI_MODE_STA)
+        {
+            esp_wifi_get_mac(ESP_IF_WIFI_AP, mac);
+        }
+        else
+        {
+            esp_wifi_get_mac(ESP_IF_WIFI_STA, mac);
+        }
 
-    	uint8_t* buffer = (uint8_t*)value_bufinfo.buf;
+        uint8_t* buffer = (uint8_t*)value_bufinfo.buf;
 
-		if(!memcmp(mac, buffer, value_bufinfo.len))
-		{
-			nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Station and AP cannot have the same Mac address!"));
-		}
-
-
-		//bit 0 of first byte should not be = 1
-		if((*buffer & ((uint8_t)1)))
-		{
-			nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Bit 0 of First Byte in Mac addr cannot be 1"));
-		}
+        if(!memcmp(mac, buffer, value_bufinfo.len))
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Station and AP cannot have the same Mac address!"));
+        }
 
 
-		if(ESP_OK != esp_wifi_set_mac(interface, (uint8_t*)value_bufinfo.buf))
-		{
-			goto op_not_possible;
-		}
+        //bit 0 of first byte should not be = 1
+        if((*buffer & ((uint8_t)1)))
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Bit 0 of First Byte in Mac addr cannot be 1"));
+        }
 
-		if(interface == ESP_IF_WIFI_STA)
-		{
-			memcpy(self->mac, (uint8_t*)value_bufinfo.buf, sizeof(self->mac));
-		}
-		else
-		{
-			memcpy(self->mac_ap, (uint8_t*)value_bufinfo.buf, sizeof(self->mac_ap));
-		}
 
-		return mp_const_none;
+        if(ESP_OK != esp_wifi_set_mac(interface, (uint8_t*)value_bufinfo.buf))
+        {
+            goto op_not_possible;
+        }
+
+        if(interface == ESP_IF_WIFI_STA)
+        {
+            memcpy(self->mac, (uint8_t*)value_bufinfo.buf, sizeof(self->mac));
+        }
+        else
+        {
+            memcpy(self->mac_ap, (uint8_t*)value_bufinfo.buf, sizeof(self->mac_ap));
+        }
+
+        return mp_const_none;
 
     }
     else
     {
-    	nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_num_type_invalid_arguments));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_num_type_invalid_arguments));
     }
 
 op_not_possible:
-	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
 
 invalid_value:
-	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
 
-	return mp_const_none;
+    return mp_const_none;
 
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_mac_obj, 1, 3, wlan_mac);
 
 STATIC mp_obj_t wlan_max_tx_power (mp_uint_t n_args, const mp_obj_t *args) {
 
-	int8_t pwr;
+    int8_t pwr;
 
-	if(n_args > 1)
-	{
-		pwr = mp_obj_get_int(args[1]);
-		if(ESP_OK != esp_wifi_set_max_tx_power(pwr))
-		{
-			nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
-		}
+    if(n_args > 1)
+    {
+        pwr = mp_obj_get_int(args[1]);
+        if(ESP_OK != esp_wifi_set_max_tx_power(pwr))
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+        }
 
-		return mp_const_none;
-	}
-	else
-	{
-		if(ESP_OK != esp_wifi_get_max_tx_power(&pwr))
-		{
-			nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
-		}
-		return MP_OBJ_NEW_SMALL_INT(pwr);
-	}
+        return mp_const_none;
+    }
+    else
+    {
+        if(ESP_OK != esp_wifi_get_max_tx_power(&pwr))
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+        }
+        return MP_OBJ_NEW_SMALL_INT(pwr);
+    }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_max_tx_power_obj, 1, 2, wlan_max_tx_power);
 
 STATIC mp_obj_t wlan_country(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
-	STATIC const qstr wlan_scan_info_fields[] = {
+    STATIC const qstr wlan_scan_info_fields[] = {
         MP_QSTR_country, MP_QSTR_schan, MP_QSTR_nchan, MP_QSTR_max_tx_pwr, MP_QSTR_policy
     };
 
     STATIC const mp_arg_t allowed_args[] = {
-        { MP_QSTR_country,                 	MP_ARG_KW_ONLY  | MP_ARG_OBJ,					{.u_obj = mp_const_none}},
-        { MP_QSTR_schan,                	MP_ARG_KW_ONLY  | MP_ARG_OBJ,					{.u_obj = mp_const_none}},
-        { MP_QSTR_nchan,              		MP_ARG_KW_ONLY  | MP_ARG_OBJ,					{.u_obj = mp_const_none}},
-        { MP_QSTR_max_tx_pwr,          		MP_ARG_KW_ONLY  | MP_ARG_OBJ, 					{.u_obj = mp_const_none} },
-        { MP_QSTR_policy,             		MP_ARG_KW_ONLY  | MP_ARG_OBJ, 					{.u_obj = mp_const_none} },
+        { MP_QSTR_country,                     MP_ARG_KW_ONLY  | MP_ARG_OBJ,                    {.u_obj = mp_const_none}},
+        { MP_QSTR_schan,                    MP_ARG_KW_ONLY  | MP_ARG_OBJ,                    {.u_obj = mp_const_none}},
+        { MP_QSTR_nchan,                      MP_ARG_KW_ONLY  | MP_ARG_OBJ,                    {.u_obj = mp_const_none}},
+        { MP_QSTR_max_tx_pwr,                  MP_ARG_KW_ONLY  | MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+        { MP_QSTR_policy,                     MP_ARG_KW_ONLY  | MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
     };
 
     // parse args
@@ -2185,82 +2185,82 @@ STATIC mp_obj_t wlan_country(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
 
     if(args[0].u_obj == mp_const_none && args[1].u_obj == mp_const_none && args[2].u_obj == mp_const_none && args[3].u_obj == mp_const_none && args[4].u_obj == mp_const_none)
     {
-		wifi_country_t outconfig;
-		esp_wifi_get_country(&outconfig);
-		mp_obj_t tuple[5];
+        wifi_country_t outconfig;
+        esp_wifi_get_country(&outconfig);
+        mp_obj_t tuple[5];
 
-		// fill tuple
-		tuple[0] = mp_obj_new_str((const char*)outconfig.cc, 2);
-		tuple[1] = MP_OBJ_NEW_SMALL_INT(outconfig.schan);
-		tuple[2] = MP_OBJ_NEW_SMALL_INT(outconfig.nchan);
-		tuple[3] = MP_OBJ_NEW_SMALL_INT(outconfig.max_tx_power);
-		tuple[4] = MP_OBJ_NEW_SMALL_INT(outconfig.policy);
+        // fill tuple
+        tuple[0] = mp_obj_new_str((const char*)outconfig.cc, 2);
+        tuple[1] = MP_OBJ_NEW_SMALL_INT(outconfig.schan);
+        tuple[2] = MP_OBJ_NEW_SMALL_INT(outconfig.nchan);
+        tuple[3] = MP_OBJ_NEW_SMALL_INT(outconfig.max_tx_power);
+        tuple[4] = MP_OBJ_NEW_SMALL_INT(outconfig.policy);
 
-		mp_obj_t data = mp_obj_new_attrtuple(wlan_scan_info_fields, 5, tuple);
+        mp_obj_t data = mp_obj_new_attrtuple(wlan_scan_info_fields, 5, tuple);
 
-		return data;
+        return data;
     }
 
     wifi_country_t country_config;
 
-	//country
-	if (args[0].u_obj != mp_const_none) {
-		const char * country = mp_obj_str_get_str(args[0].u_obj);
-		wlan_validate_country(country);
-		memcpy(&(country_config.cc[0]), country, strlen(country));
-	}
-	else
-	{
-		nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "No Country Specified!"));
-	}
+    //country
+    if (args[0].u_obj != mp_const_none) {
+        const char * country = mp_obj_str_get_str(args[0].u_obj);
+        wlan_validate_country(country);
+        memcpy(&(country_config.cc[0]), country, strlen(country));
+    }
+    else
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "No Country Specified!"));
+    }
 
     // start channel
-	if (args[1].u_obj != mp_const_none) {
-		uint8_t startchn = mp_obj_get_int(args[1].u_obj);
-		wlan_validate_channel(startchn);
-		country_config.schan = startchn;
-	}
-	else
-	{
-		nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Please Specify start channel!"));
-	}
+    if (args[1].u_obj != mp_const_none) {
+        uint8_t startchn = mp_obj_get_int(args[1].u_obj);
+        wlan_validate_channel(startchn);
+        country_config.schan = startchn;
+    }
+    else
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Please Specify start channel!"));
+    }
 
     // num of channels
-	if (args[2].u_obj != mp_const_none) {
-		uint8_t numchn = mp_obj_get_int(args[2].u_obj);
-		wlan_validate_channel(numchn);
-		country_config.nchan = numchn;
-	}
-	else
-	{
-		nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Please Specify number of channels!"));
-	}
+    if (args[2].u_obj != mp_const_none) {
+        uint8_t numchn = mp_obj_get_int(args[2].u_obj);
+        wlan_validate_channel(numchn);
+        country_config.nchan = numchn;
+    }
+    else
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Please Specify number of channels!"));
+    }
 
     // max tx power
     if(args[3].u_obj != mp_const_none)
     {
-    	country_config.max_tx_power = mp_obj_get_int(args[3].u_obj);
+        country_config.max_tx_power = mp_obj_get_int(args[3].u_obj);
     }
     else
     {
-    	country_config.max_tx_power = CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER;
+        country_config.max_tx_power = CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER;
     }
 
     //policy
     if(args[4].u_obj != mp_const_none)
     {
-    	wlan_validate_country_policy(mp_obj_get_int(args[4].u_obj));
-    	country_config.policy = (wifi_country_policy_t)mp_obj_get_int(args[4].u_obj);
+        wlan_validate_country_policy(mp_obj_get_int(args[4].u_obj));
+        country_config.policy = (wifi_country_policy_t)mp_obj_get_int(args[4].u_obj);
     }
     else
     {
-    	country_config.policy = WIFI_COUNTRY_POLICY_AUTO;
+        country_config.policy = WIFI_COUNTRY_POLICY_AUTO;
     }
 
     /* Set configuration */
     if(ESP_OK != esp_wifi_set_country(&country_config))
     {
-    	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
 
     return mp_const_none;
@@ -2269,45 +2269,45 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_country_obj, 1, wlan_country);
 
 STATIC mp_obj_t wlan_promiscuous_mode (mp_uint_t n_args, const mp_obj_t *args)
 {
-	wlan_obj_t* self = (wlan_obj_t*)args[0];
+    wlan_obj_t* self = (wlan_obj_t*)args[0];
 
-	if (n_args > 1)
-	{
-		/* Set promiscuous mode */
-		if(mp_obj_is_true(args[1]))
-		{
-			if(ESP_OK == esp_wifi_set_promiscuous(true))
-			{
-				self->is_promiscuous = true;
-				esp_wifi_set_promiscuous_rx_cb(promiscuous_callback);
-			}
-			else
-			{
-				goto error;
-			}
-		}
-		else
-		{
-			if(ESP_OK == esp_wifi_set_promiscuous(false))
-			{
-				self->is_promiscuous = false;
-			}
-			else
-			{
-				goto error;
-			}
-		}
+    if (n_args > 1)
+    {
+        /* Set promiscuous mode */
+        if(mp_obj_is_true(args[1]))
+        {
+            if(ESP_OK == esp_wifi_set_promiscuous(true))
+            {
+                self->is_promiscuous = true;
+                esp_wifi_set_promiscuous_rx_cb(promiscuous_callback);
+            }
+            else
+            {
+                goto error;
+            }
+        }
+        else
+        {
+            if(ESP_OK == esp_wifi_set_promiscuous(false))
+            {
+                self->is_promiscuous = false;
+            }
+            else
+            {
+                goto error;
+            }
+        }
 
-		return mp_const_none;
-	}
-	else
-	{
-		/* return the current status */
-		return mp_obj_new_bool(self->is_promiscuous);
-	}
+        return mp_const_none;
+    }
+    else
+    {
+        /* return the current status */
+        return mp_obj_new_bool(self->is_promiscuous);
+    }
 
 error:
-	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_promiscuous_mode_obj, 1, 2, wlan_promiscuous_mode);
 
@@ -2325,7 +2325,7 @@ STATIC mp_obj_t wlan_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
 
     wifi_promiscuous_filter_t filter =
     {
-    		.filter_mask = 0
+            .filter_mask = 0
     };
 
     // enable the callback
@@ -2333,31 +2333,31 @@ STATIC mp_obj_t wlan_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
         self->trigger = mp_obj_get_int(args[0].u_obj);
         if (self->trigger <= MOD_WLAN_TRIGGER_PKT_ANY)
         {
-        	if(self->trigger & MOD_WLAN_TRIGGER_PKT_MGMT)
-        	{
-        		filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_MGMT;
-        	}
-        	if(self->trigger & MOD_WLAN_TRIGGER_PKT_CTRL)
-			{
-				filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_CTRL;
-			}
-        	if(self->trigger & MOD_WLAN_TRIGGER_PKT_DATA)
-			{
-				filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_DATA;
-			}
-        	if(self->trigger & MOD_WLAN_TRIGGER_PKT_DATA_MPDU)
-			{
-				filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_DATA_MPDU;
-			}
-        	if(self->trigger & MOD_WLAN_TRIGGER_PKT_DATA_AMPDU)
-			{
-				filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_DATA_AMPDU;
-			}
-        	if(self->trigger & MOD_WLAN_TRIGGER_PKT_MISC)
-			{
-				filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_MISC;
-			}
-        	esp_wifi_set_promiscuous_filter(&filter);
+            if(self->trigger & MOD_WLAN_TRIGGER_PKT_MGMT)
+            {
+                filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_MGMT;
+            }
+            if(self->trigger & MOD_WLAN_TRIGGER_PKT_CTRL)
+            {
+                filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_CTRL;
+            }
+            if(self->trigger & MOD_WLAN_TRIGGER_PKT_DATA)
+            {
+                filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_DATA;
+            }
+            if(self->trigger & MOD_WLAN_TRIGGER_PKT_DATA_MPDU)
+            {
+                filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_DATA_MPDU;
+            }
+            if(self->trigger & MOD_WLAN_TRIGGER_PKT_DATA_AMPDU)
+            {
+                filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_DATA_AMPDU;
+            }
+            if(self->trigger & MOD_WLAN_TRIGGER_PKT_MISC)
+            {
+                filter.filter_mask |= WIFI_PROMIS_FILTER_MASK_MISC;
+            }
+            esp_wifi_set_promiscuous_filter(&filter);
         }
         self->handler = args[1].u_obj;
         if (args[2].u_obj == mp_const_none) {
@@ -2388,49 +2388,49 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_events_obj, wlan_events);
 
 STATIC mp_obj_t wlan_packet(mp_obj_t self_in) {
 
-	wlan_obj_t* self = self_in;
+    wlan_obj_t* self = self_in;
 
-	STATIC const qstr wlan_pkt_info_fields[] = {
-	        MP_QSTR_rssi, MP_QSTR_rate, MP_QSTR_sig_mode, MP_QSTR_mcs, MP_QSTR_cwb, MP_QSTR_aggregation, MP_QSTR_stbc, MP_QSTR_fec_coding, MP_QSTR_sgi, MP_QSTR_noise_floor, MP_QSTR_ampdu_cnt, MP_QSTR_channel,
-			MP_QSTR_sec_channel, MP_QSTR_time_stamp, MP_QSTR_ant, MP_QSTR_sig_len, MP_QSTR_rx_state, MP_QSTR_data
-	    };
+    STATIC const qstr wlan_pkt_info_fields[] = {
+            MP_QSTR_rssi, MP_QSTR_rate, MP_QSTR_sig_mode, MP_QSTR_mcs, MP_QSTR_cwb, MP_QSTR_aggregation, MP_QSTR_stbc, MP_QSTR_fec_coding, MP_QSTR_sgi, MP_QSTR_noise_floor, MP_QSTR_ampdu_cnt, MP_QSTR_channel,
+            MP_QSTR_sec_channel, MP_QSTR_time_stamp, MP_QSTR_ant, MP_QSTR_sig_len, MP_QSTR_rx_state, MP_QSTR_data
+        };
 
-	uint8_t loc_tocken = token;
+    uint8_t loc_tocken = token;
 
-	xSemaphoreTake(self->mutex, portMAX_DELAY);
+    xSemaphoreTake(self->mutex, portMAX_DELAY);
 
     token ^= 1;
 
     xSemaphoreGive(self->mutex);
 
-	mp_obj_t tuple[MAX_WIFI_PKT_PARAMS];
+    mp_obj_t tuple[MAX_WIFI_PKT_PARAMS];
 
-	tuple[0] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.rssi);
-	tuple[1] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.rate);
-	tuple[2] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.sig_mode);
-	tuple[3] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.mcs);
-	tuple[4] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.cwb);
-	tuple[5] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.aggregation);
-	tuple[6] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.stbc);
-	tuple[7] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.fec_coding);
-	tuple[8] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.sgi);
-	tuple[9] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.noise_floor);
-	tuple[10] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.ampdu_cnt);
-	tuple[11] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.channel);
-	tuple[12] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.second_channel);
-	tuple[13] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.timestamp);
-	tuple[14] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.ant);
-	tuple[15] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.sig_len);
-	tuple[16] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.rx_state);
+    tuple[0] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.rssi);
+    tuple[1] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.rate);
+    tuple[2] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.sig_mode);
+    tuple[3] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.mcs);
+    tuple[4] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.cwb);
+    tuple[5] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.aggregation);
+    tuple[6] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.stbc);
+    tuple[7] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.fec_coding);
+    tuple[8] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.sgi);
+    tuple[9] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.noise_floor);
+    tuple[10] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.ampdu_cnt);
+    tuple[11] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.channel);
+    tuple[12] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.second_channel);
+    tuple[13] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.timestamp);
+    tuple[14] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.ant);
+    tuple[15] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.sig_len);
+    tuple[16] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.rx_state);
 
-	if(wlan_prom_packet[loc_tocken].pkt_type != WIFI_PKT_CTRL)
-	{
-		tuple[17] = mp_obj_new_bytes((const uint8_t*)(wlan_prom_packet[loc_tocken].data), wlan_prom_packet[loc_tocken].rx_ctrl.sig_len);
-	}
-	else
-	{
-		tuple[17] = mp_const_none;
-	}
+    if(wlan_prom_packet[loc_tocken].pkt_type != WIFI_PKT_CTRL)
+    {
+        tuple[17] = mp_obj_new_bytes((const uint8_t*)(wlan_prom_packet[loc_tocken].data), wlan_prom_packet[loc_tocken].rx_ctrl.sig_len);
+    }
+    else
+    {
+        tuple[17] = mp_const_none;
+    }
 
 
     return mp_obj_new_attrtuple(wlan_pkt_info_fields, MAX_WIFI_PKT_PARAMS, tuple);
@@ -2439,29 +2439,29 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_packet_obj, wlan_packet);
 
 STATIC mp_obj_t wlan_ctrl_pkt_filter(mp_uint_t n_args, const mp_obj_t *args) {
 
-	wifi_promiscuous_filter_t  filter_ctrl_mask;
+    wifi_promiscuous_filter_t  filter_ctrl_mask;
 
-	if(n_args > 1)
-	{
-		filter_ctrl_mask.filter_mask  = mp_obj_get_int(args[1]);
+    if(n_args > 1)
+    {
+        filter_ctrl_mask.filter_mask  = mp_obj_get_int(args[1]);
 
-		if((filter_ctrl_mask.filter_mask < WIFI_PROMIS_CTRL_FILTER_MASK_WRAPPER) || (filter_ctrl_mask.filter_mask > WIFI_PROMIS_CTRL_FILTER_MASK_ALL))
-		{
-			nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid Filter mask!"));
-		}
-		else
-		{
-			esp_wifi_set_promiscuous_ctrl_filter(&filter_ctrl_mask);
-		}
-	}
-	else
-	{
-		esp_wifi_set_promiscuous_ctrl_filter(&filter_ctrl_mask);
+        if((filter_ctrl_mask.filter_mask < WIFI_PROMIS_CTRL_FILTER_MASK_WRAPPER) || (filter_ctrl_mask.filter_mask > WIFI_PROMIS_CTRL_FILTER_MASK_ALL))
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid Filter mask!"));
+        }
+        else
+        {
+            esp_wifi_set_promiscuous_ctrl_filter(&filter_ctrl_mask);
+        }
+    }
+    else
+    {
+        esp_wifi_set_promiscuous_ctrl_filter(&filter_ctrl_mask);
 
-		return mp_obj_new_int(filter_ctrl_mask.filter_mask);
-	}
+        return mp_obj_new_int(filter_ctrl_mask.filter_mask);
+    }
 
-	return mp_const_none;
+    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(wlan_ctrl_pkt_filter_obj, 1, 2, wlan_ctrl_pkt_filter);
 
@@ -2483,57 +2483,57 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_channel),             (mp_obj_t)&wlan_channel_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_antenna),             (mp_obj_t)&wlan_antenna_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&wlan_mac_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_ap_sta_list),         (mp_obj_t)&wlan_ap_sta_list_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_max_tx_power),        (mp_obj_t)&wlan_max_tx_power_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_country),        		(mp_obj_t)&wlan_country_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_joined_ap_info),      (mp_obj_t)&wlan_joined_ap_info_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_wifi_protocol),      	(mp_obj_t)&wlan_wifi_protocol_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_send_raw),      		(mp_obj_t)&wlan_send_raw_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_promiscuous),      	(mp_obj_t)&wlan_promiscuous_mode_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_callback),      		(mp_obj_t)&wlan_callback_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_events),      		(mp_obj_t)&wlan_events_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_wifi_packet),      	(mp_obj_t)&wlan_packet_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_ctrl_pkt_filter),     (mp_obj_t)&wlan_ctrl_pkt_filter_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ap_sta_list),         (mp_obj_t)&wlan_ap_sta_list_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_max_tx_power),        (mp_obj_t)&wlan_max_tx_power_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_country),                (mp_obj_t)&wlan_country_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_joined_ap_info),      (mp_obj_t)&wlan_joined_ap_info_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_protocol),          (mp_obj_t)&wlan_wifi_protocol_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_send_raw),              (mp_obj_t)&wlan_send_raw_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_promiscuous),          (mp_obj_t)&wlan_promiscuous_mode_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_callback),              (mp_obj_t)&wlan_callback_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_events),              (mp_obj_t)&wlan_events_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_packet),          (mp_obj_t)&wlan_packet_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ctrl_pkt_filter),     (mp_obj_t)&wlan_ctrl_pkt_filter_obj },
 
     // class constants
-    { MP_OBJ_NEW_QSTR(MP_QSTR_STA),                 		MP_OBJ_NEW_SMALL_INT(WIFI_MODE_STA) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_AP),                  		MP_OBJ_NEW_SMALL_INT(WIFI_MODE_AP) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_STA_AP),              		MP_OBJ_NEW_SMALL_INT(WIFI_MODE_APSTA) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_WEP),                 		MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WEP) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_WPA),                 		MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA_PSK) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_WPA2),                		MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA2_PSK) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_WPA2_ENT),            		MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA2_ENTERPRISE) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_INT_ANT),             		MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_INTERNAL) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_EXT_ANT),             		MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_EXTERNAL) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_HT20),                		MP_OBJ_NEW_SMALL_INT(WIFI_BW_HT20) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_HT40),                		MP_OBJ_NEW_SMALL_INT(WIFI_BW_HT40) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_PHY_11_B),            		MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_B) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_PHY_11_G),            		MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_G) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_PHY_11_N),            		MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_N) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_PHY_LOW_RATE),        		MP_OBJ_NEW_SMALL_INT(WLAN_PHY_LOW_RATE) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_SCAN_PASSIVE),        		MP_OBJ_NEW_SMALL_INT(WIFI_SCAN_TYPE_PASSIVE) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_SCAN_ACTIVE),         		MP_OBJ_NEW_SMALL_INT(WIFI_SCAN_TYPE_ACTIVE) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_COUNTRY_POL_AUTO),    		MP_OBJ_NEW_SMALL_INT(WIFI_COUNTRY_POLICY_AUTO) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_COUNTRY_POL_MAN),     		MP_OBJ_NEW_SMALL_INT(WIFI_COUNTRY_POLICY_MANUAL) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_SECONDARY_CHN_ABOVE), 		MP_OBJ_NEW_SMALL_INT(WIFI_SECOND_CHAN_ABOVE) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_SECONDARY_CHN_BELOW), 		MP_OBJ_NEW_SMALL_INT(WIFI_SECOND_CHAN_BELOW) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_SECONDARY_CHN_NONE), 			MP_OBJ_NEW_SMALL_INT(WIFI_SECOND_CHAN_NONE) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_MGMT), 				MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_MGMT) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_CTRL), 				MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_CTRL) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_DATA), 				MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_DATA) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_DATA_MPDU),			MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_DATA_MPDU) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_DATA_AMPDU),		MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_DATA_AMPDU) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_MISC), 				MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_MISC) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_ANY), 				MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_ANY) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_ALL), 		MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_ALL) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_WRAPPER), 	MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_WRAPPER) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_BAR), 		MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_BAR) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_BA), 			MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_BA) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_PSPOLL), 		MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_PSPOLL) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_CTS), 		MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_CTS) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_ACK), 		MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_ACK) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_CFEND), 		MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_CFEND) },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_CFENDACK), 	MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_CFENDACK) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_STA),                         MP_OBJ_NEW_SMALL_INT(WIFI_MODE_STA) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_AP),                          MP_OBJ_NEW_SMALL_INT(WIFI_MODE_AP) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_STA_AP),                      MP_OBJ_NEW_SMALL_INT(WIFI_MODE_APSTA) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_WEP),                         MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WEP) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_WPA),                         MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA_PSK) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_WPA2),                        MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA2_PSK) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_WPA2_ENT),                    MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA2_ENTERPRISE) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INT_ANT),                     MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_INTERNAL) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EXT_ANT),                     MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_EXTERNAL) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_HT20),                        MP_OBJ_NEW_SMALL_INT(WIFI_BW_HT20) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_HT40),                        MP_OBJ_NEW_SMALL_INT(WIFI_BW_HT40) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PHY_11_B),                    MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_B) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PHY_11_G),                    MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_G) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PHY_11_N),                    MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_N) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PHY_LOW_RATE),                MP_OBJ_NEW_SMALL_INT(WLAN_PHY_LOW_RATE) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_SCAN_PASSIVE),                MP_OBJ_NEW_SMALL_INT(WIFI_SCAN_TYPE_PASSIVE) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_SCAN_ACTIVE),                 MP_OBJ_NEW_SMALL_INT(WIFI_SCAN_TYPE_ACTIVE) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_COUNTRY_POL_AUTO),            MP_OBJ_NEW_SMALL_INT(WIFI_COUNTRY_POLICY_AUTO) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_COUNTRY_POL_MAN),             MP_OBJ_NEW_SMALL_INT(WIFI_COUNTRY_POLICY_MANUAL) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_SECONDARY_CHN_ABOVE),         MP_OBJ_NEW_SMALL_INT(WIFI_SECOND_CHAN_ABOVE) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_SECONDARY_CHN_BELOW),         MP_OBJ_NEW_SMALL_INT(WIFI_SECOND_CHAN_BELOW) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_SECONDARY_CHN_NONE),             MP_OBJ_NEW_SMALL_INT(WIFI_SECOND_CHAN_NONE) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_MGMT),                 MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_MGMT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_CTRL),                 MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_CTRL) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_DATA),                 MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_DATA) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_DATA_MPDU),            MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_DATA_MPDU) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_DATA_AMPDU),        MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_DATA_AMPDU) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_MISC),                 MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_MISC) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_PKT_ANY),                 MP_OBJ_NEW_SMALL_INT(MOD_WLAN_TRIGGER_PKT_ANY) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_ALL),         MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_ALL) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_WRAPPER),     MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_WRAPPER) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_BAR),         MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_BAR) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_BA),             MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_BA) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_PSPOLL),         MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_PSPOLL) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_CTS),         MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_CTS) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_ACK),         MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_ACK) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_CFEND),         MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_CFEND) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FILTER_CTRL_PKT_CFENDACK),     MP_OBJ_NEW_SMALL_INT(WIFI_PROMIS_CTRL_FILTER_MASK_CFENDACK) },
 };
 STATIC MP_DEFINE_CONST_DICT(wlan_locals_dict, wlan_locals_dict_table);
 

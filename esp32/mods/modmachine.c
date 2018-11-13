@@ -183,58 +183,58 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_idle_obj, machine_idle);
 
 STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
 
-	bool reconnect = false;
-	bt_deinit(NULL);
-	wlan_deinit(NULL);
+    bool reconnect = false;
+    bt_deinit(NULL);
+    wlan_deinit(NULL);
 #if defined(FIPY) || defined(GPY)
-	while (!lteppp_task_ready()) {
-		mp_hal_delay_ms(2);
-	}
-	lteppp_deinit();
+    while (!lteppp_task_ready()) {
+        mp_hal_delay_ms(2);
+    }
+    lteppp_deinit();
 #endif
 
 #if defined(LOPY) || defined(LOPY4) || defined(FIPY)
-	/* Send LoRa module to Sleep Mode */
+    /* Send LoRa module to Sleep Mode */
     modlora_sleep_module();
-	while(!modlora_is_module_sleep())
-	{
-		mp_hal_delay_ms(2);
-	}
+    while(!modlora_is_module_sleep())
+    {
+        mp_hal_delay_ms(2);
+    }
 #endif
 
-	if (n_args == 0)
-	{
-		mach_expected_wakeup_time = 0;
-		esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);
-	}
-	else
-	{
-		int64_t sleep_time = (int64_t)mp_obj_get_int_truncated(arg[0]) * 1000;
-		struct timeval tv;
-		gettimeofday(&tv, NULL);
-		mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
-		esp_sleep_enable_timer_wakeup(sleep_time);
-		if(n_args == 2)
-		{
-			reconnect = (bool)mp_obj_is_true(arg[1]);
-		}
-		else
-		{
-			reconnect = false;
-		}
-	}
+    if (n_args == 0)
+    {
+        mach_expected_wakeup_time = 0;
+        esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);
+    }
+    else
+    {
+        int64_t sleep_time = (int64_t)mp_obj_get_int_truncated(arg[0]) * 1000;
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
+        esp_sleep_enable_timer_wakeup(sleep_time);
+        if(n_args == 2)
+        {
+            reconnect = (bool)mp_obj_is_true(arg[1]);
+        }
+        else
+        {
+            reconnect = false;
+        }
+    }
 
-	if(ESP_OK != esp_light_sleep_start())
-	{
-		nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Wifi or BT not stopped before sleep"));
-	}
+    if(ESP_OK != esp_light_sleep_start())
+    {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Wifi or BT not stopped before sleep"));
+    }
 
-	/* resume wlan */
-	wlan_resume(reconnect);
-	/* resume bt */
-	bt_resume(reconnect);
+    /* resume wlan */
+    wlan_resume(reconnect);
+    /* resume bt */
+    bt_resume(reconnect);
 
-	return mp_const_none;
+    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_sleep_obj,0, 2, machine_sleep);
 
@@ -368,12 +368,12 @@ STATIC mp_obj_t machine_temperature (void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_temperature_obj, machine_temperature);
 
 STATIC mp_obj_t flash_encrypt (void) {
-	return mp_obj_new_int(esp_flash_encryption_enabled());
+    return mp_obj_new_int(esp_flash_encryption_enabled());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_flash_encrypt_obj, flash_encrypt);
 
 STATIC mp_obj_t secure_boot (void) {
-	return mp_obj_new_int(esp_secure_boot_enabled());
+    return mp_obj_new_int(esp_secure_boot_enabled());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_secure_boot_obj, secure_boot);
 
@@ -402,7 +402,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_info),                    (mp_obj_t)&machine_info_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_temperature),             (mp_obj_t)&machine_temperature_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_flash_encrypt),           (mp_obj_t)&machine_flash_encrypt_obj },
-	{ MP_OBJ_NEW_QSTR(MP_QSTR_secure_boot),           	(mp_obj_t)&machine_secure_boot_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_secure_boot),               (mp_obj_t)&machine_secure_boot_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_Pin),                     (mp_obj_t)&pin_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_UART),                    (mp_obj_t)&mach_uart_type },

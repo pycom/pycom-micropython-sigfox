@@ -17,9 +17,9 @@
 #include <openthread/ip6.h>
 #include <openthread/platform/settings.h>
 
-#define OT_PLAT_SETTINGS_NUM					7
-#define OT_PLAT_SETTINGS_VAL_MAX_SIZE 		128
-#define OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY 	1
+#define OT_PLAT_SETTINGS_NUM                    7
+#define OT_PLAT_SETTINGS_VAL_MAX_SIZE         128
+#define OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY     1
 
 typedef struct settings_row_s {
     int16_t size;

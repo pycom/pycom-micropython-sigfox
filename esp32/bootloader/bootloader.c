@@ -273,7 +273,7 @@ static bool ota_select_valid(const boot_info_t *s)
 }
 
 static IRAM_ATTR bool ota_write_boot_info (boot_info_t *boot_info, uint32_t offset) {
-	esp_rom_spiflash_result_t write_result;
+    esp_rom_spiflash_result_t write_result;
 
     boot_info->crc = ota_select_crc(boot_info);
     Cache_Read_Disable(0);
@@ -284,13 +284,13 @@ static IRAM_ATTR bool ota_write_boot_info (boot_info_t *boot_info, uint32_t offs
     }
 
     if (esp_flash_encryption_enabled()) {
-    		// if flash is encrypted, then Write is done 32B chunks
-		uint8_t buff[64] __attribute__((aligned (32)));
-		memcpy(buff, (void *)boot_info, sizeof(boot_info_t));
-		write_result = esp_rom_spiflash_write_encrypted(offset, (void *)boot_info, 64);
+            // if flash is encrypted, then Write is done 32B chunks
+        uint8_t buff[64] __attribute__((aligned (32)));
+        memcpy(buff, (void *)boot_info, sizeof(boot_info_t));
+        write_result = esp_rom_spiflash_write_encrypted(offset, (void *)boot_info, 64);
     }
     else {
-    		write_result = esp_rom_spiflash_write(offset, (void *)boot_info, sizeof(boot_info_t));
+            write_result = esp_rom_spiflash_write(offset, (void *)boot_info, sizeof(boot_info_t));
     }
 
     if (ESP_ROM_SPIFLASH_RESULT_OK != write_result) {
@@ -390,8 +390,8 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
             // verify the active image (ota partition)
             esp_image_metadata_t data;
             if (ESP_OK != esp_image_load(ESP_IMAGE_VERIFY, &bs->image[boot_info->ActiveImg], &data)) {
-            		ESP_LOGD(TAG, "Switch to the previous image");
-            		// switch to the previous image
+                    ESP_LOGD(TAG, "Switch to the previous image");
+                    // switch to the previous image
                 boot_info->ActiveImg = boot_info->PrevImg;
                 boot_info->PrevImg = IMG_ACT_FACTORY;
             }
