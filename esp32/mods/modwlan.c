@@ -876,7 +876,7 @@ STATIC void promiscuous_callback(void *buf, wifi_promiscuous_pkt_type_t type)
         wlan_prom_packet[token].rx_ctrl.noise_floor = wlan_ctrl_pkt->noise_floor;
         wlan_prom_packet[token].rx_ctrl.ampdu_cnt = wlan_ctrl_pkt->ampdu_cnt;
         wlan_prom_packet[token].rx_ctrl.channel = wlan_ctrl_pkt->channel;
-        wlan_prom_packet[token].rx_ctrl.second_channel = wlan_ctrl_pkt->second_channel;
+        wlan_prom_packet[token].rx_ctrl.secondary_channel = wlan_ctrl_pkt->secondary_channel;
         wlan_prom_packet[token].rx_ctrl.timestamp = wlan_ctrl_pkt->timestamp;
         wlan_prom_packet[token].rx_ctrl.ant = wlan_ctrl_pkt->ant;
         wlan_prom_packet[token].rx_ctrl.sig_len = wlan_ctrl_pkt->sig_len;
@@ -2417,7 +2417,7 @@ STATIC mp_obj_t wlan_packet(mp_obj_t self_in) {
     tuple[9] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.noise_floor);
     tuple[10] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.ampdu_cnt);
     tuple[11] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.channel);
-    tuple[12] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.second_channel);
+    tuple[12] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.secondary_channel);
     tuple[13] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.timestamp);
     tuple[14] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.ant);
     tuple[15] = mp_obj_new_int(wlan_prom_packet[loc_tocken].rx_ctrl.sig_len);
