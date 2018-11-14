@@ -112,6 +112,7 @@ ifeq ($(OS_NAME), Linux)
 # make a list of all the .py files that need compiling and freezing
 FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR)/Base/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Base\///')
 FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Common/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Common\///')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Custom/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Custom\///')
 ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
 FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/LTE/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/LTE\///')
 endif
@@ -119,6 +120,7 @@ else
 # make a list of all the .py files that need compiling and freezing
 FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR)/Base/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/Base\//==')
 FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Common/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/Common\//==')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Custom/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/Custom\//==')
 ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
 FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/LTE/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/LTE\//==')
 endif
@@ -137,6 +139,16 @@ $(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/Common/%.py
 	@$(ECHO) "MPY $<"
 	$(Q)$(MKDIR) -p $(dir $@)
 	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/Common/%=%) $(MPY_CROSS_FLAGS) $^
+
+
+# to build custom .mpy files from .py files
+$(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/Custom/%.py
+	@$(ECHO) "MPY $<"
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/Custom/%=%) $(MPY_CROSS_FLAGS) $^
+
+
+
 
 ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))	
 # to build .mpy files from .py files
