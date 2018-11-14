@@ -31,6 +31,7 @@ def main():
     shutil.copy(src + '/driver/libdriver.a', dst)
     shutil.copy(src + '/esp_adc_cal/libesp_adc_cal.a', dst)
     shutil.copy(src + '/esp32/libesp32.a', dst)
+    shutil.copy(src + '/smartconfig_ack/libsmartconfig_ack.a', dst)
     shutil.copy(src + '/expat/libexpat.a', dst)
     shutil.copy(src + '/freertos/libfreertos.a', dst)
     shutil.copy(src + '/heap/libheap.a', dst)

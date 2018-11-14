@@ -71,7 +71,7 @@ bool updater_read_boot_info (boot_info_t *boot_info, uint32_t *boot_info_offset)
 
     ESP_LOGV(TAG, "Reading boot info\n");
 
-    if (ESP_OK != updater_spi_flash_read(ESP_PARTITION_TABLE_ADDR, (void *)partition_info, sizeof(partition_info), true)) {
+    if (ESP_OK != updater_spi_flash_read(CONFIG_PARTITION_TABLE_OFFSET, (void *)partition_info, sizeof(partition_info), true)) {
             ESP_LOGE(TAG, "err1\n");
             return false;
     }

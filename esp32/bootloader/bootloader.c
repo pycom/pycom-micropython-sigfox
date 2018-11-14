@@ -185,14 +185,14 @@ bool load_partition_table(bootloader_state_t* bs)
     }
 #endif
 
-    partitions = bootloader_mmap(ESP_PARTITION_TABLE_ADDR, ESP_PARTITION_TABLE_DATA_LEN);
+    partitions = bootloader_mmap(CONFIG_PARTITION_TABLE_OFFSET, ESP_PARTITION_TABLE_DATA_LEN);
     if (!partitions) {
-            ESP_LOGE(TAG, "bootloader_mmap(0x%x, 0x%x) failed", ESP_PARTITION_TABLE_ADDR, ESP_PARTITION_TABLE_DATA_LEN);
+            ESP_LOGE(TAG, "bootloader_mmap(0x%x, 0x%x) failed", CONFIG_PARTITION_TABLE_OFFSET, ESP_PARTITION_TABLE_DATA_LEN);
             return false;
     }
-    ESP_LOGD(TAG, "mapped partition table 0x%x at 0x%x", ESP_PARTITION_TABLE_ADDR, (intptr_t)partitions);
+    ESP_LOGD(TAG, "mapped partition table 0x%x at 0x%x", CONFIG_PARTITION_TABLE_OFFSET, (intptr_t)partitions);
 
-    err = esp_partition_table_basic_verify(partitions, true, &num_partitions);
+    err = esp_partition_table_verify(partitions, true, &num_partitions);
     if (err != ESP_OK) {
         ESP_LOGE(TAG, "Failed to verify partition table");
         return false;

@@ -176,8 +176,3 @@ void app_main(void) {
                                                     MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
     }
 }
-/*TODO: Disabled untill Mesh wifi is supported */
-bool esp_mesh_is_scan_allowed()
-{
-    return false;
-}

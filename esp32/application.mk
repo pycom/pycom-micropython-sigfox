@@ -41,6 +41,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip
 APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip/port
 APP_INC += -I$(ESP_IDF_COMP_PATH)/newlib/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/newlib/platform_include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/nvs_flash/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/spi_flash/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/tcpip_adapter/include
