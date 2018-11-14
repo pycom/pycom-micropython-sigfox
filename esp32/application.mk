@@ -657,7 +657,9 @@ endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
 release: $(APP_BIN) $(BOOT_BIN)
 	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR)
 
-flash: $(APP_BIN) $(BOOT_BIN)
+flash: $(APP_BIN) $(BOOT_BIN)	
+	$(ECHO) "checking size of image"
+	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT)
 	$(ECHO) "Entering flash mode"
 	$(Q) $(ENTER_FLASHING_MODE)
 	$(ECHO) "Flashing project"
