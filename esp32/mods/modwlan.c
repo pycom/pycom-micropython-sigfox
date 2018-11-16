@@ -119,6 +119,8 @@ static EventGroupHandle_t wifi_event_group;
 // Event bits
 const int CONNECTED_BIT = BIT0;
 
+STATIC bool is_inf_up = false;
+
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
@@ -239,6 +241,11 @@ void wlan_off_on (void) {
 // DEFINE STATIC FUNCTIONS
 //*****************************************************************************
 
+STATIC bool wlan_is_inf_up(void)
+{
+	return is_inf_up;
+}
+
 STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
     switch(event->event_id) {
     case SYSTEM_EVENT_STA_START:
@@ -253,10 +260,12 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
         break;
     case SYSTEM_EVENT_STA_GOT_IP:
         xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+        is_inf_up = true;
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
         system_event_sta_disconnected_t *disconn = &event->event_info.disconnected;
+        is_inf_up = false;
         switch (disconn->reason) {
             case WIFI_REASON_AUTH_FAIL:
                 wlan_obj.disconnected = true;
@@ -725,6 +734,7 @@ mp_obj_t wlan_deinit(mp_obj_t self_in) {
     if (wlan_obj.started) {
         esp_wifi_stop();
         wlan_obj.started = false;
+        mod_network_deregister_nic(&wlan_obj);
     }
     return mp_const_none;
 }
@@ -1188,6 +1198,7 @@ const mod_network_nic_type_t mod_network_nic_type_wlan = {
     .n_setsockopt = lwipsocket_socket_setsockopt,
     .n_settimeout = lwipsocket_socket_settimeout,
     .n_ioctl = lwipsocket_socket_ioctl,
+	.inf_up = wlan_is_inf_up
 };
 
 //STATIC const mp_irq_methods_t wlan_irq_methods = {

@@ -499,6 +499,7 @@ STATIC mp_obj_t lte_deinit(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         lte_obj.init = false;
     }
     lteppp_deinit();
+    mod_network_deregister_nic(&lte_obj);
     return mp_const_none;
 
 error:
@@ -789,14 +790,13 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_disconnect_obj, lte_disconnect);
 
 STATIC mp_obj_t lte_isconnected(mp_obj_t self_in) {
     lte_check_init();
-    if (lteppp_get_state() == E_LTE_PPP && lteppp_ipv4() > 0) {
+    if (ltepp_is_ppp_conn_up()) {
         return mp_const_true;
     }
-    if (lteppp_get_state() == E_LTE_PPP && lteppp_ipv4() == 0) {
+    else
+    {
         return mp_const_false;
     }
-    lteppp_set_state(E_LTE_ATTACHED);
-    return mp_const_false;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_isconnected_obj, lte_isconnected);
 
@@ -1050,4 +1050,5 @@ const mod_network_nic_type_t mod_network_nic_type_lte = {
     .n_setsockopt = lwipsocket_socket_setsockopt,
     .n_bind = lwipsocket_socket_bind,
     .n_ioctl = lwipsocket_socket_ioctl,
+	.inf_up = ltepp_is_ppp_conn_up,
 };

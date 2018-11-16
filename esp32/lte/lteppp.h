@@ -101,4 +101,6 @@ bool lteppp_is_modem_connected(void);
 
 extern void connect_lte_uart (void);
 
+extern bool ltepp_is_ppp_conn_up(void);
+
 #endif  // _LTEPPP_H_

@@ -66,6 +66,8 @@ static bool lteppp_init_complete = false;
 
 static bool lteppp_enabled = false;
 
+static bool ltepp_ppp_conn_up = false;
+
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -279,6 +281,10 @@ bool lteppp_task_ready(void) {
     return lteppp_init_complete;
 }
 
+bool ltepp_is_ppp_conn_up(void)
+{
+	return ltepp_ppp_conn_up;
+}
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -380,6 +386,19 @@ static void TASK_LTE (void *pvParameters) {
             lte_state_t state = lteppp_get_state();
             if (state == E_LTE_PPP) {
                 uint32_t rx_len;
+                // check for IP connection
+                if(lteppp_ipv4() > 0)
+                {
+                	ltepp_ppp_conn_up = true;
+                }
+                else
+                {
+                	if(ltepp_ppp_conn_up == true)
+                	{
+                		ltepp_ppp_conn_up = false;
+                    	lteppp_set_state(E_LTE_ATTACHED);
+                	}
+                }
                 // wait for characters received
                 uart_get_buffered_data_len(LTE_UART_ID, &rx_len);
                 if (rx_len > 0) {
@@ -390,6 +409,10 @@ static void TASK_LTE (void *pvParameters) {
                         pppos_input_tcpip(lteppp_pcb, (uint8_t *)lteppp_trx_buffer, rx_len);
                     }
                 }
+            }
+            else
+            {
+            	ltepp_ppp_conn_up = false;
             }
         }
     }
