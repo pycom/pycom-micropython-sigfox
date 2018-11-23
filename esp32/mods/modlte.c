@@ -235,7 +235,7 @@ static bool lte_check_attached(void) {
             }
         }
     }
-    if (attached && lteppp_get_state() <= E_LTE_PPP) {
+    if (attached && lteppp_get_state() < E_LTE_PPP) {
         lteppp_set_state(E_LTE_ATTACHED);
     }
     //printf("This is our current LTE state: %d\n", lteppp_get_state());
