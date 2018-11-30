@@ -30,7 +30,7 @@ Constructors
 
 .. only:: port_pycom_esp32
 
-    .. class:: uhashlib.MD5([data])
+    .. class:: uhashlib.md5([data])
 
        Create a MD5 hasher object and optionally feed ``data`` into it.
 
