@@ -499,6 +499,7 @@ void RegionAU915ComputeRxWindowParameters( int8_t datarate, uint8_t minRxSymbols
     tSymbol = RegionCommonComputeSymbolTimeLoRa( DataratesAU915[rxConfigParams->Datarate], BandwidthsAU915[rxConfigParams->Datarate] );
 
     RegionCommonComputeRxWindowParameters( tSymbol, minRxSymbols, rxError, RADIO_WAKEUP_TIME, &rxConfigParams->WindowTimeout, &rxConfigParams->WindowOffset );
+    rxConfigParams->WindowTimeout = rxConfigParams->WindowTimeout * 3;
 }
 
 bool RegionAU915RxConfig( RxConfigParams_t* rxConfig, int8_t* datarate )

@@ -13,6 +13,7 @@ import time
 import binascii
 import socket
 import struct
+import machine
 
 
 DEV_EUI = '11 22 33 44 55 66 77 88'
@@ -36,18 +37,19 @@ class Compliance:
 
     def _join(self):
         if self.activation == LoRa.OTAA:
-            dev_eui = binascii.unhexlify(DEV_EUI.replace(' ',''))
-            app_eui = binascii.unhexlify(APP_EUI.replace(' ',''))
-            app_key = binascii.unhexlify(APP_KEY.replace(' ',''))
+            dev_eui = binascii.unhexlify(DEV_EUI.replace(' ', ''))
+            app_eui = binascii.unhexlify(APP_EUI.replace(' ', ''))
+            app_key = binascii.unhexlify(APP_KEY.replace(' ', ''))
             self.lora.join(activation=LoRa.OTAA, auth=(dev_eui, app_eui, app_key), timeout=0)
         else:
-            dev_addr = struct.unpack('>l', binascii.unhexlify(DEV_ADDR.replace(' ','')))[0]
-            nwk_swkey = binascii.unhexlify(NWK_SWKEY.replace(' ',''))
-            app_swkey = binascii.unhexlify(APP_SWKEY.replace(' ',''))
+            dev_addr = struct.unpack('>l', binascii.unhexlify(DEV_ADDR.replace(' ', '')))[0]
+            nwk_swkey = binascii.unhexlify(NWK_SWKEY.replace(' ', ''))
+            app_swkey = binascii.unhexlify(APP_SWKEY.replace(' ', ''))
             self.lora.join(activation=LoRa.ABP, auth=(dev_addr, nwk_swkey, app_swkey))
 
         # wait until the module has joined the network
         print('Joining.', end='', flush=True)
+        time.sleep(0.1)
         while not self.lora.has_joined():
             time.sleep(0.5)
             print('.', end='', flush=True)
@@ -56,7 +58,7 @@ class Compliance:
         print('Network joined!')
 
         self.s = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
-        self.s.setsockopt(socket.SOL_LORA, socket.SO_DR, 3)
+        self.s.setsockopt(socket.SOL_LORA, socket.SO_DR, 2)
         self.s.setsockopt(socket.SOL_LORA, socket.SO_CONFIRMED, False)
         self.s.setblocking(True)
 
@@ -81,7 +83,6 @@ class Compliance:
                                       self.lora.compliance_test().downlink_counter & 0xFF])
 
             while self.lora.compliance_test().running:
-
                 # re-join
                 if self.lora.compliance_test().state < 6:
                     try:
@@ -109,10 +110,16 @@ class Compliance:
                                                       self.lora.compliance_test().downlink_counter & 0xFF])
                 else:
                     self.rejoined = True
-                    time.sleep(3)
+                    time.sleep(3.5)
                     self._join()
 
-            # the test has been disabled, 1 more message and then wait 5 seconds before trying to join again
+            # The test has been disabled, send one more message in order to signal that test mode
+            # has been deactivated and then wait a few seconds before trying to join again
             time.sleep(3)
             self.s.send(ACTIVATE_MSG)
-            time.sleep(6)
+            if self.activation == LoRa.OTAA:
+                time.sleep(3)
+            else:
+                time.sleep(5)
+            if not self.rejoined:
+                machine.deepsleep(1000)
