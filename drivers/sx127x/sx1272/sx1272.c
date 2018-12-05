@@ -234,7 +234,6 @@ bool SX1272IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh
 {
     bool status = true;
     int16_t rssi = 0;
-    uint32_t carrierSenseTime = 0;
 
     SX1272SetModem( modem );
 
@@ -242,9 +241,7 @@ bool SX1272IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh
 
     SX1272SetOpMode( RF_OPMODE_RECEIVER );
 
-    DelayMs( 2 );
-
-    carrierSenseTime = TimerGetCurrentTime( );
+    DelayMs( 1 );
 
     // Perform carrier sense for maxCarrierSenseTime
     do {
@@ -254,7 +251,9 @@ bool SX1272IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh
             status = false;
             break;
         }
-    } while( TimerGetElapsedTime( carrierSenseTime ) < maxCarrierSenseTime );
+        DelayMs( 1 );
+        maxCarrierSenseTime -= 1;
+    } while( maxCarrierSenseTime > 0 );
     SX1272SetSleep( );
     return status;
 }

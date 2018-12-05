@@ -1128,7 +1128,7 @@ static void OnRadioRxError( void )
         }
         MlmeConfirm.Status = LORAMAC_EVENT_INFO_STATUS_RX1_ERROR;
 
-        if( TimerGetElapsedTime( AggregatedLastTxDoneTime ) >= RxWindow2Delay )
+        if( TimerGetElapsedTime( AggregatedLastTxDoneTime ) >= RxWindow2Delay + 50)
         {
             LoRaMacFlags.Bits.MacDone = 1;
         }
@@ -1163,7 +1163,7 @@ static void OnRadioRxTimeout( void )
         }
         MlmeConfirm.Status = LORAMAC_EVENT_INFO_STATUS_RX1_TIMEOUT;
 
-        if( TimerGetElapsedTime( AggregatedLastTxDoneTime ) >= RxWindow2Delay )
+        if( TimerGetElapsedTime( AggregatedLastTxDoneTime ) >= RxWindow2Delay + 50)
         {
             LoRaMacFlags.Bits.MacDone = 1;
         }
@@ -1933,8 +1933,8 @@ static LoRaMacStatus_t ScheduleTx( void )
 
     if( IsLoRaMacNetworkJoined == false )
     {
-        RxWindow1Delay = LoRaMacParams.JoinAcceptDelay1 + RxWindow1Config.WindowOffset;
-        RxWindow2Delay = LoRaMacParams.JoinAcceptDelay2 + RxWindow2Config.WindowOffset;
+        RxWindow1Delay = LoRaMacParams.JoinAcceptDelay1 + RxWindow1Config.WindowOffset - 2;
+        RxWindow2Delay = LoRaMacParams.JoinAcceptDelay2 + RxWindow2Config.WindowOffset - 3;
     }
     else
     {
@@ -1942,8 +1942,8 @@ static LoRaMacStatus_t ScheduleTx( void )
         {
             return LORAMAC_STATUS_LENGTH_ERROR;
         }
-        RxWindow1Delay = LoRaMacParams.ReceiveDelay1 + RxWindow1Config.WindowOffset;
-        RxWindow2Delay = LoRaMacParams.ReceiveDelay2 + RxWindow2Config.WindowOffset;
+        RxWindow1Delay = LoRaMacParams.ReceiveDelay1 + RxWindow1Config.WindowOffset - 1;
+        RxWindow2Delay = LoRaMacParams.ReceiveDelay2 + RxWindow2Config.WindowOffset - 2;
     }
 
     // Schedule transmission of frame

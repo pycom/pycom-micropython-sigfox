@@ -585,6 +585,7 @@ void RegionAS923ComputeRxWindowParameters( int8_t datarate, uint8_t minRxSymbols
     }
 
     RegionCommonComputeRxWindowParameters( tSymbol, minRxSymbols, rxError, RADIO_WAKEUP_TIME, &rxConfigParams->WindowTimeout, &rxConfigParams->WindowOffset );
+    rxConfigParams->WindowTimeout = rxConfigParams->WindowTimeout * 3;
 }
 
 bool RegionAS923RxConfig( RxConfigParams_t* rxConfig, int8_t* datarate )
