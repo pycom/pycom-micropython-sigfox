@@ -42,6 +42,7 @@
 #include "serverstask.h"
 #include "modnetwork.h"
 #include "modwlan.h"
+#include "modusocket.h"
 #include "antenna.h"
 #include "modled.h"
 #include "esp_log.h"
@@ -162,6 +163,8 @@ void TASK_Micropython (void *pvParameters) {
     mp_thread_preinit(mpTaskStack, stack_len);
     mp_irq_preinit();
 #endif
+    /* Creat Socket Operation task */
+    modusocket_pre_init();
 
     // initialise the stack pointer for the main thread (must be done after mp_thread_preinit)
     mp_stack_set_top((void *)sp);

@@ -66,6 +66,7 @@ TaskHandle_t xSigfoxTaskHndl;
 TaskHandle_t xLTETaskHndl;
 TaskHandle_t xLTEUpgradeTaskHndl;
 #endif
+TaskHandle_t xSocketOpsTaskHndl;
 
 extern void machine_init0(void);
 

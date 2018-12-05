@@ -61,15 +61,17 @@
 #include "lwip/sockets.h"
 #include "lwip/dns.h"
 #include "lwip/netdb.h"
+#include "lwipsocket.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "freertos/timers.h"
 
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
 #define MODUSOCKET_MAX_SOCKETS                      15
-
+#define MODUSOCKET_CONN_TIMEOUT                     -2
 /******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
@@ -77,6 +79,15 @@ typedef struct {
     int32_t sd;
     bool    user;
 } modusocket_sock_t;
+
+typedef enum {
+    SOCKET_CONN_START = 0,
+    SOCKET_CONNECTED,
+    SOCKET_NOT_CONNECTED,
+    SOCKET_CONN_PENDING,
+    SOCKET_CONN_ERROR,
+    SOCKET_CONN_TIMEDOUT
+}modsocket_sock_conn_status_t;
 
 /******************************************************************************
  DEFINE PRIVATE DATA
@@ -88,13 +99,33 @@ STATIC modusocket_sock_t modusocket_sockets[MODUSOCKET_MAX_SOCKETS] = {{.sd = -1
                                                                        {.sd = -1}, {.sd = -1}, {.sd = -1}, {.sd = -1}, {.sd = -1},
                                                                        {.sd = -1}, {.sd = -1}, {.sd = -1}, {.sd = -1}, {.sd = -1}};
 
+STATIC mod_network_socket_obj_t* modsocket_sock;
+STATIC uint8_t modsocket_ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
+STATIC mp_uint_t modsocket_port;
+STATIC int32_t modsocket_timeout;
+STATIC TimerHandle_t modsocket_conn_timeout_timer;
+STATIC modsocket_sock_conn_status_t modsocket_conn_status = SOCKET_NOT_CONNECTED;
+STATIC int modsocket_sock_errno;
+STATIC bool modsocket_istimeout = false;
+
+STATIC void TASK_SOCK_OPS (void *pvParameters) ;
+STATIC void modsocket_timer_callback( TimerHandle_t xTimer );
+/******************************************************************************
+ DEFINE PUBLIC DATA
+ ******************************************************************************/
+extern TaskHandle_t xSocketOpsTaskHndl;
+SemaphoreHandle_t xSocketOpsSem;
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 void modusocket_pre_init (void) {
-    // create the wlan lock
-//    ASSERT(OSI_OK == sl_LockObjCreate(&modusocket_LockObj, "SockLock"));
-//    sl_LockObjUnlock (&modusocket_LockObj);
+
+	// Create a Task to handle Socket Async ops
+	xTaskCreatePinnedToCore(TASK_SOCK_OPS, "Socket Operations", 2048 / sizeof(StackType_t), NULL, 5, &xSocketOpsTaskHndl, 1);
+	// Create semaphore
+	xSocketOpsSem = xSemaphoreCreateMutex();
+    /* Stop task as it is not needed unless a socket conn is requested*/
+    vTaskSuspend(xSocketOpsTaskHndl);
 }
 
 void modusocket_socket_add (int32_t sd, bool user) {
@@ -182,6 +213,7 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_
     s->sock_base.nic_type = NULL;
     s->sock_base.u.u_param.fileno = -1;
     s->sock_base.timeout = -1;      // sockets are blocking by default
+    modsocket_timeout = -1;
     s->sock_base.is_ssl = false;
     s->sock_base.connected = false;
 
@@ -197,7 +229,6 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_
             }
         }
     }
-
     // don't forget to select a network card
     if (s->sock_base.u.u_param.domain == AF_INET) {
         socket_select_nic(s, (const byte *)"");
@@ -207,7 +238,6 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_
         }
         socket_select_nic(s, NULL);
     }
-
     // now create the socket
     int _errno;
     if (s->sock_base.nic_type->n_socket(s, &_errno) != 0) {
@@ -316,20 +346,81 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(socket_accept_obj, socket_accept);
 
 // method socket.connect(address)
 STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
-    mod_network_socket_obj_t *self = self_in;
 
-    // get address
-    uint8_t ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
-    mp_uint_t port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
+    mod_network_socket_obj_t* self = self_in;
 
-    // connect the socket
-    int _errno;
-    MP_THREAD_GIL_EXIT();
-    if (self->sock_base.nic_type->n_connect(self, ip, port, &_errno) != 0) {
+    if (self->sock_base.timeout > 0 && self->base.type == &socket_type) {
+
+        modsocket_sock = self_in;
+        // get address
+        modsocket_port = netutils_parse_inet_addr(addr_in, modsocket_ip, NETUTILS_LITTLE);
+
+        /* Start socket operation handling task */
+        modsocket_conn_status = SOCKET_CONN_START;
+        vTaskResume(xSocketOpsTaskHndl);
+
+        MP_THREAD_GIL_EXIT();
+        vTaskDelay(10/portTICK_PERIOD_MS);
+        xSemaphoreTake(xSocketOpsSem, portMAX_DELAY);
+
+        switch(modsocket_conn_status)
+        {
+        case SOCKET_CONN_TIMEDOUT:
+            /* Stop task as it is not needed anymore*/
+            vTaskSuspend(xSocketOpsTaskHndl);
+            //Close socket
+            modsocket_sock->sock_base.nic_type->n_close(modsocket_sock);
+            /* Release Sem */
+            xSemaphoreGive(xSocketOpsSem);
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
+            break;
+        case SOCKET_CONN_ERROR:
+            /* Stop task as it is not needed anymore*/
+            vTaskSuspend(xSocketOpsTaskHndl);
+            //Close socket
+            modsocket_sock->sock_base.nic_type->n_close(modsocket_sock);
+            /* Release Sem */
+            xSemaphoreGive(xSocketOpsSem);
+            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(modsocket_sock_errno)));
+            break;
+        case SOCKET_CONN_PENDING:
+        case SOCKET_NOT_CONNECTED:
+        case SOCKET_CONN_START:
+            // Do Nothing
+            break;
+        case SOCKET_CONNECTED:
+            /* Stop task as it is not needed anymore*/
+            vTaskSuspend(xSocketOpsTaskHndl);
+            /* Release Sem */
+            xSemaphoreGive(xSocketOpsSem);
+            break;
+        default:
+            /* Stop task as it is not needed anymore*/
+            vTaskSuspend(xSocketOpsTaskHndl);
+            //Close socket
+            modsocket_sock->sock_base.nic_type->n_close(modsocket_sock);
+            /* Release Sem */
+                        xSemaphoreGive(xSocketOpsSem);
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Connection failed"));
+            break;
+        }
         MP_THREAD_GIL_ENTER();
-        nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
     }
-    MP_THREAD_GIL_ENTER();
+    else
+    {
+        // get address
+        uint8_t ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
+        mp_uint_t port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
+
+        // connect the socket
+        int _errno;
+        MP_THREAD_GIL_EXIT();
+        if (self->sock_base.nic_type->n_connect(self, ip, port, &_errno) != 0) {
+            MP_THREAD_GIL_ENTER();
+            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
+        }
+        MP_THREAD_GIL_ENTER();
+    }
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_connect_obj, socket_connect);
@@ -525,6 +616,8 @@ STATIC mp_obj_t socket_settimeout(mp_obj_t self_in, mp_obj_t timeout_in) {
     if (self->sock_base.nic_type->n_settimeout(self, timeout, &_errno) != 0) {
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
     }
+    //save timeout value
+    modsocket_timeout = timeout;
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_settimeout_obj, socket_settimeout);
@@ -553,6 +646,96 @@ STATIC mp_obj_t socket_makefile(mp_uint_t n_args, const mp_obj_t *args) {
     return self;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(socket_makefile_obj, 1, 6, socket_makefile);
+
+static void TASK_SOCK_OPS (void *pvParameters) {
+
+    int _errno;
+
+    for (;;)
+    {
+        if(modsocket_conn_status == SOCKET_CONN_START)
+        {
+            xSemaphoreTake(xSocketOpsSem, portMAX_DELAY);
+
+            //set socket to non-blocking
+            if (modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, 0, &_errno) != 0) {
+                modsocket_sock_errno = _errno;
+                modsocket_conn_status = SOCKET_CONN_ERROR;
+                xSemaphoreGive(xSocketOpsSem);
+            }
+            //connect socket
+            if (modsocket_sock->sock_base.nic_type->n_connect(modsocket_sock, modsocket_ip, modsocket_port, &_errno) != 0) {
+
+                if(_errno == EINPROGRESS)
+                {
+                    /*create Timer */
+                    modsocket_conn_timeout_timer = xTimerCreate("Socket_conn_Timer", modsocket_timeout / portTICK_PERIOD_MS, 0, 0, modsocket_timer_callback);
+                    /*start Timer */
+                    xTimerStart(modsocket_conn_timeout_timer, 0);
+                    /* Pending */
+                    modsocket_conn_status = SOCKET_CONN_PENDING;
+                }
+                else
+                {
+                    modsocket_sock_errno = _errno;
+                    modsocket_conn_status = SOCKET_CONN_ERROR;
+                    xSemaphoreGive(xSocketOpsSem);
+                }
+            }
+            else
+            {
+                // socket already connected
+                modsocket_conn_status = SOCKET_CONNECTED;
+                xSemaphoreGive(xSocketOpsSem);
+            }
+        }
+        else if (modsocket_conn_status == SOCKET_CONN_PENDING)
+        {
+            //start polling
+            mp_uint_t flag = MP_STREAM_POLL_WR;
+            int ret;
+            ret = lwipsocket_socket_ioctl(modsocket_sock, MP_STREAM_POLL, flag, &_errno);
+            if((ret & MP_STREAM_POLL_WR) == MP_STREAM_POLL_WR)
+            {
+                // socket connected
+                modsocket_conn_status = SOCKET_CONNECTED;
+                /* Stop Timer*/
+                xTimerStop(modsocket_conn_timeout_timer, 0);
+                xTimerDelete(modsocket_conn_timeout_timer, 0);
+                //set socket back to blocking with timeout
+                modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, modsocket_timeout, &_errno);
+                xSemaphoreGive(xSocketOpsSem);
+            }
+            else if(ret < 0)
+            {
+                modsocket_sock_errno = _errno;
+                modsocket_conn_status = SOCKET_CONN_ERROR;
+                xSemaphoreGive(xSocketOpsSem);
+            }
+
+            if(modsocket_istimeout)
+            {
+                modsocket_conn_status = SOCKET_CONN_TIMEDOUT;
+                modsocket_istimeout = false;
+                xSemaphoreGive(xSocketOpsSem);
+            }
+        }
+        else
+        {
+            // Nothing
+        }
+
+        vTaskDelay(5/portTICK_PERIOD_MS);
+    }
+}
+
+STATIC void modsocket_timer_callback( TimerHandle_t xTimer )
+{
+    modsocket_istimeout = true;
+    /* Stop Timer*/
+    xTimerStop(modsocket_conn_timeout_timer, 0);
+    xTimerDelete(modsocket_conn_timeout_timer, 0);
+}
 
 STATIC const mp_map_elem_t socket_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___del__),         (mp_obj_t)&socket_close_obj },
@@ -681,30 +864,47 @@ STATIC mp_obj_t mod_usocket_getaddrinfo(size_t n_args, const mp_obj_t *args) {
     // TODO support additional args beyond the first two
     const char *host = mp_obj_str_get_data(args[0], &hlen);
     mp_int_t port = mp_obj_get_int(args[1]);
+    bool is_inf_down = false;
 
     // find a nic that can do a name lookup
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
         mp_obj_t nic = MP_STATE_PORT(mod_network_nic_list).items[i];
         mod_network_nic_type_t *nic_type = (mod_network_nic_type_t*)mp_obj_get_type(nic);
-        if (nic_type->n_gethostbyname != NULL) {
-            // ipv4 only
-            uint8_t out_ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
-            int32_t result = nic_type->n_gethostbyname(host, hlen, out_ip, AF_INET);
-            if (result < 0) {
-                // negate result as it contains the error code which must be positive
-                nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(-result)));
-            }
-            mp_obj_tuple_t *tuple = mp_obj_new_tuple(5, NULL);
-            tuple->items[0] = MP_OBJ_NEW_SMALL_INT(AF_INET);
-            tuple->items[1] = MP_OBJ_NEW_SMALL_INT(SOCK_STREAM);
-            tuple->items[2] = MP_OBJ_NEW_SMALL_INT(0);
-            tuple->items[3] = MP_OBJ_NEW_QSTR(MP_QSTR_);
-            tuple->items[4] = netutils_format_inet_addr(out_ip, port, NETUTILS_BIG);
-            return mp_obj_new_list(1, (mp_obj_t*)&tuple);
+        if (nic_type->n_gethostbyname != NULL && nic_type->inf_up != NULL)
+        {
+			if (nic_type->inf_up()) {
+
+				is_inf_down = false;
+				// ipv4 only
+				uint8_t out_ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
+				int32_t result = nic_type->n_gethostbyname(host, hlen, out_ip, AF_INET);
+				if (result < 0) {
+					// negate result as it contains the error code which must be positive
+					nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(-result)));
+				}
+				mp_obj_tuple_t *tuple = mp_obj_new_tuple(5, NULL);
+				tuple->items[0] = MP_OBJ_NEW_SMALL_INT(AF_INET);
+				tuple->items[1] = MP_OBJ_NEW_SMALL_INT(SOCK_STREAM);
+				tuple->items[2] = MP_OBJ_NEW_SMALL_INT(0);
+				tuple->items[3] = MP_OBJ_NEW_QSTR(MP_QSTR_);
+				tuple->items[4] = netutils_format_inet_addr(out_ip, port, NETUTILS_BIG);
+				return mp_obj_new_list(1, (mp_obj_t*)&tuple);
+			}
+			else
+			{
+				is_inf_down = true;
+				continue;
+			}
         }
     }
-
-    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
+    if(is_inf_down)
+    {
+    	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Avialable Interfaces are down"));
+    }
+    else
+    {
+    	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
+    }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_usocket_getaddrinfo_obj, 2, 6, mod_usocket_getaddrinfo);
 

@@ -83,6 +83,14 @@ void mod_network_register_nic(mp_obj_t nic) {
     mp_obj_list_append(&MP_STATE_PORT(mod_network_nic_list), nic);
 }
 
+void mod_network_deregister_nic(mp_obj_t nic) {
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
+        if (MP_STATE_PORT(mod_network_nic_list).items[i] == nic) {
+            mp_obj_list_remove(&MP_STATE_PORT(mod_network_nic_list), nic);
+        }
+    }
+}
+
 mp_obj_t mod_network_find_nic(const mod_network_socket_obj_t *s, const uint8_t *ip) {
     // find a NIC that is suited to a given IP address
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {

@@ -243,7 +243,7 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     bt_deinit(NULL);
     wlan_deinit(NULL);
 #if defined(FIPY) || defined(GPY)
-    while (!lteppp_task_ready()) {
+    while (config_get_lte_modem_enable_on_boot() && !lteppp_task_ready()) {
         mp_hal_delay_ms(2);
     }
     lteppp_deinit();
