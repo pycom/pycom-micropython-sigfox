@@ -23,12 +23,9 @@ BTYPE ?= release
 
 # make Non-Pybytes firmware default
 VARIANT ?=BASE
+BUILD_DIR ?=build
 
-ifeq ($(VARIANT), BASE)
-	BUILD = build/$(BOARD)/$(BTYPE)
-else
-	BUILD = build-variant/$(BOARD)/$(BTYPE)
-endif
+BUILD = $(BUILD_DIR)/$(BOARD)/$(BTYPE)
 
 RELEASE_DIR ?= build/
 

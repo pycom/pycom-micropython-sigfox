@@ -23,7 +23,7 @@
 # Build directory
 ######################
 build/
-build-variant/
+build-*/
 
 # Test failure outputs
 ######################

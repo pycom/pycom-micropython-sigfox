@@ -524,8 +524,8 @@ $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(Q) $(AR) cru $@ $^
 
 $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a $(SECURE_BOOT_VERIFICATION_KEY)
-#	$(ECHO) "COPY IDF LIBRARIES $@"
-#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
@@ -593,8 +593,8 @@ $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
 	$(Q) $(SIZE) $@
 else
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_BOOT_VERIFICATION_KEY)
-#	$(ECHO) "COPY IDF LIBRARIES $@"
-#	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
@@ -656,7 +656,7 @@ $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
 
 release: $(APP_BIN) $(BOOT_BIN)
-	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR)
+	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD)
 
 flash: $(APP_BIN) $(BOOT_BIN)	
 	$(ECHO) "checking size of image"
