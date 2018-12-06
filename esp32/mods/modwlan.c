@@ -287,7 +287,7 @@ void wlan_setup (wlan_internal_setup_t *config) {
     wlan_obj.started = true;
 
     // start the servers before returning
-    //wlan_servers_start();
+    wlan_servers_start();
 }
 
 void wlan_get_mac (uint8_t *macAddress) {

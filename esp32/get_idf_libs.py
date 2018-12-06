@@ -12,50 +12,70 @@ def main():
 
     src = cmd_args.idflibs
 
-    # copy the bootloader libraries
-    dst = os.getcwd() + '/bootloader/lib'
+    dsttmpbl = os.getcwd() + '/bootloader/lib/tmp'
+    dstbl = os.getcwd() + '/bootloader/lib'
+    dsttmpapp = os.getcwd() + '/lib/tmp'
+    dstapp = os.getcwd() + '/lib'
+    
     try:
-        shutil.copy(src + '/bootloader/bootloader_support/libbootloader_support.a', dst)
-        shutil.copy(src + '/bootloader/log/liblog.a', dst)
-        shutil.copy(src + '/bootloader/micro-ecc/libmicro-ecc.a', dst)
-        shutil.copy(src + '/bootloader/soc/libsoc.a', dst)
-        shutil.copy(src + '/bootloader/spi_flash/libspi_flash.a', dst)
-    
-    
+        # copy the bootloader libraries
+        
+        os.mkdir(dsttmpbl)
+        
+        shutil.copy(src + '/bootloader/bootloader_support/libbootloader_support.a', dsttmpbl)
+        shutil.copy(src + '/bootloader/log/liblog.a', dsttmpbl)
+        shutil.copy(src + '/bootloader/micro-ecc/libmicro-ecc.a', dsttmpbl)
+        shutil.copy(src + '/bootloader/soc/libsoc.a', dsttmpbl)
+        shutil.copy(src + '/bootloader/spi_flash/libspi_flash.a', dsttmpbl)
+        
         # copy the application libraries
-        dst = os.getcwd() + '/lib'
-    
-        shutil.copy(src + '/bootloader_support/libbootloader_support.a', dst)
-        shutil.copy(src + '/bt/libbt.a', dst)
-        shutil.copy(src + '/cxx/libcxx.a', dst)
-        shutil.copy(src + '/driver/libdriver.a', dst)
-        shutil.copy(src + '/esp_adc_cal/libesp_adc_cal.a', dst)
-        shutil.copy(src + '/esp32/libesp32.a', dst)
-        shutil.copy(src + '/smartconfig_ack/libsmartconfig_ack.a', dst)
-        shutil.copy(src + '/expat/libexpat.a', dst)
-        shutil.copy(src + '/freertos/libfreertos.a', dst)
-        shutil.copy(src + '/heap/libheap.a', dst)
-        shutil.copy(src + '/jsmn/libjsmn.a', dst)
-        shutil.copy(src + '/json/libjson.a', dst)
-        shutil.copy(src + '/log/liblog.a', dst)
-        shutil.copy(src + '/lwip/liblwip.a', dst)
-        shutil.copy(src + '/mbedtls/libmbedtls.a', dst)
-        shutil.copy(src + '/micro-ecc/libmicro-ecc.a', dst)
-        shutil.copy(src + '/newlib/libnewlib.a', dst)
-        shutil.copy(src + '/nghttp/libnghttp.a', dst)
-        shutil.copy(src + '/nvs_flash/libnvs_flash.a', dst)
-        shutil.copy(src + '/openssl/libopenssl.a', dst)
-        shutil.copy(src + '/pthread/libpthread.a', dst)
-        shutil.copy(src + '/sdmmc/libsdmmc.a', dst)
-        shutil.copy(src + '/soc/libsoc.a', dst)
-        shutil.copy(src + '/spi_flash/libspi_flash.a', dst)
-        shutil.copy(src + '/tcpip_adapter/libtcpip_adapter.a', dst)
-        shutil.copy(src + '/vfs/libvfs.a', dst)
-        shutil.copy(src + '/wpa_supplicant/libwpa_supplicant.a', dst)
-        shutil.copy(src + '/xtensa-debug-module/libxtensa-debug-module.a', dst)
-        shutil.copy(src + '/openthread/libopenthread.a', dst)
+        
+        os.mkdir(dsttmpapp)
+        
+        shutil.copy(src + '/bootloader_support/libbootloader_support.a', dsttmpapp)
+        shutil.copy(src + '/bt/libbt.a', dsttmpapp)
+        shutil.copy(src + '/cxx/libcxx.a', dsttmpapp)
+        shutil.copy(src + '/driver/libdriver.a', dsttmpapp)
+        shutil.copy(src + '/esp_adc_cal/libesp_adc_cal.a', dsttmpapp)
+        shutil.copy(src + '/esp32/libesp32.a', dsttmpapp)
+        shutil.copy(src + '/smartconfig_ack/libsmartconfig_ack.a', dsttmpapp)
+        shutil.copy(src + '/expat/libexpat.a', dsttmpapp)
+        shutil.copy(src + '/freertos/libfreertos.a', dsttmpapp)
+        shutil.copy(src + '/heap/libheap.a', dsttmpapp)
+        shutil.copy(src + '/jsmn/libjsmn.a', dsttmpapp)
+        shutil.copy(src + '/json/libjson.a', dsttmpapp)
+        shutil.copy(src + '/log/liblog.a', dsttmpapp)
+        shutil.copy(src + '/lwip/liblwip.a', dsttmpapp)
+        shutil.copy(src + '/mbedtls/libmbedtls.a', dsttmpapp)
+        shutil.copy(src + '/micro-ecc/libmicro-ecc.a', dsttmpapp)
+        shutil.copy(src + '/newlib/libnewlib.a', dsttmpapp)
+        shutil.copy(src + '/nghttp/libnghttp.a', dsttmpapp)
+        shutil.copy(src + '/nvs_flash/libnvs_flash.a', dsttmpapp)
+        shutil.copy(src + '/openssl/libopenssl.a', dsttmpapp)
+        shutil.copy(src + '/pthread/libpthread.a', dsttmpapp)
+        shutil.copy(src + '/sdmmc/libsdmmc.a', dsttmpapp)
+        shutil.copy(src + '/soc/libsoc.a', dsttmpapp)
+        shutil.copy(src + '/spi_flash/libspi_flash.a', dsttmpapp)
+        shutil.copy(src + '/tcpip_adapter/libtcpip_adapter.a', dsttmpapp)
+        shutil.copy(src + '/vfs/libvfs.a', dsttmpapp)
+        shutil.copy(src + '/wpa_supplicant/libwpa_supplicant.a', dsttmpapp)
+        shutil.copy(src + '/xtensa-debug-module/libxtensa-debug-module.a', dsttmpapp)
+        shutil.copy(src + '/openthread/libopenthread.a', dsttmpapp)
     except:
-        print("WARNING: Couldn't get IDF libs defaulting to Local Lib Folders!")
+        print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
+        shutil.rmtree(dsttmpbl)
+        shutil.rmtree(dsttmpapp)
+    
+    for item in os.listdir(dsttmpbl):
+        shutil.copy(dsttmpbl+ '/' + item, dstbl + '/' + item)
+        
+    for item in os.listdir(dsttmpapp):
+        shutil.copy(dsttmpapp + '/' + item, dstapp + '/' + item)
+        
+    shutil.rmtree(dsttmpbl)
+    shutil.rmtree(dsttmpapp)
+    
+    print("IDF Libs copied Sucessfully!")
         
 
 if __name__ == "__main__":
