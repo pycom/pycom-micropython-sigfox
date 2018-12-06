@@ -11,9 +11,6 @@ def main():
     cmd_args = cmd_parser.parse_args()
 
     src = cmd_args.idflibs
-    if not os.path.isdir(src):
-        print("IDF Libs Directory not Found defaulting to Local Lib Folders!")
-        sys.exit(0)
 
     # copy the bootloader libraries
     dst = os.getcwd() + '/bootloader/lib'
