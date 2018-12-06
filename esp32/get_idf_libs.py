@@ -21,6 +21,7 @@ def main():
         # copy the bootloader libraries
         
         os.mkdir(dsttmpbl)
+        os.mkdir(dsttmpapp)
         
         shutil.copy(src + '/bootloader/bootloader_support/libbootloader_support.a', dsttmpbl)
         shutil.copy(src + '/bootloader/log/liblog.a', dsttmpbl)
@@ -29,8 +30,6 @@ def main():
         shutil.copy(src + '/bootloader/spi_flash/libspi_flash.a', dsttmpbl)
         
         # copy the application libraries
-        
-        os.mkdir(dsttmpapp)
         
         shutil.copy(src + '/bootloader_support/libbootloader_support.a', dsttmpapp)
         shutil.copy(src + '/bt/libbt.a', dsttmpapp)
@@ -65,6 +64,7 @@ def main():
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         shutil.rmtree(dsttmpbl)
         shutil.rmtree(dsttmpapp)
+        return
     
     for item in os.listdir(dsttmpbl):
         shutil.copy(dsttmpbl+ '/' + item, dstbl + '/' + item)
