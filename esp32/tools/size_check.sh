@@ -47,7 +47,7 @@ fi
 total_size=$((${size_app} + ${size_boot}))
 
 if [ ${total_size} -gt ${IMG_MAX_SIZE} ] ; then
-  echo "Firmware image size exceeds avialable space on board!" >&2
+  echo "${total_size} bytes => Firmware image size exceeds avialable space on board!" >&2
   exit 1
 else
   echo "${total_size} bytes => Size OK" >&2

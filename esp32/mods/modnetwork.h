@@ -50,6 +50,15 @@
 // forward declarations
 struct _mod_network_socket_obj_t;
 
+typedef enum {
+    SOCKET_CONN_START = 0,
+    SOCKET_CONNECTED,
+    SOCKET_NOT_CONNECTED,
+    SOCKET_CONN_PENDING,
+    SOCKET_CONN_ERROR,
+    SOCKET_CONN_TIMEDOUT
+}mod_network_sock_conn_status_t;
+
 typedef struct _mod_network_nic_type_t {
     mp_obj_type_t base;
 
@@ -70,6 +79,7 @@ typedef struct _mod_network_nic_type_t {
     int (*n_setsockopt)(struct _mod_network_socket_obj_t *socket, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
     int (*n_settimeout)(struct _mod_network_socket_obj_t *socket, mp_int_t timeout_ms, int *_errno);
     int (*n_ioctl)(struct _mod_network_socket_obj_t *socket, mp_uint_t request, mp_uint_t arg, int *_errno);
+    int (*n_setupssl)(struct _mod_network_socket_obj_t *socket, int *_errno);
 
     // Interface status
     bool (*inf_up)(void);
@@ -90,6 +100,11 @@ typedef struct _mod_network_socket_base_t {
     int32_t timeout;
     bool is_ssl;
     bool connected;
+    uint8_t ip_addr[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
+    mp_uint_t port;
+    mod_network_sock_conn_status_t conn_status;
+    int err;
+    uint8_t domain;
 } mod_network_socket_base_t;
 
 typedef struct _mod_network_socket_obj_t {

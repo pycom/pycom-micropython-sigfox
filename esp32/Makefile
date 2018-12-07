@@ -29,6 +29,8 @@ BUILD = $(BUILD_DIR)/$(BOARD)/$(BTYPE)
 
 RELEASE_DIR ?= build/
 
+COPY_IDF_LIB ?= 1
+
 # by default Secure Boot and Flash Encryption are disabled
 SECURE ?= off
 

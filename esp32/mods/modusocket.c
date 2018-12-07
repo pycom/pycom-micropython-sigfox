@@ -80,15 +80,6 @@ typedef struct {
     bool    user;
 } modusocket_sock_t;
 
-typedef enum {
-    SOCKET_CONN_START = 0,
-    SOCKET_CONNECTED,
-    SOCKET_NOT_CONNECTED,
-    SOCKET_CONN_PENDING,
-    SOCKET_CONN_ERROR,
-    SOCKET_CONN_TIMEDOUT
-}modsocket_sock_conn_status_t;
-
 /******************************************************************************
  DEFINE PRIVATE DATA
  ******************************************************************************/
@@ -100,12 +91,7 @@ STATIC modusocket_sock_t modusocket_sockets[MODUSOCKET_MAX_SOCKETS] = {{.sd = -1
                                                                        {.sd = -1}, {.sd = -1}, {.sd = -1}, {.sd = -1}, {.sd = -1}};
 
 STATIC mod_network_socket_obj_t* modsocket_sock;
-STATIC uint8_t modsocket_ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
-STATIC mp_uint_t modsocket_port;
-STATIC int32_t modsocket_timeout;
 STATIC TimerHandle_t modsocket_conn_timeout_timer;
-STATIC modsocket_sock_conn_status_t modsocket_conn_status = SOCKET_NOT_CONNECTED;
-STATIC int modsocket_sock_errno;
 STATIC bool modsocket_istimeout = false;
 
 STATIC void TASK_SOCK_OPS (void *pvParameters) ;
@@ -121,7 +107,7 @@ SemaphoreHandle_t xSocketOpsSem;
 void modusocket_pre_init (void) {
 
 	// Create a Task to handle Socket Async ops
-	xTaskCreatePinnedToCore(TASK_SOCK_OPS, "Socket Operations", 2048 / sizeof(StackType_t), NULL, 5, &xSocketOpsTaskHndl, 1);
+	xTaskCreatePinnedToCore(TASK_SOCK_OPS, "Socket Operations", 3072 / sizeof(StackType_t), NULL, 5, &xSocketOpsTaskHndl, 1);
 	// Create semaphore
 	xSocketOpsSem = xSemaphoreCreateMutex();
     /* Stop task as it is not needed unless a socket conn is requested*/
@@ -208,12 +194,12 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_
         s->sock_base.u.u_param.domain = AF_INET;
         s->sock_base.u.u_param.type = SOCK_STREAM;
         s->sock_base.u.u_param.proto = IPPROTO_TCP;
+        s->sock_base.conn_status = SOCKET_NOT_CONNECTED;
     }
     s->sock_base.nic = MP_OBJ_NULL;
     s->sock_base.nic_type = NULL;
     s->sock_base.u.u_param.fileno = -1;
     s->sock_base.timeout = -1;      // sockets are blocking by default
-    modsocket_timeout = -1;
     s->sock_base.is_ssl = false;
     s->sock_base.connected = false;
 
@@ -229,6 +215,8 @@ STATIC mp_obj_t socket_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_
             }
         }
     }
+    // Save Domain type
+    s->sock_base.domain = s->sock_base.u.u_param.domain;
     // don't forget to select a network card
     if (s->sock_base.u.u_param.domain == AF_INET) {
         socket_select_nic(s, (const byte *)"");
@@ -349,27 +337,40 @@ STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
 
     mod_network_socket_obj_t* self = self_in;
 
-    if (self->sock_base.timeout > 0 && self->base.type == &socket_type) {
+    if (self->sock_base.timeout > 0 && self->sock_base.domain == AF_INET) {
 
         modsocket_sock = self_in;
+        int timeout_temp = modsocket_sock->sock_base.timeout;
+
         // get address
-        modsocket_port = netutils_parse_inet_addr(addr_in, modsocket_ip, NETUTILS_LITTLE);
+        self->sock_base.port = netutils_parse_inet_addr(addr_in, self->sock_base.ip_addr, NETUTILS_LITTLE);
+
+        // Set socket to Non-Blocking
+        if(modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, 0, &(self->sock_base.err)) != 0)
+        {
+            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(self->sock_base.err)));
+        }
 
         /* Start socket operation handling task */
-        modsocket_conn_status = SOCKET_CONN_START;
+        self->sock_base.conn_status = SOCKET_CONN_START;
+        /*create Timer */
+        modsocket_conn_timeout_timer = xTimerCreate("Socket_conn_Timer", timeout_temp / portTICK_PERIOD_MS, 0, 0, modsocket_timer_callback);
+
         vTaskResume(xSocketOpsTaskHndl);
 
         MP_THREAD_GIL_EXIT();
         vTaskDelay(10/portTICK_PERIOD_MS);
         xSemaphoreTake(xSocketOpsSem, portMAX_DELAY);
 
-        switch(modsocket_conn_status)
+        switch(self->sock_base.conn_status)
         {
         case SOCKET_CONN_TIMEDOUT:
             /* Stop task as it is not needed anymore*/
             vTaskSuspend(xSocketOpsTaskHndl);
+            // Set socket back to Blocking
+            modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, timeout_temp, &(self->sock_base.err));
             //Close socket
-            modsocket_sock->sock_base.nic_type->n_close(modsocket_sock);
+            socket_close(modsocket_sock);
             /* Release Sem */
             xSemaphoreGive(xSocketOpsSem);
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
@@ -377,11 +378,13 @@ STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
         case SOCKET_CONN_ERROR:
             /* Stop task as it is not needed anymore*/
             vTaskSuspend(xSocketOpsTaskHndl);
+            // Set socket back to Blocking
+            modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, timeout_temp, &(self->sock_base.err));
             //Close socket
-            modsocket_sock->sock_base.nic_type->n_close(modsocket_sock);
+            socket_close(modsocket_sock);
             /* Release Sem */
             xSemaphoreGive(xSocketOpsSem);
-            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(modsocket_sock_errno)));
+            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, mp_obj_new_int(self->sock_base.err)));
             break;
         case SOCKET_CONN_PENDING:
         case SOCKET_NOT_CONNECTED:
@@ -393,14 +396,30 @@ STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
             vTaskSuspend(xSocketOpsTaskHndl);
             /* Release Sem */
             xSemaphoreGive(xSocketOpsSem);
+            // Set socket back to Blocking
+            modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, timeout_temp, &(self->sock_base.err));
+            // setup ssl if applicable
+            if(modsocket_sock->sock_base.is_ssl)
+            {
+                if(modsocket_sock->sock_base.nic_type->n_setupssl(modsocket_sock, &(self->sock_base.err)) != 0)
+                {
+                    //Close socket
+                    socket_close(modsocket_sock);
+                    nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(self->sock_base.err)));
+                }
+            }
+            // mark socket as connected to allow ssl handshake if applicable
+            modsocket_sock->sock_base.connected = true;
             break;
         default:
             /* Stop task as it is not needed anymore*/
             vTaskSuspend(xSocketOpsTaskHndl);
+            // Set socket back to Blocking
+            modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, timeout_temp, &(self->sock_base.err));
             //Close socket
-            modsocket_sock->sock_base.nic_type->n_close(modsocket_sock);
+            socket_close(modsocket_sock);
             /* Release Sem */
-                        xSemaphoreGive(xSocketOpsSem);
+            xSemaphoreGive(xSocketOpsSem);
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Connection failed"));
             break;
         }
@@ -409,15 +428,13 @@ STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
     else
     {
         // get address
-        uint8_t ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
-        mp_uint_t port = netutils_parse_inet_addr(addr_in, ip, NETUTILS_LITTLE);
+        self->sock_base.port = netutils_parse_inet_addr(addr_in, self->sock_base.ip_addr, NETUTILS_LITTLE);
 
         // connect the socket
-        int _errno;
         MP_THREAD_GIL_EXIT();
-        if (self->sock_base.nic_type->n_connect(self, ip, port, &_errno) != 0) {
+        if (self->sock_base.nic_type->n_connect(self, self->sock_base.ip_addr, self->sock_base.port, &(self->sock_base.err)) != 0) {
             MP_THREAD_GIL_ENTER();
-            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
+            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(self->sock_base.err)));
         }
         MP_THREAD_GIL_ENTER();
     }
@@ -616,8 +633,6 @@ STATIC mp_obj_t socket_settimeout(mp_obj_t self_in, mp_obj_t timeout_in) {
     if (self->sock_base.nic_type->n_settimeout(self, timeout, &_errno) != 0) {
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
     }
-    //save timeout value
-    modsocket_timeout = timeout;
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(socket_settimeout_obj, socket_settimeout);
@@ -649,73 +664,60 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(socket_makefile_obj, 1, 6, socket_mak
 
 static void TASK_SOCK_OPS (void *pvParameters) {
 
-    int _errno;
+    mp_uint_t flag = MP_STREAM_POLL_WR;
+    int ret;
 
     for (;;)
     {
-        if(modsocket_conn_status == SOCKET_CONN_START)
+        if(modsocket_sock->sock_base.conn_status == SOCKET_CONN_START)
         {
             xSemaphoreTake(xSocketOpsSem, portMAX_DELAY);
 
-            //set socket to non-blocking
-            if (modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, 0, &_errno) != 0) {
-                modsocket_sock_errno = _errno;
-                modsocket_conn_status = SOCKET_CONN_ERROR;
-                xSemaphoreGive(xSocketOpsSem);
-            }
             //connect socket
-            if (modsocket_sock->sock_base.nic_type->n_connect(modsocket_sock, modsocket_ip, modsocket_port, &_errno) != 0) {
+            if (modsocket_sock->sock_base.nic_type->n_connect(modsocket_sock, modsocket_sock->sock_base.ip_addr, modsocket_sock->sock_base.port, &(modsocket_sock->sock_base.err)) != 0) {
 
-                if(_errno == EINPROGRESS)
+                if(modsocket_sock->sock_base.err == EINPROGRESS)
                 {
-                    /*create Timer */
-                    modsocket_conn_timeout_timer = xTimerCreate("Socket_conn_Timer", modsocket_timeout / portTICK_PERIOD_MS, 0, 0, modsocket_timer_callback);
                     /*start Timer */
                     xTimerStart(modsocket_conn_timeout_timer, 0);
                     /* Pending */
-                    modsocket_conn_status = SOCKET_CONN_PENDING;
+                    modsocket_sock->sock_base.conn_status = SOCKET_CONN_PENDING;
                 }
                 else
                 {
-                    modsocket_sock_errno = _errno;
-                    modsocket_conn_status = SOCKET_CONN_ERROR;
+                    modsocket_sock->sock_base.conn_status = SOCKET_CONN_ERROR;
                     xSemaphoreGive(xSocketOpsSem);
                 }
             }
             else
             {
                 // socket already connected
-                modsocket_conn_status = SOCKET_CONNECTED;
+                modsocket_sock->sock_base.conn_status = SOCKET_CONNECTED;
                 xSemaphoreGive(xSocketOpsSem);
             }
         }
-        else if (modsocket_conn_status == SOCKET_CONN_PENDING)
+        else if (modsocket_sock->sock_base.conn_status == SOCKET_CONN_PENDING)
         {
             //start polling
-            mp_uint_t flag = MP_STREAM_POLL_WR;
-            int ret;
-            ret = lwipsocket_socket_ioctl(modsocket_sock, MP_STREAM_POLL, flag, &_errno);
+            ret = lwipsocket_socket_ioctl(modsocket_sock, MP_STREAM_POLL, flag, &(modsocket_sock->sock_base.err));
             if((ret & MP_STREAM_POLL_WR) == MP_STREAM_POLL_WR)
             {
                 // socket connected
-                modsocket_conn_status = SOCKET_CONNECTED;
+                modsocket_sock->sock_base.conn_status = SOCKET_CONNECTED;
                 /* Stop Timer*/
                 xTimerStop(modsocket_conn_timeout_timer, 0);
                 xTimerDelete(modsocket_conn_timeout_timer, 0);
-                //set socket back to blocking with timeout
-                modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, modsocket_timeout, &_errno);
                 xSemaphoreGive(xSocketOpsSem);
             }
             else if(ret < 0)
             {
-                modsocket_sock_errno = _errno;
-                modsocket_conn_status = SOCKET_CONN_ERROR;
+                modsocket_sock->sock_base.conn_status = SOCKET_CONN_ERROR;
                 xSemaphoreGive(xSocketOpsSem);
             }
 
             if(modsocket_istimeout)
             {
-                modsocket_conn_status = SOCKET_CONN_TIMEDOUT;
+                modsocket_sock->sock_base.conn_status = SOCKET_CONN_TIMEDOUT;
                 modsocket_istimeout = false;
                 xSemaphoreGive(xSocketOpsSem);
             }
