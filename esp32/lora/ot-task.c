@@ -163,7 +163,7 @@ int mesh_socket_bind(byte *ip, mp_uint_t port, int *_errno) {
     memset(&sockaddr, 0, sizeof(sockaddr));
 
     otEXPECT_ACTION(
-            OT_ERROR_NONE == otIp6AddressFromString("::", &sockaddr.mAddress),
+            OT_ERROR_NONE == otIp6AddressFromString((const char*) ip, &sockaddr.mAddress),
             *_errno = MP_ENOENT);
 
     sockaddr.mPort = port;
