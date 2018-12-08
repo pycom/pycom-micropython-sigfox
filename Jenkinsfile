@@ -17,11 +17,6 @@ node {
         sh 'git tag -fa v1.9.4-' + GIT_TAG + ' -m \\"v1.9.4-' + GIT_TAG + '\\"'
     }
 
-    stage('wifi_scan') {
-       sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
-             export IDF_PATH=${WORKSPACE}/esp-idf;
-             make -C esp-idf/examples/wifi/scan bootloader all'''
-    }
 
     stage('mpy-cross') {
         // build the cross compiler first
