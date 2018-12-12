@@ -60,6 +60,8 @@ void mperror_init0 (void) {
     gpio_config(&gpioconf);
 
     mperror_heart_beat.enabled = true;
+    //delay introduced to separate last falling edge of signal and next color code
+    ets_delay_us(300);
     mperror_heartbeat_switch_off();
 }
 
