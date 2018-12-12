@@ -265,7 +265,10 @@ lte_legacy_t lteppp_get_legacy(void) {
 }
 
 void lteppp_deinit (void) {
-	connect_lte_uart();
+
+    // enable airplane low power mode
+    lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
+
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
     uart_set_rts(LTE_UART_ID, false);
     xSemaphoreTake(xLTESem, portMAX_DELAY);
