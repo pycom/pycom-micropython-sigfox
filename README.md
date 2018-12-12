@@ -74,29 +74,36 @@ Then when you need the toolchain you can type ``get_esp32`` on the command line 
 You also need the ESP IDF along side this repository in order to build the ESP32 port.
 To get it:
 
-    $ git clone --recursive -b idf_dev https://github.com/pycom/pycom-esp-idf.git
+    $ git clone --recursive -b idf_v3.1 https://github.com/pycom/pycom-esp-idf.git
 
 After cloning, if you did not specify the --recursive option, make sure to checkout all the submodules:
 
     $ cd pycom-esp-idf
     $ git submodule update --init
+    
+
+``` text
+If you updated the repository from a previous revision and/or if switching between branches,<br>
+make sure to also update the submodules with the command above.
+```
 
 Finally, before building, export the IDF_PATH variable
 
     $ export IDF_PATH=~/pycom-esp-idf
 
-This repository contains submodules! Either clone using the --recursive option:
+This repository contains submodules! Clone using the --recursive option:
 
     $ git clone --recursive https://github.com/pycom/pycom-micropython-sigfox.git
     
-Alternative checkout the modules manually:
+Alternatively checkout the modules manually:
 
     $ cd pycom-micropython-sigfox
     $ git submodule update --init
 
-If you updated the repository from a previous version and/or if switching to the development branch,<br>
-make sure to also update the submodules with the command above as a new submodule has been added<br>
-in the development branch!
+``` text
+If you updated the repository from a previous revision and/or if switching between branches,<br>
+make sure to also update the submodules with the command above.
+```
 
 Prior to building the main firmware, you need to build mpy-cross
 
