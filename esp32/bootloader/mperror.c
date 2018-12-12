@@ -62,7 +62,7 @@ void mperror_init0 (void) {
 
     mperror_heart_beat.enabled = true;
     //delay introduced to separate last falling edge of signal and next color code
-    ets_delay_us(150);
+    ets_delay_us(300);
     mperror_heartbeat_switch_off();
 }
 
