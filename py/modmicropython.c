@@ -140,11 +140,33 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mp_alloc_emergency_exception_buf_obj, mp_alloc_
 #endif
 
 #if MICROPY_KBD_EXCEPTION
-STATIC mp_obj_t mp_micropython_kbd_intr(mp_obj_t int_chr_in) {
-    mp_hal_set_interrupt_char(mp_obj_get_int(int_chr_in));
+STATIC mp_obj_t mp_micropython_kbd_intr(size_t n_args, const mp_obj_t *args) {
+    int c = mp_obj_get_int(args[0]);
+    mp_hal_set_persistent_interrupt_char(c);
+    if (n_args == 1) {
+        if (c == -1) {
+            mp_hal_set_persistent_reset_char(-1);
+        }
+    } else {
+        mp_hal_set_persistent_reset_char(mp_obj_get_int(args[1]));
+    }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mp_micropython_kbd_intr_obj, mp_micropython_kbd_intr);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mp_micropython_kbd_intr_obj, 1, 2, mp_micropython_kbd_intr);
+
+STATIC mp_obj_t mp_micropython_get_kbd_intr(void) {
+
+    STATIC const qstr kbd_intr_fields[] = {
+        MP_QSTR_interrupt, MP_QSTR_reset
+    };
+
+    mp_obj_t tuple[2];
+    tuple[0] = mp_obj_new_int(mp_hal_get_persistent_interrupt_char());
+    tuple[1] = mp_obj_new_int(mp_hal_get_persistent_reset_char());
+
+    return mp_obj_new_attrtuple(kbd_intr_fields, 2, tuple);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mp_micropython_get_kbd_intr_obj, mp_micropython_get_kbd_intr);
 #endif
 
 #if MICROPY_ENABLE_SCHEDULER
@@ -187,6 +209,7 @@ STATIC const mp_rom_map_elem_t mp_module_micropython_globals_table[] = {
     #endif
     #if MICROPY_KBD_EXCEPTION
     { MP_ROM_QSTR(MP_QSTR_kbd_intr), MP_ROM_PTR(&mp_micropython_kbd_intr_obj) },
+    { MP_ROM_QSTR(MP_QSTR_get_kbd_intr), MP_ROM_PTR(&mp_micropython_get_kbd_intr_obj) },
     #endif
     #if MICROPY_ENABLE_SCHEDULER
     { MP_ROM_QSTR(MP_QSTR_schedule), MP_ROM_PTR(&mp_micropython_schedule_obj) },

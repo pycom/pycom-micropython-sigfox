@@ -26,11 +26,14 @@
 
 #include "py/obj.h"
 #include "py/mpstate.h"
+#include "readline.h"
 
 #if MICROPY_KBD_EXCEPTION
 
 int mp_interrupt_char;
 int mp_reset_char;
+int mp_persistent_interrupt_char = CHAR_CTRL_C;
+int mp_persistent_reset_char = CHAR_CTRL_F;
 
 void mp_hal_set_interrupt_char(int c) {
     if (c != -1) {
@@ -39,8 +42,25 @@ void mp_hal_set_interrupt_char(int c) {
     mp_interrupt_char = c;
 }
 
+void mp_hal_set_persistent_interrupt_char(int c) {
+
+    mp_persistent_interrupt_char = c;
+}
+
+int mp_hal_get_persistent_interrupt_char(void) {
+    return mp_persistent_interrupt_char;
+}
+
 void mp_hal_set_reset_char(int c) {
     mp_reset_char = c;
+}
+
+void mp_hal_set_persistent_reset_char(int c) {
+    mp_persistent_reset_char = c;
+}
+
+int mp_hal_get_persistent_reset_char(void) {
+    return mp_persistent_reset_char;
 }
 
 void mp_keyboard_interrupt(void) {

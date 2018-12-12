@@ -29,5 +29,9 @@ void mp_hal_delay_ms(uint32_t delay);
 void mp_hal_set_interrupt_char(int c);
 void mp_hal_set_reset_char(int c);
 void mp_hal_reset_safe_and_boot(bool reset);
+void mp_hal_set_persistent_interrupt_char(int c);
+int mp_hal_get_persistent_interrupt_char(void);
+void mp_hal_set_persistent_reset_char(int c);
+int mp_hal_get_persistent_reset_char(void) ;
 
 #endif // _INCLUDED_MPHAL_H_
