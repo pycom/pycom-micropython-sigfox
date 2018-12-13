@@ -1,15 +1,13 @@
 def buildVersion
-def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
-def boards_to_test = ["Pycom_Expansion3_Py00ec5f", "Pycom_Expansion3_Py9f8bf5"]
+def boards_to_build = ["GPy", "FiPy"]
+def boards_to_test = []
 
 node {
     // get pycom-esp-idf source
     stage('Checkout') {
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
-        sh 'git -C esp-idf checkout 4eab4e1b0e47c73b858c6b29d357f3d30a69c074'
-        sh 'git -C esp-idf submodule update'
+        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
     }
     
     PYCOM_VERSION=get_version()

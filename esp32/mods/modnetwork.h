@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2016, Pycom Limited and its licensors.
+ * Copyright (c) 2018, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -70,6 +70,9 @@ typedef struct _mod_network_nic_type_t {
     int (*n_setsockopt)(struct _mod_network_socket_obj_t *socket, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
     int (*n_settimeout)(struct _mod_network_socket_obj_t *socket, mp_int_t timeout_ms, int *_errno);
     int (*n_ioctl)(struct _mod_network_socket_obj_t *socket, mp_uint_t request, mp_uint_t arg, int *_errno);
+
+    // Interface status
+    bool (*inf_up)(void);
 } mod_network_nic_type_t;
 
 typedef struct _mod_network_socket_base_t {
@@ -108,6 +111,7 @@ extern const mod_network_nic_type_t mod_network_nic_type_lte;
  ******************************************************************************/
 void mod_network_init0(void);
 void mod_network_register_nic(mp_obj_t nic);
+void mod_network_deregister_nic(mp_obj_t nic);
 mp_obj_t mod_network_find_nic(const mod_network_socket_obj_t *s, const uint8_t *ip);
 
 #endif  // MODNETWORK_H_
