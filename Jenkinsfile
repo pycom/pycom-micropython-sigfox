@@ -1,6 +1,6 @@
 def buildVersion
-def boards_to_build = ["GPy", "FiPy"]
-def boards_to_test = []
+def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
+def boards_to_test = ["1b6fa1", "00ec51"]
 
 node {
     // get pycom-esp-idf source
