@@ -46,3 +46,4 @@ void mp_hal_set_reset_char(int c) {
 void mp_keyboard_interrupt(void) {
     MP_STATE_VM(mp_pending_exception) = MP_STATE_PORT(mp_kbd_exception);
 }
+#endif
