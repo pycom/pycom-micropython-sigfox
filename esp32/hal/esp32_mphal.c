@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "py/smallint.h"
 #include "py/mpstate.h"
 #include "py/mphal.h"
 #include "py/runtime.h"
@@ -178,7 +179,7 @@ IRAM_ATTR uint64_t mp_hal_ticks_ms_non_blocking(void) {
 }
 
 IRAM_ATTR uint64_t mp_hal_ticks_us_non_blocking(void) {
-    return esp_timer_get_time();
+    return esp_timer_get_time() & (MICROPY_PY_UTIME_TICKS_PERIOD - 1);
 }
 
 void mp_hal_delay_ms(uint32_t delay) {

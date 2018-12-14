@@ -122,6 +122,7 @@
 #define MICROPY_ENABLE_EMERGENCY_EXCEPTION_BUF      (1)
 #define MICROPY_EMERGENCY_EXCEPTION_BUF_SIZE        (0)
 #define MICROPY_KBD_EXCEPTION                       (1)
+#define MICROPY_PY_UTIME_MP_HAL                     (1)
 
 #ifndef BOOTLOADER_BUILD
 #include "freertos/FreeRTOS.h"

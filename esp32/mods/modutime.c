@@ -44,6 +44,7 @@
 #include "py/gc.h"
 #include "py/runtime.h"
 #include "py/mphal.h"
+#include "extmod/utime_mphal.h"
 #include "py/smallint.h"
 #include "machrtc.h"
 #include "machtimer.h"
@@ -132,54 +133,10 @@ STATIC mp_obj_t time_mktime(mp_obj_t tuple) {
 }
 MP_DEFINE_CONST_FUN_OBJ_1(time_mktime_obj, time_mktime);
 
-/// \function sleep(seconds)
-/// Sleep for the given number of seconds.
-STATIC mp_obj_t time_sleep(mp_obj_t seconds_o) {
-    mp_hal_delay_ms(1000 * mp_obj_get_float(seconds_o));
-    return mp_const_none;
-}
-MP_DEFINE_CONST_FUN_OBJ_1(time_sleep_obj, time_sleep);
-
-STATIC mp_obj_t time_sleep_ms(mp_obj_t arg) {
-    mp_hal_delay_ms(mp_obj_get_int(arg));
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(time_sleep_ms_obj, time_sleep_ms);
-
-STATIC mp_obj_t time_sleep_us(mp_obj_t arg) {
-    mp_hal_delay_us(mp_obj_get_int(arg));
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(time_sleep_us_obj, time_sleep_us);
-
-STATIC mp_obj_t time_ticks_ms(void) {
-    return mp_obj_new_int_from_uint(mp_hal_ticks_ms());
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_ms_obj, time_ticks_ms);
-
-STATIC mp_obj_t time_ticks_us(void) {
-    return mp_obj_new_int_from_uint(mp_hal_ticks_us());
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_us_obj, time_ticks_us);
-
 STATIC mp_obj_t time_ticks_cpu(void) {
-   return mp_obj_new_int_from_uint(mp_hal_ticks_us_non_blocking());
+   return MP_OBJ_NEW_SMALL_INT(mp_hal_ticks_us_non_blocking());
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(time_ticks_cpu_obj, time_ticks_cpu);
-
-STATIC mp_obj_t time_ticks_diff(mp_obj_t end_in, mp_obj_t start_in) {
-    int32_t start = mp_obj_get_int_truncated(start_in);
-    int32_t end = mp_obj_get_int_truncated(end_in);
-    return mp_obj_new_int(end - start);
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(time_ticks_diff_obj, time_ticks_diff);
-
-STATIC mp_obj_t time_ticks_add(mp_obj_t start_in, mp_obj_t delta_in) {
-    uint32_t start = mp_obj_get_int_truncated(start_in);
-    uint32_t delta = mp_obj_get_int_truncated(delta_in);
-    return mp_obj_new_int_from_uint(start + delta);
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(time_ticks_add_obj, time_ticks_add);
 
 /// \function time()
 /// Returns the number of seconds, as an integer, since 1/1/1970.
@@ -207,14 +164,14 @@ STATIC const mp_map_elem_t time_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_localtime),           (mp_obj_t)&time_localtime_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_gmtime),              (mp_obj_t)&time_gmtime_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mktime),              (mp_obj_t)&time_mktime_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_sleep),               (mp_obj_t)&time_sleep_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_sleep_ms),            (mp_obj_t)&time_sleep_ms_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_sleep_us),            (mp_obj_t)&time_sleep_us_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_ms),            (mp_obj_t)&time_ticks_ms_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_us),            (mp_obj_t)&time_ticks_us_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sleep),               (mp_obj_t)&mp_utime_sleep_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sleep_ms),            (mp_obj_t)&mp_utime_sleep_ms_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sleep_us),            (mp_obj_t)&mp_utime_sleep_us_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_ms),            (mp_obj_t)&mp_utime_ticks_ms_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_us),            (mp_obj_t)&mp_utime_ticks_us_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_cpu),           (mp_obj_t)&time_ticks_cpu_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_add),           (mp_obj_t)&time_ticks_add_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_diff),          (mp_obj_t)&time_ticks_diff_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_add),           (mp_obj_t)&mp_utime_ticks_add_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ticks_diff),          (mp_obj_t)&mp_utime_ticks_diff_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_time),                (mp_obj_t)&time_time_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_timezone),            (mp_obj_t)&time_timezone_obj },
 };
