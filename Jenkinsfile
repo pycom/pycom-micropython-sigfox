@@ -148,6 +148,6 @@ def get_remote_name(short_name) {
 }
 
 def get_device_name(short_name) {
-    return "/dev/serial/by-id/usb-" +  short_name + "-if00"   
+    return "/dev/tty.usbmodemPy" +  short_name + " "
 }
 
