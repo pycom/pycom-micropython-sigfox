@@ -27,7 +27,10 @@
 #include "py/obj.h"
 #include "py/mpstate.h"
 
+#if MICROPY_KBD_EXCEPTION
+
 int mp_interrupt_char;
+int mp_reset_char;
 
 void mp_hal_set_interrupt_char(int c) {
     if (c != -1) {
@@ -36,6 +39,11 @@ void mp_hal_set_interrupt_char(int c) {
     mp_interrupt_char = c;
 }
 
+void mp_hal_set_reset_char(int c) {
+    mp_reset_char = c;
+}
+
 void mp_keyboard_interrupt(void) {
     MP_STATE_VM(mp_pending_exception) = MP_STATE_PORT(mp_kbd_exception);
 }
+#endif

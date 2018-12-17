@@ -1,5 +1,22 @@
 #!/usr/bin/env python
-
+#################################################################
+#
+#  Copyright (c) 2011 SEQUANS Communications.
+#  All rights reserved.
+#
+#  This is confidential and proprietary source code of SEQUANS
+#  Communications. The use of the present source code and all
+#  its derived forms is exclusively governed by the restricted
+#  terms and conditions set forth in the SEQUANS
+#  Communications' EARLY ADOPTER AGREEMENT and/or LICENCE
+#  AGREEMENT. The present source code and all its derived
+#  forms can ONLY and EXCLUSIVELY be used with SEQUANS
+#  Communications' products. The distribution/sale of the
+#  present source code and all its derived forms is EXCLUSIVELY
+#  RESERVED to regular LICENCE holder and otherwise STRICTLY
+#  PROHIBITED.
+#
+#################################################################
 import struct
 import time
 import os
@@ -59,9 +76,9 @@ def hexdump(src, length=32):
     lines = []
     for c in range(0, len(src), length):
         chars = src[c:c+length]
-    hex = ' '.join(['%02x' % x for x in chars])
-    printable = ''.join(['%s' % ((x <= 127 and FILTER[x]) or '.') for x in chars])
-    lines.append('%04x %-*s %s\n' % (c, length*3, hex, printable))
+    hex = ' '.join(["%02x" % ord(x) for x in chars])
+    printable = ''.join(["%s" % ((ord(x) <= 127 and FILTER[ord(x)]) or '.') for x in chars])
+    lines.append("%04x %-*s %s\n" % (c, length*3, hex, printable))
     print(''.join(lines))
 
 

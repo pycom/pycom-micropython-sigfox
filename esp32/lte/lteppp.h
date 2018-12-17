@@ -39,8 +39,14 @@ typedef enum {
     E_LTE_IDLE,
     E_LTE_ATTACHING,
     E_LTE_ATTACHED,
-    E_LTE_PPP
+    E_LTE_PPP,
+	E_LTE_SUSPENDED
 } lte_state_t;
+
+typedef enum {
+    E_LTE_NORMAL = 0,
+    E_LTE_LEGACY,
+} lte_legacy_t;
 
 typedef enum {
     E_LTE_CMD_AT = 0,
@@ -67,17 +73,23 @@ extern void lteppp_start (void);
 
 extern void lteppp_set_state(lte_state_t state);
 
+extern void lteppp_set_legacy(lte_legacy_t legacy);
+
 extern void lteppp_connect(void);
 
 extern void lteppp_disconnect(void);
 
 extern lte_state_t lteppp_get_state(void);
 
+extern lte_legacy_t lteppp_get_legacy(void);
+
 extern uint32_t lteppp_ipv4(void);
 
 extern void lteppp_deinit (void);
 
 extern void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp);
+
+extern void lteppp_send_at_command_delay (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp, TickType_t delay);
 
 extern bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_mp);
 
@@ -86,5 +98,9 @@ extern bool lteppp_task_ready(void);
 void lteppp_connect_modem (void);
 
 bool lteppp_is_modem_connected(void);
+
+extern void connect_lte_uart (void);
+
+extern bool ltepp_is_ppp_conn_up(void);
 
 #endif  // _LTEPPP_H_

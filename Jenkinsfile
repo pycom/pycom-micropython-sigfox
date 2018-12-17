@@ -1,15 +1,13 @@
 def buildVersion
 def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
-def boards_to_test = ["Pycom_Expansion3_Py00ec5f", "Pycom_Expansion3_Py9f8bf5"]
+def boards_to_test = ["1b6fa1", "00ec51"]
 
 node {
     // get pycom-esp-idf source
     stage('Checkout') {
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
-        sh 'git -C esp-idf checkout 4eab4e1b0e47c73b858c6b29d357f3d30a69c074'
-        sh 'git -C esp-idf submodule update'
+        sh 'git clone --depth=1 --recursive -b master https://github.com/pycom/pycom-esp-idf.git esp-idf'
     }
     
     PYCOM_VERSION=get_version()
@@ -119,11 +117,12 @@ def testBuild(short_name) {
         dir('tests') {
             timeout(30) {
                 // As some tests are randomly failing... enforce script always returns 0 (OK)
-                    sh './run-tests --target=esp32-' + board_name_u + ' --device ' + device_name + ' || exit 0'
-                }
+                sh '''export PATH=$PATH:/usr/local/bin;
+                ./run-tests --target=esp32-''' + board_name_u + ' --device ' + device_name + ' || exit 0'
             }
-            sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
-            sh 'python esp32/tools/pypic.py --port ' + device_name +' --exit'
+        }
+        sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
+        sh 'python esp32/tools/pypic.py --port ' + device_name +' --exit'
     }
   }
 }
@@ -150,6 +149,6 @@ def get_remote_name(short_name) {
 }
 
 def get_device_name(short_name) {
-    return "/dev/serial/by-id/usb-" +  short_name + "-if00"   
+    return "/dev/tty.usbmodemPy" +  short_name + " "
 }
 

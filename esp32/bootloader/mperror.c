@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, Pycom Limited.
+ * Copyright (c) 2018, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -60,6 +60,8 @@ void mperror_init0 (void) {
     gpio_config(&gpioconf);
 
     mperror_heart_beat.enabled = true;
+    //delay introduced to separate last falling edge of signal and next color code
+    ets_delay_us(300);
     mperror_heartbeat_switch_off();
 }
 

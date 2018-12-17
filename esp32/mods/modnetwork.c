@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2016, Pycom Limited and its licensors.
+ * Copyright (c) 2018, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -81,6 +81,14 @@ void mod_network_register_nic(mp_obj_t nic) {
     }
     // nic not registered so add it to list
     mp_obj_list_append(&MP_STATE_PORT(mod_network_nic_list), nic);
+}
+
+void mod_network_deregister_nic(mp_obj_t nic) {
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
+        if (MP_STATE_PORT(mod_network_nic_list).items[i] == nic) {
+            mp_obj_list_remove(&MP_STATE_PORT(mod_network_nic_list), nic);
+        }
+    }
 }
 
 mp_obj_t mod_network_find_nic(const mod_network_socket_obj_t *s, const uint8_t *ip) {

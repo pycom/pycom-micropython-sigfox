@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2016, Pycom Limited and its licensors.
+ * Copyright (c) 2018, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -255,7 +255,6 @@ bool SX1276IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh
 {
     bool status = true;
     int16_t rssi = 0;
-    uint32_t carrierSenseTime = 0;
 
     SX1276SetModem( modem );
 
@@ -263,9 +262,7 @@ bool SX1276IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh
 
     SX1276SetOpMode( RF_OPMODE_RECEIVER );
 
-    DelayMs( 2 );
-
-    carrierSenseTime = TimerGetCurrentTime( );
+    DelayMs( 1 );
 
     // Perform carrier sense for maxCarrierSenseTime
     do {
@@ -275,7 +272,9 @@ bool SX1276IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh
             status = false;
             break;
         }
-    } while( TimerGetElapsedTime( carrierSenseTime ) < maxCarrierSenseTime );
+        DelayMs( 1 );
+        maxCarrierSenseTime -= 1;
+    } while( maxCarrierSenseTime > 0 );
     SX1276SetSleep( );
     return status;
 }

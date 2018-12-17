@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2016, Pycom Limited and its licensors.
+ * Copyright (c) 2018, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -114,6 +114,7 @@ void pin_preinit(void) {
 void pin_init0(void) {
     // initialize all pins as inputs with pull downs enabled
     mp_map_t *named_map = mp_obj_dict_get_map((mp_obj_t)&pin_module_pins_locals_dict);
+
     for (uint i = 0; i < named_map->used - 1; i++) {
         pin_obj_t *self = (pin_obj_t *)named_map->table[i].value;
         if (self != &PIN_MODULE_P1) {  // temporal while we remove all the IDF logs
@@ -132,6 +133,16 @@ void pin_init0(void) {
                continue;
             }
         #endif
+            /* exclude the antenna switch pin from initialization as it is already initialized */
+            if((micropy_hw_antenna_diversity_pin_num == MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM) && (self == &PIN_MODULE_P12))
+            {
+            	continue;
+            }
+            /* exclude RGB led from initialization as it is already initialized by mperror */
+            if (self == &PIN_MODULE_P2)
+            {
+            	continue;
+            }
             pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0);
         }
     }

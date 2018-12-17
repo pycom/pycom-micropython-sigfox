@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2016, Pycom Limited and its licensors.
+ * Copyright (c) 2018, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -191,7 +191,7 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     bt_deinit(NULL);
     wlan_deinit(NULL);
 #if defined(FIPY) || defined(GPY)
-    while (!lteppp_task_ready()) {
+    while (config_get_lte_modem_enable_on_boot() && !lteppp_task_ready()) {
         mp_hal_delay_ms(2);
     }
     lteppp_deinit();
