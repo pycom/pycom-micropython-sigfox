@@ -193,7 +193,9 @@ class MQTTClient:
         if res is None:
             return None
         if res == b"":
-            raise OSError(-1)
+            # other tls empty response happens ...
+            # raise OSError(-1)
+            return
         if res == b"\xd0":  # PING RESPONCE
             size = self.sock.read(1)[0]
             assert size == 0
@@ -223,5 +225,5 @@ class MQTTClient:
     # If not, returns immediately with None. Otherwise, does
     # the same processing as wait_msg.
     def check_msg(self):
-        # self.sock.setblocking(False)
+        self.sock.setblocking(False)
         return self.wait_msg()

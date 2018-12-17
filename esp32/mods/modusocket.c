@@ -901,7 +901,7 @@ STATIC mp_obj_t mod_usocket_getaddrinfo(size_t n_args, const mp_obj_t *args) {
     }
     if(is_inf_down)
     {
-    	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Avialable Interfaces are down"));
+    	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Available Interfaces are down"));
     }
     else
     {

@@ -3,9 +3,12 @@ try:
     from pybytes_protocol import PybytesProtocol
 except:
     from _pybytes_protocol import PybytesProtocol
+try:
+    from pybytes_connection import PybytesConnection
+except:
+    from _pybytes_connection import PybytesConnection
 
 __DEFAULT_HOST = "mqtt.pycom.io"
-
 
 class __PERIODICAL_PIN:
     TYPE_DIGITAL = 0
@@ -21,11 +24,11 @@ class __PERIODICAL_PIN:
 
 
 class Pybytes:
+
     def __init__(self, config):
         self.__conf = config
         self.__frozen = globals().get('__name__') == '_pybytes'
-        self.__custom_message_callback = None
-        self.__pybytes_protocol = PybytesProtocol(self.__conf, self.__recv_message)
+        self.__pybytes_connection = PybytesConnection(self.__conf, self.__recv_message)
         self.__custom_message_callback = None
 
         # START code from the old boot.py
@@ -36,51 +39,51 @@ class Pybytes:
 
         wmac = hexlify(machine.unique_id()).decode('ascii')
         print("WMAC: %s" % wmac)
-        print("Firmware: %s" % os.uname().release)
+        print("Firmware: %s [%s]" % (os.uname().release, os.uname().pybytes))
         # print(micropython.mem_info())
         # STOP code from the old boot.py
 
     def connect_wifi(self, reconnect=True, check_interval=0.5):
-        return self.__pybytes_protocol.connect_wifi(reconnect, check_interval)
+        return self.__pybytes_connection.connect_wifi(reconnect, check_interval)
 
-    def connect_nbiot(self, reconnect=True, check_interval=0.5):
-        return self.__pybytes_protocol.connect_nbiot(reconnect, check_interval)
+    def connect_lte(self, reconnect=True, check_interval=0.5):
+        return self.__pybytes_connection.connect_lte(reconnect, check_interval)
 
     def connect_lora_abp(self, timeout, nanogateway=False):
-        return self.__pybytes_protocol.connect_lora_abp(timeout, nanogateway)
+        return self.__pybytes_connection.connect_lora_abp(timeout, nanogateway)
 
     def connect_lora_otta(self, timeout=15, nanogateway=False):
-        return self.__pybytes_protocol.connect_lora_otta(timeout, nanogateway)
+        return self.__pybytes_connection.connect_lora_otta(timeout, nanogateway)
 
     def connect_sigfox(self):
-        self.__pybytes_protocol.connect_sigfox()
+        self.__pybytes_connection.connect_sigfox()
 
     def disconnect(self):
-        self.__pybytes_protocol.disconnect()
+        self.__pybytes_connection.disconnect()
 
     def send_custom_message(self, persistent, message_type, message):
-        self.__pybytes_protocol.send_user_message(persistent, message_type, message)
+        self.__pybytes_connection.__pybytes_protocol.send_user_message(persistent, message_type, message)
 
     def set_custom_message_callback(self, callback):
         self.__custom_message_callback = callback
 
     def send_ping_message(self):
-        self.__pybytes_protocol.send_ping_message()
+        self.__pybytes_connection.__pybytes_protocol.send_ping_message()
 
     def send_info_message(self):
-        self.__pybytes_protocol.send_info_message()
+        self.__pybytes_connection.__pybytes_protocol.send_info_message()
 
     def send_scan_info_message(self):
-        self.__pybytes_protocol.send_scan_info_message(None)
+        self.__pybytes_connection.__pybytes_protocol.send_scan_info_message(None)
 
     def send_digital_pin_value(self, persistent, pin_number, pull_mode):
-        self.__pybytes_protocol.send_pybytes_digital_value(persistent, pin_number, pull_mode)
+        self.__pybytes_connection.__pybytes_protocol.send_pybytes_digital_value(persistent, pin_number, pull_mode)
 
     def send_analog_pin_value(self, persistent, pin):
-        self.__pybytes_protocol.send_pybytes_analog_value(persistent, pin)
+        self.__pybytes_connection.__pybytes_protocol.send_pybytes_analog_value(persistent, pin)
 
     def send_virtual_pin_value(self, persistent, pin, value):
-        self.__pybytes_protocol.send_pybytes_custom_method_values(persistent, pin, [value])
+        self.__pybytes_connection.__pybytes_protocol.send_pybytes_custom_method_values(persistent, pin, [value])
 
     def register_periodical_digital_pin_publish(self, persistent, pin_number, pull_mode, period):
         self.send_digital_pin_value(persistent, pin_number, pull_mode)
@@ -95,17 +98,17 @@ class Pybytes:
         Timer.Alarm(self.__periodical_pin_callback, period, arg=periodical_pin, periodic=True)
 
     def add_custom_method(self, method_id, method):
-        self.__pybytes_protocol.add_custom_method(method_id, method)
+        self.__pybytes_connection.__pybytes_protocol.add_custom_method(method_id, method)
 
     def enable_terminal(self):
-        self.__pybytes_protocol.enable_terminal()
+        self.__pybytes_connection.__pybytes_protocol.enable_terminal()
 
     def send_battery_level(self, battery_level):
-        self.__pybytes_protocol.set_battery_level(battery_level)
-        self.__pybytes_protocol.send_battery_info()
+        self.__pybytes_connection.__pybytes_protocol.set_battery_level(battery_level)
+        self.__pybytes_connection.__pybytes_protocol.send_battery_info()
 
     def send_custom_location(self, pin, x, y):
-        self.__pybytes_protocol.send_custom_location(pin, x, y)
+        self.__pybytes_connection.__pybytes_protocol.send_custom_location(pin, x, y)
 
     def __periodical_pin_callback(self, periodical_pin):
         if (periodical_pin.pin_type == __PERIODICAL_PIN.TYPE_DIGITAL):
@@ -122,7 +125,7 @@ class Pybytes:
 
     def is_connected(self):
         try:
-            return self.__pybytes_protocol.is_connected()
+            return self.__pybytes_connection.is_connected()
         except:
             return False
 
@@ -134,8 +137,8 @@ class Pybytes:
                 print("network_preferences are empty, set it up in /flash/pybytes_config.json first")
 
             for net in self.__conf['network_preferences']:
-                if net == 'nbiot':
-                    if self.connect_nbiot():
+                if net == 'lte' or net == 'nbiot':
+                    if self.connect_lte():
                         break
                 elif net == 'wifi':
                     if self.connect_wifi():
@@ -150,9 +153,7 @@ class Pybytes:
                     if self.connect_sigfox():
                         break
                 else:
-                    print("Can't establish a connection with the networks specified")
-                    # soft reset
-                    exit()
+                    raise OSError("Can't establish a connection with the networks specified")
 
             import time
             time.sleep(.1)
@@ -203,13 +204,14 @@ class Pybytes:
         else:
             return self.__conf.get(key)
 
-    def set_config(self, key=None, value=None):
+    def set_config(self, key=None, value=None, permanent=True):
         if key is None and value is not None:
             self.__conf = value
         elif key is not None:
             self.__conf[key] = value
         else:
             raise ValueError('You need to either specify a key or a value!')
+        if permanent: self.write_config()
 
     def read_config(self, file='/flash/pybytes_config.json'):
         try:
@@ -218,9 +220,24 @@ class Pybytes:
             jfile = f.read()
             f.close()
             try:
-                pybytes_config = json.loads(jfile.strip())
+                self.__conf = json.loads(jfile.strip())
                 print("Pybytes configuration read from {}".format(file))
             except Exception as ex:
                 print("Error reading {} file!\n Exception: {}".format(file, ex))
+            try:
+                global pybytes_config
+                pybytes_config = self.__conf
+            except:
+                print("Error updating global pybytes_config variable")
         except Exception as ex:
             print("Cannot open {}: {}".format(file, ex))
+
+    def export_config(self, file='/flash/pybytes_config.json'):
+        try:
+            import json
+            f = open(file,'w')
+            f.write(json.dumps(self.__conf))
+            f.close()
+            print("Pybytes configuration exported to {}".format(file))
+        except Exception as e:
+            print("Exception: {}".format(e))
