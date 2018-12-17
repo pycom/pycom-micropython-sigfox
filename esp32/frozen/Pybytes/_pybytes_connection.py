@@ -26,11 +26,8 @@ class PybytesConnection:
     def __init__(self, config, message_callback):
         self.__conf = config
         self.__host = config['server']
-        self.__ssl = config.get('ssl') and config['ssl'] == True
-        if self.__ssl == True:
-            self.__ssl_params = config.get('ssl_params')
-        else:
-            self.__ssl_params = {}
+        self.__ssl = config.get('ssl', False)
+        self.__ssl_params = config.get('ssl_params', {})
         self.__user_name = config['username']
         self.__device_id = config['device_id']
         self.__mqtt_download_topic = "d" + self.__device_id

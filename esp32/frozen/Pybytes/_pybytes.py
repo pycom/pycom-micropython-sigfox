@@ -38,8 +38,11 @@ class Pybytes:
         from binascii import hexlify
 
         wmac = hexlify(machine.unique_id()).decode('ascii')
-        print("WMAC: %s" % wmac)
-        print("Firmware: %s [%s]" % (os.uname().release, os.uname().pybytes))
+        print("WMAC: %s" % wmac.upper())
+        try:
+            print("Firmware: %s\nPybytes: %s" % (os.uname().release, os.uname().pybytes))
+        except:
+            print("Firmware: %s [%s]" % os.uname().release)
         # print(micropython.mem_info())
         # STOP code from the old boot.py
 
@@ -223,21 +226,16 @@ class Pybytes:
                 self.__conf = json.loads(jfile.strip())
                 print("Pybytes configuration read from {}".format(file))
             except Exception as ex:
-                print("Error reading {} file!\n Exception: {}".format(file, ex))
-            try:
-                global pybytes_config
-                pybytes_config = self.__conf
-            except:
-                print("Error updating global pybytes_config variable")
+                print("JSON error in configuration file {}!\n Exception: {}".format(file, ex))
         except Exception as ex:
-            print("Cannot open {}: {}".format(file, ex))
+            print("Cannot open file {}\nException: {}".format(file, ex))
 
     def export_config(self, file='/flash/pybytes_config.json'):
         try:
             import json
-            f = open(file,'w')
+            f = open(file, 'w')
             f.write(json.dumps(self.__conf))
             f.close()
             print("Pybytes configuration exported to {}".format(file))
         except Exception as e:
-            print("Exception: {}".format(e))
+            print("Error writing to file {}\nException: {}".format(file, e))
