@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-VERSION = "1.2.0"
+VERSION = "1.2.1"
 
 # Copyright (c) 2018, Pycom Limited.
 #
@@ -415,9 +415,18 @@ class sqnsupgrade:
                 resp = self.read_rsp(100)
                 if debug: print('AT+SMSWBOOT=3,1 returned: {}'.format(resp))
                 if b'ERROR' in resp:
-                    print('Received ERROR from AT+SMSWBOOT=3,1! Aborting!')
-                    reconnect_uart()
-                    sys.exit(1)
+                    time.sleep(5)
+                    self.__serial.write(b"AT+SMSWBOOT=3,0\r\n")
+                    resp = self.read_rsp(100)
+                    if debug: print('AT+SMSWBOOT=3,0 returned: {}'.format(resp))
+                    if b'OK' in resp:
+                        self.__serial.write(b"AT^RESET\r\n")
+                        resp = self.read_rsp(100)
+                        if debug: print('AT^RESET returned: {}'.format(resp))
+                    else:
+                        print('Received ERROR from AT+SMSWBOOT=3,1! Aborting!')
+                        reconnect_uart()
+                        sys.exit(1)
                 time.sleep(3)
                 resp = self.__serial.read()
                 if debug: print("Response after reset: {}".format(resp))
@@ -444,8 +453,7 @@ class sqnsupgrade:
                 self.uart_mirror(rgbled)
 
             elif bootrom:
-                if verbose: print('Starting STP\n{}'.format(self.__get_power_warning()))
-
+                if verbose: print('Starting STP')
             else:
                 if verbose:
                     if load_fff:
@@ -532,8 +540,18 @@ class sqnsupgrade:
                 resp = self.read_rsp(100)
                 if debug: print("AT+SMSWBOOT=0,1 returned {}".format(resp))
                 if b"ERROR" in resp:
-                    print('Received ERROR from AT+SMSWBOOT=0,1! Aborting!')
-                    return False
+                    time.sleep(5)
+                    self.__serial.write(b"AT+SMSWBOOT=0,0\r\n")
+                    resp = self.read_rsp(100)
+                    if debug: print('AT+SMSWBOOT=0,0 returned: {}'.format(resp))
+                    if b'OK' in resp:
+                        self.__serial.write(b"AT^RESET\r\n")
+                        resp = self.read_rsp(100)
+                        if debug: print('AT^RESET returned: {}'.format(resp))
+                        return True
+                    else:
+                        print('Received ERROR from AT+SMSWBOOT=0,0! Aborting!')
+                        return False
                 return True
             else:
                 if load_fff:
@@ -587,9 +605,22 @@ class sqnsupgrade:
                 if debug: print('This is my result: {}'.format(sqnup_result))
                 if 'success' in sqnup_result:
                     if not load_fff:
-                        self.special_print(self.__get_power_warning(), end='\n', flush=True)
                         self.special_print('Resetting.', end='', flush=True)
                         self.__serial.write(b"AT+SMSWBOOT=1,1\r\n")
+                        if debug: print("AT+SMSWBOOT=1,1 returned {}".format(resp))
+                        if b"ERROR" in resp:
+                            time.sleep(5)
+                            self.__serial.write(b"AT+SMSWBOOT=1,0\r\n")
+                            resp = self.read_rsp(100)
+                            if debug: print('AT+SMSWBOOT=1,0 returned: {}'.format(resp))
+                            if b'OK' in resp:
+                                self.__serial.write(b"AT^RESET\r\n")
+                                resp = self.read_rsp(100)
+                                if debug: print('AT^RESET returned: {}'.format(resp))
+                                return True
+                            else:
+                                print('Received ERROR from AT+SMSWBOOT=1,0! Aborting!')
+                                return False
                         self.wait_for_modem(send=False, echo_char='.', expected=b'+SYSSTART')
 
                 elif sqnup_result is not None:
@@ -822,7 +853,7 @@ if 'FiPy' in sysname or 'GPy' in sysname:
         resume = False
         sqnup = sqnsupgrade()
         if sqnup.check_files(ffile, mfile, debug):
-            state = sqnup.detect_modem_state()
+            state = sqnup.detect_modem_state(debug=debug)
             if debug: print('Modem state: {}'.format(state))
             if state is None:
                 detect_error()
@@ -844,7 +875,7 @@ if 'FiPy' in sysname or 'GPy' in sysname:
         retry = False
         resume = False
         sqnup = sqnsupgrade()
-        state = sqnup.detect_modem_state()
+        state = sqnup.detect_modem_state(debug=debug)
         if state is None:
             detect_error()
         elif state == 0:

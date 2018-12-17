@@ -23,6 +23,7 @@
 # Build directory
 ######################
 build/
+build-*/
 
 # Test failure outputs
 ######################
@@ -50,3 +51,6 @@ secure-bootloader-key.bin
 flash_encryption_key.bin
  
 .DS_Store
+org.eclipse.cdt.ui.prefs
+org.eclipse.cdt.core.prefs
+language.settings.xml
