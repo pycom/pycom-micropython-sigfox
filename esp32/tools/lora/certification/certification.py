@@ -89,7 +89,7 @@ class Compliance:
                         self.s.send(self.tx_payload)
                     except Exception:
                         pass
-                    time.sleep(1)
+                    time.sleep(1.5)
 
                     if self.lora.compliance_test().link_check:
                         self.tx_payload = bytes([5, self.lora.compliance_test().demod_margin,
