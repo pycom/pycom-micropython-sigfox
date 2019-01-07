@@ -1,4 +1,3 @@
-print('Pybytes library: v0.9.0')
 
 '''
 This is the main.py file for Pybytes
@@ -36,7 +35,10 @@ if 'pybytes_config' not in globals().keys():
 # Load Pybytes if it is not already loaded
 if 'pybytes' not in globals().keys() and pybytes_config.get('pybytes_autostart', True):
     if frozen:
-        from _pybytes import Pybytes
+        try:
+            from _pybytes import Pybytes
+        except:
+            raise ImportError("Unable to load Pybytes. Please check your code...")
 
     pybytes = Pybytes(pybytes_config)
     pybytes.print_cfg_msg()
@@ -45,6 +47,10 @@ if 'pybytes' not in globals().keys() and pybytes_config.get('pybytes_autostart',
 elif not pybytes_config.get('pybytes_autostart', True) and pybytes_config.get('cfg_msg') is not None:
     print(pybytes_config.get('cfg_msg'))
     print("Not starting Pybytes as auto-start is disabled")
+
+del pybytes_config
+del frozen
+del PybytesConfig
 
 if 'pybytes' in globals().keys():
     if pybytes.is_connected():

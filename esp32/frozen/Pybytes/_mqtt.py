@@ -10,6 +10,8 @@ class MQTTClient:
     def __init__(self, client_id, server, mqtt_download_topic, port=0, user=None, password=None, keepalive=0, ssl=False,
                  ssl_params={}, reconnect=True):
         self.__reconnect = reconnect
+        self.__reconnect_count = 0
+        self.__reconnecting = False
         self.__server = server
         self.__mqtt_download_topic = mqtt_download_topic
         self.__mqtt = mqtt_core.MQTTClient(client_id, server, port, user, password, keepalive,
@@ -48,43 +50,53 @@ class MQTTClient:
 
     def check_msg(self):
         while 1:
-            try:
-                return self.__mqtt.check_msg()
-            except OSError as e:
-                print("Error check_msg", e)
+            time_before_retry = 10
+            if self.__reconnecting == False:
+                try:
+                    return self.__mqtt.check_msg()
+                except OSError as e:
+                    print("Error check_msg", e)
 
-            if (not self.__reconnect):
-                raise Exception('Reconnection Disabled.')
-            self.reconnect()
+                if (not self.__reconnect):
+                    raise Exception('Reconnection Disabled.')
+                self.reconnect()
+                break
+            else:
+                time.sleep(time_before_retry)
 
 
     def reconnect(self):
-        mqtt_server_boot_time = 40
-        print('Sleeping for {} seconds before attempting to reconnect, waiting for "{}" to boot up'.format(mqtt_server_boot_time, self.__server))
-        time.sleep(mqtt_server_boot_time)
-        i = 0
-        while 1:
+        if self.__reconnecting:
+            return
+        while True:
+            self.__reconnect_count +=  1
+            self.__reconnecting = True
             try:
-                print("Reconnecting...")
                 self.__mqtt.connect()
                 self.subscribe(self.__mqtt_download_topic)
+                self.__reconnect_count=0
                 print('Reconnected to MQTT server: "{}"'.format(self.__server))
+                self.__reconnecting = False
                 break
             except OSError:
-                i += 1
-                print("Reconnecting failed. Sleeping for " + str(i) + " seconds")
-                time.sleep(i)
+                time_before_retry = 10 + self.__reconnect_count
+                print("Reconnecting failed, will retry in {} seconds".format(time_before_retry))
+                time.sleep(time_before_retry)
 
     def publish(self, topic, msg, retain=False, qos=0):
         while 1:
-            try:
-                return self.__mqtt.publish(topic, msg, retain, qos)
-            except OSError as e:
-                print("Error publish", e)
+            if self.__reconnecting == False:
+                try:
+                    return self.__mqtt.publish(topic, msg, retain, qos)
+                except OSError as e:
+                    print("Error publish", e)
 
-            if (not self.__reconnect):
-                raise Exception('Reconnection Disabled.')
-            self.reconnect()
+                if (not self.__reconnect):
+                    raise Exception('Reconnection Disabled.')
+                self.reconnect()
+                break
+            else:
+                time.sleep(10)
 
     def wait_msg(self):
         while 1:

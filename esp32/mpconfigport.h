@@ -53,6 +53,8 @@
 #define MICROPY_STACK_CHECK                         (1)
 #define MICROPY_HELPER_REPL                         (1)
 #define MICROPY_PY_BUILTINS_HELP                    (1)
+#define MICROPY_PY_BUILTINS_HELP_MODULES            (1)
+#define MICROPY_PY_BUILTINS_HELP_TEXT               pycom_help_text
 #define MICROPY_HELPER_LEXER_UNIX                   (0)
 #define MICROPY_ENABLE_SOURCE_LINE                  (1)
 #define MICROPY_MODULE_WEAK_LINKS                   (1)

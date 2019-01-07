@@ -57,10 +57,10 @@ typedef struct {
 } pycom_pybytes_config_t;
 
 typedef struct {
-    uint8_t hw_type;
     uint8_t sw_version[12];
     uint8_t boot_fs_type;
     uint8_t boot_partition;
+    uint8_t hw_type;
 } pycom_config_t;
 
 typedef struct {
@@ -70,7 +70,7 @@ typedef struct {
 
 typedef struct {
     uint8_t lte_modem_en_on_boot;
-}pycom_lte_config_t;
+} pycom_lte_config_t;
 
 typedef struct {
     pycom_lpwan_config_t lpwan_config;

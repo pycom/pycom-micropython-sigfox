@@ -866,50 +866,30 @@ STATIC mp_obj_t mod_usocket_getaddrinfo(size_t n_args, const mp_obj_t *args) {
     // TODO support additional args beyond the first two
     const char *host = mp_obj_str_get_data(args[0], &hlen);
     mp_int_t port = mp_obj_get_int(args[1]);
-    bool is_inf_down = false;
 
-    // find a nic that can do a name lookup
-    for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
-        mp_obj_t nic = MP_STATE_PORT(mod_network_nic_list).items[i];
-        mod_network_nic_type_t *nic_type = (mod_network_nic_type_t*)mp_obj_get_type(nic);
-        if (nic_type->n_gethostbyname != NULL && nic_type->inf_up != NULL)
-        {
-			if (nic_type->inf_up()) {
+    const struct addrinfo hints = {
+        .ai_family = AF_INET,
+        .ai_socktype = SOCK_STREAM,
+    };
+    struct addrinfo *res;
+    struct in_addr *addr;
 
-				is_inf_down = false;
-				// ipv4 only
-				uint8_t out_ip[MOD_NETWORK_IPV4ADDR_BUF_SIZE];
-				int32_t result = nic_type->n_gethostbyname(host, hlen, out_ip, AF_INET);
-				if (result < 0) {
-					// negate result as it contains the error code which must be positive
-					nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(-result)));
-				}
-				mp_obj_tuple_t *tuple = mp_obj_new_tuple(5, NULL);
-				tuple->items[0] = MP_OBJ_NEW_SMALL_INT(AF_INET);
-				tuple->items[1] = MP_OBJ_NEW_SMALL_INT(SOCK_STREAM);
-				tuple->items[2] = MP_OBJ_NEW_SMALL_INT(0);
-				tuple->items[3] = MP_OBJ_NEW_QSTR(MP_QSTR_);
-				tuple->items[4] = netutils_format_inet_addr(out_ip, port, NETUTILS_BIG);
-				return mp_obj_new_list(1, (mp_obj_t*)&tuple);
-			}
-			else
-			{
-				is_inf_down = true;
-				continue;
-			}
-        }
+    char port_s[6];
+    sprintf(port_s, "%d", port);
+    int32_t result = getaddrinfo(host, port_s, &hints, &res);
+    if(result != 0 || res == NULL) {
+        nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(-result)));
     }
-    if(is_inf_down)
-    {
-    	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Avialable Interfaces are down"));
-    }
-    else
-    {
-    	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
-    }
+    addr = &((struct sockaddr_in *)res->ai_addr)->sin_addr;
+    mp_obj_tuple_t *tuple = mp_obj_new_tuple(5, NULL);
+    tuple->items[0] = MP_OBJ_NEW_SMALL_INT(res->ai_family);
+    tuple->items[1] = MP_OBJ_NEW_SMALL_INT(res->ai_socktype);
+    tuple->items[2] = MP_OBJ_NEW_SMALL_INT(0);
+    tuple->items[3] = MP_OBJ_NEW_QSTR(MP_QSTR_);
+    tuple->items[4] = netutils_format_inet_addr((uint8_t *) &addr->s_addr, port, NETUTILS_BIG);
+    return mp_obj_new_list(1, (mp_obj_t*) &tuple);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_usocket_getaddrinfo_obj, 2, 6, mod_usocket_getaddrinfo);
-
 
 STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),        MP_OBJ_NEW_QSTR(MP_QSTR_usocket) },

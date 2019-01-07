@@ -47,9 +47,15 @@ class PybytesConfig:
                 force_update = True
         if force_update:
             import pycom
-            extra_config = None
+            lora_config = None
+            lte_config = None
+            sigfox_config = None
             pybytes_autostart = True
             wlan_antenna = 0
+            ssl = False
+            dump_ca = False
+            ssl_params = None
+
             try:
                 extra_preferences = pycom.pybytes_extra_preferences().split(':')
                 for extra_preference in extra_preferences:
@@ -65,7 +71,7 @@ class PybytesConfig:
                                 f2 = 'nwk_skey'
                                 f3 = 'app_skey'
                         index = extra_preferences.index(extra_preference)
-                        extra_config = {
+                        lora_config = {
                             extra_preferences_type[0]: {
                                 extra_preferences_type[1]: {
                                     f1: extra_preferences[index + 1],
@@ -78,6 +84,49 @@ class PybytesConfig:
                         pybytes_autostart = False
                     elif extra_preference == "ext_ant":
                         wlan_antenna = 1
+                    elif extra_preference == "ssl":
+                        ssl = True
+                    elif extra_preference == "ca_certs":
+                        index = extra_preferences.index(extra_preference)
+                        if len(extra_preferences[index + 1]) > 0:
+                            ssl_params = { "ssl_params": {"ca_certs": extra_preferences[index + 1] }}
+                        else:
+                            ssl_params = { "ssl_params": {"ca_certs": '/flash/cert/pycom-ca.pem' }}
+                    elif extra_preference == "dump_ca":
+                        dump_ca = True
+                    elif extra_preference == "sigfox":
+                        index = extra_preferences.index(extra_preference)
+                        if len(extra_preferences[index + 1]) > 0 and extra_preferences[index + 1].isdigit():
+                            rcz = int(extra_preferences[index + 1])
+                            sigfox_config = { 'sigfox' :
+                                                { "RCZ" : rcz }
+                                            }
+                    elif extra_preference == "lte":
+                        index = extra_preferences.index(extra_preference)
+                        carrier = 'standard'
+                        cid = 1
+                        band = None
+                        apn = None
+                        reset = False
+                        if len(extra_preferences[index + 2]) > 0 and extra_preferences[index + 2].isdigit():
+                            cid = int(extra_preferences[index + 2])
+                        if len(extra_preferences[index + 3]) > 0 and extra_preferences[index + 3].isdigit():
+                            band = int(extra_preferences[index + 3])
+                        if len(extra_preferences[index + 1]) > 0 and extra_preferences[index + 1].lower() != 'none':
+                            carrier = extra_preferences[index + 1]
+                        if len(extra_preferences[index + 4]) > 0 and extra_preferences[index + 4].lower() != 'none':
+                            apn = extra_preferences[index + 4]
+                        if len(extra_preferences[index + 5]) > 0 and extra_preferences[index + 5].lower() == 'true':
+                            reset = True
+
+                        lte_config = {  'lte':
+                                        {   'carrier': carrier,
+                                            'cid': cid,
+                                            'band': band,
+                                            'apn': apn,
+                                            'reset': reset
+                                        }
+                                     }
             except:
                 pass
 
@@ -96,10 +145,18 @@ class PybytesConfig:
                         'port': 443
                     },
                     'pybytes_autostart': pybytes_autostart,
-                    'wlan_antenna': wlan_antenna
+                    'wlan_antenna': wlan_antenna,
+                    'ssl': ssl,
+                    'dump_ca': dump_ca
                 }
-                if extra_config is not None:
-                    pybytes_config.update(extra_config)
+                if lora_config is not None:
+                    pybytes_config.update(lora_config)
+                if lte_config is not None:
+                    pybytes_config.update(lte_config)
+                if sigfox_config is not None:
+                    pybytes_config.update(sigfox_config)
+                if ssl_params is not None:
+                    pybytes_config.update(ssl_params)
                 if (len(pybytes_config['username']) > 4 and len(pybytes_config['device_id']) >= 36 and len(pybytes_config['server']) > 4):
                     pybytes_config['cfg_msg'] = "Using configuration from config block, written with FW updater"
                     try:

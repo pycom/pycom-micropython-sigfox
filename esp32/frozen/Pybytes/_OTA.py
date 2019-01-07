@@ -43,9 +43,6 @@ class OTA():
         gc.collect()
         return manifest
 
-    def reboot(self):
-        machine.reset()
-
     def update(self):
         try:
             manifest = self.get_update_manifest()

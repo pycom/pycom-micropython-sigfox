@@ -20,10 +20,6 @@ if [ "${BOARD}" != "WIPY" -a "${BOARD}" != "SIPY" -a "${BOARD}" != "LOPY" -a "${
   exit 1
 fi
 
-if [ "${VARIANT}" == "PYBYTES" ] ; then
-	BUILD_DIR="build-variant"
-fi
-
 MPY_PATH=./"${BUILD_DIR}"/"${BOARD}"/"${RELEASE_TYP}"/frozen_mpy
 
 if ! [ -d ${MPY_PATH} ] ; then

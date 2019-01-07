@@ -384,6 +384,9 @@ int pyexec_friendly_repl(void) {
 
 friendly_repl_reset:
     mp_hal_stdout_tx_str("Pycom MicroPython " SW_VERSION_NUMBER " [" MICROPY_GIT_TAG "] on " MICROPY_BUILD_DATE "; " MICROPY_HW_BOARD_NAME " with " MICROPY_HW_MCU_NAME "\r\n");
+#if (VARIANT == PYBYTES)
+    mp_hal_stdout_tx_str("Pybytes Version: " PYBYTES_VERSION_NUMBER "\r\n");
+#endif
     #if MICROPY_PY_BUILTINS_HELP
     mp_hal_stdout_tx_str("Type \"help()\" for more information.\r\n");
     #endif
