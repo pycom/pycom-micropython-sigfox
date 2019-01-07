@@ -124,9 +124,9 @@ bool config_set_heartbeat_on_boot(uint8_t wifi_on_boot);
 
 bool config_get_heartbeat_on_boot(void);
 
-bool config_set_wifi_ssid(const uint8_t *wifi_pwd);
+bool config_set_wifi_ssid(const uint8_t *wifi_ssid);
 
-void config_get_wifi_ssid(uint8_t *wifi_pwd);
+void config_get_wifi_ssid(uint8_t *wifi_ssid);
 
 bool config_set_wifi_pwd(const uint8_t *wifi_pwd);
 

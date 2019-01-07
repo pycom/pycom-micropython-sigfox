@@ -72,6 +72,7 @@
  ******************************************************************************/
 #define MODUSOCKET_MAX_SOCKETS                      15
 #define MODUSOCKET_CONN_TIMEOUT                     -2
+#define MODUSOCKET_MAX_DNS_SERV                      2
 /******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
@@ -125,6 +126,18 @@ void modusocket_socket_add (int32_t sd, bool user) {
     }
 //    sl_LockObjUnlock (&modusocket_LockObj);
 }
+
+void modusocket_check_numdns (mp_obj_t numdns) {
+    //  Check if the index is not numeric
+    if (!MP_OBJ_IS_SMALL_INT(numdns)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_num_type_invalid_arguments));
+    }
+    //  Check if the index is numeric and exceeds MODUSOCKET_MAX_DNS_SERV (index starts at 0!)
+    if (mp_obj_get_int(numdns) >= MODUSOCKET_MAX_DNS_SERV) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Index out of range!\n"));
+    }
+}
+
 
 void modusocket_socket_delete (int32_t sd) {
 //    sl_LockObjLock (&modusocket_LockObj, SL_OS_WAIT_FOREVER);
@@ -891,11 +904,62 @@ STATIC mp_obj_t mod_usocket_getaddrinfo(size_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_usocket_getaddrinfo_obj, 2, 6, mod_usocket_getaddrinfo);
 
+STATIC mp_obj_t mod_usocket_dnsserver(size_t n_args, const mp_obj_t *args)
+{
+    if(n_args == 1)
+    {
+        mp_obj_t tuple[2];
+        ip_addr_t ipaddr;
+        modusocket_check_numdns(args[0]);
+        uint8_t numdns = mp_obj_get_int(args[0]);
+
+        ipaddr = dns_getserver(numdns);
+        if(ipaddr.type == 0)
+        {
+            tuple[0] = mp_obj_new_int(numdns);
+            tuple[1] = netutils_format_ipv4_addr((uint8_t *)&ipaddr.u_addr.ip4.addr, NETUTILS_BIG);
+        }
+        else
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Only IPv4 addresses are currently supported\n"));
+        }
+        return mp_obj_new_tuple(2, tuple);
+    }
+    else if(n_args > 1)
+    {
+        ip_addr_t dnsserver;
+        modusocket_check_numdns(args[0]);
+        uint8_t numdns = mp_obj_get_int(args[0]);
+        //parse dns Server IP
+        netutils_parse_ipv4_addr(args[1], (uint8_t *)&dnsserver.u_addr.ip4.addr, NETUTILS_BIG);
+        //IPv4
+        dnsserver.type = 0;
+
+        //set DNS Server
+        dns_setserver(numdns, &dnsserver);
+
+        return mp_const_none;
+
+    }
+    else
+    {
+        mp_obj_t tuple[MODUSOCKET_MAX_DNS_SERV];
+        for(int i=0; i < MODUSOCKET_MAX_DNS_SERV; i++) {
+            ip_addr_t ipaddr = dns_getserver(i);
+            tuple[i] = netutils_format_ipv4_addr((uint8_t *)&ipaddr.u_addr.ip4.addr, NETUTILS_BIG);
+        }
+        return mp_obj_new_tuple(MODUSOCKET_MAX_DNS_SERV, tuple);
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_usocket_dnsserver_obj, 0, 2, mod_usocket_dnsserver);
+
 STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),        MP_OBJ_NEW_QSTR(MP_QSTR_usocket) },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_socket),          (mp_obj_t)&socket_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_getaddrinfo),     (mp_obj_t)&mod_usocket_getaddrinfo_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_dnsserver),       (mp_obj_t)&mod_usocket_dnsserver_obj },
 
     // class exceptions
     { MP_OBJ_NEW_QSTR(MP_QSTR_error),           (mp_obj_t)&mp_type_OSError },

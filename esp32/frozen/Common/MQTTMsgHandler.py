@@ -79,6 +79,7 @@ class MsgHandler:
                 self._sock = None
 
             self._sock = socket.socket()
+            self._sock.settimeout(30)
             if self._cafile:
                 self._sock = ssl.wrap_socket(
                     self._sock,
@@ -153,7 +154,11 @@ class MsgHandler:
         return msg_sent
 
     def _receive_packet(self):
-        if not self._poll.poll(self._receive_timeout):
+        try:
+            if not self._poll.poll(self._receive_timeout):
+                return False
+        except Exception as err:
+            print("Poll error: {0}".format(err))
             return False
 
         # Read message type
@@ -257,10 +262,11 @@ class MsgHandler:
             self._verify_connection_state()
 
             self._out_packet_mutex.acquire()
-            if self._out_packet_mutex.locked() and len(self._output_queue) > 0:
-                packet=self._output_queue[0]
-                if self._send_packet(packet):
-                    self._output_queue.pop(0)
+            if self._ping_failures == 0:
+                if self._out_packet_mutex.locked() and len(self._output_queue) > 0:
+                    packet=self._output_queue[0]
+                    if self._send_packet(packet):
+                        self._output_queue.pop(0)
             self._out_packet_mutex.release()
 
             self._receive_packet()

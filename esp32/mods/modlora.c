@@ -558,6 +558,8 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
 }
 
 static void McpsIndication (McpsIndication_t *mcpsIndication) {
+    bool bDoEcho = true;
+
     if (mcpsIndication->Status != LORAMAC_EVENT_INFO_STATUS_OK) {
         return;
     }
@@ -590,8 +592,22 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
     lora_obj.snr = mcpsIndication->Snr;
     lora_obj.sfrx = mcpsIndication->RxDatarate;
 
-    if (lora_obj.ComplianceTest.Running == true) {
+    if ((mcpsIndication->Port == 224) && (lora_obj.ComplianceTest.Enabled == true)
+        && (lora_obj.ComplianceTest.Running == true)) {
+       MibRequestConfirm_t mibReq;
+        mibReq.Type = MIB_CHANNELS_DATARATE;
+        LoRaMacMibGetRequestConfirm( &mibReq );
+        if (mcpsIndication->Buffer[0] == 4)     { // echo service
+            if (ValidatePayloadLength(mcpsIndication->BufferSize, mibReq.Param.ChannelsDatarate, 0)) {
         lora_obj.ComplianceTest.DownLinkCounter++;
+            } else {
+                // do not increment the downlink counter and don't send the echo either
+                bDoEcho = false;
+    }
+        } else {
+            // increament the downlink counter anyhow
+            lora_obj.ComplianceTest.DownLinkCounter++;
+        }
     }
 
     // printf("MCPS indication!=%d :%d\n", mcpsIndication->BufferSize, mcpsIndication->Port);
@@ -674,10 +690,15 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                         break;
                     case 4: // (vii)
                         // return the payload
+                        if (bDoEcho) {
                         if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
                             memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
                             rx_data_isr.len = mcpsIndication->BufferSize;
                             xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);
+                        }
+                        } else {
+                            // set the state back to 1
+                            lora_obj.ComplianceTest.State = 1;
                         }
                         // printf("Crypto message received\n");
                         break;

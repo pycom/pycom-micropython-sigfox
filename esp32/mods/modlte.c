@@ -290,7 +290,7 @@ static void TASK_LTE_UPGRADE(void *pvParameters){
 #if defined(FIPY)
     vTaskSuspend(xLoRaTaskHndl);
     vTaskSuspend(xSigfoxTaskHndl);
-//    vTaskSuspend(xMeshTaskHndl);
+    vTaskSuspend(xMeshTaskHndl);
 #endif
     vTaskSuspend(xLTETaskHndl);
 
