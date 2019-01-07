@@ -198,7 +198,11 @@ STATIC void pybspi_transfer (mach_spi_obj_t *self, const char *txdata, char *rxd
         if (txdata) {
             memcpy(&_txdata, &txdata[i], self->wlen);
         } else {
-            _txdata = 0x55555555;
+            if (txchar) {
+                _txdata = *txchar;
+            } else {
+                _txdata = 0x55555555;
+            }
         }
         spi_data_t spidata = {.cmd = 0, .cmdLen = 0, .addr = NULL, .addrLen = 0,
                                 .txData = &_txdata, .txDataLen = self->wlen,
