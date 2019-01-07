@@ -44,6 +44,7 @@ uint32_t sntp_update_period = 3600000; // in ms
 typedef struct _mach_rtc_obj_t {
     mp_obj_base_t base;
     mp_obj_t sntp_server_name;
+    mp_obj_t sntp_backup_server_name;
     bool   synced;
 } mach_rtc_obj_t;
 
@@ -215,6 +216,7 @@ STATIC mp_obj_t mach_rtc_ntp_sync(size_t n_args, const mp_obj_t *pos_args, mp_ma
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_server,           MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_update_period,                      MP_ARG_INT, {.u_int = 3600} },
+        { MP_QSTR_backup_server,                      MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
 
     mach_rtc_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
@@ -234,6 +236,10 @@ STATIC mp_obj_t mach_rtc_ntp_sync(size_t n_args, const mp_obj_t *pos_args, mp_ma
     if (args[0].u_obj != mp_const_none) {
         self->sntp_server_name = args[0].u_obj;
         sntp_setservername(0, (char *) mp_obj_str_get_str(self->sntp_server_name));
+        if (args[2].u_obj != mp_const_none) {
+            self->sntp_backup_server_name = args[2].u_obj;
+            sntp_setservername(1, (char *) mp_obj_str_get_str(self->sntp_backup_server_name));
+        }
         sntp_init();
     }
 

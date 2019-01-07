@@ -1,3 +1,4 @@
+import os
 from machine import Timer
 try:
     from pybytes_protocol import PybytesProtocol
@@ -7,6 +8,10 @@ try:
     from pybytes_connection import PybytesConnection
 except:
     from _pybytes_connection import PybytesConnection
+try:
+    from pybytes_debug import print_debug
+except:
+    from _pybytes_debug import print_debug
 
 __DEFAULT_HOST = "mqtt.pycom.io"
 
@@ -27,6 +32,7 @@ class Pybytes:
 
     def __init__(self, config):
         self.__conf = config
+        self.__check_dump_ca()
         self.__frozen = globals().get('__name__') == '_pybytes'
         self.__pybytes_connection = PybytesConnection(self.__conf, self.__recv_message)
         self.__custom_message_callback = None
@@ -34,7 +40,6 @@ class Pybytes:
         # START code from the old boot.py
         import machine
         import micropython
-        import os
         from binascii import hexlify
 
         wmac = hexlify(machine.unique_id()).decode('ascii')
@@ -42,9 +47,17 @@ class Pybytes:
         try:
             print("Firmware: %s\nPybytes: %s" % (os.uname().release, os.uname().pybytes))
         except:
-            print("Firmware: %s [%s]" % os.uname().release)
+            print("Firmware: %s" % os.uname().release)
         # print(micropython.mem_info())
         # STOP code from the old boot.py
+
+    def __check_dump_ca(self):
+        ssl_params = self.__conf.get('ssl_params')
+        if self.__conf.get('dump_ca', False) and ssl_params is not None:
+            try:
+                stat = os.stat(ssl_params.get('ca_certs', '/flash/cert/pycom-ca.pem'))
+            except Exception as ex:
+                self.dump_ca(ssl_params.get('ca_certs', '/flash/cert/pycom-ca.pem'))
 
     def connect_wifi(self, reconnect=True, check_interval=0.5):
         return self.__pybytes_connection.connect_wifi(reconnect, check_interval)
@@ -239,3 +252,22 @@ class Pybytes:
             print("Pybytes configuration exported to {}".format(file))
         except Exception as e:
             print("Error writing to file {}\nException: {}".format(file, e))
+
+    def enable_ssl(self, ca_file='/flash/cert/pycom-ca.pem', dump_ca = True):
+        self.set_config('dump_ca', dump_ca, permanent=False)
+        if ca_file is not None:
+            self.set_config('ssl_params', {'ca_certs': ca_file}, permanent=False)
+        self.set_config('ssl', True)
+
+    def dump_ca(self, ca_file='/flash/cert/pycom-ca.pem'):
+        try:
+            try:
+                from _pybytes_ca import PYBYTES_CA
+            except:
+                from pybytes_ca import PYBYTES_CA
+            f = open(ca_file, 'w')
+            f.write(PYBYTES_CA)
+            f.close()
+            print("Successfully created {}".format(ca_file))
+        except Exception as e:
+            print("Error creating {}\nException: {}".format(file, e))

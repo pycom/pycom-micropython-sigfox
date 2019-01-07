@@ -169,8 +169,8 @@ class PybytesConnection:
             print("This device does not support LoRa connections: %s" % ex)
             return False
 
-        self.lora.nvram_restore()
         self.lora = LoRa(mode=LoRa.LORAWAN)
+        self.lora.nvram_restore()
 
         dev_addr = self.__conf['lora']['abp']['dev_addr']
         nwk_swkey = self.__conf['lora']['abp']['nwk_skey']
@@ -218,8 +218,8 @@ class PybytesConnection:
         app_key = self.__conf['lora']['otaa']['app_key']
         timeout_ms = self.__conf.get('lora_timeout',lora_timeout) * 1000
 
-        self.lora.nvram_restore()
         self.lora = LoRa(mode=LoRa.LORAWAN)
+        self.lora.nvram_restore()
 
         dev_eui = binascii.unhexlify(dev_eui.replace(' ', ''))
         app_eui = binascii.unhexlify(app_eui.replace(' ', ''))

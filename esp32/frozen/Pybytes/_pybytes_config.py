@@ -52,6 +52,10 @@ class PybytesConfig:
             sigfox_config = None
             pybytes_autostart = True
             wlan_antenna = 0
+            ssl = False
+            dump_ca = False
+            ssl_params = None
+
             try:
                 extra_preferences = pycom.pybytes_extra_preferences().split(':')
                 for extra_preference in extra_preferences:
@@ -80,6 +84,16 @@ class PybytesConfig:
                         pybytes_autostart = False
                     elif extra_preference == "ext_ant":
                         wlan_antenna = 1
+                    elif extra_preference == "ssl":
+                        ssl = True
+                    elif extra_preference == "ca_certs":
+                        index = extra_preferences.index(extra_preference)
+                        if len(extra_preferences[index + 1]) > 0:
+                            ssl_params = { "ssl_params": {"ca_certs": extra_preferences[index + 1] }}
+                        else:
+                            ssl_params = { "ssl_params": {"ca_certs": '/flash/cert/pycom-ca.pem' }}
+                    elif extra_preference == "dump_ca":
+                        dump_ca = True
                     elif extra_preference == "sigfox":
                         index = extra_preferences.index(extra_preference)
                         if len(extra_preferences[index + 1]) > 0 and extra_preferences[index + 1].isdigit():
@@ -131,7 +145,9 @@ class PybytesConfig:
                         'port': 443
                     },
                     'pybytes_autostart': pybytes_autostart,
-                    'wlan_antenna': wlan_antenna
+                    'wlan_antenna': wlan_antenna,
+                    'ssl': ssl,
+                    'dump_ca': dump_ca
                 }
                 if lora_config is not None:
                     pybytes_config.update(lora_config)
@@ -139,6 +155,8 @@ class PybytesConfig:
                     pybytes_config.update(lte_config)
                 if sigfox_config is not None:
                     pybytes_config.update(sigfox_config)
+                if ssl_params is not None:
+                    pybytes_config.update(ssl_params)
                 if (len(pybytes_config['username']) > 4 and len(pybytes_config['device_id']) >= 36 and len(pybytes_config['server']) > 4):
                     pybytes_config['cfg_msg'] = "Using configuration from config block, written with FW updater"
                     try:

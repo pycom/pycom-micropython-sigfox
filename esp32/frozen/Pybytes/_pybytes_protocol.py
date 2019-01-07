@@ -107,8 +107,11 @@ class PybytesProtocol:
         while(True):
             message = None
             with self.__pybytes_connection.lora_lock:
-                self.__pybytes_connection.__lora_socket.setblocking(False)
-                message = self.__pybytes_connection.__lora_socket.recv(256)
+                try:
+                    self.__pybytes_connection.__lora_socket.setblocking(False)
+                    message = self.__pybytes_connection.__lora_socket.recv(256)
+                except Exception as ex:
+                    print_debug(5, "Exception in PybytesProtocol.__check_lora_messages: {}".format(ex))
             if (message):
                 self.__process_recv_message(message)
             time.sleep(0.5)

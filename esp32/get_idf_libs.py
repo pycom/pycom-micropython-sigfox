@@ -75,7 +75,7 @@ def main():
     shutil.rmtree(dsttmpbl)
     shutil.rmtree(dsttmpapp)
     
-    print("IDF Libs copied Sucessfully!")
+    print("IDF Libs copied Successfully!")
         
 
 if __name__ == "__main__":
