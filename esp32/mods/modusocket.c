@@ -72,7 +72,7 @@
  ******************************************************************************/
 #define MODUSOCKET_MAX_SOCKETS                      15
 #define MODUSOCKET_CONN_TIMEOUT                     -2
-#define MODUSOCKET_MAX_DNS_SERV                     2
+#define MODUSOCKET_MAX_DNS_SERV                      2
 /******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
@@ -126,6 +126,18 @@ void modusocket_socket_add (int32_t sd, bool user) {
     }
 //    sl_LockObjUnlock (&modusocket_LockObj);
 }
+
+void modusocket_check_numdns (mp_obj_t numdns) {
+    //  Check if the index is not numeric
+    if (!MP_OBJ_IS_SMALL_INT(numdns)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_num_type_invalid_arguments));
+    }
+    //  Check if the index is numeric and exceeds MODUSOCKET_MAX_DNS_SERV (index starts at 0!)
+    if (mp_obj_get_int(numdns) >= MODUSOCKET_MAX_DNS_SERV) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Index out of range!\n"));
+    }
+}
+
 
 void modusocket_socket_delete (int32_t sd) {
 //    sl_LockObjLock (&modusocket_LockObj, SL_OS_WAIT_FOREVER);
@@ -898,19 +910,8 @@ STATIC mp_obj_t mod_usocket_dnsserver(size_t n_args, const mp_obj_t *args)
     {
         mp_obj_t tuple[2];
         ip_addr_t ipaddr;
-        uint8_t numdns;
-        if(MP_OBJ_IS_INT(args[0]))
-        {
-            numdns = mp_obj_get_int(args[0]);
-            if (numdns > MODUSOCKET_MAX_DNS_SERV)
-            {
-                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "DNS index Greater than MAX DNS Servers Possible to Config!\n"));
-            }
-        }
-        else
-        {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Please Specify Valid DNS index\n"));
-        }
+        modusocket_check_numdns(args[0]);
+        uint8_t numdns = mp_obj_get_int(args[0]);
 
         ipaddr = dns_getserver(numdns);
         if(ipaddr.type == 0)
@@ -927,20 +928,8 @@ STATIC mp_obj_t mod_usocket_dnsserver(size_t n_args, const mp_obj_t *args)
     else if(n_args > 1)
     {
         ip_addr_t dnsserver;
-        uint8_t numdns;
-        //get DNS Server index
-        if(mp_obj_is_integer(args[0]))
-        {
-            numdns = mp_obj_get_int(args[0]);
-            if (numdns > MODUSOCKET_MAX_DNS_SERV)
-            {
-                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "DNS index Greater than MAX DNS Servers Possible to Config!\n"));
-            }
-        }
-        else
-        {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Please Specify Valid DNS index\n"));
-        }
+        modusocket_check_numdns(args[0]);
+        uint8_t numdns = mp_obj_get_int(args[0]);
         //parse dns Server IP
         netutils_parse_ipv4_addr(args[1], (uint8_t *)&dnsserver.u_addr.ip4.addr, NETUTILS_BIG);
         //IPv4
@@ -954,45 +943,16 @@ STATIC mp_obj_t mod_usocket_dnsserver(size_t n_args, const mp_obj_t *args)
     }
     else
     {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+        mp_obj_t tuple[MODUSOCKET_MAX_DNS_SERV];
+        for(int i=0; i < MODUSOCKET_MAX_DNS_SERV; i++) {
+            ip_addr_t ipaddr = dns_getserver(i);
+            tuple[i] = netutils_format_ipv4_addr((uint8_t *)&ipaddr.u_addr.ip4.addr, NETUTILS_BIG);
+        }
+        return mp_obj_new_tuple(MODUSOCKET_MAX_DNS_SERV, tuple);
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_usocket_dnsserver_obj, 1, 2, mod_usocket_dnsserver);
-
-STATIC mp_obj_t mod_usocket_dnsclear(size_t n_args, const mp_obj_t *args)
-{
-    uint8_t numdns;
-    if(n_args > 0)
-    {
-        if(MP_OBJ_IS_INT(args[0]))
-        {
-            numdns = mp_obj_get_int(args[0]);
-            if (numdns > MODUSOCKET_MAX_DNS_SERV)
-            {
-                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "DNS index Greater than MAX DNS Servers Possible to Config!\n"));
-            }
-        }
-        else
-        {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Please Specify Valid DNS index\n"));
-        }
-
-        //clear DNS server specified
-        dns_setserver(numdns, NULL);
-    }
-    else
-    {
-        uint8_t index;
-        // clear all DNS servers
-        for(index = 0; index < MODUSOCKET_MAX_DNS_SERV; index++)
-        {
-            dns_setserver(index, NULL);
-        }
-    }
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_usocket_dnsclear_obj, 0, 1, mod_usocket_dnsclear);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_usocket_dnsserver_obj, 0, 2, mod_usocket_dnsserver);
 
 STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),        MP_OBJ_NEW_QSTR(MP_QSTR_usocket) },
@@ -1000,7 +960,6 @@ STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_socket),          (mp_obj_t)&socket_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_getaddrinfo),     (mp_obj_t)&mod_usocket_getaddrinfo_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_dnsserver),       (mp_obj_t)&mod_usocket_dnsserver_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_dns_clear),       (mp_obj_t)&mod_usocket_dnsclear_obj },
 
     // class exceptions
     { MP_OBJ_NEW_QSTR(MP_QSTR_error),           (mp_obj_t)&mp_type_OSError },
