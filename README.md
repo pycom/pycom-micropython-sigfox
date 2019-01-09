@@ -167,7 +167,7 @@ Hold valid keys for Flash Encryption and Secure Boot; they can be generated rand
 
 The Secure Boot key `secure_boot_signing_key.pem` has to be transformed into `secure-bootloader-key.bin`, to be burnt into efuses. This can be done in 2 ways:
 
-    python $IDF_PATH/components/esptool_py/esptool/espefuse.py extract_public_key --keyfile secure_boot_signing_key.pem signature_verification_key.bin
+    python $IDF_PATH/components/esptool_py/esptool/espsecure.py extract_public_key --keyfile secure_boot_signing_key.pem signature_verification_key.bin
 
     # or, as an artifact of the make build process, on the same directory level as Makefile
     make BOARD=GPY SECURE=on TARGET=boot
