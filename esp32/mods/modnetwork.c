@@ -108,10 +108,15 @@ mp_obj_t mod_network_find_nic(const mod_network_socket_obj_t *s, const uint8_t *
             }
         #endif
         } else if (s->sock_base.u.u_param.domain == AF_INET) {
-            return nic;
+            if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan || mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_lte)
+            {
+                return nic;
+            }
         }
     }
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Network card not available"));
+    //just to silence warning
+    return mp_const_none;
 }
 
 STATIC mp_obj_t network_server_init_helper(mp_obj_t self, const mp_arg_val_t *args) {
