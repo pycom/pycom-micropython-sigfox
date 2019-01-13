@@ -108,7 +108,11 @@ mp_obj_t mod_network_find_nic(const mod_network_socket_obj_t *s, const uint8_t *
             }
         #endif
         } else if (s->sock_base.u.u_param.domain == AF_INET) {
+#if (defined(GPY) || defined (FIPY))
             if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan || mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_lte)
+#else
+            if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan)
+#endif
             {
                 return nic;
             }
