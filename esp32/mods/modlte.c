@@ -695,6 +695,7 @@ STATIC mp_obj_t lte_suspend(mp_obj_t self_in) {
     }
     lte_check_init();
     if (lteppp_get_state() == E_LTE_PPP) {
+        lteppp_suspend();
         //printf("Pausing ppp...\n");
         lte_pause_ppp();
         //printf("Pausing ppp done...\n");
@@ -808,6 +809,7 @@ STATIC mp_obj_t lte_resume(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
 
         if (lte_push_at_command_ext("ATO", LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP)) {
             lteppp_connect();
+            lteppp_resume();
             lteppp_set_state(E_LTE_PPP);
             vTaskDelay(1500);
         } else {

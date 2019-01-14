@@ -103,4 +103,8 @@ extern void connect_lte_uart (void);
 
 extern bool ltepp_is_ppp_conn_up(void);
 
+extern void lteppp_suspend(void);
+
+extern void lteppp_resume(void);
+
 #endif  // _LTEPPP_H_
