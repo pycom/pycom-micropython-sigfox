@@ -1,4 +1,4 @@
-/* 
+/*
 * Copyright (c) 2017, Pycom Limited and its licensors.
 *
 * This software is licensed under the GNU GPL version 3 or any later version,
@@ -90,6 +90,8 @@ uart_dev_t* uart_driver_lte = &UART2;
 uart_config_t lte_uart_config0;
 uart_config_t lte_uart_config1;
 
+static bool lte_legacyattach_flag = false;
+
 extern TaskHandle_t xLTEUpgradeTaskHndl;
 extern TaskHandle_t mpTaskHandle;
 extern TaskHandle_t svTaskHandle;
@@ -109,7 +111,7 @@ extern TaskHandle_t xLTETaskHndl;
 static bool lte_push_at_command_ext (char *cmd_str, uint32_t timeout, const char *expected_rsp);
 static bool lte_push_at_command (char *cmd_str, uint32_t timeout);
 static void lte_pause_ppp(void);
-static bool lte_check_attached(void);
+static bool lte_check_attached(bool legacy);
 static void lte_check_init(void);
 static bool lte_check_sim_present(void);
 STATIC mp_obj_t lte_suspend(mp_obj_t self_in);
@@ -189,7 +191,7 @@ static void lte_pause_ppp(void) {
     }
 }
 
-static bool lte_check_attached(void) {
+static bool lte_check_attached(bool legacy) {
     char *pos;
     bool attached = false;
     bool cgatt = false;
@@ -210,18 +212,24 @@ static bool lte_check_attached(void) {
         if (((pos = strstr(modlte_rsp.data, "+CGATT")) && (strlen(pos) >= 7) && (pos[7] == '1' || pos[8] == '1'))) {
             cgatt = true;
         }
-        lte_push_at_command("AT+CEREG?", LTE_RX_TIMEOUT_MIN_MS);
-        if (!cgatt) {
-            if (((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,")))
-                    && (strlen(pos) >= 31) && (pos[30] == '7' || pos[30] == '9')) {
-                attached = true;
-            }
-        } else {
-            if ((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,"))) {
-                attached = true;
+        if (legacy) {
+            lte_push_at_command("AT+CEREG?", LTE_RX_TIMEOUT_MIN_MS);
+            if (!cgatt) {
+                if (((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,")))
+                        && (strlen(pos) >= 31) && (pos[30] == '7' || pos[30] == '9')) {
+                    attached = true;
+                }
             } else {
-                attached = false;
+                if ((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,"))) {
+                    attached = true;
+                } else {
+                    attached = false;
+                }
             }
+        }
+        else
+        {
+            attached = cgatt;
         }
         lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
         if (lteppp_get_state() == E_LTE_ATTACHING) {
@@ -357,6 +365,9 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
             }
         }
 
+        // set legacy flag
+        lte_legacyattach_flag = args[2].u_bool;
+
         // configure the carrier
         lte_push_at_command("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS);
         if (!strstr(modlte_rsp.data, carrier)) {
@@ -380,7 +391,8 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
 static const mp_arg_t lte_init_args[] = {
     { MP_QSTR_id,                                   MP_ARG_INT, {.u_int = 0} },
     { MP_QSTR_carrier,                              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-    { MP_QSTR_cid,                                  MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 1} }
+    { MP_QSTR_cid,                                  MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 1} },
+    { MP_QSTR_legacyattach,               MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false}}
 };
 
 static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
@@ -517,6 +529,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         { MP_QSTR_log,       MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_false} },
         { MP_QSTR_cid,       MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_obj = mp_const_none} },
         { MP_QSTR_type,      MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_legacyattach,    MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
 
     };
 
@@ -524,7 +537,11 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    lte_check_attached();
+    if (args[5].u_obj != mp_const_none) {
+        lte_legacyattach_flag = mp_obj_is_true(args[5].u_obj);
+    }
+
+    lte_check_attached(lte_legacyattach_flag);
 
     if (lteppp_get_state() < E_LTE_ATTACHING) {
         // configuring scanning in all 6 bands
@@ -690,7 +707,7 @@ STATIC mp_obj_t lte_suspend(mp_obj_t self_in) {
                 break;
             }
         }
-        lte_check_attached();
+        lte_check_attached(lte_legacyattach_flag);
     }
     return mp_const_none;
 }
@@ -700,7 +717,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_suspend_obj, lte_suspend);
 
 STATIC mp_obj_t lte_isattached(mp_obj_t self_in) {
     lte_check_init();
-    if (lte_check_attached()) {
+    if (lte_check_attached(lte_legacyattach_flag)) {
         return mp_const_true;
     }
     return mp_const_false;
@@ -726,7 +743,7 @@ STATIC mp_obj_t lte_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
         args[1].u_bool = lte_check_legacy_version();
     }
 
-    lte_check_attached();
+    lte_check_attached(lte_legacyattach_flag);
     lteppp_set_legacy(args[1].u_bool);
 
     if (args[1].u_bool) {
@@ -778,7 +795,7 @@ STATIC mp_obj_t lte_resume(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     if (lteppp_get_state() == E_LTE_PPP) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
-    lte_check_attached();
+    lte_check_attached(lte_legacyattach_flag);
 
     if (lteppp_get_state() == E_LTE_SUSPENDED || lteppp_get_state() == E_LTE_ATTACHED) {
         if (lteppp_get_state() == E_LTE_ATTACHED && lteppp_get_legacy() == E_LTE_LEGACY) {
@@ -820,7 +837,7 @@ STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
                 break;
             }
         }
-        lte_check_attached();
+        lte_check_attached(lte_legacyattach_flag);
     }
     return mp_const_none;
 }
