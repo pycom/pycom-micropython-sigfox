@@ -156,6 +156,8 @@ void lteppp_init(void) {
     lteppp_enabled = false;
 
     xTaskCreatePinnedToCore(TASK_LTE, "LTE", LTE_TASK_STACK_SIZE / sizeof(StackType_t), NULL, LTE_TASK_PRIORITY, &xLTETaskHndl, 1);
+
+    lteppp_suspended = false;
 }
 
 void lteppp_start (void) {
@@ -191,11 +193,13 @@ void lteppp_connect (void) {
     pppapi_set_default(lteppp_pcb);
     pppapi_set_auth(lteppp_pcb, PPPAUTHTYPE_PAP, "", "");
     pppapi_connect(lteppp_pcb, 0);
+    lteppp_suspended = false;
 }
 
 void lteppp_disconnect(void) {
     pppapi_close(lteppp_pcb, 0);
     vTaskDelay(150);
+    lteppp_suspended = false; // reset flag here as the ppp session is entirely closed
 }
 
 void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp) {
