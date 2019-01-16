@@ -6,7 +6,11 @@ VARIANT="$3"
 PY_PATH="./frozen"
 PY_DIRS="$(ls ${PY_PATH})"
 OS="$(uname)"
-BUILD_DIR="build"
+if [ ${VARIANT} = "PYBYTES" ] ; then
+    BUILD_DIR="build-PYBYTES"
+else
+    BUILD_DIR="build"
+fi
 
 #Script Has to be called from esp32 Dir
 if ! [ $0 = "tools/mpy-build-check.sh" ]; then

@@ -20,7 +20,7 @@ if [ "${BOARD}" != "WIPY" -a "${BOARD}" != "SIPY" -a "${BOARD}" != "LOPY" -a "${
 fi
 
 if [ "${VARIANT}" == "PYBYTES" ] ; then
-    BUILD_DIR="build-variant"
+    BUILD_DIR="build-PYBYTES"
 fi
 
 APP_BIN_PATH=./"${BUILD_DIR}"/"${BOARD}"/"${RELEASE_TYP}"/$(tr '[:upper:]' '[:lower:]'<<<${BOARD})".bin"
