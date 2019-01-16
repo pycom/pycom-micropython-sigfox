@@ -38,7 +38,12 @@
 /******************************************************************************
  DEFINE TYPES
  ******************************************************************************/
-
+typedef enum
+{
+    LTE_PPP_IDLE = 0,
+    LTE_PPP_RESUMED,
+    LTE_PPP_SUSPENDED
+}ltepppconnstatus_t;
 /******************************************************************************
  DECLARE EXPORTED DATA
  ******************************************************************************/
@@ -69,7 +74,7 @@ static bool lteppp_enabled = false;
 
 static bool ltepp_ppp_conn_up = false;
 
-static bool lteppp_suspended = false;
+static ltepppconnstatus_t lteppp_connstatus = LTE_PPP_IDLE;
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -157,7 +162,7 @@ void lteppp_init(void) {
 
     xTaskCreatePinnedToCore(TASK_LTE, "LTE", LTE_TASK_STACK_SIZE / sizeof(StackType_t), NULL, LTE_TASK_PRIORITY, &xLTETaskHndl, 1);
 
-    lteppp_suspended = false;
+    lteppp_connstatus = LTE_PPP_IDLE;
 }
 
 void lteppp_start (void) {
@@ -193,13 +198,13 @@ void lteppp_connect (void) {
     pppapi_set_default(lteppp_pcb);
     pppapi_set_auth(lteppp_pcb, PPPAUTHTYPE_PAP, "", "");
     pppapi_connect(lteppp_pcb, 0);
-    lteppp_suspended = false;
+    lteppp_connstatus = LTE_PPP_IDLE;
 }
 
 void lteppp_disconnect(void) {
     pppapi_close(lteppp_pcb, 0);
     vTaskDelay(150);
-    lteppp_suspended = false; // reset flag here as the ppp session is entirely closed
+    lteppp_connstatus = LTE_PPP_IDLE;
 }
 
 void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp) {
@@ -298,12 +303,12 @@ bool ltepp_is_ppp_conn_up(void)
 
 void lteppp_suspend(void)
 {
-    lteppp_suspended = true;
+    lteppp_connstatus = LTE_PPP_SUSPENDED;
 }
 
 void lteppp_resume(void)
 {
-    lteppp_suspended = false;
+    lteppp_connstatus = LTE_PPP_RESUMED;
 }
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
@@ -477,13 +482,13 @@ static uint32_t lteppp_output_callback(ppp_pcb *pcb, u8_t *data, u32_t len, void
     LWIP_UNUSED_ARG(ctx);
     uint32_t tx_bytes;
     static uint32_t top =0;
-    if (!lteppp_suspended) {
-        if(top > 0)
+    if (lteppp_connstatus == LTE_PPP_IDLE || lteppp_connstatus == LTE_PPP_RESUMED) {
+        if(top > 0 && lteppp_connstatus == LTE_PPP_RESUMED)
         {
             uart_write_bytes(LTE_UART_ID, (const char*)lteppp_queue_buffer, top+1);
             uart_wait_tx_done(LTE_UART_ID, LTE_TRX_WAIT_MS(top+1) / portTICK_RATE_MS);
-            top = 0;
         }
+        top = 0;
         tx_bytes = uart_write_bytes(LTE_UART_ID, (const char*)data, len);
         uart_wait_tx_done(LTE_UART_ID, LTE_TRX_WAIT_MS(len) / portTICK_RATE_MS);
     }
