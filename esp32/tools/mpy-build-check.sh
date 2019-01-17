@@ -24,13 +24,6 @@ if [ "${BOARD}" != "WIPY" -a "${BOARD}" != "SIPY" -a "${BOARD}" != "LOPY" -a "${
   exit 1
 fi
 
-MPY_PATH=./"${BUILD_DIR}"/"${BOARD}"/"${RELEASE_TYP}"/frozen_mpy
-
-if ! [ -d ${MPY_PATH} ] ; then
-  #Build Directory not created yet
-  exit 0
-fi
-
 BUILD_TIMESTAMP=./"${BUILD_DIR}"/${BOARD}"/"${RELEASE_TYP}"/"mpy_last_build_timestamp.TS
 
 #If Last mpy Build Timestamp Not avialable create it
@@ -38,9 +31,19 @@ if [ ! -f  ${BUILD_TIMESTAMP} ] ; then
   $(touch ${BUILD_TIMESTAMP})
 fi
 
-LAST_BUILD=$(<${BUILD_TIMESTAMP})
 #Get Current Timestamp
 CURR_TS="$(date +"%s")"
+
+MPY_PATH=./"${BUILD_DIR}"/"${BOARD}"/"${RELEASE_TYP}"/frozen_mpy
+
+if ! [ -d ${MPY_PATH} ] ; then
+  #Build Directory not created yet
+  #Update Last Build Timestamp
+  $(echo ${CURR_TS} > ${BUILD_TIMESTAMP})
+  exit 0
+fi
+
+LAST_BUILD=$(<${BUILD_TIMESTAMP})
 
 #Check if any of Frozen Directorys has been updated.. Rebuild out Mpy files
 for dir in ${PY_DIRS}
