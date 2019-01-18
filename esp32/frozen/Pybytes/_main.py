@@ -70,7 +70,7 @@ if 'pybytes' in globals().keys():
         # SEND VIRTUAL VALUE
         # You can currently send Strings, Int32, Float32 and Tuples to pybytes using this method.
         # Soon you will be able to send Coordinates, Longs, Unsigned numerical types, and more.
-        # pybytes.send_virtual_pin_value(False, pin, value)
+        # pybytes.send_signal(pin, value)
 
         # SEND SENSOR DATA THROUGH VIRTUAL PINS
         # # If you use a Pysense, some libraries are necessary to access its sensors
@@ -90,9 +90,9 @@ if 'pybytes' in globals().keys():
         # # Define your thread's behaviour, here it's a loop sending sensors data every 10 seconds
         # def send_env_data():
         #     while (pybytes):
-        #         pybytes.send_virtual_pin_value(False, 1, si.humidity())
-        #         pybytes.send_virtual_pin_value(False, 2, si.temperature())
-        #         pybytes.send_virtual_pin_value(False, 3, ltr.light());
+        #         pybytes.send_signal(1, si.humidity())
+        #         pybytes.send_signal(2, si.temperature())
+        #         pybytes.send_signal(3, ltr.light());
         #         sleep(10)
         #
         # # Start your thread

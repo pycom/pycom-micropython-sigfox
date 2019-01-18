@@ -1,25 +1,29 @@
 import os
+try:
+    from pybytes_debug import print_debug
+except:
+    from _pybytes_debug import print_debug
 
 class FCOTA:
     def __init__(self):
         pass
 
     def update_file_content(self, path, newContent):
-        print('Updating file [{}]'.format(path))
+        print_debug(2, 'Updating file [{}]'.format(path))
 
         if '.' in path:
             f = open(path, 'w')
             f.write(newContent)
             f.close()
-            print('File updated')
+            print_debug(2, 'File updated')
             return True
         else:
-            print('Cannot write into a folder')
+            print_debug(2, 'Cannot write into a folder')
 
         return False
 
     def delete_file(self, path):
-        print('FCOTA deleting file [{}]'.format(path))
+        print_debug(2, 'FCOTA deleting file [{}]'.format(path))
         try:
             if ('.' in path):
                 os.remove(path)
@@ -42,10 +46,10 @@ class FCOTA:
                                     os.rmdir(elem)
                         maxDepth -= 1
                 else:
-                    print('targetedFiles empty, no file to delete')
+                    print_debug(2, 'targetedFiles empty, no file to delete')
             return True
         except Exception as ex:
-            print('FCOTA file deletion failed: {}'.format(ex))
+            print_debug(2, 'FCOTA file deletion failed: {}'.format(ex))
             return False
 
     def convert_bytes(self, num):
@@ -55,15 +59,15 @@ class FCOTA:
             num /= 1024.0
 
     def get_file_size(self, path):
-        print('FCOTA getting file infos [{}]'.format(path))
+        print_debug(2, 'FCOTA getting file infos [{}]'.format(path))
         if '.' in path:
             fileInfo = os.stat(path)
-            print (fileInfo)
+            print_debug(2, 'printing fileInfo tupple: ' + str(fileInfo))
             return self.convert_bytes(fileInfo[6])
         return 'Unknown'
 
     def get_file_content(self, path):
-        print('FCOTA reading file [{}]'.format(path))
+        print_debug(2, 'FCOTA reading file [{}]'.format(path))
 
         if '.' in path:
             f = open(path, 'r')
@@ -72,8 +76,8 @@ class FCOTA:
         else:
             content = 'folder: {}'.format(path)
 
-        # print('encoding content')
-        # print(hexlify(content))
+        # print_debug(2, 'encoding content')
+        # print_debug(2, hexlify(content))
         # content = hexlify(content)
 
         return content

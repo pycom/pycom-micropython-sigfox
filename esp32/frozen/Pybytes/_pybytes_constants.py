@@ -5,6 +5,11 @@ class constants:
     __NETWORK_TYPE_SIGFOX = 2
     __NETWORK_TYPE_LTE = 3
 
+    __INTEGER = 0
+    __FLOAT = 1
+    __TUPLE = 2
+    __STRING = 3
+
     __CONNECTION_STATUS_DISCONNECTED = 0
     __CONNECTION_STATUS_CONNECTED_MQTT_WIFI = 1
     __CONNECTION_STATUS_CONNECTED_MQTT_LTE = 2
@@ -53,7 +58,10 @@ class constants:
 
     __WIFI_NETWORK_FORMAT = ">6sBb"  # {"ssid":"%s", "mac_addr":"%s", "channel":"%s", "power":"%s"}
 
-    __USER_SYSTEM_MASK = 0x80
-    __PERSISTENT_MASK = 0x40
+    # __USER_SYSTEM_MASK = 0x80
     __NETWORK_TYPE_MASK = 0x30
     __TYPE_MASK = 0xF
+
+    __SIGFOX_WARNING = """WARNING! Your sigfox radio configuration (RC) is currently using the default (1)
+You can set your RC with command (ex: RC 3): pybytes.set_config('sigfox', {'RCZ': 3})
+See all available zone options for RC at https://support.sigfox.com/docs/radio-configuration """

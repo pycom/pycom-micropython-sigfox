@@ -30,6 +30,7 @@ from machine import Timer
 from machine import reset
 
 import os
+import sys
 import _thread
 import time
 import socket
@@ -69,10 +70,9 @@ class PybytesProtocol:
         self.__mqtt_check_interval = check_interval
         self.__start_recv_mqtt()
 
-    def start_Sigfox(self, pybytes_connection, check_interval):
-        print_debug(5, "This is PybytesProtocol.start_Sigfox(check_interval={})".format(check_interval))
+    def start_Sigfox(self, pybytes_connection):
+        print_debug(5, "This is PybytesProtocol.start_Sigfox()")
         self.__pybytes_library.set_network_type(constants.__NETWORK_TYPE_SIGFOX)
-        self.__mqtt_check_interval = check_interval
         self.__pybytes_connection = pybytes_connection
 
     def __start_recv_mqtt(self):
@@ -95,6 +95,7 @@ class PybytesProtocol:
             except Exception as ex:
                 print("Error receiving MQTT. Ignore this message if you disconnected")
                 print_debug(2, "Exception: {}".format(ex))
+                sys.print_exception(ex)
 
     def __keep_connection(self, alarm):
         print_debug(5, "This is PybytesProtocol.__keep_connection(alarm={})".format(alarm))
@@ -123,17 +124,11 @@ class PybytesProtocol:
 
     def __process_recv_message(self, message):
         print_debug(5, "This is PybytesProtocol.__process_recv_message()")
-        user, permanent, network_type, message_type, body = self.__pybytes_library.unpack_message(message)
+        network_type, message_type, body = self.__pybytes_library.unpack_message(message)
         print_debug(2, 'Recv message of type{}'.format(message_type))
-        print_debug(6, "user={}, permanent={}, network_type={}, message_type={}\nbody={}".format(user, permanent, network_type, message_type, body))
+        print_debug(6, "network_type={}, message_type={}\nbody={}".format(network_type, message_type, body))
 
-        # if (ttl > 0):
-        #     print('time.time() - timestamp = {}'.format(time.time() - timestamp))
-        #     if (time.time() - timestamp > ttl):
-        #         print('message dropped')
-        #         return
-
-        if (user == constants.__USER_SYSTEM):
+        if self.__user_message_callback is not None:
             if (message_type == constants.__TYPE_PING):
                 self.send_ping_message()
 
@@ -291,7 +286,7 @@ class PybytesProtocol:
                         method_return = self.__custom_methods[pin_number](parameters)
 
                         if (method_return is not None and len(method_return) > 0):
-                            self.send_pybytes_custom_method_values(False, pin_number, method_return)
+                            self.send_pybytes_custom_method_values(pin_number, method_return)
 
                     else:
                         print("WARNING: Trying to write to an unregistered Virtual Pin")
@@ -357,8 +352,8 @@ class PybytesProtocol:
         except Exception as ex:
             print(ex)
 
-    def send_user_message(self, persistent, message_type, body):
-        self.__send_message(self.__pybytes_library.pack_user_message(persistent, message_type, body))
+    def send_user_message(self, message_type, body):
+        self.__send_message(self.__pybytes_library.pack_user_message(message_type, body))
 
     def send_ping_message(self):
         self.__send_message(self.__pybytes_library.pack_ping_message())
@@ -391,53 +386,54 @@ class PybytesProtocol:
         print_debug(2, 'Sending FCOTA ping back: {}'.format(activity))
         self.__send_message(self.__pybytes_library.pack_fcota_ping_message(activity), 'fcota')
 
-    def send_pybytes_digital_value(self, persistent, pin_number, pull_mode):
+    def send_pybytes_digital_value(self, pin_number, pull_mode):
         if (not pin_number in self.__pins):
             self.__configure_digital_pin(pin_number, Pin.IN, pull_mode)
         pin = self.__pins[pin_number]
-        self.__send_pybytes_message(persistent, constants.__COMMAND_DIGITAL_WRITE, pin_number, pin())
+        self.__send_pybytes_message(constants.__COMMAND_DIGITAL_WRITE, pin_number, pin())
 
-    def send_pybytes_analog_value(self, persistent, pin_number):
+    def send_pybytes_analog_value(self, pin_number):
         if (not pin_number in self.__pins):
             self.__configure_analog_pin(pin_number)
         pin = self.__pins[pin_number]
 
-        self.__send_pybytes_message(persistent, constants.__COMMAND_ANALOG_WRITE, pin_number, pin())
+        self.__send_pybytes_message(constants.__COMMAND_ANALOG_WRITE, pin_number, pin())
 
-    def send_pybytes_custom_method_values(self, persistent, method_id, parameters):
+
+    def send_pybytes_custom_method_values(self, method_id, parameters):
+        print(method_id, parameters)
         if(isinstance(parameters[0], int)):
-            values = bytearray(struct.pack("i", parameters[0]))
-            self.__send_pybytes_message_variable(persistent, constants.__COMMAND_CUSTOM_METHOD, method_id, values)
+            values = bytearray(struct.pack(">i", parameters[0]))
+            values.append(constants.__INTEGER)
+            self.__send_pybytes_message_variable(constants.__COMMAND_CUSTOM_METHOD, method_id, values)
         elif(isinstance(parameters[0], float)):
-            values = bytearray(struct.pack("f", parameters[0]))
-            self.__send_pybytes_message_variable(persistent, constants.__COMMAND_CUSTOM_METHOD, method_id, values)
-        elif(isinstance(parameters[0], tuple)):
-            stringTuple = ', '.join(map(str, parameters[0]))
+            values = bytearray(struct.pack("<f", parameters[0]))
+            values.append(constants.__FLOAT)
+            self.__send_pybytes_message_variable(constants.__COMMAND_CUSTOM_METHOD, method_id, values)
+        elif(isinstance(parameters[0], tuple) or isinstance(parameters[0], list)):
+            stringTuple = '[' + ', '.join(map(str, parameters[0])) + ']' + str(constants.__STRING)
             values = stringTuple.encode("hex")
-            self.__send_pybytes_message_variable(persistent, constants.__COMMAND_CUSTOM_METHOD, method_id, values)
+            self.__send_pybytes_message_variable(constants.__COMMAND_CUSTOM_METHOD, method_id, values)
         else:
-            values = parameters[0].encode("hex")
-            self.__send_pybytes_message_variable(persistent, constants.__COMMAND_CUSTOM_METHOD, method_id, values)
+            values = (parameters[0] + str(constants.__STRING)).encode("hex")
+            self.__send_pybytes_message_variable(constants.__COMMAND_CUSTOM_METHOD, method_id, values)
+
 
     def add_custom_method(self, method_id, method):
         self.__custom_methods[method_id] = method
 
     def __send_terminal_message(self, data):
-        self.__send_pybytes_message_variable(False, constants.__COMMAND_CUSTOM_METHOD, constants.__TERMINAL_PIN, data)
+        self.__send_pybytes_message_variable(constants.__COMMAND_CUSTOM_METHOD, constants.__TERMINAL_PIN, data)
 
     def enable_terminal(self):
         self.__terminal_enabled = True
         os.dupterm(self.__terminal)
 
-    def __send_pybytes_message(self, persistant, command, pin_number, value):
-        self.__send_message(self.__pybytes_library.pack_pybytes_message(persistant, command,
-                                                                        pin_number, value))
+    def __send_pybytes_message(self, command, pin_number, value):
+        self.__send_message(self.__pybytes_library.pack_pybytes_message(command, pin_number, value))
 
-    def __send_pybytes_message_variable(self, persistant, command, pin_number, parameters):
-        self.__send_message(self.__pybytes_library.pack_pybytes_message_variable(persistant,
-                                                                                 command,
-                                                                                 pin_number,
-                                                                                 parameters))
+    def __send_pybytes_message_variable(self, command, pin_number, parameters):
+        self.__send_message(self.__pybytes_library.pack_pybytes_message_variable(command, pin_number, parameters))
 
     def set_battery_level(self, battery_level):
         self.__battery_level = battery_level
