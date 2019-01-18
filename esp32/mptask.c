@@ -635,19 +635,15 @@ STATIC void mptask_update_lpwan_mac_address (void) {
 #endif
 
 STATIC void mptask_enable_wifi_ap (void) {
-    uint8_t wifi_ssid[32];
-    config_get_wifi_ssid(wifi_ssid);
-    uint8_t wifi_pwd[64];
-    config_get_wifi_pwd(wifi_pwd);
 
     wlan_internal_setup_t setup = {
             WIFI_MODE_AP,
-            (wifi_ssid[0]==0x00) ? DEFAULT_AP_SSID : (const char*) wifi_ssid,
-            (wifi_pwd[0]==0x00) ? DEFAULT_AP_PASSWORD : (const char*) wifi_pwd,
+            DEFAULT_AP_SSID,
+            DEFAULT_AP_PASSWORD,
             (uint32_t)WIFI_AUTH_WPA2_PSK,
             DEFAULT_AP_CHANNEL,
             ANTENNA_TYPE_INTERNAL,
-            (wifi_ssid[0]==0x00) ? true:false,
+            true,
             false,
             WIFI_BW_HT40,
             NULL,
