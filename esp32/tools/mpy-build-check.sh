@@ -6,8 +6,8 @@ VARIANT="$3"
 PY_PATH="./frozen"
 PY_DIRS="$(ls ${PY_PATH})"
 OS="$(uname)"
-if [ ${VARIANT} = "PYBYTES" ] ; then
-    BUILD_DIR="build-PYBYTES"
+if [ ${VARIANT} != "BASE" ] ; then
+    BUILD_DIR="build-${VARIANT}"
 else
     BUILD_DIR="build"
 fi

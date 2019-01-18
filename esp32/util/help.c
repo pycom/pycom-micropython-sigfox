@@ -44,7 +44,9 @@ const char pycom_help_text[] =
     "  CTRL-A        -- on a blank line, enter raw REPL mode\n"
     "  CTRL-B        -- on a blank line, enter normal REPL mode\n"
     "  CTRL-C        -- interrupt a running program\n"
+#if(VARIANT != PYBYTES)
     "  CTRL-D        -- on a blank line, do a soft reset of the board\n"
+#endif
     "  CTRL-E        -- on a blank line, enter paste mode\n"
     "  CTRL-F        -- on a blank line, do a hard reset of the board and enter safe boot\n"
     "\n"
