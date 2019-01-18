@@ -599,11 +599,11 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
         LoRaMacMibGetRequestConfirm( &mibReq );
         if (mcpsIndication->Buffer[0] == 4)     { // echo service
             if (ValidatePayloadLength(mcpsIndication->BufferSize, mibReq.Param.ChannelsDatarate, 0)) {
-        lora_obj.ComplianceTest.DownLinkCounter++;
+                lora_obj.ComplianceTest.DownLinkCounter++;
             } else {
                 // do not increment the downlink counter and don't send the echo either
                 bDoEcho = false;
-    }
+            }
         } else {
             // increament the downlink counter anyhow
             lora_obj.ComplianceTest.DownLinkCounter++;
@@ -691,10 +691,14 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                     case 4: // (vii)
                         // return the payload
                         if (bDoEcho) {
-                        if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
-                            memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
-                            rx_data_isr.len = mcpsIndication->BufferSize;
-                            xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);
+                            if (mcpsIndication->BufferSize <= LORA_PAYLOAD_SIZE_MAX) {
+                                memcpy((void *)rx_data_isr.data, mcpsIndication->Buffer, mcpsIndication->BufferSize);
+                                rx_data_isr.len = mcpsIndication->BufferSize;
+                                xQueueSend(xRxQueue, (void *)&rx_data_isr, 0);
+                            }
+                        } else {
+                            // set the state back to 1
+                            lora_obj.ComplianceTest.State = 1;
                         }
                         } else {
                             // set the state back to 1
@@ -2296,7 +2300,7 @@ STATIC mp_obj_t lora_cli(mp_obj_t self_in, mp_obj_t data) {
             mp_hal_delay_ms(300);
             timeout -= 300;
         }
-        
+
         if (meshCliOutputDone) {
             // micropy needs to output meshCliOutput string in size of meshCliOutputLen
             mp_obj_t res = mp_obj_new_str(meshCliOutput, meshCliOutputLen);

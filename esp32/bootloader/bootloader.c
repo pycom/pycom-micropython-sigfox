@@ -176,7 +176,7 @@ bool load_partition_table(bootloader_state_t* bs)
 #ifdef CONFIG_SECURE_BOOT_ENABLED
     if(esp_secure_boot_enabled()) {
         ESP_LOGI(TAG, "Verifying partition table signature...");
-        err = esp_secure_boot_verify_signature(ESP_PARTITION_TABLE_ADDR, ESP_PARTITION_TABLE_DATA_LEN);
+        err = esp_secure_boot_verify_signature(CONFIG_PARTITION_TABLE_OFFSET, ESP_PARTITION_TABLE_DATA_LEN);
         if (err != ESP_OK) {
             ESP_LOGE(TAG, "Failed to verify partition table signature.");
             return false;

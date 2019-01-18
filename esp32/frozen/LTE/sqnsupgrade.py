@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-VERSION = "1.2.1"
+VERSION = "1.2.2"
 
-# Copyright (c) 2018, Pycom Limited.
+# Copyright (c) 2019, Pycom Limited.
 #
 # This software is licensed under the GNU GPL version 3 or any
 # later version, with permitted additional terms. For more information
@@ -375,7 +375,7 @@ class sqnsupgrade:
             else:
                 if debug: print('Loading {}'.format(file_path))
                 blobsize = os.stat(file_path)[6]
-                if blobsize < 10240:
+                if blobsize < 128:
                     print('Firmware file is too small!')
                     reconnect_uart()
                     sys.exit(1)
@@ -455,6 +455,11 @@ class sqnsupgrade:
                         print('Starting STP [FFF]')
                     else:
                         print('Starting STP ON_THE_FLY')
+
+            self.__serial.read(100)
+            if verbose: print("Sending AT+CFUN=4")
+            resonse = self.__serial.write(b'AT+CFUN=4\r\n')
+            if verbose: print("AT+CFUN=4 returned {}".format(response))
             self.__serial.read(100)
 
             if load_fff:

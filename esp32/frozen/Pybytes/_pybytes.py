@@ -21,7 +21,6 @@ class __PERIODICAL_PIN:
     TYPE_VIRTUAL = 2
 
     def __init__(self, persistent, pin_number, message_type, message, pin_type):
-        self.persistent = persistent
         self.pin_number = pin_number
         self.message_type = message_type
         self.message = message
@@ -72,13 +71,13 @@ class Pybytes:
         return self.__pybytes_connection.connect_lora_otta(timeout, nanogateway)
 
     def connect_sigfox(self):
-        self.__pybytes_connection.connect_sigfox()
+        return self.__pybytes_connection.connect_sigfox()
 
     def disconnect(self):
         self.__pybytes_connection.disconnect()
 
     def send_custom_message(self, persistent, message_type, message):
-        self.__pybytes_connection.__pybytes_protocol.send_user_message(persistent, message_type, message)
+        self.__pybytes_connection.__pybytes_protocol.send_user_message(message_type, message)
 
     def set_custom_message_callback(self, callback):
         self.__custom_message_callback = callback
@@ -93,24 +92,33 @@ class Pybytes:
         self.__pybytes_connection.__pybytes_protocol.send_scan_info_message(None)
 
     def send_digital_pin_value(self, persistent, pin_number, pull_mode):
-        self.__pybytes_connection.__pybytes_protocol.send_pybytes_digital_value(persistent, pin_number, pull_mode)
+        self.__pybytes_connection.__pybytes_protocol.send_pybytes_digital_value(pin_number, pull_mode)
 
     def send_analog_pin_value(self, persistent, pin):
-        self.__pybytes_connection.__pybytes_protocol.send_pybytes_analog_value(persistent, pin)
+        self.__pybytes_connection.__pybytes_protocol.send_pybytes_analog_value(pin)
+
+    def send_signal(self, pin, value):
+        self.__pybytes_connection.__pybytes_protocol.send_pybytes_custom_method_values(pin, [value])
 
     def send_virtual_pin_value(self, persistent, pin, value):
-        self.__pybytes_connection.__pybytes_protocol.send_pybytes_custom_method_values(persistent, pin, [value])
+        print("This function is deprecated and will be removed in the future. Use send_signal(signalNumber, value)")
+        self.send_signal(pin, [value])
+
+    def __periodical_pin_callback(self, periodical_pin):
+         if (periodical_pin.pin_type == __PERIODICAL_PIN.TYPE_DIGITAL):
+            self.send_digital_pin_value(periodical_pin.persistent, periodical_pin.pin_number, None)
+         elif (periodical_pin.pin_type == __PERIODICAL_PIN.TYPE_ANALOG):
+             self.send_analog_pin_value(periodical_pin.persistent, periodical_pin.pin_number)
 
     def register_periodical_digital_pin_publish(self, persistent, pin_number, pull_mode, period):
-        self.send_digital_pin_value(persistent, pin_number, pull_mode)
-        periodical_pin = __PERIODICAL_PIN(persistent, pin_number, None, None,
+        self.send_digital_pin_value(pin_number, pull_mode)
+        periodical_pin = __PERIODICAL_PIN(pin_number, None, None,
                                           __PERIODICAL_PIN.TYPE_DIGITAL)
         Timer.Alarm(self.__periodical_pin_callback, period, arg=periodical_pin, periodic=True)
 
-    def register_periodical_analog_pin_publish(self, persistent, pin_number, period):
-        self.send_analog_pin_value(persistent, pin_number)
-        periodical_pin = __PERIODICAL_PIN(persistent, pin_number, None, None,
-                                          __PERIODICAL_PIN.TYPE_ANALOG)
+    def register_periodical_analog_pin_publish(self, pin_number, period):
+        self.send_analog_pin_value(pin_number)
+        periodical_pin = __PERIODICAL_PIN(pin_number, None, None, __PERIODICAL_PIN.TYPE_ANALOG)
         Timer.Alarm(self.__periodical_pin_callback, period, arg=periodical_pin, periodic=True)
 
     def add_custom_method(self, method_id, method):
@@ -125,12 +133,6 @@ class Pybytes:
 
     def send_custom_location(self, pin, x, y):
         self.__pybytes_connection.__pybytes_protocol.send_custom_location(pin, x, y)
-
-    def __periodical_pin_callback(self, periodical_pin):
-        if (periodical_pin.pin_type == __PERIODICAL_PIN.TYPE_DIGITAL):
-            self.send_digital_pin_value(periodical_pin.persistent, periodical_pin.pin_number, None)
-        elif (periodical_pin.pin_type == __PERIODICAL_PIN.TYPE_ANALOG):
-            self.send_analog_pin_value(periodical_pin.persistent, periodical_pin.pin_number)
 
     def __recv_message(self, message):
         if self.__custom_message_callback is not None:

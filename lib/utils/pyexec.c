@@ -446,8 +446,12 @@ friendly_repl_reset:
         } else if (ret == CHAR_CTRL_D) {
             // exit for a soft reset
             mp_hal_stdout_tx_str("\r\n");
+#if (VARIANT == PYBYTES)
+            continue;
+#else
             vstr_clear(&line);
             return PYEXEC_FORCED_EXIT;
+#endif
         } else if (ret == CHAR_CTRL_E) {
             // paste mode
             mp_hal_stdout_tx_str("\r\npaste mode; Ctrl-C to cancel, Ctrl-D to finish\r\n=== ");

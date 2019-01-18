@@ -22,28 +22,29 @@ class PybytesLibrary:
     def __init__(self):
         self.__network_type = None
 
-    def pack_user_message(self, persistent, message_type, body):
-        return self.__pack_message(False, persistent, message_type, body)
+    def pack_user_message(self, message_type, body):
+        return self.__pack_message(message_type, body)
 
-    def pack_pybytes_message(self, persistant, command, pin, value):
+    def pack_pybytes_message(self, command, pin, value):
         body = struct.pack(constants.__PYBYTES_INTERNAL_PROTOCOL, command, pin, value)
-        return self.__pack_message(True, persistant, constants.__TYPE_PYBYTES, body)
+        return self.__pack_message(constants.__TYPE_PYBYTES, body)
 
-    def pack_pybytes_message_variable(self, persistant, command, pin, parameters):
+    def pack_pybytes_message_variable(self, command, pin, parameters):
         body = struct.pack(constants.__PYBYTES_INTERNAL_PROTOCOL_VARIABLE % len(parameters),
                            command, pin, parameters)
-        return self.__pack_message(True, persistant, constants.__TYPE_PYBYTES, body)
+        return self.__pack_message(constants.__TYPE_PYBYTES, body)
 
     def pack_ping_message(self):
-        return self.__pack_message(True, False, constants.__TYPE_PING, None)
+        return self.__pack_message(constants.__TYPE_PING, None)
 
     def pack_battery_info(self, level):
         body = bytearray()
         body.append(level)
 
-        return self.__pack_message(True, False, constants.__TYPE_BATTERY_INFO, body)
+        return self.__pack_message(constants.__TYPE_BATTERY_INFO, body)
 
     def pack_info_message(self):
+        print_debug(5, "This is pack_info_message()")
         body = bytearray()
         sysname = os.uname().sysname
 
@@ -66,28 +67,28 @@ class PybytesLibrary:
 
         body.append(constants.__PROTOCOL_VERSION)
 
-        return self.__pack_message(True, False, constants.__TYPE_INFO, body)
+        return self.__pack_message(constants.__TYPE_INFO, body)
 
     def pack_ota_message(self, result):
         body = bytearray()
         body.append(result)
-        return self.__pack_message(True, False, constants.__TYPE_OTA, body)
+        return self.__pack_message(constants.__TYPE_OTA, body)
 
     def pack_fcota_hierarchy_message(self, hierarchy):
         stringTuple = 'h'
         stringTuple += ', '.join(map(str, hierarchy))
         body = stringTuple.encode("hex")
-        return self.__pack_message(True, False, constants.__TYPE_FCOTA, body)
+        return self.__pack_message(constants.__TYPE_FCOTA, body)
 
     def pack_fcota_file_message(self, content, path, size):
         stringTuple = 'f{},{},{}'.format(path, size, content)
         body = stringTuple.encode("hex")
-        return self.__pack_message(True, False, constants.__TYPE_FCOTA, body)
+        return self.__pack_message(constants.__TYPE_FCOTA, body)
 
     def pack_fcota_ping_message(self, activity):
         stringTuple = 'p{}'.format(activity)
         body = stringTuple.encode("hex")
-        return self.__pack_message(True, False, constants.__TYPE_FCOTA, body)
+        return self.__pack_message(constants.__TYPE_FCOTA, body)
 
     def pack_network_info_message(self):
         mac_addr = machine.unique_id()
@@ -101,7 +102,7 @@ class PybytesLibrary:
         body.append(int(ipAddress[2]))
         body.append(int(ipAddress[3]))
 
-        return self.__pack_message(True, False, constants.__TYPE_NETWORK_INFO, body)
+        return self.__pack_message(constants.__TYPE_NETWORK_INFO, body)
 
     def pack_scan_info_message(self, lora):
         wlan = WLAN()
@@ -125,21 +126,15 @@ class PybytesLibrary:
         if (lora):
             body.append(lora.stats().rssi)
 
-        return self.__pack_message(True, False, constants.__TYPE_SCAN_INFO, body)
+        return self.__pack_message(constants.__TYPE_SCAN_INFO, body)
 
-    def __pack_message(self, user, persistent, message_type, body):
+    def __pack_message(self, message_type, body):
         if self.__network_type is None:
             print_debug(0, "Error packing message without connection")
             return
         header = 0
 
-        if (user):
-            header = constants.__USER_SYSTEM_MASK
-        if (persistent):
-            header = header | constants.__PERSISTENT_MASK
-
         header = header | ((self.__network_type << 4) & constants.__NETWORK_TYPE_MASK)
-
         header = header | (message_type & constants.__TYPE_MASK)
 
         if body is not None:
@@ -151,15 +146,11 @@ class PybytesLibrary:
         print_debug(5, 'This is PybytesLibrary.unpack_message(message={})'.format(message))
         header, body = struct.unpack(constants.__PYBYTES_PROTOCOL % (len(message) - 1), message)
         print_debug(6,'header: {} body: {}'.format(header, body))
-        user = (header & constants.__USER_SYSTEM_MASK) >> 7
-        print_debug(6, 'user: {}'.format(user))
-        permanent = (header & constants.__PERSISTENT_MASK) >> 6
-        print_debug(6, 'permanent: {}'.format(permanent))
         network_type = (header & constants.__NETWORK_TYPE_MASK) >> 4
         print_debug(6, 'network_type: {}'.format(network_type))
         message_type = header & constants.__TYPE_MASK
         print_debug(6, 'message_type: {}'.format(message_type))
-        return user, permanent, network_type, message_type, body
+        return network_type, message_type, body
 
     def __calc_int_version(self, version):
         known_types = ['a', 'b', 'rc', 'r']
