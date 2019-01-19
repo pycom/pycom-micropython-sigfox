@@ -2296,7 +2296,7 @@ STATIC mp_obj_t lora_cli(mp_obj_t self_in, mp_obj_t data) {
             mp_hal_delay_ms(300);
             timeout -= 300;
         }
-        
+
         if (meshCliOutputDone) {
             // micropy needs to output meshCliOutput string in size of meshCliOutputLen
             mp_obj_t res = mp_obj_new_str(meshCliOutput, meshCliOutputLen);
