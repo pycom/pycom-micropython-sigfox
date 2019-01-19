@@ -700,10 +700,6 @@ static void McpsIndication (McpsIndication_t *mcpsIndication) {
                             // set the state back to 1
                             lora_obj.ComplianceTest.State = 1;
                         }
-                        } else {
-                            // set the state back to 1
-                            lora_obj.ComplianceTest.State = 1;
-                        }
                         // printf("Crypto message received\n");
                         break;
                     case 5: // (viii)
