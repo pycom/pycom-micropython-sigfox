@@ -494,13 +494,17 @@ static uint32_t lteppp_output_callback(ppp_pcb *pcb, u8_t *data, u32_t len, void
     }
     else
     {
-        memcpy(&(lteppp_queue_buffer[top]), (const char*)data, len);
-        top += len;
-        if(top > LTE_UART_BUFFER_SIZE)
+        uint32_t temp = top + len;
+        if(temp > LTE_UART_BUFFER_SIZE)
         {
-            top = LTE_UART_BUFFER_SIZE -1;
+            return 0;
         }
-        return len;
+        else
+        {
+            memcpy(&(lteppp_queue_buffer[top]), (const char*)data, len);
+            top += len;
+            return len;
+        }
     }
     return tx_bytes;
 }
