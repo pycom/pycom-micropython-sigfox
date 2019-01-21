@@ -12,7 +12,7 @@ start_test_rcm()
 start_test_ce()
 ```
 
-####To begin test:
+#### To begin test:
 
 For Sigfox only these functions are used:
 
