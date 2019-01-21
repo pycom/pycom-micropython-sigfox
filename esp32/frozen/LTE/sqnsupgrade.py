@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-VERSION = "1.2.1"
+VERSION = "1.2.2"
 
-# Copyright (c) 2018, Pycom Limited.
+# Copyright (c) 2019, Pycom Limited.
 #
 # This software is licensed under the GNU GPL version 3 or any
 # later version, with permitted additional terms. For more information
@@ -188,37 +188,32 @@ class sqnsupgrade:
         self.__serial.read()
         if not self.__kill_ppp_ok:
             self.__serial.write(b"+++")
-            time.sleep_ms(delay)
+            time.sleep_ms(1150)
             resp = self.__serial.read()
             if debug: print('Response (+++ #1): {}'.format(resp))
             self.__check_resp(resp, True)
         self.__serial.write(b"AT\r\n")
-        time.sleep_ms(delay)
+        time.sleep_ms(250)
         resp = self.__serial.read()
         if debug: print('Response (AT #1) {}'.format(resp))
         self.__check_resp(resp)
         if resp is not None:
             if b'OK' not in resp and not self.__kill_ppp_ok:
                 self.__serial.write(b"AT\r\n")
-                time.sleep_ms(delay)
+                time.sleep_ms(250)
                 resp = self.__serial.read()
                 if debug: print('Response (AT #2) {}'.format(resp))
                 self.__check_resp(resp)
                 if resp is not None and b'OK' in resp:
                     return True
                 self.__serial.write(b"+++")
-                time.sleep_ms(delay)
+                time.sleep_ms(1150)
                 resp = self.__serial.read()
                 if debug: print('Response (+++ #2): {}'.format(resp))
                 self.__check_resp(resp, True)
             if resp is not None and b'OK' in resp:
-                # self.__serial.write(b"ATH\r\n")
-                # time.sleep_ms(delay)
-                # resp = self.__serial.read()
-                # if debug: print('Response (ATH #1) {}'.format(resp))
-                # self.__check_resp(resp)
                 self.__serial.write(b"AT\r\n")
-                time.sleep_ms(delay)
+                time.sleep_ms(250)
                 resp = self.__serial.read()
                 if debug: print('Response (AT #2) {}'.format(resp))
                 self.__check_resp(resp)
@@ -380,7 +375,7 @@ class sqnsupgrade:
             else:
                 if debug: print('Loading {}'.format(file_path))
                 blobsize = os.stat(file_path)[6]
-                if blobsize < 10240:
+                if blobsize < 128:
                     print('Firmware file is too small!')
                     reconnect_uart()
                     sys.exit(1)
@@ -460,6 +455,11 @@ class sqnsupgrade:
                         print('Starting STP [FFF]')
                     else:
                         print('Starting STP ON_THE_FLY')
+
+            self.__serial.read(100)
+            if verbose: print("Sending AT+CFUN=4")
+            resonse = self.__serial.write(b'AT+CFUN=4\r\n')
+            if verbose: print("AT+CFUN=4 returned {}".format(response))
             self.__serial.read(100)
 
             if load_fff:

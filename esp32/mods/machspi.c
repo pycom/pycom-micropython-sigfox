@@ -195,8 +195,8 @@ STATIC void pybspi_transfer (mach_spi_obj_t *self, const char *txdata, char *rxd
     for (int i = 0; i < len; i += self->wlen) {
         uint32_t _rxdata = 0;
         uint32_t _txdata;
-        if (txdata) {
-            memcpy(&_txdata, &txdata[i], self->wlen);
+        if (txchar) {
+            _txdata = *txchar;
         } else {
             _txdata = 0x55555555;
         }
