@@ -428,7 +428,7 @@ static void TASK_LTE (void *pvParameters) {
                 uart_get_buffered_data_len(LTE_UART_ID, &rx_len);
                 if (rx_len > 0) {
                     // try to read up to the size of the buffer
-                    rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, sizeof(lteppp_trx_buffer), 
+                    rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, sizeof(lteppp_trx_buffer),
                                              LTE_TRX_WAIT_MS(sizeof(lteppp_trx_buffer)) / portTICK_RATE_MS);
                     if (rx_len > 0) {
                         pppos_input_tcpip(lteppp_pcb, (uint8_t *)lteppp_trx_buffer, rx_len);
