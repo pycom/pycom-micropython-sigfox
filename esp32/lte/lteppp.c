@@ -428,7 +428,7 @@ static void TASK_LTE (void *pvParameters) {
                 uart_get_buffered_data_len(LTE_UART_ID, &rx_len);
                 if (rx_len > 0) {
                     // try to read up to the size of the buffer
-                    rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, sizeof(lteppp_trx_buffer), 
+                    rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, sizeof(lteppp_trx_buffer),
                                              LTE_TRX_WAIT_MS(sizeof(lteppp_trx_buffer)) / portTICK_RATE_MS);
                     if (rx_len > 0) {
                         pppos_input_tcpip(lteppp_pcb, (uint8_t *)lteppp_trx_buffer, rx_len);
@@ -494,13 +494,17 @@ static uint32_t lteppp_output_callback(ppp_pcb *pcb, u8_t *data, u32_t len, void
     }
     else
     {
-        memcpy(&(lteppp_queue_buffer[top]), (const char*)data, len);
-        top += len;
-        if(top > LTE_UART_BUFFER_SIZE)
+        uint32_t temp = top + len;
+        if(temp > LTE_UART_BUFFER_SIZE)
         {
-            top = LTE_UART_BUFFER_SIZE -1;
+            return 0;
         }
-        return len;
+        else
+        {
+            memcpy(&(lteppp_queue_buffer[top]), (const char*)data, len);
+            top += len;
+            return len;
+        }
     }
     return tx_bytes;
 }
