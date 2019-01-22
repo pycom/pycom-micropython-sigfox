@@ -119,6 +119,7 @@ SECTIONS
   .iram.text :
   {
     _stext = .;
+    _loader_text_start = .;
     _text_start = ABSOLUTE(.);
     *(.literal .text .literal.* .text.* .stub .gnu.warning .gnu.linkonce.literal.* .gnu.linkonce.t.*.literal .gnu.linkonce.t.*)
     *(.iram1 .iram1.*) /* catch stray IRAM_ATTR */
@@ -127,6 +128,7 @@ SECTIONS
     *(.gnu.version)
     _text_end = ABSOLUTE(.);
     _etext = .;
+    _loader_text_end = .;
   } > iram_seg
 
 }

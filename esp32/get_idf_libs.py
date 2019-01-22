@@ -2,7 +2,7 @@ import os
 import sys
 import argparse
 import shutil
-
+import traceback
 
 
 def main():
@@ -62,6 +62,7 @@ def main():
         shutil.copy(src + '/openthread/libopenthread.a', dsttmpapp)
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
+        traceback.print_exc()
         shutil.rmtree(dsttmpbl)
         shutil.rmtree(dsttmpapp)
         return
