@@ -75,6 +75,8 @@ STATIC mp_thread_mutex_t thread_mutex;
 STATIC thread_t thread_entry0;
 STATIC thread_t *thread; // root pointer, handled by mp_thread_gc_others
 
+STATIC bool during_soft_reset = false;
+
 void mp_thread_preinit(void *stack, uint32_t stack_len) {
     mp_thread_set_state(&mp_state_ctx.thread);
     // create first entry in linked list of all threads
@@ -219,7 +221,19 @@ void mp_thread_finish(void) {
 
 void vPortCleanUpTCB (void *tcb) {
     thread_t *prev = NULL;
-    mp_thread_mutex_lock(&thread_mutex, 1);
+
+    /* If we are performing soft-reset the mutex has been already taken by mp_thread_deinit,
+     * do not try to take it here again as it causes deadlock.
+     * As the mutex is already taken, performing actions on the "thread" list is safe. */
+    if(during_soft_reset != true)
+    {
+        if(thread_mutex.handle == NULL)
+        {
+            mp_thread_mutex_init(&thread_mutex);
+        }
+        mp_thread_mutex_lock(&thread_mutex, 1);
+    }
+
     for (thread_t *th = thread; th != NULL; prev = th, th = th->next) {
         // unlink the node from the list
         if (th->tcb == tcb) {
@@ -229,7 +243,7 @@ void vPortCleanUpTCB (void *tcb) {
                 // move the start pointer
                 thread = th->next;
             }
-            // explicitely release all its memory
+            // explicitly release all its memory
             if (esp_get_revision() > 0) {
                 free(th->tcb);
                 free(th->stack);
@@ -242,7 +256,10 @@ void vPortCleanUpTCB (void *tcb) {
             break;
         }
     }
-    mp_thread_mutex_unlock(&thread_mutex);
+
+    if(during_soft_reset != true) {
+        mp_thread_mutex_unlock(&thread_mutex);
+    }
 }
 
 mp_obj_thread_lock_t *mp_thread_new_thread_lock(void) {
@@ -270,6 +287,8 @@ void mp_thread_mutex_unlock(mp_thread_mutex_t *mutex) {
 
 void mp_thread_deinit(void) {
     mp_thread_mutex_lock(&thread_mutex, 1);
+    during_soft_reset = true;
+
     for (thread_t *th = thread; th != NULL; th = th->next) {
         // don't delete the current task
         if (th->id == xTaskGetCurrentTaskHandle()) {
@@ -277,6 +296,8 @@ void mp_thread_deinit(void) {
         }
         vTaskDelete(th->id);
     }
+
+    during_soft_reset = false;
     mp_thread_mutex_unlock(&thread_mutex);
     // allow FreeRTOS to clean-up the threads
     vTaskDelay(2);
