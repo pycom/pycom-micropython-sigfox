@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-VERSION = "1.2.2"
+VERSION = "1.2.3"
 
 # Copyright (c) 2019, Pycom Limited.
 #
@@ -86,7 +86,8 @@ class sqnsupgrade:
         else:
             return b''
 
-    def print_pretty_response(self, rsp, flush=False):
+    def print_pretty_response(self, rsp, flush=False, prefix=None):
+        if prefix is not None: self.special_print(prefix, flush=flush, end=' ')
         lines = rsp.decode('ascii').split('\r\n')
         for line in lines:
             if 'OK' not in line and line!='':
@@ -222,7 +223,7 @@ class sqnsupgrade:
         return False
 
 
-    def detect_modem_state(self, retry=3, initial_delay=1000, debug=False):
+    def detect_modem_state(self, retry=5, initial_delay=1000, hangup=True, debug=False):
         count = 0
         self.__serial = UART(1, baudrate=921600, pins=self.__pins, timeout_chars=1)
         self.__serial.read()
@@ -232,7 +233,7 @@ class sqnsupgrade:
             if debug: print("The current delay is {}".format(delay))
             self.__serial = UART(1, baudrate=921600, pins=self.__pins, timeout_chars=10)
             #if True:
-            if self.__hangup_modem(initial_delay, debug):
+            if hangup and self.__hangup_modem(initial_delay, debug):
                 self.__serial.write(b"AT+SMOD?\r\n")
                 time.sleep_ms(delay)
                 resp = self.__serial.read()
@@ -303,6 +304,14 @@ class sqnsupgrade:
                                 pass
         return None
 
+    def get_imei(self):
+        self.__serial = UART(1, baudrate=921600, pins=self.__pins, timeout_chars=10)
+        self.__serial.write(b"AT+CGSN\r\n")
+        time.sleep(.5)
+        imei_val = self.read_rsp(2000)
+        return self.return_pretty_response(imei_val)
+
+
     def __get_power_warning(self):
         return "<<<=== DO NOT DISCONNECT POWER ===>>>"
 
@@ -317,11 +326,11 @@ class sqnsupgrade:
 
 
 
-    def __run(self, file_path=None, baudrate=921600, port=None, resume=False, load_ffh=False, mirror=False, switch_ffh=False, bootrom=False, rgbled=0x050505, debug=False, pkgdebug=False, atneg=True, max_try=10, direct=True, atneg_only=False, version_only=False, expected_smod=None, verbose=False, load_fff=False):
+    def __run(self, file_path=None, baudrate=921600, port=None, resume=False, load_ffh=False, mirror=False, switch_ffh=False, bootrom=False, rgbled=0x050505, debug=False, pkgdebug=False, atneg=True, max_try=10, direct=True, atneg_only=False, info_only=False, expected_smod=None, verbose=False, load_fff=False):
         self.__wait_msg = False
         mirror = True if atneg_only else mirror
         recover = True if atneg_only else load_ffh
-        resume = True if mirror or recover or atneg_only or version_only else resume
+        resume = True if mirror or recover or atneg_only or info_only else resume
         verbose = True if debug else verbose
         load_fff = False if bootrom and switch_ffh else load_fff
         if debug: print('mirror? {}  recover? {}  resume? {}  direct? {}  atneg_only? {} bootrom? {} load_fff? {}'.format(mirror, recover, resume, direct, atneg_only, bootrom, load_fff))
@@ -340,15 +349,18 @@ class sqnsupgrade:
             external = True
             br = 115200 if recover and not direct else baudrate
             if debug: print('Setting baudrate to {}'.format(br))
-            self.__serial = serial.Serial(port, br, bytesize=serial.EIGHTBITS, timeout=1 if version_only else 0.1)
+            self.__serial = serial.Serial(port, br, bytesize=serial.EIGHTBITS, timeout=1 if info_only else 0.1)
             self.__serial.reset_input_buffer()
             self.__serial.reset_output_buffer()
 
-        if version_only:
+        if info_only:
             self.__serial.read()
             self.__serial.write(b'AT\r\n')
             self.__serial.write(b'AT\r\n')
             self.__serial.read()
+            self.__serial.write(b"AT+CGSN\r\n")
+            time.sleep(.5)
+            shimei = self.read_rsp(2000)
             if verbose:
                 self.__serial.write(b"AT!=\"showver\"\r\n")
             else:
@@ -357,6 +369,8 @@ class sqnsupgrade:
             shver = self.read_rsp(2000)
             if shver is not None:
                 self.print_pretty_response(shver)
+            if shimei is not None:
+                self.print_pretty_response(shimei, prefix='\nIMEI:')
             return True
 
         if debug: print('Initial prepartion complete...')
@@ -391,9 +405,17 @@ class sqnsupgrade:
 
         if not resume:
 
+            # bind to AT channel
+            self.__serial.write(b"AT+BIND=AT\r\n")
+            time.sleep(.5)
+            response = self.read_rsp(size=100)
+            if debug: print("AT+BIND=AT returned {}".format(response))
+
             # disable echo
             self.__serial.write(b"ATE0\r\n")
-            response = self.read_rsp(size=6)
+            time.sleep(.5)
+            response = self.read_rsp(size=100)
+            if debug: print("ATE0 returned {}".format(response))
 
             self.__serial.read(100)
             if debug: print('Entering upgrade mode...')
@@ -673,14 +695,14 @@ class sqnsupgrade:
 
     def wakeup_modem(self, baudrate, port, max_try, delay, debug, msg='Attempting AT wakeup...'):
         if 'FiPy' in self.__sysname or 'GPy' in self.__sysname:
-            self.__serial = UART(1, baudrate=baudrate, pins=self.__pins, timeout_chars=1)
+            self.__serial = UART(1, baudrate=baudrate, pins=self.__pins, timeout_chars=10)
         MAX_TRY = max_try
         count = 0
         if msg is not None:
             print(msg)
         self.__serial.read()
         self.__serial.write(b"AT\r\n")
-        response = self.read_rsp(size=6)
+        response = self.read_rsp(size=25)
         if debug: print('{}'.format(response))
         while (not b'OK' in response) and (count < MAX_TRY):
             count = count + 1
@@ -688,7 +710,7 @@ class sqnsupgrade:
             time.sleep(delay)
             self.__serial.read()
             self.__serial.write(b"AT\r\n")
-            response = self.read_rsp(size=6)
+            response = self.read_rsp(size=25)
             if debug: print('{}'.format(response))
         if 'FiPy' in sysname or 'GPy' in sysname:
             self.__serial = UART(1, baudrate=baudrate, pins=self.__pins, timeout_chars=100)
@@ -699,7 +721,7 @@ class sqnsupgrade:
         count = 0
         print('Attempting AT auto-negotiation...')
         self.__serial.write(b"AT\r\n")
-        response = self.read_rsp(size=6)
+        response = self.read_rsp(size=20)
         if debug: print('{}'.format(response))
         while (not b'OK' in response) and (count < MAX_TRY):
             count = count + 1
@@ -707,7 +729,7 @@ class sqnsupgrade:
             time.sleep(1)
             self.__serial.read()
             self.__serial.write(b"AT\r\n")
-            response = self.read_rsp(size=6)
+            response = self.read_rsp(size=20)
             if debug: print('{}'.format(response))
         if b'OK' in response:
             self.__serial.read()
@@ -757,9 +779,9 @@ class sqnsupgrade:
     def success_message(self, port=None, verbose=False, debug=False):
         print("Your modem has been successfully updated.")
         print("Here is the current firmware version:\n")
-        self.show_version(port=port, verbose=verbose, debug=debug)
+        self.show_info(port=port, verbose=verbose, debug=debug)
 
-    def upgrade(self, ffile, mfile=None, baudrate=921600, retry=False, resume=False, debug=False, pkgdebug=False, verbose=False, load_fff=True):
+    def upgrade(self, ffile, mfile=None, baudrate=921600, retry=False, resume=False, debug=False, pkgdebug=False, verbose=False, load_fff=True, load_only=False):
         success = True
         if not retry and mfile is not None:
             if resume or self.__check_br(br_only=True, verbose=verbose, debug=debug):
@@ -776,6 +798,8 @@ class sqnsupgrade:
                 success = False
                 success = self.__run(file_path=mfile, load_ffh=True, direct=False, baudrate=baudrate, debug=debug, pkgdebug=pkgdebug, verbose=verbose)
                 time.sleep(1)
+                if load_only:
+                    return True
             else:
                 success = True
         else:
@@ -818,8 +842,8 @@ class sqnsupgrade:
         else:
             print('Unable to upgrade bootrom.')
 
-    def show_version(self, port=None, debug=False, verbose=False):
-        self.__run(port=port, debug=debug, version_only=True, verbose=verbose)
+    def show_info(self, port=None, debug=False, verbose=False):
+        self.__run(port=port, debug=debug, info_only=True, verbose=verbose)
 
     def upgrade_ext(self, port, ffile, mfile, resume=False, debug=False, pkgdebug=False, verbose=False, load_fff=True):
         success = True
@@ -847,13 +871,29 @@ def print_welcome():
 
 if 'FiPy' in sysname or 'GPy' in sysname:
 
-    def run(ffile, mfile=None, baudrate=921600, verbose=False, debug=False, load_fff=True):
+    def load(mfile, baudrate=921600, verbose=False, debug=False, hangup=False):
+        print_welcome()
+        sqnup = sqnsupgrade()
+        if sqnup.check_files(mfile, None, debug):
+            state = sqnup.detect_modem_state(debug=debug, hangup=hangup)
+            if debug: print('Modem state: {}'.format(state))
+            if state is None:
+                detect_error()
+            elif state == 0:
+                sqnup.upgrade(ffile=None, mfile=mfile, baudrate=baudrate, retry=True, resume=False, debug=debug, pkgdebug=False, verbose=verbose, load_fff=False, load_only=True)
+            elif state == -1:
+                detect_error()
+            else:
+                print('Modem must be in recovery mode!')
+        reconnect_uart()
+
+    def run(ffile, mfile=None, baudrate=921600, verbose=False, debug=False, load_fff=True, hangup=True):
         print_welcome()
         retry = False
         resume = False
         sqnup = sqnsupgrade()
         if sqnup.check_files(ffile, mfile, debug):
-            state = sqnup.detect_modem_state(debug=debug)
+            state = sqnup.detect_modem_state(debug=debug, hangup=hangup)
             if debug: print('Modem state: {}'.format(state))
             if state is None:
                 detect_error()
@@ -863,19 +903,24 @@ if 'FiPy' in sysname or 'GPy' in sysname:
                     print('Your modem is in recovery mode. Please specify updater.elf file')
                     reconnect_uart()
                     sys.exit(1)
-            elif state == 4:
+            elif state == 4 or state == 1:
                 resume = True
             elif state == -1:
                 detect_error()
             sqnup.upgrade(ffile=ffile, mfile=mfile, baudrate=baudrate, retry=retry, resume=resume, debug=debug, pkgdebug=False, verbose=verbose, load_fff=load_fff)
         reconnect_uart()
 
-    def uart(ffh_mode=False, mfile=None, color=0x050505, verbose=False, debug=False):
+    def uart(ffh_mode=False, mfile=None, color=0x050505, verbose=False, debug=False, hangup=True):
         print_welcome()
         retry = False
         resume = False
+        import pycom
+        state = None
         sqnup = sqnsupgrade()
-        state = sqnup.detect_modem_state(debug=debug)
+        if verbose: print('Trying to detect modem state...')
+        state = sqnup.detect_modem_state(debug=debug, hangup=hangup)
+        if debug: print('Modem state: {}'.format(state))
+
         if state is None:
             detect_error()
         elif state == 0:
@@ -888,22 +933,19 @@ if 'FiPy' in sysname or 'GPy' in sysname:
             detect_error()
         sqnup.upgrade_uart(ffh_mode, mfile, retry, resume, color, debug, False, verbose)
 
-    def info(verbose=False, debug=False, retry=5):
+    def info(verbose=False, debug=False, hangup=True):
         print_welcome()
         import pycom
-        count = 0
+        state = None
         sqnup = sqnsupgrade()
-        while count < retry:
-            count += 1
-            if verbose: print('Trying to detect modem state [{}/{}]'.format(count, retry))
-            state = sqnup.detect_modem_state(debug=debug)
-            if debug: print('State: {} at count: {}'.format(state, count))
-            if state is not None: break
+        if verbose: print('Trying to detect modem state...')
+        state = sqnup.detect_modem_state(debug=debug, hangup=hangup)
+        if debug: print('Modem state: {}'.format(state))
 
         if state is not None:
             if state == 2:
                 print('Your modem is in application mode. Here is the current version:')
-                sqnup.show_version(verbose=verbose, debug=debug)
+                sqnup.show_info(verbose=verbose, debug=debug)
             elif state == 1:
                 print('Your modem is in mTools mode.')
             elif state == 0:
@@ -918,6 +960,15 @@ if 'FiPy' in sysname or 'GPy' in sysname:
             print('Cannot determine modem state!')
         reconnect_uart()
 
+    def imei(verbose=False, debug=False, retry=5, hangup=False):
+        sqnup = sqnsupgrade()
+        state = sqnup.detect_modem_state(debug=debug, hangup=hangup, retry=retry)
+        return sqnup.get_imei() if state == 2 else None
+
+    def state(verbose=False, debug=False, retry=5, hangup=False):
+        sqnup = sqnsupgrade()
+        return sqnup.detect_modem_state(debug=debug, hangup=hangup, retry=retry)
+
 else:
     def run(port, ffile, mfile=None, resume=False, debug=False, verbose=False, load_fff=True):
         print_welcome()
@@ -927,4 +978,4 @@ else:
 
     def version(port, verbose=False, debug=False):
         sqnup = sqnsupgrade()
-        sqnup.show_version(port=port, debug=debug, verbose=verbose)
+        sqnup.show_info(port=port, debug=debug, verbose=verbose)

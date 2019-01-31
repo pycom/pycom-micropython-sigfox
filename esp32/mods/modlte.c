@@ -1069,6 +1069,19 @@ STATIC mp_obj_t lte_upgrade_mode(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_upgrade_mode_obj, lte_upgrade_mode);
 
+STATIC mp_obj_t lte_task_stop(void) {
+
+    if(lte_obj.init)
+    {
+        //nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Modem not disabled"));
+        lte_obj.init = false;
+    }
+    vTaskSuspend(xLTETaskHndl);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_task_stop_obj, lte_task_stop);
+
+
 STATIC mp_obj_t lte_reconnect_uart (void) {
     connect_lte_uart();
     lteppp_disconnect();
@@ -1096,6 +1109,7 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset),               (mp_obj_t)&lte_reset_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_modem_upgrade_mode),  (mp_obj_t)&lte_upgrade_mode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reconnect_uart),      (mp_obj_t)&lte_reconnect_uart_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_task_stop),           (mp_obj_t)&lte_task_stop_obj },
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_IP),                   MP_OBJ_NEW_QSTR(MP_QSTR_IP) },
