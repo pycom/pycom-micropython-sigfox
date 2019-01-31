@@ -34,6 +34,8 @@
 #include "modmachine.h"
 #include "updater.h"
 #include "bootloader.h"
+#include "modwlan.h"
+#include "modbt.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -190,6 +192,9 @@ void mp_hal_delay_ms(uint32_t delay) {
 void mp_hal_reset_safe_and_boot(bool reset) {
     boot_info_t boot_info;
     uint32_t boot_info_offset;
+    /* Disable Wifi/BT to avoid cache region being accessed since it will be disabled when updating Safe boot flag in flash */
+    wlan_deinit(NULL);
+    bt_deinit(NULL);
     if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
         boot_info.safeboot = SAFE_BOOT_SW;
         updater_write_boot_info (&boot_info, boot_info_offset);

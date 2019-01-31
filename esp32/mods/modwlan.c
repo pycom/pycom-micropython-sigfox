@@ -1131,10 +1131,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_init_obj, 1, wlan_init);
 
 mp_obj_t wlan_deinit(mp_obj_t self_in) {
 
-    if (servers_are_enabled())
-    {
-       wlan_servers_stop();
-    }
+    wlan_servers_stop();
 
     if (wlan_obj.started)
     {
