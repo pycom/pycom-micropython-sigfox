@@ -538,6 +538,16 @@ STATIC mp_obj_t socket_makefile(mp_uint_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(socket_makefile_obj, 1, 6, socket_makefile);
 
+STATIC mp_obj_t socket_do_handshake(mp_obj_t self_in) {
+    mod_network_socket_obj_t *self = self_in;
+
+    int _errno;
+    if (self->sock_base.nic_type->n_setupssl(self, &_errno) != 0) {
+        nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(socket_do_handshake_obj, socket_do_handshake);
 STATIC const mp_map_elem_t socket_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___del__),         (mp_obj_t)&socket_close_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_close),           (mp_obj_t)&socket_close_obj },
@@ -555,6 +565,7 @@ STATIC const mp_map_elem_t socket_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_setblocking),     (mp_obj_t)&socket_setblocking_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_makefile),        (mp_obj_t)&socket_makefile_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_fileno),          (mp_obj_t)&socket_fileno_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_do_handshake),    (mp_obj_t)&socket_do_handshake_obj },
 
     // stream methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_read),            (mp_obj_t)&mp_stream_read_obj },

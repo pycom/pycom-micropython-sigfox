@@ -70,6 +70,7 @@ typedef struct _mod_network_nic_type_t {
     int (*n_setsockopt)(struct _mod_network_socket_obj_t *socket, mp_uint_t level, mp_uint_t opt, const void *optval, mp_uint_t optlen, int *_errno);
     int (*n_settimeout)(struct _mod_network_socket_obj_t *socket, mp_int_t timeout_ms, int *_errno);
     int (*n_ioctl)(struct _mod_network_socket_obj_t *socket, mp_uint_t request, mp_uint_t arg, int *_errno);
+    int (*n_setupssl)(struct _mod_network_socket_obj_t *socket, int *_errno);
 
     // Interface status
     bool (*inf_up)(void);
