@@ -355,12 +355,7 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
     if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
         lte_pause_ppp();
     }
-    // disable PSM if enabled by default
-    lte_push_at_command("AT+CPSMS?", LTE_RX_TIMEOUT_MAX_MS);
-    if (!strstr(modlte_rsp.data, "+CPSMS: 0")) {
-        lte_push_at_command("AT+CPSMS=0", LTE_RX_TIMEOUT_MIN_MS);
-    }
-
+   
     lte_push_at_command("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MIN_MS);
     lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
     if (strstr(modlte_rsp.data, "+CFUN: 0")) {
@@ -469,7 +464,7 @@ STATIC mp_obj_t lte_deinit(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             }
             if (!args[0].u_bool || !args[2].u_bool) { /* backward compatibility for dettach method FIXME */
                 vTaskDelay(100);
-                lte_push_at_command("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
+                // lte_push_at_command("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
                 lteppp_deinit();
                 lte_obj.init = false;
                 vTaskDelay(100);

@@ -35,7 +35,8 @@
  DEFINE TYPES
  ******************************************************************************/
 typedef enum {
-    E_LTE_INIT = 0,
+    E_LTE_DEINIT = 0,
+    E_LTE_INIT,
     E_LTE_IDLE,
     E_LTE_ATTACHING,
     E_LTE_ATTACHED,
