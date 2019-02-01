@@ -36,6 +36,9 @@ RELEASE_DIR ?= build/
 
 COPY_IDF_LIB ?= 0
 
+# by default openthread over LoRa is enabled
+OPENTHREAD ?= on
+
 # by default Secure Boot and Flash Encryption are disabled
 SECURE ?= off
 
@@ -97,7 +100,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        $(ESP_IDF_COMP_PATH)/newlib/lib/libm-psram-workaround.a \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
-       -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -lbootloader_support -lmicro-ecc -lopenthread \
+       -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -lbootloader_support -lmicro-ecc \
 			 -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh
 ifeq ($(BOARD), $(filter $(BOARD), FIPY))
     LIBS += sigfox/modsigfox_fipy.a
@@ -109,6 +112,11 @@ endif
 
 ifeq ($(BOARD), $(filter $(BOARD), SIPY))
     LIBS += sigfox/modsigfox_sipy.a
+endif
+
+ifeq ($(OPENTHREAD), on)
+    LIBS += -lopenthread
+    CFLAGS += -DLORA_OPENTHREAD_ENABLED
 endif
 
 B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader -L$(ESP_IDF_COMP_PATH)/esp32/ld \
