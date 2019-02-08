@@ -581,7 +581,7 @@ otError otPlatRadioTransmit(otInstance *aInstance, otRadioFrame *aFrame) {
 int8_t otPlatRadioGetRssi(otInstance *aInstance) {
     (void) aInstance;
     // should be obtained from modlora.c lora_obj.rssi
-    int8_t rssi = sReceiveFrame.mRssi;
+    int8_t rssi = sReceiveFrame.mInfo.mRxInfo.mRssi;
 
     otPlatLog(OT_LOG_LEVEL_DEBG, 0, "otPlatRadioGetRssi %d", rssi);
 
@@ -740,7 +740,7 @@ otError otPlatRadioEnergyScan(otInstance *aInstance, uint8_t aScanChannel,
  */
 int8_t otPlatRadioGetReceiveSensitivity(otInstance *aInstance) {
     // funny, for Lora it's -137dBm, but this number is out of int8_t
-    int8_t sensitivity = INT8_MIN;
+    int8_t sensitivity = INT8_MIN;  // *124dBm for 125Khz, SF=7 //INT8_MIN;
     //otPlatLog(OT_LOG_LEVEL_DEBG, 0, "otPlatRadioGetReceiveSensitivity %d", sensitivity);
     return sensitivity;
 }
@@ -920,20 +920,27 @@ static inline void getExtAddress(const uint8_t *frame, otExtAddress *address) {
 }
 
 void radioReceive(otInstance *aInstance) {
-    ssize_t rval = lora_ot_recv(sReceiveFrame.mPsdu, &(sReceiveFrame.mRssi));
+    bool    isAck;
+    ssize_t rval = lora_ot_recv(sReceiveFrame.mPsdu,
+            &(sReceiveFrame.mInfo.mRxInfo.mRssi));
     if (rval <= 0)
         return;
 
-    sReceiveFrame.mLength = rval;
+    if (otPlatRadioGetPromiscuous(aInstance)) {
+        // Timestamp
+        sReceiveFrame.mInfo.mRxInfo.mMsec = otPlatAlarmMilliGetNow();
+        sReceiveFrame.mInfo.mRxInfo.mUsec = 0; // Don't support microsecond timer for now.
+    }
 
-#if OPENTHREAD_ENABLE_RAW_LINK_API
-    // Timestamp
-    sReceiveFrame.mMsec = otPlatAlarmMilliGetNow();
-    sReceiveFrame.mUsec = 0; // Don't support microsecond timer for now.
+#if OPENTHREAD_CONFIG_ENABLE_TIME_SYNC
+    sReceiveFrame.mIeInfo->mTimestamp = otPlatTimeGet();
 #endif
 
-    if (sAckWait && sTransmitFrame.mChannel == sReceiveFrame.mChannel
-            && isFrameTypeAck(sReceiveFrame.mPsdu)
+    sReceiveFrame.mLength = rval;
+
+    isAck = isFrameTypeAck(sReceiveFrame.mPsdu);
+
+    if (sAckWait && sTransmitFrame.mChannel == sReceiveFrame.mChannel && isAck
             && getDsn(sReceiveFrame.mPsdu) == getDsn(sTransmitFrame.mPsdu)) {
         otPlatLog(OT_LOG_LEVEL_DEBG, 0, "ACK RX");
         sState = OT_RADIO_STATE_RECEIVE;
@@ -941,19 +948,47 @@ void radioReceive(otInstance *aInstance) {
 
         otPlatRadioTxDone(aInstance, &sTransmitFrame, &sReceiveFrame,
                 OT_ERROR_NONE);
-    } else if (sState == OT_RADIO_STATE_RECEIVE
+    } else if ((sState == OT_RADIO_STATE_RECEIVE
             || sState == OT_RADIO_STATE_TRANSMIT)
-            // && (sReceiveFrame.mChannel == sReceiveFrame.mChannel))
-                    {
+            //&& (sReceiveFrame.mChannel == sReceiveMessage.mChannel)
+            && (!isAck || sPromiscuous)) {
         radioProcessFrame(aInstance);
     }
+
 }
 
 void radioSendMessage(otInstance *aInstance) {
+#if OPENTHREAD_CONFIG_HEADER_IE_SUPPORT
+    bool notifyFrameUpdated = false;
+
+#if OPENTHREAD_CONFIG_ENABLE_TIME_SYNC
+    if (sTransmitFrame.mIeInfo->mTimeIeOffset != 0)
+    {
+        uint8_t *timeIe = sTransmitFrame.mPsdu + sTransmitFrame.mIeInfo->mTimeIeOffset;
+        uint64_t time = (uint64_t)((int64_t)otPlatTimeGet() + sTransmitFrame.mIeInfo->mNetworkTimeOffset);
+
+        *timeIe = sTransmitFrame.mIeInfo->mTimeSyncSeq;
+
+        *(++timeIe) = (uint8_t)(time & 0xff);
+        for (uint8_t i = 1; i < sizeof(uint64_t); i++)
+        {
+            time = time >> 8;
+            *(++timeIe) = (uint8_t)(time & 0xff);
+        }
+
+        notifyFrameUpdated = true;
+    }
+#endif // OPENTHREAD_CONFIG_ENABLE_TIME_SYNC
+
+    if (notifyFrameUpdated)
+    {
+        otPlatRadioFrameUpdated(aInstance, &sTransmitFrame);
+    }
+#endif // OPENTHREAD_CONFIG_HEADER_IE_SUPPORT
+
     //sTransmitMessage.mChannel = sTransmitFrame.mChannel;
 
     otPlatRadioTxStarted(aInstance, &sTransmitFrame);
-    //radioTransmit(&sTransmitMessage, &sTransmitFrame);
     radioTransmit(&sTransmitFrame);
 
     sAckWait = isAckRequested(sTransmitFrame.mPsdu);
@@ -975,7 +1010,6 @@ void radioSendMessage(otInstance *aInstance) {
         }
     } else
         otPlatLog(OT_LOG_LEVEL_DEBG, 0, "ACK req");
-
 }
 
 //void radioTransmit(struct RadioMessage *aMessage, const struct otRadioFrame *aFrame)
@@ -997,7 +1031,6 @@ void radioSendAck(void) {
     sAckFrame.mChannel = sReceiveFrame.mChannel;
 
     radioTransmit(&sAckFrame);
-    //radioTransmit(&sAckFrame);
 }
 
 void radioProcessFrame(otInstance *aInstance) {
@@ -1037,8 +1070,8 @@ void radioProcessFrame(otInstance *aInstance) {
         goto exit;
     }
 
-    //sReceiveFrame.mRssi = -20;
-    sReceiveFrame.mLqi = OT_RADIO_LQI_NONE;
+    //sReceiveFrame.mInfo.mRxInfo.mRssi = -20; // RSSI is already set by lora_ot_rcv function
+    sReceiveFrame.mInfo.mRxInfo.mLqi = OT_RADIO_LQI_NONE;
 
     // generate acknowledgment
     if (isAckRequested(sReceiveFrame.mPsdu)) {

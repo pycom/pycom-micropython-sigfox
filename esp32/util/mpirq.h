@@ -16,7 +16,7 @@
  DEFINE CONSTANTS
  ******************************************************************************/
 #define INTERRUPTS_TASK_PRIORITY                   11
-#define INTERRUPTS_TASK_STACK_SIZE                 (6 * 1024)
+#define INTERRUPTS_TASK_STACK_SIZE                 (8 * 1024)
 #define INTERRUPTS_TASK_STACK_LEN                  (INTERRUPTS_TASK_STACK_SIZE / sizeof(StackType_t))
 
 #define INTERRUPTS_QUEUE_LEN                       (32)

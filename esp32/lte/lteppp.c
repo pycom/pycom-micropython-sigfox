@@ -89,11 +89,29 @@ static uint32_t lteppp_output_callback(ppp_pcb *pcb, u8_t *data, u32_t len, void
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
-void connect_lte_uart (void) {
 
-//    bool success = uart_driver_delete(LTE_UART_ID);
-//    vTaskDelay(5 / portTICK_RATE_MS);
-//    printf("Driver deleted? %d\n", success);
+void disconnect_lte_uart (void) {
+    uart_driver_delete(LTE_UART_ID);
+    vTaskDelay(5 / portTICK_RATE_MS);
+
+    //deassign LTE Uart pins
+    pin_deassign(MICROPY_LTE_TX_PIN);
+    gpio_pullup_dis(MICROPY_LTE_TX_PIN->pin_number);
+
+    pin_deassign(MICROPY_LTE_RX_PIN);
+    gpio_pullup_dis(MICROPY_LTE_RX_PIN->pin_number);
+
+    pin_deassign(MICROPY_LTE_CTS_PIN);
+    gpio_pullup_dis(MICROPY_LTE_CTS_PIN->pin_number);
+
+    pin_deassign(MICROPY_LTE_RTS_PIN);
+    gpio_pullup_dis(MICROPY_LTE_RTS_PIN->pin_number);
+
+    vTaskDelay(5 / portTICK_RATE_MS);
+
+}
+
+void connect_lte_uart (void) {
 
     // initialize the UART interface
     uart_config_t config;
@@ -104,21 +122,6 @@ void connect_lte_uart (void) {
     config.flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS;
     config.rx_flow_ctrl_thresh = 64;
     uart_param_config(LTE_UART_ID, &config);
-
-//    //deassign LTE Uart pins
-//    pin_deassign(MICROPY_LTE_TX_PIN);
-//    gpio_pullup_dis(MICROPY_LTE_TX_PIN->pin_number);
-//
-//    pin_deassign(MICROPY_LTE_RX_PIN);
-//    gpio_pullup_dis(MICROPY_LTE_RX_PIN->pin_number);
-//
-//    pin_deassign(MICROPY_LTE_CTS_PIN);
-//    gpio_pullup_dis(MICROPY_LTE_CTS_PIN->pin_number);
-//
-//    pin_deassign(MICROPY_LTE_RTS_PIN);
-//    gpio_pullup_dis(MICROPY_LTE_RTS_PIN->pin_number);
-//
-//    vTaskDelay(5 / portTICK_RATE_MS);
 
     // configure the UART pins
     pin_config(MICROPY_LTE_TX_PIN, -1, U2TXD_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 1);
@@ -222,8 +225,6 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
 
     uint32_t rx_len = 0;
 
-    //printf("Expected Response: %s\n", expected_rsp);
-
     // wait until characters start arriving
     do {
         // being called from the MicroPython interpreter
@@ -237,7 +238,6 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
         if (timeout > 0) {
             timeout--;
         }
-        //printf("Timeout: %d, rx_len: %d\n", timeout, rx_len);
     } while (timeout > 0 && 0 == rx_len);
 
     memset(lteppp_trx_buffer, 0, sizeof(lteppp_trx_buffer));
@@ -447,8 +447,6 @@ static void TASK_LTE (void *pvParameters) {
 static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *expected_rsp) {
     uint32_t cmd_len = strlen(cmd);
     // char tmp_buf[128];
-
-    //printf("at_cmd_exp: %s\n", cmd);
 
     // flush the rx buffer first
     uart_flush(LTE_UART_ID);

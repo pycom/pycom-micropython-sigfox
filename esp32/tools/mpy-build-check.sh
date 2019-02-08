@@ -27,8 +27,12 @@ fi
 BUILD_TIMESTAMP=./"${BUILD_DIR}"/${BOARD}"/"${RELEASE_TYP}"/"mpy_last_build_timestamp.TS
 
 #If Last mpy Build Timestamp Not avialable create it
-if [ ! -f  ${BUILD_TIMESTAMP} ] ; then
-  $(touch ${BUILD_TIMESTAMP})
+if [ ! -d ${BUILD_DIR}/${BOARD}/${RELEASE_TYP} ] ; then
+    exit 0
+else
+    if [ ! -f  ${BUILD_TIMESTAMP} ] ; then
+        $(touch ${BUILD_TIMESTAMP})
+    fi
 fi
 
 #Get Current Timestamp
