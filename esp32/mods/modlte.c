@@ -1029,10 +1029,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_reset_obj, lte_reset);
 STATIC mp_obj_t lte_factory_reset(mp_obj_t self_in) {
     lte_check_init();
     lte_disconnect(self_in);
-    lte_obj.init = false;
     if (!lte_push_at_command("AT&F", LTE_RX_TIMEOUT_MAX_MS * 2)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
+    lte_obj.init = false;
     lte_push_at_command("AT^RESET", LTE_RX_TIMEOUT_MAX_MS);
     lteppp_set_state(E_LTE_IDLE);
     mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
