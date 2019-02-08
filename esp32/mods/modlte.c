@@ -66,6 +66,7 @@
 #include "driver/gpio.h"
 
 #include "pycom_config.h"
+#include "modmachine.h"
 
 /******************************************************************************
  DEFINE TYPES
@@ -91,6 +92,8 @@ uart_config_t lte_uart_config0;
 uart_config_t lte_uart_config1;
 
 static bool lte_legacyattach_flag = true;
+
+static bool lte_ue_is_out_of_coverage = false;
 
 extern TaskHandle_t xLTEUpgradeTaskHndl;
 extern TaskHandle_t mpTaskHandle;
@@ -221,8 +224,16 @@ static bool lte_check_attached(bool legacy) {
                     attached = true;
                 }
             } else {
-                if ((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,"))) {
+                if ((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,4"))) {
                     attached = true;
+                    if((pos = strstr(modlte_rsp.data, "+CEREG: 2,4")))
+                    {
+                        lte_ue_is_out_of_coverage = true;
+                    }
+                    else
+                    {
+                        lte_ue_is_out_of_coverage = false;
+                    }
                 } else {
                     attached = false;
                 }
@@ -337,7 +348,6 @@ static void TASK_LTE_UPGRADE(void *pvParameters){
 // Micro Python bindings; LTE class
 
 static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
-    //printf("This is lte_init_helper()\n");
     char at_cmd[LTE_AT_CMD_SIZE_MAX - 4];
     mod_network_register_nic(&lte_obj);
     connect_lte_uart();
@@ -363,7 +373,7 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
 
     lte_push_at_command("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MIN_MS);
     lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
-    if (strstr(modlte_rsp.data, "+CFUN: 0")) {
+    if (strstr(modlte_rsp.data, "+CFUN: 0") || strstr(modlte_rsp.data, "+CFUN: 4")) {
         const char *carrier = "standard";
         lte_obj.carrier = false;
         if (args[0].u_obj != mp_const_none) {
@@ -384,6 +394,11 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         if (!strstr(modlte_rsp.data, carrier)) {
             sprintf(at_cmd, "AT+SQNCTM=\"%s\"", carrier);
             lte_push_at_command(at_cmd, LTE_RX_TIMEOUT_MAX_MS);
+            lteppp_wait_at_rsp("+S", LTE_RX_TIMEOUT_MAX_MS, true);
+            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
+            if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true)) {
+                lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true);
+            }
             lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
             lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
         }
@@ -473,6 +488,7 @@ STATIC mp_obj_t lte_deinit(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                 lteppp_deinit();
                 lte_obj.init = false;
                 vTaskDelay(100);
+                disconnect_lte_uart();
                 return mp_const_none;
             }
         }
@@ -522,6 +538,7 @@ STATIC mp_obj_t lte_deinit(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     }
     lteppp_deinit();
     mod_network_deregister_nic(&lte_obj);
+    disconnect_lte_uart();
     return mp_const_none;
 
 error:
@@ -555,10 +572,11 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     lte_check_attached(lte_legacyattach_flag);
 
     if (lteppp_get_state() < E_LTE_ATTACHING) {
-        // configuring scanning in all 6 bands
-        lte_push_at_command("AT!=\"clearscanconfig\"", LTE_RX_TIMEOUT_MIN_MS);
-        if (args[0].u_obj == mp_const_none) {
-            if (!lte_obj.carrier) {
+
+        if (!lte_obj.carrier) {
+            // configuring scanning in all bands
+            lte_push_at_command("AT!=\"clearscanconfig\"", LTE_RX_TIMEOUT_MIN_MS);
+            if (args[0].u_obj == mp_const_none) {
                 lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=5\"", LTE_RX_TIMEOUT_MIN_MS);
@@ -566,35 +584,35 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                 lte_push_at_command("AT!=\"RRC::addScanBand band=12\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=13\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=20\"", LTE_RX_TIMEOUT_MIN_MS);
-                lte_push_at_command("AT!=\"RRC::addScanBand band=28\"", LTE_RX_TIMEOUT_MIN_MS);
-            }
-        } else {
-            uint32_t band = mp_obj_get_int(args[0].u_obj);
-            if (band == 3) {
-                lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
-            } else if (band == 4) {
-                lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
-            } else if (band == 5) {
-                lte_push_at_command("AT!=\"RRC::addScanBand band=5\"", LTE_RX_TIMEOUT_MIN_MS);
-            } else if (band == 8) {
-                lte_push_at_command("AT!=\"RRC::addScanBand band=8\"", LTE_RX_TIMEOUT_MIN_MS);
-            } else if (band == 12) {
-                lte_push_at_command("AT!=\"RRC::addScanBand band=12\"", LTE_RX_TIMEOUT_MIN_MS);
-            } else if (band == 13) {
-                lte_push_at_command("AT!=\"RRC::addScanBand band=13\"", LTE_RX_TIMEOUT_MIN_MS);
-            } else if (band == 20) {
-                lte_push_at_command("AT!=\"RRC::addScanBand band=20\"", LTE_RX_TIMEOUT_MIN_MS);
-            } else if (band == 28) {
                 lte_push_at_command("AT!=\"RRC::addScanBand band=28\"", LTE_RX_TIMEOUT_MIN_MS);
             } else {
-                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported", band));
+                uint32_t band = mp_obj_get_int(args[0].u_obj);
+                if (band == 3) {
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
+                } else if (band == 4) {
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
+                } else if (band == 5) {
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=5\"", LTE_RX_TIMEOUT_MIN_MS);
+                } else if (band == 8) {
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=8\"", LTE_RX_TIMEOUT_MIN_MS);
+                } else if (band == 12) {
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=12\"", LTE_RX_TIMEOUT_MIN_MS);
+                } else if (band == 13) {
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=13\"", LTE_RX_TIMEOUT_MIN_MS);
+                } else if (band == 20) {
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=20\"", LTE_RX_TIMEOUT_MIN_MS);
+                } else if (band == 28) {
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=28\"", LTE_RX_TIMEOUT_MIN_MS);
+                } else {
+                    nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported", band));
+                }
             }
         }
         if (args[3].u_obj != mp_const_none) {
             lte_obj.cid = args[3].u_int;
         }
 
-        if (args[1].u_obj != mp_const_none || args[4].u_obj != mp_const_none) {
+        if (!lte_obj.carrier && (args[1].u_obj != mp_const_none || args[4].u_obj != mp_const_none)) {
 
             const char* strapn;
             const char* strtype;
@@ -837,7 +855,7 @@ STATIC mp_obj_t lte_resume(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     } else if (lteppp_get_state() == E_LTE_PPP) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "modem already connected"));
     } else {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "modem not attached"));
+        //nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "modem not attached"));
     }
     return mp_const_none;
 }
@@ -977,6 +995,20 @@ STATIC mp_obj_t lte_iccid(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_iccid_obj, lte_iccid);
 
+STATIC mp_obj_t lte_ue_coverage(mp_obj_t self_in) {
+    lte_check_init();
+    lte_check_inppp();
+    if(lte_check_attached(lte_legacyattach_flag))
+    {
+        return lte_ue_is_out_of_coverage?mp_const_false:mp_const_true;
+    }
+    else
+    {
+        return mp_const_false;
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_ue_coverage_obj, lte_ue_coverage);
+
 STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     lte_check_init();
     lte_disconnect(self_in);
@@ -993,6 +1025,28 @@ STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_reset_obj, lte_reset);
+
+STATIC mp_obj_t lte_factory_reset(mp_obj_t self_in) {
+    lte_check_init();
+    lte_disconnect(self_in);
+    lte_obj.init = false;
+    if (!lte_push_at_command("AT&F", LTE_RX_TIMEOUT_MAX_MS * 2)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+    }
+    lte_push_at_command("AT^RESET", LTE_RX_TIMEOUT_MAX_MS);
+    lteppp_set_state(E_LTE_IDLE);
+    mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
+    if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true)) {
+        lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true);
+    }
+    lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
+    if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+    }
+    machine_reset();
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_factory_reset_obj, lte_factory_reset);
 
 STATIC mp_obj_t lte_upgrade_mode(void) {
 
@@ -1098,8 +1152,10 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_iccid),               (mp_obj_t)&lte_iccid_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_send_at_cmd),         (mp_obj_t)&lte_send_at_cmd_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset),               (mp_obj_t)&lte_reset_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_factory_reset),       (mp_obj_t)&lte_factory_reset_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_modem_upgrade_mode),  (mp_obj_t)&lte_upgrade_mode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reconnect_uart),      (mp_obj_t)&lte_reconnect_uart_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ue_coverage),         (mp_obj_t)&lte_ue_coverage_obj },
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_IP),                   MP_OBJ_NEW_QSTR(MP_QSTR_IP) },
