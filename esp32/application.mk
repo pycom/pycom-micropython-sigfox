@@ -192,11 +192,17 @@ APP_LORA_SRC_C = $(addprefix lora/,\
 	sx1276-board.c \
 	sx1272-board.c \
 	board.c \
+	)
+
+APP_LORA_OPENTHREAD_SRC_C = $(addprefix lora/,\
 	otplat_alarm.c \
 	otplat_radio.c \
 	ot-settings.c \
 	ot-log.c \
-	ot-task.c \
+	)
+
+APP_MOD_MESH_SRC_C = $(addprefix mods/,\
+	modmesh.c \
 	)
 
 APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
@@ -305,6 +311,13 @@ ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_LTE_SRC_C:.c=.o) $(APP_MODS_LTE_SRC_C:.c=.o))
 endif
 
+# add OPENTHREAD code only if flag enabled and for LOPY, LOPY4 and FIPY
+ifeq ($(OPENTHREAD), on)
+ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
+OBJ += $(addprefix $(BUILD)/, $(APP_LORA_OPENTHREAD_SRC_C:.c=.o) $(APP_MOD_MESH_SRC_C:.c=.o))
+endif
+endif # ifeq ($(OPENTHREAD), on)
+
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
@@ -324,6 +337,12 @@ endif
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
 SRC_QSTR += $(APP_MODS_LTE_SRC_C)
 endif
+
+ifeq ($(OPENTHREAD), on)
+ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
+SRC_QSTR += $(APP_MOD_MESH_SRC_C)
+endif
+endif # ifeq ($(OPENTHREAD), on)
 
 # Append any auto-generated sources that are needed by sources listed in
 # SRC_QSTR

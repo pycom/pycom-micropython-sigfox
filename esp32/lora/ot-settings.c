@@ -12,53 +12,27 @@
 #include <stdbool.h>
 #include <string.h>
 #include "pycom_config.h"
+#include "nvs.h"
 
 #include <openthread/instance.h>
 #include <openthread/ip6.h>
 #include <openthread/platform/settings.h>
+#include "ot-log.h"
 
-#define OT_PLAT_SETTINGS_NUM                    7
-#define OT_PLAT_SETTINGS_VAL_MAX_SIZE         128
-#define OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY     1
+#define OT_NVS_NAMESPACE                       "LORA_MESH"
 
-typedef struct settings_row_s {
-    int16_t size;
-    uint8_t value[OT_PLAT_SETTINGS_VAL_MAX_SIZE];
-} settings_row_t;
+#define OT_PLAT_SETTINGS_NUM					255
+#define OT_PLAT_SETTINGS_VAL_MAX_SIZE 		256
+#define OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY 	256
 
-typedef struct settings_s {
-    //uint16_t key; # key is the actual index
-    int8_t rows_num;
-    settings_row_t rows[OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY];
-} settings_t;
+/* number of chars to store key and index as string, 256 key max, 256 index max, so in hex FFFF 4 chars + 1 termination */
+#define KEY_STRING_CHARS_NUM             5
 
-settings_t settings[OT_PLAT_SETTINGS_NUM];
+// returns the string, zzzOutStr, created from integer: 2 hex digits xxxKey and 2 hex digits yyyIndex
+#define KEY_INDEX_TO_STR(xxxKey, yyyIndex, zzzOutStr)              itoa((((xxxKey << 16) | yyyIndex) & 0xFFFF), zzzOutStr, 16)
 
-void printRow(settings_row_t row) {
-    printf("size %d:", row.size);
-    /*
-     for (int i = 0; i < row.size; i++)
-     printf("%d, ", row.value[i]);
-     */
-    printf("\n");
-}
+static nvs_handle ot_nvs_handle;
 
-void printKey(settings_t key) {
-    printf(" num_rows: %d", key.rows_num);
-    for (int i = 0; i < key.rows_num; i++) {
-        printf("\nRow %d, ", i);
-        printRow(key.rows[i]);
-    }
-}
-
-void otPlatSettingsPrint(void) {
-    printf("----------------------------------------------");
-    for (int i = 0; i < OT_PLAT_SETTINGS_NUM; i++) {
-        printf("\nKey %d: ", i);
-        printKey(settings[i]);
-    }
-    printf("----------------------------------------------\n");
-}
 /**
  * Performs any initialization for the settings subsystem, if necessary.
  *
@@ -69,14 +43,12 @@ void otPlatSettingsPrint(void) {
 
 void otPlatSettingsInit(otInstance *aInstance) {
     (void) aInstance;
-    otPlatLog(OT_LOG_LEVEL_DEBG, 0, "otPlatSettingsInit mem %d B\n",
-            OT_PLAT_SETTINGS_NUM * sizeof(settings_t));
-    for (int i = 0; i < OT_PLAT_SETTINGS_NUM; i++) {
-        settings[i].rows_num = -1;
-        for (int j = 0; j < OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY; j++) {
-            settings[i].rows[j].size = -1;
-        }
+
+    if (nvs_open(OT_NVS_NAMESPACE, NVS_READWRITE, &ot_nvs_handle) != ESP_OK) {
+        otPlatLog(OT_LOG_LEVEL_INFO, 0, "otPlatSettingsInit NOT OK");
     }
+    //nvs_erase_all(ot_nvs_handle);
+    otPlatLog(OT_LOG_LEVEL_INFO, 0, "otPlatSettingsInit ok");
     //printSettings();
 }
 
@@ -126,27 +98,44 @@ void otPlatSettingsInit(otInstance *aInstance) {
 otError otPlatSettingsGet(otInstance *aInstance, uint16_t aKey, int aIndex,
         uint8_t *aValue, uint16_t *aValueLength) {
     (void) aInstance;
-    otPlatLog(OT_LOG_LEVEL_DEBG, 0, "otPlatSettingsGet %d %d %d ", aKey, aIndex,
-            *aValueLength);
+    esp_err_t err;
+    size_t length = 0;
+    char key_str[KEY_STRING_CHARS_NUM];
 
-    if (aKey > OT_PLAT_SETTINGS_NUM)
-        return OT_ERROR_NOT_FOUND;
+    // transform key to string
+    KEY_INDEX_TO_STR(aKey, aIndex, key_str);
 
-    if (aIndex > settings[aKey].rows_num
-            || settings[aKey].rows[aIndex].size < 0) {
-        otPlatLog(OT_LOG_LEVEL_DEBG, 0, " not found\n");
+    otPlatLog(OT_LOG_LEVEL_INFO, 0, "otPlatSettingsGet %d 0x%s %d %d %p", aKey, key_str, aIndex,
+            *aValueLength, aValue);
+
+    if (aKey > OT_PLAT_SETTINGS_NUM || aIndex > OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY) {
+        otPlatLog(OT_LOG_LEVEL_INFO, 0, " not found\n");
         return OT_ERROR_NOT_FOUND;
     }
 
-    if (*aValueLength < settings[aKey].rows[aIndex].size) {
-        aValueLength = NULL;
+    if (aValue == NULL && aValueLength == NULL) {
+        // checking if key exists
+        if (ESP_OK != (err = nvs_get_blob(ot_nvs_handle, key_str, aValue, &length))) {
+            otPlatLog(OT_LOG_LEVEL_INFO, 0, " nvs_get_blob 1 0x%X\n", err);
+            return OT_ERROR_NOT_FOUND;
+        }
+    } else if (aValue == NULL && aValueLength != NULL) {
+        // checking the size of a key
+        if (ESP_OK != (err = nvs_get_blob(ot_nvs_handle, key_str, aValue, &length))) {
+            otPlatLog(OT_LOG_LEVEL_INFO, 0, " nvs_get_blob 2 0x%X\n", err);
+            return OT_ERROR_NOT_FOUND;
+        }
+        *aValueLength = length;
     } else {
-        memcpy(aValue, settings[aKey].rows[aIndex].value,
-                settings[aKey].rows[aIndex].size);
-        *aValueLength = settings[aKey].rows[aIndex].size;
+        length = *aValueLength;
+        if (ESP_OK != (err = nvs_get_blob(ot_nvs_handle, key_str, aValue, &length))) {
+            otPlatLog(OT_LOG_LEVEL_INFO, 0, " nvs_get_blob 3 0x%X\n", err);
+            return OT_ERROR_NOT_FOUND;
+        }
+        *aValueLength = length;
     }
-    otPlatLog(OT_LOG_LEVEL_DEBG, 0, " ok\n");
-    //printSettings();
+
+    otPlatLog(OT_LOG_LEVEL_INFO, 0, " ok\n");
     return OT_ERROR_NONE;
 }
 
@@ -179,25 +168,13 @@ otError otPlatSettingsGet(otInstance *aInstance, uint16_t aKey, int aIndex,
 otError otPlatSettingsSet(otInstance *aInstance, uint16_t aKey,
         const uint8_t *aValue, uint16_t aValueLength) {
     (void) aInstance;
-    otPlatLog(OT_LOG_LEVEL_DEBG, 0, "otPlatSettingsSet key %d len %d", aKey,
-            aValueLength);
 
-    if (aKey > OT_PLAT_SETTINGS_NUM)
-        return OT_ERROR_NOT_IMPLEMENTED;
+    otPlatLog(OT_LOG_LEVEL_INFO, 0, "otPlatSettingsSet key %d len %d", aKey, aValueLength);
 
-    if (aValueLength > OT_PLAT_SETTINGS_VAL_MAX_SIZE)
-        return OT_ERROR_NOT_IMPLEMENTED;
+    // delete all records for this aKey
+    otPlatSettingsDelete(aInstance, aKey, -1);
 
-    settings[aKey].rows_num = 1;
-
-    settings[aKey].rows[0].size = aValueLength;
-
-    if (aValueLength > 0) {
-        memcpy(settings[aKey].rows[0].value, aValue, aValueLength);
-    }
-    otPlatLog(OT_LOG_LEVEL_DEBG, 0, " ok\n");
-    //printSettings();
-    return OT_ERROR_NONE;
+    return otPlatSettingsAdd(aInstance, aKey, aValue, aValueLength);
 }
 
 /// Removes a setting from the setting store
@@ -225,22 +202,35 @@ otError otPlatSettingsSet(otInstance *aInstance, uint16_t aKey,
  */
 otError otPlatSettingsDelete(otInstance *aInstance, uint16_t aKey, int aIndex) {
     (void) aInstance;
-    otPlatLog(OT_LOG_LEVEL_DEBG, 0, "otPlatSettingsDelete %d %d\n", aKey,
+    char key_str[KEY_STRING_CHARS_NUM];
+
+    otPlatLog(OT_LOG_LEVEL_INFO, 0, "otPlatSettingsDelete %d %d", aKey,
             aIndex);
 
-    if (aKey > OT_PLAT_SETTINGS_NUM)
+    if (aKey > OT_PLAT_SETTINGS_NUM || aIndex > OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY)
         return OT_ERROR_NOT_FOUND;
 
-    if (aIndex >= OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY)
-        return OT_ERROR_NOT_FOUND;
+    if (aIndex != -1) {
+        // transform key to string
+        KEY_INDEX_TO_STR(aKey, aIndex, key_str);
 
-    if (aIndex == -1) {
-        for (int i = 0; i < settings[aKey].rows_num; i++)
-            settings[aKey].rows[i].size = -1;
-
-        settings[aKey].rows_num = -1;
+        if (ESP_OK == nvs_erase_key(ot_nvs_handle, key_str)) {
+            nvs_commit(ot_nvs_handle);
+        }
+    } else {
+        // delete all indexes for this key
+        for (int index = 0; index < OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY; index++) {
+            KEY_INDEX_TO_STR(aKey, index, key_str);
+            // try to erase the key for this index
+            if (ESP_ERR_NVS_NOT_FOUND == nvs_erase_key(ot_nvs_handle, key_str)) {
+                // key is not found, so we're done for this aKey
+                break;
+            }
+        }
+        nvs_commit(ot_nvs_handle);
     }
-    otPlatLog(OT_LOG_LEVEL_DEBG, 0, "otPlatSettingsDelete ok\n");
+
+    otPlatLog(OT_LOG_LEVEL_INFO, 0, "otPlatSettingsDelete ok");
     return OT_ERROR_NONE;
 
 }
@@ -278,10 +268,40 @@ otError otPlatSettingsDelete(otInstance *aInstance, uint16_t aKey, int aIndex) {
  */
 otError otPlatSettingsAdd(otInstance *aInstance, uint16_t aKey,
         const uint8_t *aValue, uint16_t aValueLength) {
+    int index = 0;
+    size_t length = 0;
+    esp_err_t err = ESP_OK;
+    char key_str[KEY_STRING_CHARS_NUM];
+
     (void) aInstance;
-    otPlatLog(OT_LOG_LEVEL_DEBG, 0, "!!!!! otPlatSettingsAdd %d %d %d\n", aKey,
-            *aValue, aValueLength);
-    return OT_ERROR_NOT_IMPLEMENTED;
+
+    otPlatLog(OT_LOG_LEVEL_INFO, 0, "otPlatSettingsAdd %d 0x%p %d", aKey,
+            aValue, aValueLength);
+
+    if (aKey > OT_PLAT_SETTINGS_NUM)
+        return OT_ERROR_NOT_FOUND;
+
+    // search for first index available for aKey
+    for (index = 0; index < OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY; index++) {
+        KEY_INDEX_TO_STR(aKey, index, key_str);
+        // checking if key exists
+        if (ESP_OK != (err = nvs_get_blob(ot_nvs_handle, key_str, NULL, &length))) {
+            otPlatLog(OT_LOG_LEVEL_INFO, 0, "found free index %d\n", index);
+            // key doesn't exist
+            break;
+        }
+    }
+
+    if (ESP_OK != err) {
+        // try to write
+        if (ESP_OK != (err = nvs_set_blob(ot_nvs_handle, key_str, aValue, aValueLength))) {
+            otPlatLog(OT_LOG_LEVEL_INFO, 0, " nvs_set_blob 0x%X\n", err);
+            return OT_ERROR_NOT_IMPLEMENTED;
+        }
+        nvs_commit(ot_nvs_handle);
+        otPlatLog(OT_LOG_LEVEL_INFO, 0, "stored as index %d\n", index);
+    }
+    return OT_ERROR_NONE;
 }
 
 /// Removes all settings from the setting store
@@ -292,12 +312,9 @@ otError otPlatSettingsAdd(otInstance *aInstance, uint16_t aKey,
  *             The OpenThread instance structure.
  */
 void otPlatSettingsWipe(otInstance *aInstance) {
-    for (int i = 0; i < OT_PLAT_SETTINGS_NUM; i++) {
-        settings[i].rows_num = -1;
-        for (int j = 0; j < OT_PLAT_SETTINGS_MAX_INDEX_PER_KEY; j++) {
-            settings[i].rows[j].size = -1;
-        }
-    }
+    nvs_erase_all(ot_nvs_handle);
+    nvs_commit(ot_nvs_handle);
+    otPlatLog(OT_LOG_LEVEL_INFO, 0, "!!!!! otPlatSettingsWipe");
 }
 
 /**
