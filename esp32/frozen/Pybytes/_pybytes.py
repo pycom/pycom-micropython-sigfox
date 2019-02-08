@@ -102,7 +102,7 @@ class Pybytes:
 
     def send_virtual_pin_value(self, persistent, pin, value):
         print("This function is deprecated and will be removed in the future. Use send_signal(signalNumber, value)")
-        self.send_signal(pin, [value])
+        self.send_signal(pin, value)
 
     def __periodical_pin_callback(self, periodical_pin):
          if (periodical_pin.pin_type == __PERIODICAL_PIN.TYPE_DIGITAL):
