@@ -222,7 +222,10 @@ class MsgHandler:
         try:
             if self._sock:
                 written = self._sock.write(packet)
-                print('Packet sent. (Length: %d)' % written)
+                if(written == None):
+                    written = -1
+                else:
+                    print('Packet sent. (Length: %d)' % written)
         except socket.error as err:
             print('Socket send error {0}'.format(err))
             return False

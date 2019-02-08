@@ -554,12 +554,7 @@ $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
-ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY LOPY4))
-$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
-	$(ECHO) "LINK $@"
-	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
-	$(Q) $(SIZE) $@
-else
+
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_BOOT_VERIFICATION_KEY)
 #	$(ECHO) "COPY IDF LIBRARIES $@"
 #	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
@@ -621,7 +616,6 @@ endif # feq ($(SECURE), on)
 $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 	$(ECHO) "CPP $@"
 	$(Q) $(CC) -I. -C -P -x c -E $< -o $@
-endif
 
 flash: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "Entering flash mode"

@@ -56,7 +56,7 @@ static volatile bool sleep_sockets = false;
  ******************************************************************************/
 char servers_user[SERVERS_USER_PASS_LEN_MAX + 1];
 char servers_pass[SERVERS_USER_PASS_LEN_MAX + 1];
-
+extern TaskHandle_t svTaskHandle;
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -136,10 +136,23 @@ void servers_start (void) {
 }
 
 void servers_stop (void) {
-    servers_data.do_disable = true;
-    do {
-        mp_hal_delay_ms(SERVERS_CYCLE_TIME_MS);
-    } while (servers_are_enabled());
+    //get task handle to check if this is called from servers task
+    TaskHandle_t cuur_task = xTaskGetCurrentTaskHandle();
+    if(cuur_task == svTaskHandle)
+    {
+        // disable network services
+        telnet_disable();
+        ftp_disable();
+        // now clear the flags
+        servers_data.enabled = false;
+    }
+    else
+    {
+        servers_data.do_disable = true;
+        do {
+            mp_hal_delay_ms(SERVERS_CYCLE_TIME_MS);
+        } while (servers_are_enabled());
+    }
     mp_hal_delay_ms(SERVERS_CYCLE_TIME_MS * 3);
 }
 
