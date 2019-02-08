@@ -122,15 +122,15 @@ class PybytesConnection:
             try:
                 from network import LTE
                 time.sleep(3)
-                print_debug(1, 'LTE init(carrier={})'.format(lte_cfg.get('carrier')))
+                print_debug(1, 'LTE init(carrier={}, cid={})'.format(lte_cfg.get('carrier'), lte_cfg.get('cid', 1)))
                 self.lte = LTE(carrier=lte_cfg.get('carrier'))         # instantiate the LTE object
-                print_debug(1, 'LTE attach(band={}, apn={})'.format(lte_cfg.get('band'), lte_cfg.get('apn')))
-                self.lte.attach(band=lte_cfg.get('band'), apn=lte_cfg.get('apn'))        # attach the cellular modem to a base station
+                print_debug(1, 'LTE attach(band={}, apn={}, type={})'.format(lte_cfg.get('band'), lte_cfg.get('apn'), lte_cfg.get('type')))
+                self.lte.attach(band=lte_cfg.get('band'), apn=lte_cfg.get('apn'), type=lte_cfg.get('type'))        # attach the cellular modem to a base station
                 while not self.lte.isattached():
                     time.sleep(0.25)
                 time.sleep(1)
-                print_debug(1, 'LTE connect(cid={})'.format(lte_cfg.get('cid',1)))
-                self.lte.connect(cid=lte_cfg.get('cid',1))       # start a data session and obtain an IP address
+                print_debug(1, 'LTE connect()')
+                self.lte.connect()       # start a data session and obtain an IP address
                 print_debug(1, 'LTE is_connected()')
                 while not self.lte.isconnected():
                     time.sleep(0.25)

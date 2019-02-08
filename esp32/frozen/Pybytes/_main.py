@@ -67,12 +67,11 @@ if 'pybytes' in globals().keys():
 
         # Please put your USER code below this line
 
-        # SEND VIRTUAL VALUE
+        # SEND SIGNAL
         # You can currently send Strings, Int32, Float32 and Tuples to pybytes using this method.
-        # Soon you will be able to send Coordinates, Longs, Unsigned numerical types, and more.
-        # pybytes.send_signal(pin, value)
+        # pybytes.send_signal(signalNumber, value)
 
-        # SEND SENSOR DATA THROUGH VIRTUAL PINS
+        # SEND SENSOR DATA THROUGH SIGNALS
         # # If you use a Pysense, some libraries are necessary to access its sensors
         # # you can find them here: https://github.com/pycom/pycom-libraries
         #

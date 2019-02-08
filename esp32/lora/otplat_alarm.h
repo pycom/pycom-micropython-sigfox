@@ -12,6 +12,7 @@
 
 #include <stdint.h>
 #include <openthread/instance.h>
+#include <openthread/ip6.h>
 
 inline uint16_t HostSwap16(uint16_t v) {
     return (((v & 0x00ffU) << 8) & 0xff00) | (((v & 0xff00U) >> 8) & 0x00ff);

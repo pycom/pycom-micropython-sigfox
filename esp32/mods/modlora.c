@@ -55,24 +55,11 @@
 
 // openThread includes
 #ifdef LORA_OPENTHREAD_ENABLED
-#include <openthread/udp.h>
-#include <openthread/instance.h>
-#include <openthread/ip6.h>
-#include <openthread/thread.h>
-#include <openthread/thread_ftd.h>
-#include <openthread/platform/alarm-milli.h>
-#include <openthread/tasklet.h>
-#include <openthread/platform/radio.h>
-#include <openthread/cli.h>
-#include <openthread/platform/uart.h>
-
-#include "lora/otplat_alarm.h"
-#include "lora/otplat_radio.h"
-#include "lora/ot-settings.h"
 #include "lora/ot-log.h"
-#include "lora/ot-task.h"
+#include "modmesh.h"
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
 
+#include "random.h"
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
@@ -125,7 +112,7 @@
 
 #define MODLORA_NVS_NAMESPACE                       "LORA_NVM"
 
-#define MESH_CLI_OUTPUT_SIZE                            (256)
+#define MESH_CLI_OUTPUT_SIZE                            (1024)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -271,17 +258,6 @@ static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLN
                                                                  "MACPARAMS", "CHANNELS", "SRVACK", "MACNXTTX",
                                                                  "MACBUFIDX", "MACRPTIDX", "MACBUF", "MACRPTBUF",
                                                                  "REGION", "CHANMASK", "CHANMASKREM" };
-#ifdef LORA_OPENTHREAD_ENABLED
-static otInstance *ot = NULL;
-bool ot_ready = false;
-
-char otCliBuffer[128];
-int otCliBufferLen = 0;
-
-static char meshCliOutput[MESH_CLI_OUTPUT_SIZE];
-static int meshCliOutputLen = 0;
-static bool meshCliOutputDone = false;
-#endif  // #ifdef LORA_OPENTHREAD_ENABLED
 
 /******************************************************************************
  DECLARE PUBLIC DATA
@@ -325,6 +301,7 @@ static int lora_socket_setsockopt (mod_network_socket_obj_t *s, mp_uint_t level,
 static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 static int lora_socket_sendto (struct _mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port, int *_errno);
 
+static bool lora_lbt_is_free(void);
 STATIC mp_obj_t lora_nvram_erase (mp_obj_t self_in);
 
 /******************************************************************************
@@ -415,11 +392,14 @@ int lora_ot_recv(uint8_t *buf, int8_t *rssi) {
     int len = lora_recv (buf, OT_RADIO_FRAME_MAX_SIZE, 0, NULL);
 
     if (len > 0) {
-        otPlatLog(OT_LOG_LEVEL_INFO, 0, "radio rcv: %d", len);
+
+        // put rssi on signed 8bit, saturate at -128dB
         if (lora_obj.rssi < INT8_MIN)
-                *rssi = INT8_MIN;
+            *rssi = INT8_MIN;
         else
-                *rssi = lora_obj.rssi;
+            *rssi = lora_obj.rssi;
+
+        otPlatLog(OT_LOG_LEVEL_INFO, 0, "radio rcv: %d, %d", len, *rssi);
     }
     return len;
 }
@@ -431,7 +411,7 @@ void lora_ot_send(const uint8_t *buf, uint16_t len) {
 
     lora_send(buf, len, 0);
 
-    otPlatLog(OT_LOG_LEVEL_INFO, 0, "radio TX: %d", len);
+    //otPlatLog(OT_LOG_LEVEL_INFO, 0, "radio TX: %d", len);
 }
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
 
@@ -947,11 +927,22 @@ static void TASK_LoRa (void *pvParameters) {
                     lora_obj.state = E_LORA_STATE_JOIN;
                     break;
                 case E_LORA_CMD_TX:
-                #if defined(FIPY) || defined(LOPY4)
-                    xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
-                #endif
-                    Radio.Send(task_cmd_data.info.tx.data, task_cmd_data.info.tx.len);
-                    lora_obj.state = E_LORA_STATE_TX;
+                    // implement Listen-before-Talk LBT, only for LoRa RAW (not LoRaWAN)
+                    if (lora_lbt_is_free()) {
+                        // no activity detected on Lora, so send the pack now
+
+                        // taking sigfox semaphore blocks ?!?!?
+                        // maybe, in the end of TX sempahore has to be released sooner
+//                        #if defined(FIPY) || defined(LOPY4)
+//                            xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
+//                        #endif
+                        Radio.Send(task_cmd_data.info.tx.data, task_cmd_data.info.tx.len);
+                        lora_obj.state = E_LORA_STATE_TX;
+                    } else {
+                        // activity detected on Lora, so put the TX command back on queue on Front
+                        // to be executed on next Lora task
+                        xQueueSendToFront(xCmdQueue, (void *)&task_cmd_data, (TickType_t)portMAX_DELAY);
+                    }
                     break;
                 case E_LORA_CMD_CONFIG_CHANNEL:
                     if (task_cmd_data.info.channel.add) {
@@ -1047,9 +1038,9 @@ static void TASK_LoRa (void *pvParameters) {
                 default:
                     break;
                 }
-            } else if (lora_obj.state == E_LORA_STATE_IDLE && lora_obj.stack_mode == E_LORA_STACK_MODE_LORA) {
-                Radio.Rx(LORA_RX_TIMEOUT);
-                lora_obj.state = E_LORA_STATE_RX;
+//            } else if (lora_obj.state == E_LORA_STATE_IDLE && lora_obj.stack_mode == E_LORA_STACK_MODE_LORA) {
+//                Radio.Rx(LORA_RX_TIMEOUT);
+//                lora_obj.state = E_LORA_STATE_RX;
             }
             break;
         case E_LORA_STATE_JOIN:
@@ -1104,7 +1095,9 @@ static void TASK_LoRa (void *pvParameters) {
         case E_LORA_STATE_RX_ERROR:
             // we need to perform a mode transition in order to clear the TxRx FIFO
             Radio.Sleep();
-            lora_obj.state = E_LORA_STATE_IDLE;
+            //lora_obj.state = E_LORA_STATE_IDLE;
+            lora_obj.state = E_LORA_STATE_RX;
+            Radio.Rx(LORA_RX_TIMEOUT);
             break;
         case E_LORA_STATE_TX:
             break;
@@ -1112,7 +1105,9 @@ static void TASK_LoRa (void *pvParameters) {
             // we need to perform a mode transition in order to clear the TxRx FIFO
             Radio.Sleep();
             xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
-            lora_obj.state = E_LORA_STATE_IDLE;
+            //lora_obj.state = E_LORA_STATE_IDLE;
+            lora_obj.state = E_LORA_STATE_RX;
+            Radio.Rx(LORA_RX_TIMEOUT);
         #if defined(FIPY) || defined(LOPY4)
             xSemaphoreGive(xLoRaSigfoxSem);
         #endif
@@ -1121,7 +1116,9 @@ static void TASK_LoRa (void *pvParameters) {
             // we need to perform a mode transition in order to clear the TxRx FIFO
             Radio.Sleep();
             xEventGroupSetBits(LoRaEvents, LORA_STATUS_ERROR);
-            lora_obj.state = E_LORA_STATE_IDLE;
+            //lora_obj.state = E_LORA_STATE_IDLE;
+            lora_obj.state = E_LORA_STATE_RX;
+            Radio.Rx(LORA_RX_TIMEOUT);
         #if defined(FIPY) || defined(LOPY4)
             xSemaphoreGive(xLoRaSigfoxSem);
         #endif
@@ -1132,6 +1129,40 @@ static void TASK_LoRa (void *pvParameters) {
 
         TimerLowPowerHandler();
     }
+}
+
+/*! lora_lbt_is_free checks if there is any Lora traffic on the current channel
+ * note: if Modem is not in RX, returns true (free spectrum)
+ * additionally rssi threshold and timeout_us can be added as function parameters
+ * returns true if spectrum is free
+ * returns false if spectrum is busy
+ */
+
+static bool lora_lbt_is_free(void)
+{
+    int16_t rssi_th = -85;
+    int timeout_us = 1000; //[microsec]
+    bool is_free = true;
+
+    int rssi = -1000;
+    int rssi_max = -1000;
+
+    uint64_t now = mp_hal_ticks_us_non_blocking();
+
+    do {
+        if (RF_RX_RUNNING == Radio.GetStatus()) {
+            rssi = Radio.Rssi(MODEM_LORA);
+        }
+        rssi_max = (rssi > rssi_max) ? rssi : rssi_max;
+
+        if ( rssi_max > rssi_th ) {
+            break;
+        }
+    } while (mp_hal_ticks_us_non_blocking() - now < timeout_us);
+
+    is_free = (rssi_max < rssi_th);
+
+    return is_free;
 }
 
 static void lora_callback_handler(void *arg) {
@@ -1419,6 +1450,7 @@ static void lora_send_cmd (lora_cmd_data_t *cmd_data) {
 static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
     lora_cmd_data_t cmd_data;
 
+/*
 #if defined(FIPY) || defined(LOPY4)
     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
     lora_get_config (&cmd_data);
@@ -1426,7 +1458,7 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
     lora_send_cmd (&cmd_data);
     xSemaphoreGive(xLoRaSigfoxSem);
 #endif
-
+*/
     cmd_data.cmd = E_LORA_CMD_TX;
     memcpy (cmd_data.info.tx.data, buf, len);
     cmd_data.info.tx.len = len;
@@ -1440,12 +1472,15 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
 
     // just pass to the LoRa queue
     if (!xQueueSend(xCmdQueue, (void *)&cmd_data, (TickType_t)(timeout_ms / portTICK_PERIOD_MS))) {
+        //printf("Q full\n");
         return 0;
     }
 
     lora_obj.sftx = lora_obj.sf;
 
     if (timeout_ms != 0) {
+        //printf("timeout_ms %d\n", timeout_ms);
+
         xEventGroupWaitBits(LoRaEvents,
                             LORA_STATUS_COMPLETED | LORA_STATUS_ERROR | LORA_STATUS_MSG_SIZE,
                             pdTRUE,   // clear on exit
@@ -2021,7 +2056,8 @@ STATIC mp_obj_t lora_stats(mp_obj_t self_in) {
     stats_tuple[0] = mp_obj_new_int_from_uint(self->rx_timestamp);
     stats_tuple[1] = mp_obj_new_int(self->rssi);
     stats_tuple[2] = mp_obj_new_float(snr);
-    stats_tuple[3] = mp_obj_new_int(self->sfrx);
+    //stats_tuple[3] = mp_obj_new_int(self->sfrx);
+    stats_tuple[3] = mp_obj_new_int(Radio.GetStatus());
     stats_tuple[4] = mp_obj_new_int(self->sftx);
     stats_tuple[5] = mp_obj_new_int(self->tx_trials);
     stats_tuple[6] = mp_obj_new_int(self->tx_power);
@@ -2142,15 +2178,16 @@ STATIC mp_obj_t lora_events(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_events_obj, lora_events);
 
-STATIC mp_obj_t lora_ischannel_free(mp_obj_t self_in, mp_obj_t rssi) {
+STATIC mp_obj_t lora_ischannel_free(mp_obj_t self_in, mp_obj_t rssi, mp_obj_t time_ms) {
     lora_obj_t *self = self_in;
 
-    if (Radio.IsChannelFree(MODEM_LORA, self->frequency, mp_obj_get_int(rssi), 2)) {
+    // probably we could listen for 2 symbols (bits) for the current Lora settings (freq, bw, sf)
+    if (Radio.IsChannelFree(MODEM_LORA, self->frequency, mp_obj_get_int(rssi), mp_obj_get_int(time_ms))) {
         return mp_const_true;
     }
     return mp_const_false;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_ischannel_free_obj, lora_ischannel_free);
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(lora_ischannel_free_obj, lora_ischannel_free);
 
 STATIC mp_obj_t lora_set_battery_level(mp_obj_t self_in, mp_obj_t battery) {
     BoardSetBatteryLevel(mp_obj_get_int(battery));
@@ -2213,112 +2250,12 @@ STATIC mp_obj_t lora_nvram_erase (mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_nvram_erase_obj, lora_nvram_erase);
 
-#ifdef LORA_OPENTHREAD_ENABLED
-/*
- * openthread CLI callback, triggered when an response from openthread has to be published on REPL
- */
-void otConsoleCb(const char *aBuf, uint16_t aBufLength, void *aContext){
-
-    // check if "Done" was sent
-    if (strncmp(aBuf, "Done", 4) != 0) {
-
-        // Done not received
-
-        if (MESH_CLI_OUTPUT_SIZE - meshCliOutputLen < aBufLength)
-            aBufLength = MESH_CLI_OUTPUT_SIZE - meshCliOutputLen;
-
-        memcpy(&meshCliOutput[meshCliOutputLen], aBuf, aBufLength);
-
-        meshCliOutputLen += aBufLength;
-
-        // if Error received also signal done
-        if ((strncmp(aBuf, "Error", 5) == 0) ||
-            // a PING response, should signal done, too
-            (NULL != strstr(aBuf, "icmp_seq=")))
-        {
-            meshCliOutputDone = true;
-        }
-    }
-    else {
-        // "Done" received
-        // cut the last 2 chars \r\n
-        if (meshCliOutputLen>2) meshCliOutputLen-=2;
-        meshCliOutputDone = true;
-    }
+// return time-on-air (milisec) for the current Lora settings, specifying pack_len
+STATIC mp_obj_t lora_airtime (mp_obj_t self_in, mp_obj_t pack_len_obj) {
+    int len = mp_obj_get_int(pack_len_obj);
+    return mp_obj_new_int(Radio.TimeOnAir(MODEM_LORA, len));
 }
-
-/*
- * start Lora Mesh openthread
- */
-STATIC mp_obj_t lora_mesh (mp_obj_t self_in) {
-
-    if (ot_ready){
-        printf("Mesh already enabled\n");
-        return mp_obj_new_bool(false);
-    }
-
-    ot = NULL;
-
-    if (NULL != (ot = openthread_init())) {
-
-        // init CLI and send and \n
-        meshCliOutput[0] = 0;
-        meshCliOutputLen = 0;
-        otCliConsoleInit(ot, (void*)&otConsoleCb, NULL);
-        otCliBufferLen = 0;
-    }
-    ot_ready = (ot != NULL);
-
-    return mp_obj_new_bool(ot_ready);
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_mesh_obj, lora_mesh);
-
-/*
- * openthread CLI, console interface
- * commands available: https://github.com/openthread/openthread/blob/master/src/cli/README.md
- */
-
-STATIC mp_obj_t lora_cli(mp_obj_t self_in, mp_obj_t data) {
-    //lora_obj_t *self = self_in;
-    int timeout = 5000;
-
-    if (!ot_ready){
-        printf("Mesh not enabled\n");
-        return mp_const_none;
-    }
-
-    if (otCliBufferLen == 0) {
-        char *cmdstr = (char *)mp_obj_str_get_str(data);
-        int len = strlen(cmdstr);
-
-        otCliBuffer[0] = 0;
-        strcpy(otCliBuffer, cmdstr);
-        otCliBuffer[len] = (char)'\n';
-        len++;
-
-        otCliBufferLen = len;
-        meshCliOutputDone = false;
-        while (!meshCliOutputDone && timeout >= 0) {
-            mp_hal_delay_ms(300);
-            timeout -= 300;
-        }
-
-        if (meshCliOutputDone) {
-            // micropy needs to output meshCliOutput string in size of meshCliOutputLen
-            mp_obj_t res = mp_obj_new_str(meshCliOutput, meshCliOutputLen);
-            //mp_obj_new_str_from_vstr()
-            meshCliOutput[0] = 0;
-            meshCliOutputLen = 0;
-            return res;
-        }
-    }
-    else {
-        printf("no prev cmd\n");
-    }
-    return mp_obj_new_str("", 0);
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_cli_obj, lora_cli);
-#endif  // #ifdef LORA_OPENTHREAD_ENABLED
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_airtime_obj, lora_airtime);
 
 
 STATIC const mp_map_elem_t lora_locals_dict_table[] = {
@@ -2345,9 +2282,10 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_save),          (mp_obj_t)&lora_nvram_save_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_restore),       (mp_obj_t)&lora_nvram_restore_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_erase),         (mp_obj_t)&lora_nvram_erase_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_airtime),             (mp_obj_t)&lora_airtime_obj },
+
 #ifdef LORA_OPENTHREAD_ENABLED
-    { MP_OBJ_NEW_QSTR(MP_QSTR_mesh),                (mp_obj_t)&lora_mesh_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_cli),                 (mp_obj_t)&lora_cli_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_Mesh),                (mp_obj_t)&lora_mesh_type },
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
 
     // exceptions
@@ -2420,7 +2358,7 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
 
 #ifdef LORA_OPENTHREAD_ENABLED
     // if mesh is enabled, assume socket is for mesh, not for LoraWAN
-    if (ot_ready) {
+    if (lora_mesh_ready()) {
         return mesh_socket_open(_errno);
     }
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
@@ -2459,7 +2397,7 @@ static int lora_socket_send (mod_network_socket_obj_t *s, const byte *buf, mp_ui
     LORA_CHECK_SOCKET(s);
 
 #ifdef LORA_OPENTHREAD_ENABLED
-    if (ot_ready) {
+    if (lora_mesh_ready()) {
             *_errno = MP_EOPNOTSUPP;
             return -1;
     }
@@ -2500,7 +2438,7 @@ static int lora_socket_recv (mod_network_socket_obj_t *s, byte *buf, mp_uint_t l
     LORA_CHECK_SOCKET(s);
 
 #ifdef LORA_OPENTHREAD_ENABLED
-    if (ot_ready) {
+    if (lora_mesh_ready()) {
         *_errno = MP_EOPNOTSUPP;
         return -1;
     }
@@ -2518,7 +2456,7 @@ static int lora_socket_recvfrom (mod_network_socket_obj_t *s, byte *buf, mp_uint
     LORA_CHECK_SOCKET(s);
 
 #ifdef LORA_OPENTHREAD_ENABLED
-    if (ot_ready) {
+    if (lora_mesh_ready()) {
         return mesh_socket_recvfrom(buf, len, ip, port, _errno);
     }
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
@@ -2536,7 +2474,7 @@ static int lora_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, 
     LORA_CHECK_SOCKET(s);
 
 #ifdef LORA_OPENTHREAD_ENABLED
-    if (ot_ready) {
+    if (lora_mesh_ready()) {
         *_errno = MP_EOPNOTSUPP;
         return -1;
     }
@@ -2570,7 +2508,7 @@ static int lora_socket_settimeout (mod_network_socket_obj_t *s, mp_int_t timeout
     LORA_CHECK_SOCKET(s);
 
 #ifdef LORA_OPENTHREAD_ENABLED
-    if (ot_ready) {
+    if (lora_mesh_ready()) {
         *_errno = MP_EOPNOTSUPP;
         return -1;
     }
@@ -2584,7 +2522,7 @@ static int lora_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t por
     LORA_CHECK_SOCKET(s);
 
 #ifdef LORA_OPENTHREAD_ENABLED
-    if (ot_ready) {
+    if (lora_mesh_ready()) {
         return mesh_socket_bind(ip, port, _errno);
     }
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
@@ -2603,7 +2541,7 @@ static int lora_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp
     LORA_CHECK_SOCKET(s);
 
 #ifdef LORA_OPENTHREAD_ENABLED
-    if (ot_ready) {
+    if (lora_mesh_ready()) {
         *_errno = MP_EOPNOTSUPP;
         return -1;
     }
@@ -2628,7 +2566,7 @@ static int lora_socket_sendto(struct _mod_network_socket_obj_t *s, const byte *b
     LORA_CHECK_SOCKET(s);
 
 #ifdef LORA_OPENTHREAD_ENABLED
-    if (ot_ready) {
+    if (lora_mesh_ready()) {
         return mesh_socket_sendto(buf, len, ip, port, _errno);
     }
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED

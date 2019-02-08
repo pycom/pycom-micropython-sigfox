@@ -14,7 +14,6 @@
 #include "ot-log.h"
 
 #include "pycom_config.h"
-#include <openthread/types.h>
 #include <openthread/config.h>
 #include <openthread/platform/alarm-milli.h>
 #include <openthread/platform/uart.h>
@@ -73,6 +72,7 @@ void otPlatLogBufHex(const uint8_t *aBuf, uint16_t aBufLength) {
     for (int i = 0; i < aBufLength; i++) {
         length += sprintf(&logString[length], "%x ", aBuf[i]);
     }
+    logString[length++] = '\n';
 }
 
 void otPlatLogFlush(void) {
