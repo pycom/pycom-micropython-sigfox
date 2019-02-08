@@ -599,20 +599,14 @@ ifeq ($(SECURE), on)
 	$(ECHO) $(SEPARATOR)
 endif #ifeq ($(SECURE), on)
 endif #ifeq ($(TARGET), $(filter $(TARGET), boot boot_app))
+
+
 ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
-
-
 
 $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
-ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY LOPY4))
-$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld
-	$(ECHO) "LINK $@"
-	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
-	$(Q) $(SIZE) $@
-else
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_BOOT_VERIFICATION_KEY)
 ifeq ($(COPY_IDF_LIB), 1)
 	$(ECHO) "COPY IDF LIBRARIES $@"
@@ -637,7 +631,6 @@ endif #ifeq ($(SECURE), on)
 	$(ECHO) "LINK $@"
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
 	$(SIZE) $@
-endif #ifeq ($(BOARD), $(filter $(BOARD), SIPY FIPY LOPY4))
 
 $(APP_BIN): $(BUILD)/application.elf $(PART_BIN) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "IMAGE $@"
