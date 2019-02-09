@@ -100,7 +100,9 @@ extern TaskHandle_t mpTaskHandle;
 extern TaskHandle_t svTaskHandle;
 #if defined(FIPY)
 extern TaskHandle_t xLoRaTaskHndl;
+#ifdef LORA_OPENTHREAD_ENABLED
 extern TaskHandle_t xMeshTaskHndl;
+#endif
 extern TaskHandle_t xSigfoxTaskHndl;
 #endif
 extern TaskHandle_t xLTETaskHndl;
@@ -316,7 +318,9 @@ static void TASK_LTE_UPGRADE(void *pvParameters){
 #if defined(FIPY)
     vTaskSuspend(xLoRaTaskHndl);
     vTaskSuspend(xSigfoxTaskHndl);
+#ifdef LORA_OPENTHREAD_ENABLED
     vTaskSuspend(xMeshTaskHndl);
+#endif
 #endif
     vTaskSuspend(xLTETaskHndl);
 
