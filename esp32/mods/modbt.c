@@ -891,6 +891,45 @@ STATIC mp_obj_t bt_isscanning(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_isscanning_obj, bt_isscanning);
 
+STATIC mp_obj_t bt_modem_sleep(mp_uint_t n_args, const mp_obj_t *args) {
+
+    bt_obj_t *self = args[0];
+    /* Modem sleep APIs shall not be called before bt_controller_enable() */
+    if(self->init)
+    {
+        if(n_args > 1)
+        {
+            if(mp_obj_is_true(args[1]))
+            {
+                /* Enable Modem Sleep */
+                esp_bt_sleep_enable();
+            }
+            else
+            {
+                /* Disable Modem Sleep */
+                esp_bt_sleep_disable();
+                /* Wakeup the modem is it is sleeping */
+                if (esp_bt_controller_is_sleeping())
+                {
+                    esp_bt_controller_wakeup_request();
+                }
+            }
+        }
+        else
+        {
+            /* return modem sleep status */
+            return mp_obj_new_bool(esp_bt_controller_is_sleeping());
+        }
+    }
+    else
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "BLE module not initialized"));
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(bt_modem_sleep_obj, 1, 2, bt_modem_sleep);
+
 STATIC mp_obj_t bt_stop_scan(mp_obj_t self_in) {
     if (bt_obj.scanning) {
         esp_ble_gap_stop_scanning();
@@ -1558,6 +1597,7 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&bt_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_events),                  (mp_obj_t)&bt_events_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect_client),       (mp_obj_t)&bt_gatts_disconnect_client_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_modem_sleep),             (mp_obj_t)&bt_modem_sleep_obj },
 
     // exceptions
     { MP_OBJ_NEW_QSTR(MP_QSTR_timeout),                 (mp_obj_t)&mp_type_TimeoutError },
