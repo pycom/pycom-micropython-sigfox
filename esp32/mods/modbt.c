@@ -236,6 +236,7 @@ static void gap_events_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_para
 static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 static void close_connection(int32_t conn_id);
+static bool modem_sleep(bool enable);
 
 STATIC void bluetooth_callback_handler(void *arg);
 STATIC void gattc_char_callback_handler(void *arg);
@@ -357,6 +358,36 @@ static void close_connection (int32_t conn_id) {
             mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
         }
     }
+}
+
+static bool modem_sleep(bool enable)
+{
+    bool ret = true;
+    if(enable)
+    {
+        /* Enable Modem Sleep */
+        if(ESP_OK != esp_bt_sleep_enable())
+        {
+            /* Failed*/
+            ret = false;
+        }
+    }
+    else
+    {
+        /* Disable Modem Sleep */
+        if(esp_bt_sleep_disable())
+        {
+            /* Failed*/
+            ret = false;
+        }
+        /* Wakeup the modem is it is sleeping */
+        if (esp_bt_controller_is_sleeping() && ret)
+        {
+            esp_bt_controller_wakeup_request();
+        }
+    }
+
+    return ret;
 }
 
 static bt_char_obj_t *find_gattc_char (int32_t conn_id, uint16_t char_handle) {
@@ -787,6 +818,26 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
 
     bt_obj.gatts_conn_id = -1;
 
+
+
+    /* Set BLE modem sleep flag*/
+    if (args[2].u_obj != MP_OBJ_NULL) {
+        if(mp_obj_is_true(args[2].u_obj))
+        {
+            if(!modem_sleep(true))
+            {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to Enable Bluetooth modem Sleep"));
+            }
+        }
+        else
+        {
+            if(!modem_sleep(false))
+            {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to Disable Bluetooth modem Sleep"));
+            }
+        }
+    }
+
     return mp_const_none;
 }
 
@@ -794,6 +845,7 @@ STATIC const mp_arg_t bt_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,   {.u_int  = 0} },
     { MP_QSTR_mode,         MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_BT_STACK_MODE_BLE} },
     { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
+    { MP_QSTR_modem_sleep,  MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
 };
 STATIC mp_obj_t bt_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -899,20 +951,9 @@ STATIC mp_obj_t bt_modem_sleep(mp_uint_t n_args, const mp_obj_t *args) {
     {
         if(n_args > 1)
         {
-            if(mp_obj_is_true(args[1]))
+            if(!modem_sleep(mp_obj_is_true(args[1])))
             {
-                /* Enable Modem Sleep */
-                esp_bt_sleep_enable();
-            }
-            else
-            {
-                /* Disable Modem Sleep */
-                esp_bt_sleep_disable();
-                /* Wakeup the modem is it is sleeping */
-                if (esp_bt_controller_is_sleeping())
-                {
-                    esp_bt_controller_wakeup_request();
-                }
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
         }
         else
