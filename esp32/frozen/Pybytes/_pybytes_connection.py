@@ -34,7 +34,7 @@ class PybytesConnection:
         self.__mqtt_upload_topic = "u" + self.__device_id
         self.__connection = None
         self.__connection_status = constants.__CONNECTION_STATUS_DISCONNECTED
-        self.__pybytes_protocol = PybytesProtocol(config, message_callback)
+        self.__pybytes_protocol = PybytesProtocol(config, message_callback, pybytes_connection=self)
         self.__lora_socket = None
         self.lora = None
         self.lora_lock = _thread.allocate_lock()
@@ -58,7 +58,7 @@ class PybytesConnection:
 
     def connect_wifi(self, reconnect=True, check_interval=0.5):
         """Establish a connection through WIFI before connecting to mqtt server"""
-        if (self.__connection_status != constants.__CONNECTION_STATUS_DISCONNECTED):
+        if self.__connection_status != constants.__CONNECTION_STATUS_DISCONNECTED:
             print("Error connect_wifi: Connection already exists. Disconnect First")
             return False
         try:
@@ -69,8 +69,6 @@ class PybytesConnection:
                 print("WARNING! Using external WiFi antenna.")
             '''to connect it to an existing network, the WiFi class must be configured as a station'''
             self.wlan = WLAN(mode=WLAN.STA, antenna=antenna)
-            original_ssid = self.wlan.ssid()
-            original_auth = self.wlan.auth()
 
             available_nets = self.wlan.scan()
             nets = frozenset([e.ssid for e in available_nets])
@@ -84,7 +82,7 @@ class PybytesConnection:
                 while not self.wlan.isconnected():
                     time.sleep(0.1)
             except Exception as e:
-                if (str(e) == "list index out of range"):
+                if str(e) == "list index out of range":
                     print("Please review Wifi SSID and password inside config")
                 else:
                     print("Error connecting using WIFI: %s" % e)
