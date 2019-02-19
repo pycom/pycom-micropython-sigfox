@@ -236,6 +236,7 @@ static void gap_events_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_para
 static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 static void close_connection(int32_t conn_id);
+static bool modem_sleep(bool enable);
 
 STATIC void bluetooth_callback_handler(void *arg);
 STATIC void gattc_char_callback_handler(void *arg);
@@ -357,6 +358,36 @@ static void close_connection (int32_t conn_id) {
             mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
         }
     }
+}
+
+static bool modem_sleep(bool enable)
+{
+    bool ret = true;
+    if(enable)
+    {
+        /* Enable Modem Sleep */
+        if(ESP_OK != esp_bt_sleep_enable())
+        {
+            /* Failed*/
+            ret = false;
+        }
+    }
+    else
+    {
+        /* Disable Modem Sleep */
+        if(esp_bt_sleep_disable())
+        {
+            /* Failed*/
+            ret = false;
+        }
+        /* Wakeup the modem is it is sleeping */
+        if (esp_bt_controller_is_sleeping() && ret)
+        {
+            esp_bt_controller_wakeup_request();
+        }
+    }
+
+    return ret;
 }
 
 static bt_char_obj_t *find_gattc_char (int32_t conn_id, uint16_t char_handle) {
@@ -787,6 +818,26 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
 
     bt_obj.gatts_conn_id = -1;
 
+
+
+    /* Set BLE modem sleep flag*/
+    if (args[2].u_obj != MP_OBJ_NULL) {
+        if(mp_obj_is_true(args[2].u_obj))
+        {
+            if(!modem_sleep(true))
+            {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to Enable Bluetooth modem Sleep"));
+            }
+        }
+        else
+        {
+            if(!modem_sleep(false))
+            {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to Disable Bluetooth modem Sleep"));
+            }
+        }
+    }
+
     return mp_const_none;
 }
 
@@ -794,6 +845,7 @@ STATIC const mp_arg_t bt_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,   {.u_int  = 0} },
     { MP_QSTR_mode,         MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_BT_STACK_MODE_BLE} },
     { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
+    { MP_QSTR_modem_sleep,  MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
 };
 STATIC mp_obj_t bt_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -890,6 +942,34 @@ STATIC mp_obj_t bt_isscanning(mp_obj_t self_in) {
     return mp_const_false;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_isscanning_obj, bt_isscanning);
+
+STATIC mp_obj_t bt_modem_sleep(mp_uint_t n_args, const mp_obj_t *args) {
+
+    bt_obj_t *self = args[0];
+    /* Modem sleep APIs shall not be called before bt_controller_enable() */
+    if(self->init)
+    {
+        if(n_args > 1)
+        {
+            if(!modem_sleep(mp_obj_is_true(args[1])))
+            {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+            }
+        }
+        else
+        {
+            /* return modem sleep status */
+            return mp_obj_new_bool(esp_bt_controller_is_sleeping());
+        }
+    }
+    else
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "BLE module not initialized"));
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(bt_modem_sleep_obj, 1, 2, bt_modem_sleep);
 
 STATIC mp_obj_t bt_stop_scan(mp_obj_t self_in) {
     if (bt_obj.scanning) {
@@ -1558,6 +1638,7 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&bt_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_events),                  (mp_obj_t)&bt_events_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect_client),       (mp_obj_t)&bt_gatts_disconnect_client_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_modem_sleep),             (mp_obj_t)&bt_modem_sleep_obj },
 
     // exceptions
     { MP_OBJ_NEW_QSTR(MP_QSTR_timeout),                 (mp_obj_t)&mp_type_TimeoutError },

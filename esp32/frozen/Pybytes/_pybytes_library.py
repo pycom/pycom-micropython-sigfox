@@ -12,6 +12,7 @@ import machine
 import os
 import re
 from network import WLAN
+from time import sleep
 
 try:
     from network import LoRa
@@ -19,8 +20,10 @@ except:
     pass
 
 class PybytesLibrary:
-    def __init__(self):
+    def __init__(self, pybytes_connection, pybytes_protocol):
         self.__network_type = None
+        self.__pybytes_connection = pybytes_connection
+        self.__pybytes_protocol = pybytes_protocol
 
     def pack_user_message(self, message_type, body):
         return self.__pack_message(message_type, body)
@@ -105,20 +108,31 @@ class PybytesLibrary:
         return self.__pack_message(constants.__TYPE_NETWORK_INFO, body)
 
     def pack_scan_info_message(self, lora):
-        wlan = WLAN()
+        print_debug(5, 'this is pack_scan_info_message()')
 
-        if (wlan.mode() != WLAN.STA):
-            wlan.mode(WLAN.STA)
+        scan_attempts = 0
+        wifi_networks = []
 
-        wifi_networks = wlan.scan()
+        while not wifi_networks and scan_attempts < 5:
+            wifi_networks = self.__pybytes_connection.wlan.scan()
+            scan_attempts += 1
+            print_debug(6, 'number of scanned wifi_networks: {}'.format(len(wifi_networks)))
+            print_debug(6, 'scan_attempts: {}'.format(scan_attempts))
+
+            if not wifi_networks:
+                while not self.__pybytes_connection.wlan.isconnected():
+                    print_debug(6, 'wifi disconnected, sleeping...')
+                    sleep(0.5)
 
         body = bytearray()
 
-        max_networks = 5
-        if (len(wifi_networks) < 5):
-            max_networks = len(wifi_networks)
+        # max_networks = 5
+        # if (len(wifi_networks) < 5):
+        #     max_networks = len(wifi_networks)
+        #
+        # for x in range(0, max_networks):
 
-        for x in range(0, max_networks):
+        for x in range(0, len(wifi_networks)):
             wifi_pack = struct.pack(constants.__WIFI_NETWORK_FORMAT, wifi_networks[x][1],
                                     wifi_networks[x][3], wifi_networks[x][4])
             body += wifi_pack

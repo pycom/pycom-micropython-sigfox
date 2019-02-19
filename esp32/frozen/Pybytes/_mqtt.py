@@ -79,9 +79,8 @@ class MQTTClient:
                 self.__reconnecting = False
                 break
             except OSError:
-                time_before_retry = 10 + self.__reconnect_count
-                print("Reconnecting failed, will retry in {} seconds".format(time_before_retry))
-                time.sleep(time_before_retry)
+                print("Reconnecting failed, will retry in {} seconds".format(self.__reconnect_count))
+                time.sleep(self.__reconnect_count)
 
     def publish(self, topic, msg, retain=False, qos=0):
         while 1:

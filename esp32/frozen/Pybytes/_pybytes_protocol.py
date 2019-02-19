@@ -37,15 +37,15 @@ import socket
 import struct
 
 class PybytesProtocol:
-    def __init__(self, config, message_callback):
+    def __init__(self, config, message_callback, pybytes_connection):
         self.__conf = config
         self.__thread_stack_size = 8192
         self.__device_id = config['device_id']
         self.__mqtt_download_topic = "d" + self.__device_id
         self.__mqtt_upload_topic = "u" + self.__device_id
         self.__mqtt_check_interval = 0.5
-        self.__pybytes_library = PybytesLibrary()
-        self.__pybytes_connection = None
+        self.__pybytes_connection = pybytes_connection
+        self.__pybytes_library = PybytesLibrary(pybytes_connection=pybytes_connection, pybytes_protocol=self)
         self.__user_message_callback = message_callback
         self.__pins = {}
         self.__pin_modes = {}
