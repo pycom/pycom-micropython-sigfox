@@ -69,7 +69,8 @@ typedef struct _wlan_obj_t {
     uint8_t                 auth;
     uint8_t                 channel;
     uint8_t                 antenna;
-    int8_t                    max_tx_pwr;
+    int8_t                  max_tx_pwr;
+    wifi_country_t         country;
 
     // my own ssid, key and mac
     uint8_t                 ssid[(MODWLAN_SSID_LEN_MAX + 1)];
@@ -86,16 +87,17 @@ typedef struct _wlan_obj_t {
     bool                    irq_enabled;
     bool                    enable_servers;
     bool                    disconnected;
+    bool                    sta_conn_timeout;
     bool                    soft_ap_stopped;
     bool                    sta_stopped;
     bool                    pwrsave;
     bool                    started;
-    bool                     is_promiscuous;
-    uint32_t                  trigger;
-    int32_t                   events;
+    bool                    is_promiscuous;
+    uint32_t                trigger;
+    int32_t                 events;
     mp_obj_t                handler;
     mp_obj_t                handler_arg;
-    SemaphoreHandle_t        mutex;
+    SemaphoreHandle_t       mutex;
 } wlan_obj_t;
 
 typedef struct wlan_internal_prom_t
