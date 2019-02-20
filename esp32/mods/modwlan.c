@@ -89,7 +89,8 @@ wlan_obj_t wlan_obj = {
     .enable_servers = false,
     .pwrsave = false,
     .max_tx_pwr = CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER, /*FIXME: This value is configured in sdkconfig but the max_tx_power is always init to 78 at startup by idf*/
-    .is_promiscuous = false
+    .is_promiscuous = false,
+    .sta_conn_timeout = false
 };
 
 /* TODO: Maybe we can add possibility to create IRQs for wifi events */
@@ -106,14 +107,11 @@ static uint8_t wlan_conn_recover_key[MAX_WLAN_KEY_SIZE];
 static uint8_t wlan_conn_recover_hostname[TCPIP_HOSTNAME_MAX_SIZE];
 static uint8_t wlan_conn_recover_auth;
 static int32_t wlan_conn_recover_timeout;
-static uint8_t wlan_conn_recover_ap_channel;
 static uint8_t wlan_conn_recover_scan_channel;
-static uint8_t wlan_conn_recover_antenna;
 static bool wlan_conn_recover_hidden = false;
-static int32_t wlan_conn_recover_bandwidth;
-static uint8_t wlan_conn_recover_mode;
+
 static wlan_wpa2_ent_obj_t wlan_wpa2_ent;
-static TimerHandle_t wlan_conn_timeout_timer;
+static TimerHandle_t wlan_conn_timeout_timer = NULL;
 static uint8_t wlan_prom_data_buff[2][MAX_WIFI_PROM_PKT_SIZE] = {0};
 static wlan_internal_prom_t wlan_prom_packet[2];
 
@@ -122,7 +120,10 @@ static uint8_t token = 0;
 // Event bits
 const int CONNECTED_BIT = BIT0;
 
-STATIC bool is_inf_up = false;
+static bool is_inf_up = false;
+
+//mutex for Timeout Counter protection
+SemaphoreHandle_t timeout_mutex;
 
 /******************************************************************************
  DECLARE PUBLIC DATA
@@ -155,6 +156,7 @@ static char *wlan_read_file (const char *file_path, vstr_t *vstr);
 static void wlan_timer_callback( TimerHandle_t xTimer );
 static void wlan_validate_country(const char * country);
 static void wlan_validate_country_policy(uint8_t policy);
+STATIC void wlan_stop_sta_conn_timer();
 //*****************************************************************************
 //
 //! \brief The Function Handles WLAN Events
@@ -186,6 +188,8 @@ void wlan_pre_init (void) {
     (wlan_prom_packet[0].data) = (uint8_t*) (&(wlan_prom_data_buff[0][0]));
     (wlan_prom_packet[1].data) = (uint8_t*) (&(wlan_prom_data_buff[1][0]));
     wlan_obj.mutex = xSemaphoreCreateMutex();
+    timeout_mutex = xSemaphoreCreateMutex();
+    memcpy(wlan_obj.country.cc, (const char*)"NA", sizeof(wlan_obj.country.cc));
 }
 
 void wlan_resume (bool reconnect)
@@ -199,6 +203,7 @@ void wlan_resume (bool reconnect)
             const char* bssid = NULL;
             const char* key = NULL;
             const char* hostname = NULL;
+            wifi_country_t* country = NULL;
 
             if(wlan_conn_recover_bssid[0] != '\0')
             {
@@ -212,34 +217,36 @@ void wlan_resume (bool reconnect)
             {
                 hostname = (const char*)wlan_conn_recover_hostname;
             }
+            if(strcmp((const char*)wlan_obj.country.cc, "NA"))
+            {
+                country = &(wlan_obj.country);
+            }
 
             wlan_internal_setup_t setup_config = {
-                    wlan_conn_recover_mode,
-                    (const char *)wlan_conn_recover_ssid,
-                    key,
-                    wlan_conn_recover_auth,
-                    wlan_conn_recover_ap_channel,
-                    wlan_conn_recover_antenna,
+                    wlan_obj.mode,
+                    (const char *)(wlan_obj.ssid),
+                    (const char *)(wlan_obj.key),
+                    wlan_obj.auth,
+                    wlan_obj.channel,
+                    wlan_obj.antenna,
                     false,
                     wlan_conn_recover_hidden,
-                    wlan_conn_recover_bandwidth,
-                    NULL,
-                    NULL
+                    wlan_obj.bandwidth,
+                    country,
+                    &(wlan_obj.max_tx_pwr)
             };
 
             // initialize the wlan subsystem
             wlan_setup(&setup_config);
-
+            mod_network_register_nic(&wlan_obj);
 
             if (mod_wlan_was_sta_disconnected) {
                 /* re-establish connection */
-                wlan_do_connect ((const char*)wlan_conn_recover_ssid, bssid, wlan_conn_recover_auth, (const char*)wlan_conn_recover_key,
+                wlan_do_connect ((const char*)wlan_conn_recover_ssid, bssid, wlan_conn_recover_auth, (const char*)key,
                                                                                                             wlan_conn_recover_timeout, &wlan_wpa2_ent, hostname, wlan_conn_recover_scan_channel);
 
                 mod_wlan_was_sta_disconnected = false;
             }
-
-            wlan_init_wlan_recover_params();
         }
     }
 }
@@ -272,7 +279,9 @@ void wlan_setup (wlan_internal_setup_t *config) {
         {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
         }
+        memcpy(&(wlan_obj.country), config->country, sizeof(wlan_obj.country));
     }
+
 
     esp_wifi_start();
 
@@ -281,7 +290,10 @@ void wlan_setup (wlan_internal_setup_t *config) {
     if(config->max_tx_pr != NULL)
     {
         // set the max_tx_power
-        esp_wifi_set_max_tx_power(*(config->max_tx_pr));
+        if(ESP_OK == esp_wifi_set_max_tx_power(*(config->max_tx_pr)))
+        {
+            wlan_obj.max_tx_pwr = *(config->max_tx_pr);
+        }
     }
 
     wlan_obj.started = true;
@@ -327,6 +339,8 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
             wlan_obj.channel = _event->channel;
             wlan_obj.auth = _event->authmode;
             wlan_obj.disconnected = false;
+            /* Stop Conn timeout counter*/
+            wlan_stop_sta_conn_timer();
         }
             break;
         case SYSTEM_EVENT_STA_GOT_IP: /**< ESP32 station got IP from connected AP */
@@ -397,11 +411,21 @@ STATIC void wlan_timer_callback( TimerHandle_t xTimer )
     if (wlan_obj.disconnected) {
         /* Terminate connection */
         esp_wifi_disconnect();
+        wlan_obj.sta_conn_timeout = true;
     }
-
     /* Stop Timer*/
-    xTimerStop(wlan_conn_timeout_timer, 0);
-    xTimerDelete(wlan_conn_timeout_timer, 0);
+    wlan_stop_sta_conn_timer();
+}
+STATIC void wlan_stop_sta_conn_timer()
+{
+    xSemaphoreTake(timeout_mutex, portMAX_DELAY);
+    /* Clear Connection timeout counter if applicable*/
+    if (wlan_conn_timeout_timer != NULL) {
+        xTimerStop(wlan_conn_timeout_timer, 0);
+        xTimerDelete(wlan_conn_timeout_timer, 0);
+        wlan_conn_timeout_timer = NULL;
+    }
+    xSemaphoreGive(timeout_mutex);
 }
 STATIC void wlan_servers_start (void) {
     // start the servers if they were enabled before
@@ -711,6 +735,8 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
         wlan_conn_recover_timeout = timeout;
         /*create Timer */
         wlan_conn_timeout_timer = xTimerCreate("Wlan_Timer", timeout / portTICK_PERIOD_MS, 0, 0, wlan_timer_callback);
+        /* reset timeout Flag */
+        wlan_obj.sta_conn_timeout = false;
         /*start Timer */
         xTimerStart(wlan_conn_timeout_timer, 0);
     }
@@ -805,12 +831,8 @@ static void wlan_init_wlan_recover_params(void)
     wlan_conn_recover_hostname[0] = '\0';
     wlan_conn_recover_auth = WIFI_AUTH_MAX;
     wlan_conn_recover_timeout = -1;
-    wlan_conn_recover_ap_channel = 0;
     wlan_conn_recover_scan_channel = 0;
-    wlan_conn_recover_antenna = ANTENNA_TYPE_INTERNAL;
     wlan_conn_recover_hidden = false;
-    wlan_conn_recover_bandwidth = 0;
-    wlan_conn_recover_mode = WIFI_MODE_NULL;
 }
 
 STATIC void wlan_callback_handler(void* arg)
@@ -1055,11 +1077,7 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
         ptrcountry_info = &country_info;
     }
 
-    wlan_conn_recover_ap_channel = channel;
-    wlan_conn_recover_antenna = antenna;
     wlan_conn_recover_hidden = hidden;
-    wlan_conn_recover_bandwidth = bandwidth;
-    wlan_conn_recover_mode = mode;
 
     wlan_internal_setup_t setup = {
             mode,
@@ -1487,6 +1505,8 @@ STATIC mp_obj_t wlan_disconnect(mp_obj_t self_in) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
     esp_wifi_disconnect();
+    /* Stop Conn timeout counter*/
+    wlan_stop_sta_conn_timer();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_disconnect_obj, wlan_disconnect);
@@ -1495,6 +1515,13 @@ STATIC mp_obj_t wlan_isconnected(mp_obj_t self_in) {
     if (xEventGroupGetBits(wifi_event_group) & CONNECTED_BIT) {
         return mp_const_true;
     }
+
+    if(wlan_obj.sta_conn_timeout)
+    {
+        wlan_obj.sta_conn_timeout = false;
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "Connection to AP Timeout!"));
+    }
+
     return mp_const_false;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_isconnected_obj, wlan_isconnected);
@@ -2158,7 +2185,7 @@ STATIC mp_obj_t wlan_max_tx_power (mp_uint_t n_args, const mp_obj_t *args) {
         {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
         }
-
+        wlan_obj.max_tx_pwr = pwr;
         return mp_const_none;
     }
     else
@@ -2269,6 +2296,8 @@ STATIC mp_obj_t wlan_country(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
     {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
+
+    memcpy(&(wlan_obj.country), &country_config, sizeof(wlan_obj.country));
 
     return mp_const_none;
 }
