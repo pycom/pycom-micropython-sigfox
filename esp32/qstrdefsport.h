@@ -12,3 +12,4 @@ Q(/)
 // entries for sys.path
 Q(/flash)
 Q(/flash/lib)
+Q(MBEDTLS_ERR_SSL_TIMEOUT)

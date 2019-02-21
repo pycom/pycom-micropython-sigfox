@@ -268,6 +268,33 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
 
 #define _assert(expr)   ((expr) ? (void)0 : __assert_func(__FILE__, __LINE__, __func__, #expr))
 
+#define MICROPY_PY_UERRNO_LIST \
+    X(EPERM) \
+    X(ENOENT) \
+    X(EIO) \
+    X(EBADF) \
+    X(EAGAIN) \
+    X(ENOMEM) \
+    X(EACCES) \
+    X(EEXIST) \
+    X(ENODEV) \
+    X(EISDIR) \
+    X(EINVAL) \
+    X(EMSGSIZE) \
+    X(EOPNOTSUPP) \
+    X(EADDRINUSE) \
+    X(ENETDOWN) \
+    X(ECONNABORTED) \
+    X(ECONNRESET) \
+    X(ENOBUFS) \
+    X(ENOTCONN) \
+    X(ETIMEDOUT) \
+    X(ECONNREFUSED) \
+    X(EHOSTUNREACH) \
+    X(EALREADY) \
+    X(EINPROGRESS) \
+    X(MBEDTLS_ERR_SSL_TIMEOUT) \
+
 #include "mpconfigboard.h"
 
 #endif // __INCLUDED_MPCONFIGPORT_H
