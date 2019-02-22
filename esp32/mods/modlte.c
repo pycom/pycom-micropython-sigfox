@@ -387,7 +387,7 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         }
 
         // set legacy flag
-        lte_legacyattach_flag = args[1].u_bool;
+        lte_legacyattach_flag = args[2].u_bool;
 
         // configure the carrier
         lte_push_at_command("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS);
@@ -565,8 +565,8 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
-    if (args[3].u_obj != mp_const_none) {
-        lte_legacyattach_flag = mp_obj_is_true(args[3].u_obj);
+    if (args[5].u_obj != mp_const_none) {
+        lte_legacyattach_flag = mp_obj_is_true(args[5].u_obj);
     }
 
     lte_check_attached(lte_legacyattach_flag);
@@ -647,6 +647,10 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         lteppp_set_state(E_LTE_ATTACHING);
         if (!lte_push_at_command("AT+CFUN=1", LTE_RX_TIMEOUT_MAX_MS)) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+        else
+        {
+            lte_push_at_command("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
         }
     }
     return mp_const_none;
