@@ -29,7 +29,6 @@
 
 #include "py/obj.h"
 #include "py/mperrno.h"
-#include "mbedtls/net_sockets.h"
 
 #if MICROPY_PY_UERRNO
 
