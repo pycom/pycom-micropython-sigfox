@@ -294,7 +294,6 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
     X(EHOSTUNREACH)                                 \
     X(EALREADY)                                     \
     X(EINPROGRESS)                                  \
-    X(MBEDTLS_ERR_SSL_TIMEOUT)                      \
     X(MBEDTLS_ERR_NET_SOCKET_FAILED)             \
     X(MBEDTLS_ERR_NET_CONNECT_FAILED)            \
     X(MBEDTLS_ERR_NET_BIND_FAILED)               \

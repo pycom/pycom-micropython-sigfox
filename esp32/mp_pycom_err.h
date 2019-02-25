@@ -14,7 +14,6 @@
 #include "lwip/netdb.h"
 #include "esp_err.h"
 
-#define MP_MBEDTLS_ERR_SSL_TIMEOUT                          MBEDTLS_ERR_SSL_TIMEOUT
 #define MP_MBEDTLS_ERR_NET_SOCKET_FAILED                    MBEDTLS_ERR_NET_SOCKET_FAILED
 #define MP_MBEDTLS_ERR_NET_CONNECT_FAILED                   MBEDTLS_ERR_NET_CONNECT_FAILED
 #define MP_MBEDTLS_ERR_NET_BIND_FAILED                      MBEDTLS_ERR_NET_BIND_FAILED
