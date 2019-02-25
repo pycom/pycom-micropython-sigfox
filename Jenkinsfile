@@ -2,6 +2,7 @@ def buildVersion
 def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def variants_to_build = [ "BASE", "PYBYTES" ]
 def boards_to_test = ["1b6fa1", "00ec51"]
+def open_thread = 'on'
 
 node {
     // get pycom-esp-idf source
@@ -28,7 +29,12 @@ node {
             def parallelSteps = [:]
             for (variant in variants_to_build) {
                 board_variant = board + "_" + variant
-                parallelSteps[board_variant] = boardBuild(board, variant)
+                // disable openthread in case of FIPY Pybytes build as fw img exceeds memory avialable
+                if ( variant == 'PYBYTES' && board == 'FiPy')
+                {
+                    open_thread = 'off'
+                }
+                parallelSteps[board_variant] = boardBuild(board, variant, open_thread)
             }
             parallel parallelSteps
         }
@@ -60,7 +66,7 @@ for (variant in variants_to_build) {
     }
 }
 
-def boardBuild(name, variant) {
+def boardBuild(name, variant, open_thread) {
     def name_u = name.toUpperCase()
     def name_short = name_u.split('_')[0]
     def app_bin = name.toLowerCase() + '.bin'
@@ -72,7 +78,7 @@ def boardBuild(name, variant) {
 
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
-        make -C esp32 -j2 release BOARD=''' + name_short + ' BUILD_DIR=build-' + variant + ' RELEASE_DIR=' + release_dir + variant + '/' + ' VARIANT=' + variant
+        make -C esp32 -j2 release BOARD=''' + name_short + ' BUILD_DIR=build-' + variant + ' RELEASE_DIR=' + release_dir + variant + '/' + ' VARIANT=' + variant + ' OPENTHREAD=' + open_thread
 
         sh 'mv esp32/build-' + variant + '/'+ name_u + '/release/application.elf ' + release_dir + variant + '/' + name + "-" + PYCOM_VERSION + '-application.elf'
     }
