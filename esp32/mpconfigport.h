@@ -344,6 +344,59 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
     X(NO_DATA)                                   \
     X(NO_RECOVERY)                               \
     X(TRY_AGAIN)                                 \
+    X(MBEDTLS_ERR_SSL_FEATURE_UNAVAILABLE)                      \
+    X(MBEDTLS_ERR_SSL_BAD_INPUT_DATA)                           \
+    X(MBEDTLS_ERR_SSL_INVALID_MAC)                              \
+    X(MBEDTLS_ERR_SSL_INVALID_RECORD)                           \
+    X(MBEDTLS_ERR_SSL_CONN_EOF)                                 \
+    X(MBEDTLS_ERR_SSL_UNKNOWN_CIPHER)                           \
+    X(MBEDTLS_ERR_SSL_NO_CIPHER_CHOSEN)                         \
+    X(MBEDTLS_ERR_SSL_NO_RNG)                                   \
+    X(MBEDTLS_ERR_SSL_NO_CLIENT_CERTIFICATE)                    \
+    X(MBEDTLS_ERR_SSL_CERTIFICATE_TOO_LARGE)                    \
+    X(MBEDTLS_ERR_SSL_CERTIFICATE_REQUIRED)                     \
+    X(MBEDTLS_ERR_SSL_PRIVATE_KEY_REQUIRED)                     \
+    X(MBEDTLS_ERR_SSL_CA_CHAIN_REQUIRED)                        \
+    X(MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE)                       \
+    X(MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE)                      \
+    X(MBEDTLS_ERR_SSL_PEER_VERIFY_FAILED)                       \
+    X(MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)                        \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CLIENT_HELLO)                      \
+    X(MBEDTLS_ERR_SSL_BAD_HS_SERVER_HELLO)                      \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CERTIFICATE)                       \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CERTIFICATE_REQUEST)               \
+    X(MBEDTLS_ERR_SSL_BAD_HS_SERVER_KEY_EXCHANGE)               \
+    X(MBEDTLS_ERR_SSL_BAD_HS_SERVER_HELLO_DONE)                 \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CLIENT_KEY_EXCHANGE)               \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CLIENT_KEY_EXCHANGE_RP)            \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CLIENT_KEY_EXCHANGE_CS)            \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CERTIFICATE_VERIFY)                \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CHANGE_CIPHER_SPEC)                \
+    X(MBEDTLS_ERR_SSL_BAD_HS_FINISHED)                          \
+    X(MBEDTLS_ERR_SSL_ALLOC_FAILED)                             \
+    X(MBEDTLS_ERR_SSL_HW_ACCEL_FAILED)                          \
+    X(MBEDTLS_ERR_SSL_HW_ACCEL_FALLTHROUGH)                     \
+    X(MBEDTLS_ERR_SSL_COMPRESSION_FAILED)                       \
+    X(MBEDTLS_ERR_SSL_BAD_HS_PROTOCOL_VERSION)                  \
+    X(MBEDTLS_ERR_SSL_BAD_HS_NEW_SESSION_TICKET)                \
+    X(MBEDTLS_ERR_SSL_SESSION_TICKET_EXPIRED)                   \
+    X(MBEDTLS_ERR_SSL_PK_TYPE_MISMATCH)                         \
+    X(MBEDTLS_ERR_SSL_UNKNOWN_IDENTITY)                         \
+    X(MBEDTLS_ERR_SSL_INTERNAL_ERROR)                           \
+    X(MBEDTLS_ERR_SSL_COUNTER_WRAPPING)                         \
+    X(MBEDTLS_ERR_SSL_WAITING_SERVER_HELLO_RENEGO)              \
+    X(MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED)                    \
+    X(MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL)                         \
+    X(MBEDTLS_ERR_SSL_NO_USABLE_CIPHERSUITE)                    \
+    X(MBEDTLS_ERR_SSL_WANT_READ)                                \
+    X(MBEDTLS_ERR_SSL_WANT_WRITE)                               \
+    X(MBEDTLS_ERR_SSL_TIMEOUT)                                  \
+    X(MBEDTLS_ERR_SSL_CLIENT_RECONNECT)                         \
+    X(MBEDTLS_ERR_SSL_UNEXPECTED_RECORD)                        \
+    X(MBEDTLS_ERR_SSL_NON_FATAL)                                \
+    X(MBEDTLS_ERR_SSL_INVALID_VERIFY_HASH)                      \
+    X(MBEDTLS_ERR_SSL_CONTINUE_PROCESSING)                      \
+    X(MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS)                        \
 
 #include "mpconfigboard.h"
 
