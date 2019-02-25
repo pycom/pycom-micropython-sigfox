@@ -689,7 +689,7 @@ STATIC mp_obj_t mod_usocket_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
 				int32_t result = nic_type->n_gethostbyname(host, hlen, out_ip, AF_INET);
 				if (result < 0) {
 					// negate result as it contains the error code which must be positive
-					nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(-result)));
+					nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(result)));
 				}
 				mp_obj_tuple_t *tuple = mp_obj_new_tuple(5, NULL);
 				tuple->items[0] = MP_OBJ_NEW_SMALL_INT(AF_INET);
