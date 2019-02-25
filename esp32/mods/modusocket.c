@@ -903,7 +903,7 @@ STATIC mp_obj_t mod_usocket_getaddrinfo(size_t n_args, const mp_obj_t *args) {
     sprintf(port_s, "%d", port);
     int32_t result = getaddrinfo(host, port_s, &hints, &res);
     if(result != 0 || res == NULL) {
-        nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(-result)));
+        nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(result)));
     }
     addr = &((struct sockaddr_in *)res->ai_addr)->sin_addr;
     mp_obj_tuple_t *tuple = mp_obj_new_tuple(5, NULL);
