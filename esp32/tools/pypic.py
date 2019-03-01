@@ -85,25 +85,29 @@ class Pypic:
         except Exception:
             pass
 
-    def _write(self, data, read=True):
+    def _write(self, data, read=True, num_read_bytes = 1):
         self.serial.write(data)
         if read:
             r_data = self.serial.read(2)
             if not r_data:
                 raise Exception('Timeout while waiting for Rx data')
+            if num_read_bytes == 2:
+                (b1, b2) = struct.unpack('BB', r_data)
+                return 256 * b2 + b1
+            # by default, just 1 byte is being returned
             return struct.unpack('B', r_data[0])[0]
 
-    def _send_cmd(self, cmd):
-        return self._write(bytearray([cmd]))
+    def _send_cmd(self, cmd, num_read_bytes = 1):
+        return self._write(bytearray([cmd]), True, num_read_bytes)
 
     def read_hw_version(self):
-        return self._send_cmd(CMD_HW_VER)
+        return self._send_cmd(CMD_HW_VER, 2)
 
     def read_fw_version(self):
-        return self._send_cmd(CMD_FW_VER)
+        return self._send_cmd(CMD_FW_VER, 2)
 
     def read_product_id(self):
-        return self._send_cmd(CMD_PROD_ID)
+        return self._send_cmd(CMD_PROD_ID, 2)
 
     def peek_memory(self, addr):
         return self._write(bytearray([CMD_PEEK, addr & 0xFF, (addr >> 8) & 0xFF]))
@@ -172,8 +176,8 @@ def main(args):
     if not args.port:
         exit_with_error(1, 'no serial port specified')
 
-    if (args.enter and args.exit) or (not args.enter and not args.exit):
-        exit_with_error(1, 'invalid action requested')
+    # if (args.enter and args.exit) or (not args.enter and not args.exit):
+    #     exit_with_error(1, 'invalid action requested')
 
     pic = Pypic(args.port)
 
@@ -182,6 +186,11 @@ def main(args):
             pic.enter_pycom_programming_mode()
         elif args.exit:
             pic.exit_pycom_programming_mode()
+    
+    # print debug info about current PIC product
+    # print("read_product_id(): 0x%X"%pic.read_product_id())
+    # print("read_hw_version(): 0x%X"%pic.read_hw_version())
+    # print("read_fw_version(): 0x%X"%pic.read_fw_version())
 
     pic.close()
 
