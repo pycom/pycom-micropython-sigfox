@@ -40,6 +40,7 @@
 #define __INCLUDED_MPCONFIGPORT_H
 
 #include <stdint.h>
+#include "mp_pycom_err.h"
 
 // options to control how Micro Python is built
 #define MICROPY_OBJ_REPR                            (MICROPY_OBJ_REPR_A)
@@ -267,6 +268,134 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
 #define MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM                   (21)
 
 #define _assert(expr)   ((expr) ? (void)0 : __assert_func(__FILE__, __LINE__, __func__, #expr))
+
+#define MICROPY_PY_UERRNO_LIST \
+    X(EPERM)                                        \
+    X(ENOENT)                                       \
+    X(EIO)                                          \
+    X(EBADF)                                        \
+    X(EAGAIN)                                       \
+    X(ENOMEM)                                       \
+    X(EACCES)                                       \
+    X(EEXIST)                                       \
+    X(ENODEV)                                       \
+    X(EISDIR)                                       \
+    X(EINVAL)                                       \
+    X(EMSGSIZE)                                     \
+    X(EOPNOTSUPP)                                   \
+    X(EADDRINUSE)                                   \
+    X(ENETDOWN)                                     \
+    X(ECONNABORTED)                                 \
+    X(ECONNRESET)                                   \
+    X(ENOBUFS)                                      \
+    X(ENOTCONN)                                     \
+    X(ETIMEDOUT)                                    \
+    X(ECONNREFUSED)                                 \
+    X(EHOSTUNREACH)                                 \
+    X(EALREADY)                                     \
+    X(EINPROGRESS)                                  \
+    X(MBEDTLS_ERR_NET_SOCKET_FAILED)             \
+    X(MBEDTLS_ERR_NET_CONNECT_FAILED)            \
+    X(MBEDTLS_ERR_NET_BIND_FAILED)               \
+    X(MBEDTLS_ERR_NET_LISTEN_FAILED)             \
+    X(MBEDTLS_ERR_NET_ACCEPT_FAILED)             \
+    X(MBEDTLS_ERR_NET_RECV_FAILED)               \
+    X(MBEDTLS_ERR_NET_SEND_FAILED)               \
+    X(MBEDTLS_ERR_NET_CONN_RESET)                \
+    X(MBEDTLS_ERR_NET_UNKNOWN_HOST)              \
+    X(MBEDTLS_ERR_NET_BUFFER_TOO_SMALL)          \
+    X(MBEDTLS_ERR_NET_INVALID_CONTEXT)           \
+    X(MBEDTLS_ERR_NET_POLL_FAILED)               \
+    X(MBEDTLS_ERR_NET_BAD_INPUT_DATA)            \
+    X(ERR_MEM)                                   \
+    X(ERR_BUF)                                   \
+    X(ERR_TIMEOUT)                               \
+    X(ERR_RTE)                                   \
+    X(ERR_INPROGRESS)                            \
+    X(ERR_VAL)                                   \
+    X(ERR_WOULDBLOCK)                            \
+    X(ERR_USE)                                   \
+    X(ERR_ALREADY)                               \
+    X(ERR_ISCONN)                                \
+    X(ERR_ABRT)                                  \
+    X(ERR_RST)                                   \
+    X(ERR_CLSD)                                  \
+    X(ERR_CONN)                                  \
+    X(ERR_ARG)                                   \
+    X(ERR_IF)                                    \
+    X(ESP_ERR_NO_MEM)                            \
+    X(ESP_ERR_INVALID_ARG)                       \
+    X(ESP_ERR_INVALID_STATE)                     \
+    X(ESP_ERR_INVALID_SIZE)                      \
+    X(ESP_ERR_NOT_FOUND)                         \
+    X(ESP_ERR_NOT_SUPPORTED)                     \
+    X(ESP_ERR_TIMEOUT)                           \
+    X(ESP_ERR_INVALID_RESPONSE)                  \
+    X(ESP_ERR_INVALID_CRC)                       \
+    X(ESP_ERR_INVALID_VERSION)                   \
+    X(ESP_ERR_INVALID_MAC)                       \
+    X(EAI_NONAME)                                \
+    X(EAI_SERVICE)                               \
+    X(EAI_FAIL)                                  \
+    X(EAI_MEMORY)                                \
+    X(EAI_FAMILY)                                \
+    X(HOST_NOT_FOUND)                            \
+    X(NO_DATA)                                   \
+    X(NO_RECOVERY)                               \
+    X(TRY_AGAIN)                                 \
+    X(MBEDTLS_ERR_SSL_FEATURE_UNAVAILABLE)                      \
+    X(MBEDTLS_ERR_SSL_BAD_INPUT_DATA)                           \
+    X(MBEDTLS_ERR_SSL_INVALID_MAC)                              \
+    X(MBEDTLS_ERR_SSL_INVALID_RECORD)                           \
+    X(MBEDTLS_ERR_SSL_CONN_EOF)                                 \
+    X(MBEDTLS_ERR_SSL_UNKNOWN_CIPHER)                           \
+    X(MBEDTLS_ERR_SSL_NO_CIPHER_CHOSEN)                         \
+    X(MBEDTLS_ERR_SSL_NO_RNG)                                   \
+    X(MBEDTLS_ERR_SSL_NO_CLIENT_CERTIFICATE)                    \
+    X(MBEDTLS_ERR_SSL_CERTIFICATE_TOO_LARGE)                    \
+    X(MBEDTLS_ERR_SSL_CERTIFICATE_REQUIRED)                     \
+    X(MBEDTLS_ERR_SSL_PRIVATE_KEY_REQUIRED)                     \
+    X(MBEDTLS_ERR_SSL_CA_CHAIN_REQUIRED)                        \
+    X(MBEDTLS_ERR_SSL_UNEXPECTED_MESSAGE)                       \
+    X(MBEDTLS_ERR_SSL_FATAL_ALERT_MESSAGE)                      \
+    X(MBEDTLS_ERR_SSL_PEER_VERIFY_FAILED)                       \
+    X(MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY)                        \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CLIENT_HELLO)                      \
+    X(MBEDTLS_ERR_SSL_BAD_HS_SERVER_HELLO)                      \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CERTIFICATE)                       \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CERTIFICATE_REQUEST)               \
+    X(MBEDTLS_ERR_SSL_BAD_HS_SERVER_KEY_EXCHANGE)               \
+    X(MBEDTLS_ERR_SSL_BAD_HS_SERVER_HELLO_DONE)                 \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CLIENT_KEY_EXCHANGE)               \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CLIENT_KEY_EXCHANGE_RP)            \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CLIENT_KEY_EXCHANGE_CS)            \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CERTIFICATE_VERIFY)                \
+    X(MBEDTLS_ERR_SSL_BAD_HS_CHANGE_CIPHER_SPEC)                \
+    X(MBEDTLS_ERR_SSL_BAD_HS_FINISHED)                          \
+    X(MBEDTLS_ERR_SSL_ALLOC_FAILED)                             \
+    X(MBEDTLS_ERR_SSL_HW_ACCEL_FAILED)                          \
+    X(MBEDTLS_ERR_SSL_HW_ACCEL_FALLTHROUGH)                     \
+    X(MBEDTLS_ERR_SSL_COMPRESSION_FAILED)                       \
+    X(MBEDTLS_ERR_SSL_BAD_HS_PROTOCOL_VERSION)                  \
+    X(MBEDTLS_ERR_SSL_BAD_HS_NEW_SESSION_TICKET)                \
+    X(MBEDTLS_ERR_SSL_SESSION_TICKET_EXPIRED)                   \
+    X(MBEDTLS_ERR_SSL_PK_TYPE_MISMATCH)                         \
+    X(MBEDTLS_ERR_SSL_UNKNOWN_IDENTITY)                         \
+    X(MBEDTLS_ERR_SSL_INTERNAL_ERROR)                           \
+    X(MBEDTLS_ERR_SSL_COUNTER_WRAPPING)                         \
+    X(MBEDTLS_ERR_SSL_WAITING_SERVER_HELLO_RENEGO)              \
+    X(MBEDTLS_ERR_SSL_HELLO_VERIFY_REQUIRED)                    \
+    X(MBEDTLS_ERR_SSL_BUFFER_TOO_SMALL)                         \
+    X(MBEDTLS_ERR_SSL_NO_USABLE_CIPHERSUITE)                    \
+    X(MBEDTLS_ERR_SSL_WANT_READ)                                \
+    X(MBEDTLS_ERR_SSL_WANT_WRITE)                               \
+    X(MBEDTLS_ERR_SSL_TIMEOUT)                                  \
+    X(MBEDTLS_ERR_SSL_CLIENT_RECONNECT)                         \
+    X(MBEDTLS_ERR_SSL_UNEXPECTED_RECORD)                        \
+    X(MBEDTLS_ERR_SSL_NON_FATAL)                                \
+    X(MBEDTLS_ERR_SSL_INVALID_VERIFY_HASH)                      \
+    X(MBEDTLS_ERR_SSL_CONTINUE_PROCESSING)                      \
+    X(MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS)                        \
 
 #include "mpconfigboard.h"
 
