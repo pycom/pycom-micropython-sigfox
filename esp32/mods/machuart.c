@@ -71,6 +71,9 @@
 #define UART_TRIGGER_RX_FULL                    (0x04)
 #define UART_TRIGGER_TX_DONE                    (0x08)
 
+#define MACH_UART_CHECK_INIT(self)                    \
+    if(!(self->init)) {nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError, "UART not Initialized!"));}
+
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -89,6 +92,7 @@ struct _mach_uart_obj_t {
     uint8_t uart_id;
     uint8_t rx_timeout;
     uint8_t n_pins;
+    bool init;
 };
 
 /******************************************************************************
@@ -265,6 +269,7 @@ STATIC bool uart_rx_wait (mach_uart_obj_t *self) {
 
 STATIC void mach_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     mach_uart_obj_t *self = self_in;
+    MACH_UART_CHECK_INIT(self)
     if (self->config.baud_rate > 0) {
         mp_printf(print, "UART(%u, baudrate=%u, bits=", self->uart_id, self->config.baud_rate);
         switch (self->config.data_bits) {
@@ -430,6 +435,9 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     // configure the rx timeout threshold
     self->uart_reg->conf1.rx_tout_thrhd = self->rx_timeout & UART_RX_TOUT_THRHD_V;
 
+    // Init Done
+    self->init = true;
+
     return mp_const_none;
 
 error:
@@ -494,18 +502,22 @@ STATIC mp_obj_t mach_uart_deinit(mp_obj_t self_in) {
         uart_driver_delete(self->uart_id);
     }
 
+    self->init = false;
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_deinit_obj, mach_uart_deinit);
 
 STATIC mp_obj_t mach_uart_any(mp_obj_t self_in) {
     mach_uart_obj_t *self = self_in;
+    MACH_UART_CHECK_INIT(self)
     return mp_obj_new_int(uart_rx_any(self));
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_uart_any_obj, mach_uart_any);
 
 STATIC mp_obj_t mach_uart_wait_tx_done(mp_obj_t self_in, mp_obj_t timeout_ms) {
     mach_uart_obj_t *self = self_in;
+    MACH_UART_CHECK_INIT(self)
     TickType_t timeout_ticks = mp_obj_get_int_truncated(timeout_ms) / portTICK_PERIOD_MS;
     return uart_wait_tx_done(self->uart_id, timeout_ticks) == ESP_OK ? mp_const_true : mp_const_false;
 }
@@ -513,6 +525,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(mach_uart_wait_tx_done_obj, mach_uart_wait_tx_d
 
 STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
     mach_uart_obj_t *self = self_in;
+    MACH_UART_CHECK_INIT(self)
     pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
 
     uint32_t isrmask = MICROPY_BEGIN_ATOMIC_SECTION();
@@ -571,6 +584,7 @@ STATIC MP_DEFINE_CONST_DICT(mach_uart_locals_dict, mach_uart_locals_dict_table);
 
 STATIC mp_uint_t mach_uart_read(mp_obj_t self_in, void *buf_in, mp_uint_t size, int *errcode) {
     mach_uart_obj_t *self = self_in;
+    MACH_UART_CHECK_INIT(self)
     byte *buf = buf_in;
 
     // make sure we want at least 1 char
@@ -598,6 +612,7 @@ STATIC mp_uint_t mach_uart_read(mp_obj_t self_in, void *buf_in, mp_uint_t size, 
 
 STATIC mp_uint_t mach_uart_write(mp_obj_t self_in, const void *buf_in, mp_uint_t size, int *errcode) {
     mach_uart_obj_t *self = self_in;
+    MACH_UART_CHECK_INIT(self)
     const char *buf = buf_in;
 
     // write the data
@@ -609,6 +624,7 @@ STATIC mp_uint_t mach_uart_write(mp_obj_t self_in, const void *buf_in, mp_uint_t
 
 STATIC mp_uint_t mach_uart_ioctl(mp_obj_t self_in, mp_uint_t request, mp_uint_t arg, int *errcode) {
     mach_uart_obj_t *self = self_in;
+    MACH_UART_CHECK_INIT(self)
     mp_uint_t ret;
 
     if (request == MP_STREAM_POLL) {
