@@ -60,10 +60,44 @@
  ******************************************************************************/
 #define MESH_STACK_SIZE                                             (8192)
 #define MESH_TASK_PRIORITY                                          (6)
-#define OT_DATA_QUEUE_SIZE_MAX                                      (10)
+#define OT_DATA_QUEUE_SIZE_MAX                                      (5)
 #define OT_RX_PACK_SIZE_MAX                                         (512)
 #define IPV6_HEADER_UDP_PROTOCOL_CODE                               (17)
 #define MESH_CLI_OUTPUT_SIZE                                        (1024)
+#define MESH_NEIGBORS_MAX                                           (16)
+#define MESH_IP_ADDRESSES_MAX                                       (7)
+#define MESH_ROUTERS_MAX                                            (16)
+
+// number of Mesh.routers() micropy command fields
+#define MESH_ROUTERS_FIELDS_NUM                                     (5)
+
+// number of Mesh.neighbors() micropy command fields
+#define MESH_NEIGHBOR_FIELDS_NUM                                    (5)
+
+// number of Mesh.leader() micropy command fields
+#define MESH_LEADER_FIELDS_NUM                                      (3)
+
+// number of Mesh.border_router() micropy command fields
+#define MESH_BR_FIELDS_NUM                                          (2)
+
+// max number of Border Routers prefix entries for a single node
+#define MESH_BR_MAX                                                 (2)
+
+// max number of UDP sockets
+#define UDP_SOCKETS_MAX                                             (3)
+
+// UDP datagrams arrived on Border Router interface have an additional header
+// first part header size, in bytes
+#define BORDER_ROUTER_HEADER_1                                      (1)
+// actual value of the MAGIC value for BR header
+#define BORDER_ROUTER_HEADER_1_CONST                                (0xBB)
+// second part of BR header is the IPv6 destination (16 bytes)
+#define BORDER_ROUTER_HEADER_2                                      (OT_IP6_ADDRESS_SIZE)
+// third part of BR header is the UDP port destination (2 bytes)
+#define BORDER_ROUTER_HEADER_3                                      (sizeof(uint16_t))
+// total size of BR header
+#define BORDER_ROUTER_HEADER_SIZE                                   (BORDER_ROUTER_HEADER_1 + BORDER_ROUTER_HEADER_2 + BORDER_ROUTER_HEADER_3)
+
 /******************************************************************************
  DEFINE TYPES
  ******************************************************************************/
@@ -107,16 +141,29 @@ typedef struct {
     uint16_t checksum;
 }ipv6_and_udp_header_t;
 
+typedef struct {
+    char net[MOD_USOCKET_IPV6_CHARS_MAX];
+    int8_t preference;
+}border_router_info_t;
+
+
+typedef struct {
+    mod_network_socket_obj_t *s;            // pointer to the NIC socket
+    otUdpSocket udp_sock;                   // socket from openthread
+    uint16_t port;                          // UDP port
+    otIp6Address ip;                        // ipv6
+    //char ip_str[MOD_USOCKET_IPV6_CHARS_MAX];// IPv6 in string
+    QueueHandle_t rx_queue;                 // queue for RX packages
+}pymesh_socket_t;
+
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
 static ot_obj_t ot_obj;
 static otInstance *ot = NULL;
-static otUdpSocket udp_sock;
-static bool socket_opened = false;
-static QueueHandle_t xRxQueue;
 static otIp6Prefix border_router_prefix;
 static mesh_obj_t mesh_obj;
+static pymesh_socket_t sockets[UDP_SOCKETS_MAX];
 
 /******************************************************************************
  DECLARE PUBLIC DATA
@@ -156,9 +203,14 @@ static int mesh_routers(uint8_t routers_num, otRouterInfo routers[routers_num]);
 
 static int mesh_leader_data(otRouterInfo *leaderRouterData, otLeaderData *leaderData);
 
-static int mesh_rx_callback(mp_obj_t cb_obj);
+static int mesh_rx_callback(mp_obj_t cb_obj, mp_obj_t cb_arg_obj);
 
 static int mesh_add_border_router(const char* ipv6_net_str, int preference_level);
+
+static int mesh_del_border_router(const char* ipv6_net_str);
+
+static pymesh_socket_t *find_socket(mod_network_socket_obj_t *nic_sock);
+
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -170,49 +222,81 @@ bool lora_mesh_ready(void) {
     return mesh_obj.ot_ready;
 }
 
-int mesh_socket_open(int *_errno) {
+// opens a new UDP socket on Pymesh
+int mesh_socket_open(mod_network_socket_obj_t *s, int *_errno) {
 
     *_errno = 0;
-    otEXPECT_ACTION(socket_opened == false, *_errno = MP_EALREADY);
+    pymesh_socket_t *sock;
 
-    memset(&udp_sock, 0, sizeof(udp_sock));
+    otEXPECT_ACTION(NULL != (sock = find_socket(NULL)), *_errno = MP_EMFILE);
+
+    memset(&sock->udp_sock, 0, sizeof(otUdpSocket));
+
+    otEXPECT_ACTION(NULL != (sock->rx_queue = xQueueCreate(OT_DATA_QUEUE_SIZE_MAX, sizeof(ot_rx_data_t))),
+            *_errno = MP_ENOBUFS);
 
     // open socket
     otEXPECT_ACTION(
-            OT_ERROR_NONE == otUdpOpen(ot, &udp_sock, &socket_udp_cb, NULL),
+            OT_ERROR_NONE == otUdpOpen(ot, &sock->udp_sock, &socket_udp_cb, sock),
             *_errno = MP_ENOENT);
+
+    sock->s = s;
+    printf("opened: %p\n", s);
 
     exit: if (*_errno != 0) {
         printf("err: %d", *_errno);
+        vQueueDelete(sock->rx_queue);
+        sock->s = NULL;
         return -1;
     }
-    socket_opened = true;
+
     return 0;
 }
 
-void mesh_socket_close(void) {
-    otUdpClose(&udp_sock);
-    socket_opened = false;
+// closes the specified socket
+// if s is NULL, closes all sockets for Pymesh interface
+void mesh_socket_close(mod_network_socket_obj_t *s) {
+    if (s) {
+        // destroy a specific socket
+        pymesh_socket_t *sock = find_socket(s);
+        otUdpClose(&sock->udp_sock);
+        vQueueDelete(sock->rx_queue);
+        memset(sock, 0, sizeof(pymesh_socket_t));
+    } else {
+        // destroy all sockets
+        for (int i = 0 ; i < UDP_SOCKETS_MAX; i++) {
+            if (sockets[i].s) {
+                otUdpClose(&sockets[i].udp_sock);
+                vQueueDelete(sockets[i].rx_queue);
+                memset(&sockets[i], 0, sizeof(pymesh_socket_t));
+            }
+        }
+    }
 }
 
-int mesh_socket_bind(byte *ip, mp_uint_t port, int *_errno) {
+int mesh_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno) {
     otSockAddr sockaddr;
 
     *_errno = 0;
-    otEXPECT_ACTION(socket_opened == true, *_errno = MP_EALREADY);
+    pymesh_socket_t *sock;
+
+    otEXPECT_ACTION(NULL != (sock = find_socket(s)), *_errno = MP_ENOENT);
 
     memset(&sockaddr, 0, sizeof(sockaddr));
 
     otEXPECT_ACTION(
-            OT_ERROR_NONE == otIp6AddressFromString("::", &sockaddr.mAddress),
+            OT_ERROR_NONE == otIp6AddressFromString((const char*) ip, &sockaddr.mAddress),
             *_errno = MP_ENOENT);
 
     sockaddr.mPort = port;
     sockaddr.mScopeId = OT_NETIF_INTERFACE_ID_THREAD;
 
     // bind socket (server assigns its own address)
-    otEXPECT_ACTION(OT_ERROR_NONE == otUdpBind(&udp_sock, &sockaddr), *_errno =
+    otEXPECT_ACTION(OT_ERROR_NONE == otUdpBind(&sock->udp_sock, &sockaddr), *_errno =
             MP_ENOENT);
+
+    sock->ip = sockaddr.mAddress;
+    sock->port = port;
 
     exit: if (*_errno != 0) {
         printf("err: %d", *_errno);
@@ -221,13 +305,15 @@ int mesh_socket_bind(byte *ip, mp_uint_t port, int *_errno) {
     return 0;
 }
 
-int mesh_socket_sendto(const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port,
+int mesh_socket_sendto(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port,
         int *_errno) {
     otMessageInfo messageInfo;
     otMessage *message = NULL;
 
     *_errno = 0;
-    otEXPECT_ACTION(socket_opened == true, *_errno = MP_EALREADY);
+    pymesh_socket_t *sock;
+
+    otEXPECT_ACTION(NULL != (sock = find_socket(s)), *_errno = MP_ENOENT);
 
     memset(&messageInfo, 0, sizeof(messageInfo));
 
@@ -249,7 +335,7 @@ int mesh_socket_sendto(const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port,
             MP_EFAULT);//MP_ENOMEM);
 
     otEXPECT_ACTION(
-            OT_ERROR_NONE == otUdpSend(&udp_sock, message, &messageInfo),
+            OT_ERROR_NONE == otUdpSend(&sock->udp_sock, message, &messageInfo),
             *_errno = MP_EHOSTUNREACH);
 
     exit:
@@ -265,15 +351,18 @@ int mesh_socket_sendto(const byte *buf, mp_uint_t len, byte *ip, mp_uint_t port,
     return len;
 }
 
-int mesh_socket_recvfrom(byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port,
+int mesh_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip, mp_uint_t *port,
         int *_errno) {
 
     ot_rx_data_t rx_data;
 
     *_errno = 0;
-    otEXPECT_ACTION(socket_opened == true, *_errno = MP_EALREADY);
 
-    if (xQueueReceive(xRxQueue, &rx_data, 0)) {
+    pymesh_socket_t *sock;
+
+    otEXPECT_ACTION(NULL != (sock = find_socket(s)), *_errno = MP_ENOENT);
+
+    if (xQueueReceive(sock->rx_queue, &rx_data, 0)) {
         // adjust the len
         if (rx_data.len < len) {
             len = rx_data.len;
@@ -331,17 +420,39 @@ static void TASK_Mesh(void *pvParameters) {
  */
 static void modmesh_init(void) {
 
-    xRxQueue = xQueueCreate(OT_DATA_QUEUE_SIZE_MAX, sizeof(ot_rx_data_t));
+    //xRxQueue = xQueueCreate(OT_DATA_QUEUE_SIZE_MAX, sizeof(ot_rx_data_t));
 
     ot_obj.handler = mp_const_none;
     ot_obj.handler_arg = mp_const_none;
     
     memset(&mesh_obj, 0, sizeof(mesh_obj));
 
+    for (int i = 0 ; i < UDP_SOCKETS_MAX ; i++)
+        memset(&sockets[i], 0, sizeof(pymesh_socket_t));
+
     xTaskCreatePinnedToCore(TASK_Mesh, "Mesh",
     MESH_STACK_SIZE / sizeof(StackType_t),
     NULL,
     MESH_TASK_PRIORITY, &xMeshTaskHndl, 1);
+}
+
+/*
+ * returns the pymesh_socket which has nic_socket as s
+ * if s is NULL, then searches the first unused socket
+ */
+static pymesh_socket_t *find_socket(mod_network_socket_obj_t *nic_sock) {
+    int i;
+
+    //printf("find_socket: %p\n", nic_sock);
+    for (i = 0 ; i < UDP_SOCKETS_MAX; i++) {
+        //printf("%d: %p ", i, sockets[i].s);
+        if (sockets[i].s == nic_sock) {
+            //printf("found\n");
+            return &sockets[i];
+        }
+    }
+    //printf("find_socket: null\n");
+    return NULL;
 }
 
 /*
@@ -351,7 +462,7 @@ STATIC void rx_interrupt_queue_handler(void *arg) {
     ot_obj_t *self = arg;
 
     if (self->handler && self->handler != mp_const_none) {
-            mp_call_function_0(self->handler);
+            mp_call_function_1(self->handler, self->handler_arg);
         }
 }
 
@@ -359,9 +470,6 @@ STATIC void rx_interrupt_queue_handler(void *arg) {
 static otInstance* openthread_init(void) {
     otError err;
     otExtAddress extAddr;
-
-    // flush the rx queue
-    xQueueReset(xRxQueue);
 
     otPlatRadioInit();
 
@@ -402,10 +510,7 @@ static void openthread_deinit(void) {
         return; // nothing to do
 
     mesh_obj.ot_ready = false;
-    mesh_socket_close();
-
-    // flush the rx queue
-    xQueueReset(xRxQueue);
+    mesh_socket_close(NULL);
 
     otInstanceFactoryReset(ot);
     otInstanceFinalize(ot);
@@ -530,12 +635,13 @@ static int mesh_leader_data(otRouterInfo *leaderRouterData, otLeaderData *leader
     return -1;
 }
 
-// register the callbeack to be triggered when a new packet arrived on mesh
-static int mesh_rx_callback(mp_obj_t cb_obj) {
+// register the callback to be triggered(with argument) when a new packet arrived on mesh
+static int mesh_rx_callback(mp_obj_t cb_obj, mp_obj_t cb_arg_obj) {
     if (!ot)
         return -1;
 
     ot_obj.handler = cb_obj;
+    ot_obj.handler_arg = cb_arg_obj;
     mp_irq_add(&ot_obj, cb_obj);
 
     return 1;
@@ -590,6 +696,72 @@ exit:
 
 }
 
+// remove a border router entry
+static int mesh_del_border_router(const char* ipv6_net_str) {
+
+    // this code is from the CLI command: "prefix remvoe <prefix>"
+    int                     error = 0;
+    struct otIp6Prefix      prefix;
+
+    memset(&prefix, 0, sizeof(otIp6Prefix));
+
+    char *prefixLengthStr;
+
+    // parse and check if ipv6_net_str is a real IPv6 network address(prefix)
+    // ipv6 prefix example: "2001:dead:beef:cafe::/64"
+    otEXPECT_ACTION((prefixLengthStr = strchr(ipv6_net_str, '/')) != NULL, error = MP_ENXIO);
+
+    *prefixLengthStr++ = '\0';
+
+    otEXPECT_ACTION((error = otIp6AddressFromString(ipv6_net_str, &prefix.mPrefix)) == OT_ERROR_NONE,);
+
+    prefix.mLength = (uint8_t)(strtol(prefixLengthStr, NULL, 0));
+
+    error = otBorderRouterRemoveOnMeshPrefix(ot, &prefix);
+
+    if (error == OT_ERROR_NONE) {
+        // remove ipv6 callback
+        otIp6SetReceiveCallback(ot, NULL, NULL);
+
+        // erase border_router_prefix
+        memset(&border_router_prefix, 0, sizeof(otIp6Prefix));
+    }
+exit:
+    return error;
+}
+
+// returns the border routers net address set on current mesh node
+static int mesh_br_list(uint8_t routers_num, border_router_info_t routers[routers_num]) {
+
+    if (!ot)
+        return 0;
+
+    uint8_t router_crt = 0;
+
+    otNetworkDataIterator iterator = OT_NETWORK_DATA_ITERATOR_INIT;
+    otBorderRouterConfig config;
+
+    while (otBorderRouterGetNextOnMeshPrefix(ot, &iterator, &config) == OT_ERROR_NONE)
+    {
+        snprintf(routers[router_crt].net,sizeof(routers[router_crt].net),
+                "%x:%x:%x:%x::/%d",
+                HostSwap16(config.mPrefix.mPrefix.mFields.m16[0]),
+                HostSwap16(config.mPrefix.mPrefix.mFields.m16[1]),
+                HostSwap16(config.mPrefix.mPrefix.mFields.m16[2]),
+                HostSwap16(config.mPrefix.mPrefix.mFields.m16[3]),
+                config.mPrefix.mLength);
+
+        routers[router_crt].preference = config.mPreference;
+        router_crt++;
+
+        if (router_crt >= routers_num)
+            // no more space to store BR
+            break;
+    }
+
+    return router_crt;
+}
+
 // transform otIp6Address to string
 static bool otIp6ToString(otIp6Address ipv6, char* ip_str, int str_len) {
 
@@ -614,6 +786,13 @@ static bool otIp6ToString(otIp6Address ipv6, char* ip_str, int str_len) {
 // function called by openthread when a UDP packet arrived
 static void socket_udp_cb(void *aContext, otMessage *aMessage,
         const otMessageInfo *aMessageInfo) {
+
+    pymesh_socket_t *sock = aContext;
+
+//    otPlatLog(0, 0,"socket_udp_cb %p", sock->s);
+
+    if (!sock) return;
+
     ot_rx_data_t rx_data;
     uint16_t payloadLength = otMessageGetLength(aMessage) - otMessageGetOffset(aMessage);
 
@@ -626,16 +805,19 @@ static void socket_udp_cb(void *aContext, otMessage *aMessage,
 
     rx_data.src_ip = aMessageInfo->mPeerAddr;
 
-    //otPlatLog(0, 0,"socket_udp_cb %d (%d, %d) %s", rx_data.len, payloadLength, otMessageGetLength(aMessage),rx_data.ip);
+//    char ip_str[MOD_USOCKET_IPV6_CHARS_MAX];
+//    otIp6ToString(rx_data.src_ip, ip_str, MOD_USOCKET_IPV6_CHARS_MAX);
+//    otPlatLog(0, 0,"socket_udp_cb %dB p=%d %s", rx_data.len, rx_data.src_port, ip_str);
+//    otPlatLog(0, 0,"reg in queue, call handler");
 
     // store packet received in queue, to be consumed by socket.recvfrom()
-    if (!xQueueSend(xRxQueue, (void *) &rx_data, 0)) {
+    if (!xQueueSend(sock->rx_queue, (void *) &rx_data, 0)) {
         // queue is full, so we should drop the oldest item, to add the new one
         ot_rx_data_t rx_data_drop;
-        xQueueReceive(xRxQueue, &rx_data_drop, 0);
+        xQueueReceive(sock->rx_queue, &rx_data_drop, 0);
 
         // try to store it again
-        xQueueSend(xRxQueue, (void *) &rx_data, 0);
+        xQueueSend(sock->rx_queue, (void *) &rx_data, 0);
     }
 
 
@@ -672,11 +854,19 @@ static void socket_udp_cb(void *aContext, otMessage *aMessage,
 #endif
 }
 
+
 // function called by openthread when an IPv6 datagram arrived
 // in *aContext we could put the IP of the BR, based on which we should make the filtering
 void br_ip6_rcv_cb(otMessage *aMessage, void *aContext){
 
     ipv6_and_udp_header_t header;
+
+    if (border_router_prefix.mLength == 0)
+    {
+        // no border router set
+//        otPlatLog(0, 0,"No Border Router set");
+        return;
+    }
 
     uint16_t messageLength = otMessageGetLength(aMessage);
 
@@ -684,25 +874,42 @@ void br_ip6_rcv_cb(otMessage *aMessage, void *aContext){
     uint16_t messageOffset = sizeof(ipv6_and_udp_header_t);//otMessageGetOffset(aMessage);
 
     ot_rx_data_t rx_data;
-    rx_data.len = messageLength - sizeof(ipv6_and_udp_header_t);
+    rx_data.len = messageLength - sizeof(ipv6_and_udp_header_t) + BORDER_ROUTER_HEADER_SIZE;
 
     if (rx_data.len > sizeof(rx_data.data))
         rx_data.len = sizeof(rx_data.data);
 
     // read data content of UDP datagram
-    otMessageRead(aMessage, messageOffset, rx_data.data, rx_data.len);
+    otMessageRead(aMessage, messageOffset, rx_data.data + BORDER_ROUTER_HEADER_SIZE, rx_data.len);
 
     // read ipv6+UDP datagram header, to find ipv6 source and destination and ports
     otMessageRead(aMessage, 0, (void*)&header, sizeof(ipv6_and_udp_header_t));
 
-    char source[MOD_USOCKET_IPV6_CHARS_MAX];
-    otIp6ToString(header.source_ip6, source, MOD_USOCKET_IPV6_CHARS_MAX);
+    // ports should be swapped, according to host endianess
+    header.dst_port = HostSwap16(header.dst_port);
+    header.src_port = HostSwap16(header.src_port);
 
-    char dest[MOD_USOCKET_IPV6_CHARS_MAX];
-    otIp6ToString(header.dest_ip6, dest, MOD_USOCKET_IPV6_CHARS_MAX);
+    // create a small preamble(header), as BORDER_ROUTER_HEADER_1_CONST + dest IP + dest port
+    rx_data.data[0] = BORDER_ROUTER_HEADER_1_CONST;
 
-    //otPlatLog(0, 0,"IP data: len:%d, off: %d, prot: %d",messageLength, messageOffset, header.payload_type);
-    //otPlatLog(0, 0,"dest: %s:%d, src: %s:%d", dest, HostSwap16(header.dst_port), source, HostSwap16(header.src_port));
+    // add IP destination
+    memcpy( rx_data.data + BORDER_ROUTER_HEADER_1,
+            &header.dest_ip6.mFields.m8[0],
+            BORDER_ROUTER_HEADER_2);
+
+    // add port destination
+    rx_data.data[BORDER_ROUTER_HEADER_1 + BORDER_ROUTER_HEADER_2] = header.dst_port >> 8;
+    rx_data.data[BORDER_ROUTER_HEADER_1 + BORDER_ROUTER_HEADER_2 + 1] = header.dst_port;
+
+//    char source[MOD_USOCKET_IPV6_CHARS_MAX];
+//    otIp6ToString(header.source_ip6, source, MOD_USOCKET_IPV6_CHARS_MAX);
+//
+//    char dest[MOD_USOCKET_IPV6_CHARS_MAX];
+//    otIp6ToString(header.dest_ip6, dest, MOD_USOCKET_IPV6_CHARS_MAX);
+//
+//    //otPlatLog(0, 0,"IP data: len:%d, off: %d, prot: %d",messageLength, messageOffset, header.payload_type);
+//    otPlatLog(0, 0,"IP data: len:%d dest: %s:%d, src: %s:%d",
+//            messageLength, dest, header.dst_port, source, header.src_port);
     //otPlatLogBuf((char*)data, payloadLength);
     //otPlatLogBufHex(data, payloadLength);
 
@@ -716,21 +923,50 @@ void br_ip6_rcv_cb(otMessage *aMessage, void *aContext){
     if (matching_bits < border_router_prefix.mLength)
         return;
 
-    // the source IPv6 matches the BR prefix, so we should add data payload into the queue
+    // the source IPv6 matches the BR prefix, so we should add data payload into the RX_queue
+
+    // first, let's find the socket
+    pymesh_socket_t *sock = NULL;
+
+    for (int i = 0; i < UDP_SOCKETS_MAX ; i++) {
+        if (sockets[i].s) {
+            // valid slot occupied by a socket
+            sock = &sockets[i];
+
+            // search if this socket is opened for an interface with border router prefix
+            matching_bits = otIp6PrefixMatch(&sockets[i].udp_sock.mSockName.mAddress,
+                    &border_router_prefix.mPrefix);
+
+            if (matching_bits >= border_router_prefix.mLength) {
+//                otPlatLog(0, 0,"found sock: %p", sock->s);
+                break;
+            }
+        }
+    }
+    // so, after the for, we'll have either the exact BR socket(if opened), or any valid socket
+
+    if (!sock) {
+//        otPlatLog(0, 0,"no sock found");
+        return;
+    }
+
 
     rx_data.dest_ip = header.dest_ip6;
     rx_data.src_ip = header.source_ip6;
     rx_data.dest_port = header.dst_port;
     rx_data.src_port = header.src_port;
 
+    //otPlatLog(0, 0,"reg in queue, call handler %d", rx_data.src_port);
+
     // store packet received in queue, to be consumed by socket.recvfrom()
-    if (!xQueueSend(xRxQueue, (void *) &rx_data, 0)) {
+
+    if (!xQueueSend(sock->rx_queue, (void *) &rx_data, 0)) {
         // queue is full, so we should drop the oldest item, to add the new one
         ot_rx_data_t rx_data_drop;
-        xQueueReceive(xRxQueue, &rx_data_drop, 0);
+        xQueueReceive(sock->rx_queue, &rx_data_drop, 0);
 
         // try to store it again
-        xQueueSend(xRxQueue, (void *) &rx_data, 0);
+        xQueueSend(sock->rx_queue, (void *) &rx_data, 0);
     }
 
     // callback to mpy if registered
@@ -815,7 +1051,7 @@ STATIC mp_obj_t mesh_deinit_cmd (mp_obj_t self_in) {
     
     openthread_deinit();
     vTaskDelete(xMeshTaskHndl);
-    vQueueDelete(xRxQueue);
+
     return mp_obj_new_bool(true);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mesh_deinit_obj, mesh_deinit_cmd);
@@ -912,7 +1148,6 @@ STATIC mp_obj_t mesh_ipaddr_cmd (mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mesh_ipaddr_obj, mesh_ipaddr_cmd);
 
-#define MESH_NEIGHBOR_FIELDS_NUM 5
 /*
  * returns a list with all neighbors properties(mac, role, rloc16, rssi and age)
  */
@@ -957,13 +1192,13 @@ STATIC mp_obj_t mesh_neigbors_cmd (mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mesh_neighbors_obj, mesh_neigbors_cmd);
 
-#define MESH_ROUTERS_FIELDS_NUM 5
+
 /*
  * returns a list with all routers properties (mac, role, rloc16, rssi and age)
  */
 STATIC mp_obj_t mesh_routers_cmd (mp_obj_t self_in) {
     //Ex: [(mac=0, rloc16=11264, id=11, path_cost=0, age=0), (mac=72623859790382856, rloc16=18432, id=18, path_cost=0, age=15)]
-    static const qstr mesh_esh_routers_info_fields[MESH_NEIGHBOR_FIELDS_NUM] = {
+    static const qstr mesh_esh_routers_info_fields[MESH_ROUTERS_FIELDS_NUM] = {
             MP_QSTR_mac, MP_QSTR_rloc16, MP_QSTR_id, MP_QSTR_path_cost, MP_QSTR_age
     };
 
@@ -1003,7 +1238,6 @@ STATIC mp_obj_t mesh_routers_cmd (mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mesh_routers_obj, mesh_routers_cmd);
 
-#define MESH_LEADER_FIELDS_NUM 3
 /*
  * returns a list with all Leader properties(partition, mac and rloc16)
  */
@@ -1041,32 +1275,74 @@ STATIC mp_obj_t mesh_leader (mp_obj_t self_in) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mesh_leader_obj, mesh_leader);
 
 /*
- * register a callback to be triggered when mesh interface receives data
+ * register a callback(with argument) to be triggered when mesh interface receives data
  */
-STATIC mp_obj_t mesh_rx_cb (mp_obj_t self_in, mp_obj_t cb_obj) {
+STATIC mp_obj_t mesh_rx_cb (mp_obj_t self_in, mp_obj_t cb_obj, mp_obj_t cb_arg_obj) {
     int res = 0;
 
     if ((mesh_obj.ot_ready) && (cb_obj != mp_const_none)) {
-        //lora_obj_t *self = self_in;
-        //mp_irq_add(self, cb_obj);
 
-        mesh_rx_callback(cb_obj);
+        mesh_rx_callback(cb_obj, cb_arg_obj);
         res = 1;
     }
     return mp_obj_new_int(res);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(mesh_rx_cb_obj, mesh_rx_cb);
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(mesh_rx_cb_obj, mesh_rx_cb);
+
 
 /*
+ * list the Border Router entries, if no param OR
  * register a Border Router for the mesh network, by its network addres (on-mesh prefix) and preference
  */
-STATIC mp_obj_t mesh_border_router (mp_obj_t self_in, mp_obj_t ipv6_net_obj, mp_obj_t preference_obj) {
-    const char *ipv6_net_str = mp_obj_str_get_str(ipv6_net_obj);
-    int preference_lvl = mp_obj_get_int(preference_obj);
+STATIC mp_obj_t mesh_border_router (mp_uint_t n_args, const mp_obj_t *args) {
 
-    return mp_obj_new_int(mesh_add_border_router(ipv6_net_str, preference_lvl));
+    if (n_args == 1) {
+        // list the BR entries
+        static const qstr mesh_br_info_fields[MESH_BR_FIELDS_NUM] = {
+                MP_QSTR_net, MP_QSTR_preference};
+
+        mp_obj_t br_list[MESH_BR_MAX];
+        mp_obj_t br_tuple[MESH_BR_FIELDS_NUM];
+        border_router_info_t brouters[MESH_BR_MAX];
+        int br_num = MESH_BR_MAX;
+
+        br_num = mesh_br_list(br_num, brouters);
+        for (int i = 0; i < br_num; i++) {
+
+            // create the tupple with current neighbor
+            br_tuple[0] = mp_obj_new_str(brouters[i].net, strlen(brouters[i].net));
+            br_tuple[1] = mp_obj_new_int((int)brouters[i].preference);
+
+            // add the tupple in the list
+            br_list[i] = mp_obj_new_attrtuple(mesh_br_info_fields,
+                    sizeof(br_tuple) / sizeof(br_tuple[0]),
+                    br_tuple);
+        }
+        return mp_obj_new_list(br_num, br_list);
+
+    } else if (n_args == 3) {
+        // add new Border Router (by net address and preference level)
+
+        const char *ipv6_net_str = mp_obj_str_get_str(args[1]);
+        int preference_lvl = mp_obj_get_int(args[2]);
+
+        return mp_obj_new_int(mesh_add_border_router(ipv6_net_str, preference_lvl));
+    }
+    // no good params
+    return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_3(mesh_border_router_obj, mesh_border_router);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mesh_border_router_obj, 1, 3, mesh_border_router);
+
+/*
+ * delete a Border Router entry
+ */
+STATIC mp_obj_t mesh_border_router_del (mp_obj_t self_in, mp_obj_t br_prefixj) {
+
+    const char *ipv6_net_str = mp_obj_str_get_str(br_prefixj);
+
+    return mp_obj_new_int(mesh_del_border_router(ipv6_net_str));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mesh_border_router_del_obj, mesh_border_router_del);
 
 STATIC const mp_map_elem_t mesh_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_state),                   (mp_obj_t)&mesh_state_obj },
@@ -1079,6 +1355,7 @@ STATIC const mp_map_elem_t mesh_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_leader),                  (mp_obj_t)&mesh_leader_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_rx_cb),                   (mp_obj_t)&mesh_rx_cb_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_border_router),           (mp_obj_t)&mesh_border_router_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_border_router_del),       (mp_obj_t)&mesh_border_router_del_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),                  (mp_obj_t)&mesh_deinit_obj },
 };
 

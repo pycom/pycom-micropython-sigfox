@@ -275,11 +275,24 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
 
 #if defined (LOPY) || defined(LOPY4) || defined(FIPY)
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
-        mp_uint_t port = mp_obj_get_int(addr_in);
-
-        if (self->sock_base.nic_type->n_bind(self, NULL, port, &_errno) != 0) {
-            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
-        }
+        if (MP_OBJ_IS_INT(addr_in)) {
+              mp_uint_t port = mp_obj_get_int(addr_in);
+              if (self->sock_base.nic_type->n_bind(self, (unsigned char*) "::", port, &_errno) != 0) {
+                  nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
+              }
+         } else {
+             uint8_t ip[MOD_USOCKET_IPV6_CHARS_MAX];
+             mp_obj_t *addr_items;
+             mp_obj_get_array_fixed_n(addr_in, 2, &addr_items);
+             size_t addr_len;
+             const char *addr_str = mp_obj_str_get_data(addr_items[0], &addr_len);
+             addr_len++; //string end null char
+             memcpy(ip, addr_str, (addr_len< MOD_USOCKET_IPV6_CHARS_MAX)?addr_len:MOD_USOCKET_IPV6_CHARS_MAX);
+             mp_uint_t port = mp_obj_get_int(addr_items[1]);
+             if (self->sock_base.nic_type->n_bind(self, ip, port, &_errno) != 0) {
+                 nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
+             }
+         }
     } else {
 #endif
         // get the address
