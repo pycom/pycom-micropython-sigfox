@@ -40,6 +40,7 @@
 #define __INCLUDED_MPCONFIGPORT_H
 
 #include <stdint.h>
+#include "mp_pycom_err.h"
 
 // options to control how Micro Python is built
 #define MICROPY_OBJ_REPR                            (MICROPY_OBJ_REPR_A)
@@ -248,7 +249,7 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
 
 #define _assert(expr)   ((expr) ? (void)0 : __assert_func(__FILE__, __LINE__, __func__, #expr))
 
-#define MICROPY_PY_UERRNO_LIST \
+#define ERRNO_LIST \
     X(EPERM)                                        \
     X(ENOENT)                                       \
     X(EIO)                                          \
@@ -284,8 +285,6 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
     X(MBEDTLS_ERR_NET_UNKNOWN_HOST)              \
     X(MBEDTLS_ERR_NET_BUFFER_TOO_SMALL)          \
     X(MBEDTLS_ERR_NET_INVALID_CONTEXT)           \
-    X(MBEDTLS_ERR_NET_POLL_FAILED)               \
-    X(MBEDTLS_ERR_NET_BAD_INPUT_DATA)            \
     X(ERR_MEM)                                   \
     X(ERR_BUF)                                   \
     X(ERR_TIMEOUT)                               \
@@ -373,8 +372,6 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
     X(MBEDTLS_ERR_SSL_UNEXPECTED_RECORD)                        \
     X(MBEDTLS_ERR_SSL_NON_FATAL)                                \
     X(MBEDTLS_ERR_SSL_INVALID_VERIFY_HASH)                      \
-    X(MBEDTLS_ERR_SSL_CONTINUE_PROCESSING)                      \
-    X(MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS)                        \
 
 #include "mpconfigboard.h"
 

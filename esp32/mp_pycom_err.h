@@ -25,8 +25,6 @@
 #define MP_MBEDTLS_ERR_NET_UNKNOWN_HOST                     MBEDTLS_ERR_NET_UNKNOWN_HOST
 #define MP_MBEDTLS_ERR_NET_BUFFER_TOO_SMALL                 MBEDTLS_ERR_NET_BUFFER_TOO_SMALL
 #define MP_MBEDTLS_ERR_NET_INVALID_CONTEXT                  MBEDTLS_ERR_NET_INVALID_CONTEXT
-#define MP_MBEDTLS_ERR_NET_POLL_FAILED                      MBEDTLS_ERR_NET_POLL_FAILED
-#define MP_MBEDTLS_ERR_NET_BAD_INPUT_DATA                   MBEDTLS_ERR_NET_BAD_INPUT_DATA
 
 #define MP_ERR_MEM             ERR_MEM
 #define MP_ERR_BUF             ERR_BUF
@@ -119,7 +117,5 @@
 #define MP_MBEDTLS_ERR_SSL_UNEXPECTED_RECORD                     MBEDTLS_ERR_SSL_UNEXPECTED_RECORD                  /* < Record header looks valid but is not expected. */
 #define MP_MBEDTLS_ERR_SSL_NON_FATAL                             MBEDTLS_ERR_SSL_NON_FATAL                          /* < The alert message received indicates a non-fatal error. */
 #define MP_MBEDTLS_ERR_SSL_INVALID_VERIFY_HASH                   MBEDTLS_ERR_SSL_INVALID_VERIFY_HASH                /* < Couldn't set the hash for verifying CertificateVerify */
-#define MP_MBEDTLS_ERR_SSL_CONTINUE_PROCESSING                   MBEDTLS_ERR_SSL_CONTINUE_PROCESSING                /* < Internal-only message signaling that further message-processing should be done */
-#define MP_MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS                     MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS                  /* < The asynchronous operation is not completed yet. */
 
 #endif /* ESP32_MP_PYCOM_ERR_H_ */
