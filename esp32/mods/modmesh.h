@@ -27,10 +27,7 @@
 
 #include <openthread/instance.h>
 #include <openthread/thread.h>
-
-#define MESH_NEIGBORS_MAX       16
-#define MESH_IP_ADDRESSES_MAX   7
-#define MESH_ROUTERS_MAX        16
+#include <modnetwork.h>
 
 /******************************************************************************
  PUBLIC VARS
@@ -48,16 +45,16 @@ extern bool lora_mesh_ready(void);
  * socket functions used in modlora.c
  */
 
-extern int mesh_socket_open(int *_errno);
+extern int mesh_socket_open(mod_network_socket_obj_t *s, int *_errno);
 
-extern void mesh_socket_close(void);
+extern void mesh_socket_close(mod_network_socket_obj_t *s);
 
-extern int mesh_socket_recvfrom(byte *buf, mp_uint_t len, byte *ip,
+extern int mesh_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, byte *ip,
         mp_uint_t *port, int *_errno);
 
-extern int mesh_socket_bind(byte *ip, mp_uint_t port, int *_errno);
+extern int mesh_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int *_errno);
 
-extern int mesh_socket_sendto(const byte *buf, mp_uint_t len, byte *ip,
+extern int mesh_socket_sendto(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t len, byte *ip,
         mp_uint_t port, int *_errno);
 /******************************************************************************/
 

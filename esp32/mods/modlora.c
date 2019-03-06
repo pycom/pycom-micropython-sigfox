@@ -2359,7 +2359,7 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
 #ifdef LORA_OPENTHREAD_ENABLED
     // if mesh is enabled, assume socket is for mesh, not for LoraWAN
     if (lora_mesh_ready()) {
-        return mesh_socket_open(_errno);
+        return mesh_socket_open(s, _errno);
     }
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
 
@@ -2387,7 +2387,7 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
 static void lora_socket_close (mod_network_socket_obj_t *s) {
     s->sock_base.u.sd = -1;
 #ifdef LORA_OPENTHREAD_ENABLED
-    mesh_socket_close();
+    mesh_socket_close(s);
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
 }
 
@@ -2457,7 +2457,7 @@ static int lora_socket_recvfrom (mod_network_socket_obj_t *s, byte *buf, mp_uint
 
 #ifdef LORA_OPENTHREAD_ENABLED
     if (lora_mesh_ready()) {
-        return mesh_socket_recvfrom(buf, len, ip, port, _errno);
+        return mesh_socket_recvfrom(s, buf, len, ip, port, _errno);
     }
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
 
@@ -2523,7 +2523,7 @@ static int lora_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t por
 
 #ifdef LORA_OPENTHREAD_ENABLED
     if (lora_mesh_ready()) {
-        return mesh_socket_bind(ip, port, _errno);
+        return mesh_socket_bind(s, ip, port, _errno);
     }
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
 
@@ -2567,7 +2567,7 @@ static int lora_socket_sendto(struct _mod_network_socket_obj_t *s, const byte *b
 
 #ifdef LORA_OPENTHREAD_ENABLED
     if (lora_mesh_ready()) {
-        return mesh_socket_sendto(buf, len, ip, port, _errno);
+        return mesh_socket_sendto(s, buf, len, ip, port, _errno);
     }
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
 
