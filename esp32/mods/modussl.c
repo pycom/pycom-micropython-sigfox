@@ -32,6 +32,7 @@
  DEFINE CONSTANTS
  ******************************************************************************/
 #define FILE_READ_SIZE                              256
+#define DEFAULT_SSL_READ_TIMEOUT                    10 //sec
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -143,6 +144,8 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
         }
     }
 
+    mbedtls_ssl_conf_read_timeout(&ssl_sock->conf, 1000);
+
     ssl_sock->context_fd.fd = ssl_sock->sock_base.u.sd;
     ssl_sock->sock_base.is_ssl = true;
 
@@ -157,11 +160,16 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
         mbedtls_ssl_set_bio(&ssl_sock->ssl, &ssl_sock->context_fd, mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
 
         // printf("Performing the SSL/TLS handshake...\n");
+        int count = 0;
         while ((ret = mbedtls_ssl_handshake(&ssl_sock->ssl)) != 0)
         {
-            if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_TIMEOUT) {
-                // printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
+            if ((ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE && ret != MBEDTLS_ERR_SSL_TIMEOUT) || count >= ssl_sock->read_timeout) {
+                 //printf("mbedtls_ssl_handshake returned -0x%x\n", -ret);
                 return ret;
+            }
+            if(ret == MBEDTLS_ERR_SSL_TIMEOUT)
+            {
+                count++;
             }
         }
 
@@ -174,7 +182,6 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
             // printf("Certificate verified.\n");
         }
     }
-    mbedtls_ssl_conf_read_timeout(&ssl_sock->conf, 10);
 
     return 0;
 }
@@ -224,6 +231,7 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
         { MP_QSTR_ssl_version,                  MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 0} },
         { MP_QSTR_ca_certs,                     MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
         { MP_QSTR_server_hostname,              MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+        { MP_QSTR_timeout,                      MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
     };
 
     int32_t _error;
@@ -258,6 +266,16 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
     ssl_sock->base.type = &ssl_socket_type;
     ssl_sock->o_sock = args[0].u_obj;       // this is needed so that the GC doesnt collect the socket
 
+    //Read timeout
+    if(args[8].u_obj == mp_const_none)
+    {
+        ssl_sock->read_timeout = DEFAULT_SSL_READ_TIMEOUT;
+    }
+    else
+    {
+        ssl_sock->read_timeout = mp_obj_get_int(args[8].u_obj);
+    }
+
     _error = mod_ssl_setup_socket(ssl_sock, host_name, cafile_path, certfile_path, keyfile_path,
                                   verify_type, server_side ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT);
 
@@ -283,6 +301,8 @@ STATIC const mp_map_elem_t mp_module_ussl_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_CERT_NONE),           MP_OBJ_NEW_SMALL_INT(MBEDTLS_SSL_VERIFY_NONE) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CERT_OPTIONAL),       MP_OBJ_NEW_SMALL_INT(MBEDTLS_SSL_VERIFY_OPTIONAL) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CERT_REQUIRED),       MP_OBJ_NEW_SMALL_INT(MBEDTLS_SSL_VERIFY_REQUIRED) },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_SSL_TIMEOUT),         MP_OBJ_NEW_SMALL_INT(MBEDTLS_ERR_SSL_TIMEOUT) },
 
     // { MP_OBJ_NEW_QSTR(MP_QSTR_PROTOCOL_SSLv3),      MP_OBJ_NEW_SMALL_INT(SL_SO_SEC_METHOD_SSLV3) },
     // { MP_OBJ_NEW_QSTR(MP_QSTR_PROTOCOL_TLSv1),      MP_OBJ_NEW_SMALL_INT(SL_SO_SEC_METHOD_TLSV1) },

@@ -40,4 +40,6 @@ extern int lwipsocket_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t ti
 
 extern int lwipsocket_socket_ioctl (mod_network_socket_obj_t *s, mp_uint_t request, mp_uint_t arg, int *_errno);
 
+extern int lwipsocket_socket_setup_ssl(mod_network_socket_obj_t *s, int *_errno);
+
 #endif      // LWIPSOCKET_H_

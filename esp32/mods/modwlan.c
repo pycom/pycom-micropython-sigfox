@@ -1198,6 +1198,7 @@ const mod_network_nic_type_t mod_network_nic_type_wlan = {
     .n_setsockopt = lwipsocket_socket_setsockopt,
     .n_settimeout = lwipsocket_socket_settimeout,
     .n_ioctl = lwipsocket_socket_ioctl,
+    .n_setupssl = lwipsocket_socket_setup_ssl,
 	.inf_up = wlan_is_inf_up
 };
 
