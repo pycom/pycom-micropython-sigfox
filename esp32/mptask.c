@@ -448,7 +448,8 @@ STATIC void mptask_enable_wifi_ap (void) {
 	uint8_t wifi_pwd[64];
 	config_get_wifi_pwd(wifi_pwd);
     wlan_setup (WIFI_MODE_AP, DEFAULT_AP_SSID, WIFI_AUTH_WPA2_PSK, DEFAULT_AP_PASSWORD ,
-                DEFAULT_AP_CHANNEL, ANTENNA_TYPE_INTERNAL, true, false);
+                DEFAULT_AP_CHANNEL, ANTENNA_TYPE_INTERNAL, true, false, WIFI_PROTOCOL_11B |
+                WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N );
     mod_network_register_nic(&wlan_obj);
 }
 
