@@ -382,7 +382,7 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
         // if the MD5 fails, then we roll back to the previous image
 
         // do we have a new image that needs to be verified?
-        if ((boot_info->ActiveImg != IMG_ACT_FACTORY) && (boot_info->Status == IMG_STATUS_CHECK)) {
+        if (boot_info->Status == IMG_STATUS_CHECK) {
             if (boot_info->ActiveImg == IMG_ACT_UPDATE2) {
                 boot_info->ActiveImg = IMG_ACT_FACTORY;    // we only have space for 1 OTA image
             }
@@ -390,10 +390,11 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
             // verify the active image (ota partition)
             esp_image_metadata_t data;
             if (ESP_OK != esp_image_load(ESP_IMAGE_VERIFY, &bs->image[boot_info->ActiveImg], &data)) {
-                    ESP_LOGD(TAG, "Switch to the previous image");
-                    // switch to the previous image
+                ets_printf("Cannot load Firmware img in the active partition! .. Defaulting back to previous partition\n");
+                // switch to the previous image
+                uint32_t tempimg = boot_info->ActiveImg;
                 boot_info->ActiveImg = boot_info->PrevImg;
-                boot_info->PrevImg = IMG_ACT_FACTORY;
+                boot_info->PrevImg = tempimg;
             }
 
             // in any case, change the status to "READY"

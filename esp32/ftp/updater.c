@@ -246,9 +246,28 @@ int updater_ota_next_slot_address() {
     // check which one should be the next active image
     if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
         // if we still have an image pending for verification, keep overwriting it
-        if ((boot_info.Status == IMG_STATUS_CHECK && boot_info.ActiveImg == IMG_ACT_UPDATE2) ||
-            (boot_info.ActiveImg == IMG_ACT_UPDATE1 && boot_info.Status != IMG_STATUS_CHECK)) {
-                ota_offset = IMG_UPDATE2_OFFSET;
+        if (boot_info.Status == IMG_STATUS_CHECK) {
+            if(boot_info.ActiveImg == IMG_ACT_FACTORY)
+
+            {
+                ota_offset = IMG_FACTORY_OFFSET;
+            }
+            else
+            {
+                ota_offset = IMG_UPDATE1_OFFSET;
+            }
+        }
+        else
+        {
+            if(boot_info.ActiveImg == IMG_ACT_FACTORY)
+
+            {
+                ota_offset = IMG_UPDATE1_OFFSET;
+            }
+            else
+            {
+                ota_offset = IMG_FACTORY_OFFSET;
+            }
         }
     }
 
