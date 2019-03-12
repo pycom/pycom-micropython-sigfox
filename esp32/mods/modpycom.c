@@ -49,7 +49,7 @@ static nvs_handle pycom_nvs_handle;
 boot_info_t boot_info;
 uint32_t boot_info_offset;
 
-static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t safeboot);
+static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t safeboot, bool reset);
 
 void modpycom_init0(void) {
     if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &pycom_nvs_handle) != ESP_OK) {
@@ -61,38 +61,60 @@ void modpycom_init0(void) {
     }
 }
 
-static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t safeboot) {
-    bool update_boot = false;
+static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t safeboot, bool reset) {
+    bool update_part = false;
+    bool update_fstype = false;
+    bool update_safeboot = false;
 
     if (boot_partition < 255) {
-        if (boot_partition <= 1) {
+        if ((boot_partition <= IMG_ACT_UPDATE1) && (boot_info.ActiveImg != boot_partition)) {
+            boot_info.PrevImg = boot_info.ActiveImg;
             boot_info.ActiveImg = (uint32_t)boot_partition;
-            boot_info.Status = 0;
-            update_boot = true;
+            boot_info.Status = IMG_STATUS_CHECK;
+            update_part = true;
         } else {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error invalid boot partition!"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error invalid boot partition! or partition already active!"));
         }
     }
     if (safeboot < 255) {
-        if (safeboot <= 1) {
-            boot_info.safeboot = (uint32_t)safeboot;
-            update_boot = true;
+        if ((safeboot <= 1) && (safeboot != boot_info.safeboot)) {
+            if(safeboot)
+            {
+                boot_info.safeboot = (uint32_t)SAFE_BOOT_SW;
+            }
+            else
+            {
+                boot_info.safeboot = (uint32_t)0x00;
+            }
+            update_safeboot = true;
         } else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error safeboot must be True or False!"));
         }
     }
     if (fs_type < 255) {
         if (fs_type <= 1) {
-            config_set_boot_fs_type(fs_type);
+            if(config_get_boot_fs_type() != fs_type)
+            {
+                config_set_boot_fs_type(fs_type);
+                update_fstype = true;
+            }
         }
         else {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error invalid filesystem type!"));
         }
     }
-    if (update_boot) {
+    if (update_part || update_safeboot) {
         if (updater_write_boot_info (&boot_info, boot_info_offset) == false) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error writing bootloader information!"));
         }
+        if(update_part)
+        {
+            machine_reset();
+        }
+    }
+    if((update_fstype || update_safeboot) && reset)
+    {
+        machine_reset();
     }
 }
 
@@ -338,7 +360,7 @@ STATIC mp_obj_t mod_pycom_lte_modem_on_boot (mp_uint_t n_args, const mp_obj_t *a
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_lte_modem_on_boot_obj, 0, 1, mod_pycom_lte_modem_on_boot);
 
 STATIC mp_obj_t mod_pycom_bootmgr (size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
-    enum { ARG_boot_partition, ARG_fs_type, ARG_safeboot, ARG_reset };
+    enum { ARG_boot_partition, ARG_fs_type, ARG_safeboot, ARG_status };
     STATIC const mp_arg_t allowed_args[] = {
         { MP_QSTR_boot_partition,   MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 255} },
         { MP_QSTR_fs_type,          MP_ARG_KW_ONLY | MP_ARG_INT, {.u_int = 255} },
@@ -350,7 +372,7 @@ STATIC mp_obj_t mod_pycom_bootmgr (size_t n_args, const mp_obj_t *pos_args, mp_m
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     if (args[ARG_boot_partition].u_int == 255 && args[ARG_fs_type].u_int == 255 && args[ARG_safeboot].u_int == 255) {
-        mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(3, NULL));
+        mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(4, NULL));
 
         if(boot_info.ActiveImg == 0x00)
         {
@@ -372,21 +394,25 @@ STATIC mp_obj_t mod_pycom_bootmgr (size_t n_args, const mp_obj_t *pos_args, mp_m
 
         if(boot_info.safeboot == 0x00)
         {
-            t->items[ARG_safeboot] = mp_obj_new_str("False", strlen("False"));
+            t->items[ARG_safeboot] = mp_obj_new_str("SafeBoot: False", strlen("SafeBoot: False"));
         }
         else
         {
-            t->items[ARG_safeboot] = mp_obj_new_str("True", strlen("True"));
+            t->items[ARG_safeboot] = mp_obj_new_str("SafeBoot: True", strlen("SafeBoot: True"));
+        }
+        if(boot_info.Status == 0x00)
+        {
+            t->items[ARG_status] = mp_obj_new_str("Status: Check", strlen("Status: Check"));
+        }
+        else
+        {
+            t->items[ARG_status] = mp_obj_new_str("Status: Ready", strlen("Status: Ready"));
         }
 
         return MP_OBJ_FROM_PTR(t);
 
     } else {
-            modpycom_bootmgr(args[ARG_boot_partition].u_int, args[ARG_fs_type].u_int, args[ARG_safeboot].u_int);
-
-            if (args[ARG_reset].u_bool == true) {
-                machine_reset();
-            }
+            modpycom_bootmgr(args[ARG_boot_partition].u_int, args[ARG_fs_type].u_int, args[ARG_safeboot].u_int, args[3].u_bool);
     }
 
     return mp_const_none;
