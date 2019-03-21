@@ -347,7 +347,7 @@ STATIC mp_obj_t pyb_spi_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(args), pyb_spi_init_args, args);
 
     // check the peripheral id
-#if defined(WIPY)
+#if defined(WIPY) || defined(GPY)
     if (args[0].u_int != 0 && args[0].u_int != 1) {
 #else
     if (args[0].u_int != 0) {
