@@ -29,6 +29,7 @@ node {
             def parallelSteps = [:]
             for (variant in variants_to_build) {
                 board_variant = board + "_" + variant
+                open_thread = 'on'
                 // disable openthread in case of FIPY Pybytes build as fw img exceeds memory avialable
                 if ( variant == 'PYBYTES' && board == 'FiPy')
                 {
