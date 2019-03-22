@@ -78,7 +78,7 @@ def boardBuild(name, variant, open_thread) {
         release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + PYCOM_VERSION + "/" + GIT_TAG + "/"
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
-        make -C esp32 clean BOARD=''' + name_short + ' VARIANT=' + variant
+        make -C esp32 clean BOARD=''' + name_short + ' VARIANT=' + variant + ' BUILD_DIR=build-' + variant
 
         sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
         export IDF_PATH=${WORKSPACE}/esp-idf;
