@@ -612,7 +612,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             lte_obj.cid = args[3].u_int;
         }
 
-        if (!lte_obj.carrier && (args[1].u_obj != mp_const_none || args[4].u_obj != mp_const_none)) {
+        if (args[1].u_obj != mp_const_none || args[4].u_obj != mp_const_none) {
 
             const char* strapn;
             const char* strtype;
