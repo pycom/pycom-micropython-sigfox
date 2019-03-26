@@ -550,6 +550,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_deinit_obj, 1, lte_deinit);
 
 STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     lte_check_init();
+    bool is_new_band_support = false;
 
     STATIC const mp_arg_t allowed_args[] = {
         { MP_QSTR_band,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
@@ -574,13 +575,39 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     if (lteppp_get_state() < E_LTE_ATTACHING) {
 
         if (!lte_obj.carrier) {
+
+            lte_task_cmd_data_t cmd = { .timeout = LTE_RX_TIMEOUT_MAX_MS };
+            memcpy(cmd.data, "AT+SMDD", strlen("AT+SMDD"));
+            lteppp_send_at_command(&cmd, &modlte_rsp);
+
+            if(strstr(modlte_rsp.data, "17 bands") == NULL)
+            {
+                memcpy(cmd.data, "Pycom_Dummy", strlen("Pycom_Dummy"));
+                while(modlte_rsp.data_remaining)
+                {
+                    lteppp_send_at_command(&cmd, &modlte_rsp);
+                    if(strstr(modlte_rsp.data, "<band p=\"5\">") != NULL)
+                    {
+                        is_new_band_support = true;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                is_new_band_support = true;
+            }
             // configuring scanning in all bands
             lte_push_at_command("AT!=\"clearscanconfig\"", LTE_RX_TIMEOUT_MIN_MS);
+            // Delay to ensure next addScan command is not discarded
+            vTaskDelay(1000);
             if (args[0].u_obj == mp_const_none) {
                 lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
-                lte_push_at_command("AT!=\"RRC::addScanBand band=5\"", LTE_RX_TIMEOUT_MIN_MS);
-                lte_push_at_command("AT!=\"RRC::addScanBand band=8\"", LTE_RX_TIMEOUT_MIN_MS);
+                if (is_new_band_support) {
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=5\"", LTE_RX_TIMEOUT_MIN_MS);
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=8\"", LTE_RX_TIMEOUT_MIN_MS);
+                }
                 lte_push_at_command("AT!=\"RRC::addScanBand band=12\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=13\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=20\"", LTE_RX_TIMEOUT_MIN_MS);
