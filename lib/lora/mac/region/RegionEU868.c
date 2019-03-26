@@ -184,7 +184,7 @@ static uint8_t CountNbOfEnabledChannels( bool joined, uint8_t datarate, uint16_t
     return nbEnabledChannels;
 }
 
-PhyParam_t RegionEU868GetPhyParam( GetPhyParams_t* getPhy )
+IRAM_ATTR PhyParam_t RegionEU868GetPhyParam( GetPhyParams_t* getPhy )
 {
     PhyParam_t phyParam = { 0 };
 
