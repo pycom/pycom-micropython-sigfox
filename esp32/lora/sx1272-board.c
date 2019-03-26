@@ -14,6 +14,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 */
 
 #include "board.h"
+#include "esp_attr.h"
 
 #if defined(LOPY) || defined (FIPY)
 
@@ -25,7 +26,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 /*!
  * Radio driver structure initialization
  */
-const struct Radio_s Radio =
+DRAM_ATTR const struct Radio_s Radio =
 {
     SX1272Init,
     SX1272GetStatus,
