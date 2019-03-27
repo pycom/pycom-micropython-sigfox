@@ -57,6 +57,7 @@ TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xLoRaTaskHndl;
+TaskHandle_t xLoRaTimerTaskHndl;
 #endif
 #if defined(SIPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xSigfoxTaskHndl;
