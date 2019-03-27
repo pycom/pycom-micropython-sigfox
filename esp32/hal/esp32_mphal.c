@@ -58,9 +58,9 @@ IRAM_ATTR static void HAL_TimerCallback (void* arg) {
         HAL_tick_user_cb();
     }
 
-        TIMERG0.int_clr_timers.t1 = 1;
-        TIMERG0.hw_timer[1].update=1;
-        TIMERG0.hw_timer[1].config.alarm_en = 1;
+    TIMERG0.int_clr_timers.t1 = 1;
+    TIMERG0.hw_timer[1].update=1;
+    TIMERG0.hw_timer[1].config.alarm_en = 1;
 
 }
 

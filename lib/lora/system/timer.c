@@ -229,11 +229,6 @@ IRAM_ATTR void TimerIrqHandler( void )
         if( elapsedTimer->Callback != NULL )
         {
             modlora_set_timer_callback(elapsedTimer->Callback);
-
-            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-            // Notify the thread so it will wake up when the ISR is complete
-            vTaskNotifyGiveFromISR(xLoRaTimerTaskHndl, &xHigherPriorityTaskWoken);
-            portYIELD_FROM_ISR();
         }
     }
 

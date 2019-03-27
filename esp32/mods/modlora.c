@@ -1052,10 +1052,12 @@ static void TASK_LoRa_Timer (void *pvParameters) {
         if (thread_notification) {
 
             modlora_timerCallback cb;
-            xQueueReceive(xCbQueue, &cb, 0);
-            if(cb != NULL)
+            while (pdTRUE == xQueueReceive(xCbQueue, &cb, 0))
             {
-                cb();
+                if(cb != NULL)
+                {
+                    cb();
+                }
             }
         }
     }
