@@ -45,7 +45,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 /*!
  * Hardware Timer tick counter
  */
-volatile TimerTime_t TimerTickCounter = 1;
+DRAM_ATTR volatile TimerTime_t TimerTickCounter = 1;
 
 /*!
  * Saved value of the Tick counter at the start of the next event
@@ -55,13 +55,18 @@ static TimerTime_t TimerTickCounterContext = 0;
 /*!
  * Value trigging the IRQ
  */
-volatile TimerTime_t TimeoutCntValue = 0;
-
+DRAM_ATTR volatile TimerTime_t TimeoutCntValue = 0;
+extern TaskHandle_t xLoRaTimerTaskHndl;
 
 static IRAM_ATTR void TimerCallback (void) {
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
     TimerTickCounter++;
     if (TimeoutCntValue > 0 && TimerTickCounter == TimeoutCntValue) {
         TimerIrqHandler();
+        // Notify the thread so it will wake up when the ISR is complete
+        vTaskNotifyGiveFromISR(xLoRaTimerTaskHndl, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR();
     }
 }
 

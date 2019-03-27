@@ -19,8 +19,11 @@
 #define LORA_PAYLOAD_SIZE_MAX                                   (255)
 #define LORA_CMD_QUEUE_SIZE_MAX                                 (7)
 #define LORA_DATA_QUEUE_SIZE_MAX                                (7)
+#define LORA_CB_QUEUE_SIZE_MAX                                  (7)
 #define LORA_STACK_SIZE                                         (4096)
+#define LORA_TIMER_STACK_SIZE                                   (2048)
 #define LORA_TASK_PRIORITY                                      (6)
+#define LORA_TIMER_TASK_PRIORITY                                (8)
 
 #define LORA_STATUS_COMPLETED                                   (0x01)
 #define LORA_STATUS_ERROR                                       (0x02)
@@ -136,10 +139,11 @@ typedef struct {
     uint8_t port;
 } lora_rx_data_t;
 
+typedef void ( *modlora_timerCallback )( void );
 /******************************************************************************
  EXPORTED DATA
  ******************************************************************************/
-
+extern TaskHandle_t xLoRaTimerTaskHndl;
 /******************************************************************************
  DECLARE FUNCTIONS
  ******************************************************************************/
@@ -150,6 +154,7 @@ extern bool modlora_nvs_get_uint(uint32_t key_idx, uint32_t *value);
 extern bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length);
 extern void modlora_sleep_module(void);
 extern bool modlora_is_module_sleep(void);
+IRAM_ATTR extern void modlora_set_timer_callback(modlora_timerCallback cb);
 
 extern int lora_ot_recv(uint8_t *buf, int8_t *rssi);
 extern void lora_ot_send(const uint8_t *buf, uint16_t len);

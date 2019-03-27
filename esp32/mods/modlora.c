@@ -239,6 +239,7 @@ typedef struct {
  ******************************************************************************/
 static QueueHandle_t xCmdQueue;
 static QueueHandle_t xRxQueue;
+static QueueHandle_t xCbQueue;
 static EventGroupHandle_t LoRaEvents;
 
 static RadioEvents_t RadioEvents;
@@ -258,7 +259,7 @@ static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLN
                                                                  "MACPARAMS", "CHANNELS", "SRVACK", "MACNXTTX",
                                                                  "MACBUFIDX", "MACRPTIDX", "MACBUF", "MACRPTBUF",
                                                                  "REGION", "CHANMASK", "CHANMASKREM" };
-
+DRAM_ATTR static modlora_timerCallback modlora_timer_cb;
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
@@ -268,6 +269,7 @@ extern TaskHandle_t xLoRaTaskHndl;
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
 static void TASK_LoRa (void *pvParameters);
+static void TASK_LoRa_Timer (void *pvParameters);
 static void OnTxDone (void);
 static void OnRxDone (uint8_t *payload, uint32_t timestamp, uint16_t size, int16_t rssi, int8_t snr, uint8_t sf);
 static void OnTxTimeout (void);
@@ -317,6 +319,7 @@ SemaphoreHandle_t xLoRaSigfoxSem;
 void modlora_init0(void) {
     xCmdQueue = xQueueCreate(LORA_CMD_QUEUE_SIZE_MAX, sizeof(lora_cmd_data_t));
     xRxQueue = xQueueCreate(LORA_DATA_QUEUE_SIZE_MAX, sizeof(lora_rx_data_t));
+    xCbQueue = xQueueCreate(LORA_CB_QUEUE_SIZE_MAX, sizeof(modlora_timerCallback));
     LoRaEvents = xEventGroupCreate();
 #if defined(FIPY) || defined(LOPY4)
     xLoRaSigfoxSem = xSemaphoreCreateMutex();
@@ -331,6 +334,7 @@ void modlora_init0(void) {
     BoardInitPeriph();
 
     xTaskCreatePinnedToCore(TASK_LoRa, "LoRa", LORA_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TASK_PRIORITY, &xLoRaTaskHndl, 1);
+    xTaskCreatePinnedToCore(TASK_LoRa_Timer, "LoRa_Timer_callback", LORA_TIMER_STACK_SIZE / sizeof(StackType_t), NULL, LORA_TIMER_TASK_PRIORITY, &xLoRaTimerTaskHndl, 1);
 }
 
 bool modlora_nvs_set_uint(uint32_t key_idx, uint32_t value) {
@@ -382,6 +386,15 @@ bool modlora_is_module_sleep(void)
     else
     {
         return false;
+    }
+}
+
+IRAM_ATTR void modlora_set_timer_callback(modlora_timerCallback cb)
+{
+    modlora_timer_cb = cb;
+    if(cb != NULL)
+    {
+        xQueueSendFromISR(xCbQueue, &cb, NULL);
     }
 }
 
@@ -1128,6 +1141,27 @@ static void TASK_LoRa (void *pvParameters) {
         }
 
         TimerLowPowerHandler();
+    }
+}
+
+static void TASK_LoRa_Timer (void *pvParameters) {
+
+    static uint32_t thread_notification;
+
+    for(;;)
+    {
+        thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        if (thread_notification) {
+
+            modlora_timerCallback cb;
+            while (pdTRUE == xQueueReceive(xCbQueue, &cb, 0))
+            {
+                if(cb != NULL)
+                {
+                    cb();
+                }
+            }
+        }
     }
 }
 

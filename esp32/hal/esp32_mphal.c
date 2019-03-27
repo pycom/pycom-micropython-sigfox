@@ -37,29 +37,35 @@
 #include "modwlan.h"
 #include "modbt.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/semphr.h"
-#include "freertos/queue.h"
-#include "freertos/timers.h"
-#include "freertos/xtensa_api.h"
+#include "driver/timer.h"
 
-
+typedef void (*HAL_tick_user_cb_t)(void);
 #if defined (LOPY) || defined(LOPY4) || defined(FIPY)
-static void (*HAL_tick_user_cb)(void);
+DRAM_ATTR static HAL_tick_user_cb_t HAL_tick_user_cb;
+
+#define TIMER1_ALARM_TIME_MS        1U
+#define TIMER1_DIVIDER              16U
+#define TIMER1_ALARM_COUNT          ((uint64_t)TIMER_BASE_CLK * (uint64_t)TIMER1_ALARM_TIME_MS) / ((uint64_t)TIMER1_DIVIDER * (uint64_t)1000)
+
 #endif
 
-#define TIMER_TICKS             160000        // 1 ms @160MHz
 
 #if defined (LOPY) || defined(LOPY4) || defined(FIPY)
-IRAM_ATTR static void HAL_TimerCallback (TimerHandle_t xTimer) {
-    if (HAL_tick_user_cb) {
+IRAM_ATTR static void HAL_TimerCallback (void* arg) {
+
+    if (HAL_tick_user_cb != NULL) {
+
         HAL_tick_user_cb();
     }
+
+    TIMERG0.int_clr_timers.t1 = 1;
+    TIMERG0.hw_timer[1].update=1;
+    TIMERG0.hw_timer[1].config.alarm_en = 1;
+
 }
 
 void HAL_set_tick_cb (void *cb) {
-    HAL_tick_user_cb = cb;
+    HAL_tick_user_cb = (HAL_tick_user_cb_t)cb;
 }
 #endif
 
@@ -68,8 +74,30 @@ void mp_hal_init(bool soft_reset) {
     #if defined (LOPY) || defined(LOPY4) || defined(FIPY)
         // setup the HAL timer for LoRa
         HAL_tick_user_cb = NULL;
-        TimerHandle_t hal_timer = xTimerCreate("HAL_Timer", 1 / portTICK_PERIOD_MS, pdTRUE, (void *) 0, HAL_TimerCallback);
-        xTimerStart (hal_timer, 0);
+
+        timer_config_t config;
+
+        config.alarm_en = 1;
+        config.auto_reload = 1;
+        config.counter_dir = TIMER_COUNT_UP;
+        config.divider = TIMER1_DIVIDER;
+        config.intr_type = TIMER_INTR_LEVEL;
+        config.counter_en = TIMER_PAUSE;
+        /*Configure timer*/
+        timer_init(TIMER_GROUP_0, TIMER_1, &config);
+        /*Stop timer counter*/
+        timer_pause(TIMER_GROUP_0, TIMER_1);
+        /*Load counter value */
+        timer_set_counter_value(TIMER_GROUP_0, TIMER_1, 0x00000000ULL);
+        /*Set alarm value*/
+        timer_set_alarm_value(TIMER_GROUP_0, TIMER_1, (uint64_t)TIMER1_ALARM_COUNT);
+        /*Enable timer interrupt*/
+        timer_enable_intr(TIMER_GROUP_0, TIMER_1);
+        /* Register Interrupt */
+        timer_isr_register(TIMER_GROUP_0, TIMER_1, HAL_TimerCallback, NULL, ESP_INTR_FLAG_IRAM, NULL);
+        /* Start Timer */
+        timer_start(TIMER_GROUP_0, TIMER_1);
+
     #endif
     }
 }

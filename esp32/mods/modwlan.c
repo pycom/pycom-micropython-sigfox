@@ -88,7 +88,6 @@ wlan_obj_t wlan_obj = {
     .irq_enabled = false,
     .enable_servers = false,
     .pwrsave = false,
-    .max_tx_pwr = CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER, /*FIXME: This value is configured in sdkconfig but the max_tx_power is always init to 78 at startup by idf*/
     .is_promiscuous = false,
     .sta_conn_timeout = false
 };
@@ -181,7 +180,6 @@ void wlan_pre_init (void) {
     wlan_obj.disconnected = true;
     wlan_obj.soft_ap_stopped = true;
     wlan_obj.sta_stopped = true;
-    wlan_obj.max_tx_pwr = CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER;
     wlan_obj.started = false;
     wlan_obj.is_promiscuous = false;
     wlan_obj.events = 0;
@@ -289,10 +287,12 @@ void wlan_setup (wlan_internal_setup_t *config) {
 
     if(config->max_tx_pr != NULL)
     {
-        // set the max_tx_power
-        if(ESP_OK == esp_wifi_set_max_tx_power(*(config->max_tx_pr)))
-        {
-            wlan_obj.max_tx_pwr = *(config->max_tx_pr);
+        if (*(config->max_tx_pr) > 0) {
+            // set the max_tx_power
+            if(ESP_OK == esp_wifi_set_max_tx_power(*(config->max_tx_pr)))
+            {
+                wlan_obj.max_tx_pwr = *(config->max_tx_pr);
+            }
         }
     }
 
@@ -1110,7 +1110,7 @@ STATIC const mp_arg_t wlan_init_args[] = {
     { MP_QSTR_power_save,   MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
     { MP_QSTR_hidden,       MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
     { MP_QSTR_bandwidth,    MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = WIFI_BW_HT40} },
-    { MP_QSTR_max_tx_pwr,   MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = CONFIG_ESP32_PHY_MAX_WIFI_TX_POWER} },
+    { MP_QSTR_max_tx_pwr,   MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 0} },
     { MP_QSTR_country,        MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
 };
 STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {

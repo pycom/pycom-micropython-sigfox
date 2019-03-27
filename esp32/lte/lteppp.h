@@ -58,10 +58,12 @@ typedef struct {
     uint32_t timeout;
     char data[LTE_AT_CMD_SIZE_MAX - 4];
 } lte_task_cmd_data_t;
-
+#pragma pack(1)
 typedef struct {
     char data[LTE_UART_BUFFER_SIZE];
+    bool data_remaining;
 } lte_task_rsp_data_t;
+#pragma pack()
 
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS
@@ -91,7 +93,7 @@ extern void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_
 
 extern void lteppp_send_at_command_delay (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp, TickType_t delay);
 
-extern bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_mp);
+extern bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_mp, void* data_rem);
 
 extern bool lteppp_task_ready(void);
 

@@ -398,10 +398,10 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         if (!strstr(modlte_rsp.data, carrier)) {
             sprintf(at_cmd, "AT+SQNCTM=\"%s\"", carrier);
             lte_push_at_command(at_cmd, LTE_RX_TIMEOUT_MAX_MS);
-            lteppp_wait_at_rsp("+S", LTE_RX_TIMEOUT_MAX_MS, true);
+            lteppp_wait_at_rsp("+S", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
             mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-            if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true)) {
-                lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true);
+            if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL)) {
+                lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
             }
             lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
             lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
@@ -500,10 +500,10 @@ STATIC mp_obj_t lte_deinit(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         if (lte_check_sim_present()) {
             if (args[1].u_bool) {
                 if (lte_push_at_command("AT+CFUN=4,1", LTE_RX_TIMEOUT_MAX_MS)) {
-                    lteppp_wait_at_rsp("+S", LTE_RX_TIMEOUT_MAX_MS, true);
+                    lteppp_wait_at_rsp("+S", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
                     mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-                    if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true)) {
-                        lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true);
+                    if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL)) {
+                        lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
                     }
                     lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
                     if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
@@ -520,10 +520,10 @@ STATIC mp_obj_t lte_deinit(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         } else {
             if (args[1].u_bool) {
                 if (lte_push_at_command("AT+CFUN=0,1", LTE_RX_TIMEOUT_MAX_MS)) {
-                    lteppp_wait_at_rsp("+S", LTE_RX_TIMEOUT_MAX_MS, true);
+                    lteppp_wait_at_rsp("+S", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
                     mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-                    if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true)) {
-                        lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true);
+                    if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL)) {
+                        lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
                     }
                     lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
                     if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
@@ -554,6 +554,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_deinit_obj, 1, lte_deinit);
 
 STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     lte_check_init();
+    bool is_new_band_support = false;
 
     STATIC const mp_arg_t allowed_args[] = {
         { MP_QSTR_band,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
@@ -578,13 +579,39 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     if (lteppp_get_state() < E_LTE_ATTACHING) {
 
         if (!lte_obj.carrier) {
+
+            lte_task_cmd_data_t cmd = { .timeout = LTE_RX_TIMEOUT_MAX_MS };
+            memcpy(cmd.data, "AT+SMDD", strlen("AT+SMDD"));
+            lteppp_send_at_command(&cmd, &modlte_rsp);
+
+            if(strstr(modlte_rsp.data, "17 bands") == NULL)
+            {
+                memcpy(cmd.data, "Pycom_Dummy", strlen("Pycom_Dummy"));
+                while(modlte_rsp.data_remaining)
+                {
+                    lteppp_send_at_command(&cmd, &modlte_rsp);
+                    if(strstr(modlte_rsp.data, "<band p=\"5\">") != NULL)
+                    {
+                        is_new_band_support = true;
+                        break;
+                    }
+                }
+            }
+            else
+            {
+                is_new_band_support = true;
+            }
             // configuring scanning in all bands
             lte_push_at_command("AT!=\"clearscanconfig\"", LTE_RX_TIMEOUT_MIN_MS);
+            // Delay to ensure next addScan command is not discarded
+            vTaskDelay(1000);
             if (args[0].u_obj == mp_const_none) {
                 lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
-                lte_push_at_command("AT!=\"RRC::addScanBand band=5\"", LTE_RX_TIMEOUT_MIN_MS);
-                lte_push_at_command("AT!=\"RRC::addScanBand band=8\"", LTE_RX_TIMEOUT_MIN_MS);
+                if (is_new_band_support) {
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=5\"", LTE_RX_TIMEOUT_MIN_MS);
+                    lte_push_at_command("AT!=\"RRC::addScanBand band=8\"", LTE_RX_TIMEOUT_MIN_MS);
+                }
                 lte_push_at_command("AT!=\"RRC::addScanBand band=12\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=13\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=20\"", LTE_RX_TIMEOUT_MIN_MS);
@@ -616,7 +643,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             lte_obj.cid = args[3].u_int;
         }
 
-        if (!lte_obj.carrier && (args[1].u_obj != mp_const_none || args[4].u_obj != mp_const_none)) {
+        if (args[1].u_obj != mp_const_none || args[4].u_obj != mp_const_none) {
 
             const char* strapn;
             const char* strtype;
@@ -680,10 +707,10 @@ mp_obj_t lte_detach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_arg
     if (lte_check_sim_present()) {
         if (args[0].u_bool) {
             if (lte_push_at_command("AT+CFUN=4,1", LTE_RX_TIMEOUT_MAX_MS)) {
-                lteppp_wait_at_rsp("+S", LTE_RX_TIMEOUT_MAX_MS, true);
+                lteppp_wait_at_rsp("+S", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
                 mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-                if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true)) {
-                    lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true);
+                if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL)) {
+                    lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
                 }
                 lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
                 if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
@@ -700,10 +727,10 @@ mp_obj_t lte_detach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_arg
     } else {
         if (args[0].u_bool) {
             if (lte_push_at_command("AT+CFUN=0,1", LTE_RX_TIMEOUT_MAX_MS)) {
-                lteppp_wait_at_rsp("+S", LTE_RX_TIMEOUT_MAX_MS, true);
+                lteppp_wait_at_rsp("+S", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
                 mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-                if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true)) {
-                    lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true);
+                if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL)) {
+                    lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
                 }
                 lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
                 if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
@@ -926,8 +953,14 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     const char *cmd = mp_obj_str_get_str(args[0].u_obj);
     lte_push_at_command_delay((char *)cmd, LTE_RX_TIMEOUT_MAX_MS, args[1].u_int);
     vstr_t vstr;
-    vstr_init_len(&vstr, strlen(modlte_rsp.data));
-    strcpy(vstr.buf, modlte_rsp.data);
+    vstr_init(&vstr, 0);
+    vstr_add_str(&vstr, modlte_rsp.data);
+    while(modlte_rsp.data_remaining)
+    {
+        lte_push_at_command_delay("Pycom_Dummy", LTE_RX_TIMEOUT_MAX_MS, args[1].u_int);
+        vstr_add_str(&vstr, modlte_rsp.data);
+    }
+
     return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_send_at_cmd_obj, 1, lte_send_at_cmd);
@@ -1019,8 +1052,8 @@ STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     lte_push_at_command("AT^RESET", LTE_RX_TIMEOUT_MAX_MS);
     lteppp_set_state(E_LTE_IDLE);
     mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-    if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true)) {
-        lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true);
+    if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL)) {
+        lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
     }
     lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
     if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
@@ -1040,8 +1073,8 @@ STATIC mp_obj_t lte_factory_reset(mp_obj_t self_in) {
     lte_push_at_command("AT^RESET", LTE_RX_TIMEOUT_MAX_MS);
     lteppp_set_state(E_LTE_IDLE);
     mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-    if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true)) {
-        lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true);
+    if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL)) {
+        lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
     }
     lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
     if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
