@@ -224,7 +224,7 @@ void lteppp_send_at_command_delay (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t
 bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_mp, void* data_rem) {
 
     uint32_t rx_len = 0;
-
+    uint32_t timeout_cnt = timeout;
     // wait until characters start arriving
     do {
         // being called from the MicroPython interpreter
@@ -235,14 +235,17 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
             vTaskDelay(1 / portTICK_RATE_MS);
         }
         uart_get_buffered_data_len(LTE_UART_ID, &rx_len);
-        if (timeout > 0) {
-            timeout--;
+        if (timeout_cnt > 0) {
+            timeout_cnt--;
         }
-    } while (timeout > 0 && 0 == rx_len);
+    } while (timeout_cnt > 0 && 0 == rx_len);
 
     memset(lteppp_trx_buffer, 0, LTE_UART_BUFFER_SIZE);
     uint16_t len_count = 0;
-    while (rx_len > 0) {
+    /* reset timeout to 1000ms to account for pause in response */
+    timeout_cnt = 1000;
+    bool pause = false;
+    while (rx_len > 0 || (pause && timeout_cnt > 0)) {
         // try to read up to the size of the buffer minus null terminator (minus 2 because we store the OK status in the last byte)
         rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, LTE_UART_BUFFER_SIZE - 2, LTE_TRX_WAIT_MS(LTE_UART_BUFFER_SIZE) / portTICK_RATE_MS);
         len_count += rx_len;
@@ -250,7 +253,15 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
         if (rx_len > 0) {
             // NULL terminate the string
             lteppp_trx_buffer[rx_len] = '\0';
-            //printf("%s\n", lteppp_trx_buffer);
+            /* Check for pause after start of response */
+            if(strcmp(lteppp_trx_buffer, "\r\n") == 0)
+            {
+                pause = true;
+            }
+            else
+            {
+                pause = false;
+            }
             if (expected_rsp != NULL) {
                 if (strstr(lteppp_trx_buffer, expected_rsp) != NULL) {
                     //printf("RESP: %s\n", lteppp_trx_buffer);
@@ -264,6 +275,12 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
                     *((bool *)data_rem) = true;
                     return true;
                 }
+            }
+        }
+        else
+        {
+            if (timeout_cnt > 0 && pause) {
+                timeout_cnt--;
             }
         }
     }
@@ -459,6 +476,7 @@ static void TASK_LTE (void *pvParameters) {
 
 
 static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *expected_rsp, void* data_rem) {
+
     if(strstr(cmd, "Pycom_Dummy") != NULL)
     {
         return lteppp_wait_at_rsp(expected_rsp, timeout, false, data_rem);
