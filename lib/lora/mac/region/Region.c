@@ -629,7 +629,7 @@ bool RegionIsActive( LoRaMacRegion_t region )
     }
 }
 
-PhyParam_t RegionGetPhyParam( LoRaMacRegion_t region, GetPhyParams_t* getPhy )
+IRAM_ATTR PhyParam_t RegionGetPhyParam( LoRaMacRegion_t region, GetPhyParams_t* getPhy )
 {
     PhyParam_t phyParam = { 0 };
     switch( region )
