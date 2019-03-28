@@ -436,14 +436,14 @@ class sqnsupgrade:
             self.__serial.read()
             if debug: print('Entering upgrade mode...')
 
-            self.__serial.write(b"AT+SMOD?\r\n")
-            response = self.return_pretty_response(self.read_rsp(size=7))
-            if debug: print("AT+SMOD? returned {}".format(response))
-
             if verbose: print("Sending AT+SMLOG?")
             self.__serial.write(b'AT+SMLOG?\r\n')
             response = self.read_rsp(size=100)
             if verbose: print("AT+SMLOG? returned {}".format(response))
+
+            self.__serial.write(b"AT+SMOD?\r\n")
+            response = self.return_pretty_response(self.read_rsp(size=7))
+            if debug: print("AT+SMOD? returned {}".format(response))
 
             if verbose: print('Sending AT+FSRDFILE="/fs/crashdump"')
             self.__serial.write(b'AT+FSRDFILE="/fs/crashdump"\r\n')
@@ -456,10 +456,10 @@ class sqnsupgrade:
             if verbose: print('AT+SQNSUPGRADENTF="started" returned {}'.format(response))
             self.wait_for_modem()
 
-            if verbose: print('Sending AT+SQNWL="sqndcc"')
-            self.__serial.write(b'AT+SQNWL="sqndcc"\r\n')
+            if verbose: print('Sending AT+SQNWL="sqndcc",2')
+            self.__serial.write(b'AT+SQNWL="sqndcc",2\r\n')
             response = self.read_rsp(size=100)
-            if verbose: print('AT+SQNWL="sqndcc" returned {}'.format(response))
+            if verbose: print('AT+SQNWL="sqndcc",2 returned {}'.format(response))
             self.__serial.read(100)
 
             if verbose: print("Sending AT+CFUN=4")
