@@ -52,6 +52,7 @@
 #include "lora/mac/region/RegionUS915.h"
 #include "lora/mac/region/RegionUS915-Hybrid.h"
 #include "lora/mac/region/RegionEU868.h"
+#include "lora/mac/region/RegionCN470.h"  //*********** ADDED HERE  ********************//
 
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
@@ -1121,7 +1122,7 @@ static void lora_validate_mode (uint32_t mode) {
 static void lora_validate_frequency (uint32_t frequency) {
     switch (lora_obj.region) {
         case LORAMAC_REGION_AS923:
-            if (frequency < 915000000 || frequency > 928000000) {
+            if (frequency < 915000000 || frequency > 928000000) { //******* INCORRECT *********//
                 goto freq_error;
             }
             break;
@@ -1182,6 +1183,11 @@ static void lora_validate_channel (uint32_t index) {
             break;
         case LORAMAC_REGION_EU868:
             if (index >= EU868_MAX_NB_CHANNELS) {
+                goto channel_error;
+            }
+            break;
+        case LORAMAC_REGION_CN470: //*********** ADDED HERE  ********************//
+            if (index >= CN470_MAX_NB_CHANNELS) {
                 goto channel_error;
             }
             break;
