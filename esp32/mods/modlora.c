@@ -2090,8 +2090,7 @@ STATIC mp_obj_t lora_stats(mp_obj_t self_in) {
     stats_tuple[0] = mp_obj_new_int_from_uint(self->rx_timestamp);
     stats_tuple[1] = mp_obj_new_int(self->rssi);
     stats_tuple[2] = mp_obj_new_float(snr);
-    //stats_tuple[3] = mp_obj_new_int(self->sfrx);
-    stats_tuple[3] = mp_obj_new_int(Radio.GetStatus());
+    stats_tuple[3] = mp_obj_new_int(self->sfrx);
     stats_tuple[4] = mp_obj_new_int(self->sftx);
     stats_tuple[5] = mp_obj_new_int(self->tx_trials);
     stats_tuple[6] = mp_obj_new_int(self->tx_power);
