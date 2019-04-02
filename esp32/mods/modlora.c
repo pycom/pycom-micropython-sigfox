@@ -2212,6 +2212,7 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
     switch (lora_obj.region) {
     case LORAMAC_REGION_AS923:
     case LORAMAC_REGION_EU868:
+    case LORAMAC_REGION_CN470:
         dr = DR_5;
         break;
     case LORAMAC_REGION_AU915:
