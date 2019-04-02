@@ -1121,8 +1121,13 @@ static void lora_validate_mode (uint32_t mode) {
 
 static void lora_validate_frequency (uint32_t frequency) {
     switch (lora_obj.region) {
+        case LORAMAC_REGION_CN470:
+            if (frequency < 470000000 || frequency > 510000000) {
+                goto freq_error;
+            }
+            break;
         case LORAMAC_REGION_AS923:
-            if (frequency < 915000000 || frequency > 928000000) { //******* INCORRECT *********//
+            if (frequency < 920000000 || frequency > 928000000) { //******* JAPAN *********//
                 goto freq_error;
             }
             break;
