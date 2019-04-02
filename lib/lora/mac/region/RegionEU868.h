@@ -37,6 +37,8 @@
 
 /*!
  * LoRaMac maximum number of channels
+ * EU868MHz end-devices should be capable of operating in the 863 to 870 MHz frequency 
+ * band and should feature a channel data structure to store the parameters of at least 16 channels.
  */
 #define EU868_MAX_NB_CHANNELS                       16
 
