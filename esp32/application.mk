@@ -196,6 +196,7 @@ APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/region/RegionCommon.c \
 	mac/region/RegionEU868.c \
 	mac/region/RegionUS915.c \
+	mac/region/RegionCN470.c \
 	system/delay.c \
 	system/gpio.c \
 	system/timer.c \
