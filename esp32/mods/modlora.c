@@ -967,6 +967,10 @@ static void TASK_LoRa (void *pvParameters) {
                 #if defined(FIPY) || defined(LOPY4)
                     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                 #endif
+                    mibReq.Type = MIB_NETWORK_ACTIVATION;
+                    mibReq.Param.NetworkActivation = ACTIVATION_TYPE_OTAA;
+                    LoRaMacMibSetRequestConfirm( &mibReq );
+                    
                     TimerStart( &TxNextActReqTimer );
                     mlmeReq.Type = MLME_JOIN;
                     mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.u.otaa.DevEui;
@@ -976,6 +980,10 @@ static void TASK_LoRa (void *pvParameters) {
                     mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa_dr;
                     LoRaMacMlmeRequest( &mlmeReq );
                 } else {
+                    mibReq.Type = MIB_NETWORK_ACTIVATION;
+                    mibReq.Param.NetworkActivation = ACTIVATION_TYPE_ABP;
+                    LoRaMacMibSetRequestConfirm( &mibReq );
+                    
                     mibReq.Type = MIB_NET_ID;
                     mibReq.Param.NetID = lora_obj.net_id;
                     LoRaMacMibSetRequestConfirm( &mibReq );
