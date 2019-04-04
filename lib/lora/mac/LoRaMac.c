@@ -120,6 +120,11 @@ static MulticastParams_t *MulticastChannels = NULL;
  */
 static DeviceClass_t LoRaMacDeviceClass;
 
+/*
+ * End-Device network activation
+ */
+static ActivationType_t NetworkActivation;
+
 /*!
  * Indicates if the node is connected to a private or public network
  */
@@ -1458,6 +1463,10 @@ static void OnRxWindow2TimerEvent( void )
     else
     {
         RxWindow2Config.RxContinuous = true;
+        
+        if (NetworkActivation == ACTIVATION_TYPE_ABP){
+            RxWindow2Config.Datarate = McpsIndication.RxDatarate;
+        }
     }
 
     if( RegionRxConfig( LoRaMacRegion, &RxWindow2Config, ( int8_t* )&McpsIndication.RxDatarate ) == true )
@@ -2301,6 +2310,7 @@ LoRaMacStatus_t LoRaMacInitialization( LoRaMacPrimitives_t *primitives, LoRaMacC
 
     LoRaMacDeviceClass = CLASS_A;
     LoRaMacState = LORAMAC_IDLE;
+    NetworkActivation = ACTIVATION_TYPE_NONE;
 
     JoinRequestTrials = 0;
     MaxJoinRequestTrials = 1;
@@ -2499,6 +2509,11 @@ LoRaMacStatus_t LoRaMacMibGetRequestConfirm( MibRequestConfirm_t *mibGet )
         case MIB_DEVICE_CLASS:
         {
             mibGet->Param.Class = LoRaMacDeviceClass;
+            break;
+        }
+        case MIB_NETWORK_ACTIVATION:
+        {
+            mibGet->Param.NetworkActivation = NetworkActivation;
             break;
         }
         case MIB_NETWORK_JOINED:
@@ -2702,6 +2717,18 @@ LoRaMacStatus_t LoRaMacMibSetRequestConfirm( MibRequestConfirm_t *mibSet )
                     OnRxWindow2TimerEvent( );
                     break;
                 }
+            }
+            break;
+        }
+        case MIB_NETWORK_ACTIVATION:
+        {
+            if( mibSet->Param.NetworkActivation != ACTIVATION_TYPE_OTAA )
+            {
+                NetworkActivation = mibSet->Param.NetworkActivation;
+            }
+            else
+            {
+                status = LORAMAC_STATUS_PARAMETER_INVALID;
             }
             break;
         }
