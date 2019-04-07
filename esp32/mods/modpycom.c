@@ -18,6 +18,11 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 
+#include "entropy.h"
+#include "pk.h"
+#include "ctr_drbg.h"
+#include "base64url.h"
+
 #include "pycom_config.h"
 #include "mpexception.h"
 #include "machpin.h"
@@ -467,6 +472,63 @@ STATIC mp_obj_t mod_pycom_pybytes_force_update (mp_uint_t n_args, const mp_obj_t
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_pybytes_force_update_obj, 0, 1, mod_pycom_pybytes_force_update);
 #endif
+
+STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_in, mp_obj_t payload_in, mp_obj_t private_key_in) {
+
+    const char* header = mp_obj_str_get_str(private_key_in);
+    const char* payload = mp_obj_str_get_str(private_key_in);
+    const char* private_key = mp_obj_str_get_str(private_key_in);
+
+    char* header_payload = m_malloc(strlen(header) + strlen(payload));
+    strcpy(&header_payload[0], header);
+    strcpy(&header_payload[strlen(header)], payload);
+
+    mbedtls_pk_context pk_context;
+    mbedtls_pk_init(&pk_context);
+
+    int rc = mbedtls_pk_parse_key(&pk_context, (const unsigned char*)private_key, strlen(private_key)+1, NULL, 0);
+    if (rc != 0) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Invalid Private Key, error code: %d", rc));
+    }
+
+    mbedtls_entropy_context entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+    mbedtls_entropy_init(&entropy);
+
+    const char* pers="MyEntropy";
+
+    mbedtls_ctr_drbg_seed(
+        &ctr_drbg,
+        mbedtls_entropy_func,
+        &entropy,
+        (const unsigned char*)pers,
+        strlen(pers));
+
+    uint8_t digest[32];
+    rc = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), (const unsigned char*)header_payload, strlen(header) + strlen(payload), digest);
+    if (rc != 0) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Message Digest operation failed, error code: %d", rc));
+    }
+
+    unsigned char signature[600];
+    size_t signature_length;
+
+    rc = mbedtls_pk_sign(&pk_context, MBEDTLS_MD_SHA256, digest, sizeof(digest), signature, &signature_length, mbedtls_ctr_drbg_random, &ctr_drbg);
+    if (rc != 0) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Signing failed, error code: %d!", rc));
+    }
+
+    char signature_base64url[600];
+    base64url_encode(signature, signature_length, signature_base64url);
+
+    mbedtls_pk_free(&pk_context);
+    m_free(header_payload);
+
+    return mp_obj_new_str_via_qstr(signature_base64url, strlen(signature_base64url));
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(mod_pycom_generate_jwt_signature_obj, mod_pycom_generate_jwt_signature);
+
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat),                       (mp_obj_t)&mod_pycom_heartbeat_obj },
@@ -497,11 +559,12 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_force_update),            (mp_obj_t)&mod_pycom_pybytes_force_update_obj },
 #endif
     { MP_OBJ_NEW_QSTR(MP_QSTR_bootmgr),                         (mp_obj_t)&mod_pycom_bootmgr_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_generate_jwt_signature),          (mp_obj_t)&mod_pycom_generate_jwt_signature_obj },
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_FACTORY),                         MP_OBJ_NEW_SMALL_INT(0) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_OTA_0),                           MP_OBJ_NEW_SMALL_INT(1) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_FAT),                           MP_OBJ_NEW_SMALL_INT(0) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FAT),                             MP_OBJ_NEW_SMALL_INT(0) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_LittleFS),                        MP_OBJ_NEW_SMALL_INT(1) },
 
 };
