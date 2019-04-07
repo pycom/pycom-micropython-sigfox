@@ -475,13 +475,14 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_pybytes_force_update_obj, 0
 
 STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_in, mp_obj_t payload_in, mp_obj_t private_key_in) {
 
-    const char* header = mp_obj_str_get_str(private_key_in);
-    const char* payload = mp_obj_str_get_str(private_key_in);
+    const char* header = mp_obj_str_get_str(header_in);
+    const char* payload = mp_obj_str_get_str(payload_in);
     const char* private_key = mp_obj_str_get_str(private_key_in);
 
-    char* header_payload = m_malloc(strlen(header) + strlen(payload));
-    strcpy(&header_payload[0], header);
-    strcpy(&header_payload[strlen(header)], payload);
+    char* header_payload = m_malloc(strlen(header) + strlen(payload) + 1);
+    sprintf(header_payload, "%s.%s", header, payload);
+
+    printf("header_payload: %s\n", header_payload);
 
     mbedtls_pk_context pk_context;
     mbedtls_pk_init(&pk_context);
@@ -511,7 +512,7 @@ STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_in, mp_obj_t pa
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Message Digest operation failed, error code: %d", rc));
     }
 
-    unsigned char signature[600];
+    unsigned char *signature = m_malloc(5000);
     size_t signature_length;
 
     rc = mbedtls_pk_sign(&pk_context, MBEDTLS_MD_SHA256, digest, sizeof(digest), signature, &signature_length, mbedtls_ctr_drbg_random, &ctr_drbg);
@@ -519,13 +520,25 @@ STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_in, mp_obj_t pa
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Signing failed, error code: %d!", rc));
     }
 
-    char signature_base64url[600];
+    char *signature_base64url = m_malloc(600);
     base64url_encode(signature, signature_length, signature_base64url);
+
+//    printf("signature_base64url length: %d\n", strlen(signature_base64url));
+//
+//    for(int i = 0; i < strlen(signature_base64url); i++) {
+//                printf("%c", signature_base64url[i]);
+//    }
+//    printf("\n");
+
+    //mp_obj_t ret_signature = mp_obj_new_str_via_qstr(signature_base64url, strlen(signature_base64url));
+    mp_obj_t ret_signature = mp_obj_new_bytearray(strlen(signature_base64url), signature_base64url);
 
     mbedtls_pk_free(&pk_context);
     m_free(header_payload);
+    m_free(signature);
+    m_free(signature_base64url);
 
-    return mp_obj_new_str_via_qstr(signature_base64url, strlen(signature_base64url));
+    return ret_signature;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(mod_pycom_generate_jwt_signature_obj, mod_pycom_generate_jwt_signature);
 
