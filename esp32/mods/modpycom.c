@@ -482,8 +482,6 @@ STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_in, mp_obj_t pa
     char* header_payload = m_malloc(strlen(header) + strlen(payload) + 1);
     sprintf(header_payload, "%s.%s", header, payload);
 
-    printf("header_payload: %s\n", header_payload);
-
     mbedtls_pk_context pk_context;
     mbedtls_pk_init(&pk_context);
 
@@ -507,7 +505,7 @@ STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_in, mp_obj_t pa
         strlen(pers));
 
     uint8_t digest[32];
-    rc = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), (const unsigned char*)header_payload, strlen(header) + strlen(payload), digest);
+    rc = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), (const unsigned char*)header_payload, strlen(header_payload), digest);
     if (rc != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Message Digest operation failed, error code: %d", rc));
     }
@@ -520,17 +518,9 @@ STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_in, mp_obj_t pa
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Signing failed, error code: %d!", rc));
     }
 
-    char *signature_base64url = m_malloc(600);
+    char *signature_base64url = m_malloc(1000);
     base64url_encode(signature, signature_length, signature_base64url);
 
-//    printf("signature_base64url length: %d\n", strlen(signature_base64url));
-//
-//    for(int i = 0; i < strlen(signature_base64url); i++) {
-//                printf("%c", signature_base64url[i]);
-//    }
-//    printf("\n");
-
-    //mp_obj_t ret_signature = mp_obj_new_str_via_qstr(signature_base64url, strlen(signature_base64url));
     mp_obj_t ret_signature = mp_obj_new_bytearray(strlen(signature_base64url), signature_base64url);
 
     mbedtls_pk_free(&pk_context);
