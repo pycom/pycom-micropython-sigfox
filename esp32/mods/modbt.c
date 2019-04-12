@@ -1201,6 +1201,134 @@ static mp_obj_t modbt_connect(mp_obj_t addr)
     return bt_connect_helper(addr, portMAX_DELAY);
 }
 
+
+STATIC mp_obj_t bt_set_advertisement_params (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_adv_int_min,              MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_adv_int_max,              MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_adv_type,                 MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_own_addr_type,            MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_channel_map,              MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_adv_filter_policy,        MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+    };
+ 
+    // parse args
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
+ 
+    // adv_int_min
+    if (args[0].u_obj != mp_const_none) {
+        if (mp_obj_is_integer(args[0].u_obj)) {
+            bt_adv_params.adv_int_min = mp_obj_get_int_truncated(args[0].u_obj);
+        }
+    }
+ 
+    // adv_int_max
+    if (args[1].u_obj != mp_const_none) {
+        if (mp_obj_is_integer(args[1].u_obj)) {
+            bt_adv_params.adv_int_max = mp_obj_get_int_truncated(args[1].u_obj);
+        }
+    }
+ 
+    // adv_type
+    if (args[2].u_obj != mp_const_none) {
+        if (mp_obj_is_integer(args[2].u_obj)) {
+            uint32_t adv_type = mp_obj_get_int_truncated(args[2].u_obj);
+            switch(adv_type) {
+               case 0x00:
+                   bt_adv_params.adv_type = ADV_TYPE_IND;
+                   break;
+               case 0x01:
+                   bt_adv_params.adv_type = ADV_TYPE_DIRECT_IND_HIGH;
+                   break;
+               case 0x02:
+                   bt_adv_params.adv_type = ADV_TYPE_SCAN_IND;
+                   break;
+               case 0x03:
+                   bt_adv_params.adv_type = ADV_TYPE_NONCONN_IND;
+                   break;
+               case 0x04:
+                   bt_adv_params.adv_type = ADV_TYPE_DIRECT_IND_LOW;
+                   break;
+               default:
+                   bt_adv_params.adv_type = ADV_TYPE_IND;
+                   break;
+            }
+        }
+    }
+ 
+    // own_addr_type
+    if (args[3].u_obj != mp_const_none) {
+        if (mp_obj_is_integer(args[3].u_obj)) {
+            uint32_t own_addr_type = mp_obj_get_int_truncated(args[3].u_obj);
+            switch(own_addr_type) {
+               case 0x00:
+                   bt_adv_params.own_addr_type = BLE_ADDR_TYPE_PUBLIC;
+                   break;
+               case 0x01:
+                   bt_adv_params.own_addr_type = BLE_ADDR_TYPE_RANDOM;
+                   break;
+               case 0x02:
+                   bt_adv_params.own_addr_type = BLE_ADDR_TYPE_RPA_PUBLIC;
+                   break;
+               case 0x03:
+                   bt_adv_params.own_addr_type = BLE_ADDR_TYPE_RPA_RANDOM;
+                   break;
+               default:
+                   bt_adv_params.own_addr_type = BLE_ADDR_TYPE_PUBLIC;
+                   break;
+            }
+        }
+    }
+ 
+    // channel_map
+    if (args[4].u_obj != mp_const_none) {
+        if (mp_obj_is_integer(args[4].u_obj)) {
+            uint32_t channel_map = mp_obj_get_int_truncated(args[4].u_obj);
+            switch(channel_map) {
+               case 0x01:
+                   bt_adv_params.channel_map = ADV_CHNL_37;
+                   break;
+               case 0x02:
+                   bt_adv_params.channel_map = ADV_CHNL_38 ;
+                   break;
+               case 0x04:
+                   bt_adv_params.channel_map = ADV_CHNL_39;
+                   break;
+               default:
+                   bt_adv_params.channel_map = ADV_CHNL_ALL;
+                   break;
+            }
+        }
+    }
+ 
+    // adv_filter_policy
+    if (args[5].u_obj != mp_const_none) {
+        if (mp_obj_is_integer(args[5].u_obj)) {
+            uint32_t adv_filter_policy = mp_obj_get_int_truncated(args[5].u_obj);
+            switch(adv_filter_policy) {
+               case 0x00:
+                   bt_adv_params.adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY;
+                   break;
+               case 0x01:
+                   bt_adv_params.adv_filter_policy = ADV_FILTER_ALLOW_SCAN_WLST_CON_ANY;
+                   break;
+               case 0x02:
+                   bt_adv_params.adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_WLST;
+                   break;
+               case 0x03:
+                   bt_adv_params.adv_filter_policy = ADV_FILTER_ALLOW_SCAN_WLST_CON_WLST;
+                   break;
+               default:
+                   bt_adv_params.adv_filter_policy = ADV_FILTER_ALLOW_SCAN_ANY_CON_ANY;
+                   break;
+            }
+        }
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_set_advertisement_params_obj, 1, bt_set_advertisement_params);
+
+
 STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_name,                     MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
@@ -1285,6 +1413,34 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_set_advertisement_obj, 1, bt_set_advertisement);
+
+
+STATIC mp_obj_t bt_set_advertisement_raw(mp_obj_t self_in, mp_obj_t raw_data) {
+    mp_buffer_info_t bufinfo;
+    uint32_t data_len;
+    uint8_t  data[30] = {0};
+
+    if (raw_data != mp_const_none) {
+        mp_get_buffer_raise(raw_data, &bufinfo, MP_BUFFER_READ);
+        if (bufinfo.len < 31) {
+            memcpy(data, (uint8_t *)bufinfo.buf, bufinfo.len);
+            data_len = bufinfo.len;
+        } else {
+            memcpy(data, (uint8_t *)bufinfo.buf, sizeof(data));
+            data_len = sizeof(data);
+        }
+ 
+        esp_ble_gap_config_adv_data_raw(data, data_len);
+     
+        // wait for the advertisement data to be configured
+        bt_gatts_event_result_t gatts_event;
+        xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);
+    }
+ 
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_set_advertisement_raw_obj, bt_set_advertisement_raw);
+
 
 STATIC mp_obj_t bt_advertise(mp_obj_t self_in, mp_obj_t enable) {
     if (mp_obj_is_true(enable)) {
@@ -1632,7 +1788,9 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_get_advertisements),      (mp_obj_t)&bt_get_advertisements_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_resolve_adv_data),        (mp_obj_t)&bt_resolve_adv_data_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_connect),                 (mp_obj_t)&bt_connect_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_set_advertisement_params),(mp_obj_t)&bt_set_advertisement_params_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_set_advertisement),       (mp_obj_t)&bt_set_advertisement_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_set_advertisement_raw),   (mp_obj_t)&bt_set_advertisement_raw_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_advertise),               (mp_obj_t)&bt_advertise_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_service),                 (mp_obj_t)&bt_service_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&bt_callback_obj },
