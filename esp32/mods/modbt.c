@@ -58,7 +58,8 @@
  ******************************************************************************/
 #define BT_SCAN_QUEUE_SIZE_MAX                              (16)
 #define BT_GATTS_QUEUE_SIZE_MAX                             (2)
-#define BT_CHAR_VALUE_SIZE_MAX                              (20)
+#define BT_MTU_SIZE_MAX                                     (200)
+#define BT_CHAR_VALUE_SIZE_MAX                              (BT_MTU_SIZE_MAX - 3)
 
 #define MOD_BT_CLIENT_APP_ID                                (0)
 #define MOD_BT_SERVER_APP_ID                                (1)
@@ -297,7 +298,7 @@ void bt_resume(bool reconnect)
         esp_ble_gattc_app_register(MOD_BT_CLIENT_APP_ID);
         esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
 
-        esp_ble_gatt_set_local_mtu(200);
+        esp_ble_gatt_set_local_mtu(BT_MTU_SIZE_MAX);
 
         bt_connection_obj_t *connection_obj = NULL;
 
@@ -563,6 +564,7 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         bt_obj.busy = false;
         // intentional fall through
     case ESP_GATTC_CLOSE_EVT:
+    case ESP_GATTC_DISCONNECT_EVT:
         close_connection(p_data->close.conn_id);
         bt_obj.busy = false;
         break;
@@ -797,7 +799,7 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
         esp_ble_gattc_app_register(MOD_BT_CLIENT_APP_ID);
         esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
 
-        esp_ble_gatt_set_local_mtu(500);
+        esp_ble_gatt_set_local_mtu(BT_MTU_SIZE_MAX);
 
         self->init = true;
     }
