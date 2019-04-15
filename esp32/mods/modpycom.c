@@ -473,14 +473,11 @@ STATIC mp_obj_t mod_pycom_pybytes_force_update (mp_uint_t n_args, const mp_obj_t
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_pybytes_force_update_obj, 0, 1, mod_pycom_pybytes_force_update);
 #endif
 
-STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_in, mp_obj_t payload_in, mp_obj_t private_key_in) {
+STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_payload_in, mp_obj_t private_key_in) {
 
-    const char* header = mp_obj_str_get_str(header_in);
-    const char* payload = mp_obj_str_get_str(payload_in);
+    /* The header and the payload must be UTF-8 and Base64Url encoded, delimited with ".", like: HEADER.PAYLOAD*/
+    const char* header_payload = mp_obj_str_get_str(header_payload_in);
     const char* private_key = mp_obj_str_get_str(private_key_in);
-
-    char* header_payload = m_malloc(strlen(header) + strlen(payload) + 1);
-    sprintf(header_payload, "%s.%s", header, payload);
 
     mbedtls_pk_context pk_context;
     mbedtls_pk_init(&pk_context);
@@ -530,7 +527,7 @@ STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_in, mp_obj_t pa
 
     return ret_signature;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_3(mod_pycom_generate_jwt_signature_obj, mod_pycom_generate_jwt_signature);
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_pycom_generate_jwt_signature_obj, mod_pycom_generate_jwt_signature);
 
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
