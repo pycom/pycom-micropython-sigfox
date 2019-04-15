@@ -1898,6 +1898,47 @@ dr_error:
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lora_join_obj, 1, lora_join);
 
+STATIC mp_obj_t lora_join_multicast_group (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_mcAddress,    MP_ARG_REQUIRED | MP_ARG_INT, {.u_int  = -1}         },
+        { MP_QSTR_mcNwkKey,     MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+        { MP_QSTR_mcAppKey,     MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
+    };
+    
+    // parse args
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
+    
+    mp_buffer_info_t bufinfo_0, bufinfo_1;
+    mp_get_buffer_raise(args[1].u_obj, &bufinfo_0, MP_BUFFER_READ);
+    mp_get_buffer_raise(args[2].u_obj, &bufinfo_1, MP_BUFFER_READ);
+    
+    MulticastParams_t *channelParam = m_new_obj(MulticastParams_t);
+    channelParam->Next = NULL;
+    channelParam->DownLinkCounter = 0;
+    channelParam->Address = args[0].u_int;
+    memcpy(channelParam->NwkSKey, bufinfo_0.buf, sizeof(channelParam->NwkSKey));
+    memcpy(channelParam->AppSKey, bufinfo_1.buf, sizeof(channelParam->AppSKey));
+    
+    if (LoRaMacMulticastChannelLink(channelParam) == LORAMAC_STATUS_OK) {
+        return mp_const_true;
+    }
+            
+    return mp_const_false;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lora_join_multicast_group_obj, 0, lora_join_multicast_group);
+
+STATIC mp_obj_t lora_leave_multicast_group (mp_obj_t self_in, mp_obj_t multicast_addr_obj) {
+    uint32_t mcAddr = mp_obj_get_int(multicast_addr_obj);
+    MulticastParams_t *channelParam = LoRaMacMulticastGetChannel(mcAddr);
+    if (LoRaMacMulticastChannelUnlink(channelParam) == LORAMAC_STATUS_OK) {
+        m_del_obj(MulticastParams_t, channelParam);
+        return mp_const_true;
+    }
+    return mp_const_false;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_leave_multicast_group_obj, lora_leave_multicast_group);
+
 STATIC mp_obj_t lora_compliance_test(mp_uint_t n_args, const mp_obj_t *args) {
     // get
     if (n_args == 1) {
@@ -2301,29 +2342,31 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_airtime_obj, lora_airtime);
 
 STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     // instance methods
-    { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&lora_init_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_join),                (mp_obj_t)&lora_join_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_tx_power),            (mp_obj_t)&lora_tx_power_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_bandwidth),           (mp_obj_t)&lora_bandwidth_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_frequency),           (mp_obj_t)&lora_frequency_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_coding_rate),         (mp_obj_t)&lora_coding_rate_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_preamble),            (mp_obj_t)&lora_preamble_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_sf),                  (mp_obj_t)&lora_sf_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_power_mode),          (mp_obj_t)&lora_power_mode_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_stats),               (mp_obj_t)&lora_stats_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_has_joined),          (mp_obj_t)&lora_has_joined_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_add_channel),         (mp_obj_t)&lora_add_channel_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_remove_channel),      (mp_obj_t)&lora_remove_channel_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&lora_mac_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_compliance_test),     (mp_obj_t)&lora_compliance_test_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_callback),            (mp_obj_t)&lora_callback_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_events),              (mp_obj_t)&lora_events_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_ischannel_free),      (mp_obj_t)&lora_ischannel_free_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_set_battery_level),   (mp_obj_t)&lora_set_battery_level_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_save),          (mp_obj_t)&lora_nvram_save_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_restore),       (mp_obj_t)&lora_nvram_restore_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_erase),         (mp_obj_t)&lora_nvram_erase_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_airtime),             (mp_obj_t)&lora_airtime_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_init),                  (mp_obj_t)&lora_init_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_join),                  (mp_obj_t)&lora_join_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_join_multicast_group),  (mp_obj_t)&lora_join_multicast_group_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_leave_multicast_group), (mp_obj_t)&lora_leave_multicast_group_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_tx_power),              (mp_obj_t)&lora_tx_power_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_bandwidth),             (mp_obj_t)&lora_bandwidth_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_frequency),             (mp_obj_t)&lora_frequency_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_coding_rate),           (mp_obj_t)&lora_coding_rate_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_preamble),              (mp_obj_t)&lora_preamble_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sf),                    (mp_obj_t)&lora_sf_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_power_mode),            (mp_obj_t)&lora_power_mode_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_stats),                 (mp_obj_t)&lora_stats_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_has_joined),            (mp_obj_t)&lora_has_joined_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_add_channel),           (mp_obj_t)&lora_add_channel_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_remove_channel),        (mp_obj_t)&lora_remove_channel_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                   (mp_obj_t)&lora_mac_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_compliance_test),       (mp_obj_t)&lora_compliance_test_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_callback),              (mp_obj_t)&lora_callback_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_events),                (mp_obj_t)&lora_events_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ischannel_free),        (mp_obj_t)&lora_ischannel_free_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_set_battery_level),     (mp_obj_t)&lora_set_battery_level_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_save),            (mp_obj_t)&lora_nvram_save_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_restore),         (mp_obj_t)&lora_nvram_restore_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_erase),           (mp_obj_t)&lora_nvram_erase_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_airtime),               (mp_obj_t)&lora_airtime_obj },
 
 #ifdef LORA_OPENTHREAD_ENABLED
     { MP_OBJ_NEW_QSTR(MP_QSTR_Mesh),                (mp_obj_t)&lora_mesh_type },

@@ -1856,6 +1856,18 @@ LoRaMacStatus_t LoRaMacMulticastChannelLink( MulticastParams_t *channelParam );
 LoRaMacStatus_t LoRaMacMulticastChannelUnlink( MulticastParams_t *channelParam );
 
 /*!
+ * \brief   LoRaMAC multicast get channel
+ *
+ * \details Gets the specified multicast channel from the linked list.
+ *
+ * \param   [IN] multicastAddr - Address of the Multicast channel.
+ *
+ * \retval  MulticastParams_t * Pointer to the multicast channel. 
+ */
+
+MulticastParams_t * LoRaMacMulticastGetChannel(uint32_t multicastAddr);
+
+/*!
  * \brief   LoRaMAC MIB-Get
  *
  * \details The mac information base service to get attributes of the LoRaMac

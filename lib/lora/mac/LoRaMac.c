@@ -1463,7 +1463,6 @@ static void OnRxWindow2TimerEvent( void )
     else
     {
         RxWindow2Config.RxContinuous = true;
-        
         if (NetworkActivation == ACTIVATION_TYPE_ABP){
             RxWindow2Config.Datarate = McpsIndication.RxDatarate;
         }
@@ -3108,6 +3107,21 @@ LoRaMacStatus_t LoRaMacMulticastChannelLink( MulticastParams_t *channelParam )
     }
 
     return LORAMAC_STATUS_OK;
+}
+
+MulticastParams_t * LoRaMacMulticastGetChannel(uint32_t multicastAddr)
+{
+    MulticastParams_t *cur = MulticastChannels;
+    
+    while (cur != NULL)
+    {
+        if (cur->Address == multicastAddr) {
+            return cur;
+        }
+        cur = cur->Next;
+    }
+    
+    return NULL;
 }
 
 LoRaMacStatus_t LoRaMacMulticastChannelUnlink( MulticastParams_t *channelParam )
