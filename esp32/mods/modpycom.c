@@ -473,11 +473,25 @@ STATIC mp_obj_t mod_pycom_pybytes_force_update (mp_uint_t n_args, const mp_obj_t
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_pybytes_force_update_obj, 0, 1, mod_pycom_pybytes_force_update);
 #endif
 
-STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_payload_in, mp_obj_t private_key_in) {
+STATIC mp_obj_t mod_pycom_generate_rsa_signature(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
-    /* The header and the payload must be UTF-8 and Base64Url encoded, delimited with ".", like: HEADER.PAYLOAD*/
-    const char* header_payload = mp_obj_str_get_str(header_payload_in);
-    const char* private_key = mp_obj_str_get_str(private_key_in);
+    STATIC const mp_arg_t mod_pycom_generate_rsa_signature_args[] = {
+        { MP_QSTR_message,                MP_ARG_OBJ | MP_ARG_REQUIRED, {} },
+        { MP_QSTR_private_key,            MP_ARG_OBJ | MP_ARG_REQUIRED, {} },
+        { MP_QSTR_pers,                   MP_ARG_OBJ | MP_ARG_KW_ONLY,  {.u_obj = MP_OBJ_NULL} }
+    };
+
+    // parse args
+    mp_arg_val_t args[MP_ARRAY_SIZE(mod_pycom_generate_rsa_signature_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(mod_pycom_generate_rsa_signature_args), mod_pycom_generate_rsa_signature_args, args);
+
+    const char* message = mp_obj_str_get_str(args[0].u_obj);
+    const char* private_key = mp_obj_str_get_str(args[1].u_obj);
+
+    char* pers="esp32-tls";
+    if(args[2].u_obj != MP_OBJ_NULL) {
+        pers = (char*)mp_obj_str_get_str(args[2].u_obj);
+    }
 
     mbedtls_pk_context pk_context;
     mbedtls_pk_init(&pk_context);
@@ -492,8 +506,6 @@ STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_payload_in, mp_
     mbedtls_ctr_drbg_init(&ctr_drbg);
     mbedtls_entropy_init(&entropy);
 
-    const char* pers="MyEntropy";
-
     mbedtls_ctr_drbg_seed(
         &ctr_drbg,
         mbedtls_entropy_func,
@@ -502,7 +514,7 @@ STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_payload_in, mp_
         strlen(pers));
 
     uint8_t digest[32];
-    rc = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), (const unsigned char*)header_payload, strlen(header_payload), digest);
+    rc = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), (const unsigned char*)message, strlen(message), digest);
     if (rc != 0) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Message Digest operation failed, error code: %d", rc));
     }
@@ -515,19 +527,15 @@ STATIC mp_obj_t mod_pycom_generate_jwt_signature(mp_obj_t header_payload_in, mp_
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Signing failed, error code: %d!", rc));
     }
 
-    char *signature_base64url = m_malloc(1000);
-    base64url_encode(signature, signature_length, signature_base64url);
-
-    mp_obj_t ret_signature = mp_obj_new_bytearray(strlen(signature_base64url), signature_base64url);
+    mp_obj_t ret_signature = mp_obj_new_bytearray(signature_length, signature);
 
     mbedtls_pk_free(&pk_context);
-    m_free(header_payload);
-    m_free(signature);
-    m_free(signature_base64url);
+    m_free((char*)message);
+    m_free((char*)signature);
 
     return ret_signature;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_pycom_generate_jwt_signature_obj, mod_pycom_generate_jwt_signature);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_generate_rsa_signature_obj, 2, mod_pycom_generate_rsa_signature);
 
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
@@ -559,7 +567,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_force_update),            (mp_obj_t)&mod_pycom_pybytes_force_update_obj },
 #endif
     { MP_OBJ_NEW_QSTR(MP_QSTR_bootmgr),                         (mp_obj_t)&mod_pycom_bootmgr_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_generate_jwt_signature),          (mp_obj_t)&mod_pycom_generate_jwt_signature_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_generate_rsa_signature),          (mp_obj_t)&mod_pycom_generate_rsa_signature_obj },
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_FACTORY),                         MP_OBJ_NEW_SMALL_INT(0) },
