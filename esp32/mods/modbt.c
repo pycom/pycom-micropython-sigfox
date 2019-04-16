@@ -58,7 +58,8 @@
  ******************************************************************************/
 #define BT_SCAN_QUEUE_SIZE_MAX                              (16)
 #define BT_GATTS_QUEUE_SIZE_MAX                             (2)
-#define BT_CHAR_VALUE_SIZE_MAX                              (20)
+#define BT_MTU_SIZE_MAX                                     (200)
+#define BT_CHAR_VALUE_SIZE_MAX                              (BT_MTU_SIZE_MAX - 3)
 
 #define MOD_BT_CLIENT_APP_ID                                (0)
 #define MOD_BT_SERVER_APP_ID                                (1)
@@ -209,6 +210,9 @@ static volatile bt_obj_t bt_obj;
 static QueueHandle_t xScanQueue;
 static QueueHandle_t xGattsQueue;
 
+static esp_ble_adv_data_t adv_data;
+static esp_ble_adv_data_t scan_rsp_data;
+
 static const mp_obj_type_t mod_bt_connection_type;
 static const mp_obj_type_t mod_bt_service_type;
 static const mp_obj_type_t mod_bt_characteristic_type;
@@ -219,7 +223,7 @@ static const mp_obj_type_t mod_bt_gatts_char_type;
 
 static esp_ble_adv_params_t bt_adv_params = {
     .adv_int_min        = 0x20,
-    .adv_int_max        = 0x20,
+    .adv_int_max        = 0x40,
     .adv_type           = ADV_TYPE_IND,
     .own_addr_type      = BLE_ADDR_TYPE_PUBLIC,
     .channel_map        = ADV_CHNL_ALL,
@@ -451,6 +455,7 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         bt_obj.busy = false;
         // intentional fall through
     case ESP_GATTC_CLOSE_EVT:
+    case ESP_GATTC_DISCONNECT_EVT:
         close_connection(p_data->close.conn_id);
         break;
     default:
@@ -684,7 +689,7 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
         esp_ble_gattc_app_register(MOD_BT_CLIENT_APP_ID);
         esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
 
-        esp_ble_gatt_set_local_mtu(200);
+        esp_ble_gatt_set_local_mtu(BT_MTU_SIZE_MAX);
 
         self->init = true;
     }
@@ -989,7 +994,6 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
         { MP_QSTR_service_uuid,             MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
 
-    esp_ble_adv_data_t adv_data;
     mp_buffer_info_t manuf_bufinfo;
     mp_buffer_info_t srv_bufinfo;
     mp_buffer_info_t uuid_bufinfo;
@@ -1056,7 +1060,21 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
     adv_data.appearance = 0x00;
     adv_data.flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT);
 
+    // copy all the info to the scan response
+    memcpy(&scan_rsp_data, &adv_data, sizeof(esp_ble_adv_data_t));
+    scan_rsp_data.set_scan_rsp = true;
+    // do not include the name or the tx power in the scan response
+    scan_rsp_data.include_name = false;
+    scan_rsp_data.include_txpower = false;
+    // do not include the service uuid or service data in the advertisement, only in the scan response
+    adv_data.manufacturer_len = 0;
+    adv_data.p_manufacturer_data =  NULL;
+    adv_data.service_data_len = 0;
+    adv_data.p_service_data = NULL;
+    adv_data.service_uuid_len = 0;
+    adv_data.p_service_uuid = NULL;
     esp_ble_gap_config_adv_data(&adv_data);
+    esp_ble_gap_config_adv_data(&scan_rsp_data);
 
     // wait for the advertisement data to be configured
     bt_gatts_event_result_t gatts_event;
@@ -1068,6 +1086,8 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_set_advertisement_obj, 1, bt_set_advertisem
 
 STATIC mp_obj_t bt_advertise(mp_obj_t self_in, mp_obj_t enable) {
     if (mp_obj_is_true(enable)) {
+        // some sensible time to wait for the advertisement configuration to complete
+        mp_hal_delay_ms(50);
         esp_ble_gap_start_advertising(&bt_adv_params);
         bt_obj.advertising = true;
     } else {

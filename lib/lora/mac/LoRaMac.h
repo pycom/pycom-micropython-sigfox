@@ -143,6 +143,25 @@ typedef enum eDeviceClass
 }DeviceClass_t;
 
 /*!
+ * End-Device activation type
+ */
+typedef enum eActivationType
+{
+    /*!
+     * None
+     */
+    ACTIVATION_TYPE_NONE = 0,
+    /*!
+     * Activation By Personalization (ACTIVATION_TYPE_ABP)
+     */
+    ACTIVATION_TYPE_ABP = 1,
+    /*!
+     * Over-The-Air Activation (ACTIVATION_TYPE_OTAA)
+     */
+    ACTIVATION_TYPE_OTAA = 2,
+}ActivationType_t;
+
+/*!
  * LoRaMAC channels parameters definition
  */
 typedef union uDrRange
@@ -1111,6 +1130,7 @@ typedef struct sMlmeConfirm
  * Attribute                         | Get | Set
  * --------------------------------- | :-: | :-:
  * \ref MIB_DEVICE_CLASS             | YES | YES
+ * \ref MIB_NETWORK_ACTIVATION       | YES | YES
  * \ref MIB_NETWORK_JOINED           | YES | YES
  * \ref MIB_ADR                      | YES | YES
  * \ref MIB_NET_ID                   | YES | YES
@@ -1156,6 +1176,12 @@ typedef enum eMib
      * LoRaWAN Specification V1.0.2
      */
     MIB_DEVICE_CLASS,
+    /*!
+     * LoRaWAN Network End-Device Activation
+     *
+     * LoRaWAN Specification V1.0.2
+     */
+    MIB_NETWORK_ACTIVATION,
     /*!
      * LoRaWAN Network joined attribute
      *
@@ -1359,6 +1385,12 @@ typedef union uMibParam
      * Related MIB type: \ref MIB_DEVICE_CLASS
      */
     DeviceClass_t Class;
+    /*!
+     * LoRaWAN Network End-Device Activation ( ACTIVATION_TYPE_NONE, ACTIVATION_TYPE_ABP or OTTA )
+     *
+     * Related MIB type: \ref MIB_NETWORK_ACTIVATION
+     */
+    ActivationType_t NetworkActivation;
     /*!
      * LoRaWAN network joined attribute
      *

@@ -21,7 +21,7 @@
 #define LORA_DATA_QUEUE_SIZE_MAX                                (3)
 #define LORA_CB_QUEUE_SIZE_MAX                                  (7)
 #define LORA_STACK_SIZE                                         (2560)
-#define LORA_TIMER_STACK_SIZE                                   (2048)
+#define LORA_TIMER_STACK_SIZE                                   (3072)
 #define LORA_TASK_PRIORITY                                      (6)
 #define LORA_TIMER_TASK_PRIORITY                                (8)
 
