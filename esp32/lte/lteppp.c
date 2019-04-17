@@ -307,14 +307,10 @@ lte_legacy_t lteppp_get_legacy(void) {
 }
 
 void lteppp_deinit (void) {
-
-    // enable airplane low power mode
-    lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
-
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
     uart_set_rts(LTE_UART_ID, false);
     xSemaphoreTake(xLTESem, portMAX_DELAY);
-    lteppp_lte_state = E_LTE_INIT;
+    lteppp_lte_state = E_LTE_DEINIT;
     xSemaphoreGive(xLTESem);
 }
 
@@ -423,11 +419,7 @@ static void TASK_LTE (void *pvParameters) {
         }
     }
 
-    // disable PSM if enabled by default
-    lteppp_send_at_cmd("AT+CPSMS?", LTE_RX_TIMEOUT_MAX_MS);
-    if (!strstr(lteppp_trx_buffer, "+CPSMS: 0")) {
-        lteppp_send_at_cmd("AT+CPSMS=0", LTE_RX_TIMEOUT_MIN_MS);
-    }
+
     // enable airplane low power mode
     lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
 
