@@ -170,7 +170,6 @@ APP_UTIL_SRC_C = $(addprefix util/,\
 	mpirq.c \
 	mpsleep.c \
 	timeutils.c \
-	base64url.c \
 	)
 
 APP_FATFS_SRC_C = $(addprefix fatfs/src/,\

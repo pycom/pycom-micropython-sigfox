@@ -21,7 +21,6 @@
 #include "entropy.h"
 #include "pk.h"
 #include "ctr_drbg.h"
-#include "base64url.h"
 
 #include "pycom_config.h"
 #include "mpexception.h"
