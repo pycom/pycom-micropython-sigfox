@@ -527,7 +527,7 @@ STATIC mp_obj_t mod_pycom_generate_rsa_signature(mp_uint_t n_args, const mp_obj_
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Signing failed, error code: %d!", rc));
     }
 
-    mp_obj_t ret_signature = mp_obj_new_bytearray(signature_length, signature);
+    mp_obj_t ret_signature = mp_obj_new_bytes((const byte*)signature, signature_length);
 
     mbedtls_pk_free(&pk_context);
     m_free((char*)message);
