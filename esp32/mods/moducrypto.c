@@ -17,6 +17,9 @@
 #include "hwcrypto/aes.h"
 #include "hwcrypto/sha.h"
 #include "mpexception.h"
+#include "entropy.h"
+#include "pk.h"
+#include "ctr_drbg.h"
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -271,6 +274,70 @@ STATIC mp_obj_t getrandbits(mp_obj_t bits) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(getrandbits_obj, getrandbits);
 
+STATIC mp_obj_t mod_pycom_generate_rsa_signature(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+
+    STATIC const mp_arg_t mod_pycom_generate_rsa_signature_args[] = {
+        { MP_QSTR_message,                MP_ARG_OBJ | MP_ARG_REQUIRED, {} },
+        { MP_QSTR_private_key,            MP_ARG_OBJ | MP_ARG_REQUIRED, {} },
+        { MP_QSTR_pers,                   MP_ARG_OBJ | MP_ARG_KW_ONLY,  {.u_obj = MP_OBJ_NULL} }
+    };
+
+    // parse args
+    mp_arg_val_t args[MP_ARRAY_SIZE(mod_pycom_generate_rsa_signature_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(mod_pycom_generate_rsa_signature_args), mod_pycom_generate_rsa_signature_args, args);
+
+    const char* message = mp_obj_str_get_str(args[0].u_obj);
+    const char* private_key = mp_obj_str_get_str(args[1].u_obj);
+
+    char* pers="esp32-tls";
+    if(args[2].u_obj != MP_OBJ_NULL) {
+        pers = (char*)mp_obj_str_get_str(args[2].u_obj);
+    }
+
+    mbedtls_pk_context pk_context;
+    mbedtls_pk_init(&pk_context);
+
+    int rc = mbedtls_pk_parse_key(&pk_context, (const unsigned char*)private_key, strlen(private_key)+1, NULL, 0);
+    if (rc != 0) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Invalid Private Key, error code: %d", rc));
+    }
+
+    mbedtls_entropy_context entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+    mbedtls_entropy_init(&entropy);
+
+    mbedtls_ctr_drbg_seed(
+        &ctr_drbg,
+        mbedtls_entropy_func,
+        &entropy,
+        (const unsigned char*)pers,
+        strlen(pers));
+
+    uint8_t digest[32];
+    rc = mbedtls_md(mbedtls_md_info_from_type(MBEDTLS_MD_SHA256), (const unsigned char*)message, strlen(message), digest);
+    if (rc != 0) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Message Digest operation failed, error code: %d", rc));
+    }
+
+    unsigned char *signature = m_malloc(5000);
+    size_t signature_length;
+
+    rc = mbedtls_pk_sign(&pk_context, MBEDTLS_MD_SHA256, digest, sizeof(digest), signature, &signature_length, mbedtls_ctr_drbg_random, &ctr_drbg);
+    if (rc != 0) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Signing failed, error code: %d!", rc));
+    }
+
+    mp_obj_t ret_signature = mp_obj_new_bytes((const byte*)signature, signature_length);
+
+    mbedtls_pk_free(&pk_context);
+    m_free((char*)message);
+    m_free((char*)signature);
+
+    return ret_signature;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_generate_rsa_signature_obj, 2, mod_pycom_generate_rsa_signature);
+
 STATIC const mp_map_elem_t mp_module_AES_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_uAES) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MODE_ECB),            MP_OBJ_NEW_SMALL_INT(CRYPT_MODE_ECB) },
@@ -292,9 +359,10 @@ STATIC const mp_obj_type_t mod_crypt_aes = {
 
 
 STATIC const mp_map_elem_t module_ucrypto_globals_table[] = {
-    { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_ucrypto) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_AES),                 (mp_obj_t)&mod_crypt_aes },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_getrandbits),         (mp_obj_t)&getrandbits_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_ucrypto) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_AES),                             (mp_obj_t)&mod_crypt_aes },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_getrandbits),                     (mp_obj_t)&getrandbits_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_generate_rsa_signature),          (mp_obj_t)&mod_pycom_generate_rsa_signature_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(module_ucrypto_globals, module_ucrypto_globals_table);

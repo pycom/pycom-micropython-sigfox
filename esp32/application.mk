@@ -25,6 +25,7 @@ APP_INC += -I$(BUILD)/genhdr
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include_priv
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/mbedtls/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/mbedtls/include/mbedtls
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
