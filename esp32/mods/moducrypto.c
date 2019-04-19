@@ -274,7 +274,7 @@ STATIC mp_obj_t getrandbits(mp_obj_t bits) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(getrandbits_obj, getrandbits);
 
-STATIC mp_obj_t mod_pycom_generate_rsa_signature(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t mod_crypt_generate_rsa_signature(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
     STATIC const mp_arg_t mod_pycom_generate_rsa_signature_args[] = {
         { MP_QSTR_message,                MP_ARG_OBJ | MP_ARG_REQUIRED, {} },
@@ -331,12 +331,11 @@ STATIC mp_obj_t mod_pycom_generate_rsa_signature(mp_uint_t n_args, const mp_obj_
     mp_obj_t ret_signature = mp_obj_new_bytes((const byte*)signature, signature_length);
 
     mbedtls_pk_free(&pk_context);
-    m_free((char*)message);
     m_free((char*)signature);
 
     return ret_signature;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_generate_rsa_signature_obj, 2, mod_pycom_generate_rsa_signature);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_crypt_generate_rsa_signature_obj, 2, mod_crypt_generate_rsa_signature);
 
 STATIC const mp_map_elem_t mp_module_AES_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_uAES) },
@@ -362,7 +361,7 @@ STATIC const mp_map_elem_t module_ucrypto_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_ucrypto) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_AES),                             (mp_obj_t)&mod_crypt_aes },
     { MP_OBJ_NEW_QSTR(MP_QSTR_getrandbits),                     (mp_obj_t)&getrandbits_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_generate_rsa_signature),          (mp_obj_t)&mod_pycom_generate_rsa_signature_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_generate_rsa_signature),          (mp_obj_t)&mod_crypt_generate_rsa_signature_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(module_ucrypto_globals, module_ucrypto_globals_table);
