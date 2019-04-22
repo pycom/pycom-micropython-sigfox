@@ -9,7 +9,7 @@
 
 char prog_buffer[SFLASH_BLOCK_SIZE] = {0};
 char read_buffer[SFLASH_BLOCK_SIZE] = {0};
-char lookahead_buffer[SFLASH_BLOCK_COUNT_8MB] = {0};
+char lookahead_buffer[SFLASH_BLOCK_COUNT_8MB/8] = {0};
 
 int littlefs_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, void *buffer, lfs_size_t size)
 {
@@ -44,8 +44,17 @@ struct lfs_config lfscfg =
     .prog_size = SFLASH_BLOCK_SIZE,
     .block_size = SFLASH_BLOCK_SIZE,
     .block_count = 0, // To be initialized according to the flash size of the chip
-    .lookahead = 0, // To be initialized according to the flash size of the chip
+    .block_cycles = 0, // No block-level wear-leveling
+    /* Current implementation of littlefs_read/prog/erase/sync() functions only operates with
+     * full blocks, always the starting address of the block is passed to the driver.
+     * This helps on the Power-loss resilient behavior of LittleFS, with this approach the File System will not be corrupted by corruption of a single file/block
+     * E.g.: it is not possible to only read/write a middle of a block, inline files will not work, set cache_size equal to read/prog size.*/
+    .cache_size = SFLASH_BLOCK_SIZE,
+    .lookahead_size = 0, // To be initialized according to the flash size of the chip
     .prog_buffer = prog_buffer,
     .read_buffer = read_buffer,
-    .lookahead_buffer = lookahead_buffer
+    .lookahead_buffer = lookahead_buffer,
+    .name_max = 0, // 0 means it is equal to LFS_NAME_MAX
+    .file_max = 0, // 0 means it is equal to LFS_FILE_MAX
+    .attr_max = 0 // 0 means it is equal to LFS_ATTR_MAX
 };
