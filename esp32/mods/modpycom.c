@@ -9,6 +9,7 @@
 
 #include "py/mpconfig.h"
 #include "py/obj.h"
+#include "py/objstr.h"
 #include "py/runtime.h"
 #include "mperror.h"
 #include "updater.h"
@@ -233,8 +234,41 @@ STATIC mp_obj_t mod_pycom_pulses_get (mp_obj_t gpio, mp_obj_t timeout) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_pycom_pulses_get_obj, mod_pycom_pulses_get);
 
+
+
+/*
+ * nvs_setstring/nvs_getstring: support for NVS string storage and, 
+ * thanks to JSON/other serializers, pretty much any datastructure.
+ */
+STATIC mp_obj_t mod_pycom_nvs_setstring (mp_obj_t _key, mp_obj_t _value) {
+    const char *key = mp_obj_str_get_str(_key);
+    const char *value = mp_obj_str_get_str(_value);
+    if (strlen(value) >= 1984) {
+        // orwell error: maximum length (including null character) is 1984 bytes
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "value too long (max: 1984)"));
+        return mp_const_none;
+    }
+    esp_err_t esp_err = nvs_set_str(pycom_nvs_handle, key, value);
+    if (ESP_OK == esp_err) {
+        nvs_commit(pycom_nvs_handle);
+    } else if (ESP_ERR_NVS_NOT_ENOUGH_SPACE == esp_err || ESP_ERR_NVS_PAGE_FULL == esp_err || ESP_ERR_NVS_NO_FREE_PAGES == esp_err) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no space available"));
+    } else if (ESP_ERR_NVS_INVALID_NAME == esp_err || ESP_ERR_NVS_KEY_TOO_LONG == esp_err) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid key (or too long)"));
+    } else {
+        // not ESP_OK, but not reporting?  TODO:check this...
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_pycom_nvs_setstring_obj, mod_pycom_nvs_setstring);
+
+
 STATIC mp_obj_t mod_pycom_nvs_set (mp_obj_t _key, mp_obj_t _value) {
     const char *key = mp_obj_str_get_str(_key);
+    if (MP_OBJ_IS_STR_OR_BYTES(_value)) {
+        // not certain how to differentiate between string and bytes, here... TODO
+        return mod_pycom_nvs_setstring(_key, _value);
+    }
     uint32_t value = mp_obj_get_int_truncated(_value);
 
     esp_err_t esp_err = nvs_set_u32(pycom_nvs_handle, key, value);
@@ -249,16 +283,52 @@ STATIC mp_obj_t mod_pycom_nvs_set (mp_obj_t _key, mp_obj_t _value) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_pycom_nvs_set_obj, mod_pycom_nvs_set);
 
+
+
+STATIC mp_obj_t mod_pycom_nvs_getstring (mp_obj_t _key) {
+    vstr_t vstr;
+    const char *key = mp_obj_str_get_str(_key);
+    size_t required_size = 0;
+    if (ESP_ERR_NVS_NOT_FOUND == nvs_get_str(pycom_nvs_handle, key, NULL, &required_size)) {
+        return mp_const_none;
+    }
+    vstr_init_len(&vstr, required_size);
+    if (ESP_OK != nvs_get_str(pycom_nvs_handle, key, vstr.buf, &required_size)) {
+        vstr_clear(&vstr);
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "can't get string"));
+        return mp_const_none;
+    }
+    if (vstr.len && vstr.buf[vstr.len - 1] == '\0') {
+        /* bit of a hack to get rid of trailing null terminator required by the
+         * nvs backend to figure out string length... must be a better way, TODO.
+         */
+        vstr.len = vstr.len - 1;
+    }
+    return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
+
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_nvs_getstring_obj, mod_pycom_nvs_getstring);
+
+
 STATIC mp_obj_t mod_pycom_nvs_get (mp_obj_t _key) {
     const char *key = mp_obj_str_get_str(_key);
     uint32_t value;
-
-    if (ESP_ERR_NVS_NOT_FOUND == nvs_get_u32(pycom_nvs_handle, key, &value)) {
-        return mp_const_none;
+    esp_err_t esp_err = nvs_get_u32(pycom_nvs_handle, key, &value);
+    if (ESP_OK == esp_err) {
+        return mp_obj_new_int(value);
     }
-    return mp_obj_new_int(value);
+    if (ESP_ERR_NVS_NOT_FOUND == esp_err || ESP_ERR_NVS_TYPE_MISMATCH == esp_err) {	
+        /* you would expect it to return TYPE_MISMATCH if it's been 
+           stored as a string, but it's actually returning NOT_FOUND...
+           so: try string */
+        return mod_pycom_nvs_getstring(_key);
+    }
+    nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Error doing nvs_get: %d", esp_err));
+    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_nvs_get_obj, mod_pycom_nvs_get);
+
+
 
 STATIC mp_obj_t mod_pycom_nvs_erase (mp_obj_t _key) {
     const char *key = mp_obj_str_get_str(_key);
@@ -478,7 +548,9 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_ota_slot),                        (mp_obj_t)&mod_pycom_ota_slot_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pulses_get),                      (mp_obj_t)&mod_pycom_pulses_get_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_set),                         (mp_obj_t)&mod_pycom_nvs_set_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_setstring),                   (mp_obj_t)&mod_pycom_nvs_setstring_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_get),                         (mp_obj_t)&mod_pycom_nvs_get_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_getstring),                   (mp_obj_t)&mod_pycom_nvs_getstring_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_erase),                       (mp_obj_t)&mod_pycom_nvs_erase_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_erase_all),                   (mp_obj_t)&mod_pycom_nvs_erase_all_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_on_boot),                    (mp_obj_t)&mod_pycom_wifi_on_boot_obj },
