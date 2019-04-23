@@ -30,5 +30,6 @@ typedef struct _lte_obj_t {
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
 extern void modlte_init0(void);
+extern void modlte_start_modem(void);
 
 #endif /* MODLTE_H_ */

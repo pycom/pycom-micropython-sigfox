@@ -188,10 +188,9 @@ STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
     bt_deinit(NULL);
     wlan_deinit(NULL);
 #if defined(FIPY) || defined(GPY)
-    while (config_get_lte_modem_enable_on_boot() && !lteppp_task_ready()) {
-        mp_hal_delay_ms(2);
+    if (lteppp_modem_state() < E_LTE_MODEM_DISCONNECTED) {
+        lteppp_deinit();
     }
-    lteppp_deinit();
 #endif
 
 #if defined(LOPY) || defined(LOPY4) || defined(FIPY)
@@ -244,10 +243,9 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     bt_deinit(NULL);
     wlan_deinit(NULL);
 #if defined(FIPY) || defined(GPY)
-    while (config_get_lte_modem_enable_on_boot() && !lteppp_task_ready()) {
-        mp_hal_delay_ms(2);
+    if (lteppp_modem_state() < E_LTE_MODEM_DISCONNECTED) {
+        lteppp_deinit();
     }
-    lteppp_deinit();
 #endif
     if (n_args == 0) {
         mach_expected_wakeup_time = 0;

@@ -34,6 +34,7 @@
 
 #define LTE_TRX_WAIT_MS(len)                                    (((len + 1) * 12 * 1000) / MICROPY_LTE_UART_BAUDRATE)
 #define LTE_TASK_PERIOD_MS                                      (2)
+#define LTE_AT_CMD_TRIALS                                       (20)
 
 /******************************************************************************
  DEFINE TYPES
@@ -48,7 +49,7 @@ typedef enum
  DECLARE EXPORTED DATA
  ******************************************************************************/
 extern TaskHandle_t xLTETaskHndl;
-
+SemaphoreHandle_t xLTE_modem_Conn_Sem;
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -68,9 +69,7 @@ static uint32_t lte_gw;
 static uint32_t lte_netmask;
 static ip6_addr_t lte_ipv6addr;
 
-static bool lteppp_init_complete = false;
-
-static bool lteppp_enabled = false;
+static lte_modem_conn_state_t lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
 
 static bool ltepp_ppp_conn_up = false;
 
@@ -89,27 +88,6 @@ static uint32_t lteppp_output_callback(ppp_pcb *pcb, u8_t *data, u32_t len, void
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
-
-void disconnect_lte_uart (void) {
-    uart_driver_delete(LTE_UART_ID);
-    vTaskDelay(5 / portTICK_RATE_MS);
-
-    //deassign LTE Uart pins
-    pin_deassign(MICROPY_LTE_TX_PIN);
-    gpio_pullup_dis(MICROPY_LTE_TX_PIN->pin_number);
-
-    pin_deassign(MICROPY_LTE_RX_PIN);
-    gpio_pullup_dis(MICROPY_LTE_RX_PIN->pin_number);
-
-    pin_deassign(MICROPY_LTE_CTS_PIN);
-    gpio_pullup_dis(MICROPY_LTE_CTS_PIN->pin_number);
-
-    pin_deassign(MICROPY_LTE_RTS_PIN);
-    gpio_pullup_dis(MICROPY_LTE_RTS_PIN->pin_number);
-
-    vTaskDelay(5 / portTICK_RATE_MS);
-
-}
 
 void connect_lte_uart (void) {
 
@@ -143,9 +121,6 @@ void connect_lte_uart (void) {
 
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
     uart_set_rts(LTE_UART_ID, false);
-    vTaskDelay(5 / portTICK_RATE_MS);
-    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
-    vTaskDelay(5 / portTICK_RATE_MS);
 
 }
 
@@ -157,11 +132,12 @@ void lteppp_init(void) {
     xRxQueue = xQueueCreate(LTE_RSP_QUEUE_SIZE_MAX, LTE_AT_RSP_SIZE_MAX + 1);
 
     xLTESem = xSemaphoreCreateMutex();
+    xLTE_modem_Conn_Sem = xSemaphoreCreateMutex();
 
     lteppp_pcb = pppapi_pppos_create(&lteppp_netif, lteppp_output_callback, lteppp_status_cb, NULL);
 
     //wait on connecting modem until it is allowed
-    lteppp_enabled = false;
+    lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
 
     xTaskCreatePinnedToCore(TASK_LTE, "LTE", LTE_TASK_STACK_SIZE / sizeof(StackType_t), NULL, LTE_TASK_PRIORITY, &xLTETaskHndl, 1);
 
@@ -173,14 +149,13 @@ void lteppp_start (void) {
     vTaskDelay(5);
 }
 
-void lteppp_connect_modem (void) {
-
-	lteppp_enabled = true;
-}
-
-bool lteppp_is_modem_connected(void)
+lte_modem_conn_state_t lteppp_modem_state(void)
 {
-	return lteppp_enabled;
+    lte_modem_conn_state_t state;
+    xSemaphoreTake(xLTESem, portMAX_DELAY);
+    state = lteppp_modem_conn_state;
+	xSemaphoreGive(xLTESem);
+	return state;
 }
 
 void lteppp_set_state(lte_state_t state) {
@@ -308,22 +283,16 @@ lte_legacy_t lteppp_get_legacy(void) {
 
 void lteppp_deinit (void) {
 
-    // enable airplane low power mode
-    lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
-
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
     uart_set_rts(LTE_UART_ID, false);
     xSemaphoreTake(xLTESem, portMAX_DELAY);
     lteppp_lte_state = E_LTE_INIT;
-    xSemaphoreGive(xLTESem);
+    lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
+	xSemaphoreGive(xLTESem);
 }
 
 uint32_t lteppp_ipv4(void) {
     return lte_ipv4addr;
-}
-
-bool lteppp_task_ready(void) {
-    return lteppp_init_complete;
 }
 
 bool ltepp_is_ppp_conn_up(void)
@@ -347,131 +316,119 @@ static void TASK_LTE (void *pvParameters) {
     bool sim_present;
     lte_task_cmd_data_t *lte_task_cmd = (lte_task_cmd_data_t *)lteppp_trx_buffer;
     lte_task_rsp_data_t *lte_task_rsp = (lte_task_rsp_data_t *)lteppp_trx_buffer;
-
+    uint8_t at_trials = 0;
+    static uint32_t thread_notification;
 
     connect_lte_uart();
 
-    while (!lteppp_enabled)
+modem_init:
+
+    thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    if (thread_notification)
     {
-    	// wait till connection is enabled
-    	vTaskDelay(LTE_TASK_PERIOD_MS/portTICK_PERIOD_MS);
-    }
-
-    if (lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
-        vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
-        while (true) {
-            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
-            if (lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-                break;
+        xSemaphoreTake(xLTE_modem_Conn_Sem, portMAX_DELAY);
+        xSemaphoreTake(xLTESem, portMAX_DELAY);
+        lteppp_modem_conn_state = E_LTE_MODEM_CONNECTING;
+        xSemaphoreGive(xLTESem);
+        uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
+        vTaskDelay(500/portTICK_PERIOD_MS);
+        // exit PPP session if applicable
+        lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS);
+        while(!lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS))
+        {
+            if (at_trials >= LTE_AT_CMD_TRIALS) {
+                uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
+                uart_set_rts(LTE_UART_ID, false);
+                xSemaphoreTake(xLTESem, portMAX_DELAY);
+                lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
+                xSemaphoreGive(xLTESem);
+                xSemaphoreGive(xLTE_modem_Conn_Sem);
+                at_trials = 0;
+                goto modem_init;
             }
+            at_trials++;
         }
-
-        //lteppp_send_at_cmd("ATH", LTE_RX_TIMEOUT_MIN_MS);
-        while (true) {
-            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS);
-            if (lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-                break;
-            }
-        }
-    }
-
-    lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS);
-    if (!lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-        vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
-        if (lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS)) {
-            vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
-            while (true) {
-                vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
-                if (lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-                    break;
-                }
-            }
-        } else {
-            while (true) {
-                vTaskDelay(LTE_RX_TIMEOUT_MIN_MS / portTICK_RATE_MS);
-                if (lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-                    break;
-                }
-            }
-            //lteppp_send_at_cmd("ATH", LTE_RX_TIMEOUT_MIN_MS);
-            while (true) {
-                vTaskDelay(LTE_RX_TIMEOUT_MIN_MS);
-                if (lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-                    break;
-                }
-            }
-        }
-    }
-
-    lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MAX_MS);
-
-    // at least enable access to the SIM
-    lteppp_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
-    char *pos = strstr(lteppp_trx_buffer, "+CFUN: ");
-    if (pos && (pos[7] != '1') && (pos[7] != '4')) {
-        lteppp_send_at_cmd("AT+CFUN=4", LTE_RX_TIMEOUT_MAX_MS);
-        lteppp_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
-    }
-    // check for SIM card inserted
-    sim_present = lteppp_check_sim_present();
-
-    // if we are coming from a power on reset, disable the LTE radio
-    if (mpsleep_get_reset_cause() < MPSLEEP_WDT_RESET) {
-        lteppp_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
-        if (!sim_present) {
-            lteppp_send_at_cmd("AT+CFUN=0", LTE_RX_TIMEOUT_MAX_MS);
-        }
-    }
-
-    // disable PSM if enabled by default
-    lteppp_send_at_cmd("AT+CPSMS?", LTE_RX_TIMEOUT_MAX_MS);
-    if (!strstr(lteppp_trx_buffer, "+CPSMS: 0")) {
+        at_trials = 0;
+        // Disable char echo
+        lteppp_send_at_cmd("ATE0", LTE_RX_TIMEOUT_MIN_MS);
+        // disable PSM if enabled by default
         lteppp_send_at_cmd("AT+CPSMS=0", LTE_RX_TIMEOUT_MIN_MS);
-    }
-    // enable airplane low power mode
-    lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
 
-    lteppp_init_complete = true;
+        // at least enable access to the SIM
+        lteppp_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
+        char *pos = strstr(lteppp_trx_buffer, "+CFUN: ");
+        if (pos && (pos[7] != '1') && (pos[7] != '4')) {
+            lteppp_send_at_cmd("AT+CFUN=4", LTE_RX_TIMEOUT_MAX_MS);
+        }
+        // check for SIM card inserted
+        sim_present = lteppp_check_sim_present();
 
-    for (;;) {
-        vTaskDelay(LTE_TASK_PERIOD_MS);
-        if (xQueueReceive(xCmdQueue, lteppp_trx_buffer, 0)) {
-            lteppp_send_at_cmd_exp(lte_task_cmd->data, lte_task_cmd->timeout, NULL, &(lte_task_rsp->data_remaining));
-            xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
-        } else {
-            lte_state_t state = lteppp_get_state();
-            if (state == E_LTE_PPP) {
-                uint32_t rx_len;
-                // check for IP connection
-                if(lteppp_ipv4() > 0)
-                {
-                	ltepp_ppp_conn_up = true;
+        // if we are coming from a power on reset, disable the LTE radio
+        if (mpsleep_get_reset_cause() < MPSLEEP_WDT_RESET) {
+            lteppp_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
+            if (!sim_present) {
+                lteppp_send_at_cmd("AT+CFUN=0", LTE_RX_TIMEOUT_MAX_MS);
+            }
+        }
+
+        // enable airplane low power mode
+        lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
+
+        xSemaphoreTake(xLTESem, portMAX_DELAY);
+        lteppp_modem_conn_state = E_LTE_MODEM_CONNECTED;
+        xSemaphoreGive(xLTESem);
+        xSemaphoreGive(xLTE_modem_Conn_Sem);
+
+        for (;;) {
+            vTaskDelay(LTE_TASK_PERIOD_MS);
+            xSemaphoreTake(xLTESem, portMAX_DELAY);
+            if(E_LTE_MODEM_DISCONNECTED == lteppp_modem_conn_state)
+            {
+                xSemaphoreGive(xLTESem);
+                // restart the task
+                goto modem_init;
+            }
+            xSemaphoreGive(xLTESem);
+            if (xQueueReceive(xCmdQueue, lteppp_trx_buffer, 0)) {
+                lteppp_send_at_cmd_exp(lte_task_cmd->data, lte_task_cmd->timeout, NULL, &(lte_task_rsp->data_remaining));
+                xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
+            } else {
+                lte_state_t state = lteppp_get_state();
+                if (state == E_LTE_PPP) {
+                    uint32_t rx_len;
+                    // check for IP connection
+                    if(lteppp_ipv4() > 0)
+                    {
+                        ltepp_ppp_conn_up = true;
+                    }
+                    else
+                    {
+                        if(ltepp_ppp_conn_up == true)
+                        {
+                            ltepp_ppp_conn_up = false;
+                            lteppp_set_state(E_LTE_ATTACHED);
+                        }
+                    }
+                    // wait for characters received
+                    uart_get_buffered_data_len(LTE_UART_ID, &rx_len);
+                    if (rx_len > 0) {
+                        // try to read up to the size of the buffer
+                        rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, LTE_UART_BUFFER_SIZE,
+                                                 LTE_TRX_WAIT_MS(LTE_UART_BUFFER_SIZE) / portTICK_RATE_MS);
+                        if (rx_len > 0) {
+                            pppos_input_tcpip(lteppp_pcb, (uint8_t *)lteppp_trx_buffer, rx_len);
+                        }
+                    }
                 }
                 else
                 {
-                	if(ltepp_ppp_conn_up == true)
-                	{
-                		ltepp_ppp_conn_up = false;
-                    	lteppp_set_state(E_LTE_ATTACHED);
-                	}
+                    ltepp_ppp_conn_up = false;
                 }
-                // wait for characters received
-                uart_get_buffered_data_len(LTE_UART_ID, &rx_len);
-                if (rx_len > 0) {
-                    // try to read up to the size of the buffer
-                    rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, LTE_UART_BUFFER_SIZE,
-                                             LTE_TRX_WAIT_MS(LTE_UART_BUFFER_SIZE) / portTICK_RATE_MS);
-                    if (rx_len > 0) {
-                        pppos_input_tcpip(lteppp_pcb, (uint8_t *)lteppp_trx_buffer, rx_len);
-                    }
-                }
-            }
-            else
-            {
-            	ltepp_ppp_conn_up = false;
             }
         }
     }
+    goto modem_init;
 }
 
 

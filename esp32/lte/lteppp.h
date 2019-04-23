@@ -54,6 +54,12 @@ typedef enum {
     E_LTE_CMD_PPP_EXIT
 } lte_task_cmd_t;
 
+typedef enum {
+    E_LTE_MODEM_CONNECTED = 0,
+    E_LTE_MODEM_CONNECTING,
+    E_LTE_MODEM_DISCONNECTED
+} lte_modem_conn_state_t;
+
 typedef struct {
     uint32_t timeout;
     char data[LTE_AT_CMD_SIZE_MAX - 4];
@@ -65,6 +71,11 @@ typedef struct {
 } lte_task_rsp_data_t;
 #pragma pack()
 
+
+/******************************************************************************
+ DECLARE PUBLIC DTATA
+ ******************************************************************************/
+extern SemaphoreHandle_t xLTE_modem_Conn_Sem;
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -95,15 +106,9 @@ extern void lteppp_send_at_command_delay (lte_task_cmd_data_t *cmd, lte_task_rsp
 
 extern bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_mp, void* data_rem);
 
-extern bool lteppp_task_ready(void);
-
-void lteppp_connect_modem (void);
-
-bool lteppp_is_modem_connected(void);
+lte_modem_conn_state_t lteppp_modem_state(void);
 
 extern void connect_lte_uart (void);
-
-extern void disconnect_lte_uart (void);
 
 extern bool ltepp_is_ppp_conn_up(void);
 
