@@ -267,7 +267,8 @@ soft_reset:
         modlte_init0();
         if(config_get_lte_modem_enable_on_boot())
         {
-        	lteppp_connect_modem();
+            // Notify the LTE thread to start
+            modlte_start_modem();
         }
     #endif
     }
