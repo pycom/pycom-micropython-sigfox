@@ -369,6 +369,12 @@ else
 	$(error Invalid Variant specified)
 	endif
 endif  
+# Enable or Disable LTE_LOG_BUFF
+ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
+ifeq ($(LTE_LOG_BUFF),1)
+CFLAGS += -DLTE_LOG=1
+endif #ifeq ($(LTE_LOG_BUFF),1)
+endif #ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
 # Give the possibility to use LittleFs on /flash, otherwise  FatFs is used
 FS ?= ""
 ifeq ($(FS), LFS)

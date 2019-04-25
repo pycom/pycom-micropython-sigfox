@@ -34,7 +34,7 @@
 
 #define LTE_TRX_WAIT_MS(len)                                    (((len + 1) * 12 * 1000) / MICROPY_LTE_UART_BAUDRATE)
 #define LTE_TASK_PERIOD_MS                                      (2)
-#define LTE_AT_CMD_TRIALS                                       (20)
+#define LTE_AT_CMD_TRIALS                                       (5)
 
 /******************************************************************************
  DEFINE TYPES
@@ -54,6 +54,9 @@ SemaphoreHandle_t xLTE_modem_Conn_Sem;
  DECLARE PRIVATE DATA
  ******************************************************************************/
 static char lteppp_trx_buffer[LTE_UART_BUFFER_SIZE + 1];
+#ifdef LTE_LOG
+static lte_log_t lteppp_log;
+#endif
 static char lteppp_queue_buffer[LTE_UART_BUFFER_SIZE];
 static uart_dev_t* lteppp_uart_reg;
 static QueueHandle_t xCmdQueue;
@@ -142,13 +145,22 @@ void lteppp_init(void) {
     xTaskCreatePinnedToCore(TASK_LTE, "LTE", LTE_TASK_STACK_SIZE / sizeof(StackType_t), NULL, LTE_TASK_PRIORITY, &xLTETaskHndl, 1);
 
     lteppp_connstatus = LTE_PPP_IDLE;
+#ifdef LTE_LOG
+    lteppp_log.log = heap_caps_malloc(LTE_LOG_BUFF_SIZE, MALLOC_CAP_SPIRAM);
+#endif
 }
 
 void lteppp_start (void) {
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
     vTaskDelay(5);
 }
-
+#ifdef LTE_LOG
+char* lteppp_get_log_buff(void)
+{
+    lteppp_log.log[lteppp_log.ptr] = '\0';
+    return lteppp_log.log;
+}
+#endif
 lte_modem_conn_state_t lteppp_modem_state(void)
 {
     lte_modem_conn_state_t state;
@@ -228,6 +240,20 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
         if (rx_len > 0) {
             // NULL terminate the string
             lteppp_trx_buffer[rx_len] = '\0';
+#ifdef LTE_LOG
+            if (lteppp_log.ptr < LTE_LOG_BUFF_SIZE - rx_len) {
+                memcpy(&(lteppp_log.log[lteppp_log.ptr]), "[RSP]: ", strlen("[RSP]: "));
+                lteppp_log.ptr += strlen("[RSP]: ");
+                memcpy(&(lteppp_log.log[lteppp_log.ptr]), lteppp_trx_buffer, rx_len-1);
+                lteppp_log.ptr += rx_len-1;
+                lteppp_log.log[lteppp_log.ptr] = '\n';
+                lteppp_log.ptr++;
+            }
+            else
+            {
+                lteppp_log.ptr = 0;
+            }
+#endif
             /* Check for pause after start of response */
             if(strcmp(lteppp_trx_buffer, "\r\n") == 0)
             {
@@ -334,20 +360,64 @@ modem_init:
         uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
         vTaskDelay(500/portTICK_PERIOD_MS);
         // exit PPP session if applicable
-        lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS);
-        while(!lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS))
+        if(lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS))
         {
-            if (at_trials >= LTE_AT_CMD_TRIALS) {
-                uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
-                uart_set_rts(LTE_UART_ID, false);
-                xSemaphoreTake(xLTESem, portMAX_DELAY);
-                lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
-                xSemaphoreGive(xLTESem);
-                xSemaphoreGive(xLTE_modem_Conn_Sem);
-                at_trials = 0;
-                goto modem_init;
+            vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
+            while(!lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS))
+            {
+                if (at_trials >= LTE_AT_CMD_TRIALS) {
+                    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
+                    uart_set_rts(LTE_UART_ID, false);
+                    xSemaphoreTake(xLTESem, portMAX_DELAY);
+                    lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
+                    xSemaphoreGive(xLTESem);
+                    xSemaphoreGive(xLTE_modem_Conn_Sem);
+                    at_trials = 0;
+                    goto modem_init;
+                }
+                at_trials++;
             }
-            at_trials++;
+        }
+        else
+        {
+            lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS);
+            if (!lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS)) {
+                vTaskDelay(LTE_PPP_BACK_OFF_TIME_MS / portTICK_RATE_MS);
+                if (lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS))
+                {
+                    while(!lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS))
+                    {
+                        if (at_trials >= LTE_AT_CMD_TRIALS) {
+                            uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
+                            uart_set_rts(LTE_UART_ID, false);
+                            xSemaphoreTake(xLTESem, portMAX_DELAY);
+                            lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
+                            xSemaphoreGive(xLTESem);
+                            xSemaphoreGive(xLTE_modem_Conn_Sem);
+                            at_trials = 0;
+                            goto modem_init;
+                        }
+                        at_trials++;
+                    }
+                }
+                else
+                {
+                    while(!lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS))
+                    {
+                        if (at_trials >= LTE_AT_CMD_TRIALS) {
+                            uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
+                            uart_set_rts(LTE_UART_ID, false);
+                            xSemaphoreTake(xLTESem, portMAX_DELAY);
+                            lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
+                            xSemaphoreGive(xLTESem);
+                            xSemaphoreGive(xLTE_modem_Conn_Sem);
+                            at_trials = 0;
+                            goto modem_init;
+                        }
+                        at_trials++;
+                    }
+                }
+            }
         }
         at_trials = 0;
         // Disable char echo
@@ -436,13 +506,40 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
 
     if(strstr(cmd, "Pycom_Dummy") != NULL)
     {
+#ifdef LTE_LOG
+        if (lteppp_log.ptr < (LTE_LOG_BUFF_SIZE - strlen("[CMD]: Dummy") + 1))
+        {
+            memcpy(&(lteppp_log.log[lteppp_log.ptr]), "[CMD]: Dummy", strlen("[CMD]: Dummy"));
+            lteppp_log.ptr += strlen("[CMD]: Dummy");
+            lteppp_log.log[lteppp_log.ptr] = '\n';
+            lteppp_log.ptr++;
+        }
+        else
+        {
+            lteppp_log.ptr = 0;
+        }
+#endif
         return lteppp_wait_at_rsp(expected_rsp, timeout, false, data_rem);
     }
     else
     {
         uint32_t cmd_len = strlen(cmd);
         // char tmp_buf[128];
-
+#ifdef LTE_LOG
+        if (lteppp_log.ptr < (LTE_LOG_BUFF_SIZE - strlen("[CMD]:") - cmd_len + 1))
+        {
+            memcpy(&(lteppp_log.log[lteppp_log.ptr]), "[CMD]:", strlen("[CMD]:"));
+            lteppp_log.ptr += strlen("[CMD]:");
+            memcpy(&(lteppp_log.log[lteppp_log.ptr]), cmd, cmd_len);
+            lteppp_log.ptr += cmd_len;
+            lteppp_log.log[lteppp_log.ptr] = '\n';
+            lteppp_log.ptr++;
+        }
+        else
+        {
+            lteppp_log.ptr = 0;
+        }
+#endif
         // flush the rx buffer first
         uart_flush(LTE_UART_ID);
         // uart_read_bytes(LTE_UART_ID, (uint8_t *)tmp_buf, sizeof(tmp_buf), 5 / portTICK_RATE_MS);

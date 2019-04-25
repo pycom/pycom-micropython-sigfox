@@ -36,6 +36,8 @@ RELEASE_DIR ?= build/
 
 COPY_IDF_LIB ?= 0
 
+LTE_LOG_BUFF ?= 0
+
 # by default openthread over LoRa is enabled
 OPENTHREAD ?= on
 

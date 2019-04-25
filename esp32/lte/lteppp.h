@@ -24,12 +24,15 @@
 #define LTE_OK_RSP                                                      "OK"
 #define LTE_CONNECT_RSP                                                 "CONNECT"
 #define LTE_RX_TIMEOUT_MAX_MS                                           (9500)
-#define LTE_RX_TIMEOUT_MIN_MS                                           (250)
+#define LTE_RX_TIMEOUT_MIN_MS                                           (300)
 #define LTE_PPP_BACK_OFF_TIME_MS                                        (1150)
 
 #define LTE_MUTEX_TIMEOUT                                               (5050 / portTICK_RATE_MS)
 #define LTE_TASK_STACK_SIZE                                             (3072)
 #define LTE_TASK_PRIORITY                                               (6)
+#ifdef LTE_LOG
+#define LTE_LOG_BUFF_SIZE                                       (20 * 1024)
+#endif
 
 /******************************************************************************
  DEFINE TYPES
@@ -59,7 +62,12 @@ typedef enum {
     E_LTE_MODEM_CONNECTING,
     E_LTE_MODEM_DISCONNECTED
 } lte_modem_conn_state_t;
-
+#ifdef LTE_LOG
+typedef struct {
+    char* log;
+    uint16_t ptr;
+} lte_log_t;
+#endif
 typedef struct {
     uint32_t timeout;
     char data[LTE_AT_CMD_SIZE_MAX - 4];
@@ -115,5 +123,8 @@ extern bool ltepp_is_ppp_conn_up(void);
 extern void lteppp_suspend(void);
 
 extern void lteppp_resume(void);
+#ifdef LTE_LOG
+extern char* lteppp_get_log_buff(void);
+#endif
 
 #endif  // _LTEPPP_H_
