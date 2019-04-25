@@ -1257,15 +1257,15 @@ STATIC mp_obj_t lte_upgrade_mode(void) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_upgrade_mode_obj, lte_upgrade_mode);
-#ifdef LTE_DEBUG_BUFF
-STATIC mp_obj_t lte_debug_buff(void) {
+#ifdef LTE_LOG
+STATIC mp_obj_t lte_log(void) {
     vstr_t vstr;
     char* str_log = lteppp_get_log_buff();
     vstr_init_len(&vstr, strlen(str_log));
     strcpy(vstr.buf, str_log);
     return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_debug_buff_obj, lte_debug_buff);
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_log_obj, lte_log);
 #endif
 STATIC mp_obj_t lte_reconnect_uart (void) {
     connect_lte_uart();
@@ -1296,8 +1296,8 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_modem_upgrade_mode),  (mp_obj_t)&lte_upgrade_mode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reconnect_uart),      (mp_obj_t)&lte_reconnect_uart_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ue_coverage),         (mp_obj_t)&lte_ue_coverage_obj },
-#ifdef LTE_DEBUG_BUFF
-    { MP_OBJ_NEW_QSTR(MP_QSTR_debug_buff),          (mp_obj_t)&lte_debug_buff_obj },
+#ifdef LTE_LOG
+    { MP_OBJ_NEW_QSTR(MP_QSTR_log),         (mp_obj_t)&lte_log_obj },
 #endif
 
     // class constants
