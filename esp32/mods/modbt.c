@@ -1330,6 +1330,7 @@ STATIC mp_obj_t bt_set_advertisement_params (mp_uint_t n_args, const mp_obj_t *p
             }
         }
     }
+    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_set_advertisement_params_obj, 1, bt_set_advertisement_params);
 
