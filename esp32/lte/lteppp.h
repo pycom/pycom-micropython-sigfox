@@ -30,7 +30,7 @@
 #define LTE_MUTEX_TIMEOUT                                               (5050 / portTICK_RATE_MS)
 #define LTE_TASK_STACK_SIZE                                             (3072)
 #define LTE_TASK_PRIORITY                                               (6)
-#ifdef LTE_LOG
+#ifdef LTE_DEBUG_BUFF
 #define LTE_LOG_BUFF_SIZE                                       (20 * 1024)
 #endif
 
@@ -62,10 +62,11 @@ typedef enum {
     E_LTE_MODEM_CONNECTING,
     E_LTE_MODEM_DISCONNECTED
 } lte_modem_conn_state_t;
-#ifdef LTE_LOG
+#ifdef LTE_DEBUG_BUFF
 typedef struct {
     char* log;
     uint16_t ptr;
+    bool truncated;
 } lte_log_t;
 #endif
 typedef struct {
@@ -123,7 +124,7 @@ extern bool ltepp_is_ppp_conn_up(void);
 extern void lteppp_suspend(void);
 
 extern void lteppp_resume(void);
-#ifdef LTE_LOG
+#ifdef LTE_DEBUG_BUFF
 extern char* lteppp_get_log_buff(void);
 #endif
 
