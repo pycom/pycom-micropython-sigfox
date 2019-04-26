@@ -390,13 +390,14 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         return mp_const_none;
     }
     modem_state  = lteppp_modem_state();
-
     switch(modem_state)
     {
     case E_LTE_MODEM_DISCONNECTED:
         // Notify the LTE thread to start
         modlte_start_modem();
+        MP_THREAD_GIL_EXIT();
         xSemaphoreTake(xLTE_modem_Conn_Sem, portMAX_DELAY);
+        MP_THREAD_GIL_ENTER();
         if (E_LTE_MODEM_DISCONNECTED == lteppp_modem_state()) {
             xSemaphoreGive(xLTE_modem_Conn_Sem);
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem!"));
@@ -619,6 +620,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             lteppp_send_at_command(&cmd, &modlte_rsp);
             /* Dummy command for command response > Uart buff size */
             memcpy(cmd.data, "Pycom_Dummy", strlen("Pycom_Dummy"));
+            MP_THREAD_GIL_EXIT();
             while(modlte_rsp.data_remaining)
             {
                 if (!is_hw_new_band_support) {
@@ -629,6 +631,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                 }
                 lteppp_send_at_command(&cmd, &modlte_rsp);
             }
+            MP_THREAD_GIL_ENTER();
             int version = lte_get_modem_version();
 
             if(version > 0 && version > SQNS_SW_FULL_BAND_SUPPORT)
@@ -970,12 +973,11 @@ STATIC mp_obj_t lte_resume(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             lteppp_set_state(E_LTE_ATTACHED);
             lte_check_attached(lte_legacyattach_flag);
             return lte_connect(n_args, pos_args, kw_args);
-            //nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
         }
     } else if (lteppp_get_state() == E_LTE_PPP) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "modem already connected"));
     } else {
-        //nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "modem not attached"));
+        //Do Nothing
     }
     return mp_const_none;
 }
@@ -1044,12 +1046,13 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     vstr_t vstr;
     vstr_init(&vstr, 0);
     vstr_add_str(&vstr, modlte_rsp.data);
+    MP_THREAD_GIL_EXIT();
     while(modlte_rsp.data_remaining)
     {
         lte_push_at_command_delay("Pycom_Dummy", LTE_RX_TIMEOUT_MAX_MS, args[1].u_int);
         vstr_add_str(&vstr, modlte_rsp.data);
     }
-
+    MP_THREAD_GIL_ENTER();
     return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_send_at_cmd_obj, 1, lte_send_at_cmd);
@@ -1257,15 +1260,15 @@ STATIC mp_obj_t lte_upgrade_mode(void) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_upgrade_mode_obj, lte_upgrade_mode);
-#ifdef LTE_LOG
-STATIC mp_obj_t lte_log(void) {
+#ifdef LTE_DEBUG_BUFF
+STATIC mp_obj_t lte_debug_buff(void) {
     vstr_t vstr;
     char* str_log = lteppp_get_log_buff();
     vstr_init_len(&vstr, strlen(str_log));
     strcpy(vstr.buf, str_log);
     return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_log_obj, lte_log);
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_debug_buff_obj, lte_debug_buff);
 #endif
 STATIC mp_obj_t lte_reconnect_uart (void) {
     connect_lte_uart();
@@ -1296,8 +1299,8 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_modem_upgrade_mode),  (mp_obj_t)&lte_upgrade_mode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reconnect_uart),      (mp_obj_t)&lte_reconnect_uart_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ue_coverage),         (mp_obj_t)&lte_ue_coverage_obj },
-#ifdef LTE_LOG
-    { MP_OBJ_NEW_QSTR(MP_QSTR_log),         (mp_obj_t)&lte_log_obj },
+#ifdef LTE_DEBUG_BUFF
+    { MP_OBJ_NEW_QSTR(MP_QSTR_debug_buff),          (mp_obj_t)&lte_debug_buff_obj },
 #endif
 
     // class constants

@@ -104,8 +104,8 @@ endif #ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
 
 # Enable or Disable LTE_LOG_BUFF
 ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
-ifeq ($(LTE_LOG_BUFF),1)
-	CFLAGS += -DLTE_LOG
+ifeq ($(LTE_DEBUG_BUFF),1)
+	CFLAGS += -DLTE_DEBUG_BUFF
 endif #ifeq ($(LTE_LOG_BUFF),1)
 endif #ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
 

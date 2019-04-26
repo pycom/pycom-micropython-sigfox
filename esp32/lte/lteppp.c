@@ -54,7 +54,7 @@ SemaphoreHandle_t xLTE_modem_Conn_Sem;
  DECLARE PRIVATE DATA
  ******************************************************************************/
 static char lteppp_trx_buffer[LTE_UART_BUFFER_SIZE + 1];
-#ifdef LTE_LOG
+#ifdef LTE_DEBUG_BUFF
 static lte_log_t lteppp_log;
 #endif
 static char lteppp_queue_buffer[LTE_UART_BUFFER_SIZE];
@@ -145,7 +145,7 @@ void lteppp_init(void) {
     xTaskCreatePinnedToCore(TASK_LTE, "LTE", LTE_TASK_STACK_SIZE / sizeof(StackType_t), NULL, LTE_TASK_PRIORITY, &xLTETaskHndl, 1);
 
     lteppp_connstatus = LTE_PPP_IDLE;
-#ifdef LTE_LOG
+#ifdef LTE_DEBUG_BUFF
     lteppp_log.log = heap_caps_malloc(LTE_LOG_BUFF_SIZE, MALLOC_CAP_SPIRAM);
 #endif
 }
@@ -154,10 +154,22 @@ void lteppp_start (void) {
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
     vTaskDelay(5);
 }
-#ifdef LTE_LOG
+#ifdef LTE_DEBUG_BUFF
 char* lteppp_get_log_buff(void)
 {
-    lteppp_log.log[lteppp_log.ptr] = '\0';
+    if(lteppp_log.truncated)
+    {
+        if(lteppp_log.ptr < LTE_LOG_BUFF_SIZE - strlen("\n********BUFFER WRAPAROUND********\n") - 1)
+        {
+            memcpy(&(lteppp_log.log[lteppp_log.ptr]), "\n********BUFFER WRAPAROUND********\n", strlen("\n********BUFFER WRAPAROUND********\n"));
+            lteppp_log.ptr += strlen("\n********BUFFER WRAPAROUND********\n");
+        }
+        lteppp_log.log[LTE_LOG_BUFF_SIZE - 1] = '\0';
+    }
+    else
+    {
+        lteppp_log.log[lteppp_log.ptr] = '\0';
+    }
     return lteppp_log.log;
 }
 #endif
@@ -240,8 +252,8 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
         if (rx_len > 0) {
             // NULL terminate the string
             lteppp_trx_buffer[rx_len] = '\0';
-#ifdef LTE_LOG
-            if (lteppp_log.ptr < LTE_LOG_BUFF_SIZE - rx_len) {
+#ifdef LTE_DEBUG_BUFF
+            if (lteppp_log.ptr < LTE_LOG_BUFF_SIZE - rx_len - 1) {
                 memcpy(&(lteppp_log.log[lteppp_log.ptr]), "[RSP]: ", strlen("[RSP]: "));
                 lteppp_log.ptr += strlen("[RSP]: ");
                 memcpy(&(lteppp_log.log[lteppp_log.ptr]), lteppp_trx_buffer, rx_len-1);
@@ -252,6 +264,7 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
             else
             {
                 lteppp_log.ptr = 0;
+                lteppp_log.truncated = true;
             }
 #endif
             /* Check for pause after start of response */
@@ -263,7 +276,7 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
             {
                 pause = false;
             }
-            if (expected_rsp != NULL) {
+            if ((expected_rsp != NULL) && !pause) {
                 if (strstr(lteppp_trx_buffer, expected_rsp) != NULL) {
                     //printf("RESP: %s\n", lteppp_trx_buffer);
                     return true;
@@ -506,8 +519,8 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
 
     if(strstr(cmd, "Pycom_Dummy") != NULL)
     {
-#ifdef LTE_LOG
-        if (lteppp_log.ptr < (LTE_LOG_BUFF_SIZE - strlen("[CMD]: Dummy") + 1))
+#ifdef LTE_DEBUG_BUFF
+        if (lteppp_log.ptr < (LTE_LOG_BUFF_SIZE - strlen("[CMD]: Dummy") - 1))
         {
             memcpy(&(lteppp_log.log[lteppp_log.ptr]), "[CMD]: Dummy", strlen("[CMD]: Dummy"));
             lteppp_log.ptr += strlen("[CMD]: Dummy");
@@ -517,6 +530,7 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
         else
         {
             lteppp_log.ptr = 0;
+            lteppp_log.truncated = true;
         }
 #endif
         return lteppp_wait_at_rsp(expected_rsp, timeout, false, data_rem);
@@ -525,8 +539,8 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
     {
         uint32_t cmd_len = strlen(cmd);
         // char tmp_buf[128];
-#ifdef LTE_LOG
-        if (lteppp_log.ptr < (LTE_LOG_BUFF_SIZE - strlen("[CMD]:") - cmd_len + 1))
+#ifdef LTE_DEBUG_BUFF
+        if (lteppp_log.ptr < (LTE_LOG_BUFF_SIZE - strlen("[CMD]:") - cmd_len - 1))
         {
             memcpy(&(lteppp_log.log[lteppp_log.ptr]), "[CMD]:", strlen("[CMD]:"));
             lteppp_log.ptr += strlen("[CMD]:");
@@ -538,6 +552,7 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
         else
         {
             lteppp_log.ptr = 0;
+            lteppp_log.truncated = true;
         }
 #endif
         // flush the rx buffer first
