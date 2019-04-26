@@ -554,7 +554,13 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_param) {
     t->items[3] = MP_OBJ_NEW_SMALL_INT(0); // st_nlink
     t->items[4] = MP_OBJ_NEW_SMALL_INT(0); // st_uid
     t->items[5] = MP_OBJ_NEW_SMALL_INT(0); // st_gid
-    t->items[6] = mp_obj_new_int_from_uint(fno.size); // st_size
+    // Size only interpreted on files, not directories
+    if(fno.type == LFS_TYPE_REG) {
+        t->items[6] = mp_obj_new_int_from_uint(fno.size); // st_size
+    }
+    else {
+        t->items[6] = mp_obj_new_int_from_uint(0); // st_size
+    }
     //TODO: get time
     t->items[7] = MP_OBJ_NEW_SMALL_INT(0); // st_atime
     t->items[8] = MP_OBJ_NEW_SMALL_INT(0); // st_mtime
@@ -574,14 +580,12 @@ STATIC mp_obj_t littlefs_vfs_statvfs(mp_obj_t vfs_in, mp_obj_t path_in) {
 
     mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(10, NULL));
 
-    lfs_size_t in_use = 0;
-
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
-        int res = lfs_traverse(lfs, lfs_statvfs_count, &in_use);
+        lfs_ssize_t in_use = lfs_fs_size(lfs);
     xSemaphoreGive(self->fs.littlefs.mutex);
 
-    if (res != LFS_ERR_OK) {
-        mp_raise_OSError(littleFsErrorToErrno(res));
+    if (in_use < 0) {
+        mp_raise_OSError(littleFsErrorToErrno(in_use));
     }
 
     t->items[0] = MP_OBJ_NEW_SMALL_INT(lfs->cfg->block_size); // f_bsize
@@ -606,14 +610,12 @@ STATIC mp_obj_t littlefs_vfs_getfree(mp_obj_t vfs_in) {
 
     lfs_t* lfs = &self->fs.littlefs.lfs;
 
-    lfs_size_t in_use = 0;
-
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
-        int res = lfs_traverse(lfs, lfs_statvfs_count, &in_use);
+        lfs_ssize_t in_use = lfs_fs_size(lfs);
     xSemaphoreGive(self->fs.littlefs.mutex);
 
-    if (res != LFS_ERR_OK) {
-        mp_raise_OSError(littleFsErrorToErrno(res));
+    if (in_use < 0) {
+        mp_raise_OSError(littleFsErrorToErrno(in_use));
     }
 
     uint32_t free_space = (lfs->cfg->block_count - in_use) * lfs->cfg->block_size;

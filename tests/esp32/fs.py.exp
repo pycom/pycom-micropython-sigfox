@@ -18,17 +18,17 @@ FatFs: os.getcwd() - /sd/test
 FatFs: os.getcwd() - /sd/test/myfolder
 FatFs: os.chdir("/sd/inv") - OSError(2,)
 FatFs: os.getcwd() - /sd/test/myfolder
-LittleFs: os.listdir("") - ['myfolder', 'dir', 'file1', 'file2']
-LittleFs: os.listdir(".") - ['myfolder', 'dir', 'file1', 'file2']
+LittleFs: os.listdir("") - ['dir', 'file1', 'file2', 'myfolder']
+LittleFs: os.listdir(".") - ['dir', 'file1', 'file2', 'myfolder']
 LittleFs: os.listdir("myfolder/.") - ['dir1', 'file3']
-LittleFs: os.listdir("myfolder/..") - ['myfolder', 'dir', 'file1', 'file2']
+LittleFs: os.listdir("myfolder/..") - ['dir', 'file1', 'file2', 'myfolder']
 LittleFs: os.listdir("myfolder/./dir1") - []
 LittleFs: os.listdir("myfolder/../myfolder") - ['dir1', 'file3']
 LittleFs: os.listdir("myfolder/../myfolder/dir1") - []
 LittleFs: os.listdir("myfolder") - myfolder
 LittleFs: os.listdir("myfolder/dir1") - []
 LittleFs: os.ilistdir("myfolder") - [('dir1', 16384, 0, 0), ('file3', 32768, 0, 15)]
-LittleFs: os.listdir("..") - ['myfolder', 'dir', 'file1', 'file2']
+LittleFs: os.listdir("..") - ['dir', 'file1', 'file2', 'myfolder']
 LittleFs: os.listdir("") - []
 LittleFs: os.rmdir("dir_inv") - OSError(2,)
 LittleFs: os.rmdir("file_inv") - OSError(2,)
@@ -46,10 +46,10 @@ FatFs: os.listdir("..") - ['myfolder', 'dir', 'file1', 'file2']
 FatFs: os.listdir("") - []
 FatFs: os.rmdir("dir_inv") - OSError(2,)
 FatFs: os.rmdir("file_inv") - OSError(2,)
-LittleFs: os.listdir("") - ['myfolder', 'dir', 'file2', 'file_renamed']
+LittleFs: os.listdir("") - ['dir', 'file2', 'file_renamed', 'myfolder']
 LittleFs: os.listdir("dir") - ['file_renamed']
-LittleFs: os.listdir("") - ['myfolder', 'dir', 'file2', 'file_renamed', 'file4']
-LittleFs: os.listdir("") - ['myfolder', 'dir', 'file2', 'file_renamed', 'file4', 'dir_renamed']
+LittleFs: os.listdir("") - ['dir', 'file2', 'file4', 'file_renamed', 'myfolder']
+LittleFs: os.listdir("") - ['dir_renamed', 'dir', 'file2', 'file4', 'file_renamed', 'myfolder']
 LittleFs: os.listdir("dir") - []
 FatFs: os.listdir("") - ['myfolder', 'dir', 'file2', 'file_renamed']
 FatFs: os.listdir("dir") - ['file_renamed']
@@ -72,12 +72,12 @@ Removing: /sd/test/file4
 Removing: /sd/test/file2
 Removing: /sd/test/file_renamed
 Removing: /sd/test/dir_renamed
-Removing: /flash/test/myfolder
+Removing: /flash/test/dir_renamed
 Removing: /flash/test/dir
 Removing: /flash/test/file2
-Removing: /flash/test/file_renamed
 Removing: /flash/test/file4
-Removing: /flash/test/dir_renamed
+Removing: /flash/test/file_renamed
+Removing: /flash/test/myfolder
 OSError('Cannot format root dir',)
 OSError(19,)
 OSError('sd is not an absolute or invalid path',)
