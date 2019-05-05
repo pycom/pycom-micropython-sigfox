@@ -523,8 +523,18 @@ STATIC mp_obj_t mach_uart_wait_tx_done(mp_obj_t self_in, mp_obj_t timeout_ms) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(mach_uart_wait_tx_done_obj, mach_uart_wait_tx_done);
 
-STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
-    mach_uart_obj_t *self = self_in;
+STATIC mp_obj_t mach_uart_sendbreak(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+
+    STATIC const mp_arg_t mach_uart_sendbreak_args[] = {
+        { MP_QSTR_bits,                            MP_ARG_INT,  {.u_int = 13} }
+    };
+
+    mp_arg_val_t args[MP_ARRAY_SIZE(mach_uart_sendbreak_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &mach_uart_sendbreak_args[0], args);
+
+    mach_uart_obj_t *self = pos_args[0];
+    mp_int_t bits = args[0].u_int;
+
     MACH_UART_CHECK_INIT(self)
     pin_obj_t * pin = (pin_obj_t *)((mp_obj_t *)self->pins)[0];
 
@@ -532,7 +542,7 @@ STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
 
     // only if the bus is initialized
     if (self->config.baud_rate > 0) {
-        uint32_t delay = (((mp_obj_get_int(bits) + 1) * 1000000) / self->config.baud_rate) & 0x7FFF;
+        uint32_t delay = (((bits + 1) * 1000000) / self->config.baud_rate) & 0x7FFF;
 
         if (self->n_pins == 1) {
             // make it UART Tx
@@ -559,7 +569,7 @@ STATIC mp_obj_t mach_uart_sendbreak(mp_obj_t self_in, mp_obj_t bits) {
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(mach_uart_sendbreak_obj, mach_uart_sendbreak);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_uart_sendbreak_obj, 1, mach_uart_sendbreak);
 
 STATIC const mp_map_elem_t mach_uart_locals_dict_table[] = {
     // instance methods
