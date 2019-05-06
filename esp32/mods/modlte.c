@@ -612,9 +612,11 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             memcpy(cmd.data, "Pycom_Dummy", strlen("Pycom_Dummy"));
             while(modlte_rsp.data_remaining)
             {
-                if((strstr(modlte_rsp.data, "17 bands") != NULL) && !is_hw_new_band_support)
-                {
-                    is_hw_new_band_support = true;
+                if (!is_hw_new_band_support) {
+                    if(strstr(modlte_rsp.data, "17 bands") != NULL)
+                    {
+                        is_hw_new_band_support = true;
+                    }
                 }
                 lteppp_send_at_command(&cmd, &modlte_rsp);
             }
@@ -654,7 +656,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                         }
                         else if(version < SQNS_SW_5_8_BAND_SUPPORT)
                         {
-                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware, please upgrade!", band));
+                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware [%d], please upgrade!", band, version));
                         }
                         break;
                     case 1:
@@ -668,7 +670,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                     case 66:
                         if(!is_sw_new_band_support)
                         {
-                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware, please upgrade!", band));
+                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware [%d], please upgrade!", band, version));
                         }
                         if(!is_hw_new_band_support)
                         {
@@ -1151,8 +1153,13 @@ STATIC mp_obj_t lte_factory_reset(mp_obj_t self_in) {
     lte_push_at_command("AT^RESET", LTE_RX_TIMEOUT_MAX_MS);
     lteppp_set_state(E_LTE_IDLE);
     mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-    if (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL)) {
-        lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL);
+    uint8_t timeout = 0;
+    while (!lteppp_wait_at_rsp("+SYSSTART", LTE_RX_TIMEOUT_MAX_MS, true, NULL)) {
+        if(timeout > 3)
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+        timeout++;
     }
     lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS);
     if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
@@ -1241,7 +1248,16 @@ STATIC mp_obj_t lte_upgrade_mode(void) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_upgrade_mode_obj, lte_upgrade_mode);
-
+#ifdef LTE_DEBUG_BUFF
+STATIC mp_obj_t lte_debug_buff(void) {
+    vstr_t vstr;
+    char* str_log = lteppp_get_log_buff();
+    vstr_init_len(&vstr, strlen(str_log));
+    strcpy(vstr.buf, str_log);
+    return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_debug_buff_obj, lte_debug_buff);
+#endif
 STATIC mp_obj_t lte_reconnect_uart (void) {
     connect_lte_uart();
     lteppp_disconnect();
@@ -1271,6 +1287,9 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_modem_upgrade_mode),  (mp_obj_t)&lte_upgrade_mode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reconnect_uart),      (mp_obj_t)&lte_reconnect_uart_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ue_coverage),         (mp_obj_t)&lte_ue_coverage_obj },
+#ifdef LTE_DEBUG_BUFF
+    { MP_OBJ_NEW_QSTR(MP_QSTR_debug_buff),          (mp_obj_t)&lte_debug_buff_obj },
+#endif
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_IP),                   MP_OBJ_NEW_QSTR(MP_QSTR_IP) },

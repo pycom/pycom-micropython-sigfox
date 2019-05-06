@@ -53,6 +53,9 @@ extern TaskHandle_t xLTETaskHndl;
  DECLARE PRIVATE DATA
  ******************************************************************************/
 static char lteppp_trx_buffer[LTE_UART_BUFFER_SIZE + 1];
+#ifdef LTE_DEBUG_BUFF
+static lte_log_t lteppp_log;
+#endif
 static char lteppp_queue_buffer[LTE_UART_BUFFER_SIZE];
 static uart_dev_t* lteppp_uart_reg;
 static QueueHandle_t xCmdQueue;
@@ -166,13 +169,34 @@ void lteppp_init(void) {
     xTaskCreatePinnedToCore(TASK_LTE, "LTE", LTE_TASK_STACK_SIZE / sizeof(StackType_t), NULL, LTE_TASK_PRIORITY, &xLTETaskHndl, 1);
 
     lteppp_connstatus = LTE_PPP_IDLE;
+#ifdef LTE_DEBUG_BUFF
+    lteppp_log.log = heap_caps_malloc(LTE_LOG_BUFF_SIZE, MALLOC_CAP_SPIRAM);
+#endif
 }
 
 void lteppp_start (void) {
     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
     vTaskDelay(5);
 }
-
+#ifdef LTE_DEBUG_BUFF
+char* lteppp_get_log_buff(void)
+{
+    if(lteppp_log.truncated)
+    {
+        if(lteppp_log.ptr < LTE_LOG_BUFF_SIZE - strlen("\n********BUFFER WRAPAROUND********\n") - 1)
+        {
+            memcpy(&(lteppp_log.log[lteppp_log.ptr]), "\n********BUFFER WRAPAROUND********\n", strlen("\n********BUFFER WRAPAROUND********\n"));
+            lteppp_log.ptr += strlen("\n********BUFFER WRAPAROUND********\n");
+        }
+        lteppp_log.log[LTE_LOG_BUFF_SIZE - 1] = '\0';
+    }
+    else
+    {
+        lteppp_log.log[lteppp_log.ptr] = '\0';
+    }
+    return lteppp_log.log;
+}
+#endif
 void lteppp_connect_modem (void) {
 
 	lteppp_enabled = true;
@@ -242,33 +266,49 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
 
     memset(lteppp_trx_buffer, 0, LTE_UART_BUFFER_SIZE);
     uint16_t len_count = 0;
-    /* reset timeout to 1000ms to account for pause in response */
-    timeout_cnt = 1000;
-    bool pause = false;
-    while (rx_len > 0 || (pause && timeout_cnt > 0)) {
-        // try to read up to the size of the buffer minus null terminator (minus 2 because we store the OK status in the last byte)
-        rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, LTE_UART_BUFFER_SIZE - 2, LTE_TRX_WAIT_MS(LTE_UART_BUFFER_SIZE) / portTICK_RATE_MS);
+
+    while (rx_len > 0) {
+        if (len_count == 0) {
+            // try to read up to the size of the buffer minus null terminator (minus 2 because we store the OK status in the last byte)
+            rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)lteppp_trx_buffer, LTE_UART_BUFFER_SIZE - 2, LTE_TRX_WAIT_MS(LTE_UART_BUFFER_SIZE) / portTICK_RATE_MS);
+        }
+        else
+        {
+            // try to read up to the size of the buffer minus null terminator (minus 2 because we store the OK status in the last byte)
+            rx_len = uart_read_bytes(LTE_UART_ID, (uint8_t *)(&(lteppp_trx_buffer[len_count])), LTE_UART_BUFFER_SIZE - len_count - 2, LTE_TRX_WAIT_MS(LTE_UART_BUFFER_SIZE) / portTICK_RATE_MS);
+        }
         len_count += rx_len;
 
         if (rx_len > 0) {
             // NULL terminate the string
-            lteppp_trx_buffer[rx_len] = '\0';
-            /* Check for pause after start of response */
-            if(strcmp(lteppp_trx_buffer, "\r\n") == 0)
-            {
-                pause = true;
+            lteppp_trx_buffer[len_count] = '\0';
+#ifdef LTE_DEBUG_BUFF
+            if (lteppp_log.ptr < LTE_LOG_BUFF_SIZE - rx_len) {
+                if (len_count == rx_len) {
+                    memcpy(&(lteppp_log.log[lteppp_log.ptr]), "[RSP]: ", strlen("[RSP]: "));
+                    lteppp_log.ptr += strlen("[RSP]: ");
+                }
+                memcpy(&(lteppp_log.log[lteppp_log.ptr]), lteppp_trx_buffer, rx_len);
+                lteppp_log.ptr += rx_len;
+                lteppp_log.log[lteppp_log.ptr] = '\n';
+                lteppp_log.ptr++;
             }
             else
             {
-                pause = false;
+                lteppp_log.ptr = 0;
+                lteppp_log.truncated = true;
             }
+#endif
+
             if (expected_rsp != NULL) {
                 if (strstr(lteppp_trx_buffer, expected_rsp) != NULL) {
                     //printf("RESP: %s\n", lteppp_trx_buffer);
                     return true;
                 }
             }
+
             uart_get_buffered_data_len(LTE_UART_ID, &rx_len);
+
             if((len_count + rx_len) >= (LTE_UART_BUFFER_SIZE - 2))
             {
                 if (data_rem != NULL) {
@@ -276,12 +316,40 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
                     return true;
                 }
             }
+            else if(rx_len == 0)
+            {
+                uint8_t timeout_buff = 10;
+                while((!strstr(lteppp_trx_buffer,"\r\nOK\r\n")) && (!strstr(lteppp_trx_buffer,"\r\nERROR\r\n")) && (!strstr(lteppp_trx_buffer,"+SYSSTART")) && (!strstr(lteppp_trx_buffer,"\r\nCONNECT\r\n")) &&
+                        rx_len == 0 && timeout_buff > 0)
+                {
+#ifdef LTE_DEBUG_BUFF
+                    memcpy(&(lteppp_log.log[lteppp_log.ptr]), "[Waiting]:\n", strlen("[Waiting]:\n"));
+                    lteppp_log.ptr += strlen("[Waiting]:\n");
+#endif
+
+                    uart_get_buffered_data_len(LTE_UART_ID, &rx_len);
+
+                    if (from_mp) {
+                        mp_hal_delay_ms(100);
+                    }
+                    else {
+                        vTaskDelay(100 / portTICK_RATE_MS);
+                    }
+                    timeout_buff--;
+                }
+                //check size again
+                if((len_count + rx_len) >= (LTE_UART_BUFFER_SIZE - 2))
+                {
+                    if (data_rem != NULL) {
+                        *((bool *)data_rem) = true;
+                        return true;
+                    }
+                }
+            }
         }
         else
         {
-            if (timeout_cnt > 0 && pause) {
-                timeout_cnt--;
-            }
+            // Do Nothing
         }
     }
     if (data_rem != NULL) {
@@ -479,13 +547,42 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
 
     if(strstr(cmd, "Pycom_Dummy") != NULL)
     {
+#ifdef LTE_DEBUG_BUFF
+        if (lteppp_log.ptr < (LTE_LOG_BUFF_SIZE - strlen("[CMD]: Dummy") + 1))
+        {
+            memcpy(&(lteppp_log.log[lteppp_log.ptr]), "[CMD]: Dummy", strlen("[CMD]: Dummy"));
+            lteppp_log.ptr += strlen("[CMD]: Dummy");
+            lteppp_log.log[lteppp_log.ptr] = '\n';
+            lteppp_log.ptr++;
+        }
+        else
+        {
+            lteppp_log.ptr = 0;
+            lteppp_log.truncated = true;
+        }
+#endif
         return lteppp_wait_at_rsp(expected_rsp, timeout, false, data_rem);
     }
     else
     {
         uint32_t cmd_len = strlen(cmd);
         // char tmp_buf[128];
-
+#ifdef LTE_DEBUG_BUFF
+        if (lteppp_log.ptr < (LTE_LOG_BUFF_SIZE - strlen("[CMD]:") - cmd_len + 1))
+        {
+            memcpy(&(lteppp_log.log[lteppp_log.ptr]), "[CMD]:", strlen("[CMD]:"));
+            lteppp_log.ptr += strlen("[CMD]:");
+            memcpy(&(lteppp_log.log[lteppp_log.ptr]), cmd, cmd_len);
+            lteppp_log.ptr += cmd_len;
+            lteppp_log.log[lteppp_log.ptr] = '\n';
+            lteppp_log.ptr++;
+        }
+        else
+        {
+            lteppp_log.ptr = 0;
+            lteppp_log.truncated = true;
+        }
+#endif
         // flush the rx buffer first
         uart_flush(LTE_UART_ID);
         // uart_read_bytes(LTE_UART_ID, (uint8_t *)tmp_buf, sizeof(tmp_buf), 5 / portTICK_RATE_MS);
