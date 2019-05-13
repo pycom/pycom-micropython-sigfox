@@ -627,9 +627,11 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             MP_THREAD_GIL_EXIT();
             while(modlte_rsp.data_remaining)
             {
-                if((strstr(modlte_rsp.data, "17 bands") != NULL) && !is_hw_new_band_support)
-                {
-                    is_hw_new_band_support = true;
+                if (!is_hw_new_band_support) {
+                    if(strstr(modlte_rsp.data, "17 bands") != NULL)
+                    {
+                        is_hw_new_band_support = true;
+                    }
                 }
                 lteppp_send_at_command(&cmd, &modlte_rsp);
             }
@@ -670,7 +672,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                         }
                         else if(version < SQNS_SW_5_8_BAND_SUPPORT)
                         {
-                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware, please upgrade!", band));
+                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware [%d], please upgrade!", band, version));
                         }
                         break;
                     case 1:
@@ -684,7 +686,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                     case 66:
                         if(!is_sw_new_band_support)
                         {
-                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware, please upgrade!", band));
+                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware [%d], please upgrade!", band, version));
                         }
                         if(!is_hw_new_band_support)
                         {
