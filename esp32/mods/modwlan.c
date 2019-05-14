@@ -98,6 +98,7 @@ static EventGroupHandle_t wifi_event_group;
 
 static bool mod_wlan_is_deinit = false;
 static bool mod_wlan_was_sta_disconnected;
+static uint16_t mod_wlan_ap_number_of_connections = 0;
 
 /* Variables holding wlan conn params for wakeup recovery of connections */
 static uint8_t wlan_conn_recover_ssid[(MODWLAN_SSID_LEN_MAX + 1)];
@@ -371,10 +372,22 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
             break;
 
         case SYSTEM_EVENT_AP_START:                 /**< ESP32 soft-AP start */
+            mod_wlan_ap_number_of_connections = 0;
             wlan_obj.soft_ap_stopped = false;
             break;
         case SYSTEM_EVENT_AP_STOP:                  /**< ESP32 soft-AP stop */
+            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
             wlan_obj.soft_ap_stopped = true;
+            break;
+        case SYSTEM_EVENT_AP_STACONNECTED:          /**< a station connected to ESP32 soft-AP */
+            mod_wlan_ap_number_of_connections++;
+            xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+            break;
+        case SYSTEM_EVENT_AP_STADISCONNECTED:       /**< a station disconnected from ESP32 soft-AP */
+            mod_wlan_ap_number_of_connections--;
+            if(mod_wlan_ap_number_of_connections == 0) {
+                xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+            }
             break;
         case SYSTEM_EVENT_WIFI_READY:                /**< ESP32 WiFi ready */
         case SYSTEM_EVENT_SCAN_DONE:                /**< ESP32 finish scanning AP */
@@ -385,8 +398,6 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
         case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:       /**< ESP32 station wps timeout in enrollee mode */
         case SYSTEM_EVENT_STA_WPS_ER_PIN:           /**< ESP32 station wps pin code in enrollee mode */
 
-        case SYSTEM_EVENT_AP_STACONNECTED:          /**< a station connected to ESP32 soft-AP */
-        case SYSTEM_EVENT_AP_STADISCONNECTED:       /**< a station disconnected from ESP32 soft-AP */
         case SYSTEM_EVENT_AP_STAIPASSIGNED:         /**< ESP32 soft-AP assign an IP to a connected station */
         case SYSTEM_EVENT_AP_PROBEREQRECVED:        /**< Receive probe request packet in soft-AP interface */
         case SYSTEM_EVENT_GOT_IP6:                  /**< ESP32 station or ap or ethernet interface v6IP addr is preferred */

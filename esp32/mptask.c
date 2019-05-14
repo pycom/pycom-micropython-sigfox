@@ -282,7 +282,8 @@ soft_reset:
         modlte_init0();
         if(config_get_lte_modem_enable_on_boot())
         {
-            lteppp_connect_modem();
+            // Notify the LTE thread to start
+            modlte_start_modem();
         }
     #endif
     }
@@ -484,17 +485,18 @@ STATIC void mptask_init_sflash_filesystem_littlefs(void) {
     if(spi_flash_get_chip_size() > (4* 1024 * 1024))
     {
         lfscfg.block_count = SFLASH_BLOCK_COUNT_8MB;
-        lfscfg.lookahead = SFLASH_BLOCK_COUNT_8MB;
+        lfscfg.lookahead_size = (SFLASH_BLOCK_COUNT_8MB/8);
     }
     else
     {
         lfscfg.block_count = SFLASH_BLOCK_COUNT_4MB;
-        lfscfg.lookahead = SFLASH_BLOCK_COUNT_4MB;
+        lfscfg.lookahead_size = 32;
     }
 
     // Mount the file system if exists
     if(LFS_ERR_OK != lfs_mount(littlefsptr, &lfscfg))
     {
+        printf("----------------Creating the files system-------------------\n");
         // File system does not exist, create it and mount
         if(LFS_ERR_OK == lfs_format(littlefsptr, &lfscfg))
         {
