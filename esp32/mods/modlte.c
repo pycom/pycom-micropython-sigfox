@@ -104,7 +104,6 @@ extern TaskHandle_t svTaskHandle;
 #if defined(FIPY)
 extern TaskHandle_t xLoRaTaskHndl;
 extern TaskHandle_t xSigfoxTaskHndl;
-//extern TaskHandle_t xMeshTaskHndl;
 #endif
 extern TaskHandle_t xLTETaskHndl;
 
@@ -350,7 +349,6 @@ static void TASK_LTE_UPGRADE(void *pvParameters){
 #if defined(FIPY)
     vTaskSuspend(xLoRaTaskHndl);
     vTaskSuspend(xSigfoxTaskHndl);
-//    vTaskSuspend(xMeshTaskHndl);
 #endif
     vTaskSuspend(xLTETaskHndl);
 

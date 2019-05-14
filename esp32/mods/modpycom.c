@@ -9,6 +9,7 @@
 
 #include "py/mpconfig.h"
 #include "py/obj.h"
+#include "py/objstr.h"
 #include "py/runtime.h"
 #include "mperror.h"
 #include "updater.h"
@@ -215,7 +216,7 @@ STATIC mp_obj_t mod_pycom_nvs_get (mp_obj_t _key) {
 
             if(esp_err == ESP_OK) {
                 //do not count the terminating \0
-                ret = mp_obj_new_str(value_string, value-1);
+                ret = mp_obj_new_str(value_string, value-1, false);
                 m_free(value_string);
             }
             m_free(value_string);

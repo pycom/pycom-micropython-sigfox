@@ -457,6 +457,7 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
     case ESP_GATTC_CLOSE_EVT:
     case ESP_GATTC_DISCONNECT_EVT:
         close_connection(p_data->close.conn_id);
+        bt_obj.busy = false;
         break;
     default:
         break;
