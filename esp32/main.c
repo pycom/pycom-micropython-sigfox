@@ -120,9 +120,10 @@ void app_main(void) {
         nvs_flash_erase();
         nvs_flash_init();
     }
-
+#ifndef RGB_LED_DISABLE
     // initialise heartbeat on Core 0
     mperror_pre_init();
+#endif
 
     // differentiate the Flash Size (either 8MB or 4MB) based on ESP32 rev id
     micropy_hw_flash_size = (esp_get_revision() > 0 ? 0x800000 : 0x400000);

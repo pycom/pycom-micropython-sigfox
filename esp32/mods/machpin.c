@@ -138,11 +138,13 @@ void pin_init0(void) {
             {
                 continue;
             }
+#ifndef RGB_LED_DISABLE
             /* exclude RGB led from initialization as it is already initialized by mperror */
             if (self == &PIN_MODULE_P2)
             {
                 continue;
             }
+#endif
             pin_config(self, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_DOWN, 0);
         }
     }

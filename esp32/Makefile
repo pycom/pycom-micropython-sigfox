@@ -37,6 +37,7 @@ RELEASE_DIR ?= build/
 COPY_IDF_LIB ?= 0
 
 LTE_LOG_BUFF ?= 0
+RGB_LED ?= enable
 
 # by default openthread over LoRa is enabled
 OPENTHREAD ?= on
@@ -127,6 +128,10 @@ ifeq ($(LTE_DEBUG_BUFF),1)
 	CFLAGS += -DLTE_DEBUG_BUFF
 endif #ifeq ($(LTE_LOG_BUFF),1)
 endif #ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
+# Enable or Disable RGB led
+ifeq ($(RGB_LED),disable)
+	CFLAGS += -DRGB_LED_DISABLE
+endif #ifeq ($(LTE_LOG_BUFF),1)
 
 B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader -L$(ESP_IDF_COMP_PATH)/esp32/ld \
          -L$(ESP_IDF_COMP_PATH)/esp32/lib -llog -lcore -lbootloader_support \
