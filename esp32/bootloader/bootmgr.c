@@ -70,9 +70,12 @@ static void delay_ms (uint32_t delay) {
 //*****************************************************************************
 static bool wait_while_blinking (uint32_t wait_time, uint32_t period, bool force_wait) {
     uint32_t count;
+#ifndef RGB_LED_DISABLE
     static bool toggle = true;
+#endif
     for (count = 0; (force_wait || gpio_get_level(MICROPY_HW_SAFE_PIN_NUM)) &&
          ((period * count) < wait_time); count++) {
+#ifndef RGB_LED_DISABLE
         // toggle the led
         if (toggle) {
             mperror_set_rgb_color(BOOTMGR_SAFEBOOT_COLOR);
@@ -80,6 +83,7 @@ static bool wait_while_blinking (uint32_t wait_time, uint32_t period, bool force
             mperror_set_rgb_color(0);
         }
         toggle = !toggle;
+#endif
         delay_ms(period);
     }
     return gpio_get_level(MICROPY_HW_SAFE_PIN_NUM) ? true : false;
@@ -116,8 +120,10 @@ uint32_t wait_for_safe_boot (const boot_info_t *boot_info, uint32_t *ActiveImg) 
                 wait_while_blinking(BOOTMGR_WAIT_SAFE_MODE_3_MS, BOOTMGR_WAIT_SAFE_MODE_3_BLINK_MS, true);
             }
         }
+#ifndef RGB_LED_DISABLE
         // turn off the heartbeat led
         mperror_set_rgb_color(0);
+#endif
         // request a HW safe boot
         ret = SAFE_BOOT_HW;
     }

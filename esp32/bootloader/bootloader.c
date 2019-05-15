@@ -338,7 +338,9 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
     memcpy(&_boot_info, boot_info, sizeof(boot_info_t));
     bootloader_munmap(boot_info);
     boot_info = &_boot_info;
+#ifndef RGB_LED_DISABLE
     mperror_init0();
+#endif
 
     // // check the signature fot he bootloader first
     // uint8_t signature[16];
@@ -372,7 +374,9 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
         boot_info->safeboot = false;
         if (!ota_write_boot_info (boot_info, bs->ota_info.offset)) {
             ESP_LOGE(TAG, "Error writing boot info");
+#ifndef RGB_LED_DISABLE
             mperror_fatal_error();
+#endif
             return false;
         }
         return true;
@@ -504,7 +508,9 @@ static void bootloader_main()
     if (bootloader_state.ota_info.offset == 0 || !find_active_image(&bootloader_state, &partition)) {
         // nothing to load, bail out
         ESP_LOGE(TAG, "nothing to load");
+#ifndef RGB_LED_DISABLE
         mperror_fatal_error();
+#endif
         return;
     }
 

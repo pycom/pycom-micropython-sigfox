@@ -6,7 +6,7 @@
  * see the Pycom Licence v1.0 document supplied with this file, or
  * available at https://www.pycom.io/opensource/licensing
  */
-
+#ifndef RGB_LED_DISABLE
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -146,3 +146,11 @@ void IRAM_ATTR mperror_set_rgb_color (uint32_t rgbcolor) {
     XTOS_RESTORE_INTLEVEL(ilevel);
     ets_delay_us(RESET_TIME_US);
 }
+
+#else
+
+__attribute__((noreturn)) void mperror_fatal_error (void) {
+    for ( ; ; );
+}
+
+#endif //RGB_LED_DISABLE
