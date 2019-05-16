@@ -70,7 +70,9 @@ Methods
      - ``channel`` a number in the range 1-11. Only needed when mode is ``WLAN.AP``.
      - ``antenna`` selects between the internal and the external antenna. Can be either
        ``WLAN.INT_ANT`` or ``WLAN.EXT_ANT``.
+     - ``protocol_mode`` selects Wi-Fi protocol mode. Defaults to 802.11BGN (``WLAN.PROTOCOL_11B|WLAN.PROTOCOL_11G|WLAN.PROTOCOL_11N``). Here you can activate Espressif-patented long range mode with ``WLAN.PROTOCOL_LR``.
     - ``power_save`` enables or disables power save functions in STA mode.
+
 
    For example, you can do::
 
@@ -194,3 +196,10 @@ Constants
           WLAN.EXT_ANT
 
    selects the antenna type
+
+.. data:: WLAN.PROTOCOL_11B
+          WLAN.PROTOCOL_11G
+          WLAN.PROTOCOL_11N
+          WLAN.PROTOCOL_LR
+
+   selects the Wi-Fi protocol mode

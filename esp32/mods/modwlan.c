@@ -169,7 +169,7 @@ void wlan_pre_init (void) {
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
 }
 
-void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac, bool hidden) {
+void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key, uint32_t channel, uint32_t antenna, bool add_mac, bool hidden, uint32_t protocol_mode) {
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
@@ -198,6 +198,21 @@ void wlan_setup (int32_t mode, const char *ssid, uint32_t auth, const char *key,
 
     // start the servers before returning
     wlan_servers_start();
+
+    // set wifi protocol mode
+    int32_t wifi_interface = 0;
+    switch( mode ) {
+      case WIFI_MODE_STA:
+        wifi_interface = ESP_IF_WIFI_STA;
+        break;
+      case WIFI_MODE_AP:
+        wifi_interface = ESP_IF_WIFI_AP;
+        break;
+      default:
+        wifi_interface = ESP_IF_WIFI_STA;
+    }
+    ESP_ERROR_CHECK(esp_wifi_set_protocol(wifi_interface, protocol_mode));
+
 }
 
 void wlan_get_mac (uint8_t *macAddress) {
@@ -664,6 +679,7 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
 
     wlan_obj.pwrsave = args[5].u_bool;
     bool hidden = args[6].u_bool;
+    int32_t protocol_mode = args[7].u_int;
 
     if (mode != WIFI_MODE_STA) {
         if (ssid == NULL) {
@@ -675,7 +691,7 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
     }
 
     // initialize the wlan subsystem
-    wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false, hidden);
+    wlan_setup(mode, (const char *)ssid, auth, (const char *)key, channel, antenna, false, hidden, protocol_mode);
     mod_network_register_nic(&wlan_obj);
 
     return mp_const_none;
@@ -690,6 +706,7 @@ STATIC const mp_arg_t wlan_init_args[] = {
     { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_power_save,   MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
     { MP_QSTR_hidden,       MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
+    { MP_QSTR_protocol_mode,MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N} },
 };
 STATIC mp_obj_t wlan_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -1172,6 +1189,10 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_WPA2_ENT),            MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA2_ENTERPRISE) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_INT_ANT),             MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_INTERNAL) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_EXT_ANT),             MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_EXTERNAL) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROTOCOL_11B),        MP_OBJ_NEW_SMALL_INT(WIFI_PROTOCOL_11B) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROTOCOL_11G),        MP_OBJ_NEW_SMALL_INT(WIFI_PROTOCOL_11G) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROTOCOL_11N),        MP_OBJ_NEW_SMALL_INT(WIFI_PROTOCOL_11N) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROTOCOL_LR),         MP_OBJ_NEW_SMALL_INT(WIFI_PROTOCOL_LR) },
 //    { MP_OBJ_NEW_QSTR(MP_QSTR_ANY_EVENT),           MP_OBJ_NEW_SMALL_INT(MODWLAN_WIFI_EVENT_ANY) },
 };
 STATIC MP_DEFINE_CONST_DICT(wlan_locals_dict, wlan_locals_dict_table);
