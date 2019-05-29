@@ -116,8 +116,8 @@ typedef enum {
 
 typedef struct {
     union {
-    FIL             fp_fat;
-    lfs_file_t      fp_lfs;
+    FIL                   fp_fat;
+    pycom_lfs_file_t      fp_lfs;
     } u;
 }ftp_file_t;
 
@@ -130,8 +130,8 @@ typedef struct {
 
 typedef struct {
     union {
-    FILINFO              fpinfo_fat;
-    struct lfs_info      fpinfo_lfs;
+        FILINFO                fpinfo_fat;
+        lfs_ftp_file_stat_t    fpinfo_lfs;
     } u;
 }ftp_fileinfo_t;
 
@@ -240,7 +240,7 @@ STATIC FRESULT f_open_helper(ftp_file_t *fp, const TCHAR *path, BYTE mode) {
         }
 
         xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
-            int lfs_ret = lfs_file_open(&littlefs->lfs, &fp->u.fp_lfs, path_relative, fatFsModetoLittleFsMode(mode));
+            int lfs_ret = littlefs_open_common_helper(&littlefs->lfs, path_relative, &fp->u.fp_lfs.fp, fatFsModetoLittleFsMode(mode), &fp->u.fp_lfs.cfg, &fp->u.fp_lfs.timestamp_update);
         xSemaphoreGive(littlefs->mutex);
 
         return lfsErrorToFatFsError(lfs_ret);
@@ -265,7 +265,7 @@ STATIC FRESULT f_read_helper(ftp_file_t *fp, void* buff, uint32_t desiredsize, u
         }
 
         xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
-            *actualsize = lfs_file_read(&littlefs->lfs, &fp->u.fp_lfs,buff, desiredsize);
+            *actualsize = lfs_file_read(&littlefs->lfs, &fp->u.fp_lfs.fp, buff, desiredsize);
         xSemaphoreGive(littlefs->mutex);
 
         return lfsErrorToFatFsError(*actualsize);
@@ -280,7 +280,7 @@ STATIC FRESULT f_read_helper(ftp_file_t *fp, void* buff, uint32_t desiredsize, u
     }
 }
 
-STATIC FRESULT f_write_helper(ftp_file_t *fp, void* buff, uint32_t desiredsize, uint32_t *actualsize ) {
+STATIC FRESULT f_write_helper(ftp_file_t *fp, void* buff, uint32_t desiredsize, uint32_t *actualsize) {
 
     if(isLittleFs(ftp_path))
     {
@@ -290,7 +290,11 @@ STATIC FRESULT f_write_helper(ftp_file_t *fp, void* buff, uint32_t desiredsize, 
         }
 
         xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
-            *actualsize = lfs_file_write(&littlefs->lfs, &fp->u.fp_lfs, buff, desiredsize);
+            *actualsize = lfs_file_write(&littlefs->lfs, &fp->u.fp_lfs.fp, buff, desiredsize);
+            // Request timestamp update if file has been written successfully
+            if(*actualsize >= 0) {
+                fp->u.fp_lfs.timestamp_update = true;
+            }
         xSemaphoreGive(littlefs->mutex);
 
         return lfsErrorToFatFsError(*actualsize);
@@ -309,13 +313,56 @@ STATIC FRESULT f_readdir_helper(ftp_dir_t *dp, ftp_fileinfo_t *fno ) {
 
     if(isLittleFs(ftp_path))
     {
+
         vfs_lfs_struct_t* littlefs = lookup_path_littlefs(ftp_path, &path_relative);
         if (littlefs == NULL) {
             return FR_NO_PATH;
         }
 
         xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
-            int lfs_ret = lfs_dir_read(&littlefs->lfs, &dp->u.dp_lfs, &fno->u.fpinfo_lfs);
+
+            int lfs_ret = lfs_dir_read(&littlefs->lfs, &dp->u.dp_lfs, &fno->u.fpinfo_lfs.info);
+
+            // Fetch the timestamp for valid files, filter out empty, "." and ".." entries
+            if((lfs_ret >= LFS_ERR_OK) &&
+               !(fno->u.fpinfo_lfs.info.name[0] == 0) &&
+               !(fno->u.fpinfo_lfs.info.name[0] == '.' && fno->u.fpinfo_lfs.info.name[1] == 0) &&
+               !(fno->u.fpinfo_lfs.info.name[0] == '.' && fno->u.fpinfo_lfs.info.name[1] == '.' && fno->u.fpinfo_lfs.info.name[2] == 0))
+            {
+                // Length of the relative path
+                size_t length_of_relative_path = strlen(path_relative);
+
+                // Calculate the length of the relative path of the file with the name of the file plus closing /0
+                size_t path_length = length_of_relative_path + strlen(fno->u.fpinfo_lfs.info.name) + 1;
+
+                // If the current directory is not root directory need to append extra "/" at the end of relative path
+                if(length_of_relative_path > 1) {
+                    path_length++;
+                }
+                char* file_relative_path = m_malloc(path_length);
+
+                // Copy the current working directory (relative path)
+                memcpy(file_relative_path, path_relative, length_of_relative_path);
+
+                // Append the "/" at the end of current working directory path if needed
+                if(length_of_relative_path > 1) {
+                    memcpy(&file_relative_path[length_of_relative_path], "/", 1);
+                    // Modify the length of relative path to include the closing "/"
+                    length_of_relative_path++;
+                }
+                // Copy the name of the file after the current working directory, this will copy the closing /0
+                strcpy(&file_relative_path[length_of_relative_path], fno->u.fpinfo_lfs.info.name);
+
+                int lfs_getattr_ret = lfs_getattr(&littlefs->lfs, file_relative_path, LFS_ATTRIBUTE_TIMESTAMP, &fno->u.fpinfo_lfs.timestamp, sizeof(lfs_timestamp_attribute_t));
+                // If no timestamp is saved for this entry, fill it with 0
+                if(lfs_getattr_ret < LFS_ERR_OK) {
+                    fno->u.fpinfo_lfs.timestamp.fdate = 0;
+                    fno->u.fpinfo_lfs.timestamp.ftime = 0;
+                }
+
+                m_free(file_relative_path);
+            }
+
         xSemaphoreGive(littlefs->mutex);
 
         return lfsErrorToFatFsError(lfs_ret);
@@ -367,7 +414,7 @@ STATIC FRESULT f_closefile_helper(ftp_file_t *fp) {
         }
 
         xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
-            int lfs_ret = lfs_file_close(&littlefs->lfs, &fp->u.fp_lfs);
+            int lfs_ret = littlefs_close_common_helper(&littlefs->lfs, &fp->u.fp_lfs.fp, &fp->u.fp_lfs.cfg, &fp->u.fp_lfs.timestamp_update);
         xSemaphoreGive(littlefs->mutex);
 
         return lfsErrorToFatFsError(lfs_ret);
@@ -417,7 +464,7 @@ STATIC FRESULT f_stat_helper(const TCHAR *path, ftp_fileinfo_t *fno) {
         }
 
         xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
-            int lfs_ret = lfs_stat(&littlefs->lfs, path_relative, &fno->u.fpinfo_lfs);
+            int lfs_ret = littlefs_stat_common_helper(&littlefs->lfs, path_relative, &fno->u.fpinfo_lfs.info, &fno->u.fpinfo_lfs.timestamp);
         xSemaphoreGive(littlefs->mutex);
 
         return lfsErrorToFatFsError(lfs_ret);
@@ -443,6 +490,9 @@ STATIC FRESULT f_mkdir_helper(const TCHAR *path) {
 
         xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
             int lfs_ret = lfs_mkdir(&littlefs->lfs, path_relative);
+            if(lfs_ret == LFS_ERR_OK) {
+                littlefs_update_timestamp(&littlefs->lfs, path_relative);
+            }
         xSemaphoreGive(littlefs->mutex);
 
         return lfsErrorToFatFsError(lfs_ret);
@@ -1021,7 +1071,7 @@ static void ftp_process_cmd (void) {
                     // send the size
                     if(isLittleFs(ftp_path))
                     {
-                        snprintf((char *)ftp_data.dBuffer, FTP_BUFFER_SIZE, "%u", (uint32_t)fno.u.fpinfo_lfs.size);
+                        snprintf((char *)ftp_data.dBuffer, FTP_BUFFER_SIZE, "%u", (uint32_t)fno.u.fpinfo_lfs.info.size);
                     }
                     else
                     {
@@ -1041,7 +1091,9 @@ static void ftp_process_cmd (void) {
                 if(isLittleFs(ftp_path))
                 {
                     snprintf((char *)ftp_data.dBuffer, FTP_BUFFER_SIZE, "%u%02u%02u%02u%02u%02u",
-                                             0, 0, 0 , 0, 0, 0); //TODO: LittleFS does not handle time
+                            1980 + ((fno.u.fpinfo_lfs.timestamp.fdate >> 9) & 0x7f), (fno.u.fpinfo_lfs.timestamp.fdate >> 5) & 0x0f,
+                            fno.u.fpinfo_lfs.timestamp.fdate & 0x1f, (fno.u.fpinfo_lfs.timestamp.ftime >> 11) & 0x1f,
+                            (fno.u.fpinfo_lfs.timestamp.ftime >> 5) & 0x3f, 2 * (fno.u.fpinfo_lfs.timestamp.ftime & 0x1f));
                 }
                 else
                 {
@@ -1050,8 +1102,6 @@ static void ftp_process_cmd (void) {
                                              fno.u.fpinfo_fat.fdate & 0x1f, (fno.u.fpinfo_fat.ftime >> 11) & 0x1f,
                                              (fno.u.fpinfo_fat.ftime >> 5) & 0x3f, 2 * (fno.u.fpinfo_fat.ftime & 0x1f));
                 }
-
-
 
                 ftp_send_reply(213, (char *)ftp_data.dBuffer);
             } else {
@@ -1262,12 +1312,27 @@ static int ftp_print_eplf_item (char *dest, uint32_t destsize, ftp_fileinfo_t *f
 
     if(isLittleFs(ftp_path))
     {
-        type = (fno->u.fpinfo_lfs.type == LFS_TYPE_DIR) ? "d" : "-";
+        type = (fno->u.fpinfo_lfs.info.type == LFS_TYPE_DIR) ? "d" : "-";
 
-        //TODO: as LittleFs does not store timestamp, cannot provide it
-        _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %5u %s\r\n",
-                        type, (uint32_t)fno->u.fpinfo_lfs.size, ftp_month[mindex].month, day,
-                        0, fno->u.fpinfo_lfs.name);
+        mindex = (((fno->u.fpinfo_lfs.timestamp.fdate >> 5) & 0x0f) > 0) ? (((fno->u.fpinfo_lfs.timestamp.fdate >> 5) & 0x0f) - 1) : 0;
+        day = ((fno->u.fpinfo_lfs.timestamp.fdate & 0x1f) > 0) ? (fno->u.fpinfo_lfs.timestamp.fdate & 0x1f) : 1;
+        fseconds = timeutils_seconds_since_epoch(1980 + ((fno->u.fpinfo_lfs.timestamp.fdate >> 9) & 0x7f),
+                                                         (fno->u.fpinfo_lfs.timestamp.fdate >> 5) & 0x0f,
+                                                         fno->u.fpinfo_lfs.timestamp.fdate & 0x1f,
+                                                         (fno->u.fpinfo_lfs.timestamp.ftime >> 11) & 0x1f,
+                                                         (fno->u.fpinfo_lfs.timestamp.ftime >> 5) & 0x3f,
+                                                         2 * (fno->u.fpinfo_lfs.timestamp.ftime & 0x1f));
+
+        tseconds = mach_rtc_get_us_since_epoch() / 1000000ll;
+        if (FTP_UNIX_SECONDS_180_DAYS < (int64_t)(tseconds - fseconds)) {
+            _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %5u %s\r\n",
+                            type, (uint32_t)fno->u.fpinfo_lfs.info.size, ftp_month[mindex].month, day,
+                            1980 + ((fno->u.fpinfo_lfs.timestamp.fdate >> 9) & 0x7f), fno->u.fpinfo_lfs.info.name);
+        } else {
+            _len = snprintf(dest, destsize, "%srw-rw-r--   1 root  root %9u %s %2u %02u:%02u %s\r\n",
+                            type, (uint32_t)fno->u.fpinfo_lfs.info.size, ftp_month[mindex].month, day,
+                            (fno->u.fpinfo_lfs.timestamp.ftime >> 11) & 0x1f, (fno->u.fpinfo_lfs.timestamp.ftime >> 5) & 0x3f, fno->u.fpinfo_lfs.info.name);
+        }
 
     }
     else
@@ -1392,7 +1457,7 @@ static ftp_result_t ftp_list_dir (char *list, uint32_t maxlistsize, uint32_t *li
         }
     }
 
-    // read until we get all items are there's no more space in the buffer
+    // read until we get all items or there's no more space in the buffer
     while (true) {
         if (ftp_data.listroot) {
             // root directory "hack"
@@ -1417,16 +1482,16 @@ static ftp_result_t ftp_list_dir (char *list, uint32_t maxlistsize, uint32_t *li
             res = f_readdir_helper(&ftp_data.u.dp, &fno);                                                       /* Read a directory item */
             if(isLittleFs(ftp_path))
             {
-                if (res != FR_OK || fno.u.fpinfo_lfs.name[0] == 0) {
+                if (res != FR_OK || fno.u.fpinfo_lfs.info.name[0] == 0) {
                     result = E_FTP_RESULT_OK;
                     break;                                                                                 /* Break on error or end of dp */
                 }
-                if (fno.u.fpinfo_lfs.name[0] == '.' && fno.u.fpinfo_lfs.name[1] == 0)
+                if (fno.u.fpinfo_lfs.info.name[0] == '.' && fno.u.fpinfo_lfs.info.name[1] == 0)
                 {
                     ftp_last_dir_idx++;
                     continue;            /* Ignore . entry, but need to count it as LittleFs does not filter it out opposed to FatFs */
                 }
-                if (fno.u.fpinfo_lfs.name[0] == '.' && fno.u.fpinfo_lfs.name[1] == '.' && fno.u.fpinfo_lfs.name[2] == 0)
+                if (fno.u.fpinfo_lfs.info.name[0] == '.' && fno.u.fpinfo_lfs.info.name[1] == '.' && fno.u.fpinfo_lfs.info.name[2] == 0)
                 {
                     ftp_last_dir_idx++;
                     continue;            /* Ignore .. entry, but need to count it as LittleFs does not filter it out opposed to FatFs */
