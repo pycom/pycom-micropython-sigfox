@@ -133,127 +133,76 @@ STATIC char *updater_read_file (const char *file_path, vstr_t *vstr) {
 
 bool updater_start (void) {
 
-    //Reading OTA_DATA
-    printf("Reading boot info..\n");
+    esp_err_t ret;
+
+    // Save the current OTADATA partition before updating the partition table
     boot_info_t boot_info_local;
     uint32_t boot_info_offset_local;
-    if(true == updater_read_boot_info(&boot_info_local, &boot_info_offset_local)) {
-        printf("Boot info read successfully...\n");
+    if(true != updater_read_boot_info(&boot_info_local, &boot_info_offset_local)) {
+        ESP_LOGE(TAG, "Reading boot info (otadata partition) failed!\n");
+        printf("Reading boot info (otadata partition) failed!\n");
+        return false;
     }
-
-    printf("Checking OLD partition table:\n");
-    esp_partition_info_t partition_info_OLD[PARTITIONS_COUNT];
-    if (ESP_OK != updater_spi_flash_read(ESP_PARTITION_TABLE_ADDR, (void *)partition_info_OLD, sizeof(partition_info_OLD), true)) {
-            ESP_LOGE(TAG, "err1\n");
-            return false;
-    }
-    int i = 0;
-    for(; i < PARTITIONS_COUNT; i++) {
-        printf("%d offset: 0x%X\n", i, partition_info_OLD[i].pos.offset);
-        printf("%d size: %d\n",   i, partition_info_OLD[i].pos.size);
-        printf("%d magic: 0x%X\n",   i, partition_info_OLD[i].magic);
-        printf("%d type: 0x%X\n",   i, partition_info_OLD[i].type);
-        printf("%d subtype: 0x%X\n",   i, partition_info_OLD[i].subtype);
-    }
-
-    printf("Erasing partition table...\n");
-//     Update partition table
-    if (ESP_OK != spi_flash_erase_sector(ESP_PARTITION_TABLE_ADDR / SPI_FLASH_SEC_SIZE)) {
-            ESP_LOGE(TAG, "Erasing partition table sector failed!\n");
-            printf("Erasing partition table sector failed!\n");
-            return false;
-    }
-
 
     // Read the new partition table
     vstr_t vstr;
     char* buf = updater_read_file("partitions.bin", &vstr);
-    printf("Partition table file has been read...\n");
     if(buf != NULL) {
-        printf("Writing partition table...\n");
-        // Writing the new partition table
-        if (ESP_OK != spi_flash_write(0x8000, (void *)buf, vstr.len)) {
-            ESP_LOGE(TAG, "SPI flash write failed\n");
-            printf("SPI flash write failed\n");
+        // Update partition table
+        ret = spi_flash_erase_sector(ESP_PARTITION_TABLE_ADDR / SPI_FLASH_SEC_SIZE);
+        if (ESP_OK != ret) {
+            ESP_LOGE(TAG, "Erasing partition table partition failed, error code: %d!\n", ret);
+            printf("Erasing partition table partition failed, error code: %d!\n", ret);
+            //TODO: write back old one ??
             return false;
         }
-        printf("Partition table has been written successfully!\n");
+        // Writing the new partition table
+        ret = spi_flash_write(0x8000, (void *)buf, vstr.len);
+        if (ESP_OK != ret) {
+            ESP_LOGE(TAG, "Writing new partition table failed, error code: %d\n", ret);
+            printf("Writing new partition table failed, error code: %d\n", ret);
+            //TODO: try again ???
+            return false;
+        }
     }
     else {
-        ESP_LOGE(TAG, "Reading new partition table file failed...\n");
-        printf("Reading new partition table file failed...\n");
+        ESP_LOGE(TAG, "Reading file (/flash/partitions.bin) containing the new partition table failed!\n");
+        printf("Reading file (/flash/partitions.bin) containing the new partition table failed!\n");
         return false;
     }
 
-    printf("Checking new partition table:\n");
+    // Reading the new partition table
     esp_partition_info_t partition_info_NEW[PARTITIONS_COUNT];
-    if (ESP_OK != updater_spi_flash_read(ESP_PARTITION_TABLE_ADDR, (void *)partition_info_NEW, sizeof(partition_info_NEW), true)) {
-            ESP_LOGE(TAG, "err1\n");
-            return false;
-    }
-    for(i = 0; i < PARTITIONS_COUNT; i++) {
-        printf("%d offset: 0x%X\n", i, partition_info_NEW[i].pos.offset);
-        printf("%d size: %d\n",   i, partition_info_NEW[i].pos.size);
-        printf("%d magic: 0x%X\n",   i, partition_info_NEW[i].magic);
-        printf("%d type: 0x%X\n",   i, partition_info_NEW[i].type);
-        printf("%d subtype: 0x%X\n",   i, partition_info_NEW[i].subtype);
-    }
-
-    printf("Erasing the new sector of boot info...\n");
-    //     Update partition table
-    if (ESP_OK != spi_flash_erase_sector(partition_info_NEW[OTA_DATA_INDEX].pos.offset / SPI_FLASH_SEC_SIZE)) {
-            ESP_LOGE(TAG, "Erasing new sector of boot info failed!\n");
-            printf("Erasing new sector of boot info failed!\n");
-            return false;
-    }
-    printf("Writing back boot info...\n");
-    if (ESP_OK != spi_flash_write(partition_info_NEW[OTA_DATA_INDEX].pos.offset, (void *)&boot_info_local, sizeof(boot_info_t))) {
-        ESP_LOGE(TAG, "Writing back boot info failed\n");
-        printf("Writing back boot info failed\n");
+    ret = updater_spi_flash_read(ESP_PARTITION_TABLE_ADDR, (void *)partition_info_NEW, sizeof(partition_info_NEW), true);
+    if (ESP_OK != ret) {
+        ESP_LOGE(TAG, "Reading the updated partition table failed, error code: %d\n", ret);
+        printf("Reading the updated partition table failed, error code: %d\n", ret);
+        // TODO: write back the old one ??
         return false;
     }
-    printf("Boot info has been written successfully!\n");
 
-    printf("Checking the new boot info:\n");
-    boot_info_t boot_info_local_NEW;
-    uint32_t boot_info_offset_local_NEW;
-    if(true == updater_read_boot_info(&boot_info_local_NEW, &boot_info_offset_local_NEW)) {
-           printf("Boot info read successfully...\n");
-   }
-    printf("Writing out informations...\n");
+    // Erasing the new location of OTADATA partition as per the updated partition table
+    if (ESP_OK != spi_flash_erase_sector(partition_info_NEW[OTA_DATA_INDEX].pos.offset / SPI_FLASH_SEC_SIZE)) {
+        ESP_LOGE(TAG, "Erasing new sector of boot info failed!\n");
+        printf("Erasing new sector of boot info failed!\n");
+        // TODO: try again ???
+        return false;
+    }
 
-    printf("OLD offset: 0x%X\n", boot_info_offset_local);
-    printf("NEW offset: 0x%X\n", boot_info_offset_local_NEW);
-
-    printf("OLD ActiveImg: %d\n", boot_info_local.ActiveImg);
-    printf("NEW ActiveImg: %d\n", boot_info_local_NEW.ActiveImg);
-
-    printf("OLD status: %d\n", boot_info_local.Status);
-    printf("NEW status: %d\n", boot_info_local_NEW.Status);
-
-    printf("OLD PrevImg: %d\n", boot_info_local.PrevImg);
-    printf("NEW PrevImg: %d\n", boot_info_local_NEW.PrevImg);
-
-    printf("OLD Crc: %u\n", boot_info_local.crc);
-    printf("NEW Crc: %u\n", boot_info_local_NEW.crc);
-
-    printf("OLD safeboot: %u\n", boot_info_local.safeboot);
-    printf("NEW safeboot: %u\n", boot_info_local_NEW.safeboot);
-
-    printf("OLD size: %u\n", boot_info_local.size);
-    printf("NEW size: %u\n", boot_info_local_NEW.size);
-
-    printf("Writing out informations FINISHED\n");
-
+    // Updating the new OTADATA partition with the old information
+    ret =  spi_flash_write(partition_info_NEW[OTA_DATA_INDEX].pos.offset, (void *)&boot_info_local, sizeof(boot_info_t));
+    if (ESP_OK != ret) {
+        ESP_LOGE(TAG, "Writing the old boot info into new otadata partition failed, error code: %d\n", ret);
+        printf("Writing the old boot info into new otadata partition failed, error code: %d\n", ret);
+        //TODO: try again ???
+        return false;
+    }
 
     updater_data.size = IMG_SIZE;
     // check which one should be the next active image
     updater_data.offset = updater_ota_next_slot_address();
 
-    printf("updater_data.offset: 0x%x\n", updater_data.offset);
-
     ESP_LOGD(TAG, "Updating image at offset = 0x%6X\n", updater_data.offset);
-    printf("Updating image at offset = 0x%6X\n", updater_data.offset);
     updater_data.offset_start_upd = updater_data.offset;
 
     // erase the first 2 sectors
@@ -280,7 +229,6 @@ bool updater_write (uint8_t *buf, uint32_t len) {
     // because it already came encrypted from OTA server
     if (ESP_OK != updater_spi_flash_write(updater_data.offset, (void *)buf, len, false)) {
         ESP_LOGE(TAG, "SPI flash write failed\n");
-        printf("updater_write: SPI flash write failed\n");
         return false;
     }
 
@@ -293,7 +241,6 @@ bool updater_write (uint8_t *buf, uint32_t len) {
         // erase the next sector
         if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
             ESP_LOGE(TAG, "Erasing next sector failed!\n");
-            printf("updater_write: Erasing next sector failed!\n");
             return false;
         }
     }
@@ -304,12 +251,10 @@ bool updater_write (uint8_t *buf, uint32_t len) {
 bool updater_finish (void) {
     if (updater_data.offset > 0) {
         ESP_LOGI(TAG, "Updater finished, boot status: %d\n", boot_info.Status);
-        printf("Updater finished, boot status: %d\n", boot_info.Status);
 //        sl_LockObjLock (&wlan_LockObj, SL_OS_WAIT_FOREVER);
         // if we still have an image pending for verification, leave the boot info as it is
         if (boot_info.Status != IMG_STATUS_CHECK) {
             ESP_LOGI(TAG, "Saving new boot info\n");
-            printf("Saving new boot info\n");
             // save the new boot info
             boot_info.PrevImg = boot_info.ActiveImg;
             if (boot_info.ActiveImg == IMG_ACT_UPDATE1) {
@@ -319,7 +264,6 @@ bool updater_finish (void) {
             }
             boot_info.Status = IMG_STATUS_CHECK;
 
-            printf("Calling updater_write_boot_info with address: 0x%X\n", boot_info_offset);
             // save the actual boot_info structure to otadata partition
             updater_write_boot_info(&boot_info, boot_info_offset);
         }
@@ -344,12 +288,9 @@ bool updater_verify (void) {
       .size = boot_info.size,
     };
 
-    printf("Verifying: 0x%X\n", updater_data.offset_start_upd);
-
     ret = esp_image_load(ESP_IMAGE_VERIFY, &part_pos, &data);
 
     ESP_LOGI(TAG, "esp_image_load: %d\n", ret);
-    printf("esp_image_load: %d\n", ret);
 
     return (ret == ESP_OK);
 }
@@ -361,7 +302,6 @@ bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset) 
     ESP_LOGI(TAG, "Wr crc=0x%x\n", boot_info->crc);
 
     if (ESP_OK != spi_flash_erase_sector(boot_info_offset / SPI_FLASH_SEC_SIZE)) {
-        printf("Erasing boot info failed\n");
         return false;
     }
 
@@ -397,7 +337,6 @@ bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset) 
         ESP_LOGE(TAG, "Saving boot info failed\n");
     } else {
             ESP_LOGI(TAG, "Boot info saved OK\n");
-            printf("Boot info saved OK\n");
     }
 
     return (ESP_OK == ret);
@@ -417,7 +356,6 @@ int updater_ota_next_slot_address() {
     }
 
     ESP_LOGI(TAG, "Next slot address: 0x%6X\n", ota_offset);
-    printf("Next slot address: 0x%6X\n", ota_offset);
 
     return ota_offset;
 }
