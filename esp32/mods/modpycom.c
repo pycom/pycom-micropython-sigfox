@@ -274,9 +274,9 @@ STATIC mp_obj_t mod_pycom_nvs_set (mp_obj_t _key, mp_obj_t _value) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_pycom_nvs_set_obj, mod_pycom_nvs_set);
 
-STATIC mp_obj_t mod_pycom_nvs_get (mp_obj_t _key) {
+STATIC mp_obj_t mod_pycom_nvs_get (mp_uint_t n_args, const mp_obj_t *args) {
 
-    const char *key = mp_obj_str_get_str(_key);
+    const char *key = mp_obj_str_get_str(args[0]);
     esp_err_t esp_err = ESP_OK;
     mp_obj_t ret = mp_const_none;
     uint32_t value;
@@ -302,14 +302,21 @@ STATIC mp_obj_t mod_pycom_nvs_get (mp_obj_t _key) {
     }
 
     if(esp_err == ESP_ERR_NVS_NOT_FOUND) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "No matching object for the provided key"));
+        if (n_args > 1) {
+             // return user defined NoExistValue
+             return args[1];
+         }
+         else
+         {
+             nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "No matching object for the provided key"));
+         }
     } else if(esp_err != ESP_OK) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_Exception, "Error occurred while fetching value, code: %d", esp_err));
     }
 
     return ret;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_nvs_get_obj, mod_pycom_nvs_get);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_nvs_get_obj, 1, 2, mod_pycom_nvs_get);
 
 STATIC mp_obj_t mod_pycom_nvs_erase (mp_obj_t _key) {
     const char *key = mp_obj_str_get_str(_key);
