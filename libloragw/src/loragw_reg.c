@@ -651,7 +651,8 @@ int lgw_reg_w(uint16_t register_id, int32_t reg_value) {
     }
 
     /* select proper register page if needed */
-    if ((r.page != -1) && (r.page != lgw_regpage)) {
+    /* don't rely on lgw_regpage as the MCU could have changed the page index */
+    if (r.page != -1) {
         com_stat += page_switch(r.page);
     }
 
@@ -689,7 +690,8 @@ int lgw_reg_r(uint16_t register_id, int32_t *reg_value) {
     r = loregs[register_id];
 
     /* select proper register page if needed */
-    if ((r.page != -1) && (r.page != lgw_regpage)) {
+    /* don't rely on lgw_regpage as the MCU could have changed the page index */
+    if (r.page != -1) {
         com_stat += page_switch(r.page);
     }
 
@@ -737,7 +739,8 @@ int lgw_reg_wb(uint16_t register_id, uint8_t *data, uint16_t size) {
     }
 
     /* select proper register page if needed */
-    if ((r.page != -1) && (r.page != lgw_regpage)) {
+    /* don't rely on lgw_regpage as the MCU could have changed the page index */
+    if (r.page != -1) {
         com_stat += page_switch(r.page);
     }
 
@@ -780,7 +783,8 @@ int lgw_reg_rb(uint16_t register_id, uint8_t *data, uint16_t size) {
     r = loregs[register_id];
 
     /* select proper register page if needed */
-    if ((r.page != -1) && (r.page != lgw_regpage)) {
+    /* don't rely on lgw_regpage as the MCU could have changed the page index */
+    if (r.page != -1) {
         com_stat += page_switch(r.page);
     }
 
