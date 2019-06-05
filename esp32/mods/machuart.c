@@ -426,6 +426,11 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     self->config.rx_flow_ctrl_thresh = 64;
     uart_param_config(self->uart_id, &self->config);
 
+    uint32_t inverse_mask = args[6].u_int;
+    if (inverse_mask != 0) {
+        uart_set_line_inverse(self->uart_id, inverse_mask << 19);
+    }
+
     // install the UART driver
     uart_driver_install(self->uart_id, MACHUART_RX_BUFFER_LEN, 0, 0, NULL, 0, UARTRxCallback);
 
@@ -452,6 +457,7 @@ STATIC const mp_arg_t mach_uart_init_args[] = {
     { MP_QSTR_stop,                            MP_ARG_OBJ,  {.u_obj = mp_const_none} },
     { MP_QSTR_pins,           MP_ARG_KW_ONLY | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_timeout_chars,  MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = 2} },
+    { MP_QSTR_inverse_mask,   MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = 0} },
 };
 STATIC mp_obj_t mach_uart_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -588,6 +594,11 @@ STATIC const mp_map_elem_t mach_uart_locals_dict_table[] = {
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_EVEN),            MP_OBJ_NEW_SMALL_INT(UART_PARITY_EVEN) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ODD),             MP_OBJ_NEW_SMALL_INT(UART_PARITY_ODD) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INVERSE_RXD),     MP_OBJ_NEW_SMALL_INT(0x01) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INVERSE_CTS),     MP_OBJ_NEW_SMALL_INT(0x02) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INVERSE_TXD),     MP_OBJ_NEW_SMALL_INT(0x08) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INVERSE_RTS),     MP_OBJ_NEW_SMALL_INT(0x10) },
+    
     // { MP_OBJ_NEW_QSTR(MP_QSTR_RX_ANY),      MP_OBJ_NEW_SMALL_INT(2) },
 };
 STATIC MP_DEFINE_CONST_DICT(mach_uart_locals_dict, mach_uart_locals_dict_table);
