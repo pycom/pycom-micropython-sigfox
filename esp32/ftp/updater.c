@@ -157,7 +157,7 @@ bool updater_start (void) {
             return false;
         }
         // Writing the new partition table
-        ret = spi_flash_write(0x8000, (void *)buf, vstr.len);
+        ret = spi_flash_write(ESP_PARTITION_TABLE_ADDR, (void *)buf, vstr.len);
         if (ESP_OK != ret) {
             ESP_LOGE(TAG, "Writing new partition table failed, error code: %d\n", ret);
             printf("Writing new partition table failed, error code: %d\n", ret);
@@ -190,10 +190,7 @@ bool updater_start (void) {
     }
 
     // Updating the new OTADATA partition with the old information
-    ret =  spi_flash_write(partition_info_NEW[OTA_DATA_INDEX].pos.offset, (void *)&boot_info_local, sizeof(boot_info_t));
-    if (ESP_OK != ret) {
-        ESP_LOGE(TAG, "Writing the old boot info into new otadata partition failed, error code: %d\n", ret);
-        printf("Writing the old boot info into new otadata partition failed, error code: %d\n", ret);
+    if (true != updater_write_boot_info(&boot_info_local, partition_info_NEW[OTA_DATA_INDEX].pos.offset)) {
         //TODO: try again ???
         return false;
     }
