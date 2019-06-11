@@ -21,6 +21,7 @@ import time
 import socket
 import struct
 import binascii
+from machine import WDT
 
 class PybytesConnection:
     def __init__(self, config, message_callback):
@@ -42,7 +43,7 @@ class PybytesConnection:
         self.lte = None
         self.wlan = None
         self.__network_type = None
-
+        self.__wifi_lte_watchdog = None
 
     def lte_ping_routine(self, delay):
         while True:
@@ -56,8 +57,17 @@ class PybytesConnection:
                 if line not in ['OK']:
                     print(line)
 
+    def __initialise_watchdog(self):
+        if self.__conf.get('connection_watchdog', True):
+            self.__wifi_lte_watchdog = WDT(timeout=constants.__WDT_TIMEOUT_MILLISECONDS)
+            print('Initialized watchdog for WiFi and LTE connection with timeout {} ms'.format(constants.__WDT_TIMEOUT_MILLISECONDS))
+        else:
+            print('Watchdog for WiFi and LTE was disabled, enable with "connection_watchdog": true in pybytes_config.json')
+
+    # Establish a connection through WIFI before connecting to mqtt server
     def connect_wifi(self, reconnect=True, check_interval=0.5):
-        """Establish a connection through WIFI before connecting to mqtt server"""
+        self.__initialise_watchdog()
+
         if self.__connection_status != constants.__CONNECTION_STATUS_DISCONNECTED:
             print("Error connect_wifi: Connection already exists. Disconnect First")
             return False
@@ -110,8 +120,10 @@ class PybytesConnection:
             print("Exception connect_wifi: {}".format(ex))
             return False
 
+    # Establish a connection through LTE before connecting to mqtt server
     def connect_lte(self, reconnect=True, check_interval=0.5):
-        """Establish a connection through LTE before connecting to mqtt server"""
+        self.__initialise_watchdog()
+
         lte_cfg = self.__conf.get('lte')
         if lte_cfg is not None:
             if (os.uname()[0] not in ['FiPy', 'GPy']):

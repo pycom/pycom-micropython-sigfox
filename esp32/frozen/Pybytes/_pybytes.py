@@ -1,10 +1,6 @@
 import os
 from machine import Timer
 try:
-    from pybytes_protocol import PybytesProtocol
-except:
-    from _pybytes_protocol import PybytesProtocol
-try:
     from pybytes_connection import PybytesConnection
 except:
     from _pybytes_connection import PybytesConnection
@@ -222,14 +218,14 @@ class Pybytes:
         else:
             return self.__conf.get(key)
 
-    def set_config(self, key=None, value=None, permanent=True):
+    def set_config(self, key=None, value=None, permanent=True, silent=False):
         if key is None and value is not None:
             self.__conf = value
         elif key is not None:
             self.__conf[key] = value
         else:
             raise ValueError('You need to either specify a key or a value!')
-        if permanent: self.write_config()
+        if permanent: self.write_config(silent=silent)
 
     def read_config(self, file='/flash/pybytes_config.json'):
         try:
@@ -259,7 +255,8 @@ class Pybytes:
         self.set_config('dump_ca', dump_ca, permanent=False)
         if ca_file is not None:
             self.set_config('ssl_params', {'ca_certs': ca_file}, permanent=False)
-        self.set_config('ssl', True)
+        self.set_config('ssl', True, silent=True)
+        print('Please reset your module to apply the new settings.')
 
     def dump_ca(self, ca_file='/flash/cert/pycom-ca.pem'):
         try:

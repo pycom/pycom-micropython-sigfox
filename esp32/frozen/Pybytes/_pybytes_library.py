@@ -13,6 +13,7 @@ import os
 import re
 from network import WLAN
 from time import sleep
+import binascii
 
 try:
     from network import LoRa
@@ -29,10 +30,12 @@ class PybytesLibrary:
         return self.__pack_message(message_type, body)
 
     def pack_pybytes_message(self, command, pin, value):
+        print_debug(5, "This is pack_pybytes_message({}, {}, {})".format(command, pin, value))
         body = struct.pack(constants.__PYBYTES_INTERNAL_PROTOCOL, command, pin, value)
         return self.__pack_message(constants.__TYPE_PYBYTES, body)
 
     def pack_pybytes_message_variable(self, command, pin, parameters):
+        print_debug(5, "This is pack_pybytes_message_variable({}, {}, {})".format(command, pin, parameters))
         body = struct.pack(constants.__PYBYTES_INTERNAL_PROTOCOL_VARIABLE % len(parameters),
                            command, pin, parameters)
         return self.__pack_message(constants.__TYPE_PYBYTES, body)
@@ -152,7 +155,7 @@ class PybytesLibrary:
         header = header | (message_type & constants.__TYPE_MASK)
 
         if body is not None:
-            print_debug(3, '__pack_message: %s' % struct.pack(constants.__PYBYTES_PROTOCOL % len(body), header, body))
+            print_debug(3, '__pack_message: %s' % binascii.hexlify(struct.pack(constants.__PYBYTES_PROTOCOL % len(body), header, body)))
             return struct.pack(constants.__PYBYTES_PROTOCOL % len(body), header, body)
         return struct.pack(constants.__PYBYTES_PROTOCOL_PING, header)
 

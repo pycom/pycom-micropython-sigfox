@@ -108,23 +108,29 @@ class PybytesConfig:
                         band = None
                         apn = None
                         reset = False
+                        type = None
+
+                        if len(extra_preferences[index + 1]) > 0 and extra_preferences[index + 1].lower() != 'none':
+                            carrier = extra_preferences[index + 1]
                         if len(extra_preferences[index + 2]) > 0 and extra_preferences[index + 2].isdigit():
                             cid = int(extra_preferences[index + 2])
                         if len(extra_preferences[index + 3]) > 0 and extra_preferences[index + 3].isdigit():
                             band = int(extra_preferences[index + 3])
-                        if len(extra_preferences[index + 1]) > 0 and extra_preferences[index + 1].lower() != 'none':
-                            carrier = extra_preferences[index + 1]
                         if len(extra_preferences[index + 4]) > 0 and extra_preferences[index + 4].lower() != 'none':
                             apn = extra_preferences[index + 4]
                         if len(extra_preferences[index + 5]) > 0 and extra_preferences[index + 5].lower() == 'true':
                             reset = True
+                        if len(extra_preferences[index + 6]) > 0 and extra_preferences[index + 6].lower() != 'none':
+                            type = extra_preferences[index + 6]
+
 
                         lte_config = {  'lte':
                                         {   'carrier': carrier,
                                             'cid': cid,
                                             'band': band,
                                             'apn': apn,
-                                            'reset': reset
+                                            'reset': reset,
+                                            'type': type
                                         }
                                      }
             except:
