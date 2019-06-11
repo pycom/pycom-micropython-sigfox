@@ -78,7 +78,7 @@ class MQTTClient:
             self.sock = ussl.wrap_socket(self.sock, **self.ssl_params)
             print("Using MQTT over TLS")
         else:
-            print("WARNING: consider enabling TLS by using \"ssl\": true in pybytes_config.json")
+            print("WARNING: consider enabling TLS by using pybytes.enable_ssl()")
         premsg = bytearray(b"\x10\0\0\0\0\0")
         msg = bytearray(b"\x04MQTT\x04\x02\0\0")
 

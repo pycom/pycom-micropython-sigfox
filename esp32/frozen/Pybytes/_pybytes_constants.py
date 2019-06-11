@@ -25,6 +25,7 @@ class constants:
     __TYPE_BATTERY_INFO = 0x04
     __TYPE_OTA = 0x05
     __TYPE_FCOTA = 0x06
+    __TYPE_PONG = 0x07
     __TYPE_PYBYTES = 0x0E
     __PYBYTES_PROTOCOL = ">B%ds"
     __PYBYTES_PROTOCOL_PING = ">B"
@@ -65,3 +66,7 @@ class constants:
     __SIGFOX_WARNING = """WARNING! Your sigfox radio configuration (RC) is currently using the default (1)
 You can set your RC with command (ex: RC 3): pybytes.set_config('sigfox', {'RCZ': 3})
 See all available zone options for RC at https://support.sigfox.com/docs/radio-configuration """
+
+    __KEEP_ALIVE_PING_INTERVAL = 600 # in seconds
+    # set watch dog timeout one minute after __KEEP_ALIVE_PING_INTERVAL
+    __WDT_TIMEOUT_MILLISECONDS = (__KEEP_ALIVE_PING_INTERVAL + 60) * 1000
