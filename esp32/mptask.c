@@ -116,6 +116,8 @@ static uint8_t *gc_pool_upy;
 static char fresh_main_py[] = "# main.py -- put your code here!\r\n";
 static char fresh_boot_py[] = "# boot.py -- run on boot-up\r\n";
 
+extern void update_to_factory_partition(void);
+
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -133,6 +135,25 @@ void TASK_Micropython (void *pvParameters) {
         stack_len = (MICROPY_TASK_STACK_SIZE_PSRAM / sizeof(StackType_t));
     } else {
         stack_len = (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t));
+    }
+
+    printf("IN TASK_Micropython-----------------\n");
+
+    boot_info_t boot_info_local;
+    uint32_t boot_info_offset_local;
+    if(true == updater_read_boot_info(&boot_info_local, &boot_info_offset_local)) {
+        printf("TASK_Micropython, reading boot info (otadata partition) OK!\n");
+        if(boot_info_local.ActiveImg != IMG_ACT_FACTORY) {
+            printf("TASK_Micropython, starting update...\n");
+            update_to_factory_partition();
+            printf("TASK_Micropython, update finished...\n");
+            //Restart the system
+            //machine_wdt_start(1);
+            //for ( ; ; );
+        }
+    }
+    else {
+        printf("TASK_Micropython: Reading boot info failed\n");
     }
 
     // configure the antenna select switch here
