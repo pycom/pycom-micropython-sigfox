@@ -135,19 +135,39 @@ bool updater_start (void) {
 
     esp_err_t ret;
 
-    // Save the current OTADATA partition before updating the partition table
-    boot_info_t boot_info_local;
-    uint32_t boot_info_offset_local;
-    if(true != updater_read_boot_info(&boot_info_local, &boot_info_offset_local)) {
-        ESP_LOGE(TAG, "Reading boot info (otadata partition) failed!\n");
-        printf("Reading boot info (otadata partition) failed!\n");
-        return false;
-    }
-
-    // Read the new partition table
+    // Read the new partition table, if not provided do not start anything
     vstr_t vstr;
     char* buf = updater_read_file("partitions.bin", &vstr);
     if(buf != NULL) {
+
+        // Save the current OTADATA partition before updating the partition table
+        boot_info_t boot_info_local;
+        uint32_t boot_info_offset_local;
+        if(true != updater_read_boot_info(&boot_info_local, &boot_info_offset_local)) {
+            ESP_LOGE(TAG, "Reading boot info (otadata partition) failed!\n");
+            printf("Reading boot info (otadata partition) failed!\n");
+            return false;
+        }
+
+        /* Erasing the NEW location of otadata partition, this will ruin/corrupt the firmware on "ota_0" partition
+         * The new location of otadata is 0x1BE000 as per updated partition table
+         */
+        ret = spi_flash_erase_sector(0x1BE000 / SPI_FLASH_SEC_SIZE);
+        if (ESP_OK != ret) {
+            ESP_LOGE(TAG, "Erasing new sector of boot info failed, error code: %d!\n", ret);
+            printf("Erasing new sector of boot info failed, error code: %d!\n", ret);
+            // TODO: try again ???
+            return false;
+        }
+
+        // Updating the NEW otadata partition with the OLD information
+        if (true != updater_write_boot_info(&boot_info_local, 0x1BE000)) {
+            ESP_LOGE(TAG, "Writing new sector of boot info failed!\n");
+            printf("Writing new sector of boot info failed!\n");
+            //TODO: try again ???
+            return false;
+        }
+
         // Update partition table
         ret = spi_flash_erase_sector(ESP_PARTITION_TABLE_ADDR / SPI_FLASH_SEC_SIZE);
         if (ESP_OK != ret) {
@@ -168,30 +188,6 @@ bool updater_start (void) {
     else {
         ESP_LOGE(TAG, "Reading file (/flash/partitions.bin) containing the new partition table failed!\n");
         printf("Reading file (/flash/partitions.bin) containing the new partition table failed!\n");
-        return false;
-    }
-
-    // Reading the new partition table
-    esp_partition_info_t partition_info_NEW[PARTITIONS_COUNT];
-    ret = updater_spi_flash_read(ESP_PARTITION_TABLE_ADDR, (void *)partition_info_NEW, sizeof(partition_info_NEW), true);
-    if (ESP_OK != ret) {
-        ESP_LOGE(TAG, "Reading the updated partition table failed, error code: %d\n", ret);
-        printf("Reading the updated partition table failed, error code: %d\n", ret);
-        // TODO: write back the old one ??
-        return false;
-    }
-
-    // Erasing the new location of OTADATA partition as per the updated partition table
-    if (ESP_OK != spi_flash_erase_sector(partition_info_NEW[OTA_DATA_INDEX].pos.offset / SPI_FLASH_SEC_SIZE)) {
-        ESP_LOGE(TAG, "Erasing new sector of boot info failed!\n");
-        printf("Erasing new sector of boot info failed!\n");
-        // TODO: try again ???
-        return false;
-    }
-
-    // Updating the new OTADATA partition with the old information
-    if (true != updater_write_boot_info(&boot_info_local, partition_info_NEW[OTA_DATA_INDEX].pos.offset)) {
-        //TODO: try again ???
         return false;
     }
 
