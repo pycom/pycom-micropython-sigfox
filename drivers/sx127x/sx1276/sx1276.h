@@ -176,6 +176,13 @@ void SX1276SetModem( RadioModems_t modem );
 void SX1276SetChannel( uint32_t freq );
 
 /*!
+ * Return the channel configuration
+ *
+ * \param Channel RF frequency .
+ */
+uint32_t SX1276GetChannel( void );
+
+/*!
  * \brief Checks if the channel is free for the given time
  *
  * \param [IN] modem      Radio modem to be used [0: FSK, 1: LoRa]

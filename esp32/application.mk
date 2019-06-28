@@ -216,6 +216,8 @@ APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/region/RegionCommon.c \
 	mac/region/RegionEU868.c \
 	mac/region/RegionUS915.c \
+	mac/region/RegionCN470.c \
+	mac/region/RegionIN865.c \
 	system/delay.c \
 	system/gpio.c \
 	system/timer.c \
@@ -358,7 +360,7 @@ APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\"
 CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
-CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DBASE=0 -DPYBYTES=1 
+CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DREGION_CN470 -DREGION_IN865 -DBASE=0 -DPYBYTES=1 
 # Specify if this is base or Pybytes Firmware
 ifeq ($(VARIANT),BASE)
 CFLAGS += -DVARIANT=0
@@ -456,7 +458,8 @@ ENTER_FLASHING_MODE = $(PIC_TOOL) --enter
 EXIT_FLASHING_MODE = $(PIC_TOOL) --exit
 
 ESPTOOLPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/esptool.py --chip esp32
-ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD) --before no_reset --after no_reset
+ESPRESET ?= --before no_reset --after no_reset
+ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD) $(ESPRESET)
 
 ESPTOOLPY_WRITE_FLASH  = $(ESPTOOLPY_SERIAL) write_flash -z --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE)
 ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash

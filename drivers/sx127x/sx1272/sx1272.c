@@ -230,6 +230,11 @@ IRAM_ATTR void SX1272SetChannel( uint32_t freq )
     SX1272Write( REG_FRFLSB, ( uint8_t )( freq & 0xFF ) );
 }
 
+IRAM_ATTR uint32_t SX1272GetChannel( void )
+{
+    return SX1272.Settings.Channel;
+}
+
 bool SX1272IsChannelFree( RadioModems_t modem, uint32_t freq, int16_t rssiThresh, uint32_t maxCarrierSenseTime )
 {
     bool status = true;
