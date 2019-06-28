@@ -975,6 +975,7 @@ STATIC mp_obj_t lte_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
         }
+        mod_network_register_nic(&lte_obj);
         lteppp_connect();
         lteppp_set_state(E_LTE_PPP);
         vTaskDelay(1000);
@@ -1049,6 +1050,7 @@ STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
             }
         }
         lte_check_attached(lte_legacyattach_flag);
+        mod_network_deregister_nic(&lte_obj);
     }
     return mp_const_none;
 }

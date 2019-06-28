@@ -157,6 +157,7 @@ static void wlan_timer_callback( TimerHandle_t xTimer );
 static void wlan_validate_country(const char * country);
 static void wlan_validate_country_policy(uint8_t policy);
 STATIC void wlan_stop_sta_conn_timer();
+STATIC void wlan_inf_up(void);
 //*****************************************************************************
 //
 //! \brief The Function Handles WLAN Events
@@ -356,6 +357,7 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
                 case WIFI_REASON_AUTH_FAIL:
                 case WIFI_REASON_ASSOC_LEAVE:
                     wlan_obj.disconnected = true;
+                    mod_network_deregister_nic(&wlan_obj);
                     break;
                 default:
                     // let other errors through and try to reconnect.
@@ -938,6 +940,15 @@ STATIC void promiscuous_callback(void *buf, wifi_promiscuous_pkt_type_t type)
 
         mp_irq_queue_interrupt(wlan_callback_handler, &wlan_obj);
 
+    }
+}
+
+STATIC void wlan_inf_up(void)
+{
+    if (wlan_obj.mode == WIFI_MODE_STA || wlan_obj.mode == WIFI_MODE_APSTA) {
+        tcpip_adapter_up(TCPIP_ADAPTER_IF_STA);
+        tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
+        tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_STA);
     }
 }
 
@@ -2607,7 +2618,8 @@ const mod_network_nic_type_t mod_network_nic_type_wlan = {
     .n_settimeout = lwipsocket_socket_settimeout,
     .n_ioctl = lwipsocket_socket_ioctl,
     .n_setupssl = lwipsocket_socket_setup_ssl,
-	.inf_up = wlan_is_inf_up
+	.inf_up = wlan_is_inf_up,
+	.set_inf_up = wlan_inf_up
 };
 
 //STATIC const mp_irq_methods_t wlan_irq_methods = {

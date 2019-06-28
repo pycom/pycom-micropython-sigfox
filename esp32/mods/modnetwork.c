@@ -87,6 +87,21 @@ void mod_network_deregister_nic(mp_obj_t nic) {
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
         if (MP_STATE_PORT(mod_network_nic_list).items[i] == nic) {
             mp_obj_list_remove(&MP_STATE_PORT(mod_network_nic_list), nic);
+
+            for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++)
+            {
+                mp_obj_t nic_rem = MP_STATE_PORT(mod_network_nic_list).items[i];
+                if(mp_obj_get_type(nic_rem) == (mp_obj_type_t *)&mod_network_nic_type_wlan)
+                {
+                    mod_network_nic_type_wlan.set_inf_up();
+                }
+                else if (mp_obj_get_type(nic_rem) == (mp_obj_type_t *)&mod_network_nic_type_lte)
+                {
+                    if (mod_network_nic_type_lte.set_inf_up != NULL) {
+                        mod_network_nic_type_lte.set_inf_up();
+                    }
+                }
+            }
         }
     }
 }
