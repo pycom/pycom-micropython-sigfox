@@ -87,7 +87,7 @@ void mod_network_deregister_nic(mp_obj_t nic) {
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
         if (MP_STATE_PORT(mod_network_nic_list).items[i] == nic) {
             mp_obj_list_remove(&MP_STATE_PORT(mod_network_nic_list), nic);
-
+#if defined(GPY) || defined(FIPY)
             for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++)
             {
                 mp_obj_t nic_rem = MP_STATE_PORT(mod_network_nic_list).items[i];
@@ -102,6 +102,7 @@ void mod_network_deregister_nic(mp_obj_t nic) {
                     }
                 }
             }
+#endif
         }
     }
 }

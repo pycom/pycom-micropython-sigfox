@@ -2,7 +2,7 @@
   "version" : "2.0",
   "partitions" : {
     "factory"   : ["0x10000", "0x1AE000"],
-    "ota_0"      : ["0x1a0000", "0x1AE000"]
+    "ota_0"      : ["0x1C0000", "0x1AE000"]
     },
   "script" : [
       ["w", "bootloader", "bootloader.bin"],

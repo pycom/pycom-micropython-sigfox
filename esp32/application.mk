@@ -437,12 +437,17 @@ ifeq ($(BOARD), FIPY)
     $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 
-APP_IMG  = $(BUILD)/appimg.bin
-PART_CSV = lib/partitions.csv
 PART_BIN = $(BUILD)/lib/partitions.bin
 PART_BIN_ENCRYPT = $(PART_BIN)_enc
 APP_BIN_ENCRYPT = $(APP_BIN)_enc_0x10000
+APP_IMG  = $(BUILD)/appimg.bin
+ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+PART_CSV = lib/partitions_8MB.csv
+APP_BIN_ENCRYPT_2 = $(APP_BIN)_enc_0x210000
+else
+PART_CSV = lib/partitions_4MB.csv
 APP_BIN_ENCRYPT_2 = $(APP_BIN)_enc_0x1C0000
+endif
 
 ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
@@ -474,7 +479,11 @@ SIGN_BINARY = $(ESPSECUREPY) sign_data --keyfile $(SECURE_KEY)
 # $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o image_encrypt.bin image.bin
 ENCRYPT_BINARY = $(ESPSECUREPY) encrypt_flash_data --keyfile $(ENCRYPT_KEY)
 ENCRYPT_0x10000 = --address 0x10000
-ENCRYPT_0x1C0000 = --address 0x1C0000
+ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+ENCRYPT_APP_PART_2 = --address 0x210000
+else
+ENCRYPT_APP_PART_2 = --address 0x1C0000
+endif
 
 GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py -q
 
@@ -642,9 +651,13 @@ ifeq ($(SECURE), on)
 	$(ECHO) "Signing $@"
 	$(Q) $(SIGN_BINARY) $@
 	$(ECHO) $(SEPARATOR)
+ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2) (0x210000 offset)"
+else
 	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2) (0x1C0000 offset)"
+endif
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o $(APP_BIN_ENCRYPT) $@
-	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x1C0000) -o $(APP_BIN_ENCRYPT_2) $@
+	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_APP_PART_2) -o $(APP_BIN_ENCRYPT_2) $@
 	$(ECHO) "Overwrite $(APP_BIN) with $(APP_BIN_ENCRYPT)"
 	$(CP) -f $(APP_BIN_ENCRYPT) $(APP_BIN)
 	$(ECHO) $(SEPARATOR)
@@ -675,6 +688,8 @@ $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
 
 release: $(APP_BIN) $(BOOT_BIN)
+	$(ECHO) "checking size of image"
+	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT)
 	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD)
 
 flash: $(APP_BIN) $(BOOT_BIN)	

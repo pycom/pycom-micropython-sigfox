@@ -4,7 +4,8 @@ BOARD="$1"
 RELEASE_TYP="$2"
 VARIANT="$3"
 BUILD_DIR="build"
-IMG_MAX_SIZE=1761280
+IMG_MAX_SIZE_8MB=2027520
+IMG_MAX_SIZE_4MB=1761280
 OS="$(uname)"
 
 #Script Has to be called from esp32 Dir
@@ -45,6 +46,12 @@ if [ ${OS} = "Darwin" ] ; then
 fi
 
 total_size=$((${size_app} + ${size_boot}))
+
+if [ "${BOARD}" != "LOPY4" -a "${BOARD}" != "GPY" -a "${BOARD}" != "FIPY" ] ; then
+  IMG_MAX_SIZE=${IMG_MAX_SIZE_4MB}
+ else
+  IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
+fi
 
 if [ ${total_size} -gt ${IMG_MAX_SIZE} ] ; then
   echo "${total_size} bytes => Firmware image size exceeds avialable space on board!" >&2
