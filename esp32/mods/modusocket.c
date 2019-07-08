@@ -84,7 +84,7 @@ typedef struct {
 /******************************************************************************
  DEFINE PRIVATE DATA
  ******************************************************************************/
-STATIC const mp_obj_type_t socket_type;
+extern const mp_obj_type_t socket_type;
 STATIC const mp_obj_type_t raw_socket_type;
 //STATIC OsiLockObj_t modusocket_LockObj;
 STATIC modusocket_sock_t modusocket_sockets[MODUSOCKET_MAX_SOCKETS] = {{.sd = -1}, {.sd = -1}, {.sd = -1}, {.sd = -1}, {.sd = -1},
@@ -878,7 +878,7 @@ const mp_stream_p_t raw_socket_stream_p = {
     .is_text = false,
 };
 
-STATIC const mp_obj_type_t socket_type = {
+const mp_obj_type_t socket_type = {
     { &mp_type_type },
     .name = MP_QSTR_socket,
     .make_new = socket_make_new,

@@ -47,6 +47,7 @@
 #include "mpexception.h"
 #include "serverstask.h"
 #include "modusocket.h"
+#include "modcoap.h"
 
 #include "lwip/sockets.h"
 
@@ -241,6 +242,8 @@ STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
 #endif
     { MP_OBJ_NEW_QSTR(MP_QSTR_Bluetooth),           (mp_obj_t)&mod_network_nic_type_bt },
     { MP_OBJ_NEW_QSTR(MP_QSTR_Server),              (mp_obj_t)&network_server_type },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_Coap),                (mp_obj_t)&mod_coap },
+
 };
 
 STATIC MP_DEFINE_CONST_DICT(mp_module_network_globals, mp_module_network_globals_table);
