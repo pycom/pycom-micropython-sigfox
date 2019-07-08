@@ -299,25 +299,6 @@ BOOT_SRC_C = $(addprefix bootloader/,\
 	flash_qio_mode.c \
 	)
 
-APP_COAP_SRC_C = $(addprefix $(ESP_IDF_COMP_PATH)/coap/,\
-	libcoap/src/address.c \
-	libcoap/src/async.c \
-	libcoap/src/block.c \
-	libcoap/src/coap_io.c \
-	libcoap/src/coap_time.c \
-	libcoap/src/debug.c \
-	libcoap/src/encode.c \
-	libcoap/src/hashkey.c \
-	libcoap/src/mem.c \
-	libcoap/src/net.c \
-	libcoap/src/option.c \
-	libcoap/src/pdu.c \
-	libcoap/src/resource.c \
-	libcoap/src/str.c \
-	libcoap/src/subscribe.c \
-	libcoap/src/uri.c \
-	port/coap_io_socket.c \
-	)
 
 SFX_OBJ =
 
@@ -348,7 +329,7 @@ endif # ifeq ($(OPENTHREAD), on)
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o) $(APP_COAP_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins.o
 
 BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))

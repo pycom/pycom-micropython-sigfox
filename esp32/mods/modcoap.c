@@ -26,6 +26,7 @@
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
+
 #define MODCOAP_DEFAULT_PORT    (5683)
 #define MODCOAP_IP4_MULTICAST   ("224.0.1.187")
 #define MODCOAP_REQUEST_GET     (0x01)
@@ -36,7 +37,7 @@
 /******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
-
+#ifdef ENABLE_COAP_SERVER
 typedef struct mod_coap_resource_obj_s {
     mp_obj_base_t base;
     coap_resource_t* coap_resource;
@@ -49,13 +50,15 @@ typedef struct mod_coap_resource_obj_s {
     uint8_t mediatype;
     bool etag;
 }mod_coap_resource_obj_t;
-
+#endif
 
 typedef struct mod_coap_obj_s {
     mp_obj_base_t base;
     coap_context_t* context;
     mod_network_socket_obj_t* socket;
+#ifdef ENABLE_COAP_SERVER
     mod_coap_resource_obj_t* resources;
+#endif
     SemaphoreHandle_t semphr;
 }mod_coap_obj_t;
 
@@ -64,6 +67,7 @@ typedef struct mod_coap_obj_s {
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
+#ifdef ENABLE_COAP_SERVER
 STATIC mod_coap_resource_obj_t* find_resource(coap_resource_t* resource);
 STATIC mod_coap_resource_obj_t* find_resource_by_key(coap_key_t key);
 STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype, uint8_t max_age, mp_obj_t value, bool etag);
@@ -103,11 +107,13 @@ STATIC void coap_resource_callback_delete(coap_context_t * context,
                                           str * token,
                                           coap_pdu_t * response);
 
-
+#endif
 /******************************************************************************
  DEFINE PRIVATE VARIABLES
  ******************************************************************************/
+#ifdef ENABLE_COAP_SERVER
 STATIC const mp_obj_type_t mod_coap_resource_type;
+#endif
 // Only 1 context is supported
 STATIC mod_coap_obj_t* coap_obj_ptr;
 STATIC bool initialized = false;
@@ -116,7 +122,7 @@ STATIC bool initialized = false;
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
-
+#ifdef ENABLE_COAP_SERVER
 // Get the resource if exists
 STATIC mod_coap_resource_obj_t* find_resource(coap_resource_t* resource) {
 
@@ -632,13 +638,13 @@ STATIC void coap_resource_callback_delete(coap_context_t * context,
     // Reply with DELETED response
     response->hdr->code = COAP_RESPONSE_CODE(202);
 }
-
+#endif
 
 /******************************************************************************
  DEFINE COAP RESOURCE CLASS FUNCTIONS
  ******************************************************************************/
 
-
+#ifdef ENABLE_COAP_SERVER
 // Add attribute to a resource
 STATIC mp_obj_t mod_coap_resource_add_attribute(mp_obj_t self_in, mp_obj_t name, mp_obj_t val) {
 
@@ -734,7 +740,7 @@ STATIC const mp_obj_type_t mod_coap_resource_type = {
     .name = MP_QSTR_CoapResource,
     .locals_dict = (mp_obj_t)&coap_resource_locals,
 };
-
+#endif
 
 /******************************************************************************
  DEFINE COAP CLASS FUNCTIONS
@@ -812,7 +818,9 @@ STATIC mp_obj_t mod_coap_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
         MP_STATE_PORT(coap_ptr) = gc_alloc(sizeof(mod_coap_obj_t), false);
         coap_obj_ptr = MP_STATE_PORT(coap_ptr);
         coap_obj_ptr->context = NULL;
+#ifdef ENABLE_COAP_SERVER
         coap_obj_ptr->resources = NULL;
+#endif
         coap_obj_ptr->socket = NULL;
         coap_obj_ptr->semphr = NULL;
 
@@ -843,7 +851,7 @@ STATIC mp_obj_t mod_coap_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
 
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_coap_init_obj, 1, mod_coap_init);
 
-
+#ifdef ENABLE_COAP_SERVER
 // Get the socket of the Coap
 STATIC mp_obj_t mod_coap_socket(void) {
 
@@ -956,11 +964,12 @@ STATIC mp_obj_t mod_coap_read(void) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_coap_read_obj, mod_coap_read);
-
+#endif
 
 STATIC const mp_map_elem_t mod_coap_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_coap) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                            (mp_obj_t)&mod_coap_init_obj },
+#ifdef ENABLE_COAP_SERVER
     { MP_OBJ_NEW_QSTR(MP_QSTR_socket),                          (mp_obj_t)&mod_coap_socket_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_add_resource),                    (mp_obj_t)&mod_coap_add_resource_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_remove_resource),                 (mp_obj_t)&mod_coap_remove_resource_obj },
@@ -980,7 +989,7 @@ STATIC const mp_map_elem_t mod_coap_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_MEDIATYPE_APP_EXI),               MP_OBJ_NEW_SMALL_INT(COAP_MEDIATYPE_APPLICATION_EXI) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MEDIATYPE_APP_JSON),              MP_OBJ_NEW_SMALL_INT(COAP_MEDIATYPE_APPLICATION_JSON) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MEDIATYPE_APP_CBOR),              MP_OBJ_NEW_SMALL_INT(COAP_MEDIATYPE_APPLICATION_CBOR) },
-
+#endif
 };
 
 STATIC MP_DEFINE_CONST_DICT(mod_coap_globals, mod_coap_globals_table);
