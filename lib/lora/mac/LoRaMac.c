@@ -2222,7 +2222,8 @@ LoRaMacStatus_t SendFrameOnChannel( uint8_t channel )
     McpsConfirm.Status = LORAMAC_EVENT_INFO_STATUS_ERROR;
     McpsConfirm.Datarate = LoRaMacParams.ChannelsDatarate;
     McpsConfirm.TxPower = txPower;
-
+    McpsConfirm.UpLinkFrequency = Radio.GetChannel();
+   
     // Store the time on air
     McpsConfirm.TxTimeOnAir = TxTimeOnAir;
     MlmeConfirm.TxTimeOnAir = TxTimeOnAir;

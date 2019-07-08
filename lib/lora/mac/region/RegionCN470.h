@@ -438,4 +438,8 @@ uint8_t RegionCN470ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t d
 
 /*! \} defgroup REGIONCN470 */
 
+bool RegionCN470ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr );
+LoRaMacStatus_t RegionCN470ChannelManualAdd( ChannelAddParams_t* channelAdd );
+bool RegionCN470ChannelsRemove( ChannelRemoveParams_t* channelRemove  );
+
 #endif // __REGION_CN470_H__

@@ -221,6 +221,8 @@ APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/region/RegionCommon.c \
 	mac/region/RegionEU868.c \
 	mac/region/RegionUS915.c \
+	mac/region/RegionCN470.c \
+	mac/region/RegionIN865.c \
 	system/delay.c \
 	system/gpio.c \
 	system/timer.c \
@@ -364,7 +366,7 @@ APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
 CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
-CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DBASE=0 -DPYBYTES=1 
+CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DREGION_CN470 -DREGION_IN865 -DBASE=0 -DPYBYTES=1 
 # Specify if this is base or Pybytes Firmware
 ifeq ($(VARIANT),BASE)
 CFLAGS += -DVARIANT=0

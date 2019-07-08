@@ -32,6 +32,7 @@ DRAM_ATTR const struct Radio_s Radio =
     SX1272GetStatus,
     SX1272SetModem,
     SX1272SetChannel,
+    SX1272GetChannel,
     SX1272IsChannelFree,
     SX1272Random,
     SX1272SetRxConfig,

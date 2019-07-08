@@ -30,7 +30,6 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #include "Region.h"
 
 
-
 // Setup regions
 #ifdef REGION_AS923
 #include "RegionAS923.h"
@@ -182,8 +181,11 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define CN470_NEXT_CHANNEL( )                      CN470_CASE { return RegionCN470NextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define CN470_CHANNEL_ADD( )                       CN470_CASE { return RegionCN470ChannelAdd( channelAdd ); }
 #define CN470_CHANNEL_REMOVE( )                    CN470_CASE { return RegionCN470ChannelsRemove( channelRemove ); }
+#define CN470_CHANNEL_MANUAL_ADD( )                CN470_CASE { return RegionCN470ChannelManualAdd( channelAdd ); }
+#define CN470_CHANNEL_MANUAL_REMOVE( )             CN470_CASE { return RegionCN470ChannelsRemove( channelRemove ); }
 #define CN470_SET_CONTINUOUS_WAVE( )               CN470_CASE { RegionCN470SetContinuousWave( continuousWave ); break; }
 #define CN470_APPLY_DR_OFFSET( )                   CN470_CASE { return RegionCN470ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
+#define CN470_FORCE_JOIN_DATARATE( )               CN470_CASE { return RegionCN470ForceJoinDataRate( joinDr, alternateDr ); }
 #else
 #define CN470_IS_ACTIVE( )
 #define CN470_GET_PHY_PARAM( )
@@ -206,8 +208,11 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define CN470_NEXT_CHANNEL( )
 #define CN470_CHANNEL_ADD( )
 #define CN470_CHANNEL_REMOVE( )
+#define CN470_CHANNEL_MANUAL_ADD( )
+#define CN470_CHANNEL_MANUAL_REMOVE( )
 #define CN470_SET_CONTINUOUS_WAVE( )
 #define CN470_APPLY_DR_OFFSET( )
+#define CN470_FORCE_JOIN_DATARATE( )
 #endif
 
 #ifdef REGION_CN779
@@ -452,8 +457,13 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define IN865_NEXT_CHANNEL( )                      IN865_CASE { return RegionIN865NextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define IN865_CHANNEL_ADD( )                       IN865_CASE { return RegionIN865ChannelAdd( channelAdd ); }
 #define IN865_CHANNEL_REMOVE( )                    IN865_CASE { return RegionIN865ChannelsRemove( channelRemove ); }
+#define IN865_CHANNEL_MANUAL_ADD( )                IN865_CASE { return RegionIN865ChannelManualAdd( channelAdd ); }
+#define IN865_CHANNEL_MANUAL_REMOVE( )             IN865_CASE { return RegionIN865ChannelsRemove( channelRemove ); }
 #define IN865_SET_CONTINUOUS_WAVE( )               IN865_CASE { RegionIN865SetContinuousWave( continuousWave ); break; }
 #define IN865_APPLY_DR_OFFSET( )                   IN865_CASE { return RegionIN865ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
+#define IN865_GET_CHANNELS( )                      IN865_CASE { return RegionIN865GetChannels( channels, size ); }
+#define IN865_GET_CHANNEL_MASK( )                  IN865_CASE { return RegionIN865GetChannelMask( channelmask, size ); }
+#define IN865_FORCE_JOIN_DATARATE( )               IN865_CASE { return RegionIN865ForceJoinDataRate( joinDr, alternateDr ); }
 #else
 #define IN865_IS_ACTIVE( )
 #define IN865_GET_PHY_PARAM( )
@@ -476,8 +486,13 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define IN865_NEXT_CHANNEL( )
 #define IN865_CHANNEL_ADD( )
 #define IN865_CHANNEL_REMOVE( )
+#define IN865_CHANNEL_MANUAL_ADD( )
+#define IN865_CHANNEL_MANUAL_REMOVE( )
 #define IN865_SET_CONTINUOUS_WAVE( )
 #define IN865_APPLY_DR_OFFSET( )
+#define IN865_GET_CHANNELS( )
+#define IN865_GET_CHANNEL_MASK( )
+#define IN865_FORCE_JOIN_DATARATE( )
 #endif
 
 #ifdef REGION_US915
@@ -1037,6 +1052,8 @@ LoRaMacStatus_t RegionChannelManualAdd( LoRaMacRegion_t region, ChannelAddParams
         AU915_CHANNEL_MANUAL_ADD( );
         EU868_CHANNEL_MANUAL_ADD( );
         US915_CHANNEL_MANUAL_ADD( );
+        CN470_CHANNEL_MANUAL_ADD( );
+        IN865_CHANNEL_MANUAL_ADD( );
         US915_HYBRID_CHANNEL_MANUAL_ADD( );
         default:
         {
@@ -1074,6 +1091,8 @@ bool RegionChannelsManualRemove( LoRaMacRegion_t region, ChannelRemoveParams_t* 
         AU915_CHANNEL_MANUAL_REMOVE( );
         EU868_CHANNEL_MANUAL_REMOVE( );
         US915_CHANNEL_MANUAL_REMOVE( );
+        CN470_CHANNEL_MANUAL_REMOVE( );
+        IN865_CHANNEL_MANUAL_REMOVE( );
         US915_HYBRID_CHANNEL_MANUAL_REMOVE( );
         default:
         {
@@ -1131,6 +1150,7 @@ bool RegionGetChannels( LoRaMacRegion_t region, ChannelParams_t** channels, uint
         AS923_GET_CHANNELS( );
         AU915_GET_CHANNELS( );
         EU868_GET_CHANNELS( );
+        IN865_GET_CHANNELS( );
         US915_GET_CHANNELS( );
         US915_HYBRID_GET_CHANNELS( );
         default:
@@ -1146,6 +1166,7 @@ bool RegionGetChannelMask(LoRaMacRegion_t region, uint16_t **channelmask, uint32
         AS923_GET_CHANNEL_MASK( );
         AU915_GET_CHANNEL_MASK( );
         EU868_GET_CHANNEL_MASK( );
+        IN865_GET_CHANNEL_MASK( );
         US915_GET_CHANNEL_MASK( );
         US915_HYBRID_GET_CHANNEL_MASK( );
         default:
@@ -1176,6 +1197,8 @@ bool RegionForceJoinDataRate( LoRaMacRegion_t region, int8_t joinDr, AlternateDr
         AU915_FORCE_JOIN_DATARATE( );
         EU868_FORCE_JOIN_DATARATE( );
         US915_FORCE_JOIN_DATARATE( );
+        CN470_FORCE_JOIN_DATARATE( );
+        IN865_FORCE_JOIN_DATARATE( );
         US915_HYBRID_FORCE_JOIN_DATARATE( );
         default:
         {

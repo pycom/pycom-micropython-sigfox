@@ -23,7 +23,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #include <math.h>
 
 #include "board.h"
-#include "LoRaMac.h"
+#include "lora/mac/LoRaMac.h"
 #include "esp_attr.h"
 
 #include "utilities.h"
@@ -740,7 +740,6 @@ bool RegionCN470NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel,
 
         // Update bands Time OFF
         nextTxDelay = RegionCommonUpdateBandTimeOff( nextChanParams->Joined, nextChanParams->DutyCycleEnabled, Bands, CN470_MAX_NB_BANDS );
-
         // Search how many channels are enabled
         nbEnabledChannels = CountNbOfEnabledChannels( nextChanParams->Datarate,
                                                       ChannelsMask, Channels,
@@ -796,6 +795,56 @@ void RegionCN470SetContinuousWave( ContinuousWaveParams_t* continuousWave )
     Radio.SetTxContinuousWave( frequency, phyTxPower, continuousWave->Timeout );
 }
 
+LoRaMacStatus_t RegionCN470ChannelManualAdd( ChannelAddParams_t* channelAdd )
+{
+    uint8_t band = 0;
+    bool drInvalid = false;
+    bool freqInvalid = false;
+    uint8_t id = channelAdd->ChannelId;
+
+    if( id >= CN470_MAX_NB_CHANNELS )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
+    }
+
+    // Validate the datarate range for min: must be DR_0
+    if( channelAdd->NewChannel->DrRange.Fields.Min != DR_0 )
+    {
+        drInvalid = true;
+    }
+    // Validate the datarate range for max: must be <= TX_MAX_DATARATE
+    if( channelAdd->NewChannel->DrRange.Fields.Max > CN470_TX_MAX_DATARATE )
+    {
+        drInvalid = true;
+    }
+
+    // Check frequency
+    if( ( channelAdd->NewChannel->Frequency < 470000000 ) || ( channelAdd->NewChannel->Frequency > 510000000 ) )
+    {
+        freqInvalid = true;
+    }
+
+    // Check status
+    if( ( drInvalid == true ) && ( freqInvalid == true ) )
+    {
+        return LORAMAC_STATUS_FREQ_AND_DR_INVALID;
+    }
+    if( drInvalid == true )
+    {
+        return LORAMAC_STATUS_DATARATE_INVALID;
+    }
+    if( freqInvalid == true )
+    {
+        return LORAMAC_STATUS_FREQUENCY_INVALID;
+    }
+
+    memcpy( &(Channels[id]), channelAdd->NewChannel, sizeof( Channels[id] ) );
+    Channels[id].Band = band;
+    ChannelsMask[ (id / 16) ] |= (1 << (id % 16));
+
+    return LORAMAC_STATUS_OK;
+}
+
 uint8_t RegionCN470ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t drOffset )
 {
     int8_t datarate = dr - drOffset;
@@ -805,4 +854,13 @@ uint8_t RegionCN470ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t d
         datarate = DR_0;
     }
     return datarate;
+}
+
+bool RegionCN470ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr )
+{
+    uint8_t DRToCounter[6] = { 48, 32, 24, 16, 8, 1 };
+    if (joinDr < sizeof(DRToCounter)) {
+        alternateDr->NbTrials = DRToCounter[joinDr];
+    }
+    return true;
 }

@@ -117,6 +117,14 @@ struct Radio_s
      * \param [IN] freq         Channel RF frequency
      */
     void    ( *SetChannel )( uint32_t freq );
+
+    /*!
+     * \brief Gets the channel frequency
+     *
+     * \param  Channel RF frequency
+     */
+    uint32_t    ( *GetChannel )( void );
+
     /*!
      * \brief Checks if the channel is free for the given time
      *
