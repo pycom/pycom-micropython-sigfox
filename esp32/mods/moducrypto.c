@@ -17,9 +17,9 @@
 #include "hwcrypto/aes.h"
 #include "hwcrypto/sha.h"
 #include "mpexception.h"
-#include "entropy.h"
-#include "pk.h"
-#include "ctr_drbg.h"
+#include "mbedtls/entropy.h"
+#include "mbedtls/pk.h"
+#include "mbedtls/ctr_drbg.h"
 
 /******************************************************************************
  DEFINE PRIVATE TYPES

@@ -25,7 +25,6 @@ APP_INC += -I$(BUILD)/genhdr
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include_priv
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/mbedtls/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/mbedtls/include/mbedtls
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
@@ -69,6 +68,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/gki/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include/coap
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/examples
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include/coap
 APP_INC += -I../lib/mp-readline
@@ -300,7 +300,6 @@ BOOT_SRC_C = $(addprefix bootloader/,\
 	gpio.c \
 	flash_qio_mode.c \
 	)
-
 
 SFX_OBJ =
 

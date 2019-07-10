@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Pycom Limited.
+ * Copyright (c) 2019, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -7,12 +7,15 @@
  * available at https://www.pycom.io/opensource/licensing
  */
 
+#ifdef ENABLE_COAP
+
 #include "py/mpconfig.h"
 #include "py/obj.h"
 #include "py/runtime.h"
 #include "py/gc.h"
 
 #include "coap.h"
+#include "coap_list.h"
 
 #include "modcoap.h"
 #include "modnetwork.h"
@@ -37,7 +40,6 @@
 /******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
-#ifdef ENABLE_COAP_SERVER
 typedef struct mod_coap_resource_obj_s {
     mp_obj_base_t base;
     coap_resource_t* coap_resource;
@@ -50,16 +52,15 @@ typedef struct mod_coap_resource_obj_s {
     uint8_t mediatype;
     bool etag;
 }mod_coap_resource_obj_t;
-#endif
 
 typedef struct mod_coap_obj_s {
     mp_obj_base_t base;
     coap_context_t* context;
     mod_network_socket_obj_t* socket;
-#ifdef ENABLE_COAP_SERVER
     mod_coap_resource_obj_t* resources;
-#endif
     SemaphoreHandle_t semphr;
+    mp_obj_t callback;
+    coap_list_t *optlist;
 }mod_coap_obj_t;
 
 
@@ -67,7 +68,6 @@ typedef struct mod_coap_obj_s {
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-#ifdef ENABLE_COAP_SERVER
 STATIC mod_coap_resource_obj_t* find_resource(coap_resource_t* resource);
 STATIC mod_coap_resource_obj_t* find_resource_by_key(coap_key_t key);
 STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype, uint8_t max_age, mp_obj_t value, bool etag);
@@ -107,22 +107,40 @@ STATIC void coap_resource_callback_delete(coap_context_t * context,
                                           str * token,
                                           coap_pdu_t * response);
 
-#endif
+STATIC void coap_response_handler(struct coap_context_t * context,
+                                    const coap_endpoint_t *local_interface,
+                                    const coap_address_t *remote,
+                                    coap_pdu_t *sent,
+                                    coap_pdu_t *received,
+                                    const coap_tid_t id);
+
+STATIC void coap_response_handler(struct coap_context_t * context,
+                                    const coap_endpoint_t *local_interface,
+                                    const coap_address_t *remote,
+                                    coap_pdu_t *sent,
+                                    coap_pdu_t *received,
+                                    const coap_tid_t id);
+
+STATIC int modcoap_order_opts(void *a, void *b);
+STATIC coap_pdu_t * modcoap_new_request(coap_context_t *ctx,
+                                        unsigned int m,
+                                        coap_list_t **options,
+                                        const char* token,
+                                        size_t token_length,
+                                        const char *data,
+                                        size_t length);
+STATIC coap_list_t * modcoap_new_option_node(unsigned short key, unsigned int length, unsigned char *data);
 /******************************************************************************
  DEFINE PRIVATE VARIABLES
  ******************************************************************************/
-#ifdef ENABLE_COAP_SERVER
 STATIC const mp_obj_type_t mod_coap_resource_type;
-#endif
 // Only 1 context is supported
 STATIC mod_coap_obj_t* coap_obj_ptr;
 STATIC bool initialized = false;
 
-
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
-#ifdef ENABLE_COAP_SERVER
 // Get the resource if exists
 STATIC mod_coap_resource_obj_t* find_resource(coap_resource_t* resource) {
 
@@ -192,7 +210,7 @@ STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype,
     resource->next = NULL;
 
     // uri parameter pointer will be destroyed, pass a pointer to a permanent location
-    resource->uri = gc_alloc(strlen(uri),false);
+    resource->uri = m_malloc(strlen(uri));
     memcpy(resource->uri, uri, strlen(uri));
     resource->coap_resource = coap_resource_init((const unsigned char* )resource->uri, strlen(uri), 0);
     if(resource->coap_resource != NULL) {
@@ -222,7 +240,7 @@ STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype,
         return resource;
     }
     else {
-        gc_free(resource->uri);
+        m_free(resource->uri);
         m_del_obj(mod_coap_resource_obj_t, resource);
         // Resource cannot be created
         return NULL;
@@ -263,13 +281,13 @@ STATIC void remove_resource_by_key(coap_key_t key) {
                 }
 
                 // Free the URI
-                gc_free(current->uri);
+                m_free(current->uri);
                 // Free the resource in coap's scope
                 coap_delete_resource(context->context, key);
                 // Free the element in MP scope
-                gc_free(current->value);
+                m_free(current->value);
                 // Free the resource itself
-                gc_free(current);
+                m_free(current);
 
                 return;
             }
@@ -304,7 +322,7 @@ STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t ne
 
     // Invalidate current data first
     resource->value_len = 0;
-    gc_free(resource->value);
+    m_free(resource->value);
 
     if (mp_obj_is_integer(new_value)) {
 
@@ -318,7 +336,7 @@ STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t ne
         }
 
         // Allocate memory for the new data
-        resource->value = gc_alloc(resource->value_len, false);
+        resource->value = m_malloc(resource->value_len);
         memcpy(resource->value, &value, sizeof(value));
 
     } else {
@@ -328,7 +346,7 @@ STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t ne
         resource->value_len = value_bufinfo.len;
 
         // Allocate memory for the new data
-        resource->value = gc_alloc(resource->value_len, false);
+        resource->value = m_malloc(resource->value_len);
         memcpy(resource->value, value_bufinfo.buf, resource->value_len);
     }
 }
@@ -638,13 +656,119 @@ STATIC void coap_resource_callback_delete(coap_context_t * context,
     // Reply with DELETED response
     response->hdr->code = COAP_RESPONSE_CODE(202);
 }
-#endif
+
+
+// Callback function for responses of requests
+STATIC void coap_response_handler(struct coap_context_t * context,
+                                    const coap_endpoint_t *local_interface,
+                                    const coap_address_t *remote,
+                                    coap_pdu_t *sent,
+                                    coap_pdu_t *received,
+                                    const coap_tid_t id)
+{
+
+    size_t len;
+    unsigned char *databuf;
+    int ret = coap_get_data(received, &len, &databuf);
+
+    if(ret == 1){
+
+        mp_obj_t args[5];
+        args[0] = mp_obj_new_int(received->hdr->code);
+        args[1] = mp_obj_new_int(received->hdr->id);
+        args[2] = mp_obj_new_int(received->hdr->type);
+        args[3] = mp_obj_new_bytes(received->hdr->token, received->hdr->token_length);
+        args[4] = mp_obj_new_bytes(databuf, len);
+
+        // Call the registered function, it must have 5 parameters:
+        mp_call_function_n_kw(coap_obj_ptr->callback, 5, 0, args);
+    }
+
+}
+
+// Helper function to order the options in a request as per delta encoding
+STATIC int modcoap_order_opts(void *a, void *b) {
+
+    coap_option *o1, *o2;
+
+    if (!a || !b) {
+        return a < b ? -1 : 1;
+    }
+
+    o1 = (coap_option *)(((coap_list_t *)a)->data);
+    o2 = (coap_option *)(((coap_list_t *)b)->data);
+
+    return (COAP_OPTION_KEY(*o1) < COAP_OPTION_KEY(*o2)) ? -1 : (COAP_OPTION_KEY(*o1) != COAP_OPTION_KEY(*o2));
+}
+
+// Helper function to create a new request message
+STATIC coap_pdu_t * modcoap_new_request
+(
+    coap_context_t *ctx,
+    unsigned int method,
+    coap_list_t **options,
+    const char* token,
+    size_t token_length,
+    const char *data,
+    size_t length
+)
+{
+    coap_list_t *opt;
+    // TODO: get the type of the PDU as a parameter
+    // TODO: calculate somehow the proper length
+    coap_pdu_t *pdu = coap_pdu_init(COAP_MESSAGE_CON, method, htons(++(ctx->message_id)), COAP_MAX_PDU_SIZE);
+
+    if(pdu == NULL){
+        return NULL;
+    }
+
+    pdu->hdr->token_length = token_length;
+    if (0 == coap_add_token(pdu, token_length, (const unsigned char*)token)) {
+        return NULL;
+    }
+
+    if (options) {
+        /* sort options for delta encoding */
+        LL_SORT((*options), modcoap_order_opts);
+
+        LL_FOREACH((*options), opt) {
+            coap_option *o = (coap_option *)(opt->data);
+            coap_add_option(pdu,
+                            COAP_OPTION_KEY(*o),
+                            COAP_OPTION_LENGTH(*o),
+                            COAP_OPTION_DATA(*o));
+        }
+    }
+
+    if (length) {
+      coap_add_data(pdu, length, (const unsigned char*)data);
+    }
+
+    return pdu;
+}
+
+// Helper function to create a new option for a request message
+STATIC coap_list_t * modcoap_new_option_node(unsigned short key, unsigned int length, unsigned char *data) {
+
+    coap_list_t *node = m_malloc(sizeof(coap_list_t) + sizeof(coap_option) + length);
+    if (node) {
+        coap_option *option;
+        option = (coap_option *)(node->data);
+        COAP_OPTION_KEY(*option) = key;
+        COAP_OPTION_LENGTH(*option) = length;
+        memcpy(COAP_OPTION_DATA(*option), data, length);
+    } else {
+        m_free(node);
+        node = NULL;
+    }
+
+    return node;
+}
 
 /******************************************************************************
  DEFINE COAP RESOURCE CLASS FUNCTIONS
  ******************************************************************************/
 
-#ifdef ENABLE_COAP_SERVER
 // Add attribute to a resource
 STATIC mp_obj_t mod_coap_resource_add_attribute(mp_obj_t self_in, mp_obj_t name, mp_obj_t val) {
 
@@ -740,7 +864,6 @@ STATIC const mp_obj_type_t mod_coap_resource_type = {
     .name = MP_QSTR_CoapResource,
     .locals_dict = (mp_obj_t)&coap_resource_locals,
 };
-#endif
 
 /******************************************************************************
  DEFINE COAP CLASS FUNCTIONS
@@ -813,14 +936,13 @@ STATIC const mp_arg_t mod_coap_init_args[] = {
 STATIC mp_obj_t mod_coap_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
     // The Coap module should be initialized only once
+    // Only 1 context is supported currently
     if(initialized == false) {
 
-        MP_STATE_PORT(coap_ptr) = gc_alloc(sizeof(mod_coap_obj_t), false);
+        MP_STATE_PORT(coap_ptr) = m_malloc(sizeof(mod_coap_obj_t));
         coap_obj_ptr = MP_STATE_PORT(coap_ptr);
         coap_obj_ptr->context = NULL;
-#ifdef ENABLE_COAP_SERVER
         coap_obj_ptr->resources = NULL;
-#endif
         coap_obj_ptr->socket = NULL;
         coap_obj_ptr->semphr = NULL;
 
@@ -851,7 +973,6 @@ STATIC mp_obj_t mod_coap_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
 
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_coap_init_obj, 1, mod_coap_init);
 
-#ifdef ENABLE_COAP_SERVER
 // Get the socket of the Coap
 STATIC mp_obj_t mod_coap_socket(void) {
 
@@ -964,17 +1085,251 @@ STATIC mp_obj_t mod_coap_read(void) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_coap_read_obj, mod_coap_read);
-#endif
+
+// Register the user's callback handler
+STATIC mp_obj_t mod_coap_register_response_handler(mp_obj_t callback) {
+
+    // The Coap module should have been already initialized
+    if(initialized == true) {
+        // Take the context's semaphore to avoid concurrent access, this will guard the handler functions too
+        xSemaphoreTake(coap_obj_ptr->semphr, portMAX_DELAY);
+        // Register the user's callback handler
+        coap_obj_ptr->callback = callback;
+        coap_register_response_handler(coap_obj_ptr->context, coap_response_handler);
+        xSemaphoreGive(coap_obj_ptr->semphr);
+    }
+    else {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Coap module has not been initialized!"));
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_coap_register_response_handler_obj, mod_coap_register_response_handler);
+
+STATIC const mp_arg_t mod_coap_send_request_args[] = {
+        { MP_QSTR_uri_host,                 MP_ARG_REQUIRED | MP_ARG_OBJ, },
+        { MP_QSTR_method,                   MP_ARG_REQUIRED | MP_ARG_INT, },
+        { MP_QSTR_uri_port,                 MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = MODCOAP_DEFAULT_PORT}},
+        { MP_QSTR_uri_path,                 MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
+        { MP_QSTR_content_format,           MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = -1}},
+        { MP_QSTR_payload,                  MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
+        { MP_QSTR_token,                    MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
+        { MP_QSTR_include_options,          MP_ARG_KW_ONLY  | MP_ARG_BOOL,{.u_bool = true}}
+};
+
+
+// Call coap_read
+STATIC mp_obj_t mod_coap_send_request(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+
+    // The Coap module should have been already initialized
+    if(initialized == true) {
+
+        mp_arg_val_t args[MP_ARRAY_SIZE(mod_coap_send_request_args)];
+        mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_coap_send_request_args, args);
+
+        coap_uri_t coap_uri;
+
+        // Get the destination address
+        coap_uri.host.length = 0;
+        coap_uri.host.s = (unsigned char*)mp_obj_str_get_data(args[0].u_obj, &coap_uri.host.length);
+
+        // Get the method
+        mp_int_t method;
+        switch (args[1].u_int){
+            case MODCOAP_REQUEST_GET:
+                method = COAP_REQUEST_GET;
+                break;
+            case MODCOAP_REQUEST_PUT:
+                method = COAP_REQUEST_PUT;
+                break;
+            case MODCOAP_REQUEST_POST:
+                method = COAP_REQUEST_POST;
+                break;
+            case MODCOAP_REQUEST_DELETE:
+                method = COAP_REQUEST_DELETE;
+                break;
+            default:
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid \"method\" parameter value!"));
+        }
+
+
+        // Get the port
+        coap_uri.port = args[2].u_int;
+
+        // Get the path
+        coap_uri.path.s = NULL;
+        coap_uri.path.length = 0;
+        if(args[3].u_obj != MP_OBJ_NULL) {
+             coap_uri.path.s = (unsigned char*)mp_obj_str_get_data(args[3].u_obj, &coap_uri.path.length);
+        }
+
+        // Get the content format
+       mp_int_t content_format = args[4].u_int;
+       switch (content_format){
+           case -1:
+           case COAP_MEDIATYPE_TEXT_PLAIN:
+           case COAP_MEDIATYPE_APPLICATION_CBOR:
+           case COAP_MEDIATYPE_APPLICATION_EXI:
+           case COAP_MEDIATYPE_APPLICATION_JSON:
+           case COAP_MEDIATYPE_APPLICATION_LINK_FORMAT:
+           case COAP_MEDIATYPE_APPLICATION_OCTET_STREAM:
+           case COAP_MEDIATYPE_APPLICATION_RDF_XML:
+           case COAP_MEDIATYPE_APPLICATION_XML:
+               break;
+           default:
+               nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Invalid \"content_format\" parameter value!"));
+       }
+
+        // Get the payload
+        const char* payload = NULL;
+        size_t payload_length = 0;
+        if(args[5].u_obj != MP_OBJ_NULL) {
+            payload = mp_obj_str_get_data(args[5].u_obj, &payload_length);
+        }
+
+        // Get the token
+        const char* token = NULL;
+        size_t token_length = 0;
+        if(args[6].u_obj != MP_OBJ_NULL) {
+            token = mp_obj_str_get_data(args[6].u_obj, &token_length);
+        }
+
+        // Get the include_options parameter
+        bool include_options = args[7].u_bool;
+
+        mp_obj_t address = mp_obj_new_list(0, NULL);
+        // Get the address as a string
+        mp_obj_list_append(address, mp_obj_new_str((const char*)coap_uri.host.s, coap_uri.host.length));
+
+        // Get the port as a number
+        mp_obj_list_append(address, mp_obj_new_int(coap_uri.port));
+
+        // Prepare the destination address where to send the request
+        coap_address_t dst_address;
+        coap_address_init(&dst_address);
+        dst_address.addr.sin.sin_family = AF_INET;
+        // The address will be in Big Endian order
+        uint16_t port  = netutils_parse_inet_addr(address, (uint8_t*)&dst_address.addr.sin.sin_addr.s_addr, NETUTILS_BIG);
+        dst_address.addr.sin.sin_port = htons(port);
+
+        // Take the context's semaphore to avoid concurrent access
+        xSemaphoreTake(coap_obj_ptr->semphr, portMAX_DELAY);
+
+        if(include_options == true) {
+
+            // Put the URI-HOST as an option
+            coap_list_t * node = modcoap_new_option_node(COAP_OPTION_URI_HOST, coap_uri.host.length, coap_uri.host.s);
+            if(node != NULL) {
+                LL_APPEND(coap_obj_ptr->optlist, node);
+            }
+
+            // Put the URI-PORT as an option
+            unsigned char portbuf[2];
+            // Store it in Big Endian
+            portbuf[0] = (coap_uri.port >> 8) & 0xFF;
+            portbuf[1] = coap_uri.port & 0xFF;
+            node = modcoap_new_option_node(COAP_OPTION_URI_PORT, sizeof(portbuf), portbuf);
+            if(node != NULL) {
+                LL_APPEND(coap_obj_ptr->optlist, node);
+            }
+
+            // Split up the URI-PATH into more segments if needed
+            //TODO: allocate the proper length
+            size_t length = 300;
+            unsigned char* path = m_malloc(length);
+            int segments = coap_split_path(coap_uri.path.s, coap_uri.path.length, path, &length);
+
+            // Insert the segments as separate URI-Path options
+            while (segments--) {
+                node = modcoap_new_option_node(COAP_OPTION_URI_PATH, COAP_OPT_LENGTH(path), COAP_OPT_VALUE(path));
+                if(node != NULL) {
+                    LL_APPEND(coap_obj_ptr->optlist, node);
+                }
+
+                path += COAP_OPT_SIZE(path);
+            }
+
+
+            m_free(path);
+
+            // Put Content Format option if given
+            if(content_format != -1) {
+                unsigned char content_format_buf[2];
+                // Store it in Big Endian
+                content_format_buf[0] = (content_format >> 8) & 0xFF;
+                content_format_buf[1] = content_format & 0xFF;
+                node = modcoap_new_option_node(COAP_OPTION_CONTENT_FORMAT, sizeof(content_format_buf), content_format_buf);
+                if(node != NULL) {
+                    LL_APPEND(coap_obj_ptr->optlist, node);
+                }
+            }
+        }
+
+        // Create new request
+        coap_pdu_t *pdu = modcoap_new_request(coap_obj_ptr->context, method, &coap_obj_ptr->optlist, token, token_length, payload, payload_length);
+
+        // Clean up optlist, they are already part of the PDU if it has been created
+        struct coap_list_t *next;
+        while(coap_obj_ptr->optlist != NULL) {
+            next = coap_obj_ptr->optlist->next;
+            coap_obj_ptr->optlist->next = NULL;
+            m_free(coap_obj_ptr->optlist);
+            coap_obj_ptr->optlist = next;
+        }
+
+        if (pdu == NULL) {
+            xSemaphoreGive(coap_obj_ptr->semphr);
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Cannot create request"));
+        }
+
+        // Send out the request
+        // TODO: currently always confirmed message is sent out
+        coap_tid_t ret;
+        if (pdu->hdr->type == COAP_MESSAGE_CON) {
+            ret = coap_send_confirmed(coap_obj_ptr->context, coap_obj_ptr->context->endpoint, &dst_address, pdu);
+        }
+        else {
+            ret = coap_send(coap_obj_ptr->context, coap_obj_ptr->context->endpoint, &dst_address, pdu);
+        }
+
+        // Sending the packet failed
+        if(ret == COAP_INVALID_TID) {
+            xSemaphoreGive(coap_obj_ptr->semphr);
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Sending message failed!"));
+        }
+
+        // Fetch the message ID to be used from MicroPython to match the request with response
+        mp_obj_t id = mp_obj_new_int(pdu->hdr->id);
+
+        //TODO: check if this is needed once not-confirmed message support is added
+//        if (pdu->hdr->type != COAP_MESSAGE_CON) {
+//          coap_delete_pdu(pdu);
+//        }
+
+        xSemaphoreGive(coap_obj_ptr->semphr);
+
+        return id;
+    }
+    else {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Coap module has not been initialized!"));
+        // Just to fulfill the compiler's needs
+        return mp_const_none;
+    }
+}
+
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_coap_send_request_obj, 2, mod_coap_send_request);
+
 
 STATIC const mp_map_elem_t mod_coap_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_coap) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                            (mp_obj_t)&mod_coap_init_obj },
-#ifdef ENABLE_COAP_SERVER
     { MP_OBJ_NEW_QSTR(MP_QSTR_socket),                          (mp_obj_t)&mod_coap_socket_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_add_resource),                    (mp_obj_t)&mod_coap_add_resource_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_remove_resource),                 (mp_obj_t)&mod_coap_remove_resource_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_get_resource),                    (mp_obj_t)&mod_coap_get_resource_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_read),                            (mp_obj_t)&mod_coap_read_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_register_response_handler),       (mp_obj_t)&mod_coap_register_response_handler_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_send_request),                    (mp_obj_t)&mod_coap_send_request_obj },
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_REQUEST_GET),                     MP_OBJ_NEW_SMALL_INT(MODCOAP_REQUEST_GET) },
@@ -989,7 +1344,6 @@ STATIC const mp_map_elem_t mod_coap_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_MEDIATYPE_APP_EXI),               MP_OBJ_NEW_SMALL_INT(COAP_MEDIATYPE_APPLICATION_EXI) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MEDIATYPE_APP_JSON),              MP_OBJ_NEW_SMALL_INT(COAP_MEDIATYPE_APPLICATION_JSON) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MEDIATYPE_APP_CBOR),              MP_OBJ_NEW_SMALL_INT(COAP_MEDIATYPE_APPLICATION_CBOR) },
-#endif
 };
 
 STATIC MP_DEFINE_CONST_DICT(mod_coap_globals, mod_coap_globals_table);
@@ -999,3 +1353,4 @@ const mp_obj_module_t mod_coap = {
     .globals = (mp_obj_dict_t*)&mod_coap_globals,
 };
 
+#endif /* ENABLE_COAP */
