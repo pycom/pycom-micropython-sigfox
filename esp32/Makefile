@@ -41,7 +41,7 @@ COPY_IDF_LIB ?= 0
 LTE_LOG_BUFF ?= 0
 
 # by default openthread over LoRa is enabled
-OPENTHREAD ?= on
+OPENTHREAD = off
 
 # by default Secure Boot and Flash Encryption are disabled
 SECURE ?= off
