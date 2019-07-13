@@ -131,6 +131,162 @@ STATIC char *updater_read_file (const char *file_path, vstr_t *vstr) {
     return vstr->buf;
 }
 
+extern bool updater_write_encrypt (uint8_t *buf, uint32_t len);
+static uint8_t buf[SPI_FLASH_SEC_SIZE];
+#define IMG_UPDATE1_OFFSET_OLD 0x1a0000
+extern const void *bootloader_mmap(uint32_t src_addr, uint32_t size);
+extern void bootloader_munmap(const void *mapping);
+
+
+void update_to_factory_partition(void) {
+
+    esp_image_header_t image;
+    uint32_t checksum_word = 0xEF;
+    esp_image_segment_header_t segments[ESP_IMAGE_MAX_SEGMENTS];
+    uint32_t segment_data[ESP_IMAGE_MAX_SEGMENTS];
+
+
+    printf("update_to_factory_partition 1\n");
+
+    printf("update_to_factory_partition 2\n");
+
+    updater_data.size = (1536*1024);
+    updater_data.offset = IMG_FACTORY_OFFSET;
+    updater_data.offset_start_upd = updater_data.offset;
+    boot_info.size = 0;
+    updater_data.current_chunk = 0;
+
+    // erase the first 2 sectors
+   if (ESP_OK != spi_flash_erase_sector(updater_data.offset / SPI_FLASH_SEC_SIZE)) {
+       ESP_LOGE(TAG, "Erasing first sector failed!\n");
+   }
+//   if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
+//       ESP_LOGE(TAG, "Erasing second sector failed!\n");
+//   }
+
+   printf("update_to_factory_partition 3\n");
+
+
+   uint32_t bytes_read = 0;
+
+   while(updater_data.size != bytes_read){
+       //printf("update_to_factory_partition 4\n");
+
+       updater_spi_flash_read(IMG_UPDATE1_OFFSET_OLD+bytes_read, buf, SPI_FLASH_SEC_SIZE, true);
+       bytes_read += SPI_FLASH_SEC_SIZE;
+       if(false == updater_write_encrypt(buf, SPI_FLASH_SEC_SIZE)){
+           printf("update_to_factory_partition, updater_write returned FALSE\n");
+       }
+   }
+
+   printf("update_to_factory_partition, bytes_read: %u\n", bytes_read);
+
+   updater_finish();
+
+   printf("update_to_factory_partition 7\n");
+
+   updater_spi_flash_read(IMG_FACTORY_OFFSET, &image, sizeof(esp_image_header_t), true);
+
+    uint32_t next_addr = IMG_FACTORY_OFFSET + sizeof(esp_image_header_t);
+    for(int i = 0; i < image.segment_count; i++) {
+      esp_image_segment_header_t *header = &segments[i];
+
+      updater_spi_flash_read(next_addr, header, sizeof(esp_image_segment_header_t), true);
+      const uint32_t *data = (const uint32_t *)bootloader_mmap(next_addr+sizeof(esp_image_segment_header_t), header->data_len);
+      for (int i = 0; i < header->data_len; i += 4) {
+          int w_i = i/4; // Word index
+          uint32_t w = data[w_i];
+          checksum_word ^= w;
+      }
+
+      bootloader_munmap(data);
+
+      next_addr += sizeof(esp_image_segment_header_t);
+      segment_data[i] = next_addr;
+      next_addr += header->data_len;
+    }
+
+    //uint32_t unpadded_length = 1536*1024;
+    uint32_t unpadded_length  = next_addr - IMG_FACTORY_OFFSET;
+    uint32_t length = unpadded_length + 1; // Add a byte for the checksum
+    length = (length + 15) & ~15; // Pad to next full 16 byte block
+    printf("length: %u\n", length);
+    // Verify checksum
+    uint8_t buf[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    updater_spi_flash_read(IMG_FACTORY_OFFSET + unpadded_length, buf, length - unpadded_length, true);
+
+    printf("length - unpadded_length - 1: %u\n", length - unpadded_length - 1);
+    uint8_t calc = buf[length - unpadded_length - 1];
+    printf("calc: 0x%X\n", calc);
+    printf("checksum_word: 0x%X\n", checksum_word);
+    uint8_t checksum = (checksum_word >> 24)
+      ^ (checksum_word >> 16)
+      ^ (checksum_word >> 8)
+      ^ (checksum_word >> 0);
+    printf("checksum of FACTORY: 0x%X\n", checksum);
+
+    printf("Writing new checksum...\n");
+    buf[length - unpadded_length - 1] = checksum;
+    if(ESP_OK != updater_spi_flash_write(IMG_FACTORY_OFFSET + unpadded_length, buf, length - unpadded_length, true)) {
+        printf("Writing new checksum failed...'\n");
+    }
+
+    printf("Reading new value...\n");
+    uint8_t buf3[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    updater_spi_flash_read(IMG_FACTORY_OFFSET + unpadded_length, buf3, length - unpadded_length, true);
+    printf("length - unpadded_length - 1: %u\n", length - unpadded_length - 1);
+    calc = buf3[length - unpadded_length - 1];
+    printf("calc: 0x%X\n", calc);
+    printf("-----------------\n");
+
+
+
+    /*--------------------------------------------------------------------*/
+
+    checksum_word = 0xEF;
+    updater_spi_flash_read(IMG_UPDATE1_OFFSET_OLD, &image, sizeof(esp_image_header_t), true);
+
+    next_addr = IMG_UPDATE1_OFFSET_OLD + sizeof(esp_image_header_t);
+    for(int i = 0; i < image.segment_count; i++) {
+        esp_image_segment_header_t *header = &segments[i];
+
+        updater_spi_flash_read(next_addr, header, sizeof(esp_image_segment_header_t), true);
+        const uint32_t *data = (const uint32_t *)bootloader_mmap(next_addr+sizeof(esp_image_segment_header_t), header->data_len);
+        for (int i = 0; i < header->data_len; i += 4) {
+            int w_i = i/4; // Word index
+            uint32_t w = data[w_i];
+            checksum_word ^= w;
+        }
+
+        bootloader_munmap(data);
+
+        next_addr += sizeof(esp_image_segment_header_t);
+        segment_data[i] = next_addr;
+        next_addr += header->data_len;
+    }
+
+    //unpadded_length = 1536*1024;
+    unpadded_length  = next_addr - IMG_UPDATE1_OFFSET_OLD;
+    length = unpadded_length + 1; // Add a byte for the checksum
+    length = (length + 15) & ~15; // Pad to next full 16 byte block
+    printf("length: %u\n", length);
+
+    // Verify checksum
+    uint8_t buf2[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    updater_spi_flash_read(IMG_UPDATE1_OFFSET_OLD + unpadded_length, buf2, length - unpadded_length, true);
+
+    printf("length - unpadded_length - 1: %u\n", length - unpadded_length - 1);
+    calc = buf2[length - unpadded_length - 1];
+    printf("calc: 0x%X\n", calc);
+    printf("checksum_word: 0x%X\n", checksum_word);
+    checksum = (checksum_word >> 24)
+        ^ (checksum_word >> 16)
+        ^ (checksum_word >> 8)
+        ^ (checksum_word >> 0);
+    printf("checksum of OTA_0: 0x%X\n", checksum);
+}
+
+
 bool updater_start (void) {
 
     esp_err_t ret;
@@ -221,6 +377,31 @@ bool updater_write (uint8_t *buf, uint32_t len) {
     // the actual writing into flash, not-encrypted,
     // because it already came encrypted from OTA server
     if (ESP_OK != updater_spi_flash_write(updater_data.offset, (void *)buf, len, false)) {
+        ESP_LOGE(TAG, "SPI flash write failed\n");
+        return false;
+    }
+
+    updater_data.offset += len;
+    updater_data.current_chunk += len;
+    boot_info.size += len;
+
+    if (updater_data.current_chunk >= SPI_FLASH_SEC_SIZE) {
+        updater_data.current_chunk -= SPI_FLASH_SEC_SIZE;
+        // erase the next sector
+        if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
+            ESP_LOGE(TAG, "Erasing next sector failed!\n");
+            return false;
+        }
+    }
+//    sl_LockObjUnlock (&wlan_LockObj);
+    return true;
+}
+
+bool updater_write_encrypt (uint8_t *buf, uint32_t len) {
+
+    // the actual writing into flash, not-encrypted,
+    // because it already came encrypted from OTA server
+    if (ESP_OK != updater_spi_flash_write(updater_data.offset, (void *)buf, len, true)) {
         ESP_LOGE(TAG, "SPI flash write failed\n");
         return false;
     }
