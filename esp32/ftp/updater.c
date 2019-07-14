@@ -206,84 +206,40 @@ void update_to_factory_partition(void) {
       next_addr += header->data_len;
     }
 
-    //uint32_t unpadded_length = 1536*1024;
     uint32_t unpadded_length  = next_addr - IMG_FACTORY_OFFSET;
     uint32_t length = unpadded_length + 1; // Add a byte for the checksum
     length = (length + 15) & ~15; // Pad to next full 16 byte block
-    printf("length: %u\n", length);
-    // Verify checksum
-    uint8_t buf[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    updater_spi_flash_read(IMG_FACTORY_OFFSET + unpadded_length, buf, length - unpadded_length, true);
 
-    printf("length - unpadded_length - 1: %u\n", length - unpadded_length - 1);
-    uint8_t calc = buf[length - unpadded_length - 1];
-    printf("calc: 0x%X\n", calc);
-    printf("checksum_word: 0x%X\n", checksum_word);
     uint8_t checksum = (checksum_word >> 24)
       ^ (checksum_word >> 16)
       ^ (checksum_word >> 8)
       ^ (checksum_word >> 0);
-    printf("checksum of FACTORY: 0x%X\n", checksum);
 
-    printf("Writing new checksum...\n");
-    buf[length - unpadded_length - 1] = checksum;
-    if(ESP_OK != updater_spi_flash_write(IMG_FACTORY_OFFSET + unpadded_length, buf, length - unpadded_length, true)) {
+    uint8_t tmp[SPI_FLASH_SEC_SIZE];
+
+    // Checksum is at this location
+    size_t addr_of_checksum = IMG_FACTORY_OFFSET + unpadded_length +  (length - unpadded_length - 1);
+    uint32_t sector_num = addr_of_checksum / SPI_FLASH_SEC_SIZE;
+    uint32_t checksum_offset = addr_of_checksum % SPI_FLASH_SEC_SIZE;
+
+    // Read the sector where the checksum is located
+    if (ESP_OK != updater_spi_flash_read(sector_num*SPI_FLASH_SEC_SIZE, &tmp[0], SPI_FLASH_SEC_SIZE, true)) {
+        printf("Failed reading flash...\n");
+    }
+
+    // Erase the sector where the checksum is located
+    if (ESP_OK != spi_flash_erase_sector(sector_num)) {
+        printf("Erasing sector failed\n");
+    }
+
+    // Update the sector with the correct checksum
+    tmp[checksum_offset] = checksum;
+
+    // Write back the sector where the checksum is located
+    if(ESP_OK != updater_spi_flash_write(sector_num*SPI_FLASH_SEC_SIZE, (void*)&tmp[0], SPI_FLASH_SEC_SIZE, true)) {
         printf("Writing new checksum failed...'\n");
     }
 
-    printf("Reading new value...\n");
-    uint8_t buf3[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    updater_spi_flash_read(IMG_FACTORY_OFFSET + unpadded_length, buf3, length - unpadded_length, true);
-    printf("length - unpadded_length - 1: %u\n", length - unpadded_length - 1);
-    calc = buf3[length - unpadded_length - 1];
-    printf("calc: 0x%X\n", calc);
-    printf("-----------------\n");
-
-
-
-    /*--------------------------------------------------------------------*/
-
-    checksum_word = 0xEF;
-    updater_spi_flash_read(IMG_UPDATE1_OFFSET_OLD, &image, sizeof(esp_image_header_t), true);
-
-    next_addr = IMG_UPDATE1_OFFSET_OLD + sizeof(esp_image_header_t);
-    for(int i = 0; i < image.segment_count; i++) {
-        esp_image_segment_header_t *header = &segments[i];
-
-        updater_spi_flash_read(next_addr, header, sizeof(esp_image_segment_header_t), true);
-        const uint32_t *data = (const uint32_t *)bootloader_mmap(next_addr+sizeof(esp_image_segment_header_t), header->data_len);
-        for (int i = 0; i < header->data_len; i += 4) {
-            int w_i = i/4; // Word index
-            uint32_t w = data[w_i];
-            checksum_word ^= w;
-        }
-
-        bootloader_munmap(data);
-
-        next_addr += sizeof(esp_image_segment_header_t);
-        segment_data[i] = next_addr;
-        next_addr += header->data_len;
-    }
-
-    //unpadded_length = 1536*1024;
-    unpadded_length  = next_addr - IMG_UPDATE1_OFFSET_OLD;
-    length = unpadded_length + 1; // Add a byte for the checksum
-    length = (length + 15) & ~15; // Pad to next full 16 byte block
-    printf("length: %u\n", length);
-
-    // Verify checksum
-    uint8_t buf2[16] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    updater_spi_flash_read(IMG_UPDATE1_OFFSET_OLD + unpadded_length, buf2, length - unpadded_length, true);
-
-    printf("length - unpadded_length - 1: %u\n", length - unpadded_length - 1);
-    calc = buf2[length - unpadded_length - 1];
-    printf("calc: 0x%X\n", calc);
-    printf("checksum_word: 0x%X\n", checksum_word);
-    checksum = (checksum_word >> 24)
-        ^ (checksum_word >> 16)
-        ^ (checksum_word >> 8)
-        ^ (checksum_word >> 0);
-    printf("checksum of OTA_0: 0x%X\n", checksum);
 }
 
 
