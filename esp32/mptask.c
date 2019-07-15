@@ -502,7 +502,6 @@ STATIC void mptask_init_sflash_filesystem_littlefs(void) {
     // Mount the file system if exists
     if(LFS_ERR_OK != lfs_mount(littlefsptr, &lfscfg))
     {
-        printf("----------------Creating the files system-------------------\n");
         // File system does not exist, create it and mount
         if(LFS_ERR_OK == lfs_format(littlefsptr, &lfscfg))
         {
@@ -556,6 +555,9 @@ STATIC void mptask_init_sflash_filesystem_littlefs(void) {
         {
             __fatal_error("failed to create main.py");
         }
+
+        // Save the time of creation
+        littlefs_update_timestamp(littlefsptr, "/main.py");
     }
 
     // create empty boot.py if does not exist
@@ -568,12 +570,24 @@ STATIC void mptask_init_sflash_filesystem_littlefs(void) {
         {
             __fatal_error("failed to create boot.py");
         }
+
+        // Save the time of creation
+        littlefs_update_timestamp(littlefsptr, "/boot.py");
     }
 
     // create /flash/sys, /flash/lib and /flash/cert if they don't exist
-    lfs_mkdir(littlefsptr,"/sys");
-    lfs_mkdir(littlefsptr,"/lib");
-    lfs_mkdir(littlefsptr,"/cert");
+    if(LFS_ERR_OK == lfs_mkdir(littlefsptr,"/sys")) {
+        // Save the time of creation
+        littlefs_update_timestamp(littlefsptr, "/sys");
+    }
+    if(LFS_ERR_OK == lfs_mkdir(littlefsptr,"/lib")) {
+        // Save the time of creation
+        littlefs_update_timestamp(littlefsptr, "/lib");
+    }
+    if(LFS_ERR_OK == lfs_mkdir(littlefsptr,"/cert")) {
+        // Save the time of creation
+        littlefs_update_timestamp(littlefsptr, "/cert");
+    }
 
     xSemaphoreGive(vfs_littlefs->fs.littlefs.mutex);
 }

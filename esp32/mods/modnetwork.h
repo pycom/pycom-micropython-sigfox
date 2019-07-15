@@ -83,6 +83,8 @@ typedef struct _mod_network_nic_type_t {
 
     // Interface status
     bool (*inf_up)(void);
+    // Bring Inf_up
+    void (*set_inf_up)(void);
 } mod_network_nic_type_t;
 
 typedef struct _mod_network_socket_base_t {

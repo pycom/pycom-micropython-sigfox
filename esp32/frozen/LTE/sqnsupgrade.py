@@ -900,7 +900,7 @@ class sqnsupgrade:
         print('Preparing modem for upgrade...')
         if not retry and ffh_mode:
             success = False
-            if self.__check_br(verbose=verbose, debug=debug):
+            if self.__check_br(br_only=True, verbose=verbose, debug=debug):
                 success = self.__run(bootrom=True, resume=resume, switch_ffh=True, direct=False, debug=debug, pkgdebug=pkgdebug, verbose=verbose)
                 time.sleep(1)
             else:

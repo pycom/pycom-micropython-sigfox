@@ -47,6 +47,7 @@
 #include "mpexception.h"
 #include "serverstask.h"
 #include "modusocket.h"
+#include "modcoap.h"
 
 #include "lwip/sockets.h"
 
@@ -87,6 +88,22 @@ void mod_network_deregister_nic(mp_obj_t nic) {
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
         if (MP_STATE_PORT(mod_network_nic_list).items[i] == nic) {
             mp_obj_list_remove(&MP_STATE_PORT(mod_network_nic_list), nic);
+#if defined(GPY) || defined(FIPY)
+            for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++)
+            {
+                mp_obj_t nic_rem = MP_STATE_PORT(mod_network_nic_list).items[i];
+                if(mp_obj_get_type(nic_rem) == (mp_obj_type_t *)&mod_network_nic_type_wlan)
+                {
+                    mod_network_nic_type_wlan.set_inf_up();
+                }
+                else if (mp_obj_get_type(nic_rem) == (mp_obj_type_t *)&mod_network_nic_type_lte)
+                {
+                    if (mod_network_nic_type_lte.set_inf_up != NULL) {
+                        mod_network_nic_type_lte.set_inf_up();
+                    }
+                }
+            }
+#endif
         }
     }
 }
@@ -225,6 +242,9 @@ STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
 #endif
     { MP_OBJ_NEW_QSTR(MP_QSTR_Bluetooth),           (mp_obj_t)&mod_network_nic_type_bt },
     { MP_OBJ_NEW_QSTR(MP_QSTR_Server),              (mp_obj_t)&network_server_type },
+#if defined (ENABLE_COAP)
+    { MP_OBJ_NEW_QSTR(MP_QSTR_Coap),                (mp_obj_t)&mod_coap },
+#endif
 };
 
 STATIC MP_DEFINE_CONST_DICT(mp_module_network_globals, mp_module_network_globals_table);

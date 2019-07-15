@@ -31,12 +31,10 @@ node {
                 board_variant = board + "_" + variant
                 open_thread = 'off'
                 // Enable openthread in case of FIPY/LoPy4/LoPy BASE builds
-                if (variant == 'BASE')
+                if (board == 'FiPy' || board == 'LoPy4' || board == 'LoPy')
                 {
-                    if (board == 'FiPy' || board == 'LoPy4' || board == 'LoPy')
-                    {
-                        open_thread = 'on'
-                    }
+                    // openthread is currently disabled
+                    open_thread = 'off'
                 }
                 parallelSteps[board_variant] = boardBuild(board, variant, open_thread)
             }

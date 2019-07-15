@@ -375,6 +375,13 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
         }
     }
 
+    // Get the size of the RX buffer
+    int rx_buffer_size = args[6].u_int;
+    // Check is needed because return value of uart_driver_install is not checked
+    if(!(rx_buffer_size > UART_FIFO_LEN)) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid RX buffer size, minimum is 128"));
+    }
+
     if (self->config.baud_rate > 0) {
         // uninstall the driver
         uart_driver_delete(self->uart_id);
@@ -427,7 +434,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     uart_param_config(self->uart_id, &self->config);
 
     // install the UART driver
-    uart_driver_install(self->uart_id, MACHUART_RX_BUFFER_LEN, 0, 0, NULL, 0, UARTRxCallback);
+    uart_driver_install(self->uart_id, rx_buffer_size, 0, 0, NULL, 0, UARTRxCallback);
 
     // disable the delay between transfers
     self->uart_reg->idle_conf.tx_idle_num = 0;
@@ -452,6 +459,7 @@ STATIC const mp_arg_t mach_uart_init_args[] = {
     { MP_QSTR_stop,                            MP_ARG_OBJ,  {.u_obj = mp_const_none} },
     { MP_QSTR_pins,           MP_ARG_KW_ONLY | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_timeout_chars,  MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = 2} },
+    { MP_QSTR_rx_buffer_size, MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = MACHUART_RX_BUFFER_LEN} }
 };
 STATIC mp_obj_t mach_uart_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args

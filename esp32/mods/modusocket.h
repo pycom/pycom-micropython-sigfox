@@ -59,6 +59,8 @@
 extern const mp_obj_dict_t socket_locals_dict;
 extern const mp_stream_p_t socket_stream_p;
 
+extern const mp_obj_type_t socket_type;
+
 extern void modusocket_pre_init (void);
 extern void modusocket_socket_add (int32_t sd, bool user);
 extern void modusocket_socket_delete (int32_t sd);

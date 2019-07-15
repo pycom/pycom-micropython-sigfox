@@ -25,7 +25,6 @@ APP_INC += -I$(BUILD)/genhdr
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include_priv
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/mbedtls/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/mbedtls/include/mbedtls
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
@@ -41,6 +40,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/json/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip
 APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip/port
+APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip/posix
 APP_INC += -I$(ESP_IDF_COMP_PATH)/newlib/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/newlib/platform_include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/nvs_flash/include
@@ -67,6 +67,10 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/hci/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/gki/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include/coap
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/examples
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include/coap
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
 APP_INC += -I../lib/oofatfs
@@ -149,6 +153,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machrmt.c \
 	lwipsocket.c \
 	machtouch.c \
+	modcoap.c \
 	)
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
@@ -358,7 +363,7 @@ BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.periph
 APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld
 
 # add the application specific CFLAGS
-CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\"
+CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
 CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
 CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DREGION_CN470 -DREGION_IN865 -DBASE=0 -DPYBYTES=1 
 # Specify if this is base or Pybytes Firmware
@@ -371,7 +376,7 @@ else
 	$(error Invalid Variant specified)
 	endif
 endif  
-# Give the possibility to use LittleFs on /flash, otherwise  FatFs is used
+# Give the possibility to use LittleFs on /flash, otherwise FatFs is used
 FS ?= ""
 ifeq ($(FS), LFS)
     CFLAGS += -DFS_USE_LITTLEFS
@@ -439,12 +444,17 @@ ifeq ($(BOARD), FIPY)
     $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 
-APP_IMG  = $(BUILD)/appimg.bin
-PART_CSV = lib/partitions.csv
 PART_BIN = $(BUILD)/lib/partitions.bin
 PART_BIN_ENCRYPT = $(PART_BIN)_enc
 APP_BIN_ENCRYPT = $(APP_BIN)_enc_0x10000
+APP_IMG  = $(BUILD)/appimg.bin
+ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+PART_CSV = lib/partitions_8MB.csv
+APP_BIN_ENCRYPT_2 = $(APP_BIN)_enc_0x210000
+else
+PART_CSV = lib/partitions_4MB.csv
 APP_BIN_ENCRYPT_2 = $(APP_BIN)_enc_0x1C0000
+endif
 
 ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
@@ -476,7 +486,11 @@ SIGN_BINARY = $(ESPSECUREPY) sign_data --keyfile $(SECURE_KEY)
 # $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o image_encrypt.bin image.bin
 ENCRYPT_BINARY = $(ESPSECUREPY) encrypt_flash_data --keyfile $(ENCRYPT_KEY)
 ENCRYPT_0x10000 = --address 0x10000
-ENCRYPT_0x1C0000 = --address 0x1C0000
+ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+ENCRYPT_APP_PART_2 = --address 0x210000
+else
+ENCRYPT_APP_PART_2 = --address 0x1C0000
+endif
 
 GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py -q
 
@@ -644,9 +658,13 @@ ifeq ($(SECURE), on)
 	$(ECHO) "Signing $@"
 	$(Q) $(SIGN_BINARY) $@
 	$(ECHO) $(SEPARATOR)
+ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2) (0x210000 offset)"
+else
 	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2) (0x1C0000 offset)"
+endif
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o $(APP_BIN_ENCRYPT) $@
-	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x1C0000) -o $(APP_BIN_ENCRYPT_2) $@
+	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_APP_PART_2) -o $(APP_BIN_ENCRYPT_2) $@
 	$(ECHO) "Overwrite $(APP_BIN) with $(APP_BIN_ENCRYPT)"
 	$(CP) -f $(APP_BIN_ENCRYPT) $(APP_BIN)
 	$(ECHO) $(SEPARATOR)
@@ -677,6 +695,8 @@ $(BUILD)/esp32_out.ld: $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.ld sdkconfig.h
 endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
 
 release: $(APP_BIN) $(BOOT_BIN)
+	$(ECHO) "checking size of image"
+	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT)
 	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD)
 
 flash: $(APP_BIN) $(BOOT_BIN)	

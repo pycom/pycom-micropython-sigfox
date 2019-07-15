@@ -303,13 +303,13 @@ STATIC mp_obj_t mod_pycom_nvs_get (mp_uint_t n_args, const mp_obj_t *args) {
 
     if(esp_err == ESP_ERR_NVS_NOT_FOUND) {
         if (n_args > 1) {
-             // return user defined NoExistValue
-             return args[1];
-         }
-         else
-         {
-             nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "No matching object for the provided key"));
-         }
+            // return user defined NoExistValue
+            return args[1];
+        }
+        else
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "No matching object for the provided key"));
+        }
     } else if(esp_err != ESP_OK) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_Exception, "Error occurred while fetching value, code: %d", esp_err));
     }

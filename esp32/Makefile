@@ -23,6 +23,8 @@ BTYPE ?= release
 
 # make Non-Pybytes firmware default
 VARIANT ?=BASE
+# make Coap Module off by default
+COAP_MODULE ?=disabled
 
 ifeq ($(VARIANT),BASE)
 	BUILD_DIR ?=build
@@ -40,7 +42,7 @@ LTE_LOG_BUFF ?= 0
 RGB_LED ?= enable
 
 # by default openthread over LoRa is enabled
-OPENTHREAD ?= on
+OPENTHREAD = off
 
 # by default Secure Boot and Flash Encryption are disabled
 SECURE ?= off
@@ -104,7 +106,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -lbootloader_support -lmicro-ecc \
-			 -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh
+			 -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh -lcoap
 ifeq ($(BOARD), $(filter $(BOARD), FIPY))
     LIBS += sigfox/modsigfox_fipy.a
 endif
@@ -120,6 +122,10 @@ endif
 ifeq ($(OPENTHREAD), on)
     LIBS += -lopenthread
     CFLAGS += -DLORA_OPENTHREAD_ENABLED
+endif
+
+ifeq ($(COAP_MODULE), enabled)
+    CFLAGS += -DENABLE_COAP
 endif
 
 # Enable or Disable LTE_LOG_BUFF

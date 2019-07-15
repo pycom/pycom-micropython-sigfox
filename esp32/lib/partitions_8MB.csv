@@ -1,0 +1,9 @@
+# IMPORTANT: Changes need need to be checked against the constants PARTITIONS_COUNT
+# and OTA_DATA_INDEX defined in  in bootloader.h
+
+# Name,   Type, SubType, Offset,   Size
+nvs,      data, nvs,     0x9000,   0x7000
+factory,  app,  factory, 0x10000,  1980k, encrypted
+otadata,  data, ota,     ,         4K,    encrypted
+ota_0,    app,  ota_0,   0x210000, 1980K, encrypted
+config,   data, 6,       ,         4K

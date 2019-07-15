@@ -68,7 +68,7 @@ static int is_valid_directory(vfs_lfs_struct_t* littlefs, const char* path)
     }
 }
 
-extern mp_import_stat_t littleFS_vfs_import_stat(fs_user_mount_t *vfs, const char *path)
+mp_import_stat_t littleFS_vfs_import_stat(fs_user_mount_t *vfs, const char *path)
 {
     struct lfs_info lfs_info_stat;
     assert(vfs != NULL);
@@ -277,6 +277,122 @@ int fatFsModetoLittleFsMode(int FatFsMode)
     return mode;
 }
 
+int littlefs_open_common_helper(lfs_t *lfs, const char* file_path, lfs_file_t *fp, int mode, struct lfs_file_config *cfg, bool *timestamp_update_ptr){
+
+    // Prepare the attributes
+    littlefs_prepare_attributes(cfg);
+
+    bool new_file = false;
+    struct lfs_info info;
+    if(LFS_ERR_NOENT == lfs_stat(lfs, file_path, &info)) {
+        new_file = true;
+    }
+
+    // Open/create the file
+    int res = lfs_file_opencfg(lfs, fp, file_path, mode, cfg);
+
+    if(res == LFS_ERR_OK) {
+        /* Request timestamp update, if open was successful and:
+         * - The file is truncated when opened OR
+         * - The file does not exist thus is created now
+         */
+        if((mode & LFS_O_TRUNC) || (new_file == true)) {
+            *timestamp_update_ptr = true;
+        }
+
+        /* Fetch the timestamp if no read access given, it is only read automatically in lfs_file_opencfg if the file opened with read access */
+        if(!(mode & LFS_O_RDONLY)){
+            int res_getattr = lfs_getattr(lfs, file_path, LFS_ATTRIBUTE_TIMESTAMP, fp->cfg->attrs[0].buffer, sizeof(lfs_timestamp_attribute_t));
+            // Request timestamp update if no timestamp is saved for this entry
+            if(res_getattr < LFS_ERR_OK) {
+                *timestamp_update_ptr = true;
+            }
+        }
+    }
+
+    return res;
+}
+
+int littlefs_close_common_helper(lfs_t *lfs, lfs_file_t *fp, struct lfs_file_config *cfg, bool *timestamp_update_ptr){
+
+    // Update timestamp if it has been requested
+    if(*timestamp_update_ptr == true) {
+        littlefs_update_timestamp_fp(fp);
+    }
+
+    int res = lfs_file_close(lfs, fp);
+    littlefs_free_up_attributes(cfg);
+
+    return res;
+}
+
+int littlefs_stat_common_helper(lfs_t *lfs, const char* file_path, struct lfs_info *fno, lfs_timestamp_attribute_t *ts){
+
+    int res = lfs_stat(lfs, file_path, fno);
+    if(res == LFS_ERR_OK) {
+        // Get the timestamp
+        int lfs_getattr_ret = lfs_getattr(lfs, file_path, LFS_ATTRIBUTE_TIMESTAMP, ts, sizeof(lfs_timestamp_attribute_t));
+        // If no timestamp is saved for this entry, fill it with 0
+        if(lfs_getattr_ret < LFS_ERR_OK) {
+            ts->fdate = 0;
+            ts->ftime = 0;
+        }
+    }
+
+    return res;
+}
+
+
+void littlefs_prepare_attributes(struct lfs_file_config *cfg)
+{
+    // Currently we only have 1 attribute
+    cfg->attr_count = 1;
+    cfg->attrs = m_malloc(cfg->attr_count * sizeof(struct lfs_attr));
+
+    // Set attribute for storing the timestamp
+    cfg->attrs->size = sizeof(lfs_timestamp_attribute_t);
+    cfg->attrs->type = LFS_ATTRIBUTE_TIMESTAMP;
+    cfg->attrs->buffer = m_malloc(sizeof(lfs_timestamp_attribute_t));
+}
+
+void littlefs_free_up_attributes(struct lfs_file_config *cfg)
+{
+    // Currently we only have 1 attribute for timestamp
+    m_free(cfg->attrs[0].buffer);
+    m_free(cfg->attrs);
+}
+
+
+int littlefs_update_timestamp(lfs_t* lfs, const char* file_relative_path)
+{
+    DWORD tm = get_fattime();
+    lfs_timestamp_attribute_t ts;
+    ts.fdate = (WORD)(tm >> 16);
+    ts.ftime = (WORD)tm;
+    return lfs_setattr(lfs, file_relative_path, LFS_ATTRIBUTE_TIMESTAMP, &ts, sizeof(lfs_timestamp_attribute_t));
+}
+
+void littlefs_update_timestamp_fp(lfs_file_t* fp)
+{
+    DWORD tm = get_fattime();
+    lfs_timestamp_attribute_t ts;
+    ts.fdate = (WORD)(tm >> 16);
+    ts.ftime = (WORD)tm;
+
+    // Until we only have 1 attribute, it is good to write the 0th element
+    memcpy(fp->cfg->attrs[0].buffer, &ts, sizeof(ts));
+}
+
+lfs_timestamp_attribute_t littlefs_get_timestamp_fp(lfs_file_t* fp)
+{
+    lfs_timestamp_attribute_t ts;
+
+    // Until we only have 1 attribute, it is good to read the 0th element
+    memcpy(&ts, fp->cfg->attrs[0].buffer, sizeof(ts));
+    return ts;
+}
+
+
 
 typedef struct _mp_vfs_littlefs_ilistdir_it_t {
     mp_obj_base_t base;
@@ -395,6 +511,9 @@ STATIC mp_obj_t littlefs_vfs_mkdir(mp_obj_t vfs_in, mp_obj_t path_param) {
         else
         {
             res = lfs_mkdir(&self->fs.littlefs.lfs, path);
+            if(res == LFS_ERR_OK) {
+                littlefs_update_timestamp(&self->fs.littlefs.lfs, path);
+            }
         }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
@@ -507,6 +626,8 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_param) {
     fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
     const char* path_in = mp_obj_str_get_str(path_param);
     struct lfs_info fno;
+    lfs_timestamp_attribute_t ts;
+
 
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
         const char* path = concat_with_cwd(&self->fs.littlefs, path_in);
@@ -520,16 +641,16 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_param) {
             fno.size = 0;
             fno.type = LFS_TYPE_DIR;
         } else {
-            res = lfs_stat(&self->fs.littlefs.lfs, path, &fno);
+            res = littlefs_stat_common_helper(&self->fs.littlefs.lfs, path, &fno, &ts);
         }
+
     xSemaphoreGive(self->fs.littlefs.mutex);
+
+    m_free((void*)path);
 
     if (res < LFS_ERR_OK) {
         mp_raise_OSError(littleFsErrorToErrno(res));
     }
-
-
-    m_free((void*)path);
 
     mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(10, NULL));
     mp_int_t mode = 0;
@@ -539,15 +660,15 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_param) {
         mode |= MP_S_IFREG;
     }
 
-//TODO: LittleFS does not store the time
-//    mp_int_t seconds = timeutils_seconds_since_2000(
-//        1980 + ((fno.fdate >> 9) & 0x7f),
-//        (fno.fdate >> 5) & 0x0f,
-//        fno.fdate & 0x1f,
-//        (fno.ftime >> 11) & 0x1f,
-//        (fno.ftime >> 5) & 0x3f,
-//        2 * (fno.ftime & 0x1f)
-//    );
+    mp_int_t seconds = timeutils_seconds_since_2000(
+        1980 + ((ts.fdate >> 9) & 0x7f),
+        (ts.fdate >> 5) & 0x0f,
+        ts.fdate & 0x1f,
+        (ts.ftime >> 11) & 0x1f,
+        (ts.ftime >> 5) & 0x3f,
+        2 * (ts.ftime & 0x1f)
+    );
+
     t->items[0] = MP_OBJ_NEW_SMALL_INT(mode); // st_mode
     t->items[1] = MP_OBJ_NEW_SMALL_INT(0); // st_ino
     t->items[2] = MP_OBJ_NEW_SMALL_INT(0); // st_dev
@@ -561,10 +682,9 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_param) {
     else {
         t->items[6] = mp_obj_new_int_from_uint(0); // st_size
     }
-    //TODO: get time
-    t->items[7] = MP_OBJ_NEW_SMALL_INT(0); // st_atime
-    t->items[8] = MP_OBJ_NEW_SMALL_INT(0); // st_mtime
-    t->items[9] = MP_OBJ_NEW_SMALL_INT(0); // st_ctime
+    t->items[7] = MP_OBJ_NEW_SMALL_INT(seconds); // st_atime
+    t->items[8] = MP_OBJ_NEW_SMALL_INT(seconds); // st_mtime
+    t->items[9] = MP_OBJ_NEW_SMALL_INT(seconds); // st_ctime
 
     return MP_OBJ_FROM_PTR(t);
 }
