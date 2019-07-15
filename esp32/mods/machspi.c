@@ -89,7 +89,7 @@ typedef struct _mach_spi_obj_t {
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
-#if defined(WIPY) || defined(WIPY3) || defined(GPY)
+#if defined(WIPY) || defined(GPY)
 STATIC mach_spi_obj_t mach_spi_obj[2] = { {.baudrate = 0}, {.baudrate = 0} };
 STATIC const mp_obj_t mach_spi_def_pin[2][3] = { {&PIN_MODULE_P10, &PIN_MODULE_P11, &PIN_MODULE_P14},
                                                  {&PIN_MODULE_P19, &PIN_MODULE_P20, &PIN_MODULE_P21} };
@@ -347,7 +347,7 @@ STATIC mp_obj_t pyb_spi_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(args), pyb_spi_init_args, args);
 
     // check the peripheral id
-#if defined(WIPY) || defined(WIPY3) || defined(GPY)
+#if defined(WIPY) || defined(GPY)
     if (args[0].u_int != 0 && args[0].u_int != 1) {
 #else
     if (args[0].u_int != 0) {
