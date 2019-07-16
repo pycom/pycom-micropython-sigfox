@@ -59,7 +59,6 @@ def main():
         shutil.copy(src + '/vfs/libvfs.a', dsttmpapp)
         shutil.copy(src + '/wpa_supplicant/libwpa_supplicant.a', dsttmpapp)
         shutil.copy(src + '/xtensa-debug-module/libxtensa-debug-module.a', dsttmpapp)
-        shutil.copy(src + '/openthread/libopenthread.a', dsttmpapp)
         shutil.copy(src + '/esp_ringbuf/libesp_ringbuf.a', dsttmpapp)
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
