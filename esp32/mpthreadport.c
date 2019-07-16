@@ -76,8 +76,9 @@ STATIC thread_t thread_entry0;
 STATIC thread_t *thread; // root pointer, handled by mp_thread_gc_others
 
 STATIC bool during_soft_reset = false;
+STATIC uint8_t mp_chip_revision;
 
-void mp_thread_preinit(void *stack, uint32_t stack_len) {
+void mp_thread_preinit(void *stack, uint32_t stack_len, uint8_t chip_revision) {
     mp_thread_set_state(&mp_state_ctx.thread);
     // create first entry in linked list of all threads
     thread = &thread_entry0;
@@ -87,6 +88,7 @@ void mp_thread_preinit(void *stack, uint32_t stack_len) {
     thread->stack = stack;
     thread->stack_len = stack_len;
     thread->next = NULL;
+    mp_chip_revision = chip_revision;
 }
 
 void mp_thread_init(void) {
@@ -164,7 +166,7 @@ void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, i
     thread_t *th;
 
     // allocate TCB, stack and linked-list node (must be outside thread_mutex lock)
-    if (esp_get_revision() > 0) {
+    if (mp_chip_revision > 0) {
         // for revision 1 devices we allocate from the internal memory of the malloc heap
         tcb = heap_caps_malloc(sizeof(StaticTask_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
         if (!tcb) {
@@ -255,7 +257,7 @@ void vPortCleanUpTCB (void *tcb) {
                 thread = th->next;
             }
             // explicitly release all its memory
-            if (esp_get_revision() > 0) {
+            if (mp_chip_revision > 0) {
                 free(th->tcb);
                 free(th->stack);
                 free(th);

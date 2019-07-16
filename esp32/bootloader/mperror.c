@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#include "xtensa/xtruntime.h"
 #include "mpconfigboard.h"
 #include "mperror.h"
 
@@ -20,7 +21,6 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
-#include "esp_event.h"
 
 #include "gpio.h"
 

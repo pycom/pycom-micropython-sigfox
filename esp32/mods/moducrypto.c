@@ -22,6 +22,10 @@
 #include "mbedtls/ctr_drbg.h"
 
 /******************************************************************************
+ DEFINE CONSTANTS
+ ******************************************************************************/
+
+/******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
 typedef enum {
@@ -337,6 +341,138 @@ STATIC mp_obj_t mod_crypt_generate_rsa_signature(mp_uint_t n_args, const mp_obj_
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_crypt_generate_rsa_signature_obj, 2, mod_crypt_generate_rsa_signature);
 
+STATIC mp_obj_t mod_crypt_rsa_encrypt(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+
+    STATIC const mp_arg_t mod_pycom_generate_rsa_signature_args[] = {
+        { MP_QSTR_message,                  MP_ARG_OBJ | MP_ARG_REQUIRED, {} },
+        { MP_QSTR_key,                      MP_ARG_OBJ | MP_ARG_REQUIRED, {} },
+    };
+
+    // parse args
+    mp_arg_val_t args[MP_ARRAY_SIZE(mod_pycom_generate_rsa_signature_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(mod_pycom_generate_rsa_signature_args), mod_pycom_generate_rsa_signature_args, args);
+
+    const char* public_key = mp_obj_str_get_str(args[1].u_obj);
+
+    mp_buffer_info_t message;
+    mp_get_buffer_raise(args[0].u_obj, &message, MP_BUFFER_READ);
+
+    char* pers="esp32-tls";
+
+    mbedtls_pk_context pk_context;
+    mbedtls_pk_init(&pk_context);
+
+    int32_t rc = 0;
+    rc = mbedtls_pk_parse_public_key(&pk_context, (const unsigned char*)public_key, strlen(public_key)+1);
+
+    if (rc != 0) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Invalid public key, mbedtls error code: 0x%X", -rc));
+    }
+
+    mbedtls_entropy_context entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+    mbedtls_entropy_init(&entropy);
+
+    mbedtls_ctr_drbg_seed(
+        &ctr_drbg,
+        mbedtls_entropy_func,
+        &entropy,
+        (const unsigned char*)pers,
+        strlen(pers));
+
+    size_t output_len = message.len + 256;
+    unsigned char *output = m_malloc(output_len);
+    size_t output_actual_length = 0;
+
+    rc = mbedtls_pk_encrypt(&pk_context,
+            (const unsigned char*)message.buf,
+            message.len,
+            output,
+            &output_actual_length,
+            output_len,
+            mbedtls_ctr_drbg_random,
+            &ctr_drbg);
+
+    if (rc != 0) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Encrypt failed, mbedtls error code: 0x%X!", -rc));
+    }
+
+    mp_obj_t ret_output = mp_obj_new_bytes((const byte*)output, output_actual_length);
+
+    mbedtls_pk_free(&pk_context);
+    m_free((char*)output);
+
+    return ret_output;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_crypt_rsa_encrypt_obj, 2, mod_crypt_rsa_encrypt);
+
+STATIC mp_obj_t mod_crypt_rsa_decrypt(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+
+    STATIC const mp_arg_t mod_pycom_generate_rsa_signature_args[] = {
+        { MP_QSTR_message,                  MP_ARG_OBJ | MP_ARG_REQUIRED, {} },
+        { MP_QSTR_key,                      MP_ARG_OBJ | MP_ARG_REQUIRED, {} },
+    };
+
+    // parse args
+    mp_arg_val_t args[MP_ARRAY_SIZE(mod_pycom_generate_rsa_signature_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(mod_pycom_generate_rsa_signature_args), mod_pycom_generate_rsa_signature_args, args);
+
+    const char* private_key = mp_obj_str_get_str(args[1].u_obj);
+
+    mp_buffer_info_t message;
+    mp_get_buffer_raise(args[0].u_obj, &message, MP_BUFFER_READ);
+
+    char* pers="esp32-tls";
+
+    mbedtls_pk_context pk_context;
+    mbedtls_pk_init(&pk_context);
+
+    int32_t rc = 0;
+    rc = mbedtls_pk_parse_key(&pk_context, (const unsigned char*)private_key, strlen(private_key)+1, NULL, 0);
+
+    if (rc != 0) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Invalid private key, mbedtls error code: 0x%X", -rc));
+    }
+
+    mbedtls_entropy_context entropy;
+    mbedtls_ctr_drbg_context ctr_drbg;
+    mbedtls_ctr_drbg_init(&ctr_drbg);
+    mbedtls_entropy_init(&entropy);
+
+    mbedtls_ctr_drbg_seed(
+        &ctr_drbg,
+        mbedtls_entropy_func,
+        &entropy,
+        (const unsigned char*)pers,
+        strlen(pers));
+
+    size_t output_len = message.len + 256;
+    unsigned char *output = m_malloc(output_len);
+    size_t output_actual_length = 0;
+
+    rc = mbedtls_pk_decrypt(&pk_context,
+            (const unsigned char*)message.buf,
+            message.len,
+            output,
+            &output_actual_length,
+            output_len,
+            mbedtls_ctr_drbg_random,
+            &ctr_drbg);
+
+    if (rc != 0) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Decrypt failed, mbedtls error code: 0x%X!", -rc));
+    }
+
+    mp_obj_t ret_output = mp_obj_new_bytes((const byte*)output, output_actual_length);
+
+    mbedtls_pk_free(&pk_context);
+    m_free((char*)output);
+
+    return ret_output;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_crypt_rsa_decrypt_obj, 2, mod_crypt_rsa_decrypt);
+
 STATIC const mp_map_elem_t mp_module_AES_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_uAES) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MODE_ECB),            MP_OBJ_NEW_SMALL_INT(CRYPT_MODE_ECB) },
@@ -362,6 +498,8 @@ STATIC const mp_map_elem_t module_ucrypto_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_AES),                             (mp_obj_t)&mod_crypt_aes },
     { MP_OBJ_NEW_QSTR(MP_QSTR_getrandbits),                     (mp_obj_t)&getrandbits_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_generate_rsa_signature),          (mp_obj_t)&mod_crypt_generate_rsa_signature_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_rsa_encrypt),                     (mp_obj_t)&mod_crypt_rsa_encrypt_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_rsa_decrypt),                     (mp_obj_t)&mod_crypt_rsa_decrypt_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(module_ucrypto_globals, module_ucrypto_globals_table);

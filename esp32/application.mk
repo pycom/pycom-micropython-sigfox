@@ -24,6 +24,7 @@ APP_INC += -I$(BUILD)
 APP_INC += -I$(BUILD)/genhdr
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include_priv
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader_support/include_bootloader
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/mbedtls/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mbedtls/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
@@ -31,6 +32,8 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include/driver
 APP_INC += -I$(ESP_IDF_COMP_PATH)/heap/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_ringbuf/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_event/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_adc_cal/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
@@ -40,6 +43,9 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/json/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip
 APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip/port
+APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/apps
+APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/port/esp32/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/lwip/src/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip/posix
 APP_INC += -I$(ESP_IDF_COMP_PATH)/newlib/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/newlib/platform_include
@@ -298,7 +304,6 @@ BOOT_SRC_C = $(addprefix bootloader/,\
 	bootmgr.c \
 	mperror.c \
 	gpio.c \
-	flash_qio_mode.c \
 	)
 
 SFX_OBJ =
@@ -360,7 +365,7 @@ SRC_QSTR_AUTO_DEPS +=
 BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld
 
 # add the application linker script(s)
-APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld
+APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld -T wifi_iram.ld
 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
@@ -503,7 +508,7 @@ endif
 ifeq ($(TARGET), boot_app)
 all: $(BOOT_BIN) $(APP_BIN)
 endif
-.PHONY: all
+.PHONY: all CHECK_DEP
 
 $(info $(VARIANT) Variant) 
 ifeq ($(SECURE), on)
@@ -562,10 +567,6 @@ $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(Q) $(AR) cru $@ $^
 
 $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a $(SECURE_BOOT_VERIFICATION_KEY)
-ifeq ($(COPY_IDF_LIB), 1)
-	$(ECHO) "COPY IDF LIBRARIES $@"
-	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
-endif
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
@@ -627,10 +628,6 @@ $(BUILD)/application.a: $(OBJ)
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_BOOT_VERIFICATION_KEY)
-ifeq ($(COPY_IDF_LIB), 1)
-	$(ECHO) "COPY IDF LIBRARIES $@"
-	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
-endif
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
@@ -750,6 +747,11 @@ GEN_PINS_SRC = $(BUILD)/pins.c
 GEN_PINS_HDR = $(HEADER_BUILD)/pins.h
 GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 
+.NOTPARALLEL: CHECK_DEP $(OBJ)
+.NOTPARALLEL: CHECK_DEP $(BOOT_OBJ)
+
+$(BOOT_OBJ): CHECK_DEP
+
 # Making OBJ use an order-only dependency on the generated pins.h file
 # has the side effect of making the pins.h file before we actually compile
 # any of the objects. The normal dependency generation will deal with the
@@ -757,8 +759,17 @@ GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 # which source files might need it.
 $(OBJ): | $(GEN_PINS_HDR)
 
+# Check Dependencies (IDF version, Frozen code and IDF LIBS)
+CHECK_DEP:
+	$(Q) bash tools/idfVerCheck.sh $(IDF_PATH) "$(IDF_VERSION)"
+	$(Q) bash tools/mpy-build-check.sh $(BOARD) $(BTYPE) $(VARIANT)
+ifeq ($(COPY_IDF_LIB), 1)
+	$(ECHO) "COPY IDF LIBRARIES $@"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+endif
+
 # Call make-pins.py to generate both pins_gen.c and pins.h
-$(GEN_PINS_SRC) $(GEN_PINS_HDR) $(GEN_PINS_QSTR): $(BOARD_PINS) $(MAKE_PINS) $(AF_FILE) $(PREFIX_FILE) | $(HEADER_BUILD)
+$(GEN_PINS_SRC) $(GEN_PINS_HDR) $(GEN_PINS_QSTR): CHECK_DEP $(BOARD_PINS) $(MAKE_PINS) $(AF_FILE) $(PREFIX_FILE) | $(HEADER_BUILD)
 	$(ECHO) "Create $@"
 	$(Q)$(PYTHON) $(MAKE_PINS) --board $(BOARD_PINS) --af $(AF_FILE) --prefix $(PREFIX_FILE) --hdr $(GEN_PINS_HDR) --qstr $(GEN_PINS_QSTR) > $(GEN_PINS_SRC)
 

@@ -26,7 +26,6 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
-#include "esp_event.h"
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
 #include "esp_event_loop.h"

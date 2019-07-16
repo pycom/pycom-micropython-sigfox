@@ -50,7 +50,6 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
-#include "esp_event.h"
 #include "esp_sleep.h"
 #include "soc/timer_group_struct.h"
 #include "esp_flash_encrypt.h"

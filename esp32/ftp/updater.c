@@ -184,9 +184,9 @@ bool updater_verify (void) {
       .size = boot_info.size,
     };
 
-    ret = esp_image_load(ESP_IMAGE_VERIFY, &part_pos, &data);
+    ret = esp_image_verify(ESP_IMAGE_VERIFY, &part_pos, &data);
 
-    ESP_LOGI(TAG, "esp_image_load: %d\n", ret);
+    ESP_LOGI(TAG, "esp_image_verify: %d\n", ret);
 
     return (ret == ESP_OK);
 }

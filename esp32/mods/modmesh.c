@@ -185,7 +185,7 @@ static void br_ip6_rcv_cb(otMessage *aMessage, void *aContext);
 
 static bool otIp6ToString(otIp6Address ipv6, char* ip_str, int str_len);
 
-static otInstance* openthread_init(void);
+static otInstance* openthread_init(uint8_t key[]);
 
 static void openthread_deinit(void);
 
@@ -241,7 +241,7 @@ int mesh_socket_open(mod_network_socket_obj_t *s, int *_errno) {
             *_errno = MP_ENOENT);
 
     sock->s = s;
-    printf("opened: %p\n", s);
+//    printf("opened: %p\n", s);
 
     exit: if (*_errno != 0) {
         printf("err: %d", *_errno);
@@ -467,7 +467,7 @@ STATIC void rx_interrupt_queue_handler(void *arg) {
 }
 
 // initialize Thread interface
-static otInstance* openthread_init(void) {
+static otInstance* openthread_init(uint8_t key[]) {
     otError err;
     otExtAddress extAddr;
 
@@ -477,6 +477,13 @@ static otInstance* openthread_init(void) {
         printf("can't otInstanceInitSingle\n");
     }
     otPlatAlarmInit(ot);
+
+    // set master key
+    otMasterKey masterkey;
+    memcpy(masterkey.m8, key, OT_MASTER_KEY_SIZE);
+    if (OT_ERROR_NONE != (err = otThreadSetMasterKey(ot, &masterkey))) {
+        printf("Can't set Masterkey: %d\n", err);
+    }
 
     // > panid 0x1234
     if (OT_ERROR_NONE != otLinkSetPanId(ot, 0x1234)) {
@@ -1014,6 +1021,10 @@ void otConsoleCb(const char *aBuf, uint16_t aBufLength, void *aContext){
     }
 }
 
+STATIC const mp_arg_t mesh_init_args[] = {
+    { MP_QSTR_id,                             MP_ARG_INT,   {.u_int  = 0} },
+    { MP_QSTR_key,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
+};
 /*
  * start Lora Mesh openthread
  */
@@ -1022,6 +1033,23 @@ STATIC mp_obj_t mesh_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_ui
 
     // if ot_ready already started, do nothing
     if (!mesh_obj.ot_ready) {
+
+        // parse args
+        mp_map_t kw_args;
+        mp_map_init_fixed_table(&kw_args, n_kw, all_args + n_args);
+        // parse args
+        mp_arg_val_t args[MP_ARRAY_SIZE(mesh_init_args)];
+        mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(args), mesh_init_args, args);
+
+        uint8_t master_key[OT_MASTER_KEY_SIZE] = {0x12, 0x34, 0xC0, 0xDE, 0x1A, 0xB5, 0x12, 0x34, 0xC0, 0xDE, 0x1A, 0xB5, 0xCA, 0x1A, 0x11, 0x0F};
+
+        // get/set the Master Key
+        if (args[1].u_obj != MP_OBJ_NULL) {
+            mp_buffer_info_t bufinfo;
+            mp_get_buffer_raise(args[1].u_obj, &bufinfo, MP_BUFFER_READ);
+            memcpy(master_key, bufinfo.buf, sizeof(master_key));
+        }
+
         modmesh_init();
         //printf("mesh task started\n");
         
@@ -1030,7 +1058,7 @@ STATIC mp_obj_t mesh_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_ui
         self->base.type = &lora_mesh_type;
 
         // must start Mesh
-        if (NULL != openthread_init()) {
+        if (NULL != openthread_init(master_key)) {
 
             // init CLI and send and \n
             mesh_obj.meshCliOutput[0] = 0;

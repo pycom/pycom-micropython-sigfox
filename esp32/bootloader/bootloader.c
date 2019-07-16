@@ -311,7 +311,7 @@ static bool get_image_from_partition(const esp_partition_pos_t *partition, esp_i
         return false;
     }
 
-    if (esp_image_load(ESP_IMAGE_LOAD, partition, data) == ESP_OK) {
+    if (bootloader_load_image(partition, data) == ESP_OK) {
         ESP_LOGI(TAG, "Loaded app from partition at offset 0x%x",
                  partition->offset);
         return true;
@@ -393,7 +393,7 @@ static bool find_active_image(bootloader_state_t *bs, esp_partition_pos_t *parti
 
             // verify the active image (ota partition)
             esp_image_metadata_t data;
-            if (ESP_OK != esp_image_load(ESP_IMAGE_VERIFY, &bs->image[boot_info->ActiveImg], &data)) {
+            if (ESP_OK != esp_image_verify(ESP_IMAGE_VERIFY, &bs->image[boot_info->ActiveImg], &data)) {
                 ets_printf("Cannot load Firmware img in the active partition! .. Defaulting back to previous partition\n");
                 // switch to the previous image
                 uint32_t tempimg = boot_info->ActiveImg;
@@ -967,8 +967,3 @@ static void wdt_reset_check(void)
     wdt_reset_cpu0_info_enable();
 }
 
-void __assert_func(const char *file, int line, const char *func, const char *expr)
-{
-    ESP_LOGE(TAG, "Assert failed in %s, %s:%d (%s)", func, file, line, expr);
-    while(1) {}
-}

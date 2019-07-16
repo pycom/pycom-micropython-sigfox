@@ -12,12 +12,13 @@
 #include <stdbool.h>
 #include <string.h>
 #include <ctype.h>
+#include <stddef.h>
 
 #include "esp_heap_caps.h"
 #include "sdkconfig.h"
-#include "esp_wifi.h"
+#include "esp_err.h"
 #include "esp_system.h"
-#include "esp_event.h"
+#include "esp_wifi.h"
 #include "esp_event_loop.h"
 #include "nvs_flash.h"
 #include "esp_spi_flash.h"
@@ -159,7 +160,7 @@ void TASK_Micropython (void *pvParameters) {
     // initialization that must not be repeted after a soft reset
     mptask_preinit();
 #if MICROPY_PY_THREAD
-    mp_thread_preinit(mpTaskStack, stack_len);
+    mp_thread_preinit(mpTaskStack, stack_len, chip_info.revision);
     mp_irq_preinit();
 #endif
     /* Creat Socket Operation task */
@@ -172,7 +173,7 @@ void TASK_Micropython (void *pvParameters) {
     // to recover from hiting the limit (the limit is measured in bytes)
     mp_stack_set_limit(stack_len - 1024);
 
-    if (esp_get_revision() > 0) {
+    if (chip_info.revision > 0) {
         gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
         gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES_PSRAM, MALLOC_CAP_SPIRAM);
     } else {

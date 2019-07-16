@@ -14,6 +14,8 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
+IDF_VERSION=3.2
+
 TARGET ?= boot_app
 
 OEM ?= 0
@@ -70,9 +72,6 @@ ifndef PROJECT_PATH
 PROJECT_PATH := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
 endif
 
-#check Frozen files changes
-$(shell bash tools/mpy-build-check.sh $(BOARD) $(BTYPE) $(VARIANT))
-
 FROZEN_MPY_DIR = frozen
 
 include ../py/mkenv.mk
@@ -97,7 +96,7 @@ CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-vol
 LDFLAGS = -nostdlib -Wl,-Map=$(@:.elf=.map) -Wl,--no-check-sections -u call_user_start_cpu0
 LDFLAGS += -Wl,-static -Wl,--undefined=uxTopUsedPriority -Wl,--gc-sections
 
-LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_IDF_COMP_PATH)/bt/lib \
+LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_IDF_COMP_PATH)/esp32/ld/wifi_iram_noopt -L$(ESP_IDF_COMP_PATH)/bt/lib \
        -L$(ESP_IDF_COMP_PATH)/esp32 -L$(ESP_IDF_COMP_PATH)/newlib/lib -Lbootloader \
        -Llib -lnvs_flash -ltcpip_adapter -L$(BUILD) -lhal -lcore -lwps -lcoexist -lstdc++ \
        -lnet80211 -lphy -lpp -lrtc -llog -lsmartconfig -lwpa -lwpa2 -lbtdm_app -lcxx -u __cxa_guard_dummy \
@@ -106,7 +105,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -lbootloader_support -lmicro-ecc \
-			 -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh -lcoap
+       -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh -lesp_ringbuf -lcoap
 ifeq ($(BOARD), $(filter $(BOARD), FIPY))
     LIBS += sigfox/modsigfox_fipy.a
 endif

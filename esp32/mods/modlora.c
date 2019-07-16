@@ -35,7 +35,6 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
-#include "esp_event.h"
 #include "nvs.h"
 
 #include "lwip/sockets.h"       // for the socket error codes

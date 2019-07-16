@@ -54,7 +54,6 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
-#include "esp_event.h"
 
 extern uint64_t system_get_rtc_time(void);
 

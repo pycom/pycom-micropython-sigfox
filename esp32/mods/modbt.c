@@ -240,7 +240,7 @@ static void gap_events_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_para
 static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 static void close_connection(int32_t conn_id);
-static bool modem_sleep(bool enable);
+static esp_err_t modem_sleep(bool enable);
 
 STATIC void bluetooth_callback_handler(void *arg);
 STATIC void gattc_char_callback_handler(void *arg);
@@ -364,34 +364,27 @@ static void close_connection (int32_t conn_id) {
     }
 }
 
-static bool modem_sleep(bool enable)
+static esp_err_t modem_sleep(bool enable)
 {
-    bool ret = true;
+    esp_err_t err = esp_bt_controller_get_status();
+
     if(enable)
     {
         /* Enable Modem Sleep */
-        if(ESP_OK != esp_bt_sleep_enable())
-        {
-            /* Failed*/
-            ret = false;
-        }
+        err = esp_bt_sleep_enable();
     }
     else
     {
         /* Disable Modem Sleep */
-        if(esp_bt_sleep_disable())
-        {
-            /* Failed*/
-            ret = false;
-        }
+        err = esp_bt_sleep_disable();
+
         /* Wakeup the modem is it is sleeping */
-        if (esp_bt_controller_is_sleeping() && ret)
+        if (esp_bt_controller_is_sleeping() && err == ESP_OK)
         {
             esp_bt_controller_wakeup_request();
         }
     }
-
-    return ret;
+    return err;
 }
 
 static bt_char_obj_t *find_gattc_char (int32_t conn_id, uint16_t char_handle) {
@@ -827,19 +820,10 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
 
     /* Set BLE modem sleep flag*/
     if (args[2].u_obj != MP_OBJ_NULL) {
-        if(mp_obj_is_true(args[2].u_obj))
+        esp_err_t err = modem_sleep(mp_obj_is_true(args[2].u_obj));
+        if(ESP_OK != err)
         {
-            if(!modem_sleep(true))
-            {
-                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to Enable Bluetooth modem Sleep"));
-            }
-        }
-        else
-        {
-            if(!modem_sleep(false))
-            {
-                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to Disable Bluetooth modem Sleep"));
-            }
+            nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(err)));
         }
     }
 
@@ -956,7 +940,7 @@ STATIC mp_obj_t bt_modem_sleep(mp_uint_t n_args, const mp_obj_t *args) {
     {
         if(n_args > 1)
         {
-            if(!modem_sleep(mp_obj_is_true(args[1])))
+            if(ESP_OK != modem_sleep(mp_obj_is_true(args[1])))
             {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
