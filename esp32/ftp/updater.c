@@ -58,6 +58,9 @@ static updater_data_t updater_data = {
 static boot_info_t boot_info;
 static uint32_t boot_info_offset;
 
+static uint8_t buf[SPI_FLASH_SEC_SIZE];
+#define IMG_UPDATE1_OFFSET_OLD 0x1a0000
+
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -131,14 +134,7 @@ STATIC char *updater_read_file (const char *file_path, vstr_t *vstr) {
     return vstr->buf;
 }
 
-static uint8_t buf[SPI_FLASH_SEC_SIZE];
-#define IMG_UPDATE1_OFFSET_OLD 0x1a0000
-
 void update_to_factory_partition(void) {
-
-    printf("update_to_factory_partition 1\n");
-
-    printf("update_to_factory_partition 2\n");
 
     updater_data.size = (1536*1024);
     updater_data.offset = IMG_FACTORY_OFFSET;
@@ -154,28 +150,20 @@ void update_to_factory_partition(void) {
        ESP_LOGE(TAG, "Erasing second sector failed!\n");
    }
 
-   printf("update_to_factory_partition 3\n");
-
-
    uint32_t bytes_read = 0;
 
    while(updater_data.size != bytes_read){
        //printf("update_to_factory_partition 4\n");
 
-       updater_spi_flash_read(IMG_UPDATE1_OFFSET_OLD+bytes_read, buf, SPI_FLASH_SEC_SIZE, false);
+       updater_spi_flash_read(IMG_UPDATE1_OFFSET_OLD + bytes_read, buf, SPI_FLASH_SEC_SIZE, false);
        bytes_read += SPI_FLASH_SEC_SIZE;
        if(false == updater_write(buf, SPI_FLASH_SEC_SIZE)){
            printf("update_to_factory_partition, updater_write returned FALSE\n");
        }
    }
 
-   printf("update_to_factory_partition, bytes_read: %u\n", bytes_read);
-
    updater_finish();
-
-   printf("update_to_factory_partition 7\n");
 }
-
 
 bool updater_start (void) {
 
