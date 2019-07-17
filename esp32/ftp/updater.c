@@ -181,9 +181,9 @@ void update_to_factory_partition(void) {
    if (ESP_OK != spi_flash_erase_sector(updater_data.offset / SPI_FLASH_SEC_SIZE)) {
        ESP_LOGE(TAG, "Erasing first sector failed!\n");
    }
-//   if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
-//       ESP_LOGE(TAG, "Erasing second sector failed!\n");
-//   }
+   if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
+       ESP_LOGE(TAG, "Erasing second sector failed!\n");
+   }
 
    printf("update_to_factory_partition 3\n");
 
@@ -193,9 +193,9 @@ void update_to_factory_partition(void) {
    while(updater_data.size != bytes_read){
        //printf("update_to_factory_partition 4\n");
 
-       updater_spi_flash_read(IMG_UPDATE1_OFFSET_OLD+bytes_read, buf, SPI_FLASH_SEC_SIZE, true);
+       updater_spi_flash_read(IMG_UPDATE1_OFFSET_OLD+bytes_read, buf, SPI_FLASH_SEC_SIZE, false);
        bytes_read += SPI_FLASH_SEC_SIZE;
-       if(false == updater_write_encrypt(buf, SPI_FLASH_SEC_SIZE)){
+       if(false == updater_write(buf, SPI_FLASH_SEC_SIZE)){
            printf("update_to_factory_partition, updater_write returned FALSE\n");
        }
    }
@@ -220,6 +220,9 @@ void update_to_factory_partition(void) {
       esp_image_segment_header_t *header = &segments[i];
 
       updater_spi_flash_read(next_addr, header, sizeof(esp_image_segment_header_t), true);
+
+      bootloader_sha256_data(sha_handle, header, sizeof(esp_image_segment_header_t));
+
       const uint32_t *data = (const uint32_t *)bootloader_mmap(next_addr+sizeof(esp_image_segment_header_t), header->data_len);
       for (int i = 0; i < header->data_len; i += 4) {
           int w_i = i/4; // Word index
@@ -279,7 +282,7 @@ void update_to_factory_partition(void) {
     esp_err_t err = updater_spi_flash_read(IMG_FACTORY_OFFSET + unpadded_length, buf_local, length - unpadded_length, true);
 
     if (sha_handle != NULL) {
-        bootloader_sha256_data(sha_handle, buf, length - unpadded_length);
+        bootloader_sha256_data(sha_handle, buf_local, length - unpadded_length);
     }
 
     length += HASH_LEN;
@@ -318,18 +321,18 @@ void update_to_factory_partition(void) {
        printf("Failed reading flash...\n");
    }
 
-//   // Erase the sector where the checksum is located
-//   if (ESP_OK != spi_flash_erase_sector(sector_num)) {
-//       printf("Erasing sector failed\n");
-//   }
+   // Erase the sector where the checksum is located
+   if (ESP_OK != spi_flash_erase_sector(sector_num)) {
+       printf("Erasing sector failed\n");
+   }
 
    // Update the sector with the correct hash
    memcpy(&tmp[hash_offset], image_hash, HASH_LEN);
 
-//   // Write back the sector where the hash is located
-//   if(ESP_OK != updater_spi_flash_write(sector_num*SPI_FLASH_SEC_SIZE, (void*)&tmp[0], SPI_FLASH_SEC_SIZE, true)) {
-//       printf("Writing new hash failed...'\n");
-//   }
+   // Write back the sector where the hash is located
+   if(ESP_OK != updater_spi_flash_write(sector_num*SPI_FLASH_SEC_SIZE, (void*)&tmp[0], SPI_FLASH_SEC_SIZE, true)) {
+       printf("Writing new hash failed...'\n");
+   }
 
    const uint8_t *hash_2 = bootloader_mmap(IMG_FACTORY_OFFSET + length - HASH_LEN, HASH_LEN);
    debug_log_hash(hash_2, "Hash read after write: ");
