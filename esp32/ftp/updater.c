@@ -24,8 +24,6 @@
 
 #include "ff.h"
 
-#include "bootloader_sha.h"
-
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
@@ -133,39 +131,10 @@ STATIC char *updater_read_file (const char *file_path, vstr_t *vstr) {
     return vstr->buf;
 }
 
-extern bool updater_write_encrypt (uint8_t *buf, uint32_t len);
 static uint8_t buf[SPI_FLASH_SEC_SIZE];
 #define IMG_UPDATE1_OFFSET_OLD 0x1a0000
-extern const void *bootloader_mmap(uint32_t src_addr, uint32_t size);
-extern void bootloader_munmap(const void *mapping);
-#define HASH_LEN 32 /* SHA-256 digest length */
-
-
-// Log a hash as a hex string
-static void debug_log_hash(const uint8_t *image_hash, const char *label)
-{
-        char hash_print[sizeof(image_hash)*2 + 1];
-        hash_print[sizeof(image_hash)*2] = 0;
-        for (int i = 0; i < sizeof(image_hash); i++) {
-            for (int shift = 0; shift < 2; shift++) {
-                uint8_t nibble = (image_hash[i] >> (shift ? 0 : 4)) & 0x0F;
-                if (nibble < 10) {
-                    hash_print[i*2+shift] = '0' + nibble;
-                } else {
-                    hash_print[i*2+shift] = 'a' + nibble - 10;
-                }
-            }
-        }
-        printf("%s: %s", label, hash_print);
-}
 
 void update_to_factory_partition(void) {
-
-    esp_image_header_t image;
-    uint32_t checksum_word = 0xEF;
-    esp_image_segment_header_t segments[ESP_IMAGE_MAX_SEGMENTS];
-    uint32_t segment_data[ESP_IMAGE_MAX_SEGMENTS];
-
 
     printf("update_to_factory_partition 1\n");
 
@@ -205,145 +174,6 @@ void update_to_factory_partition(void) {
    updater_finish();
 
    printf("update_to_factory_partition 7\n");
-
-   updater_spi_flash_read(IMG_FACTORY_OFFSET, &image, sizeof(esp_image_header_t), true);
-
-   bootloader_sha256_handle_t sha_handle = bootloader_sha256_start();
-   if (sha_handle == NULL) {
-       //return ESP_ERR_NO_MEM;
-       printf("sha_handle is NULL\n");
-   }
-   bootloader_sha256_data(sha_handle, &image, sizeof(esp_image_header_t));
-
-    uint32_t next_addr = IMG_FACTORY_OFFSET + sizeof(esp_image_header_t);
-    for(int i = 0; i < image.segment_count; i++) {
-      esp_image_segment_header_t *header = &segments[i];
-
-      updater_spi_flash_read(next_addr, header, sizeof(esp_image_segment_header_t), true);
-
-      bootloader_sha256_data(sha_handle, header, sizeof(esp_image_segment_header_t));
-
-      const uint32_t *data = (const uint32_t *)bootloader_mmap(next_addr+sizeof(esp_image_segment_header_t), header->data_len);
-      for (int i = 0; i < header->data_len; i += 4) {
-          int w_i = i/4; // Word index
-          uint32_t w = data[w_i];
-          checksum_word ^= w;
-
-          const size_t SHA_CHUNK = 1024;
-          if (sha_handle != NULL && i % SHA_CHUNK == 0) {
-              bootloader_sha256_data(sha_handle, &data[w_i],
-                                     MIN(SHA_CHUNK, header->data_len - i));
-          }
-      }
-
-      bootloader_munmap(data);
-
-      next_addr += sizeof(esp_image_segment_header_t);
-      segment_data[i] = next_addr;
-      next_addr += header->data_len;
-    }
-
-    uint32_t unpadded_length  = next_addr - IMG_FACTORY_OFFSET;
-    uint32_t length = unpadded_length + 1; // Add a byte for the checksum
-    length = (length + 15) & ~15; // Pad to next full 16 byte block
-
-    uint8_t checksum = (checksum_word >> 24)
-      ^ (checksum_word >> 16)
-      ^ (checksum_word >> 8)
-      ^ (checksum_word >> 0);
-
-    uint8_t tmp[SPI_FLASH_SEC_SIZE];
-
-    // Checksum is at this location
-    size_t addr_of_checksum = IMG_FACTORY_OFFSET + unpadded_length +  (length - unpadded_length - 1);
-    uint32_t sector_num = addr_of_checksum / SPI_FLASH_SEC_SIZE;
-    uint32_t checksum_offset = addr_of_checksum % SPI_FLASH_SEC_SIZE;
-
-    // Read the sector where the checksum is located
-    if (ESP_OK != updater_spi_flash_read(sector_num*SPI_FLASH_SEC_SIZE, &tmp[0], SPI_FLASH_SEC_SIZE, true)) {
-        printf("Failed reading flash...\n");
-    }
-
-    // Erase the sector where the checksum is located
-    if (ESP_OK != spi_flash_erase_sector(sector_num)) {
-        printf("Erasing sector failed\n");
-    }
-
-    // Update the sector with the correct checksum
-    tmp[checksum_offset] = checksum;
-
-    // Write back the sector where the checksum is located
-    if(ESP_OK != updater_spi_flash_write(sector_num*SPI_FLASH_SEC_SIZE, (void*)&tmp[0], SPI_FLASH_SEC_SIZE, true)) {
-        printf("Writing new checksum failed...'\n");
-    }
-
-    // Verify checksum
-    uint8_t buf_local[16];
-    esp_err_t err = updater_spi_flash_read(IMG_FACTORY_OFFSET + unpadded_length, buf_local, length - unpadded_length, true);
-
-    if (sha_handle != NULL) {
-        bootloader_sha256_data(sha_handle, buf_local, length - unpadded_length);
-    }
-
-    length += HASH_LEN;
-
-    uint8_t image_hash[HASH_LEN] = { 0 };
-    bootloader_sha256_finish(sha_handle, image_hash);
-
-    debug_log_hash(image_hash, "Calculated hash: ");
-    printf("\n");
-    printf("Digits of calculated hash");
-    for(int i = 0; i < HASH_LEN; i++) {
-        printf("%x ", image_hash[i]);
-    }
-    printf("\n");
-
-
-    const uint8_t *hash_1 = bootloader_mmap(IMG_FACTORY_OFFSET + length - HASH_LEN, HASH_LEN);
-
-    debug_log_hash(hash_1, "Original hash: ");
-    printf("\n");
-    printf("Digits of original hash: ");
-    for(int i = 0; i < HASH_LEN; i++) {
-        printf("%x ", hash_1[i]);
-    }
-    printf("\n");
-    bootloader_munmap(hash_1);
-
-
-    // Checksum is at this location
-    size_t addr_of_hash = IMG_FACTORY_OFFSET + length - HASH_LEN;
-    sector_num = addr_of_hash / SPI_FLASH_SEC_SIZE;
-    uint32_t hash_offset = addr_of_hash % SPI_FLASH_SEC_SIZE;
-
-    // Read the sector where the hash is located
-   if (ESP_OK != updater_spi_flash_read(sector_num*SPI_FLASH_SEC_SIZE, &tmp[0], SPI_FLASH_SEC_SIZE, true)) {
-       printf("Failed reading flash...\n");
-   }
-
-   // Erase the sector where the checksum is located
-   if (ESP_OK != spi_flash_erase_sector(sector_num)) {
-       printf("Erasing sector failed\n");
-   }
-
-   // Update the sector with the correct hash
-   memcpy(&tmp[hash_offset], image_hash, HASH_LEN);
-
-   // Write back the sector where the hash is located
-   if(ESP_OK != updater_spi_flash_write(sector_num*SPI_FLASH_SEC_SIZE, (void*)&tmp[0], SPI_FLASH_SEC_SIZE, true)) {
-       printf("Writing new hash failed...'\n");
-   }
-
-   const uint8_t *hash_2 = bootloader_mmap(IMG_FACTORY_OFFSET + length - HASH_LEN, HASH_LEN);
-   debug_log_hash(hash_2, "Hash read after write: ");
-   printf("\n");
-   printf("Digits of read hash");
-   for(int i = 0; i < HASH_LEN; i++) {
-       printf("%x ", hash_2[i]);
-   }
-   printf("\n");
-   bootloader_munmap(hash_2);
-
 }
 
 
@@ -437,31 +267,6 @@ bool updater_write (uint8_t *buf, uint32_t len) {
     // the actual writing into flash, not-encrypted,
     // because it already came encrypted from OTA server
     if (ESP_OK != updater_spi_flash_write(updater_data.offset, (void *)buf, len, false)) {
-        ESP_LOGE(TAG, "SPI flash write failed\n");
-        return false;
-    }
-
-    updater_data.offset += len;
-    updater_data.current_chunk += len;
-    boot_info.size += len;
-
-    if (updater_data.current_chunk >= SPI_FLASH_SEC_SIZE) {
-        updater_data.current_chunk -= SPI_FLASH_SEC_SIZE;
-        // erase the next sector
-        if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
-            ESP_LOGE(TAG, "Erasing next sector failed!\n");
-            return false;
-        }
-    }
-//    sl_LockObjUnlock (&wlan_LockObj);
-    return true;
-}
-
-bool updater_write_encrypt (uint8_t *buf, uint32_t len) {
-
-    // the actual writing into flash, not-encrypted,
-    // because it already came encrypted from OTA server
-    if (ESP_OK != updater_spi_flash_write(updater_data.offset, (void *)buf, len, true)) {
         ESP_LOGE(TAG, "SPI flash write failed\n");
         return false;
     }
