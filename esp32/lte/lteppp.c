@@ -595,7 +595,7 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
         // then send the command
         uart_write_bytes(LTE_UART_ID, cmd, cmd_len);
         if (strcmp(cmd, "+++")) {
-            uart_write_bytes(LTE_UART_ID, "\r\n", 2);
+            uart_write_bytes(LTE_UART_ID, "\r", 1);
         }
         uart_wait_tx_done(LTE_UART_ID, LTE_TRX_WAIT_MS(cmd_len) / portTICK_RATE_MS);
         vTaskDelay(2 / portTICK_RATE_MS);
