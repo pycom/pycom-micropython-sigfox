@@ -183,10 +183,11 @@ bool updater_start (void) {
             return false;
         }
 
-        /* Erasing the NEW location of otadata partition, this will ruin/corrupt the firmware on "ota_0" partition
-         * The new location of otadata is 0x1BE000 as per updated partition table
+        /* Erasing the NEW location of otadata partition, this will ruin/corrupt the current firmware on "ota_0" partition
+         * The new location of otadata is 0x1BE000 or 0x1FF000 as per updated partition table and has size of
+         * 4096 bytes which is size of a sector
          */
-        ret = spi_flash_erase_sector(0x1BE000 / SPI_FLASH_SEC_SIZE);
+        ret = spi_flash_erase_sector(OTA_DATA_ADDRESS / SPI_FLASH_SEC_SIZE);
         if (ESP_OK != ret) {
             ESP_LOGE(TAG, "Erasing new sector of boot info failed, error code: %d!\n", ret);
             printf("Erasing new sector of boot info failed, error code: %d!\n", ret);
@@ -195,14 +196,14 @@ bool updater_start (void) {
         }
 
         // Updating the NEW otadata partition with the OLD information
-        if (true != updater_write_boot_info(&boot_info_local, 0x1BE000)) {
+        if (true != updater_write_boot_info(&boot_info_local, OTA_DATA_ADDRESS)) {
             ESP_LOGE(TAG, "Writing new sector of boot info failed!\n");
             printf("Writing new sector of boot info failed!\n");
             //TODO: try again ???
             return false;
         }
 
-        // Update partition table
+        // Update partition table, it has size of 4096 which is 1 sector
         ret = spi_flash_erase_sector(ESP_PARTITION_TABLE_ADDR / SPI_FLASH_SEC_SIZE);
         if (ESP_OK != ret) {
             ESP_LOGE(TAG, "Erasing partition table partition failed, error code: %d!\n", ret);

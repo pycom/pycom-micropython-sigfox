@@ -48,6 +48,7 @@ typedef struct _boot_info_t
 #define OTA_DATA_INDEX                      2
 #define IMG_FACTORY_OFFSET                  (64 * 1024)
 #define IMG_UPDATE1_OFFSET                  (2112 * 1024)  // taken from the partitions table
+#define OTA_DATA_ADDRESS                    (0x1FF000)
 
 #else
 
@@ -56,6 +57,7 @@ typedef struct _boot_info_t
 #define OTA_DATA_INDEX                      2
 #define IMG_FACTORY_OFFSET                  (64 * 1024)
 #define IMG_UPDATE1_OFFSET                  (1792 * 1024)  // taken from the partitions table
+#define OTA_DATA_ADDRESS                    (0x1BE000)
 
 #endif
 
