@@ -144,12 +144,12 @@ void TASK_Micropython (void *pvParameters) {
         ret = updater_read_boot_info(&boot_info_local, &boot_info_offset_local);
     }
     if(boot_info_local.ActiveImg != IMG_ACT_FACTORY) {
-        printf("Copying image from OTA_0 partition to Factory partition\n");
+        printf("Copying image from OTA_0 partition to Factory partition, please wait...\n");
         update_to_factory_partition();
         printf("Image copy finished!\n");
         //Restart the system
-        //machine_wdt_start(1);
-        //for ( ; ; );
+        machine_wdt_start(100);
+        for ( ; ; );
     }
 
     // configure the antenna select switch here
