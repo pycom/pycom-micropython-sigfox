@@ -156,8 +156,6 @@ bool update_to_factory_partition(void) {
    uint32_t bytes_read = 0;
 
    while(updater_data.size != bytes_read){
-       //printf("update_to_factory_partition 4\n");
-
        updater_spi_flash_read(IMG_UPDATE1_OFFSET_OLD + bytes_read, buf, SPI_FLASH_SEC_SIZE, false);
        bytes_read += SPI_FLASH_SEC_SIZE;
        if(false == updater_write(buf, SPI_FLASH_SEC_SIZE)){
@@ -185,7 +183,6 @@ bool updater_start (void) {
         uint32_t boot_info_offset_local;
         if(true != updater_read_boot_info(&boot_info_local, &boot_info_offset_local)) {
             ESP_LOGE(TAG, "Reading boot info (otadata partition) failed!\n");
-            printf("Reading boot info (otadata partition) failed!\n");
             return false;
         }
 
@@ -196,7 +193,6 @@ bool updater_start (void) {
         ret = spi_flash_erase_sector(OTA_DATA_ADDRESS / SPI_FLASH_SEC_SIZE);
         if (ESP_OK != ret) {
             ESP_LOGE(TAG, "Erasing new sector of boot info failed, error code: %d!\n", ret);
-            printf("Erasing new sector of boot info failed, error code: %d!\n", ret);
             // TODO: try again ???
             return false;
         }
@@ -204,7 +200,6 @@ bool updater_start (void) {
         // Updating the NEW otadata partition with the OLD information
         if (true != updater_write_boot_info(&boot_info_local, OTA_DATA_ADDRESS)) {
             ESP_LOGE(TAG, "Writing new sector of boot info failed!\n");
-            printf("Writing new sector of boot info failed!\n");
             //TODO: try again ???
             return false;
         }
@@ -213,7 +208,6 @@ bool updater_start (void) {
         ret = spi_flash_erase_sector(ESP_PARTITION_TABLE_ADDR / SPI_FLASH_SEC_SIZE);
         if (ESP_OK != ret) {
             ESP_LOGE(TAG, "Erasing partition table partition failed, error code: %d!\n", ret);
-            printf("Erasing partition table partition failed, error code: %d!\n", ret);
             //TODO: write back old one ??
             return false;
         }
@@ -221,14 +215,12 @@ bool updater_start (void) {
         ret = spi_flash_write(ESP_PARTITION_TABLE_ADDR, (void *)buf, vstr.len);
         if (ESP_OK != ret) {
             ESP_LOGE(TAG, "Writing new partition table failed, error code: %d\n", ret);
-            printf("Writing new partition table failed, error code: %d\n", ret);
             //TODO: try again ???
             return false;
         }
     }
     else {
         ESP_LOGE(TAG, "Reading file (/flash/partitions.bin) containing the new partition table failed!\n");
-        printf("Reading file (/flash/partitions.bin) containing the new partition table failed!\n");
         return false;
     }
 
