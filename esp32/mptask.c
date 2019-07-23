@@ -116,7 +116,7 @@ static uint8_t *gc_pool_upy;
 static char fresh_main_py[] = "# main.py -- put your code here!\r\n";
 static char fresh_boot_py[] = "# boot.py -- run on boot-up\r\n";
 
-extern void update_to_factory_partition(void);
+extern bool update_to_factory_partition(void);
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
@@ -145,8 +145,10 @@ void TASK_Micropython (void *pvParameters) {
     }
     if(boot_info_local.ActiveImg != IMG_ACT_FACTORY) {
         printf("Copying image from OTA_0 partition to Factory partition, please wait...\n");
-        update_to_factory_partition();
-        printf("Image copy finished!\n");
+        if(true == update_to_factory_partition()) {
+            printf("Image copy finished successfully!\n");
+        }
+
         //Restart the system
         machine_wdt_start(100);
         for ( ; ; );

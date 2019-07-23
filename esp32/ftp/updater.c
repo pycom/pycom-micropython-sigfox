@@ -134,8 +134,9 @@ STATIC char *updater_read_file (const char *file_path, vstr_t *vstr) {
     return vstr->buf;
 }
 
-void update_to_factory_partition(void) {
+bool update_to_factory_partition(void) {
 
+    // Size of the image used in 1.18.2r7 version
     updater_data.size = (1536*1024);
     updater_data.offset = IMG_FACTORY_OFFSET;
     updater_data.offset_start_upd = updater_data.offset;
@@ -144,10 +145,12 @@ void update_to_factory_partition(void) {
 
     // erase the first 2 sectors
    if (ESP_OK != spi_flash_erase_sector(updater_data.offset / SPI_FLASH_SEC_SIZE)) {
-       ESP_LOGE(TAG, "Erasing first sector failed!\n");
+       ESP_LOGE(TAG, "Copying image from OTA_0 partition to Factory partition failed, erasing first sector failed!\n");
+       return false;
    }
    if (ESP_OK != spi_flash_erase_sector((updater_data.offset + SPI_FLASH_SEC_SIZE) / SPI_FLASH_SEC_SIZE)) {
-       ESP_LOGE(TAG, "Erasing second sector failed!\n");
+       ESP_LOGE(TAG, "Copying image from OTA_0 partition to Factory partition failed, erasing second sector failed!\n");
+       return false;
    }
 
    uint32_t bytes_read = 0;
@@ -158,11 +161,14 @@ void update_to_factory_partition(void) {
        updater_spi_flash_read(IMG_UPDATE1_OFFSET_OLD + bytes_read, buf, SPI_FLASH_SEC_SIZE, false);
        bytes_read += SPI_FLASH_SEC_SIZE;
        if(false == updater_write(buf, SPI_FLASH_SEC_SIZE)){
-           printf("update_to_factory_partition, updater_write returned FALSE\n");
+           ESP_LOGE(TAG, "Copying image from OTA_0 partition to Factory partition failed!\n");
+           return false;
        }
    }
 
    updater_finish();
+
+   return true;
 }
 
 bool updater_start (void) {
