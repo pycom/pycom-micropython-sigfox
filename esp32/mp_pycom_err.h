@@ -9,6 +9,7 @@
 #define ESP32_MP_PYCOM_ERR_H_
 
 #include "mbedtls/net_sockets.h"
+#include "mbedtls/pk.h"
 #include "mbedtls/ssl.h"
 #include "lwip/err.h"
 #include "lwip/netdb.h"
@@ -27,6 +28,22 @@
 #define MP_MBEDTLS_ERR_NET_INVALID_CONTEXT                  MBEDTLS_ERR_NET_INVALID_CONTEXT
 #define MP_MBEDTLS_ERR_NET_POLL_FAILED                      MBEDTLS_ERR_NET_POLL_FAILED
 #define MP_MBEDTLS_ERR_NET_BAD_INPUT_DATA                   MBEDTLS_ERR_NET_BAD_INPUT_DATA
+
+#define MP_MBEDTLS_ERR_PK_ALLOC_FAILED        MBEDTLS_ERR_PK_ALLOC_FAILED  /**< Memory allocation failed. */
+#define MP_MBEDTLS_ERR_PK_TYPE_MISMATCH       MBEDTLS_ERR_PK_TYPE_MISMATCH  /**< Type mismatch, eg attempt to encrypt with an ECDSA key */
+#define MP_MBEDTLS_ERR_PK_BAD_INPUT_DATA      MBEDTLS_ERR_PK_BAD_INPUT_DATA  /**< Bad input parameters to function. */
+#define MP_MBEDTLS_ERR_PK_FILE_IO_ERROR       MBEDTLS_ERR_PK_FILE_IO_ERROR  /**< Read/write of file failed. */
+#define MP_MBEDTLS_ERR_PK_KEY_INVALID_VERSION MBEDTLS_ERR_PK_KEY_INVALID_VERSION  /**< Unsupported key version */
+#define MP_MBEDTLS_ERR_PK_KEY_INVALID_FORMAT  MBEDTLS_ERR_PK_KEY_INVALID_FORMAT  /**< Invalid key tag or value. */
+#define MP_MBEDTLS_ERR_PK_UNKNOWN_PK_ALG      MBEDTLS_ERR_PK_UNKNOWN_PK_ALG  /**< Key algorithm is unsupported (only RSA and EC are supported). */
+#define MP_MBEDTLS_ERR_PK_PASSWORD_REQUIRED   MBEDTLS_ERR_PK_PASSWORD_REQUIRED  /**< Private key password can't be empty. */
+#define MP_MBEDTLS_ERR_PK_PASSWORD_MISMATCH   MBEDTLS_ERR_PK_PASSWORD_MISMATCH  /**< Given private key password does not allow for correct decryption. */
+#define MP_MBEDTLS_ERR_PK_INVALID_PUBKEY      MBEDTLS_ERR_PK_INVALID_PUBKEY  /**< The pubkey tag or value is invalid (only RSA and EC are supported). */
+#define MP_MBEDTLS_ERR_PK_INVALID_ALG         MBEDTLS_ERR_PK_INVALID_ALG  /**< The algorithm tag or value is invalid. */
+#define MP_MBEDTLS_ERR_PK_UNKNOWN_NAMED_CURVE MBEDTLS_ERR_PK_UNKNOWN_NAMED_CURVE  /**< Elliptic curve is unsupported (only NIST curves are supported). */
+#define MP_MBEDTLS_ERR_PK_FEATURE_UNAVAILABLE MBEDTLS_ERR_PK_FEATURE_UNAVAILABLE  /**< Unavailable feature, e.g. RSA disabled for RSA key. */
+#define MP_MBEDTLS_ERR_PK_SIG_LEN_MISMATCH    MBEDTLS_ERR_PK_SIG_LEN_MISMATCH  /**< The buffer contains a valid signature followed by more data. */
+#define MP_MBEDTLS_ERR_PK_HW_ACCEL_FAILED     MBEDTLS_ERR_PK_HW_ACCEL_FAILED  /**< PK hardware accelerator failed. */
 
 #define MP_ERR_MEM             ERR_MEM
 #define MP_ERR_BUF             ERR_BUF
