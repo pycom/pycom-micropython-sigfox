@@ -397,6 +397,21 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
     X(MBEDTLS_ERR_SSL_INVALID_VERIFY_HASH)                      \
     X(MBEDTLS_ERR_SSL_CONTINUE_PROCESSING)                      \
     X(MBEDTLS_ERR_SSL_ASYNC_IN_PROGRESS)                        \
+    X(MBEDTLS_ERR_PK_ALLOC_FAILED)                              \
+    X(MBEDTLS_ERR_PK_TYPE_MISMATCH)                             \
+    X(MBEDTLS_ERR_PK_BAD_INPUT_DATA)                            \
+    X(MBEDTLS_ERR_PK_FILE_IO_ERROR)                             \
+    X(MBEDTLS_ERR_PK_KEY_INVALID_VERSION)                       \
+    X(MBEDTLS_ERR_PK_KEY_INVALID_FORMAT)                        \
+    X(MBEDTLS_ERR_PK_UNKNOWN_PK_ALG)                            \
+    X(MBEDTLS_ERR_PK_PASSWORD_REQUIRED)                         \
+    X(MBEDTLS_ERR_PK_PASSWORD_MISMATCH)                         \
+    X(MBEDTLS_ERR_PK_INVALID_PUBKEY)                            \
+    X(MBEDTLS_ERR_PK_INVALID_ALG)                               \
+    X(MBEDTLS_ERR_PK_UNKNOWN_NAMED_CURVE)                       \
+    X(MBEDTLS_ERR_PK_FEATURE_UNAVAILABLE)                       \
+    X(MBEDTLS_ERR_PK_SIG_LEN_MISMATCH)                          \
+    X(MBEDTLS_ERR_PK_HW_ACCEL_FAILED)
 
 #include "mpconfigboard.h"
 
