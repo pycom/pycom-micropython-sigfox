@@ -128,7 +128,7 @@ STATIC mp_obj_t lte_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
 
 STATIC mp_obj_t lte_deinit(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
 STATIC mp_obj_t lte_disconnect(mp_obj_t self_in);
-
+static void lte_set_default_inf(void);
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -320,6 +320,11 @@ static void lte_check_init(void) {
     if (!lte_obj.init) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "LTE modem not initialized"));
     }
+}
+
+static void lte_set_default_inf(void)
+{
+    lteppp_set_default_inf();
 }
 
 static void lte_check_inppp(void) {
@@ -1385,4 +1390,5 @@ const mod_network_nic_type_t mod_network_nic_type_lte = {
     .n_ioctl = lwipsocket_socket_ioctl,
     .n_setupssl = lwipsocket_socket_setup_ssl,
     .inf_up = ltepp_is_ppp_conn_up,
+    .set_default_inf = lte_set_default_inf
 };
