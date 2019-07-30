@@ -94,13 +94,11 @@ void mod_network_deregister_nic(mp_obj_t nic) {
                 mp_obj_t nic_rem = MP_STATE_PORT(mod_network_nic_list).items[i];
                 if(mp_obj_get_type(nic_rem) == (mp_obj_type_t *)&mod_network_nic_type_wlan)
                 {
-                    mod_network_nic_type_wlan.set_inf_up();
+                    mod_network_nic_type_wlan.set_default_inf();
                 }
                 else if (mp_obj_get_type(nic_rem) == (mp_obj_type_t *)&mod_network_nic_type_lte)
                 {
-                    if (mod_network_nic_type_lte.set_inf_up != NULL) {
-                        mod_network_nic_type_lte.set_inf_up();
-                    }
+                    mod_network_nic_type_lte.set_default_inf();
                 }
             }
 #endif

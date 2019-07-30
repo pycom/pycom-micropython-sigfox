@@ -124,6 +124,10 @@ static bool is_inf_up = false;
 
 //mutex for Timeout Counter protection
 SemaphoreHandle_t timeout_mutex;
+#if defined(FIPY) || defined(GPY)
+// Variable saving DNS info
+static tcpip_adapter_dns_info_t wlan_sta_inf_dns_info;
+#endif
 
 /******************************************************************************
  DECLARE PUBLIC DATA
@@ -157,7 +161,7 @@ static void wlan_timer_callback( TimerHandle_t xTimer );
 static void wlan_validate_country(const char * country);
 static void wlan_validate_country_policy(uint8_t policy);
 STATIC void wlan_stop_sta_conn_timer();
-STATIC void wlan_inf_up(void);
+STATIC void wlan_set_default_inf(void);
 //*****************************************************************************
 //
 //! \brief The Function Handles WLAN Events
@@ -347,7 +351,11 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
             break;
         case SYSTEM_EVENT_STA_GOT_IP: /**< ESP32 station got IP from connected AP */
             xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-        is_inf_up = true;
+#if defined(FIPY) || defined(GPY)
+            // Save DNS info for restoring if wifi inf is usable again after LTE disconnect
+            tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_STA, TCPIP_ADAPTER_DNS_MAIN, &wlan_sta_inf_dns_info);
+#endif
+            is_inf_up = true;
             break;
         case SYSTEM_EVENT_STA_DISCONNECTED: /**< ESP32 station disconnected from AP */
             xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
@@ -943,12 +951,11 @@ STATIC void promiscuous_callback(void *buf, wifi_promiscuous_pkt_type_t type)
     }
 }
 
-STATIC void wlan_inf_up(void)
+STATIC void wlan_set_default_inf(void)
 {
     if (wlan_obj.mode == WIFI_MODE_STA || wlan_obj.mode == WIFI_MODE_APSTA) {
+        tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_STA, TCPIP_ADAPTER_DNS_MAIN, &wlan_sta_inf_dns_info);
         tcpip_adapter_up(TCPIP_ADAPTER_IF_STA);
-        tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
-        tcpip_adapter_dhcpc_start(TCPIP_ADAPTER_IF_STA);
     }
 }
 
@@ -2619,7 +2626,7 @@ const mod_network_nic_type_t mod_network_nic_type_wlan = {
     .n_ioctl = lwipsocket_socket_ioctl,
     .n_setupssl = lwipsocket_socket_setup_ssl,
 	.inf_up = wlan_is_inf_up,
-	.set_inf_up = wlan_inf_up
+	.set_default_inf = wlan_set_default_inf
 };
 
 //STATIC const mp_irq_methods_t wlan_irq_methods = {
