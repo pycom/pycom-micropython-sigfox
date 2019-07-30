@@ -976,6 +976,9 @@ void br_ip6_rcv_cb(otMessage *aMessage, void *aContext){
         xQueueSend(sock->rx_queue, (void *) &rx_data, 0);
     }
 
+    // free message
+    otMessageFree(aMessage);
+
     // callback to mpy if registered
     if (ot_obj.handler != mp_const_none) {
         //printf("Calling cb\n");
