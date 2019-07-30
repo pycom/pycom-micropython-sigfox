@@ -953,10 +953,12 @@ STATIC void promiscuous_callback(void *buf, wifi_promiscuous_pkt_type_t type)
 
 STATIC void wlan_set_default_inf(void)
 {
+#if defined(FIPY) || defined(GPY)
     if (wlan_obj.mode == WIFI_MODE_STA || wlan_obj.mode == WIFI_MODE_APSTA) {
         tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_STA, TCPIP_ADAPTER_DNS_MAIN, &wlan_sta_inf_dns_info);
         tcpip_adapter_up(TCPIP_ADAPTER_IF_STA);
     }
+#endif
 }
 
 //STATIC void wlan_get_sl_mac (void) {
