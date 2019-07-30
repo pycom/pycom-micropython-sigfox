@@ -124,6 +124,8 @@ extern bool ltepp_is_ppp_conn_up(void);
 extern void lteppp_suspend(void);
 
 extern void lteppp_resume(void);
+
+extern void lteppp_set_default_inf(void);
 #ifdef LTE_DEBUG_BUFF
 extern char* lteppp_get_log_buff(void);
 #endif

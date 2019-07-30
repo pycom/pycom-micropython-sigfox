@@ -27,6 +27,7 @@
 #include "pins.h"
 #include "mpsleep.h"
 #include "esp32_mphal.h"
+#include "lwip/dns.h"
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -77,6 +78,8 @@ static lte_modem_conn_state_t lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED
 static bool ltepp_ppp_conn_up = false;
 
 static ltepppconnstatus_t lteppp_connstatus = LTE_PPP_IDLE;
+
+static ip_addr_t ltepp_dns_info[2]={0};
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -186,6 +189,14 @@ void lteppp_set_state(lte_state_t state) {
     xSemaphoreTake(xLTESem, portMAX_DELAY);
     lteppp_lte_state = state;
     xSemaphoreGive(xLTESem);
+}
+
+void lteppp_set_default_inf(void)
+{
+    pppapi_set_default(lteppp_pcb);
+    //Restore DNS
+    dns_setserver(0, &(ltepp_dns_info[0]));
+    dns_setserver(1, &(ltepp_dns_info[1]));
 }
 
 void lteppp_set_legacy(lte_legacy_t legacy) {
@@ -656,6 +667,11 @@ static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx) {
         lte_gw = pppif->gw.u_addr.ip4.addr;
         lte_netmask = pppif->netmask.u_addr.ip4.addr;
         lte_ipv4addr = pppif->ip_addr.u_addr.ip4.addr;
+        if(lte_ipv4addr > 0)
+        {
+            ltepp_dns_info[0] = dns_getserver(0);
+            ltepp_dns_info[1] = dns_getserver(1);
+        }
 //        printf("ipaddr    = %s\n", ipaddr_ntoa(&pppif->ip_addr));
 //        printf("gateway   = %s\n", ipaddr_ntoa(&pppif->gw));
 //        printf("netmask   = %s\n", ipaddr_ntoa(&pppif->netmask));
