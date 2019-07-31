@@ -91,7 +91,7 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
 
         xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
             int res = lfs_file_sync(&self->littlefs->lfs, &self->fp);
-        xSemaphoreGive(self->littlefs->mutex);;
+        xSemaphoreGive(self->littlefs->mutex);
 
         if (res < 0) {
             *errcode = littleFsErrorToErrno(res);
@@ -108,6 +108,9 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
             *errcode = littleFsErrorToErrno(res);
             return MP_STREAM_ERROR;
         }
+        // Free up the object so GC does not need to do that
+        m_del_obj(pyb_file_obj_t, self);
+
         return 0;
     } else {
         *errcode = MP_EINVAL;
@@ -170,7 +173,6 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
 
     m_free((void*)fname);
     if (res < LFS_ERR_OK) {
-        littlefs_free_up_attributes(&o->cfg);
         m_del_obj(pyb_file_obj_t, o);
         mp_raise_OSError(littleFsErrorToErrno(res));
     }
