@@ -63,6 +63,8 @@
 #include "lwip/netdb.h"
 #include "lwipsocket.h"
 
+#include "mbedtls/ssl.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
@@ -498,7 +500,7 @@ STATIC mp_obj_t socket_recv(mp_obj_t self_in, mp_obj_t len_in) {
     mp_int_t ret = self->sock_base.nic_type->n_recv(self, (byte*)vstr.buf, len, &_errno);
     MP_THREAD_GIL_ENTER();
     if (ret < 0) {
-        if (_errno == MP_EAGAIN) {
+        if (_errno == MP_EAGAIN || _errno == MBEDTLS_ERR_SSL_TIMEOUT ) {
             if (self->sock_base.timeout > 0) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
             } else {
@@ -574,7 +576,7 @@ STATIC mp_obj_t socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
     mp_int_t ret = self->sock_base.nic_type->n_recvfrom(self, (byte*)vstr.buf, vstr.len, ip, &port, &_errno);
     MP_THREAD_GIL_ENTER();
     if (ret < 0) {
-        if (_errno == MP_EAGAIN && self->sock_base.timeout > 0) {
+        if ((_errno == MP_EAGAIN || _errno == MBEDTLS_ERR_SSL_TIMEOUT ) && self->sock_base.timeout > 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
         }
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));

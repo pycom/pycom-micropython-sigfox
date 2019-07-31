@@ -211,7 +211,11 @@ int lwipsocket_socket_recv(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len
                     ret = 0;
                     break;
                 }
-                // blocking do nothing
+                // blocking and timed out, return with error
+                // mbedtls_net_recv_timeout() returned with timeout
+                else {
+                    break;
+                }
             }
             else if (ret == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) {
                 // printf("Close notify received\n");
@@ -278,33 +282,41 @@ int lwipsocket_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, m
 
 int lwipsocket_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno) {
     int ret;
-    uint32_t option = lwip_fcntl_r(s->sock_base.u.sd, F_GETFL, 0);
 
-    if (timeout_ms <= 0) {
-        if (timeout_ms == 0) {
-            // set non-blocking mode
-            option |= O_NONBLOCK;
+    if (s->sock_base.is_ssl) {
+       mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
+       // mbedtls_net_recv_timeout() API is registered with mbedtls_ssl_set_bio() so setting timeout on receive works
+       mbedtls_ssl_conf_read_timeout(&ss->conf, timeout_ms);
+    }
+    else {
+        uint32_t option = lwip_fcntl_r(s->sock_base.u.sd, F_GETFL, 0);
+
+        if (timeout_ms <= 0) {
+            if (timeout_ms == 0) {
+                // set non-blocking mode
+                option |= O_NONBLOCK;
+            } else {
+                // set blocking mode
+                option &= ~O_NONBLOCK;
+                timeout_ms = UINT32_MAX;
+            }
         } else {
             // set blocking mode
             option &= ~O_NONBLOCK;
-            timeout_ms = UINT32_MAX;
         }
-    } else {
-        // set blocking mode
-        option &= ~O_NONBLOCK;
-    }
 
-    // set the timeout
-    struct timeval tv;
-    tv.tv_sec = timeout_ms / 1000;              // seconds
-    tv.tv_usec = (timeout_ms % 1000) * 1000;    // microseconds
-    ret = lwip_setsockopt_r(s->sock_base.u.sd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
-    ret |= lwip_setsockopt_r(s->sock_base.u.sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
-    ret |= lwip_fcntl_r(s->sock_base.u.sd, F_SETFL, option);
+        // set the timeout
+        struct timeval tv;
+        tv.tv_sec = timeout_ms / 1000;              // seconds
+        tv.tv_usec = (timeout_ms % 1000) * 1000;    // microseconds
+        ret = lwip_setsockopt_r(s->sock_base.u.sd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
+        ret |= lwip_setsockopt_r(s->sock_base.u.sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+        ret |= lwip_fcntl_r(s->sock_base.u.sd, F_SETFL, option);
 
-    if (ret != 0) {
-        *_errno = errno;
-        return -1;
+        if (ret != 0) {
+            *_errno = errno;
+            return -1;
+        }
     }
 
     s->sock_base.timeout = timeout_ms;
