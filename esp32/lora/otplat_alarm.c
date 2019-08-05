@@ -10,7 +10,9 @@
 #include "otplat_alarm.h"
 #include <stdint.h>
 #include <stdbool.h>
+#include "otplat_radio.h"
 
+#include "esp_system.h"
 #include "py/mpconfig.h"
 #include "py/nlr.h"
 #include "py/runtime.h"
@@ -106,17 +108,36 @@ void otPlatAlarmMilliStop(otInstance *aInstance) {
 }
 
 /**
- * Get a 32-bit random value.
+ * Fill buffer with entropy.
  *
- * This function may be implemented using a pseudo-random number generator.
+ * This function MUST be implemented using a true random number generator (TRNG).
  *
- * @returns A 32-bit random value.
+ * @param[out]  aOutput              A pointer to where the true random values are placed.  Must not be NULL.
+ * @param[in]   aOutputLength        Size of @p aBuffer.
+ *
+ * @retval OT_ERROR_NONE          Successfully filled @p aBuffer with true random values.
+ * @retval OT_ERROR_FAILED        Failed to fill @p aBuffer with true random values.
+ * @retval OT_ERROR_INVALID_ARGS  @p aBuffer was set to NULL.
  *
  */
-uint32_t otPlatRandomGet(void) {
-    return rng_get();
-}
+otError otPlatEntropyGet(uint8_t *aOutput, uint16_t aOutputLength) {
+    otError error = OT_ERROR_NONE;
 
+    otEXPECT_ACTION(aOutput && aOutputLength, error = OT_ERROR_INVALID_ARGS);
+
+    // ESP32 random generator, from either Wifi/BT noise, or pseudo-random
+    esp_fill_random(aOutput, aOutputLength);
+
+    // pseudo-random, from micropython machine.rng()
+    /*
+    for (uint16_t length = 0; length < aOutputLength; length++)
+    {
+        aOutput[length] = (uint8_t)rng_get();
+    }*/
+
+    exit:
+        return error;
+}
 /**
  * Print an IPv6 address
  *
