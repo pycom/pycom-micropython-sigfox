@@ -927,9 +927,8 @@ void radioReceive(otInstance *aInstance) {
         return;
 
     if (otPlatRadioGetPromiscuous(aInstance)) {
-        // Timestamp
-        sReceiveFrame.mInfo.mRxInfo.mMsec = otPlatAlarmMilliGetNow();
-        sReceiveFrame.mInfo.mRxInfo.mUsec = 0; // Don't support microsecond timer for now.
+        // Timestamp in microsec
+        sReceiveFrame.mInfo.mRxInfo.mTimestamp = otPlatAlarmMilliGetNow() * 1000;
     }
 
 #if OPENTHREAD_CONFIG_ENABLE_TIME_SYNC

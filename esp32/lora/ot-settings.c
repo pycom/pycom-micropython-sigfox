@@ -52,6 +52,21 @@ void otPlatSettingsInit(otInstance *aInstance) {
     //printSettings();
 }
 
+/**
+ * Performs any de-initialization for the settings subsystem, if necessary.
+ *
+ * @param[in]  aInstance The OpenThread instance structure.
+ *
+ */
+void otPlatSettingsDeinit(otInstance *aInstance) {
+    (void) aInstance;
+
+    nvs_commit(ot_nvs_handle);
+    nvs_close(ot_nvs_handle);
+
+    otPlatLog(OT_LOG_LEVEL_INFO, 0, "!!!! otPlatSettingsDeinit");
+}
+
 /// Fetches the value of a setting
 /** This function fetches the value of the setting identified
  *  by aKey and write it to the memory pointed to by aValue.

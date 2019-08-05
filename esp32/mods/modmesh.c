@@ -289,7 +289,6 @@ int mesh_socket_bind(mod_network_socket_obj_t *s, byte *ip, mp_uint_t port, int 
             *_errno = MP_ENOENT);
 
     sockaddr.mPort = port;
-    sockaddr.mScopeId = OT_NETIF_INTERFACE_ID_THREAD;
 
     // bind socket (server assigns its own address)
     otEXPECT_ACTION(OT_ERROR_NONE == otUdpBind(&sock->udp_sock, &sockaddr), *_errno =
@@ -323,7 +322,6 @@ int mesh_socket_sendto(mod_network_socket_obj_t *s, const byte *buf, mp_uint_t l
                             &messageInfo.mPeerAddr), *_errno = MP_EAFNOSUPPORT);
 
     messageInfo.mPeerPort = port;
-    messageInfo.mInterfaceId = OT_NETIF_INTERFACE_ID_THREAD;
 
     message = otUdpNewMessage(ot, NULL);
     otEXPECT_ACTION(NULL != message, *_errno = MP_ENOMEM);
