@@ -34,7 +34,7 @@ node {
                 if (board == 'FiPy' || board == 'LoPy4' || board == 'LoPy')
                 {
                     // openthread is currently disabled
-                    open_thread = 'off'
+                    open_thread = 'on'
                 }
                 parallelSteps[board_variant] = boardBuild(board, variant, open_thread)
             }
