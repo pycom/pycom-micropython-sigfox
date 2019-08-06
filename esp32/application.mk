@@ -765,7 +765,7 @@ CHECK_DEP:
 	$(Q) bash tools/mpy-build-check.sh $(BOARD) $(BTYPE) $(VARIANT)
 ifeq ($(COPY_IDF_LIB), 1)
 	$(ECHO) "COPY IDF LIBRARIES"
-	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build --pymesh $(OPENTHREAD)
 endif
 
 # Call make-pins.py to generate both pins_gen.c and pins.h

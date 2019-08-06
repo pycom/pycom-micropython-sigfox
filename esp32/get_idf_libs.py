@@ -8,8 +8,11 @@ import traceback
 def main():
     cmd_parser = argparse.ArgumentParser(description='Get the precompiled libs from the IDF')
     cmd_parser.add_argument('--idflibs', default=None, help='the path to the idf libraries')
+    cmd_parser.add_argument('--pymesh', default='off', help='flag for enabling Pymesh library copy')
     cmd_args = cmd_parser.parse_args()
 
+    pymesh = cmd_args.pymesh
+    
     src = cmd_args.idflibs
 
     dsttmpbl = os.getcwd() + '/bootloader/lib/tmp'
@@ -60,6 +63,8 @@ def main():
         shutil.copy(src + '/wpa_supplicant/libwpa_supplicant.a', dsttmpapp)
         shutil.copy(src + '/xtensa-debug-module/libxtensa-debug-module.a', dsttmpapp)
         shutil.copy(src + '/esp_ringbuf/libesp_ringbuf.a', dsttmpapp)
+        if pymesh == 'on':
+            shutil.copy(src + '/openthread/libopenthread.a', dsttmpapp)
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         traceback.print_exc()

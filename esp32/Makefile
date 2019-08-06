@@ -43,8 +43,13 @@ COPY_IDF_LIB ?= 0
 LTE_LOG_BUFF ?= 0
 RGB_LED ?= enable
 
-# by default openthread over LoRa is enabled
-OPENTHREAD = off
+# by default Pymesh over LoRa is disabled
+OPENTHREAD ?= off
+
+# if OPENTHREAD is enabled, then IDF has to contain openthread component
+ifeq ($(OPENTHREAD),on)
+	IDF_VERSION = 3.2_ot
+endif
 
 # by default Secure Boot and Flash Encryption are disabled
 SECURE ?= off
