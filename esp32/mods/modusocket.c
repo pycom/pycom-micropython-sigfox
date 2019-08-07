@@ -109,7 +109,7 @@ SemaphoreHandle_t xSocketOpsSem;
 void modusocket_pre_init (void) {
 
 	// Create a Task to handle Socket Async ops
-	xTaskCreatePinnedToCore(TASK_SOCK_OPS, "Socket Operations", 3072 / sizeof(StackType_t), NULL, 5, &xSocketOpsTaskHndl, 1);
+	xTaskCreatePinnedToCore(TASK_SOCK_OPS, "Socket Operations", 4096 / sizeof(StackType_t), NULL, 5, &xSocketOpsTaskHndl, 1);
 	// Create semaphore
 	xSocketOpsSem = xSemaphoreCreateMutex();
     /* Stop task as it is not needed unless a socket conn is requested*/

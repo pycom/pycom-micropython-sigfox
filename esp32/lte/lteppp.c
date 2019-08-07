@@ -209,6 +209,7 @@ void lteppp_connect (void) {
     uart_flush(LTE_UART_ID);
     vTaskDelay(25);
     pppapi_set_default(lteppp_pcb);
+    ppp_set_usepeerdns(lteppp_pcb, 1);
     pppapi_set_auth(lteppp_pcb, PPPAUTHTYPE_PAP, "", "");
     pppapi_connect(lteppp_pcb, 0);
     lteppp_connstatus = LTE_PPP_IDLE;
