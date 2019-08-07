@@ -264,6 +264,30 @@ typedef struct sRx2ChannelParams
 }Rx2ChannelParams_t;
 
 /*!
+ * LoRaMAC receive window enumeration
+ */
+typedef enum eLoRaMacRxSlot
+{
+    /*!
+     * LoRaMAC receive window 1
+     */
+    RX_SLOT_WIN_1,
+    /*!
+     * LoRaMAC receive window 2
+     */
+    RX_SLOT_WIN_2,
+    /*!
+     * LoRaMAC receive window 2 for class c - continuous listening
+     */
+    RX_SLOT_WIN_CLASS_C,
+    /*!
+     * LoRaMAC class b ping slot window
+     */
+    RX_SLOT_WIN_PING_SLOT
+}LoRaMacRxSlot_t;
+
+
+/*!
  * Global MAC layer parameters
  */
 typedef struct sLoRaMacParams
@@ -681,6 +705,10 @@ typedef union eLoRaMacFlags_t
          */
         uint8_t MlmeReq         : 1;
         /*!
+         * MLME-Ind pending
+         */
+        uint8_t MlmeInd         : 1;
+        /*!
          * MAC cycle done
          */
         uint8_t MacDone         : 1;
@@ -893,6 +921,10 @@ typedef struct sMcpsConfirm
      * The uplink frequency related to the frame
      */
     uint32_t UpLinkFrequency;
+    /*!
+     * The uplink channel related to the frame
+     */
+    uint32_t Channel;
 }McpsConfirm_t;
 
 /*!
@@ -1010,6 +1042,11 @@ typedef enum eMlme
      * LoRaWAN end-device certification
      */
     MLME_TXCW_1,
+    /*!
+     * Indicates that the application shall perform an uplink as
+     * soon as possible.
+     */
+    MLME_SCHEDULE_UPLINK
 }Mlme_t;
 
 /*!
@@ -1040,9 +1077,9 @@ typedef struct sMlmeReqJoin
      */
     uint8_t NbTrials;
     /*!
-     * To support initial data rate selection for the Join Request
+     * Datarate used for join request.
      */
-    uint8_t DR;
+    uint8_t Datarate;
 }MlmeReqJoin_t;
 
 /*!
@@ -1121,6 +1158,17 @@ typedef struct sMlmeConfirm
      */
     uint8_t NbRetries;
 }MlmeConfirm_t;
+
+/*!
+ * LoRaMAC MLME-Indication primitive
+ */
+typedef struct sMlmeIndication
+{
+    /*!
+     * MLME-Indication type
+     */
+    Mlme_t MlmeIndication;
+}MlmeIndication_t;
 
 /*!
  * LoRa Mac Information Base (MIB)
@@ -1371,7 +1419,14 @@ typedef enum eMib
      * The formula is:
      * radioTxPower = ( int8_t )floor( maxEirp - antennaGain )
      */
-    MIB_ANTENNA_GAIN
+    MIB_ANTENNA_GAIN,
+    /*!
+     * Default antenna gain of the node. Default value is region specific.
+     * The antenna gain is used to calculate the TX power of the node.
+     * The formula is:
+     * radioTxPower = ( int8_t )floor( maxEirp - antennaGain )
+     */
+    MIB_DEFAULT_ANTENNA_GAIN
 }Mib_t;
 
 /*!
@@ -1565,6 +1620,12 @@ typedef union uMibParam
      * Related MIB type: \ref MIB_ANTENNA_GAIN
      */
     float AntennaGain;
+    /*!
+     * Default antenna gain
+     *
+     * Related MIB type: \ref MIB_DEFAULT_ANTENNA_GAIN
+     */
+    float DefaultAntennaGain;
 }MibParam_t;
 
 /*!
@@ -1647,7 +1708,19 @@ typedef enum eLoRaMacStatus
      * Service not started - the specified region is not supported
      * or not activated with preprocessor definitions.
      */
-    LORAMAC_STATUS_REGION_NOT_SUPPORTED
+    LORAMAC_STATUS_REGION_NOT_SUPPORTED,
+    /*!
+     *
+     */
+    LORAMAC_STATUS_DUTYCYCLE_RESTRICTED,
+     /*!
+      *
+      */
+    LORAMAC_STATUS_NO_CHANNEL_FOUND,
+     /*!
+      *
+      */
+    LORAMAC_STATUS_NO_FREE_CHANNEL_FOUND
 }LoRaMacStatus_t;
 
 /*!
@@ -1721,6 +1794,12 @@ typedef struct sLoRaMacPrimitives
      * \param   [OUT] MLME-Confirm parameters
      */
     void ( *MacMlmeConfirm )( MlmeConfirm_t *MlmeConfirm );
+    /*!
+     * \brief   MLME-Indication primitive
+     *
+     * \param   [OUT] MLME-Indication parameters
+     */
+    void ( *MacMlmeIndication )( MlmeIndication_t *MlmeIndication );
 }LoRaMacPrimitives_t;
 
 /*!

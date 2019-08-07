@@ -770,6 +770,21 @@ static void OnTxNextActReqTimerEvent(void) {
     }
 }
 
+static void MlmeIndication( MlmeIndication_t *mlmeIndication )
+{
+    switch( mlmeIndication->MlmeIndication )
+    {
+        case MLME_SCHEDULE_UPLINK:
+        {// The MAC signals that we shall provide an uplink as soon as possible
+            printf("Trying to send uplink\n");
+            OnTxNextActReqTimerEvent( );
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 static void TASK_LoRa (void *pvParameters) {
     MibRequestConfirm_t mibReq;
     MlmeReq_t mlmeReq;
@@ -796,6 +811,7 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacPrimitives.MacMcpsConfirm = McpsConfirm;
                         LoRaMacPrimitives.MacMcpsIndication = McpsIndication;
                         LoRaMacPrimitives.MacMlmeConfirm = MlmeConfirm;
+                        LoRaMacPrimitives.MacMlmeIndication = MlmeIndication;
                         LoRaMacCallbacks.GetBatteryLevel = BoardGetBatteryLevel;
                         LoRaMacInitialization(&LoRaMacPrimitives, &LoRaMacCallbacks, task_cmd_data.info.init.region);
 
@@ -1075,7 +1091,7 @@ static void TASK_LoRa (void *pvParameters) {
                     mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.u.otaa.AppEui;
                     mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.u.otaa.AppKey;
                     mlmeReq.Req.Join.NbTrials = 1;
-                    mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa_dr;
+                    mlmeReq.Req.Join.Datarate = (uint8_t) lora_obj.otaa_dr;
                     LoRaMacMlmeRequest( &mlmeReq );
                 } else {
                     mibReq.Type = MIB_NETWORK_ACTIVATION;
