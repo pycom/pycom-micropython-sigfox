@@ -85,7 +85,7 @@ static ip_addr_t ltepp_dns_info[2]={0};
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
 static void TASK_LTE (void *pvParameters);
-static bool lteppp_send_at_cmd_exp(const char *cmd, uint32_t timeout, const char *expected_rsp, void* data_rem);
+static bool lteppp_send_at_cmd_exp(const char *cmd, uint32_t timeout, const char *expected_rsp, void* data_rem, size_t len);
 static bool lteppp_send_at_cmd(const char *cmd, uint32_t timeout);
 static bool lteppp_check_sim_present(void);
 static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx);
@@ -223,12 +223,6 @@ void lteppp_disconnect(void) {
 
 void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp) {
     xQueueSend(xCmdQueue, (void *)cmd, (TickType_t)portMAX_DELAY);
-    xQueueReceive(xRxQueue, rsp, (TickType_t)portMAX_DELAY);
-}
-
-void lteppp_send_at_command_delay (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp, TickType_t delay) {
-    xQueueSend(xCmdQueue, (void *)cmd, (TickType_t)portMAX_DELAY);
-    vTaskDelay(delay);
     xQueueReceive(xRxQueue, rsp, (TickType_t)portMAX_DELAY);
 }
 
@@ -515,7 +509,7 @@ modem_init:
             }
             xSemaphoreGive(xLTESem);
             if (xQueueReceive(xCmdQueue, lteppp_trx_buffer, 0)) {
-                lteppp_send_at_cmd_exp(lte_task_cmd->data, lte_task_cmd->timeout, NULL, &(lte_task_rsp->data_remaining));
+                lteppp_send_at_cmd_exp(lte_task_cmd->data, lte_task_cmd->timeout, NULL, &(lte_task_rsp->data_remaining), lte_task_cmd->dataLen);
                 xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
             } else {
                 lte_state_t state = lteppp_get_state();
@@ -556,7 +550,7 @@ modem_init:
 }
 
 
-static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *expected_rsp, void* data_rem) {
+static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *expected_rsp, void* data_rem, size_t len) {
 
     if(strstr(cmd, "Pycom_Dummy") != NULL)
     {
@@ -578,7 +572,7 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
     }
     else
     {
-        uint32_t cmd_len = strlen(cmd);
+        size_t cmd_len = len;
         // char tmp_buf[128];
 #ifdef LTE_DEBUG_BUFF
         if (lteppp_log.ptr < (LTE_LOG_BUFF_SIZE - strlen("[CMD]:") - cmd_len + 1))
@@ -612,7 +606,7 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
 }
 
 static bool lteppp_send_at_cmd(const char *cmd, uint32_t timeout) {
-    return lteppp_send_at_cmd_exp (cmd, timeout, LTE_OK_RSP, NULL);
+    return lteppp_send_at_cmd_exp (cmd, timeout, LTE_OK_RSP, NULL, strlen(cmd) );
 }
 
 static bool lteppp_check_sim_present(void) {
