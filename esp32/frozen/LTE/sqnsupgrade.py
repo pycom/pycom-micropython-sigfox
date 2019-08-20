@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-VERSION = "1.2.5"
+VERSION = "1.2.6"
 
 # Copyright (c) 2019, Pycom Limited.
 #
@@ -339,7 +339,7 @@ class sqnsupgrade:
 
 
 
-    def __run(self, file_path=None, baudrate=921600, port=None, resume=False, load_ffh=False, mirror=False, switch_ffh=False, bootrom=False, rgbled=0x050505, debug=False, pkgdebug=False, atneg=True, max_try=10, direct=True, atneg_only=False, info_only=False, expected_smod=None, verbose=False, load_fff=False, mtools=False):
+    def __run(self, file_path=None, baudrate=921600, port=None, resume=False, load_ffh=False, mirror=False, switch_ffh=False, bootrom=False, rgbled=0x050505, debug=False, pkgdebug=False, atneg=True, max_try=10, direct=True, atneg_only=False, info_only=False, expected_smod=None, verbose=False, load_fff=False, mtools=False, fc=False):
         self.__wait_msg = False
         mirror = True if atneg_only else mirror
         recover = True if atneg_only else load_ffh
@@ -365,7 +365,7 @@ class sqnsupgrade:
             external = True
             br = 115200 if recover and not direct else baudrate
             if debug: print('Setting baudrate to {}'.format(br))
-            self.__serial = serial.Serial(port, br, bytesize=serial.EIGHTBITS, timeout=1 if info_only else 0.1)
+            self.__serial = serial.Serial(port, br, bytesize=serial.EIGHTBITS, timeout=1 if info_only else 0.1, rtscts=fc)
             self.__serial.reset_input_buffer()
             self.__serial.reset_output_buffer()
 
@@ -447,7 +447,7 @@ class sqnsupgrade:
 
             if verbose: print('Sending AT+FSRDFILE="/fs/crashdump"')
             self.__serial.write(b'AT+FSRDFILE="/fs/crashdump"\r\n')
-            response = self.read_rsp(size=100)
+            response = self.read_rsp(size=1024)
             if verbose: print('AT+FSRDFILE="/fs/crashdump" returned {}'.format(response))
             self.__serial.read()
 
@@ -819,7 +819,7 @@ class sqnsupgrade:
                     self.__serial = UART(1, baudrate=target_baudrate, pins=self.__pins, timeout_chars=100)
                 else:
                     self.__serial = None
-                    self.__serial = serial.Serial(port, target_baudrate, bytesize=serial.EIGHTBITS, timeout=0.1)
+                    self.__serial = serial.Serial(port, target_baudrate, bytesize=serial.EIGHTBITS, timeout=0.1, rtscts=fc)
                     self.__serial.reset_input_buffer()
                     self.__serial.reset_output_buffer()
                     self.__serial.flush()
@@ -882,10 +882,11 @@ class sqnsupgrade:
         if success:
             if self.__run(file_path=ffile, resume=True if mfile is not None else resume, baudrate=baudrate, direct=False, debug=debug, pkgdebug=pkgdebug, verbose=verbose, load_fff=False if mfile else load_fff, mtools=mtools):
                 if self.__check_br(verbose=verbose, debug=debug):
-                    self.__run(bootrom=True, debug=debug, direct=False, pkgdebug=pkgdebug, verbose=verbose, load_fff=True)
+                    success = self.__run(bootrom=True, debug=debug, direct=False, pkgdebug=pkgdebug, verbose=verbose, load_fff=True)
                 self.success_message(verbose=verbose, debug=debug)
         else:
             print('Unable to load updater from {}'.format(mfile))
+        return success
 
     def upgrade_uart(self, ffh_mode=False, mfile=None, retry=False, resume=False, color=0x050505, debug=False, pkgdebug=False, verbose=False, load_fff=True):
         success = False
@@ -923,16 +924,16 @@ class sqnsupgrade:
         else:
             print('Unable to upgrade bootrom.')
 
-    def show_info(self, port=None, debug=False, verbose=False):
-        self.__run(port=port, debug=debug, info_only=True, verbose=verbose)
+    def show_info(self, port=None, debug=False, verbose=False, fc=False):
+        self.__run(port=port, debug=debug, info_only=True, verbose=verbose, fc=fc)
 
-    def upgrade_ext(self, port, ffile, mfile, resume=False, debug=False, pkgdebug=False, verbose=False, load_fff=True):
+    def upgrade_ext(self, port, ffile, mfile, resume=False, debug=False, pkgdebug=False, verbose=False, load_fff=True, fc=False):
         success = True
         if mfile is not None:
             success = False
-            success = self.__run(file_path=mfile, load_ffh=True, port=port, debug=debug, pkgdebug=pkgdebug, verbose=verbose)
+            success = self.__run(file_path=mfile, load_ffh=True, port=port, debug=debug, pkgdebug=pkgdebug, verbose=verbose, fc=fc)
         if success:
-            if self.__run(file_path=ffile, resume=True if mfile is not None else resume, direct=False, port=port, debug=debug, pkgdebug=pkgdebug, verbose=verbose, load_fff=load_fff):
+            if self.__run(file_path=ffile, resume=True if mfile is not None else resume, direct=False, port=port, debug=debug, pkgdebug=pkgdebug, verbose=verbose, load_fff=load_fff, fc=fc):
                 self.success_message(port=port, verbose=verbose, debug=debug)
         else:
             print('Unable to load updater from {}'.format(mfile))
@@ -973,6 +974,7 @@ if 'FiPy' in sysname or 'GPy' in sysname:
         retry = False
         resume = False
         mtools = False
+        success = False
         sqnup = sqnsupgrade()
         if sqnup.check_files(ffile, mfile, debug):
             state = sqnup.detect_modem_state(debug=debug, hangup=hangup)
@@ -991,8 +993,9 @@ if 'FiPy' in sysname or 'GPy' in sysname:
                 mtools = True
             elif state == -1:
                 detect_error()
-            sqnup.upgrade(ffile=ffile, mfile=mfile, baudrate=baudrate, retry=retry, resume=resume, debug=debug, pkgdebug=False, verbose=verbose, load_fff=load_fff, mtools=mtools)
+            success = sqnup.upgrade(ffile=ffile, mfile=mfile, baudrate=baudrate, retry=retry, resume=resume, debug=debug, pkgdebug=False, verbose=verbose, load_fff=load_fff, mtools=mtools)
         reconnect_uart()
+        return success
 
     def uart(ffh_mode=False, mfile=None, color=0x050505, verbose=False, debug=False, hangup=True):
         print_welcome()
@@ -1054,12 +1057,12 @@ if 'FiPy' in sysname or 'GPy' in sysname:
         return sqnup.detect_modem_state(debug=debug, hangup=hangup, retry=retry)
 
 else:
-    def run(port, ffile, mfile=None, resume=False, debug=False, verbose=False, load_fff=True):
+    def run(port, ffile, mfile=None, resume=False, debug=False, verbose=False, load_fff=True, fc=False):
         print_welcome()
         sqnup = sqnsupgrade()
         if sqnup.check_files(ffile, mfile, debug):
             sqnup.upgrade_ext(port=port, ffile=ffile, mfile=mfile, resume=resume, debug=debug, pkgdebug=False, verbose=verbose, load_fff=load_fff)
 
-    def version(port, verbose=False, debug=False):
+    def version(port, verbose=False, debug=False, fc=False):
         sqnup = sqnsupgrade()
         sqnup.show_info(port=port, debug=debug, verbose=verbose)
