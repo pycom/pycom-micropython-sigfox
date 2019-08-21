@@ -359,12 +359,6 @@ void RegionEU868InitDefaults( InitType_t type )
             ChannelsMask[0] |= ChannelsDefaultMask[0];
             break;
         }
-        case INIT_TYPE_APP_DEFAULTS:
-        {
-            // Update the channels mask defaults
-            RegionCommonChanMaskCopy( ChannelsMask, ChannelsDefaultMask, 1 );
-            break;
-        }
         default:
         {
             break;
@@ -579,7 +573,7 @@ bool RegionEU868RxConfig( RxConfigParams_t* rxConfig, int8_t* datarate )
         return false;
     }
 
-    if( rxConfig->RxSlot == 0 )
+    if( rxConfig->Window == 0 )
     {
         // Apply window 1 frequency
         frequency = Channels[rxConfig->Channel].Frequency;
@@ -953,7 +947,7 @@ bool RegionEU868NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel,
         *channel = enabledChannels[randr( 0, nbEnabledChannels - 1 )];
 
         *time = 0;
-        return LORAMAC_STATUS_OK;
+        return true;
     }
     else
     {
@@ -961,12 +955,12 @@ bool RegionEU868NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel,
         {
             // Delay transmission due to AggregatedTimeOff or to a band time off
             *time = nextTxDelay;
-            return LORAMAC_STATUS_DUTYCYCLE_RESTRICTED;
+            return true;
         }
         // Datarate not supported by any channel, restore defaults
         ChannelsMask[0] |= LC( 1 ) + LC( 2 ) + LC( 3 );
         *time = 0;
-        return LORAMAC_STATUS_NO_CHANNEL_FOUND;
+        return false;
     }
 }
 

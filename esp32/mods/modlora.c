@@ -1091,7 +1091,7 @@ static void TASK_LoRa (void *pvParameters) {
                     mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.u.otaa.AppEui;
                     mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.u.otaa.AppKey;
                     mlmeReq.Req.Join.NbTrials = 1;
-                    mlmeReq.Req.Join.Datarate = (uint8_t) lora_obj.otaa_dr;
+                    mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa_dr;
                     LoRaMacMlmeRequest( &mlmeReq );
                 } else {
                     mibReq.Type = MIB_NETWORK_ACTIVATION;

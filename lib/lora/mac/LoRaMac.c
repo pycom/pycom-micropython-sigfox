@@ -540,24 +540,6 @@ static LoRaMacStatus_t AddMacCommand( uint8_t cmd, uint8_t p1, uint8_t p2 );
 static uint8_t ParseMacCommandsToRepeat( uint8_t* cmdBufIn, uint8_t length, uint8_t* cmdBufOut );
 
 /*!
- * \brief Validates if the payload fits into the frame, taking the datarate
- *        into account.
- *
- * \details Refer to chapter 4.3.2 of the LoRaWAN specification, v1.0
- *
- * \param lenN Length of the application payload. The length depends on the
- *             datarate and is region specific
- *
- * \param datarate Current datarate
- *
- * \param fOptsLen Length of the fOpts field
- *
- * \retval [false: payload does not fit into the frame, true: payload fits into
- *          the frame]
- */
-bool ValidatePayloadLength( uint8_t lenN, int8_t datarate, uint8_t fOptsLen );
-
-/*!
  * \brief Decodes MAC commands in the fOpts field and in the payload
  */
 static void ProcessMacCommands( uint8_t *payload, uint8_t macIndex, uint8_t commandsSize, uint8_t snr );
@@ -589,11 +571,9 @@ LoRaMacStatus_t PrepareFrame( LoRaMacHeader_t *macHdr, LoRaMacFrameCtrl_t *fCtrl
 /*
  * \brief Schedules the frame according to the duty cycle
  *
- * \param [IN] allowDelayedTx When set to true, the a frame will be delayed,
- *                            the duty cycle restriction is active
  * \retval Status of the operation
  */
-static LoRaMacStatus_t ScheduleTx( bool allowDelayedTx );
+static LoRaMacStatus_t ScheduleTx( void );
 
 /*
  * \brief Calculates the back-off time for the band of a channel.
@@ -1180,13 +1160,9 @@ static void OnRadioRxError( void )
         }
         MlmeConfirm.Status = LORAMAC_EVENT_INFO_STATUS_RX1_ERROR;
 
-        if( LoRaMacDeviceClass != CLASS_C )
+        if( TimerGetElapsedTime( AggregatedLastTxDoneTime ) >= RxWindow2Delay + 50)
         {
-            if( TimerGetElapsedTime( AggregatedLastTxDoneTime ) >= RxWindow2Delay )
-            {
-                TimerStop( &RxWindowTimer2 );
-                LoRaMacFlags.Bits.MacDone = 1;
-            }
+            LoRaMacFlags.Bits.MacDone = 1;
         }
     }
     else
@@ -1196,11 +1172,7 @@ static void OnRadioRxError( void )
             McpsConfirm.Status = LORAMAC_EVENT_INFO_STATUS_RX2_ERROR;
         }
         MlmeConfirm.Status = LORAMAC_EVENT_INFO_STATUS_RX2_ERROR;
-
-        if( LoRaMacDeviceClass != CLASS_C )
-        {
-            LoRaMacFlags.Bits.MacDone = 1;
-        }
+        LoRaMacFlags.Bits.MacDone = 1;
     }
 
     if( LoRaMacDeviceClass == CLASS_C )
@@ -1215,7 +1187,11 @@ static void OnRadioRxTimeout( void )
     {
         Radio.Sleep( );
     }
-    
+    else
+    {
+        OnRxWindow2TimerEvent( );
+    }
+
     if( RxSlot == 0 )
     {
         if( NodeAckRequested == true )
@@ -1224,13 +1200,9 @@ static void OnRadioRxTimeout( void )
         }
         MlmeConfirm.Status = LORAMAC_EVENT_INFO_STATUS_RX1_TIMEOUT;
 
-        if( LoRaMacDeviceClass != CLASS_C )
+        if( TimerGetElapsedTime( AggregatedLastTxDoneTime ) >= RxWindow2Delay + 50)
         {
-            if( TimerGetElapsedTime( AggregatedLastTxDoneTime ) >= RxWindow2Delay )
-            {
-                TimerStop( &RxWindowTimer2 );
-                LoRaMacFlags.Bits.MacDone = 1;
-            }
+            LoRaMacFlags.Bits.MacDone = 1;
         }
     }
     else
@@ -1296,9 +1268,23 @@ static void OnMacStateCheckTimerEvent( void )
                     {// Node joined successfully
                         UpLinkCounter = 0;
                         ChannelsNbRepCounter = 0;
-                        //LoRaMacState &= ~LORAMAC_TX_RUNNING;
+                        LoRaMacState &= ~LORAMAC_TX_RUNNING;
                     }
-                    LoRaMacState &= ~LORAMAC_TX_RUNNING;
+                    else
+                    {
+                        // Pycom: Do not resend join requests
+
+                        // if( JoinRequestTrials >= MaxJoinRequestTrials )
+                        // {
+                            LoRaMacState &= ~LORAMAC_TX_RUNNING;
+                        // }
+                        // else
+                        // {
+                        //     LoRaMacFlags.Bits.MacDone = 0;
+                        //     // Sends the same frame again
+                        //     OnTxDelayedTimerEvent( );
+                        // }
+                    }
                 }
                 else
                 {// Procedure for all other frames
@@ -1361,8 +1347,8 @@ static void OnMacStateCheckTimerEvent( void )
                     phyParam = RegionGetPhyParam( LoRaMacRegion, &getPhy );
                     LoRaMacParams.ChannelsDatarate = phyParam.Value;
                 }
-                // Try to send the frame again. Allow delayed frame transmissions
-                if( ScheduleTx( true ) == LORAMAC_STATUS_OK )
+                // Try to send the frame again
+                if( ScheduleTx( ) == LORAMAC_STATUS_OK )
                 {
                     LoRaMacFlags.Bits.MacDone = 0;
                 }
@@ -1406,18 +1392,32 @@ static void OnMacStateCheckTimerEvent( void )
         LoRaMacState &= ~LORAMAC_RX;
     }
 
+    if( LoRaMacFlags.Bits.McpsInd == 1 )
+    {
+        if( LoRaMacDeviceClass == CLASS_C )
+        {// Activate RX2 window for Class C
+            OnRxWindow2TimerEvent( );
+        }
+        if( LoRaMacFlags.Bits.McpsIndSkip == 0 )
+        {
+            LoRaMacPrimitives->MacMcpsIndication( &McpsIndication );
+        }
+        LoRaMacFlags.Bits.McpsIndSkip = 0;
+        LoRaMacFlags.Bits.McpsInd = 0;
+    }
+
     if( LoRaMacState == LORAMAC_IDLE )
     {
         if( LoRaMacFlags.Bits.McpsReq == 1 )
         {
-            LoRaMacFlags.Bits.McpsReq = 0;
             LoRaMacPrimitives->MacMcpsConfirm( &McpsConfirm );
+            LoRaMacFlags.Bits.McpsReq = 0;
         }
 
         if( LoRaMacFlags.Bits.MlmeReq == 1 )
         {
-            LoRaMacFlags.Bits.MlmeReq = 0;
             LoRaMacPrimitives->MacMlmeConfirm( &MlmeConfirm );
+            LoRaMacFlags.Bits.MlmeReq = 0;
         }
 
         // Verify if sticky MAC commands are pending or not
@@ -1461,11 +1461,33 @@ static void OnMacStateCheckTimerEvent( void )
 
 static void OnTxDelayedTimerEvent( void )
 {
+    LoRaMacHeader_t macHdr;
+    LoRaMacFrameCtrl_t fCtrl;
+    AlternateDrParams_t altDr;
+
     TimerStop( &TxDelayedTimer );
     LoRaMacState &= ~LORAMAC_TX_DELAYED;
 
-    // Schedule frame, allow delayed frame transmissions
-    ScheduleTx( true );
+    if( ( LoRaMacFlags.Bits.MlmeReq == 1 ) && ( MlmeConfirm.MlmeRequest == MLME_JOIN ) )
+    {
+        ResetMacParameters( );
+
+        altDr.NbTrials = JoinRequestTrials + 1;
+        LoRaMacParams.ChannelsDatarate = RegionAlternateDr( LoRaMacRegion, &altDr );
+
+        macHdr.Value = 0;
+        macHdr.Bits.MType = FRAME_TYPE_JOIN_REQ;
+
+        fCtrl.Value = 0;
+        fCtrl.Bits.Adr = AdrCtrlOn;
+
+        /* In case of join request retransmissions, the stack must prepare
+         * the frame again, because the network server keeps track of the random
+         * LoRaMacDevNonce values to prevent reply attacks. */
+        PrepareFrame( &macHdr, &fCtrl, 0, NULL, 0 );
+    }
+
+    ScheduleTx( );
 }
 
 static void OnRxWindow1TimerEvent( void )
@@ -1478,7 +1500,7 @@ static void OnRxWindow1TimerEvent( void )
     RxWindow1Config.DownlinkDwellTime = LoRaMacParams.DownlinkDwellTime;
     RxWindow1Config.RepeaterSupport = RepeaterSupport;
     RxWindow1Config.RxContinuous = false;
-    RxWindow1Config.RxSlot = RxSlot;
+    RxWindow1Config.Window = RxSlot;
 
     if( LoRaMacDeviceClass == CLASS_C )
     {
@@ -1497,7 +1519,7 @@ static void OnRxWindow2TimerEvent( void )
     RxWindow2Config.Frequency = LoRaMacParams.Rx2Channel.Frequency;
     RxWindow2Config.DownlinkDwellTime = LoRaMacParams.DownlinkDwellTime;
     RxWindow2Config.RepeaterSupport = RepeaterSupport;
-    RxWindow2Config.RxSlot = 1;
+    RxWindow2Config.Window = 1;
 
     if( LoRaMacDeviceClass != CLASS_C )
     {
@@ -1505,17 +1527,16 @@ static void OnRxWindow2TimerEvent( void )
     }
     else
     {
-        // Setup continuous listening for class c
         RxWindow2Config.RxContinuous = true;
-        /*if (NetworkActivation == ACTIVATION_TYPE_ABP){
+        if (NetworkActivation == ACTIVATION_TYPE_ABP){
             RxWindow2Config.Datarate = McpsIndication.RxDatarate;
-        }*/
+        }
     }
 
     if( RegionRxConfig( LoRaMacRegion, &RxWindow2Config, ( int8_t* )&McpsIndication.RxDatarate ) == true )
     {
         RxWindowSetup( RxWindow2Config.RxContinuous, LoRaMacParams.MaxRxWindow );
-        RxSlot = 1;
+        RxSlot = RxWindow2Config.Window;
     }
 }
 
@@ -1875,7 +1896,7 @@ static void ProcessMacCommands( uint8_t *payload, uint8_t macIndex, uint8_t comm
                     {
                         batteryLevel = LoRaMacCallbacks->GetBatteryLevel( );
                     }
-                    AddMacCommand( MOTE_MAC_DEV_STATUS_ANS, batteryLevel, snr & 0x3F);
+                    AddMacCommand( MOTE_MAC_DEV_STATUS_ANS, batteryLevel, snr );
                     break;
                 }
             case SRV_MAC_NEW_CHANNEL_REQ:
@@ -1991,15 +2012,13 @@ LoRaMacStatus_t Send( LoRaMacHeader_t *macHdr, uint8_t fPort, void *fBuffer, uin
     McpsConfirm.AckReceived = false;
     McpsConfirm.UpLinkCounter = UpLinkCounter;
 
-    // Schedule frame, do not allow delayed transmissions
-    status = ScheduleTx( false );
+    status = ScheduleTx( );
 
     return status;
 }
 
-static LoRaMacStatus_t ScheduleTx( bool allowDelayedTx )
+static LoRaMacStatus_t ScheduleTx( void )
 {
-    LoRaMacStatus_t status = LORAMAC_STATUS_PARAMETER_INVALID;
     TimerTime_t dutyCycleTimeOff = 0;
     NextChanParams_t nextChan;
 
@@ -2023,27 +2042,12 @@ static LoRaMacStatus_t ScheduleTx( bool allowDelayedTx )
     nextChan.LastAggrTx = AggregatedLastTxDoneTime;
 
     // Select channel
-    status = RegionNextChannel( LoRaMacRegion, &nextChan, &Channel, &dutyCycleTimeOff, &AggregatedTimeOff );
-
-    if( status != LORAMAC_STATUS_OK )
+    while( RegionNextChannel( LoRaMacRegion, &nextChan, &Channel, &dutyCycleTimeOff, &AggregatedTimeOff ) == false )
     {
-        if( ( status == LORAMAC_STATUS_DUTYCYCLE_RESTRICTED ) && 
-            ( allowDelayedTx == true ) )
-        {
-            // Allow delayed transmissions. We have to allow it in case
-            // the MAC must retransmit a frame with the frame repetitions
-            if( dutyCycleTimeOff != 0 )
-            {// Send later - prepare timer
-                LoRaMacState |= LORAMAC_TX_DELAYED;
-                TimerSetValue( &TxDelayedTimer, dutyCycleTimeOff );
-                TimerStart( &TxDelayedTimer );
-            }
-            return LORAMAC_STATUS_OK;
-        }
-        else
-        {// State where the MAC cannot send a frame
-            return status;
-        }
+        // Set the default datarate
+        LoRaMacParams.ChannelsDatarate = LoRaMacParamsDefaults.ChannelsDatarate;
+        // Update datarate in the function parameters
+        nextChan.Datarate = LoRaMacParams.ChannelsDatarate;
     }
 
     // Compute Rx1 windows parameters
@@ -2061,8 +2065,8 @@ static LoRaMacStatus_t ScheduleTx( bool allowDelayedTx )
 
     if( IsLoRaMacNetworkJoined == false )
     {
-        RxWindow1Delay = LoRaMacParams.JoinAcceptDelay1 + RxWindow1Config.WindowOffset;
-        RxWindow2Delay = LoRaMacParams.JoinAcceptDelay2 + RxWindow2Config.WindowOffset;
+        RxWindow1Delay = LoRaMacParams.JoinAcceptDelay1 + RxWindow1Config.WindowOffset - 2;
+        RxWindow2Delay = LoRaMacParams.JoinAcceptDelay2 + RxWindow2Config.WindowOffset - 3;
     }
     else
     {
@@ -2070,14 +2074,11 @@ static LoRaMacStatus_t ScheduleTx( bool allowDelayedTx )
         {
             return LORAMAC_STATUS_LENGTH_ERROR;
         }
-        RxWindow1Delay = LoRaMacParams.ReceiveDelay1 + RxWindow1Config.WindowOffset;
-        RxWindow2Delay = LoRaMacParams.ReceiveDelay2 + RxWindow2Config.WindowOffset;
+        RxWindow1Delay = LoRaMacParams.ReceiveDelay1 + RxWindow1Config.WindowOffset - 1;
+        RxWindow2Delay = LoRaMacParams.ReceiveDelay2 + RxWindow2Config.WindowOffset - 2;
     }
 
-    // Try to send now
-    return SendFrameOnChannel( Channel );
-
-    /* // Schedule transmission of frame
+    // Schedule transmission of frame
     if( dutyCycleTimeOff == 0 )
     {
         // Try to send now
@@ -2091,7 +2092,7 @@ static LoRaMacStatus_t ScheduleTx( bool allowDelayedTx )
         TimerStart( &TxDelayedTimer );
 
         return LORAMAC_STATUS_OK;
-    } */
+    }
 }
 
 static void CalculateBackOff( uint8_t channel )
@@ -2108,9 +2109,8 @@ static void CalculateBackOff( uint8_t channel )
     // Update regional back-off
     RegionCalcBackOff( LoRaMacRegion, &calcBackOff );
 
-    // Update aggregated time-off. This must be an assignment and no incremental
-    // update as we do only calculate the time-off based on the last transmission
-    AggregatedTimeOff = ( TxTimeOnAir * AggregatedDCycle - TxTimeOnAir );
+    // Update aggregated time-off
+    AggregatedTimeOff = AggregatedTimeOff + ( TxTimeOnAir * AggregatedDCycle - TxTimeOnAir );
 }
 
 static void ResetMacParameters( void )
@@ -2144,9 +2144,6 @@ static void ResetMacParameters( void )
     LoRaMacParams.DownlinkDwellTime = LoRaMacParamsDefaults.DownlinkDwellTime;
     LoRaMacParams.MaxEirp = LoRaMacParamsDefaults.MaxEirp;
     LoRaMacParams.AntennaGain = LoRaMacParamsDefaults.AntennaGain;
-
-    // Reset to application defaults
-    RegionInitDefaults( LoRaMacRegion, INIT_TYPE_APP_DEFAULTS );
 
     NodeAckRequested = false;
     SrvAckRequested = false;
@@ -2364,7 +2361,6 @@ LoRaMacStatus_t SendFrameOnChannel( uint8_t channel )
     McpsConfirm.Status = LORAMAC_EVENT_INFO_STATUS_ERROR;
     McpsConfirm.Datarate = LoRaMacParams.ChannelsDatarate;
     McpsConfirm.TxPower = txPower;
-    McpsConfirm.Channel = channel;
     McpsConfirm.UpLinkFrequency = Radio.GetChannel();
    
     // Store the time on air
@@ -2814,11 +2810,6 @@ LoRaMacStatus_t LoRaMacMibGetRequestConfirm( MibRequestConfirm_t *mibGet )
             mibGet->Param.AntennaGain = LoRaMacParams.AntennaGain;
             break;
         }
-        case MIB_DEFAULT_ANTENNA_GAIN:
-        {
-            mibGet->Param.DefaultAntennaGain = LoRaMacParamsDefaults.AntennaGain;
-            break;
-        }
         default:
             status = LORAMAC_STATUS_SERVICE_UNKNOWN;
             break;
@@ -2863,15 +2854,7 @@ LoRaMacStatus_t LoRaMacMibSetRequestConfirm( MibRequestConfirm_t *mibSet )
                 {
                     // Set the NodeAckRequested indicator to default
                     NodeAckRequested = false;
-                    // Set the radio into sleep mode in case we are still in RX mode
-                    Radio.Sleep( );
-                    // Compute Rx2 windows parameters in case the RX2 datarate has changed
-                    RegionComputeRxWindowParameters( LoRaMacRegion,
-                                                     LoRaMacParams.Rx2Channel.Datarate,
-                                                     LoRaMacParams.MinRxSymbols,
-                                                     LoRaMacParams.SystemMaxRxError,
-                                                     &RxWindow2Config );
-                    OpenContinuousRx2Window( );
+                    OnRxWindow2TimerEvent( );
                     break;
                 }
             }
@@ -2957,18 +2940,29 @@ LoRaMacStatus_t LoRaMacMibSetRequestConfirm( MibRequestConfirm_t *mibSet )
 
                 if( ( LoRaMacDeviceClass == CLASS_C ) && ( IsLoRaMacNetworkJoined == true ) )
                 {
-                    // We can only compute the RX window parameters directly, if we are already
-                    // in class c mode and joined. We cannot setup an RX window in case of any other
-                    // class type.
-                    // Set the radio into sleep mode in case we are still in RX mode
-                    Radio.Sleep( );
                     // Compute Rx2 windows parameters
                     RegionComputeRxWindowParameters( LoRaMacRegion,
                                                      LoRaMacParams.Rx2Channel.Datarate,
                                                      LoRaMacParams.MinRxSymbols,
                                                      LoRaMacParams.SystemMaxRxError,
                                                      &RxWindow2Config );
-                    OpenContinuousRx2Window( );
+
+                    RxWindow2Config.Channel = Channel;
+                    RxWindow2Config.Frequency = LoRaMacParams.Rx2Channel.Frequency;
+                    RxWindow2Config.DownlinkDwellTime = LoRaMacParams.DownlinkDwellTime;
+                    RxWindow2Config.RepeaterSupport = RepeaterSupport;
+                    RxWindow2Config.Window = 1;
+                    RxWindow2Config.RxContinuous = true;
+
+                    if( RegionRxConfig( LoRaMacRegion, &RxWindow2Config, ( int8_t* )&McpsIndication.RxDatarate ) == true )
+                    {
+                        RxWindowSetup( RxWindow2Config.RxContinuous, LoRaMacParams.MaxRxWindow );
+                        RxSlot = RxWindow2Config.Window;
+                    }
+                    else
+                    {
+                        status = LORAMAC_STATUS_PARAMETER_INVALID;
+                    }
                 }
             }
             else
@@ -3069,7 +3063,6 @@ LoRaMacStatus_t LoRaMacMibSetRequestConfirm( MibRequestConfirm_t *mibSet )
         case MIB_CHANNELS_DATARATE:
         {
             verify.DatarateParams.Datarate = mibSet->Param.ChannelsDatarate;
-            verify.DatarateParams.UplinkDwellTime = LoRaMacParams.UplinkDwellTime;
 
             if( RegionVerify( LoRaMacRegion, &verify, PHY_TX_DR ) == true )
             {
@@ -3132,11 +3125,6 @@ LoRaMacStatus_t LoRaMacMibSetRequestConfirm( MibRequestConfirm_t *mibSet )
         case MIB_ANTENNA_GAIN:
         {
             LoRaMacParams.AntennaGain = mibSet->Param.AntennaGain;
-            break;
-        }
-        case MIB_DEFAULT_ANTENNA_GAIN:
-        {
-            LoRaMacParamsDefaults.AntennaGain = mibSet->Param.DefaultAntennaGain;
             break;
         }
         default:
@@ -3329,7 +3317,7 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest )
     {
         return LORAMAC_STATUS_PARAMETER_INVALID;
     }
-    if( LoRaMacState != LORAMAC_IDLE )
+    if( ( LoRaMacState & LORAMAC_TX_RUNNING ) == LORAMAC_TX_RUNNING )
     {
         return LORAMAC_STATUS_BUSY;
     }
@@ -3355,8 +3343,6 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest )
                 return LORAMAC_STATUS_PARAMETER_INVALID;
             }
 
-            ResetMacParameters( );
-
             // Verify the parameter NbTrials for the join procedure
             verify.NbJoinTrials = mlmeRequest->Req.Join.NbTrials;
 
@@ -3374,7 +3360,6 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest )
             LoRaMacDevEui = mlmeRequest->Req.Join.DevEui;
             LoRaMacAppEui = mlmeRequest->Req.Join.AppEui;
             LoRaMacAppKey = mlmeRequest->Req.Join.AppKey;
-            //LoRaMacParams.ChannelsDatarate = RegionAlternateDr( LoRaMacRegion, mlmeRequest->Req.Join.Datarate );
             MaxJoinRequestTrials = mlmeRequest->Req.Join.NbTrials;
 
             // Reset variable JoinRequestTrials
@@ -3384,12 +3369,12 @@ LoRaMacStatus_t LoRaMacMlmeRequest( MlmeReq_t *mlmeRequest )
             macHdr.Value = 0;
             macHdr.Bits.MType  = FRAME_TYPE_JOIN_REQ;
 
-            //ResetMacParameters( );
+            ResetMacParameters( );
 
             altDr.NbTrials = JoinRequestTrials + 1;
 
             // Pycom: Add Join DR selection as and when the region permits
-            RegionForceJoinDataRate( LoRaMacRegion, mlmeRequest->Req.Join.Datarate, &altDr );
+            RegionForceJoinDataRate( LoRaMacRegion, mlmeRequest->Req.Join.DR, &altDr );
 
             LoRaMacParams.ChannelsDatarate = RegionAlternateDr( LoRaMacRegion, &altDr );
 
@@ -3442,14 +3427,15 @@ LoRaMacStatus_t LoRaMacMcpsRequest( McpsReq_t *mcpsRequest )
     uint8_t fPort = 0;
     void *fBuffer;
     uint16_t fBufferSize;
-    int8_t datarate = DR_0;
+    int8_t datarate;
     bool readyToSend = false;
 
     if( mcpsRequest == NULL )
     {
         return LORAMAC_STATUS_PARAMETER_INVALID;
     }
-    if( LoRaMacState != LORAMAC_IDLE )
+    if( ( ( LoRaMacState & LORAMAC_TX_RUNNING ) == LORAMAC_TX_RUNNING ) ||
+        ( ( LoRaMacState & LORAMAC_TX_DELAYED ) == LORAMAC_TX_DELAYED ) )
     {
         return LORAMAC_STATUS_BUSY;
     }

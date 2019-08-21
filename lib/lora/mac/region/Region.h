@@ -672,12 +672,7 @@ typedef enum eInitType
     /*!
      * Restores default channels only.
      */
-    INIT_TYPE_RESTORE,
-    /*!
-     * Initializes the region specific data to the defaults which were set by
-     * the application.
-     */
-    INIT_TYPE_APP_DEFAULTS
+    INIT_TYPE_RESTORE
 }InitType_t;
 
 typedef enum eChannelsMask
@@ -907,9 +902,9 @@ typedef struct sRxConfigParams
      */
     bool RxContinuous;
     /*!
-     * Sets the RX window.
+     * Sets the RX window. 0: RX window 1, 1: RX window 2.
      */
-    LoRaMacRxSlot_t RxSlot;
+    bool Window;
 }RxConfigParams_t;
 
 /*!

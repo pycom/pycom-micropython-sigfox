@@ -264,30 +264,6 @@ typedef struct sRx2ChannelParams
 }Rx2ChannelParams_t;
 
 /*!
- * LoRaMAC receive window enumeration
- */
-typedef enum eLoRaMacRxSlot
-{
-    /*!
-     * LoRaMAC receive window 1
-     */
-    RX_SLOT_WIN_1,
-    /*!
-     * LoRaMAC receive window 2
-     */
-    RX_SLOT_WIN_2,
-    /*!
-     * LoRaMAC receive window 2 for class c - continuous listening
-     */
-    RX_SLOT_WIN_CLASS_C,
-    /*!
-     * LoRaMAC class b ping slot window
-     */
-    RX_SLOT_WIN_PING_SLOT
-}LoRaMacRxSlot_t;
-
-
-/*!
  * Global MAC layer parameters
  */
 typedef struct sLoRaMacParams
@@ -921,10 +897,6 @@ typedef struct sMcpsConfirm
      * The uplink frequency related to the frame
      */
     uint32_t UpLinkFrequency;
-    /*!
-     * The uplink channel related to the frame
-     */
-    uint32_t Channel;
 }McpsConfirm_t;
 
 /*!
@@ -1077,9 +1049,9 @@ typedef struct sMlmeReqJoin
      */
     uint8_t NbTrials;
     /*!
-     * Datarate used for join request.
+     * To support initial data rate selection for the Join Request
      */
-    uint8_t Datarate;
+    uint8_t DR;
 }MlmeReqJoin_t;
 
 /*!
@@ -1419,14 +1391,7 @@ typedef enum eMib
      * The formula is:
      * radioTxPower = ( int8_t )floor( maxEirp - antennaGain )
      */
-    MIB_ANTENNA_GAIN,
-    /*!
-     * Default antenna gain of the node. Default value is region specific.
-     * The antenna gain is used to calculate the TX power of the node.
-     * The formula is:
-     * radioTxPower = ( int8_t )floor( maxEirp - antennaGain )
-     */
-    MIB_DEFAULT_ANTENNA_GAIN
+    MIB_ANTENNA_GAIN
 }Mib_t;
 
 /*!
@@ -1620,12 +1585,6 @@ typedef union uMibParam
      * Related MIB type: \ref MIB_ANTENNA_GAIN
      */
     float AntennaGain;
-    /*!
-     * Default antenna gain
-     *
-     * Related MIB type: \ref MIB_DEFAULT_ANTENNA_GAIN
-     */
-    float DefaultAntennaGain;
 }MibParam_t;
 
 /*!
@@ -1708,19 +1667,7 @@ typedef enum eLoRaMacStatus
      * Service not started - the specified region is not supported
      * or not activated with preprocessor definitions.
      */
-    LORAMAC_STATUS_REGION_NOT_SUPPORTED,
-    /*!
-     *
-     */
-    LORAMAC_STATUS_DUTYCYCLE_RESTRICTED,
-     /*!
-      *
-      */
-    LORAMAC_STATUS_NO_CHANNEL_FOUND,
-     /*!
-      *
-      */
-    LORAMAC_STATUS_NO_FREE_CHANNEL_FOUND
+    LORAMAC_STATUS_REGION_NOT_SUPPORTED
 }LoRaMacStatus_t;
 
 /*!
