@@ -353,12 +353,6 @@ void RegionKR920InitDefaults( InitType_t type )
             ChannelsMask[0] |= ChannelsDefaultMask[0];
             break;
         }
-        case INIT_TYPE_APP_DEFAULTS:
-        {
-            // Update the channels mask defaults
-            RegionCommonChanMaskCopy( ChannelsMask, ChannelsDefaultMask, 1 );
-            break;
-        }
         default:
         {
             break;
@@ -564,7 +558,7 @@ bool RegionKR920RxConfig( RxConfigParams_t* rxConfig, int8_t* datarate )
         return false;
     }
 
-    if( rxConfig->RxSlot == 0 )
+    if( rxConfig->Window == 0 )
     {
         // Apply window 1 frequency
         frequency = Channels[rxConfig->Channel].Frequency;

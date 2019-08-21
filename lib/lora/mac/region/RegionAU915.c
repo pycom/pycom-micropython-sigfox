@@ -338,15 +338,6 @@ void RegionAU915InitDefaults( InitType_t type )
             }
             break;
         }
-        case INIT_TYPE_APP_DEFAULTS:
-        {
-            // Copy channels default mask
-            RegionCommonChanMaskCopy( ChannelsMask, ChannelsDefaultMask, 6 );
-
-            // Copy into channels mask remaining
-            RegionCommonChanMaskCopy( ChannelsMaskRemaining, ChannelsMask, 6 );
-            break;
-        }
         default:
         {
             break;
@@ -523,7 +514,7 @@ bool RegionAU915RxConfig( RxConfigParams_t* rxConfig, int8_t* datarate )
         return false;
     }
 
-    if( rxConfig->RxSlot == 0 )
+    if( rxConfig->Window == 0 )
     {
         // Apply window 1 frequency
         frequency = AU915_FIRST_RX1_CHANNEL + ( rxConfig->Channel % 8 ) * AU915_STEPWIDTH_RX1_CHANNEL;

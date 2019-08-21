@@ -168,7 +168,7 @@ static bool ValidateChannelsMask( uint16_t* channelsMask )
         block1 = channelsMaskCpy[i] & 0x00FF;
         block2 = channelsMaskCpy[i] & 0xFF00;
 
-        if( CountBits( block1, 16 ) > 1 )
+        if( CountBits( block1, 16 ) > 5 )
         {
             channelsMaskCpy[i] &= block1;
             channelsMaskCpy[4] = 1 << ( i * 2 );
@@ -176,7 +176,7 @@ static bool ValidateChannelsMask( uint16_t* channelsMask )
             index = i;
             break;
         }
-        else if( CountBits( block2, 16 ) > 1 )
+        else if( CountBits( block2, 16 ) > 5 )
         {
             channelsMaskCpy[i] &= block2;
             channelsMaskCpy[4] = 1 << ( i * 2 + 1 );
@@ -431,16 +431,6 @@ void RegionUS915HybridInitDefaults( InitType_t type )
             { // Copy-And the channels mask
                 ChannelsMaskRemaining[i] &= ChannelsMask[i];
             }
-            break;
-        }
-        case INIT_TYPE_APP_DEFAULTS:
-        {
-            // Copy channels default mask
-            RegionCommonChanMaskCopy( ChannelsMask, ChannelsDefaultMask, 6 );
-
-            // Copy into channels mask remaining
-            RegionCommonChanMaskCopy( ChannelsMaskRemaining, ChannelsMask, 6 );
-            break;
         }
         default:
         {
@@ -619,7 +609,7 @@ bool RegionUS915HybridRxConfig( RxConfigParams_t* rxConfig, int8_t* datarate )
         return false;
     }
 
-    if( rxConfig->RxSlot == 0 )
+    if( rxConfig->Window == 0 )
     {
         // Apply window 1 frequency
         frequency = US915_HYBRID_FIRST_RX1_CHANNEL + ( rxConfig->Channel % 8 ) * US915_HYBRID_STEPWIDTH_RX1_CHANNEL;
