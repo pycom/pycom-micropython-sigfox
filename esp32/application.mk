@@ -503,7 +503,7 @@ endif
 ifeq ($(TARGET), boot_app)
 all: $(BOOT_BIN) $(APP_BIN)
 endif
-.PHONY: all
+.PHONY: all CHECK_DEP
 
 $(info $(VARIANT) Variant) 
 ifeq ($(SECURE), on)
@@ -562,10 +562,6 @@ $(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
 	$(Q) $(AR) cru $@ $^
 
 $(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a $(SECURE_BOOT_VERIFICATION_KEY)
-ifeq ($(COPY_IDF_LIB), 1)
-	$(ECHO) "COPY IDF LIBRARIES $@"
-	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
-endif
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
@@ -627,10 +623,6 @@ $(BUILD)/application.a: $(OBJ)
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
 $(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_BOOT_VERIFICATION_KEY)
-ifeq ($(COPY_IDF_LIB), 1)
-	$(ECHO) "COPY IDF LIBRARIES $@"
-	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
-endif
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
@@ -750,12 +742,26 @@ GEN_PINS_SRC = $(BUILD)/pins.c
 GEN_PINS_HDR = $(HEADER_BUILD)/pins.h
 GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 
+.NOTPARALLEL: CHECK_DEP $(OBJ)
+.NOTPARALLEL: CHECK_DEP $(BOOT_OBJ)
+
+$(BOOT_OBJ) $(OBJ): | CHECK_DEP
+
 # Making OBJ use an order-only dependency on the generated pins.h file
 # has the side effect of making the pins.h file before we actually compile
 # any of the objects. The normal dependency generation will deal with the
 # case when pins.h is modified. But when it doesn't exist, we don't know
 # which source files might need it.
 $(OBJ): | $(GEN_PINS_HDR)
+
+# Check Dependencies (IDF version, Frozen code and IDF LIBS)
+CHECK_DEP:
+	$(Q) bash tools/idfVerCheck.sh $(IDF_PATH) "$(IDF_VERSION)"
+	$(Q) bash tools/mpy-build-check.sh $(BOARD) $(BTYPE) $(VARIANT)
+ifeq ($(COPY_IDF_LIB), 1)
+	$(ECHO) "COPY IDF LIBRARIES"
+	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
+endif
 
 # Call make-pins.py to generate both pins_gen.c and pins.h
 $(GEN_PINS_SRC) $(GEN_PINS_HDR) $(GEN_PINS_QSTR): $(BOARD_PINS) $(MAKE_PINS) $(AF_FILE) $(PREFIX_FILE) | $(HEADER_BUILD)
