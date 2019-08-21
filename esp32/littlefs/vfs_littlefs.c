@@ -309,6 +309,10 @@ int littlefs_open_common_helper(lfs_t *lfs, const char* file_path, lfs_file_t *f
             }
         }
     }
+    else {
+        // Problem happened, free up the attributes
+        littlefs_free_up_attributes(cfg);
+    }
 
     return res;
 }
@@ -317,11 +321,14 @@ int littlefs_close_common_helper(lfs_t *lfs, lfs_file_t *fp, struct lfs_file_con
 
     // Update timestamp if it has been requested
     if(*timestamp_update_ptr == true) {
-        littlefs_update_timestamp_fp(fp);
+        littlefs_update_timestamp_cfg(cfg);
+        *timestamp_update_ptr = false;
     }
 
     int res = lfs_file_close(lfs, fp);
-    littlefs_free_up_attributes(cfg);
+    if(res == LFS_ERR_OK) {
+        littlefs_free_up_attributes(cfg);
+    }
 
     return res;
 }
@@ -350,13 +357,15 @@ void littlefs_prepare_attributes(struct lfs_file_config *cfg)
     cfg->attrs = m_malloc(cfg->attr_count * sizeof(struct lfs_attr));
 
     // Set attribute for storing the timestamp
-    cfg->attrs->size = sizeof(lfs_timestamp_attribute_t);
-    cfg->attrs->type = LFS_ATTRIBUTE_TIMESTAMP;
-    cfg->attrs->buffer = m_malloc(sizeof(lfs_timestamp_attribute_t));
+    cfg->attrs[0].size = sizeof(lfs_timestamp_attribute_t);
+    cfg->attrs[0].type = LFS_ATTRIBUTE_TIMESTAMP;
+    cfg->attrs[0].buffer = m_malloc(sizeof(lfs_timestamp_attribute_t));
+
 }
 
 void littlefs_free_up_attributes(struct lfs_file_config *cfg)
 {
+    cfg->attr_count = 0;
     // Currently we only have 1 attribute for timestamp
     m_free(cfg->attrs[0].buffer);
     m_free(cfg->attrs);
@@ -369,29 +378,24 @@ int littlefs_update_timestamp(lfs_t* lfs, const char* file_relative_path)
     lfs_timestamp_attribute_t ts;
     ts.fdate = (WORD)(tm >> 16);
     ts.ftime = (WORD)tm;
+    // Write directly the timestamp value onto the flash
     return lfs_setattr(lfs, file_relative_path, LFS_ATTRIBUTE_TIMESTAMP, &ts, sizeof(lfs_timestamp_attribute_t));
 }
 
-void littlefs_update_timestamp_fp(lfs_file_t* fp)
+void littlefs_update_timestamp_cfg(struct lfs_file_config *cfg)
 {
-    DWORD tm = get_fattime();
-    lfs_timestamp_attribute_t ts;
-    ts.fdate = (WORD)(tm >> 16);
-    ts.ftime = (WORD)tm;
+    // Check is needed to prevent any accidental case when cfg->attrs[x].buffer is already freed up by someone else
+    if(cfg->attr_count > 0) {
+        DWORD tm = get_fattime();
+        lfs_timestamp_attribute_t ts;
+        ts.fdate = (WORD)(tm >> 16);
+        ts.ftime = (WORD)tm;
 
-    // Until we only have 1 attribute, it is good to write the 0th element
-    memcpy(fp->cfg->attrs[0].buffer, &ts, sizeof(ts));
+        // Until we only have 1 attribute, it is good to write the 0th element
+        // This will automatically written out to the flash when close is performed
+        memcpy(cfg->attrs[0].buffer, &ts, sizeof(ts));
+    }
 }
-
-lfs_timestamp_attribute_t littlefs_get_timestamp_fp(lfs_file_t* fp)
-{
-    lfs_timestamp_attribute_t ts;
-
-    // Until we only have 1 attribute, it is good to read the 0th element
-    memcpy(&ts, fp->cfg->attrs[0].buffer, sizeof(ts));
-    return ts;
-}
-
 
 
 typedef struct _mp_vfs_littlefs_ilistdir_it_t {

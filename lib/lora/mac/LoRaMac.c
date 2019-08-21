@@ -257,7 +257,7 @@ static uint8_t MaxDCycle = 0;
 static uint16_t AggregatedDCycle;
 static TimerTime_t AggregatedLastTxDoneTime;
 static TimerTime_t AggregatedTimeOff;
-static TimerEvent_t RadioTxDoneClassCTimer;
+//static TimerEvent_t RadioTxDoneClassCTimer;
 
 /*!
  * Enables/Disables duty cycle management (Test only)
@@ -397,6 +397,11 @@ static McpsIndication_t McpsIndication;
 static McpsConfirm_t McpsConfirm;
 
 /*!
+ * Structure to hold MLME indication data.
+ */
+static MlmeIndication_t MlmeIndication;
+
+/*!
  * Structure to hold MLME confirm data.
  */
 static MlmeConfirm_t MlmeConfirm;
@@ -463,6 +468,19 @@ static void OnRxWindow1TimerEvent( void );
 static void OnRxWindow2TimerEvent( void );
 
 /*!
+ * \brief Check if the OnAckTimeoutTimer has do be disabled. If so, the
+ *        function disables it.
+ *
+ * \param [IN] nodeAckRequested Set to true, if the node has requested an ACK
+ * \param [IN] class The device class
+ * \param [IN] ackReceived Set to true, if the node has received an ACK
+ * \param [IN] ackTimeoutRetriesCounter Retries counter for confirmed uplinks
+ * \param [IN] ackTimeoutRetries Maximum retries for confirmed uplinks
+ */
+static void CheckToDisableAckTimeout( bool nodeAckRequested, DeviceClass_t devClass, bool ackReceived,
+                                      uint8_t ackTimeoutRetriesCounter, uint8_t ackTimeoutRetries );
+
+/*!
  * \brief Function executed on AckTimeout timer event
  */
 static void OnAckTimeoutTimerEvent( void );
@@ -474,6 +492,19 @@ static void OnAckTimeoutTimerEvent( void );
  * \param [IN] maxRxWindow Maximum RX window timeout
  */
 static void RxWindowSetup( bool rxContinuous, uint32_t maxRxWindow );
+
+/*!
+ * \brief Verifies if sticky MAC commands are pending.
+ *
+ * \retval [true: sticky MAC commands pending, false: No MAC commands pending]
+ */
+static bool IsStickyMacCommandPending( void );
+
+/*!
+ * \brief Configures the events to trigger an MLME-Indication with
+ *        a MLME type of MLME_SCHEDULE_UPLINK.
+ */
+static void SetMlmeScheduleUplinkIndication( void );
 
 /*!
  * \brief Adds a new MAC command to be sent.
@@ -589,6 +620,21 @@ LoRaMacStatus_t SetTxContinuousWave1( uint16_t timeout, uint32_t frequency, uint
  */
 static void ResetMacParameters( void );
 
+/*!
+ * \brief Resets MAC specific parameters to default
+ *
+ * \param [IN] fPort     The fPort
+ *
+ * \retval [false: fPort not allowed, true: fPort allowed]
+ */
+static bool IsFPortAllowed( uint8_t fPort );
+
+/*!
+ * \brief Opens up a continuous RX 2 window. This is used for
+ *        class c devices.
+ */
+static void OpenContinuousRx2Window( void );
+
 static IRAM_ATTR void OnRadioTxDone( void )
 {
     GetPhyParams_t getPhy;
@@ -602,7 +648,7 @@ static IRAM_ATTR void OnRadioTxDone( void )
     }
     else
     {
-        TimerStart(&RadioTxDoneClassCTimer);
+        OpenContinuousRx2Window( );
     }
 
     // Setup timers
@@ -686,7 +732,6 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
     ApplyCFListParams_t applyCFList;
     GetPhyParams_t getPhy;
     PhyParam_t phyParam;
-    bool skipIndication = false;
 
     uint8_t pktHeaderLen = 0;
     uint32_t address = 0;
@@ -937,8 +982,8 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
                                 // In this case, the MAC layer shall accept the MAC commands
                                 // which are included in the downlink retransmission.
                                 // It should not provide the same frame to the application
-                                // layer again.
-                                skipIndication = true;
+                                // layer again. The MAC layer accepts the acknowledgement.
+                                LoRaMacFlags.Bits.McpsIndSkip = 1;
                             }
                         }
                         else
@@ -967,6 +1012,9 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
                         if( fCtrl.Bits.Ack == 1 )
                         {// Reset MacCommandsBufferIndex when we have received an ACK.
                             MacCommandsBufferIndex = 0;
+                            // Update acknowledgement information
+                            McpsConfirm.AckReceived = fCtrl.Bits.Ack;
+                            McpsIndication.AckReceived = fCtrl.Bits.Ack;
                         }
                     }
                     else
@@ -1000,7 +1048,10 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
                             }
                             else
                             {
-                                skipIndication = true;
+                                LoRaMacFlags.Bits.McpsIndSkip = 1;
+                                // This is not a valid frame. Drop it and reset the ACK bits
+                                McpsConfirm.AckReceived = false;
+                                McpsIndication.AckReceived = false;
                             }
                         }
                         else
@@ -1019,12 +1070,9 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
                                                    downLinkCounter,
                                                    LoRaMacRxPayload );
 
-                            if( skipIndication == false )
-                            {
-                                McpsIndication.Buffer = LoRaMacRxPayload;
-                                McpsIndication.BufferSize = frameLen;
-                                McpsIndication.RxData = true;
-                            }
+                            McpsIndication.Buffer = LoRaMacRxPayload;
+                            McpsIndication.BufferSize = frameLen;
+                            McpsIndication.RxData = true;
                         }
                     }
                     else
@@ -1036,34 +1084,9 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
                         }
                     }
 
-                    if( skipIndication == false )
-                    {
-                        // Check if the frame is an acknowledgement
-                        if( fCtrl.Bits.Ack == 1 )
-                        {
-                            McpsConfirm.AckReceived = true;
-                            McpsIndication.AckReceived = true;
-
-                            // Stop the AckTimeout timer as no more retransmissions
-                            // are needed.
-                            TimerStop( &AckTimeoutTimer );
-                        }
-                        else
-                        {
-                            McpsConfirm.AckReceived = false;
-
-                            if( AckTimeoutRetriesCounter > AckTimeoutRetries )
-                            {
-                                // Stop the AckTimeout timer as no more retransmissions
-                                // are needed.
-                                TimerStop( &AckTimeoutTimer );
-                            }
-                        }
-                    }
                     // Provide always an indication, skip the callback to the user application,
                     // in case of a confirmed downlink retransmission.
                     LoRaMacFlags.Bits.McpsInd = 1;
-                    LoRaMacFlags.Bits.McpsIndSkip = skipIndication;
                 }
                 else
                 {
@@ -1091,11 +1114,19 @@ static void OnRadioRxDone( uint8_t *payload, uint32_t timestamp, uint16_t size, 
             PrepareRxDoneAbort( );
             break;
     }
-    LoRaMacFlags.Bits.MacDone = 1;
 
-    // Trig OnMacCheckTimerEvent call as soon as possible
-    TimerSetValue( &MacStateCheckTimer, 1 );
-    TimerStart( &MacStateCheckTimer );
+    // Verify if we need to disable the AckTimeoutTimer
+    CheckToDisableAckTimeout( NodeAckRequested, LoRaMacDeviceClass, McpsConfirm.AckReceived,
+                                AckTimeoutRetriesCounter, AckTimeoutRetries );
+
+    if( AckTimeoutTimer.IsRunning == false )
+    {// Procedure is completed when the AckTimeoutTimer is not running anymore
+        LoRaMacFlags.Bits.MacDone = 1;
+
+        // Trig OnMacCheckTimerEvent call as soon as possible
+        TimerSetValue( &MacStateCheckTimer, 1 );
+        TimerStart( &MacStateCheckTimer );
+    }
 }
 
 static void OnRadioTxTimeout( void )
@@ -1106,7 +1137,7 @@ static void OnRadioTxTimeout( void )
     }
     else
     {
-        OnRxWindow2TimerEvent( );
+        OpenContinuousRx2Window( );
     }
 
     McpsConfirm.Status = LORAMAC_EVENT_INFO_STATUS_TX_TIMEOUT;
@@ -1119,10 +1150,6 @@ static void OnRadioRxError( void )
     if( LoRaMacDeviceClass != CLASS_C )
     {
         Radio.Sleep( );
-    }
-    else
-    {
-        OnRxWindow2TimerEvent( );
     }
 
     if( RxSlot == 0 )
@@ -1146,6 +1173,11 @@ static void OnRadioRxError( void )
         }
         MlmeConfirm.Status = LORAMAC_EVENT_INFO_STATUS_RX2_ERROR;
         LoRaMacFlags.Bits.MacDone = 1;
+    }
+
+    if( LoRaMacDeviceClass == CLASS_C )
+    {
+        OpenContinuousRx2Window( );
     }
 }
 
@@ -1185,6 +1217,11 @@ static void OnRadioRxTimeout( void )
         {
             LoRaMacFlags.Bits.MacDone = 1;
         }
+    }
+
+    if( LoRaMacDeviceClass == CLASS_C )
+    {
+        OpenContinuousRx2Window( );
     }
 }
 
@@ -1383,6 +1420,12 @@ static void OnMacStateCheckTimerEvent( void )
             LoRaMacFlags.Bits.MlmeReq = 0;
         }
 
+        // Verify if sticky MAC commands are pending or not
+        if( IsStickyMacCommandPending( ) == true )
+        {// Setup MLME indication
+            SetMlmeScheduleUplinkIndication( );
+        }
+
         // Procedure done. Reset variables.
         LoRaMacFlags.Bits.MacDone = 0;
     }
@@ -1391,6 +1434,28 @@ static void OnMacStateCheckTimerEvent( void )
         // Operation not finished restart timer
         TimerSetValue( &MacStateCheckTimer, MAC_STATE_CHECK_TIMEOUT );
         TimerStart( &MacStateCheckTimer );
+    }
+
+    // Handle MCPS indication
+    if( LoRaMacFlags.Bits.McpsInd == 1 )
+    {
+        LoRaMacFlags.Bits.McpsInd = 0;
+        if( LoRaMacDeviceClass == CLASS_C )
+        {// Activate RX2 window for Class C
+            OpenContinuousRx2Window( );
+        }
+        if( LoRaMacFlags.Bits.McpsIndSkip == 0 )
+        {
+            LoRaMacPrimitives->MacMcpsIndication( &McpsIndication );
+        }
+        LoRaMacFlags.Bits.McpsIndSkip = 0;
+    }
+
+    // Handle MLME indication
+    if( LoRaMacFlags.Bits.MlmeInd == 1 )
+    {
+        LoRaMacFlags.Bits.MlmeInd = 0;
+        LoRaMacPrimitives->MacMlmeIndication( &MlmeIndication );
     }
 }
 
@@ -1475,6 +1540,41 @@ static void OnRxWindow2TimerEvent( void )
     }
 }
 
+static void CheckToDisableAckTimeout( bool nodeAckRequested, DeviceClass_t devClass, bool ackReceived,
+                                      uint8_t ackTimeoutRetriesCounter, uint8_t ackTimeoutRetries )
+{
+    // There are three cases where we need to stop the AckTimeoutTimer:
+    if( nodeAckRequested == false )
+    {
+        if( devClass == CLASS_C )
+        {// FIRST CASE
+            // We have performed an unconfirmed uplink in class c mode
+            // and have received a downlink in RX1 or RX2.
+            TimerStop( &AckTimeoutTimer );
+        }
+    }
+    else
+    {
+        if( ackReceived == 1 )
+        {// SECOND CASE
+            // We have performed a confirmed uplink and have received a
+            // downlink with a valid ACK.
+            TimerStop( &AckTimeoutTimer );
+        }
+        else
+        {// THIRD CASE
+            if( ackTimeoutRetriesCounter > ackTimeoutRetries )
+            {
+                // We have performed a confirmed uplink and have not
+                // received a downlink with a valid ACK. In this case
+                // we need to verify if the maximum retries have been
+                // elapsed. If so, stop the timer.
+                TimerStop( &AckTimeoutTimer );
+            }
+        }
+    }
+}
+
 static void OnAckTimeoutTimerEvent( void )
 {
     TimerStop( &AckTimeoutTimer );
@@ -1533,6 +1633,22 @@ bool ValidatePayloadLength( uint8_t lenN, int8_t datarate, uint8_t fOptsLen )
     return false;
 }
 
+static bool IsStickyMacCommandPending( void )
+{
+    if( MacCommandsBufferToRepeatIndex > 0 )
+    {
+        // Sticky MAC commands pending
+        return true;
+    }
+    return false;
+}
+
+static void SetMlmeScheduleUplinkIndication( void )
+{
+    MlmeIndication.MlmeIndication = MLME_SCHEDULE_UPLINK;
+    LoRaMacFlags.Bits.MlmeInd = 1;
+}
+
 static LoRaMacStatus_t AddMacCommand( uint8_t cmd, uint8_t p1, uint8_t p2 )
 {
     LoRaMacStatus_t status = LORAMAC_STATUS_BUSY;
@@ -1572,6 +1688,8 @@ static LoRaMacStatus_t AddMacCommand( uint8_t cmd, uint8_t p1, uint8_t p2 )
                 MacCommandsBuffer[MacCommandsBufferIndex++] = cmd;
                 // Status: Datarate ACK, Channel ACK
                 MacCommandsBuffer[MacCommandsBufferIndex++] = p1;
+                // This is a sticky MAC command answer. Setup indication
+                SetMlmeScheduleUplinkIndication( );
                 status = LORAMAC_STATUS_OK;
             }
             break;
@@ -1600,6 +1718,8 @@ static LoRaMacStatus_t AddMacCommand( uint8_t cmd, uint8_t p1, uint8_t p2 )
             {
                 MacCommandsBuffer[MacCommandsBufferIndex++] = cmd;
                 // No payload for this answer
+                // This is a sticky MAC command answer. Setup indication
+                SetMlmeScheduleUplinkIndication( );
                 status = LORAMAC_STATUS_OK;
             }
             break;
@@ -1617,6 +1737,10 @@ static LoRaMacStatus_t AddMacCommand( uint8_t cmd, uint8_t p1, uint8_t p2 )
                 MacCommandsBuffer[MacCommandsBufferIndex++] = cmd;
                 // Status: Uplink frequency exists, Channel frequency OK
                 MacCommandsBuffer[MacCommandsBufferIndex++] = p1;
+
+                // This is a sticky MAC command answer. Setup indication
+                SetMlmeScheduleUplinkIndication( );
+               
                 status = LORAMAC_STATUS_OK;
             }
             break;
@@ -2038,6 +2162,21 @@ static void ResetMacParameters( void )
     LastTxChannel = Channel;
 }
 
+static bool IsFPortAllowed( uint8_t fPort )
+{
+    if( fPort > 224 )
+    {
+        return false;
+    }
+    return true;
+}
+
+static void OpenContinuousRx2Window( void )
+{
+    OnRxWindow2TimerEvent( );
+    RxSlot = 2;
+}
+
 LoRaMacStatus_t PrepareFrame( LoRaMacHeader_t *macHdr, LoRaMacFrameCtrl_t *fCtrl, uint8_t fPort, void *fBuffer, uint16_t fBufferSize )
 {
     AdrNextParams_t adrNext;
@@ -2292,7 +2431,8 @@ LoRaMacStatus_t LoRaMacInitialization( LoRaMacPrimitives_t *primitives, LoRaMacC
 
     if( ( primitives->MacMcpsConfirm == NULL ) ||
         ( primitives->MacMcpsIndication == NULL ) ||
-        ( primitives->MacMlmeConfirm == NULL ) )
+        ( primitives->MacMlmeConfirm == NULL ) ||
+        ( primitives->MacMlmeIndication == NULL ) )
     {
         return LORAMAC_STATUS_PARAMETER_INVALID;
     }
@@ -2407,8 +2547,8 @@ LoRaMacStatus_t LoRaMacInitialization( LoRaMacPrimitives_t *primitives, LoRaMacC
     TimerInit( &RxWindowTimer1, OnRxWindow1TimerEvent );
     TimerInit( &RxWindowTimer2, OnRxWindow2TimerEvent );
     TimerInit( &AckTimeoutTimer, OnAckTimeoutTimerEvent );
-    TimerInit( &RadioTxDoneClassCTimer, OnRxWindow2TimerEvent );
-    TimerSetValue( &RadioTxDoneClassCTimer, 1 );
+    //TimerInit( &RadioTxDoneClassCTimer, OnRxWindow2TimerEvent );
+    //TimerSetValue( &RadioTxDoneClassCTimer, 1 );
 
     // Store the current initialization time
     LoRaMacInitializationTime = TimerGetCurrentTime( );
@@ -3346,6 +3486,12 @@ LoRaMacStatus_t LoRaMacMcpsRequest( McpsReq_t *mcpsRequest )
         }
         default:
             break;
+    }
+
+    // Filter fPorts
+    if( IsFPortAllowed( fPort ) == false )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
     }
 
     // Get the minimum possible datarate

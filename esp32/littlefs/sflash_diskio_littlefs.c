@@ -9,7 +9,8 @@
 
 char prog_buffer[SFLASH_BLOCK_SIZE] = {0};
 char read_buffer[SFLASH_BLOCK_SIZE] = {0};
-char lookahead_buffer[SFLASH_BLOCK_COUNT_8MB/8] = {0};
+// Must be on 64 bit aligned address, create it as array of 64 bit entries to achieve it
+uint64_t lookahead_buffer[SFLASH_BLOCK_COUNT_8MB/(8*8)] = {0};
 
 int littlefs_read(const struct lfs_config *c, lfs_block_t block, lfs_off_t off, void *buffer, lfs_size_t size)
 {

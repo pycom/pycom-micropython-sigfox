@@ -45,7 +45,7 @@ extern int littlefs_close_common_helper(lfs_t *lfs, lfs_file_t *fp, struct lfs_f
 extern int littlefs_stat_common_helper(lfs_t *lfs, const char* file_path, struct lfs_info *fno, lfs_timestamp_attribute_t *ts);
 extern void littlefs_free_up_attributes(struct lfs_file_config *cfg);
 extern int littlefs_update_timestamp(lfs_t* lfs, const char* file_relative_path);
-extern void littlefs_update_timestamp_fp(lfs_file_t* fp);
+extern void littlefs_update_timestamp_cfg(struct lfs_file_config *cfg);
 extern lfs_timestamp_attribute_t littlefs_get_timestamp_fp(lfs_file_t* fp);
 
 

@@ -14,6 +14,8 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
+IDF_VERSION=3.1
+
 TARGET ?= boot_app
 
 OEM ?= 0
@@ -69,9 +71,6 @@ endif # ifeq ($(SECURE), on)
 ifndef PROJECT_PATH
 PROJECT_PATH := $(abspath $(dir $(firstword $(MAKEFILE_LIST))))
 endif
-
-#check Frozen files changes
-$(shell bash tools/mpy-build-check.sh $(BOARD) $(BTYPE) $(VARIANT))
 
 FROZEN_MPY_DIR = frozen
 
@@ -130,7 +129,7 @@ endif
 
 # Enable or Disable LTE_LOG_BUFF
 ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
-ifeq ($(LTE_DEBUG_BUFF),1)
+ifeq ($(LTE_LOG_BUFF),1)
 	CFLAGS += -DLTE_DEBUG_BUFF
 endif #ifeq ($(LTE_LOG_BUFF),1)
 endif #ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
