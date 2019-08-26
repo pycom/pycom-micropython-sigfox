@@ -661,15 +661,20 @@ static int mesh_add_border_router(const char* ipv6_net_str, int preference_level
 
     memset(&config, 0, sizeof(otBorderRouterConfig));
 
+    // copy the ipv6_net_str
+    char ip_cpy[101];
+    strncpy(ip_cpy, ipv6_net_str, 100);
     char *prefixLengthStr;
 
     // parse and check if ipv6_net_str is a real IPv6 network address(prefix)
     // ipv6 prefix example: "2001:dead:beef:cafe::/64"
-    otEXPECT_ACTION((prefixLengthStr = strchr(ipv6_net_str, '/')) != NULL, error = MP_ENXIO);
+    prefixLengthStr = strchr(ip_cpy, '/');
+    otEXPECT_ACTION( prefixLengthStr != NULL, error = MP_ENXIO);
 
-    *prefixLengthStr++ = '\0';
+    prefixLengthStr[0] = 0; // delete the '/' from "2001:dead:beef:cafe::/64"
+    prefixLengthStr++;      // prefixLengthStr points to "64"
 
-    otEXPECT_ACTION((error = otIp6AddressFromString(ipv6_net_str, &config.mPrefix.mPrefix)) == OT_ERROR_NONE,);
+    otEXPECT_ACTION((error = otIp6AddressFromString(ip_cpy, &config.mPrefix.mPrefix)) == OT_ERROR_NONE,);
 
     config.mPrefix.mLength = (uint8_t)(strtol(prefixLengthStr, NULL, 0));
 
