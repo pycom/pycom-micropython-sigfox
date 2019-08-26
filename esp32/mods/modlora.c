@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Pycom Limited.
+ * Copyright (c) 2019, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -1090,7 +1090,7 @@ static void TASK_LoRa (void *pvParameters) {
                     mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.u.otaa.AppEui;
                     mlmeReq.Req.Join.AppKey = (uint8_t *)lora_obj.u.otaa.AppKey;
                     mlmeReq.Req.Join.NbTrials = 1;
-                    mlmeReq.Req.Join.Datarate = (uint8_t) lora_obj.otaa_dr;
+                    mlmeReq.Req.Join.DR = (uint8_t) lora_obj.otaa_dr;
                     LoRaMacMlmeRequest( &mlmeReq );
                 } else {
                     mibReq.Type = MIB_NETWORK_ACTIVATION;

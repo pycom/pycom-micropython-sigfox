@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Pycom Limited.
+ * Copyright (c) 2019, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -378,7 +378,7 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     int rx_buffer_size = args[6].u_int;
     // Check is needed because return value of uart_driver_install is not checked
     if(!(rx_buffer_size > UART_FIFO_LEN)) {
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid RX buffer size, minimum is 128"));
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid RX buffer size, should be > 128 bytes"));
     }
 
     if (self->config.baud_rate > 0) {

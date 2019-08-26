@@ -1,5 +1,5 @@
 #
-# Copyright © 2016, Pycom Limited.
+# Copyright © 2019, Pycom Limited.
 #
 # This software is licensed under the GNU GPL version 3 or any
 # later version, with permitted additional terms. For more information
@@ -129,7 +129,7 @@ endif
 
 # Enable or Disable LTE_LOG_BUFF
 ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
-ifeq ($(LTE_DEBUG_BUFF),1)
+ifeq ($(LTE_LOG_BUFF),1)
 	CFLAGS += -DLTE_DEBUG_BUFF
 endif #ifeq ($(LTE_LOG_BUFF),1)
 endif #ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
