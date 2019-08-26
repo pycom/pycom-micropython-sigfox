@@ -44,7 +44,7 @@ LTE_LOG_BUFF ?= 0
 RGB_LED ?= enable
 
 # by default Pymesh over LoRa is disabled
-OPENTHREAD ?= off
+OPENTHREAD ?= on
 
 # by default Secure Boot and Flash Encryption are disabled
 SECURE ?= off
