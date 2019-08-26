@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2017, Pycom Limited and its licensors.
+* Copyright (c) 2019, Pycom Limited and its licensors.
 *
 * This software is licensed under the GNU GPL version 3 or any later version,
 * with permitted additional terms. For more information see the Pycom Licence
@@ -115,7 +115,7 @@ extern TaskHandle_t xLTETaskHndl;
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-static bool lte_push_at_command_ext (char *cmd_str, uint32_t timeout, const char *expected_rsp);
+static bool lte_push_at_command_ext (char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len);
 static bool lte_push_at_command (char *cmd_str, uint32_t timeout);
 static void lte_pause_ppp(void);
 static bool lte_check_attached(bool legacy);
@@ -145,25 +145,12 @@ void modlte_start_modem(void)
 // DEFINE STATIC FUNCTIONS
 //*****************************************************************************
 
-static bool lte_push_at_command_ext(char *cmd_str, uint32_t timeout, const char *expected_rsp) {
-    lte_task_cmd_data_t cmd = { .timeout = timeout };
-    memcpy(cmd.data, cmd_str, strlen(cmd_str));
+static bool lte_push_at_command_ext(char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len) {
+    lte_task_cmd_data_t cmd = { .timeout = timeout, .dataLen = len};
+    memcpy(cmd.data, cmd_str, len);
     //printf("[CMD] %s\n", cmd_str);
     lteppp_send_at_command(&cmd, &modlte_rsp);
-    if (strstr(modlte_rsp.data, expected_rsp) != NULL) {
-        //printf("[OK] %s\n", modlte_rsp.data);
-        return true;
-    }
-    //printf("[FAIL] %s\n", modlte_rsp.data);
-    return false;
-}
-
-static bool lte_push_at_command_delay_ext (char *cmd_str, uint32_t timeout, const char *expected_rsp, TickType_t delay) {
-    lte_task_cmd_data_t cmd = { .timeout = timeout };
-    memcpy(cmd.data, cmd_str, strlen(cmd_str));
-    //printf("[CMD] %s\n", cmd_str);
-    lteppp_send_at_command_delay(&cmd, &modlte_rsp, delay);
-    if (strstr(modlte_rsp.data, expected_rsp) != NULL) {
+    if ((expected_rsp == NULL) || (strstr(modlte_rsp.data, expected_rsp) != NULL)) {
         //printf("[OK] %s\n", modlte_rsp.data);
         return true;
     }
@@ -172,11 +159,7 @@ static bool lte_push_at_command_delay_ext (char *cmd_str, uint32_t timeout, cons
 }
 
 static bool lte_push_at_command (char *cmd_str, uint32_t timeout) {
-    return lte_push_at_command_ext(cmd_str, timeout, LTE_OK_RSP);
-}
-
-static bool lte_push_at_command_delay (char *cmd_str, uint32_t timeout, TickType_t delay) {
-    return lte_push_at_command_delay_ext(cmd_str, timeout, LTE_OK_RSP, delay);
+    return lte_push_at_command_ext(cmd_str, timeout, LTE_OK_RSP, strlen(cmd_str));
 }
 
 static void lte_pause_ppp(void) {
@@ -968,14 +951,14 @@ STATIC mp_obj_t lte_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
     }
 
     if (lteppp_get_state() == E_LTE_ATTACHED || (args[1].u_bool && lteppp_get_state() == E_LTE_SUSPENDED)) {
-        if (args[1].u_bool || !lte_push_at_command_ext("ATO", LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP)) {
+        if (args[1].u_bool || !lte_push_at_command_ext("ATO", LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP, strlen("ATO") )) {
             char at_cmd[LTE_AT_CMD_SIZE_MAX - 4];
             if (args[0].u_obj != mp_const_none) {
                 lte_obj.cid = args[0].u_int;
             }
             sprintf(at_cmd, "AT+CGDATA=\"PPP\",%d", lte_obj.cid);
             // set the PPP state in advance, to avoid CEREG? to be sent right after PPP is entered
-            if (!lte_push_at_command_ext(at_cmd, LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP)) {
+            if (!lte_push_at_command_ext(at_cmd, LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP, strlen(at_cmd) )) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
         }
@@ -1018,7 +1001,7 @@ STATIC mp_obj_t lte_resume(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             lte_obj.cid = args[0].u_int;
         }
 
-        if (lte_push_at_command_ext("ATO", LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP)) {
+        if (lte_push_at_command_ext("ATO", LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP, strlen("ATO") )) {
             lteppp_connect();
             lteppp_resume();
             lteppp_set_state(E_LTE_PPP);
@@ -1089,7 +1072,6 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     lte_check_inppp();
     STATIC const mp_arg_t allowed_args[] = {
         { MP_QSTR_cmd,        MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_delay,      MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 0} },
     };
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
@@ -1097,15 +1079,23 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     if (args[0].u_obj == mp_const_none) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "the command must be specified!"));
     }
-    const char *cmd = mp_obj_str_get_str(args[0].u_obj);
-    lte_push_at_command_delay((char *)cmd, LTE_RX_TIMEOUT_MAX_MS, args[1].u_int);
+    if (MP_OBJ_IS_STR_OR_BYTES(args[0].u_obj))
+    {
+        size_t len;
+        lte_push_at_command_ext((char *)(mp_obj_str_get_data(args[0].u_obj, &len)), LTE_RX_TIMEOUT_MAX_MS, NULL, len);
+    }
+    else
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_TypeError, mpexception_num_type_invalid_arguments));
+    }
+
     vstr_t vstr;
     vstr_init(&vstr, 0);
     vstr_add_str(&vstr, modlte_rsp.data);
     MP_THREAD_GIL_EXIT();
     while(modlte_rsp.data_remaining)
     {
-        lte_push_at_command_delay("Pycom_Dummy", LTE_RX_TIMEOUT_MAX_MS, args[1].u_int);
+        lte_push_at_command_ext("Pycom_Dummy", LTE_RX_TIMEOUT_MAX_MS, NULL, strlen("Pycom_Dummy") );
         vstr_add_str(&vstr, modlte_rsp.data);
     }
     MP_THREAD_GIL_ENTER();

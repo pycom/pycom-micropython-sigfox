@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Pycom Limited.
+ * Copyright (c) 2019, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -72,6 +72,7 @@ typedef struct {
 typedef struct {
     uint32_t timeout;
     char data[LTE_AT_CMD_SIZE_MAX - 4];
+    size_t dataLen;
 } lte_task_cmd_data_t;
 #pragma pack(1)
 typedef struct {
@@ -110,8 +111,6 @@ extern uint32_t lteppp_ipv4(void);
 extern void lteppp_deinit (void);
 
 extern void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp);
-
-extern void lteppp_send_at_command_delay (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp, TickType_t delay);
 
 extern bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_mp, void* data_rem);
 

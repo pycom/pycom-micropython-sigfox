@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Pycom Limited.
+ * Copyright (c) 2019, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -769,6 +769,21 @@ static void OnTxNextActReqTimerEvent(void) {
     }
 }
 
+static void MlmeIndication( MlmeIndication_t *mlmeIndication )
+{
+    switch( mlmeIndication->MlmeIndication )
+    {
+        case MLME_SCHEDULE_UPLINK:
+        {// The MAC signals that we shall provide an uplink as soon as possible
+            printf("Trying to send uplink\n");
+            OnTxNextActReqTimerEvent( );
+            break;
+        }
+        default:
+            break;
+    }
+}
+
 static void TASK_LoRa (void *pvParameters) {
     MibRequestConfirm_t mibReq;
     MlmeReq_t mlmeReq;
@@ -795,6 +810,7 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacPrimitives.MacMcpsConfirm = McpsConfirm;
                         LoRaMacPrimitives.MacMcpsIndication = McpsIndication;
                         LoRaMacPrimitives.MacMlmeConfirm = MlmeConfirm;
+                        LoRaMacPrimitives.MacMlmeIndication = MlmeIndication;
                         LoRaMacCallbacks.GetBatteryLevel = BoardGetBatteryLevel;
                         LoRaMacInitialization(&LoRaMacPrimitives, &LoRaMacCallbacks, task_cmd_data.info.init.region);
 

@@ -1,0 +1,7 @@
+# Integration with Issue Tracker
+#
+# (note that '\' need to be escaped).
+
+[issuetracker "PYFW jira rule"]
+  regex = "PYFW-(\\d+)"
+  url = "https://pycomiot.atlassian.net/browse/PYFW-$1"

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Pycom Limited.
+ * Copyright (c) 2019, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -478,6 +478,30 @@ STATIC mp_obj_t mod_pycom_bootmgr (size_t n_args, const mp_obj_t *pos_args, mp_m
 
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_bootmgr_obj, 0, mod_pycom_bootmgr);
 
+STATIC mp_obj_t mod_pycom_get_free_heap (void) {
+
+    size_t heap_psram_free = 0;
+    mp_obj_t items[2];
+    esp_chip_info_t chip_info;
+
+    esp_chip_info(&chip_info);
+    if (chip_info.revision > 0) {
+        heap_psram_free = heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    }
+    items[0] = mp_obj_new_int(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+    if(heap_psram_free)
+    {
+        items[1] = mp_obj_new_int(heap_psram_free);
+    }
+    else
+    {
+        items[1] = mp_obj_new_str("NO_EXT_RAM", strlen("NO_EXT_RAM"));
+    }
+
+    return mp_obj_new_tuple(2, items);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_get_free_heap_obj, mod_pycom_get_free_heap);
+
 #if (VARIANT == PYBYTES)
 STATIC mp_obj_t mod_pycom_pybytes_device_token (void) {
         uint8_t pybytes_device_token[39];
@@ -546,6 +570,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd),                        (mp_obj_t)&mod_pycom_wifi_pwd_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat_on_boot),               (mp_obj_t)&mod_pycom_heartbeat_on_boot_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_lte_modem_en_on_boot),            (mp_obj_t)&mod_pycom_lte_modem_on_boot_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_get_free_heap),                   (mp_obj_t)&mod_pycom_get_free_heap_obj },
 #if (VARIANT == PYBYTES)
     { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_device_token),            (mp_obj_t)&mod_pycom_pybytes_device_token_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_mqttServiceAddress),      (mp_obj_t)&mod_pycom_pybytes_mqttServiceAddress_obj },

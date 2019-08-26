@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2018, Pycom Limited and its licensors.
+ * Copyright (c) 2019, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -109,7 +109,7 @@ SemaphoreHandle_t xSocketOpsSem;
 void modusocket_pre_init (void) {
 
 	// Create a Task to handle Socket Async ops
-	xTaskCreatePinnedToCore(TASK_SOCK_OPS, "Socket Operations", 3072 / sizeof(StackType_t), NULL, 5, &xSocketOpsTaskHndl, 1);
+	xTaskCreatePinnedToCore(TASK_SOCK_OPS, "Socket Operations", 4096 / sizeof(StackType_t), NULL, 5, &xSocketOpsTaskHndl, 1);
 	// Create semaphore
 	xSocketOpsSem = xSemaphoreCreateMutex();
     /* Stop task as it is not needed unless a socket conn is requested*/

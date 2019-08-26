@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, Pycom Limited.
+# Copyright (c) 2019, Pycom Limited.
 #
 # This software is licensed under the GNU GPL version 3 or any
 # later version, with permitted additional terms. For more information
@@ -747,8 +747,8 @@ GEN_PINS_SRC = $(BUILD)/pins.c
 GEN_PINS_HDR = $(HEADER_BUILD)/pins.h
 GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 
-.NOTPARALLEL: CHECK_DEP $(APP_BIN)
-.NOTPARALLEL: CHECK_DEP $(BOOT_BIN)
+.NOTPARALLEL: CHECK_DEP $(OBJ)
+.NOTPARALLEL: CHECK_DEP $(BOOT_OBJ)
 
 $(BOOT_OBJ) $(OBJ): | CHECK_DEP
 
