@@ -6,7 +6,7 @@ see the Pycom Licence v1.0 document supplied with this file, or
 available at https://www.pycom.io/opensource/licensing
 '''
 
-import os
+import os, json, binascii
 from machine import Timer
 
 try:
@@ -19,7 +19,17 @@ try:
 except:
     from _pybytes_debug import print_debug
 
-__DEFAULT_HOST = "mqtt.pycom.io"
+try:
+    from pybytes_constants import constants
+except:
+    from _pybytes_constants import constants
+
+try:
+    from pybytes_config import PybytesConfig
+except:
+    from _pybytes_config import PybytesConfig
+
+__DEFAULT_HOST = "mqtt.{}".format(constants.__DEFAULT_DOMAIN)
 
 class __PERIODICAL_PIN:
     TYPE_DIGITAL = 0
@@ -35,112 +45,146 @@ class __PERIODICAL_PIN:
 
 class Pybytes:
 
-    def __init__(self, config):
-        self.__conf = config
-        self.__check_dump_ca()
+    def __init__(self, config, activation=False):
         self.__frozen = globals().get('__name__') == '_pybytes'
-        self.__pybytes_connection = PybytesConnection(self.__conf, self.__recv_message)
+        self.__activation = activation
         self.__custom_message_callback = None
+        self.__config_updated = False
+        self.__pybytes_connection = None
+        self.__conf = {}
 
-        # START code from the old boot.py
-        import machine
-        import micropython
-        from binascii import hexlify
+        if not self.__activation:
+            self.__conf = config
+            self.__check_dump_ca()
+            self.__pybytes_connection = PybytesConnection(self.__conf, self.__recv_message)
 
-        wmac = hexlify(machine.unique_id()).decode('ascii')
-        print("WMAC: %s" % wmac.upper())
-        try:
-            print("Firmware: %s\nPybytes: %s" % (os.uname().release, os.uname().pybytes))
-        except:
-            print("Firmware: %s" % os.uname().release)
-        # print(micropython.mem_info())
-        # STOP code from the old boot.py
+            # START code from the old boot.py
+            import machine
+            import micropython
+            from binascii import hexlify
+
+            wmac = hexlify(machine.unique_id()).decode('ascii')
+            print("WMAC: %s" % wmac.upper())
+            try:
+                print("Firmware: %s\nPybytes: %s" % (os.uname().release, os.uname().pybytes))
+            except:
+                print("Firmware: %s" % os.uname().release)
+            # print(micropython.mem_info())
+            # STOP code from the old boot.py
+
+    def __check_init(self):
+        if self.__pybytes_connection is None:
+            raise OSError('Pybytes has not been initialized!')
 
     def __check_dump_ca(self):
-        ssl_params = self.__conf.get('ssl_params')
-        if self.__conf.get('dump_ca', False) and ssl_params is not None:
+        ssl_params = self.__conf.get('ssl_params', {'ca_certs': '/flash/cert/pycom-ca.pem'})
+        print_debug(4,' ssl_params={} '.format(ssl_params))
+        if self.__conf.get('dump_ca', False):
             try:
-                stat = os.stat(ssl_params.get('ca_certs', '/flash/cert/pycom-ca.pem'))
-            except Exception as ex:
-                self.dump_ca(ssl_params.get('ca_certs', '/flash/cert/pycom-ca.pem'))
+                stat = os.stat(ssl_params.get('ca_certs'))
+            except:
+                self.dump_ca(ssl_params.get('ca_certs'))
 
     def connect_wifi(self, reconnect=True, check_interval=0.5):
+        self.__check_init()
         return self.__pybytes_connection.connect_wifi(reconnect, check_interval)
 
     def connect_lte(self, reconnect=True, check_interval=0.5):
+        self.__check_init()
         return self.__pybytes_connection.connect_lte(reconnect, check_interval)
 
     def connect_lora_abp(self, timeout, nanogateway=False):
+        self.__check_init()
         return self.__pybytes_connection.connect_lora_abp(timeout, nanogateway)
 
     def connect_lora_otta(self, timeout=15, nanogateway=False):
+        self.__check_init()
         return self.__pybytes_connection.connect_lora_otta(timeout, nanogateway)
 
     def connect_sigfox(self):
+        self.__check_init()
         return self.__pybytes_connection.connect_sigfox()
 
     def disconnect(self):
+        self.__check_init()
         self.__pybytes_connection.disconnect()
 
     def send_custom_message(self, persistent, message_type, message):
+        self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.send_user_message(message_type, message)
 
     def set_custom_message_callback(self, callback):
+        self.__check_init()
         self.__custom_message_callback = callback
 
     def send_ping_message(self):
+        self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.send_ping_message()
 
     def send_info_message(self):
+        self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.send_info_message()
 
     def send_scan_info_message(self):
+        self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.send_scan_info_message(None)
 
     def send_digital_pin_value(self, persistent, pin_number, pull_mode):
+        self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.send_pybytes_digital_value(pin_number, pull_mode)
 
     def send_analog_pin_value(self, persistent, pin):
+        self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.send_pybytes_analog_value(pin)
 
     def send_signal(self, pin, value):
+        self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.send_pybytes_custom_method_values(pin, [value])
 
     def send_virtual_pin_value(self, persistent, pin, value):
+        self.__check_init()
         print("This function is deprecated and will be removed in the future. Use send_signal(signalNumber, value)")
         self.send_signal(pin, value)
 
     def __periodical_pin_callback(self, periodical_pin):
+         self.__check_init()
          if (periodical_pin.pin_type == __PERIODICAL_PIN.TYPE_DIGITAL):
             self.send_digital_pin_value(periodical_pin.persistent, periodical_pin.pin_number, None)
          elif (periodical_pin.pin_type == __PERIODICAL_PIN.TYPE_ANALOG):
              self.send_analog_pin_value(periodical_pin.persistent, periodical_pin.pin_number)
 
     def register_periodical_digital_pin_publish(self, persistent, pin_number, pull_mode, period):
+        self.__check_init()
         self.send_digital_pin_value(pin_number, pull_mode)
         periodical_pin = __PERIODICAL_PIN(pin_number, None, None,
                                           __PERIODICAL_PIN.TYPE_DIGITAL)
         Timer.Alarm(self.__periodical_pin_callback, period, arg=periodical_pin, periodic=True)
 
     def register_periodical_analog_pin_publish(self, pin_number, period):
+        self.__check_init()
         self.send_analog_pin_value(pin_number)
         periodical_pin = __PERIODICAL_PIN(pin_number, None, None, __PERIODICAL_PIN.TYPE_ANALOG)
         Timer.Alarm(self.__periodical_pin_callback, period, arg=periodical_pin, periodic=True)
 
     def add_custom_method(self, method_id, method):
+        self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.add_custom_method(method_id, method)
 
     def enable_terminal(self):
+        self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.enable_terminal()
 
     def send_battery_level(self, battery_level):
+        self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.set_battery_level(battery_level)
         self.__pybytes_connection.__pybytes_protocol.send_battery_info()
 
     def send_custom_location(self, pin, x, y):
+        self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.send_custom_location(pin, x, y)
 
     def __recv_message(self, message):
+        self.__check_init()
         if self.__custom_message_callback is not None:
             self.__custom_message_callback(message)
 
@@ -156,6 +200,10 @@ class Pybytes:
     def connect(self):
         try:
             lora_joining_timeout = 15  # seconds to wait for LoRa joining
+            if self.__config_updated:
+                self.__pybytes_connection = PybytesConnection(self.__conf, self.__recv_message)
+                self.__config_updated = False
+            self.__check_init()
 
             if not self.__conf['network_preferences']:
                 print("network_preferences are empty, set it up in /flash/pybytes_config.json first")
@@ -176,8 +224,6 @@ class Pybytes:
                 elif net == 'sigfox':
                     if self.connect_sigfox():
                         break
-                else:
-                    raise OSError("Can't establish a connection with the networks specified")
 
             import time
             time.sleep(.1)
@@ -228,16 +274,20 @@ class Pybytes:
         else:
             return self.__conf.get(key)
 
-    def set_config(self, key=None, value=None, permanent=True, silent=False):
+    def set_config(self, key=None, value=None, permanent=True, silent=False, reconnect=False):
         if key is None and value is not None:
             self.__conf = value
         elif key is not None:
             self.__conf[key] = value
         else:
             raise ValueError('You need to either specify a key or a value!')
+        self.__config_updated = True
         if permanent: self.write_config(silent=silent)
+        if reconnect:
+            self.reconnect()
 
-    def read_config(self, file='/flash/pybytes_config.json'):
+
+    def read_config(self, file='/flash/pybytes_config.json', reconnect=False):
         try:
             import json
             f = open(file,'r')
@@ -245,11 +295,24 @@ class Pybytes:
             f.close()
             try:
                 self.__conf = json.loads(jfile.strip())
+                self.__config_updated = True
                 print("Pybytes configuration read from {}".format(file))
+                if reconnect:
+                    self.reconnect()
             except Exception as ex:
                 print("JSON error in configuration file {}!\n Exception: {}".format(file, ex))
         except Exception as ex:
             print("Cannot open file {}\nException: {}".format(file, ex))
+
+    def reconnect(self):
+        self.__check_init()
+        try:
+            self.disconnect()
+            import time
+            time.sleep(1)
+            self.connect()
+        except Exception as ex:
+            print('Error trying to reconnect... {}'.format(ex))
 
     def export_config(self, file='/flash/pybytes_config.json'):
         try:
@@ -262,11 +325,22 @@ class Pybytes:
             print("Error writing to file {}\nException: {}".format(file, e))
 
     def enable_ssl(self, ca_file='/flash/cert/pycom-ca.pem', dump_ca = True):
+        self.__check_init()
         self.set_config('dump_ca', dump_ca, permanent=False)
         if ca_file is not None:
             self.set_config('ssl_params', {'ca_certs': ca_file}, permanent=False)
         self.set_config('ssl', True, silent=True)
         print('Please reset your module to apply the new settings.')
+
+    def enable_lte(self, carrier=None, cid=None, band=None, apn=None, type=None, reset=None, fallback=False):
+        self.__check_init()
+        self.set_config('lte', {"carrier": carrier, "cid": cid, "band": band, "apn": apn, "type": type, "reset": reset }, permanent=False)
+        if fallback:
+            self.set_config('network_preferences', self.__conf.get('network_preferences', []).append('lte'), reconnect=True)
+        else:
+            nwpref = ['lte']
+            self.set_config('network_preferences', nwpref.extend(self.__conf.get('network_preferences', [])), reconnect=True)
+
 
     def dump_ca(self, ca_file='/flash/cert/pycom-ca.pem'):
         try:
@@ -280,3 +354,28 @@ class Pybytes:
             print("Successfully created {}".format(ca_file))
         except Exception as e:
             print("Error creating {}\nException: {}".format(file, e))
+
+
+    def activate(self, activation_string):
+        try:
+            jstring = json.loads(binascii.a2b_base64(activation_string))
+        except Exception as ex:
+            print('Error decoding activation string!')
+            print(ex)
+        self.__conf = PybytesConfig().cli_config(activation_info=jstring)
+        if self.__conf is not None:
+            self.__check_dump_ca()
+            self.__config_updated = True
+
+            # START code from the old boot.py
+            import machine
+            import micropython
+            from binascii import hexlify
+
+            wmac = hexlify(machine.unique_id()).decode('ascii')
+            print("WMAC: %s" % wmac.upper())
+            try:
+                print("Firmware: %s\nPybytes: %s" % (os.uname().release, os.uname().pybytes))
+            except:
+                print("Firmware: %s" % os.uname().release)
+            self.connect()

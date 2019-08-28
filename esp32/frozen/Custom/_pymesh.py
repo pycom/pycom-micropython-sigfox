@@ -157,3 +157,10 @@ class Pymesh:
             'b': payload
         }
         return self.mesh.send_message(data)
+    
+    def config_get(self):
+        return self.config
+    
+    def mac(self):
+        return self.mac.mac.MAC
+        
