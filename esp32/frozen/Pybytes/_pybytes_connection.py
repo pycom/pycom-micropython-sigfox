@@ -81,7 +81,7 @@ class PybytesConnection:
             print('Watchdog for WiFi and LTE was disabled, enable with "connection_watchdog": true in pybytes_config.json') # noqa
 
     # Establish a connection through WIFI before connecting to mqtt server
-    def connect_wifi(self, reconnect=True, check_interval=0.5):
+    def connect_wifi(self, reconnect=True, check_interval=0.5, timeout=120):
         self.__initialise_watchdog()
 
         if self.__connection_status != constants.__CONNECTION_STATUS_DISCONNECTED: # noqa
@@ -99,25 +99,46 @@ class PybytesConnection:
 
             self.wlan = WLAN(mode=WLAN.STA, antenna=antenna)
 
-            available_nets = self.wlan.scan()
-            nets = frozenset([e.ssid for e in available_nets])
-            known_nets_names = frozenset([e[0]for e in known_nets])
-            net_to_use = list(nets & known_nets_names)
-            try:
-                net_to_use = net_to_use[0]
-                pwd = dict(known_nets)[net_to_use]
-                sec = [e.sec for e in available_nets if e.ssid == net_to_use][0] # noqa
-                self.wlan.connect(net_to_use, (sec, pwd), timeout=10000)
-                while not self.wlan.isconnected():
-                    time.sleep(0.1)
-            except Exception as e:
-                if str(e) == "list index out of range":
-                    print("Please review Wifi SSID and password inside config")
-                else:
-                    print("Error connecting using WIFI: %s" % e)
+            attempt = 0
 
-                self.wlan.deinit()
-                return False
+            print_debug(3,'WLAN connected? {}'.format(self.wlan.isconnected()))
+
+            while not self.wlan.isconnected() and attempt < 3:
+                attempt += 1
+                print_debug(3, "Wifi connection attempt: {}".format(attempt))
+                print_debug(3,'WLAN connected? {}'.format(self.wlan.isconnected()))
+                available_nets = None
+                while available_nets is None:
+                    try:
+                        available_nets = self.wlan.scan()
+                        for x in available_nets:
+                            print_debug(5, x)
+                        time.sleep(1)
+                    except:
+                        pass
+
+                nets = frozenset([e.ssid for e in available_nets])
+                known_nets_names = frozenset([e[0]for e in known_nets])
+                net_to_use = list(nets & known_nets_names)
+                try:
+                    net_to_use = net_to_use[0]
+                    pwd = dict(known_nets)[net_to_use]
+                    sec = [e.sec for e in available_nets if e.ssid == net_to_use][0] # noqa
+                    print_debug(99, "Connecting with {} and {}".format(net_to_use, pwd))
+                    self.wlan.connect(net_to_use, (sec, pwd), timeout=10000)
+                    start_time = time.time()
+                    while not self.wlan.isconnected():
+                        if time.time() - start_time > timeout:
+                            raise TimeoutError('Timeout trying to connect via WiFi')
+                        time.sleep(0.1)
+                except Exception as e:
+                    if str(e) == "list index out of range" and attempt == 3:
+                        print("Please review Wifi SSID and password inside config")
+                        self.wlan.deinit()
+                        return False
+                    elif attempt == 3:
+                        print("Error connecting using WIFI: %s" % e)
+
             self.__network_type = constants.__NETWORK_TYPE_WIFI
             print("WiFi connection established")
             try:
@@ -360,6 +381,11 @@ class PybytesConnection:
 
     # COMMON
     def disconnect(self):
+
+        if self.__wifi_lte_watchdog is not None:
+            self.__wifi_lte_watchdog = WDT(timeout=constants.__WDT_MAX_TIMEOUT_MILLISECONDS)
+            print('Watchdog timeout has been increased to {} ms'.format(constants.__WDT_MAX_TIMEOUT_MILLISECONDS)) # noqa
+
         print_debug(
             1,
             'self.__connection_status={} | self.__network_type={}'.format(
@@ -414,4 +440,8 @@ class PybytesConnection:
         self.__connection_status = constants.__CONNECTION_STATUS_DISCONNECTED
 
     def is_connected(self):
+        return not (self.__connection_status == constants.__CONNECTION_STATUS_DISCONNECTED) # noqa
+
+    # Added for convention with other connectivity classes
+    def isconnected(self):
         return not (self.__connection_status == constants.__CONNECTION_STATUS_DISCONNECTED) # noqa

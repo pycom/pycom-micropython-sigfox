@@ -6,6 +6,9 @@ see the Pycom Licence v1.0 document supplied with this file, or
 available at https://www.pycom.io/opensource/licensing
 '''
 
+import sys, pycom
+
+
 class MQTTConstants:
     # - Protocol types
     MQTTv3_1 = 3
@@ -110,3 +113,8 @@ See all available zone options for RC at https://support.sigfox.com/docs/radio-c
     __KEEP_ALIVE_PING_INTERVAL = 600  # in seconds
     # set watch dog timeout to 21 minutes ~ (2 * 10) + 1
     __WDT_TIMEOUT_MILLISECONDS = (2 * __KEEP_ALIVE_PING_INTERVAL + __ONE_MINUTE) * 1000 # noqa
+
+    __WDT_MAX_TIMEOUT_MILLISECONDS = sys.maxsize
+
+    __DEFAULT_DOMAIN = pycom.nvs_get('pybytes_domain', 'pybytes.pycom.io')
+    __DEFAULT_SW_HOST = pycom.nvs_get('pybytes_sw_host', 'software.pycom.io')

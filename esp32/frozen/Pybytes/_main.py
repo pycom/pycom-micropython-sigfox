@@ -1,5 +1,11 @@
 
 '''
+Copyright (c) 2019, Pycom Limited.
+This software is licensed under the GNU GPL version 3 or any
+later version, with permitted additional terms. For more information
+see the Pycom Licence v1.0 document supplied with this file, or
+available at https://www.pycom.io/opensource/licensing
+
 This is the main.py file for Pybytes
 This code and included libraries are intended for users wishing to fully
 customise pybytes. It is the same code that is included in the Pybytes firmware
@@ -32,30 +38,29 @@ if 'pybytes_config' not in globals().keys():
 
     pybytes_config = PybytesConfig().read_config()
 
-# Load Pybytes if it is not already loaded
-if 'pybytes' not in globals().keys() and pybytes_config.get('pybytes_autostart', True):
-    if frozen:
-        try:
-            from _pybytes import Pybytes
-        except:
-            raise ImportError("Unable to load Pybytes. Please check your code...")
 
-    pybytes = Pybytes(pybytes_config)
-    pybytes.print_cfg_msg()
-    pybytes.connect()
-
-elif not pybytes_config.get('pybytes_autostart', True) and pybytes_config.get('cfg_msg') is not None:
+if (not pybytes_config.get('pybytes_autostart', True)) and pybytes_config.get('cfg_msg') is not None:
     print(pybytes_config.get('cfg_msg'))
     print("Not starting Pybytes as auto-start is disabled")
 
-del pybytes_config
-del frozen
-del PybytesConfig
+else:
+    # Load Pybytes if it is not already loaded
+    if 'pybytes' not in globals().keys():
+        if frozen:
+            try:
+                from _pybytes import Pybytes
+            except:
+                raise ImportError("Unable to load Pybytes. Please check your code...")
 
-if 'pybytes' in globals().keys():
-    if pybytes.is_connected():
+        pybytes = Pybytes(pybytes_config, pybytes_config.get('cfg_msg') is None)
+        if pybytes_config.get('cfg_msg') is not None:
+            pybytes.print_cfg_msg()
+            pybytes.connect()
 
-        print("Now starting user code in main.py")
+    if 'pybytes' in globals().keys() and pybytes.is_connected():
+
+        if not frozen: print("Now starting user code in main.py")
+        del frozen
         '''
         If Pybytes isn't connected at this time, it means you either deliberately
         disabled Pybytes auto-start, or something went wrong.
