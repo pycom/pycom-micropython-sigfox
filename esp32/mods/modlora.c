@@ -2527,7 +2527,9 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
 static void lora_socket_close (mod_network_socket_obj_t *s) {
     s->sock_base.u.sd = -1;
 #ifdef LORA_OPENTHREAD_ENABLED
-    mesh_socket_close(s);
+    if (lora_mesh_ready()) {
+        mesh_socket_close(s);
+    }
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
 }
 
