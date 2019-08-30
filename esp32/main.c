@@ -54,6 +54,7 @@
 
 TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
+TaskHandle_t SmartConfTaskHandle;
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xLoRaTaskHndl;
 TaskHandle_t xLoRaTimerTaskHndl;

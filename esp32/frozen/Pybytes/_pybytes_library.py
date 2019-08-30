@@ -1,7 +1,16 @@
+'''
+Copyright (c) 2019, Pycom Limited.
+This software is licensed under the GNU GPL version 3 or any
+later version, with permitted additional terms. For more information
+see the Pycom Licence v1.0 document supplied with this file, or
+available at https://www.pycom.io/opensource/licensing
+'''
+
 try:
     from pybytes_constants import constants
 except:
     from _pybytes_constants import constants
+
 try:
     from pybytes_debug import print_debug
 except:
@@ -115,6 +124,10 @@ class PybytesLibrary:
 
         scan_attempts = 0
         wifi_networks = []
+        wifi_deinit = False
+        if self.__pybytes_connection.wlan is None:
+            self.__pybytes_connection.wlan = WLAN(mode=WLAN.STA)
+            wifi_deinit = True
 
         while not wifi_networks and scan_attempts < 5:
             wifi_networks = self.__pybytes_connection.wlan.scan()
@@ -143,6 +156,9 @@ class PybytesLibrary:
         if (lora):
             body.append(lora.stats().rssi)
 
+        if wifi_deinit:
+            self.__pybytes_connection.wlan.deinit()
+            self.__pybytes_connection.wlan = None
         return self.__pack_message(constants.__TYPE_SCAN_INFO, body)
 
     def __pack_message(self, message_type, body):

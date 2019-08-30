@@ -36,7 +36,7 @@ endif
 
 BUILD = $(BUILD_DIR)/$(BOARD)/$(BTYPE)
 
-RELEASE_DIR ?= build/
+RELEASE_DIR ?= $(BUILD_DIR)
 
 COPY_IDF_LIB ?= 0
 

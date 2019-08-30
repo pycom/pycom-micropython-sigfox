@@ -1,4 +1,106 @@
+'''
+Copyright (c) 2019, Pycom Limited.
+This software is licensed under the GNU GPL version 3 or any
+later version, with permitted additional terms. For more information
+see the Pycom Licence v1.0 document supplied with this file, or
+available at https://www.pycom.io/opensource/licensing
+'''
+
+try:
+    from pybytes_debug import print_debug
+except:
+    from _pybytes_debug import print_debug
+
 class PybytesConfig:
+
+    def smart_config(self, file='/flash/pybytes_config.json'):
+        import time, pycom
+        from network import WLAN
+        try:
+            from pybytes_constants import constants
+        except:
+            from _pybytes_constants import constants
+
+        #if pycom.wifi_ssid_sta() is None and pycom.wifi_pwd_sta() is None:
+        pycom.wifi_on_boot(True, True)
+        time.sleep(2)
+        wl = WLAN(mode=WLAN.STA)
+        while True:
+            print_debug(2, 'Wifi mode is STA... wait for a connection...')
+            if pycom.wifi_ssid_sta() is None:
+                wl.smartConfig()
+            try:
+                start_time = time.time()
+                while not wl.isconnected() and (time.time() - start_time < 60):
+                    time.sleep(1)
+            except:
+                pass
+            if not wl.isconnected():
+                wl.smartConfig()
+            else:
+                try:
+                    import urequest
+                except:
+                    import _urequest as urequest
+                import binascii, machine, os
+                from uhashlib import sha512
+                print('Wifi connection established... activating device!')
+                pybytes_activation = None
+                data = { "deviceType": os.uname().sysname.lower(), "wirelessMac": binascii.hexlify(machine.unique_id()).upper()}
+                data.update({"activation_hash" : binascii.b2a_base64(sha512(data.get("wirelessMac") + '-' + pycom.wifi_ssid_sta() + '-' + pycom.wifi_pwd_sta()).digest()).decode('UTF-8').strip()})
+                time.sleep(1)
+                try:
+                    pybytes_activation = urequest.post('https://api.{}/esp-touch/register-device'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
+                except Exception as ex:
+                    if pybytes_activation is not None:
+                        pybytes_activation.close()
+                    print('Failed to send activation request!')
+                print_debug(2, 'Activation request sent... checking result')
+                try:
+                    if not pybytes_activation.status_code == 200:
+                        print_debug(3, 'Activation request returned {}. Trying again in 10 seconds...'.format(pybytes_activation.status_code))
+                        pybytes_activation.close()
+                        time.sleep(10)
+                    else:
+                        pybytes_config = {
+                            'username': pybytes_activation.json().get('username'),  # Pybytes username
+                            'device_id': pybytes_activation.json().get('deviceToken'),  # device token
+                            'server': 'mqtt.{}'.format(constants.__DEFAULT_DOMAIN),
+                            'network_preferences': ['wifi'],  # ordered list, first working network used
+                            'wifi': {
+                                'ssid': pycom.wifi_ssid_sta(),
+                                'password': pycom.wifi_pwd_sta()
+                            },
+                            'ota_server': {
+                                'domain': constants.__DEFAULT_SW_HOST,
+                                'port': 443
+                            },
+                            'pybytes_autostart': True,
+                            'wlan_antenna': 0,
+                            'ssl': True,
+                            'dump_ca': True
+                        }
+                        pybytes_activation.close()
+
+                        if (len(pybytes_config['username']) > 4 and len(pybytes_config['device_id']) >= 36 and len(pybytes_config['server']) > 4):
+                            try:
+                                import json, pycom
+                                cf = open('/flash/pybytes_config.json','w')
+                                cf.write(json.dumps(pybytes_config))
+                                cf.close()
+                                pycom.wifi_on_boot(False)
+                                print('Activation successful... restarting in 10 seconds to activate device!')
+                                time.sleep(10)
+                                import machine
+                                machine.reset()
+                            except Exception as e:
+                                print("Error saving configuration in json format!")
+                                print("Exception: {}".format(e))
+
+                except Exception as e:
+                    print('Exception during WiFi esp-touch activation!\nPlease wait, retrying to activate your device...')
+                    print('{}'.format(e))
+
 
     def read_config(self, file='/flash/pybytes_config.json'):
         pybytes_config = {}
@@ -147,7 +249,7 @@ class PybytesConfig:
                         'password': pycom.wifi_pwd()
                     },
                     'ota_server': {
-                        'domain': 'software.pycom.io',
+                        'domain': constants.__DEFAULT_SW_HOST,
                         'port': 443
                     },
                     'pybytes_autostart': pybytes_autostart,
@@ -175,10 +277,13 @@ class PybytesConfig:
                         print("Error saving configuration in new json format!")
                         print("Exception: {}".format(e))
             except Exception as e:
-                print("No configuration found, auto_start disabled")
-                pybytes_config['pybytes_autostart'] = False
-                pybytes_config['cfg_msg'] = None
-
+                if (hasattr(pycom,'smart_config_on_boot') and pycom.smart_config_on_boot()):
+                    import _thread as thread
+                    thread.start_new_thread(self.smart_config, (file,))
+                    print("Smart Provisioning started in the background")
+                    print("See https://docs.pycom.io/smart for details")
+                    pybytes_config['pybytes_autostart'] = False
+                    pybytes_config['cfg_msg'] = None
             try:
                 pycom.pybytes_force_update(False)
             except:

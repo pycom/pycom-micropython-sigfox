@@ -1,229 +1,402 @@
-'''umqtt is a simple MQTT client for MicroPython.
-   Original code: https://github.com/micropython/micropython-lib/tree/master/umqtt.simple'''
+'''
+umqtt is a simple MQTT client for MicroPython.
+Original code: https://github.com/micropython/micropython-lib/tree/master/umqtt.simple
+
+Copyright (c) 2019, Pycom Limited.
+This software is licensed under the GNU GPL version 3 or any
+later version, with permitted additional terms. For more information
+see the Pycom Licence v1.0 document supplied with this file, or
+available at https://www.pycom.io/opensource/licensing
+'''
+
+
+try:
+    from msg_handl import MsgHandler as msgHandler
+except:
+    from _msg_handl import MsgHandler as msgHandler
+
+try:
+    from pybytes_constants import MQTTConstants as mqttConst
+except:
+    from _pybytes_constants import MQTTConstants as mqttConst
+try:
+    from pybytes_debug import print_debug
+except:
+    from _pybytes_debug import print_debug
+
 import time
-import usocket as socket
-import ustruct as struct
-from ubinascii import hexlify
+import struct
+import _thread
 
 
-class MQTTException(Exception):
-    pass
+class MQTTMessage:
+    def __init__(self):
+        self.timestamp = 0
+        self.state = 0
+        self.dup = False
+        self.mid = 0
+        self.topic = ""
+        self.payload = None
+        self.qos = 0
+        self.retain = False
 
 
-class MQTTClient:
+class MQTTCore:
 
-    def __init__(self, client_id, server, port=0, user=None, password=None, keepalive=0,
-                 ssl=False, ssl_params={}):
-        if port == 0:
-            port = 8883 if ssl else 1883
-        self.client_id = client_id
-        self.sock = None
-        self.addr = socket.getaddrinfo(server, port)[0][-1]
-        self.ssl = ssl
-        self.ssl_params = ssl_params
-        self.pid = 0
-        self.cb = None
-        self.user = user
-        self.pswd = password
-        self.keepalive = keepalive
-        self.lastWill_topic = None
-        self.lastWill_msg = None
-        self.lastWill_qos = 0
-        self.lastWill_retain = False
+    def __init__(
+                self,
+                clientID,
+                cleanSession,
+                protocol,
+                receive_timeout=3000,
+                reconnectMethod=None
+            ):
+        self.client_id = clientID
+        self._cleanSession = cleanSession
+        self._protocol = protocol
+        self._user = ""
+        self._password = ""
+        self._connectdisconnectTimeout = 30
+        self._mqttOperationTimeout = 5
+        self._topic_callback_queue = []
+        self._callback_mutex = _thread.allocate_lock()
+        self._pid = 0
+        self._subscribeSent = False
+        self._unsubscribeSent = False
+        self._msgHandler = msgHandler(
+                self._recv_callback,
+                self.connect,
+                receive_timeout,
+                reconnectMethod
+            )
 
-    def _send_str(self, s):
-        self.sock.write(struct.pack("!H", len(s)))
-        self.sock.write(s)
+    def configEndpoint(self, srcHost, srcPort):
+        self._msgHandler.setEndpoint(srcHost, srcPort)
 
-    def _recv_len(self):
-        n = 0
-        sh = 0
-        while 1:
-            b = self.sock.read(1)[0]
-            n |= (b & 0x7f) << sh
-            if not b & 0x80:
-                return n
-            sh += 7
+    def connect(self):
+        if not self._msgHandler.createSocketConnection():
+            return False
 
-    def set_callback(self, f):
-        self.cb = f
+        self._send_connect(self._cleanSession)
 
-    def set_last_will(self, topic, msg, retain=False, qos=0):
-        assert 0 <= qos <= 2
-        assert topic
-        self.lastWill_topic = topic
-        self.lastWill_msg = msg
-        self.lastWill_qos = qos
-        self.lastWill_retain = retain
+        # delay to check the state
+        count_10ms = 0
+        while(count_10ms <= self._connectdisconnectTimeout * 100 and not self._msgHandler.isConnected()):  # noqa
+            count_10ms += 1
+            time.sleep(0.01)
 
-    def connect(self, clean_session=True):
-        if (self.sock):
-            # https://pycomiot.atlassian.net/browse/PB-358
-            try:
-                self.sock.send('') # can send == closeable
-                self.sock.close()
-            except Exception as e:
-                self.sock = None    # socket is not closable
-                import gc
-                gc.collect()
+        return True if self._msgHandler.isConnected() else False
 
-        self.sock = socket.socket()
-        self.sock.connect(self.addr)
-        if self.ssl == True:
-            import ussl
-            if self.ssl_params != None and self.ssl_params.get('ca_certs'):
-                self.ssl_params["cert_reqs"] = ussl.CERT_REQUIRED
-            else:
-                print("WARNING: consider enabling certificate validation")
-            self.sock = ussl.wrap_socket(self.sock, **self.ssl_params)
-            print("Using MQTT over TLS")
+    def subscribe(self, topic, qos, callback):
+        if (topic is None or callback is None):
+            raise TypeError("Invalid subscribe values.")
+        topic = topic.encode('utf-8')
+
+        header = mqttConst.MSG_SUBSCRIBE | (1 << 1)
+        pkt = bytearray([header])
+
+        # packet identifier + len of topic (16 bits) + topic len + QOS
+        pkt_len = 2 + 2 + len(topic) + 1
+        pkt.extend(self._encode_varlen_length(pkt_len))  # len of the remaining
+
+        self._pid += 1
+        pkt.extend(self._encode_16(self._pid))
+        pkt.extend(self._pascal_string(topic))
+        pkt.append(qos)
+
+        self._subscribeSent = False
+        self._msgHandler.push_on_send_queue(pkt)
+
+        count_10ms = 0
+        while(count_10ms <= self._mqttOperationTimeout * 100 and not self._subscribeSent):  # noqa
+            count_10ms += 1
+            time.sleep(0.01)
+
+        if self._subscribeSent:
+            self._callback_mutex.acquire()
+            self._topic_callback_queue.append((topic, callback))
+            self._callback_mutex.release()
+            return True
+
+        return False
+
+    def publish(self, topic, payload, qos, retain, dup=False, priority=False):
+        topic = topic.encode('utf-8') if hasattr(topic, 'encode') else topic
+        payload = payload.encode('utf-8') if hasattr(payload, 'encode') else payload  # noqa
+
+        header = mqttConst.MSG_PUBLISH | (dup << 3) | (qos << 1) | retain
+        pkt_len = (2 + len(topic) + (2 if qos else 0) + (len(payload)))
+
+        pkt = bytearray([header])
+        pkt.extend(self._encode_varlen_length(pkt_len))  # len of the remaining
+        pkt.extend(self._pascal_string(topic))
+        if qos:
+            # todo: I don't think this is the way to deal with the packet id
+            self._pid += 1
+            pkt.extend(self._encode_16(self._pid))
+
+        pkt = pkt + payload
+        if priority:
+            self._msgHandler.priority_send(pkt)
         else:
-            print("WARNING: consider enabling TLS by using pybytes.enable_ssl()")
-        premsg = bytearray(b"\x10\0\0\0\0\0")
-        msg = bytearray(b"\x04MQTT\x04\x02\0\0")
+            self._msgHandler.push_on_send_queue(pkt)
 
-        size = 10 + 2 + len(self.client_id)
-        msg[6] = clean_session << 1
-        if self.user is not None:
-            size += 2 + len(self.user) + 2 + len(self.pswd)
-            msg[6] |= 0xC0
-        if self.keepalive:
-            assert self.keepalive < 65536
-            msg[7] |= self.keepalive >> 8
-            msg[8] |= self.keepalive & 0x00FF
-        if self.lastWill_topic:
-            size += 2 + len(self.lastWill_topic) + 2 + len(self.lastWill_msg)
-            msg[6] |= 0x4 | (self.lastWill_qos & 0x1) << 3 | (self.lastWill_qos & 0x2) << 3
-            msg[6] |= self.lastWill_retain << 5
+    def _encode_16(self, x):
+        return struct.pack("!H", x)
 
-        i = 1
-        while size > 0x7f:
-            premsg[i] = (size & 0x7f) | 0x80
-            size >>= 7
-            i += 1
-        premsg[i] = size
+    def _pascal_string(self, s):
+        return struct.pack("!H", len(s)) + s
 
-        self.sock.write(premsg, i + 2)
-        self.sock.write(msg)
-        self._send_str(self.client_id)
+    def _encode_varlen_length(self, length):
+        i = 0
+        buff = bytearray()
+        while 1:
+            buff.append(length % 128)
+            length = length // 128
+            if length > 0:
+                buff[i] = buff[i] | 0x80
+                i += 1
+            else:
+                break
 
-        if self.lastWill_topic:
-            self._send_str(self.lastWill_topic)
-            self._send_str(self.lastWill_msg)
+        return buff
 
-        if self.user is not None:
-            self._send_str(self.user)
-            self._send_str(self.pswd)
+    def _topic_matches_sub(self, sub, topic):
+        result = True
+        multilevel_wildcard = False
 
-        resp = self.sock.read(4)
-        assert resp[0] == 0x20 and resp[1] == 0x02
-        if resp[3] != 0:
-            raise MQTTException(resp[3])
-        return resp[2] & 1
+        slen = len(sub)
+        tlen = len(topic)
+
+        if slen > 0 and tlen > 0:
+            if (sub[0] == '$' and topic[0] != '$') or (topic[0] == '$' and sub[0] != '$'):  # noqa
+                return False
+
+        spos = 0
+        tpos = 0
+
+        while spos < slen and tpos < tlen:
+            if sub[spos] == topic[tpos]:
+                if tpos == tlen-1:
+                    # Check for e.g. foo matching foo/#
+                    if spos == slen-3 and sub[spos+1] == '/' and sub[spos+2] == '#':  # noqa
+                        result = True
+                        multilevel_wildcard = True
+                        break
+
+                spos += 1
+                tpos += 1
+
+                if tpos == tlen and spos == slen-1 and sub[spos] == '+':
+                    spos += 1
+                    result = True
+                    break
+            else:
+                if sub[spos] == '+':
+                    spos += 1
+                    while tpos < tlen and topic[tpos] != '/':
+                        tpos += 1
+                    if tpos == tlen and spos == slen:
+                        result = True
+                        break
+
+                elif sub[spos] == '#':
+                    multilevel_wildcard = True
+                    if spos+1 != slen:
+                        result = False
+                        break
+                    else:
+                        result = True
+                        break
+
+                else:
+                    result = False
+                    break
+
+        if not multilevel_wildcard and (tpos < tlen or spos < slen):
+            result = False
+
+        return result
+
+    def _remove_topic_callback(self, topic):
+        deleted = False
+
+        self._callback_mutex.acquire()
+        for i in range(0, len(self._topic_callback_queue)):
+            if self._topic_callback_queue[i][0] == topic:
+                self._topic_callback_queue.pop(i)
+                deleted = True
+        self._callback_mutex.release()
+
+        return deleted
+
+    def unsubscribe(self, topic):
+        self._unsubscribeSent = False
+        self._send_unsubscribe(topic, False)
+
+        count_10ms = 0
+        while(count_10ms <= self._mqttOperationTimeout * 100 and not self._unsubscribeSent):  # noqa
+            count_10ms += 1
+            time.sleep(0.01)
+
+        if self._unsubscribeSent:
+            topic = topic.encode('utf-8')
+            return self._remove_topic_callback(topic)
+
+        return False
 
     def disconnect(self):
-        self.sock.write(b"\xe0\0")
-        self.sock.close()
+        pkt = struct.pack('!BB', mqttConst.MSG_DISCONNECT, 0)
+        self._msgHandler.push_on_send_queue(pkt)
+        time.sleep(self._connectdisconnectTimeout)
+        self._msgHandler.disconnect()
+        return True
 
-    def ping(self):
-        self.sock.write(b"\xc0\0")
+    def _send_connect(self, clean_session):
+        pkt_len = (12 + len(self.client_id) +  # 10 + 2 + len(client_id)
+                   (2 + len(self._user) if self._user else 0) +
+                   (2 + len(self._password) if self._password else 0))
 
-    def publish(self, topic, msg, retain=False, qos=0):
-        pkt = bytearray(b"\x30\0\0\0")
-        pkt[0] |= qos << 1 | retain
-        size = 2 + len(topic) + len(msg)
-        if qos > 0:
-            size += 2
-        assert size < 2097152
-        i = 1
-        while size > 0x7f:
-            pkt[i] = (size & 0x7f) | 0x80
-            size >>= 7
-            i += 1
-        pkt[i] = size
-        # print('publish', hex(len(pkt)), hexlify(pkt).decode('ascii'))
-        self.sock.write(pkt, i + 1)
-        self._send_str(topic)
-        if qos > 0:
-            self.pid += 1
-            pid = self.pid
-            struct.pack_into("!H", pkt, 0, pid)
-            self.sock.write(pkt, 2)
-        self.sock.write(msg)
+        flags = (0x80 if self._user else 0x00) | (0x40 if self._password else 0x00) | (0x02 if clean_session else 0x00)  # noqa
 
-        if qos == 1:
-            while 1:
-                op = self.wait_msg()
-                if op == 0x40:
-                    size = self.sock.read(1)
-                    assert size == b"\x02"
-                    rcv_pid = self.sock.read(2)
-                    rcv_pid = rcv_pid[0] << 8 | rcv_pid[1]
-                    if pid == rcv_pid:
-                        return
-        elif qos == 2:
-            assert 0
+        pkt = bytearray([mqttConst.MSG_CONNECT])  # connect
+        pkt.extend(self._encode_varlen_length(pkt_len))  # len of the remaining
+        # len of "MQTT" (16 bits), protocol name, and protocol version
+        pkt.extend(b'\x00\x04MQTT\x04')
+        pkt.append(flags)
+        pkt.extend(b'\x00\x00')  # disable keepalive
+        pkt.extend(self._pascal_string(self.client_id))
 
-    def subscribe(self, topic, qos=0):
-        assert self.cb is not None, "Subscribe callback is not set"
-        pkt = bytearray(b"\x82\0\0\0")
-        self.pid += 1
-        struct.pack_into("!BH", pkt, 1, 2 + 2 + len(topic) + 1, self.pid)
-        # print('subscribe', hex(len(pkt)), hexlify(pkt).decode('ascii'))
-        self.sock.write(pkt)
-        self._send_str(topic)
-        self.sock.write(qos.to_bytes(1, "little"))
-        while 1:
-            op = self.wait_msg()
-            if op == 0x90:
-                resp = self.sock.read(4)
-                # print('Response subscribe', hexlify(resp).decode('ascii'))
-                assert resp[1] == pkt[2] and resp[2] == pkt[3]
-                if resp[3] == 0x80:
-                    raise MQTTException(resp[3])
-                return
+        if self._user:
+            pkt.extend(self._pascal_string(self._user))
+        if self._password:
+            pkt.extend(self._pascal_string(self._password))
 
-    # Wait for a single incoming MQTT message and process it.
-    # Subscribed messages are delivered to a callback previously
-    # set by .set_callback() method. Other (internal) MQTT
-    # messages processed internally.
-    def wait_msg(self):
-        res = self.sock.read(1)
-        self.sock.setblocking(True)
-        if res is None:
-            return None
-        if res == b"":
-            # other tls empty response happens ...
-            # raise OSError(-1)
-            return
-        if res == b"\xd0":  # PING RESPONCE
-            size = self.sock.read(1)[0]
-            assert size == 0
-            return None
-        op = res[0]
-        if op & 0xf0 != 0x30:
-            return op
-        size = self._recv_len()
-        topic_len = self.sock.read(2)
-        topic_len = (topic_len[0] << 8) | topic_len[1]
-        topic = self.sock.read(topic_len)
-        size -= topic_len + 2
-        if op & 6:
-            pid = self.sock.read(2)
-            pid = pid[0] << 8 | pid[1]
-            size -= 2
-        msg = self.sock.read(size)
-        self.cb(topic, msg)
-        if op & 6 == 2:
-            pkt = bytearray(b"\x40\x02\0\0")
-            struct.pack_into("!H", pkt, 2, pid)
-            self.sock.write(pkt)
-        elif op & 6 == 4:
-            assert 0
+        return self._msgHandler.priority_send(pkt)
 
-    # Checks whether a pending message from server is available.
-    # If not, returns immediately with None. Otherwise, does
-    # the same processing as wait_msg.
-    def check_msg(self):
-        self.sock.setblocking(False)
-        return self.wait_msg()
+    def _send_unsubscribe(self, topic, dup=False):
+        pkt = bytearray()
+        msg_type = mqttConst.MSG_UNSUBSCRIBE | (dup << 3) | (1 << 1)
+        pkt.extend(struct.pack("!B", msg_type))
+
+        remaining_length = 2 + 2 + len(topic)
+        pkt.extend(self._encode_varlen_length(remaining_length))
+
+        self._pid += 1
+        pkt.extend(self._encode_16(self._pid))
+        pkt.extend(self._pascal_string(topic))
+
+        return self._msgHandler.push_on_send_queue(pkt)
+
+    def _send_puback(self, msg_id):
+        remaining_length = 2
+        pkt = struct.pack(
+             '!BBH',
+             mqttConst.MSG_PUBACK,
+             remaining_length,
+             msg_id
+         )
+
+        return self._msgHandler.push_on_send_queue(pkt)
+
+    def _send_pubrec(self, msg_id):
+        remaining_length = 2
+        pkt = struct.pack(
+            '!BBH',
+            mqttConst.MSG_PUBREC,
+            remaining_length,
+            msg_id
+        )
+
+        return self._msgHandler.push_on_send_queue(pkt)
+
+    def _parse_connack(self, payload):
+        if len(payload) != 2:
+            return False
+
+        (flags, result) = struct.unpack("!BB", payload)
+
+        if result == 0:
+            self._msgHandler.setConnectionState(mqttConst.STATE_CONNECTED)
+            return True
+        else:
+            self._msgHandler.setConnectionState(mqttConst.STATE_DISCONNECTED)
+            return False
+
+    def _parse_suback(self, payload):
+        self._subscribeSent = True
+        return True
+
+    def _parse_puback(self, payload):
+        return True
+
+    def _notify_message(self, message):
+        notified = False
+        self._callback_mutex.acquire()
+        for t_obj in self._topic_callback_queue:
+            if self._topic_matches_sub(t_obj[0], message.topic):
+                t_obj[1](self, message)
+                notified = True
+        self._callback_mutex.release()
+
+        return notified
+
+    def _parse_publish(self, cmd, packet):
+        msg = MQTTMessage()
+        msg.dup = (cmd & 0x08) >> 3
+        msg.qos = (cmd & 0x06) >> 1
+        msg.retain = (cmd & 0x01)
+
+        pack_format = "!H" + str(len(packet)-2) + 's'
+        (slen, packet) = struct.unpack(pack_format, packet)
+        pack_format = '!' + str(slen) + 's' + str(len(packet)-slen) + 's'
+        (msg.topic, packet) = struct.unpack(pack_format, packet)
+
+        if len(msg.topic) == 0:
+            return False
+
+        if msg.qos > 0:
+            pack_format = "!H" + str(len(packet)-2) + 's'
+            (msg.mid, packet) = struct.unpack(pack_format, packet)
+
+        msg.payload = packet
+
+        if msg.qos == 0:
+            self._notify_message(msg)
+        elif msg.qos == 1:
+            self._send_puback(msg.mid)
+            self._notify_message(msg)
+        elif msg.qos == 2:
+            self._send_pubrec(msg.mid)
+            self._notify_message(msg)
+        else:
+            return False
+
+        return True
+
+    def _parse_unsuback(self, payload):
+        self._unsubscribeSent = True
+        return True
+
+    def _parse_pingresp(self):
+        self._msgHandler.setPingFlag(True)
+        return True
+
+    def _recv_callback(self, cmd, payload):
+        msg_type = cmd & 0xF0
+
+        if msg_type == mqttConst.MSG_CONNACK:
+            return self._parse_connack(payload)
+        elif msg_type == mqttConst.MSG_SUBACK:
+            return self._parse_suback(payload)
+        elif msg_type == mqttConst.MSG_PUBACK:
+            return self._parse_puback(payload)
+        elif msg_type == mqttConst.MSG_PUBLISH:
+            return self._parse_publish(cmd, payload)
+        elif msg_type == mqttConst.MSG_UNSUBACK:
+            return self._parse_unsuback(payload)
+        elif msg_type == mqttConst.MSG_PINGRESP:
+            return self._parse_pingresp()
+        else:
+            print_debug(2, 'Unknown message type: %d' % msg_type)
+            return False

@@ -1,15 +1,30 @@
+'''
+Copyright (c) 2019, Pycom Limited.
+This software is licensed under the GNU GPL version 3 or any
+later version, with permitted additional terms. For more information
+see the Pycom Licence v1.0 document supplied with this file, or
+available at https://www.pycom.io/opensource/licensing
+'''
+
 import os
 from machine import Timer
+
 try:
     from pybytes_connection import PybytesConnection
 except:
     from _pybytes_connection import PybytesConnection
+
 try:
     from pybytes_debug import print_debug
 except:
     from _pybytes_debug import print_debug
 
-__DEFAULT_HOST = "mqtt.pycom.io"
+try:
+    from pybytes_constants import constants
+except:
+    from _pybytes_constants import constants
+
+__DEFAULT_HOST = "mqtt.{}".format(constants.__DEFAULT_DOMAIN)
 
 class __PERIODICAL_PIN:
     TYPE_DIGITAL = 0
@@ -31,6 +46,7 @@ class Pybytes:
         self.__frozen = globals().get('__name__') == '_pybytes'
         self.__pybytes_connection = PybytesConnection(self.__conf, self.__recv_message)
         self.__custom_message_callback = None
+        self.__config_updated = False
 
         # START code from the old boot.py
         import machine
@@ -47,12 +63,13 @@ class Pybytes:
         # STOP code from the old boot.py
 
     def __check_dump_ca(self):
-        ssl_params = self.__conf.get('ssl_params')
-        if self.__conf.get('dump_ca', False) and ssl_params is not None:
+        ssl_params = self.__conf.get('ssl_params', {'ca_certs': '/flash/cert/pycom-ca.pem'})
+        print_debug(4,' ssl_params={} '.format(ssl_params))
+        if self.__conf.get('dump_ca', False):
             try:
-                stat = os.stat(ssl_params.get('ca_certs', '/flash/cert/pycom-ca.pem'))
-            except Exception as ex:
-                self.dump_ca(ssl_params.get('ca_certs', '/flash/cert/pycom-ca.pem'))
+                stat = os.stat(ssl_params.get('ca_certs'))
+            except:
+                self.dump_ca(ssl_params.get('ca_certs'))
 
     def connect_wifi(self, reconnect=True, check_interval=0.5):
         return self.__pybytes_connection.connect_wifi(reconnect, check_interval)
@@ -146,6 +163,9 @@ class Pybytes:
     def connect(self):
         try:
             lora_joining_timeout = 15  # seconds to wait for LoRa joining
+            if self.__config_updated:
+                self.__pybytes_connection = PybytesConnection(self.__conf, self.__recv_message)
+                self.__config_updated = False
 
             if not self.__conf['network_preferences']:
                 print("network_preferences are empty, set it up in /flash/pybytes_config.json first")
@@ -166,8 +186,6 @@ class Pybytes:
                 elif net == 'sigfox':
                     if self.connect_sigfox():
                         break
-                else:
-                    raise OSError("Can't establish a connection with the networks specified")
 
             import time
             time.sleep(.1)
@@ -218,16 +236,20 @@ class Pybytes:
         else:
             return self.__conf.get(key)
 
-    def set_config(self, key=None, value=None, permanent=True, silent=False):
+    def set_config(self, key=None, value=None, permanent=True, silent=False, reconnect=False):
         if key is None and value is not None:
             self.__conf = value
         elif key is not None:
             self.__conf[key] = value
         else:
             raise ValueError('You need to either specify a key or a value!')
+        self.__config_updated = True
         if permanent: self.write_config(silent=silent)
+        if reconnect:
+            self.reconnect()
 
-    def read_config(self, file='/flash/pybytes_config.json'):
+
+    def read_config(self, file='/flash/pybytes_config.json', reconnect=False):
         try:
             import json
             f = open(file,'r')
@@ -235,11 +257,23 @@ class Pybytes:
             f.close()
             try:
                 self.__conf = json.loads(jfile.strip())
+                self.__config_updated = True
                 print("Pybytes configuration read from {}".format(file))
+                if reconnect:
+                    self.reconnect()
             except Exception as ex:
                 print("JSON error in configuration file {}!\n Exception: {}".format(file, ex))
         except Exception as ex:
             print("Cannot open file {}\nException: {}".format(file, ex))
+
+    def reconnect(self):
+        try:
+            self.disconnect()
+            import time
+            time.sleep(1)
+            self.connect()
+        except Exception as ex:
+            print('Error trying to reconnect... {}'.format(ex))
 
     def export_config(self, file='/flash/pybytes_config.json'):
         try:

@@ -1,5 +1,11 @@
 
 '''
+Copyright (c) 2019, Pycom Limited.
+This software is licensed under the GNU GPL version 3 or any
+later version, with permitted additional terms. For more information
+see the Pycom Licence v1.0 document supplied with this file, or
+available at https://www.pycom.io/opensource/licensing
+
 This is the main.py file for Pybytes
 This code and included libraries are intended for users wishing to fully
 customise pybytes. It is the same code that is included in the Pybytes firmware
@@ -49,13 +55,13 @@ elif not pybytes_config.get('pybytes_autostart', True) and pybytes_config.get('c
     print("Not starting Pybytes as auto-start is disabled")
 
 del pybytes_config
-del frozen
 del PybytesConfig
 
 if 'pybytes' in globals().keys():
     if pybytes.is_connected():
 
-        print("Now starting user code in main.py")
+        if not frozen: print("Now starting user code in main.py")
+        del frozen
         '''
         If Pybytes isn't connected at this time, it means you either deliberately
         disabled Pybytes auto-start, or something went wrong.

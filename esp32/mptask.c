@@ -114,7 +114,6 @@ STATIC void mptask_init_sflash_filesystem_littlefs(void);
 #if defined (LOPY) || defined (SIPY) || defined (LOPY4) || defined (FIPY)
 STATIC void mptask_update_lpwan_mac_address (void);
 #endif
-STATIC void mptask_enable_wifi_ap (void);
 
 /******************************************************************************
  DECLARE PUBLIC DATA
@@ -138,7 +137,6 @@ void TASK_Micropython (void *pvParameters) {
     volatile uint32_t sp = (uint32_t)get_sp();
     uint32_t gc_pool_size;
     bool soft_reset = false;
-    bool wifi_on_boot;
     esp_chip_info_t chip_info;
     uint32_t stack_len;
 
@@ -189,8 +187,6 @@ void TASK_Micropython (void *pvParameters) {
     mach_timer_alarm_preinit();
     pin_preinit();
 
-    wifi_on_boot = config_get_wifi_on_boot();
-
 soft_reset:
 
     // thread init
@@ -239,9 +235,8 @@ soft_reset:
                 config_set_wdt_on_boot(false);
             }
         }
-        if (wifi_on_boot) {
-            mptask_enable_wifi_ap();
-        }
+        // Config Wifi as per Pycom config
+        mptask_config_wifi(false);
         // these ones are special because they need uPy running and they launch tasks
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
         modlora_init0();
@@ -272,11 +267,6 @@ soft_reset:
 
     // reset config variables; they should be set by boot.py
     MP_STATE_PORT(machine_config_main) = MP_OBJ_NULL;
-
-    // enable telnet and ftp
-    if (wifi_on_boot) {
-        servers_start();
-    }
 
     pyexec_frozen_module("_boot.py");
 
@@ -389,11 +379,11 @@ STATIC void mptask_preinit (void) {
 
 STATIC void mptask_init_sflash_filesystem(void) {
     if (config_get_boot_fs_type() == 0x01) {
-        printf("Initializing filesystem as LittleFS!\n");
+        //printf("Initializing filesystem as LittleFS!\n");
         mptask_init_sflash_filesystem_littlefs();
     }
     else {
-        printf("Initializing filesystem as FatFS!\n");
+        //printf("Initializing filesystem as FatFS!\n");
         mptask_init_sflash_filesystem_fatfs();
     }
 }
@@ -655,24 +645,154 @@ STATIC void mptask_update_lpwan_mac_address (void) {
 }
 #endif
 
-STATIC void mptask_enable_wifi_ap (void) {
+void mptask_config_wifi(bool force_start)
+{
+    uint8_t mode = config_get_wifi_mode();
+    uint8_t auth = config_get_wifi_auth();
+    bool wifi_on_boot = config_get_wifi_on_boot();
+    bool antenna;
+    char ssid_station [33];
+    char pwd_station[65];
+    char ssid_accessPoint [33];
+    char pwd_accessPoint[65];
+    char * ssid_sta = NULL;
+    char * pwd_sta = NULL;
+    char * ssid_ap = NULL;
+    char * pwd_ap = NULL;
 
-    wlan_internal_setup_t setup = {
-            WIFI_MODE_AP,
-            DEFAULT_AP_SSID,
-            DEFAULT_AP_PASSWORD,
-            (uint32_t)WIFI_AUTH_WPA2_PSK,
-            DEFAULT_AP_CHANNEL,
-            ANTENNA_TYPE_INTERNAL,
-            true,
-            false,
-            WIFI_BW_HT40,
-            NULL,
-            NULL
-    };
+    switch(mode)
+    {
+    case PYCOM_WIFI_CONF_MODE_STA:
+        mode = WIFI_MODE_STA;
+        break;
+    case PYCOM_WIFI_CONF_MODE_AP:
+        mode = WIFI_MODE_AP;
+        break;
+    case PYCOM_WIFI_CONF_MODE_APSTA:
+        mode = WIFI_MODE_APSTA;
+        break;
+    default:
+#if (VARIANT != PYBYTES)
+        mode = WIFI_MODE_AP;
+        config_set_wifi_mode((uint8_t)PYCOM_WIFI_CONF_MODE_AP, true);
+#else
+        mode = WIFI_MODE_STA;
+        config_set_wifi_mode((uint8_t)PYCOM_WIFI_CONF_MODE_STA, true);
+#endif
+        break;
+    }
 
-    wlan_setup (&setup);
-    mod_network_register_nic(&wlan_obj);
+    if(auth >= WIFI_AUTH_MAX)
+    {
+        auth = (uint8_t)WIFI_AUTH_WPA2_PSK;
+        config_set_wifi_auth(auth, true);
+    }
+    if(true == config_get_wifi_antenna())
+    {
+        antenna = ANTENNA_TYPE_INTERNAL;
+    }
+    else
+    {
+        antenna = ANTENNA_TYPE_EXTERNAL;
+    }
+
+    if (force_start || wifi_on_boot)
+    {
+        switch(mode)
+        {
+            case WIFI_MODE_STA:
+            case WIFI_MODE_APSTA:
+
+                // Get STA ssid and password
+                if(config_get_wifi_sta_ssid((uint8_t*)ssid_station))
+                {
+                    ssid_sta = ssid_station;
+                }
+                if(config_get_wifi_sta_pwd((uint8_t*)pwd_station))
+                {
+                    pwd_sta = pwd_station;
+                }
+
+                // Get AP ssid and password
+                if(config_get_wifi_ap_ssid((uint8_t*)ssid_accessPoint))
+                {
+                    ssid_ap = ssid_accessPoint;
+                }
+                if(config_get_wifi_ap_pwd((uint8_t*)pwd_accessPoint))
+                {
+                    pwd_ap = pwd_accessPoint;
+                }
+
+                wlan_internal_setup_t setup_sta_ap = {
+                        mode,
+                        ssid_sta,
+                        pwd_sta,
+                        ssid_ap,
+                        pwd_ap,
+                        (uint32_t)auth,
+                        0,
+                        antenna,
+                        true,
+                        false,
+                        WIFI_BW_HT40,
+                        NULL,
+                        NULL
+                };
+
+                if ((ssid_sta != NULL) || (ssid_ap != NULL)) {
+                    wlan_setup (&setup_sta_ap);
+                }
+
+                break;
+
+            case WIFI_MODE_AP:
+
+                if(!config_get_wifi_ap_ssid((uint8_t*)ssid_accessPoint))
+                {
+                    ssid_ap = DEFAULT_AP_SSID;
+                    pwd_ap = DEFAULT_AP_PASSWORD;
+                }
+                else
+                {
+                    ssid_ap = ssid_accessPoint;
+                    if(config_get_wifi_ap_pwd((uint8_t*)pwd_accessPoint))
+                    {
+                        pwd_ap = pwd_accessPoint;
+                        if(strlen(pwd_ap) == 0)
+                        {
+                            auth = WIFI_AUTH_OPEN;
+                        }
+                    }
+                    else
+                    {
+                        auth = WIFI_AUTH_OPEN;
+                    }
+                }
+
+                wlan_internal_setup_t setup_ap = {
+                        mode,
+                        NULL,
+                        NULL,
+                        ssid_ap,
+                        pwd_ap,
+                        (uint32_t)auth,
+                        DEFAULT_AP_CHANNEL,
+                        antenna,
+                        true,
+                        false,
+                        WIFI_BW_HT40,
+                        NULL,
+                        NULL
+                };
+
+                wlan_setup (&setup_ap);
+
+                break;
+            default:
+                break;
+
+        }
+    }
 }
 
 STATIC void mptask_create_main_py (void) {
