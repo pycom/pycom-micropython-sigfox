@@ -64,6 +64,7 @@ TaskHandle_t xSigfoxTaskHndl;
 #endif
 #if defined(GPY) || defined (FIPY)
 TaskHandle_t xLTETaskHndl;
+TaskHandle_t xLTEUartEvtTaskHndl;
 TaskHandle_t xLTEUpgradeTaskHndl;
 #endif
 
