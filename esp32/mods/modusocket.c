@@ -928,6 +928,10 @@ STATIC mp_obj_t mod_usocket_getaddrinfo(size_t n_args, const mp_obj_t *args) {
     tuple->items[2] = MP_OBJ_NEW_SMALL_INT(0);
     tuple->items[3] = MP_OBJ_NEW_QSTR(MP_QSTR_);
     tuple->items[4] = netutils_format_inet_addr((uint8_t *) &addr->s_addr, port, NETUTILS_BIG);
+
+    //getaddrinfo() allocates memory, needs to be freed
+    freeaddrinfo(res);
+
     return mp_obj_new_list(1, (mp_obj_t*) &tuple);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_usocket_getaddrinfo_obj, 2, 6, mod_usocket_getaddrinfo);
