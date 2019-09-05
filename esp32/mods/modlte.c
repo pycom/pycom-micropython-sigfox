@@ -66,6 +66,7 @@
 
 #include "pycom_config.h"
 #include "modmachine.h"
+#include "mpirq.h"
 
 /******************************************************************************
  DEFINE TYPES
@@ -85,7 +86,7 @@
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
-static lte_obj_t lte_obj = {.init = false};
+static lte_obj_t lte_obj = {.init = false, .trigger = LTE_TRIGGER_NONE, .events = 0, .handler = NULL, .handler_arg = NULL};
 static lte_task_rsp_data_t modlte_rsp;
 uart_dev_t* uart_driver_0 = &UART0;
 uart_dev_t* uart_driver_lte = &UART2;
@@ -128,6 +129,7 @@ STATIC mp_obj_t lte_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
 STATIC mp_obj_t lte_deinit(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args);
 STATIC mp_obj_t lte_disconnect(mp_obj_t self_in);
 static void lte_set_default_inf(void);
+static void lte_callback_handler(void* arg);
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -141,9 +143,34 @@ void modlte_start_modem(void)
     vTaskDelay(100 / portTICK_PERIOD_MS);
     portYIELD();
 }
+
+void modlte_urc_events(lte_events_t events)
+{
+    switch(events)
+    {
+    case LTE_EVENT_COVERAGE_LOST:
+        if ((lte_obj.trigger & LTE_TRIGGER_SIG_LOST)) {
+            lte_obj.events |= (uint32_t)LTE_TRIGGER_SIG_LOST;
+        }
+        mp_irq_queue_interrupt(lte_callback_handler, &lte_obj);
+        break;
+    default:
+        break;
+    }
+}
 //*****************************************************************************
 // DEFINE STATIC FUNCTIONS
 //*****************************************************************************
+
+static void lte_callback_handler(void* arg)
+{
+    lte_obj_t *self = arg;
+
+    if (self->handler && self->handler != mp_const_none) {
+
+        mp_call_function_1(self->handler, self->handler_arg);
+    }
+}
 
 static bool lte_push_at_command_ext(char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len) {
     lte_task_cmd_data_t cmd = { .timeout = timeout, .dataLen = len};
@@ -217,8 +244,9 @@ static bool lte_check_attached(bool legacy) {
                     attached = true;
                 }
             } else {
-                if ((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,4"))) {
+                if ((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,"))) {
                     attached = true;
+                } else {
                     if((pos = strstr(modlte_rsp.data, "+CEREG: 2,4")))
                     {
                         lte_ue_is_out_of_coverage = true;
@@ -227,7 +255,6 @@ static bool lte_check_attached(bool legacy) {
                     {
                         lte_ue_is_out_of_coverage = false;
                     }
-                } else {
                     attached = false;
                 }
             }
@@ -585,7 +612,6 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     lte_check_init();
     bool is_hw_new_band_support = false;
     bool is_sw_new_band_support = false;
-    bool is_custom_hw = false;
     STATIC const mp_arg_t allowed_args[] = {
         { MP_QSTR_band,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_apn,              MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
@@ -626,20 +652,12 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             {
                 is_hw_new_band_support = true;
             }
-            if(strstr(modlte_rsp.data, "<band p=\"111\">") != NULL)
-            {
-                is_custom_hw = true;
-            }
             while(modlte_rsp.data_remaining)
             {
-                if ((!is_hw_new_band_support) && (!is_custom_hw) ) {
+                if (!is_hw_new_band_support) {
                     if(strstr(modlte_rsp.data, "17 bands") != NULL)
                     {
                         is_hw_new_band_support = true;
-                    }
-                    if(strstr(modlte_rsp.data, "<band p=\"111\">") != NULL)
-                    {
-                        is_custom_hw = true;
                     }
                 }
                 lteppp_send_at_command(&cmd, &modlte_rsp);
@@ -656,11 +674,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             // Delay to ensure next addScan command is not discarded
             vTaskDelay(1000);
 
-            if (args[0].u_obj == mp_const_none && is_custom_hw) {
-                lte_push_at_command("AT!=\"RRC::addScanBand band=111\"", LTE_RX_TIMEOUT_MIN_MS);
-                lte_push_at_command("AT!=\"RRC::addScanBand band=222\"", LTE_RX_TIMEOUT_MIN_MS);
-            }
-            else if (args[0].u_obj == mp_const_none) {
+            if (args[0].u_obj == mp_const_none) {
                 lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
                 if (is_hw_new_band_support && version > SQNS_SW_5_8_BAND_SUPPORT) {
@@ -680,7 +694,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                 {
                     case 5:
                     case 8:
-                        if((!is_hw_new_band_support) || (is_custom_hw))
+                        if (!is_hw_new_band_support)
                         {
                             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by this board hardware!", band));
                         }
@@ -702,20 +716,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                         {
                             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware [%d], please upgrade!", band, version));
                         }
-                        if((!is_hw_new_band_support) || (is_custom_hw))
-                        {
-                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by this board hardware!", band));
-                        }
-                        break;
-                    case 111:
-                    case 222:
-                        if(!is_custom_hw)
-                        {
-                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by this board hardware!", band));
-                        }
-                        break;
-                    case 13:
-                        if(is_custom_hw)
+                        if (!is_hw_new_band_support)
                         {
                             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by this board hardware!", band));
                         }
@@ -757,10 +758,6 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                     lte_push_at_command("AT!=\"RRC::addScanBand band=28\"", LTE_RX_TIMEOUT_MIN_MS);
                 } else if (band == 66) {
                     lte_push_at_command("AT!=\"RRC::addScanBand band=66\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 111) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=111\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 222) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=222\"", LTE_RX_TIMEOUT_MIN_MS);
                 } else {
                     nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported", band));
                 }
@@ -1324,6 +1321,53 @@ STATIC mp_obj_t lte_reconnect_uart (void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_reconnect_uart_obj, lte_reconnect_uart);
 
+STATIC mp_obj_t lte_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    STATIC const mp_arg_t allowed_args[] = {
+        { MP_QSTR_trigger,      MP_ARG_REQUIRED | MP_ARG_OBJ,   },
+        { MP_QSTR_handler,      MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+        { MP_QSTR_arg,          MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+    };
+
+    // parse arguments
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
+    lte_obj_t *self = pos_args[0];
+
+    // enable the callback
+    if (args[0].u_obj != mp_const_none && args[1].u_obj != mp_const_none)
+    {
+        self->trigger = mp_obj_get_int(args[0].u_obj);
+
+        self->handler = args[1].u_obj;
+
+        if (args[2].u_obj == mp_const_none) {
+            self->handler_arg = self;
+        } else {
+            self->handler_arg = args[2].u_obj;
+        }
+    }
+    else
+    {   // disable the callback
+        self->trigger = 0;
+        mp_irq_remove(self);
+        INTERRUPT_OBJ_CLEAN(self);
+    }
+
+    mp_irq_add(self, args[1].u_obj);
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_callback_obj, 1, lte_callback);
+
+STATIC mp_obj_t lte_events(mp_obj_t self_in) {
+    lte_obj_t *self = self_in;
+
+    int32_t events = self->events;
+    self->events = 0;
+    return mp_obj_new_int(events);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_events_obj, lte_events);
+
 STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&lte_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&lte_deinit_obj },
@@ -1345,6 +1389,8 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_modem_upgrade_mode),  (mp_obj_t)&lte_upgrade_mode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reconnect_uart),      (mp_obj_t)&lte_reconnect_uart_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ue_coverage),         (mp_obj_t)&lte_ue_coverage_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_lte_callback),         (mp_obj_t)&lte_callback_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_events),              (mp_obj_t)&lte_events_obj },
 #ifdef LTE_DEBUG_BUFF
     { MP_OBJ_NEW_QSTR(MP_QSTR_debug_buff),          (mp_obj_t)&lte_debug_buff_obj },
 #endif
@@ -1352,6 +1398,7 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_IP),                   MP_OBJ_NEW_QSTR(MP_QSTR_IP) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_IPV4V6),               MP_OBJ_NEW_QSTR(MP_QSTR_IPV4V6) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_COVERAGE_LOSS),  MP_OBJ_NEW_SMALL_INT(LTE_TRIGGER_SIG_LOST) },
 };
 STATIC MP_DEFINE_CONST_DICT(lte_locals_dict, lte_locals_dict_table);
 

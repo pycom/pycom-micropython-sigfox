@@ -20,7 +20,7 @@ else
   RELEASE_DIR=$(realpath $2 2>/dev/null || echo $2)
       if ! [ -d $RELEASE_DIR ]; then
     mkdir -p $RELEASE_DIR >/dev/null 2>&1 || { echo >&2 "Cannot create release directory! Aborting."; exit 1; }
-    RELEASE_DIR=$(realpath $2 || echo $2)
+    RELEASE_DIR=$(realpath $2 2>/dev/null || echo $2)
   fi
   if ! [ -w $RELEASE_DIR ]; then
     echo >&2 "Cannot write to ${RELEASE_DIR}! Aborting."

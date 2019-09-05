@@ -124,7 +124,7 @@ class PybytesConnection:
                     net_to_use = net_to_use[0]
                     pwd = dict(known_nets)[net_to_use]
                     sec = [e.sec for e in available_nets if e.ssid == net_to_use][0] # noqa
-                    print_debug(99, "Connecting with {} and {}".format(net_to_use, pwd))
+                    print_debug(2, "Connecting with {} and {}".format(net_to_use, pwd))
                     self.wlan.connect(net_to_use, (sec, pwd), timeout=10000)
                     start_time = time.time()
                     while not self.wlan.isconnected():
@@ -381,7 +381,7 @@ class PybytesConnection:
 
     # COMMON
     def disconnect(self):
-
+      
         if self.__wifi_lte_watchdog is not None:
             self.__wifi_lte_watchdog = WDT(timeout=constants.__WDT_MAX_TIMEOUT_MILLISECONDS)
             print('Watchdog timeout has been increased to {} ms'.format(constants.__WDT_MAX_TIMEOUT_MILLISECONDS)) # noqa

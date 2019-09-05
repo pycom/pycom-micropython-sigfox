@@ -54,6 +54,7 @@
 
 TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
+TaskHandle_t SmartConfTaskHandle;
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xLoRaTaskHndl;
 TaskHandle_t xLoRaTimerTaskHndl;
@@ -63,6 +64,7 @@ TaskHandle_t xSigfoxTaskHndl;
 #endif
 #if defined(GPY) || defined (FIPY)
 TaskHandle_t xLTETaskHndl;
+TaskHandle_t xLTEUartEvtTaskHndl;
 TaskHandle_t xLTEUpgradeTaskHndl;
 #endif
 TaskHandle_t xSocketOpsTaskHndl;

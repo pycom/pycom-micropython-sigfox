@@ -30,9 +30,12 @@
 #define MOD_WLAN_TRIGGER_PKT_CTRL                    0x00000002    // 2
 #define MOD_WLAN_TRIGGER_PKT_DATA                    0x00000004    // 4
 #define MOD_WLAN_TRIGGER_PKT_MISC                    0x00000008    // 8
-#define MOD_WLAN_TRIGGER_PKT_DATA_MPDU                0x00000010    // 16
-#define MOD_WLAN_TRIGGER_PKT_DATA_AMPDU                0x00000020    // 32
-#define MOD_WLAN_TRIGGER_PKT_ANY                    0x0000003F
+#define MOD_WLAN_TRIGGER_PKT_DATA_MPDU               0x00000010    // 16
+#define MOD_WLAN_TRIGGER_PKT_DATA_AMPDU              0x00000020    // 32
+#define MOD_WLAN_TRIGGER_PKT_ANY                     0x0000003F
+
+#define MOD_WLAN_SMART_CONFIG_DONE                   0x00000040    // 64
+#define MOD_WLAN_SMART_CONFIG_TIMEOUT                0x00000080    // 128
 
 /******************************************************************************
  DEFINE TYPES
@@ -111,8 +114,10 @@ typedef struct wlan_internal_prom_t
 typedef struct wlan_internal_setup_t
 {
     int32_t             mode;
-    const char *         ssid;
-    const char *        key;
+    const char *        ssid_sta;
+    const char *        key_sta;
+    const char *        ssid_ap;
+    const char *        key_ap;
     uint32_t             auth;
     uint32_t             channel;
     uint32_t             antenna;
@@ -128,7 +133,7 @@ typedef struct wlan_internal_setup_t
  DECLARE PUBLIC DATA
  ******************************************************************************/
 extern wlan_obj_t wlan_obj;
-
+extern TaskHandle_t SmartConfTaskHandle;
 /******************************************************************************
  DECLARE PUBLIC FUNCTIONS
  ******************************************************************************/

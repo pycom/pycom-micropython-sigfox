@@ -6,7 +6,7 @@ see the Pycom Licence v1.0 document supplied with this file, or
 available at https://www.pycom.io/opensource/licensing
 '''
 
-import sys, pycom
+import sys
 
 
 class MQTTConstants:
@@ -116,5 +116,5 @@ See all available zone options for RC at https://support.sigfox.com/docs/radio-c
 
     __WDT_MAX_TIMEOUT_MILLISECONDS = sys.maxsize
 
-    __DEFAULT_DOMAIN = pycom.nvs_get('pybytes_domain', 'pybytes.pycom.io')
-    __DEFAULT_SW_HOST = pycom.nvs_get('pybytes_sw_host', 'software.pycom.io')
+    __DEFAULT_DOMAIN = 'pybytes.pycom.io'
+    __DEFAULT_SW_HOST = 'software.pycom.io'
