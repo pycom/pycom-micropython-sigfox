@@ -243,7 +243,6 @@ void wlan_resume (bool reconnect)
 
             // initialize the wlan subsystem
             wlan_setup(&setup_config);
-            mod_network_register_nic(&wlan_obj);
         }
     }
 }
@@ -359,6 +358,7 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
             break;
         case SYSTEM_EVENT_STA_GOT_IP: /**< ESP32 station got IP from connected AP */
             xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+            mod_network_register_nic(&wlan_obj);
 #if defined(FIPY) || defined(GPY)
             // Save DNS info for restoring if wifi inf is usable again after LTE disconnect
             tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_STA, TCPIP_ADAPTER_DNS_MAIN, &wlan_sta_inf_dns_info);
@@ -522,6 +522,8 @@ STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uin
     esp_wifi_set_config(WIFI_IF_AP, &config);
     //get mac of AP
     esp_wifi_get_mac(WIFI_IF_AP, wlan_obj.mac_ap);
+
+    mod_network_register_nic(&wlan_obj);
 }
 
 STATIC void wlan_validate_mode (uint mode) {
@@ -1032,7 +1034,7 @@ smartConf_init:
     goto smartConf_init;
 
 smartConf_start:
-    mp_printf(&mp_plat_print, "\n-------SmartConfig Started-------\n");
+    //mp_printf(&mp_plat_print, "\n-------SmartConfig Started-------\n");
     /*create Timer */
     wlan_smartConfig_timeout = xTimerCreate("smartConfig_Timer", 60000 / portTICK_PERIOD_MS, 0, 0, wlan_timer_callback);
     /*start Timer */
@@ -1041,15 +1043,15 @@ smartConf_start:
         uxBits = xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT | ESPTOUCH_STOP_BIT, true, false, portMAX_DELAY);
         if(uxBits & ESPTOUCH_STOP_BIT) {
             esp_smartconfig_stop();
-            mp_printf(&mp_plat_print, "\nSmart Config Aborted or Timed-out\n");
+            //mp_printf(&mp_plat_print, "\nSmart Config Aborted or Timed-out\n");
             goto smartConf_init;
         }
         if(uxBits & CONNECTED_BIT) {
-            mp_printf(&mp_plat_print, "WiFi Connected to ap\n");
+            //mp_printf(&mp_plat_print, "WiFi Connected to ap\n");
             connected = true;
         }
         if(uxBits & ESPTOUCH_DONE_BIT) {
-            mp_printf(&mp_plat_print, "smartconfig over\n");
+            //mp_printf(&mp_plat_print, "smartconfig over\n");
             esp_smartconfig_stop();
             wlan_stop_smartConfig_timer();
             //set event flag
@@ -1248,7 +1250,6 @@ STATIC mp_obj_t wlan_init_helper(wlan_obj_t *self, const mp_arg_val_t *args) {
 
     // initialize the wlan subsystem
     wlan_setup(&setup);
-    mod_network_register_nic(&wlan_obj);
 
     return mp_const_none;
 }
