@@ -37,6 +37,7 @@
 #include "mptask.h"
 
 #include "modmachine.h"
+#include "esp32chipinfo.h"
 
 
 #include <string.h>
@@ -594,10 +595,8 @@ STATIC mp_obj_t mod_pycom_get_free_heap (void) {
 
     size_t heap_psram_free = 0;
     mp_obj_t items[2];
-    esp_chip_info_t chip_info;
 
-    esp_chip_info(&chip_info);
-    if (chip_info.revision > 0) {
+    if (esp32_get_chip_rev() > 0) {
         heap_psram_free = heap_caps_get_free_size(MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     }
     items[0] = mp_obj_new_int(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));

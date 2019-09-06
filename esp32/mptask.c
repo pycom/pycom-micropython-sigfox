@@ -84,6 +84,7 @@
 #include "lfs.h"
 #include "sflash_diskio_littlefs.h"
 #include "lteppp.h"
+#include "esp32chipinfo.h"
 
 
 /******************************************************************************
@@ -137,11 +138,11 @@ void TASK_Micropython (void *pvParameters) {
     volatile uint32_t sp = (uint32_t)get_sp();
     uint32_t gc_pool_size;
     bool soft_reset = false;
-    esp_chip_info_t chip_info;
     uint32_t stack_len;
 
-    esp_chip_info(&chip_info);
-    if (chip_info.revision > 0) {
+    uint8_t chip_rev = esp32_get_chip_rev();
+
+    if (chip_rev > 0) {
         stack_len = (MICROPY_TASK_STACK_SIZE_PSRAM / sizeof(StackType_t));
     } else {
         stack_len = (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t));
@@ -158,7 +159,7 @@ void TASK_Micropython (void *pvParameters) {
     // initialization that must not be repeted after a soft reset
     mptask_preinit();
 #if MICROPY_PY_THREAD
-    mp_thread_preinit(mpTaskStack, stack_len, chip_info.revision);
+    mp_thread_preinit(mpTaskStack, stack_len, chip_rev);
     mp_irq_preinit();
 #endif
     /* Creat Socket Operation task */
@@ -171,7 +172,7 @@ void TASK_Micropython (void *pvParameters) {
     // to recover from hiting the limit (the limit is measured in bytes)
     mp_stack_set_limit(stack_len - 1024);
 
-    if (chip_info.revision > 0) {
+    if (esp32_get_chip_rev() > 0) {
         gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
         gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES_PSRAM, MALLOC_CAP_SPIRAM);
     } else {
