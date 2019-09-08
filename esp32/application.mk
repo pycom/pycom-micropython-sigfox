@@ -450,17 +450,16 @@ ifeq ($(BOARD), FIPY)
     $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 
-PART_BIN = $(BUILD)/lib/partitions.bin
-PART_BIN_ENCRYPT = $(PART_BIN)_enc
+PART_BIN_8MB = $(BUILD)/lib/partitions_8MB.bin
+PART_BIN_4MB = $(BUILD)/lib/partitions_4MB.bin
+PART_BIN_ENCRYPT_4MB = $(PART_BIN_4MB)_enc
+PART_BIN_ENCRYPT_8MB = $(PART_BIN_8MB)_enc
 APP_BIN_ENCRYPT = $(APP_BIN)_enc_0x10000
 APP_IMG  = $(BUILD)/appimg.bin
-ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
-PART_CSV = lib/partitions_8MB.csv
-APP_BIN_ENCRYPT_2 = $(APP_BIN)_enc_0x210000
-else
-PART_CSV = lib/partitions_4MB.csv
-APP_BIN_ENCRYPT_2 = $(APP_BIN)_enc_0x1C0000
-endif
+PART_CSV_8MB = lib/partitions_8MB.csv
+PART_CSV_4MB = lib/partitions_4MB.csv
+APP_BIN_ENCRYPT_2_8MB = $(APP_BIN)_enc_0x210000
+APP_BIN_ENCRYPT_2_4MB = $(APP_BIN)_enc_0x1C0000
 
 ESPPORT ?= /dev/ttyUSB0
 ESPBAUD ?= 921600
@@ -474,12 +473,13 @@ ENTER_FLASHING_MODE = $(PIC_TOOL) --enter
 EXIT_FLASHING_MODE = $(PIC_TOOL) --exit
 
 ESPTOOLPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/esptool.py --chip esp32
-ESPRESET ?= --before no_reset --after no_reset
+ESPRESET ?= --before default_reset --after no_reset
 ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD) $(ESPRESET)
 
 ESPTOOLPY_WRITE_FLASH  = $(ESPTOOLPY_SERIAL) write_flash -z --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE)
 ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash
-ESPTOOL_ALL_FLASH_ARGS = $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN) $(APP_OFFSET) $(APP_BIN)
+ESPTOOL_ALL_FLASH_ARGS_4MB = $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN_4MB) $(APP_OFFSET) $(APP_BIN)
+ESPTOOL_ALL_FLASH_ARGS_8MB = $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN_8MB) $(APP_OFFSET) $(APP_BIN)
 
 ESPSECUREPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espsecure.py
 ESPEFUSE = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espefuse.py --port $(ESPPORT)
@@ -615,7 +615,15 @@ ifeq ($(SECURE), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "* Flash: write bootloader_digest + partition + app all encrypted"
 	$(ECHO) "Hint: 'make BOARD=$(BOARD) SECURE=on flash' can be used"
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+else
+ifeq ($(BOARD), $(filter $(BOARD), SIPY))
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+	$(ECHO) "Generating Encrypted Images for 4MB devices, you can use make flash and it would be handled automatically!"
+endif #($(BOARD), $(filter $(BOARD), SIPY))
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_4MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+endif #ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 endif #ifeq ($(SECURE), on)
@@ -649,7 +657,7 @@ endif #ifeq ($(SECURE), on)
 	$(Q) $(CC) $(APP_LDFLAGS) $(APP_LIBS) -o $@
 	$(SIZE) $@
 
-$(APP_BIN): $(BUILD)/application.elf $(PART_BIN) $(ORIG_ENCRYPT_KEY)
+$(APP_BIN): $(BUILD)/application.elf $(PART_BIN_4MB) $(PART_BIN_8MB) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "IMAGE $@"
 	$(Q) $(ESPTOOLPY) elf2image --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) -o $@ $<
 ifeq ($(SECURE), on)
@@ -657,12 +665,23 @@ ifeq ($(SECURE), on)
 	$(Q) $(SIGN_BINARY) $@
 	$(ECHO) $(SEPARATOR)
 ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
-	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2) (0x210000 offset)"
+	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2_8MB) (0x210000 offset)"
 else
-	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2) (0x1C0000 offset)"
+ifneq ($(BOARD), $(filter $(BOARD), SIPY))
+	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2_8MB) (0x210000 offset)"
+	$(ECHO) "And"
+endif
+	$(ECHO) "Encrypt image into $(APP_BIN_ENCRYPT) (0x10000 offset) and $(APP_BIN_ENCRYPT_2_4MB) (0x1C0000 offset)"
 endif
 	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o $(APP_BIN_ENCRYPT) $@
-	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_APP_PART_2) -o $(APP_BIN_ENCRYPT_2) $@
+ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_APP_PART_2_8MB) -o $(APP_BIN_ENCRYPT_2_8MB) $@
+else
+ifneq ($(BOARD), $(filter $(BOARD), SIPY))
+	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_APP_PART_2_8MB) -o $(APP_BIN_ENCRYPT_2_8MB) $@
+endif
+	$(Q) $(ENCRYPT_BINARY) $(ENCRYPT_APP_PART_2_4MB) -o $(APP_BIN_ENCRYPT_2_4MB) $@
+endif
 	$(ECHO) "Overwrite $(APP_BIN) with $(APP_BIN_ENCRYPT)"
 	$(CP) -f $(APP_BIN_ENCRYPT) $(APP_BIN)
 	$(ECHO) $(SEPARATOR)
@@ -682,7 +701,15 @@ endif
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "* Flash: write bootloader_digest + partition + app all encrypted"
 	$(ECHO) "Hint: 'make BOARD=$(BOARD) SECURE=on flash' can be used"
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+else
+ifeq ($(BOARD), $(filter $(BOARD), SIPY))
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+	$(ECHO) "Generating Encrypted Images for 4MB devices, you can use make flash and it would be handled automatically!"
+endif #($(BOARD), $(filter $(BOARD), SIPY))
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_4MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+endif #ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) $(SEPARATOR)
 endif # feq ($(SECURE), on)
@@ -703,16 +730,41 @@ flash: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "Entering flash mode"
 	$(Q) $(ENTER_FLASHING_MODE)
 	$(ECHO) "Flashing project"
+ifeq ($(findstring 8MB,$(shell $(PYTHON) tools/detect_flash_size.py -p $(ESPPORT) -c default_reset -b 115200 )), 8MB)
 ifeq ($(SECURE), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "(Secure boot enabled, so bootloader + digest is flashed)"
 	$(ECHO) $(SEPARATOR)
-	$(ECHO) "$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
-	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT) $(APP_OFFSET) $(APP_BIN_ENCRYPT)
+	$(ECHO) "$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)
 else # ifeq ($(SECURE), on)
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)"
-	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS)
+
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_8MB)"
+	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_8MB)
 endif #ifeq ($(SECURE), on)
+else #ifeq ($(findstring 8MB,$(shell $(PYTHON) tools/detect_flash_size.py -p $(ESPPORT) -c no_reset -b 115200 )), 8MB)
+ifeq ($(SECURE), on)
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "(Secure boot enabled, so bootloader + digest is flashed)"
+	$(ECHO) $(SEPARATOR)
+ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+	$(ECHO) "$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)
+else
+	$(ECHO) "$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_4MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
+	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_4MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)
+endif #ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+else # ifeq ($(SECURE), on)
+ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_8MB)"
+	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_8MB)
+else
+	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_4MB)"
+	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_4MB)
+endif #ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
+endif #ifeq ($(SECURE), on)
+endif #ifeq ($(findstring 8MB,$(shell $(PYTHON) tools/detect_flash_size.py -p $(ESPPORT) -c no_reset -b 115200 )), 8MB)
+
 	$(ECHO) "Exiting flash mode"
 	$(Q) $(EXIT_FLASHING_MODE)
 
@@ -724,8 +776,11 @@ erase:
 	$(ECHO) "Exiting flash mode"
 	$(Q) $(EXIT_FLASHING_MODE)
 
-$(PART_BIN): $(PART_CSV) $(ORIG_ENCRYPT_KEY)
-	$(ECHO) "Building partitions from $(PART_CSV)..."
+$(PART_BIN_4MB): $(PART_CSV_4MB) $(ORIG_ENCRYPT_KEY)
+	$(ECHO) "Building partitions from $(PART_CSV_4MB)..."
+	$(Q) $(GEN_ESP32PART) $< $@
+$(PART_BIN_8MB): $(PART_CSV_8MB) $(ORIG_ENCRYPT_KEY)
+	$(ECHO) "Building partitions from $(PART_CSV_8MB)..."
 	$(Q) $(GEN_ESP32PART) $< $@
 ifeq ($(SECURE), on)
 	$(ECHO) "Signing $@"
@@ -734,10 +789,14 @@ ifeq ($(SECURE), on)
 	$(Q) $(ENCRYPT_BINARY) --address 0x8000 -o $(PART_BIN_ENCRYPT) $@
 endif # ifeq ($(SECURE), on)
 
-show_partitions: $(PART_BIN)
-	$(ECHO) "Partition table binary generated. Contents:"
+show_partitions: $(PART_BIN_4MB) $(PART_BIN_8MB)
+	$(ECHO) "Partition table 4MB binary generated. Contents:"
 	$(ECHO) $(SEPARATOR)
 	$(Q) $(GEN_ESP32PART) $<
+	$(ECHO) $(SEPARATOR)
+	$(ECHO) "Partition table 8MB binary generated. Contents:"
+	$(ECHO) $(SEPARATOR)
+	$(Q) $(GEN_ESP32PART) $(word 2,$^)
 	$(ECHO) $(SEPARATOR)
 
 MAKE_PINS = boards/make-pins.py
