@@ -69,7 +69,7 @@ else
     SCRIPT_FILE_4MB='script_4MB'
 fi
 cat boards/$1/script  > ${PKG_TMP_DIR}/script  || { echo >&2 "Cannot create legacy script file! Aborting."; exit 1; }
-cat boards/$1/script2  > ${PKG_TMP_DIR}/script  || { echo >&2 "Cannot create legacy script2 file! Aborting."; exit 1; }
+cat boards/$1/script2  > ${PKG_TMP_DIR}/script2  || { echo >&2 "Cannot create legacy script2 file! Aborting."; exit 1; }
 tar -czf ${RELEASE_DIR}/${FILE_NAME} -C ${PKG_TMP_DIR} bootloader.bin ${PART_FILE_4MB} ${PART_FILE_8MB} ${BOARD_NAME_L}.bin ${SCRIPT_FILE_4MB} ${SCRIPT_FILE_8MB} script script2 || { echo >&2 "Cannot create ${RELEASE_DIR}/${FILE_NAME}! Aborting."; exit 1; }
 echo "Release package ${FILE_NAME} created successfully."
 
