@@ -493,7 +493,12 @@ modem_init:
 
         // enable airplane low power mode
         lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
-
+        // enable Break Signal for URC on UART0
+        lteppp_send_at_cmd("AT+SQNIBRCFG?", LTE_RX_TIMEOUT_MAX_MS);
+        if(strstr(lteppp_trx_buffer, "+SQNIBRCFG: 1,100"))
+        {
+            lteppp_send_at_cmd("AT+SQNIBRCFG=1,100", LTE_RX_TIMEOUT_MAX_MS);
+        }
         xSemaphoreTake(xLTESem, portMAX_DELAY);
         lteppp_modem_conn_state = E_LTE_MODEM_CONNECTED;
         xSemaphoreGive(xLTESem);
