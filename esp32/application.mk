@@ -472,14 +472,20 @@ PIC_TOOL = $(PYTHON) tools/pypic.py --port $(ESPPORT)
 ENTER_FLASHING_MODE = $(PIC_TOOL) --enter
 EXIT_FLASHING_MODE = $(PIC_TOOL) --exit
 
+ESP_UPDATER_PY = $(PYTHON) ./tools/fw_updater/updater.py
 ESPTOOLPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/esptool.py --chip esp32
 ESPRESET ?= --before default_reset --after no_reset
 ESPTOOLPY_SERIAL = $(ESPTOOLPY) --port $(ESPPORT) --baud $(ESPBAUD) $(ESPRESET)
-
+ESP_UPDATER_PY_SERIAL = $(ESP_UPDATER_PY) --port $(ESPPORT) --speed $(ESPBAUD)
+BOARD_L = `echo $(BOARD) | tr '[IOY]' '[ioy]'`
+SW_VERSION = `cat pycom_version.h |grep SW_VERSION_NUMBER | cut -d'"' -f2`
 ESPTOOLPY_WRITE_FLASH  = $(ESPTOOLPY_SERIAL) write_flash -z --flash_mode $(ESPFLASHMODE) --flash_freq $(ESPFLASHFREQ) --flash_size $(FLASH_SIZE)
 ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash
-ESPTOOL_ALL_FLASH_ARGS_4MB = $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN_4MB) $(APP_OFFSET) $(APP_BIN)
-ESPTOOL_ALL_FLASH_ARGS_8MB = $(BOOT_OFFSET) $(BOOT_BIN) $(PART_OFFSET) $(PART_BIN_8MB) $(APP_OFFSET) $(APP_BIN)
+
+ESP_UPDATER_PY_WRITE_FLASH  = $(ESP_UPDATER_PY_SERIAL) flash
+ESP_UPDATER_PY_ERASE_FLASH  = $(ESP_UPDATER_PY_SERIAL) erase_all
+ESP_UPDATER_ALL_FLASH_ARGS = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION).tar.gz
+ESP_UPDATER_ALL_FLASH_ARGS_ENC = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION)_ENC.tar.gz
 
 ESPSECUREPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espsecure.py
 ESPEFUSE = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espefuse.py --port $(ESPPORT)
@@ -722,59 +728,31 @@ endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
 release: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "checking size of image"
 	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT)
+ifeq ($(SECURE), on)
+	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD) 1
+else
 	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD)
+endif
 
-flash: $(APP_BIN) $(BOOT_BIN)	
+flash: release
 	$(ECHO) "checking size of image"
 	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT)
-	$(ECHO) "Entering flash mode"
-	$(Q) $(ENTER_FLASHING_MODE)
+
 	$(ECHO) "Flashing project"
-ifeq ($(findstring 8MB,$(shell $(PYTHON) tools/detect_flash_size.py -p $(ESPPORT) -c default_reset -b 115200 )), 8MB)
 ifeq ($(SECURE), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "(Secure boot enabled, so bootloader + digest is flashed)"
 	$(ECHO) $(SEPARATOR)
-	$(ECHO) "$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
-	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)
+	$(ECHO) "$(Q) $(ESP_UPDATER_PY_WRITE_FLASH) $(ESP_UPDATER_ALL_FLASH_ARGS_ENC) --secureboot"
+	$(Q) $(ESP_UPDATER_PY_WRITE_FLASH) $(ESP_UPDATER_ALL_FLASH_ARGS_ENC) --secureboot"
 else # ifeq ($(SECURE), on)
-
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_8MB)"
-	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_8MB)
-endif #ifeq ($(SECURE), on)
-else #ifeq ($(findstring 8MB,$(shell $(PYTHON) tools/detect_flash_size.py -p $(ESPPORT) -c no_reset -b 115200 )), 8MB)
-ifeq ($(SECURE), on)
-	$(ECHO) $(SEPARATOR)
-	$(ECHO) "(Secure boot enabled, so bootloader + digest is flashed)"
-	$(ECHO) $(SEPARATOR)
-ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
-	$(ECHO) "$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
-	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)
-else
-	$(ECHO) "$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_4MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
-	$(Q) $(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_4MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)
-endif #ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
-else # ifeq ($(SECURE), on)
-ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_8MB)"
-	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_8MB)
-else
-	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_4MB)"
-	$(Q) $(ESPTOOLPY_WRITE_FLASH) $(ESPTOOL_ALL_FLASH_ARGS_4MB)
-endif #ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
-endif #ifeq ($(SECURE), on)
-endif #ifeq ($(findstring 8MB,$(shell $(PYTHON) tools/detect_flash_size.py -p $(ESPPORT) -c no_reset -b 115200 )), 8MB)
-
-	$(ECHO) "Exiting flash mode"
-	$(Q) $(EXIT_FLASHING_MODE)
+	$(ECHO) "$(ESP_UPDATER_PY_WRITE_FLASH) $(ESP_UPDATER_ALL_FLASH_ARGS)"
+	$(Q) $(ESP_UPDATER_PY_WRITE_FLASH) $(ESP_UPDATER_ALL_FLASH_ARGS)
+endif
 
 erase:
-	$(ECHO) "Entering flash mode"
-	$(Q) $(ENTER_FLASHING_MODE)
 	$(ECHO) "Erasing flash"
-	$(Q) $(ESPTOOLPY_ERASE_FLASH)
-	$(ECHO) "Exiting flash mode"
-	$(Q) $(EXIT_FLASHING_MODE)
+	$(Q) $(ESP_UPDATER_PY_ERASE_FLASH)
 
 $(PART_BIN_4MB): $(PART_CSV_4MB) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "Building partitions from $(PART_CSV_4MB)..."
