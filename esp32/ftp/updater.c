@@ -21,6 +21,7 @@
 //#define LOG_LOCAL_LEVEL ESP_LOG_INFO
 #include "esp_log.h"
 #include "rom/crc.h"
+#include "esp32chipinfo.h"
 
 #include "ff.h"
 
@@ -78,11 +79,13 @@ static esp_err_t updater_spi_flash_write(size_t dest_addr, void *src, size_t siz
  ******************************************************************************/
 
 bool updater_read_boot_info (boot_info_t *boot_info, uint32_t *boot_info_offset) {
-    esp_partition_info_t partition_info[PARTITIONS_COUNT];
+    esp_partition_info_t partition_info[PARTITIONS_COUNT_4MB];
+
+    uint8_t part_count = (esp32_get_chip_rev() > 0 ? PARTITIONS_COUNT_8MB : PARTITIONS_COUNT_4MB);
 
     ESP_LOGV(TAG, "Reading boot info\n");
 
-    if (ESP_OK != updater_spi_flash_read(ESP_PARTITION_TABLE_ADDR, (void *)partition_info, sizeof(partition_info), true)) {
+    if (ESP_OK != updater_spi_flash_read(ESP_PARTITION_TABLE_ADDR, (void *)partition_info, (sizeof(esp_partition_info_t) * part_count), true)) {
             ESP_LOGE(TAG, "err1\n");
             return false;
     }
@@ -175,7 +178,12 @@ bool updater_start (void) {
      * The new location of otadata is 0x1BE000 or 0x1FF000 as per updated partition table and has size of
      * 4096 bytes which is size of a sector
      */
-    ret = spi_flash_erase_sector(OTA_DATA_ADDRESS / SPI_FLASH_SEC_SIZE);
+    if (esp32_get_chip_rev() > 0) {
+        ret = spi_flash_erase_sector(OTA_DATA_ADDRESS_8MB / SPI_FLASH_SEC_SIZE);
+    }
+    else {
+        ret = spi_flash_erase_sector(OTA_DATA_ADDRESS_4MB / SPI_FLASH_SEC_SIZE);
+    }
     if (ESP_OK != ret) {
         ESP_LOGE(TAG, "Erasing new sector of boot info failed, error code: %d!\n", ret);
         // TODO: try again ???
@@ -183,7 +191,14 @@ bool updater_start (void) {
     }
 
     // Updating the NEW otadata partition with the OLD information
-    if (true != updater_write_boot_info(&boot_info_local, OTA_DATA_ADDRESS)) {
+    bool updater_ret = false;
+    if (esp32_get_chip_rev() > 0) {
+        updater_ret = updater_write_boot_info(&boot_info_local, OTA_DATA_ADDRESS_8MB);
+    }
+    else {
+        updater_ret = updater_write_boot_info(&boot_info_local, OTA_DATA_ADDRESS_4MB);
+    }
+    if (true != updater_ret) {
         ESP_LOGE(TAG, "Writing new sector of boot info failed!\n");
         //TODO: try again ???
         return false;
@@ -198,7 +213,7 @@ bool updater_start (void) {
     }
 
     // Writing the new partition table
-    if (esp_get_revision() > 0) {
+    if (esp32_get_chip_rev() > 0) {
         ret = spi_flash_write(ESP_PARTITION_TABLE_ADDR, (void *)partitions_bin_8MB, sizeof(partitions_bin_8MB));
     }
     else {
@@ -210,7 +225,7 @@ bool updater_start (void) {
         return false;
     }
 
-    updater_data.size = IMG_SIZE;
+    updater_data.size = (esp32_get_chip_rev() > 0 ? IMG_SIZE_8MB : IMG_SIZE_4MB);
     // check which one should be the next active image
     updater_data.offset = updater_ota_next_slot_address();
 
@@ -356,7 +371,7 @@ bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset) 
 
 int updater_ota_next_slot_address() {
 
-    int ota_offset = IMG_UPDATE1_OFFSET;
+    int ota_offset = (esp32_get_chip_rev() > 0 ? IMG_UPDATE1_OFFSET_8MB : IMG_UPDATE1_OFFSET_4MB);;
 
     // check which one should be the next active image
     if (updater_read_boot_info (&boot_info, &boot_info_offset)) {

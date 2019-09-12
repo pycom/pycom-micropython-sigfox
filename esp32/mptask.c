@@ -79,6 +79,7 @@
 
 
 #include "lteppp.h"
+#include "esp32chipinfo.h"
 /******************************************************************************
  DECLARE EXTERNAL FUNCTIONS
  ******************************************************************************/
@@ -127,11 +128,10 @@ void TASK_Micropython (void *pvParameters) {
     uint32_t gc_pool_size;
     bool soft_reset = false;
     bool wifi_on_boot;
-    esp_chip_info_t chip_info;
     uint32_t stack_len;
+    uint8_t chip_rev = esp32_get_chip_rev();
 
-    esp_chip_info(&chip_info);
-    if (chip_info.revision > 0) {
+    if (chip_rev > 0) {
         stack_len = (MICROPY_TASK_STACK_SIZE_PSRAM / sizeof(StackType_t));
     } else {
         stack_len = (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t));
@@ -176,7 +176,7 @@ void TASK_Micropython (void *pvParameters) {
     // to recover from hiting the limit (the limit is measured in bytes)
     mp_stack_set_limit(stack_len - 1024);
 
-    if (esp_get_revision() > 0) {
+    if (esp32_get_chip_rev() > 0) {
         gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
         gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES_PSRAM, MALLOC_CAP_SPIRAM);
     } else {

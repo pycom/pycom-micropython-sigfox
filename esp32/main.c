@@ -51,6 +51,7 @@
 #include "pins.h"
 #include "mperror.h"
 #include "machtimer.h"
+#include "esp32chipinfo.h"
 
 
 TaskHandle_t mpTaskHandle;
@@ -104,6 +105,8 @@ static StaticTask_t mpTaskTCB;
  * Returns      : none
 *******************************************************************************/
 void app_main(void) {
+
+    esp32_init_chip_info();
     // remove all the logs from the IDF
     esp_log_level_set("*", ESP_LOG_NONE);
 
@@ -123,7 +126,7 @@ void app_main(void) {
     mperror_pre_init();
 
     // differentiate the Flash Size (either 8MB or 4MB) based on ESP32 rev id
-    micropy_hw_flash_size = (esp_get_revision() > 0 ? 0x800000 : 0x400000);
+    micropy_hw_flash_size = (esp32_get_chip_rev() > 0 ? 0x800000 : 0x400000);
 
     // propagating the Flash Size in the global variable (used in multiple IDF modules)
     g_rom_flashchip.chip_size = micropy_hw_flash_size;
@@ -131,7 +134,7 @@ void app_main(void) {
     esp_chip_info_t chip_info;
     esp_chip_info(&chip_info);
 
-    if (chip_info.revision > 0) {
+    if (esp32_get_chip_rev() > 0) {
         micropy_hw_antenna_diversity_pin_num = MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM;
 
         micropy_lpwan_ncs_pin_index = 1;
