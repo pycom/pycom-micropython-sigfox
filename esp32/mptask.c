@@ -144,14 +144,19 @@ void TASK_Micropython (void *pvParameters) {
         ret = updater_read_boot_info(&boot_info_local, &boot_info_offset_local);
     }
     if(boot_info_local.ActiveImg != IMG_ACT_FACTORY) {
-        printf("Copying image from OTA_0 partition to Factory partition, please wait...\n");
-        if(true == update_to_factory_partition()) {
-            printf("Image copy finished successfully!\n");
-        }
+        // Only copy if coming from older version (1.18.2) and this is not a downgrade
+        // In case of upgrade the boot_info located under 0x190000 address
+        // In case of a downgrade, the boot info located somewhere else than 0x190000 because of the updated partition table
+        if(boot_info_offset_local == (uint32_t)0x190000){
+            printf("Copying image from OTA_0 partition to Factory partition, please wait...\n");
+            if(true == update_to_factory_partition()) {
+                printf("Image copy finished successfully!\n");
+            }
 
-        //Restart the system
-        machine_wdt_start(100);
-        for ( ; ; );
+            //Restart the system
+            machine_wdt_start(100);
+            for ( ; ; );
+        }
     }
 
     // configure the antenna select switch here
