@@ -16,6 +16,7 @@ APP_INC += -Itelnet
 APP_INC += -Iftp
 APP_INC += -Ilora
 APP_INC += -Ilte
+APP_INC += -Ipygate
 APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
@@ -247,6 +248,12 @@ APP_SX1308_SRC_C = $(addprefix drivers/sx1308/,\
 	sx1308-spi.c \
 	)
 
+APP_PYGATE_SRC_C = $(addprefix pygate/,\
+	loragw_reg.c \
+	loragw_hal.c \
+	cmd_manager.c \
+	)
+
 APP_SX1272_SRC_C = $(addprefix drivers/sx127x/,\
 	sx1272/sx1272.c \
 	)
@@ -346,7 +353,7 @@ endif # ifeq ($(OPENTHREAD), on)
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o) $(APP_SX1308_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o) $(APP_SX1308_SRC_C:.c=.o) $(APP_PYGATE_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins.o
 
 BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))

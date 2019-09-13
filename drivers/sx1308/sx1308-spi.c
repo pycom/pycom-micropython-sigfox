@@ -73,7 +73,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 //              SPI  => SPI_1
 //              HSPI => SPI_2
 //              VSPI => SPI_3
-void SpiInit( Spi_t *obj) {
+void sx1308_SpiInit( Spi_sx1308_t *obj) {
     // this is SpiNum_SPI2
     DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_SPI_CLK_EN);
     DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_SPI_RST);
@@ -114,7 +114,7 @@ void SpiInit( Spi_t *obj) {
  * \param [IN] outData Byte to be sent
  * \retval inData      Received byte.
  */
-IRAM_ATTR uint16_t SpiInOut(Spi_t *obj, uint16_t outData) {
+IRAM_ATTR uint16_t sx1308_SpiInOut(Spi_sx1308_t *obj, uint16_t outData) {
     uint32_t spiNum = obj->Spi;
 
     // set data send buffer length (1 byte)

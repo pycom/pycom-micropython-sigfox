@@ -33,7 +33,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "machpin.h"
 
 
-struct Spi_s
+struct Spi_sx1308_s
 {
     uint32_t Spi;
     pin_obj_t *Mosi;
@@ -42,9 +42,9 @@ struct Spi_s
     pin_obj_t *Nss;
 };
 
-typedef struct Spi_s Spi_t;
+typedef struct Spi_sx1308_s Spi_sx1308_t;
 
 
-extern void SpiInit( Spi_t *obj);
+extern void sx1308_SpiInit( Spi_sx1308_t *obj);
 
-extern uint16_t SpiInOut(Spi_t *obj, uint16_t outData);
+extern uint16_t sx1308_SpiInOut(Spi_sx1308_t *obj, uint16_t outData);

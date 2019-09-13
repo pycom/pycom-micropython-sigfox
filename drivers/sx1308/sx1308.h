@@ -32,17 +32,25 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "py/runtime.h"
 #include "sx1308-config.h"
 #include "sx1308-spi.h"
-
+#include "loragw_reg.h"
 
 typedef struct
 {
-    Spi_t Spi;
+    Spi_sx1308_t Spi;
     pin_obj_t *Reset;
     pin_obj_t *TxOn;
     pin_obj_t *RxOn;
-
+    pin_obj_t *RadioAEn;
+    pin_obj_t *RadioBEn;
+    pin_obj_t *RFPowerEn;
+    uint8_t waittxend;
+    uint8_t txongoing;
+    uint32_t offtmstp;
+    uint32_t offtmstpref;
+    bool firsttx;
 } SX1308_t;
 
+extern volatile SX1308_t SX1308;
 
 bool sx1308_init(void);
 
@@ -67,3 +75,5 @@ uint8_t sx1308_spiReadBurstM(uint8_t reg, uint8_t *data, int size);
 uint8_t sx1308_spiReadBurstE(uint8_t reg, uint8_t *data, int size);
 
 uint8_t sx1308_spiReadBurst(uint8_t reg, uint8_t *data, int size);
+
+uint32_t sx1308_timer_read_us(void);

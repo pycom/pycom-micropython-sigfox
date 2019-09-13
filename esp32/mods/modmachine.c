@@ -91,6 +91,8 @@
 #include "soc/rtc_cntl_reg.h"
 #include "soc/sens_reg.h"
 
+#include "cmd_manager.h"
+#include "loragw_hal.h"
 
 static RTC_DATA_ATTR int64_t mach_expected_wakeup_time;
 static int64_t mach_remaining_sleep_time;
@@ -174,6 +176,41 @@ STATIC mp_obj_t machine_main(mp_obj_t main) {
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_1(machine_main_obj, machine_main);
+
+STATIC mp_obj_t machine_pygate_init (void) {
+    lgw_connect();
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_pygate_init_obj, machine_pygate_init);
+
+STATIC mp_obj_t machine_pygate_cmd_decode (mp_obj_t cmd_in) {
+    // get the cmd data
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(cmd_in, &bufinfo, MP_BUFFER_READ);
+
+    // pass the data to the cmd manager
+    cmd_manager_DecodeCmd(bufinfo.buf);
+
+    // return the number of bytes written
+    return mp_obj_new_int(bufinfo.len);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pygate_cmd_decode_obj, machine_pygate_cmd_decode);
+
+STATIC mp_obj_t machine_pygate_cmd_get (void) {
+    vstr_t vstr;
+    uint32_t len = 0;
+    uint8_t *BufToHost;
+
+    // get the command from the cmd manager
+    cmd_manager_GetCmdToHost (&BufToHost);
+    len = (uint16_t)((BufToHost[CMD_LENGTH_MSB] << 8) + BufToHost[CMD_LENGTH_LSB] + CMD_HEADER_TX_SIZE);
+    vstr_init_len(&vstr, len);
+    memcpy(vstr.buf, BufToHost, len);
+
+    // return the received data
+    return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_pygate_cmd_get_obj, machine_pygate_cmd_get);
 
 STATIC mp_obj_t machine_idle(void) {
     taskYIELD();
@@ -395,7 +432,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_sleep),                   (mp_obj_t)(&machine_sleep_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deepsleep),               (mp_obj_t)(&machine_deepsleep_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_remaining_sleep_time),    (mp_obj_t)(&machine_remaining_sleep_time_obj) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_pin_sleep_wakeup),    (mp_obj_t)(&machine_pin_sleep_wakeup_obj) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pin_sleep_wakeup),        (mp_obj_t)(&machine_pin_sleep_wakeup_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset_cause),             (mp_obj_t)(&machine_reset_cause_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_wake_reason),             (mp_obj_t)(&machine_wake_reason_obj) },
 
@@ -404,7 +441,11 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_info),                    (mp_obj_t)&machine_info_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_temperature),             (mp_obj_t)&machine_temperature_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_flash_encrypt),           (mp_obj_t)&machine_flash_encrypt_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_secure_boot),               (mp_obj_t)&machine_secure_boot_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_secure_boot),             (mp_obj_t)&machine_secure_boot_obj },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_init),             (mp_obj_t)&machine_pygate_init_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_cmd_decode),       (mp_obj_t)&machine_pygate_cmd_decode_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_cmd_get),          (mp_obj_t)&machine_pygate_cmd_get_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_Pin),                     (mp_obj_t)&pin_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_UART),                    (mp_obj_t)&mach_uart_type },

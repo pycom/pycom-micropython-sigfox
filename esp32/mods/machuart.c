@@ -61,7 +61,7 @@
 #define MACHUART_TX_WAIT_US(baud)               ((MACHUART_FRAME_TIME_US(baud)) + 1)
 #define MACHUART_TX_MAX_TIMEOUT_MS              (5)
 
-#define MACHUART_RX_BUFFER_LEN                  (512)
+#define MACHUART_RX_BUFFER_LEN                  (4096)
 #define MACHUART_TX_FIFO_LEN                    (UART_FIFO_LEN)
 
 // interrupt triggers
