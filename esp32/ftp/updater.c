@@ -66,7 +66,9 @@ static boot_info_t boot_info;
 static uint32_t boot_info_offset;
 
 static uint8_t buf[SPI_FLASH_SEC_SIZE];
-#define IMG_UPDATE1_OFFSET_OLD 0x1a0000
+#define IMG_UPDATE1_OFFSET_OLD   (0x1a0000)
+#define OTA_DATA_ADDRESS_OLD     (0x190000)
+#define BOOTLOADER_ADDRESS       (0x1000)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -109,6 +111,7 @@ bool updater_check_path (void *path) {
     return false;
 }
 
+// This function basically simulates an OTA update, the new firmware comes from OTA_0 partition and not from a server
 bool update_to_factory_partition(void) {
 
     // Size of the image used in 1.18.2r7 version
@@ -159,11 +162,11 @@ bool updater_start (void) {
     // Only update bootloader, otadata and partition table if coming from older version (e.g. 1.18.2) and this is not a downgrade
     // In case of upgrade the boot_info located under 0x190000 address
     // In case of a downgrade, the boot info located somewhere else than 0x190000 because of the updated partition table
-    if(boot_info_offset_local == (uint32_t)0x190000){
+    if(boot_info_offset_local == (uint32_t)OTA_DATA_ADDRESS_OLD){
 
         // Erasing address space of bootloader in 4 KB chunks, it is from 0x1000-0x9000 = 32KB (SPI_FLASH_SEC_SIZE = 4KB)
         for(int i = 0; i < 8; i++){
-            ret = spi_flash_erase_sector((0x1000 + (i*SPI_FLASH_SEC_SIZE)) / SPI_FLASH_SEC_SIZE);
+            ret = spi_flash_erase_sector((BOOTLOADER_ADDRESS + (i*SPI_FLASH_SEC_SIZE)) / SPI_FLASH_SEC_SIZE);
             if (ESP_OK != ret) {
                 ESP_LOGE(TAG, "Erasing sectors of bootloader failed, error code: %d!\n", ret);
                 // TODO: try again ???
@@ -172,7 +175,7 @@ bool updater_start (void) {
         }
 
         // Update bootloader
-        ret = spi_flash_write(0x1000, (void *)bootloader_bin, sizeof(bootloader_bin));
+        ret = updater_spi_flash_write(BOOTLOADER_ADDRESS, (void *)bootloader_bin, sizeof(bootloader_bin), true);
         if (ESP_OK != ret) {
             ESP_LOGE(TAG, "Updating bootloader failed, error code: %d\n", ret);
             //TODO: try again ???
@@ -219,10 +222,10 @@ bool updater_start (void) {
 
         // Writing the new partition table
         if (esp32_get_chip_rev() > 0) {
-            ret = spi_flash_write(ESP_PARTITION_TABLE_ADDR, (void *)partitions_bin_8MB, sizeof(partitions_bin_8MB));
+            ret = updater_spi_flash_write(ESP_PARTITION_TABLE_ADDR, (void *)partitions_bin_8MB, sizeof(partitions_bin_8MB), true);
         }
         else {
-            ret = spi_flash_write(ESP_PARTITION_TABLE_ADDR, (void *)partitions_bin_4MB, sizeof(partitions_bin_4MB));
+            ret = updater_spi_flash_write(ESP_PARTITION_TABLE_ADDR, (void *)partitions_bin_4MB, sizeof(partitions_bin_4MB), true);
         }
         if (ESP_OK != ret) {
             ESP_LOGE(TAG, "Writing new partition table failed, error code: %d\n", ret);

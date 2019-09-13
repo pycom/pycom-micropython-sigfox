@@ -91,6 +91,8 @@ extern void modpycom_init0(void);
 #define GC_POOL_SIZE_BYTES                                          (67 * 1024)
 #define GC_POOL_SIZE_BYTES_PSRAM                                    ((2048 + 512) * 1024)
 
+#define OTA_DATA_ADDRESS_OLD                                        (0x190000)
+
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -147,7 +149,7 @@ void TASK_Micropython (void *pvParameters) {
         // Only copy if coming from older version (1.18.2) and this is not a downgrade
         // In case of upgrade the boot_info located under 0x190000 address
         // In case of a downgrade, the boot info located somewhere else than 0x190000 because of the updated partition table
-        if(boot_info_offset_local == (uint32_t)0x190000){
+        if(boot_info_offset_local == (uint32_t)OTA_DATA_ADDRESS_OLD){
             printf("Copying image from OTA_0 partition to Factory partition, please wait...\n");
             if(true == update_to_factory_partition()) {
                 printf("Image copy finished successfully!\n");
