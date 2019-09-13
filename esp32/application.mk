@@ -83,6 +83,7 @@ APP_INC += -I../lib/netutils
 APP_INC += -I../lib/oofatfs
 APP_INC += -I../lib
 APP_INC += -I../drivers/sx127x
+APP_INC += -I../drivers/sx1308
 APP_INC += -I../ports/stm32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/openthread/src
 
@@ -241,6 +242,11 @@ APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	system/crypto/cmac.c \
 	)
 
+APP_SX1308_SRC_C = $(addprefix drivers/sx1308/,\
+	sx1308.c \
+	sx1308-spi.c \
+	)
+
 APP_SX1272_SRC_C = $(addprefix drivers/sx127x/,\
 	sx1272/sx1272.c \
 	)
@@ -340,7 +346,7 @@ endif # ifeq ($(OPENTHREAD), on)
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o) $(APP_SX1308_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins.o
 
 BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
