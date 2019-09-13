@@ -1481,7 +1481,7 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
         }
 
         /* Duration of 1 symbol */
-        Tsym = (2 ^ SF) / BW;
+        Tsym = pow(2.0, (int)SF) / BW;
 
         /* Duration of preamble */
         Tpreamble = (8 + 4.25) * Tsym; /* 8 programmed symbols in preamble */
