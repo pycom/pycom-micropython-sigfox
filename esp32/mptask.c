@@ -79,6 +79,7 @@
 
 
 #include "lteppp.h"
+#include "esp32chipinfo.h"
 /******************************************************************************
  DECLARE EXTERNAL FUNCTIONS
  ******************************************************************************/
@@ -89,6 +90,8 @@ extern void modpycom_init0(void);
  ******************************************************************************/
 #define GC_POOL_SIZE_BYTES                                          (67 * 1024)
 #define GC_POOL_SIZE_BYTES_PSRAM                                    ((2048 + 512) * 1024)
+
+#define OTA_DATA_ADDRESS_OLD                                        (0x190000)
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -116,6 +119,8 @@ static uint8_t *gc_pool_upy;
 static char fresh_main_py[] = "# main.py -- put your code here!\r\n";
 static char fresh_boot_py[] = "# boot.py -- run on boot-up\r\n";
 
+extern bool update_to_factory_partition(void);
+
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -125,14 +130,35 @@ void TASK_Micropython (void *pvParameters) {
     uint32_t gc_pool_size;
     bool soft_reset = false;
     bool wifi_on_boot;
-    esp_chip_info_t chip_info;
     uint32_t stack_len;
+    uint8_t chip_rev = esp32_get_chip_rev();
 
-    esp_chip_info(&chip_info);
-    if (chip_info.revision > 0) {
+    if (chip_rev > 0) {
         stack_len = (MICROPY_TASK_STACK_SIZE_PSRAM / sizeof(StackType_t));
     } else {
         stack_len = (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t));
+    }
+
+    boot_info_t boot_info_local;
+    uint32_t boot_info_offset_local;
+    bool ret =  false;
+    while(false == ret) {
+        ret = updater_read_boot_info(&boot_info_local, &boot_info_offset_local);
+    }
+    if(boot_info_local.ActiveImg != IMG_ACT_FACTORY) {
+        // Only copy if coming from older version (1.18.2) and this is not a downgrade
+        // In case of upgrade the boot_info located under 0x190000 address
+        // In case of a downgrade, the boot info located somewhere else than 0x190000 because of the updated partition table
+        if(boot_info_offset_local == (uint32_t)OTA_DATA_ADDRESS_OLD){
+            printf("Copying image from OTA_0 partition to Factory partition, please wait...\n");
+            if(true == update_to_factory_partition()) {
+                printf("Image copy finished successfully!\n");
+            }
+
+            //Restart the system
+            machine_wdt_start(100);
+            for ( ; ; );
+        }
     }
 
     // configure the antenna select switch here
@@ -157,7 +183,7 @@ void TASK_Micropython (void *pvParameters) {
     // to recover from hiting the limit (the limit is measured in bytes)
     mp_stack_set_limit(stack_len - 1024);
 
-    if (esp_get_revision() > 0) {
+    if (esp32_get_chip_rev() > 0) {
         gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
         gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES_PSRAM, MALLOC_CAP_SPIRAM);
     } else {
@@ -267,7 +293,8 @@ soft_reset:
         modlte_init0();
         if(config_get_lte_modem_enable_on_boot())
         {
-        	lteppp_connect_modem();
+            // Notify the LTE thread to start
+            modlte_start_modem();
         }
     #endif
     }

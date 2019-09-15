@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-VERSION = "1.2.3"
+VERSION = "1.2.5"
 
 # Copyright (c) 2019, Pycom Limited.
 #
@@ -67,6 +67,7 @@ class sqnsupgrade:
             print(msg, flush=flush, end=end)
 
     def read_rsp(self, size=None, timeout=-1):
+        time.sleep(.25)
         if timeout < 0:
             timeout = 20000
         elif timeout is None:
@@ -338,15 +339,17 @@ class sqnsupgrade:
 
 
 
-    def __run(self, file_path=None, baudrate=921600, port=None, resume=False, load_ffh=False, mirror=False, switch_ffh=False, bootrom=False, rgbled=0x050505, debug=False, pkgdebug=False, atneg=True, max_try=10, direct=True, atneg_only=False, info_only=False, expected_smod=None, verbose=False, load_fff=False):
+    def __run(self, file_path=None, baudrate=921600, port=None, resume=False, load_ffh=False, mirror=False, switch_ffh=False, bootrom=False, rgbled=0x050505, debug=False, pkgdebug=False, atneg=True, max_try=10, direct=True, atneg_only=False, info_only=False, expected_smod=None, verbose=False, load_fff=False, mtools=False):
         self.__wait_msg = False
         mirror = True if atneg_only else mirror
         recover = True if atneg_only else load_ffh
         resume = True if mirror or recover or atneg_only or info_only else resume
         verbose = True if debug else verbose
         load_fff = False if bootrom and switch_ffh else load_fff
+        target_baudrate = baudrate
         baudrate = self.__modem_speed if self.__speed_detected else baudrate
         if debug: print('mirror? {}  recover? {}  resume? {}  direct? {}  atneg_only? {} bootrom? {} load_fff? {}'.format(mirror, recover, resume, direct, atneg_only, bootrom, load_fff))
+        if debug: print('baudrate: {} target_baudrate: {}'.format(baudrate, target_baudrate))
         abort = True
         external = False
         self.__serial = None
@@ -416,7 +419,7 @@ class sqnsupgrade:
             if not self.wakeup_modem(baudrate, port, 10, 1, debug):
                 return False
 
-        if not resume:
+        if (not resume) or mtools:
 
             # bind to AT channel
             self.__serial.write(b"AT+BIND=AT\r\n")
@@ -430,17 +433,42 @@ class sqnsupgrade:
             response = self.read_rsp(size=100)
             if debug: print("ATE0 returned {}".format(response))
 
-            self.__serial.read(100)
+            self.__serial.read()
             if debug: print('Entering upgrade mode...')
+
+            if verbose: print("Sending AT+SMLOG?")
+            self.__serial.write(b'AT+SMLOG?\r\n')
+            response = self.read_rsp(size=100)
+            if verbose: print("AT+SMLOG? returned {}".format(response))
 
             self.__serial.write(b"AT+SMOD?\r\n")
             response = self.return_pretty_response(self.read_rsp(size=7))
-            self.__serial.read(100)
             if debug: print("AT+SMOD? returned {}".format(response))
 
+            if verbose: print('Sending AT+FSRDFILE="/fs/crashdump"')
+            self.__serial.write(b'AT+FSRDFILE="/fs/crashdump"\r\n')
+            response = self.read_rsp(size=100)
+            if verbose: print('AT+FSRDFILE="/fs/crashdump" returned {}'.format(response))
+            self.__serial.read()
+
             self.__serial.write(b"AT+SQNSUPGRADENTF=\"started\"\r\n")
+            response = self.read_rsp(size=100)
+            if verbose: print('AT+SQNSUPGRADENTF="started" returned {}'.format(response))
             self.wait_for_modem()
-            if not load_fff:
+
+            if verbose: print('Sending AT+SQNWL="sqndcc",2')
+            self.__serial.write(b'AT+SQNWL="sqndcc",2\r\n')
+            response = self.read_rsp(size=100)
+            if verbose: print('AT+SQNWL="sqndcc",2 returned {}'.format(response))
+            self.__serial.read(100)
+
+            if verbose: print("Sending AT+CFUN=4")
+            self.__serial.write(b'AT+CFUN=4\r\n')
+            response = self.read_rsp(size=100)
+            if verbose: print("AT+CFUN=4 returned {}".format(response))
+            self.__serial.read(100)
+
+            if not (load_fff or mtools):
                 self.__serial.write(b"AT+SMSWBOOT=3,1\r\n")
                 resp = self.read_rsp(100)
                 if debug: print('AT+SMSWBOOT=3,1 returned: {}'.format(resp))
@@ -462,6 +490,23 @@ class sqnsupgrade:
                 if debug: print("Response after reset: {}".format(resp))
                 self.wait_for_modem()
                 self.__serial.write(b"AT\r\n")
+
+                if verbose: print("Sending AT+CFUN=4")
+                self.__serial.write(b'AT+CFUN=4\r\n')
+                response = self.read_rsp(size=100)
+                if verbose: print("AT+CFUN=4 returned {}".format(response))
+
+                if verbose: print("Sending AT+SMLOG?")
+                self.__serial.write(b'AT+SMLOG?\r\n')
+                response = self.read_rsp(size=100)
+                if verbose: print("AT+SMLOG? returned {}".format(response))
+
+                if verbose: print('Sending AT+FSRDFILE="/fs/crashdump"')
+                self.__serial.write(b'AT+FSRDFILE="/fs/crashdump"\r\n')
+                response = self.read_rsp(size=100)
+                if verbose: print('AT+FSRDFILE="/fs/crashdump" returned {}'.format(response))
+                self.__serial.read()
+
 
         else:
             self.__serial.read(100)
@@ -492,10 +537,6 @@ class sqnsupgrade:
                         print('Starting STP ON_THE_FLY')
 
             self.__serial.read(100)
-            if verbose: print("Sending AT+CFUN=4")
-            resonse = self.__serial.write(b'AT+CFUN=4\r\n')
-            if verbose: print("AT+CFUN=4 returned {}".format(response))
-            self.__serial.read(100)
 
             if load_fff:
                 if debug: print("Sending AT+SMSTPU")
@@ -512,8 +553,11 @@ class sqnsupgrade:
             self.__serial.read()
         elif recover and (not direct):
             if atneg:
-                result = self.at_negotiation(baudrate, port, max_try, mirror, atneg_only, debug)
+                result = self.at_negotiation(baudrate, port, max_try, mirror, atneg_only, debug, target_baudrate)
                 if result:
+                    baudrate = target_baudrate
+                    self.__modem_speed = target_baudrate
+                    self.__speed_detected = True
                     if atneg_only:
                         return True
                     if mirror:
@@ -671,7 +715,15 @@ class sqnsupgrade:
                 time.sleep(0.5)
 
                 if 'success' in sqnup_result:
+                    if verbose: print('Sending AT+SQNSUPGRADENTF="success"')
                     self.__serial.write(b"AT+SQNSUPGRADENTF=\"success\"\r\n")
+                    resonse = self.read_rsp(100)
+                    if verbose: print('AT+SQNSUPGRADENTF="success" returned {}'.format(response))
+                    time.sleep(.25)
+                    if verbose: print('Sending AT+FSRDFILE="/fs/crashdump"')
+                    self.__serial.write(b'AT+FSRDFILE="/fs/crashdump"\r\n')
+                    resonse = self.read_rsp(100)
+                    if verbose: print('AT+FSRDFILE="/fs/crashdump" returned {}'.format(response))
                     self.__serial.read()
                     return True
                 elif sqnup_result is None:
@@ -712,7 +764,11 @@ class sqnsupgrade:
         MAX_TRY = max_try
         count = 0
         if msg is not None:
-            print(msg)
+            if debug:
+                print(msg + ' [{}]'.format(baudrate))
+            else:
+                print(msg)
+
         self.__serial.read()
         self.__serial.write(b"AT\r\n")
         response = self.read_rsp(size=25)
@@ -729,10 +785,13 @@ class sqnsupgrade:
             self.__serial = UART(1, baudrate=baudrate, pins=self.__pins, timeout_chars=100)
         return count < MAX_TRY
 
-    def at_negotiation(self, baudrate, port, max_try, mirror, atneg_only, debug):
+    def at_negotiation(self, baudrate, port, max_try, mirror, atneg_only, debug, target_baudrate):
         MAX_TRY = max_try
         count = 0
-        print('Attempting AT auto-negotiation...')
+        if debug:
+            print('Attempting AT auto-negotiation... with baudrate {} and target_baudrate {}'.format(baudrate, target_baudrate))
+        else:
+            print('Attempting AT auto-negotiation...')
         self.__serial.write(b"AT\r\n")
         response = self.read_rsp(size=20)
         if debug: print('{}'.format(response))
@@ -746,19 +805,21 @@ class sqnsupgrade:
             if debug: print('{}'.format(response))
         if b'OK' in response:
             self.__serial.read()
-            cmd = "AT+IPR=%d\n"%baudrate
-            if debug: print('Setting baudrate to {}'.format(baudrate))
+            cmd = "AT+IPR=%d\n"%target_baudrate
+            if debug: print('Setting baudrate to {}'.format(target_baudrate))
             self.__serial.write(cmd.encode())
             response = self.read_rsp(size=6)
             if debug: print('{}'.format(response))
             if b'OK' in response:
+                self.__modem_speed = target_baudrate
+                self.__speed_detected =  True
                 if atneg_only:
                     return True
                 if 'FiPy' in self.__sysname or 'GPy' in self.__sysname:
-                    self.__serial = UART(1, baudrate=baudrate, pins=self.__pins, timeout_chars=100)
+                    self.__serial = UART(1, baudrate=target_baudrate, pins=self.__pins, timeout_chars=100)
                 else:
                     self.__serial = None
-                    self.__serial = serial.Serial(port, baudrate, bytesize=serial.EIGHTBITS, timeout=0.1)
+                    self.__serial = serial.Serial(port, target_baudrate, bytesize=serial.EIGHTBITS, timeout=0.1)
                     self.__serial.reset_input_buffer()
                     self.__serial.reset_output_buffer()
                     self.__serial.flush()
@@ -774,7 +835,7 @@ class sqnsupgrade:
                     print('ERROR in AT+SMOD returned {}'.format(response))
                     return False
             else:
-                print('ERROR in AT+IPR={} returned {}'.format(baudrate, response))
+                print('ERROR in AT+IPR={} returned {}'.format(target_baudrate, response))
                 return False
         else:
             print('ERROR sending AT command... no response? {}'.format(response))
@@ -794,7 +855,7 @@ class sqnsupgrade:
         print("Here is the current firmware version:\n")
         self.show_info(port=port, verbose=verbose, debug=debug)
 
-    def upgrade(self, ffile, mfile=None, baudrate=921600, retry=False, resume=False, debug=False, pkgdebug=False, verbose=False, load_fff=True, load_only=False):
+    def upgrade(self, ffile, mfile=None, baudrate=921600, retry=False, resume=False, debug=False, pkgdebug=False, verbose=False, load_fff=True, load_only=False, mtools=False):
         success = True
         if not retry and mfile is not None:
             if resume or self.__check_br(br_only=True, verbose=verbose, debug=debug):
@@ -819,7 +880,7 @@ class sqnsupgrade:
             print('Unable to upgrade bootrom.')
         if debug: print('Success2? {}'.format(success))
         if success:
-            if self.__run(file_path=ffile, resume=True if mfile is not None else resume, baudrate=baudrate, direct=False, debug=debug, pkgdebug=pkgdebug, verbose=verbose, load_fff=False if mfile else load_fff):
+            if self.__run(file_path=ffile, resume=True if mfile is not None else resume, baudrate=baudrate, direct=False, debug=debug, pkgdebug=pkgdebug, verbose=verbose, load_fff=False if mfile else load_fff, mtools=mtools):
                 if self.__check_br(verbose=verbose, debug=debug):
                     self.__run(bootrom=True, debug=debug, direct=False, pkgdebug=pkgdebug, verbose=verbose, load_fff=True)
                 self.success_message(verbose=verbose, debug=debug)
@@ -839,8 +900,15 @@ class sqnsupgrade:
         print('Preparing modem for upgrade...')
         if not retry and ffh_mode:
             success = False
-            success = self.__run(bootrom=True, resume=resume, switch_ffh=True, direct=False, debug=debug, pkgdebug=pkgdebug, verbose=verbose)
-            time.sleep(1)
+            if self.__check_br(verbose=verbose, debug=debug):
+                success = self.__run(bootrom=True, resume=resume, switch_ffh=True, direct=False, debug=debug, pkgdebug=pkgdebug, verbose=verbose)
+                time.sleep(1)
+            else:
+                print('FFH mode is not necessary... ignoring!')
+                print('Do not specify updater.elf when updating!')
+                mfile = None
+                ffh_mode = False
+                success = True
         if success:
             if mfile is not None:
                 success = False
@@ -904,6 +972,7 @@ if 'FiPy' in sysname or 'GPy' in sysname:
         print_welcome()
         retry = False
         resume = False
+        mtools = False
         sqnup = sqnsupgrade()
         if sqnup.check_files(ffile, mfile, debug):
             state = sqnup.detect_modem_state(debug=debug, hangup=hangup)
@@ -916,11 +985,13 @@ if 'FiPy' in sysname or 'GPy' in sysname:
                     print('Your modem is in recovery mode. Please specify updater.elf file')
                     reconnect_uart()
                     sys.exit(1)
-            elif state == 4 or state == 1:
+            elif state == 4:
                 resume = True
+            elif state == 1:
+                mtools = True
             elif state == -1:
                 detect_error()
-            sqnup.upgrade(ffile=ffile, mfile=mfile, baudrate=baudrate, retry=retry, resume=resume, debug=debug, pkgdebug=False, verbose=verbose, load_fff=load_fff)
+            sqnup.upgrade(ffile=ffile, mfile=mfile, baudrate=baudrate, retry=retry, resume=resume, debug=debug, pkgdebug=False, verbose=verbose, load_fff=load_fff, mtools=mtools)
         reconnect_uart()
 
     def uart(ffh_mode=False, mfile=None, color=0x050505, verbose=False, debug=False, hangup=True):

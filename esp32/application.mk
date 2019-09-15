@@ -140,6 +140,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machwdt.c \
 	machrmt.c \
 	lwipsocket.c \
+	machtouch.c \
 	)
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
@@ -167,6 +168,7 @@ APP_UTIL_SRC_C = $(addprefix util/,\
 	mpirq.c \
 	mpsleep.c \
 	timeutils.c \
+	esp32chipinfo.c \
 	)
 
 APP_FATFS_SRC_C = $(addprefix fatfs/src/,\

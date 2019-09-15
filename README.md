@@ -91,6 +91,20 @@ After cloning, make sure to checkout all the submodules:
 Finally, before building, export the IDF_PATH variable
 
     $ export IDF_PATH=~/pycom-esp-idf
+    
+This repository contains submodules! Clone using the --recursive option:
+
+    $ git clone --recursive https://github.com/pycom/pycom-micropython-sigfox.git
+    
+Alternatively checkout the modules manually:
+
+    $ cd pycom-micropython-sigfox
+    $ git submodule update --init
+
+``` text
+If you updated the repository from a previous revision and/or if switching between branches,<br>
+make sure to also update the submodules with the command above.
+```
 
 Prior to building the main firmware, you need to build mpy-cross
 

@@ -14,6 +14,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 */
 #include "board.h"
 #include "timer-board.h"
+#include "modlora.h"
 
 /*!
  * This flag is used to make sure we have looped through the main several time to avoid race issues
@@ -68,6 +69,7 @@ static bool TimerExists( TimerEvent_t *obj );
  * \retval value current timer value
  */
 TimerTime_t TimerGetValue( void );
+
 
 void TimerInit( TimerEvent_t *obj, void ( *callback )( void ) )
 {
@@ -226,7 +228,7 @@ IRAM_ATTR void TimerIrqHandler( void )
 
         if( elapsedTimer->Callback != NULL )
         {
-            elapsedTimer->Callback( );
+            modlora_set_timer_callback(elapsedTimer->Callback);
         }
     }
 

@@ -276,8 +276,12 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
         ssl_sock->read_timeout = mp_obj_get_int(args[8].u_obj);
     }
 
+    MP_THREAD_GIL_EXIT();
+
     _error = mod_ssl_setup_socket(ssl_sock, host_name, cafile_path, certfile_path, keyfile_path,
                                   verify_type, server_side ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT);
+
+    MP_THREAD_GIL_ENTER();
 
     if (_error) {
         mp_raise_OSError(_error);

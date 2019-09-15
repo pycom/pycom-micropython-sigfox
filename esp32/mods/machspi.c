@@ -195,10 +195,14 @@ STATIC void pybspi_transfer (mach_spi_obj_t *self, const char *txdata, char *rxd
     for (int i = 0; i < len; i += self->wlen) {
         uint32_t _rxdata = 0;
         uint32_t _txdata;
-        if (txchar) {
-            _txdata = *txchar;
+        if (txdata) {
+            memcpy(&_txdata, &txdata[i], self->wlen);
         } else {
-            _txdata = 0x55555555;
+            if (txchar) {
+                _txdata = *txchar;
+            } else {
+                _txdata = 0x55555555;
+            }
         }
         spi_data_t spidata = {.cmd = 0, .cmdLen = 0, .addr = NULL, .addrLen = 0,
                                 .txData = &_txdata, .txDataLen = self->wlen,
@@ -343,7 +347,7 @@ STATIC mp_obj_t pyb_spi_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(args), pyb_spi_init_args, args);
 
     // check the peripheral id
-#if defined(WIPY)
+#if defined(WIPY) || defined(GPY)
     if (args[0].u_int != 0 && args[0].u_int != 1) {
 #else
     if (args[0].u_int != 0) {

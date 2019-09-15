@@ -542,9 +542,11 @@ STATIC mp_obj_t socket_do_handshake(mp_obj_t self_in) {
     mod_network_socket_obj_t *self = self_in;
 
     int _errno;
+    MP_THREAD_GIL_EXIT();
     if (self->sock_base.nic_type->n_setupssl(self, &_errno) != 0) {
         nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
     }
+    MP_THREAD_GIL_ENTER();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(socket_do_handshake_obj, socket_do_handshake);
