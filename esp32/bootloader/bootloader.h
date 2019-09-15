@@ -41,11 +41,18 @@ typedef struct _boot_info_t
   uint32_t  crc;
 } boot_info_t;
 
-#define IMG_SIZE                            ((1024 + 512) * 1024)
+#define IMG_SIZE_8MB                        (1980 * 1024)
+#define IMG_UPDATE1_OFFSET_8MB              (2112 * 1024)  // taken from the partitions table
+#define OTA_DATA_ADDRESS_8MB                (0x1FF000)     // calculated from partitions table
+
+#define IMG_SIZE_4MB                        (1720 * 1024)
+#define IMG_UPDATE1_OFFSET_4MB              (1792 * 1024)  // taken from the partitions table
+#define OTA_DATA_ADDRESS_4MB                (0x1BE000)     // calculated from partitions table
+
 #define OTAA_DATA_SIZE                      (4 * 1024)
 #define OTA_DATA_INDEX                      2
 #define IMG_FACTORY_OFFSET                  (64 * 1024)
-#define IMG_UPDATE1_OFFSET                  (1664 * 1024)  // taken from the partitions table
+
 #define IMG_UPDATE2_OFFSET                  (IMG_FACTORY_OFFSET)
 
 #define IMG_STATUS_CHECK                    0
@@ -58,7 +65,8 @@ typedef struct _boot_info_t
 #define BOOT_VERSION                        "V0.2"
 #define SPI_SEC_SIZE                        0x1000
 
-#define PARTITIONS_COUNT                    7
+#define PARTITIONS_COUNT_8MB                5
+#define PARTITIONS_COUNT_4MB                7
 
 #define PART_TYPE_APP                       0x00
 #define PART_SUBTYPE_FACTORY                0x00
