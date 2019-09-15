@@ -1,7 +1,8 @@
 """
 This test need a set of pins which can be set as inputs and have no external
 pull up or pull down connected.
-P9 and P23 must be connected together
+THIS TEST ONLY PASSES USING EXPANSION BOARD 2.1
+ON EXPANSION BOARD 3.0 THE TEST FAILS ON LOPY4 AND WIPY DUE TO DIFFERENT REASONS
 """
 from machine import Pin
 from machine import UART
