@@ -16,10 +16,11 @@ APP_INC += -Itelnet
 APP_INC += -Iftp
 APP_INC += -Ilora
 APP_INC += -Ilte
-APP_INC += -Ipygate
 APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
+APP_INC += -Ipygate/concentrator
+APP_INC += -Ipygate/lora_pkt_fwd
 APP_INC += -Ilittlefs
 APP_INC += -I$(BUILD)
 APP_INC += -I$(BUILD)/genhdr
@@ -249,9 +250,14 @@ APP_SX1308_SRC_C = $(addprefix drivers/sx1308/,\
 	)
 
 APP_PYGATE_SRC_C = $(addprefix pygate/,\
-	loragw_reg.c \
-	loragw_hal.c \
-	cmd_manager.c \
+	concentrator/loragw_reg.c \
+	concentrator/loragw_hal.c \
+	concentrator/cmd_manager.c \
+	lora_pkt_fwd/base64.c \
+	lora_pkt_fwd/jitqueue.c \
+	lora_pkt_fwd/lora_pkt_fwd.c \
+	lora_pkt_fwd/parson.c \
+	lora_pkt_fwd/timersync.c \
 	)
 
 APP_SX1272_SRC_C = $(addprefix drivers/sx127x/,\
