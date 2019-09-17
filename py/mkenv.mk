@@ -42,8 +42,9 @@ ECHO = @echo
 CP = cp
 MKDIR = mkdir
 SED = sed
-PYTHON = python
-CD = cd
+CAT = cat
+TOUCH = touch
+PYTHON = python3
 
 AS = $(CROSS_COMPILE)as
 CC = $(CROSS_COMPILE)gcc
@@ -62,28 +63,6 @@ endif
 MAKE_FROZEN = $(PYTHON) $(TOP)/tools/make-frozen.py
 MPY_CROSS = $(TOP)/mpy-cross/mpy-cross
 MPY_TOOL = $(PYTHON) $(TOP)/tools/mpy-tool.py
-
-# macro to keep an absolute path as-is, but resolve a relative path
-# against a particular parent directory
-#
-# $(1) path to resolve
-# $(2) directory to resolve non-absolute path against
-#
-# Path and directory don't have to exist (definition of a "relative
-# path" is one that doesn't start with /)
-#
-# $(2) can contain a trailing forward slash or not, result will not
-# double any path slashes.
-#
-# example $(call resolvepath,$(CONFIG_PATH),$(CONFIG_DIR))
-define resolvepath
-$(foreach dir,$(1),$(if $(filter /%,$(dir)),$(dir),$(subst //,/,$(2)/$(dir))))
-endef
-
-# macro to remove quotes from an argument, ie $(call dequote,$(CONFIG_BLAH))
-define dequote
-$(subst ",,$(1))
-endef
 
 all:
 .PHONY: all
