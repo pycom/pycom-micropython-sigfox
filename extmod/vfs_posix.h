@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2013, 2014 Damien P. George
+ * Copyright (c) 2018 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,25 +23,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef MICROPY_INCLUDED_EXTMOD_VFS_FAT_H
-#define MICROPY_INCLUDED_EXTMOD_VFS_FAT_H
+#ifndef MICROPY_INCLUDED_EXTMOD_VFS_POSIX_H
+#define MICROPY_INCLUDED_EXTMOD_VFS_POSIX_H
 
 #include "py/lexer.h"
 #include "py/obj.h"
-#include "lib/oofatfs/ff.h"
-#include "extmod/vfs.h"
 
-// these are the values for fs_user_mount_t.flags
-#define FSUSER_NATIVE       (0x0001) // readblocks[2]/writeblocks[2] contain native func
-#define FSUSER_FREE_OBJ     (0x0002) // fs_user_mount_t obj should be freed on umount
-#define FSUSER_HAVE_IOCTL   (0x0004) // new protocol with ioctl
-#define FSUSER_NO_FILESYSTEM (0x0008) // the block device has no filesystem on it
+extern const mp_obj_type_t mp_type_vfs_posix;
+extern const mp_obj_type_t mp_type_vfs_posix_fileio;
+extern const mp_obj_type_t mp_type_vfs_posix_textio;
 
-extern const byte fresult_to_errno_table[20];
-extern const mp_obj_type_t mp_fat_vfs_type;
-extern const mp_obj_type_t mp_type_vfs_fat_fileio;
-extern const mp_obj_type_t mp_type_vfs_fat_textio;
+mp_obj_t mp_vfs_posix_file_open(const mp_obj_type_t *type, mp_obj_t file_in, mp_obj_t mode_in);
 
-MP_DECLARE_CONST_FUN_OBJ_3(fat_vfs_open_obj);
-
-#endif // MICROPY_INCLUDED_EXTMOD_VFS_FAT_H
+#endif // MICROPY_INCLUDED_EXTMOD_VFS_POSIX_H

@@ -67,6 +67,10 @@ typedef struct _fs_user_mount_t {
     } fs;
 } fs_user_mount_t;
 
+typedef struct _mp_vfs_proto_t {
+    mp_import_stat_t (*import_stat)(void *self, const char *path);
+} mp_vfs_proto_t;
+
 typedef struct _mp_vfs_mount_t {
     const char *str; // mount point with leading /
     size_t len;
