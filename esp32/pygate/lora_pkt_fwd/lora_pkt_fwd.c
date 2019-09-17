@@ -51,6 +51,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "base64.h"
 #include "loragw_hal.h"
 #include "loragw_reg.h"
+#include "esp32_mphal.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -94,7 +95,16 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define STATUS_SIZE     200
 #define TX_BUFF_SIZE    ((540 * NB_PKT_MAX) + 30 + STATUS_SIZE)
 
+#define NI_NUMERICHOST	1	/* return the host address, not the name */
+
 #define COM_PATH_DEFAULT "/dev/ttyACM0"
+
+#define LORA_GW_STACK_SIZE                                             (4096)
+#define LORA_GW_PRIORITY                                               (6)
+
+TaskHandle_t xLoraGwTaskHndl;
+
+void TASK_lora_gw(void *pvParameters);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
@@ -199,13 +209,15 @@ static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
-static void sig_handler(int sigio);
+//static void sig_handler(int sigio);
 
 static int parse_SX1301_configuration(const char * conf_file);
 
 static int parse_gateway_configuration(const char * conf_file);
 
-static double difftimespec(struct timespec end, struct timespec beginning);
+//static double difftimespec(struct timespec end, struct timespec beginning);
+
+static double time_diff(struct timeval x , struct timeval y);
 
 /* threads */
 void thread_up(void);
@@ -216,21 +228,21 @@ void thread_timersync(void);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
-static void exit_cleanup(void) {
+/*static void exit_cleanup(void) {
     MSG("INFO: Stopping concentrator\n");
     lgw_stop();
-}
+}*/
 
-static void sig_handler(int sigio) {
+/*static void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
         quit_sig = true;
     } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
         exit_sig = true;
     }
     return;
-}
+}*/
 
-static void usage(void) {
+/*static void usage(void) {
     MSG("~~~ Software versions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
     MSG(" Packet Forwarder: Version: " VERSION_STRING "\n");
     MSG(" HAL library: %s\n", lgw_version_info());
@@ -239,7 +251,7 @@ static void usage(void) {
     MSG(" -d <path> COM device to be used to access the concentrator board\n");
     MSG("            => default path: " COM_PATH_DEFAULT "\n");
     MSG("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-}
+}*/
 
 static int parse_SX1301_configuration(const char * conf_file) {
     int i;
@@ -708,14 +720,26 @@ static int parse_gateway_configuration(const char * conf_file) {
     return 0;
 }
 
-static double difftimespec(struct timespec end, struct timespec beginning) {
+static double time_diff(struct timeval x , struct timeval y)
+{
+    double x_ms , y_ms , diff;
+  
+    x_ms = (double)x.tv_sec*1000000 + (double)x.tv_usec;
+    y_ms = (double)y.tv_sec*1000000 + (double)y.tv_usec;
+	
+    diff = (double)y_ms - (double)x_ms;
+	
+    return diff / 1000000.0;
+}
+
+/*static double difftimespec(struct timespec end, struct timespec beginning) {
     double x;
 
     x = 1E-9 * (double)(end.tv_nsec - beginning.tv_nsec);
     x += (double)(end.tv_sec - beginning.tv_sec);
 
     return x;
-}
+}*/
 
 static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error) {
     uint8_t buff_ack[64]; /* buffer to give feedback to server */
@@ -806,8 +830,19 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error)
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-int main(int argc, char **argv) {
-    struct sigaction sigact; /* SIGQUIT&SIGINT&SIGTERM signal handling */
+void lora_gw_init(void) {
+  xTaskCreatePinnedToCore(TASK_lora_gw, "LoraGW",
+    LORA_GW_STACK_SIZE / sizeof(StackType_t),
+    NULL,
+    LORA_GW_PRIORITY, &xLoraGwTaskHndl, 1);
+}
+
+void lora_gw_stop(void) {
+    vTaskDelete(xLoraGwTaskHndl);
+}
+
+void TASK_lora_gw(void *pvParameters) {
+
     int i; /* loop variable and temporary variable for return value */
     int x;
 
@@ -830,8 +865,8 @@ int main(int argc, char **argv) {
     struct addrinfo hints;
     struct addrinfo *result; /* store result of getaddrinfo */
     struct addrinfo *q; /* pointer to move into *result data */
-    char host_name[64];
-    char port_name[64];
+    //char host_name[64];
+    //char port_name[64];
 
     /* variables to get local copies of measurements */
     uint32_t cp_nb_rx_rcv;
@@ -869,7 +904,7 @@ int main(int argc, char **argv) {
     float dw_ack_ratio;
 
     /* Parse command line options */
-    while((i = getopt(argc, argv, "hd:")) != -1) {
+    /*while((i = getopt(argc, argv, "hd:")) != -1) {
         switch(i) {
         case 'h':
             usage();
@@ -886,22 +921,11 @@ int main(int argc, char **argv) {
             usage();
             return EXIT_FAILURE;
         }
-    }
+    }*/
 
     /* display version informations */
     MSG("*** Packet Forwarder for Lora PicoCell Gateway ***\nVersion: " VERSION_STRING "\n");
     MSG("*** Lora concentrator HAL library version info ***\n%s\n", lgw_version_info());
-
-    /* register function to be called for exit cleanups */
-    atexit(exit_cleanup);
-
-    /* configure signal handling */
-    sigemptyset(&sigact.sa_mask);
-    sigact.sa_flags = 0;
-    sigact.sa_handler = sig_handler;
-    sigaction(SIGQUIT, &sigact, NULL); /* Ctrl-\ */
-    sigaction(SIGINT, &sigact, NULL); /* Ctrl-C */
-    sigaction(SIGTERM, &sigact, NULL); /* default "kill" command */
 
     /* Open communication bridge */
     x = lgw_connect();
@@ -910,7 +934,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    MSG("*** MCU FW version for LoRa PicoCell Gateway ***\nVersion: 0x%08X\n***\n", lgw_mcu_version_info());
+    //MSG("*** MCU FW version for LoRa PicoCell Gateway ***\nVersion: 0x%08X\n***\n", lgw_mcu_version_info());
 
     /* display host endianness */
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -982,7 +1006,7 @@ int main(int argc, char **argv) {
     /* look for server address w/ upstream port */
     i = getaddrinfo(serv_addr, serv_port_up, &hints, &result);
     if (i != 0) {
-        MSG("ERROR: [up] getaddrinfo on address %s (PORT %s) returned %s\n", serv_addr, serv_port_up, gai_strerror(i));
+        MSG("ERROR: [up] getaddrinfo on address %s (PORT %s) returned %d\n", serv_addr, serv_port_up, i);
         exit(EXIT_FAILURE);
     }
 
@@ -997,12 +1021,12 @@ int main(int argc, char **argv) {
     }
     if (q == NULL) {
         MSG("ERROR: [up] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
-        i = 1;
+        /*i = 1;
         for (q = result; q != NULL; q = q->ai_next) {
             getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
             MSG("INFO: [up] result %i host:%s service:%s\n", i, host_name, port_name);
             ++i;
-        }
+        }*/
         exit(EXIT_FAILURE);
     }
 
@@ -1017,7 +1041,7 @@ int main(int argc, char **argv) {
     /* look for server address w/ downstream port */
     i = getaddrinfo(serv_addr, serv_port_down, &hints, &result);
     if (i != 0) {
-        MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %s\n", serv_addr, serv_port_up, gai_strerror(i));
+        MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %d\n", serv_addr, serv_port_up, i);
         exit(EXIT_FAILURE);
     }
 
@@ -1032,12 +1056,12 @@ int main(int argc, char **argv) {
     }
     if (q == NULL) {
         MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
-        i = 1;
+        /*i = 1;
         for (q = result; q != NULL; q = q->ai_next) {
             getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
             MSG("INFO: [down] result %i host:%s service:%s\n", i, host_name, port_name);
             ++i;
-        }
+        }*/
         exit(EXIT_FAILURE);
     }
 
@@ -1081,9 +1105,9 @@ int main(int argc, char **argv) {
     }
 
     /* main loop task : statistics collection */
-    while (!exit_sig && !quit_sig) {
+    while (true) {
         /* wait for next reporting interval */
-        wait_ms(1000 * stat_interval);
+        mp_hal_delay_us(1000 * 1000 * stat_interval);
 
         /* get timestamp for statistics */
         t = time(NULL);
@@ -1206,7 +1230,7 @@ int main(int argc, char **argv) {
     pthread_cancel(thrid_timersync); /* don't wait for timer sync thread */
 
     /* if an exit signal was received, try to quit properly */
-    if (exit_sig) {
+    if (true) {
         /* shut down network sockets */
         shutdown(sock_up, SHUT_RDWR);
         shutdown(sock_down, SHUT_RDWR);
@@ -1245,8 +1269,8 @@ void thread_up(void) {
     uint8_t token_l = 0; /* random token for acknowledgement matching */
     static uint16_t token = 0;
     /* ping measurement variables */
-    struct timespec send_time;
-    struct timespec recv_time;
+    struct timeval send_time;
+    struct timeval recv_time;
 
     /* report management variable */
     bool send_report = false;
@@ -1285,7 +1309,7 @@ void thread_up(void) {
 
         /* wait a short time if no packets, nor status report */
         if ((nb_pkt == 0) && (send_report == false)) {
-            wait_ms(FETCH_SLEEP_MS);
+            mp_hal_delay_us(FETCH_SLEEP_MS * 1000);
             continue;
         }
 
@@ -1584,7 +1608,9 @@ void thread_up(void) {
 
         /* send datagram to server */
         send(sock_up, (void *)buff_up, buff_index, 0);
-        clock_gettime(CLOCK_MONOTONIC, &send_time);
+        
+        gettimeofday(&send_time, NULL);
+        //clock_gettime(CLOCK_MONOTONIC, &send_time);
         pthread_mutex_lock(&mx_meas_up);
         meas_up_dgram_sent += 1;
         meas_up_network_byte += buff_index;
@@ -1592,7 +1618,8 @@ void thread_up(void) {
         /* wait for acknowledge (in 2 times, to catch extra packets) */
         for (i = 0; i < 2; ++i) {
             j = recv(sock_up, (void *)buff_ack, sizeof buff_ack, 0);
-            clock_gettime(CLOCK_MONOTONIC, &recv_time);
+            gettimeofday(&recv_time, NULL);
+            //clock_gettime(CLOCK_MONOTONIC, &recv_time);
             if (j == -1) {
                 if (errno == EAGAIN) { /* timeout */
                     continue;
@@ -1606,7 +1633,7 @@ void thread_up(void) {
                 //MSG("WARNING: [up] ignored out-of sync ACK packet\n");
                 continue;
             } else {
-                MSG("INFO: [up] PUSH_ACK received in %i ms\n", (int)(1000 * difftimespec(recv_time, send_time)));
+                MSG("INFO: [up] PUSH_ACK received in %i ms\n", (int)(1000 * time_diff(send_time, recv_time)));
                 meas_up_ack_rcv += 1;
                 break;
             }
@@ -1627,8 +1654,8 @@ void thread_down(void) {
     bool sent_immediate = false; /* option to sent the packet immediately */
 
     /* local timekeeping variables */
-    struct timespec send_time; /* time of the pull request */
-    struct timespec recv_time; /* time of return from recv socket call */
+    struct timeval send_time; /* time of the pull request */
+    struct timeval recv_time; /* time of return from recv socket call */
 
     /* data buffers */
     uint8_t buff_down[1000]; /* buffer to receive downstream packets */
@@ -1689,7 +1716,8 @@ void thread_down(void) {
 
         /* send PULL request and record time */
         send(sock_down, (void *)buff_req, sizeof buff_req, 0);
-        clock_gettime(CLOCK_MONOTONIC, &send_time);
+        //clock_gettime(CLOCK_MONOTONIC, &send_time);
+        gettimeofday(&send_time, NULL);
         pthread_mutex_lock(&mx_meas_dw);
         meas_dw_pull_sent += 1;
         pthread_mutex_unlock(&mx_meas_dw);
@@ -1698,11 +1726,12 @@ void thread_down(void) {
 
         /* listen to packets and process them until a new PULL request must be sent */
         recv_time = send_time;
-        while ((int)difftimespec(recv_time, send_time) < keepalive_time) {
+        while ((int)time_diff(send_time, recv_time) < keepalive_time) {
 
             /* try to receive a datagram */
             msg_len = recv(sock_down, (void *)buff_down, (sizeof buff_down) - 1, 0);
-            clock_gettime(CLOCK_MONOTONIC, &recv_time);
+            gettimeofday(&recv_time, NULL);
+            //clock_gettime(CLOCK_MONOTONIC, &recv_time);
 
             /* if no network message was received, got back to listening sock_down socket */
             if (msg_len == -1) {
@@ -1728,7 +1757,7 @@ void thread_down(void) {
                         pthread_mutex_lock(&mx_meas_dw);
                         meas_dw_ack_rcv += 1;
                         pthread_mutex_unlock(&mx_meas_dw);
-                        MSG("INFO: [down] PULL_ACK received in %i ms\n", (int)(1000 * difftimespec(recv_time, send_time)));
+                        MSG("INFO: [down] PULL_ACK received in %i ms\n", (int)(1000 * time_diff(recv_time, send_time)));
                     }
                 } else { /* out-of-sync token */
                     MSG("INFO: [down] received out-of-sync ACK\n");
@@ -2079,7 +2108,7 @@ void thread_jit(void) {
     uint8_t tx_status;
 
     while (!exit_sig && !quit_sig) {
-        wait_ms(10);
+        mp_hal_delay_us(10 * 1000);
 
         /* transfer data and metadata to the concentrator, and schedule TX */
         gettimeofday(&current_unix_time, NULL);

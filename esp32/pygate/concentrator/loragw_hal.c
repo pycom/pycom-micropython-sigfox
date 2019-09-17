@@ -26,6 +26,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_radio.h"
 #include "esp32_mphal.h"
 #include "sx1308.h"
+#include "timeconv.h"
 
 
 /* -------------------------------------------------------------------------- */
