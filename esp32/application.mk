@@ -122,7 +122,7 @@ APP_LIB_SRC_C = $(addprefix lib/,\
 	utils/interrupt_char.c \
 	utils/sys_stdio_mphal.c \
 	oofatfs/ff.c \
-	oofatfs/option/ccsbcs.c \
+	oofatfs/ffunicode.c \
 	timeutils/timeutils.c \
 	)
 

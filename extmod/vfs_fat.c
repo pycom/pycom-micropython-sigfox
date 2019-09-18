@@ -128,7 +128,7 @@ STATIC FRESULT fat_format(fs_user_mount_t* vfs)
 {
     uint32_t blockcount = 0;
     uint8_t options = FM_FAT;
-    uint8_t working_buf[_MAX_SS];
+    uint8_t working_buf[FF_MAX_SS];
 
     if ((vfs->flags & FSUSER_HAVE_IOCTL))
     {
@@ -416,10 +416,10 @@ STATIC mp_obj_t fat_vfs_getfree(mp_obj_t vfs_in) {
     }
 
     uint64_t free_space = ((uint64_t)fatfs->csize * nclst)
-    #if _MAX_SS != _MIN_SS
+    #if FF_MAX_SS != FF_MIN_SS
         * fatfs->ssize;
     #else
-        * _MIN_SS;
+        * FF_MIN_SS;
     #endif
 
     return MP_OBJ_NEW_SMALL_INT(free_space / 1024);
