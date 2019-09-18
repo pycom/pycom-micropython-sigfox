@@ -402,7 +402,7 @@ STATIC void mptask_init_sflash_filesystem_fatfs(void) {
     FRESULT res = f_mount(&vfs_fat->fs.fatfs);
     if (res == FR_NO_FILESYSTEM) {
         // no filesystem, so create a fresh one
-        uint8_t working_buf[_MAX_SS];
+        uint8_t working_buf[FF_MAX_SS];
         res = f_mkfs(&vfs_fat->fs.fatfs, FM_SFD | FM_FAT, 0, working_buf, sizeof(working_buf));
         if (res != FR_OK) {
             __fatal_error("failed to create /flash");

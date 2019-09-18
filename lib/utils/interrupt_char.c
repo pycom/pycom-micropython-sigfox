@@ -29,6 +29,7 @@
 
 #if MICROPY_KBD_EXCEPTION
 
+int mp_reset_char;
 int mp_interrupt_char = -1;
 
 void mp_hal_set_interrupt_char(int c) {
@@ -36,6 +37,10 @@ void mp_hal_set_interrupt_char(int c) {
         mp_obj_exception_clear_traceback(MP_OBJ_FROM_PTR(&MP_STATE_VM(mp_kbd_exception)));
     }
     mp_interrupt_char = c;
+}
+
+void mp_hal_set_reset_char(int c) {
+    mp_reset_char = c;
 }
 
 void mp_keyboard_interrupt(void) {
