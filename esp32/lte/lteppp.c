@@ -112,6 +112,7 @@ void connect_lte_uart (void) {
     config.stop_bits = UART_STOP_BITS_1;
     config.flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS;
     config.rx_flow_ctrl_thresh = 64;
+    config.use_ref_tick = false;
     uart_param_config(LTE_UART_ID, &config);
 
     // configure the UART pins
@@ -121,6 +122,8 @@ void connect_lte_uart (void) {
     pin_config(MICROPY_LTE_CTS_PIN, U2CTS_IN_IDX, -1, GPIO_MODE_INPUT, MACHPIN_PULL_NONE, 1);
 
     vTaskDelay(5 / portTICK_RATE_MS);
+
+    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
 
     // install the UART driver
     uart_driver_install(LTE_UART_ID, LTE_UART_BUFFER_SIZE, LTE_UART_BUFFER_SIZE, 1, &uart0_queue, 0, NULL);
@@ -132,7 +135,6 @@ void connect_lte_uart (void) {
     // configure the rx timeout threshold
     lteppp_uart_reg->conf1.rx_tout_thrhd = 20 & UART_RX_TOUT_THRHD_V;
 
-    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
     uart_set_rts(LTE_UART_ID, false);
 
     xTaskCreatePinnedToCore(TASK_UART_EVT, "LTE_UART_EVT", 2048 / sizeof(StackType_t), NULL, 12, &xLTEUartEvtTaskHndl, 1);
@@ -413,8 +415,9 @@ modem_init:
         xSemaphoreTake(xLTESem, portMAX_DELAY);
         lteppp_modem_conn_state = E_LTE_MODEM_CONNECTING;
         xSemaphoreGive(xLTESem);
-        uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
+        uart_set_rts(LTE_UART_ID, true);
         vTaskDelay(500/portTICK_PERIOD_MS);
+        uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
         // exit PPP session if applicable
         if(lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS))
         {
@@ -502,7 +505,7 @@ modem_init:
         lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
         // enable Break Signal for URC on UART0
         lteppp_send_at_cmd("AT+SQNIBRCFG?", LTE_RX_TIMEOUT_MAX_MS);
-        if(strstr(lteppp_trx_buffer, "+SQNIBRCFG: 1,100"))
+        if(!strstr(lteppp_trx_buffer, "+SQNIBRCFG: 1,100"))
         {
             lteppp_send_at_cmd("AT+SQNIBRCFG=1,100", LTE_RX_TIMEOUT_MAX_MS);
         }
