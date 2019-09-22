@@ -95,6 +95,9 @@
 #include "loragw_hal.h"
 #include "lora_pkt_fwd.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 static RTC_DATA_ATTR int64_t mach_expected_wakeup_time;
 static int64_t mach_remaining_sleep_time;
 
@@ -178,13 +181,19 @@ STATIC mp_obj_t machine_main(mp_obj_t main) {
 }
 MP_DEFINE_CONST_FUN_OBJ_1(machine_main_obj, machine_main);
 
-STATIC mp_obj_t machine_pygate_init (void) {
-    lgw_connect();
-    lora_gw_init();
- 
+STATIC mp_obj_t machine_pygate_init (mp_obj_t global_conf) {
+    //lgw_connect();
+
+    mp_buffer_info_t bufinfo;
+    mp_get_buffer_raise(global_conf, &bufinfo, MP_BUFFER_READ);
+
+    //printf("Info: %d\n", bufinfo.len);
+    
+    lora_gw_init((char *)bufinfo.buf);
+
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_pygate_init_obj, machine_pygate_init);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pygate_init_obj, machine_pygate_init);
 
 STATIC mp_obj_t machine_pygate_cmd_decode (mp_obj_t cmd_in) {
     // get the cmd data

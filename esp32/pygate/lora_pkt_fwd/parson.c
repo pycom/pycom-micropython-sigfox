@@ -22,11 +22,11 @@
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
 */
-#ifdef _MSC_VER
-#ifndef _CRT_SECURE_NO_WARNINGS
-#define _CRT_SECURE_NO_WARNINGS
-#endif /* _CRT_SECURE_NO_WARNINGS */
-#endif /* _MSC_VER */
+//#ifdef _MSC_VER
+//#ifndef _CRT_SECURE_NO_WARNINGS
+//#define _CRT_SECURE_NO_WARNINGS
+//#endif /* _CRT_SECURE_NO_WARNINGS */
+//#endif /* _MSC_VER */
 
 #include "parson.h"
 
@@ -37,10 +37,9 @@
 #include <math.h>
 #include <errno.h>
 
-
 /* Apparently sscanf is not implemented in some "standard" libraries, so don't use it, if you
  * don't have to. */
-#define sscanf THINK_TWICE_ABOUT_USING_SSCANF
+//#define sscanf THINK_TWICE_ABOUT_USING_SSCANF
 
 #define STARTING_CAPACITY 16
 #define MAX_NESTING       2048
@@ -1111,14 +1110,14 @@ JSON_Value * json_parse_file(const char *filename) {
     return output_value;
 }
 
-JSON_Value * json_parse_file_with_comments(const char *filename) {
-    char *file_contents = read_file(filename);
+JSON_Value * json_parse_file_with_comments(const char *file_contents) {
     JSON_Value *output_value = NULL;
     if (file_contents == NULL) {
         return NULL;
     }
     output_value = json_parse_string_with_comments(file_contents);
-    parson_free(file_contents);
+    //parson_free(file_contents);
+
     return output_value;
 }
 

@@ -99,7 +99,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define COM_PATH_DEFAULT "/dev/ttyACM0"
 
-#define LORA_GW_STACK_SIZE                                             (4096)
+#define LORA_GW_STACK_SIZE                                             (8192)
 #define LORA_GW_PRIORITY                                               (6)
 
 TaskHandle_t xLoraGwTaskHndl;
@@ -830,10 +830,10 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error)
 /* -------------------------------------------------------------------------- */
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
-void lora_gw_init(void) {
+void lora_gw_init(const char* global_conf) {
   xTaskCreatePinnedToCore(TASK_lora_gw, "LoraGW",
     LORA_GW_STACK_SIZE / sizeof(StackType_t),
-    NULL,
+    (void *) global_conf,
     LORA_GW_PRIORITY, &xLoraGwTaskHndl, 1);
 }
 
@@ -841,7 +841,20 @@ void lora_gw_stop(void) {
     vTaskDelete(xLoraGwTaskHndl);
 }
 
+void logger(const char *msg) {
+    FILE *fp;
+
+    fp = fopen("/flash/debug.txt", "a+");
+    fprintf(fp, msg);
+    fclose(fp);
+}
+
 void TASK_lora_gw(void *pvParameters) {
+
+    printf("Start lgw_connect\n");
+    lgw_connect();
+    printf("lgw_connect done !!!\n");
+    mp_hal_delay_us(3000000);
 
     int i; /* loop variable and temporary variable for return value */
     int x;
@@ -851,9 +864,9 @@ void TASK_lora_gw(void *pvParameters) {
     const char *com_path = com_path_default;
 
     /* configuration file related */
-    char *global_cfg_path = "global_conf.json"; /* contain global (typ. network-wide) configuration */
-    char *local_cfg_path = "local_conf.json"; /* contain node specific configuration, overwrite global parameters for parameters that are defined in both */
-    char *debug_cfg_path = "debug_conf.json"; /* if present, all other configuration files are ignored */
+    //char *global_cfg_path = "/flash/global_conf.json"; /* contain global (typ. network-wide) configuration */
+    //char *local_cfg_path = "/flash/local_conf.json"; /* contain node specific configuration, overwrite global parameters for parameters that are defined in both */
+    //char *debug_cfg_path = "/flash/debug_conf.json"; /* if present, all other configuration files are ignored */
 
     /* threads */
     pthread_t thrid_up;
@@ -945,8 +958,20 @@ void TASK_lora_gw(void *pvParameters) {
     MSG("INFO: Host endianness unknown\n");
 #endif
 
+    x = parse_SX1301_configuration((char *)pvParameters);
+    if (x != 0) {
+       exit(EXIT_FAILURE);
+    }
+    x = parse_gateway_configuration((char *)pvParameters);
+    if (x != 0) {
+       exit(EXIT_FAILURE);
+    }
+
+    MSG("INFO: found global configuration file and parsed correctly\n");
+    mp_hal_delay_us(2000000);
+
     /* load configuration files */
-    if (access(debug_cfg_path, R_OK) == 0) { /* if there is a debug conf, parse only the debug conf */
+    /*if (access(debug_cfg_path, R_OK) == 0) { // if there is a debug conf, parse only the debug conf 
         MSG("INFO: found debug configuration file %s, parsing it\n", debug_cfg_path);
         MSG("INFO: other configuration files will be ignored\n");
         x = parse_SX1301_configuration(debug_cfg_path);
@@ -957,7 +982,7 @@ void TASK_lora_gw(void *pvParameters) {
         if (x != 0) {
             exit(EXIT_FAILURE);
         }
-    } else if (access(global_cfg_path, R_OK) == 0) { /* if there is a global conf, parse it and then try to parse local conf  */
+    } else if (access(global_cfg_path, R_OK) == 0) { // if there is a global conf, parse it and then try to parse local conf  
         MSG("INFO: found global configuration file %s, parsing it\n", global_cfg_path);
         x = parse_SX1301_configuration(global_cfg_path);
         if (x != 0) {
@@ -973,7 +998,7 @@ void TASK_lora_gw(void *pvParameters) {
             parse_SX1301_configuration(local_cfg_path);
             parse_gateway_configuration(local_cfg_path);
         }
-    } else if (access(local_cfg_path, R_OK) == 0) { /* if there is only a local conf, parse it and that's all */
+    } else if (access(local_cfg_path, R_OK) == 0) { // if there is only a local conf, parse it and that's all 
         MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);
         x = parse_SX1301_configuration(local_cfg_path);
         if (x != 0) {
@@ -986,7 +1011,7 @@ void TASK_lora_gw(void *pvParameters) {
     } else {
         MSG("ERROR: [main] failed to find any configuration file named %s, %s OR %s\n", global_cfg_path, local_cfg_path, debug_cfg_path);
         exit(EXIT_FAILURE);
-    }
+    }*/
 
     /* get timezone info */
     tzset();
@@ -1044,7 +1069,7 @@ void TASK_lora_gw(void *pvParameters) {
         MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %d\n", serv_addr, serv_port_up, i);
         exit(EXIT_FAILURE);
     }
-
+    
     /* try to open socket for downstream traffic */
     for (q = result; q != NULL; q = q->ai_next) {
         sock_down = socket(q->ai_family, q->ai_socktype, q->ai_protocol);
@@ -1054,6 +1079,7 @@ void TASK_lora_gw(void *pvParameters) {
             break;    /* success, get out of loop */
         }
     }
+ 
     if (q == NULL) {
         MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
         /*i = 1;
@@ -1071,6 +1097,7 @@ void TASK_lora_gw(void *pvParameters) {
         MSG("ERROR: [down] connect returned %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
+
     freeaddrinfo(result);
 
     /* starting the concentrator */
@@ -1079,29 +1106,37 @@ void TASK_lora_gw(void *pvParameters) {
         MSG("INFO: [main] concentrator started, packet can now be received\n");
     } else {
         MSG("ERROR: [main] failed to start the concentrator\n");
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
 
     /* spawn threads to manage upstream and downstream */
     i = pthread_create( &thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create upstream thread\n");
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
+
+    printf("Before long delay\n");
+    while (true) {
+        mp_hal_delay_us(1000000);
+    }
+
     i = pthread_create( &thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create downstream thread\n");
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
+    
     i = pthread_create( &thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create JIT thread\n");
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
+    
     i = pthread_create( &thrid_timersync, NULL, (void * (*)(void *))thread_timersync, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create Timer Sync thread\n");
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
 
     /* main loop task : statistics collection */
@@ -1296,11 +1331,11 @@ void thread_up(void) {
 
         /* fetch packets */
         pthread_mutex_lock(&mx_concent);
-        nb_pkt = lgw_receive(NB_PKT_MAX, rxpkt);
+        nb_pkt = lgw_receive(NB_PKT_MAX, rxpkt);  // Crashing here
         pthread_mutex_unlock(&mx_concent);
         if (nb_pkt == LGW_HAL_ERROR) {
             MSG("ERROR: [up] failed packet fetch, exiting\n");
-            exit(EXIT_FAILURE);
+            //exit(EXIT_FAILURE);
         }
 
         /* check if there are status report to send */
@@ -1647,6 +1682,7 @@ void thread_up(void) {
 /* --- THREAD 2: POLLING SERVER AND ENQUEUING PACKETS IN JIT QUEUE ---------- */
 
 void thread_down(void) {
+   
     int i; /* loop variables */
 
     /* configuration and metadata for an outbound packet */
@@ -1661,7 +1697,7 @@ void thread_down(void) {
     uint8_t buff_down[1000]; /* buffer to receive downstream packets */
     uint8_t buff_req[12]; /* buffer to compose pull requests */
     int msg_len;
-
+  
     /* protocol variables */
     uint8_t token_h; /* random token for acknowledgement matching */
     uint8_t token_l; /* random token for acknowledgement matching */
@@ -1732,6 +1768,7 @@ void thread_down(void) {
             msg_len = recv(sock_down, (void *)buff_down, (sizeof buff_down) - 1, 0);
             gettimeofday(&recv_time, NULL);
             //clock_gettime(CLOCK_MONOTONIC, &recv_time);
+
 
             /* if no network message was received, got back to listening sock_down socket */
             if (msg_len == -1) {
@@ -1853,6 +1890,7 @@ void thread_down(void) {
                 json_value_free(root_val);
                 continue;
             }
+
             if (strcmp(str, "LORA") == 0) {
                 /* Lora modulation */
                 txpkt.modulation = MOD_LORA;
@@ -1909,7 +1947,7 @@ void thread_down(void) {
                         json_value_free(root_val);
                         continue;
                 }
-
+              
                 /* Parse ECC coding rate (optional field) */
                 str = json_object_get_string(txpk_obj, "codr");
                 if (str == NULL) {
@@ -1955,6 +1993,7 @@ void thread_down(void) {
                 }
 
             } else if (strcmp(str, "FSK") == 0) {
+
                 /* FSK modulation */
                 txpkt.modulation = MOD_FSK;
 

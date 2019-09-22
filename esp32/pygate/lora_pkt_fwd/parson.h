@@ -26,11 +26,6 @@
 #ifndef parson_parson_h
 #define parson_parson_h
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 #include <stddef.h>   /* size_t */
 
 /* Types and enums */
@@ -233,9 +228,6 @@ const char  *   json_string (const JSON_Value *value);
 double          json_number (const JSON_Value *value);
 int             json_boolean(const JSON_Value *value);
 
-#ifdef __cplusplus
-}
-#endif
 
 #endif
 
