@@ -60,7 +60,7 @@ SCRIPT_FILE_8MB=''
 if [ $4 ]; then
     BOOT_FILE='bootloader-reflash-digest.bin_enc'
     APP_FILE="${BOARD_NAME_L}.bin_enc"
-    FILE_NAME="$BOARD_NAME-$VERSION_ENC.tar.gz"
+    FILE_NAME="${BOARD_NAME}-${VERSION}_ENC.tar.gz"
 else
     BOOT_FILE='bootloader.bin'
     APP_FILE="${BOARD_NAME_L}.bin"

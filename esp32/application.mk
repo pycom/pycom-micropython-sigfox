@@ -454,7 +454,7 @@ PART_BIN_8MB = $(BUILD)/lib/partitions_8MB.bin
 PART_BIN_4MB = $(BUILD)/lib/partitions_4MB.bin
 PART_BIN_ENCRYPT_4MB = $(PART_BIN_4MB)_enc
 PART_BIN_ENCRYPT_8MB = $(PART_BIN_8MB)_enc
-APP_BIN_ENCRYPT = $(APP_BIN)_enc_0x10000
+APP_BIN_ENCRYPT = $(APP_BIN)_enc
 APP_IMG  = $(BUILD)/appimg.bin
 PART_CSV_8MB = lib/partitions_8MB.csv
 PART_CSV_4MB = lib/partitions_4MB.csv
@@ -485,7 +485,7 @@ ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash
 ESP_UPDATER_PY_WRITE_FLASH  = $(ESP_UPDATER_PY_SERIAL) flash
 ESP_UPDATER_PY_ERASE_FLASH  = $(ESP_UPDATER_PY_SERIAL) erase_all
 ESP_UPDATER_ALL_FLASH_ARGS = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION).tar.gz
-ESP_UPDATER_ALL_FLASH_ARGS_ENC = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION)_ENC.tar.gz
+ESP_UPDATER_ALL_FLASH_ARGS_ENC = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION)_ENC.tar.gz --secureboot
 
 ESPSECUREPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espsecure.py
 ESPEFUSE = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espefuse.py --port $(ESPPORT)
@@ -498,11 +498,8 @@ SIGN_BINARY = $(ESPSECUREPY) sign_data --keyfile $(SECURE_KEY)
 # $(ENCRYPT_BINARY) $(ENCRYPT_0x10000) -o image_encrypt.bin image.bin
 ENCRYPT_BINARY = $(ESPSECUREPY) encrypt_flash_data --keyfile $(ENCRYPT_KEY)
 ENCRYPT_0x10000 = --address 0x10000
-ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
-ENCRYPT_APP_PART_2 = --address 0x210000
-else
-ENCRYPT_APP_PART_2 = --address 0x1C0000
-endif
+ENCRYPT_APP_PART_2_8MB = --address 0x210000
+ENCRYPT_APP_PART_2_4MB = --address 0x1C0000
 
 GEN_ESP32PART := $(PYTHON) $(ESP_IDF_COMP_PATH)/partition_table/gen_esp32part.py -q
 
@@ -580,7 +577,7 @@ ifeq ($(SECURE), on)
 	$(Q) $(RM) -f ./bootloader/lib/bootloader_support_temp
 	$(Q) $(MKDIR)  ./bootloader/lib/bootloader_support_temp
 	$(Q) $(CP) ./bootloader/lib/libbootloader_support.a ./bootloader/lib/bootloader_support_temp/
-	$(Q) $(CD) bootloader/lib/bootloader_support_temp/ ; pwd ;\
+	$(Q) cd bootloader/lib/bootloader_support_temp/ ; pwd ;\
 	$(AR) x libbootloader_support.a ;\
 	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(CP) ../../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
@@ -649,7 +646,7 @@ ifeq ($(SECURE), on)
 	$(Q) $(RM) -rf ./lib/bootloader_support_temp
 	$(Q) $(MKDIR)  ./lib/bootloader_support_temp
 	$(Q) $(CP) ./lib/libbootloader_support.a ./lib/bootloader_support_temp/
-	$(Q) $(CD) lib/bootloader_support_temp/ ; pwd ;\
+	$(Q) cd lib/bootloader_support_temp/ ; pwd ;\
 	$(AR) x libbootloader_support.a ;\
 	$(RM) -f $(SECURE_BOOT_VERIFICATION_KEY).bin.o ;\
 	$(CP) ../../$(SECURE_BOOT_VERIFICATION_KEY) . ;\
@@ -743,8 +740,8 @@ ifeq ($(SECURE), on)
 	$(ECHO) $(SEPARATOR)
 	$(ECHO) "(Secure boot enabled, so bootloader + digest is flashed)"
 	$(ECHO) $(SEPARATOR)
-	$(ECHO) "$(Q) $(ESP_UPDATER_PY_WRITE_FLASH) $(ESP_UPDATER_ALL_FLASH_ARGS_ENC) --secureboot"
-	$(Q) $(ESP_UPDATER_PY_WRITE_FLASH) $(ESP_UPDATER_ALL_FLASH_ARGS_ENC) --secureboot"
+	$(ECHO) "$(Q) $(ESP_UPDATER_PY_WRITE_FLASH) $(ESP_UPDATER_ALL_FLASH_ARGS_ENC)"
+	$(Q) $(ESP_UPDATER_PY_WRITE_FLASH) $(ESP_UPDATER_ALL_FLASH_ARGS_ENC)
 else # ifeq ($(SECURE), on)
 	$(ECHO) "$(ESP_UPDATER_PY_WRITE_FLASH) $(ESP_UPDATER_ALL_FLASH_ARGS)"
 	$(Q) $(ESP_UPDATER_PY_WRITE_FLASH) $(ESP_UPDATER_ALL_FLASH_ARGS)
@@ -757,14 +754,20 @@ erase:
 $(PART_BIN_4MB): $(PART_CSV_4MB) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "Building partitions from $(PART_CSV_4MB)..."
 	$(Q) $(GEN_ESP32PART) $< $@
+ifeq ($(SECURE), on)
+	$(ECHO) "Signing $@"
+	$(Q) $(SIGN_BINARY) $@
+	$(ECHO) "Encrypt paritions table image into $(PART_BIN_ENCRYPT_4MB) (by default 0x8000 offset)"
+	$(Q) $(ENCRYPT_BINARY) --address 0x8000 -o $(PART_BIN_ENCRYPT_4MB) $@
+endif # ifeq ($(SECURE), on)
 $(PART_BIN_8MB): $(PART_CSV_8MB) $(ORIG_ENCRYPT_KEY)
 	$(ECHO) "Building partitions from $(PART_CSV_8MB)..."
 	$(Q) $(GEN_ESP32PART) $< $@
 ifeq ($(SECURE), on)
 	$(ECHO) "Signing $@"
 	$(Q) $(SIGN_BINARY) $@
-	$(ECHO) "Encrypt paritions table image into $(PART_BIN_ENCRYPT) (by default 0x8000 offset)"
-	$(Q) $(ENCRYPT_BINARY) --address 0x8000 -o $(PART_BIN_ENCRYPT) $@
+	$(ECHO) "Encrypt paritions table image into $(PART_BIN_ENCRYPT_8MB) (by default 0x8000 offset)"
+	$(Q) $(ENCRYPT_BINARY) --address 0x8000 -o $(PART_BIN_ENCRYPT_8MB) $@
 endif # ifeq ($(SECURE), on)
 
 show_partitions: $(PART_BIN_4MB) $(PART_BIN_8MB)
@@ -776,6 +779,9 @@ show_partitions: $(PART_BIN_4MB) $(PART_BIN_8MB)
 	$(ECHO) $(SEPARATOR)
 	$(Q) $(GEN_ESP32PART) $(word 2,$^)
 	$(ECHO) $(SEPARATOR)
+
+flash_mode:
+	$(ENTER_FLASHING_MODE)
 
 MAKE_PINS = boards/make-pins.py
 BOARD_PINS = boards/$(BOARD)/pins.csv
