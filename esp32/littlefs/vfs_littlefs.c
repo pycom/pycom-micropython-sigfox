@@ -68,9 +68,10 @@ static int is_valid_directory(vfs_lfs_struct_t* littlefs, const char* path)
     }
 }
 
-mp_import_stat_t littleFS_vfs_import_stat(fs_user_mount_t *vfs, const char *path)
+static mp_import_stat_t lfs_vfs_import_stat(void *self, const char *path)
 {
     struct lfs_info lfs_info_stat;
+    fs_user_mount_t *vfs = (fs_user_mount_t*) self;
     assert(vfs != NULL);
     /* check if path exists */
     if((int)LFS_ERR_OK == lfs_stat(&(vfs->fs.littlefs.lfs), path, &lfs_info_stat))
@@ -88,7 +89,6 @@ mp_import_stat_t littleFS_vfs_import_stat(fs_user_mount_t *vfs, const char *path
     {
         return MP_IMPORT_STAT_NO_EXIST;
     }
-
 }
 
 static int change_cwd(vfs_lfs_struct_t* littlefs, const char* path_in)
@@ -766,25 +766,30 @@ STATIC mp_obj_t littlefs_vfs_fsformat(mp_obj_t vfs_in)
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(littlefs_vfs_fsformat_obj, littlefs_vfs_fsformat);
 
 STATIC const mp_rom_map_elem_t littlefs_vfs_locals_dict_table[] = {
-    { MP_ROM_QSTR(MP_QSTR_open), MP_ROM_PTR(&littlefs_vfs_open_obj) },
-    { MP_ROM_QSTR(MP_QSTR_ilistdir), MP_ROM_PTR(&littlefs_vfs_ilistdir_obj) },
-    { MP_ROM_QSTR(MP_QSTR_mkdir), MP_ROM_PTR(&littlefs_vfs_mkdir_obj) },
-    { MP_ROM_QSTR(MP_QSTR_rmdir), MP_ROM_PTR(&littlefs_vfs_rmdir_obj) },
-    { MP_ROM_QSTR(MP_QSTR_chdir), MP_ROM_PTR(&littlefs_vfs_chdir_obj) },
-    { MP_ROM_QSTR(MP_QSTR_getcwd), MP_ROM_PTR(&littlefs_vfs_getcwd_obj) },
-    { MP_ROM_QSTR(MP_QSTR_remove), MP_ROM_PTR(&littlefs_vfs_remove_obj) },
-    { MP_ROM_QSTR(MP_QSTR_rename), MP_ROM_PTR(&littlefs_vfs_rename_obj) },
-    { MP_ROM_QSTR(MP_QSTR_stat), MP_ROM_PTR(&littlefs_vfs_stat_obj) },
-    { MP_ROM_QSTR(MP_QSTR_statvfs), MP_ROM_PTR(&littlefs_vfs_statvfs_obj) },
-    { MP_ROM_QSTR(MP_QSTR_getfree), MP_ROM_PTR(&littlefs_vfs_getfree_obj) },
-    { MP_ROM_QSTR(MP_QSTR_umount), MP_ROM_PTR(&littlefs_vfs_umount_obj) },
-    { MP_ROM_QSTR(MP_QSTR_fsformat), MP_ROM_PTR(&littlefs_vfs_fsformat_obj) }
+    { MP_ROM_QSTR(MP_QSTR_open),        MP_ROM_PTR(&littlefs_vfs_open_obj) },
+    { MP_ROM_QSTR(MP_QSTR_ilistdir),    MP_ROM_PTR(&littlefs_vfs_ilistdir_obj) },
+    { MP_ROM_QSTR(MP_QSTR_mkdir),       MP_ROM_PTR(&littlefs_vfs_mkdir_obj) },
+    { MP_ROM_QSTR(MP_QSTR_rmdir),       MP_ROM_PTR(&littlefs_vfs_rmdir_obj) },
+    { MP_ROM_QSTR(MP_QSTR_chdir),       MP_ROM_PTR(&littlefs_vfs_chdir_obj) },
+    { MP_ROM_QSTR(MP_QSTR_getcwd),      MP_ROM_PTR(&littlefs_vfs_getcwd_obj) },
+    { MP_ROM_QSTR(MP_QSTR_remove),      MP_ROM_PTR(&littlefs_vfs_remove_obj) },
+    { MP_ROM_QSTR(MP_QSTR_rename),      MP_ROM_PTR(&littlefs_vfs_rename_obj) },
+    { MP_ROM_QSTR(MP_QSTR_stat),        MP_ROM_PTR(&littlefs_vfs_stat_obj) },
+    { MP_ROM_QSTR(MP_QSTR_statvfs),     MP_ROM_PTR(&littlefs_vfs_statvfs_obj) },
+    { MP_ROM_QSTR(MP_QSTR_getfree),     MP_ROM_PTR(&littlefs_vfs_getfree_obj) },
+    { MP_ROM_QSTR(MP_QSTR_umount),      MP_ROM_PTR(&littlefs_vfs_umount_obj) },
+    { MP_ROM_QSTR(MP_QSTR_fsformat),    MP_ROM_PTR(&littlefs_vfs_fsformat_obj) }
 
 };
 STATIC MP_DEFINE_CONST_DICT(littlefs_vfs_locals_dict, littlefs_vfs_locals_dict_table);
 
+STATIC const mp_vfs_proto_t lfs_vfs_proto = {
+    .import_stat = lfs_vfs_import_stat,
+};
+
 const mp_obj_type_t mp_littlefs_vfs_type = {
     { &mp_type_type },
+    .protocol = &lfs_vfs_proto,
     .locals_dict = (mp_obj_dict_t*)&littlefs_vfs_locals_dict,
 };
 
