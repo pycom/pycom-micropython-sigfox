@@ -599,9 +599,14 @@ STATIC esp_err_t wlan_update_hostname () {
 
     esp_err_t err = tcpip_adapter_get_hostname(interface, (const char**)&hostname);
     if(err != ESP_OK)
+    {
         return err;
+    }
 
-    strlcpy((char*)wlan_obj.hostname, hostname, TCPIP_HOSTNAME_MAX_SIZE);
+    if(hostname != NULL)
+    {
+        strlcpy((char*)wlan_obj.hostname, hostname, TCPIP_HOSTNAME_MAX_SIZE);
+    }
     return err;
 }
 
@@ -782,9 +787,13 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
     }
 
     if(hostname != NULL)
+    {
         wlan_set_hostname(hostname);
+    }
     else
+    {
         wlan_update_hostname();
+    }
 
     if (ESP_OK != esp_wifi_connect()) {
         goto os_error;
