@@ -1,15 +1,12 @@
 try:
     import uerrno
-    try:
-        import uos_vfs as uos
-    except ImportError:
-        import uos
+    import uos
 except ImportError:
     print("SKIP")
     raise SystemExit
 
 try:
-    uos.mkfat
+    uos.VfsFat
 except AttributeError:
     print("SKIP")
     raise SystemExit
@@ -46,12 +43,12 @@ except MemoryError:
     print("SKIP")
     raise SystemExit
 
-uos.mkfat.mkfs(bdev)
+uos.VfsFat.mkfs(bdev)
 
 print(b"FOO_FILETXT" not in bdev.data)
 print(b"hello!" not in bdev.data)
 
-vfs = uos.mkfat(bdev)
+vfs = uos.VfsFat(bdev)
 uos.mount(vfs, "/ramdisk")
 
 print("statvfs:", vfs.statvfs("/ramdisk"))
@@ -90,7 +87,7 @@ print("getcwd:", vfs.getcwd())
 
 uos.umount(vfs)
 
-vfs = uos.mkfat(bdev)
+vfs = uos.VfsFat(bdev)
 print(list(vfs.ilistdir(b"")))
 
 # list a non-existent directory

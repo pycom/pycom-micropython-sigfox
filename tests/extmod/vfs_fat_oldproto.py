@@ -1,15 +1,12 @@
 try:
     import uerrno
-    try:
-        import uos_vfs as uos
-    except ImportError:
-        import uos
+    import uos
 except ImportError:
     print("SKIP")
     raise SystemExit
 
 try:
-    uos.mkfat
+    uos.VfsFat
 except AttributeError:
     print("SKIP")
     raise SystemExit
@@ -44,8 +41,8 @@ except MemoryError:
     print("SKIP")
     raise SystemExit
 
-uos.mkfat.mkfs(bdev)
-vfs = uos.mkfat(bdev)
+uos.VfsFat.mkfs(bdev)
+vfs = uos.VfsFat(bdev)
 uos.mount(vfs, "/ramdisk")
 
 # file io

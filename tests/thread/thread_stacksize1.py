@@ -3,15 +3,11 @@
 # MIT license; Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
 
 import sys
-import os
 import _thread
 
 # different implementations have different minimum sizes
 if sys.implementation.name == 'micropython':
-    if 'ESP32' in os.uname().machine:   # minimmum stack size of the ESP32 is 4K
-        sz = 4 * 1024
-    else:
-        sz = 2 * 1024
+    sz = 2 * 1024
 else:
     sz = 32 * 1024
 

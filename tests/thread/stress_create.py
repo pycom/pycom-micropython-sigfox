@@ -16,7 +16,6 @@ while thread_num < 500:
         thread_num += 1
     except MemoryError:
         pass
-    time.sleep(0.005) # allow other threads to run
 
 # wait for the last threads to terminate
 time.sleep(1)

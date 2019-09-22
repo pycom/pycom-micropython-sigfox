@@ -2,12 +2,6 @@
 
 import micropython
 
-# SKIP LOPY1 for limitations
-if os.uname().sysname == 'LoPy':
-    print("SKIP")
-    import sys
-    sys.exit()
-
 # Check for stackless build, which can't call functions without
 # allocating a frame on the heap.
 try:

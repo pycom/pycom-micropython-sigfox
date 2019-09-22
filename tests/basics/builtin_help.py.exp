@@ -1,15 +1,4 @@
-Welcome to MicroPython!
-For online docs please visit http://docs.pycom.io
-
-Control commands:
-  CTRL-A        -- on a blank line, enter raw REPL mode
-  CTRL-B        -- on a blank line, enter normal REPL mode
-  CTRL-C        -- interrupt a running program
-  CTRL-D        -- on a blank line, do a soft reset of the board
-  CTRL-E        -- on a blank line, enter paste mode
-  CTRL-F        -- on a blank line, do a hard reset of the board and enter safe boot
-
-For further help on a specific object, type help(obj)
+########
 object <function> is of type function
 object <class 'int'> is of type type
   from_bytes -- <classmethod>
@@ -21,35 +10,5 @@ object <module 'micropython'> is of type module
   __name__ -- micropython
   const -- <function>
   opt_level -- <function>
-  mem_info -- <function>
-  qstr_info -- <function>
-  stack_use -- <function>
-  alloc_emergency_exception_buf -- <function>
-  heap_lock -- <function>
-  heap_unlock -- <function>
-  kbd_intr -- <function>
-object modules is of type str
-  encode -- <function>
-  find -- <function>
-  rfind -- <function>
-  index -- <function>
-  rindex -- <function>
-  join -- <function>
-  split -- <function>
-  rsplit -- <function>
-  startswith -- <function>
-  endswith -- <function>
-  strip -- <function>
-  lstrip -- <function>
-  rstrip -- <function>
-  format -- <function>
-  replace -- <function>
-  count -- <function>
-  lower -- <function>
-  upper -- <function>
-  isspace -- <function>
-  isalpha -- <function>
-  isdigit -- <function>
-  isupper -- <function>
-  islower -- <function>
+########
 done
