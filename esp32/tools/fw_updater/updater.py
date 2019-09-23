@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-#   Copyright (c) 2016-2018, Pycom Limited.
+#   Copyright (c) 2016-2019, Pycom Limited.
 #
 #   This software is licensed under the GNU GPL version 3 or any
 #   later version, with permitted additional terms. For more information
@@ -34,35 +34,7 @@ try:
 except:
     humanfriendly_available = False
 
-SERVER = False
-
-if SERVER:
-    from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-    import SocketServer
-    PORT=8000
-
-    class S(BaseHTTPRequestHandler):
-        def _set_headers(self):
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-
-        def do_GET(self):
-            self._set_headers()
-            self.wfile.write("<html><body><h1>hi!</h1></body></html>")
-    
-        def do_HEAD(self):
-            self._set_headers()
-            
-        def do_POST(self):
-            # Doesn't do anything with posted data
-            self._set_headers()
-            self.wfile.write("<html><body><h1>POST!</h1></body></html>")
-
-try:
-    from local_settings import DEBUG
-except:
-    DEBUG = False
+DEBUG = False
 
 FLASH_MODE = 'dio'
 FLASH_FREQ = '80m'
@@ -259,7 +231,7 @@ class NPyProgrammer(object):
             if (self.__pypic):
                 self.enter_pycom_programming_mode()
             self.esp = ESP32ROM(self.esp_port, DEFAULT_BAUD_RATE)
-            if reset:
+            if not self.__pypic:
                 self.esp.connect()
             else:
                 self.esp.connect(mode='no_reset')
@@ -827,6 +799,9 @@ class NPyProgrammer(object):
         pic.close()
 
     def exit_pycom_programming_mode(self, reset=True):
+        if not self.__pypic:
+            self.esp.hard_reset()
+        time.sleep(.5)
         del self.esp
         if (self.__pypic):
             pic = Pypic(self.esp_port)
