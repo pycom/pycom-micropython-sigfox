@@ -871,11 +871,6 @@ def process_arguments():
 
     subparsers = cmd_parser.add_subparsers(dest='command')
 
-    if SERVER:
-        cmd_parser_server = subparsers.add_parser('server', help='run in server mode [experimental]')
-        cmd_parser_server.add_argument('-p', '--port', default=None, help='PORT to listen on')
-        cmd_parser_server.add_argument('-a', '--address', default=None, help='ADDRESS to listen on')
-
     subparsers.add_parser('list', help='Get list of available COM ports')
 
     subparsers.add_parser('chip_id', help='Show ESP32 chip_id')
@@ -963,48 +958,47 @@ def process_arguments():
 #         raise e
 #     
     try:
-        if not (SERVER and args.command == 'server'):
-            if args.command == 'boot_part' and args.partition is not None:
-                if args.partition != 'factory' and args.partition != 'ota_0':
-                    raise ValueError('Partition must be factory or ota_0')
-            if hasattr(args, "region") and args.region is not None:
-                args.region = args.region.replace('"', '')
-            if args.pic and args.ftdi:
-                raise ValueError('Cannot force both ftdi and pic mode!')
-            if args.pic and args.reset:
-                raise ValueError('Cannot use Espressif reset in pic mode!')
-            if args.command == 'flash' and args.tar is None and (args.file is None or args.partition is None):
-                raise ValueError('You must either specifiy the tar[.gz] file or both the file and partition to flash')
-            if  args.command != 'list' and args.port is None:
-                try:
-                    args.port = os.environ['ESPPORT']
-                except:
-                    raise ValueError('The port must be specified when using %s' % args.command)
-            if  args.command != 'list' and args.speed is None:
-                try:
-                    args.speed = int(os.environ['ESPBAUD'])
-                except:
-                    args.speed = FAST_BAUD_RATE
-            if (hasattr(args, "restore") and args.restore == True) and (hasattr(args, "backup") and args.backup == True):
-                raise ValueError('Cannot backup and restore at the same time')
-            if (hasattr(args, "command") and args.command == 'lpwan' and hasattr(args, "region") and args.region is not None):
-                if (not check_lora_region(args.region)):
-                    err_msg = 'Invalid LoRa region ' + args.region + ' must be one of:' 
-                    for region in LORA_REGIONS:
-                        err_msg += " " + region
-                    raise ValueError(err_msg)
-            if (args.command == 'copy' and (not hasattr(args, "partition") or args.partition is None)):
-                err_msg = 'partition must be one of:' 
+        if args.command == 'boot_part' and args.partition is not None:
+            if args.partition != 'factory' and args.partition != 'ota_0':
+                raise ValueError('Partition must be factory or ota_0')
+        if hasattr(args, "region") and args.region is not None:
+            args.region = args.region.replace('"', '')
+        if args.pic and args.ftdi:
+            raise ValueError('Cannot force both ftdi and pic mode!')
+        if args.pic and args.reset:
+            raise ValueError('Cannot use Espressif reset in pic mode!')
+        if args.command == 'flash' and args.tar is None and (args.file is None or args.partition is None):
+            raise ValueError('You must either specifiy the tar[.gz] file or both the file and partition to flash')
+        if  args.command != 'list' and args.port is None:
+            try:
+                args.port = os.environ['ESPPORT']
+            except:
+                raise ValueError('The port must be specified when using %s' % args.command)
+        if  args.command != 'list' and args.speed is None:
+            try:
+                args.speed = int(os.environ['ESPBAUD'])
+            except:
+                args.speed = FAST_BAUD_RATE
+        if (hasattr(args, "restore") and args.restore == True) and (hasattr(args, "backup") and args.backup == True):
+            raise ValueError('Cannot backup and restore at the same time')
+        if (hasattr(args, "command") and args.command == 'lpwan' and hasattr(args, "region") and args.region is not None):
+            if (not check_lora_region(args.region)):
+                err_msg = 'Invalid LoRa region ' + args.region + ' must be one of:' 
+                for region in LORA_REGIONS:
+                    err_msg += " " + region
+                raise ValueError(err_msg)
+        if (args.command == 'copy' and (not hasattr(args, "partition") or args.partition is None)):
+            err_msg = 'partition must be one of:' 
+            for partition in PARTITIONS.keys():
+                err_msg += " " + partition
+            raise ValueError(err_msg)
+            
+        if (args.command == 'copy' and hasattr(args, "partition") and args.partition is not None):
+            if (not check_partition(args.partition)):
+                err_msg = 'Invalid partition ' + args.partition + ' must be one of:' 
                 for partition in PARTITIONS.keys():
                     err_msg += " " + partition
                 raise ValueError(err_msg)
-                
-            if (args.command == 'copy' and hasattr(args, "partition") and args.partition is not None):
-                if (not check_partition(args.partition)):
-                    err_msg = 'Invalid partition ' + args.partition + ' must be one of:' 
-                    for partition in PARTITIONS.keys():
-                        err_msg += " " + partition
-                    raise ValueError(err_msg)
     except Exception as e:
         print_exception(e)
         raise e
@@ -1029,18 +1023,9 @@ def mac_to_string(mac):
 def print_result(result):
     print(result)
 
-if SERVER:
-    def runServer(server_class=HTTPServer, handler_class=S, address='127.0.0.1', port=PORT):
-        server_address = (address, port)
-        httpd = server_class(server_address, handler_class)
-        print('Starting httpd... on {} port {}'.format(address, port))
-        httpd.serve_forever()
-
 def main():
     try:
         args = process_arguments()
-        if SERVER and args.command == 'server':
-            runServer()
         
         if args.command == 'list':
             list_usbid()
