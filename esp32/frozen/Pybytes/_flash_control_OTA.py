@@ -21,6 +21,24 @@ class FCOTA:
         print_debug(2, 'Updating file [{}]'.format(path))
 
         if '.' in path:
+            listfDir = path.split('/')
+            currentPath = '/'
+            for value in listfDir:
+                if not value:
+                    continue
+                parentList = os.listdir(currentPath)
+                if currentPath == '/':
+                    currentPath = "{}{}".format(currentPath, value)
+                else:
+                    currentPath = "{}/{}".format(currentPath, value)
+                # check if dir exists
+                if value not in parentList:
+                    # create dir
+                    if '.' in currentPath:
+                        continue
+                    os.mkdir(currentPath)
+
+            # update content
             f = open(path, 'w')
             f.write(newContent)
             f.close()

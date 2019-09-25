@@ -10,8 +10,8 @@
 #include "extmod/vfs.h"
 #include "vfs_littlefs.h"
 
-extern const mp_obj_type_t littlefs_type_fileio;
-extern const mp_obj_type_t littlefs_type_textio;
+extern const mp_obj_type_t mp_type_vfs_lfs_fileio;
+extern const mp_obj_type_t mp_type_vfs_lfs_textio;
 
 
 typedef struct _pyb_file_obj_t {
@@ -153,11 +153,11 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
                 break;
             #if MICROPY_PY_IO_FILEIO
             case 'b':
-                type = &littlefs_type_fileio;
+                type = &mp_type_vfs_lfs_fileio;
                 break;
             #endif
             case 't':
-                type = &littlefs_type_textio;
+                type = &mp_type_vfs_lfs_textio;
                 break;
         }
     }
@@ -214,7 +214,7 @@ STATIC const mp_stream_p_t fileio_stream_p = {
     .ioctl = file_obj_ioctl,
 };
 
-const mp_obj_type_t littlefs_type_fileio = {
+const mp_obj_type_t mp_type_vfs_lfs_fileio = {
     { &mp_type_type },
     .name = MP_QSTR_FileIO,
     .print = file_obj_print,
@@ -233,7 +233,7 @@ STATIC const mp_stream_p_t textio_stream_p = {
     .is_text = true,
 };
 
-const mp_obj_type_t littlefs_type_textio = {
+const mp_obj_type_t mp_type_vfs_lfs_textio = {
     { &mp_type_type },
     .name = MP_QSTR_TextIOWrapper,
     .print = file_obj_print,
@@ -252,7 +252,7 @@ STATIC mp_obj_t littlefs_builtin_open_self(mp_obj_t self_in, mp_obj_t path, mp_o
     arg_vals[0].u_obj = path;
     arg_vals[1].u_obj = mode;
     arg_vals[2].u_obj = mp_const_none;
-    return file_open(self, &littlefs_type_textio, arg_vals);
+    return file_open(self, &mp_type_vfs_lfs_textio, arg_vals);
 }
 MP_DEFINE_CONST_FUN_OBJ_3(littlefs_vfs_open_obj, littlefs_builtin_open_self);
 

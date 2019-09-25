@@ -2,6 +2,8 @@
 # author = Paul Sokolovsky
 
 import usocket
+
+
 class Response:
 
     def __init__(self, f):
@@ -57,7 +59,7 @@ def request(method, url, data=None, json=None, headers={}, stream=None):
     if proto == "https:":
         s = ussl.wrap_socket(s)
     s.write(b"%s /%s HTTP/1.0\r\n" % (method, path))
-    if not "Host" in headers:
+    if "Host" not in headers:
         s.write(b"Host: %s\r\n" % host)
     # Iterate over keys to avoid tuple alloc
     for k in headers:
@@ -75,20 +77,20 @@ def request(method, url, data=None, json=None, headers={}, stream=None):
     if data:
         s.write(data)
 
-    l = s.readline()
+    lineRead = s.readline()
 
-    protover, status, msg = l.split(None, 2)
+    protover, status, msg = lineRead.split(None, 2)
     status = int(status)
 
     while True:
-        l = s.readline()
+        lineRead = s.readline()
 
-        if not l or l == b"\r\n":
+        if not lineRead or lineRead == b"\r\n":
             break
-        if l.startswith(b"Transfer-Encoding:"):
-            if b"chunked" in l:
-                raise ValueError("Unsupported " + l)
-        elif l.startswith(b"Location:") and not 200 <= status <= 299:
+        if lineRead.startswith(b"Transfer-Encoding:"):
+            if b"chunked" in lineRead:
+                raise ValueError("Unsupported " + lineRead)
+        elif lineRead.startswith(b"Location:") and not 200 <= status <= 299:
             raise NotImplementedError("Redirects not yet supported")
 
     resp = Response(s)

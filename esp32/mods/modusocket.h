@@ -39,6 +39,8 @@
 #ifndef MODUSOCKET_H_
 #define MODUSOCKET_H_
 
+#include "py/stream.h"
+
 #define AF_LORA                             (0xA0)
 #define AF_SIGFOX                           (0xA1)
 

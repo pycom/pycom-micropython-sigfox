@@ -256,3 +256,4 @@ class MsgHandler:
                         self.reconnectMethod()
             self._out_packet_mutex.release()
             self._receive_packet()
+            time.sleep(1)

@@ -1,16 +1,11 @@
-import uerrno
 try:
-    try:
-        import uos_vfs as uos
-        open = uos.vfs_open
-    except ImportError:
-        import uos
+    import uos
 except ImportError:
     print("SKIP")
     raise SystemExit
 
 try:
-    uos.mkfat
+    uos.VfsFat
 except AttributeError:
     print("SKIP")
     raise SystemExit
@@ -56,7 +51,7 @@ except OSError:
 for path in uos.listdir('/'):
     uos.umount('/' + path)
 
-uos.mkfat.mkfs(bdev)
+uos.VfsFat.mkfs(bdev)
 uos.mount(bdev, '/')
 
 print(uos.getcwd())
@@ -100,7 +95,7 @@ for exist in ('', '/', 'dir', '/dir', 'dir/subdir'):
 uos.chdir('/')
 print(uos.stat('test5.txt')[:-3])
 
-uos.mkfat.mkfs(bdev2)
+uos.VfsFat.mkfs(bdev2)
 uos.mount(bdev2, '/sys')
 print(uos.listdir())
 print(uos.listdir('sys'))
@@ -114,3 +109,11 @@ uos.umount('/')
 print(uos.getcwd())
 print(uos.listdir())
 print(uos.listdir('sys'))
+
+# test importing a file from a mounted FS
+import sys
+sys.path.clear()
+sys.path.append('/sys')
+with open('sys/test_module.py', 'w') as f:
+    f.write('print("test_module!")')
+import test_module

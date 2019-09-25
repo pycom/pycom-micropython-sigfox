@@ -112,8 +112,6 @@ void modusocket_pre_init (void) {
 	xTaskCreatePinnedToCore(TASK_SOCK_OPS, "Socket Operations", 4096 / sizeof(StackType_t), NULL, 5, &xSocketOpsTaskHndl, 1);
 	// Create semaphore
 	xSocketOpsSem = xSemaphoreCreateMutex();
-    /* Stop task as it is not needed unless a socket conn is requested*/
-    vTaskSuspend(xSocketOpsTaskHndl);
 }
 
 void modusocket_socket_add (int32_t sd, bool user) {
@@ -383,17 +381,16 @@ STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
         /*create Timer */
         modsocket_conn_timeout_timer = xTimerCreate("Socket_conn_Timer", timeout_temp / portTICK_PERIOD_MS, 0, 0, modsocket_timer_callback);
 
-        vTaskResume(xSocketOpsTaskHndl);
-
         MP_THREAD_GIL_EXIT();
-        vTaskDelay(10/portTICK_PERIOD_MS);
+        xTaskNotifyGive(xSocketOpsTaskHndl);
+        portYIELD();
+        vTaskDelay(10 / portTICK_PERIOD_MS);
+
         xSemaphoreTake(xSocketOpsSem, portMAX_DELAY);
 
         switch(self->sock_base.conn_status)
         {
         case SOCKET_CONN_TIMEDOUT:
-            /* Stop task as it is not needed anymore*/
-            vTaskSuspend(xSocketOpsTaskHndl);
             // Set socket back to Blocking
             modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, timeout_temp, &(self->sock_base.err));
             //Close socket
@@ -403,8 +400,6 @@ STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
             break;
         case SOCKET_CONN_ERROR:
-            /* Stop task as it is not needed anymore*/
-            vTaskSuspend(xSocketOpsTaskHndl);
             // Set socket back to Blocking
             modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, timeout_temp, &(self->sock_base.err));
             //Close socket
@@ -419,8 +414,6 @@ STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
             // Do Nothing
             break;
         case SOCKET_CONNECTED:
-            /* Stop task as it is not needed anymore*/
-            vTaskSuspend(xSocketOpsTaskHndl);
             /* Release Sem */
             xSemaphoreGive(xSocketOpsSem);
             // Set socket back to Blocking
@@ -439,8 +432,6 @@ STATIC mp_obj_t socket_connect(mp_obj_t self_in, mp_obj_t addr_in) {
             modsocket_sock->sock_base.connected = true;
             break;
         default:
-            /* Stop task as it is not needed anymore*/
-            vTaskSuspend(xSocketOpsTaskHndl);
             // Set socket back to Blocking
             modsocket_sock->sock_base.nic_type->n_settimeout(modsocket_sock, timeout_temp, &(self->sock_base.err));
             //Close socket
@@ -706,69 +697,83 @@ static void TASK_SOCK_OPS (void *pvParameters) {
 
     mp_uint_t flag = MP_STREAM_POLL_WR;
     int ret;
+    static uint32_t thread_notification;
 
-    for (;;)
-    {
-        if(modsocket_sock->sock_base.conn_status == SOCKET_CONN_START)
+Conn_start:
+
+    thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    if (thread_notification) {
+        for (;;)
         {
-            xSemaphoreTake(xSocketOpsSem, portMAX_DELAY);
+            if(modsocket_sock->sock_base.conn_status == SOCKET_CONN_START)
+            {
+                xSemaphoreTake(xSocketOpsSem, portMAX_DELAY);
 
-            //connect socket
-            if (modsocket_sock->sock_base.nic_type->n_connect(modsocket_sock, modsocket_sock->sock_base.ip_addr, modsocket_sock->sock_base.port, &(modsocket_sock->sock_base.err)) != 0) {
+                //connect socket
+                if (modsocket_sock->sock_base.nic_type->n_connect(modsocket_sock, modsocket_sock->sock_base.ip_addr, modsocket_sock->sock_base.port, &(modsocket_sock->sock_base.err)) != 0) {
 
-                if(modsocket_sock->sock_base.err == EINPROGRESS)
-                {
-                    /*start Timer */
-                    xTimerStart(modsocket_conn_timeout_timer, 0);
-                    /* Pending */
-                    modsocket_sock->sock_base.conn_status = SOCKET_CONN_PENDING;
+                    if(modsocket_sock->sock_base.err == EINPROGRESS)
+                    {
+                        /*start Timer */
+                        xTimerStart(modsocket_conn_timeout_timer, 0);
+                        /* Pending */
+                        modsocket_sock->sock_base.conn_status = SOCKET_CONN_PENDING;
+                    }
+                    else
+                    {
+                        modsocket_sock->sock_base.conn_status = SOCKET_CONN_ERROR;
+                        xSemaphoreGive(xSocketOpsSem);
+                        goto Conn_start;
+                    }
                 }
                 else
                 {
+                    // socket already connected
+                    modsocket_sock->sock_base.conn_status = SOCKET_CONNECTED;
+                    xSemaphoreGive(xSocketOpsSem);
+                    goto Conn_start;
+                }
+            }
+            else if (modsocket_sock->sock_base.conn_status == SOCKET_CONN_PENDING)
+            {
+                //start polling
+                ret = lwipsocket_socket_ioctl(modsocket_sock, MP_STREAM_POLL, flag, &(modsocket_sock->sock_base.err));
+                if((ret & MP_STREAM_POLL_WR) == MP_STREAM_POLL_WR)
+                {
+                    // socket connected
+                    modsocket_sock->sock_base.conn_status = SOCKET_CONNECTED;
+                    /* Stop Timer*/
+                    xTimerStop(modsocket_conn_timeout_timer, 0);
+                    xTimerDelete(modsocket_conn_timeout_timer, 0);
+                    xSemaphoreGive(xSocketOpsSem);
+                    goto Conn_start;
+                }
+                else if(ret < 0)
+                {
                     modsocket_sock->sock_base.conn_status = SOCKET_CONN_ERROR;
                     xSemaphoreGive(xSocketOpsSem);
+                    goto Conn_start;
+                }
+
+                if(modsocket_istimeout)
+                {
+                    modsocket_sock->sock_base.conn_status = SOCKET_CONN_TIMEDOUT;
+                    modsocket_istimeout = false;
+                    xSemaphoreGive(xSocketOpsSem);
+                    goto Conn_start;
                 }
             }
             else
             {
-                // socket already connected
-                modsocket_sock->sock_base.conn_status = SOCKET_CONNECTED;
-                xSemaphoreGive(xSocketOpsSem);
-            }
-        }
-        else if (modsocket_sock->sock_base.conn_status == SOCKET_CONN_PENDING)
-        {
-            //start polling
-            ret = lwipsocket_socket_ioctl(modsocket_sock, MP_STREAM_POLL, flag, &(modsocket_sock->sock_base.err));
-            if((ret & MP_STREAM_POLL_WR) == MP_STREAM_POLL_WR)
-            {
-                // socket connected
-                modsocket_sock->sock_base.conn_status = SOCKET_CONNECTED;
-                /* Stop Timer*/
-                xTimerStop(modsocket_conn_timeout_timer, 0);
-                xTimerDelete(modsocket_conn_timeout_timer, 0);
-                xSemaphoreGive(xSocketOpsSem);
-            }
-            else if(ret < 0)
-            {
-                modsocket_sock->sock_base.conn_status = SOCKET_CONN_ERROR;
-                xSemaphoreGive(xSocketOpsSem);
+                // Nothing
             }
 
-            if(modsocket_istimeout)
-            {
-                modsocket_sock->sock_base.conn_status = SOCKET_CONN_TIMEDOUT;
-                modsocket_istimeout = false;
-                xSemaphoreGive(xSocketOpsSem);
-            }
+            vTaskDelay(5/portTICK_PERIOD_MS);
         }
-        else
-        {
-            // Nothing
-        }
-
-        vTaskDelay(5/portTICK_PERIOD_MS);
     }
+
+    goto Conn_start;
 }
 
 STATIC void modsocket_timer_callback( TimerHandle_t xTimer )

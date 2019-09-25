@@ -25,9 +25,10 @@ from time import sleep
 import binascii
 
 try:
-    from network import LoRa
+    from network import LoRa # noqa
 except:
     pass
+
 
 class PybytesLibrary:
     def __init__(self, pybytes_connection, pybytes_protocol):
@@ -42,6 +43,11 @@ class PybytesLibrary:
         print_debug(5, "This is pack_pybytes_message({}, {}, {})".format(command, pin, value))
         body = struct.pack(constants.__PYBYTES_INTERNAL_PROTOCOL, command, pin, value)
         return self.__pack_message(constants.__TYPE_PYBYTES, body)
+
+    def pack_release_info_message(self, releaseId):
+        print_debug(5, "This is pack_release_info_message")
+        print("This is pack_release_info_message")
+        return self.__pack_message(constants.__TYPE_RELEASE_INFO, releaseId)
 
     def pack_pybytes_message_variable(self, command, pin, parameters):
         print_debug(5, "This is pack_pybytes_message_variable({}, {}, {})".format(command, pin, parameters))
@@ -58,7 +64,7 @@ class PybytesLibrary:
 
         return self.__pack_message(constants.__TYPE_BATTERY_INFO, body)
 
-    def pack_info_message(self):
+    def pack_info_message(self, releaseVersion=None):
         print_debug(5, "This is pack_info_message()")
         body = bytearray()
         sysname = os.uname().sysname
@@ -80,7 +86,9 @@ class PybytesLibrary:
         body.append((release >> 8) & 0xFF)
         body.append(release & 0xFF)
 
-        body.append(constants.__PROTOCOL_VERSION)
+        if releaseVersion is not None:
+            body.append((releaseVersion >> 8) & 0xFF)
+            body.append(releaseVersion & 0xFF)
 
         return self.__pack_message(constants.__TYPE_INFO, body)
 
@@ -178,7 +186,7 @@ class PybytesLibrary:
     def unpack_message(self, message):
         print_debug(5, 'This is PybytesLibrary.unpack_message(message={})'.format(message))
         header, body = struct.unpack(constants.__PYBYTES_PROTOCOL % (len(message) - 1), message)
-        print_debug(6,'header: {} body: {}'.format(header, body))
+        print_debug(6, 'header: {} body: {}'.format(header, body))
         network_type = (header & constants.__NETWORK_TYPE_MASK) >> 4
         print_debug(6, 'network_type: {}'.format(network_type))
         message_type = header & constants.__TYPE_MASK
