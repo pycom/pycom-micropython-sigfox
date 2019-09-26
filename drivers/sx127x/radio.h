@@ -336,6 +336,10 @@ struct Radio_s
      * \param [IN] enable if true, it enables a public network
      */
     void    ( *SetPublicNetwork )( bool enable );
+    /*!
+     * \brief Manually resets Lora chip.
+     */
+    void    ( *Reset )( void );
 };
 
 /*!
