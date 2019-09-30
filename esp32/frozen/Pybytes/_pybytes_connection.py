@@ -102,12 +102,12 @@ class PybytesConnection:
 
             attempt = 0
 
-            print_debug(3,'WLAN connected? {}'.format(self.wlan.isconnected()))
+            print_debug(3, 'WLAN connected? {}'.format(self.wlan.isconnected()))
 
             while not self.wlan.isconnected() and attempt < 3:
                 attempt += 1
                 print_debug(3, "Wifi connection attempt: {}".format(attempt))
-                print_debug(3,'WLAN connected? {}'.format(self.wlan.isconnected()))
+                print_debug(3, 'WLAN connected? {}'.format(self.wlan.isconnected()))
                 available_nets = None
                 while available_nets is None:
                     try:

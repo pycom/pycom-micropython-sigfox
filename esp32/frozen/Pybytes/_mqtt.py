@@ -27,11 +27,11 @@ import time
 class MQTTClient:
 
     def __init__(
-                self, client_id, server, mqtt_download_topic,
-                pybytes_protocol, port=0, user=None, password=None,
-                keepalive=0, ssl=False,
-                ssl_params={}, reconnect=True
-            ):
+            self, client_id, server, mqtt_download_topic,
+            pybytes_protocol, port=0, user=None, password=None,
+            keepalive=0, ssl=False,
+            ssl_params={}, reconnect=True
+    ):
         if port == 0:
             self.__port = 8883 if ssl else 1883
         else:
@@ -49,12 +49,12 @@ class MQTTClient:
 
     def init_mqtt_core(self):
         self.__mqtt = mqtt_core(
-                self.__clientId,
-                True,
-                mqttConst.MQTTv3_1_1,
-                receive_timeout=500,
-                reconnectMethod=self.reconnect
-            )
+            self.__clientId,
+            True,
+            mqttConst.MQTTv3_1_1,
+            receive_timeout=500,
+            reconnectMethod=self.reconnect
+        )
         self.__mqtt.configEndpoint(self.__server, self.__port)
         self.__mqtt._user = self.__user
         self.__mqtt._password = self.__password

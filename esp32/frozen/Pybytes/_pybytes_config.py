@@ -6,7 +6,7 @@ see the Pycom Licence v1.0 document supplied with this file, or
 available at https://www.pycom.io/opensource/licensing
 '''
 
-import pycom
+import pycom, time
 try:
     from pybytes_debug import print_debug
 except:
@@ -84,7 +84,7 @@ class PybytesConfig:
         except:
             import _urequest as urequest
 
-        import binascii, machine, os, pycom, time
+        import binascii, machine, os
         from uhashlib import sha512
         print('Wifi connection established... activating device!')
         self.__pybytes_activation = None
@@ -110,7 +110,7 @@ class PybytesConfig:
         except:
             import _urequest as urequest
 
-        import binascii, machine, os, pycom, time
+        import binascii, machine, os
         from uhashlib import sha512
         print('Wifi connection established... activating device!')
         self.__pybytes_cli_activation = None
@@ -125,7 +125,7 @@ class PybytesConfig:
             print_debug(2, ex)
 
     def __process_cli_activation(self, filename):
-        import time, json
+        import json
         try:
             if not self.__pybytes_cli_activation.status_code == 200:
                 print_debug(3, 'Activation request returned {}.'.format(self.__pybytes_cli_activation.status_code))
@@ -145,12 +145,11 @@ class PybytesConfig:
 
 
     def __process_activation(self, filename):
-        import time
         try:
             if not self.__pybytes_activation.status_code == 200:
                 print_debug(3, 'Activation request returned {}. Trying again in 10 seconds...'.format(self.__pybytes_activation.status_code))
                 self.__pybytes_activation.close()
-                time.sleep(10)
+                return False
             else:
                 self.__activation2config()
                 self.__pybytes_activation.close()
@@ -349,14 +348,14 @@ class PybytesConfig:
     def smart_config(self, filename='/flash/pybytes_config.json'):
         if self.__read_activation():
             print_debug(2, 'Activation request sent... checking result')
-        if self.__process_activation(filename):
-            return self.__pybytes_config
+        while not self.__process_activation(filename):
+            time.sleep(10)
+        return self.__pybytes_config
 
     def cli_config(self, filename='/flash/pybytes_config.json', activation_info=None, timeout = 60):
         print_debug(99, activation_info)
         print('Please wait while we try to connect to {}'.format(activation_info.get('s')))
         from network import WLAN
-        import time
         wlan = WLAN(mode=WLAN.STA)
         attempt = 0
         known_nets = [((activation_info['s'], activation_info['p']))] # noqa
