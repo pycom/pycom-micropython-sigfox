@@ -346,17 +346,20 @@ static bool lte_check_sim_present(void) {
     lte_push_at_command("AT+CFUN?", LTE_RX_TIMEOUT_MIN_MS);
     if (strstr(modlte_rsp.data, "+CFUN: 0")) {
     	lte_push_at_command("AT+CFUN=4", LTE_RX_TIMEOUT_MAX_MS);
+    	mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
     }
     lte_push_at_command("AT+CPIN?", LTE_RX_TIMEOUT_MAX_MS);
-    if (strstr(modlte_rsp.data, "ERROR")) {
-        lte_push_at_command("AT+CPIN?", LTE_RX_TIMEOUT_MAX_MS);
-        if (strstr(modlte_rsp.data, "ERROR")) {
-            return false;
-        } else {
-            return true;
-        }
+    if (strstr(modlte_rsp.data, "READY")) {
+    	return true;
     } else {
-        return true;
+    	for (int n=0; n < 4; n++) {
+    		mp_hal_delay_ms(1000);
+    		lte_push_at_command("AT+CPIN?", LTE_RX_TIMEOUT_MAX_MS);
+    		if (strstr(modlte_rsp.data, "READY")) {
+    			return true;
+    		}
+    	}
+    	return false;
     }
 }
 
@@ -1158,14 +1161,16 @@ STATIC mp_obj_t lte_iccid(mp_obj_t self_in) {
 	lte_check_init();
 	lte_check_inppp();
 	if (lte_check_sim_present()) {
-		char *pos;
+		char *pos, *iccid;
 		vstr_t vstr;
 		vstr_init_len(&vstr, strlen("AT+SQNCCID?"));
 		strcpy(vstr.buf, "AT+SQNCCID?");
 		lte_send_raw_at(MP_OBJ_NULL, mp_obj_new_str_from_vstr(&mp_type_str, &vstr));
 		if ((pos = strstr(modlte_rsp.data, "SQNCCID:")) && (strlen(pos) > 25)) {
-			vstr_init_len(&vstr, 20);
-			memcpy(vstr.buf, &pos[10], 20);
+			iccid = strchr(pos, '"')+1;
+			pos = strchr(iccid, '"');
+			vstr_init_len(&vstr, strlen(iccid)-strlen(pos));
+			memcpy(vstr.buf, iccid, strlen(iccid)-strlen(pos));
 			return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
 		}
 	} else {
