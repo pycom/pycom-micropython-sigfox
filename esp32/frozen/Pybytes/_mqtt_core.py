@@ -245,10 +245,13 @@ class MQTTCore:
 
         return False
 
-    def disconnect(self):
+    def disconnect(self, force=False):
         pkt = struct.pack('!BB', mqttConst.MSG_DISCONNECT, 0)
-        self._msgHandler.push_on_send_queue(pkt)
-        time.sleep(self._connectdisconnectTimeout)
+        if force:
+            self._msgHandler.priority_send(pkt)
+        else:
+            self._msgHandler.push_on_send_queue(pkt)
+            time.sleep(self._connectdisconnectTimeout)
         self._msgHandler.disconnect()
         return True
 

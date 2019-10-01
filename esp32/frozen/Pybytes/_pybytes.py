@@ -12,26 +12,9 @@ from network import WLAN
 from machine import Timer
 
 try:
-    from pybytes_connection import PybytesConnection
-except:
-    from _pybytes_connection import PybytesConnection
-
-try:
     from pybytes_debug import print_debug
 except:
     from _pybytes_debug import print_debug
-
-try:
-    from pybytes_constants import constants
-except:
-    from _pybytes_constants import constants
-
-try:
-    from pybytes_config import PybytesConfig
-except:
-    from _pybytes_config import PybytesConfig
-
-__DEFAULT_HOST = "mqtt.{}".format(constants.__DEFAULT_DOMAIN)
 
 
 class __PERIODICAL_PIN:
@@ -50,7 +33,10 @@ class __PERIODICAL_PIN:
 
 class Pybytes:
 
-    def __init__(self, config, activation=False):
+    WAKEUP_ALL_LOW = const(0)
+    WAKEUP_ANY_HIGH = const(1)
+
+    def __init__(self, config, activation=False, autoconnect=False):
         self.__frozen = globals().get('__name__') == '_pybytes'
         self.__activation = activation
         self.__custom_message_callback = None
@@ -62,21 +48,15 @@ class Pybytes:
         if not self.__activation:
             self.__conf = config
             self.__check_dump_ca()
+            try:
+                from pybytes_connection import PybytesConnection
+            except:
+                from _pybytes_connection import PybytesConnection
             self.__pybytes_connection = PybytesConnection(self.__conf, self.__recv_message)
 
-            # START code from the old boot.py
-            import machine
-            import micropython
-            from binascii import hexlify
-
-            wmac = hexlify(machine.unique_id()).decode('ascii')
-            print("WMAC: %s" % wmac.upper())
-            try:
-                print("Firmware: %s\nPybytes: %s" % (os.uname().release, os.uname().pybytes))
-            except:
-                print("Firmware: %s" % os.uname().release)
-            # print(micropython.mem_info())
-            # STOP code from the old boot.py
+            self.start(autoconnect)
+            if autoconnect:
+                self.print_cfg_msg()
         else:
             if (hasattr(pycom, 'smart_config_on_boot') and pycom.smart_config_on_boot()):
                 self.smart_config(True)
@@ -125,9 +105,9 @@ class Pybytes:
         self.__check_init()
         return self.__pybytes_connection.connect_sigfox()
 
-    def disconnect(self):
+    def disconnect(self, force=True):
         self.__check_init()
-        self.__pybytes_connection.disconnect()
+        self.__pybytes_connection.disconnect(force=force)
 
     def send_custom_message(self, persistent, message_type, message):
         self.__check_init()
@@ -234,6 +214,10 @@ class Pybytes:
             lora_joining_timeout = 15  # seconds to wait for LoRa joining
             if self.__config_updated:
                 if self.__check_config():
+                    try:
+                        from pybytes_connection import PybytesConnection
+                    except:
+                        from _pybytes_connection import PybytesConnection
                     self.__pybytes_connection = PybytesConnection(self.__conf, self.__recv_message)
                     self.__config_updated = False
             self.__check_init()
@@ -388,15 +372,28 @@ class Pybytes:
         print('Please reset your module to apply the new settings.')
 
     def enable_lte(self, carrier=None, cid=None, band=None, apn=None, type=None, reset=None, fallback=False):
+        nwpref = None
         self.__check_init()
         self.set_config('lte', {"carrier": carrier, "cid": cid, "band": band, "apn": apn, "type": type, "reset": reset }, permanent=False)
         if fallback:
-            self.set_config('network_preferences', self.__conf.get('network_preferences', []).append('lte'), reconnect=True)
+            nwpref = self.__conf.get('network_preferences', [])
+            nwpref.extend(['lte'])
         else:
             nwpref = ['lte']
             nwpref.extend(self.__conf.get('network_preferences', []))
+        print_debug(1, 'nwpref: {}'.format(nwpref))
+        if nwpref is not None:
             self.set_config('network_preferences', nwpref, reconnect=True)
 
+    def deepsleep(self, ms, pins=None, mode=None, enable_pull=None):
+        self.__check_init()
+        import machine
+        if pins is not None:
+            if mode is None or type(mode) != int:
+                raise ValueError('You must specify a mode as integer!')
+            machine.pin_sleep_wakeup(pins, mode, enable_pull)
+        self.disconnect()
+        machine.deepsleep(ms)
 
     def dump_ca(self, ca_file='/flash/cert/pycom-ca.pem'):
         try:
@@ -412,7 +409,7 @@ class Pybytes:
             print("Error creating {}\nException: {}".format(file, e))
 
 
-    def start(self):
+    def start(self, autoconnect=True):
         if self.__conf is not None:
             self.__check_dump_ca()
             self.__config_updated = True
@@ -428,7 +425,10 @@ class Pybytes:
                 print("Firmware: %s\nPybytes: %s" % (os.uname().release, os.uname().pybytes))
             except:
                 print("Firmware: %s" % os.uname().release)
-            self.connect()
+            if autoconnect:
+                self.connect()
+
+
 
     def activate(self, activation_string):
         self.__smart_config = False
@@ -439,8 +439,16 @@ class Pybytes:
         except Exception as ex:
             print('Error decoding activation string!')
             print(ex)
-        self.__conf = PybytesConfig().cli_config(activation_info=jstring)
-        self.start()
+        try:
+            from pybytes_config import PybytesConfig
+        except:
+            from _pybytes_config import PybytesConfig
+        try:
+            self.__conf = PybytesConfig().cli_config(activation_info=jstring)
+            self.start()
+        except Exception as ex:
+            print('Activation failed! Please try again...')
+            print_debug(1, ex)
 
     if hasattr(pycom, 'smart_config_on_boot'):
         def smart_config(self, status=None):
@@ -467,10 +475,19 @@ class Pybytes:
                 print_debug(99, 'Restarting smartConfig()')
                 wl.smartConfig()
             if event == WLAN.SMART_CONF_DONE and self.__smart_config:
+                try:
+                    from pybytes_config import PybytesConfig
+                except:
+                    from _pybytes_config import PybytesConfig
                 print_debug(99, 'smartConfig done... activating')
-                self.__conf = PybytesConfig().smart_config()
-                self.__smart_config = False
-                self.start()
+                try:
+                    self.__conf = PybytesConfig().smart_config()
+                    self.__smart_config = False
+                    self.start()
+                except Exception as ex:
+                    print('Smart Config failed... restarting!')
+                    self.__smart_config = True
+                    self.__smart_config_setup()
 
         def __smart_config_setup(self):
             wl = WLAN(mode=WLAN.STA)
@@ -485,6 +502,10 @@ class Pybytes:
                 except:
                     pass
                 if wl.isconnected() and self.__smart_config:
+                    try:
+                        from pybytes_config import PybytesConfig
+                    except:
+                        from _pybytes_config import PybytesConfig
                     self.__conf = PybytesConfig().smart_config()
                     self.__smart_config = False
                     self.start()

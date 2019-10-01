@@ -281,6 +281,8 @@ class PybytesProtocol:
 
                 elif (command == constants.__COMMAND_CUSTOM_METHOD):
                     if (pin_number == constants.__TERMINAL_PIN and self.__terminal_enabled): # noqa
+                        original_dupterm = os.dupterm()
+                        os.dupterm(self.__terminal)
                         self.__terminal.message_sent_from_pybytes_start()
                         terminal_command = body[2: len(body)]
                         terminal_command = terminal_command.decode("utf-8")
@@ -298,6 +300,7 @@ class PybytesProtocol:
                             except Exception as e:
                                 print('Exception:\n  ' + repr(e))
                         self.__terminal.message_sent_from_pybytes_end()
+                        os.dupterm(original_dupterm)
                         return
 
                     if (self.__custom_methods[pin_number] is not None):
@@ -493,7 +496,7 @@ class PybytesProtocol:
 
     def enable_terminal(self):
         self.__terminal_enabled = True
-        os.dupterm(self.__terminal)
+        #os.dupterm(self.__terminal)
 
     def __send_pybytes_message(self, command, pin_number, value):
         self.__send_message(

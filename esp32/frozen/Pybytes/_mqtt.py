@@ -138,5 +138,5 @@ class MQTTClient:
             else:
                 time.sleep(10)
 
-    def disconnect(self):
-        self.__mqtt.disconnect()
+    def disconnect(self, force=False):
+        self.__mqtt.disconnect(force=force)

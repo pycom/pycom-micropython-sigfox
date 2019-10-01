@@ -406,7 +406,7 @@ class PybytesConnection:
             return False
 
     # COMMON
-    def disconnect(self, keep_wifi=False):
+    def disconnect(self, keep_wifi=False, force=False):
 
         if self.__wifi_lte_watchdog is not None:
             self.__wifi_lte_watchdog = WDT(timeout=constants.__WDT_MAX_TIMEOUT_MILLISECONDS)
@@ -425,7 +425,7 @@ class PybytesConnection:
         if (constants.__CONNECTION_STATUS_CONNECTED_MQTT_WIFI <= self.__connection_status <= constants.__CONNECTION_STATUS_CONNECTED_MQTT_LTE): # noqa
             print_debug(1, 'MQTT over WIFI||LTE... disconnecting MQTT')
             try:
-                self.__connection.disconnect()
+                self.__connection.disconnect(force=force)
                 self.__connection_status = constants.__CONNECTION_STATUS_DISCONNECTED # noqa
             except Exception as e:
                 print("Error disconnecting: {}".format(e))

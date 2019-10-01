@@ -27,17 +27,14 @@ configuration before connecting to Pybytes manually using pybytes.connect()
 if 'pybytes_config' not in globals().keys():
     try:
         from pybytes_config import PybytesConfig
-        frozen = False
     except:
         from _pybytes_config import PybytesConfig
-        frozen = True
     try:
         from pybytes import Pybytes
     except:
-        frozen = True
+        from _pybytes import Pybytes
 
     pybytes_config = PybytesConfig().read_config()
-
 
 if (not pybytes_config.get('pybytes_autostart', True)) and pybytes_config.get('cfg_msg') is not None:
     print(pybytes_config.get('cfg_msg'))
@@ -46,30 +43,7 @@ if (not pybytes_config.get('pybytes_autostart', True)) and pybytes_config.get('c
 else:
     # Load Pybytes if it is not already loaded
     if 'pybytes' not in globals().keys():
-        if frozen:
-            try:
-                from _pybytes import Pybytes
-            except:
-                raise ImportError("Unable to load Pybytes. Please check your code...")
-
-        pybytes = Pybytes(pybytes_config, pybytes_config.get('cfg_msg') is None)
-        if pybytes_config.get('cfg_msg') is not None:
-            pybytes.print_cfg_msg()
-            pybytes.connect()
-
-    if 'pybytes' in globals().keys() and pybytes.is_connected():
-
-        if not frozen:
-            print("Now starting user code in main.py")
-        del frozen
-        '''
-        If Pybytes isn't connected at this time, it means you either deliberately
-        disabled Pybytes auto-start, or something went wrong.
-        This could be reading the configuration or establishing a connection.
-
-        To connect to Pybytes manually when auto-start is disabled, please call:
-        pybytes.connect()
-        '''
+        pybytes = Pybytes(pybytes_config, pybytes_config.get('cfg_msg') is None, True)
 
         # Please put your USER code below this line
 
