@@ -44,8 +44,8 @@ class OTA():
         current_version = self.get_current_version()
         sysname = os.uname().sysname
         wmac = hexlify(machine.unique_id()).decode('ascii')
-        request_template = "manifest.json?current_ver={}&sysname={}&wmac={}"
-        req = request_template.format(current_version, sysname, wmac)
+        request_template = "manifest.json?current_ver={}&sysname={}&wmac={}&ota_slot={}"
+        req = request_template.format(current_version, sysname, wmac, hex(pycom.ota_slot()))
         manifest_data = self.get_data(req).decode()
         manifest = ujson.loads(manifest_data)
         gc.collect()
