@@ -85,7 +85,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define PKT_PULL_ACK    4
 #define PKT_TX_ACK      5
 
-#define NB_PKT_MAX      15 /* max number of packets per fetch/send cycle */
+#define NB_PKT_MAX      2 /* max number of packets per fetch/send cycle */
 
 #define MIN_LORA_PREAMB 6 /* minimum Lora preamble length for this application */
 #define STD_LORA_PREAMB 8
@@ -99,7 +99,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #define COM_PATH_DEFAULT "/dev/ttyACM0"
 
-#define LORA_GW_STACK_SIZE                                             (8192)
+#define LORA_GW_STACK_SIZE                                             (10000)
 #define LORA_GW_PRIORITY                                               (6)
 
 TaskHandle_t xLoraGwTaskHndl;
@@ -850,11 +850,6 @@ void logger(const char *msg) {
 }
 
 void TASK_lora_gw(void *pvParameters) {
-
-    printf("Start lgw_connect\n");
-    lgw_connect();
-    printf("lgw_connect done !!!\n");
-    mp_hal_delay_us(3000000);
 
     int i; /* loop variable and temporary variable for return value */
     int x;
