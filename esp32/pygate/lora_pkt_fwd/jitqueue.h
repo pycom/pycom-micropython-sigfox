@@ -24,7 +24,7 @@ Maintainer: Michael Coracin
 #include <stdbool.h>    /* bool type */
 #include <sys/time.h>   /* timeval */
 
-#include "../concentrator/loragw_hal_esp.h"
+#include "loragw_hal.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */

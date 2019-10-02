@@ -12,6 +12,7 @@
 #include "esp32_mphal.h"
 #include "loragw_hal_esp.h"
 #include "loragw_reg_esp.h"
+#include <string.h>
 
 
 #define DELAY_COM_INIT                          (1000)
@@ -86,6 +87,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 BufToHost[2] = 1;
                 BufToHost[3] = ACK_OK;
                 BufToHost[4] = val;
+                //printf("[cmdManager]: Adress Read: %X , valueDec: %d, valueHex: %X\n", adressreg, BufToHost[4], BufToHost[4]);
                 return(CMD_OK);
             }
         case 's': { // cmd Read burst register first
@@ -454,6 +456,18 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
 
 void cmd_manager_GetCmdToHost (uint8_t **bufToHost) {
     *bufToHost = BufToHost;
+}
+
+size_t cmd_manager_GetCmdToHost_byte (uint32_t index, uint8_t *bufToHost, size_t len) {
+    if(index < (CMD_DATA_TX_SIZE + CMD_HEADER_TX_SIZE))
+    {
+        memcpy(bufToHost, &BufToHost[index], len);
+        return len;
+    }
+    else
+    {
+        return -1;
+    }
 }
 
 static bool cmd_manager_CheckCmd(char id) {

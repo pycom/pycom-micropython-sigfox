@@ -19,7 +19,7 @@
 #define PAGE_ADDR        0x00
 #define PAGE_MASK        0x03
 
-const struct lgw_reg_s loregs[LGW_TOTALREGS] = {
+static const struct lgw_reg_s loregs[LGW_TOTALREGS] = {
     {-1, 0, 0, 0, 2, 0, 0},   /* PAGE_REG */
     {-1, 0, 7, 0, 1, 0, 0},   /* SOFT_RESET */
     {-1, 1, 0, 0, 8, 1, 103}, /* VERSION */
@@ -356,7 +356,7 @@ static int lgw_regpage = -1; /*! keep the value of the register page selected */
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 
-int page_switch(uint8_t target) {
+static int page_switch(uint8_t target) {
     lgw_regpage = PAGE_MASK & target;
     sx1308_spiWrite(PAGE_ADDR, (uint8_t)lgw_regpage);
     return LGW_REG_SUCCESS;

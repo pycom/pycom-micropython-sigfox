@@ -20,6 +20,7 @@ APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
 APP_INC += -Ipygate/concentrator
+APP_INC += -Ipygate/hal/include
 APP_INC += -Ipygate/lora_pkt_fwd
 APP_INC += -Ilittlefs
 APP_INC += -I$(BUILD)
@@ -253,6 +254,13 @@ APP_PYGATE_SRC_C = $(addprefix pygate/,\
 	concentrator/loragw_reg_esp.c \
 	concentrator/loragw_hal_esp.c \
 	concentrator/cmd_manager.c \
+	hal/loragw_aux.c \
+	hal/loragw_mcu.c \
+	hal/loragw_com_esp.c \
+	hal/loragw_com.c \
+	hal/loragw_hal.c \
+	hal/loragw_radio.c \
+	hal/loragw_reg.c \
 	lora_pkt_fwd/base64.c \
 	lora_pkt_fwd/jitqueue.c \
 	lora_pkt_fwd/lora_pkt_fwd.c \

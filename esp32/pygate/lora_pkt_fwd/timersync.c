@@ -23,9 +23,8 @@ Maintainer: Michael Coracin
 
 #include "trace.h"
 #include "timersync.h"
-
-#include "../concentrator/loragw_hal_esp.h"
-#include "../concentrator/loragw_reg_esp.h"
+#include "loragw_hal.h"
+#include "loragw_reg.h"
 #include "esp32_mphal.h"
 //#include "loragw_aux.h"
 
@@ -98,7 +97,7 @@ void thread_timersync(void) {
         gettimeofday(&unix_timeval, NULL);
 
         /* Get current concentrator counter value (1MHz) */
-        esp_lgw_get_trigcnt(&sx1301_timecount);
+        lgw_get_trigcnt(&sx1301_timecount);
 
         concentrator_timeval.tv_sec = sx1301_timecount / 1000000UL;
         concentrator_timeval.tv_usec = sx1301_timecount - (concentrator_timeval.tv_sec * 1000000UL);

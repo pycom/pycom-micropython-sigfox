@@ -75,11 +75,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LGW_RF_RX_BANDWIDTH_250KHZ  1000000     /* for 250KHz channels */
 #define LGW_RF_RX_BANDWIDTH_500KHZ  1100000     /* for 500KHz channels */
 /* constant arrays defining hardware capability */
-const uint8_t ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
+const uint8_t esp_ifmod_config[LGW_IF_CHAIN_NB] = LGW_IFMODEM_CONFIG;
 
 
 /* Version string, used to identify the library version/options once compiled */
-const char lgw_version_string[] = "Version: 0.1";// LIBLORAGW_VERSION ";";
+const char esp_lgw_version_string[] = "Version: 0.1";// LIBLORAGW_VERSION ";";
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
@@ -140,12 +140,12 @@ static int8_t cal_offset_b_q[16]; /* TX Q offset for radio B */
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
-void lgw_constant_adjust(void);
-int32_t lgw_sf_getval(int x);
-int32_t lgw_bw_getval(int x);
-int reset_firmware(uint8_t target);
-void calibration_save(void);
-void calibration_reload(void);
+static void lgw_constant_adjust(void);
+static int32_t lgw_sf_getval(int x);
+static int32_t lgw_bw_getval(int x);
+static int reset_firmware(uint8_t target);
+static void calibration_save(void);
+static void calibration_reload(void);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
@@ -411,7 +411,7 @@ int esp_lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s *conf) {
     }
 
     /* check 'general' parameters */
-    if (ifmod_config[if_chain] == IF_UNDEFINED) {
+    if (esp_ifmod_config[if_chain] == IF_UNDEFINED) {
         DEBUG_PRINTF("ERROR: IF CHAIN %d NOT CONFIGURABLE\n", if_chain);
     }
     if (conf->rf_chain >= LGW_RF_CHAIN_NB) {
@@ -442,7 +442,7 @@ int esp_lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s *conf) {
 
     /* check parameters according to the type of IF chain + modem,
     fill default if necessary, and commit configuration if everything is OK */
-    switch (ifmod_config[if_chain]) {
+    switch (esp_ifmod_config[if_chain]) {
         case IF_LORA_STD:
             /* fill default parameters if needed */
             if (conf->bandwidth == BW_UNDEFINED) {
@@ -898,7 +898,7 @@ int esp_lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
             DEBUG_PRINTF("WARNING: %u NOT A VALID IF_CHAIN NUMBER, ABORTING\n", p->if_chain);
             break;
         }
-        ifmod = ifmod_config[p->if_chain];
+        ifmod = esp_ifmod_config[p->if_chain];
         DEBUG_PRINTF("[%d %d]\n", p->if_chain, ifmod);
 
         p->rf_chain = (uint8_t)if_rf_chain[p->if_chain];
@@ -1444,7 +1444,7 @@ int esp_lgw_get_trigcnt(uint32_t* trig_cnt_us) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 const char* esp_lgw_version_info() {
-    return lgw_version_string;
+    return esp_lgw_version_string;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */

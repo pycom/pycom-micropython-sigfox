@@ -155,7 +155,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, struct timeval *time, st
         case JIT_PKT_TYPE_DOWNLINK_CLASS_B:
         case JIT_PKT_TYPE_DOWNLINK_CLASS_C:
             packet_pre_delay = TX_START_DELAY + TX_JIT_DELAY;
-            packet_post_delay = esp_lgw_time_on_air(packet) * 1000UL; /* in us */
+            packet_post_delay = lgw_time_on_air(packet) * 1000UL; /* in us */
             break;
         case JIT_PKT_TYPE_BEACON:
             /* As defined in LoRaWAN spec */

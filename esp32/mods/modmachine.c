@@ -182,7 +182,7 @@ STATIC mp_obj_t machine_main(mp_obj_t main) {
 MP_DEFINE_CONST_FUN_OBJ_1(machine_main_obj, machine_main);
 
 STATIC mp_obj_t machine_pygate_init (mp_obj_t global_conf) {
-    //lgw_connect();
+    esp_lgw_connect();
 
     mp_buffer_info_t bufinfo;
     mp_get_buffer_raise(global_conf, &bufinfo, MP_BUFFER_READ);
