@@ -250,8 +250,8 @@ APP_SX1308_SRC_C = $(addprefix drivers/sx1308/,\
 	)
 
 APP_PYGATE_SRC_C = $(addprefix pygate/,\
-	concentrator/loragw_reg.c \
-	concentrator/loragw_hal.c \
+	concentrator/loragw_reg_esp.c \
+	concentrator/loragw_hal_esp.c \
 	concentrator/cmd_manager.c \
 	lora_pkt_fwd/base64.c \
 	lora_pkt_fwd/jitqueue.c \

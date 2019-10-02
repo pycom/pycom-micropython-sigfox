@@ -21,10 +21,11 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>      /* printf fprintf */
 #include <string.h>     /* memcpy */
 #include <math.h>       /* pow, cell */
-#include "loragw_reg.h"
-#include "loragw_hal.h"
-#include "loragw_radio.h"
 #include "esp32_mphal.h"
+#include "loragw_hal_esp.h"
+
+#include "loragw_radio_esp.h"
+#include "loragw_reg_esp.h"
 #include "sx1308.h"
 
 /* -------------------------------------------------------------------------- */
@@ -166,14 +167,14 @@ int reset_firmware(uint8_t target) {
     }
 
     /* reset the targeted MCU */
-    lgw_reg_w(reg_rst, 1);
+    esp_lgw_reg_w(reg_rst, 1);
 
     /* set mux to access MCU program RAM and set address to 0 */
-    lgw_reg_w(reg_sel, 0);
-    lgw_reg_w(LGW_MCU_PROM_ADDR, 0);
+    esp_lgw_reg_w(reg_sel, 0);
+    esp_lgw_reg_w(LGW_MCU_PROM_ADDR, 0);
 
     /* give back control of the MCU program ram to the MCU */
-    lgw_reg_w(reg_sel, 1);
+    esp_lgw_reg_w(reg_sel, 1);
 
     return 0;
 }
@@ -189,14 +190,14 @@ void lgw_constant_adjust(void) {
     // lgw_reg_w(LGW_RX_EDGE_SELECT,0); /* default 0 */
     // lgw_reg_w(LGW_MBWSSF_MODEM_INVERT_IQ,0); /* default 0 */
     // lgw_reg_w(LGW_DC_NOTCH_EN,1); /* default 1 */
-    lgw_reg_w(LGW_RSSI_BB_FILTER_ALPHA, 6); /* default 7 */
-    lgw_reg_w(LGW_RSSI_DEC_FILTER_ALPHA, 7); /* default 5 */
-    lgw_reg_w(LGW_RSSI_CHANN_FILTER_ALPHA, 7); /* default 8 */
-    lgw_reg_w(LGW_RSSI_BB_DEFAULT_VALUE, 23); /* default 32 */
-    lgw_reg_w(LGW_RSSI_CHANN_DEFAULT_VALUE, 85); /* default 100 */
-    lgw_reg_w(LGW_RSSI_DEC_DEFAULT_VALUE, 66); /* default 100 */
-    lgw_reg_w(LGW_DEC_GAIN_OFFSET, 7); /* default 8 */
-    lgw_reg_w(LGW_CHAN_GAIN_OFFSET, 6); /* default 7 */
+    esp_lgw_reg_w(LGW_RSSI_BB_FILTER_ALPHA, 6); /* default 7 */
+    esp_lgw_reg_w(LGW_RSSI_DEC_FILTER_ALPHA, 7); /* default 5 */
+    esp_lgw_reg_w(LGW_RSSI_CHANN_FILTER_ALPHA, 7); /* default 8 */
+    esp_lgw_reg_w(LGW_RSSI_BB_DEFAULT_VALUE, 23); /* default 32 */
+    esp_lgw_reg_w(LGW_RSSI_CHANN_DEFAULT_VALUE, 85); /* default 100 */
+    esp_lgw_reg_w(LGW_RSSI_DEC_DEFAULT_VALUE, 66); /* default 100 */
+    esp_lgw_reg_w(LGW_DEC_GAIN_OFFSET, 7); /* default 8 */
+    esp_lgw_reg_w(LGW_CHAN_GAIN_OFFSET, 6); /* default 7 */
 
     /* Correlator setup */
     // lgw_reg_w(LGW_CORR_DETECT_EN,126); /* default 126 */
@@ -223,13 +224,13 @@ void lgw_constant_adjust(void) {
     // lgw_reg_w(LGW_FRAME_SYNCH_GAIN,1); /* default 1 */
     // lgw_reg_w(LGW_SYNCH_DETECT_TH,1); /* default 1 */
     // lgw_reg_w(LGW_ZERO_PAD,0); /* default 0 */
-    lgw_reg_w(LGW_SNR_AVG_CST, 3); /* default 2 */
+    esp_lgw_reg_w(LGW_SNR_AVG_CST, 3); /* default 2 */
     if (lorawan_public) { /* LoRa network */
-        lgw_reg_w(LGW_FRAME_SYNCH_PEAK1_POS, 3); /* default 1 */
-        lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS, 4); /* default 2 */
+        esp_lgw_reg_w(LGW_FRAME_SYNCH_PEAK1_POS, 3); /* default 1 */
+        esp_lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS, 4); /* default 2 */
     } else { /* private network */
-        lgw_reg_w(LGW_FRAME_SYNCH_PEAK1_POS, 1); /* default 1 */
-        lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS, 2); /* default 2 */
+        esp_lgw_reg_w(LGW_FRAME_SYNCH_PEAK1_POS, 1); /* default 1 */
+        esp_lgw_reg_w(LGW_FRAME_SYNCH_PEAK2_POS, 2); /* default 2 */
     }
 
     // lgw_reg_w(LGW_PREAMBLE_FINE_TIMING_GAIN,1); /* default 1 */
@@ -247,57 +248,57 @@ void lgw_constant_adjust(void) {
     // lgw_reg_w(LGW_MBWSSF_SYNCH_DETECT_TH,1); /* default 1 */
     // lgw_reg_w(LGW_MBWSSF_ZERO_PAD,0); /* default 0 */
     if (lorawan_public) { /* LoRa network */
-        lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS, 3); /* default 1 */
-        lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS, 4); /* default 2 */
+        esp_lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS, 3); /* default 1 */
+        esp_lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS, 4); /* default 2 */
     } else {
-        lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS, 1); /* default 1 */
-        lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS, 2); /* default 2 */
+        esp_lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK1_POS, 1); /* default 1 */
+        esp_lgw_reg_w(LGW_MBWSSF_FRAME_SYNCH_PEAK2_POS, 2); /* default 2 */
     }
     // lgw_reg_w(LGW_MBWSSF_ONLY_CRC_EN,1); /* default 1 */
     // lgw_reg_w(LGW_MBWSSF_PAYLOAD_FINE_TIMING_GAIN,2); /* default 2 */
     // lgw_reg_w(LGW_MBWSSF_PREAMBLE_FINE_TIMING_GAIN,1); /* default 1 */
     // lgw_reg_w(LGW_MBWSSF_TRACKING_INTEGRAL,0); /* default 0 */
     // lgw_reg_w(LGW_MBWSSF_AGC_FREEZE_ON_DETECT,1); /* default 1 */
-    lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_RDX4, 1); /* default 0 */
-    lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_SF12_RDX4, 4094); /* default 4092 */
-    lgw_reg_w(LGW_CORR_MAC_GAIN, 7); /* default 5 */
+    esp_lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_RDX4, 1); /* default 0 */
+    esp_lgw_reg_w(LGW_ADJUST_MODEM_START_OFFSET_SF12_RDX4, 4094); /* default 4092 */
+    esp_lgw_reg_w(LGW_CORR_MAC_GAIN, 7); /* default 5 */
 
 
 
     /* FSK datapath setup */
-    lgw_reg_w(LGW_FSK_RX_INVERT, 1); /* default 0 */
-    lgw_reg_w(LGW_FSK_MODEM_INVERT_IQ, 1); /* default 0 */
+    esp_lgw_reg_w(LGW_FSK_RX_INVERT, 1); /* default 0 */
+    esp_lgw_reg_w(LGW_FSK_MODEM_INVERT_IQ, 1); /* default 0 */
 
     /* FSK demodulator setup */
-    lgw_reg_w(LGW_FSK_RSSI_LENGTH, 4); /* default 0 */
-    lgw_reg_w(LGW_FSK_PKT_MODE, 1); /* variable length, default 0 */
-    lgw_reg_w(LGW_FSK_CRC_EN, 1); /* default 0 */
-    lgw_reg_w(LGW_FSK_DCFREE_ENC, 2); /* default 0 */
+    esp_lgw_reg_w(LGW_FSK_RSSI_LENGTH, 4); /* default 0 */
+    esp_lgw_reg_w(LGW_FSK_PKT_MODE, 1); /* variable length, default 0 */
+    esp_lgw_reg_w(LGW_FSK_CRC_EN, 1); /* default 0 */
+    esp_lgw_reg_w(LGW_FSK_DCFREE_ENC, 2); /* default 0 */
     // lgw_reg_w(LGW_FSK_CRC_IBM,0); /* default 0 */
-    lgw_reg_w(LGW_FSK_ERROR_OSR_TOL, 10); /* default 0 */
-    lgw_reg_w(LGW_FSK_PKT_LENGTH, 255); /* max packet length in variable length mode */
+    esp_lgw_reg_w(LGW_FSK_ERROR_OSR_TOL, 10); /* default 0 */
+    esp_lgw_reg_w(LGW_FSK_PKT_LENGTH, 255); /* max packet length in variable length mode */
     // lgw_reg_w(LGW_FSK_NODE_ADRS,0); /* default 0 */
     // lgw_reg_w(LGW_FSK_BROADCAST,0); /* default 0 */
     // lgw_reg_w(LGW_FSK_AUTO_AFC_ON,0); /* default 0 */
-    lgw_reg_w(LGW_FSK_PATTERN_TIMEOUT_CFG, 128); /* sync timeout (allow 8 bytes preamble + 8 bytes sync word, default 0 */
+    esp_lgw_reg_w(LGW_FSK_PATTERN_TIMEOUT_CFG, 128); /* sync timeout (allow 8 bytes preamble + 8 bytes sync word, default 0 */
 
     /* TX general parameters */
-    lgw_reg_w(LGW_TX_START_DELAY, TX_START_DELAY); /* default 0 */
+    esp_lgw_reg_w(LGW_TX_START_DELAY, TX_START_DELAY); /* default 0 */
 
     /* TX LoRa */
     // lgw_reg_w(LGW_TX_MODE,0); /* default 0 */
-    lgw_reg_w(LGW_TX_SWAP_IQ, 1); /* "normal" polarity; default 0 */
+    esp_lgw_reg_w(LGW_TX_SWAP_IQ, 1); /* "normal" polarity; default 0 */
     if (lorawan_public) { /* LoRa network */
-        lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK1_POS, 3); /* default 1 */
-        lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK2_POS, 4); /* default 2 */
+        esp_lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK1_POS, 3); /* default 1 */
+        esp_lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK2_POS, 4); /* default 2 */
     } else { /* Private network */
-        lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK1_POS, 1); /* default 1 */
-        lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK2_POS, 2); /* default 2 */
+        esp_lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK1_POS, 1); /* default 1 */
+        esp_lgw_reg_w(LGW_TX_FRAME_SYNCH_PEAK2_POS, 2); /* default 2 */
     }
 
     /* TX FSK */
     // lgw_reg_w(LGW_FSK_TX_GAUSSIAN_EN,1); /* default 1 */
-    lgw_reg_w(LGW_FSK_TX_GAUSSIAN_SELECT_BT, 2); /* Gaussian filter always on TX, default 0 */
+    esp_lgw_reg_w(LGW_FSK_TX_GAUSSIAN_SELECT_BT, 2); /* Gaussian filter always on TX, default 0 */
     // lgw_reg_w(LGW_FSK_TX_PATTERN_EN,1); /* default 1 */
     // lgw_reg_w(LGW_FSK_TX_PREAMBLE_SEQ,0); /* default 0 */
 
@@ -351,7 +352,7 @@ int32_t lgw_sf_getval(int x) {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
-int lgw_board_setconf(struct lgw_conf_board_s *conf) {
+int esp_lgw_board_setconf(struct lgw_conf_board_s *conf) {
 
     /* set internal config according to parameters */
     lorawan_public = conf->lorawan_public;
@@ -363,7 +364,7 @@ int lgw_board_setconf(struct lgw_conf_board_s *conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s *conf) {
+int esp_lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s *conf) {
 
     /* check input range (segfault prevention) */
     if (rf_chain >= LGW_RF_CHAIN_NB) {
@@ -391,7 +392,7 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s *conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s *conf) {
+int esp_lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s *conf) {
     int32_t bw_hz;
     uint32_t rf_rx_bandwidth;
 
@@ -540,7 +541,7 @@ int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s *conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
+int esp_lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
     int i;
 
     /* Check LUT size */
@@ -583,7 +584,7 @@ int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_start(void) {
+int esp_lgw_start(void) {
     int i;
     uint32_t x;
     uint8_t radio_select;
@@ -594,15 +595,15 @@ int lgw_start(void) {
     int DELAYSTART = 1;
 
     /* Enable clocks */
-    lgw_reg_w(LGW_GLOBAL_EN, 1);
-    lgw_reg_w(LGW_CLK32M_EN, 1);
+    esp_lgw_reg_w(LGW_GLOBAL_EN, 1);
+    esp_lgw_reg_w(LGW_CLK32M_EN, 1);
 
     /* Compute counter offset to be applied to SX1308 internal counter on receive and send */
     SX1308.offtmstp = sx1308_timer_read_us() - SX1308.offtmstpref;
 
     /* Set all GPIOs as output RXON/TXON*/
-    lgw_reg_w(LGW_GPIO_MODE, 31);
-    lgw_reg_w(LGW_GPIO_SELECT_OUTPUT, 0);
+    esp_lgw_reg_w(LGW_GPIO_MODE, 31);
+    esp_lgw_reg_w(LGW_GPIO_SELECT_OUTPUT, 0);
 
     /* select calibration command */
     calibration_reload();
@@ -621,13 +622,13 @@ int lgw_start(void) {
     float ftemp = (4096 * 2) / (rf_rx_freq[0] / 1000000);
     x = (uint32_t)ftemp; /* dividend: (4*2048*1000000) >> 1, rescaled to avoid 32b overflow */
     x = (x > 63) ? 63 : x; /* saturation */
-    lgw_reg_w(LGW_FREQ_TO_TIME_DRIFT, x); /* default 9 */
+    esp_lgw_reg_w(LGW_FREQ_TO_TIME_DRIFT, x); /* default 9 */
 
     //ftemp=(409600 / (rf_rx_freq[0] >> 3))*10000; /* dividend: (16*2048*1000000) >> 3, rescaled to avoid 32b overflow */
     ftemp = (4096 * 8) / (rf_rx_freq[0] / 1000000);
     x = (uint32_t)ftemp;
     x = (x > 63) ? 63 : x; /* saturation */
-    lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_DRIFT, x); /* default 36 */
+    esp_lgw_reg_w(LGW_MBWSSF_FREQ_TO_TIME_DRIFT, x); /* default 36 */
 
     /* configure LoRa 'multi' demodulators aka. LoRa 'sensor' channels (IF0-3) */
     radio_select = 0; /* IF mapping to radio A/B (per bit, 0=A, 1=B) */
@@ -640,38 +641,38 @@ int lgw_start(void) {
     will be loaded in LGW_RADIO_SELECT at the end of start procedure.
     */
 
-    lgw_reg_w(LGW_IF_FREQ_0, IF_HZ_TO_REG(if_freq[0])); /* default -384 */
-    lgw_reg_w(LGW_IF_FREQ_1, IF_HZ_TO_REG(if_freq[1])); /* default -128 */
-    lgw_reg_w(LGW_IF_FREQ_2, IF_HZ_TO_REG(if_freq[2])); /* default 128 */
-    lgw_reg_w(LGW_IF_FREQ_3, IF_HZ_TO_REG(if_freq[3])); /* default 384 */
-    lgw_reg_w(LGW_IF_FREQ_4, IF_HZ_TO_REG(if_freq[4])); /* default -384 */
-    lgw_reg_w(LGW_IF_FREQ_5, IF_HZ_TO_REG(if_freq[5])); /* default -128 */
-    lgw_reg_w(LGW_IF_FREQ_6, IF_HZ_TO_REG(if_freq[6])); /* default 128 */
-    lgw_reg_w(LGW_IF_FREQ_7, IF_HZ_TO_REG(if_freq[7])); /* default 384 */
-    lgw_reg_w(LGW_CORR0_DETECT_EN, (if_enable[0] == true) ? lora_multi_sfmask[0] : 0); /* default 0 */
-    lgw_reg_w(LGW_CORR1_DETECT_EN, (if_enable[1] == true) ? lora_multi_sfmask[1] : 0); /* default 0 */
-    lgw_reg_w(LGW_CORR2_DETECT_EN, (if_enable[2] == true) ? lora_multi_sfmask[2] : 0); /* default 0 */
-    lgw_reg_w(LGW_CORR3_DETECT_EN, (if_enable[3] == true) ? lora_multi_sfmask[3] : 0); /* default 0 */
-    lgw_reg_w(LGW_CORR4_DETECT_EN, (if_enable[4] == true) ? lora_multi_sfmask[4] : 0); /* default 0 */
-    lgw_reg_w(LGW_CORR5_DETECT_EN, (if_enable[5] == true) ? lora_multi_sfmask[5] : 0); /* default 0 */
-    lgw_reg_w(LGW_CORR6_DETECT_EN, (if_enable[6] == true) ? lora_multi_sfmask[6] : 0); /* default 0 */
-    lgw_reg_w(LGW_CORR7_DETECT_EN, (if_enable[7] == true) ? lora_multi_sfmask[7] : 0); /* default 0 */
-    lgw_reg_w(LGW_PPM_OFFSET, 0x60); /* as the threshold is 16ms, use 0x60 to enable ppm_offset for SF12 and SF11 @125kHz*/
-    lgw_reg_w(LGW_CONCENTRATOR_MODEM_ENABLE, 1); /* default 0 */
+    esp_lgw_reg_w(LGW_IF_FREQ_0, IF_HZ_TO_REG(if_freq[0])); /* default -384 */
+    esp_lgw_reg_w(LGW_IF_FREQ_1, IF_HZ_TO_REG(if_freq[1])); /* default -128 */
+    esp_lgw_reg_w(LGW_IF_FREQ_2, IF_HZ_TO_REG(if_freq[2])); /* default 128 */
+    esp_lgw_reg_w(LGW_IF_FREQ_3, IF_HZ_TO_REG(if_freq[3])); /* default 384 */
+    esp_lgw_reg_w(LGW_IF_FREQ_4, IF_HZ_TO_REG(if_freq[4])); /* default -384 */
+    esp_lgw_reg_w(LGW_IF_FREQ_5, IF_HZ_TO_REG(if_freq[5])); /* default -128 */
+    esp_lgw_reg_w(LGW_IF_FREQ_6, IF_HZ_TO_REG(if_freq[6])); /* default 128 */
+    esp_lgw_reg_w(LGW_IF_FREQ_7, IF_HZ_TO_REG(if_freq[7])); /* default 384 */
+    esp_lgw_reg_w(LGW_CORR0_DETECT_EN, (if_enable[0] == true) ? lora_multi_sfmask[0] : 0); /* default 0 */
+    esp_lgw_reg_w(LGW_CORR1_DETECT_EN, (if_enable[1] == true) ? lora_multi_sfmask[1] : 0); /* default 0 */
+    esp_lgw_reg_w(LGW_CORR2_DETECT_EN, (if_enable[2] == true) ? lora_multi_sfmask[2] : 0); /* default 0 */
+    esp_lgw_reg_w(LGW_CORR3_DETECT_EN, (if_enable[3] == true) ? lora_multi_sfmask[3] : 0); /* default 0 */
+    esp_lgw_reg_w(LGW_CORR4_DETECT_EN, (if_enable[4] == true) ? lora_multi_sfmask[4] : 0); /* default 0 */
+    esp_lgw_reg_w(LGW_CORR5_DETECT_EN, (if_enable[5] == true) ? lora_multi_sfmask[5] : 0); /* default 0 */
+    esp_lgw_reg_w(LGW_CORR6_DETECT_EN, (if_enable[6] == true) ? lora_multi_sfmask[6] : 0); /* default 0 */
+    esp_lgw_reg_w(LGW_CORR7_DETECT_EN, (if_enable[7] == true) ? lora_multi_sfmask[7] : 0); /* default 0 */
+    esp_lgw_reg_w(LGW_PPM_OFFSET, 0x60); /* as the threshold is 16ms, use 0x60 to enable ppm_offset for SF12 and SF11 @125kHz*/
+    esp_lgw_reg_w(LGW_CONCENTRATOR_MODEM_ENABLE, 1); /* default 0 */
 
     /* configure LoRa 'stand-alone' modem (IF8) */
-    lgw_reg_w(LGW_IF_FREQ_8, IF_HZ_TO_REG(if_freq[8])); /* MBWSSF modem (default 0) */
+    esp_lgw_reg_w(LGW_IF_FREQ_8, IF_HZ_TO_REG(if_freq[8])); /* MBWSSF modem (default 0) */
     if (if_enable[8] == true) {
-        lgw_reg_w(LGW_MBWSSF_RADIO_SELECT, if_rf_chain[8]);
+        esp_lgw_reg_w(LGW_MBWSSF_RADIO_SELECT, if_rf_chain[8]);
         switch (lora_rx_bw) {
             case BW_125KHZ:
-                lgw_reg_w(LGW_MBWSSF_MODEM_BW, 0);
+                esp_lgw_reg_w(LGW_MBWSSF_MODEM_BW, 0);
                 break;
             case BW_250KHZ:
-                lgw_reg_w(LGW_MBWSSF_MODEM_BW, 1);
+                esp_lgw_reg_w(LGW_MBWSSF_MODEM_BW, 1);
                 break;
             case BW_500KHZ:
-                lgw_reg_w(LGW_MBWSSF_MODEM_BW, 2);
+                esp_lgw_reg_w(LGW_MBWSSF_MODEM_BW, 2);
                 break;
             default:
                 DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_bw);
@@ -679,75 +680,75 @@ int lgw_start(void) {
         }
         switch (lora_rx_sf) {
             case DR_LORA_SF7:
-                lgw_reg_w(LGW_MBWSSF_RATE_SF, 7);
+                esp_lgw_reg_w(LGW_MBWSSF_RATE_SF, 7);
                 break;
             case DR_LORA_SF8:
-                lgw_reg_w(LGW_MBWSSF_RATE_SF, 8);
+                esp_lgw_reg_w(LGW_MBWSSF_RATE_SF, 8);
                 break;
             case DR_LORA_SF9:
-                lgw_reg_w(LGW_MBWSSF_RATE_SF, 9);
+                esp_lgw_reg_w(LGW_MBWSSF_RATE_SF, 9);
                 break;
             case DR_LORA_SF10:
-                lgw_reg_w(LGW_MBWSSF_RATE_SF, 10);
+                esp_lgw_reg_w(LGW_MBWSSF_RATE_SF, 10);
                 break;
             case DR_LORA_SF11:
-                lgw_reg_w(LGW_MBWSSF_RATE_SF, 11);
+                esp_lgw_reg_w(LGW_MBWSSF_RATE_SF, 11);
                 break;
             case DR_LORA_SF12:
-                lgw_reg_w(LGW_MBWSSF_RATE_SF, 12);
+                esp_lgw_reg_w(LGW_MBWSSF_RATE_SF, 12);
                 break;
             default:
                 DEBUG_PRINTF("ERROR: UNEXPECTED VALUE %d IN SWITCH STATEMENT\n", lora_rx_sf);
                 return LGW_HAL_ERROR;
         }
-        lgw_reg_w(LGW_MBWSSF_PPM_OFFSET, lora_rx_ppm_offset); /* default 0 */
-        lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE, 1); /* default 0 */
+        esp_lgw_reg_w(LGW_MBWSSF_PPM_OFFSET, lora_rx_ppm_offset); /* default 0 */
+        esp_lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE, 1); /* default 0 */
     } else {
-        lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE, 0);
+        esp_lgw_reg_w(LGW_MBWSSF_MODEM_ENABLE, 0);
     }
 
     /* configure FSK modem (IF9) */
-    lgw_reg_w(LGW_IF_FREQ_9, IF_HZ_TO_REG(if_freq[9])); /* FSK modem, default 0 */
-    lgw_reg_w(LGW_FSK_PSIZE, fsk_sync_word_size - 1);
-    lgw_reg_w(LGW_FSK_TX_PSIZE, fsk_sync_word_size - 1);
+    esp_lgw_reg_w(LGW_IF_FREQ_9, IF_HZ_TO_REG(if_freq[9])); /* FSK modem, default 0 */
+    esp_lgw_reg_w(LGW_FSK_PSIZE, fsk_sync_word_size - 1);
+    esp_lgw_reg_w(LGW_FSK_TX_PSIZE, fsk_sync_word_size - 1);
     fsk_sync_word_reg = fsk_sync_word << (8 * (8 - fsk_sync_word_size));
-    lgw_reg_w(LGW_FSK_REF_PATTERN_LSB, (uint32_t)(0xFFFFFFFF & fsk_sync_word_reg));
-    lgw_reg_w(LGW_FSK_REF_PATTERN_MSB, (uint32_t)(0xFFFFFFFF & (fsk_sync_word_reg >> 32)));
+    esp_lgw_reg_w(LGW_FSK_REF_PATTERN_LSB, (uint32_t)(0xFFFFFFFF & fsk_sync_word_reg));
+    esp_lgw_reg_w(LGW_FSK_REF_PATTERN_MSB, (uint32_t)(0xFFFFFFFF & (fsk_sync_word_reg >> 32)));
     if (if_enable[9] == true) {
-        lgw_reg_w(LGW_FSK_RADIO_SELECT, if_rf_chain[9]);
-        lgw_reg_w(LGW_FSK_BR_RATIO, LGW_XTAL_FREQU / fsk_rx_dr); /* setting the dividing ratio for datarate */
-        lgw_reg_w(LGW_FSK_CH_BW_EXPO, fsk_rx_bw);
-        lgw_reg_w(LGW_FSK_MODEM_ENABLE, 1); /* default 0 */
+        esp_lgw_reg_w(LGW_FSK_RADIO_SELECT, if_rf_chain[9]);
+        esp_lgw_reg_w(LGW_FSK_BR_RATIO, LGW_XTAL_FREQU / fsk_rx_dr); /* setting the dividing ratio for datarate */
+        esp_lgw_reg_w(LGW_FSK_CH_BW_EXPO, fsk_rx_bw);
+        esp_lgw_reg_w(LGW_FSK_MODEM_ENABLE, 1); /* default 0 */
     } else {
-        lgw_reg_w(LGW_FSK_MODEM_ENABLE, 0);
+        esp_lgw_reg_w(LGW_FSK_MODEM_ENABLE, 0);
     }
 
     /* Load firmware */
     reset_firmware(MCU_ARB);
     reset_firmware(MCU_AGC);
-    lgw_reg_w(LGW_MCU_RST_0, 1);
-    lgw_reg_w(LGW_MCU_RST_1, 1);
+    esp_lgw_reg_w(LGW_MCU_RST_0, 1);
+    esp_lgw_reg_w(LGW_MCU_RST_1, 1);
 
     /* gives the AGC MCU control over radio, RF front-end and filter gain */
-    lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL, 0);
-    lgw_reg_w(LGW_FORCE_HOST_FE_CTRL, 0);
-    lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN, 0);
+    esp_lgw_reg_w(LGW_FORCE_HOST_RADIO_CTRL, 0);
+    esp_lgw_reg_w(LGW_FORCE_HOST_FE_CTRL, 0);
+    esp_lgw_reg_w(LGW_FORCE_DEC_FILTER_GAIN, 0);
 
     /* Get MCUs out of reset */
-    lgw_reg_w(LGW_RADIO_SELECT, 0); /* MUST not be = to 1 or 2 at firmware init */
-    lgw_reg_w(LGW_MCU_RST_0, 0);
-    lgw_reg_w(LGW_MCU_RST_1, 0);
+    esp_lgw_reg_w(LGW_RADIO_SELECT, 0); /* MUST not be = to 1 or 2 at firmware init */
+    esp_lgw_reg_w(LGW_MCU_RST_0, 0);
+    esp_lgw_reg_w(LGW_MCU_RST_1, 0);
 
     /* Check firmware version */
-    lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, FW_VERSION_ADDR);
-    lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+    esp_lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, FW_VERSION_ADDR);
+    esp_lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_AGC) {
         DEBUG_PRINTF("ERROR: Version of AGC firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_AGC);
         return LGW_HAL_ERROR;
     }
-    lgw_reg_w(LGW_DBG_ARB_MCU_RAM_ADDR, FW_VERSION_ADDR);
-    lgw_reg_r(LGW_DBG_ARB_MCU_RAM_DATA, &read_val);
+    esp_lgw_reg_w(LGW_DBG_ARB_MCU_RAM_ADDR, FW_VERSION_ADDR);
+    esp_lgw_reg_r(LGW_DBG_ARB_MCU_RAM_DATA, &read_val);
     fw_version = (uint8_t)read_val;
     if (fw_version != FW_VERSION_ARB) {
         DEBUG_PRINTF("ERROR: Version of arbiter firmware not expected, actual:%d expected:%d\n", fw_version, FW_VERSION_ARB);
@@ -756,7 +757,7 @@ int lgw_start(void) {
 
     DEBUG_MSG("Info: Initialising AGC firmware...\n");
     mp_hal_delay_us(100); /* Need to wait for long enough here */
-    lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+    esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x10) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS1 0x%02X\n", (uint8_t)read_val);
         return LGW_HAL_ERROR;
@@ -764,12 +765,12 @@ int lgw_start(void) {
 
     /* Update Tx gain LUT and start AGC */
     for (i = 0; i < txgain_lut.size; ++i) {
-        lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT); /* start a transaction */
+        esp_lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT); /* start a transaction */
         mp_hal_delay_us(DELAYSTART);
         load_val = txgain_lut.lut[i].mix_gain + (16 * txgain_lut.lut[i].dac_gain) + (64 * txgain_lut.lut[i].pa_gain);
-        lgw_reg_w(LGW_RADIO_SELECT, load_val);
+        esp_lgw_reg_w(LGW_RADIO_SELECT, load_val);
         mp_hal_delay_us(DELAYSTART);
-        lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+        esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
         if (read_val != (0x30 + i)) {
             DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS2 0x%02X\n", (uint8_t)read_val);
             return LGW_HAL_ERROR;
@@ -778,12 +779,12 @@ int lgw_start(void) {
 
     /* As the AGC fw is waiting for 16 entries, we need to abort the transaction if we get less entries */
     if (txgain_lut.size < TX_GAIN_LUT_SIZE_MAX) {
-        lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
+        esp_lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
         mp_hal_delay_us(DELAYSTART);
         load_val = AGC_CMD_ABORT;
-        lgw_reg_w(LGW_RADIO_SELECT, load_val);
+        esp_lgw_reg_w(LGW_RADIO_SELECT, load_val);
         mp_hal_delay_us(DELAYSTART);
-        lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+        esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
         if (read_val != 0x30) {
             DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS3 0x%02X\n", (uint8_t)read_val);
             return LGW_HAL_ERROR;
@@ -791,40 +792,40 @@ int lgw_start(void) {
     }
 
     /* Load Tx freq MSBs (always 3 if f > 768 for SX1257 or f > 384 for SX1255 */
-    lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
+    esp_lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
     mp_hal_delay_us(DELAYSTART);
-    lgw_reg_w(LGW_RADIO_SELECT, 3);
+    esp_lgw_reg_w(LGW_RADIO_SELECT, 3);
     mp_hal_delay_us(DELAYSTART);
-    lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+    esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x33) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS4 0x%02X\n", (uint8_t)read_val);
         return LGW_HAL_ERROR;
     }
 
     /* Load chan_select firmware option */
-    lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
+    esp_lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
     mp_hal_delay_us(DELAYSTART);
-    lgw_reg_w(LGW_RADIO_SELECT, 0);
+    esp_lgw_reg_w(LGW_RADIO_SELECT, 0);
     mp_hal_delay_us(DELAYSTART);
-    lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+    esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x30) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS5 0x%02X\n", (uint8_t)read_val);
         return LGW_HAL_ERROR;
     }
 
     /* End AGC firmware init and check status */
-    lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
+    esp_lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
     mp_hal_delay_us(DELAYSTART);
-    lgw_reg_w(LGW_RADIO_SELECT, radio_select); /* Load intended value of RADIO_SELECT */
+    esp_lgw_reg_w(LGW_RADIO_SELECT, radio_select); /* Load intended value of RADIO_SELECT */
     mp_hal_delay_us(DELAYSTART);
-    lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
+    esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x40) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
         return LGW_HAL_ERROR;
     }
 
     /* do not enable GPS event capture */
-    lgw_reg_w(LGW_GPS_EN, 0);
+    esp_lgw_reg_w(LGW_GPS_EN, 0);
 
     DEBUG_MSG("Info: concentrator restarted...\n");
 
@@ -833,7 +834,7 @@ int lgw_start(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
+int esp_lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
     int nb_pkt_fetch; /* loop variable and return value */
     struct lgw_pkt_rx_s *p; /* pointer to the current structure in the struct array */
     uint8_t buff[255 + RX_METADATA_NB]; /* buffer to store the result of SPI read bursts */
@@ -862,7 +863,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         p = &pkt_data[nb_pkt_fetch];
 
         /* fetch all the RX FIFO data */
-        lgw_reg_rb(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, buff, 5);
+        esp_lgw_reg_rb(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, buff, 5);
         /* 0:   number of packets available in RX data buffer */
         /* 1,2: start address of the current packet in RX data buffer */
         /* 3:   CRC status of the current packet */
@@ -886,7 +887,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         stat_fifo = buff[3]; /* will be used later, need to save it before overwriting buff */
 
         /* get payload + metadata */
-        lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, sz + RX_METADATA_NB);
+        esp_lgw_reg_rb(LGW_RX_DATA_BUF_DATA, buff, sz + RX_METADATA_NB);
 
         /* copy payload to result struct */
         memcpy((void *)p->payload, (void *)buff, sz);
@@ -1072,7 +1073,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
         p->crc = (uint16_t)buff[sz + 10] + ((uint16_t)buff[sz + 11] << 8);
 
         /* advance packet FIFO */
-        lgw_reg_w(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, 0);
+        esp_lgw_reg_w(LGW_RX_PACKET_DATA_FIFO_NUM_STORED, 0);
     }
 
     return nb_pkt_fetch;
@@ -1080,7 +1081,7 @@ int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_send(struct lgw_pkt_tx_s *pkt_data) {
+int esp_lgw_send(struct lgw_pkt_tx_s *pkt_data) {
     int i;
     uint8_t buff[256 + TX_METADATA_NB]; /* buffer to prepare the packet to send + metadata before SPI write burst */
     uint32_t part_int = 0; /* integer part for PLL register value calculation */
@@ -1159,15 +1160,15 @@ int lgw_send(struct lgw_pkt_tx_s *pkt_data) {
     /* loading TX imbalance correction */
     target_mix_gain = txgain_lut.lut[pow_index].mix_gain;
     if (pkt_data->rf_chain == 0) { /* use radio A calibration table */
-        lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_a_i[target_mix_gain ]);
-        lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_a_q[target_mix_gain ]);
+        esp_lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_a_i[target_mix_gain ]);
+        esp_lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_a_q[target_mix_gain ]);
     } else { /* use radio B calibration table */
-        lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_b_i[target_mix_gain ]);
-        lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_b_q[target_mix_gain ]);
+        esp_lgw_reg_w(LGW_TX_OFFSET_I, cal_offset_b_i[target_mix_gain ]);
+        esp_lgw_reg_w(LGW_TX_OFFSET_Q, cal_offset_b_q[target_mix_gain ]);
     }
 
     /* Set digital gain from LUT */
-    lgw_reg_w(LGW_TX_GAIN, txgain_lut.lut[pow_index].dig_gain);
+    esp_lgw_reg_w(LGW_TX_GAIN, txgain_lut.lut[pow_index].dig_gain);
 
     /* fixed metadata, useful payload and misc metadata compositing */
     transfer_size = TX_METADATA_NB + pkt_data->size; /*  */
@@ -1351,24 +1352,24 @@ int lgw_send(struct lgw_pkt_tx_s *pkt_data) {
     memcpy((void *)(buff + payload_offset), (void *)(pkt_data->payload), pkt_data->size);
 
     /* reset TX command flags */
-    lgw_abort_tx();
+    esp_lgw_abort_tx();
 
     /* put metadata + payload in the TX data buffer */
-    lgw_reg_w(LGW_TX_DATA_BUF_ADDR, 0);
-    lgw_reg_wb(LGW_TX_DATA_BUF_DATA, buff, transfer_size);
+    esp_lgw_reg_w(LGW_TX_DATA_BUF_ADDR, 0);
+    esp_lgw_reg_wb(LGW_TX_DATA_BUF_DATA, buff, transfer_size);
     DEBUG_ARRAY(i, transfer_size, buff);
 
     switch (pkt_data->tx_mode) {
         case IMMEDIATE:
-            lgw_reg_w(LGW_TX_TRIG_IMMEDIATE, 1);
+            esp_lgw_reg_w(LGW_TX_TRIG_IMMEDIATE, 1);
             break;
 
         case TIMESTAMPED:
-            lgw_reg_w(LGW_TX_TRIG_DELAYED, 1);
+            esp_lgw_reg_w(LGW_TX_TRIG_DELAYED, 1);
             break;
 
         case ON_GPS:
-            lgw_reg_w(LGW_TX_TRIG_GPS, 1);
+            esp_lgw_reg_w(LGW_TX_TRIG_GPS, 1);
             break;
 
         default:
@@ -1383,14 +1384,14 @@ int lgw_send(struct lgw_pkt_tx_s *pkt_data) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_status(uint8_t select, uint8_t *code) {
+int esp_lgw_status(uint8_t select, uint8_t *code) {
     int32_t read_value;
 
     /* check input variables */
     CHECK_NULL(code);
 
     if (select == TX_STATUS) {
-        lgw_reg_r(LGW_TX_STATUS, &read_value);
+        esp_lgw_reg_r(LGW_TX_STATUS, &read_value);
         if ((read_value & 0x10) == 0) { /* bit 4 @1: TX programmed */
             *code = TX_FREE;
         } else if ((read_value & 0x60) != 0) { /* bit 5 or 6 @1: TX sequence */
@@ -1413,10 +1414,10 @@ int lgw_status(uint8_t select, uint8_t *code) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_abort_tx(void) {
+int esp_lgw_abort_tx(void) {
     int i;
 
-    i = lgw_reg_w(LGW_TX_TRIG_ALL, 0);
+    i = esp_lgw_reg_w(LGW_TX_TRIG_ALL, 0);
 
     if (i == LGW_REG_SUCCESS) {
         return LGW_HAL_SUCCESS;
@@ -1427,11 +1428,11 @@ int lgw_abort_tx(void) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
+int esp_lgw_get_trigcnt(uint32_t* trig_cnt_us) {
     int i;
     int32_t val;
 
-    i = lgw_reg_r(LGW_TIMESTAMP, &val);
+    i = esp_lgw_reg_r(LGW_TIMESTAMP, &val);
     if (i == LGW_REG_SUCCESS) {
         *trig_cnt_us = (uint32_t)val;
         return LGW_HAL_SUCCESS;
@@ -1442,13 +1443,13 @@ int lgw_get_trigcnt(uint32_t* trig_cnt_us) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-const char* lgw_version_info() {
+const char* esp_lgw_version_info() {
     return lgw_version_string;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
+uint32_t esp_lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
     int32_t val;
     uint8_t SF, H, DE;
     uint16_t BW;
@@ -1517,7 +1518,7 @@ uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet) {
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
-void lgw_calibration_offset_transfer(uint8_t idx_start, uint8_t idx_nb) {
+void esp_lgw_calibration_offset_transfer(uint8_t idx_start, uint8_t idx_nb) {
     int i;
     int read_val;
 
@@ -1526,24 +1527,24 @@ void lgw_calibration_offset_transfer(uint8_t idx_start, uint8_t idx_nb) {
     /* Get 'idx_nb' calibration offsets from AGC FW, and put it in the local 
     calibration offsets array, at 'idx_start' index position */
     for(i = 0; i < idx_nb; ++i) {
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0 + i);
+        esp_lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0 + i);
         mp_hal_delay_ms(1);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        esp_lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
         mp_hal_delay_ms(1);
         cal_offset_a_i[i + idx_start] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8 + i);
+        esp_lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8 + i);
         mp_hal_delay_ms(1);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        esp_lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
         mp_hal_delay_ms(1);
         cal_offset_a_q[i + idx_start] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0 + i);
+        esp_lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0 + i);
         mp_hal_delay_ms(1);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        esp_lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
         mp_hal_delay_ms(1);
         cal_offset_b_i[i + idx_start] = (int8_t)read_val;
-        lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8 + i);
+        esp_lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8 + i);
         mp_hal_delay_ms(1);
-        lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
+        esp_lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
         mp_hal_delay_ms(1);
         cal_offset_b_q[i + idx_start] = (int8_t)read_val;
     }
@@ -1560,19 +1561,19 @@ void lgw_calibration_offset_transfer(uint8_t idx_start, uint8_t idx_nb) {
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 void calibration_save(void) {
-    lgw_reg_r(LGW_IQ_MISMATCH_A_AMP_COEFF, &iqrxtab[0]);
-    lgw_reg_r(LGW_IQ_MISMATCH_A_PHI_COEFF, &iqrxtab[1]);
-    lgw_reg_r(LGW_IQ_MISMATCH_B_AMP_COEFF, &iqrxtab[2]);
-    lgw_reg_r(LGW_IQ_MISMATCH_B_PHI_COEFF, &iqrxtab[3]);
+    esp_lgw_reg_r(LGW_IQ_MISMATCH_A_AMP_COEFF, &iqrxtab[0]);
+    esp_lgw_reg_r(LGW_IQ_MISMATCH_A_PHI_COEFF, &iqrxtab[1]);
+    esp_lgw_reg_r(LGW_IQ_MISMATCH_B_AMP_COEFF, &iqrxtab[2]);
+    esp_lgw_reg_r(LGW_IQ_MISMATCH_B_PHI_COEFF, &iqrxtab[3]);
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 void calibration_reload(void) {
-    lgw_reg_w(LGW_IQ_MISMATCH_A_AMP_COEFF, iqrxtab[0]);
-    lgw_reg_w(LGW_IQ_MISMATCH_A_PHI_COEFF, iqrxtab[1]);
-    lgw_reg_w(LGW_IQ_MISMATCH_B_AMP_COEFF, iqrxtab[2]);
-    lgw_reg_w(LGW_IQ_MISMATCH_B_PHI_COEFF, iqrxtab[3]);
+    esp_lgw_reg_w(LGW_IQ_MISMATCH_A_AMP_COEFF, iqrxtab[0]);
+    esp_lgw_reg_w(LGW_IQ_MISMATCH_A_PHI_COEFF, iqrxtab[1]);
+    esp_lgw_reg_w(LGW_IQ_MISMATCH_B_AMP_COEFF, iqrxtab[2]);
+    esp_lgw_reg_w(LGW_IQ_MISMATCH_B_PHI_COEFF, iqrxtab[3]);
 }
 
 /* --- EOF ------------------------------------------------------------------ */

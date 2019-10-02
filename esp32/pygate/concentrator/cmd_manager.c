@@ -9,9 +9,9 @@
 */
 
 #include "cmd_manager.h"
-#include "loragw_hal.h"
-#include "loragw_reg.h"
 #include "esp32_mphal.h"
+#include "loragw_hal_esp.h"
+#include "loragw_reg_esp.h"
 
 
 #define DELAY_COM_INIT                          (1000)
@@ -240,7 +240,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 for (i = 0; i < cmdSettings_FromHost.len_lsb + (cmdSettings_FromHost.len_msb << 8); i++) {
                     cmdSettings_FromHost.cmd_data[i] = BufFromHost[4 + i];
                 }
-                nbpacket = lgw_receive(cmdSettings_FromHost.cmd_data[0], &pkt_data[0]);
+                nbpacket = esp_lgw_receive(cmdSettings_FromHost.cmd_data[0], &pkt_data[0]);
                 BufToHost[0] = 'b';
                 BufToHost[3] = ((nbpacket >= 0) ? ACK_OK : ACK_K0); 
                 BufToHost[4] = nbpacket;
@@ -265,7 +265,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 for (i = 0; i < cmdSettings_FromHost.len_lsb + (cmdSettings_FromHost.len_msb << 8); i++) {
                     conf[i] = BufFromHost[4 + i];
                 }
-                x = lgw_rxrf_setconf(rf_chain, (struct lgw_conf_rxrf_s *)conf);
+                x = esp_lgw_rxrf_setconf(rf_chain, (struct lgw_conf_rxrf_s *)conf);
                 BufToHost[0] = 'c';
                 BufToHost[1] = 0;
                 BufToHost[2] = 0;
@@ -279,7 +279,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 for (i = 0; i < cmdSettings_FromHost.len_lsb + (cmdSettings_FromHost.len_msb << 8); i++) {
                     conf[i] = BufFromHost[4 + i];
                 }
-                x = lgw_txgain_setconf((struct lgw_tx_gain_lut_s *)conf);
+                x = esp_lgw_txgain_setconf((struct lgw_tx_gain_lut_s *)conf);
                 BufToHost[0] = 'h';
                 BufToHost[1] = 0;
                 BufToHost[2] = 0;
@@ -295,7 +295,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 for (i = 0; i < cmdSettings_FromHost.len_lsb + (cmdSettings_FromHost.len_msb << 8); i++) {
                     conf[i] = BufFromHost[4 + i];
                 }
-                x = lgw_rxif_setconf(if_chain, (struct lgw_conf_rxif_s *)conf);
+                x = esp_lgw_rxif_setconf(if_chain, (struct lgw_conf_rxif_s *)conf);
                 BufToHost[0] = 'd';
                 BufToHost[1] = 0;
                 BufToHost[2] = 0;
@@ -314,18 +314,18 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 }
 
                 /* Switch off SX1308 correlators to reduce power consumption during transmit */
-                lgw_reg_w(LGW_CLKHS_EN, 0);
+                esp_lgw_reg_w(LGW_CLKHS_EN, 0);
 
                 /* Send packet */
                 SX1308.txongoing = 1;
                 SX1308.waittxend = 1;
-                x = lgw_send((struct lgw_pkt_tx_s *)conf);
+                x = esp_lgw_send((struct lgw_pkt_tx_s *)conf);
                 if (x < 0) {
                     //pc.printf("lgw_send() failed\n");
                 }
                 
                 /* In case of TX continuous, return the answer immediatly */
-                lgw_reg_r(LGW_TX_MODE, &txcontinuous); // to switch off the timeout in case of tx continuous
+                esp_lgw_reg_r(LGW_TX_MODE, &txcontinuous); // to switch off the timeout in case of tx continuous
                 if (txcontinuous == 1) {
                     BufToHost[0] = 'f';
                     BufToHost[1] = 0;
@@ -343,7 +343,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
 
                 /* Align SX1308 internal counter and STM32 counter */
                 if (SX1308.firsttx == true) {
-                    lgw_get_trigcnt(&count_us);
+                    esp_lgw_get_trigcnt(&count_us);
                     SX1308.offtmstpref = (sx1308_timer_read_us() - count_us) + 60;
                     SX1308.firsttx = false;
                 }
@@ -352,10 +352,10 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 sx1308_dig_reset();
 
                 /* Switch SX1308 correlators back on  */
-                lgw_reg_w(LGW_CLKHS_EN, 1);
+                esp_lgw_reg_w(LGW_CLKHS_EN, 1);
 
                 /* restart SX1308 */
-                x = lgw_start();
+                x = esp_lgw_start();
                 if (x < 0) {
                     //pc.printf("lgw_start() failed\n");
                 }
@@ -370,7 +370,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
             }
         case 'q': { // lgw_get_trigcnt
                 uint32_t timestamp;
-                x = lgw_get_trigcnt(&timestamp);
+                x = esp_lgw_get_trigcnt(&timestamp);
                 timestamp += SX1308.offtmstp;
                 BufToHost[0] = 'q';
                 BufToHost[1] = 0;
@@ -390,7 +390,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                     conf[i] = BufFromHost[4 + i];
                 }
 
-                x = lgw_board_setconf((struct lgw_conf_board_s *)conf);
+                x = esp_lgw_board_setconf((struct lgw_conf_board_s *)conf);
                 BufToHost[0] = 'i';
                 BufToHost[1] = 0;
                 BufToHost[2] = 0;
@@ -398,7 +398,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 return(CMD_OK);
             }
         case 'j': { // lgw_calibration_snapshot
-                lgw_calibration_offset_transfer(BufFromHost[4], BufFromHost[5]);
+                esp_lgw_calibration_offset_transfer(BufFromHost[4], BufFromHost[5]);
                 BufToHost[0] = 'j';
                 BufToHost[1] = 0;
                 BufToHost[2] = 0;
@@ -433,7 +433,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
             }
         case 'm': { // Reset SX1308 and STM32
                 /* reset SX1308 */
-                lgw_soft_reset();
+                esp_lgw_soft_reset();
                 /* Prepare command answer */
                 BufToHost[0] = 'm';
                 BufToHost[1] = 0;

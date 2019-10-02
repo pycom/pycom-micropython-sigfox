@@ -92,7 +92,7 @@
 #include "soc/sens_reg.h"
 
 #include "cmd_manager.h"
-#include "loragw_hal.h"
+#include "../pygate/concentrator/loragw_hal_esp.h"
 #include "lora_pkt_fwd.h"
 
 #include <stdio.h>

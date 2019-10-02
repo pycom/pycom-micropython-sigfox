@@ -32,7 +32,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "py/runtime.h"
 #include "sx1308-config.h"
 #include "sx1308-spi.h"
-#include "loragw_reg.h"
+#include "../../esp32/pygate/concentrator/loragw_reg_esp.h"
 
 typedef struct
 {

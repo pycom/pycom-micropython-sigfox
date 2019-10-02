@@ -49,8 +49,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "timersync.h"
 #include "parson.h"
 #include "base64.h"
-#include "loragw_hal.h"
-#include "loragw_reg.h"
+#include "../concentrator/loragw_hal_esp.h"
+#include "../concentrator/loragw_reg_esp.h"
 #include "esp32_mphal.h"
 
 /* -------------------------------------------------------------------------- */
@@ -300,7 +300,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
     }
     MSG("INFO: lorawan_public %d, clksrc %d\n", boardconf.lorawan_public, boardconf.clksrc);
     /* all parameters parsed, submitting configuration to the HAL */
-    if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
+    if (esp_lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
         MSG("ERROR: Failed to configure board\n");
         return -1;
     }
@@ -371,7 +371,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
     /* all parameters parsed, submitting configuration to the HAL */
     if (txlut.size > 0) {
         MSG("INFO: Configuring TX LUT with %u indexes\n", txlut.size);
-        if (lgw_txgain_setconf(&txlut) != LGW_HAL_SUCCESS) {
+        if (esp_lgw_txgain_setconf(&txlut) != LGW_HAL_SUCCESS) {
             MSG("ERROR: Failed to configure concentrator TX Gain LUT\n");
             return -1;
         }
@@ -432,7 +432,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable);
         }
         /* all parameters parsed, submitting configuration to the HAL */
-        if (lgw_rxrf_setconf(i, &rfconf) != LGW_HAL_SUCCESS) {
+        if (esp_lgw_rxrf_setconf(i, &rfconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for radio %i\n", i);
             return -1;
         }
@@ -466,7 +466,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             MSG("INFO: Lora multi-SF channel %i>  radio %i, IF %i Hz, 125 kHz bw, SF 7 to 12\n", i, ifconf.rf_chain, ifconf.freq_hz);
         }
         /* all parameters parsed, submitting configuration to the HAL */
-        if (lgw_rxif_setconf(i, &ifconf) != LGW_HAL_SUCCESS) {
+        if (esp_lgw_rxif_setconf(i, &ifconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for Lora multi-SF channel %i\n", i);
             return -1;
         }
@@ -528,7 +528,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             }
             MSG("INFO: Lora std channel> radio %i, IF %i Hz, %u Hz bw, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
         }
-        if (lgw_rxif_setconf(8, &ifconf) != LGW_HAL_SUCCESS) {
+        if (esp_lgw_rxif_setconf(8, &ifconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for Lora standard channel\n");
             return -1;
         }
@@ -581,7 +581,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
 
             MSG("INFO: FSK channel> radio %i, IF %i Hz, %u Hz bw, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
         }
-        if (lgw_rxif_setconf(9, &ifconf) != LGW_HAL_SUCCESS) {
+        if (esp_lgw_rxif_setconf(9, &ifconf) != LGW_HAL_SUCCESS) {
             MSG("ERROR: invalid configuration for FSK channel\n");
             return -1;
         }
@@ -933,10 +933,10 @@ void TASK_lora_gw(void *pvParameters) {
 
     /* display version informations */
     MSG("*** Packet Forwarder for Lora PicoCell Gateway ***\nVersion: " VERSION_STRING "\n");
-    MSG("*** Lora concentrator HAL library version info ***\n%s\n", lgw_version_info());
+    MSG("*** Lora concentrator HAL library version info ***\n%s\n", esp_lgw_version_info());
 
     /* Open communication bridge */
-    x = lgw_connect();
+    x = esp_lgw_connect();
     if (x == LGW_REG_ERROR) {
         MSG("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
         exit(EXIT_FAILURE);
@@ -1096,7 +1096,7 @@ void TASK_lora_gw(void *pvParameters) {
     freeaddrinfo(result);
 
     /* starting the concentrator */
-    i = lgw_start();
+    i = esp_lgw_start();
     if (i == LGW_HAL_SUCCESS) {
         MSG("INFO: [main] concentrator started, packet can now be received\n");
     } else {
@@ -1265,7 +1265,7 @@ void TASK_lora_gw(void *pvParameters) {
         shutdown(sock_up, SHUT_RDWR);
         shutdown(sock_down, SHUT_RDWR);
         /* stop the hardware */
-        i = lgw_stop();
+        i = esp_lgw_stop();
         if (i == LGW_HAL_SUCCESS) {
             MSG("INFO: concentrator stopped successfully\n");
         } else {
@@ -1326,7 +1326,7 @@ void thread_up(void) {
 
         /* fetch packets */
         pthread_mutex_lock(&mx_concent);
-        nb_pkt = lgw_receive(NB_PKT_MAX, rxpkt);  // Crashing here
+        nb_pkt = esp_lgw_receive(NB_PKT_MAX, rxpkt);  // Crashing here
         pthread_mutex_unlock(&mx_concent);
         if (nb_pkt == LGW_HAL_ERROR) {
             MSG("ERROR: [up] failed packet fetch, exiting\n");
@@ -2154,7 +2154,7 @@ void thread_jit(void) {
                 if (jit_result == JIT_ERROR_OK) {
 
                     /* check if concentrator is free for sending new packet */
-                    result = lgw_status(TX_STATUS, &tx_status);
+                    result = esp_lgw_status(TX_STATUS, &tx_status);
                     if (result == LGW_HAL_ERROR) {
                         MSG("WARNING: [jit] lgw_status failed\n");
                     } else {
@@ -2172,7 +2172,7 @@ void thread_jit(void) {
 
                     /* send packet to concentrator */
                     pthread_mutex_lock(&mx_concent); /* may have to wait for a fetch to finish */
-                    result = lgw_send(&pkt);
+                    result = esp_lgw_send(&pkt);
                     pthread_mutex_unlock(&mx_concent); /* free concentrator ASAP */
                     if (result == LGW_HAL_ERROR) {
                         pthread_mutex_lock(&mx_meas_dw);

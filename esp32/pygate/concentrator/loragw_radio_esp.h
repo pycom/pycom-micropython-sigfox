@@ -13,8 +13,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 */
 
-#ifndef _LORAGW_RADIO_H
-#define _LORAGW_RADIO_H
+#ifndef _LORAGW_RADIO_ESP_H
+#define _LORAGW_RADIO_ESP_H
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
@@ -60,13 +60,13 @@ enum lgw_sx127x_rxbw_e {
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS PROTOTYPES ------------------------------------------ */
 
-int lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf_radio_type, uint32_t freq_hz);
+int esp_lgw_setup_sx125x(uint8_t rf_chain, uint8_t rf_clkout, bool rf_enable, uint8_t rf_radio_type, uint32_t freq_hz);
 
-int lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t rssi_offset);
+int esp_lgw_setup_sx127x(uint32_t frequency, uint8_t modulation, enum lgw_sx127x_rxbw_e rxbw_khz, int8_t rssi_offset);
 
-int lgw_sx127x_reg_w(uint8_t address, uint8_t reg_value);
+int esp_lgw_sx127x_reg_w(uint8_t address, uint8_t reg_value);
 
-int lgw_sx127x_reg_r(uint8_t address, uint8_t *reg_value);
+int esp_lgw_sx127x_reg_r(uint8_t address, uint8_t *reg_value);
 
 
 #endif

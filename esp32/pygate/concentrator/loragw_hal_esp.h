@@ -14,16 +14,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 */
 
 
-#ifndef _LORAGW_HAL_H
-#define _LORAGW_HAL_H
+#ifndef _LORAGW_HAL_ESP_H
+#define _LORAGW_HAL_ESP_H
 
 /* -------------------------------------------------------------------------- */
 /* --- DEPENDANCIES --------------------------------------------------------- */
 
 #include <stdint.h>     /* C99 types */
 #include <stdbool.h>    /* bool type */
-
-#include "config.h"     /* library configuration options (dynamically generated) */
 
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC MACROS -------------------------------------------------------- */
@@ -184,7 +182,7 @@ struct lgw_conf_rxrf_s {
     uint32_t                freq_hz;        /*!> center frequency of the radio in Hz */
     float                   rssi_offset;    /*!> Board-specific RSSI correction factor */
     enum lgw_radio_type_e   type;           /*!> Radio type for that RF chain (SX1255, SX1257....) */
-    bool                    tx_enable;      /*!> enable or disable TX on that RF chain */
+    uint32_t                tx_enable;      /*!> enable or disable TX on that RF chain */
 };
 
 /**
@@ -223,13 +221,8 @@ struct lgw_pkt_rx_s {
     uint16_t    size;           /*!> payload size in bytes */
     uint8_t     payload[256];   /*!> buffer containing the payload */
 };
-#define LGW_PKT_RX_METADATA_SIZE_ALIGNED 44
-/* ---------- WARNING -------------
-This metadata size is used to convert the byte array received from the MCU to a
-lgw_pkt_rx_s structure. Structure members are 64-bits aligned in the byte array.
-Any modification of this structure has to be done with caution!
---------------WARNING ------------- */
-#define LGW_PKT_RX_STRUCT_SIZE_ALIGNED (256 + LGW_PKT_RX_METADATA_SIZE_ALIGNED)
+
+
 
 /**
 @struct lgw_pkt_tx_s
@@ -253,21 +246,14 @@ struct lgw_pkt_tx_s {
     uint16_t    size;           /*!> payload size in bytes */
     uint8_t     payload[256];   /*!> buffer containing the payload */
 };
-#define LGW_PKT_TX_METADATA_SIZE_ALIGNED 30
-/* ---------- WARNING -------------
-This metadata size is used to convert a lgw_pkt_tx_s structure to the byte array
-sent to the MCU to. The structure members are 64-bits aligned in the byte array.
-Any modification of this structure has to be done with caution!
---------------WARNING ------------- */
-#define LGW_PKT_TX_STRUCT_SIZE_ALIGNED (256 + LGW_PKT_TX_METADATA_SIZE_ALIGNED)
 
 /**
 @struct lgw_tx_gain_s
 @brief Structure containing all gains of Tx chain
 */
 struct lgw_tx_gain_s {
-    uint8_t dig_gain;   /*!> 2 bits, control of the digital gain of SX1301 */
-    uint8_t pa_gain;    /*!> 2 bits, control of the external PA (SX1301 I/O) */
+    uint8_t dig_gain;   /*!> 2 bits, control of the digital gain of SX1308 */
+    uint8_t pa_gain;    /*!> 2 bits, control of the external PA (SX1308 I/O) */
     uint8_t dac_gain;   /*!> 2 bits, control of the radio DAC */
     uint8_t mix_gain;   /*!> 4 bits, control of the radio mixer */
     int8_t  rf_power;   /*!> measured TX power at the board connector, in dBm */
@@ -290,7 +276,7 @@ struct lgw_tx_gain_lut_s {
 @param conf structure containing the configuration parameters
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_board_setconf(struct lgw_conf_board_s conf);
+int esp_lgw_board_setconf(struct lgw_conf_board_s *conf);
 
 /**
 @brief Configure an RF chain (must configure before start)
@@ -298,7 +284,7 @@ int lgw_board_setconf(struct lgw_conf_board_s conf);
 @param conf structure containing the configuration parameters
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf);
+int esp_lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s *conf);
 
 /**
 @brief Configure an IF chain + modem (must configure before start)
@@ -306,26 +292,26 @@ int lgw_rxrf_setconf(uint8_t rf_chain, struct lgw_conf_rxrf_s conf);
 @param conf structure containing the configuration parameters
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s conf);
+int esp_lgw_rxif_setconf(uint8_t if_chain, struct lgw_conf_rxif_s *conf);
 
 /**
 @brief Configure the Tx gain LUT
 @param pointer to structure defining the LUT
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf);
+int esp_lgw_txgain_setconf(struct lgw_tx_gain_lut_s *conf);
 
 /**
 @brief Connect to the LoRa concentrator, reset it and configure it according to previously set parameters
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_start(void);
+int esp_lgw_start(void);
 
 /**
 @brief Stop the LoRa concentrator and disconnect it
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_stop(void);
+int esp_lgw_stop(void);
 
 /**
 @brief A non-blocking function that will fetch up to 'max_pkt' packets from the LoRa concentrator FIFO and data buffer
@@ -333,7 +319,7 @@ int lgw_stop(void);
 @param pkt_data pointer to an array of struct that will receive the packet metadata and payload pointers
 @return LGW_HAL_ERROR id the operation failed, else the number of packets retrieved
 */
-int lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data);
+int esp_lgw_receive(uint8_t max_pkt, struct lgw_pkt_rx_s *pkt_data);
 
 /**
 @brief Schedule a packet to be send immediately or after a delay depending on tx_mode
@@ -345,7 +331,7 @@ In 'timestamp' mode, this is transparent: the modem is started 1.5ms before the 
 In 'immediate' mode, the packet is emitted as soon as possible: transferring the packet (and its parameters) from the host to the concentrator takes some time, then there is the TX_START_DELAY, then the packet is emitted.
 In 'triggered' mode (aka PPS/GPS mode), the packet, typically a beacon, is emitted 1.5ms after a rising edge of the trigger signal. Because there is no way to anticipate the triggering event and start the analog circuitry beforehand, that delay must be taken into account in the protocol.
 */
-int lgw_send(struct lgw_pkt_tx_s pkt_data);
+int esp_lgw_send(struct lgw_pkt_tx_s *pkt_data);
 
 /**
 @brief Give the the status of different part of the LoRa concentrator
@@ -353,39 +339,41 @@ int lgw_send(struct lgw_pkt_tx_s pkt_data);
 @param code is used to return the status code
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_status(uint8_t select, uint8_t *code);
+int esp_lgw_status(uint8_t select, uint8_t *code);
 
 /**
 @brief Abort a currently scheduled or ongoing TX
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_abort_tx(void);
+int esp_lgw_abort_tx(void);
 
 /**
 @brief Return value of internal counter when latest event (eg GPS pulse) was captured
 @param trig_cnt_us pointer to receive timestamp value
 @return LGW_HAL_ERROR id the operation failed, LGW_HAL_SUCCESS else
 */
-int lgw_get_trigcnt(uint32_t* trig_cnt_us);
+int esp_lgw_get_trigcnt(uint32_t* trig_cnt_us);
 
 /**
 @brief Allow user to check the version/options of the library once compiled
 @return pointer on a human-readable null terminated string
 */
-const char* lgw_version_info(void);
-
-/**
-@brief Allow user to check the version of the concentrator MCU firmware
-@return An integer value representing the firmware version
-*/
-int lgw_mcu_version_info(void);
+const char* esp_lgw_version_info(void);
 
 /**
 @brief Return time on air of given packet, in milliseconds
 @param packet is a pointer to the packet structure
 @return the packet time on air in milliseconds
 */
-uint32_t lgw_time_on_air(struct lgw_pkt_tx_s *packet);
+uint32_t esp_lgw_time_on_air(struct lgw_pkt_tx_s *packet);
+
+/**
+@brief Transfer the calibration offsets from the AGC firwmare to the local array
+@param idx_start is the start index in the local array where the calibration offset are being copied
+@param idx_nb is the number of calibration offsets to be copied in the local array
+@return the packet time on air in milliseconds
+*/
+void esp_lgw_calibration_offset_transfer(uint8_t idx_start, uint8_t idx_nb);
 
 #endif
 
