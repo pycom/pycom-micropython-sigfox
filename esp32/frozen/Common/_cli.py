@@ -10,6 +10,11 @@ import time
 import json
 import sys
 
+try:
+    from pymesh_debug import print_debug
+except:
+    from _pymesh_debug import print_debug
+
 __version__ = '1'
 """
 * initial draft
@@ -225,7 +230,18 @@ class Cli:
                 elif cmd == "ot":
                     cli = input('(openthread cli)<')
                     print(self.mesh.mesh.mesh.mesh.cli(cli))
+
+                elif cmd == "debug":
+                    ret = input('(debug level[0-5])<')
+                    try:
+                        level = int(ret)
+                        self.mesh.debug_level(level)
+                    except:
+                        print_debug(1, "error parsing")
                 
+                elif cmd == "config":
+                    print(self.mesh.config)
+
                 else:
                     print("List of available commands")
                     print("ip - display current IPv6 unicast addresses")
@@ -244,6 +260,8 @@ class Cli:
                     print("rst - reset NOW, including NVM Pymesh IPv6")
                     print("buf - display buffer info")
                     print("ot - sends command to openthread internal CLI")
+                    print("debug - set debug level")
+                    print("config - print config file contents")
                     
         except KeyboardInterrupt:
             print('cli Got Ctrl-C')

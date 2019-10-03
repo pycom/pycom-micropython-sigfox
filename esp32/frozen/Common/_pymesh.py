@@ -28,13 +28,18 @@ try:
 except:
     from _ble_rpc import BleRpc
 
+try:
+    from pymesh_debug import print_debug
+except:
+    from _pymesh_debug import print_debug
+
 class Pymesh:
 
     def __init__(self, config, message_cb):
         # print MAC, set MAC is given and restart
         
         self.config = config
-        self.mesh = MeshInterface(config.get('LoRa'), message_cb)
+        self.mesh = MeshInterface(config, message_cb)
 
         self.kill_all = False
         self.deepsleep_timeout = 0
@@ -162,5 +167,29 @@ class Pymesh:
         return self.config
     
     def mac(self):
-        return self.mac.mac.MAC
-        
+        return self.mesh.mesh.MAC
+    
+    def ot_cli(self, command):
+        """ Call OpenThread internal CLI """
+        return self.mesh.ot_cli(command)
+
+    def end_device(self, state = None):
+        """ Set current node and End (Sleepy) Device, always a Child """
+        return self.mesh.end_device(state)
+
+    def leader_priority(self, weight = None):
+        """ Set for the current node the Leader Weight;
+        it's a 0 to 255 value, which increases/decreases probability to become Leader;
+        by default any node has weight of 64 """
+        return self.mesh.leader_priority(weight)
+
+    def debug_level(self, level = None):
+        """ Set the debug level, 0 - off; recommended levels are:
+            DEBUG_DEBG = const(5)
+            DEBUG_INFO = const(4)
+            DEBUG_NOTE = const(3)
+            DEBUG_WARN = const(2)
+            DEBUG_CRIT = const(1)
+            DEBUG_NONE = const(0) """
+        return self.mesh.debug_level(level)
+

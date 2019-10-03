@@ -20,10 +20,10 @@ class PymeshConfig:
     # DEFAULT SETTINGS
 
     # LoRa region is one of LoRa.US915, LoRa.EU868, LoRa.AS923, LoRa.AU915
-    LORA_REGION = LoRa.US915
+    LORA_REGION = LoRa.EU868
 
-    # frequency expressed in Hz, for EU868 863000000Hz, for US915 
-    LORA_FREQ = const(904600000)
+    # frequency expressed in Hz, for EU868 863000000 Hz, for US915 904600000 Hz
+    LORA_FREQ = const(863000000)
     
     # bandwidth options are: LoRa.BW_125KHZ, LoRa.BW_250KHZ or LoRa.BW_500KHZ
     LORA_BW = LoRa.BW_500KHZ
@@ -34,15 +34,9 @@ class PymeshConfig:
     # Pymesh 128b key, used for auth. and encryption
     KEY = "112233"
 
-    # debug level from the most verbose to off
-    DEBUG_INFO = const(3)
-    DEBUG_WARN = const(2)
-    DEBUG_ERR = const(1)
-    DEBUG_NONE = const(0)
-
     # if true, Pymesh is auto-started
     AUTOSTART = True
-    DEBUG_LEVEL = DEBUG_INFO
+    DEBUG_LEVEL = 5
 
     # if true, it will start as BLE Server, to be connected with mobile app
     BLE_API = True

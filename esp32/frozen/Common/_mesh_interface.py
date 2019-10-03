@@ -25,6 +25,13 @@ try:
 except:
     from _meshaging import Meshaging
 
+try:
+    from pymesh_debug import print_debug
+    from pymesh_debug import debug_level
+except:
+    from _pymesh_debug import print_debug
+    from _pymesh_debug import debug_level
+
 __version__ = '4'
 """
 * added file send/receive debug
@@ -45,6 +52,7 @@ class MeshInterface:
     def __init__(self, config, message_cb):
         self.lock = _thread.allocate_lock()
         self.meshaging = Meshaging(self.lock)
+        self.config = config
         self.mesh = MeshInternal(self.meshaging, config, message_cb)
         self.sleep_function = None
         self.single_leader_ts = 0
@@ -57,6 +65,8 @@ class MeshInterface:
         self.br_auto = False
         self.mesh.br_handler = self.br_handler
 
+        self.end_device_m = False
+        
         self.statistics = Statistics(self.meshaging)
         self._timer = Timer.Alarm(self.periodic_cb, self.INTERVAL, periodic=True)
 
@@ -68,7 +78,7 @@ class MeshInterface:
     def periodic_cb(self, alarm):
         # wait lock forever
         if self.lock.acquire():
-            print("============ MESH THREAD >>>>>>>>>>> ")
+            print_debug(2, "============ MESH THREAD >>>>>>>>>>> ")
             t0 = time.ticks_ms()
 
             self.mesh.process()
@@ -99,7 +109,7 @@ class MeshInterface:
 
             self.lock.release()
 
-            print(">>>>>>>>>>> DONE MESH THREAD ============ %d\n"%(time.ticks_ms() - t0))
+            print_debug(2, ">>>>>>>>>>> DONE MESH THREAD ============ %d\n"%(time.ticks_ms() - t0))
 
         pass
 
@@ -264,3 +274,69 @@ class MeshInterface:
     def br_set(self, enable, prio = 0, br_mess_cb = None):
         with self.lock:
             self.mesh.border_router(enable, prio, br_mess_cb)
+    
+    def ot_cli(self, command):
+        """ Executes commands in Openthread CLI,
+        see https://github.com/openthread/openthread/tree/master/src/cli """
+        return self.mesh.mesh.mesh.cli(command)
+
+    def end_device(self, state = None):
+        if state is None:
+            # read status of end_device
+            state = self.ot_cli('routerrole') 
+            return state == 'Disabled'
+        self.end_device_m = False
+        state_str = 'enable'
+        if state == True:
+            self.end_device_m = True
+            state_str = 'disable'
+        ret = self.ot_cli('routerrole '+ state_str) 
+        return ret == ''
+
+    def leader_priority(self, weight = None):
+        if weight is None:
+            # read status of end_device
+            ret = self.ot_cli('leaderweight')
+            try:
+                weight = int(ret)
+            except:
+                weight = -1
+            return weight
+        try:
+            x = int(weight)
+        except:
+            return False
+        # weight should be uint8, positive and <256
+        if weight > 0xFF:
+            weight = 0xFF
+        elif weight < 0:
+            weight = 0
+        ret = self.ot_cli('leaderweight '+ str(weight))
+        return ret == ''
+
+    def debug_level(self, level = None):
+        if level is None:
+            try:
+                ret = pycom.nvs_get('pymesh_debug')
+            except:
+                ret = None
+            return ret
+        try:
+            ret = int(level)
+        except:
+            ret = self.debug_level
+        debug_level(ret)
+        
+    def parent(self):
+        """ Returns the Parent MAC for the current Child node
+        Returns 0 if node is not Child """
+         
+        if self.mesh.mesh.mesh.state() != self.mesh.mesh.STATE_CHILD:
+            print("Not Child, no Parent")
+            return 0
+        # try:
+        parent_mac = int(self.mesh.mesh.mesh.cli('parent').split('\r\n')[0].split('Ext Addr: ')[1], 16)
+        # except:
+            # parent_mac = 0
+        print('Parent mac is:', parent_mac)
+        return parent_mac
