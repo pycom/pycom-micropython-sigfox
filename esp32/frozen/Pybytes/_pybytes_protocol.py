@@ -524,93 +524,101 @@ class PybytesProtocol:
 
     def deploy_new_release(self, body):
         application = self.__conf.get('application')
+        try:
+            body = ujson.loads(body.decode())
+        except Exception as e:
+            print_debug(0, "error while loading body {}".format(e))
+            return
+
         if application is not None:
-            baseWebConfigUrl = 'https://{}'.format(constants.__DEFAULT_PYCONFIG_DOMAIN)
-            manifestURL = '{}/manifest.json?'.format(baseWebConfigUrl)
-            fileUrl = '{}/files?'.format(baseWebConfigUrl)
+            if 'id' in application and application['id']:
+                applicationID = application['id']
+            else:
+                applicationID = body['applicationId']
+            if 'release' in application and 'codeFilename' in application['release']:
+                currentReleaseID = application['release']['codeFilename']
+            else:
+                currentReleaseID = None
+        else:
+            applicationID = body['applicationId']
+            currentReleaseID = None
 
-            applicationID = application['id']
-            currentReleaseID = application['release']['codeFilename']
-            newReleaseID = body.decode()
+        baseWebConfigUrl = 'https://{}'.format(constants.__DEFAULT_PYCONFIG_DOMAIN)
+        manifestURL = '{}/manifest.json?'.format(baseWebConfigUrl)
+        fileUrl = '{}/files?'.format(baseWebConfigUrl)
+        newReleaseID = body["releaseId"]
+        targetURL = '{}app_id={}&target_ver={}&current_ver={}'.format(
+                    manifestURL,
+                    applicationID,
+                    newReleaseID,
+                    currentReleaseID
+        )
+        print_debug(6, "manifest URL: {}".format(targetURL))
+        try:
+            pybytes_activation = urequest.get(targetURL, headers={'content-type': 'application/json'})
+            letResp = pybytes_activation.json()
+            pybytes_activation.close()
+            print_debug(6, "letResp: {}".format(letResp))
+        except Exception as ex:
+            print_debug(1, "error while calling {}!: {}".format(targetURL, ex))
+            return
 
+        if 'errorMessage' in letResp:
+            print_debug(1, letResp['errorMessage'])
+            return
+
+        try:
+            newFiles = letResp['newFiles']
+            updatedFiles = letResp['updatedFiles']
+            newFiles.extend(updatedFiles)
+        except Exception as e:
+            print_debug(1, "error getting files {}".format(e))
+            newFiles = []
+
+        for file in newFiles:
+            targetFileLocation = '{}application_id={}&target_ver={}&target_path={}'.format(
+                fileUrl,
+                applicationID,
+                newReleaseID,
+                file['fileName']
+            )
             try:
-                targetURL = '{}app_id={}&target_ver={}&current_ver={}'.format(
-                            manifestURL,
-                            applicationID,
-                            newReleaseID,
-                            currentReleaseID
-                )
+                getFile = urequest.get(targetFileLocation, headers={'content-type': 'text/plain'})
+            except Exception as e:
+                print_debug(1, "error getting {}! {}".format(targetFileLocation, e))
+                continue
 
-                pybytes_activation = urequest.get(
-                    targetURL,
-                    headers={'content-type': 'application/json'})
+            fileContent = getFile.content
+            self.__FCOTA.update_file_content(file['fileName'], fileContent)
 
-                letResp = pybytes_activation.json()
-                pybytes_activation.close()
+        if 'deletedFiles' in letResp:
+            deletedFiles = letResp['deletedFiles']
+            for file in deletedFiles:
+                self.__FCOTA.delete_file(file['fileName'])
 
-                try:
-                    errorMessage = letResp['errorMessage']
-                    print_debug(1, errorMessage)
-                    return
-                except:
-                    # manifest does not contain an error message
-                    pass
+        try:
+            if application is None:
+                self.__conf['application'] = {
+                    "id": "",
+                    "release": {
+                          "id": "",
+                          "codeFilename": "",
+                          "version": 0
+                    }
+                }
 
-                newFiles = letResp['newFiles']
-                updatedFiles = letResp['updatedFiles']
-                newFiles.extend(updatedFiles)
+            self.__conf['application']["id"] = applicationID
+            self.__conf['application']['release']['id'] = letResp['target_version']['id']
+            self.__conf['application']['release']['codeFilename'] = letResp['target_version']['codeFileName']
+            try:
+                self.__conf['application']['release']['version'] = int(letResp['target_version']['version'])
+            except Exception as e:
+                print_debug(1, "error while converting version: {}".format(e))
 
-                for file in newFiles:
-                    targetFileLocation = '{}application_id={}&target_ver={}&target_path={}'.format(
-                        fileUrl,
-                        applicationID,
-                        newReleaseID,
-                        file['fileName']
-                    )
+            json_string = ujson.dumps(self.__conf)
+            print_debug(1, "json_string: {}".format(json_string))
+            self.__FCOTA.update_file_content('/flash/pybytes_config.json', json_string)
+        except Exception as e:
+            print_debug(1, "error while updating pybytes_config.json! {}".format(e))
 
-                    getFile = urequest.get(
-                        targetFileLocation,
-                        headers={'content-type': 'text/plain'})
-
-                    fileContent = getFile.content
-                    self.__FCOTA.update_file_content(file['fileName'], fileContent)
-
-                deletedFiles = letResp['deletedFiles']
-                for file in deletedFiles:
-                    self.__FCOTA.delete_file(file['fileName'])
-
-                self.__conf['application']['release']['idea'] = letResp['target_version']['id']
-                self.__conf['application']['release']['codeFilename'] = letResp['target_version']['codeFileName']
-                self.__conf['application']['release']['version'] = letResp['target_version']['version']
-                json_string = ujson.dumps(self.__conf)
-                self.__FCOTA.update_file_content('/flash/pybytes_config.json', json_string)
-
-                newFiles = letResp['newFiles']
-                updatedFiles = letResp['updatedFiles']
-                newFiles.extend(updatedFiles)
-
-                for file in newFiles:
-                    getFile = urequest.get(
-                        '{}application_id={}&target_ver={}&target_path={}'.format(
-                            fileUrl,
-                            applicationID,
-                            newReleaseID,
-                            file['fileName']
-                        ),
-                        headers={'content-type': 'text/plain'})
-                    fileContent = getFile.content
-                    self.__FCOTA.update_file_content(file['fileName'], fileContent)
-
-                deletedFiles = letResp['deletedFiles']
-                for file in deletedFiles:
-                    self.__FCOTA.delete_file(file['fileName'])
-
-                self.__conf['application']['release']['idea'] = letResp['target_version']['id']
-                self.__conf['application']['release']['codeFilename'] = letResp['target_version']['codeFileName']
-                self.__conf['application']['release']['version'] = letResp['target_version']['version']
-                json_string = ujson.dumps(self.__conf)
-                self.__FCOTA.update_file_content('/flash/pybytes_config.json', json_string)
-
-                machine.reset()
-            except Exception as ex:
-                print_debug(1, "an error has occurred while deploying changes!: {}".format(ex))
+        machine.reset()
