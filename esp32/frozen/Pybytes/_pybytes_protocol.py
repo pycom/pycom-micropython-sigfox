@@ -281,6 +281,8 @@ class PybytesProtocol:
 
                 elif (command == constants.__COMMAND_CUSTOM_METHOD):
                     if (pin_number == constants.__TERMINAL_PIN and self.__terminal_enabled): # noqa
+                        original_dupterm = os.dupterm()
+                        os.dupterm(self.__terminal)
                         self.__terminal.message_sent_from_pybytes_start()
                         terminal_command = body[2: len(body)]
                         terminal_command = terminal_command.decode("utf-8")
@@ -298,6 +300,7 @@ class PybytesProtocol:
                             except Exception as e:
                                 print('Exception:\n  ' + repr(e))
                         self.__terminal.message_sent_from_pybytes_end()
+                        os.dupterm(original_dupterm)
                         return
 
                     if (self.__custom_methods[pin_number] is not None):
@@ -493,7 +496,7 @@ class PybytesProtocol:
 
     def enable_terminal(self):
         self.__terminal_enabled = True
-        os.dupterm(self.__terminal)
+        #os.dupterm(self.__terminal)
 
     def __send_pybytes_message(self, command, pin_number, value):
         self.__send_message(
@@ -522,30 +525,29 @@ class PybytesProtocol:
     def deploy_new_release(self, body):
         application = self.__conf.get('application')
         if application is not None:
-            baseWebConfigUrl = 'http://{}:5000'.format(
-                self.__conf['server']
-            )
-            manifestURL = '{}/manifest.json?'.format(
-                baseWebConfigUrl
-            )
-            fileUrl = '{}/files?'.format(
-                baseWebConfigUrl
-            )
+            baseWebConfigUrl = 'https://{}'.format(constants.__DEFAULT_PYCONFIG_DOMAIN)
+            manifestURL = '{}/manifest.json?'.format(baseWebConfigUrl)
+            fileUrl = '{}/files?'.format(baseWebConfigUrl)
+
             applicationID = application['id']
             currentReleaseID = application['release']['codeFilename']
             newReleaseID = body.decode()
 
             try:
+                targetURL = '{}app_id={}&target_ver={}&current_ver={}'.format(
+                            manifestURL,
+                            applicationID,
+                            newReleaseID,
+                            currentReleaseID
+                )
+
                 pybytes_activation = urequest.get(
-                    '{}app_id={}&target_ver={}&current_ver={}'.format(
-                        manifestURL,
-                        applicationID,
-                        newReleaseID,
-                        currentReleaseID
-                    ),
+                    targetURL,
                     headers={'content-type': 'application/json'})
+
                 letResp = pybytes_activation.json()
                 pybytes_activation.close()
+
                 try:
                     errorMessage = letResp['errorMessage']
                     print_debug(1, errorMessage)
@@ -553,6 +555,35 @@ class PybytesProtocol:
                 except:
                     # manifest does not contain an error message
                     pass
+
+                newFiles = letResp['newFiles']
+                updatedFiles = letResp['updatedFiles']
+                newFiles.extend(updatedFiles)
+
+                for file in newFiles:
+                    targetFileLocation = '{}application_id={}&target_ver={}&target_path={}'.format(
+                        fileUrl,
+                        applicationID,
+                        newReleaseID,
+                        file['fileName']
+                    )
+
+                    getFile = urequest.get(
+                        targetFileLocation,
+                        headers={'content-type': 'text/plain'})
+
+                    fileContent = getFile.content
+                    self.__FCOTA.update_file_content(file['fileName'], fileContent)
+
+                deletedFiles = letResp['deletedFiles']
+                for file in deletedFiles:
+                    self.__FCOTA.delete_file(file['fileName'])
+
+                self.__conf['application']['release']['idea'] = letResp['target_version']['id']
+                self.__conf['application']['release']['codeFilename'] = letResp['target_version']['codeFileName']
+                self.__conf['application']['release']['version'] = letResp['target_version']['version']
+                json_string = ujson.dumps(self.__conf)
+                self.__FCOTA.update_file_content('/flash/pybytes_config.json', json_string)
 
                 newFiles = letResp['newFiles']
                 updatedFiles = letResp['updatedFiles']

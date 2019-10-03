@@ -139,11 +139,9 @@ class Args(object):
     pass
 
 
-def load_tar(fileobj, prog):
-    args = process_arguments()
+def load_tar(fileobj, prog, secure=False):
     script = None
     legacy = False
-    secure = args.secureboot
     try:
         tar = tarfile.open(mode="r", fileobj=fileobj)
     except Exception as e:
@@ -177,7 +175,7 @@ def load_tar(fileobj, prog):
 
         version = script_file.get('version')
         if version is not None:
-            print_debug('Version: {}'.format(version), True)
+            print_debug('Script Version: {}'.format(version), True)
             partitions = script_file.get('partitions')
             if partitions is not None:
                 PARTITIONS.update(partitions)
@@ -1023,6 +1021,7 @@ def mac_to_string(mac):
 def print_result(result):
     print(result)
 
+
 def main():
     try:
         args = process_arguments()
@@ -1069,7 +1068,7 @@ def main():
             if args.tar is not None:
                 try:
                     tar_file = open(args.tar, "rb")
-                    script = load_tar(tar_file, nPy)
+                    script = load_tar(tar_file, nPy, args.secureboot)
                     if not args.quiet:
                         #sys.stdout = old_stdout
                         sys.stderr.flush()

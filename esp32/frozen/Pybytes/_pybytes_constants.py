@@ -124,3 +124,7 @@ See all available zone options for RC at https://support.sigfox.com/docs/radio-c
         __DEFAULT_SW_HOST = pycom.nvs_get('pybytes_sw_host', 'software.pycom.io')
     except:
         __DEFAULT_SW_HOST = 'software.pycom.io'
+    try:
+        __DEFAULT_PYCONFIG_DOMAIN = pycom.nvs_get('pyconfig_host', 'staging-pyconfig.eu-central-1.elasticbeanstalk.com')
+    except:
+        __DEFAULT_PYCONFIG_DOMAIN = 'staging-pyconfig.eu-central-1.elasticbeanstalk.com'

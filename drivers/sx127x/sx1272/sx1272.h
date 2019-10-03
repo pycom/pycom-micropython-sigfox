@@ -409,5 +409,9 @@ void SX1272SetOpMode( uint8_t opMode );
  * \param [IN] enable if true, it enables a public network
  */
 void SX1272SetPublicNetwork( bool enable );
+/*!
+ * \brief Resets the SX1272
+ */
+void SX1272Reset( void );
 
 #endif // __SX1272_H__

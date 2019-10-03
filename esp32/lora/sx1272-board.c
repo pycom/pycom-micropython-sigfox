@@ -51,7 +51,8 @@ DRAM_ATTR const struct Radio_s Radio =
     SX1272WriteBuffer,
     SX1272ReadBuffer,
     SX1272SetMaxPayloadLength,
-    SX1272SetPublicNetwork
+    SX1272SetPublicNetwork,
+    SX1272Reset
 };
 
 /*!

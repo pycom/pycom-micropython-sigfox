@@ -135,7 +135,8 @@ typedef enum {
     E_LORA_STATE_TX,
     E_LORA_STATE_TX_DONE,
     E_LORA_STATE_TX_TIMEOUT,
-    E_LORA_STATE_SLEEP
+    E_LORA_STATE_SLEEP,
+    E_LORA_STATE_RESET
 } lora_state_t;
 
 typedef enum {
@@ -223,6 +224,7 @@ typedef struct {
     bool              adr;
     bool              public;
     bool              joined;
+    bool              reset;
     uint8_t           events;
     uint8_t           trigger;
     uint8_t           tx_trials;
@@ -788,6 +790,7 @@ static void TASK_LoRa (void *pvParameters) {
     MibRequestConfirm_t mibReq;
     MlmeReq_t mlmeReq;
     McpsReq_t mcpsReq;
+    bool isReset;
 
     lora_obj.state = E_LORA_STATE_NOINIT;
     lora_obj.pwr_mode = E_LORA_MODE_ALWAYS_ON;
@@ -795,15 +798,23 @@ static void TASK_LoRa (void *pvParameters) {
     for ( ; ; ) {
         vTaskDelay (2 / portTICK_PERIOD_MS);
 
+        if(lora_obj.reset)
+        {
+            Radio.Reset();
+            lora_obj.state = E_LORA_STATE_RESET;
+            lora_obj.reset = false;
+        }
         switch (lora_obj.state) {
         case E_LORA_STATE_NOINIT:
         case E_LORA_STATE_IDLE:
         case E_LORA_STATE_RX:
         case E_LORA_STATE_SLEEP:
+        case E_LORA_STATE_RESET:
             // receive from the command queue and act accordingly
             if (xQueueReceive(xCmdQueue, &task_cmd_data, 0)) {
                 switch (task_cmd_data.cmd) {
                 case E_LORA_CMD_INIT:
+                    isReset = lora_obj.state == E_LORA_STATE_RESET? true:false;
                     // save the new configuration first
                     lora_set_config(&task_cmd_data);
                     if (task_cmd_data.info.init.stack_mode == E_LORA_STACK_MODE_LORAWAN) {
@@ -938,6 +949,9 @@ static void TASK_LoRa (void *pvParameters) {
                     lora_obj.joined = false;
                     if (lora_obj.state == E_LORA_STATE_IDLE) {
                         xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
+                    }
+                    if (isReset) {
+                        xEventGroupSetBits(LoRaEvents, LORA_STATUS_RESET_DONE);
                     }
                     break;
                 case E_LORA_CMD_JOIN:
@@ -2392,6 +2406,37 @@ STATIC mp_obj_t lora_airtime (mp_obj_t self_in, mp_obj_t pack_len_obj) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(lora_airtime_obj, lora_airtime);
 
+STATIC mp_obj_t lora_reset (mp_obj_t self_in) {
+
+    lora_obj_t* self = (lora_obj_t*)self_in;
+    lora_cmd_data_t cmd_data;
+
+    MP_THREAD_GIL_EXIT();
+    //Reset Command Queue
+    while(!xQueueReset(xCmdQueue))
+    {
+        // Try again
+        vTaskDelay (100 / portTICK_PERIOD_MS);
+    }
+
+    self->reset = true;
+
+    lora_get_config (&cmd_data);
+    cmd_data.cmd = E_LORA_CMD_INIT;
+    lora_send_cmd (&cmd_data);
+
+    xEventGroupWaitBits(LoRaEvents,
+                                  LORA_STATUS_RESET_DONE,
+                                  pdTRUE,   // clear on exit
+                                  pdTRUE,  // do not wait for all bits
+                                  (TickType_t)portMAX_DELAY);
+
+    MP_THREAD_GIL_ENTER();
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(lora_reset_obj, lora_reset);
+
 
 STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     // instance methods
@@ -2420,6 +2465,7 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_restore),         (mp_obj_t)&lora_nvram_restore_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_erase),           (mp_obj_t)&lora_nvram_erase_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_airtime),               (mp_obj_t)&lora_airtime_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_reset),                 (mp_obj_t)&lora_reset_obj },
 
 #ifdef LORA_OPENTHREAD_ENABLED
     { MP_OBJ_NEW_QSTR(MP_QSTR_Mesh),                (mp_obj_t)&lora_mesh_type },

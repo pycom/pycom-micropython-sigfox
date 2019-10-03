@@ -10,7 +10,7 @@
 #ifndef VERSION_H_
 #define VERSION_H_
 
-#define SW_VERSION_NUMBER                              "1.20.0.rc14"
+#define SW_VERSION_NUMBER                              "1.20.1"
 
 #define LORAWAN_VERSION_NUMBER                         "1.0.2"
 
