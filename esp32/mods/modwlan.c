@@ -1372,82 +1372,68 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     mp_buffer_info_t bufinfo;
     mp_obj_t *stime;
     size_t stimelen;
-    if(args[0].u_obj == mp_const_none && args[1].u_obj == mp_const_none && args[2].u_obj == mp_const_none && args[3].u_obj == mp_const_none && args[4].u_obj == mp_const_none && args[5].u_obj == mp_const_none)
+
+
+    if(args[0].u_obj != mp_const_none)
     {
-        ptr_config = NULL;
+        scan_config.ssid = (uint8_t*)mp_obj_str_get_str(args[0].u_obj);
+    }
+
+    if(args[1].u_obj != mp_const_none)
+    {
+        if(MP_OBJ_IS_TYPE(args[1].u_obj, &mp_type_bytes))
+        {
+            mp_get_buffer_raise(args[1].u_obj, &bufinfo, MP_BUFFER_READ);
+            scan_config.bssid = bufinfo.buf;
+        }
+        else
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid bssid"));
+        }
+    }
+
+    if(args[2].u_obj != mp_const_none)
+    {
+        scan_config.channel = mp_obj_get_int(args[2].u_obj);
+    }
+
+    if(args[3].u_obj != mp_const_none)
+    {
+        scan_config.show_hidden = mp_obj_get_int(args[3].u_obj) >= 1;
+    }
+
+    if(args[4].u_obj != mp_const_none)
+    {
+        if((wifi_scan_type_t)(mp_obj_get_int(args[4].u_obj)) == WIFI_SCAN_TYPE_PASSIVE)
+        {
+            scan_config.scan_type = WIFI_SCAN_TYPE_PASSIVE;
+        }
+        else
+        {
+            scan_config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+        }
+    }
+    else if(wlan_obj.mode == WIFI_MODE_STA && !wlan_obj.disconnected)
+    {
+        scan_config.scan_type = WIFI_SCAN_TYPE_PASSIVE;
     }
     else
     {
-        if(args[0].u_obj != mp_const_none)
-        {
-            scan_config.ssid = (uint8_t*)mp_obj_str_get_str(args[0].u_obj);
-        }
+        // Nothing
+    }
 
-        if(args[1].u_obj != mp_const_none)
+    if(args[5].u_obj != mp_const_none)
+    {
+        if(MP_OBJ_IS_TYPE(args[5].u_obj, &mp_type_tuple) && scan_config.scan_type == WIFI_SCAN_TYPE_ACTIVE)
         {
-            if(MP_OBJ_IS_TYPE(args[1].u_obj, &mp_type_bytes))
+            mp_obj_get_array(args[5].u_obj, &stimelen, &stime);
+
+            if(stimelen != 0 && stimelen <= 2)
             {
-                mp_get_buffer_raise(args[1].u_obj, &bufinfo, MP_BUFFER_READ);
-                scan_config.bssid = bufinfo.buf;
-            }
-            else
-            {
-                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "invalid bssid"));
-            }
-        }
-
-        if(args[2].u_obj != mp_const_none)
-        {
-            scan_config.channel = mp_obj_get_int(args[2].u_obj);
-        }
-
-        if(args[3].u_obj != mp_const_none)
-        {
-            scan_config.show_hidden = mp_obj_get_int(args[3].u_obj) >= 1;
-        }
-
-        if(args[4].u_obj != mp_const_none)
-        {
-            if((wifi_scan_type_t)(mp_obj_get_int(args[4].u_obj)) == WIFI_SCAN_TYPE_PASSIVE)
-            {
-                scan_config.scan_type = WIFI_SCAN_TYPE_PASSIVE;
-            }
-            else
-            {
-                scan_config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
-            }
-        }
-
-        if(args[5].u_obj != mp_const_none)
-        {
-            if(MP_OBJ_IS_TYPE(args[5].u_obj, &mp_type_tuple) && scan_config.scan_type == WIFI_SCAN_TYPE_ACTIVE)
-            {
-                mp_obj_get_array(args[5].u_obj, &stimelen, &stime);
-
-                if(stimelen != 0 && stimelen <= 2)
+                if(stimelen == 2 && scan_config.scan_type == WIFI_SCAN_TYPE_ACTIVE)
                 {
-                    if(stimelen == 2 && scan_config.scan_type == WIFI_SCAN_TYPE_ACTIVE)
-                    {
-                        scan_config.scan_time.active.min = mp_obj_get_int(stime[0]);
-                        scan_config.scan_time.active.max = mp_obj_get_int(stime[1]);
-                    }
-                    else
-                    {
-                        goto scan_time_err;
-                    }
-                }
-                else
-                {
-                    goto scan_time_err;
-                }
-            }
-            else if(MP_OBJ_IS_INT(args[5].u_obj) && scan_config.scan_type == WIFI_SCAN_TYPE_PASSIVE)
-            {
-                uint32_t passive = mp_obj_get_int(args[5].u_obj);
-
-                if(passive >= 0)
-                {
-                    scan_config.scan_time.passive = mp_obj_get_int(args[5].u_obj);
+                    scan_config.scan_time.active.min = mp_obj_get_int(stime[0]);
+                    scan_config.scan_time.active.max = mp_obj_get_int(stime[1]);
                 }
                 else
                 {
@@ -1459,9 +1445,26 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
                 goto scan_time_err;
             }
         }
+        else if(MP_OBJ_IS_INT(args[5].u_obj) && scan_config.scan_type == WIFI_SCAN_TYPE_PASSIVE)
+        {
+            uint32_t passive = mp_obj_get_int(args[5].u_obj);
 
-        ptr_config = &scan_config;
+            if(passive >= 0)
+            {
+                scan_config.scan_time.passive = mp_obj_get_int(args[5].u_obj);
+            }
+            else
+            {
+                goto scan_time_err;
+            }
+        }
+        else
+        {
+            goto scan_time_err;
+        }
     }
+
+    ptr_config = &scan_config;
 
     // check for the correct wlan mode
     if (wlan_obj.mode == WIFI_MODE_AP) {
