@@ -393,9 +393,10 @@ class PybytesConfig:
                 if str(e) == "list index out of range" and attempt == 3:
                     print("Please review Wifi SSID and password!")
                     wlan.deinit()
-                    return False
+                    return None
                 elif attempt == 3:
                     print("Error connecting using WIFI: %s" % e)
+                    return None
         self.__read_cli_activation(activation_info)
         return self.__process_cli_activation(filename)
 

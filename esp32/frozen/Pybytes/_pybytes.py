@@ -443,7 +443,8 @@ class Pybytes:
         except:
             from _pybytes_config import PybytesConfig
         try:
-            if self.__conf = PybytesConfig().cli_config(activation_info=jstring):
+            self.__conf = PybytesConfig().cli_config(activation_info=jstring)
+            if self.__conf is not None:
                 self.start()
             else:
                 print('Activation failed!')
