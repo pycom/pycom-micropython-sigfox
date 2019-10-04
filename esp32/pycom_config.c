@@ -180,7 +180,15 @@ bool config_get_wifi_antenna(void)
 
 bool config_set_wifi_ap_ssid(const uint8_t *wifi_ssid)
 {
-    memcpy(pycom_config_block.wifi_ap_config.wifi_ssid, wifi_ssid, sizeof(pycom_config_block.wifi_ap_config.wifi_ssid));
+    if(wifi_ssid != NULL)
+    {
+        memcpy(pycom_config_block.wifi_ap_config.wifi_ssid, wifi_ssid, sizeof(pycom_config_block.wifi_ap_config.wifi_ssid));
+    }
+    else
+    {
+        memset(pycom_config_block.wifi_ap_config.wifi_ssid, (uint8_t)0xFF, sizeof(pycom_config_block.wifi_ap_config.wifi_ssid));
+    }
+
     return config_write();
 }
 
@@ -195,7 +203,15 @@ bool config_get_wifi_ap_ssid(uint8_t *wifi_ssid)
 
 bool config_set_wifi_ap_pwd(const uint8_t *wifi_pwd)
 {
-    memcpy(pycom_config_block.wifi_ap_config.wifi_pwd, wifi_pwd, sizeof(pycom_config_block.wifi_ap_config.wifi_pwd));
+    if(wifi_pwd != NULL)
+    {
+        memcpy(pycom_config_block.wifi_ap_config.wifi_pwd, wifi_pwd, sizeof(pycom_config_block.wifi_ap_config.wifi_pwd));
+    }
+    else
+    {
+        memset(pycom_config_block.wifi_ap_config.wifi_pwd, (uint8_t)0xFF, sizeof(pycom_config_block.wifi_ap_config.wifi_pwd));
+    }
+
     return config_write();
 }
 
@@ -261,7 +277,13 @@ bool config_get_heartbeat_on_boot (void) {
 }
 
 bool config_set_sta_wifi_ssid (const uint8_t *wifi_ssid, bool update_flash) {
-    memcpy(pycom_config_block.wifi_sta_config.wifi_ssid, wifi_ssid, sizeof(pycom_config_block.wifi_sta_config.wifi_ssid));
+    if (wifi_ssid != NULL) {
+        memcpy(pycom_config_block.wifi_sta_config.wifi_ssid, wifi_ssid, sizeof(pycom_config_block.wifi_sta_config.wifi_ssid));
+    }
+    else
+    {
+        memset(pycom_config_block.wifi_sta_config.wifi_ssid, (uint8_t)0xFF, sizeof(pycom_config_block.wifi_sta_config.wifi_ssid));
+    }
     if (update_flash) {
         return config_write();
     }
@@ -280,7 +302,13 @@ bool config_get_wifi_sta_ssid (uint8_t *wifi_ssid) {
 }
 
 bool config_set_wifi_sta_pwd (const uint8_t *wifi_pwd, bool update_flash) {
-    memcpy(pycom_config_block.wifi_sta_config.wifi_pwd, wifi_pwd, sizeof(pycom_config_block.wifi_sta_config.wifi_pwd));
+    if (wifi_pwd != NULL) {
+        memcpy(pycom_config_block.wifi_sta_config.wifi_pwd, wifi_pwd, sizeof(pycom_config_block.wifi_sta_config.wifi_pwd));
+    }
+    else
+    {
+        memset(pycom_config_block.wifi_sta_config.wifi_pwd, (uint8_t)0xFF, sizeof(pycom_config_block.wifi_sta_config.wifi_pwd));
+    }
     if (update_flash) {
         return config_write();
     }

@@ -395,9 +395,16 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_wifi_mode_obj, 0, 1, mod_py
 
 STATIC mp_obj_t mod_pycom_wifi_ssid_sta (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
-        if (MP_OBJ_IS_STR(args[0])) {
+        if(args[0] == mp_const_none)
+        {
+            config_set_sta_wifi_ssid (NULL, true);
+        }
+        else if (MP_OBJ_IS_STR(args[0]))
+        {
             config_set_sta_wifi_ssid ((uint8_t *)(mp_obj_str_get_str(args[0])), true);
         }
+        else{/*Nothing*/}
+
     } else {
         uint8_t * ssid = (uint8_t *)m_malloc(33);
         mp_obj_t ssid_obj;
@@ -418,9 +425,15 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_wifi_ssid_sta_obj, 0, 1, mo
 
 STATIC mp_obj_t mod_pycom_wifi_pwd_sta (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
-        if (MP_OBJ_IS_STR(args[0])) {
+        if(args[0] == mp_const_none)
+        {
+            config_set_wifi_sta_pwd (NULL, true);
+        }
+        else if (MP_OBJ_IS_STR(args[0]))
+        {
             config_set_wifi_sta_pwd ((uint8_t *)(mp_obj_str_get_str(args[0])), true);
         }
+        else{/*Nothing*/}
     } else {
         uint8_t * pwd = (uint8_t *)m_malloc(65);
         mp_obj_t pwd_obj;
@@ -441,9 +454,15 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_wifi_pwd_sta_obj, 0, 1, mod
 
 STATIC mp_obj_t mod_pycom_wifi_ssid_ap (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
-        if (MP_OBJ_IS_STR(args[0])) {
+        if(args[0] == mp_const_none)
+        {
+            config_set_wifi_ap_ssid (NULL);
+        }
+        else if (MP_OBJ_IS_STR(args[0]))
+        {
             config_set_wifi_ap_ssid ((uint8_t *)(mp_obj_str_get_str(args[0])));
         }
+        else{/*Nothing*/}
     } else {
         uint8_t * ssid = (uint8_t *)m_malloc(33);
         mp_obj_t ssid_obj;
@@ -464,9 +483,15 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_wifi_ssid_ap_obj, 0, 1, mod
 
 STATIC mp_obj_t mod_pycom_wifi_pwd_ap (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
-        if (MP_OBJ_IS_STR(args[0])) {
+        if(args[0] == mp_const_none)
+        {
+            config_set_wifi_ap_pwd (NULL);
+        }
+        else if (MP_OBJ_IS_STR(args[0]))
+        {
             config_set_wifi_ap_pwd ((uint8_t *)(mp_obj_str_get_str(args[0])));
         }
+        else{/*Nothing*/}
     } else {
         uint8_t * pwd = (uint8_t *)m_malloc(65);
         mp_obj_t pwd_obj;
