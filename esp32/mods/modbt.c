@@ -246,6 +246,7 @@ static esp_ble_adv_params_t bt_adv_params_sec = {
 
 
 static bool mod_bt_is_deinit;
+static uint16_t mod_bt_gatts_mtu_restore = 0;
 static bool mod_bt_is_conn_restore_available;
 
 static uint8_t tx_pwr_level_to_dbm[] = {-12, -9, -6, -3, 0, 3, 6, 9};
@@ -326,7 +327,7 @@ void bt_resume(bool reconnect)
         esp_ble_gattc_app_register(MOD_BT_CLIENT_APP_ID);
         esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
 
-        esp_ble_gatt_set_local_mtu(BT_MTU_SIZE_MAX);
+        esp_ble_gatt_set_local_mtu(mod_bt_gatts_mtu_restore);
 
         bt_connection_obj_t *connection_obj = NULL;
 
@@ -870,10 +871,12 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
         if(mtu > BT_MTU_SIZE_MAX)
         {
             esp_ble_gatt_set_local_mtu(BT_MTU_SIZE_MAX);
+            mod_bt_gatts_mtu_restore = BT_MTU_SIZE_MAX;
         }
         else
         {
             esp_ble_gatt_set_local_mtu(mtu);
+            mod_bt_gatts_mtu_restore = mtu;
         }
 
         self->init = true;
