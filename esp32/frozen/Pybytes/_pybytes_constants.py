@@ -6,7 +6,8 @@ see the Pycom Licence v1.0 document supplied with this file, or
 available at https://www.pycom.io/opensource/licensing
 '''
 
-import sys, pycom
+import sys
+import pycom
 
 
 class MQTTConstants:

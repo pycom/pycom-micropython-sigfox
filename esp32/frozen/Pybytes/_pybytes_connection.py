@@ -139,6 +139,7 @@ class PybytesConnection:
                         return False
                     elif attempt == 3:
                         print("Error connecting using WIFI: %s" % e)
+                        return False
 
             self.__network_type = constants.__NETWORK_TYPE_WIFI
             print("WiFi connection established")

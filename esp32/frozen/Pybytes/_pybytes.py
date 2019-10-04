@@ -222,7 +222,7 @@ class Pybytes:
                     self.__config_updated = False
             self.__check_init()
 
-            if not self.__conf['network_preferences']:
+            if not self.__conf.get('network_preferences'):
                 print("network_preferences are empty, set it up in /flash/pybytes_config.json first") # noqa
 
             for net in self.__conf['network_preferences']:
@@ -310,11 +310,10 @@ class Pybytes:
         if reconnect:
             self.reconnect()
 
-    def update_config(self, key=None, value=None, permanent=True, silent=False, reconnect=False):
-        if key is None:
-            raise ValueError('You need to either specify a key!')
-        else:
-            self.__conf[key].update(value)
+    def update_config(self, key, value=None, permanent=True, silent=False, reconnect=False):
+        if type(value) != list:
+            raise ValueError('Value must be a list!')
+        self.__conf[key].update(value)
         self.__config_updated = True
         if permanent: self.write_config(silent=silent)
         if reconnect:
@@ -444,8 +443,10 @@ class Pybytes:
         except:
             from _pybytes_config import PybytesConfig
         try:
-            self.__conf = PybytesConfig().cli_config(activation_info=jstring)
-            self.start()
+            if self.__conf = PybytesConfig().cli_config(activation_info=jstring):
+                self.start()
+            else:
+                print('Activation failed!')
         except Exception as ex:
             print('Activation failed! Please try again...')
             print_debug(1, ex)
