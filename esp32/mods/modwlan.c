@@ -1701,16 +1701,16 @@ STATIC mp_obj_t wlan_smartConfig(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_smartConfig_obj, wlan_smartConfig);
 
-STATIC mp_obj_t wlan_key(mp_obj_t self_in) {
+STATIC mp_obj_t wlan_smartConfkey(mp_obj_t self_in) {
 
     wlan_obj_t* self = (wlan_obj_t*)self_in;
-    if(strlen((char *)self->key) > 0)
+    if((xEventGroupGetBits(wifi_event_group) & CONNECTED_BIT))
     {
         return mp_obj_new_str((char *)self->key, strlen((char *)self->key));
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_key_obj, wlan_key);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_smartConfkey_obj, wlan_smartConfkey);
 
 STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     STATIC const mp_arg_t wlan_ifconfig_args[] = {
@@ -2717,7 +2717,7 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_packet),         (mp_obj_t)&wlan_packet_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ctrl_pkt_filter),     (mp_obj_t)&wlan_ctrl_pkt_filter_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_smartConfig),         (mp_obj_t)&wlan_smartConfig_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_Connected_ap_pwd),    (mp_obj_t)&wlan_key_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_Connected_ap_pwd),    (mp_obj_t)&wlan_smartConfkey_obj },
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_STA),                         MP_OBJ_NEW_SMALL_INT(WIFI_MODE_STA) },

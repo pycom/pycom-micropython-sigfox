@@ -10,10 +10,8 @@
 #ifndef MODCOAP_H_
 #define MODCOAP_H_
 
-#ifdef ENABLE_COAP
 
 extern const mp_obj_module_t mod_coap;
 
-#endif
 
 #endif  // MODCOAP_H_

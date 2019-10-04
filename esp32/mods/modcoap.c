@@ -7,7 +7,6 @@
  * available at https://www.pycom.io/opensource/licensing
  */
 
-#ifdef ENABLE_COAP
 
 #include "py/mpconfig.h"
 #include "py/obj.h"
@@ -1352,5 +1351,3 @@ const mp_obj_module_t mod_coap = {
     .base = { &mp_type_module },
     .globals = (mp_obj_dict_t*)&mod_coap_globals,
 };
-
-#endif /* ENABLE_COAP */
