@@ -72,6 +72,8 @@
 #define MOD_BT_GATTC_NOTIFY_EVT                             (0x0020)
 #define MOD_BT_GATTC_INDICATE_EVT                           (0x0040)
 #define MOD_BT_GATTS_SUBSCRIBE_EVT                          (0x0080)
+#define MOD_BT_GATTC_MTU_EVT                                (0x0100)
+#define MOD_BT_GATTS_MTU_EVT                                (0x0200)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -79,6 +81,7 @@
 typedef struct {
     mp_obj_base_t         base;
     int32_t               scan_duration;
+    uint8_t               gatts_mtu;
     mp_obj_t              handler;
     mp_obj_t              handler_arg;
     esp_bd_addr_t         client_bda;
@@ -100,6 +103,7 @@ typedef struct {
     mp_obj_list_t         srv_list;
     esp_bd_addr_t         srv_bda;
     int32_t               conn_id;
+    uint16_t              mtu;
     esp_gatt_if_t         gatt_if;
 } bt_connection_obj_t;
 
@@ -245,7 +249,8 @@ static bool mod_bt_is_deinit;
 static bool mod_bt_is_conn_restore_available;
 
 static uint8_t tx_pwr_level_to_dbm[] = {-12, -9, -6, -3, 0, 3, 6, 9};
-
+static EventGroupHandle_t bt_event_group;
+static uint16_t bt_conn_mtu = 0;
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -276,6 +281,16 @@ void modbt_init0(void) {
     } else {
         xQueueReset(xGattsQueue);
     }
+    if(!bt_event_group)
+    {
+        bt_event_group = xEventGroupCreate();
+    }
+    else
+    {
+        //Using only MTU event in group for now
+        xEventGroupClearBits(bt_event_group, MOD_BT_GATTC_MTU_EVT | MOD_BT_GATTS_MTU_EVT);
+    }
+    bt_event_group = xEventGroupCreate();
 
     if (bt_obj.init) {
         esp_ble_gattc_app_unregister(MOD_BT_CLIENT_APP_ID);
@@ -538,6 +553,8 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
     case ESP_GATTC_CFG_MTU_EVT:
         // connection process and MTU request complete
         bt_obj.busy = false;
+        bt_conn_mtu = p_data->cfg_mtu.mtu;
+        xEventGroupSetBits(bt_event_group, MOD_BT_GATTC_MTU_EVT);
         break;
     case ESP_GATTC_READ_CHAR_EVT:
         if (p_data->read.status == ESP_GATT_OK) {
@@ -595,10 +612,9 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         break;
     }
     case ESP_GATTC_SEARCH_CMPL_EVT:
-        bt_obj.busy = false;
-        break;
     case ESP_GATTC_CANCEL_OPEN_EVT:
         bt_obj.busy = false;
+        break;
         // intentional fall through
     case ESP_GATTC_CLOSE_EVT:
     case ESP_GATTC_DISCONNECT_EVT:
@@ -743,8 +759,11 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         }
         break;
     }
-    case ESP_GATTS_EXEC_WRITE_EVT:
     case ESP_GATTS_MTU_EVT:
+        bt_obj.gatts_mtu = p->mtu.mtu;
+        xEventGroupSetBits(bt_event_group, MOD_BT_GATTS_MTU_EVT);
+        break;
+    case ESP_GATTS_EXEC_WRITE_EVT:
     case ESP_GATTS_CONF_EVT:
     case ESP_GATTS_UNREG_EVT:
         break;
@@ -792,6 +811,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         break;
     case ESP_GATTS_DISCONNECT_EVT:
         bt_obj.gatts_conn_id = -1;
+        xEventGroupClearBits(bt_event_group, MOD_BT_GATTS_MTU_EVT);
         if (bt_obj.advertising) {
             if (!bt_obj.secure){
                 esp_ble_gap_start_advertising(&bt_adv_params);
@@ -845,7 +865,16 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
         esp_ble_gattc_app_register(MOD_BT_CLIENT_APP_ID);
         esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
 
-        esp_ble_gatt_set_local_mtu(BT_MTU_SIZE_MAX);
+        //set MTU
+        uint16_t mtu = args[5].u_int;
+        if(mtu > BT_MTU_SIZE_MAX)
+        {
+            esp_ble_gatt_set_local_mtu(BT_MTU_SIZE_MAX);
+        }
+        else
+        {
+            esp_ble_gatt_set_local_mtu(mtu);
+        }
 
         self->init = true;
     }
@@ -896,6 +925,7 @@ STATIC const mp_arg_t bt_init_args[] = {
     { MP_QSTR_modem_sleep,  MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
     { MP_QSTR_secure,       MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
     { MP_QSTR_io_cap,       MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = ESP_IO_CAP_NONE} },
+    { MP_QSTR_mtu,          MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = BT_MTU_SIZE_MAX} },
 
 };
 STATIC mp_obj_t bt_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
@@ -1173,6 +1203,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_events_obj, bt_events);
 static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
 
     bt_event_result_t bt_event;
+    EventBits_t uxBits;
 
     if (bt_obj.busy) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "operation already in progress"));
@@ -1194,6 +1225,7 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
     if (ESP_OK != esp_ble_gattc_open(bt_obj.gattc_if, bufinfo.buf, BLE_ADDR_TYPE_PUBLIC, true)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
+    MP_THREAD_GIL_EXIT();
     if (xQueueReceive(xScanQueue, &bt_event, timeout) == pdTRUE)
     {
         if (bt_event.connection.conn_id < 0) {
@@ -1205,6 +1237,11 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
         conn->base.type = (mp_obj_t)&mod_bt_connection_type;
         conn->conn_id = bt_event.connection.conn_id;
         conn->gatt_if = bt_event.connection.gatt_if;
+        uxBits = xEventGroupWaitBits(bt_event_group, MOD_BT_GATTC_MTU_EVT, true, true, 1000/portTICK_PERIOD_MS);
+        if(uxBits & MOD_BT_GATTC_MTU_EVT)
+        {
+            conn->mtu = bt_conn_mtu;
+        }
         memcpy(conn->srv_bda, bt_event.connection.srv_bda, 6);
         mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), conn);
         return conn;
@@ -1214,7 +1251,7 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
         (void)esp_ble_gap_disconnect(bufinfo.buf);
         nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
     }
-
+    MP_THREAD_GIL_ENTER();
     return mp_const_none;
 }
 
@@ -1826,6 +1863,37 @@ STATIC mp_obj_t bt_tx_power(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_tx_power_obj, 2, bt_tx_power);
 
+STATIC mp_obj_t bt_conn_get_mtu(mp_obj_t self_in) {
+
+    bt_connection_obj_t * self =  (bt_connection_obj_t *)self_in;
+
+    if(self->conn_id >= 0)
+    {
+        return mp_obj_new_int(self->mtu);
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_conn_get_mtu_obj, bt_conn_get_mtu);
+
+STATIC mp_obj_t bt_gatts_get_mtu(mp_obj_t self_in) {
+
+    bt_obj_t * self =  (bt_obj_t *)self_in;
+    EventBits_t uxBits;
+
+    if(self->gatts_conn_id >= 0)
+    {
+        MP_THREAD_GIL_EXIT();
+        uxBits = xEventGroupWaitBits(bt_event_group, MOD_BT_GATTS_MTU_EVT, true, true, 1000/portTICK_PERIOD_MS);
+        MP_THREAD_GIL_ENTER();
+        if(uxBits & MOD_BT_GATTS_MTU_EVT)
+        {
+            return mp_obj_new_int(self->gatts_mtu);
+        }
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_gatts_get_mtu_obj, bt_gatts_get_mtu);
+
 STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                    (mp_obj_t)&bt_init_obj },
@@ -1847,6 +1915,7 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect_client),       (mp_obj_t)&bt_gatts_disconnect_client_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_modem_sleep),             (mp_obj_t)&bt_modem_sleep_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_tx_power),                (mp_obj_t)&bt_tx_power_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_gatts_mtu),               (mp_obj_t)&bt_gatts_get_mtu_obj },
 
 
     // exceptions
@@ -2019,6 +2088,7 @@ STATIC const mp_map_elem_t bt_connection_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_isconnected),             (mp_obj_t)&bt_conn_isconnected_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_disconnect),              (mp_obj_t)&bt_conn_disconnect_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_services),                (mp_obj_t)&bt_conn_services_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_get_mtu),                 (mp_obj_t)&bt_conn_get_mtu_obj },
 
 };
 STATIC MP_DEFINE_CONST_DICT(bt_connection_locals_dict, bt_connection_locals_dict_table);
