@@ -15,7 +15,7 @@ node {
     stage('git-tag') {
         PYCOM_VERSION=get_version()
         GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-        sh 'git tag -fa v1.9.4-' + GIT_TAG + ' -m \\"v1.9.4-' + GIT_TAG + '\\"'
+        sh 'git tag -fa v1.11-' + GIT_TAG + ' -m \\"v1.11-' + GIT_TAG + '\\"'
     }
 
 
