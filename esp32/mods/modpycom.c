@@ -555,6 +555,86 @@ STATIC mp_obj_t mod_pycom_lte_modem_on_boot (mp_uint_t n_args, const mp_obj_t *a
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_lte_modem_on_boot_obj, 0, 1, mod_pycom_lte_modem_on_boot);
 
+STATIC mp_obj_t mod_pycom_pybytes_lte_config (size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    enum { ARG_carrier, ARG_apn, ARG_cid, ARG_band, ARG_type, ARG_reset };
+    STATIC const mp_arg_t allowed_args[] = {
+        { MP_QSTR_carrier,   		MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_apn,          	MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_cid,         		MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_band,            	MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_type,            	MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_reset,            MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+
+    };
+
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    pycom_pybytes_lte_config_t pycom_pybytes_lte_config = config_get_pybytes_lte_config();
+
+    if (n_args == 0) {
+        mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(6, NULL));
+
+        if(pycom_pybytes_lte_config.carrier[0] == 0xFF && pycom_pybytes_lte_config.carrier[1] == 0xFF && pycom_pybytes_lte_config.carrier[2] == 0xFF)
+        {
+            t->items[ARG_carrier] = mp_const_none;
+        }
+        else
+        {
+            t->items[ARG_carrier] = mp_obj_new_str((const char *)pycom_pybytes_lte_config.carrier, strlen((const char *)pycom_pybytes_lte_config.carrier));
+        }
+
+        if(pycom_pybytes_lte_config.apn[0] == 0xFF && pycom_pybytes_lte_config.apn[1] == 0xFF && pycom_pybytes_lte_config.apn[2] == 0xFF)
+        {
+            t->items[ARG_apn] = mp_const_none;
+        }
+        else
+        {
+            t->items[ARG_apn] = mp_obj_new_str((const char *)pycom_pybytes_lte_config.apn, strlen((const char *)pycom_pybytes_lte_config.apn));
+        }
+        if(pycom_pybytes_lte_config.cid == 0xFF)
+        {
+            t->items[ARG_cid] = mp_obj_new_int(1);
+        }
+        else
+        {
+            t->items[ARG_cid] = mp_obj_new_int(pycom_pybytes_lte_config.cid);
+        }
+        if(pycom_pybytes_lte_config.band == 0xFF)
+        {
+            t->items[ARG_band] = mp_const_none;
+        }
+        else
+        {
+            t->items[ARG_band] = mp_obj_new_int(pycom_pybytes_lte_config.band);
+        }
+        if(pycom_pybytes_lte_config.type[0] == 0xFF)
+        {
+            t->items[ARG_type] = mp_const_none;
+        }
+        else
+        {
+            t->items[ARG_type] = mp_obj_new_str((const char *)pycom_pybytes_lte_config.type, strlen((const char *)pycom_pybytes_lte_config.type));
+        }
+        if(pycom_pybytes_lte_config.reset == 0xff)
+        {
+            t->items[ARG_reset] = mp_const_false;
+        }
+        else
+        {
+            t->items[ARG_reset] = mp_obj_new_bool(pycom_pybytes_lte_config.reset);
+        }
+        return MP_OBJ_FROM_PTR(t);
+
+    } else {
+    	nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Error this functionality is not yet supported!"));
+    }
+
+    return mp_const_none;
+}
+
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_pybytes_lte_config_obj, 0, mod_pycom_pybytes_lte_config);
+
 STATIC mp_obj_t mod_pycom_bootmgr (size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_boot_partition, ARG_fs_type, ARG_safeboot, ARG_status };
     STATIC const mp_arg_t allowed_args[] = {
@@ -731,6 +811,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_extra_preferences),       (mp_obj_t)&mod_pycom_pybytes_extra_preferences_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_force_update),            (mp_obj_t)&mod_pycom_pybytes_force_update_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_smart_config_on_boot),            (mp_obj_t)&mod_pycom_smartConfig_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_lte_config),    			(mp_obj_t)&mod_pycom_pybytes_lte_config_obj },
 #endif //(VARIANT == PYBYTES)
     { MP_OBJ_NEW_QSTR(MP_QSTR_bootmgr),                         (mp_obj_t)&mod_pycom_bootmgr_obj },
 

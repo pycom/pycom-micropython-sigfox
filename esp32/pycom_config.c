@@ -384,6 +384,15 @@ uint8_t config_get_boot_fs_type (void) {
     return pycom_config_block.pycom_config.boot_fs_type;
 }
 
+pycom_pybytes_lte_config_t config_get_pybytes_lte_config (void) {
+	return pycom_config_block.pycom_pybytes_lte_config;
+}
+
+bool config_set_pybytes_lte_config(const pycom_pybytes_lte_config_t pycom_pybytes_lte_config) {
+	pycom_config_block.pycom_pybytes_lte_config=pycom_pybytes_lte_config;
+	return config_write();
+}
+
 bool config_set_boot_fs_type (const uint8_t boot_fs_type) {
     pycom_config_block.pycom_config.boot_fs_type=boot_fs_type;
     return config_write();

@@ -174,7 +174,13 @@ class PybytesConfig:
                 'network_preferences' : pycom.pybytes_network_preferences().split(),
                 'wifi_ssid' : pycom.wifi_ssid_sta() if hasattr(pycom, 'wifi_ssid_sta') else pycom.wifi_ssid(),
                 'wifi_pwd': pycom.wifi_pwd_sta() if hasattr(pycom, 'wifi_pwd_sta') else pycom.wifi_pwd(),
-                'extra_preferences' : pycom.pybytes_extra_preferences()
+                'extra_preferences' : pycom.pybytes_extra_preferences(),
+                'carrier' : pycom.pybytes_lte_config()[0],
+                'apn' : pycom.pybytes_lte_config()[1],
+                'cid' : pycom.pybytes_lte_config()[2],
+                'band' : pycom.pybytes_lte_config()[3],
+                'protocol' : pycom.pybytes_lte_config()[4],
+                'reset' : pycom.pybytes_lte_config()[5]
             }
         except:
             pass
