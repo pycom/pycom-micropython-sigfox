@@ -74,6 +74,7 @@
 #define MOD_BT_GATTS_SUBSCRIBE_EVT                          (0x0080)
 #define MOD_BT_GATTC_MTU_EVT                                (0x0100)
 #define MOD_BT_GATTS_MTU_EVT                                (0x0200)
+#define MOD_BT_GATTS_CLOSE_EVT                              (0x0400)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -245,7 +246,7 @@ static esp_ble_adv_params_t bt_adv_params_sec = {
 };
 
 
-static bool mod_bt_is_deinit;
+static bool mod_bt_allow_resume_deinit;
 static uint16_t mod_bt_gatts_mtu_restore = 0;
 static bool mod_bt_is_conn_restore_available;
 
@@ -288,8 +289,8 @@ void modbt_init0(void) {
     }
     else
     {
-        //Using only MTU event in group for now
-        xEventGroupClearBits(bt_event_group, MOD_BT_GATTC_MTU_EVT | MOD_BT_GATTS_MTU_EVT);
+        //Using only specific events in group for now
+        xEventGroupClearBits(bt_event_group, MOD_BT_GATTC_MTU_EVT | MOD_BT_GATTS_MTU_EVT | MOD_BT_GATTS_DISCONN_EVT | MOD_BT_GATTS_CLOSE_EVT);
     }
     bt_event_group = xEventGroupCreate();
 
@@ -304,13 +305,56 @@ void modbt_init0(void) {
 
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
 
-    mod_bt_is_deinit = false;
+    mod_bt_allow_resume_deinit = false;
     mod_bt_is_conn_restore_available = false;
+}
+
+void modbt_deinit(bool allow_reconnect)
+{
+    uint16_t timeout = 0;
+    if (bt_obj.init)
+    {
+        if (bt_obj.scanning) {
+            esp_ble_gap_stop_scanning();
+            bt_obj.scanning = false;
+        }
+        /* Allow reconnection flag */
+        mod_bt_allow_resume_deinit = allow_reconnect;
+
+        bt_connection_obj_t *connection_obj;
+
+        for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++)
+        {
+            // loop through the connections
+            connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
+            //close connections
+            modbt_conn_disconnect(connection_obj);
+        }
+        while ((MP_STATE_PORT(btc_conn_list).len > 0) && (timeout < 20) && !mod_bt_allow_resume_deinit)
+        {
+            vTaskDelay (50 / portTICK_PERIOD_MS);
+            timeout++;
+        }
+
+        if (bt_obj.gatts_conn_id >= 0)
+        {
+            bt_obj.advertising  = false;
+            esp_ble_gatts_close(bt_obj.gatts_if, bt_obj.gatts_conn_id);
+            xEventGroupWaitBits(bt_event_group, MOD_BT_GATTS_DISCONN_EVT | MOD_BT_GATTS_CLOSE_EVT, true, true, 1000/portTICK_PERIOD_MS);
+        }
+
+        esp_bluedroid_disable();
+        esp_bluedroid_deinit();
+        esp_bt_controller_disable();
+        bt_obj.init = false;
+        mod_bt_is_conn_restore_available = false;
+        xEventGroupClearBits(bt_event_group, MOD_BT_GATTC_MTU_EVT | MOD_BT_GATTS_MTU_EVT | MOD_BT_GATTS_DISCONN_EVT | MOD_BT_GATTS_CLOSE_EVT);
+    }
 }
 
 void bt_resume(bool reconnect)
 {
-    if(mod_bt_is_deinit && !bt_obj.init)
+    if(mod_bt_allow_resume_deinit && !bt_obj.init)
     {
         esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
         esp_bt_controller_init(&bt_cfg);
@@ -367,7 +411,7 @@ void bt_resume(bool reconnect)
         }
 
         bt_obj.init = true;
-        mod_bt_is_deinit = false;
+        mod_bt_allow_resume_deinit = false;
     }
 }
 
@@ -404,7 +448,7 @@ static void close_connection (int32_t conn_id) {
     for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++) {
         bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
         /* Only reset Conn Id if it is a normal disconnect not module de-init to mark conn obj to be restored */
-        if (connection_obj->conn_id == conn_id && (!mod_bt_is_deinit)) {
+        if (connection_obj->conn_id == conn_id && (!mod_bt_allow_resume_deinit)) {
             connection_obj->conn_id = -1;
             mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
         }
@@ -821,13 +865,16 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
             }
         }
         bt_obj.events |= MOD_BT_GATTS_DISCONN_EVT;
+        xEventGroupSetBits(bt_event_group, MOD_BT_GATTS_DISCONN_EVT);
         if (bt_obj.trigger & MOD_BT_GATTS_DISCONN_EVT) {
             mp_irq_queue_interrupt(bluetooth_callback_handler, (void *)&bt_obj);
         }
         break;
+    case ESP_GATTS_CLOSE_EVT:
+        xEventGroupSetBits(bt_event_group, MOD_BT_GATTS_CLOSE_EVT);
+        break;
     case ESP_GATTS_OPEN_EVT:
     case ESP_GATTS_CANCEL_OPEN_EVT:
-    case ESP_GATTS_CLOSE_EVT:
     case ESP_GATTS_LISTEN_EVT:
     case ESP_GATTS_CONGEST_EVT:
     default:
@@ -972,29 +1019,8 @@ STATIC mp_obj_t bt_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_init_obj, 1, bt_init);
 
 mp_obj_t bt_deinit(mp_obj_t self_in) {
-    if (bt_obj.init) {
-        if (bt_obj.scanning) {
-            esp_ble_gap_stop_scanning();
-            bt_obj.scanning = false;
-        }
-        /* Indicate module is de-initializing */
-        mod_bt_is_deinit = true;
 
-        bt_connection_obj_t *connection_obj;
-
-        for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++)
-        {
-            // loop through the connections
-            connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
-            //close connections
-            modbt_conn_disconnect(connection_obj);
-        }
-        esp_bluedroid_disable();
-        esp_bluedroid_deinit();
-        esp_bt_controller_disable();
-        bt_obj.init = false;
-        mod_bt_is_conn_restore_available = false;
-    }
+    modbt_deinit(false);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_deinit_obj, bt_deinit);
@@ -2041,7 +2067,7 @@ STATIC mp_obj_t bt_conn_disconnect(mp_obj_t self_in) {
         esp_ble_gattc_close(bt_obj.gattc_if, self->conn_id);
         esp_ble_gap_disconnect(self->srv_bda);
         /* Only reset Conn Id if it is a normal disconnect not module de-init to mark conn obj to be restored */
-        if(!mod_bt_is_deinit)
+        if(!mod_bt_allow_resume_deinit)
         {
             self->conn_id = -1;
         }

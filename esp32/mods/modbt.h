@@ -28,4 +28,5 @@
 extern void modbt_init0(void);
 extern mp_obj_t bt_deinit(mp_obj_t self_in);
 extern void bt_resume(bool reconnect);
+void modbt_deinit(bool allow_reconnect);
 #endif  // MODBT_H_

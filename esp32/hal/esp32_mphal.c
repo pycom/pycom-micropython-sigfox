@@ -35,6 +35,8 @@
 #include "bootloader.h"
 #include "modwlan.h"
 #include "modbt.h"
+#include "machtimer.h"
+#include "mpirq.h"
 
 #include "driver/timer.h"
 
@@ -220,8 +222,13 @@ void mp_hal_reset_safe_and_boot(bool reset) {
     boot_info_t boot_info;
     uint32_t boot_info_offset;
     /* Disable Wifi/BT to avoid cache region being accessed since it will be disabled when updating Safe boot flag in flash */
+    machtimer_deinit();
+#if MICROPY_PY_THREAD
+    mp_irq_kill();
+    mp_thread_deinit();
+#endif
     wlan_deinit(NULL);
-    bt_deinit(NULL);
+    modbt_deinit(false);
     if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
         boot_info.safeboot = SAFE_BOOT_SW;
         updater_write_boot_info (&boot_info, boot_info_offset);
