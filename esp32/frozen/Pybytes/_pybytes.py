@@ -311,13 +311,15 @@ class Pybytes:
             self.reconnect()
 
     def update_config(self, key, value=None, permanent=True, silent=False, reconnect=False):
-        if type(value) != list:
-            raise ValueError('Value must be a list!')
-        self.__conf[key].update(value)
-        self.__config_updated = True
-        if permanent: self.write_config(silent=silent)
-        if reconnect:
-            self.reconnect()
+        try:
+            self.__conf[key].update(value)
+            self.__config_updated = True
+            if permanent: self.write_config(silent=silent)
+            if reconnect:
+                self.reconnect()
+        except Exception as ex:
+            print('Error updating configuration!')
+            print('{}: {}'.format(ex.__name__, ex))
 
 
     def read_config(self, file='/flash/pybytes_config.json', reconnect=False):
