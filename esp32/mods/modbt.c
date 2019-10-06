@@ -338,7 +338,9 @@ void modbt_deinit(bool allow_reconnect)
 
         if (bt_obj.gatts_conn_id >= 0)
         {
-            bt_obj.advertising  = false;
+            if (!mod_bt_allow_resume_deinit) {
+                bt_obj.advertising  = false;
+            }
             esp_ble_gatts_close(bt_obj.gatts_if, bt_obj.gatts_conn_id);
             xEventGroupWaitBits(bt_event_group, MOD_BT_GATTS_DISCONN_EVT | MOD_BT_GATTS_CLOSE_EVT, true, true, 1000/portTICK_PERIOD_MS);
         }
@@ -1020,7 +1022,9 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_init_obj, 1, bt_init);
 
 mp_obj_t bt_deinit(mp_obj_t self_in) {
 
+    MP_THREAD_GIL_EXIT();
     modbt_deinit(false);
+    MP_THREAD_GIL_ENTER();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_deinit_obj, bt_deinit);
