@@ -442,7 +442,7 @@ class PybytesConfig:
         # Check if we have a project specific configuration
         try:
             pf = open('/flash/pybytes_project.json', 'r')
-            pjfile = pf.readall()
+            pjfile = pf.read()
             pf.close()
             try:
                 import json
@@ -456,7 +456,7 @@ class PybytesConfig:
                 print("Exception: {}".format(ex))
         except:
             pass
-
-        self.__pybytes_config['pybytes_autostart'] = self.__check_config()
+        if self.__pybytes_config.get('pybytes_autostart', False):
+             self.__pybytes_config['pybytes_autostart'] = self.__check_config()
 
         return self.__pybytes_config
