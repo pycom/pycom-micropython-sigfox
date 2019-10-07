@@ -301,13 +301,10 @@ static bool lte_check_legacy_version(void) {
 
 static int lte_get_modem_version(void)
 {
-    lte_task_cmd_data_t cmd = { .timeout = LTE_RX_TIMEOUT_MAX_MS };
-
     /* Get modem version */
-    memcpy(cmd.data, "AT!=\"showver\"", strlen("AT!=\"showver\""));
     char * ver = NULL;
 
-    lteppp_send_at_command(&cmd, &modlte_rsp);
+    lte_push_at_command_ext("AT!=\"showver\"", LTE_RX_TIMEOUT_MAX_MS, NULL, strlen("AT!=\"showver\""));
     ver = strstr(modlte_rsp.data, "Software     :");
 
     if(ver != NULL )
@@ -649,11 +646,8 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         if (strstr(modlte_rsp.data, carrier)) {
             lte_obj.carrier = false;
             /* Get configured bands in modem */
-            lte_task_cmd_data_t cmd = { .timeout = LTE_RX_TIMEOUT_MAX_MS };
-            memcpy(cmd.data, "AT+SMDD", strlen("AT+SMDD"));
-            lteppp_send_at_command(&cmd, &modlte_rsp);
+            lte_push_at_command_ext("AT+SMDD", LTE_RX_TIMEOUT_MAX_MS, NULL, strlen("AT+SMDD"));
             /* Dummy command for command response > Uart buff size */
-            memcpy(cmd.data, "Pycom_Dummy", strlen("Pycom_Dummy"));
             MP_THREAD_GIL_EXIT();
             if(strstr(modlte_rsp.data, "17 bands") != NULL)
             {
@@ -667,7 +661,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                         is_hw_new_band_support = true;
                     }
                 }
-                lteppp_send_at_command(&cmd, &modlte_rsp);
+                lte_push_at_command_ext("Pycom_Dummy", LTE_RX_TIMEOUT_MAX_MS, NULL, strlen("Pycom_Dummy"));
             }
             MP_THREAD_GIL_ENTER();
             int version = lte_get_modem_version();
