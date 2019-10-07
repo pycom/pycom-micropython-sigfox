@@ -153,10 +153,12 @@ STATIC mp_obj_t adc_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *k
     mp_arg_val_t args[MP_ARRAY_SIZE(pyb_adc_init_args) - 1];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &pyb_adc_init_args[1], args);
     // check the number of bits
-    if (args[0].u_int != 12) {
+    if (args[0].u_int < 9 || args[0].u_int > 12) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
     }
-    pyb_adc_init(pos_args[0]);
+    pyb_adc_obj_t *self = pos_args[0];
+    self->width = args[0].u_int;
+    pyb_adc_init(self);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(adc_init_obj, 1, adc_init);
