@@ -24,7 +24,7 @@ node {
         sh 'make -C mpy-cross clean all'
     }
 
-	for (board in boards_to_build) {
+    for (board in boards_to_build) {
         stage(board) {
             def parallelSteps = [:]
             for (variant in variants_to_build) {
@@ -105,7 +105,7 @@ def testBuild(short_name) {
         }
         sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
         sh 'python esp32/tools/pypic.py --port ' + device_name +' --exit'
-	}
+    }
   }
 }
 
@@ -116,16 +116,16 @@ def get_version() {
 
 def get_firmware_name(short_name) {
   node {
-	def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
-	def matcher = node_info =~ short_name + ':(.+):.*'
+    def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
+    def matcher = node_info =~ short_name + ':(.+):.*'
     matcher ? matcher[0][1] : "WiPy"
   }
 }
 
 def get_remote_name(short_name) {
   node {
-	def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
-	def matcher = node_info =~ short_name + ':.*:(.+)'
+    def node_info = sh (script: 'cat ${JENKINS_HOME}/pycom-ic.conf || exit 0', returnStdout: true).trim()
+    def matcher = node_info =~ short_name + ':.*:(.+)'
     matcher ? matcher[0][1] : "RPI3"
   }
 }
@@ -133,4 +133,3 @@ def get_remote_name(short_name) {
 def get_device_name(short_name) {
     return "/dev/tty.usbmodemPy" +  short_name + " "
 }
-
