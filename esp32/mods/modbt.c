@@ -53,6 +53,9 @@
 #include "lwip/opt.h"
 #include "lwip/def.h"
 
+#include "mbedtls/sha1.h"
+#include "nvs.h"
+
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
@@ -75,6 +78,9 @@
 #define MOD_BT_GATTC_MTU_EVT                                (0x0100)
 #define MOD_BT_GATTS_MTU_EVT                                (0x0200)
 #define MOD_BT_GATTS_CLOSE_EVT                              (0x0400)
+#define MOD_BT_NVS_NAMESPACE                                "BT_NVS"
+#define MOD_BT_HASH_SIZE                                    (20)
+#define MOD_BT_PIN_LENGTH                                   (6)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -209,6 +215,11 @@ typedef struct {
     uint16_t              config;
 } bt_gatts_char_obj_t;
 
+typedef union {
+    uint32_t pin;
+    uint8_t value[4];
+} bt_hash_obj_t;
+
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -250,6 +261,7 @@ static bool mod_bt_allow_resume_deinit;
 static uint16_t mod_bt_gatts_mtu_restore = 0;
 static bool mod_bt_is_conn_restore_available;
 
+static nvs_handle modbt_nvs_handle;
 static uint8_t tx_pwr_level_to_dbm[] = {-12, -9, -6, -3, 0, 3, 6, 9};
 static EventGroupHandle_t bt_event_group;
 static uint16_t bt_conn_mtu = 0;
@@ -430,15 +442,115 @@ static esp_ble_scan_params_t ble_scan_params = {
     .scan_window            = 0x30
 };
 
-static void set_secure_parameters(esp_ble_io_cap_t *iocap){
-    esp_ble_auth_req_t auth_req = ESP_LE_AUTH_BOND;
+STATIC mp_obj_t bt_nvram_erase (mp_obj_t self_in) {
+    if (nvs_open(MOD_BT_NVS_NAMESPACE, NVS_READWRITE, &modbt_nvs_handle) != ESP_OK) {
+        mp_printf(&mp_plat_print, "Error opening secure BLE NVS namespace!\n");
+    }
+
+    if (ESP_OK != nvs_erase_all(modbt_nvs_handle)) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+    }
+    nvs_commit(modbt_nvs_handle);
+    nvs_close(modbt_nvs_handle);
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_nvram_erase_obj, bt_nvram_erase);
+
+static void create_hash(uint32_t pin, uint8_t *h_value)
+{
+    bt_hash_obj_t pin_hash;
+    mbedtls_sha1_context sha1_context;
+   
+    mbedtls_sha1_init(&sha1_context);
+    mbedtls_sha1_starts_ret(&sha1_context);
+   
+    pin_hash.pin = pin;
+    mbedtls_sha1_update_ret(&sha1_context, pin_hash.value, 4);
+    
+    mbedtls_sha1_finish_ret(&sha1_context, h_value);
+    mbedtls_sha1_free(&sha1_context);
+}
+
+static bool is_pin_valid(uint32_t pin)
+{
+    int digits = 0;
+
+    while(pin != 0)
+    {
+        digits++;
+        pin /= 10;
+    }
+ 
+    if (digits != MOD_BT_PIN_LENGTH){
+       return false;
+    }
+
+    return true;
+}
+static bool pin_changed(uint32_t new_pin) 
+{   
+     bool ret = false;
+     uint32_t h_size = MOD_BT_HASH_SIZE;
+     uint8_t h_stored[MOD_BT_HASH_SIZE] = {0};
+     uint8_t h_created[MOD_BT_HASH_SIZE] = {0};
+     const char *key = "bt_pin_hash";
+     esp_err_t esp_err = ESP_OK;
+
+     if (nvs_open(MOD_BT_NVS_NAMESPACE, NVS_READWRITE, &modbt_nvs_handle) != ESP_OK) {
+        mp_printf(&mp_plat_print, "Error opening secure BLE NVS namespace!\n");
+     }
+     nvs_get_blob(modbt_nvs_handle, key, h_stored, &h_size);
+     
+     create_hash(new_pin, h_created);
+     
+     if (memcmp(h_stored, h_created, MOD_BT_HASH_SIZE) != 0) {
+         esp_err = nvs_set_blob(modbt_nvs_handle, key, h_created, h_size);
+         if (esp_err == ESP_OK) {
+            nvs_commit(modbt_nvs_handle);
+            ret = true;
+          }
+     }
+ 
+     nvs_close(modbt_nvs_handle);
+
+     return ret;
+}
+
+static void remove_all_bonded_devices(void)
+{
+    int dev_num = esp_ble_get_bond_device_num();
+
+    esp_ble_bond_dev_t *dev_list = heap_caps_malloc(sizeof(esp_ble_bond_dev_t) * dev_num, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    esp_ble_get_bond_device_list(&dev_num, dev_list);
+    for (int i = 0; i < dev_num; i++) {
+        esp_ble_remove_bond_device(dev_list[i].bd_addr);
+    }
+
+    free(dev_list);
+}
+
+static void set_secure_parameters(uint32_t passKey){  
+
+    if (pin_changed(passKey)) {
+       remove_all_bonded_devices();
+    }
+  
+    uint32_t passkey = passKey;
+    esp_ble_gap_set_security_param(ESP_BLE_SM_SET_STATIC_PASSKEY, &passkey, sizeof(uint32_t)); 
+    
+    esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_MITM_BOND;
     esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
 
-    esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, iocap, sizeof(uint8_t));
+    esp_ble_io_cap_t iocap = ESP_IO_CAP_OUT;
+    esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap, sizeof(uint8_t));
 
     uint8_t key_size = 16;
     esp_ble_gap_set_security_param(ESP_BLE_SM_MAX_KEY_SIZE, &key_size, sizeof(uint8_t));
 
+    uint8_t auth_option = ESP_BLE_ONLY_ACCEPT_SPECIFIED_AUTH_DISABLE;
+    esp_ble_gap_set_security_param(ESP_BLE_SM_ONLY_ACCEPT_SPECIFIED_SEC_AUTH, &auth_option, sizeof(uint8_t));
+  
     uint8_t init_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_INIT_KEY, &init_key, sizeof(uint8_t));
 
@@ -963,8 +1075,11 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
     if (args[3].u_bool){
         bt_obj.secure = true;
 
-        esp_ble_io_cap_t io_cap = args[4].u_int;
-        set_secure_parameters(&io_cap);
+        uint32_t passKey = args[4].u_int;
+        if (!is_pin_valid(passKey)){
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Only 6 digit (0-9) pins are allowed"));
+        } 
+        set_secure_parameters(passKey);
     }
 
     return mp_const_none;
@@ -976,7 +1091,7 @@ STATIC const mp_arg_t bt_init_args[] = {
     { MP_QSTR_antenna,      MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
     { MP_QSTR_modem_sleep,  MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
     { MP_QSTR_secure,       MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
-    { MP_QSTR_io_cap,       MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = ESP_IO_CAP_NONE} },
+    { MP_QSTR_pin,          MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = 123456} },
     { MP_QSTR_mtu,          MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = BT_MTU_SIZE_MAX} },
 
 };
@@ -1949,6 +2064,7 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_modem_sleep),             (mp_obj_t)&bt_modem_sleep_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_tx_power),                (mp_obj_t)&bt_tx_power_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_gatts_mtu),               (mp_obj_t)&bt_gatts_get_mtu_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_erase),             (mp_obj_t)&bt_nvram_erase_obj },
 
 
     // exceptions
