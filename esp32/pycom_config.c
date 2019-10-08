@@ -87,17 +87,12 @@ uint8_t config_get_lora_region (void) {
 bool config_set_wifi_on_boot (uint8_t wifi_on_boot) {
     if (pycom_config_block.wifi_config.wifi_on_boot != wifi_on_boot) {
         pycom_config_block.wifi_config.wifi_on_boot = wifi_on_boot;
-#if (VARIANT != PYBYTES)
         return config_write();
-#endif
     }
     return true;
 }
 
 bool config_get_wifi_on_boot (void) {
-#if (VARIANT == PYBYTES)
-    return false;
-#endif
     return pycom_config_block.wifi_config.wifi_on_boot;
 }
 
