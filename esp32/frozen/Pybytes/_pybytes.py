@@ -47,7 +47,7 @@ class Pybytes:
 
         if not self.__activation:
             self.__conf = config
-            pycom.wifi_on_boot(False)
+            pycom.wifi_on_boot(False, True)
 
             self.__check_dump_ca()
             try:

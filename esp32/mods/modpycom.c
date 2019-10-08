@@ -38,6 +38,7 @@
 
 #include "modmachine.h"
 #include "esp32chipinfo.h"
+#include "modwlan.h"
 
 
 #include <string.h>
@@ -341,13 +342,18 @@ STATIC mp_obj_t mod_pycom_nvs_erase_all (void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_nvs_erase_all_obj, mod_pycom_nvs_erase_all);
 
 STATIC mp_obj_t mod_pycom_wifi_on_boot (mp_uint_t n_args, const mp_obj_t *args) {
-    if (n_args >= 1 ) {
+    if (n_args == 0) {
+        return mp_obj_new_bool(config_get_wifi_on_boot());
+    }
+    if (config_get_wifi_on_boot() != mp_obj_is_true(args[0])) {
         config_set_wifi_on_boot (mp_obj_is_true(args[0]));
         if (n_args > 1 && mp_obj_is_true(args[1])) {
-            mptask_config_wifi(true);
+            if (mp_obj_is_true(args[0])) {
+                mptask_config_wifi(true);
+            } else {
+                wlan_deinit(NULL);
+            }
         }
-    } else {
-        return mp_obj_new_bool(config_get_wifi_on_boot());
     }
     return mp_const_none;
 }
