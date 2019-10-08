@@ -175,13 +175,13 @@ static void lte_callback_handler(void* arg)
 static bool lte_push_at_command_ext(char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len) {
     lte_task_cmd_data_t cmd = { .timeout = timeout, .dataLen = len};
     memcpy(cmd.data, cmd_str, len);
-    //printf("[CMD] %s\n", cmd_str);
+    printf("[CMD] %s\n", cmd_str);
     lteppp_send_at_command(&cmd, &modlte_rsp);
     if ((expected_rsp == NULL) || (strstr(modlte_rsp.data, expected_rsp) != NULL)) {
-        //printf("[OK] %s\n", modlte_rsp.data);
+        printf("[OK] %s\n", modlte_rsp.data);
         return true;
     }
-    //printf("[FAIL] %s\n", modlte_rsp.data);
+    printf("[FAIL] %s\n", modlte_rsp.data);
     return false;
 }
 
