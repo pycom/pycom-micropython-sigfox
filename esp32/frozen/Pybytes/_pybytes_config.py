@@ -155,7 +155,6 @@ class PybytesConfig:
                 self.__pybytes_activation.close()
 
                 if self.__check_config() and self.__write_config(filename):
-                    pycom.wifi_on_boot(False)
                     return True
             return False
 

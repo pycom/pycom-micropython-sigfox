@@ -47,6 +47,8 @@ class Pybytes:
 
         if not self.__activation:
             self.__conf = config
+            pycom.wifi_on_boot(False)
+
             self.__check_dump_ca()
             try:
                 from pybytes_connection import PybytesConnection
@@ -434,7 +436,8 @@ class Pybytes:
     def activate(self, activation_string):
         self.__smart_config = False
         if self.__pybytes_connection is not None:
-            self.__pybytes_connection.disconnect(keep_wifi=True)
+            print('Disconnecting current connection!')
+            self.__pybytes_connection.disconnect(keep_wifi=True, force=True)
         try:
             jstring = json.loads(binascii.a2b_base64(activation_string))
         except Exception as ex:
@@ -455,10 +458,13 @@ class Pybytes:
             print_debug(1, ex)
 
     if hasattr(pycom, 'smart_config_on_boot'):
-        def smart_config(self, status=None):
+        def smart_config(self, status=None, reset_ap=False):
             if status is None:
                 return self.__smart_config
             if status:
+                if reset_ap:
+                    pycom.wifi_ssid_sta(None)
+                    pycom.wifi_pwd_sta(None)
                 if self.__pybytes_connection is not None:
                     if self.isconnected():
                         print('Disconnecting current connection!')
