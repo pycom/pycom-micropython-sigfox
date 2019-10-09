@@ -11,6 +11,7 @@
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_system.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -49,11 +50,13 @@
 #include <openthread/platform/uart.h>
 #include <openthread/border_router.h>
 #include <openthread/link.h>
+#include <openthread/heap.h>
 
 #include "lora/otplat_alarm.h"
 #include "lora/otplat_radio.h"
 #include "lora/ot-settings.h"
 #include "lora/ot-log.h"
+#include "lora/ot-heap.h"
 
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
@@ -386,7 +389,13 @@ int mesh_socket_recvfrom(mod_network_socket_obj_t *s, byte *buf, mp_uint_t len, 
  * Main function executed by Mesh task
  */
 static void TASK_Mesh(void *pvParameters) {
-    
+
+#define MODMESH_DEBUG_STACK
+
+#ifdef MODMESH_DEBUG_STACK
+    int stack_high = -1;
+#endif /* MODMESH_DEBUG_STACK */
+
     for (;;) {
         vTaskDelay(1 / portTICK_PERIOD_MS);
 
@@ -394,7 +403,6 @@ static void TASK_Mesh(void *pvParameters) {
 
         // CLI
         if (mesh_obj.ot_ready) {
-
             // Radio 802.15.4 TX/RX state-machine
             otRadioProcess(ot);
 
@@ -408,6 +416,14 @@ static void TASK_Mesh(void *pvParameters) {
 
             // Log output
             otPlatLogFlush();
+
+#ifdef MODMESH_DEBUG_STACK
+            int x = uxTaskGetStackHighWaterMark(NULL);
+            if (stack_high < x) {
+                stack_high = x;
+                printf("OT stack: %d\n", stack_high);
+            }
+#endif /* MODMESH_DEBUG_STACK */
         }
 
     }
@@ -468,6 +484,8 @@ STATIC void rx_interrupt_queue_handler(void *arg) {
 static otInstance* openthread_init(uint8_t key[]) {
     otError err;
     otExtAddress extAddr;
+
+    otHeapSetCAllocFree(&otHeapCAllocFunction, &otHeapFreeFunction);
 
     otPlatRadioInit();
 

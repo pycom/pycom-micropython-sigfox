@@ -213,6 +213,7 @@ APP_LORA_OPENTHREAD_SRC_C = $(addprefix lora/,\
 	otplat_radio.c \
 	ot-settings.c \
 	ot-log.c \
+	ot-heap.c \
 	)
 
 APP_MOD_MESH_SRC_C = $(addprefix mods/,\
