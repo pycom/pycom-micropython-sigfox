@@ -41,7 +41,6 @@ typedef struct
     pin_obj_t *TxOn;
     pin_obj_t *RxOn;
     pin_obj_t *RadioAEn;
-    pin_obj_t *RadioBEn;
     pin_obj_t *RFPowerEn;
     uint8_t waittxend;
     uint8_t txongoing;

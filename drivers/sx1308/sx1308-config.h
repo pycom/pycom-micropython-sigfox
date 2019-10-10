@@ -13,7 +13,6 @@
 #define SX1308_RX_ON_PIN                                        (&PIN_MODULE_P15)
 
 #define PYGATE_RADIO_A_EN_PIN                                   (&PIN_MODULE_P4)
-#define PYGATE_RADIO_B_EN_PIN                                   (&PIN_MODULE_P21)
 #define PYGATE_RF_POWER_EN_PIN                                  (&PIN_MODULE_P20)
 
 #endif  // _SX1308_CONFIG_H

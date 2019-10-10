@@ -48,7 +48,6 @@ void sx1308_deinit(void)
     // Disable power to RF
     // Enable power to all RF systems
     GpioWrite( SX1308.RadioAEn, 0 );
-    GpioWrite( SX1308.RadioBEn, 0 );
     GpioWrite( SX1308.RFPowerEn, 0 );
     mp_hal_delay_ms(50);
 }
@@ -65,7 +64,6 @@ bool sx1308_init(void) {
     SX1308.TxOn = SX1308_TX_ON_PIN;
     SX1308.RxOn = SX1308_RX_ON_PIN;
     SX1308.RadioAEn = PYGATE_RADIO_A_EN_PIN;
-    SX1308.RadioBEn = PYGATE_RADIO_B_EN_PIN;
     SX1308.RFPowerEn = PYGATE_RF_POWER_EN_PIN;
 
     // Initialize the non SPI pins
@@ -74,12 +72,10 @@ bool sx1308_init(void) {
     pin_config(SX1308.RxOn, -1, -1, GPIO_MODE_INPUT, MACHPIN_PULL_NONE, 0);
 
     pin_config(SX1308.RadioAEn, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
-    pin_config(SX1308.RadioBEn, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
     pin_config(SX1308.RFPowerEn, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
 
     // Enable power to all RF systems
     GpioWrite( SX1308.RadioAEn, 1 );
-    GpioWrite( SX1308.RadioBEn, 1 );
     GpioWrite( SX1308.RFPowerEn, 1 );
     mp_hal_delay_ms(50);
 
