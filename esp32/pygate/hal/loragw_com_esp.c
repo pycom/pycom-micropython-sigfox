@@ -40,10 +40,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "loragw_mcu.h"
 
 extern int cmd_manager_DecodeCmd(uint8_t *BufFromHost);
-
-extern void cmd_manager_GetCmdToHost (uint8_t **bufToHost);
-
-size_t cmd_manager_GetCmdToHost_byte (uint32_t index, uint8_t *bufToHost, size_t len);
+extern size_t cmd_manager_GetCmdToHost_byte (uint32_t index, uint8_t *bufToHost, size_t len);
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -75,42 +72,6 @@ int set_interface_attribs_linux(int fd, int speed) {
 
     UNUSED(fd);
     UNUSED(speed);
-//    struct termios tty;
-//
-//    memset(&tty, 0, sizeof tty);
-//
-//    /* Get current attributes */
-//    if (tcgetattr(fd, &tty) != 0) {
-//        DEBUG_PRINTF("ERROR: tcgetattr failed with %d - %s", errno, strerror(errno));
-//        return LGW_COM_ERROR;
-//    }
-//
-//    cfsetospeed(&tty, speed);
-//    cfsetispeed(&tty, speed);
-//
-//    /* Control Modes */
-//    tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8; /* set 8-bit characters */
-//    tty.c_cflag |= CLOCAL;                      /* local connection, no modem control */
-//    tty.c_cflag |= CREAD;                       /* enable receiving characters */
-//    tty.c_cflag &= ~PARENB;                     /* no parity */
-//    tty.c_cflag &= ~CSTOPB;                     /* one stop bit */
-//    /* Input Modes */
-//    tty.c_iflag &= ~IGNBRK;
-//    tty.c_iflag &= ~(IXON | IXOFF | IXANY | ICRNL);
-//    /* Output Modes */
-//    tty.c_oflag &= ~IGNBRK;
-//    tty.c_oflag &= ~(IXON | IXOFF | IXANY | ICRNL);
-//    /* Local Modes */
-//    tty.c_lflag = 0;
-//    /* Settings for non-canonical mode */
-//    tty.c_cc[VMIN] = 0;                         /* non-blocking mode */
-//    tty.c_cc[VTIME] = 50;                       /* wait for (n * 0.1) seconds before returning */
-//
-//    /* Set attributes */
-//    if (tcsetattr(fd, TCSANOW, &tty) != 0) {
-//        DEBUG_PRINTF("ERROR: tcsetattr failed with %d - %s", errno, strerror(errno));
-//        return LGW_COM_ERROR;
-//    }
 
     return LGW_COM_SUCCESS;
 }
@@ -121,24 +82,6 @@ int set_interface_attribs_linux(int fd, int speed) {
 int set_blocking_linux(int fd, bool blocking) {
     UNUSED(fd);
     UNUSED(blocking);
-//    struct termios tty;
-//
-//    memset(&tty, 0, sizeof tty);
-//
-//    /* Get current attributes */
-//    if (tcgetattr(fd, &tty) != 0) {
-//        DEBUG_PRINTF("ERROR: tcgetattr failed with %d - %s", errno, strerror(errno));
-//        return LGW_COM_ERROR;
-//    }
-//
-//    tty.c_cc[VMIN] = (blocking == true) ? 1 : 0;    /* set blocking or non-blocking mode */
-//    tty.c_cc[VTIME] = 1;                            /* wait for (n * 0.1) seconds before returning */
-//
-//    /* Set attributes */
-//    if (tcsetattr(fd, TCSANOW, &tty) != 0) {
-//        DEBUG_PRINTF("ERROR: tcsetattr failed with %d - %s", errno, strerror(errno));
-//        return LGW_COM_ERROR;
-//    }
 
     return LGW_COM_SUCCESS;
 }
@@ -181,6 +124,7 @@ int lgw_com_send_cmd_linux(lgw_com_cmd_t cmd, lgw_handle_t handle) {
     uint8_t buffertx[CMD_HEADER_TX_SIZE + CMD_DATA_TX_SIZE];
     uint16_t Clen = cmd.len_lsb + (cmd.len_msb << 8);
     uint16_t Tlen = CMD_HEADER_TX_SIZE + Clen;
+    UNUSED(Tlen);
     int retcheck;
 
     /* Initialize buffer */
@@ -276,72 +220,17 @@ int lgw_com_receive_ans_linux(lgw_com_ans_t *ans, lgw_handle_t handle) {
 /* --- PUBLIC FUNCTIONS DEFINITION ------------------------------------------ */
 
 int lgw_com_open_linux(void **com_target_ptr, const char *com_path) {
-
     UNUSED(com_path);
-
     *com_target_ptr = &dummy_com_dev;
-//    int *usb_device = NULL;
-//    char portname[50];
-//    int x;
-//    int fd;
-//
-//    /*check input variables*/
-//    CHECK_NULL(com_target_ptr);
-//
-//    usb_device = malloc(sizeof(int));
-//    if (usb_device == NULL) {
-//        DEBUG_MSG("ERROR : MALLOC FAIL\n");
-//        return LGW_COM_ERROR;
-//    }
-//
-//    /* open tty port */
-//    sprintf(portname, "%s", com_path);
-//    fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
-//    if (fd < 0) {
-//        printf("ERROR: failed to open COM port %s - %s\n", portname, strerror(errno));
-//    } else {
-//        x = set_interface_attribs_linux(fd, B115200);
-//        x |= set_blocking_linux(fd, true);
-//        if (x != 0) {
-//            printf("ERROR: failed to configure COM port %s\n", portname);
-//            free(usb_device);
-//            return LGW_COM_ERROR;
-//        }
-//
-//        *usb_device = fd;
-//        *com_target_ptr = (void*)usb_device;
-//
-//        return LGW_COM_SUCCESS;
-//    }
-//
-//    free(usb_device);
+
     return LGW_COM_SUCCESS;
 }
 
 /* ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ */
 
 int lgw_com_close_linux(void *com_target) {
-    UNUSED(com_target);
     com_target = NULL;
-//    int usb_device;
-//    int a;
-//
-//    /*check input variables*/
-//    CHECK_NULL(com_target);
-//
-//    /* close file & deallocate file descriptor */
-//    usb_device = *(int*)com_target;
-//    a = close(usb_device);
-//    free(com_target);
-//
-//    /* determine return code */
-//    if (a < 0) {
-//        printf("ERROR: failed to close COM port - %s\n", strerror(errno));
-//        return LGW_COM_ERROR;
-//    } else {
-//        DEBUG_MSG("Note : USB port closed\n");
-//        return LGW_COM_SUCCESS;
-//    }
+
     return LGW_COM_SUCCESS;
 }
 
@@ -355,9 +244,9 @@ int lgw_com_w_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
     UNUSED(com_mux_target);
 
     /*check input variables*/
-    //CHECK_NULL(com_target);
+    CHECK_NULL(com_target);
 
-    fd = 0;//*(int *)com_target; /* must check that com_target is not null beforehand */
+    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
     cmd.id = 'w';
     cmd.len_msb = 0;
@@ -386,10 +275,10 @@ int lgw_com_r_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_targ
     UNUSED(com_mux_target);
 
     /* check input variables */
-    //CHECK_NULL(com_target);
+    CHECK_NULL(com_target);
     CHECK_NULL(data);
 
-    fd = 0;//*(int *)com_target; /* must check that com_target is not null beforehand */
+    fd = *(int *)com_target; /* must check that com_target is not null beforehand */
 
     cmd.id = 'r';
     cmd.len_msb = 0;
@@ -423,10 +312,10 @@ int lgw_com_wb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
     UNUSED(com_mux_target);
 
     /* check input parameters */
-    //CHECK_NULL(com_target);
+    CHECK_NULL(com_target);
     CHECK_NULL(data);
 
-    fd = 0;//*(int *)com_target;
+    fd = *(int *)com_target;
 
     /* lock for complete burst */
     pthread_mutex_lock(&mx_usbbridgesync);
@@ -502,10 +391,10 @@ int lgw_com_rb_linux(void *com_target, uint8_t com_mux_mode, uint8_t com_mux_tar
     UNUSED(com_mux_target);
 
     /* check input parameters */
-    //CHECK_NULL(com_target);
+    CHECK_NULL(com_target);
     CHECK_NULL(data);
 
-    fd = 0;//*(int *)com_target;
+    fd = *(int *)com_target;
 
     /* lock for complete burst */
     pthread_mutex_lock(&mx_usbbridgesync);

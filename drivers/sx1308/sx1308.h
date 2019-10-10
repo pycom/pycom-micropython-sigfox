@@ -54,6 +54,8 @@ extern volatile SX1308_t SX1308;
 
 bool sx1308_init(void);
 
+void sx1308_deinit(void);
+
 void sx1308_dig_reset(void);
 
 void sx1308_spiWrite(uint8_t reg, uint8_t val);

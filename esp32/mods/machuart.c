@@ -311,6 +311,11 @@ STATIC IRAM_ATTR void UARTRxCallback(int uart_id, int rx_byte) {
             servers_reset_and_safe_boot();
         }
     }
+    // Trigger SIGTERM signal if needed
+    if (mp_interrupt_char == rx_byte) {
+        // raise an exception when interrupts are finished
+        mp_hal_trig_term_sig();
+    }
 }
 
 STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t *args) {

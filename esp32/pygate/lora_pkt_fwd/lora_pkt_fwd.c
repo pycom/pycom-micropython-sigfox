@@ -59,6 +59,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 #include "lwip/err.h"
 #include "lwip/apps/sntp.h"
+#include "utils/interrupt_char.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -66,7 +67,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define ARRAY_SIZE(a)   (sizeof(a) / sizeof((a)[0]))
 #define STRINGIFY(x)    #x
 #define STR(x)          STRINGIFY(x)
-
+#define exit(x)         loragw_exit(x)
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS ---------------------------------------------------- */
 
@@ -112,7 +113,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 TaskHandle_t xLoraGwTaskHndl;
 
 void TASK_lora_gw(void *pvParameters);
-
+void machine_wdt_start (uint32_t timeout_ms);
+void machtimer_deinit(void);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
 
@@ -130,8 +132,8 @@ struct coord_s {
 /* --- PRIVATE VARIABLES (GLOBAL) ------------------------------------------- */
 
 /* signal handling variables */
-volatile bool exit_sig = false; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
-volatile bool quit_sig = false; /* 1 -> application terminates without shutting down the hardware */
+volatile DRAM_ATTR bool exit_sig = false; /* 1 -> application terminates cleanly (shut down hardware, close open files, etc) */
+volatile DRAM_ATTR bool quit_sig = false; /* 1 -> application terminates without shutting down the hardware */
 
 /* packets filtering configuration variables */
 static bool fwd_valid_pkt = true; /* packets with PAYLOAD CRC OK are forwarded */
@@ -216,7 +218,7 @@ static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
 
-//static void sig_handler(int sigio);
+static IRAM_ATTR void sig_handler(int sigio);
 
 static int parse_SX1301_configuration(const char * conf_file);
 
@@ -229,6 +231,8 @@ static double time_diff(struct timeval x , struct timeval y);
 static void initialize_sntp(void);
 static void obtain_time(void);
 
+static void loragw_exit(int status);
+
 /* threads */
 void thread_up(void);
 void thread_down(void);
@@ -238,30 +242,35 @@ void thread_timersync(void);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
-/*static void exit_cleanup(void) {
+static void exit_cleanup(void) {
     MSG("INFO: Stopping concentrator\n");
     lgw_stop();
-}*/
+}
 
-/*static void sig_handler(int sigio) {
+static IRAM_ATTR void sig_handler(int sigio) {
     if (sigio == SIGQUIT) {
         quit_sig = true;
     } else if ((sigio == SIGINT) || (sigio == SIGTERM)) {
         exit_sig = true;
     }
     return;
-}*/
-
-/*static void usage(void) {
-    MSG("~~~ Software versions ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    MSG(" Packet Forwarder: Version: " VERSION_STRING "\n");
-    MSG(" HAL library: %s\n", lgw_version_info());
-    MSG("~~~ Available options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-    MSG(" -h  print this help\n");
-    MSG(" -d <path> COM device to be used to access the concentrator board\n");
-    MSG("            => default path: " COM_PATH_DEFAULT "\n");
-    MSG("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-}*/
+}
+static void loragw_exit(int status)
+{
+    if(status == EXIT_FAILURE)
+    {
+        exit_cleanup();
+        machtimer_deinit();
+        machine_wdt_start(1);
+        for ( ; ; );
+    }
+    else
+    {
+        exit_sig = false;
+        vTaskDelete(NULL);
+        for (;;);
+    }
+}
 
 static int parse_SX1301_configuration(const char * conf_file) {
     int i;
@@ -773,7 +782,8 @@ static void initialize_sntp(void)
 {
     printf( "Initializing SNTP\n");
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "0.nl.pool.ntp.org");
+    sntp_servermode_dhcp(1);
+    //sntp_setservername(0, "0.nl.pool.ntp.org");
     sntp_init();
 }
 
@@ -875,7 +885,7 @@ void lora_gw_init(const char* global_conf) {
     localtime_r(&now, &timeinfo);
     // Is time set? If not, tm_year will be (1970 - 1900).
     if (timeinfo.tm_year < (2016 - 1900)) {
-        printf( "Time is not set yet. Connecting to WiFi and getting time over NTP.\n");
+        printf( "Time is not set. getting time over NTP.\n");
         obtain_time();
         // update 'now' variable with current time
         time(&now);
@@ -883,18 +893,12 @@ void lora_gw_init(const char* global_conf) {
     char strftime_buf[64];
 
     // Set timezone to Eastern Standard Time and print local time
-    setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
+    //setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
     tzset();
     localtime_r(&now, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
     printf( "The current date/time in New York is: %s\n", strftime_buf);
 
-    // Set timezone to China Standard Time
-    setenv("TZ", "CST-8", 1);
-    tzset();
-    localtime_r(&now, &timeinfo);
-    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    printf( "The current date/time in Shanghai is: %s\n", strftime_buf);
 
   xTaskCreatePinnedToCore(TASK_lora_gw, "LoraGW",
     LORA_GW_STACK_SIZE / sizeof(StackType_t),
@@ -902,23 +906,25 @@ void lora_gw_init(const char* global_conf) {
     LORA_GW_PRIORITY, &xLoraGwTaskHndl, 1);
 }
 
-void lora_gw_stop(void) {
+/*void lora_gw_stop(void) {
     vTaskDelete(xLoraGwTaskHndl);
-}
+}*/
 
-void logger(const char *msg) {
+/*void logger(const char *msg) {
     FILE *fp;
 
     fp = fopen("/flash/debug.txt", "a+");
     fprintf(fp, msg);
     fclose(fp);
-}
+}*/
 
 void TASK_lora_gw(void *pvParameters) {
 
     int i; /* loop variable and temporary variable for return value */
     int x;
-
+    //set signal handler cb
+    mp_hal_set_signal_exit_cb(sig_handler);
+    mp_hal_set_interrupt_char(3);
     /* COM interfaces */
     const char com_path_default[] = COM_PATH_DEFAULT;
     const char *com_path = com_path_default;
@@ -1200,7 +1206,7 @@ void TASK_lora_gw(void *pvParameters) {
     }
 
     /* main loop task : statistics collection */
-    while (true) {
+    while (!exit_sig && !quit_sig) {
         /* wait for next reporting interval */
         wait_ms ((1000 * stat_interval) / portTICK_PERIOD_MS);
 
@@ -1320,9 +1326,9 @@ void TASK_lora_gw(void *pvParameters) {
 
     /* wait for upstream thread to finish (1 fetch cycle max) */
     pthread_join(thrid_up, NULL);
-    pthread_cancel(thrid_down); /* don't wait for downstream thread */
-    pthread_cancel(thrid_jit); /* don't wait for jit thread */
-    pthread_cancel(thrid_timersync); /* don't wait for timer sync thread */
+    pthread_join(thrid_down, NULL); /* don't wait for downstream thread */
+    pthread_join(thrid_jit, NULL); /* don't wait for jit thread */
+    pthread_join(thrid_timersync, NULL); /* don't wait for timer sync thread */
 
     /* if an exit signal was received, try to quit properly */
     if (true) {
@@ -2155,7 +2161,6 @@ void thread_down(void) {
             /* insert packet to be sent into JIT queue */
             if (jit_result == JIT_ERROR_OK) {
                 gettimeofday(&current_unix_time, NULL);
-                printf("Current unix : %ld\n", ((current_unix_time.tv_sec * 1000000UL) + current_unix_time.tv_usec));
                 get_concentrator_time(&current_concentrator_time, current_unix_time);
                 jit_result = jit_enqueue(&jit_queue, &current_concentrator_time, &txpkt, downlink_type);
                 if (jit_result != JIT_ERROR_OK) {

@@ -117,7 +117,7 @@ void thread_timersync(void) {
                   concentrator_timeval.tv_usec);
         MSG_DEBUG(DEBUG_TIMERSYNC, "  unix_timeval = %ld,%ld\n", unix_timeval.tv_sec, unix_timeval.tv_usec);
 
-        MSG("INFO: host/sx1301 time offset=(%lds:%ldµs) - drift=%ldµs\n",
+        MSG_DEBUG(DEBUG_TIMERSYNC, "INFO: host/sx1301 time offset=(%ld s:%ld µs) - drift=%ld µs\n",
             offset_unix_concent.tv_sec,
             offset_unix_concent.tv_usec,
             offset_drift.tv_sec * 1000000UL + offset_drift.tv_usec);
@@ -128,6 +128,6 @@ void thread_timersync(void) {
             As here the time precision is not critical, we should be able to cope with at least 1ms drift,
             which should occur after 50s (50000µs * 1000).
             Let's set the thread sleep to 1 minute for now */
-        wait_ms(60000);
+        wait_ms(750);
     }
 }

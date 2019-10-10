@@ -517,7 +517,6 @@ int lgw_connect(const char *com_path) {
 
     /* check SX1301 version */
     com_stat = lgw_com_r(lgw_com_target, lgw_com_mux_mode, LGW_COM_MUX_TARGET_SX1301, loregs[LGW_VERSION].addr, &u);
-    printf("com_stat = %d\n", com_stat);
     if (com_stat != LGW_COM_SUCCESS) {
         DEBUG_MSG("ERROR READING CHIP VERSION REGISTER\n");
         return LGW_REG_ERROR;

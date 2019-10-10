@@ -87,7 +87,6 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 BufToHost[2] = 1;
                 BufToHost[3] = ACK_OK;
                 BufToHost[4] = val;
-                //printf("[cmdManager]: Adress Read: %X , valueDec: %d, valueHex: %X\n", adressreg, BufToHost[4], BufToHost[4]);
                 return(CMD_OK);
             }
         case 's': { // cmd Read burst register first
@@ -443,6 +442,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 BufToHost[3] = ACK_OK;
                 /* Indicate that STM32 reset has to be triggered */
                 // TODO: Reset the ESP32
+                //sx1308_deinit();
                 return(CMD_OK);
             }
         default:

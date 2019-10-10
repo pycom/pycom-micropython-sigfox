@@ -182,14 +182,20 @@ STATIC mp_obj_t machine_main(mp_obj_t main) {
 MP_DEFINE_CONST_FUN_OBJ_1(machine_main_obj, machine_main);
 
 STATIC mp_obj_t machine_pygate_init (mp_obj_t global_conf) {
-    esp_lgw_connect();
+    if (global_conf != mp_const_none) {
+        esp_lgw_connect();
 
-    mp_buffer_info_t bufinfo;
-    mp_get_buffer_raise(global_conf, &bufinfo, MP_BUFFER_READ);
+        mp_buffer_info_t bufinfo;
+        mp_get_buffer_raise(global_conf, &bufinfo, MP_BUFFER_READ);
 
-    //printf("Info: %d\n", bufinfo.len);
-    
-    lora_gw_init((char *)bufinfo.buf);
+        //printf("Info: %d\n", bufinfo.len);
+
+        lora_gw_init((char *)bufinfo.buf);
+    }
+    else
+    {
+        esp_lgw_connect();
+    }
 
     return mp_const_none;
 }

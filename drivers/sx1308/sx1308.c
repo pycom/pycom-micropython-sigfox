@@ -43,6 +43,16 @@ volatile SX1308_t SX1308;
 
 static uint64_t timer_start_value = 0;
 
+void sx1308_deinit(void)
+{
+    // Disable power to RF
+    // Enable power to all RF systems
+    GpioWrite( SX1308.RadioAEn, 0 );
+    GpioWrite( SX1308.RadioBEn, 0 );
+    GpioWrite( SX1308.RFPowerEn, 0 );
+    mp_hal_delay_ms(50);
+}
+
 bool sx1308_init(void) {
     // Init the SX1308 structure
     SX1308.Spi.Miso = SX1308_MISO_PIN;

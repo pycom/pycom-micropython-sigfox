@@ -32,17 +32,17 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 /* --- PRIVATE MACROS ------------------------------------------------------- */
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
-// #if DEBUG_HAL == 1
+#if DEBUG_HAL == 1
 #define DEBUG_MSG(str)                printf(str)
 #define DEBUG_PRINTF(fmt, args...)    printf("%s:%d: "fmt, __FUNCTION__, __LINE__, args)
 #define DEBUG_ARRAY(a,b,c)           for(a=0;a!=0;){}
 #define CHECK_NULL(a)                if(a==NULL){return LGW_HAL_ERROR;}
-// #else
-// #define DEBUG_MSG(str)
-// #define DEBUG_PRINTF(fmt, args...)
-// #define DEBUG_ARRAY(a,b,c)            for(a=0;a!=0;){}
-// #define CHECK_NULL(a)                 if(a==NULL){return LGW_HAL_ERROR;}
-// #endif
+#else
+#define DEBUG_MSG(str)
+#define DEBUG_PRINTF(fmt, args...)
+#define DEBUG_ARRAY(a,b,c)            for(a=0;a!=0;){}
+#define CHECK_NULL(a)                 if(a==NULL){return LGW_HAL_ERROR;}
+#endif
 #define IF_HZ_TO_REG(f)     (f << 5)/15625
 #define SET_PPM_ON(bw,dr)   (((bw == BW_125KHZ) && ((dr == DR_LORA_SF11) || (dr == DR_LORA_SF12))) || ((bw == BW_250KHZ) && (dr == DR_LORA_SF12)))
 #define TRACE()
