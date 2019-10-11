@@ -12,6 +12,9 @@
  * * general Heap (dynamic allocation)
  * * message buffer management
  */
+#include "freertos/FreeRTOS.h"
+#include "freertos/semphr.h"
+
 #include "esp_heap_caps.h"
 #include "esp_system.h"
 
@@ -28,17 +31,19 @@
 
 typedef struct {
     uint8_t **buffer; /* array of messages */
-    bool *free;     /* array to indicate if a buffer is unused */
-    uint16_t num;        /* number of messages slots */
-    uint16_t free_num;   /* number of free messages slots inside message buffer */
-    uint16_t size;       /* size (in bytes) of a slots */
-}ot_buffer_obj_t;
+    bool *free; /* array to indicate if a buffer is unused */
+    uint16_t num; /* number of messages slots */
+    uint16_t free_num; /* number of free messages slots inside message buffer */
+    uint16_t size; /* size (in bytes) of a slots */
+} ot_buffer_obj_t;
 
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
 /* pointer to the message buffer array */
 static ot_buffer_obj_t buff_obj;
+
+static SemaphoreHandle_t xSemaphore = NULL;
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -62,11 +67,12 @@ static ot_buffer_obj_t buff_obj;
  */
 //typedef void *(*otHeapCAllocFn)(size_t aCount, size_t aSize);
 void* otHeapCAllocFunction(size_t aCount, size_t aSize) {
-    void* ret = heap_caps_calloc(aCount, aSize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-    otPlatLog(OT_LOG_LEVEL_DEBG, 0, "otHeapCAllocFunction %d %d %p", aCount, aSize, ret);
+    void* ret = heap_caps_calloc(aCount, aSize,
+            MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    otPlatLog(OT_LOG_LEVEL_DEBG, 0, "otHeapCAllocFunction %d %d %p", aCount,
+            aSize, ret);
     return ret;
 }
-
 
 /**
  * Function pointer used to set external Free function for OpenThread.
@@ -75,12 +81,10 @@ void* otHeapCAllocFunction(size_t aCount, size_t aSize) {
  *
  */
 //typedef void (*otHeapFreeFn)(void *aPointer);
-
 void otHeapFreeFunction(void *aPointer) {
-    otPlatLog(OT_LOG_LEVEL_DEBG, 0,"otHeapFreeFunction");
+    otPlatLog(OT_LOG_LEVEL_DEBG, 0, "otHeapFreeFunction");
     heap_caps_free(aPointer);
 }
-
 
 /**
  * This function sets the external heap CAlloc and Free
@@ -113,35 +117,51 @@ void otPlatMessagePoolInit(otInstance *aInstance, uint16_t aMinNumFreeBuffers,
     int error = 0;
 
     (void) aInstance;
-    otPlatLog(OT_LOG_LEVEL_DEBG, 0, "otPlatMessagePoolInit %d %d", aMinNumFreeBuffers, aBufferSize);
 
-    buff_obj.buffer = heap_caps_calloc(aMinNumFreeBuffers, sizeof(uint8_t *), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (xSemaphore == NULL) {
+        xSemaphore = xSemaphoreCreateBinary();
+    }
+    otEXPECT_ACTION( NULL != xSemaphore, error = MP_ENXIO);
 
-    otEXPECT_ACTION(NULL != buff_obj.buffer, error = MP_ENOMEM);
+    // according to docs, the semaphore created with xSemaphoreCreateBinary must first be "Given"
+    xSemaphoreGive(xSemaphore);
 
-    otEXPECT_ACTION(
-            NULL != (buff_obj.free = heap_caps_calloc(aMinNumFreeBuffers, sizeof(bool), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)),
-            error = MP_EFAULT);
+//    ets_printf("otPlatMessagePoolInit %d %d\n", aMinNumFreeBuffers, aBufferSize);
 
-    buff_obj.num = aMinNumFreeBuffers;
-    buff_obj.free_num = aMinNumFreeBuffers;
-    buff_obj.size = aBufferSize;
+    if (xSemaphoreTake( xSemaphore, ( TickType_t ) portMAX_DELAY ) == pdTRUE) {
+        buff_obj.buffer = heap_caps_calloc(aMinNumFreeBuffers,
+                sizeof(uint8_t *), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
 
-    for (int i = 0 ; i < aMinNumFreeBuffers; i++) {
-        buff_obj.free[i] = true;
+        otEXPECT_ACTION(NULL != buff_obj.buffer, error = MP_ENOMEM);
 
-        buff_obj.buffer[i] = heap_caps_malloc(aBufferSize, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-        otEXPECT_ACTION(NULL != buff_obj.buffer[i], error = MP_EFAULT + 1+ i);
+        otEXPECT_ACTION(
+                NULL
+                        != (buff_obj.free = heap_caps_calloc(aMinNumFreeBuffers,
+                                sizeof(bool),
+                                MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT)),
+                error = MP_EFAULT);
 
-        ets_printf("%d -> 0x%p 0x%p\n", i, (void*)buff_obj.buffer[i], (void*)&buff_obj.buffer[i]);
+        buff_obj.num = aMinNumFreeBuffers;
+        buff_obj.free_num = aMinNumFreeBuffers;
+        buff_obj.size = aBufferSize;
+
+        for (int i = 0; i < aMinNumFreeBuffers; i++) {
+            buff_obj.free[i] = true;
+
+            buff_obj.buffer[i] = heap_caps_calloc(aBufferSize, sizeof(uint8_t),
+                    MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+            otEXPECT_ACTION(NULL != buff_obj.buffer[i],
+                    error = MP_EFAULT + 1 + i);
+        }
+        xSemaphoreGive(xSemaphore);
+    } else {
+        ets_printf("otPlatMessagePoolInit Can't take semaphore\n");
     }
 
-    otPlatLog(OT_LOG_LEVEL_WARN, 0, "otPlatMessagePoolInit OK");
-
-    exit:
-        if (error != 0) {
-            printf("err: %d\n", error);
-        }
+    exit: if (error != 0) {
+        xSemaphoreGive(xSemaphore);
+        printf("err: %d\n", error);
+    }
 }
 
 /**
@@ -155,21 +175,27 @@ void otPlatMessagePoolInit(otInstance *aInstance, uint16_t aMinNumFreeBuffers,
 otMessage *otPlatMessagePoolNew(otInstance *aInstance) {
     (void) aInstance;
 
-//    if (buff_obj.free_num <= 0)
-//        return NULL;
+    if ( xSemaphoreTake( xSemaphore, ( TickType_t ) portMAX_DELAY ) == pdTRUE) {
 
-    // find the first free message
-    for (int i = 0; i < buff_obj.num; i++) {
-        if (buff_obj.free[i]) {
-            buff_obj.free[i] = false;
-            buff_obj.free_num--;
-//            otPlatLog(OT_LOG_LEVEL_WARN, 0, "otPlatMessagePoolNew, found mess %d", i);
-            ets_printf("otPlatMessagePoolNew, found mess %d %p\n", i, &buff_obj.buffer[i]);
-            return (otMessage *)&buff_obj.buffer[i];
+        // find the first free message
+        for (int i = 0; i < buff_obj.num; i++) {
+            if (buff_obj.free[i]) {
+                buff_obj.free[i] = false;
+                buff_obj.free_num--;
+                xSemaphoreGive(xSemaphore);
+                otPlatLog(OT_LOG_LEVEL_DEBG, 0,
+                        "otPlatMessagePoolNew, found mess %d", i);
+                return (otMessage *) buff_obj.buffer[i];
+            }
         }
+        xSemaphoreGive(xSemaphore);
+        otPlatLog(OT_LOG_LEVEL_CRIT, 0,
+                "otPlatMessagePoolNew, no free message found !!!");
+
+    } else {
+        ets_printf("otPlatMessagePoolNew Can't take semaphore\n");
     }
-    ets_printf("otPlatMessagePoolNew, no free message found !!!\n");
-//    otPlatLog(OT_LOG_LEVEL_CRIT, 0, "otPlatMessagePoolNew, no free message found !!!");
+
     // if reach here, then it's not found, return NULL
     return NULL;
 }
@@ -184,19 +210,27 @@ otMessage *otPlatMessagePoolNew(otInstance *aInstance) {
 void otPlatMessagePoolFree(otInstance *aInstance, otMessage *aBuffer) {
     (void) aInstance;
 
-    ets_printf("otPlatMessagePoolFree 0x%p\n", aBuffer);
+//    ets_printf("otPlatMessagePoolFree 0x%p %d\n", aBuffer, buff_obj.free_num);
+    if ( xSemaphoreTake( xSemaphore, ( TickType_t ) portMAX_DELAY ) == pdTRUE) {
 
-    for (int i = 0; i < buff_obj.num; i++){
-        if ((otMessage *)&buff_obj.buffer[i] == aBuffer) {
-            buff_obj.free[i] = true;
-            buff_obj.free_num++;
-            ets_printf("otPlatMessagePoolFree, found mess %d %p\n", i, &buff_obj.buffer[i]);
-//            otPlatLog(OT_LOG_LEVEL_WARN, 0, "otPlatMessagePoolFree, found mess %d", i);
-            return;
+        for (int i = 0; i < buff_obj.num; i++) {
+            if ((otMessage *) buff_obj.buffer[i] == aBuffer) {
+                // just make sure the buffer is really used
+                if (!buff_obj.free[i]) {
+                    buff_obj.free[i] = true;
+                    buff_obj.free_num++;
+                }
+                xSemaphoreGive(xSemaphore);
+//                otPlatLog(OT_LOG_LEVEL_DEBUG, 0, "otPlatMessagePoolFree, found mess %d", i);
+                return;
+            }
         }
+        xSemaphoreGive(xSemaphore);
+        otPlatLog(OT_LOG_LEVEL_CRIT, 0, "otPlatMessagePoolFree, no free message found !!!");
+
+    } else {
+        ets_printf("otPlatMessagePoolNew Can't take semaphore\n");
     }
-    ets_printf("otPlatMessagePoolFree, no message found !!!\n");
-//    otPlatLog(OT_LOG_LEVEL_CRIT, 0, "otPlatMessagePoolFree, no free message found !!!");
 }
 
 /**
@@ -209,7 +243,5 @@ void otPlatMessagePoolFree(otInstance *aInstance, otMessage *aBuffer) {
  */
 uint16_t otPlatMessagePoolNumFreeBuffers(otInstance *aInstance) {
     (void) aInstance;
-    ets_printf("otPlatMessagePoolNumFreeBuffers, free: %d\n", buff_obj.free_num);
-//    otPlatLog(OT_LOG_LEVEL_WARN, 0,  "otPlatMessagePoolNumFreeBuffers, free: %d", buff_obj.free_num);
     return buff_obj.free_num;
 }
