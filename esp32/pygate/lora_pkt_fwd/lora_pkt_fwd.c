@@ -60,6 +60,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "lwip/err.h"
 #include "lwip/apps/sntp.h"
 #include "utils/interrupt_char.h"
+#include "py/obj.h"
+#include "modmachine.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -114,8 +116,6 @@ TaskHandle_t xLoraGwTaskHndl;
 typedef void (*_sig_func_cb_ptr)(int);
 
 void TASK_lora_gw(void *pvParameters);
-void machine_wdt_start (uint32_t timeout_ms);
-void machtimer_deinit(void);
 void mp_hal_set_signal_exit_cb (_sig_func_cb_ptr fun);
 bool mach_is_rtc_synced (void);
 /* -------------------------------------------------------------------------- */
@@ -231,7 +231,6 @@ static int parse_gateway_configuration(const char * conf_file);
 
 static double time_diff(struct timeval x , struct timeval y);
 
-static void initialize_sntp(void);
 static void obtain_time(void);
 
 static void loragw_exit(int status);
@@ -263,11 +262,20 @@ static void loragw_exit(int status)
     if(status == EXIT_FAILURE)
     {
         exit_cleanup();
-        esp_restart();
+        machine_pygate_set_status(PYGATE_ERROR);
+        vTaskDelete(NULL);
+        for(;;);
     }
     else
     {
         exit_sig = false;
+        if(quit_sig)
+        {
+            quit_sig = false;
+            machine_pygate_set_status(PYGATE_STOPPED);
+            vTaskDelete(NULL);
+            for(;;);
+        }
         esp_restart();
     }
 }
@@ -762,8 +770,6 @@ static double time_diff(struct timeval x , struct timeval y)
 
 static void obtain_time(void)
 {
-    initialize_sntp();
-
     // wait for time to be set
     time_t now = 0;
     struct tm timeinfo = { 0 };
@@ -781,15 +787,6 @@ static void obtain_time(void)
         exit(EXIT_FAILURE);
     }
 
-}
-
-static void initialize_sntp(void)
-{
-    //printf( "Initializing SNTP\n");
-    //sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    //sntp_servermode_dhcp(1);
-    //sntp_setservername(0, "0.nl.pool.ntp.org");
-    //sntp_init();
 }
 
 static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error) {
@@ -883,27 +880,8 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error)
 
 void lora_gw_init(const char* global_conf) {
 
-    time_t now;
-    struct tm timeinfo;
-
-    time(&now);
-    localtime_r(&now, &timeinfo);
-    // Is time set? If not, tm_year will be (1970 - 1900).
-    if (timeinfo.tm_year < (2016 - 1900)) {
-        printf( "Time is not set. getting time over NTP.\n");
-        obtain_time();
-        // update 'now' variable with current time
-        time(&now);
-    }
-    //char strftime_buf[64];
-
-    // Set timezone to Eastern Standard Time and print local time
-    //setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
-    //tzset();
-    //localtime_r(&now, &timeinfo);
-    //strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    //printf( "The current date/time in New York is: %s\n", strftime_buf);
-
+    quit_sig = false;
+    exit_sig = false;
 
   xTaskCreatePinnedToCore(TASK_lora_gw, "LoraGW",
     LORA_GW_STACK_SIZE / sizeof(StackType_t),
@@ -929,6 +907,7 @@ void TASK_lora_gw(void *pvParameters) {
     int x;
     //set signal handler cb
     mp_hal_set_signal_exit_cb(sig_handler);
+    machine_register_pygate_sig_handler(sig_handler);
     mp_hal_set_interrupt_char(3);
     /* COM interfaces */
     const char com_path_default[] = COM_PATH_DEFAULT;
@@ -1016,6 +995,19 @@ void TASK_lora_gw(void *pvParameters) {
     if (x == LGW_REG_ERROR) {
         MSG("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
         exit(EXIT_FAILURE);
+    }
+
+    time_t now;
+    struct tm timeinfo;
+
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    // Is time set? If not, tm_year will be (1970 - 1900).
+    if (timeinfo.tm_year < (2016 - 1900)) {
+        printf( "Time is not set.\n");
+        obtain_time();
+        // update 'now' variable with current time
+        time(&now);
     }
 
     //MSG("*** MCU FW version for LoRa PicoCell Gateway ***\nVersion: 0x%08X\n***\n", lgw_mcu_version_info());
@@ -1189,26 +1181,34 @@ void TASK_lora_gw(void *pvParameters) {
     i = pthread_create( &thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create upstream thread\n");
-        //exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
 
     i = pthread_create( &thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create downstream thread\n");
-        //exit(EXIT_FAILURE);
+        pthread_cancel(thrid_up);
+        exit(EXIT_FAILURE);
     }
 
     i = pthread_create( &thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create JIT thread\n");
-        //exit(EXIT_FAILURE);
+        pthread_cancel(thrid_up);
+        pthread_cancel(thrid_down);
+        exit(EXIT_FAILURE);
     }
 
     i = pthread_create( &thrid_timersync, NULL, (void * (*)(void *))thread_timersync, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create Timer Sync thread\n");
-        //exit(EXIT_FAILURE);
+        pthread_cancel(thrid_up);
+        pthread_cancel(thrid_down);
+        pthread_cancel(thrid_jit);
+        exit(EXIT_FAILURE);
     }
+
+    machine_pygate_set_status(PYGATE_STARTED);
 
     /* main loop task : statistics collection */
     while (!exit_sig && !quit_sig) {
@@ -1389,7 +1389,8 @@ void thread_up(void) {
     i = setsockopt(sock_up, SOL_SOCKET, SO_RCVTIMEO, (void *)&push_timeout_half, sizeof push_timeout_half);
     if (i != 0) {
         MSG("ERROR: [up] setsockopt returned %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        quit_sig = true;
+        machine_pygate_set_status(PYGATE_ERROR);
     }
 
     /* pre-fill the data buffer with fixed fields */
@@ -1498,7 +1499,7 @@ void thread_up(void) {
                 buff_index += j;
             } else {
                 MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                exit(EXIT_FAILURE);
+                quit_sig = true;
             }
 
             /* Packet concentrator channel, RF chain & RX frequency, 34-36 useful chars */
@@ -1507,7 +1508,8 @@ void thread_up(void) {
                 buff_index += j;
             } else {
                 MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                exit(EXIT_FAILURE);
+                quit_sig = true;
+                machine_pygate_set_status(PYGATE_ERROR);
             }
 
             /* Packet status, 9-10 useful chars */
@@ -1528,7 +1530,8 @@ void thread_up(void) {
                     MSG("ERROR: [up] received packet with unknown status\n");
                     memcpy((void *)(buff_up + buff_index), (void *)",\"stat\":?", 9);
                     buff_index += 9;
-                    exit(EXIT_FAILURE);
+                    quit_sig = true;
+                    machine_pygate_set_status(PYGATE_ERROR);
             }
 
             /* Packet modulation, 13-14 useful chars */
@@ -1566,7 +1569,8 @@ void thread_up(void) {
                         MSG("ERROR: [up] lora packet with unknown datarate\n");
                         memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF?", 12);
                         buff_index += 12;
-                        exit(EXIT_FAILURE);
+                        quit_sig = true;
+                        machine_pygate_set_status(PYGATE_ERROR);
                 }
                 switch (p->bandwidth) {
                     case BW_125KHZ:
@@ -1585,7 +1589,8 @@ void thread_up(void) {
                         MSG("ERROR: [up] lora packet with unknown bandwidth\n");
                         memcpy((void *)(buff_up + buff_index), (void *)"BW?\"", 4);
                         buff_index += 4;
-                        exit(EXIT_FAILURE);
+                        quit_sig = true;
+                        machine_pygate_set_status(PYGATE_ERROR);
                 }
 
                 /* Packet ECC coding rate, 11-13 useful chars */
@@ -1614,7 +1619,8 @@ void thread_up(void) {
                         MSG("ERROR: [up] lora packet with unknown coderate\n");
                         memcpy((void *)(buff_up + buff_index), (void *)",\"codr\":\"?\"", 11);
                         buff_index += 11;
-                        exit(EXIT_FAILURE);
+                        quit_sig = true;
+                        machine_pygate_set_status(PYGATE_ERROR);
                 }
 
                 /* Lora SNR, 11-13 useful chars */
@@ -1623,7 +1629,8 @@ void thread_up(void) {
                     buff_index += j;
                 } else {
                     MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                    exit(EXIT_FAILURE);
+                    quit_sig = true;
+                    machine_pygate_set_status(PYGATE_ERROR);
                 }
             } else if (p->modulation == MOD_FSK) {
                 memcpy((void *)(buff_up + buff_index), (void *)",\"modu\":\"FSK\"", 13);
@@ -1635,11 +1642,13 @@ void thread_up(void) {
                     buff_index += j;
                 } else {
                     MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                    exit(EXIT_FAILURE);
+                    quit_sig = true;
+                    machine_pygate_set_status(PYGATE_ERROR);
                 }
             } else {
                 MSG("ERROR: [up] received packet with unknown modulation\n");
-                exit(EXIT_FAILURE);
+                quit_sig = true;
+                machine_pygate_set_status(PYGATE_ERROR);
             }
 
             /* Packet RSSI, payload size, 18-23 useful chars */
@@ -1648,7 +1657,8 @@ void thread_up(void) {
                 buff_index += j;
             } else {
                 MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
-                exit(EXIT_FAILURE);
+                quit_sig = true;
+                machine_pygate_set_status(PYGATE_ERROR);
             }
 
             /* Packet base64-encoded payload, 14-350 useful chars */
@@ -1659,7 +1669,8 @@ void thread_up(void) {
                 buff_index += j;
             } else {
                 MSG("ERROR: [up] bin_to_b64 failed line %u\n", (__LINE__ - 5));
-                exit(EXIT_FAILURE);
+                quit_sig = true;
+                machine_pygate_set_status(PYGATE_ERROR);
             }
             buff_up[buff_index] = '"';
             ++buff_index;
@@ -1700,7 +1711,8 @@ void thread_up(void) {
                 buff_index += j;
             } else {
                 MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 5));
-                exit(EXIT_FAILURE);
+                quit_sig = true;
+                machine_pygate_set_status(PYGATE_ERROR);
             }
         }
 
@@ -1795,7 +1807,8 @@ void thread_down(void) {
     i = setsockopt(sock_down, SOL_SOCKET, SO_RCVTIMEO, (void *)&pull_timeout, sizeof pull_timeout);
     if (i != 0) {
         MSG("ERROR: [down] setsockopt returned %s\n", strerror(errno));
-        exit(EXIT_FAILURE);
+        quit_sig = true;
+        machine_pygate_set_status(PYGATE_ERROR);
     }
 
     /* pre-fill the pull request buffer with fixed fields */

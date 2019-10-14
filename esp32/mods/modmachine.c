@@ -77,6 +77,7 @@
 #include "machrmt.h"
 #include "machtouch.h"
 #include "pycom_config.h"
+#include "modmachine.h"
 #if defined (GPY) || defined (FIPY)
 #include "lteppp.h"
 #endif
@@ -94,17 +95,39 @@
 #include "cmd_manager.h"
 #include "../pygate/concentrator/loragw_hal_esp.h"
 #include "lora_pkt_fwd.h"
+#include "mpirq.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
+#define PYGATE_STOP_EVENT           (0x00001)
+#define PYGATE_START_EVENT          (0x00002)
+#define PYGATE_ERROR_EVENT          (0x00004)
+
 static RTC_DATA_ATTR int64_t mach_expected_wakeup_time;
 static int64_t mach_remaining_sleep_time;
 
+typedef struct _machine_obj_t {
+    mp_obj_base_t           base;
+    uint32_t                trigger;
+    int32_t                 events;
+    mp_obj_t                handler;
+    mp_obj_t                handler_arg;
+} machine_obj_t;
 
 // Function name is not a typo - undocumented ESP-IDF to get die temperature
 uint8_t temprature_sens_read(); 
+static _sig_func_cb_ptr pygate_signal = NULL;
+static machine_pygate_states_t pygate_status;
 
+STATIC void machine_callback_handler(void* arg);
+
+static machine_obj_t machine_obj = {
+        .trigger = 0,
+        .handler = NULL,
+        .handler_arg = NULL,
+        .events = 0
+};
 
 void machine_init0(void) {
     if (mach_expected_wakeup_time > 0) {
@@ -117,8 +140,50 @@ void machine_init0(void) {
     } else {
         mach_remaining_sleep_time = 0;
     }
+    machine_obj.base.type = (mp_obj_t)&machine_module;
+    pygate_status = PYGATE_STOPPED;
 }
 
+void machine_register_pygate_sig_handler(_sig_func_cb_ptr sig_handler)
+{
+    pygate_signal = sig_handler;
+}
+
+void machine_pygate_set_status(machine_pygate_states_t status)
+{
+    bool trig = false;
+    pygate_status = status;
+    switch (pygate_status)
+    {
+    case PYGATE_STOPPED:
+        if(machine_obj.trigger & PYGATE_STOP_EVENT)
+        {
+            trig = true;
+            machine_obj.events |= PYGATE_STOP_EVENT;
+        }
+        break;
+    case PYGATE_STARTED:
+        if(machine_obj.trigger & PYGATE_START_EVENT)
+        {
+            trig = true;
+            machine_obj.events |= PYGATE_START_EVENT;
+        }
+        break;
+    case PYGATE_ERROR:
+        if(machine_obj.trigger & PYGATE_ERROR_EVENT)
+        {
+            trig = true;
+            machine_obj.events |= PYGATE_ERROR_EVENT;
+        }
+        break;
+    default:
+        break;
+    }
+    if(trig)
+    {
+        mp_irq_queue_interrupt(machine_callback_handler, &machine_obj);
+    }
+}
 /// \module machine - functions related to the SoC
 ///
 
@@ -201,6 +266,15 @@ STATIC mp_obj_t machine_pygate_init (mp_obj_t global_conf) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_pygate_init_obj, machine_pygate_init);
 
+STATIC mp_obj_t machine_pygate_deinit (void) {
+    if(pygate_signal != NULL)
+    {
+        pygate_signal(3);
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_pygate_deinit_obj, machine_pygate_deinit);
+
 STATIC mp_obj_t machine_pygate_cmd_decode (mp_obj_t cmd_in) {
     // get the cmd data
     mp_buffer_info_t bufinfo;
@@ -229,6 +303,56 @@ STATIC mp_obj_t machine_pygate_cmd_get (void) {
     return mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_pygate_cmd_get_obj, machine_pygate_cmd_get);
+
+STATIC mp_obj_t machine_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    STATIC const mp_arg_t allowed_args[] = {
+        { MP_QSTR_trigger,      MP_ARG_REQUIRED | MP_ARG_OBJ,   },
+        { MP_QSTR_handler,      MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+        { MP_QSTR_arg,          MP_ARG_OBJ,                     {.u_obj = mp_const_none} },
+    };
+
+    // parse arguments
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
+
+    // enable the callback
+    if (args[0].u_obj != mp_const_none && args[1].u_obj != mp_const_none) {
+        machine_obj.trigger = mp_obj_get_int(args[0].u_obj);
+        machine_obj.handler = args[1].u_obj;
+        if (args[2].u_obj == mp_const_none) {
+            machine_obj.handler_arg = &machine_obj;
+        } else {
+            machine_obj.handler_arg = args[2].u_obj;
+        }
+    } else {  // disable the callback
+        machine_obj.trigger = 0;
+        mp_irq_remove((mp_obj_t)(&machine_obj));
+        INTERRUPT_OBJ_CLEAN(&machine_obj);
+    }
+
+    mp_irq_add((mp_obj_t)(&machine_obj), args[1].u_obj);
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_callback_obj, 0, machine_callback);
+
+STATIC void machine_callback_handler(void* arg)
+{
+    machine_obj_t *self = arg;
+
+    if (self->handler && self->handler != mp_const_none) {
+
+        mp_call_function_1(self->handler, self->handler_arg);
+    }
+}
+
+STATIC mp_obj_t machine_events(void) {
+
+    int32_t events = machine_obj.events;
+    machine_obj.events = 0;
+    return mp_obj_new_int(events);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_events_obj, machine_events);
 
 STATIC mp_obj_t machine_idle(void) {
     taskYIELD();
@@ -462,8 +586,11 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_secure_boot),             (mp_obj_t)&machine_secure_boot_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_init),             (mp_obj_t)&machine_pygate_init_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_deinit),           (mp_obj_t)&machine_pygate_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_cmd_decode),       (mp_obj_t)&machine_pygate_cmd_decode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_cmd_get),          (mp_obj_t)&machine_pygate_cmd_get_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&machine_callback_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_events),                (mp_obj_t)&machine_events_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_Pin),                     (mp_obj_t)&pin_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_UART),                    (mp_obj_t)&mach_uart_type },
@@ -496,6 +623,10 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_WAKEUP_ALL_LOW),      MP_OBJ_NEW_SMALL_INT(ESP_EXT1_WAKEUP_ALL_LOW) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WAKEUP_ANY_HIGH),     MP_OBJ_NEW_SMALL_INT(ESP_EXT1_WAKEUP_ANY_HIGH) },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PYGATE_START_EVT),     MP_OBJ_NEW_SMALL_INT(PYGATE_START_EVENT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PYGATE_STOP_EVT),     MP_OBJ_NEW_SMALL_INT(PYGATE_STOP_EVENT) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PYGATE_ERROR_EVT),     MP_OBJ_NEW_SMALL_INT(PYGATE_ERROR_EVENT) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(machine_module_globals, machine_module_globals_table);
