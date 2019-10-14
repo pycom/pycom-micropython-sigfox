@@ -51,7 +51,7 @@
 
 /// \moduleref machine
 /// \class UART - duplex serial communication bus
-
+extern void IRAM_ATTR mp_hal_trig_term_sig(void);
 /******************************************************************************
  DEFINE CONSTANTS
  *******-***********************************************************************/

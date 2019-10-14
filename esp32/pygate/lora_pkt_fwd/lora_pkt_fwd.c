@@ -111,10 +111,13 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define LORA_GW_PRIORITY                                               (6)
 
 TaskHandle_t xLoraGwTaskHndl;
+typedef void (*_sig_func_cb_ptr)(int);
 
 void TASK_lora_gw(void *pvParameters);
 void machine_wdt_start (uint32_t timeout_ms);
 void machtimer_deinit(void);
+void mp_hal_set_signal_exit_cb (_sig_func_cb_ptr fun);
+bool mach_is_rtc_synced (void);
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE TYPES -------------------------------------------------------- */
 
@@ -260,15 +263,12 @@ static void loragw_exit(int status)
     if(status == EXIT_FAILURE)
     {
         exit_cleanup();
-        machtimer_deinit();
-        machine_wdt_start(1);
-        for ( ; ; );
+        esp_restart();
     }
     else
     {
         exit_sig = false;
-        vTaskDelete(NULL);
-        for (;;);
+        esp_restart();
     }
 }
 
@@ -769,22 +769,27 @@ static void obtain_time(void)
     struct tm timeinfo = { 0 };
     int retry = 0;
     const int retry_count = 10;
-    while(timeinfo.tm_year < (2016 - 1900) && ++retry < retry_count) {
+    while(!mach_is_rtc_synced() && ++retry < retry_count) {
         printf( "Waiting for system time to be set... (%d/%d)\n", retry, retry_count);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         time(&now);
         localtime_r(&now, &timeinfo);
+    }
+    if(retry == retry_count)
+    {
+        printf("Failed to set system time.. please Sync time via an NTP server using RTC module.!\n");
+        exit(EXIT_FAILURE);
     }
 
 }
 
 static void initialize_sntp(void)
 {
-    printf( "Initializing SNTP\n");
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_servermode_dhcp(1);
+    //printf( "Initializing SNTP\n");
+    //sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    //sntp_servermode_dhcp(1);
     //sntp_setservername(0, "0.nl.pool.ntp.org");
-    sntp_init();
+    //sntp_init();
 }
 
 static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error) {
@@ -890,14 +895,14 @@ void lora_gw_init(const char* global_conf) {
         // update 'now' variable with current time
         time(&now);
     }
-    char strftime_buf[64];
+    //char strftime_buf[64];
 
     // Set timezone to Eastern Standard Time and print local time
     //setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
-    tzset();
-    localtime_r(&now, &timeinfo);
-    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-    printf( "The current date/time in New York is: %s\n", strftime_buf);
+    //tzset();
+    //localtime_r(&now, &timeinfo);
+    //strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    //printf( "The current date/time in New York is: %s\n", strftime_buf);
 
 
   xTaskCreatePinnedToCore(TASK_lora_gw, "LoraGW",

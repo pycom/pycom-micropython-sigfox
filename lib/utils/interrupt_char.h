@@ -25,13 +25,10 @@
  */
 #ifndef MICROPY_INCLUDED_LIB_UTILS_INTERRUPT_CHAR_H
 #define MICROPY_INCLUDED_LIB_UTILS_INTERRUPT_CHAR_H
-typedef void (*_sig_func_cb_ptr)(int);
 extern int mp_interrupt_char;
 extern int mp_reset_char;
 void mp_hal_set_interrupt_char(int c);
 void mp_hal_set_reset_char(int c);
 void mp_keyboard_interrupt(void);
-void IRAM_ATTR mp_hal_trig_term_sig(void);
-void mp_hal_set_signal_exit_cb (_sig_func_cb_ptr fun);
 
 #endif // MICROPY_INCLUDED_LIB_UTILS_INTERRUPT_CHAR_H

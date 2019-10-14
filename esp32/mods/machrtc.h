@@ -16,5 +16,6 @@ void rtc_init0(void);
 void mach_rtc_synced (void);
 void mach_rtc_set_us_since_epoch(uint64_t nowus);
 uint64_t mach_rtc_get_us_since_epoch(void);
+bool mach_is_rtc_synced (void);
 
 #endif // MACHRTC_H_
