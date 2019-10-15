@@ -259,6 +259,7 @@ static IRAM_ATTR void sig_handler(int sigio) {
 }
 static void loragw_exit(int status)
 {
+    exit_sig = false;
     if(status == EXIT_FAILURE)
     {
         exit_cleanup();
@@ -268,7 +269,6 @@ static void loragw_exit(int status)
     }
     else
     {
-        exit_sig = false;
         if(quit_sig)
         {
             quit_sig = false;
@@ -1173,7 +1173,7 @@ void TASK_lora_gw(void *pvParameters) {
     }
     esp_pthread_cfg_t cfg = {
             (10 * 1024),
-            5,
+            10,
             true
     };
     esp_pthread_set_cfg(&cfg);
@@ -1187,24 +1187,30 @@ void TASK_lora_gw(void *pvParameters) {
     i = pthread_create( &thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create downstream thread\n");
-        pthread_cancel(thrid_up);
+        exit_sig = true;
+        pthread_join(thrid_up, NULL);
         exit(EXIT_FAILURE);
     }
-
+    cfg.stack_size = (7 * 1024);
+    esp_pthread_set_cfg(&cfg);
     i = pthread_create( &thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create JIT thread\n");
-        pthread_cancel(thrid_up);
-        pthread_cancel(thrid_down);
+        exit_sig = true;
+        pthread_join(thrid_up, NULL);
+        pthread_join(thrid_down, NULL);
         exit(EXIT_FAILURE);
     }
 
+    cfg.stack_size = (7 * 1024);
+    esp_pthread_set_cfg(&cfg);
     i = pthread_create( &thrid_timersync, NULL, (void * (*)(void *))thread_timersync, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create Timer Sync thread\n");
-        pthread_cancel(thrid_up);
-        pthread_cancel(thrid_down);
-        pthread_cancel(thrid_jit);
+        exit_sig = true;
+        pthread_join(thrid_up, NULL);
+        pthread_join(thrid_down, NULL);
+        pthread_join(thrid_jit, NULL);
         exit(EXIT_FAILURE);
     }
 
