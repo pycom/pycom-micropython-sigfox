@@ -24,6 +24,11 @@ try:
 except:
     from _meshaging import *
 
+try:
+    from pymesh_debug import print_debug
+except:
+    from _pymesh_debug import print_debug
+
 __version__ = '6'
 """
 __version__ = '6'
@@ -137,7 +142,7 @@ class MeshInternal:
         """ create UDP socket """
         self.sock = socket.socket(socket.AF_LORA, socket.SOCK_RAW)
         self.sock.bind(self.PORT_MESH_INTERNAL)
-        print("Socket created on port %d" % self.PORT_MESH_INTERNAL)
+        print_debug(5, "Socket created on port %d" % self.PORT_MESH_INTERNAL)
 
     def process_messages(self):
         """ consuming message queue """
@@ -163,7 +168,7 @@ class MeshInternal:
         if message.type == message.TYPE_IMAGE:
             pack_type = self.PACK_FILE_SEND
         if payload:
-            print("Send message ", payload)
+            print_debug(4, "Send message " + str(payload))
             self.send_pack(pack_type, payload, message.ip)
         pass
 
@@ -247,12 +252,12 @@ class MeshInternal:
     def process(self):
         self.mesh.update_internals()
         self.mesh.led_state()
-        print("%d: MAC %s(%d), State %s, Single %s" % (time.time(),
+        print_debug(3, "%d: MAC %s(%d), State %s, Single %s" % (time.time(),
             hex(self.MAC), self.MAC, self.mesh.state_string(), str(self.mesh.mesh.single())))
-        print(self.mesh.ipaddr())
+        print_debug(3, self.mesh.ipaddr())
         leader = self.mesh.mesh.leader()
         if leader is not None:
-            print("Leader: mac %s, rloc %s, net: %s" %
+            print_debug(3,"Leader: mac %s, rloc %s, net: %s" %
                   (hex(leader.mac), hex(leader.rloc16), hex(leader.part_id)))
         if not self.mesh.is_connected():
             return  # nothing to do
@@ -505,7 +510,7 @@ class MeshInternal:
 
                 # forward message to user-application layer
                 if self.message_cb:
-                    self.message_cb(rcv_ip, rcv_port, rcv_data)
+                    self.message_cb(rcv_ip, rcv_port, message.payload)
 
 
             elif type == self.PACK_MESSAGE_ACK:

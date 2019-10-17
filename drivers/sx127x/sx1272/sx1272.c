@@ -56,11 +56,6 @@ typedef struct
 
 
 /*!
- * \brief Resets the SX1272
- */
-void SX1272Reset( void );
-
-/*!
  * \brief Sets the SX1272 in transmission mode for the given time
  * \param [IN] timeout Transmission timeout [ms] [0: continuous, others timeout]
  */

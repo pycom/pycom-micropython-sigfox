@@ -333,7 +333,10 @@ STATIC IRAM_ATTR void machpin_intr_process (void* arg) {
 #ifdef MICROPY_LPWAN_DIO_PIN
     // fast path for the LPWAN DIO interrupt
     if (gpio_intr_status & (1 << micropy_lpwan_dio_pin_num)) {
-        ((void(*)(void))((pin_obj_t *)micropy_lpwan_dio_pin)->handler)();
+        if(((pin_obj_t *)micropy_lpwan_dio_pin)->handler != NULL)
+        {
+            ((void(*)(void))((pin_obj_t *)micropy_lpwan_dio_pin)->handler)();
+        }
 
         // clear this bit from the interrupt status
         gpio_intr_status &= ~(1 << micropy_lpwan_dio_pin_num);

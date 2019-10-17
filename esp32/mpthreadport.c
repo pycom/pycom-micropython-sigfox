@@ -140,13 +140,16 @@ STATIC void freertos_entry(void *arg) {
         ext_thread_entry(arg);
     }
 
-    /* Free up the resources of this task from the task running the interrupt handlers
+    /* Free up the resources of this task from the task TASK_Interrupts
      * as it can happen that calling here a vTaskDelete(NULL) will not have effect as the Idle Task which frees up
      * the resources of the deleted task does not have the chance to run as higher priority tasks keep the
      * processor busy and as a result we can run out of memory.
+     *
+     * From vTaskDelete() source: "Deleting a currently running task. This cannot complete within the task itself,
+     * as a context switch to another task is required." -> that's why delete will happen from TASK_Interrupts
      * */
     mp_irq_queue_interrupt_immediate_thread_delete(xTaskGetCurrentTaskHandle());
-    // Execution will only reach this point when the Interrupt handler task is about to be deleted
+    // Execution will only reach this point when TASK_Interrupts task is being deleted at the moment
     vTaskDelete(NULL);
     for (;;);
 }

@@ -35,6 +35,10 @@ try:
     from pybytes_debug import print_debug
 except:
     from _pybytes_debug import print_debug
+try:
+    import urequest
+except:
+    import _urequest as urequest
 
 from machine import Pin
 from machine import ADC
@@ -47,6 +51,7 @@ import _thread
 import time
 import struct
 import machine
+import ujson
 
 
 class PybytesProtocol:
@@ -83,10 +88,10 @@ class PybytesProtocol:
         self.__pybytes_connection.__connection.subscribe(
             self.__mqtt_download_topic)
         self.__connectionAlarm = Timer.Alarm(
-                self.__keep_connection,
-                constants.__KEEP_ALIVE_PING_INTERVAL,
-                periodic=True
-            )
+            self.__keep_connection,
+            constants.__KEEP_ALIVE_PING_INTERVAL,
+            periodic=True
+        )
 
     def start_Sigfox(self, pybytes_connection):
         print_debug(5, "This is PybytesProtocol.start_Sigfox()")
@@ -121,6 +126,7 @@ class PybytesProtocol:
 
     def __process_recv_message(self, message):
         print_debug(5, "This is PybytesProtocol.__process_recv_message()")
+
         if message.payload:
             network_type, message_type, body = self.__pybytes_library.unpack_message(message.payload) # noqa
         else:
@@ -149,6 +155,9 @@ class PybytesProtocol:
 
             elif (message_type == constants.__TYPE_BATTERY_INFO):
                 self.send_battery_info()
+
+            elif (message_type == constants.__TYPE_RELEASE_DEPLOY):
+                self.deploy_new_release(body)
 
             elif (message_type == constants.__TYPE_OTA):
                 ota = WiFiOTA(
@@ -272,6 +281,8 @@ class PybytesProtocol:
 
                 elif (command == constants.__COMMAND_CUSTOM_METHOD):
                     if (pin_number == constants.__TERMINAL_PIN and self.__terminal_enabled): # noqa
+                        original_dupterm = os.dupterm()
+                        os.dupterm(self.__terminal)
                         self.__terminal.message_sent_from_pybytes_start()
                         terminal_command = body[2: len(body)]
                         terminal_command = terminal_command.decode("utf-8")
@@ -289,6 +300,7 @@ class PybytesProtocol:
                             except Exception as e:
                                 print('Exception:\n  ' + repr(e))
                         self.__terminal.message_sent_from_pybytes_end()
+                        os.dupterm(original_dupterm)
                         return
 
                     if (self.__custom_methods[pin_number] is not None):
@@ -348,7 +360,7 @@ class PybytesProtocol:
         self.__pins[pin_number] = pwm.channel(
             _PWMMap[pin_number][1], pin="P" + str(pin_number),
             duty_cycle=0
-         )
+        )
 
     def __send_message(self, message, topic=None, priority=True):
         try:
@@ -385,7 +397,11 @@ class PybytesProtocol:
         self.__send_message(self.__pybytes_library.pack_ping_message())
 
     def send_info_message(self):
-        self.__send_message(self.__pybytes_library.pack_info_message())
+        try:
+            releaseVersion = self.__conf['application']['release']['version']
+        except:
+            releaseVersion = None
+        self.__send_message(self.__pybytes_library.pack_info_message(releaseVersion))
 
     def send_network_info_message(self):
         self.__send_message(self.__pybytes_library.pack_network_info_message())
@@ -480,7 +496,7 @@ class PybytesProtocol:
 
     def enable_terminal(self):
         self.__terminal_enabled = True
-        os.dupterm(self.__terminal)
+        #os.dupterm(self.__terminal)
 
     def __send_pybytes_message(self, command, pin_number, value):
         self.__send_message(
@@ -490,12 +506,12 @@ class PybytesProtocol:
         )
 
     def __send_pybytes_message_variable(
-                self,
-                command,
-                pin_number,
-                parameters,
-                priority=False
-            ):
+        self,
+        command,
+        pin_number,
+        parameters,
+        priority=False
+    ):
         self.__send_message(
             self.__pybytes_library.pack_pybytes_message_variable(
                 command, pin_number, parameters
@@ -505,3 +521,96 @@ class PybytesProtocol:
 
     def set_battery_level(self, battery_level):
         self.__battery_level = battery_level
+
+    def deploy_new_release(self, body):
+        application = self.__conf.get('application')
+        if application is not None:
+            baseWebConfigUrl = 'https://{}'.format(constants.__DEFAULT_PYCONFIG_DOMAIN)
+            manifestURL = '{}/manifest.json?'.format(baseWebConfigUrl)
+            fileUrl = '{}/files?'.format(baseWebConfigUrl)
+
+            applicationID = application['id']
+            currentReleaseID = application['release']['codeFilename']
+            newReleaseID = body.decode()
+
+            try:
+                targetURL = '{}app_id={}&target_ver={}&current_ver={}'.format(
+                            manifestURL,
+                            applicationID,
+                            newReleaseID,
+                            currentReleaseID
+                )
+
+                pybytes_activation = urequest.get(
+                    targetURL,
+                    headers={'content-type': 'application/json'})
+
+                letResp = pybytes_activation.json()
+                pybytes_activation.close()
+
+                try:
+                    errorMessage = letResp['errorMessage']
+                    print_debug(1, errorMessage)
+                    return
+                except:
+                    # manifest does not contain an error message
+                    pass
+
+                newFiles = letResp['newFiles']
+                updatedFiles = letResp['updatedFiles']
+                newFiles.extend(updatedFiles)
+
+                for file in newFiles:
+                    targetFileLocation = '{}application_id={}&target_ver={}&target_path={}'.format(
+                        fileUrl,
+                        applicationID,
+                        newReleaseID,
+                        file['fileName']
+                    )
+
+                    getFile = urequest.get(
+                        targetFileLocation,
+                        headers={'content-type': 'text/plain'})
+
+                    fileContent = getFile.content
+                    self.__FCOTA.update_file_content(file['fileName'], fileContent)
+
+                deletedFiles = letResp['deletedFiles']
+                for file in deletedFiles:
+                    self.__FCOTA.delete_file(file['fileName'])
+
+                self.__conf['application']['release']['idea'] = letResp['target_version']['id']
+                self.__conf['application']['release']['codeFilename'] = letResp['target_version']['codeFileName']
+                self.__conf['application']['release']['version'] = letResp['target_version']['version']
+                json_string = ujson.dumps(self.__conf)
+                self.__FCOTA.update_file_content('/flash/pybytes_config.json', json_string)
+
+                newFiles = letResp['newFiles']
+                updatedFiles = letResp['updatedFiles']
+                newFiles.extend(updatedFiles)
+
+                for file in newFiles:
+                    getFile = urequest.get(
+                        '{}application_id={}&target_ver={}&target_path={}'.format(
+                            fileUrl,
+                            applicationID,
+                            newReleaseID,
+                            file['fileName']
+                        ),
+                        headers={'content-type': 'text/plain'})
+                    fileContent = getFile.content
+                    self.__FCOTA.update_file_content(file['fileName'], fileContent)
+
+                deletedFiles = letResp['deletedFiles']
+                for file in deletedFiles:
+                    self.__FCOTA.delete_file(file['fileName'])
+
+                self.__conf['application']['release']['idea'] = letResp['target_version']['id']
+                self.__conf['application']['release']['codeFilename'] = letResp['target_version']['codeFileName']
+                self.__conf['application']['release']['version'] = letResp['target_version']['version']
+                json_string = ujson.dumps(self.__conf)
+                self.__FCOTA.update_file_content('/flash/pybytes_config.json', json_string)
+
+                machine.reset()
+            except Exception as ex:
+                print_debug(1, "an error has occurred while deploying changes!: {}".format(ex))

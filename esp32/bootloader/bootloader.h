@@ -41,23 +41,16 @@ typedef struct _boot_info_t
   uint32_t  crc;
 } boot_info_t;
 
-#if defined (FIPY) || defined (GPY) || defined (LOPY4) || defined(WIPY3)
+#define IMG_SIZE_8MB                            (1980 * 1024)
+#define IMG_UPDATE1_OFFSET_8MB                  (2112 * 1024)  // taken from the partitions table
 
-#define IMG_SIZE                            (1980 * 1024)
+#define IMG_SIZE_4MB                            (1720 * 1024)
+#define IMG_UPDATE1_OFFSET_4MB                  (1792 * 1024)  // taken from the partitions table
+
 #define OTAA_DATA_SIZE                      (4 * 1024)
 #define OTA_DATA_INDEX                      2
 #define IMG_FACTORY_OFFSET                  (64 * 1024)
-#define IMG_UPDATE1_OFFSET                  (2112 * 1024)  // taken from the partitions table
 
-#else
-
-#define IMG_SIZE                            (1720 * 1024)
-#define OTAA_DATA_SIZE                      (4 * 1024)
-#define OTA_DATA_INDEX                      2
-#define IMG_FACTORY_OFFSET                  (64 * 1024)
-#define IMG_UPDATE1_OFFSET                  (1792 * 1024)  // taken from the partitions table
-
-#endif
 
 #define IMG_UPDATE2_OFFSET                  (IMG_FACTORY_OFFSET)
 
@@ -68,13 +61,11 @@ typedef struct _boot_info_t
 #define IMG_ACT_UPDATE1                     1
 #define IMG_ACT_UPDATE2                     2
 
-#define BOOT_VERSION                        "V0.2"
+#define BOOT_VERSION                        "V0.3"
 #define SPI_SEC_SIZE                        0x1000
-#if defined (FIPY) || defined (GPY) || defined (LOPY4) || defined(WIPY3)
-#define PARTITIONS_COUNT                    5
-#else
-#define PARTITIONS_COUNT                    7
-#endif
+
+#define PARTITIONS_COUNT_8MB                    5
+#define PARTITIONS_COUNT_4MB                    7
 
 #define PART_TYPE_APP                       0x00
 #define PART_SUBTYPE_FACTORY                0x00

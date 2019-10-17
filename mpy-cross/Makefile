@@ -5,8 +5,12 @@ ifneq ($(findstring undefine,$(.FEATURES)),)
 override undefine COPT
 override undefine CFLAGS_EXTRA
 override undefine LDFLAGS_EXTRA
+override undefine MICROPY_FORCE_32BIT
+override undefine CROSS_COMPILE
 override undefine FROZEN_DIR
 override undefine FROZEN_MPY_DIR
+override undefine USER_C_MODULES
+override undefine SRC_MOD
 override undefine BUILD
 override undefine PROG
 endif
@@ -25,9 +29,9 @@ UNAME_S := $(shell uname -s)
 # include py core make definitions
 include $(TOP)/py/py.mk
 
-INC +=  -I.
-INC +=  -I$(TOP)
+INC += -I.
 INC += -I$(BUILD)
+INC += -I$(TOP)
 
 # compiler settings
 CWARN = -Wall -Werror
@@ -68,7 +72,7 @@ ifneq (,$(findstring mingw,$(COMPILER_TARGET)))
 	SRC_C += ports/windows/fmode.c
 endif
 
-OBJ = $(PY_O)
+OBJ = $(PY_CORE_O)
 OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 
 include $(TOP)/py/mkrules.mk

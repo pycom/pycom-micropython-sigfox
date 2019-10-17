@@ -32,5 +32,5 @@ extern fs_user_mount_t sflash_vfs_flash;
  ******************************************************************************/
 extern void TASK_Micropython (void *pvParameters);
 extern bool isLittleFs(const TCHAR *path);
-
+extern void mptask_config_wifi(bool force_start);
 #endif /* MPTASK_H_ */

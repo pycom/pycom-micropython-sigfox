@@ -28,6 +28,7 @@
 #include "mpsleep.h"
 #include "esp32_mphal.h"
 #include "lwip/dns.h"
+#include "modlte.h"
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -50,6 +51,7 @@ typedef enum
  DECLARE EXPORTED DATA
  ******************************************************************************/
 extern TaskHandle_t xLTETaskHndl;
+extern TaskHandle_t xLTEUartEvtTaskHndl;
 SemaphoreHandle_t xLTE_modem_Conn_Sem;
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -81,10 +83,15 @@ static ltepppconnstatus_t lteppp_connstatus = LTE_PPP_IDLE;
 
 static ip_addr_t ltepp_dns_info[2]={0};
 
+static QueueHandle_t uart0_queue;
+
+static bool lte_uart_break_evt = false;
+
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
 static void TASK_LTE (void *pvParameters);
+static void TASK_UART_EVT (void *pvParameters);
 static bool lteppp_send_at_cmd_exp(const char *cmd, uint32_t timeout, const char *expected_rsp, void* data_rem, size_t len);
 static bool lteppp_send_at_cmd(const char *cmd, uint32_t timeout);
 static bool lteppp_check_sim_present(void);
@@ -105,6 +112,7 @@ void connect_lte_uart (void) {
     config.stop_bits = UART_STOP_BITS_1;
     config.flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS;
     config.rx_flow_ctrl_thresh = 64;
+    config.use_ref_tick = false;
     uart_param_config(LTE_UART_ID, &config);
 
     // configure the UART pins
@@ -115,8 +123,10 @@ void connect_lte_uart (void) {
 
     vTaskDelay(5 / portTICK_RATE_MS);
 
+    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
+
     // install the UART driver
-    uart_driver_install(LTE_UART_ID, LTE_UART_BUFFER_SIZE, LTE_UART_BUFFER_SIZE, 0, NULL, 0, NULL);
+    uart_driver_install(LTE_UART_ID, LTE_UART_BUFFER_SIZE, LTE_UART_BUFFER_SIZE, 1, &uart0_queue, 0, NULL);
     lteppp_uart_reg = &UART2;
 
     // disable the delay between transfers
@@ -125,9 +135,9 @@ void connect_lte_uart (void) {
     // configure the rx timeout threshold
     lteppp_uart_reg->conf1.rx_tout_thrhd = 20 & UART_RX_TOUT_THRHD_V;
 
-    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
     uart_set_rts(LTE_UART_ID, false);
 
+    xTaskCreatePinnedToCore(TASK_UART_EVT, "LTE_UART_EVT", 2048 / sizeof(StackType_t), NULL, 12, &xLTEUartEvtTaskHndl, 1);
 }
 
 
@@ -405,8 +415,9 @@ modem_init:
         xSemaphoreTake(xLTESem, portMAX_DELAY);
         lteppp_modem_conn_state = E_LTE_MODEM_CONNECTING;
         xSemaphoreGive(xLTESem);
-        uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
+        uart_set_rts(LTE_UART_ID, true);
         vTaskDelay(500/portTICK_PERIOD_MS);
+        uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
         // exit PPP session if applicable
         if(lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS))
         {
@@ -492,12 +503,17 @@ modem_init:
 
         // enable airplane low power mode
         lteppp_send_at_cmd("AT!=\"setlpm airplane=1 enable=1\"", LTE_RX_TIMEOUT_MAX_MS);
-
+        // enable Break Signal for URC on UART0
+        lteppp_send_at_cmd("AT+SQNIBRCFG?", LTE_RX_TIMEOUT_MAX_MS);
+        if(!strstr(lteppp_trx_buffer, "+SQNIBRCFG: 1,100"))
+        {
+            lteppp_send_at_cmd("AT+SQNIBRCFG=1,100", LTE_RX_TIMEOUT_MAX_MS);
+        }
         xSemaphoreTake(xLTESem, portMAX_DELAY);
         lteppp_modem_conn_state = E_LTE_MODEM_CONNECTED;
         xSemaphoreGive(xLTESem);
         xSemaphoreGive(xLTE_modem_Conn_Sem);
-
+        lte_state_t state;
         for (;;) {
             vTaskDelay(LTE_TASK_PERIOD_MS);
             xSemaphoreTake(xLTESem, portMAX_DELAY);
@@ -508,11 +524,18 @@ modem_init:
                 goto modem_init;
             }
             xSemaphoreGive(xLTESem);
+            state = lteppp_get_state();
             if (xQueueReceive(xCmdQueue, lteppp_trx_buffer, 0)) {
                 lteppp_send_at_cmd_exp(lte_task_cmd->data, lte_task_cmd->timeout, NULL, &(lte_task_rsp->data_remaining), lte_task_cmd->dataLen);
                 xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
-            } else {
-                lte_state_t state = lteppp_get_state();
+            }
+            else if(state == E_LTE_PPP && lte_uart_break_evt)
+            {
+                lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS);
+                lteppp_suspend();
+            }
+            else
+            {
                 if (state == E_LTE_PPP) {
                     uint32_t rx_len;
                     // check for IP connection
@@ -547,6 +570,46 @@ modem_init:
         }
     }
     goto modem_init;
+}
+
+static void TASK_UART_EVT (void *pvParameters)
+{
+    uart_event_t event;
+    uint8_t buff[50] = {0};
+    for(;;) {
+        //Waiting for UART event.
+        if(xQueueReceive(uart0_queue, (void * )&event, (portTickType)portMAX_DELAY)) {
+
+            switch(event.type)
+            {
+                case UART_DATA:
+                    if (lte_uart_break_evt) {
+
+                        uint32_t rx_len = uart_read_bytes(LTE_UART_ID, buff, LTE_UART_BUFFER_SIZE,
+                                                                         LTE_TRX_WAIT_MS(LTE_UART_BUFFER_SIZE) / portTICK_RATE_MS);
+
+                        if ((rx_len) && (strstr((const char *)buff, "OK") != NULL))
+                        {
+                            if(strstr((const char *)buff, "+CEREG: 4") != NULL)
+                            {
+                                modlte_urc_events(LTE_EVENT_COVERAGE_LOST);
+                            }
+
+                            lte_uart_break_evt = false;
+                        }
+                    }
+                    break;
+                case UART_BREAK:
+                    if (E_LTE_PPP == lteppp_get_state()) {
+                        lte_uart_break_evt = true;
+                    }
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+    vTaskDelete(NULL);
 }
 
 

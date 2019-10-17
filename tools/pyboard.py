@@ -47,6 +47,7 @@ Or:
 Then:
 
     pyb.enter_raw_repl()
+    pyb.exec('import pyb')
     pyb.exec('pyb.LED(1).on()')
     pyb.exit_raw_repl()
 
@@ -81,11 +82,12 @@ def stdout_write_bytes(b):
     stdout.write(b)
     stdout.flush()
 
-class PyboardError(BaseException):
+class PyboardError(Exception):
     pass
 
 class TelnetToSerial:
     def __init__(self, ip, user, password, read_timeout=None):
+        self.tn = None
         import telnetlib
         self.tn = telnetlib.Telnet(ip, timeout=15)
         self.read_timeout = read_timeout
@@ -109,11 +111,8 @@ class TelnetToSerial:
         self.close()
 
     def close(self):
-        try:
+        if self.tn:
             self.tn.close()
-        except:
-            # the telnet object might not exist yet, so ignore this one
-            pass
 
     def read(self, size=1):
         while len(self.fifo) < size:
@@ -152,7 +151,7 @@ class ProcessToSerial:
 
     def __init__(self, cmd):
         import subprocess
-        self.subp = subprocess.Popen(cmd.split(), bufsize=0, shell=True, preexec_fn=os.setsid,
+        self.subp = subprocess.Popen(cmd, bufsize=0, shell=True, preexec_fn=os.setsid,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
         # Initially was implemented with selectors, but that adds Python3
@@ -262,6 +261,9 @@ class Pyboard:
         self.serial.close()
 
     def read_until(self, min_num_bytes, ending, timeout=10, data_consumer=None):
+        # if data_consumer is used then data is not accumulated and the ending must be 1 byte long
+        assert data_consumer is None or len(ending) == 1
+
         data = self.serial.read(min_num_bytes)
         if data_consumer:
             data_consumer(data)
@@ -271,9 +273,11 @@ class Pyboard:
                 break
             elif self.serial.inWaiting() > 0:
                 new_data = self.serial.read(1)
-                data = data + new_data
                 if data_consumer:
                     data_consumer(new_data)
+                    data = new_data
+                else:
+                    data = data + new_data
                 timeout_count = 0
             else:
                 timeout_count += 1

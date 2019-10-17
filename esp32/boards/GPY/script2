@@ -7,7 +7,7 @@
     },
   "script" : [
       ["w", "bootloader", "bootloader.bin"],
-      ["w", "partitions", "partitions.bin"],
-      ["w", "factory", "gpy.bin"]
+      ["w", "partitions", "partitions_8MB.bin"],
+      ["w", "factory", "fipy.bin"]
     ]
 }

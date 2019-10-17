@@ -64,7 +64,7 @@ enum {
     IEEE802154_MACCMD_DATA_REQ = 4,
 };
 
-#define POSIX_MAX_SRC_MATCH_ENTRIES OPENTHREAD_CONFIG_MAX_CHILDREN
+#define POSIX_MAX_SRC_MATCH_ENTRIES OPENTHREAD_CONFIG_MLE_MAX_CHILDREN
 
 /******************************************************************************
  DECLARE PRIVATE DATA

@@ -87,12 +87,17 @@ uint8_t config_get_lora_region (void) {
 bool config_set_wifi_on_boot (uint8_t wifi_on_boot) {
     if (pycom_config_block.wifi_config.wifi_on_boot != wifi_on_boot) {
         pycom_config_block.wifi_config.wifi_on_boot = wifi_on_boot;
+#if (VARIANT != PYBYTES)
         return config_write();
+#endif
     }
     return true;
 }
 
 bool config_get_wifi_on_boot (void) {
+#if (VARIANT == PYBYTES)
+    return false;
+#endif
     return pycom_config_block.wifi_config.wifi_on_boot;
 }
 
@@ -106,6 +111,101 @@ bool config_set_wdt_on_boot (uint8_t wdt_on_boot) {
 
 bool config_get_wdt_on_boot (void) {
     return pycom_config_block.wdt_config.wdt_on_boot;
+}
+
+bool config_set_wifi_smart_config (uint8_t smartConfig, bool update_flash)
+{
+    if (pycom_config_block.wifi_config.wifi_smart_config != smartConfig) {
+        pycom_config_block.wifi_config.wifi_smart_config = smartConfig;
+        if (update_flash) {
+            return config_write();
+        }
+        else
+        {
+            return true;
+        }
+    }
+    return true;
+}
+
+bool config_get_wifi_smart_config(void)
+{
+    return pycom_config_block.wifi_config.wifi_smart_config;
+}
+
+bool config_set_wifi_mode(uint8_t wifi_mode, bool update_flash)
+{
+    if (pycom_config_block.wifi_config.wifi_mode != wifi_mode) {
+        pycom_config_block.wifi_config.wifi_mode = wifi_mode;
+        return config_write();
+    }
+    if (update_flash) {
+        return config_write();
+    }
+    else
+    {
+        return true;
+    }
+}
+
+uint8_t config_get_wifi_mode(void)
+{
+    return pycom_config_block.wifi_config.wifi_mode;
+}
+
+bool config_set_wifi_auth(uint8_t wifi_auth, bool update_flash)
+{
+    if (pycom_config_block.wifi_config.wifi_auth != wifi_auth) {
+        pycom_config_block.wifi_config.wifi_auth = wifi_auth;
+        if (update_flash) {
+            return config_write();
+        }
+        else
+        {
+            return true;
+        }
+    }
+    return true;
+}
+
+uint8_t config_get_wifi_auth(void)
+{
+    return pycom_config_block.wifi_config.wifi_auth;
+}
+
+bool config_get_wifi_antenna(void)
+{
+    return (bool)pycom_config_block.wifi_config.wifi_antenna;
+}
+
+bool config_set_wifi_ap_ssid(const uint8_t *wifi_ssid)
+{
+    memcpy(pycom_config_block.wifi_ap_config.wifi_ssid, wifi_ssid, sizeof(pycom_config_block.wifi_ap_config.wifi_ssid));
+    return config_write();
+}
+
+bool config_get_wifi_ap_ssid(uint8_t *wifi_ssid)
+{
+    memcpy( wifi_ssid, pycom_config_block.wifi_ap_config.wifi_ssid, sizeof(pycom_config_block.wifi_ap_config.wifi_ssid));
+    if (wifi_ssid[0]==0xff) {
+        return false;
+    }
+    return true;
+}
+
+bool config_set_wifi_ap_pwd(const uint8_t *wifi_pwd)
+{
+    memcpy(pycom_config_block.wifi_ap_config.wifi_pwd, wifi_pwd, sizeof(pycom_config_block.wifi_ap_config.wifi_pwd));
+    return config_write();
+}
+
+bool config_get_wifi_ap_pwd(uint8_t *wifi_pwd)
+{
+    memcpy( wifi_pwd, pycom_config_block.wifi_ap_config.wifi_pwd, sizeof(pycom_config_block.wifi_ap_config.wifi_pwd));
+    if (wifi_pwd[0]==0xff) {
+        return false;
+    }
+    return true;
 }
 
 bool config_set_wdt_on_boot_timeout (uint32_t wdt_on_boot_timeout) {
@@ -160,28 +260,42 @@ bool config_get_heartbeat_on_boot (void) {
     return pycom_config_block.rgbled_config.heartbeat_on_boot;
 }
 
-bool config_set_wifi_ssid (const uint8_t *wifi_ssid) {
-    memcpy(pycom_config_block.wifi_config.wifi_ssid, wifi_ssid, sizeof(pycom_config_block.wifi_config.wifi_ssid));
-    return config_write();
+bool config_set_sta_wifi_ssid (const uint8_t *wifi_ssid, bool update_flash) {
+    memcpy(pycom_config_block.wifi_sta_config.wifi_ssid, wifi_ssid, sizeof(pycom_config_block.wifi_sta_config.wifi_ssid));
+    if (update_flash) {
+        return config_write();
+    }
+    else
+    {
+        return true;
+    }
 }
 
-void config_get_wifi_ssid (uint8_t *wifi_ssid) {
-    memcpy( wifi_ssid, pycom_config_block.wifi_config.wifi_ssid, sizeof(pycom_config_block.wifi_config.wifi_ssid));
+bool config_get_wifi_sta_ssid (uint8_t *wifi_ssid) {
+    memcpy( wifi_ssid, pycom_config_block.wifi_sta_config.wifi_ssid, sizeof(pycom_config_block.wifi_sta_config.wifi_ssid));
     if (wifi_ssid[0]==0xff) {
-        wifi_ssid[0]=0x0;
+        return false;
+    }
+    return true;
+}
+
+bool config_set_wifi_sta_pwd (const uint8_t *wifi_pwd, bool update_flash) {
+    memcpy(pycom_config_block.wifi_sta_config.wifi_pwd, wifi_pwd, sizeof(pycom_config_block.wifi_sta_config.wifi_pwd));
+    if (update_flash) {
+        return config_write();
+    }
+    else
+    {
+        return true;
     }
 }
 
-bool config_set_wifi_pwd (const uint8_t *wifi_pwd) {
-    memcpy(pycom_config_block.wifi_config.wifi_pwd, wifi_pwd, sizeof(pycom_config_block.wifi_config.wifi_pwd));
-    return config_write();
-}
-
-void config_get_wifi_pwd (uint8_t *wifi_pwd) {
-    memcpy( wifi_pwd, pycom_config_block.wifi_config.wifi_pwd, sizeof(pycom_config_block.wifi_config.wifi_pwd));
+bool config_get_wifi_sta_pwd (uint8_t *wifi_pwd) {
+    memcpy( wifi_pwd, pycom_config_block.wifi_sta_config.wifi_pwd, sizeof(pycom_config_block.wifi_sta_config.wifi_pwd));
     if (wifi_pwd[0]==0xff) {
-        wifi_pwd[0]=0x0;
+        return false;
     }
+    return true;
 }
 #if (VARIANT == PYBYTES)
 void config_get_pybytes_userId (uint8_t *pybytes_userId) {
@@ -237,7 +351,7 @@ uint8_t config_get_boot_fs_type (void) {
     return 0x01;
 #endif
     if (pycom_config_block.pycom_config.boot_fs_type==0xff) {
-        return 0x00;
+        return 0x01;
     }
     return pycom_config_block.pycom_config.boot_fs_type;
 }

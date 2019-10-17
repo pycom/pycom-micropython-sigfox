@@ -14,7 +14,16 @@ import ubinascii
 import pycom
 
 from struct import *
-# from gps import Gps
+
+try:
+    from pymesh_debug import print_debug
+except:
+    from _pymesh_debug import print_debug
+
+try:
+    from gps import Gps
+except:
+    from _gps import Gps
 
 __version__ = '6'
 """
@@ -57,11 +66,13 @@ class Loramesh:
 
     def __init__(self, config):
         """ Constructor """
+        self.config = config
+        config_lora = config.get('LoRa')
         self.lora = LoRa(mode=LoRa.LORA, 
-            region = config.get("region"), 
-            frequency = config.get("freq"), 
-            bandwidth = config.get("bandwidth"), 
-            sf = config.get("sf"))
+            region = config_lora.get("region"), 
+            frequency = config_lora.get("freq"), 
+            bandwidth = config_lora.get("bandwidth"), 
+            sf = config_lora.get("sf"))
         self.mesh = self.lora.Mesh() #start Mesh
 
         # get Lora MAC address
@@ -70,7 +81,7 @@ class Loramesh:
 
         #last 2 letters from MAC, as integer
         self.mac_short = self.MAC & 0xFFFF #int(self.MAC[-4:], 16)
-        print("LoRa MAC: %s, short: %s"%(hex(self.MAC), self.mac_short))
+        print_debug(5, "LoRa MAC: %s, short: %s"%(hex(self.MAC), self.mac_short))
 
         self.rloc16 = 0
         self.rloc = ''
@@ -256,7 +267,7 @@ class Loramesh:
 
         """
         x = self.mesh.neighbors()
-        print("Neighbors Table: %s"%x)
+        print_debug(3,"Neighbors Table: %s"%x)
 
         if x is None:
             # bad read, just keep previous neigbors
@@ -268,7 +279,7 @@ class Loramesh:
         self.router_data.rloc16 = self.rloc16
         self.router_data.role = self.state
         self.router_data.ts = time.time()
-        self.router_data.coord = (1,2) #Gps.get_location()
+        self.router_data.coord = Gps.get_location()
 
         for nei_rec in x:
             # nei_rec = (role=3, rloc16=10240, rssi=0, age=28, mac=5)
@@ -446,7 +457,7 @@ class Loramesh:
             data['a'] = node.age
         elif role is self.STATE_ROUTER:
             data['a'] = time.time() - node.ts
-            data['l'] = {'lng':node.coord[1], 'lat':node.coord[0]}
+            data['l'] = {'lat':node.coord[0], 'lng':node.coord[1]}
             data['nn'] = node.neigh_num()
             nei_macs = node.get_macs_set()
             data['nei'] = list()
@@ -528,7 +539,7 @@ class RouterData:
         self.ts = 0
         self.dict = {}
         self.pack_index_last = 0
-        self.coord = (0.0, 0.0)
+        self.coord = Gps.get_location()
 
         if data is None:
             return
@@ -618,8 +629,8 @@ class RouterData:
         dict['ip'] = self.rloc16
         dict['role'] = self.role
         dict['age'] = time.time() - self.ts
-        dict['loc'] = self.coord[0]
-        dict['ble'] = self.coord[1]
+        dict['loc'] = {"lat":self.coord[0], "lng":self.coord[1]}
+        dict['ble'] = "ble"
         return dict
 
     def get_all_pairs(self):

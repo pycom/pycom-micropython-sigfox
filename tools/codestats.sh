@@ -138,7 +138,7 @@ EOF
     # undo patch if it was applied
     git checkout unix/modtime.c
 
-    #### stmhal ####
+    #### stm32 ####
 
     $RM $bin_stm32
     $MAKE -C ports/stm32 board=PYBV10

@@ -28,6 +28,7 @@
 #define LORA_STATUS_COMPLETED                                   (0x01)
 #define LORA_STATUS_ERROR                                       (0x02)
 #define LORA_STATUS_MSG_SIZE                                    (0x04)
+#define LORA_STATUS_RESET_DONE                                  (0x08)
 
 /******************************************************************************
  DEFINE TYPES

@@ -16,6 +16,7 @@
 
 #include "esp_spi_flash.h"
 #include "esp_flash_encrypt.h"
+#include "esp32chipinfo.h"
 
 static uint8_t *sflash_block_cache;
 static bool sflash_cache_is_dirty;
@@ -43,12 +44,10 @@ static bool sflash_write (void) {
 }
 
 DRESULT sflash_disk_init (void) {
-    esp_chip_info_t chip_info;
 
-    esp_chip_info(&chip_info);
     if (!sflash_init_done) {
         // this is how we diferentiate flash sizes in Pycom modules
-        if (chip_info.revision > 0) {
+        if (esp32_get_chip_rev() > 0) {
             sflash_start_address = SFLASH_START_ADDR_8MB;
             sflash_fs_sector_count = SFLASH_FS_SECTOR_COUNT_8MB;
         } else {

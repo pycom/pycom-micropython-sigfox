@@ -6,7 +6,7 @@ see the Pycom Licence v1.0 document supplied with this file, or
 available at https://www.pycom.io/opensource/licensing
 '''
 
-import pycom
+import pycom, time
 try:
     from pybytes_debug import print_debug
 except:
@@ -69,26 +69,40 @@ class PybytesConfig:
             print_debug(4, 'Exception in __check_config!\n{}'.format(e))
             return False
 
+    def __check_cb_config(self, config):
+        try:
+            print_debug(99, self.__pybytes_config)
+            return (len(config['userId']) > 4 and len(config['device_id']) >= 36 and len(config['server']) > 4)
+        except Exception as e:
+            print_debug(4, 'Exception in __check_cb_config!\n{}'.format(e))
+            return False
+
+
     def __read_activation(self):
         try:
             import urequest
         except:
             import _urequest as urequest
 
-        import binascii, machine, os, pycom, time
+        import binascii, machine, os
         from uhashlib import sha512
         print('Wifi connection established... activating device!')
         self.__pybytes_activation = None
-        data = { "deviceType": os.uname().sysname.lower(), "wirelessMac": binascii.hexlify(machine.unique_id()).upper()}
-        data.update({"activation_hash" : binascii.b2a_base64(sha512(data.get("wirelessMac") + '-' + pycom.wifi_ssid_sta() + '-' + pycom.wifi_pwd_sta()).digest()).decode('UTF-8').strip()})
+        data = { "deviceType": os.uname().sysname.lower(), "wirelessMac": binascii.hexlify(machine.unique_id()).upper() }
+        try:
+            data.update({"activation_hash" : binascii.b2a_base64(sha512(data.get("wirelessMac") + '-' + '{}'.format(pycom.wifi_ssid_sta()) + '-' + '{}'.format(pycom.wifi_pwd_sta())).digest()).decode('UTF-8').strip()})
+        except:
+            pass
         time.sleep(1)
         try:
             self.__pybytes_activation = urequest.post('https://api.{}/esp-touch/register-device'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
+            return True
         except Exception as ex:
             if self.__pybytes_activation is not None:
                 self.__pybytes_activation.close()
             print('Failed to send activation request!')
             print_debug(2, ex)
+            return False
 
     def __read_cli_activation(self, activation_token):
         try:
@@ -96,7 +110,7 @@ class PybytesConfig:
         except:
             import _urequest as urequest
 
-        import binascii, machine, os, pycom, time
+        import binascii, machine, os
         from uhashlib import sha512
         print('Wifi connection established... activating device!')
         self.__pybytes_cli_activation = None
@@ -111,18 +125,19 @@ class PybytesConfig:
             print_debug(2, ex)
 
     def __process_cli_activation(self, filename):
-        import time, json
+        import json
         try:
             if not self.__pybytes_cli_activation.status_code == 200:
                 print_debug(3, 'Activation request returned {}.'.format(self.__pybytes_cli_activation.status_code))
                 self.__pybytes_cli_activation.close()
             else:
+                print_debug(99, 'Activation response:\n{}'.format(self.__pybytes_cli_activation.json()))
                 self.__process_config(filename, self.__generate_cli_config())
                 self.__pybytes_cli_activation.close()
-
-                if self.f() and self.__write_config(filename):
+                if self.__check_config() and self.__write_config(filename):
                     return self.__pybytes_config
             return None
+
         except Exception as e:
             print('Exception during WiFi cli activation!')
             print('{}'.format(e))
@@ -130,27 +145,24 @@ class PybytesConfig:
 
 
     def __process_activation(self, filename):
-        import time
         try:
             if not self.__pybytes_activation.status_code == 200:
                 print_debug(3, 'Activation request returned {}. Trying again in 10 seconds...'.format(self.__pybytes_activation.status_code))
                 self.__pybytes_activation.close()
-                time.sleep(10)
+                return False
             else:
                 self.__activation2config()
                 self.__pybytes_activation.close()
 
                 if self.__check_config() and self.__write_config(filename):
                     pycom.wifi_on_boot(False)
-                    print('Activation successful... restarting in 10 seconds to connect the device!')
-                    time.sleep(10)
-                    import machine
-                    machine.reset()
+                    return True
+            return False
 
         except Exception as e:
             print('Exception during WiFi esp-touch activation!\nPlease wait, retrying to activate your device...')
             print('{}'.format(e))
-
+            return False
 
     def __read_cb_config(self):
         config_block = {}
@@ -177,13 +189,30 @@ class PybytesConfig:
                 'mqttServiceAddress' : self.__pybytes_cli_activation.json().get('mqttServiceAddress'),
                 'network_preferences' : self.__pybytes_cli_activation.json().get('network_preferences'),
                 'wifi_ssid' : self.__pybytes_cli_activation.json().get('wifi').get('ssid'),
-                'wifi_pwd': self.__pybytes_cli_activation.json().get('wifi').get('password'),
+                'wifi_pwd': self.__pybytes_cli_activation.json().get('wifi').get('password')
+            }
+        except:
+            pass
+
+        cli_lte_config = {}
+        try:
+            cli_lte_config = {
+                'carrier' : self.__pybytes_cli_activation.json().get('lte').get('carrier').lower(),
+                'apn' : self.__pybytes_cli_activation.json().get('lte').get('apn'),
+                'cid' : self.__pybytes_cli_activation.json().get('lte').get('cid'),
+                'band' : self.__pybytes_cli_activation.json().get('lte').get('band'),
+                'reset' : self.__pybytes_cli_activation.json().get('lte').get('reset'),
+                'protocol' : self.__pybytes_cli_activation.json().get('lte').get('protocol')
             }
         except:
             pass
         try:
             cli_config.update({'extra_preferences' :self.__pybytes_cli_activation.json().get('extra_preferences', '')})
-        except Exception as ex:
+        except:
+            pass
+        try:
+            cli_config.update(cli_lte_config)
+        except:
             pass
         return cli_config
 
@@ -260,8 +289,8 @@ class PybytesConfig:
         except Exception as e:
             print_debug(2, 'Exception __process_config[lte]\n{}'.format(e))
 
-        #try:
-        if True:
+        try:
+        #if True:
             self.__pybytes_config = {
                 'username': configuration['userId'],  # Pybytes username
                 'device_id': configuration['device_token'],  # device token
@@ -294,9 +323,9 @@ class PybytesConfig:
                 self.__pybytes_config['cfg_msg'] = "Configuration successfully converted to pybytes_config.json"
                 return True
             return False
-        #except Exception as e:
-        #    print_debug(2 , 'Exception __process_config[generic]\n{}'.format(e))
-        #    return False
+        except Exception as e:
+            print_debug(2 , 'Exception __process_config[generic]\n{}'.format(e))
+            return False
 
     def __convert_legacy_config(self, filename):
         try:
@@ -317,34 +346,16 @@ class PybytesConfig:
             self.__force_update = True
 
     def smart_config(self, filename='/flash/pybytes_config.json'):
-        import time, pycom
-        from network import WLAN
-
-        # if pycom.wifi_ssid_sta() is None and pycom.wifi_pwd_sta() is None:
-        pycom.wifi_on_boot(True, True)
-        time.sleep(2)
-        wl = WLAN(mode=WLAN.STA)
-        while True:
-            print_debug(2, 'Wifi mode is STA... wait for a connection...')
-            try:
-                start_time = time.time()
-                while not wl.isconnected() and (time.time() - start_time < 60):
-                    time.sleep(1)
-            except:
-                pass
-            if not wl.isconnected():
-                wl.mode(WLAN.STA)
-                wl.smartConfig()
-            else:
-                self.__read_activation()
-                print_debug(2, 'Activation request sent... checking result')
-                self.__process_activation(filename)
+        if self.__read_activation():
+            print_debug(2, 'Activation request sent... checking result')
+        while not self.__process_activation(filename):
+            time.sleep(10)
+        return self.__pybytes_config
 
     def cli_config(self, filename='/flash/pybytes_config.json', activation_info=None, timeout = 60):
         print_debug(99, activation_info)
         print('Please wait while we try to connect to {}'.format(activation_info.get('s')))
         from network import WLAN
-        import time
         wlan = WLAN(mode=WLAN.STA)
         attempt = 0
         known_nets = [((activation_info['s'], activation_info['p']))] # noqa
@@ -414,18 +425,13 @@ class PybytesConfig:
 
         if self.__force_update:
             if not self.__process_config(filename, self.__read_cb_config()):
-                if (hasattr(pycom, 'smart_config_on_boot') and pycom.smart_config_on_boot()):
-                    import _thread as thread
-                    thread.start_new_thread(self.smart_config, (filename,))
-                    print("Smart Provisioning started in the background")
-                    print("See https://docs.pycom.io/smart for details")
-                    self.__pybytes_config['pybytes_autostart'] = False
-                    self.__pybytes_config['cfg_msg'] = None
-                    self.__pybytes_config['smart_config'] = True
+                self.__pybytes_config['pybytes_autostart'] = False
+                self.__pybytes_config['cfg_msg'] = None
             try:
                 pycom.pybytes_force_update(False)
             except:
                 pass
+
         # Check if we have a project specific configuration
         try:
             pf = open('/flash/pybytes_project.json', 'r')

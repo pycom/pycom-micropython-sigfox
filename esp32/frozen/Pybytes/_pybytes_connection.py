@@ -38,14 +38,15 @@ from machine import WDT
 class PybytesConnection:
     def __init__(self, config, message_callback):
         self.__conf = config
-        self.__host = config['server']
+        self.__host = config.get('server')
         self.__ssl = config.get('ssl', False)
         self.__ssl_params = config.get('ssl_params', {})
-        self.__user_name = config['username']
-        self.__device_id = config['device_id']
+        self.__user_name = config.get('username')
+        self.__device_id = config.get('device_id')
         self.__mqtt_download_topic = "d" + self.__device_id
         self.__mqtt_upload_topic = "u" + self.__device_id
         self.__connection = None
+#        self.__thread_stack_size = 8192
         self.__connection_status = constants.__CONNECTION_STATUS_DISCONNECTED
         self.__pybytes_protocol = PybytesProtocol(
             config, message_callback, pybytes_connection=self
@@ -101,12 +102,12 @@ class PybytesConnection:
 
             attempt = 0
 
-            print_debug(3,'WLAN connected? {}'.format(self.wlan.isconnected()))
+            print_debug(3, 'WLAN connected? {}'.format(self.wlan.isconnected()))
 
             while not self.wlan.isconnected() and attempt < 3:
                 attempt += 1
                 print_debug(3, "Wifi connection attempt: {}".format(attempt))
-                print_debug(3,'WLAN connected? {}'.format(self.wlan.isconnected()))
+                print_debug(3, 'WLAN connected? {}'.format(self.wlan.isconnected()))
                 available_nets = None
                 while available_nets is None:
                     try:
@@ -181,16 +182,29 @@ class PybytesConnection:
                 time.sleep(3)
                 print_debug(1, 'LTE init(carrier={}, cid={})'.format(lte_cfg.get('carrier'), lte_cfg.get('cid', 1))) # noqa
                 # instantiate the LTE object
-                self.lte = LTE(carrier=lte_cfg.get('carrier'))
+                self.lte = LTE(carrier=lte_cfg.get('carrier'), cid=lte_cfg.get('cid', 1))
+                try:
+                    lte_type = lte_cfg.get('type') if len(lte_cfg.get('type')) > 0 else None
+                except:
+                    lte_type = None
+                try:
+                    lte_apn = lte_cfg.get('apn') if len(lte_cfg.get('type')) > 0 else None
+                except:
+                    lte_apn = None
+                try:
+                    lte_band = int(lte_cfg.get('band'))
+                except:
+                    lte_band = None
                 print_debug(
                     1,
                     'LTE attach(band={}, apn={}, type={})'.format(
-                        lte_cfg.get('band'),
-                        lte_cfg.get('apn'),
-                        lte_cfg.get('type')
+                        lte_band,
+                        lte_apn,
+                        lte_type
                     )
                 )
-                self.lte.attach(band=lte_cfg.get('band'), apn=lte_cfg.get('apn'), type=lte_cfg.get('type'))  # noqa   # attach the cellular modem to a base station
+
+                self.lte.attach(band=lte_band, apn=lte_apn, type=lte_type)  # noqa   # attach the cellular modem to a base station
                 while not self.lte.isattached():
                     time.sleep(0.25)
                 time.sleep(1)
@@ -234,6 +248,7 @@ class PybytesConnection:
 
     # LORA
     def connect_lora_abp(self, lora_timeout, nanogateway):
+        print_debug(1,'Attempting to connect via LoRa')
         if (self.__connection_status != constants.__CONNECTION_STATUS_DISCONNECTED): # noqa
             print("Error connect_lora_abp: Connection already exists. Disconnect First") # noqa
             return False
@@ -243,7 +258,10 @@ class PybytesConnection:
             print("This device does not support LoRa connections: %s" % ex)
             return False
 
-        self.lora = LoRa(mode=LoRa.LORAWAN)
+        if self.__conf.get('lora', {}).get('region') is not None:
+            self.lora = LoRa(mode=LoRa.LORAWAN, region=self.__conf.get('lora', {}).get('region'))
+        else:
+            self.lora = LoRa(mode=LoRa.LORAWAN)
         self.lora.nvram_restore()
 
         dev_addr = self.__conf['lora']['abp']['dev_addr']
@@ -256,12 +274,13 @@ class PybytesConnection:
         app_swkey = binascii.unhexlify(app_swkey.replace(' ', ''))
 
         try:
-            print("Trying to join LoRa.ABP for %d seconds..." % lora_timeout)
-            self.lora.join(
-                activation=LoRa.ABP,
-                auth=(dev_addr, nwk_swkey, app_swkey),
-                timeout=timeout_ms
-            )
+            if not self.lora.has_joined:
+                print("Trying to join LoRa.ABP for %d seconds..." % lora_timeout)
+                self.lora.join(
+                    activation=LoRa.ABP,
+                    auth=(dev_addr, nwk_swkey, app_swkey),
+                    timeout=timeout_ms
+                )
 
             # if you want, uncomment this code, but timeout must be 0
             # while not self.lora.has_joined():
@@ -269,18 +288,20 @@ class PybytesConnection:
             #     time.sleep(5)
 
             self.__open_lora_socket(nanogateway)
-
-            _thread.stack_size(self.__thread_stack_size)
-            _thread.start_new_thread(self.__check_lora_messages, ())
+#            print_debug(5, 'Stack size: {}'.format(self.__thread_stack_size))
+#            _thread.stack_size(self.__thread_stack_size)
+#            _thread.start_new_thread(self.__check_lora_messages, ())
             return True
         except Exception as e:
             message = str(e)
             if message == 'timed out':
                 print("LoRa connection timeout: %d seconds" % lora_timeout)
-
+            else:
+                print_debug(3, 'Exception in LoRa connect: {}'.format(e))
             return False
 
     def connect_lora_otta(self, lora_timeout, nanogateway):
+        print_debug(1,'Attempting to connect via LoRa')
         if (self.__connection_status != constants.__CONNECTION_STATUS_DISCONNECTED): # noqa
             print("Error connect_lora_otta: Connection already exists. Disconnect First") # noqa
             return False
@@ -295,19 +316,23 @@ class PybytesConnection:
         app_key = self.__conf['lora']['otaa']['app_key']
         timeout_ms = self.__conf.get('lora_timeout', lora_timeout) * 1000
 
-        self.lora = LoRa(mode=LoRa.LORAWAN)
+        if self.__conf.get('lora', {}).get('region') is not None:
+            self.lora = LoRa(mode=LoRa.LORAWAN, region=self.__conf.get('lora', {}).get('region'))
+        else:
+            self.lora = LoRa(mode=LoRa.LORAWAN)
         self.lora.nvram_restore()
 
         dev_eui = binascii.unhexlify(dev_eui.replace(' ', ''))
         app_eui = binascii.unhexlify(app_eui.replace(' ', ''))
         app_key = binascii.unhexlify(app_key.replace(' ', ''))
         try:
-            print("Trying to join LoRa.OTAA for %d seconds..." % lora_timeout)
-            self.lora.join(
-                activation=LoRa.OTAA,
-                auth=(dev_eui, app_eui, app_key),
-                timeout=timeout_ms
-            )
+            if not self.lora.has_joined():
+                print("Trying to join LoRa.OTAA for %d seconds..." % lora_timeout)
+                self.lora.join(
+                    activation=LoRa.OTAA,
+                    auth=(dev_eui, app_eui, app_key),
+                    timeout=timeout_ms
+                )
 
             # if you want, uncomment this code, but timeout must be 0
             # while not self.lora.has_joined():
@@ -315,15 +340,16 @@ class PybytesConnection:
             #     time.sleep(5)
 
             self.__open_lora_socket(nanogateway)
-
-            _thread.stack_size(self.__thread_stack_size)
-            _thread.start_new_thread(self.__check_lora_messages, ())
+#            print_debug(5, 'Stack size: {}'.format(self.__thread_stack_size))
+#            _thread.stack_size(self.__thread_stack_size)
+#            _thread.start_new_thread(self.__check_lora_messages, ())
             return True
         except Exception as e:
             message = str(e)
             if message == 'timed out':
                 print("LoRa connection timeout: %d seconds" % lora_timeout)
-
+            else:
+                print_debug(3, 'Exception in LoRa connect: {}'.format(e))
             return False
 
     def __open_lora_socket(self, nanogateway):
@@ -380,7 +406,7 @@ class PybytesConnection:
             return False
 
     # COMMON
-    def disconnect(self):
+    def disconnect(self, keep_wifi=False, force=False):
 
         if self.__wifi_lte_watchdog is not None:
             self.__wifi_lte_watchdog = WDT(timeout=constants.__WDT_MAX_TIMEOUT_MILLISECONDS)
@@ -394,13 +420,12 @@ class PybytesConnection:
         )
 
         if (self.__connection_status == constants.__CONNECTION_STATUS_DISCONNECTED): # noqa
-            print("Already disconnected")
-            pass
+            print_debug(3, "Already disconnected")
 
         if (constants.__CONNECTION_STATUS_CONNECTED_MQTT_WIFI <= self.__connection_status <= constants.__CONNECTION_STATUS_CONNECTED_MQTT_LTE): # noqa
             print_debug(1, 'MQTT over WIFI||LTE... disconnecting MQTT')
             try:
-                self.__connection.disconnect()
+                self.__connection.disconnect(force=force)
                 self.__connection_status = constants.__CONNECTION_STATUS_DISCONNECTED # noqa
             except Exception as e:
                 print("Error disconnecting: {}".format(e))
@@ -420,7 +445,7 @@ class PybytesConnection:
             except Exception as e:
                 print("Error disconnecting: {}".format(e))
 
-        if (self.__network_type == constants.__NETWORK_TYPE_WIFI):
+        if (self.__network_type == constants.__NETWORK_TYPE_WIFI and not keep_wifi):
             print_debug(1, 'Connected over WIFI... disconnecting')
             try:
                 self.wlan.deinit()

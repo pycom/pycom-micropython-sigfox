@@ -1,0 +1,13 @@
+{
+  "version" : "2.1",
+  "partitions" : {
+    "factory"   : ["0x10000", "0x1AE000"],
+    "ota_0"     : ["0x1C0000", "0x1AE000"],
+    "otadata"   : ["0x1BE000", "0x1000"]
+    },
+  "script" : [
+      ["w", "secureboot", "bootloader-reflash-digest.bin_enc"],
+      ["w", "partitions", "partitions_4MB.bin_enc"],
+      ["w", "factory", "lopy.bin_enc"]
+    ]
+}

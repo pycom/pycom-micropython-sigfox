@@ -25,12 +25,12 @@ import struct
 class MsgHandler:
 
     def __init__(
-                self,
-                receive_callback,
-                connect_helper,
-                receive_timeout=3000,
-                reconnectMethod=None
-            ):
+            self,
+            receive_callback,
+            connect_helper,
+            receive_timeout=3000,
+            reconnectMethod=None
+    ):
         self._host = ""
         self._port = -1
         self._sock = None
@@ -42,8 +42,9 @@ class MsgHandler:
         self._poll = select.poll()
         self._output_queue = []
         self._out_packet_mutex = _thread.allocate_lock()
-        _thread.stack_size(8192)
+        _thread.stack_size(10240)
         _thread.start_new_thread(self._io_thread_func, ())
+        _thread.stack_size(8192)
         self._recv_callback = receive_callback
         self._connect_helper = connect_helper
         self._pingSent = False
@@ -77,8 +78,8 @@ class MsgHandler:
             self._sock = socket.socket()
             self._sock.settimeout(30)
             self._sock.connect(
-                    socket.getaddrinfo(self._host, self._port)[0][-1]
-                )
+                socket.getaddrinfo(self._host, self._port)[0][-1]
+            )
             self._poll.register(self._sock, select.POLLIN)
         except socket.error as err:
             print_debug(2, "Socket create error: {0}".format(err))
@@ -256,3 +257,4 @@ class MsgHandler:
                         self.reconnectMethod()
             self._out_packet_mutex.release()
             self._receive_packet()
+            time.sleep(1)
