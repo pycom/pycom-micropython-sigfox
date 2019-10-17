@@ -155,7 +155,6 @@ class PybytesConfig:
                 self.__pybytes_activation.close()
 
                 if self.__check_config() and self.__write_config(filename):
-                    pycom.wifi_on_boot(False)
                     return True
             return False
 
@@ -174,7 +173,13 @@ class PybytesConfig:
                 'network_preferences' : pycom.pybytes_network_preferences().split(),
                 'wifi_ssid' : pycom.wifi_ssid_sta() if hasattr(pycom, 'wifi_ssid_sta') else pycom.wifi_ssid(),
                 'wifi_pwd': pycom.wifi_pwd_sta() if hasattr(pycom, 'wifi_pwd_sta') else pycom.wifi_pwd(),
-                'extra_preferences' : pycom.pybytes_extra_preferences()
+                'extra_preferences' : pycom.pybytes_extra_preferences(),
+                'carrier' : pycom.pybytes_lte_config()[0],
+                'apn' : pycom.pybytes_lte_config()[1],
+                'cid' : pycom.pybytes_lte_config()[2],
+                'band' : pycom.pybytes_lte_config()[3],
+                'protocol' : pycom.pybytes_lte_config()[4],
+                'reset' : pycom.pybytes_lte_config()[5]
             }
         except:
             pass
@@ -393,9 +398,10 @@ class PybytesConfig:
                 if str(e) == "list index out of range" and attempt == 3:
                     print("Please review Wifi SSID and password!")
                     wlan.deinit()
-                    return False
+                    return None
                 elif attempt == 3:
                     print("Error connecting using WIFI: %s" % e)
+                    return None
         self.__read_cli_activation(activation_info)
         return self.__process_cli_activation(filename)
 
@@ -435,7 +441,7 @@ class PybytesConfig:
         # Check if we have a project specific configuration
         try:
             pf = open('/flash/pybytes_project.json', 'r')
-            pjfile = pf.readall()
+            pjfile = pf.read()
             pf.close()
             try:
                 import json
@@ -449,7 +455,7 @@ class PybytesConfig:
                 print("Exception: {}".format(ex))
         except:
             pass
-
-        self.__pybytes_config['pybytes_autostart'] = self.__check_config()
+        if self.__pybytes_config.get('pybytes_autostart', False):
+             self.__pybytes_config['pybytes_autostart'] = self.__check_config()
 
         return self.__pybytes_config

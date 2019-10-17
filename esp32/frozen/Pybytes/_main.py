@@ -45,55 +45,55 @@ else:
     if 'pybytes' not in globals().keys():
         pybytes = Pybytes(pybytes_config, pybytes_config.get('cfg_msg') is None, True)
 
-        # Please put your USER code below this line
+    # Please put your USER code below this line
 
-        # SEND SIGNAL
-        # You can currently send Strings, Int32, Float32 and Tuples to pybytes using this method.
-        # pybytes.send_signal(signalNumber, value)
+    # SEND SIGNAL
+    # You can currently send Strings, Int32, Float32 and Tuples to pybytes using this method.
+    # pybytes.send_signal(signalNumber, value)
 
-        # SEND SENSOR DATA THROUGH SIGNALS
-        # # If you use a Pysense, some libraries are necessary to access its sensors
-        # # you can find them here: https://github.com/pycom/pycom-libraries
-        #
-        # # Include the libraries in the lib folder then import the ones you want to use here:
-        # from SI7006A20 import SI7006A20
-        # si = SI7006A20()
-        # from LTR329ALS01 import LTR329ALS01
-        # ltr = LTR329ALS01()
-        #
-        # # Import what is necessary to create a thread
-        # import _thread
-        # from time import sleep
-        # from machine import Pin
-        #
-        # # Define your thread's behaviour, here it's a loop sending sensors data every 10 seconds
-        # def send_env_data():
-        #     while (pybytes):
-        #         pybytes.send_signal(1, si.humidity())
-        #         pybytes.send_signal(2, si.temperature())
-        #         pybytes.send_signal(3, ltr.light());
-        #         sleep(10)
-        #
-        # # Start your thread
-        # _thread.start_new_thread(send_env_data, ())
+    # SEND SENSOR DATA THROUGH SIGNALS
+    # # If you use a Pysense, some libraries are necessary to access its sensors
+    # # you can find them here: https://github.com/pycom/pycom-libraries
+    #
+    # # Include the libraries in the lib folder then import the ones you want to use here:
+    # from SI7006A20 import SI7006A20
+    # si = SI7006A20()
+    # from LTR329ALS01 import LTR329ALS01
+    # ltr = LTR329ALS01()
+    #
+    # # Import what is necessary to create a thread
+    # import _thread
+    # from time import sleep
+    # from machine import Pin
+    #
+    # # Define your thread's behaviour, here it's a loop sending sensors data every 10 seconds
+    # def send_env_data():
+    #     while (pybytes):
+    #         pybytes.send_signal(1, si.humidity())
+    #         pybytes.send_signal(2, si.temperature())
+    #         pybytes.send_signal(3, ltr.light());
+    #         sleep(10)
+    #
+    # # Start your thread
+    # _thread.start_new_thread(send_env_data, ())
 
-        # SET THE BATTERY LEVEL
-        # pybytes.send_battery_level(23)
+    # SET THE BATTERY LEVEL
+    # pybytes.send_battery_level(23)
 
-        # SEND DIGITAL VALUE
-        # pybytes.send_digital_pin_value(False, 12, Pin.PULL_UP)
+    # SEND DIGITAL VALUE
+    # pybytes.send_digital_pin_value(False, 12, Pin.PULL_UP)
 
-        # SEND ANALOG VALUE
-        # pybytes.send_analog_pin_value(False, 13)
+    # SEND ANALOG VALUE
+    # pybytes.send_analog_pin_value(False, 13)
 
-        # REGISTER PERIODICAL DIGIAL VALUE SEND
-        # pybytes.register_periodical_digital_pin_publish(False, PIN_NUMBER, Pin.PULL_UP, INTERVAL_SECONDS)
+    # REGISTER PERIODICAL DIGIAL VALUE SEND
+    # pybytes.register_periodical_digital_pin_publish(False, PIN_NUMBER, Pin.PULL_UP, INTERVAL_SECONDS)
 
-        # REGISTER PERIODICAL ANALOG VALUE SEND
-        # pybytes.register_periodical_analog_pin_publish(False, PIN_NUMBER, INTERVAL_SECONDS)
+    # REGISTER PERIODICAL ANALOG VALUE SEND
+    # pybytes.register_periodical_analog_pin_publish(False, PIN_NUMBER, INTERVAL_SECONDS)
 
-        # CUSTOM METHOD EXAMPLE
-        # def custom_print(params):
-        #     print("Custom method called")
-        #     return [255, 20]
-        # pybytes.add_custom_method(0, custom_print)
+    # CUSTOM METHOD EXAMPLE
+    # def custom_print(params):
+    #     print("Custom method called")
+    #     return [255, 20]
+    # pybytes.add_custom_method(0, custom_print)

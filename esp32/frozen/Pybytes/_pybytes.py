@@ -47,6 +47,8 @@ class Pybytes:
 
         if not self.__activation:
             self.__conf = config
+            pycom.wifi_on_boot(False, True)
+
             self.__check_dump_ca()
             try:
                 from pybytes_connection import PybytesConnection
@@ -222,7 +224,7 @@ class Pybytes:
                     self.__config_updated = False
             self.__check_init()
 
-            if not self.__conf['network_preferences']:
+            if not self.__conf.get('network_preferences'):
                 print("network_preferences are empty, set it up in /flash/pybytes_config.json first") # noqa
 
             for net in self.__conf['network_preferences']:
@@ -310,15 +312,16 @@ class Pybytes:
         if reconnect:
             self.reconnect()
 
-    def update_config(self, key=None, value=None, permanent=True, silent=False, reconnect=False):
-        if key is None:
-            raise ValueError('You need to either specify a key!')
-        else:
+    def update_config(self, key, value=None, permanent=True, silent=False, reconnect=False):
+        try:
             self.__conf[key].update(value)
-        self.__config_updated = True
-        if permanent: self.write_config(silent=silent)
-        if reconnect:
-            self.reconnect()
+            self.__config_updated = True
+            if permanent: self.write_config(silent=silent)
+            if reconnect:
+                self.reconnect()
+        except Exception as ex:
+            print('Error updating configuration!')
+            print('{}: {}'.format(ex.__name__, ex))
 
 
     def read_config(self, file='/flash/pybytes_config.json', reconnect=False):
@@ -433,7 +436,8 @@ class Pybytes:
     def activate(self, activation_string):
         self.__smart_config = False
         if self.__pybytes_connection is not None:
-            self.__pybytes_connection.disconnect(keep_wifi=True)
+            print('Disconnecting current connection!')
+            self.__pybytes_connection.disconnect(keep_wifi=True, force=True)
         try:
             jstring = json.loads(binascii.a2b_base64(activation_string))
         except Exception as ex:
@@ -445,16 +449,22 @@ class Pybytes:
             from _pybytes_config import PybytesConfig
         try:
             self.__conf = PybytesConfig().cli_config(activation_info=jstring)
-            self.start()
+            if self.__conf is not None:
+                self.start()
+            else:
+                print('Activation failed!')
         except Exception as ex:
             print('Activation failed! Please try again...')
             print_debug(1, ex)
 
     if hasattr(pycom, 'smart_config_on_boot'):
-        def smart_config(self, status=None):
+        def smart_config(self, status=None, reset_ap=False):
             if status is None:
                 return self.__smart_config
             if status:
+                if reset_ap:
+                    pycom.wifi_ssid_sta(None)
+                    pycom.wifi_pwd_sta(None)
                 if self.__pybytes_connection is not None:
                     if self.isconnected():
                         print('Disconnecting current connection!')

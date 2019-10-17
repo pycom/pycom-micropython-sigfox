@@ -18,6 +18,11 @@ import pycom
 import os
 from binascii import hexlify
 
+try:
+    from pybytes_debug import print_debug
+except:
+    from _pybytes_debug import print_debug
+
 # Try to get version number
 # try:
 #     from OTA_VERSION import VERSION
@@ -225,6 +230,7 @@ class WiFiOTA(OTA):
 
             # Get data from server
             result = s.recv(50)
+            print_debug(4, "Result: {}".format(result))
 
             start_writing = False
             while (len(result) > 0):
@@ -232,7 +238,7 @@ class WiFiOTA(OTA):
                 if not start_writing:
                     if "\r\n\r\n" in result:
                         start_writing = True
-                        result = result.decode().split("\r\n\r\n")[1].encode()
+                        result = result.split(b'\r\n\r\n')[1]
 
                 if start_writing:
                     if firmware:

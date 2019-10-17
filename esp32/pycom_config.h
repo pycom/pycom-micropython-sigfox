@@ -82,6 +82,15 @@ typedef struct {
 } pycom_lte_config_t;
 
 typedef struct {
+	uint8_t carrier[129];
+	uint8_t apn[129];
+	uint8_t type[17];
+	uint8_t cid;
+	uint8_t band;
+	uint8_t reset;
+} pycom_pybytes_lte_config_t;
+
+typedef struct {
     pycom_lpwan_config_t lpwan_config;
     pycom_wifi_config_t wifi_config;
     pycom_wifi_sta_config_t wifi_sta_config;
@@ -91,7 +100,8 @@ typedef struct {
     pycom_lte_config_t lte_config;
     pycom_config_t pycom_config;
     pycom_wifi_ap_config_t wifi_ap_config;
-    uint8_t pycom_reserved[390];
+    pycom_pybytes_lte_config_t pycom_pybytes_lte_config;
+    uint8_t pycom_reserved[112];
 } pycom_config_block_t;
 
 typedef enum
@@ -196,6 +206,10 @@ bool config_get_pybytes_force_update (void);
 uint8_t config_get_boot_fs_type (void);
 
 bool config_set_boot_fs_type (const uint8_t boot_fs_type);
+
+pycom_pybytes_lte_config_t config_get_pybytes_lte_config (void);
+
+bool config_set_pybytes_lte_config(const pycom_pybytes_lte_config_t pycom_pybytes_lte_config);
 
 uint8_t config_get_boot_partition (void);
 
