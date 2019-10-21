@@ -46,6 +46,7 @@
 #include "py/mperrno.h"
 
 #include "modnetwork.h"
+#include "mpirq.h"
 
 NORETURN void _esp_espnow_exceptions(esp_err_t e) {
    switch (e) {
@@ -86,13 +87,22 @@ static inline void _get_bytes(mp_obj_t str, size_t len, uint8_t *dst) {
 static mp_obj_t send_cb_obj = mp_const_none;
 static mp_obj_t recv_cb_obj = mp_const_none;
 
+
+STATIC void send_queue_handler(void *arg) {
+    // this function will be called by the interrupt thread
+    mp_obj_tuple_t *msg = arg;
+    if (send_cb_obj != mp_const_none) {
+        mp_call_function_1(send_cb_obj, msg);
+    }
+}
+
 STATIC void IRAM_ATTR send_cb(const uint8_t *macaddr, esp_now_send_status_t status)
 {
     if (send_cb_obj != mp_const_none) {
         mp_obj_tuple_t *msg = mp_obj_new_tuple(2, NULL);
         msg->items[0] = mp_obj_new_bytes(macaddr, ESP_NOW_ETH_ALEN);
         msg->items[1] = (status == ESP_NOW_SEND_SUCCESS) ? mp_const_true : mp_const_false;
-        mp_sched_schedule(send_cb_obj, msg);
+        mp_irq_queue_interrupt(send_queue_handler, msg);
     }
 }
 
@@ -102,7 +112,7 @@ STATIC void IRAM_ATTR recv_cb(const uint8_t *macaddr, const uint8_t *data, int l
         mp_obj_tuple_t *msg = mp_obj_new_tuple(2, NULL);
         msg->items[0] = mp_obj_new_bytes(macaddr, ESP_NOW_ETH_ALEN);
         msg->items[1] = mp_obj_new_bytes(data, len);
-        mp_sched_schedule(recv_cb_obj, msg);
+//        mp_sched_schedule(recv_cb_obj, msg);
     }
 } 
 
