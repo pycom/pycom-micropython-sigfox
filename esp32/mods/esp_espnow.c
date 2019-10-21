@@ -106,13 +106,21 @@ STATIC void IRAM_ATTR send_cb(const uint8_t *macaddr, esp_now_send_status_t stat
     }
 }
 
+STATIC void recv_queue_handler(void *arg) {
+    // this function will be called by the interrupt thread
+    mp_obj_tuple_t *msg = arg;
+    if (send_cb_obj != mp_const_none) {
+        mp_call_function_1(recv_cb_obj, msg);
+    }
+}
+
 STATIC void IRAM_ATTR recv_cb(const uint8_t *macaddr, const uint8_t *data, int len) 
 {
     if (recv_cb_obj != mp_const_none) {
         mp_obj_tuple_t *msg = mp_obj_new_tuple(2, NULL);
         msg->items[0] = mp_obj_new_bytes(macaddr, ESP_NOW_ETH_ALEN);
         msg->items[1] = mp_obj_new_bytes(data, len);
-//        mp_sched_schedule(recv_cb_obj, msg);
+        mp_irq_queue_interrupt(recv_queue_handler, msg);
     }
 } 
 
