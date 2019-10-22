@@ -243,10 +243,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(espnow_del_peer_obj, espnow_del_peer);
 // The variable has been changed to not static to make it visble outside the wlan module.
 //  TODO - change to public call
 
-extern bool wifi_started;
+//extern bool wifi_started;
 
 STATIC mp_obj_t espnow_send(mp_obj_t addr, mp_obj_t msg) {
-    if (!wifi_started) goto espnow_wifi_err;
+//    if (!wifi_started) goto espnow_wifi_err;
 
     mp_uint_t addr_len;
     const uint8_t *addr_buf;
