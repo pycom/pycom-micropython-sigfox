@@ -5,6 +5,10 @@ later version, with permitted additional terms. For more information
 see the Pycom Licence v1.0 document supplied with this file, or
 available at https://www.pycom.io/opensource/licensing
 '''
+try:
+    from pybytes_debug import print_debug
+except:
+    from _pybytes_debug import print_debug
 
 import network
 import socket
@@ -56,9 +60,9 @@ class OTA():
         gc.collect()
         return manifest
 
-    def update(self):
+    def update(self, customManifest=None):
         try:
-            manifest = self.get_update_manifest()
+            manifest = self.get_update_manifest() if not customManifest else customManifest
         except Exception as e:
             print('Error reading the manifest, aborting: {}'.format(e))
             return 0
@@ -68,36 +72,38 @@ class OTA():
             return 1
 
         # Download new files and verify hashes
-        for f in manifest['new'] + manifest['update']:
-            # Upto 5 retries
-            for _ in range(5):
-                try:
-                    self.get_file(f)
-                    break
-                except Exception as e:
-                    print(e)
-                    msg = "Error downloading `{}` retrying..."
-                    print(msg.format(f['URL']))
-                    return 0
-            else:
-                raise Exception("Failed to download `{}`".format(f['URL']))
+        if "new" in manifest and "update" in manifest:
+            for f in manifest['new'] + manifest['update']:
+                # Upto 5 retries
+                for _ in range(5):
+                    try:
+                        self.get_file(f)
+                        break
+                    except Exception as e:
+                        print(e)
+                        msg = "Error downloading `{}` retrying..."
+                        print(msg.format(f['URL']))
+                        return 0
+                else:
+                    raise Exception("Failed to download `{}`".format(f['URL']))
 
-        # Backup old files
-        # only once all files have been successfully downloaded
-        for f in manifest['update']:
-            self.backup_file(f)
+            # Backup old files
+            # only once all files have been successfully downloaded
+            for f in manifest['update']:
+                self.backup_file(f)
 
-        # Rename new files to proper name
-        for f in manifest['new'] + manifest['update']:
-            new_path = "{}.new".format(f['dst_path'])
-            dest_path = "{}".format(f['dst_path'])
+            # Rename new files to proper name
+            for f in manifest['new'] + manifest['update']:
+                new_path = "{}.new".format(f['dst_path'])
+                dest_path = "{}".format(f['dst_path'])
 
-            os.rename(new_path, dest_path)
+                os.rename(new_path, dest_path)
 
-        # `Delete` files no longer required
-        # This actually makes a backup of the files incase we need to roll back
-        for f in manifest['delete']:
-            self.delete_file(f)
+        if "delete" in manifest:
+            # `Delete` files no longer required
+            # This actually makes a backup of the files incase we need to roll back
+            for f in manifest['delete']:
+                self.delete_file(f)
 
         # Flash firmware
         if "firmware" in manifest:
@@ -162,9 +168,12 @@ class OTA():
         os.rename(dest_path, bak_path)
 
     def write_firmware(self, f):
-        hash = self.get_data(f['URL'].split("/", 3)[-1],
-                             hash=True,
-                             firmware=True)
+        # hash =
+        self.get_data(
+            f['URL'].split("/", 3)[-1],
+            hash=True,
+            firmware=True
+        )
         # TODO: Add verification when released in future firmware
 
 
@@ -258,6 +267,7 @@ class WiFiOTA(OTA):
             if fp is not None:
                 fp.close()
             if firmware:
+                print_debug(6, 'ota_finish')
                 pycom.ota_finish()
 
         except Exception as e:
