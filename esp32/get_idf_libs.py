@@ -69,7 +69,7 @@ def main():
         shutil.copy(src + '/efuse/libefuse.a', dsttmpapp)
         shutil.copy(src + '/espcoredump/libespcoredump.a', dsttmpapp)
         shutil.copy(src + '/app_update/libapp_update.a', dsttmpapp)
-        
+        shutil.copy(src + '/ethernet/libethernet.a', dsttmpapp)
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         traceback.print_exc()

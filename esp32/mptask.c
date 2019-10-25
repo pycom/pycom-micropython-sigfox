@@ -43,6 +43,7 @@
 #include "serverstask.h"
 #include "modnetwork.h"
 #include "modwlan.h"
+#include "modeth.h"
 #include "modusocket.h"
 #include "antenna.h"
 #include "modled.h"
@@ -383,6 +384,7 @@ bool isLittleFs(const TCHAR *path){
  ******************************************************************************/
 STATIC void mptask_preinit (void) {
     wlan_pre_init();
+    eth_pre_init();
     //TODO: Re-check this: increased stack is needed by modified FTP implementation due to LittleFS vs FatFs
     xTaskCreatePinnedToCore(TASK_Servers, "Servers", 2*SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 1);
 }

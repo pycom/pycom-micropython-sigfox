@@ -7,6 +7,7 @@
 #define KSZ8851_MISO_PIN                                         (&PIN_MODULE_P17)
 #define KSZ8851_NSS_PIN                                          (&PIN_MODULE_P22)
 #define KSZ8851_RST_PIN                                          (&PIN_MODULE_P19)
+#define KSZ8851_INT_PIN                                          (&PIN_MODULE_P18)
 
 #define KSZ8851_MAC0    '0'
 #define KSZ8851_MAC1    'F'

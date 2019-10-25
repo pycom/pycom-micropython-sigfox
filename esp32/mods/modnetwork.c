@@ -49,6 +49,7 @@
 #include "modusocket.h"
 #include "modcoap.h"
 #include "modmdns.h"
+#include "modeth.h"
 
 #include "lwip/sockets.h"
 
@@ -125,9 +126,9 @@ mp_obj_t mod_network_find_nic(const mod_network_socket_obj_t *s, const uint8_t *
         #endif
         } else if (s->sock_base.u.u_param.domain == AF_INET) {
 #if (defined(GPY) || defined (FIPY))
-            if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan || mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_lte)
+            if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan || mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_eth || mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_lte)
 #else
-            if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan)
+            if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan || mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_eth)
 #endif
             {
                 return nic;
@@ -230,6 +231,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(network_server_deinit_obj, network_server_deini
 STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_network) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WLAN),                (mp_obj_t)&mod_network_nic_type_wlan },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ETH),                (mp_obj_t)&mod_network_nic_type_eth },
 #if defined (LOPY) || defined(LOPY4) || defined (FIPY)
     { MP_OBJ_NEW_QSTR(MP_QSTR_LoRa),                (mp_obj_t)&mod_network_nic_type_lora },
 #endif

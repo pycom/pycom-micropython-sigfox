@@ -42,6 +42,10 @@
 
 static uint16_t	length_sum;
 static uint8_t	frameID = 0;
+static ksz8851_evt_cb_t evt_cb_func = NULL;
+
+static void gpio_set_value(pin_obj_t *pin_o, uint32_t value);
+static void ksz8851Overrun(void);
 
 static void init_spi(void) {
     // this is SpiNum_SPI2
@@ -76,6 +80,9 @@ static void init_spi(void) {
     pin_config(KSZ8851_SCLK_PIN, -1, HSPICLK_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
     pin_config(KSZ8851_NSS_PIN, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_UP, 1);
 	pin_config(KSZ8851_RST_PIN, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
+	pin_config((&PIN_MODULE_P20), -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
+
+	gpio_set_value( (&PIN_MODULE_P20), 1 );
 }
 
 /* spi_byte() sends one byte (outdat) and returns the received byte */
@@ -215,33 +222,89 @@ void spi_clrbits(uint16_t reg, uint16_t bits_to_clr) {
 	ksz8851_regwr(reg, temp);
 }
 
+/* ksz8851GetLinkStatus() get link status.
+ */
+bool ksz8851GetLinkStatus(void) {
+    uint16_t    port_status;
+    port_status = ksz8851_regrd(REG_PORT_STATUS);
+    return (port_status & PORT_STATUS_LINK_GOOD);
+}
+/* ksz8851PhyReset() reset Phy.
+ */
+void ksz8851PhyReset(void) {
+    ksz8851_regwr(REG_PHY_RESET, PHY_RESET);
+}
+
+/* ksz8851SoiInit() initializes the spi for ksz8851.
+ */
+void ksz8851SpiInit(void) {
+    init_spi();
+}
+
+/* ksz8851ProcessInterrupt() -- All this does (for now) is check for
+ * an overrun condition.
+*/
+void ksz8851ProcessInterrupt(void) {
+    uint16_t    isr;
+
+    isr = ksz8851_regrd(REG_INT_STATUS);
+
+    if (isr & INT_RX_OVERRUN) {
+        /* Clear the flag by writing 1 to it*/
+        isr |= INT_RX_OVERRUN;
+
+        ksz8851Overrun();
+    }
+
+    if (isr & INT_PHY) {
+        /* Clear the flag by writing 1 to it*/
+        isr |= INT_PHY;
+        /* Notify upper layer*/
+        if(evt_cb_func != NULL)
+        {
+            evt_cb_func(KSZ8851_EVT_LINK_CHANGE);
+        }
+    }
+
+    if (isr & INT_RX) {
+        /* Clear the flag by writing 1 to it*/
+        isr |= INT_RX;
+        /* Notify upper layer*/
+        if(evt_cb_func != NULL)
+        {
+            evt_cb_func(KSZ8851_EVT_RX_INT);
+        }
+    }
+
+    ksz8851_regwr(REG_INT_STATUS, isr);
+}
+
 /* ksz8851Init() initializes the ksz8851.
  */
 void ksz8851Init(void) {
 	uint16_t	dev_id;
 
-	init_spi();
-
 	/* Make sure we get a valid chip ID before going on */
 	do {
 		gpio_set_value(KSZ8851_RST_PIN, 0);
-		mp_hal_delay_us(20);
+		ets_delay_us(20);
 		gpio_set_value(KSZ8851_RST_PIN, 1);
-
+		ets_delay_us(1000 * 100);
 		/* Read device chip ID */
 		dev_id = ksz8851_regrd(REG_CHIP_ID);
 
-		if ((dev_id & 0xFFF0) != CHIP_ID_8851_16) {
+		if ((dev_id & CHIP_ID_MASK) != CHIP_ID_8851_16) {
 			printf("Expected Device ID 0x%x, got 0x%x\n", CHIP_ID_8851_16, dev_id);
 		}
-	} while (dev_id != CHIP_ID_8851_16);
+	} while ((dev_id & CHIP_ID_MASK) != CHIP_ID_8851_16);
+
 
 	/* Write QMU MAC address (low) */
-	ksz8851_regwr(REG_MAC_ADDR_01, (KSZ8851_MAC4 << 8) | KSZ8851_MAC5);
+	ksz8851_regwr(REG_MAC_ADDR_01, (ethernet_mac[4] << 8) | ethernet_mac[5]);
 	/* Write QMU MAC address (middle) */
-	ksz8851_regwr(REG_MAC_ADDR_23, (KSZ8851_MAC2 << 8) | KSZ8851_MAC3);
+	ksz8851_regwr(REG_MAC_ADDR_23, (ethernet_mac[2] << 8) | ethernet_mac[3]);
 	/* Write QMU MAC address (high) */
-	ksz8851_regwr(REG_MAC_ADDR_45, (KSZ8851_MAC0 << 8) | KSZ8851_MAC1);
+	ksz8851_regwr(REG_MAC_ADDR_45, (ethernet_mac[0] << 8) | ethernet_mac[1]);
 
 	/* Enable QMU Transmit Frame Data Pointer Auto Increment */
 	ksz8851_regwr(REG_TX_ADDR_PTR, ADDR_PTR_AUTO_INC);
@@ -285,11 +348,36 @@ void ksz8851Init(void) {
 	 */
 	ksz8851_regwr(REG_RXQ_CMD, RXQ_CMD_CNTL);
 
+	/*spi_setbits(REG_PORT_CTRL, PORT_AUTO_MDIX_DISABLE);
+	spi_setbits(REG_PHY_CNTL, PHY_AUTO_MDIX_DISABLE);
+
+	ets_delay_us(1000);
+
+	spi_setbits(REG_PORT_LINK_MD , PORT_START_CABLE_DIAG);
+
+	do
+	{
+	    ets_delay_us(1000);
+
+	}while((ksz8851_regrd(REG_PORT_LINK_MD) & PORT_START_CABLE_DIAG));
+
+	uint16_t diag = ksz8851_regrd(REG_PORT_LINK_MD);
+
+	printf("=======CABLE DIAG========\n");
+	printf("Cable OC/SC: %X\n", diag & PORT_CABLE_DIAG_RESULT);
+
+	spi_clrbits(REG_PHY_CNTL, PHY_AUTO_MDIX_DISABLE);
+
+	spi_clrbits(REG_PORT_CTRL, PORT_AUTO_MDIX_DISABLE);*/
+
 	/* restart Port 1 auto-negotiation */
 	spi_setbits(REG_PORT_CTRL, PORT_AUTO_NEG_RESTART);
 
 	/* Clear the interrupts status */
 	ksz8851_regwr(REG_INT_STATUS, 0xffff);
+
+    /* Enable Link change interrupt , enable  tx/Rx interrupts */
+    spi_setbits(REG_INT_MASK, INT_MASK );
 
 	/* Enable QMU Transmit */
 	spi_setbits(REG_TX_CTRL, TX_CTRL_ENABLE);
@@ -330,7 +418,7 @@ void ksz8851BeginPacketSend(unsigned int packetLength) {
 		spi_clrbits(REG_TXQ_CMD, TXQ_MEM_AVAILABLE_INT);
 
 		/* Clear the flag */
-		isr &= ~INT_TX_SPACE;
+		isr |= INT_TX_SPACE;
 		ksz8851_regwr(REG_INT_STATUS, isr);
 	}
 
@@ -393,22 +481,6 @@ static void ksz8851Overrun(void) {
 	printf("ksz8851_overrun\n");
 }
 
-/* ksz8851ProcessInterrupt() -- All this does (for now) is check for
- * an overrun condition.
-*/
-static void ksz8851ProcessInterrupt(void) {
-	uint16_t	isr;
-
-	isr = ksz8851_regrd(REG_INT_STATUS);
-
-	if (isr & INT_RX_OVERRUN) {
-		/* Clear the flag */
-		isr &= ~INT_RX_OVERRUN;
-		ksz8851_regwr(REG_INT_STATUS, isr);
-
-		ksz8851Overrun();
-	}
-}
 
 /* ksz8851BeginPacketRetrieve() checks to see if there are any packets
  * available.  If not, it returns 0.
@@ -422,29 +494,28 @@ static void ksz8851ProcessInterrupt(void) {
  * trailer).
 */
 unsigned int ksz8851BeginPacketRetrieve(void) {
-	static uint8_t rxFrameCount = 0;
+	/*static*/ uint8_t rxFrameCount = 0;
 	uint16_t	rxfctr, rxfhsr;
 	int16_t	rxPacketLength;
 	uint8_t	dummy[4];
 
-	if (rxFrameCount == 0) {
-		ksz8851ProcessInterrupt();
+	//if (rxFrameCount == 0) {
 
-		if (!(ksz8851_regrd(REG_INT_STATUS) & INT_RX)) {
+		//if (!(ksz8851_regrd(REG_INT_STATUS) & INT_RX)) {
 			/* No packets available */
-			return 0;
-		}
+			//return 0;
+		//}
 
 		/* Clear Rx flag */
-		spi_setbits(REG_INT_STATUS, INT_RX);
+		//spi_setbits(REG_INT_STATUS, INT_RX);
 
 		/* Read rx total frame count */
-		rxfctr = ksz8851_regrd(REG_RX_FRAME_CNT_THRES);
-		rxFrameCount = (rxfctr & RX_FRAME_CNT_MASK) >> 8;
+    rxfctr = ksz8851_regrd(REG_RX_FRAME_CNT_THRES);
+    rxFrameCount = (rxfctr & RX_FRAME_CNT_MASK) >> 8;
 
-		if (rxFrameCount == 0)
-			return 0;
-	}
+    if (rxFrameCount == 0)
+        return 0;
+	//}
 
 	/* read rx frame header status */
 	rxfhsr = ksz8851_regrd(REG_RX_FHR_STATUS);
@@ -458,7 +529,7 @@ unsigned int ksz8851BeginPacketRetrieve(void) {
 		/* Issue the RELEASE error frame command */
 		spi_setbits(REG_RXQ_CMD, RXQ_CMD_FREE_PACKET);
 
-		rxFrameCount--;
+		//rxFrameCount--;
 
 		return 0;
 	}
@@ -472,7 +543,7 @@ unsigned int ksz8851BeginPacketRetrieve(void) {
 		/* Issue the RELEASE error frame command */
 		spi_setbits(REG_RXQ_CMD, RXQ_CMD_FREE_PACKET);
 
-		rxFrameCount--;
+		//rxFrameCount--;
 
 		return 0;
 	}
@@ -492,7 +563,7 @@ unsigned int ksz8851BeginPacketRetrieve(void) {
 	/* Read 2-byte alignment bytes */
 	spi_op(SPI_CONTINUE, FIFO_RD, dummy, 2);
 
-	rxFrameCount--;
+	//rxFrameCount--;
 
 	return rxPacketLength - 4;
 }
@@ -513,4 +584,10 @@ void ksz8851EndPacketRetrieve(void) {
 
 	/* Read 4-byte crc */
 	spi_op(SPI_END, FIFO_RD, crc, 4);
+}
+/* ksz8851RegisterLinkStatusCb() register callback for link status update,
+ */
+void ksz8851RegisterEvtCb(ksz8851_evt_cb_t evt_cb)
+{
+    evt_cb_func = evt_cb;
 }

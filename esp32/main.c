@@ -56,6 +56,8 @@
 TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
 TaskHandle_t SmartConfTaskHandle;
+TaskHandle_t ethernetTaskHandle;
+TaskHandle_t ethernetIntrTaskHandle;
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xLoRaTaskHndl;
 DRAM_ATTR TaskHandle_t xLoRaTimerTaskHndl;
@@ -111,7 +113,7 @@ void app_main(void) {
     esp32_init_chip_info();
 
     // remove all the logs from the IDF
-    esp_log_level_set("*", ESP_LOG_NONE);
+    esp_log_level_set("*", ESP_LOG_DEBUG);
 
     // setup the timer used as a reference in mphal
     machtimer_preinit();

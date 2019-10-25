@@ -1,6 +1,14 @@
 #ifndef __KSZ8851_H__
 #define __KSZ8851_H__
 
+typedef enum
+{
+    KSZ8851_EVT_RX_INT = 0,
+    KSZ8851_EVT_LINK_CHANGE
+}ksz8851_evt_t;
+
+typedef void (*ksz8851_evt_cb_t)(ksz8851_evt_t);
+
 uint16_t ksz8851_regrd(uint16_t reg);
 void ksz8851_regwr(uint16_t reg, uint16_t wrdata);
 void ksz8851Init(void);
@@ -10,7 +18,11 @@ void ksz8851EndPacketSend(void);
 unsigned int ksz8851BeginPacketRetrieve(void);
 void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int length);
 void ksz8851EndPacketRetrieve(void);
-
+void ksz8851SpiInit(void);
+bool ksz8851GetLinkStatus(void);
+void ksz8851PhyReset(void);
+void ksz8851RegisterEvtCb(ksz8851_evt_cb_t evt_cb);
+void ksz8851ProcessInterrupt(void);
 
 /*****************************************************************************
 *
@@ -19,6 +31,7 @@ void ksz8851EndPacketRetrieve(void);
 *****************************************************************************/
 #define ETHERNET_MIN_PACKET_LENGTH      0x3C
 #define ETHERNET_HEADER_LENGTH          0x0E
+#define ETH_MAC_SIZE                    6
 
 /*****************************************************************************
 *
@@ -31,6 +44,8 @@ void ksz8851EndPacketRetrieve(void);
 #define MYMAC_3         UIP_ETHADDR3
 #define MYMAC_4         UIP_ETHADDR4
 #define MYMAC_5         UIP_ETHADDR5
+
+extern uint8_t ethernet_mac[ETH_MAC_SIZE];
 
 #define OPCODE_MASK     (3 << 14)
 #define IO_RD           (0 << 14)
@@ -147,9 +162,7 @@ void ksz8851EndPacketRetrieve(void);
 #define   TX_CTRL_PAD_ENABLE          0x0004    /* Eanble adding a padding to a packet shorter than 64 bytes */
 #define   TX_CTRL_CRC_ENABLE          0x0002    /* Enable adding a CRC to the end of transmit frame */
 #define   TX_CTRL_ENABLE              0x0001    /* Enable tranmsit */
-#define   DEFAULT_TX_CTRL             ( TX_CTRL_ICMP_CHECKSUM | TX_CTRL_UDP_CHECKSUM | \
-                                        TX_CTRL_TCP_CHECKSUM |  TX_CTRL_IP_CHECKSUM |  \
-                                        TX_CTRL_FLOW_ENABLE |   TX_CTRL_PAD_ENABLE |   \
+#define   DEFAULT_TX_CTRL             ( TX_CTRL_FLOW_ENABLE |   TX_CTRL_PAD_ENABLE |   \
                                         TX_CTRL_CRC_ENABLE )
 
 #define   REG_TX_STATUS               0x72       /* TXSR */
@@ -173,10 +186,8 @@ void ksz8851EndPacketRetrieve(void);
 #define   RX_CTRL_PROMISCUOUS         0x0010    /* Receive all incoming frames, regardless of frame's DA */
 #define   RX_CTRL_INVERSE_FILTER      0x0002    /* Receive with address check in inverse filtering mode */
 #define   RX_CTRL_ENABLE              0x0001    /* Enable receive */
-#define   DEFAULT_RX_CTRL1            (RX_CTRL_UDP_CHECKSUM | RX_CTRL_TCP_CHECKSUM |   \
-                                       RX_CTRL_IP_CHECKSUM |  RX_CTRL_MAC_FILTER |     \
-                                       RX_CTRL_FLOW_ENABLE |  RX_CTRL_BROADCAST |      \
-                                       RX_CTRL_ALL_MULTICAST| RX_CTRL_UNICAST )
+#define   DEFAULT_RX_CTRL1            (RX_CTRL_FLOW_ENABLE | RX_CTRL_MAC_FILTER |    \
+                                       RX_CTRL_MULTICAST | RX_CTRL_BROADCAST | RX_CTRL_UNICAST)
 
 #define   REG_RX_CTRL2                0x76      /* RXCR2 */
 #define   RX_CTRL_BURST_LEN_MASK      0x00e0    /* SRDBL SPI Receive Data Burst Length */
@@ -191,8 +202,7 @@ void ksz8851EndPacketRetrieve(void);
 #define   RX_CTRL_UDP_LITE_CHECKSUM   0x0004    /* Enable UDP Lite frame checksum generation and verification */
 #define   RX_CTRL_ICMP_CHECKSUM       0x0002    /* Enable ICMP frame checksum verification */
 #define   RX_CTRL_BLOCK_MAC           0x0001    /* Receive drop frame if the SA is same as device MAC address */
-#define   DEFAULT_RX_CTRL2            ( RX_CTRL_IPV6_UDP_FRAG_PASS | RX_CTRL_UDP_LITE_CHECKSUM | \
-                                        RX_CTRL_ICMP_CHECKSUM )
+#define   DEFAULT_RX_CTRL2            ( RX_CTRL_IPV6_UDP_FRAG_PASS | RX_CTRL_IPV6_UDP_ZERO_PASS )
 
 #define   REG_TX_MEM_INFO             0x78       /* TXMIR */
 #define   TX_MEM_AVAILABLE_MASK       0x1FFF    /* The amount of memory available in TXQ */
@@ -260,7 +270,7 @@ void ksz8851EndPacketRetrieve(void);
 #define   INT_RX_WOL_ENERGY           0x0004    /* Enable WOL on energy detect interrupt */
 #define   INT_RX_SPI_ERROR            0x0002    /* Enable receive SPI bus error interrupt */
 #define   RX_WOL_DELAY_ENERGY         0x0001    /* Enable delay generate WOL on energy detect */
-#define   INT_MASK                    ( INT_RX | INT_TX | INT_PHY )
+#define   INT_MASK                    ( INT_RX | INT_TX | INT_PHY | INT_RX_OVERRUN | INT_TX_SPACE )
 
 #define   REG_INT_STATUS              0x92       /* ISR */
 

@@ -182,7 +182,7 @@ STATIC void wlan_callback_handler(void* arg);
 void wlan_pre_init (void) {
     tcpip_adapter_init();
     wifi_event_group = xEventGroupCreate();
-    ESP_ERROR_CHECK(esp_event_loop_init(wlan_event_handler, NULL));
+    //ESP_ERROR_CHECK(esp_event_loop_init(wlan_event_handler, NULL));
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
     wlan_wpa2_ent.ca_certs_path = NULL;
     wlan_wpa2_ent.client_cert_path = NULL;
