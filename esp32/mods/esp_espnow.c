@@ -48,6 +48,12 @@
 #include "modnetwork.h"
 #include "mpirq.h"
 
+typedef struct _mp_obj_espnow_t {
+    mp_obj_base_t base;
+    mp_obj_t buf_obj; // need to store this to prevent GC from reclaiming buf
+    uint8_t number;
+} mp_obj_espnow_t;
+
 NORETURN void _esp_espnow_exceptions(esp_err_t e) {
    switch (e) {
       case ESP_ERR_ESPNOW_NOT_INIT:
@@ -124,25 +130,22 @@ STATIC void IRAM_ATTR recv_cb(const uint8_t *macaddr, const uint8_t *data, int l
     }
 } 
 
-static int initialized = 0;
+STATIC mp_obj_t espnow_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+ 
+    mp_obj_espnow_t *self = m_new_obj(mp_obj_espnow_t);
+    self->base.type = type;
+    self->number = 0;
+    
+    ESPNOW_EXCEPTIONS(esp_now_init());  
+    ESPNOW_EXCEPTIONS(esp_now_register_recv_cb(recv_cb));
+    ESPNOW_EXCEPTIONS(esp_now_register_send_cb(send_cb));
 
-STATIC mp_obj_t espnow_init() {
-    if (!initialized) {
-        ESPNOW_EXCEPTIONS(esp_now_init());
-        initialized = 1;
-
-        ESPNOW_EXCEPTIONS(esp_now_register_recv_cb(recv_cb));
-        ESPNOW_EXCEPTIONS(esp_now_register_send_cb(send_cb));
-    }
-    return mp_const_none;
+    return MP_OBJ_FROM_PTR(self);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(espnow_init_obj, espnow_init);
 
 STATIC mp_obj_t espnow_deinit() {
-    if (initialized) {
-        ESPNOW_EXCEPTIONS(esp_now_deinit());
-        initialized = 0;
-    }
+    ESPNOW_EXCEPTIONS(esp_now_deinit());
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(espnow_deinit_obj, espnow_deinit);
@@ -319,9 +322,8 @@ STATIC mp_obj_t espnow_version() {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(espnow_version_obj, espnow_version);
 
-STATIC const mp_rom_map_elem_t espnow_globals_dict_table[] = {
+STATIC const mp_rom_map_elem_t espnow_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_espnow) },
-    { MP_ROM_QSTR(MP_QSTR_init), MP_ROM_PTR(&espnow_init_obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&espnow_deinit_obj) },
     { MP_ROM_QSTR(MP_QSTR_pmk), MP_ROM_PTR(&espnow_pmk_obj) },
     { MP_ROM_QSTR(MP_QSTR_lmk), MP_ROM_PTR(&espnow_lmk_obj) },
@@ -333,9 +335,23 @@ STATIC const mp_rom_map_elem_t espnow_globals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_peer_count), MP_ROM_PTR(&espnow_peer_count_obj) },
     { MP_ROM_QSTR(MP_QSTR_version), MP_ROM_PTR(&espnow_version_obj) },
 };
-STATIC MP_DEFINE_CONST_DICT(espnow_globals_dict, espnow_globals_dict_table);
+STATIC MP_DEFINE_CONST_DICT(espnow_locals_dict, espnow_locals_dict_table);
+
+STATIC const mp_obj_type_t mp_type_espnow = {
+    { &mp_type_type },
+    .name = MP_QSTR_EspNow,
+    .make_new = espnow_make_new,
+    .locals_dict = (mp_obj_dict_t*)&espnow_locals_dict,
+};
+
+STATIC const mp_rom_map_elem_t espnow_module_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_espnow) },
+    { MP_ROM_QSTR(MP_QSTR_EspNow), MP_ROM_PTR(&mp_type_espnow) },
+};
+
+STATIC MP_DEFINE_CONST_DICT(espnow_module_globals, espnow_module_globals_table);
 
 const mp_obj_module_t mp_module_esp_espnow = {
     .base = { &mp_type_module },
-    .globals = (mp_obj_dict_t *)&espnow_globals_dict,
+    .globals = (mp_obj_dict_t *)&espnow_module_globals,
 };
