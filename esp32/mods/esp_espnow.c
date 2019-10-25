@@ -50,7 +50,6 @@
 
 typedef struct _mp_obj_espnow_t {
     mp_obj_base_t base;
-    mp_obj_t buf_obj; // need to store this to prevent GC from reclaiming buf
     uint8_t number;
 } mp_obj_espnow_t;
 
@@ -143,44 +142,46 @@ STATIC mp_obj_t espnow_make_new(const mp_obj_type_t *type, size_t n_args, size_t
     return MP_OBJ_FROM_PTR(self);
 }
 
-STATIC mp_obj_t espnow_deinit() {
+STATIC mp_obj_t espnow_deinit(mp_obj_t self_in) {
     ESPNOW_EXCEPTIONS(esp_now_deinit());
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(espnow_deinit_obj, espnow_deinit);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(espnow_deinit_obj, espnow_deinit);
 
 STATIC mp_obj_t espnow_on_send(size_t n_args, const mp_obj_t *args) {
-    if (n_args == 0) {
+//    mp_obj_espnow_t *self = MP_OBJ_TO_PTR(args[0]);
+       if (n_args == 1) {
         return send_cb_obj;
     }
 
-    send_cb_obj = args[0];
+    send_cb_obj = args[1];
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(espnow_on_send_obj, 0, 1, espnow_on_send);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(espnow_on_send_obj, 1, 2, espnow_on_send);
 
 STATIC mp_obj_t espnow_on_recv(size_t n_args, const mp_obj_t *args) {
-    if (n_args == 0) {
+//    mp_obj_framebuf_t *self = MP_OBJ_TO_PTR(args[0]);
+    if (n_args == 1) {
         return recv_cb_obj;
     }
 
-    recv_cb_obj = args[0];
+    recv_cb_obj = args[1];
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(espnow_on_recv_obj, 0, 1, espnow_on_recv);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(espnow_on_recv_obj, 1, 2, espnow_on_recv);
 
 // pmk(primary_key)
-STATIC mp_obj_t espnow_pmk(mp_obj_t key) {
+STATIC mp_obj_t espnow_pmk(mp_obj_t self_in, mp_obj_t key) {
     uint8_t buf[ESP_NOW_KEY_LEN];
     _get_bytes(key, ESP_NOW_KEY_LEN, buf);
     ESPNOW_EXCEPTIONS(esp_now_set_pmk(buf));
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(espnow_pmk_obj, espnow_pmk);
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(espnow_pmk_obj, espnow_pmk);
 
 // lmk(peer_mac, local_key)
-STATIC mp_obj_t espnow_lmk(mp_obj_t addr, mp_obj_t key) {
+STATIC mp_obj_t espnow_lmk(mp_obj_t self_in, mp_obj_t addr, mp_obj_t key) {
     mp_uint_t addr_len;
     const uint8_t *addr_buf = (const uint8_t *)mp_obj_str_get_data(addr, &addr_len);
     if (addr_len != ESP_NOW_ETH_ALEN) mp_raise_ValueError("addr invalid");
@@ -202,31 +203,31 @@ STATIC mp_obj_t espnow_lmk(mp_obj_t addr, mp_obj_t key) {
     }
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(espnow_lmk_obj, espnow_lmk);
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(espnow_lmk_obj, espnow_lmk);
 
 // add_peer(peer_mac, [local_key])
 STATIC mp_obj_t espnow_add_peer(size_t n_args, const mp_obj_t *args) {
     esp_now_peer_info_t peer = {0};
-    _get_bytes(args[0], ESP_NOW_ETH_ALEN, peer.peer_addr);
-    if (n_args > 1) {
-        _get_bytes(args[1], ESP_NOW_KEY_LEN, peer.lmk);
+    _get_bytes(args[1], ESP_NOW_ETH_ALEN, peer.peer_addr);
+    if (n_args > 2) {
+        _get_bytes(args[2], ESP_NOW_KEY_LEN, peer.lmk);
         peer.encrypt = 1;
     }
 
     ESPNOW_EXCEPTIONS(esp_now_add_peer(&peer));
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(espnow_add_peer_obj, 1, 2, espnow_add_peer);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(espnow_add_peer_obj, 2, 3, espnow_add_peer);
 
 // del_peer(peer_mac)
-STATIC mp_obj_t espnow_del_peer(mp_obj_t addr) {
+STATIC mp_obj_t espnow_del_peer(mp_obj_t self_in, mp_obj_t addr) {
     mp_uint_t addr_len;
     const uint8_t *addr_buf = (const uint8_t *)mp_obj_str_get_data(addr, &addr_len);
     if (addr_len != ESP_NOW_ETH_ALEN) mp_raise_ValueError("addr invalid");
     ESPNOW_EXCEPTIONS(esp_now_del_peer(addr_buf));
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(espnow_del_peer_obj, espnow_del_peer);
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(espnow_del_peer_obj, espnow_del_peer);
 
 // this workaround enables ESP32 to send from whatever IF that is
 // active
@@ -248,7 +249,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(espnow_del_peer_obj, espnow_del_peer);
 
 //extern bool wifi_started;
 
-STATIC mp_obj_t espnow_send(mp_obj_t addr, mp_obj_t msg) {
+STATIC mp_obj_t espnow_send(mp_obj_t self_in, mp_obj_t addr, mp_obj_t msg) {
 //    if (!wifi_started) goto espnow_wifi_err;
 
     mp_uint_t addr_len;
@@ -302,9 +303,9 @@ espnow_wifi_err:
     mp_raise_msg(&mp_type_OSError, "wifi not active");
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(espnow_send_obj, espnow_send);
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(espnow_send_obj, espnow_send);
 
-STATIC mp_obj_t espnow_peer_count() {
+STATIC mp_obj_t espnow_peer_count(mp_obj_t self_in) {
     esp_now_peer_num_t peer_num = {0};
     ESPNOW_EXCEPTIONS(esp_now_get_peer_num(&peer_num));
 
@@ -313,14 +314,15 @@ STATIC mp_obj_t espnow_peer_count() {
     tuple[1] = mp_obj_new_int(peer_num.encrypt_num);
     return mp_obj_new_tuple(2, tuple);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(espnow_peer_count_obj, espnow_peer_count);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(espnow_peer_count_obj, espnow_peer_count);
 
-STATIC mp_obj_t espnow_version() {
+STATIC mp_obj_t espnow_version(mp_obj_t self_in) {
+//    mp_obj_espnow_t *self = MP_OBJ_TO_PTR(self_in);
     uint32_t version;
     ESPNOW_EXCEPTIONS(esp_now_get_version(&version));
     return mp_obj_new_int(version);
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(espnow_version_obj, espnow_version);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(espnow_version_obj, espnow_version);
 
 STATIC const mp_rom_map_elem_t espnow_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_espnow) },
