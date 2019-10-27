@@ -42,17 +42,17 @@
 #include "freertos/timers.h"
 
 #define ETHERNET_TASK_STACK_SIZE        4608
-#define ETHERNET_TASK_PRIORITY          20
-#define ETHERNET_RX_PACKET_BUFF_SIZE    (400)
+#define ETHERNET_TASK_PRIORITY          5
+#define ETHERNET_RX_PACKET_BUFF_SIZE    (1500)
 #define ETHERNET_CHECK_LINK_PERIOD_MS   2000
 #define ETHERNET_CMD_QUEUE_SIZE         200
 
 static void TASK_ETHERNET (void *pvParameters);
-static void TASK_ETHERNET_POLL_INT (void *pvParameters);
 static mp_obj_t eth_init_helper(eth_obj_t *self, const mp_arg_val_t *args);
-static void ksz8851_evt_callback(ksz8851_evt_t ksz8851_evt);
+static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt);
 static void process_tx(uint8_t* buff, uint16_t len);
 static void process_rx(void);
+static void eth_validate_hostname (const char *hostname);
 
 
 eth_obj_t eth_obj = {
@@ -81,8 +81,6 @@ void eth_pre_init (void) {
     eth_cmdQueue = xQueueCreate(ETHERNET_CMD_QUEUE_SIZE, sizeof(modeth_cmd_ctx_t));
     // create eth Task
     xTaskCreatePinnedToCore(TASK_ETHERNET, "ethernet_task", ETHERNET_TASK_STACK_SIZE / sizeof(StackType_t), NULL, ETHERNET_TASK_PRIORITY, &ethernetTaskHandle, 1);
-    // create eth intr polling Task
-    xTaskCreatePinnedToCore(TASK_ETHERNET_POLL_INT, "ethernet_intr_task", 1024 / sizeof(StackType_t), NULL, 21, &ethernetIntrTaskHandle, 1);
 }
 
 void modeth_get_mac(uint8_t *mac)
@@ -93,7 +91,6 @@ void modeth_get_mac(uint8_t *mac)
 STATIC const mp_arg_t eth_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,  {.u_int = 0} },
     { MP_QSTR_hostname,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
-    { MP_QSTR_ifconfig,         MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
 };
 STATIC mp_obj_t eth_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -125,6 +122,14 @@ STATIC mp_obj_t modeth_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(modeth_init_obj, 1, modeth_init);
 
 STATIC mp_obj_t eth_init_helper(eth_obj_t *self, const mp_arg_val_t *args) {
+
+    const char *hostname;
+
+    if (args[0].u_obj != mp_const_none) {
+        hostname = mp_obj_str_get_str(args[0].u_obj);
+        eth_validate_hostname(hostname);
+        tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_ETH, hostname);
+    }
 
     //Notify task to start right away
     xTaskNotifyGive(ethernetTaskHandle);
@@ -189,63 +194,73 @@ static void process_tx(uint8_t* buff, uint16_t len)
 }
 static void process_rx(void)
 {
-    int len = ksz8851BeginPacketRetrieve();
+    uint32_t len, frameCnt;
+    uint32_t isr = ksz8851_regrd(REG_INT_STATUS);
+    uint32_t ier = ksz8851_regrd(REG_INT_MASK);
 
-    if(len && eth_obj.link_status)
+    /* Clear RX interrupt */
+    isr |= INT_RX;
+    ksz8851_regwr(REG_INT_STATUS, isr);
+    frameCnt = (ksz8851_regrd(REG_RX_FRAME_CNT_THRES) & RX_FRAME_CNT_MASK) >> 8;
+    while (frameCnt > 0)
     {
-        printf("modeth_Rx \n");
-        if (len > ETHERNET_RX_PACKET_BUFF_SIZE)
+        ksz8851RetrievePacketData(modeth_rxBuff, &len);
+        if(len)
         {
-            ksz8851RetrievePacketData(modeth_rxBuff, ETHERNET_RX_PACKET_BUFF_SIZE);
-            tcpip_adapter_eth_input(modeth_rxBuff, ETHERNET_RX_PACKET_BUFF_SIZE, NULL);
-            len -= ETHERNET_RX_PACKET_BUFF_SIZE;
-            // fetch reminder of the data
-            while (len > 0)
-            {
-                if(len > ETHERNET_RX_PACKET_BUFF_SIZE)
-                {
-                    ksz8851RetrievePacketData(modeth_rxBuff, ETHERNET_RX_PACKET_BUFF_SIZE);
-                    tcpip_adapter_eth_input(modeth_rxBuff, ETHERNET_RX_PACKET_BUFF_SIZE, NULL);
-                    len -= ETHERNET_RX_PACKET_BUFF_SIZE;
-                }
-                else
-                {
-                    ksz8851RetrievePacketData(modeth_rxBuff, len);
-                    tcpip_adapter_eth_input(modeth_rxBuff, len, NULL);
-                    len = 0;
-                }
-            }
+            tcpip_adapter_eth_input(modeth_rxBuff, len, NULL);
         }
         else
         {
-            ksz8851RetrievePacketData(modeth_rxBuff, len);
-            tcpip_adapter_eth_input(modeth_rxBuff, len, NULL);
+            printf("Error recieve  \n");
         }
-
-        ksz8851EndPacketRetrieve();
+        frameCnt--;
     }
+    //Re-enable RX interrupt
+    ier |= INT_RX;
+    ksz8851_regwr(REG_INT_MASK, ier);
 }
-static void ksz8851_evt_callback(ksz8851_evt_t ksz8851_evt)
+static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt)
 {
     modeth_cmd_ctx_t ctx;
+    portBASE_TYPE tmp;
+    uint16_t ier, isr;
 
-    switch(ksz8851_evt)
+    if(ksz8851_evt & KSZ8851_LINK_CHG_INT)
     {
-    case KSZ8851_EVT_LINK_CHANGE:
         ctx.cmd = ETH_CMD_CHK_LINK;
         ctx.buf = NULL;
-        xQueueSendToFront(eth_cmdQueue, &ctx, 10 / portTICK_PERIOD_MS);
+        xQueueSendToFrontFromISR(eth_cmdQueue, &ctx, &tmp);
+        if (tmp != pdFALSE) {
+            portYIELD_FROM_ISR();
+        }
         // unblock task if link up
         if(!eth_obj.link_status)
         {
-            xTaskNotifyGive(ethernetTaskHandle);
+            xTaskNotifyFromISR(ethernetTaskHandle, 0, eIncrement, NULL);
         }
-        break;
-    case KSZ8851_EVT_RX_INT:
+    }
+
+    if(ksz8851_evt & KSZ8851_RX_INT)
+    {
         ctx.cmd = ETH_CMD_RX;
         ctx.buf = NULL;
-        xQueueSend(eth_cmdQueue, &ctx, 10 / portTICK_PERIOD_MS);
-        break;
+        xQueueSendFromISR(eth_cmdQueue, &ctx, &tmp);
+        if (tmp != pdFALSE) {
+            portYIELD_FROM_ISR();
+        }
+    }
+
+    if(ksz8851_evt & KSZ8851_OVERRUN_INT)
+    {
+        isr = ksz8851_regrd(REG_INT_STATUS);
+        ier = ksz8851_regrd(REG_INT_MASK);
+
+        /* Clear LINK interrupt */
+        isr |= INT_RX_OVERRUN;
+        ksz8851_regwr(REG_INT_STATUS, isr);
+        //Re-enable LINK interrupt
+        ier |= INT_RX_OVERRUN;
+        ksz8851_regwr(REG_INT_MASK, ier);
     }
 }
 
@@ -268,28 +283,12 @@ bool is_eth_link_up(void)
     return eth_obj.link_status;
 }
 
-static void TASK_ETHERNET_POLL_INT (void *pvParameters)
-{
-    static uint32_t thread_notification;
-
-    // Block task till notification is recieved
-    thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-    if (thread_notification)
-    {
-        for(;;)
-        {
-            ksz8851ProcessInterrupt();
-            vTaskDelay(10/portTICK_PERIOD_MS);
-        }
-    }
-}
-
 static void TASK_ETHERNET (void *pvParameters) {
 
     static uint32_t thread_notification;
     system_event_t evt;
     modeth_cmd_ctx_t queue_entry;
+    uint32_t ier, isr;
 
     /*TODO: Interrupt registration*/
 
@@ -320,9 +319,6 @@ static void TASK_ETHERNET (void *pvParameters) {
         evt.event_id = SYSTEM_EVENT_ETH_START;
         esp_event_send(&evt);
 
-        //Notify intr task to start right away
-        xTaskNotifyGive(ethernetIntrTaskHandle);
-
         for(;;)
         {
             if(!eth_obj.link_status)
@@ -330,23 +326,25 @@ static void TASK_ETHERNET (void *pvParameters) {
                 // block till link is up again
                 ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
             }
-            else
-            {
-                vTaskDelay(2/portTICK_PERIOD_MS);
-            }
 
             if (xQueueReceive(eth_cmdQueue, &queue_entry, 0) == pdTRUE)
             {
                 switch(queue_entry.cmd)
                 {
                     case ETH_CMD_TX:
-                        printf("modeth Tx Packet\n");
                         process_tx(queue_entry.buf, queue_entry.len);
                         break;
                     case ETH_CMD_RX:
                         process_rx();
                         break;
                     case ETH_CMD_CHK_LINK:
+                        isr = ksz8851_regrd(REG_INT_STATUS);
+                        ier = ksz8851_regrd(REG_INT_MASK);
+
+                        /* Clear LINK interrupt */
+                        isr |= INT_PHY;
+                        ksz8851_regwr(REG_INT_STATUS, isr);
+
                         if(ksz8851GetLinkStatus())
                         {
                             eth_obj.link_status = true;
@@ -359,6 +357,9 @@ static void TASK_ETHERNET (void *pvParameters) {
                             evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
                             esp_event_send(&evt);
                         }
+                        //Re-enable LINK interrupt
+                        ier |= INT_PHY;
+                        ksz8851_regwr(REG_INT_MASK, ier);
                         break;
                     default:
                         break;

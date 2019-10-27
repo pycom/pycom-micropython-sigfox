@@ -57,7 +57,6 @@ TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
 TaskHandle_t SmartConfTaskHandle;
 TaskHandle_t ethernetTaskHandle;
-TaskHandle_t ethernetIntrTaskHandle;
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xLoRaTaskHndl;
 DRAM_ATTR TaskHandle_t xLoRaTimerTaskHndl;

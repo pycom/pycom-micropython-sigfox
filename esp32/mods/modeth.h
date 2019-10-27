@@ -15,7 +15,6 @@
 #include "modnetwork.h"
 
 extern TaskHandle_t ethernetTaskHandle;
-extern TaskHandle_t ethernetIntrTaskHandle;
 extern const mod_network_nic_type_t mod_network_nic_type_eth;
 extern xQueueHandle eth_cmdQueue;
 

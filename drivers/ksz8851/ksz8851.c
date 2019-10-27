@@ -42,10 +42,10 @@
 
 static uint16_t	length_sum;
 static uint8_t	frameID = 0;
-static ksz8851_evt_cb_t evt_cb_func = NULL;
+static DRAM_ATTR ksz8851_evt_cb_t evt_cb_func = NULL;
 
 static void gpio_set_value(pin_obj_t *pin_o, uint32_t value);
-static void ksz8851Overrun(void);
+static void ksz8851ProcessInterrupt(void);
 
 static void init_spi(void) {
     // this is SpiNum_SPI2
@@ -146,8 +146,56 @@ static void spi_op(uint8_t phase, uint16_t cmd, uint8_t *buf, uint16_t len) {
 	}
 }
 
+/* ksz8851ProcessInterrupt() -- All this does (for now) is check for
+ * an overrun condition.
+*/
+static IRAM_ATTR void ksz8851ProcessInterrupt(void) {
+    uint16_t isr;
+    uint16_t ier;
+    uint32_t evt = 0;
+
+    ier = ksz8851_regrd(REG_INT_MASK);
+    // Disable interrupts to release the interrupt line
+    ksz8851_regwr(REG_INT_MASK, 0x0000 );
+    // Read INT status
+    isr = ksz8851_regrd(REG_INT_STATUS);
+
+    if (isr & INT_RX_OVERRUN) {
+        //Disable overrun interrupt
+        ier &= ~INT_RX_OVERRUN;
+        evt |= KSZ8851_OVERRUN_INT;
+    }
+
+    if (isr & INT_PHY) {
+        //Disable LCIE interrupt
+        ier &= ~INT_PHY;
+        evt |= KSZ8851_LINK_CHG_INT;
+    }
+
+    if (isr & INT_RX) {
+        //Disable RXIE interrupt
+        ier &= ~INT_RX;
+        evt |= KSZ8851_RX_INT;
+    }
+
+    ksz8851_regwr(REG_INT_MASK, ier);
+
+    /* Notify upper layer*/
+    if((evt_cb_func != NULL) && evt)
+    {
+        evt_cb_func(evt);
+    }
+    else
+    {
+        /* Clear the interrupts status */
+        ksz8851_regwr(REG_INT_STATUS, 0xffff);
+        // Enable interrupts
+        ksz8851_regwr(REG_INT_MASK, INT_MASK );
+    }
+}
+
 /* ksz8851_regrd() will read one 16-bit word from reg. */
-uint16_t ksz8851_regrd(uint16_t reg) {
+uint16_t IRAM_ATTR ksz8851_regrd(uint16_t reg) {
 	uint16_t	cmd;
 	uint8_t	inbuf[2];
 	uint16_t	rddata;
@@ -176,7 +224,7 @@ uint16_t ksz8851_regrd(uint16_t reg) {
 }
 
 /* ksz8851_regwr() will write one 16-bit word (wrdata) to reg. */
-void ksz8851_regwr(uint16_t reg, uint16_t wrdata) {
+void IRAM_ATTR ksz8851_regwr(uint16_t reg, uint16_t wrdata) {
 	uint16_t	cmd;
 	uint8_t	outbuf[2];
 
@@ -239,44 +287,6 @@ void ksz8851PhyReset(void) {
  */
 void ksz8851SpiInit(void) {
     init_spi();
-}
-
-/* ksz8851ProcessInterrupt() -- All this does (for now) is check for
- * an overrun condition.
-*/
-void ksz8851ProcessInterrupt(void) {
-    uint16_t    isr;
-
-    isr = ksz8851_regrd(REG_INT_STATUS);
-
-    if (isr & INT_RX_OVERRUN) {
-        /* Clear the flag by writing 1 to it*/
-        isr |= INT_RX_OVERRUN;
-
-        ksz8851Overrun();
-    }
-
-    if (isr & INT_PHY) {
-        /* Clear the flag by writing 1 to it*/
-        isr |= INT_PHY;
-        /* Notify upper layer*/
-        if(evt_cb_func != NULL)
-        {
-            evt_cb_func(KSZ8851_EVT_LINK_CHANGE);
-        }
-    }
-
-    if (isr & INT_RX) {
-        /* Clear the flag by writing 1 to it*/
-        isr |= INT_RX;
-        /* Notify upper layer*/
-        if(evt_cb_func != NULL)
-        {
-            evt_cb_func(KSZ8851_EVT_RX_INT);
-        }
-    }
-
-    ksz8851_regwr(REG_INT_STATUS, isr);
 }
 
 /* ksz8851Init() initializes the ksz8851.
@@ -375,6 +385,11 @@ void ksz8851Init(void) {
 
 	/* Clear the interrupts status */
 	ksz8851_regwr(REG_INT_STATUS, 0xffff);
+	/* Enable ext interrupt */
+    pin_irq_disable(KSZ8851_INT_PIN);
+    pin_extint_register(KSZ8851_INT_PIN, GPIO_INTR_NEGEDGE, 0);
+    machpin_register_irq_c_handler(KSZ8851_INT_PIN, (void *)ksz8851ProcessInterrupt);
+    pin_irq_enable(KSZ8851_INT_PIN);
 
     /* Enable Link change interrupt , enable  tx/Rx interrupts */
     spi_setbits(REG_INT_MASK, INT_MASK );
@@ -476,11 +491,6 @@ void ksz8851EndPacketSend(void) {
 	while (ksz8851_regrd(REG_TXQ_CMD) & TXQ_ENQUEUE);
 }
 
-/* ksz8851Overrun() -- Needs work */
-static void ksz8851Overrun(void) {
-	printf("ksz8851_overrun\n");
-}
-
 
 /* ksz8851BeginPacketRetrieve() checks to see if there are any packets
  * available.  If not, it returns 0.
@@ -572,8 +582,50 @@ unsigned int ksz8851BeginPacketRetrieve(void) {
  * packet.  It may be called as many times as necessary to retrieve
  * the entire payload.
  */
-void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int length) {
-	spi_op(SPI_CONTINUE, FIFO_RD, localBuffer, length);
+void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length) {
+	//spi_op(SPI_CONTINUE, FIFO_RD, localBuffer, length);
+    size_t n;
+   uint16_t status;
+   uint8_t  dummy[4];
+
+   *length = 0;
+   //Read received frame status from RXFHSR
+   status = ksz8851_regrd(REG_RX_FHR_STATUS);
+
+   //Make sure the frame is valid
+   if(status & RX_VALID)
+   {
+      //Check error flags
+      if(!(status & (RX_ERRORS)))
+      {
+         //Read received frame byte size from RXFHBCR
+         n = ksz8851_regrd(REG_RX_FHR_BYTE_CNT) & RX_BYTE_CNT_MASK;
+
+         //Ensure the frame size is acceptable
+         if(n > 4 && n <= 1500)
+         {
+            //Reset QMU RXQ frame pointer to zero
+             spi_clrbits(REG_RX_ADDR_PTR, ADDR_PTR_MASK);
+            //Enable RXQ read access
+             spi_setbits(REG_RXQ_CMD, RXQ_START);
+             /* Read 4-byte garbage */
+             spi_op(SPI_BEGIN, FIFO_RD, dummy, 4);
+             /* Read 4-byte status word/byte count */
+             spi_op(SPI_CONTINUE, FIFO_RD, dummy, 4);
+             /* Read 2-byte alignment bytes */
+             spi_op(SPI_CONTINUE, FIFO_RD, dummy, 2);
+             n -= 4;
+            //Read data
+             spi_op(SPI_END, FIFO_RD, localBuffer, n);
+            //End RXQ read access
+             spi_clrbits(REG_RXQ_CMD, RXQ_START);
+             *length = n;
+             return;
+         }
+      }
+   }
+   //Release the current error frame from RXQ
+   spi_setbits(REG_RXQ_CMD, RXQ_CMD_FREE_PACKET);
 }
 
 /* ksz8851EndPacketRetrieve() reads (and discards) the 4-byte CRC,

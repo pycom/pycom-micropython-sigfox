@@ -1,28 +1,21 @@
 #ifndef __KSZ8851_H__
 #define __KSZ8851_H__
 
-typedef enum
-{
-    KSZ8851_EVT_RX_INT = 0,
-    KSZ8851_EVT_LINK_CHANGE
-}ksz8851_evt_t;
+typedef void (*ksz8851_evt_cb_t)(uint32_t);
 
-typedef void (*ksz8851_evt_cb_t)(ksz8851_evt_t);
-
-uint16_t ksz8851_regrd(uint16_t reg);
-void ksz8851_regwr(uint16_t reg, uint16_t wrdata);
+uint16_t IRAM_ATTR ksz8851_regrd(uint16_t reg);
+void IRAM_ATTR ksz8851_regwr(uint16_t reg, uint16_t wrdata);
 void ksz8851Init(void);
 void ksz8851BeginPacketSend(unsigned int packetLength);
 void ksz8851SendPacketData(unsigned char *localBuffer, unsigned int length);
 void ksz8851EndPacketSend(void);
 unsigned int ksz8851BeginPacketRetrieve(void);
-void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int length);
+void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length);
 void ksz8851EndPacketRetrieve(void);
 void ksz8851SpiInit(void);
 bool ksz8851GetLinkStatus(void);
 void ksz8851PhyReset(void);
 void ksz8851RegisterEvtCb(ksz8851_evt_cb_t evt_cb);
-void ksz8851ProcessInterrupt(void);
 
 /*****************************************************************************
 *
@@ -52,6 +45,11 @@ extern uint8_t ethernet_mac[ETH_MAC_SIZE];
 #define IO_WR           (1 << 14)
 #define FIFO_RD         (2 << 14)
 #define FIFO_WR         (3 << 14)
+
+// Interrupt Events
+#define KSZ8851_RX_INT           (0x0001)
+#define KSZ8851_LINK_CHG_INT      (0x0002)
+#define KSZ8851_OVERRUN_INT      (0x0004)
 
 /* Register definitions */
 /*
@@ -270,7 +268,7 @@ extern uint8_t ethernet_mac[ETH_MAC_SIZE];
 #define   INT_RX_WOL_ENERGY           0x0004    /* Enable WOL on energy detect interrupt */
 #define   INT_RX_SPI_ERROR            0x0002    /* Enable receive SPI bus error interrupt */
 #define   RX_WOL_DELAY_ENERGY         0x0001    /* Enable delay generate WOL on energy detect */
-#define   INT_MASK                    ( INT_RX | INT_TX | INT_PHY | INT_RX_OVERRUN | INT_TX_SPACE )
+#define   INT_MASK                    ( INT_RX | INT_PHY | INT_RX_OVERRUN )
 
 #define   REG_INT_STATUS              0x92       /* ISR */
 
