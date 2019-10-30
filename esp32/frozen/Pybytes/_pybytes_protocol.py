@@ -496,7 +496,7 @@ class PybytesProtocol:
 
     def enable_terminal(self):
         self.__terminal_enabled = True
-        #os.dupterm(self.__terminal)
+        # os.dupterm(self.__terminal)
 
     def __send_pybytes_message(self, command, pin_number, value):
         self.__send_message(
@@ -522,14 +522,28 @@ class PybytesProtocol:
     def set_battery_level(self, battery_level):
         self.__battery_level = battery_level
 
-    def deploy_new_release(self, body):
-        application = self.__conf.get('application')
-        try:
-            body = ujson.loads(body.decode())
-        except Exception as e:
-            print_debug(0, "error while loading body {}".format(e))
-            return
+    def write_firmware(self, customManifest=None):
+        ota = WiFiOTA(
+            self.__conf['wifi']['ssid'],
+            self.__conf['wifi']['password'],
+            self.__conf['ota_server']['domain'],
+            self.__conf['ota_server']['port']
+        )
 
+        if (self.__pybytes_connection.__connection_status == constants.__CONNECTION_STATUS_DISCONNECTED): # noqa
+            print_debug(5, 'Connecting to WiFi')
+            ota.connect()
+
+        print_debug(5, "Performing OTA")
+        result = ota.update(customManifest)
+        self.send_ota_response(result)
+        time.sleep(1.5)
+        if (result == 2):
+            # Reboot the device to run the new decode
+            machine.reset()
+
+    def get_application_details(self, body):
+        application = self.__conf.get('application')
         if application is not None:
             if 'id' in application and application['id']:
                 applicationID = application['id']
@@ -542,16 +556,24 @@ class PybytesProtocol:
         else:
             applicationID = body['applicationId']
             currentReleaseID = None
+            self.__conf['application'] = {
+                "id": "",
+                "release": {
+                      "id": "",
+                      "codeFilename": "",
+                      "version": 0
+                }
+            }
+        return (applicationID, currentReleaseID)
 
-        baseWebConfigUrl = 'https://{}'.format(constants.__DEFAULT_PYCONFIG_DOMAIN)
-        manifestURL = '{}/manifest.json?'.format(baseWebConfigUrl)
-        fileUrl = '{}/files?'.format(baseWebConfigUrl)
-        newReleaseID = body["releaseId"]
-        targetURL = '{}app_id={}&target_ver={}&current_ver={}'.format(
+    def get_update_manifest(self, applicationID, newReleaseID, currentReleaseID):
+        manifestURL = '{}://{}/manifest.json?'.format(constants.__DEFAULT_PYCONFIG_PROTOCOL, constants.__DEFAULT_PYCONFIG_DOMAIN)
+        targetURL = '{}app_id={}&target_ver={}&current_ver={}&device_id={}'.format(
                     manifestURL,
                     applicationID,
                     newReleaseID,
-                    currentReleaseID
+                    currentReleaseID,
+                    self.__conf['device_id']
         )
         print_debug(6, "manifest URL: {}".format(targetURL))
         try:
@@ -559,6 +581,7 @@ class PybytesProtocol:
             letResp = pybytes_activation.json()
             pybytes_activation.close()
             print_debug(6, "letResp: {}".format(letResp))
+            return letResp
         except Exception as ex:
             print_debug(1, "error while calling {}!: {}".format(targetURL, ex))
             return
@@ -567,6 +590,8 @@ class PybytesProtocol:
             print_debug(1, letResp['errorMessage'])
             return
 
+    def update_files(self, letResp, applicationID, newReleaseID):
+        fileUrl = '{}://{}/files?'.format(constants.__DEFAULT_PYCONFIG_PROTOCOL, constants.__DEFAULT_PYCONFIG_DOMAIN)
         try:
             newFiles = letResp['newFiles']
             updatedFiles = letResp['updatedFiles']
@@ -591,22 +616,14 @@ class PybytesProtocol:
             fileContent = getFile.content
             self.__FCOTA.update_file_content(file['fileName'], fileContent)
 
+    def delete_files(self, letResp):
         if 'deletedFiles' in letResp:
             deletedFiles = letResp['deletedFiles']
             for file in deletedFiles:
                 self.__FCOTA.delete_file(file['fileName'])
 
+    def update_application_config(self, letResp, applicationID):
         try:
-            if application is None:
-                self.__conf['application'] = {
-                    "id": "",
-                    "release": {
-                          "id": "",
-                          "codeFilename": "",
-                          "version": 0
-                    }
-                }
-
             self.__conf['application']["id"] = applicationID
             self.__conf['application']['release']['id'] = letResp['target_version']['id']
             self.__conf['application']['release']['codeFilename'] = letResp['target_version']['codeFileName']
@@ -621,4 +638,69 @@ class PybytesProtocol:
         except Exception as e:
             print_debug(1, "error while updating pybytes_config.json! {}".format(e))
 
+    def update_network_config(self, letResp):
+        try:
+            if 'networkConfig' in letResp:
+                netConf = letResp['networkConfig']
+                self.__conf['network_preferences'] = netConf['networkPreferences']
+                if 'wifi' in netConf:
+                    self.__conf['wifi'] = netConf['wifi']
+                elif 'wifi' in self.__conf:
+                    del self.__conf['wifi']
+
+                if 'lte' in netConf:
+                    self.__conf['lte'] = netConf['lte']
+                elif 'lte' in self.__conf:
+                    del self.__conf['lte']
+
+                if 'lora' in netConf:
+                    self.__conf['lora'] = {
+                        'otaa': netConf['lora']['otaa'],
+                        'abp': netConf['lora']['abp']
+                    }
+                elif 'lora' in self.__conf:
+                    del self.__conf['lora']
+
+                json_string = ujson.dumps(self.__conf)
+                print_debug(1, "update_network_config : {}".format(json_string))
+                self.__FCOTA.update_file_content('/flash/pybytes_config.json', json_string)
+        except Exception as e:
+            print_debug(1, "error while updating network config pybytes_config.json! {}".format(e))
+
+    def update_firmware(self, body):
+        if "firmware" not in body:
+            print_debug(0, "no firmware to update")
+            return
+        version = body['firmware']["version"]
+        print_debug(0, "updating firmware to {}".format(version))
+        customManifest = {
+            "firmware": {
+                "URL": "https://{}/downloads/appimg/firmware_{}_{}.bin".format(
+                    constants.__DEFAULT_SW_HOST,
+                    os.uname().sysname,
+                    version),
+                }
+            }
+        self.write_firmware(customManifest)
+
+    def deploy_new_release(self, body):
+        try:
+            body = ujson.loads(body.decode())
+            print_debug(6, "body {}".format(body))
+        except Exception as e:
+            print_debug(0, "error while loading body {}".format(e))
+            return
+
+        newReleaseID = body["releaseId"]
+        applicationID, currentReleaseID = self.get_application_details(body)
+
+        letResp = self.get_update_manifest(applicationID, newReleaseID, currentReleaseID)
+        if not letResp:
+            return
+
+        self.update_files(letResp, applicationID, newReleaseID)
+        self.delete_files(letResp)
+        self.update_application_config(letResp, applicationID)
+        self.update_network_config(letResp)
+        self.update_firmware(letResp)
         machine.reset()
