@@ -25,8 +25,6 @@ BTYPE ?= release
 
 # make Non-Pybytes firmware default
 VARIANT ?=BASE
-# make Coap Module off by default
-COAP_MODULE ?=disabled
 
 ifeq ($(VARIANT),BASE)
 	BUILD_DIR ?=build
@@ -121,10 +119,6 @@ endif
 ifeq ($(OPENTHREAD), on)
     LIBS += -lopenthread
     CFLAGS += -DLORA_OPENTHREAD_ENABLED
-endif
-
-ifeq ($(COAP_MODULE), enabled)
-    CFLAGS += -DENABLE_COAP
 endif
 
 # Enable or Disable LTE_LOG_BUFF

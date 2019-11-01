@@ -138,7 +138,7 @@ class PybytesLibrary:
             wifi_deinit = True
 
         while not wifi_networks and scan_attempts < 5:
-            wifi_networks = self.__pybytes_connection.wlan.scan()
+            wifi_networks = self.__pybytes_connection.wlan.scan(type=WLAN.SCAN_PASSIVE)
             scan_attempts += 1
             print_debug(6, 'number of scanned wifi_networks: {}'.format(len(wifi_networks)))
             print_debug(6, 'scan_attempts: {}'.format(scan_attempts))

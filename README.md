@@ -74,7 +74,7 @@ Then when you need the toolchain you can type ``get_esp32`` on the command line 
 You also need the ESP IDF along side this repository in order to build the ESP32 port.
 To get it:
 
-    $ git clone --recursive -b idf_v3.1 https://github.com/pycom/pycom-esp-idf.git
+    $ git clone --recursive -b idf_v3.2 https://github.com/pycom/pycom-esp-idf.git
 
 After cloning, if you did not specify the --recursive option, make sure to checkout all the submodules:
 
@@ -109,7 +109,7 @@ Prior to building the main firmware, you need to build mpy-cross
 
 	$ cd mpy-cross && make clean && make && cd ..
 
-By default the firmware is built for the WIPY2:
+By default the firmware is built for the WIPY:
 
     $ cd esp32
     $ make clean
@@ -192,7 +192,17 @@ To create a release package for all currently supported Pycom boards in a direct
     $ cd esp32
     $ for BOARD in WIPY LOPY SIPY GPY FIPY LOPY4; do make BOARD=$BOARD clean && make BOARD=$BOARD RELEASE_DIR=~/pycom-packages release; done
 
+To inclue a step for copying IDF libs from IDF_PATH specify the following variable in the make command
 
+    COPY_IDF_LIB=1
+    
+To Buiild the firmware with Pybytes libs use the following make variable
+
+    VARIANT=PYBYTES
+    
+To Disable RGB Led control use the following make variable
+
+    RGB_LED=disable
 
 ## Steps for using Secure Boot and Flash Encryption
 

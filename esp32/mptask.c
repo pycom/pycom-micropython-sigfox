@@ -673,13 +673,8 @@ void mptask_config_wifi(bool force_start)
         mode = WIFI_MODE_APSTA;
         break;
     default:
-#if (VARIANT != PYBYTES)
         mode = WIFI_MODE_AP;
         config_set_wifi_mode((uint8_t)PYCOM_WIFI_CONF_MODE_AP, true);
-#else
-        mode = WIFI_MODE_STA;
-        config_set_wifi_mode((uint8_t)PYCOM_WIFI_CONF_MODE_STA, true);
-#endif
         break;
     }
 

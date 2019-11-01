@@ -6,7 +6,8 @@ see the Pycom Licence v1.0 document supplied with this file, or
 available at https://www.pycom.io/opensource/licensing
 '''
 
-import sys, pycom
+import sys
+import pycom
 
 
 class MQTTConstants:
@@ -125,6 +126,10 @@ See all available zone options for RC at https://support.sigfox.com/docs/radio-c
     except:
         __DEFAULT_SW_HOST = 'software.pycom.io'
     try:
-        __DEFAULT_PYCONFIG_DOMAIN = pycom.nvs_get('pyconfig_host', 'staging-pyconfig.eu-central-1.elasticbeanstalk.com')
+        __DEFAULT_PYCONFIG_DOMAIN = pycom.nvs_get('pyconfig_host', 'pyconfig.eu-central-1.elasticbeanstalk.com')
     except:
-        __DEFAULT_PYCONFIG_DOMAIN = 'staging-pyconfig.eu-central-1.elasticbeanstalk.com'
+        __DEFAULT_PYCONFIG_DOMAIN = 'pyconfig.eu-central-1.elasticbeanstalk.com'
+    try:
+        __DEFAULT_PYCONFIG_PROTOCOL = pycom.nvs_get('pyconfig_protocol', 'https')
+    except:
+        __DEFAULT_PYCONFIG_PROTOCOL = "https"

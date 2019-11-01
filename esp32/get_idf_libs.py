@@ -65,6 +65,7 @@ def main():
         shutil.copy(src + '/esp_ringbuf/libesp_ringbuf.a', dsttmpapp)
         if pymesh == 'on':
             shutil.copy(src + '/openthread/libopenthread.a', dsttmpapp)
+        shutil.copy(src + '/coap/libcoap.a', dsttmpapp)
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         traceback.print_exc()

@@ -32,13 +32,17 @@ import time
 import socket
 import struct
 import binascii
+import pycom
 from machine import WDT
 
 
 class PybytesConnection:
     def __init__(self, config, message_callback):
         self.__conf = config
-        self.__host = config.get('server')
+        try:
+            self.__host = pycom.nvs_get('pybytes_server')
+        except:
+            self.__host = config.get('server')
         self.__ssl = config.get('ssl', False)
         self.__ssl_params = config.get('ssl_params', {})
         self.__user_name = config.get('username')
@@ -139,6 +143,7 @@ class PybytesConnection:
                         return False
                     elif attempt == 3:
                         print("Error connecting using WIFI: %s" % e)
+                        return False
 
             self.__network_type = constants.__NETWORK_TYPE_WIFI
             print("WiFi connection established")
@@ -180,9 +185,13 @@ class PybytesConnection:
             try:
                 from network import LTE
                 time.sleep(3)
-                print_debug(1, 'LTE init(carrier={}, cid={})'.format(lte_cfg.get('carrier'), lte_cfg.get('cid', 1))) # noqa
+                if lte_cfg.get('carrier', 'standard') == 'standard':
+                    carrier = None
+                else:
+                    carrier = lte_cfg.get('carrier')
+                print_debug(1, 'LTE init(carrier={}, cid={})'.format(carrier, lte_cfg.get('cid', 1))) # noqa
                 # instantiate the LTE object
-                self.lte = LTE(carrier=lte_cfg.get('carrier'), cid=lte_cfg.get('cid', 1))
+                self.lte = LTE(carrier=carrier, cid=lte_cfg.get('cid', 1))
                 try:
                     lte_type = lte_cfg.get('type') if len(lte_cfg.get('type')) > 0 else None
                 except:

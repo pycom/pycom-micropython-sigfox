@@ -184,8 +184,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_idle_obj, machine_idle);
 STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
 
     bool reconnect = false;
-    bt_deinit(NULL);
-    wlan_deinit(NULL);
+
 #if defined(FIPY) || defined(GPY)
     if (lteppp_modem_state() < E_LTE_MODEM_DISCONNECTED) {
         lteppp_deinit();
@@ -223,6 +222,9 @@ STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
         }
     }
 
+    modbt_deinit(reconnect);
+    wlan_deinit(NULL);
+
     if(ESP_OK != esp_light_sleep_start())
     {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Wifi or BT not stopped before sleep"));
@@ -241,7 +243,7 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
 #ifndef RGB_LED_DISABLE
     mperror_enable_heartbeat(false);
 #endif
-    bt_deinit(NULL);
+    modbt_deinit(false);
     wlan_deinit(NULL);
 #if defined(FIPY) || defined(GPY)
     if (lteppp_modem_state() < E_LTE_MODEM_DISCONNECTED) {
