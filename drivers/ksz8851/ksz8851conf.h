@@ -1,7 +1,7 @@
 #ifndef KSZ8851CONF_H
 #define KSZ8851CONF_H
 
-#define KSZ8851_SPI_NUM                                          (SpiNum_SPI2)
+#define KSZ8851_SPI_NUM                                          (SpiNum_SPI3)
 #define KSZ8851_SCLK_PIN                                         (&PIN_MODULE_P21)
 #define KSZ8851_MOSI_PIN                                         (&PIN_MODULE_P23)
 #define KSZ8851_MISO_PIN                                         (&PIN_MODULE_P17)

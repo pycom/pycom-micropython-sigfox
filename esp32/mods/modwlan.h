@@ -88,7 +88,6 @@ typedef struct _wlan_obj_t {
 
     uint8_t                 irq_flags;
     bool                    irq_enabled;
-    bool                    enable_servers;
     bool                    disconnected;
     bool                    sta_conn_timeout;
     bool                    soft_ap_stopped;

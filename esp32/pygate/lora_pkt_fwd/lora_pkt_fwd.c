@@ -110,7 +110,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #define COM_PATH_DEFAULT "/dev/ttyACM0"
 
 #define LORA_GW_STACK_SIZE                                             (15000)
-#define LORA_GW_PRIORITY                                               (6)
+#define LORA_GW_PRIORITY                                               (10)
 
 TaskHandle_t xLoraGwTaskHndl;
 typedef void (*_sig_func_cb_ptr)(int);

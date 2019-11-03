@@ -23,7 +23,6 @@
 #include "netutils.h"
 
 #include "esp_system.h"
-#include "esp_event_loop.h"
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_eth.h"
@@ -41,21 +40,36 @@
 #include "freertos/event_groups.h"
 #include "freertos/timers.h"
 
-#define ETHERNET_TASK_STACK_SIZE        4608
-#define ETHERNET_TASK_PRIORITY          5
-#define ETHERNET_RX_PACKET_BUFF_SIZE    (1500)
-#define ETHERNET_CHECK_LINK_PERIOD_MS   2000
-#define ETHERNET_CMD_QUEUE_SIZE         200
+#include "esp32chipinfo.h"
+#include "app_sys_evt.h"
 
+/*****************************************************************************
+* DEFINE CONSTANTS
+*****************************************************************************/
+#define ETHERNET_TASK_STACK_SIZE        3072
+#define ETHERNET_TASK_PRIORITY          12
+#define ETHERNET_CHECK_LINK_PERIOD_MS   2000
+#define ETHERNET_CMD_QUEUE_SIZE         100
+
+//EVENT bits
+#define ETHERNET_EVT_CONNECTED        0x0001
+#define ETHERNET_EVT_STARTED          0x0002
+
+/*****************************************************************************
+* DECLARE PRIVATE FUNCTIONS
+*****************************************************************************/
 static void TASK_ETHERNET (void *pvParameters);
 static mp_obj_t eth_init_helper(eth_obj_t *self, const mp_arg_val_t *args);
 static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt);
 static void process_tx(uint8_t* buff, uint16_t len);
 static void process_rx(void);
 static void eth_validate_hostname (const char *hostname);
+static esp_err_t modeth_event_handler(void *ctx, system_event_t *event);
 
-
-eth_obj_t eth_obj = {
+/*****************************************************************************
+* DECLARE PRIVATE DATA
+*****************************************************************************/
+eth_obj_t DRAM_ATTR eth_obj = {
         .mac = {0},
         .hostname = {0},
         .link_status = false,
@@ -66,19 +80,31 @@ eth_obj_t eth_obj = {
         .handler_arg = NULL
 };
 
-static uint8_t modeth_rxBuff[ETHERNET_RX_PACKET_BUFF_SIZE];
+static uint8_t* modeth_rxBuff = NULL;
 #if defined(FIPY) || defined(GPY)
 // Variable saving DNS info
 static tcpip_adapter_dns_info_t eth_sta_inf_dns_info;
 #endif
 uint8_t ethernet_mac[ETH_MAC_SIZE] = {0};
-xQueueHandle eth_cmdQueue = NULL;
+xQueueHandle DRAM_ATTR eth_cmdQueue = NULL;
+static DRAM_ATTR EventGroupHandle_t eth_event_group;
+
+/*****************************************************************************
+* DEFINE PUBLIC FUNCTIONS
+*****************************************************************************/
 
 void eth_pre_init (void) {
+    // init tcpip stack
     tcpip_adapter_init();
-    eth_obj.sem = xSemaphoreCreateBinary();
+    // init tcpip eth evt handlers to default
+    esp_event_set_default_eth_handlers();
+    // register eth app evt handler
+    app_sys_register_evt_cb(APP_SYS_EVT_ETH, modeth_event_handler);
     //Create cmd Queue
     eth_cmdQueue = xQueueCreate(ETHERNET_CMD_QUEUE_SIZE, sizeof(modeth_cmd_ctx_t));
+    //Create event group
+    eth_event_group = xEventGroupCreate();
+
     // create eth Task
     xTaskCreatePinnedToCore(TASK_ETHERNET, "ethernet_task", ETHERNET_TASK_STACK_SIZE / sizeof(StackType_t), NULL, ETHERNET_TASK_PRIORITY, &ethernetTaskHandle, 1);
 }
@@ -87,6 +113,269 @@ void modeth_get_mac(uint8_t *mac)
 {
     memcpy(mac, ethernet_mac, ETH_MAC_SIZE);
 }
+
+eth_speed_mode_t get_eth_link_speed(void)
+{
+    uint16_t speed = ksz8851_regrd(REG_PORT_STATUS);
+    if((speed & (PORT_STAT_SPEED_100MBIT)))
+    {
+        return ETH_SPEED_MODE_100M;
+    }
+    else
+    {
+        return ETH_SPEED_MODE_10M;
+    }
+}
+
+bool is_eth_link_up(void)
+{
+    return eth_obj.link_status;
+}
+
+/*****************************************************************************
+* DEFINE PRIVATE FUNCTIONS
+*****************************************************************************/
+
+static esp_err_t modeth_event_handler(void *ctx, system_event_t *event)
+{
+    tcpip_adapter_ip_info_t ip;
+
+    switch (event->event_id) {
+    case SYSTEM_EVENT_ETH_CONNECTED:
+        //printf("Ethernet Link Up\n");
+        break;
+    case SYSTEM_EVENT_ETH_DISCONNECTED:
+        //printf( "Ethernet Link Down\n");
+        mod_network_deregister_nic(&eth_obj);
+        xEventGroupClearBits(eth_event_group, ETHERNET_EVT_CONNECTED);
+        break;
+    case SYSTEM_EVENT_ETH_START:
+        //printf( "Ethernet Started\n");
+        break;
+    case SYSTEM_EVENT_ETH_GOT_IP:
+        memset(&ip, 0, sizeof(tcpip_adapter_ip_info_t));
+        ESP_ERROR_CHECK(tcpip_adapter_get_ip_info(ESP_IF_ETH, &ip));
+        //printf( "Ethernet Got IP Addr\n");
+        //printf( "~~~~~~~~~~~\n");
+        //printf( "ETHIP:\n" IPSTR, IP2STR(&ip.ip));
+        //printf( "ETHMASK:\n" IPSTR, IP2STR(&ip.netmask));
+        //printf( "ETHGW:\n" IPSTR, IP2STR(&ip.gw));
+        //printf( "~~~~~~~~~~~\n");
+#if defined(FIPY) || defined(GPY)
+        // Save DNS info for restoring if wifi inf is usable again after LTE disconnect
+        tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &eth_sta_inf_dns_info);
+#endif
+        mod_network_register_nic(&eth_obj);
+        xEventGroupSetBits(eth_event_group, ETHERNET_EVT_CONNECTED);
+        break;
+    case SYSTEM_EVENT_ETH_STOP:
+        //printf( "Ethernet Stopped\n");
+        xEventGroupClearBits(eth_event_group, ETHERNET_EVT_STARTED);
+        break;
+    default:
+        break;
+    }
+    return ESP_OK;
+}
+
+static void eth_set_default_inf(void)
+{
+#if defined(FIPY) || defined(GPY)
+    tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &eth_sta_inf_dns_info);
+    tcpip_adapter_up(TCPIP_ADAPTER_IF_ETH);
+#endif
+}
+static void process_tx(uint8_t* buff, uint16_t len)
+{
+    if (eth_obj.link_status) {
+        ksz8851BeginPacketSend(len);
+        ksz8851SendPacketData(buff, len);
+        ksz8851EndPacketSend();
+    }
+}
+static void process_rx(void)
+{
+    uint32_t len, frameCnt;
+
+    frameCnt = (ksz8851_regrd(REG_RX_FRAME_CNT_THRES) & RX_FRAME_CNT_MASK) >> 8;
+    while (frameCnt > 0)
+    {
+        ksz8851RetrievePacketData(modeth_rxBuff, &len);
+        if(len)
+        {
+            tcpip_adapter_eth_input(modeth_rxBuff, len, NULL);
+        }
+        frameCnt--;
+    }
+}
+static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt)
+{
+    modeth_cmd_ctx_t ctx;
+    portBASE_TYPE tmp;
+    uint16_t isr;
+
+    isr = ksz8851_regrd(REG_INT_STATUS);
+
+    if(ksz8851_evt & KSZ8851_LINK_CHG_INT)
+    {
+        /* Clear overrun interrupt */
+        isr |= INT_PHY;
+        ctx.cmd = ETH_CMD_CHK_LINK;
+        ctx.buf = NULL;
+        // unblock task if link up
+        if(!eth_obj.link_status)
+        {
+            xTaskNotifyFromISR(ethernetTaskHandle, 0, eIncrement, NULL);
+        }
+        xQueueSendToFrontFromISR(eth_cmdQueue, &ctx, &tmp);
+        if (tmp != pdFALSE) {
+            portYIELD_FROM_ISR();
+        }
+    }
+
+    if(ksz8851_evt & KSZ8851_RX_INT)
+    {
+        /* Clear overrun interrupt */
+        isr |= INT_RX;
+        ctx.cmd = ETH_CMD_RX;
+        ctx.buf = NULL;
+        xQueueSendFromISR(eth_cmdQueue, &ctx, &tmp);
+        if (tmp != pdFALSE) {
+            portYIELD_FROM_ISR();
+        }
+    }
+
+    if(ksz8851_evt & KSZ8851_OVERRUN_INT)
+    {
+        /* Clear overrun interrupt */
+        isr |= INT_RX_OVERRUN;
+        //Re-enable  interrupts
+        ksz8851_regwr(REG_INT_MASK, INT_MASK);
+        //printf("\n\n===================OVERRUN=====================\n\n");
+    }
+
+    //Clear interrupts
+    ksz8851_regwr(REG_INT_STATUS, isr);
+    //Re-enable  interrupts
+    ksz8851_regwr(REG_INT_MASK, INT_MASK);
+}
+
+static void TASK_ETHERNET (void *pvParameters) {
+
+    static uint32_t thread_notification;
+    system_event_t evt;
+    modeth_cmd_ctx_t queue_entry;
+
+    // Block task till notification is recieved
+    thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    if (thread_notification)
+    {
+        if(ESP_OK != esp_read_mac(ethernet_mac, ESP_MAC_ETH))
+        {
+            // Set mac to default
+            ethernet_mac[0] = KSZ8851_MAC0;
+            ethernet_mac[1] = KSZ8851_MAC1;
+            ethernet_mac[2] = KSZ8851_MAC2;
+            ethernet_mac[3] = KSZ8851_MAC3;
+            ethernet_mac[4] = KSZ8851_MAC4;
+            ethernet_mac[5] = KSZ8851_MAC5;
+        }
+        else
+        {
+            // check for MAC address limitation of KSZ8851 (5th Byte should not be 0x06)
+            if(ethernet_mac[4] == 0x06)
+            {
+                // OR this byte with last byte
+                ethernet_mac[4] |= (ethernet_mac[5] | 0x01 /*Just in case if last byte = 0*/ );
+            }
+        }
+        //save mac
+        memcpy(eth_obj.mac, ethernet_mac, ETH_MAC_SIZE);
+
+        //Init spi
+        ksz8851SpiInit();
+        /* link status  */
+        ksz8851RegisterEvtCb(ksz8851_evt_callback);
+eth_start:
+        xEventGroupWaitBits(eth_event_group, ETHERNET_EVT_STARTED, false, true, portMAX_DELAY);
+        // Init Driver
+        ksz8851Init();
+
+        evt.event_id = SYSTEM_EVENT_ETH_START;
+        esp_event_send(&evt);
+
+        for(;;)
+        {
+            if(!eth_obj.link_status && (xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED))
+            {
+                // block till link is up again
+                ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+            }
+
+            if(!(xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED))
+            {
+                // deinit called, free memory and block till re-init
+                heap_caps_free(modeth_rxBuff);
+                eth_obj.link_status = false;
+                evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
+                esp_event_send(&evt);
+                //Disable  interrupts
+                ksz8851_regwr(REG_INT_MASK, 0x0000);
+                goto eth_start;
+            }
+            // Introduce some delay so not to let task be transparently driven by Interrupt
+            vTaskDelay(10/portTICK_PERIOD_MS);
+
+            if (xQueueReceive(eth_cmdQueue, &queue_entry, 0) == pdTRUE)
+            {
+                switch(queue_entry.cmd)
+                {
+                    case ETH_CMD_TX:
+                        process_tx(queue_entry.buf, queue_entry.len);
+                        //printf("TX command\n");
+                        break;
+                    case ETH_CMD_RX:
+                        process_rx();
+                        printf("RX command\n");
+                        break;
+                    case ETH_CMD_CHK_LINK:
+                        if(ksz8851GetLinkStatus())
+                        {
+                            eth_obj.link_status = true;
+                            evt.event_id = SYSTEM_EVENT_ETH_CONNECTED;
+                            esp_event_send(&evt);
+                        }
+                        else
+                        {
+                            eth_obj.link_status = false;
+                            evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
+                            esp_event_send(&evt);
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+}
+
+STATIC void eth_validate_hostname (const char *hostname) {
+    //dont set hostname it if is null, so its a valid hostname
+    if (hostname == NULL) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+    }
+
+    uint8_t len = strlen(hostname);
+    if(len == 0 || len > TCPIP_HOSTNAME_MAX_SIZE){
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
+    }
+}
+
+/*****************************************************************************
+* MICROPYTHON FUNCTIONS
+*****************************************************************************/
 
 STATIC const mp_arg_t eth_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,  {.u_int = 0} },
@@ -131,254 +420,28 @@ STATIC mp_obj_t eth_init_helper(eth_obj_t *self, const mp_arg_val_t *args) {
         tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_ETH, hostname);
     }
 
-    //Notify task to start right away
-    xTaskNotifyGive(ethernetTaskHandle);
-    return mp_const_none;
-}
-
-static esp_err_t modeth_event_handler(void *ctx, system_event_t *event)
-{
-    tcpip_adapter_ip_info_t ip;
-
-    printf("ID:%d\n", event->event_id);
-
-    switch (event->event_id) {
-    case SYSTEM_EVENT_ETH_CONNECTED:
-        mp_printf(&mp_plat_print,"Ethernet Link Up\n");
-        break;
-    case SYSTEM_EVENT_ETH_DISCONNECTED:
-        mp_printf(&mp_plat_print, "Ethernet Link Down\n");
-        mod_network_deregister_nic(&eth_obj);
-        break;
-    case SYSTEM_EVENT_ETH_START:
-        mp_printf(&mp_plat_print, "Ethernet Started\n");
-        break;
-    case SYSTEM_EVENT_ETH_GOT_IP:
-        memset(&ip, 0, sizeof(tcpip_adapter_ip_info_t));
-        ESP_ERROR_CHECK(tcpip_adapter_get_ip_info(ESP_IF_ETH, &ip));
-        mp_printf(&mp_plat_print, "Ethernet Got IP Addr\n");
-        mp_printf(&mp_plat_print, "~~~~~~~~~~~\n");
-        mp_printf(&mp_plat_print, "ETHIP:" IPSTR, IP2STR(&ip.ip));
-        mp_printf(&mp_plat_print, "ETHMASK:" IPSTR, IP2STR(&ip.netmask));
-        mp_printf(&mp_plat_print, "ETHGW:" IPSTR, IP2STR(&ip.gw));
-        mp_printf(&mp_plat_print, "~~~~~~~~~~~\n");
-#if defined(FIPY) || defined(GPY)
-        // Save DNS info for restoring if wifi inf is usable again after LTE disconnect
-        tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &eth_sta_inf_dns_info);
-#endif
-        mod_network_register_nic(&eth_obj);
-        break;
-    case SYSTEM_EVENT_ETH_STOP:
-        mp_printf(&mp_plat_print, "Ethernet Stopped\n");
-        break;
-    default:
-        break;
-    }
-    return ESP_OK;
-}
-
-STATIC void eth_set_default_inf(void)
-{
-#if defined(FIPY) || defined(GPY)
-    tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &eth_sta_inf_dns_info);
-    tcpip_adapter_up(TCPIP_ADAPTER_IF_ETH);
-#endif
-}
-static void process_tx(uint8_t* buff, uint16_t len)
-{
-    if (eth_obj.link_status) {
-        ksz8851BeginPacketSend(len);
-        ksz8851SendPacketData(buff, len);
-        ksz8851EndPacketSend();
-    }
-}
-static void process_rx(void)
-{
-    uint32_t len, frameCnt;
-    uint32_t isr = ksz8851_regrd(REG_INT_STATUS);
-    uint32_t ier = ksz8851_regrd(REG_INT_MASK);
-
-    /* Clear RX interrupt */
-    isr |= INT_RX;
-    ksz8851_regwr(REG_INT_STATUS, isr);
-    frameCnt = (ksz8851_regrd(REG_RX_FRAME_CNT_THRES) & RX_FRAME_CNT_MASK) >> 8;
-    while (frameCnt > 0)
-    {
-        ksz8851RetrievePacketData(modeth_rxBuff, &len);
-        if(len)
-        {
-            tcpip_adapter_eth_input(modeth_rxBuff, len, NULL);
+    if (!(xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED)) {
+        //alloc memory for rx buff
+        if (esp32_get_chip_rev() > 0) {
+            modeth_rxBuff = heap_caps_malloc(ETHERNET_RX_PACKET_BUFF_SIZE, MALLOC_CAP_SPIRAM);
         }
         else
         {
-            printf("Error recieve  \n");
+            modeth_rxBuff = heap_caps_malloc(ETHERNET_RX_PACKET_BUFF_SIZE, MALLOC_CAP_INTERNAL);
         }
-        frameCnt--;
-    }
-    //Re-enable RX interrupt
-    ier |= INT_RX;
-    ksz8851_regwr(REG_INT_MASK, ier);
-}
-static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt)
-{
-    modeth_cmd_ctx_t ctx;
-    portBASE_TYPE tmp;
-    uint16_t ier, isr;
 
-    if(ksz8851_evt & KSZ8851_LINK_CHG_INT)
-    {
-        ctx.cmd = ETH_CMD_CHK_LINK;
-        ctx.buf = NULL;
-        xQueueSendToFrontFromISR(eth_cmdQueue, &ctx, &tmp);
-        if (tmp != pdFALSE) {
-            portYIELD_FROM_ISR();
-        }
-        // unblock task if link up
-        if(!eth_obj.link_status)
+        if(modeth_rxBuff == NULL)
         {
-            xTaskNotifyFromISR(ethernetTaskHandle, 0, eIncrement, NULL);
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Cant allocate memory for eth rx Buffer!"));
         }
+
+        xEventGroupSetBits(eth_event_group, ETHERNET_EVT_STARTED);
+
+        //Notify task to start right away
+        xTaskNotifyGive(ethernetTaskHandle);
     }
 
-    if(ksz8851_evt & KSZ8851_RX_INT)
-    {
-        ctx.cmd = ETH_CMD_RX;
-        ctx.buf = NULL;
-        xQueueSendFromISR(eth_cmdQueue, &ctx, &tmp);
-        if (tmp != pdFALSE) {
-            portYIELD_FROM_ISR();
-        }
-    }
-
-    if(ksz8851_evt & KSZ8851_OVERRUN_INT)
-    {
-        isr = ksz8851_regrd(REG_INT_STATUS);
-        ier = ksz8851_regrd(REG_INT_MASK);
-
-        /* Clear LINK interrupt */
-        isr |= INT_RX_OVERRUN;
-        ksz8851_regwr(REG_INT_STATUS, isr);
-        //Re-enable LINK interrupt
-        ier |= INT_RX_OVERRUN;
-        ksz8851_regwr(REG_INT_MASK, ier);
-    }
-}
-
-
-eth_speed_mode_t get_eth_link_speed(void)
-{
-    uint16_t speed = ksz8851_regrd(REG_PORT_STATUS);
-    if((speed & (PORT_STAT_SPEED_100MBIT)))
-    {
-        return ETH_SPEED_MODE_100M;
-    }
-    else
-    {
-        return ETH_SPEED_MODE_10M;
-    }
-}
-
-bool is_eth_link_up(void)
-{
-    return eth_obj.link_status;
-}
-
-static void TASK_ETHERNET (void *pvParameters) {
-
-    static uint32_t thread_notification;
-    system_event_t evt;
-    modeth_cmd_ctx_t queue_entry;
-    uint32_t ier, isr;
-
-    /*TODO: Interrupt registration*/
-
-    // Block task till notification is recieved
-    thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-    if (thread_notification)
-    {
-        ESP_ERROR_CHECK(esp_event_loop_init(modeth_event_handler, NULL));
-        esp_event_set_default_eth_handlers();
-        //esp_read_mac(ethernet_mac, ESP_MAC_ETH);
-        ethernet_mac[0] = KSZ8851_MAC0;
-        ethernet_mac[1] = KSZ8851_MAC1;
-        ethernet_mac[2] = KSZ8851_MAC2;
-        ethernet_mac[3] = KSZ8851_MAC3;
-        ethernet_mac[4] = KSZ8851_MAC4;
-        ethernet_mac[5] = KSZ8851_MAC5;
-        //save mac
-        memcpy(eth_obj.mac, ethernet_mac, ETH_MAC_SIZE);
-
-        //Init spi
-        ksz8851SpiInit();
-        // Init Driver
-        ksz8851Init();
-        /* link status  */
-        ksz8851RegisterEvtCb(ksz8851_evt_callback);
-
-        evt.event_id = SYSTEM_EVENT_ETH_START;
-        esp_event_send(&evt);
-
-        for(;;)
-        {
-            if(!eth_obj.link_status)
-            {
-                // block till link is up again
-                ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-            }
-
-            if (xQueueReceive(eth_cmdQueue, &queue_entry, 0) == pdTRUE)
-            {
-                switch(queue_entry.cmd)
-                {
-                    case ETH_CMD_TX:
-                        process_tx(queue_entry.buf, queue_entry.len);
-                        break;
-                    case ETH_CMD_RX:
-                        process_rx();
-                        break;
-                    case ETH_CMD_CHK_LINK:
-                        isr = ksz8851_regrd(REG_INT_STATUS);
-                        ier = ksz8851_regrd(REG_INT_MASK);
-
-                        /* Clear LINK interrupt */
-                        isr |= INT_PHY;
-                        ksz8851_regwr(REG_INT_STATUS, isr);
-
-                        if(ksz8851GetLinkStatus())
-                        {
-                            eth_obj.link_status = true;
-                            evt.event_id = SYSTEM_EVENT_ETH_CONNECTED;
-                            esp_event_send(&evt);
-                        }
-                        else
-                        {
-                            eth_obj.link_status = false;
-                            evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
-                            esp_event_send(&evt);
-                        }
-                        //Re-enable LINK interrupt
-                        ier |= INT_PHY;
-                        ksz8851_regwr(REG_INT_MASK, ier);
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-    }
-}
-
-STATIC void eth_validate_hostname (const char *hostname) {
-    //dont set hostname it if is null, so its a valid hostname
-    if (hostname == NULL) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
-    }
-
-    uint8_t len = strlen(hostname);
-    if(len == 0 || len > TCPIP_HOSTNAME_MAX_SIZE){
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
-    }
+    return mp_const_none;
 }
 
 STATIC mp_obj_t eth_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -466,15 +529,55 @@ STATIC mp_obj_t modeth_mac (mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(modeth_mac_obj, modeth_mac);
 
+STATIC mp_obj_t modeth_enable_intr (mp_uint_t n_args, const mp_obj_t *args) {
+
+    if(mp_obj_get_int(args[2]) == 0)
+    {
+        return mp_obj_new_int(ksz8851_regrd(mp_obj_get_int(args[1])));
+    }
+    else
+    {
+        if (n_args > 3) {
+            ksz8851_regwr(mp_obj_get_int(args[1]), mp_obj_get_int(args[3]));
+        }
+        return mp_const_none;
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(modeth_enable_intr_obj, 3, 4, modeth_enable_intr);
+
+STATIC mp_obj_t modeth_deinit (mp_obj_t self_in) {
+
+    system_event_t evt;
+
+    if ((xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED)) {
+        mod_network_deregister_nic(&eth_obj);
+        evt.event_id = SYSTEM_EVENT_ETH_STOP;
+        esp_event_send(&evt);
+
+        ksz8851PowerDownMode();
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(modeth_deinit_obj, modeth_deinit);
+
+STATIC mp_obj_t modeth_isconnected(mp_obj_t self_in) {
+    if (xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_CONNECTED) {
+        return mp_const_true;
+    }
+    return mp_const_false;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(modeth_isconnected_obj, modeth_isconnected);
+
 STATIC const mp_map_elem_t eth_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&modeth_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ifconfig),            (mp_obj_t)&eth_ifconfig_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_hostname),            (mp_obj_t)&eth_hostname_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&modeth_mac_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&modeth_deinit_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_isconnected),         (mp_obj_t)&modeth_isconnected_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_events),         (mp_obj_t)&modeth_enable_intr_obj },
 
-
-    // class constants
-    { MP_OBJ_NEW_QSTR(MP_QSTR_STA),                         MP_OBJ_NEW_SMALL_INT(WIFI_MODE_STA) },
 };
 STATIC MP_DEFINE_CONST_DICT(eth_locals_dict, eth_locals_dict_table);
 
@@ -501,6 +604,6 @@ const mod_network_nic_type_t mod_network_nic_type_eth = {
     .n_settimeout = lwipsocket_socket_settimeout,
     .n_ioctl = lwipsocket_socket_ioctl,
     .n_setupssl = lwipsocket_socket_setup_ssl,
-    .inf_up = NULL,
+    .inf_up = is_eth_link_up,
     .set_default_inf = eth_set_default_inf
 };

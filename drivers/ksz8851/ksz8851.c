@@ -44,13 +44,13 @@ static uint16_t	length_sum;
 static uint8_t	frameID = 0;
 static DRAM_ATTR ksz8851_evt_cb_t evt_cb_func = NULL;
 
-static void gpio_set_value(pin_obj_t *pin_o, uint32_t value);
-static void ksz8851ProcessInterrupt(void);
+static IRAM_ATTR void gpio_set_value(pin_obj_t *pin_o, uint32_t value);
+static IRAM_ATTR void ksz8851ProcessInterrupt(void);
 
 static void init_spi(void) {
     // this is SpiNum_SPI2
-    DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_SPI_CLK_EN);
-    DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_SPI_RST);
+    DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_SPI_CLK_EN_2);
+    DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_SPI_RST_2);
 
     // configure the SPI port
     spi_attr_t spi_attr = {.mode = SpiMode_Master, .subMode = SpiSubMode_0, .speed = SpiSpeed_8MHz,
@@ -75,9 +75,9 @@ static void init_spi(void) {
     SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(KSZ8851_SPI_NUM), SPI_USR_MISO_DBITLEN, 7, SPI_USR_MISO_DBITLEN_S);
 
     // assign the SPI pins to the GPIO matrix and configure the AF
-    pin_config(KSZ8851_MISO_PIN, HSPIQ_IN_IDX, -1, GPIO_MODE_INPUT, MACHPIN_PULL_NONE, 0);
-    pin_config(KSZ8851_MOSI_PIN, -1, HSPID_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
-    pin_config(KSZ8851_SCLK_PIN, -1, HSPICLK_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
+    pin_config(KSZ8851_MISO_PIN, VSPIQ_IN_IDX, -1, GPIO_MODE_INPUT, MACHPIN_PULL_NONE, 0);
+    pin_config(KSZ8851_MOSI_PIN, -1, VSPID_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
+    pin_config(KSZ8851_SCLK_PIN, -1, VSPICLK_OUT_IDX, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
     pin_config(KSZ8851_NSS_PIN, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_UP, 1);
 	pin_config(KSZ8851_RST_PIN, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
 	pin_config((&PIN_MODULE_P20), -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
@@ -86,7 +86,7 @@ static void init_spi(void) {
 }
 
 /* spi_byte() sends one byte (outdat) and returns the received byte */
-static uint8_t spi_byte(uint8_t outdat) {
+static IRAM_ATTR uint8_t spi_byte(uint8_t outdat) {
     // load the send buffer
     WRITE_PERI_REG(SPI_W0_REG(KSZ8851_SPI_NUM), outdat);
     // start to send data
@@ -96,7 +96,7 @@ static uint8_t spi_byte(uint8_t outdat) {
     return READ_PERI_REG(SPI_W0_REG(KSZ8851_SPI_NUM));
 }
 
-static void gpio_set_value(pin_obj_t *pin_o, uint32_t value) {
+static IRAM_ATTR void gpio_set_value(pin_obj_t *pin_o, uint32_t value) {
     // set the pin value
     if (value) {
         pin_o->value = 1;
@@ -113,7 +113,7 @@ static void gpio_set_value(pin_obj_t *pin_o, uint32_t value) {
  * Continue an SPI transfer (leaving CSN in the asserted state), or
  * End an SPI transfer (negating CSN at the end of the transfer).
  */
-static void spi_op(uint8_t phase, uint16_t cmd, uint8_t *buf, uint16_t len) {
+static IRAM_ATTR void spi_op(uint8_t phase, uint16_t cmd, uint8_t *buf, uint16_t len) {
 	uint16_t	opcode;
 	uint16_t	ii;
 
@@ -151,34 +151,27 @@ static void spi_op(uint8_t phase, uint16_t cmd, uint8_t *buf, uint16_t len) {
 */
 static IRAM_ATTR void ksz8851ProcessInterrupt(void) {
     uint16_t isr;
-    uint16_t ier;
     uint32_t evt = 0;
 
-    ier = ksz8851_regrd(REG_INT_MASK);
     // Disable interrupts to release the interrupt line
     ksz8851_regwr(REG_INT_MASK, 0x0000 );
     // Read INT status
     isr = ksz8851_regrd(REG_INT_STATUS);
 
     if (isr & INT_RX_OVERRUN) {
-        //Disable overrun interrupt
-        ier &= ~INT_RX_OVERRUN;
+        //set overrun event
         evt |= KSZ8851_OVERRUN_INT;
     }
 
     if (isr & INT_PHY) {
-        //Disable LCIE interrupt
-        ier &= ~INT_PHY;
+        //set LCIE event
         evt |= KSZ8851_LINK_CHG_INT;
     }
 
     if (isr & INT_RX) {
-        //Disable RXIE interrupt
-        ier &= ~INT_RX;
+        //set RXIE event
         evt |= KSZ8851_RX_INT;
     }
-
-    ksz8851_regwr(REG_INT_MASK, ier);
 
     /* Notify upper layer*/
     if((evt_cb_func != NULL) && evt)
@@ -277,10 +270,10 @@ bool ksz8851GetLinkStatus(void) {
     port_status = ksz8851_regrd(REG_PORT_STATUS);
     return (port_status & PORT_STATUS_LINK_GOOD);
 }
-/* ksz8851PhyReset() reset Phy.
+/* ksz8851PowerSavingMode() go to power save mode.
  */
-void ksz8851PhyReset(void) {
-    ksz8851_regwr(REG_PHY_RESET, PHY_RESET);
+void ksz8851PowerDownMode(void) {
+    spi_setbits(REG_PHY_CNTL, PHY_POWER_DOWN);
 }
 
 /* ksz8851SoiInit() initializes the spi for ksz8851.
@@ -293,6 +286,7 @@ void ksz8851SpiInit(void) {
  */
 void ksz8851Init(void) {
 	uint16_t	dev_id;
+	uint16_t pwrctrl;
 
 	/* Make sure we get a valid chip ID before going on */
 	do {
@@ -390,6 +384,13 @@ void ksz8851Init(void) {
     pin_extint_register(KSZ8851_INT_PIN, GPIO_INTR_NEGEDGE, 0);
     machpin_register_irq_c_handler(KSZ8851_INT_PIN, (void *)ksz8851ProcessInterrupt);
     pin_irq_enable(KSZ8851_INT_PIN);
+
+    //set power save mode when cable is disconnected or link down
+    pwrctrl = ksz8851_regrd(REG_POWER_CNTL);
+    pwrctrl &= ~0x0003;
+    pwrctrl |= POWER_STATE_D1;
+    ksz8851_regwr(REG_POWER_CNTL, pwrctrl);
+    spi_setbits(REG_PORT_LINK_MD, PORT_POWER_SAVE_MODE);
 
     /* Enable Link change interrupt , enable  tx/Rx interrupts */
     spi_setbits(REG_INT_MASK, INT_MASK );
@@ -491,93 +492,6 @@ void ksz8851EndPacketSend(void) {
 	while (ksz8851_regrd(REG_TXQ_CMD) & TXQ_ENQUEUE);
 }
 
-
-/* ksz8851BeginPacketRetrieve() checks to see if there are any packets
- * available.  If not, it returns 0.
- * If there are packets available, it gets the number of packets
- * available and the length of the first packet.  If there are any
- * errors in the packet, it releases that packet from the ksz8851.
- * It then sets up the ksz8851 for RXQ read access, reads the first
- * DWORD (which is garbage), then reads the 4-byte status word/byte
- * count, then the 2-byte alignment word.
- * Finally, it returns the length of the packet (without the CRC
- * trailer).
-*/
-unsigned int ksz8851BeginPacketRetrieve(void) {
-	/*static*/ uint8_t rxFrameCount = 0;
-	uint16_t	rxfctr, rxfhsr;
-	int16_t	rxPacketLength;
-	uint8_t	dummy[4];
-
-	//if (rxFrameCount == 0) {
-
-		//if (!(ksz8851_regrd(REG_INT_STATUS) & INT_RX)) {
-			/* No packets available */
-			//return 0;
-		//}
-
-		/* Clear Rx flag */
-		//spi_setbits(REG_INT_STATUS, INT_RX);
-
-		/* Read rx total frame count */
-    rxfctr = ksz8851_regrd(REG_RX_FRAME_CNT_THRES);
-    rxFrameCount = (rxfctr & RX_FRAME_CNT_MASK) >> 8;
-
-    if (rxFrameCount == 0)
-        return 0;
-	//}
-
-	/* read rx frame header status */
-	rxfhsr = ksz8851_regrd(REG_RX_FHR_STATUS);
-
-	//printf("rxfhsr = 0x%x\n", rxfhsr);
-
-	if (rxfhsr & RX_ERRORS) {
-		/* Packet has errors */
-		printf("rx errors: rxfhsr = 0x%x\n", rxfhsr);
-
-		/* Issue the RELEASE error frame command */
-		spi_setbits(REG_RXQ_CMD, RXQ_CMD_FREE_PACKET);
-
-		//rxFrameCount--;
-
-		return 0;
-	}
-
-	/* Read byte count (4-byte CRC included) */
-	rxPacketLength = ksz8851_regrd(REG_RX_FHR_BYTE_CNT) & RX_BYTE_CNT_MASK;
-
-	if (rxPacketLength <= 0) {
-		printf("Error: rxPacketLength = %d\n", rxPacketLength);
-
-		/* Issue the RELEASE error frame command */
-		spi_setbits(REG_RXQ_CMD, RXQ_CMD_FREE_PACKET);
-
-		//rxFrameCount--;
-
-		return 0;
-	}
-
-	/* Clear rx frame pointer */
-	spi_clrbits(REG_RX_ADDR_PTR, ADDR_PTR_MASK);
-
-	/* Enable RXQ read access */
-	spi_setbits(REG_RXQ_CMD, RXQ_START);
-
-	/* Read 4-byte garbage */
-	spi_op(SPI_BEGIN, FIFO_RD, dummy, 4);
-
-	/* Read 4-byte status word/byte count */
-	spi_op(SPI_CONTINUE, FIFO_RD, dummy, 4);
-
-	/* Read 2-byte alignment bytes */
-	spi_op(SPI_CONTINUE, FIFO_RD, dummy, 2);
-
-	//rxFrameCount--;
-
-	return rxPacketLength - 4;
-}
-
 /* ksz8851RetrievePacketData() is used to retrieve the payload of a
  * packet.  It may be called as many times as necessary to retrieve
  * the entire payload.
@@ -602,7 +516,7 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length)
          n = ksz8851_regrd(REG_RX_FHR_BYTE_CNT) & RX_BYTE_CNT_MASK;
 
          //Ensure the frame size is acceptable
-         if(n > 4 && n <= 1500)
+         if(n > 4 && n <= ETHERNET_RX_PACKET_BUFF_SIZE)
          {
             //Reset QMU RXQ frame pointer to zero
              spi_clrbits(REG_RX_ADDR_PTR, ADDR_PTR_MASK);
@@ -628,15 +542,6 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length)
    spi_setbits(REG_RXQ_CMD, RXQ_CMD_FREE_PACKET);
 }
 
-/* ksz8851EndPacketRetrieve() reads (and discards) the 4-byte CRC,
- * and ends the RXQ read access.
- */
-void ksz8851EndPacketRetrieve(void) {
-	uint8_t	crc[4];
-
-	/* Read 4-byte crc */
-	spi_op(SPI_END, FIFO_RD, crc, 4);
-}
 /* ksz8851RegisterLinkStatusCb() register callback for link status update,
  */
 void ksz8851RegisterEvtCb(ksz8851_evt_cb_t evt_cb)

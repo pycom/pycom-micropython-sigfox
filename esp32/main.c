@@ -51,6 +51,8 @@
 #include "mperror.h"
 #include "machtimer.h"
 #include "esp32chipinfo.h"
+#include "esp_event_loop.h"
+#include "app_sys_evt.h"
 
 
 TaskHandle_t mpTaskHandle;
@@ -100,7 +102,25 @@ void * micropy_lpwan_ncs_pin;
  DECLARE PRIVATE DATA
  ******************************************************************************/
 static StaticTask_t mpTaskTCB;
-
+static system_event_cb_t main_evt_cb_list[APP_SYS_EVT_NUM] = {NULL, NULL};
+/******************************************************************************
+ DECLARE PRIVATE FUNC
+ ******************************************************************************/
+static esp_err_t app_sys_event_handler(void *ctx, system_event_t *event);
+/******************************************************************************
+ DECLARE PUBLIC FUNC
+ ******************************************************************************/
+static esp_err_t app_sys_event_handler(void *ctx, system_event_t *event)
+{
+    for(uint8_t i = 0; i < APP_SYS_EVT_NUM; i++)
+    {
+        if(main_evt_cb_list[i] != NULL)
+        {
+            main_evt_cb_list[i](ctx, event);
+        }
+    }
+    return ESP_OK;
+}
 /******************************************************************************
  * FunctionName : app_main
  * Description  : entry of user application, init user function here
@@ -112,7 +132,10 @@ void app_main(void) {
     esp32_init_chip_info();
 
     // remove all the logs from the IDF
-    esp_log_level_set("*", ESP_LOG_DEBUG);
+    esp_log_level_set("*", ESP_LOG_NONE);
+
+    // Register sys event callback
+    ESP_ERROR_CHECK(esp_event_loop_init(app_sys_event_handler, NULL));
 
     // setup the timer used as a reference in mphal
     machtimer_preinit();
@@ -179,5 +202,13 @@ void app_main(void) {
         mpTaskHandle =
         (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t)), NULL,
                                                     MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
+    }
+}
+
+void app_sys_register_evt_cb(main_app_sys_evt_t sys_evt, system_event_cb_t cb)
+{
+    if((cb != NULL) && (sys_evt < APP_SYS_EVT_NUM))
+    {
+        main_evt_cb_list[sys_evt] = cb;
     }
 }

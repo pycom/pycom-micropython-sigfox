@@ -37,6 +37,7 @@
  */
 
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "py/mpstate.h"
 #include "py/obj.h"
@@ -67,6 +68,8 @@ typedef struct {
 STATIC network_server_obj_t network_server_obj;
 STATIC const mp_obj_type_t network_server_type;
 
+STATIC void network_select_nic(mp_obj_t removed_nic);
+
 /// \module network - network configuration
 ///
 /// This module provides network drivers and server configuration.
@@ -84,26 +87,15 @@ void mod_network_register_nic(mp_obj_t nic) {
     }
     // nic not registered so add it to list
     mp_obj_list_append(&MP_STATE_PORT(mod_network_nic_list), nic);
+    network_select_nic(NULL);
 }
 
 void mod_network_deregister_nic(mp_obj_t nic) {
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
         if (MP_STATE_PORT(mod_network_nic_list).items[i] == nic) {
             mp_obj_list_remove(&MP_STATE_PORT(mod_network_nic_list), nic);
-#if defined(GPY) || defined(FIPY)
-            for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++)
-            {
-                mp_obj_t nic_rem = MP_STATE_PORT(mod_network_nic_list).items[i];
-                if(mp_obj_get_type(nic_rem) == (mp_obj_type_t *)&mod_network_nic_type_wlan)
-                {
-                    mod_network_nic_type_wlan.set_default_inf();
-                }
-                else if (mp_obj_get_type(nic_rem) == (mp_obj_type_t *)&mod_network_nic_type_lte)
-                {
-                    mod_network_nic_type_lte.set_default_inf();
-                }
-            }
-#endif
+            network_select_nic(nic);
+            break;
         }
     }
 }
@@ -160,11 +152,127 @@ STATIC mp_obj_t network_server_init_helper(mp_obj_t self, const mp_arg_val_t *ar
 
     // configure the timeout
     servers_set_timeout(timeout * 1000);
-
+    MP_THREAD_GIL_EXIT();
     // start the servers
     servers_start();
+    MP_THREAD_GIL_ENTER();
 
     return mp_const_none;
+}
+
+STATIC void network_select_nic(mp_obj_t removed_nic)
+{
+    mp_obj_t nic_chosen = NULL;
+    mp_obj_type_t * nic_type = NULL;
+
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
+        mp_obj_t nic = MP_STATE_PORT(mod_network_nic_list).items[i];
+        // Find ETH nic
+        if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_eth)
+        {
+            nic_chosen = nic;
+            goto process_nic;
+        }
+    }
+
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
+        mp_obj_t nic = MP_STATE_PORT(mod_network_nic_list).items[i];
+        // Find WLAN nic
+        if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan)
+        {
+            nic_chosen = nic;
+            goto process_nic;
+        }
+    }
+#if defined(FIPY) || defined(GPY)
+    for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
+        mp_obj_t nic = MP_STATE_PORT(mod_network_nic_list).items[i];
+        // Find LTE nic
+        if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_lte)
+        {
+            nic_chosen = nic;
+            goto process_nic;
+        }
+    }
+#endif
+process_nic:
+    if (nic_chosen != NULL) {
+        nic_type = mp_obj_get_type(nic_chosen);
+        //printf("Chosen Nic = %s\n", qstr_str(nic_type->name));
+    }
+    if (removed_nic != NULL && nic_type != NULL) {
+        if((nic_type == (mp_obj_type_t *)&mod_network_nic_type_wlan) || (nic_type == (mp_obj_type_t *)&mod_network_nic_type_eth))
+        {
+#if defined(FIPY) || defined(GPY)
+            if(mp_obj_get_type(removed_nic) == (mp_obj_type_t *)&mod_network_nic_type_lte)
+            {
+                if(nic_type == (mp_obj_type_t *)&mod_network_nic_type_wlan)
+                {
+                    //printf("Default WLAN\n");
+                    mod_network_nic_type_wlan.set_default_inf();
+                }
+                else
+                {
+                    //printf("Default ETH\n");
+                    mod_network_nic_type_eth.set_default_inf();
+                }
+            }
+#endif
+            // check if we need to handle servers
+            if(!(mod_network_nic_type_wlan.inf_up() || mod_network_nic_type_eth.inf_up()))
+            {
+                // stop the servers if they are enabled
+                if (servers_are_enabled()) {
+                    //printf("Server Disabled\n");
+                    servers_stop();
+                }
+            }
+            else
+            {
+                // start the servers with default config
+                if (!servers_are_enabled()) {
+                    //printf("Server Enabled\n");
+                    servers_start();
+                }
+            }
+        }
+        else
+        {
+#if defined(FIPY) || defined(GPY)
+            if((mp_obj_get_type(removed_nic) == (mp_obj_type_t *)&mod_network_nic_type_eth) || (mp_obj_get_type(removed_nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan))
+            {
+                //printf("Default LTE\n");
+                mod_network_nic_type_lte.set_default_inf();
+            }
+#endif
+        }
+    }
+    else
+    {
+        if ((nic_chosen != NULL))
+        {
+#if defined(FIPY) || defined(GPY)
+            if((nic_type != (mp_obj_type_t *)&mod_network_nic_type_lte))
+            {
+#endif
+                // start the servers with default config
+                if (!servers_are_enabled()) {
+                    //printf("Server Enabled\n");
+                    servers_start();
+                }
+#if defined(FIPY) || defined(GPY)
+            }
+#endif
+        }
+        else
+        {
+            // stop the servers if they are enabled
+            if (servers_are_enabled()) {
+                //printf("Server Disabled\n");
+                servers_stop();
+            }
+        }
+    }
 }
 
 STATIC const mp_arg_t network_server_args[] = {
@@ -223,7 +331,9 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(network_server_running_obj, network_server_runn
 
 STATIC mp_obj_t network_server_deinit(mp_obj_t self_in) {
     // simply stop the servers
+    MP_THREAD_GIL_EXIT();
     servers_stop();
+    MP_THREAD_GIL_ENTER();
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(network_server_deinit_obj, network_server_deinit);

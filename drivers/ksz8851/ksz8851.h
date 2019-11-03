@@ -9,13 +9,11 @@ void ksz8851Init(void);
 void ksz8851BeginPacketSend(unsigned int packetLength);
 void ksz8851SendPacketData(unsigned char *localBuffer, unsigned int length);
 void ksz8851EndPacketSend(void);
-unsigned int ksz8851BeginPacketRetrieve(void);
 void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length);
-void ksz8851EndPacketRetrieve(void);
 void ksz8851SpiInit(void);
 bool ksz8851GetLinkStatus(void);
-void ksz8851PhyReset(void);
 void ksz8851RegisterEvtCb(ksz8851_evt_cb_t evt_cb);
+void ksz8851PowerDownMode(void);
 
 /*****************************************************************************
 *
@@ -23,6 +21,7 @@ void ksz8851RegisterEvtCb(ksz8851_evt_cb_t evt_cb);
 *
 *****************************************************************************/
 #define ETHERNET_MIN_PACKET_LENGTH      0x3C
+#define ETHERNET_RX_PACKET_BUFF_SIZE    (1500)
 #define ETHERNET_HEADER_LENGTH          0x0E
 #define ETH_MAC_SIZE                    6
 
@@ -160,7 +159,9 @@ extern uint8_t ethernet_mac[ETH_MAC_SIZE];
 #define   TX_CTRL_PAD_ENABLE          0x0004    /* Eanble adding a padding to a packet shorter than 64 bytes */
 #define   TX_CTRL_CRC_ENABLE          0x0002    /* Enable adding a CRC to the end of transmit frame */
 #define   TX_CTRL_ENABLE              0x0001    /* Enable tranmsit */
-#define   DEFAULT_TX_CTRL             ( TX_CTRL_FLOW_ENABLE |   TX_CTRL_PAD_ENABLE |   \
+#define   DEFAULT_TX_CTRL             ( TX_CTRL_ICMP_CHECKSUM | TX_CTRL_UDP_CHECKSUM | \
+                                        TX_CTRL_TCP_CHECKSUM |  TX_CTRL_IP_CHECKSUM |  \
+                                        TX_CTRL_FLOW_ENABLE |   TX_CTRL_PAD_ENABLE |   \
                                         TX_CTRL_CRC_ENABLE )
 
 #define   REG_TX_STATUS               0x72       /* TXSR */
@@ -184,8 +185,10 @@ extern uint8_t ethernet_mac[ETH_MAC_SIZE];
 #define   RX_CTRL_PROMISCUOUS         0x0010    /* Receive all incoming frames, regardless of frame's DA */
 #define   RX_CTRL_INVERSE_FILTER      0x0002    /* Receive with address check in inverse filtering mode */
 #define   RX_CTRL_ENABLE              0x0001    /* Enable receive */
-#define   DEFAULT_RX_CTRL1            (RX_CTRL_FLOW_ENABLE | RX_CTRL_MAC_FILTER |    \
-                                       RX_CTRL_MULTICAST | RX_CTRL_BROADCAST | RX_CTRL_UNICAST)
+#define   DEFAULT_RX_CTRL1            (RX_CTRL_UDP_CHECKSUM | RX_CTRL_TCP_CHECKSUM |   \
+                                       RX_CTRL_IP_CHECKSUM |  RX_CTRL_MAC_FILTER |     \
+                                       RX_CTRL_FLOW_ENABLE |  RX_CTRL_BROADCAST |      \
+                                       RX_CTRL_ALL_MULTICAST| RX_CTRL_UNICAST )
 
 #define   REG_RX_CTRL2                0x76      /* RXCR2 */
 #define   RX_CTRL_BURST_LEN_MASK      0x00e0    /* SRDBL SPI Receive Data Burst Length */
@@ -200,7 +203,8 @@ extern uint8_t ethernet_mac[ETH_MAC_SIZE];
 #define   RX_CTRL_UDP_LITE_CHECKSUM   0x0004    /* Enable UDP Lite frame checksum generation and verification */
 #define   RX_CTRL_ICMP_CHECKSUM       0x0002    /* Enable ICMP frame checksum verification */
 #define   RX_CTRL_BLOCK_MAC           0x0001    /* Receive drop frame if the SA is same as device MAC address */
-#define   DEFAULT_RX_CTRL2            ( RX_CTRL_IPV6_UDP_FRAG_PASS | RX_CTRL_IPV6_UDP_ZERO_PASS )
+#define   DEFAULT_RX_CTRL2            ( RX_CTRL_IPV6_UDP_FRAG_PASS | RX_CTRL_UDP_LITE_CHECKSUM | \
+                                        RX_CTRL_ICMP_CHECKSUM )
 
 #define   REG_TX_MEM_INFO             0x78       /* TXMIR */
 #define   TX_MEM_AVAILABLE_MASK       0x1FFF    /* The amount of memory available in TXQ */
@@ -423,6 +427,7 @@ extern uint8_t ethernet_mac[ETH_MAC_SIZE];
 #define   PORT_CABLE_STAT_NORMAL      0x0000     /* Normal condition */
 #define   PORT_CABLE_DIAG_RESULT      0x6000     /* Cable diagnostic test result mask */
 #define   PORT_START_CABLE_DIAG       0x1000     /* Enable cable diagnostic test */
+#define   PORT_POWER_SAVE_MODE        0x0400     /* power saving mode (Note: reqired when goint to power save mode in PMECR)*/
 #define   PORT_FORCE_LINK             0x0800     /* Enable force link pass */
 #define   PORT_REMOTE_LOOPBACK        0x0200     /* Enable remote loopback at PHY */
 #define   PORT_CABLE_FAULT_COUNTER    0x01FF     /* Cable length distance to the fault */
