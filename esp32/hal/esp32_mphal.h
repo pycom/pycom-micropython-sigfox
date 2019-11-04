@@ -30,4 +30,9 @@ void mp_hal_set_interrupt_char(int c);
 void mp_hal_set_reset_char(int c);
 void mp_hal_reset_safe_and_boot(bool reset);
 
+// https://github.com/micropython/micropython/blob/master/ports/esp32/mphalport.h
+#define mp_hal_quiet_timing_enter() MICROPY_BEGIN_ATOMIC_SECTION()
+#define mp_hal_quiet_timing_exit(irq_state) MICROPY_END_ATOMIC_SECTION(irq_state)
+#define mp_hal_delay_us_fast(us) ets_delay_us(us)
+
 #endif // _INCLUDED_MPHAL_H_
