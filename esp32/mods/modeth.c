@@ -27,6 +27,9 @@
 #include "esp_log.h"
 #include "esp_eth.h"
 
+#include "gpio.h"
+#include "machpin.h"
+#include "pins.h"
 #include "ksz8851conf.h"
 #include "ksz8851.h"
 
@@ -211,15 +214,10 @@ static void process_rx(void)
 static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt)
 {
     modeth_cmd_ctx_t ctx;
-    portBASE_TYPE tmp;
-    uint16_t isr;
-
-    isr = ksz8851_regrd(REG_INT_STATUS);
+    portBASE_TYPE tmp = pdFALSE;
 
     if(ksz8851_evt & KSZ8851_LINK_CHG_INT)
     {
-        /* Clear overrun interrupt */
-        isr |= INT_PHY;
         ctx.cmd = ETH_CMD_CHK_LINK;
         ctx.buf = NULL;
         // unblock task if link up
@@ -228,36 +226,28 @@ static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt)
             xTaskNotifyFromISR(ethernetTaskHandle, 0, eIncrement, NULL);
         }
         xQueueSendToFrontFromISR(eth_cmdQueue, &ctx, &tmp);
-        if (tmp != pdFALSE) {
-            portYIELD_FROM_ISR();
-        }
     }
 
     if(ksz8851_evt & KSZ8851_RX_INT)
     {
-        /* Clear overrun interrupt */
-        isr |= INT_RX;
         ctx.cmd = ETH_CMD_RX;
         ctx.buf = NULL;
         xQueueSendFromISR(eth_cmdQueue, &ctx, &tmp);
-        if (tmp != pdFALSE) {
-            portYIELD_FROM_ISR();
-        }
     }
 
     if(ksz8851_evt & KSZ8851_OVERRUN_INT)
     {
-        /* Clear overrun interrupt */
-        isr |= INT_RX_OVERRUN;
-        //Re-enable  interrupts
-        ksz8851_regwr(REG_INT_MASK, INT_MASK);
-        //printf("\n\n===================OVERRUN=====================\n\n");
+        ctx.cmd = ETH_CMD_OVERRUN;
+        ctx.buf = NULL;
+        xQueueSendToFrontFromISR(eth_cmdQueue, &ctx, &tmp);
     }
 
-    //Clear interrupts
-    ksz8851_regwr(REG_INT_STATUS, isr);
-    //Re-enable  interrupts
-    ksz8851_regwr(REG_INT_MASK, INT_MASK);
+    if( tmp == pdTRUE )
+    {
+        //clear interrupt
+        SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, 0x01 << 2);
+        portYIELD_FROM_ISR ();
+    }
 }
 
 static void TASK_ETHERNET (void *pvParameters) {
@@ -265,6 +255,7 @@ static void TASK_ETHERNET (void *pvParameters) {
     static uint32_t thread_notification;
     system_event_t evt;
     modeth_cmd_ctx_t queue_entry;
+    uint8_t timeout = 0;
 
     // Block task till notification is recieved
     thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -298,6 +289,7 @@ static void TASK_ETHERNET (void *pvParameters) {
         /* link status  */
         ksz8851RegisterEvtCb(ksz8851_evt_callback);
 eth_start:
+        xQueueReset(eth_cmdQueue);
         xEventGroupWaitBits(eth_event_group, ETHERNET_EVT_STARTED, false, true, portMAX_DELAY);
         // Init Driver
         ksz8851Init();
@@ -316,6 +308,7 @@ eth_start:
             if(!(xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED))
             {
                 // deinit called, free memory and block till re-init
+                xQueueReset(eth_cmdQueue);
                 heap_caps_free(modeth_rxBuff);
                 eth_obj.link_status = false;
                 evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
@@ -324,10 +317,8 @@ eth_start:
                 ksz8851_regwr(REG_INT_MASK, 0x0000);
                 goto eth_start;
             }
-            // Introduce some delay so not to let task be transparently driven by Interrupt
-            vTaskDelay(10/portTICK_PERIOD_MS);
 
-            if (xQueueReceive(eth_cmdQueue, &queue_entry, 0) == pdTRUE)
+            if (xQueueReceive(eth_cmdQueue, &queue_entry, 200 / portTICK_PERIOD_MS) == pdTRUE)
             {
                 switch(queue_entry.cmd)
                 {
@@ -337,7 +328,9 @@ eth_start:
                         break;
                     case ETH_CMD_RX:
                         process_rx();
-                        printf("RX command\n");
+                        //printf("RX command\n");
+                        // Clear Intr status bits
+                        ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_CHK_LINK:
                         if(ksz8851GetLinkStatus())
@@ -352,9 +345,43 @@ eth_start:
                             evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
                             esp_event_send(&evt);
                         }
+                        // Clear Intr status bits
+                        ksz8851_regwr(REG_INT_STATUS, INT_MASK);
+                        break;
+                    case ETH_CMD_OVERRUN:
+                        //printf("\n\n===================OVERRUN=====================\n\n");
+                        xQueueReset(eth_cmdQueue);
+                        eth_obj.link_status = false;
+                        ksz8851PowerDownMode();
+                        evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
+                        esp_event_send(&evt);
+                        vTaskDelay(100 / portTICK_PERIOD_MS);
+                        ksz8851Init();
                         break;
                     default:
                         break;
+                }
+            }
+            else
+            {
+                timeout = 0;
+                // Checking if interrupt line is locked up in Low state
+                //TODO: This workaround should be removed once the lockup is resolved
+                while((!pin_get_value(KSZ8851_INT_PIN)) && timeout < 5)
+                {
+                    vTaskDelay(1 / portTICK_PERIOD_MS);
+                    timeout++;
+                }
+                if(timeout >= 5)
+                {
+                    //printf("Force Int\n");
+                    xQueueReset(eth_cmdQueue);
+                    eth_obj.link_status = false;
+                    ksz8851PowerDownMode();
+                    evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
+                    esp_event_send(&evt);
+                    vTaskDelay(100 / portTICK_PERIOD_MS);
+                    ksz8851Init();
                 }
             }
         }
@@ -529,21 +556,30 @@ STATIC mp_obj_t modeth_mac (mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(modeth_mac_obj, modeth_mac);
 
-STATIC mp_obj_t modeth_enable_intr (mp_uint_t n_args, const mp_obj_t *args) {
+STATIC mp_obj_t modeth_ksz8851_reg_wr (mp_uint_t n_args, const mp_obj_t *args) {
 
-    if(mp_obj_get_int(args[2]) == 0)
-    {
-        return mp_obj_new_int(ksz8851_regrd(mp_obj_get_int(args[1])));
-    }
-    else
-    {
-        if (n_args > 3) {
-            ksz8851_regwr(mp_obj_get_int(args[1]), mp_obj_get_int(args[3]));
+    if ((xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED)) {
+        if(mp_obj_get_int(args[2]) == 0)
+        {
+            //modeth_sem_lock();
+            return mp_obj_new_int(ksz8851_regrd(mp_obj_get_int(args[1])));
+            //modeth_sem_unlock();
         }
-        return mp_const_none;
+        else
+        {
+            if (n_args > 3) {
+                //modeth_sem_lock();
+                ksz8851_regwr(mp_obj_get_int(args[1]), mp_obj_get_int(args[3]));
+                //modeth_sem_unlock();
+            }
+            return mp_const_none;
+        }
     }
+
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Ethernet module not initialized!"));
+    return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(modeth_enable_intr_obj, 3, 4, modeth_enable_intr);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(modeth_ksz8851_reg_wr_obj, 3, 4, modeth_ksz8851_reg_wr);
 
 STATIC mp_obj_t modeth_deinit (mp_obj_t self_in) {
 
@@ -576,7 +612,7 @@ STATIC const mp_map_elem_t eth_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&modeth_mac_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&modeth_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_isconnected),         (mp_obj_t)&modeth_isconnected_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_events),         (mp_obj_t)&modeth_enable_intr_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_register),            (mp_obj_t)&modeth_ksz8851_reg_wr_obj },
 
 };
 STATIC MP_DEFINE_CONST_DICT(eth_locals_dict, eth_locals_dict_table);

@@ -153,8 +153,6 @@ static IRAM_ATTR void ksz8851ProcessInterrupt(void) {
     uint16_t isr;
     uint32_t evt = 0;
 
-    // Disable interrupts to release the interrupt line
-    ksz8851_regwr(REG_INT_MASK, 0x0000 );
     // Read INT status
     isr = ksz8851_regrd(REG_INT_STATUS);
 
@@ -173,6 +171,8 @@ static IRAM_ATTR void ksz8851ProcessInterrupt(void) {
         evt |= KSZ8851_RX_INT;
     }
 
+    ksz8851_regwr(REG_INT_STATUS, 0xFFFF);
+
     /* Notify upper layer*/
     if((evt_cb_func != NULL) && evt)
     {
@@ -180,10 +180,7 @@ static IRAM_ATTR void ksz8851ProcessInterrupt(void) {
     }
     else
     {
-        /* Clear the interrupts status */
-        ksz8851_regwr(REG_INT_STATUS, 0xffff);
-        // Enable interrupts
-        ksz8851_regwr(REG_INT_MASK, INT_MASK );
+        ksz8851_regwr(REG_INT_STATUS, 0xFFFF);
     }
 }
 

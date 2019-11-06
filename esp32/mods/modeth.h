@@ -38,6 +38,7 @@ typedef enum
 {
     ETH_CMD_TX = 0,
     ETH_CMD_RX,
+    ETH_CMD_OVERRUN,
     ETH_CMD_CHK_LINK
 }modeth_cmd_t;
 
