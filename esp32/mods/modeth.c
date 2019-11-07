@@ -50,7 +50,7 @@
 * DEFINE CONSTANTS
 *****************************************************************************/
 #define ETHERNET_TASK_STACK_SIZE        3072
-#define ETHERNET_TASK_PRIORITY          12
+#define ETHERNET_TASK_PRIORITY          20
 #define ETHERNET_CHECK_LINK_PERIOD_MS   2000
 #define ETHERNET_CMD_QUEUE_SIZE         100
 
@@ -329,7 +329,7 @@ eth_start:
                     case ETH_CMD_RX:
                         process_rx();
                         //printf("RX command\n");
-                        // Clear Intr status bits
+                        // Clear Intr status bits to release INTRN line
                         ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_CHK_LINK:
@@ -345,7 +345,7 @@ eth_start:
                             evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
                             esp_event_send(&evt);
                         }
-                        // Clear Intr status bits
+                        // Clear Intr status bits to release INTRN line
                         ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_OVERRUN:
