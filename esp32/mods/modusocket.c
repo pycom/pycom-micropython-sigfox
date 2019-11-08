@@ -718,9 +718,6 @@ STATIC mp_obj_t mod_usocket_getaddrinfo(mp_obj_t host_in, mp_obj_t port_in) {
     {
     	nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "no available NIC"));
     }
-    //getaddrinfo() allocates memory, needs to be freed
-    freeaddrinfo(res);
-
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_usocket_getaddrinfo_obj, mod_usocket_getaddrinfo);
 
