@@ -211,6 +211,36 @@ Methods
 
      bluetooth.set_advertisement(name="advert", manufacturer_data="lopy_v1")
 
+.. method:: bluetooth.set_pin(new_pin)
+
+    Sets a new pin code which clients can use to bond with this device. Only works when Bluetooth was initialized with ``secure=True``.
+
+    When the pin code is changed, all client bondings are removed, except for the currently connected client if any.
+
+    Arguments:
+
+       - ``pin`` is the 6 digit (0-9) pin code as an integer.
+
+    Example::
+
+        from network import Bluetooth
+
+        bluetooth = Bluetooth(secure=True, pin=123456)
+        bluetooth.set_advertisement(name='LoPy', service_uuid=b'1234567890123456')
+        bluetooth.advertise(True)
+
+        service = bluetooth.service(uuid=b'7890123456789012')
+        characteristic = service.characteristic(uuid=b'3456789012345678')
+
+        def char_cb(chr)
+            events = chr.events()
+            if events & Bluetooth.CHAR_WRITE_EVENT:
+                new_pin = int(chr.value())
+                print("Setting PIN to {}".format(new_pin))
+                bluetooth.set_pin(new_pin)
+
+        characteristic.callback(trigger=Bluetooth.CHAR_WRITE_EVENT, handler=char_cb)
+
 .. method:: bluetooth.advertise([Enable])
 
     Start or stop sending advertisements. The ``.set_advertisement()`` method must have been called prior to this one. ::
@@ -288,6 +318,17 @@ Constants
           Bluetooth.PROP_EXT_PROP
 
     Characteristic properties (bit values that can be combined)
+
+.. data:: PERM_READ
+          PERM_READ_ENCRYPTED
+          PERM_READ_ENC_MITM
+          PERM_WRITE
+          PERM_WRITE_ENCRYPTED
+          PERM_WRITE_ENC_MITM
+          PERM_WRITE_SIGNED
+          PERM_WRITE_SIGNED_MITM
+
+    Characteristic permissions (bit values that can be combined)
 
 .. data:: Bluetooth.CHAR_READ_EVENT
           Bluetooth.CHAR_WRITE_EVENT
