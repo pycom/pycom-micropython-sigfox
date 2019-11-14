@@ -103,6 +103,7 @@ STATIC mp_obj_t mach_pwm_channel_make_new(mp_uint_t n_args, const mp_obj_t *pos_
 
     // get the correct pwm timer instance
     if (pwm->mach_pwm_channel_obj_t[pwm_channel_id] == NULL) {
+        // FIXME: This should be reviewed. "gc_alloc" might not be appropriate here.
         pwm->mach_pwm_channel_obj_t[pwm_channel_id] = gc_alloc(sizeof(mach_pwm_channel_obj_t), false);
     }
     mach_pwm_channel_obj_t *self = pwm->mach_pwm_channel_obj_t[pwm_channel_id];
@@ -191,6 +192,7 @@ STATIC mp_obj_t mach_pwm_timer_make_new(const mp_obj_type_t *type, mp_uint_t n_a
 
     // get the correct pwm timer instance or create a new one
     if (MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]) == NULL) {
+        // FIXME: This should be reviewed. "gc_alloc" might not be appropriate here.
         MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]) = gc_alloc(sizeof(mach_pwm_timer_obj_t), false);
         memset(((mach_pwm_timer_obj_t *) MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]))->mach_pwm_channel_obj_t,
                0, sizeof(((mach_pwm_timer_obj_t *) MP_STATE_PORT(mach_pwm_timer_obj[pwm_timer_id]))->mach_pwm_channel_obj_t));

@@ -338,7 +338,7 @@ STATIC FRESULT f_readdir_helper(ftp_dir_t *dp, ftp_fileinfo_t *fno ) {
                 if(length_of_relative_path > 1) {
                     path_length++;
                 }
-                char* file_relative_path = m_malloc(path_length);
+                char* file_relative_path = pvPortMalloc(path_length);
 
                 // Copy the current working directory (relative path)
                 memcpy(file_relative_path, path_relative, length_of_relative_path);
@@ -359,7 +359,7 @@ STATIC FRESULT f_readdir_helper(ftp_dir_t *dp, ftp_fileinfo_t *fno ) {
                     fno->u.fpinfo_lfs.timestamp.ftime = 0;
                 }
 
-                m_free(file_relative_path);
+                vPortFree(file_relative_path);
             }
 
         xSemaphoreGive(littlefs->mutex);

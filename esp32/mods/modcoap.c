@@ -11,7 +11,6 @@
 #include "py/mpconfig.h"
 #include "py/obj.h"
 #include "py/runtime.h"
-#include "py/gc.h"
 
 #include "coap.h"
 #include "coap_list.h"
@@ -209,7 +208,7 @@ STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype,
     resource->next = NULL;
 
     // uri parameter pointer will be destroyed, pass a pointer to a permanent location
-    resource->uri = m_malloc(strlen(uri));
+    resource->uri = pvPortMalloc(strlen(uri));
     memcpy(resource->uri, uri, strlen(uri));
     resource->coap_resource = coap_resource_init((const unsigned char* )resource->uri, strlen(uri), 0);
     if(resource->coap_resource != NULL) {
@@ -239,7 +238,7 @@ STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype,
         return resource;
     }
     else {
-        m_free(resource->uri);
+        vPortFree(resource->uri);
         m_del_obj(mod_coap_resource_obj_t, resource);
         // Resource cannot be created
         return NULL;
@@ -280,13 +279,13 @@ STATIC void remove_resource_by_key(coap_key_t key) {
                 }
 
                 // Free the URI
-                m_free(current->uri);
+                vPortFree(current->uri);
                 // Free the resource in coap's scope
                 coap_delete_resource(context->context, key);
                 // Free the element in MP scope
-                m_free(current->value);
+                vPortFree(current->value);
                 // Free the resource itself
-                m_free(current);
+                vPortFree(current);
 
                 return;
             }
@@ -321,7 +320,7 @@ STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t ne
 
     // Invalidate current data first
     resource->value_len = 0;
-    m_free(resource->value);
+    vPortFree(resource->value);
 
     if (mp_obj_is_integer(new_value)) {
 
@@ -335,7 +334,7 @@ STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t ne
         }
 
         // Allocate memory for the new data
-        resource->value = m_malloc(resource->value_len);
+        resource->value = pvPortMalloc(resource->value_len);
         memcpy(resource->value, &value, sizeof(value));
 
     } else {
@@ -345,7 +344,7 @@ STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t ne
         resource->value_len = value_bufinfo.len;
 
         // Allocate memory for the new data
-        resource->value = m_malloc(resource->value_len);
+        resource->value = pvPortMalloc(resource->value_len);
         memcpy(resource->value, value_bufinfo.buf, resource->value_len);
     }
 }
@@ -749,7 +748,7 @@ STATIC coap_pdu_t * modcoap_new_request
 // Helper function to create a new option for a request message
 STATIC coap_list_t * modcoap_new_option_node(unsigned short key, unsigned int length, unsigned char *data) {
 
-    coap_list_t *node = m_malloc(sizeof(coap_list_t) + sizeof(coap_option) + length);
+    coap_list_t *node = pvPortMalloc(sizeof(coap_list_t) + sizeof(coap_option) + length);
     if (node) {
         coap_option *option;
         option = (coap_option *)(node->data);
@@ -757,7 +756,7 @@ STATIC coap_list_t * modcoap_new_option_node(unsigned short key, unsigned int le
         COAP_OPTION_LENGTH(*option) = length;
         memcpy(COAP_OPTION_DATA(*option), data, length);
     } else {
-        m_free(node);
+        vPortFree(node);
         node = NULL;
     }
 
@@ -938,7 +937,7 @@ STATIC mp_obj_t mod_coap_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
     // Only 1 context is supported currently
     if(initialized == false) {
 
-        MP_STATE_PORT(coap_ptr) = m_malloc(sizeof(mod_coap_obj_t));
+        MP_STATE_PORT(coap_ptr) = pvPortMalloc(sizeof(mod_coap_obj_t));
         coap_obj_ptr = MP_STATE_PORT(coap_ptr);
         coap_obj_ptr->context = NULL;
         coap_obj_ptr->resources = NULL;
@@ -1235,7 +1234,7 @@ STATIC mp_obj_t mod_coap_send_request(mp_uint_t n_args, const mp_obj_t *pos_args
             // Split up the URI-PATH into more segments if needed
             //TODO: allocate the proper length
             size_t length = 300;
-            unsigned char* path = m_malloc(length);
+            unsigned char* path = pvPortMalloc(length);
             int segments = coap_split_path(coap_uri.path.s, coap_uri.path.length, path, &length);
 
             // Insert the segments as separate URI-Path options
@@ -1249,7 +1248,7 @@ STATIC mp_obj_t mod_coap_send_request(mp_uint_t n_args, const mp_obj_t *pos_args
             }
 
 
-            m_free(path);
+            vPortFree(path);
 
             // Put Content Format option if given
             if(content_format != -1) {
@@ -1272,7 +1271,7 @@ STATIC mp_obj_t mod_coap_send_request(mp_uint_t n_args, const mp_obj_t *pos_args
         while(coap_obj_ptr->optlist != NULL) {
             next = coap_obj_ptr->optlist->next;
             coap_obj_ptr->optlist->next = NULL;
-            m_free(coap_obj_ptr->optlist);
+            vPortFree(coap_obj_ptr->optlist);
             coap_obj_ptr->optlist = next;
         }
 

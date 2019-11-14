@@ -4,7 +4,6 @@
 #include <string.h>
 #include "py/runtime.h"
 #include "py/mperrno.h"
-#include "py/gc.h"
 #include "lib/oofatfs/ff.h"
 #include "extmod/vfs.h"
 #include "vfs_littlefs.h"
@@ -18,14 +17,14 @@ int lfs_statvfs_count(void *p, lfs_block_t b)
     return 0;
 }
 
-// After this function m_free() must be called on the returned address after usage!!
+// After this function vPortFree() must be called on the returned address after usage!!
 const char* concat_with_cwd(vfs_lfs_struct_t* littlefs, const char* path)
 {
     char* path_out = NULL;
 
     if (path[0] == '/') /* Absolute path */
     {
-        path_out = (char*)gc_alloc(strlen(path) + 1, false); // Count the \0 too
+        path_out = (char*)pvPortMalloc(strlen(path) + 1); // Count the \0 too
         if(path_out != NULL)
         {
             strcpy(path_out, path);
@@ -33,7 +32,7 @@ const char* concat_with_cwd(vfs_lfs_struct_t* littlefs, const char* path)
     }
     else
     {
-        path_out = (char*)gc_alloc(strlen(littlefs->cwd) + 1 + strlen(path) + 1, false);
+        path_out = (char*)pvPortMalloc(strlen(littlefs->cwd) + 1 + strlen(path) + 1);
         if(path_out != NULL)
         {
             strcpy(path_out, littlefs->cwd);
@@ -130,7 +129,7 @@ static int change_cwd(vfs_lfs_struct_t* littlefs, const char* path_in)
         }
         else if(is_valid_directory(littlefs, new_path))
         {
-            m_free(littlefs->cwd);
+            vPortFree(littlefs->cwd);
             littlefs->cwd = (char*)new_path;
             MP_STATE_PORT(lfs_cwd) = littlefs->cwd;
 
@@ -354,12 +353,12 @@ void littlefs_prepare_attributes(struct lfs_file_config *cfg)
 {
     // Currently we only have 1 attribute
     cfg->attr_count = 1;
-    cfg->attrs = m_malloc(cfg->attr_count * sizeof(struct lfs_attr));
+    cfg->attrs = pvPortMalloc(cfg->attr_count * sizeof(struct lfs_attr));
 
     // Set attribute for storing the timestamp
     cfg->attrs[0].size = sizeof(lfs_timestamp_attribute_t);
     cfg->attrs[0].type = LFS_ATTRIBUTE_TIMESTAMP;
-    cfg->attrs[0].buffer = m_malloc(sizeof(lfs_timestamp_attribute_t));
+    cfg->attrs[0].buffer = pvPortMalloc(sizeof(lfs_timestamp_attribute_t));
 
 }
 
@@ -367,8 +366,8 @@ void littlefs_free_up_attributes(struct lfs_file_config *cfg)
 {
     cfg->attr_count = 0;
     // Currently we only have 1 attribute for timestamp
-    m_free(cfg->attrs[0].buffer);
-    m_free(cfg->attrs);
+    vPortFree(cfg->attrs[0].buffer);
+    vPortFree(cfg->attrs);
 }
 
 
@@ -490,7 +489,7 @@ STATIC mp_obj_t littlefs_vfs_ilistdir_func(size_t n_args, const mp_obj_t *args) 
         }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
-    m_free((void*)path);
+    vPortFree((void*)path);
 
     if (res != LFS_ERR_OK) {
         mp_raise_OSError(littleFsErrorToErrno(res));
@@ -521,7 +520,7 @@ STATIC mp_obj_t littlefs_vfs_mkdir(mp_obj_t vfs_in, mp_obj_t path_param) {
         }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
-    m_free((void*)path);
+    vPortFree((void*)path);
 
     if (res != LFS_ERR_OK) {
         mp_raise_OSError(littleFsErrorToErrno(res));
@@ -550,7 +549,7 @@ STATIC mp_obj_t littlefs_vfs_remove(mp_obj_t vfs_in, mp_obj_t path_param) {
         }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
-    m_free((void*)path);
+    vPortFree((void*)path);
 
     if (res != LFS_ERR_OK) {
         mp_raise_OSError(littleFsErrorToErrno(res));
@@ -582,8 +581,8 @@ STATIC mp_obj_t littlefs_vfs_rename(mp_obj_t vfs_in, mp_obj_t path_param_in, mp_
         }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
-    m_free((void*)old_path);
-    m_free((void*)new_path);
+    vPortFree((void*)old_path);
+    vPortFree((void*)new_path);
 
     if (res != LFS_ERR_OK) {
         mp_raise_OSError(littleFsErrorToErrno(res));
@@ -650,7 +649,7 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_param) {
 
     xSemaphoreGive(self->fs.littlefs.mutex);
 
-    m_free((void*)path);
+    vPortFree((void*)path);
 
     if (res < LFS_ERR_OK) {
         mp_raise_OSError(littleFsErrorToErrno(res));

@@ -8,7 +8,6 @@
 #include "py/mpconfig.h"
 #include "py/nlr.h"
 #include "py/runtime.h"
-#include "py/gc.h"
 #include "py/mperrno.h"
 #include "util/mpirq.h"
 
@@ -56,7 +55,7 @@ void mach_timer_alarm_preinit(void) {
 
 void mach_timer_alarm_init_heap(void) {
     alarm_heap.count = 0;
-    MP_STATE_PORT(mp_alarm_heap) = gc_alloc(ALARM_HEAP_MAX_ELEMENTS * sizeof(mp_obj_alarm_t *), false);
+    MP_STATE_PORT(mp_alarm_heap) = pvPortMalloc(ALARM_HEAP_MAX_ELEMENTS * sizeof(mp_obj_alarm_t *));
     alarm_heap.data = MP_STATE_PORT(mp_alarm_heap);
     if (alarm_heap.data == NULL) {
         mp_printf(&mp_plat_print, "FATAL ERROR: not enough memory for the alarms heap\n");

@@ -168,6 +168,7 @@ STATIC mp_obj_t mod_mdns_add_service(mp_uint_t n_args, const mp_obj_t *pos_args,
             mp_obj_t* items;
             mp_obj_tuple_get(args[3].u_obj, &length_total, &items);
 
+            // FIXME: This should be reviewed. "m_malloc" might not be appropriate here.
             service_txt = m_malloc(length_total * sizeof(mdns_txt_item_t));
 
             for(int i = 0; i < length_total; i++) {
