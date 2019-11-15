@@ -25,6 +25,7 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
+#include "esp_event.h"
 
 #include "esp_types.h"
 #include "esp_attr.h"
@@ -92,6 +93,7 @@ struct _mach_uart_obj_t {
     uint8_t rx_timeout;
     uint8_t n_pins;
     bool init;
+    uint32_t invert;        // lines to invert
 };
 
 /******************************************************************************
@@ -293,10 +295,39 @@ STATIC void mach_uart_print(const mp_print_t *print, mp_obj_t self_in, mp_print_
             mp_printf(print, ", parity=UART.%q", (self->config.parity == UART_PARITY_EVEN) ? MP_QSTR_EVEN : MP_QSTR_ODD);
         }
         if (self->config.stop_bits == UART_STOP_BITS_1_5) {
-            mp_printf(print, ", stop=1.5)");
+            mp_printf(print, ", stop=1.5");
         } else {
-            mp_printf(print, ", stop=%u)", (self->config.stop_bits == UART_STOP_BITS_1) ? 1 : 2);
+            mp_printf(print, ", stop=%u", (self->config.stop_bits == UART_STOP_BITS_1) ? 1 : 2);
         }
+        if (self->invert) {
+            mp_printf(print, ", invert=");
+            uint32_t invert_mask = self->invert;
+            if (invert_mask & UART_INVERSE_TXD) {
+                mp_print_str(print, "INV_TX");
+                invert_mask &= ~UART_INVERSE_TXD;
+                if (invert_mask) {
+                    mp_print_str(print, "|");
+                }
+            }
+            if (invert_mask & UART_INVERSE_RXD) {
+                mp_print_str(print, "INV_RX");
+                invert_mask &= ~UART_INVERSE_RXD;
+                if (invert_mask) {
+                    mp_print_str(print, "|");
+                }
+            }
+            if (invert_mask & UART_INVERSE_RTS) {
+                mp_print_str(print, "INV_RTS");
+                invert_mask &= ~UART_INVERSE_RTS;
+                if (invert_mask) {
+                    mp_print_str(print, "|");
+                }
+            }
+            if (invert_mask & UART_INVERSE_CTS) {
+                mp_print_str(print, "INV_CTS");
+            }
+        }
+        mp_printf(print, ")");
     } else {
         mp_printf(print, "UART(%u)", self->uart_id);
     }
@@ -432,6 +463,11 @@ STATIC mp_obj_t mach_uart_init_helper(mach_uart_obj_t *self, const mp_arg_val_t 
     self->config.rx_flow_ctrl_thresh = 64;
     uart_param_config(self->uart_id, &self->config);
 
+    self->invert = args[7].u_int;
+    if (self->invert != 0) {
+        uart_set_line_inverse(self->uart_id, self->invert);
+    }
+
     // install the UART driver
     uart_driver_install(self->uart_id, rx_buffer_size, 0, 0, NULL, 0, UARTRxCallback);
 
@@ -458,7 +494,8 @@ STATIC const mp_arg_t mach_uart_init_args[] = {
     { MP_QSTR_stop,                            MP_ARG_OBJ,  {.u_obj = mp_const_none} },
     { MP_QSTR_pins,           MP_ARG_KW_ONLY | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
     { MP_QSTR_timeout_chars,  MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = 2} },
-    { MP_QSTR_rx_buffer_size, MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = MACHUART_RX_BUFFER_LEN} }
+    { MP_QSTR_rx_buffer_size, MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = MACHUART_RX_BUFFER_LEN} }, 
+    { MP_QSTR_invert,         MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = 0} }
 };
 STATIC mp_obj_t mach_uart_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
     // parse args
@@ -595,6 +632,11 @@ STATIC const mp_map_elem_t mach_uart_locals_dict_table[] = {
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_EVEN),            MP_OBJ_NEW_SMALL_INT(UART_PARITY_EVEN) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ODD),             MP_OBJ_NEW_SMALL_INT(UART_PARITY_ODD) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INV_RX),          MP_OBJ_NEW_SMALL_INT(UART_INVERSE_RXD) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INV_CTS),         MP_OBJ_NEW_SMALL_INT(UART_INVERSE_CTS) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INV_TX),          MP_OBJ_NEW_SMALL_INT(UART_INVERSE_TXD) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_INV_RTS),         MP_OBJ_NEW_SMALL_INT(UART_INVERSE_RTS) },
+    
     // { MP_OBJ_NEW_QSTR(MP_QSTR_RX_ANY),      MP_OBJ_NEW_SMALL_INT(2) },
 };
 STATIC MP_DEFINE_CONST_DICT(mach_uart_locals_dict, mach_uart_locals_dict_table);
