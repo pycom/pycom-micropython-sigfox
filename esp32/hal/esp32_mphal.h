@@ -35,4 +35,16 @@ void mp_hal_reset_safe_and_boot(bool reset);
 #define mp_hal_quiet_timing_exit(irq_state) MICROPY_END_ATOMIC_SECTION(irq_state)
 #define mp_hal_delay_us_fast(us) ets_delay_us(us)
 
+// C-level pin HAL
+#include "py/obj.h"
+#include "machpin.h"
+#define mp_hal_pin_obj_t mp_obj_t
+#define mp_hal_get_pin_obj(pin) (pin)
+#define mp_hal_pin_write(p, v) do { \
+		pin_obj_t *npin = pin_find(p); \
+		npin->value = v; \
+		pin_set_value(npin); \
+	} while (0)
+#define mp_hal_pin_read(p) pin_get_value(pin_find(p))
+
 #endif // _INCLUDED_MPHAL_H_
