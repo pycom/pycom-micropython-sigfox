@@ -61,6 +61,7 @@ def main():
         shutil.copy(src + '/xtensa-debug-module/libxtensa-debug-module.a', dsttmpapp)
         shutil.copy(src + '/esp_ringbuf/libesp_ringbuf.a', dsttmpapp)
         shutil.copy(src + '/coap/libcoap.a', dsttmpapp)
+        shutil.copy(src + '/mdns/libmdns.a', dsttmpapp)
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         traceback.print_exc()
