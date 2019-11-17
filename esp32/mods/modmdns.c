@@ -150,41 +150,32 @@ STATIC mp_obj_t mod_mdns_add_service(mp_uint_t n_args, const mp_obj_t *pos_args,
         // Get port number
         mp_int_t port = args[2].u_int;
 
+        // Get text
+        mdns_txt_item_t* service_text = NULL;
+        size_t length_total = 0;
 
-//        mdns_txt_item_t* service_text_data_array;
-//        mp_int_t item_count = 0;
-//
-//        mp_obj_iter_buf_t iter_buf;
-//        mp_obj_t iterable = mp_getiter(args[3].u_obj, &iter_buf);
-//        mp_obj_t item;
-//        while ((item = mp_iternext(iterable)) != MP_OBJ_STOP_ITERATION) {
-//           if (mp_obj_is_true(item)) {
-//               item_count++;
-//           }
-//        }
+        if(args[3].u_obj != MP_OBJ_NULL) {
+            mp_obj_t* items;
+            mp_obj_tuple_get(args[3].u_obj, &length_total, &items);
 
-//        service_text_data_array = m_malloc(item_count * sizeof(mdns_txt_item_t));
-//
-//        item_count = 0;
-//        iterable = mp_getiter(args[3].u_obj, &iter_buf);
-//        while ((item = mp_iternext(iterable)) != MP_OBJ_STOP_ITERATION) {
-//           if (mp_obj_is_true(item)) {
-//
-//               mp_obj_tuple_get(item, &data_length, &data_ptr);
-//
-//               service_text_data_array[item_count].key
-//
-//               item_count++;
-//           }
-//        }
+            service_text = m_malloc(length_total * sizeof(mdns_txt_item_t));
 
-//        mdns_txt_item_t serviceTxtData[3] = {
-//            {"board","esp32"},
-//            {"u","user"},
-//            {"p","password"}
-//        };
+            for(int i = 0; i < length_total; i++) {
+                size_t length_elem = 0;
+                mp_obj_t* item;
+                mp_obj_tuple_get(items[i], &length_elem, &item);
 
-        esp_err_t ret = mdns_service_add(NULL, service_type, proto, port, NULL, 0);
+                // There should be only key-value pair here
+                if(length_elem != 2) {
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Text must contain key-value pair strings"));
+                }
+
+                service_text[i].key = (char*)mp_obj_str_get_str(item[0]);
+                service_text[i].value = (char*)mp_obj_str_get_str(item[1]);
+            }
+        }
+
+        esp_err_t ret = mdns_service_add(NULL, service_type, proto, port, service_text, length_total);
         if(ret != ESP_OK) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Service could not be added, error code: %d", ret));
         }
