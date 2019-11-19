@@ -61,6 +61,10 @@ def main():
         shutil.copy(src + '/xtensa-debug-module/libxtensa-debug-module.a', dsttmpapp)
         shutil.copy(src + '/esp_ringbuf/libesp_ringbuf.a', dsttmpapp)
         shutil.copy(src + '/coap/libcoap.a', dsttmpapp)
+        shutil.copy(src + '/efuse/libefuse.a', dsttmpapp)
+        shutil.copy(src + '/espcoredump/libespcoredump.a', dsttmpapp)
+        shutil.copy(src + '/app_update/libapp_update.a', dsttmpapp)
+        
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         traceback.print_exc()
@@ -74,10 +78,16 @@ def main():
     for item in os.listdir(dsttmpapp):
         shutil.copy(dsttmpapp + '/' + item, dstapp + '/' + item)
         
+    # copy the project's linker script
+    shutil.copy(src + '/esp32/esp32.project.ld', ".")
+    
+    # copy the generated sdkconfig.h
+    shutil.copy(src + '/include/sdkconfig.h', ".")
+        
     shutil.rmtree(dsttmpbl)
     shutil.rmtree(dsttmpapp)
     
-    print("IDF Libs copied Successfully!")
+    print("IDF Libs, linker script and skdconfig.h copied Successfully!")
         
 
 if __name__ == "__main__":

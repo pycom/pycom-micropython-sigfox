@@ -366,7 +366,7 @@ SRC_QSTR_AUTO_DEPS +=
 BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld
 
 # add the application linker script(s)
-APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld -T wifi_iram.ld
+APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.project.ld -T esp32.rom.ld -T esp32.peripherals.ld
 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
@@ -639,7 +639,7 @@ $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
-$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_BOOT_VERIFICATION_KEY)
+$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld esp32.project.ld $(SECURE_BOOT_VERIFICATION_KEY)
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
