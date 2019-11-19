@@ -9,7 +9,7 @@
 *.dis
 *.exe
 
-# Packages 
+# Packages
 ############
 
 # Logs and Databases
@@ -50,8 +50,9 @@ secure_boot_signing_key.pem
 signature_verification_key.bin
 secure-bootloader-key.bin
 flash_encryption_key.bin
- 
+
 .DS_Store
 org.eclipse.cdt.ui.prefs
 org.eclipse.cdt.core.prefs
 language.settings.xml
+.idea
