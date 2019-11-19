@@ -133,6 +133,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	pybflash.c \
 	machspi.c \
 	machine_i2c.c \
+	machine_i2s.c \
 	machpwm.c \
 	machcan.c \
 	modmachine.c \

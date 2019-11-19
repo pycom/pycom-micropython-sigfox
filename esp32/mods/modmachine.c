@@ -61,6 +61,7 @@
 #include "machuart.h"
 #include "machtimer.h"
 #include "machine_i2c.h"
+#include "machine_i2s.h"
 #include "machspi.h"
 #include "machpwm.h"
 #include "machrtc.h"
@@ -410,6 +411,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_UART),                    (mp_obj_t)&mach_uart_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SPI),                     (mp_obj_t)&mach_spi_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_I2C),                     (mp_obj_t)&machine_i2c_type },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_I2S),                     (mp_obj_t)&machine_i2s_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_PWM),                     (mp_obj_t)&mach_pwm_timer_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ADC),                     (mp_obj_t)&pyb_adc_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_DAC),                     (mp_obj_t)&pyb_dac_type },
