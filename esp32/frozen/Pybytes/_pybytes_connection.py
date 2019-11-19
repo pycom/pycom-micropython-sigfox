@@ -32,17 +32,13 @@ import time
 import socket
 import struct
 import binascii
-import pycom
 from machine import WDT
 
 
 class PybytesConnection:
     def __init__(self, config, message_callback):
         self.__conf = config
-        try:
-            self.__host = pycom.nvs_get('pybytes_server')
-        except:
-            self.__host = config.get('server')
+        self.__host = config.get('server')
         self.__ssl = config.get('ssl', False)
         self.__ssl_params = config.get('ssl_params', {})
         self.__user_name = config.get('username')
@@ -185,13 +181,9 @@ class PybytesConnection:
             try:
                 from network import LTE
                 time.sleep(3)
-                if lte_cfg.get('carrier', 'standard') == 'standard':
-                    carrier = None
-                else:
-                    carrier = lte_cfg.get('carrier')
-                print_debug(1, 'LTE init(carrier={}, cid={})'.format(carrier, lte_cfg.get('cid', 1))) # noqa
+                print_debug(1, 'LTE init(carrier={}, cid={})'.format(lte_cfg.get('carrier'), lte_cfg.get('cid', 1))) # noqa
                 # instantiate the LTE object
-                self.lte = LTE(carrier=carrier, cid=lte_cfg.get('cid', 1))
+                self.lte = LTE(carrier=lte_cfg.get('carrier'), cid=lte_cfg.get('cid', 1))
                 try:
                     lte_type = lte_cfg.get('type') if len(lte_cfg.get('type')) > 0 else None
                 except:
@@ -283,13 +275,12 @@ class PybytesConnection:
         app_swkey = binascii.unhexlify(app_swkey.replace(' ', ''))
 
         try:
-            if not self.lora.has_joined:
-                print("Trying to join LoRa.ABP for %d seconds..." % lora_timeout)
-                self.lora.join(
-                    activation=LoRa.ABP,
-                    auth=(dev_addr, nwk_swkey, app_swkey),
-                    timeout=timeout_ms
-                )
+            print("Trying to join LoRa.ABP for %d seconds..." % lora_timeout)
+            self.lora.join(
+                activation=LoRa.ABP,
+                auth=(dev_addr, nwk_swkey, app_swkey),
+                timeout=timeout_ms
+            )
 
             # if you want, uncomment this code, but timeout must be 0
             # while not self.lora.has_joined():

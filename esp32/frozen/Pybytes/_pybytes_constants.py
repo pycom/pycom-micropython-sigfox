@@ -70,6 +70,7 @@ class constants:
     __TYPE_PYBYTES = 0x0E
     __TYPE_RELEASE_INFO = 0x0B
     __TYPE_RELEASE_DEPLOY = 0x0A
+    __TYPE_DEVICE_NETWORK_DEPLOY = 0x0C
     __PYBYTES_PROTOCOL = ">B%ds"
     __PYBYTES_PROTOCOL_PING = ">B"
     __PYBYTES_INTERNAL_PROTOCOL = ">BBH"
@@ -118,17 +119,17 @@ See all available zone options for RC at https://support.sigfox.com/docs/radio-c
     __WDT_MAX_TIMEOUT_MILLISECONDS = sys.maxsize
 
     try:
-        __DEFAULT_DOMAIN = pycom.nvs_get('pybytes_domain', 'pybytes.pycom.io')
+        __DEFAULT_DOMAIN = pycom.nvs_get('pybytes_domain', 'pybytes-staging.pycom.io')
     except:
-        __DEFAULT_DOMAIN = 'pybytes.pycom.io'
+        __DEFAULT_DOMAIN = 'pybytes-staging.pycom.io'
     try:
         __DEFAULT_SW_HOST = pycom.nvs_get('pybytes_sw_host', 'software.pycom.io')
     except:
         __DEFAULT_SW_HOST = 'software.pycom.io'
     try:
-        __DEFAULT_PYCONFIG_DOMAIN = pycom.nvs_get('pyconfig_host', 'pyconfig.eu-central-1.elasticbeanstalk.com')
+        __DEFAULT_PYCONFIG_DOMAIN = pycom.nvs_get('pyconfig_host', 'staging-pyconfig.eu-central-1.elasticbeanstalk.com')
     except:
-        __DEFAULT_PYCONFIG_DOMAIN = 'pyconfig.eu-central-1.elasticbeanstalk.com'
+        __DEFAULT_PYCONFIG_DOMAIN = 'staging-pyconfig.eu-central-1.elasticbeanstalk.com'
     try:
         __DEFAULT_PYCONFIG_PROTOCOL = pycom.nvs_get('pyconfig_protocol', 'https')
     except:
