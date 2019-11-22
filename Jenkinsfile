@@ -9,7 +9,7 @@ node {
     stage('Checkout') {
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --depth=1 --recursive -b idf_v3.3 https://github.com/pycom/pycom-esp-idf.git esp-idf'
+        sh 'git clone --depth=1 --recursive -b idf_v3.2 https://github.com/pycom/pycom-esp-idf.git esp-idf'
     }
     
     stage('git-tag') {
