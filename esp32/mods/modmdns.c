@@ -302,6 +302,8 @@ STATIC mp_obj_t mod_mdns_query(mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
                 result = result->next;
             }
 
+            mdns_query_results_free(results);
+
             return queries_list;
 
         }
