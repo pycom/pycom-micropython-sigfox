@@ -100,7 +100,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_mdns_deinit_obj, mod_mdns_deinit);
 STATIC mp_obj_t mod_mdns_set_name(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
     STATIC const mp_arg_t mod_mdns_set_name_args[] = {
-            { MP_QSTR_host_name,                 MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
+            { MP_QSTR_hostname,                 MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
             { MP_QSTR_instance_name,             MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}}
     };
 
@@ -111,8 +111,8 @@ STATIC mp_obj_t mod_mdns_set_name(mp_uint_t n_args, const mp_obj_t *pos_args, mp
 
         //set host name if specified
         if(args[0].u_obj != MP_OBJ_NULL) {
-            const char* host_name = mp_obj_str_get_str(args[0].u_obj);
-            mdns_hostname_set(host_name);
+            const char* hostname = mp_obj_str_get_str(args[0].u_obj);
+            mdns_hostname_set(hostname);
         }
 
         //set instance name if specified
@@ -322,11 +322,11 @@ STATIC mp_obj_t mod_mdns_query_instance_name(mp_obj_t self) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_mdns_query_instance_name_obj, mod_mdns_query_instance_name);
 
-STATIC mp_obj_t mod_mdns_query_host_name(mp_obj_t self) {
+STATIC mp_obj_t mod_mdns_query_hostname(mp_obj_t self) {
 
     return ((mod_mdns_query_obj_t *)self)->hostname;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_mdns_query_host_name_obj, mod_mdns_query_host_name);
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_mdns_query_hostname_obj, mod_mdns_query_hostname);
 
 STATIC mp_obj_t mod_mdns_query_port(mp_obj_t self) {
 
@@ -351,7 +351,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_mdns_query_addr_obj, mod_mdns_query_addr);
 STATIC const mp_map_elem_t mod_mdns_query_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_instance_name),           (mp_obj_t)&mod_mdns_query_instance_name_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_host_name),               (mp_obj_t)&mod_mdns_query_host_name_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_hostname),               (mp_obj_t)&mod_mdns_query_hostname_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_port),                    (mp_obj_t)&mod_mdns_query_port_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_txt),                     (mp_obj_t)&mod_mdns_query_txt_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_addr),                    (mp_obj_t)&mod_mdns_query_addr_obj },
