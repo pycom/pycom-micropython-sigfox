@@ -101,7 +101,7 @@ STATIC mp_obj_t mod_mdns_set_name(mp_uint_t n_args, const mp_obj_t *pos_args, mp
 
     STATIC const mp_arg_t mod_mdns_set_name_args[] = {
             { MP_QSTR_hostname,                 MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
-            { MP_QSTR_instance_name,             MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}}
+            { MP_QSTR_instance_name,            MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}}
     };
 
     if(initialized == true) {
@@ -136,7 +136,7 @@ STATIC mp_obj_t mod_mdns_add_service(mp_uint_t n_args, const mp_obj_t *pos_args,
             { MP_QSTR_service_type,             MP_ARG_OBJ  | MP_ARG_REQUIRED, },
             { MP_QSTR_proto,                    MP_ARG_INT  | MP_ARG_REQUIRED, },
             { MP_QSTR_port,                     MP_ARG_INT  | MP_ARG_REQUIRED, },
-            { MP_QSTR_text,                     MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
+            { MP_QSTR_txt,                     MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
     };
 
     if(initialized == true) {
@@ -160,15 +160,15 @@ STATIC mp_obj_t mod_mdns_add_service(mp_uint_t n_args, const mp_obj_t *pos_args,
         // Get port number
         mp_int_t port = args[2].u_int;
 
-        // Get text
-        mdns_txt_item_t* service_text = NULL;
+        // Get txt
+        mdns_txt_item_t* service_txt = NULL;
         size_t length_total = 0;
 
         if(args[3].u_obj != MP_OBJ_NULL) {
             mp_obj_t* items;
             mp_obj_tuple_get(args[3].u_obj, &length_total, &items);
 
-            service_text = m_malloc(length_total * sizeof(mdns_txt_item_t));
+            service_txt = m_malloc(length_total * sizeof(mdns_txt_item_t));
 
             for(int i = 0; i < length_total; i++) {
                 size_t length_elem = 0;
@@ -177,15 +177,15 @@ STATIC mp_obj_t mod_mdns_add_service(mp_uint_t n_args, const mp_obj_t *pos_args,
 
                 // There should be only key-value pair here
                 if(length_elem != 2) {
-                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Text must contain key-value pair strings"));
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Txt must contain key-value pair strings"));
                 }
 
-                service_text[i].key = (char*)mp_obj_str_get_str(item[0]);
-                service_text[i].value = (char*)mp_obj_str_get_str(item[1]);
+                service_txt[i].key = (char*)mp_obj_str_get_str(item[0]);
+                service_txt[i].value = (char*)mp_obj_str_get_str(item[1]);
             }
         }
 
-        esp_err_t ret = mdns_service_add(NULL, service_type, proto, port, service_text, length_total);
+        esp_err_t ret = mdns_service_add(NULL, service_type, proto, port, service_txt, length_total);
         if(ret != ESP_OK) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Service could not be added, error code: %d", ret));
         }
