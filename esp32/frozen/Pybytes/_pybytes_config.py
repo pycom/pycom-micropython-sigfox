@@ -136,7 +136,7 @@ class PybytesConfig:
                     print_debug(99,'sigfox_registration: {}'.format(data))
                     self.__pybytes_sigfox_registration = urequest.post('https://api.{}/v2/register-sigfox'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
                     start_time = time.time()
-                    while (self.__pybytes_sigfox_registration is not None and not self.__pybytes_sigfox_registration.status_code == 200) or time.time() - start_time < 600:
+                    while (self.__pybytes_sigfox_registration is None or self.__pybytes_sigfox_registration.status_code != 200) and time.time() - start_time < 600:
                         time.sleep(60)
                         self.__pybytes_sigfox_registration = urequest.post('https://api.{}/v2/register-sigfox'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
                     if self.__pybytes_sigfox_registration is not None and self.__pybytes_sigfox_registration.status_code == 200:
