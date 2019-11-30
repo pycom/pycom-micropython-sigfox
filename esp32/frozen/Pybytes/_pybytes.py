@@ -99,7 +99,7 @@ class Pybytes:
         self.__check_init()
         return self.__pybytes_connection.connect_lora_abp(timeout, nanogateway)
 
-    def connect_lora_otta(self, timeout=15, nanogateway=False):
+    def connect_lora_otta(self, timeout=120, nanogateway=False):
         self.__check_init()
         return self.__pybytes_connection.connect_lora_otta(timeout, nanogateway)
 
@@ -213,7 +213,7 @@ class Pybytes:
 
     def connect(self):
         try:
-            lora_joining_timeout = 15  # seconds to wait for LoRa joining
+            lora_joining_timeout = 120  # seconds to wait for LoRa joining
             if self.__config_updated:
                 if self.__check_config():
                     try:
