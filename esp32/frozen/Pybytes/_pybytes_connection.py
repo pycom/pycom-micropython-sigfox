@@ -32,13 +32,17 @@ import time
 import socket
 import struct
 import binascii
+import pycom
 from machine import WDT
 
 
 class PybytesConnection:
     def __init__(self, config, message_callback):
         self.__conf = config
-        self.__host = config.get('server')
+        try:
+            self.__host = pycom.nvs_get('pybytes_server')
+        except:
+            self.__host = config.get('server')
         self.__ssl = config.get('ssl', False)
         self.__ssl_params = config.get('ssl_params', {})
         self.__user_name = config.get('username')
@@ -181,9 +185,13 @@ class PybytesConnection:
             try:
                 from network import LTE
                 time.sleep(3)
-                print_debug(1, 'LTE init(carrier={}, cid={})'.format(lte_cfg.get('carrier'), lte_cfg.get('cid', 1))) # noqa
+                if lte_cfg.get('carrier', 'standard') == 'standard':
+                    carrier = None
+                else:
+                    carrier = lte_cfg.get('carrier')
+                print_debug(1, 'LTE init(carrier={}, cid={})'.format(carrier, lte_cfg.get('cid', 1))) # noqa
                 # instantiate the LTE object
-                self.lte = LTE(carrier=lte_cfg.get('carrier'), cid=lte_cfg.get('cid', 1))
+                self.lte = LTE(carrier=carrier, cid=lte_cfg.get('cid', 1))
                 try:
                     lte_type = lte_cfg.get('type') if len(lte_cfg.get('type')) > 0 else None
                 except:
@@ -265,9 +273,14 @@ class PybytesConnection:
             self.lora = LoRa(mode=LoRa.LORAWAN)
         self.lora.nvram_restore()
 
-        dev_addr = self.__conf['lora']['abp']['dev_addr']
-        nwk_swkey = self.__conf['lora']['abp']['nwk_skey']
-        app_swkey = self.__conf['lora']['abp']['app_skey']
+        try:
+            dev_addr = self.__conf['lora']['abp']['dev_addr']
+            nwk_swkey = self.__conf['lora']['abp']['nwk_skey']
+            app_swkey = self.__conf['lora']['abp']['app_skey']
+        except Exception as ex:
+            print("Invalid LoRaWAN ABP configuration!")
+            print_debug(1, ex)
+            return False
         timeout_ms = self.__conf.get('lora_timeout', lora_timeout) * 1000
 
         dev_addr = struct.unpack(">l", binascii.unhexlify(dev_addr.replace(' ', '')))[0] # noqa
@@ -275,13 +288,12 @@ class PybytesConnection:
         app_swkey = binascii.unhexlify(app_swkey.replace(' ', ''))
 
         try:
-            if not self.lora.has_joined:
-                print("Trying to join LoRa.ABP for %d seconds..." % lora_timeout)
-                self.lora.join(
-                    activation=LoRa.ABP,
-                    auth=(dev_addr, nwk_swkey, app_swkey),
-                    timeout=timeout_ms
-                )
+            print("Trying to join LoRa.ABP for %d seconds..." % self.__conf.get('lora_timeout', lora_timeout))
+            self.lora.join(
+                activation=LoRa.ABP,
+                auth=(dev_addr, nwk_swkey, app_swkey),
+                timeout=timeout_ms
+            )
 
             # if you want, uncomment this code, but timeout must be 0
             # while not self.lora.has_joined():
@@ -296,7 +308,7 @@ class PybytesConnection:
         except Exception as e:
             message = str(e)
             if message == 'timed out':
-                print("LoRa connection timeout: %d seconds" % lora_timeout)
+                print("LoRa connection timeout: %d seconds" % self.__conf.get('lora_timeout', lora_timeout))
             else:
                 print_debug(3, 'Exception in LoRa connect: {}'.format(e))
             return False
@@ -312,9 +324,15 @@ class PybytesConnection:
             print("This device does not support LoRa connections: %s" % ex)
             return False
 
-        dev_eui = self.__conf['lora']['otaa']['app_device_eui']
-        app_eui = self.__conf['lora']['otaa']['app_eui']
-        app_key = self.__conf['lora']['otaa']['app_key']
+        try:
+            dev_eui = self.__conf['lora']['otaa']['app_device_eui']
+            app_eui = self.__conf['lora']['otaa']['app_eui']
+            app_key = self.__conf['lora']['otaa']['app_key']
+        except Exception as ex:
+            print("Invalid LoRaWAN OTAA configuration!")
+            print_debug(1, ex)
+            return False
+
         timeout_ms = self.__conf.get('lora_timeout', lora_timeout) * 1000
 
         if self.__conf.get('lora', {}).get('region') is not None:
@@ -328,7 +346,7 @@ class PybytesConnection:
         app_key = binascii.unhexlify(app_key.replace(' ', ''))
         try:
             if not self.lora.has_joined():
-                print("Trying to join LoRa.OTAA for %d seconds..." % lora_timeout)
+                print("Trying to join LoRa.OTAA for %d seconds..." % self.__conf.get('lora_timeout', lora_timeout))
                 self.lora.join(
                     activation=LoRa.OTAA,
                     auth=(dev_eui, app_eui, app_key),
@@ -348,7 +366,7 @@ class PybytesConnection:
         except Exception as e:
             message = str(e)
             if message == 'timed out':
-                print("LoRa connection timeout: %d seconds" % lora_timeout)
+                print("LoRa connection timeout: %d seconds" % self.__conf.get('lora_timeout', lora_timeout))
             else:
                 print_debug(3, 'Exception in LoRa connect: {}'.format(e))
             return False
