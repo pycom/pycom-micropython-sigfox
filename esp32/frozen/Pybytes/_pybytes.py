@@ -228,6 +228,7 @@ class Pybytes:
                 print("network_preferences are empty, set it up in /flash/pybytes_config.json first") # noqa
 
             for net in self.__conf['network_preferences']:
+                print_debug(3,'Attempting to connect with network {}'.format(net))
                 if net == 'lte' or net == 'nbiot':
                     if self.connect_lte():
                         break
