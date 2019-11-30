@@ -128,7 +128,7 @@ class PybytesConfig:
         except:
             import _urequest as urequest
 
-        if hasattr(pycom, 'sigfox_info') and (os.uname()[0] == 'LoPy4' or os.uname()[0] == 'FiPy'):
+        if hasattr(pycom, 'sigfox_info'):
             if pycom.sigfox_info()[0] is None or pycom.sigfox_info()[1] is None or pycom.sigfox_info()[2] is None or pycom.sigfox_info()[3] is None:
                 try:
                     from network import LoRa
@@ -391,7 +391,7 @@ class PybytesConfig:
         known_nets = [((activation_info['s'], activation_info['p']))] # noqa
 
         print_debug(3,'WLAN connected? {}'.format(wlan.isconnected()))
-        while not wlan.isconnected() and attempt < 3:
+        while not wlan.isconnected() and attempt < 10:
             attempt += 1
             print_debug(3, "Wifi connection attempt: {}".format(attempt))
             print_debug(3,'WLAN connected? {}'.format(wlan.isconnected()))
@@ -401,7 +401,7 @@ class PybytesConfig:
                     available_nets = wlan.scan()
                     for x in available_nets:
                         print_debug(5, x)
-                    time.sleep(1)
+                    time.sleep(3)
                 except:
                     pass
 
