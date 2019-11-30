@@ -137,17 +137,27 @@ class PybytesConfig:
                     self.__pybytes_sigfox_registration = urequest.post('https://api.{}/v2/register-sigfox'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
                     start_time = time.time()
                     while (self.__pybytes_sigfox_registration is None or self.__pybytes_sigfox_registration.status_code != 200) and time.time() - start_time < 600:
-                        time.sleep(60)
+                        time.sleep(30)
                         self.__pybytes_sigfox_registration = urequest.post('https://api.{}/v2/register-sigfox'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
                     if self.__pybytes_sigfox_registration is not None and self.__pybytes_sigfox_registration.status_code == 200:
                         jsigfox = self.__pybytes_sigfox_registration.json()
-                        self.__pybytes_sigfox_registration.close()
+                        try:
+                            self.__pybytes_sigfox_registration.close()
+                        except:
+                            pass
                         print_debug(99, 'Sigfox regisgtration response:\n{}'.format(jsigfox))
-                        pycom.sigfox_info(id=jsigfox.get('sigfoxId'), pac=jsigfox.get('sigfoxPac'), public_key=jsigfox.get('sigfoxPubKey'), private_key=jsigfox.get('sigfoxPrivKey'), force=True)
-
+                        return pycom.sigfox_info(id=jsigfox.get('sigfoxId'), pac=jsigfox.get('sigfoxPac'), public_key=jsigfox.get('sigfoxPubKey'), private_key=jsigfox.get('sigfoxPrivKey'), force=True)
+                    else:
+                        try:
+                            self.__pybytes_sigfox_registration.close()
+                        except:
+                            pass
+                        return False
                 except Exception as ex:
                     print('Failed to retrieve/program Sigfox credentials!')
                     print_debug(2, ex)
+                    return False
+        return True
 
     def __process_cli_activation(self, filename, activation_token):
         try:
@@ -158,9 +168,11 @@ class PybytesConfig:
                 print_debug(99, 'Activation response:\n{}'.format(self.__pybytes_cli_activation.json()))
                 self.__process_config(filename, self.__generate_cli_config())
                 self.__pybytes_cli_activation.close()
-                self.__process_sigfox_registration(activation_token)
-                if self.__check_config() and self.__write_config(filename):
-                    return self.__pybytes_config
+                if self.__process_sigfox_registration(activation_token):
+                    if self.__check_config() and self.__write_config(filename):
+                        return self.__pybytes_config
+                else:
+                    print('Unable to provision Sigfox! Please try again.')
             return None
 
         except Exception as e:
