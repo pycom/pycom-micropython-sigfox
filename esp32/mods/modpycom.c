@@ -66,6 +66,16 @@ void modpycom_init0(void) {
     }
 }
 
+static bool is_empty(uint8_t* value) {
+	bool ret_val = true;
+	for (int i=0; i < sizeof(value); i++) {
+		if (value[i] != 0xFF) {
+			ret_val = false;
+		}
+	}
+	return ret_val;
+}
+
 static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t safeboot, bool reset) {
     bool update_part = false;
     bool update_fstype = false;
@@ -784,6 +794,185 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_smartConfig_obj, 0, 1, mod_
 
 #endif //(VARIANT == PYBYTES)
 
+
+// Helper function to return decimal value of a hexadecimal character coded in ASCII
+STATIC uint8_t hex_from_char(const char c) {
+
+    if((uint8_t)c >= '0' && (uint8_t)c <= '9') {
+        return c - '0';
+    }
+    else if((uint8_t)c >= 'A' && (uint8_t)c <= 'F') {
+        return c - ('A' - 10);
+    }
+    else if((uint8_t)c >= 'a' && (uint8_t)c <= 'f') {
+            return c - ('a' - 10);
+    }
+    else {
+        // 16 is invalid, because in hexa allowed range is 0 - 15
+        return 16;
+    }
+
+}
+
+
+STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+	enum { ARG_id, ARG_pac, ARG_public_key, ARG_private_key, ARG_force };
+	STATIC const mp_arg_t allowed_args[] = {
+			{ MP_QSTR_id,           MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+			{ MP_QSTR_pac,          MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+			{ MP_QSTR_public_key,   MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+			{ MP_QSTR_private_key,  MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+			{ MP_QSTR_force,        MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} }
+	};
+	mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+	mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+	uint8_t id[4];
+	uint8_t pac[8];
+	uint8_t public_key[16];
+	uint8_t private_key[16];
+
+	config_get_sigfox_id(id);
+	config_get_sigfox_pac(pac);
+	config_get_sigfox_public_key(public_key);
+	config_get_sigfox_private_key(private_key);
+
+
+	if (args[ARG_id].u_obj == mp_const_none && args[ARG_pac].u_obj == mp_const_none && args[ARG_public_key].u_obj == mp_const_none && args[ARG_private_key].u_obj == mp_const_none) {
+
+		mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(4, NULL));
+
+		t->items[ARG_id] = is_empty(id) ? mp_const_none:mp_obj_new_str((const char*)id, sizeof(id));
+		t->items[ARG_pac] = is_empty(pac) ? mp_const_none:mp_obj_new_str((const char*)pac, sizeof(pac));
+		t->items[ARG_public_key] = is_empty(public_key) ? mp_const_none:mp_obj_new_str((const char*)public_key, sizeof(public_key));
+		t->items[ARG_private_key] = is_empty(private_key) ? mp_const_none:mp_obj_new_str((const char*)private_key, sizeof(private_key));
+
+		return MP_OBJ_FROM_PTR(t);
+
+	} else {
+
+		// temporary array to store even the longest value from id, pac, public_key and private_key
+		uint8_t tmp_array[16];
+		size_t length;
+
+		if (args[ARG_id].u_obj != mp_const_none) {
+
+			if ( args[ARG_force].u_bool == true || is_empty(id) ) {
+
+				const char* id = mp_obj_str_get_data(args[ARG_id].u_obj, &length);
+
+				if(length != 8) {
+					nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "ID must have length of 8!"));
+				}
+
+				// Put together every 3 characters of the string (which are digits from 0 - 9 and a/A - f/F) into 1 bytes because the available space is half of the required one
+				for(int i = 0, j = 0; i < length; i = i+2) {
+					uint8_t lower_nibble = hex_from_char(id[i+1]);
+					uint8_t upper_nibble = hex_from_char(id[i]);
+
+					if(lower_nibble == 16 || upper_nibble == 16) {
+						nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "ID must only contain hexadecimal digits!"));
+					}
+
+					tmp_array[j] = lower_nibble | (upper_nibble << 4);
+					j++;
+				}
+
+				config_set_sigfox_id(tmp_array);
+			} else {
+				nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing id!"));
+			}
+		}
+		if (args[ARG_pac].u_obj != mp_const_none) {
+
+			if (args[ARG_force].u_bool == true || is_empty(pac)) {
+
+				const char* pac = mp_obj_str_get_data(args[ARG_pac].u_obj, &length);
+
+				if(length != 16) {
+					nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "PAC must have length of 16!"));
+				}
+
+				// Put together every 3 characters of the string (which are digits from 0 - 9 and a/A - f/F) into 1 bytes because the available space is half of the required one
+				for(int i = 0, j = 0; i < length; i = i+2) {
+					uint8_t lower_nibble = hex_from_char(pac[i+1]);
+					uint8_t upper_nibble = hex_from_char(pac[i]);
+
+					if(lower_nibble == 16 || upper_nibble == 16) {
+						nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "PAC must only contain hexadecimal digits!"));
+					}
+
+					tmp_array[j] = lower_nibble | (upper_nibble << 4);
+					j++;
+				}
+
+				config_set_sigfox_pac(tmp_array);
+			} else {
+				nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing pac!"));
+			}
+		}
+		if (args[ARG_public_key].u_obj != mp_const_none) {
+
+			if (args[ARG_force].u_bool == true || is_empty(public_key)) {
+
+				const char* public_key = mp_obj_str_get_data(args[ARG_public_key].u_obj, &length);
+
+				if(length != 32) {
+					nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Public Key must have length of 32!"));
+				}
+
+				// Put together every 3 characters of the string (which are digits from 0 - 9 and a/A - f/F) into 1 bytes because the available space is half of the required one
+				for(int i = 0, j = 0; i < length; i = i+2) {
+					uint8_t lower_nibble = hex_from_char(public_key[i+1]);
+					uint8_t upper_nibble = hex_from_char(public_key[i]);
+
+					if(lower_nibble == 16 || upper_nibble == 16) {
+						nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Public Key must only contain hexadecimal digits!"));
+					}
+
+					tmp_array[j] = lower_nibble | (upper_nibble << 4);
+					j++;
+				}
+
+				config_set_sigfox_public_key(tmp_array);
+			} else {
+				nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing public key!"));
+			}
+
+		}
+		if (args[ARG_private_key].u_obj != mp_const_none) {
+
+			if (args[ARG_force].u_bool == true || is_empty(private_key)) {
+
+				const char* private_key = mp_obj_str_get_data(args[ARG_private_key].u_obj, &length);
+
+				if(length != 32) {
+					nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Private Key must have length of 32"));
+				}
+
+				// Put together every 3 characters of the string (which are digits from 0 - 9 and a/A - f/F) into 1 bytes because the available space is half of the required one
+				for(int i = 0, j = 0; i < length; i = i+2) {
+					uint8_t lower_nibble = hex_from_char(private_key[i+1]);
+					uint8_t upper_nibble = hex_from_char(private_key[i]);
+
+					if(lower_nibble == 16 || upper_nibble == 16) {
+						nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Private Key must only contain hexadecimal digits!"));
+					}
+
+					tmp_array[j] = lower_nibble | (upper_nibble << 4);
+					j++;
+				}
+
+				config_set_sigfox_private_key(tmp_array);
+			} else {
+				nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing private key!"));
+			}
+		}
+	}
+	return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_sigfox_info_obj, 0, mod_pycom_sigfox_info);
+
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat),                       (mp_obj_t)&mod_pycom_heartbeat_obj },
@@ -809,6 +998,8 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd_sta),                    (mp_obj_t)&mod_pycom_wifi_pwd_sta_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd_ap),                     (mp_obj_t)&mod_pycom_wifi_pwd_ap_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_mode_on_boot),               (mp_obj_t)&mod_pycom_wifi_mode_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sigfox_info),                     (mp_obj_t)&mod_pycom_sigfox_info_obj },
+
 #if (VARIANT == PYBYTES)
     { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_device_token),            (mp_obj_t)&mod_pycom_pybytes_device_token_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_mqttServiceAddress),      (mp_obj_t)&mod_pycom_pybytes_mqttServiceAddress_obj },
