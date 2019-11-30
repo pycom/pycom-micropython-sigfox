@@ -28,6 +28,7 @@ class PybytesConfig:
         self.__force_update = False
 
     def __write_config(self, filename='/flash/pybytes_config.json'):
+        print_debug(2, 'Writing configuration to {}'.format(filename))
         try:
             cf = open(filename, 'w')
             cf.write(json.dumps(self.__pybytes_config))
@@ -131,16 +132,24 @@ class PybytesConfig:
         if hasattr(pycom, 'sigfox_info'):
             if pycom.sigfox_info()[0] is None or pycom.sigfox_info()[1] is None or pycom.sigfox_info()[2] is None or pycom.sigfox_info()[3] is None:
                 try:
+                    jsigfox = None
                     from network import LoRa
                     data = { "activationToken": activation_token['a'], "wmac": binascii.hexlify(machine.unique_id()).upper(), "smac": binascii.hexlify(LoRa(region=LoRa.EU868).mac())}
                     print_debug(99,'sigfox_registration: {}'.format(data))
-                    self.__pybytes_sigfox_registration = urequest.post('https://api.{}/v2/register-sigfox'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
-                    start_time = time.time()
-                    while (self.__pybytes_sigfox_registration is None or self.__pybytes_sigfox_registration.status_code != 200) and time.time() - start_time < 600:
-                        time.sleep(30)
+                    try:
                         self.__pybytes_sigfox_registration = urequest.post('https://api.{}/v2/register-sigfox'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
-                    if self.__pybytes_sigfox_registration is not None and self.__pybytes_sigfox_registration.status_code == 200:
                         jsigfox = self.__pybytes_sigfox_registration.json()
+                    except:
+                        jsigfox = None
+                    start_time = time.time()
+                    while jsigfox is None and time.time() - start_time < 300:
+                        time.sleep(15)
+                        try:
+                            self.__pybytes_sigfox_registration = urequest.post('https://api.{}/v2/register-sigfox'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
+                            jsigfox = self.__pybytes_sigfox_registration.json()
+                        except:
+                            jsigfox = None
+                    if jsigfox is not None:
                         try:
                             self.__pybytes_sigfox_registration.close()
                         except:
@@ -163,13 +172,14 @@ class PybytesConfig:
         try:
             if not self.__pybytes_cli_activation.status_code == 200:
                 print_debug(3, 'Activation request returned {}.'.format(self.__pybytes_cli_activation.status_code))
-                self.__pybytes_cli_activation.close()
             else:
                 print_debug(99, 'Activation response:\n{}'.format(self.__pybytes_cli_activation.json()))
-                self.__process_config(filename, self.__generate_cli_config())
-                self.__pybytes_cli_activation.close()
                 if self.__process_sigfox_registration(activation_token):
-                    if self.__check_config() and self.__write_config(filename):
+                    if self.__process_config(filename, self.__generate_cli_config()):
+                        try:
+                            self.__pybytes_cli_activation.close()
+                        except:
+                            pass
                         return self.__pybytes_config
                 else:
                     print('Unable to provision Sigfox! Please try again.')
@@ -190,7 +200,7 @@ class PybytesConfig:
             else:
                 self.__activation2config()
                 self.__pybytes_activation.close()
-
+                print_debug(2, 'Checking and writing configuration in __process_activation')
                 if self.__check_config() and self.__write_config(filename):
                     return True
             return False
@@ -361,6 +371,7 @@ class PybytesConfig:
                 self.__pybytes_config.update(sigfox_config)
             if ssl_params is not None:
                 self.__pybytes_config.update(ssl_params)
+            print_debug(2, 'Checking and writing configuration in __process_config')
             if (len(self.__pybytes_config['username']) > 4 and len(self.__pybytes_config['device_id']) >= 36 and len(self.__pybytes_config['server']) > 4) and self.__write_config(filename):
                 self.__pybytes_config['cfg_msg'] = "Configuration successfully converted to pybytes_config.json"
                 return True
@@ -379,6 +390,7 @@ class PybytesConfig:
             else:
                 self.__pybytes_config.update(pybytes_legacy_config)
                 del pybytes_legacy_config
+                print_debug(2, 'Checking and writing configuration in __convert_legacy_config')
                 if self.__write_config(filename):
                     self.__pybytes_config['cfg_msg'] = 'Configuration successfully converted from config.py to {}'.format(filename)
                     self.__force_update = False
