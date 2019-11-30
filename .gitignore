@@ -1,15 +1,4 @@
-# Compiled Sources
-###################
-*.o
-*.a
-*.elf
-*.bin
-*.map
-*.hex
-*.dis
-*.exe
-
-# Packages
+# Packages 
 ############
 
 # Logs and Databases
@@ -20,10 +9,13 @@
 ######################
 *.swp
 
-# Build directory
+# Build directories
 ######################
-build/
-build-*/
+esp32/build/*
+esp32/build-PYBYTES/*
+mpy-cross/build/*
+# This map file is generated here instead of the build folder...
+mpy-cross/*.map
 
 # Test failure outputs
 ######################
