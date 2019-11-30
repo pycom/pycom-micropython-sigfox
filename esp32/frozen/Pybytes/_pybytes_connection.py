@@ -273,9 +273,14 @@ class PybytesConnection:
             self.lora = LoRa(mode=LoRa.LORAWAN)
         self.lora.nvram_restore()
 
-        dev_addr = self.__conf['lora']['abp']['dev_addr']
-        nwk_swkey = self.__conf['lora']['abp']['nwk_skey']
-        app_swkey = self.__conf['lora']['abp']['app_skey']
+        try:
+            dev_addr = self.__conf['lora']['abp']['dev_addr']
+            nwk_swkey = self.__conf['lora']['abp']['nwk_skey']
+            app_swkey = self.__conf['lora']['abp']['app_skey']
+        except Exception as ex:
+            print("Invalid LoRaWAN ABP configuration!")
+            print_debug(1, ex)
+            return False
         timeout_ms = self.__conf.get('lora_timeout', lora_timeout) * 1000
 
         dev_addr = struct.unpack(">l", binascii.unhexlify(dev_addr.replace(' ', '')))[0] # noqa
@@ -319,9 +324,15 @@ class PybytesConnection:
             print("This device does not support LoRa connections: %s" % ex)
             return False
 
-        dev_eui = self.__conf['lora']['otaa']['app_device_eui']
-        app_eui = self.__conf['lora']['otaa']['app_eui']
-        app_key = self.__conf['lora']['otaa']['app_key']
+        try:
+            dev_eui = self.__conf['lora']['otaa']['app_device_eui']
+            app_eui = self.__conf['lora']['otaa']['app_eui']
+            app_key = self.__conf['lora']['otaa']['app_key']
+        except Exception as ex:
+            print("Invalid LoRaWAN OTAA configuration!")
+            print_debug(1, ex)
+            return False
+
         timeout_ms = self.__conf.get('lora_timeout', lora_timeout) * 1000
 
         if self.__conf.get('lora', {}).get('region') is not None:
