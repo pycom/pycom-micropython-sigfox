@@ -128,25 +128,36 @@ class PybytesConfig:
         except:
             import _urequest as urequest
 
-        if hasattr(pycom, 'sigfox_info') and (os.uname()[0] == 'LoPy4' or os.uname()[0] == 'FiPy'):
+        if hasattr(pycom, 'sigfox_info'):
             if pycom.sigfox_info()[0] is None or pycom.sigfox_info()[1] is None or pycom.sigfox_info()[2] is None or pycom.sigfox_info()[3] is None:
                 try:
                     from network import LoRa
                     data = { "activationToken": activation_token['a'], "wmac": binascii.hexlify(machine.unique_id()).upper(), "smac": binascii.hexlify(LoRa(region=LoRa.EU868).mac())}
                     print_debug(99,'sigfox_registration: {}'.format(data))
                     self.__pybytes_sigfox_registration = urequest.post('https://api.{}/v2/register-sigfox'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
-                    #self.__pybytes_sigfox_registration = urequest.post('https://en7nkpr7bz4r4.x.pipedream.net'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
-                    while not self.__pybytes_sigfox_registration.status_code == 200:
-                        time.sleep(60)
-                        self.__pybytes_sigfox_registration = urequest.post('https://en7nkpr7bz4r4.x.pipedream.net'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
-                    jsigfox = self.__pybytes_sigfox_registration.json()
-                    self.__pybytes_sigfox_registration.close()
-                    print_debug(99, 'Sigfox regisgtration response:\n{}'.format(jsigfox))
-                    pycom.sigfox_info(id=jsigfox.get('sigfoxId'), pac=jsigfox.get('sigfoxPac'), public_key=jsigfox.get('sigfoxPubKey'), private_key=jsigfox.get('sigfoxPrivKey'), force=True)
-
+                    start_time = time.time()
+                    while (self.__pybytes_sigfox_registration is None or self.__pybytes_sigfox_registration.status_code != 200) and time.time() - start_time < 600:
+                        time.sleep(30)
+                        self.__pybytes_sigfox_registration = urequest.post('https://api.{}/v2/register-sigfox'.format(constants.__DEFAULT_DOMAIN), json=data, headers={'content-type': 'application/json'})
+                    if self.__pybytes_sigfox_registration is not None and self.__pybytes_sigfox_registration.status_code == 200:
+                        jsigfox = self.__pybytes_sigfox_registration.json()
+                        try:
+                            self.__pybytes_sigfox_registration.close()
+                        except:
+                            pass
+                        print_debug(99, 'Sigfox regisgtration response:\n{}'.format(jsigfox))
+                        return pycom.sigfox_info(id=jsigfox.get('sigfoxId'), pac=jsigfox.get('sigfoxPac'), public_key=jsigfox.get('sigfoxPubKey'), private_key=jsigfox.get('sigfoxPrivKey'), force=True)
+                    else:
+                        try:
+                            self.__pybytes_sigfox_registration.close()
+                        except:
+                            pass
+                        return False
                 except Exception as ex:
                     print('Failed to retrieve/program Sigfox credentials!')
                     print_debug(2, ex)
+                    return False
+        return True
 
     def __process_cli_activation(self, filename, activation_token):
         try:
@@ -157,9 +168,11 @@ class PybytesConfig:
                 print_debug(99, 'Activation response:\n{}'.format(self.__pybytes_cli_activation.json()))
                 self.__process_config(filename, self.__generate_cli_config())
                 self.__pybytes_cli_activation.close()
-                self.__process_sigfox_registration(activation_token)
-                if self.__check_config() and self.__write_config(filename):
-                    return self.__pybytes_config
+                if self.__process_sigfox_registration(activation_token):
+                    if self.__check_config() and self.__write_config(filename):
+                        return self.__pybytes_config
+                else:
+                    print('Unable to provision Sigfox! Please try again.')
             return None
 
         except Exception as e:
@@ -390,7 +403,7 @@ class PybytesConfig:
         known_nets = [((activation_info['s'], activation_info['p']))] # noqa
 
         print_debug(3,'WLAN connected? {}'.format(wlan.isconnected()))
-        while not wlan.isconnected() and attempt < 3:
+        while not wlan.isconnected() and attempt < 10:
             attempt += 1
             print_debug(3, "Wifi connection attempt: {}".format(attempt))
             print_debug(3,'WLAN connected? {}'.format(wlan.isconnected()))
@@ -400,7 +413,7 @@ class PybytesConfig:
                     available_nets = wlan.scan()
                     for x in available_nets:
                         print_debug(5, x)
-                    time.sleep(1)
+                    time.sleep(3)
                 except:
                     pass
 
