@@ -111,7 +111,7 @@ void app_main(void) {
     esp32_init_chip_info();
 
     // remove all the logs from the IDF
-    esp_log_level_set("*", ESP_LOG_NONE);
+    // esp_log_level_set("*", ESP_LOG_NONE);
 
     // setup the timer used as a reference in mphal
     machtimer_preinit();
