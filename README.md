@@ -26,7 +26,7 @@ board (PyBoard), the officially supported reference electronic circuit board.
 The following components are actively maintained by Pycom:
 - py/ -- the core Python implementation, including compiler, runtime, and
   core library.
-- exp32/ -- a version of MicroPython that runs on the ESP32 based boards from Pycom.
+- esp32/ -- a version of MicroPython that runs on the ESP32 based boards from Pycom.
 - tests/ -- test framework and test scripts.
 
 Additional components:
