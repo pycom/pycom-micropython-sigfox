@@ -1191,6 +1191,11 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_ue_coverage_obj, lte_ue_coverage);
 STATIC mp_obj_t lte_reset(mp_obj_t self_in) {
     lte_check_init();
     lte_disconnect(self_in);
+    if (!lte_push_at_command("AT+CFUN=0", LTE_RX_TIMEOUT_MAX_MS)) {
+        mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
+        lte_push_at_command("AT+CFUN=0", LTE_RX_TIMEOUT_MAX_MS);
+    }
+    mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
     lte_push_at_command("AT^RESET", LTE_RX_TIMEOUT_MAX_MS);
     lteppp_set_state(E_LTE_IDLE);
     mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);

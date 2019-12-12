@@ -182,6 +182,10 @@ class PybytesConfig:
                             pass
                         return self.__pybytes_config
                 else:
+                    try:
+                        self.__pybytes_cli_activation.close()
+                    except:
+                        pass
                     print('Unable to provision Sigfox! Please try again.')
             return None
 
