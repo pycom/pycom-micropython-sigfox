@@ -1,4 +1,8 @@
 Short readme for how to use the PyJTAG.
+
+Create the firmware with BTYPE=debug flag.
+Do not use the default pins assigned to UART, SPI, CAN because they are used by the JTAG. Pins not to be used: P4, P9, P10, P23
+
 Detailed information are here: https://pycomiot.atlassian.net/wiki/spaces/FIR/pages/966295564/Usage+of+PyJTAG
 
 Setup the PyJTAG board's switches:
@@ -33,5 +37,6 @@ Info : Listening on port 3333 for gdb connections
 
 
 When OpenOCD is running start GDB from "esp32" folder assuming you have a FIPY:
-"xtensa-esp32-elf-gdb -x gdbinit build/FIPY/release/application.elf"
+"xtensa-esp32-elf-gdb -x PyJTAG/gdbinit build/FIPY/debug/application.elf"
 
+In "PyJTAG/gdbinit" a breakpoint is configured at TASK_Micropython, execution should stop there first.
