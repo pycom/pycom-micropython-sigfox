@@ -118,6 +118,7 @@ void pin_init0(void) {
         pin_obj_t *self = (pin_obj_t *)named_map->table[i].value;
         if (self != &PIN_MODULE_P1) {  // temporal while we remove all the IDF logs
         #ifdef DEBUG
+            // Pins needed for JTAG
             if (self == &PIN_MODULE_P4 || self == &PIN_MODULE_P9 || self == &PIN_MODULE_P10 || self == &PIN_MODULE_P23) {
                continue;
             }
