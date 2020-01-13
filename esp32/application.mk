@@ -247,7 +247,7 @@ APP_SX1276_SRC_C = $(addprefix drivers/sx127x/,\
 	sx1276/sx1276.c \
 	)
 
-APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/,\
+APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/src/,\
 	manufacturer_api.c \
 	radio.c \
 	ti_aes_128.c \
@@ -256,7 +256,7 @@ APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/,\
 	modsigfox.c \
 	)
 
-APP_SIGFOX_SRC_FIPY_LOPY4_C = $(addprefix sigfox/,\
+APP_SIGFOX_SRC_FIPY_LOPY4_C = $(addprefix sigfox/src/,\
 	manufacturer_api.c \
 	radio_sx127x.c \
 	ti_aes_128.c \
@@ -269,7 +269,7 @@ APP_SIGFOX_MOD_SRC_C = $(addprefix mods/,\
 	modsigfox_api.c \
 	)
 
-APP_SIGFOX_TARGET_SRC_C = $(addprefix sigfox/targets/,\
+APP_SIGFOX_TARGET_SRC_C = $(addprefix sigfox/src/targets/,\
 	cc112x_spi.c \
 	hal_int.c \
 	hal_spi_rf_trxeb.c \
@@ -513,6 +513,9 @@ all: $(BOOT_BIN)
 endif
 ifeq ($(TARGET), boot_app)
 all: $(BOOT_BIN) $(APP_BIN)
+endif
+ifeq ($(TARGET), sigfox)
+include sigfox.mk
 endif
 .PHONY: all CHECK_DEP
 
