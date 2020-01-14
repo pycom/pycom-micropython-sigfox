@@ -159,6 +159,15 @@ class PybytesProtocol:
             elif (message_type == constants.__TYPE_RELEASE_DEPLOY):
                 self.deploy_new_release(body)
 
+            elif (message_type == constants.__TYPE_DEVICE_NETWORK_DEPLOY):
+                ota = WiFiOTA(
+                    self.__conf['wifi']['ssid'],
+                    self.__conf['wifi']['password'],
+                    self.__conf['ota_server']['domain'],
+                    self.__conf['ota_server']['port']
+                )
+                ota.update_device_network_config(self.__FCOTA, self.__conf)
+
             elif (message_type == constants.__TYPE_OTA):
                 ota = WiFiOTA(
                     self.__conf['wifi']['ssid'],
