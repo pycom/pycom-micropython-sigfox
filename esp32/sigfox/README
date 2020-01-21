@@ -5,8 +5,9 @@ There are three prebuilt libraries for SIPY, LOPY4, and FIPY.
 @Pycom In order to build these libraries execute the following steps using the private pyupython repository:
 
 git clone -b sigfox git@github.com:pycom/pyupython.git src
+cd src
 git checkout deb8afcf
-cd ..
+cd ../..
 make BOARD=LOPY4 TARGET=sigfox
 make BOARD=FIPY TARGET=sigfox
 make BOARD=SIPY TARGET=sigfox
