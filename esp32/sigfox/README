@@ -6,7 +6,7 @@ There are three prebuilt libraries for SIPY, LOPY4, and FIPY.
 
 git clone -b sigfox git@github.com:pycom/pyupython.git src
 cd src
-git checkout deb8afcf
+git checkout ba89a617475d0e4f57bb135f395b9ecf48eaa3b0
 cd ../..
 make BOARD=LOPY4 TARGET=sigfox
 make BOARD=FIPY TARGET=sigfox
