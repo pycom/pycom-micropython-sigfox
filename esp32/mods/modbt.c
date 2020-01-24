@@ -659,7 +659,7 @@ static void gap_events_handler (esp_gap_ble_cb_event_t event, esp_ble_gap_cb_par
             xQueueSend(xScanQueue, (void *)&bt_event_result, (TickType_t)0);
             bt_obj.events |= MOD_BT_GATTC_ADV_EVT;
             if (bt_obj.trigger & MOD_BT_GATTC_ADV_EVT) {
-                mp_irq_queue_interrupt(bluetooth_callback_handler, (void *)&bt_obj);
+                mp_irq_queue_interrupt_non_ISR(bluetooth_callback_handler, (void *)&bt_obj);
             }
             break;
         case ESP_GAP_SEARCH_DISC_RES_EVT:
@@ -765,7 +765,7 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
                 char_obj->events |= MOD_BT_GATTC_INDICATE_EVT;
             }
             if ((char_obj->trigger & MOD_BT_GATTC_NOTIFY_EVT) || (char_obj->trigger & MOD_BT_GATTC_INDICATE_EVT)) {
-                mp_irq_queue_interrupt(gattc_char_callback_handler, char_obj);
+                mp_irq_queue_interrupt_non_ISR(gattc_char_callback_handler, char_obj);
             }
         }
         break;
@@ -867,7 +867,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                 if (char_obj->trigger & MOD_BT_GATTS_READ_EVT) {
                     char_obj->read_request = true;
                     char_obj->trans_id = p->read.trans_id;
-                    mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+                    mp_irq_queue_interrupt_non_ISR(gatts_char_callback_handler, char_obj);
                     break;
                 }
             }
@@ -894,7 +894,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                     bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
                     char_obj->events |= MOD_BT_GATTS_WRITE_EVT;
                     if (char_obj->trigger & MOD_BT_GATTS_WRITE_EVT) {
-                        mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+                        mp_irq_queue_interrupt_non_ISR(gatts_char_callback_handler, char_obj);
                     }
                 } else {    // descriptor
                     if (attr_obj->uuid.len == ESP_UUID_LEN_16 && attr_obj->uuid.uuid.uuid16 == GATT_UUID_CHAR_CLIENT_CONFIG) {
@@ -903,7 +903,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                         char_obj->config = value;
                         char_obj->events |= MOD_BT_GATTS_SUBSCRIBE_EVT;
                         if (char_obj->trigger & MOD_BT_GATTS_SUBSCRIBE_EVT) {
-                            mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
+                            mp_irq_queue_interrupt_non_ISR(gatts_char_callback_handler, char_obj);
                         }
 
                         if (value == 0x0001) {  // notifications enabled
@@ -961,7 +961,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
             bt_obj.gatts_conn_id = p->connect.conn_id;
             bt_obj.events |= MOD_BT_GATTS_CONN_EVT;
             if (bt_obj.trigger & MOD_BT_GATTS_CONN_EVT) {
-                mp_irq_queue_interrupt(bluetooth_callback_handler, (void *)&bt_obj);
+                mp_irq_queue_interrupt_non_ISR(bluetooth_callback_handler, (void *)&bt_obj);
             }
             if (bt_obj.secure){
                 esp_ble_set_encryption(p->connect.remote_bda, ESP_BLE_SEC_ENCRYPT_MITM);
@@ -981,7 +981,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
         bt_obj.events |= MOD_BT_GATTS_DISCONN_EVT;
         xEventGroupSetBits(bt_event_group, MOD_BT_GATTS_DISCONN_EVT);
         if (bt_obj.trigger & MOD_BT_GATTS_DISCONN_EVT) {
-            mp_irq_queue_interrupt(bluetooth_callback_handler, (void *)&bt_obj);
+            mp_irq_queue_interrupt_non_ISR(bluetooth_callback_handler, (void *)&bt_obj);
         }
         break;
     case ESP_GATTS_CLOSE_EVT:
