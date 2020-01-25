@@ -49,10 +49,10 @@
 #include "esp_log.h"
 #include "mods/pybflash.h"
 
-#if defined (LOPY) || defined (LOPY4) || defined (FIPY)
+#if defined (LOPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
 #include "modlora.h"
 #endif
-#if defined (SIPY) || defined(LOPY4) || defined (FIPY)
+#if defined (SIPY) || defined(LOPY4) || defined (FIPY) || defined (TBEAMv1)
 #include "sigfox/modsigfox.h"
 #endif
 #if defined (GPY) || defined (FIPY)
@@ -112,7 +112,7 @@ STATIC void mptask_init_sflash_filesystem (void);
 STATIC void mptask_init_sflash_filesystem_fatfs(void);
 STATIC void mptask_create_main_py (void);
 STATIC void mptask_init_sflash_filesystem_littlefs(void);
-#if defined (LOPY) || defined (SIPY) || defined (LOPY4) || defined (FIPY)
+#if defined (LOPY) || defined (SIPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
 STATIC void mptask_update_lpwan_mac_address (void);
 #endif
 
@@ -239,10 +239,10 @@ soft_reset:
         // Config Wifi as per Pycom config
         mptask_config_wifi(false);
         // these ones are special because they need uPy running and they launch tasks
-#if defined(LOPY) || defined (LOPY4) || defined (FIPY)
+#if defined(LOPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
         modlora_init0();
 #endif
-#if defined(SIPY) || defined(LOPY4) || defined (FIPY)
+#if defined(SIPY) || defined(LOPY4) || defined (FIPY) || defined (TBEAMv1)
         modsigfox_init0();
 #endif
     }
@@ -250,12 +250,12 @@ soft_reset:
     // initialize the serial flash file system
     mptask_init_sflash_filesystem();
 
-#if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY)
+#if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY) || defined (TBEAMv1)
     // must be done after initializing the file system
     mptask_update_lpwan_mac_address();
 #endif
 
-#if defined(SIPY) || defined(LOPY4) || defined(FIPY)
+#if defined(SIPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
     sigfox_update_id();
     sigfox_update_pac();
     sigfox_update_private_key();
@@ -594,7 +594,7 @@ STATIC void mptask_init_sflash_filesystem_littlefs(void) {
 }
 
 
-#if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY)
+#if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY) || defined (TBEAMv1)
 STATIC void mptask_update_lpwan_mac_address (void) {
     #define LPWAN_MAC_ADDR_PATH          "/sys/lpwan.mac"
 

@@ -41,6 +41,10 @@ COPY_IDF_LIB ?= 0
 LTE_LOG_BUFF ?= 0
 RGB_LED ?= enable
 
+ifeq ($(BOARD), $(filter $(BOARD), TBEAMv1))
+    RGB_LED ?= disable
+endif
+
 # by default openthread over LoRa is enabled
 OPENTHREAD = off
 
@@ -88,7 +92,7 @@ CFLAGS_XTENSA = -DESP_PLATFORM -Wpointer-arith -Wall -Werror=all -Wno-error=unus
 CFLAGS_XTENSA_OPT = -Os
 CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue
 
-CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
+CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD) -DBOARD_$(BOARD)
 CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 
 LDFLAGS = -nostdlib -Wl,-Map=$(@:.elf=.map) -Wl,--no-check-sections -u call_user_start_cpu0

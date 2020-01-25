@@ -16,7 +16,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "board.h"
 #include "esp_attr.h"
 
-#if defined(LOPY4)
+#if defined(LOPY4) || defined (TBEAMv1)
 
 #include "radio.h"
 #include "sx1276/sx1276.h"

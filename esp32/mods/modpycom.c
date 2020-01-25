@@ -1024,7 +1024,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd_ap),                     (mp_obj_t)&mod_pycom_wifi_pwd_ap_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_mode_on_boot),               (mp_obj_t)&mod_pycom_wifi_mode_obj },
 
-#if defined(FIPY) || defined(LOPY4) || defined(SIPY)
+#if defined(FIPY) || defined(LOPY4) || defined(SIPY) || defined (TBEAMv1)
         { MP_OBJ_NEW_QSTR(MP_QSTR_sigfox_info),                     (mp_obj_t)&mod_pycom_sigfox_info_obj },
 #endif
 

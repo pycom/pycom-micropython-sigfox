@@ -48,7 +48,7 @@ void BoardInitMcu( void )
     #if defined(LOPY) || defined (FIPY)
         SpiInit( &SX1272.Spi, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, NC );
         SX1272IoInit( );
-    #elif defined(LOPY4)
+    #elif defined(LOPY4) || defined (TBEAMv1)
         SpiInit( &SX1276.Spi, RADIO_MOSI, RADIO_MISO, RADIO_SCLK, NC );
         SX1276IoInit( );
     #endif
@@ -64,7 +64,7 @@ void BoardDeInitMcu( void )
 #if defined(LOPY) || defined (FIPY)
     SpiDeInit( &SX1272.Spi );
     SX1272IoDeInit( );
-#elif defined(LOPY4)
+#elif defined(LOPY4) || defined (TBEAMv1)
     SpiDeInit( &SX1276.Spi );
     SX1276IoDeInit( );
 #endif

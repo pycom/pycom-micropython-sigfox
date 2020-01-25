@@ -272,7 +272,7 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
     mod_network_socket_obj_t *self = self_in;
     int _errno;
 
-#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+#if defined (LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
         if (MP_OBJ_IS_INT(addr_in)) {
               mp_uint_t port = mp_obj_get_int(addr_in);
@@ -301,7 +301,7 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
         if (self->sock_base.nic_type->n_bind(self, ip, port, &_errno) != 0) {
             nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
         }
-#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+#if defined (LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
     }
 #endif
     return mp_const_none;
@@ -521,7 +521,7 @@ STATIC mp_obj_t socket_sendto(mp_obj_t self_in, mp_obj_t data_in, mp_obj_t addr_
     uint8_t ip[MOD_USOCKET_IPV6_CHARS_MAX];
     mp_uint_t port = 0;
 
-#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+#if defined (LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
         mp_obj_t *addr_items;
         mp_obj_get_array_fixed_n(addr_in, 2, &addr_items);
@@ -579,7 +579,7 @@ STATIC mp_obj_t socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
         vstr.buf[vstr.len] = '\0';
         tuple[0] = mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
     }
-#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+#if defined (LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
     // check if lora NIC and IP is not set (so Lora Raw or LoraWAN, but no Lora Mesh)
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
             if (ip[0] == 0) {
@@ -812,7 +812,7 @@ STATIC const mp_map_elem_t socket_locals_dict_table[] = {
 
 MP_DEFINE_CONST_DICT(socket_locals_dict, socket_locals_dict_table);
 
-#if defined (LOPY) || defined(LOPY4) || defined (FIPY)
+#if defined (LOPY) || defined(LOPY4) || defined (FIPY) || defined (TBEAMv1)
 STATIC const mp_map_elem_t raw_socket_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___del__),         (mp_obj_t)&socket_close_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_close),           (mp_obj_t)&socket_close_obj },
@@ -1004,17 +1004,17 @@ STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
 
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_AF_INET),         MP_OBJ_NEW_SMALL_INT(AF_INET) },
-#if defined (LOPY) || defined (LOPY4) || defined (FIPY)
+#if defined (LOPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
     { MP_OBJ_NEW_QSTR(MP_QSTR_AF_LORA),         MP_OBJ_NEW_SMALL_INT(AF_LORA) },
 #endif
 
-#if defined (SIPY) || defined (LOPY4) || defined (FIPY)
+#if defined (SIPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
     { MP_OBJ_NEW_QSTR(MP_QSTR_AF_SIGFOX),       MP_OBJ_NEW_SMALL_INT(AF_SIGFOX) },
 #endif
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_SOCK_STREAM),     MP_OBJ_NEW_SMALL_INT(SOCK_STREAM) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SOCK_DGRAM),      MP_OBJ_NEW_SMALL_INT(SOCK_DGRAM) },
-#if defined (LOPY) || defined (SIPY) || defined (LOPY4) || defined(FIPY)
+#if defined (LOPY) || defined (SIPY) || defined (LOPY4) || defined(FIPY) || defined (TBEAMv1)
     { MP_OBJ_NEW_QSTR(MP_QSTR_SOCK_RAW),        MP_OBJ_NEW_SMALL_INT(SOCK_RAW) },
 #endif
 
@@ -1031,18 +1031,18 @@ STATIC const mp_map_elem_t mp_module_usocket_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_LORA),        MP_OBJ_NEW_SMALL_INT(SOL_LORA) },
 #elif defined(SIPY)
     { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_SIGFOX),      MP_OBJ_NEW_SMALL_INT(SOL_SIGFOX) },
-#elif defined(FIPY) || defined(LOPY4)
+#elif defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
     { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_LORA),        MP_OBJ_NEW_SMALL_INT(SOL_LORA) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_SIGFOX),      MP_OBJ_NEW_SMALL_INT(SOL_SIGFOX) },
 #endif
     { MP_OBJ_NEW_QSTR(MP_QSTR_SOL_SOCKET),      MP_OBJ_NEW_SMALL_INT(SOL_SOCKET) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SO_REUSEADDR),    MP_OBJ_NEW_SMALL_INT(SO_REUSEADDR) },
 
-#if defined(LOPY) || defined (LOPY4) || defined(FIPY)
+#if defined(LOPY) || defined (LOPY4) || defined(FIPY) || defined (TBEAMv1)
     { MP_OBJ_NEW_QSTR(MP_QSTR_SO_CONFIRMED),    MP_OBJ_NEW_SMALL_INT(SO_LORAWAN_CONFIRMED) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_SO_DR),           MP_OBJ_NEW_SMALL_INT(SO_LORAWAN_DR) },
 #endif
-#if defined(SIPY) || defined (LOPY4) || defined(FIPY)
+#if defined(SIPY) || defined (LOPY4) || defined(FIPY) || defined (TBEAMv1)
      { MP_OBJ_NEW_QSTR(MP_QSTR_SO_RX),          MP_OBJ_NEW_SMALL_INT(SO_SIGFOX_RX) },
      { MP_OBJ_NEW_QSTR(MP_QSTR_SO_TX_REPEAT),   MP_OBJ_NEW_SMALL_INT(SO_SIGFOX_TX_REPEAT) },
      { MP_OBJ_NEW_QSTR(MP_QSTR_SO_OOB),         MP_OBJ_NEW_SMALL_INT(SO_SIGFOX_OOB) },

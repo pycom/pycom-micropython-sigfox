@@ -46,7 +46,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 #if defined(LOPY) || defined (FIPY)
 #include "sx1272/sx1272.h"
 #include "sx1272-board.h"
-#elif defined(LOPY4)
+#elif defined(LOPY4) || defined (TBEAMv1)
 #include "sx1276/sx1276.h"
 #include "sx1276-board.h"
 #endif
@@ -63,7 +63,7 @@ Maintainer: Miguel Luis and Gregory Cristian
 /*!
  * Board MCU pins definitions
  */
-#if defined (LOPY) || defined (LOPY4) || defined (FIPY)
+#if defined (LOPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
 #define RADIO_RESET                                 micropy_lpwan_reset_pin_index
 
 #define RADIO_MOSI                                  GPIO27

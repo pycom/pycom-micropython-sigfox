@@ -34,6 +34,6 @@ Maintainer: Miguel Luis and Gregory Cristian
  * ESP32 Pin Names
  */
 #define MCU_PINS \
-    GPIO17 = 0, GPIO18, GPIO23, GPIO5, GPIO27, GPIO19, NBR_GP_PINS
+    GPIO17 = 0, GPIO18, GPIO23, GPIO5, GPIO27, GPIO19, GPIO26, NBR_GP_PINS
 
 #endif // __PIN_NAME_MCU_H__

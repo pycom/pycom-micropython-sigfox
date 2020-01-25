@@ -316,13 +316,13 @@ OBJ = $(PY_O)
 ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1272_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
 endif
-ifeq ($(BOARD), $(filter $(BOARD), LOPY4))
+ifeq ($(BOARD), $(filter $(BOARD), LOPY4 TBEAMv1))
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1276_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
 endif
 ifeq ($(BOARD), $(filter $(BOARD), SIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
-ifeq ($(BOARD), $(filter $(BOARD), LOPY4 FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), LOPY4 FIPY TBEAMv1))
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
@@ -331,7 +331,7 @@ endif
 
 # add OPENTHREAD code only if flag enabled and for LOPY, LOPY4 and FIPY
 ifeq ($(OPENTHREAD), on)
-ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY TBEAMv1))
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_OPENTHREAD_SRC_C:.c=.o) $(APP_MOD_MESH_SRC_C:.c=.o))
 endif
 endif # ifeq ($(OPENTHREAD), on)
@@ -346,10 +346,10 @@ BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
 
 # List of sources for qstr extraction
 SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C) $(APP_LIB_SRC_C)
-ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY TBEAMv1))
 SRC_QSTR += $(APP_MODS_LORA_SRC_C)
 endif
-ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY TBEAMv1))
 SRC_QSTR += $(APP_SIGFOX_MOD_SRC_C)
 endif
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
@@ -357,7 +357,7 @@ SRC_QSTR += $(APP_MODS_LTE_SRC_C)
 endif
 
 ifeq ($(OPENTHREAD), on)
-ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY TBEAMv1))
 SRC_QSTR += $(APP_MOD_MESH_SRC_C)
 endif
 endif # ifeq ($(OPENTHREAD), on)
@@ -424,6 +424,14 @@ ifeq ($(BOARD), WIPY)
 endif
 ifeq ($(BOARD), LOPY)
     APP_BIN = $(BUILD)/lopy.bin
+endif
+ifeq ($(BOARD), TBEAMv1)
+    APP_BIN = $(BUILD)/tbeamv1.bin
+    $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
 endif
 ifeq ($(BOARD), LOPY4)
     APP_BIN = $(BUILD)/lopy4.bin
@@ -638,7 +646,7 @@ else
 ifeq ($(BOARD), $(filter $(BOARD), SIPY))
 	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
 	$(ECHO) "Generating Encrypted Images for 4MB devices, you can use make flash and it would be handled automatically!"
-endif #($(BOARD), $(filter $(BOARD), SIPY))
+endif #($(BOARD), $(filter $(BOARD), SIPY TBEAMv1))
 	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_4MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
 endif #ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
 	$(ECHO) $(SEPARATOR)

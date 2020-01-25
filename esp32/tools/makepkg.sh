@@ -22,7 +22,7 @@ if ! [ -d ${BUILD_DIR} ]; then echo >&2 "Build directory for $1 not found! Run m
 if ! [ -r "pycom_version.h" ]; then echo >&2 "Cannot read pycom_version.h! Aborting."; exit 1; fi
 if [ "${BOARD}" = "GPY" -o  "${BOARD}" = "LOPY4" -o "${BOARD}" = "FIPY" ]; then
     if ! [ -r "boards/$1/${SCRIPT_NAME_8MB}" ]; then echo >&2 "Cannot read boards/$1/${SCRIPT_NAME_8MB}! Aborting."; exit 1; fi
-elif [ "${BOARD}" = "LOPY" -o "${BOARD}" = "WIPY" ]; then
+elif [ "${BOARD}" = "LOPY" -o "${BOARD}" = "WIPY" -o "${BOARD}" = "TBEAMv1" ]; then
     if ! [ -r "boards/$1/${SCRIPT_NAME_4MB}" ]; then echo >&2 "Cannot read boards/$1/${SCRIPT_NAME_4MB}! Aborting."; exit 1; fi
     if ! [ -r "boards/$1/${SCRIPT_NAME_8MB}" ]; then echo >&2 "Cannot read boards/$1/${SCRIPT_NAME_8MB}! Aborting."; exit 1; fi
 else
@@ -82,7 +82,7 @@ if [ "${BOARD}" != "SIPY" ]; then
     cp ${BUILD_DIR}/lib/${PART_FILE_8MB} ${PKG_TMP_DIR}
     cat boards/$1/${SCRIPT_FILE_8MB} > ${PKG_TMP_DIR}/${SCRIPT_FILE_8MB} || { echo >&2 "Cannot create ${SCRIPT_FILE_8MB} file! Aborting."; exit 1; }
 
-    if [ "${BOARD}" = "LOPY" -o "${BOARD}" = "WIPY" ]; then
+    if [ "${BOARD}" = "LOPY" -o "${BOARD}" = "WIPY" -o "${BOARD}" = "TBEAMv1" ]; then
        if [ $4 ]; then
             PART_FILE_4MB='partitions_4MB.bin_enc'
             SCRIPT_FILE_4MB='script_4MB_enc'

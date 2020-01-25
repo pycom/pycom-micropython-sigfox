@@ -37,6 +37,7 @@ pin_obj_t *gpio_board_map[NBR_GP_PINS] = {
         &pin_GPIO5,
         &pin_GPIO27,
         &pin_GPIO19,
+	&pin_GPIO26,
 };
 
 /*!

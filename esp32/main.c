@@ -56,11 +56,11 @@
 TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
 TaskHandle_t SmartConfTaskHandle;
-#if defined(LOPY) || defined (LOPY4) || defined (FIPY)
+#if defined(LOPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
 TaskHandle_t xLoRaTaskHndl;
 DRAM_ATTR TaskHandle_t xLoRaTimerTaskHndl;
 #endif
-#if defined(SIPY) || defined (LOPY4) || defined (FIPY)
+#if defined(SIPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
 TaskHandle_t xSigfoxTaskHndl;
 #endif
 #if defined(GPY) || defined (FIPY)
@@ -131,7 +131,11 @@ void app_main(void) {
 #endif
 
     // differentiate the Flash Size (either 8MB or 4MB) based on ESP32 rev id
+#if defined(BOARD_TBEAMv1)
+    micropy_hw_flash_size = 0x400000;
+#else
     micropy_hw_flash_size = (esp32_get_chip_rev() > 0 ? 0x800000 : 0x400000);
+#endif
 
     // propagating the Flash Size in the global variable (used in multiple IDF modules)
     g_rom_flashchip.chip_size = micropy_hw_flash_size;
@@ -143,11 +147,24 @@ void app_main(void) {
         micropy_lpwan_ncs_pin_num = 18;
         micropy_lpwan_ncs_pin = &pin_GPIO18;
 
+#if defined(BOARD_TBEAMv1)
+        micropy_lpwan_reset_pin_index = 2;
+        micropy_lpwan_reset_pin_num = 23;
+        micropy_lpwan_reset_pin = &pin_GPIO23;
+        micropy_lpwan_use_reset_pin = true;
+#else
         micropy_lpwan_use_reset_pin = false;
+#endif
 
+#if defined(BOARD_TBEAMv1)
+        micropy_lpwan_dio_pin_index = 6;
+        micropy_lpwan_dio_pin_num = 26;
+        micropy_lpwan_dio_pin = &pin_GPIO26;
+#else
         micropy_lpwan_dio_pin_index = 2;
         micropy_lpwan_dio_pin_num = 23;
         micropy_lpwan_dio_pin = &pin_GPIO23;
+#endif
 
         mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE_PSRAM, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
