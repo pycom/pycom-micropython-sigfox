@@ -39,10 +39,10 @@ RELEASE_DIR ?= $(BUILD_DIR)
 COPY_IDF_LIB ?= 0
 
 LTE_LOG_BUFF ?= 0
-RGB_LED ?= enable
-
 ifeq ($(BOARD), $(filter $(BOARD), TBEAMv1))
     RGB_LED ?= disable
+else
+    RGB_LED ?= enable
 endif
 
 # by default openthread over LoRa is enabled
