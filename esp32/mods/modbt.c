@@ -1420,6 +1420,8 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
     MP_THREAD_GIL_EXIT();
     if (xQueueReceive(xScanQueue, &bt_event, timeout) == pdTRUE)
     {
+        MP_THREAD_GIL_ENTER();
+
         if (bt_event.connection.conn_id < 0) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection refused"));
         }
@@ -1429,7 +1431,11 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
         conn->base.type = (mp_obj_t)&mod_bt_connection_type;
         conn->conn_id = bt_event.connection.conn_id;
         conn->gatt_if = bt_event.connection.gatt_if;
+
+        MP_THREAD_GIL_EXIT();
         uxBits = xEventGroupWaitBits(bt_event_group, MOD_BT_GATTC_MTU_EVT, true, true, 1000/portTICK_PERIOD_MS);
+        MP_THREAD_GIL_ENTER();
+
         if(uxBits & MOD_BT_GATTC_MTU_EVT)
         {
             conn->mtu = bt_conn_mtu;
@@ -1440,10 +1446,11 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
     }
     else
     {
+        MP_THREAD_GIL_ENTER();
+
         (void)esp_ble_gap_disconnect(bufinfo.buf);
         nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
     }
-    MP_THREAD_GIL_ENTER();
     return mp_const_none;
 }
 
