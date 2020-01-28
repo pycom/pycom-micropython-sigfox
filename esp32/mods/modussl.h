@@ -45,4 +45,9 @@ typedef struct _mp_obj_ssl_socket_t {
     uint8_t read_timeout;
 } mp_obj_ssl_socket_t;
 
+typedef struct _mp_obj_ssl_session_t {
+    mp_obj_base_t base;
+    mbedtls_ssl_session saved_session;
+} mp_obj_ssl_session_t;
+
 #endif /* MODUSSL_H_ */
