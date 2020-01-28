@@ -185,6 +185,7 @@ APP_UTIL_SRC_C = $(addprefix util/,\
 	mpsleep.c \
 	timeutils.c \
 	esp32chipinfo.c \
+	pycom_general_util.c \
 	)
 
 APP_FATFS_SRC_C = $(addprefix fatfs/src/,\

@@ -29,9 +29,6 @@
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
 #include "esp_event_loop.h"
-#include "ff.h"
-#include "lfs.h"
-#include "vfs_littlefs.h"
 #include "esp_wpa2.h"
 #include "esp_smartconfig.h"
 
@@ -58,6 +55,7 @@
 #include "mpirq.h"
 #include "mptask.h"
 #include "pycom_config.h"
+#include "pycom_general_util.h"
 
 /******************************************************************************
  DEFINE TYPES
@@ -67,7 +65,6 @@
  DEFINE CONSTANTS
  ******************************************************************************/
 
-#define FILE_READ_SIZE                      256
 #define BSSID_MAX_SIZE                        6
 #define MAX_WLAN_KEY_SIZE                    65
 #define MAX_AP_CONNECTED_STA                4
@@ -164,7 +161,6 @@ STATIC void wlan_set_antenna (uint8_t antenna);
 static esp_err_t wlan_event_handler(void *ctx, system_event_t *event);
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key, int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent, const char *hostname, uint8_t channel);
 static void wlan_init_wlan_recover_params(void);
-static char *wlan_read_file (const char *file_path, vstr_t *vstr);
 static void wlan_timer_callback( TimerHandle_t xTimer );
 static void wlan_validate_country(const char * country);
 static void wlan_validate_country_policy(uint8_t policy);
@@ -746,7 +742,7 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
     if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
         // CA Certificate is not mandatory
         if (wpa2_ent->ca_certs_path != NULL) {
-            if (wlan_read_file(wpa2_ent->ca_certs_path, &wlan_obj.vstr_ca)) {
+            if (pycom_util_read_file(wpa2_ent->ca_certs_path, &wlan_obj.vstr_ca)) {
                 if (ESP_OK != esp_wifi_sta_wpa2_ent_set_ca_cert((unsigned char*)wlan_obj.vstr_ca.buf, (int)wlan_obj.vstr_ca.len)) {
                     goto os_error;
                 }
@@ -757,7 +753,7 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
 
         // client certificate is necessary only in EAP-TLS method, this is ensured by wlan_validate_certificates() function
         if (wpa2_ent->client_key_path != NULL && wpa2_ent->client_cert_path != NULL) {
-            if (wlan_read_file(wpa2_ent->client_key_path, &wlan_obj.vstr_key) && wlan_read_file(wpa2_ent->client_cert_path, &wlan_obj.vstr_cert)) {
+            if (pycom_util_read_file(wpa2_ent->client_key_path, &wlan_obj.vstr_key) && pycom_util_read_file(wpa2_ent->client_cert_path, &wlan_obj.vstr_cert)) {
                 if (ESP_OK != esp_wifi_sta_wpa2_ent_set_cert_key((unsigned char*)wlan_obj.vstr_cert.buf, (int)wlan_obj.vstr_cert.len,
                                                                  (unsigned char*)wlan_obj.vstr_key.buf, (int)wlan_obj.vstr_key.len, NULL, 0)) {
                     goto os_error;
@@ -822,78 +818,6 @@ os_error:
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
 }
 
-STATIC char *wlan_read_file (const char *file_path, vstr_t *vstr) {
-    vstr_init(vstr, FILE_READ_SIZE);
-    char *filebuf = vstr->buf;
-    mp_uint_t actualsize;
-    mp_uint_t totalsize = 0;
-    static const TCHAR *path_relative;
-
-    if(isLittleFs(file_path))
-    {
-        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(file_path, &path_relative);
-        if (littlefs == NULL) {
-            return NULL;
-        }
-
-        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
-
-        lfs_file_t fp;
-        int res = lfs_file_open(&littlefs->lfs, &fp, path_relative, LFS_O_RDONLY);
-        if(res < LFS_ERR_OK)
-        {
-            return NULL;
-        }
-
-        while (true) {
-            actualsize = lfs_file_read(&littlefs->lfs, &fp, filebuf, FILE_READ_SIZE);
-            if (actualsize < LFS_ERR_OK) {
-                return NULL;
-            }
-            totalsize += actualsize;
-            if (actualsize < FILE_READ_SIZE) {
-                break;
-            } else {
-                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
-            }
-        }
-        lfs_file_close(&littlefs->lfs, &fp);
-
-        xSemaphoreGive(littlefs->mutex);
-
-    }
-    else
-    {
-        FATFS *fs = lookup_path_fatfs(file_path, &path_relative);
-        if (fs == NULL) {
-            return NULL;
-        }
-        FIL fp;
-        FRESULT res = f_open(fs, &fp, path_relative, FA_READ);
-        if (res != FR_OK) {
-            return NULL;
-        }
-
-        while (true) {
-            FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
-            if (res != FR_OK) {
-                f_close(&fp);
-                return NULL;
-            }
-            totalsize += actualsize;
-            if (actualsize < FILE_READ_SIZE) {
-                break;
-            } else {
-                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
-            }
-        }
-        f_close(&fp);
-    }
-
-    vstr->len = totalsize;
-    vstr_null_terminated_str(vstr);
-    return vstr->buf;
-}
 
 static void wlan_init_wlan_recover_params(void)
 {
