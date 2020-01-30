@@ -220,6 +220,14 @@ typedef union {
     uint8_t value[4];
 } bt_hash_obj_t;
 
+typedef struct {
+    bt_gatts_char_obj_t *chr;
+    uint32_t event;
+    uint32_t data_length;
+    uint8_t* data;
+} char_cbk_arg_t;
+
+
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -805,10 +813,21 @@ STATIC void gattc_char_callback_handler(void *arg) {
 
 // this function will be called by the interrupt thread
 STATIC void gatts_char_callback_handler(void *arg) {
-    bt_gatts_char_obj_t *chr = arg;
+
+    bt_gatts_char_obj_t *chr = ((char_cbk_arg_t*)arg)->chr;
 
     if (chr->handler && chr->handler != mp_const_none) {
-        mp_obj_t r_value = mp_call_function_1(chr->handler, chr->handler_arg);
+
+        mp_obj_t tuple[2];
+        tuple[0] = mp_obj_new_int(((char_cbk_arg_t*)arg)->event);
+        tuple[1] = mp_const_none;
+        if(((char_cbk_arg_t*)arg)->data_length > 0) {
+            tuple[1] = mp_obj_new_bytes(((char_cbk_arg_t*)arg)->data, ((char_cbk_arg_t*)arg)->data_length);
+            heap_caps_free(((char_cbk_arg_t*)arg)->data);
+            heap_caps_free((char_cbk_arg_t*)arg);
+        }
+
+        mp_obj_t r_value = mp_call_function_2(chr->handler, chr->handler_arg, mp_obj_new_tuple(2, tuple));
 
         if (chr->read_request) {
             uint32_t u_value;
@@ -867,7 +886,15 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                 if (char_obj->trigger & MOD_BT_GATTS_READ_EVT) {
                     char_obj->read_request = true;
                     char_obj->trans_id = p->read.trans_id;
-                    mp_irq_queue_interrupt_non_ISR(gatts_char_callback_handler, char_obj);
+
+                    char_cbk_arg_t *cbk_arg = heap_caps_malloc(sizeof(char_cbk_arg_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
+                    cbk_arg->chr = char_obj;
+                    cbk_arg->event = MOD_BT_GATTS_READ_EVT;
+                    cbk_arg->data_length = 0;
+                    cbk_arg->data = NULL;
+
+                    mp_irq_queue_interrupt_non_ISR(gatts_char_callback_handler, cbk_arg);
                     break;
                 }
             }
@@ -894,7 +921,16 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                     bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj;
                     char_obj->events |= MOD_BT_GATTS_WRITE_EVT;
                     if (char_obj->trigger & MOD_BT_GATTS_WRITE_EVT) {
-                        mp_irq_queue_interrupt_non_ISR(gatts_char_callback_handler, char_obj);
+
+                        char_cbk_arg_t *cbk_arg = heap_caps_malloc(sizeof(char_cbk_arg_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
+                        cbk_arg->chr = char_obj;
+                        cbk_arg->event = MOD_BT_GATTS_WRITE_EVT;
+                        cbk_arg->data_length = write_len;
+                        cbk_arg->data = heap_caps_malloc(cbk_arg->data_length, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                        memcpy(cbk_arg->data, p->write.value, cbk_arg->data_length);
+
+                        mp_irq_queue_interrupt_non_ISR(gatts_char_callback_handler, cbk_arg);
                     }
                 } else {    // descriptor
                     if (attr_obj->uuid.len == ESP_UUID_LEN_16 && attr_obj->uuid.uuid.uuid16 == GATT_UUID_CHAR_CLIENT_CONFIG) {
@@ -903,7 +939,15 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                         char_obj->config = value;
                         char_obj->events |= MOD_BT_GATTS_SUBSCRIBE_EVT;
                         if (char_obj->trigger & MOD_BT_GATTS_SUBSCRIBE_EVT) {
-                            mp_irq_queue_interrupt_non_ISR(gatts_char_callback_handler, char_obj);
+
+                            char_cbk_arg_t *cbk_arg = heap_caps_malloc(sizeof(char_cbk_arg_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
+                            cbk_arg->chr = char_obj;
+                            cbk_arg->event = MOD_BT_GATTS_SUBSCRIBE_EVT;
+                            cbk_arg->data_length = 0;
+                            cbk_arg->data = NULL;
+
+                            mp_irq_queue_interrupt_non_ISR(gatts_char_callback_handler, cbk_arg);
                         }
 
                         if (value == 0x0001) {  // notifications enabled
