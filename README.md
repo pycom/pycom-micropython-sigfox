@@ -212,6 +212,8 @@ To Buiild the firmware with Pybytes libs use the following make variable
 To Disable RGB Led control use the following make variable
 
     RGB_LED=disable
+    
+The RGB_LED is only enabled by default on Pycom boards
 
 ## Steps for using Secure Boot and Flash Encryption
 
