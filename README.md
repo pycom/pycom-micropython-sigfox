@@ -159,6 +159,7 @@ Additionaly we also support a third party BOARD from TTGO, the T-Beam version 1,
 
 More info on this board can be found here: https://github.com/LilyGO/TTGO-T-Beam
 
+This should also work on other versions of the T-Beam, and other ESP32 boards with 4MB Flash and 4MB PSRAM.
 
 To specify a serial port other than /dev/ttyUSB0, use ESPPORT variable:
 
