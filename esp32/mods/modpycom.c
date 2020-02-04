@@ -1038,6 +1038,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_smart_config_on_boot),            (mp_obj_t)&mod_pycom_smartConfig_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_lte_config),              (mp_obj_t)&mod_pycom_pybytes_lte_config_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_on_boot),                 (mp_obj_t)&mod_pycom_pybytes_on_boot_obj },
+
 #endif //(VARIANT == PYBYTES)
         { MP_OBJ_NEW_QSTR(MP_QSTR_bootmgr),                         (mp_obj_t)&mod_pycom_bootmgr_obj },
 
