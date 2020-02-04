@@ -8,6 +8,7 @@ available at https://www.pycom.io/opensource/licensing
 
 import os, json, binascii
 import time, pycom
+import sys
 from network import WLAN
 from machine import Timer
 
@@ -50,18 +51,20 @@ class Pybytes:
             pycom.wifi_on_boot(False, True)
 
             self.__check_dump_ca()
-            try:
-                from pybytes_connection import PybytesConnection
-            except:
-                from _pybytes_connection import PybytesConnection
-            self.__pybytes_connection = PybytesConnection(self.__conf, self.__recv_message)
-
+            self.__create_pybytes_connection(self.__conf)
             self.start(autoconnect)
             if autoconnect:
                 self.print_cfg_msg()
         else:
             if (hasattr(pycom, 'smart_config_on_boot') and pycom.smart_config_on_boot()):
                 self.smart_config(True)
+
+    def __create_pybytes_connection(self, conf):
+        try:
+            from pybytes_connection import PybytesConnection
+        except:
+            from _pybytes_connection import PybytesConnection
+        self.__pybytes_connection = PybytesConnection(conf, self.__recv_message)
 
     def __check_config(self):
         try:
@@ -91,17 +94,17 @@ class Pybytes:
         self.__check_init()
         return self.__pybytes_connection.connect_wifi(reconnect, check_interval)
 
-    def connect_lte(self, reconnect=True, check_interval=0.5):
+    def connect_lte(self):
         self.__check_init()
-        return self.__pybytes_connection.connect_lte(reconnect, check_interval)
+        return self.__pybytes_connection.connect_lte()
 
     def connect_lora_abp(self, timeout, nanogateway=False):
         self.__check_init()
         return self.__pybytes_connection.connect_lora_abp(timeout, nanogateway)
 
-    def connect_lora_otta(self, timeout=120, nanogateway=False):
+    def connect_lora_otaa(self, timeout=120, nanogateway=False):
         self.__check_init()
-        return self.__pybytes_connection.connect_lora_otta(timeout, nanogateway)
+        return self.__pybytes_connection.connect_lora_otaa(timeout, nanogateway)
 
     def connect_sigfox(self):
         self.__check_init()
@@ -139,9 +142,9 @@ class Pybytes:
         self.__check_init()
         self.__pybytes_connection.__pybytes_protocol.send_pybytes_analog_value(pin)
 
-    def send_signal(self, pin, value):
+    def send_signal(self, signal_number, value):
         self.__check_init()
-        self.__pybytes_connection.__pybytes_protocol.send_pybytes_custom_method_values(pin, [value])
+        self.__pybytes_connection.__pybytes_protocol.send_pybytes_custom_method_values(signal_number, [value])
 
     def send_virtual_pin_value(self, persistent, pin, value):
         self.__check_init()
@@ -216,11 +219,7 @@ class Pybytes:
             lora_joining_timeout = 120  # seconds to wait for LoRa joining
             if self.__config_updated:
                 if self.__check_config():
-                    try:
-                        from pybytes_connection import PybytesConnection
-                    except:
-                        from _pybytes_connection import PybytesConnection
-                    self.__pybytes_connection = PybytesConnection(self.__conf, self.__recv_message)
+                    self.__create_pybytes_connection(self.__conf)
                     self.__config_updated = False
             self.__check_init()
 
@@ -239,7 +238,7 @@ class Pybytes:
                     if self.connect_lora_abp(lora_joining_timeout):
                         break
                 elif net == 'lora_otaa':
-                    if self.connect_lora_otta(lora_joining_timeout):
+                    if self.connect_lora_otaa(lora_joining_timeout):
                         break
                 elif net == 'sigfox':
                     if self.connect_sigfox():
@@ -315,14 +314,24 @@ class Pybytes:
 
     def update_config(self, key, value=None, permanent=True, silent=False, reconnect=False):
         try:
-            self.__conf[key].update(value)
+            if isinstance(self.__conf[key], dict):
+                self.__conf[key].update(value)
+            elif type(self.__conf[key]) is list:
+                # set new list
+                self.__conf[key] = []
+                values = list(value.split(","))
+                # removes leading whitespaces on array itens
+                values = [item.strip() for item in values]
+                self.__conf[key] = values
+            else:
+                self.__conf[key] = value
             self.__config_updated = True
             if permanent: self.write_config(silent=silent)
             if reconnect:
                 self.reconnect()
         except Exception as ex:
             print('Error updating configuration!')
-            print('{}: {}'.format(ex.__name__, ex))
+            sys.print_exception(ex)
 
 
     def read_config(self, file='/flash/pybytes_config.json', reconnect=False):
@@ -449,14 +458,15 @@ class Pybytes:
         except:
             from _pybytes_config import PybytesConfig
         try:
-            self.__conf = PybytesConfig().cli_config(activation_info=jstring)
+            self.__create_pybytes_connection(None)
+            self.__conf = PybytesConfig().cli_config(activation_info=jstring, pybytes_connection=self.__pybytes_connection)
             if self.__conf is not None:
                 self.start()
             else:
                 print('Activation failed!')
         except Exception as ex:
             print('Activation failed! Please try again...')
-            print_debug(1, ex)
+            sys.print_exception(ex)
 
     if hasattr(pycom, 'smart_config_on_boot'):
         def smart_config(self, status=None, reset_ap=False):

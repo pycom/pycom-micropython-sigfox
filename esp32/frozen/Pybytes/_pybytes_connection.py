@@ -27,6 +27,7 @@ except:
     from _pybytes_debug import print_debug
 
 import os
+import sys
 import _thread
 import time
 import socket
@@ -38,23 +39,23 @@ from machine import WDT
 
 class PybytesConnection:
     def __init__(self, config, message_callback):
-        self.__conf = config
-        try:
-            self.__host = pycom.nvs_get('pybytes_server')
-        except:
-            self.__host = config.get('server')
-        self.__ssl = config.get('ssl', False)
-        self.__ssl_params = config.get('ssl_params', {})
-        self.__user_name = config.get('username')
-        self.__device_id = config.get('device_id')
-        self.__mqtt_download_topic = "d" + self.__device_id
-        self.__mqtt_upload_topic = "u" + self.__device_id
+        if config is not None:
+            self.__conf = config
+            try:
+                self.__host = pycom.nvs_get('pybytes_server')
+            except:
+                self.__host = config.get('server')
+            self.__ssl = config.get('ssl', False)
+            self.__ssl_params = config.get('ssl_params', {})
+            self.__user_name = config.get('username')
+            self.__device_id = config.get('device_id')
+            self.__mqtt_download_topic = "d" + self.__device_id
+            self.__mqtt_upload_topic = "u" + self.__device_id
+            self.__pybytes_protocol = PybytesProtocol(
+                config, message_callback, pybytes_connection=self
+            )
         self.__connection = None
-#        self.__thread_stack_size = 8192
         self.__connection_status = constants.__CONNECTION_STATUS_DISCONNECTED
-        self.__pybytes_protocol = PybytesProtocol(
-            config, message_callback, pybytes_connection=self
-        )
         self.__lora_socket = None
         self.lora = None
         self.lora_lock = _thread.allocate_lock()
@@ -130,7 +131,10 @@ class PybytesConnection:
                     pwd = dict(known_nets)[net_to_use]
                     sec = [e.sec for e in available_nets if e.ssid == net_to_use][0] # noqa
                     print_debug(99, "Connecting with {} and {}".format(net_to_use, pwd))
-                    self.wlan.connect(net_to_use, (sec, pwd), timeout=10000)
+                    if  sec == 0:
+                        self.wlan.connect(net_to_use, timeout=10000)
+                    else:
+                        self.wlan.connect(net_to_use, (sec, pwd), timeout=10000)
                     start_time = time.time()
                     while not self.wlan.isconnected():
                         if time.time() - start_time > timeout:
@@ -174,10 +178,13 @@ class PybytesConnection:
             return False
 
     # Establish a connection through LTE before connecting to mqtt server
-    def connect_lte(self, reconnect=True, check_interval=0.5):
-        self.__initialise_watchdog()
+    def connect_lte(self, activation_info=False, start_mqtt=True):
+        if activation_info:
+            lte_cfg = activation_info
+        else:
+            lte_cfg = self.__conf.get('lte')
+            self.__initialise_watchdog()
 
-        lte_cfg = self.__conf.get('lte')
         if lte_cfg is not None:
             if (os.uname()[0] not in ['FiPy', 'GPy']):
                 print("You need a device with FiPy or GPy firmware to connect via LTE") # noqa
@@ -225,32 +232,35 @@ class PybytesConnection:
                     time.sleep(0.25)
                 print("LTE connection established")
                 self.__network_type = constants.__NETWORK_TYPE_LTE
-                try:
-                    self.__connection = MQTTClient(
-                        self.__device_id,
-                        self.__host,
-                        self.__mqtt_download_topic,
-                        self.__pybytes_protocol,
-                        user=self.__user_name,
-                        password=self.__device_id
-                    )
-                    self.__connection.connect()
-                    self.__connection_status = constants.__CONNECTION_STATUS_CONNECTED_MQTT_LTE # noqa
-                    self.__pybytes_protocol.start_MQTT(
-                        self,
-                        constants.__NETWORK_TYPE_WIFI
-                    )
-                    print("Connected to MQTT {}".format(self.__host))
-                    return True
-                except Exception as ex:
-                    if '{}'.format(ex) == '4':
-                        print('MQTT ERROR! Bad credentials when connecting to server: "{}"'.format(self.__host)) # noqa
-                    else:
-                        print("MQTT ERROR! {}".format(ex))
-                    return False
+
+                if start_mqtt:
+                    try:
+                        self.__connection = MQTTClient(
+                            self.__device_id,
+                            self.__host,
+                            self.__mqtt_download_topic,
+                            self.__pybytes_protocol,
+                            user=self.__user_name,
+                            password=self.__device_id
+                        )
+                        self.__connection.connect()
+                        self.__connection_status = constants.__CONNECTION_STATUS_CONNECTED_MQTT_LTE # noqa
+                        self.__pybytes_protocol.start_MQTT(
+                            self,
+                            constants.__NETWORK_TYPE_LTE
+                        )
+                        print("Connected to MQTT {}".format(self.__host))
+                        return True
+                    except Exception as ex:
+                        if '{}'.format(ex) == '4':
+                            print('MQTT ERROR! Bad credentials when connecting to server: "{}"'.format(self.__host)) # noqa
+                        else:
+                            print("MQTT ERROR! {}".format(ex))
+                        return False
             except Exception as ex:
                 print("Exception connect_lte: {}".format(ex))
-                return False
+                sys.print_exception(ex)
+            return False
         else:
             print("Error... missing configuration!")
             return False
@@ -314,10 +324,10 @@ class PybytesConnection:
                 print_debug(3, 'Exception in LoRa connect: {}'.format(e))
             return False
 
-    def connect_lora_otta(self, lora_timeout, nanogateway):
+    def connect_lora_otaa(self, lora_timeout, nanogateway):
         print_debug(1,'Attempting to connect via LoRa')
         if (self.__connection_status != constants.__CONNECTION_STATUS_DISCONNECTED): # noqa
-            print("Error connect_lora_otta: Connection already exists. Disconnect First") # noqa
+            print("Error connect_lora_otaa: Connection already exists. Disconnect First") # noqa
             return False
         try:
             from network import LoRa
