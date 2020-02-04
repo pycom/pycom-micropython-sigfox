@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-IDF_VERSION=3.2
+IDF_VERSION=3.3.1
 
 TARGET ?= boot_app
 
@@ -103,7 +103,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -lbootloader_support -lmicro-ecc \
-       -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh -lesp_ringbuf -lcoap -lmdns
+       -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh -lesp_ringbuf -lcoap -lmdns -lefuse -lespcoredump -lapp_update
 ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
     LIBS += sigfox/modsigfox_$(BOARD).a
 $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
@@ -127,7 +127,7 @@ endif #ifeq ($(LTE_LOG_BUFF),1)
 
 B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader -L$(ESP_IDF_COMP_PATH)/esp32/ld \
          -L$(ESP_IDF_COMP_PATH)/esp32/lib -llog -lcore -lbootloader_support \
-         -lspi_flash -lsoc -lmicro-ecc -lgcc -lstdc++ -lgcov
+         -lspi_flash -lsoc -lmicro-ecc -lgcc -lstdc++ -lgcov -lefuse
 
 # objcopy paramters, to transform a binary file into an object file
 OBJCOPY_EMBED_ARGS = --input-target binary --output-target elf32-xtensa-le --binary-architecture xtensa --rename-section .data=.rodata.embedded

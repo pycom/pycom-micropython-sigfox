@@ -74,7 +74,7 @@ Then when you need the toolchain you can type ``get_esp32`` on the command line 
 You also need the ESP IDF along side this repository in order to build the ESP32 port.
 To get it:
 
-    $ git clone --recursive -b idf_v3.2 https://github.com/pycom/pycom-esp-idf.git
+    $ git clone --recursive -b idf_v3.3.1 https://github.com/pycom/pycom-esp-idf.git
 
 After cloning, if you did not specify the --recursive option, make sure to checkout all the submodules:
 
