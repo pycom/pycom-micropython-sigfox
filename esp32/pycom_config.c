@@ -393,6 +393,18 @@ bool config_set_boot_fs_type (const uint8_t boot_fs_type) {
     return config_write();
 }
 
+bool config_set_pybytes_autostart (bool pybytes_autostart) {
+    if (pycom_config_block.pybytes_config.auto_start != (uint8_t)pybytes_autostart) {
+        pycom_config_block.pybytes_config.auto_start = (uint8_t)pybytes_autostart;
+        return config_write();
+    }
+    return true;
+}
+
+bool config_get_pybytes_autostart (void) {
+    return (bool)pycom_config_block.pybytes_config.auto_start;
+}
+
 static bool config_write (void) {
     // erase the block first
     if (ESP_OK == spi_flash_erase_sector(CONFIG_DATA_FLASH_BLOCK)) {
