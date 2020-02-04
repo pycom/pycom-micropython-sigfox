@@ -701,7 +701,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         { MP_QSTR_cid,              MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_obj = mp_const_none} },
         { MP_QSTR_type,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_legacyattach,     MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-
+        { MP_QSTR_bands,            MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
 
     // parse args
@@ -753,7 +753,8 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             // Delay to ensure next addScan command is not discarded
             vTaskDelay(1000);
 
-            if (args[0].u_obj == mp_const_none) {
+            if (args[0].u_obj == mp_const_none  && args[6].u_obj == mp_const_none) {
+                // neither the argument 'band', nor 'bands' was supplied
                 lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
                 if (is_hw_new_band_support && version > SQNS_SW_5_8_BAND_SUPPORT) {
@@ -767,8 +768,21 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             }
             else
             {
-                lte_add_band(mp_obj_get_int(args[0].u_obj), is_hw_new_band_support, is_sw_new_band_support, version);
+                if (args[0].u_obj != mp_const_none) {
+                    // argument 'band'
+                    lte_add_band(mp_obj_get_int(args[0].u_obj), is_hw_new_band_support, is_sw_new_band_support, version);
                 }
+
+                if (args[6].u_obj != mp_const_none){
+                    // argument 'bands'
+                    mp_obj_t *bands;
+                    size_t n_bands=0;
+                    mp_obj_get_array(args[6].u_obj, &n_bands, &bands);
+
+                    for (size_t b = 0 ; b < n_bands ; ++b )
+                    {
+                        lte_add_band(mp_obj_get_int(bands[b]), is_hw_new_band_support, is_sw_new_band_support, version);
+                    }
                 }
             }
         } else {
