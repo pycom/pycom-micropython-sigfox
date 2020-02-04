@@ -29,9 +29,6 @@
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
 #include "esp_event_loop.h"
-#include "ff.h"
-#include "lfs.h"
-#include "vfs_littlefs.h"
 #include "esp_wpa2.h"
 #include "esp_smartconfig.h"
 
@@ -58,6 +55,7 @@
 #include "mpirq.h"
 #include "mptask.h"
 #include "pycom_config.h"
+#include "pycom_general_util.h"
 
 /******************************************************************************
  DEFINE TYPES
@@ -67,7 +65,6 @@
  DEFINE CONSTANTS
  ******************************************************************************/
 
-#define FILE_READ_SIZE                      256
 #define BSSID_MAX_SIZE                        6
 #define MAX_WLAN_KEY_SIZE                    65
 #define MAX_AP_CONNECTED_STA                4
@@ -164,7 +161,6 @@ STATIC void wlan_set_antenna (uint8_t antenna);
 static esp_err_t wlan_event_handler(void *ctx, system_event_t *event);
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key, int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent, const char *hostname, uint8_t channel);
 static void wlan_init_wlan_recover_params(void);
-static char *wlan_read_file (const char *file_path, vstr_t *vstr);
 static void wlan_timer_callback( TimerHandle_t xTimer );
 static void wlan_validate_country(const char * country);
 static void wlan_validate_country_policy(uint8_t policy);
@@ -286,6 +282,7 @@ void wlan_setup (wlan_internal_setup_t *config) {
     {
         case WIFI_MODE_AP:
            MP_THREAD_GIL_EXIT();
+           // wlan_setup_ap must be called only when GIL is not locked
            wlan_setup_ap (config->ssid_ap, config->auth, config->key_ap, config->channel, config->add_mac, config->hidden);
            // Start Wifi
            esp_wifi_start();
@@ -294,15 +291,33 @@ void wlan_setup (wlan_internal_setup_t *config) {
         break;
         case WIFI_MODE_APSTA:
         case WIFI_MODE_STA:
+            MP_THREAD_GIL_EXIT();
             if(config->mode == WIFI_MODE_APSTA)
             {
+                // wlan_setup_ap must be called only when GIL is not locked
                 wlan_setup_ap (config->ssid_ap, config->auth, config->key_ap, config->channel, config->add_mac, config->hidden);
             }
-            MP_THREAD_GIL_EXIT();
             // Start Wifi
             esp_wifi_start();
             wlan_obj.started = true;
             if (config->ssid_sta != NULL) {
+                if (config->auth == WIFI_AUTH_WPA2_ENTERPRISE) {
+
+                    // Take back the GIL as the pycom_util_read_file() uses MicroPython APIs (allocates memory with GC)
+                    MP_THREAD_GIL_ENTER();
+
+                    if (wlan_wpa2_ent.ca_certs_path != NULL) {
+                        pycom_util_read_file(wlan_wpa2_ent.ca_certs_path, &wlan_obj.vstr_ca);
+                    }
+
+                    if (wlan_wpa2_ent.client_key_path != NULL && wlan_wpa2_ent.client_cert_path != NULL) {
+                        pycom_util_read_file(wlan_wpa2_ent.client_key_path, &wlan_obj.vstr_key);
+                        pycom_util_read_file(wlan_wpa2_ent.client_cert_path, &wlan_obj.vstr_cert);
+                    }
+
+                    MP_THREAD_GIL_EXIT();
+                }
+
                 // connect to the requested access point
                 wlan_do_connect (config->ssid_sta, NULL, config->auth, config->key_sta, 30000, &wlan_wpa2_ent, NULL, 0);
             }
@@ -504,6 +519,7 @@ STATIC void wlan_servers_stop (void) {
     }
 }
 
+// Must be called only when GIL is not locked
 STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac, bool hidden) {
     uint32_t ssid_len = wlan_set_ssid_internal (ssid, strlen(ssid), add_mac);
     wlan_set_security_internal(auth, key);
@@ -523,7 +539,10 @@ STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uin
     //get mac of AP
     esp_wifi_get_mac(WIFI_IF_AP, wlan_obj.mac_ap);
 
+    // Need to take back the GIL as mod_network_register_nic() uses MicroPython API and wlan_setup_ap() is called when GIL is not locked
+    MP_THREAD_GIL_ENTER();
     mod_network_register_nic(&wlan_obj);
+    MP_THREAD_GIL_EXIT();
 }
 
 STATIC void wlan_validate_mode (uint mode) {
@@ -743,10 +762,11 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
         goto os_error;
     }
 
+    // The certificate files are already read at this point because this function runs outside of GIL, and the file_read functions uses MicroPython APIs
     if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
         // CA Certificate is not mandatory
         if (wpa2_ent->ca_certs_path != NULL) {
-            if (wlan_read_file(wpa2_ent->ca_certs_path, &wlan_obj.vstr_ca)) {
+            if (wlan_obj.vstr_ca.buf != NULL) {
                 if (ESP_OK != esp_wifi_sta_wpa2_ent_set_ca_cert((unsigned char*)wlan_obj.vstr_ca.buf, (int)wlan_obj.vstr_ca.len)) {
                     goto os_error;
                 }
@@ -757,7 +777,7 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
 
         // client certificate is necessary only in EAP-TLS method, this is ensured by wlan_validate_certificates() function
         if (wpa2_ent->client_key_path != NULL && wpa2_ent->client_cert_path != NULL) {
-            if (wlan_read_file(wpa2_ent->client_key_path, &wlan_obj.vstr_key) && wlan_read_file(wpa2_ent->client_cert_path, &wlan_obj.vstr_cert)) {
+            if ((wlan_obj.vstr_cert.buf != NULL) && (wlan_obj.vstr_key.buf != NULL)) {
                 if (ESP_OK != esp_wifi_sta_wpa2_ent_set_cert_key((unsigned char*)wlan_obj.vstr_cert.buf, (int)wlan_obj.vstr_cert.len,
                                                                  (unsigned char*)wlan_obj.vstr_key.buf, (int)wlan_obj.vstr_key.len, NULL, 0)) {
                     goto os_error;
@@ -822,78 +842,6 @@ os_error:
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
 }
 
-STATIC char *wlan_read_file (const char *file_path, vstr_t *vstr) {
-    vstr_init(vstr, FILE_READ_SIZE);
-    char *filebuf = vstr->buf;
-    mp_uint_t actualsize;
-    mp_uint_t totalsize = 0;
-    static const TCHAR *path_relative;
-
-    if(isLittleFs(file_path))
-    {
-        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(file_path, &path_relative);
-        if (littlefs == NULL) {
-            return NULL;
-        }
-
-        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
-
-        lfs_file_t fp;
-        int res = lfs_file_open(&littlefs->lfs, &fp, path_relative, LFS_O_RDONLY);
-        if(res < LFS_ERR_OK)
-        {
-            return NULL;
-        }
-
-        while (true) {
-            actualsize = lfs_file_read(&littlefs->lfs, &fp, filebuf, FILE_READ_SIZE);
-            if (actualsize < LFS_ERR_OK) {
-                return NULL;
-            }
-            totalsize += actualsize;
-            if (actualsize < FILE_READ_SIZE) {
-                break;
-            } else {
-                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
-            }
-        }
-        lfs_file_close(&littlefs->lfs, &fp);
-
-        xSemaphoreGive(littlefs->mutex);
-
-    }
-    else
-    {
-        FATFS *fs = lookup_path_fatfs(file_path, &path_relative);
-        if (fs == NULL) {
-            return NULL;
-        }
-        FIL fp;
-        FRESULT res = f_open(fs, &fp, path_relative, FA_READ);
-        if (res != FR_OK) {
-            return NULL;
-        }
-
-        while (true) {
-            FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
-            if (res != FR_OK) {
-                f_close(&fp);
-                return NULL;
-            }
-            totalsize += actualsize;
-            if (actualsize < FILE_READ_SIZE) {
-                break;
-            } else {
-                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
-            }
-        }
-        f_close(&fp);
-    }
-
-    vstr->len = totalsize;
-    vstr_null_terminated_str(vstr);
-    return vstr->buf;
-}
 
 static void wlan_init_wlan_recover_params(void)
 {

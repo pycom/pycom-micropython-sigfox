@@ -1090,13 +1090,11 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     vstr_t vstr;
     vstr_init(&vstr, 0);
     vstr_add_str(&vstr, modlte_rsp.data);
-    MP_THREAD_GIL_EXIT();
     while(modlte_rsp.data_remaining)
     {
         lte_push_at_command_ext("Pycom_Dummy", LTE_RX_TIMEOUT_MAX_MS, NULL, strlen("Pycom_Dummy") );
         vstr_add_str(&vstr, modlte_rsp.data);
     }
-    MP_THREAD_GIL_ENTER();
     return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_send_at_cmd_obj, 1, lte_send_at_cmd);
