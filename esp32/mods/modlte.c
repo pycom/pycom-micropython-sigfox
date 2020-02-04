@@ -612,6 +612,84 @@ error:
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_deinit_obj, 1, lte_deinit);
 
+STATIC void lte_add_band(uint32_t band, bool is_hw_new_band_support, bool is_sw_new_band_support, int version)
+{
+    /* Check band support */
+    switch(band)
+    {
+        case 5:
+        case 8:
+            if (!is_hw_new_band_support)
+            {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by this board hardware!", band));
+            }
+            else if(version < SQNS_SW_5_8_BAND_SUPPORT)
+            {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware [%d], please upgrade!", band, version));
+            }
+            break;
+        case 1:
+        case 2:
+        case 14:
+        case 17:
+        case 18:
+        case 19:
+        case 25:
+        case 26:
+        case 66:
+            if(!is_sw_new_band_support)
+            {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware [%d], please upgrade!", band, version));
+            }
+            if (!is_hw_new_band_support)
+            {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by this board hardware!", band));
+            }
+            break;
+        default:
+            break;
+    }
+
+    if (band == 1) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=1\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 2) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=2\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 3) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 4) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 5) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=5\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 8) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=8\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 12) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=12\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 13) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=13\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 14) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=14\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 17) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=17\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 18) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=18\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 19) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=19\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 20) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=20\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 25) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=25\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 26) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=26\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 28) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=28\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else if (band == 66) {
+        lte_push_at_command("AT!=\"RRC::addScanBand band=66\"", LTE_RX_TIMEOUT_MIN_MS);
+    } else {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported", band));
+    }
+}
+
+
 STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     lte_check_init();
     bool is_hw_new_band_support = false;
@@ -623,7 +701,7 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         { MP_QSTR_cid,              MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_obj = mp_const_none} },
         { MP_QSTR_type,             MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_legacyattach,     MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-
+        { MP_QSTR_bands,            MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
     };
 
     // parse args
@@ -675,7 +753,8 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             // Delay to ensure next addScan command is not discarded
             vTaskDelay(1000);
 
-            if (args[0].u_obj == mp_const_none) {
+            if (args[0].u_obj == mp_const_none  && args[6].u_obj == mp_const_none) {
+                // neither the argument 'band', nor 'bands' was supplied
                 lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
                 lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
                 if (is_hw_new_band_support && version > SQNS_SW_5_8_BAND_SUPPORT) {
@@ -689,78 +768,21 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             }
             else
             {
-                uint32_t band = mp_obj_get_int(args[0].u_obj);
-                /* Check band support */
-                switch(band)
-                {
-                    case 5:
-                    case 8:
-                        if (!is_hw_new_band_support)
-                        {
-                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by this board hardware!", band));
-                        }
-                        else if(version < SQNS_SW_5_8_BAND_SUPPORT)
-                        {
-                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware [%d], please upgrade!", band, version));
-                        }
-                        break;
-                    case 1:
-                    case 2:
-                    case 14:
-                    case 17:
-                    case 18:
-                    case 19:
-                    case 25:
-                    case 26:
-                    case 66:
-                        if(!is_sw_new_band_support)
-                        {
-                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by current modem Firmware [%d], please upgrade!", band, version));
-                        }
-                        if (!is_hw_new_band_support)
-                        {
-                            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported by this board hardware!", band));
-                        }
-                        break;
-                    default:
-                        break;
+                if (args[0].u_obj != mp_const_none) {
+                    // argument 'band'
+                    lte_add_band(mp_obj_get_int(args[0].u_obj), is_hw_new_band_support, is_sw_new_band_support, version);
                 }
-                if (band == 1) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=1\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 2) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=2\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 3) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=3\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 4) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=4\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 5) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=5\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 8) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=8\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 12) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=12\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 13) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=13\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 14) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=14\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 17) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=17\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 18) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=18\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 19) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=19\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 20) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=20\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 25) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=25\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 26) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=26\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 28) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=28\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else if (band == 66) {
-                    lte_push_at_command("AT!=\"RRC::addScanBand band=66\"", LTE_RX_TIMEOUT_MIN_MS);
-                } else {
-                    nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "band %d not supported", band));
+
+                if (args[6].u_obj != mp_const_none){
+                    // argument 'bands'
+                    mp_obj_t *bands;
+                    size_t n_bands=0;
+                    mp_obj_get_array(args[6].u_obj, &n_bands, &bands);
+
+                    for (size_t b = 0 ; b < n_bands ; ++b )
+                    {
+                        lte_add_band(mp_obj_get_int(bands[b]), is_hw_new_band_support, is_sw_new_band_support, version);
+                    }
                 }
             }
         } else {
@@ -1090,13 +1112,11 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     vstr_t vstr;
     vstr_init(&vstr, 0);
     vstr_add_str(&vstr, modlte_rsp.data);
-    MP_THREAD_GIL_EXIT();
     while(modlte_rsp.data_remaining)
     {
         lte_push_at_command_ext("Pycom_Dummy", LTE_RX_TIMEOUT_MAX_MS, NULL, strlen("Pycom_Dummy") );
         vstr_add_str(&vstr, modlte_rsp.data);
     }
-    MP_THREAD_GIL_ENTER();
     return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_send_at_cmd_obj, 1, lte_send_at_cmd);

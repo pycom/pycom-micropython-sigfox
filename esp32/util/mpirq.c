@@ -148,7 +148,20 @@ mp_obj_tuple_t *mp_irq_find (mp_obj_t parent) {
 
 void IRAM_ATTR mp_irq_queue_interrupt(void (* handler)(void *), void *arg) {
     mp_callback_obj_t cb = {.handler = handler, .arg = arg};
-    xQueueSendFromISR(InterruptsQueue, &cb, NULL);
+
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+    xQueueSendFromISR(InterruptsQueue, &cb, &xHigherPriorityTaskWoken);
+
+    if( xHigherPriorityTaskWoken)
+    {
+        portYIELD_FROM_ISR();
+    }
+}
+
+void mp_irq_queue_interrupt_non_ISR(void (* handler)(void *), void *arg) {
+    mp_callback_obj_t cb = {.handler = handler, .arg = arg};
+    (void)xQueueSend(InterruptsQueue, &cb, 0);
 }
 
 void IRAM_ATTR mp_irq_queue_interrupt_immediate_thread_delete(TaskHandle_t id) {

@@ -27,22 +27,16 @@
 #include "modusocket.h"
 #include "modussl.h"
 #include "mptask.h"
+#include "pycom_general_util.h"
 
-#include "ff.h"
-#include "lfs.h"
-#include "extmod/vfs.h"
-
-#include "mptask.h"
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
-#define FILE_READ_SIZE                              256
 #define DEFAULT_SSL_READ_TIMEOUT                    10 //sec
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-static char *mod_ssl_read_file (const char *file_path, vstr_t *vstr);
 
 /******************************************************************************
  DECLARE PRIVATE DATA
@@ -59,8 +53,8 @@ STATIC const mp_obj_type_t ssl_socket_type = {
 };
 
 static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *host_name,
-                                     const char *ca_cert_path, const char *client_cert_path,
-                                     const char *key_path, uint32_t ssl_verify, uint32_t client_or_server) {
+                                     const char *ca_cert, const char *client_cert, const char *client_key,
+                                     uint32_t ssl_verify, uint32_t client_or_server) {
 
     int32_t ret;
     mbedtls_ssl_init(&ssl_sock->ssl);
@@ -76,42 +70,29 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
         return ret;
     }
 
-    if (ca_cert_path) {
-        const char *ca_cert = mod_ssl_read_file(ca_cert_path, &ssl_sock->vstr_ca);
-        if (ca_cert) {
-            // printf("Loading the CA root certificate...\n");
-            ret = mbedtls_x509_crt_parse(&ssl_sock->cacert, (uint8_t *)ca_cert, strlen(ca_cert) + 1);
-            if (ret < 0) {
-                // printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
-                return ret;
-            }
-        } else {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "CA file not found"));
+    if (ca_cert) {
+        // printf("Loading the CA root certificate...\n");
+        ret = mbedtls_x509_crt_parse(&ssl_sock->cacert, (uint8_t *)ca_cert, strlen(ca_cert) + 1);
+        if (ret < 0) {
+            // printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
+            return ret;
         }
     }
 
-    if (client_cert_path && key_path) {
-        const char *client_cert = mod_ssl_read_file(client_cert_path, &ssl_sock->vstr_cert);
-        if (client_cert) {
-            // printf("Loading the own certificate...\n");
-            ret = mbedtls_x509_crt_parse(&ssl_sock->own_cert, (uint8_t *)client_cert, strlen(client_cert) + 1);
-            if (ret < 0) {
-                // printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
-                return ret;
-            }
-        } else {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "certificate file not found"));
+    if (client_cert) {
+        // printf("Loading the own certificate...\n");
+        ret = mbedtls_x509_crt_parse(&ssl_sock->own_cert, (uint8_t *)client_cert, strlen(client_cert) + 1);
+        if (ret < 0) {
+            // printf("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
+            return ret;
         }
+    }
 
-        const char *client_key = mod_ssl_read_file(key_path, &ssl_sock->vstr_key);
-        if (client_key) {
-            ret = mbedtls_pk_parse_key(&ssl_sock->pk_key, (uint8_t *)client_key, strlen(client_key) + 1, (const unsigned char *)"", 0);
-            if (ret < 0) {
-                // printf("mbedtls_pk_parse_key returned -0x%x\n\n", -ret);
-                return ret;
-            }
-        } else {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "key file not found"));
+    if (client_key) {
+        ret = mbedtls_pk_parse_key(&ssl_sock->pk_key, (uint8_t *)client_key, strlen(client_key) + 1, (const unsigned char *)"", 0);
+        if (ret < 0) {
+            // printf("mbedtls_pk_parse_key returned -0x%x\n\n", -ret);
+            return ret;
         }
     }
 
@@ -126,7 +107,7 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
     mbedtls_ssl_conf_authmode(&ssl_sock->conf, ssl_verify);
     mbedtls_ssl_conf_rng(&ssl_sock->conf, mbedtls_ctr_drbg_random, &ssl_sock->ctr_drbg);
     mbedtls_ssl_conf_ca_chain(&ssl_sock->conf, &ssl_sock->cacert, NULL);
-    if (client_cert_path && key_path) {
+    if (client_cert && client_key) {
         if ((ret = mbedtls_ssl_conf_own_cert(&ssl_sock->conf,
                                              &ssl_sock->own_cert,
                                              &ssl_sock->pk_key)) != 0) {
@@ -189,79 +170,6 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
     return 0;
 }
 
-static char *mod_ssl_read_file (const char *file_path, vstr_t *vstr) {
-    vstr_init(vstr, FILE_READ_SIZE);
-    char *filebuf = vstr->buf;
-    mp_uint_t actualsize;
-    mp_uint_t totalsize = 0;
-    static const TCHAR *path_relative;
-
-    if(isLittleFs(file_path))
-    {
-        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(file_path, &path_relative);
-        if (littlefs == NULL) {
-            return NULL;
-        }
-
-        lfs_file_t fp;
-
-        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
-
-        int res = lfs_file_open(&littlefs->lfs, &fp, path_relative, LFS_O_RDONLY);
-        if(res < LFS_ERR_OK)
-        {
-            return NULL;
-        }
-
-        while (true) {
-            actualsize = lfs_file_read(&littlefs->lfs, &fp, filebuf, FILE_READ_SIZE);
-            if (actualsize < LFS_ERR_OK) {
-                return NULL;
-            }
-            totalsize += actualsize;
-            if (actualsize < FILE_READ_SIZE) {
-                break;
-            } else {
-                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
-            }
-        }
-        lfs_file_close(&littlefs->lfs, &fp);
-
-        xSemaphoreGive(littlefs->mutex);
-
-    }
-    else
-    {
-        FATFS *fs = lookup_path_fatfs(file_path, &path_relative);
-        if (fs == NULL) {
-            return NULL;
-        }
-        FIL fp;
-        FRESULT res = f_open(fs, &fp, path_relative, FA_READ);
-        if (res != FR_OK) {
-            return NULL;
-        }
-
-        while (true) {
-            FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
-            if (res != FR_OK) {
-                f_close(&fp);
-                return NULL;
-            }
-            totalsize += actualsize;
-            if (actualsize < FILE_READ_SIZE) {
-                break;
-            } else {
-                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
-            }
-        }
-        f_close(&fp);
-    }
-
-    vstr->len = totalsize;
-    vstr_null_terminated_str(vstr);
-    return vstr->buf;
-}
 
 /******************************************************************************/
 // Micro Python bindings; SSL class
@@ -321,9 +229,31 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
         ssl_sock->read_timeout = mp_obj_get_int(args[8].u_obj);
     }
 
+    const char *ca_cert = NULL;
+    if (cafile_path) {
+        ca_cert = pycom_util_read_file(cafile_path, &ssl_sock->vstr_ca);
+        if(ca_cert == NULL) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "CA file not found"));
+        }
+    }
+
+    const char *client_cert = NULL;
+    const char *client_key = NULL;
+    if (certfile_path && keyfile_path) {
+        client_cert = pycom_util_read_file(certfile_path, &ssl_sock->vstr_ca);
+        if(client_cert == NULL) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "certificate file not found"));
+        }
+        client_key = pycom_util_read_file(keyfile_path, &ssl_sock->vstr_ca);
+        if(client_key == NULL) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "key file not found"));
+        }
+    }
+
+
     MP_THREAD_GIL_EXIT();
 
-    _error = mod_ssl_setup_socket(ssl_sock, host_name, cafile_path, certfile_path, keyfile_path,
+    _error = mod_ssl_setup_socket(ssl_sock, host_name, ca_cert, client_cert, client_key,
                                   verify_type, server_side ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT);
 
     MP_THREAD_GIL_ENTER();

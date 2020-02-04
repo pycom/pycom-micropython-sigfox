@@ -77,6 +77,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include/coap
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/examples
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include/coap
+APP_INC += -I$(ESP_IDF_COMP_PATH)/mdns/include
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
 APP_INC += -I../lib/oofatfs
@@ -160,6 +161,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	lwipsocket.c \
 	machtouch.c \
 	modcoap.c \
+	modmdns.c \
 	)
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
@@ -183,6 +185,7 @@ APP_UTIL_SRC_C = $(addprefix util/,\
 	mpsleep.c \
 	timeutils.c \
 	esp32chipinfo.c \
+	pycom_general_util.c \
 	)
 
 APP_FATFS_SRC_C = $(addprefix fatfs/src/,\
@@ -245,7 +248,7 @@ APP_SX1276_SRC_C = $(addprefix drivers/sx127x/,\
 	sx1276/sx1276.c \
 	)
 
-APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/,\
+APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/src/,\
 	manufacturer_api.c \
 	radio.c \
 	ti_aes_128.c \
@@ -254,7 +257,7 @@ APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/,\
 	modsigfox.c \
 	)
 
-APP_SIGFOX_SRC_FIPY_LOPY4_C = $(addprefix sigfox/,\
+APP_SIGFOX_SRC_FIPY_LOPY4_C = $(addprefix sigfox/src/,\
 	manufacturer_api.c \
 	radio_sx127x.c \
 	ti_aes_128.c \
@@ -267,7 +270,7 @@ APP_SIGFOX_MOD_SRC_C = $(addprefix mods/,\
 	modsigfox_api.c \
 	)
 
-APP_SIGFOX_TARGET_SRC_C = $(addprefix sigfox/targets/,\
+APP_SIGFOX_TARGET_SRC_C = $(addprefix sigfox/src/targets/,\
 	cc112x_spi.c \
 	hal_int.c \
 	hal_spi_rf_trxeb.c \
@@ -366,7 +369,7 @@ SRC_QSTR_AUTO_DEPS +=
 BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld
 
 # add the application linker script(s)
-APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld -T wifi_iram.ld
+APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.project.ld -T esp32.rom.ld -T esp32.peripherals.ld
 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
@@ -512,6 +515,9 @@ endif
 ifeq ($(TARGET), boot_app)
 all: $(BOOT_BIN) $(APP_BIN)
 endif
+ifeq ($(TARGET), sigfox)
+include sigfox.mk
+endif
 .PHONY: all CHECK_DEP
 
 $(info $(VARIANT) Variant) 
@@ -524,6 +530,14 @@ CFLAGS += -DCONFIG_FLASH_ENCRYPTION_ENABLED=1
 # add #define CONFIG_SECURE_BOOT_ENABLED 1 used for Secure Boot
 # it can also be added permanently in sdkconfig.h
 CFLAGS += -DCONFIG_SECURE_BOOT_ENABLED=1
+
+define resolvepath
+$(abspath $(foreach dir,$(1),$(if $(filter /%,$(dir)),$(dir),$(subst //,/,$(2)/$(dir)))))
+endef
+
+define dequote
+$(subst ",,$(1))
+endef
 
 # find the configured private key file
 ORIG_SECURE_KEY := $(call resolvepath,$(call dequote,$(SECURE_KEY)),$(PROJECT_PATH))
@@ -639,7 +653,7 @@ $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
-$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_BOOT_VERIFICATION_KEY)
+$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld esp32.project.ld $(SECURE_BOOT_VERIFICATION_KEY)
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
@@ -807,6 +821,7 @@ $(OBJ): | $(GEN_PINS_HDR)
 CHECK_DEP:
 	$(Q) bash tools/idfVerCheck.sh $(IDF_PATH) "$(IDF_VERSION)"
 	$(Q) bash tools/mpy-build-check.sh $(BOARD) $(BTYPE) $(VARIANT)
+	$(Q) $(PYTHON) check_secure_boot.py --SECURE $(SECURE)
 ifeq ($(COPY_IDF_LIB), 1)
 	$(ECHO) "COPY IDF LIBRARIES"
 	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build

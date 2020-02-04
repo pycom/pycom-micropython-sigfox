@@ -62,7 +62,8 @@ typedef struct {
     uint8_t network_preferences[55];
     uint8_t extra_preferences[100];
     uint8_t force_update;
-    uint8_t reserved[12];
+    uint8_t auto_start;
+    uint8_t reserved[11];
 } pycom_pybytes_config_t;
 
 typedef struct {
@@ -82,12 +83,12 @@ typedef struct {
 } pycom_lte_config_t;
 
 typedef struct {
-	uint8_t carrier[129];
-	uint8_t apn[129];
-	uint8_t type[17];
-	uint8_t cid;
-	uint8_t band;
-	uint8_t reset;
+    uint8_t carrier[129];
+    uint8_t apn[129];
+    uint8_t type[17];
+    uint8_t cid;
+    uint8_t band;
+    uint8_t reset;
 } pycom_pybytes_lte_config_t;
 
 typedef struct {
@@ -218,5 +219,9 @@ bool config_set_boot_partition (const uint8_t boot_partition);
 bool config_set_lte_modem_enable_on_boot (bool lte_modem_en_on_boot);
 
 bool config_get_lte_modem_enable_on_boot (void);
+
+bool config_set_pybytes_autostart (bool pybytes_autostart);
+
+bool config_get_pybytes_autostart (void);
 
 #endif /* PYCOM_CONFIG_H_ */
