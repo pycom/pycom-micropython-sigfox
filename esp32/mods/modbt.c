@@ -102,6 +102,7 @@ typedef struct {
     bool                  advertising;
     bool                  controller_active;
     bool                  secure;
+    bool                  secure_connections;
     bool                  privacy;
 } bt_obj_t;
 
@@ -501,24 +502,6 @@ static void remove_all_bonded_devices(void)
     free(dev_list);
 }
 
-static void set_pin(uint32_t new_pin)
-{
-    if (!bt_obj.secure) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Cannot set PIN when secure is not set"));
-    }
-
-    if (new_pin > 999999) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Only 6 digit (0-9) pins are allowed"));
-    }
-
-    if (pin_changed(new_pin)) {
-       remove_all_bonded_devices();
-    }
-
-    uint32_t passkey = new_pin;
-    esp_ble_gap_set_security_param(ESP_BLE_SM_SET_STATIC_PASSKEY, &passkey, sizeof(uint32_t));
-}
-
 static void set_secure_parameters(bool secure_connections) {
     esp_ble_auth_req_t auth_req = secure_connections ? ESP_LE_AUTH_REQ_SC_MITM_BOND : ESP_LE_AUTH_BOND;
     esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
@@ -537,6 +520,22 @@ static void set_secure_parameters(bool secure_connections) {
 
     uint8_t rsp_key = ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK;
     esp_ble_gap_set_security_param(ESP_BLE_SM_SET_RSP_KEY, &rsp_key, sizeof(uint8_t));
+}
+
+static void set_pin(uint32_t new_pin)
+{
+    if (new_pin > 999999) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Only 6 digit (0-9) pins are allowed"));
+    }
+
+    if (pin_changed(new_pin)) {
+       remove_all_bonded_devices();
+    }
+
+    uint32_t passkey = new_pin;
+    esp_ble_gap_set_security_param(ESP_BLE_SM_SET_STATIC_PASSKEY, &passkey, sizeof(uint32_t));
+    bt_obj.secure = true;
+    set_secure_parameters(bt_obj.secure_connections);
 }
 
 static void close_connection (int32_t conn_id) {
@@ -997,7 +996,7 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
         esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
 
         //set MTU
-        uint16_t mtu = args[7].u_int;
+        uint16_t mtu = args[6].u_int;
         if(mtu > BT_MTU_SIZE_MAX)
         {
             esp_ble_gatt_set_local_mtu(BT_MTU_SIZE_MAX);
@@ -1041,17 +1040,21 @@ static mp_obj_t bt_init_helper(bt_obj_t *self, const mp_arg_val_t *args) {
         }
     }
 
-    if (args[3].u_bool){
+    bt_obj.secure_connections = args[5].u_bool;
+
+    if (args[3].u_obj != MP_OBJ_NULL){
         bt_obj.secure = true;
 
         // modified default advertisement parameters for secure
         bt_adv_params.adv_int_min = 0x100;
         bt_adv_params.adv_int_max = 0x100;
-        bt_adv_params.own_addr_type = args[5].u_bool ? BLE_ADDR_TYPE_RANDOM : BLE_ADDR_TYPE_PUBLIC;
+        bt_adv_params.own_addr_type = args[4].u_bool ? BLE_ADDR_TYPE_RANDOM : BLE_ADDR_TYPE_PUBLIC;
 
-        set_pin(args[4].u_int);
-        bt_obj.privacy = args[5].u_bool;
-        set_secure_parameters(args[6].u_bool);
+        set_pin(mp_obj_get_int(args[3].u_obj));
+        bt_obj.privacy = args[4].u_bool;
+        set_secure_parameters(bt_obj.secure_connections);
+    } else {
+    	bt_obj.secure = false;
     }
 
     return mp_const_none;
@@ -1062,8 +1065,7 @@ STATIC const mp_arg_t bt_init_args[] = {
     { MP_QSTR_mode,                 MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_BT_STACK_MODE_BLE} },
     { MP_QSTR_antenna,              MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
     { MP_QSTR_modem_sleep,          MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
-    { MP_QSTR_secure,               MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
-    { MP_QSTR_pin,                  MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = 123456} },
+	{ MP_QSTR_pin,                  MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj  = MP_OBJ_NULL} },
     { MP_QSTR_privacy,              MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = true} },
     { MP_QSTR_secure_connections,   MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = true} },
     { MP_QSTR_mtu,                  MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = BT_MTU_SIZE_MAX} },
@@ -1086,7 +1088,7 @@ STATIC mp_obj_t bt_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
     }
 
-    if (args[4].u_bool) {
+    if (args[4].u_obj != MP_OBJ_NULL) {
        if (heap_caps_get_free_size(MALLOC_CAP_SPIRAM) == 0) {
           nlr_raise(mp_obj_new_exception_msg(&mp_type_MemoryError,"Secure BLE not available for 512K RAM devices"));
        }
