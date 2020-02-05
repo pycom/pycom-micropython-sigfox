@@ -487,19 +487,17 @@ static bool pin_changed(uint32_t new_pin)
      return ret;
 }
 
-static void remove_bonded_devices(void)
+static void remove_all_bonded_devices(void)
 {
     int dev_num = esp_ble_get_bond_device_num();
 
     esp_ble_bond_dev_t *dev_list = heap_caps_malloc(sizeof(esp_ble_bond_dev_t) * dev_num, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     esp_ble_get_bond_device_list(&dev_num, dev_list);
     for (int i = 0; i < dev_num; i++) {
-        if (bt_obj.gatts_conn_id >= 0 && memcmp((void *) dev_list[i].bd_addr, (void *) bt_obj.client_bda, sizeof(esp_bd_addr_t)) == 0) {
-            continue;
-        }
+    	close_connection(dev_list[i].bd_addr);
         esp_ble_remove_bond_device(dev_list[i].bd_addr);
     }
-
+    esp_ble_gap_start_advertising(&bt_adv_params);
     free(dev_list);
 }
 
@@ -514,7 +512,7 @@ static void set_pin(uint32_t new_pin)
     }
 
     if (pin_changed(new_pin)) {
-       remove_bonded_devices();
+       remove_all_bonded_devices();
     }
 
     uint32_t passkey = new_pin;
