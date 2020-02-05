@@ -883,6 +883,12 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                         if (char_obj->trigger & MOD_BT_GATTS_SUBSCRIBE_EVT) {
                             mp_irq_queue_interrupt(gatts_char_callback_handler, char_obj);
                         }
+
+                        if (value == 0x0001) {  // notifications enabled
+                            bt_gatts_char_obj_t *char_obj = (bt_gatts_char_obj_t *)attr_obj->parent;
+                            // the size of value[] needs to be less than MTU size
+                            esp_ble_gatts_send_indicate(gatts_if, param->write.conn_id, char_obj->attr_obj.handle, char_obj->attr_obj.value_len, char_obj->attr_obj.value, false);
+                        }
                     }
                 }
                 esp_ble_gatts_send_response(gatts_if, p->write.conn_id, p->write.trans_id, ESP_GATT_OK, NULL);
