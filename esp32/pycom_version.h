@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -10,14 +10,14 @@
 #ifndef VERSION_H_
 #define VERSION_H_
 
-#define SW_VERSION_NUMBER                              "1.20.2.rc2"
+#define SW_VERSION_NUMBER                              "1.20.2.rc3"
 
 #define LORAWAN_VERSION_NUMBER                         "1.0.2"
 
 #define SIGFOX_VERSION_NUMBER                          "1.0.1"
 
 #if (VARIANT == PYBYTES)
-#define PYBYTES_VERSION_NUMBER                         "1.3.0"
+#define PYBYTES_VERSION_NUMBER                         "1.3.1"
 #endif
 
 #endif /* VERSION_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -298,12 +298,16 @@ soft_reset:
 
     if (!safeboot) {
         // execute the frozen main first
-        //pyexec_frozen_module("_main.py");
+
+#if (VARIANT == PYBYTES)
         if (config_get_pybytes_autostart()) {
             pyexec_frozen_module("_main_pybytes.py");
         } else {
             pyexec_frozen_module("_main.py");
         }
+#else
+        pyexec_frozen_module("_main.py");
+#endif
 
         // run the main script from the current directory.
         if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {

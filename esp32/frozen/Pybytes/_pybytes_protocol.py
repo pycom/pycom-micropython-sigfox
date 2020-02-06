@@ -1,5 +1,5 @@
 '''
-Copyright (c) 2019, Pycom Limited.
+Copyright (c) 2020, Pycom Limited.
 This software is licensed under the GNU GPL version 3 or any
 later version, with permitted additional terms. For more information
 see the Pycom Licence v1.0 document supplied with this file, or
@@ -323,7 +323,7 @@ class PybytesProtocol:
 
                         if (method_return is not None and len(method_return) > 0): # noqa
                             self.send_pybytes_custom_method_values(
-                                pin_number, method_return
+                                signal_number, method_return
                             )
 
                     else:
@@ -459,13 +459,13 @@ class PybytesProtocol:
         if (pin_number not in self.__pins):
             self.__configure_digital_pin(pin_number, Pin.IN, pull_mode)
         pin = self.__pins[pin_number]
-        self.send_pybytes_custom_method_values(pin_number, [pin()])
+        self.send_pybytes_custom_method_values(signal_number, [pin()])
 
     def send_pybytes_analog_value(self, pin_number):
         if (pin_number not in self.__pins):
             self.__configure_analog_pin(pin_number)
         pin = self.__pins[pin_number]
-        self.send_pybytes_custom_method_values(pin_number, [pin()])
+        self.send_pybytes_custom_method_values(signal_number, [pin()])
 
     def send_pybytes_custom_method_values(self, method_id, parameters):
         if(isinstance(parameters[0], int)):

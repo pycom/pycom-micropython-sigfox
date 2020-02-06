@@ -1,5 +1,5 @@
 #
-# Copyright © 2019, Pycom Limited.
+# Copyright © 2020, Pycom Limited.
 #
 # This software is licensed under the GNU GPL version 3 or any
 # later version, with permitted additional terms. For more information
