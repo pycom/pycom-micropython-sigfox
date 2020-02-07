@@ -495,7 +495,7 @@ static void remove_all_bonded_devices(void)
     esp_ble_bond_dev_t *dev_list = heap_caps_malloc(sizeof(esp_ble_bond_dev_t) * dev_num, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     esp_ble_get_bond_device_list(&dev_num, dev_list);
     for (int i = 0; i < dev_num; i++) {
-    	close_connection(dev_list[i].bd_addr);
+    	//close_connection(dev_list[i].bd_addr);
         esp_ble_remove_bond_device(dev_list[i].bd_addr);
     }
     esp_ble_gap_start_advertising(&bt_adv_params);
