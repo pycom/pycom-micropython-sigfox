@@ -238,6 +238,18 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
         goto arg_error;
     }
 
+    // socket type check
+    if (!mp_obj_is_type(args[0].u_obj, &socket_type)) {
+    	goto arg_error;
+    }
+
+    // saved_session type check
+    if (args[8].u_obj != mp_const_none) {
+    	if (!mp_obj_is_type(args[8].u_obj, &mod_ssl_session_type)) {
+    		goto arg_error;
+        }
+    }
+
     // Retrieve previously saved session
     const mbedtls_ssl_session *saved_session  = (args[8].u_obj == mp_const_none) ? NULL : &((mp_obj_ssl_session_t *)args[8].u_obj)->saved_session;
 
