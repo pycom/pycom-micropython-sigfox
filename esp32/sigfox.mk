@@ -1,7 +1,7 @@
 ifeq ($(BOARD), $(filter $(BOARD), SIPY))
 SFX_OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_SIPY_C:.c=.o) $(APP_SIGFOX_TARGET_SRC_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o))
 endif
-ifeq ($(BOARD), $(filter $(BOARD), LOPY4 FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), LOPY4 FIPY TBEAMv1))
 SFX_OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_SRC_FIPY_LOPY4_C:.c=.o) $(APP_SIGFOX_SPI_SRC_C:.c=.o))
 endif
 

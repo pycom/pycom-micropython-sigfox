@@ -108,7 +108,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -lbootloader_support -lmicro-ecc \
        -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh -lesp_ringbuf -lcoap -lmdns -lefuse -lespcoredump -lapp_update
-ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY TBEAMv1))
     LIBS += sigfox/modsigfox_$(BOARD).a
 $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
 endif
