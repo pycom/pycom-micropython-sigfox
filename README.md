@@ -93,7 +93,7 @@ Finally, before building, export the IDF_PATH variable
 
 This repository contains submodules! Clone using the --recursive option:
 
-    $ git clone --recursive https://github.com/pycom/pycom-micropython-sigfox.git
+    $ git clone --recursive https://github.com/nunomcruz/pycom-micropython-sigfox.git
     
 Alternatively checkout the modules manually:
 
