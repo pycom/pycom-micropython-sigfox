@@ -86,6 +86,14 @@ APP_INC += -I../drivers/sx127x
 APP_INC += -I../ports/stm32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/openthread/src
 
+#Added with idf 4.0
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_common/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_rom/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/xtensa/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/xtensa/esp32/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
+
+
 APP_MAIN_SRC_C = \
 	main.c \
 	mptask.c \
@@ -305,7 +313,7 @@ APP_CAN_SRC_C = $(addprefix can/,\
 	)
 
 BOOT_SRC_C = $(addprefix bootloader/,\
-	bootloader.c \
+	bootloader_start.c \
 	bootmgr.c \
 	mperror.c \
 	gpio.c \
@@ -368,7 +376,14 @@ endif # ifeq ($(OPENTHREAD), on)
 SRC_QSTR_AUTO_DEPS +=
 
 # These files are passed here as per esp-idf/components/bootloader/subproject/main/component.mk
-BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld
+# esp32.rom.libgcc.ld also needed, but not listed in esp-idf/components/bootloader/subproject/main/component.mk and based on the logs
+# when wifi/scan is being built it is not used there...
+BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld \
+                          -T esp32.bootloader.rom.ld \
+                          -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.ld \
+                          -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.newlib-funcs.ld \
+                          -T esp32.peripherals.ld \
+                          -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.libgcc.ld
 
 # Add the application linker script(s)
 # These files are passed here as per esp-idf/components/esp32/component.mk

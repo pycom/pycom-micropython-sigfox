@@ -30,7 +30,7 @@
 #include "esp_attr.h"
 #include "esp_intr.h"
 
-#include "rom/ets_sys.h"
+#include "esp32/rom/ets_sys.h"
 #include "soc/uart_struct.h"
 #include "soc/dport_reg.h"
 #include "soc/gpio_sig_map.h"

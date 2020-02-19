@@ -16,14 +16,17 @@
 #define _DRIVER_GPIO_H_
 #include "esp_err.h"
 #include <esp_types.h>
-#include "soc/gpio_reg.h"
-#include "soc/gpio_struct.h"
-#include "soc/rtc_io_reg.h"
-#include "soc/io_mux_reg.h"
-#include "soc/gpio_sig_map.h"
-#include "rom/gpio.h"
+#include <esp_bit_defs.h>
+#include "esp32/rom/gpio.h"
 #include "esp_attr.h"
 #include "esp_intr_alloc.h"
+#include "soc/gpio_periph.h"
+
+#include "sdkconfig.h"
+
+#ifdef CONFIG_LEGACY_INCLUDE_COMMON_HEADERS
+#include "soc/rtc_io_reg.h"
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,7 +34,13 @@ extern "C" {
 
 #define GPIO_SEL_0              (BIT(0))                         /*!< Pin 0 selected */
 #define GPIO_SEL_1              (BIT(1))                         /*!< Pin 1 selected */
-#define GPIO_SEL_2              (BIT(2))                         /*!< Pin 2 selected */
+#define GPIO_SEL_2              (BIT(2))                         /*!< Pin 2 selected
+                                                                      @note There are more macros
+                                                                      like that up to pin 39,
+                                                                      excluding pins 20, 24 and 28..31.
+                                                                      They are not shown here
+                                                                      to reduce redundant information. */
+/** @cond */
 #define GPIO_SEL_3              (BIT(3))                         /*!< Pin 3 selected */
 #define GPIO_SEL_4              (BIT(4))                         /*!< Pin 4 selected */
 #define GPIO_SEL_5              (BIT(5))                         /*!< Pin 5 selected */
@@ -67,41 +76,41 @@ extern "C" {
 #define GPIO_SEL_38             ((uint64_t)(((uint64_t)1)<<38))  /*!< Pin 38 selected */
 #define GPIO_SEL_39             ((uint64_t)(((uint64_t)1)<<39))  /*!< Pin 39 selected */
 
-#define GPIO_PIN_REG_0          PERIPHS_IO_MUX_GPIO0_U
-#define GPIO_PIN_REG_1          PERIPHS_IO_MUX_U0TXD_U
-#define GPIO_PIN_REG_2          PERIPHS_IO_MUX_GPIO2_U
-#define GPIO_PIN_REG_3          PERIPHS_IO_MUX_U0RXD_U
-#define GPIO_PIN_REG_4          PERIPHS_IO_MUX_GPIO4_U
-#define GPIO_PIN_REG_5          PERIPHS_IO_MUX_GPIO5_U
-#define GPIO_PIN_REG_6          PERIPHS_IO_MUX_SD_CLK_U
-#define GPIO_PIN_REG_7          PERIPHS_IO_MUX_SD_DATA0_U
-#define GPIO_PIN_REG_8          PERIPHS_IO_MUX_SD_DATA1_U
-#define GPIO_PIN_REG_9          PERIPHS_IO_MUX_SD_DATA2_U
-#define GPIO_PIN_REG_10         PERIPHS_IO_MUX_SD_DATA3_U
-#define GPIO_PIN_REG_11         PERIPHS_IO_MUX_SD_CMD_U
-#define GPIO_PIN_REG_12         PERIPHS_IO_MUX_MTDI_U
-#define GPIO_PIN_REG_13         PERIPHS_IO_MUX_MTCK_U
-#define GPIO_PIN_REG_14         PERIPHS_IO_MUX_MTMS_U
-#define GPIO_PIN_REG_15         PERIPHS_IO_MUX_MTDO_U
-#define GPIO_PIN_REG_16         PERIPHS_IO_MUX_GPIO16_U
-#define GPIO_PIN_REG_17         PERIPHS_IO_MUX_GPIO17_U
-#define GPIO_PIN_REG_18         PERIPHS_IO_MUX_GPIO18_U
-#define GPIO_PIN_REG_19         PERIPHS_IO_MUX_GPIO19_U
-#define GPIO_PIN_REG_20         PERIPHS_IO_MUX_GPIO20_U
-#define GPIO_PIN_REG_21         PERIPHS_IO_MUX_GPIO21_U
-#define GPIO_PIN_REG_22         PERIPHS_IO_MUX_GPIO22_U
-#define GPIO_PIN_REG_23         PERIPHS_IO_MUX_GPIO23_U
-#define GPIO_PIN_REG_25         PERIPHS_IO_MUX_GPIO25_U
-#define GPIO_PIN_REG_26         PERIPHS_IO_MUX_GPIO26_U
-#define GPIO_PIN_REG_27         PERIPHS_IO_MUX_GPIO27_U
-#define GPIO_PIN_REG_32         PERIPHS_IO_MUX_GPIO32_U
-#define GPIO_PIN_REG_33         PERIPHS_IO_MUX_GPIO33_U
-#define GPIO_PIN_REG_34         PERIPHS_IO_MUX_GPIO34_U
-#define GPIO_PIN_REG_35         PERIPHS_IO_MUX_GPIO35_U
-#define GPIO_PIN_REG_36         PERIPHS_IO_MUX_GPIO36_U
-#define GPIO_PIN_REG_37         PERIPHS_IO_MUX_GPIO37_U
-#define GPIO_PIN_REG_38         PERIPHS_IO_MUX_GPIO38_U
-#define GPIO_PIN_REG_39         PERIPHS_IO_MUX_GPIO39_U
+#define GPIO_PIN_REG_0          IO_MUX_GPIO0_REG
+#define GPIO_PIN_REG_1          IO_MUX_GPIO1_REG
+#define GPIO_PIN_REG_2          IO_MUX_GPIO2_REG
+#define GPIO_PIN_REG_3          IO_MUX_GPIO3_REG
+#define GPIO_PIN_REG_4          IO_MUX_GPIO4_REG
+#define GPIO_PIN_REG_5          IO_MUX_GPIO5_REG
+#define GPIO_PIN_REG_6          IO_MUX_GPIO6_REG
+#define GPIO_PIN_REG_7          IO_MUX_GPIO7_REG
+#define GPIO_PIN_REG_8          IO_MUX_GPIO8_REG
+#define GPIO_PIN_REG_9          IO_MUX_GPIO9_REG
+#define GPIO_PIN_REG_10         IO_MUX_GPIO10_REG
+#define GPIO_PIN_REG_11         IO_MUX_GPIO11_REG
+#define GPIO_PIN_REG_12         IO_MUX_GPIO12_REG
+#define GPIO_PIN_REG_13         IO_MUX_GPIO13_REG
+#define GPIO_PIN_REG_14         IO_MUX_GPIO14_REG
+#define GPIO_PIN_REG_15         IO_MUX_GPIO15_REG
+#define GPIO_PIN_REG_16         IO_MUX_GPIO16_REG
+#define GPIO_PIN_REG_17         IO_MUX_GPIO17_REG
+#define GPIO_PIN_REG_18         IO_MUX_GPIO18_REG
+#define GPIO_PIN_REG_19         IO_MUX_GPIO19_REG
+#define GPIO_PIN_REG_20         IO_MUX_GPIO20_REG
+#define GPIO_PIN_REG_21         IO_MUX_GPIO21_REG
+#define GPIO_PIN_REG_22         IO_MUX_GPIO22_REG
+#define GPIO_PIN_REG_23         IO_MUX_GPIO23_REG
+#define GPIO_PIN_REG_25         IO_MUX_GPIO25_REG
+#define GPIO_PIN_REG_26         IO_MUX_GPIO26_REG
+#define GPIO_PIN_REG_27         IO_MUX_GPIO27_REG
+#define GPIO_PIN_REG_32         IO_MUX_GPIO32_REG
+#define GPIO_PIN_REG_33         IO_MUX_GPIO33_REG
+#define GPIO_PIN_REG_34         IO_MUX_GPIO34_REG
+#define GPIO_PIN_REG_35         IO_MUX_GPIO35_REG
+#define GPIO_PIN_REG_36         IO_MUX_GPIO36_REG
+#define GPIO_PIN_REG_37         IO_MUX_GPIO37_REG
+#define GPIO_PIN_REG_38         IO_MUX_GPIO38_REG
+#define GPIO_PIN_REG_39         IO_MUX_GPIO39_REG
 
 #define GPIO_APP_CPU_INTR_ENA      (BIT(0))
 #define GPIO_APP_CPU_NMI_INTR_ENA  (BIT(1))
@@ -109,19 +118,27 @@ extern "C" {
 #define GPIO_PRO_CPU_NMI_INTR_ENA  (BIT(3))
 #define GPIO_SDIO_EXT_INTR_ENA     (BIT(4))
 
+#define GPIO_MODE_DEF_DISABLE         (0)
 #define GPIO_MODE_DEF_INPUT           (BIT0)
 #define GPIO_MODE_DEF_OUTPUT          (BIT1)
 #define GPIO_MODE_DEF_OD              (BIT2)
 
-#define GPIO_PIN_COUNT              40
-extern const uint32_t GPIO_PIN_MUX_REG[GPIO_PIN_COUNT];
-#define GPIO_IS_VALID_GPIO(gpio_num)      ((gpio_num < GPIO_PIN_COUNT && GPIO_PIN_MUX_REG[gpio_num] != 0))   //to decide whether it is a valid GPIO number
-#define GPIO_IS_VALID_OUTPUT_GPIO(gpio_num)      ((GPIO_IS_VALID_GPIO(gpio_num)) && (gpio_num < 34))         //to decide whether it can be a valid GPIO number of output mode
+
+/** @endcond */
+
+#define GPIO_IS_VALID_GPIO(gpio_num)      ((gpio_num < GPIO_PIN_COUNT && GPIO_PIN_MUX_REG[gpio_num] != 0))   /*!< Check whether it is a valid GPIO number */
+#define GPIO_IS_VALID_OUTPUT_GPIO(gpio_num)      ((GPIO_IS_VALID_GPIO(gpio_num)) && (gpio_num < 34))         /*!< Check whether it can be a valid GPIO number of output mode */
 
 typedef enum {
+    GPIO_NUM_NC = -1,    /*!< Use to signal not connected to S/W */
     GPIO_NUM_0 = 0,     /*!< GPIO0, input and output */
     GPIO_NUM_1 = 1,     /*!< GPIO1, input and output */
-    GPIO_NUM_2 = 2,     /*!< GPIO2, input and output */
+    GPIO_NUM_2 = 2,     /*!< GPIO2, input and output
+                             @note There are more enumerations like that
+                             up to GPIO39, excluding GPIO20, GPIO24 and GPIO28..31.
+                             They are not shown here to reduce redundant information.
+                             @note GPIO34..39 are input mode only. */
+/** @cond */
     GPIO_NUM_3 = 3,     /*!< GPIO3, input and output */
     GPIO_NUM_4 = 4,     /*!< GPIO4, input and output */
     GPIO_NUM_5 = 5,     /*!< GPIO5, input and output */
@@ -149,13 +166,15 @@ typedef enum {
     GPIO_NUM_27 = 27,   /*!< GPIO27, input and output */
 
     GPIO_NUM_32 = 32,   /*!< GPIO32, input and output */
-    GPIO_NUM_33 = 33,   /*!< GPIO32, input and output */
+    GPIO_NUM_33 = 33,   /*!< GPIO33, input and output */
     GPIO_NUM_34 = 34,   /*!< GPIO34, input mode only */
     GPIO_NUM_35 = 35,   /*!< GPIO35, input mode only */
     GPIO_NUM_36 = 36,   /*!< GPIO36, input mode only */
     GPIO_NUM_37 = 37,   /*!< GPIO37, input mode only */
     GPIO_NUM_38 = 38,   /*!< GPIO38, input mode only */
     GPIO_NUM_39 = 39,   /*!< GPIO39, input mode only */
+    GPIO_NUM_MAX = 40,
+/** @endcond */
 } gpio_num_t;
 
 typedef enum {
@@ -169,6 +188,7 @@ typedef enum {
 } gpio_int_type_t;
 
 typedef enum {
+    GPIO_MODE_DISABLE = GPIO_MODE_DEF_DISABLE,                                        /*!< GPIO mode : disable input and output             */
     GPIO_MODE_INPUT = GPIO_MODE_DEF_INPUT,                                                         /*!< GPIO mode : input only                           */
     GPIO_MODE_OUTPUT = GPIO_MODE_DEF_OUTPUT,                                                       /*!< GPIO mode : output only mode                     */
     GPIO_MODE_OUTPUT_OD = ((GPIO_MODE_DEF_OUTPUT)|(GPIO_MODE_DEF_OD)),                             /*!< GPIO mode : output only with open-drain mode     */
@@ -204,10 +224,17 @@ typedef enum {
     GPIO_FLOATING,                  /*!< Pad floating           */
 } gpio_pull_mode_t;
 
+typedef enum {
+    GPIO_DRIVE_CAP_0       = 0,    /*!< Pad drive capability: weak          */
+    GPIO_DRIVE_CAP_1       = 1,    /*!< Pad drive capability: stronger      */
+    GPIO_DRIVE_CAP_2       = 2,    /*!< Pad drive capability: default value */
+    GPIO_DRIVE_CAP_DEFAULT = 2,    /*!< Pad drive capability: default value */
+    GPIO_DRIVE_CAP_3       = 3,    /*!< Pad drive capability: strongest     */
+    GPIO_DRIVE_CAP_MAX,
+} gpio_drive_cap_t;
 
-
+typedef void (*gpio_isr_t)(void*);
 typedef intr_handle_t gpio_isr_handle_t;
-typedef void (*gpio_event_callback)(gpio_num_t gpio_intr_num);
 
 /**
  * @brief GPIO common configuration
@@ -221,8 +248,20 @@ typedef void (*gpio_event_callback)(gpio_num_t gpio_intr_num);
  *     - ESP_ERR_INVALID_ARG Parameter error
  *
  */
-esp_err_t gpio_config(gpio_config_t *pGPIOConfig);
+esp_err_t gpio_config(const gpio_config_t *pGPIOConfig);
 
+/**
+ * @brief Reset an gpio to default state (select gpio function, enable pullup and disable input and output).
+ *
+ * @param gpio_num GPIO number.
+ *
+ * @note This function also configures the IOMUX for this pin to the GPIO
+ *       function, and disconnects any other peripheral output configured via GPIO
+ *       Matrix.
+ *
+ * @return Always return ESP_OK.
+ */
+esp_err_t gpio_reset_pin(gpio_num_t gpio_num);
 
 /**
  * @brief  GPIO set interrupt trigger type
@@ -239,6 +278,10 @@ esp_err_t gpio_set_intr_type(gpio_num_t gpio_num, gpio_int_type_t intr_type);
 
 /**
  * @brief  Enable GPIO module interrupt signal
+ *
+ * @note Please do not use the interrupt of GPIO36 and GPIO39 when using ADC.
+ *       Please refer to the comments of `adc1_get_raw`.
+ *       Please refer to section 3.11 of 'ECO_and_Workarounds_for_Bugs_in_ESP32' for the description of this issue.
  *
  * @param  gpio_num GPIO number. If you want to enable an interrupt on e.g. GPIO16, gpio_num should be GPIO_NUM_16 (16);
  *
@@ -269,13 +312,15 @@ esp_err_t gpio_intr_disable(gpio_num_t gpio_num);
  *
  * @return
  *     - ESP_OK Success
- *     - GPIO_IS_VALID_GPIO GPIO number error
+ *     - ESP_ERR_INVALID_ARG GPIO number error
  *
  */
 esp_err_t gpio_set_level(gpio_num_t gpio_num, uint32_t level);
 
 /**
  * @brief  GPIO get input level
+ *
+ * @warning If the pad is not configured for input (or input and output) the returned value is always 0.
  *
  * @param  gpio_num GPIO number. If you want to get the logic level of e.g. pin GPIO16, gpio_num should be GPIO_NUM_16 (16);
  *
@@ -287,7 +332,7 @@ esp_err_t gpio_set_level(gpio_num_t gpio_num, uint32_t level);
 int gpio_get_level(gpio_num_t gpio_num);
 
 /**
- * @brief  GPIO set direction
+ * @brief	 GPIO set direction
  *
  * Configure GPIO direction,such as output_only,input_only,output_and_input
  *
@@ -302,9 +347,9 @@ int gpio_get_level(gpio_num_t gpio_num);
 esp_err_t gpio_set_direction(gpio_num_t gpio_num, gpio_mode_t mode);
 
 /**
- * @brief  GPIO set pull
+ * @brief  Configure GPIO pull-up/pull-down resistors
  *
- * User this Function,configure GPIO pull mode,such as pull-up,pull-down
+ * Only pins that support both input & output have integrated pull-up and pull-down resistors. Input-only GPIOs 34-39 do not.
  *
  * @param  gpio_num GPIO number. If you want to set pull up or down mode for e.g. GPIO16, gpio_num should be GPIO_NUM_16 (16);
  * @param  pull GPIO pull up/down mode.
@@ -317,50 +362,54 @@ esp_err_t gpio_set_direction(gpio_num_t gpio_num, gpio_mode_t mode);
 esp_err_t gpio_set_pull_mode(gpio_num_t gpio_num, gpio_pull_mode_t pull);
 
 /**
-  * @brief enable GPIO wake-up function.
-  *
-  * @param gpio_num GPIO number.
-  *
-  * @param intr_type GPIO wake-up type. Only GPIO_INTR_LOW_LEVEL or GPIO_INTR_HIGH_LEVEL can be used.
-  *
-  * @return
-  *     - ESP_OK Success
-  *     - ESP_ERR_INVALID_ARG Parameter error
-  */
+ * @brief Enable GPIO wake-up function.
+ *
+ * @param gpio_num GPIO number.
+ *
+ * @param intr_type GPIO wake-up type. Only GPIO_INTR_LOW_LEVEL or GPIO_INTR_HIGH_LEVEL can be used.
+ *
+ * @return
+ *     - ESP_OK Success
+ *     - ESP_ERR_INVALID_ARG Parameter error
+ */
 esp_err_t gpio_wakeup_enable(gpio_num_t gpio_num, gpio_int_type_t intr_type);
 
 /**
-  * @brief Disable GPIO wake-up function.
-  *
-  * @param gpio_num GPIO number
-  *
-  * @return
-  *     - ESP_OK Success
-  *     - ESP_ERR_INVALID_ARG Parameter error
-  */
+ * @brief Disable GPIO wake-up function.
+ *
+ * @param gpio_num GPIO number
+ *
+ * @return
+ *     - ESP_OK Success
+ *     - ESP_ERR_INVALID_ARG Parameter error
+ */
 esp_err_t gpio_wakeup_disable(gpio_num_t gpio_num);
 
 /**
- * @brief   register GPIO interrupt handler, the handler is an ISR.
+ * @brief   Register GPIO interrupt handler, the handler is an ISR.
  *          The handler will be attached to the same CPU core that this function is running on.
- *          @note
- *          Users should know that which CPU is running and then pick a INUM that is not used by system.
- *          We can find the information of INUM and interrupt level in soc.h.
+ *
+ * This ISR function is called whenever any GPIO interrupt occurs. See
+ * the alternative gpio_install_isr_service() and
+ * gpio_isr_handler_add() API in order to have the driver support
+ * per-GPIO ISRs.
  *
  * @param  fn  Interrupt handler function.
  * @param  intr_alloc_flags Flags used to allocate the interrupt. One or multiple (ORred)
  *            ESP_INTR_FLAG_* values. See esp_intr_alloc.h for more info.
  * @param  arg  Parameter for handler function
- * @param  handle Pointer to return handle. If non-NULL, a handle for the interrupt will
- *            be returned here.
+ * @param  handle Pointer to return handle. If non-NULL, a handle for the interrupt will be returned here.
+ *
+ * \verbatim embed:rst:leading-asterisk
+ * To disable or remove the ISR, pass the returned handle to the :doc:`interrupt allocation functions </api-reference/system/intr_alloc>`.
+ * \endverbatim
  *
  * @return
  *     - ESP_OK Success ;
  *     - ESP_ERR_INVALID_ARG GPIO error
+ *     - ESP_ERR_NOT_FOUND No free interrupt found with the specified flags
  */
 esp_err_t gpio_isr_register(void (*fn)(void*), void * arg, int intr_alloc_flags, gpio_isr_handle_t *handle);
-
-
 
 /**
   * @brief Enable pull-up on GPIO.
@@ -406,97 +455,163 @@ esp_err_t gpio_pulldown_en(gpio_num_t gpio_num);
   */
 esp_err_t gpio_pulldown_dis(gpio_num_t gpio_num);
 
+/**
+  * @brief Install the driver's GPIO ISR handler service, which allows per-pin GPIO interrupt handlers.
+  *
+  * This function is incompatible with gpio_isr_register() - if that function is used, a single global ISR is registered for all GPIO interrupts. If this function is used, the ISR service provides a global GPIO ISR and individual pin handlers are registered via the gpio_isr_handler_add() function.
+  *
+  * @param intr_alloc_flags Flags used to allocate the interrupt. One or multiple (ORred)
+  *            ESP_INTR_FLAG_* values. See esp_intr_alloc.h for more info.
+  *
+  * @return
+  *     - ESP_OK Success
+  *     - ESP_ERR_NO_MEM No memory to install this service
+  *     - ESP_ERR_INVALID_STATE ISR service already installed.
+  *     - ESP_ERR_NOT_FOUND No free interrupt found with the specified flags
+  *     - ESP_ERR_INVALID_ARG GPIO error
+  */
+esp_err_t gpio_install_isr_service(int intr_alloc_flags);
 
 /**
- * ***************        ATTENTION       ********************/
-/**
- *@attention
- *     Each GPIO has its own separate configuration register, so we do not use
- *     a lock to serialize access to them. This works under the assumption that
- *     no situation will occur where two tasks try to configure the same GPIO
- *     pin simultaneously. It is up to the application developer to guarantee this.
- */
+  * @brief Uninstall the driver's GPIO ISR service, freeing related resources.
+  */
+void gpio_uninstall_isr_service();
 
 /**
- *----------EXAMPLE TO CONFIGURE GPIO AS OUTPUT ------------ *
- * @code{c}
- *     gpio_config_t io_conf;
- *     io_conf.intr_type = GPIO_INTR_DISABLE;             //disable interrupt
- *     io_conf.mode = GPIO_MODE_OUTPUT;                       //set as output mode
- *     io_conf.pin_bit_mask = GPIO_SEL_18 | GPIO_SEL_19;      //bit mask of the pins that you want to set,e.g.GPIO18/19
- *     io_conf.pull_down_en = 0;                              //disable pull-down mode
- *     io_conf.pull_up_en = 0;                                //disable pull-up mode
- *     gpio_config(&io_conf);                                 //configure GPIO with the given settings
- * @endcode
- **/
+  * @brief Add ISR handler for the corresponding GPIO pin.
+  *
+  * Call this function after using gpio_install_isr_service() to
+  * install the driver's GPIO ISR handler service.
+  *
+  * The pin ISR handlers no longer need to be declared with IRAM_ATTR,
+  * unless you pass the ESP_INTR_FLAG_IRAM flag when allocating the
+  * ISR in gpio_install_isr_service().
+  *
+  * This ISR handler will be called from an ISR. So there is a stack
+  * size limit (configurable as "ISR stack size" in menuconfig). This
+  * limit is smaller compared to a global GPIO interrupt handler due
+  * to the additional level of indirection.
+  *
+  * @param gpio_num GPIO number
+  * @param isr_handler ISR handler function for the corresponding GPIO number.
+  * @param args parameter for ISR handler.
+  *
+  * @return
+  *     - ESP_OK Success
+  *     - ESP_ERR_INVALID_STATE Wrong state, the ISR service has not been initialized.
+  *     - ESP_ERR_INVALID_ARG Parameter error
+  */
+esp_err_t gpio_isr_handler_add(gpio_num_t gpio_num, gpio_isr_t isr_handler, void* args);
 
 /**
- *----------EXAMPLE TO CONFIGURE GPIO AS OUTPUT ------------ *
- * @code{c}
- *     io_conf.intr_type = GPIO_INTR_POSEDGE;             //set posedge interrupt
- *     io_conf.mode = GPIO_MODE_INPUT;                        //set as input
- *     io_conf.pin_bit_mask = GPIO_SEL_4 | GPIO_SEL_5;        //bit mask of the pins that you want to set, e.g.,GPIO4/5
- *     io_conf.pull_down_en = 0;                              //disable pull-down mode
- *     io_conf.pull_up_en = 1;                                //enable pull-up mode
- *     gpio_config(&io_conf);                                 //configure GPIO with the given settings
- * @endcode
- */
-/**
- *----------EXAMPLE TO SET ISR HANDLER ----------------------
- * @code{c}
- * gpio_isr_register(gpio_intr_test,NULL, 0);    //hook the isr handler for GPIO interrupt
- * @endcode
- * @note
- *     1. user should arrange the INUMs that used, better not to use a same INUM for different interrupt.
- *     2. do not pick the INUM that already occupied by the system.
- *     3. refer to soc.h to check which INUMs that can be used.
- */
-/**
- *-------------EXAMPLE OF HANDLER FUNCTION-------------------*
- * @code{c}
- * #include "esp_attr.h"
- * void IRAM_ATTR gpio_intr_test(void* arg)
- * {
- *     //GPIO intr process
- *     ets_printf("in gpio_intr\n");
- *     uint32_t gpio_num = 0;
- *     uint32_t gpio_intr_status = READ_PERI_REG(GPIO_STATUS_REG);   //read status to get interrupt status for GPIO0-31
- *     uint32_t gpio_intr_status_h = READ_PERI_REG(GPIO_STATUS1_REG);//read status1 to get interrupt status for GPIO32-39
- *     SET_PERI_REG_MASK(GPIO_STATUS_W1TC_REG, gpio_intr_status);    //Clear intr for gpio0-gpio31
- *     SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, gpio_intr_status_h); //Clear intr for gpio32-39
- *     do {
- *         if(gpio_num < 32) {
- *             if(gpio_intr_status & BIT(gpio_num)) { //gpio0-gpio31
- *                 ets_printf("Intr GPIO%d ,val: %d\n",gpio_num,gpio_get_level(gpio_num));
- *                 //This is an isr handler, you should post an event to process it in RTOS queue.
- *             }
- *         } else {
- *             if(gpio_intr_status_h & BIT(gpio_num - 32)) {
- *                 ets_printf("Intr GPIO%d, val : %d\n",gpio_num,gpio_get_level(gpio_num));
- *                 //This is an isr handler, you should post an event to process it in RTOS queue.
- *             }
- *         }
- *     } while(++gpio_num < GPIO_PIN_COUNT);
- * }
- * @endcode
- */
+  * @brief Remove ISR handler for the corresponding GPIO pin.
+  *
+  * @param gpio_num GPIO number
+  *
+  * @return
+  *     - ESP_OK Success
+  *     - ESP_ERR_INVALID_STATE Wrong state, the ISR service has not been initialized.
+  *     - ESP_ERR_INVALID_ARG Parameter error
+  */
+esp_err_t gpio_isr_handler_remove(gpio_num_t gpio_num);
 
 /**
- *----EXAMPLE OF I2C CONFIG AND PICK SIGNAL FOR IO MATRIX---*
- * @code{c}
- * gpio_config_t io_conf;
- * io_conf.intr_type = GPIO_INTR_DISABLE;                 //disable interrupt
- * io_conf.mode = GPIO_MODE_INPUT_OUTPUT_OD;              //set as output mode
- * io_conf.pin_bit_mask = GPIO_SEL_21 | GPIO_SEL_22;      //bit mask of the pins that you want to set,e.g.GPIO21/22
- * io_conf.pull_down_en = 0;                              //disable pull-down mode
- * io_conf.pull_up_en = 1;                                //enable pull-up mode
- * gpio_config(&io_conf);                                 //configure GPIO with the given settings
- * gpio_matrix_out(21, EXT_I2C_SCL_O_IDX, 0,  0);         //set output signal for io_matrix
- * gpio_matrix_out(22, EXT_I2C_SDA_O_IDX, 0,  0);         //set output signal for io_matrix
- * gpio_matrix_in( 22, EXT_I2C_SDA_I_IDX, 0);             //set input signal for io_matrix
- * @endcode
- *
- */
+  * @brief Set GPIO pad drive capability
+  *
+  * @param gpio_num GPIO number, only support output GPIOs
+  * @param strength Drive capability of the pad
+  *
+  * @return
+  *     - ESP_OK Success
+  *     - ESP_ERR_INVALID_ARG Parameter error
+  */
+esp_err_t gpio_set_drive_capability(gpio_num_t gpio_num, gpio_drive_cap_t strength);
+
+/**
+  * @brief Get GPIO pad drive capability
+  *
+  * @param gpio_num GPIO number, only support output GPIOs
+  * @param strength Pointer to accept drive capability of the pad
+  *
+  * @return
+  *     - ESP_OK Success
+  *     - ESP_ERR_INVALID_ARG Parameter error
+  */
+esp_err_t gpio_get_drive_capability(gpio_num_t gpio_num, gpio_drive_cap_t* strength);
+
+/**
+  * @brief Enable gpio pad hold function.
+  *
+  * The gpio pad hold function works in both input and output modes, but must be output-capable gpios.
+  * If pad hold enabled:
+  *   in output mode: the output level of the pad will be force locked and can not be changed.
+  *   in input mode: the input value read will not change, regardless the changes of input signal.
+  *
+  * The state of digital gpio cannot be held during Deep-sleep, and it will resume the hold function
+  * when the chip wakes up from Deep-sleep. If the digital gpio also needs to be held during Deep-sleep,
+  * `gpio_deep_sleep_hold_en` should also be called.
+  *
+  * Power down or call gpio_hold_dis will disable this function.
+  *
+  * @param gpio_num GPIO number, only support output-capable GPIOs
+  *
+  * @return
+  *     - ESP_OK Success
+  *     - ESP_ERR_NOT_SUPPORTED Not support pad hold function
+  */
+esp_err_t gpio_hold_en(gpio_num_t gpio_num);
+
+/**
+  * @brief Disable gpio pad hold function.
+  *
+  * When the chip is woken up from Deep-sleep, the gpio will be set to the default mode, so, the gpio will output
+  * the default level if this function is called. If you dont't want the level changes, the gpio should be configured to
+  * a known state before this function is called.
+  *  e.g.
+  *     If you hold gpio18 high during Deep-sleep, after the chip is woken up and `gpio_hold_dis` is called,
+  *     gpio18 will output low level(because gpio18 is input mode by default). If you don't want this behavior,
+  *     you should configure gpio18 as output mode and set it to hight level before calling `gpio_hold_dis`.
+  *
+  * @param gpio_num GPIO number, only support output-capable GPIOs
+  *
+  * @return
+  *     - ESP_OK Success
+  *     - ESP_ERR_NOT_SUPPORTED Not support pad hold function
+  */
+esp_err_t gpio_hold_dis(gpio_num_t gpio_num);
+
+/**
+  * @brief Enable all digital gpio pad hold function during Deep-sleep.
+  *
+  * When the chip is in Deep-sleep mode, all digital gpio will hold the state before sleep, and when the chip is woken up,
+  * the status of digital gpio will not be held. Note that the pad hold feature only works when the chip is in Deep-sleep mode,
+  * when not in sleep mode, the digital gpio state can be changed even you have called this function.
+  *
+  * Power down or call gpio_hold_dis will disable this function, otherwise, the digital gpio hold feature works as long as the chip enter Deep-sleep.
+  */
+void gpio_deep_sleep_hold_en(void);
+
+/**
+  * @brief Disable all digital gpio pad hold function during Deep-sleep.
+  *
+  */
+void gpio_deep_sleep_hold_dis(void);
+
+/**
+  * @brief Set pad input to a peripheral signal through the IOMUX.
+  * @param gpio_num GPIO number of the pad.
+  * @param signal_idx Peripheral signal id to input. One of the ``*_IN_IDX`` signals in ``soc/gpio_sig_map.h``.
+  */
+void gpio_iomux_in(uint32_t gpio_num, uint32_t signal_idx);
+
+/**
+  * @brief Set peripheral output to an GPIO pad through the IOMUX.
+  * @param gpio_num gpio_num GPIO number of the pad.
+  * @param func The function number of the peripheral pin to output pin.
+  *        One of the ``FUNC_X_*`` of specified pin (X) in ``soc/io_mux_reg.h``.
+  * @param oen_inv True if the output enable needs to be inversed, otherwise False.
+  */
+void gpio_iomux_out(uint8_t gpio_num, int func, bool oen_inv);
 
 #ifdef __cplusplus
 }

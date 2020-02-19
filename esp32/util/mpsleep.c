@@ -15,7 +15,7 @@
 #include "py/mphal.h"
 
 #include "sdkconfig.h"
-#include "rom/rtc.h"
+#include "esp32/rom/rtc.h"
 #include "esp_system.h"
 #include "esp_sleep.h"
 #include "mpsleep.h"

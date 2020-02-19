@@ -26,12 +26,13 @@ def main():
         os.mkdir(dsttmpbl)
         os.mkdir(dsttmpapp)
         
-        shutil.copy(src + '/bootloader/bootloader_support/libbootloader_support.a', dsttmpbl)
         shutil.copy(src + '/bootloader/log/liblog.a', dsttmpbl)
-        shutil.copy(src + '/bootloader/micro-ecc/libmicro-ecc.a', dsttmpbl)
         shutil.copy(src + '/bootloader/soc/libsoc.a', dsttmpbl)
-        shutil.copy(src + '/bootloader/spi_flash/libspi_flash.a', dsttmpbl)
+        shutil.copy(src + '/bootloader/main/libmain.a', dsttmpbl)
         shutil.copy(src + '/bootloader/efuse/libefuse.a', dsttmpbl)
+        shutil.copy(src + '/bootloader/micro-ecc/libmicro-ecc.a', dsttmpbl)
+        shutil.copy(src + '/bootloader/spi_flash/libspi_flash.a', dsttmpbl)
+        shutil.copy(src + '/bootloader/bootloader_support/libbootloader_support.a', dsttmpbl)
         
         # copy the application libraries
         

@@ -87,7 +87,7 @@
 #include "freertos/timers.h"
 #include "freertos/xtensa_api.h"
 
-#include "rom/ets_sys.h"
+#include "esp32/rom/ets_sys.h"
 #include "soc/rtc_cntl_reg.h"
 #include "soc/sens_reg.h"
 

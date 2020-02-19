@@ -15,20 +15,13 @@
 #define __BOOTLOADER_H__
 
 #include <stdint.h>
-#include "esp_flash_data_types.h"
+#include "esp_flash_partitions.h"
 
 #ifdef __cplusplus
 extern "C"
 {
 #endif
 
-/* OTA selection structure (two copies in the OTA data partition).
-   Size of 32 bytes is friendly to flash encryption */
-typedef struct {
-    uint32_t ota_seq;
-    uint8_t  seq_label[24];
-    uint32_t crc; /* CRC32 of ota_seq field only */
-} ota_select;
 
 typedef struct _boot_info_t
 {
@@ -82,13 +75,6 @@ typedef struct _boot_info_t
 #define SAFE_BOOT_SW                        0x02
 
 #define SPI_ERROR_LOG "spi flash error"
-
-typedef struct {
-    esp_partition_pos_t ota_info;
-    esp_partition_pos_t image[3];
-    uint32_t image_count;
-    uint32_t selected_subtype;
-} bootloader_state_t;
 
 #ifdef __cplusplus
 }

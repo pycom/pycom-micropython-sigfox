@@ -20,7 +20,7 @@
 #include "sha1_alt.h"
 #include "sha256_alt.h"
 #include "sha512_alt.h"
-#include "rom/md5_hash.h"
+#include "esp32/rom/md5_hash.h"
 #include "hwcrypto/sha.h"
 #include "mpexception.h"
 #include "mbedtls/sha1.h"

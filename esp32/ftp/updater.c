@@ -20,7 +20,7 @@
 #include "esp_image_format.h"
 //#define LOG_LOCAL_LEVEL ESP_LOG_INFO
 #include "esp_log.h"
-#include "rom/crc.h"
+#include "esp32/rom/crc.h"
 #include "esp32chipinfo.h"
 
 /******************************************************************************
