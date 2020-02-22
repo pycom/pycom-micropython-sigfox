@@ -230,6 +230,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(network_server_deinit_obj, network_server_deini
 STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_network) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WLAN),                (mp_obj_t)&mod_network_nic_type_wlan },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PPP),                 (mp_obj_t)&ppp_make_new_obj },
 #if defined (LOPY) || defined(LOPY4) || defined (FIPY)
     { MP_OBJ_NEW_QSTR(MP_QSTR_LoRa),                (mp_obj_t)&mod_network_nic_type_lora },
 #endif

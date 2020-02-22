@@ -140,6 +140,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	moduos.c \
 	modusocket.c \
 	modnetwork.c \
+	network_ppp.c \
 	modwlan.c \
 	modutime.c \
 	modpycom.c \
