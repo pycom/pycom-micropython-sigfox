@@ -367,10 +367,12 @@ endif # ifeq ($(OPENTHREAD), on)
 # SRC_QSTR
 SRC_QSTR_AUTO_DEPS +=
 
+# These files are passed here as per esp-idf/components/bootloader/subproject/main/component.mk
 BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld
 
-# add the application linker script(s)
-APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.project.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.rom.libgcc.ld
+# Add the application linker script(s)
+# These files are passed here as per esp-idf/components/esp32/component.mk
+APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.rom.libgcc.ld -T esp32.project.ld
 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
