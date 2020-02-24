@@ -891,7 +891,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_id(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write id"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing id!"));
@@ -922,7 +922,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_pac(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write pac"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing pac!"));
@@ -953,7 +953,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_public_key(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write public key"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing public key!"));
@@ -985,7 +985,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_private_key(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write private key"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing private key!"));
