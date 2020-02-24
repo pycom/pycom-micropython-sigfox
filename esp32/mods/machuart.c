@@ -597,9 +597,9 @@ STATIC mp_obj_t mach_uart_sendbreak(mp_uint_t n_args, const mp_obj_t *pos_args, 
             gpio_matrix_out(pin->pin_number, pin->af_out, false, false);
         }
 
-        WRITE_PERI_REG(UART_CONF0_REG(self->uart_id), READ_PERI_REG(UART_CONF0_REG(self->uart_id)) | UART_TXD_INV);
+        WRITE_PERI_REG(UART_CONF0_REG(self->uart_id), READ_PERI_REG(UART_CONF0_REG(self->uart_id)) ^ UART_TXD_INV);
         ets_delay_us((delay > 0) ? delay : 1);
-        WRITE_PERI_REG(UART_CONF0_REG(self->uart_id), READ_PERI_REG(UART_CONF0_REG(self->uart_id)) & (~UART_TXD_INV));
+        WRITE_PERI_REG(UART_CONF0_REG(self->uart_id), READ_PERI_REG(UART_CONF0_REG(self->uart_id)) ^ UART_TXD_INV);
 
         if (self->n_pins == 1) {
             // make it an input again
