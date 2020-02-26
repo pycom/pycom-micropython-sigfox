@@ -686,9 +686,9 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_param) {
     else {
         t->items[6] = mp_obj_new_int_from_uint(0); // st_size
     }
-    t->items[7] = MP_OBJ_NEW_SMALL_INT(seconds); // st_atime
-    t->items[8] = MP_OBJ_NEW_SMALL_INT(seconds); // st_mtime
-    t->items[9] = MP_OBJ_NEW_SMALL_INT(seconds); // st_ctime
+    t->items[7] = mp_obj_new_int_from_uint(seconds); // st_atime
+    t->items[8] = mp_obj_new_int_from_uint(seconds); // st_mtime
+    t->items[9] = mp_obj_new_int_from_uint(seconds); // st_ctime
 
     return MP_OBJ_FROM_PTR(t);
 }
