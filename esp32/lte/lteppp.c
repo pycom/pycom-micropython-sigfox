@@ -658,7 +658,7 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
         // uart_read_bytes(LTE_UART_ID, (uint8_t *)tmp_buf, sizeof(tmp_buf), 5 / portTICK_RATE_MS);
         // then send the command
         uart_write_bytes(LTE_UART_ID, cmd, cmd_len);
-        if (strcmp(cmd, "+++")) {
+        if (!strcmp(cmd, "+++")) {
             uart_write_bytes(LTE_UART_ID, "\r", 1);
         }
         uart_wait_tx_done(LTE_UART_ID, LTE_TRX_WAIT_MS(cmd_len) / portTICK_RATE_MS);
