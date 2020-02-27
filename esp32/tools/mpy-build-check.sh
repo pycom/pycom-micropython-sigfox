@@ -1,4 +1,7 @@
 #!/bin/bash
+# Check whether we should rebuild the frozen Micro Python code
+
+set -e
 
 BOARD="$1"
 RELEASE_TYP="$2"
@@ -7,49 +10,50 @@ PY_PATH="./frozen"
 PY_DIRS="$(ls ${PY_PATH})"
 OS="$(uname)"
 if [ ${VARIANT} != "BASE" ] ; then
-    BUILD_DIR="build-${VARIANT}"
+    BUILD_DIR="build-${VARIANT}/${BOARD}/${RELEASE_TYP}"
 else
-    BUILD_DIR="build"
+    BUILD_DIR="build/${BOARD}/${RELEASE_TYP}"
 fi
 
-#Script Has to be called from esp32 Dir
+# Script has to be called from esp32 dir
 if ! [ $0 = "tools/mpy-build-check.sh" ]; then
   echo "Need to run as tools/mpy-build-check.sh!" >&2
   exit 1
 fi
 
-#Check Board Type
+# Check board type
 if [ "${BOARD}" != "WIPY" -a "${BOARD}" != "SIPY" -a "${BOARD}" != "LOPY" -a "${BOARD}" != "LOPY4" -a "${BOARD}" != "GPY" -a "${BOARD}" != "FIPY" ] ; then
   echo "Invalid Board name for MPY build!" >&2
   exit 1
 fi
 
-BUILD_TIMESTAMP=./"${BUILD_DIR}"/${BOARD}"/"${RELEASE_TYP}"/"mpy_last_build_timestamp.TS
 
-#If Last mpy Build Timestamp Not avialable create it
-if [ ! -d ${BUILD_DIR}/${BOARD}/${RELEASE_TYP} ] ; then
-    exit 0
-else
-    if [ ! -f  ${BUILD_TIMESTAMP} ] ; then
-        $(touch ${BUILD_TIMESTAMP})
-    fi
-fi
-
-#Get Current Timestamp
+# Get current timestamp
 CURR_TS="$(date +"%s")"
 
-MPY_PATH=./"${BUILD_DIR}"/"${BOARD}"/"${RELEASE_TYP}"/frozen_mpy
 
+BUILD_TIMESTAMP="${BUILD_DIR}/mpy_last_build_timestamp.TS"
+
+
+MPY_PATH="${BUILD_DIR}/frozen_mpy"
 if ! [ -d ${MPY_PATH} ] ; then
-  #Build Directory not created yet
-  #Update Last Build Timestamp
-  $(echo ${CURR_TS} > ${BUILD_TIMESTAMP})
+  # Build directory does not exist
+  # Update last build timestamp
+  mkdir -p ${BUILD_DIR}
+  echo ${CURR_TS} > ${BUILD_TIMESTAMP}
   exit 0
 fi
 
-LAST_BUILD=$(<${BUILD_TIMESTAMP})
 
-#Check if any of Frozen Directorys has been updated.. Rebuild out Mpy files
+# Get last build timestamp
+if [ ! -f  ${BUILD_TIMESTAMP} ] ; then
+    LAST_BUILD=0
+else
+    LAST_BUILD=$(<${BUILD_TIMESTAMP})
+fi
+
+
+# Remove Mpy build directory if any of the frozen directories have been updated
 for dir in ${PY_DIRS}
 do
   if [[ "${dir}" =~ ^\\.* ]] ; then
@@ -65,14 +69,14 @@ do
 
   if [[ ${TS} -gt ${LAST_BUILD} ]] ; then
     echo "Rebuilding frozen Code!" >&2
-    #Remove all MPY out files to be rubuild again by Makefile
-    $(rm -rf ${MPY_PATH})
-    #Update Last Build Timestamp
-    $(echo ${CURR_TS} > ${BUILD_TIMESTAMP})
+    # Remove the build directory to trigger a rebuild from the Makefile
+    rm -rf ${MPY_PATH}
+    # Update last build timestamp
+    echo ${CURR_TS} > ${BUILD_TIMESTAMP}
     exit 0
   fi
 done
 
-#Update Last Build Timestamp
-$(echo ${CURR_TS} > ${BUILD_TIMESTAMP})
+# Update last build timestamp
+echo ${CURR_TS} > ${BUILD_TIMESTAMP}
 exit 0
