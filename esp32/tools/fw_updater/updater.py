@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-#   Copyright (c) 2016-2020, Pycom Limited.
+#   Copyright (c) 2016-2019, Pycom Limited.
 #
 #   This software is licensed under the GNU GPL version 3 or any
 #   later version, with permitted additional terms. For more information
@@ -43,7 +43,7 @@ DEFAULT_BAUD_RATE = 115200
 FAST_BAUD_RATE = 921600
 MAXPICREAD_BAUD_RATE = 230400
 
-LORA_REGIONS = ["EU868", "US915", "AS923", "AU915"]
+LORA_REGIONS = ["EU868", "US915", "AS923", "AU915", "IN865"]
 
 PIC_BOARDS = ["04D8:F013", "04D8:F012", "04D8:EF98", "04D8:EF38"]
 
@@ -678,6 +678,55 @@ class NPyProgrammer(object):
                            +config_block[152:]
         return self.set_pybytes_config(new_config_block, force_update=True)
 
+    def set_lte_config(self, config_block, carrier=None, apn=None, lte_type=None, cid=None, band=None, reset=None):
+        config_block = config_block.ljust(int(PARTITIONS.get('config')[1], 16), b'\x00')
+        
+        if carrier is not None:
+            cb_carrier = str(carrier[0:128]).ljust(129, b'\x00')
+            print(cb_carrier)        
+        else:
+            cb_carrier = config_block[634:763]
+        
+        if apn is not None:
+            cb_apn = str(apn[0:128]).ljust(129, b'\x00')
+        else:
+            cb_apn = config_block[763:892]
+        
+        if lte_type is not None:
+            cb_lte_type = str(lte_type[0:16]).ljust(17, b'\x00')
+        else:
+            cb_lte_type = config_block[892:909]
+        
+        if cid is not None:
+            cb_cid = struct.pack('>B', int(cid))
+        else:
+            cb_cid = config_block[909]
+        
+        if band is not None:
+            cb_band = struct.pack('>B', int(band))
+        else:
+            cb_band = config_block[910]
+        
+        if reset is not None:
+            cb_reset = struct.pack('>B', int(reset=='True'))
+        else:
+            cb_reset = config_block[911]
+            print(cb_reset)
+            
+        new_config_block = config_block[0:634] \
+                           +cb_carrier \
+                           +cb_apn \
+                           +cb_lte_type  \
+                           +cb_cid  \
+                           +cb_band  \
+                           +cb_reset  \
+                           +config_block[912:]
+        return self.set_pybytes_config(new_config_block, force_update=True)
+            
+            
+            
+            
+    
     def set_pycom_config(self, config_block, boot_fs_type=None):
         print_debug('This is set_pycom_config with boot_fs_type={} [{}]'.format(boot_fs_type, type(boot_fs_type)))
         config_block = config_block.ljust(int(PARTITIONS.get('config')[1], 16), b'\x00')
@@ -702,7 +751,7 @@ class NPyProgrammer(object):
         return self.set_pybytes_config(new_config_block, force_update=True)
 
     def print_cb(self, config_block):
-        for x in range(0, 20):
+        for x in range(0, 30):
             print(binascii.hexlify(config_block[x * 32:x * 32 + 32]))
             
     def set_pybytes_config(self, config_block, userid=None, device_token=None, mqttServiceAddress=None, network_preferences=None, extra_preferences=None, force_update=None):
@@ -918,6 +967,12 @@ def process_arguments():
     cmd_parser_pybytes.add_argument('--uid', default=None, help='Set userId')
     cmd_parser_pybytes.add_argument('--nwprefs', default=None, help='Set network preferences')
     cmd_parser_pybytes.add_argument('--extraprefs', default=None, help='Set extra preferences')
+    cmd_parser_pybytes.add_argument('--carrier', default=None, help='Set LTE carrier')
+    cmd_parser_pybytes.add_argument('--apn', default=None, help='Set LTE apn')
+    cmd_parser_pybytes.add_argument('--type', default=None, help='Set LTE type')
+    cmd_parser_pybytes.add_argument('--cid', default=None, help='Set LTE cid')
+    cmd_parser_pybytes.add_argument('--band', default=None, help='Set LTE band')
+    cmd_parser_pybytes.add_argument('--reset', default=None, help='Set LTE reset')
 
     cmd_parser_cb = subparsers.add_parser('cb', help='Read/Write config block')
     cmd_parser_cb.add_argument('-f', '--file', default=None, help='name of the backup file  (default: <wmac>.cb)')
@@ -1389,8 +1444,16 @@ def main():
                 or (hasattr(args, "mqtt") and args.mqtt is not None) \
                 or (hasattr(args, "uid") and args.uid is not None) \
                 or (hasattr(args, "nwprefs") and args.nwprefs is not None) \
+                or (hasattr(args, "carrier") and args.carrier is not None) \
+                or (hasattr(args, "apn") and args.apn is not None) \
+                or (hasattr(args, "type") and args.type is not None) \
+                or (hasattr(args, "cid") and args.cid is not None) \
+                or (hasattr(args, "band") and args.band is not None) \
+                or (hasattr(args, "reset") and args.reset is not None) \
                 or (hasattr(args, "extraprefs") and args.extraprefs is not None):
                 new_config_block = nPy.set_pybytes_config(config_block, args.uid, args.token, args.mqtt, args.nwprefs, args.extraprefs, True)
+                new_config_block = nPy.set_lte_config(new_config_block, args.carrier, args.apn, args.type, args.cid, args.band, args.reset)
+                print(nPy.print_cb(new_config_block))
                 nPy.write(int(PARTITIONS.get('config')[0], 16), new_config_block)
                 sys.stdout = old_stdout
             else:
