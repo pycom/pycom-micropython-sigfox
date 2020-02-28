@@ -1,6 +1,6 @@
 #!/usr/bin/env python2
 
-#   Copyright (c) 2016-2019, Pycom Limited.
+#   Copyright (c) 2016-2020, Pycom Limited.
 #
 #   This software is licensed under the GNU GPL version 3 or any
 #   later version, with permitted additional terms. For more information
@@ -751,10 +751,11 @@ class NPyProgrammer(object):
         return self.set_pybytes_config(new_config_block, force_update=True)
 
     def print_cb(self, config_block):
-        for x in range(0, 30):
-            print(binascii.hexlify(config_block[x * 32:x * 32 + 32]))
+	if DEBUG:
+	    for x in range(0, 30):
+                print(binascii.hexlify(config_block[x * 32:x * 32 + 32]))
             
-    def set_pybytes_config(self, config_block, userid=None, device_token=None, mqttServiceAddress=None, network_preferences=None, extra_preferences=None, force_update=None):
+    def set_pybytes_config(self, config_block, userid=None, device_token=None, mqttServiceAddress=None, network_preferences=None, extra_preferences=None, force_update=None, auto_start=None):
         config_block = config_block.ljust(int(PARTITIONS.get('config')[1], 16), b'\x00')
         if device_token is not None:
             token = str(device_token)[0:39].ljust(40, b'\x00')
@@ -789,6 +790,14 @@ class NPyProgrammer(object):
         else:
             fu = config_block[497]
 
+        if auto_start is not None:
+            if auto_start:
+                asf = b'\x01'
+            else:
+                asf = b'\x00'
+        else:
+            asf = config_block[498]
+        
         new_config_block = config_block[0:162] \
                            +token \
                            +address  \
@@ -796,7 +805,8 @@ class NPyProgrammer(object):
                            +nwp \
                            +ep \
                            +fu \
-                           +config_block[498:]
+                           +asf \
+                           +config_block[499:]
 
         # self.print_cb(new_config_block)
         return new_config_block
@@ -972,7 +982,8 @@ def process_arguments():
     cmd_parser_pybytes.add_argument('--type', default=None, help='Set LTE type')
     cmd_parser_pybytes.add_argument('--cid', default=None, help='Set LTE cid')
     cmd_parser_pybytes.add_argument('--band', default=None, help='Set LTE band')
-    cmd_parser_pybytes.add_argument('--reset', default=None, help='Set LTE reset')
+    cmd_parser_pybytes.add_argument('--lte_reset', default=None, type=str2bool, nargs='?', const=True, help='Set LTE reset')
+    cmd_parser_pybytes.add_argument('--auto_start', default=None, type=str2bool, nargs='?', const=True, help='Set Pybytes auto_start')
 
     cmd_parser_cb = subparsers.add_parser('cb', help='Read/Write config block')
     cmd_parser_cb.add_argument('-f', '--file', default=None, help='name of the backup file  (default: <wmac>.cb)')
@@ -1444,16 +1455,16 @@ def main():
                 or (hasattr(args, "mqtt") and args.mqtt is not None) \
                 or (hasattr(args, "uid") and args.uid is not None) \
                 or (hasattr(args, "nwprefs") and args.nwprefs is not None) \
+                or (hasattr(args, "auto_start") and args.auto_start is not None) \
                 or (hasattr(args, "carrier") and args.carrier is not None) \
                 or (hasattr(args, "apn") and args.apn is not None) \
                 or (hasattr(args, "type") and args.type is not None) \
                 or (hasattr(args, "cid") and args.cid is not None) \
                 or (hasattr(args, "band") and args.band is not None) \
-                or (hasattr(args, "reset") and args.reset is not None) \
+                or (hasattr(args, "lte_reset") and args.lte_reset is not None) \
                 or (hasattr(args, "extraprefs") and args.extraprefs is not None):
-                new_config_block = nPy.set_pybytes_config(config_block, args.uid, args.token, args.mqtt, args.nwprefs, args.extraprefs, True)
+                new_config_block = nPy.set_pybytes_config(config_block, args.uid, args.token, args.mqtt, args.nwprefs, args.extraprefs, True, args.auto_start)
                 new_config_block = nPy.set_lte_config(new_config_block, args.carrier, args.apn, args.type, args.cid, args.band, args.reset)
-                print(nPy.print_cb(new_config_block))
                 nPy.write(int(PARTITIONS.get('config')[0], 16), new_config_block)
                 sys.stdout = old_stdout
             else:
