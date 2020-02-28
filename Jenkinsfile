@@ -87,6 +87,7 @@ def flashBuild(short_name, version, variant) {
       unstash 'tools'
       sh 'python esp32/tools/fw_updater/updater.py --noexit --port ' + device_name +' flash -t esp32/build-' + variant + '/' + board_name + '-' + version + '.tar.gz'
       sh 'python esp32/tools/fw_updater/updater.py --port ' + device_name +' pybytes --auto_start False'
+    }
   }
 }
 
