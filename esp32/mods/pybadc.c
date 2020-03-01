@@ -22,7 +22,7 @@
 
 #include "esp_types.h"
 #include "esp_attr.h"
-#include "esp_intr.h"
+#include "esp_intr_alloc.h"
 #include "soc/dport_reg.h"
 #include "soc/gpio_sig_map.h"
 

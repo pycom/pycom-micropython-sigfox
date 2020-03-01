@@ -130,7 +130,6 @@ static tcpip_adapter_dns_info_t wlan_sta_inf_dns_info;
 #endif
 SemaphoreHandle_t smartConfigTimeout_mutex;
 
-static const int ESPTOUCH_DONE_BIT = BIT1;
 static const int ESPTOUCH_STOP_BIT = BIT2;
 static bool wlan_smart_config_enabled = false;
 
@@ -167,8 +166,9 @@ static void wlan_validate_country_policy(uint8_t policy);
 STATIC void wlan_stop_sta_conn_timer();
 STATIC void wlan_set_default_inf(void);
 STATIC void wlan_stop_smartConfig_timer();
-static void smart_config_callback(smartconfig_status_t status, void *pdata);
-static void TASK_SMART_CONFIG (void *pvParameters);
+// TODO: refactor Smart Config as per esp-idf 4.0
+//static void smart_config_callback(smartconfig_status_t status, void *pdata);
+//static void TASK_SMART_CONFIG (void *pvParameters);
 STATIC void wlan_callback_handler(void* arg);
 //*****************************************************************************
 //
@@ -203,7 +203,8 @@ void wlan_pre_init (void) {
     smartConfigTimeout_mutex = xSemaphoreCreateMutex();
     memcpy(wlan_obj.country.cc, (const char*)"NA", sizeof(wlan_obj.country.cc));
     // create Smart Config Task
-    xTaskCreatePinnedToCore(TASK_SMART_CONFIG, "SmartConfig", SMART_CONF_TASK_STACK_SIZE / sizeof(StackType_t), NULL, SMART_CONF_TASK_PRIORITY, &SmartConfTaskHandle, 1);
+    // TODO: refactor Smart Config as per esp-idf 4.0
+    // xTaskCreatePinnedToCore(TASK_SMART_CONFIG, "SmartConfig", SMART_CONF_TASK_STACK_SIZE / sizeof(StackType_t), NULL, SMART_CONF_TASK_PRIORITY, &SmartConfTaskHandle, 1);
 }
 
 void wlan_resume (bool reconnect)
@@ -730,7 +731,6 @@ static void wlan_validate_country_policy(uint8_t policy)
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key,
                              int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent, const char* hostname, uint8_t channel) {
 
-    esp_wpa2_config_t wpa2_config = WPA2_CONFIG_INIT_DEFAULT();
     wifi_config_t wifi_config;
     memset(&wifi_config, 0, sizeof(wifi_config));
 
@@ -801,7 +801,7 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
             }
         }
 
-        if (ESP_OK != esp_wifi_sta_wpa2_ent_enable(&wpa2_config)) {
+        if (ESP_OK != esp_wifi_sta_wpa2_ent_enable()) {
             goto os_error;
         }
     }
@@ -956,134 +956,135 @@ STATIC void wlan_set_default_inf(void)
 #endif
 }
 
+// TODO: refactor Smart Config as per esp-idf 4.0
 //STATIC void wlan_get_sl_mac (void) {
 //    // Get the MAC address
 ////    uint8_t macAddrLen = SL_MAC_ADDR_LEN;
 ////    sl_NetCfgGet(SL_MAC_ADDRESS_GET, NULL, &macAddrLen, wlan_obj.mac);
 //}
-static void TASK_SMART_CONFIG (void *pvParameters) {
+//static void TASK_SMART_CONFIG (void *pvParameters) {
+//
+//    EventBits_t uxBits;
+//    bool connected;
+//    static uint32_t thread_notification;
+//
+//smartConf_init:
+//    wlan_smart_config_enabled = false;
+//    connected = false;
+//    // Block task till notification is recieved
+//    thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+//
+//    if (thread_notification) {
+//        if (wlan_obj.started == false) {
+//            CHECK_ESP_ERR(esp_wifi_start(), smartConf_init)
+//            wlan_obj.started = true;
+//        }
+//        else
+//        {
+//            // disconnect any AP connected
+//            CHECK_ESP_ERR(esp_wifi_disconnect(), smartConf_init)
+//        }
+//        CHECK_ESP_ERR(esp_smartconfig_set_type(SC_TYPE_ESPTOUCH), smartConf_init)
+//        CHECK_ESP_ERR(esp_smartconfig_start(smart_config_callback), smartConf_init)
+//        wlan_smart_config_enabled = true;
+//        goto smartConf_start;
+//    }
+//    goto smartConf_init;
+//
+//smartConf_start:
+//    //mp_printf(&mp_plat_print, "\n-------SmartConfig Started-------\n");
+//    /*create Timer */
+//    wlan_smartConfig_timeout = xTimerCreate("smartConfig_Timer", 60000 / portTICK_PERIOD_MS, 0, 0, wlan_timer_callback);
+//    /*start Timer */
+//    xTimerStart(wlan_smartConfig_timeout, 0);
+//    while (1) {
+//        uxBits = xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT | ESPTOUCH_STOP_BIT, true, false, portMAX_DELAY);
+//        if(uxBits & ESPTOUCH_STOP_BIT) {
+//            esp_smartconfig_stop();
+//            //mp_printf(&mp_plat_print, "\nSmart Config Aborted or Timed-out\n");
+//            goto smartConf_init;
+//        }
+//        if(uxBits & CONNECTED_BIT) {
+//            //mp_printf(&mp_plat_print, "WiFi Connected to ap\n");
+//            connected = true;
+//        }
+//        if(uxBits & ESPTOUCH_DONE_BIT) {
+//            //mp_printf(&mp_plat_print, "smartconfig over\n");
+//            esp_smartconfig_stop();
+//            wlan_stop_smartConfig_timer();
+//            //set event flag
+//            wlan_obj.events |= MOD_WLAN_SMART_CONFIG_DONE;
+//            // trigger interrupt
+//            if(wlan_obj.trigger & MOD_WLAN_SMART_CONFIG_DONE)
+//            {
+//                mp_irq_queue_interrupt(wlan_callback_handler, &wlan_obj);
+//            }
+//            if (connected) {
+//                //save wifi credentials
+//                config_set_sta_wifi_ssid(wlan_obj.ssid_o, false);
+//                config_set_wifi_auth(wlan_obj.auth, false);
+//                switch(wlan_obj.mode)
+//                    {
+//                    case WIFI_MODE_STA:
+//                        config_set_wifi_mode(PYCOM_WIFI_CONF_MODE_STA, false);
+//                        break;
+//                    case WIFI_MODE_AP:
+//                        config_set_wifi_mode(PYCOM_WIFI_CONF_MODE_STA, false);
+//                        break;
+//                    case WIFI_MODE_APSTA:
+//                        config_set_wifi_mode(PYCOM_WIFI_CONF_MODE_STA, false);
+//                        break;
+//                    default:
+//                        break;
+//                    }
+//                config_set_wifi_sta_pwd(wlan_obj.key, true);
+//                //set Connected bit back as it has been consumed.
+//                xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+//            }
+//            goto smartConf_init;
+//        }
+//    }
+//
+//}
 
-    EventBits_t uxBits;
-    bool connected;
-    static uint32_t thread_notification;
-
-smartConf_init:
-    wlan_smart_config_enabled = false;
-    connected = false;
-    // Block task till notification is recieved
-    thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-
-    if (thread_notification) {
-        if (wlan_obj.started == false) {
-            CHECK_ESP_ERR(esp_wifi_start(), smartConf_init)
-            wlan_obj.started = true;
-        }
-        else
-        {
-            // disconnect any AP connected
-            CHECK_ESP_ERR(esp_wifi_disconnect(), smartConf_init)
-        }
-        CHECK_ESP_ERR(esp_smartconfig_set_type(SC_TYPE_ESPTOUCH), smartConf_init)
-        CHECK_ESP_ERR(esp_smartconfig_start(smart_config_callback), smartConf_init)
-        wlan_smart_config_enabled = true;
-        goto smartConf_start;
-    }
-    goto smartConf_init;
-
-smartConf_start:
-    //mp_printf(&mp_plat_print, "\n-------SmartConfig Started-------\n");
-    /*create Timer */
-    wlan_smartConfig_timeout = xTimerCreate("smartConfig_Timer", 60000 / portTICK_PERIOD_MS, 0, 0, wlan_timer_callback);
-    /*start Timer */
-    xTimerStart(wlan_smartConfig_timeout, 0);
-    while (1) {
-        uxBits = xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT | ESPTOUCH_STOP_BIT, true, false, portMAX_DELAY);
-        if(uxBits & ESPTOUCH_STOP_BIT) {
-            esp_smartconfig_stop();
-            //mp_printf(&mp_plat_print, "\nSmart Config Aborted or Timed-out\n");
-            goto smartConf_init;
-        }
-        if(uxBits & CONNECTED_BIT) {
-            //mp_printf(&mp_plat_print, "WiFi Connected to ap\n");
-            connected = true;
-        }
-        if(uxBits & ESPTOUCH_DONE_BIT) {
-            //mp_printf(&mp_plat_print, "smartconfig over\n");
-            esp_smartconfig_stop();
-            wlan_stop_smartConfig_timer();
-            //set event flag
-            wlan_obj.events |= MOD_WLAN_SMART_CONFIG_DONE;
-            // trigger interrupt
-            if(wlan_obj.trigger & MOD_WLAN_SMART_CONFIG_DONE)
-            {
-                mp_irq_queue_interrupt(wlan_callback_handler, &wlan_obj);
-            }
-            if (connected) {
-                //save wifi credentials
-                config_set_sta_wifi_ssid(wlan_obj.ssid_o, false);
-                config_set_wifi_auth(wlan_obj.auth, false);
-                switch(wlan_obj.mode)
-                    {
-                    case WIFI_MODE_STA:
-                        config_set_wifi_mode(PYCOM_WIFI_CONF_MODE_STA, false);
-                        break;
-                    case WIFI_MODE_AP:
-                        config_set_wifi_mode(PYCOM_WIFI_CONF_MODE_STA, false);
-                        break;
-                    case WIFI_MODE_APSTA:
-                        config_set_wifi_mode(PYCOM_WIFI_CONF_MODE_STA, false);
-                        break;
-                    default:
-                        break;
-                    }
-                config_set_wifi_sta_pwd(wlan_obj.key, true);
-                //set Connected bit back as it has been consumed.
-                xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-            }
-            goto smartConf_init;
-        }
-    }
-
-}
-
-static void smart_config_callback(smartconfig_status_t status, void *pdata)
-{
-    wifi_config_t *wifi_config;
-
-    switch (status) {
-        case SC_STATUS_WAIT:
-            //mp_printf(&mp_plat_print, "SC_STATUS_WAIT\n");
-            break;
-        case SC_STATUS_FIND_CHANNEL:
-            //mp_printf(&mp_plat_print, "SC_STATUS_FINDING_CHANNEL\n");
-            break;
-        case SC_STATUS_GETTING_SSID_PSWD:
-            //mp_printf(&mp_plat_print, "SC_STATUS_GETTING_SSID_PSWD\n");
-            break;
-        case SC_STATUS_LINK:
-            //mp_printf(&mp_plat_print, "SC_STATUS_LINK\n");
-            wifi_config = pdata;
-            //save password/ssid/auth
-            memcpy(wlan_obj.key, wifi_config->sta.password, 64);
-            memcpy(wlan_obj.ssid, wifi_config->sta.ssid, (MODWLAN_SSID_LEN_MAX));
-            wlan_obj.auth = wifi_config->sta.threshold.authmode;
-            esp_wifi_disconnect();
-            esp_wifi_set_config(ESP_IF_WIFI_STA, wifi_config);
-            esp_wifi_connect();
-            break;
-        case SC_STATUS_LINK_OVER:
-            //mp_printf(&mp_plat_print, "SC_STATUS_LINK_OVER\n");
-            if (pdata != NULL) {
-                uint8_t phone_ip[4] = { 0 };
-                memcpy(phone_ip, (uint8_t* )pdata, 4);
-                //mp_printf(&mp_plat_print, "Phone ip: %d.%d.%d.%d\n", phone_ip[0], phone_ip[1], phone_ip[2], phone_ip[3]);
-            }
-            xEventGroupSetBits(wifi_event_group, ESPTOUCH_DONE_BIT);
-            break;
-        default:
-            break;
-    }
-}
+// TODO: refactor Smart Config as per esp-idf 4.0
+//static void smart_config_callback(smartconfig_status_t status, void *pdata)
+//{
+//    wifi_config_t *wifi_config;
+//    switch (status) {
+//        case SC_STATUS_WAIT:
+//            //mp_printf(&mp_plat_print, "SC_STATUS_WAIT\n");
+//            break;
+//        case SC_STATUS_FIND_CHANNEL:
+//            //mp_printf(&mp_plat_print, "SC_STATUS_FINDING_CHANNEL\n");
+//            break;
+//        case SC_STATUS_GETTING_SSID_PSWD:
+//            //mp_printf(&mp_plat_print, "SC_STATUS_GETTING_SSID_PSWD\n");
+//            break;
+//        case SC_STATUS_LINK:
+//            //mp_printf(&mp_plat_print, "SC_STATUS_LINK\n");
+//            wifi_config = pdata;
+//            //save password/ssid/auth
+//            memcpy(wlan_obj.key, wifi_config->sta.password, 64);
+//            memcpy(wlan_obj.ssid, wifi_config->sta.ssid, (MODWLAN_SSID_LEN_MAX));
+//            wlan_obj.auth = wifi_config->sta.threshold.authmode;
+//            esp_wifi_disconnect();
+//            esp_wifi_set_config(ESP_IF_WIFI_STA, wifi_config);
+//            esp_wifi_connect();
+//            break;
+//        case SC_STATUS_LINK_OVER:
+//            //mp_printf(&mp_plat_print, "SC_STATUS_LINK_OVER\n");
+//            if (pdata != NULL) {
+//                uint8_t phone_ip[4] = { 0 };
+//                memcpy(phone_ip, (uint8_t* )pdata, 4);
+//                //mp_printf(&mp_plat_print, "Phone ip: %d.%d.%d.%d\n", phone_ip[0], phone_ip[1], phone_ip[2], phone_ip[3]);
+//            }
+//            xEventGroupSetBits(wifi_event_group, ESPTOUCH_DONE_BIT);
+//            break;
+//        default:
+//            break;
+//    }
+//}
 
 /******************************************************************************/
 // Micro Python bindings; WLAN class

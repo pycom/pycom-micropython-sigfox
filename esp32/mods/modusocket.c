@@ -950,7 +950,7 @@ STATIC mp_obj_t mod_usocket_dnsserver(size_t n_args, const mp_obj_t *args)
         modusocket_check_numdns(args[0]);
         uint8_t numdns = mp_obj_get_int(args[0]);
 
-        ipaddr = dns_getserver(numdns);
+        ipaddr = *(dns_getserver(numdns));
         if(ipaddr.type == 0)
         {
             tuple[0] = mp_obj_new_int(numdns);
@@ -982,7 +982,7 @@ STATIC mp_obj_t mod_usocket_dnsserver(size_t n_args, const mp_obj_t *args)
     {
         mp_obj_t tuple[MODUSOCKET_MAX_DNS_SERV];
         for(int i=0; i < MODUSOCKET_MAX_DNS_SERV; i++) {
-            ip_addr_t ipaddr = dns_getserver(i);
+            ip_addr_t ipaddr = *(dns_getserver(i));
             tuple[i] = netutils_format_ipv4_addr((uint8_t *)&ipaddr.u_addr.ip4.addr, NETUTILS_BIG);
         }
         return mp_obj_new_tuple(MODUSOCKET_MAX_DNS_SERV, tuple);

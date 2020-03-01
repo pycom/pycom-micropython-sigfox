@@ -73,7 +73,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/hci/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/gki/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include/coap
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/examples
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include/coap
@@ -92,6 +92,19 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_rom/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/xtensa/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/xtensa/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_wifi/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/wpa_supplicant/include/esp_supplicant
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include/coap2
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/device/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/device/include/device
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/common/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/common/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/stack/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/common/osi/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/hci/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/bta/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/api/include
+
 
 
 APP_MAIN_SRC_C = \
@@ -168,9 +181,9 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machrmt.c \
 	lwipsocket.c \
 	machtouch.c \
-	modcoap.c \
 	modmdns.c \
 	)
+#	TODO: modcoap.c  -> add back when refactored as per esp-idf 4.0
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
 	modlora.c \

@@ -1597,7 +1597,7 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
 }
 
 static int32_t lora_recv (byte *buf, uint32_t len, int32_t timeout_ms, uint32_t *port) {
-    lora_rx_data_t rx_data;
+    lora_rx_data_t rx_data = {{0}, 0, 0};
 
     if (timeout_ms < 0) {
         // blocking mode

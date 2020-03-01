@@ -51,7 +51,7 @@
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
-#include "esp_intr.h"
+#include "esp_intr_alloc.h"
 #include "driver/rtc_io.h"
 
 #include "gpio.h"

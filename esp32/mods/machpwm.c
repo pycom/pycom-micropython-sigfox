@@ -213,11 +213,6 @@ STATIC mp_obj_t mach_pwm_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_pwm_init_obj, 1, mach_pwm_init);
 
-STATIC mp_obj_t mach_pwm_deinit(mp_obj_t self_in) {
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mach_pwm_deinit_obj, mach_pwm_deinit);
-
 STATIC const mp_map_elem_t mach_pwm_timer_locals_dict_table[] = {
     // instance methods
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),          (mp_obj_t)&mach_pwm_init_obj },

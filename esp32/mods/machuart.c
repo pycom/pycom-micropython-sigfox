@@ -28,7 +28,7 @@
 
 #include "esp_types.h"
 #include "esp_attr.h"
-#include "esp_intr.h"
+#include "esp_intr_alloc.h"
 
 #include "esp32/rom/ets_sys.h"
 #include "soc/uart_struct.h"

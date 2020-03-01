@@ -52,7 +52,6 @@
  DECLARE PRIVATE DATA
  ******************************************************************************/
 #ifndef BOOTLOADER_BUILD
-STATIC const mp_obj_base_t pyb_heartbeat_obj = {&pyb_heartbeat_type};
 
 static rmt_item32_t rmt_grb_items[COLOR_BITS];
 
@@ -110,7 +109,7 @@ void mperror_signal_error (void) {
         }
         disable_and_wait();
         led_set_color(&led_info, false, false);
-        toggle = ~toggle;
+        toggle = !toggle;
         mp_hal_delay_ms(MPERROR_TOOGLE_MS);
     }
 }

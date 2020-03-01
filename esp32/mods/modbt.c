@@ -1604,7 +1604,7 @@ STATIC mp_obj_t bt_set_advertisement (mp_uint_t n_args, const mp_obj_t *pos_args
         if (mp_obj_is_integer(args[3].u_obj)) {
             uint32_t srv_uuid = mp_obj_get_int_truncated(args[3].u_obj);
             uint8_t uuid_buf[16] = {0};
-            memcpy(uuid_buf, (uint8_t *)&srv_uuid, sizeof(uuid_buf));
+            memcpy(uuid_buf, (uint8_t *)&srv_uuid, sizeof(srv_uuid));
             adv_data.service_uuid_len = 16;
             adv_data.p_service_uuid = (uint8_t *)&srv_uuid;
         } else {

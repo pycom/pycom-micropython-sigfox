@@ -21,7 +21,7 @@
 #include "mpexception.h"
 #include "machrtc.h"
 #include "soc/rtc.h"
-#include "esp_clk.h"
+#include "esp32/clk.h"
 #include "esp_clk_internal.h"
 
 

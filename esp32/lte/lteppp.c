@@ -727,8 +727,8 @@ static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx) {
         lte_ipv4addr = pppif->ip_addr.u_addr.ip4.addr;
         if(lte_ipv4addr > 0)
         {
-            ltepp_dns_info[0] = dns_getserver(0);
-            ltepp_dns_info[1] = dns_getserver(1);
+            ltepp_dns_info[0] = *(dns_getserver(0));
+            ltepp_dns_info[1] = *(dns_getserver(1));
         }
 //        printf("ipaddr    = %s\n", ipaddr_ntoa(&pppif->ip_addr));
 //        printf("gateway   = %s\n", ipaddr_ntoa(&pppif->gw));
@@ -754,12 +754,12 @@ static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx) {
     case PPPERR_USER:
 //        printf("status_cb: User interrupt (disconnected)\n");
         lte_ipv4addr = 0;
-        memset(lte_ipv6addr.addr, 0, sizeof(lte_ipv4addr));
+        memset(lte_ipv6addr.addr, 0, sizeof(lte_ipv6addr.addr));
         break;
     case PPPERR_CONNECT:
 //        printf("status_cb: Connection lost\n");
         lte_ipv4addr = 0;
-        memset(lte_ipv6addr.addr, 0, sizeof(lte_ipv4addr));
+        memset(lte_ipv6addr.addr, 0, sizeof(lte_ipv6addr.addr));
         break;
     case PPPERR_AUTHFAIL:
 //        printf("status_cb: Failed authentication challenge\n");
@@ -782,7 +782,7 @@ static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx) {
     default:
 //        printf("status_cb: Unknown error code %d\n", err_code);
         lte_ipv4addr = 0;
-        memset(lte_ipv6addr.addr, 0, sizeof(lte_ipv4addr));
+        memset(lte_ipv6addr.addr, 0, sizeof(lte_ipv6addr.addr));
         break;
     }
 }
