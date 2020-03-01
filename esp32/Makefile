@@ -94,16 +94,20 @@ CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-vol
 LDFLAGS = -nostdlib -Wl,-Map=$(@:.elf=.map) -Wl,--no-check-sections -u call_user_start_cpu0
 LDFLAGS += -Wl,-static -Wl,--undefined=uxTopUsedPriority -Wl,--gc-sections
 
-LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_IDF_COMP_PATH)/esp32/ld/wifi_iram_noopt -L$(ESP_IDF_COMP_PATH)/bt/lib \
-       -L$(ESP_IDF_COMP_PATH)/esp32 -L$(ESP_IDF_COMP_PATH)/newlib/lib -Lbootloader \
-       -Llib -lnvs_flash -ltcpip_adapter -L$(BUILD) -lhal -lcore -lwps -lcoexist -lstdc++ \
-       -lnet80211 -lphy -lpp -lrtc -llog -lsmartconfig -lwpa -lwpa2 -lbtdm_app -lcxx -u __cxa_guard_dummy \
-       -lsigfox -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat -lpthread -lesp_adc_cal \
+LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld \
+       -L$(ESP_IDF_COMP_PATH)/esp32/ld/wifi_iram_noopt -L$(ESP_IDF_COMP_PATH)/bt/lib \
+       -L$(ESP_IDF_COMP_PATH)/esp32 -L$(ESP_IDF_COMP_PATH)/newlib/lib -Lbootloader -Llib -L$(BUILD) \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libm-psram-workaround.a \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
+       -lsigfox \
+       -lnvs_flash -ltcpip_adapter -lstdc++ \
+       -llog -lcxx -u __cxa_guard_dummy \
+       -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat -lpthread -lesp_adc_cal \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
-       -u ld_include_panic_highint_hdl -lmesh -lesp_ringbuf -lcoap -lmdns -lefuse -lespcoredump -lapp_update
+       -lesp_ringbuf -lcoap -lmdns -lefuse -lespcoredump -lapp_update \
+       -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth
+       -u ld_include_panic_highint_hdl
 ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
     LIBS += sigfox/modsigfox_$(BOARD).a
 $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a

@@ -241,7 +241,8 @@ STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
 #endif
     { MP_OBJ_NEW_QSTR(MP_QSTR_Bluetooth),           (mp_obj_t)&mod_network_nic_type_bt },
     { MP_OBJ_NEW_QSTR(MP_QSTR_Server),              (mp_obj_t)&network_server_type },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_Coap),                (mp_obj_t)&mod_coap },
+    // TODO: re-enable when refactored as per esp-idf 4.0
+    //{ MP_OBJ_NEW_QSTR(MP_QSTR_Coap),                (mp_obj_t)&mod_coap },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MDNS),                (mp_obj_t)&mod_mdns },
 };
 

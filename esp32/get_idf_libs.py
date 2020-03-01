@@ -72,7 +72,19 @@ def main():
         shutil.copy(src + '/app_update/libapp_update.a', dsttmpapp)
 	# Added with esp-idf 4.0 update
         shutil.copy(src + '/esp_common/libesp_common.a', dsttmpapp)
-        
+        shutil.copy(src + '/esp_event/libesp_event.a', dsttmpapp)
+        shutil.copy(src + '/esp_wifi/libesp_wifi.a', dsttmpapp)
+        shutil.copy(src + '/xtensa/libxtensa.a', dsttmpapp)
+        shutil.copy(src + '/esp_eth/libesp_eth.a', dsttmpapp)
+        shutil.copy(os.environ['IDF_PATH'] + '/components/bt/controller/lib/libbtdm_app.a', dsttmpapp)
+        shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libphy.a', dsttmpapp)
+        shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/librtc.a', dsttmpapp)
+        shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libnet80211.a', dsttmpapp)
+        shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libpp.a', dsttmpapp)
+        shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libcore.a', dsttmpapp)
+        shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libmesh.a', dsttmpapp)
+        shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libcoexist.a', dsttmpapp)
+        shutil.copy(os.environ['IDF_PATH'] + '/components/xtensa/esp32/libhal.a', dsttmpapp)
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         traceback.print_exc()
