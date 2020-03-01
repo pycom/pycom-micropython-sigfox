@@ -70,6 +70,8 @@ def main():
         shutil.copy(src + '/efuse/libefuse.a', dsttmpapp)
         shutil.copy(src + '/espcoredump/libespcoredump.a', dsttmpapp)
         shutil.copy(src + '/app_update/libapp_update.a', dsttmpapp)
+	# Added with esp-idf 4.0 update
+        shutil.copy(src + '/esp_common/libesp_common.a', dsttmpapp)
         
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
