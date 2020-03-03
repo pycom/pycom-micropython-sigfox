@@ -396,11 +396,17 @@ BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld \
                           -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.ld \
                           -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.newlib-funcs.ld \
                           -T esp32.peripherals.ld \
-                          -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.libgcc.ld
+                          -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.libgcc.ld \
 
 # Add the application linker script(s)
-# These files are passed here as per esp-idf/components/esp32/component.mk
-APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.rom.libgcc.ld -T esp32.project.ld
+# These files are passed here as per final build comman fetched from the console when esp-idf/examples/wifi/scan is linked
+APP_LDFLAGS += $(LDFLAGS) -T /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/esp32/esp32_out.ld \
+                          -T /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/esp32/esp32.project.ld \
+                          -T esp32.peripherals.ld \
+                          -T esp32.rom.ld \
+                          -T esp32.rom.libgcc.ld \
+                          -T esp32.rom.syscalls.ld \
+                          -T esp32.rom.newlib-data.ld \
 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
