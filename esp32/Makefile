@@ -91,7 +91,9 @@ CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue
 CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 
-LDFLAGS = -nostdlib -Wl,-Map=$(@:.elf=.map) -Wl,--no-check-sections -u call_user_start_cpu0
+LDFLAGS = -nostdlib -Wl,-Map=$(@:.elf=.map) -Wl,--no-check-sections -u call_user_start_cpu0 \
+          -mfix-esp32-psram-cache-issue \
+          
 LDFLAGS += -Wl,-static -Wl,--undefined=uxTopUsedPriority -Wl,--gc-sections
 
 LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
@@ -104,17 +106,23 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -Lbootloader \
        -Llib \
        -L$(BUILD) \
-       -u ld_include_panic_highint_hdl \
-       -u __cxa_guard_dummy \
-       $(ESP_IDF_COMP_PATH)/newlib/lib/libm-psram-workaround.a \
-       $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
        -lsigfox \
+       /home/gezahusi/Work/Toolchains/xtensa-esp32-elf/xtensa-esp32-elf/lib/libc.a \
+       /home/gezahusi/Work/Toolchains/xtensa-esp32-elf/xtensa-esp32-elf/lib/libm.a \
        -lnvs_flash -ltcpip_adapter -lstdc++ -llog -lcxx \
        -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat -lpthread -lesp_adc_cal \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
        -lesp_ringbuf -lcoap -lmdns -lefuse -lespcoredump -lapp_update \
        -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth
+
+# These libraries cannot be used otherwise application.elf does not link, error: "undefined references to `__locale_ctype_ptr'"
+# Using the libc and libm from the Toolchain solves this issue.
+# In esp-idf 4.1 and 4.2 these libraries are completely removed from esp-idf...
+#       $(ESP_IDF_COMP_PATH)/newlib/lib/libm-psram-workaround.a \
+#       $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
+#       $(ESP_IDF_COMP_PATH)/newlib/lib/libm.a \
+#       $(ESP_IDF_COMP_PATH)/newlib/lib/libc.a \
 
 ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
     LIBS += sigfox/modsigfox_$(BOARD).a
