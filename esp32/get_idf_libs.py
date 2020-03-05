@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import os
 import sys
 import argparse
@@ -6,8 +8,9 @@ import traceback
 
 
 def main():
+    src_def = os.environ['IDF_PATH']+'/examples/wifi/scan/build'
     cmd_parser = argparse.ArgumentParser(description='Get the precompiled libs from the IDF')
-    cmd_parser.add_argument('--idflibs', default=None, help='the path to the idf libraries')
+    cmd_parser.add_argument('--idflibs', default=src_def, help='the path to the idf libraries (' + src_def + ')')
     cmd_args = cmd_parser.parse_args()
 
     src = cmd_args.idflibs

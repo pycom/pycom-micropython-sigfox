@@ -492,7 +492,13 @@ friendly_repl_reset:
             // exit for a soft reset
             mp_hal_stdout_tx_str("\r\n");
 #if (VARIANT == PYBYTES)
-            continue;
+            if (config_get_pybytes_autostart()) {
+                continue;
+            }
+            else {
+                vstr_clear(&line);
+                return PYEXEC_FORCED_EXIT;
+            }
 #else
             vstr_clear(&line);
             return PYEXEC_FORCED_EXIT;

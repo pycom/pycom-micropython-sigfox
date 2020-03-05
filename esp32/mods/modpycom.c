@@ -850,17 +850,16 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
 
     if (args[ARG_id].u_obj == mp_const_none && args[ARG_pac].u_obj == mp_const_none && args[ARG_public_key].u_obj == mp_const_none && args[ARG_private_key].u_obj == mp_const_none) {
+        // query sigfox info
 
-        mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(4, NULL));
-
-        t->items[ARG_id] = is_empty(id, sizeof(id)) ? mp_const_none:mp_obj_new_str((const char*)id, sizeof(id));
-        t->items[ARG_pac] = is_empty(pac, sizeof(pac)) ? mp_const_none:mp_obj_new_str((const char*)pac, sizeof(pac));
-        t->items[ARG_public_key] = is_empty(public_key, sizeof(public_key)) ? mp_const_none:mp_obj_new_str((const char*)public_key, sizeof(public_key));
-        t->items[ARG_private_key] = is_empty(private_key, sizeof(private_key)) ? mp_const_none:mp_obj_new_str((const char*)private_key, sizeof(private_key));
-
-        return MP_OBJ_FROM_PTR(t);
-
+        if ( !is_empty(id, sizeof(id)) && !is_empty(pac, sizeof(pac)) && !is_empty(public_key, sizeof(public_key)) && !is_empty(private_key, sizeof(private_key)) ){
+            // all configs valid
+            return mp_const_true;
+        } else {
+            return mp_const_false;
+        }
     } else {
+        // write sigfox info
 
         // temporary array to store even the longest value from id, pac, public_key and private_key
         uint8_t tmp_array[16];
@@ -892,7 +891,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_id(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write id"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing id!"));
@@ -923,7 +922,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_pac(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write pac"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing pac!"));
@@ -954,7 +953,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_public_key(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write public key"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing public key!"));
@@ -986,7 +985,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_private_key(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write private key"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing private key!"));
@@ -994,7 +993,6 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
         }
         return mp_const_true;
     }
-    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_sigfox_info_obj, 0, mod_pycom_sigfox_info);
 

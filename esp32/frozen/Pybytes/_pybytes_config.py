@@ -129,7 +129,7 @@ class PybytesConfig:
             import _urequest as urequest
 
         if hasattr(pycom, 'sigfox_info'):
-            if pycom.sigfox_info()[0] is None or pycom.sigfox_info()[1] is None or pycom.sigfox_info()[2] is None or pycom.sigfox_info()[3] is None:
+            if not pycom.sigfox_info():
                 try:
                     jsigfox = None
                     from network import LoRa
