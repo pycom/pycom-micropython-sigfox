@@ -31,7 +31,7 @@
 #include "antenna.h"
 #include "py/mphal.h"
 
-#include "bootmgr.h"
+#include "bootloader.h"
 #include "updater.h"
 
 #include "mptask.h"

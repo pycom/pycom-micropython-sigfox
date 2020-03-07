@@ -325,13 +325,6 @@ APP_CAN_SRC_C = $(addprefix can/,\
 	CAN.c \
 	)
 
-BOOT_SRC_C = $(addprefix bootloader/,\
-	bootloader_start.c \
-	bootmgr.c \
-	mperror.c \
-	gpio.c \
-	)
-
 SFX_OBJ =
 
 OBJ = $(PY_O)
@@ -364,8 +357,6 @@ OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.
 OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins.o
 
-BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
-
 # List of sources for qstr extraction
 SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C) $(APP_LIB_SRC_C)
 ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
@@ -389,17 +380,15 @@ endif # ifeq ($(OPENTHREAD), on)
 SRC_QSTR_AUTO_DEPS +=
 
 # These files are passed here as per esp-idf/components/bootloader/subproject/main/component.mk
-# esp32.rom.libgcc.ld also needed, but not listed in esp-idf/components/bootloader/subproject/main/component.mk and based on the logs
-# when wifi/scan is being built it is not used there...
-BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld \
-                          -T esp32.bootloader.rom.ld \
+BOOT_LDFLAGS = $(LDFLAGS) -T $(ESP_IDF_COMP_PATH)/bootloader/subproject/main/esp32.bootloader.ld \
+                          -T $(ESP_IDF_COMP_PATH)/bootloader/subproject/main/esp32.bootloader.rom.ld \
                           -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.ld \
                           -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.newlib-funcs.ld \
-                          -T esp32.peripherals.ld \
+                          -T $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.peripherals.ld \
                           -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.libgcc.ld \
 
 # Add the application linker script(s)
-# These files are passed here as per final build comman fetched from the console when esp-idf/examples/wifi/scan is linked
+# These files are passed here as per final build command in esp-idf fetched from the console when esp-idf/examples/wifi/scan is linked
 APP_LDFLAGS += $(LDFLAGS) -T /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/esp32/esp32_out.ld \
                           -T /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/esp32/esp32.project.ld \
                           -T esp32.peripherals.ld \
@@ -430,7 +419,7 @@ endif
 # add the application archive, this order is very important
 APP_LIBS = -Wl,--start-group $(LIBS) $(BUILD)/application.a -Wl,--end-group -Wl,-EL
 
-BOOT_LIBS = -Wl,--start-group $(B_LIBS) $(BUILD)/bootloader/bootloader.a -Wl,--end-group -Wl,-EL
+BOOT_LIBS = -Wl,--start-group $(B_LIBS) -Wl,--end-group -Wl,-EL
 
 # debug / optimization options
 ifeq ($(BTYPE), debug)
@@ -616,12 +605,8 @@ endif #ifeq ($(SECURE), on)
 
 
 ifeq ($(TARGET), $(filter $(TARGET), boot boot_app))
-$(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
-	$(ECHO) "AR $@"
-	$(Q) rm -f $@
-	$(Q) $(AR) cru $@ $^
 
-$(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a $(SECURE_BOOT_VERIFICATION_KEY)
+$(BUILD)/bootloader/bootloader.elf: $(SECURE_BOOT_VERIFICATION_KEY)
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
@@ -638,6 +623,11 @@ ifeq ($(SECURE), on)
 	$(CP) libbootloader_support.a ../
 	$(Q) $(RM) -rf ./bootloader/lib/bootloader_support_temp
 endif #ifeq ($(SECURE), on)
+	$(Q) $(MKDIR) -p build
+	$(Q) $(MKDIR) -p build/$(BOARD)
+	$(Q) $(MKDIR) -p build/$(BOARD)/release
+	$(Q) $(MKDIR) -p build/$(BOARD)/release/bootloader
+	$(Q) $(CP) bootloader/lib/bootloader.map build/$(BOARD)/release/bootloader/
 	$(ECHO) "LINK $(CC) *** $(BOOT_LDFLAGS) *** $(BOOT_LIBS) -o $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
@@ -843,9 +833,6 @@ GEN_PINS_HDR = $(HEADER_BUILD)/pins.h
 GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 
 .NOTPARALLEL: CHECK_DEP $(OBJ)
-.NOTPARALLEL: CHECK_DEP $(BOOT_OBJ)
-
-$(BOOT_OBJ) $(OBJ): | CHECK_DEP
 
 # Making OBJ use an order-only dependency on the generated pins.h file
 # has the side effect of making the pins.h file before we actually compile

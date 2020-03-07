@@ -33,6 +33,7 @@ def main():
         shutil.copy(src + '/bootloader/micro-ecc/libmicro-ecc.a', dsttmpbl)
         shutil.copy(src + '/bootloader/spi_flash/libspi_flash.a', dsttmpbl)
         shutil.copy(src + '/bootloader/bootloader_support/libbootloader_support.a', dsttmpbl)
+        shutil.copy(src + '/bootloader/bootloader.map', dsttmpbl)
         
         # copy the application libraries
         

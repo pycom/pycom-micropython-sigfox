@@ -16,6 +16,7 @@
 
 #include <stdint.h>
 #include "esp_flash_partitions.h"
+#include "bootloader_config.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -55,7 +56,6 @@ typedef struct _boot_info_t
 #define IMG_ACT_UPDATE2                     2
 
 #define BOOT_VERSION                        "V0.3"
-#define SPI_SEC_SIZE                        0x1000
 
 #define PARTITIONS_COUNT_8MB                    5
 #define PARTITIONS_COUNT_4MB                    7

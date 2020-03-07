@@ -145,9 +145,13 @@ ifeq ($(RGB_LED),disable)
 	CFLAGS += -DRGB_LED_DISABLE
 endif #ifeq ($(LTE_LOG_BUFF),1)
 
-B_LIBS = -Lbootloader/lib -Lbootloader -L$(BUILD)/bootloader -L$(ESP_IDF_COMP_PATH)/esp32/ld \
-         -L$(ESP_IDF_COMP_PATH)/esp32/lib \
-         -llog -lsoc -lmain -lefuse -lmicro-ecc -lspi_flash -lbootloader_support
+B_LIBS = bootloader/lib/libbootloader_support.a \
+         bootloader/lib/libefuse.a \
+         bootloader/lib/liblog.a \
+         bootloader/lib/libmain.a \
+         bootloader/lib/libmicro-ecc.a \
+         bootloader/lib/libsoc.a \
+         bootloader/lib/libspi_flash.a
 
 # objcopy paramters, to transform a binary file into an object file
 OBJCOPY_EMBED_ARGS = --input-target binary --output-target elf32-xtensa-le --binary-architecture xtensa --rename-section .data=.rodata.embedded
