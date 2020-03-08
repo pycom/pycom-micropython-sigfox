@@ -114,7 +114,7 @@ STATIC void IRAM_ATTR send_cb(const uint8_t *macaddr, esp_now_send_status_t stat
 STATIC void recv_queue_handler(void *arg) {
     // this function will be called by the interrupt thread
     mp_obj_tuple_t *msg = arg;
-    if (send_cb_obj != mp_const_none) {
+    if (recv_cb_obj != mp_const_none) {
         mp_call_function_1(recv_cb_obj, msg);
     }
 }
