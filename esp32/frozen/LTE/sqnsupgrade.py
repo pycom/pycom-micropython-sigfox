@@ -527,7 +527,7 @@ class sqnsupgrade:
                 time.sleep(.5)
                 self.__serial.read(100)
                 print('Going into MIRROR mode... please close this terminal to resume the upgrade via UART')
-                self.uart_mirror(rgbled)
+                return self.uart_mirror(rgbled)
 
             elif bootrom:
                 if verbose: print('Starting STP')
@@ -570,10 +570,10 @@ class sqnsupgrade:
                         time.sleep(.5)
                         self.__serial.read(100)
                         print('Going into MIRROR mode... please close this terminal to resume the upgrade via UART')
-                        self.uart_mirror(rgbled)
+                        return self.uart_mirror(rgbled)
                     else:
                         self.__serial.write(b"AT+STP\n")
-                        response = self.read_rsp(size=6)
+                        response = self.read_rsp(size=2)
                         if not b'OK' in response:
                             print('Failed to start STP mode!')
                             reconnect_uart()
@@ -584,7 +584,7 @@ class sqnsupgrade:
         else:
             if debug: print('Starting STP mode...')
             self.__serial.write(b"AT+STP\n")
-            response = self.read_rsp(size=6)
+            response = self.read_rsp(size=2)
             if not b'OK' in response:
                 print('Failed to start STP mode!')
                 reconnect_uart()
@@ -871,6 +871,7 @@ class sqnsupgrade:
         time.sleep(.5)
         pycom.rgbled(color)
         LTE.modem_upgrade_mode()
+        return True
 
     def success_message(self, port=None, verbose=False, debug=False):
         print("Your modem has been successfully updated.")

@@ -1,29 +1,33 @@
 # Short readme for how to use the PyJTAG
 
+## Setup
+Generally follow these rules to setup JTAG debugging on your OS: https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/jtag-debugging/index.html
+
+Download link for OpenOCD for ESP32 from Espressif: https://github.com/espressif/openocd-esp32/releases
+
+
+## Build the firmware
 Create the firmware with `BTYPE=debug` flag.
-Do not use the default pins assigned to UART, SPI, CAN because they are used by the JTAG. Pins not to be used: P4, P9, P10, P23
 
-Detailed information are here: https://pycomiot.atlassian.net/wiki/spaces/FIR/pages/966295564/Usage+of+PyJTAG
+Note: Do not use the default pins assigned to UART, SPI, CAN because they are used by the JTAG. Pins not to be used: P4, P9, P10, P23.
 
-Setup the PyJTAG board's switches:
+## Setup the PyJTAG board
+
+PyJTAG's switches:
  * ESP32 JTAG: all turned ON
  * ESP32 B.LOADER: all turned ON except SAFE_BOOT_SW which is OFF
  * TO LTE UART 1/2: does not matter
  * CURRENT SHUNTS: connected
 
-Place the Pycom board with the reset button towards the Current Shunts.
-
-Generally follow these rules to setup JTAG debugging on your OS: https://docs.espressif.com/projects/esp-idf/en/latest/api-guides/jtag-debugging/index.html
-
-(Download link of OpenOCD for ESP32 from Espressif: https://github.com/espressif/openocd-esp32/releases)
-
-Connect the PyJTAG via usb. You see four new USB devices:
+Place the Pycom board with the reset button towards the Current Shunts. Now connect the PyJTAG via usb. You will see four new USB devices. On Linux this will look like this:
 ```
 $ lsusb -d 0403:
 Bus 001 Device 010: ID 0403:6011 Future Technology Devices International, Ltd FT4232H Quad HS USB-UART/FIFO IC
 $ ls /dev/ttyUSB?
 /dev/ttyUSB0  /dev/ttyUSB1  /dev/ttyUSB2  /dev/ttyUSB3
 ```
+
+## Start OCD
 
 Go to `esp32` folder in Firmware-Development repository and run:
 ```
@@ -49,9 +53,33 @@ Info : JTAG tap: esp32.cpu1 tap/device found: 0x120034e5 (mfg: 0x272 (Tensilica)
 Info : Listening on port 3333 for gdb connections
 ```
 
+## Start GDB
+
 When OpenOCD is running, start GDB from `esp32` folder. Assuming you have a FIPY:
 ```
 xtensa-esp32-elf-gdb -x PyJTAG/gdbinit build/FIPY/debug/application.elf
 ```
 
-In `PyJTAG/gdbinit` a breakpoint is configured at `TASK_Micropython`, so execution should stop there first.
+In `PyJTAG/gdbinit` a breakpoint is configured at `TASK_Micropython`, so execution should stop there first:
+
+```
+Thread 1 hit Temporary breakpoint 1, TASK_Micropython (pvParameters=0x0) at mptask.c:136
+```
+
+
+## REPL
+
+Connect to `/dev/ttyUSB2` to reach the REPL terminal over usb serial. E.g. using pymakr in Atom. 
+
+## Troubleshooting
+If openocd says "Error: Connect failed", try to close gdb and openocd and start over.
+
+If `/dev/ttyUSB0` doesn't show up or disappears, disconnect the PyJTAG board, reconnect and start over.
+
+It can be advisable to use the `gdb` from the latest xtensa toolchain, even if an earlier version is used to build the firmware.
+
+If `gdb` does not reach the `Thread 1 hit Temporary breakpoint ...` line, close and reopen `gdb`.
+
+## Extra
+A few more details are here: https://pycomiot.atlassian.net/wiki/spaces/FIR/pages/966295564/Usage+of+PyJTAG
+

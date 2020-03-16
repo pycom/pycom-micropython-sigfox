@@ -41,6 +41,25 @@
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
+// tiny object for storing ssl sessions
+STATIC mp_obj_t ssl_session_free(mp_obj_t self_in) {
+    mp_obj_ssl_session_t *self = self_in;
+    mbedtls_ssl_session_free(&self->saved_session);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(ssl_session_free_obj, ssl_session_free);
+
+STATIC const mp_map_elem_t ssl_session_locals_dict_table[] = {
+    { MP_OBJ_NEW_QSTR(MP_QSTR___del__),             (mp_obj_t)&ssl_session_free_obj },
+};
+STATIC MP_DEFINE_CONST_DICT(ssl_session_locals_dict, ssl_session_locals_dict_table);
+
+static const mp_obj_type_t mod_ssl_session_type = {
+    { &mp_type_type },
+    .name = MP_QSTR_SSLSession,
+    .locals_dict = (mp_obj_t)&ssl_session_locals_dict,
+};
+
 // ssl sockets inherit from normal socket, so we take its
 // locals and stream methods
 STATIC const mp_obj_type_t ssl_socket_type = {
@@ -52,7 +71,7 @@ STATIC const mp_obj_type_t ssl_socket_type = {
     .locals_dict = (mp_obj_t)&socket_locals_dict,
 };
 
-static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *host_name,
+static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const mbedtls_ssl_session *saved_session, const char *host_name,
                                      const char *ca_cert, const char *client_cert, const char *client_key,
                                      uint32_t ssl_verify, uint32_t client_or_server) {
 
@@ -120,6 +139,12 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const char *
         // printf("mbedtls_ssl_setup returned -0x%x\n\n", -ret);
         return ret;
     }
+    if (saved_session != NULL) {
+        if ((ret = mbedtls_ssl_set_session(&ssl_sock->ssl, saved_session)) != 0) {
+            // printf("mbedtls_ssl_set_session returned -0x%x\n\n", -ret);
+            return ret;
+        }
+    }
 
     if (host_name) {
         // printf("Setting hostname for TLS session...\n");
@@ -184,6 +209,7 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
         { MP_QSTR_ssl_version,                  MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 0} },
         { MP_QSTR_ca_certs,                     MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
         { MP_QSTR_server_hostname,              MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+        { MP_QSTR_saved_session,                MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
         { MP_QSTR_timeout,                      MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
     };
 
@@ -212,6 +238,21 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
         goto arg_error;
     }
 
+    // socket type check
+    if (!mp_obj_is_type(args[0].u_obj, &socket_type)) {
+    	goto arg_error;
+    }
+
+    // saved_session type check
+    if (args[8].u_obj != mp_const_none) {
+    	if (!mp_obj_is_type(args[8].u_obj, &mod_ssl_session_type)) {
+    		goto arg_error;
+        }
+    }
+
+    // Retrieve previously saved session
+    const mbedtls_ssl_session *saved_session  = (args[8].u_obj == mp_const_none) ? NULL : &((mp_obj_ssl_session_t *)args[8].u_obj)->saved_session;
+
     // create the ssl socket
     mp_obj_ssl_socket_t *ssl_sock = m_new_obj_with_finaliser(mp_obj_ssl_socket_t);
     // ssl sockets inherit all properties from the original socket
@@ -220,13 +261,13 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
     ssl_sock->o_sock = args[0].u_obj;       // this is needed so that the GC doesnt collect the socket
 
     //Read timeout
-    if(args[8].u_obj == mp_const_none)
+    if(args[9].u_obj == mp_const_none)
     {
         ssl_sock->read_timeout = DEFAULT_SSL_READ_TIMEOUT;
     }
     else
     {
-        ssl_sock->read_timeout = mp_obj_get_int(args[8].u_obj);
+        ssl_sock->read_timeout = mp_obj_get_int(args[9].u_obj);
     }
 
     const char *ca_cert = NULL;
@@ -253,7 +294,7 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
 
     MP_THREAD_GIL_EXIT();
 
-    _error = mod_ssl_setup_socket(ssl_sock, host_name, ca_cert, client_cert, client_key,
+    _error = mod_ssl_setup_socket(ssl_sock, saved_session, host_name, ca_cert, client_cert, client_key,
                                   verify_type, server_side ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT);
 
     MP_THREAD_GIL_ENTER();
@@ -269,9 +310,42 @@ arg_error:
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ssl_wrap_socket_obj, 0, mod_ssl_wrap_socket);
 
+STATIC mp_obj_t mod_ssl_save_session(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    STATIC const mp_arg_t allowed_args[] = {
+        { MP_QSTR_ssl_sock,     MP_ARG_REQUIRED | MP_ARG_OBJ, },
+    };
+
+    int32_t _error;
+
+    // parse arguments
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    mp_obj_ssl_socket_t *ssl_sock = args[0].u_obj;
+
+    // Create the SSL session obj
+    mp_obj_ssl_session_t *ssl_session = m_new_obj_with_finaliser(mp_obj_ssl_session_t);
+    ssl_session->base.type = &mod_ssl_session_type;
+    memset(&ssl_session->saved_session, 0, sizeof(mbedtls_ssl_session));
+
+    MP_THREAD_GIL_EXIT();
+
+    _error = mbedtls_ssl_get_session(&ssl_sock->ssl, &ssl_session->saved_session);
+
+    MP_THREAD_GIL_ENTER();
+
+    if (_error) {
+        mp_raise_OSError(_error);
+    }
+
+    return ssl_session;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ssl_save_session_obj, 0, mod_ssl_save_session);
+
 STATIC const mp_map_elem_t mp_module_ussl_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_ussl) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_wrap_socket),         (mp_obj_t)&mod_ssl_wrap_socket_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_save_session),        (mp_obj_t)&mod_ssl_save_session_obj },
 
     // class exceptions
     { MP_OBJ_NEW_QSTR(MP_QSTR_SSLError),            (mp_obj_t)&mp_type_OSError },
@@ -295,4 +369,3 @@ const mp_obj_module_t mp_module_ussl = {
     .base = { &mp_type_module },
     .globals = (mp_obj_dict_t*)&mp_module_ussl_globals,
 };
-
