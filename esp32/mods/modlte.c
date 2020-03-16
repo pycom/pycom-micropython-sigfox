@@ -95,6 +95,7 @@ uart_config_t lte_uart_config0;
 uart_config_t lte_uart_config1;
 
 static bool lte_legacyattach_flag = true;
+static bool lte_debug = false;
 
 static bool lte_ue_is_out_of_coverage = false;
 
@@ -175,13 +176,16 @@ static void lte_callback_handler(void* arg)
 static bool lte_push_at_command_ext(char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len) {
     lte_task_cmd_data_t cmd = { .timeout = timeout, .dataLen = len};
     memcpy(cmd.data, cmd_str, len);
-    //printf("[CMD] %s\n", cmd_str);
+    if (lte_debug)
+        printf("[AT] %s\n", cmd_str);
     lteppp_send_at_command(&cmd, &modlte_rsp);
     if ((expected_rsp == NULL) || (strstr(modlte_rsp.data, expected_rsp) != NULL)) {
-        //printf("[OK] %s\n", modlte_rsp.data);
+        if (lte_debug)
+            printf("[AT-OK] %s\n", modlte_rsp.data);
         return true;
     }
-    //printf("[FAIL] %s\n", modlte_rsp.data);
+    if (lte_debug)
+        printf("[AT-FAIL] %s\n", modlte_rsp.data);
     return false;
 }
 
@@ -494,7 +498,8 @@ static const mp_arg_t lte_init_args[] = {
     { MP_QSTR_id,                                   MP_ARG_INT, {.u_int = 0} },
     { MP_QSTR_carrier,                              MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
     { MP_QSTR_cid,                                  MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 1} },
-    { MP_QSTR_legacyattach,                         MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = true} }
+    { MP_QSTR_legacyattach,                         MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = true} },
+    { MP_QSTR_debug,                                MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
 };
 
 static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
@@ -504,6 +509,8 @@ static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(lte_init_args)];
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(args), lte_init_args, args);
+    if (args[4].u_bool)
+        lte_debug = true;
 
     // setup the object
     lte_obj_t *self = &lte_obj;
@@ -524,6 +531,8 @@ STATIC mp_obj_t lte_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *k
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(lte_init_args) - 1];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &lte_init_args[1], args);
+    if (args[3].u_bool)
+        lte_debug = true;
     return lte_init_helper(pos_args[0], args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_init_obj, 1, lte_init);
