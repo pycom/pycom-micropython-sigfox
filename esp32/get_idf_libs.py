@@ -70,10 +70,10 @@ def main():
         shutil.copy(src + '/espcoredump/libespcoredump.a', dsttmpapp)
         shutil.copy(src + '/app_update/libapp_update.a', dsttmpapp)
         shutil.copy(src + '/esp_http_server/libesp_http_server.a', dsttmpapp)
-	    shutil.copy(src + '/esp_https_server/libesp_https_server.a', dsttmpapp)
-	    shutil.copy(src + '/esp_http_client/libesp_http_client.a', dsttmpapp)
-	    shutil.copy(src + '/tcp_transport/libtcp_transport.a', dsttmpapp)
-	    shutil.copy(src + '/esp-tls/libesp-tls.a', dsttmpapp)
+        shutil.copy(src + '/esp_https_server/libesp_https_server.a', dsttmpapp)
+        shutil.copy(src + '/esp_http_client/libesp_http_client.a', dsttmpapp)
+        shutil.copy(src + '/tcp_transport/libtcp_transport.a', dsttmpapp)
+        shutil.copy(src + '/esp-tls/libesp-tls.a', dsttmpapp)
         
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
