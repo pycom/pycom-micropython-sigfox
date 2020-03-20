@@ -446,7 +446,7 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         MP_THREAD_GIL_ENTER();
         if (E_LTE_MODEM_DISCONNECTED == lteppp_modem_state()) {
             xSemaphoreGive(xLTE_modem_Conn_Sem);
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem!"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=disconnected)"));
         }
         break;
     case E_LTE_MODEM_CONNECTING:
@@ -454,14 +454,14 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         xSemaphoreTake(xLTE_modem_Conn_Sem, portMAX_DELAY);
         if (E_LTE_MODEM_DISCONNECTED == lteppp_modem_state()) {
             xSemaphoreGive(xLTE_modem_Conn_Sem);
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem!"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=connecting)"));
         }
         break;
     case E_LTE_MODEM_CONNECTED:
         //continue
         break;
     default:
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem!"));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=default)"));
         break;
     }
     lte_obj.cid = args[1].u_int;
