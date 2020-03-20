@@ -531,6 +531,8 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
 }
 
 STATIC mp_obj_t lte_psm(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    lte_check_init();
+    lte_check_inppp();
     mp_obj_t tuple[5];
     static const qstr psm_info_fields[] = {
         MP_QSTR_enabled,
