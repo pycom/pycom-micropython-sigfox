@@ -658,8 +658,7 @@ STATIC mp_obj_t lte_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *k
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(lte_init_args) - 1];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &lte_init_args[1], args);
-    if (args[3].u_bool)
-        lte_debug = true;
+    lte_debug = args[3].u_bool;
     return lte_init_helper(pos_args[0], args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_init_obj, 1, lte_init);
