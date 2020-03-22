@@ -522,40 +522,57 @@ STATIC esp_err_t mod_http_server_callback(httpd_req_t *r){
 /******************************************************************************
  DEFINE PRIVATE CLIENT FUNCTIONS
  ******************************************************************************/
-
+// TODO handle response_headers better
+STATIC mp_obj_t response_headers;
 esp_err_t _http_event_handle(esp_http_client_event_t *evt)
 {
+	if(evt->event_id == HTTP_EVENT_ON_CONNECTED) {
+		// Create empty headers dictionary
+		response_headers = mp_obj_new_dict(0);
+	}
+
+	if(evt->event_id == HTTP_EVENT_ON_HEADER) {
+		// Append dictionary with actual header Key: Value pair
+		mp_obj_dict_store(response_headers, mp_obj_new_str(evt->header_key, strlen(evt->header_key)), mp_obj_new_str(evt->header_value, strlen(evt->header_value)));
+	}
+
 	if(evt->event_id == HTTP_EVENT_ON_DATA) {
 		if (!esp_http_client_is_chunked_response(evt->client)) {
-			// The MicroPython callback is stored in user_ctx
-			mp_obj_t args[3];
+			mp_obj_t args[4];
+
+			// Fill arguments
 			args[0] = client_callback;
 			args[1] = mp_obj_new_int(esp_http_client_get_status_code(client_obj));
-			args[2] = mp_obj_new_str((char*)evt->data, evt->data_len);
+			args[2] = response_headers;
+			args[3] = mp_obj_new_str((char*)evt->data, evt->data_len);
 
 			// The user registered MicroPython callback will be called decoupled from the HTTP Server context in the IRQ Task
-			mp_irq_queue_interrupt(mod_http_client_callback_handler, (void *)mp_obj_new_tuple(3, args));
+			mp_irq_queue_interrupt(mod_http_client_callback_handler, (void *)mp_obj_new_tuple(5, args));
 		}
 	}
+
 	return ESP_OK;
 }
 
 STATIC void mod_http_client_callback_handler(void *arg_in) {
 
-	/* The received arg_in is a tuple with 4 elements
+	/* The received arg_in is a tuple with 3 elements
 	 * 0 - user's MicroPython callback
 	 * 1 - Status code as int
-	 * 2 - Data as string
+	 * 2 - Headers as dictionary
+	 * 3 - Body as string
 	 */
 
-	mp_obj_t args[2];
+	mp_obj_t args[3];
 	// Status Code
 	args[0] = ((mp_obj_tuple_t*)arg_in)->items[1];
-	// Data
+	// Headers
 	args[1] = ((mp_obj_tuple_t*)arg_in)->items[2];
+	// Body
+	args[2] = ((mp_obj_tuple_t*)arg_in)->items[3];
 
 	// Call the user registered MicroPython function
-	mp_call_function_n_kw(((mp_obj_tuple_t*)arg_in)->items[0], 2, 0, args);
+	mp_call_function_n_kw(((mp_obj_tuple_t*)arg_in)->items[0], 3, 0, args);
 
 }
 
@@ -929,22 +946,14 @@ STATIC mp_obj_t mod_http_client_callback(mp_uint_t n_args, const mp_obj_t *pos_a
 	mp_arg_val_t args[MP_ARRAY_SIZE(mod_http_client_callback_args)];
 	mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_http_client_callback_args, args);
 
-
-	// Get method
-	if(args[0].u_obj == MP_OBJ_NULL) {
-		if(client_callback == NULL) {
-			nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Client callback has not been set!"));
-		}
-		return client_callback;
-	}
-
 	// Set method
 	client_callback = args[0].u_obj;
 
 	if(args[1].u_bool) {
 		client_config.event_handler = _http_event_handle;
 	} else {
-		// If action is true, remove client callback
+		// If action is false, remove client callback
+		memset(&client_callback, 0, sizeof(client_callback));
 		memset(&client_config.event_handler, 0, sizeof(client_config.event_handler));
 	}
 
@@ -953,7 +962,7 @@ STATIC mp_obj_t mod_http_client_callback(mp_uint_t n_args, const mp_obj_t *pos_a
 	return mp_const_none;
 }
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_http_client_callback_obj, 1, mod_http_client_callback);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_http_client_callback_obj, 0, mod_http_client_callback);
 
 STATIC mp_obj_t mod_http_client_send_request(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
@@ -973,16 +982,19 @@ STATIC mp_obj_t mod_http_client_send_request(mp_uint_t n_args, const mp_obj_t *p
 
 	// Set client's method
 	if(args[0].u_int==MOD_HTTP_GET) {
-		client_config.method = HTTP_METHOD_GET;
+		esp_http_client_set_method(client_obj, HTTP_METHOD_GET);
 	}
-	if(args[0].u_int==MOD_HTTP_POST) {
-		client_config.method = HTTP_METHOD_POST;
+	else if(args[0].u_int==MOD_HTTP_POST) {
+		esp_http_client_set_method(client_obj, HTTP_METHOD_POST);
 	}
-	if(args[0].u_int==MOD_HTTP_PUT) {
-		client_config.method = HTTP_METHOD_PUT;
+	else if(args[0].u_int==MOD_HTTP_PUT) {
+		esp_http_client_set_method(client_obj, HTTP_METHOD_PUT);
 	}
-	if(args[0].u_int==MOD_HTTP_DELETE) {
-		client_config.method = HTTP_METHOD_DELETE;
+	else if(args[0].u_int==MOD_HTTP_DELETE) {
+		esp_http_client_set_method(client_obj, HTTP_METHOD_DELETE);
+	}
+	else {
+		nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "This method is not allowed."));
 	}
 
 	// Set Request body
@@ -1063,6 +1075,58 @@ STATIC mp_obj_t mod_http_client_url(mp_uint_t n_args, const mp_obj_t *pos_args, 
 
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_http_client_url_obj, 0, mod_http_client_url);
 
+// Gets or sets the Client URL
+STATIC mp_obj_t mod_http_client_auth(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+
+	const mp_arg_t mod_http_client_auth_args[] = {
+			{ MP_QSTR_user,                MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
+			{ MP_QSTR_pass,                MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL}},
+	};
+	mp_arg_val_t args[MP_ARRAY_SIZE(mod_http_client_auth_args)];
+	mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_http_client_auth_args, args);
+
+	// Any arguments are not defined
+	if (args[0].u_obj == MP_OBJ_NULL && args[1].u_obj == MP_OBJ_NULL) {
+		if(client_config.username == NULL && client_config.password == NULL) {
+			nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Username and Password are not set."));
+		}
+		mp_obj_t tuple[2];
+		tuple[0] = mp_obj_new_str(client_config.username, strlen(client_config.username));
+		tuple[1] = mp_obj_new_str(client_config.password, strlen(client_config.username));
+		return mp_obj_new_tuple(2, tuple);
+	}
+	else {
+		if (args[0].u_obj == MP_OBJ_NULL || args[1].u_obj == MP_OBJ_NULL) {
+			nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Username and Password must be set."));
+		}
+		// Get user and pass from tuple
+		const char *user = mp_obj_str_get_str(args[0].u_obj);
+		const char *pass = mp_obj_str_get_str(args[1].u_obj);
+
+		if (strlen(user) == 0 && strlen(pass) == 0) {
+			// Reset auth type, username and password
+			client_config.auth_type = HTTP_AUTH_TYPE_NONE;
+			memset(&client_config.username, 0, sizeof(client_config.username));
+			memset(&client_config.password, 0, sizeof(client_config.password));
+		} else if (strlen(user) < 1 || strlen(pass) < 1) {
+			// Username and Password was not correctly set
+			nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Username and Password must be set."));
+		} else {
+			// Set Auth
+			client_config.auth_type = HTTP_AUTH_TYPE_BASIC;
+			client_config.username = user;
+			client_config.password = pass;
+		}
+
+		// Initiate Client Object
+		client_obj = esp_http_client_init(&client_config);
+	}
+
+	return mp_const_none;
+}
+
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_http_client_auth_obj, 0, mod_http_client_auth);
+
 STATIC const mp_map_elem_t mod_http_client_globals_table[] = {
 		{ MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_HTTP_Client) },
 		{ MP_OBJ_NEW_QSTR(MP_QSTR_init),                            (mp_obj_t)&mod_http_client_init_obj },
@@ -1070,6 +1134,19 @@ STATIC const mp_map_elem_t mod_http_client_globals_table[] = {
 		{ MP_OBJ_NEW_QSTR(MP_QSTR_callback),                        (mp_obj_t)&mod_http_client_callback_obj },
 		{ MP_OBJ_NEW_QSTR(MP_QSTR_send_request),                    (mp_obj_t)&mod_http_client_send_request_obj },
 		{ MP_OBJ_NEW_QSTR(MP_QSTR_url),                             (mp_obj_t)&mod_http_client_url_obj },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_auth),                            (mp_obj_t)&mod_http_client_auth_obj },
+
+		// class constants
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_GET),                      		MP_OBJ_NEW_SMALL_INT(MOD_HTTP_GET) },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_PUT),                      		MP_OBJ_NEW_SMALL_INT(MOD_HTTP_PUT) },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_POST),                     		MP_OBJ_NEW_SMALL_INT(MOD_HTTP_POST) },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_DELETE),                   		MP_OBJ_NEW_SMALL_INT(MOD_HTTP_DELETE) },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_TEXT),                     		MP_OBJ_NEW_SMALL_INT(MOD_HTTP_MEDIA_TYPE_TEXT_HTML_ID) },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_XML),                      		MP_OBJ_NEW_SMALL_INT(MOD_HTTP_MEDIA_TYPE_TEXT_XML_ID) },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_PLAIN),                    		MP_OBJ_NEW_SMALL_INT(MOD_HTTP_MEDIA_TYPE_TEXT_PLAIN_ID) },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_JSON),                     		MP_OBJ_NEW_SMALL_INT(MOD_HTTP_MEDIA_TYPE_APP_JSON_ID) },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_OCTET),                    		MP_OBJ_NEW_SMALL_INT(MOD_HTTP_MEDIA_TYPE_APP_OCTET_ID) },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_APP_XML),                  		MP_OBJ_NEW_SMALL_INT(MOD_HTTP_MEDIA_TYPE_APP_XML_ID) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mod_http_client_globals, mod_http_client_globals_table);
