@@ -68,6 +68,8 @@
 #include "modmachine.h"
 #include "mpirq.h"
 
+#include "str_utils.h"
+
 /******************************************************************************
  DEFINE TYPES
  ******************************************************************************/
@@ -83,6 +85,23 @@
 
 #define SQNS_SW_FULL_BAND_SUPPORT   41000
 #define SQNS_SW_5_8_BAND_SUPPORT    39000
+
+// PSM Power saving mode
+// PERIOD, aka Requested Periodic TAU (T3412), in GPRS Timer 3 format
+#define PSM_PERIOD_2S         0b011
+#define PSM_PERIOD_30S        0b100
+#define PSM_PERIOD_1M         0b101
+#define PSM_PERIOD_10M        0b000
+#define PSM_PERIOD_1H         0b001
+#define PSM_PERIOD_10H        0b010
+#define PSM_PERIOD_320H       0b110
+#define PSM_PERIOD_DISABLED   0b111
+// ACTIVE, aka Requested Active Time (T3324), in GPRS Timer 2 format
+#define PSM_ACTIVE_2S         0b000
+#define PSM_ACTIVE_1M         0b001
+#define PSM_ACTIVE_6M         0b010
+#define PSM_ACTIVE_DISABLED   0b111
+
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -408,7 +427,8 @@ static void TASK_LTE_UPGRADE(void *pvParameters){
 // Micro Python bindings; LTE class
 
 static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
-    char at_cmd[LTE_AT_CMD_SIZE_MAX - 4];
+    const size_t at_cmd_len = LTE_AT_CMD_SIZE_MAX - 4;
+    char at_cmd[at_cmd_len];
     lte_modem_conn_state_t modem_state;
 
     if (lte_obj.init) {
@@ -426,7 +446,7 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         MP_THREAD_GIL_ENTER();
         if (E_LTE_MODEM_DISCONNECTED == lteppp_modem_state()) {
             xSemaphoreGive(xLTE_modem_Conn_Sem);
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem!"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=disconnected)"));
         }
         break;
     case E_LTE_MODEM_CONNECTING:
@@ -434,16 +454,15 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         xSemaphoreTake(xLTE_modem_Conn_Sem, portMAX_DELAY);
         if (E_LTE_MODEM_DISCONNECTED == lteppp_modem_state()) {
             xSemaphoreGive(xLTE_modem_Conn_Sem);
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem!"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=connecting)"));
         }
         break;
     case E_LTE_MODEM_CONNECTED:
         //continue
         break;
     default:
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem!"));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=default)"));
         break;
-
     }
     lte_obj.cid = args[1].u_int;
 
@@ -490,9 +509,91 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
     lteppp_set_state(E_LTE_IDLE);
     mod_network_register_nic(&lte_obj);
     lte_obj.init = true;
+
+    // configure PSM
+    u8_t psm_period_value = args[4].u_int;
+    u8_t psm_period_unit = args[5].u_int;
+    u8_t psm_active_value = args[6].u_int;
+    u8_t psm_active_unit = args[7].u_int;
+    if ( psm_period_unit != PSM_PERIOD_DISABLED && psm_active_unit != PSM_ACTIVE_DISABLED ) {
+        u8_t psm_period = ( psm_period_unit << 5 ) | psm_period_value;
+        u8_t psm_active = ( psm_active_unit << 5 ) | psm_active_value;
+        char p[9];
+        char a[9];
+        sprint_binary_u8(p, psm_period);
+        sprint_binary_u8(a, psm_active);
+        snprintf(at_cmd, at_cmd_len, "AT+CPSMS=1,,,\"%s\",\"%s\"", p, a);
+        lte_push_at_command(at_cmd, LTE_RX_TIMEOUT_MAX_MS);
+    }
+
     xSemaphoreGive(xLTE_modem_Conn_Sem);
     return mp_const_none;
 }
+
+STATIC mp_obj_t lte_psm(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    lte_check_init();
+    lte_check_inppp();
+    mp_obj_t tuple[5];
+    static const qstr psm_info_fields[] = {
+        MP_QSTR_enabled,
+        MP_QSTR_period_value,
+        MP_QSTR_period_unit,
+        MP_QSTR_active_value,
+        MP_QSTR_active_unit,
+    };
+
+    lte_push_at_command("AT+CPSMS?", LTE_RX_TIMEOUT_MAX_MS);
+    const char *resp = modlte_rsp.data;
+    char *pos;
+    if ( ( pos = strstr(resp, "+CPSMS: ") ) ) {
+        // decode the resp:
+        // +CPSMS: <mode>,[<Requested_Periodic-RAU>],[<Requested_GPRS-READYtimer>],[<Requested_Periodic-TAU>],[<Requested_Active-Time>]
+
+        // go to <mode>
+        pos += strlen_const("+CPSMS: ");
+        tuple[0] = mp_obj_new_bool(*pos == '1');
+
+        // go to <Requested_Periodic-RAU>
+        pos += strlen_const("1,");
+
+        // find <Requested_GPRS-READYtimer>
+        pos = strstr(pos, ",");
+        pos++;
+
+        // find <Requested_Periodic-TAU>
+        pos = strstr(pos, ",");
+        pos++; // ,
+        pos++; // "
+
+        // get three digit TAU unit
+        char* oldpos = pos;
+        tuple[2] = mp_obj_new_int_from_str_len( (const char**) &pos, 3, false, 2);
+        assert( pos == oldpos + 3); // mp_obj_new_int_from_str_len is supposed to consume exactly 3 characters
+
+        // get five digit TAU value
+        tuple[1] = mp_obj_new_int_from_str_len( (const char**) &pos, 5, false, 2);
+
+        // find <Requested_Active-Time>
+        pos = strstr(pos, ",");
+        pos++; // ,
+        pos++; // "
+
+        // get three digit ActiveTime unit
+        oldpos = pos;
+        tuple[4] = mp_obj_new_int_from_str_len( (const char**) &pos, 3, false, 2);
+        assert( pos == oldpos + 3); // mp_obj_new_int_from_str_len is supposed to consume exactly 3 characters
+
+        // get five digit ActiveTime value
+        tuple[3] = mp_obj_new_int_from_str_len( (const char**) &pos, 5, false, 2);
+
+    } else {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to read PSM setting"));
+    }
+
+    return mp_obj_new_attrtuple(psm_info_fields, 5, tuple);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_psm_obj, 1, lte_psm);
+
 
 static const mp_arg_t lte_init_args[] = {
     { MP_QSTR_id,                                   MP_ARG_INT, {.u_int = 0} },
@@ -500,6 +601,10 @@ static const mp_arg_t lte_init_args[] = {
     { MP_QSTR_cid,                                  MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 1} },
     { MP_QSTR_legacyattach,                         MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = true} },
     { MP_QSTR_debug,                                MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
+    { MP_QSTR_psm_period_value,                     MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 0 } },
+    { MP_QSTR_psm_period_unit,                      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = PSM_PERIOD_DISABLED } },
+    { MP_QSTR_psm_active_value,                     MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = 0 } },
+    { MP_QSTR_psm_active_unit,                      MP_ARG_KW_ONLY  | MP_ARG_INT,  {.u_int = PSM_ACTIVE_DISABLED } },
 };
 
 static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
@@ -522,6 +627,30 @@ static mp_obj_t lte_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uin
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
         }
     }
+
+    // check psm args
+    u8_t psm_period_value = args[5].u_int;
+    u8_t psm_period_unit = args[6].u_int;
+    u8_t psm_active_value = args[7].u_int;
+    u8_t psm_active_unit = args[8].u_int;
+    if (psm_period_unit > 7)
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Invalid psm_period_unit"));
+    if (psm_period_value > 31)
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Invalid psm_period_value"));
+    switch(psm_active_unit){
+        case PSM_ACTIVE_2S:
+        case PSM_ACTIVE_1M:
+        case PSM_ACTIVE_6M:
+        case PSM_ACTIVE_DISABLED:
+            // ok, nothing to do
+            break;
+        default:
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Invalid psm_active_unit"));
+            break;
+    }
+    if (psm_active_value > 31)
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Invalid psm_active_value"));
+
     // start the peripheral
     lte_init_helper(self, &args[1]);
     return (mp_obj_t)self;
@@ -531,8 +660,7 @@ STATIC mp_obj_t lte_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *k
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(lte_init_args) - 1];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), &lte_init_args[1], args);
-    if (args[3].u_bool)
-        lte_debug = true;
+    lte_debug = args[3].u_bool;
     return lte_init_helper(pos_args[0], args);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lte_init_obj, 1, lte_init);
@@ -1407,6 +1535,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(lte_events_obj, lte_events);
 STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_init),                (mp_obj_t)&lte_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&lte_deinit_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_psm),                 (mp_obj_t)&lte_psm_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_attach),              (mp_obj_t)&lte_attach_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_dettach),             (mp_obj_t)&lte_detach_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_detach),              (mp_obj_t)&lte_detach_obj }, /* backward compatibility for dettach method FIXME */
@@ -1435,6 +1564,20 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_IP),                   MP_OBJ_NEW_QSTR(MP_QSTR_IP) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_IPV4V6),               MP_OBJ_NEW_QSTR(MP_QSTR_IPV4V6) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_COVERAGE_LOSS),  MP_OBJ_NEW_SMALL_INT(LTE_TRIGGER_SIG_LOST) },
+    // PSM Power Saving Mode
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_2S),        MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_2S) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_30S),       MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_30S) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_1M),        MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_1M) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_10M),       MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_10M) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_1H),        MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_1H) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_10H),       MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_10H) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_320H),      MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_320H) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_DISABLED),  MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_DISABLED) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_ACTIVE_2S),        MP_OBJ_NEW_SMALL_INT(PSM_ACTIVE_2S) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_ACTIVE_1M),        MP_OBJ_NEW_SMALL_INT(PSM_ACTIVE_1M) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_ACTIVE_6M),        MP_OBJ_NEW_SMALL_INT(PSM_ACTIVE_6M) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_ACTIVE_DISABLED),  MP_OBJ_NEW_SMALL_INT(PSM_ACTIVE_DISABLED) },
+
 };
 STATIC MP_DEFINE_CONST_DICT(lte_locals_dict, lte_locals_dict_table);
 
