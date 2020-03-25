@@ -625,9 +625,9 @@ ifeq ($(SECURE), on)
 endif #ifeq ($(SECURE), on)
 	$(Q) $(MKDIR) -p build
 	$(Q) $(MKDIR) -p build/$(BOARD)
-	$(Q) $(MKDIR) -p build/$(BOARD)/release
-	$(Q) $(MKDIR) -p build/$(BOARD)/release/bootloader
-	$(Q) $(CP) bootloader/lib/bootloader.map build/$(BOARD)/release/bootloader/
+	$(Q) $(MKDIR) -p build/$(BOARD)/$(BTYPE)
+	$(Q) $(MKDIR) -p build/$(BOARD)/$(BTYPE)/bootloader
+	$(Q) $(CP) bootloader/lib/bootloader.map build/$(BOARD)/$(BTYPE)/bootloader/
 	$(ECHO) "LINK $(CC) *** $(BOOT_LDFLAGS) *** $(BOOT_LIBS) -o $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
