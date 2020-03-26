@@ -1189,10 +1189,10 @@ STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
         lteppp_set_state(E_LTE_ATTACHED);
         lte_push_at_command("ATH", LTE_RX_TIMEOUT_MAX_MS);
         while (true) {
-            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
             if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
                 break;
             }
+            mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
         }
         lte_check_attached(lte_legacyattach_flag);
         mod_network_deregister_nic(&lte_obj);
