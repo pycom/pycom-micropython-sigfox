@@ -1187,7 +1187,7 @@ STATIC mp_obj_t lte_disconnect(mp_obj_t self_in) {
             lte_pause_ppp();
         }
         lteppp_set_state(E_LTE_ATTACHED);
-        lte_push_at_command("ATH", LTE_RX_TIMEOUT_MIN_MS);
+        lte_push_at_command("ATH", LTE_RX_TIMEOUT_MAX_MS);
         while (true) {
             mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
             if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
