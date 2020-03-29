@@ -391,8 +391,8 @@ BOOT_LDFLAGS = $(LDFLAGS) -T $(ESP_IDF_COMP_PATH)/bootloader/subproject/main/esp
 
 # Add the application linker script(s)
 # These files are passed here as per final build command in esp-idf fetched from the console when esp-idf/examples/wifi/scan is linked
-APP_LDFLAGS += $(LDFLAGS) -T /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/esp32/esp32_out.ld \
-                          -T /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/esp32/esp32.project.ld \
+APP_LDFLAGS += $(LDFLAGS) -T $(BUILD)/esp32_out.ld \
+                          -T esp32.project.ld \
                           -T esp32.peripherals.ld \
                           -T esp32.rom.ld \
                           -T esp32.rom.libgcc.ld \
