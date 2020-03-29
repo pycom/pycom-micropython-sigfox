@@ -387,7 +387,6 @@ BOOT_LDFLAGS = $(LDFLAGS) -T $(ESP_IDF_COMP_PATH)/bootloader/subproject/main/esp
                           -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.ld \
                           -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.newlib-funcs.ld \
                           -T $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.peripherals.ld \
-                          -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.libgcc.ld \
 
 # Add the application linker script(s)
 # These files are passed here as per final build command in esp-idf fetched from the console when esp-idf/examples/wifi/scan is linked

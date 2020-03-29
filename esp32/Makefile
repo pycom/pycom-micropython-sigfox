@@ -109,8 +109,10 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lsigfox \
        lib/libc.a \
        lib/libm.a \
-       -lnvs_flash -ltcpip_adapter -lstdc++ -llog -lcxx \
-       -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat -lpthread -lesp_adc_cal \
+       lib/libgcc.a \
+       lib/libstdc++.a \
+       -lnvs_flash -ltcpip_adapter -llog -lcxx \
+       -lspi_flash -lnvs_flash -lnghttp -ldriver -lesp32 -lexpat -lpthread -lesp_adc_cal \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
        -lesp_ringbuf -lcoap -lmdns -lefuse -lespcoredump -lapp_update \
@@ -151,7 +153,8 @@ B_LIBS = bootloader/lib/libbootloader_support.a \
          bootloader/lib/libmain.a \
          bootloader/lib/libmicro-ecc.a \
          bootloader/lib/libsoc.a \
-         bootloader/lib/libspi_flash.a
+         bootloader/lib/libspi_flash.a \
+         lib/libgcc.a \
 
 # objcopy paramters, to transform a binary file into an object file
 OBJCOPY_EMBED_ARGS = --input-target binary --output-target elf32-xtensa-le --binary-architecture xtensa --rename-section .data=.rodata.embedded

@@ -102,6 +102,8 @@ def main():
         toolchain_path = find_xtensa_path()
         shutil.copy(toolchain_path + '/xtensa-esp32-elf/lib/esp32-psram/libc.a', dsttmpapp)
         shutil.copy(toolchain_path + '/xtensa-esp32-elf/lib/esp32-psram/libm.a', dsttmpapp)
+        shutil.copy(toolchain_path + '/lib/gcc/xtensa-esp32-elf/8.2.0/esp32-psram/libgcc.a', dsttmpapp)
+        shutil.copy(toolchain_path + '/xtensa-esp32-elf/lib/esp32-psram/libstdc++.a', dsttmpapp)
 
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
