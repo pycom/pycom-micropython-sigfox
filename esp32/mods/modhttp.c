@@ -62,7 +62,28 @@ typedef struct mod_http_resource_obj_s {
 typedef struct mod_http_server_obj_s {
 	httpd_handle_t server;
 	mod_http_resource_obj_t* resources;
+	int max_resources;
+	int num_of_resources;
 }mod_http_server_obj_t;
+
+// From esp_httpd_priv.h
+#define HTTPD_SCRATCH_BUF  MAX(HTTPD_MAX_REQ_HDR_LEN, HTTPD_MAX_URI_LEN)
+
+struct httpd_req_aux {
+    struct sock_db *sd;                             /*!< Pointer to socket database */
+    char            scratch[HTTPD_SCRATCH_BUF + 1]; /*!< Temporary buffer for our operations (1 byte extra for null termination) */
+    size_t          remaining_len;                  /*!< Amount of data remaining to be fetched */
+    char           *status;                         /*!< HTTP response's status code */
+    char           *content_type;                   /*!< HTTP response's content type */
+    bool            first_chunk_sent;               /*!< Used to indicate if first chunk sent */
+    unsigned        req_hdrs_count;                 /*!< Count of total headers in request packet */
+    unsigned        resp_hdrs_count;                /*!< Count of additional headers in response packet */
+    struct resp_hdr {
+        const char *field;
+        const char *value;
+    } *resp_hdrs;                                   /*!< Additional headers in response packet */
+    struct http_parser_url url_parse_res;           /*!< URL parsing result, used for retrieving URL elements */
+};
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -158,7 +179,6 @@ STATIC mod_http_resource_obj_t* add_resource(const char* uri, mp_obj_t value, mp
 		// Append the new resource to the end of the list
 		current->next = resource;
 	}
-
 	resource->mediatype = mediatype;
 
 	return resource;
@@ -262,6 +282,9 @@ STATIC esp_err_t mod_http_resource_callback_helper(mod_http_resource_obj_t* reso
 		// The registered handler is our own handler which will handle different requests and call user's callback, if any
 		uri.handler = mod_http_server_callback;
 
+		// Unregister first URI, solves ESP_ERR_HTTPD_ALLOC_MEM issue
+		ret = httpd_unregister_uri(server_obj->server, uri.uri);
+
 		if((method & MOD_HTTP_GET) && (ret == ESP_OK)) {
 			uri.method = HTTP_GET;
 			ret = httpd_register_uri_handler(server_obj->server, &uri);
@@ -347,25 +370,103 @@ STATIC int mod_http_server_get_mediatype_id(const char* mediatype) {
 	return id;
 }
 
+STATIC mp_obj_t mod_http_server_get_headers(const char* hdr_ptr, int hdr_cnt) {
+	// Initiate an empty request_headers dictionary MP Object
+	mp_obj_t request_headers = mp_obj_new_dict(0);
+
+	// Initiate Start and End indices
+	int key_start = 0;
+	int key_end = 0;
+	int val_start = 0;
+	int val_end = 0;
+
+	// First look for Key
+	bool find_key = 1;
+
+	char key[HTTPD_SCRATCH_BUF];
+	char val[HTTPD_SCRATCH_BUF];
+
+	for(int i=0; i<HTTPD_SCRATCH_BUF; i++) {
+		if(find_key) {
+			// Looking for key
+			if(hdr_ptr[i] == ':') {
+				// Set Key end index
+				key_end = i - 1;
+
+				// Get Key substring
+				memset(key, '\0', HTTPD_SCRATCH_BUF);
+				memcpy(key, hdr_ptr + key_start, key_end - key_start + 1);
+
+				// Set Value start index
+				val_start = i + 2;
+
+				// Set iterator
+				i = i + 2;
+
+				// Look for Value
+				find_key = 0;
+			}
+		} else {
+			// Looking for value
+			if(hdr_ptr[i] == '\0') {
+				// Set Value end index
+				val_end = i - 1;
+
+				// Get Value substring
+				memset(val, '\0', HTTPD_SCRATCH_BUF);
+				memcpy(val, hdr_ptr + val_start, val_end - val_start + 1);
+
+				// Set Key start index
+				key_start = i + 2;
+
+				// Set iterator
+				i = i + 2;
+
+				// Look for Key
+				find_key = 1;
+
+				// Less Header is remained
+				hdr_cnt--;
+
+				// Store Key-Value Header pair
+				mp_obj_dict_store(request_headers, mp_obj_new_str(key, strlen(key)), mp_obj_new_str(val, strlen(val)));
+			}
+		}
+		if(hdr_cnt <= 0) {
+			break;
+		}
+	}
+	return request_headers;
+}
+
 STATIC void mod_http_server_callback_handler(void *arg_in) {
 
 	/* The received arg_in is a tuple with 4 elements
 	 * 0 - user's MicroPython callback
 	 * 1 - URI as string
 	 * 2 - HTTP method as INT
-	 * 3 - Content of the method as a string (if any)
+	 * 3 - Headers as dictionary
+	 * 4 - Body as a string (if any)
+	 * 5 - New URI as a string (if any)
+	 * 6 - Status Code as int
 	 */
 
-	mp_obj_t args[3];
+	mp_obj_t args[6];
 	// URI
 	args[0] = ((mp_obj_tuple_t*)arg_in)->items[1];
 	// method
 	args[1] = ((mp_obj_tuple_t*)arg_in)->items[2];
-	// Content
+	// Headers
 	args[2] = ((mp_obj_tuple_t*)arg_in)->items[3];
+	// Body
+	args[3] = ((mp_obj_tuple_t*)arg_in)->items[4];
+	// New URI
+	args[4] = ((mp_obj_tuple_t*)arg_in)->items[5];
+	// Status Code
+	args[5] = ((mp_obj_tuple_t*)arg_in)->items[6];
 
 	// Call the user registered MicroPython function
-	mp_call_function_n_kw(((mp_obj_tuple_t*)arg_in)->items[0], 3, 0, args);
+	mp_call_function_n_kw(((mp_obj_tuple_t*)arg_in)->items[0], 6, 0, args);
 
 }
 
@@ -373,12 +474,22 @@ STATIC esp_err_t mod_http_server_callback(httpd_req_t *r){
 
 	char* content = NULL;
 	bool error = false;
-	mp_obj_t args[4];
+	mp_obj_t args[7];
 	mod_http_resource_obj_t* resource = find_resource(r->uri);
+	char* new_uri = "";
+	int status_code = 404;
+	int mediatype_id = 0;
+
+	// Get headers
+	struct httpd_req_aux *ra = r->aux;
+    const char* hdr_ptr = ra->scratch;
+    int hdr_cnt = ra->req_hdrs_count;
+    mp_obj_t request_headers = mod_http_server_get_headers(hdr_ptr, hdr_cnt);
 
 	// If the resource does not exist anymore then send back 404
 	if(resource == NULL){
 		httpd_resp_send_404(r);
+		status_code = 404;
 		// This can happen if locally the resource has been removed but for some reason it still exists in the HTTP Server library context...
 		return ESP_FAIL;
 	}
@@ -397,6 +508,7 @@ STATIC esp_err_t mod_http_server_callback(httpd_req_t *r){
 				// Check if timeout error occurred and send back appropriate response
 				if (recv_length == HTTPD_SOCK_ERR_TIMEOUT) {
 					httpd_resp_send_408(r);
+					status_code = 408;
 				}
 
 				//TODO: check if exception is needed
@@ -418,6 +530,18 @@ STATIC esp_err_t mod_http_server_callback(httpd_req_t *r){
 		}
 	}
 
+	// Get "Content-Type" field
+	size_t length = httpd_req_get_hdr_value_len(r, "Content-Type");
+	if(length > 0) {
+		// length+1 is needed because with length the ESP_ERR_HTTPD_RESULT_TRUNC is dropped
+		char* buf = m_malloc(length+1);
+		esp_err_t ret = httpd_req_get_hdr_value_str(r, "Content-Type", buf, length+1);
+		if(ret == ESP_OK) {
+			mediatype_id = mod_http_server_get_mediatype_id(buf);
+		}
+		m_free(buf);
+	}
+
 	if(error == false) {
 
 		// This is a GET request, send back the current value of the resource
@@ -437,45 +561,30 @@ STATIC esp_err_t mod_http_server_callback(httpd_req_t *r){
 						httpd_resp_set_type(r, HTTPD_TYPE_TEXT);
 						httpd_resp_send(r, msg, strlen(msg));
 						error = true;
+						status_code = 406;
 					}
 				}
 				m_free(buf);
-			}
-			else {
-				printf("Accept is NOT defined\n");
 			}
 
 			if(error == false) {
 				// Set the media type
 				httpd_resp_set_type(r, mod_http_mediatype[resource->mediatype]);
 				httpd_resp_send(r, (const char*)resource->value, (ssize_t)resource->value_len);
+				status_code = 200;
 			}
 		}
-		// This is a POST request
-		else if(r->method == HTTP_POST && r->method == HTTP_PUT) {
+		// This is a PUT request
+		else if(r->method == HTTP_PUT) {
 
-			// Check if "Content-Type" field is defined
-			size_t length = httpd_req_get_hdr_value_len(r, "Content-Type");
-			if(length > 0) {
-				// length+1 is needed because with length the ESP_ERR_HTTPD_RESULT_TRUNC is dropped
-				char* buf = m_malloc(length+1);
-				esp_err_t ret = httpd_req_get_hdr_value_str(r, "Content-Type", buf, length+1);
-				if(ret == ESP_OK) {
-					int mediatype_id = mod_http_server_get_mediatype_id(buf);
-					if(mediatype_id != -1) {
-						// Update the mediatype of the resource
-						resource->mediatype = (uint8_t)mediatype_id;
-					}
-					else {
-						httpd_resp_send_err(r, 415, "Unsupported Media Type");
-						error = true;
-					}
-				}
-				else {
-					error = true;
-				}
-
-				m_free(buf);
+			if(mediatype_id != -1) {
+				// Update the mediatype of the resource
+				resource->mediatype = (uint8_t)mediatype_id;
+			}
+			else {
+				httpd_resp_send_err(r, 415, "Unsupported Media Type");
+				error = true;
+				status_code = 415;
 			}
 
 			// Update the resource if new value is provided
@@ -485,6 +594,66 @@ STATIC esp_err_t mod_http_server_callback(httpd_req_t *r){
 				//TODO: compose here a better message
 				const char resp[] = "Resource is updated.";
 				httpd_resp_send(r, resp, strlen(resp));
+				status_code = 200;
+			}
+		}
+
+		// This is a POST request
+		else if(r->method == HTTP_POST) {
+
+			// Generate 5 digit id
+			long int id_int = 10000 + (long int)esp_timer_get_time() % 89999;
+
+			// Convert id from int to string
+			char* id_str = calloc(5, sizeof(char));
+			itoa(id_int, id_str, 10);
+
+			// [parent_uri][/][5_digit_id] + null termination format
+			new_uri = calloc(strlen(r->uri) + 2 + 5, sizeof(char));
+
+			// Concatanate parent_uri + '/' + id
+			httpd_uri_t uri;
+			strncpy(new_uri, r->uri, strlen(r->uri));
+			new_uri[strlen(r->uri)] = '/';
+			strncat(new_uri, id_str, 5);
+			new_uri[strlen(r->uri) + 5] = '\0';
+			uri.uri = new_uri;
+
+			// Create the resource in the esp-idf http server's context
+			esp_err_t ret = ESP_OK;
+			ret = httpd_register_uri_handler(server_obj->server, &uri);
+
+			if(ret == ESP_OK && server_obj->num_of_resources <= server_obj->max_resources) {
+				// Add resource to MicroPython http server's context with default value
+				add_resource(new_uri, mp_obj_new_str(content, r->content_len), 0);
+				server_obj->num_of_resources++;
+
+				if(mediatype_id != -1) {
+					printf("mediatype id: %d\n", mediatype_id);
+					find_resource(new_uri)->mediatype = (uint8_t)mediatype_id;
+				}
+
+				// 201 status code
+				char* status = "201 Created";
+				char* msg = calloc(11 + strlen(new_uri), sizeof(char));
+				strcat(msg, "Location: ");
+				strcat(msg, uri.uri);
+				httpd_resp_set_status(r, status);
+				httpd_resp_set_type(r, HTTPD_TYPE_TEXT);
+				httpd_resp_set_hdr(r, "Location", new_uri);
+				httpd_resp_send(r, msg, strlen(msg));
+				status_code = 201;
+			}
+			else {
+				new_uri = (char *) realloc(new_uri, 1);
+				new_uri = calloc(1, sizeof(char));
+				// 500 status code
+				char* status = "500 Internal Server Error";
+				char* msg    = "";
+				httpd_resp_set_status(r, status);
+				httpd_resp_set_type(r, HTTPD_TYPE_TEXT);
+				httpd_resp_send(r, msg, strlen(msg));
+				status_code = 500;
 			}
 		}
 
@@ -492,6 +661,7 @@ STATIC esp_err_t mod_http_server_callback(httpd_req_t *r){
 			// Remove resource
 			remove_resource(r->uri);
 			(void)httpd_unregister_uri(server_obj->server, r->uri);
+			server_obj->num_of_resources--;
 
 			// 204 status code is not defined in esp-idf
 			char* status = "204 No Content";
@@ -499,18 +669,22 @@ STATIC esp_err_t mod_http_server_callback(httpd_req_t *r){
 			httpd_resp_set_status(r, status);
 			httpd_resp_set_type(r, HTTPD_TYPE_TEXT);
 			httpd_resp_send(r, msg, strlen(msg));
+			status_code = 204;
 		}
 
 		// If there is a registered MP callback for this resource the parameters need to be prepared
-		if(error == false && r->user_ctx != MP_OBJ_NULL) {
+		if(r->user_ctx != MP_OBJ_NULL) {
 			// The MicroPython callback is stored in user_ctx
 			args[0] = r->user_ctx;
 			args[1] = mp_obj_new_str(r->uri, strlen(r->uri));
 			args[2] = mp_obj_new_int(r->method);
-			args[3] = mp_obj_new_str(content, r->content_len);
+			args[3] = request_headers;
+			args[4] = mp_obj_new_str(content, r->content_len);
+			args[5] = mp_obj_new_str(new_uri, strlen(new_uri));
+			args[6] = mp_obj_new_int(status_code);
 
 			// The user registered MicroPython callback will be called decoupled from the HTTP Server context in the IRQ Task
-			mp_irq_queue_interrupt(mod_http_server_callback_handler, (void *)mp_obj_new_tuple(4, args));
+			mp_irq_queue_interrupt(mod_http_server_callback_handler, (void *)mp_obj_new_tuple(7, args));
 		}
 	}
 
@@ -585,8 +759,9 @@ STATIC mp_obj_t mod_http_resource_value(mp_uint_t n_args, const mp_obj_t *args) 
 	mod_http_resource_obj_t* self = (mod_http_resource_obj_t*)args[0];
 	mp_obj_t ret = mp_const_none;
 
+	// Commented out -> in case of seting none value, cannot be set to any value anymore
 	// If the value exists, e.g.: not deleted from another task before we got the semaphore
-	if(self->value != NULL) {
+	//if(self->value != NULL) {
 		if (n_args == 1) {
 			// get
 			ret = mp_obj_new_bytes(self->value, self->value_len);
@@ -594,23 +769,23 @@ STATIC mp_obj_t mod_http_resource_value(mp_uint_t n_args, const mp_obj_t *args) 
 			// set
 			resource_update_value(self, (mp_obj_t)args[1]);
 		}
-	}
+	//}
 	return ret;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_http_resource_value_obj, 1, 2, mod_http_resource_value);
 
 // Sets or removes the callback on a given method
-STATIC mp_obj_t mod_http_resource_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+STATIC mp_obj_t mod_http_resource_register_request_handler(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
-	const mp_arg_t mod_http_resource_callback_args[] = {
+	const mp_arg_t mod_http_resource_register_request_handler_args[] = {
 			{ MP_QSTR_self,                    MP_ARG_OBJ  | MP_ARG_REQUIRED, },
 			{ MP_QSTR_method,                  MP_ARG_INT  | MP_ARG_REQUIRED, },
 			{ MP_QSTR_callback,                MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
 			{ MP_QSTR_action,                  MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_bool = true}},
 	};
 
-	mp_arg_val_t args[MP_ARRAY_SIZE(mod_http_resource_callback_args)];
-	mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_http_resource_callback_args, args);
+	mp_arg_val_t args[MP_ARRAY_SIZE(mod_http_resource_register_request_handler_args)];
+	mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_http_resource_register_request_handler_args, args);
 
 	// Get the resource
 	mod_http_resource_obj_t* self = (mod_http_resource_obj_t*)args[0].u_obj;
@@ -625,7 +800,7 @@ STATIC mp_obj_t mod_http_resource_callback(mp_uint_t n_args, const mp_obj_t *pos
 		nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "If the \"action\" is TRUE then \"callback\" must be defined"));
 	}
 
-	esp_err_t  ret = mod_http_resource_callback_helper(self, method, callback, action);
+	esp_err_t ret = mod_http_resource_callback_helper(self, method, callback, action);
 
 	if(ret != ESP_OK) {
 		nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Callback of the resource could not be updated, error code: %d!", ret));
@@ -633,12 +808,12 @@ STATIC mp_obj_t mod_http_resource_callback(mp_uint_t n_args, const mp_obj_t *pos
 
 	return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_http_resource_callback_obj, 2, mod_http_resource_callback);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_http_resource_register_request_handler_obj, 2, mod_http_resource_register_request_handler);
 
 STATIC const mp_map_elem_t http_resource_locals_table[] = {
 		// instance methods
 		{ MP_OBJ_NEW_QSTR(MP_QSTR_value),                       (mp_obj_t)&mod_http_resource_value_obj },
-		{ MP_OBJ_NEW_QSTR(MP_QSTR_callback),                    (mp_obj_t)&mod_http_resource_callback_obj },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_register_request_handler),    (mp_obj_t)&mod_http_resource_register_request_handler_obj },
 
 };
 STATIC MP_DEFINE_CONST_DICT(http_resource_locals, http_resource_locals_table);
@@ -658,9 +833,10 @@ STATIC const mp_obj_type_t mod_http_resource_type = {
 STATIC mp_obj_t mod_http_server_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
 	const mp_arg_t mod_http_server_init_args[] = {
-			{ MP_QSTR_port,                     MP_ARG_INT  | MP_ARG_KW_ONLY, {.u_int = 80}},
+			{ MP_QSTR_port,                     MP_ARG_INT  	| MP_ARG_KW_ONLY, {.u_int = 80}},
 			{ MP_QSTR_keyfile,                  MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
 			{ MP_QSTR_certfile,                 MP_ARG_KW_ONLY  | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+			{ MP_QSTR_max_uri,                  MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = 100}},
 	};
 
 	if(server_initialized == false) {
@@ -672,6 +848,10 @@ STATIC mp_obj_t mod_http_server_init(mp_uint_t n_args, const mp_obj_t *pos_args,
 		mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_http_server_init_args, args);
 
 		httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
+		config.httpd.max_open_sockets = 7;
+		config.httpd.max_uri_handlers = 4*args[3].u_int;
+		server_obj->max_resources = args[3].u_int;
+		server_obj->num_of_resources = 0;
 
 		// HTTPS Server
 		if(args[0].u_int == 443) {
@@ -689,7 +869,6 @@ STATIC mp_obj_t mod_http_server_init(mp_uint_t n_args, const mp_obj_t *pos_args,
 				const char *signed_cert = NULL;
 				const char *prvt_key = NULL;
 
-				// Do not know why these needed in pycom_util_read_file
 				vstr_t vstr_ca = {};
 				vstr_t vstr_key =  {};
 
@@ -735,13 +914,31 @@ STATIC mp_obj_t mod_http_server_init(mp_uint_t n_args, const mp_obj_t *pos_args,
 
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_http_server_init_obj, 0, mod_http_server_init);
 
+STATIC mp_obj_t mod_http_server_deinit(void) {
+
+	// Check if Server is already initiated
+	if(server_initialized == false) {
+		nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Server is not initialized!"));
+	}
+
+	// Cleanup Server
+	httpd_stop(server_obj->server);
+
+	// Server is not initialized anymore
+	server_initialized = false;
+
+    return mp_const_none;
+}
+
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_http_server_deinit_obj, mod_http_server_deinit);
+
 // Adds a resource to the http server module
 STATIC mp_obj_t mod_http_server_add_resource(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
 	const mp_arg_t mod_http_server_add_resource_args[] = {
 			{ MP_QSTR_uri,                     MP_ARG_OBJ  | MP_ARG_REQUIRED, },
 			{ MP_QSTR_value,                   MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
-			{ MP_QSTR_media_type,              MP_ARG_INT  | MP_ARG_KW_ONLY, {.u_int = MOD_HTTP_MEDIA_TYPE_TEXT_HTML_ID}},
+			{ MP_QSTR_content_type,            MP_ARG_INT  | MP_ARG_KW_ONLY, {.u_int = MOD_HTTP_MEDIA_TYPE_TEXT_HTML_ID}},
 
 	};
 
@@ -761,23 +958,35 @@ STATIC mp_obj_t mod_http_server_add_resource(mp_uint_t n_args, const mp_obj_t *p
 			nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Resource already added!"));
 		}
 
-		// Create the resource in the esp-idf http server's context
-		ret = httpd_register_uri_handler(server_obj->server, &uri);
-
-		if(ret == ESP_OK) {
-			// Add resource to MicroPython http server's context with default value
-			resource = add_resource(uri.uri, args[1].u_obj, args[2].u_int);
+		if(server_obj->num_of_resources >= server_obj->max_resources) {
+			nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Cannot be added more resources!"));
 		}
 
-		if(ret != ESP_OK) {
-			// Error occurred, remove the registered resource from MicroPython http server's context
-			remove_resource(uri.uri);
-			// Error occurred, remove the registered resource from esp-idf http server's context
-			(void)httpd_unregister_uri(server_obj->server, uri.uri);
-			nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Resource could not be added, error code: %d!", ret));
+		// Check first character of URI
+		if(uri.uri[0] == '/') {
+
+			// Create the resource in the esp-idf http server's context
+			ret = httpd_register_uri_handler(server_obj->server, &uri);
+
+			if(ret == ESP_OK) {
+				// Add resource to MicroPython http server's context with default value
+				resource = add_resource(uri.uri, args[1].u_obj, args[2].u_int);
+				server_obj->num_of_resources++;
+			}
+			else {
+				// Error occurred, remove the registered resource from MicroPython http server's context
+				(void)httpd_unregister_uri(server_obj->server, uri.uri);
+				nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Resource could not be added, error code: %d!", ret));
+			}
+
+			return resource;
+		}
+		else {
+			nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "URI must start with \"/\"."));
+			// Just to fulfills the compiler's needs
+			return mp_const_none;
 		}
 
-		return resource;
 	}
 	else {
 		nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "HTTP Server module is not initialized!"));
@@ -786,6 +995,82 @@ STATIC mp_obj_t mod_http_server_add_resource(mp_uint_t n_args, const mp_obj_t *p
 	}
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_http_server_add_resource_obj, 1, mod_http_server_add_resource);
+
+// Get a resource from http server module
+STATIC mp_obj_t mod_http_server_get_resource(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+
+	const mp_arg_t mod_http_server_get_resource_args[] = {
+			{ MP_QSTR_uri,                     MP_ARG_OBJ  | MP_ARG_REQUIRED, },
+
+	};
+
+	if(server_initialized == true) {
+
+		mp_arg_val_t args[MP_ARRAY_SIZE(mod_http_server_get_resource_args)];
+		mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_http_server_get_resource_args, args);
+
+		httpd_uri_t uri;
+
+		// Get the URI
+		uri.uri = mp_obj_str_get_str(args[0].u_obj);
+
+		if(find_resource(uri.uri) == NULL) {
+			nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Resource is not exists!"));
+		}
+		return find_resource(uri.uri);
+	}
+	else {
+		nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "HTTP Server module is not initialized!"));
+		// Just to fulfills the compiler's needs
+		return mp_const_none;
+	}
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_http_server_get_resource_obj, 1, mod_http_server_get_resource);
+
+// Get a resource from http server module
+STATIC mp_obj_t mod_http_server_list_resource(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+
+	const mp_arg_t mod_http_server_list_resource_args[] = {
+			{ MP_QSTR_uri,                     MP_ARG_OBJ},
+	};
+
+	if(server_initialized == true) {
+
+		mp_arg_val_t args[MP_ARRAY_SIZE(mod_http_server_list_resource_args)];
+		mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_http_server_list_resource_args, args);
+
+		httpd_uri_t uri;
+
+		// Get the URI
+		uri.uri = (args[0].u_obj != MP_OBJ_NULL) ? mp_obj_str_get_str(args[0].u_obj) : "/";
+
+		// Maximum 100 resources can be listed
+		mp_obj_t tuple[100];
+
+		// Initiate number of resources with 0
+		int num_of_res = 0;
+
+		if(server_obj->resources != NULL) {
+			mod_http_resource_obj_t* current = server_obj->resources;
+			for(; current != NULL; current = current->next) {
+				// Match found
+				//printf("current: %s, uri: %s, len: %d\n", current)
+				if(strncmp(current->uri, uri.uri, strlen(uri.uri)) == 0) {
+					// Append uri string to list
+					tuple[num_of_res] = mp_obj_new_str(current->uri, strlen(current->uri));
+					num_of_res++;
+				}
+			}
+		}
+		return mp_obj_new_tuple(num_of_res, tuple);
+	}
+	else {
+		nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "HTTP Server module is not initialized!"));
+		// Just to fulfills the compiler's needs
+		return mp_const_none;
+	}
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_http_server_list_resource_obj, 0, mod_http_server_list_resource);
 
 // Removes a resource from the http server module
 STATIC mp_obj_t mod_http_server_remove_resource(mp_obj_t uri_in) {
@@ -804,6 +1089,7 @@ STATIC mp_obj_t mod_http_server_remove_resource(mp_obj_t uri_in) {
 		}
 
 		remove_resource(uri);
+		server_obj->num_of_resources--;
 	}
 	else {
 		nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "HTTP Server module is not initialized!"));
@@ -817,8 +1103,11 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_http_server_remove_resource_obj, mod_http_s
 STATIC const mp_map_elem_t mod_http_server_globals_table[] = {
 		{ MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_HTTP_Server) },
 		{ MP_OBJ_NEW_QSTR(MP_QSTR_init),                            (mp_obj_t)&mod_http_server_init_obj },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_deinit),                          (mp_obj_t)&mod_http_server_deinit_obj },
 		{ MP_OBJ_NEW_QSTR(MP_QSTR_add_resource),                    (mp_obj_t)&mod_http_server_add_resource_obj },
 		{ MP_OBJ_NEW_QSTR(MP_QSTR_remove_resource),                 (mp_obj_t)&mod_http_server_remove_resource_obj },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_get_resource),                    (mp_obj_t)&mod_http_server_get_resource_obj },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_list_resource),                   (mp_obj_t)&mod_http_server_list_resource_obj },
 
 		// class constants
 		{ MP_OBJ_NEW_QSTR(MP_QSTR_GET),                      MP_OBJ_NEW_SMALL_INT(MOD_HTTP_GET) },
@@ -927,7 +1216,9 @@ STATIC mp_obj_t mod_http_client_deinit(void) {
 	}
 
 	// Cleanup Client
-	esp_http_client_cleanup(client_obj);
+	if(client_obj != NULL) {
+		esp_http_client_cleanup(client_obj);
+	}
 
 	// Reinit Client Config
 	memset(&client_config, 0, sizeof(client_config));
@@ -1023,8 +1314,14 @@ STATIC mp_obj_t mod_http_client_send_request(mp_uint_t n_args, const mp_obj_t *p
 
 	// Perform request
 	esp_err_t err = esp_http_client_perform(client_obj);
+	free(client_obj->request);
 
 	if (err != ESP_OK) {
+		// Cleanup Client - needed according to esp-idf documentation after every request, but its too slow
+		// in case of HTTPS handshake
+		esp_http_client_cleanup(client_obj);
+		// Reinit Client
+		client_obj = esp_http_client_init(&client_config);
 		nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Request could not sent."));
 	}
 
