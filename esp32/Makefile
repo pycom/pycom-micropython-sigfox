@@ -107,8 +107,8 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -Llib \
        -L$(BUILD) \
        -lsigfox \
-       /home/gezahusi/Work/Toolchains/xtensa-esp32-elf/xtensa-esp32-elf/lib/libc.a \
-       /home/gezahusi/Work/Toolchains/xtensa-esp32-elf/xtensa-esp32-elf/lib/libm.a \
+       lib/libc.a \
+       lib/libm.a \
        -lnvs_flash -ltcpip_adapter -lstdc++ -llog -lcxx \
        -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat -lpthread -lesp_adc_cal \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \

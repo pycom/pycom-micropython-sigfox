@@ -7,6 +7,18 @@ import shutil
 import traceback
 
 
+def find_xtensa_path():
+    system_path = os.environ['PATH']
+    system_paths = system_path.split(os.pathsep)
+
+    for p in system_paths:
+        if "xtensa-esp32-elf" in p:
+            # Remove /bin from the end
+            return p[:-4]
+
+    print("Couldn't find xtensa-esp32-elf toolchain!")
+    traceback.print_exc()
+
 def main():
     src_def = os.environ['IDF_PATH']+'/examples/wifi/scan/build'
     cmd_parser = argparse.ArgumentParser(description='Get the precompiled libs from the IDF')
@@ -33,6 +45,7 @@ def main():
         shutil.copy(src + '/bootloader/micro-ecc/libmicro-ecc.a', dsttmpbl)
         shutil.copy(src + '/bootloader/spi_flash/libspi_flash.a', dsttmpbl)
         shutil.copy(src + '/bootloader/bootloader_support/libbootloader_support.a', dsttmpbl)
+        # bootloader.map is needed since we build all the bootlader libraries (including Pycom's one) in esp-idf, here we will just link them together
         shutil.copy(src + '/bootloader/bootloader.map', dsttmpbl)
         
         # copy the application libraries
@@ -52,7 +65,6 @@ def main():
         shutil.copy(src + '/log/liblog.a', dsttmpapp)
         shutil.copy(src + '/lwip/liblwip.a', dsttmpapp)
         shutil.copy(src + '/mbedtls/libmbedtls.a', dsttmpapp)
-        #shutil.copy(src + '/micro-ecc/libmicro-ecc.a', dsttmpapp)
         shutil.copy(src + '/newlib/libnewlib.a', dsttmpapp)
         shutil.copy(src + '/nghttp/libnghttp.a', dsttmpapp)
         shutil.copy(src + '/nvs_flash/libnvs_flash.a', dsttmpapp)
@@ -64,7 +76,6 @@ def main():
         shutil.copy(src + '/tcpip_adapter/libtcpip_adapter.a', dsttmpapp)
         shutil.copy(src + '/vfs/libvfs.a', dsttmpapp)
         shutil.copy(src + '/wpa_supplicant/libwpa_supplicant.a', dsttmpapp)
-        #shutil.copy(src + '/xtensa-debug-module/libxtensa-debug-module.a', dsttmpapp)
         shutil.copy(src + '/esp_ringbuf/libesp_ringbuf.a', dsttmpapp)
         shutil.copy(src + '/coap/libcoap.a', dsttmpapp)
         shutil.copy(src + '/mdns/libmdns.a', dsttmpapp)
@@ -86,6 +97,12 @@ def main():
         shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libmesh.a', dsttmpapp)
         shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libcoexist.a', dsttmpapp)
         shutil.copy(os.environ['IDF_PATH'] + '/components/xtensa/esp32/libhal.a', dsttmpapp)
+
+        # copy libraries from toolchain
+        toolchain_path = find_xtensa_path()
+        shutil.copy(toolchain_path + '/xtensa-esp32-elf/lib/esp32-psram/libc.a', dsttmpapp)
+        shutil.copy(toolchain_path + '/xtensa-esp32-elf/lib/esp32-psram/libm.a', dsttmpapp)
+
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         traceback.print_exc()
