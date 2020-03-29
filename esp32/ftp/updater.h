@@ -11,7 +11,7 @@
 #ifndef UPDATER_H_
 #define UPDATER_H_
 
-#include "bootloader.h"
+#include "pycom_bootloader.h"
 
 /**
  * @brief  Checks the default path.

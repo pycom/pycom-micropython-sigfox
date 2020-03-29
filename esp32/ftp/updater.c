@@ -13,7 +13,7 @@
 
 #include "py/mpconfig.h"
 #include "py/obj.h"
-#include "bootloader.h"
+#include "pycom_bootloader.h"
 #include "updater.h"
 #include "esp_spi_flash.h"
 #include "esp_flash_encrypt.h"

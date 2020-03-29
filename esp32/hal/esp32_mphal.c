@@ -32,7 +32,7 @@
 #include "mpexception.h"
 #include "modmachine.h"
 #include "updater.h"
-#include "bootloader.h"
+#include "pycom_bootloader.h"
 #include "modwlan.h"
 #include "modbt.h"
 #include "machtimer.h"

@@ -60,7 +60,7 @@
 #endif
 
 #include "random.h"
-#include "bootloader.h"
+#include "pycom_bootloader.h"
 #include "updater.h"
 #include "pycom_config.h"
 #include "mpsleep.h"
