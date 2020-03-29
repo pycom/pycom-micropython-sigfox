@@ -835,6 +835,8 @@ GEN_PINS_HDR = $(HEADER_BUILD)/pins.h
 GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 
 .NOTPARALLEL: CHECK_DEP $(OBJ)
+.NOTPARALLEL: CHECK_DEP $(BUILD)/bootloader/bootloader.elf
+$(BUILD)/bootloader/bootloader.elf $(OBJ): | CHECK_DEP
 
 # Making OBJ use an order-only dependency on the generated pins.h file
 # has the side effect of making the pins.h file before we actually compile
@@ -843,11 +845,12 @@ GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 # which source files might need it.
 $(OBJ): | $(GEN_PINS_HDR)
 
-# Check Dependencies (IDF version, Frozen code and IDF LIBS)
+# Check Dependencies (IDF version, Frozen code, Xtensa version and IDF LIBS)
 CHECK_DEP:
 	$(Q) bash tools/idfVerCheck.sh $(IDF_PATH) "$(IDF_HASH)"
 	$(Q) bash tools/mpy-build-check.sh $(BOARD) $(BTYPE) $(VARIANT)
 	$(Q) $(PYTHON) check_secure_boot.py --SECURE $(SECURE)
+	$(Q) $(PYTHON) check_xtensa_version.py --VERSION $(XTENSA_VERSION)
 ifeq ($(COPY_IDF_LIB), 1)
 	$(ECHO) "COPY IDF LIBRARIES"
 	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build
