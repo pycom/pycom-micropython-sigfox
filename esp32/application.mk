@@ -72,6 +72,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/osi/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/hci/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/gki/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/api/include/api
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/examples
@@ -85,6 +86,14 @@ APP_INC += -I../lib
 APP_INC += -I../drivers/sx127x
 APP_INC += -I../ports/stm32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/openthread/src
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/api
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/mesh_common/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/api/core/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/mesh_core
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/mesh_core/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/mesh_models/common/include
+
+
 
 #Added with idf 4.0
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_common/include
@@ -178,6 +187,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	pybsd.c \
 	modussl.c \
 	modbt.c \
+	modble_mesh.c \
 	modled.c \
 	machwdt.c \
 	machrmt.c \

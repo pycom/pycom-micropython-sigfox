@@ -31,7 +31,6 @@
 #include "modbt.h"
 #include "mpirq.h"
 #include "antenna.h"
-
 #include "esp_bt.h"
 #include "common/bt_trace.h"
 #include "stack/bt_types.h"
@@ -54,6 +53,7 @@
 #include "lwip/def.h"
 
 #include "mbedtls/sha1.h"
+#include "modble_mesh.h"
 #include "nvs.h"
 
 /******************************************************************************
@@ -2143,6 +2143,8 @@ STATIC const mp_map_elem_t bt_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_gatts_mtu),               (mp_obj_t)&bt_gatts_get_mtu_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_nvram_erase),             (mp_obj_t)&bt_nvram_erase_obj },
 
+    // BLE Mesh
+    { MP_OBJ_NEW_QSTR(MP_QSTR_BLE_Mesh),                (mp_obj_t)&mod_ble_mesh },
 
     // exceptions
     { MP_OBJ_NEW_QSTR(MP_QSTR_timeout),                 (mp_obj_t)&mp_type_TimeoutError },
