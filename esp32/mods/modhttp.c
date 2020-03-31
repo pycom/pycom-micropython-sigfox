@@ -7,7 +7,6 @@
  * available at https://www.pycom.io/opensource/licensing
  */
 
-
 #include "py/mpconfig.h"
 #include "py/obj.h"
 #include "py/runtime.h"
@@ -21,7 +20,6 @@
 #include "esp_http_client.h"
 #include "modhttp.h"
 #include "pycom_general_util.h"
-
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -45,6 +43,7 @@
 #define MOD_HTTP_MEDIA_TYPE_APP_XML_ID      (5)
 
 #define MOD_DEFAULT_HTTP_USER_AGENT         "ESP32 HTTP Client/1.0"
+#define MOD_HTTP_MAX_PAYLOAD_LEN         	(32768)
 
 
 /******************************************************************************
@@ -92,7 +91,7 @@ STATIC mod_http_resource_obj_t* find_resource(const char* uri);
 STATIC mod_http_resource_obj_t* add_resource(const char* uri, mp_obj_t value, mp_int_t mediatype);
 STATIC void remove_resource(const char* uri);
 STATIC void resource_update_value(mod_http_resource_obj_t* resource, mp_obj_t new_value);
-STATIC esp_err_t mod_http_resource_callback_helper(mod_http_resource_obj_t* resource , httpd_method_t method, mp_obj_t callback, bool action);
+STATIC esp_err_t mod_http_resource_callback_helper(mod_http_resource_obj_t* resource , httpd_method_t method, mp_obj_t callback);
 STATIC int mod_http_server_get_mediatype_id(const char* mediatype);
 STATIC bool mod_http_server_get_acceptance(const char* accept_field, uint8_t mediatype_id);
 
@@ -122,7 +121,7 @@ STATIC bool server_initialized = false;
 STATIC esp_http_client_handle_t client_obj;
 STATIC esp_http_client_config_t client_config = {};
 STATIC mp_obj_t client_callback;
-
+STATIC mp_obj_t response_headers;
 STATIC const mp_obj_type_t mod_http_resource_type;
 
 
@@ -262,66 +261,45 @@ STATIC void resource_update_value(mod_http_resource_obj_t* resource, mp_obj_t ne
 }
 
 
-STATIC esp_err_t mod_http_resource_callback_helper(mod_http_resource_obj_t* resource , httpd_method_t method, mp_obj_t callback, bool action){
+STATIC esp_err_t mod_http_resource_callback_helper(mod_http_resource_obj_t* resource , httpd_method_t method, mp_obj_t callback){
 
 	esp_err_t ret = ESP_OK;
 
-	if(action == true) {
+	/* This needs to be static otherwise, most probably due to compiler optimizations, the
+	 * value of it is not updated between to subsequent calls and httpd_register_uri_handler()
+	 * fails with error ESP_ERR_HTTPD_HANDLER_EXISTS because it gets the URI of the previous resource
+	 */
+	STATIC httpd_uri_t uri;
 
-		/* This needs to be static otherwise, most probably due to compiler optimizations, the
-		 * value of it is not updated between to subsequent calls and httpd_register_uri_handler()
-		 * fails with error ESP_ERR_HTTPD_HANDLER_EXISTS because it gets the URI of the previous resource
-		 */
-		STATIC httpd_uri_t uri;
+	// Set the URI
+	uri.uri = resource->uri;
 
-		// Set the URI
-		uri.uri = resource->uri;
+	// Save the user's callback into user context field for future usage
+	uri.user_ctx = callback;
+	// The registered handler is our own handler which will handle different requests and call user's callback, if any
+	uri.handler = mod_http_server_callback;
 
-		// Save the user's callback into user context field for future usage
-		uri.user_ctx = callback;
-		// The registered handler is our own handler which will handle different requests and call user's callback, if any
-		uri.handler = mod_http_server_callback;
+	// Unregister first URI, solves ESP_ERR_HTTPD_ALLOC_MEM issue
+	ret = httpd_unregister_uri(server_obj->server, uri.uri);
 
-		// Unregister first URI, solves ESP_ERR_HTTPD_ALLOC_MEM issue
-		ret = httpd_unregister_uri(server_obj->server, uri.uri);
-
-		if((method & MOD_HTTP_GET) && (ret == ESP_OK)) {
-			uri.method = HTTP_GET;
-			ret = httpd_register_uri_handler(server_obj->server, &uri);
-		}
-
-		if((method & MOD_HTTP_PUT) && (ret == ESP_OK)) {
-			uri.method = HTTP_PUT;
-			ret = httpd_register_uri_handler(server_obj->server, &uri);
-		}
-
-		if((method & MOD_HTTP_POST) && (ret == ESP_OK)) {
-			uri.method = HTTP_POST;
-			ret = httpd_register_uri_handler(server_obj->server, &uri);
-		}
-
-		if((method & MOD_HTTP_DELETE) && (ret == ESP_OK)) {
-			uri.method = HTTP_DELETE;
-			ret = httpd_register_uri_handler(server_obj->server, &uri);
-		}
+	if((method & MOD_HTTP_GET) && (ret == ESP_OK)) {
+		uri.method = HTTP_GET;
+		ret = httpd_register_uri_handler(server_obj->server, &uri);
 	}
-	else {
 
-		if((method & MOD_HTTP_GET) && (ret == ESP_OK)) {
-			ret = httpd_unregister_uri_handler(server_obj->server, resource->uri, HTTP_GET);
-		}
+	if((method & MOD_HTTP_PUT) && (ret == ESP_OK)) {
+		uri.method = HTTP_PUT;
+		ret = httpd_register_uri_handler(server_obj->server, &uri);
+	}
 
-		if((method & MOD_HTTP_PUT) && (ret == ESP_OK)) {
-			ret = httpd_unregister_uri_handler(server_obj->server, resource->uri, HTTP_PUT);
-		}
+	if((method & MOD_HTTP_POST) && (ret == ESP_OK)) {
+		uri.method = HTTP_POST;
+		ret = httpd_register_uri_handler(server_obj->server, &uri);
+	}
 
-		if((method & MOD_HTTP_POST) && (ret == ESP_OK)) {
-			ret = httpd_unregister_uri_handler(server_obj->server, resource->uri, HTTP_POST);
-		}
-
-		if((method & MOD_HTTP_DELETE) && (ret == ESP_OK)) {
-			ret = httpd_unregister_uri_handler(server_obj->server, resource->uri, HTTP_DELETE);
-		}
+	if((method & MOD_HTTP_DELETE) && (ret == ESP_OK)) {
+		uri.method = HTTP_DELETE;
+		ret = httpd_register_uri_handler(server_obj->server, &uri);
 	}
 
 	return ret;
@@ -392,17 +370,13 @@ STATIC mp_obj_t mod_http_server_get_headers(const char* hdr_ptr, int hdr_cnt) {
 			if(hdr_ptr[i] == ':') {
 				// Set Key end index
 				key_end = i - 1;
-
 				// Get Key substring
 				memset(key, '\0', HTTPD_SCRATCH_BUF);
 				memcpy(key, hdr_ptr + key_start, key_end - key_start + 1);
-
 				// Set Value start index
 				val_start = i + 2;
-
 				// Set iterator
 				i = i + 2;
-
 				// Look for Value
 				find_key = 0;
 			}
@@ -411,23 +385,17 @@ STATIC mp_obj_t mod_http_server_get_headers(const char* hdr_ptr, int hdr_cnt) {
 			if(hdr_ptr[i] == '\0') {
 				// Set Value end index
 				val_end = i - 1;
-
 				// Get Value substring
 				memset(val, '\0', HTTPD_SCRATCH_BUF);
 				memcpy(val, hdr_ptr + val_start, val_end - val_start + 1);
-
 				// Set Key start index
 				key_start = i + 2;
-
 				// Set iterator
 				i = i + 2;
-
 				// Look for Key
 				find_key = 1;
-
 				// Less Header is remained
 				hdr_cnt--;
-
 				// Store Key-Value Header pair
 				mp_obj_dict_store(request_headers, mp_obj_new_str(key, strlen(key)), mp_obj_new_str(val, strlen(val)));
 			}
@@ -437,6 +405,33 @@ STATIC mp_obj_t mod_http_server_get_headers(const char* hdr_ptr, int hdr_cnt) {
 		}
 	}
 	return request_headers;
+}
+
+STATIC char* mod_http_server_get_new_uri(const char* current_uri) {
+	// Generate 5 digit id
+	long int id_int = 10000 + (long int)esp_timer_get_time() % 89999;
+	//long int id_int = pow(10, id_len-1) + (long int)esp_timer_get_time() % (pow(10, id_len)-1);
+
+	// Convert id from int to string
+	char* id_str = calloc(5, sizeof(char));
+	itoa(id_int, id_str, 10);
+
+	// [parent_uri][/][5_digit_id] + null termination format
+	char* new_uri = calloc(strlen(current_uri) + 2 + 5, sizeof(char));
+
+	// Concatanate parent_uri + '/' + id
+	strncpy(new_uri, current_uri, strlen(current_uri));
+	new_uri[strlen(current_uri)] = '/';
+	strncat(new_uri, id_str, 5);
+	new_uri[strlen(current_uri) + 6] = '\0';
+
+	return(new_uri);
+}
+
+STATIC void mod_http_resp_send(httpd_req_t *r, char* status, char* msg) {
+	httpd_resp_set_status(r, status);
+	httpd_resp_set_type(r, HTTPD_TYPE_TEXT);
+	httpd_resp_send(r, msg, strlen(msg));
 }
 
 STATIC void mod_http_server_callback_handler(void *arg_in) {
@@ -472,220 +467,248 @@ STATIC void mod_http_server_callback_handler(void *arg_in) {
 
 STATIC esp_err_t mod_http_server_callback(httpd_req_t *r){
 
+	// Initiate values
 	char* content = NULL;
-	bool error = false;
-	mp_obj_t args[7];
-	mod_http_resource_obj_t* resource = find_resource(r->uri);
 	char* new_uri = "";
 	int status_code = 404;
 	int mediatype_id = 0;
+	bool error = false;
+	mp_obj_t args[7];
 
-	// Get headers
-	struct httpd_req_aux *ra = r->aux;
-    const char* hdr_ptr = ra->scratch;
-    int hdr_cnt = ra->req_hdrs_count;
-    mp_obj_t request_headers = mod_http_server_get_headers(hdr_ptr, hdr_cnt);
+	// Get the resource from Pycom context
+	mod_http_resource_obj_t* resource = find_resource(r->uri);
 
 	// If the resource does not exist anymore then send back 404
 	if(resource == NULL){
-		httpd_resp_send_404(r);
 		status_code = 404;
+		httpd_resp_send_404(r);
 		// This can happen if locally the resource has been removed but for some reason it still exists in the HTTP Server library context...
 		return ESP_FAIL;
 	}
 
-	// Get the content part of the message
-	if(r->content_len > 0) {
-		// Allocate memory for the content
-		content = m_malloc(r->content_len);
-		if(content != NULL) {
-			// Get the content from the message
-			int recv_length = httpd_req_recv(r, content, r->content_len);
+    // Get headers
+    struct httpd_req_aux *ra = r->aux;
+    mp_obj_t request_headers = mod_http_server_get_headers(ra->scratch, ra->req_hdrs_count);
+    m_free(ra);
 
-			// If return value less than 0, error occurred
-			if(recv_length < 0) {
+    // Get "Content-Type" field
+    size_t length = httpd_req_get_hdr_value_len(r, "Content-Type");
+    if(length > 0) {
+    	// length+1 is needed because with length the ESP_ERR_HTTPD_RESULT_TRUNC is dropped
+    	char* buf = m_malloc(length+1);
+    	esp_err_t ret = httpd_req_get_hdr_value_str(r, "Content-Type", buf, length+1);
+    	if(ret == ESP_OK) {
+    		// Get the ID of content_type from supported medatypes
+    		mediatype_id = mod_http_server_get_mediatype_id(buf);
+    	}
+    	m_free(buf);
+    }
 
-				// Check if timeout error occurred and send back appropriate response
-				if (recv_length == HTTPD_SOCK_ERR_TIMEOUT) {
-					httpd_resp_send_408(r);
-					status_code = 408;
+    // Check the content part of the message
+    if(r->content_len > 0) {
+    	// Check if Payload/Body of request is loo long
+    	if(r->content_len > MOD_HTTP_MAX_PAYLOAD_LEN) {
+    		//413 status code
+    		status_code = 413;
+    		mod_http_resp_send(r, "413 Payload Too Large", "Payload Too Large.");
+    		error = true;
+    	}
+    	else {
+    		// Allocate memory for the content
+    		content = m_malloc(r->content_len);
+    		if(content != NULL) {
+    			// Get the content from the message
+    			int recv_length = httpd_req_recv(r, content, r->content_len);
+
+    			// If return value less than 0, error occurred
+    			if(recv_length < 0) {
+    				// Check if timeout error occurred and send back appropriate response
+    				if (recv_length == HTTPD_SOCK_ERR_TIMEOUT) {
+    					//408 status code
+    					status_code = 408;
+    					mod_http_resp_send(r, "408 Request Timeout", "Request Timeout");
+    					error = true;
+    				} else {
+    					//500 status code
+    					status_code = 500;
+    					mod_http_resp_send(r, "500 Internal Server Error", "Internal Server Error.");
+    					error = true;
+    				}
+    			}
+    			else if(recv_length != r->content_len) {
+    				//413 status code
+    				status_code = 413;
+    				mod_http_resp_send(r, "413 Payload Too Large", "Payload Too Large.");
+    				error = true;
+    			}
+    		}
+    		else {
+    			//500 status code
+    			status_code = 500;
+    			mod_http_resp_send(r, "500 Internal Server Error", "Internal Server Error.");
+    			error = true;
+    		}
+    	}
+    }
+
+	// This is a GET request
+	if(r->method == HTTP_GET && error == false) {
+		// Check if "Accept" field is defined
+		size_t length = httpd_req_get_hdr_value_len(r, "Accept");
+		if(length > 0) {
+			// length+1 is needed because with length the ESP_ERR_HTTPD_RESULT_TRUNC is dropped
+			char* buf = m_malloc(length+1);
+			esp_err_t ret = httpd_req_get_hdr_value_str(r, "Accept", buf, length+1);
+			if(ret == ESP_OK) {
+				if(!mod_http_server_get_acceptance(buf, resource->mediatype)) {
+					//406 status code
+					status_code = 406;
+					mod_http_resp_send(r, "406 Not Acceptable", "Not Acceptable.");
+					error = true;
 				}
-
-				//TODO: check if exception is needed
-				error = true;
 			}
-			else if(recv_length != r->content_len) {
+			m_free(buf);
+		}
 
-				//TODO: Handle this case properly
-				printf("recv_length != r->content_len !!\n");
+		if(error == false) {
+			// Set the media type
+			status_code = 200;
+			httpd_resp_set_type(r, mod_http_mediatype[resource->mediatype]);
+			httpd_resp_send(r, (const char*)resource->value, (ssize_t)resource->value_len);
+		}
+	}
 
-				//TODO: check if exception is needed
-				error = true;
-			}
+	// This is a PUT request
+	else if(r->method == HTTP_PUT && error == false) {
+
+		// Check content_type / mediatype
+		if(mediatype_id == -1) {
+			//415 status code
+			status_code = 415;
+			mod_http_resp_send(r, "415 Unsupported Media Type", "Unsupported Media Type.");
 		}
 		else {
-			//TODO: ESP_FAIL should be returned as per HTTP LIB, check if exception is needed
-			return ESP_FAIL;
-			//nlr_raise(mp_obj_new_exception_msg(&mp_type_MemoryError, "Not enough free memory to handle request to HTTP Server!"));
+			// Update the mediatype of the resource
+			resource->mediatype = (uint8_t)mediatype_id;
+
+			// Update the resource
+			resource_update_value(resource, mp_obj_new_str(content, r->content_len));
+
+			// Add Content-Location header ro response
+			httpd_resp_set_hdr(r, "Content-Location", r->uri);
+
+			//204 status code
+			status_code = 204;
+			mod_http_resp_send(r, "204 No Content", "Resource is updated.");
 		}
 	}
 
-	// Get "Content-Type" field
-	size_t length = httpd_req_get_hdr_value_len(r, "Content-Type");
-	if(length > 0) {
-		// length+1 is needed because with length the ESP_ERR_HTTPD_RESULT_TRUNC is dropped
-		char* buf = m_malloc(length+1);
-		esp_err_t ret = httpd_req_get_hdr_value_str(r, "Content-Type", buf, length+1);
-		if(ret == ESP_OK) {
-			mediatype_id = mod_http_server_get_mediatype_id(buf);
+	// This is a POST request
+	else if(r->method == HTTP_POST && error == false) {
+
+		if(mediatype_id == -1) {
+			//415 status code
+			status_code = 415;
+			mod_http_resp_send(r, "415 Unsupported Media Type", "Unsupported Media Type.");
 		}
-		m_free(buf);
-	}
+		else {
+			// Generate new URI with 5 digit ID
+			new_uri = mod_http_server_get_new_uri(r->uri);
 
-	if(error == false) {
-
-		// This is a GET request, send back the current value of the resource
-		if(r->method == HTTP_GET) {
-			// Check if "Accept" field is defined
-			size_t length = httpd_req_get_hdr_value_len(r, "Accept");
-			if(length > 0) {
-				// length+1 is needed because with length the ESP_ERR_HTTPD_RESULT_TRUNC is dropped
-				char* buf = m_malloc(length+1);
-				esp_err_t ret = httpd_req_get_hdr_value_str(r, "Accept", buf, length+1);
-				if(ret == ESP_OK) {
-					if(!mod_http_server_get_acceptance(buf, resource->mediatype)) {
-						//406 status code is not defined in esp-idf httpd_resp_send_err()
-						char* status = "406 Not Acceptable";
-						char* msg    = "This request is not acceptable.";
-						httpd_resp_set_status(r, status);
-						httpd_resp_set_type(r, HTTPD_TYPE_TEXT);
-						httpd_resp_send(r, msg, strlen(msg));
-						error = true;
-						status_code = 406;
-					}
-				}
-				m_free(buf);
-			}
-
-			if(error == false) {
-				// Set the media type
-				httpd_resp_set_type(r, mod_http_mediatype[resource->mediatype]);
-				httpd_resp_send(r, (const char*)resource->value, (ssize_t)resource->value_len);
-				status_code = 200;
-			}
-		}
-		// This is a PUT request
-		else if(r->method == HTTP_PUT) {
-
-			if(mediatype_id != -1) {
-				// Update the mediatype of the resource
-				resource->mediatype = (uint8_t)mediatype_id;
-			}
-			else {
-				httpd_resp_send_err(r, 415, "Unsupported Media Type");
-				error = true;
-				status_code = 415;
-			}
-
-			// Update the resource if new value is provided
-			if(error == false && content != NULL) {
-				// Update the resource
-				resource_update_value(resource, mp_obj_new_str(content, r->content_len));
-				//TODO: compose here a better message
-				const char resp[] = "Resource is updated.";
-				httpd_resp_send(r, resp, strlen(resp));
-				status_code = 200;
-			}
-		}
-
-		// This is a POST request
-		else if(r->method == HTTP_POST) {
-
-			// Generate 5 digit id
-			long int id_int = 10000 + (long int)esp_timer_get_time() % 89999;
-
-			// Convert id from int to string
-			char* id_str = calloc(5, sizeof(char));
-			itoa(id_int, id_str, 10);
-
-			// [parent_uri][/][5_digit_id] + null termination format
-			new_uri = calloc(strlen(r->uri) + 2 + 5, sizeof(char));
-
-			// Concatanate parent_uri + '/' + id
+			// Create httpd_uri_t for register_uri method
 			httpd_uri_t uri;
-			strncpy(new_uri, r->uri, strlen(r->uri));
-			new_uri[strlen(r->uri)] = '/';
-			strncat(new_uri, id_str, 5);
-			new_uri[strlen(r->uri) + 5] = '\0';
 			uri.uri = new_uri;
 
 			// Create the resource in the esp-idf http server's context
-			esp_err_t ret = ESP_OK;
-			ret = httpd_register_uri_handler(server_obj->server, &uri);
+			error = httpd_register_uri_handler(server_obj->server, &uri);
 
-			if(ret == ESP_OK && server_obj->num_of_resources <= server_obj->max_resources) {
+			if(error == ESP_OK && server_obj->num_of_resources < server_obj->max_resources) {
 				// Add resource to MicroPython http server's context with default value
-				add_resource(new_uri, mp_obj_new_str(content, r->content_len), 0);
+				add_resource(new_uri, mp_obj_new_str(content, r->content_len), mediatype_id);
 				server_obj->num_of_resources++;
 
-				if(mediatype_id != -1) {
-					printf("mediatype id: %d\n", mediatype_id);
-					find_resource(new_uri)->mediatype = (uint8_t)mediatype_id;
-				}
+				// Set mediatype on resource
+				find_resource(new_uri)->mediatype = (uint8_t)mediatype_id;
 
-				// 201 status code
-				char* status = "201 Created";
-				char* msg = calloc(11 + strlen(new_uri), sizeof(char));
-				strcat(msg, "Location: ");
-				strcat(msg, uri.uri);
-				httpd_resp_set_status(r, status);
-				httpd_resp_set_type(r, HTTPD_TYPE_TEXT);
-				httpd_resp_set_hdr(r, "Location", new_uri);
-				httpd_resp_send(r, msg, strlen(msg));
+				//201 status code
 				status_code = 201;
+				httpd_resp_set_hdr(r, "Location", new_uri);
+				mod_http_resp_send(r, "201 Created", "Resource is created.");
+
 			}
-			else {
+			else if(server_obj->num_of_resources >= server_obj->max_resources) {
+				// Empty new_uri
 				new_uri = (char *) realloc(new_uri, 1);
 				new_uri = calloc(1, sizeof(char));
-				// 500 status code
-				char* status = "500 Internal Server Error";
-				char* msg    = "";
-				httpd_resp_set_status(r, status);
-				httpd_resp_set_type(r, HTTPD_TYPE_TEXT);
-				httpd_resp_send(r, msg, strlen(msg));
+				//507 status code
+				status_code = 507;
+				mod_http_resp_send(r, "507 Insufficient Storage", "Maximum number of resources on Server is reached.");
+			}
+			else {
+				// Empty new_uri
+				new_uri = (char *) realloc(new_uri, 1);
+				new_uri = calloc(1, sizeof(char));
+				//500 status code
 				status_code = 500;
+				mod_http_resp_send(r, "500 Internal Server Error", "Internal Server Error.");
 			}
 		}
+	}
 
-		else if(r->method == HTTP_DELETE) {
-			// Remove resource
+	// This is a DELETE request
+	else if(r->method == HTTP_DELETE && error == false) {
+
+		// Unregister URI resource
+		error = httpd_unregister_uri(server_obj->server, r->uri);
+		if(error == false) {
+			// Remove URI
 			remove_resource(r->uri);
-			(void)httpd_unregister_uri(server_obj->server, r->uri);
 			server_obj->num_of_resources--;
-
-			// 204 status code is not defined in esp-idf
-			char* status = "204 No Content";
-			char* msg    = "Resource is deleted.";
-			httpd_resp_set_status(r, status);
-			httpd_resp_set_type(r, HTTPD_TYPE_TEXT);
-			httpd_resp_send(r, msg, strlen(msg));
+			//204 status code
 			status_code = 204;
+			mod_http_resp_send(r, "204 No Content", "Resource is deleted.");
+		}
+		else {
+			//500 status code
+			status_code = 500;
+			mod_http_resp_send(r, "500 Internal Server Error", "Internal Server Error.");
+		}
+	}
+
+	// If there is a registered MP callback for this resource the parameters need to be prepared
+	if(r->user_ctx != MP_OBJ_NULL) {
+		// The MicroPython callback is stored in user_ctx
+		args[0] = r->user_ctx;
+		args[1] = mp_obj_new_str(r->uri, strlen(r->uri));
+
+		// Remap method from HTTP to MOD_HTTP
+		if(r->method == HTTP_GET) {
+			args[2] = mp_obj_new_int(MOD_HTTP_GET);
+		}
+		else if(r->method == HTTP_PUT) {
+			args[2] = mp_obj_new_int(MOD_HTTP_PUT);
+		}
+		else if(r->method == HTTP_POST) {
+			args[2] = mp_obj_new_int(MOD_HTTP_POST);
+		}
+		else if(r->method == HTTP_DELETE) {
+			args[2] = mp_obj_new_int(MOD_HTTP_DELETE);
+		}
+		else {
+			args[2] = mp_obj_new_int(-1);
 		}
 
-		// If there is a registered MP callback for this resource the parameters need to be prepared
-		if(r->user_ctx != MP_OBJ_NULL) {
-			// The MicroPython callback is stored in user_ctx
-			args[0] = r->user_ctx;
-			args[1] = mp_obj_new_str(r->uri, strlen(r->uri));
-			args[2] = mp_obj_new_int(r->method);
-			args[3] = request_headers;
+		args[3] = request_headers;
+		if(status_code == 413) {
+			args[4] = mp_obj_new_str("", 0);
+		} else {
 			args[4] = mp_obj_new_str(content, r->content_len);
-			args[5] = mp_obj_new_str(new_uri, strlen(new_uri));
-			args[6] = mp_obj_new_int(status_code);
-
-			// The user registered MicroPython callback will be called decoupled from the HTTP Server context in the IRQ Task
-			mp_irq_queue_interrupt(mod_http_server_callback_handler, (void *)mp_obj_new_tuple(7, args));
 		}
+		args[5] = mp_obj_new_str(new_uri, strlen(new_uri));
+		args[6] = mp_obj_new_int(status_code);
+
+		// The user registered MicroPython callback will be called decoupled from the HTTP Server context in the IRQ Task
+		mp_irq_queue_interrupt(mod_http_server_callback_handler, (void *)mp_obj_new_tuple(7, args));
 	}
 
 	// Free up local content, no longer needed
@@ -696,8 +719,7 @@ STATIC esp_err_t mod_http_server_callback(httpd_req_t *r){
 /******************************************************************************
  DEFINE PRIVATE CLIENT FUNCTIONS
  ******************************************************************************/
-// TODO handle response_headers better
-STATIC mp_obj_t response_headers;
+
 esp_err_t _http_event_handle(esp_http_client_event_t *evt)
 {
 	if(evt->event_id == HTTP_EVENT_ON_CONNECTED) {
@@ -716,8 +738,11 @@ esp_err_t _http_event_handle(esp_http_client_event_t *evt)
 
 			// Fill arguments
 			args[0] = client_callback;
+			// Status Code
 			args[1] = mp_obj_new_int(esp_http_client_get_status_code(client_obj));
+			// Headers
 			args[2] = response_headers;
+			// Body
 			args[3] = mp_obj_new_str((char*)evt->data, evt->data_len);
 
 			// The user registered MicroPython callback will be called decoupled from the HTTP Server context in the IRQ Task
@@ -781,7 +806,6 @@ STATIC mp_obj_t mod_http_resource_register_request_handler(mp_uint_t n_args, con
 			{ MP_QSTR_self,                    MP_ARG_OBJ  | MP_ARG_REQUIRED, },
 			{ MP_QSTR_method,                  MP_ARG_INT  | MP_ARG_REQUIRED, },
 			{ MP_QSTR_callback,                MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
-			{ MP_QSTR_action,                  MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_bool = true}},
 	};
 
 	mp_arg_val_t args[MP_ARRAY_SIZE(mod_http_resource_register_request_handler_args)];
@@ -793,14 +817,8 @@ STATIC mp_obj_t mod_http_resource_register_request_handler(mp_uint_t n_args, con
 	httpd_method_t method = args[1].u_int;
 	// Get the callback
 	mp_obj_t callback = args[2].u_obj;
-	// Get the action
-	bool action = args[3].u_bool;
 
-	if(action == true && callback == MP_OBJ_NULL) {
-		nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "If the \"action\" is TRUE then \"callback\" must be defined"));
-	}
-
-	esp_err_t ret = mod_http_resource_callback_helper(self, method, callback, action);
+	esp_err_t ret = mod_http_resource_callback_helper(self, method, callback);
 
 	if(ret != ESP_OK) {
 		nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Callback of the resource could not be updated, error code: %d!", ret));
@@ -1314,14 +1332,17 @@ STATIC mp_obj_t mod_http_client_send_request(mp_uint_t n_args, const mp_obj_t *p
 
 	// Perform request
 	esp_err_t err = esp_http_client_perform(client_obj);
-	free(client_obj->request);
+
+	// TODO save session
+	// https://github.com/espressif/esp-idf/issues/2684
+	esp_http_client_close(client_obj);
 
 	if (err != ESP_OK) {
-		// Cleanup Client - needed according to esp-idf documentation after every request, but its too slow
-		// in case of HTTPS handshake
-		esp_http_client_cleanup(client_obj);
+
 		// Reinit Client
+		esp_http_client_cleanup(client_obj);
 		client_obj = esp_http_client_init(&client_config);
+
 		nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Request could not sent."));
 	}
 
