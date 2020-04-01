@@ -87,6 +87,7 @@ APP_INC += -I../drivers/sx127x
 APP_INC += -I../ports/stm32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/openthread/src
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/api
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/api/models/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/mesh_common/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/api/core/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/mesh_core
