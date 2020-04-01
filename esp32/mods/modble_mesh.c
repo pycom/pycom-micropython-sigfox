@@ -35,7 +35,49 @@ typedef struct mod_ble_mesh_obj_t {
  ******************************************************************************/
 static bool initialized = false;
 static esp_ble_mesh_prov_t *provision_ptr;
-static esp_ble_mesh_comp_t *component_ptr;
+static esp_ble_mesh_comp_t *composition_ptr;
+
+
+// TODO: this should be automatically configured in mod_ble_mesh_init function
+static const esp_ble_mesh_cfg_srv_t config_server = {
+    .relay = ESP_BLE_MESH_RELAY_DISABLED,
+    .beacon = ESP_BLE_MESH_BEACON_ENABLED,
+    .friend_state = ESP_BLE_MESH_FRIEND_NOT_SUPPORTED,
+    .gatt_proxy = ESP_BLE_MESH_GATT_PROXY_NOT_SUPPORTED,
+    .default_ttl = 7,
+    /* 3 transmissions with 20ms interval */
+    .net_transmit = ESP_BLE_MESH_TRANSMIT(2, 20),
+    .relay_retransmit = ESP_BLE_MESH_TRANSMIT(2, 20),
+};
+
+// TODO: this should be automatically created when the relevant MicroPython API is called, e.g.: mod_ble_mesh_add_model()
+ESP_BLE_MESH_MODEL_PUB_DEFINE(onoff_cli_pub, 2 + 1, ROLE_NODE);
+static esp_ble_mesh_client_t onoff_client;
+
+// TODO: this should be automatically created when the relevant MicroPython API is called, e.g.: mod_ble_mesh_add_model()
+ESP_BLE_MESH_MODEL_PUB_DEFINE(onoff_cli_pub, 2 + 1, ROLE_NODE);
+static esp_ble_mesh_client_t onoff_server;
+
+// TODO: this should be automatically extended when the relevant MicroPython API is called, e.g.: mod_ble_mesh_add_model()
+static esp_ble_mesh_model_t root_models_server[] = {
+    ESP_BLE_MESH_MODEL_CFG_SRV(&config_server),
+    ESP_BLE_MESH_MODEL_GEN_ONOFF_CLI(&onoff_cli_pub, &onoff_server),
+};
+
+// TODO: one root model is enough, this is just for basic testing
+static esp_ble_mesh_model_t root_models_client[] = {
+    ESP_BLE_MESH_MODEL_CFG_SRV(&config_server),
+    ESP_BLE_MESH_MODEL_GEN_ONOFF_CLI(&onoff_cli_pub, &onoff_client),
+};
+
+// TODO: this should be automatically created when the relevant MicroPython API is called, e.g.: mod_ble_mesh_add_element()
+static esp_ble_mesh_elem_t elements[1];
+// TODO: this should be automatically created when the relevant MicroPython API is called, e.g.: mod_ble_mesh_add_element()
+static esp_ble_mesh_comp_t composition = {
+    .cid = CID_ESP,
+    .elements = elements,
+    .element_count = ARRAY_SIZE(elements),
+};
 
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
@@ -45,18 +87,45 @@ static esp_ble_mesh_comp_t *component_ptr;
  DEFINE BLE MESH CLASS FUNCTIONS
  ******************************************************************************/
 
+// TODO: add parameters
 // Initialize the module
-STATIC mp_obj_t mod_ble_mesh_init() {
+STATIC mp_obj_t mod_ble_mesh_init(mp_int_t type) {
 
     // The BLE Mesh module should be initialized only once
     if(initialized == false) {
+        // For now type = 0 means the device is initialized with onoff_server
+        if(type == 0) {
+            elements[0].location         = 0,
+            elements[0].sig_model_count  = sizeof(root_models_server)/sizeof(esp_ble_mesh_model_t);
+            elements[0].sig_models       = root_models_server;
+            elements[0].vnd_model_count  = 0;
+            elements[0].vnd_models       = ESP_BLE_MESH_MODEL_NONE;
+        }
+        // For now type != 0 means the device is initialized with onoff_client
+        else {
+            elements[0].location         = 0,
+            elements[0].sig_model_count  = sizeof(root_models_client)/sizeof(esp_ble_mesh_model_t);
+            elements[0].sig_models       = root_models_client;
+            elements[0].vnd_model_count  = 0;
+            elements[0].vnd_models       = ESP_BLE_MESH_MODEL_NONE;
+        }
+
         provision_ptr = (esp_ble_mesh_prov_t *)heap_caps_malloc(sizeof(esp_ble_mesh_prov_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-        component_ptr = (esp_ble_mesh_comp_t *)heap_caps_malloc(sizeof(esp_ble_mesh_comp_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        composition_ptr = (esp_ble_mesh_comp_t *)heap_caps_malloc(sizeof(esp_ble_mesh_comp_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
-        //TODO: initialize provision and component based on input parameters
+        //TODO: initialize composition based on input parameters
+       composition->cid = 0x02C4;  // CID_ESP=0x02C4
+       composition->elements = elements;
+       composition->element_count = ARRAY_SIZE(elements);
+       //TODO: initialize provision based on input parameters
+       /* Disable OOB security for SILabs Android app */
+       provision_ptr->uuid = dev_uuid;
+       provision_ptr->output_size = 0;
+       provision_ptr->output_actions = 0;
 
-        if(provision_ptr != NULL && component_ptr != NULL) {
-            esp_err_t err = esp_ble_mesh_init(provision_ptr, component_ptr);
+
+        if(provision_ptr != NULL && composition_ptr != NULL) {
+            esp_err_t err = esp_ble_mesh_init(provision_ptr, composition_ptr);
             if(err != ESP_OK) {
                 // TODO: drop back the error code
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "BLE Mesh module could not be initialized!"));
