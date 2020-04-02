@@ -828,6 +828,8 @@ STATIC uint8_t hex_from_char(const char c) {
 }
 
 
+#if defined(FIPY) || defined(LOPY4) || defined(SIPY)
+
 STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_id, ARG_pac, ARG_public_key, ARG_private_key, ARG_force };
     STATIC const mp_arg_t allowed_args[] = {
@@ -997,6 +999,8 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
     }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_sigfox_info_obj, 0, mod_pycom_sigfox_info);
+
+#endif // #if defined(FIPY) || defined(LOPY4) || defined(SIPY)
 
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
