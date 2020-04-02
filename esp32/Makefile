@@ -79,7 +79,7 @@ CROSS_COMPILE = xtensa-esp32-elf-
 ESP_IDF_PATH = $(IDF_PATH)
 ESP_IDF_COMP_PATH = $(ESP_IDF_PATH)/components
 
-CFLAGS_XTENSA = -DESP_PLATFORM -Wpointer-arith -Wall -Werror=all -Wno-error=unused-function \
+CFLAGS_XTENSA = -DESP_PLATFORM -Wall -Werror=all -Wno-error=unused-function \
                 -Wno-error=unused-but-set-variable -Wno-error=unused-variable -Wl,-EL \
                 -mlongcalls -Wall -ffunction-sections -fdata-sections -fno-common \
                 -Wno-sign-compare -Wno-old-style-declaration -fstrict-volatile-bitfields \
