@@ -13,8 +13,14 @@
 #include "py/gc.h"
 #include <string.h>
 
+#include "nvs_flash.h"
+
+#include "esp_bt.h"
+#include "esp_bt_device.h"
+
 #include "esp_ble_mesh_defs.h"
 #include "esp_ble_mesh_common_api.h"
+#include "esp_ble_mesh_provisioning_api.h"
 #include "esp_ble_mesh_config_model_api.h"
 #include "esp_ble_mesh_generic_model_api.h"
 
@@ -23,6 +29,13 @@
  ******************************************************************************/
 #define MOD_BLE_MESH_SERVER              (0)
 #define MOD_BLE_MESH_CLIENT              (1)
+
+#define MOD_BLE_MESH_SERVER              (0)
+#define MOD_BLE_MESH_CLIENT              (1)
+
+#define MOD_ESP_BLE_MESH_PROV_ADV        (1)
+#define ESP_BLE_MESH_PROV_GATT           (2)
+#define ESP_BLE_MESH_PROV_NONE           (4)
 
 #define MOD_BLE_MESH_MODEL_GENERIC       (0)
 #define MOD_BLE_MESH_MODEL_SENSORS       (1)
@@ -35,6 +48,9 @@
 /******************************************************************************
  DEFINE PRIVATE TYPES
  ******************************************************************************/
+
+// There is only one UUID, and it cannot be changed during runtime
+static uint8_t dev_uuid[16] = { 0xdd, 0xdd };
 
 // This is the same as esp_ble_mesh_elem_t just without const members
 typedef struct mod_ble_mesh_elem_s {
@@ -310,29 +326,22 @@ STATIC mp_obj_t mod_ble_mesh_init() {
 
         //TODO: initialize provision based on input parameters
         /* Disable OOB security for SILabs Android app */
-        uint8_t dev_uuid[16] = { 0xdd, 0xdd };
         provision_ptr->uuid = dev_uuid; // From the example
         provision_ptr->output_size = 0;
         provision_ptr->output_actions = 0;
 
-        if(provision_ptr != NULL && composition_ptr != NULL) {
+        memcpy(dev_uuid + 2, esp_bt_dev_get_address(), BD_ADDR_LEN);
+        esp_ble_mesh_register_prov_callback(mod_ble_mesh_generic_client_callback);
+        esp_ble_mesh_register_generic_client_callback(mod_ble_mesh_generic_server_callback);
+        esp_ble_mesh_register_config_server_callback(mod_ble_mesh_config_server_callback);
+        esp_err_t err = esp_ble_mesh_init(provision_ptr, composition_ptr);
 
-            // TODO: all kind of callbacks should be registered here
-            esp_ble_mesh_register_generic_client_callback(mod_ble_mesh_generic_client_callback);
-            esp_ble_mesh_register_generic_server_callback(mod_ble_mesh_generic_server_callback);
-            esp_ble_mesh_register_config_server_callback(mod_ble_mesh_config_server_callback);
-
-            esp_err_t err = esp_ble_mesh_init(provision_ptr, composition_ptr);
-            if(err != ESP_OK) {
-                // TODO: drop back the error code
-                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "BLE Mesh module could not be initialized, error code: %d!", err));
-            }
-            else {
-                initialized = true;
-            }
+        if(err != ESP_OK) {
+        	// TODO: drop back the error code
+        	nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "BLE Mesh module could not be initialized, error code: %d!", err));
         }
         else {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_MemoryError, "BLE Mesh module could not be initialized!"));
+        	initialized = true;
         }
     }
     else {
@@ -343,6 +352,27 @@ STATIC mp_obj_t mod_ble_mesh_init() {
 }
 
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_ble_mesh_init_obj, mod_ble_mesh_init);
+
+// Set node provisioning
+STATIC mp_obj_t mod_ble_mesh_set_node_prov(mp_obj_t bearer) {
+
+	int type = mp_obj_get_int(bearer);
+
+	if(type>=MOD_ESP_BLE_MESH_PROV_ADV && type<= (MOD_ESP_BLE_MESH_PROV_ADV|ESP_BLE_MESH_PROV_GATT)) {
+		// If provision mode is within valid range
+		esp_ble_mesh_node_prov_enable(type);
+	}
+	else if(type!=ESP_BLE_MESH_PROV_NONE) {
+		nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Node provision mode is not valid!"));
+	}
+	else if(esp_ble_mesh_node_is_provisioned()) {
+		esp_ble_mesh_node_prov_disable(MOD_ESP_BLE_MESH_PROV_ADV|ESP_BLE_MESH_PROV_GATT);
+	}
+
+    return mp_const_none;
+}
+
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_ble_mesh_set_node_prov_obj, mod_ble_mesh_set_node_prov);
 
 // TODO: add parameters for configuring the Configuration Server Model
 STATIC mp_obj_t mod_ble_mesh_create_element() {
@@ -369,7 +399,8 @@ STATIC mp_obj_t mod_ble_mesh_create_element() {
     configuration_server_model_ptr->relay = ESP_BLE_MESH_RELAY_DISABLED;
     configuration_server_model_ptr->beacon = ESP_BLE_MESH_BEACON_ENABLED;
     configuration_server_model_ptr->friend_state = ESP_BLE_MESH_FRIEND_NOT_SUPPORTED;
-    configuration_server_model_ptr->gatt_proxy = ESP_BLE_MESH_GATT_PROXY_NOT_SUPPORTED;
+    // To be able to provision with mobile
+    configuration_server_model_ptr->gatt_proxy = BLE_MESH_GATT_PROXY_ENABLED;
     configuration_server_model_ptr->default_ttl = 7;
     configuration_server_model_ptr->net_transmit = ESP_BLE_MESH_TRANSMIT(2, 20); /* 3 transmissions with 20ms interval */
     configuration_server_model_ptr->relay_retransmit = ESP_BLE_MESH_TRANSMIT(2, 20);
@@ -394,9 +425,15 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_ble_mesh_create_element_obj, mod_ble_mesh_c
 
 
 STATIC const mp_map_elem_t mod_ble_mesh_globals_table[] = {
-        { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_BLE_Mesh) },
-        { MP_OBJ_NEW_QSTR(MP_QSTR_init),                            (mp_obj_t)&mod_ble_mesh_init_obj },
-        { MP_OBJ_NEW_QSTR(MP_QSTR_create_element),                  (mp_obj_t)&mod_ble_mesh_create_element_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                       MP_OBJ_NEW_QSTR(MP_QSTR_BLE_Mesh) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_init),                           (mp_obj_t)&mod_ble_mesh_init_obj },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_set_node_prov),                  (mp_obj_t)&mod_ble_mesh_set_node_prov_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_create_element),                 (mp_obj_t)&mod_ble_mesh_create_element_obj },
+
+		// Constants of Arvertisement
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_PROV_ADV),                       MP_OBJ_NEW_SMALL_INT(MOD_ESP_BLE_MESH_PROV_ADV) },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_PROV_GATT),                      MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_PROV_GATT) },
+		{ MP_OBJ_NEW_QSTR(MP_QSTR_PROV_NONE),                      MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_PROV_NONE) },
 
         // Constants of Server-Client
         { MP_OBJ_NEW_QSTR(MP_QSTR_SERVER),                         MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_SERVER) },
