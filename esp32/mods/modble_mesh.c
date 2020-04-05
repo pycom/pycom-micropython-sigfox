@@ -12,6 +12,7 @@
 #include "py/runtime.h"
 #include "py/gc.h"
 #include <string.h>
+#include <stdbool.h>
 
 #include "esp_bt_device.h"
 
@@ -34,6 +35,11 @@
 //TODO: these 2 values below could be used directly from esp_ble_mesh_defs.h
 #define ESP_BLE_MESH_PROV_GATT           (2)
 #define ESP_BLE_MESH_PROV_NONE           (4)
+
+#define MOD_BLE_MESH_RELAY               (1)
+#define MOD_BLE_MESH_GATT_PROXY          (2)
+#define MOD_BLE_MESH_LOW_POWER           (4)
+#define MOD_BLE_MESH_FRIEND              (8)
 
 #define MOD_BLE_MESH_MODEL_GENERIC       (0)
 #define MOD_BLE_MESH_MODEL_SENSORS       (1)
@@ -94,7 +100,11 @@ static mod_ble_mesh_model_class_t *mod_ble_models_list = NULL;
 
 static bool initialized = false;
 static esp_ble_mesh_prov_t *provision_ptr;
-static esp_ble_mesh_comp_t *composition_ptr;
+//static esp_ble_mesh_comp_t *composition_ptr;
+
+static esp_ble_mesh_comp_t composition = {
+    .element_count = 0,
+};
 
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
@@ -321,16 +331,14 @@ STATIC mp_obj_t mod_ble_mesh_init() {
     if(initialized == false) {
 
         provision_ptr = (esp_ble_mesh_prov_t *)heap_caps_malloc(sizeof(esp_ble_mesh_prov_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-        composition_ptr = (esp_ble_mesh_comp_t *)heap_caps_malloc(sizeof(esp_ble_mesh_comp_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
-        if(provision_ptr != NULL && composition_ptr != NULL) {
+        if(provision_ptr != NULL && composition.element_count == 0) {
 
             //TODO: initialize composition based on input parameters
-            composition_ptr->cid = 0x02C4;  // CID_ESP=0x02C4
+            composition.cid = 0x02C4;  // CID_ESP=0x02C4
             // TODO: add support for more Elements
             // TODO: check this cast, it might not be good
-            composition_ptr->elements = (esp_ble_mesh_elem_t *)mod_ble_mesh_element.element;
-            composition_ptr->element_count = 1;
+            composition.elements = (esp_ble_mesh_elem_t *)mod_ble_mesh_element.element;
 
             //TODO: initialize provision based on input parameters
             /* Disable OOB security for SILabs Android app */
@@ -346,7 +354,7 @@ STATIC mp_obj_t mod_ble_mesh_init() {
             esp_ble_mesh_register_prov_callback(mod_ble_mesh_provision_callback);
 
 
-            esp_err_t err = esp_ble_mesh_init(provision_ptr, composition_ptr);
+            esp_err_t err = esp_ble_mesh_init(provision_ptr, &composition);
 
             if(err != ESP_OK) {
                 // TODO: drop back the error code
@@ -389,53 +397,97 @@ STATIC mp_obj_t mod_ble_mesh_set_node_prov(mp_obj_t bearer) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_ble_mesh_set_node_prov_obj, mod_ble_mesh_set_node_prov);
 
 // TODO: add parameters for configuring the Configuration Server Model
-STATIC mp_obj_t mod_ble_mesh_create_element() {
+STATIC mp_obj_t mod_ble_mesh_create_element(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
-    //TODO: add support for several more elements
-    mod_ble_mesh_element_class_t *ble_mesh_element = &mod_ble_mesh_element;
+    STATIC const mp_arg_t mod_ble_mesh_create_element_args[] = {
+            { MP_QSTR_primary,               MP_ARG_BOOL | MP_ARG_KW_ONLY | MP_ARG_REQUIRED },
+            { MP_QSTR_feature,               MP_ARG_INT  | MP_ARG_KW_ONLY, {.u_int = 0}},
+            { MP_QSTR_beacon,                MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_bool = true}},
+            { MP_QSTR_ttl,                   MP_ARG_INT  | MP_ARG_KW_ONLY, {.u_int = 7}},
+    };
 
+    mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_create_element_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_ble_mesh_create_element_args, args);
 
-    ble_mesh_element->base.type = &mod_ble_mesh_element_type;
-    ble_mesh_element->element = (mod_ble_mesh_elem_t *)heap_caps_malloc(sizeof(mod_ble_mesh_elem_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    // Get primary bool
+    bool primary = args[0].u_bool;
 
-    ble_mesh_element->element->location         = 0;
-    ble_mesh_element->element->sig_model_count  = 0;
-    ble_mesh_element->element->sig_models       = NULL;
-    ble_mesh_element->element->vnd_model_count  = 0;
-    ble_mesh_element->element->vnd_models       = NULL;
+    if(primary) {
+        if(composition.element_count == 0) {
 
+            // Get Configuration Server Model params
+            int feature = args[1].u_int;
+            bool beacon = args[2].u_bool;
+            int ttl = args[3].u_int;
 
-    // Add the mandatory Configuration Server Model
-    esp_ble_mesh_cfg_srv_t* configuration_server_model_ptr = (esp_ble_mesh_cfg_srv_t *)heap_caps_malloc(sizeof(esp_ble_mesh_cfg_srv_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+            //TODO: add support for several more elements
+            mod_ble_mesh_element_class_t *ble_mesh_element = &mod_ble_mesh_element;
 
-    // TODO: fetch the parameters via the API
-    // Configure the Configuration Server Model
-    configuration_server_model_ptr->relay = ESP_BLE_MESH_RELAY_DISABLED;
-    configuration_server_model_ptr->beacon = ESP_BLE_MESH_BEACON_ENABLED;
-    configuration_server_model_ptr->friend_state = ESP_BLE_MESH_FRIEND_NOT_SUPPORTED;
-    // To be able to provision with mobile
-    configuration_server_model_ptr->gatt_proxy = BLE_MESH_GATT_PROXY_ENABLED;
-    configuration_server_model_ptr->default_ttl = 7;
-    configuration_server_model_ptr->net_transmit = ESP_BLE_MESH_TRANSMIT(2, 20); /* 3 transmissions with 20ms interval */
-    configuration_server_model_ptr->relay_retransmit = ESP_BLE_MESH_TRANSMIT(2, 20);
+            // Initiate an empty element
+            ble_mesh_element->base.type = &mod_ble_mesh_element_type;
+            ble_mesh_element->element = (mod_ble_mesh_elem_t *)heap_caps_malloc(sizeof(mod_ble_mesh_elem_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+            ble_mesh_element->element->location         = 0;
+            ble_mesh_element->element->sig_model_count  = 0;
+            ble_mesh_element->element->sig_models       = NULL;
+            ble_mesh_element->element->vnd_model_count  = 0;
+            ble_mesh_element->element->vnd_models       = NULL;
+            ble_mesh_element->element->sig_model_count = 0;
 
-    // Prepare temp model
-    esp_ble_mesh_model_t tmp_model = ESP_BLE_MESH_MODEL_CFG_SRV(configuration_server_model_ptr);
+            // Add the mandatory Configuration Server Model
+            esp_ble_mesh_cfg_srv_t* configuration_server_model_ptr = (esp_ble_mesh_cfg_srv_t *)heap_caps_malloc(sizeof(esp_ble_mesh_cfg_srv_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
-    // Allocate memory for the model
-    ble_mesh_element->element->sig_models = (esp_ble_mesh_model_t*)heap_caps_malloc(sizeof(esp_ble_mesh_model_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    // Copy the already prepared element to the new location
-    memcpy(ble_mesh_element->element->sig_models, &tmp_model, sizeof(esp_ble_mesh_model_t));
+            // Configure the Configuration Server Model
+            configuration_server_model_ptr->relay = ((feature & MOD_BLE_MESH_RELAY) > 0);
+            configuration_server_model_ptr->friend_state = ((feature & MOD_BLE_MESH_FRIEND) > 0);
+            configuration_server_model_ptr->gatt_proxy = ((feature & MOD_BLE_MESH_GATT_PROXY) > 0);
 
-    // Create the MicroPython Model
-    // TODO: add callback and value
-    (void)mod_ble_add_model_to_list(ble_mesh_element, ble_mesh_element->element->sig_models, NULL, NULL);
-    // This is the first model
-    ble_mesh_element->element->sig_model_count = 1;
+            configuration_server_model_ptr->beacon = beacon;
+            configuration_server_model_ptr->default_ttl = ttl;
 
-    return ble_mesh_element;
+            configuration_server_model_ptr->net_transmit = ESP_BLE_MESH_TRANSMIT(2, 20); /* 3 transmissions with 20ms interval */
+            configuration_server_model_ptr->relay_retransmit = ESP_BLE_MESH_TRANSMIT(2, 20);
+
+            // Prepare temp model
+            esp_ble_mesh_model_t tmp_model = ESP_BLE_MESH_MODEL_CFG_SRV(configuration_server_model_ptr);
+
+            // Allocate memory for the model
+            ble_mesh_element->element->sig_models = (esp_ble_mesh_model_t*)heap_caps_malloc(sizeof(esp_ble_mesh_model_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+            // Copy the already prepared element to the new location
+            memcpy(ble_mesh_element->element->sig_models, &tmp_model, sizeof(esp_ble_mesh_model_t));
+
+            // Create the MicroPython Model
+            // TODO: add callback and value
+            (void)mod_ble_add_model_to_list(ble_mesh_element, ble_mesh_element->element->sig_models, NULL, NULL);
+            // This is the first model
+            ble_mesh_element->element->sig_model_count = 1;
+
+            // First element
+            composition.element_count = 1;
+
+            return ble_mesh_element;
+        }
+        else {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Only one primary element is allowed!"));
+
+            return mp_const_none;
+        }
+    }
+    else {
+        if(composition.element_count > 0) {
+            // Can be added here empty secondary element
+            //TODO: add support for more elements
+
+            //Return none until not implemented scenario
+            return mp_const_none;
+        }
+        else {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Cannot create secondary element before primary exists!"));
+
+            return mp_const_none;
+        }
+    }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_ble_mesh_create_element_obj, mod_ble_mesh_create_element);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_create_element_obj, 0, mod_ble_mesh_create_element);
 
 
 STATIC const mp_map_elem_t mod_ble_mesh_globals_table[] = {
@@ -448,6 +500,11 @@ STATIC const mp_map_elem_t mod_ble_mesh_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_ADV),                       MP_OBJ_NEW_SMALL_INT(MOD_ESP_BLE_MESH_PROV_ADV) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_GATT),                      MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_PROV_GATT) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_NONE),                      MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_PROV_NONE) },
+        // Constants of Node Features
+        { MP_OBJ_NEW_QSTR(MP_QSTR_RELAY),                          MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_RELAY) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_LOW_POWER),                      MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_LOW_POWER) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_GATT_PROXY),                     MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_GATT_PROXY) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_FRIEND),                         MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_FRIEND) },
         // Constants of Server-Client
         { MP_OBJ_NEW_QSTR(MP_QSTR_SERVER),                         MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_SERVER) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_CLIENT),                         MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_CLIENT) },
