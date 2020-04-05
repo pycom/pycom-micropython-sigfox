@@ -13,9 +13,6 @@
 #include "py/gc.h"
 #include <string.h>
 
-#include "nvs_flash.h"
-
-#include "esp_bt.h"
 #include "esp_bt_device.h"
 
 #include "esp_ble_mesh_defs.h"
