@@ -33,8 +33,8 @@
 
 #define MOD_ESP_BLE_MESH_PROV_ADV        (1)
 //TODO: these 2 values below could be used directly from esp_ble_mesh_defs.h
-#define ESP_BLE_MESH_PROV_GATT           (2)
-#define ESP_BLE_MESH_PROV_NONE           (4)
+#define MOD_ESP_BLE_MESH_PROV_GATT       (2)
+#define MOD_ESP_BLE_MESH_PROV_NONE       (4)
 
 #define MOD_BLE_MESH_RELAY               (1)
 #define MOD_BLE_MESH_GATT_PROXY          (2)
@@ -100,11 +100,7 @@ static mod_ble_mesh_model_class_t *mod_ble_models_list = NULL;
 
 static bool initialized = false;
 static esp_ble_mesh_prov_t *provision_ptr;
-//static esp_ble_mesh_comp_t *composition_ptr;
-
-static esp_ble_mesh_comp_t composition = {
-    .element_count = 0,
-};
+static esp_ble_mesh_comp_t *composition_ptr;
 
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
@@ -331,14 +327,16 @@ STATIC mp_obj_t mod_ble_mesh_init() {
     if(initialized == false) {
 
         provision_ptr = (esp_ble_mesh_prov_t *)heap_caps_malloc(sizeof(esp_ble_mesh_prov_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        composition_ptr = (esp_ble_mesh_comp_t *)heap_caps_malloc(sizeof(esp_ble_mesh_comp_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
-        if(provision_ptr != NULL && composition.element_count == 0) {
+        if(provision_ptr != NULL && composition_ptr != NULL) {
 
             //TODO: initialize composition based on input parameters
-            composition.cid = 0x02C4;  // CID_ESP=0x02C4
+            composition_ptr->cid = 0x02C4;  // CID_ESP=0x02C4
             // TODO: add support for more Elements
             // TODO: check this cast, it might not be good
-            composition.elements = (esp_ble_mesh_elem_t *)mod_ble_mesh_element.element;
+            composition_ptr->elements = (esp_ble_mesh_elem_t *)mod_ble_mesh_element.element;
+            composition_ptr->element_count = 1;
 
             //TODO: initialize provision based on input parameters
             /* Disable OOB security for SILabs Android app */
@@ -354,7 +352,7 @@ STATIC mp_obj_t mod_ble_mesh_init() {
             esp_ble_mesh_register_prov_callback(mod_ble_mesh_provision_callback);
 
 
-            esp_err_t err = esp_ble_mesh_init(provision_ptr, &composition);
+            esp_err_t err = esp_ble_mesh_init(provision_ptr, composition_ptr);
 
             if(err != ESP_OK) {
                 // TODO: drop back the error code
@@ -382,14 +380,14 @@ STATIC mp_obj_t mod_ble_mesh_set_node_prov(mp_obj_t bearer) {
     int type = mp_obj_get_int(bearer);
 
     // Check if provision mode is within valid range
-    if((type >= MOD_ESP_BLE_MESH_PROV_ADV) && (type <= (MOD_ESP_BLE_MESH_PROV_ADV|ESP_BLE_MESH_PROV_GATT))) {
+    if((type >= MOD_ESP_BLE_MESH_PROV_ADV) && (type <= (MOD_ESP_BLE_MESH_PROV_ADV|MOD_ESP_BLE_MESH_PROV_GATT))) {
         esp_ble_mesh_node_prov_enable(type);
     }
-    else if(type != ESP_BLE_MESH_PROV_NONE) {
+    else if(type != MOD_ESP_BLE_MESH_PROV_NONE) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Node provision mode is not valid!"));
     }
     else if(esp_ble_mesh_node_is_provisioned()) {
-        esp_ble_mesh_node_prov_disable(MOD_ESP_BLE_MESH_PROV_ADV|ESP_BLE_MESH_PROV_GATT);
+        esp_ble_mesh_node_prov_disable(MOD_ESP_BLE_MESH_PROV_ADV|MOD_ESP_BLE_MESH_PROV_GATT);
     }
 
     return mp_const_none;
@@ -413,8 +411,8 @@ STATIC mp_obj_t mod_ble_mesh_create_element(mp_uint_t n_args, const mp_obj_t *po
     bool primary = args[0].u_bool;
 
     if(primary) {
-        if(composition.element_count == 0) {
-
+        // TODO: check here if not other primary element exists
+        if(1) {
             // Get Configuration Server Model params
             int feature = args[1].u_int;
             bool beacon = args[2].u_bool;
@@ -461,30 +459,21 @@ STATIC mp_obj_t mod_ble_mesh_create_element(mp_uint_t n_args, const mp_obj_t *po
             // This is the first model
             ble_mesh_element->element->sig_model_count = 1;
 
-            // First element
-            composition.element_count = 1;
-
             return ble_mesh_element;
         }
         else {
+            // TODO: add support for more elements
             nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Only one primary element is allowed!"));
 
             return mp_const_none;
         }
     }
     else {
-        if(composition.element_count > 0) {
-            // Can be added here empty secondary element
-            //TODO: add support for more elements
-
-            //Return none until not implemented scenario
-            return mp_const_none;
-        }
-        else {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Cannot create secondary element before primary exists!"));
-
-            return mp_const_none;
-        }
+        // Can be added here empty secondary element
+        //TODO: add support for more elements
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Only primary element is supported now!"));
+        //Return none until not implemented scenario
+        return mp_const_none;
     }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_create_element_obj, 0, mod_ble_mesh_create_element);
@@ -498,8 +487,8 @@ STATIC const mp_map_elem_t mod_ble_mesh_globals_table[] = {
 
         // Constants of Advertisement
         { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_ADV),                       MP_OBJ_NEW_SMALL_INT(MOD_ESP_BLE_MESH_PROV_ADV) },
-        { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_GATT),                      MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_PROV_GATT) },
-        { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_NONE),                      MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_PROV_NONE) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_GATT),                      MP_OBJ_NEW_SMALL_INT(MOD_ESP_BLE_MESH_PROV_GATT) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_NONE),                      MP_OBJ_NEW_SMALL_INT(MOD_ESP_BLE_MESH_PROV_NONE) },
         // Constants of Node Features
         { MP_OBJ_NEW_QSTR(MP_QSTR_RELAY),                          MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_RELAY) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_LOW_POWER),                      MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_LOW_POWER) },
