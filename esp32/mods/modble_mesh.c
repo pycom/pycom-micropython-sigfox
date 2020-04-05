@@ -21,6 +21,9 @@
 #include "esp_ble_mesh_provisioning_api.h"
 #include "esp_ble_mesh_config_model_api.h"
 #include "esp_ble_mesh_generic_model_api.h"
+#include "esp_ble_mesh_networking_api.h"
+
+#include "mpirq.h"
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -77,13 +80,18 @@ typedef struct mod_ble_mesh_model_class_s {
     struct mod_ble_mesh_model_class_s* next;
     // Pointer to the element owns this model
     mod_ble_mesh_element_class_t *element;
-    // Pointer to the Model in esp ble context
-    esp_ble_mesh_model_t* esp_ble_model;
+    // Index in the esp ble context
+    uint8_t index;
     // User defined MicroPython callback function
     mp_obj_t callback;
     // MicroPython object for the value of the model
     mp_obj_t value;
 }mod_ble_mesh_model_class_t;
+
+typedef struct mod_ble_mesh_generic_server_callback_param_s {
+    esp_ble_mesh_generic_server_cb_event_t event;
+    esp_ble_mesh_generic_server_cb_param_t* param;
+}mod_ble_mesh_generic_server_callback_param_t;
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -106,7 +114,10 @@ static esp_ble_mesh_comp_t *composition_ptr;
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
 
-static mod_ble_mesh_model_class_t* mod_ble_add_model_to_list(mod_ble_mesh_element_class_t* ble_mesh_element, esp_ble_mesh_model_t* esp_ble_model, mp_obj_t callback, mp_obj_t value) {
+static mod_ble_mesh_model_class_t* mod_ble_add_model_to_list(mod_ble_mesh_element_class_t* ble_mesh_element,
+                                                             uint8_t index,
+                                                             mp_obj_t callback,
+                                                             mp_obj_t value) {
 
     mod_ble_mesh_model_class_t *model = mod_ble_models_list;
     mod_ble_mesh_model_class_t *model_last = NULL; // Only needed as helper pointer for the case when the list is fully empty
@@ -126,18 +137,16 @@ static mod_ble_mesh_model_class_t* mod_ble_add_model_to_list(mod_ble_mesh_elemen
     // Initialize the new Model
     model->base.type = &mod_ble_mesh_model_type;
     model->element = ble_mesh_element;
-    model->esp_ble_model = esp_ble_model;
+    model->index = index;
     model->callback = callback;
     model->value = value;
     model->next = NULL;
 
     // Add the new element to the list
     if(model_last != NULL) {
-        printf("Append to the end of the list\n");
         model_last->next = model;
     }
     else {
-        printf("This is the very first element\n");
         // This means this new element is the very first one in the list
         mod_ble_models_list = model;
     }
@@ -151,7 +160,7 @@ static mod_ble_mesh_model_class_t* mod_ble_find_model(esp_ble_mesh_model_t *esp_
 
     // Iterate through on all the Models
     while(model != NULL) {
-        if(model->esp_ble_model == esp_ble_model) {
+        if(model->index == esp_ble_model->model_idx) {
             return model;
         }
         model = model->next;
@@ -159,6 +168,82 @@ static mod_ble_mesh_model_class_t* mod_ble_find_model(esp_ble_mesh_model_t *esp_
 
     return NULL;
 }
+
+// TODO: check what other arguments are needed, or whether these arguments are needed at all
+static void mod_ble_mesh_generic_onoff_server_callback_call_mp_callback(mp_obj_t callback,
+                                                                        esp_ble_mesh_generic_server_cb_event_t event,
+                                                                        uint32_t recv_op,
+                                                                        uint8_t onoff){
+    // Call the registered function
+    if(callback != NULL) {
+        mp_obj_t args[3];
+        args[0] = mp_obj_new_int(event);
+        //TODO: check what other object should be passed from the context
+        args[1] = mp_obj_new_int(recv_op);
+        args[2] = mp_obj_new_bool(onoff);
+
+        // TODO: check if these 3 arguments are really needed here
+        mp_call_function_n_kw(callback, 3, 0, args);
+    }
+}
+
+static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
+
+    mod_ble_mesh_generic_server_callback_param_t* callback_param = (mod_ble_mesh_generic_server_callback_param_t*)param_in;
+    mod_ble_mesh_model_class_t* mod_ble_model = mod_ble_find_model(callback_param->param->model);
+
+    if(mod_ble_model != NULL) {
+
+        esp_ble_mesh_generic_server_cb_event_t event = callback_param->event;
+        esp_ble_mesh_generic_server_cb_param_t* param = callback_param->param;
+        esp_ble_mesh_model_t* model = callback_param->param->model;
+        esp_ble_mesh_gen_onoff_srv_t* srv = (esp_ble_mesh_gen_onoff_srv_t*)callback_param->param->model->user_data;
+
+        switch (event) {
+            case ESP_BLE_MESH_GENERIC_SERVER_STATE_CHANGE_EVT:
+                if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET ||
+                    param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK) {
+
+                    //TODO: in the example here the new value is not saved into srv, why ???
+                    //srv->state.onoff = param->value.state_change.onoff_set.onoff;
+
+                    // Call the registered MP function
+                    mod_ble_mesh_generic_onoff_server_callback_call_mp_callback(mod_ble_model->callback,
+                                                                                event,
+                                                                                param->ctx.recv_op,
+                                                                                param->value.state_change.onoff_set.onoff);
+                }
+                break;
+            case ESP_BLE_MESH_GENERIC_SERVER_RECV_GET_MSG_EVT:
+                if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET) {
+                    esp_ble_mesh_server_model_send_msg(model, &callback_param->param->ctx,
+                                                       ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS, sizeof(srv->state.onoff), &srv->state.onoff);
+                }
+                break;
+            case ESP_BLE_MESH_GENERIC_SERVER_RECV_SET_MSG_EVT:
+                if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET ||
+                    param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK) {
+
+                    srv->state.onoff = callback_param->param->value.set.onoff.onoff;
+
+                    if (callback_param->param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET) {
+                        esp_ble_mesh_server_model_send_msg(model, &callback_param->param->ctx,
+                                                           ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS, sizeof(srv->state.onoff), &srv->state.onoff);
+                    }
+                    // Call the registered MP function
+                    mod_ble_mesh_generic_onoff_server_callback_call_mp_callback(mod_ble_model->callback,
+                                                                                event,
+                                                                                param->ctx.recv_op,
+                                                                                srv->state.onoff);
+                }
+                break;
+            default:
+                // Handle it silently
+                break;
+        }
+    }
+}
+
 
 static void mod_ble_mesh_provision_callback(esp_ble_mesh_prov_cb_event_t event, esp_ble_mesh_prov_cb_param_t *param) {
     // TODO: here the user registered MicroPython API should be called with correct parameters via the Interrupt Task
@@ -197,45 +282,25 @@ static void mod_ble_mesh_generic_client_callback(esp_ble_mesh_generic_client_cb_
 
     // TODO: here the user registered MicroPython API should be called with correct parameters via the Interrupt Task
 
-    printf("mod_ble_mesh_generic_client_callback is called!\n");
-    printf("event: %d\n", event);
-    printf("error code: %d\n", param->error_code);
-//    mod_ble_mesh_model_class_t* model = mod_ble_find_model(param->params->model);
-//
-//    mp_obj_t args[3];
-//    // Call the registered function
-//    mp_call_function_n_kw(model->callback, 3, 0, args);
 
 }
 
 static void mod_ble_mesh_generic_server_callback(esp_ble_mesh_generic_server_cb_event_t event, esp_ble_mesh_generic_server_cb_param_t *param) {
 
+    mod_ble_mesh_generic_server_callback_param_t* callback_param_ptr = (mod_ble_mesh_generic_server_callback_param_t *)heap_caps_malloc(sizeof(mod_ble_mesh_generic_server_callback_param_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    callback_param_ptr->param = (esp_ble_mesh_generic_server_cb_param_t *)heap_caps_malloc(sizeof(esp_ble_mesh_generic_server_cb_param_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
-    printf("mod_ble_mesh_generic_server_callback is called!\n");
-    printf("event: %d\n", event);
-    mod_ble_mesh_model_class_t* model = mod_ble_find_model(param->model);
+    callback_param_ptr->event = event;
+    memcpy(callback_param_ptr->param, param, sizeof(esp_ble_mesh_generic_server_cb_param_t));
 
-
-    mp_obj_t args[3];
-    args[0] = mp_obj_new_int(event);
-    //TODO: check what other object should be pased from the context
-    args[1] = mp_obj_new_int(param->ctx.recv_op);
-    // TODO: here it needs to be decided what value.set.xyz to use, maybe when new Model is added it should be stored
-    // TODO: this is only needed if the event is SET event
-    args[2] = mp_obj_new_bool(param->value.set.onoff.onoff);
-
-    // TODO: Double check whether direct call to MicroPython is OK, or it should be done from the Interrupt Task
-    // Call the registered function
-    mp_call_function_n_kw(model->callback, 3, 0, args);
+    // The registered callback will be handled in context of TASK_Interrupts
+    mp_irq_queue_interrupt_non_ISR(mod_ble_mesh_generic_server_callback_handler, (void *)callback_param_ptr);
 
 }
 
 static void mod_ble_mesh_config_server_callback(esp_ble_mesh_cfg_server_cb_event_t event, esp_ble_mesh_cfg_server_cb_param_t *param) {
 
     // TODO: here the user registered MicroPython API should be called with correct parameters via the Interrupt Task
-
-    printf("mod_ble_mesh_config_server_callback is called!\n");
-    printf("event: %d\n", event);
 
     if (event == ESP_BLE_MESH_CFG_SERVER_STATE_CHANGE_EVT) {
         switch (param->ctx.recv_op) {
@@ -266,9 +331,6 @@ static void mod_ble_mesh_config_server_callback(esp_ble_mesh_cfg_server_cb_event
             break;
         }
     }
-
-    //mod_ble_mesh_model_class_t* model = mod_ble_find_model(param->model);
-
 }
 
 /******************************************************************************
@@ -365,7 +427,7 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
 
     // Create the MicroPython Model
     mod_ble_mesh_model_class_t* model = mod_ble_add_model_to_list(ble_mesh_element,
-                                                                 &ble_mesh_element->element->sig_models[ble_mesh_element->element->sig_model_count],
+                                                                 ble_mesh_element->element->sig_model_count,
                                                                  callback,
                                                                  value);
 
@@ -531,7 +593,7 @@ STATIC mp_obj_t mod_ble_mesh_create_element(mp_uint_t n_args, const mp_obj_t *po
 
             // Create the MicroPython Model
             // TODO: add callback and value
-            (void)mod_ble_add_model_to_list(ble_mesh_element, ble_mesh_element->element->sig_models, NULL, NULL);
+            (void)mod_ble_add_model_to_list(ble_mesh_element, 0, NULL, NULL);
             // This is the first model
             ble_mesh_element->element->sig_model_count = 1;
 
