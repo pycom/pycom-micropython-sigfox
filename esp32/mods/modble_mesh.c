@@ -109,20 +109,38 @@ static esp_ble_mesh_comp_t *composition_ptr;
 static mod_ble_mesh_model_class_t* mod_ble_add_model_to_list(mod_ble_mesh_element_class_t* ble_mesh_element, esp_ble_mesh_model_t* esp_ble_model, mp_obj_t callback, mp_obj_t value) {
 
     mod_ble_mesh_model_class_t *model = mod_ble_models_list;
+    mod_ble_mesh_model_class_t *model_last = NULL; // Only needed as helper pointer for the case when the list is fully empty
 
-    // Find the last element in the list
+
+    // Find the last element of the list
     while(model != NULL) {
+        // Save the last Model we checked
+        model_last = model;
+        // Jump to the next Model
         model = model->next;
     }
 
+    // Allocate memory for the new element
     //TODO: check this allocation, it should be from GC controlled memory
     model = (mod_ble_mesh_model_class_t*)heap_caps_malloc(sizeof(mod_ble_mesh_model_class_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    // Initialize the new Model
     model->base.type = &mod_ble_mesh_model_type;
     model->element = ble_mesh_element;
     model->esp_ble_model = esp_ble_model;
     model->callback = callback;
     model->value = value;
     model->next = NULL;
+
+    // Add the new element to the list
+    if(model_last != NULL) {
+        printf("Append to the end of the list\n");
+        model_last->next = model;
+    }
+    else {
+        printf("This is the very first element\n");
+        // This means this new element is the very first one in the list
+        mod_ble_models_list = model;
+    }
 
     return model;
 }
@@ -131,7 +149,7 @@ static mod_ble_mesh_model_class_t* mod_ble_find_model(esp_ble_mesh_model_t *esp_
 
     mod_ble_mesh_model_class_t *model = mod_ble_models_list;
 
-    // Find the last element in the list
+    // Iterate through on all the Models
     while(model != NULL) {
         if(model->esp_ble_model == esp_ble_model) {
             return model;
@@ -146,6 +164,33 @@ static void mod_ble_mesh_provision_callback(esp_ble_mesh_prov_cb_event_t event, 
     // TODO: here the user registered MicroPython API should be called with correct parameters via the Interrupt Task
     printf("mod_ble_mesh_provision_callback is called!\n");
 
+    switch (event) {
+        case ESP_BLE_MESH_PROV_REGISTER_COMP_EVT:
+            printf("ESP_BLE_MESH_PROV_REGISTER_COMP_EVT, err_code %d\n", param->prov_register_comp.err_code);
+            break;
+        case ESP_BLE_MESH_NODE_PROV_ENABLE_COMP_EVT:
+            printf("ESP_BLE_MESH_NODE_PROV_ENABLE_COMP_EVT, err_code %d\n", param->node_prov_enable_comp.err_code);
+            break;
+        case ESP_BLE_MESH_NODE_PROV_LINK_OPEN_EVT:
+            printf("ESP_BLE_MESH_NODE_PROV_LINK_OPEN_EVT, bearer %s\n",
+                param->node_prov_link_open.bearer == ESP_BLE_MESH_PROV_ADV ? "PB-ADV" : "PB-GATT");
+            break;
+        case ESP_BLE_MESH_NODE_PROV_LINK_CLOSE_EVT:
+            printf("ESP_BLE_MESH_NODE_PROV_LINK_CLOSE_EVT, bearer %s\n",
+                param->node_prov_link_close.bearer == ESP_BLE_MESH_PROV_ADV ? "PB-ADV" : "PB-GATT");
+            break;
+        case ESP_BLE_MESH_NODE_PROV_COMPLETE_EVT:
+            printf("ESP_BLE_MESH_NODE_PROV_COMPLETE_EVT\n");
+            break;
+        case ESP_BLE_MESH_NODE_PROV_RESET_EVT:
+            printf("ESP_BLE_MESH_NODE_PROV_RESET_EVT\n");
+            break;
+        case ESP_BLE_MESH_NODE_SET_UNPROV_DEV_NAME_COMP_EVT:
+            printf("ESP_BLE_MESH_NODE_SET_UNPROV_DEV_NAME_COMP_EVT, err_code %d\n", param->node_set_unprov_dev_name_comp.err_code);
+            break;
+        default:
+            break;
+        }
 }
 
 static void mod_ble_mesh_generic_client_callback(esp_ble_mesh_generic_client_cb_event_t event, esp_ble_mesh_generic_client_cb_param_t *param) {
@@ -170,6 +215,7 @@ static void mod_ble_mesh_generic_server_callback(esp_ble_mesh_generic_server_cb_
     printf("event: %d\n", event);
     mod_ble_mesh_model_class_t* model = mod_ble_find_model(param->model);
 
+
     mp_obj_t args[3];
     args[0] = mp_obj_new_int(event);
     //TODO: check what other object should be pased from the context
@@ -190,6 +236,36 @@ static void mod_ble_mesh_config_server_callback(esp_ble_mesh_cfg_server_cb_event
 
     printf("mod_ble_mesh_config_server_callback is called!\n");
     printf("event: %d\n", event);
+
+    if (event == ESP_BLE_MESH_CFG_SERVER_STATE_CHANGE_EVT) {
+        switch (param->ctx.recv_op) {
+        case ESP_BLE_MESH_MODEL_OP_APP_KEY_ADD:
+            printf("ESP_BLE_MESH_MODEL_OP_APP_KEY_ADD\n");
+            printf("net_idx 0x%04x, app_idx 0x%04x\n",
+                param->value.state_change.appkey_add.net_idx,
+                param->value.state_change.appkey_add.app_idx);
+            ESP_LOG_BUFFER_HEX("AppKey", param->value.state_change.appkey_add.app_key, 16);
+            break;
+        case ESP_BLE_MESH_MODEL_OP_MODEL_APP_BIND:
+            printf("ESP_BLE_MESH_MODEL_OP_MODEL_APP_BIND\n");
+            printf("elem_addr 0x%04x, app_idx 0x%04x, cid 0x%04x, mod_id 0x%04x\n",
+                param->value.state_change.mod_app_bind.element_addr,
+                param->value.state_change.mod_app_bind.app_idx,
+                param->value.state_change.mod_app_bind.company_id,
+                param->value.state_change.mod_app_bind.model_id);
+            break;
+        case ESP_BLE_MESH_MODEL_OP_MODEL_SUB_ADD:
+            printf("ESP_BLE_MESH_MODEL_OP_MODEL_SUB_ADD\n");
+            printf("elem_addr 0x%04x, sub_addr 0x%04x, cid 0x%04x, mod_id 0x%04x\n",
+                param->value.state_change.mod_sub_add.element_addr,
+                param->value.state_change.mod_sub_add.sub_addr,
+                param->value.state_change.mod_sub_add.company_id,
+                param->value.state_change.mod_sub_add.model_id);
+            break;
+        default:
+            break;
+        }
+    }
 
     //mod_ble_mesh_model_class_t* model = mod_ble_find_model(param->model);
 
