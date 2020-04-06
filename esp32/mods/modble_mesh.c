@@ -110,6 +110,9 @@ static bool initialized = false;
 static esp_ble_mesh_prov_t *provision_ptr;
 static esp_ble_mesh_comp_t *composition_ptr;
 
+// Find a better place for definition
+mp_obj_t provision_callback;
+
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
@@ -244,12 +247,48 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
     }
 }
 
+STATIC void mod_http_server_callback_handler(void *arg_in) {
+
+    /* The received arg_in is a tuple with 1 element
+     * 0 - user's MicroPython callback
+     * 1 - OOB Pass as int/string
+     */
+
+    mp_obj_t args[1];
+    // OOB Pass
+    args[0] = ((mp_obj_tuple_t*)arg_in)->items[1];
+
+    // Call the user registered MicroPython function
+    mp_call_function_n_kw(((mp_obj_tuple_t*)arg_in)->items[0], 1, 0, args);
+
+}
+
 
 static void mod_ble_mesh_provision_callback(esp_ble_mesh_prov_cb_event_t event, esp_ble_mesh_prov_cb_param_t *param) {
     // TODO: here the user registered MicroPython API should be called with correct parameters via the Interrupt Task
     printf("mod_ble_mesh_provision_callback is called!\n");
 
     switch (event) {
+        case ESP_BLE_MESH_NODE_PROV_OUTPUT_NUMBER_EVT:
+            // Call the registered function
+            if(provision_callback != NULL) {
+                mp_obj_t args[2];
+                args[0] = provision_callback;
+                args[1] = mp_obj_new_int(param->node_prov_output_num.number);
+                // The user registered MicroPython callback will be called decoupled from the HTTP Server context in the IRQ Task
+                mp_irq_queue_interrupt(mod_http_server_callback_handler, (void *)mp_obj_new_tuple(2, args));
+            }
+            break;
+        case ESP_BLE_MESH_NODE_PROV_OUTPUT_STRING_EVT:
+            // Call the registered function
+            if(provision_callback != NULL) {
+                mp_obj_t args[2];
+                args[0] = provision_callback;
+                args[1] = mp_obj_new_str(param->node_prov_output_str.string, strlen(param->node_prov_output_str.string));
+                // The user registered MicroPython callback will be called decoupled from the HTTP Server context in the IRQ Task
+                mp_irq_queue_interrupt(mod_http_server_callback_handler, (void *)mp_obj_new_tuple(2, args));
+            }
+            break;
         case ESP_BLE_MESH_PROV_REGISTER_COMP_EVT:
             printf("ESP_BLE_MESH_PROV_REGISTER_COMP_EVT, err_code %d\n", param->prov_register_comp.err_code);
             break;
@@ -459,7 +498,13 @@ static const mp_obj_type_t mod_ble_mesh_element_type = {
 
 // TODO: add parameters
 // Initialize the module
-STATIC mp_obj_t mod_ble_mesh_init() {
+STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    STATIC const mp_arg_t mod_ble_mesh_init_args[] = {
+            { MP_QSTR_auth,                  MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
+    };
+
+    mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_init_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_ble_mesh_init_args, args);
 
     // The BLE Mesh module should be initialized only once
     if(initialized == false) {
@@ -469,19 +514,59 @@ STATIC mp_obj_t mod_ble_mesh_init() {
 
         if(provision_ptr != NULL && composition_ptr != NULL) {
 
+            // Set UUID
+            memcpy(dev_uuid + 2, esp_bt_dev_get_address(), BD_ADDR_LEN);
+            provision_ptr->uuid = dev_uuid;
+
+            //TODO: Support multiple auth metods paralelly
+            // Initiate params with NO OOB case
+            provision_ptr->output_size = 0;
+            provision_ptr->input_size = 0;
+
+            // If auth is required
+            if(args[0].u_obj != MP_OBJ_NULL) {
+                // GET auth information
+                mp_obj_t *auth;
+                mp_obj_get_array_fixed_n(args[0].u_obj, 3, &auth);
+                int type = mp_obj_get_int(auth[0]);
+                int action = mp_obj_get_int(auth[1]);
+                int pass_len = mp_obj_get_int(auth[2]);
+
+                if(type==ESP_BLE_MESH_INPUT_OOB) {
+                    provision_ptr->input_size = pass_len;
+                    if(action==ESP_BLE_MESH_DISPLAY_NUMBER) {
+                        provision_ptr->input_actions = ESP_BLE_MESH_ENTER_NUMBER;
+                    }
+                    else if(action==ESP_BLE_MESH_DISPLAY_STRING) {
+                        provision_ptr->input_actions = ESP_BLE_MESH_ENTER_STRING;
+                    }
+                    else {
+                        nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Not supported OOB authentication action!"));
+                    }
+                }
+                else if(type==ESP_BLE_MESH_OUTPUT_OOB) {
+                    provision_ptr->output_size = pass_len;
+                    if(action==ESP_BLE_MESH_DISPLAY_NUMBER) {
+                        provision_ptr->output_actions = ESP_BLE_MESH_DISPLAY_NUMBER;
+                    }
+                    else if(action==ESP_BLE_MESH_DISPLAY_STRING) {
+                        provision_ptr->output_actions = ESP_BLE_MESH_DISPLAY_STRING;
+                    }
+                    else {
+                        nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Not supported OOB authentication action!"));
+                    }
+                }
+                else {
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Not supported OOB authentication type!"));
+                }
+            }
+
             //TODO: initialize composition based on input parameters
             composition_ptr->cid = 0x02C4;  // CID_ESP=0x02C4
             // TODO: add support for more Elements
             // TODO: check this cast, it might not be good
             composition_ptr->elements = (esp_ble_mesh_elem_t *)mod_ble_mesh_element.element;
             composition_ptr->element_count = 1;
-
-            //TODO: initialize provision based on input parameters
-            /* Disable OOB security for SILabs Android app */
-            provision_ptr->uuid = dev_uuid; // From the example
-            provision_ptr->output_size = 0;
-            provision_ptr->output_actions = 0;
-            memcpy(dev_uuid + 2, esp_bt_dev_get_address(), BD_ADDR_LEN);
 
             // TODO: all kind of callbacks should be registered here
             esp_ble_mesh_register_generic_client_callback(mod_ble_mesh_generic_client_callback);
@@ -510,12 +595,27 @@ STATIC mp_obj_t mod_ble_mesh_init() {
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_ble_mesh_init_obj, mod_ble_mesh_init);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_init_obj, 0, mod_ble_mesh_init);
 
 // Set node provisioning
-STATIC mp_obj_t mod_ble_mesh_set_node_prov(mp_obj_t bearer) {
+STATIC mp_obj_t mod_ble_mesh_set_node_prov(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
-    int type = mp_obj_get_int(bearer);
+    STATIC const mp_arg_t mod_ble_mesh_set_node_prov_args[] = {
+            { MP_QSTR_bearer,                MP_ARG_INT,                   {.u_int = 4}},
+            { MP_QSTR_callback,              MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
+    };
+
+    mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_set_node_prov_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_ble_mesh_set_node_prov_args, args);
+
+    // Get bearer type
+    int type = args[0].u_int;
+
+    // Get MP callback
+    provision_callback = args[1].u_obj;
+
+    // Disable node provision in prior
+    esp_ble_mesh_node_prov_disable(MOD_ESP_BLE_MESH_PROV_ADV|MOD_ESP_BLE_MESH_PROV_GATT);
 
     // Check if provision mode is within valid range
     if((type >= MOD_ESP_BLE_MESH_PROV_ADV) && (type <= (MOD_ESP_BLE_MESH_PROV_ADV|MOD_ESP_BLE_MESH_PROV_GATT))) {
@@ -524,13 +624,10 @@ STATIC mp_obj_t mod_ble_mesh_set_node_prov(mp_obj_t bearer) {
     else if(type != MOD_ESP_BLE_MESH_PROV_NONE) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Node provision mode is not valid!"));
     }
-    else if(esp_ble_mesh_node_is_provisioned()) {
-        esp_ble_mesh_node_prov_disable(MOD_ESP_BLE_MESH_PROV_ADV|MOD_ESP_BLE_MESH_PROV_GATT);
-    }
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_ble_mesh_set_node_prov_obj, mod_ble_mesh_set_node_prov);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_set_node_prov_obj, 0, mod_ble_mesh_set_node_prov);
 
 // TODO: add parameters for configuring the Configuration Server Model
 STATIC mp_obj_t mod_ble_mesh_create_element(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -567,7 +664,7 @@ STATIC mp_obj_t mod_ble_mesh_create_element(mp_uint_t n_args, const mp_obj_t *po
             ble_mesh_element->element->sig_models       = NULL;
             ble_mesh_element->element->vnd_model_count  = 0;
             ble_mesh_element->element->vnd_models       = NULL;
-            ble_mesh_element->element->sig_model_count = 0;
+            ble_mesh_element->element->sig_model_count  = 0;
 
             // Add the mandatory Configuration Server Model
             esp_ble_mesh_cfg_srv_t* configuration_server_model_ptr = (esp_ble_mesh_cfg_srv_t *)heap_caps_malloc(sizeof(esp_ble_mesh_cfg_srv_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
@@ -632,6 +729,12 @@ STATIC const mp_map_elem_t mod_ble_mesh_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_LOW_POWER),                      MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_LOW_POWER) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_GATT_PROXY),                     MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_GATT_PROXY) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_FRIEND),                         MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_FRIEND) },
+        // Constants of Authentication
+        { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_INPUT),                      MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_INPUT_OOB) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_OUTPUT),                     MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_OUTPUT_OOB) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_NUMBER),                     MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_DISPLAY_NUMBER) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_STRING),                     MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_DISPLAY_STRING) },
+
         // Constants of Server-Client
         { MP_OBJ_NEW_QSTR(MP_QSTR_SERVER),                         MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_SERVER) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_CLIENT),                         MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_CLIENT) },
