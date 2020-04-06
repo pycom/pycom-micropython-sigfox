@@ -50,6 +50,10 @@
 #define MOD_BLE_MESH_MODEL_LIGHTNING     (3)
 
 #define MOD_BLE_MESH_MODEL_ONOFF         (0)
+#define MOD_BLE_MESH_MODEL_LEVEL         (1)
+
+#define MOD_BLE_MESH_STATE_ONOFF         (0)
+#define MOD_BLE_MESH_STATE_LEVEL         (1)
 
 
 /******************************************************************************
@@ -173,20 +177,33 @@ static mod_ble_mesh_model_class_t* mod_ble_find_model(esp_ble_mesh_model_t *esp_
 }
 
 // TODO: check what other arguments are needed, or whether these arguments are needed at all
-static void mod_ble_mesh_generic_onoff_server_callback_call_mp_callback(mp_obj_t callback,
+static void mod_ble_mesh_generic_server_callback_call_mp_callback(mp_obj_t callback,
                                                                         esp_ble_mesh_generic_server_cb_event_t event,
                                                                         uint32_t recv_op,
-                                                                        uint8_t onoff){
+                                                                        int16_t value,
+                                                                        int value_type){
     // Call the registered function
     if(callback != NULL) {
-        mp_obj_t args[3];
+        mp_obj_t args[4];
         args[0] = mp_obj_new_int(event);
         //TODO: check what other object should be passed from the context
         args[1] = mp_obj_new_int(recv_op);
-        args[2] = mp_obj_new_bool(onoff);
+
+        switch (value_type) {
+            case MOD_BLE_MESH_STATE_ONOFF:
+                args[2] = mp_obj_new_bool(value);
+                break;
+            case MOD_BLE_MESH_STATE_LEVEL:
+                args[2] = mp_obj_new_int(value);
+                break;
+            default:
+                // TODO: check if OK to choose -1 as default
+                args[2] = mp_obj_new_int(-1);
+        }
+        args[3] = mp_obj_new_int(value_type);
 
         // TODO: check if these 3 arguments are really needed here
-        mp_call_function_n_kw(callback, 3, 0, args);
+        mp_call_function_n_kw(callback, 4, 0, args);
     }
 }
 
@@ -200,7 +217,6 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
         esp_ble_mesh_generic_server_cb_event_t event = callback_param->event;
         esp_ble_mesh_generic_server_cb_param_t* param = callback_param->param;
         esp_ble_mesh_model_t* model = callback_param->param->model;
-        esp_ble_mesh_gen_onoff_srv_t* srv = (esp_ble_mesh_gen_onoff_srv_t*)callback_param->param->model->user_data;
 
         switch (event) {
             case ESP_BLE_MESH_GENERIC_SERVER_STATE_CHANGE_EVT:
@@ -211,22 +227,50 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
                     //srv->state.onoff = param->value.state_change.onoff_set.onoff;
 
                     // Call the registered MP function
-                    mod_ble_mesh_generic_onoff_server_callback_call_mp_callback(mod_ble_model->callback,
-                                                                                event,
-                                                                                param->ctx.recv_op,
-                                                                                param->value.state_change.onoff_set.onoff);
+                    mod_ble_mesh_generic_server_callback_call_mp_callback(mod_ble_model->callback,
+                                                                          event,
+                                                                          param->ctx.recv_op,
+                                                                          (int16_t)param->value.state_change.onoff_set.onoff,
+                                                                          MOD_BLE_MESH_STATE_ONOFF);
+                }
+                else if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET ||
+                         param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK) {
+
+                    // Call the registered MP function
+                    mod_ble_mesh_generic_server_callback_call_mp_callback(mod_ble_model->callback,
+                                                                          event,
+                                                                          param->ctx.recv_op,
+                                                                          param->value.state_change.level_set.level,
+                                                                          MOD_BLE_MESH_STATE_LEVEL);
+                }
+                else if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_DELTA_SET ||
+                         param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_DELTA_SET_UNACK) {
+                    // TODO: Implement STATE_CHANGE LEVEL_DELTA case
+                }
+                else if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_MOVE_SET ||
+                         param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_MOVE_SET_UNACK) {
+                    // TODO: Implement STATE CHANGE LEVEL_MOVE case
                 }
                 break;
             case ESP_BLE_MESH_GENERIC_SERVER_RECV_GET_MSG_EVT:
                 if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET) {
+
+                    esp_ble_mesh_gen_onoff_srv_t* srv = (esp_ble_mesh_gen_onoff_srv_t*)callback_param->param->model->user_data;
                     esp_ble_mesh_server_model_send_msg(model, &callback_param->param->ctx,
                                                        ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS, sizeof(srv->state.onoff), &srv->state.onoff);
+                }
+                else if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_GET) {
+
+                    esp_ble_mesh_gen_level_srv_t* srv = (esp_ble_mesh_gen_level_srv_t*)callback_param->param->model->user_data;
+                    esp_ble_mesh_server_model_send_msg(model, &callback_param->param->ctx,
+                                                       ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS, sizeof(srv->state.level), (uint8_t*)&srv->state.level);
                 }
                 break;
             case ESP_BLE_MESH_GENERIC_SERVER_RECV_SET_MSG_EVT:
                 if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET ||
                     param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK) {
 
+                    esp_ble_mesh_gen_onoff_srv_t* srv = (esp_ble_mesh_gen_onoff_srv_t*)callback_param->param->model->user_data;
                     srv->state.onoff = callback_param->param->value.set.onoff.onoff;
 
                     if (callback_param->param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET) {
@@ -234,10 +278,36 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
                                                            ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS, sizeof(srv->state.onoff), &srv->state.onoff);
                     }
                     // Call the registered MP function
-                    mod_ble_mesh_generic_onoff_server_callback_call_mp_callback(mod_ble_model->callback,
-                                                                                event,
-                                                                                param->ctx.recv_op,
-                                                                                srv->state.onoff);
+                    mod_ble_mesh_generic_server_callback_call_mp_callback(mod_ble_model->callback,
+                                                                          event,
+                                                                          param->ctx.recv_op,
+                                                                          (int16_t)srv->state.onoff,
+                                                                          MOD_BLE_MESH_STATE_ONOFF);
+                }
+                else if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET ||
+                    param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK) {
+
+                    esp_ble_mesh_gen_level_srv_t* srv = (esp_ble_mesh_gen_level_srv_t*)callback_param->param->model->user_data;
+                    srv->state.level = callback_param->param->value.set.level.level;
+
+                    if (callback_param->param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET) {
+                        esp_ble_mesh_server_model_send_msg(model, &callback_param->param->ctx,
+                                                           ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS, sizeof(srv->state.level), (uint8_t*)&srv->state.level);
+                    }
+                    // Call the registered MP function
+                    mod_ble_mesh_generic_server_callback_call_mp_callback(mod_ble_model->callback,
+                                                                          event,
+                                                                          param->ctx.recv_op,
+                                                                          srv->state.level,
+                                                                          MOD_BLE_MESH_STATE_LEVEL);
+                }
+                else if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_DELTA_SET ||
+                    param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_DELTA_SET_UNACK) {
+                    // TODO: Implement SET LEVEL_DELTA case
+                }
+                else if (param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_MOVE_SET ||
+                    param->ctx.recv_op == ESP_BLE_MESH_MODEL_OP_GEN_MOVE_SET_UNACK) {
+                    // TODO: Implement SET LEVEL_MOVE case
                 }
                 break;
             default:
@@ -430,6 +500,17 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
 
                 esp_ble_mesh_model_t gen_onoff_srv_mod = ESP_BLE_MESH_MODEL_GEN_ONOFF_SRV(&onoff_srv_pub, onoff_server);
                 memcpy(&tmp_model, &gen_onoff_srv_mod, sizeof(gen_onoff_srv_mod));
+            }
+            else if(func == MOD_BLE_MESH_MODEL_LEVEL) {
+                //TODO: check this publication structure
+                ESP_BLE_MESH_MODEL_PUB_DEFINE(level_srv_pub, 2 + 3, ROLE_NODE);
+                // This will be saved into the Model's user_data field
+                esp_ble_mesh_gen_level_srv_t* level_server = (esp_ble_mesh_gen_level_srv_t *)heap_caps_malloc(sizeof(esp_ble_mesh_gen_level_srv_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                level_server->rsp_ctrl.get_auto_rsp = ESP_BLE_MESH_SERVER_AUTO_RSP;
+                level_server->rsp_ctrl.set_auto_rsp = ESP_BLE_MESH_SERVER_AUTO_RSP;
+
+                esp_ble_mesh_model_t gen_level_srv_mod = ESP_BLE_MESH_MODEL_GEN_LEVEL_SRV(&level_srv_pub, level_server);
+                memcpy(&tmp_model, &gen_level_srv_mod, sizeof(gen_level_srv_mod));
             }
             else {
                 //TODO: Add support for more functionality
@@ -745,6 +826,7 @@ STATIC const mp_map_elem_t mod_ble_mesh_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_LIGHTNING),                      MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_MODEL_LIGHTNING) },
         // Constants of functionality behind a model
         { MP_OBJ_NEW_QSTR(MP_QSTR_ONOFF),                          MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_MODEL_ONOFF) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_LEVEL),                          MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_MODEL_LEVEL) },
 
 };
 
