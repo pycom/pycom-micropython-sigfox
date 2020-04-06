@@ -339,7 +339,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 /* Wait for TX_DONE interrupt, or 10 seconds timeout */
                 int32_t tx_timeout_ms = 10000;
                 while (SX1308.waittxend && tx_timeout_ms > 0) {
-                    mp_hal_delay_ms (1);
+                    ets_delay_us(1000);
                     tx_timeout_ms -= 1;
                 }
 

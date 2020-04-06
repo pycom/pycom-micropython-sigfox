@@ -27,7 +27,8 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include <stdio.h>  /* printf fprintf */
 #include <stdint.h>
 #include <stdbool.h>
-#include "esp32_mphal.h"   /* clock_nanosleep */
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h" /* clock_nanosleep */
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -48,7 +49,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 
 void wait_ms(unsigned long a) {
 
-    mp_hal_delay_ms(a);
+    vTaskDelay (a / portTICK_PERIOD_MS);;
 }
 void wait_ns(unsigned long a) {
 

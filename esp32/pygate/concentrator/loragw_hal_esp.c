@@ -756,7 +756,7 @@ int esp_lgw_start(void) {
     }
 
     DEBUG_MSG("Info: Initialising AGC firmware...\n");
-    mp_hal_delay_us(100); /* Need to wait for long enough here */
+    ets_delay_us(100); /* Need to wait for long enough here */
     esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x10) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS1 0x%02X\n", (uint8_t)read_val);
@@ -766,10 +766,10 @@ int esp_lgw_start(void) {
     /* Update Tx gain LUT and start AGC */
     for (i = 0; i < txgain_lut.size; ++i) {
         esp_lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT); /* start a transaction */
-        mp_hal_delay_us(DELAYSTART);
+        ets_delay_us(DELAYSTART);
         load_val = txgain_lut.lut[i].mix_gain + (16 * txgain_lut.lut[i].dac_gain) + (64 * txgain_lut.lut[i].pa_gain);
         esp_lgw_reg_w(LGW_RADIO_SELECT, load_val);
-        mp_hal_delay_us(DELAYSTART);
+        ets_delay_us(DELAYSTART);
         esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
         if (read_val != (0x30 + i)) {
             DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS2 0x%02X\n", (uint8_t)read_val);
@@ -780,10 +780,10 @@ int esp_lgw_start(void) {
     /* As the AGC fw is waiting for 16 entries, we need to abort the transaction if we get less entries */
     if (txgain_lut.size < TX_GAIN_LUT_SIZE_MAX) {
         esp_lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
-        mp_hal_delay_us(DELAYSTART);
+        ets_delay_us(DELAYSTART);
         load_val = AGC_CMD_ABORT;
         esp_lgw_reg_w(LGW_RADIO_SELECT, load_val);
-        mp_hal_delay_us(DELAYSTART);
+        ets_delay_us(DELAYSTART);
         esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
         if (read_val != 0x30) {
             DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS3 0x%02X\n", (uint8_t)read_val);
@@ -793,9 +793,9 @@ int esp_lgw_start(void) {
 
     /* Load Tx freq MSBs (always 3 if f > 768 for SX1257 or f > 384 for SX1255 */
     esp_lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
-    mp_hal_delay_us(DELAYSTART);
+    ets_delay_us(DELAYSTART);
     esp_lgw_reg_w(LGW_RADIO_SELECT, 3);
-    mp_hal_delay_us(DELAYSTART);
+    ets_delay_us(DELAYSTART);
     esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x33) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS4 0x%02X\n", (uint8_t)read_val);
@@ -804,9 +804,9 @@ int esp_lgw_start(void) {
 
     /* Load chan_select firmware option */
     esp_lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
-    mp_hal_delay_us(DELAYSTART);
+    ets_delay_us(DELAYSTART);
     esp_lgw_reg_w(LGW_RADIO_SELECT, 0);
-    mp_hal_delay_us(DELAYSTART);
+    ets_delay_us(DELAYSTART);
     esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x30) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS5 0x%02X\n", (uint8_t)read_val);
@@ -815,9 +815,9 @@ int esp_lgw_start(void) {
 
     /* End AGC firmware init and check status */
     esp_lgw_reg_w(LGW_RADIO_SELECT, AGC_CMD_WAIT);
-    mp_hal_delay_us(DELAYSTART);
+    ets_delay_us(DELAYSTART);
     esp_lgw_reg_w(LGW_RADIO_SELECT, radio_select); /* Load intended value of RADIO_SELECT */
-    mp_hal_delay_us(DELAYSTART);
+    ets_delay_us(DELAYSTART);
     esp_lgw_reg_r(LGW_MCU_AGC_STATUS, &read_val);
     if (read_val != 0x40) {
         DEBUG_PRINTF("ERROR: AGC FIRMWARE INITIALIZATION FAILURE, STATUS 0x%02X\n", (uint8_t)read_val);
@@ -1528,24 +1528,24 @@ void esp_lgw_calibration_offset_transfer(uint8_t idx_start, uint8_t idx_nb) {
     calibration offsets array, at 'idx_start' index position */
     for(i = 0; i < idx_nb; ++i) {
         esp_lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA0 + i);
-        mp_hal_delay_ms(1);
+        ets_delay_us(1000);
         esp_lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        mp_hal_delay_ms(1);
+        ets_delay_us(1000);
         cal_offset_a_i[i + idx_start] = (int8_t)read_val;
         esp_lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xA8 + i);
-        mp_hal_delay_ms(1);
+        ets_delay_us(1000);
         esp_lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        mp_hal_delay_ms(1);
+        ets_delay_us(1000);
         cal_offset_a_q[i + idx_start] = (int8_t)read_val;
         esp_lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB0 + i);
-        mp_hal_delay_ms(1);
+        ets_delay_us(1000);
         esp_lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        mp_hal_delay_ms(1);
+        ets_delay_us(1000);
         cal_offset_b_i[i + idx_start] = (int8_t)read_val;
         esp_lgw_reg_w(LGW_DBG_AGC_MCU_RAM_ADDR, 0xB8 + i);
-        mp_hal_delay_ms(1);
+        ets_delay_us(1000);
         esp_lgw_reg_r(LGW_DBG_AGC_MCU_RAM_DATA, &read_val);
-        mp_hal_delay_ms(1);
+        ets_delay_us(1000);
         cal_offset_b_q[i + idx_start] = (int8_t)read_val;
     }
 

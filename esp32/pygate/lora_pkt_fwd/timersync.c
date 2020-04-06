@@ -25,8 +25,7 @@ Maintainer: Michael Coracin
 #include "timersync.h"
 #include "loragw_hal.h"
 #include "loragw_reg.h"
-#include "esp32_mphal.h"
-//#include "loragw_aux.h"
+#include "loragw_aux.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE CONSTANTS & TYPES -------------------------------------------- */
@@ -129,7 +128,6 @@ void thread_timersync(void) {
             As here the time precision is not critical, we should be able to cope with at least 1ms drift,
             which should occur after 50s (50000µs * 1000).
             Let's set the thread sleep to 1 minute for now */
-        mp_hal_delay_us(60 * 1000 * 1000);
-        //wait_ms(60000);
+        wait_ms(60000);
     }
 }

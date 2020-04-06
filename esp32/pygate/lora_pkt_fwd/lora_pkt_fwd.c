@@ -51,7 +51,14 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "base64.h"
 #include "loragw_hal.h"
 #include "loragw_reg.h"
-#include "esp32_mphal.h"
+#include "loragw_aux.h"
+#include "esp_pthread.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_attr.h"
+
+#include "lwip/err.h"
+#include "lwip/apps/sntp.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -219,6 +226,9 @@ static int parse_gateway_configuration(const char * conf_file);
 
 static double time_diff(struct timeval x , struct timeval y);
 
+static void initialize_sntp(void);
+static void obtain_time(void);
+
 /* threads */
 void thread_up(void);
 void thread_down(void);
@@ -279,7 +289,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
         return -1;
     } else {
-        MSG("INFO: %s does contain a JSON object named %s, parsing SX1301 parameters\n", conf_file, conf_obj_name);
+        //MSG("INFO: %s does contain a JSON object named %s, parsing SX1301 parameters\n", conf_file, conf_obj_name);
     }
 
     /* set board configuration */
@@ -612,7 +622,7 @@ static int parse_gateway_configuration(const char * conf_file) {
         MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
         return -1;
     } else {
-        MSG("INFO: %s does contain a JSON object named %s, parsing gateway parameters\n", conf_file, conf_obj_name);
+        //MSG("INFO: %s does contain a JSON object named %s, parsing gateway parameters\n", conf_file, conf_obj_name);
     }
 
     /* gateway unique identifier (aka MAC address) (optional) */
@@ -741,6 +751,32 @@ static double time_diff(struct timeval x , struct timeval y)
     return x;
 }*/
 
+static void obtain_time(void)
+{
+    initialize_sntp();
+
+    // wait for time to be set
+    time_t now = 0;
+    struct tm timeinfo = { 0 };
+    int retry = 0;
+    const int retry_count = 10;
+    while(timeinfo.tm_year < (2016 - 1900) && ++retry < retry_count) {
+        printf( "Waiting for system time to be set... (%d/%d)\n", retry, retry_count);
+        vTaskDelay(2000 / portTICK_PERIOD_MS);
+        time(&now);
+        localtime_r(&now, &timeinfo);
+    }
+
+}
+
+static void initialize_sntp(void)
+{
+    printf( "Initializing SNTP\n");
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "0.nl.pool.ntp.org");
+    sntp_init();
+}
+
 static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error) {
     uint8_t buff_ack[64]; /* buffer to give feedback to server */
     int buff_index;
@@ -831,6 +867,35 @@ static int send_tx_ack(uint8_t token_h, uint8_t token_l, enum jit_error_e error)
 /* --- MAIN FUNCTION -------------------------------------------------------- */
 
 void lora_gw_init(const char* global_conf) {
+
+    time_t now;
+    struct tm timeinfo;
+
+    time(&now);
+    localtime_r(&now, &timeinfo);
+    // Is time set? If not, tm_year will be (1970 - 1900).
+    if (timeinfo.tm_year < (2016 - 1900)) {
+        printf( "Time is not set yet. Connecting to WiFi and getting time over NTP.\n");
+        obtain_time();
+        // update 'now' variable with current time
+        time(&now);
+    }
+    char strftime_buf[64];
+
+    // Set timezone to Eastern Standard Time and print local time
+    setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
+    tzset();
+    localtime_r(&now, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    printf( "The current date/time in New York is: %s\n", strftime_buf);
+
+    // Set timezone to China Standard Time
+    setenv("TZ", "CST-8", 1);
+    tzset();
+    localtime_r(&now, &timeinfo);
+    strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+    printf( "The current date/time in Shanghai is: %s\n", strftime_buf);
+
   xTaskCreatePinnedToCore(TASK_lora_gw, "LoraGW",
     LORA_GW_STACK_SIZE / sizeof(StackType_t),
     (void *) global_conf,
@@ -963,7 +1028,7 @@ void TASK_lora_gw(void *pvParameters) {
     }
 
     MSG("INFO: found global configuration file and parsed correctly\n");
-    mp_hal_delay_us(2000000);
+    wait_ms (2000);
 
     /* load configuration files */
     /*if (access(debug_cfg_path, R_OK) == 0) { // if there is a debug conf, parse only the debug conf 
@@ -1103,7 +1168,12 @@ void TASK_lora_gw(void *pvParameters) {
         MSG("ERROR: [main] failed to start the concentrator\n");
         //exit(EXIT_FAILURE);
     }
-
+    esp_pthread_cfg_t cfg = {
+            (10 * 1024),
+            5,
+            true
+    };
+    esp_pthread_set_cfg(&cfg);
     /* spawn threads to manage upstream and downstream */
     i = pthread_create( &thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
     if (i != 0) {
@@ -1111,23 +1181,18 @@ void TASK_lora_gw(void *pvParameters) {
         //exit(EXIT_FAILURE);
     }
 
-    printf("Before long delay\n");
-    while (true) {
-        mp_hal_delay_us(1000000);
-    }
-
     i = pthread_create( &thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create downstream thread\n");
         //exit(EXIT_FAILURE);
     }
-    
+
     i = pthread_create( &thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create JIT thread\n");
         //exit(EXIT_FAILURE);
     }
-    
+
     i = pthread_create( &thrid_timersync, NULL, (void * (*)(void *))thread_timersync, NULL);
     if (i != 0) {
         MSG("ERROR: [main] impossible to create Timer Sync thread\n");
@@ -1137,7 +1202,7 @@ void TASK_lora_gw(void *pvParameters) {
     /* main loop task : statistics collection */
     while (true) {
         /* wait for next reporting interval */
-        mp_hal_delay_us(1000 * 1000 * stat_interval);
+        wait_ms ((1000 * stat_interval) / portTICK_PERIOD_MS);
 
         /* get timestamp for statistics */
         t = time(NULL);
@@ -1323,7 +1388,6 @@ void thread_up(void) {
     *(uint32_t *)(buff_up + 8) = net_mac_l;
 
     while (!exit_sig && !quit_sig) {
-
         /* fetch packets */
         pthread_mutex_lock(&mx_concent);
         nb_pkt = lgw_receive(NB_PKT_MAX, rxpkt);  // Crashing here
@@ -1339,7 +1403,7 @@ void thread_up(void) {
 
         /* wait a short time if no packets, nor status report */
         if ((nb_pkt == 0) && (send_report == false)) {
-            mp_hal_delay_us(FETCH_SLEEP_MS * 1000);
+            wait_ms ((FETCH_SLEEP_MS));
             continue;
         }
 
@@ -1652,15 +1716,16 @@ void thread_up(void) {
             //clock_gettime(CLOCK_MONOTONIC, &recv_time);
             if (j == -1) {
                 if (errno == EAGAIN) { /* timeout */
+                    MSG("WARNING: [up] ACK recieve timeout\n");
                     continue;
                 } else { /* server connection error */
                     break;
                 }
             } else if ((j < 4) || (buff_ack[0] != PROTOCOL_VERSION) || (buff_ack[3] != PKT_PUSH_ACK)) {
-                //MSG("WARNING: [up] ignored invalid non-ACL packet\n");
+                MSG("WARNING: [up] ignored invalid non-ACL packet\n");
                 continue;
             } else if ((buff_ack[1] != token_h) || (buff_ack[2] != token_l)) {
-                //MSG("WARNING: [up] ignored out-of sync ACK packet\n");
+                MSG("WARNING: [up] ignored out-of sync ACK packet\n");
                 continue;
             } else {
                 MSG("INFO: [up] PUSH_ACK received in %i ms\n", (int)(1000 * time_diff(send_time, recv_time)));
@@ -1669,6 +1734,7 @@ void thread_up(void) {
             }
         }
         pthread_mutex_unlock(&mx_meas_up);
+        wait_ms (5);
     }
     MSG("\nINFO: End of upstream thread\n");
 }
@@ -1738,7 +1804,6 @@ void thread_down(void) {
             MSG("INFO: [down] the last %u PULL_DATA were not ACKed, exiting application\n", autoquit_threshold);
             break;
         }
-
         /* generate random token for request */
         token_h = (uint8_t)rand(); /* random token */
         token_l = (uint8_t)rand(); /* random token */
@@ -2090,6 +2155,7 @@ void thread_down(void) {
             /* insert packet to be sent into JIT queue */
             if (jit_result == JIT_ERROR_OK) {
                 gettimeofday(&current_unix_time, NULL);
+                printf("Current unix : %ld\n", ((current_unix_time.tv_sec * 1000000UL) + current_unix_time.tv_usec));
                 get_concentrator_time(&current_concentrator_time, current_unix_time);
                 jit_result = jit_enqueue(&jit_queue, &current_concentrator_time, &txpkt, downlink_type);
                 if (jit_result != JIT_ERROR_OK) {
@@ -2103,6 +2169,7 @@ void thread_down(void) {
             /* Send acknoledge datagram to server */
             send_tx_ack(buff_down[1], buff_down[2], jit_result);
         }
+        wait_ms(5);
     }
     MSG("\nINFO: End of downstream thread\n");
 }
@@ -2142,8 +2209,6 @@ void thread_jit(void) {
     uint8_t tx_status;
 
     while (!exit_sig && !quit_sig) {
-        mp_hal_delay_us(10 * 1000);
-
         /* transfer data and metadata to the concentrator, and schedule TX */
         gettimeofday(&current_unix_time, NULL);
         get_concentrator_time(&current_concentrator_time, current_unix_time);
@@ -2156,7 +2221,6 @@ void thread_jit(void) {
                     /* check if concentrator is free for sending new packet */
                     result = lgw_status(TX_STATUS, &tx_status);
                     if (result == LGW_HAL_ERROR) {
-                        MSG("WARNING: [jit] lgw_status failed\n");
                     } else {
                         if (tx_status == TX_EMITTING) {
                             MSG("WARNING: concentrator is currently busy\n");
@@ -2195,6 +2259,7 @@ void thread_jit(void) {
         } else {
             MSG("ERROR: jit_peek failed with %d\n", jit_result);
         }
+        wait_ms(5);
     }
 }
 
