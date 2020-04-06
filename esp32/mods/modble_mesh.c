@@ -317,7 +317,7 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
     }
 }
 
-STATIC void mod_http_server_callback_handler(void *arg_in) {
+STATIC void mod_ble_mesh_provision_callback_call_mp_callback(void *arg_in) {
 
     /* The received arg_in is a tuple with 1 element
      * 0 - user's MicroPython callback
@@ -346,7 +346,7 @@ static void mod_ble_mesh_provision_callback(esp_ble_mesh_prov_cb_event_t event, 
                 args[0] = provision_callback;
                 args[1] = mp_obj_new_int(param->node_prov_output_num.number);
                 // The user registered MicroPython callback will be called decoupled from the HTTP Server context in the IRQ Task
-                mp_irq_queue_interrupt(mod_http_server_callback_handler, (void *)mp_obj_new_tuple(2, args));
+                mp_irq_queue_interrupt(mod_ble_mesh_provision_callback_call_mp_callback, (void *)mp_obj_new_tuple(2, args));
             }
             break;
         case ESP_BLE_MESH_NODE_PROV_OUTPUT_STRING_EVT:
@@ -356,7 +356,7 @@ static void mod_ble_mesh_provision_callback(esp_ble_mesh_prov_cb_event_t event, 
                 args[0] = provision_callback;
                 args[1] = mp_obj_new_str(param->node_prov_output_str.string, strlen(param->node_prov_output_str.string));
                 // The user registered MicroPython callback will be called decoupled from the HTTP Server context in the IRQ Task
-                mp_irq_queue_interrupt(mod_http_server_callback_handler, (void *)mp_obj_new_tuple(2, args));
+                mp_irq_queue_interrupt(mod_ble_mesh_provision_callback_call_mp_callback, (void *)mp_obj_new_tuple(2, args));
             }
             break;
         case ESP_BLE_MESH_PROV_REGISTER_COMP_EVT:
