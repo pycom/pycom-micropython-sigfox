@@ -8,26 +8,14 @@
 # available at https://www.pycom.io/opensource/licensing
 #
 
-IDF_VER="idf_v"$2
-CURR_VER="$(git --git-dir=$1/.git branch | grep \* | cut -d ' ' -f2)"
+IDF_VER=$2
+IDF_PATH=$1
+CURR_VER=$(git --git-dir=$IDF_PATH/.git rev-parse HEAD)
 
 if [ "${CURR_VER}" = "${IDF_VER}" ]; then
     echo "IDF Version OK!"
     exit 0
 else
-    echo "Incompatible IDF version...Checking out IDF version $2!"
-    if ! git --git-dir=$1/.git --work-tree=$1 checkout ${IDF_VER} ; then
-        echo "Cannot checkout IDF version ${IDF_VER}!...Please make sure latest idf_v${IDF_VER} branch is fetched" >&2
+    echo "Incompatible IDF version... Expected $IDF_VER, but $IDF_PATH is pointing at $CURR_VER"
         exit 1
-    fi
-    cd ${IDF_PATH}
-    if ! git submodule sync ; then
-        echo "Cannot checkout IDF version ${IDF_VER}!...Please make sure latest idf_v${IDF_VER} branch is fetched" >&2
-        exit 1
-    fi
-    if ! git submodule update --init ; then
-        echo "Cannot checkout IDF version ${IDF_VER}!...Please make sure latest idf_v${IDF_VER} branch is fetched" >&2
-        exit 1
-    fi
-    exit 0
 fi
