@@ -259,13 +259,13 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
             case ESP_BLE_MESH_GENERIC_SERVER_STATE_CHANGE_EVT:
                 type =  generic_type_and_size_table[param->ctx.recv_op & 0x00FF][0];
                 size = generic_type_and_size_table[param->ctx.recv_op & 0x00FF][1];
-                void* value = heap_caps_malloc(size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-                memcpy(value, &param->value.state_change, size);
+                data_ptr = heap_caps_malloc(size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                memcpy(data_ptr, &param->value.state_change, size);
                 // Call the registered MP function
                 mod_ble_mesh_generic_server_callback_call_mp_callback(mod_ble_model->callback,
                                                                       event,
                                                                       param->ctx.recv_op,
-                                                                      value,
+                                                                      data_ptr,
                                                                       type);
                 break;
             case ESP_BLE_MESH_GENERIC_SERVER_RECV_GET_MSG_EVT:
