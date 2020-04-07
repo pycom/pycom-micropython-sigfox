@@ -55,6 +55,8 @@
 #define MOD_BLE_MESH_STATE_ONOFF         (0)
 #define MOD_BLE_MESH_STATE_LEVEL         (1)
 
+#define MOD_BLE_MESH_DEFAULT_NAME        "ESP-BLE-MESH"
+
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -581,6 +583,7 @@ static const mp_obj_type_t mod_ble_mesh_element_type = {
 // Initialize the module
 STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     STATIC const mp_arg_t mod_ble_mesh_init_args[] = {
+            { MP_QSTR_name,                  MP_ARG_OBJ,                  {.u_obj = MP_OBJ_NULL}},
             { MP_QSTR_auth,                  MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
     };
 
@@ -589,6 +592,7 @@ STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp
 
     // The BLE Mesh module should be initialized only once
     if(initialized == false) {
+        esp_err_t err;
 
         provision_ptr = (esp_ble_mesh_prov_t *)heap_caps_malloc(sizeof(esp_ble_mesh_prov_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
         composition_ptr = (esp_ble_mesh_comp_t *)heap_caps_malloc(sizeof(esp_ble_mesh_comp_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
@@ -605,10 +609,10 @@ STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp
             provision_ptr->input_size = 0;
 
             // If auth is required
-            if(args[0].u_obj != MP_OBJ_NULL) {
+            if(args[1].u_obj != MP_OBJ_NULL) {
                 // GET auth information
                 mp_obj_t *auth;
-                mp_obj_get_array_fixed_n(args[0].u_obj, 3, &auth);
+                mp_obj_get_array_fixed_n(args[1].u_obj, 3, &auth);
                 int type = mp_obj_get_int(auth[0]);
                 int action = mp_obj_get_int(auth[1]);
                 int pass_len = mp_obj_get_int(auth[2]);
@@ -655,8 +659,19 @@ STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp
             esp_ble_mesh_register_config_server_callback(mod_ble_mesh_config_server_callback);
             esp_ble_mesh_register_prov_callback(mod_ble_mesh_provision_callback);
 
+            if(args[0].u_obj != MP_OBJ_NULL) {
+                err = esp_ble_mesh_set_unprovisioned_device_name(mp_obj_str_get_str(args[0].u_obj));
+            }
+            else {
+                err = esp_ble_mesh_set_unprovisioned_device_name(MOD_BLE_MESH_DEFAULT_NAME);
+            }
 
-            esp_err_t err = esp_ble_mesh_init(provision_ptr, composition_ptr);
+            if(err != ESP_OK) {
+                // TODO: drop back the error code
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "BLE Mesh node name cannot be set, error code: %d!", err));
+            }
+
+            err = esp_ble_mesh_init(provision_ptr, composition_ptr);
 
             if(err != ESP_OK) {
                 // TODO: drop back the error code
@@ -709,6 +724,16 @@ STATIC mp_obj_t mod_ble_mesh_set_node_prov(mp_uint_t n_args, const mp_obj_t *pos
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_set_node_prov_obj, 0, mod_ble_mesh_set_node_prov);
+
+// Reset node provisioning information
+STATIC mp_obj_t mod_ble_mesh_reset_node_prov(void) {
+
+    // Delete and reset node provision information
+    esp_ble_mesh_node_local_reset();
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_ble_mesh_reset_node_prov_obj, mod_ble_mesh_reset_node_prov);
 
 // TODO: add parameters for configuring the Configuration Server Model
 STATIC mp_obj_t mod_ble_mesh_create_element(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -799,6 +824,7 @@ STATIC const mp_map_elem_t mod_ble_mesh_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                       MP_OBJ_NEW_QSTR(MP_QSTR_BLE_Mesh) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_init),                           (mp_obj_t)&mod_ble_mesh_init_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_set_node_prov),                  (mp_obj_t)&mod_ble_mesh_set_node_prov_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_reset_node_prov),                (mp_obj_t)&mod_ble_mesh_reset_node_prov_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_create_element),                 (mp_obj_t)&mod_ble_mesh_create_element_obj },
 
         // Constants of Advertisement
