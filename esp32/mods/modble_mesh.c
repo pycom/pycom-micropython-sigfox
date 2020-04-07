@@ -125,7 +125,7 @@ static const uint8_t generic_type_and_size_table[][2] = {
         {MOD_BLE_MESH_STATE_INT,  sizeof(esp_ble_mesh_state_change_gen_level_set_t)},
         // GENERIC DELTA
         {MOD_BLE_MESH_STATE_INT,  sizeof(esp_ble_mesh_server_recv_gen_delta_set_t)},
-        {MOD_BLE_MESH_STATE_INT,  sizeof(esp_ble_mesh_server_recv_gen_delta_set_t)},
+        {MOD_BLE_MESH_STATE_INT,  sizeof(esp_ble_mesh_state_change_gen_delta_set_t)},
         // GENERIC MOVE
         {MOD_BLE_MESH_STATE_INT,  sizeof(esp_ble_mesh_server_recv_gen_move_set_t)},
         {MOD_BLE_MESH_STATE_INT,  sizeof(esp_ble_mesh_state_change_gen_move_set_t)},
