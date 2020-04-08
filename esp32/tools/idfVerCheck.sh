@@ -8,14 +8,26 @@
 # available at https://www.pycom.io/opensource/licensing
 #
 
-IDF_VER=$2
+IDF_HASH=$2
 IDF_PATH=$1
-CURR_VER=$(git --git-dir=$IDF_PATH/.git rev-parse HEAD)
+CURR_HASH=$(git -c core.abbrev=7 --git-dir=$IDF_PATH/.git rev-parse --short HEAD)
 
-if [ "${CURR_VER}" = "${IDF_VER}" ]; then
-    echo "IDF Version OK!"
+if [ "${CURR_HASH}" = "${IDF_HASH}" ]; then
+    echo "IDF Version OK! $IDF_HASH"
     exit 0
 else
-    echo "Incompatible IDF version... Expected $IDF_VER, but $IDF_PATH is pointing at $CURR_VER"
-        exit 1
+    echo "
+Incompatible IDF git hash:
+
+$IDF_HASH is expected from IDF_HASH from Makefile, but
+$CURR_HASH is what IDF_PATH=$IDF_PATH is pointing at.
+
+You should probably update one (or multiple) of:
+  * IDF_PATH environment variable
+  * IDF_HASH variable in esp32/Makefile
+  * IDF commit, e.g.
+cd \$IDF_PATH && git checkout $IDF_HASH && git submodule sync && git submodule update --init --recursive && cd -
+
+"
+    exit 1
 fi
