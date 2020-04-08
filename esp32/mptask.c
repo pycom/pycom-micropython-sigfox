@@ -48,6 +48,7 @@
 #include "modled.h"
 #include "esp_log.h"
 #include "mods/pybflash.h"
+#include "telnet/telnet.h"
 
 #if defined (LOPY) || defined (LOPY4) || defined (FIPY)
 #include "modlora.h"
@@ -357,6 +358,7 @@ soft_reset_exit:
     ets_delay_us(5000);
 
     uart_deinit_all();
+    telnet_reset();
     // TODO: rmt_deinit_all();
     rmt_deinit_rgb();
 
