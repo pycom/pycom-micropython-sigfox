@@ -74,9 +74,9 @@ int get_concentrator_time(struct timeval *concent_time, struct timeval unix_time
     concent_time->tv_sec = local_timeval.tv_sec;
     concent_time->tv_usec = local_timeval.tv_usec;
 
-    MSG_DEBUG(DEBUG_TIMERSYNC, " --> TIME: unix current time is   %ld,%ld\n", unix_time.tv_sec, unix_time.tv_usec);
-    MSG_DEBUG(DEBUG_TIMERSYNC, "           offset is              %ld,%ld\n", offset_unix_concent.tv_sec, offset_unix_concent.tv_usec);
-    MSG_DEBUG(DEBUG_TIMERSYNC, "           sx1301 current time is %ld,%ld\n", local_timeval.tv_sec, local_timeval.tv_usec);
+      MSG_DEBUG(DEBUG_TIMERSYNC, " --> TIME: unix current time is   %ld,%ld\n", unix_time.tv_sec, unix_time.tv_usec);
+      MSG_DEBUG(DEBUG_TIMERSYNC, "           offset is              %ld,%ld\n", offset_unix_concent.tv_sec, offset_unix_concent.tv_usec);
+      MSG_DEBUG(DEBUG_TIMERSYNC, "           sx1301 current time is %ld,%ld\n", local_timeval.tv_sec, local_timeval.tv_usec);
 
     return 0;
 }

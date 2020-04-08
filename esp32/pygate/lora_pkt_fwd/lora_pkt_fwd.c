@@ -245,7 +245,7 @@ void thread_timersync(void);
 /* --- PRIVATE FUNCTIONS DEFINITION ----------------------------------------- */
 
 static void exit_cleanup(void) {
-    MSG("INFO: Stopping concentrator\n");
+    MSG("lorapf INFO: Stopping concentrator\n");
     lgw_stop();
 }
 
@@ -296,17 +296,17 @@ static int parse_SX1301_configuration(const char * conf_file) {
     /* try to parse JSON */
     root_val = json_parse_file_with_comments(conf_file);
     if (root_val == NULL) {
-        MSG("ERROR: %s is not a valid JSON file\n", conf_file);
+        MSG("lorapf ERROR: %s is not a valid JSON file\n", conf_file);
         exit(EXIT_FAILURE);
     }
 
     /* point to the gateway configuration object */
     conf_obj = json_object_get_object(json_value_get_object(root_val), conf_obj_name);
     if (conf_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
+        MSG("lorapf INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
         return -1;
     } else {
-        //MSG("INFO: %s does contain a JSON object named %s, parsing SX1301 parameters\n", conf_file, conf_obj_name);
+        //MSG("lorapf INFO: %s does contain a JSON object named %s, parsing SX1301 parameters\n", conf_file, conf_obj_name);
     }
 
     /* set board configuration */
@@ -315,20 +315,20 @@ static int parse_SX1301_configuration(const char * conf_file) {
     if (json_value_get_type(val) == JSONBoolean) {
         boardconf.lorawan_public = (bool)json_value_get_boolean(val);
     } else {
-        MSG("WARNING: Data type for lorawan_public seems wrong, please check\n");
+        MSG("lorapf WARNING: Data type for lorawan_public seems wrong, please check\n");
         boardconf.lorawan_public = false;
     }
     val = json_object_get_value(conf_obj, "clksrc"); /* fetch value (if possible) */
     if (json_value_get_type(val) == JSONNumber) {
         boardconf.clksrc = (uint8_t)json_value_get_number(val);
     } else {
-        MSG("WARNING: Data type for clksrc seems wrong, please check\n");
+        MSG("lorapf WARNING: Data type for clksrc seems wrong, please check\n");
         boardconf.clksrc = 0;
     }
-    MSG("INFO: lorawan_public %d, clksrc %d\n", boardconf.lorawan_public, boardconf.clksrc);
+    MSG("lorapf INFO: lorawan_public %d, clksrc %d\n", boardconf.lorawan_public, boardconf.clksrc);
     /* all parameters parsed, submitting configuration to the HAL */
     if (lgw_board_setconf(&boardconf) != LGW_HAL_SUCCESS) {
-        MSG("ERROR: Failed to configure board\n");
+        MSG("lorapf ERROR: Failed to configure board\n");
         return -1;
     }
 
@@ -338,11 +338,11 @@ static int parse_SX1301_configuration(const char * conf_file) {
         if (json_value_get_type(val) == JSONNumber) {
             antenna_gain = (int8_t)json_value_get_number(val);
         } else {
-            MSG("WARNING: Data type for antenna_gain seems wrong, please check\n");
+            MSG("lorapf WARNING: Data type for antenna_gain seems wrong, please check\n");
             antenna_gain = 0;
         }
     }
-    MSG("INFO: antenna_gain %d dBi\n", antenna_gain);
+    MSG("lorapf INFO: antenna_gain %d dBi\n", antenna_gain);
 
     /* set configuration for tx gains */
     memset(&txlut, 0, sizeof txlut); /* initialize configuration structure */
@@ -350,7 +350,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         snprintf(param_name, sizeof param_name, "tx_lut_%i", i); /* compose parameter path inside JSON structure */
         val = json_object_get_value(conf_obj, param_name); /* fetch value (if possible) */
         if (json_value_get_type(val) != JSONObject) {
-            MSG("INFO: no configuration for tx gain lut %i\n", i);
+            MSG("lorapf INFO: no configuration for tx gain lut %i\n", i);
             continue;
         }
         txlut.size++; /* update TX LUT size based on JSON object found in configuration file */
@@ -360,7 +360,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         if (json_value_get_type(val) == JSONNumber) {
             txlut.lut[i].pa_gain = (uint8_t)json_value_get_number(val);
         } else {
-            MSG("WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
+            MSG("lorapf WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
             txlut.lut[i].pa_gain = 0;
         }
         snprintf(param_name, sizeof param_name, "tx_lut_%i.dac_gain", i);
@@ -375,7 +375,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         if (json_value_get_type(val) == JSONNumber) {
             txlut.lut[i].dig_gain = (uint8_t)json_value_get_number(val);
         } else {
-            MSG("WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
+            MSG("lorapf WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
             txlut.lut[i].dig_gain = 0;
         }
         snprintf(param_name, sizeof param_name, "tx_lut_%i.mix_gain", i);
@@ -383,7 +383,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         if (json_value_get_type(val) == JSONNumber) {
             txlut.lut[i].mix_gain = (uint8_t)json_value_get_number(val);
         } else {
-            MSG("WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
+            MSG("lorapf WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
             txlut.lut[i].mix_gain = 0;
         }
         snprintf(param_name, sizeof param_name, "tx_lut_%i.rf_power", i);
@@ -391,19 +391,19 @@ static int parse_SX1301_configuration(const char * conf_file) {
         if (json_value_get_type(val) == JSONNumber) {
             txlut.lut[i].rf_power = (int8_t)json_value_get_number(val);
         } else {
-            MSG("WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
+            MSG("lorapf WARNING: Data type for %s[%d] seems wrong, please check\n", param_name, i);
             txlut.lut[i].rf_power = 0;
         }
     }
     /* all parameters parsed, submitting configuration to the HAL */
     if (txlut.size > 0) {
-        MSG("INFO: Configuring TX LUT with %u indexes\n", txlut.size);
+        MSG("lorapf INFO: Configuring TX LUT with %u indexes\n", txlut.size);
         if (lgw_txgain_setconf(&txlut) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: Failed to configure concentrator TX Gain LUT\n");
+            MSG("lorapf ERROR: Failed to configure concentrator TX Gain LUT\n");
             return -1;
         }
     } else {
-        MSG("WARNING: No TX gain LUT defined\n");
+        MSG("lorapf WARNING: No TX gain LUT defined\n");
     }
 
     /* set configuration for RF chains */
@@ -412,7 +412,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         snprintf(param_name, sizeof param_name, "radio_%i", i); /* compose parameter path inside JSON structure */
         val = json_object_get_value(conf_obj, param_name); /* fetch value (if possible) */
         if (json_value_get_type(val) != JSONObject) {
-            MSG("INFO: no configuration for radio %i\n", i);
+            MSG("lorapf INFO: no configuration for radio %i\n", i);
             continue;
         }
         /* there is an object to configure that radio, let's parse it */
@@ -424,7 +424,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             rfconf.enable = false;
         }
         if (rfconf.enable == false) { /* radio disabled, nothing else to parse */
-            MSG("INFO: radio %i disabled\n", i);
+            MSG("lorapf INFO: radio %i disabled\n", i);
         } else  { /* radio enabled, will parse the other parameters */
             snprintf(param_name, sizeof param_name, "radio_%i.freq", i);
             rfconf.freq_hz = (uint32_t)json_object_dotget_number(conf_obj, param_name);
@@ -437,7 +437,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             } else if (!strncmp(str, "SX1257", 6)) {
                 rfconf.type = LGW_RADIO_TYPE_SX1257;
             } else {
-                MSG("WARNING: invalid radio type: %s (should be SX1255 or SX1257)\n", str);
+                MSG("lorapf WARNING: invalid radio type: %s (should be SX1255 or SX1257)\n", str);
             }
             snprintf(param_name, sizeof param_name, "radio_%i.tx_enable", i);
             val = json_object_dotget_value(conf_obj, param_name);
@@ -450,17 +450,17 @@ static int parse_SX1301_configuration(const char * conf_file) {
                     snprintf(param_name, sizeof param_name, "radio_%i.tx_freq_max", i);
                     tx_freq_max[i] = (uint32_t)json_object_dotget_number(conf_obj, param_name);
                     if ((tx_freq_min[i] == 0) || (tx_freq_max[i] == 0)) {
-                        MSG("WARNING: no frequency range specified for TX rf chain %d\n", i);
+                        MSG("lorapf WARNING: no frequency range specified for TX rf chain %d\n", i);
                     }
                 }
             } else {
                 rfconf.tx_enable = false;
             }
-            MSG("INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable);
+            MSG("lorapf INFO: radio %i enabled (type %s), center frequency %u, RSSI offset %f, tx enabled %d\n", i, str, rfconf.freq_hz, rfconf.rssi_offset, rfconf.tx_enable);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxrf_setconf(i, &rfconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for radio %i\n", i);
+            MSG("lorapf ERROR: invalid configuration for radio %i\n", i);
             return -1;
         }
     }
@@ -471,7 +471,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
         snprintf(param_name, sizeof param_name, "chan_multiSF_%i", i); /* compose parameter path inside JSON structure */
         val = json_object_get_value(conf_obj, param_name); /* fetch value (if possible) */
         if (json_value_get_type(val) != JSONObject) {
-            MSG("INFO: no configuration for Lora multi-SF channel %i\n", i);
+            MSG("lorapf INFO: no configuration for Lora multi-SF channel %i\n", i);
             continue;
         }
         /* there is an object to configure that Lora multi-SF channel, let's parse it */
@@ -483,18 +483,18 @@ static int parse_SX1301_configuration(const char * conf_file) {
             ifconf.enable = false;
         }
         if (ifconf.enable == false) { /* Lora multi-SF channel disabled, nothing else to parse */
-            MSG("INFO: Lora multi-SF channel %i disabled\n", i);
+            MSG("lorapf INFO: Lora multi-SF channel %i disabled\n", i);
         } else  { /* Lora multi-SF channel enabled, will parse the other parameters */
             snprintf(param_name, sizeof param_name, "chan_multiSF_%i.radio", i);
             ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf_obj, param_name);
             snprintf(param_name, sizeof param_name, "chan_multiSF_%i.if", i);
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf_obj, param_name);
             // TODO: handle individual SF enabling and disabling (spread_factor)
-            MSG("INFO: Lora multi-SF channel %i>  radio %i, IF %i Hz, 125 kHz bw, SF 7 to 12\n", i, ifconf.rf_chain, ifconf.freq_hz);
+            MSG("lorapf INFO: Lora multi-SF channel %i>  radio %i, IF %i Hz, 125 kHz bw, SF 7 to 12\n", i, ifconf.rf_chain, ifconf.freq_hz);
         }
         /* all parameters parsed, submitting configuration to the HAL */
         if (lgw_rxif_setconf(i, &ifconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for Lora multi-SF channel %i\n", i);
+            MSG("lorapf ERROR: invalid configuration for Lora multi-SF channel %i\n", i);
             return -1;
         }
     }
@@ -503,7 +503,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
     memset(&ifconf, 0, sizeof ifconf); /* initialize configuration structure */
     val = json_object_get_value(conf_obj, "chan_Lora_std"); /* fetch value (if possible) */
     if (json_value_get_type(val) != JSONObject) {
-        MSG("INFO: no configuration for Lora standard channel\n");
+        MSG("lorapf INFO: no configuration for Lora standard channel\n");
     } else {
         val = json_object_dotget_value(conf_obj, "chan_Lora_std.enable");
         if (json_value_get_type(val) == JSONBoolean) {
@@ -512,7 +512,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             ifconf.enable = false;
         }
         if (ifconf.enable == false) {
-            MSG("INFO: Lora standard channel %i disabled\n", i);
+            MSG("lorapf INFO: Lora standard channel %i disabled\n", i);
         } else  {
             ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.radio");
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf_obj, "chan_Lora_std.if");
@@ -553,10 +553,10 @@ static int parse_SX1301_configuration(const char * conf_file) {
                 default:
                     ifconf.datarate = DR_UNDEFINED;
             }
-            MSG("INFO: Lora std channel> radio %i, IF %i Hz, %u Hz bw, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
+            MSG("lorapf INFO: Lora std channel> radio %i, IF %i Hz, %u Hz bw, SF %u\n", ifconf.rf_chain, ifconf.freq_hz, bw, sf);
         }
         if (lgw_rxif_setconf(8, &ifconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for Lora standard channel\n");
+            MSG("lorapf ERROR: invalid configuration for Lora standard channel\n");
             return -1;
         }
     }
@@ -565,7 +565,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
     memset(&ifconf, 0, sizeof ifconf); /* initialize configuration structure */
     val = json_object_get_value(conf_obj, "chan_FSK"); /* fetch value (if possible) */
     if (json_value_get_type(val) != JSONObject) {
-        MSG("INFO: no configuration for FSK channel\n");
+        MSG("lorapf INFO: no configuration for FSK channel\n");
     } else {
         val = json_object_dotget_value(conf_obj, "chan_FSK.enable");
         if (json_value_get_type(val) == JSONBoolean) {
@@ -574,7 +574,7 @@ static int parse_SX1301_configuration(const char * conf_file) {
             ifconf.enable = false;
         }
         if (ifconf.enable == false) {
-            MSG("INFO: FSK channel %i disabled\n", i);
+            MSG("lorapf INFO: FSK channel %i disabled\n", i);
         } else  {
             ifconf.rf_chain = (uint32_t)json_object_dotget_number(conf_obj, "chan_FSK.radio");
             ifconf.freq_hz = (int32_t)json_object_dotget_number(conf_obj, "chan_FSK.if");
@@ -606,10 +606,10 @@ static int parse_SX1301_configuration(const char * conf_file) {
                 ifconf.bandwidth = BW_UNDEFINED;
             }
 
-            MSG("INFO: FSK channel> radio %i, IF %i Hz, %u Hz bw, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
+            MSG("lorapf INFO: FSK channel> radio %i, IF %i Hz, %u Hz bw, %u bps datarate\n", ifconf.rf_chain, ifconf.freq_hz, bw, ifconf.datarate);
         }
         if (lgw_rxif_setconf(9, &ifconf) != LGW_HAL_SUCCESS) {
-            MSG("ERROR: invalid configuration for FSK channel\n");
+            MSG("lorapf ERROR: invalid configuration for FSK channel\n");
             return -1;
         }
     }
@@ -629,17 +629,17 @@ static int parse_gateway_configuration(const char * conf_file) {
     /* try to parse JSON */
     root_val = json_parse_file_with_comments(conf_file);
     if (root_val == NULL) {
-        MSG("ERROR: %s is not a valid JSON file\n", conf_file);
+        MSG("lorapf ERROR: %s is not a valid JSON file\n", conf_file);
         exit(EXIT_FAILURE);
     }
 
     /* point to the gateway configuration object */
     conf_obj = json_object_get_object(json_value_get_object(root_val), conf_obj_name);
     if (conf_obj == NULL) {
-        MSG("INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
+        MSG("lorapf INFO: %s does not contain a JSON object named %s\n", conf_file, conf_obj_name);
         return -1;
     } else {
-        //MSG("INFO: %s does contain a JSON object named %s, parsing gateway parameters\n", conf_file, conf_obj_name);
+        //MSG("lorapf INFO: %s does contain a JSON object named %s, parsing gateway parameters\n", conf_file, conf_obj_name);
     }
 
     /* gateway unique identifier (aka MAC address) (optional) */
@@ -647,47 +647,47 @@ static int parse_gateway_configuration(const char * conf_file) {
     if (str != NULL) {
         sscanf(str, "%llx", &ull);
         lgwm = ull;
-        MSG("INFO: gateway MAC address is configured to %016llX\n", ull);
+        MSG("lorapf INFO: gateway MAC address is configured to %016llX\n", ull);
     }
 
     /* server hostname or IP address (optional) */
     str = json_object_get_string(conf_obj, "server_address");
     if (str != NULL) {
         strncpy(serv_addr, str, sizeof serv_addr);
-        MSG("INFO: server hostname or IP address is configured to \"%s\"\n", serv_addr);
+        MSG("lorapf INFO: server hostname or IP address is configured to \"%s\"\n", serv_addr);
     }
 
     /* get up and down ports (optional) */
     val = json_object_get_value(conf_obj, "serv_port_up");
     if (val != NULL) {
         snprintf(serv_port_up, sizeof serv_port_up, "%u", (uint16_t)json_value_get_number(val));
-        MSG("INFO: upstream port is configured to \"%s\"\n", serv_port_up);
+        MSG("lorapf INFO: upstream port is configured to \"%s\"\n", serv_port_up);
     }
     val = json_object_get_value(conf_obj, "serv_port_down");
     if (val != NULL) {
         snprintf(serv_port_down, sizeof serv_port_down, "%u", (uint16_t)json_value_get_number(val));
-        MSG("INFO: downstream port is configured to \"%s\"\n", serv_port_down);
+        MSG("lorapf INFO: downstream port is configured to \"%s\"\n", serv_port_down);
     }
 
     /* get keep-alive interval (in seconds) for downstream (optional) */
     val = json_object_get_value(conf_obj, "keepalive_interval");
     if (val != NULL) {
         keepalive_time = (int)json_value_get_number(val);
-        MSG("INFO: downstream keep-alive interval is configured to %u seconds\n", keepalive_time);
+        MSG("lorapf INFO: downstream keep-alive interval is configured to %u seconds\n", keepalive_time);
     }
 
     /* get interval (in seconds) for statistics display (optional) */
     val = json_object_get_value(conf_obj, "stat_interval");
     if (val != NULL) {
         stat_interval = (unsigned)json_value_get_number(val);
-        MSG("INFO: statistics display interval is configured to %u seconds\n", stat_interval);
+        MSG("lorapf INFO: statistics display interval is configured to %u seconds\n", stat_interval);
     }
 
     /* get time-out value (in ms) for upstream datagrams (optional) */
     val = json_object_get_value(conf_obj, "push_timeout_ms");
     if (val != NULL) {
         push_timeout_half.tv_usec = 500 * (long int)json_value_get_number(val);
-        MSG("INFO: upstream PUSH_DATA time-out is configured to %u ms\n", (unsigned)(push_timeout_half.tv_usec / 500));
+        MSG("lorapf INFO: upstream PUSH_DATA time-out is configured to %u ms\n", (unsigned)(push_timeout_half.tv_usec / 500));
     }
 
     /* packet filtering parameters */
@@ -695,33 +695,33 @@ static int parse_gateway_configuration(const char * conf_file) {
     if (json_value_get_type(val) == JSONBoolean) {
         fwd_valid_pkt = (bool)json_value_get_boolean(val);
     }
-    MSG("INFO: packets received with a valid CRC will%s be forwarded\n", (fwd_valid_pkt ? "" : " NOT"));
+    MSG("lorapf INFO: packets received with a valid CRC will%s be forwarded\n", (fwd_valid_pkt ? "" : " NOT"));
     val = json_object_get_value(conf_obj, "forward_crc_error");
     if (json_value_get_type(val) == JSONBoolean) {
         fwd_error_pkt = (bool)json_value_get_boolean(val);
     }
-    MSG("INFO: packets received with a CRC error will%s be forwarded\n", (fwd_error_pkt ? "" : " NOT"));
+    MSG("lorapf INFO: packets received with a CRC error will%s be forwarded\n", (fwd_error_pkt ? "" : " NOT"));
     val = json_object_get_value(conf_obj, "forward_crc_disabled");
     if (json_value_get_type(val) == JSONBoolean) {
         fwd_nocrc_pkt = (bool)json_value_get_boolean(val);
     }
-    MSG("INFO: packets received with no CRC will%s be forwarded\n", (fwd_nocrc_pkt ? "" : " NOT"));
+    MSG("lorapf INFO: packets received with no CRC will%s be forwarded\n", (fwd_nocrc_pkt ? "" : " NOT"));
 
     /* get reference coordinates */
     val = json_object_get_value(conf_obj, "ref_latitude");
     if (val != NULL) {
         reference_coord.lat = (double)json_value_get_number(val);
-        MSG("INFO: Reference latitude is configured to %f deg\n", reference_coord.lat);
+        MSG("lorapf INFO: Reference latitude is configured to %f deg\n", reference_coord.lat);
     }
     val = json_object_get_value(conf_obj, "ref_longitude");
     if (val != NULL) {
         reference_coord.lon = (double)json_value_get_number(val);
-        MSG("INFO: Reference longitude is configured to %f deg\n", reference_coord.lon);
+        MSG("lorapf INFO: Reference longitude is configured to %f deg\n", reference_coord.lon);
     }
     val = json_object_get_value(conf_obj, "ref_altitude");
     if (val != NULL) {
         reference_coord.alt = (short)json_value_get_number(val);
-        MSG("INFO: Reference altitude is configured to %i meters\n", reference_coord.alt);
+        MSG("lorapf INFO: Reference altitude is configured to %i meters\n", reference_coord.alt);
     }
 
     /* Gateway GPS coordinates hardcoding (aka. faking) option */
@@ -729,9 +729,9 @@ static int parse_gateway_configuration(const char * conf_file) {
     if (json_value_get_type(val) == JSONBoolean) {
         gps_fake_enable = (bool)json_value_get_boolean(val);
         if (gps_fake_enable == true) {
-            MSG("INFO: fake GPS is enabled\n");
+            MSG("lorapf INFO: fake GPS is enabled\n");
         } else {
-            MSG("INFO: fake GPS is disabled\n");
+            MSG("lorapf INFO: fake GPS is disabled\n");
         }
     }
 
@@ -739,7 +739,7 @@ static int parse_gateway_configuration(const char * conf_file) {
     val = json_object_get_value(conf_obj, "autoquit_threshold");
     if (val != NULL) {
         autoquit_threshold = (uint32_t)json_value_get_number(val);
-        MSG("INFO: Auto-quit after %u non-acknowledged PULL_DATA\n", autoquit_threshold);
+        MSG("lorapf INFO: Auto-quit after %u non-acknowledged PULL_DATA\n", autoquit_threshold);
     }
 
     /* free JSON parsing data structure */
@@ -776,14 +776,14 @@ static void obtain_time(void)
     int retry = 0;
     const int retry_count = 10;
     while(!mach_is_rtc_synced() && ++retry < retry_count) {
-        printf( "Waiting for system time to be set... (%d/%d)\n", retry, retry_count);
+        MSG("lorapf INFO: Waiting for system time to be set... (%d/%d)\n", retry, retry_count);
         vTaskDelay(2000 / portTICK_PERIOD_MS);
         time(&now);
         localtime_r(&now, &timeinfo);
     }
     if(retry == retry_count)
     {
-        printf("Failed to set system time.. please Sync time via an NTP server using RTC module.!\n");
+        MSG("lorapf ERROR: Failed to set system time.. please Sync time via an NTP server using RTC module.!\n");
         exit(EXIT_FAILURE);
     }
 
@@ -980,20 +980,20 @@ void TASK_lora_gw(void *pvParameters) {
             break;
 
         default:
-            MSG("ERROR: argument parsing options, use -h option for help\n");
+            MSG("lorapf [main] ERROR: argument parsing options, use -h option for help\n");
             usage();
             return EXIT_FAILURE;
         }
     }*/
 
     /* display version informations */
-    MSG("*** Packet Forwarder for Lora PicoCell Gateway ***\nVersion: " VERSION_STRING "\n");
-    MSG("*** Lora concentrator HAL library version info ***\n%s\n", lgw_version_info());
+    MSG("lorapf *** Packet Forwarder for Lora PicoCell Gateway ***\nVersion: " VERSION_STRING "\n");
+    MSG("lorapf *** Lora concentrator HAL library version info ***\n%s\n", lgw_version_info());
 
     /* Open communication bridge */
     x = lgw_connect(NULL);
     if (x == LGW_REG_ERROR) {
-        MSG("ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
+        MSG("lorapf [main] ERROR: FAIL TO CONNECT BOARD ON %s\n", com_path);
         exit(EXIT_FAILURE);
     }
 
@@ -1004,21 +1004,21 @@ void TASK_lora_gw(void *pvParameters) {
     localtime_r(&now, &timeinfo);
     // Is time set? If not, tm_year will be (1970 - 1900).
     if (timeinfo.tm_year < (2016 - 1900)) {
-        printf( "Time is not set.\n");
+        MSG("lorapf [main] INFO: Time is not set.\n");
         obtain_time();
         // update 'now' variable with current time
         time(&now);
     }
 
-    //MSG("*** MCU FW version for LoRa PicoCell Gateway ***\nVersion: 0x%08X\n***\n", lgw_mcu_version_info());
+    //MSG("lorapf *** MCU FW version for LoRa PicoCell Gateway ***\nVersion: 0x%08X\n***\n", lgw_mcu_version_info());
 
     /* display host endianness */
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    MSG("INFO: Little endian host\n");
+    MSG("lorapf [main] INFO: Little endian host\n");
 #elif __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    MSG("INFO: Big endian host\n");
+    MSG("lorapf [main] INFO: Big endian host\n");
 #else
-    MSG("INFO: Host endianness unknown\n");
+    MSG("lorapf [main] INFO: Host endianness unknown\n");
 #endif
 
     x = parse_SX1301_configuration((char *)pvParameters);
@@ -1030,13 +1030,13 @@ void TASK_lora_gw(void *pvParameters) {
        exit(EXIT_FAILURE);
     }
 
-    MSG("INFO: found global configuration file and parsed correctly\n");
+    MSG("lorapf [main] INFO: found global configuration file and parsed correctly\n");
     wait_ms (2000);
 
     /* load configuration files */
     /*if (access(debug_cfg_path, R_OK) == 0) { // if there is a debug conf, parse only the debug conf 
-        MSG("INFO: found debug configuration file %s, parsing it\n", debug_cfg_path);
-        MSG("INFO: other configuration files will be ignored\n");
+        MSG("lorapf [main] INFO: found debug configuration file %s, parsing it\n", debug_cfg_path);
+        MSG("lorapf [main] INFO: other configuration files will be ignored\n");
         x = parse_SX1301_configuration(debug_cfg_path);
         if (x != 0) {
             exit(EXIT_FAILURE);
@@ -1046,7 +1046,7 @@ void TASK_lora_gw(void *pvParameters) {
             exit(EXIT_FAILURE);
         }
     } else if (access(global_cfg_path, R_OK) == 0) { // if there is a global conf, parse it and then try to parse local conf  
-        MSG("INFO: found global configuration file %s, parsing it\n", global_cfg_path);
+        MSG("lorapf [main] INFO: found global configuration file %s, parsing it\n", global_cfg_path);
         x = parse_SX1301_configuration(global_cfg_path);
         if (x != 0) {
             exit(EXIT_FAILURE);
@@ -1056,13 +1056,13 @@ void TASK_lora_gw(void *pvParameters) {
             exit(EXIT_FAILURE);
         }
         if (access(local_cfg_path, R_OK) == 0) {
-            MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);
-            MSG("INFO: redefined parameters will overwrite global parameters\n");
+            MSG("lorapf [main] INFO: found local configuration file %s, parsing it\n", local_cfg_path);
+            MSG("lorapf [main] INFO: redefined parameters will overwrite global parameters\n");
             parse_SX1301_configuration(local_cfg_path);
             parse_gateway_configuration(local_cfg_path);
         }
     } else if (access(local_cfg_path, R_OK) == 0) { // if there is only a local conf, parse it and that's all 
-        MSG("INFO: found local configuration file %s, parsing it\n", local_cfg_path);
+        MSG("lorapf [main] INFO: found local configuration file %s, parsing it\n", local_cfg_path);
         x = parse_SX1301_configuration(local_cfg_path);
         if (x != 0) {
             exit(EXIT_FAILURE);
@@ -1072,7 +1072,7 @@ void TASK_lora_gw(void *pvParameters) {
             exit(EXIT_FAILURE);
         }
     } else {
-        MSG("ERROR: [main] failed to find any configuration file named %s, %s OR %s\n", global_cfg_path, local_cfg_path, debug_cfg_path);
+        MSG("lorapf [main] ERROR: failed to find any configuration file named %s, %s OR %s\n", global_cfg_path, local_cfg_path, debug_cfg_path);
         exit(EXIT_FAILURE);
     }*/
 
@@ -1094,7 +1094,7 @@ void TASK_lora_gw(void *pvParameters) {
     /* look for server address w/ upstream port */
     i = getaddrinfo(serv_addr, serv_port_up, &hints, &result);
     if (i != 0) {
-        MSG("ERROR: [up] getaddrinfo on address %s (PORT %s) returned %d\n", serv_addr, serv_port_up, i);
+        MSG("lorapf ERROR: [up] getaddrinfo on address %s (PORT %s) returned %d\n", serv_addr, serv_port_up, i);
         exit(EXIT_FAILURE);
     }
 
@@ -1108,11 +1108,11 @@ void TASK_lora_gw(void *pvParameters) {
         }
     }
     if (q == NULL) {
-        MSG("ERROR: [up] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
+        MSG("lorapf ERROR: [up] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
         /*i = 1;
         for (q = result; q != NULL; q = q->ai_next) {
             getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-            MSG("INFO: [up] result %i host:%s service:%s\n", i, host_name, port_name);
+            MSG("lorapf INFO: [up] result %i host:%s service:%s\n", i, host_name, port_name);
             ++i;
         }*/
         exit(EXIT_FAILURE);
@@ -1121,7 +1121,7 @@ void TASK_lora_gw(void *pvParameters) {
     /* connect so we can send/receive packet with the server only */
     i = connect(sock_up, q->ai_addr, q->ai_addrlen);
     if (i != 0) {
-        MSG("ERROR: [up] connect returned %s\n", strerror(errno));
+        MSG("lorapf ERROR: [up] connect returned %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
     freeaddrinfo(result);
@@ -1129,7 +1129,7 @@ void TASK_lora_gw(void *pvParameters) {
     /* look for server address w/ downstream port */
     i = getaddrinfo(serv_addr, serv_port_down, &hints, &result);
     if (i != 0) {
-        MSG("ERROR: [down] getaddrinfo on address %s (port %s) returned %d\n", serv_addr, serv_port_up, i);
+        MSG("lorapf ERROR: [down] getaddrinfo on address %s (port %s) returned %d\n", serv_addr, serv_port_up, i);
         exit(EXIT_FAILURE);
     }
     
@@ -1144,11 +1144,11 @@ void TASK_lora_gw(void *pvParameters) {
     }
  
     if (q == NULL) {
-        MSG("ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
+        MSG("lorapf ERROR: [down] failed to open socket to any of server %s addresses (port %s)\n", serv_addr, serv_port_up);
         /*i = 1;
         for (q = result; q != NULL; q = q->ai_next) {
             getnameinfo(q->ai_addr, q->ai_addrlen, host_name, sizeof host_name, port_name, sizeof port_name, NI_NUMERICHOST);
-            MSG("INFO: [down] result %i host:%s service:%s\n", i, host_name, port_name);
+            MSG("lorapf INFO: [down] result %i host:%s service:%s\n", i, host_name, port_name);
             ++i;
         }*/
         exit(EXIT_FAILURE);
@@ -1157,7 +1157,7 @@ void TASK_lora_gw(void *pvParameters) {
     /* connect so we can send/receive packet with the server only */
     i = connect(sock_down, q->ai_addr, q->ai_addrlen);
     if (i != 0) {
-        MSG("ERROR: [down] connect returned %s\n", strerror(errno));
+        MSG("lorapf ERROR: [down] connect returned %s\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
@@ -1166,9 +1166,9 @@ void TASK_lora_gw(void *pvParameters) {
     /* starting the concentrator */
     i = lgw_start();
     if (i == LGW_HAL_SUCCESS) {
-        MSG("INFO: [main] concentrator started, packet can now be received\n");
+        MSG("lorapf INFO: [main] concentrator started, packet can now be received\n");
     } else {
-        MSG("ERROR: [main] failed to start the concentrator\n");
+        MSG("lorapf ERROR: [main] failed to start the concentrator\n");
         //exit(EXIT_FAILURE);
     }
     esp_pthread_cfg_t cfg = {
@@ -1180,13 +1180,13 @@ void TASK_lora_gw(void *pvParameters) {
     /* spawn threads to manage upstream and downstream */
     i = pthread_create( &thrid_up, NULL, (void * (*)(void *))thread_up, NULL);
     if (i != 0) {
-        MSG("ERROR: [main] impossible to create upstream thread\n");
+        MSG("lorapf ERROR: [main] impossible to create upstream thread\n");
         exit(EXIT_FAILURE);
     }
 
     i = pthread_create( &thrid_down, NULL, (void * (*)(void *))thread_down, NULL);
     if (i != 0) {
-        MSG("ERROR: [main] impossible to create downstream thread\n");
+        MSG("lorapf ERROR: [main] impossible to create downstream thread\n");
         exit_sig = true;
         pthread_join(thrid_up, NULL);
         exit(EXIT_FAILURE);
@@ -1195,7 +1195,7 @@ void TASK_lora_gw(void *pvParameters) {
     esp_pthread_set_cfg(&cfg);
     i = pthread_create( &thrid_jit, NULL, (void * (*)(void *))thread_jit, NULL);
     if (i != 0) {
-        MSG("ERROR: [main] impossible to create JIT thread\n");
+        MSG("lorapf ERROR: [main] impossible to create JIT thread\n");
         exit_sig = true;
         pthread_join(thrid_up, NULL);
         pthread_join(thrid_down, NULL);
@@ -1206,7 +1206,7 @@ void TASK_lora_gw(void *pvParameters) {
     esp_pthread_set_cfg(&cfg);
     i = pthread_create( &thrid_timersync, NULL, (void * (*)(void *))thread_timersync, NULL);
     if (i != 0) {
-        MSG("ERROR: [main] impossible to create Timer Sync thread\n");
+        MSG("lorapf ERROR: [main] impossible to create Timer Sync thread\n");
         exit_sig = true;
         pthread_join(thrid_up, NULL);
         pthread_join(thrid_down, NULL);
@@ -1300,7 +1300,7 @@ void TASK_lora_gw(void *pvParameters) {
         }
 
         /* display a report */
-        printf("\n##### %s #####\n", stat_timestamp);
+        MSG("lorapf INFO: report\n##### %s #####\n", stat_timestamp);
         printf("### [UPSTREAM] ###\n");
         printf("# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
         printf("# CRC_OK: %.2f%%, CRC_FAIL: %.2f%%, NO_CRC: %.2f%%\n", 100.0 * rx_ok_ratio, 100.0 * rx_bad_ratio, 100.0 * rx_nocrc_ratio);
@@ -1334,6 +1334,7 @@ void TASK_lora_gw(void *pvParameters) {
         report_ready = true;
         pthread_mutex_unlock(&mx_stat_rep);
     }
+    MSG("lorapf [main] INFO: Exited main packet forwarder loop\n");
 
     /* wait for upstream thread to finish (1 fetch cycle max) */
     pthread_join(thrid_up, NULL);
@@ -1349,13 +1350,13 @@ void TASK_lora_gw(void *pvParameters) {
         /* stop the hardware */
         i = lgw_stop();
         if (i == LGW_HAL_SUCCESS) {
-            MSG("INFO: concentrator stopped successfully\n");
+            MSG("lorapf INFO: concentrator stopped successfully\n");
         } else {
-            MSG("WARNING: failed to stop concentrator successfully\n");
+            MSG("lorapf WARNING: failed to stop concentrator successfully\n");
         }
     }
 
-    MSG("INFO: Exiting packet forwarder program\n");
+    MSG("lorapf INFO: Exiting packet forwarder program\n");
     exit(EXIT_SUCCESS);
 }
 
@@ -1394,7 +1395,7 @@ void thread_up(void) {
     /* set upstream socket RX timeout */
     i = setsockopt(sock_up, SOL_SOCKET, SO_RCVTIMEO, (void *)&push_timeout_half, sizeof push_timeout_half);
     if (i != 0) {
-        MSG("ERROR: [up] setsockopt returned %s\n", strerror(errno));
+        MSG("lorapf ERROR: [up] setsockopt returned %s\n", strerror(errno));
         quit_sig = true;
         machine_pygate_set_status(PYGATE_ERROR);
     }
@@ -1411,7 +1412,7 @@ void thread_up(void) {
         nb_pkt = lgw_receive(NB_PKT_MAX, rxpkt);  // Crashing here
         pthread_mutex_unlock(&mx_concent);
         if (nb_pkt == LGW_HAL_ERROR) {
-            MSG("ERROR: [up] failed packet fetch, exiting\n");
+            MSG("lorapf ERROR: [up] failed packet fetch, exiting\n");
             //exit(EXIT_FAILURE);
         }
 
@@ -1459,7 +1460,7 @@ void thread_up(void) {
             switch(p->status) {
                 case STAT_CRC_OK:
                     meas_nb_rx_ok += 1;
-                    printf( "\nINFO: Received pkt from mote: %08X (fcnt=%u)\n", mote_addr, mote_fcnt );
+                    MSG("lorapf INFO: [up] received pkt from mote: %08X (fcnt=%u)\n", mote_addr, mote_fcnt );
                     if (!fwd_valid_pkt) {
                         pthread_mutex_unlock(&mx_meas_up);
                         continue; /* skip that packet */
@@ -1480,7 +1481,7 @@ void thread_up(void) {
                     }
                     break;
                 default:
-                    MSG("WARNING: [up] received packet with unknown status %u (size %u, modulation %u, BW %u, DR %u, RSSI %.1f)\n", p->status, p->size, p->modulation, p->bandwidth, p->datarate, p->rssi);
+                    MSG("lorapf WARNING: [up] received packet with unknown status %u (size %u, modulation %u, BW %u, DR %u, RSSI %.1f)\n", p->status, p->size, p->modulation, p->bandwidth, p->datarate, p->rssi);
                     pthread_mutex_unlock(&mx_meas_up);
                     continue; /* skip that packet */
                     // exit(EXIT_FAILURE);
@@ -1504,7 +1505,7 @@ void thread_up(void) {
             if (j > 0) {
                 buff_index += j;
             } else {
-                MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                MSG("lorapf ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
                 quit_sig = true;
             }
 
@@ -1513,7 +1514,7 @@ void thread_up(void) {
             if (j > 0) {
                 buff_index += j;
             } else {
-                MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                MSG("lorapf ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
                 quit_sig = true;
                 machine_pygate_set_status(PYGATE_ERROR);
             }
@@ -1533,7 +1534,7 @@ void thread_up(void) {
                     buff_index += 9;
                     break;
                 default:
-                    MSG("ERROR: [up] received packet with unknown status\n");
+                    MSG("lorapf ERROR: [up] received packet with unknown status\n");
                     memcpy((void *)(buff_up + buff_index), (void *)",\"stat\":?", 9);
                     buff_index += 9;
                     quit_sig = true;
@@ -1572,7 +1573,7 @@ void thread_up(void) {
                         buff_index += 13;
                         break;
                     default:
-                        MSG("ERROR: [up] lora packet with unknown datarate\n");
+                        MSG("lorapf ERROR: [up] lora packet with unknown datarate\n");
                         memcpy((void *)(buff_up + buff_index), (void *)",\"datr\":\"SF?", 12);
                         buff_index += 12;
                         quit_sig = true;
@@ -1592,7 +1593,7 @@ void thread_up(void) {
                         buff_index += 6;
                         break;
                     default:
-                        MSG("ERROR: [up] lora packet with unknown bandwidth\n");
+                        MSG("lorapf ERROR: [up] lora packet with unknown bandwidth\n");
                         memcpy((void *)(buff_up + buff_index), (void *)"BW?\"", 4);
                         buff_index += 4;
                         quit_sig = true;
@@ -1622,7 +1623,7 @@ void thread_up(void) {
                         buff_index += 13;
                         break;
                     default:
-                        MSG("ERROR: [up] lora packet with unknown coderate\n");
+                        MSG("lorapf ERROR: [up] lora packet with unknown coderate\n");
                         memcpy((void *)(buff_up + buff_index), (void *)",\"codr\":\"?\"", 11);
                         buff_index += 11;
                         quit_sig = true;
@@ -1634,7 +1635,7 @@ void thread_up(void) {
                 if (j > 0) {
                     buff_index += j;
                 } else {
-                    MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                    MSG("lorapf ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
                     quit_sig = true;
                     machine_pygate_set_status(PYGATE_ERROR);
                 }
@@ -1647,12 +1648,12 @@ void thread_up(void) {
                 if (j > 0) {
                     buff_index += j;
                 } else {
-                    MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                    MSG("lorapf ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
                     quit_sig = true;
                     machine_pygate_set_status(PYGATE_ERROR);
                 }
             } else {
-                MSG("ERROR: [up] received packet with unknown modulation\n");
+                MSG("lorapf ERROR: [up] received packet with unknown modulation\n");
                 quit_sig = true;
                 machine_pygate_set_status(PYGATE_ERROR);
             }
@@ -1662,7 +1663,7 @@ void thread_up(void) {
             if (j > 0) {
                 buff_index += j;
             } else {
-                MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
+                MSG("lorapf ERROR: [up] snprintf failed line %u\n", (__LINE__ - 4));
                 quit_sig = true;
                 machine_pygate_set_status(PYGATE_ERROR);
             }
@@ -1674,7 +1675,7 @@ void thread_up(void) {
             if (j >= 0) {
                 buff_index += j;
             } else {
-                MSG("ERROR: [up] bin_to_b64 failed line %u\n", (__LINE__ - 5));
+                MSG("lorapf ERROR: [up] bin_to_b64 failed line %u\n", (__LINE__ - 5));
                 quit_sig = true;
                 machine_pygate_set_status(PYGATE_ERROR);
             }
@@ -1716,7 +1717,7 @@ void thread_up(void) {
             if (j > 0) {
                 buff_index += j;
             } else {
-                MSG("ERROR: [up] snprintf failed line %u\n", (__LINE__ - 5));
+                MSG("lorapf ERROR: [up] snprintf failed line %u\n", (__LINE__ - 5));
                 quit_sig = true;
                 machine_pygate_set_status(PYGATE_ERROR);
             }
@@ -1727,7 +1728,7 @@ void thread_up(void) {
         ++buff_index;
         buff_up[buff_index] = 0; /* add string terminator, for safety */
 
-        printf("\nJSON up: %s\n", (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
+        MSG("lorapf DEBUG: [up] send PUSH_DATA [%u:%u]: %s\n", token_h, token_l, (char *)(buff_up + 12)); /* DEBUG: display JSON payload */
 
         /* send datagram to server */
         send(sock_up, (void *)buff_up, buff_index, 0);
@@ -1745,19 +1746,19 @@ void thread_up(void) {
             //clock_gettime(CLOCK_MONOTONIC, &recv_time);
             if (j == -1) {
                 if (errno == EAGAIN) { /* timeout */
-                    MSG("WARNING: [up] ACK recieve timeout\n");
+                    MSG("lorapf WARNING: [up] PUSH_ACK recieve timeout %d\n", i);
                     continue;
                 } else { /* server connection error */
                     break;
                 }
             } else if ((j < 4) || (buff_ack[0] != PROTOCOL_VERSION) || (buff_ack[3] != PKT_PUSH_ACK)) {
-                MSG("WARNING: [up] ignored invalid non-ACL packet\n");
+                MSG("lorapf WARNING: [up] ignored invalid non-ACL packet\n");
                 continue;
             } else if ((buff_ack[1] != token_h) || (buff_ack[2] != token_l)) {
-                MSG("WARNING: [up] ignored out-of sync ACK packet\n");
+                MSG("lorapf WARNING: [up] ignored out-of sync PUSH_ACK packet buff_ack[%u:%u] != token[%u:%u]\n", buff_ack[1], buff_ack[2], token_h, token_l);
                 continue;
             } else {
-                MSG("INFO: [up] PUSH_ACK received in %i ms\n", (int)(1000 * time_diff(send_time, recv_time)));
+                MSG("lorapf INFO: [up] received PUSH_ACK [%u:%u] in %i ms\n", buff_ack[1], buff_ack[2], (int)(1000 * time_diff(send_time, recv_time)));
                 meas_up_ack_rcv += 1;
                 break;
             }
@@ -1765,7 +1766,7 @@ void thread_up(void) {
         pthread_mutex_unlock(&mx_meas_up);
         wait_ms (5);
     }
-    MSG("\nINFO: End of upstream thread\n");
+    MSG("lorapf INFO: [up] End of upstream thread\n\n");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1812,7 +1813,7 @@ void thread_down(void) {
     /* set downstream socket RX timeout */
     i = setsockopt(sock_down, SOL_SOCKET, SO_RCVTIMEO, (void *)&pull_timeout, sizeof pull_timeout);
     if (i != 0) {
-        MSG("ERROR: [down] setsockopt returned %s\n", strerror(errno));
+        MSG("lorapf ERROR: [down] setsockopt returned %s\n", strerror(errno));
         quit_sig = true;
         machine_pygate_set_status(PYGATE_ERROR);
     }
@@ -1831,7 +1832,7 @@ void thread_down(void) {
         /* auto-quit if the threshold is crossed */
         if ((autoquit_threshold > 0) && (autoquit_cnt >= autoquit_threshold)) {
             exit_sig = true;
-            MSG("INFO: [down] the last %u PULL_DATA were not ACKed, exiting application\n", autoquit_threshold);
+            MSG("lorapf INFO: [down] the last %u PULL_DATA were not ACKed, exiting application\n", autoquit_threshold);
             break;
         }
         /* generate random token for request */
@@ -1841,6 +1842,7 @@ void thread_down(void) {
         buff_req[2] = token_l;
 
         /* send PULL request and record time */
+        MSG("lorapf DEBUG: [down] send PULL_DATA [%u:%u]\n", buff_req[1], buff_req[2]);
         send(sock_down, (void *)buff_req, sizeof buff_req, 0);
         //clock_gettime(CLOCK_MONOTONIC, &send_time);
         gettimeofday(&send_time, NULL);
@@ -1862,13 +1864,13 @@ void thread_down(void) {
 
             /* if no network message was received, got back to listening sock_down socket */
             if (msg_len == -1) {
-                //MSG("WARNING: [down] recv returned %s\n", strerror(errno)); /* too verbose */
+                //MSG("lorapf WARNING: [down] recv returned %s\n", strerror(errno)); /* too verbose */
                 continue;
             }
 
             /* if the datagram does not respect protocol, just ignore it */
             if ((msg_len < 4) || (buff_down[0] != PROTOCOL_VERSION) || ((buff_down[3] != PKT_PULL_RESP) && (buff_down[3] != PKT_PULL_ACK))) {
-                MSG("WARNING: [down] ignoring invalid packet len=%d, protocol_version=%d, id=%d\n",
+                MSG("lorapf WARNING: [down] ignoring invalid packet len=%d, protocol_version=%d, id=%d\n",
                     msg_len, buff_down[0], buff_down[3]);
                 continue;
             }
@@ -1877,38 +1879,38 @@ void thread_down(void) {
             if (buff_down[3] == PKT_PULL_ACK) {
                 if ((buff_down[1] == token_h) && (buff_down[2] == token_l)) {
                     if (req_ack) {
-                        MSG("INFO: [down] duplicate ACK received :)\n");
+                        MSG("lorapf INFO: [down] duplicate PULL_ACK received :)\n");
                     } else { /* if that packet was not already acknowledged */
                         req_ack = true;
                         autoquit_cnt = 0;
                         pthread_mutex_lock(&mx_meas_dw);
                         meas_dw_ack_rcv += 1;
                         pthread_mutex_unlock(&mx_meas_dw);
-                        MSG("INFO: [down] PULL_ACK received in %i ms\n", (int)(1000 * time_diff(send_time, recv_time)));
+                        MSG("lorapf INFO: [down] received PULL_ACK [%u:%u] in %i ms\n", buff_down[1], buff_down[2], (int)(1000 * time_diff(send_time, recv_time)));
                     }
                 } else { /* out-of-sync token */
-                    MSG("INFO: [down] received out-of-sync ACK\n");
+                    MSG("lorapf INFO: [down] received out-of-sync PULL_ACK [%u:%u]\n", buff_down[1], buff_down[2]);
                 }
                 continue;
             }
 
             /* the datagram is a PULL_RESP */
             buff_down[msg_len] = 0; /* add string terminator, just to be safe */
-            MSG("INFO: [down] PULL_RESP received  - token[%d:%d] :)\n", buff_down[1], buff_down[2]); /* very verbose */
-            printf("\nJSON down: %s\n", (char *)(buff_down + 4)); /* DEBUG: display JSON payload */
+            MSG("lorapf INFO: [down] received PULL_RESP [%d:%d] :)\n", buff_down[1], buff_down[2]); /* very verbose */
+            MSG("lorapf DEBUG: [down] PULL_RESP json: %s\n", (char *)(buff_down + 4)); /* DEBUG: display JSON payload */
 
             /* initialize TX struct and try to parse JSON */
             memset(&txpkt, 0, sizeof txpkt);
             root_val = json_parse_string_with_comments((const char *)(buff_down + 4)); /* JSON offset */
             if (root_val == NULL) {
-                MSG("WARNING: [down] invalid JSON, TX aborted\n");
+                MSG("lorapf WARNING: [down] invalid JSON, TX aborted\n");
                 continue;
             }
 
             /* look for JSON sub-object 'txpk' */
             txpk_obj = json_object_get_object(json_value_get_object(root_val), "txpk");
             if (txpk_obj == NULL) {
-                MSG("WARNING: [down] no \"txpk\" object in JSON, TX aborted\n");
+                MSG("lorapf WARNING: [down] no \"txpk\" object in JSON, TX aborted\n");
                 json_value_free(root_val);
                 continue;
             }
@@ -1919,7 +1921,7 @@ void thread_down(void) {
                 /* TX procedure: send immediately */
                 sent_immediate = true;
                 downlink_type = JIT_PKT_TYPE_DOWNLINK_CLASS_C;
-                MSG("INFO: [down] a packet will be sent in \"immediate\" mode\n");
+                MSG("lorapf INFO: [down] a packet will be sent in \"immediate\" mode\n");
             } else {
                 sent_immediate = false;
                 val = json_object_get_value(txpk_obj, "tmst");
@@ -1933,11 +1935,11 @@ void thread_down(void) {
                     /* TX procedure: send on UTC time (converted to timestamp value) */
                     str = json_object_get_string(txpk_obj, "time");
                     if (str == NULL) {
-                        MSG("WARNING: [down] no mandatory \"txpk.tmst\" or \"txpk.time\" objects in JSON, TX aborted\n");
+                        MSG("lorapf WARNING: [down] no mandatory \"txpk.tmst\" or \"txpk.time\" objects in JSON, TX aborted\n");
                         json_value_free(root_val);
                         continue;
                     }
-                    MSG("WARNING: [down] GPS disabled, impossible to send packet on specific UTC time, TX aborted\n");
+                    MSG("lorapf WARNING: [down] GPS disabled, impossible to send packet on specific UTC time, TX aborted\n");
                     json_value_free(root_val);
                     continue;
                 }
@@ -1952,7 +1954,7 @@ void thread_down(void) {
             /* parse target frequency (mandatory) */
             val = json_object_get_value(txpk_obj, "freq");
             if (val == NULL) {
-                MSG("WARNING: [down] no mandatory \"txpk.freq\" object in JSON, TX aborted\n");
+                MSG("lorapf WARNING: [down] no mandatory \"txpk.freq\" object in JSON, TX aborted\n");
                 json_value_free(root_val);
                 continue;
             }
@@ -1961,7 +1963,7 @@ void thread_down(void) {
             /* parse RF chain used for TX (mandatory) */
             val = json_object_get_value(txpk_obj, "rfch");
             if (val == NULL) {
-                MSG("WARNING: [down] no mandatory \"txpk.rfch\" object in JSON, TX aborted\n");
+                MSG("lorapf WARNING: [down] no mandatory \"txpk.rfch\" object in JSON, TX aborted\n");
                 json_value_free(root_val);
                 continue;
             }
@@ -1976,7 +1978,7 @@ void thread_down(void) {
             /* Parse modulation (mandatory) */
             str = json_object_get_string(txpk_obj, "modu");
             if (str == NULL) {
-                MSG("WARNING: [down] no mandatory \"txpk.modu\" object in JSON, TX aborted\n");
+                MSG("lorapf WARNING: [down] no mandatory \"txpk.modu\" object in JSON, TX aborted\n");
                 json_value_free(root_val);
                 continue;
             }
@@ -1988,13 +1990,13 @@ void thread_down(void) {
                 /* Parse Lora spreading-factor and modulation bandwidth (mandatory) */
                 str = json_object_get_string(txpk_obj, "datr");
                 if (str == NULL) {
-                    MSG("WARNING: [down] no mandatory \"txpk.datr\" object in JSON, TX aborted\n");
+                    MSG("lorapf WARNING: [down] no mandatory \"txpk.datr\" object in JSON, TX aborted\n");
                     json_value_free(root_val);
                     continue;
                 }
                 i = sscanf(str, "SF%2hdBW%3hd", &x0, &x1);
                 if (i != 2) {
-                    MSG("WARNING: [down] format error in \"txpk.datr\", TX aborted\n");
+                    MSG("lorapf WARNING: [down] format error in \"txpk.datr\", TX aborted\n");
                     json_value_free(root_val);
                     continue;
                 }
@@ -2018,7 +2020,7 @@ void thread_down(void) {
                         txpkt.datarate = DR_LORA_SF12;
                         break;
                     default:
-                        MSG("WARNING: [down] format error in \"txpk.datr\", invalid SF, TX aborted\n");
+                        MSG("lorapf WARNING: [down] format error in \"txpk.datr\", invalid SF, TX aborted\n");
                         json_value_free(root_val);
                         continue;
                 }
@@ -2033,7 +2035,7 @@ void thread_down(void) {
                         txpkt.bandwidth = BW_500KHZ;
                         break;
                     default:
-                        MSG("WARNING: [down] format error in \"txpk.datr\", invalid BW, TX aborted\n");
+                        MSG("lorapf WARNING: [down] format error in \"txpk.datr\", invalid BW, TX aborted\n");
                         json_value_free(root_val);
                         continue;
                 }
@@ -2041,7 +2043,7 @@ void thread_down(void) {
                 /* Parse ECC coding rate (optional field) */
                 str = json_object_get_string(txpk_obj, "codr");
                 if (str == NULL) {
-                    MSG("WARNING: [down] no mandatory \"txpk.codr\" object in json, TX aborted\n");
+                    MSG("lorapf WARNING: [down] no mandatory \"txpk.codr\" object in json, TX aborted\n");
                     json_value_free(root_val);
                     continue;
                 }
@@ -2058,7 +2060,7 @@ void thread_down(void) {
                 } else if (strcmp(str, "1/2") == 0) {
                     txpkt.coderate = CR_LORA_4_8;
                 } else {
-                    MSG("WARNING: [down] format error in \"txpk.codr\", TX aborted\n");
+                    MSG("lorapf WARNING: [down] format error in \"txpk.codr\", TX aborted\n");
                     json_value_free(root_val);
                     continue;
                 }
@@ -2090,7 +2092,7 @@ void thread_down(void) {
                 /* parse FSK bitrate (mandatory) */
                 val = json_object_get_value(txpk_obj, "datr");
                 if (val == NULL) {
-                    MSG("WARNING: [down] no mandatory \"txpk.datr\" object in JSON, TX aborted\n");
+                    MSG("lorapf WARNING: [down] no mandatory \"txpk.datr\" object in JSON, TX aborted\n");
                     json_value_free(root_val);
                     continue;
                 }
@@ -2099,7 +2101,7 @@ void thread_down(void) {
                 /* parse frequency deviation (mandatory) */
                 val = json_object_get_value(txpk_obj, "fdev");
                 if (val == NULL) {
-                    MSG("WARNING: [down] no mandatory \"txpk.fdev\" object in JSON, TX aborted\n");
+                    MSG("lorapf WARNING: [down] no mandatory \"txpk.fdev\" object in JSON, TX aborted\n");
                     json_value_free(root_val);
                     continue;
                 }
@@ -2119,7 +2121,7 @@ void thread_down(void) {
                 }
 
             } else {
-                MSG("WARNING: [down] invalid modulation in \"txpk.modu\", TX aborted\n");
+                MSG("lorapf WARNING: [down] invalid modulation in \"txpk.modu\", TX aborted\n");
                 json_value_free(root_val);
                 continue;
             }
@@ -2127,7 +2129,7 @@ void thread_down(void) {
             /* Parse payload length (mandatory) */
             val = json_object_get_value(txpk_obj, "size");
             if (val == NULL) {
-                MSG("WARNING: [down] no mandatory \"txpk.size\" object in JSON, TX aborted\n");
+                MSG("lorapf WARNING: [down] no mandatory \"txpk.size\" object in JSON, TX aborted\n");
                 json_value_free(root_val);
                 continue;
             }
@@ -2136,13 +2138,13 @@ void thread_down(void) {
             /* Parse payload data (mandatory) */
             str = json_object_get_string(txpk_obj, "data");
             if (str == NULL) {
-                MSG("WARNING: [down] no mandatory \"txpk.data\" object in JSON, TX aborted\n");
+                MSG("lorapf WARNING: [down] no mandatory \"txpk.data\" object in JSON, TX aborted\n");
                 json_value_free(root_val);
                 continue;
             }
             i = b64_to_bin(str, strlen(str), txpkt.payload, sizeof txpkt.payload);
             if (i != txpkt.size) {
-                MSG("WARNING: [down] mismatch between .size and .data size once converter to binary\n");
+                MSG("lorapf WARNING: [down] mismatch between .size and .data size once converter to binary\n");
             }
 
             /* free the JSON parse tree from memory */
@@ -2166,7 +2168,7 @@ void thread_down(void) {
             jit_result = JIT_ERROR_OK;
             if ((txpkt.freq_hz < tx_freq_min[txpkt.rf_chain]) || (txpkt.freq_hz > tx_freq_max[txpkt.rf_chain])) {
                 jit_result = JIT_ERROR_TX_FREQ;
-                MSG("ERROR: Packet REJECTED, unsupported frequency - %u (min:%u,max:%u)\n", txpkt.freq_hz, tx_freq_min[txpkt.rf_chain], tx_freq_max[txpkt.rf_chain]);
+                MSG("lorapf ERROR: [down] Packet REJECTED, unsupported frequency - %u (min:%u,max:%u)\n", txpkt.freq_hz, tx_freq_min[txpkt.rf_chain], tx_freq_max[txpkt.rf_chain]);
             }
             if (jit_result == JIT_ERROR_OK) {
                 for (i = 0; i < txlut.size; i++) {
@@ -2178,7 +2180,7 @@ void thread_down(void) {
                 if (i == txlut.size) {
                     /* this RF power is not supported */
                     jit_result = JIT_ERROR_TX_POWER;
-                    MSG("ERROR: Packet REJECTED, unsupported RF power for TX - %d\n", txpkt.rf_power);
+                    MSG("lorapf ERROR: [down] Packet REJECTED, unsupported RF power for TX - %d\n", txpkt.rf_power);
                 }
             }
 
@@ -2188,7 +2190,8 @@ void thread_down(void) {
                 get_concentrator_time(&current_concentrator_time, current_unix_time);
                 jit_result = jit_enqueue(&jit_queue, &current_concentrator_time, &txpkt, downlink_type);
                 if (jit_result != JIT_ERROR_OK) {
-                    printf("ERROR: Packet REJECTED (jit error=%d)\n", jit_result);
+                    //MSG("lorapf ERROR: [down] Packet REJECTED (jit error=%d)\n", jit_result);
+                    MSG("lorapf ERROR: [down] Packet REJECTED (jit error=%d) cut=(%li,%li) cct=(%li,%li)\n", jit_result, current_unix_time.tv_sec, current_unix_time.tv_usec, current_concentrator_time.tv_sec, current_concentrator_time.tv_usec);
                 }
                 pthread_mutex_lock(&mx_meas_dw);
                 meas_nb_tx_requested += 1;
@@ -2196,29 +2199,30 @@ void thread_down(void) {
             }
 
             /* Send acknoledge datagram to server */
+            MSG("lorapf DEBUG: [down] send TX_ACK [%u:%u]\n", buff_down[1], buff_down[2]);
             send_tx_ack(buff_down[1], buff_down[2], jit_result);
         }
         wait_ms(5);
     }
-    MSG("\nINFO: End of downstream thread\n");
+    MSG("lorapf INFO: [down] End of downstream thread\n\n");
 }
 
 void print_tx_status(uint8_t tx_status) {
     switch (tx_status) {
         case TX_OFF:
-            MSG("INFO: [jit] lgw_status returned TX_OFF\n");
+            MSG("lorapf INFO: [jit] lgw_status returned TX_OFF\n");
             break;
         case TX_FREE:
-            MSG("INFO: [jit] lgw_status returned TX_FREE\n");
+            MSG("lorapf INFO: [jit] lgw_status returned TX_FREE\n");
             break;
         case TX_EMITTING:
-            MSG("INFO: [jit] lgw_status returned TX_EMITTING\n");
+            MSG("lorapf INFO: [jit] lgw_status returned TX_EMITTING\n");
             break;
         case TX_SCHEDULED:
-            MSG("INFO: [jit] lgw_status returned TX_SCHEDULED\n");
+            MSG("lorapf INFO: [jit] lgw_status returned TX_SCHEDULED\n");
             break;
         default:
-            MSG("INFO: [jit] lgw_status returned UNKNOWN (%d)\n", tx_status);
+            MSG("lorapf INFO: [jit] lgw_status returned UNKNOWN (%d)\n", tx_status);
             break;
     }
 }
@@ -2252,11 +2256,11 @@ void thread_jit(void) {
                     if (result == LGW_HAL_ERROR) {
                     } else {
                         if (tx_status == TX_EMITTING) {
-                            MSG("WARNING: concentrator is currently busy\n");
+                            MSG("lorapf WARNING: concentrator is currently busy\n");
                             print_tx_status(tx_status);
                             // continue;
                         } else if (tx_status == TX_SCHEDULED) {
-                            MSG("WARNING: a downlink was already scheduled, overwritting it...\n");
+                            MSG("lorapf WARNING: a downlink was already scheduled, overwritting it...\n");
                             print_tx_status(tx_status);
                         } else {
                             /* Nothing to do */
@@ -2271,7 +2275,7 @@ void thread_jit(void) {
                         pthread_mutex_lock(&mx_meas_dw);
                         meas_nb_tx_fail += 1;
                         pthread_mutex_unlock(&mx_meas_dw);
-                        MSG("WARNING: [jit] lgw_send failed\n");
+                        MSG("lorapf WARNING: [jit] lgw_send failed\n");
                         continue;
                     } else {
                         pthread_mutex_lock(&mx_meas_dw);
@@ -2280,13 +2284,13 @@ void thread_jit(void) {
                         MSG_DEBUG(DEBUG_PKT_FWD, "lgw_send done: count_us=%u\n", pkt.count_us);
                     }
                 } else {
-                    MSG("ERROR: jit_dequeue failed with %d\n", jit_result);
+                    MSG("lorapf ERROR: jit_dequeue failed with %d\n", jit_result);
                 }
             }
         } else if (jit_result == JIT_ERROR_EMPTY) {
             /* Do nothing, it can happen */
         } else {
-            MSG("ERROR: jit_peek failed with %d\n", jit_result);
+            MSG("lorapf ERROR: jit_peek failed with %d\n", jit_result);
         }
         wait_ms(5);
     }
