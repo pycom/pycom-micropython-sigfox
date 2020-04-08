@@ -34,10 +34,12 @@
 #define MOD_BLE_MESH_SERVER              (0)
 #define MOD_BLE_MESH_CLIENT              (1)
 
-#define MOD_ESP_BLE_MESH_PROV_ADV        (1)
-//TODO: these 2 values below could be used directly from esp_ble_mesh_defs.h
-#define MOD_ESP_BLE_MESH_PROV_GATT       (2)
-#define MOD_ESP_BLE_MESH_PROV_NONE       (4)
+#define MOD_BLE_MESH_PROV_ADV            (1)
+#define MOD_BLE_MESH_PROV_GATT           (2)
+#define MOD_BLE_MESH_PROV_NONE           (4)
+
+#define MOD_BLE_MESH_INPUT_OOB           (1)
+#define MOD_BLE_MESH_OUTPUT_OOB          (2)
 
 #define MOD_BLE_MESH_RELAY               (1)
 #define MOD_BLE_MESH_GATT_PROXY          (2)
@@ -52,8 +54,8 @@
 #define MOD_BLE_MESH_MODEL_ONOFF         (0)
 #define MOD_BLE_MESH_MODEL_LEVEL         (1)
 
-#define MOD_BLE_MESH_STATE_BOOL         (0)
-#define MOD_BLE_MESH_STATE_INT          (1)
+#define MOD_BLE_MESH_STATE_BOOL          (0)
+#define MOD_BLE_MESH_STATE_INT           (1)
 
 #define MOD_BLE_MESH_DEFAULT_NAME        "ESP-BLE-MESH"
 
@@ -100,6 +102,12 @@ typedef struct mod_ble_mesh_generic_server_callback_param_s {
     esp_ble_mesh_generic_server_cb_event_t event;
     esp_ble_mesh_generic_server_cb_param_t* param;
 }mod_ble_mesh_generic_server_callback_param_t;
+
+typedef struct mod_ble_mesh_provision_callback_param_s {
+    mp_obj_t callback;
+    int8_t oob_key;
+    int8_t oob_type;
+}mod_ble_mesh_provision_callback_param_t;
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -286,46 +294,55 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
     }
 }
 
-STATIC void mod_ble_mesh_provision_callback_call_mp_callback(void *arg_in) {
+STATIC void mod_ble_mesh_provision_callback_call_mp_callback(void* param_in) {
 
-    /* The received arg_in is a tuple with 1 element
-     * 0 - user's MicroPython callback
-     * 1 - OOB Pass as int/string
-     */
+    mod_ble_mesh_provision_callback_param_t* callback_param = (mod_ble_mesh_provision_callback_param_t*)param_in;
+    mp_obj_t args[2];
+    // GET OOB Type
+    args[0] = mp_obj_new_int(callback_param->oob_type);
 
-    mp_obj_t args[1];
-    // OOB Pass
-    args[0] = ((mp_obj_tuple_t*)arg_in)->items[1];
+    if(callback_param->oob_type == MOD_BLE_MESH_OUTPUT_OOB) {
+        //OOB Key
+        args[1] = mp_obj_new_int(callback_param->oob_key);
+    }
+    else if(callback_param->oob_type == MOD_BLE_MESH_INPUT_OOB) {
+        //Invalid OOB Key
+        args[1] = mp_const_none;
+    }
 
     // Call the user registered MicroPython function
-    mp_call_function_n_kw(((mp_obj_tuple_t*)arg_in)->items[0], 1, 0, args);
+    mp_call_function_n_kw(callback_param->callback, 2, 0, args);
 
+    // Free callback_param
+    heap_caps_free(callback_param);
 }
-
 
 static void mod_ble_mesh_provision_callback(esp_ble_mesh_prov_cb_event_t event, esp_ble_mesh_prov_cb_param_t *param) {
     // TODO: here the user registered MicroPython API should be called with correct parameters via the Interrupt Task
-    printf("mod_ble_mesh_provision_callback is called!\n");
+    printf("mod_ble_mesh_provision_callback is called: %d\n", event);
 
     switch (event) {
         case ESP_BLE_MESH_NODE_PROV_OUTPUT_NUMBER_EVT:
-            // Call the registered function
             if(provision_callback != NULL) {
-                mp_obj_t args[2];
-                args[0] = provision_callback;
-                args[1] = mp_obj_new_int(param->node_prov_output_num.number);
-                // The user registered MicroPython callback will be called decoupled from the HTTP Server context in the IRQ Task
-                mp_irq_queue_interrupt(mod_ble_mesh_provision_callback_call_mp_callback, (void *)mp_obj_new_tuple(2, args));
+
+                mod_ble_mesh_provision_callback_param_t* callback_param_ptr = (mod_ble_mesh_provision_callback_param_t *)heap_caps_malloc(sizeof(mod_ble_mesh_provision_callback_param_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                callback_param_ptr->callback = provision_callback;
+                callback_param_ptr->oob_type = MOD_BLE_MESH_OUTPUT_OOB;
+                callback_param_ptr->oob_key = param->node_prov_output_num.number;
+
+                // The user registered MicroPython callback will be called decoupled from the BLE Mesh context in the IRQ Task
+                mp_irq_queue_interrupt(mod_ble_mesh_provision_callback_call_mp_callback, (void *)callback_param_ptr);
             }
             break;
-        case ESP_BLE_MESH_NODE_PROV_OUTPUT_STRING_EVT:
-            // Call the registered function
+        case ESP_BLE_MESH_NODE_PROV_INPUT_EVT:
             if(provision_callback != NULL) {
-                mp_obj_t args[2];
-                args[0] = provision_callback;
-                args[1] = mp_obj_new_str(param->node_prov_output_str.string, strlen(param->node_prov_output_str.string));
-                // The user registered MicroPython callback will be called decoupled from the HTTP Server context in the IRQ Task
-                mp_irq_queue_interrupt(mod_ble_mesh_provision_callback_call_mp_callback, (void *)mp_obj_new_tuple(2, args));
+
+                mod_ble_mesh_provision_callback_param_t* callback_param_ptr = (mod_ble_mesh_provision_callback_param_t *)heap_caps_malloc(sizeof(mod_ble_mesh_provision_callback_param_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                callback_param_ptr->callback = provision_callback;
+                callback_param_ptr->oob_type = MOD_BLE_MESH_INPUT_OOB;
+
+                // The user registered MicroPython callback will be called decoupled from the BLE Mesh context in the IRQ Task
+                mp_irq_queue_interrupt(mod_ble_mesh_provision_callback_call_mp_callback, (void *)callback_param_ptr);
             }
             break;
         case ESP_BLE_MESH_PROV_REGISTER_COMP_EVT:
@@ -551,7 +568,7 @@ static const mp_obj_type_t mod_ble_mesh_element_type = {
 STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     STATIC const mp_arg_t mod_ble_mesh_init_args[] = {
             { MP_QSTR_name,                  MP_ARG_OBJ,                  {.u_obj = MP_OBJ_NULL}},
-            { MP_QSTR_auth,                  MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
+            { MP_QSTR_auth,                  MP_ARG_INT | MP_ARG_KW_ONLY, {.u_int = 0}},
     };
 
     mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_init_args)];
@@ -572,45 +589,22 @@ STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp
 
             //TODO: Support multiple auth metods paralelly
             // Initiate params with NO OOB case
-            provision_ptr->output_size = 0;
             provision_ptr->input_size = 0;
+            provision_ptr->input_actions = ESP_BLE_MESH_NO_INPUT;
 
-            // If auth is required
-            if(args[1].u_obj != MP_OBJ_NULL) {
-                // GET auth information
-                mp_obj_t *auth;
-                mp_obj_get_array_fixed_n(args[1].u_obj, 3, &auth);
-                int type = mp_obj_get_int(auth[0]);
-                int action = mp_obj_get_int(auth[1]);
-                int pass_len = mp_obj_get_int(auth[2]);
+            provision_ptr->output_size = 0;
+            provision_ptr->output_actions = ESP_BLE_MESH_NO_OUTPUT;
 
-                if(type==ESP_BLE_MESH_INPUT_OOB) {
-                    provision_ptr->input_size = pass_len;
-                    if(action==ESP_BLE_MESH_DISPLAY_NUMBER) {
-                        provision_ptr->input_actions = ESP_BLE_MESH_ENTER_NUMBER;
-                    }
-                    else if(action==ESP_BLE_MESH_DISPLAY_STRING) {
-                        provision_ptr->input_actions = ESP_BLE_MESH_ENTER_STRING;
-                    }
-                    else {
-                        nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Not supported OOB authentication action!"));
-                    }
-                }
-                else if(type==ESP_BLE_MESH_OUTPUT_OOB) {
-                    provision_ptr->output_size = pass_len;
-                    if(action==ESP_BLE_MESH_DISPLAY_NUMBER) {
-                        provision_ptr->output_actions = ESP_BLE_MESH_DISPLAY_NUMBER;
-                    }
-                    else if(action==ESP_BLE_MESH_DISPLAY_STRING) {
-                        provision_ptr->output_actions = ESP_BLE_MESH_DISPLAY_STRING;
-                    }
-                    else {
-                        nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Not supported OOB authentication action!"));
-                    }
-                }
-                else {
-                    nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Not supported OOB authentication type!"));
-                }
+            // GET auth information
+            int oob_type = args[1].u_int;
+
+            if(oob_type & MOD_BLE_MESH_INPUT_OOB) {
+                provision_ptr->input_size = 1;
+                provision_ptr->input_actions = ESP_BLE_MESH_PUSH;
+            }
+            if(oob_type & MOD_BLE_MESH_OUTPUT_OOB) {
+                provision_ptr->output_size = 1;
+                provision_ptr->output_actions = ESP_BLE_MESH_BLINK;
             }
 
             //TODO: initialize composition based on input parameters
@@ -678,13 +672,13 @@ STATIC mp_obj_t mod_ble_mesh_set_node_prov(mp_uint_t n_args, const mp_obj_t *pos
     provision_callback = args[1].u_obj;
 
     // Disable node provision in prior
-    esp_ble_mesh_node_prov_disable(MOD_ESP_BLE_MESH_PROV_ADV|MOD_ESP_BLE_MESH_PROV_GATT);
+    esp_ble_mesh_node_prov_disable(MOD_BLE_MESH_PROV_ADV|MOD_BLE_MESH_PROV_GATT);
 
     // Check if provision mode is within valid range
-    if((type >= MOD_ESP_BLE_MESH_PROV_ADV) && (type <= (MOD_ESP_BLE_MESH_PROV_ADV|MOD_ESP_BLE_MESH_PROV_GATT))) {
+    if((type >= MOD_BLE_MESH_PROV_ADV) && (type <= (MOD_BLE_MESH_PROV_ADV|MOD_BLE_MESH_PROV_GATT))) {
         esp_ble_mesh_node_prov_enable(type);
     }
-    else if(type != MOD_ESP_BLE_MESH_PROV_NONE) {
+    else if(type != MOD_BLE_MESH_PROV_NONE) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Node provision mode is not valid!"));
     }
 
@@ -701,6 +695,29 @@ STATIC mp_obj_t mod_ble_mesh_reset_node_prov(void) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_ble_mesh_reset_node_prov_obj, mod_ble_mesh_reset_node_prov);
+
+// Set node provisioning
+STATIC mp_obj_t mod_ble_mesh_input_oob(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+
+    STATIC const mp_arg_t mod_ble_mesh_input_oob_args[] = {
+            { MP_QSTR_oob,                   MP_ARG_OBJ,                   {.u_obj = MP_OBJ_NULL}},
+    };
+
+    mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_input_oob_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_ble_mesh_input_oob_args, args);
+
+    if(args[0].u_obj != MP_OBJ_NULL) {
+        if(mp_obj_is_int(args[0].u_obj)) {
+            esp_ble_mesh_node_input_number(mp_obj_get_int(args[0].u_obj));
+        }
+        else if(mp_obj_is_str(args[0].u_obj)) {
+            esp_ble_mesh_node_input_string(mp_obj_get_type_str(args[0].u_obj));
+        }
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_input_oob_obj, 0, mod_ble_mesh_input_oob);
 
 // TODO: add parameters for configuring the Configuration Server Model
 STATIC mp_obj_t mod_ble_mesh_create_element(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
@@ -792,22 +809,21 @@ STATIC const mp_map_elem_t mod_ble_mesh_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_init),                           (mp_obj_t)&mod_ble_mesh_init_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_set_node_prov),                  (mp_obj_t)&mod_ble_mesh_set_node_prov_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_reset_node_prov),                (mp_obj_t)&mod_ble_mesh_reset_node_prov_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_input_oob),                      (mp_obj_t)&mod_ble_mesh_input_oob_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_create_element),                 (mp_obj_t)&mod_ble_mesh_create_element_obj },
 
         // Constants of Advertisement
-        { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_ADV),                       MP_OBJ_NEW_SMALL_INT(MOD_ESP_BLE_MESH_PROV_ADV) },
-        { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_GATT),                      MP_OBJ_NEW_SMALL_INT(MOD_ESP_BLE_MESH_PROV_GATT) },
-        { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_NONE),                      MP_OBJ_NEW_SMALL_INT(MOD_ESP_BLE_MESH_PROV_NONE) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_ADV),                       MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_PROV_ADV) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_GATT),                      MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_PROV_GATT) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_PROV_NONE),                      MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_PROV_NONE) },
         // Constants of Node Features
         { MP_OBJ_NEW_QSTR(MP_QSTR_RELAY),                          MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_RELAY) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_LOW_POWER),                      MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_LOW_POWER) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_GATT_PROXY),                     MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_GATT_PROXY) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_FRIEND),                         MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_FRIEND) },
         // Constants of Authentication
-        { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_INPUT),                      MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_INPUT_OOB) },
-        { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_OUTPUT),                     MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_OUTPUT_OOB) },
-        { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_NUMBER),                     MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_DISPLAY_NUMBER) },
-        { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_STRING),                     MP_OBJ_NEW_SMALL_INT(ESP_BLE_MESH_DISPLAY_STRING) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_INPUT),                      MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_INPUT_OOB) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_OUTPUT),                     MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_OUTPUT_OOB) },
 
         // Constants of Server-Client
         { MP_OBJ_NEW_QSTR(MP_QSTR_SERVER),                         MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_SERVER) },
