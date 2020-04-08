@@ -820,7 +820,7 @@ $(OBJ): | $(GEN_PINS_HDR)
 
 # Check Dependencies (IDF version, Frozen code and IDF LIBS)
 CHECK_DEP:
-	$(Q) bash tools/idfVerCheck.sh $(IDF_PATH) "$(IDF_VERSION)"
+	$(Q) bash tools/idfVerCheck.sh $(IDF_PATH) "$(IDF_HASH)"
 	$(Q) bash tools/mpy-build-check.sh $(BOARD) $(BTYPE) $(VARIANT)
 	$(Q) $(PYTHON) check_secure_boot.py --SECURE $(SECURE)
 ifeq ($(COPY_IDF_LIB), 1)
