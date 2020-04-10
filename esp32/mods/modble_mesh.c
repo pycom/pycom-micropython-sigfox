@@ -103,6 +103,11 @@ typedef struct mod_ble_mesh_generic_server_callback_param_s {
     esp_ble_mesh_generic_server_cb_param_t* param;
 }mod_ble_mesh_generic_server_callback_param_t;
 
+typedef struct mod_ble_mesh_generic_client_callback_param_s {
+    esp_ble_mesh_generic_client_cb_event_t event;
+    esp_ble_mesh_generic_client_cb_param_t* param;
+}mod_ble_mesh_generic_client_callback_param_t;
+
 typedef struct mod_ble_mesh_provision_callback_param_s {
     mp_obj_t callback;
     int8_t oob_key;
@@ -269,6 +274,12 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
                 size = generic_type_and_size_table[param->ctx.recv_op & 0x00FF][1];
                 data_ptr = heap_caps_malloc(size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
                 memcpy(data_ptr, &param->value.state_change, size);
+
+                //TODO: this function might be called from mod_ble_mesh_generic_server_callback()
+                //TODO: double check whether this is needed when ESP_BLE_MESH_SERVER_AUTO_RSP is set
+                // Publish that the State of this Server Model changed
+                esp_ble_mesh_model_publish(model, type, size, data_ptr, ROLE_NODE);
+
                 // Call the registered MP function
                 mod_ble_mesh_generic_server_callback_call_mp_callback(mod_ble_model->callback,
                                                                       event,
@@ -291,6 +302,76 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
                 // Handle it silently
                 break;
         }
+    }
+}
+
+//// TODO: check what other arguments are needed, or whether these arguments are needed at all
+//static void mod_ble_mesh_generic_client_callback_call_mp_callback(mp_obj_t callback,
+//                                                                  esp_ble_mesh_generic_server_cb_event_t event,
+//                                                                  uint32_t recv_op,
+//                                                                  void* value,
+//                                                                  uint32_t value_type
+//                                                                  ){
+//    // Call the registered function
+//    if(callback != NULL) {
+//        mp_obj_t args[3];
+//        args[0] = mp_obj_new_int(event);
+//        //TODO: check what other object should be passed from the context
+//        args[1] = mp_obj_new_int(recv_op);
+//
+//        switch (value_type) {
+//            case MOD_BLE_MESH_STATE_BOOL:
+//                args[2] = mp_obj_new_bool(*((mp_int_t*)value));
+//                break;
+//            case MOD_BLE_MESH_STATE_INT:
+//                args[2] = mp_obj_new_int(*((mp_int_t*)value));
+//                break;
+//            default:
+//                // If the type is unknown return with None
+//                args[2] = mp_const_none;
+//        }
+//
+//        // At this point we need to free up the value, it is already stored as a MicroPython object
+//        heap_caps_free(value);
+//
+//        // TODO: check if these 3 arguments are really needed here
+//        mp_call_function_n_kw(callback, 3, 0, args);
+//    }
+//}
+
+static void mod_ble_mesh_generic_client_callback_handler(void* param_in) {
+
+    mod_ble_mesh_generic_client_callback_param_t* callback_param = (mod_ble_mesh_generic_client_callback_param_t*)param_in;
+    mod_ble_mesh_model_class_t* mod_ble_model = mod_ble_find_model(callback_param->param->params->model);
+
+    if(mod_ble_model != NULL) {
+
+        esp_ble_mesh_generic_client_cb_event_t event = callback_param->event;
+        esp_ble_mesh_generic_client_cb_param_t* param = callback_param->param;
+        esp_ble_mesh_model_t* model = callback_param->param->params->model;
+
+        switch (event) {
+            case ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT:
+               printf("ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT\n");
+                if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET) {
+                    printf("ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET, onoff %d\n", param->status_cb.onoff_status.present_onoff);
+                }
+                break;
+            case ESP_BLE_MESH_GENERIC_CLIENT_SET_STATE_EVT:
+                printf("ESP_BLE_MESH_GENERIC_CLIENT_SET_STATE_EVT\n");
+                if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET) {
+                    printf("ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET, onoff %d\n", param->status_cb.onoff_status.present_onoff);
+                }
+                break;
+            case ESP_BLE_MESH_GENERIC_CLIENT_PUBLISH_EVT:
+                printf("ESP_BLE_MESH_GENERIC_CLIENT_PUBLISH_EVT\n");
+                break;
+            case ESP_BLE_MESH_GENERIC_CLIENT_TIMEOUT_EVT:
+                printf("ESP_BLE_MESH_GENERIC_CLIENT_TIMEOUT_EVT\n");
+                break;
+            default:
+                break;
+            }
     }
 }
 
@@ -376,7 +457,17 @@ static void mod_ble_mesh_provision_callback(esp_ble_mesh_prov_cb_event_t event, 
 static void mod_ble_mesh_generic_client_callback(esp_ble_mesh_generic_client_cb_event_t event, esp_ble_mesh_generic_client_cb_param_t *param) {
 
     // TODO: here the user registered MicroPython API should be called with correct parameters via the Interrupt Task
+    mod_ble_mesh_generic_client_callback_param_t* callback_param_ptr = (mod_ble_mesh_generic_client_callback_param_t *)heap_caps_malloc(sizeof(mod_ble_mesh_generic_server_callback_param_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    callback_param_ptr->param = (esp_ble_mesh_generic_client_cb_param_t *)heap_caps_malloc(sizeof(esp_ble_mesh_generic_client_cb_param_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    callback_param_ptr->param->params = (esp_ble_mesh_client_common_param_t *)heap_caps_malloc(sizeof(esp_ble_mesh_client_common_param_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
 
+
+    callback_param_ptr->event = event;
+    memcpy(callback_param_ptr->param, param, sizeof(esp_ble_mesh_generic_client_cb_param_t));
+    memcpy(callback_param_ptr->param->params, param->params, sizeof(esp_ble_mesh_client_common_param_t));
+
+    // The registered callback will be handled in context of TASK_Interrupts
+    mp_irq_queue_interrupt_non_ISR(mod_ble_mesh_generic_client_callback_handler, (void *)callback_param_ptr);
 
 }
 
@@ -513,8 +604,7 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
                 //TODO: check this publication structure
                 ESP_BLE_MESH_MODEL_PUB_DEFINE(onoff_cli_pub, 2 + 1, ROLE_NODE);
                 // This will be saved into the Model's user_data field
-                esp_ble_mesh_client_t* onoff_client = (esp_ble_mesh_client_t *)heap_caps_malloc(sizeof(esp_ble_mesh_client_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-
+                esp_ble_mesh_client_t* onoff_client = (esp_ble_mesh_client_t *)heap_caps_calloc(1, sizeof(esp_ble_mesh_client_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
                 esp_ble_mesh_model_t gen_onoff_cli_mod = ESP_BLE_MESH_MODEL_GEN_ONOFF_CLI(&onoff_cli_pub, onoff_client);
                 memcpy(&tmp_model, &gen_onoff_cli_mod, sizeof(gen_onoff_cli_mod));
             }
