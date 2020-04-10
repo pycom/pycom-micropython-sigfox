@@ -57,7 +57,7 @@
 #define MOD_BLE_MESH_STATE_BOOL          (0)
 #define MOD_BLE_MESH_STATE_INT           (1)
 
-#define MOD_BLE_MESH_DEFAULT_NAME        "ESP-BLE-MESH"
+#define MOD_BLE_MESH_DEFAULT_NAME        "PYCOM-ESP-BLE-MESH"
 
 #define MOD_BLE_MESH_STATE_LOCATION_IN_SRV_T_TYPE (sizeof(esp_ble_mesh_model_t*) + sizeof(esp_ble_mesh_server_rsp_ctrl_t))
 
