@@ -54,6 +54,9 @@
 #define MOD_BLE_MESH_MODEL_ONOFF         (0)
 #define MOD_BLE_MESH_MODEL_LEVEL         (1)
 
+#define MOD_BLE_ADDR_ALL_NODES           (0xFFFF)
+#define MOD_BLE_ADDR_DEFAULT             (0x0000)
+
 #define MOD_BLE_MESH_STATE_BOOL          (0)
 #define MOD_BLE_MESH_STATE_INT           (1)
 
@@ -90,9 +93,12 @@ typedef struct mod_ble_mesh_model_class_s {
     struct mod_ble_mesh_model_class_s* next;
     // Pointer to the element owns this model
     mod_ble_mesh_element_class_t *element;
-    // List of Application Index :
+    // List of Application Index --> element->sig_models[ble_mesh_model->index].keys[i]
     // Index in the esp ble context
     uint8_t index;
+    // Client Publication
+    uint16_t client_pud_addr;
+    uint16_t client_pud_app_idx;
     // User defined MicroPython callback function
     mp_obj_t callback;
     // TODO: check whether this value has any sense
@@ -526,6 +532,20 @@ static void mod_ble_mesh_config_server_callback(esp_ble_mesh_cfg_server_cb_event
                     param->value.state_change.mod_pub_set.pub_addr,
                     param->value.state_change.mod_pub_set.pub_period,
                     param->value.state_change.mod_pub_set.model_id);
+
+            // Search for model esp_ble_mesh_model_t by received model_id
+            for(int i=0; i < param->model->element->sig_model_count; i++) {
+                if(param->model->element->sig_models[i].model_id==param->value.state_change.mod_pub_set.model_id) {
+
+                    // Find private mesh model class
+                    mod_ble_mesh_model_class_t* mod_ble_model = mod_ble_find_model(&param->model->element->sig_models[i]);
+
+                    // Set Client publish informations
+                    mod_ble_model->client_pud_addr = param->value.state_change.mod_pub_set.pub_addr;
+                    mod_ble_model->client_pud_app_idx = param->value.state_change.mod_pub_set.app_idx;
+                    break;
+                }
+            }
             break;
         default:
             //TODO: we need to handle all types of event coming from Configuration Client (Provisioner) !
@@ -543,9 +563,10 @@ static uint8_t msg_tid = 0x0;
 STATIC mp_obj_t mod_ble_mesh_model_set_state(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
     STATIC const mp_arg_t mod_ble_mesh_model_set_state_args[] = {
-            { MP_QSTR_self_in,               MP_ARG_OBJ,                  },
-            { MP_QSTR_addr,                  MP_ARG_INT,                  },
-            { MP_QSTR_value,                 MP_ARG_INT,                  },
+            { MP_QSTR_self_in,               MP_ARG_OBJ,                                                     },
+            { MP_QSTR_addr,                  MP_ARG_INT,                   {.u_int = MOD_BLE_ADDR_ALL_NODES} },
+            { MP_QSTR_app_idx,               MP_ARG_INT | MP_ARG_KW_ONLY,  {.u_int = 0} },
+            { MP_QSTR_value,                 MP_ARG_INT | MP_ARG_REQUIRED                                    },
     };
 
     mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_model_set_state_args)];
@@ -553,28 +574,56 @@ STATIC mp_obj_t mod_ble_mesh_model_set_state(mp_uint_t n_args, const mp_obj_t *p
 
     mod_ble_mesh_model_class_t* ble_mesh_model = (mod_ble_mesh_model_class_t*)args[0].u_obj;
     mp_int_t addr = args[1].u_int;
-    mp_int_t value = args[2].u_int;
+    mp_int_t app_idx = args[2].u_int;
+    mp_int_t value = args[3].u_int;
+
+    bool app_binded = false;
+
+    for(int i=0; i<CONFIG_BLE_MESH_MODEL_KEY_COUNT; i++) {
+        if(ble_mesh_model->element->element->sig_models[ble_mesh_model->index].keys[i] < CONFIG_BLE_MESH_MODEL_KEY_COUNT) {
+            app_binded = true;
+        }
+    }
+
+    if(!app_binded) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "AppKey is not binded to Client Model!"));
+    }
 
     esp_ble_mesh_generic_client_set_state_t set = {0};
     esp_ble_mesh_client_common_param_t common = {0};
     esp_err_t err;
 
+    // Common params settings
     common.opcode = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK;
     common.model = &ble_mesh_model->element->element->sig_models[ble_mesh_model->index];
-    // TODO: set the correct netidx here
     common.ctx.net_idx = 0;
     // TODO: set the correct netidx here
-    common.ctx.app_idx = 0;
-    common.ctx.addr = addr;
     common.ctx.send_ttl = 3;
     common.ctx.send_rel = false;
-    common.msg_timeout = 0;     /* 0 indicates that timeout value from menuconfig will be used */
+    common.msg_timeout = 100;     /* 0 indicates that timeout value from menuconfig will be used */
     common.msg_role = ROLE_NODE;
 
+    // Set state settings
     set.onoff_set.op_en = false;
     set.onoff_set.onoff = value == 0 ? false : true;
     set.onoff_set.tid = msg_tid++;
 
+    // Publication Case
+    if(addr == MOD_BLE_ADDR_DEFAULT) {
+        if(ble_mesh_model->client_pud_addr == MOD_BLE_ADDR_DEFAULT) {
+            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Publication is not set for Client Model!"));
+        }
+        else {
+            common.ctx.app_idx = ble_mesh_model->client_pud_app_idx;
+            common.ctx.addr = ble_mesh_model->client_pud_addr;
+        }
+    }
+    else {
+        common.ctx.app_idx = app_idx;
+        common.ctx.addr = addr;
+    }
+
+    // Send set state
     err = esp_ble_mesh_generic_client_set_state(&common, &set);
     if (err) {
         printf("esp_ble_mesh_generic_client_set_state returned: %d\n", err);
@@ -582,7 +631,7 @@ STATIC mp_obj_t mod_ble_mesh_model_set_state(mp_uint_t n_args, const mp_obj_t *p
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_model_set_state_obj, 3, mod_ble_mesh_model_set_state);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_model_set_state_obj, 1, mod_ble_mesh_model_set_state);
 
 
 STATIC const mp_map_elem_t mod_ble_mesh_model_locals_dict_table[] = {
@@ -968,6 +1017,9 @@ STATIC const mp_map_elem_t mod_ble_mesh_globals_table[] = {
         // Constants of Authentication
         { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_INPUT),                      MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_INPUT_OOB) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_OOB_OUTPUT),                     MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_OUTPUT_OOB) },
+        // Constants of Node Addresses
+        { MP_OBJ_NEW_QSTR(MP_QSTR_ADDR_ALL_NODES),                 MP_OBJ_NEW_SMALL_INT(MOD_BLE_ADDR_ALL_NODES) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_ADDR_PUBLISH),                   MP_OBJ_NEW_SMALL_INT(MOD_BLE_ADDR_DEFAULT) },
 
         // Constants of Server-Client
         { MP_OBJ_NEW_QSTR(MP_QSTR_SERVER),                         MP_OBJ_NEW_SMALL_INT(MOD_BLE_MESH_SERVER) },
