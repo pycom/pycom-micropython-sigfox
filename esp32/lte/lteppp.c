@@ -528,8 +528,9 @@ modem_init:
             xSemaphoreGive(xLTESem);
             state = lteppp_get_state();
             if (xQueueReceive(xCmdQueue, lteppp_trx_buffer, 0)) {
+                bool expect_continuation = lte_task_cmd->expect_continuation;
                 lteppp_send_at_cmd_exp(lte_task_cmd->data, lte_task_cmd->timeout, NULL, &(lte_task_rsp->data_remaining), lte_task_cmd->dataLen, lte_task_cmd->expect_continuation);
-                if(!lte_task_cmd->expect_continuation)
+                if(!expect_continuation)
                     xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
             }
             else if(state == E_LTE_PPP && lte_uart_break_evt)
