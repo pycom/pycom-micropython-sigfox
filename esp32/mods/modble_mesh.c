@@ -101,12 +101,14 @@ typedef struct mod_ble_mesh_model_class_s {
     uint8_t index;
     // User defined MicroPython callback function
     mp_obj_t callback;
-    // TODO: check whether this value has any sense because we should use the already stored values from
-    // Mesh library, under the model->user_data
     // Value of the model to return to MicroPython
     mp_obj_t value_mp_obj;
     // Opcode to use when sending out Publish message
     uint32_t pub_opcode;
+    // Opcode to use when sending out Get message
+    uint32_t get_opcode;
+    // Store whether this is a Server or a Client Model
+    bool server_client;
 }mod_ble_mesh_model_class_t;
 
 typedef struct mod_ble_mesh_generic_server_callback_param_s {
@@ -167,7 +169,7 @@ static mod_ble_mesh_model_class_t *mod_ble_models_list = NULL;
 static bool initialized = false;
 static esp_ble_mesh_prov_t *provision_ptr;
 static esp_ble_mesh_comp_t *composition_ptr;
-// TODO: double check wheter this is needed
+// TODO: double check whether this is needed
 static uint8_t msg_tid = 0x0;
 
 // TODO: This should be part of the primary element as provisioning is performed on it only
@@ -181,7 +183,9 @@ static mod_ble_mesh_model_class_t* mod_ble_add_model_to_list(mod_ble_mesh_elemen
                                                              uint8_t index,
                                                              mp_obj_t callback,
                                                              uint32_t pub_opcode,
-                                                             mp_obj_t value_mp_obj) {
+                                                             uint32_t get_opcode,
+                                                             mp_obj_t value_mp_obj,
+                                                             bool server_client) {
 
     mod_ble_mesh_model_class_t *model = mod_ble_models_list;
     mod_ble_mesh_model_class_t *model_last = NULL; // Only needed as helper pointer for the case when the list is fully empty
@@ -205,7 +209,9 @@ static mod_ble_mesh_model_class_t* mod_ble_add_model_to_list(mod_ble_mesh_elemen
     model->callback = callback;
     model->next = NULL;
     model->pub_opcode = pub_opcode;
+    model->get_opcode = get_opcode;
     model->value_mp_obj = value_mp_obj;
+    model->server_client = server_client;
 
     // Add the new element to the list
     if(model_last != NULL) {
@@ -240,10 +246,10 @@ static mod_ble_mesh_model_class_t* mod_ble_find_model(esp_ble_mesh_model_t *esp_
 
 // TODO: check what other arguments are needed, or whether these arguments are needed at all
 static void mod_ble_mesh_generic_callback_call_mp_callback(mp_obj_t callback,
-                                                                  esp_ble_mesh_generic_server_cb_event_t event,
-                                                                  uint32_t recv_op,
-                                                                  mod_ble_mesh_model_class_t* model
-                                                                  ){
+                                                           esp_ble_mesh_generic_server_cb_event_t event,
+                                                           uint32_t recv_op,
+                                                           mod_ble_mesh_model_class_t* model
+                                                           ){
     // Call the registered function
     if(callback != NULL) {
         mp_obj_t args[3];
@@ -285,8 +291,6 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
                 // Update the Model's MP Value
                 mod_ble_model->value_mp_obj = mod_ble_value_to_mp_obj(value_ptr, value_size, value_type);
 
-                //TODO: this function might be called from mod_ble_mesh_generic_server_callback()
-                //TODO: double check whether this is needed when ESP_BLE_MESH_SERVER_AUTO_RSP is set
                 // Publish that the State of this Server Model changed
                 esp_ble_mesh_model_publish(model, mod_ble_model->pub_opcode, value_size, value_ptr, ROLE_NODE);
 
@@ -351,13 +355,18 @@ static void mod_ble_mesh_generic_client_callback_handler(void* param_in) {
 
         esp_ble_mesh_generic_client_cb_event_t event = callback_param->event;
         esp_ble_mesh_generic_client_cb_param_t* param = callback_param->param;
-        esp_ble_mesh_model_t* model = callback_param->param->params->model;
 
         switch (event) {
             case ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT:
                printf("ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT\n");
-                if (param->params->opcode == ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET) {
-                    printf("ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET, onoff %d\n", param->status_cb.onoff_status.present_onoff);
+               printf("param->params->opcode: %d\n", param->params->opcode);
+               printf("param->params->ctx.recv_op: %d\n", param->params->ctx.recv_op);
+                //TODO: figure out a generic way to handle this... it is not easy
+                if(param->params->ctx.recv_op == BLE_MESH_MODEL_OP_GEN_ONOFF_GET){
+                    mod_ble_model->value_mp_obj = mod_ble_value_to_mp_obj(&param->status_cb.onoff_status.present_onoff, 1, MOD_BLE_MESH_STATE_BOOL);
+                }
+                else if(param->params->ctx.recv_op == BLE_MESH_MODEL_OP_GEN_LEVEL_GET){
+                    mod_ble_model->value_mp_obj = mod_ble_value_to_mp_obj(&param->status_cb.onoff_status.present_onoff, 2, MOD_BLE_MESH_STATE_INT);
                 }
                 break;
             case ESP_BLE_MESH_GENERIC_CLIENT_SET_STATE_EVT:
@@ -368,8 +377,6 @@ static void mod_ble_mesh_generic_client_callback_handler(void* param_in) {
                 break;
             case ESP_BLE_MESH_GENERIC_CLIENT_PUBLISH_EVT:
                 printf("ESP_BLE_MESH_GENERIC_CLIENT_PUBLISH_EVT\n");
-                uint8_t value_ptr;
-                uint16_t value_length;
                 //TODO: figure out a generic way to handle this... it is not easy
                 if(param->params->ctx.recv_op == BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS){
                     mod_ble_model->value_mp_obj = mod_ble_value_to_mp_obj(&param->status_cb.onoff_status.present_onoff, 1, MOD_BLE_MESH_STATE_BOOL);
@@ -610,29 +617,25 @@ STATIC mp_obj_t mod_ble_mesh_model_value(mp_uint_t n_args, const mp_obj_t *args)
     mp_obj_t ret = mp_const_none;
 
    if(self->value_mp_obj != NULL) {
-       if (n_args == 1) {
-           //TODO: GET the value from the Server if this is a Client Model
-           // Return back to the user
            ret = self->value_mp_obj;
-       } else {
-           //TODO: verify whether the new argument is good for the Model
+   } else {
+       //TODO: verify whether the new argument is good for the Model
 
-           // Compose the value to be sent out
-           uint16_t value_length = 0;
-           uint8_t* value_ptr = mod_ble_mp_obj_to_value((mp_obj_t)args[1], &value_length);
+       // Compose the value to be sent out
+       uint16_t value_length = 0;
+       uint8_t* value_ptr = mod_ble_mp_obj_to_value((mp_obj_t)args[1], &value_length);
 
-           // Send out Publication message
-           esp_ble_mesh_model_t *model = &self->element->element->sig_models[self->index];
-           esp_err_t err = esp_ble_mesh_model_publish(model, self->pub_opcode, value_length, value_ptr, ROLE_NODE);
-           printf("mod_ble_mesh_model_value, publication message has been sent out, code: %d\n", err);
+       // Send out Publication message
+       esp_ble_mesh_model_t *model = &self->element->element->sig_models[self->index];
+       esp_err_t err = esp_ble_mesh_model_publish(model, self->pub_opcode, value_length, value_ptr, ROLE_NODE);
+       printf("mod_ble_mesh_model_value, publication message has been sent out, code: %d\n", err);
 
-           // Free up the temporary buffer
-           heap_caps_free(value_ptr);
+       // Free up the temporary buffer
+       heap_caps_free(value_ptr);
 
-           if(err == ESP_OK) {
-               // Update value
-               self->value_mp_obj = (mp_obj_t)args[1];
-           }
+       if(err == ESP_OK) {
+           // Update value
+           self->value_mp_obj = (mp_obj_t)args[1];
        }
    }
    return ret;
@@ -732,11 +735,61 @@ STATIC mp_obj_t mod_ble_mesh_model_set_state(mp_uint_t n_args, const mp_obj_t *p
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_model_set_state_obj, 1, mod_ble_mesh_model_set_state);
 
+// DOES NOT WORK COMMENT OUT
+// Sending out Get message and updating the value of the Model
+//STATIC mp_obj_t mod_ble_mesh_model_get_state(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+//
+//    STATIC const mp_arg_t mod_ble_mesh_model_set_state_args[] = {
+//            { MP_QSTR_self_in,               MP_ARG_OBJ,                                                     },
+//            { MP_QSTR_addr,                  MP_ARG_INT,                   {.u_int = MOD_BLE_ADDR_ALL_NODES} },
+//    };
+//
+//    mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_model_set_state_args)];
+//    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_ble_mesh_model_set_state_args, args);
+//
+//    mod_ble_mesh_model_class_t* self = (mod_ble_mesh_model_class_t*)args[0].u_obj;
+//    mp_int_t addr = args[1].u_int;
+//    esp_err_t err;
+//    mp_obj_t ret = mp_const_none;
+//
+//    if(self->server_client == MOD_BLE_MESH_CLIENT) {
+//       esp_ble_mesh_client_common_param_t params;
+//       params.model = &self->element->element->sig_models[self->index];
+//       params.msg_role = ROLE_NODE;
+//       params.opcode = self->get_opcode;
+//       params.ctx.net_idx = 0;
+//       params.ctx.send_ttl = 3;
+//       params.ctx.send_rel = false;
+//       params.msg_timeout = 100;
+//       params.msg_role = ROLE_NODE;
+//       //TODO: put here correct app id
+//       params.ctx.app_idx = 0;
+//       params.ctx.addr = addr;
+//       esp_ble_mesh_generic_client_get_state_t get_state;
+//       esp_err_t err = esp_ble_mesh_generic_client_get_state(&params, &get_state);
+//       // TODO: double check whether here we should wait for an event, e.g. with a semaphore, or esp_ble_mesh_generic_client_get_state() is a
+//       // blocking operation
+//       // The value_mp_obj should be updated in the background by mod_ble_mesh_generic_server_callback_handler()
+//      ret = self->value_mp_obj;
+//       if(err != ESP_OK) {
+//           printf("mod_ble_mesh_model_get_state, esp_ble_mesh_generic_client_get_state returned with error, code: %d\n", err);
+//       }
+//   }
+//   else {
+//       // Use the already stored value if this is a Server Model
+//       ret = self->value_mp_obj;
+//   }
+//
+//    return ret;
+//}
+//STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_model_get_state_obj, 1, mod_ble_mesh_model_get_state);
+
 
 STATIC const mp_map_elem_t mod_ble_mesh_model_locals_dict_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_BLE_Mesh_Model) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_value),                           (mp_obj_t)&mod_ble_mesh_model_value_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_set_state),                       (mp_obj_t)&mod_ble_mesh_model_set_state_obj },
+//        { MP_OBJ_NEW_QSTR(MP_QSTR_get_state),                       (mp_obj_t)&mod_ble_mesh_model_get_state_obj },
 
 };
 STATIC MP_DEFINE_CONST_DICT(mod_ble_mesh_model_locals_dict, mod_ble_mesh_model_locals_dict_table);
@@ -767,6 +820,7 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
     mod_ble_mesh_element_class_t* ble_mesh_element = (mod_ble_mesh_element_class_t*)args[0].u_obj;
     mp_int_t type = args[1].u_int;
     mp_int_t func = args[2].u_int;
+    // TODO: check the range, only SERVER or CLIENT is allowed
     mp_int_t server_client = args[3].u_int;
     mp_obj_t callback = args[4].u_obj;
     mp_obj_t value_mp_obj = args[5].u_obj;
@@ -774,39 +828,51 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
     // Start preparing the Model
     esp_ble_mesh_model_t tmp_model;
     uint32_t pub_opcode = 0;
+    uint32_t get_opcode = 0;
+
+    esp_ble_mesh_model_pub_t* pub = (esp_ble_mesh_model_pub_t *)heap_caps_malloc(sizeof(esp_ble_mesh_model_pub_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    uint8_t* net_buf_data = (uint8_t *)heap_caps_malloc(sizeof(5), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    struct net_buf_simple* net_buf_simple = (struct net_buf_simple *)heap_caps_malloc(sizeof(5), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    net_buf_simple->__buf = net_buf_data;
+    net_buf_simple->data = net_buf_data;
+    net_buf_simple->len = 0;
+    net_buf_simple->size = 5;
+    pub->update = NULL;
+    pub->msg = net_buf_simple;
+    pub->dev_role = ROLE_NODE;
 
     // Server Type
     if(server_client == MOD_BLE_MESH_SERVER) {
         if(type == MOD_BLE_MESH_MODEL_GENERIC) {
             if(func == MOD_BLE_MESH_MODEL_ONOFF) {
                 //TODO: check the validity of the value
-                //TODO: check this publication structure
-                ESP_BLE_MESH_MODEL_PUB_DEFINE(onoff_srv_pub, 2 + 3, ROLE_NODE);
                 // This will be saved into the Model's user_data field
                 esp_ble_mesh_gen_onoff_srv_t* onoff_server = (esp_ble_mesh_gen_onoff_srv_t *)heap_caps_malloc(sizeof(esp_ble_mesh_gen_onoff_srv_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
                 onoff_server->rsp_ctrl.get_auto_rsp = ESP_BLE_MESH_SERVER_AUTO_RSP;
                 onoff_server->rsp_ctrl.set_auto_rsp = ESP_BLE_MESH_SERVER_AUTO_RSP;
 
-                esp_ble_mesh_model_t gen_onoff_srv_mod = ESP_BLE_MESH_MODEL_GEN_ONOFF_SRV(&onoff_srv_pub, onoff_server);
+                esp_ble_mesh_model_t gen_onoff_srv_mod = ESP_BLE_MESH_MODEL_GEN_ONOFF_SRV(pub, onoff_server);
                 memcpy(&tmp_model, &gen_onoff_srv_mod, sizeof(gen_onoff_srv_mod));
 
                 // Opcode when sending out Publish message
                 pub_opcode = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS;
+                // Opcode when sending out Get message
+                get_opcode = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET;
             }
             else if(func == MOD_BLE_MESH_MODEL_LEVEL) {
                 //TODO: check the validity of the value
-                //TODO: check this publication structure
-                ESP_BLE_MESH_MODEL_PUB_DEFINE(level_srv_pub, 2 + 3, ROLE_NODE);
                 // This will be saved into the Model's user_data field
                 esp_ble_mesh_gen_level_srv_t* level_server = (esp_ble_mesh_gen_level_srv_t *)heap_caps_malloc(sizeof(esp_ble_mesh_gen_level_srv_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
                 level_server->rsp_ctrl.get_auto_rsp = ESP_BLE_MESH_SERVER_AUTO_RSP;
                 level_server->rsp_ctrl.set_auto_rsp = ESP_BLE_MESH_SERVER_AUTO_RSP;
 
-                esp_ble_mesh_model_t gen_level_srv_mod = ESP_BLE_MESH_MODEL_GEN_LEVEL_SRV(&level_srv_pub, level_server);
+                esp_ble_mesh_model_t gen_level_srv_mod = ESP_BLE_MESH_MODEL_GEN_LEVEL_SRV(pub, level_server);
                 memcpy(&tmp_model, &gen_level_srv_mod, sizeof(gen_level_srv_mod));
 
                 // Opcode when sending out Publish message
                 pub_opcode = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS;
+                // Opcode when sending out Get message
+                get_opcode = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_GET;
             }
             else {
                 //TODO: Add support for more functionality
@@ -817,14 +883,12 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
         }
     }
     // Client Type
-    else {
+    else{
         if(type == MOD_BLE_MESH_MODEL_GENERIC) {
             if(func == MOD_BLE_MESH_MODEL_ONOFF) {
-                //TODO: check this publication structure
-                ESP_BLE_MESH_MODEL_PUB_DEFINE(onoff_cli_pub, 2 + 1, ROLE_NODE);
                 // This will be saved into the Model's user_data field
                 esp_ble_mesh_client_t* onoff_client = (esp_ble_mesh_client_t *)heap_caps_calloc(1, sizeof(esp_ble_mesh_client_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-                esp_ble_mesh_model_t gen_onoff_cli_mod = ESP_BLE_MESH_MODEL_GEN_ONOFF_CLI(&onoff_cli_pub, onoff_client);
+                esp_ble_mesh_model_t gen_onoff_cli_mod = ESP_BLE_MESH_MODEL_GEN_ONOFF_CLI(pub, onoff_client);
                 memcpy(&tmp_model, &gen_onoff_cli_mod, sizeof(gen_onoff_cli_mod));
             }
             else {
@@ -842,10 +906,12 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
 
     // Create the MicroPython Model
     mod_ble_mesh_model_class_t* model = mod_ble_add_model_to_list(ble_mesh_element,
-                                                                 ble_mesh_element->element->sig_model_count,
-                                                                 callback,
-                                                                 pub_opcode,
-                                                                 value_mp_obj);
+                                                                  ble_mesh_element->element->sig_model_count,
+                                                                  callback,
+                                                                  pub_opcode,
+                                                                  get_opcode,
+                                                                  value_mp_obj,
+                                                                  server_client);
 
     // Indicate we have a new element in the array
     ble_mesh_element->element->sig_model_count++;
@@ -1084,7 +1150,7 @@ STATIC mp_obj_t mod_ble_mesh_create_element(mp_uint_t n_args, const mp_obj_t *po
 
             // Create the MicroPython Model
             // TODO: add callback and value
-            (void)mod_ble_add_model_to_list(ble_mesh_element, 0, NULL, 0, NULL);
+            (void)mod_ble_add_model_to_list(ble_mesh_element, 0, NULL, 0, 0, NULL, MOD_BLE_MESH_SERVER);
             // This is the first model
             ble_mesh_element->element->sig_model_count = 1;
 
