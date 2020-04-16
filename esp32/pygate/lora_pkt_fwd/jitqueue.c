@@ -229,7 +229,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, struct timeval *time, st
      *  Warning: unsigned arithmetic (handle roll-over)
      *      t_packet < t_current + TX_START_DELAY + MARGIN
      */
-    if ((packet->count_us - time_us) <= (TX_START_DELAY + TX_MARGIN_DELAY + TX_JIT_DELAY)) {
+    if (packet->count_us <= time_us + TX_START_DELAY + TX_MARGIN_DELAY + TX_JIT_DELAY) {
         MSG_DEBUG(DEBUG_JIT_ERROR, "ERROR: Packet REJECTED, already too late to send it (current=%u, packet=%u, type=%d)\n", time_us, packet->count_us, pkt_type);
         pthread_mutex_unlock(&mx_jit_queue);
         return JIT_ERROR_TOO_LATE;
@@ -243,12 +243,10 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, struct timeval *time, st
      *  So let's define a safe delay above which we can say that the packet is out of bound: TX_MAX_ADVANCE_DELAY
      *  Note: - Valid for Downlinks only, not for Beacon packets
      *
-     *  Warning: unsigned arithmetic (handle roll-over)
-                t_packet > t_current + TX_MAX_ADVANCE_DELAY
      */
     if ((pkt_type == JIT_PKT_TYPE_DOWNLINK_CLASS_A) || (pkt_type == JIT_PKT_TYPE_DOWNLINK_CLASS_B)) {
-        if ((packet->count_us - time_us) > TX_MAX_ADVANCE_DELAY) {
-            MSG_DEBUG(DEBUG_JIT_ERROR, "ERROR: Packet REJECTED, timestamp seems wrong, too much in advance (current=%u, packet=%u, type=%d)\n", time_us, packet->count_us, pkt_type);
+        if (packet->count_us > time_us + TX_MAX_ADVANCE_DELAY) {
+            MSG_DEBUG(DEBUG_JIT_ERROR, "ERROR: Packet REJECTED, timestamp seems wrong, too much in advance (current=%u, packet=%u, max=%f, type=%d)\n", time_us, packet->count_us, TX_MAX_ADVANCE_DELAY, pkt_type);
             pthread_mutex_unlock(&mx_jit_queue);
             return JIT_ERROR_TOO_EARLY;
         }
@@ -392,7 +390,7 @@ enum jit_error_e jit_peek(struct jit_queue_s *queue, struct timeval *time, int *
          *  Warning: unsigned arithmetic
          *      t_packet > t_current + TX_MAX_ADVANCE_DELAY
          */
-        if ((queue->nodes[i].pkt.count_us - time_us) >= TX_MAX_ADVANCE_DELAY) {
+        if (queue->nodes[i].pkt.count_us >= time_us + TX_MAX_ADVANCE_DELAY) {
             /* We drop the packet to avoid lock-up */
             queue->num_pkt--;
             if (queue->nodes[i].pkt_type == JIT_PKT_TYPE_BEACON) {
