@@ -39,6 +39,8 @@
 #define SPI_END			2
 #define SPI_COMPLETE	3
 
+#define MSG(fmt, ...) printf("[%u] ksz8851: " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
+//#define MSG(fmt, ...) (void)0
 
 static uint16_t	length_sum;
 static uint8_t	frameID = 0;
@@ -390,6 +392,7 @@ void ksz8851Init(void) {
     spi_setbits(REG_PORT_LINK_MD, PORT_POWER_SAVE_MODE);
 
     /* Enable Link change interrupt , enable  tx/Rx interrupts */
+    MSG("init INT:0x%x\n", INT_MASK);
     spi_setbits(REG_INT_MASK, INT_MASK );
 
 	/* Enable QMU Transmit */
@@ -412,6 +415,7 @@ void ksz8851BeginPacketSend(unsigned int packetLength) {
 
 	/* Check if TXQ memory size is available for this transmit packet */
 	txmir = ksz8851_regrd(REG_TX_MEM_INFO) & TX_MEM_AVAILABLE_MASK;
+	//MSG("Send Begin(%u): %u %u\n", packetLength, txmir, (txmir < packetLength+4));
 	if (txmir < packetLength + 4) {
 		/* Not enough space to send packet. */
 
@@ -456,6 +460,7 @@ void ksz8851BeginPacketSend(unsigned int packetLength) {
 void ksz8851SendPacketData(unsigned char *localBuffer, unsigned int length) {
 
 	length_sum += length;
+	//MSG("Send Data(buf, %u):%u\n", length, length_sum);
 
 	spi_op(SPI_CONTINUE, FIFO_WR, localBuffer, length);
 }
@@ -469,7 +474,7 @@ void ksz8851SendPacketData(unsigned char *localBuffer, unsigned int length) {
 void ksz8851EndPacketSend(void) {
 	uint32_t	dummy = 0;
 
-	//printf("ksz8851EndPacketSend():length_sum = %d\n", length_sum);
+	//MSG("Send End:length_sum = %d\n", length_sum);
 
 	/* Calculate how many bytes to get to DWORD */
 	length_sum = -length_sum & 3;
@@ -502,6 +507,7 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length)
    *length = 0;
    //Read received frame status from RXFHSR
    status = ksz8851_regrd(REG_RX_FHR_STATUS);
+   //MSG("Retr Data s=0x%x\n", status);
 
    //Make sure the frame is valid
    if(status & RX_VALID)
@@ -531,9 +537,22 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length)
             //End RXQ read access
              spi_clrbits(REG_RXQ_CMD, RXQ_START);
              *length = n;
+             //MSG("Retr read %u\n", *length);
              return;
          }
+         else
+         {
+            MSG("Retr unacceptable frame size: %u (4,%u)\n", n, ETHERNET_RX_PACKET_BUFF_SIZE);
+         }
       }
+      else
+      {
+         MSG("Retr errors\n");
+      }
+   }
+   else
+   {
+      MSG("Retr invalid\n");
    }
    //Release the current error frame from RXQ
    spi_setbits(REG_RXQ_CMD, RXQ_CMD_FREE_PACKET);

@@ -58,6 +58,9 @@
 #define ETHERNET_EVT_CONNECTED        0x0001
 #define ETHERNET_EVT_STARTED          0x0002
 
+#define MSG(fmt, ...) printf("[%u] modeth: " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
+//#define MSG(fmt, ...) (void)0
+
 /*****************************************************************************
 * DECLARE PRIVATE FUNCTIONS
 *****************************************************************************/
@@ -145,26 +148,22 @@ static esp_err_t modeth_event_handler(void *ctx, system_event_t *event)
 
     switch (event->event_id) {
     case SYSTEM_EVENT_ETH_CONNECTED:
-        //printf("Ethernet Link Up\n");
+        MSG("EH Ethernet Link Up\n");
         break;
     case SYSTEM_EVENT_ETH_DISCONNECTED:
-        //printf( "Ethernet Link Down\n");
+        MSG("EH Ethernet Link Down\n");
         mod_network_deregister_nic(&eth_obj);
         xEventGroupClearBits(eth_event_group, ETHERNET_EVT_CONNECTED);
         break;
     case SYSTEM_EVENT_ETH_START:
-        //printf( "Ethernet Started\n");
+        MSG("EH Ethernet Started\n");
         break;
     case SYSTEM_EVENT_ETH_GOT_IP:
         memset(&ip, 0, sizeof(tcpip_adapter_ip_info_t));
         ESP_ERROR_CHECK(tcpip_adapter_get_ip_info(ESP_IF_ETH, &ip));
-        //printf( "Ethernet Got IP Addr\n");
-        //printf( "~~~~~~~~~~~\n");
-        //printf( "ETHIP:\n" IPSTR, IP2STR(&ip.ip));
-        //printf( "ETHMASK:\n" IPSTR, IP2STR(&ip.netmask));
-        //printf( "ETHGW:\n" IPSTR, IP2STR(&ip.gw));
-        //printf( "~~~~~~~~~~~\n");
+        MSG("EH Got IP Addr: " IPSTR " " IPSTR " " IPSTR "\n", IP2STR(&ip.ip), IP2STR(&ip.netmask), IP2STR(&ip.gw));
 #if defined(FIPY) || defined(GPY)
+        MSG("EH save DNS\n");
         // Save DNS info for restoring if wifi inf is usable again after LTE disconnect
         tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &eth_sta_inf_dns_info);
 #endif
@@ -172,7 +171,7 @@ static esp_err_t modeth_event_handler(void *ctx, system_event_t *event)
         xEventGroupSetBits(eth_event_group, ETHERNET_EVT_CONNECTED);
         break;
     case SYSTEM_EVENT_ETH_STOP:
-        //printf( "Ethernet Stopped\n");
+        MSG("EH Ethernet Stopped\n");
         xEventGroupClearBits(eth_event_group, ETHERNET_EVT_STARTED);
         break;
     default:
@@ -201,6 +200,7 @@ static void process_rx(void)
     uint32_t len, frameCnt;
 
     frameCnt = (ksz8851_regrd(REG_RX_FRAME_CNT_THRES) & RX_FRAME_CNT_MASK) >> 8;
+    MSG("TE process_rx f:%u\n", frameCnt);
     while (frameCnt > 0)
     {
         ksz8851RetrievePacketData(modeth_rxBuff, &len);
@@ -210,6 +210,7 @@ static void process_rx(void)
         }
         frameCnt--;
     }
+    MSG("TE process_rx len:%u\n", totalLen);
 }
 static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt)
 {
@@ -251,6 +252,7 @@ static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt)
 }
 
 static void TASK_ETHERNET (void *pvParameters) {
+    MSG("TE\n");
 
     static uint32_t thread_notification;
     system_event_t evt;
@@ -259,6 +261,7 @@ static void TASK_ETHERNET (void *pvParameters) {
 
     // Block task till notification is recieved
     thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    MSG("TE tn=%u\n", thread_notification);
 
     if (thread_notification)
     {
@@ -289,6 +292,7 @@ static void TASK_ETHERNET (void *pvParameters) {
         /* link status  */
         ksz8851RegisterEvtCb(ksz8851_evt_callback);
 eth_start:
+        MSG("TE eth_start\n");
         xQueueReset(eth_cmdQueue);
         xEventGroupWaitBits(eth_event_group, ETHERNET_EVT_STARTED, false, true, portMAX_DELAY);
         // Init Driver
@@ -302,11 +306,13 @@ eth_start:
             if(!eth_obj.link_status && (xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED))
             {
                 // block till link is up again
+                MSG("TE block til up\n");
                 ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
             }
 
             if(!(xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED))
             {
+                MSG("TE deinit\n");
                 // deinit called, free memory and block till re-init
                 xQueueReset(eth_cmdQueue);
                 heap_caps_free(modeth_rxBuff);
@@ -323,16 +329,17 @@ eth_start:
                 switch(queue_entry.cmd)
                 {
                     case ETH_CMD_TX:
+                        //MSG("TE TX %u\n", queue_entry.len);
                         process_tx(queue_entry.buf, queue_entry.len);
-                        //printf("TX command\n");
                         break;
                     case ETH_CMD_RX:
                         process_rx();
-                        //printf("RX command\n");
+                        //MSG("TE RX {0x%x}\n", queue_entry.isr);
                         // Clear Intr status bits
                         ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_CHK_LINK:
+                        MSG("TE CHK_LINK {0x%x}\n", queue_entry.isr);
                         if(ksz8851GetLinkStatus())
                         {
                             eth_obj.link_status = true;
@@ -349,7 +356,7 @@ eth_start:
                         ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_OVERRUN:
-                        //printf("\n\n===================OVERRUN=====================\n\n");
+                        MSG("TE OVERRUN {0x%x} ========================================\n", queue_entry.isr);
                         xQueueReset(eth_cmdQueue);
                         eth_obj.link_status = false;
                         ksz8851PowerDownMode();
@@ -359,6 +366,7 @@ eth_start:
                         ksz8851Init();
                         break;
                     default:
+                        MSG("TE def {0x%x} %u\n", queue_entry.isr, queue_entry.cmd);
                         break;
                 }
             }
@@ -369,12 +377,13 @@ eth_start:
                 //TODO: This workaround should be removed once the lockup is resolved
                 while((!pin_get_value(KSZ8851_INT_PIN)) && timeout < 5)
                 {
+                    MSG("TE TO %u\n", timeout);
                     vTaskDelay(1 / portTICK_PERIOD_MS);
                     timeout++;
                 }
                 if(timeout >= 5)
                 {
-                    //printf("Force Int\n");
+                    MSG("TE Force Int\n");
                     xQueueReset(eth_cmdQueue);
                     eth_obj.link_status = false;
                     ksz8851PowerDownMode();
