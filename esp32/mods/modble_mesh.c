@@ -831,14 +831,15 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
     uint32_t get_opcode = 0;
 
     esp_ble_mesh_model_pub_t* pub = (esp_ble_mesh_model_pub_t *)heap_caps_malloc(sizeof(esp_ble_mesh_model_pub_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    uint8_t* net_buf_data = (uint8_t *)heap_caps_malloc(sizeof(5), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    struct net_buf_simple* net_buf_simple = (struct net_buf_simple *)heap_caps_malloc(sizeof(5), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    net_buf_simple->__buf = net_buf_data;
-    net_buf_simple->data = net_buf_data;
-    net_buf_simple->len = 0;
-    net_buf_simple->size = 5;
-    pub->update = NULL;
-    pub->msg = net_buf_simple;
+    // Allocate 5 byte for the buffer, this size was taken from the examples
+    uint8_t* net_buf_data = (uint8_t *)heap_caps_malloc(5, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    struct net_buf_simple* net_buf_simple_ptr = (struct net_buf_simple *)heap_caps_malloc(sizeof(struct net_buf_simple), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    net_buf_simple_ptr->__buf = net_buf_data;
+    net_buf_simple_ptr->data = net_buf_data;
+    net_buf_simple_ptr->len = 0;
+    net_buf_simple_ptr->size = 5;
+    pub->update = 0;
+    pub->msg = net_buf_simple_ptr;
     pub->dev_role = ROLE_NODE;
 
     // Server Type
@@ -1006,14 +1007,6 @@ STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp
             if(err != ESP_OK) {
                 // TODO: drop back the error code
                 nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "BLE Mesh node name cannot be set, error code: %d!", err));
-            }
-
-            // Quick fix, seems it solves Client crash issue
-            // TODO: check if it really solves
-            err = nvs_flash_init();
-
-            if (err != ESP_OK) {
-                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Storage was not successfully initialized., error code: %d!", err));
             }
 
             err = esp_ble_mesh_init(provision_ptr, composition_ptr);
