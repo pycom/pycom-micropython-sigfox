@@ -173,12 +173,16 @@ static IRAM_ATTR void ksz8851ProcessInterrupt(void) {
         evt |= KSZ8851_RX_INT;
     }
 
+    if ( ! evt ) {
+        evt |= KSZ8851_OTHER_INT;
+    }
+
     ksz8851_regwr(REG_INT_STATUS, 0xFFFF);
 
     /* Notify upper layer*/
     if((evt_cb_func != NULL) && evt)
     {
-        evt_cb_func(evt);
+        evt_cb_func(evt, isr);
     }
     else
     {

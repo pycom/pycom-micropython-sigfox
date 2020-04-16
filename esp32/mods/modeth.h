@@ -39,7 +39,8 @@ typedef enum
     ETH_CMD_TX = 0,
     ETH_CMD_RX,
     ETH_CMD_OVERRUN,
-    ETH_CMD_CHK_LINK
+    ETH_CMD_CHK_LINK,
+    ETH_CMD_OTHER
 }modeth_cmd_t;
 
 typedef struct
@@ -47,6 +48,7 @@ typedef struct
     modeth_cmd_t cmd;
     uint8_t* buf;
     uint16_t len;
+    uint16_t isr;
 }modeth_cmd_ctx_t;
 
 #endif

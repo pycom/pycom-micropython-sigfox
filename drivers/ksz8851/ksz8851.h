@@ -1,7 +1,7 @@
 #ifndef __KSZ8851_H__
 #define __KSZ8851_H__
 
-typedef void (*ksz8851_evt_cb_t)(uint32_t);
+typedef void (*ksz8851_evt_cb_t)(uint32_t, uint16_t);
 
 uint16_t IRAM_ATTR ksz8851_regrd(uint16_t reg);
 void IRAM_ATTR ksz8851_regwr(uint16_t reg, uint16_t wrdata);
@@ -49,6 +49,7 @@ extern uint8_t ethernet_mac[ETH_MAC_SIZE];
 #define KSZ8851_RX_INT           (0x0001)
 #define KSZ8851_LINK_CHG_INT      (0x0002)
 #define KSZ8851_OVERRUN_INT      (0x0004)
+#define KSZ8851_OTHER_INT      (0x0008)
 
 /* Register definitions */
 /*
@@ -273,6 +274,8 @@ extern uint8_t ethernet_mac[ETH_MAC_SIZE];
 #define   INT_RX_SPI_ERROR            0x0002    /* Enable receive SPI bus error interrupt */
 #define   RX_WOL_DELAY_ENERGY         0x0001    /* Enable delay generate WOL on energy detect */
 #define   INT_MASK                    ( INT_RX | INT_PHY | INT_RX_OVERRUN )
+//#define INT_MASK (INT_PHY | INT_TX | INT_RX | INT_RX_OVERRUN | INT_TX_STOPPED | INT_RX_STOPPED | INT_TX_SPACE | INT_RX_WOL_FRAME | INT_RX_WOL_MAGIC | INT_RX_WOL_LINKUP | INT_RX_WOL_ENERGY | INT_RX_SPI_ERROR )
+//#define INT_MASK (INT_PHY | INT_TX | INT_RX | INT_RX_OVERRUN | INT_TX_STOPPED | INT_RX_STOPPED | INT_TX_SPACE | INT_RX_SPI_ERROR )
 
 #define   REG_INT_STATUS              0x92       /* ISR */
 
