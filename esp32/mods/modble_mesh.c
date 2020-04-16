@@ -1008,6 +1008,14 @@ STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp
                 nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "BLE Mesh node name cannot be set, error code: %d!", err));
             }
 
+            // Quick fix, seems it solves Client crash issue
+            // TODO: check if it really solves
+            err = nvs_flash_init();
+
+            if (err != ESP_OK) {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Storage was not successfully initialized., error code: %d!", err));
+            }
+
             err = esp_ble_mesh_init(provision_ptr, composition_ptr);
 
             if(err != ESP_OK) {
