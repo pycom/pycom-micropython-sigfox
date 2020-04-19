@@ -272,7 +272,6 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
 
         esp_ble_mesh_generic_server_cb_event_t event = callback_param->event;
         esp_ble_mesh_generic_server_cb_param_t* param = callback_param->param;
-        esp_ble_mesh_model_t* model = callback_param->param->model;
         enum mod_ble_mesh_data_type value_type = 0;
         uint16_t value_size = 0;
         uint8_t* value_ptr = NULL;
@@ -290,9 +289,6 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
 
                 // Update the Model's MP Value
                 mod_ble_model->value_mp_obj = mod_ble_value_to_mp_obj(value_ptr, value_size, value_type);
-
-                // Publish that the State of this Server Model changed
-                esp_ble_mesh_model_publish(model, mod_ble_model->pub_opcode, value_size, value_ptr, ROLE_NODE);
 
                 // Free up the space allocated temporary for the value
                 heap_caps_free(value_ptr);
@@ -575,11 +571,9 @@ static mp_obj_t mod_ble_value_to_mp_obj(uint8_t* value, uint16_t value_length, e
 STATIC mp_obj_t mod_ble_mesh_model_value(mp_uint_t n_args, const mp_obj_t *args) {
 
     mod_ble_mesh_model_class_t* self = (mod_ble_mesh_model_class_t*)args[0];
-    mp_obj_t ret = mp_const_none;
 
-   if(self->value_mp_obj != NULL) {
-           ret = self->value_mp_obj;
-   } else {
+    // SET
+    if (n_args == 2) {
        //TODO: verify whether the new argument is good for the Model
 
        // Compose the value to be sent out
@@ -589,7 +583,6 @@ STATIC mp_obj_t mod_ble_mesh_model_value(mp_uint_t n_args, const mp_obj_t *args)
        // Send out Publication message
        esp_ble_mesh_model_t *model = &self->element->element->sig_models[self->index];
        esp_err_t err = esp_ble_mesh_model_publish(model, self->pub_opcode, value_length, value_ptr, ROLE_NODE);
-
        // Free up the temporary buffer
        heap_caps_free(value_ptr);
 
@@ -597,8 +590,9 @@ STATIC mp_obj_t mod_ble_mesh_model_value(mp_uint_t n_args, const mp_obj_t *args)
            // Update value
            self->value_mp_obj = (mp_obj_t)args[1];
        }
-   }
-   return ret;
+    }
+
+   return self->value_mp_obj;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_ble_mesh_model_value_obj, 1, 2, mod_ble_mesh_model_value);
 
@@ -771,7 +765,7 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
             { MP_QSTR_functionality,         MP_ARG_INT,                  {.u_int = MOD_BLE_MESH_MODEL_ONOFF}},
             { MP_QSTR_server_client,         MP_ARG_INT,                  {.u_int = MOD_BLE_MESH_SERVER}},
             { MP_QSTR_callback,              MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
-            { MP_QSTR_value,                 MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
+            { MP_QSTR_value,                 MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = mp_const_none}},
     };
 
     mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_add_model_args)];
