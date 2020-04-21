@@ -10,7 +10,7 @@ Archive member included to satisfy reference by file (symbol)
                               /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_bootmgr.o) (mperror_set_rgb_color)
 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_gpio.o)
                               /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_bootmgr.o) (gpio_get_level)
-/home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
+/home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
                               /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_gpio.o) (__lshrdi3)
 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash.o)
                               /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_bootloader.o) (bootloader_mmap)
@@ -50,11 +50,11 @@ Archive member included to satisfy reference by file (symbol)
                               /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o) (rtc_clk_32k_enable)
 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
                               /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o) (rtc_clk_cal_ratio)
-/home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+/home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
                               /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_sha.o) (__bswapsi2)
-/home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+/home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
                               /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o) (__divdi3)
-/home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+/home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
                               /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_wdt.o) (__udivdi3)
 
 Discarded input sections
@@ -120,9 +120,9 @@ Discarded input sections
                 0x0000000000000000       0x38 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_gpio.o)
  .xt.lit        0x0000000000000000       0x78 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_gpio.o)
  .xt.prop       0x0000000000000000      0x600 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_gpio.o)
- .data          0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
- .bss           0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
- .xt.prop       0x0000000000000000       0x3c /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
+ .data          0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
+ .bss           0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
+ .xt.prop       0x0000000000000000       0x3c /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
  .literal.bootloader_flash_erase_range
                 0x0000000000000000        0xc /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash.o)
  .text          0x0000000000000000        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash.o)
@@ -346,7 +346,7 @@ Discarded input sections
  .xt.lit        0x0000000000000000       0x60 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_wdt.o)
  .xt.prop       0x0000000000000000      0x384 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_wdt.o)
  .literal.rtc_init
-                0x0000000000000000       0xbc /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_init.o)
+                0x0000000000000000       0xb8 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_init.o)
  .text          0x0000000000000000        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_init.o)
  .data          0x0000000000000000        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_init.o)
  .bss           0x0000000000000000        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_init.o)
@@ -415,29 +415,29 @@ Discarded input sections
                 0x0000000000000000       0x4f /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
  .xt.lit        0x0000000000000000       0x30 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
  .xt.prop       0x0000000000000000      0x234 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
- .data          0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
- .bss           0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
- .xt.lit        0x0000000000000000        0x8 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
- .xt.prop       0x0000000000000000       0x30 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
- .text          0x0000000000000000      0x2aa /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .data          0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .bss           0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .debug_frame   0x0000000000000000       0x28 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .eh_frame      0x0000000000000000       0x28 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .debug_info    0x0000000000000000     0x114b /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .debug_abbrev  0x0000000000000000      0x28e /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .debug_loc     0x0000000000000000      0xac9 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .data          0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .bss           0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .xt.lit        0x0000000000000000        0x8 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .xt.prop       0x0000000000000000       0x30 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .text          0x0000000000000000      0x2aa /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .data          0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .bss           0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .debug_frame   0x0000000000000000       0x28 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .eh_frame      0x0000000000000000       0x28 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .debug_info    0x0000000000000000     0x114b /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .debug_abbrev  0x0000000000000000      0x28e /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .debug_loc     0x0000000000000000      0xac9 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
  .debug_aranges
-                0x0000000000000000       0x20 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .debug_ranges  0x0000000000000000       0xa0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .debug_line    0x0000000000000000      0xb68 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .debug_str     0x0000000000000000      0x77e /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .comment       0x0000000000000000       0x26 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .xt.prop       0x0000000000000000      0x234 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .data          0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
- .bss           0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
- .eh_frame      0x0000000000000000       0x28 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
- .xt.prop       0x0000000000000000      0x21c /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+                0x0000000000000000       0x20 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .debug_ranges  0x0000000000000000       0xa0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .debug_line    0x0000000000000000      0xaf6 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .debug_str     0x0000000000000000      0x758 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .comment       0x0000000000000000       0x26 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .xt.prop       0x0000000000000000      0x234 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .data          0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .bss           0x0000000000000000        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .eh_frame      0x0000000000000000       0x28 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .xt.prop       0x0000000000000000      0x21c /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
 
 Memory Configuration
 
@@ -458,9 +458,9 @@ LOAD /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/boo
 LOAD /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a
 LOAD /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a
 LOAD /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/efuse/libefuse.a
-LOAD /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a
-LOAD /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/../../../../xtensa-esp32-elf/lib/no-rtti/libstdc++.a
-LOAD /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcov.a
+LOAD /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a
+LOAD /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/../../../../xtensa-esp32-elf/lib/no-rtti/libstdc++.a
+LOAD /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcov.a
 END GROUP
 
 .iram_loader.text
@@ -487,7 +487,7 @@ END GROUP
                 0x0000000040078094        0x4 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(cpu_util.o)
  .literal.esp_log_early_timestamp
                 0x0000000040078098        0x8 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/log/liblog.a(log.o)
- .literal       0x00000000400780a0        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .literal       0x00000000400780a0        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
                                           0x8 (size before relaxing)
  .literal.bootloader_clock_configure
                 0x00000000400780a0       0x1c /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_clock.o)
@@ -703,13 +703,13 @@ END GROUP
  *fill*         0x0000000040078821        0x0 
  *libgcc.a:(.literal .text .literal.* .text.*)
  *fill*         0x0000000040078821        0x3 
- .text          0x0000000040078824       0x26 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .text          0x0000000040078824       0x26 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
                 0x0000000040078824                __bswapsi2
  *fill*         0x000000004007884a        0x2 
- .text          0x000000004007884c       0x18 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
+ .text          0x000000004007884c       0x18 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
                 0x000000004007884c                __lshrdi3
  *fill*         0x0000000040078864        0x0 
- .text          0x0000000040078864      0x26a /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .text          0x0000000040078864      0x26a /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
                 0x0000000040078864                __udivdi3
  *libbootloader_support.a:bootloader_clock.*(.literal .text .literal.* .text.*)
  *fill*         0x0000000040078ace        0x2 
@@ -3177,8 +3177,8 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .debug_frame   0x0000000000000db0       0x40 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o)
  .debug_frame   0x0000000000000df0      0x2b0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk.o)
  .debug_frame   0x00000000000010a0       0xb8 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
- .debug_frame   0x0000000000001158       0x28 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
- .debug_frame   0x0000000000001180       0x28 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .debug_frame   0x0000000000001158       0x28 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .debug_frame   0x0000000000001180       0x28 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
 
 .debug_info     0x0000000000000000    0x5fc98
  .debug_info    0x0000000000000000      0xd00 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(bootloader_start.o)
@@ -3186,7 +3186,7 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .debug_info    0x0000000000002941     0x24e9 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_bootmgr.o)
  .debug_info    0x0000000000004e2a     0x246c /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_mperror.o)
  .debug_info    0x0000000000007296     0x519f /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_gpio.o)
- .debug_info    0x000000000000c435       0x26 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
+ .debug_info    0x000000000000c435       0x26 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
  .debug_info    0x000000000000c45b     0x1f32 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash.o)
  .debug_info    0x000000000000e38d     0xa2e9 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_init.o)
  .debug_info    0x0000000000018676     0x510f /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_common.o)
@@ -3206,8 +3206,8 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .debug_info    0x000000000004bb7a     0x6a3c /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o)
  .debug_info    0x00000000000525b6     0x7719 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk.o)
  .debug_info    0x0000000000059ccf     0x43ca /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
- .debug_info    0x000000000005e099      0xb02 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
- .debug_info    0x000000000005eb9b     0x10fd /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .debug_info    0x000000000005e099      0xb02 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .debug_info    0x000000000005eb9b     0x10fd /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
 
 .debug_abbrev   0x0000000000000000     0x62df
  .debug_abbrev  0x0000000000000000      0x2bf /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(bootloader_start.o)
@@ -3215,7 +3215,7 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .debug_abbrev  0x00000000000006e7      0x393 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_bootmgr.o)
  .debug_abbrev  0x0000000000000a7a      0x3dc /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_mperror.o)
  .debug_abbrev  0x0000000000000e56      0x4ab /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_gpio.o)
- .debug_abbrev  0x0000000000001301       0x14 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
+ .debug_abbrev  0x0000000000001301       0x14 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
  .debug_abbrev  0x0000000000001315      0x490 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash.o)
  .debug_abbrev  0x00000000000017a5      0x54e /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_init.o)
  .debug_abbrev  0x0000000000001cf3      0x4ce /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_common.o)
@@ -3235,8 +3235,8 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .debug_abbrev  0x00000000000051a7      0x3df /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o)
  .debug_abbrev  0x0000000000005586      0x5ae /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk.o)
  .debug_abbrev  0x0000000000005b34      0x380 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
- .debug_abbrev  0x0000000000005eb4      0x1b1 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
- .debug_abbrev  0x0000000000006065      0x27a /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .debug_abbrev  0x0000000000005eb4      0x1b1 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .debug_abbrev  0x0000000000006065      0x27a /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
 
 .debug_loc      0x0000000000000000     0x835a
  .debug_loc     0x0000000000000000       0xce /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(bootloader_start.o)
@@ -3263,8 +3263,8 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .debug_loc     0x000000000000692f      0x262 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o)
  .debug_loc     0x0000000000006b91      0xa5e /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk.o)
  .debug_loc     0x00000000000075ef      0x334 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
- .debug_loc     0x0000000000007923       0x25 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
- .debug_loc     0x0000000000007948      0xa12 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .debug_loc     0x0000000000007923       0x25 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .debug_loc     0x0000000000007948      0xa12 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
 
 .debug_aranges  0x0000000000000000      0x7e8
  .debug_aranges
@@ -3278,7 +3278,7 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .debug_aranges
                 0x00000000000000d8       0x90 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_gpio.o)
  .debug_aranges
-                0x0000000000000168       0x20 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
+                0x0000000000000168       0x20 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
  .debug_aranges
                 0x0000000000000188       0x50 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash.o)
  .debug_aranges
@@ -3318,9 +3318,9 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .debug_aranges
                 0x0000000000000758       0x50 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
  .debug_aranges
-                0x00000000000007a8       0x20 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+                0x00000000000007a8       0x20 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
  .debug_aranges
-                0x00000000000007c8       0x20 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+                0x00000000000007c8       0x20 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
 
 .debug_ranges   0x0000000000000000     0x1170
  .debug_ranges  0x0000000000000000       0x18 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(bootloader_start.o)
@@ -3347,38 +3347,38 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .debug_ranges  0x0000000000000ee0       0x18 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o)
  .debug_ranges  0x0000000000000ef8      0x198 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk.o)
  .debug_ranges  0x0000000000001090       0x40 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
- .debug_ranges  0x00000000000010d0       0xa0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .debug_ranges  0x00000000000010d0       0xa0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
 
-.debug_line     0x0000000000000000    0x145fe
+.debug_line     0x0000000000000000    0x14507
  .debug_line    0x0000000000000000      0x571 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(bootloader_start.o)
  .debug_line    0x0000000000000571      0xcba /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_bootloader.o)
  .debug_line    0x000000000000122b      0x861 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_bootmgr.o)
  .debug_line    0x0000000000001a8c      0xa48 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_mperror.o)
  .debug_line    0x00000000000024d4     0x13e6 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_gpio.o)
- .debug_line    0x00000000000038ba       0xce /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
- .debug_line    0x0000000000003988      0xf4b /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash.o)
- .debug_line    0x00000000000048d3     0x14d8 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_init.o)
- .debug_line    0x0000000000005dab     0x116c /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_common.o)
- .debug_line    0x0000000000006f17      0x610 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_clock.o)
- .debug_line    0x0000000000007527      0x8ce /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_random.o)
- .debug_line    0x0000000000007df5      0x5f3 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(flash_partitions.o)
- .debug_line    0x00000000000083e8     0x199f /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(esp_image_format.o)
- .debug_line    0x0000000000009d87     0x18b8 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_utility.o)
- .debug_line    0x000000000000b63f      0x7c1 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_sha.o)
- .debug_line    0x000000000000be00      0xbbb /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(flash_qio_mode.o)
- .debug_line    0x000000000000c9bb      0x890 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash_config.o)
- .debug_line    0x000000000000d24b      0xc24 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/log/liblog.a(log.o)
- .debug_line    0x000000000000de6f     0x17c1 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/spi_flash/libspi_flash.a(spi_flash_rom_patch.o)
- .debug_line    0x000000000000f630      0x41a /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(cpu_util.o)
- .debug_line    0x000000000000fa4a      0x97d /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_wdt.o)
- .debug_line    0x00000000000103c7      0x98a /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_init.o)
- .debug_line    0x0000000000010d51      0x8e5 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o)
- .debug_line    0x0000000000011636     0x1902 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk.o)
- .debug_line    0x0000000000012f38      0x8d5 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
- .debug_line    0x000000000001380d      0x354 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
- .debug_line    0x0000000000013b61      0xa9d /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .debug_line    0x00000000000038ba       0xbb /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
+ .debug_line    0x0000000000003975      0xf4b /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash.o)
+ .debug_line    0x00000000000048c0     0x14d8 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_init.o)
+ .debug_line    0x0000000000005d98     0x116c /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_common.o)
+ .debug_line    0x0000000000006f04      0x610 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_clock.o)
+ .debug_line    0x0000000000007514      0x8ce /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_random.o)
+ .debug_line    0x0000000000007de2      0x5f3 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(flash_partitions.o)
+ .debug_line    0x00000000000083d5     0x199f /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(esp_image_format.o)
+ .debug_line    0x0000000000009d74     0x18b8 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_utility.o)
+ .debug_line    0x000000000000b62c      0x7c1 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_sha.o)
+ .debug_line    0x000000000000bded      0xbbb /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(flash_qio_mode.o)
+ .debug_line    0x000000000000c9a8      0x890 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash_config.o)
+ .debug_line    0x000000000000d238      0xc24 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/log/liblog.a(log.o)
+ .debug_line    0x000000000000de5c     0x17c1 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/spi_flash/libspi_flash.a(spi_flash_rom_patch.o)
+ .debug_line    0x000000000000f61d      0x41a /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(cpu_util.o)
+ .debug_line    0x000000000000fa37      0x97d /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_wdt.o)
+ .debug_line    0x00000000000103b4      0x98a /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_init.o)
+ .debug_line    0x0000000000010d3e      0x8e5 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o)
+ .debug_line    0x0000000000011623     0x1902 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk.o)
+ .debug_line    0x0000000000012f25      0x8d5 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
+ .debug_line    0x00000000000137fa      0x2e2 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .debug_line    0x0000000000013adc      0xa2b /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
 
-.debug_str      0x0000000000000000     0xa802
+.debug_str      0x0000000000000000     0xa7c9
  .debug_str     0x0000000000000000      0x86c /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(bootloader_start.o)
                                         0x93f (size before relaxing)
  .debug_str     0x000000000000086c     0x10ba /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_bootloader.o)
@@ -3389,49 +3389,49 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
                                        0x1ab4 (size before relaxing)
  .debug_str     0x000000000000219b     0x1ac7 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_gpio.o)
                                        0x319e (size before relaxing)
- .debug_str     0x0000000000003c62       0xf8 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
- .debug_str     0x0000000000003d5a      0x2ef /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash.o)
+ .debug_str     0x0000000000003c62       0xd2 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
+ .debug_str     0x0000000000003d34      0x2ef /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash.o)
                                        0x16e1 (size before relaxing)
- .debug_str     0x0000000000004049     0x27c1 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_init.o)
+ .debug_str     0x0000000000004023     0x27c1 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_init.o)
                                        0x584e (size before relaxing)
- .debug_str     0x000000000000680a      0x579 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_common.o)
+ .debug_str     0x00000000000067e4      0x579 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_common.o)
                                        0x2a83 (size before relaxing)
- .debug_str     0x0000000000006d83      0x26f /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_clock.o)
+ .debug_str     0x0000000000006d5d      0x26f /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_clock.o)
                                        0x3471 (size before relaxing)
- .debug_str     0x0000000000006ff2     0x14f2 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_random.o)
+ .debug_str     0x0000000000006fcc     0x14f2 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_random.o)
                                        0x41be (size before relaxing)
- .debug_str     0x00000000000084e4       0xbf /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(flash_partitions.o)
+ .debug_str     0x00000000000084be       0xbf /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(flash_partitions.o)
                                         0x811 (size before relaxing)
- .debug_str     0x00000000000085a3      0x4aa /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(esp_image_format.o)
+ .debug_str     0x000000000000857d      0x4aa /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(esp_image_format.o)
                                        0x1cc0 (size before relaxing)
- .debug_str     0x0000000000008a4d      0x223 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_utility.o)
+ .debug_str     0x0000000000008a27      0x223 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_utility.o)
                                        0x4064 (size before relaxing)
- .debug_str     0x0000000000008c70      0x10a /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_sha.o)
+ .debug_str     0x0000000000008c4a      0x10a /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_sha.o)
                                        0x1288 (size before relaxing)
- .debug_str     0x0000000000008d7a      0x335 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(flash_qio_mode.o)
+ .debug_str     0x0000000000008d54      0x335 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(flash_qio_mode.o)
                                        0x23ea (size before relaxing)
- .debug_str     0x00000000000090af      0x103 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash_config.o)
+ .debug_str     0x0000000000009089      0x103 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash_config.o)
                                         0xbdf (size before relaxing)
- .debug_str     0x00000000000091b2      0x28b /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/log/liblog.a(log.o)
+ .debug_str     0x000000000000918c      0x28b /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/log/liblog.a(log.o)
                                        0x1211 (size before relaxing)
- .debug_str     0x000000000000943d      0x3d2 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/spi_flash/libspi_flash.a(spi_flash_rom_patch.o)
+ .debug_str     0x0000000000009417      0x3d2 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/spi_flash/libspi_flash.a(spi_flash_rom_patch.o)
                                        0x2598 (size before relaxing)
- .debug_str     0x000000000000980f       0xd9 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(cpu_util.o)
+ .debug_str     0x00000000000097e9       0xd9 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(cpu_util.o)
                                        0x2524 (size before relaxing)
- .debug_str     0x00000000000098e8      0x380 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_wdt.o)
+ .debug_str     0x00000000000098c2      0x380 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_wdt.o)
                                        0x2171 (size before relaxing)
- .debug_str     0x0000000000009c68       0xce /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_init.o)
+ .debug_str     0x0000000000009c42       0xce /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_init.o)
                                        0x27e3 (size before relaxing)
- .debug_str     0x0000000000009d36      0x2e4 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o)
+ .debug_str     0x0000000000009d10      0x2e4 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o)
                                        0x4189 (size before relaxing)
- .debug_str     0x000000000000a01a      0x3f8 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk.o)
+ .debug_str     0x0000000000009ff4      0x3f8 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk.o)
                                        0x4500 (size before relaxing)
- .debug_str     0x000000000000a412      0x14f /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
+ .debug_str     0x000000000000a3ec      0x14f /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
                                        0x235a (size before relaxing)
- .debug_str     0x000000000000a561      0x1c8 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
-                                        0x705 (size before relaxing)
- .debug_str     0x000000000000a729       0xd9 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
-                                        0x77f (size before relaxing)
+ .debug_str     0x000000000000a53b      0x1b5 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+                                        0x6df (size before relaxing)
+ .debug_str     0x000000000000a6f0       0xd9 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+                                        0x759 (size before relaxing)
 
 .comment        0x0000000000000000       0x25
  .comment       0x0000000000000000       0x25 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(bootloader_start.o)
@@ -3459,8 +3459,8 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .comment       0x0000000000000025       0x26 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o)
  .comment       0x0000000000000025       0x26 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk.o)
  .comment       0x0000000000000025       0x26 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
- .comment       0x0000000000000025       0x26 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
- .comment       0x0000000000000025       0x26 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .comment       0x0000000000000025       0x26 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .comment       0x0000000000000025       0x26 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
 
 .xtensa.info    0x0000000000000000       0x38
  .xtensa.info   0x0000000000000000       0x38 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(bootloader_start.o)
@@ -3468,7 +3468,7 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_bootmgr.o)
  .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_mperror.o)
  .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/main/libmain.a(pycom_gpio.o)
- .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
+ .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_lshrdi3.o)
  .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_flash.o)
  .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_init.o)
  .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/bootloader_support/libbootloader_support.a(bootloader_common.o)
@@ -3488,6 +3488,6 @@ OUTPUT(/home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/b
  .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk_init.o)
  .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_clk.o)
  .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Repositories/pycom-esp-idf/examples/wifi/scan/build/bootloader/soc/libsoc.a(rtc_time.o)
- .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
- .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
- .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2019r2/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
+ .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_bswapsi2.o)
+ .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_divdi3.o)
+ .xtensa.info   0x0000000000000038        0x0 /home/gezahusi/Work/Toolchains/xtensa-esp32-elf_2020r1/bin/../lib/gcc/xtensa-esp32-elf/8.2.0/no-rtti/libgcc.a(_udivdi3.o)
