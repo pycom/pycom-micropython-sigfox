@@ -314,6 +314,14 @@ void ksz8851Init(void) {
 	}
 	MSG("Init: 0x%x\n", mem_self_test);
 
+
+	uint16_t auto_negotiation = ksz8851_regrd(REG_PHY_AUTO_NEGOTIATION);
+	MSG("Init: AN=0x%x\n", auto_negotiation);
+	auto_negotiation &= ~PHY_AUTO_NEG_100BTX_FD;
+	auto_negotiation &= ~PHY_AUTO_NEG_100BTX;
+	MSG("Init: AN=0x%x\n", auto_negotiation);
+	ksz8851_regwr(REG_PHY_AUTO_NEGOTIATION, auto_negotiation);
+
 	/* Write QMU MAC address (low) */
 	ksz8851_regwr(REG_MAC_ADDR_01, (ethernet_mac[4] << 8) | ethernet_mac[5]);
 	/* Write QMU MAC address (middle) */
