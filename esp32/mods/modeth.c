@@ -547,6 +547,9 @@ STATIC mp_obj_t eth_init_helper(eth_obj_t *self, const mp_arg_val_t *args) {
 
     const char *hostname;
 
+    if (!ethernetTaskHandle)
+        eth_pre_init();
+
     if (args[0].u_obj != mp_const_none) {
         hostname = mp_obj_str_get_str(args[0].u_obj);
         eth_validate_hostname(hostname);
