@@ -201,7 +201,7 @@ static uint32_t process_rx(void)
     uint32_t totalLen = 0;
 
     frameCnt = (ksz8851_regrd(REG_RX_FRAME_CNT_THRES) & RX_FRAME_CNT_MASK) >> 8;
-    MSG("TE process_rx f:%u\n", frameCnt);
+    // MSG("TE process_rx f:%u\n", frameCnt);
     while (frameCnt > 0)
     {
         ksz8851RetrievePacketData(modeth_rxBuff, &len);
@@ -212,7 +212,7 @@ static uint32_t process_rx(void)
         }
         frameCnt--;
     }
-    MSG("TE process_rx len:%u\n", totalLen);
+    // MSG("TE process_rx len:%u\n", totalLen);
     return totalLen;
 }
 static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt, uint16_t isr)
@@ -279,8 +279,8 @@ static void TASK_ETHERNET (void *pvParameters) {
     static uint32_t thread_notification;
     system_event_t evt;
     modeth_cmd_ctx_t queue_entry;
-    uint8_t timeout = 0;
-    uint8_t max_timeout = 50; // 5
+    uint16_t timeout = 0;
+    uint16_t max_timeout = 50u; // 5
 
     // Block task till notification is recieved
     thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -318,21 +318,22 @@ eth_start:
         MSG("TE eth_start\n");
         xQueueReset(eth_cmdQueue);
         xEventGroupWaitBits(eth_event_group, ETHERNET_EVT_STARTED, false, true, portMAX_DELAY);
+        MSG("TE init driver\n");
         // Init Driver
         ksz8851Init();
 
         evt.event_id = SYSTEM_EVENT_ETH_START;
         esp_event_send(&evt);
 
-        // MSG("TE for ls=%u 10M=%u 100M=%u\n", get_eth_link_speed(), ETH_SPEED_MODE_10M, ETH_SPEED_MODE_100M);
+        MSG("TE for ls=%u 10M=%u 100M=%u\n", get_eth_link_speed(), ETH_SPEED_MODE_10M, ETH_SPEED_MODE_100M);
         UBaseType_t stack_high = uxTaskGetStackHighWaterMark(NULL);
         MSG("TE stack_high=%u\n", stack_high);
 
-        uint16_t ct = 0;
-        uint16_t ctTX = 0;
-        uint16_t ctRX = 0;
-        uint16_t totalTX = 0;
-        uint16_t totalRX = 0;
+        uint32_t ct = 0;
+        uint32_t ctTX = 0;
+        uint32_t ctRX = 0;
+        uint32_t totalTX = 0;
+        uint32_t totalRX = 0;
         bool printStat = false;
         uint16_t interrupt_pin_value = pin_get_value(KSZ8851_INT_PIN);
         //uint16_t interrupt_value = ksz8851_regrd(REG_INT_STATUS);
@@ -359,10 +360,10 @@ eth_start:
                 printStat = true;
             }
             if (printStat){
-                MSG("TE ct=%u stack:%u queue:%u tx:%u/%u rx:%u/%u ksz8851:%u 0x%x\n",
+                MSG("TE ct=%u stack:%u queue:%u tx:%u/%u rx:%u/%u link:%u int:0x%x port:0x%x speed:%u\n",
                     ct, stack_high, uxQueueMessagesWaiting( eth_cmdQueue ),
                     ctTX, totalTX, ctRX, totalRX,
-                    ksz8851GetLinkStatus(), interrupt_pin_value );
+                    ksz8851GetLinkStatus(), interrupt_pin_value, ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
                 // if (ct % 1000 == 0)
                 //     printTaskStatus();
 
@@ -390,13 +391,13 @@ eth_start:
             if(!eth_obj.link_status && (xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED))
             {
                 // block till link is up again
-                MSG("TE block til up\n");
+                MSG("TE link not up\n");
                 ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
             }
 
             if(!(xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED))
             {
-                MSG("TE deinit\n");
+                MSG("TE not started\n");
                 // deinit called, free memory and block till re-init
                 xQueueReset(eth_cmdQueue);
                 heap_caps_free(modeth_rxBuff);
@@ -405,6 +406,7 @@ eth_start:
                 esp_event_send(&evt);
                 //Disable  interrupts
                 ksz8851_regwr(REG_INT_MASK, 0x0000);
+                MSG("TE goto eth_start\n");
                 goto eth_start;
             }
 
@@ -415,9 +417,10 @@ eth_start:
                 //     MSG("TE msg waiting:%u\n", numWait);
                 //     //printTaskStatus();
                 // }
-                MSG("TE ct=%u cmd:0x%x isr:0x%x queue:%u ksz8851:%u 0x%x\n",
-                    ct, queue_entry.cmd, (queue_entry.cmd == ETH_CMD_TX)?0:queue_entry.isr, uxQueueMessagesWaiting( eth_cmdQueue ),
-                    ksz8851GetLinkStatus(), interrupt_pin_value );
+                if (! (queue_entry.cmd == ETH_CMD_TX && interrupt_pin_value ))
+                    MSG("TE ct=%u cmd:0x%x isr:0x%x queue:%u ksz8851:%u 0x%x port:0x%x speed:%u\n",
+                        ct, queue_entry.cmd, (queue_entry.cmd == ETH_CMD_TX)?0:queue_entry.isr, uxQueueMessagesWaiting( eth_cmdQueue ),
+                        ksz8851GetLinkStatus(), interrupt_pin_value, ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
 
                 switch(queue_entry.cmd)
                 {
@@ -462,7 +465,7 @@ eth_start:
                         ksz8851Init();
                         break;
                     default:
-                        MSG("TE def {0x%x} %u\n", queue_entry.isr, queue_entry.cmd);
+                        MSG("TE def cmd:0x%x isr:0x%x\n", queue_entry.cmd, queue_entry.isr);
                         break;
                 }
             }

@@ -62,7 +62,7 @@ int get_concentrator_time(struct timeval *concent_time, struct timeval unix_time
     struct timeval local_timeval;
 
     if (concent_time == NULL) {
-        MSG("ERROR: %s invalid parameter\n", __FUNCTION__);
+        MSG("lorapf ERROR: %s invalid parameter\n", __FUNCTION__);
         return -1;
     }
 
@@ -74,9 +74,9 @@ int get_concentrator_time(struct timeval *concent_time, struct timeval unix_time
     concent_time->tv_sec = local_timeval.tv_sec;
     concent_time->tv_usec = local_timeval.tv_usec;
 
-      MSG_DEBUG(DEBUG_TIMERSYNC, " --> TIME: unix current time is   %ld,%ld\n", unix_time.tv_sec, unix_time.tv_usec);
-      MSG_DEBUG(DEBUG_TIMERSYNC, "           offset is              %ld,%ld\n", offset_unix_concent.tv_sec, offset_unix_concent.tv_usec);
-      MSG_DEBUG(DEBUG_TIMERSYNC, "           sx1301 current time is %ld,%ld\n", local_timeval.tv_sec, local_timeval.tv_usec);
+    MSG_DEBUG(DEBUG_TIMERSYNC, " --> TIME: unix current time is    (%ld,%ld)[s,us]\n", unix_time.tv_sec, unix_time.tv_usec);
+    MSG_DEBUG(DEBUG_TIMERSYNC, "           concent current time is (%ld,%ld)[s,us]\n", local_timeval.tv_sec, local_timeval.tv_usec);
+    MSG_DEBUG(DEBUG_TIMERSYNC, "           offset is               (%ld,%ld)[s,us]\n", offset_unix_concent.tv_sec, offset_unix_concent.tv_usec);
 
     return 0;
 }
@@ -85,6 +85,7 @@ int get_concentrator_time(struct timeval *concent_time, struct timeval unix_time
 /* --- THREAD 6: REGULARLAY MONITOR THE OFFSET BETWEEN UNIX CLOCK AND CONCENTRATOR CLOCK -------- */
 
 void thread_timersync(void) {
+    MSG("lorapf [ts] DEBUG: start\n");
     struct timeval unix_timeval;
     struct timeval concentrator_timeval;
     uint32_t sx1301_timecount = 0;
@@ -111,13 +112,15 @@ void thread_timersync(void) {
 
         timersub(&offset_unix_concent, &offset_previous, &offset_drift);
 
-        MSG_DEBUG(DEBUG_TIMERSYNC, "  sx1301    = %u (µs) - timeval (%ld,%ld)\n",
-                  sx1301_timecount,
+        MSG_DEBUG(DEBUG_TIMERSYNC, "  unix_timeval (%ld,%ld)[s,us]\n",
+                  unix_timeval.tv_sec,
+                  unix_timeval.tv_usec);
+        MSG_DEBUG(DEBUG_TIMERSYNC, "  concentrator (%ld,%ld)[s,us] = %u [us]\n",
                   concentrator_timeval.tv_sec,
-                  concentrator_timeval.tv_usec);
-        MSG_DEBUG(DEBUG_TIMERSYNC, "  unix_timeval = %ld,%ld\n", unix_timeval.tv_sec, unix_timeval.tv_usec);
+                  concentrator_timeval.tv_usec,
+                  sx1301_timecount);
 
-        MSG_DEBUG(DEBUG_TIMERSYNC, "INFO: host/sx1301 time offset=(%ld s:%ld µs) - drift=%ld µs\n",
+        MSG_DEBUG(DEBUG_TIMERSYNC, "  offset       (%ld,%ld)[s,us], drift=%ld [us]\n",
             offset_unix_concent.tv_sec,
             offset_unix_concent.tv_usec,
             offset_drift.tv_sec * 1000000UL + offset_drift.tv_usec);
@@ -130,4 +133,5 @@ void thread_timersync(void) {
             Let's set the thread sleep to 1 minute for now */
         wait_ms(750);
     }
+    MSG("lorapf [ts] DEBUG: end exit=%u quit=%u\n", exit_sig, quit_sig);
 }
