@@ -305,6 +305,14 @@ void ksz8851Init(void) {
 		}
 	} while ((dev_id & CHIP_ID_MASK) != CHIP_ID_8851_16);
 
+	uint16_t mem_self_test = ksz8851_regrd(REG_MEM_BIST_INFO);
+	uint16_t mem_self_test_done = TX_MEM_TEST_FINISHED | RX_MEM_TEST_FINISHED;
+	MSG("Init: 0x%x\n", mem_self_test);
+	while ( (mem_self_test & mem_self_test_done) != mem_self_test_done ){
+		vTaskDelay(1/portTICK_PERIOD_MS);
+		mem_self_test = ksz8851_regrd(REG_MEM_BIST_INFO);
+	}
+	MSG("Init: 0x%x\n", mem_self_test);
 
 	/* Write QMU MAC address (low) */
 	ksz8851_regwr(REG_MAC_ADDR_01, (ethernet_mac[4] << 8) | ethernet_mac[5]);
