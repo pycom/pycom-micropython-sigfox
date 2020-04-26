@@ -104,7 +104,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/common/osi/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/hci/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/bta/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/api/include
-# Needed to find pycom_bootloader.h from pycom=-esp-idf
+# Needed to find pycom_bootloader.h from pycom-esp-idf
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader/subproject/main
 
 
@@ -183,9 +183,9 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machrmt.c \
 	lwipsocket.c \
 	machtouch.c \
+	modcoap.c \
 	modmdns.c \
 	)
-#	TODO: modcoap.c  -> add back when refactored as per esp-idf 4.0
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
 	modlora.c \
