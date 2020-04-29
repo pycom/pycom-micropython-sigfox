@@ -489,9 +489,9 @@ void ksz8851EndPacketSend(void) {
  * packet.  It may be called as many times as necessary to retrieve
  * the entire payload.
  */
-void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length) {
+void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length, uint16_t frameCnt) {
 	//spi_op(SPI_CONTINUE, FIFO_RD, localBuffer, length);
-    size_t n;
+    size_t n = 0;
    uint16_t status;
    uint8_t  dummy[4];
 
@@ -533,17 +533,17 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length)
          }
          else
          {
-            MSG("Retr unacceptable frame size: %u (4,%u)\n", n, ETHERNET_RX_PACKET_BUFF_SIZE);
+            MSG("Retr[%u] unacceptable frame size: %u (4,%u)\n", frameCnt, n, ETHERNET_RX_PACKET_BUFF_SIZE);
          }
       }
       else
       {
-         MSG("Retr errors\n");
+         MSG("Retr[%u] errors n=%u s=0x%x\n", frameCnt, n, status);
       }
    }
    else
    {
-      MSG("Retr invalid\n");
+      MSG("Retr[%u] invalid n=%u s=0x%x\n", frameCnt, n, status);
    }
    //Release the current error frame from RXQ
    spi_setbits(REG_RXQ_CMD, RXQ_CMD_FREE_PACKET);

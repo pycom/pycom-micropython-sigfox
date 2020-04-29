@@ -60,6 +60,7 @@
 #define ETHERNET_EVT_CONNECTED        0x0001
 #define ETHERNET_EVT_STARTED          0x0002
 
+//#define DEBUG_MODETH
 #define MSG(fmt, ...) printf("[%u] modeth: " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
 //#define MSG(fmt, ...) (void)0
 
@@ -195,6 +196,15 @@ static void eth_set_default_inf(void)
 }
 static void process_tx(uint8_t* buff, uint16_t len)
 {
+#ifdef DEBUG_MODETH
+    if ( len > 3){
+        MSG("process_tx(%u): [%x %x %x %x ... %x %x %x %x]\n", len,
+            buff[0], buff[1], buff[2], buff[3],
+            buff[len-4], buff[len-3], buff[len-2], buff[len-1]);
+    } else {
+        MSG("process_tx(%u)\n", len);
+    }
+#endif
     if (eth_obj.link_status) {
         ksz8851BeginPacketSend(len);
         ksz8851SendPacketData(buff, len);
@@ -207,19 +217,34 @@ static uint32_t process_rx(void)
     uint32_t totalLen = 0;
 
     frameCnt = (ksz8851_regrd(REG_RX_FRAME_CNT_THRES) & RX_FRAME_CNT_MASK) >> 8;
-    uint32_t frameCntLog = frameCnt;
+    uint32_t frameCntTotal = frameCnt;
     // MSG("TE process_rx f:%u\n", frameCnt);
     while (frameCnt > 0)
     {
-        ksz8851RetrievePacketData(modeth_rxBuff, &len);
+        ksz8851RetrievePacketData(modeth_rxBuff, &len, frameCnt);
         if(len)
         {
+#ifdef DEBUG_MODETH
+            if ( len > 3){
+                MSG("process_rx[%u/%u] len=%u: [%x %x %x %x ... %x %x %x %x]\n", c, frameCnt, len,
+                    modeth_rxBuff[0], modeth_rxBuff[1], modeth_rxBuff[2], modeth_rxBuff[3],
+                    modeth_rxBuff[len-4], modeth_rxBuff[len-3], modeth_rxBuff[len-2], modeth_rxBuff[len-1]
+                    );
+            } else {
+                MSG("process_rx[%u/%u] len=%u\n", frameCnt, frameCntTotal, len);
+            }
+#endif
             totalLen += len;
             tcpip_adapter_eth_input(modeth_rxBuff, len, NULL);
+        } else {
+            printf("process_rx[%u/%u] zero len\n", frameCnt, frameCntTotal);
         }
         frameCnt--;
     }
-    MSG("TE process_rx frameCnt:%u len:%u\n", frameCntLog, totalLen);
+#ifdef DEBUG_MODETH
+    //if ( frameCntTotal != 1)
+        printf("TE process_rx frameCnt:%u len:%u REENABLEINT\n", frameCnt, totalLen);
+#endif
     return totalLen;
 }
 
@@ -228,6 +253,14 @@ static void processInterrupt(void) {
     ctx.buf = NULL;
     ctx.isr = 0;
     uint16_t processed = 0;
+
+#ifdef DEBUG_MODETH
+    // TODO: maybe we should check the queue and not enter the same cmd again? also in ksz8851_evt_callback
+    modeth_cmd_ctx_t ctx_peek;
+    UBaseType_t queue_len = uxQueueMessagesWaiting(eth_cmdQueue);
+    BaseType_t has_peek = xQueuePeek(eth_cmdQueue, &ctx_peek, 0);
+    assert( (bool) queue_len == (bool) has_peek );
+#endif
 
     // // disable interrupts
     // // FIXME: should we disable int around reading/clearing? do we need a mutex?
@@ -246,22 +279,32 @@ static void processInterrupt(void) {
 
     // FIXME: capture errQUEUE_FULL
 
+
     if (ctx.isr & INT_RX) {
-        //set RXIE event
+        //if (queue_len)
+        //    MSG("pI: RX + Q[%u]:{0x%x,...}\n", queue_len, ctx_peek.cmd );
+        // else
+        //     MSG("pI: RX + Q[%u]\n", queue_len );
         ctx.cmd = ETH_CMD_RX;
         xQueueSendToFront(eth_cmdQueue, &ctx, portMAX_DELAY);
         processed++;
     }
 
     if (ctx.isr & INT_RX_OVERRUN) {
-        //set overrun event
+        //if (queue_len)
+        //    MSG("pI: RXOVER + Q[%u]:{0x%x,...}\n", queue_len, ctx_peek.cmd );
+        // else
+        //     MSG("pI: RXOVER + Q[%u]\n", queue_len );
         ctx.cmd = ETH_CMD_OVERRUN;
         xQueueSendToFront(eth_cmdQueue, &ctx, portMAX_DELAY);
         processed++;
     }
 
     if (ctx.isr & INT_PHY) {
-        //set LCIE event
+        //if (queue_len)
+        //    MSG("pI: PHY + Q[%u]:{0x%x,...}\n", queue_len, ctx_peek.cmd );
+        // else
+        //     MSG("pI: PHY + Q[%u]\n", queue_len );
         ctx.cmd = ETH_CMD_CHK_LINK;
         // TODO: nofify needed?
         // // unblock task if link up
@@ -277,18 +320,18 @@ static void processInterrupt(void) {
         MSG("processInterrupt 0x%x %u\n", ctx.isr, processed);
     }
 
-    // if ( ! processed ) {
-    //     // Normally this shouldn't happen. It migth be possible to happen in this case:
-    //     // interupt fires
-    //     // cmd is put is received via the queue
-    //     // another interupt fires and puts a new cmd into the queue
-    //     // processInterrupt for the first one is exectued, but handles both (all) events
-    //     // later the second cmd is handled but processInterrupt doesn't find anything to do
-    //     // this case shouldn't be a real problem though?!
-    //     ctx.cmd = ETH_CMD_OTHER;
-    //     xQueueSend(eth_cmdQueue, &ctx, portMAX_DELAY);
-    //     processed++;
-    // }
+    if ( ! processed ) {
+        // Normally this shouldn't happen. It migth be possible to happen in this case:
+        // interupt fires
+        // cmd is put is received via the queue
+        // another interupt fires and puts a new cmd into the queue
+        // processInterrupt for the first one is exectued, but handles both (all) events
+        // later the second cmd is handled but processInterrupt doesn't find anything to do
+        // this case shouldn't be a real problem though?!
+        ctx.cmd = ETH_CMD_OTHER;
+        xQueueSend(eth_cmdQueue, &ctx, portMAX_DELAY);
+        processed++;
+    }
 
 }
 
@@ -397,37 +440,24 @@ eth_start:
                 interrupt_pin_value = interrupt_pin_value_new;
                 printStat = true;
             }
-            if (ct % 100 == 0){
-                printStat = true;
-            }
-            if (printStat){
-                MSG("TE ct=%u stack:%u queue:%u tx:%u/%u rx:%u/%u:%f link:%u int:0x%x isr:0x%x (%u/%u) rstovf=%u rstint=%u\n",
-                // port:0x%x speed:%u\n",
-                    ct, stack_high, uxQueueMessagesWaiting( eth_cmdQueue ),
-                    ctTX, totalTX, ctRX, totalRX, ((double)totalRX/ctRX),
-                    ksz8851GetLinkStatus(), interrupt_pin_value, interrupt_stati, num_strange_isr, num_strange_isr_zero,
-                    num_resets_overflow, num_resets_int_pin);
-                    // ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
-                // if (ct % 1000 == 0)
-                //     printTaskStatus();
-
-                    // spi_op
-                    // ksz8851GetLinkStatus
-                    // ksz8851PowerDownMode
-                    // pi_setbits(REG_PORT_LINK_MD, PORT_POWER_SAVE_MODE);
-                    // ksz8851BeginPacketSend
-
-                printStat = false;
-
-                // UBaseType_t numTasks = uxTaskGetNumberOfTasks();
-
-                // TaskStatus_t* taskStatus = (TaskStatus_t*) heap_caps_malloc(sizeof(TaskStatus_t) * numTasks, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-                // UBaseType_t totalRuntime = 0;
-                // UBaseType_t numTasksGotten = uxTaskGetSystemState(taskStatus, numTasks, &totalRuntime);
-                // MSG("TE uxTaskGetSystemState: %u, %u, %u\n", numTasks, numTasksGotten, totalRuntime);
-                // heap_caps_free(taskStatus);
-
-            }
+            // if ( ( uxQueueMessagesWaiting(eth_cmdQueue) == 0 ) && ( interrupt_pin_value == 0 || interrupt_stati != INT_RX_WOL_LINKUP ) ) {
+            //     // there is no command,
+            //     // however either the interrupt line is low, or there is an atypical status
+            //     printStat = true;
+            // }
+            // if (ct % 100 == 0){
+            //     printStat = true;
+            // }
+            // if (printStat){
+            //     printf("TE ct=%u stack:%u queue:%u tx:%u/%u rx:%u/%u:%f link:%u:%u int:0x%x isr:0x%x (%u/%u) rstovf=%u rstint=%u\n",
+            //     // port:0x%x speed:%u\n",
+            //         ct, stack_high, uxQueueMessagesWaiting( eth_cmdQueue ),
+            //         ctTX, totalTX, ctRX, totalRX, ((double)totalRX/ctRX),
+            //         ksz8851GetLinkStatus(), get_eth_link_speed(), interrupt_pin_value, interrupt_stati, num_strange_isr, num_strange_isr_zero,
+            //         num_resets_overflow, num_resets_int_pin);
+            //         // ksz8851_regrd(REG_PORT_STATUS));
+            //     printStat = false;
+            // }
 
 
             ct++;
@@ -458,20 +488,25 @@ eth_start:
             if (xQueueReceive(eth_cmdQueue, &queue_entry, 200 / portTICK_PERIOD_MS) == pdTRUE)
             {
 
-                bool log = true;
-                // if (queue_entry.cmd == ETH_CMD_TX){
-                //     // don't log tx
-                //     log = false;
-                // }
-                // if (queue_entry.cmd == ETH_CMD_RX && interrupt_pin_value ){
-                //     // don't log rx as long as the int pin is ok (high)
-                //     log = false;
-                // }
+                // bool log = true;
+                // // if ( uxQueueMessagesWaiting( eth_cmdQueue) == 0 && interrupt_pin_value == 1 ){
+                // //     // happy situation, don't log
+                // //     log = false;
+                // // }
+                // // if (queue_entry.cmd == ETH_CMD_TX && uxQueueMessagesWaiting( eth_cmdQueue) == 0 ){
+                // //     // don't log tx
+                // //     log = false;
+                // // }
+                // // if (queue_entry.cmd == ETH_CMD_RX && queue_entry.isr == 0x2008 && interrupt_pin_value ){
+                // //     // don't log rx as long as the int pin is ok (high)
+                // //     log = false;
+                // // }
+                // // if (queue_entry.cmd == ETH_CMD_HW_INT && )
 
-                if (log)
-                    MSG("TE ct=%u cmd:0x%x isr:0x%x queue:%u ksz8851:%u 0x%x port:0x%x speed:%u\n",
-                        ct, queue_entry.cmd, (queue_entry.cmd == ETH_CMD_TX)?0:queue_entry.isr, uxQueueMessagesWaiting( eth_cmdQueue ),
-                        ksz8851GetLinkStatus(), interrupt_pin_value, ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
+                // if (log)
+                //     MSG("TE ct=%u cmd:0x%x isr:0x%x queue:%u ksz8851:%u 0x%x port:0x%x speed:%u\n",
+                //         ct, queue_entry.cmd, (queue_entry.cmd == ETH_CMD_TX)?0:queue_entry.isr, uxQueueMessagesWaiting( eth_cmdQueue ),
+                //         ksz8851GetLinkStatus(), interrupt_pin_value, ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
 
                 switch(queue_entry.cmd)
                 {
@@ -511,7 +546,7 @@ eth_start:
                         // ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_OVERRUN:
-                        MSG("TE OVERRUN {0x%x} ========================================\n", queue_entry.isr);
+                        printf("TE OVERRUN {0x%x} ========================================\n", queue_entry.isr);
                         xQueueReset(eth_cmdQueue);
                         eth_obj.link_status = false;
                         ksz8851PowerDownMode();
@@ -521,7 +556,7 @@ eth_start:
                         ksz8851Init();
                         break;
                     default:
-                        //MSG("TE def cmd:0x%x isr:0x%x\n", queue_entry.cmd, queue_entry.isr);
+                        MSG("TE def cmd:0x%x isr:0x%x\n", queue_entry.cmd, queue_entry.isr);
                         num_strange_isr++;
                         if (queue_entry.isr == 0)
                             num_strange_isr_zero++;
@@ -535,7 +570,7 @@ eth_start:
                 //TODO: This workaround should be removed once the lockup is resolved
                 while((!pin_get_value(KSZ8851_INT_PIN)) && timeout < max_timeout)
                 {
-                    MSG("TE TO %u\n", timeout);
+                    printf("TE TO %u\n", timeout);
 
                     vTaskDelay(10 / portTICK_PERIOD_MS);
                     timeout++;
