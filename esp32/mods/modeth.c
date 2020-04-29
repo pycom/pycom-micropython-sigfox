@@ -246,6 +246,13 @@ static void processInterrupt(void) {
 
     // FIXME: capture errQUEUE_FULL
 
+    if (ctx.isr & INT_RX) {
+        //set RXIE event
+        ctx.cmd = ETH_CMD_RX;
+        xQueueSendToFront(eth_cmdQueue, &ctx, portMAX_DELAY);
+        processed++;
+    }
+
     if (ctx.isr & INT_RX_OVERRUN) {
         //set overrun event
         ctx.cmd = ETH_CMD_OVERRUN;
@@ -263,13 +270,6 @@ static void processInterrupt(void) {
         //     xTaskNotifyFromISR(ethernetTaskHandle, 0, eIncrement, NULL);
         // }
         xQueueSendToFront(eth_cmdQueue, &ctx, portMAX_DELAY);
-        processed++;
-    }
-
-    if (ctx.isr & INT_RX) {
-        //set RXIE event
-        ctx.cmd = ETH_CMD_RX;
-        xQueueSend(eth_cmdQueue, &ctx, portMAX_DELAY);
         processed++;
     }
 
