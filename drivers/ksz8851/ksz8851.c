@@ -404,12 +404,15 @@ void ksz8851Init(void) {
     machpin_register_irq_c_handler(KSZ8851_INT_PIN, (void *)ksz8851ProcessInterrupt);
     pin_irq_enable(KSZ8851_INT_PIN);
 
+//#define POWERSAVE
+#ifdef POWERSAVE
     //set power save mode when cable is disconnected or link down
     pwrctrl = ksz8851_regrd(REG_POWER_CNTL);
     pwrctrl &= ~0x0003;
     pwrctrl |= POWER_STATE_D1;
     ksz8851_regwr(REG_POWER_CNTL, pwrctrl);
     spi_setbits(REG_PORT_LINK_MD, PORT_POWER_SAVE_MODE);
+#endif
 
     /* Enable Link change interrupt , enable  tx/Rx interrupts */
     MSG("init INT:0x%x\n", INT_MASK);
