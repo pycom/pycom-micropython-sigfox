@@ -94,6 +94,10 @@ static tcpip_adapter_dns_info_t eth_sta_inf_dns_info;
 uint8_t ethernet_mac[ETH_MAC_SIZE] = {0};
 xQueueHandle DRAM_ATTR eth_cmdQueue = NULL;
 static DRAM_ATTR EventGroupHandle_t eth_event_group;
+static uint16_t num_resets_int_pin = 0;
+static uint16_t num_resets_overflow = 0;
+static uint16_t num_strange_isr = 0;
+static uint16_t num_strange_isr_zero = 0;
 
 /*****************************************************************************
 * DEFINE PUBLIC FUNCTIONS
@@ -201,6 +205,7 @@ static uint32_t process_rx(void)
     uint32_t totalLen = 0;
 
     frameCnt = (ksz8851_regrd(REG_RX_FRAME_CNT_THRES) & RX_FRAME_CNT_MASK) >> 8;
+    uint32_t frameCntLog = frameCnt;
     // MSG("TE process_rx f:%u\n", frameCnt);
     while (frameCnt > 0)
     {
@@ -212,7 +217,7 @@ static uint32_t process_rx(void)
         }
         frameCnt--;
     }
-    // MSG("TE process_rx len:%u\n", totalLen);
+    MSG("TE process_rx frameCnt:%u len:%u\n", frameCntLog, totalLen);
     return totalLen;
 }
 static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt, uint16_t isr)
@@ -336,14 +341,19 @@ eth_start:
         uint32_t totalRX = 0;
         bool printStat = false;
         uint16_t interrupt_pin_value = pin_get_value(KSZ8851_INT_PIN);
-        //uint16_t interrupt_value = ksz8851_regrd(REG_INT_STATUS);
-
+        uint16_t interrupt_stati = 0;
         for(;;)
         {
             UBaseType_t stack_high_new = uxTaskGetStackHighWaterMark(NULL);
             uint16_t interrupt_pin_value_new = pin_get_value(KSZ8851_INT_PIN);
             //uint16_t interrupt_value_new = ksz8851_regrd(REG_INT_STATUS);
-
+            uint16_t interrupt_stati_new = 0;
+            interrupt_stati_new = ksz8851_regrd(REG_INT_STATUS);
+            if ( interrupt_stati_new != interrupt_stati ) {
+                if (interrupt_stati_new)
+                    printStat = true;
+                interrupt_stati = interrupt_stati_new;
+            }
             if (stack_high_new > stack_high) {
                 stack_high = stack_high_new;
                 printStat = true;
@@ -352,18 +362,17 @@ eth_start:
                 interrupt_pin_value = interrupt_pin_value_new;
                 printStat = true;
             }
-            //if ( interrupt_value_new != interrupt_value ) {
-            //    interrupt_value = interrupt_value_new;
-            //    printStat = true;
-            //}
             if (ct % 100 == 0){
                 printStat = true;
             }
             if (printStat){
-                MSG("TE ct=%u stack:%u queue:%u tx:%u/%u rx:%u/%u link:%u int:0x%x port:0x%x speed:%u\n",
+                MSG("TE ct=%u stack:%u queue:%u tx:%u/%u rx:%u/%u:%f link:%u int:0x%x isr:0x%x (%u/%u) rstovf=%u rstint=%u\n",
+                // port:0x%x speed:%u\n",
                     ct, stack_high, uxQueueMessagesWaiting( eth_cmdQueue ),
-                    ctTX, totalTX, ctRX, totalRX,
-                    ksz8851GetLinkStatus(), interrupt_pin_value, ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
+                    ctTX, totalTX, ctRX, totalRX, ((double)totalRX/ctRX),
+                    ksz8851GetLinkStatus(), interrupt_pin_value, interrupt_stati, num_strange_isr, num_strange_isr_zero,
+                    num_resets_overflow, num_resets_int_pin);
+                    // ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
                 // if (ct % 1000 == 0)
                 //     printTaskStatus();
 
@@ -412,15 +421,21 @@ eth_start:
 
             if (xQueueReceive(eth_cmdQueue, &queue_entry, 200 / portTICK_PERIOD_MS) == pdTRUE)
             {
-                // UBaseType_t numWait = uxQueueMessagesWaiting( eth_cmdQueue );
-                // if (numWait){
-                //     MSG("TE msg waiting:%u\n", numWait);
-                //     //printTaskStatus();
+
+                // bool log = true;
+                // if (queue_entry.cmd == ETH_CMD_TX){
+                //     // don't log tx
+                //     log = false;
                 // }
-                if (! (queue_entry.cmd == ETH_CMD_TX && interrupt_pin_value ))
-                    MSG("TE ct=%u cmd:0x%x isr:0x%x queue:%u ksz8851:%u 0x%x port:0x%x speed:%u\n",
-                        ct, queue_entry.cmd, (queue_entry.cmd == ETH_CMD_TX)?0:queue_entry.isr, uxQueueMessagesWaiting( eth_cmdQueue ),
-                        ksz8851GetLinkStatus(), interrupt_pin_value, ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
+                // if (queue_entry.cmd == ETH_CMD_RX && interrupt_pin_value ){
+                //     // don't log rx as long as the int pin is ok (high)
+                //     log = false;
+                // }
+
+                // if (log)
+                //     MSG("TE ct=%u cmd:0x%x isr:0x%x queue:%u ksz8851:%u 0x%x port:0x%x speed:%u\n",
+                //         ct, queue_entry.cmd, (queue_entry.cmd == ETH_CMD_TX)?0:queue_entry.isr, uxQueueMessagesWaiting( eth_cmdQueue ),
+                //         ksz8851GetLinkStatus(), interrupt_pin_value, ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
 
                 switch(queue_entry.cmd)
                 {
@@ -435,6 +450,7 @@ eth_start:
                         ctRX++;
                         totalRX += process_rx();
                         // Clear Intr status bits
+                        // TODO: I think it's wrong to clear status here. But, we it should be properly tested
                         ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_CHK_LINK:
@@ -452,6 +468,7 @@ eth_start:
                             esp_event_send(&evt);
                         }
                         // Clear Intr status bits
+                        // TODO: I think it's wrong to clear status here. But, we it should be properly tested
                         ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_OVERRUN:
@@ -465,7 +482,10 @@ eth_start:
                         ksz8851Init();
                         break;
                     default:
-                        MSG("TE def cmd:0x%x isr:0x%x\n", queue_entry.cmd, queue_entry.isr);
+                        //MSG("TE def cmd:0x%x isr:0x%x\n", queue_entry.cmd, queue_entry.isr);
+                        num_strange_isr++;
+                        if (queue_entry.isr == 0)
+                            num_strange_isr_zero++;
                         break;
                 }
             }
@@ -484,12 +504,14 @@ eth_start:
                 if(timeout >= max_timeout)
                 {
                     MSG("TE Force Int\n");
+                    num_resets_int_pin++;
                     xQueueReset(eth_cmdQueue);
                     eth_obj.link_status = false;
                     ksz8851PowerDownMode();
                     evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
                     esp_event_send(&evt);
                     vTaskDelay(100 / portTICK_PERIOD_MS);
+                    // TODO: should we ksz8851SpiInit() here?
                     ksz8851Init();
                 }
             }
