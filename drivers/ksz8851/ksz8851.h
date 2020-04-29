@@ -1,7 +1,7 @@
 #ifndef __KSZ8851_H__
 #define __KSZ8851_H__
 
-typedef void (*ksz8851_evt_cb_t)(uint32_t, uint16_t);
+typedef void (*ksz8851_evt_cb_t)(uint32_t);
 
 uint16_t IRAM_ATTR ksz8851_regrd(uint16_t reg);
 void IRAM_ATTR ksz8851_regwr(uint16_t reg, uint16_t wrdata);
@@ -46,10 +46,11 @@ extern uint8_t ethernet_mac[ETH_MAC_SIZE];
 #define FIFO_WR         (3 << 14)
 
 // Interrupt Events
-#define KSZ8851_RX_INT           (0x0001)
+#define KSZ8851_RX_INT            (0x0001)
 #define KSZ8851_LINK_CHG_INT      (0x0002)
-#define KSZ8851_OVERRUN_INT      (0x0004)
-#define KSZ8851_OTHER_INT      (0x0008)
+#define KSZ8851_OVERRUN_INT       (0x0004)
+#define KSZ8851_OTHER_INT         (0x0008)
+#define KSZ8851_HW_INT            (0x0010)
 
 /* Register definitions */
 /*

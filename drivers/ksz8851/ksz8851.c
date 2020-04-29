@@ -148,46 +148,14 @@ static IRAM_ATTR void spi_op(uint8_t phase, uint16_t cmd, uint8_t *buf, uint16_t
 	}
 }
 
-/* ksz8851ProcessInterrupt() -- All this does (for now) is check for
- * an overrun condition.
+
+/* interrupt handler
+all we do is add a cmd into the queue to process the interrupt
+
+We intentionally do not read over the spi bus, because that can conflict with ongoing tx/rx buffer access
 */
 static IRAM_ATTR void ksz8851ProcessInterrupt(void) {
-    uint16_t isr;
-    uint32_t evt = 0;
-
-    // Read INT status
-    isr = ksz8851_regrd(REG_INT_STATUS);
-
-    if (isr & INT_RX_OVERRUN) {
-        //set overrun event
-        evt |= KSZ8851_OVERRUN_INT;
-    }
-
-    if (isr & INT_PHY) {
-        //set LCIE event
-        evt |= KSZ8851_LINK_CHG_INT;
-    }
-
-    if (isr & INT_RX) {
-        //set RXIE event
-        evt |= KSZ8851_RX_INT;
-    }
-
-    if ( ! evt ) {
-        evt |= KSZ8851_OTHER_INT;
-    }
-
-    ksz8851_regwr(REG_INT_STATUS, 0xFFFF);
-
-    /* Notify upper layer*/
-    if((evt_cb_func != NULL) && evt)
-    {
-        evt_cb_func(evt, isr);
-    }
-    else
-    {
-        ksz8851_regwr(REG_INT_STATUS, 0xFFFF);
-    }
+    evt_cb_func(KSZ8851_HW_INT);
 }
 
 /* ksz8851_regrd() will read one 16-bit word from reg. */

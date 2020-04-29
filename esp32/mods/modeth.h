@@ -40,7 +40,8 @@ typedef enum
     ETH_CMD_RX,
     ETH_CMD_OVERRUN,
     ETH_CMD_CHK_LINK,
-    ETH_CMD_OTHER
+    ETH_CMD_OTHER,
+    ETH_CMD_HW_INT
 }modeth_cmd_t;
 
 typedef struct

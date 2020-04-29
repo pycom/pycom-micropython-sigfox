@@ -36,6 +36,8 @@
 #include "modeth.h"
 #include "mpexception.h"
 #include "lwipsocket.h"
+//#include "modmachine.h"
+//#include "mperror.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -66,7 +68,7 @@
 *****************************************************************************/
 static void TASK_ETHERNET (void *pvParameters);
 static mp_obj_t eth_init_helper(eth_obj_t *self, const mp_arg_val_t *args);
-static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt, uint16_t isr);
+static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt);
 static void process_tx(uint8_t* buff, uint16_t len);
 static uint32_t process_rx(void);
 static void eth_validate_hostname (const char *hostname);
@@ -220,54 +222,87 @@ static uint32_t process_rx(void)
     MSG("TE process_rx frameCnt:%u len:%u\n", frameCntLog, totalLen);
     return totalLen;
 }
-static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt, uint16_t isr)
+
+static void processInterrupt(void) {
+    modeth_cmd_ctx_t ctx;
+    ctx.buf = NULL;
+    ctx.isr = 0;
+    uint16_t processed = 0;
+
+    // // disable interrupts
+    // // FIXME: should we disable int around reading/clearing? do we need a mutex?
+    // ksz8851_regwr(REG_INT_MASK, 0);
+
+    // read interrupt status
+    ctx.isr = ksz8851_regrd(REG_INT_STATUS);
+
+    // clear interrupt status
+    ksz8851_regwr(REG_INT_STATUS, 0xFFFF);
+
+    // // enable interrupts
+    // ksz8851_regwr(REG_INT_MASK, INT_MASK);
+
+    // MSG("processInterrupt 0x%x\n", ctx.isr);
+
+    // FIXME: capture errQUEUE_FULL
+
+    if (ctx.isr & INT_RX_OVERRUN) {
+        //set overrun event
+        ctx.cmd = ETH_CMD_OVERRUN;
+        xQueueSendToFront(eth_cmdQueue, &ctx, portMAX_DELAY);
+        processed++;
+    }
+
+    if (ctx.isr & INT_PHY) {
+        //set LCIE event
+        ctx.cmd = ETH_CMD_CHK_LINK;
+        // TODO: nofify needed?
+        // // unblock task if link up
+        // if(!eth_obj.link_status)
+        // {
+        //     xTaskNotifyFromISR(ethernetTaskHandle, 0, eIncrement, NULL);
+        // }
+        xQueueSendToFront(eth_cmdQueue, &ctx, portMAX_DELAY);
+        processed++;
+    }
+
+    if (ctx.isr & INT_RX) {
+        //set RXIE event
+        ctx.cmd = ETH_CMD_RX;
+        xQueueSend(eth_cmdQueue, &ctx, portMAX_DELAY);
+        processed++;
+    }
+
+    if (processed != 1){
+        MSG("processInterrupt 0x%x %u\n", ctx.isr, processed);
+    }
+
+    // if ( ! processed ) {
+    //     // Normally this shouldn't happen. It migth be possible to happen in this case:
+    //     // interupt fires
+    //     // cmd is put is received via the queue
+    //     // another interupt fires and puts a new cmd into the queue
+    //     // processInterrupt for the first one is exectued, but handles both (all) events
+    //     // later the second cmd is handled but processInterrupt doesn't find anything to do
+    //     // this case shouldn't be a real problem though?!
+    //     ctx.cmd = ETH_CMD_OTHER;
+    //     xQueueSend(eth_cmdQueue, &ctx, portMAX_DELAY);
+    //     processed++;
+    // }
+
+}
+
+
+/* callback runs from interrupt context */
+static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt)
 {
     modeth_cmd_ctx_t ctx;
-    ctx.isr = isr;
-    portBASE_TYPE tmp = pdFALSE;
-    bool sent = false;
-
-    if(ksz8851_evt & KSZ8851_LINK_CHG_INT)
-    {
-        ctx.cmd = ETH_CMD_CHK_LINK;
-        ctx.buf = NULL;
-        // unblock task if link up
-        if(!eth_obj.link_status)
-        {
-            xTaskNotifyFromISR(ethernetTaskHandle, 0, eIncrement, NULL);
-        }
-        xQueueSendToFrontFromISR(eth_cmdQueue, &ctx, &tmp);
-        sent = true;
-    }
-
-    if(ksz8851_evt & KSZ8851_RX_INT)
-    {
-        ctx.cmd = ETH_CMD_RX;
-        ctx.buf = NULL;
-        xQueueSendFromISR(eth_cmdQueue, &ctx, &tmp);
-        sent = true;
-    }
-
-    if(ksz8851_evt & KSZ8851_OVERRUN_INT)
-    {
-        ctx.cmd = ETH_CMD_OVERRUN;
-        ctx.buf = NULL;
-        xQueueSendToFrontFromISR(eth_cmdQueue, &ctx, &tmp);
-        sent = true;
-    }
-
-    if ( ! sent ){
-        ctx.cmd = ETH_CMD_OTHER;
-        ctx.buf = NULL;
-        xQueueSendFromISR(eth_cmdQueue, &ctx, &tmp);
-    }
-
-    if( tmp == pdTRUE )
-    {
-        //clear interrupt
-        SET_PERI_REG_MASK(GPIO_STATUS1_W1TC_REG, 0x01 << 2);
-        portYIELD_FROM_ISR ();
-    }
+    ctx.cmd = ETH_CMD_HW_INT;
+    ctx.buf = NULL;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    xQueueSendToFrontFromISR(eth_cmdQueue, &ctx, &xHigherPriorityTaskWoken);
+    // seems is needed for link up at the start ... TODO is it actually the best solution to ulTaskNotifyTake() from Task_ETHERNET to wait for link up?
+    // xTaskNotifyFromISR(ethernetTaskHandle, 0, eIncrement, NULL);
 }
 
 // void printTaskStatus(){
@@ -330,9 +365,9 @@ eth_start:
         evt.event_id = SYSTEM_EVENT_ETH_START;
         esp_event_send(&evt);
 
-        MSG("TE for ls=%u 10M=%u 100M=%u\n", get_eth_link_speed(), ETH_SPEED_MODE_10M, ETH_SPEED_MODE_100M);
+        MSG("TE ls=%u 10M=%u 100M=%u\n", get_eth_link_speed(), ETH_SPEED_MODE_10M, ETH_SPEED_MODE_100M);
         UBaseType_t stack_high = uxTaskGetStackHighWaterMark(NULL);
-        MSG("TE stack_high=%u\n", stack_high);
+        // MSG("TE stack_high=%u\n", stack_high);
 
         uint32_t ct = 0;
         uint32_t ctTX = 0;
@@ -397,13 +432,14 @@ eth_start:
 
             ct++;
 
-            if(!eth_obj.link_status && (xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED))
-            {
-                // block till link is up again
-                MSG("TE link not up\n");
-                ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-            }
+            // if(!eth_obj.link_status && (xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED))
+            // {
+            //     // block till link is up again
+            //     MSG("TE link not up\n");
+            //     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+            // }
 
+            // MSG("TE x\n");
             if(!(xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED))
             {
                 MSG("TE not started\n");
@@ -422,7 +458,7 @@ eth_start:
             if (xQueueReceive(eth_cmdQueue, &queue_entry, 200 / portTICK_PERIOD_MS) == pdTRUE)
             {
 
-                // bool log = true;
+                bool log = true;
                 // if (queue_entry.cmd == ETH_CMD_TX){
                 //     // don't log tx
                 //     log = false;
@@ -432,10 +468,10 @@ eth_start:
                 //     log = false;
                 // }
 
-                // if (log)
-                //     MSG("TE ct=%u cmd:0x%x isr:0x%x queue:%u ksz8851:%u 0x%x port:0x%x speed:%u\n",
-                //         ct, queue_entry.cmd, (queue_entry.cmd == ETH_CMD_TX)?0:queue_entry.isr, uxQueueMessagesWaiting( eth_cmdQueue ),
-                //         ksz8851GetLinkStatus(), interrupt_pin_value, ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
+                if (log)
+                    MSG("TE ct=%u cmd:0x%x isr:0x%x queue:%u ksz8851:%u 0x%x port:0x%x speed:%u\n",
+                        ct, queue_entry.cmd, (queue_entry.cmd == ETH_CMD_TX)?0:queue_entry.isr, uxQueueMessagesWaiting( eth_cmdQueue ),
+                        ksz8851GetLinkStatus(), interrupt_pin_value, ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
 
                 switch(queue_entry.cmd)
                 {
@@ -445,13 +481,16 @@ eth_start:
                         totalTX += queue_entry.len;
                         process_tx(queue_entry.buf, queue_entry.len);
                         break;
+                    case ETH_CMD_HW_INT:
+                        processInterrupt();
+                        break;
                     case ETH_CMD_RX:
                         //MSG("TE RX {0x%x}\n", queue_entry.isr);
                         ctRX++;
                         totalRX += process_rx();
-                        // Clear Intr status bits
-                        // TODO: I think it's wrong to clear status here. But, we it should be properly tested
-                        ksz8851_regwr(REG_INT_STATUS, INT_MASK);
+                        // // Clear Intr status bits
+                        // // TODO: I think it's wrong to clear status here. But, we it should be properly tested
+                        // ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_CHK_LINK:
                         MSG("TE CHK_LINK {0x%x}\n", queue_entry.isr);
@@ -467,9 +506,9 @@ eth_start:
                             evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
                             esp_event_send(&evt);
                         }
-                        // Clear Intr status bits
-                        // TODO: I think it's wrong to clear status here. But, we it should be properly tested
-                        ksz8851_regwr(REG_INT_STATUS, INT_MASK);
+                        // // Clear Intr status bits
+                        // // TODO: I think it's wrong to clear status here. But, we it should be properly tested
+                        // ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_OVERRUN:
                         MSG("TE OVERRUN {0x%x} ========================================\n", queue_entry.isr);
@@ -513,6 +552,11 @@ eth_start:
                     vTaskDelay(100 / portTICK_PERIOD_MS);
                     // TODO: should we ksz8851SpiInit() here?
                     ksz8851Init();
+
+                    // // workaround for the workaround. Even the ksz8851 chip reset above is not enough to reliable restablish eth communication, let's reset the whole chip
+                    // printf("ksz8851 lockup detected ... resetting device\n");
+                    // vTaskDelay(100 / portTICK_PERIOD_MS);
+                    // machine_reset();
                 }
             }
         }
@@ -569,19 +613,23 @@ STATIC mp_obj_t modeth_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(modeth_init_obj, 1, modeth_init);
 
 STATIC mp_obj_t eth_init_helper(eth_obj_t *self, const mp_arg_val_t *args) {
-
+    MSG("ME ih\n");
     const char *hostname;
 
-    if (!ethernetTaskHandle)
+    if (!ethernetTaskHandle){
+        MSG("ME ih epi\n");
         eth_pre_init();
+    }
 
     if (args[0].u_obj != mp_const_none) {
+        MSG("ME ih 0\n");
         hostname = mp_obj_str_get_str(args[0].u_obj);
         eth_validate_hostname(hostname);
         tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_ETH, hostname);
     }
 
     if (!(xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED)) {
+        MSG("ME ih !started\n");
         //alloc memory for rx buff
         if (esp32_get_chip_rev() > 0) {
             modeth_rxBuff = heap_caps_malloc(ETHERNET_RX_PACKET_BUFF_SIZE, MALLOC_CAP_SPIRAM);
@@ -596,12 +644,15 @@ STATIC mp_obj_t eth_init_helper(eth_obj_t *self, const mp_arg_val_t *args) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Cant allocate memory for eth rx Buffer!"));
         }
 
+        MSG("ME ih set(started)\n");
         xEventGroupSetBits(eth_event_group, ETHERNET_EVT_STARTED);
 
         //Notify task to start right away
+        MSG("ME ih tnGive\n");
         xTaskNotifyGive(ethernetTaskHandle);
     }
 
+    MSG("ME ih done\n");
     return mp_const_none;
 }
 
