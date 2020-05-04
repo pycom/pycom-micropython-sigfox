@@ -274,7 +274,7 @@ class Pybytes:
 
                 # CHECK PYMESH FIRMWARE VERSION
                 try:
-                    if os.uname().pymesh:
+                    if hasattr(os.uname(),'pymesh'):
                         try:
                             from pybytes_pymesh_config import PybytesPymeshConfig
                         except:
