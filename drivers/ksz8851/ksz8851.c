@@ -549,7 +549,11 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length,
       MSG("Retr[%u] invalid n=%u s=0x%x\n", frameCnt, n, status);
    }
    //Release the current error frame from RXQ
+   MSG("clearing\n");
    spi_setbits(REG_RXQ_CMD, RXQ_CMD_FREE_PACKET);
+   while ( ksz8851_regrd(REG_RXQ_CMD) & RXQ_CMD_FREE_PACKET ){
+		vTaskDelay(1 / portTICK_PERIOD_MS);
+   }
 }
 
 /* ksz8851RegisterLinkStatusCb() register callback for link status update,
