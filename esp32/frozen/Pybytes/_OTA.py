@@ -57,20 +57,24 @@ class OTA():
     def get_current_version(self):
         return os.uname().release
 
-    def get_update_manifest(self):
+    def get_update_manifest(self, fwtype=None, token=None):
         current_version = self.get_current_version()
         sysname = os.uname().sysname
         wmac = hexlify(machine.unique_id()).decode('ascii')
-        request_template = "manifest.json?current_ver={}&sysname={}&wmac={}&ota_slot={}"
-        req = request_template.format(current_version, sysname, wmac, hex(pycom.ota_slot()))
+        if fwtype == 'pymesh':
+            request_template = "manifest.json?current_ver={}&sysname={}&token={}&ota_slot={}&wmac={}&fwtype={}"
+            req = request_template.format(current_version, sysname, token, hex(pycom.ota_slot()), wmac.upper(), fwtype)
+        else:
+            request_template = "manifest.json?current_ver={}&sysname={}&wmac={}&ota_slot={}"
+            req = request_template.format(current_version, sysname, wmac, hex(pycom.ota_slot()))
         manifest_data = self.get_data(req).decode()
         manifest = ujson.loads(manifest_data)
         gc.collect()
         return manifest
 
-    def update(self, customManifest=None):
+    def update(self, customManifest=None, fwtype=None, token=None):
         try:
-            manifest = self.get_update_manifest() if not customManifest else customManifest
+            manifest = self.get_update_manifest(fwtype, token) if not customManifest else customManifest
         except Exception as e:
             print('Error reading the manifest, aborting: {}'.format(e))
             return 0
@@ -240,7 +244,6 @@ class WiFiOTA(OTA):
                 fp = open(dest_path, 'wb')
 
             if firmware:
-                print('start')
                 pycom.ota_start()
 
             h = uhashlib.sha1()
