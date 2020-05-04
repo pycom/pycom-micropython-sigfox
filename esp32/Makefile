@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-IDF_VERSION=3.3.1
+IDF_HASH=d072c55
 
 TARGET ?= boot_app
 

@@ -87,8 +87,11 @@ def main():
     shutil.copy(src + '/esp32/esp32.project.ld', ".")
     
     # copy the generated sdkconfig.h
-    shutil.copy(src + '/include/sdkconfig.h', ".")
-        
+    with open(src + '/include/sdkconfig.h', 'r') as input:
+        content = input.read()
+    with open(os.path.dirname(os.path.realpath(__file__)) + '/sdkconfig.h', 'w') as output:
+        output.write(content.replace('#define CONFIG_SECURE_BOOT_ENABLED 1',''))
+
     shutil.rmtree(dsttmpbl)
     shutil.rmtree(dsttmpapp)
     
