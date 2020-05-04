@@ -205,16 +205,26 @@ static void process_tx(uint8_t* buff, uint16_t len)
         MSG("process_tx(%u)\n", len);
     }
 #endif
+    // disable int before reading buffer
+    ksz8851_regwr(REG_INT_MASK, 0);
+
     if (eth_obj.link_status) {
         ksz8851BeginPacketSend(len);
         ksz8851SendPacketData(buff, len);
         ksz8851EndPacketSend();
     }
+
+    // re-enable int
+    ksz8851_regwr(REG_INT_MASK, INT_MASK);
+
 }
 static uint32_t process_rx(void)
 {
     uint32_t len, frameCnt;
     uint32_t totalLen = 0;
+
+    // disable int before reading buffer
+    ksz8851_regwr(REG_INT_MASK, 0);
 
     frameCnt = (ksz8851_regrd(REG_RX_FRAME_CNT_THRES) & RX_FRAME_CNT_MASK) >> 8;
     uint32_t frameCntTotal = frameCnt;
@@ -245,6 +255,10 @@ static uint32_t process_rx(void)
     //if ( frameCntTotal != 1)
         printf("TE process_rx frameCnt:%u len:%u REENABLEINT\n", frameCnt, totalLen);
 #endif
+
+    // re-enable int
+    ksz8851_regwr(REG_INT_MASK, INT_MASK);
+
     return totalLen;
 }
 
