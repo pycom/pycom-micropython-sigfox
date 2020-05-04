@@ -58,6 +58,8 @@ class constants:
     __CONNECTION_STATUS_CONNECTED_MQTT_LTE = 2
     __CONNECTION_STATUS_CONNECTED_LORA = 3
     __CONNECTION_STATUS_CONNECTED_SIGFOX = 4
+    __CONNECTION_STATUS_CONNECTED_COAP_WIFI = 5
+    __CONNECTION_STATUS_CONNECTED_COAP_LTE = 6
 
     __TYPE_PING = 0x00
     __TYPE_INFO = 0x01
@@ -67,6 +69,7 @@ class constants:
     __TYPE_OTA = 0x05
     __TYPE_FCOTA = 0x06
     __TYPE_PONG = 0x07
+    __TYPE_PYMESH = 0x0D
     __TYPE_PYBYTES = 0x0E
     __TYPE_RELEASE_INFO = 0x0B
     __TYPE_RELEASE_DEPLOY = 0x0A
@@ -117,6 +120,8 @@ See all available zone options for RC at https://support.sigfox.com/docs/radio-c
     __WDT_TIMEOUT_MILLISECONDS = (2 * __KEEP_ALIVE_PING_INTERVAL + __ONE_MINUTE) * 1000 # noqa
 
     __WDT_MAX_TIMEOUT_MILLISECONDS = sys.maxsize
+
+    __SIMPLE_COAP = 'simple_coap'
 
     try:
         __DEFAULT_DOMAIN = pycom.nvs_get('pybytes_domain', 'pybytes.pycom.io')
