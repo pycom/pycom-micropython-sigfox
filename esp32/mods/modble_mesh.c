@@ -414,14 +414,15 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
                 // ESP_BLE_MESH_SERVER_AUTO_RSP is set, so SET event will never come, only STATE
             case ESP_BLE_MESH_GENERIC_SERVER_STATE_CHANGE_EVT:
                 //printf("ESP_BLE_MESH_GENERIC_SERVER_STATE_CHANGE_EVT\n");
-                // Publish that the State of this Server Model changed
 
-                args[0] = mod_ble_state_to_mp_obj(mod_ble_model, &(param->value.state_change));
-                args[1] = mp_obj_new_int(event);
-                //TODO: check what other object should be passed from the context
-                args[2] = mp_obj_new_int(param->ctx.recv_op);
-                mp_call_function_n_kw(mod_ble_model->callback, 3, 0, args);
-                //
+                // Publish that the State of this Server Model changed
+                if(mod_ble_model->callback != NULL) {
+                    args[0] = mod_ble_state_to_mp_obj(mod_ble_model, &(param->value.state_change));
+                    args[1] = mp_obj_new_int(event);
+                    //TODO: check what other object should be passed from the context
+                    args[2] = mp_obj_new_int(param->ctx.recv_op);
+                    mp_call_function_n_kw(mod_ble_model->callback, 3, 0, args);
+                }
                 break;
             case ESP_BLE_MESH_GENERIC_SERVER_RECV_GET_MSG_EVT:
                 //printf("ESP_BLE_MESH_GENERIC_SERVER_RECV_GET_MSG_EVT\n");
@@ -465,12 +466,14 @@ static void mod_ble_mesh_generic_client_callback_handler(void* param_in) {
                 break;
             }
 
-        mp_obj_t args[3];
-        args[0] = mod_ble_state_to_mp_obj(mod_ble_model, (void*)&(param->status_cb));
-        args[1] = mp_obj_new_int(event);
-        //TODO: check what other object should be passed from the context
-        args[2] = mp_obj_new_int(param->params->ctx.recv_op);
-        mp_call_function_n_kw(mod_ble_model->callback, 3, 0, args);
+        if(mod_ble_model->callback != NULL) {
+            mp_obj_t args[3];
+            args[0] = mod_ble_state_to_mp_obj(mod_ble_model, (void*)&(param->status_cb));
+            args[1] = mp_obj_new_int(event);
+            //TODO: check what other object should be passed from the context
+            args[2] = mp_obj_new_int(param->params->ctx.recv_op);
+            mp_call_function_n_kw(mod_ble_model->callback, 3, 0, args);
+        }
     }
 }
 
@@ -525,7 +528,7 @@ static void mod_ble_mesh_sensor_client_callback_handler(void* param_in) {
         esp_ble_mesh_sensor_client_cb_param_t* param = callback_param->param;
         esp_ble_mesh_model_t* model = callback_param->param->params->model;
 
-        if (event == ESP_BLE_MESH_SENSOR_CLIENT_PUBLISH_EVT && param->status_cb.sensor_status.marshalled_sensor_data->len) {
+        if (mod_ble_model->callback != NULL && event == ESP_BLE_MESH_SENSOR_CLIENT_PUBLISH_EVT && param->status_cb.sensor_status.marshalled_sensor_data->len) {
             mp_obj_t args[3];
             args[0] = mod_ble_state_to_mp_obj(mod_ble_model, (void*)&(param->status_cb));
             args[1] = mp_obj_new_int(event);
@@ -736,7 +739,6 @@ static mp_obj_t mod_ble_state_to_mp_obj(mod_ble_mesh_model_class_t* model, void*
 
 // Sets Server Model state or returns Client set structure for Get request
 static esp_ble_mesh_generic_client_set_state_t mod_ble_mp_obj_to_state(mp_obj_t obj, mod_ble_mesh_model_class_t* model) {
-
     esp_ble_mesh_generic_client_set_state_t set;
 
     if(model->server_client == MOD_BLE_MESH_SERVER) {
@@ -885,11 +887,13 @@ STATIC mp_obj_t mod_ble_mesh_model_set_state(mp_uint_t n_args, const mp_obj_t *p
             mod_ble_mp_obj_to_state(state_mp, self);
 
             // Inform user through callback
-            mp_obj_t args[3];
-            args[0] = mod_ble_state_to_mp_obj(self, NULL);
-            args[1] = mp_obj_new_int(0);
-            args[2] = mp_obj_new_int(0);
-            mp_call_function_n_kw(self->callback, 3, 0, args);
+            if(self->callback != NULL) {
+                mp_obj_t args[3];
+                args[0] = mod_ble_state_to_mp_obj(self, NULL);
+                args[1] = mp_obj_new_int(0);
+                args[2] = mp_obj_new_int(0);
+                mp_call_function_n_kw(self->callback, 3, 0, args);
+            }
         }
         else if(self->group == MOD_BLE_MESH_GROUP_SENSOR) {
             // SET the state of Sensor Server
@@ -898,6 +902,15 @@ STATIC mp_obj_t mod_ble_mesh_model_set_state(mp_uint_t n_args, const mp_obj_t *p
 
             sensor_data.data[0] = state_raw & 0xff;
             sensor_data.data[1] = state_raw >> 8;
+
+            // Inform user through callback
+            if(self->callback != NULL) {
+                mp_obj_t args[3];
+                args[0] = mp_obj_new_float(state_float);
+                args[1] = mp_obj_new_int(0);
+                args[2] = mp_obj_new_int(0);
+                mp_call_function_n_kw(self->callback, 3, 0, args);
+            }
         }
     } else {
 
