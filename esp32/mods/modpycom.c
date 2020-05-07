@@ -302,7 +302,7 @@ STATIC mp_obj_t mod_pycom_nvs_get (mp_uint_t n_args, const mp_obj_t *args) {
     else {
         esp_err = nvs_get_str(pycom_nvs_handle, key, NULL, &value);
         if(esp_err == ESP_OK) {
-            char* value_string = (char*)pvPortMalloc(value);
+            char* value_string = (char*)malloc(value);
 
             esp_err = nvs_get_str(pycom_nvs_handle, key, value_string, &value);
 
@@ -310,7 +310,7 @@ STATIC mp_obj_t mod_pycom_nvs_get (mp_uint_t n_args, const mp_obj_t *args) {
                 //do not count the terminating \0
                 ret = mp_obj_new_str(value_string, value-1);
             }
-            vPortFree(value_string);
+            free(value_string);
         }
     }
 
@@ -421,7 +421,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_sta (mp_uint_t n_args, const mp_obj_t *args)
         else{/*Nothing*/}
 
     } else {
-        uint8_t * ssid = (uint8_t *)pvPortMalloc(33);
+        uint8_t * ssid = (uint8_t *)malloc(33);
         mp_obj_t ssid_obj;
         if(config_get_wifi_sta_ssid(ssid))
         {
@@ -431,7 +431,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_sta (mp_uint_t n_args, const mp_obj_t *args)
         {
             ssid_obj = mp_const_none;
         }
-        vPortFree(ssid);
+        free(ssid);
         return ssid_obj;
     }
     return mp_const_none;
@@ -450,7 +450,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_sta (mp_uint_t n_args, const mp_obj_t *args) 
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * pwd = (uint8_t *)pvPortMalloc(65);
+        uint8_t * pwd = (uint8_t *)malloc(65);
         mp_obj_t pwd_obj;
         if(config_get_wifi_sta_pwd(pwd))
         {
@@ -460,7 +460,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_sta (mp_uint_t n_args, const mp_obj_t *args) 
         {
             pwd_obj = mp_const_none;
         }
-        vPortFree(pwd);
+        free(pwd);
         return pwd_obj;
     }
     return mp_const_none;
@@ -479,7 +479,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_ap (mp_uint_t n_args, const mp_obj_t *args) 
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * ssid = (uint8_t *)pvPortMalloc(33);
+        uint8_t * ssid = (uint8_t *)malloc(33);
         mp_obj_t ssid_obj;
         if(config_get_wifi_ap_ssid(ssid))
         {
@@ -489,7 +489,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_ap (mp_uint_t n_args, const mp_obj_t *args) 
         {
             ssid_obj = mp_const_none;
         }
-        vPortFree(ssid);
+        free(ssid);
         return ssid_obj;
     }
     return mp_const_none;
@@ -508,7 +508,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_ap (mp_uint_t n_args, const mp_obj_t *args) {
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * pwd = (uint8_t *)pvPortMalloc(65);
+        uint8_t * pwd = (uint8_t *)malloc(65);
         mp_obj_t pwd_obj;
         if(config_get_wifi_ap_pwd(pwd))
         {
@@ -518,7 +518,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_ap (mp_uint_t n_args, const mp_obj_t *args) {
         {
             pwd_obj = mp_const_none;
         }
-        vPortFree(pwd);
+        free(pwd);
         return pwd_obj;
     }
     return mp_const_none;
