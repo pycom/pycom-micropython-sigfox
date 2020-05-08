@@ -228,10 +228,11 @@ static uint32_t process_rx(void)
 
     frameCnt = (ksz8851_regrd(REG_RX_FRAME_CNT_THRES) & RX_FRAME_CNT_MASK) >> 8;
     uint32_t frameCntTotal = frameCnt;
-    // MSG("TE process_rx f:%u\n", frameCnt);
+    if (frameCntTotal > 1 )
+        MSG("TE process_rx f:%u\n", frameCntTotal);
     while (frameCnt > 0)
     {
-        ksz8851RetrievePacketData(modeth_rxBuff, &len, frameCnt);
+        ksz8851RetrievePacketData(modeth_rxBuff, &len, frameCnt, frameCntTotal);
         if(len)
         {
 #ifdef DEBUG_MODETH

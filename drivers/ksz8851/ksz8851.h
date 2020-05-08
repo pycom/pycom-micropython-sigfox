@@ -9,7 +9,7 @@ void ksz8851Init(void);
 void ksz8851BeginPacketSend(unsigned int packetLength);
 void ksz8851SendPacketData(unsigned char *localBuffer, unsigned int length);
 void ksz8851EndPacketSend(void);
-void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length, uint16_t frameCnt);
+void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length, uint16_t frameCnt, uint16_t frameCntTotal);
 void ksz8851SpiInit(void);
 bool ksz8851GetLinkStatus(void);
 void ksz8851RegisterEvtCb(ksz8851_evt_cb_t evt_cb);

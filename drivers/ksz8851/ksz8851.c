@@ -492,7 +492,7 @@ void ksz8851EndPacketSend(void) {
  * packet.  It may be called as many times as necessary to retrieve
  * the entire payload.
  */
-void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length, uint16_t frameCnt) {
+void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length, uint16_t frameCnt, uint16_t frameCntTotal) {
 	//spi_op(SPI_CONTINUE, FIFO_RD, localBuffer, length);
     size_t n = 0;
    uint16_t status;
@@ -515,8 +515,10 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length,
          //Ensure the frame size is acceptable
          if(n > 4 && n <= ETHERNET_RX_PACKET_BUFF_SIZE)
          {
+            uint16_t a = ksz8851_regrd(REG_RX_ADDR_PTR);
             //Reset QMU RXQ frame pointer to zero
              spi_clrbits(REG_RX_ADDR_PTR, ADDR_PTR_MASK);
+            uint16_t b = ksz8851_regrd(REG_RX_ADDR_PTR);
             //Enable RXQ read access
              spi_setbits(REG_RXQ_CMD, RXQ_START);
              /* Read 4-byte garbage */
@@ -531,22 +533,31 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length,
             //End RXQ read access
              spi_clrbits(REG_RXQ_CMD, RXQ_START);
              *length = n;
-             //MSG("Retr read %u\n", *length);
+             MSG("Retr[%u/%u] read %u:\n", frameCnt, frameCntTotal, *length);
+			 for ( uint16_t i = 0; i < *length; ++i)
+			 {
+				 printf("%02x", localBuffer[i]);
+				 if (i%4==3)
+				   printf(" ");
+				if (i%80==79)
+					printf("\n");
+			 }
+			 printf("\n");
              return;
          }
          else
          {
-            MSG("Retr[%u] unacceptable frame size: %u (4,%u)\n", frameCnt, n, ETHERNET_RX_PACKET_BUFF_SIZE);
+            MSG("Retr[%u/%u] unacceptable frame size: %u (4,%u)\n", frameCnt, frameCntTotal, n, ETHERNET_RX_PACKET_BUFF_SIZE);
          }
       }
       else
       {
-         MSG("Retr[%u] errors n=%u s=0x%x\n", frameCnt, n, status);
+         MSG("Retr[%u/%u] errors n=%u s=0x%x\n\n\n\n\n\n", frameCnt, frameCntTotal, n, status);
       }
    }
    else
    {
-      MSG("Retr[%u] invalid n=%u s=0x%x\n", frameCnt, n, status);
+      MSG("Retr[%u/%u] invalid n=%u s=0x%x\n\n\n\n\n\n", frameCnt, frameCntTotal, n, status);
    }
    //Release the current error frame from RXQ
    MSG("clearing\n");
