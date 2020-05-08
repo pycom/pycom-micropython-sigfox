@@ -174,11 +174,11 @@ void TASK_Micropython (void *pvParameters) {
 
     if (esp32_get_chip_rev() > 0) {
         gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
-        gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES_PSRAM, MALLOC_CAP_SPIRAM);
     } else {
         gc_pool_size = GC_POOL_SIZE_BYTES;
-        gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES, MALLOC_CAP_INTERNAL);
     }
+
+    gc_pool_upy = malloc(gc_pool_size);
 
     if (NULL == gc_pool_upy) {
         printf("GC pool malloc failed!\n");

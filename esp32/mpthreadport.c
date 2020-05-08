@@ -171,15 +171,15 @@ void mp_thread_create_ex(void *(*entry)(void*), void *arg, size_t *stack_size, i
     // allocate TCB, stack and linked-list node (must be outside thread_mutex lock)
     if (mp_chip_revision > 0) {
         // for revision 1 devices we allocate from the internal memory of the malloc heap
-        tcb = heap_caps_malloc(sizeof(StaticTask_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        tcb = malloc(sizeof(StaticTask_t));
         if (!tcb) {
             goto memory_error;
         }
-        stack = heap_caps_malloc(*stack_size, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        stack = malloc(*stack_size);
         if (!stack) {
             goto memory_error;
         }
-        th = heap_caps_malloc(sizeof(thread_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        th = malloc(sizeof(thread_t));
         if (!th) {
             goto memory_error;
         }

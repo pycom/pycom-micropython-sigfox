@@ -614,10 +614,10 @@ static void ftp_return_to_previous_path (char *pwd, char *dir);
  ******************************************************************************/
 void ftp_init (void) {
     // allocate memory for the data buffer, and the file system structs (from the RTOS heap)
-    ftp_data.dBuffer = heap_caps_malloc(FTP_BUFFER_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    ftp_path = heap_caps_malloc(FTP_MAX_PARAM_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    ftp_scratch_buffer = heap_caps_malloc(FTP_MAX_PARAM_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    ftp_cmd_buffer = heap_caps_malloc(FTP_MAX_PARAM_SIZE + FTP_CMD_SIZE_MAX, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    ftp_data.dBuffer = malloc(FTP_BUFFER_SIZE);
+    ftp_path = malloc(FTP_MAX_PARAM_SIZE);
+    ftp_scratch_buffer = malloc(FTP_MAX_PARAM_SIZE);
+    ftp_cmd_buffer = malloc(FTP_MAX_PARAM_SIZE + FTP_CMD_SIZE_MAX);
     SOCKETFIFO_Init (&ftp_socketfifo, (void *)ftp_fifoelements, FTP_SOCKETFIFO_ELEMENTS_MAX);
     ftp_data.c_sd  = -1;
     ftp_data.d_sd  = -1;
