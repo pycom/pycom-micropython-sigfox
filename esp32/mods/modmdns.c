@@ -296,7 +296,13 @@ STATIC mp_obj_t mod_mdns_query(mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
                     tuple[1] = mp_obj_new_str(result->txt[i].value, strlen(result->txt[i].value));
                     mp_obj_list_append(query_obj->txt, mp_obj_new_tuple(2, tuple));
                 }
-                query_obj->addr = netutils_format_ipv4_addr((uint8_t *)&result->addr->addr.u_addr.ip4.addr, NETUTILS_BIG);
+
+                if (result->addr) {
+                    query_obj->addr = netutils_format_ipv4_addr((uint8_t *)&result->addr->addr.u_addr.ip4.addr, NETUTILS_BIG);
+                } else {
+                    u32_t zero_ip = 0;
+                    query_obj->addr = netutils_format_ipv4_addr((uint8_t *)&zero_ip, NETUTILS_BIG);
+                }
 
                 mp_obj_list_append(queries_list, query_obj);
 
