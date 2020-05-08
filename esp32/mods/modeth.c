@@ -61,8 +61,8 @@
 #define ETHERNET_EVT_STARTED          0x0002
 
 //#define DEBUG_MODETH
-#define MSG(fmt, ...) printf("[%u] modeth: " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
-//#define MSG(fmt, ...) (void)0
+//#define MSG(fmt, ...) printf("[%u] modeth: " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
+#define MSG(fmt, ...) (void)0
 
 /*****************************************************************************
 * DECLARE PRIVATE FUNCTIONS
@@ -237,7 +237,7 @@ static uint32_t process_rx(void)
         {
 #ifdef DEBUG_MODETH
             if ( len > 3){
-                MSG("process_rx[%u/%u] len=%u: [%x %x %x %x ... %x %x %x %x]\n", c, frameCnt, len,
+                MSG("process_rx[%u/%u] len=%u: [%x %x %x %x ... %x %x %x %x]\n", frameCnt, frameCntTotal, len,
                     modeth_rxBuff[0], modeth_rxBuff[1], modeth_rxBuff[2], modeth_rxBuff[3],
                     modeth_rxBuff[len-4], modeth_rxBuff[len-3], modeth_rxBuff[len-2], modeth_rxBuff[len-1]
                     );
@@ -287,10 +287,18 @@ static void processInterrupt(void) {
     // clear interrupt status
     ksz8851_regwr(REG_INT_STATUS, 0xFFFF);
 
+    // read rx reason
+    uint16_t rxqcr = ksz8851_regrd(REG_RXQ_CMD);
+
     // // enable interrupts
     // ksz8851_regwr(REG_INT_MASK, INT_MASK);
 
-    // MSG("processInterrupt 0x%x\n", ctx.isr);
+    if ( ctx.isr != 0x2008 || rxqcr != 0x630 )
+        MSG("processInterrupt isr=0x%x rxqcr=0x%x %s%s%s\n", ctx.isr, rxqcr,
+            (rxqcr & RXQ_STAT_TIME_INT) ? "t": "",
+            (rxqcr & RXQ_STAT_BYTE_CNT_INT) ? "b": "",
+            (rxqcr & RXQ_STAT_FRAME_CNT_INT) ? "f": ""
+        );
 
     // FIXME: capture errQUEUE_FULL
 

@@ -39,8 +39,8 @@
 #define SPI_END			2
 #define SPI_COMPLETE	3
 
-#define MSG(fmt, ...) printf("[%u] ksz8851: " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
-//#define MSG(fmt, ...) (void)0
+//#define MSG(fmt, ...) printf("[%u] ksz8851: " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
+#define MSG(fmt, ...) (void)0
 
 static uint16_t	length_sum;
 static uint8_t	frameID = 0;
@@ -515,10 +515,8 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length,
          //Ensure the frame size is acceptable
          if(n > 4 && n <= ETHERNET_RX_PACKET_BUFF_SIZE)
          {
-            uint16_t a = ksz8851_regrd(REG_RX_ADDR_PTR);
             //Reset QMU RXQ frame pointer to zero
              spi_clrbits(REG_RX_ADDR_PTR, ADDR_PTR_MASK);
-            uint16_t b = ksz8851_regrd(REG_RX_ADDR_PTR);
             //Enable RXQ read access
              spi_setbits(REG_RXQ_CMD, RXQ_START);
              /* Read 4-byte garbage */
@@ -533,16 +531,18 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length,
             //End RXQ read access
              spi_clrbits(REG_RXQ_CMD, RXQ_START);
              *length = n;
-             MSG("Retr[%u/%u] read %u:\n", frameCnt, frameCntTotal, *length);
+#ifdef DEBUG_KSZ8851
+             MSG("Retr[%u/%u] read len=%u s=0x%02x a=0x%02x:\n", frameCnt, frameCntTotal, *length, status, ksz8851_regrd(REG_RX_ADDR_PTR));
 			 for ( uint16_t i = 0; i < *length; ++i)
 			 {
 				 printf("%02x", localBuffer[i]);
 				 if (i%4==3)
 				   printf(" ");
-				if (i%80==79)
+				if (i%40==39)
 					printf("\n");
 			 }
 			 printf("\n");
+#endif
              return;
          }
          else
