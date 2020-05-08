@@ -516,7 +516,8 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length,
          if(n > 4 && n <= ETHERNET_RX_PACKET_BUFF_SIZE)
          {
             //Reset QMU RXQ frame pointer to zero
-             spi_clrbits(REG_RX_ADDR_PTR, ADDR_PTR_MASK);
+            //spi_clrbits(REG_RX_ADDR_PTR, ADDR_PTR_MASK);
+            ksz8851_regwr(REG_RX_ADDR_PTR, 0x4000);
             //Enable RXQ read access
              spi_setbits(REG_RXQ_CMD, RXQ_START);
              /* Read 4-byte garbage */

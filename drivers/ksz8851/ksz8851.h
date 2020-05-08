@@ -252,7 +252,7 @@ extern uint8_t ethernet_mac[ETH_MAC_SIZE];
 #define   REG_TX_ADDR_PTR             0x84       /* TXFDPR */
 #define   REG_RX_ADDR_PTR             0x86       /* RXFDPR */
 #define   ADDR_PTR_AUTO_INC           0x4000    /* Enable Frame data pointer increments automatically */
-#define   ADDR_PTR_MASK               0x03ff    /* Address pointer mask */
+//#define   ADDR_PTR_MASK               0x03ff    /* Address pointer mask - FIXME: This should probably be 0x07ff, but currently we're not using this number anyway*/
 
 #define   REG_RX_TIME_THRES           0x8C       /* RXDTTR */
 #define   RX_TIME_THRESHOLD_MASK      0xFFFF    /* Set receive timer duration threshold */
