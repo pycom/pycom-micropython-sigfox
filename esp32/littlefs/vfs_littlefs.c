@@ -477,12 +477,12 @@ STATIC mp_obj_t littlefs_vfs_ilistdir_func(size_t n_args, const mp_obj_t *args) 
     iter->is_str = is_str_type;
 
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
-    const char *path = concat_with_cwd(&self->fs.littlefs, path_in);
-    if (path == NULL) {
-        res = LFS_ERR_NOMEM;
-    } else {
-        res = lfs_dir_open(&self->fs.littlefs.lfs, &iter->dir, path);
-    }
+        const char *path = concat_with_cwd(&self->fs.littlefs, path_in);
+        if (path == NULL) {
+            res = LFS_ERR_NOMEM;
+        } else {
+            res = lfs_dir_open(&self->fs.littlefs.lfs, &iter->dir, path);
+        }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
     free((void*)path);
@@ -502,15 +502,15 @@ STATIC mp_obj_t littlefs_vfs_mkdir(mp_obj_t vfs_in, mp_obj_t path_param) {
     const char *path_in = mp_obj_str_get_str(path_param);
 
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
-    const char *path = concat_with_cwd(&self->fs.littlefs, path_in);
-    if (path == NULL) {
-        res = LFS_ERR_NOMEM;
-    } else {
-        res = lfs_mkdir(&self->fs.littlefs.lfs, path);
-        if (res == LFS_ERR_OK) {
-            littlefs_update_timestamp(&self->fs.littlefs.lfs, path);
+        const char *path = concat_with_cwd(&self->fs.littlefs, path_in);
+        if (path == NULL) {
+            res = LFS_ERR_NOMEM;
+        } else {
+            res = lfs_mkdir(&self->fs.littlefs.lfs, path);
+            if (res == LFS_ERR_OK) {
+                littlefs_update_timestamp(&self->fs.littlefs.lfs, path);
+            }
         }
-    }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
     free((void*)path);
@@ -531,12 +531,12 @@ STATIC mp_obj_t littlefs_vfs_remove(mp_obj_t vfs_in, mp_obj_t path_param) {
     const char *path_in = mp_obj_str_get_str(path_param);
 
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
-    const char *path = concat_with_cwd(&self->fs.littlefs, path_in);
-    if (path == NULL) {
-        res = LFS_ERR_NOMEM;
-    } else {
-        res = lfs_remove(&self->fs.littlefs.lfs, path);
-    }
+        const char *path = concat_with_cwd(&self->fs.littlefs, path_in);
+        if (path == NULL) {
+            res = LFS_ERR_NOMEM;
+        } else {
+            res = lfs_remove(&self->fs.littlefs.lfs, path);
+        }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
     free((void*)path);
@@ -558,14 +558,14 @@ STATIC mp_obj_t littlefs_vfs_rename(mp_obj_t vfs_in, mp_obj_t path_param_in, mp_
     const char *path_out = mp_obj_str_get_str(path_param_out);
 
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
-    const char *old_path = concat_with_cwd(&self->fs.littlefs, path_in);
-    const char *new_path = concat_with_cwd(&self->fs.littlefs, path_out);
+        const char *old_path = concat_with_cwd(&self->fs.littlefs, path_in);
+        const char *new_path = concat_with_cwd(&self->fs.littlefs, path_out);
 
-    if (old_path == NULL || new_path == NULL) {
-        res = LFS_ERR_NOMEM;
-    } else {
-        res = lfs_rename(&self->fs.littlefs.lfs, old_path, new_path);
-    }
+        if (old_path == NULL || new_path == NULL) {
+            res = LFS_ERR_NOMEM;
+        } else {
+            res = lfs_rename(&self->fs.littlefs.lfs, old_path, new_path);
+        }
     xSemaphoreGive(self->fs.littlefs.mutex);
 
     free((void*)old_path);
@@ -620,16 +620,16 @@ STATIC mp_obj_t littlefs_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_param) {
 
 
     xSemaphoreTake(self->fs.littlefs.mutex, portMAX_DELAY);
-    const char *path = concat_with_cwd(&self->fs.littlefs, path_in);
-    if (path == NULL) {
-        res = LFS_ERR_NOMEM;
-    } else if (path[0] == 0 || (path[0] == '/' && path[1] == 0)) {
-        // stat root directory
-        fno.size = 0;
-        fno.type = LFS_TYPE_DIR;
-    } else {
-        res = littlefs_stat_common_helper(&self->fs.littlefs.lfs, path, &fno, &ts);
-    }
+        const char *path = concat_with_cwd(&self->fs.littlefs, path_in);
+        if (path == NULL) {
+            res = LFS_ERR_NOMEM;
+        } else if (path[0] == 0 || (path[0] == '/' && path[1] == 0)) {
+            // stat root directory
+            fno.size = 0;
+            fno.type = LFS_TYPE_DIR;
+        } else {
+            res = littlefs_stat_common_helper(&self->fs.littlefs.lfs, path, &fno, &ts);
+        }
 
     xSemaphoreGive(self->fs.littlefs.mutex);
 
