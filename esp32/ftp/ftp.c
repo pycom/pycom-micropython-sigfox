@@ -873,10 +873,12 @@ static ftp_result_t ftp_wait_for_connection (int32_t l_sd, int32_t *n_sd, uint32
         tcpip_adapter_ip_info_t ip_info;
 
         bool adapter_found = false;
+#ifdef PYETH_ENABLED
         if ( tcpip_adapter_is_netif_up(TCPIP_ADAPTER_IF_ETH) ) {
             tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_ETH, &ip_info);
             adapter_found = true;
         }
+#endif
 
         if ( !adapter_found && tcpip_adapter_is_netif_up(TCPIP_ADAPTER_IF_AP) ){
             tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info);

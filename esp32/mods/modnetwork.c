@@ -50,7 +50,9 @@
 #include "modusocket.h"
 #include "modcoap.h"
 #include "modmdns.h"
+#ifdef PYETH_ENABLED
 #include "modeth.h"
+#endif
 
 #include "lwip/sockets.h"
 
@@ -117,11 +119,14 @@ mp_obj_t mod_network_find_nic(const mod_network_socket_obj_t *s, const uint8_t *
             }
         #endif
         } else if (s->sock_base.u.u_param.domain == AF_INET) {
-#if (defined(GPY) || defined (FIPY))
-            if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan || mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_eth || mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_lte)
-#else
-            if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan || mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_eth)
+            if(mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan
+#ifdef PYETH_ENABLED
+               || mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_eth
 #endif
+#if (defined(GPY) || defined (FIPY))
+               || mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_lte
+#endif
+            )
             {
                 return nic;
             }
@@ -165,6 +170,7 @@ STATIC void network_select_nic(mp_obj_t removed_nic)
     mp_obj_t nic_chosen = NULL;
     mp_obj_type_t * nic_type = NULL;
 
+#ifdef PYETH_ENABLED
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
         mp_obj_t nic = MP_STATE_PORT(mod_network_nic_list).items[i];
         // Find ETH nic
@@ -174,6 +180,7 @@ STATIC void network_select_nic(mp_obj_t removed_nic)
             goto process_nic;
         }
     }
+#endif
 
     for (mp_uint_t i = 0; i < MP_STATE_PORT(mod_network_nic_list).len; i++) {
         mp_obj_t nic = MP_STATE_PORT(mod_network_nic_list).items[i];
@@ -201,7 +208,11 @@ process_nic:
         //printf("Chosen Nic = %s\n", qstr_str(nic_type->name));
     }
     if (removed_nic != NULL && nic_type != NULL) {
-        if((nic_type == (mp_obj_type_t *)&mod_network_nic_type_wlan) || (nic_type == (mp_obj_type_t *)&mod_network_nic_type_eth))
+        if((nic_type == (mp_obj_type_t *)&mod_network_nic_type_wlan)
+#ifdef PYETH_ENABLED
+           || (nic_type == (mp_obj_type_t *)&mod_network_nic_type_eth)
+#endif
+        )
         {
 #if defined(FIPY) || defined(GPY)
             if(mp_obj_get_type(removed_nic) == (mp_obj_type_t *)&mod_network_nic_type_lte)
@@ -211,15 +222,21 @@ process_nic:
                     //printf("Default WLAN\n");
                     mod_network_nic_type_wlan.set_default_inf();
                 }
+#ifdef PYETH_ENABLED
                 else
                 {
                     //printf("Default ETH\n");
                     mod_network_nic_type_eth.set_default_inf();
                 }
+#endif
             }
 #endif
             // check if we need to handle servers
-            if(!(mod_network_nic_type_wlan.inf_up() || mod_network_nic_type_eth.inf_up()))
+            if(!( mod_network_nic_type_wlan.inf_up()
+#ifdef PYETH_ENABLED
+                  || mod_network_nic_type_eth.inf_up()
+#endif
+            ) )
             {
                 // stop the servers if they are enabled
                 if (servers_are_enabled()) {
@@ -239,7 +256,11 @@ process_nic:
         else
         {
 #if defined(FIPY) || defined(GPY)
-            if((mp_obj_get_type(removed_nic) == (mp_obj_type_t *)&mod_network_nic_type_eth) || (mp_obj_get_type(removed_nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan))
+            if(
+#ifdef PYETH_ENABLED
+                (mp_obj_get_type(removed_nic) == (mp_obj_type_t *)&mod_network_nic_type_eth) ||
+#endif
+                (mp_obj_get_type(removed_nic) == (mp_obj_type_t *)&mod_network_nic_type_wlan))
             {
                 //printf("Default LTE\n");
                 mod_network_nic_type_lte.set_default_inf();
@@ -341,7 +362,9 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(network_server_deinit_obj, network_server_deini
 STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_network) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WLAN),                (mp_obj_t)&mod_network_nic_type_wlan },
+#ifdef PYETH_ENABLED
     { MP_OBJ_NEW_QSTR(MP_QSTR_ETH),                (mp_obj_t)&mod_network_nic_type_eth },
+#endif
 #if defined (LOPY) || defined(LOPY4) || defined (FIPY)
     { MP_OBJ_NEW_QSTR(MP_QSTR_LoRa),                (mp_obj_t)&mod_network_nic_type_lora },
 #endif

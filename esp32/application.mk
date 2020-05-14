@@ -19,9 +19,13 @@ APP_INC += -Ilte
 APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
+ifeq ($(PYGATE_ENABLED), 1)
 APP_INC += -Ipygate/concentrator
 APP_INC += -Ipygate/hal/include
 APP_INC += -Ipygate/lora_pkt_fwd
+APP_INC += -I$(ESP_IDF_COMP_PATH)/pthread/include/
+APP_INC += -I$(ESP_IDF_COMP_PATH)/sntp/include/
+endif
 APP_INC += -Ilittlefs
 APP_INC += -I$(BUILD)
 APP_INC += -I$(BUILD)/genhdr
@@ -38,7 +42,9 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_ringbuf/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_event/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_adc_cal/include
+ifeq ($(PYETH_ENABLED), 1)
 APP_INC += -I$(ESP_IDF_COMP_PATH)/ethernet/include
+endif
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
@@ -82,15 +88,17 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/examples
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include/coap
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mdns/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/pthread/include/
-APP_INC += -I$(ESP_IDF_COMP_PATH)/sntp/include/
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
 APP_INC += -I../lib/oofatfs
 APP_INC += -I../lib
 APP_INC += -I../drivers/sx127x
+ifeq ($(PYGATE_ENABLED), 1)
 APP_INC += -I../drivers/sx1308
+endif
+ifeq ($(PYETH_ENABLED), 1)
 APP_INC += -I../drivers/ksz8851
+endif
 APP_INC += -I../ports/stm32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/openthread/src
 
@@ -379,7 +387,15 @@ endif # ifeq ($(OPENTHREAD), on)
 OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(APP_LIB_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o) $(APP_KSZ8851_SRC_C:.c=.o) $(APP_ETHERNET_SRC_C:.c=.o) $(APP_SX1308_SRC_C:.c=.o) $(APP_PYGATE_SRC_C:.c=.o))
+OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
+ifeq ($(PYGATE_ENABLED), 1)
+OBJ += $(addprefix $(BUILD)/, $(APP_SX1308_SRC_C:.c=.o) $(APP_PYGATE_SRC_C:.c=.o))
+CFLAGS += -DPYGATE_ENABLED
+endif
+ifeq ($(PYETH_ENABLED), 1)
+OBJ += $(addprefix $(BUILD)/, $(APP_KSZ8851_SRC_C:.c=.o) $(APP_ETHERNET_SRC_C:.c=.o))
+CFLAGS += -DPYETH_ENABLED
+endif
 OBJ += $(BUILD)/pins.o
 
 BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))

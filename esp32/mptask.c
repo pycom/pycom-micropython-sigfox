@@ -43,7 +43,9 @@
 #include "serverstask.h"
 #include "modnetwork.h"
 #include "modwlan.h"
+#ifdef PYETH_ENABLED
 #include "modeth.h"
+#endif
 #include "modusocket.h"
 #include "antenna.h"
 #include "modled.h"
