@@ -1914,10 +1914,12 @@ STATIC mp_obj_t bt_characteristic_value (mp_uint_t n_args, const mp_obj_t *args)
             self->attr_obj.value_len = value_len;
         }
 
-        bool confirm = self->attr_obj.properties & ESP_GATT_CHAR_PROP_BIT_INDICATE;
-        if (ESP_OK != esp_ble_gatts_send_indicate(bt_obj.gatts_if, bt_obj.gatts_conn_id, self->attr_obj.handle,
-                                                  self->attr_obj.value_len, self->attr_obj.value, confirm)) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Erorr while sending BLE indication/notification"));
+        if(bt_obj.gatts_conn_id != -1) {
+            bool confirm = self->attr_obj.properties & ESP_GATT_CHAR_PROP_BIT_INDICATE;
+            if (ESP_OK != esp_ble_gatts_send_indicate(bt_obj.gatts_if, bt_obj.gatts_conn_id, self->attr_obj.handle,
+                    self->attr_obj.value_len, self->attr_obj.value, confirm)) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Error while sending BLE indication/notification"));
+            }
         }
         return mp_const_none;
     }
