@@ -49,11 +49,11 @@ class PybytesLibrary:
         print("This is pack_release_info_message")
         return self.__pack_message(constants.__TYPE_RELEASE_INFO, releaseId)
 
-    def pack_pybytes_message_variable(self, command, pin, parameters):
+    def pack_pybytes_message_variable(self, command, pin, parameters, message_type):
         print_debug(5, "This is pack_pybytes_message_variable({}, {}, {})".format(command, pin, parameters))
         body = struct.pack(constants.__PYBYTES_INTERNAL_PROTOCOL_VARIABLE % len(parameters),
                            command, pin, parameters)
-        return self.__pack_message(constants.__TYPE_PYBYTES, body)
+        return self.__pack_message(getattr(constants, message_type), body)
 
     def pack_ping_message(self):
         return self.__pack_message(constants.__TYPE_PING, None)
@@ -149,12 +149,6 @@ class PybytesLibrary:
                     sleep(0.5)
 
         body = bytearray()
-
-        # max_networks = 5
-        # if (len(wifi_networks) < 5):
-        #     max_networks = len(wifi_networks)
-        #
-        # for x in range(0, max_networks):
 
         for x in range(0, len(wifi_networks)):
             wifi_pack = struct.pack(constants.__WIFI_NETWORK_FORMAT, wifi_networks[x][1],
