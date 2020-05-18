@@ -500,7 +500,7 @@ static void remove_all_bonded_devices(void)
 {
     int dev_num = esp_ble_get_bond_device_num();
 
-    esp_ble_bond_dev_t *dev_list = heap_caps_malloc(sizeof(esp_ble_bond_dev_t) * dev_num, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    esp_ble_bond_dev_t *dev_list = malloc(sizeof(esp_ble_bond_dev_t) * dev_num);
     esp_ble_get_bond_device_list(&dev_num, dev_list);
     for (int i = 0; i < dev_num; i++) {
         esp_ble_remove_bond_device(dev_list[i].bd_addr);
@@ -801,8 +801,8 @@ STATIC void gatts_char_callback_handler(void *arg) {
         tuple[1] = mp_const_none;
         if(((char_cbk_arg_t*)arg)->data_length > 0) {
             tuple[1] = mp_obj_new_bytes(((char_cbk_arg_t*)arg)->data, ((char_cbk_arg_t*)arg)->data_length);
-            heap_caps_free(((char_cbk_arg_t*)arg)->data);
-            heap_caps_free((char_cbk_arg_t*)arg);
+            free(((char_cbk_arg_t*)arg)->data);
+            free((char_cbk_arg_t*)arg);
         }
 
         mp_obj_t r_value = mp_call_function_2(chr->handler, chr->handler_arg, mp_obj_new_tuple(2, tuple));
@@ -865,7 +865,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                     char_obj->read_request = true;
                     char_obj->trans_id = p->read.trans_id;
 
-                    char_cbk_arg_t *cbk_arg = heap_caps_malloc(sizeof(char_cbk_arg_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                    char_cbk_arg_t *cbk_arg = malloc(sizeof(char_cbk_arg_t));
 
                     cbk_arg->chr = char_obj;
                     cbk_arg->event = MOD_BT_GATTS_READ_EVT;
@@ -900,12 +900,12 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                     char_obj->events |= MOD_BT_GATTS_WRITE_EVT;
                     if (char_obj->trigger & MOD_BT_GATTS_WRITE_EVT) {
 
-                        char_cbk_arg_t *cbk_arg = heap_caps_malloc(sizeof(char_cbk_arg_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                        char_cbk_arg_t *cbk_arg = malloc(sizeof(char_cbk_arg_t));
 
                         cbk_arg->chr = char_obj;
                         cbk_arg->event = MOD_BT_GATTS_WRITE_EVT;
                         cbk_arg->data_length = write_len;
-                        cbk_arg->data = heap_caps_malloc(cbk_arg->data_length, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                        cbk_arg->data = malloc(cbk_arg->data_length);
                         memcpy(cbk_arg->data, p->write.value, cbk_arg->data_length);
 
                         mp_irq_queue_interrupt_non_ISR(gatts_char_callback_handler, cbk_arg);
@@ -918,7 +918,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                         char_obj->events |= MOD_BT_GATTS_SUBSCRIBE_EVT;
                         if (char_obj->trigger & MOD_BT_GATTS_SUBSCRIBE_EVT) {
 
-                            char_cbk_arg_t *cbk_arg = heap_caps_malloc(sizeof(char_cbk_arg_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                            char_cbk_arg_t *cbk_arg = malloc(sizeof(char_cbk_arg_t));
 
                             cbk_arg->chr = char_obj;
                             cbk_arg->event = MOD_BT_GATTS_SUBSCRIBE_EVT;
@@ -2344,7 +2344,7 @@ STATIC mp_obj_t bt_srv_characteristics(mp_obj_t self_in) {
                                      &attr_count);
 
         if (attr_count > 0) {
-            esp_gattc_char_elem_t *char_elems = (esp_gattc_char_elem_t *)heap_caps_malloc(sizeof(esp_gattc_char_elem_t) * attr_count, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+            esp_gattc_char_elem_t *char_elems = (esp_gattc_char_elem_t *)malloc(sizeof(esp_gattc_char_elem_t) * attr_count);
             if (!char_elems) {
                 mp_raise_OSError(MP_ENOMEM);
             } else {
@@ -2585,7 +2585,7 @@ STATIC mp_obj_t bt_char_callback(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
                                          self->characteristic.char_handle,
                                          &attr_count);
             if (attr_count > 0) {
-                esp_gattc_descr_elem_t *descr_elems = (esp_gattc_descr_elem_t *)heap_caps_malloc(sizeof(esp_gattc_descr_elem_t) * attr_count, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+                esp_gattc_descr_elem_t *descr_elems = (esp_gattc_descr_elem_t *)malloc(sizeof(esp_gattc_descr_elem_t) * attr_count);
                 if (!descr_elems) {
                     mp_raise_OSError(MP_ENOMEM);
                 } else {

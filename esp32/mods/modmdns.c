@@ -168,7 +168,7 @@ STATIC mp_obj_t mod_mdns_add_service(mp_uint_t n_args, const mp_obj_t *pos_args,
             mp_obj_t* items;
             mp_obj_tuple_get(args[3].u_obj, &length_total, &items);
 
-            service_txt = m_malloc(length_total * sizeof(mdns_txt_item_t));
+            service_txt = malloc(length_total * sizeof(mdns_txt_item_t));
 
             for(int i = 0; i < length_total; i++) {
                 size_t length_elem = 0;
@@ -186,6 +186,7 @@ STATIC mp_obj_t mod_mdns_add_service(mp_uint_t n_args, const mp_obj_t *pos_args,
         }
 
         esp_err_t ret = mdns_service_add(NULL, service_type, proto, port, service_txt, length_total);
+        free(service_txt);
         if(ret != ESP_OK) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Service could not be added, error code: %d", ret));
         }
@@ -295,7 +296,13 @@ STATIC mp_obj_t mod_mdns_query(mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
                     tuple[1] = mp_obj_new_str(result->txt[i].value, strlen(result->txt[i].value));
                     mp_obj_list_append(query_obj->txt, mp_obj_new_tuple(2, tuple));
                 }
-                query_obj->addr = netutils_format_ipv4_addr((uint8_t *)&result->addr->addr.u_addr.ip4.addr, NETUTILS_BIG);
+
+                if (result->addr) {
+                    query_obj->addr = netutils_format_ipv4_addr((uint8_t *)&result->addr->addr.u_addr.ip4.addr, NETUTILS_BIG);
+                } else {
+                    u32_t zero_ip = 0;
+                    query_obj->addr = netutils_format_ipv4_addr((uint8_t *)&zero_ip, NETUTILS_BIG);
+                }
 
                 mp_obj_list_append(queries_list, query_obj);
 

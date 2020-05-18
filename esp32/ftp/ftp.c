@@ -338,7 +338,7 @@ STATIC FRESULT f_readdir_helper(ftp_dir_t *dp, ftp_fileinfo_t *fno ) {
                 if(length_of_relative_path > 1) {
                     path_length++;
                 }
-                char* file_relative_path = m_malloc(path_length);
+                char* file_relative_path = malloc(path_length);
 
                 // Copy the current working directory (relative path)
                 memcpy(file_relative_path, path_relative, length_of_relative_path);
@@ -359,7 +359,7 @@ STATIC FRESULT f_readdir_helper(ftp_dir_t *dp, ftp_fileinfo_t *fno ) {
                     fno->u.fpinfo_lfs.timestamp.ftime = 0;
                 }
 
-                m_free(file_relative_path);
+                free(file_relative_path);
             }
 
         xSemaphoreGive(littlefs->mutex);
@@ -614,10 +614,10 @@ static void ftp_return_to_previous_path (char *pwd, char *dir);
  ******************************************************************************/
 void ftp_init (void) {
     // allocate memory for the data buffer, and the file system structs (from the RTOS heap)
-    ftp_data.dBuffer = heap_caps_malloc(FTP_BUFFER_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    ftp_path = heap_caps_malloc(FTP_MAX_PARAM_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    ftp_scratch_buffer = heap_caps_malloc(FTP_MAX_PARAM_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    ftp_cmd_buffer = heap_caps_malloc(FTP_MAX_PARAM_SIZE + FTP_CMD_SIZE_MAX, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    ftp_data.dBuffer = malloc(FTP_BUFFER_SIZE);
+    ftp_path = malloc(FTP_MAX_PARAM_SIZE);
+    ftp_scratch_buffer = malloc(FTP_MAX_PARAM_SIZE);
+    ftp_cmd_buffer = malloc(FTP_MAX_PARAM_SIZE + FTP_CMD_SIZE_MAX);
     SOCKETFIFO_Init (&ftp_socketfifo, (void *)ftp_fifoelements, FTP_SOCKETFIFO_ELEMENTS_MAX);
     ftp_data.c_sd  = -1;
     ftp_data.d_sd  = -1;
@@ -933,7 +933,7 @@ static void ftp_send_reply (uint32_t status, char *message) {
     strcat ((char *)ftp_cmd_buffer, "\r\n");
     fifoelement.sd = &ftp_data.c_sd;
     fifoelement.datasize = strlen((char *)ftp_cmd_buffer);
-    fifoelement.data = pvPortMalloc(fifoelement.datasize);
+    fifoelement.data = malloc(fifoelement.datasize);
     if (status == 221) {
         fifoelement.closesockets = E_FTP_CLOSE_CMD_AND_DATA;
     } else if (status == 426 || status == 451 || status == 550) {
@@ -945,7 +945,7 @@ static void ftp_send_reply (uint32_t status, char *message) {
     if (fifoelement.data) {
         memcpy (fifoelement.data, ftp_cmd_buffer, fifoelement.datasize);
         if (!SOCKETFIFO_Push (&fifoelement)) {
-            vPortFree(fifoelement.data);
+            free(fifoelement.data);
         }
     }
 }
@@ -979,13 +979,13 @@ static void ftp_send_from_fifo (void) {
                     ftp_close_filesystem_on_error();
                 }
                 if (fifoelement.freedata) {
-                    vPortFree(fifoelement.data);
+                    free(fifoelement.data);
                 }
             }
         } else { // socket closed, remove it from the queue
             SOCKETFIFO_Pop (&fifoelement);
             if (fifoelement.freedata) {
-                vPortFree(fifoelement.data);
+                free(fifoelement.data);
             }
         }
     } else if (ftp_data.state == E_FTP_STE_END_TRANSFER && (ftp_data.d_sd > 0)) {

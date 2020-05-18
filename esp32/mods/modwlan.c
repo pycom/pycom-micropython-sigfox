@@ -1444,7 +1444,7 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     esp_wifi_scan_get_ap_num(&ap_num); // get the number of scanned APs
 
     if (ap_num > 0) {
-        ap_record_buffer = pvPortMalloc(ap_num * sizeof(wifi_ap_record_t));
+        ap_record_buffer = malloc(ap_num * sizeof(wifi_ap_record_t));
         if (ap_record_buffer == NULL) {
             mp_raise_OSError(MP_ENOMEM);
         }
@@ -1464,7 +1464,7 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
                 mp_obj_list_append(nets, mp_obj_new_attrtuple(wlan_scan_info_fields, 5, tuple));
             }
         }
-        vPortFree(ap_record_buffer);
+        free(ap_record_buffer);
     }
 
     return nets;

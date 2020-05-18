@@ -365,7 +365,7 @@ STATIC mp_obj_t mach_rmt_pulses_send(mp_uint_t n_args, const mp_obj_t *pos_args,
 
     /* An rmt_item32_t can contain 2 bits, calculate the number of the necessary objects needed to store the input data */
     mp_uint_t items_to_send_count = (data_length / 2) + (data_length % 2);
-    rmt_item32_t* items_to_send = (rmt_item32_t*)m_malloc(items_to_send_count * sizeof(rmt_item32_t));
+    rmt_item32_t* items_to_send = (rmt_item32_t*)malloc(items_to_send_count * sizeof(rmt_item32_t));
     for(mp_uint_t i = 0, j = 0; i < items_to_send_count; i++, j++) {
 
         items_to_send[i].level0 = mp_obj_get_int(data_ptr[j]);
@@ -396,7 +396,7 @@ STATIC mp_obj_t mach_rmt_pulses_send(mp_uint_t n_args, const mp_obj_t *pos_args,
     esp_err_t retval = rmt_write_items(self->config.channel, items_to_send, items_to_send_count, wait_tx_done);
     MP_THREAD_GIL_ENTER();
 
-    m_free(items_to_send);
+    free(items_to_send);
 
     if (retval != ESP_OK) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Could not send data!"));

@@ -154,7 +154,7 @@ static void telnet_reset_buffer (void);
  ******************************************************************************/
 void telnet_init (void) {
     // allocate memory for the receive buffer (from the RTOS heap)
-    telnet_data.rxBuffer = heap_caps_malloc(TELNET_RX_BUFFER_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    telnet_data.rxBuffer = malloc(TELNET_RX_BUFFER_SIZE);
     telnet_data.state = E_TELNET_STE_DISABLED;
 }
 
