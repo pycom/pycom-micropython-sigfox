@@ -548,17 +548,17 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length,
          }
          else
          {
-            MSG("Retr[%u/%u] unacceptable frame size: n=%u (4,%u) s=0x%02x a=0x%02x\n", frameCnt, frameCntTotal, n, ETHERNET_RX_PACKET_BUFF_SIZE, status, ksz8851_regrd(REG_RX_ADDR_PTR));
+            printf("Retr[%u/%u] unacceptable frame size: n=%u (4,%u) s=0x%02x a=0x%02x\n", frameCnt, frameCntTotal, n, ETHERNET_RX_PACKET_BUFF_SIZE, status, ksz8851_regrd(REG_RX_ADDR_PTR));
          }
       }
       else
       {
-         MSG("Retr[%u/%u] errors n=%u s=0x%02x a=0x%02x\n\n\n\n\n\n", frameCnt, frameCntTotal, n, status, ksz8851_regrd(REG_RX_ADDR_PTR));
+         printf("Retr[%u/%u] errors n=%u s=0x%02x a=0x%02x\n\n\n\n\n\n", frameCnt, frameCntTotal, n, status, ksz8851_regrd(REG_RX_ADDR_PTR));
       }
    }
    else
    {
-      MSG("Retr[%u/%u] invalid n=%u s=0x%02x a=%02x\n\n\n\n\n\n", frameCnt, frameCntTotal, n, status, ksz8851_regrd(REG_RX_ADDR_PTR));
+      printf("Retr[%u/%u] invalid n=%u s=0x%02x a=%02x\n\n\n\n\n\n", frameCnt, frameCntTotal, n, status, ksz8851_regrd(REG_RX_ADDR_PTR));
    }
    //Release the current error frame from RXQ
    MSG("clearing\n");
