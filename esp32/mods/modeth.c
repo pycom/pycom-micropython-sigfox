@@ -855,8 +855,9 @@ STATIC const mp_map_elem_t eth_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&modeth_mac_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deinit),              (mp_obj_t)&modeth_deinit_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_isconnected),         (mp_obj_t)&modeth_isconnected_obj },
+#ifdef DEBUG_MODETH
     { MP_OBJ_NEW_QSTR(MP_QSTR_register),            (mp_obj_t)&modeth_ksz8851_reg_wr_obj },
-
+#endif
 };
 STATIC MP_DEFINE_CONST_DICT(eth_locals_dict, eth_locals_dict_table);
 
