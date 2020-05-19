@@ -80,6 +80,17 @@ It can be advisable to use the `gdb` from the latest xtensa toolchain, even if a
 
 If `gdb` does not reach the `Thread 1 hit Temporary breakpoint ...` line, close and reopen `gdb`.
 
+
+## Versions
+There are two generations of PyJTAG boards:
+
+1) First generation with green PCB has three blocks of switches. (Make sure SAFE_BOOT_SW is off.)
+2) Second generation with black PCB and two blocks of switches.
+
+Both generation boards can be equipped with pogo pins that connect to the bottom of the development board and allow LTE debugging. There can either be pins that connect to a GPy or pins that conenct to a FiPy.
+
+To reach the modem UART connect to `/dev/ttyUSB1`.
+
 ## Extra
 A few more details are here: https://pycomiot.atlassian.net/wiki/spaces/FIR/pages/966295564/Usage+of+PyJTAG
 
