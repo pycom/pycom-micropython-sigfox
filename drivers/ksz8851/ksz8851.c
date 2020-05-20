@@ -257,7 +257,6 @@ void ksz8851SpiInit(void) {
  */
 void ksz8851Init(void) {
 	uint16_t	dev_id;
-	uint16_t pwrctrl;
 
 	/* Make sure we get a valid chip ID before going on */
 	do {
@@ -378,6 +377,7 @@ void ksz8851Init(void) {
 //#define POWERSAVE
 #ifdef POWERSAVE
     //set power save mode when cable is disconnected or link down
+	uint16_t pwrctrl;
     pwrctrl = ksz8851_regrd(REG_POWER_CNTL);
     pwrctrl &= ~0x0003;
     pwrctrl |= POWER_STATE_D1;
