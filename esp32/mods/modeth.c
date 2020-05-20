@@ -206,6 +206,7 @@ static void process_tx(uint8_t* buff, uint16_t len)
     }
 #endif
     // disable int before reading buffer
+    portDISABLE_INTERRUPTS();
     ksz8851_regwr(REG_INT_MASK, 0);
 
     if (eth_obj.link_status) {
@@ -216,6 +217,7 @@ static void process_tx(uint8_t* buff, uint16_t len)
 
     // re-enable int
     ksz8851_regwr(REG_INT_MASK, INT_MASK);
+    portENABLE_INTERRUPTS();
 
 }
 static uint32_t process_rx(void)
@@ -224,41 +226,44 @@ static uint32_t process_rx(void)
     uint32_t totalLen = 0;
 
     // disable int before reading buffer
+    portDISABLE_INTERRUPTS();
     ksz8851_regwr(REG_INT_MASK, 0);
 
     frameCnt = (ksz8851_regrd(REG_RX_FRAME_CNT_THRES) & RX_FRAME_CNT_MASK) >> 8;
     uint32_t frameCntTotal = frameCnt;
-    if (frameCntTotal > 1 )
-        MSG("TE process_rx f:%u\n", frameCntTotal);
+    uint32_t frameCntZeroLen = 0;
     while (frameCnt > 0)
     {
         ksz8851RetrievePacketData(modeth_rxBuff, &len, frameCnt, frameCntTotal);
         if(len)
         {
-#ifdef DEBUG_MODETH
-            if ( len > 3){
-                MSG("process_rx[%u/%u] len=%u: [%x %x %x %x ... %x %x %x %x]\n", frameCnt, frameCntTotal, len,
-                    modeth_rxBuff[0], modeth_rxBuff[1], modeth_rxBuff[2], modeth_rxBuff[3],
-                    modeth_rxBuff[len-4], modeth_rxBuff[len-3], modeth_rxBuff[len-2], modeth_rxBuff[len-1]
-                    );
-            } else {
-                MSG("process_rx[%u/%u] len=%u\n", frameCnt, frameCntTotal, len);
-            }
-#endif
             totalLen += len;
             tcpip_adapter_eth_input(modeth_rxBuff, len, NULL);
         } else {
-            printf("process_rx[%u/%u] zero len\n", frameCnt, frameCntTotal);
+            frameCntZeroLen++;
         }
         frameCnt--;
     }
-#ifdef DEBUG_MODETH
-    //if ( frameCntTotal != 1)
-        printf("TE process_rx frameCnt:%u len:%u REENABLEINT\n", frameCnt, totalLen);
-#endif
 
     // re-enable int
     ksz8851_regwr(REG_INT_MASK, INT_MASK);
+    portENABLE_INTERRUPTS();
+
+#ifdef DEBUG_MODETH
+    MSG("process_rx frames=%u (%u)\n", frameCntTotal, frameCntZeroLen);
+    // print last frame
+    if (frameCntTotal){
+        for ( uint16_t i = 0; i < len; ++i)
+        {
+            printf("%02x ", modeth_rxBuff[i]);
+            if (i%8 == 7)
+                printf("  ");
+            if (i%16==15)
+                printf("\n");
+        }
+        printf("\n");
+    }
+#endif
 
     return totalLen;
 }

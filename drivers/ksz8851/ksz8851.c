@@ -532,36 +532,27 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length,
             //End RXQ read access
              spi_clrbits(REG_RXQ_CMD, RXQ_START);
              *length = n;
-#ifdef DEBUG_KSZ8851
-             MSG("Retr[%u/%u] read len=%u s=0x%02x a=0x%02x:\n", frameCnt, frameCntTotal, *length, status, ksz8851_regrd(REG_RX_ADDR_PTR));
-			 for ( uint16_t i = 0; i < *length; ++i)
-			 {
-				 printf("%02x", localBuffer[i]);
-				 if (i%4==3)
-				   printf(" ");
-				if (i%40==39)
-					printf("\n");
-			 }
-			 printf("\n");
-#endif
              return;
          }
          else
          {
-            printf("Retr[%u/%u] unacceptable frame size: n=%u (4,%u) s=0x%02x a=0x%02x\n", frameCnt, frameCntTotal, n, ETHERNET_RX_PACKET_BUFF_SIZE, status, ksz8851_regrd(REG_RX_ADDR_PTR));
+            // no printf inside portDISABLE_INTERRUPTS()
+            //MSG("Retr[%u/%u] unacceptable frame size: n=%u (4,%u) s=0x%02x a=0x%02x\n", frameCnt, frameCntTotal, n, ETHERNET_RX_PACKET_BUFF_SIZE, status, ksz8851_regrd(REG_RX_ADDR_PTR));
          }
       }
       else
       {
-         printf("Retr[%u/%u] errors n=%u s=0x%02x a=0x%02x\n\n\n\n\n\n", frameCnt, frameCntTotal, n, status, ksz8851_regrd(REG_RX_ADDR_PTR));
+         // no printf inside portDISABLE_INTERRUPTS()
+         //MSG("Retr[%u/%u] errors n=%u s=0x%02x a=0x%02x\n\n\n\n\n\n", frameCnt, frameCntTotal, n, status, ksz8851_regrd(REG_RX_ADDR_PTR));
       }
    }
    else
    {
-      printf("Retr[%u/%u] invalid n=%u s=0x%02x a=%02x\n\n\n\n\n\n", frameCnt, frameCntTotal, n, status, ksz8851_regrd(REG_RX_ADDR_PTR));
+      // no printf inside portDISABLE_INTERRUPTS()
+      //MSG("Retr[%u/%u] invalid n=%u s=0x%02x a=%02x\n\n\n\n\n\n", frameCnt, frameCntTotal, n, status, ksz8851_regrd(REG_RX_ADDR_PTR));
    }
    //Release the current error frame from RXQ
-   MSG("clearing\n");
+   //MSG("clearing\n");
    spi_setbits(REG_RXQ_CMD, RXQ_CMD_FREE_PACKET);
    while ( ksz8851_regrd(REG_RXQ_CMD) & RXQ_CMD_FREE_PACKET ){
 		vTaskDelay(1 / portTICK_PERIOD_MS);
