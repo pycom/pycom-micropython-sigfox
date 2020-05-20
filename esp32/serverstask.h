@@ -22,7 +22,7 @@
 
 #define SERVERS_USER_PASS_LEN_MAX                   32
 
-#define SERVERS_CYCLE_TIME_MS                       50
+#define SERVERS_CYCLE_TIME_MS                       2
 
 #define SERVERS_DEF_USER                            "micro"
 #define SERVERS_DEF_PASS                            "python"
