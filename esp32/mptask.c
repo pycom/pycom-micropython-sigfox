@@ -242,11 +242,15 @@ soft_reset:
         // Config Wifi as per Pycom config
         mptask_config_wifi(false);
         // these ones are special because they need uPy running and they launch tasks
+#ifndef PYETH_ENABLED
+// PyEth and LoRa module are both connected via SPI 3,
+// so with PyEth enabled, we disable th LoRa module
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
         modlora_init0();
 #endif
 #if defined(SIPY) || defined(LOPY4) || defined (FIPY)
         modsigfox_init0();
+#endif
 #endif
     }
 
