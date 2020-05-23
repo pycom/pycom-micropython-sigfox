@@ -281,7 +281,7 @@ int lwipsocket_socket_setsockopt(mod_network_socket_obj_t *s, mp_uint_t level, m
 }
 
 int lwipsocket_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_ms, int *_errno) {
-    int ret;
+    int ret = 0;
 
     if (s->sock_base.is_ssl) {
        mp_obj_ssl_socket_t *ss = (mp_obj_ssl_socket_t *)s;
@@ -289,28 +289,38 @@ int lwipsocket_socket_settimeout(mod_network_socket_obj_t *s, mp_int_t timeout_m
        mbedtls_ssl_conf_read_timeout(&ss->conf, timeout_ms);
     }
     else {
+        struct timeval tv;
         uint32_t option = lwip_fcntl(s->sock_base.u.sd, F_GETFL, 0);
 
-        if (timeout_ms <= 0) {
-            if (timeout_ms == 0) {
-                // set non-blocking mode
-                option |= O_NONBLOCK;
-            } else {
-                // set blocking mode
-                option &= ~O_NONBLOCK;
-                timeout_ms = UINT32_MAX;
-            }
-        } else {
-            // set blocking mode
+        // timeout_ms is in milliseconds
+        // 0 value means set the socket to non-blocking
+        if(timeout_ms == 0) {
+            // set non-blocking mode
+            option |= O_NONBLOCK;
+            // Timeout values does not really matter as the socket set to non-blocking
+            tv.tv_sec = 0;
+            tv.tv_usec = 0;
+        }
+        else {
+            // set the socket to blocking
             option &= ~O_NONBLOCK;
+            // Set the timeout if given correctly
+            if(timeout_ms != -1) {
+                // set the timeout
+                tv.tv_sec = timeout_ms / 1000;              // seconds
+                tv.tv_usec = (timeout_ms % 1000) * 1000;    // microseconds
+            }
+            else {
+                // Clear the timeout values, the socket must wait forever
+                tv.tv_sec = 0;
+                tv.tv_usec = 0;
+            }
         }
 
-        // set the timeout
-        struct timeval tv;
-        tv.tv_sec = timeout_ms / 1000;              // seconds
-        tv.tv_usec = (timeout_ms % 1000) * 1000;    // microseconds
+        // Configure the correct timeout
         ret = lwip_setsockopt(s->sock_base.u.sd, SOL_SOCKET, SO_SNDTIMEO, &tv, sizeof(tv));
         ret |= lwip_setsockopt(s->sock_base.u.sd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+        // Configure the socket as per its option: blocking or non blocking
         ret |= lwip_fcntl(s->sock_base.u.sd, F_SETFL, option);
 
         if (ret != 0) {

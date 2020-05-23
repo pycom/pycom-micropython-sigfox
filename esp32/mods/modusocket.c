@@ -645,6 +645,7 @@ STATIC mp_obj_t socket_settimeout(mp_obj_t self_in, mp_obj_t timeout_in) {
     if (timeout_in == mp_const_none) {
         timeout = -1;
     } else {
+        // Convert the timeout given in seconds to millisecond
         timeout = 1000 * mp_obj_get_float(timeout_in);
     }
     int _errno;
