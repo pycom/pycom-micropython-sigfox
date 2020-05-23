@@ -624,11 +624,11 @@ ifeq ($(SECURE), on)
 	$(CP) libbootloader_support.a ../
 	$(Q) $(RM) -rf ./bootloader/lib/bootloader_support_temp
 endif #ifeq ($(SECURE), on)
-	$(Q) $(MKDIR) -p build
-	$(Q) $(MKDIR) -p build/$(BOARD)
-	$(Q) $(MKDIR) -p build/$(BOARD)/$(BTYPE)
-	$(Q) $(MKDIR) -p build/$(BOARD)/$(BTYPE)/bootloader
-	$(Q) $(CP) bootloader/lib/bootloader.map build/$(BOARD)/$(BTYPE)/bootloader/
+	$(Q) $(MKDIR) -p $(BUILD_DIR)
+	$(Q) $(MKDIR) -p $(BUILD_DIR)/$(BOARD)
+	$(Q) $(MKDIR) -p $(BUILD_DIR)/$(BOARD)/$(BTYPE)
+	$(Q) $(MKDIR) -p $(BUILD_DIR)/$(BOARD)/$(BTYPE)/bootloader
+	$(Q) $(CP) bootloader/lib/bootloader.map $(BUILD_DIR)/$(BOARD)/$(BTYPE)/bootloader/
 	$(ECHO) "LINK $(CC) *** $(BOOT_LDFLAGS) *** $(BOOT_LIBS) -o $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
