@@ -56,7 +56,6 @@ def main():
         shutil.copy(src + '/driver/libdriver.a', dsttmpapp)
         shutil.copy(src + '/esp_adc_cal/libesp_adc_cal.a', dsttmpapp)
         shutil.copy(src + '/esp32/libesp32.a', dsttmpapp)
-        #shutil.copy(src + '/smartconfig_ack/libsmartconfig_ack.a', dsttmpapp)
         shutil.copy(src + '/expat/libexpat.a', dsttmpapp)
         shutil.copy(src + '/freertos/libfreertos.a', dsttmpapp)
         shutil.copy(src + '/heap/libheap.a', dsttmpapp)
@@ -97,6 +96,7 @@ def main():
         shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libmesh.a', dsttmpapp)
         shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libcoexist.a', dsttmpapp)
         shutil.copy(os.environ['IDF_PATH'] + '/components/xtensa/esp32/libhal.a', dsttmpapp)
+        shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libsmartconfig.a', dsttmpapp)
 
         # copy libraries from toolchain
         toolchain_path = find_xtensa_path()

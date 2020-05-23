@@ -116,7 +116,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
        -lesp_ringbuf -lcoap -lmdns -lefuse -lespcoredump -lapp_update \
-       -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth
+       -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig
 
 # These libraries cannot be used otherwise application.elf does not link, error: "undefined references to `__locale_ctype_ptr'"
 # Using the libc and libm from the Toolchain solves this issue.
