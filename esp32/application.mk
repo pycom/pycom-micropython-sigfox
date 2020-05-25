@@ -391,10 +391,12 @@ OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
 ifeq ($(PYGATE_ENABLED), 1)
 OBJ += $(addprefix $(BUILD)/, $(APP_SX1308_SRC_C:.c=.o) $(APP_PYGATE_SRC_C:.c=.o))
 CFLAGS += -DPYGATE_ENABLED
+SRC_QSTR += $(APP_SX1308_SRC_C) $(APP_PYGATE_SRC_C)
 endif
 ifeq ($(PYETH_ENABLED), 1)
 OBJ += $(addprefix $(BUILD)/, $(APP_KSZ8851_SRC_C:.c=.o) $(APP_ETHERNET_SRC_C:.c=.o))
 CFLAGS += -DPYETH_ENABLED
+SRC_QSTR += $(APP_KSZ8851_SRC_C) $(APP_ETHERNET_SRC_C)
 endif
 OBJ += $(BUILD)/pins.o
 
