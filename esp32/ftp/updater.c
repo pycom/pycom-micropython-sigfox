@@ -225,11 +225,16 @@ bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset) 
         memcpy(buff, (void *)boot_info, sizeof(boot_info_t));
 
         // read the next bytes
-        spi_flash_read_encrypted(boot_info_offset + sizeof(boot_info_t),
+        //TODO: temporary replacing with spi_flash_read as currently on esp-idf 4.0 spi_flash_read_encrypted causes lockup
+//        spi_flash_read_encrypted(boot_info_offset + sizeof(boot_info_t),
+//                                (void *)(buff + sizeof(boot_info_t)),
+//                                len_aligned_16 - sizeof(boot_info_t) );
+        spi_flash_read(boot_info_offset + sizeof(boot_info_t),
                                 (void *)(buff + sizeof(boot_info_t)),
                                 len_aligned_16 - sizeof(boot_info_t) );
-
-        ret = spi_flash_write_encrypted(boot_info_offset, (void *)buff, len_aligned_16);
+        //TODO: temporary replacing with spi_flash_write as currently on esp-idf 4.0 spi_flash_write_encrypted causes lockup
+        //ret = spi_flash_write_encrypted(boot_info_offset, (void *)buff, len_aligned_16);
+        ret = spi_flash_write(boot_info_offset, (void *)buff, len_aligned_16);
     } else { // not-encrypted flash, just write directly boot_info
             ret = spi_flash_write(boot_info_offset, (void *)boot_info, sizeof(boot_info_t));
     }
@@ -287,7 +292,9 @@ int updater_ota_next_slot_address() {
 static esp_err_t updater_spi_flash_read(size_t src, void *dest, size_t size, bool allow_decrypt)
 {
     if (allow_decrypt && esp_flash_encryption_enabled()) {
-        return spi_flash_read_encrypted(src, dest, size);
+        //TODO: temporary replacing with spi_flash_read as currently on esp-idf 4.0 spi_flash_read_encrypted causes lockup
+        //return spi_flash_read_encrypted(src, dest, size);
+        return spi_flash_read(src, dest, size);
     } else {
         return spi_flash_read(src, dest, size);
     }
@@ -301,7 +308,9 @@ static esp_err_t updater_spi_flash_write(size_t dest_addr, void *src, size_t siz
                                         bool write_encrypted)
 {
     if (write_encrypted && esp_flash_encryption_enabled()) {
-        return spi_flash_write_encrypted(dest_addr, src, size);
+        //TODO: temporary replacing with spi_flash_write as currently on esp-idf 4.0 spi_flash_write_encrypted causes lockup
+        //return spi_flash_write_encrypted(dest_addr, src, size);
+        return spi_flash_write(dest_addr, src, size);
     } else {
         return spi_flash_write(dest_addr, src, size);
     }
