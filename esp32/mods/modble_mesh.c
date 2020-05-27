@@ -27,42 +27,6 @@
 
 #include "mpirq.h"
 
-// Created for first Sensor Model release
-// TODO: Allocate dynamically
-
-NET_BUF_SIMPLE_DEFINE_STATIC(sensor_data, 2);
-
-static esp_ble_mesh_sensor_state_t sensor_states[1] = {
-    [0] = {
-        // Dummy property for first release
-        .sensor_property_id = 0x0056,
-        .descriptor.positive_tolerance = ESP_BLE_MESH_SENSOR_UNSPECIFIED_POS_TOLERANCE,
-        .descriptor.negative_tolerance = ESP_BLE_MESH_SENSOR_UNSPECIFIED_NEG_TOLERANCE,
-        .descriptor.sampling_function = ESP_BLE_MESH_SAMPLE_FUNC_UNSPECIFIED,
-        .descriptor.measure_period = ESP_BLE_MESH_SENSOR_NOT_APPL_MEASURE_PERIOD,
-        .descriptor.update_interval = ESP_BLE_MESH_SENSOR_NOT_APPL_UPDATE_INTERVAL,
-        .sensor_data.format = ESP_BLE_MESH_SENSOR_DATA_FORMAT_A,
-        .sensor_data.length = 1, /* 1 represents the length is 2 -> 16 bit representation */
-        .sensor_data.raw_value = &sensor_data,
-    },
-};
-
-ESP_BLE_MESH_MODEL_PUB_DEFINE(sensor_pub, 20, ROLE_NODE);
-static esp_ble_mesh_sensor_srv_t sensor_server = {
-    .rsp_ctrl.get_auto_rsp = ESP_BLE_MESH_SERVER_RSP_BY_APP,
-    .rsp_ctrl.set_auto_rsp = ESP_BLE_MESH_SERVER_RSP_BY_APP,
-    .state_count = ARRAY_SIZE(sensor_states),
-    .states = sensor_states,
-};
-
-ESP_BLE_MESH_MODEL_PUB_DEFINE(sensor_setup_pub, 20, ROLE_NODE);
-static esp_ble_mesh_sensor_srv_t sensor_setup_server = {
-    .rsp_ctrl.get_auto_rsp = ESP_BLE_MESH_SERVER_RSP_BY_APP,
-    .rsp_ctrl.set_auto_rsp = ESP_BLE_MESH_SERVER_RSP_BY_APP,
-    .state_count = ARRAY_SIZE(sensor_states),
-    .states = sensor_states,
-};
-
 static esp_ble_mesh_client_t sensor_client;
 
 /******************************************************************************
@@ -224,6 +188,14 @@ typedef struct mod_ble_mesh_elem_s {
     esp_ble_mesh_model_t *vnd_models;
 }mod_ble_mesh_elem_t;
 
+// This is the same as esp_ble_mesh_sensor_srv_t just without const members
+typedef struct mod_ble_mesh_sensor_srv_s {
+    esp_ble_mesh_model_t *model;
+    esp_ble_mesh_server_rsp_ctrl_t rsp_ctrl;
+    uint8_t state_count;
+    esp_ble_mesh_sensor_state_t *states;
+} mod_ble_mesh_sensor_srv_t;
+
 typedef struct mod_ble_mesh_element_class_s {
     mp_obj_base_t base;
     mod_ble_mesh_elem_t *element;
@@ -282,18 +254,12 @@ typedef struct mod_ble_mesh_provision_callback_param_s {
     int8_t oob_key;
 }mod_ble_mesh_provision_callback_param_t;
 
-typedef struct mod_ble_mesh_sensor_representation_s {
-    float sen_min;
-    float sen_max;
-    float sen_res;
-}mod_ble_mesh_sensor_representation_t;
-
-
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
 static mp_obj_t mod_ble_state_to_mp_obj(mod_ble_mesh_model_class_t* model, void* state_change);
 static esp_ble_mesh_generic_client_set_state_t mod_ble_mp_obj_to_state(mp_obj_t obj, mod_ble_mesh_model_class_t* model);
+static uint8_t get_sen_state_idx(mp_int_t prop_id);
 static uint16_t example_ble_mesh_get_sensor_data(esp_ble_mesh_sensor_state_t *state, uint8_t *data);
 
 /******************************************************************************
@@ -305,13 +271,14 @@ static const mp_obj_type_t mod_ble_mesh_model_type;
 static mod_ble_mesh_element_class_t mod_ble_mesh_element;
 // This is a list containing all the Models regardless their Elements
 static mod_ble_mesh_model_class_t *mod_ble_models_list = NULL;
+// Sensor Server
+static mod_ble_mesh_sensor_srv_t mod_ble_sensor_srv;
 
 static bool initialized = false;
 static esp_ble_mesh_prov_t *provision_ptr;
 static esp_ble_mesh_comp_t *composition_ptr;
 // TODO: double check whether this is needed
 static uint8_t msg_tid = 0x0;
-static mod_ble_mesh_sensor_representation_t mod_ble_mesh_sen_rep;
 
 // TODO: This should be part of the primary element as provisioning is performed on it only
 mp_obj_t provision_callback;
@@ -489,26 +456,30 @@ static void mod_ble_mesh_sensor_server_callback_handler(void* param_in) {
         esp_ble_mesh_model_t* model = callback_param->param->model;
 
         if (event == ESP_BLE_MESH_SENSOR_SERVER_RECV_GET_MSG_EVT) {
-
             uint8_t *status = NULL;
             uint16_t buf_size = 0;
             uint16_t length = 0;
 
-            esp_ble_mesh_sensor_state_t *state = &sensor_states[0];
+            // Get Property ID from request
+            mp_int_t prop_id = param->value.get.sensor_data.property_id;
+            // Get Sensor State Index
+            int8_t state_idx = get_sen_state_idx(prop_id);
+
+            esp_ble_mesh_sensor_state_t *state = &mod_ble_sensor_srv.states[state_idx];
 
             if (state->sensor_data.length == ESP_BLE_MESH_SENSOR_DATA_ZERO_LEN) {
                 buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN;
             } else {
-                /* Use "state->sensor_data.length + 1" because the length of sensor data is zero-based. */
+                // Use "state->sensor_data.length + 3" because sendind 4 uint8
                 if (state->sensor_data.format == ESP_BLE_MESH_SENSOR_DATA_FORMAT_A) {
-                    buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_A_MPID_LEN + state->sensor_data.length + 1;
+                    buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_A_MPID_LEN + state->sensor_data.length + 3;
                 } else {
-                    buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN + state->sensor_data.length + 1;
+                    buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN + state->sensor_data.length + 3;
                 }
             }
 
             status = calloc(1, buf_size);
-            length = example_ble_mesh_get_sensor_data(&sensor_states[0], status);
+            length = example_ble_mesh_get_sensor_data(state, status);
 
             esp_ble_mesh_server_model_send_msg(&param->ctx.model, &param->ctx, ESP_BLE_MESH_MODEL_OP_SENSOR_STATUS, length, status);
             free(status);
@@ -723,14 +694,20 @@ static mp_obj_t mod_ble_state_to_mp_obj(mod_ble_mesh_model_class_t* model, void*
                 // GET the state of Sensor Server
                 uint8_t *data = state_change_client->sensor_status.marshalled_sensor_data->__buf;
                 uint8_t fmt = ESP_BLE_MESH_GET_SENSOR_DATA_FORMAT(data);
-                //Can be used later
-                //uint16_t prop_id = ESP_BLE_MESH_GET_SENSOR_DATA_PROPERTY_ID(data, fmt);
+                uint16_t prop_id = ESP_BLE_MESH_GET_SENSOR_DATA_PROPERTY_ID(data, fmt);
                 uint8_t mpid_len = (fmt == ESP_BLE_MESH_SENSOR_DATA_FORMAT_A ? ESP_BLE_MESH_SENSOR_DATA_FORMAT_A_MPID_LEN : ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN);
-                uint8_t raw_meas1 = *(data + mpid_len);
-                uint8_t raw_meas2 = *(data + mpid_len + 1);
-                uint16_t raw_meas = (raw_meas2 << 8) | (raw_meas1 & 0xff);
-                float float_meas = raw_meas*(mod_ble_mesh_sen_rep.sen_max - mod_ble_mesh_sen_rep.sen_min)/65535 + mod_ble_mesh_sen_rep.sen_min;
-                ret =  mp_obj_new_float(round(float_meas/mod_ble_mesh_sen_rep.sen_res)*mod_ble_mesh_sen_rep.sen_res);
+
+                // GET the state of Sensor Server
+                uint8_t state_u8[4];
+                state_u8[0] = *(data + mpid_len);
+                state_u8[1] = *(data + mpid_len + 1);
+                state_u8[2] = *(data + mpid_len + 2);
+                state_u8[3] = *(data + mpid_len + 3);
+
+                uint32_t state_u32;
+                state_u32 = *(uint32_t*)&state_u8;
+                float state_float = *(float*)&state_u32;
+                ret = mp_obj_new_float(state_float);
             }
         }
     }
@@ -768,6 +745,26 @@ static esp_ble_mesh_generic_client_set_state_t mod_ble_mp_obj_to_state(mp_obj_t 
     return set;
 }
 
+// Get Sensor State Index defined by Property ID
+static uint8_t get_sen_state_idx(mp_int_t prop_id) {
+    // Invalidate State Index
+    int8_t state_idx = -1;
+
+    // Get First element if Property ID is not given
+    if(prop_id == -1) {
+        state_idx = 0;
+    }
+    else {
+        for(int8_t i=0; i<mod_ble_sensor_srv.state_count; i++) {
+            // Poroperty ID match
+            if(mod_ble_sensor_srv.states[i].sensor_property_id == prop_id) {
+                state_idx = i;
+            }
+        }
+    }
+    return state_idx;
+}
+
 /******************************************************************************
  DEFINE BLE MESH MODEL FUNCTIONS
  ******************************************************************************/
@@ -780,6 +777,7 @@ STATIC mp_obj_t mod_ble_mesh_model_get_state(mp_uint_t n_args, const mp_obj_t *p
             { MP_QSTR_addr,                  MP_ARG_INT,                   {.u_int = MOD_BLE_ADDR_ALL_NODES} },
             { MP_QSTR_app_idx,               MP_ARG_INT | MP_ARG_KW_ONLY,  {.u_int = 0} },
             { MP_QSTR_state_type,            MP_ARG_OBJ | MP_ARG_KW_ONLY,  {.u_obj = mp_const_none} },
+            { MP_QSTR_prop_id,               MP_ARG_INT | MP_ARG_KW_ONLY,  {.u_int = -1} },
     };
 
     mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_model_get_state_args)];
@@ -795,10 +793,32 @@ STATIC mp_obj_t mod_ble_mesh_model_get_state(mp_uint_t n_args, const mp_obj_t *p
             return mod_ble_state_to_mp_obj(self, NULL);
         }
         else if(self->group == MOD_BLE_MESH_GROUP_SENSOR) {
-            // GET the state of Sensor Server
-            uint16_t raw_meas = (sensor_data.data[1] << 8) | (sensor_data.data[0] & 0xff);
-            float float_meas = raw_meas*(mod_ble_mesh_sen_rep.sen_max - mod_ble_mesh_sen_rep.sen_min)/65535 + mod_ble_mesh_sen_rep.sen_min;
-            return mp_obj_new_float(round(float_meas/mod_ble_mesh_sen_rep.sen_res)*mod_ble_mesh_sen_rep.sen_res);
+            if(mod_ble_sensor_srv.state_count > 0) {
+                // Get Property ID from user
+                mp_int_t prop_id = args[4].u_int;
+                // Get Sensor State Index
+                int8_t state_idx = get_sen_state_idx(prop_id);
+
+                if(state_idx != -1) {
+                    // GET the state of Sensor Server
+                    uint8_t state_u8[4];
+                    state_u8[0] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[0];
+                    state_u8[1] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[1];
+                    state_u8[2] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[2];
+                    state_u8[3] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[3];
+
+                    uint32_t state_u32;
+                    state_u32 = *(uint32_t*)&state_u8;
+                    float state_float = *(float*)&state_u32;
+                    return mp_obj_new_float(state_float);
+                }
+                else {
+                    return mp_const_none;
+                }
+            }
+            else {
+                return mp_const_none;
+            }
         }
         else {
             return mp_const_none;
@@ -847,7 +867,14 @@ STATIC mp_obj_t mod_ble_mesh_model_get_state(mp_uint_t n_args, const mp_obj_t *p
             common.msg_timeout = 100;
             common.msg_role = ROLE_NODE;
 
-            //get.sensor_get.property_id = 0x0056;
+            // Property ID
+            get.sensor_get.op_en = true;
+            if(args[4].u_int == -1) {
+                get.sensor_get.property_id = mod_ble_sensor_srv.states[0].sensor_property_id;
+            }
+            else {
+                get.sensor_get.property_id = args[4].u_int;
+            }
 
             esp_ble_mesh_sensor_client_get_state(&common, &get);
         }
@@ -864,8 +891,9 @@ STATIC mp_obj_t mod_ble_mesh_model_set_state(mp_uint_t n_args, const mp_obj_t *p
             { MP_QSTR_self_in,               MP_ARG_OBJ,                                                     },
             { MP_QSTR_value,                 MP_ARG_OBJ | MP_ARG_REQUIRED,                                   },
             { MP_QSTR_addr,                  MP_ARG_INT,                   {.u_int = MOD_BLE_ADDR_ALL_NODES} },
-            { MP_QSTR_app_idx,               MP_ARG_INT | MP_ARG_KW_ONLY,  {.u_int = 0} },
-            { MP_QSTR_state_type,            MP_ARG_OBJ | MP_ARG_KW_ONLY,  {.u_obj = mp_const_none} },
+            { MP_QSTR_app_idx,               MP_ARG_INT | MP_ARG_KW_ONLY,  {.u_int = 0}                      },
+            { MP_QSTR_state_type,            MP_ARG_OBJ | MP_ARG_KW_ONLY,  {.u_obj = mp_const_none}          },
+            { MP_QSTR_prop_id,               MP_ARG_INT | MP_ARG_KW_ONLY,  {.u_int = -1}                     },
     };
 
     mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_model_set_state_args)];
@@ -896,20 +924,30 @@ STATIC mp_obj_t mod_ble_mesh_model_set_state(mp_uint_t n_args, const mp_obj_t *p
             }
         }
         else if(self->group == MOD_BLE_MESH_GROUP_SENSOR) {
-            // SET the state of Sensor Server
-            float state_float = mp_obj_get_float(state_mp);
-            uint16_t state_raw = (uint16_t)((65535/(mod_ble_mesh_sen_rep.sen_max - mod_ble_mesh_sen_rep.sen_min))*(state_float - mod_ble_mesh_sen_rep.sen_min));
+            // Get Property ID from user
+            mp_int_t prop_id = args[5].u_int;
+            // Get Sensor State Index
+            int8_t state_idx = get_sen_state_idx(prop_id);
 
-            sensor_data.data[0] = state_raw & 0xff;
-            sensor_data.data[1] = state_raw >> 8;
+            if(state_idx != -1) {
+                // SET the state of Sensor Server
+                float state_float = mp_obj_get_float(state_mp);
+                uint32_t state_u32 = *(uint32_t*)&state_float;
 
-            // Inform user through callback
-            if(self->callback != NULL) {
-                mp_obj_t args[3];
-                args[0] = mp_obj_new_float(state_float);
-                args[1] = mp_obj_new_int(0);
-                args[2] = mp_obj_new_int(0);
-                mp_call_function_n_kw(self->callback, 3, 0, args);
+                // Store uint32_t State as 4 uint8_t values
+                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[0] = (state_u32 & 0x000000ff);
+                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[1] = (state_u32 & 0x0000ff00) >> 8;
+                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[2] = (state_u32 & 0x00ff0000) >> 16;
+                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[3] = (state_u32 & 0xff000000) >> 24;
+
+                // Inform user through callback
+                if(self->callback != NULL) {
+                    mp_obj_t args[3];
+                    args[0] = mp_obj_new_float(state_float);
+                    args[1] = mp_obj_new_int(0);
+                    args[2] = mp_obj_new_int(0);
+                    mp_call_function_n_kw(self->callback, 3, 0, args);
+                }
             }
         }
     } else {
@@ -962,8 +1000,9 @@ STATIC mp_obj_t mod_ble_mesh_model_status_state(mp_uint_t n_args, const mp_obj_t
     STATIC const mp_arg_t mod_ble_mesh_model_status_state_args[] = {
             { MP_QSTR_self_in,               MP_ARG_OBJ,                                                     },
             { MP_QSTR_addr,                  MP_ARG_INT,                   {.u_int = MOD_BLE_ADDR_ALL_NODES} },
-            { MP_QSTR_app_idx,               MP_ARG_INT | MP_ARG_KW_ONLY,  {.u_int = 0} },
-            { MP_QSTR_state_type,            MP_ARG_OBJ | MP_ARG_KW_ONLY,  {.u_obj = mp_const_none} },
+            { MP_QSTR_app_idx,               MP_ARG_INT | MP_ARG_KW_ONLY,  {.u_int = 0}                      },
+            { MP_QSTR_state_type,            MP_ARG_OBJ | MP_ARG_KW_ONLY,  {.u_obj = mp_const_none}          },
+            { MP_QSTR_prop_id,               MP_ARG_INT | MP_ARG_KW_ONLY,  {.u_int = -1}                     },
     };
 
     mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_model_status_state_args)];
@@ -1015,28 +1054,35 @@ STATIC mp_obj_t mod_ble_mesh_model_status_state(mp_uint_t n_args, const mp_obj_t
         }
         else if(self->group == MOD_BLE_MESH_GROUP_SENSOR) {
 
-            uint8_t *status = NULL;
-            uint16_t buf_size = 0;
-            uint16_t length = 0;
+            // Get Property ID from user
+            mp_int_t prop_id = args[4].u_int;
+            // Get Sensor State Index
+            int8_t state_idx = get_sen_state_idx(prop_id);
 
-            esp_ble_mesh_sensor_state_t *state = &sensor_states[0];
+            if(state_idx != -1) {
+                uint8_t *status = NULL;
+                uint16_t buf_size = 0;
+                uint16_t length = 0;
 
-            if (state->sensor_data.length == ESP_BLE_MESH_SENSOR_DATA_ZERO_LEN) {
-                buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN;
-            } else {
-                /* Use "state->sensor_data.length + 1" because the length of sensor data is zero-based. */
-                if (state->sensor_data.format == ESP_BLE_MESH_SENSOR_DATA_FORMAT_A) {
-                    buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_A_MPID_LEN + state->sensor_data.length + 1;
+                esp_ble_mesh_sensor_state_t *state = &mod_ble_sensor_srv.states[state_idx];
+
+                if (state->sensor_data.length == ESP_BLE_MESH_SENSOR_DATA_ZERO_LEN) {
+                    buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN;
                 } else {
-                    buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN + state->sensor_data.length + 1;
+                    // Use "state->sensor_data.length + 3" because sending 4 uint8
+                    if (state->sensor_data.format == ESP_BLE_MESH_SENSOR_DATA_FORMAT_A) {
+                        buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_A_MPID_LEN + state->sensor_data.length + 3;
+                    } else {
+                        buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN + state->sensor_data.length + 3;
+                    }
                 }
+
+                status = calloc(1, buf_size);
+                length = example_ble_mesh_get_sensor_data(&mod_ble_sensor_srv.states[state_idx], status);
+
+                esp_ble_mesh_server_model_send_msg(&self->element->element->sig_models[self->index], &ctx, ESP_BLE_MESH_MODEL_OP_SENSOR_STATUS, length, status);
+                free(status);
             }
-
-            status = calloc(1, buf_size);
-            length = example_ble_mesh_get_sensor_data(&sensor_states[0], status);
-
-            esp_ble_mesh_server_model_send_msg(&self->element->element->sig_models[self->index], &ctx, ESP_BLE_MESH_MODEL_OP_SENSOR_STATUS, length, status);
-            free(status);
         }
 
         return mp_const_none;
@@ -1050,11 +1096,66 @@ STATIC mp_obj_t mod_ble_mesh_model_status_state(mp_uint_t n_args, const mp_obj_t
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_model_status_state_obj, 1, mod_ble_mesh_model_status_state);
 
+// Add Sensor
+STATIC mp_obj_t mod_ble_mesh_model_add_sensor(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+
+    STATIC const mp_arg_t mod_ble_mesh_model_add_sensor_args[] = {
+            { MP_QSTR_self_in,               MP_ARG_OBJ,                                                     },
+            { MP_QSTR_prop_id,               MP_ARG_INT,                   {.u_int = 0}                      },
+    };
+
+    mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_model_add_sensor_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_ble_mesh_model_add_sensor_args, args);
+
+    // Get Mod BLE Mesh Model
+    mod_ble_mesh_model_class_t* self = (mod_ble_mesh_model_class_t*)args[0].u_obj;
+    uint8_t prop_id = args[1].u_int;
+
+    if(self->group == MOD_BLE_MESH_GROUP_SENSOR && self->server_client == MOD_BLE_MESH_SERVER) {
+
+        for(int i=0; i<mod_ble_sensor_srv.state_count; i++) {
+            if(mod_ble_sensor_srv.states[i].sensor_property_id == prop_id) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Sensor State with given Property ID is already exists!"));
+            }
+        }
+
+        // Define Sensor Data with 4xuint8 Data
+        u8_t* net_buf_data = (u8_t *)heap_caps_malloc(4*sizeof(u8_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        struct net_buf_simple* asd = (struct net_buf_simple *)heap_caps_malloc(sizeof(struct net_buf_simple), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        asd->__buf = net_buf_data;
+        asd->data = net_buf_data;
+        asd->len = 0;
+        asd->size = 4;
+
+        mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].sensor_property_id = prop_id;
+        mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].descriptor.positive_tolerance = ESP_BLE_MESH_SENSOR_UNSPECIFIED_POS_TOLERANCE;
+        mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].descriptor.negative_tolerance = ESP_BLE_MESH_SENSOR_UNSPECIFIED_NEG_TOLERANCE;
+        mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].descriptor.sampling_function = ESP_BLE_MESH_SAMPLE_FUNC_UNSPECIFIED;
+        mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].descriptor.measure_period = ESP_BLE_MESH_SENSOR_NOT_APPL_MEASURE_PERIOD;
+        mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].descriptor.update_interval = ESP_BLE_MESH_SENSOR_NOT_APPL_UPDATE_INTERVAL;
+        mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].sensor_data.format = ESP_BLE_MESH_SENSOR_DATA_FORMAT_A;
+        mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].sensor_data.length = 1;
+        mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].sensor_data.raw_value = asd;
+
+        // Increase Number of States
+        mod_ble_sensor_srv.state_count = mod_ble_sensor_srv.state_count + 1;
+
+    }
+    else {
+        // Error if not Sensor Server Model
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "This operation is only allowed on Sensor Server Model!"));
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_ble_mesh_model_add_sensor_obj, 1, mod_ble_mesh_model_add_sensor);
+
 STATIC const mp_map_elem_t mod_ble_mesh_model_locals_dict_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_BLE_Mesh_Model) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_get_state),                       (mp_obj_t)&mod_ble_mesh_model_get_state_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_set_state),                       (mp_obj_t)&mod_ble_mesh_model_set_state_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_status_state),                    (mp_obj_t)&mod_ble_mesh_model_status_state_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_add_sensor),                      (mp_obj_t)&mod_ble_mesh_model_add_sensor_obj },
 
 };
 STATIC MP_DEFINE_CONST_DICT(mod_ble_mesh_model_locals_dict, mod_ble_mesh_model_locals_dict_table);
@@ -1074,7 +1175,7 @@ static uint16_t example_ble_mesh_get_sensor_data(esp_ble_mesh_sensor_state_t *st
     uint32_t mpid = 0;
 
     if (state == NULL || data == NULL) {
-        printf("SInvalid parameter\n");
+        printf("Invalid parameter\n");
         return 0;
     }
 
@@ -1091,8 +1192,8 @@ static uint16_t example_ble_mesh_get_sensor_data(esp_ble_mesh_sensor_state_t *st
             mpid = ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID(state->sensor_data.length, state->sensor_property_id);
             mpid_len = ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN;
         }
-        /* Use "state->sensor_data.length + 1" because the length of sensor data is zero-based. */
-        data_len = state->sensor_data.length + 1;
+        // Use "state->sensor_data.length + 3" because sending 4 uint8
+        data_len = state->sensor_data.length + 3;
     }
 
     memcpy(data, &mpid, mpid_len);
@@ -1109,10 +1210,6 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
             { MP_QSTR_server_client,         MP_ARG_INT,                  {.u_int = MOD_BLE_MESH_SERVER}},
             { MP_QSTR_callback,              MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
             { MP_QSTR_value,                 MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL}},
-            { MP_QSTR_sen_min,               MP_ARG_OBJ,                  {.u_int = MP_OBJ_NULL}},
-            { MP_QSTR_sen_max,               MP_ARG_OBJ,                  {.u_int = MP_OBJ_NULL}},
-            { MP_QSTR_sen_res,               MP_ARG_OBJ,                  {.u_int = MP_OBJ_NULL}},
-
     };
 
     mp_arg_val_t args[MP_ARRAY_SIZE(mod_ble_mesh_add_model_args)];
@@ -1124,10 +1221,6 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
     mp_int_t server_client = args[2].u_int;
     mp_obj_t callback = args[3].u_obj;
     mp_obj_t value_mp_obj = args[4].u_obj;
-
-    mod_ble_mesh_sen_rep.sen_min = args[5].u_obj == MP_OBJ_NULL ? -100 : mp_obj_get_float(args[5].u_obj);
-    mod_ble_mesh_sen_rep.sen_max = args[6].u_int == MP_OBJ_NULL ?  100 : mp_obj_get_float(args[6].u_obj);
-    mod_ble_mesh_sen_rep.sen_res = args[7].u_int == MP_OBJ_NULL ?  0.01: mp_obj_get_float(args[7].u_obj);
 
     int16_t group = 0;
 
@@ -1181,29 +1274,18 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
             group = MOD_BLE_MESH_GROUP_GENERIC;
         }
         else if(type == MOD_BLE_MESH_MODEL_SENSOR) {
-            //esp_ble_mesh_sensor_srv_t* sensors_server = (esp_ble_mesh_sensor_srv_t *)heap_caps_malloc(sizeof(esp_ble_mesh_sensor_srv_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-            //sensors_server->rsp_ctrl.get_auto_rsp = ESP_BLE_MESH_SERVER_RSP_BY_APP;
-            //sensors_server->rsp_ctrl.set_auto_rsp = ESP_BLE_MESH_SERVER_RSP_BY_APP;
+            ESP_BLE_MESH_MODEL_PUB_DEFINE(sensor_pub, 20, ROLE_NODE);
 
-            //esp_ble_mesh_model_t sen_srv_mod = ESP_BLE_MESH_MODEL_SENSOR_SRV(pub, &sensors_server);
-            esp_ble_mesh_model_t sen_srv_mod = ESP_BLE_MESH_MODEL_SENSOR_SRV(&sensor_pub, &sensor_server);
+            // 10 Number of Sensors is available
+            mod_ble_sensor_srv.rsp_ctrl.get_auto_rsp = ESP_BLE_MESH_SERVER_RSP_BY_APP;
+            mod_ble_sensor_srv.rsp_ctrl.set_auto_rsp = ESP_BLE_MESH_SERVER_RSP_BY_APP;
+            mod_ble_sensor_srv.state_count = 0;
+            mod_ble_sensor_srv.states = (esp_ble_mesh_sensor_state_t*)heap_caps_calloc(10, sizeof(esp_ble_mesh_sensor_state_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+
+            esp_ble_mesh_model_t sen_srv_mod = ESP_BLE_MESH_MODEL_SENSOR_SRV(&sensor_pub, &mod_ble_sensor_srv);
             memcpy(&tmp_model, &sen_srv_mod, sizeof(sen_srv_mod));
 
             op_def_status = BLE_MESH_MODEL_OP_SENSOR_STATUS;
-
-            group = MOD_BLE_MESH_GROUP_SENSOR;
-        }
-        else if(type == MOD_BLE_MESH_MODEL_SENSOR_SETUP) {
-            //esp_ble_mesh_sensor_setup_srv_t* sensors_setup_server = (esp_ble_mesh_sensor_setup_srv_t *)heap_caps_malloc(sizeof(esp_ble_mesh_sensor_setup_srv_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-            //sensors_setup_server->rsp_ctrl.get_auto_rsp = ESP_BLE_MESH_SERVER_AUTO_RSP;
-            //sensors_setup_server->rsp_ctrl.set_auto_rsp = ESP_BLE_MESH_SERVER_AUTO_RSP;
-
-            //esp_ble_mesh_model_t sen_setup_srv_mod = ESP_BLE_MESH_MODEL_SENSOR_SETUP_SRV(pub, sensors_setup_server);
-            //memcpy(&tmp_model, &sen_setup_srv_mod, sizeof(sen_setup_srv_mod));
-            esp_ble_mesh_model_t sen_stp_srv_mod = ESP_BLE_MESH_MODEL_SENSOR_SETUP_SRV(&sensor_setup_pub, &sensor_setup_server);
-            memcpy(&tmp_model, &sen_stp_srv_mod, sizeof(sen_stp_srv_mod));
-
-            op_def_status = BLE_MESH_MODEL_OP_SENSOR_CADENCE_STATUS;
 
             group = MOD_BLE_MESH_GROUP_SENSOR;
         }
@@ -1389,8 +1471,6 @@ STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp
     else {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "BLE Mesh module is already initialized!"));
     }
-
-    net_buf_simple_push_u8(&sensor_data, 0);
 
     return mp_const_none;
 }
