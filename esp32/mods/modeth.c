@@ -204,6 +204,8 @@ static void process_tx(uint8_t* buff, uint16_t len)
     } else {
         MSG("process_tx(%u)\n", len);
     }
+#else
+    MSG("process_tx(%u)\n", len);
 #endif
     // disable int before reading buffer
     portDISABLE_INTERRUPTS();
@@ -249,8 +251,8 @@ static uint32_t process_rx(void)
     ksz8851_regwr(REG_INT_MASK, INT_MASK);
     portENABLE_INTERRUPTS();
 
+    MSG("process_rx frames=%u (%u) len=%u\n", frameCntTotal, frameCntZeroLen, totalLen);
 #ifdef DEBUG_MODETH
-    MSG("process_rx frames=%u (%u)\n", frameCntTotal, frameCntZeroLen);
     // print last frame
     if (frameCntTotal){
         for ( uint16_t i = 0; i < len; ++i)
@@ -274,18 +276,6 @@ static void processInterrupt(void) {
     ctx.isr = 0;
     uint16_t processed = 0;
 
-#ifdef DEBUG_MODETH
-    // TODO: maybe we should check the queue and not enter the same cmd again? also in ksz8851_evt_callback
-    modeth_cmd_ctx_t ctx_peek;
-    UBaseType_t queue_len = uxQueueMessagesWaiting(eth_cmdQueue);
-    BaseType_t has_peek = xQueuePeek(eth_cmdQueue, &ctx_peek, 0);
-    assert( (bool) queue_len == (bool) has_peek );
-#endif
-
-    // // disable interrupts
-    // // FIXME: should we disable int around reading/clearing? do we need a mutex?
-    // ksz8851_regwr(REG_INT_MASK, 0);
-
     // read interrupt status
     ctx.isr = ksz8851_regrd(REG_INT_STATUS);
 
@@ -294,9 +284,6 @@ static void processInterrupt(void) {
 
     // read rx reason
     uint16_t rxqcr = ksz8851_regrd(REG_RXQ_CMD);
-
-    // // enable interrupts
-    // ksz8851_regwr(REG_INT_MASK, INT_MASK);
 
     if ( ctx.isr != 0x2008 || rxqcr != 0x630 )
         MSG("processInterrupt isr=0x%x rxqcr=0x%x %s%s%s\n", ctx.isr, rxqcr,
@@ -309,37 +296,19 @@ static void processInterrupt(void) {
 
 
     if (ctx.isr & INT_RX) {
-        //if (queue_len)
-        //    MSG("pI: RX + Q[%u]:{0x%x,...}\n", queue_len, ctx_peek.cmd );
-        // else
-        //     MSG("pI: RX + Q[%u]\n", queue_len );
         ctx.cmd = ETH_CMD_RX;
         xQueueSendToFront(eth_cmdQueue, &ctx, portMAX_DELAY);
         processed++;
     }
 
     if (ctx.isr & INT_RX_OVERRUN) {
-        //if (queue_len)
-        //    MSG("pI: RXOVER + Q[%u]:{0x%x,...}\n", queue_len, ctx_peek.cmd );
-        // else
-        //     MSG("pI: RXOVER + Q[%u]\n", queue_len );
         ctx.cmd = ETH_CMD_OVERRUN;
         xQueueSendToFront(eth_cmdQueue, &ctx, portMAX_DELAY);
         processed++;
     }
 
     if (ctx.isr & INT_PHY) {
-        //if (queue_len)
-        //    MSG("pI: PHY + Q[%u]:{0x%x,...}\n", queue_len, ctx_peek.cmd );
-        // else
-        //     MSG("pI: PHY + Q[%u]\n", queue_len );
         ctx.cmd = ETH_CMD_CHK_LINK;
-        // TODO: nofify needed?
-        // // unblock task if link up
-        // if(!eth_obj.link_status)
-        // {
-        //     xTaskNotifyFromISR(ethernetTaskHandle, 0, eIncrement, NULL);
-        // }
         xQueueSendToFront(eth_cmdQueue, &ctx, portMAX_DELAY);
         processed++;
     }
@@ -349,13 +318,14 @@ static void processInterrupt(void) {
     }
 
     if ( ! processed ) {
-        // Normally this shouldn't happen. It migth be possible to happen in this case:
-        // interupt fires
-        // cmd is put is received via the queue
-        // another interupt fires and puts a new cmd into the queue
-        // processInterrupt for the first one is exectued, but handles both (all) events
-        // later the second cmd is handled but processInterrupt doesn't find anything to do
-        // this case shouldn't be a real problem though?!
+        // This shouldn't happen regularly.
+        // It migth be possible to happen in this case:
+        // - interupt fires
+        // - cmd is put is received via the queue
+        // - another interupt fires and puts a new cmd into the queue
+        // - processInterrupt for the first one is exectued, but handles both (all) events
+        // - later the second cmd is handled but processInterrupt doesn't find anything to do
+        // - this case shouldn't be a real problem though
         ctx.cmd = ETH_CMD_OTHER;
         xQueueSend(eth_cmdQueue, &ctx, portMAX_DELAY);
         processed++;
@@ -468,24 +438,6 @@ eth_start:
                 interrupt_pin_value = interrupt_pin_value_new;
                 printStat = true;
             }
-            // if ( ( uxQueueMessagesWaiting(eth_cmdQueue) == 0 ) && ( interrupt_pin_value == 0 || interrupt_stati != INT_RX_WOL_LINKUP ) ) {
-            //     // there is no command,
-            //     // however either the interrupt line is low, or there is an atypical status
-            //     printStat = true;
-            // }
-            // if (ct % 100 == 0){
-            //     printStat = true;
-            // }
-            // if (printStat){
-            //     printf("TE ct=%u stack:%u queue:%u tx:%u/%u rx:%u/%u:%f link:%u:%u int:0x%x isr:0x%x (%u/%u) rstovf=%u rstint=%u\n",
-            //     // port:0x%x speed:%u\n",
-            //         ct, stack_high, uxQueueMessagesWaiting( eth_cmdQueue ),
-            //         ctTX, totalTX, ctRX, totalRX, ((double)totalRX/ctRX),
-            //         ksz8851GetLinkStatus(), get_eth_link_speed(), interrupt_pin_value, interrupt_stati, num_strange_isr, num_strange_isr_zero,
-            //         num_resets_overflow, num_resets_int_pin);
-            //         // ksz8851_regrd(REG_PORT_STATUS));
-            //     printStat = false;
-            // }
 
 
             ct++;
@@ -516,25 +468,6 @@ eth_start:
             if (xQueueReceive(eth_cmdQueue, &queue_entry, 200 / portTICK_PERIOD_MS) == pdTRUE)
             {
 
-                // bool log = true;
-                // // if ( uxQueueMessagesWaiting( eth_cmdQueue) == 0 && interrupt_pin_value == 1 ){
-                // //     // happy situation, don't log
-                // //     log = false;
-                // // }
-                // // if (queue_entry.cmd == ETH_CMD_TX && uxQueueMessagesWaiting( eth_cmdQueue) == 0 ){
-                // //     // don't log tx
-                // //     log = false;
-                // // }
-                // // if (queue_entry.cmd == ETH_CMD_RX && queue_entry.isr == 0x2008 && interrupt_pin_value ){
-                // //     // don't log rx as long as the int pin is ok (high)
-                // //     log = false;
-                // // }
-                // // if (queue_entry.cmd == ETH_CMD_HW_INT && )
-
-                // if (log)
-                //     MSG("TE ct=%u cmd:0x%x isr:0x%x queue:%u ksz8851:%u 0x%x port:0x%x speed:%u\n",
-                //         ct, queue_entry.cmd, (queue_entry.cmd == ETH_CMD_TX)?0:queue_entry.isr, uxQueueMessagesWaiting( eth_cmdQueue ),
-                //         ksz8851GetLinkStatus(), interrupt_pin_value, ksz8851_regrd(REG_PORT_STATUS), get_eth_link_speed() );
 
                 switch(queue_entry.cmd)
                 {
@@ -551,9 +484,6 @@ eth_start:
                         //MSG("TE RX {0x%x}\n", queue_entry.isr);
                         ctRX++;
                         totalRX += process_rx();
-                        // // Clear Intr status bits
-                        // // TODO: I think it's wrong to clear status here. But, we it should be properly tested
-                        // ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_CHK_LINK:
                         MSG("TE CHK_LINK {0x%x}\n", queue_entry.isr);
@@ -569,9 +499,6 @@ eth_start:
                             evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
                             esp_event_send(&evt);
                         }
-                        // // Clear Intr status bits
-                        // // TODO: I think it's wrong to clear status here. But, we it should be properly tested
-                        // ksz8851_regwr(REG_INT_STATUS, INT_MASK);
                         break;
                     case ETH_CMD_OVERRUN:
                         printf("TE OVERRUN {0x%x} ========================================\n", queue_entry.isr);
