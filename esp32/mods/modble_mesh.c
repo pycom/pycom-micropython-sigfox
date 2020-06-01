@@ -15,6 +15,8 @@
 #include <stdbool.h>
 #include <math.h>
 
+#include "nvs_flash.h"
+
 #include "esp_bt_device.h"
 
 #include "esp_ble_mesh_defs.h"
@@ -201,6 +203,11 @@ typedef struct mod_ble_mesh_element_class_s {
     mod_ble_mesh_elem_t *element;
 }mod_ble_mesh_element_class_t;
 
+typedef struct mod_ble_mesh_sensor_state_class_s {
+    mp_obj_base_t base;
+    esp_ble_mesh_sensor_state_t *sensor_state;
+}mod_ble_mesh_sensor_state_class_t;
+
 typedef struct mod_ble_mesh_model_class_s {
     mp_obj_base_t base;
     struct mod_ble_mesh_model_class_s* next;
@@ -266,6 +273,7 @@ static uint16_t example_ble_mesh_get_sensor_data(esp_ble_mesh_sensor_state_t *st
  DEFINE PRIVATE VARIABLES
  ******************************************************************************/
 
+static const mp_obj_type_t mod_ble_mesh_sensor_state_type;
 static const mp_obj_type_t mod_ble_mesh_model_type;
 // TODO: add support for more Elements
 static mod_ble_mesh_element_class_t mod_ble_mesh_element;
@@ -766,6 +774,22 @@ static uint8_t get_sen_state_idx(mp_int_t prop_id) {
 }
 
 /******************************************************************************
+ DEFINE BLE MESH SENSOR STATE FUNCTIONS
+ ******************************************************************************/
+
+STATIC const mp_map_elem_t mod_ble_mesh_sensor_state_locals_dict_table[] = {
+        { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_BLE_Mesh_Sensor_State) },
+
+};
+STATIC MP_DEFINE_CONST_DICT(mod_ble_mesh_sensor_state_locals_dict, mod_ble_mesh_sensor_state_locals_dict_table);
+
+static const mp_obj_type_t mod_ble_mesh_sensor_state_type = {
+    { &mp_type_type },
+    .name = MP_QSTR_BLE_Mesh_Sensor_State,
+    .locals_dict = (mp_obj_t)&mod_ble_mesh_sensor_state_locals_dict,
+};
+
+/******************************************************************************
  DEFINE BLE MESH MODEL FUNCTIONS
  ******************************************************************************/
 
@@ -1121,11 +1145,11 @@ STATIC mp_obj_t mod_ble_mesh_model_add_sensor(mp_uint_t n_args, const mp_obj_t *
 
         // Define Sensor Data with 4xuint8 Data
         u8_t* net_buf_data = (u8_t *)heap_caps_malloc(4*sizeof(u8_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-        struct net_buf_simple* asd = (struct net_buf_simple *)heap_caps_malloc(sizeof(struct net_buf_simple), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-        asd->__buf = net_buf_data;
-        asd->data = net_buf_data;
-        asd->len = 0;
-        asd->size = 4;
+        struct net_buf_simple* buf = (struct net_buf_simple *)heap_caps_malloc(sizeof(struct net_buf_simple), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        buf->__buf = net_buf_data;
+        buf->data = net_buf_data;
+        buf->len = 0;
+        buf->size = 4;
 
         mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].sensor_property_id = prop_id;
         mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].descriptor.positive_tolerance = ESP_BLE_MESH_SENSOR_UNSPECIFIED_POS_TOLERANCE;
@@ -1135,11 +1159,17 @@ STATIC mp_obj_t mod_ble_mesh_model_add_sensor(mp_uint_t n_args, const mp_obj_t *
         mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].descriptor.update_interval = ESP_BLE_MESH_SENSOR_NOT_APPL_UPDATE_INTERVAL;
         mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].sensor_data.format = ESP_BLE_MESH_SENSOR_DATA_FORMAT_A;
         mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].sensor_data.length = 1;
-        mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].sensor_data.raw_value = asd;
+        mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count].sensor_data.raw_value = buf;
+
+        // Initialize the new Sensor Server State
+        mod_ble_mesh_sensor_state_class_t* sensor = (mod_ble_mesh_sensor_state_class_t*)heap_caps_malloc(sizeof(mod_ble_mesh_sensor_state_class_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        sensor->base.type = &mod_ble_mesh_sensor_state_type;
+        sensor->sensor_state = &mod_ble_sensor_srv.states[mod_ble_sensor_srv.state_count];
 
         // Increase Number of States
         mod_ble_sensor_srv.state_count = mod_ble_sensor_srv.state_count + 1;
 
+        return sensor;
     }
     else {
         // Error if not Sensor Server Model
@@ -1453,6 +1483,12 @@ STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp
 
             if(err != ESP_OK) {
                 nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "BLE Mesh node name cannot be set, error code: %d!", err));
+            }
+
+            err = nvs_flash_init();
+
+            if (err != ESP_OK) {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Storage was not successfully initialized., error code: %d!", err));
             }
 
             err = esp_ble_mesh_init(provision_ptr, composition_ptr);
