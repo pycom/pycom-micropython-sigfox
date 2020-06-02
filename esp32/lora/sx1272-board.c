@@ -22,6 +22,10 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "sx1272/sx1272.h"
 #include "sx1272-board.h"
 
+static uint8_t SX1272GetPaSelect( uint32_t channel )
+{
+    return RF_PACONFIG_PASELECT_PABOOST;
+}
 
 /*!
  * Radio driver structure initialization
@@ -52,7 +56,11 @@ DRAM_ATTR const struct Radio_s Radio =
     SX1272ReadBuffer,
     SX1272SetMaxPayloadLength,
     SX1272SetPublicNetwork,
-    SX1272Reset
+    SX1272Reset,
+    NULL, // uint32_t ( *GetWakeupTime )( void )
+    NULL, // void     ( *IrqProcess )( void )
+    NULL, // void     ( *RxBoosted )( uint32_t timeout )
+    NULL  // void     ( *SetRxDutyCycle ) ( uint32_t rxTime, uint32_t sleepTime )
 };
 
 /*!
@@ -73,6 +81,35 @@ void SX1272IoDeInit( void )
 {
     GpioInit( &SX1272.Spi.Nss, RADIO_NSS, PIN_OUTPUT, PIN_PUSH_PULL, PIN_PULL_UP, 1 );
     GpioInit( &SX1272.DIO, RADIO_DIO, PIN_INPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
+}
+
+void SX1272IoTcxoInit( void )
+{
+    // Not supported
+}
+
+void SX1272IoDbgInit( void )
+{
+    // Not supported
+}
+
+void SX1272Reset( void )
+{
+    if (micropy_lpwan_use_reset_pin) {
+        // Set RESET pin to 1
+        GpioInit( &SX1272.Reset, RADIO_RESET, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+
+        // Wait 2 ms
+        DelayMs( 2 );
+
+        // Configure RESET as input
+        GpioInit( &SX1272.Reset, RADIO_RESET, PIN_INPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+
+        // Wait 6 ms
+        DelayMs( 6 );
+    } else {
+        DelayMs( 2 );
+    }
 }
 
 void SX1272SetRfTxPower( int8_t power )
@@ -136,15 +173,51 @@ void SX1272SetRfTxPower( int8_t power )
     SX1272Write( REG_PADAC, paDac );
 }
 
-uint8_t SX1272GetPaSelect( uint32_t channel )
+void SX1272SetAntSwLowPower( bool status )
 {
-    return RF_PACONFIG_PASELECT_PABOOST;
+    // No antenna switch available.
+}
+
+void SX1272AntSwInit( void )
+{
+    // No antenna switch available.
+}
+
+void SX1272AntSwDeInit( void )
+{
+    // No antenna switch available.
+}
+
+void SX1272SetAntSw( uint8_t opMode )
+{
+    // No antenna switch available.
 }
 
 bool SX1272CheckRfFrequency( uint32_t frequency )
 {
     // Implement check. Currently all frequencies are supportted
     return true;
+}
+
+void SX1272SetBoardTcxo( uint8_t state )
+{
+    // Not supported
+}
+
+uint32_t SX1272GetBoardTcxoWakeupTime( void )
+{
+    // Returning a random value for now.
+    return 5;
+}
+
+void SX1272DbgPinTxWrite( uint8_t state )
+{
+    // Not supported
+}
+
+void SX1272DbgPinRxWrite( uint8_t state )
+{
+    // Not supported
 }
 
 #endif

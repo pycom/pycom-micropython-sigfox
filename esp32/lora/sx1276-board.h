@@ -1,19 +1,36 @@
-/*
- / _____)             _              | |
-( (____  _____ ____ _| |_ _____  ____| |__
- \____ \| ___ |    (_   _) ___ |/ ___)  _ \
- _____) ) ____| | | || |_| ____( (___| | | |
-(______/|_____)_|_|_| \__)_____)\____)_| |_|
-    (C)2013 Semtech
+/*!
+ * \file      sx1276-board.h
+ *
+ * \brief     Target board SX1276 driver implementation
+ *
+ * \copyright Revised BSD License, see section \ref LICENSE.
+ *
+ * \code
+ *                ______                              _
+ *               / _____)             _              | |
+ *              ( (____  _____ ____ _| |_ _____  ____| |__
+ *               \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ *               _____) ) ____| | | || |_| ____( (___| | | |
+ *              (______/|_____)_|_|_| \__)_____)\____)_| |_|
+ *              (C)2013-2017 Semtech
+ *
+ * \endcode
+ *
+ * \author    Miguel Luis ( Semtech )
+ *
+ * \author    Gregory Cristian ( Semtech )
+ */
+#ifndef __SX1276_BOARD_H__
+#define __SX1276_BOARD_H__
 
-Description: SX1276 driver specific target board functions implementation
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
-License: Revised BSD License, see LICENSE.TXT file include in the project
-
-Maintainer: Miguel Luis and Gregory Cristian
-*/
-#ifndef __SX1276_ARCH_H__
-#define __SX1276_ARCH_H__
+#include <stdint.h>
+#include <stdbool.h>
+#include "sx1276/sx1276.h"
 
 /*!
  * \brief Radio hardware registers initialization definition
@@ -37,7 +54,6 @@ Maintainer: Miguel Luis and Gregory Cristian
     { MODEM_FSK , REG_IMAGECAL           , 0x02 },\
     { MODEM_FSK , REG_DIOMAPPING1        , 0x00 },\
     { MODEM_FSK , REG_DIOMAPPING2        , 0x30 },\
-    { MODEM_LORA, REG_LR_TCXO            , 0x19 },\
     { MODEM_LORA, REG_LR_PAYLOADMAXLENGTH, 0x40 },\
 }                                                 \
 
@@ -56,11 +72,26 @@ void SX1276IoInit( void );
 void SX1276IoIrqInit( DioIrqHandler **irqHandlers );
 
 /*!
- * \brief De-initializes the radio I/Os pins interface. 
+ * \brief De-initializes the radio I/Os pins interface.
  *
  * \remark Useful when going in MCU low power modes
  */
 void SX1276IoDeInit( void );
+
+/*!
+ * \brief Initializes the TCXO power pin.
+ */
+void SX1276IoTcxoInit( void );
+
+/*!
+ * \brief Initializes the radio debug pins.
+ */
+void SX1276IoDbgInit( void );
+
+/*!
+ * \brief Resets the radio
+ */
+void SX1276Reset( void );
 
 /*!
  * \brief Sets the radio output power.
@@ -70,12 +101,32 @@ void SX1276IoDeInit( void );
 void SX1276SetRfTxPower( int8_t power );
 
 /*!
- * \brief Gets the board PA selection configuration
+ * \brief Set the RF Switch I/Os pins in low power mode
  *
- * \param [IN] channel Channel frequency in Hz
- * \retval PaSelect RegPaConfig PaSelect value
+ * \param [IN] status enable or disable
  */
-uint8_t SX1276GetPaSelect( uint32_t channel );
+void SX1276SetAntSwLowPower( bool status );
+
+/*!
+ * \brief Initializes the RF Switch I/Os pins interface
+ */
+void SX1276AntSwInit( void );
+
+/*!
+ * \brief De-initializes the RF Switch I/Os pins interface
+ *
+ * \remark Needed to decrease the power consumption in MCU low power modes
+ */
+void SX1276AntSwDeInit( void );
+
+/*!
+ * \brief Controls the antenna switch if necessary.
+ *
+ * \remark see errata note
+ *
+ * \param [IN] opMode Current radio operating mode
+ */
+void SX1276SetAntSw( uint8_t opMode );
 
 /*!
  * \brief Checks if the given RF frequency is supported by the hardware
@@ -86,8 +137,40 @@ uint8_t SX1276GetPaSelect( uint32_t channel );
 bool SX1276CheckRfFrequency( uint32_t frequency );
 
 /*!
+ * \brief Enables/disables the TCXO if available on board design.
+ *
+ * \param [IN] state TCXO enabled when true and disabled when false.
+ */
+void SX1276SetBoardTcxo( uint8_t state );
+
+/*!
+ * \brief Gets the Defines the time required for the TCXO to wakeup [ms].
+ *
+ * \retval time Board TCXO wakeup time in ms.
+ */
+uint32_t SX1276GetBoardTcxoWakeupTime( void );
+
+/*!
+ * \brief Writes new Tx debug pin state
+ *
+ * \param [IN] state Debug pin state
+ */
+void SX1276DbgPinTxWrite( uint8_t state );
+
+/*!
+ * \brief Writes new Rx debug pin state
+ *
+ * \param [IN] state Debug pin state
+ */
+void SX1276DbgPinRxWrite( uint8_t state );
+
+/*!
  * Radio hardware and global parameters
  */
 extern SX1276_t SX1276;
 
-#endif // __SX1276_ARCH_H__
+#ifdef __cplusplus
+}
+#endif
+
+#endif // __SX1276_BOARD_H__

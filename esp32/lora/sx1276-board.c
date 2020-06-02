@@ -22,6 +22,18 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "sx1276/sx1276.h"
 #include "sx1276-board.h"
 
+static uint8_t SX1276GetPaSelect( uint32_t channel )
+{
+    if( channel >= RF_MID_BAND_THRESH )
+    {
+        return RF_PACONFIG_PASELECT_PABOOST;
+    }
+    else
+    {
+        return RF_PACONFIG_PASELECT_RFO;
+    }
+}
+
 /*!
  * Radio driver structure initialization
  */
@@ -50,7 +62,12 @@ DRAM_ATTR const struct Radio_s Radio =
     SX1276WriteBuffer,
     SX1276ReadBuffer,
     SX1276SetMaxPayloadLength,
-    SX1276SetPublicNetwork
+    SX1276SetPublicNetwork,
+    NULL, // void     ( *Reset )( void )
+    NULL, // uint32_t ( *GetWakeupTime )( void )
+    NULL, // void     ( *IrqProcess )( void )
+    NULL, // void     ( *RxBoosted )( uint32_t timeout )
+    NULL  // void     ( *SetRxDutyCycle ) ( uint32_t rxTime, uint32_t sleepTime )
 };
 
 /*!
@@ -71,6 +88,35 @@ void SX1276IoDeInit( void )
 {
     GpioInit( &SX1276.Spi.Nss, RADIO_NSS, PIN_OUTPUT, PIN_PUSH_PULL, PIN_PULL_UP, 1 );
     GpioInit( &SX1276.DIO, RADIO_DIO, PIN_INPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
+}
+
+void SX1276IoTcxoInit( void )
+{
+    // Not supported
+}
+
+void SX1276IoDbgInit( void )
+{
+    // Not supported
+}
+
+void SX1276Reset( void )
+{
+    if (micropy_lpwan_use_reset_pin) {
+        // Set RESET pin to 0
+        GpioInit( &SX1276.Reset, RADIO_RESET, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
+
+        // Wait 2 ms
+        DelayMs( 2 );
+
+        // Configure RESET as input
+        GpioInit( &SX1276.Reset, RADIO_RESET, PIN_INPUT, PIN_PUSH_PULL, PIN_NO_PULL, 1 );
+
+        // Wait 6 ms
+        DelayMs( 6 );
+    } else {
+        DelayMs( 2 );
+    }
 }
 
 void SX1276SetRfTxPower( int8_t power )
@@ -135,22 +181,50 @@ void SX1276SetRfTxPower( int8_t power )
     SX1276Write( REG_PADAC, paDac );
 }
 
-uint8_t SX1276GetPaSelect( uint32_t channel )
+void SX1276SetAntSwLowPower( bool status )
 {
-    if( channel >= RF_MID_BAND_THRESH )
-    {
-        return RF_PACONFIG_PASELECT_PABOOST;
-    }
-    else
-    {
-        return RF_PACONFIG_PASELECT_RFO;
-    }
+    // No antenna switch available.
+}
+
+void SX1276AntSwInit( void )
+{
+    // No antenna switch available.
+}
+
+void SX1276AntSwDeInit( void )
+{
+    // No antenna switch available.
+}
+
+void SX1276SetAntSw( uint8_t opMode )
+{
+    // No antenna switch available.
 }
 
 bool SX1276CheckRfFrequency( uint32_t frequency )
 {
     // Implement check. Currently all frequencies are supported
     return true;
+}
+
+void SX1276SetBoardTcxo( uint8_t state )
+{
+    // Not supported
+}
+
+uint32_t SX1276GetBoardTcxoWakeupTime( void )
+{
+    return 5; // TODO: Returning a random number for now
+}
+
+void SX1276DbgPinTxWrite( uint8_t state )
+{
+    // Not supported
+}
+
+void SX1276DbgPinRxWrite( uint8_t state )
+{
+    // Not supported
 }
 
 #endif

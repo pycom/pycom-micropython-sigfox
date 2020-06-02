@@ -1,19 +1,35 @@
-/*
- / _____)             _              | |
-( (____  _____ ____ _| |_ _____  ____| |__
- \____ \| ___ |    (_   _) ___ |/ ___)  _ \
- _____) ) ____| | | || |_| ____( (___| | | |
-(______/|_____)_|_|_| \__)_____)\____)_| |_|
-    (C)2013 Semtech
-
-Description: Generic radio driver definition
-
-License: Revised BSD License, see LICENSE.TXT file include in the project
-
-Maintainer: Miguel Luis and Gregory Cristian
-*/
+/*!
+ * \file      radio.h
+ *
+ * \brief     Radio driver API definition
+ *
+ * \copyright Revised BSD License, see section \ref LICENSE.
+ *
+ * \code
+ *                ______                              _
+ *               / _____)             _              | |
+ *              ( (____  _____ ____ _| |_ _____  ____| |__
+ *               \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ *               _____) ) ____| | | || |_| ____( (___| | | |
+ *              (______/|_____)_|_|_| \__)_____)\____)_| |_|
+ *              (C)2013-2017 Semtech
+ *
+ * \endcode
+ *
+ * \author    Miguel Luis ( Semtech )
+ *
+ * \author    Gregory Cristian ( Semtech )
+ */
 #ifndef __RADIO_H__
 #define __RADIO_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+// #include <stdint.h>
+// #include <stdbool.h>
 
 #define RADIO_IRQ_FLAG_RX_TIMEOUT                   ( 0x01 )
 #define RADIO_IRQ_FLAG_RX_DONE                      ( 0x02 )
@@ -57,9 +73,9 @@ typedef struct
      *
      * \param [IN] payload      Received buffer pointer
      * \param [IN] size         Received buffer size
-     * \param [IN] timestamp    timestamp of the packet in us
+     * \param [IN] timestamp    timestamp of the packet in us //TODO: Check if its required
      * \param [IN] rssi         RSSI value computed while receiving the frame [dBm]
-     * \param [IN] snr          Raw SNR value given by the radio hardware
+     * \param [IN] snr          SNR value computed while receiving the frame [dB]
      *                          FSK : N/A ( set to 0 )
      *                          LoRa: SNR value in dB
      * \param [IN] sf           Spreading factor of the packet received (6 - 12)
@@ -297,14 +313,14 @@ struct Radio_s
      * \param [IN]: addr Register address
      * \param [IN]: data New register value
      */
-    void    ( *Write )( uint8_t addr, uint8_t data );
+    void    ( *Write )( uint16_t addr, uint8_t data );
     /*!
      * \brief Reads the radio register at the specified address
      *
      * \param [IN]: addr Register address
      * \retval data Register value
      */
-    uint8_t ( *Read )( uint8_t addr );
+    uint8_t ( *Read )( uint16_t addr );
     /*!
      * \brief Writes multiple radio registers starting at address
      *
@@ -312,7 +328,7 @@ struct Radio_s
      * \param [IN] buffer Buffer containing the new register's values
      * \param [IN] size   Number of registers to be written
      */
-    void    ( *WriteBuffer )( uint8_t addr, uint8_t *buffer, uint8_t size );
+    void    ( *WriteBuffer )( uint16_t addr, uint8_t *buffer, uint8_t size );
     /*!
      * \brief Reads multiple radio registers starting at address
      *
@@ -320,7 +336,7 @@ struct Radio_s
      * \param [OUT] buffer Buffer where to copy the registers data
      * \param [IN] size Number of registers to be read
      */
-    void    ( *ReadBuffer )( uint8_t addr, uint8_t *buffer, uint8_t size );
+    void    ( *ReadBuffer )( uint16_t addr, uint8_t *buffer, uint8_t size );
     /*!
      * \brief Sets the maximum payload length.
      *
@@ -340,6 +356,37 @@ struct Radio_s
      * \brief Manually resets Lora chip.
      */
     void    ( *Reset )( void );
+    /*!
+     * \brief Gets the time required for the board plus radio to get out of sleep.[ms]
+     *
+     * \retval time Radio plus board wakeup time in ms.
+     */
+    uint32_t  ( *GetWakeupTime )( void );
+    /*!
+     * \brief Process radio irq
+     */
+    void ( *IrqProcess )( void );
+    /*
+     * The next functions are available only on SX126x radios.
+     */
+    /*!
+     * \brief Sets the radio in reception mode with Max LNA gain for the given time
+     *
+     * \remark Available on SX126x radios only.
+     *
+     * \param [IN] timeout Reception timeout [ms]
+     *                     [0: continuous, others timeout]
+     */
+    void    ( *RxBoosted )( uint32_t timeout );
+    /*!
+     * \brief Sets the Rx duty cycle management parameters
+     *
+     * \remark Available on SX126x radios only.
+     *
+     * \param [in]  rxTime        Structure describing reception timeout value
+     * \param [in]  sleepTime     Structure describing sleep timeout value
+     */
+    void ( *SetRxDutyCycle ) ( uint32_t rxTime, uint32_t sleepTime );
 };
 
 /*!
@@ -349,5 +396,9 @@ struct Radio_s
  *         board implementation
  */
 extern const struct Radio_s Radio;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __RADIO_H__
