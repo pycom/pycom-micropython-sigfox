@@ -15,8 +15,6 @@
 #include <stdbool.h>
 #include <math.h>
 
-#include "nvs_flash.h"
-
 #include "esp_bt_device.h"
 
 #include "esp_ble_mesh_defs.h"
@@ -379,9 +377,6 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
         esp_ble_mesh_generic_server_cb_param_t* param = callback_param->param;
         esp_ble_mesh_model_t* model = callback_param->param->model;
 
-        //printf("Addr: %d\n", param->ctx.addr);
-        mp_obj_t args[3];
-
         switch (event) {
             case ESP_BLE_MESH_GENERIC_SERVER_RECV_SET_MSG_EVT:
                 //printf("ESP_BLE_MESH_GENERIC_SERVER_RECV_SET_MSG_EVT\n");
@@ -392,11 +387,12 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
 
                 // Publish that the State of this Server Model changed
                 if(mod_ble_model->callback != NULL) {
+                    mp_obj_t args[4];
                     args[0] = mod_ble_state_to_mp_obj(mod_ble_model, &(param->value.state_change));
-                    args[1] = mp_obj_new_int(event);
-                    //TODO: check what other object should be passed from the context
-                    args[2] = mp_obj_new_int(param->ctx.recv_op);
-                    mp_call_function_n_kw(mod_ble_model->callback, 3, 0, args);
+                    args[1] = mp_obj_new_int(param->ctx.addr);
+                    args[2] = mp_obj_new_int(mod_ble_model->type);
+                    args[3] = mp_const_none;
+                    mp_call_function_n_kw(mod_ble_model->callback, 4, 0, args);
                 }
                 break;
             case ESP_BLE_MESH_GENERIC_SERVER_RECV_GET_MSG_EVT:
@@ -420,8 +416,6 @@ static void mod_ble_mesh_generic_client_callback_handler(void* param_in) {
         esp_ble_mesh_generic_client_cb_event_t event = callback_param->event;
         esp_ble_mesh_generic_client_cb_param_t* param = callback_param->param;
 
-        //printf("Addr: %d\n", param->params->ctx.addr);
-
         switch (event) {
             case ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT:
                 //printf("ESP_BLE_MESH_GENERIC_CLIENT_GET_STATE_EVT\n");
@@ -442,12 +436,12 @@ static void mod_ble_mesh_generic_client_callback_handler(void* param_in) {
             }
 
         if(mod_ble_model->callback != NULL) {
-            mp_obj_t args[3];
+            mp_obj_t args[4];
             args[0] = mod_ble_state_to_mp_obj(mod_ble_model, (void*)&(param->status_cb));
-            args[1] = mp_obj_new_int(event);
-            //TODO: check what other object should be passed from the context
-            args[2] = mp_obj_new_int(param->params->ctx.recv_op);
-            mp_call_function_n_kw(mod_ble_model->callback, 3, 0, args);
+            args[1] = mp_obj_new_int(param->params->ctx.addr);
+            args[2] = mp_obj_new_int(mod_ble_model->type);
+            args[3] = mp_const_none;
+            mp_call_function_n_kw(mod_ble_model->callback, 4, 0, args);
         }
     }
 }
@@ -464,34 +458,41 @@ static void mod_ble_mesh_sensor_server_callback_handler(void* param_in) {
         esp_ble_mesh_model_t* model = callback_param->param->model;
 
         if (event == ESP_BLE_MESH_SENSOR_SERVER_RECV_GET_MSG_EVT) {
-            uint8_t *status = NULL;
-            uint16_t buf_size = 0;
-            uint16_t length = 0;
-
-            // Get Property ID from request
-            mp_int_t prop_id = param->value.get.sensor_data.property_id;
-            // Get Sensor State Index
-            int8_t state_idx = get_sen_state_idx(prop_id);
-
-            esp_ble_mesh_sensor_state_t *state = &mod_ble_sensor_srv.states[state_idx];
-
-            if (state->sensor_data.length == ESP_BLE_MESH_SENSOR_DATA_ZERO_LEN) {
-                buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN;
-            } else {
-                // Use "state->sensor_data.length + 3" because sendind 4 uint8
-                if (state->sensor_data.format == ESP_BLE_MESH_SENSOR_DATA_FORMAT_A) {
-                    buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_A_MPID_LEN + state->sensor_data.length + 3;
-                } else {
-                    buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN + state->sensor_data.length + 3;
-                }
+            int8_t state_idx;
+            if(param->value.get.sensor_data.op_en) {
+                // Get Property ID from user
+                mp_int_t prop_id = param->value.get.sensor_data.property_id;
+                // Get Sensor State Index
+                state_idx = get_sen_state_idx(prop_id);
+            }
+            else {
+                state_idx = 0;
             }
 
-            status = calloc(1, buf_size);
-            length = example_ble_mesh_get_sensor_data(state, status);
+            if(state_idx != -1) {
+                uint8_t *status = NULL;
+                uint16_t buf_size = 0;
+                uint16_t length = 0;
 
-            esp_ble_mesh_server_model_send_msg(&param->ctx.model, &param->ctx, ESP_BLE_MESH_MODEL_OP_SENSOR_STATUS, length, status);
-            free(status);
+                esp_ble_mesh_sensor_state_t *state = &mod_ble_sensor_srv.states[state_idx];
 
+                if (state->sensor_data.length == ESP_BLE_MESH_SENSOR_DATA_ZERO_LEN) {
+                    buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN;
+                } else {
+                    // Use "state->sensor_data.length + 3" because sending 4 uint8
+                    if (state->sensor_data.format == ESP_BLE_MESH_SENSOR_DATA_FORMAT_A) {
+                        buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_A_MPID_LEN + state->sensor_data.length + 3;
+                    } else {
+                        buf_size += ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN + state->sensor_data.length + 3;
+                    }
+                }
+
+                status = calloc(1, buf_size);
+                length = example_ble_mesh_get_sensor_data(&mod_ble_sensor_srv.states[state_idx], status);
+
+                esp_ble_mesh_server_model_send_msg(&param->ctx.model, &param->ctx, ESP_BLE_MESH_MODEL_OP_SENSOR_STATUS, length, status);
+                free(status);
+            }
         }
     }
 }
@@ -508,12 +509,18 @@ static void mod_ble_mesh_sensor_client_callback_handler(void* param_in) {
         esp_ble_mesh_model_t* model = callback_param->param->params->model;
 
         if (mod_ble_model->callback != NULL && event == ESP_BLE_MESH_SENSOR_CLIENT_PUBLISH_EVT && param->status_cb.sensor_status.marshalled_sensor_data->len) {
-            mp_obj_t args[3];
+            // Get Prop ID
+            uint8_t *data = param->status_cb.sensor_status.marshalled_sensor_data->__buf;
+            uint8_t fmt = ESP_BLE_MESH_GET_SENSOR_DATA_FORMAT(data);
+            uint16_t prop_id = ESP_BLE_MESH_GET_SENSOR_DATA_PROPERTY_ID(data, fmt);
+
+            mp_obj_t args[4];
             args[0] = mod_ble_state_to_mp_obj(mod_ble_model, (void*)&(param->status_cb));
-            args[1] = mp_obj_new_int(event);
-            //TODO: check what other object should be passed from the context
-            args[2] = mp_obj_new_int(param->params->ctx.recv_op);
-            mp_call_function_n_kw(mod_ble_model->callback, 3, 0, args);
+            args[1] = mp_obj_new_int(param->params->ctx.addr);
+            args[2] = mp_obj_new_int(mod_ble_model->type);
+            args[3] = mp_obj_new_int(prop_id);
+
+            mp_call_function_n_kw(mod_ble_model->callback, 4, 0, args);
         }
     }
 }
@@ -892,13 +899,22 @@ STATIC mp_obj_t mod_ble_mesh_model_get_state(mp_uint_t n_args, const mp_obj_t *p
             common.msg_role = ROLE_NODE;
 
             // Property ID
-            get.sensor_get.op_en = true;
             if(args[4].u_int == -1) {
-                get.sensor_get.property_id = mod_ble_sensor_srv.states[0].sensor_property_id;
+                get.sensor_get.op_en = false;
+            }
+            else {
+                get.sensor_get.op_en = true;
+                get.sensor_get.property_id = args[4].u_int;
+            }
+
+            /*if(args[4].u_int == -1) {
+                // Error if Set request is not possible on state
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Property ID is not defined!"));
             }
             else {
                 get.sensor_get.property_id = args[4].u_int;
-            }
+            }*/
+
 
             esp_ble_mesh_sensor_client_get_state(&common, &get);
         }
@@ -940,11 +956,13 @@ STATIC mp_obj_t mod_ble_mesh_model_set_state(mp_uint_t n_args, const mp_obj_t *p
 
             // Inform user through callback
             if(self->callback != NULL) {
-                mp_obj_t args[3];
+                mp_obj_t args[4];
                 args[0] = mod_ble_state_to_mp_obj(self, NULL);
-                args[1] = mp_obj_new_int(0);
-                args[2] = mp_obj_new_int(0);
-                mp_call_function_n_kw(self->callback, 3, 0, args);
+                //TODO: Get address
+                args[1] = mp_const_none;
+                args[2] = mp_obj_new_int(self->type);
+                args[3] = mp_const_none;
+                mp_call_function_n_kw(self->callback, 4, 0, args);
             }
         }
         else if(self->group == MOD_BLE_MESH_GROUP_SENSOR) {
@@ -966,11 +984,18 @@ STATIC mp_obj_t mod_ble_mesh_model_set_state(mp_uint_t n_args, const mp_obj_t *p
 
                 // Inform user through callback
                 if(self->callback != NULL) {
-                    mp_obj_t args[3];
+                    mp_obj_t args[4];
                     args[0] = mp_obj_new_float(state_float);
-                    args[1] = mp_obj_new_int(0);
-                    args[2] = mp_obj_new_int(0);
-                    mp_call_function_n_kw(self->callback, 3, 0, args);
+                    //TODO: Get address
+                    args[1] = mp_const_none;
+                    args[2] = mp_obj_new_int(self->type);
+                    if(prop_id == -1) {
+                        args[3] = mod_ble_sensor_srv.states[0].sensor_property_id;
+                    }
+                    else {
+                        args[3] = prop_id;
+                    }
+                    mp_call_function_n_kw(self->callback, 4, 0, args);
                 }
             }
         }
@@ -1483,12 +1508,6 @@ STATIC mp_obj_t mod_ble_mesh_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp
 
             if(err != ESP_OK) {
                 nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "BLE Mesh node name cannot be set, error code: %d!", err));
-            }
-
-            err = nvs_flash_init();
-
-            if (err != ESP_OK) {
-                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Storage was not successfully initialized., error code: %d!", err));
             }
 
             err = esp_ble_mesh_init(provision_ptr, composition_ptr);
