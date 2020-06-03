@@ -1463,7 +1463,7 @@ void thread_up(void) {
             switch(p->status) {
                 case STAT_CRC_OK:
                     meas_nb_rx_ok += 1;
-                    MSG("lorapf [up] INFO: received pkt from mote: %08X (fcnt=%u/%X)\n", mote_addr, mote_fcnt, mote_fcnt);
+                    MSG("lorapf [up] INFO: received pkt from mote: %08X (fcnt=%u/%X), RSSI %.1f\n", mote_addr, mote_fcnt, mote_fcnt, p->rssi);
                     if (!fwd_valid_pkt) {
                         pthread_mutex_unlock(&mx_meas_up);
                         continue; /* skip that packet */
