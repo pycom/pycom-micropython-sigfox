@@ -66,16 +66,6 @@ void modpycom_init0(void) {
     }
 }
 
-static bool is_empty(uint8_t* value, uint8_t size) {
-    bool ret_val = true;
-    for (int i=0; i < size; i++) {
-        if (value[i] != 0xFF) {
-            ret_val = false;
-        }
-    }
-    return ret_val;
-}
-
 static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t safeboot, bool reset) {
     bool update_part = false;
     bool update_fstype = false;
@@ -807,6 +797,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_smartConfig_obj, 0, 1, mod_
 
 #endif //(VARIANT == PYBYTES)
 
+#if defined(FIPY) || defined(LOPY4) || defined(SIPY)
 
 // Helper function to return decimal value of a hexadecimal character coded in ASCII
 STATIC uint8_t hex_from_char(const char c) {
@@ -824,11 +815,17 @@ STATIC uint8_t hex_from_char(const char c) {
         // 16 is invalid, because in hexa allowed range is 0 - 15
         return 16;
     }
-
 }
 
-
-#if defined(FIPY) || defined(LOPY4) || defined(SIPY)
+STATIC bool is_empty(uint8_t* value, uint8_t size) {
+    bool ret_val = true;
+    for (int i=0; i < size; i++) {
+        if (value[i] != 0xFF) {
+            ret_val = false;
+        }
+    }
+    return ret_val;
+}
 
 STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_id, ARG_pac, ARG_public_key, ARG_private_key, ARG_force };
