@@ -1208,10 +1208,8 @@ STATIC void mod_coap_init_helper(mp_obj_t address, bool service_discovery) {
             mp_obj_list_append(list, mp_obj_new_int(0)); // Port does not matter
             netutils_parse_inet_addr(list, (uint8_t*)&mreq.imr_multiaddr, NETUTILS_BIG);
 
-            //TODO: double check, does not work for some reason, maybe the IPPROTO_IP and IP_ADD_MEMBERSHIP macros are incorrect
             // Set socket option to join multicast group
-            int result = lwip_setsockopt(coap_obj_ptr->context->endpoint->sock.fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
-           printf("mod_coap_init_helper, result: %d\n", result);
+            lwip_setsockopt(coap_obj_ptr->context->endpoint->sock.fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
         }
     }
     else {
