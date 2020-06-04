@@ -1218,6 +1218,7 @@ void TASK_lora_gw(void *pvParameters) {
     }
 
     machine_pygate_set_status(PYGATE_STARTED);
+    printf("LoRa GW started\n");
 
     /* main loop task : statistics collection */
     while (!exit_sig && !quit_sig) {
@@ -1303,6 +1304,8 @@ void TASK_lora_gw(void *pvParameters) {
         }
 
         /* display a report */
+//#define LORA_PKT_FWD_PRINT_REPORT
+#ifdef LORA_PKT_FWD_PRINT_REPORT
         MSG("lorapf [main] INFO: report\n##### %s #####\n", stat_timestamp);
         printf("### [UPSTREAM] ###\n");
         printf("# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
@@ -1330,6 +1333,7 @@ void TASK_lora_gw(void *pvParameters) {
             printf("# GPS sync is disabled\n");
         }
         printf("##### END #####\n");
+#endif
 
         /* generate a JSON report (will be sent to server by upstream thread) */
         pthread_mutex_lock(&mx_stat_rep);
@@ -1464,6 +1468,7 @@ void thread_up(void) {
                 case STAT_CRC_OK:
                     meas_nb_rx_ok += 1;
                     MSG("lorapf [up] INFO: received pkt from mote: %08X (fcnt=%u/%X), RSSI %.1f\n", mote_addr, mote_fcnt, mote_fcnt, p->rssi);
+                    printf("RSSI %.1f\n", p->rssi);
                     if (!fwd_valid_pkt) {
                         pthread_mutex_unlock(&mx_meas_up);
                         continue; /* skip that packet */
