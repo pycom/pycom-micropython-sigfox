@@ -1533,7 +1533,7 @@ IRAM_ATTR void SX1272OnDio0Irq( void* context )
     }
 }
 
-void SX1272OnDio1Irq( void* context )
+IRAM_ATTR void SX1272OnDio1Irq( void* context )
 {
     switch( SX1272.Settings.State )
     {
@@ -1619,7 +1619,7 @@ void SX1272OnDio1Irq( void* context )
     }
 }
 
-void SX1272OnDio2Irq( void* context )
+IRAM_ATTR void SX1272OnDio2Irq( void* context )
 {
     switch( SX1272.Settings.State )
     {
@@ -1689,7 +1689,7 @@ void SX1272OnDio2Irq( void* context )
     }
 }
 
-void SX1272OnDio3Irq( void* context )
+IRAM_ATTR void SX1272OnDio3Irq( void* context )
 {
     switch( SX1272.Settings.Modem )
     {
@@ -1720,7 +1720,7 @@ void SX1272OnDio3Irq( void* context )
     }
 }
 
-void SX1272OnDio4Irq( void* context )
+IRAM_ATTR void SX1272OnDio4Irq( void* context )
 {
     switch( SX1272.Settings.Modem )
     {
@@ -1739,7 +1739,7 @@ void SX1272OnDio4Irq( void* context )
     }
 }
 
-void SX1272OnDio5Irq( void* context )
+IRAM_ATTR void SX1272OnDio5Irq( void* context )
 {
     switch( SX1272.Settings.Modem )
     {
