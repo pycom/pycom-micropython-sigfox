@@ -57,7 +57,7 @@ DRAM_ATTR const struct Radio_s Radio =
     SX1272SetMaxPayloadLength,
     SX1272SetPublicNetwork,
     SX1272Reset,
-    NULL, // uint32_t ( *GetWakeupTime )( void )
+    SX1276GetWakeupTime, // uint32_t ( *GetWakeupTime )( void )
     NULL, // void     ( *IrqProcess )( void )
     NULL, // void     ( *RxBoosted )( uint32_t timeout )
     NULL  // void     ( *SetRxDutyCycle ) ( uint32_t rxTime, uint32_t sleepTime )
