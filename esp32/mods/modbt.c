@@ -56,9 +56,6 @@
 #include "mbedtls/sha1.h"
 #include "nvs.h"
 
-// modification to copy received characteristic data for callbacks
-#define CB_ALLOCATE_CHAR_OBJ
-
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
@@ -229,7 +226,14 @@ typedef struct {
     uint32_t event;
     uint32_t data_length;
     uint8_t* data;
-} char_cbk_arg_t;
+} gatts_char_cbk_arg_t;
+
+typedef struct {
+    bt_char_obj_t *chr;
+    uint32_t event;
+    uint32_t data_length;
+    uint8_t* data;
+} gattc_char_cbk_arg_t;
 
 
 /******************************************************************************
@@ -743,20 +747,6 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         bt_char_obj_t *char_obj;
         char_obj = find_gattc_char (p_data->notify.conn_id, p_data->notify.handle);
         if (char_obj != NULL) {
-#ifdef CB_ALLOCATE_CHAR_OBJ
-			// create a temporary bt_char_obj_t with the data from char_obj (will be destroyed in gattc_char_callback_handler)
-			bt_char_obj_t *chr = m_new_obj(bt_char_obj_t);
-			if (chr != NULL) {
-				memcpy(chr, char_obj, sizeof(bt_char_obj_t));
-				// modify handler_arg (only when pointing to char_obj) to get the correct data in the callback handler
-				if (chr->handler_arg == char_obj)
-					chr->handler_arg = chr;
-				// I'm unsure if the next line is necessary:
-				memcpy(&chr->characteristic, &char_obj->characteristic, sizeof(esp_gattc_char_elem_t));
-				// set char_obj to chr 
-				char_obj = chr;
-			}
-#endif
             // copy the new value into the characteristic
             memcpy(&char_obj->value, p_data->notify.value, p_data->notify.value_len);
             char_obj->value_len = p_data->notify.value_len;
@@ -767,8 +757,22 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
             } else {
                 char_obj->events |= MOD_BT_GATTC_INDICATE_EVT;
             }
+
             if ((char_obj->trigger & MOD_BT_GATTC_NOTIFY_EVT) || (char_obj->trigger & MOD_BT_GATTC_INDICATE_EVT)) {
-                mp_irq_queue_interrupt_non_ISR(gattc_char_callback_handler, char_obj);
+
+                gattc_char_cbk_arg_t *cbk_arg = malloc(sizeof(gattc_char_cbk_arg_t));
+
+                cbk_arg->chr = char_obj;
+                if (p_data->notify.is_notify) {
+                    cbk_arg->event =  MOD_BT_GATTC_NOTIFY_EVT;
+                } else {
+                    cbk_arg->event =  MOD_BT_GATTC_INDICATE_EVT;
+                }
+                cbk_arg->data_length = p_data->notify.value_len;
+                cbk_arg->data = malloc(cbk_arg->data_length);
+                memcpy(cbk_arg->data, p_data->notify.value, cbk_arg->data_length);
+
+                mp_irq_queue_interrupt_non_ISR(gattc_char_callback_handler, cbk_arg);
             }
         }
         break;
@@ -799,31 +803,36 @@ STATIC void bluetooth_callback_handler(void *arg) {
 
 // this function will be called by the interrupt thread
 STATIC void gattc_char_callback_handler(void *arg) {
-    bt_char_obj_t *chr = arg;
+    bt_char_obj_t *chr = ((gattc_char_cbk_arg_t *)arg)->chr;
 
     if (chr->handler && chr->handler != mp_const_none) {
-        mp_call_function_1(chr->handler, chr->handler_arg);
+
+        mp_obj_t tuple[2];
+        tuple[0] = mp_obj_new_int(((gattc_char_cbk_arg_t*)arg)->event);
+        tuple[1] = mp_const_none;
+        if(((gattc_char_cbk_arg_t*)arg)->data_length > 0) {
+            tuple[1] = mp_obj_new_bytes(((gattc_char_cbk_arg_t*)arg)->data, ((gattc_char_cbk_arg_t*)arg)->data_length);
+            free(((gattc_char_cbk_arg_t*)arg)->data);
+        }
+
+        mp_call_function_2(chr->handler, chr->handler_arg, mp_obj_new_tuple(2, tuple));
     }
-#ifdef CB_ALLOCATE_CHAR_OBJ
-	// free the char handler object here
-	m_del_obj(bt_char_obj_t, chr);
-#endif
+    free((gattc_char_cbk_arg_t*)arg);
 }
 
 // this function will be called by the interrupt thread
 STATIC void gatts_char_callback_handler(void *arg) {
 
-    bt_gatts_char_obj_t *chr = ((char_cbk_arg_t*)arg)->chr;
+    bt_gatts_char_obj_t *chr = ((gatts_char_cbk_arg_t*)arg)->chr;
 
     if (chr->handler && chr->handler != mp_const_none) {
 
         mp_obj_t tuple[2];
-        tuple[0] = mp_obj_new_int(((char_cbk_arg_t*)arg)->event);
+        tuple[0] = mp_obj_new_int(((gatts_char_cbk_arg_t*)arg)->event);
         tuple[1] = mp_const_none;
-        if(((char_cbk_arg_t*)arg)->data_length > 0) {
-            tuple[1] = mp_obj_new_bytes(((char_cbk_arg_t*)arg)->data, ((char_cbk_arg_t*)arg)->data_length);
-            free(((char_cbk_arg_t*)arg)->data);
-            free((char_cbk_arg_t*)arg);
+        if(((gatts_char_cbk_arg_t*)arg)->data_length > 0) {
+            tuple[1] = mp_obj_new_bytes(((gatts_char_cbk_arg_t*)arg)->data, ((gatts_char_cbk_arg_t*)arg)->data_length);
+            free(((gatts_char_cbk_arg_t*)arg)->data);
         }
 
         mp_obj_t r_value = mp_call_function_2(chr->handler, chr->handler_arg, mp_obj_new_tuple(2, tuple));
@@ -864,6 +873,7 @@ STATIC void gatts_char_callback_handler(void *arg) {
             esp_ble_gatts_send_response(bt_obj.gatts_if, bt_obj.gatts_conn_id, chr->trans_id, ESP_GATT_OK, &rsp);
         }
     }
+    free((gatts_char_cbk_arg_t*)arg);
 }
 
 static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
@@ -886,7 +896,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                     char_obj->read_request = true;
                     char_obj->trans_id = p->read.trans_id;
 
-                    char_cbk_arg_t *cbk_arg = malloc(sizeof(char_cbk_arg_t));
+                    gatts_char_cbk_arg_t *cbk_arg = malloc(sizeof(gatts_char_cbk_arg_t));
 
                     cbk_arg->chr = char_obj;
                     cbk_arg->event = MOD_BT_GATTS_READ_EVT;
@@ -921,7 +931,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                     char_obj->events |= MOD_BT_GATTS_WRITE_EVT;
                     if (char_obj->trigger & MOD_BT_GATTS_WRITE_EVT) {
 
-                        char_cbk_arg_t *cbk_arg = malloc(sizeof(char_cbk_arg_t));
+                        gatts_char_cbk_arg_t *cbk_arg = malloc(sizeof(gatts_char_cbk_arg_t));
 
                         cbk_arg->chr = char_obj;
                         cbk_arg->event = MOD_BT_GATTS_WRITE_EVT;
@@ -939,7 +949,7 @@ static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_
                         char_obj->events |= MOD_BT_GATTS_SUBSCRIBE_EVT;
                         if (char_obj->trigger & MOD_BT_GATTS_SUBSCRIBE_EVT) {
 
-                            char_cbk_arg_t *cbk_arg = malloc(sizeof(char_cbk_arg_t));
+                            gatts_char_cbk_arg_t *cbk_arg = malloc(sizeof(gatts_char_cbk_arg_t));
 
                             cbk_arg->chr = char_obj;
                             cbk_arg->event = MOD_BT_GATTS_SUBSCRIBE_EVT;
