@@ -494,7 +494,7 @@ void ksz8851EndPacketSend(void) {
  */
 void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length, uint16_t frameCnt, uint16_t frameCntTotal) {
     //spi_op(SPI_CONTINUE, FIFO_RD, localBuffer, length);
-    size_t n = 0;
+    size_t rxPacketLength = 0;
     uint16_t status;
     uint8_t dummy[4];
 
@@ -504,7 +504,14 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length,
     //MSG("Retr Data s=0x%x\n", status);
 
     //Read received frame byte size from RXFHBCR
-    n = ksz8851_regrd(REG_RX_FHR_BYTE_CNT) & RX_BYTE_CNT_MASK;
+    // this includes:
+    // 4-byte CRC and
+    // 2-byte IP Header Two-Byte Offset Enable (RXQ_TWOBYTE_OFFSET)
+    rxPacketLength = ksz8851_regrd(REG_RX_FHR_BYTE_CNT) & RX_BYTE_CNT_MASK;
+    // align with 4-byte (DWord) boundary
+    size_t lengthInDWord = ( (rxPacketLength +3) >> 2);
+    size_t lengthInByte = ( lengthInDWord * 4 );
+
     //Make sure the frame is valid
     if (status & RX_VALID)
     {
@@ -513,25 +520,31 @@ void ksz8851RetrievePacketData(unsigned char *localBuffer, unsigned int *length,
         {
 
             //Ensure the frame size is acceptable
-            if (n > 4 && n <= ETHERNET_RX_PACKET_BUFF_SIZE)
+            if(rxPacketLength > 4 && rxPacketLength <= ETHERNET_RX_PACKET_BUFF_SIZE)
             {
                 //Reset QMU RXQ frame pointer to zero
                 //spi_clrbits(REG_RX_ADDR_PTR, ADDR_PTR_MASK);
                 ksz8851_regwr(REG_RX_ADDR_PTR, 0x4000);
                 //Enable RXQ read access
                 spi_setbits(REG_RXQ_CMD, RXQ_START);
-                /* Read 4-byte garbage */
+                /* Read 4-byte garbage - must read out dummy 4-byte */
                 spi_op(SPI_BEGIN, FIFO_RD, dummy, 4);
-                /* Read 4-byte status word/byte count */
+                /* Read out 2-byte Status Word and
+                   Read out 2-byte Byte Count */
                 spi_op(SPI_CONTINUE, FIFO_RD, dummy, 4);
-                /* Read 2-byte alignment bytes */
+
+                /* Read 2-byte IP header offset bytes */
                 spi_op(SPI_CONTINUE, FIFO_RD, dummy, 2);
-                n -= 4;
+                lengthInByte -= 2;
+                rxPacketLength -= 2;
+
                 //Read data
-                spi_op(SPI_END, FIFO_RD, localBuffer, n);
+                spi_op(SPI_END, FIFO_RD, localBuffer, lengthInByte);
                 //End RXQ read access
                 spi_clrbits(REG_RXQ_CMD, RXQ_START);
-                *length = n;
+                /* pass correct frame to upper layer */
+                rxPacketLength -= 4; // subtract 4-bytes for CRC
+                *length = rxPacketLength;
                 return;
             }
             else
