@@ -194,18 +194,25 @@ static void eth_set_default_inf(void)
     tcpip_adapter_up(TCPIP_ADAPTER_IF_ETH);
 #endif
 }
+
+/* print an ethernet frame in a similar style as wireshark */
+void print_frame(unsigned char* buf, size_t len){
+    for ( uint16_t i = 0; i < len; ++i)
+    {
+        printf("%02x ", buf[i]);
+        if (i%8 == 7)
+            printf("  ");
+        if (i%16==15)
+            printf("\n");
+    }
+    printf("\n");
+}
+
 static void process_tx(uint8_t* buff, uint16_t len)
 {
-#ifdef DEBUG_MODETH
-    if ( len > 3){
-        MSG("process_tx(%u): [%x %x %x %x ... %x %x %x %x]\n", len,
-            buff[0], buff[1], buff[2], buff[3],
-            buff[len-4], buff[len-3], buff[len-2], buff[len-1]);
-    } else {
-        MSG("process_tx(%u)\n", len);
-    }
-#else
     MSG("process_tx(%u)\n", len);
+#ifdef DEBUG_MODETH
+    print_frame(buff, len);
 #endif
     // disable int before reading buffer
     portDISABLE_INTERRUPTS();
@@ -222,6 +229,7 @@ static void process_tx(uint8_t* buff, uint16_t len)
     portENABLE_INTERRUPTS();
 
 }
+
 static uint32_t process_rx(void)
 {
     uint32_t len, frameCnt;
@@ -251,19 +259,19 @@ static uint32_t process_rx(void)
     ksz8851_regwr(REG_INT_MASK, INT_MASK);
     portENABLE_INTERRUPTS();
 
-    MSG("process_rx frames=%u (%u) len=%u\n", frameCntTotal, frameCntZeroLen, totalLen);
+    MSG("process_rx frames=%u (zero=%u) totalLen=%u last: len=%u \n", frameCntTotal, frameCntZeroLen, totalLen, len);
 #ifdef DEBUG_MODETH
     // print last frame
     if (frameCntTotal){
-        for ( uint16_t i = 0; i < len; ++i)
-        {
-            printf("%02x ", modeth_rxBuff[i]);
-            if (i%8 == 7)
-                printf("  ");
-            if (i%16==15)
-                printf("\n");
+       if (modeth_rxBuff[0] == 0x24 && modeth_rxBuff[1] == 0x0a ){
+            // dst mac seems to be pycom board, 24 0a c4 c7 b2 53
+            // OK
+        }else if (modeth_rxBuff[0] == 0x00 && modeth_rxBuff[1] == 0xe0 ){
+            // dst laptop, OK
+        }else {
+            printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
         }
-        printf("\n");
+        print_frame(modeth_rxBuff, len);
     }
 #endif
 
@@ -619,7 +627,7 @@ STATIC mp_obj_t eth_init_helper(eth_obj_t *self, const mp_arg_val_t *args) {
     }
 
     if (!(xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED)) {
-        MSG("ME ih !started\n");
+        MSG("ME ih !started (%u)\n", esp32_get_chip_rev());
         //alloc memory for rx buff
         if (esp32_get_chip_rev() > 0) {
             modeth_rxBuff = heap_caps_malloc(ETHERNET_RX_PACKET_BUFF_SIZE, MALLOC_CAP_SPIRAM);
