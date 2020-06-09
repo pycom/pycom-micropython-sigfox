@@ -56,6 +56,9 @@
 #include "mbedtls/sha1.h"
 #include "nvs.h"
 
+// modification to copy received characteristic data for callbacks
+#define CB_ALLOCATE_CHAR_OBJ
+
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
@@ -740,6 +743,20 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         bt_char_obj_t *char_obj;
         char_obj = find_gattc_char (p_data->notify.conn_id, p_data->notify.handle);
         if (char_obj != NULL) {
+#ifdef CB_ALLOCATE_CHAR_OBJ
+			// create a temporary bt_char_obj_t with the data from char_obj (will be destroyed in gattc_char_callback_handler)
+			bt_char_obj_t *chr = m_new_obj(bt_char_obj_t);
+			if (chr != NULL) {
+				memcpy(chr, char_obj, sizeof(bt_char_obj_t));
+				// modify handler_arg (only when pointing to char_obj) to get the correct data in the callback handler
+				if (chr->handler_arg == char_obj)
+					chr->handler_arg = chr;
+				// I'm unsure if the next line is necessary:
+				memcpy(&chr->characteristic, &char_obj->characteristic, sizeof(esp_gattc_char_elem_t));
+				// set char_obj to chr 
+				char_obj = chr;
+			}
+#endif
             // copy the new value into the characteristic
             memcpy(&char_obj->value, p_data->notify.value, p_data->notify.value_len);
             char_obj->value_len = p_data->notify.value_len;
@@ -787,6 +804,10 @@ STATIC void gattc_char_callback_handler(void *arg) {
     if (chr->handler && chr->handler != mp_const_none) {
         mp_call_function_1(chr->handler, chr->handler_arg);
     }
+#ifdef CB_ALLOCATE_CHAR_OBJ
+	// free the char handler object here
+	m_del_obj(bt_char_obj_t, chr);
+#endif
 }
 
 // this function will be called by the interrupt thread
