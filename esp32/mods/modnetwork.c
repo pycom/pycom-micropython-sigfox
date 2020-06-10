@@ -49,7 +49,6 @@
 #include "modusocket.h"
 #include "modcoap.h"
 #include "modmdns.h"
-#include "modhttp.h"
 
 #include "lwip/sockets.h"
 
@@ -244,8 +243,6 @@ STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_Server),              (mp_obj_t)&network_server_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_Coap),                (mp_obj_t)&mod_coap },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MDNS),                (mp_obj_t)&mod_mdns },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_HTTP_Server),         (mp_obj_t)&mod_http_server },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_HTTP_Client),         (mp_obj_t)&mod_http_client },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mp_module_network_globals, mp_module_network_globals_table);

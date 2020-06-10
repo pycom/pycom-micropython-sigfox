@@ -78,17 +78,6 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/examples
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include/coap
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mdns/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_https_server/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_http_server/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_http_server/src
-APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_http_server/src/port/esp32
-APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_http_client/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_http_client/lib/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/openssl/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/nghttp/port/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/tcp_transport
-APP_INC += -I$(ESP_IDF_COMP_PATH)/esp-tls
-APP_INC += -I$(ESP_IDF_COMP_PATH)/tcp_transport/include
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
 APP_INC += -I../lib/oofatfs
@@ -173,7 +162,6 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machtouch.c \
 	modcoap.c \
 	modmdns.c \
-        modhttp.c \
 	)
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
