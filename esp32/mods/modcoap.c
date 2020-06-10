@@ -11,7 +11,6 @@
 #include "py/mpconfig.h"
 #include "py/obj.h"
 #include "py/runtime.h"
-#include "py/gc.h"
 
 #include "coap.h"
 #include "coap_list.h"
@@ -1235,7 +1234,7 @@ STATIC mp_obj_t mod_coap_send_request(mp_uint_t n_args, const mp_obj_t *pos_args
             // Split up the URI-PATH into more segments if needed
             //TODO: allocate the proper length
             size_t length = 300;
-            unsigned char* path = m_malloc(length);
+            unsigned char* path = malloc(length);
             int segments = coap_split_path(coap_uri.path.s, coap_uri.path.length, path, &length);
 
             // Insert the segments as separate URI-Path options
@@ -1249,7 +1248,7 @@ STATIC mp_obj_t mod_coap_send_request(mp_uint_t n_args, const mp_obj_t *pos_args
             }
 
 
-            m_free(path);
+            free(path);
 
             // Put Content Format option if given
             if(content_format != -1) {

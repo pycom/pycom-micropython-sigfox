@@ -276,6 +276,23 @@ class PybytesProtocol:
                     else:
                         self.send_fcota_ping("file update failed!")
 
+                elif (command == constants.__FCOTA_COMMAND_FILE_UPDATE_NO_RESET):
+                    bodyString = body[1:len(body)].decode()
+                    splittedBody = bodyString.split(',')
+                    if (len(splittedBody) >= 2):
+                        path = splittedBody[0]
+                        print_debug(2, path[len(path)-7:len(path)])
+                        if (path[len(path)-7:len(path)] != '.pymakr'):
+                            self.send_fcota_ping('updating file...')
+                        newContent = bodyString[len(path)+1:len(body)]
+                        if (self.__FCOTA.update_file_content(path, newContent) is True): # noqa
+                            size = self.__FCOTA.get_file_size(path)
+                            self.send_fcota_file(newContent, path, size)
+                        else:
+                            self.send_fcota_ping('file update failed!')
+                    else:
+                        self.send_fcota_ping("file update failed!")
+
                 elif (command == constants.__FCOTA_PING):
                     self.send_fcota_ping('')
 

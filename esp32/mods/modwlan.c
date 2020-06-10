@@ -1444,7 +1444,7 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     esp_wifi_scan_get_ap_num(&ap_num); // get the number of scanned APs
 
     if (ap_num > 0) {
-        ap_record_buffer = pvPortMalloc(ap_num * sizeof(wifi_ap_record_t));
+        ap_record_buffer = malloc(ap_num * sizeof(wifi_ap_record_t));
         if (ap_record_buffer == NULL) {
             mp_raise_OSError(MP_ENOMEM);
         }
@@ -1464,7 +1464,7 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
                 mp_obj_list_append(nets, mp_obj_new_attrtuple(wlan_scan_info_fields, 5, tuple));
             }
         }
-        vPortFree(ap_record_buffer);
+        free(ap_record_buffer);
     }
 
     return nets;
@@ -1970,6 +1970,40 @@ STATIC mp_obj_t wlan_ap_sta_list (mp_obj_t self_in) {
     return sta_out_list;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_ap_sta_list_obj, wlan_ap_sta_list);
+
+STATIC mp_obj_t wlan_ap_tcpip_sta_list (mp_obj_t self_in) {
+    STATIC const qstr wlan_sta_ifo_fields[] = {
+        MP_QSTR_mac, MP_QSTR_IP
+    };
+    uint8_t index;
+    wifi_sta_list_t wifi_sta_list;
+    esp_wifi_ap_get_sta_list(&wifi_sta_list);
+    tcpip_adapter_sta_list_t sta_list;
+    wlan_obj_t * self = self_in;
+
+    mp_obj_t sta_out_list = mp_obj_new_list(0, NULL);
+    /* Check if AP mode is enabled */
+    if (self->mode == WIFI_MODE_AP || self->mode == WIFI_MODE_APSTA) {
+        tcpip_adapter_get_sta_list(&wifi_sta_list, &sta_list);
+
+        mp_obj_t tuple[2];
+        for(index = 0; index < MAX_AP_CONNECTED_STA && index < sta_list.num; index++)
+        {
+            tuple[0] = mp_obj_new_bytes((const byte *)sta_list.sta[index].mac, 6);
+            tuple[1] = netutils_format_ipv4_addr((uint8_t *)&sta_list.sta[index].ip.addr, NETUTILS_BIG);
+
+            /*insert tuple */
+            mp_obj_list_append(sta_out_list, mp_obj_new_attrtuple(wlan_sta_ifo_fields, 2, tuple));
+        }
+    }
+    else
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+    }
+    
+    return sta_out_list;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_ap_tcpip_sta_list_obj, wlan_ap_tcpip_sta_list);
 
 STATIC mp_obj_t wlan_joined_ap_info (mp_obj_t self_in)
 {
@@ -2654,6 +2688,7 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_antenna),             (mp_obj_t)&wlan_antenna_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&wlan_mac_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ap_sta_list),         (mp_obj_t)&wlan_ap_sta_list_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ap_tcpip_sta_list),   (mp_obj_t)&wlan_ap_tcpip_sta_list_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_max_tx_power),        (mp_obj_t)&wlan_max_tx_power_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_country),             (mp_obj_t)&wlan_country_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_joined_ap_info),      (mp_obj_t)&wlan_joined_ap_info_obj },

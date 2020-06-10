@@ -273,16 +273,13 @@ class Pybytes:
                     self.enable_terminal()
 
                 # CHECK PYMESH FIRMWARE VERSION
-                try:
-                    if hasattr(os.uname(),'pymesh'):
-                        try:
-                            from pybytes_pymesh_config import PybytesPymeshConfig
-                        except:
-                            from _pybytes_pymesh_config import PybytesPymeshConfig
-                        self.__pymesh = PybytesPymeshConfig(self)
-                        self.__pymesh.pymesh_init()
-                except Exception as e:
-                    print("Exception: {}".format(e))
+                if hasattr(os.uname(), 'pymesh'):
+                    try:
+                        from pybytes_pymesh_config import PybytesPymeshConfig
+                    except:
+                        from _pybytes_pymesh_config import PybytesPymeshConfig
+                    self.__pymesh = PybytesPymeshConfig(self)
+                    self.__pymesh.pymesh_init()
             else:
                 print('ERROR! Could not connect to Pybytes!')
 
