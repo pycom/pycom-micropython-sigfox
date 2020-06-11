@@ -287,6 +287,26 @@ STATIC mp_obj_t machine_pygate_deinit (void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_pygate_deinit_obj, machine_pygate_deinit);
 
+STATIC mp_obj_t machine_pygate_debug_level (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    STATIC const mp_arg_t allowed_args[] = {
+        { MP_QSTR_level,  MP_ARG_INT, },
+    };
+
+    // parse arguments
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
+
+    if (n_args > 0) {
+        // set
+        lora_gw_set_debug_level(args[0].u_int);
+        return mp_const_none;
+    } else {
+        // get
+        return mp_obj_new_int(lora_gw_get_debug_level());
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(machine_pygate_debug_level_obj, 0, machine_pygate_debug_level);
+
 STATIC mp_obj_t machine_pygate_cmd_decode (mp_obj_t cmd_in) {
     // get the cmd data
     mp_buffer_info_t bufinfo;
@@ -601,6 +621,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
 #ifdef PYGATE_ENABLED
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_init),             (mp_obj_t)&machine_pygate_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_deinit),           (mp_obj_t)&machine_pygate_deinit_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_debug_level),      (mp_obj_t)&machine_pygate_debug_level_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_cmd_decode),       (mp_obj_t)&machine_pygate_cmd_decode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_cmd_get),          (mp_obj_t)&machine_pygate_cmd_get_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                (mp_obj_t)&machine_callback_obj },

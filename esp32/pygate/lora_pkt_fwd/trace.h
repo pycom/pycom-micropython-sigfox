@@ -28,7 +28,7 @@ Maintainer: Michael Coracin
 #define ERROR     1
 
 // run time debug level
-extern uint16_t debug_level;
+extern int debug_level;
 // compile time debug level
 #define DEBUG_LEVEL INFO_
 

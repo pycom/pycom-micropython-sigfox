@@ -218,7 +218,7 @@ static struct lgw_tx_gain_lut_s txlut; /* TX gain table */
 static uint32_t tx_freq_min[LGW_RF_CHAIN_NB]; /* lowest frequency supported by TX chain */
 static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by TX chain */
 
-uint16_t debug_level = INFO_;
+int debug_level = INFO_;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -892,6 +892,14 @@ void lora_gw_init(const char* global_conf) {
         (void *) global_conf,
         LORA_GW_PRIORITY, &xLoraGwTaskHndl, 1);
     MSG_INFO("lora_gw_init() done fh=%u high=%u\n", xPortGetFreeHeapSize(), uxTaskGetStackHighWaterMark(NULL));
+}
+
+int lora_gw_get_debug_level(){
+    return debug_level;
+}
+
+void lora_gw_set_debug_level(int level){
+    debug_level = level;
 }
 
 /*void lora_gw_stop(void) {
