@@ -149,7 +149,7 @@ enum jit_error_e jit_peek(struct jit_queue_s *queue, struct timeval *time, int *
 @param queue[in] Just in Time queue to be displayed
 @param show_all[in] Indicates if empty nodes have to be displayed or not
 */
-void jit_print_queue(struct jit_queue_s *queue, bool show_all, int debug_level);
+void jit_print_queue(struct jit_queue_s *queue, bool show_all);
 
 #endif
 /* --- EOF ------------------------------------------------------------------ */

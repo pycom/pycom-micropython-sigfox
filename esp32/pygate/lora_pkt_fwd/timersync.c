@@ -62,7 +62,7 @@ int get_concentrator_time(struct timeval *concent_time, struct timeval unix_time
     struct timeval local_timeval;
 
     if (concent_time == NULL) {
-        MSG("lorapf ERROR: %s invalid parameter\n", __FUNCTION__);
+        MSG_ERROR("[ts  ] %s invalid parameter\n", __FUNCTION__);
         return -1;
     }
 
@@ -73,11 +73,11 @@ int get_concentrator_time(struct timeval *concent_time, struct timeval unix_time
     /* TODO: handle sx1301 coutner wrap-up !! */
     concent_time->tv_sec = local_timeval.tv_sec;
     concent_time->tv_usec = local_timeval.tv_usec;
-
-    MSG_DEBUG(DEBUG_TIMERSYNC, " --> TIME: unix current time is    (%ld,%ld)[s,us]\n", unix_time.tv_sec, unix_time.tv_usec);
-    MSG_DEBUG(DEBUG_TIMERSYNC, "           concent current time is (%ld,%ld)[s,us]\n", local_timeval.tv_sec, local_timeval.tv_usec);
-    MSG_DEBUG(DEBUG_TIMERSYNC, "           offset is               (%ld,%ld)[s,us]\n", offset_unix_concent.tv_sec, offset_unix_concent.tv_usec);
-
+    /*
+    MSG_DEBUG("[ts  ] --> TIME: unix current time is    (%ld,%ld)[s,us]\n", unix_time.tv_sec, unix_time.tv_usec);
+    MSG_DEBUG("[ts  ]           concent current time is (%ld,%ld)[s,us]\n", local_timeval.tv_sec, local_timeval.tv_usec);
+    MSG_DEBUG("[ts  ]           offset is               (%ld,%ld)[s,us]\n", offset_unix_concent.tv_sec, offset_unix_concent.tv_usec);
+    */
     return 0;
 }
 
@@ -85,7 +85,7 @@ int get_concentrator_time(struct timeval *concent_time, struct timeval unix_time
 /* --- THREAD 6: REGULARLAY MONITOR THE OFFSET BETWEEN UNIX CLOCK AND CONCENTRATOR CLOCK -------- */
 
 void thread_timersync(void) {
-    MSG("lorapf [ts] DEBUG: start\n");
+    MSG_INFO("[ts  ] start\n");
     struct timeval unix_timeval;
     struct timeval concentrator_timeval;
     uint32_t sx1301_timecount = 0;
@@ -112,18 +112,20 @@ void thread_timersync(void) {
 
         timersub(&offset_unix_concent, &offset_previous, &offset_drift);
 
-        MSG_DEBUG(DEBUG_TIMERSYNC, "  unix_timeval (%ld,%ld)[s,us]\n",
+/*
+        MSG_DEBUG("[ts  ] unix_timeval (%ld,%ld)[s,us]\n",
                   unix_timeval.tv_sec,
                   unix_timeval.tv_usec);
-        MSG_DEBUG(DEBUG_TIMERSYNC, "  concentrator (%ld,%ld)[s,us] = %u [us]\n",
+        MSG_DEBUG("[ts  ] concentrator (%ld,%ld)[s,us] = %u [us]\n",
                   concentrator_timeval.tv_sec,
                   concentrator_timeval.tv_usec,
                   sx1301_timecount);
 
-        MSG_DEBUG(DEBUG_TIMERSYNC, "  offset       (%ld,%ld)[s,us], drift=%ld [us]\n",
+        MSG_DEBUG("[ts  ] offset       (%ld,%ld)[s,us], drift=%ld [us]\n",
             offset_unix_concent.tv_sec,
             offset_unix_concent.tv_usec,
             offset_drift.tv_sec * 1000000UL + offset_drift.tv_usec);
+*/
 
         /* delay next sync */
         /* If we consider a crystal oscillator precision of about 20ppm worst case, and a clock
@@ -133,5 +135,5 @@ void thread_timersync(void) {
             Let's set the thread sleep to 1 minute for now */
         wait_ms(750);
     }
-    MSG("lorapf [ts] DEBUG: end exit=%u quit=%u\n", exit_sig, quit_sig);
+    MSG_INFO("[ts  ] end exit=%u quit=%u\n", exit_sig, quit_sig);
 }

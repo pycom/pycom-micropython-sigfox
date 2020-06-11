@@ -21,21 +21,46 @@ Maintainer: Michael Coracin
 #include <stdbool.h>
 #include "esp32_mphal.h"
 
-#define DEBUG_PKT_FWD   1
-#define DEBUG_JIT       0
-#define DEBUG_JIT_ERROR 1
-#define DEBUG_TIMERSYNC 0
-#define DEBUG_BEACON    0
-#define DEBUG_LOG       0
+// debug levels
+#define DEBUG     4
+#define INFO_     3
+#define WARN_     2
+#define ERROR     1
 
-#define MSG(fmt, ...) printf("[%u] " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
-//#define MSG(args...) printf(args)/* message that is destined to the user */
-#define MSG_DEBUG(FLAG, fmt, ...)                                                                         \
-            do  {                                                                                         \
-                if (FLAG)                                                                                 \
-                    fprintf(stdout, "%s:%d:%s(): " fmt, __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__); \
+// run time debug level
+extern uint16_t debug_level;
+// compile time debug level
+#define DEBUG_LEVEL INFO_
+
+#define MSG_DX(LEVEL, fmt, ...)                                                               \
+            do  {                                                                             \
+                if (debug_level >= LEVEL)                                                     \
+                    printf("[%u] lorapf: " #LEVEL " " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__); \
             } while (0)
 
+#if DEBUG_LEVEL >= DEBUG
+#define MSG_DEBUG(...) MSG_DX(DEBUG, __VA_ARGS__)
+#else
+#define MSG_DEBUG(...) (void)0
+#endif
+
+#if DEBUG_LEVEL >= INFO_
+#define MSG_INFO(...) MSG_DX(INFO_, __VA_ARGS__)
+#else
+#define MSG_INFO(...) (void)0
+#endif
+
+#if DEBUG_LEVEL >= WARN_
+#define MSG_WARN(...) MSG_DX(WARN_, __VA_ARGS__)
+#else
+#define MSG_WARN(...) (void)0
+#endif
+
+#if DEBUG_LEVEL >= ERROR
+#define MSG_ERROR(...) MSG_DX(ERROR, __VA_ARGS__)
+#else
+#define MSG_ERROR(...) (void)0
+#endif
 
 
 #endif
