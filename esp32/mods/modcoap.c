@@ -306,7 +306,7 @@ STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype,
     resource->next = NULL;
 
     // uri parameter pointer will be destroyed, pass a pointer to a permanent location
-    resource->uri = m_malloc(strlen(uri));
+    resource->uri = malloc(strlen(uri));
     memcpy(resource->uri, uri, strlen(uri));
     resource->coap_resource = coap_resource_init(&coap_str, 0);
     if(resource->coap_resource != NULL) {
@@ -336,7 +336,7 @@ STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype,
         return resource;
     }
     else {
-        m_free(resource->uri);
+        free(resource->uri);
         m_del_obj(mod_coap_resource_obj_t, resource);
         // Resource cannot be created
         return NULL;
@@ -377,7 +377,7 @@ STATIC void remove_resource_by_uri(coap_str_const_t *uri_path) {
                     }
 
                     // Free the URI
-                    m_free(current->uri);
+                    free(current->uri);
                     // Free the resource in coap's scope
                     coap_delete_resource(context->context, current->coap_resource);
                     // Free the element in MP scope
@@ -785,9 +785,9 @@ STATIC void coap_response_handler_micropython(void* arg) {
     args[4] = mp_obj_new_bytes(params->data, params->data_length);
 
     // Objects in C no longer needed, they are all transformed to MicroPython objects
-    heap_caps_free(params->token);
-    heap_caps_free(params->data);
-    heap_caps_free(params);
+    free(params->token);
+    free(params->data);
+    free(params);
 
     // Call the registered function, it must have 5 parameters:
     mp_call_function_n_kw(coap_obj_ptr->callback, 5, 0, args);
@@ -809,17 +809,17 @@ STATIC void coap_response_handler(struct coap_context_t *context,
     if(ret == 1){
 
         // This will be freed in coap_response_handler_micropython()
-        mod_coap_response_handler_args_t* params = heap_caps_malloc(sizeof(mod_coap_response_handler_args_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        mod_coap_response_handler_args_t* params = malloc(sizeof(mod_coap_response_handler_args_t));
         params->code = received->code;
         params->tid = received->tid;
         params->type = received->type;
         params->token_length = received->token_length;
         // This will be freed in coap_response_handler_micropython()
-        params->token = heap_caps_malloc(params->token_length, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        params->token = malloc(params->token_length);
         memcpy(params->token, received->token, params->token_length);
         params->data_length = len;
         // This will be freed in coap_response_handler_micropython()
-        params->data = heap_caps_malloc(params->data_length, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        params->data = malloc(params->data_length);
         memcpy(params->data, databuf, params->data_length);
 
         mp_irq_queue_interrupt_non_ISR(coap_response_handler_micropython, (void *)params);
@@ -967,7 +967,7 @@ STATIC mp_obj_t mod_coap_client_session_send_request(mp_uint_t n_args, const mp_
             // Split up the URI-PATH into more segments if needed
             //TODO: allocate the proper length
             size_t length = 300;
-            uint8_t* path = m_malloc(length);
+            uint8_t* path = malloc(length);
             uint8_t* path_start = path;
             int segments = coap_split_path(uri_path, uri_path_length, path, &length);
 
@@ -978,7 +978,7 @@ STATIC mp_obj_t mod_coap_client_session_send_request(mp_uint_t n_args, const mp_
             }
 
             // Free up the allocated space, at this point path does not point to the beginning
-            m_free(path_start);
+            free(path_start);
 
             // Put Content Format option if given
             if(content_format != -1) {
