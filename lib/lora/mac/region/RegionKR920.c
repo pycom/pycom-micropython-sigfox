@@ -1,63 +1,68 @@
-/*
- / _____)             _              | |
-( (____  _____ ____ _| |_ _____  ____| |__
- \____ \| ___ |    (_   _) ___ |/ ___)  _ \
- _____) ) ____| | | || |_| ____( (___| | | |
-(______/|_____)_|_|_| \__)_____)\____)_| |_|
-    (C)2013 Semtech
- ___ _____ _   ___ _  _____ ___  ___  ___ ___
-/ __|_   _/_\ / __| |/ / __/ _ \| _ \/ __| __|
-\__ \ | |/ _ \ (__| ' <| _| (_) |   / (__| _|
-|___/ |_/_/ \_\___|_|\_\_| \___/|_|_\\___|___|
-embedded.connectivity.solutions===============
-
-Description: LoRa MAC region KR920 implementation
-
-License: Revised BSD License, see LICENSE.TXT file include in the project
-
-Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jaeckle ( STACKFORCE )
+/*!
+ * \file      RegionKR920.c
+ *
+ * \brief     Region implementation for KR920
+ *
+ * \copyright Revised BSD License, see section \ref LICENSE.
+ *
+ * \code
+ *                ______                              _
+ *               / _____)             _              | |
+ *              ( (____  _____ ____ _| |_ _____  ____| |__
+ *               \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ *               _____) ) ____| | | || |_| ____( (___| | | |
+ *              (______/|_____)_|_|_| \__)_____)\____)_| |_|
+ *              (C)2013-2017 Semtech
+ *
+ *               ___ _____ _   ___ _  _____ ___  ___  ___ ___
+ *              / __|_   _/_\ / __| |/ / __/ _ \| _ \/ __| __|
+ *              \__ \ | |/ _ \ (__| ' <| _| (_) |   / (__| _|
+ *              |___/ |_/_/ \_\___|_|\_\_| \___/|_|_\\___|___|
+ *              embedded.connectivity.solutions===============
+ *
+ * \endcode
+ *
+ * \author    Miguel Luis ( Semtech )
+ *
+ * \author    Gregory Cristian ( Semtech )
+ *
+ * \author    Daniel Jaeckle ( STACKFORCE )
 */
-#include <stdbool.h>
-#include <string.h>
-#include <stdint.h>
-#include <math.h>
-
-#include "board.h"
-#include "LoRaMac.h"
-#include "esp_attr.h"
-
 #include "utilities.h"
 
-#include "Region.h"
 #include "RegionCommon.h"
 #include "RegionKR920.h"
 
 // Definitions
 #define CHANNELS_MASK_SIZE              1
 
-// Global attributes
 /*!
- * LoRaMAC channels
+ * Region specific context
  */
-static ChannelParams_t Channels[KR920_MAX_NB_CHANNELS];
-
-/*!
- * LoRaMac bands
- */
-static Band_t Bands[KR920_MAX_NB_BANDS] =
+typedef struct sRegionKR920NvmCtx
 {
-    KR920_BAND0
-};
+    /*!
+     * LoRaMAC channels
+     */
+    ChannelParams_t Channels[ KR920_MAX_NB_CHANNELS ];
+    /*!
+     * LoRaMac bands
+     */
+    Band_t Bands[ KR920_MAX_NB_BANDS ];
+    /*!
+     * LoRaMac channels mask
+     */
+    uint16_t ChannelsMask[ CHANNELS_MASK_SIZE ];
+    /*!
+     * LoRaMac channels default mask
+     */
+    uint16_t ChannelsDefaultMask[ CHANNELS_MASK_SIZE ];
+}RegionKR920NvmCtx_t;
 
-/*!
- * LoRaMac channels mask
+/*
+ * Non-volatile module context.
  */
-static uint16_t ChannelsMask[CHANNELS_MASK_SIZE];
-
-/*!
- * LoRaMac channels default mask
- */
-static uint16_t ChannelsDefaultMask[CHANNELS_MASK_SIZE];
+static RegionKR920NvmCtx_t NvmCtx;
 
 // Static functions
 static int8_t GetNextLowerTxDr( int8_t dr, int8_t minDr )
@@ -109,7 +114,7 @@ static int8_t LimitTxPower( int8_t txPower, int8_t maxBandTxPower, int8_t datara
     return txPowerResult;
 }
 
-static bool VerifyTxFreq( uint32_t freq )
+static bool VerifyRfFreq( uint32_t freq )
 {
     uint32_t tmpFreq = freq;
 
@@ -200,9 +205,24 @@ PhyParam_t RegionKR920GetPhyParam( GetPhyParams_t* getPhy )
             phyParam.Value = GetNextLowerTxDr( getPhy->Datarate, KR920_TX_MIN_DATARATE );
             break;
         }
+        case PHY_MAX_TX_POWER:
+        {
+            phyParam.Value = KR920_MAX_TX_POWER;
+            break;
+        }
         case PHY_DEF_TX_POWER:
         {
             phyParam.Value = KR920_DEFAULT_TX_POWER;
+            break;
+        }
+        case PHY_DEF_ADR_ACK_LIMIT:
+        {
+            phyParam.Value = KR920_ADR_ACK_LIMIT;
+            break;
+        }
+        case PHY_DEF_ADR_ACK_DELAY:
+        {
+            phyParam.Value = KR920_ADR_ACK_DELAY;
             break;
         }
         case PHY_MAX_PAYLOAD:
@@ -272,12 +292,12 @@ PhyParam_t RegionKR920GetPhyParam( GetPhyParams_t* getPhy )
         }
         case PHY_CHANNELS_MASK:
         {
-            phyParam.ChannelsMask = ChannelsMask;
+            phyParam.ChannelsMask = NvmCtx.ChannelsMask;
             break;
         }
         case PHY_CHANNELS_DEFAULT_MASK:
         {
-            phyParam.ChannelsMask = ChannelsDefaultMask;
+            phyParam.ChannelsMask = NvmCtx.ChannelsDefaultMask;
             break;
         }
         case PHY_MAX_NB_CHANNELS:
@@ -287,7 +307,7 @@ PhyParam_t RegionKR920GetPhyParam( GetPhyParams_t* getPhy )
         }
         case PHY_CHANNELS:
         {
-            phyParam.Channels = Channels;
+            phyParam.Channels = NvmCtx.Channels;
             break;
         }
         case PHY_DEF_UPLINK_DWELL_TIME:
@@ -310,10 +330,26 @@ PhyParam_t RegionKR920GetPhyParam( GetPhyParams_t* getPhy )
             phyParam.fValue = KR920_DEFAULT_ANTENNA_GAIN;
             break;
         }
-        case PHY_NB_JOIN_TRIALS:
-        case PHY_DEF_NB_JOIN_TRIALS:
+        case PHY_BEACON_CHANNEL_FREQ:
         {
-            phyParam.Value = 48;
+            phyParam.Value = KR920_BEACON_CHANNEL_FREQ;
+            break;
+        }
+        case PHY_BEACON_FORMAT:
+        {
+            phyParam.BeaconFormat.BeaconSize = KR920_BEACON_SIZE;
+            phyParam.BeaconFormat.Rfu1Size = KR920_RFU1_SIZE;
+            phyParam.BeaconFormat.Rfu2Size = KR920_RFU2_SIZE;
+            break;
+        }
+        case PHY_BEACON_CHANNEL_DR:
+        {
+            phyParam.Value = KR920_BEACON_CHANNEL_DR;
+            break;
+        }
+        case PHY_PING_SLOT_CHANNEL_DR:
+        {
+            phyParam.Value = KR920_PING_SLOT_CHANNEL_DR;
             break;
         }
         default:
@@ -325,32 +361,53 @@ PhyParam_t RegionKR920GetPhyParam( GetPhyParams_t* getPhy )
     return phyParam;
 }
 
-IRAM_ATTR void RegionKR920SetBandTxDone( SetBandTxDoneParams_t* txDone )
+void RegionKR920SetBandTxDone( SetBandTxDoneParams_t* txDone )
 {
-    RegionCommonSetBandTxDone( txDone->Joined, &Bands[Channels[txDone->Channel].Band], txDone->LastTxDoneTime );
+    RegionCommonSetBandTxDone( txDone->Joined, &NvmCtx.Bands[NvmCtx.Channels[txDone->Channel].Band], txDone->LastTxDoneTime );
 }
 
-void RegionKR920InitDefaults( InitType_t type )
+void RegionKR920InitDefaults( InitDefaultsParams_t* params )
 {
-    switch( type )
+    Band_t bands[KR920_MAX_NB_BANDS] =
+    {
+        KR920_BAND0
+    };
+
+    switch( params->Type )
     {
         case INIT_TYPE_INIT:
         {
+            // Initialize bands
+            memcpy1( ( uint8_t* )NvmCtx.Bands, ( uint8_t* )bands, sizeof( Band_t ) * KR920_MAX_NB_BANDS );
+
             // Channels
-            Channels[0] = ( ChannelParams_t ) KR920_LC1;
-            Channels[1] = ( ChannelParams_t ) KR920_LC2;
-            Channels[2] = ( ChannelParams_t ) KR920_LC3;
+            NvmCtx.Channels[0] = ( ChannelParams_t ) KR920_LC1;
+            NvmCtx.Channels[1] = ( ChannelParams_t ) KR920_LC2;
+            NvmCtx.Channels[2] = ( ChannelParams_t ) KR920_LC3;
 
             // Initialize the channels default mask
-            ChannelsDefaultMask[0] = LC( 1 ) + LC( 2 ) + LC( 3 );
+            NvmCtx.ChannelsDefaultMask[0] = LC( 1 ) + LC( 2 ) + LC( 3 );
             // Update the channels mask
-            RegionCommonChanMaskCopy( ChannelsMask, ChannelsDefaultMask, 1 );
+            RegionCommonChanMaskCopy( NvmCtx.ChannelsMask, NvmCtx.ChannelsDefaultMask, 1 );
             break;
         }
-        case INIT_TYPE_RESTORE:
+        case INIT_TYPE_RESTORE_CTX:
+        {
+            if( params->NvmCtx != 0 )
+            {
+                memcpy1( (uint8_t*) &NvmCtx, (uint8_t*) params->NvmCtx, sizeof( NvmCtx ) );
+            }
+            break;
+        }
+        case INIT_TYPE_RESTORE_DEFAULT_CHANNELS:
         {
             // Restore channels default mask
-            ChannelsMask[0] |= ChannelsDefaultMask[0];
+            NvmCtx.ChannelsMask[0] |= NvmCtx.ChannelsDefaultMask[0];
+
+            // Channels
+            NvmCtx.Channels[0] = ( ChannelParams_t ) KR920_LC1;
+            NvmCtx.Channels[1] = ( ChannelParams_t ) KR920_LC2;
+            NvmCtx.Channels[2] = ( ChannelParams_t ) KR920_LC3;
             break;
         }
         default:
@@ -360,10 +417,20 @@ void RegionKR920InitDefaults( InitType_t type )
     }
 }
 
+void* RegionKR920GetNvmCtx( GetNvmCtxParams_t* params )
+{
+    params->nvmCtxSize = sizeof( RegionKR920NvmCtx_t );
+    return &NvmCtx;
+}
+
 bool RegionKR920Verify( VerifyParams_t* verify, PhyAttribute_t phyAttribute )
 {
     switch( phyAttribute )
     {
+        case PHY_FREQUENCY:
+        {
+            return VerifyRfFreq( verify->Frequency );
+        }
         case PHY_TX_DR:
         {
             return RegionCommonValueInRange( verify->DatarateParams.Datarate, KR920_TX_MIN_DATARATE, KR920_TX_MAX_DATARATE );
@@ -386,18 +453,9 @@ bool RegionKR920Verify( VerifyParams_t* verify, PhyAttribute_t phyAttribute )
         {
             return KR920_DUTY_CYCLE_ENABLED;
         }
-        case PHY_NB_JOIN_TRIALS:
-        {
-            if( verify->NbJoinTrials < 48 )
-            {
-                return false;
-            }
-            break;
-        }
         default:
             return false;
     }
-    return true;
 }
 
 void RegionKR920ApplyCFList( ApplyCFListParams_t* applyCFList )
@@ -411,6 +469,12 @@ void RegionKR920ApplyCFList( ApplyCFListParams_t* applyCFList )
 
     // Size of the optional CF list
     if( applyCFList->Size != 16 )
+    {
+        return;
+    }
+
+    // Last byte CFListType must be 0 to indicate the CFList contains a list of frequencies
+    if( applyCFList->Payload[15] != 0 )
     {
         return;
     }
@@ -459,78 +523,18 @@ bool RegionKR920ChanMaskSet( ChanMaskSetParams_t* chanMaskSet )
     {
         case CHANNELS_MASK:
         {
-            RegionCommonChanMaskCopy( ChannelsMask, chanMaskSet->ChannelsMaskIn, 1 );
+            RegionCommonChanMaskCopy( NvmCtx.ChannelsMask, chanMaskSet->ChannelsMaskIn, 1 );
             break;
         }
         case CHANNELS_DEFAULT_MASK:
         {
-            RegionCommonChanMaskCopy( ChannelsDefaultMask, chanMaskSet->ChannelsMaskIn, 1 );
+            RegionCommonChanMaskCopy( NvmCtx.ChannelsDefaultMask, chanMaskSet->ChannelsMaskIn, 1 );
             break;
         }
         default:
             return false;
     }
     return true;
-}
-
-bool RegionKR920AdrNext( AdrNextParams_t* adrNext, int8_t* drOut, int8_t* txPowOut, uint32_t* adrAckCounter )
-{
-    bool adrAckReq = false;
-    int8_t datarate = adrNext->Datarate;
-    int8_t txPower = adrNext->TxPower;
-    GetPhyParams_t getPhy;
-    PhyParam_t phyParam;
-
-    // Report back the adr ack counter
-    *adrAckCounter = adrNext->AdrAckCounter;
-
-    if( adrNext->AdrEnabled == true )
-    {
-        if( datarate == KR920_TX_MIN_DATARATE )
-        {
-            *adrAckCounter = 0;
-            adrAckReq = false;
-        }
-        else
-        {
-            if( adrNext->AdrAckCounter >= KR920_ADR_ACK_LIMIT )
-            {
-                adrAckReq = true;
-                txPower = KR920_MAX_TX_POWER;
-            }
-            else
-            {
-                adrAckReq = false;
-            }
-            if( adrNext->AdrAckCounter >= ( KR920_ADR_ACK_LIMIT + KR920_ADR_ACK_DELAY ) )
-            {
-                if( ( adrNext->AdrAckCounter % KR920_ADR_ACK_DELAY ) == 1 )
-                {
-                    // Decrease the datarate
-                    getPhy.Attribute = PHY_NEXT_LOWER_TX_DR;
-                    getPhy.Datarate = datarate;
-                    getPhy.UplinkDwellTime = adrNext->UplinkDwellTime;
-                    phyParam = RegionKR920GetPhyParam( &getPhy );
-                    datarate = phyParam.Value;
-
-                    if( datarate == KR920_TX_MIN_DATARATE )
-                    {
-                        // We must set adrAckReq to false as soon as we reach the lowest datarate
-                        adrAckReq = false;
-                        if( adrNext->UpdateChanMask == true )
-                        {
-                            // Re-enable default channels
-                            ChannelsMask[0] |= LC( 1 ) + LC( 2 ) + LC( 3 );
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    *drOut = datarate;
-    *txPowOut = txPower;
-    return adrAckReq;
 }
 
 void RegionKR920ComputeRxWindowParameters( int8_t datarate, uint8_t minRxSymbols, uint32_t rxError, RxConfigParams_t *rxConfigParams )
@@ -543,7 +547,7 @@ void RegionKR920ComputeRxWindowParameters( int8_t datarate, uint8_t minRxSymbols
 
     tSymbol = RegionCommonComputeSymbolTimeLoRa( DataratesKR920[rxConfigParams->Datarate], BandwidthsKR920[rxConfigParams->Datarate] );
 
-    RegionCommonComputeRxWindowParameters( tSymbol, minRxSymbols, rxError, RADIO_WAKEUP_TIME, &rxConfigParams->WindowTimeout, &rxConfigParams->WindowOffset );
+    RegionCommonComputeRxWindowParameters( tSymbol, minRxSymbols, rxError, Radio.GetWakeupTime( ), &rxConfigParams->WindowTimeout, &rxConfigParams->WindowOffset );
 }
 
 bool RegionKR920RxConfig( RxConfigParams_t* rxConfig, int8_t* datarate )
@@ -558,14 +562,14 @@ bool RegionKR920RxConfig( RxConfigParams_t* rxConfig, int8_t* datarate )
         return false;
     }
 
-    if( rxConfig->Window == 0 )
+    if( rxConfig->RxSlot == RX_SLOT_WIN_1 )
     {
         // Apply window 1 frequency
-        frequency = Channels[rxConfig->Channel].Frequency;
+        frequency = NvmCtx.Channels[rxConfig->Channel].Frequency;
         // Apply the alternative RX 1 window frequency, if it is available
-        if( Channels[rxConfig->Channel].Rx1Frequency != 0 )
+        if( NvmCtx.Channels[rxConfig->Channel].Rx1Frequency != 0 )
         {
-            frequency = Channels[rxConfig->Channel].Rx1Frequency;
+            frequency = NvmCtx.Channels[rxConfig->Channel].Rx1Frequency;
         }
     }
 
@@ -586,9 +590,9 @@ bool RegionKR920RxConfig( RxConfigParams_t* rxConfig, int8_t* datarate )
 bool RegionKR920TxConfig( TxConfigParams_t* txConfig, int8_t* txPower, TimerTime_t* txTimeOnAir )
 {
     int8_t phyDr = DataratesKR920[txConfig->Datarate];
-    int8_t txPowerLimited = LimitTxPower( txConfig->TxPower, Bands[Channels[txConfig->Channel].Band].TxMaxPower, txConfig->Datarate, ChannelsMask );
+    int8_t txPowerLimited = LimitTxPower( txConfig->TxPower, NvmCtx.Bands[NvmCtx.Channels[txConfig->Channel].Band].TxMaxPower, txConfig->Datarate, NvmCtx.ChannelsMask );
     uint32_t bandwidth = GetBandwidth( txConfig->Datarate );
-    float maxEIRP = GetMaxEIRP( Channels[txConfig->Channel].Frequency );
+    float maxEIRP = GetMaxEIRP( NvmCtx.Channels[txConfig->Channel].Frequency );
     int8_t phyTxPower = 0;
 
     // Take the minimum between the maxEIRP and txConfig->MaxEirp.
@@ -599,9 +603,9 @@ bool RegionKR920TxConfig( TxConfigParams_t* txConfig, int8_t* txPower, TimerTime
     phyTxPower = RegionCommonComputeTxPower( txPowerLimited, maxEIRP, txConfig->AntennaGain );
 
     // Setup the radio frequency
-    Radio.SetChannel( Channels[txConfig->Channel].Frequency );
+    Radio.SetChannel( NvmCtx.Channels[txConfig->Channel].Frequency );
 
-    Radio.SetTxConfig( MODEM_LORA, phyTxPower, 0, bandwidth, phyDr, 1, 8, false, true, 0, 0, false, 3000 );
+    Radio.SetTxConfig( MODEM_LORA, phyTxPower, 0, bandwidth, phyDr, 1, 8, false, true, 0, 0, false, 4000 );
 
     // Setup maximum payload lenght of the radio driver
     Radio.SetMaxPayloadLength( MODEM_LORA, txConfig->PktLen );
@@ -657,7 +661,7 @@ uint8_t RegionKR920LinkAdrReq( LinkAdrReqParams_t* linkAdrReq, int8_t* drOut, in
             {
                 if( linkAdrParams.ChMaskCtrl == 6 )
                 {
-                    if( Channels[i].Frequency != 0 )
+                    if( NvmCtx.Channels[i].Frequency != 0 )
                     {
                         chMask |= 1 << i;
                     }
@@ -665,7 +669,7 @@ uint8_t RegionKR920LinkAdrReq( LinkAdrReqParams_t* linkAdrReq, int8_t* drOut, in
                 else
                 {
                     if( ( ( chMask & ( 1 << i ) ) != 0 ) &&
-                        ( Channels[i].Frequency == 0 ) )
+                        ( NvmCtx.Channels[i].Frequency == 0 ) )
                     {// Trying to enable an undefined channel
                         status &= 0xFE; // Channel mask KO
                     }
@@ -691,9 +695,10 @@ uint8_t RegionKR920LinkAdrReq( LinkAdrReqParams_t* linkAdrReq, int8_t* drOut, in
     linkAdrVerifyParams.ChannelsMask = &chMask;
     linkAdrVerifyParams.MinDatarate = ( int8_t )phyParam.Value;
     linkAdrVerifyParams.MaxDatarate = KR920_TX_MAX_DATARATE;
-    linkAdrVerifyParams.Channels = Channels;
+    linkAdrVerifyParams.Channels = NvmCtx.Channels;
     linkAdrVerifyParams.MinTxPower = KR920_MIN_TX_POWER;
     linkAdrVerifyParams.MaxTxPower = KR920_MAX_TX_POWER;
+    linkAdrVerifyParams.Version = linkAdrReq->Version;
 
     // Verify the parameters and update, if necessary
     status = RegionCommonLinkAdrReqVerifyParams( &linkAdrVerifyParams, &linkAdrParams.Datarate, &linkAdrParams.TxPower, &linkAdrParams.NbRep );
@@ -702,9 +707,9 @@ uint8_t RegionKR920LinkAdrReq( LinkAdrReqParams_t* linkAdrReq, int8_t* drOut, in
     if( status == 0x07 )
     {
         // Set the channels mask to a default value
-        memset( ChannelsMask, 0, sizeof( ChannelsMask ) );
+        memset1( ( uint8_t* ) NvmCtx.ChannelsMask, 0, sizeof( NvmCtx.ChannelsMask ) );
         // Update the channels mask
-        ChannelsMask[0] = chMask;
+        NvmCtx.ChannelsMask[0] = chMask;
     }
 
     // Update status variables
@@ -721,7 +726,7 @@ uint8_t RegionKR920RxParamSetupReq( RxParamSetupReqParams_t* rxParamSetupReq )
     uint8_t status = 0x07;
 
     // Verify radio frequency
-    if( Radio.CheckRfFrequency( rxParamSetupReq->Frequency ) == false )
+    if( VerifyRfFreq( rxParamSetupReq->Frequency ) == false )
     {
         status &= 0xFE; // Channel frequency KO
     }
@@ -804,13 +809,13 @@ uint8_t RegionKR920DlChannelReq( DlChannelReqParams_t* dlChannelReq )
     uint8_t status = 0x03;
 
     // Verify if the frequency is supported
-    if( VerifyTxFreq( dlChannelReq->Rx1Frequency ) == false )
+    if( VerifyRfFreq( dlChannelReq->Rx1Frequency ) == false )
     {
         status &= 0xFE;
     }
 
     // Verify if an uplink frequency exists
-    if( Channels[dlChannelReq->ChannelId].Frequency == 0 )
+    if( NvmCtx.Channels[dlChannelReq->ChannelId].Frequency == 0 )
     {
         status &= 0xFD;
     }
@@ -818,49 +823,23 @@ uint8_t RegionKR920DlChannelReq( DlChannelReqParams_t* dlChannelReq )
     // Apply Rx1 frequency, if the status is OK
     if( status == 0x03 )
     {
-        Channels[dlChannelReq->ChannelId].Rx1Frequency = dlChannelReq->Rx1Frequency;
+        NvmCtx.Channels[dlChannelReq->ChannelId].Rx1Frequency = dlChannelReq->Rx1Frequency;
     }
 
     return status;
 }
 
-int8_t RegionKR920AlternateDr( AlternateDrParams_t* alternateDr )
+int8_t RegionKR920AlternateDr( int8_t currentDr, AlternateDrType_t type )
 {
-    int8_t datarate = 0;
-
-    if( ( alternateDr->NbTrials % 48 ) == 0 )
-    {
-        datarate = DR_0;
-    }
-    else if( ( alternateDr->NbTrials % 32 ) == 0 )
-    {
-        datarate = DR_1;
-    }
-    else if( ( alternateDr->NbTrials % 24 ) == 0 )
-    {
-        datarate = DR_2;
-    }
-    else if( ( alternateDr->NbTrials % 16 ) == 0 )
-    {
-        datarate = DR_3;
-    }
-    else if( ( alternateDr->NbTrials % 8 ) == 0 )
-    {
-        datarate = DR_4;
-    }
-    else
-    {
-        datarate = DR_5;
-    }
-    return datarate;
+    return currentDr;
 }
 
 void RegionKR920CalcBackOff( CalcBackOffParams_t* calcBackOff )
 {
     RegionCommonCalcBackOffParams_t calcBackOffParams;
 
-    calcBackOffParams.Channels = Channels;
-    calcBackOffParams.Bands = Bands;
+    calcBackOffParams.Channels = NvmCtx.Channels;
+    calcBackOffParams.Bands = NvmCtx.Bands;
     calcBackOffParams.LastTxIsJoinRequest = calcBackOff->LastTxIsJoinRequest;
     calcBackOffParams.Joined = calcBackOff->Joined;
     calcBackOffParams.DutyCycleEnabled = calcBackOff->DutyCycleEnabled;
@@ -871,7 +850,7 @@ void RegionKR920CalcBackOff( CalcBackOffParams_t* calcBackOff )
     RegionCommonCalcBackOff( &calcBackOffParams );
 }
 
-bool RegionKR920NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel, TimerTime_t* time, TimerTime_t* aggregatedTimeOff )
+LoRaMacStatus_t RegionKR920NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel, TimerTime_t* time, TimerTime_t* aggregatedTimeOff )
 {
     uint8_t channelNext = 0;
     uint8_t nbEnabledChannels = 0;
@@ -879,28 +858,29 @@ bool RegionKR920NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel,
     uint8_t enabledChannels[KR920_MAX_NB_CHANNELS] = { 0 };
     TimerTime_t nextTxDelay = 0;
 
-    if( RegionCommonCountChannels( ChannelsMask, 0, 1 ) == 0 )
+    if( RegionCommonCountChannels( NvmCtx.ChannelsMask, 0, 1 ) == 0 )
     { // Reactivate default channels
-        ChannelsMask[0] |= LC( 1 ) + LC( 2 ) + LC( 3 );
+        NvmCtx.ChannelsMask[0] |= LC( 1 ) + LC( 2 ) + LC( 3 );
     }
 
-    if( nextChanParams->AggrTimeOff <= TimerGetElapsedTime( nextChanParams->LastAggrTx ) )
+    TimerTime_t elapsed = TimerGetElapsedTime( nextChanParams->LastAggrTx );
+    if( ( nextChanParams->LastAggrTx == 0 ) || ( nextChanParams->AggrTimeOff <= elapsed ) )
     {
         // Reset Aggregated time off
         *aggregatedTimeOff = 0;
 
         // Update bands Time OFF
-        nextTxDelay = RegionCommonUpdateBandTimeOff( nextChanParams->Joined, nextChanParams->DutyCycleEnabled, Bands, KR920_MAX_NB_BANDS );
+        nextTxDelay = RegionCommonUpdateBandTimeOff( nextChanParams->Joined, nextChanParams->DutyCycleEnabled, NvmCtx.Bands, KR920_MAX_NB_BANDS );
 
         // Search how many channels are enabled
         nbEnabledChannels = CountNbOfEnabledChannels( nextChanParams->Joined, nextChanParams->Datarate,
-                                                      ChannelsMask, Channels,
-                                                      Bands, enabledChannels, &delayTx );
+                                                      NvmCtx.ChannelsMask, NvmCtx.Channels,
+                                                      NvmCtx.Bands, enabledChannels, &delayTx );
     }
     else
     {
         delayTx++;
-        nextTxDelay = nextChanParams->AggrTimeOff - TimerGetElapsedTime( nextChanParams->LastAggrTx );
+        nextTxDelay = nextChanParams->AggrTimeOff - elapsed;
     }
 
     if( nbEnabledChannels > 0 )
@@ -912,15 +892,15 @@ bool RegionKR920NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel,
 
             // Perform carrier sense for KR920_CARRIER_SENSE_TIME
             // If the channel is free, we can stop the LBT mechanism
-            if( Radio.IsChannelFree( MODEM_LORA, Channels[channelNext].Frequency, KR920_RSSI_FREE_TH, KR920_CARRIER_SENSE_TIME ) == true )
+            if( Radio.IsChannelFree( MODEM_LORA, NvmCtx.Channels[channelNext].Frequency, KR920_RSSI_FREE_TH, KR920_CARRIER_SENSE_TIME ) == true )
             {
                 // Free channel found
                 *channel = channelNext;
                 *time = 0;
-                return true;
+                return LORAMAC_STATUS_OK;
             }
         }
-        return false;
+        return LORAMAC_STATUS_NO_FREE_CHANNEL_FOUND;
     }
     else
     {
@@ -928,21 +908,25 @@ bool RegionKR920NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel,
         {
             // Delay transmission due to AggregatedTimeOff or to a band time off
             *time = nextTxDelay;
-            return true;
+            return LORAMAC_STATUS_DUTYCYCLE_RESTRICTED;
         }
         // Datarate not supported by any channel, restore defaults
-        ChannelsMask[0] |= LC( 1 ) + LC( 2 ) + LC( 3 );
+        NvmCtx.ChannelsMask[0] |= LC( 1 ) + LC( 2 ) + LC( 3 );
         *time = 0;
-        return false;
+        return LORAMAC_STATUS_NO_CHANNEL_FOUND;
     }
 }
 
 LoRaMacStatus_t RegionKR920ChannelAdd( ChannelAddParams_t* channelAdd )
 {
-    uint8_t band = 0;
     bool drInvalid = false;
     bool freqInvalid = false;
     uint8_t id = channelAdd->ChannelId;
+
+    if( id < KR920_NUMB_DEFAULT_CHANNELS )
+    {
+        return LORAMAC_STATUS_FREQ_AND_DR_INVALID;
+    }
 
     if( id >= KR920_MAX_NB_CHANNELS )
     {
@@ -963,21 +947,10 @@ LoRaMacStatus_t RegionKR920ChannelAdd( ChannelAddParams_t* channelAdd )
         drInvalid = true;
     }
 
-    // Default channels don't accept all values
-    if( id < KR920_NUMB_DEFAULT_CHANNELS )
-    {
-        // All datarates are supported
-        // We are not allowed to change the frequency
-        if( channelAdd->NewChannel->Frequency != Channels[id].Frequency )
-        {
-            freqInvalid = true;
-        }
-    }
-
     // Check frequency
     if( freqInvalid == false )
     {
-        if( VerifyTxFreq( channelAdd->NewChannel->Frequency ) == false )
+        if( VerifyRfFreq( channelAdd->NewChannel->Frequency ) == false )
         {
             freqInvalid = true;
         }
@@ -997,9 +970,9 @@ LoRaMacStatus_t RegionKR920ChannelAdd( ChannelAddParams_t* channelAdd )
         return LORAMAC_STATUS_FREQUENCY_INVALID;
     }
 
-    memcpy( &(Channels[id]), channelAdd->NewChannel, sizeof( Channels[id] ) );
-    Channels[id].Band = band;
-    ChannelsMask[0] |= ( 1 << id );
+    memcpy1( ( uint8_t* ) &(NvmCtx.Channels[id]), ( uint8_t* ) channelAdd->NewChannel, sizeof( NvmCtx.Channels[id] ) );
+    NvmCtx.Channels[id].Band = 0;
+    NvmCtx.ChannelsMask[0] |= ( 1 << id );
     return LORAMAC_STATUS_OK;
 }
 
@@ -1013,17 +986,17 @@ bool RegionKR920ChannelsRemove( ChannelRemoveParams_t* channelRemove  )
     }
 
     // Remove the channel from the list of channels
-    Channels[id] = ( ChannelParams_t ){ 0, 0, { 0 }, 0 };
+    NvmCtx.Channels[id] = ( ChannelParams_t ){ 0, 0, { 0 }, 0 };
 
-    return RegionCommonChanDisable( ChannelsMask, id, KR920_MAX_NB_CHANNELS );
+    return RegionCommonChanDisable( NvmCtx.ChannelsMask, id, KR920_MAX_NB_CHANNELS );
 }
 
 void RegionKR920SetContinuousWave( ContinuousWaveParams_t* continuousWave )
 {
-    int8_t txPowerLimited = LimitTxPower( continuousWave->TxPower, Bands[Channels[continuousWave->Channel].Band].TxMaxPower, continuousWave->Datarate, ChannelsMask );
-    float maxEIRP = GetMaxEIRP( Channels[continuousWave->Channel].Frequency );
+    int8_t txPowerLimited = LimitTxPower( continuousWave->TxPower, NvmCtx.Bands[NvmCtx.Channels[continuousWave->Channel].Band].TxMaxPower, continuousWave->Datarate, NvmCtx.ChannelsMask );
+    float maxEIRP = GetMaxEIRP( NvmCtx.Channels[continuousWave->Channel].Frequency );
     int8_t phyTxPower = 0;
-    uint32_t frequency = Channels[continuousWave->Channel].Frequency;
+    uint32_t frequency = NvmCtx.Channels[continuousWave->Channel].Frequency;
 
     // Take the minimum between the maxEIRP and continuousWave->MaxEirp.
     // The value of continuousWave->MaxEirp could have changed during runtime, e.g. due to a MAC command.
@@ -1044,4 +1017,22 @@ uint8_t RegionKR920ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t d
         datarate = DR_0;
     }
     return datarate;
+}
+
+void RegionKR920RxBeaconSetup( RxBeaconSetup_t* rxBeaconSetup, uint8_t* outDr )
+{
+    RegionCommonRxBeaconSetupParams_t regionCommonRxBeaconSetup;
+
+    regionCommonRxBeaconSetup.Datarates = DataratesKR920;
+    regionCommonRxBeaconSetup.Frequency = rxBeaconSetup->Frequency;
+    regionCommonRxBeaconSetup.BeaconSize = KR920_BEACON_SIZE;
+    regionCommonRxBeaconSetup.BeaconDatarate = KR920_BEACON_CHANNEL_DR;
+    regionCommonRxBeaconSetup.BeaconChannelBW = KR920_BEACON_CHANNEL_BW;
+    regionCommonRxBeaconSetup.RxTime = rxBeaconSetup->RxTime;
+    regionCommonRxBeaconSetup.SymbolTimeout = rxBeaconSetup->SymbolTimeout;
+
+    RegionCommonRxBeaconSetup( &regionCommonRxBeaconSetup );
+
+    // Store downlink datarate
+    *outDr = KR920_BEACON_CHANNEL_DR;
 }

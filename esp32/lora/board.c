@@ -30,6 +30,8 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "board.h"
 #include "random.h"
 
+#include "rtc-board.h"
+
 /*!
  * Flag to indicate if the MCU is Initialized
  */
@@ -53,7 +55,7 @@ void BoardInitMcu( void )
         SX1276IoInit( );
     #endif
 
-        TimerHwInit( );
+        RtcInit( );
 
         McuInitialized = true;
     }

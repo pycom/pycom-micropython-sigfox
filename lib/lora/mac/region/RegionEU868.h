@@ -12,7 +12,7 @@
  *               \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  *               _____) ) ____| | | || |_| ____( (___| | | |
  *              (______/|_____)_|_|_| \__)_____)\____)_| |_|
- *              (C)2013 Semtech
+ *              (C)2013-2017 Semtech
  *
  *               ___ _____ _   ___ _  _____ ___  ___  ___ ___
  *              / __|_   _/_\ / __| |/ / __/ _ \| _ \/ __| __|
@@ -28,12 +28,21 @@
  *
  * \author    Daniel Jaeckle ( STACKFORCE )
  *
+ * \author    Johannes Bruder ( STACKFORCE )
+ *
  * \defgroup  REGIONEU868 Region EU868
  *            Implementation according to LoRaWAN Specification v1.0.2.
  * \{
  */
 #ifndef __REGION_EU868_H__
 #define __REGION_EU868_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "Region.h"
 
 /*!
  * LoRaMac maximum number of channels
@@ -58,7 +67,7 @@
 /*!
  * Maximal datarate that can be used by the node
  */
-#define EU868_TX_MAX_DATARATE                       DR_6
+#define EU868_TX_MAX_DATARATE                       DR_7
 
 /*!
  * Minimal datarate that can be used by the node
@@ -68,7 +77,7 @@
 /*!
  * Maximal datarate that can be used by the node
  */
-#define EU868_RX_MAX_DATARATE                       DR_6
+#define EU868_RX_MAX_DATARATE                       DR_7
 
 /*!
  * Default datarate used by the node
@@ -184,40 +193,84 @@
  */
 #define EU868_RX_WND_2_DR                           DR_0
 
+/*
+ * CLASS B
+ */
+/*!
+ * Beacon frequency
+ */
+#define EU868_BEACON_CHANNEL_FREQ                   869525000
+
+/*!
+ * Payload size of a beacon frame
+ */
+#define EU868_BEACON_SIZE                           17
+
+/*!
+ * Size of RFU 1 field
+ */
+#define EU868_RFU1_SIZE                             2
+
+/*!
+ * Size of RFU 2 field
+ */
+#define EU868_RFU2_SIZE                             0
+
+/*!
+ * Datarate of the beacon channel
+ */
+#define EU868_BEACON_CHANNEL_DR                     DR_3
+
+/*!
+ * Bandwith of the beacon channel
+ */
+#define EU868_BEACON_CHANNEL_BW                     0
+
+/*!
+ * Ping slot channel datarate
+ */
+#define EU868_PING_SLOT_CHANNEL_DR                  DR_3
+
 /*!
  * Maximum number of bands
  */
-#define EU868_MAX_NB_BANDS                          5
+#define EU868_MAX_NB_BANDS                          6
 
 /*!
  * Band 0 definition
- * { DutyCycle, TxMaxPower, LastTxDoneTime, TimeOff }
+ * { DutyCycle, TxMaxPower, LastJoinTxDoneTime, LastTxDoneTime, TimeOff }
  */
-#define EU868_BAND0                                 { 100 , EU868_MAX_TX_POWER, 0,  0 } //  1.0 %
+#define EU868_BAND0                                 { 100 , EU868_MAX_TX_POWER, 0, 0, 0 } //  1.0 %
 
 /*!
  * Band 1 definition
- * { DutyCycle, TxMaxPower, LastTxDoneTime, TimeOff }
+ * { DutyCycle, TxMaxPower, LastJoinTxDoneTime, LastTxDoneTime, TimeOff }
  */
-#define EU868_BAND1                                 { 100 , EU868_MAX_TX_POWER, 0,  0 } //  1.0 %
+#define EU868_BAND1                                 { 100 , EU868_MAX_TX_POWER, 0, 0, 0 } //  1.0 %
 
 /*!
  * Band 2 definition
- * Band = { DutyCycle, TxMaxPower, LastTxDoneTime, TimeOff }
+ * Band = { DutyCycle, TxMaxPower, LastJoinTxDoneTime, LastTxDoneTime, TimeOff }
  */
-#define EU868_BAND2                                 { 1000, EU868_MAX_TX_POWER, 0,  0 } //  0.1 %
+#define EU868_BAND2                                 { 1000, EU868_MAX_TX_POWER, 0, 0, 0 } //  0.1 %
 
 /*!
- * Band 2 definition
- * Band = { DutyCycle, TxMaxPower, LastTxDoneTime, TimeOff }
+ * Band 3 definition
+ * Band = { DutyCycle, TxMaxPower, LastJoinTxDoneTime, LastTxDoneTime, TimeOff }
  */
-#define EU868_BAND3                                 { 10  , EU868_MAX_TX_POWER, 0,  0 } // 10.0 %
+#define EU868_BAND3                                 { 10  , EU868_MAX_TX_POWER, 0, 0, 0 } // 10.0 %
 
 /*!
- * Band 2 definition
- * Band = { DutyCycle, TxMaxPower, LastTxDoneTime, TimeOff }
+ * Band 4 definition
+ * Band = { DutyCycle, TxMaxPower, LastJoinTxDoneTime, LastTxDoneTime, TimeOff }
  */
-#define EU868_BAND4                                 { 100 , EU868_MAX_TX_POWER, 0,  0 } //  1.0 %
+#define EU868_BAND4                                 { 100 , EU868_MAX_TX_POWER, 0, 0, 0 } //  1.0 %
+
+/*!
+ * Band 5 definition
+ * Band = { DutyCycle, TxMaxPower, LastJoinTxDoneTime, LastTxDoneTime, TimeOff }
+ */
+#define EU868_BAND5                                 { 1000, EU868_MAX_TX_POWER, 0, 0, 0 } //  0.1 %
 
 /*!
  * LoRaMac default channel 1
@@ -283,7 +336,16 @@ void RegionEU868SetBandTxDone( SetBandTxDoneParams_t* txDone );
  *
  * \param [IN] type Sets the initialization type.
  */
-void RegionEU868InitDefaults( InitType_t type );
+void RegionEU868InitDefaults( InitDefaultsParams_t* params );
+
+/*!
+ * \brief Returns a pointer to the internal context and its size.
+ *
+ * \param [OUT] params Pointer to the function parameters.
+ *
+ * \retval      Points to a structure where the module store its non-volatile context.
+ */
+void* RegionEU868GetNvmCtx( GetNvmCtxParams_t* params );
 
 /*!
  * \brief Verifies a parameter.
@@ -312,21 +374,6 @@ void RegionEU868ApplyCFList( ApplyCFListParams_t* applyCFList );
  * \retval Returns true, if the channels mask could be set.
  */
 bool RegionEU868ChanMaskSet( ChanMaskSetParams_t* chanMaskSet );
-
-/*!
- * \brief Calculates the next datarate to set, when ADR is on or off.
- *
- * \param [IN] adrNext Pointer to the function parameters.
- *
- * \param [OUT] drOut The calculated datarate for the next TX.
- *
- * \param [OUT] txPowOut The TX power for the next TX.
- *
- * \param [OUT] adrAckCounter The calculated ADR acknowledgement counter.
- *
- * \retval Returns true, if an ADR request should be performed.
- */
-bool RegionEU868AdrNext( AdrNextParams_t* adrNext, int8_t* drOut, int8_t* txPowOut, uint32_t* adrAckCounter );
 
 /*!
  * Computes the Rx window timeout and offset.
@@ -417,11 +464,11 @@ uint8_t RegionEU868DlChannelReq( DlChannelReqParams_t* dlChannelReq );
 /*!
  * \brief Alternates the datarate of the channel for the join request.
  *
- * \param [IN] alternateDr Pointer to the function parameters.
+ * \param [IN] currentDr Current datarate.
  *
  * \retval Datarate to apply.
  */
-int8_t RegionEU868AlternateDr( AlternateDrParams_t* alternateDr );
+int8_t RegionEU868AlternateDr( int8_t currentDr, AlternateDrType_t type );
 
 /*!
  * \brief Calculates the back-off time.
@@ -442,7 +489,7 @@ void RegionEU868CalcBackOff( CalcBackOffParams_t* calcBackOff );
  *
  * \retval Function status [1: OK, 0: Unable to find a channel on the current datarate]
  */
-bool RegionEU868NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel, TimerTime_t* time, TimerTime_t* aggregatedTimeOff );
+LoRaMacStatus_t RegionEU868NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel, TimerTime_t* time, TimerTime_t* aggregatedTimeOff );
 
 /*!
  * \brief Adds a channel.
@@ -483,12 +530,17 @@ void RegionEU868SetContinuousWave( ContinuousWaveParams_t* continuousWave );
  */
 uint8_t RegionEU868ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t drOffset );
 
-bool RegionEU868GetChannels( ChannelParams_t** channels, uint32_t *size );
-
-bool RegionEU868GetChannelMask( uint16_t** channelmask, uint32_t *size );
-
-bool RegionEU868ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr );
+/*!
+ * \brief Sets the radio into beacon reception mode
+ *
+ * \param [IN] rxBeaconSetup Pointer to the function parameters
+ */
+void RegionEU868RxBeaconSetup( RxBeaconSetup_t* rxBeaconSetup, uint8_t* outDr );
 
 /*! \} defgroup REGIONEU868 */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __REGION_EU868_H__

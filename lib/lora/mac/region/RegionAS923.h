@@ -12,7 +12,7 @@
  *               \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  *               _____) ) ____| | | || |_| ____( (___| | | |
  *              (______/|_____)_|_|_| \__)_____)\____)_| |_|
- *              (C)2013 Semtech
+ *              (C)2013-2017 Semtech
  *
  *               ___ _____ _   ___ _  _____ ___  ___  ___ ___
  *              / __|_   _/_\ / __| |/ / __/ _ \| _ \/ __| __|
@@ -28,12 +28,21 @@
  *
  * \author    Daniel Jaeckle ( STACKFORCE )
  *
+ * \author    Johannes Bruder ( STACKFORCE )
+ *
  * \defgroup  REGIONAS923 Region AS923
  *            Implementation according to LoRaWAN Specification v1.0.2.
  * \{
  */
 #ifndef __REGION_AS923_H__
 #define __REGION_AS923_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "Region.h"
 
 /*!
  * LoRaMac maximum number of channels
@@ -58,7 +67,7 @@
 /*!
  * Maximal datarate that can be used by the node
  */
-#define AS923_TX_MAX_DATARATE                       DR_6
+#define AS923_TX_MAX_DATARATE                       DR_7
 
 /*!
  * Minimal datarate that can be used by the node
@@ -68,7 +77,7 @@
 /*!
  * Maximal datarate that can be used by the node
  */
-#define AS923_RX_MAX_DATARATE                       DR_6
+#define AS923_RX_MAX_DATARATE                       DR_7
 
 /*!
  * Default datarate used by the node
@@ -200,6 +209,44 @@
  */
 #define AS923_RX_WND_2_DR                           DR_2
 
+/*
+ * CLASS B
+ */
+/*!
+ * Beacon frequency
+ */
+#define AS923_BEACON_CHANNEL_FREQ                   923400000
+
+/*!
+ * Payload size of a beacon frame
+ */
+#define AS923_BEACON_SIZE                           17
+
+/*!
+ * Size of RFU 1 field
+ */
+#define AS923_RFU1_SIZE                             2
+
+/*!
+ * Size of RFU 2 field
+ */
+#define AS923_RFU2_SIZE                             0
+
+/*!
+ * Datarate of the beacon channel
+ */
+#define AS923_BEACON_CHANNEL_DR                     DR_3
+
+/*!
+ * Bandwith of the beacon channel
+ */
+#define AS923_BEACON_CHANNEL_BW                     0
+
+/*!
+ * Ping slot channel datarate
+ */
+#define AS923_PING_SLOT_CHANNEL_DR                  DR_3
+
 /*!
  * Maximum number of bands
  */
@@ -207,9 +254,9 @@
 
 /*!
  * Band 0 definition
- * { DutyCycle, TxMaxPower, LastTxDoneTime, TimeOff }
+ * { DutyCycle, TxMaxPower, LastJoinTxDoneTime, LastTxDoneTime, TimeOff }
  */
-#define AS923_BAND0                                 { 100, AS923_MAX_TX_POWER, 0,  0 } //  1.0 %
+#define AS923_BAND0                                 { 100, AS923_MAX_TX_POWER, 0, 0, 0 } //  1.0 %
 
 /*!
  * LoRaMac default channel 1
@@ -299,7 +346,16 @@ void RegionAS923SetBandTxDone( SetBandTxDoneParams_t* txDone );
  *
  * \param [IN] type Sets the initialization type.
  */
-void RegionAS923InitDefaults( InitType_t type );
+void RegionAS923InitDefaults( InitDefaultsParams_t* params );
+
+/*!
+ * \brief Returns a pointer to the internal context and its size.
+ *
+ * \param [OUT] params Pointer to the function parameters.
+ *
+ * \retval      Points to a structure where the module store its non-volatile context.
+ */
+void* RegionAS923GetNvmCtx( GetNvmCtxParams_t* params );
 
 /*!
  * \brief Verifies a parameter.
@@ -328,21 +384,6 @@ void RegionAS923ApplyCFList( ApplyCFListParams_t* applyCFList );
  * \retval Returns true, if the channels mask could be set.
  */
 bool RegionAS923ChanMaskSet( ChanMaskSetParams_t* chanMaskSet );
-
-/*!
- * \brief Calculates the next datarate to set, when ADR is on or off.
- *
- * \param [IN] adrNext Pointer to the function parameters.
- *
- * \param [OUT] drOut The calculated datarate for the next TX.
- *
- * \param [OUT] txPowOut The TX power for the next TX.
- *
- * \param [OUT] adrAckCounter The calculated ADR acknowledgement counter.
- *
- * \retval Returns true, if an ADR request should be performed.
- */
-bool RegionAS923AdrNext( AdrNextParams_t* adrNext, int8_t* drOut, int8_t* txPowOut, uint32_t* adrAckCounter );
 
 /*!
  * Computes the Rx window timeout and offset.
@@ -433,11 +474,11 @@ uint8_t RegionAS923DlChannelReq( DlChannelReqParams_t* dlChannelReq );
 /*!
  * \brief Alternates the datarate of the channel for the join request.
  *
- * \param [IN] alternateDr Pointer to the function parameters.
+ * \param [IN] currentDr Current datarate.
  *
  * \retval Datarate to apply.
  */
-int8_t RegionAS923AlternateDr( AlternateDrParams_t* alternateDr );
+int8_t RegionAS923AlternateDr( int8_t currentDr, AlternateDrType_t type );
 
 /*!
  * \brief Calculates the back-off time.
@@ -458,7 +499,7 @@ void RegionAS923CalcBackOff( CalcBackOffParams_t* calcBackOff );
  *
  * \retval Function status [1: OK, 0: Unable to find a channel on the current datarate]
  */
-bool RegionAS923NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel, TimerTime_t* time, TimerTime_t* aggregatedTimeOff );
+LoRaMacStatus_t RegionAS923NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel, TimerTime_t* time, TimerTime_t* aggregatedTimeOff );
 
 /*!
  * \brief Adds a channel.
@@ -499,12 +540,17 @@ void RegionAS923SetContinuousWave( ContinuousWaveParams_t* continuousWave );
  */
 uint8_t RegionAS923ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t drOffset );
 
-bool RegionAS923GetChannels( ChannelParams_t** channels, uint32_t *size );
-
-bool RegionAS923GetChannelMask( uint16_t** channelmask, uint32_t *size );
-
-bool RegionAS923ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr );
+/*!
+ * \brief Sets the radio into beacon reception mode
+ *
+ * \param [IN] rxBeaconSetup Pointer to the function parameters
+ */
+ void RegionAS923RxBeaconSetup( RxBeaconSetup_t* rxBeaconSetup, uint8_t* outDr );
 
 /*! \} defgroup REGIONAS923 */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __REGION_AS923_H__

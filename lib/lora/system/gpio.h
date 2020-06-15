@@ -119,7 +119,7 @@ typedef struct
 /*!
  * GPIO IRQ handler function prototype
  */
-typedef void( GpioIrqHandler )( void );
+typedef void( GpioIrqHandler )( void *);
 
 /*!
  * \brief Initializes the given GPIO object

@@ -73,7 +73,7 @@ typedef struct
      *
      * \param [IN] payload      Received buffer pointer
      * \param [IN] size         Received buffer size
-     * \param [IN] timestamp    timestamp of the packet in us //TODO: Check if its required
+     * \param [IN] timestamp    timestamp of the packet in us
      * \param [IN] rssi         RSSI value computed while receiving the frame [dBm]
      * \param [IN] snr          SNR value computed while receiving the frame [dB]
      *                          FSK : N/A ( set to 0 )

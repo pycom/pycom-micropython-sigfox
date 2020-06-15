@@ -12,7 +12,7 @@
  *               \____ \| ___ |    (_   _) ___ |/ ___)  _ \
  *               _____) ) ____| | | || |_| ____( (___| | | |
  *              (______/|_____)_|_|_| \__)_____)\____)_| |_|
- *              (C)2013 Semtech
+ *              (C)2013-2017 Semtech
  *
  *               ___ _____ _   ___ _  _____ ___  ___  ___ ___
  *              / __|_   _/_\ / __| |/ / __/ _ \| _ \/ __| __|
@@ -28,12 +28,21 @@
  *
  * \author    Daniel Jaeckle ( STACKFORCE )
  *
+ * \author    Johannes Bruder ( STACKFORCE )
+ *
  * \defgroup  REGIONIN865 Region IN865
  *            Implementation according to LoRaWAN Specification v1.0.2.
  * \{
  */
 #ifndef __REGION_IN865_H__
 #define __REGION_IN865_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "Region.h"
 
 /*!
  * LoRaMac maximum number of channels
@@ -184,6 +193,44 @@
  */
 #define IN865_RX_WND_2_DR                           DR_2
 
+/*
+ * CLASS B
+ */
+/*!
+ * Beacon frequency
+ */
+#define IN865_BEACON_CHANNEL_FREQ                   866550000
+
+/*!
+ * Payload size of a beacon frame
+ */
+#define IN865_BEACON_SIZE                           19
+
+/*!
+ * Size of RFU 1 field
+ */
+#define IN865_RFU1_SIZE                             1
+
+/*!
+ * Size of RFU 2 field
+ */
+#define IN865_RFU2_SIZE                             3
+
+/*!
+ * Datarate of the beacon channel
+ */
+#define IN865_BEACON_CHANNEL_DR                     DR_4
+
+/*!
+ * Bandwith of the beacon channel
+ */
+#define IN865_BEACON_CHANNEL_BW                     0
+
+/*!
+ * Ping slot channel datarate
+ */
+#define IN865_PING_SLOT_CHANNEL_DR                  DR_4
+
 /*!
  * Maximum number of bands
  */
@@ -191,9 +238,9 @@
 
 /*!
  * Band 0 definition
- * { DutyCycle, TxMaxPower, LastTxDoneTime, TimeOff }
+ * { DutyCycle, TxMaxPower, LastJoinTxDoneTime, LastTxDoneTime, TimeOff }
  */
-#define IN865_BAND0                                 { 1 , IN865_MAX_TX_POWER, 0,  0 } //  100.0 %
+#define IN865_BAND0                                 { 1 , IN865_MAX_TX_POWER, 0, 0, 0 } //  100.0 %
 
 /*!
  * LoRaMac default channel 1
@@ -264,7 +311,16 @@ void RegionIN865SetBandTxDone( SetBandTxDoneParams_t* txDone );
  *
  * \param [IN] type Sets the initialization type.
  */
-void RegionIN865InitDefaults( InitType_t type );
+void RegionIN865InitDefaults( InitDefaultsParams_t* params );
+
+/*!
+ * \brief Returns a pointer to the internal context and its size.
+ *
+ * \param [OUT] params Pointer to the function parameters.
+ *
+ * \retval      Points to a structure where the module store its non-volatile context.
+ */
+void* RegionIN865GetNvmCtx( GetNvmCtxParams_t* params );
 
 /*!
  * \brief Verifies a parameter.
@@ -293,21 +349,6 @@ void RegionIN865ApplyCFList( ApplyCFListParams_t* applyCFList );
  * \retval Returns true, if the channels mask could be set.
  */
 bool RegionIN865ChanMaskSet( ChanMaskSetParams_t* chanMaskSet );
-
-/*!
- * \brief Calculates the next datarate to set, when ADR is on or off.
- *
- * \param [IN] adrNext Pointer to the function parameters.
- *
- * \param [OUT] drOut The calculated datarate for the next TX.
- *
- * \param [OUT] txPowOut The TX power for the next TX.
- *
- * \param [OUT] adrAckCounter The calculated ADR acknowledgement counter.
- *
- * \retval Returns true, if an ADR request should be performed.
- */
-bool RegionIN865AdrNext( AdrNextParams_t* adrNext, int8_t* drOut, int8_t* txPowOut, uint32_t* adrAckCounter );
 
 /*!
  * Computes the Rx window timeout and offset.
@@ -398,11 +439,11 @@ uint8_t RegionIN865DlChannelReq( DlChannelReqParams_t* dlChannelReq );
 /*!
  * \brief Alternates the datarate of the channel for the join request.
  *
- * \param [IN] alternateDr Pointer to the function parameters.
+ * \param [IN] currentDr Current datarate.
  *
  * \retval Datarate to apply.
  */
-int8_t RegionIN865AlternateDr( AlternateDrParams_t* alternateDr );
+int8_t RegionIN865AlternateDr( int8_t currentDr, AlternateDrType_t type );
 
 /*!
  * \brief Calculates the back-off time.
@@ -423,7 +464,7 @@ void RegionIN865CalcBackOff( CalcBackOffParams_t* calcBackOff );
  *
  * \retval Function status [1: OK, 0: Unable to find a channel on the current datarate]
  */
-bool RegionIN865NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel, TimerTime_t* time, TimerTime_t* aggregatedTimeOff );
+LoRaMacStatus_t RegionIN865NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel, TimerTime_t* time, TimerTime_t* aggregatedTimeOff );
 
 /*!
  * \brief Adds a channel.
@@ -433,6 +474,7 @@ bool RegionIN865NextChannel( NextChanParams_t* nextChanParams, uint8_t* channel,
  * \retval Status of the operation.
  */
 LoRaMacStatus_t RegionIN865ChannelAdd( ChannelAddParams_t* channelAdd );
+LoRaMacStatus_t RegionIN865ChannelManualAdd( ChannelAddParams_t* channelAdd );
 
 /*!
  * \brief Removes a channel.
@@ -463,16 +505,17 @@ void RegionIN865SetContinuousWave( ContinuousWaveParams_t* continuousWave );
  */
 uint8_t RegionIN865ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t drOffset );
 
-bool RegionIN865ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr );
-
-LoRaMacStatus_t RegionIN865ChannelManualAdd( ChannelAddParams_t* channelAdd );
-
-bool RegionIN865ChannelsRemove( ChannelRemoveParams_t* channelRemove  );
-
-bool RegionIN865GetChannels( ChannelParams_t** channels, uint32_t *size );
-
-bool RegionIN865GetChannelMask( uint16_t** channelmask, uint32_t *size );
+/*!
+ * \brief Sets the radio into beacon reception mode
+ *
+ * \param [IN] rxBeaconSetup Pointer to the function parameters
+ */
+ void RegionIN865RxBeaconSetup( RxBeaconSetup_t* rxBeaconSetup, uint8_t* outDr );
 
 /*! \} defgroup REGIONIN865 */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __REGION_IN865_H__

@@ -209,6 +209,7 @@ APP_LORA_SRC_C = $(addprefix lora/,\
 	spi-board.c \
 	sx1276-board.c \
 	sx1272-board.c \
+	rtc-board.c \
 	board.c \
 	)
 
@@ -225,7 +226,14 @@ APP_MOD_MESH_SRC_C = $(addprefix mods/,\
 
 APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/LoRaMac.c \
+	mac/LoRaMacAdr.c \
+	mac/LoRaMacClassB.c \
+	mac/LoRaMacCommands.c \
+	mac/LoRaMacConfirmQueue.c \
 	mac/LoRaMacCrypto.c \
+	mac/LoRaMacParser.c \
+	mac/LoRaMacSerializer.c \
+	mac/soft-se.c \
 	mac/region/Region.c \
 	mac/region/RegionAS923.c \
 	mac/region/RegionAU915.c \
@@ -236,6 +244,7 @@ APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/region/RegionIN865.c \
 	system/delay.c \
 	system/gpio.c \
+	system/systime.c \
 	system/timer.c \
 	system/crypto/aes.c \
 	system/crypto/cmac.c \

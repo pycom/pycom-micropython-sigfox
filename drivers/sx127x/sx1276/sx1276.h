@@ -114,7 +114,7 @@ typedef struct
  */
 typedef struct
 {
-    uint32_t TimeStamp; // TODO:
+    uint32_t TimeStamp;
     int8_t SnrValue;
     int16_t RssiValue;
     uint8_t Size;
@@ -141,12 +141,6 @@ typedef struct SX1276_s
 {
     Gpio_t        Reset;
     Gpio_t        DIO;
-    Gpio_t        DIO0; // TODO: Check if we need DIO0-5 or not
-    Gpio_t        DIO1;
-    Gpio_t        DIO2;
-    Gpio_t        DIO3;
-    Gpio_t        DIO4;
-    Gpio_t        DIO5;
     Spi_t         Spi;
     RadioSettings_t Settings;
     uint32_t      irqFlags;

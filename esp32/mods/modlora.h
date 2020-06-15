@@ -45,24 +45,11 @@ typedef enum {
 
 typedef enum {
     E_LORA_NVS_ELE_JOINED = 0,
-    E_LORA_NVS_ELE_UPLINK,
-    E_LORA_NVS_ELE_DWLINK,
-    E_LORA_NVS_ELE_DEVADDR,
-    E_LORA_NVS_ELE_NWSKEY,
-    E_LORA_NVS_ELE_APPSKEY,
-    E_LORA_NVS_ELE_NET_ID,
-    E_LORA_NVS_ELE_ADR_ACKS,
-    E_LORA_NVS_ELE_MAC_PARAMS,
-    E_LORA_NVS_ELE_CHANNELS,
-    E_LORA_NVS_ELE_ACK_REQ,
-    E_LORA_NVS_MAC_NXT_TX,
-    E_LORA_NVS_MAC_CMD_BUF_IDX,
-    E_LORA_NVS_MAC_CMD_BUF_RPT_IDX,
-    E_LORA_NVS_ELE_MAC_BUF,
-    E_LORA_NVS_ELE_MAC_RPT_BUF,
+    E_LORA_NVS_ELE_LORAMAC_CTX,
+    E_LORA_NVS_ELE_MAC_CMD_CTX,
     E_LORA_NVS_ELE_REGION,
-    E_LORA_NVS_ELE_CHANNELMASK,
-    E_LORA_NVS_ELE_CHANNELMASK_REMAINING,
+    E_LORA_NVS_ELE_REGION_CTX,
+    E_LORA_NVS_ELE_SEC_ELEM_CTX,
     E_LORA_NVS_NUM_KEYS
 } e_lora_nvs_key_t;
 
@@ -140,7 +127,13 @@ typedef struct {
     uint8_t port;
 } lora_rx_data_t;
 
-typedef void ( *modlora_timerCallback )( void );
+typedef void ( *modlora_timerCallback )( void *context );
+
+typedef struct {
+    modlora_timerCallback cb;
+    void *cb_param;
+} modlora_timerCb_data_t;
+
 /******************************************************************************
  EXPORTED DATA
  ******************************************************************************/
@@ -155,7 +148,7 @@ extern bool modlora_nvs_get_uint(uint32_t key_idx, uint32_t *value);
 extern bool modlora_nvs_get_blob(uint32_t key_idx, void *value, uint32_t *length);
 extern void modlora_sleep_module(void);
 extern bool modlora_is_module_sleep(void);
-IRAM_ATTR extern void modlora_set_timer_callback(modlora_timerCallback cb);
+IRAM_ATTR extern void modlora_set_timer_callback(modlora_timerCallback cb, void *cb_param);
 
 extern int lora_ot_recv(uint8_t *buf, int8_t *rssi);
 extern void lora_ot_send(const uint8_t *buf, uint16_t len);
