@@ -235,13 +235,17 @@ APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/LoRaMacSerializer.c \
 	mac/soft-se.c \
 	mac/region/Region.c \
+	mac/region/RegionCommon.c \
 	mac/region/RegionAS923.c \
 	mac/region/RegionAU915.c \
-	mac/region/RegionCommon.c \
+	mac/region/RegionEU433.c \
 	mac/region/RegionEU868.c \
 	mac/region/RegionUS915.c \
 	mac/region/RegionCN470.c \
+	mac/region/RegionCN779.c \
 	mac/region/RegionIN865.c \
+	mac/region/RegionKR920.c \
+	mac/region/RegionRU864.c \
 	system/delay.c \
 	system/gpio.c \
 	system/systime.c \
