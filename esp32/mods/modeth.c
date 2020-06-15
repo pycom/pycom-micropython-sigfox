@@ -97,10 +97,6 @@ static tcpip_adapter_dns_info_t eth_sta_inf_dns_info;
 uint8_t ethernet_mac[ETH_MAC_SIZE] = {0};
 xQueueHandle DRAM_ATTR eth_cmdQueue = NULL;
 static DRAM_ATTR EventGroupHandle_t eth_event_group;
-static uint16_t num_resets_int_pin = 0;
-static uint16_t num_resets_overflow = 0;
-static uint16_t num_strange_isr = 0;
-static uint16_t num_strange_isr_zero = 0;
 
 /*****************************************************************************
 * DEFINE PUBLIC FUNCTIONS
@@ -129,7 +125,9 @@ void modeth_get_mac(uint8_t *mac)
 
 eth_speed_mode_t get_eth_link_speed(void)
 {
+    portDISABLE_INTERRUPTS();
     uint16_t speed = ksz8851_regrd(REG_PORT_STATUS);
+    portENABLE_INTERRUPTS();
     if((speed & (PORT_STAT_SPEED_100MBIT)))
     {
         return ETH_SPEED_MODE_100M;
@@ -216,7 +214,7 @@ static void process_tx(uint8_t* buff, uint16_t len)
 #endif
     // disable int before reading buffer
     portDISABLE_INTERRUPTS();
-    ksz8851_regwr(REG_INT_MASK, 0);
+    //ksz8851_regwr(REG_INT_MASK, 0);
 
     if (eth_obj.link_status) {
         ksz8851BeginPacketSend(len);
@@ -225,7 +223,7 @@ static void process_tx(uint8_t* buff, uint16_t len)
     }
 
     // re-enable int
-    ksz8851_regwr(REG_INT_MASK, INT_MASK);
+    //ksz8851_regwr(REG_INT_MASK, INT_MASK);
     portENABLE_INTERRUPTS();
 
 }
@@ -237,7 +235,7 @@ static uint32_t process_rx(void)
 
     // disable int before reading buffer
     portDISABLE_INTERRUPTS();
-    ksz8851_regwr(REG_INT_MASK, 0);
+    //ksz8851_regwr(REG_INT_MASK, 0);
 
     frameCnt = (ksz8851_regrd(REG_RX_FRAME_CNT_THRES) & RX_FRAME_CNT_MASK) >> 8;
     uint32_t frameCntTotal = frameCnt;
@@ -256,7 +254,7 @@ static uint32_t process_rx(void)
     }
 
     // re-enable int
-    ksz8851_regwr(REG_INT_MASK, INT_MASK);
+    //ksz8851_regwr(REG_INT_MASK, INT_MASK);
     portENABLE_INTERRUPTS();
 
     MSG("process_rx frames=%u (zero=%u) totalLen=%u last: len=%u \n", frameCntTotal, frameCntZeroLen, totalLen, len);
@@ -284,21 +282,25 @@ static void processInterrupt(void) {
     ctx.isr = 0;
     uint16_t processed = 0;
 
+    portDISABLE_INTERRUPTS();
+
+#ifdef DEBUG_MODETH
+    uint32_t int_pin_before = pin_get_value(KSZ8851_INT_PIN);
+#endif
+
     // read interrupt status
     ctx.isr = ksz8851_regrd(REG_INT_STATUS);
 
     // clear interrupt status
     ksz8851_regwr(REG_INT_STATUS, 0xFFFF);
 
+#ifdef DEBUG_MODETH
+    uint32_t int_pin_after = pin_get_value(KSZ8851_INT_PIN);
+
     // read rx reason
     uint16_t rxqcr = ksz8851_regrd(REG_RXQ_CMD);
+#endif
 
-    if ( ctx.isr != 0x2008 || rxqcr != 0x630 )
-        MSG("processInterrupt isr=0x%x rxqcr=0x%x %s%s%s\n", ctx.isr, rxqcr,
-            (rxqcr & RXQ_STAT_TIME_INT) ? "t": "",
-            (rxqcr & RXQ_STAT_BYTE_CNT_INT) ? "b": "",
-            (rxqcr & RXQ_STAT_FRAME_CNT_INT) ? "f": ""
-        );
 
     // FIXME: capture errQUEUE_FULL
 
@@ -321,10 +323,6 @@ static void processInterrupt(void) {
         processed++;
     }
 
-    if (processed != 1){
-        MSG("processInterrupt 0x%x %u\n", ctx.isr, processed);
-    }
-
     if ( ! processed ) {
         // This shouldn't happen regularly.
         // It migth be possible to happen in this case:
@@ -339,6 +337,18 @@ static void processInterrupt(void) {
         processed++;
     }
 
+    portENABLE_INTERRUPTS();
+
+#ifdef MODETH
+    if ( ctx.isr != 0x2008 || rxqcr != 0x630 )
+        MSG("processInterrupt isr=0x%04x rxqcr=0x%04x %s%s%s pin:%u/%u\n", ctx.isr, rxqcr,
+            (rxqcr & RXQ_STAT_TIME_INT) ? "t": "",
+            (rxqcr & RXQ_STAT_BYTE_CNT_INT) ? "b": "",
+            (rxqcr & RXQ_STAT_FRAME_CNT_INT) ? "f": "",
+            int_pin_before,
+            int_pin_after
+        );
+#endif
 }
 
 
@@ -353,14 +363,6 @@ static IRAM_ATTR void ksz8851_evt_callback(uint32_t ksz8851_evt)
     // seems is needed for link up at the start ... TODO is it actually the best solution to ulTaskNotifyTake() from Task_ETHERNET to wait for link up?
     // xTaskNotifyFromISR(ethernetTaskHandle, 0, eIncrement, NULL);
 }
-
-// void printTaskStatus(){
-//     UBaseType_t numTasks = uxTaskGetNumberOfTasks();
-//     char* taskStatusWriteBuffer = (char*) heap_caps_malloc(sizeof(char) * 40 * numTasks, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-//     vTaskGetRunTimeStats(taskStatusWriteBuffer);
-//     MSG("TE vTaskGetRunTimeStats:\n%s\n", taskStatusWriteBuffer);
-//     heap_caps_free(taskStatusWriteBuffer);
-// }
 
 static void TASK_ETHERNET (void *pvParameters) {
     MSG("TE\n");
@@ -415,41 +417,8 @@ eth_start:
         esp_event_send(&evt);
 
         MSG("TE ls=%u 10M=%u 100M=%u\n", get_eth_link_speed(), ETH_SPEED_MODE_10M, ETH_SPEED_MODE_100M);
-        UBaseType_t stack_high = uxTaskGetStackHighWaterMark(NULL);
-        // MSG("TE stack_high=%u\n", stack_high);
-
-        uint32_t ct = 0;
-        uint32_t ctTX = 0;
-        uint32_t ctRX = 0;
-        uint32_t totalTX = 0;
-        uint32_t totalRX = 0;
-        bool printStat = false;
-        uint16_t interrupt_pin_value = pin_get_value(KSZ8851_INT_PIN);
-        uint16_t interrupt_stati = 0;
         for(;;)
         {
-            UBaseType_t stack_high_new = uxTaskGetStackHighWaterMark(NULL);
-            uint16_t interrupt_pin_value_new = pin_get_value(KSZ8851_INT_PIN);
-            //uint16_t interrupt_value_new = ksz8851_regrd(REG_INT_STATUS);
-            uint16_t interrupt_stati_new = 0;
-            interrupt_stati_new = ksz8851_regrd(REG_INT_STATUS);
-            if ( interrupt_stati_new != interrupt_stati ) {
-                if (interrupt_stati_new)
-                    printStat = true;
-                interrupt_stati = interrupt_stati_new;
-            }
-            if (stack_high_new > stack_high) {
-                stack_high = stack_high_new;
-                printStat = true;
-            }
-            if (interrupt_pin_value_new != interrupt_pin_value ) {
-                interrupt_pin_value = interrupt_pin_value_new;
-                printStat = true;
-            }
-
-
-            ct++;
-
             // if(!eth_obj.link_status && (xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED))
             // {
             //     // block till link is up again
@@ -468,7 +437,9 @@ eth_start:
                 evt.event_id = SYSTEM_EVENT_ETH_DISCONNECTED;
                 esp_event_send(&evt);
                 //Disable  interrupts
+                portDISABLE_INTERRUPTS();
                 ksz8851_regwr(REG_INT_MASK, 0x0000);
+                portENABLE_INTERRUPTS();
                 MSG("TE goto eth_start\n");
                 goto eth_start;
             }
@@ -481,8 +452,6 @@ eth_start:
                 {
                     case ETH_CMD_TX:
                         //MSG("TE TX %u\n", queue_entry.len);
-                        ctTX++;
-                        totalTX += queue_entry.len;
                         process_tx(queue_entry.buf, queue_entry.len);
                         break;
                     case ETH_CMD_HW_INT:
@@ -490,8 +459,7 @@ eth_start:
                         break;
                     case ETH_CMD_RX:
                         //MSG("TE RX {0x%x}\n", queue_entry.isr);
-                        ctRX++;
-                        totalRX += process_rx();
+                        process_rx();
                         break;
                     case ETH_CMD_CHK_LINK:
                         MSG("TE CHK_LINK {0x%x}\n", queue_entry.isr);
@@ -519,10 +487,7 @@ eth_start:
                         ksz8851Init();
                         break;
                     default:
-                        MSG("TE def cmd:0x%x isr:0x%x\n", queue_entry.cmd, queue_entry.isr);
-                        num_strange_isr++;
-                        if (queue_entry.isr == 0)
-                            num_strange_isr_zero++;
+                        MSG("TE def cmd:0x%x isr:0x%04x\n", queue_entry.cmd, queue_entry.isr);
                         break;
                 }
             }
@@ -541,7 +506,6 @@ eth_start:
                 if(timeout >= max_timeout)
                 {
                     printf("ETH interrupt pin stuck\n");
-                    num_resets_int_pin++;
                     xQueueReset(eth_cmdQueue);
                     eth_obj.link_status = false;
                     ksz8851PowerDownMode();
@@ -739,30 +703,30 @@ STATIC mp_obj_t modeth_mac (mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(modeth_mac_obj, modeth_mac);
 
-STATIC mp_obj_t modeth_ksz8851_reg_wr (mp_uint_t n_args, const mp_obj_t *args) {
+// STATIC mp_obj_t modeth_ksz8851_reg_wr (mp_uint_t n_args, const mp_obj_t *args) {
 
-    if ((xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED)) {
-        if(mp_obj_get_int(args[2]) == 0)
-        {
-            //modeth_sem_lock();
-            return mp_obj_new_int(ksz8851_regrd(mp_obj_get_int(args[1])));
-            //modeth_sem_unlock();
-        }
-        else
-        {
-            if (n_args > 3) {
-                //modeth_sem_lock();
-                ksz8851_regwr(mp_obj_get_int(args[1]), mp_obj_get_int(args[3]));
-                //modeth_sem_unlock();
-            }
-            return mp_const_none;
-        }
-    }
+//     if ((xEventGroupGetBits(eth_event_group) & ETHERNET_EVT_STARTED)) {
+//         if(mp_obj_get_int(args[2]) == 0)
+//         {
+//             //modeth_sem_lock();
+//             return mp_obj_new_int(ksz8851_regrd(mp_obj_get_int(args[1])));
+//             //modeth_sem_unlock();
+//         }
+//         else
+//         {
+//             if (n_args > 3) {
+//                 //modeth_sem_lock();
+//                 ksz8851_regwr(mp_obj_get_int(args[1]), mp_obj_get_int(args[3]));
+//                 //modeth_sem_unlock();
+//             }
+//             return mp_const_none;
+//         }
+//     }
 
-    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Ethernet module not initialized!"));
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(modeth_ksz8851_reg_wr_obj, 3, 4, modeth_ksz8851_reg_wr);
+//     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Ethernet module not initialized!"));
+//     return mp_const_none;
+// }
+// STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(modeth_ksz8851_reg_wr_obj, 3, 4, modeth_ksz8851_reg_wr);
 
 STATIC mp_obj_t modeth_deinit (mp_obj_t self_in) {
 

@@ -49,6 +49,7 @@ static IRAM_ATTR void gpio_set_value(pin_obj_t *pin_o, uint32_t value);
 static IRAM_ATTR void ksz8851ProcessInterrupt(void);
 
 static void init_spi(void) {
+    portDISABLE_INTERRUPTS();
     // this is SpiNum_SPI2
     DPORT_SET_PERI_REG_MASK(DPORT_PERIP_CLK_EN_REG, DPORT_SPI_CLK_EN_2);
     DPORT_CLEAR_PERI_REG_MASK(DPORT_PERIP_RST_EN_REG, DPORT_SPI_RST_2);
@@ -84,6 +85,7 @@ static void init_spi(void) {
     pin_config((&PIN_MODULE_P20), -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
 
     gpio_set_value( (&PIN_MODULE_P20), 1 );
+    portENABLE_INTERRUPTS();
 }
 
 /* spi_byte() sends one byte (outdat) and returns the received byte */
@@ -244,7 +246,9 @@ bool ksz8851GetLinkStatus(void) {
 /* ksz8851PowerSavingMode() go to power save mode.
  */
 void ksz8851PowerDownMode(void) {
+    portDISABLE_INTERRUPTS();
     spi_setbits(REG_PHY_CNTL, PHY_POWER_DOWN);
+    portENABLE_INTERRUPTS();
 }
 
 /* ksz8851SoiInit() initializes the spi for ksz8851.
@@ -265,31 +269,37 @@ void ksz8851Init(void) {
         gpio_set_value(KSZ8851_RST_PIN, 1);
         ets_delay_us(1000 * 100);
         /* Read device chip ID */
+        portDISABLE_INTERRUPTS();
         dev_id = ksz8851_regrd(REG_CHIP_ID);
+        portENABLE_INTERRUPTS();
 
         if ((dev_id & CHIP_ID_MASK) != CHIP_ID_8851_16) {
             printf("Expected Device ID 0x%x, got 0x%x\n", CHIP_ID_8851_16, dev_id);
         }
     } while ((dev_id & CHIP_ID_MASK) != CHIP_ID_8851_16);
 
+    portDISABLE_INTERRUPTS();
     uint16_t mem_self_test = ksz8851_regrd(REG_MEM_BIST_INFO);
     uint16_t mem_self_test_done = TX_MEM_TEST_FINISHED | RX_MEM_TEST_FINISHED;
-    MSG("Init: 0x%x\n", mem_self_test);
     while ( (mem_self_test & mem_self_test_done) != mem_self_test_done ) {
         vTaskDelay(1 / portTICK_PERIOD_MS);
         mem_self_test = ksz8851_regrd(REG_MEM_BIST_INFO);
     }
+    portENABLE_INTERRUPTS();
     MSG("Init: 0x%x\n", mem_self_test);
 
 #define DISABLE_100MBIT
 #ifdef DISABLE_100MBIT
+    portDISABLE_INTERRUPTS();
     uint16_t auto_negotiation = ksz8851_regrd(REG_PHY_AUTO_NEGOTIATION);
-    MSG("Init: AN=0x%x\n", auto_negotiation);
     auto_negotiation &= ~PHY_AUTO_NEG_100BTX_FD;
     auto_negotiation &= ~PHY_AUTO_NEG_100BTX;
-    MSG("Init: AN=0x%x\n", auto_negotiation);
     ksz8851_regwr(REG_PHY_AUTO_NEGOTIATION, auto_negotiation);
+    portENABLE_INTERRUPTS();
+    MSG("Init: AN=0x%x\n", auto_negotiation);
 #endif
+
+    portDISABLE_INTERRUPTS();
 
     /* Write QMU MAC address (low) */
     ksz8851_regwr(REG_MAC_ADDR_01, (ethernet_mac[4] << 8) | ethernet_mac[5]);
@@ -385,7 +395,6 @@ void ksz8851Init(void) {
 #endif
 
     /* Enable Link change interrupt , enable  tx/Rx interrupts */
-    MSG("init INT:0x%x\n", INT_MASK);
     spi_setbits(REG_INT_MASK, INT_MASK);
 
     /* Enable QMU Transmit */
@@ -393,6 +402,8 @@ void ksz8851Init(void) {
 
     /* Enable QMU Receive */
     spi_setbits(REG_RX_CTRL1, RX_CTRL_ENABLE);
+
+    portENABLE_INTERRUPTS();
 }
 
 /* ksz8851BeginPacketSend() starts the packet sending process.  First,
