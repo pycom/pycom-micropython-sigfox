@@ -534,13 +534,13 @@ eth_start:
                 while((!pin_get_value(KSZ8851_INT_PIN)) && timeout < max_timeout)
                 {
                     printf("TE TO %u\n", timeout);
-
+                    processInterrupt();
                     vTaskDelay(10 / portTICK_PERIOD_MS);
                     timeout++;
                 }
                 if(timeout >= max_timeout)
                 {
-                    MSG("TE Force Int\n");
+                    printf("ETH interrupt pin stuck\n");
                     num_resets_int_pin++;
                     xQueueReset(eth_cmdQueue);
                     eth_obj.link_status = false;
