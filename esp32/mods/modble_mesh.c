@@ -115,7 +115,8 @@ static esp_ble_mesh_client_t sensor_client;
  ******************************************************************************/
 
 // TYPE : SIZE table, can be addressed with (model_type + state + request).
-static const uint8_t opcode_table[] = {
+// int to eliminate compiler warnings
+static const int opcode_table[] = {
         // GENERIC ONOFF ONOFF
         BLE_MESH_MODEL_OP_GEN_ONOFF_GET,
         BLE_MESH_MODEL_OP_GEN_ONOFF_SET,
@@ -177,6 +178,11 @@ static const uint8_t opcode_table[] = {
 // There is only one UUID, and it cannot be changed during runtime
 // TODO: why is this initialized with these 2 values ?
 static uint8_t dev_uuid[16] = { 0xdd, 0xdd };
+
+typedef union mod_ble_mesh_sensor_state_s {
+    float state_float;
+    uint8_t state_uint8[4];
+}mod_ble_mesh_sensor_state_t;
 
 // This is the same as esp_ble_mesh_elem_t just without const members
 typedef struct mod_ble_mesh_elem_s {
@@ -375,7 +381,6 @@ static void mod_ble_mesh_generic_server_callback_handler(void* param_in) {
 
         esp_ble_mesh_generic_server_cb_event_t event = callback_param->event;
         esp_ble_mesh_generic_server_cb_param_t* param = callback_param->param;
-        esp_ble_mesh_model_t* model = callback_param->param->model;
 
         switch (event) {
             case ESP_BLE_MESH_GENERIC_SERVER_RECV_SET_MSG_EVT:
@@ -455,7 +460,6 @@ static void mod_ble_mesh_sensor_server_callback_handler(void* param_in) {
 
         esp_ble_mesh_sensor_server_cb_event_t event = callback_param->event;
         esp_ble_mesh_sensor_server_cb_param_t* param = callback_param->param;
-        esp_ble_mesh_model_t* model = callback_param->param->model;
 
         if (event == ESP_BLE_MESH_SENSOR_SERVER_RECV_GET_MSG_EVT) {
             int8_t state_idx;
@@ -490,7 +494,7 @@ static void mod_ble_mesh_sensor_server_callback_handler(void* param_in) {
                 status = calloc(1, buf_size);
                 length = example_ble_mesh_get_sensor_data(&mod_ble_sensor_srv.states[state_idx], status);
 
-                esp_ble_mesh_server_model_send_msg(&param->ctx.model, &param->ctx, ESP_BLE_MESH_MODEL_OP_SENSOR_STATUS, length, status);
+                esp_ble_mesh_server_model_send_msg((esp_ble_mesh_model_t*)&param->ctx.model, &param->ctx, ESP_BLE_MESH_MODEL_OP_SENSOR_STATUS, length, status);
                 free(status);
             }
         }
@@ -506,7 +510,6 @@ static void mod_ble_mesh_sensor_client_callback_handler(void* param_in) {
 
         esp_ble_mesh_sensor_client_cb_event_t event = callback_param->event;
         esp_ble_mesh_sensor_client_cb_param_t* param = callback_param->param;
-        esp_ble_mesh_model_t* model = callback_param->param->params->model;
 
         if (mod_ble_model->callback != NULL && event == ESP_BLE_MESH_SENSOR_CLIENT_PUBLISH_EVT && param->status_cb.sensor_status.marshalled_sensor_data->len) {
             // Get Prop ID
@@ -709,20 +712,19 @@ static mp_obj_t mod_ble_state_to_mp_obj(mod_ble_mesh_model_class_t* model, void*
                 // GET the state of Sensor Server
                 uint8_t *data = state_change_client->sensor_status.marshalled_sensor_data->__buf;
                 uint8_t fmt = ESP_BLE_MESH_GET_SENSOR_DATA_FORMAT(data);
-                uint16_t prop_id = ESP_BLE_MESH_GET_SENSOR_DATA_PROPERTY_ID(data, fmt);
+                // Not used yet
+                //uint16_t prop_id = ESP_BLE_MESH_GET_SENSOR_DATA_PROPERTY_ID(data, fmt);
                 uint8_t mpid_len = (fmt == ESP_BLE_MESH_SENSOR_DATA_FORMAT_A ? ESP_BLE_MESH_SENSOR_DATA_FORMAT_A_MPID_LEN : ESP_BLE_MESH_SENSOR_DATA_FORMAT_B_MPID_LEN);
 
                 // GET the state of Sensor Server
-                uint8_t state_u8[4];
-                state_u8[0] = *(data + mpid_len);
-                state_u8[1] = *(data + mpid_len + 1);
-                state_u8[2] = *(data + mpid_len + 2);
-                state_u8[3] = *(data + mpid_len + 3);
 
-                uint32_t state_u32;
-                state_u32 = *(uint32_t*)&state_u8;
-                float state_float = *(float*)&state_u32;
-                ret = mp_obj_new_float(state_float);
+                mod_ble_mesh_sensor_state_t state;
+                state.state_uint8[0] = *(data + mpid_len);
+                state.state_uint8[1] = *(data + mpid_len + 1);
+                state.state_uint8[2] = *(data + mpid_len + 2);
+                state.state_uint8[3] = *(data + mpid_len + 3);
+
+                ret = mp_obj_new_float(state.state_float);
             }
         }
     }
@@ -832,16 +834,13 @@ STATIC mp_obj_t mod_ble_mesh_model_get_state(mp_uint_t n_args, const mp_obj_t *p
 
                 if(state_idx != -1) {
                     // GET the state of Sensor Server
-                    uint8_t state_u8[4];
-                    state_u8[0] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[0];
-                    state_u8[1] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[1];
-                    state_u8[2] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[2];
-                    state_u8[3] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[3];
+                    mod_ble_mesh_sensor_state_t state;
+                    state.state_uint8[0] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[0];
+                    state.state_uint8[1] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[1];
+                    state.state_uint8[2] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[2];
+                    state.state_uint8[3] = mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[3];
 
-                    uint32_t state_u32;
-                    state_u32 = *(uint32_t*)&state_u8;
-                    float state_float = *(float*)&state_u32;
-                    return mp_obj_new_float(state_float);
+                    return mp_obj_new_float(state.state_float);
                 }
                 else {
                     return mp_const_none;
@@ -972,28 +971,27 @@ STATIC mp_obj_t mod_ble_mesh_model_set_state(mp_uint_t n_args, const mp_obj_t *p
             int8_t state_idx = get_sen_state_idx(prop_id);
 
             if(state_idx != -1) {
-                // SET the state of Sensor Server
-                float state_float = mp_obj_get_float(state_mp);
-                uint32_t state_u32 = *(uint32_t*)&state_float;
+                // SET the state of Sensor Server as 4 uint8_t values
+                mod_ble_mesh_sensor_state_t state;
+                state.state_float = mp_obj_get_float(state_mp);
 
-                // Store uint32_t State as 4 uint8_t values
-                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[0] = (state_u32 & 0x000000ff);
-                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[1] = (state_u32 & 0x0000ff00) >> 8;
-                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[2] = (state_u32 & 0x00ff0000) >> 16;
-                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[3] = (state_u32 & 0xff000000) >> 24;
+                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[0] = state.state_uint8[0];
+                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[1] = state.state_uint8[1];
+                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[2] = state.state_uint8[2];
+                mod_ble_sensor_srv.states[state_idx].sensor_data.raw_value->data[3] = state.state_uint8[3];
 
                 // Inform user through callback
                 if(self->callback != NULL) {
                     mp_obj_t args[4];
-                    args[0] = mp_obj_new_float(state_float);
+                    args[0] = mp_obj_new_float(state.state_float);
                     //TODO: Get address
                     args[1] = mp_const_none;
                     args[2] = mp_obj_new_int(self->type);
                     if(prop_id == -1) {
-                        args[3] = mod_ble_sensor_srv.states[0].sensor_property_id;
+                        args[3] = mp_obj_new_int(mod_ble_sensor_srv.states[0].sensor_property_id);
                     }
                     else {
-                        args[3] = prop_id;
+                        args[3] = mp_obj_new_int(prop_id);
                     }
                     mp_call_function_n_kw(self->callback, 4, 0, args);
                 }
@@ -1093,12 +1091,12 @@ STATIC mp_obj_t mod_ble_mesh_model_status_state(mp_uint_t n_args, const mp_obj_t
             if(self->type == MOD_BLE_MESH_MODEL_GEN_ONOFF) {
                 // Send Status of Generic OnOff Server State
                 esp_ble_mesh_gen_onoff_srv_t *srv = self->element->element->sig_models[self->index].user_data;
-                esp_ble_mesh_server_model_send_msg(&self->element->element->sig_models[self->index], &ctx, opcode, sizeof(srv->state.onoff), &srv->state.onoff);
+                esp_ble_mesh_server_model_send_msg(&self->element->element->sig_models[self->index], &ctx, opcode, sizeof(srv->state.onoff), (uint8_t*)&srv->state.onoff);
             }
             else if(self->type == MOD_BLE_MESH_MODEL_GEN_LEVEL) {
                 // Send Status of Generic Level Server State
                 esp_ble_mesh_gen_level_srv_t *srv = self->element->element->sig_models[self->index].user_data;
-                esp_ble_mesh_server_model_send_msg(&self->element->element->sig_models[self->index], &ctx, opcode, sizeof(srv->state.level), &srv->state.level);
+                esp_ble_mesh_server_model_send_msg(&self->element->element->sig_models[self->index], &ctx, opcode, sizeof(srv->state.level), (uint8_t*)&srv->state.level);
             }
         }
         else if(self->group == MOD_BLE_MESH_GROUP_SENSOR) {
