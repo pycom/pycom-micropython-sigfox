@@ -109,7 +109,7 @@ void TASK_Servers (void *pvParameters) {
 //            pybwdt_srv_sleeping(true);  //  FIXME
 //            modusocket_enter_sleep();   //  FIXME
 //            pybwdt_srv_sleeping(false); // FIXME
-            mp_hal_delay_ms(SERVERS_CYCLE_TIME_MS * 2);
+            vTaskDelay((SERVERS_CYCLE_TIME_MS * 2) / portTICK_PERIOD_MS);
             if (servers_data.do_wlan_cycle_power) {
                 servers_data.do_wlan_cycle_power = false;
 //                wlan_off_on(); // FIXME
@@ -132,7 +132,7 @@ void TASK_Servers (void *pvParameters) {
 
 void servers_start (void) {
     servers_data.do_enable = true;
-    mp_hal_delay_ms(SERVERS_CYCLE_TIME_MS * 3);
+    vTaskDelay((SERVERS_CYCLE_TIME_MS * 3) / portTICK_PERIOD_MS);
 }
 
 void servers_stop (void) {
@@ -150,10 +150,10 @@ void servers_stop (void) {
     {
         servers_data.do_disable = true;
         do {
-            mp_hal_delay_ms(SERVERS_CYCLE_TIME_MS);
+            vTaskDelay(SERVERS_CYCLE_TIME_MS / portTICK_PERIOD_MS);
         } while (servers_are_enabled());
     }
-    mp_hal_delay_ms(SERVERS_CYCLE_TIME_MS * 3);
+    vTaskDelay((SERVERS_CYCLE_TIME_MS * 3) / portTICK_PERIOD_MS);
 }
 
 void servers_reset (void) {
@@ -174,7 +174,7 @@ bool servers_are_enabled (void) {
 
 void server_sleep_sockets (void) {
     sleep_sockets = true;
-    mp_hal_delay_ms(SERVERS_CYCLE_TIME_MS + 1);
+    vTaskDelay((SERVERS_CYCLE_TIME_MS + 1) / portTICK_PERIOD_MS);
 }
 
 void servers_close_socket (int32_t *sd) {

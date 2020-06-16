@@ -19,6 +19,13 @@ APP_INC += -Ilte
 APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
+ifeq ($(PYGATE_ENABLED), 1)
+APP_INC += -Ipygate/concentrator
+APP_INC += -Ipygate/hal/include
+APP_INC += -Ipygate/lora_pkt_fwd
+APP_INC += -I$(ESP_IDF_COMP_PATH)/pthread/include/
+APP_INC += -I$(ESP_IDF_COMP_PATH)/sntp/include/
+endif
 APP_INC += -Ilittlefs
 APP_INC += -I$(BUILD)
 APP_INC += -I$(BUILD)/genhdr
@@ -35,6 +42,9 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_ringbuf/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_event/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_adc_cal/include
+ifeq ($(PYETH_ENABLED), 1)
+APP_INC += -I$(ESP_IDF_COMP_PATH)/ethernet/include
+endif
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
@@ -83,6 +93,12 @@ APP_INC += -I../lib/netutils
 APP_INC += -I../lib/oofatfs
 APP_INC += -I../lib
 APP_INC += -I../drivers/sx127x
+ifeq ($(PYGATE_ENABLED), 1)
+APP_INC += -I../drivers/sx1308
+endif
+ifeq ($(PYETH_ENABLED), 1)
+APP_INC += -I../drivers/ksz8851
+endif
 APP_INC += -I../ports/stm32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/openthread/src
 
@@ -241,12 +257,43 @@ APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	system/crypto/cmac.c \
 	)
 
+APP_SX1308_SRC_C = $(addprefix drivers/sx1308/,\
+	sx1308.c \
+	sx1308-spi.c \
+	)
+
+APP_PYGATE_SRC_C = $(addprefix pygate/,\
+	concentrator/loragw_reg_esp.c \
+	concentrator/loragw_hal_esp.c \
+	concentrator/cmd_manager.c \
+	hal/loragw_aux.c \
+	hal/loragw_mcu.c \
+	hal/loragw_com_esp.c \
+	hal/loragw_com.c \
+	hal/loragw_hal.c \
+	hal/loragw_radio.c \
+	hal/loragw_reg.c \
+	lora_pkt_fwd/base64.c \
+	lora_pkt_fwd/jitqueue.c \
+	lora_pkt_fwd/lora_pkt_fwd.c \
+	lora_pkt_fwd/parson.c \
+	lora_pkt_fwd/timersync.c \
+	)
+	
+APP_ETHERNET_SRC_C = $(addprefix mods/,\
+	modeth.c \
+	)
+
 APP_SX1272_SRC_C = $(addprefix drivers/sx127x/,\
 	sx1272/sx1272.c \
 	)
 
 APP_SX1276_SRC_C = $(addprefix drivers/sx127x/,\
 	sx1276/sx1276.c \
+	)
+
+APP_KSZ8851_SRC_C = $(addprefix drivers/ksz8851/,\
+	ksz8851.c \
 	)
 
 APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/src/,\
@@ -341,6 +388,16 @@ OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(A
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
+ifeq ($(PYGATE_ENABLED), 1)
+OBJ += $(addprefix $(BUILD)/, $(APP_SX1308_SRC_C:.c=.o) $(APP_PYGATE_SRC_C:.c=.o))
+CFLAGS += -DPYGATE_ENABLED
+SRC_QSTR += $(APP_SX1308_SRC_C) $(APP_PYGATE_SRC_C)
+endif
+ifeq ($(PYETH_ENABLED), 1)
+OBJ += $(addprefix $(BUILD)/, $(APP_KSZ8851_SRC_C:.c=.o) $(APP_ETHERNET_SRC_C:.c=.o))
+CFLAGS += -DPYETH_ENABLED
+SRC_QSTR += $(APP_KSZ8851_SRC_C) $(APP_ETHERNET_SRC_C)
+endif
 OBJ += $(BUILD)/pins.o
 
 BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
@@ -367,10 +424,10 @@ endif # ifeq ($(OPENTHREAD), on)
 # SRC_QSTR
 SRC_QSTR_AUTO_DEPS +=
 
-BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld
+BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld -T esp32.extram.bss.ld
 
 # add the application linker script(s)
-APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.project.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.rom.libgcc.ld
+APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.project.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.rom.libgcc.ld -T esp32.extram.bss.ld
 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX

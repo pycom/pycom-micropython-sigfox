@@ -43,6 +43,9 @@
 #include "serverstask.h"
 #include "modnetwork.h"
 #include "modwlan.h"
+#ifdef PYETH_ENABLED
+#include "modeth.h"
+#endif
 #include "modusocket.h"
 #include "antenna.h"
 #include "modled.h"
@@ -239,11 +242,15 @@ soft_reset:
         // Config Wifi as per Pycom config
         mptask_config_wifi(false);
         // these ones are special because they need uPy running and they launch tasks
+#ifndef PYETH_ENABLED
+// PyEth and LoRa module are both connected via SPI 3,
+// so with PyEth enabled, we disable th LoRa module
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
         modlora_init0();
 #endif
 #if defined(SIPY) || defined(LOPY4) || defined (FIPY)
         modsigfox_init0();
+#endif
 #endif
     }
 
@@ -383,6 +390,7 @@ bool isLittleFs(const TCHAR *path){
  ******************************************************************************/
 STATIC void mptask_preinit (void) {
     wlan_pre_init();
+    //eth_pre_init();
     //TODO: Re-check this: increased stack is needed by modified FTP implementation due to LittleFS vs FatFs
     xTaskCreatePinnedToCore(TASK_Servers, "Servers", 2*SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 1);
 }

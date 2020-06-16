@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-IDF_HASH=6ec081c
+IDF_HASH=b39468b
 
 TARGET ?= boot_app
 
@@ -25,6 +25,12 @@ BTYPE ?= release
 
 # make Non-Pybytes firmware default
 VARIANT ?=BASE
+
+# set to 1 to enable PyEthernet board (ksz8851 chip)
+PYETH_ENABLED ?= 0
+
+# set to 1 to enable LoRaWAN gateway (requires Pygate board)
+PYGATE_ENABLED ?= 0
 
 ifeq ($(VARIANT),BASE)
 	BUILD_DIR ?=build
