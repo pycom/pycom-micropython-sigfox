@@ -259,16 +259,8 @@ static uint32_t process_rx(void)
 
     MSG("process_rx frames=%u (zero=%u) totalLen=%u last: len=%u \n", frameCntTotal, frameCntZeroLen, totalLen, len);
 #ifdef DEBUG_MODETH
-    // print last frame
     if (frameCntTotal){
-       if (modeth_rxBuff[0] == 0x24 && modeth_rxBuff[1] == 0x0a ){
-            // dst mac seems to be pycom board, 24 0a c4 c7 b2 53
-            // OK
-        }else if (modeth_rxBuff[0] == 0x00 && modeth_rxBuff[1] == 0xe0 ){
-            // dst laptop, OK
-        }else {
-            printf("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
-        }
+        // print last frame
         print_frame(modeth_rxBuff, len);
     }
 #endif
@@ -477,7 +469,7 @@ eth_start:
                         }
                         break;
                     case ETH_CMD_OVERRUN:
-                        printf("TE OVERRUN {0x%x} ========================================\n", queue_entry.isr);
+                        MSG("TE OVERRUN {0x%x} ========================================\n", queue_entry.isr);
                         xQueueReset(eth_cmdQueue);
                         eth_obj.link_status = false;
                         ksz8851PowerDownMode();
@@ -498,7 +490,7 @@ eth_start:
                 //TODO: This workaround should be removed once the lockup is resolved
                 while((!pin_get_value(KSZ8851_INT_PIN)) && timeout < max_timeout)
                 {
-                    printf("TE TO %u\n", timeout);
+                    MSG("TE TO %u\n", timeout);
                     processInterrupt();
                     vTaskDelay(10 / portTICK_PERIOD_MS);
                     timeout++;
