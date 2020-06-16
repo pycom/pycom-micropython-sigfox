@@ -83,10 +83,14 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/hci/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/gki/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
+
+ifeq ($(MOD_COAP_ENABLED), 1)
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include/coap
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/examples
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include/coap
+endif
+
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mdns/include
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
@@ -176,9 +180,13 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machrmt.c \
 	lwipsocket.c \
 	machtouch.c \
-	modcoap.c \
 	modmdns.c \
 	)
+ifeq ($(MOD_COAP_ENABLED), 1)
+APP_MODS_SRC_C += $(addprefix mods/,\
+	modcoap.c \
+	)
+endif
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
 	modlora.c \
@@ -367,12 +375,16 @@ endif
 ifeq ($(BOARD), $(filter $(BOARD), LOPY4))
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1276_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
 endif
+
+ifeq ($(MOD_SIGFOX_ENABLED), 1)
 ifeq ($(BOARD), $(filter $(BOARD), SIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
 ifeq ($(BOARD), $(filter $(BOARD), LOPY4 FIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
+endif
+
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_LTE_SRC_C:.c=.o) $(APP_MODS_LTE_SRC_C:.c=.o))
 endif
@@ -408,7 +420,9 @@ ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
 SRC_QSTR += $(APP_MODS_LORA_SRC_C)
 endif
 ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
+ifeq ($(MOD_SIGFOX_ENABLED), 1)
 SRC_QSTR += $(APP_SIGFOX_MOD_SRC_C)
+endif
 endif
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
 SRC_QSTR += $(APP_MODS_LTE_SRC_C)
@@ -485,30 +499,36 @@ ifeq ($(BOARD), LOPY)
 endif
 ifeq ($(BOARD), LOPY4)
     APP_BIN = $(BUILD)/lopy4.bin
-    $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    ifeq ($(MOD_SIGFOX_ENABLED), 1)
+        $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    endif
 endif
 ifeq ($(BOARD), SIPY)
     APP_BIN = $(BUILD)/sipy.bin
-    $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    ifeq ($(MOD_SIGFOX_ENABLED), 1)
+        $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    endif
 endif
 ifeq ($(BOARD), GPY)
     APP_BIN = $(BUILD)/gpy.bin
 endif
 ifeq ($(BOARD), FIPY)
     APP_BIN = $(BUILD)/fipy.bin
-    $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    ifeq ($(MOD_SIGFOX_ENABLED), 1)
+        $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    endif
 endif
 
 PART_BIN_8MB = $(BUILD)/lib/partitions_8MB.bin
