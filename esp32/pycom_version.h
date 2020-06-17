@@ -20,4 +20,8 @@
 #define PYBYTES_VERSION_NUMBER                         "1.5.0"
 #endif
 
+#ifdef PYGATE_ENABLED
+#define PYGATE_VERSION_NUMBER                          "1.0.0"
+#endif
+
 #endif /* VERSION_H_ */
