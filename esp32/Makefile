@@ -23,9 +23,6 @@ OEM ?= 0
 # make 'release' the default build type
 BTYPE ?= release
 
-# make Non-Pybytes firmware default
-VARIANT ?=BASE
-
 # set to 1 to enable PyEthernet board (ksz8851 chip)
 PYETH_ENABLED ?= 0
 
@@ -38,11 +35,27 @@ MOD_COAP_ENABLED ?= 1
 # SIGFOX is enabled by default. It will only be built for supported boards.
 MOD_SIGFOX_ENABLED ?= 1
 
-ifeq ($(VARIANT),BASE)
-	BUILD_DIR ?=build
-else
-	BUILD_DIR ?=build-$(VARIANT)
+# Pybytes disabled by default
+PYBYTES_ENABLED ?= 0
+
+# by default make a BASE firmware with features as specified with defaults above
+# valid choices for VARIANT are: BASE, PYBYTES, PYGATE
+VARIANT ?=BASE
+
+ifeq ($(VARIANT),PYBYTES)
+    PYBYTES_ENABLED=1
 endif
+
+ifeq ($(VARIANT),PYGATE)
+    ifneq ($(BOARD), $(filter $(BOARD), WIPY GPY LOPY4 ))
+        $(error PYGATE variant is not supported on $(BOARD))
+    endif
+    PYBYTES_ENABLED=1
+    PYETH_ENABLED=1
+    PYGATE_ENABLED=1
+endif
+
+BUILD_DIR ?=build-$(VARIANT)
 
 BUILD = $(BUILD_DIR)/$(BOARD)/$(BTYPE)
 
