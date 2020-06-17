@@ -287,7 +287,7 @@ APP_PYGATE_SRC_C = $(addprefix pygate/,\
 	lora_pkt_fwd/parson.c \
 	lora_pkt_fwd/timersync.c \
 	)
-	
+
 APP_ETHERNET_SRC_C = $(addprefix mods/,\
 	modeth.c \
 	)
@@ -401,11 +401,13 @@ OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
 ifeq ($(PYGATE_ENABLED), 1)
+$(info Pygate Enabled)
 OBJ += $(addprefix $(BUILD)/, $(APP_SX1308_SRC_C:.c=.o) $(APP_PYGATE_SRC_C:.c=.o))
 CFLAGS += -DPYGATE_ENABLED
 SRC_QSTR += $(APP_SX1308_SRC_C) $(APP_PYGATE_SRC_C)
 endif
 ifeq ($(PYETH_ENABLED), 1)
+$(info PyEthernet Enabled)
 OBJ += $(addprefix $(BUILD)/, $(APP_KSZ8851_SRC_C:.c=.o) $(APP_ETHERNET_SRC_C:.c=.o))
 CFLAGS += -DPYETH_ENABLED
 SRC_QSTR += $(APP_KSZ8851_SRC_C) $(APP_ETHERNET_SRC_C)
@@ -446,22 +448,23 @@ APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.project.ld -T esp32.rom.ld -T
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
 CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
-CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DREGION_CN470 -DREGION_IN865 -DBASE=0 -DPYBYTES=1 
-# Specify if this is base or Pybytes Firmware
-ifeq ($(VARIANT),BASE)
-CFLAGS += -DVARIANT=0
+CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DREGION_CN470 -DREGION_IN865 -DBASE=0 -DPYBYTES=1
+
+# Specify if this is Firmware build has Pybytes enabled
+# FIXME: would be cleaner to have a PYBYTES_ENABLED define, rather than a VARIANT
+ifeq ($(PYBYTES_ENABLED), 1)
+$(info Pybytes Enabled)
+CFLAGS += -DVARIANT=1
 else
-	ifeq ($(VARIANT),PYBYTES)
-	CFLAGS += -DVARIANT=1
-	else
-	$(error Invalid Variant specified)
-	endif
-endif  
+CFLAGS += -DVARIANT=0
+endif
+
 # Give the possibility to use LittleFs on /flash, otherwise FatFs is used
 FS ?= ""
 ifeq ($(FS), LFS)
     CFLAGS += -DFS_USE_LITTLEFS
 endif
+
 # add the application archive, this order is very important
 APP_LIBS = -Wl,--start-group $(LIBS) $(BUILD)/application.a -Wl,--end-group -Wl,-EL
 
@@ -598,7 +601,7 @@ include sigfox.mk
 endif
 .PHONY: all CHECK_DEP
 
-$(info $(VARIANT) Variant) 
+$(info Variant: $(VARIANT))
 ifeq ($(SECURE), on)
 
 # add #define CONFIG_FLASH_ENCRYPTION_ENABLE 1 used for Flash Encryption

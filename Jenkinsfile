@@ -1,6 +1,9 @@
 def buildVersion
 def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def variants_to_build = [ "PYBYTES" ]
+// FIXME: there must be a better way of adding PYGATE to Jenkins, but it evades me :(
+def pygate_boards_to_build = ["WiPy", "GPy", "LoPy4"]
+def pygate_variants_to_build = [ "PYGATE" ]
 def boards_to_test = ["00ec51"]
 def open_thread
 
@@ -35,6 +38,19 @@ node {
             parallel parallelSteps
         }
     }
+
+    for (board in pygate_boards_to_build) {
+        stage(board) {
+            def parallelSteps = [:]
+            for (variant in pygate_variants_to_build) {
+                board_variant = board + "_" + variant
+                open_thread = 'off'
+                parallelSteps[board_variant] = boardBuild(board, variant, open_thread)
+            }
+            parallel parallelSteps
+        }
+    }
+
     stash includes: '**/*.tar.gz', name: 'binary'
     stash includes: 'tests/**', name: 'tests'
     stash includes: 'tools/**', name: 'tools'
