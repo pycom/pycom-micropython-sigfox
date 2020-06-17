@@ -102,29 +102,19 @@ STATIC const MP_DEFINE_STR_OBJ(os_uname_info_sigfox_obj, SIGFOX_VERSION_NUMBER);
 #if (VARIANT == PYBYTES)
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_pybytes_obj, PYBYTES_VERSION_NUMBER);
 #endif
+
 STATIC MP_DEFINE_ATTRTUPLE(
     os_uname_info_obj
     ,os_uname_info_fields
+    , 5
+#if defined(LOPY) || defined(LOPY4) || defined(FIPY)
+    +1
+#endif
+#if defined(SIPY) || defined (LOPY4) || defined(FIPY)
+    +1
+#endif
 #if (VARIANT == PYBYTES)
-#if defined(FIPY) || defined (LOPY4)
-    ,8
-#else
-#if defined(LOPY) || defined(SIPY)
-    ,7
-    #else
-    ,6
-    #endif
-#endif
-#else
-#if defined(FIPY) || defined (LOPY4)
-    ,7
-#else
-#if defined(LOPY) || defined(SIPY)
-    ,6
-    #else
-    ,5
-    #endif
-#endif
+    +1
 #endif
     ,(mp_obj_t)&os_uname_info_sysname_obj
     ,(mp_obj_t)&os_uname_info_nodename_obj
