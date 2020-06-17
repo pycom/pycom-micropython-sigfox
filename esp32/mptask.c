@@ -211,8 +211,7 @@ soft_reset:
 #endif
     uart_init0();
 #ifndef RGB_LED_DISABLE
-    // TODO: disabled for now because with esp-idf 4.0 calling this function causes core lockup due to interrupts belonging to RMT peripheral
-    //mperror_init0();
+    mperror_init0();
 #endif
     rng_init0();
     mp_hal_init(soft_reset);
