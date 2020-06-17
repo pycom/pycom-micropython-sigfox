@@ -97,14 +97,6 @@ def main():
         shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libcoexist.a', dsttmpapp)
         shutil.copy(os.environ['IDF_PATH'] + '/components/xtensa/esp32/libhal.a', dsttmpapp)
         shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib_esp32/libsmartconfig.a', dsttmpapp)
-
-        # copy libraries from toolchain
-        toolchain_path = find_xtensa_path()
-        shutil.copy(toolchain_path + '/xtensa-esp32-elf/lib/esp32-psram/libc.a', dsttmpapp)
-        shutil.copy(toolchain_path + '/xtensa-esp32-elf/lib/esp32-psram/libm.a', dsttmpapp)
-        shutil.copy(toolchain_path + '/lib/gcc/xtensa-esp32-elf/8.2.0/esp32-psram/libgcc.a', dsttmpapp)
-        shutil.copy(toolchain_path + '/xtensa-esp32-elf/lib/esp32-psram/libstdc++.a', dsttmpapp)
-
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         traceback.print_exc()

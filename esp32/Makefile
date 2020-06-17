@@ -87,6 +87,7 @@ CFLAGS_XTENSA = -DESP_PLATFORM -Wall -Werror=all -Wno-error=unused-function \
                 -Wno-error=deprecated-declarations -Wno-unused-parameter -DWITH_POSIX \
 
 CFLAGS_XTENSA_OPT = -Os
+# Using -mfix-esp32-psram-cache-issue will make sure that the correct libraries, designed to workaround the PSRAM issue, are used from the Toolchain
 CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue
 
 CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
@@ -103,15 +104,14 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -L$(ESP_IDF_COMP_PATH)/esp32/ld/wifi_iram_noopt \
        -L$(ESP_IDF_COMP_PATH)/bt/lib \
        -L$(ESP_IDF_COMP_PATH)/esp32 \
-       -L$(ESP_IDF_COMP_PATH)/newlib/lib \
        -Lbootloader \
        -Llib \
        -L$(BUILD) \
        -lsigfox \
-       lib/libc.a \
-       lib/libm.a \
-       lib/libgcc.a \
-       lib/libstdc++.a \
+       -lc \
+       -lm \
+       -lgcc \
+       -lstdc++ \
        -lnvs_flash -ltcpip_adapter -llog -lcxx \
        -lspi_flash -lnvs_flash -lnghttp -ldriver -lesp32 -lexpat -lpthread -lesp_adc_cal \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
@@ -155,7 +155,7 @@ B_LIBS = bootloader/lib/libbootloader_support.a \
          bootloader/lib/libmicro-ecc.a \
          bootloader/lib/libsoc.a \
          bootloader/lib/libspi_flash.a \
-         lib/libgcc.a \
+         -lgcc \
 
 # objcopy paramters, to transform a binary file into an object file
 OBJCOPY_EMBED_ARGS = --input-target binary --output-target elf32-xtensa-le --binary-architecture xtensa --rename-section .data=.rodata.embedded
