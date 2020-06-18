@@ -55,7 +55,11 @@ ifeq ($(VARIANT),PYGATE)
     PYGATE_ENABLED=1
 endif
 
-BUILD_DIR ?=build-$(VARIANT)
+ifeq ($(VARIANT),BASE)
+	BUILD_DIR ?=build
+else
+	BUILD_DIR ?=build-$(VARIANT)
+endif
 
 BUILD = $(BUILD_DIR)/$(BOARD)/$(BTYPE)
 

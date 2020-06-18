@@ -5,7 +5,12 @@ set -e
 BOARD="$1"
 RELEASE_TYP="$2"
 VARIANT="$3"
-BUILD_DIR="build-${VARIANT}"
+if [ ${VARIANT} != "BASE" ] ; then
+  BUILD_DIR="build-${VARIANT}"
+else
+  BUILD_DIR="build"
+fi
+
 IMG_MAX_SIZE_8MB=2027520
 IMG_MAX_SIZE_4MB=1761280
 OS="$(uname)"
