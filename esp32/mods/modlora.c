@@ -231,8 +231,7 @@ typedef struct {
     } u;
     uint8_t           McKeyE[16];
 
-    bool              txiq;
-    bool              rxiq;
+    bool              inv_iq;
     bool              adr;
     bool              public;
     bool              joined;
@@ -1330,12 +1329,12 @@ static void lora_radio_setup (lora_init_cmd_data_t *init_data) {
     Radio.SetTxConfig(MODEM_LORA, init_data->tx_power, 0, init_data->bandwidth,
                                   init_data->sf, init_data->coding_rate,
                                   init_data->preamble, LORA_FIX_LENGTH_PAYLOAD_OFF,
-                                  true, 0, 0, init_data->txiq, LORA_TX_TIMEOUT_MAX);
+                                  true, 0, 0, init_data->inv_iq, LORA_TX_TIMEOUT_MAX);
 
     Radio.SetRxConfig(MODEM_LORA, init_data->bandwidth, init_data->sf,
                                   init_data->coding_rate, 0, init_data->preamble,
                                   symbol_to, LORA_FIX_LENGTH_PAYLOAD_OFF,
-                                  0, true, 0, 0, init_data->rxiq, true);
+                                  0, true, 0, 0, init_data->inv_iq, true);
 
     Radio.SetMaxPayloadLength(MODEM_LORA, LORA_PAYLOAD_SIZE_MAX);
 
@@ -1567,8 +1566,7 @@ static void lora_set_config (lora_cmd_data_t *cmd_data) {
     lora_obj.coding_rate = cmd_data->info.init.coding_rate;
     lora_obj.frequency = cmd_data->info.init.frequency;
     lora_obj.preamble = cmd_data->info.init.preamble;
-    lora_obj.rxiq = cmd_data->info.init.rxiq;
-    lora_obj.txiq = cmd_data->info.init.txiq;
+    lora_obj.inv_iq = cmd_data->info.init.inv_iq;
     lora_obj.sf = cmd_data->info.init.sf;
     lora_obj.tx_power = cmd_data->info.init.tx_power;
     lora_obj.pwr_mode = cmd_data->info.init.power_mode;
@@ -1585,8 +1583,7 @@ static void lora_get_config (lora_cmd_data_t *cmd_data) {
     cmd_data->info.init.coding_rate = lora_obj.coding_rate;
     cmd_data->info.init.frequency = lora_obj.frequency;
     cmd_data->info.init.preamble = lora_obj.preamble;
-    cmd_data->info.init.rxiq = lora_obj.rxiq;
-    cmd_data->info.init.txiq = lora_obj.txiq;
+    cmd_data->info.init.inv_iq = lora_obj.inv_iq;
     cmd_data->info.init.sf = lora_obj.sf;
     cmd_data->info.init.tx_power = lora_obj.tx_power;
     cmd_data->info.init.power_mode = lora_obj.pwr_mode;
@@ -1752,13 +1749,13 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
     lora_validate_mode (cmd_data.info.init.stack_mode);
 
     // we need to know the region first
-    if (args[14].u_obj == MP_OBJ_NULL) {
+    if (args[13].u_obj == MP_OBJ_NULL) {
         cmd_data.info.init.region = config_get_lora_region();
         if (cmd_data.info.init.region == 0xff) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "no region specified and no default found in config block"));
         }
     } else {
-        cmd_data.info.init.region = mp_obj_get_int(args[14].u_obj);
+        cmd_data.info.init.region = mp_obj_get_int(args[13].u_obj);
     }
     lora_validate_region(cmd_data.info.init.region);
     // we need to do it here in advance for the rest of the validation to work
@@ -1840,14 +1837,13 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
     cmd_data.info.init.power_mode = args[7].u_int;
     lora_validate_power_mode (cmd_data.info.init.power_mode);
 
-    cmd_data.info.init.txiq = args[8].u_bool;
-    cmd_data.info.init.rxiq = args[9].u_bool;
+    cmd_data.info.init.inv_iq = args[8].u_bool;
 
-    cmd_data.info.init.adr = args[10].u_bool;
-    cmd_data.info.init.public = args[11].u_bool;
-    cmd_data.info.init.tx_retries = args[12].u_int;
+    cmd_data.info.init.adr = args[9].u_bool;
+    cmd_data.info.init.public = args[10].u_bool;
+    cmd_data.info.init.tx_retries = args[11].u_int;
 
-    cmd_data.info.init.device_class = args[13].u_int;
+    cmd_data.info.init.device_class = args[12].u_int;
     lora_validate_device_class(cmd_data.info.init.device_class);
 
     // send message to the lora task
@@ -1867,8 +1863,7 @@ STATIC const mp_arg_t lora_init_args[] = {
     { MP_QSTR_preamble,     MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = 8} },
     { MP_QSTR_coding_rate,  MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_LORA_CODING_4_5} },
     { MP_QSTR_power_mode,   MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int  = E_LORA_MODE_ALWAYS_ON} },
-    { MP_QSTR_tx_iq,        MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
-    { MP_QSTR_rx_iq,        MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
+    { MP_QSTR_inv_iq,       MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
     { MP_QSTR_adr,          MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = false} },
     { MP_QSTR_public,       MP_ARG_KW_ONLY  | MP_ARG_BOOL,  {.u_bool = true} },
     { MP_QSTR_tx_retries,   MP_ARG_KW_ONLY  | MP_ARG_INT,   {.u_int = 2} },

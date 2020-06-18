@@ -65,8 +65,7 @@ typedef struct {
     uint8_t         tx_power;
     uint8_t         power_mode;
     uint8_t         tx_retries;
-    bool            txiq;
-    bool            rxiq;
+    bool            inv_iq;
     bool            adr;
     bool            public;
 } lora_init_cmd_data_t;
