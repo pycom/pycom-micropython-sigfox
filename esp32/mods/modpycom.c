@@ -279,8 +279,10 @@ STATIC mp_obj_t mod_pycom_nvs_set (mp_obj_t _key, mp_obj_t _value) {
         nvs_commit(pycom_nvs_handle);
     } else if (ESP_ERR_NVS_NOT_ENOUGH_SPACE == esp_err || ESP_ERR_NVS_PAGE_FULL == esp_err || ESP_ERR_NVS_NO_FREE_PAGES == esp_err) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "No free space available"));
-    } else if (ESP_ERR_NVS_INVALID_NAME == esp_err || ESP_ERR_NVS_KEY_TOO_LONG == esp_err) {
+    } else if (ESP_ERR_NVS_INVALID_NAME == esp_err) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Key is invalid"));
+    } else if (ESP_ERR_NVS_KEY_TOO_LONG == esp_err) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Key is too long"));
     } else {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_Exception, "Error occurred while storing value, code: %d", esp_err));
     }
