@@ -78,7 +78,9 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/examples
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include/coap
+ifeq ($(MOD_MDNS_ENABLED), 1)
 APP_INC += -I$(ESP_IDF_COMP_PATH)/mdns/include
+endif
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
 APP_INC += -I../lib/oofatfs
@@ -195,8 +197,13 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	lwipsocket.c \
 	machtouch.c \
 	modcoap.c \
-	modmdns.c \
 	)
+
+ifeq ($(MOD_MDNS_ENABLED), 1)
+APP_MODS_SRC_C += $(addprefix mods/,\
+    modmdns.c \
+	)
+endif
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
 	modlora.c \

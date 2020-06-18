@@ -24,6 +24,8 @@ OEM ?= 0
 # make 'release' the default build type
 BTYPE ?= release
 
+MOD_MDNS_ENABLED ?= 0
+
 # make Non-Pybytes firmware default
 VARIANT ?=BASE
 
@@ -130,6 +132,12 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
 ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
     LIBS += sigfox/modsigfox_$(BOARD).a
 $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
+endif
+
+ifeq ($(MOD_MDNS_ENABLED), 1)
+    $(info MDNS Module Enabled)
+    LIBS += -lmdns
+    CFLAGS += -DMOD_MDNS_ENABLED
 endif
 
 ifeq ($(OPENTHREAD), on)
