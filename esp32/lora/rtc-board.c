@@ -247,8 +247,3 @@ static IRAM_ATTR void RtcAlarmIrq( void )
     // NOTE: The handler should take less then 1 ms otherwise the clock shifts
     TimerIrqHandler( );
 }
-
-static void RtcOverflowIrq( void )
-{
-    // RtcTimerContext.Time += ( uint64_t )( 1 << 32 );
-}
