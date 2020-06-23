@@ -13,8 +13,13 @@ node {
         checkout scm
         sh 'rm -rf esp-idf'
         sh 'git clone --recursive -b idf_v3.3.1 https://github.com/pycom/pycom-esp-idf.git esp-idf'
+        IDF_HASH=get_idf_hash()
+        dir('esp-idf'){
+            sh 'git checkout ' + IDF_HASH
+            sh 'git submodule update --init --recursive'
+        }
     }
-    
+
     stage('git-tag') {
         PYCOM_VERSION=get_version()
         GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
@@ -128,6 +133,11 @@ def testBuild(short_name) {
 
 def get_version() {
     def matcher = readFile('esp32/pycom_version.h') =~ 'SW_VERSION_NUMBER (.+)'
+    matcher ? matcher[0][1].trim().replace('"','') : null
+}
+
+def get_idf_hash() {
+    def matcher = readFile('esp32/Makefile') =~ 'IDF_HASH=(.+)'
     matcher ? matcher[0][1].trim().replace('"','') : null
 }
 
