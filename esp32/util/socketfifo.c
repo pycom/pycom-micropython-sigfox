@@ -62,7 +62,7 @@ void SOCKETFIFO_Flush (void) {
     SocketFifoElement_t element;
     while (SOCKETFIFO_Pop(&element)) {
         if (element.freedata) {
-            vPortFree(element.data);
+            free(element.data);
         }
     }
 }

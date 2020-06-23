@@ -72,8 +72,9 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/osi/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/hci/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/gki/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/api/include/api
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include/coap
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/examples
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include/coap
@@ -85,6 +86,38 @@ APP_INC += -I../lib
 APP_INC += -I../drivers/sx127x
 APP_INC += -I../ports/stm32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/openthread/src
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/api
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/api/models/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/mesh_common/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/api/core/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/mesh_core
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/mesh_core/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/mesh_models/common/include
+
+
+
+#Added with idf 4.0
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_common/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_rom/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/xtensa/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/xtensa/esp32/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_wifi/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/wpa_supplicant/include/esp_supplicant
+APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include/coap2
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/device/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/device/include/device
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/common/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/common/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/stack/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/common/osi/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/hci/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/bta/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/api/include
+# Needed to find pycom_bootloader.h from pycom-esp-idf
+APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader/subproject/main
+
+
 
 APP_MAIN_SRC_C = \
 	main.c \
@@ -155,6 +188,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	pybsd.c \
 	modussl.c \
 	modbt.c \
+	modble_mesh.c \
 	modled.c \
 	machwdt.c \
 	machrmt.c \
@@ -317,13 +351,6 @@ APP_CAN_SRC_C = $(addprefix can/,\
 	CAN.c \
 	)
 
-BOOT_SRC_C = $(addprefix bootloader/,\
-	bootloader.c \
-	bootmgr.c \
-	mperror.c \
-	gpio.c \
-	)
-
 SFX_OBJ =
 
 OBJ = $(PY_O)
@@ -356,8 +383,6 @@ OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.
 OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
 OBJ += $(BUILD)/pins.o
 
-BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
-
 # List of sources for qstr extraction
 SRC_QSTR += $(APP_MODS_SRC_C) $(APP_UTIL_SRC_C) $(APP_STM_SRC_C) $(APP_LIB_SRC_C)
 ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
@@ -380,10 +405,22 @@ endif # ifeq ($(OPENTHREAD), on)
 # SRC_QSTR
 SRC_QSTR_AUTO_DEPS +=
 
-BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld
+# These files are passed here as per esp-idf/components/bootloader/subproject/main/component.mk
+BOOT_LDFLAGS = $(LDFLAGS) -T $(ESP_IDF_COMP_PATH)/bootloader/subproject/main/esp32.bootloader.ld \
+                          -T $(ESP_IDF_COMP_PATH)/bootloader/subproject/main/esp32.bootloader.rom.ld \
+                          -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.ld \
+                          -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.newlib-funcs.ld \
+                          -T $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.peripherals.ld \
 
-# add the application linker script(s)
-APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.project.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.rom.libgcc.ld
+# Add the application linker script(s)
+# These files are passed here as per final build command in esp-idf fetched from the console when esp-idf/examples/wifi/scan is linked
+APP_LDFLAGS += $(LDFLAGS) -T $(BUILD)/esp32_out.ld \
+                          -T esp32.project.ld \
+                          -T esp32.peripherals.ld \
+                          -T esp32.rom.ld \
+                          -T esp32.rom.libgcc.ld \
+                          -T esp32.rom.syscalls.ld \
+                          -T esp32.rom.newlib-data.ld \
 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
@@ -407,7 +444,7 @@ endif
 # add the application archive, this order is very important
 APP_LIBS = -Wl,--start-group $(LIBS) $(BUILD)/application.a -Wl,--end-group -Wl,-EL
 
-BOOT_LIBS = -Wl,--start-group $(B_LIBS) $(BUILD)/bootloader/bootloader.a -Wl,--end-group -Wl,-EL
+BOOT_LIBS = -Wl,--start-group $(B_LIBS) -Wl,--end-group -Wl,-EL
 
 # debug / optimization options
 ifeq ($(BTYPE), debug)
@@ -593,12 +630,8 @@ endif #ifeq ($(SECURE), on)
 
 
 ifeq ($(TARGET), $(filter $(TARGET), boot boot_app))
-$(BUILD)/bootloader/bootloader.a: $(BOOT_OBJ) sdkconfig.h
-	$(ECHO) "AR $@"
-	$(Q) rm -f $@
-	$(Q) $(AR) cru $@ $^
 
-$(BUILD)/bootloader/bootloader.elf: $(BUILD)/bootloader/bootloader.a $(SECURE_BOOT_VERIFICATION_KEY)
+$(BUILD)/bootloader/bootloader.elf: $(SECURE_BOOT_VERIFICATION_KEY)
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
@@ -615,6 +648,11 @@ ifeq ($(SECURE), on)
 	$(CP) libbootloader_support.a ../
 	$(Q) $(RM) -rf ./bootloader/lib/bootloader_support_temp
 endif #ifeq ($(SECURE), on)
+	$(Q) $(MKDIR) -p $(BUILD_DIR)
+	$(Q) $(MKDIR) -p $(BUILD_DIR)/$(BOARD)
+	$(Q) $(MKDIR) -p $(BUILD_DIR)/$(BOARD)/$(BTYPE)
+	$(Q) $(MKDIR) -p $(BUILD_DIR)/$(BOARD)/$(BTYPE)/bootloader
+	$(Q) $(CP) bootloader/lib/bootloader.map $(BUILD_DIR)/$(BOARD)/$(BTYPE)/bootloader/
 	$(ECHO) "LINK $(CC) *** $(BOOT_LDFLAGS) *** $(BOOT_LIBS) -o $@"
 	$(Q) $(CC) $(BOOT_LDFLAGS) $(BOOT_LIBS) -o $@
 	$(Q) $(SIZE) $@
@@ -820,9 +858,8 @@ GEN_PINS_HDR = $(HEADER_BUILD)/pins.h
 GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 
 .NOTPARALLEL: CHECK_DEP $(OBJ)
-.NOTPARALLEL: CHECK_DEP $(BOOT_OBJ)
-
-$(BOOT_OBJ) $(OBJ): | CHECK_DEP
+.NOTPARALLEL: CHECK_DEP $(BUILD)/bootloader/bootloader.elf
+$(BUILD)/bootloader/bootloader.elf $(OBJ): | CHECK_DEP
 
 # Making OBJ use an order-only dependency on the generated pins.h file
 # has the side effect of making the pins.h file before we actually compile
@@ -831,11 +868,12 @@ $(BOOT_OBJ) $(OBJ): | CHECK_DEP
 # which source files might need it.
 $(OBJ): | $(GEN_PINS_HDR)
 
-# Check Dependencies (IDF version, Frozen code and IDF LIBS)
+# Check Dependencies (IDF version, Frozen code, Xtensa version and IDF LIBS)
 CHECK_DEP:
 	$(Q) bash tools/idfVerCheck.sh $(IDF_PATH) "$(IDF_HASH)"
 	$(Q) bash tools/mpy-build-check.sh $(BOARD) $(BTYPE) $(VARIANT)
 	$(Q) $(PYTHON) check_secure_boot.py --SECURE $(SECURE)
+	$(Q) $(PYTHON) check_xtensa_version.py --VERSION $(XTENSA_VERSION)
 ifeq ($(COPY_IDF_LIB), 1)
 	$(ECHO) "COPY IDF LIBRARIES"
 	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build

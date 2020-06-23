@@ -167,7 +167,7 @@ static void wlan_validate_country_policy(uint8_t policy);
 STATIC void wlan_stop_sta_conn_timer();
 STATIC void wlan_set_default_inf(void);
 STATIC void wlan_stop_smartConfig_timer();
-static void smart_config_callback(smartconfig_status_t status, void *pdata);
+static void smart_config_callback(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static void TASK_SMART_CONFIG (void *pvParameters);
 STATIC void wlan_callback_handler(void* arg);
 //*****************************************************************************
@@ -730,7 +730,6 @@ static void wlan_validate_country_policy(uint8_t policy)
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key,
                              int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent, const char* hostname, uint8_t channel) {
 
-    esp_wpa2_config_t wpa2_config = WPA2_CONFIG_INIT_DEFAULT();
     wifi_config_t wifi_config;
     memset(&wifi_config, 0, sizeof(wifi_config));
 
@@ -801,7 +800,7 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
             }
         }
 
-        if (ESP_OK != esp_wifi_sta_wpa2_ent_enable(&wpa2_config)) {
+        if (ESP_OK != esp_wifi_sta_wpa2_ent_enable()) {
             goto os_error;
         }
     }
@@ -957,15 +956,19 @@ STATIC void wlan_set_default_inf(void)
 }
 
 //STATIC void wlan_get_sl_mac (void) {
-//    // Get the MAC address
-////    uint8_t macAddrLen = SL_MAC_ADDR_LEN;
-////    sl_NetCfgGet(SL_MAC_ADDRESS_GET, NULL, &macAddrLen, wlan_obj.mac);
+//     Get the MAC address
+//    uint8_t macAddrLen = SL_MAC_ADDR_LEN;
+//    sl_NetCfgGet(SL_MAC_ADDRESS_GET, NULL, &macAddrLen, wlan_obj.mac);
 //}
+
 static void TASK_SMART_CONFIG (void *pvParameters) {
 
     EventBits_t uxBits;
     bool connected;
     static uint32_t thread_notification;
+
+    // Register the SmartConfig event handler
+    esp_event_handler_register(SC_EVENT, ESP_EVENT_ANY_ID, &smart_config_callback, NULL);
 
 smartConf_init:
     wlan_smart_config_enabled = false;
@@ -984,7 +987,8 @@ smartConf_init:
             CHECK_ESP_ERR(esp_wifi_disconnect(), smartConf_init)
         }
         CHECK_ESP_ERR(esp_smartconfig_set_type(SC_TYPE_ESPTOUCH), smartConf_init)
-        CHECK_ESP_ERR(esp_smartconfig_start(smart_config_callback), smartConf_init)
+        smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
+        CHECK_ESP_ERR(esp_smartconfig_start(&cfg), smartConf_init );
         wlan_smart_config_enabled = true;
         goto smartConf_start;
     }
@@ -1046,42 +1050,43 @@ smartConf_start:
 
 }
 
-static void smart_config_callback(smartconfig_status_t status, void *pdata)
+static void smart_config_callback(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
-    wifi_config_t *wifi_config;
+    if (event_base == SC_EVENT && event_id == SC_EVENT_SCAN_DONE) {
+        //mp_printf(&mp_plat_print, "Scan done\n");
+    } else if (event_base == SC_EVENT && event_id == SC_EVENT_FOUND_CHANNEL) {
+        //mp_printf(&mp_plat_print, "Found channel\n");
+    } else if (event_base == SC_EVENT && event_id == SC_EVENT_GOT_SSID_PSWD) {
+        //mp_printf(&mp_plat_print, "Got SSID and password\n");
 
-    switch (status) {
-        case SC_STATUS_WAIT:
-            //mp_printf(&mp_plat_print, "SC_STATUS_WAIT\n");
-            break;
-        case SC_STATUS_FIND_CHANNEL:
-            //mp_printf(&mp_plat_print, "SC_STATUS_FINDING_CHANNEL\n");
-            break;
-        case SC_STATUS_GETTING_SSID_PSWD:
-            //mp_printf(&mp_plat_print, "SC_STATUS_GETTING_SSID_PSWD\n");
-            break;
-        case SC_STATUS_LINK:
-            //mp_printf(&mp_plat_print, "SC_STATUS_LINK\n");
-            wifi_config = pdata;
-            //save password/ssid/auth
-            memcpy(wlan_obj.key, wifi_config->sta.password, 64);
-            memcpy(wlan_obj.ssid, wifi_config->sta.ssid, (MODWLAN_SSID_LEN_MAX));
-            wlan_obj.auth = wifi_config->sta.threshold.authmode;
-            esp_wifi_disconnect();
-            esp_wifi_set_config(ESP_IF_WIFI_STA, wifi_config);
-            esp_wifi_connect();
-            break;
-        case SC_STATUS_LINK_OVER:
-            //mp_printf(&mp_plat_print, "SC_STATUS_LINK_OVER\n");
-            if (pdata != NULL) {
-                uint8_t phone_ip[4] = { 0 };
-                memcpy(phone_ip, (uint8_t* )pdata, 4);
-                //mp_printf(&mp_plat_print, "Phone ip: %d.%d.%d.%d\n", phone_ip[0], phone_ip[1], phone_ip[2], phone_ip[3]);
-            }
-            xEventGroupSetBits(wifi_event_group, ESPTOUCH_DONE_BIT);
-            break;
-        default:
-            break;
+        smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
+        wifi_config_t wifi_config;
+        bzero(&wifi_config, sizeof(wifi_config_t));
+        memcpy(wifi_config.sta.ssid, evt->ssid, sizeof(wifi_config.sta.ssid));
+        memcpy(wifi_config.sta.password, evt->password, sizeof(wifi_config.sta.password));
+        wifi_config.sta.bssid_set = evt->bssid_set;
+        if (wifi_config.sta.bssid_set == true) {
+            memcpy(wifi_config.sta.bssid, evt->bssid, sizeof(wifi_config.sta.bssid));
+        }
+
+        //save password/ssid/auth
+        memcpy(wlan_obj.key, wifi_config.sta.password, 64);
+        memcpy(wlan_obj.ssid, wifi_config.sta.ssid, (MODWLAN_SSID_LEN_MAX));
+        // In ESP-IDF 3.3.x authmode also can be saved here, but in ESP-IDF 4.0 auth mode is not known at this point
+        //wlan_obj.auth = wifi_config.sta.threshold.authmode;
+
+        esp_wifi_disconnect();
+        esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config);
+        esp_wifi_connect();
+
+    } else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE) {
+        if (event_data != NULL) {
+            smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
+            uint8_t phone_ip[4] = { 0 };
+            memcpy(phone_ip, evt->cellphone_ip, 4);
+            //mp_printf(&mp_plat_print, "Phone ip: %d.%d.%d.%d\n", phone_ip[0], phone_ip[1], phone_ip[2], phone_ip[3]);
+        }
+        xEventGroupSetBits(wifi_event_group, ESPTOUCH_DONE_BIT);
     }
 }
 
@@ -1444,7 +1449,7 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     esp_wifi_scan_get_ap_num(&ap_num); // get the number of scanned APs
 
     if (ap_num > 0) {
-        ap_record_buffer = pvPortMalloc(ap_num * sizeof(wifi_ap_record_t));
+        ap_record_buffer = malloc(ap_num * sizeof(wifi_ap_record_t));
         if (ap_record_buffer == NULL) {
             mp_raise_OSError(MP_ENOMEM);
         }
@@ -1464,7 +1469,7 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
                 mp_obj_list_append(nets, mp_obj_new_attrtuple(wlan_scan_info_fields, 5, tuple));
             }
         }
-        vPortFree(ap_record_buffer);
+        free(ap_record_buffer);
     }
 
     return nets;
@@ -1970,6 +1975,40 @@ STATIC mp_obj_t wlan_ap_sta_list (mp_obj_t self_in) {
     return sta_out_list;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_ap_sta_list_obj, wlan_ap_sta_list);
+
+STATIC mp_obj_t wlan_ap_tcpip_sta_list (mp_obj_t self_in) {
+    STATIC const qstr wlan_sta_ifo_fields[] = {
+        MP_QSTR_mac, MP_QSTR_IP
+    };
+    uint8_t index;
+    wifi_sta_list_t wifi_sta_list;
+    esp_wifi_ap_get_sta_list(&wifi_sta_list);
+    tcpip_adapter_sta_list_t sta_list;
+    wlan_obj_t * self = self_in;
+
+    mp_obj_t sta_out_list = mp_obj_new_list(0, NULL);
+    /* Check if AP mode is enabled */
+    if (self->mode == WIFI_MODE_AP || self->mode == WIFI_MODE_APSTA) {
+        tcpip_adapter_get_sta_list(&wifi_sta_list, &sta_list);
+
+        mp_obj_t tuple[2];
+        for(index = 0; index < MAX_AP_CONNECTED_STA && index < sta_list.num; index++)
+        {
+            tuple[0] = mp_obj_new_bytes((const byte *)sta_list.sta[index].mac, 6);
+            tuple[1] = netutils_format_ipv4_addr((uint8_t *)&sta_list.sta[index].ip.addr, NETUTILS_BIG);
+
+            /*insert tuple */
+            mp_obj_list_append(sta_out_list, mp_obj_new_attrtuple(wlan_sta_ifo_fields, 2, tuple));
+        }
+    }
+    else
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+    }
+    
+    return sta_out_list;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_ap_tcpip_sta_list_obj, wlan_ap_tcpip_sta_list);
 
 STATIC mp_obj_t wlan_joined_ap_info (mp_obj_t self_in)
 {
@@ -2654,6 +2693,7 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_antenna),             (mp_obj_t)&wlan_antenna_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&wlan_mac_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ap_sta_list),         (mp_obj_t)&wlan_ap_sta_list_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ap_tcpip_sta_list),   (mp_obj_t)&wlan_ap_tcpip_sta_list_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_max_tx_power),        (mp_obj_t)&wlan_max_tx_power_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_country),             (mp_obj_t)&wlan_country_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_joined_ap_info),      (mp_obj_t)&wlan_joined_ap_info_obj },

@@ -150,7 +150,7 @@ class PybytesPymeshConfig():
                 "ble_api": False,
                 "ble_name_prefix": "Device-{}".format(wmac),
                 "br_prio": 0,
-                "br_ena": False,
+                "br_ena": customSettings["br_ena"],
                 "autostart": True
             }
 

@@ -36,8 +36,8 @@
 #include "esp_system.h"
 #include "esp_attr.h"
 #include "esp_spi_flash.h"
-#include "rom/spi_flash.h"
-#include "rom/ets_sys.h"
+#include "esp32/rom/spi_flash.h"
+#include "esp32/rom/ets_sys.h"
 #include "nvs_flash.h"
 #include "soc/dport_reg.h"
 #include "esp_log.h"
@@ -149,7 +149,7 @@ void app_main(void) {
         micropy_lpwan_dio_pin_num = 23;
         micropy_lpwan_dio_pin = &pin_GPIO23;
 
-        mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE_PSRAM, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        mpTaskStack = malloc(MICROPY_TASK_STACK_SIZE_PSRAM);
 
         // create the MicroPython task
         mpTaskHandle =
@@ -172,7 +172,7 @@ void app_main(void) {
         micropy_lpwan_dio_pin_num = 23;
         micropy_lpwan_dio_pin = &pin_GPIO23;
 
-        mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        mpTaskStack = malloc(MICROPY_TASK_STACK_SIZE);
 
         // create the MicroPython task
         mpTaskHandle =

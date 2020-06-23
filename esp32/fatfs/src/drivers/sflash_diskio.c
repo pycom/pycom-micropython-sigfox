@@ -35,7 +35,9 @@ static bool sflash_write (void) {
             // then write it
             if (esp_flash_encryption_enabled()) {
                 // sflash_prev_block_addr being 4KB block address is aligned 32B
-                wr_result = spi_flash_write_encrypted(sflash_prev_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE);
+                //TODO: temporary replacing with spi_flash_write as currently on esp-idf 4.0 spi_flash_write_encrypted causes lockup
+                //wr_result = spi_flash_write_encrypted(sflash_prev_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE);
+                wr_result = spi_flash_write(sflash_prev_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE);
             } else {
                 wr_result = spi_flash_write(sflash_prev_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE);
             }
@@ -54,7 +56,7 @@ DRESULT sflash_disk_init (void) {
             sflash_start_address = SFLASH_START_ADDR_4MB;
             sflash_fs_sector_count = SFLASH_FS_SECTOR_COUNT_4MB;
         }
-        sflash_block_cache = (uint8_t *)heap_caps_malloc(SFLASH_BLOCK_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        sflash_block_cache = (uint8_t *)malloc(SFLASH_BLOCK_SIZE);
         sflash_prev_block_addr = UINT32_MAX;
         sflash_cache_is_dirty = false;
         sflash_init_done = true;
@@ -90,7 +92,9 @@ DRESULT sflash_disk_read(BYTE *buff, DWORD sector, UINT count) {
                 return RES_ERROR;
             }
             sflash_prev_block_addr = sflash_block_addr;
-            if (ESP_OK != spi_flash_read_encrypted(sflash_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE)) {
+          // Disabling as results core lockup
+          //  if (ESP_OK != spi_flash_read_encrypted(sflash_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE)) {
+            if (ESP_OK != spi_flash_read(sflash_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE)) {
                 // TODO sl_LockObjUnlock (&flash_LockObj);
                 return RES_ERROR;
             }
@@ -126,7 +130,9 @@ DRESULT sflash_disk_write(const BYTE *buff, DWORD sector, UINT count) {
                 return RES_ERROR;
             }
             sflash_prev_block_addr = sflash_block_addr;
-            if (ESP_OK != spi_flash_read_encrypted(sflash_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE)) {
+         // Disabling as results core lockup
+         //   if (ESP_OK != spi_flash_read_encrypted(sflash_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE)) {
+            if (ESP_OK != spi_flash_read(sflash_block_addr, (void *)sflash_block_cache, SFLASH_BLOCK_SIZE)) {
 //                // TODO sl_LockObjUnlock (&flash_LockObj);
                 return RES_ERROR;
             }

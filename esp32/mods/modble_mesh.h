@@ -7,11 +7,10 @@
  * available at https://www.pycom.io/opensource/licensing
  */
 
-#ifndef __BOOTMGR_H
-#define __BOOTMGR_H
 
-#include "bootloader.h"
+#ifndef ESP32_MODS_MODBLE_MESH_H_
+#define ESP32_MODS_MODBLE_MESH_H_
 
-bool wait_for_safe_boot (const boot_info_t *boot_info, uint32_t *ActiveImg);
+extern const mp_obj_type_t mod_ble_mesh;
 
-#endif // __BOOTMGR_H
+#endif /* ESP32_MODS_MODBLE_MESH_H_ */

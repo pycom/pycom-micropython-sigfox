@@ -31,7 +31,7 @@
 #include "antenna.h"
 #include "py/mphal.h"
 
-#include "bootmgr.h"
+#include "pycom_bootloader.h"
 #include "updater.h"
 
 #include "mptask.h"
@@ -64,16 +64,6 @@ void modpycom_init0(void) {
     if (updater_read_boot_info (&boot_info, &boot_info_offset) == false) {
         mp_printf(&mp_plat_print, "Error reading bootloader information!\n");
     }
-}
-
-static bool is_empty(uint8_t* value, uint8_t size) {
-    bool ret_val = true;
-    for (int i=0; i < size; i++) {
-        if (value[i] != 0xFF) {
-            ret_val = false;
-        }
-    }
-    return ret_val;
 }
 
 static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t safeboot, bool reset) {
@@ -302,16 +292,15 @@ STATIC mp_obj_t mod_pycom_nvs_get (mp_uint_t n_args, const mp_obj_t *args) {
     else {
         esp_err = nvs_get_str(pycom_nvs_handle, key, NULL, &value);
         if(esp_err == ESP_OK) {
-            char* value_string = (char*)m_malloc(value);
+            char* value_string = (char*)malloc(value);
 
             esp_err = nvs_get_str(pycom_nvs_handle, key, value_string, &value);
 
             if(esp_err == ESP_OK) {
                 //do not count the terminating \0
                 ret = mp_obj_new_str(value_string, value-1);
-                m_free(value_string);
             }
-            m_free(value_string);
+            free(value_string);
         }
     }
 
@@ -422,7 +411,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_sta (mp_uint_t n_args, const mp_obj_t *args)
         else{/*Nothing*/}
 
     } else {
-        uint8_t * ssid = (uint8_t *)m_malloc(33);
+        uint8_t * ssid = (uint8_t *)malloc(33);
         mp_obj_t ssid_obj;
         if(config_get_wifi_sta_ssid(ssid))
         {
@@ -432,7 +421,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_sta (mp_uint_t n_args, const mp_obj_t *args)
         {
             ssid_obj = mp_const_none;
         }
-        m_free(ssid);
+        free(ssid);
         return ssid_obj;
     }
     return mp_const_none;
@@ -451,7 +440,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_sta (mp_uint_t n_args, const mp_obj_t *args) 
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * pwd = (uint8_t *)m_malloc(65);
+        uint8_t * pwd = (uint8_t *)malloc(65);
         mp_obj_t pwd_obj;
         if(config_get_wifi_sta_pwd(pwd))
         {
@@ -461,7 +450,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_sta (mp_uint_t n_args, const mp_obj_t *args) 
         {
             pwd_obj = mp_const_none;
         }
-        m_free(pwd);
+        free(pwd);
         return pwd_obj;
     }
     return mp_const_none;
@@ -480,7 +469,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_ap (mp_uint_t n_args, const mp_obj_t *args) 
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * ssid = (uint8_t *)m_malloc(33);
+        uint8_t * ssid = (uint8_t *)malloc(33);
         mp_obj_t ssid_obj;
         if(config_get_wifi_ap_ssid(ssid))
         {
@@ -490,7 +479,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_ap (mp_uint_t n_args, const mp_obj_t *args) 
         {
             ssid_obj = mp_const_none;
         }
-        m_free(ssid);
+        free(ssid);
         return ssid_obj;
     }
     return mp_const_none;
@@ -509,7 +498,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_ap (mp_uint_t n_args, const mp_obj_t *args) {
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * pwd = (uint8_t *)m_malloc(65);
+        uint8_t * pwd = (uint8_t *)malloc(65);
         mp_obj_t pwd_obj;
         if(config_get_wifi_ap_pwd(pwd))
         {
@@ -519,7 +508,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_ap (mp_uint_t n_args, const mp_obj_t *args) {
         {
             pwd_obj = mp_const_none;
         }
-        m_free(pwd);
+        free(pwd);
         return pwd_obj;
     }
     return mp_const_none;
@@ -571,6 +560,8 @@ STATIC mp_obj_t mod_pycom_lte_modem_on_boot (mp_uint_t n_args, const mp_obj_t *a
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_lte_modem_on_boot_obj, 0, 1, mod_pycom_lte_modem_on_boot);
 
+#if (VARIANT == PYBYTES)
+
 STATIC mp_obj_t mod_pycom_pybytes_on_boot (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
         config_set_pybytes_autostart (mp_obj_is_true(args[0]));
@@ -580,7 +571,6 @@ STATIC mp_obj_t mod_pycom_pybytes_on_boot (mp_uint_t n_args, const mp_obj_t *arg
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_pybytes_on_boot_obj, 0, 1, mod_pycom_pybytes_on_boot);
-
 
 STATIC mp_obj_t mod_pycom_pybytes_lte_config (size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_carrier, ARG_apn, ARG_cid, ARG_band, ARG_type, ARG_reset };
@@ -661,6 +651,8 @@ STATIC mp_obj_t mod_pycom_pybytes_lte_config (size_t n_args, const mp_obj_t *pos
 }
 
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_pybytes_lte_config_obj, 0, mod_pycom_pybytes_lte_config);
+
+#endif
 
 STATIC mp_obj_t mod_pycom_bootmgr (size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_boot_partition, ARG_fs_type, ARG_safeboot, ARG_status };
@@ -805,6 +797,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_smartConfig_obj, 0, 1, mod_
 
 #endif //(VARIANT == PYBYTES)
 
+#if defined(FIPY) || defined(LOPY4) || defined(SIPY)
 
 // Helper function to return decimal value of a hexadecimal character coded in ASCII
 STATIC uint8_t hex_from_char(const char c) {
@@ -822,9 +815,17 @@ STATIC uint8_t hex_from_char(const char c) {
         // 16 is invalid, because in hexa allowed range is 0 - 15
         return 16;
     }
-
 }
 
+STATIC bool is_empty(uint8_t* value, uint8_t size) {
+    bool ret_val = true;
+    for (int i=0; i < size; i++) {
+        if (value[i] != 0xFF) {
+            ret_val = false;
+        }
+    }
+    return ret_val;
+}
 
 STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_id, ARG_pac, ARG_public_key, ARG_private_key, ARG_force };
@@ -995,6 +996,8 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
     }
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_sigfox_info_obj, 0, mod_pycom_sigfox_info);
+
+#endif // #if defined(FIPY) || defined(LOPY4) || defined(SIPY)
 
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },

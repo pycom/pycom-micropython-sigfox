@@ -59,7 +59,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
-#include "rom/ets_sys.h"
+#include "esp32/rom/ets_sys.h"
 #include "driver/i2c.h"
 #include "driver/gpio.h"
 #include "driver/periph_ctrl.h"
