@@ -428,6 +428,7 @@ static void TASK_LTE_UPGRADE(void *pvParameters){
 // Micro Python bindings; LTE class
 
 static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
+    lteppp_init();
     const size_t at_cmd_len = LTE_AT_CMD_SIZE_MAX - 4;
     char at_cmd[at_cmd_len];
     lte_modem_conn_state_t modem_state;

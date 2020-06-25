@@ -286,9 +286,9 @@ soft_reset:
 
     if (!soft_reset) {
     #if defined(GPY) || defined (FIPY)
-        modlte_init0();
         if(config_get_lte_modem_enable_on_boot())
         {
+            modlte_init0();
             // Notify the LTE thread to start
             modlte_start_modem();
         }

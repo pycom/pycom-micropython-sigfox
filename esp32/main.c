@@ -67,7 +67,7 @@ DRAM_ATTR TaskHandle_t xLoRaTimerTaskHndl;
 TaskHandle_t xSigfoxTaskHndl;
 #endif
 #if defined(GPY) || defined (FIPY)
-TaskHandle_t xLTETaskHndl;
+TaskHandle_t xLTETaskHndl = NULL;
 TaskHandle_t xLTEUartEvtTaskHndl;
 TaskHandle_t xLTEUpgradeTaskHndl;
 #endif

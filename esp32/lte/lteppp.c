@@ -142,25 +142,28 @@ void connect_lte_uart (void) {
 
 
 void lteppp_init(void) {
-    lteppp_lte_state = E_LTE_INIT;
+    if (!xLTETaskHndl)
+    {
+        lteppp_lte_state = E_LTE_INIT;
 
-    xCmdQueue = xQueueCreate(LTE_CMD_QUEUE_SIZE_MAX, sizeof(lte_task_cmd_data_t));
-    xRxQueue = xQueueCreate(LTE_RSP_QUEUE_SIZE_MAX, LTE_AT_RSP_SIZE_MAX + 1);
+        xCmdQueue = xQueueCreate(LTE_CMD_QUEUE_SIZE_MAX, sizeof(lte_task_cmd_data_t));
+        xRxQueue = xQueueCreate(LTE_RSP_QUEUE_SIZE_MAX, LTE_AT_RSP_SIZE_MAX + 1);
 
-    xLTESem = xSemaphoreCreateMutex();
-    xLTE_modem_Conn_Sem = xSemaphoreCreateMutex();
+        xLTESem = xSemaphoreCreateMutex();
+        xLTE_modem_Conn_Sem = xSemaphoreCreateMutex();
 
-    lteppp_pcb = pppapi_pppos_create(&lteppp_netif, lteppp_output_callback, lteppp_status_cb, NULL);
+        lteppp_pcb = pppapi_pppos_create(&lteppp_netif, lteppp_output_callback, lteppp_status_cb, NULL);
 
-    //wait on connecting modem until it is allowed
-    lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
+        //wait on connecting modem until it is allowed
+        lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
 
-    xTaskCreatePinnedToCore(TASK_LTE, "LTE", LTE_TASK_STACK_SIZE / sizeof(StackType_t), NULL, LTE_TASK_PRIORITY, &xLTETaskHndl, 1);
+        xTaskCreatePinnedToCore(TASK_LTE, "LTE", LTE_TASK_STACK_SIZE / sizeof(StackType_t), NULL, LTE_TASK_PRIORITY, &xLTETaskHndl, 1);
 
-    lteppp_connstatus = LTE_PPP_IDLE;
+        lteppp_connstatus = LTE_PPP_IDLE;
 #ifdef LTE_DEBUG_BUFF
-    lteppp_log.log = malloc(LTE_LOG_BUFF_SIZE);
+        lteppp_log.log = malloc(LTE_LOG_BUFF_SIZE);
 #endif
+    }
 }
 
 void lteppp_start (void) {
