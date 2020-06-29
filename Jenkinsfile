@@ -68,13 +68,13 @@ for (variant in variants_to_build) {
 def boardBuild(name, variant, open_thread) {
     return {
         release_dir = "${JENKINS_HOME}/release/${JOB_NAME}/" + PYCOM_VERSION + "/" + GIT_TAG + "/"
-        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+        sh '''export PATH=$PATH:/opt/2020r2/xtensa-esp32-elf/bin/;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         make -C esp32 clean BOARD=''' + name.toUpperCase() + ' VARIANT=' + variant
-        sh '''export PATH=$PATH:/opt/xtensa-esp32-elf/bin;
+        sh '''export PATH=$PATH:/opt/2020r2/xtensa-esp32-elf/bin/;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         make -C esp32 -j2 release BOARD=''' + name.toUpperCase() + ' VARIANT=' + variant + ' OPENTHREAD=' + open_thread
-        sh 'mkdir -p ' + release_dir + variant + '/' 
+        sh 'mkdir -p ' + release_dir + variant + '/'
         sh 'cp esp32/build-' + variant + '/' + name + '-' + PYCOM_VERSION + '.tar.gz ' + release_dir + variant + '/'
         sh 'mv esp32/build-' + variant + '/' + name.toUpperCase() + '/release/application.elf ' + release_dir + variant + '/' + name + "-" + PYCOM_VERSION + '-application.elf'
     }
