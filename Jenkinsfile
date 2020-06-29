@@ -1,5 +1,5 @@
 def buildVersion
-def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
+def boards_to_build = ["WiPy", "LoPy", "GPy", "FiPy", "LoPy4"]
 def variants_to_build = [ "PYBYTES" ]
 def boards_to_test = ["00ec51"]
 def open_thread

@@ -47,7 +47,7 @@ fi
 
 total_size=$((${size_app} + ${size_boot}))
 
-if [ "${BOARD}" != "LOPY4" -a "${BOARD}" != "GPY" -a "${BOARD}" != "FIPY" ] ; then
+if [ "${BOARD}" != "LOPY4" -a "${BOARD}" != "GPY" -a "${BOARD}" != "FIPY" -a "${BOARD}" != "WIPY" -a "${BOARD}" != "LOPY" ] ; then
   IMG_MAX_SIZE=${IMG_MAX_SIZE_4MB}
  else
   IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}

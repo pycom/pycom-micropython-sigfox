@@ -23,13 +23,8 @@ if ! [ -r "pycom_version.h" ]; then echo >&2 "Cannot read pycom_version.h! Abort
 if [ "${BOARD}" = "GPY" -o  "${BOARD}" = "LOPY4" -o "${BOARD}" = "FIPY" ]; then
     if ! [ -r "boards/$1/${SCRIPT_NAME_8MB}" ]; then echo >&2 "Cannot read boards/$1/${SCRIPT_NAME_8MB}! Aborting."; exit 1; fi
 elif [ "${BOARD}" = "LOPY" -o "${BOARD}" = "WIPY" ]; then
-    if ! [ -r "boards/$1/${SCRIPT_NAME_4MB}" ]; then echo >&2 "Cannot read boards/$1/${SCRIPT_NAME_4MB}! Aborting."; exit 1; fi
     if ! [ -r "boards/$1/${SCRIPT_NAME_8MB}" ]; then echo >&2 "Cannot read boards/$1/${SCRIPT_NAME_8MB}! Aborting."; exit 1; fi
-else
-    if ! [ -r "boards/$1/${SCRIPT_NAME_4MB}" ]; then echo >&2 "Cannot read boards/$1/${SCRIPT_NAME_4MB}! Aborting."; exit 1; fi
 fi
-if ! [ -r "boards/$1/script" ]; then echo >&2 "Cannot read legacy boards/$1/script! Aborting."; exit 1; fi
-if ! [ -r "boards/$1/script2" ]; then echo >&2 "Cannot read legacy boards/$1/script2! Aborting."; exit 1; fi
 
 if [ -z $2 ]; then
   RELEASE_DIR="$(pwd)/${BUILD_DIR}"
@@ -70,46 +65,18 @@ fi
 cp ${BUILD_DIR}/bootloader/${BOOT_FILE} ${PKG_TMP_DIR}
 cp ${BUILD_DIR}/${APP_FILE} ${PKG_TMP_DIR}
 
-if [ "${BOARD}" != "SIPY" ]; then
-    if [ $4 ]; then
-        PART_FILE_8MB='partitions_8MB.bin_enc'
-        SCRIPT_FILE_8MB='script_8MB_enc'
-    else
-        PART_FILE_8MB='partitions_8MB.bin'
-        SCRIPT_FILE_8MB='script_8MB'
-    fi
-    
-    cp ${BUILD_DIR}/lib/${PART_FILE_8MB} ${PKG_TMP_DIR}
-    cat boards/$1/${SCRIPT_FILE_8MB} > ${PKG_TMP_DIR}/${SCRIPT_FILE_8MB} || { echo >&2 "Cannot create ${SCRIPT_FILE_8MB} file! Aborting."; exit 1; }
-
-    if [ "${BOARD}" = "LOPY" -o "${BOARD}" = "WIPY" ]; then
-       if [ $4 ]; then
-            PART_FILE_4MB='partitions_4MB.bin_enc'
-            SCRIPT_FILE_4MB='script_4MB_enc'
-        else
-            PART_FILE_4MB='partitions_4MB.bin'
-            SCRIPT_FILE_4MB='script_4MB'
-        fi
-        
-        cp ${BUILD_DIR}/lib/${PART_FILE_4MB} ${PKG_TMP_DIR}
-        cat boards/$1/${SCRIPT_FILE_4MB} > ${PKG_TMP_DIR}/${SCRIPT_FILE_4MB} || { echo >&2 "Cannot create ${SCRIPT_FILE_4MB} file! Aborting."; exit 1; }
-    fi
+if [ $4 ]; then
+PART_FILE_8MB='partitions_8MB.bin_enc'
+SCRIPT_FILE_8MB='script_8MB_enc'
 else
-   if [ $4 ]; then
-        PART_FILE_4MB='partitions_4MB.bin_enc'
-        SCRIPT_FILE_4MB='script_4MB_enc'
-    else
-        PART_FILE_4MB='partitions_4MB.bin'
-        SCRIPT_FILE_4MB='script_4MB'
-    fi
-    
-    cp ${BUILD_DIR}/lib/${PART_FILE_4MB} ${PKG_TMP_DIR}
-    cat boards/$1/${SCRIPT_FILE_4MB} > ${PKG_TMP_DIR}/${SCRIPT_FILE_4MB} || { echo >&2 "Cannot create ${SCRIPT_FILE_4MB} file! Aborting."; exit 1; }
-
+PART_FILE_8MB='partitions_8MB.bin'
+SCRIPT_FILE_8MB='script_8MB'
 fi
-cat boards/$1/script  > ${PKG_TMP_DIR}/script  || { echo >&2 "Cannot create legacy script file! Aborting."; exit 1; }
-cat boards/$1/script2  > ${PKG_TMP_DIR}/script2  || { echo >&2 "Cannot create legacy script2 file! Aborting."; exit 1; }
-tar -czf ${RELEASE_DIR}/${FILE_NAME} -C ${PKG_TMP_DIR} ${BOOT_FILE} ${PART_FILE_4MB} ${PART_FILE_8MB} ${APP_FILE} ${SCRIPT_FILE_4MB} ${SCRIPT_FILE_8MB} script script2 || { echo >&2 "Cannot create ${RELEASE_DIR}/${FILE_NAME}! Aborting."; exit 1; }
+
+cp ${BUILD_DIR}/lib/${PART_FILE_8MB} ${PKG_TMP_DIR}
+cat boards/$1/${SCRIPT_FILE_8MB} > ${PKG_TMP_DIR}/${SCRIPT_FILE_8MB} || { echo >&2 "Cannot create ${SCRIPT_FILE_8MB} file! Aborting."; exit 1; }
+
+tar -czf ${RELEASE_DIR}/${FILE_NAME} -C ${PKG_TMP_DIR} ${BOOT_FILE} ${PART_FILE_4MB} ${PART_FILE_8MB} ${APP_FILE} ${SCRIPT_FILE_8MB} || { echo >&2 "Cannot create ${RELEASE_DIR}/${FILE_NAME}! Aborting."; exit 1; }
 echo "Release package ${FILE_NAME} created successfully."
 
 rm -rf ${PKG_TMP_DIR}/
