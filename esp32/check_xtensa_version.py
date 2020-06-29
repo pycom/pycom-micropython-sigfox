@@ -16,13 +16,13 @@ def main():
             print("Xtensa version OK!")
             exit(0)
         else:
-            print("xtensa-esp32-elf-gcc version must be: " + version)
+            print("xtensa-esp32-elf-gcc version NOT OK. expected:" + version, "but I got:", output)
             # Non zero exit code means error
-            exit(1) 
+            exit(1)
     else:
         print("xtensa-esp32-elf-gcc dropped an error, its version cannot be checked!")
         # Non zero exit code means error
-        exit(1) 
+        exit(1)
 
 
 if __name__ == "__main__":
