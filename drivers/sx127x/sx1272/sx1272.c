@@ -110,7 +110,7 @@ void SX1272SetOpMode( uint8_t opMode );
 /*!
  * \brief Common DIO IRQ callback
  */
-static void SX1272OnDioIrq (void);
+static void SX1272OnDioIrq (void *context);
 
 /*!
  * \brief DIO 0 IRQ callback
@@ -150,7 +150,7 @@ void SX1272OnTimeoutIrq( void* context );
 /*!
  * \brief General radio flags check callback
  */
-void SX1272RadioFlagsIrq (void);
+void SX1272RadioFlagsIrq (void *context);
 
 /*
  * Private global constants
@@ -1303,7 +1303,7 @@ void SX1272OnTimeoutIrq( void* context )
     }
 }
 
-IRAM_ATTR void SX1272RadioFlagsIrq (void) {
+IRAM_ATTR void SX1272RadioFlagsIrq (void *context) {
     if (SX1272.irqFlags & RADIO_IRQ_FLAG_RX_TIMEOUT) {
         SX1272.irqFlags &= ~RADIO_IRQ_FLAG_RX_TIMEOUT;
         if( ( RadioEvents != NULL ) && ( RadioEvents->RxTimeout != NULL ) )
@@ -1329,7 +1329,7 @@ IRAM_ATTR void SX1272RadioFlagsIrq (void) {
     }
 }
 
-static IRAM_ATTR void SX1272OnDioIrq (void) {
+static IRAM_ATTR void SX1272OnDioIrq (void *context) {
     if (SX1272.Settings.State > RF_IDLE) {
         // read the the irq flags registers
         uint8_t volatile irqflags1;
