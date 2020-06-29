@@ -289,8 +289,7 @@ STATIC void mach_modbus_serial_master_init (const mach_modbus_obj_t *self) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "uart set mode error: %d", err));
     }
     
-    //put proper delay
-    vTaskDelay(10);
+    mp_hal_delay_ms(100);
     
     //we won"t use this because the func which in this func will be in the each request.
     // master_operation_func(NULL);
@@ -837,11 +836,11 @@ STATIC mp_obj_t modbus_sendRequest(mp_uint_t n_args, const mp_obj_t *args) {
     if (self->comm_info.mode == MB_MODE_TCP) {
         setparam.slave_addr = 1;
     }
-    printf("slave = %d\n", setparam.slave_addr);
+    // printf("slave = %d\n", setparam.slave_addr);
     setparam.command = mp_obj_get_int(args[2]);
-    printf("command = %d\n", setparam.command);
+    // printf("command = %d\n", setparam.command);
     setparam.reg_start = mp_obj_get_int(args[3]);
-    printf("reg_start = %d\n", setparam.reg_start);
+    // printf("reg_start = %d\n", setparam.reg_start);
 
     if (setparam.command == MB_FUNC_READ_COILS || setparam.command == MB_FUNC_READ_DISCRETE_INPUTS) {
         //slaveaddr, cmd, reg start, quantity

@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-IDF_HASH=038ed1b
+IDF_HASH=2a92339
 XTENSA_VERSION = "2020r3"
 
 TARGET ?= boot_app

@@ -51,16 +51,9 @@ fi
 
 total_size=$((${size_app} + ${size_boot}))
 
-
-IMG_MAX_SIZE=${IMG_MAX_SIZE_4MB}
-
-if [ "${BOARD}" = "LOPY4" -o "${BOARD}" = "GPY" -o "${BOARD}" = "FIPY" ] ; then
-  IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
-elif [ "${BOARD}" = "WIPY" -a "${VARIANT}" = "PYGATE" ] ; then
-  # WiPy2.0 has a 4MB chip
-  # WiPy3.0 has a 8MB chip
-  # they are both supported by BOARD=WIPY
-  # on the Pygate we support only the WiPy3.0, so for this combination we allow the 8MB limit
+if [ "${BOARD}" != "LOPY4" -a "${BOARD}" != "GPY" -a "${BOARD}" != "FIPY" -a "${BOARD}" != "WIPY" -a "${BOARD}" != "LOPY" ] ; then
+  IMG_MAX_SIZE=${IMG_MAX_SIZE_4MB}
+ else
   IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
 fi
 
