@@ -817,6 +817,7 @@ static void TASK_LoRa (void *pvParameters) {
     MibRequestConfirm_t mibReq;
     MlmeReq_t mlmeReq;
     McpsReq_t mcpsReq;
+    LoRaMacStatus_t ret;
     bool isReset;
 
     lora_obj.state = E_LORA_STATE_NOINIT;
@@ -853,8 +854,6 @@ static void TASK_LoRa (void *pvParameters) {
                     // save the new configuration first
                     lora_set_config(&task_cmd_data);
                     if (task_cmd_data.info.init.stack_mode == E_LORA_STACK_MODE_LORAWAN) {
-                        LoRaMacStatus_t status;
-
                         LoRaMacPrimitives.MacMcpsConfirm = McpsConfirm;
                         LoRaMacPrimitives.MacMcpsIndication = McpsIndication;
                         LoRaMacPrimitives.MacMlmeConfirm = MlmeConfirm;
@@ -863,10 +862,10 @@ static void TASK_LoRa (void *pvParameters) {
                         LoRaMacCallbacks.GetTemperatureLevel = NULL;
                         LoRaMacCallbacks.NvmContextChange = NULL; // NULL for now
                         LoRaMacCallbacks.MacProcessNotify = OnMacProcessNotify;
-                        status = LoRaMacInitialization(&LoRaMacPrimitives, &LoRaMacCallbacks, task_cmd_data.info.init.region);
-                        if(status != LORAMAC_STATUS_OK)
+                        ret = LoRaMacInitialization(&LoRaMacPrimitives, &LoRaMacCallbacks, task_cmd_data.info.init.region);
+                        if(ret != LORAMAC_STATUS_OK)
                         {
-                            printf("LoRaMac initiliazation failed. Error code: %d\n", (int)status);
+                            printf("LoRaMac initiliazation failed. Error code: %d\n", (int)ret);
                             return;
                         }
 
@@ -1049,8 +1048,6 @@ static void TASK_LoRa (void *pvParameters) {
                     #if defined(FIPY) || defined(LOPY4)
                         xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                     #endif
-                        LoRaMacStatus_t ret;
-
                         // set back the original datarate
                         if (!lora_obj.adr) {
                             mibReq.Param.ChannelsDatarate = mac_datarate;
@@ -1101,6 +1098,7 @@ static void TASK_LoRa (void *pvParameters) {
             }
             break;
         case E_LORA_STATE_JOIN:
+            ret = LORAMAC_STATUS_OK;
             TimerStop( &TxNextActReqTimer );
             if (!lora_obj.joined) {
                 if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
@@ -1130,7 +1128,7 @@ static void TASK_LoRa (void *pvParameters) {
                     TimerStart( &TxNextActReqTimer );
                     mlmeReq.Type = MLME_JOIN;
                     mlmeReq.Req.Join.Datarate = (uint8_t) lora_obj.otaa_dr;
-                    LoRaMacMlmeRequest( &mlmeReq );
+                    ret = LoRaMacMlmeRequest( &mlmeReq );
                 } else {
                     mibReq.Type = MIB_ABP_LORAWAN_VERSION;
                     mibReq.Param.AbpLrWanVersion.Value = ABP_ACTIVATION_LRWAN_VERSION;
@@ -1168,7 +1166,12 @@ static void TASK_LoRa (void *pvParameters) {
                     lora_obj.ComplianceTest.State = 1;
                 }
             }
-            xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
+            if (ret == LORAMAC_STATUS_OK) {
+                xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
+            } else {
+                printf("Failed to send MLME Join. Error: %d\n", ret);
+                xEventGroupSetBits(LoRaEvents, LORA_STATUS_ERROR);
+            }
             lora_obj.state = E_LORA_STATE_IDLE;
             break;
         case E_LORA_STATE_LINK_CHECK:
@@ -1390,11 +1393,7 @@ static void lora_validate_frequency (uint32_t frequency) {
         #endif
             break;
         case LORAMAC_REGION_EU868:
-        #if defined(LOPY4)
-            if (frequency < 410000000 || frequency > 870000000) {
-        #else
             if (frequency < 863000000 || frequency > 870000000) {
-        #endif
                 goto freq_error;
             }
             break;
@@ -1496,29 +1495,11 @@ static void lora_validate_power (uint8_t tx_power) {
 
 static bool lora_validate_data_rate (uint32_t data_rate) {
 
-    switch (lora_obj.region) {
-    case LORAMAC_REGION_AS923:
-    case LORAMAC_REGION_EU433:
-    case LORAMAC_REGION_EU868:
-    case LORAMAC_REGION_AU915:
-    case LORAMAC_REGION_CN470:
-    case LORAMAC_REGION_CN779:
-    case LORAMAC_REGION_IN865:
-    case LORAMAC_REGION_KR920:
-    case LORAMAC_REGION_RU864:
-        if (data_rate > DR_6) {
-            return false;
-        }
-        break;
-    case LORAMAC_REGION_US915:
-        if (data_rate > DR_4) {
-            return false;
-        }
-        break;
-    default:
-        break;
-    }
-    return true;
+    VerifyParams_t verify;
+
+    verify.DatarateParams.Datarate = data_rate;
+
+    return RegionVerify( lora_obj.region, &verify, PHY_TX_DR );
 }
 
 static void lora_validate_bandwidth (uint8_t bandwidth) {
@@ -1553,9 +1534,7 @@ static void lora_validate_device_class (DeviceClass_t device_class) {
 }
 
 static void lora_validate_region (LoRaMacRegion_t region) {
-    if (region != LORAMAC_REGION_AS923 && region != LORAMAC_REGION_AU915
-        && region != LORAMAC_REGION_EU868 && region != LORAMAC_REGION_US915
-        && region != LORAMAC_REGION_CN470 && region != LORAMAC_REGION_IN865) {
+    if (region < LORAMAC_REGION_AS923 || region > LORAMAC_REGION_RU864) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid region %d", region));
     }
 }
@@ -1771,7 +1750,7 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
             cmd_data.info.init.frequency = 915000000;
             break;
         case LORAMAC_REGION_EU433:
-            cmd_data.info.init.frequency = 433000000;
+            cmd_data.info.init.frequency = 433175000;
             break;
         case LORAMAC_REGION_EU868:
             cmd_data.info.init.frequency = 868000000;
@@ -1780,10 +1759,10 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
             cmd_data.info.init.frequency = 470000000;
             break;
         case LORAMAC_REGION_CN779:
-            cmd_data.info.init.frequency = 779000000;
+            cmd_data.info.init.frequency = 779500000;
             break;
         case LORAMAC_REGION_KR920:
-            cmd_data.info.init.frequency = 920000000;
+            cmd_data.info.init.frequency = 920900000;
             break;
         case LORAMAC_REGION_RU864:
             cmd_data.info.init.frequency = 864000000;
@@ -1985,30 +1964,9 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     // get the data rate
     if (args[2].u_obj != mp_const_none) {
         dr = mp_obj_get_int(args[2].u_obj);
-        switch (lora_obj.region) {
-        case LORAMAC_REGION_AS923:
-            if (dr != DR_2) {
-                goto dr_error;
-            }
-            break;
-        case LORAMAC_REGION_AU915:
-            if (dr != DR_0 && dr != DR_6) {
-                goto dr_error;
-            }
-            break;
-        case LORAMAC_REGION_US915:
-            if (dr != DR_0 && dr != DR_4) {
-                goto dr_error;
-            }
-            break;
-        case LORAMAC_REGION_CN470:
-        case LORAMAC_REGION_EU868:
-            if (dr > DR_5) {
-                goto dr_error;
-            }
-            break;
-        default:
-            break;
+
+        if (lora_validate_data_rate(dr) != true) {
+            goto dr_error;
         }
     }
     cmd_data.info.join.otaa_dr = dr;
@@ -2598,10 +2556,14 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_AS923),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_AS923) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_AU915),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_AU915) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EU433),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_EU433) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_EU868),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_EU868) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_US915),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_US915) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CN470),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_CN470) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_CN779),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_CN779) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_IN865),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_IN865) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_RU864),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_RU864) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_KR920),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_KR920) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(lora_locals_dict, lora_locals_dict_table);
@@ -2648,6 +2610,11 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
     case LORAMAC_REGION_AS923:
     case LORAMAC_REGION_EU868:
     case LORAMAC_REGION_CN470:
+    case LORAMAC_REGION_EU433:
+    case LORAMAC_REGION_CN779:
+    case LORAMAC_REGION_RU864:
+    case LORAMAC_REGION_IN865:
+    case LORAMAC_REGION_KR920:
         dr = DR_5;
         break;
     case LORAMAC_REGION_AU915:

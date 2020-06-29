@@ -471,6 +471,7 @@ LoRaMacStatus_t RegionCN779NextChannel( NextChanParams_t* nextChanParams, uint8_
  * \retval Status of the operation.
  */
 LoRaMacStatus_t RegionCN779ChannelAdd( ChannelAddParams_t* channelAdd );
+LoRaMacStatus_t RegionCN779ChannelManualAdd( ChannelAddParams_t* channelAdd );
 
 /*!
  * \brief Removes a channel.

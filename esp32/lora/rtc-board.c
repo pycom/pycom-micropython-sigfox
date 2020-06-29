@@ -195,7 +195,7 @@ IRAM_ATTR void RtcStartAlarm( uint32_t timeout )
 
 uint32_t RtcGetTimerValue( void )
 {
-    return ( uint32_t )RTCTimeoutCntValue;
+    return ( uint32_t )RTCTimerTickCounter;
 }
 
 IRAM_ATTR uint32_t RtcGetTimerElapsedTime( void )

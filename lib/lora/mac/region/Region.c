@@ -233,6 +233,8 @@
 #define CN779_SET_CONTINUOUS_WAVE( )               CN779_CASE { RegionCN779SetContinuousWave( continuousWave ); break; }
 #define CN779_APPLY_DR_OFFSET( )                   CN779_CASE { return RegionCN779ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define CN779_RX_BEACON_SETUP( )                   CN779_CASE { RegionCN779RxBeaconSetup( rxBeaconSetup, outDr ); break; }
+#define CN779_CHANNEL_MANUAL_ADD( )                CN779_CASE { return RegionCN779ChannelManualAdd( channelAdd ); }
+#define CN779_CHANNEL_MANUAL_REMOVE( )             CN779_CASE { return RegionCN779ChannelsRemove( channelRemove ); }
 #else
 #define CN779_IS_ACTIVE( )
 #define CN779_GET_PHY_PARAM( )
@@ -258,6 +260,8 @@
 #define CN779_SET_CONTINUOUS_WAVE( )
 #define CN779_APPLY_DR_OFFSET( )
 #define CN779_RX_BEACON_SETUP( )
+#define CN779_CHANNEL_MANUAL_ADD( )
+#define CN779_CHANNEL_MANUAL_REMOVE( )
 #endif
 
 #ifdef REGION_EU433
@@ -287,6 +291,8 @@
 #define EU433_SET_CONTINUOUS_WAVE( )               EU433_CASE { RegionEU433SetContinuousWave( continuousWave ); break; }
 #define EU433_APPLY_DR_OFFSET( )                   EU433_CASE { return RegionEU433ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define EU433_RX_BEACON_SETUP( )                   EU433_CASE { RegionEU433RxBeaconSetup( rxBeaconSetup, outDr ); break; }
+#define EU433_CHANNEL_MANUAL_ADD( )                EU433_CASE { return RegionEU433ChannelManualAdd( channelAdd ); }
+#define EU433_CHANNEL_MANUAL_REMOVE( )                    EU433_CASE { return RegionEU433ChannelsRemove( channelRemove ); }
 #else
 #define EU433_IS_ACTIVE( )
 #define EU433_GET_PHY_PARAM( )
@@ -312,6 +318,8 @@
 #define EU433_SET_CONTINUOUS_WAVE( )
 #define EU433_APPLY_DR_OFFSET( )
 #define EU433_RX_BEACON_SETUP( )
+#define EU433_CHANNEL_MANUAL_ADD( )
+#define EU433_CHANNEL_MANUAL_REMOVE( )
 #endif
 
 #ifdef REGION_EU868
@@ -399,6 +407,8 @@
 #define KR920_SET_CONTINUOUS_WAVE( )               KR920_CASE { RegionKR920SetContinuousWave( continuousWave ); break; }
 #define KR920_APPLY_DR_OFFSET( )                   KR920_CASE { return RegionKR920ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define KR920_RX_BEACON_SETUP( )                   KR920_CASE { RegionKR920RxBeaconSetup( rxBeaconSetup, outDr ); break; }
+#define KR920_CHANNEL_MANUAL_ADD( )                KR920_CASE { return RegionKR920ChannelManualAdd( channelAdd ); }
+#define KR920_CHANNEL_MANUAL_REMOVE( )             KR920_CASE { return RegionKR920ChannelsRemove( channelRemove ); }
 #else
 #define KR920_IS_ACTIVE( )
 #define KR920_GET_PHY_PARAM( )
@@ -424,6 +434,8 @@
 #define KR920_SET_CONTINUOUS_WAVE( )
 #define KR920_APPLY_DR_OFFSET( )
 #define KR920_RX_BEACON_SETUP( )
+#define KR920_CHANNEL_MANUAL_ADD( )
+#define KR920_CHANNEL_MANUAL_REMOVE( )
 #endif
 
 #ifdef REGION_IN865
@@ -569,6 +581,8 @@
 #define RU864_SET_CONTINUOUS_WAVE( )               RU864_CASE { RegionRU864SetContinuousWave( continuousWave ); break; }
 #define RU864_APPLY_DR_OFFSET( )                   RU864_CASE { return RegionRU864ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
 #define RU864_RX_BEACON_SETUP( )                   RU864_CASE { RegionRU864RxBeaconSetup( rxBeaconSetup, outDr ); break; }
+#define RU864_CHANNEL_MANUAL_ADD( )                RU864_CASE { return RegionRU864ChannelManualAdd( channelAdd ); }
+#define RU864_CHANNEL_MANUAL_REMOVE( )             RU864_CASE { return RegionRU864ChannelsRemove( channelRemove ); }
 #else
 #define RU864_IS_ACTIVE( )
 #define RU864_GET_PHY_PARAM( )
@@ -594,6 +608,8 @@
 #define RU864_SET_CONTINUOUS_WAVE( )
 #define RU864_APPLY_DR_OFFSET( )
 #define RU864_RX_BEACON_SETUP( )
+#define RU864_CHANNEL_MANUAL_ADD( )
+#define RU864_CHANNEL_MANUAL_REMOVE( )
 #endif
 
 bool RegionIsActive( LoRaMacRegion_t region )
@@ -1112,6 +1128,10 @@ LoRaMacStatus_t RegionChannelManualAdd( LoRaMacRegion_t region, ChannelAddParams
         US915_CHANNEL_MANUAL_ADD( )
         CN470_CHANNEL_MANUAL_ADD( )
         IN865_CHANNEL_MANUAL_ADD( )
+        EU433_CHANNEL_MANUAL_ADD( )
+        CN779_CHANNEL_MANUAL_ADD( )
+        RU864_CHANNEL_MANUAL_ADD( )
+        KR920_CHANNEL_MANUAL_ADD( )
 
         default:
         {
@@ -1131,6 +1151,10 @@ bool RegionChannelsManualRemove( LoRaMacRegion_t region, ChannelRemoveParams_t* 
         US915_CHANNEL_MANUAL_REMOVE( )
         CN470_CHANNEL_MANUAL_REMOVE( )
         IN865_CHANNEL_MANUAL_REMOVE( )
+        EU433_CHANNEL_MANUAL_REMOVE( )
+        CN779_CHANNEL_MANUAL_REMOVE( )
+        RU864_CHANNEL_MANUAL_REMOVE( )
+        KR920_CHANNEL_MANUAL_REMOVE( )
         default:
         {
             return false;

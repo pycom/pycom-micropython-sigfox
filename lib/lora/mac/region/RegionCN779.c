@@ -1026,3 +1026,57 @@ void RegionCN779RxBeaconSetup( RxBeaconSetup_t* rxBeaconSetup, uint8_t* outDr )
     // Store downlink datarate
     *outDr = CN779_BEACON_CHANNEL_DR;
 }
+
+LoRaMacStatus_t RegionCN779ChannelManualAdd( ChannelAddParams_t* channelAdd )
+{
+    bool drInvalid = false;
+    bool freqInvalid = false;
+    uint8_t id = channelAdd->ChannelId;
+
+    if( id >= CN779_MAX_NB_CHANNELS )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
+    }
+
+    // Validate the datarate range
+    if( RegionCommonValueInRange( channelAdd->NewChannel->DrRange.Fields.Min, CN779_TX_MIN_DATARATE, CN779_TX_MAX_DATARATE ) == false )
+    {
+        drInvalid = true;
+    }
+    if( RegionCommonValueInRange( channelAdd->NewChannel->DrRange.Fields.Max, CN779_TX_MIN_DATARATE, CN779_TX_MAX_DATARATE ) == false )
+    {
+        drInvalid = true;
+    }
+    if( channelAdd->NewChannel->DrRange.Fields.Min > channelAdd->NewChannel->DrRange.Fields.Max )
+    {
+        drInvalid = true;
+    }
+
+    // Check frequency
+    if( freqInvalid == false )
+    {
+        if( VerifyRfFreq( channelAdd->NewChannel->Frequency ) == false )
+        {
+            freqInvalid = true;
+        }
+    }
+
+    // Check status
+    if( ( drInvalid == true ) && ( freqInvalid == true ) )
+    {
+        return LORAMAC_STATUS_FREQ_AND_DR_INVALID;
+    }
+    if( drInvalid == true )
+    {
+        return LORAMAC_STATUS_DATARATE_INVALID;
+    }
+    if( freqInvalid == true )
+    {
+        return LORAMAC_STATUS_FREQUENCY_INVALID;
+    }
+
+    memcpy1( ( uint8_t* ) &(NvmCtx.Channels[id]), ( uint8_t* ) channelAdd->NewChannel, sizeof( NvmCtx.Channels[id] ) );
+    NvmCtx.Channels[id].Band = 0;
+    NvmCtx.ChannelsMask[0] |= ( 1 << id );
+    return LORAMAC_STATUS_OK;
+}
