@@ -243,6 +243,7 @@ APP_LORA_SRC_C = $(addprefix lora/,\
 	spi-board.c \
 	sx1276-board.c \
 	sx1272-board.c \
+	rtc-board.c \
 	board.c \
 	)
 
@@ -259,17 +260,29 @@ APP_MOD_MESH_SRC_C = $(addprefix mods/,\
 
 APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/LoRaMac.c \
+	mac/LoRaMacAdr.c \
+	mac/LoRaMacClassB.c \
+	mac/LoRaMacCommands.c \
+	mac/LoRaMacConfirmQueue.c \
 	mac/LoRaMacCrypto.c \
+	mac/LoRaMacParser.c \
+	mac/LoRaMacSerializer.c \
+	mac/soft-se.c \
 	mac/region/Region.c \
+	mac/region/RegionCommon.c \
 	mac/region/RegionAS923.c \
 	mac/region/RegionAU915.c \
-	mac/region/RegionCommon.c \
+	mac/region/RegionEU433.c \
 	mac/region/RegionEU868.c \
 	mac/region/RegionUS915.c \
 	mac/region/RegionCN470.c \
+	mac/region/RegionCN779.c \
 	mac/region/RegionIN865.c \
+	mac/region/RegionKR920.c \
+	mac/region/RegionRU864.c \
 	system/delay.c \
 	system/gpio.c \
+	system/systime.c \
 	system/timer.c \
 	system/crypto/aes.c \
 	system/crypto/cmac.c \
@@ -412,7 +425,7 @@ APP_LDFLAGS += $(LDFLAGS) -T $(BUILD)/esp32_out.ld \
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
 CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
-CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DREGION_CN470 -DREGION_IN865 -DBASE=0 -DPYBYTES=1 
+CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DREGION_CN470 -DREGION_IN865 -DREGION_EU433 -DREGION_CN779 -DREGION_RU864 -DREGION_KR920 -DBASE=0 -DPYBYTES=1 
 # Specify if this is base or Pybytes Firmware
 ifeq ($(VARIANT),BASE)
 CFLAGS += -DVARIANT=0

@@ -83,3 +83,13 @@ int8_t Nibble2HexChar( uint8_t a )
         return '?';
     }
 }
+
+IRAM_ATTR void BoardCriticalSectionBegin( uint32_t *mask )
+{
+    *mask = MICROPY_BEGIN_ATOMIC_SECTION();
+}
+
+IRAM_ATTR void BoardCriticalSectionEnd( uint32_t *mask )
+{
+    MICROPY_END_ATOMIC_SECTION(*mask);
+}

@@ -1,19 +1,32 @@
-/*
- / _____)             _              | |
-( (____  _____ ____ _| |_ _____  ____| |__
- \____ \| ___ |    (_   _) ___ |/ ___)  _ \
- _____) ) ____| | | || |_| ____( (___| | | |
-(______/|_____)_|_|_| \__)_____)\____)_| |_|
-    (C)2013 Semtech
-
-Description: SX1276 LoRa modem registers and bits definitions
-
-License: Revised BSD License, see LICENSE.TXT file include in the project
-
-Maintainer: Miguel Luis and Gregory Cristian
-*/
+/*!
+ * \file      sx1276Regs-LoRa.h
+ *
+ * \brief     SX1276 LoRa modem registers and bits definitions
+ *
+ * \copyright Revised BSD License, see section \ref LICENSE.
+ *
+ * \code
+ *                ______                              _
+ *               / _____)             _              | |
+ *              ( (____  _____ ____ _| |_ _____  ____| |__
+ *               \____ \| ___ |    (_   _) ___ |/ ___)  _ \
+ *               _____) ) ____| | | || |_| ____( (___| | | |
+ *              (______/|_____)_|_|_| \__)_____)\____)_| |_|
+ *              (C)2013-2017 Semtech
+ *
+ * \endcode
+ *
+ * \author    Miguel Luis ( Semtech )
+ *
+ * \author    Gregory Cristian ( Semtech )
+ */
 #ifndef __SX1276_REGS_LORA_H__
 #define __SX1276_REGS_LORA_H__
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 /*!
  * ============================================================================
@@ -63,14 +76,14 @@ Maintainer: Miguel Luis and Gregory Cristian
 #define REG_LR_FEIMID                               0x29
 #define REG_LR_FEILSB                               0x2A
 #define REG_LR_RSSIWIDEBAND                         0x2C
-#define REG_LR_TEST2F                               0x2F
-#define REG_LR_TEST30                               0x30
+#define REG_LR_IFFREQ1                              0x2F
+#define REG_LR_IFFREQ2                              0x30
 #define REG_LR_DETECTOPTIMIZE                       0x31
 #define REG_LR_INVERTIQ                             0x33
-#define REG_LR_TEST36                               0x36
+#define REG_LR_HIGHBWOPTIMIZE1                      0x36
 #define REG_LR_DETECTIONTHRESHOLD                   0x37
 #define REG_LR_SYNCWORD                             0x39
-#define REG_LR_TEST3A                               0x3A
+#define REG_LR_HIGHBWOPTIMIZE2                      0x3A
 #define REG_LR_INVERTIQ2                            0x3B
 
 // end of documented register in datasheet
@@ -561,5 +574,9 @@ Maintainer: Miguel Luis and Gregory Cristian
 #define RF_PLL_BANDWIDTH_150                        0x40
 #define RF_PLL_BANDWIDTH_225                        0x80
 #define RF_PLL_BANDWIDTH_300                        0xC0  // Default
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // __SX1276_REGS_LORA_H__
