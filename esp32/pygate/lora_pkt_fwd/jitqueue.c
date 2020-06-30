@@ -230,7 +230,7 @@ enum jit_error_e jit_enqueue(struct jit_queue_s *queue, struct timeval *time, st
      *      t_packet < t_current + TX_START_DELAY + MARGIN
      */
     if (packet->count_us <= time_us + TX_START_DELAY + TX_MARGIN_DELAY + TX_JIT_DELAY) {
-        MSG_ERROR("jitqueue: IGNORED: not REJECTED, already too late to send it (current=%u, packet=%u, type=%d)\n", time_us, packet->count_us, pkt_type);
+        MSG_WARN("jitqueue: IGNORED: not REJECTED, already too late to send it (current=%u, packet=%u, type=%d)\n", time_us, packet->count_us, pkt_type);
         // pthread_mutex_unlock(&mx_jit_queue);
         // return JIT_ERROR_TOO_LATE;
     }
