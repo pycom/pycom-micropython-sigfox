@@ -54,8 +54,8 @@ if [ "${BOARD}" != "LOPY4" -a "${BOARD}" != "GPY" -a "${BOARD}" != "FIPY" -a "${
 fi
 
 if [ ${total_size} -gt ${IMG_MAX_SIZE} ] ; then
-  echo "${total_size} bytes => Firmware image size exceeds avialable space on board!" >&2
+  echo "${total_size} bytes => Firmware image size is NOT ok. It exceeds the avialable space ${IMG_MAX_SIZE} by $[ $total_size - $IMG_MAX_SIZE ]!" >&2
   exit 1
 else
-  echo "${total_size} bytes => Size OK" >&2
+  echo "${total_size} bytes => Firmware image size is OK. It does not exceed the available sapce ${IMG_MAX_SIZE}. Still $[ $IMG_MAX_SIZE - $total_size ] left" >&2
 fi
