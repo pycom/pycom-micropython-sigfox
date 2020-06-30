@@ -112,9 +112,9 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lm \
        -lgcc \
        -lstdc++ \
-       -lnvs_flash -ltcpip_adapter -llog -lcxx \
-       -lspi_flash -lnvs_flash -lnghttp -ldriver -lesp32 -lexpat -lpthread -lesp_adc_cal \
-       -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
+       -lnvs_flash -ltcpip_adapter -llog \
+       -lspi_flash -lnvs_flash -ldriver -lesp32 -lexpat -lpthread  -lesp_adc_cal \
+       -lfreertos -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
        -lesp_ringbuf -lcoap -lmdns -lefuse -lespcoredump -lapp_update \
        -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig
