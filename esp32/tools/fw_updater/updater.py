@@ -45,7 +45,7 @@ MAXPICREAD_BAUD_RATE = 230400
 
 LORA_REGIONS = ["EU868", "US915", "AS923", "AU915", "IN865"]
 
-PIC_BOARDS = ["04D8:F013", "04D8:F012", "04D8:EF98", "04D8:EF38"]
+PIC_BOARDS = ["04D8:F013", "04D8:F012", "04D8:EF98", "04D8:EF38", "04D8:ED14"]
 
 PARTITIONS = { 'secureboot' : ["0x0", "0x8000"],
                 'bootloader' : ["0x1000", "0x7000"],
@@ -195,6 +195,7 @@ def load_tar(fileobj, prog, secure=False):
         except Exception as e:
             script = e
             print_exception(e)
+            raise ValueError("Your board is not supported by this firmware package")
     try:
         for i in range(len(script)):
             if script[i][0] == 'w' or script[i][0] == 'o':
@@ -460,7 +461,7 @@ class NPyProgrammer(object):
         config_block = self.read(cb_start, cb_len)
         self.write(cb_start, contents[0:52] + config_block[52:])
         
-    def run_script(self, script, config_block=None, erase_fs=False, chip_id=None, ui_label=None, progress_fs=None):
+    def run_script(self, script, config_block=None, erase_fs=False, chip_id=None, ui_label=None, progress_fs=None, erase_nvs=False):
         self.__progress_fs = progress_fs
         print_debug('script type: {}'.format(type(script)))
         if script is None:
@@ -475,10 +476,12 @@ class NPyProgrammer(object):
         for instruction in script:
             if instruction[1] == 'fs' or instruction[1] == 'fs1':
                 erase_fs = (instruction[0] == 'e')
+            elif instruction[1] == 'nvs':
+                erase_nvs = (instruction[0] == 'e')
             elif instruction[1] == 'all':
                 erase_fs = False
+                erase_nvs = False
                 no_erase = not (instruction[0] == 'e')
-
         start_time = time.time()
         total_size = 0
         for instruction in script:
@@ -524,6 +527,8 @@ class NPyProgrammer(object):
         
         if erase_fs:
             self.erase_fs(chip_id, ui_label=ui_label)
+        if erase_nvs:
+            self.erase(int(PARTITIONS.get('nvs')[0], 16), int(PARTITIONS.get('nvs')[1], 16), ui_label=ui_label, updateList = True)
 
         for instruction in script:
             if instruction[0].split(':', 2)[0] == 'w' or instruction[0].split(':', 2)[0] == 'o':
@@ -751,8 +756,8 @@ class NPyProgrammer(object):
         return self.set_pybytes_config(new_config_block, force_update=True)
 
     def print_cb(self, config_block):
-	if DEBUG:
-	    for x in range(0, 30):
+        if DEBUG:
+            for x in range(0, 30):
                 print(binascii.hexlify(config_block[x * 32:x * 32 + 32]))
             
     def set_pybytes_config(self, config_block, userid=None, device_token=None, mqttServiceAddress=None, network_preferences=None, extra_preferences=None, force_update=None, auto_start=None):
