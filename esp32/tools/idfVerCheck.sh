@@ -26,7 +26,7 @@ You should probably update one (or multiple) of:
   * IDF_PATH environment variable
   * IDF_HASH variable in esp32/Makefile
   * IDF commit, e.g.
-cd \$IDF_PATH && git checkout $IDF_HASH && git submodule sync && git submodule update --init --recursive && cd -
+cd \$IDF_PATH && git checkout $IDF_HASH && git submodule update --init --recursive && git clean -d -f -f && cd -
 
 "
     exit 1

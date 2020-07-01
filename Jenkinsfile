@@ -14,6 +14,7 @@ node {
         dir('esp-idf'){
             sh 'git checkout ' + IDF_HASH
             sh 'git submodule update --init --recursive'
+            sh 'git clean -d -f -f'
         }
     }
 
