@@ -173,7 +173,7 @@ class PybytesConnection:
             self.__initialise_watchdog()
 
         if lte_cfg is not None:
-            if (os.uname()[0] not in ['FiPy', 'GPy']):
+            if (os.uname().sysname not in ['FiPy', 'GPy']):
                 print("You need a device with FiPy or GPy firmware to connect via LTE") # noqa
                 return False
             try:

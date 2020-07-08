@@ -53,13 +53,6 @@ class PybytesPymeshConfig():
         # initialize Pymesh
         self.__pymesh = Pymesh(self.__pymesh_config, self.pymesh_new_message_cb)
 
-        while not self.__pymesh.is_connected():
-            print(self.__pymesh.status_str())
-            time.sleep(3)
-
-        # send message to the Node having MAC address 5
-        self.__pymesh.send_mess(2, "Hello World")
-        print("Done Pymesh init, forever loop, exit/stop with Ctrl+C multiple times")
         self.__pymesh_br_enabled = False
 
         if self.__pymesh_config.get("br_ena", False):
@@ -69,8 +62,6 @@ class PybytesPymeshConfig():
                     print_debug(99, "Set as border router")
                     self.__pymesh.br_set(PymeshConfig.BR_PRIORITY_NORM, self.pymesh_new_br_message_cb)
 
-                self.__pybytes.send_signal(1, str(self.__pymesh.mac()) + " : " + str(time.time()) + "s, " + str(pycom.get_free_heap()))
-                print_debug(99, "Send to Pyb,", pycom.get_free_heap())
             else:  # not connected anymore to pybytes
                 if self.__pymesh_br_enabled:
                     self.__pymesh_br_enabled = False
@@ -88,8 +79,13 @@ class PybytesPymeshConfig():
             pyb_ip = '1:2:3::' + hex(pyb_port)[2:]
             pkt_start = self.__pack_tocken_prefix + self.__pack_tocken_sep + deviceID + self.__pack_tocken_sep
 
-            self.__pymesh.send_mess_external(pyb_ip, pyb_port, pkt_start + monitoringData)
-            self.__pymesh.send_mess_external(pyb_ip, pyb_port, pkt_start + value)
+            # send data to the port equal with signal_number
+            self.__pymesh.send_mess_external(pyb_ip, signal_number, pkt_start + value)
+            
+            time.sleep(3) # shouldn't send too fast to BR
+
+            # hardcode monitoring data to be sent on signal #2
+            self.__pymesh.send_mess_external(pyb_ip, 2, pkt_start + monitoringData)
 
     def pymesh_new_message_cb(self, rcv_ip, rcv_port, rcv_data):
         ''' callback triggered when a new packet arrived '''
@@ -122,9 +118,11 @@ class PybytesPymeshConfig():
             if len(x) > 2:
                 token = x[1]
                 rcv_data = rcv_data[len(self.__pack_tocken_prefix) + len(token) + len(self.__pack_tocken_sep):]
-        pkt = 'BR %d B from %s (%s), to %s ( %d): %s' % (len(rcv_data), token, rcv_ip, dest_ip, dest_port, str(rcv_data))
-        print_debug(99, 'Pymesh node packet: {} '.format(pkt))
-        self.__pybytes.send_node_signal(1, str(rcv_data.decode()).replace("#", ""), token.decode())
+
+                # send data to Pybytes only if it's coded properly
+                pkt = 'BR %d B from %s (%s), to %s ( %d): %s' % (len(rcv_data), token, rcv_ip, dest_ip, dest_port, str(rcv_data))
+                print_debug(99, 'Pymesh node packet: {} '.format(pkt))
+                self.__pybytes.send_node_signal(dest_port & 0xFF, str(rcv_data.decode()).replace("#", ""), token.decode())
         return
 
     def get_config(self, token, silent=False):
