@@ -62,8 +62,11 @@ class OTA():
         sysname = os.uname().sysname
         wmac = hexlify(machine.unique_id()).decode('ascii')
         if fwtype == 'pymesh':
-            request_template = "manifest.json?current_ver={}&sysname={}&token={}&ota_slot={}&wmac={}&fwtype={}"
-            req = request_template.format(current_version, sysname, token, hex(pycom.ota_slot()), wmac.upper(), fwtype)
+            request_template = "manifest.json?current_ver={}&sysname={}&token={}&ota_slot={}&wmac={}&fwtype={}&current_fwtype={}"
+            req = request_template.format(current_version, sysname, token, hex(pycom.ota_slot()), wmac.upper(), fwtype, 'pymesh' if hasattr(os.uname(),'pymesh') else 'pybytes')
+        elif fwtype == 'pygate':
+            request_template = "manifest.json?current_ver={}&sysname={}&ota_slot={}&wmac={}&fwtype={}&current_fwtype={}"
+            req = request_template.format(current_version, sysname, hex(pycom.ota_slot()), wmac.upper(), fwtype, 'pygate' if hasattr(os.uname(),'pygate') else 'pybytes')
         else:
             request_template = "manifest.json?current_ver={}&sysname={}&wmac={}&ota_slot={}"
             req = request_template.format(current_version, sysname, wmac, hex(pycom.ota_slot()))
