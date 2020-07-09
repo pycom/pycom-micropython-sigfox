@@ -10,7 +10,7 @@
 #ifndef VERSION_H_
 #define VERSION_H_
 
-#define SW_VERSION_NUMBER                              "1.20.2.rc9"
+#define SW_VERSION_NUMBER                              "1.20.2.rc11"
 
 #define LORAWAN_VERSION_NUMBER                         "1.0.2"
 
@@ -21,7 +21,7 @@
 #endif
 
 #ifdef PYGATE_ENABLED
-#define PYGATE_VERSION_NUMBER                          "1.0.0"
+#define PYGATE_VERSION_NUMBER                          "1.0.1"
 #endif
 
 #endif /* VERSION_H_ */
