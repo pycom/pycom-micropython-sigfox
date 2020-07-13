@@ -89,10 +89,14 @@ static bool wait_while_blinking (uint32_t wait_time, uint32_t period, bool force
 }
 
 static bool safe_boot_request_start (uint32_t wait_time) {
+#ifndef SAFEBOOT_DISABLE
     if (gpio_get_level(MICROPY_HW_SAFE_PIN_NUM)) {
         delay_ms(wait_time);
     }
     return gpio_get_level(MICROPY_HW_SAFE_PIN_NUM) ? true : false;
+#else
+    return false;
+#endif
 }
 
 //*****************************************************************************
