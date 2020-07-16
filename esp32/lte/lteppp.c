@@ -658,17 +658,21 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
         }
 #endif
         // flush the rx buffer first
-        if(!expect_continuation || 
-            (len >= 2 && cmd[0] == 'A' && cmd[1] == 'T')) // starts with AT
+        if(!expect_continuation || (len >= 2 && cmd[0] == 'A' && cmd[1] == 'T')) // starts with AT
+        {
             uart_flush(LTE_UART_ID);
+        }
         // uart_read_bytes(LTE_UART_ID, (uint8_t *)tmp_buf, sizeof(tmp_buf), 5 / portTICK_RATE_MS);
         // then send the command
         uart_write_bytes(LTE_UART_ID, cmd, cmd_len);
 
         if(expect_continuation)
+        {
             return true;
+        }
         else {
-            if (strcmp(cmd, "+++")) {
+            if (strcmp(cmd, "+++"))
+            {
                 uart_write_bytes(LTE_UART_ID, "\r", 1);
             }
 

@@ -1236,11 +1236,11 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     lte_check_inppp();
     STATIC const mp_arg_t allowed_args[] = {
         { MP_QSTR_cmd,                   MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_delay,                 MP_ARG_INT,  {.u_int = 10000} }
+        { MP_QSTR_delay,                 MP_ARG_INT,  {.u_int = LTE_RX_TIMEOUT_MAX_MS} }
     };
     // parse args
-    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     uint32_t argLength = MP_ARRAY_SIZE(allowed_args);
+    mp_arg_val_t args[argLength];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
     if (args[0].u_obj == mp_const_none) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "the command must be specified!"));
