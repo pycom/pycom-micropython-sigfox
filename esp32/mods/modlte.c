@@ -136,6 +136,7 @@ extern TaskHandle_t xLTETaskHndl;
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
+static bool lte_push_at_command_ext_cont (char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len, bool continuation);
 static bool lte_push_at_command_ext (char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len);
 static bool lte_push_at_command (char *cmd_str, uint32_t timeout);
 static void lte_pause_ppp(void);
@@ -192,14 +193,15 @@ static void lte_callback_handler(void* arg)
     }
 }
 
-static bool lte_push_at_command_ext(char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len) {
-    lte_task_cmd_data_t cmd = { .timeout = timeout, .dataLen = len};
+static bool lte_push_at_command_ext_cont (char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len, bool continuation)
+{
+    lte_task_cmd_data_t cmd = { .timeout = timeout, .dataLen = len, .expect_continuation = continuation};
     memcpy(cmd.data, cmd_str, len);
     uint32_t start = mp_hal_ticks_ms();
     if (lte_debug)
         printf("[AT] %u %s\n", start, cmd_str);
     lteppp_send_at_command(&cmd, &modlte_rsp);
-    if ((expected_rsp == NULL) || (strstr(modlte_rsp.data, expected_rsp) != NULL)) {
+    if (continuation || (expected_rsp == NULL) || (strstr(modlte_rsp.data, expected_rsp) != NULL)) {
         if (lte_debug)
             printf("[AT-OK] +%u %s\n", mp_hal_ticks_ms()-start, modlte_rsp.data);
         return true;
@@ -207,6 +209,10 @@ static bool lte_push_at_command_ext(char *cmd_str, uint32_t timeout, const char 
     if (lte_debug)
         printf("[AT-FAIL] +%u %s\n", mp_hal_ticks_ms()-start, modlte_rsp.data);
     return false;
+}
+
+static bool lte_push_at_command_ext(char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len) {
+    return lte_push_at_command_ext_cont(cmd_str, timeout, expected_rsp, len, false);
 }
 
 static bool lte_push_at_command (char *cmd_str, uint32_t timeout) {
@@ -1230,18 +1236,46 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     lte_check_init();
     lte_check_inppp();
     STATIC const mp_arg_t allowed_args[] = {
-        { MP_QSTR_cmd,        MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_cmd,                   MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_delay,                 MP_ARG_INT,  {.u_int = LTE_RX_TIMEOUT_MAX_MS} }
     };
     // parse args
-    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    uint32_t argLength = MP_ARRAY_SIZE(allowed_args);
+    mp_arg_val_t args[argLength];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
     if (args[0].u_obj == mp_const_none) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "the command must be specified!"));
     }
+    uint32_t timeout = LTE_RX_TIMEOUT_MAX_MS;
     if (MP_OBJ_IS_STR_OR_BYTES(args[0].u_obj))
     {
         size_t len;
-        lte_push_at_command_ext((char *)(mp_obj_str_get_data(args[0].u_obj, &len)), LTE_RX_TIMEOUT_MAX_MS, NULL, len);
+        char* command = (char *)(mp_obj_str_get_data(args[0].u_obj, &len));
+        
+        if(argLength > 1) {
+            timeout = args[1].u_int;
+        }
+
+        if(len <= LTE_AT_CMD_DATA_SIZE_MAX)
+          lte_push_at_command_ext_cont(command, timeout, NULL, len, false);
+        else {
+            size_t chunk_count = len / LTE_AT_CMD_DATA_SIZE_MAX;
+            size_t remaining_bytes = len % LTE_AT_CMD_DATA_SIZE_MAX;
+
+            bool expect_continuation = false;
+            char* chunk_start = command;
+            for(size_t i=0; i<chunk_count; ++i) {
+                expect_continuation = (i < (chunk_count - 1)) || remaining_bytes;
+
+                lte_push_at_command_ext_cont(chunk_start, timeout, NULL, LTE_AT_CMD_DATA_SIZE_MAX, expect_continuation);
+
+                chunk_start += LTE_AT_CMD_DATA_SIZE_MAX;
+            }
+
+            if(remaining_bytes) {
+                lte_push_at_command_ext_cont(chunk_start, timeout, NULL, remaining_bytes, false);
+            }
+        }           
     }
     else
     {
