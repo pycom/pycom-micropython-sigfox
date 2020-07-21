@@ -1251,31 +1251,29 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     {
         size_t len;
         char* command = (char *)(mp_obj_str_get_data(args[0].u_obj, &len));
-        
+
         if(argLength > 1) {
             timeout = args[1].u_int;
         }
 
-        if(len <= LTE_AT_CMD_DATA_SIZE_MAX)
-          lte_push_at_command_ext_cont(command, timeout, NULL, len, false);
-        else {
+        if(len <= LTE_AT_CMD_DATA_SIZE_MAX) {
+            lte_push_at_command_ext_cont(command, timeout, NULL, len, false);
+        } else {
             size_t chunk_count = len / LTE_AT_CMD_DATA_SIZE_MAX;
             size_t remaining_bytes = len % LTE_AT_CMD_DATA_SIZE_MAX;
 
             bool expect_continuation = false;
             char* chunk_start = command;
-            for(size_t i=0; i<chunk_count; ++i) {
+            for(size_t i = 0; i < chunk_count; ++i) {
                 expect_continuation = (i < (chunk_count - 1)) || remaining_bytes;
-
                 lte_push_at_command_ext_cont(chunk_start, timeout, NULL, LTE_AT_CMD_DATA_SIZE_MAX, expect_continuation);
-
                 chunk_start += LTE_AT_CMD_DATA_SIZE_MAX;
             }
 
             if(remaining_bytes) {
                 lte_push_at_command_ext_cont(chunk_start, timeout, NULL, remaining_bytes, false);
             }
-        }           
+        }
     }
     else
     {
