@@ -87,7 +87,7 @@ bool sx1308_init(void) {
     machpin_register_irq_c_handler(SX1308.TxOn, (void *)SX1308_Tx_Off_Isr);
     pin_irq_enable(SX1308.TxOn);
 
-    timer_start_value = machtimer_get_timer_counter_value();
+    timer_start_value = machtimer_get_timer_counter_value()/(CLK_FREQ / 1000000);
     SX1308.firsttx = true;
     SX1308.txongoing = 0;
     SX1308.offtmstp = 0;
@@ -235,7 +235,7 @@ uint8_t sx1308_spiReadBurst(uint8_t reg, uint8_t *data, int size) {
 }
 
 uint32_t sx1308_timer_read_us(void) {
-     return ((machtimer_get_timer_counter_value() - timer_start_value) & 0xFFFFFFFF);
+     return ((machtimer_get_timer_counter_value()/(CLK_FREQ / 1000000) - timer_start_value) & 0xFFFFFFFF);
 }
 
 
