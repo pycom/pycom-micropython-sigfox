@@ -142,6 +142,11 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include/soc
 # Needed to find pycom_bootloader.h from pycom-esp-idf
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader/subproject/main
 
+# Added for Tensor Flow Micro -ML framework
+APP_INC += -Iml
+APP_INC += -I$(ESP_IDF_COMP_PATH)/tfmicro
+APP_INC += -I$(ESP_IDF_COMP_PATH)/tfmicro/third_party/flatbuffers/include 
+APP_INC += -I$(ESP_IDF_COMP_PATH)/tfmicro/third_party/gemmlowp
 
 
 APP_MAIN_SRC_C = \
@@ -433,6 +438,10 @@ APP_FTP_SRC_C = $(addprefix ftp/,\
 APP_CAN_SRC_C = $(addprefix can/,\
 	CAN.c \
 	)
+
+# APP_ML_SRC_C = $(addprefix ml/,\
+# 	magic_wand_data.c \
+# 	)
 
 SFX_OBJ =
 
