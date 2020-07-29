@@ -1014,6 +1014,63 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_sigfox_info_obj, 0, mod_pycom_sigfox
 
 #endif // #if defined(FIPY) || defined(LOPY4) || defined(SIPY)
 
+#include "utils/data_struct/list.h"
+#include "ml/data_pipeline.h"
+#include "ml/model.h"
+
+STATIC mp_obj_t mod_pycom_ml_new_model (mp_obj_t model_definition) {
+
+    const char *model_definition_str = mp_obj_str_get_str(model_definition);
+    
+    bool ret = new_model(model_definition_str);
+
+    return mp_obj_new_bool(ret);
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_ml_new_model_obj, mod_pycom_ml_new_model);
+
+STATIC mp_obj_t mod_pycom_ml_run_model (mp_obj_t data) {
+
+    // Get input data.
+    mp_obj_t *list;
+    size_t listlen = 0;
+
+    mp_obj_list_get(data, &listlen, &list);
+
+    float data_buf[listlen];
+    for (int i = 0 ; i < listlen ; i++){
+        data_buf[i] =  mp_obj_float_get(list[i]);
+    }
+
+    // Run inference.
+    List* results = run_model(data_buf, listlen);
+
+    // Dictionary to hold results.
+    mp_obj_dict_t *results_dct = mp_obj_new_dict(0);
+
+    // For each output block, add results.
+    l_for_each_entry(entry, results){
+
+        ReturnedData *rd = (ReturnedData *) entry->data;
+
+        mp_obj_t entry_l = mp_obj_new_list(0, NULL);
+
+        for(int i = 0; i < rd->data->buffer_size; i++){
+
+            mp_obj_list_append(entry_l, mp_obj_new_float(rd->data->buffer[i]));
+        }
+
+        // Add to dict.
+        mp_obj_dict_store (results_dct, mp_obj_new_str(rd->block_id, strlen(rd->block_id)), entry_l);
+    }
+
+    // Free memory.
+    l_delete_list(results);
+
+    return results_dct;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_ml_run_model_obj, mod_pycom_ml_run_model);
+
+
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat),                       (mp_obj_t)&mod_pycom_heartbeat_obj },
@@ -1040,6 +1097,8 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd_sta),                    (mp_obj_t)&mod_pycom_wifi_pwd_sta_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd_ap),                     (mp_obj_t)&mod_pycom_wifi_pwd_ap_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_mode_on_boot),               (mp_obj_t)&mod_pycom_wifi_mode_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_ml_new_model),                    (mp_obj_t)&mod_pycom_ml_new_model_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_ml_run_model),                    (mp_obj_t)&mod_pycom_ml_run_model_obj },
 
 #if defined(FIPY) || defined(LOPY4) || defined(SIPY)
         { MP_OBJ_NEW_QSTR(MP_QSTR_sigfox_info),                     (mp_obj_t)&mod_pycom_sigfox_info_obj },

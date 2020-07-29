@@ -163,7 +163,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lfreertos -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
        -lesp_ringbuf -lefuse -lespcoredump -lapp_update \
-       -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig -ltfmicro
+       -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig -ljson -ltfmicro
 
 ifeq ($(MOD_COAP_ENABLED), 1)
     $(info COAP Module Enabled)
