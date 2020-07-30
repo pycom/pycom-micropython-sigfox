@@ -1036,13 +1036,15 @@ STATIC mp_obj_t mod_pycom_ml_run_model (mp_obj_t data) {
 
     mp_obj_list_get(data, &listlen, &list);
 
-    float data_buf[listlen];
+    float *data_buf = (float *)malloc(listlen * sizeof(float));
     for (int i = 0 ; i < listlen ; i++){
         data_buf[i] =  mp_obj_float_get(list[i]);
     }
 
     // Run inference.
     List* results = run_model(data_buf, listlen);
+
+    free(data_buf);
 
     // Dictionary to hold results.
     mp_obj_dict_t *results_dct = mp_obj_new_dict(0);
