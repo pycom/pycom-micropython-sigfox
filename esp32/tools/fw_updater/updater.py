@@ -12,7 +12,7 @@ from __future__ import print_function
 import argparse
 import base64
 import binascii
-from io import BytesIO
+from io import BytesIO, StringIO
 import json
 import os
 import re
@@ -1163,7 +1163,10 @@ def main():
         if args.command == 'list':
             list_usbid()
             sys.exit(0)
-        new_stream = BytesIO()
+        if sys.version_info[0] < 3:
+            new_stream = BytesIO()
+        else:
+            new_stream = StringIO()
         old_stdout = sys.stdout
         if (args.ftdi):
             pypic = False
