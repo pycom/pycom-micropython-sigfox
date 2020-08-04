@@ -34,7 +34,7 @@ try:
 except:
     humanfriendly_available = False
 
-DEBUG = True
+DEBUG = False
 
 FLASH_MODE = 'dio'
 FLASH_FREQ = '80m'
