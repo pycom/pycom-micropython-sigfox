@@ -1001,6 +1001,8 @@ def process_arguments():
         cmd_parser_bootpart = subparsers.add_parser('boot_part', add_help=False)  # , help='Check / Set active boot partition')
         cmd_parser_bootpart.add_argument('-p', '--partition', default=None, help="Set the activate boot partition [factory or ota_0]")
 
+    cmd_parser_pycom = subparsers.add_parser('pycom', help='Check / Set pycom parameters')
+    cmd_parser_pycom.add_argument('--fs_type', default=None, help="Set the file system type ['FatFS' or 'LittleFS']")
     cmd_parser_sigfox = subparsers.add_parser('sigfox', help='Show/Update sigfox details')
     cmd_parser_sigfox.add_argument('--id', default=None, help='Update Sigfox id')
     cmd_parser_sigfox.add_argument('--pac', default=None, help='Update Sigfox pac')
@@ -1294,7 +1296,7 @@ def main():
                 print("SID: %s" % sid)
                 print("PAC: %s" % pac)
 
-        elif args.command == 'lpwan' or args.command == 'sigfox':
+        elif args.command == 'lpwan':
             config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
             if hasattr(args, "region") and args.region is not None:
                 new_config_block = nPy.set_lpwan_config(config_block, args.region)
@@ -1319,9 +1321,6 @@ def main():
                         print(nPy.region2str(ord(region)))
                     except:
                         print("NONE")
-                elif args.command == 'sigfox':
-                    print("SID: %s" % sid)
-                    print("PAC: %s" % pac)
                 else:
                     print("SMAC: %s" % smac)
                     print("SID: %s" % sid)
@@ -1545,6 +1544,29 @@ def main():
                 except:
                     print("WIFI_ON_BOOT=[not set]")
 
+        elif args.command == 'pycom':
+            config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
+            nPy.print_cb(config_block)
+            if (args.fs_type is not None):
+                new_config_block = nPy.set_pycom_config(config_block, args.fs_type)
+                nPy.print_cb(new_config_block)
+                nPy.write(int(PARTITIONS.get('config')[0], 16), new_config_block)
+            else:
+                sys.stdout = old_stdout
+                try:
+                    if sys.version_info[0] < 3:
+                        fs_type = config_block[533]
+                    else:
+                        fs_type = config_block[533].to_bytes(1, byteorder='little')
+                    if fs_type == (b'\x00'):
+                        print("fs_type=FatFS")
+                    if fs_type == (b'\x01'):
+                        print("fs_type=LittleFS")
+                    if fs_type == (b'\xff'):
+                        print("fs_type=[not set]")
+                except:
+                    print("fs_type=[not set]")
+                        
         elif args.command == 'pybytes':
             config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
             if (hasattr(args, "token") and args.token is not None) \
