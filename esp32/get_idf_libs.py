@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import os
 import sys
 import argparse
@@ -6,8 +8,9 @@ import traceback
 
 
 def main():
+    src_def = os.environ['IDF_PATH']+'/examples/wifi/scan/build'
     cmd_parser = argparse.ArgumentParser(description='Get the precompiled libs from the IDF')
-    cmd_parser.add_argument('--idflibs', default=None, help='the path to the idf libraries')
+    cmd_parser.add_argument('--idflibs', default=src_def, help='the path to the idf libraries (' + src_def + ')')
     cmd_args = cmd_parser.parse_args()
 
     src = cmd_args.idflibs
@@ -28,6 +31,7 @@ def main():
         shutil.copy(src + '/bootloader/micro-ecc/libmicro-ecc.a', dsttmpbl)
         shutil.copy(src + '/bootloader/soc/libsoc.a', dsttmpbl)
         shutil.copy(src + '/bootloader/spi_flash/libspi_flash.a', dsttmpbl)
+        shutil.copy(src + '/bootloader/efuse/libefuse.a', dsttmpbl)
         
         # copy the application libraries
         
@@ -62,6 +66,10 @@ def main():
         shutil.copy(src + '/esp_ringbuf/libesp_ringbuf.a', dsttmpapp)
         shutil.copy(src + '/coap/libcoap.a', dsttmpapp)
         shutil.copy(src + '/mdns/libmdns.a', dsttmpapp)
+        shutil.copy(src + '/efuse/libefuse.a', dsttmpapp)
+        shutil.copy(src + '/espcoredump/libespcoredump.a', dsttmpapp)
+        shutil.copy(src + '/app_update/libapp_update.a', dsttmpapp)
+        
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         traceback.print_exc()
@@ -75,10 +83,19 @@ def main():
     for item in os.listdir(dsttmpapp):
         shutil.copy(dsttmpapp + '/' + item, dstapp + '/' + item)
         
+    # copy the project's linker script
+    shutil.copy(src + '/esp32/esp32.project.ld', ".")
+    
+    # copy the generated sdkconfig.h
+    with open(src + '/include/sdkconfig.h', 'r') as input:
+        content = input.read()
+    with open(os.path.dirname(os.path.realpath(__file__)) + '/sdkconfig.h', 'w') as output:
+        output.write(content.replace('#define CONFIG_SECURE_BOOT_ENABLED 1',''))
+
     shutil.rmtree(dsttmpbl)
     shutil.rmtree(dsttmpapp)
     
-    print("IDF Libs copied Successfully!")
+    print("IDF Libs, linker script and sdkconfig.h copied successfully!")
         
 
 if __name__ == "__main__":

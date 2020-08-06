@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2019, Pycom Limited and its licensors.
+ * Copyright (c) 2020, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -118,6 +118,7 @@ void pin_init0(void) {
         pin_obj_t *self = (pin_obj_t *)named_map->table[i].value;
         if (self != &PIN_MODULE_P1) {  // temporal while we remove all the IDF logs
         #ifdef DEBUG
+            // Pins needed for JTAG
             if (self == &PIN_MODULE_P4 || self == &PIN_MODULE_P9 || self == &PIN_MODULE_P10 || self == &PIN_MODULE_P23) {
                continue;
             }

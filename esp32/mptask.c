@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -174,11 +174,11 @@ void TASK_Micropython (void *pvParameters) {
 
     if (esp32_get_chip_rev() > 0) {
         gc_pool_size = GC_POOL_SIZE_BYTES_PSRAM;
-        gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES_PSRAM, MALLOC_CAP_SPIRAM);
     } else {
         gc_pool_size = GC_POOL_SIZE_BYTES;
-        gc_pool_upy = heap_caps_malloc(GC_POOL_SIZE_BYTES, MALLOC_CAP_INTERNAL);
     }
+
+    gc_pool_upy = malloc(gc_pool_size);
 
     if (NULL == gc_pool_upy) {
         printf("GC pool malloc failed!\n");
@@ -298,7 +298,16 @@ soft_reset:
 
     if (!safeboot) {
         // execute the frozen main first
+
+#if (VARIANT == PYBYTES)
+        if (config_get_pybytes_autostart()) {
+            pyexec_frozen_module("_main_pybytes.py");
+        } else {
+            pyexec_frozen_module("_main.py");
+        }
+#else
         pyexec_frozen_module("_main.py");
+#endif
 
         // run the main script from the current directory.
         if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
@@ -525,11 +534,10 @@ STATIC void mptask_init_sflash_filesystem_littlefs(void) {
     MP_STATE_PORT(vfs_cur) = vfs;
 
     //Initialize the current working directory (cwd)
-    vfs_littlefs->fs.littlefs.cwd = (char*)m_malloc(2);
+    vfs_littlefs->fs.littlefs.cwd = (char*)malloc(2);
     vfs_littlefs->fs.littlefs.cwd[0] = '/';
     vfs_littlefs->fs.littlefs.cwd[1] = '\0';
 
-    MP_STATE_PORT(lfs_cwd) = vfs_littlefs->fs.littlefs.cwd;
     vfs_littlefs->fs.littlefs.mutex = xSemaphoreCreateMutex();
 
     xSemaphoreTake(vfs_littlefs->fs.littlefs.mutex, portMAX_DELAY);

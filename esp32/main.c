@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -58,7 +58,7 @@ TaskHandle_t svTaskHandle;
 TaskHandle_t SmartConfTaskHandle;
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xLoRaTaskHndl;
-TaskHandle_t xLoRaTimerTaskHndl;
+DRAM_ATTR TaskHandle_t xLoRaTimerTaskHndl;
 #endif
 #if defined(SIPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xSigfoxTaskHndl;
@@ -149,7 +149,7 @@ void app_main(void) {
         micropy_lpwan_dio_pin_num = 23;
         micropy_lpwan_dio_pin = &pin_GPIO23;
 
-        mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE_PSRAM, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        mpTaskStack = malloc(MICROPY_TASK_STACK_SIZE_PSRAM);
 
         // create the MicroPython task
         mpTaskHandle =
@@ -172,7 +172,7 @@ void app_main(void) {
         micropy_lpwan_dio_pin_num = 23;
         micropy_lpwan_dio_pin = &pin_GPIO23;
 
-        mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        mpTaskStack = malloc(MICROPY_TASK_STACK_SIZE);
 
         // create the MicroPython task
         mpTaskHandle =

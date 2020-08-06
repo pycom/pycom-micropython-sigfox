@@ -36,6 +36,7 @@ user.props
 .pydevproject
 .settings
 .launch
+.vscode
 
 # Key files (for Flash Encryption and Secure Boot)
 secure_boot_signing_key.pem

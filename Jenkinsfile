@@ -9,9 +9,14 @@ node {
     stage('Checkout') {
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --depth=1 --recursive -b idf_v3.2 https://github.com/pycom/pycom-esp-idf.git esp-idf'
+        sh 'git clone --recursive -b idf_v3.3.1 https://github.com/pycom/pycom-esp-idf.git esp-idf'
+        IDF_HASH=get_idf_hash()
+        dir('esp-idf'){
+            sh 'git checkout ' + IDF_HASH
+            sh 'git submodule update --init --recursive'
+        }
     }
-    
+
     stage('git-tag') {
         PYCOM_VERSION=get_version()
         GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
@@ -85,7 +90,8 @@ def flashBuild(short_name, version, variant) {
       unstash 'esp32Tools'
       unstash 'tests'
       unstash 'tools'
-      sh 'python esp32/tools/fw_updater/updater.py --port ' + device_name +' flash -t esp32/build-' + variant + '/' + board_name + '-' + version + '.tar.gz'
+      sh 'python esp32/tools/fw_updater/updater.py --noexit --port ' + device_name +' flash -t esp32/build-' + variant + '/' + board_name + '-' + version + '.tar.gz'
+      sh 'python esp32/tools/fw_updater/updater.py --port ' + device_name +' pybytes --auto_start False'
     }
   }
 }
@@ -111,6 +117,11 @@ def testBuild(short_name) {
 
 def get_version() {
     def matcher = readFile('esp32/pycom_version.h') =~ 'SW_VERSION_NUMBER (.+)'
+    matcher ? matcher[0][1].trim().replace('"','') : null
+}
+
+def get_idf_hash() {
+    def matcher = readFile('esp32/Makefile') =~ 'IDF_HASH=(.+)'
     matcher ? matcher[0][1].trim().replace('"','') : null
 }
 

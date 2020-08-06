@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -302,16 +302,15 @@ STATIC mp_obj_t mod_pycom_nvs_get (mp_uint_t n_args, const mp_obj_t *args) {
     else {
         esp_err = nvs_get_str(pycom_nvs_handle, key, NULL, &value);
         if(esp_err == ESP_OK) {
-            char* value_string = (char*)m_malloc(value);
+            char* value_string = (char*)malloc(value);
 
             esp_err = nvs_get_str(pycom_nvs_handle, key, value_string, &value);
 
             if(esp_err == ESP_OK) {
                 //do not count the terminating \0
                 ret = mp_obj_new_str(value_string, value-1);
-                m_free(value_string);
             }
-            m_free(value_string);
+            free(value_string);
         }
     }
 
@@ -422,7 +421,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_sta (mp_uint_t n_args, const mp_obj_t *args)
         else{/*Nothing*/}
 
     } else {
-        uint8_t * ssid = (uint8_t *)m_malloc(33);
+        uint8_t * ssid = (uint8_t *)malloc(33);
         mp_obj_t ssid_obj;
         if(config_get_wifi_sta_ssid(ssid))
         {
@@ -432,7 +431,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_sta (mp_uint_t n_args, const mp_obj_t *args)
         {
             ssid_obj = mp_const_none;
         }
-        m_free(ssid);
+        free(ssid);
         return ssid_obj;
     }
     return mp_const_none;
@@ -451,7 +450,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_sta (mp_uint_t n_args, const mp_obj_t *args) 
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * pwd = (uint8_t *)m_malloc(65);
+        uint8_t * pwd = (uint8_t *)malloc(65);
         mp_obj_t pwd_obj;
         if(config_get_wifi_sta_pwd(pwd))
         {
@@ -461,7 +460,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_sta (mp_uint_t n_args, const mp_obj_t *args) 
         {
             pwd_obj = mp_const_none;
         }
-        m_free(pwd);
+        free(pwd);
         return pwd_obj;
     }
     return mp_const_none;
@@ -480,7 +479,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_ap (mp_uint_t n_args, const mp_obj_t *args) 
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * ssid = (uint8_t *)m_malloc(33);
+        uint8_t * ssid = (uint8_t *)malloc(33);
         mp_obj_t ssid_obj;
         if(config_get_wifi_ap_ssid(ssid))
         {
@@ -490,7 +489,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_ap (mp_uint_t n_args, const mp_obj_t *args) 
         {
             ssid_obj = mp_const_none;
         }
-        m_free(ssid);
+        free(ssid);
         return ssid_obj;
     }
     return mp_const_none;
@@ -509,7 +508,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_ap (mp_uint_t n_args, const mp_obj_t *args) {
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * pwd = (uint8_t *)m_malloc(65);
+        uint8_t * pwd = (uint8_t *)malloc(65);
         mp_obj_t pwd_obj;
         if(config_get_wifi_ap_pwd(pwd))
         {
@@ -519,7 +518,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_ap (mp_uint_t n_args, const mp_obj_t *args) {
         {
             pwd_obj = mp_const_none;
         }
-        m_free(pwd);
+        free(pwd);
         return pwd_obj;
     }
     return mp_const_none;
@@ -570,6 +569,17 @@ STATIC mp_obj_t mod_pycom_lte_modem_on_boot (mp_uint_t n_args, const mp_obj_t *a
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_lte_modem_on_boot_obj, 0, 1, mod_pycom_lte_modem_on_boot);
+
+STATIC mp_obj_t mod_pycom_pybytes_on_boot (mp_uint_t n_args, const mp_obj_t *args) {
+    if (n_args) {
+        config_set_pybytes_autostart (mp_obj_is_true(args[0]));
+    } else {
+        return mp_obj_new_bool(config_get_pybytes_autostart());
+    }
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_pybytes_on_boot_obj, 0, 1, mod_pycom_pybytes_on_boot);
+
 
 STATIC mp_obj_t mod_pycom_pybytes_lte_config (size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_carrier, ARG_apn, ARG_cid, ARG_band, ARG_type, ARG_reset };
@@ -839,17 +849,16 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
 
     if (args[ARG_id].u_obj == mp_const_none && args[ARG_pac].u_obj == mp_const_none && args[ARG_public_key].u_obj == mp_const_none && args[ARG_private_key].u_obj == mp_const_none) {
+        // query sigfox info
 
-        mp_obj_tuple_t *t = MP_OBJ_TO_PTR(mp_obj_new_tuple(4, NULL));
-
-        t->items[ARG_id] = is_empty(id, sizeof(id)) ? mp_const_none:mp_obj_new_str((const char*)id, sizeof(id));
-        t->items[ARG_pac] = is_empty(pac, sizeof(pac)) ? mp_const_none:mp_obj_new_str((const char*)pac, sizeof(pac));
-        t->items[ARG_public_key] = is_empty(public_key, sizeof(public_key)) ? mp_const_none:mp_obj_new_str((const char*)public_key, sizeof(public_key));
-        t->items[ARG_private_key] = is_empty(private_key, sizeof(private_key)) ? mp_const_none:mp_obj_new_str((const char*)private_key, sizeof(private_key));
-
-        return MP_OBJ_FROM_PTR(t);
-
+        if ( !is_empty(id, sizeof(id)) && !is_empty(pac, sizeof(pac)) && !is_empty(public_key, sizeof(public_key)) && !is_empty(private_key, sizeof(private_key)) ){
+            // all configs valid
+            return mp_const_true;
+        } else {
+            return mp_const_false;
+        }
     } else {
+        // write sigfox info
 
         // temporary array to store even the longest value from id, pac, public_key and private_key
         uint8_t tmp_array[16];
@@ -881,7 +890,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_id(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write id"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing id!"));
@@ -912,7 +921,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_pac(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write pac"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing pac!"));
@@ -943,7 +952,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_public_key(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write public key"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing public key!"));
@@ -975,7 +984,7 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 
                 ret_val = config_set_sigfox_private_key(tmp_array);
                 if (ret_val == false) {
-                    return mp_const_false;
+                    nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Failed to write private key"));
                 }
             } else {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Use force option to overwrite existing private key!"));
@@ -983,7 +992,6 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
         }
         return mp_const_true;
     }
-    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_sigfox_info_obj, 0, mod_pycom_sigfox_info);
 
@@ -1026,6 +1034,8 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_force_update),            (mp_obj_t)&mod_pycom_pybytes_force_update_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_smart_config_on_boot),            (mp_obj_t)&mod_pycom_smartConfig_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_lte_config),              (mp_obj_t)&mod_pycom_pybytes_lte_config_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_on_boot),                 (mp_obj_t)&mod_pycom_pybytes_on_boot_obj },
+
 #endif //(VARIANT == PYBYTES)
         { MP_OBJ_NEW_QSTR(MP_QSTR_bootmgr),                         (mp_obj_t)&mod_pycom_bootmgr_obj },
 

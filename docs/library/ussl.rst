@@ -114,6 +114,21 @@ network sockets, both client-side and server-side.
 
        SSL sockets inherit all methods and from the standard sockets, see the :mod:`usocket` module.
 
+    .. function:: ssl.save_session(sock)
+
+       Takes an instance sock of ssl.SSLSocket, and returns an instance of ssl.SSLSession representing saved session data from the socket, which can be used to resume a SSL session later. Example::
+
+          import socket
+          import ssl
+          addr = socket.getaddrinfo('www.google.com', 443)[0][-1]
+          sock_one = ssl.wrap_socket(socket.socket())
+          sock_one.connect(addr) # performs a full ssl handshake
+          session = ssl.save_session(sock_one)
+          sock_one.close()
+          sock_one = None
+          sock_two = ssl.wrap_socket(socket.socket(), saved_session=session)
+          sock_two.connect(addr) # resumes using saved session, resulting in a faster handshake
+
     Exceptions
     ----------
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -159,7 +159,7 @@ void lteppp_init(void) {
 
     lteppp_connstatus = LTE_PPP_IDLE;
 #ifdef LTE_DEBUG_BUFF
-    lteppp_log.log = heap_caps_malloc(LTE_LOG_BUFF_SIZE, MALLOC_CAP_SPIRAM);
+    lteppp_log.log = malloc(LTE_LOG_BUFF_SIZE);
 #endif
 }
 
