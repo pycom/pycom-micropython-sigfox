@@ -133,6 +133,7 @@ CFLAGS_XTENSA_OPT = -Os
 CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue
 
 CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
+CFLAGS += $(CFLAGS_MOD) $(CFLAGS_EXTRA)
 CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 
 # Configure floating point support
