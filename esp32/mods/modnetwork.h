@@ -131,4 +131,6 @@ void mod_network_register_nic(mp_obj_t nic);
 void mod_network_deregister_nic(mp_obj_t nic);
 mp_obj_t mod_network_find_nic(const mod_network_socket_obj_t *s, const uint8_t *ip);
 
+MP_DECLARE_CONST_FUN_OBJ_1(ppp_make_new_obj);
+
 #endif  // MODNETWORK_H_
