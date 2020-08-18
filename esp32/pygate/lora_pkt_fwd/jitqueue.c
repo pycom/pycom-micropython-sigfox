@@ -451,15 +451,15 @@ void jit_print_queue(struct jit_queue_s *queue, bool show_all) {
     int loop_end;
 
     if (jit_queue_is_empty(queue)) {
-        printf("[jit] queue is empty\n");
+        mp_printf(&mp_plat_print,"[jit] queue is empty\n");
     } else {
         pthread_mutex_lock(&mx_jit_queue);
 
-        printf("[jit] queue contains %d packets:\n", queue->num_pkt);
-        printf("[jit] queue contains %d beacons:\n", queue->num_beacon);
+        mp_printf(&mp_plat_print,"[jit] queue contains %d packets:\n", queue->num_pkt);
+        mp_printf(&mp_plat_print,"[jit] queue contains %d beacons:\n", queue->num_beacon);
         loop_end = (show_all == true) ? JIT_QUEUE_MAX : queue->num_pkt;
         for (i = 0; i < loop_end; i++) {
-            printf(" - node[%d]: count_us=%u - type=%d\n",
+            mp_printf(&mp_plat_print," - node[%d]: count_us=%u - type=%d\n",
                       i,
                       queue->nodes[i].pkt.count_us,
                       queue->nodes[i].pkt_type);

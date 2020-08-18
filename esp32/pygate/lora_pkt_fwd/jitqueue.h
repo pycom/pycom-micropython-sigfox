@@ -34,6 +34,8 @@ Maintainer: Michael Coracin
 
 #include "loragw_hal.h"
 
+#include "py/mpprint.h"
+
 /* -------------------------------------------------------------------------- */
 /* --- PUBLIC CONSTANTS ----------------------------------------------------- */
 

@@ -29,6 +29,8 @@ Maintainer: Michael Coracin
 #include <stdbool.h>
 #include "esp32_mphal.h"
 
+#include "py/mpprint.h"
+
 // debug levels
 #define DEBUG     4
 #define INFO_     3
@@ -43,7 +45,8 @@ extern int debug_level;
 #define MSG_DX(LEVEL, fmt, ...)                                                               \
             do  {                                                                             \
                 if (debug_level >= LEVEL)                                                     \
-                    printf("[%u] lorapf: " #LEVEL " " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__); \
+                    mp_printf(&mp_plat_print, "hello world");                                 \
+                    mp_printf(&mp_plat_print, "[%u] lorapf: " #LEVEL " " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__); \
             } while (0)
 
 #if DEBUG_LEVEL >= DEBUG

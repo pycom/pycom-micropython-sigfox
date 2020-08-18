@@ -25,6 +25,8 @@ Maintainer: Michael Coracin
 #ifndef _LORA_PKTFWD_H
 #define _LORA_PKTFWD_H
 
+#include "py/mpprint.h"
+
 int lora_gw_init(char *);
 int lora_gw_get_debug_level();
 void lora_gw_set_debug_level(int level);
