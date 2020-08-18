@@ -45,7 +45,6 @@ extern int debug_level;
 #define MSG_DX(LEVEL, fmt, ...)                                                               \
             do  {                                                                             \
                 if (debug_level >= LEVEL)                                                     \
-                    mp_printf(&mp_plat_print, "hello world");                                 \
                     mp_printf(&mp_plat_print, "[%u] lorapf: " #LEVEL " " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__); \
             } while (0)
 
