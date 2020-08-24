@@ -183,8 +183,26 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	modmdns.c \
 	)
 ifeq ($(MOD_COAP_ENABLED), 1)
+APP_INC += -Ibsdiff
 APP_MODS_SRC_C += $(addprefix mods/,\
 	modcoap.c \
+	)
+endif
+
+ifeq ($(DIFF_UPDATE_ENABLED), 1)
+APP_INC += -Ibzlib/
+APP_MODS_SRC_C += $(addprefix bsdiff/,\
+	bspatch.c \
+	)
+APP_MODS_SRC_C += $(addprefix bzlib/,\
+	blocksort.c \
+	huffman.c \
+	crctable.c \
+	randtable.c \
+	compress.c \
+	decompress.c \
+	bzlib.c \
+	bzlib_ext.c \
 	)
 endif
 

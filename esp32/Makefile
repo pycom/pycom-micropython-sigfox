@@ -38,6 +38,9 @@ MOD_SIGFOX_ENABLED ?= 1
 # Pybytes disabled by default
 PYBYTES_ENABLED ?= 0
 
+# Flag to enable/disable Delta Update Feature. Disabled by default
+DIFF_UPDATE_ENABLED ?= 0
+
 # by default make a BASE firmware with features as specified with defaults above
 # valid choices for VARIANT are: BASE, PYBYTES, PYGATE
 VARIANT ?=BASE
@@ -138,6 +141,11 @@ ifeq ($(MOD_COAP_ENABLED), 1)
     $(info COAP Module Enabled)
     LIBS += -lcoap
     CFLAGS += -DMOD_COAP_ENABLED
+endif
+
+ifeq ($(DIFF_UPDATE_ENABLED), 1)
+    $(info Differential Update Enabled)
+    CFLAGS += -DDIFF_UPDATE_ENABLED -DBZ_NO_STDIO
 endif
 
 ifeq ($(MOD_SIGFOX_ENABLED), 1)

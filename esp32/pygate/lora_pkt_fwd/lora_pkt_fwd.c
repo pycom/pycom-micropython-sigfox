@@ -1,4 +1,12 @@
 /*
+ * Copyright (c) 2020, Pycom Limited.
+ *
+ * This software is licensed under the GNU GPL version 3 or any
+ * later version, with permitted additional terms. For more information
+ * see the Pycom Licence v1.0 document supplied with this file, or
+ * available at https://www.pycom.io/opensource/licensing
+ */
+/*
  / _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
@@ -61,6 +69,7 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "lwip/apps/sntp.h"
 #include "utils/interrupt_char.h"
 #include "py/obj.h"
+#include "py/mpprint.h"
 #include "modmachine.h"
 
 /* -------------------------------------------------------------------------- */
@@ -1228,7 +1237,7 @@ void TASK_lora_gw(void *pvParameters) {
     }
 
     machine_pygate_set_status(PYGATE_STARTED);
-    printf("LoRa GW started\n");
+    mp_printf(&mp_plat_print, "LoRa GW started\n");
 
     /* main loop task : statistics collection */
     while (!exit_sig && !quit_sig) {
@@ -1317,32 +1326,32 @@ void TASK_lora_gw(void *pvParameters) {
 #if DEBUG_LEVEL >= INFO_
         if ( debug_level >= INFO_){
         MSG_INFO("[main] report\n##### %s #####\n", stat_timestamp);
-        printf("### [UPSTREAM] ###\n");
-        printf("# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
-        printf("# CRC_OK: %.2f%%, CRC_FAIL: %.2f%%, NO_CRC: %.2f%%\n", 100.0 * rx_ok_ratio, 100.0 * rx_bad_ratio, 100.0 * rx_nocrc_ratio);
-        printf("# RF packets forwarded: %u (%u bytes)\n", cp_up_pkt_fwd, cp_up_payload_byte);
-        printf("# PUSH_DATA datagrams sent: %u (%u bytes)\n", cp_up_dgram_sent, cp_up_network_byte);
-        printf("# PUSH_DATA acknowledged: %.2f%%\n", 100.0 * up_ack_ratio);
-        printf("### [DOWNSTREAM] ###\n");
-        printf("# PULL_DATA sent: %u (%.2f%% acknowledged)\n", cp_dw_pull_sent, 100.0 * dw_ack_ratio);
-        printf("# PULL_RESP(onse) datagrams received: %u (%u bytes)\n", cp_dw_dgram_rcv, cp_dw_network_byte);
-        printf("# RF packets sent to concentrator: %u (%u bytes)\n", (cp_nb_tx_ok + cp_nb_tx_fail), cp_dw_payload_byte);
-        printf("# TX errors: %u\n", cp_nb_tx_fail);
+        mp_printf(&mp_plat_print, "### [UPSTREAM] ###\n");
+        mp_printf(&mp_plat_print, "# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
+        mp_printf(&mp_plat_print, "# CRC_OK: %.2f%%, CRC_FAIL: %.2f%%, NO_CRC: %.2f%%\n", 100.0 * rx_ok_ratio, 100.0 * rx_bad_ratio, 100.0 * rx_nocrc_ratio);
+        mp_printf(&mp_plat_print, "# RF packets forwarded: %u (%u bytes)\n", cp_up_pkt_fwd, cp_up_payload_byte);
+        mp_printf(&mp_plat_print, "# PUSH_DATA datagrams sent: %u (%u bytes)\n", cp_up_dgram_sent, cp_up_network_byte);
+        mp_printf(&mp_plat_print, "# PUSH_DATA acknowledged: %.2f%%\n", 100.0 * up_ack_ratio);
+        mp_printf(&mp_plat_print, "### [DOWNSTREAM] ###\n");
+        mp_printf(&mp_plat_print, "# PULL_DATA sent: %u (%.2f%% acknowledged)\n", cp_dw_pull_sent, 100.0 * dw_ack_ratio);
+        mp_printf(&mp_plat_print, "# PULL_RESP(onse) datagrams received: %u (%u bytes)\n", cp_dw_dgram_rcv, cp_dw_network_byte);
+        mp_printf(&mp_plat_print, "# RF packets sent to concentrator: %u (%u bytes)\n", (cp_nb_tx_ok + cp_nb_tx_fail), cp_dw_payload_byte);
+        mp_printf(&mp_plat_print, "# TX errors: %u\n", cp_nb_tx_fail);
         if (cp_nb_tx_requested != 0 ) {
-            printf("# TX rejected (collision packet): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_packet / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_packet);
-            printf("# TX rejected (collision beacon): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_beacon / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_beacon);
-            printf("# TX rejected (too late): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_late / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_late);
-            printf("# TX rejected (too early): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_early / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_early);
+            mp_printf(&mp_plat_print, "# TX rejected (collision packet): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_packet / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_packet);
+            mp_printf(&mp_plat_print, "# TX rejected (collision beacon): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_collision_beacon / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_collision_beacon);
+            mp_printf(&mp_plat_print, "# TX rejected (too late): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_late / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_late);
+            mp_printf(&mp_plat_print, "# TX rejected (too early): %.2f%% (req:%u, rej:%u)\n", 100.0 * cp_nb_tx_rejected_too_early / cp_nb_tx_requested, cp_nb_tx_requested, cp_nb_tx_rejected_too_early);
         }
-        printf("### [JIT] ###\n");
+        mp_printf(&mp_plat_print, "### [JIT] ###\n");
         jit_print_queue (&jit_queue, false);
-        printf("### [GPS] ###\n");
+        mp_printf(&mp_plat_print, "### [GPS] ###\n");
         if (gps_fake_enable == true) {
-            printf("# GPS *FAKE* coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
+            mp_printf(&mp_plat_print, "# GPS *FAKE* coordinates: latitude %.5f, longitude %.5f, altitude %i m\n", cp_gps_coord.lat, cp_gps_coord.lon, cp_gps_coord.alt);
         } else {
-            printf("# GPS sync is disabled\n");
+            mp_printf(&mp_plat_print, "# GPS sync is disabled\n");
         }
-        printf("##### END #####\n");
+        mp_printf(&mp_plat_print, "##### END #####\n");
         }
 #endif
 

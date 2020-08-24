@@ -212,6 +212,15 @@ STATIC mp_obj_t mod_pycom_ota_slot (void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_ota_slot_obj, mod_pycom_ota_slot);
 
+STATIC mp_obj_t mod_pycom_diff_update_enabled (void) {
+#ifdef DIFF_UPDATE_ENABLED
+    return mp_obj_new_bool(true);
+#else
+    return mp_obj_new_bool(false);
+#endif
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_diff_update_enabled_obj, mod_pycom_diff_update_enabled);
+
 STATIC mp_obj_t mod_pycom_pulses_get (mp_obj_t gpio, mp_obj_t timeout) {
     rmt_config_t rmt_rx;
     rmt_rx.channel = RMT_CHANNEL_0;
@@ -704,13 +713,17 @@ STATIC mp_obj_t mod_pycom_bootmgr (size_t n_args, const mp_obj_t *pos_args, mp_m
         {
             t->items[ARG_safeboot] = mp_obj_new_str("SafeBoot: True", strlen("SafeBoot: True"));
         }
-        if(boot_info.Status == 0x00)
+        if(boot_info.Status == IMG_STATUS_CHECK)
         {
             t->items[ARG_status] = mp_obj_new_str("Status: Check", strlen("Status: Check"));
         }
-        else
+        else if(boot_info.Status == IMG_STATUS_READY)
         {
             t->items[ARG_status] = mp_obj_new_str("Status: Ready", strlen("Status: Ready"));
+        }
+        else if(boot_info.Status == IMG_STATUS_PATCH)
+        {
+            t->items[ARG_status] = mp_obj_new_str("Status: Patch", strlen("Status: Patch"));
         }
 
         return MP_OBJ_FROM_PTR(t);
@@ -1006,6 +1019,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_ota_finish),                      (mp_obj_t)&mod_pycom_ota_finish_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_ota_verify),                      (mp_obj_t)&mod_pycom_ota_verify_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_ota_slot),                        (mp_obj_t)&mod_pycom_ota_slot_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_diff_update_enabled),             (mp_obj_t)&mod_pycom_diff_update_enabled_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_pulses_get),                      (mp_obj_t)&mod_pycom_pulses_get_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_set),                         (mp_obj_t)&mod_pycom_nvs_set_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_get),                         (mp_obj_t)&mod_pycom_nvs_get_obj },

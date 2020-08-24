@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
 #   Copyright (c) 2016-2020, Pycom Limited.
 #
@@ -12,7 +12,7 @@ from __future__ import print_function
 import argparse
 import base64
 import binascii
-import cStringIO
+from io import BytesIO, StringIO
 import json
 import os
 import re
@@ -97,11 +97,18 @@ def eprint(*args, **kwargs):
 
 def print_exception(e):
     if DEBUG:
-        print_exc(e)
+        try:
+            if sys.version_info[0] < 3:
+                print_exc(e)
+            else:
+                print_exc()
+        except Exception as ex:
+            print_debug('Exception: {}'.format(e))
+            print_debug('Exception exception: {}'.format(ex))
 
 
 def print_debug(msg, show=DEBUG):
-    if show: 
+    if show:
         eprint(msg)
 
 
@@ -114,7 +121,7 @@ size_table = [
 
 
 def hr_size(size):
-    
+
     if humanfriendly_available:
         return humanfriendly.format_size(size, binary=True)
     else:
@@ -152,26 +159,27 @@ def load_tar(fileobj, prog, secure=False):
         if fsize == 0x800000:
             try:
                 if secure:
-                    script_file = json.load(tar.extractfile("script_8MB_enc"))
+                    script_file = json.loads(tar.extractfile("script_8MB_enc").read().decode('UTF-8'))
                 else:
-                    script_file = json.load(tar.extractfile("script_8MB"))
+                    script_file = json.loads(tar.extractfile("script_8MB").read().decode('UTF-8'))
             except:
                 print_debug("Error Loading script_8MB ... defaulting to legacy script2!", True)
                 legacy = True
         elif fsize == 0x400000:
             try:
                 if secure:
-                    script_file = json.load(tar.extractfile("script_4MB_enc"))
+                    script_file = json.load(tar.extractfile("script_4MB_enc").read().decode('UTF-8'))
                 else:
-                    script_file = json.load(tar.extractfile("script_4MB"))
-            except:
+                    script_file = json.load(tar.extractfile("script_4MB").read().decode('UTF-8'))
+            except Exception as e:
+                print_exception(e)
                 print_debug("Error Loading script_4MB ... defaulting to legacy script2!", True)
                 legacy = True
         else:
-            return RuntimeError("Cannot Detect Flash Size! .. Aborting")
+            return RuntimeError("Cannot detect flash size! .. Aborting")
 
         if legacy:
-            script_file = json.load(tar.extractfile("script2"))
+            script_file = json.loads(tar.extractfile("script2").read().decode('UTF-8'))
 
         version = script_file.get('version')
         if version is not None:
@@ -182,7 +190,10 @@ def load_tar(fileobj, prog, secure=False):
         else:
             raise ValueError('version not found in script2')
 
-        script = script_file.get('script')
+        try:
+            script = script_file.get('script')
+        except Exception as e:
+            print_exception(e)
 
         if script is None:
             raise ValueError('script not found in script2')
@@ -191,7 +202,7 @@ def load_tar(fileobj, prog, secure=False):
         return e
     except:
         try:
-            script = json.load(tar.extractfile("script"))
+            script = json.loads(tar.extractfile("script").read().decode('UTF-8'))
         except Exception as e:
             script = e
             print_exception(e)
@@ -204,14 +215,14 @@ def load_tar(fileobj, prog, secure=False):
     except Exception as e:
         script = e
         print_exception(e)
-    
+
     tar.close()
     return script
 
 
 class NPyProgrammer(object):
 
-    def __init__(self, port, baudrate, continuation=False, pypic=False, debug=False, reset=False, resultUpdateList = None, connect_read = False):
+    def __init__(self, port, baudrate, continuation=False, pypic=False, debug=False, reset=False, resultUpdateList=None, connect_read=False):
         self.__debug = debug
         self.__current_baudrate = self.__baudrate = baudrate
         self.__pypic = pypic
@@ -223,9 +234,9 @@ class NPyProgrammer(object):
             self.esp_port = port.lower()
         else:
             self.esp_port = port
-        
+
         print_debug("Connecting to ESP32 with baudrate: %d" % self.__baudrate, self.__debug)
-        
+
         if continuation == False:
             if (self.__pypic):
                 self.enter_pycom_programming_mode()
@@ -247,10 +258,10 @@ class NPyProgrammer(object):
 
     def is_pypic(self):
         return self.__pypic
-    
+
     def get_resultUpdateList(self):
         return self.__resultUpdateList
-    
+
     def get_baudrate(self, read=False):
         if self.__pypic and read and self.__baudrate > MAXPICREAD_BAUD_RATE:
             return MAXPICREAD_BAUD_RATE
@@ -270,13 +281,13 @@ class NPyProgrammer(object):
         ret_val = self.esp.read_flash(offset, size, resultUpdateList=self.__resultUpdateList, partition=self.partition_name(offset))
         self.set_baudrate(False)
         return ret_val
-    
+
     def check_partition(self, partition):
         if PARTITIONS.get(partition) is None:
             return False
         else:
             return True
-        
+
     def partition_name(self, offset):
         if offset > 0:
             for partition in PARTITIONS.keys():
@@ -292,7 +303,7 @@ class NPyProgrammer(object):
         args.compress = True
         args.verify = False
         args.no_stub = False
-            
+
         if args.flash_size == 'detect':
             esptool.detect_flash_size(self.esp, args)
             self.__flash_size = args.flash_size
@@ -304,20 +315,20 @@ class NPyProgrammer(object):
         return int_flash_size
 
     def erase(self, offset, section_size, ui_label=None, updateList=False):
-        msg = "Erasing %s at address 0x%08X" % (hr_size(section_size), offset)
+        msg = "Erasing %s at address 0x%08X" % (hr_size(section_size), int(offset))
         if ui_label is None:
             print(msg)
         else:
             ui_label.setText(msg)
         if updateList and self.__resultUpdateList is not None:
             self.__resultUpdateList.append("Erased %s at address 0x%08X" % (hr_size(section_size), offset))
-        
+
         MAX_SECTION_SIZE = 0x380000
-        offset = (offset // 4096) * 4096
-        iterations = (section_size + MAX_SECTION_SIZE - 1) // MAX_SECTION_SIZE
+        offset = int((offset // 4096) * 4096)
+        iterations = int((section_size + MAX_SECTION_SIZE - 1) // MAX_SECTION_SIZE)
         for x in range(iterations):
             s = min(section_size, MAX_SECTION_SIZE)
-            s = ((s + 4095) // 4096) * 4096
+            s = int(((s + 4095) // 4096) * 4096)
             # We'll give it 3 attempts, if it still fails we lost the connection
             try:
                 self.esp.erase_region(offset, s, progress_fs=self.__progress_fs)
@@ -366,7 +377,7 @@ class NPyProgrammer(object):
             self.__flash_size = args.flash_size
         self.set_baudrate(False)
 
-        fmap = cStringIO.StringIO(contents)
+        fmap = BytesIO(contents)
         args.addr_filename = [[offset, fmap]]
         if std_out is not None:
             sys.stdout = std_out
@@ -386,7 +397,7 @@ class NPyProgrammer(object):
         fmap.close()
         if first_exception is not None:
             raise first_exception
-        
+
     def detect_flash_size(self):
         args = Args()
         args.flash_size = 'detect'
@@ -397,7 +408,7 @@ class NPyProgrammer(object):
         args.no_stub = False
         esptool.detect_flash_size(self.esp, args)
         return args.flash_size
-    
+
     def write_script(self, offset, contents, config_block, overwrite=False, size=None, ui_label=None, file_name=None):
         if overwrite or size is None:
             self.write(offset, contents, ui_label=ui_label, file_name=file_name)
@@ -413,7 +424,7 @@ class NPyProgrammer(object):
             args.compress = True
             args.verify = False
             args.no_stub = False
-            
+
             if args.flash_size == 'detect':
                 esptool.detect_flash_size(self.esp, args)
                 self.__flash_size = args.flash_size
@@ -424,7 +435,7 @@ class NPyProgrammer(object):
                 int_flash_size = int(str_flash_size.replace('MB', '')) * 0x100000
             except:
                 int_flash_size = (4 * 0x100000) if args.flash_size != '8MB' else (8 * 0x100000)
-            
+
             cb_start = int(PARTITIONS.get('config')[0], 16)
             cb_len = int(PARTITIONS.get('config')[1], 16)
             cb_end = cb_start + cb_len
@@ -438,7 +449,7 @@ class NPyProgrammer(object):
             elif offset < cb_end and finish_addr > cb_start:
                 if offset >= cb_start and finish_addr <= cb_end:
                     print_debug("Offset[0x%X] until finish_addr[0x%X] would only write within the CB! Skipping..." % (offset, finish_addr), self.__debug)
-                else:    
+                else:
                     print_debug("Offset[0x%X] + Content[%s] would overwrite CB! It ends at: 0x%X" % (offset, hr_size(len(contents)), finish_addr), self.__debug)
                     if config_block is None:
                         print_debug("I need to read the config block because I didn't receive it as a parameter", self.__debug)
@@ -454,21 +465,20 @@ class NPyProgrammer(object):
             else:
                 print_debug("Offset[0x%X] + Content[%s] finish at: 0x%X" % (offset, hr_size(len(contents)), finish_addr), self.__debug)
                 self.write(offset, contents.ljust(size, b'\xFF'), flash_size=args.flash_size, ui_label=ui_label, file_name=file_name)
-        
+
     def write_remote(self, contents):
         cb_start = int(PARTITIONS.get('config')[0], 16)
         cb_len = int(PARTITIONS.get('config')[1], 16)
         config_block = self.read(cb_start, cb_len)
         self.write(cb_start, contents[0:52] + config_block[52:])
-        
+
     def run_script(self, script, config_block=None, erase_fs=False, chip_id=None, ui_label=None, progress_fs=None, erase_nvs=False):
         self.__progress_fs = progress_fs
-        print_debug('script type: {}'.format(type(script)))
         if script is None:
             raise ValueError('Invalid or no script file in firmware package!')
         if DEBUG:
             for instruction in script:
-                print_debug('Instruction: {} {}'.format(instruction[0],instruction[1]))
+                print_debug('Instruction: {} {}'.format(instruction[0], instruction[1]))
         ota_updated = False
         ota = None
         img_size = 0xffffffff
@@ -492,7 +502,6 @@ class NPyProgrammer(object):
                 if instruction[1] == 'fs' or instruction[1] == 'fs1':
                     continue
                 if instruction[1] == 'all':
-                    print_debug("Erasing all...", self.__debug)
                     self.erase_all(ui_label=ui_label)
                     ota_updated = True
                     continue
@@ -515,7 +524,7 @@ class NPyProgrammer(object):
                 if instruction1 <= int(PARTITIONS.get('otadata')[0], 16) and instruction1 + instruction2 >= int(PARTITIONS.get('otadata')[0], 16) + int(PARTITIONS.get('otadata')[1], 16):
                     ota_updated = True
                 if ota_updated:
-                    print_debug("OTA partition has been erased.", self.__debug) 
+                    print_debug("OTA partition has been erased.", self.__debug)
                 total_size += instruction2
                 self.erase(instruction1, instruction2, ui_label=ui_label)
 
@@ -524,7 +533,7 @@ class NPyProgrammer(object):
                 self.__resultUpdateList.append('Erased {} in {}'.format(humanfriendly.format_size(total_size, binary=True), humanfriendly.format_timespan(time.time() - start_time)))
             else:
                 self.__resultUpdateList.append('Erased {} in {0:.2f} seconds'.format(hr_size(total_size), time.time() - start_time))
-        
+
         if erase_fs:
             self.erase_fs(chip_id, ui_label=ui_label)
         if erase_nvs:
@@ -549,7 +558,7 @@ class NPyProgrammer(object):
                             ota = False
                         img_size = len(instruction[2])
                     psize = int(PARTITIONS.get(instruction[1])[1], 16)
-                    if instruction[1] == "all": 
+                    if instruction[1] == "all":
                         psize = self.int_flash_size()
                     instruction1 = PARTITIONS.get(instruction[1])[0]
                 elif instruction[1] == 'cb':
@@ -566,15 +575,15 @@ class NPyProgrammer(object):
                 self.write_script(int_instr1, instruction[2], config_block, instruction[0].split(':', 2)[0] == 'o', size=psize, ui_label=ui_label, file_name=file_name)
                 if (int_instr1 <= int(PARTITIONS.get('otadata')[0], 16)) and (int_instr1 + (len(instruction[2]) if psize is None else psize) >= int(PARTITIONS.get('otadata')[0], 16) + int(PARTITIONS.get('otadata')[1], 16)):
                     ota_updated = True
-                    print_debug("OTA partition has been written.", self.__debug) 
+                    print_debug("OTA partition has been written.", self.__debug)
             elif instruction[0] != 'e':
                 raise ValueError('Invalid script command %s' % instruction[0].split(':', 2)[0])
         if ota is not None and not ota_updated:
             self.set_ota(ota, img_size, ui_label=ui_label)
-            
+
     def set_ota(self, ota, image_size, ui_label=None):
-        ota_signature = '\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
-        crc32_header = '\xff\xff\xff\xff'
+        ota_signature = b'\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff'
+        crc32_header = b'\xff\xff\xff\xff'
         if ota:
             ota_data = struct.pack('<5I16s', 1, 0, 0, image_size, 0, ota_signature)
             ota_crc32 = (binascii.crc32(crc32_header + ota_data) % (1 << 32))
@@ -584,7 +593,7 @@ class NPyProgrammer(object):
             if self.__resultUpdateList is not None:
                 self.__resultUpdateList.append("Booting from partition: <b>ota_0</b>")
             print_debug("Setting otadata partition to boot from ota_0", self.__debug)
-            self.write(int(PARTITIONS.get('otadata')[0], 16), ota_part.ljust(int(PARTITIONS.get('otadata')[1], 16), '\xff'))
+            self.write(int(PARTITIONS.get('otadata')[0], 16), ota_part.ljust(int(PARTITIONS.get('otadata')[1], 16), b'\xff'))
         else:
             ota_data = struct.pack('<5I16s', 0, 1, 0, image_size, 0, ota_signature)
             ota_crc32 = (binascii.crc32(crc32_header + ota_data) % (1 << 32))
@@ -594,8 +603,8 @@ class NPyProgrammer(object):
             if self.__resultUpdateList is not None:
                 self.__resultUpdateList.append("Booting from partition: <b>factory</b>")
             print_debug("Setting otadata partition to boot from factory", self.__debug)
-            self.write(int(PARTITIONS.get('otadata')[0], 16), ota_part.ljust(int(PARTITIONS.get('otadata')[1], 16), '\xff'))
-    
+            self.write(int(PARTITIONS.get('otadata')[0], 16), ota_part.ljust(int(PARTITIONS.get('otadata')[1], 16), b'\xff'))
+
     def erase_sytem_mem(self):
         # Erase first 3.5Mb (this way fs and MAC address will be untouched)
         self.erase(0, 0x3100000)
@@ -607,7 +616,7 @@ class NPyProgrammer(object):
         print_debug('chip_id = {}'.format(chip_id))
         if self.int_flash_size() == 0x800000:
             print_debug("Erasing 8MB device flash fs", self.__debug)
-            #self.erase(int(PARTITIONS.get('fs')[0], 16), int(PARTITIONS.get('fs')[1], 16), ui_label=ui_label, updateList=False)
+            # self.erase(int(PARTITIONS.get('fs')[0], 16), int(PARTITIONS.get('fs')[1], 16), ui_label=ui_label, updateList=False)
             section_size = int(PARTITIONS.get('fs1')[1], 16) / 8
             for x in range(0, 8):
                 self.erase(int(PARTITIONS.get('fs1')[0], 16) + (x * section_size), section_size, ui_label=ui_label, updateList=False)
@@ -624,7 +633,7 @@ class NPyProgrammer(object):
                     self.__resultUpdateList.append("Erased {} flash fs in {}".format(humanfriendly.format_size(int(PARTITIONS.get('fs')[1], 16), binary=True), humanfriendly.format_timespan(time.time() - start_time)))
                 else:
                     self.__resultUpdateList.append("Erased {} flash fs in {0:.2f} seconds".format(hr_size(int(PARTITIONS.get('fs')[1], 16)), time.time() - start_time))
-    
+
     def get_chip_id(self):
         try:
             return self.esp.get_chip_description()
@@ -647,7 +656,7 @@ class NPyProgrammer(object):
         if args.flash_size == 'detect':
             esptool.detect_flash_size(self.esp, args)
             self.__flash_size = args.flash_size
-            
+
         dest_and_file = list(dest_and_file_pairs)
 
         for i, el in enumerate(dest_and_file):
@@ -661,18 +670,21 @@ class NPyProgrammer(object):
         config_block = config_block.ljust(int(PARTITIONS.get('config')[1], 16), b'\x00')
         if wifi_on_boot is not None:
             if wifi_on_boot == True:
-                wob = b'\xff'
+                wob = b'\xbb'
             else:
-                wob = b'\xfe'
+                wob = b'\xba'
         else:
-            wob = config_block[53]
+            if sys.version_info[0] < 3:
+                wob = config_block[53]
+            else:
+                wob = config_block[53].to_bytes(1, byteorder='little')
         if wifi_ssid is not None:
-            ssid = wifi_ssid.ljust(33, b'\x00')
+            ssid = wifi_ssid.encode().ljust(33, b'\x00')
         else:
             ssid = config_block[54:87]
 
         if wifi_pwd is not None:
-            pwd = wifi_pwd.ljust(65, b'\x00')
+            pwd = wifi_pwd.encode().ljust(65, b'\x00')
         else:
             pwd = config_block[87:152]
 
@@ -685,39 +697,37 @@ class NPyProgrammer(object):
 
     def set_lte_config(self, config_block, carrier=None, apn=None, lte_type=None, cid=None, band=None, reset=None):
         config_block = config_block.ljust(int(PARTITIONS.get('config')[1], 16), b'\x00')
-        
+
         if carrier is not None:
             cb_carrier = str(carrier[0:128]).ljust(129, b'\x00')
-            print(cb_carrier)        
         else:
             cb_carrier = config_block[634:763]
-        
+
         if apn is not None:
             cb_apn = str(apn[0:128]).ljust(129, b'\x00')
         else:
             cb_apn = config_block[763:892]
-        
+
         if lte_type is not None:
             cb_lte_type = str(lte_type[0:16]).ljust(17, b'\x00')
         else:
             cb_lte_type = config_block[892:909]
-        
+
         if cid is not None:
             cb_cid = struct.pack('>B', int(cid))
         else:
             cb_cid = config_block[909]
-        
+
         if band is not None:
             cb_band = struct.pack('>B', int(band))
         else:
             cb_band = config_block[910]
-        
+
         if reset is not None:
-            cb_reset = struct.pack('>B', int(reset=='True'))
+            cb_reset = struct.pack('>B', int(reset == 'True'))
         else:
             cb_reset = config_block[911]
-            print(cb_reset)
-            
+
         new_config_block = config_block[0:634] \
                            +cb_carrier \
                            +cb_apn \
@@ -727,11 +737,7 @@ class NPyProgrammer(object):
                            +cb_reset  \
                            +config_block[912:]
         return self.set_pybytes_config(new_config_block, force_update=True)
-            
-            
-            
-            
-    
+
     def set_pycom_config(self, config_block, boot_fs_type=None):
         print_debug('This is set_pycom_config with boot_fs_type={} [{}]'.format(boot_fs_type, type(boot_fs_type)))
         config_block = config_block.ljust(int(PARTITIONS.get('config')[1], 16), b'\x00')
@@ -758,8 +764,8 @@ class NPyProgrammer(object):
     def print_cb(self, config_block):
         if DEBUG:
             for x in range(0, 30):
-                print(binascii.hexlify(config_block[x * 32:x * 32 + 32]))
-            
+                print(binascii.hexlify(config_block[x * 32:x * 32 + 32]).decode('UTF-8'))
+
     def set_pybytes_config(self, config_block, userid=None, device_token=None, mqttServiceAddress=None, network_preferences=None, extra_preferences=None, force_update=None, auto_start=None):
         config_block = config_block.ljust(int(PARTITIONS.get('config')[1], 16), b'\x00')
         if device_token is not None:
@@ -781,19 +787,22 @@ class NPyProgrammer(object):
             nwp = str(network_preferences)[0:54].ljust(55, b'\x00')
         else:
             nwp = config_block[342:397]
-        
+
         if extra_preferences is not None:
             ep = str(extra_preferences)[0:99].ljust(100, b'\x00')
         else:
             ep = config_block[397:497]
-            
+
         if force_update is not None:
             if force_update:
                 fu = b'\x01'
             else:
                 fu = b'\x00'
         else:
-            fu = config_block[497]
+            if sys.version_info[0] < 3:
+                fu = config_block[497]
+            else:
+                fu = config_block[497].to_bytes(1, byteorder='little')
 
         if auto_start is not None:
             if auto_start:
@@ -801,8 +810,11 @@ class NPyProgrammer(object):
             else:
                 asf = b'\x00'
         else:
-            asf = config_block[498]
-        
+            if sys.version_info[0] < 3:
+                asf = config_block[498]
+            else:
+                asf = config_block[498].to_bytes(1, byteorder='little')
+
         new_config_block = config_block[0:162] \
                            +token \
                            +address  \
@@ -815,7 +827,7 @@ class NPyProgrammer(object):
 
         # self.print_cb(new_config_block)
         return new_config_block
-    
+
     def str2region(self, lora_region_str):
         if lora_region_str is not None:
             return {
@@ -825,8 +837,8 @@ class NPyProgrammer(object):
                 'AS923' : LORAMAC_REGION_AS923
             }.get(lora_region_str, 0xff)
         else:
-            return 0xff 
-    
+            return 0xff
+
     def region2str(self, lora_region_int):
         if lora_region_int is not None:
             return {
@@ -837,18 +849,63 @@ class NPyProgrammer(object):
             }.get(lora_region_int, 'NONE')
         else:
             return None
-            
+
     def set_lpwan_config(self, config_block, lora_region=None):
         config_block = config_block.ljust(int(PARTITIONS.get('config')[1], 16), b'\x00')
         if lora_region is not None:
-            region = chr(self.str2region(lora_region))
+            if sys.version_info[0] < 3:
+                region = chr(self.str2region(lora_region))
+            else:
+                region = self.str2region(lora_region).to_bytes(1, byteorder='little')
         else:
-            region = config_block[52]
+            if sys.version_info[0] < 3:
+                region = config_block[52]
+            else:
+                region = config_block[52].to_bytes(1, byteorder='little')
 
         new_config_block = config_block[0:52] \
                            +region \
                            +config_block[53:]
         return new_config_block
+
+    def set_sigfox_config(self, config_block, sid=None, pac=None, pubkey=None, privkey=None):
+        config_block = config_block.ljust(int(PARTITIONS.get('config')[1], 16), b'\x00')
+        if sid is not None:
+            if not len(sid)==8:
+                raise ValueError('ID must be 8 HEX characters')
+            sigid = bytearray.fromhex(sid).ljust(4, b'\x00')
+        else:
+            sigid = config_block[8:12]
+
+        if pac is not None:
+            if not len(pac)==16:
+                raise ValueError('PAC must be 16 HEX characters')
+            spac = bytearray.fromhex(pac).ljust(8, b'\x00')
+        else:
+            spac = config_block[12:20]
+
+        if privkey is not None:
+            if not len(privkey)==32:
+                raise ValueError('private key must be 32 HEX characters')
+            sprivkey = bytearray.fromhex(privkey).ljust(16, b'\x00')
+        else:
+            sprivkey = config_block[20:36]
+
+        if pubkey is not None:
+            if not len(pubkey)==32:
+                raise ValueError('public key must be 32 HEX characters')
+            spubkey = bytearray.fromhex(pubkey).ljust(16, b'\x00')
+        else:
+            spubkey = config_block[36:52]
+
+        new_config_block = config_block[0:8] \
+                           +sigid \
+                           +spac \
+                           + sprivkey \
+                           + spubkey \
+                           +config_block[52:]
+        return new_config_block
+
 
     def read_mac(self):
         # returns a tuple with (wifi_mac, bluetooth_mac)
@@ -900,7 +957,7 @@ def check_partition(partition):
         return False
     else:
         return True
-    
+
 
 def check_lora_region(region):
     if region in LORA_REGIONS:
@@ -938,17 +995,24 @@ def process_arguments():
     subparsers.add_parser('chip_id', help='Show ESP32 chip_id')
     subparsers.add_parser('wmac', help='Show WiFi MAC')
     subparsers.add_parser('smac', help='Show LPWAN MAC')
-    subparsers.add_parser('sigfox', help='Show sigfox details')
     subparsers.add_parser('exit', help='Exit firmware update mode')
 
     if DEBUG:
         cmd_parser_bootpart = subparsers.add_parser('boot_part', add_help=False)  # , help='Check / Set active boot partition')
         cmd_parser_bootpart.add_argument('-p', '--partition', default=None, help="Set the activate boot partition [factory or ota_0]")
-    
+
+    cmd_parser_pycom = subparsers.add_parser('pycom', help='Check / Set pycom parameters')
+    cmd_parser_pycom.add_argument('--fs_type', default=None, help="Set the file system type ['FatFS' or 'LittleFS']")
+    cmd_parser_sigfox = subparsers.add_parser('sigfox', help='Show/Update sigfox details')
+    cmd_parser_sigfox.add_argument('--id', default=None, help='Update Sigfox id')
+    cmd_parser_sigfox.add_argument('--pac', default=None, help='Update Sigfox pac')
+    cmd_parser_sigfox.add_argument('--pubkey', default=None, help='Update Sigfox public key')
+    cmd_parser_sigfox.add_argument('--privkey', default=None, help='Update Sigfox private key')
+
     cmd_parser_flash = subparsers.add_parser('flash', help='Write firmware image to flash')
     cmd_parser_flash.add_argument('-t', '--tar', default=None, help='perform the upgrade from a tar[.gz] file')
     cmd_parser_flash.add_argument('-f', '--file', default=None, help='flash binary file to a single partition')
-    cmd_parser_flash.add_argument('--secureboot', action='store_true', help='Flash Encrypted binaries if avialable')
+    cmd_parser_flash.add_argument('--secureboot', action='store_true', help='Flash Encrypted binaries if available')
     help_msg = 'The partition to flash ('
     for partition in PARTITIONS.keys():
         help_msg += (partition + ", ")
@@ -974,7 +1038,8 @@ def process_arguments():
     cmd_parser_wifi = subparsers.add_parser('wifi', help='Get/Set default WIFI parameters')
     cmd_parser_wifi.add_argument('--ssid', default=None, help='Set Wifi SSID')
     cmd_parser_wifi.add_argument('--pwd', default=None, help='Set Wifi PWD')
-    cmd_parser_wifi.add_argument('--wob', type=str2bool, nargs='?', const=True, help='Set Wifi on boot')
+    # This doesn't really work as we updated the field to a bitfield
+    #cmd_parser_wifi.add_argument('--wob', type=str2bool, nargs='?', const=True, help='Set Wifi on boot')
 
     cmd_parser_pybytes = subparsers.add_parser('pybytes', help='Read/Write pybytes configuration')
     cmd_parser_pybytes.add_argument('--token', default=None, help='Set Device Token')
@@ -1025,7 +1090,7 @@ def process_arguments():
 #     except Exception as e:
 #         print_exception(e)
 #         raise e
-#     
+#
     try:
         if args.command == 'boot_part' and args.partition is not None:
             if args.partition != 'factory' and args.partition != 'ota_0':
@@ -1052,19 +1117,19 @@ def process_arguments():
             raise ValueError('Cannot backup and restore at the same time')
         if (hasattr(args, "command") and args.command == 'lpwan' and hasattr(args, "region") and args.region is not None):
             if (not check_lora_region(args.region)):
-                err_msg = 'Invalid LoRa region ' + args.region + ' must be one of:' 
+                err_msg = 'Invalid LoRa region ' + args.region + ' must be one of:'
                 for region in LORA_REGIONS:
                     err_msg += " " + region
                 raise ValueError(err_msg)
         if (args.command == 'copy' and (not hasattr(args, "partition") or args.partition is None)):
-            err_msg = 'partition must be one of:' 
+            err_msg = 'partition must be one of:'
             for partition in PARTITIONS.keys():
                 err_msg += " " + partition
             raise ValueError(err_msg)
-            
+
         if (args.command == 'copy' and hasattr(args, "partition") and args.partition is not None):
             if (not check_partition(args.partition)):
-                err_msg = 'Invalid partition ' + args.partition + ' must be one of:' 
+                err_msg = 'Invalid partition ' + args.partition + ' must be one of:'
                 for partition in PARTITIONS.keys():
                     err_msg += " " + partition
                 raise ValueError(err_msg)
@@ -1096,11 +1161,14 @@ def print_result(result):
 def main():
     try:
         args = process_arguments()
-        
+
         if args.command == 'list':
             list_usbid()
             sys.exit(0)
-        new_stream = cStringIO.StringIO()
+        if sys.version_info[0] < 3:
+            new_stream = BytesIO()
+        else:
+            new_stream = StringIO()
         old_stdout = sys.stdout
         if (args.ftdi):
             pypic = False
@@ -1113,14 +1181,14 @@ def main():
         if not args.quiet:
             if (pypic):
                 print("Running in PIC mode")
-            else:    
+            else:
                 print("Running in FTDI mode")
         if args.command == 'erase_all' and not args.quiet:
             print("Erasing the board can take up to 40 seconds.")
 
         if pypic == True:
             args.continuation = False
-        
+
         if not (DEBUG or args.debug) and (args.verbose == False):
             sys.stdout = new_stream
         nPy = NPyProgrammer(args.port, args.speed, args.continuation, pypic, args.debug, args.reset)
@@ -1135,13 +1203,13 @@ def main():
                 padding = '\b' * len(msg)
                 sys.stderr.write(msg + padding)
                 sys.stderr.flush()
-            
+
             if args.tar is not None:
                 try:
                     tar_file = open(args.tar, "rb")
                     script = load_tar(tar_file, nPy, args.secureboot)
                     if not args.quiet:
-                        #sys.stdout = old_stdout
+                        # sys.stdout = old_stdout
                         sys.stderr.flush()
                         nPy.run_script(script, progress_fs=progress_fs)
                     else:
@@ -1185,13 +1253,13 @@ def main():
             if not args.quiet:
                 sys.stdout = old_stdout
                 print("Board programmed successfully")
-                
+
         elif args.command == 'write_remote':
             nPy.write_remote(base64.b64decode(args.contents))
             if not args.quiet:
                 sys.stdout = old_stdout
                 print("Board configuration programmed successfully")
-        
+
         elif args.command == 'chip_id':
             sys.stdout = old_stdout
             print(nPy.get_chip_id())
@@ -1213,7 +1281,22 @@ def main():
                 ota_data = nPy.read(int(PARTITIONS.get('otadata')[0], 16), int(PARTITIONS.get('otadata')[1], 16))
                 eprint(binascii.hexlify(ota_data[0:25]))
 
-        elif args.command == 'lpwan' or args.command == 'sigfox':
+        elif args.command == 'sigfox':
+            config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
+            if args.id is not None or args.pac is not None or args.pubkey is not None or args.privkey is not None:
+                new_config_block = nPy.set_sigfox_config(config_block, args.id, args.pac, args.pubkey, args.privkey)
+                nPy.write(int(PARTITIONS.get('config')[0], 16), new_config_block)
+                sys.stdout = old_stdout
+                if not args.quiet:
+                    print("Sigfox credentials programmed successfully")
+            else:
+                sys.stdout = old_stdout
+                sid = binascii.hexlify(config_block[8:12]).decode('UTF-8').upper()
+                pac = binascii.hexlify(config_block[12:20]).decode('UTF-8').upper()
+                print("SID: %s" % sid)
+                print("PAC: %s" % pac)
+
+        elif args.command == 'lpwan':
             config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
             if hasattr(args, "region") and args.region is not None:
                 new_config_block = nPy.set_lpwan_config(config_block, args.region)
@@ -1230,24 +1313,24 @@ def main():
             else:
                 sys.stdout = old_stdout
                 smac = mac_to_string(config_block[:8])
-                sid = str(binascii.hexlify(config_block[8:12]).upper())
-                pac = str(binascii.hexlify(config_block[12:20]).upper())
+                sid = binascii.hexlify(config_block[8:12]).decode('UTF-8').upper()
+                pac = binascii.hexlify(config_block[12:20]).decode('UTF-8').upper()
                 if hasattr(args, "lora_region") and args.lora_region:
                     try:
                         region = config_block[52]
                         print(nPy.region2str(ord(region)))
                     except:
                         print("NONE")
-                elif args.command == 'sigfox':
-                    print("SID: %s" % sid)
-                    print("PAC: %s" % pac)
                 else:
                     print("SMAC: %s" % smac)
                     print("SID: %s" % sid)
                     print("PAC: %s" % pac)
                     try:
                         region = config_block[52]
-                        print("LORA REGION=%s" % nPy.region2str(ord(region)))
+                        if sys.version_info[0] < 3:
+                            print("LORA REGION=%s" % nPy.region2str(ord(region)))
+                        else:
+                            print("LORA REGION=%s" % nPy.region2str(region))
                     except:
                         print("LORA REGION=[not set]")
 
@@ -1263,6 +1346,7 @@ def main():
                 if args.quiet:
                     flash_progress = None
                 else:
+
                     def flash_progress(progress, length):
                         if humanfriendly_available:
                             msg = 'Read %s from %s (%d %%)%s' % (humanfriendly.format_size(progress, keep_width=(progress > 1024000), binary=True), args.partition, progress * 100.0 / length, ' ' * 15)
@@ -1286,7 +1370,7 @@ def main():
                     if not args.quiet:
                         print('\rRead %d bytes at 0x%x in %.1f seconds (%.1f kbit/s)...'
                                 % (len(data), int(PARTITIONS.get(args.partition)[0], 16), t, len(data) / t * 8 / 1000))
-                        print('Partition saved to %s' % fname)                
+                        print('Partition saved to %s' % fname)
                 except Exception as e:
                     print_exception(e)
                     raise e
@@ -1294,11 +1378,13 @@ def main():
                     if partf is not None:
                         partf.close()
             else:
+
                 def progress_fs(msg):
                     msg = ' ' + msg + ' ' * 15
                     padding = '\b' * len(msg)
                     sys.stderr.write(msg + padding)
                     sys.stderr.flush()
+
                 try:
                     t = time.time()
                     partf = open(fname, "rb")
@@ -1318,7 +1404,7 @@ def main():
                 except Exception as e:
                     print_exception(e)
                     raise e
-        
+
         elif (args.command == 'cb'):
             if not (hasattr(args, 'file') and args.file is not None):
                 wmac = mac_to_string(nPy.read_mac())
@@ -1335,7 +1421,7 @@ def main():
                         cbf.close()
                         if not args.quiet:
                             sys.stdout = old_stdout
-                            print('Config block saved to %s' % fname)                
+                            print('Config block saved to %s' % fname)
                     else:
                         sys.stdout = old_stdout
                         print(binascii.b2a_base64(config_block))
@@ -1402,7 +1488,7 @@ def main():
                     if not fname == '-':
                         otaf = open(fname, "wb")
                     ota = nPy.read(int(PARTITIONS.get('otadata')[0], 16), int(PARTITIONS.get('otadata')[1], 16))
-                    if not fname == '-':                    
+                    if not fname == '-':
                         otaf.write(binascii.b2a_base64(ota))
                         otaf.close()
                         if not args.quiet:
@@ -1446,14 +1532,41 @@ def main():
                 except:
                     print("WIFI_PWD=[not set]")
                 try:
-                    wob = config_block[53]
-                    if (wob == (b'\xfe')):
+                    if sys.version_info[0] < 3:
+                        wob = config_block[53]
+                    else:
+                        wob = config_block[53].to_bytes(1, byteorder='little')
+                    print_debug('wob: {}'.format(wob))
+                    if (wob == (b'\xfe') or wob == (b'\xba')):
                         print("WIFI_ON_BOOT=OFF")
                     else:
                         print("WIFI_ON_BOOT=ON")
                 except:
                     print("WIFI_ON_BOOT=[not set]")
 
+        elif args.command == 'pycom':
+            config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
+            nPy.print_cb(config_block)
+            if (args.fs_type is not None):
+                new_config_block = nPy.set_pycom_config(config_block, args.fs_type)
+                nPy.print_cb(new_config_block)
+                nPy.write(int(PARTITIONS.get('config')[0], 16), new_config_block)
+            else:
+                sys.stdout = old_stdout
+                try:
+                    if sys.version_info[0] < 3:
+                        fs_type = config_block[533]
+                    else:
+                        fs_type = config_block[533].to_bytes(1, byteorder='little')
+                    if fs_type == (b'\x00'):
+                        print("fs_type=FatFS")
+                    if fs_type == (b'\x01'):
+                        print("fs_type=LittleFS")
+                    if fs_type == (b'\xff'):
+                        print("fs_type=[not set]")
+                except:
+                    print("fs_type=[not set]")
+                        
         elif args.command == 'pybytes':
             config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
             if (hasattr(args, "token") and args.token is not None) \
@@ -1501,11 +1614,13 @@ def main():
                     print("EXTRAPREFS=[not set]")
 
         elif args.command == 'erase_fs':
+
             def progress_fs(msg):
                 msg = msg + ' ' * 10
                 padding = '\b' * len(msg)
                 sys.stderr.write(msg + padding)
                 sys.stderr.flush()
+
             try:
                 nPy.erase_fs(progress_fs=progress_fs)
                 if not args.quiet:
@@ -1514,14 +1629,14 @@ def main():
             except Exception as e:
                 print_exception(e)
                 raise e
-        
+
         if (not (args.command == "list" or (hasattr(args, 'noexit') and args.noexit == True))) or args.command == 'exit':
             nPy.exit_pycom_programming_mode()
 
     except ValueError as e:
         print_exception(e)
         eprint(format(e))
-    
+
     except Exception as e:
         if DEBUG:
             print_exc(e)

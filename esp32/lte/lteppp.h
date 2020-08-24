@@ -19,6 +19,7 @@
 #define LTE_CMD_QUEUE_SIZE_MAX                                          (1)
 #define LTE_RSP_QUEUE_SIZE_MAX                                          (1)
 #define LTE_AT_CMD_SIZE_MAX                                             (128)
+#define LTE_AT_CMD_DATA_SIZE_MAX                                        (LTE_AT_CMD_SIZE_MAX - 4)
 #define LTE_AT_RSP_SIZE_MAX                                             (LTE_UART_BUFFER_SIZE)
 
 #define LTE_OK_RSP                                                      "OK"
@@ -71,8 +72,9 @@ typedef struct {
 #endif
 typedef struct {
     uint32_t timeout;
-    char data[LTE_AT_CMD_SIZE_MAX - 4];
+    char data[LTE_AT_CMD_DATA_SIZE_MAX];
     size_t dataLen;
+    bool expect_continuation;
 } lte_task_cmd_data_t;
 #pragma pack(1)
 typedef struct {

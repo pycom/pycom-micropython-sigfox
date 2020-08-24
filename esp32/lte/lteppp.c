@@ -92,7 +92,7 @@ static bool lte_uart_break_evt = false;
  ******************************************************************************/
 static void TASK_LTE (void *pvParameters);
 static void TASK_UART_EVT (void *pvParameters);
-static bool lteppp_send_at_cmd_exp(const char *cmd, uint32_t timeout, const char *expected_rsp, void* data_rem, size_t len);
+static bool lteppp_send_at_cmd_exp(const char *cmd, uint32_t timeout, const char *expected_rsp, void* data_rem, size_t len, bool expect_continuation);
 static bool lteppp_send_at_cmd(const char *cmd, uint32_t timeout);
 static bool lteppp_check_sim_present(void);
 static void lteppp_status_cb (ppp_pcb *pcb, int err_code, void *ctx);
@@ -236,7 +236,9 @@ void lteppp_disconnect(void) {
 
 void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_t *rsp) {
     xQueueSend(xCmdQueue, (void *)cmd, (TickType_t)portMAX_DELAY);
-    xQueueReceive(xRxQueue, rsp, (TickType_t)portMAX_DELAY);
+
+    if(!cmd->expect_continuation)
+        xQueueReceive(xRxQueue, rsp, (TickType_t)portMAX_DELAY);
 }
 
 bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_mp, void* data_rem) {
@@ -529,8 +531,10 @@ modem_init:
             xSemaphoreGive(xLTESem);
             state = lteppp_get_state();
             if (xQueueReceive(xCmdQueue, lteppp_trx_buffer, 0)) {
-                lteppp_send_at_cmd_exp(lte_task_cmd->data, lte_task_cmd->timeout, NULL, &(lte_task_rsp->data_remaining), lte_task_cmd->dataLen);
-                xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
+                bool expect_continuation = lte_task_cmd->expect_continuation;
+                lteppp_send_at_cmd_exp(lte_task_cmd->data, lte_task_cmd->timeout, NULL, &(lte_task_rsp->data_remaining), lte_task_cmd->dataLen, lte_task_cmd->expect_continuation);
+                if(!expect_continuation)
+                    xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
             }
             else if(state == E_LTE_PPP && lte_uart_break_evt)
             {
@@ -616,7 +620,7 @@ static void TASK_UART_EVT (void *pvParameters)
 }
 
 
-static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *expected_rsp, void* data_rem, size_t len) {
+static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const char *expected_rsp, void* data_rem, size_t len, bool expect_continuation) {
 
     if(strstr(cmd, "Pycom_Dummy") != NULL)
     {
@@ -657,22 +661,34 @@ static bool lteppp_send_at_cmd_exp (const char *cmd, uint32_t timeout, const cha
         }
 #endif
         // flush the rx buffer first
-        uart_flush(LTE_UART_ID);
+        if(!expect_continuation || (len >= 2 && cmd[0] == 'A' && cmd[1] == 'T')) // starts with AT
+        {
+            uart_flush(LTE_UART_ID);
+        }
         // uart_read_bytes(LTE_UART_ID, (uint8_t *)tmp_buf, sizeof(tmp_buf), 5 / portTICK_RATE_MS);
         // then send the command
         uart_write_bytes(LTE_UART_ID, cmd, cmd_len);
-        if (strcmp(cmd, "+++")) {
-            uart_write_bytes(LTE_UART_ID, "\r", 1);
-        }
-        uart_wait_tx_done(LTE_UART_ID, LTE_TRX_WAIT_MS(cmd_len) / portTICK_RATE_MS);
-        vTaskDelay(2 / portTICK_RATE_MS);
 
-        return lteppp_wait_at_rsp(expected_rsp, timeout, false, data_rem);
+        if(expect_continuation)
+        {
+            return true;
+        }
+        else {
+            if (strcmp(cmd, "+++"))
+            {
+                uart_write_bytes(LTE_UART_ID, "\r", 1);
+            }
+
+            uart_wait_tx_done(LTE_UART_ID, LTE_TRX_WAIT_MS(cmd_len) / portTICK_RATE_MS);
+            vTaskDelay(2 / portTICK_RATE_MS);
+
+            return lteppp_wait_at_rsp(expected_rsp, timeout, false, data_rem);
+        }
     }
 }
 
 static bool lteppp_send_at_cmd(const char *cmd, uint32_t timeout) {
-    return lteppp_send_at_cmd_exp (cmd, timeout, LTE_OK_RSP, NULL, strlen(cmd) );
+    return lteppp_send_at_cmd_exp (cmd, timeout, LTE_OK_RSP, NULL, strlen(cmd), false);
 }
 
 static bool lteppp_check_sim_present(void) {
