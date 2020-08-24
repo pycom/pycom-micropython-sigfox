@@ -1,4 +1,12 @@
 /*
+ * Copyright (c) 2020, Pycom Limited.
+ *
+ * This software is licensed under the GNU GPL version 3 or any
+ * later version, with permitted additional terms. For more information
+ * see the Pycom Licence v1.0 document supplied with this file, or
+ * available at https://www.pycom.io/opensource/licensing
+ */
+/*
  / _____)             _              | |
 ( (____  _____ ____ _| |_ _____  ____| |__
  \____ \| ___ |    (_   _) ___ |/ ___)  _ \
@@ -21,6 +29,8 @@ Maintainer: Michael Coracin
 #include <stdbool.h>
 #include "esp32_mphal.h"
 
+#include "py/mpprint.h"
+
 // debug levels
 #define DEBUG     4
 #define INFO_     3
@@ -35,7 +45,7 @@ extern int debug_level;
 #define MSG_DX(LEVEL, fmt, ...)                                                               \
             do  {                                                                             \
                 if (debug_level >= LEVEL)                                                     \
-                    printf("[%u] lorapf: " #LEVEL " " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__); \
+                    mp_printf(&mp_plat_print, "[%u] lorapf: " #LEVEL " " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__); \
             } while (0)
 
 #if DEBUG_LEVEL >= DEBUG

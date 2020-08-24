@@ -56,6 +56,7 @@ typedef struct _boot_info_t
 
 #define IMG_STATUS_CHECK                    0
 #define IMG_STATUS_READY                    1
+#define IMG_STATUS_PATCH                    2
 
 #define IMG_ACT_FACTORY                     0
 #define IMG_ACT_UPDATE1                     1
