@@ -71,6 +71,10 @@ void mach_rtc_synced (void) {
     mach_rtc_obj.synced = true;
 }
 
+bool mach_is_rtc_synced (void) {
+    return mach_rtc_obj.synced;
+}
+
 uint64_t mach_rtc_get_us_since_epoch(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -194,9 +198,12 @@ STATIC mp_obj_t mach_rtc_now (mp_obj_t self_in) {
     timeutils_struct_time_t tm;
     uint64_t useconds;
 
+    struct timeval now;
+    gettimeofday(&now, NULL);
+
     // get the time from the RTC
-    useconds = mach_rtc_get_us_since_epoch();
-    timeutils_seconds_since_epoch_to_struct_time((useconds / 1000000ull), &tm);
+    useconds = (now.tv_sec * 1000000ull ) + (now.tv_usec);
+    timeutils_seconds_since_epoch_to_struct_time((useconds) / 1000000ull, &tm);
 
     mp_obj_t tuple[8] = {
         mp_obj_new_int(tm.tm_year),

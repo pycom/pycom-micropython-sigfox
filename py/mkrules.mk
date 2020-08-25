@@ -104,7 +104,8 @@ endif
 
 ifneq ($(FROZEN_MPY_DIR),)
 OS_NAME := $(shell uname -s)
-ifeq ($(VARIANT), PYBYTES)
+
+ifeq ($(PYBYTES_ENABLED), 1)
 ifeq ($(OS_NAME), Linux)
 # make a list of all the .py files that need compiling and freezing
 FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR)/Pybytes/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Pybytes\///')
@@ -152,7 +153,8 @@ $(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/LTE/%.py
 endif
 	
 endif
-ifeq ($(VARIANT), BASE)
+
+ifeq ($(PYBYTES_ENABLED), 0)
 ifeq ($(OS_NAME), Linux)
 # make a list of all the .py files that need compiling and freezing
 FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR)/Base/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Base\///')
