@@ -860,6 +860,11 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     lte_check_attached(lte_legacyattach_flag);
 
     if (lteppp_get_state() < E_LTE_ATTACHING) {
+
+        if ( ! lte_check_sim_present() ) {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Sim card not present"));
+        }
+
         const char *carrier = "standard";
         if (!lte_push_at_command("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS)) {
             if (!lte_push_at_command("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS)) {
@@ -913,13 +918,13 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             }
             else
             {
+                // argument 'band'
                 if (args[0].u_obj != mp_const_none) {
-                    // argument 'band'
                     lte_add_band(mp_obj_get_int(args[0].u_obj), is_hw_new_band_support, is_sw_new_band_support, version);
                 }
 
+                // argument 'bands'
                 if (args[6].u_obj != mp_const_none){
-                    // argument 'bands'
                     mp_obj_t *bands;
                     size_t n_bands=0;
                     mp_obj_get_array(args[6].u_obj, &n_bands, &bands);
@@ -933,12 +938,14 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         } else {
             lte_obj.carrier = true;
         }
+
+        // argument 'cid'
         if (args[3].u_obj != mp_const_none) {
             lte_obj.cid = args[3].u_int;
         }
 
+        // argument 'apn'
         if (args[1].u_obj != mp_const_none || args[4].u_obj != mp_const_none) {
-
             const char* strapn;
             const char* strtype;
 
@@ -964,11 +971,14 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
         }
+
+        // argument 'log'
         if (args[2].u_obj == mp_const_false) {
             lte_push_at_command("AT!=\"disablelog 1\"", LTE_RX_TIMEOUT_MAX_MS);
         } else {
             lte_push_at_command("AT!=\"disablelog 0\"", LTE_RX_TIMEOUT_MAX_MS);
         }
+
         lteppp_set_state(E_LTE_ATTACHING);
         if (!lte_push_at_command("AT+CFUN=1", LTE_RX_TIMEOUT_MAX_MS)) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
