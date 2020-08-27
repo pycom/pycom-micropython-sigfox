@@ -1102,9 +1102,9 @@ static void TASK_LoRa (void *pvParameters) {
                 #endif
                     mibReq.Type = MIB_NETWORK_ACTIVATION;
                     mibReq.Param.NetworkActivation = ACTIVATION_TYPE_OTAA;
-                   LoRaMacMibSetRequestConfirm( &mibReq );
+                    LoRaMacMibSetRequestConfirm( &mibReq );
                    
-                   TimerStart( &TxNextActReqTimer );
+                    TimerStart( &TxNextActReqTimer );
                     mlmeReq.Type = MLME_JOIN;
                     mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.u.otaa.DevEui;
                     mlmeReq.Req.Join.AppEui = (uint8_t *)lora_obj.u.otaa.AppEui;
@@ -1981,6 +1981,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
             timeout -= LORA_JOIN_WAIT_MS;
         }
         if (timeout <= 0) {
+            TimerStop( &TxNextActReqTimer );
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
         }
     }
