@@ -28,6 +28,7 @@ Maintainer: Michael Coracin
 #include "py/mpprint.h"
 
 int lora_gw_init(char *);
+void pygate_reset();
 int lora_gw_get_debug_level();
 void lora_gw_set_debug_level(int level);
 
