@@ -405,7 +405,7 @@ STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
     bool reconnect = false;
 
 #if defined(FIPY) || defined(GPY)
-    if (lteppp_modem_state() < E_LTE_MODEM_DISCONNECTED) {
+    if (lteppp_get_modem_conn_state() < E_LTE_MODEM_DISCONNECTED) {
         lteppp_deinit();
     }
 #endif
@@ -466,7 +466,7 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
     modbt_deinit(false);
     wlan_deinit(NULL);
 #if defined(FIPY) || defined(GPY)
-    if (lteppp_modem_state() < E_LTE_MODEM_DISCONNECTED) {
+    if (lteppp_get_modem_conn_state() < E_LTE_MODEM_DISCONNECTED) {
         lteppp_deinit();
     }
 #endif

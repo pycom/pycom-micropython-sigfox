@@ -456,7 +456,7 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         //printf("All done since we were already initialised.\n");
         return mp_const_none;
     }
-    modem_state  = lteppp_modem_state();
+    modem_state  = lteppp_get_modem_conn_state();
     switch(modem_state)
     {
     case E_LTE_MODEM_DISCONNECTED:
@@ -465,7 +465,7 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         MP_THREAD_GIL_EXIT();
         xSemaphoreTake(xLTE_modem_Conn_Sem, portMAX_DELAY);
         MP_THREAD_GIL_ENTER();
-        if (E_LTE_MODEM_DISCONNECTED == lteppp_modem_state()) {
+        if (E_LTE_MODEM_DISCONNECTED == lteppp_get_modem_conn_state()) {
             xSemaphoreGive(xLTE_modem_Conn_Sem);
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=disconnected)"));
         }
@@ -473,7 +473,7 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
     case E_LTE_MODEM_CONNECTING:
         // Block till modem is connected
         xSemaphoreTake(xLTE_modem_Conn_Sem, portMAX_DELAY);
-        if (E_LTE_MODEM_DISCONNECTED == lteppp_modem_state()) {
+        if (E_LTE_MODEM_DISCONNECTED == lteppp_get_modem_conn_state()) {
             xSemaphoreGive(xLTE_modem_Conn_Sem);
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=connecting)"));
         }
