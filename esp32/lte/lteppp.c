@@ -174,7 +174,7 @@ void lteppp_init(void) {
         lteppp_pcb = pppapi_pppos_create(&lteppp_netif, lteppp_output_callback, lteppp_status_cb, NULL);
 
         //wait on connecting modem until it is allowed
-        lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
+        lteppp_set_modem_conn_state(E_LTE_MODEM_DISCONNECTED);
 
         xTaskCreatePinnedToCore(TASK_LTE, "LTE", LTE_TASK_STACK_SIZE / sizeof(StackType_t), NULL, LTE_TASK_PRIORITY, &xLTETaskHndl, 1);
 
@@ -211,7 +211,7 @@ char* lteppp_get_log_buff(void)
 }
 #endif
 
-lte_modem_conn_state_t lteppp_modem_state(void)
+lte_modem_conn_state_t lteppp_get_modem_conn_state(void)
 {
     lte_modem_conn_state_t state;
     if (!xLTESem){
@@ -222,6 +222,13 @@ lte_modem_conn_state_t lteppp_modem_state(void)
     state = lteppp_modem_conn_state;
 	xSemaphoreGive(xLTESem);
 	return state;
+}
+
+void lteppp_set_modem_conn_state(lte_modem_conn_state_t state)
+{
+    xSemaphoreTake(xLTESem, portMAX_DELAY);
+    lteppp_modem_conn_state = state;
+    xSemaphoreGive(xLTESem);
 }
 
 void lteppp_set_state(lte_state_t state) {
@@ -455,9 +462,7 @@ modem_init:
     {
         MSG("notif\n");
         xSemaphoreTake(xLTE_modem_Conn_Sem, portMAX_DELAY);
-        xSemaphoreTake(xLTESem, portMAX_DELAY);
-        lteppp_modem_conn_state = E_LTE_MODEM_CONNECTING;
-        xSemaphoreGive(xLTESem);
+        lteppp_set_modem_conn_state(E_LTE_MODEM_CONNECTING);
         uart_set_rts(LTE_UART_ID, true);
         vTaskDelay(500/portTICK_PERIOD_MS);
         uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
@@ -471,9 +476,7 @@ modem_init:
                 if (at_trials >= LTE_AT_CMD_TRIALS) {
                     uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
                     uart_set_rts(LTE_UART_ID, false);
-                    xSemaphoreTake(xLTESem, portMAX_DELAY);
-                    lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
-                    xSemaphoreGive(xLTESem);
+                    lteppp_set_modem_conn_state(E_LTE_MODEM_DISCONNECTED);
                     xSemaphoreGive(xLTE_modem_Conn_Sem);
                     at_trials = 0;
                     goto modem_init;
@@ -494,9 +497,7 @@ modem_init:
                         if (at_trials >= LTE_AT_CMD_TRIALS) {
                             uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
                             uart_set_rts(LTE_UART_ID, false);
-                            xSemaphoreTake(xLTESem, portMAX_DELAY);
-                            lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
-                            xSemaphoreGive(xLTESem);
+                            lteppp_set_modem_conn_state(E_LTE_MODEM_DISCONNECTED);
                             xSemaphoreGive(xLTE_modem_Conn_Sem);
                             at_trials = 0;
                             goto modem_init;
@@ -511,9 +512,7 @@ modem_init:
                         if (at_trials >= LTE_AT_CMD_TRIALS) {
                             uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
                             uart_set_rts(LTE_UART_ID, false);
-                            xSemaphoreTake(xLTESem, portMAX_DELAY);
-                            lteppp_modem_conn_state = E_LTE_MODEM_DISCONNECTED;
-                            xSemaphoreGive(xLTESem);
+                                lteppp_set_modem_conn_state(E_LTE_MODEM_DISCONNECTED);
                             xSemaphoreGive(xLTE_modem_Conn_Sem);
                             at_trials = 0;
                             goto modem_init;
@@ -555,22 +554,16 @@ modem_init:
         {
             lteppp_send_at_cmd("AT+SQNIBRCFG=1,100", LTE_RX_TIMEOUT_MAX_MS);
         }
-        xSemaphoreTake(xLTESem, portMAX_DELAY);
-        lteppp_modem_conn_state = E_LTE_MODEM_CONNECTED;
-        xSemaphoreGive(xLTESem);
+        lteppp_set_modem_conn_state(E_LTE_MODEM_CONNECTED);
         xSemaphoreGive(xLTE_modem_Conn_Sem);
         MSG("forever\n");
         lte_state_t state;
         for (;;) {
             vTaskDelay(LTE_TASK_PERIOD_MS);
-            xSemaphoreTake(xLTESem, portMAX_DELAY);
-            if(E_LTE_MODEM_DISCONNECTED == lteppp_modem_conn_state)
-            {
-                xSemaphoreGive(xLTESem);
+            if(lteppp_get_modem_conn_state() == E_LTE_MODEM_DISCONNECTED ){
                 // restart the task
                 goto modem_init;
             }
-            xSemaphoreGive(xLTESem);
             state = lteppp_get_state();
             if (xQueueReceive(xCmdQueue, lteppp_trx_buffer, 0)) {
                 MSG("cmd\n");
@@ -868,7 +861,7 @@ static void lteppp_print_states(){
     if (!xLTESem)
         return;
     static lte_modem_conn_state_t last_c = 0xff;
-    lte_modem_conn_state_t c = lteppp_modem_state();
+    lte_modem_conn_state_t c = lteppp_get_modem_conn_state();
     static lte_state_t last_s = 0xff;
     lte_state_t s = lteppp_get_state();
     static bool last_u = false;

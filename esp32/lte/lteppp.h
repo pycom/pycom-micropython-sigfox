@@ -119,7 +119,8 @@ extern void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_
 
 extern bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_mp, void* data_rem);
 
-lte_modem_conn_state_t lteppp_modem_state(void);
+lte_modem_conn_state_t lteppp_get_modem_conn_state(void);
+void lteppp_set_modem_conn_state(lte_modem_conn_state_t state);
 
 extern void connect_lte_uart (void);
 
