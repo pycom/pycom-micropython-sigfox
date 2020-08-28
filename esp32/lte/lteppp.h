@@ -61,7 +61,8 @@ typedef enum {
 typedef enum {
     E_LTE_MODEM_CONNECTED = 0,
     E_LTE_MODEM_CONNECTING,
-    E_LTE_MODEM_DISCONNECTED
+    E_LTE_MODEM_DISCONNECTED,
+    E_LTE_MODEM_RECOVERY
 } lte_modem_conn_state_t;
 
 #ifdef LTE_DEBUG_BUFF

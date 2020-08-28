@@ -444,6 +444,35 @@ void lteppp_resume(void) {
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
+bool trx_is_ok_or_error(){
+    if (strstr(lteppp_trx_buffer, "ERROR\r\n") != NULL){
+        // printf("ok\n");
+        return true;
+    } else if (strstr(lteppp_trx_buffer, "OK\r\n") != NULL) {
+        // printf("error\n");
+        return true;
+    }
+    return false;
+}
+
+/** check whether modem is responding at 115200
+ * this means it is in FFH or RECOVYER mode
+ */
+bool lteppp_check_ffh_mode(){
+    uart_set_baudrate(LTE_UART_ID, 115200);
+    uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
+    uart_set_rts(LTE_UART_ID, true);
+
+    for ( uint8_t attempt = 0 ; attempt < 3 ; attempt++ ){
+        lteppp_send_at_cmd("AT", LTE_PPP_BACK_OFF_TIME_MS);
+        if ( trx_is_ok_or_error() ){
+            // we could check for AT+SMOD / AT+BMOD to get more details
+            return true;
+        }
+    }
+    return false;
+}
+
 static void TASK_LTE (void *pvParameters) {
     MSG("\n");
     bool sim_present;
@@ -510,9 +539,14 @@ modem_init:
                     while(!lteppp_send_at_cmd("AT", LTE_RX_TIMEOUT_MIN_MS))
                     {
                         if (at_trials >= LTE_AT_CMD_TRIALS) {
-                            uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
-                            uart_set_rts(LTE_UART_ID, false);
+                            if ( lteppp_check_ffh_mode() ){
+                                lteppp_set_modem_conn_state(E_LTE_MODEM_RECOVERY);
+                            } else {
+                                uart_set_baudrate(LTE_UART_ID, MICROPY_LTE_UART_BAUDRATE);
+                                uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_DISABLE, 0);
+                                uart_set_rts(LTE_UART_ID, false);
                                 lteppp_set_modem_conn_state(E_LTE_MODEM_DISCONNECTED);
+                            }
                             xSemaphoreGive(xLTE_modem_Conn_Sem);
                             at_trials = 0;
                             goto modem_init;
