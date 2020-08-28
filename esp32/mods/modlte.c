@@ -465,9 +465,13 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         MP_THREAD_GIL_EXIT();
         xSemaphoreTake(xLTE_modem_Conn_Sem, portMAX_DELAY);
         MP_THREAD_GIL_ENTER();
-        if (E_LTE_MODEM_DISCONNECTED == lteppp_get_modem_conn_state()) {
+        lte_modem_conn_state_t modem_state = lteppp_get_modem_conn_state();
+        if (E_LTE_MODEM_DISCONNECTED == modem_state) {
             xSemaphoreGive(xLTE_modem_Conn_Sem);
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=disconnected)"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't start connection to Modem (modem_state=disconnected)"));
+        } else if (E_LTE_MODEM_RECOVERY == modem_state){
+            xSemaphoreGive(xLTE_modem_Conn_Sem);
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't start connection to Modem (modem_state=recovery). Perform a modem firmware update."));
         }
         break;
     case E_LTE_MODEM_CONNECTING:
@@ -481,8 +485,11 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
     case E_LTE_MODEM_CONNECTED:
         //continue
         break;
+    case E_LTE_MODEM_RECOVERY:
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=recovery). Perform a modem firmware update."));
+        break;
     default:
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=default)"));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state - default)"));
         break;
     }
     lte_obj.cid = args[1].u_int;
