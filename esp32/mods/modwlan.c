@@ -28,7 +28,7 @@
 #include "nvs_flash.h"
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
-#include "esp_event_loop.h"
+#include "esp_event.h"
 #include "esp_wpa2.h"
 #include "esp_smartconfig.h"
 
@@ -376,7 +376,7 @@ STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
             mod_network_register_nic(&wlan_obj);
 #if defined(FIPY) || defined(GPY)
             // Save DNS info for restoring if wifi inf is usable again after LTE disconnect
-            tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_STA, TCPIP_ADAPTER_DNS_MAIN, &wlan_sta_inf_dns_info);
+            tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_STA, ESP_NETIF_DNS_MAIN, &wlan_sta_inf_dns_info);
 #endif
             is_inf_up = true;
             break;
@@ -949,7 +949,7 @@ STATIC void wlan_set_default_inf(void)
 {
 #if defined(FIPY) || defined(GPY)
     if (wlan_obj.mode == WIFI_MODE_STA || wlan_obj.mode == WIFI_MODE_APSTA) {
-        tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_STA, TCPIP_ADAPTER_DNS_MAIN, &wlan_sta_inf_dns_info);
+        tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_STA, ESP_NETIF_DNS_MAIN, &wlan_sta_inf_dns_info);
         tcpip_adapter_up(TCPIP_ADAPTER_IF_STA);
     }
 #endif
@@ -1690,7 +1690,7 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
     if (args[1].u_obj == MP_OBJ_NULL) {
         // get
         tcpip_adapter_ip_info_t ip_info;
-        tcpip_adapter_get_dns_info(adapter_if, TCPIP_ADAPTER_DNS_MAIN, &dns_info);
+        tcpip_adapter_get_dns_info(adapter_if, ESP_NETIF_DNS_MAIN, &dns_info);
         if (ESP_OK == tcpip_adapter_get_ip_info(adapter_if, &ip_info)) {
             mp_obj_t ifconfig[4] = {
                 netutils_format_ipv4_addr((uint8_t *)&ip_info.ip.addr, NETUTILS_BIG),
@@ -1717,11 +1717,11 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
             if (adapter_if == TCPIP_ADAPTER_IF_STA) {
                 tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
                 tcpip_adapter_set_ip_info(adapter_if, &ip_info);
-                tcpip_adapter_set_dns_info(adapter_if, TCPIP_ADAPTER_DNS_MAIN, &dns_info);
+                tcpip_adapter_set_dns_info(adapter_if, ESP_NETIF_DNS_MAIN, &dns_info);
             } else {
                 tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP);
                 tcpip_adapter_set_ip_info(adapter_if, &ip_info);
-                tcpip_adapter_set_dns_info(adapter_if, TCPIP_ADAPTER_DNS_MAIN, &dns_info);
+                tcpip_adapter_set_dns_info(adapter_if, ESP_NETIF_DNS_MAIN, &dns_info);
                 tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP);
             }
         } else {

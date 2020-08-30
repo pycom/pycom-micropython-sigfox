@@ -16,8 +16,10 @@
 #include "esp_log.h"
 
 #include "driver/uart.h"
+#include "uart_struct.h"
+#include "uart_reg.h"
 #include "driver/gpio.h"
-#include "tcpip_adapter.h"
+#include "esp_netif.h"
 #include "netif/ppp/pppos.h"
 #include "netif/ppp/ppp.h"
 #include "netif/ppp/pppapi.h"

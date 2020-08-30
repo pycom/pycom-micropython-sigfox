@@ -173,7 +173,7 @@ STATIC mp_obj_t mach_rtc_make_new(const mp_obj_type_t *type, mp_uint_t n_args, m
                 rtc_clk_32k_bootstrap(5);
             }
         }
-        rtc_clk_select_rtc_slow_clk(clk_src);
+        rtc_clk_select_rtc_slow_clk();
         settimeofday(&now, NULL);
     }
 

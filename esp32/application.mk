@@ -98,13 +98,15 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/esp_ble_mesh/mesh_models/common/include
 
 
 
-#Added with idf 4.0
+#Added with idf 4.x
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_common/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_rom/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/xtensa/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/xtensa/esp32/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/driver/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_wifi/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_netif/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_eth/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/wpa_supplicant/include/esp_supplicant
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include/coap2
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/device/include
@@ -116,6 +118,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/common/osi/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/hci/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/bta/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/api/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include/soc
 # Needed to find pycom_bootloader.h from pycom-esp-idf
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader/subproject/main
 
@@ -413,8 +416,8 @@ endif # ifeq ($(OPENTHREAD), on)
 SRC_QSTR_AUTO_DEPS +=
 
 # These files are passed here as per esp-idf/components/bootloader/subproject/main/component.mk
-BOOT_LDFLAGS = $(LDFLAGS) -T $(ESP_IDF_COMP_PATH)/bootloader/subproject/main/esp32.bootloader.ld \
-                          -T $(ESP_IDF_COMP_PATH)/bootloader/subproject/main/esp32.bootloader.rom.ld \
+BOOT_LDFLAGS = $(LDFLAGS) -T $(ESP_IDF_COMP_PATH)/bootloader/subproject/main/ld/esp32/bootloader.ld \
+                          -T $(ESP_IDF_COMP_PATH)/bootloader/subproject/main/ld/esp32/bootloader.rom.ld \
                           -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.ld \
                           -T $(ESP_IDF_COMP_PATH)/esp_rom/esp32/ld/esp32.rom.newlib-funcs.ld \
                           -T $(ESP_IDF_COMP_PATH)/esp32/ld/esp32.peripherals.ld \

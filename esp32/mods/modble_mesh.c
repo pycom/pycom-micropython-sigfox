@@ -118,60 +118,60 @@ static esp_ble_mesh_client_t sensor_client;
 // int to eliminate compiler warnings
 static const int opcode_table[] = {
         // GENERIC ONOFF ONOFF
-        BLE_MESH_MODEL_OP_GEN_ONOFF_GET,
-        BLE_MESH_MODEL_OP_GEN_ONOFF_SET,
-        BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK,
-        BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS,
+        ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET,
+        ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET,
+        ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK,
+        ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS,
         // GENERIC LEVEL LEVEL
-        BLE_MESH_MODEL_OP_GEN_LEVEL_GET,
-        BLE_MESH_MODEL_OP_GEN_LEVEL_SET,
-        BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK,
-        BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS,
+        ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_GET,
+        ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET,
+        ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK,
+        ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS,
         // GENERIC LEVEL DELTA
         -1,
-        BLE_MESH_MODEL_OP_GEN_DELTA_SET,
-        BLE_MESH_MODEL_OP_GEN_DELTA_SET_UNACK,
+        ESP_BLE_MESH_MODEL_OP_GEN_DELTA_SET,
+        ESP_BLE_MESH_MODEL_OP_GEN_DELTA_SET_UNACK,
         -1,
         // GENERIC LEVEL MOVE
         -1,
-        BLE_MESH_MODEL_OP_GEN_MOVE_SET,
-        BLE_MESH_MODEL_OP_GEN_MOVE_SET_UNACK,
+        ESP_BLE_MESH_MODEL_OP_GEN_MOVE_SET,
+        ESP_BLE_MESH_MODEL_OP_GEN_MOVE_SET_UNACK,
         -1,
         // SENSOR SENSOR_DESCRIPTOR
-        BLE_MESH_MODEL_OP_SENSOR_DESCRIPTOR_GET,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_DESCRIPTOR_GET,
         -1,
         -1,
-        BLE_MESH_MODEL_OP_SENSOR_DESCRIPTOR_STATUS,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_DESCRIPTOR_STATUS,
         // SENSOR SENSOR
-        BLE_MESH_MODEL_OP_SENSOR_GET,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_GET,
         -1,
         -1,
-        BLE_MESH_MODEL_OP_SENSOR_STATUS,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_STATUS,
         // SENSOR SENSOR_COLUMN
-        BLE_MESH_MODEL_OP_SENSOR_COLUMN_GET,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_COLUMN_GET,
         -1,
         -1,
-        BLE_MESH_MODEL_OP_SENSOR_COLUMN_STATUS,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_COLUMN_STATUS,
         // SENSOR SENSOR_SERIES
-        BLE_MESH_MODEL_OP_SENSOR_SERIES_GET,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_SERIES_GET,
         -1,
         -1,
-        BLE_MESH_MODEL_OP_SENSOR_SERIES_STATUS,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_SERIES_STATUS,
         // SENSOR_SETUP SENSOR_CADENCE
-        BLE_MESH_MODEL_OP_SENSOR_CADENCE_GET,
-        BLE_MESH_MODEL_OP_SENSOR_CADENCE_SET,
-        BLE_MESH_MODEL_OP_SENSOR_CADENCE_SET_UNACK,
-        BLE_MESH_MODEL_OP_SENSOR_CADENCE_STATUS,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_CADENCE_GET,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_CADENCE_SET,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_CADENCE_SET_UNACK,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_CADENCE_STATUS,
         // SENSOR SENSOR_COLUMN
-        BLE_MESH_MODEL_OP_SENSOR_SETTINGS_GET,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_SETTINGS_GET,
         -1,
         -1,
-        BLE_MESH_MODEL_OP_SENSOR_SETTINGS_STATUS,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_SETTINGS_STATUS,
         // SENSOR SENSOR_SERIES
-        BLE_MESH_MODEL_OP_SENSOR_SETTING_GET,
-        BLE_MESH_MODEL_OP_SENSOR_SETTING_SET,
-        BLE_MESH_MODEL_OP_SENSOR_SETTING_SET_UNACK,
-        BLE_MESH_MODEL_OP_SENSOR_SETTING_STATUS,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_SETTING_GET,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_SETTING_SET,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_SETTING_SET_UNACK,
+        ESP_BLE_MESH_MODEL_OP_SENSOR_SETTING_STATUS,
 
 };
 
@@ -891,7 +891,7 @@ STATIC mp_obj_t mod_ble_mesh_model_get_state(mp_uint_t n_args, const mp_obj_t *p
             esp_ble_mesh_sensor_client_get_state_t get = {0};
             esp_ble_mesh_client_common_param_t common = {0};
 
-            common.opcode = BLE_MESH_MODEL_OP_SENSOR_GET;
+            common.opcode = ESP_BLE_MESH_MODEL_OP_SENSOR_GET;
             common.model = &self->element->element->sig_models[self->index];
             common.ctx = ctx;
             common.msg_timeout = 100;
@@ -1308,7 +1308,7 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
             esp_ble_mesh_model_t gen_onoff_srv_mod = ESP_BLE_MESH_MODEL_GEN_ONOFF_SRV(pub, onoff_server);
             memcpy(&tmp_model, &gen_onoff_srv_mod, sizeof(gen_onoff_srv_mod));
 
-            op_def_status = BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS;
+            op_def_status = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_STATUS;
 
             group = MOD_BLE_MESH_GROUP_GENERIC;
         }
@@ -1322,7 +1322,7 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
             esp_ble_mesh_model_t gen_level_srv_mod = ESP_BLE_MESH_MODEL_GEN_LEVEL_SRV(pub, level_server);
             memcpy(&tmp_model, &gen_level_srv_mod, sizeof(gen_level_srv_mod));
 
-            op_def_status = BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS;
+            op_def_status = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_STATUS;
 
             group = MOD_BLE_MESH_GROUP_GENERIC;
         }
@@ -1338,7 +1338,7 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
             esp_ble_mesh_model_t sen_srv_mod = ESP_BLE_MESH_MODEL_SENSOR_SRV(&sensor_pub, &mod_ble_sensor_srv);
             memcpy(&tmp_model, &sen_srv_mod, sizeof(sen_srv_mod));
 
-            op_def_status = BLE_MESH_MODEL_OP_SENSOR_STATUS;
+            op_def_status = ESP_BLE_MESH_MODEL_OP_SENSOR_STATUS;
 
             group = MOD_BLE_MESH_GROUP_SENSOR;
         }
@@ -1354,9 +1354,9 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
             esp_ble_mesh_model_t gen_onoff_cli_mod = ESP_BLE_MESH_MODEL_GEN_ONOFF_CLI(pub, onoff_client);
             memcpy(&tmp_model, &gen_onoff_cli_mod, sizeof(gen_onoff_cli_mod));
 
-            op_def_get = BLE_MESH_MODEL_OP_GEN_ONOFF_GET;
-            op_def_set = BLE_MESH_MODEL_OP_GEN_ONOFF_SET;
-            op_def_set_unack = BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK;
+            op_def_get = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_GET;
+            op_def_set = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET;
+            op_def_set_unack = ESP_BLE_MESH_MODEL_OP_GEN_ONOFF_SET_UNACK;
 
             group = MOD_BLE_MESH_GROUP_GENERIC;
         }
@@ -1366,9 +1366,9 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
             esp_ble_mesh_model_t gen_level_cli_mod = ESP_BLE_MESH_MODEL_GEN_LEVEL_CLI(pub, level_client);
             memcpy(&tmp_model, &gen_level_cli_mod, sizeof(gen_level_cli_mod));
 
-            op_def_get = BLE_MESH_MODEL_OP_GEN_LEVEL_GET;
-            op_def_set = BLE_MESH_MODEL_OP_GEN_LEVEL_SET;
-            op_def_set_unack = BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK;
+            op_def_get = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_GET;
+            op_def_set = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET;
+            op_def_set_unack = ESP_BLE_MESH_MODEL_OP_GEN_LEVEL_SET_UNACK;
 
             group = MOD_BLE_MESH_GROUP_GENERIC;
         }
@@ -1377,7 +1377,7 @@ STATIC mp_obj_t mod_ble_mesh_element_add_model(mp_uint_t n_args, const mp_obj_t 
             esp_ble_mesh_model_t sen_cli_mod = ESP_BLE_MESH_MODEL_SENSOR_CLI(NULL, &sensor_client);
             memcpy(&tmp_model, &sen_cli_mod, sizeof(sen_cli_mod));
 
-            op_def_get = BLE_MESH_MODEL_OP_SENSOR_GET;
+            op_def_get = ESP_BLE_MESH_MODEL_OP_SENSOR_GET;
 
             group = MOD_BLE_MESH_GROUP_SENSOR;
         }

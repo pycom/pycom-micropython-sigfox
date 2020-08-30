@@ -838,7 +838,7 @@ STATIC coap_pdu_t * modcoap_new_request(coap_context_t *ctx,
 {
     // TODO: get the type of the PDU as a parameter
     // TODO: calculate the proper size of the PDU
-    coap_pdu_t *pdu = coap_pdu_init(COAP_MESSAGE_CON, method, htons(++(ctx->message_id)), coap_session_max_pdu_size(session));
+    coap_pdu_t *pdu = coap_pdu_init(COAP_MESSAGE_CON, method, coap_new_message_id(session), coap_session_max_pdu_size(session));
 
     if(pdu == NULL){
         return NULL;

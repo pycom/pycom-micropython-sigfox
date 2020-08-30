@@ -10,7 +10,7 @@
 #ifndef MODWLAN_H_
 #define MODWLAN_H_
 
-#include <tcpip_adapter.h>
+#include "esp_netif.h"
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -23,6 +23,7 @@
 #define MODWLAN_WIFI_EVENT_ANY                      0x01
 
 #define MODWLAN_SSID_LEN_MAX                        32
+#define TCPIP_HOSTNAME_MAX_SIZE                     32
 
 //Triggers
 
