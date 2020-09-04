@@ -148,22 +148,25 @@ STATIC mp_obj_t mod_pycom_heartbeat (mp_uint_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_heartbeat_obj, 0, 1, mod_pycom_heartbeat);
 
-STATIC mp_obj_t mod_pycom_rgb_led (mp_obj_t o_color) {
+STATIC mp_obj_t mod_pycom_rgb_led (mp_uint_t n_args, const mp_obj_t *args) {
 #ifndef RGB_LED_DISABLE
     if (mperror_is_heartbeat_enabled()) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
-
-    uint32_t color = mp_obj_get_int(o_color);
-    led_info.color.value = color;
-    led_set_color(&led_info, true, false);
+    if(n_args > 0){
+        uint32_t color = mp_obj_get_int(args[0]);
+        led_info.color.value = color;
+        led_set_color(&led_info, true, false);
+    } else {
+        return mp_obj_new_int(led_info.color.value);
+    }
 #else
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "RGB Led Interface Disabled"));
 #endif
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_rgb_led_obj, mod_pycom_rgb_led);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_rgb_led_obj, 0,1,mod_pycom_rgb_led);
 
 STATIC mp_obj_t mod_pycom_ota_start (void) {
     if (!updater_start()) {
