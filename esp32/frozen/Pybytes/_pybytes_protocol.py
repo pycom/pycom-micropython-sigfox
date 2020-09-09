@@ -32,6 +32,11 @@ except:
     from _pybytes_pymesh_config import PybytesPymeshConfig
 
 try:
+    from pybytes_machine_learning import MlFeatures
+except:
+    from _pybytes_machine_learning import MlFeatures
+
+try:
     from pybytes_config_reader import PybytesConfigReader
 except:
     from _pybytes_config_reader import PybytesConfigReader
@@ -281,10 +286,10 @@ class PybytesProtocol:
                     splittedBody = bodyString.split(',')
                     if (len(splittedBody) >= 2):
                         path = splittedBody[0]
-                        print_debug(2, path[len(path)-7:len(path)])
-                        if (path[len(path)-7:len(path)] != '.pymakr'):
+                        print_debug(2, path[len(path) - 7:len(path)])
+                        if (path[len(path) - 7:len(path)] != '.pymakr'):
                             self.send_fcota_ping('updating file...')
-                        newContent = bodyString[len(path)+1:len(body)]
+                        newContent = bodyString[len(path) + 1:len(body)]
                         if (self.__FCOTA.update_file_content(path, newContent) is True): # noqa
                             size = self.__FCOTA.get_file_size(path)
                             self.send_fcota_file(newContent, path, size)
@@ -319,7 +324,18 @@ class PybytesProtocol:
                 if (len(body) > 3):
                     value = body[2] << 8 | body[3]
 
-                if (command == constants.__COMMAND_PIN_MODE):
+                if (command == constants.__COMMAND_START_SAMPLE):
+                    parameters = ujson.loads(body[2: len(body)].decode("utf-8"))
+                    sampling = MlFeatures(self, parameters=parameters)
+                    sampling.start_sampling(pin=parameters["pin"])
+                    self.send_ota_response(result=2, topic='sample')
+                elif (command == constants.__COMMAND_DEPLOY_MODEL):
+                    parameters = ujson.loads(body[2: len(body)].decode("utf-8"))
+                    sampling = MlFeatures()
+                    sampling.deploy_model(modelId=parameters["modelId"])
+                    self.send_ota_response(result=2, topic='deploymlmodel')
+
+                elif (command == constants.__COMMAND_PIN_MODE):
                     pass
 
                 elif (command == constants.__COMMAND_DIGITAL_READ):
