@@ -86,9 +86,18 @@ class PybytesLibrary:
         body.append((release >> 8) & 0xFF)
         body.append(release & 0xFF)
 
-        if releaseVersion is not None:
-            body.append((releaseVersion >> 8) & 0xFF)
-            body.append(releaseVersion & 0xFF)
+        if releaseVersion is None:
+            releaseVersion = 0
+
+        body.append((releaseVersion >> 8) & 0xFF)
+        body.append(releaseVersion & 0xFF)
+
+        if hasattr(os.uname(), 'pymesh'):
+            body.append(constants.__FWTYPE_PYMESH)
+        elif hasattr(os.uname(), 'pygate'):
+            body.append(constants.__FWTYPE_PYGATE)
+        else:
+            body.append(constants.__FWTYPE_DEFAULT)
 
         return self.__pack_message(constants.__TYPE_INFO, body)
 
