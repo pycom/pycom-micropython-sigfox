@@ -72,7 +72,7 @@ def main():
         shutil.copy(src + '/sdmmc/libsdmmc.a', dsttmpapp)
         shutil.copy(src + '/soc/libsoc.a', dsttmpapp)
         shutil.copy(src + '/spi_flash/libspi_flash.a', dsttmpapp)
-        shutil.copy(src + '/tcpip_adapter/libtcpip_adapter.a', dsttmpapp)
+        shutil.copy(src + '/esp_netif/libesp_netif.a', dsttmpapp)
         shutil.copy(src + '/vfs/libvfs.a', dsttmpapp)
         shutil.copy(src + '/wpa_supplicant/libwpa_supplicant.a', dsttmpapp)
         shutil.copy(src + '/esp_ringbuf/libesp_ringbuf.a', dsttmpapp)

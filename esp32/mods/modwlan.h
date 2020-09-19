@@ -68,9 +68,9 @@ typedef struct _wlan_obj_t {
 
     uint32_t                ip;
 
-    int8_t                  mode;
+    wifi_mode_t             mode;
     int8_t                  bandwidth;
-    uint8_t                 auth;
+    wifi_auth_mode_t        auth;
     uint8_t                 channel;
     uint8_t                 antenna;
     int8_t                  max_tx_pwr;
@@ -102,6 +102,8 @@ typedef struct _wlan_obj_t {
     mp_obj_t                handler;
     mp_obj_t                handler_arg;
     SemaphoreHandle_t       mutex;
+    esp_netif_t *           esp_netif_AP;
+    esp_netif_t *           esp_netif_STA;
 } wlan_obj_t;
 
 typedef struct wlan_internal_prom_t
@@ -114,12 +116,12 @@ typedef struct wlan_internal_prom_t
 #pragma pack(1)
 typedef struct wlan_internal_setup_t
 {
-    int32_t             mode;
+    wifi_mode_t         mode;
     const char *        ssid_sta;
     const char *        key_sta;
     const char *        ssid_ap;
     const char *        key_ap;
-    uint32_t             auth;
+    wifi_auth_mode_t    auth;
     uint32_t             channel;
     uint32_t             antenna;
     bool                 add_mac;

@@ -31,6 +31,7 @@
 #include "esp_event.h"
 #include "esp_wpa2.h"
 #include "esp_smartconfig.h"
+#include "esp_netif_sta_list.h"
 
 //#include "timeutils.h"
 #include "netutils.h"
@@ -93,7 +94,9 @@ wlan_obj_t wlan_obj = {
     .enable_servers = false,
     .pwrsave = false,
     .is_promiscuous = false,
-    .sta_conn_timeout = false
+    .sta_conn_timeout = false,
+    .esp_netif_AP = NULL,
+    .esp_netif_STA = NULL
 };
 
 /* TODO: Maybe we can add possibility to create IRQs for wifi events */
@@ -126,7 +129,7 @@ static bool is_inf_up = false;
 SemaphoreHandle_t timeout_mutex;
 #if defined(FIPY) || defined(GPY)
 // Variable saving DNS info
-static tcpip_adapter_dns_info_t wlan_sta_inf_dns_info;
+static esp_netif_dns_info_t wlan_sta_inf_dns_info;
 #endif
 SemaphoreHandle_t smartConfigTimeout_mutex;
 
@@ -151,11 +154,11 @@ STATIC bool wlan_set_bandwidth (wifi_bandwidth_t mode);
 STATIC void wlan_validate_hostname (const char *hostname);
 STATIC bool wlan_set_hostname (const char *hostname);
 STATIC esp_err_t wlan_update_hostname ();
-STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac, bool hidden);
+STATIC void wlan_setup_ap (const char *ssid, wifi_auth_mode_t auth, const char *key, uint32_t channel, bool add_mac, bool hidden);
 STATIC void wlan_validate_ssid_len (uint32_t len);
 STATIC uint32_t wlan_set_ssid_internal (const char *ssid, uint8_t len, bool add_mac);
-STATIC void wlan_validate_security (uint8_t auth, const char *key);
-STATIC void wlan_set_security_internal (uint8_t auth, const char *key);
+STATIC void wlan_validate_security (wifi_auth_mode_t auth, const char *key);
+STATIC void wlan_set_security_internal (wifi_auth_mode_t auth, const char *key);
 STATIC void wlan_validate_channel (uint8_t channel);
 STATIC void wlan_set_antenna (uint8_t antenna);
 STATIC void wlan_event_handler(void* event_handler_arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
@@ -180,7 +183,6 @@ STATIC void wlan_callback_handler(void* arg);
 //!
 //*****************************************************************************
 void wlan_pre_init (void) {
-    tcpip_adapter_init();
     wifi_event_group = xEventGroupCreate();
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
     wlan_wpa2_ent.ca_certs_path = NULL;
@@ -201,6 +203,9 @@ void wlan_pre_init (void) {
     timeout_mutex = xSemaphoreCreateMutex();
     smartConfigTimeout_mutex = xSemaphoreCreateMutex();
     memcpy(wlan_obj.country.cc, (const char*)"NA", sizeof(wlan_obj.country.cc));
+    wlan_obj.esp_netif_AP = NULL;
+    wlan_obj.esp_netif_STA = NULL;
+    wlan_obj.started = false;
     // create Smart Config Task
     xTaskCreatePinnedToCore(TASK_SMART_CONFIG, "SmartConfig", SMART_CONF_TASK_STACK_SIZE / sizeof(StackType_t), NULL, SMART_CONF_TASK_PRIORITY, &SmartConfTaskHandle, 1);
 }
@@ -244,12 +249,43 @@ void wlan_resume (bool reconnect)
 
 void wlan_setup (wlan_internal_setup_t *config) {
 
+    /* Only initialize/create these if they have not been created/initialized before */
+    if(wlan_obj.started == false)
+    {
+        ESP_ERROR_CHECK(esp_netif_init());
+        ESP_ERROR_CHECK(esp_event_loop_create_default());
+        // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to WIFI events
+        ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wlan_event_handler, NULL));
+        // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to IP events
+        ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wlan_event_handler, NULL));
+    }
+    else {
+        /* init() is called without deinit(), remove the already created esp_netif objects */
+        if( wlan_obj.esp_netif_AP != NULL) {
+            esp_netif_destroy(wlan_obj.esp_netif_AP);
+            wlan_obj.esp_netif_AP = NULL;
+        }
+
+        if( wlan_obj.esp_netif_STA != NULL) {
+            esp_netif_destroy(wlan_obj.esp_netif_STA);
+            wlan_obj.esp_netif_STA = NULL;
+        }
+    }
+
+    if(config->mode == WIFI_MODE_AP) {
+        wlan_obj.esp_netif_AP = esp_netif_create_default_wifi_ap();
+    }
+    else if(config->mode == WIFI_MODE_STA) {
+        wlan_obj.esp_netif_STA = esp_netif_create_default_wifi_sta();
+    }
+    else {
+        wlan_obj.esp_netif_AP = esp_netif_create_default_wifi_ap();
+        wlan_obj.esp_netif_STA = esp_netif_create_default_wifi_sta();
+    }
+
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to WIFI events
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wlan_event_handler, NULL));
-    // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to IP events
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wlan_event_handler, NULL));
+
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
     // stop the servers
@@ -280,12 +316,13 @@ void wlan_setup (wlan_internal_setup_t *config) {
             }
         }
     }
+
     switch(config->mode)
     {
         case WIFI_MODE_AP:
            MP_THREAD_GIL_EXIT();
            // wlan_setup_ap must be called only when GIL is not locked
-           wlan_setup_ap (config->ssid_ap, config->auth, config->key_ap, config->channel, config->add_mac, config->hidden);
+           wlan_setup_ap(config->ssid_ap, config->auth, config->key_ap, config->channel, config->add_mac, config->hidden);
            // Start Wifi
            esp_wifi_start();
            wlan_obj.started = true;
@@ -297,7 +334,7 @@ void wlan_setup (wlan_internal_setup_t *config) {
             if(config->mode == WIFI_MODE_APSTA)
             {
                 // wlan_setup_ap must be called only when GIL is not locked
-                wlan_setup_ap (config->ssid_ap, config->auth, config->key_ap, config->channel, config->add_mac, config->hidden);
+                wlan_setup_ap(config->ssid_ap, config->auth, config->key_ap, config->channel, config->add_mac, config->hidden);
             }
             // Start Wifi
             esp_wifi_start();
@@ -321,7 +358,7 @@ void wlan_setup (wlan_internal_setup_t *config) {
                 }
 
                 // connect to the requested access point
-                wlan_do_connect (config->ssid_sta, NULL, config->auth, config->key_sta, 30000, &wlan_wpa2_ent, NULL, 0);
+                wlan_do_connect(config->ssid_sta, NULL, config->auth, config->key_sta, 30000, &wlan_wpa2_ent, NULL, 0);
             }
 
             MP_THREAD_GIL_ENTER();
@@ -433,7 +470,7 @@ STATIC void wlan_event_handler(void* event_handler_arg, esp_event_base_t event_b
                 mod_network_register_nic(&wlan_obj);
 #if defined(FIPY) || defined(GPY)
                 // Save DNS info for restoring if wifi inf is usable again after LTE disconnect
-                tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_STA, ESP_NETIF_DNS_MAIN, &wlan_sta_inf_dns_info);
+                esp_netif_get_dns_info(wlan_obj.esp_netif_STA, ESP_NETIF_DNS_MAIN, &wlan_sta_inf_dns_info);
 #endif
                 is_inf_up = true;
                 break;
@@ -514,24 +551,24 @@ STATIC void wlan_servers_stop (void) {
 }
 
 // Must be called only when GIL is not locked
-STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac, bool hidden) {
-    uint32_t ssid_len = wlan_set_ssid_internal (ssid, strlen(ssid), add_mac);
+STATIC void wlan_setup_ap (const char *ssid, wifi_auth_mode_t auth, const char *key, uint32_t channel, bool add_mac, bool hidden) {
+    uint32_t ssid_len = wlan_set_ssid_internal(ssid, strlen(ssid), add_mac);
     wlan_set_security_internal(auth, key);
-
     // get the current config and then change it
     wifi_config_t config;
-    esp_wifi_get_config(WIFI_IF_AP, &config);
+    ESP_ERROR_CHECK(esp_wifi_get_config(ESP_IF_WIFI_AP, &config));
     strcpy((char *)config.ap.ssid, (char *)wlan_obj.ssid);
     config.ap.ssid_len = ssid_len;
-    config.ap.authmode = wlan_obj.auth;
+    config.ap.authmode = auth;
     strcpy((char *)config.ap.password, (char *)wlan_obj.key);
     config.ap.channel = channel;
     wlan_obj.channel = channel;
     config.ap.max_connection = MAX_AP_CONNECTED_STA;
     config.ap.ssid_hidden = (uint8_t)hidden;
-    esp_wifi_set_config(WIFI_IF_AP, &config);
+    ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_AP, &config));
+
     //get mac of AP
-    esp_wifi_get_mac(WIFI_IF_AP, wlan_obj.mac_ap);
+    ESP_ERROR_CHECK(esp_wifi_get_mac(ESP_IF_WIFI_AP, wlan_obj.mac_ap));
 
     // Need to take back the GIL as mod_network_register_nic() uses MicroPython API and wlan_setup_ap() is called when GIL is not locked
     MP_THREAD_GIL_ENTER();
@@ -545,9 +582,9 @@ STATIC void wlan_validate_mode (uint mode) {
     }
 }
 
-STATIC void wlan_set_mode (uint mode) {
+STATIC void wlan_set_mode(wifi_mode_t mode) {
     wlan_obj.mode = mode;
-    esp_wifi_set_mode(mode);
+    ESP_ERROR_CHECK(esp_wifi_set_mode(mode));
     wifi_ps_type_t wifi_ps_type;
     if (mode != WIFI_MODE_STA || wlan_obj.pwrsave == false) {
         wifi_ps_type = WIFI_PS_NONE;
@@ -594,11 +631,11 @@ STATIC void wlan_validate_hostname (const char *hostname) {
 STATIC bool wlan_set_hostname (const char *hostname) {
     if (wlan_obj.mode == WIFI_MODE_STA)
     {
-        if(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_STA, hostname) != ESP_OK)
+        if(esp_netif_set_hostname(wlan_obj.esp_netif_STA, hostname) != ESP_OK)
             return false;
     } else
     {
-        if(tcpip_adapter_set_hostname(TCPIP_ADAPTER_IF_AP, hostname) != ESP_OK)
+        if(esp_netif_set_hostname(wlan_obj.esp_netif_AP, hostname) != ESP_OK)
             return false;
     }
 
@@ -608,9 +645,9 @@ STATIC bool wlan_set_hostname (const char *hostname) {
 
 STATIC esp_err_t wlan_update_hostname () {
     char* hostname = NULL;
-    tcpip_adapter_if_t interface = wlan_obj.mode == WIFI_MODE_STA ? TCPIP_ADAPTER_IF_STA : TCPIP_ADAPTER_IF_AP;
+    esp_netif_t * interface = wlan_obj.mode == WIFI_MODE_STA ? wlan_obj.esp_netif_STA : wlan_obj.esp_netif_AP;
 
-    esp_err_t err = tcpip_adapter_get_hostname(interface, (const char**)&hostname);
+    esp_err_t err = esp_netif_get_hostname(interface, (const char**)&hostname);
     if(err != ESP_OK)
     {
         return err;
@@ -642,7 +679,7 @@ STATIC uint32_t wlan_set_ssid_internal (const char *ssid, uint8_t len, bool add_
     return len;
 }
 
-STATIC void wlan_validate_security (uint8_t auth, const char *key) {
+STATIC void wlan_validate_security (wifi_auth_mode_t auth, const char *key) {
     if (auth < WIFI_AUTH_WEP && auth > WIFI_AUTH_WPA2_ENTERPRISE) {
         goto invalid_args;
     }
@@ -659,7 +696,7 @@ invalid_args:
     nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
 }
 
-STATIC void wlan_set_security_internal (uint8_t auth, const char *key) {
+STATIC void wlan_set_security_internal (wifi_auth_mode_t auth, const char *key) {
     wlan_obj.auth = auth;
 //    uint8_t wep_key[32];
     if (key != NULL) {
@@ -693,7 +730,7 @@ STATIC void wlan_validate_certificates (wlan_wpa2_ent_obj_t *wpa2_ent) {
     }
 
     if (wpa2_ent->identity == NULL) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "indentiy required for WPA2_ENT authentication"));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "identity required for WPA2_ENT authentication"));
     } else if (strlen(wpa2_ent->identity) > 127) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid identity length %d", strlen(wpa2_ent->identity)));
     }
@@ -943,8 +980,9 @@ STATIC void wlan_set_default_inf(void)
 {
 #if defined(FIPY) || defined(GPY)
     if (wlan_obj.mode == WIFI_MODE_STA || wlan_obj.mode == WIFI_MODE_APSTA) {
-        tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_STA, ESP_NETIF_DNS_MAIN, &wlan_sta_inf_dns_info);
-        tcpip_adapter_up(TCPIP_ADAPTER_IF_STA);
+        esp_netif_set_dns_info(wlan_obj.esp_netif_STA, ESP_NETIF_DNS_MAIN, &wlan_sta_inf_dns_info);
+        //TODO: this is a private function
+//        esp_netif_up(wlan_obj.esp_netif_STA);
     }
 #endif
 }
@@ -1278,8 +1316,15 @@ mp_obj_t wlan_deinit(mp_obj_t self_in) {
             vTaskDelay(1 / portTICK_PERIOD_MS);
         }
 
-        /* stop and free wifi resource */
+        /* stop and free wifi resources */
+        esp_netif_destroy(wlan_obj.esp_netif_AP);
+        esp_netif_destroy(wlan_obj.esp_netif_STA);
         esp_wifi_deinit();
+        esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, wlan_event_handler);
+        esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, wlan_event_handler);
+        esp_event_loop_delete_default();
+        esp_netif_deinit();
+
         mod_wlan_is_deinit = true;
         wlan_obj.started = false;
         mod_network_deregister_nic(&wlan_obj);
@@ -1670,22 +1715,23 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), wlan_ifconfig_args, args);
 
     // check the interface id
-    tcpip_adapter_if_t adapter_if;
+    esp_interface_t interface_id;
     if (args[0].u_int > 1) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
     } else if (args[0].u_int == 0) {
-        adapter_if = TCPIP_ADAPTER_IF_STA;
+        interface_id = ESP_IF_WIFI_STA;
     } else {
-        adapter_if = TCPIP_ADAPTER_IF_AP;
+        interface_id = ESP_IF_WIFI_AP;
     }
+    esp_netif_t * esp_netif_interface = interface_id == ESP_IF_WIFI_STA ? wlan_obj.esp_netif_STA : wlan_obj.esp_netif_AP;
 
-    tcpip_adapter_dns_info_t dns_info;
+    esp_netif_dns_info_t dns_info;
     // get the configuration
     if (args[1].u_obj == MP_OBJ_NULL) {
         // get
-        tcpip_adapter_ip_info_t ip_info;
-        tcpip_adapter_get_dns_info(adapter_if, ESP_NETIF_DNS_MAIN, &dns_info);
-        if (ESP_OK == tcpip_adapter_get_ip_info(adapter_if, &ip_info)) {
+        esp_netif_ip_info_t ip_info;
+        esp_netif_get_dns_info(esp_netif_interface, ESP_NETIF_DNS_MAIN, &dns_info);
+        if (ESP_OK == esp_netif_get_ip_info(esp_netif_interface, &ip_info)) {
             mp_obj_t ifconfig[4] = {
                 netutils_format_ipv4_addr((uint8_t *)&ip_info.ip.addr, NETUTILS_BIG),
                 netutils_format_ipv4_addr((uint8_t *)&ip_info.netmask.addr, NETUTILS_BIG),
@@ -1702,21 +1748,17 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
             mp_obj_t *items;
             mp_obj_get_array_fixed_n(args[1].u_obj, 4, &items);
 
-            tcpip_adapter_ip_info_t ip_info;
+            esp_netif_ip_info_t ip_info;
             netutils_parse_ipv4_addr(items[0], (uint8_t *)&ip_info.ip.addr, NETUTILS_BIG);
             netutils_parse_ipv4_addr(items[1], (uint8_t *)&ip_info.netmask.addr, NETUTILS_BIG);
             netutils_parse_ipv4_addr(items[2], (uint8_t *)&ip_info.gw.addr, NETUTILS_BIG);
             netutils_parse_ipv4_addr(items[3], (uint8_t *)&dns_info.ip, NETUTILS_BIG);
 
-            if (adapter_if == TCPIP_ADAPTER_IF_STA) {
-                tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_STA);
-                tcpip_adapter_set_ip_info(adapter_if, &ip_info);
-                tcpip_adapter_set_dns_info(adapter_if, ESP_NETIF_DNS_MAIN, &dns_info);
-            } else {
-                tcpip_adapter_dhcps_stop(TCPIP_ADAPTER_IF_AP);
-                tcpip_adapter_set_ip_info(adapter_if, &ip_info);
-                tcpip_adapter_set_dns_info(adapter_if, ESP_NETIF_DNS_MAIN, &dns_info);
-                tcpip_adapter_dhcps_start(TCPIP_ADAPTER_IF_AP);
+            esp_netif_dhcpc_stop(esp_netif_interface);
+            esp_netif_set_ip_info(esp_netif_interface, &ip_info);
+            esp_netif_set_dns_info(esp_netif_interface, ESP_NETIF_DNS_MAIN, &dns_info);
+            if (interface_id == ESP_IF_WIFI_AP) {
+                esp_netif_dhcps_start(esp_netif_interface);
             }
         } else {
             // check for the correct string
@@ -1725,12 +1767,12 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, mpexception_value_invalid_arguments));
             }
 
-            if (ESP_OK != tcpip_adapter_dhcpc_start(adapter_if)) {
+            if (ESP_OK != esp_netif_dhcpc_start(esp_netif_interface)) {
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
         }
-        return mp_const_none;
     }
+    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_ifconfig_obj, 1, wlan_ifconfig);
 
@@ -1977,13 +2019,13 @@ STATIC mp_obj_t wlan_ap_tcpip_sta_list (mp_obj_t self_in) {
     uint8_t index;
     wifi_sta_list_t wifi_sta_list;
     esp_wifi_ap_get_sta_list(&wifi_sta_list);
-    tcpip_adapter_sta_list_t sta_list;
+    esp_netif_sta_list_t sta_list;
     wlan_obj_t * self = self_in;
 
     mp_obj_t sta_out_list = mp_obj_new_list(0, NULL);
     /* Check if AP mode is enabled */
     if (self->mode == WIFI_MODE_AP || self->mode == WIFI_MODE_APSTA) {
-        tcpip_adapter_get_sta_list(&wifi_sta_list, &sta_list);
+        esp_netif_get_sta_list(&wifi_sta_list, &sta_list);
 
         mp_obj_t tuple[2];
         for(index = 0; index < MAX_AP_CONNECTED_STA && index < sta_list.num; index++)
@@ -2768,8 +2810,8 @@ const mod_network_nic_type_t mod_network_nic_type_wlan = {
     .n_settimeout = lwipsocket_socket_settimeout,
     .n_ioctl = lwipsocket_socket_ioctl,
     .n_setupssl = lwipsocket_socket_setup_ssl,
-	.inf_up = wlan_is_inf_up,
-	.set_default_inf = wlan_set_default_inf
+    .inf_up = wlan_is_inf_up,
+    .set_default_inf = wlan_set_default_inf
 };
 
 //STATIC const mp_irq_methods_t wlan_irq_methods = {

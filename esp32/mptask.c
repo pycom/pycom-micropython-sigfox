@@ -657,7 +657,7 @@ STATIC void mptask_update_lpwan_mac_address (void) {
 void mptask_config_wifi(bool force_start)
 {
     uint8_t mode = config_get_wifi_mode();
-    uint8_t auth = config_get_wifi_auth();
+    wifi_auth_mode_t auth = (wifi_auth_mode_t)config_get_wifi_auth();
     bool wifi_on_boot = config_get_wifi_on_boot();
     bool antenna;
     char ssid_station [33];
@@ -686,10 +686,13 @@ void mptask_config_wifi(bool force_start)
         break;
     }
 
-    if(auth >= WIFI_AUTH_MAX)
+    // If "auth" is not configured, value 7 is returned because it is full of 1s
+    // Until WPA3 is not supported, using 3 bits in pycom_wifi_config_t for storing "auth" is okay
+    // If 4 bits will be used to store "auth", then (auth >= WIFI_AUTH_MAX) should be added back here
+    if(auth == 7)
     {
-        auth = (uint8_t)WIFI_AUTH_WPA2_PSK;
-        config_set_wifi_auth(auth, true);
+        auth = WIFI_AUTH_WPA2_PSK;
+        config_set_wifi_auth((uint8_t)auth, true);
     }
     if(true == config_get_wifi_antenna())
     {
@@ -733,7 +736,7 @@ void mptask_config_wifi(bool force_start)
                         pwd_sta,
                         ssid_ap,
                         pwd_ap,
-                        (uint32_t)auth,
+                        auth,
                         0,
                         antenna,
                         true,

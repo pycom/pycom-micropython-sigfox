@@ -51,6 +51,7 @@
 #include "machrtc.h"
 
 #include "mptask.h"
+#include "modwlan.h"
 
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
@@ -866,23 +867,19 @@ static ftp_result_t ftp_wait_for_connection (int32_t l_sd, int32_t *n_sd, uint32
     }
 
     if (ip_addr) {
-        tcpip_adapter_ip_info_t ip_info;
+        esp_netif_ip_info_t ip_info;
         wifi_mode_t wifi_mode;
         esp_wifi_get_mode(&wifi_mode);
         if (wifi_mode != WIFI_MODE_APSTA) {
             // easy way
-            tcpip_adapter_if_t if_type;
-            if (wifi_mode == WIFI_MODE_AP) {
-                if_type = TCPIP_ADAPTER_IF_AP;
-            } else {
-                if_type = TCPIP_ADAPTER_IF_STA;
-            }
-            tcpip_adapter_get_ip_info(if_type, &ip_info);
+            esp_netif_t * esp_netif_interface = wifi_mode == WIFI_MODE_AP ? wlan_obj.esp_netif_AP : wlan_obj.esp_netif_STA;
+
+            esp_netif_get_ip_info(esp_netif_interface, &ip_info);
         } else {
             // see on which subnet is the client ip address
-            tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info);
+            esp_netif_get_ip_info(wlan_obj.esp_netif_AP, &ip_info);
             if ((ip_info.ip.addr & ip_info.netmask.addr) != (ip_info.netmask.addr & sClientAddress.sin_addr.s_addr)) {
-                tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info);
+                esp_netif_get_ip_info(wlan_obj.esp_netif_STA, &ip_info);
             }
         }
         *ip_addr = ip_info.ip.addr;

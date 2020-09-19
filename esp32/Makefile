@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-IDF_HASH=8d4ec0a
+IDF_HASH=21739dc
 XTENSA_VERSION = "2020r2"
 
 TARGET ?= boot_app
@@ -114,21 +114,12 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lm \
        -lgcc \
        -lstdc++ \
-       -lnvs_flash -ltcpip_adapter -llog \
+       -lnvs_flash -lesp_netif -llog \
        -lspi_flash -lnvs_flash -ldriver -lesp32 -lexpat -lpthread  -lesp_adc_cal \
        -lfreertos -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
        -lesp_ringbuf -lcoap -lmdns -lefuse -lespcoredump -lapp_update \
-       -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig \
-       -lesp_netif
-
-# These libraries cannot be used otherwise application.elf does not link, error: "undefined references to `__locale_ctype_ptr'"
-# Using the libc and libm from the Toolchain solves this issue.
-# In esp-idf 4.1 and 4.2 these libraries are completely removed from esp-idf...
-#       $(ESP_IDF_COMP_PATH)/newlib/lib/libm-psram-workaround.a \
-#       $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
-#       $(ESP_IDF_COMP_PATH)/newlib/lib/libm.a \
-#       $(ESP_IDF_COMP_PATH)/newlib/lib/libc.a \
+       -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig
 
 ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
     LIBS += sigfox/modsigfox_$(BOARD).a
