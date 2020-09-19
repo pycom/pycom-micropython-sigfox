@@ -569,10 +569,14 @@ STATIC mp_obj_t lte_psm(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw
         pos++; // "
 
         // get three digit TAU unit
+#ifdef DEBUG
         char* oldpos = pos;
+#endif
         tuple[2] = mp_obj_new_int_from_str_len( (const char**) &pos, 3, false, 2);
+#ifdef DEBUG
+        // assert() is empty when NDEBUG is defined (so DEBUG is not defined) and it causes compilation warning as "variable 'oldpos' set but not used"
         assert( pos == oldpos + 3); // mp_obj_new_int_from_str_len is supposed to consume exactly 3 characters
-
+#endif
         // get five digit TAU value
         tuple[1] = mp_obj_new_int_from_str_len( (const char**) &pos, 5, false, 2);
 
@@ -582,10 +586,13 @@ STATIC mp_obj_t lte_psm(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw
         pos++; // "
 
         // get three digit ActiveTime unit
+#ifdef DEBUG
         oldpos = pos;
+#endif
         tuple[4] = mp_obj_new_int_from_str_len( (const char**) &pos, 3, false, 2);
+#ifdef DEBUG
         assert( pos == oldpos + 3); // mp_obj_new_int_from_str_len is supposed to consume exactly 3 characters
-
+#endif
         // get five digit ActiveTime value
         tuple[3] = mp_obj_new_int_from_str_len( (const char**) &pos, 5, false, 2);
 
