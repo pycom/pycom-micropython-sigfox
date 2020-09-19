@@ -158,7 +158,7 @@ STATIC void wlan_validate_security (uint8_t auth, const char *key);
 STATIC void wlan_set_security_internal (uint8_t auth, const char *key);
 STATIC void wlan_validate_channel (uint8_t channel);
 STATIC void wlan_set_antenna (uint8_t antenna);
-static esp_err_t wlan_event_handler(void *ctx, system_event_t *event);
+STATIC void wlan_event_handler(void* event_handler_arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key, int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent, const char *hostname, uint8_t channel);
 static void wlan_init_wlan_recover_params(void);
 static void wlan_timer_callback( TimerHandle_t xTimer );
@@ -182,7 +182,6 @@ STATIC void wlan_callback_handler(void* arg);
 void wlan_pre_init (void) {
     tcpip_adapter_init();
     wifi_event_group = xEventGroupCreate();
-    ESP_ERROR_CHECK(esp_event_loop_init(wlan_event_handler, NULL));
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
     wlan_wpa2_ent.ca_certs_path = NULL;
     wlan_wpa2_ent.client_cert_path = NULL;
@@ -247,7 +246,10 @@ void wlan_setup (wlan_internal_setup_t *config) {
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
+    // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to WIFI events
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wlan_event_handler, NULL));
+    // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to IP events
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wlan_event_handler, NULL));
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
     // stop the servers
@@ -351,102 +353,94 @@ STATIC bool wlan_is_inf_up(void)
 	return is_inf_up;
 }
 
-STATIC esp_err_t wlan_event_handler(void *ctx, system_event_t *event) {
-    switch(event->event_id) {
-        case SYSTEM_EVENT_STA_START: /**< ESP32 station start */
-            wlan_obj.sta_stopped = false;
-            break;
-        case SYSTEM_EVENT_STA_STOP:                 /**< ESP32 station stop */
-            wlan_obj.sta_stopped = true;
-            break;
-        case SYSTEM_EVENT_STA_CONNECTED: /**< ESP32 station connected to AP */
-        {
-            system_event_sta_connected_t *_event = (system_event_sta_connected_t *)&event->event_info;
-            memcpy(wlan_obj.bssid, _event->bssid, 6);
-            memcpy(wlan_obj.ssid_o, _event->ssid, 32);
-            wlan_obj.channel = _event->channel;
-            wlan_obj.auth = _event->authmode;
-            wlan_obj.disconnected = false;
-            /* Stop Conn timeout counter*/
-            wlan_stop_sta_conn_timer();
-        }
-            break;
-        case SYSTEM_EVENT_STA_GOT_IP: /**< ESP32 station got IP from connected AP */
-            xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-            mod_network_register_nic(&wlan_obj);
-#if defined(FIPY) || defined(GPY)
-            // Save DNS info for restoring if wifi inf is usable again after LTE disconnect
-            tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_STA, ESP_NETIF_DNS_MAIN, &wlan_sta_inf_dns_info);
-#endif
-            is_inf_up = true;
-            break;
-        case SYSTEM_EVENT_STA_DISCONNECTED: /**< ESP32 station disconnected from AP */
-            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-            system_event_sta_disconnected_t *disconn = &event->event_info.disconnected;
-        	is_inf_up = false;
-            switch (disconn->reason) {
-                case WIFI_REASON_AUTH_FAIL:
-                case WIFI_REASON_ASSOC_LEAVE:
-                    wlan_obj.disconnected = true;
-                    mod_network_deregister_nic(&wlan_obj);
-                    break;
-                default:
-                    // let other errors through and try to reconnect.
-                    break;
+STATIC void wlan_event_handler(void* event_handler_arg, esp_event_base_t event_base, int32_t event_id, void* event_data) {
+
+    if(WIFI_EVENT == event_base)
+    {
+        // Perform the specific action based on the event_id
+        switch(event_id) {
+            case WIFI_EVENT_STA_START:                      /**< ESP32 station start */
+                wlan_obj.sta_stopped = false;
+                break;
+            case WIFI_EVENT_STA_STOP:                       /**< ESP32 station stop */
+                wlan_obj.sta_stopped = true;
+                break;
+            case WIFI_EVENT_STA_CONNECTED:                  /**< ESP32 station connected to AP */
+            {
+                wifi_event_sta_connected_t *_event = (wifi_event_sta_connected_t *)event_data;
+                memcpy(wlan_obj.bssid, _event->bssid, 6);
+                memcpy(wlan_obj.ssid_o, _event->ssid, 32);
+                wlan_obj.channel = _event->channel;
+                wlan_obj.auth = _event->authmode;
+                wlan_obj.disconnected = false;
+                /* Stop Conn timeout counter*/
+                wlan_stop_sta_conn_timer();
             }
-            if (!wlan_obj.disconnected) {
-                wifi_mode_t mode;
-                if (esp_wifi_get_mode(&mode) == ESP_OK) {
-                    if (mode & WIFI_MODE_STA) {
-                        esp_wifi_connect();
+                break;
+            case WIFI_EVENT_STA_DISCONNECTED:               /**< ESP32 station disconnected from AP */
+                xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+                wifi_event_sta_disconnected_t *disconn = (wifi_event_sta_disconnected_t*)event_data;
+                is_inf_up = false;
+                switch (disconn->reason) {
+                    case WIFI_REASON_AUTH_FAIL:
+                    case WIFI_REASON_ASSOC_LEAVE:
+                        wlan_obj.disconnected = true;
+                        mod_network_deregister_nic(&wlan_obj);
+                        break;
+                    default:
+                        // let other errors through and try to reconnect.
+                        break;
+                }
+                if (!wlan_obj.disconnected) {
+                    wifi_mode_t mode;
+                    if (esp_wifi_get_mode(&mode) == ESP_OK) {
+                        if (mode & WIFI_MODE_STA) {
+                            esp_wifi_connect();
+                        }
                     }
                 }
-            }
-            break;
+                break;
 
-        case SYSTEM_EVENT_AP_START:                 /**< ESP32 soft-AP start */
-            mod_wlan_ap_number_of_connections = 0;
-            wlan_obj.soft_ap_stopped = false;
-            break;
-        case SYSTEM_EVENT_AP_STOP:                  /**< ESP32 soft-AP stop */
-            xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-            wlan_obj.soft_ap_stopped = true;
-            break;
-        case SYSTEM_EVENT_AP_STACONNECTED:          /**< a station connected to ESP32 soft-AP */
-            mod_wlan_ap_number_of_connections++;
-            xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
-            break;
-        case SYSTEM_EVENT_AP_STADISCONNECTED:       /**< a station disconnected from ESP32 soft-AP */
-            mod_wlan_ap_number_of_connections--;
-            if(mod_wlan_ap_number_of_connections == 0) {
+            case WIFI_EVENT_AP_START:                       /**< ESP32 soft-AP start */
+                mod_wlan_ap_number_of_connections = 0;
+                wlan_obj.soft_ap_stopped = false;
+                break;
+            case WIFI_EVENT_AP_STOP:                        /**< ESP32 soft-AP stop */
                 xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
-            }
-            break;
-        case SYSTEM_EVENT_WIFI_READY:                /**< ESP32 WiFi ready */
-        case SYSTEM_EVENT_SCAN_DONE:                /**< ESP32 finish scanning AP */
-        case SYSTEM_EVENT_STA_AUTHMODE_CHANGE:      /**< the auth mode of AP connected by ESP32 station changed */
-        case SYSTEM_EVENT_STA_LOST_IP:              /**< ESP32 station lost IP and the IP is reset to 0 */
-        case SYSTEM_EVENT_STA_WPS_ER_SUCCESS:       /**< ESP32 station wps succeeds in enrollee mode */
-        case SYSTEM_EVENT_STA_WPS_ER_FAILED:        /**< ESP32 station wps fails in enrollee mode */
-        case SYSTEM_EVENT_STA_WPS_ER_TIMEOUT:       /**< ESP32 station wps timeout in enrollee mode */
-        case SYSTEM_EVENT_STA_WPS_ER_PIN:           /**< ESP32 station wps pin code in enrollee mode */
-
-        case SYSTEM_EVENT_AP_STAIPASSIGNED:         /**< ESP32 soft-AP assign an IP to a connected station */
-        case SYSTEM_EVENT_AP_PROBEREQRECVED:        /**< Receive probe request packet in soft-AP interface */
-        case SYSTEM_EVENT_GOT_IP6:                  /**< ESP32 station or ap or ethernet interface v6IP addr is preferred */
-        case SYSTEM_EVENT_ETH_START:                /**< ESP32 ethernet start */
-        case SYSTEM_EVENT_ETH_STOP:                 /**< ESP32 ethernet stop */
-        case SYSTEM_EVENT_ETH_CONNECTED:            /**< ESP32 ethernet phy link up */
-        case SYSTEM_EVENT_ETH_DISCONNECTED:         /**< ESP32 ethernet phy link down */
-        case SYSTEM_EVENT_ETH_GOT_IP:               /**< ESP32 ethernet got IP from connected AP */
-
-                /*  TODO: some of These events will be a good candidate for Diagnostics log send to Pybytes*/
-
-            break;
-        default:
-            break;
+                wlan_obj.soft_ap_stopped = true;
+                break;
+            case WIFI_EVENT_AP_STACONNECTED:                /**< a station connected to ESP32 soft-AP */
+                mod_wlan_ap_number_of_connections++;
+                xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+                break;
+            case WIFI_EVENT_AP_STADISCONNECTED:             /**< a station disconnected from ESP32 soft-AP */
+                mod_wlan_ap_number_of_connections--;
+                if(mod_wlan_ap_number_of_connections == 0) {
+                    xEventGroupClearBits(wifi_event_group, CONNECTED_BIT);
+                }
+                break;
+            default:
+                /*  TODO: some of these other events not handled now might be a good candidate for Diagnostics log send to Pybytes */
+                break;
+        }
     }
-    return ESP_OK;
+    else if(IP_EVENT == event_base)
+    {
+        // Perform the specific action based on the event_id
+        switch(event_id) {
+            case IP_EVENT_STA_GOT_IP:                       /*!< station got IP from connected AP */
+                xEventGroupSetBits(wifi_event_group, CONNECTED_BIT);
+                mod_network_register_nic(&wlan_obj);
+#if defined(FIPY) || defined(GPY)
+                // Save DNS info for restoring if wifi inf is usable again after LTE disconnect
+                tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_STA, ESP_NETIF_DNS_MAIN, &wlan_sta_inf_dns_info);
+#endif
+                is_inf_up = true;
+                break;
+            default:
+               break;
+        }
+    }
 }
 
 STATIC void wlan_timer_callback( TimerHandle_t xTimer )
