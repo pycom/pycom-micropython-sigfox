@@ -1236,8 +1236,8 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     lte_check_init();
     lte_check_inppp();
     STATIC const mp_arg_t allowed_args[] = {
-        { MP_QSTR_cmd,                   MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_delay,                 MP_ARG_INT,  {.u_int = LTE_RX_TIMEOUT_MAX_MS} }
+        { MP_QSTR_cmd,        MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_timeout,    MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_int = LTE_RX_TIMEOUT_MAX_MS} },
     };
     // parse args
     uint32_t argLength = MP_ARRAY_SIZE(allowed_args);
@@ -1246,34 +1246,10 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     if (args[0].u_obj == mp_const_none) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "the command must be specified!"));
     }
-    uint32_t timeout = LTE_RX_TIMEOUT_MAX_MS;
     if (MP_OBJ_IS_STR_OR_BYTES(args[0].u_obj))
     {
         size_t len;
-        char* command = (char *)(mp_obj_str_get_data(args[0].u_obj, &len));
-
-        if(argLength > 1) {
-            timeout = args[1].u_int;
-        }
-
-        if(len <= LTE_AT_CMD_DATA_SIZE_MAX) {
-            lte_push_at_command_ext_cont(command, timeout, NULL, len, false);
-        } else {
-            size_t chunk_count = len / LTE_AT_CMD_DATA_SIZE_MAX;
-            size_t remaining_bytes = len % LTE_AT_CMD_DATA_SIZE_MAX;
-
-            bool expect_continuation = false;
-            char* chunk_start = command;
-            for(size_t i = 0; i < chunk_count; ++i) {
-                expect_continuation = (i < (chunk_count - 1)) || remaining_bytes;
-                lte_push_at_command_ext_cont(chunk_start, timeout, NULL, LTE_AT_CMD_DATA_SIZE_MAX, expect_continuation);
-                chunk_start += LTE_AT_CMD_DATA_SIZE_MAX;
-            }
-
-            if(remaining_bytes) {
-                lte_push_at_command_ext_cont(chunk_start, timeout, NULL, remaining_bytes, false);
-            }
-        }
+        lte_push_at_command_ext((char *)(mp_obj_str_get_data(args[0].u_obj, &len)), args[1].u_int, NULL, len);
     }
     else
     {
@@ -1285,7 +1261,7 @@ STATIC mp_obj_t lte_send_at_cmd(mp_uint_t n_args, const mp_obj_t *pos_args, mp_m
     vstr_add_str(&vstr, modlte_rsp.data);
     while(modlte_rsp.data_remaining)
     {
-        lte_push_at_command_ext("Pycom_Dummy", LTE_RX_TIMEOUT_MAX_MS, NULL, strlen("Pycom_Dummy") );
+        lte_push_at_command_ext("Pycom_Dummy", args[1].u_int, NULL, strlen("Pycom_Dummy") );
         vstr_add_str(&vstr, modlte_rsp.data);
     }
     return mp_obj_new_str_from_vstr(&mp_type_str, &vstr);

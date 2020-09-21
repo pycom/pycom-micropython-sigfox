@@ -258,7 +258,7 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
         if (timeout_cnt > 0) {
             timeout_cnt--;
         }
-    } while (timeout_cnt > 0 && 0 == rx_len);
+    } while ((timeout_cnt > 0 || timeout == 0) && 0 == rx_len);
 
     memset(lteppp_trx_buffer, 0, LTE_UART_BUFFER_SIZE);
     uint16_t len_count = 0;
