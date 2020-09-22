@@ -15,7 +15,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
 endif
 
 IDF_HASH=21739dc
-XTENSA_VERSION = "2020r2"
+XTENSA_VERSION = "2020r3"
 
 TARGET ?= boot_app
 
