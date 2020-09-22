@@ -1716,14 +1716,22 @@ STATIC mp_obj_t wlan_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_ma
 
     // check the interface id
     esp_interface_t interface_id;
+    esp_netif_t * esp_netif_interface;
     if (args[0].u_int > 1) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_resource_not_avaliable));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_AttributeError, "Invalid interface ID!"));
     } else if (args[0].u_int == 0) {
+        if(wlan_obj.esp_netif_STA == NULL) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_AttributeError, "The STA interface has not been initialized!"));
+        }
+        esp_netif_interface = wlan_obj.esp_netif_STA;
         interface_id = ESP_IF_WIFI_STA;
     } else {
+        if(wlan_obj.esp_netif_AP == NULL) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_AttributeError, "The AP interface has not been initialized!"));
+        }
+        esp_netif_interface = wlan_obj.esp_netif_AP;
         interface_id = ESP_IF_WIFI_AP;
     }
-    esp_netif_t * esp_netif_interface = interface_id == ESP_IF_WIFI_STA ? wlan_obj.esp_netif_STA : wlan_obj.esp_netif_AP;
 
     esp_netif_dns_info_t dns_info;
     // get the configuration
