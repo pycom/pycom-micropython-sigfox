@@ -1,92 +1,35 @@
 .. currentmodule:: machine
+.. _machine.ADC:
 
 class ADC -- analog to digital conversion
 =========================================
 
-Usage::
+The ADC class provides an interface to analog-to-digital convertors, and
+represents a single endpoint that can sample a continuous voltage and
+convert it to a discretised value.
+
+Example usage::
 
    import machine
 
-   adc = machine.ADC()             # create an ADC object
-   apin = adc.channel(pin='P16')   # create an analog pin on P16
-   val = apin()                    # read an analog value
+   adc = machine.ADC(pin)   # create an ADC object acting on a pin
+   val = adc.read_u16()     # read a raw analog value in the range 0-65535
 
 Constructors
 ------------
 
-.. #todo: document the bits parameter
+.. class:: ADC(id)
 
-.. class:: ADC(id=0)
-
-   Create an ADC object, that will let you associate a channel with a pin.
-   For more info check the :ref:`hardware section<hardware>`.
+   Access the ADC associated with a source identified by *id*.  This
+   *id* may be an integer (usually specifying a channel number), a
+   :ref:`Pin <machine.Pin>` object, or other value supported by the
+   underlying machine.
 
 Methods
 -------
 
-.. method:: adc.init(\*, bits=12)
+.. method:: ADC.read_u16()
 
-   Enable the ADC block. This method is automatically called on object creation.
-
-      - ``bits`` can take values between 9 and 12 and selects the number of bits of resolution of the ADC block.
-.. method:: adc.deinit()
-
-   Disable the ADC block.
-
-.. method:: adc.channel(\*, pin, attn=ADC.ATTN_0DB)
-
-   Create an analog pin.
-
-      - ``pin`` is a keyword-only string argument. Valid pins are 'P13' to 'P20'.
-      - ``attn`` is the attenuation level. The supported values are: ``ADC.ATTN_0DB``, ``ADC.ATTN_2_5DB``, ``ADC.ATTN_6DB``, ``ADC.ATTN_11DB``
-
-   Returns an instance of :class:`ADCChannel`. Example::
-
-      # enable an ADC channel on P16
-      apin = adc.channel(pin='P16')
-
-Constants
----------
-
-.. data:: ADC.ATTN_0DB
-          ADC.ATTN_2_5DB
-          ADC.ATTN_6DB
-          ADC.ATTN_11DB
-
-   ADC channel attenuation values
-
-
-class ADCChannel --- read analog values from internal or external sources
--------------------------------------------------------------------------
-
-ADC channels can be connected to internal points of the MCU or to GPIO pins.
-ADC channels are created using the ADC.channel method.
-
-.. comment: the method adcchannel gets modified on runtime by javascript bellow
-
-.. method:: adcchannel()
-
-   Fast method to read the channel value.
-
-.. method:: adcchannel.value()
-
-   Read the channel value.
-
-.. method:: adcchannel.init()
-
-   (Re)init and enable the ADC channel. This method is automatically called on object creation.
-
-.. method:: adcchannel.deinit()
-
-   Disable the ADC channel.
-
-.. raw:: html
-
-    <script>
-        el = document.getElementById('machine.adcchannel').getElementsByClassName('descclassname')[0].innerText = "";
-    </script>
-
-.. warning::
-
-      ADC pin input range is 0-1.1V. This maximum value can be increased up to 3.3V using the highest attenuation of 11dB.
-      DO NOT exceed the maximum of 3.3V in order to avoid damaging the device.
+   Take an analog reading and return an integer in the range 0-65535.
+   The return value represents the raw reading taken by the ADC, scaled
+   such that the minimum value is 0 and the maximum value is 65535.

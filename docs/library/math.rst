@@ -4,14 +4,14 @@
 .. module:: math
    :synopsis: mathematical functions
 
+|see_cpython_module| :mod:`python:math`.
+
 The ``math`` module provides some basic mathematical functions for
 working with floating-point numbers.
 
-.. only:: port_pyboard
+*Note:* On the pyboard, floating-point numbers have 32-bit precision.
 
-   *Note:* On the pyboard, floating-point numbers have 32-bit precision.
-
-Availability: not available on WiPy 1.0. Floating point support required
+Availability: not available on WiPy. Floating point support required
 for this module.
 
 Functions

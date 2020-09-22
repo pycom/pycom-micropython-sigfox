@@ -1,4 +1,4 @@
-.. _quickref:
+.. _esp8266_quickref:
 
 Quick reference for the ESP8266
 ===============================
@@ -8,6 +8,15 @@ Quick reference for the ESP8266
     :width: 640px
 
 The Adafruit Feather HUZZAH board (image attribution: Adafruit).
+
+Below is a quick reference for ESP8266-based boards.  If it is your first time
+working with this board please consider reading the following sections first:
+
+.. toctree::
+   :maxdepth: 1
+
+   general.rst
+   tutorial/index.rst
 
 Installing MicroPython
 ----------------------
@@ -83,12 +92,12 @@ Use the :mod:`time <utime>` module::
     time.sleep_ms(500)      # sleep for 500 milliseconds
     time.sleep_us(10)       # sleep for 10 microseconds
     start = time.ticks_ms() # get millisecond counter
-    delta = time.ticks_diff(start, time.ticks_ms()) # compute time difference
+    delta = time.ticks_diff(time.ticks_ms(), start) # compute time difference
 
 Timers
 ------
 
-Virtual (RTOS-based) timers are supported. Use the ``machine.Timer`` class
+Virtual (RTOS-based) timers are supported. Use the :ref:`machine.Timer <machine.Timer>` class
 with timer ID of -1::
 
     from machine import Timer
@@ -102,14 +111,14 @@ The period is in milliseconds.
 Pins and GPIO
 -------------
 
-Use the ``machine.Pin`` class::
+Use the :ref:`machine.Pin <machine.Pin>` class::
 
     from machine import Pin
 
     p0 = Pin(0, Pin.OUT)    # create output pin on GPIO0
-    p0.high()               # set pin to high
-    p0.low()                # set pin to low
-    p0.value(1)             # set pin to high
+    p0.on()                 # set pin to "on" (high) level
+    p0.off()                # set pin to "off" (low) level
+    p0.value(1)             # set pin to on/high
 
     p2 = Pin(2, Pin.IN)     # create input pin on GPIO2
     print(p2.value())       # get value, 0 or 1
@@ -155,7 +164,7 @@ ADC (analog to digital conversion)
 ADC is available on a dedicated pin.
 Note that input voltages on the ADC pin must be between 0v and 1.0v.
 
-Use the ``machine.ADC`` class::
+Use the :ref:`machine.ADC <machine.ADC>` class::
 
     from machine import ADC
 
@@ -166,7 +175,8 @@ Software SPI bus
 ----------------
 
 There are two SPI drivers. One is implemented in software (bit-banging)
-and works on all pins::
+and works on all pins, and is accessed via the :ref:`machine.SPI <machine.SPI>`
+class::
 
     from machine import Pin, SPI
 
@@ -178,7 +188,7 @@ and works on all pins::
     spi.init(baudrate=200000) # set the baudrate
 
     spi.read(10)            # read 10 bytes on MISO
-    spi.read(10, 0xff)      # read 10 bytes while outputing 0xff on MOSI
+    spi.read(10, 0xff)      # read 10 bytes while outputting 0xff on MOSI
 
     buf = bytearray(50)     # create a buffer
     spi.readinto(buf)       # read into the given buffer (reads 50 bytes in this case)
@@ -208,7 +218,8 @@ constructor and init (as those are fixed)::
 I2C bus
 -------
 
-The I2C driver is implemented in software and works on all pins::
+The I2C driver is implemented in software and works on all pins,
+and is accessed via the :ref:`machine.I2C <machine.I2C>` class::
 
     from machine import Pin, I2C
 
@@ -220,6 +231,27 @@ The I2C driver is implemented in software and works on all pins::
 
     buf = bytearray(10)     # create a buffer with 10 bytes
     i2c.writeto(0x3a, buf)  # write the given buffer to the slave
+
+Real time clock (RTC)
+---------------------
+
+See :ref:`machine.RTC <machine.RTC>` ::
+
+    from machine import RTC
+
+    rtc = RTC()
+    rtc.datetime((2017, 8, 23, 1, 12, 48, 0, 0)) # set a specific date and time
+    rtc.datetime() # get date and time
+
+    # synchronize with ntp
+    # need to be connected to wifi
+    import ntptime
+    ntptime.settime() # set the rtc datetime from the remote server
+    rtc.datetime()    # get the date and time in UTC
+
+.. note:: Not all methods are implemented: `RTC.now()`, `RTC.irq(handler=*) <RTC.irq>`
+          (using a custom handler), `RTC.init()` and `RTC.deinit()` are
+          currently not supported.
 
 Deep-sleep mode
 ---------------
@@ -336,16 +368,16 @@ WebREPL (web browser interactive prompt)
 WebREPL (REPL over WebSockets, accessible via a web browser) is an
 experimental feature available in ESP8266 port. Download web client
 from https://github.com/micropython/webrepl (hosted version available
-at http://micropython.org/webrepl), and start the daemon on a device
-using::
+at http://micropython.org/webrepl), and configure it by executing::
+
+    import webrepl_setup
+
+and following on-screen instructions. After reboot, it will be available
+for connection. If you disabled automatic start-up on boot, you may
+run configured daemon on demand using::
 
     import webrepl
     webrepl.start()
-
-(Release versions have it started on boot by default.)
-
-On a first connection, you will be prompted to set password for future
-sessions to use.
 
 The supported way to use WebREPL is by connecting to ESP8266 access point,
 but the daemon is also started on STA interface if it is active, so if your
@@ -353,12 +385,10 @@ router is set up and works correctly, you may also use WebREPL while connected
 to your normal Internet access point (use the ESP8266 AP connection method
 if you face any issues).
 
-WebREPL is an experimental feature and a work in progress, and has known
-issues.
+Besides terminal/command prompt access, WebREPL also has provision for file
+transfer (both upload and download). Web client has buttons for the
+corresponding functions, or you can use command-line client ``webrepl_cli.py``
+from the repository above.
 
-There's also provision to transfer (both upload and download)
-files over WebREPL connection, but it has even more experimental status
-than the WebREPL terminal mode. It is still a practical way to
-get script files onto ESP8266, so give it a try using ``webrepl_cli.py``
-from the repository above. See the MicroPython forum for other
-community-supported alternatives to transfer files to ESP8266.
+See the MicroPython forum for other community-supported alternatives
+to transfer files to ESP8266.

@@ -1,9 +1,10 @@
 .. currentmodule:: pyb
+.. _pyb.USB_VCP:
 
 class USB_VCP -- USB virtual comm port
 ======================================
 
-The USB_VCP class allows creation of an object representing the USB
+The USB_VCP class allows creation of a `stream`-like object representing the USB
 virtual comm port.  It can be used to read and write data over USB to
 the connected host.
 
@@ -11,13 +12,20 @@ the connected host.
 Constructors
 ------------
 
-.. class:: pyb.USB_VCP()
+.. class:: pyb.USB_VCP(id=0)
 
-   Create a new USB_VCP object.
+   Create a new USB_VCP object.  The *id* argument specifies which USB VCP port to
+   use.
 
 
 Methods
 -------
+
+.. method:: USB_VCP.init(\*, flow=-1)
+
+   Configure the USB VCP port.  If the *flow* argument is not -1 then the value sets
+   the flow control, which can be a bitwise-or of ``USB_VCP.RTS`` and ``USB_VCP.CTS``.
+   RTS is used to control read behaviour and CTS, to control write behaviour.
 
 .. method:: USB_VCP.setinterrupt(chr)
 
@@ -44,15 +52,11 @@ Methods
 .. method:: USB_VCP.read([nbytes])
 
    Read at most ``nbytes`` from the serial device and return them as a
-   bytes object.  If ``nbytes`` is not specified then the method acts as
-   ``readall()``. USB_VCP stream implicitly works in non-blocking mode,
+   bytes object.  If ``nbytes`` is not specified then the method reads
+   all available bytes from the serial device.
+   USB_VCP `stream` implicitly works in non-blocking mode,
    so if no pending data available, this method will return immediately
    with ``None`` value.
-
-.. method:: USB_VCP.readall()
-
-   Read all available bytes from the serial device and return them as
-   a bytes object, or ``None`` if no pending data available.
 
 .. method:: USB_VCP.readinto(buf, [maxlen])
 
@@ -88,19 +92,28 @@ Methods
 .. method:: USB_VCP.recv(data, \*, timeout=5000)
 
    Receive data on the bus:
-   
+
      - ``data`` can be an integer, which is the number of bytes to receive,
        or a mutable buffer, which will be filled with received bytes.
      - ``timeout`` is the timeout in milliseconds to wait for the receive.
-   
+
    Return value: if ``data`` is an integer then a new buffer of the bytes received,
    otherwise the number of bytes read into ``data`` is returned.
 
 .. method:: USB_VCP.send(data, \*, timeout=5000)
 
    Send data over the USB VCP:
-   
+
      - ``data`` is the data to send (an integer to send, or a buffer object).
      - ``timeout`` is the timeout in milliseconds to wait for the send.
-   
+
    Return value: number of bytes sent.
+
+
+Constants
+---------
+
+.. data:: USB_VCP.RTS
+          USB_VCP.CTS
+
+   to select the flow control type.

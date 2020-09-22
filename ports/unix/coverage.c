@@ -10,6 +10,7 @@
 #include "py/builtin.h"
 #include "py/emit.h"
 #include "py/formatfloat.h"
+#include "py/ringbuf.h"
 #include "py/stream.h"
 #include "py/binary.h"
 #include "py/bc.h"
@@ -118,7 +119,6 @@ STATIC mp_uint_t stest_read2(mp_obj_t o_in, void *buf, mp_uint_t size, int *errc
 
 STATIC const mp_rom_map_elem_t rawfile_locals_dict_table2[] = {
     { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_stream_read_obj) },
-    { MP_ROM_QSTR(MP_QSTR_write), MP_ROM_PTR(&mp_stream_write_obj) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(rawfile_locals_dict2, rawfile_locals_dict_table2);
@@ -162,6 +162,7 @@ STATIC mp_obj_t extra_coverage(void) {
         mp_printf(&mp_plat_print, "%x\n", 0x80000000); // should print unsigned
         mp_printf(&mp_plat_print, "%X\n", 0x80000000); // should print unsigned
         mp_printf(&mp_plat_print, "abc\n%"); // string ends in middle of format specifier
+        mp_printf(&mp_plat_print, "%%\n"); // literal % character
     }
 
     // GC
@@ -251,7 +252,7 @@ STATIC mp_obj_t extra_coverage(void) {
         mp_printf(&mp_plat_print, "# str\n");
 
         // intern string
-        mp_printf(&mp_plat_print, "%d\n", MP_OBJ_IS_QSTR(mp_obj_str_intern(mp_obj_new_str("intern me", 9))));
+        mp_printf(&mp_plat_print, "%d\n", mp_obj_is_qstr(mp_obj_str_intern(mp_obj_new_str("intern me", 9))));
     }
 
     // bytearray
@@ -384,7 +385,7 @@ STATIC mp_obj_t extra_coverage(void) {
         code_state->fun_bc = &fun_bc;
         code_state->ip = (const byte*)"\x00"; // just needed for an invalid opcode
         code_state->sp = &code_state->state[0];
-        code_state->exc_sp = NULL;
+        code_state->exc_sp_idx = 0;
         code_state->old_globals = NULL;
         mp_vm_return_kind_t ret = mp_execute_bytecode(code_state, MP_OBJ_NULL);
         mp_printf(&mp_plat_print, "%d %d\n", ret, mp_obj_get_type(code_state->state[0]) == &mp_type_NotImplementedError);
@@ -417,6 +418,77 @@ STATIC mp_obj_t extra_coverage(void) {
         while (mp_sched_num_pending()) {
             mp_handle_pending();
         }
+    }
+
+    // ringbuf
+    {
+        byte buf[100];
+        ringbuf_t ringbuf = {buf, sizeof(buf), 0, 0};
+
+        mp_printf(&mp_plat_print, "# ringbuf\n");
+
+        // Single-byte put/get with empty ringbuf.
+        mp_printf(&mp_plat_print, "%d %d\n", ringbuf_free(&ringbuf), ringbuf_avail(&ringbuf));
+        ringbuf_put(&ringbuf, 22);
+        mp_printf(&mp_plat_print, "%d %d\n", ringbuf_free(&ringbuf), ringbuf_avail(&ringbuf));
+        mp_printf(&mp_plat_print, "%d\n", ringbuf_get(&ringbuf));
+        mp_printf(&mp_plat_print, "%d %d\n", ringbuf_free(&ringbuf), ringbuf_avail(&ringbuf));
+
+        // Two-byte put/get with empty ringbuf.
+        ringbuf_put16(&ringbuf, 0xaa55);
+        mp_printf(&mp_plat_print, "%d %d\n", ringbuf_free(&ringbuf), ringbuf_avail(&ringbuf));
+        mp_printf(&mp_plat_print, "%04x\n", ringbuf_get16(&ringbuf));
+        mp_printf(&mp_plat_print, "%d %d\n", ringbuf_free(&ringbuf), ringbuf_avail(&ringbuf));
+
+        // Two-byte put with full ringbuf.
+        for (int i = 0; i < 99; ++i) {
+            ringbuf_put(&ringbuf, i);
+        }
+        mp_printf(&mp_plat_print, "%d %d\n", ringbuf_free(&ringbuf), ringbuf_avail(&ringbuf));
+        mp_printf(&mp_plat_print, "%d\n", ringbuf_put16(&ringbuf, 0x11bb));
+        // Two-byte put with one byte free.
+        ringbuf_get(&ringbuf);
+        mp_printf(&mp_plat_print, "%d %d\n", ringbuf_free(&ringbuf), ringbuf_avail(&ringbuf));
+        mp_printf(&mp_plat_print, "%d\n", ringbuf_put16(&ringbuf, 0x3377));
+        ringbuf_get(&ringbuf);
+        mp_printf(&mp_plat_print, "%d %d\n", ringbuf_free(&ringbuf), ringbuf_avail(&ringbuf));
+        mp_printf(&mp_plat_print, "%d\n", ringbuf_put16(&ringbuf, 0xcc99));
+        for (int i = 0; i < 97; ++i) {
+            ringbuf_get(&ringbuf);
+        }
+        mp_printf(&mp_plat_print, "%04x\n", ringbuf_get16(&ringbuf));
+        mp_printf(&mp_plat_print, "%d %d\n", ringbuf_free(&ringbuf), ringbuf_avail(&ringbuf));
+
+        // Two-byte put with wrap around on first byte:
+        ringbuf.iput = 0;
+        ringbuf.iget = 0;
+        for (int i = 0; i < 99; ++i) {
+            ringbuf_put(&ringbuf, i);
+            ringbuf_get(&ringbuf);
+        }
+        mp_printf(&mp_plat_print, "%d\n", ringbuf_put16(&ringbuf, 0x11bb));
+        mp_printf(&mp_plat_print, "%04x\n", ringbuf_get16(&ringbuf));
+
+        // Two-byte put with wrap around on second byte:
+        ringbuf.iput = 0;
+        ringbuf.iget = 0;
+        for (int i = 0; i < 98; ++i) {
+            ringbuf_put(&ringbuf, i);
+            ringbuf_get(&ringbuf);
+        }
+        mp_printf(&mp_plat_print, "%d\n", ringbuf_put16(&ringbuf, 0x22ff));
+        mp_printf(&mp_plat_print, "%04x\n", ringbuf_get16(&ringbuf));
+
+        // Two-byte get from empty ringbuf.
+        ringbuf.iput = 0;
+        ringbuf.iget = 0;
+        mp_printf(&mp_plat_print, "%d\n", ringbuf_get16(&ringbuf));
+        
+        // Two-byte get from ringbuf with one byte available.
+        ringbuf.iput = 0;
+        ringbuf.iget = 0;
+        ringbuf_put(&ringbuf, 0xaa);
+        mp_printf(&mp_plat_print, "%d\n", ringbuf_get16(&ringbuf));
     }
 
     mp_obj_streamtest_t *s = m_new_obj(mp_obj_streamtest_t);

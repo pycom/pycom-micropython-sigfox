@@ -1,5 +1,5 @@
 /*
- * This file is part of the Micro Python project, http://micropython.org/
+ * This file is part of the MicroPython project, http://micropython.org/
  *
  * The MIT License (MIT)
  *
@@ -35,11 +35,13 @@
 
 static char heap[16384];
 
-mp_obj_t execute_from_lexer(mp_lexer_t *lex) {
+mp_obj_t execute_from_str(const char *str) {
     nlr_buf_t nlr;
     if (nlr_push(&nlr) == 0) {
+        qstr src_name = 1/*MP_QSTR_*/;
+        mp_lexer_t *lex = mp_lexer_new_from_str_len(src_name, str, strlen(str), false);
         mp_parse_tree_t pt = mp_parse(lex, MP_PARSE_FILE_INPUT);
-        mp_obj_t module_fun = mp_compile(&pt, lex->source_name, MP_EMIT_OPT_NONE, false);
+        mp_obj_t module_fun = mp_compile(&pt, src_name, false);
         mp_call_function_0(module_fun);
         nlr_pop();
         return 0;
@@ -58,8 +60,7 @@ int main() {
     mp_init();
 
     const char str[] = "print('Hello world of easy embedding!')";
-    mp_lexer_t *lex = mp_lexer_new_from_str_len(0/*MP_QSTR_*/, str, strlen(str), false);
-    if (execute_from_lexer(lex)) {
+    if (execute_from_str(str)) {
         printf("Error\n");
     }
 }

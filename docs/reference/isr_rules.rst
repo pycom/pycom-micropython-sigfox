@@ -21,6 +21,7 @@ This summarises the points detailed below and lists the principal recommendation
 
 * Keep the code as short and simple as possible.
 * Avoid memory allocation: no appending to lists or insertion into dictionaries, no floating point.
+* Consider using ``micropython.schedule`` to work around the above constraint.
 * Where an ISR returns multiple bytes use a pre-allocated ``bytearray``. If multiple integers are to be
   shared between an ISR and the main program consider an array (``array.array``).
 * Where data is shared between the main program and an ISR, consider disabling interrupts prior to accessing
@@ -79,7 +80,7 @@ example causes two LED's to flash at different rates.
             self.led.toggle()
 
     red = Foo(pyb.Timer(4, freq=1), pyb.LED(1))
-    greeen = Foo(pyb.Timer(2, freq=0.8), pyb.LED(2))
+    green = Foo(pyb.Timer(2, freq=0.8), pyb.LED(2))
 
 In this example the ``red`` instance associates timer 4 with LED 1: when a timer 4 interrupt occurs ``red.cb()``
 is called causing LED 1 to change state. The ``green`` instance operates similarly: a timer 2 interrupt
@@ -123,6 +124,32 @@ A means of creating an object without employing a class or globals is as follows
 The compiler instantiates the default ``buf`` argument when the function is
 loaded for the first time (usually when the module it's in is imported).
 
+An instance of object creation occurs when a reference to a bound method is
+created. This means that an ISR cannot pass a bound method to a function. One
+solution is to create a reference to the bound method in the class constructor
+and to pass that reference in the ISR. For example:
+
+.. code:: python
+
+    class Foo():
+        def __init__(self):
+            self.bar_ref = self.bar  # Allocation occurs here
+            self.x = 0.1
+            tim = pyb.Timer(4)
+            tim.init(freq=2)
+            tim.callback(self.cb)
+
+        def bar(self, _):
+            self.x *= 1.2
+            print(self.x)
+
+        def cb(self, t):
+            # Passing self.bar would cause allocation.
+            micropython.schedule(self.bar_ref, 0)
+
+Other techniques are to define and instantiate the method in the constructor
+or to pass :meth:`Foo.bar` with the argument *self*.
+
 Use of Python objects
 ~~~~~~~~~~~~~~~~~~~~~
 
@@ -157,6 +184,29 @@ to floats is normally done in the main loop. However there are a few DSP algorit
 On platforms with hardware floating point (such as the Pyboard) the inline ARM Thumb assembler can be used to work
 round this limitation. This is because the processor stores float values in a machine word; values can be shared
 between the ISR and main program code via an array of floats.
+
+Using micropython.schedule
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This function enables an ISR to schedule a callback for execution "very soon". The callback is queued for
+execution which will take place at a time when the heap is not locked. Hence it can create Python objects
+and use floats. The callback is also guaranteed to run at a time when the main program has completed any
+update of Python objects, so the callback will not encounter partially updated objects.
+
+Typical usage is to handle sensor hardware. The ISR acquires data from the hardware and enables it to
+issue a further interrupt. It then schedules a callback to process the data.
+
+Scheduled callbacks should comply with the principles of interrupt handler design outlined below. This is to
+avoid problems resulting from I/O activity and the modification of shared data which can arise in any code
+which pre-empts the main program loop.
+
+Execution time needs to be considered in relation to the frequency with which interrupts can occur. If an
+interrupt occurs while the previous callback is executing, a further instance of the callback will be queued
+for execution; this will run after the current instance has completed. A sustained high interrupt repetition
+rate therefore carries a risk of unconstrained queue growth and eventual failure with a ``RuntimeError``.
+
+If the callback to be passed to `schedule()` is a bound method, consider the
+note in "Creation of Python objects".
 
 Exceptions
 ----------

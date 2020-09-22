@@ -1,4 +1,5 @@
 .. currentmodule:: machine
+.. _machine.I2C:
 
 class I2C -- a two-wire serial protocol
 =======================================
@@ -6,146 +7,101 @@ class I2C -- a two-wire serial protocol
 I2C is a two-wire protocol for communicating between devices.  At the physical
 level it consists of 2 wires: SCL and SDA, the clock and data lines respectively.
 
-I2C objects are created attached to a specific bus.  They can be initialized
-when created, or initialized later on.
+I2C objects are created attached to a specific bus.  They can be initialised
+when created, or initialised later on.
 
-.. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
+Printing the I2C object gives you information about its configuration.
 
-    Example::
+Example usage::
 
-        from machine import I2C
+    from machine import I2C
 
-        i2c = I2C(0)                         # create on bus 0
-        i2c = I2C(0, I2C.MASTER)             # create and init as a master
-        i2c.init(I2C.MASTER, baudrate=20000) # init as a master
-        i2c.deinit()                         # turn off the peripheral
+    i2c = I2C(freq=400000)          # create I2C peripheral at frequency of 400kHz
+                                    # depending on the port, extra parameters may be required
+                                    # to select the peripheral and/or pins to use
 
-Printing the i2c object gives you information about its configuration.
+    i2c.scan()                      # scan for slaves, returning a list of 7-bit addresses
 
-.. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
+    i2c.writeto(42, b'123')         # write 3 bytes to slave with 7-bit address 42
+    i2c.readfrom(42, 4)             # read 4 bytes from slave with 7-bit address 42
 
-    A master must specify the recipient's address::
-
-        i2c.init(I2C.MASTER)
-        i2c.writeto(0x42, '123')        # send 3 bytes to slave with address 0x42
-        i2c.writeto(addr=0x42, b'456')  # keyword for address
-
-    Master also has other methods::
-
-        i2c.scan()                          # scan for slaves on the bus, returning
-                                            #   a list of valid addresses
-        i2c.readfrom_mem(0x42, 2, 3)        # read 3 bytes from memory of slave 0x42,
-                                            #   starting at address 2 in the slave
-        i2c.writeto_mem(0x42, 2, 'abc')     # write 'abc' (3 bytes) to memory of slave 0x42
-                                            # starting at address 2 in the slave, timeout after 1 second
-
-
-Quick usage example
--------------------
-
-    ::
-
-        from machine import I2C
-        # configure the I2C bus
-        i2c = I2C(0, I2C.MASTER, baudrate=100000)
-        i2c.scan() # returns list of slave addresses
-        i2c.writeto(0x42, 'hello') # send 5 bytes to slave with address 0x42
-        i2c.readfrom(0x42, 5) # receive 5 bytes from slave
-        i2c.readfrom_mem(0x42, 0x10, 2) # read 2 bytes from slave 0x42, slave memory 0x10
-        i2c.writeto_mem(0x42, 0x10, 'xy') # write 2 bytes to slave 0x42, slave memory 0x10
+    i2c.readfrom_mem(42, 8, 3)      # read 3 bytes from memory of slave 42,
+                                    #   starting at memory-address 8 in the slave
+    i2c.writeto_mem(42, 2, b'\x10') # write 1 byte to memory of slave 42
+                                    #   starting at address 2 in the slave
 
 Constructors
 ------------
 
-.. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
+.. class:: I2C(id=-1, \*, scl, sda, freq=400000)
 
-    .. class:: I2C(bus, ...)
+   Construct and return a new I2C object using the following parameters:
 
-       Construct an I2C object on the given bus.  `bus` can only be 0, 1 or 2.
-       If the bus is not given, the default one will be selected (0). Buses 0 and 1
-       use the ESP32 I2C hardware peripheral while bus 2 is implemented with a
-       bit-banged software driver.
-
-.. only:: port_esp8266
-
-    .. class:: I2C(scl, sda, \*, freq=400000)
-
-       Construct and return a new I2C object.
-       See the init method below for a description of the arguments.
+      - *id* identifies a particular I2C peripheral.  The default
+        value of -1 selects a software implementation of I2C which can
+        work (in most cases) with arbitrary pins for SCL and SDA.
+        If *id* is -1 then *scl* and *sda* must be specified.  Other
+        allowed values for *id* depend on the particular port/board,
+        and specifying *scl* and *sda* may or may not be required or
+        allowed in this case.
+      - *scl* should be a pin object specifying the pin to use for SCL.
+      - *sda* should be a pin object specifying the pin to use for SDA.
+      - *freq* should be an integer which sets the maximum frequency
+        for SCL.
 
 General Methods
 ---------------
 
-.. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
+.. method:: I2C.init(scl, sda, \*, freq=400000)
 
-    .. method:: i2c.init(mode, \*, baudrate=100000, pins=(SDA, SCL))
+  Initialise the I2C bus with the given arguments:
 
-      Initialize the I2C bus with the given parameters:
+     - *scl* is a pin object for the SCL line
+     - *sda* is a pin object for the SDA line
+     - *freq* is the SCL clock rate
 
-         - ``mode`` must be ``I2C.MASTER``
-         - ``baudrate`` is the SCL clock rate
-         - ``pins`` is an optional tuple with the pins to assign to the I2C bus. The default I2C pins are ``P9`` (SDA) and ``P10`` (SCL)
+.. method:: I2C.deinit()
 
-.. only:: port_esp8266
+   Turn off the I2C bus.
 
-    .. method:: i2c.init(scl, sda, \*, freq=400000)
+   Availability: WiPy.
 
-      Initialize the I2C bus with the given arguments:
-
-         - `scl` is a pin object for the SCL line
-         - `sda` is a pin object for the SDA line
-         - `freq` is the SCL clock rate
-
-.. only:: port_wipy
-
-    .. method:: i2c.deinit()
-
-       Turn off the I2C bus.
-
-       Availability: WiPy.
-
-.. method:: i2c.scan()
+.. method:: I2C.scan()
 
    Scan all I2C addresses between 0x08 and 0x77 inclusive and return a list of
    those that respond.  A device responds if it pulls the SDA line low after
-   its address (including a read bit) is sent on the bus.
+   its address (including a write bit) is sent on the bus.
 
-.. only:: port_esp8266
+Primitive I2C operations
+------------------------
 
-    Primitive I2C operations
-    ------------------------
+The following methods implement the primitive I2C master bus operations and can
+be combined to make any I2C transaction.  They are provided if you need more
+control over the bus, otherwise the standard methods (see below) can be used.
 
-    The following methods implement the primitive I2C master bus operations and can
-    be combined to make any I2C transaction.  They are provided if you need more
-    control over the bus, otherwise the standard methods (see below) can be used.
+These methods are available on software I2C only.
 
-    .. method:: I2C.start()
+.. method:: I2C.start()
 
-       Send a start bit on the bus (SDA transitions to low while SCL is high).
+   Generate a START condition on the bus (SDA transitions to low while SCL is high).
 
-       Availability: ESP8266.
+.. method:: I2C.stop()
 
-    .. method:: I2C.stop()
+   Generate a STOP condition on the bus (SDA transitions to high while SCL is high).
 
-       Send a stop bit on the bus (SDA transitions to high while SCL is high).
+.. method:: I2C.readinto(buf, nack=True)
 
-       Availability: ESP8266.
+   Reads bytes from the bus and stores them into *buf*.  The number of bytes
+   read is the length of *buf*.  An ACK will be sent on the bus after
+   receiving all but the last byte.  After the last byte is received, if *nack*
+   is true then a NACK will be sent, otherwise an ACK will be sent (and in this
+   case the slave assumes more bytes are going to be read in a later call).
 
-    .. method:: I2C.readinto(buf)
+.. method:: I2C.write(buf)
 
-       Reads bytes from the bus and stores them into `buf`.  The number of bytes
-       read is the length of `buf`.  An ACK will be sent on the bus after
-       receiving all but the last byte, and a NACK will be sent following the last
-       byte.
-
-       Availability: ESP8266.
-
-    .. method:: I2C.write(buf)
-
-       Write all the bytes from `buf` to the bus.  Checks that an ACK is received
-       after each byte and raises an OSError if not.
-
-       Availability: ESP8266.
+   Write the bytes from *buf* to the bus.  Checks that an ACK is received
+   after each byte and stops transmitting the remaining bytes if a NACK is
+   received.  The function returns the number of ACKs that were received.
 
 Standard bus operations
 -----------------------
@@ -153,26 +109,41 @@ Standard bus operations
 The following methods implement the standard I2C master read and write
 operations that target a given slave device.
 
-.. method:: i2c.readfrom(addr, nbytes)
+.. method:: I2C.readfrom(addr, nbytes, stop=True)
 
-   Read `nbytes` from the slave specified by `addr`.
+   Read *nbytes* from the slave specified by *addr*.
+   If *stop* is true then a STOP condition is generated at the end of the transfer.
    Returns a `bytes` object with the data read.
 
-.. method:: i2c.readfrom_into(addr, buf)
+.. method:: I2C.readfrom_into(addr, buf, stop=True)
 
-   Read into `buf` from the slave specified by `addr`.
-   The number of bytes read will be the length of `buf`.
+   Read into *buf* from the slave specified by *addr*.
+   The number of bytes read will be the length of *buf*.
+   If *stop* is true then a STOP condition is generated at the end of the transfer.
 
-   Return value is the number of bytes read.
+   The method returns ``None``.
 
-.. method:: i2c.writeto(addr, buf, \*, stop=True)
+.. method:: I2C.writeto(addr, buf, stop=True)
 
-   Write the bytes from `buf` to the slave specified by `addr`.
-   The argument `buf` can also be an integer which will be treated as a single byte.
-   If `stop` is set to `False` then the stop condition won't be sent
-   and the I2C operation may be continued (typically with a read transaction).
+   Write the bytes from *buf* to the slave specified by *addr*.  If a
+   NACK is received following the write of a byte from *buf* then the
+   remaining bytes are not sent.  If *stop* is true then a STOP condition is
+   generated at the end of the transfer, even if a NACK is received.
+   The function returns the number of ACKs that were received.
 
-   Return value is the number of bytes written.
+.. method:: I2C.writevto(addr, vector, stop=True)
+
+   Write the bytes contained in *vector* to the slave specified by *addr*.
+   *vector* should be a tuple or list of objects with the buffer protocol.
+   The *addr* is sent once and then the bytes from each object in *vector*
+   are written out sequentially.  The objects in *vector* may be zero bytes
+   in length in which case they don't contribute to the output.
+
+   If a NACK is received following the write of a byte from one of the
+   objects in *vector* then the remaining bytes, and any remaining objects,
+   are not sent.  If *stop* is true then a STOP condition is generated at
+   the end of the transfer, even if a NACK is received.  The function
+   returns the number of ACKs that were received.
 
 Memory operations
 -----------------
@@ -182,30 +153,28 @@ from and written to.  In this case there are two addresses associated with an
 I2C transaction: the slave address and the memory address.  The following
 methods are convenience functions to communicate with such devices.
 
-.. method:: i2c.readfrom_mem(addr, memaddr, nbytes)
+.. method:: I2C.readfrom_mem(addr, memaddr, nbytes, \*, addrsize=8)
 
-   Read `nbytes` from the slave specified by `addr` starting from the memory
-   address specified by `memaddr`.
+   Read *nbytes* from the slave specified by *addr* starting from the memory
+   address specified by *memaddr*.
+   The argument *addrsize* specifies the address size in bits.
+   Returns a `bytes` object with the data read.
 
-.. method:: i2c.readfrom_mem_into(addr, memaddr, buf)
+.. method:: I2C.readfrom_mem_into(addr, memaddr, buf, \*, addrsize=8)
 
-   Read into `buf` from the slave specified by `addr` starting from the
-   memory address specified by `memaddr`.  The number of bytes read is the
-   length of `buf`.
+   Read into *buf* from the slave specified by *addr* starting from the
+   memory address specified by *memaddr*.  The number of bytes read is the
+   length of *buf*.
+   The argument *addrsize* specifies the address size in bits (on ESP8266
+   this argument is not recognised and the address size is always 8 bits).
 
-   The return value is the number of bytes read.
+   The method returns ``None``.
 
-.. method:: i2c.writeto_mem(addr, memaddr, buf)
+.. method:: I2C.writeto_mem(addr, memaddr, buf, \*, addrsize=8)
 
-   Write `buf` to the slave specified by `addr` starting from the
-   memory address specified by `memaddr`. The argument `buf` can also
-   be an integer which will be treated as a single byte.
+   Write *buf* to the slave specified by *addr* starting from the
+   memory address specified by *memaddr*.
+   The argument *addrsize* specifies the address size in bits (on ESP8266
+   this argument is not recognised and the address size is always 8 bits).
 
-   The return value is the number of bytes written.
-
-Constants
----------
-
-.. data:: I2C.MASTER
-
-   for initialising the bus to master mode
+   The method returns ``None``.

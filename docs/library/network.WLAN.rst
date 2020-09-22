@@ -1,196 +1,132 @@
 .. currentmodule:: network
+.. _network.WLAN:
 
-class WLAN
-==========
+class WLAN -- control built-in WiFi interfaces
+==============================================
 
-This class provides a driver for the WiFi network processor in the module. Example usage::
+This class provides a driver for WiFi network processors.  Example usage::
 
     import network
-    import time
-    # setup as a station
-    wlan = network.WLAN(mode=network.WLAN.STA)
-    wlan.connect('your-ssid', auth=(network.WLAN.WPA2, 'your-key'))
-    while not wlan.isconnected():
-        time.sleep_ms(50)
-    print(wlan.ifconfig())
-
-    # now use socket as usual
-    ...
-
-
-
-Quick usage example
--------------------
-
-    ::
-
-        import machine
-        from network import WLAN
-
-        # configure the WLAN subsystem in station mode (the default is AP)
-        wlan = WLAN(mode=WLAN.STA)
-        # go for fixed IP settings (IP, Subnet, Gateway, DNS)
-        wlan.ifconfig(config=('192.168.0.107', '255.255.255.0', '192.168.0.1', '192.168.0.1'))
-        wlan.scan()     # scan for available networks
-        wlan.connect(ssid='mynetwork', auth=(WLAN.WPA2, 'my_network_key'))
-        while not wlan.isconnected():
-            pass
-        print(wlan.ifconfig())
+    # enable station interface and connect to WiFi access point
+    nic = network.WLAN(network.STA_IF)
+    nic.active(True)
+    nic.connect('your-ssid', 'your-password')
+    # now use sockets as usual
 
 Constructors
 ------------
+.. class:: WLAN(interface_id)
 
-.. class:: WLAN(id=0, ...)
-
-   Create a WLAN object, and optionally configure it. See ``init`` for params of configuration.
-
-.. note::
-
-   The ``WLAN`` constructor is special in the sense that if no arguments besides the id are given,
-   it will return the already existing ``WLAN`` instance without re-configuring it. This is
-   because ``WLAN`` is a system feature of the WiPy. If the already existing instance is not
-   initialized it will do the same as the other constructors an will initialize it with default
-   values.
+Create a WLAN network interface object. Supported interfaces are
+``network.STA_IF`` (station aka client, connects to upstream WiFi access
+points) and ``network.AP_IF`` (access point, allows other WiFi clients to
+connect). Availability of the methods below depends on interface type.
+For example, only STA interface may `WLAN.connect()` to an access point.
 
 Methods
 -------
 
-.. method:: wlan.init(mode, \*, ssid=None, auth=None, channel=1, antenna=WLAN.INT_ANT, power_save=False)
+.. method:: WLAN.active([is_active])
 
-   Set or get the WiFi network processor configuration.
+    Activate ("up") or deactivate ("down") network interface, if boolean
+    argument is passed. Otherwise, query current state if no argument is
+    provided. Most other methods require active interface.
 
-   Arguments are:
+.. method:: WLAN.connect(ssid=None, password=None, \*, bssid=None)
 
-     - ``mode`` can be either ``WLAN.STA``, ``WLAN.AP`` or WLAN.STA_AP.
-     - ``ssid`` is a string with the ssid name. Only needed when mode is ``WLAN.AP``.
-     - ``auth`` is a tuple with (sec, key). Security can be ``None``, ``WLAN.WEP``,
-       ``WLAN.WPA`` or ``WLAN.WPA2``. The key is a string with the network password.
-       If ``sec`` is ``WLAN.WEP`` the key must be a string representing hexadecimal
-       values (e.g. 'ABC1DE45BF'). Only needed when mode is ``WLAN.AP``.
-     - ``channel`` a number in the range 1-11. Only needed when mode is ``WLAN.AP``.
-     - ``antenna`` selects between the internal and the external antenna. Can be either
-       ``WLAN.INT_ANT`` or ``WLAN.EXT_ANT``.
-    - ``power_save`` enables or disables power save functions in STA mode.
+    Connect to the specified wireless network, using the specified password.
+    If *bssid* is given then the connection will be restricted to the
+    access-point with that MAC address (the *ssid* must also be specified
+    in this case).
 
-   For example, you can do::
+.. method:: WLAN.disconnect()
 
-      # create and configure as an access point
-      wlan.init(mode=WLAN.AP, ssid='wipy-wlan', auth=(WLAN.WPA2,'www.wipy.io'), channel=7, antenna=WLAN.INT_ANT)
+    Disconnect from the currently connected wireless network.
 
-   or::
+.. method:: WLAN.scan()
 
-      # configure as an station
-      wlan.init(mode=WLAN.STA)
+    Scan for the available wireless networks.
 
-.. method:: wlan.deinit()
+    Scanning is only possible on STA interface. Returns list of tuples with
+    the information about WiFi access points:
 
-    Disables the WiFi radio.
+        (ssid, bssid, channel, RSSI, authmode, hidden)
 
-.. method:: wlan.connect(ssid, \*, auth=None, bssid=None, timeout=None, ca_certs=None, keyfile=None, certfile=None, identity=None)
+    *bssid* is hardware address of an access point, in binary form, returned as
+    bytes object. You can use `ubinascii.hexlify()` to convert it to ASCII form.
 
-   Connect to a wifi access point using the given SSID, and other security
-   parameters.
+    There are five values for authmode:
 
-      - ``auth`` is a tuple with (sec, key). Security can be ``None``, ``WLAN.WEP``,
-        ``WLAN.WPA``, ``WLAN.WPA2`` or ``WLAN.WPA2_ENT``. The key is a string with the network password.
-        If ``sec`` is ``WLAN.WEP`` the key must be a string representing hexadecimal
-        values (e.g. 'ABC1DE45BF').
-        If ``sec`` is ``WLAN.WPA2_ENT`` then the ``auth`` tuple can have either 3 elements: ``(sec, username, password)``,
-        or just 1: ``(sec,)``. When passing the 3 elemnt tuple, the ``keyfile`` and ``certifle`` arguments must not be given.
-      - ``bssid`` is the MAC address of the AP to connect to. Useful when there are several
-        APs with the same ssid.
-      - ``timeout`` is the maximum time in milliseconds to wait for the connection to succeed.
-      - ``ca_certs`` is the path to the CA certificate. This argument is not mandatory.
-      - ``keyfile`` is the path to the client key. Only used if ``username`` and ``password`` are not part of the ``auth`` tuple.
-      - ``certfile`` is the path to the client certificate. Only used if ``username`` and ``password`` are not part of the ``auth`` tuple.
-      - ``identity`` is only used in case of ``WLAN.WPA2_ENT`` security.
+        * 0 -- open
+        * 1 -- WEP
+        * 2 -- WPA-PSK
+        * 3 -- WPA2-PSK
+        * 4 -- WPA/WPA2-PSK
 
-.. method:: wlan.scan()
+    and two for hidden:
 
-   Performs a network scan and returns a list of named tuples with (ssid, bssid, sec, channel, rssi).
-   Note that channel is always ``None`` since this info is not provided by the WiPy.
+        * 0 -- visible
+        * 1 -- hidden
 
-.. method:: wlan.disconnect()
+.. method:: WLAN.status([param])
 
-   Disconnect from the wifi access point.
+    Return the current status of the wireless connection.
 
-.. method:: wlan.isconnected()
+    When called with no argument the return value describes the network link status.
+    The possible statuses are defined as constants:
 
-   In case of STA mode, returns ``True`` if connected to a wifi access point and has a valid IP address.
-   In AP mode returns ``True`` when a station is connected, ``False`` otherwise.
+        * ``STAT_IDLE`` -- no connection and no activity,
+        * ``STAT_CONNECTING`` -- connecting in progress,
+        * ``STAT_WRONG_PASSWORD`` -- failed due to incorrect password,
+        * ``STAT_NO_AP_FOUND`` -- failed because no access point replied,
+        * ``STAT_CONNECT_FAIL`` -- failed due to other problems,
+        * ``STAT_GOT_IP`` -- connection successful.
 
-.. method:: wlan.ifconfig(id=0, config=['dhcp' or configtuple])
+    When called with one argument *param* should be a string naming the status
+    parameter to retrieve.  Supported parameters in WiFI STA mode are: ``'rssi'``.
 
-   When ``id`` is 0, the configuration will be get/set on the **Station** interface. When ``id`` is 1 the configuration will be done for the **AP** interface.
+.. method:: WLAN.isconnected()
 
-   With no parameters given eturns a 4-tuple of ``(ip, subnet_mask, gateway, DNS_server)``.
+    In case of STA mode, returns ``True`` if connected to a WiFi access
+    point and has a valid IP address.  In AP mode returns ``True`` when a
+    station is connected. Returns ``False`` otherwise.
 
-   if ``'dhcp'`` is passed as a parameter then the DHCP client is enabled and the IP params
-   are negotiated with the AP.
+.. method:: WLAN.ifconfig([(ip, subnet, gateway, dns)])
 
-   If the 4-tuple config is given then a static IP is configured. For instance::
+   Get/set IP-level network interface parameters: IP address, subnet mask,
+   gateway and DNS server. When called with no arguments, this method returns
+   a 4-tuple with the above information. To set the above values, pass a
+   4-tuple with the required information.  For example::
 
-      wlan.ifconfig(config=('192.168.0.4', '255.255.255.0', '192.168.0.1', '8.8.8.8'))
+    nic.ifconfig(('192.168.0.4', '255.255.255.0', '192.168.0.1', '8.8.8.8'))
 
-.. method:: wlan.mode([mode])
+.. method:: WLAN.config('param')
+.. method:: WLAN.config(param=value, ...)
 
-   Get or set the WLAN mode.
+   Get or set general network interface parameters. These methods allow to work
+   with additional parameters beyond standard IP configuration (as dealt with by
+   `WLAN.ifconfig()`). These include network-specific and hardware-specific
+   parameters. For setting parameters, keyword argument syntax should be used,
+   multiple parameters can be set at once. For querying, parameters name should
+   be quoted as a string, and only one parameter can be queries at time::
 
-.. method:: wlan.ssid([ssid])
+    # Set WiFi access point name (formally known as ESSID) and WiFi channel
+    ap.config(essid='My AP', channel=11)
+    # Query params one by one
+    print(ap.config('essid'))
+    print(ap.config('channel'))
 
-   Get or set the SSID when in AP mode.
+   Following are commonly supported parameters (availability of a specific parameter
+   depends on network technology type, driver, and `MicroPython port`).
 
-.. method:: wlan.auth([auth])
-
-   Get or set the authentication type when in AP mode.
-
-.. method:: wlan.channel([channel])
-
-   Get or set the channel (only applicable in AP mode).
-
-.. method:: wlan.antenna([antenna])
-
-   Get or set the antenna type (external or internal).
-
-.. only:: port_wipy
-
-    .. method:: wlan.mac([mac_addr])
-
-       Get or set a 6-byte long bytes object with the MAC address.
-
-    .. method:: wlan.irq(\*, handler, wake)
-
-        Create a callback to be triggered when a WLAN event occurs during ``machine.SLEEP``
-        mode. Events are triggered by socket activity or by WLAN connection/disconnection.
-
-            - ``handler`` is the function that gets called when the irq is triggered.
-            - ``wake`` must be ``machine.SLEEP``.
-
-        Returns an irq object.
-
-.. only:: port_2wipy or port_lopy or port_pycom_esp32
-
-    .. method:: wlan.mac()
-
-       Get a 6-byte long ``bytes`` object with the WiFI MAC address.
-
-Constants
----------
-
-.. data:: WLAN.STA
-          WLAN.AP
-          WLAN.STA_AP
-
-   selects the WLAN mode
-
-.. data:: WLAN.WEP
-          WLAN.WPA
-          WLAN.WPA2
-          WLAN.WPA2_ENT
-
-   selects the WLAN network security
-
-.. data:: WLAN.INT_ANT
-          WLAN.EXT_ANT
-
-   selects the antenna type
+   =============  ===========
+   Parameter      Description
+   =============  ===========
+   mac            MAC address (bytes)
+   essid          WiFi access point name (string)
+   channel        WiFi channel (integer)
+   hidden         Whether ESSID is hidden (boolean)
+   authmode       Authentication mode supported (enumeration, see module constants)
+   password       Access password (string)
+   dhcp_hostname  The DHCP hostname to use
+   =============  ===========

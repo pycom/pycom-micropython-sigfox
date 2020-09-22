@@ -4,19 +4,34 @@
 .. module:: sys
    :synopsis: system specific functions
 
+|see_cpython_module| :mod:`python:sys`.
+
 Functions
 ---------
 
 .. function:: exit(retval=0)
 
    Terminate current program with a given exit code. Underlyingly, this
-   function raise as ``SystemExit`` exception. If an argument is given, its
-   value given as an argument to ``SystemExit``.
+   function raise as `SystemExit` exception. If an argument is given, its
+   value given as an argument to `SystemExit`.
+
+.. function:: atexit(func)
+
+   Register *func* to be called upon termination.  *func* must be a callable
+   that takes no arguments, or ``None`` to disable the call.  The ``atexit``
+   function will return the previous value set by this function, which is
+   initially ``None``.
+
+   .. admonition:: Difference to CPython
+      :class: attention
+
+      This function is a MicroPython extension intended to provide similar
+      functionality to the :mod:`atexit` module in CPython.
 
 .. function:: print_exception(exc, file=sys.stdout)
 
-   Print exception with a traceback to a file-like object `file` (or
-   ``sys.stdout`` by default).
+   Print exception with a traceback to a file-like object *file* (or
+   `sys.stdout` by default).
 
    .. admonition:: Difference to CPython
       :class: attention
@@ -24,9 +39,9 @@ Functions
       This is simplified version of a function which appears in the
       ``traceback`` module in CPython. Unlike ``traceback.print_exception()``,
       this function takes just exception value instead of exception type,
-      exception value, and traceback object; `file` argument should be
+      exception value, and traceback object; *file* argument should be
       positional; further arguments are not supported. CPython-compatible
-      ``traceback`` module can be found in micropython-lib.
+      ``traceback`` module can be found in `micropython-lib`.
 
 Constants
 ---------
@@ -37,15 +52,15 @@ Constants
 
 .. data:: byteorder
 
-   The byte order of the system ("little" or "big").
+   The byte order of the system (``"little"`` or ``"big"``).
 
 .. data:: implementation
 
    Object with information about the current Python implementation. For
    MicroPython, it has following attributes:
 
-   * `name` - string "micropython"
-   * `version` - tuple (major, minor, micro), e.g. (1, 7, 0)
+   * *name* - string "micropython"
+   * *version* - tuple (major, minor, micro), e.g. (1, 7, 0)
 
    This object is the recommended way to distinguish MicroPython from other
    Python implementations (note that it still may not exist in the very
@@ -95,22 +110,22 @@ Constants
 
    The platform that MicroPython is running on. For OS/RTOS ports, this is
    usually an identifier of the OS, e.g. ``"linux"``. For baremetal ports it
-   is an identifier of a board, e.g. "pyboard" for the original MicroPython
+   is an identifier of a board, e.g. ``"pyboard"`` for the original MicroPython
    reference board. It thus can be used to distinguish one board from another.
    If you need to check whether your program runs on MicroPython (vs other
-   Python implementation), use ``sys.implementation`` instead.
+   Python implementation), use `sys.implementation` instead.
 
 .. data:: stderr
 
-   Standard error stream.
+   Standard error `stream`.
 
 .. data:: stdin
 
-   Standard input stream.
+   Standard input `stream`.
 
 .. data:: stdout
 
-   Standard output stream.
+   Standard output `stream`.
 
 .. data:: version
 
@@ -119,3 +134,9 @@ Constants
 .. data:: version_info
 
    Python language version that this implementation conforms to, as a tuple of ints.
+
+    .. admonition:: Difference to CPython
+      :class: attention
+
+      Only the first three version numbers (major, minor, micro) are supported and
+      they can be referenced only by index, not by name.

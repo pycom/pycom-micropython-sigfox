@@ -28,8 +28,8 @@ You can set the frequency and duty cycle using::
     >>> pwm12.duty(512)
 
 Note that the duty cycle is between 0 (all off) and 1023 (all on), with 512
-being a 50% duty.  If you print the PWM object then it will tell you its current
-configuration::
+being a 50% duty. Values beyond this min/max will be clipped. If you
+print the PWM object then it will tell you its current configuration::
 
     >>> pwm12
     PWM(12, freq=500, duty=512)
@@ -37,7 +37,7 @@ configuration::
 You can also call the ``freq()`` and ``duty()`` methods with no arguments to
 get their current values.
 
-The pin will continue to be in PWM mode until you deinitialize it using::
+The pin will continue to be in PWM mode until you deinitialise it using::
 
     >>> pwm12.deinit()
 

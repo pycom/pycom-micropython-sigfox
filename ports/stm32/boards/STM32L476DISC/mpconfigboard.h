@@ -9,6 +9,7 @@ void STM32L476DISC_board_early_init(void);
 #define MICROPY_HW_HAS_FLASH        (1)
 #define MICROPY_HW_ENABLE_RNG       (1)
 #define MICROPY_HW_ENABLE_RTC       (1)
+#define MICROPY_HW_ENABLE_SERVO     (1)
 #define MICROPY_HW_ENABLE_USB       (1)
 
 // use external SPI flash for storage
@@ -35,6 +36,9 @@ extern struct _spi_bdev_t spi_bdev;
 #define MICROPY_HW_CLK_PLLP (RCC_PLLP_DIV7)
 #define MICROPY_HW_CLK_PLLR (RCC_PLLR_DIV2)
 #define MICROPY_HW_CLK_PLLQ (RCC_PLLQ_DIV2)
+
+// The board has an external 32kHz crystal
+#define MICROPY_HW_RTC_USE_LSE      (1)
 
 #define MICROPY_HW_FLASH_LATENCY    FLASH_LATENCY_4
 

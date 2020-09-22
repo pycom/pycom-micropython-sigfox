@@ -13,6 +13,7 @@ Features supported at this time:
 * REPL (interactive prompt) over Zephyr UART console.
 * `utime` module for time measurements and delays.
 * `machine.Pin` class for GPIO control.
+* `machine.I2C` class for I2C control.
 * `usocket` module for networking (IPv4/IPv6).
 * "Frozen modules" support to allow to bundle Python modules together
   with firmware. Including complete applications, including with
@@ -88,6 +89,13 @@ reference materials). To execute the above sample, copy it to clipboard, in
 MicroPython REPL enter "paste mode" using Ctrl+E, paste clipboard, press
 Ctrl+D to finish paste mode and start execution.
 
+Example of using I2C to scan for I2C slaves:
+
+    from machine import I2C
+
+    i2c = I2C("I2C_0")
+    i2c.scan()
+
 
 Minimal build
 -------------
@@ -110,4 +118,4 @@ To make a minimal build:
 To run a minimal build in QEMU without requiring TAP networking setup
 run the following after you built image with the previous command:
 
-    ./make-minimal BOARD=<qemu_x86|qemu_cortex_m3> run
+    ./make-minimal BOARD=<qemu_x86_nommu|qemu_x86|qemu_cortex_m3> run

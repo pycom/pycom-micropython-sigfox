@@ -70,27 +70,27 @@ STATIC mp_obj_t fat_vfs_make_new(const mp_obj_type_t *type, size_t n_args, size_
     // create new object
     fs_user_mount_t *vfs = m_new_obj(fs_user_mount_t);
     vfs->base.type = type;
-    vfs->flags = FSUSER_FREE_OBJ;
+    vfs->blockdev.flags = FSUSER_FREE_OBJ;
     vfs->fs.fatfs.drv = vfs;
 
     // load block protocol methods
-    mp_load_method(args[0], MP_QSTR_readblocks, vfs->readblocks);
-    mp_load_method_maybe(args[0], MP_QSTR_writeblocks, vfs->writeblocks);
-    mp_load_method_maybe(args[0], MP_QSTR_ioctl, vfs->u.ioctl);
-    if (vfs->u.ioctl[0] != MP_OBJ_NULL) {
+    mp_load_method(args[0], MP_QSTR_readblocks, vfs->blockdev.readblocks);
+    mp_load_method_maybe(args[0], MP_QSTR_writeblocks, vfs->blockdev.writeblocks);
+    mp_load_method_maybe(args[0], MP_QSTR_ioctl, vfs->blockdev.u.ioctl);
+    if (vfs->blockdev.u.ioctl[0] != MP_OBJ_NULL) {
         // device supports new block protocol, so indicate it
-        vfs->flags |= FSUSER_HAVE_IOCTL;
+        vfs->blockdev.flags |= FSUSER_HAVE_IOCTL;
     } else {
         // no ioctl method, so assume the device uses the old block protocol
-        mp_load_method_maybe(args[0], MP_QSTR_sync, vfs->u.old.sync);
-        mp_load_method(args[0], MP_QSTR_count, vfs->u.old.count);
+        mp_load_method_maybe(args[0], MP_QSTR_sync, vfs->blockdev.u.old.sync);
+        mp_load_method(args[0], MP_QSTR_count, vfs->blockdev.u.old.count);
     }
 
     // mount the block device so the VFS methods can be used
     FRESULT res = f_mount(&vfs->fs.fatfs);
     if (res == FR_NO_FILESYSTEM) {
         // don't error out if no filesystem, to let mkfs()/mount() create one if wanted
-        vfs->flags |= FSUSER_NO_FILESYSTEM;
+        vfs->blockdev.flags |= FSUSER_NO_FILESYSTEM;
     } else if (res != FR_OK) {
         mp_raise_OSError(fresult_to_errno_table[res]);
     }
@@ -117,7 +117,7 @@ STATIC mp_obj_t fat_vfs_mkfs(mp_obj_t bdev_in) {
 	{
 		mp_raise_OSError(fresult_to_errno_table[res]);
 	}
-	vfs->flags &= ~FSUSER_NO_FILESYSTEM;
+	vfs->blockdev.flags &= ~FSUSER_NO_FILESYSTEM;
 
     return mp_const_none;
 }
@@ -130,17 +130,17 @@ STATIC FRESULT fat_format(fs_user_mount_t* vfs)
     uint8_t options = FM_FAT;
     uint8_t working_buf[FF_MAX_SS];
 
-    if ((vfs->flags & FSUSER_HAVE_IOCTL))
+    if ((vfs->blockdev.flags & FSUSER_HAVE_IOCTL))
     {
         // device supports new block protocol, so indicate it
-        vfs->u.ioctl[2] = MP_OBJ_NEW_SMALL_INT(BP_IOCTL_SEC_COUNT);
-        vfs->u.ioctl[3] = MP_OBJ_NEW_SMALL_INT(0); // unused
-        blockcount = mp_obj_get_int(mp_call_method_n_kw(2, 0, vfs->u.ioctl));
+        vfs->blockdev.u.ioctl[2] = MP_OBJ_NEW_SMALL_INT(MP_BLOCKDEV_IOCTL_BLOCK_COUNT);
+        vfs->blockdev.u.ioctl[3] = MP_OBJ_NEW_SMALL_INT(0); // unused
+        blockcount = mp_obj_get_int(mp_call_method_n_kw(2, 0, vfs->blockdev.u.ioctl));
     }
     else
     {
         // no ioctl method, so assume the device uses the old block protocol
-        blockcount = mp_obj_get_int(mp_call_method_n_kw(0, 0, vfs->u.old.count));
+        blockcount = mp_obj_get_int(mp_call_method_n_kw(0, 0, vfs->blockdev.u.old.count));
     }
 
 	if (blockcount < 32768)
@@ -434,11 +434,11 @@ STATIC mp_obj_t vfs_fat_mount(mp_obj_t self_in, mp_obj_t readonly, mp_obj_t mkfs
     //  1. readonly=True keyword argument
     //  2. nonexistent writeblocks method (then writeblocks[0] == MP_OBJ_NULL already)
     if (mp_obj_is_true(readonly)) {
-        self->writeblocks[0] = MP_OBJ_NULL;
+        self->blockdev.writeblocks[0] = MP_OBJ_NULL;
     }
 
     // check if we need to make the filesystem
-    FRESULT res = (self->flags & FSUSER_NO_FILESYSTEM) ? FR_NO_FILESYSTEM : FR_OK;
+    FRESULT res = (self->blockdev.flags & FSUSER_NO_FILESYSTEM) ? FR_NO_FILESYSTEM : FR_OK;
     if (res == FR_NO_FILESYSTEM && mp_obj_is_true(mkfs))
     {
     	res = fat_format(self);
@@ -447,7 +447,7 @@ STATIC mp_obj_t vfs_fat_mount(mp_obj_t self_in, mp_obj_t readonly, mp_obj_t mkfs
     		mp_raise_OSError(fresult_to_errno_table[res]);
     	}
     }
-    self->flags &= ~FSUSER_NO_FILESYSTEM;
+    self->blockdev.flags &= ~FSUSER_NO_FILESYSTEM;
 
     return mp_const_none;
 }
@@ -469,7 +469,7 @@ STATIC mp_obj_t fat_vfs_fsformat(mp_obj_t vfs_in)
 		mp_raise_OSError(fresult_to_errno_table[res]);
 	}
 
-    vfs->flags &= ~FSUSER_NO_FILESYSTEM;
+    vfs->blockdev.flags &= ~FSUSER_NO_FILESYSTEM;
 
 	return mp_const_none;
 }

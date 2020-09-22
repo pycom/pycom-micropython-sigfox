@@ -1,17 +1,33 @@
-.. _quickref:
+.. _pyboard_quickref:
 
 Quick reference for the pyboard
 ===============================
 
-The below pinout is for PYBv1.0.  You can also view pinouts for
+The below pinout is for PYBv1.1.  You can also view pinouts for
 other versions of the pyboard:
-`PYBv1.1 <http://micropython.org/resources/pybv11-pinout.jpg>`__
+`PYBv1.0 <http://micropython.org/resources/pybv10-pinout.jpg>`__
 or `PYBLITEv1.0-AC <http://micropython.org/resources/pyblitev10ac-pinout.jpg>`__
 or `PYBLITEv1.0 <http://micropython.org/resources/pyblitev10-pinout.jpg>`__.
 
-.. image:: http://micropython.org/resources/pybv10-pinout.jpg
-    :alt: PYBv1.0 pinout
-    :width: 700px
+.. only:: not latex
+
+   .. image:: http://micropython.org/resources/pybv11-pinout.jpg
+      :alt: PYBv1.1 pinout
+      :width: 700px
+
+.. only:: latex
+
+   .. image:: http://micropython.org/resources/pybv11-pinout-800px.jpg
+      :alt: PYBv1.1 pinout
+
+Below is a quick reference for the pyboard.  If it is your first time working with
+this board please consider reading the following sections first:
+
+.. toctree::
+   :maxdepth: 1
+
+   general.rst
+   tutorial/index.rst
 
 General board control
 ---------------------
@@ -37,19 +53,34 @@ Use the :mod:`time <utime>` module::
     time.sleep_ms(500)      # sleep for 500 milliseconds
     time.sleep_us(10)       # sleep for 10 microseconds
     start = time.ticks_ms() # get value of millisecond counter
-    delta = time.ticks_diff(start, time.ticks_ms()) # compute time difference
+    delta = time.ticks_diff(time.ticks_ms(), start) # compute time difference
 
-LEDs
-----
+Internal LEDs
+-------------
 
 See :ref:`pyb.LED <pyb.LED>`. ::
 
     from pyb import LED
 
-    led = LED(1) # red led
+    led = LED(1) # 1=red, 2=green, 3=yellow, 4=blue
     led.toggle()
     led.on()
     led.off()
+
+    # LEDs 3 and 4 support PWM intensity (0-255)
+    LED(4).intensity()    # get intensity
+    LED(4).intensity(128) # set intensity to half
+
+Internal switch
+---------------
+
+See :ref:`pyb.Switch <pyb.Switch>`. ::
+
+    from pyb import Switch
+
+    sw = Switch()
+    sw.value() # returns True or False
+    sw.callback(lambda: pyb.LED(1).toggle())
 
 Pins and GPIO
 -------------
@@ -98,6 +129,17 @@ See :ref:`pyb.Timer <pyb.Timer>`. ::
     tim.counter() # get counter value
     tim.freq(0.5) # 0.5 Hz
     tim.callback(lambda t: pyb.LED(1).toggle())
+
+RTC (real time clock)
+---------------------
+
+See :ref:`pyb.RTC <pyb.RTC>` ::
+
+    from pyb import RTC
+
+    rtc = RTC()
+    rtc.datetime((2017, 8, 23, 1, 12, 48, 0, 0)) # set a specific date and time
+    rtc.datetime() # get date and time
 
 PWM (pulse width modulation)
 ----------------------------
@@ -152,18 +194,49 @@ See :ref:`pyb.SPI <pyb.SPI>`. ::
     spi = SPI(1, SPI.MASTER, baudrate=200000, polarity=1, phase=0)
     spi.send('hello')
     spi.recv(5) # receive 5 bytes on the bus
-    spi.send_recv('hello') # send a receive 5 bytes
+    spi.send_recv('hello') # send and receive 5 bytes
 
 I2C bus
 -------
 
-See :ref:`pyb.I2C <pyb.I2C>`. ::
+Hardware I2C is available on the X and Y halves of the pyboard via ``I2C('X')``
+and ``I2C('Y')``.  Alternatively pass in the integer identifier of the peripheral,
+eg ``I2C(1)``.  Software I2C is also available by explicitly specifying the
+``scl`` and ``sda`` pins instead of the bus name.  For more details see
+:ref:`machine.I2C <machine.I2C>`. ::
 
-    from pyb import I2C
+    from machine import I2C
 
-    i2c = I2C(1, I2C.MASTER, baudrate=100000)
-    i2c.scan() # returns list of slave addresses
-    i2c.send('hello', 0x42) # send 5 bytes to slave with address 0x42
-    i2c.recv(5, 0x42) # receive 5 bytes from slave
-    i2c.mem_read(2, 0x42, 0x10) # read 2 bytes from slave 0x42, slave memory 0x10
-    i2c.mem_write('xy', 0x42, 0x10) # write 2 bytes to slave 0x42, slave memory 0x10
+    i2c = I2C('X', freq=400000)                 # create hardware I2c object
+    i2c = I2C(scl='X1', sda='X2', freq=100000)  # create software I2C object
+
+    i2c.scan()                          # returns list of slave addresses
+    i2c.writeto(0x42, 'hello')          # write 5 bytes to slave with address 0x42
+    i2c.readfrom(0x42, 5)               # read 5 bytes from slave
+
+    i2c.readfrom_mem(0x42, 0x10, 2)     # read 2 bytes from slave 0x42, slave memory 0x10
+    i2c.writeto_mem(0x42, 0x10, 'xy')   # write 2 bytes to slave 0x42, slave memory 0x10
+
+Note: for legacy I2C support see :ref:`pyb.I2C <pyb.I2C>`.
+
+CAN bus (controller area network)
+---------------------------------
+
+See :ref:`pyb.CAN <pyb.CAN>`. ::
+
+    from pyb import CAN
+
+    can = CAN(1, CAN.LOOPBACK)
+    can.setfilter(0, CAN.LIST16, 0, (123, 124, 125, 126))
+    can.send('message!', 123)   # send a message with id 123
+    can.recv(0)                 # receive message on FIFO 0
+
+Internal accelerometer
+----------------------
+
+See :ref:`pyb.Accel <pyb.Accel>`. ::
+
+    from pyb import Accel
+
+    accel = Accel()
+    print(accel.x(), accel.y(), accel.z(), accel.tilt())

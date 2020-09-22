@@ -10,6 +10,10 @@
 #ifndef _INCLUDED_MPHAL_H_
 #define _INCLUDED_MPHAL_H_
 
+#include "py/ringbuf.h"
+
+extern ringbuf_t stdin_ringbuf;
+
 #if defined (LOPY) || defined(LOPY4) || defined(FIPY)
 void HAL_set_tick_cb (void *cb);
 #endif

@@ -50,8 +50,8 @@
 #include "pybpin.h"
 #include "pybrtc.h"
 #include "lib/utils/pyexec.h"
+#include "lib/utils/gchelper.h"
 #include "gccollect.h"
-#include "gchelper.h"
 #include "mperror.h"
 #include "simplelink.h"
 #include "modnetwork.h"
@@ -180,7 +180,7 @@ soft_reset:
 
     if (!safeboot) {
         // run boot.py
-        int ret = pyexec_file("boot.py");
+        int ret = pyexec_file_if_exists("boot.py");
         if (ret & PYEXEC_FORCED_EXIT) {
             goto soft_reset_exit;
         }
@@ -205,7 +205,7 @@ soft_reset:
             } else {
                 main_py = mp_obj_str_get_str(MP_STATE_PORT(machine_config_main));
             }
-            int ret = pyexec_file(main_py);
+            int ret = pyexec_file_if_exists(main_py);
             if (ret & PYEXEC_FORCED_EXIT) {
                 goto soft_reset_exit;
             }
@@ -234,7 +234,7 @@ soft_reset_exit:
 
     // soft reset
     pyb_sleep_signal_soft_reset();
-    mp_printf(&mp_plat_print, "PYB: soft reboot\n");
+    mp_printf(&mp_plat_print, "MPY: soft reboot\n");
 
     // disable all callbacks to avoid undefined behaviour
     // when coming out of a soft reset
@@ -300,14 +300,14 @@ STATIC void mptask_init_sflash_filesystem (void) {
     // Initialise the local flash filesystem.
     // init the vfs object
     fs_user_mount_t *vfs_fat = sflash_vfs_fat;
-    vfs_fat->flags = 0;
+    vfs_fat->blockdev.flags = 0;
     pyb_flash_init_vfs(vfs_fat);
 
     // Create it if needed, and mount in on /flash.
     FRESULT res = f_mount(&vfs_fat->fatfs);
     if (res == FR_NO_FILESYSTEM) {
         // no filesystem, so create a fresh one
-        uint8_t working_buf[_MAX_SS];
+        uint8_t working_buf[FF_MAX_SS];
         res = f_mkfs(&vfs_fat->fatfs, FM_FAT | FM_SFD, 0, working_buf, sizeof(working_buf));
         if (res == FR_OK) {
             // success creating fresh LFS

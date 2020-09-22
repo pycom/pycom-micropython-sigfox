@@ -1,4 +1,4 @@
-.. _wipy_tutorial_index:
+.. _wipy_tutorial:
 
 WiPy tutorials and examples
 ===========================
@@ -14,4 +14,5 @@ for instructions see :ref:`OTA How-To <wipy_firmware_upgrade>`.
    repl.rst
    blynk.rst
    wlan.rst
+   timer.rst
    reset.rst

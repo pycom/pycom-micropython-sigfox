@@ -144,6 +144,7 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(match_end_obj, 1, 2, match_end);
 
 #endif
 
+#if !MICROPY_ENABLE_DYNRUNTIME
 STATIC const mp_rom_map_elem_t match_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_group), MP_ROM_PTR(&match_group_obj) },
     #if MICROPY_PY_URE_MATCH_GROUPS
@@ -164,6 +165,7 @@ STATIC const mp_obj_type_t match_type = {
     .print = match_print,
     .locals_dict = (void*)&match_locals_dict,
 };
+#endif
 
 STATIC void re_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
     (void)kind;
@@ -363,6 +365,7 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(re_sub_obj, 3, 5, re_sub);
 
 #endif
 
+#if !MICROPY_ENABLE_DYNRUNTIME
 STATIC const mp_rom_map_elem_t re_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_match), MP_ROM_PTR(&re_match_obj) },
     { MP_ROM_QSTR(MP_QSTR_search), MP_ROM_PTR(&re_search_obj) },
@@ -380,8 +383,10 @@ STATIC const mp_obj_type_t re_type = {
     .print = re_print,
     .locals_dict = (void*)&re_locals_dict,
 };
+#endif
 
 STATIC mp_obj_t mod_re_compile(size_t n_args, const mp_obj_t *args) {
+    (void)n_args;
     const char *re_str = mp_obj_str_get_str(args[0]);
     int size = re1_5_sizecode(re_str);
     if (size == -1) {
@@ -389,18 +394,22 @@ STATIC mp_obj_t mod_re_compile(size_t n_args, const mp_obj_t *args) {
     }
     mp_obj_re_t *o = m_new_obj_var(mp_obj_re_t, char, size);
     o->base.type = &re_type;
+    #if MICROPY_PY_URE_DEBUG
     int flags = 0;
     if (n_args > 1) {
         flags = mp_obj_get_int(args[1]);
     }
+    #endif
     int error = re1_5_compilecode(&o->re, re_str);
     if (error != 0) {
 error:
         mp_raise_ValueError("Error in regex");
     }
+    #if MICROPY_PY_URE_DEBUG
     if (flags & FLAG_DEBUG) {
         re1_5_dumpcode(&o->re);
     }
+    #endif
     return MP_OBJ_FROM_PTR(o);
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_re_compile_obj, 1, 2, mod_re_compile);
@@ -432,6 +441,7 @@ STATIC mp_obj_t mod_re_sub(size_t n_args, const mp_obj_t *args) {
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_re_sub_obj, 3, 5, mod_re_sub);
 #endif
 
+#if !MICROPY_ENABLE_DYNRUNTIME
 STATIC const mp_rom_map_elem_t mp_module_re_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_ure) },
     { MP_ROM_QSTR(MP_QSTR_compile), MP_ROM_PTR(&mod_re_compile_obj) },
@@ -440,7 +450,9 @@ STATIC const mp_rom_map_elem_t mp_module_re_globals_table[] = {
     #if MICROPY_PY_URE_SUB
     { MP_ROM_QSTR(MP_QSTR_sub), MP_ROM_PTR(&mod_re_sub_obj) },
     #endif
+    #if MICROPY_PY_URE_DEBUG
     { MP_ROM_QSTR(MP_QSTR_DEBUG), MP_ROM_INT(FLAG_DEBUG) },
+    #endif
 };
 
 STATIC MP_DEFINE_CONST_DICT(mp_module_re_globals, mp_module_re_globals_table);
@@ -449,13 +461,16 @@ const mp_obj_module_t mp_module_ure = {
     .base = { &mp_type_module },
     .globals = (mp_obj_dict_t*)&mp_module_re_globals,
 };
+#endif
 
 // Source files #include'd here to make sure they're compiled in
 // only if module is enabled by config setting.
 
 #define re1_5_fatal(x) assert(!x)
 #include "re1.5/compilecode.c"
+#if MICROPY_PY_URE_DEBUG
 #include "re1.5/dumpcode.c"
+#endif
 #include "re1.5/recursiveloop.c"
 #include "re1.5/charclass.c"
 

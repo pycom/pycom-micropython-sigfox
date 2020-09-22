@@ -73,7 +73,6 @@
 #define MP_EOPNOTSUPP        (95) // Operation not supported on transport endpoint
 #define MP_EAFNOSUPPORT      (97) // Address family not supported by protocol
 #define MP_EADDRINUSE        (98) // Address already in use
-#define MP_ENETDOWN         (100) // Network is down
 #define MP_ECONNABORTED     (103) // Software caused connection abort
 #define MP_ECONNRESET       (104) // Connection reset by peer
 #define MP_ENOBUFS          (105) // No buffer space available
@@ -125,7 +124,7 @@
 #define MP_EPIPE            EPIPE
 #define MP_EDOM             EDOM
 #define MP_ERANGE           ERANGE
-#define MP_EWOULDBLOCK      EAGAIN
+#define MP_EWOULDBLOCK      EWOULDBLOCK
 #define MP_ENOTEMPTY        ENOTEMPTY
 #define MP_EMSGSIZE         EMSGSIZE
 #define MP_EOPNOTSUPP       EOPNOTSUPP

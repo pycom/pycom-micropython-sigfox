@@ -13,14 +13,13 @@ include $(MPTOP)/py/py.mk
 INC +=  -I.
 INC +=  -I..
 INC +=  -I$(MPTOP)
-INC +=  -I$(MPTOP)/unix
-#INC += -I../lib/timeutils
+INC +=  -I$(MPTOP)/ports/unix
 INC += -I$(BUILD)
 
 # compiler settings
 CWARN = -Wall -Werror
 CWARN += -Wpointer-arith -Wuninitialized
-CFLAGS = $(INC) $(CWARN) -ansi -std=gnu99 -DUNIX $(CFLAGS_MOD) $(COPT) $(CFLAGS_EXTRA)
+CFLAGS = $(INC) $(CWARN) -std=gnu99 -DUNIX $(CFLAGS_MOD) $(COPT) $(CFLAGS_EXTRA)
 
 # Debugging/Optimization
 ifdef DEBUG
@@ -56,8 +55,8 @@ CFLAGS += -U _FORTIFY_SOURCE
 endif
 
 # On OSX, 'gcc' is a symlink to clang unless a real gcc is installed.
-# The unix port of micropython on OSX must be compiled with clang,
-# while cross-compile ports require gcc, so we test here for OSX and 
+# The unix port of MicroPython on OSX must be compiled with clang,
+# while cross-compile ports require gcc, so we test here for OSX and
 # if necessary override the value of 'CC' set in py/mkenv.mk
 ifeq ($(UNAME_S),Darwin)
 CC = clang
@@ -80,7 +79,7 @@ endif
 endif
 
 ifeq ($(MICROPY_USE_READLINE),1)
-INC +=  -I../lib/mp-readline
+INC +=  -I$(MPTOP)/lib/mp-readline
 CFLAGS_MOD += -DMICROPY_USE_READLINE=1
 LIB_SRC_C_EXTRA += mp-readline/readline.c
 endif
@@ -106,11 +105,11 @@ endif
 ifeq ($(MICROPY_PY_FFI),1)
 
 ifeq ($(MICROPY_STANDALONE),1)
-LIBFFI_CFLAGS_MOD := -I$(shell ls -1d ../lib/libffi/build_dir/out/lib/libffi-*/include)
+LIBFFI_CFLAGS_MOD := -I$(shell ls -1d $(MPTOP)/lib/libffi/build_dir/out/lib/libffi-*/include)
  ifeq ($(MICROPY_FORCE_32BIT),1)
-  LIBFFI_LDFLAGS_MOD = ../lib/libffi/build_dir/out/lib32/libffi.a
+  LIBFFI_LDFLAGS_MOD = $(MPTOP)/lib/libffi/build_dir/out/lib32/libffi.a
  else
-  LIBFFI_LDFLAGS_MOD = ../lib/libffi/build_dir/out/lib/libffi.a
+  LIBFFI_LDFLAGS_MOD = $(MPTOP)/lib/libffi/build_dir/out/lib/libffi.a
  endif
 else
 LIBFFI_CFLAGS_MOD := $(shell pkg-config --cflags libffi)
@@ -129,7 +128,7 @@ endif
 MAIN_C = main.c
 
 # source files
-SRC_C = $(addprefix $(MPTOP)/unix/,\
+SRC_C = $(addprefix ports/unix/,\
 	$(MAIN_C) \
 	gccollect.c \
 	unix_mphal.c \
@@ -150,17 +149,9 @@ LIB_SRC_C = $(addprefix lib/,\
 	timeutils/timeutils.c \
 	)
 
-ifeq ($(MICROPY_FATFS),1)
-LIB_SRC_C += $(addprefix lib/,\
-	fatfs/ff.c \
-	fatfs/option/ccsbcs.c \
-	)
-endif
-
 OBJ = $(PY_O)
 OBJ += $(addprefix $(BUILD)/, $(SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(LIB_SRC_C:.c=.o))
-OBJ += $(addprefix $(BUILD)/, $(STMHAL_SRC_C:.c=.o))
 
 # List of sources for qstr extraction
 SRC_QSTR += $(SRC_C) $(LIB_SRC_C)
@@ -171,7 +162,7 @@ SRC_QSTR_AUTO_DEPS +=
 include $(MPTOP)/py/mkrules.mk
 
 # Value of configure's --host= option (required for cross-compilation).
-# Deduce it from CROSS_COMPILE by default, but can be overriden.
+# Deduce it from CROSS_COMPILE by default, but can be overridden.
 ifneq ($(CROSS_COMPILE),)
 CROSS_COMPILE_HOST = --host=$(patsubst %-,%,$(CROSS_COMPILE))
 else
@@ -183,18 +174,18 @@ deplibs: libffi axtls
 # install-exec-recursive & install-data-am targets are used to avoid building
 # docs and depending on makeinfo
 libffi:
-	cd ../lib/libffi; git clean -d -x -f
-	cd ../lib/libffi; ./autogen.sh
-	mkdir -p ../lib/libffi/build_dir; cd ../lib/libffi/build_dir; \
+	cd $(MPTOP)/lib/libffi; git clean -d -x -f
+	cd $(MPTOP)/lib/libffi; ./autogen.sh
+	mkdir -p $(MPTOP)/lib/libffi/build_dir; cd $(MPTOP)/lib/libffi/build_dir; \
 	../configure $(CROSS_COMPILE_HOST) --prefix=$$PWD/out CC="$(CC)" CXX="$(CXX)" LD="$(LD)"; \
 	make install-exec-recursive; make -C include install-data-am
 
-axtls: ../lib/axtls/README
-	cd ../lib/axtls; cp config/upyconfig config/.config
-	cd ../lib/axtls; make oldconfig -B
-	cd ../lib/axtls; make clean
-	cd ../lib/axtls; make all CC="$(CC)" LD="$(LD)"
+axtls: $(MPTOP)/lib/axtls/README
+	cd $(MPTOP)/lib/axtls; cp config/upyconfig config/.config
+	cd $(MPTOP)/lib/axtls; make oldconfig -B
+	cd $(MPTOP)/lib/axtls; make clean
+	cd $(MPTOP)/lib/axtls; make all CC="$(CC)" LD="$(LD)"
 
-../lib/axtls/README:
+$(MPTOP)/lib/axtls/README:
 	@echo "You cloned without --recursive, fetching submodules for you."
-	(cd ..; git submodule update --init --recursive)
+	(cd $(MPTOP); git submodule update --init --recursive)

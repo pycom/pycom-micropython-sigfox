@@ -1,9 +1,13 @@
-Maximising Python Speed
-=======================
+.. _speed_python:
+
+Maximising MicroPython Speed
+============================
+
+.. contents::
 
 This tutorial describes ways of improving the performance of MicroPython code.
 Optimisations involving other languages are covered elsewhere, namely the use
-of modules written in C and the MicroPython inline ARM Thumb-2 assembler.
+of modules written in C and the MicroPython inline assembler.
 
 The process of developing high performance code comprises the following stages
 which should be performed in the order listed.
@@ -17,6 +21,7 @@ Optimisation steps:
 * Improve the efficiency of the Python code.
 * Use the native code emitter.
 * Use the viper code emitter.
+* Use hardware-specific optimisations.
 
 Designing for speed
 -------------------
@@ -50,7 +55,7 @@ once only and not permitted to grow in size. This implies that the object persis
 for the duration of its use: typically it will be instantiated in a class constructor
 and used in various methods.
 
-This is covered in further detail :ref:`Controlling garbage collection <gc>` below.
+This is covered in further detail :ref:`Controlling garbage collection <controlling_gc>` below.
 
 Buffers
 ~~~~~~~
@@ -61,7 +66,7 @@ constructor and use it in its I/O methods which will be called repeatedly.
 
 The MicroPython libraries typically provide support for pre-allocated buffers. For
 example, objects which support stream interface (e.g., file or UART) provide ``read()``
-method which allocate new buffer for read data, but also a ``readinto()`` method
+method which allocates new buffer for read data, but also a ``readinto()`` method
 to read data into an existing buffer.
 
 Floating Point
@@ -79,14 +84,14 @@ Arrays
 ~~~~~~
 
 Consider the use of the various types of array classes as an alternative to lists.
-The ``array`` module supports various element types with 8-bit elements supported
-by Python's built in ``bytes`` and ``bytearray`` classes. These data structures all store
+The `array` module supports various element types with 8-bit elements supported
+by Python's built in `bytes` and `bytearray` classes. These data structures all store
 elements in contiguous memory locations. Once again to avoid memory allocation in critical
 code these should be pre-allocated and passed as arguments or as bound objects.
 
-When passing slices of objects such as ``bytearray`` instances, Python creates
+When passing slices of objects such as `bytearray` instances, Python creates
 a copy which involves allocation of the size proportional to the size of slice.
-This can be alleviated using a ``memoryview`` object. ``memoryview`` itself
+This can be alleviated using a `memoryview` object. `memoryview` itself
 is allocated on heap, but is a small, fixed-size object, regardless of the size
 of slice it points too.
 
@@ -97,7 +102,7 @@ of slice it points too.
     mv = memoryview(ba)    # small object is allocated
     func(mv[30:2000])      # a pointer to memory is passed
 
-A ``memoryview`` can only be applied to objects supporting the buffer protocol - this
+A `memoryview` can only be applied to objects supporting the buffer protocol - this
 includes arrays but not lists. Small caveat is that while memoryview object is live,
 it also keeps alive the original buffer object. So, a memoryview isn't a universal
 panacea. For instance, in the example above, if you are done with 10K buffer and
@@ -105,11 +110,11 @@ just need those bytes 30:2000 from it, it may be better to make a slice, and let
 the 10K buffer go (be ready for garbage collection), instead of making a
 long-living memoryview and keeping 10K blocked for GC.
 
-Nonetheless, ``memoryview`` is indispensable for advanced preallocated buffer
-management. ``.readinto()`` method discussed above puts data at the beginning
+Nonetheless, `memoryview` is indispensable for advanced preallocated buffer
+management. ``readinto()`` method discussed above puts data at the beginning
 of buffer and fills in entire buffer. What if you need to put data in the
 middle of existing buffer? Just create a memoryview into the needed section
-of buffer and pass it to ``.readinto()``.
+of buffer and pass it to ``readinto()``.
 
 Identifying the slowest section of code
 ---------------------------------------
@@ -118,8 +123,7 @@ This is a process known as profiling and is covered in textbooks and
 (for standard Python) supported by various software tools. For the type of
 smaller embedded application likely to be running on MicroPython platforms
 the slowest function or method can usually be established by judicious use
-of the timing ``ticks`` group of functions documented
-`here <http://docs.micropython.org/en/latest/pyboard/library/time.html>`_.
+of the timing ``ticks`` group of functions documented in `utime`.
 Code execution time can be measured in ms, us, or CPU cycles.
 
 The following enables any function or method to be timed by adding an
@@ -130,9 +134,9 @@ The following enables any function or method to be timed by adding an
     def timed_function(f, *args, **kwargs):
         myname = str(f).split(' ')[1]
         def new_func(*args, **kwargs):
-            t = time.ticks_us()
+            t = utime.ticks_us()
             result = f(*args, **kwargs)
-            delta = time.ticks_diff(t, time.ticks_us())
+            delta = utime.ticks_diff(utime.ticks_us(), t)
             print('Function {} Time = {:6.3f}ms'.format(myname, delta/1000))
             return result
         return new_func
@@ -161,7 +165,7 @@ by caching the object in a local variable:
 
     class foo(object):
         def __init__(self):
-            ba = bytearray(100)
+            self.ba = bytearray(100)
         def bar(self, obj_display):
             ba_ref = self.ba
             fb = obj_display.framebuffer
@@ -170,7 +174,7 @@ by caching the object in a local variable:
 This avoids the need repeatedly to look up ``self.ba`` and ``obj_display.framebuffer``
 in the body of the method ``bar()``.
 
-.. _gc:
+.. _controlling_gc:
 
 Controlling garbage collection
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -182,7 +186,7 @@ process known as garbage collection reclaims the memory used by these redundant
 objects and the allocation is then tried again - a process which can take several
 milliseconds.
 
-There are benefits in pre-empting this by periodically issuing ``gc.collect()``.
+There may be benefits in pre-empting this by periodically issuing `gc.collect()`.
 Firstly doing a collection before it is actually required is quicker - typically on the
 order of 1ms if done frequently. Secondly you can determine the point in code
 where this time is used rather than have a longer delay occur at random points,
@@ -190,34 +194,11 @@ possibly in a speed critical section. Finally performing collections regularly
 can reduce fragmentation in the heap. Severe fragmentation can lead to
 non-recoverable allocation failures.
 
-Accessing hardware directly
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-This comes into the category of more advanced programming and involves some knowledge
-of the target MCU. Consider the example of toggling an output pin on the Pyboard. The 
-standard approach would be to write
-
-.. code:: python
-
-    mypin.value(mypin.value() ^ 1) # mypin was instantiated as an output pin
-
-This involves the overhead of two calls to the ``Pin`` instance's ``value()``
-method. This overhead can be eliminated by performing a read/write to the relevant bit
-of the chip's GPIO port output data register (odr). To facilitate this the ``stm``
-module provides a set of constants providing the addresses of the relevant registers.
-A fast toggle of pin ``P4`` (CPU pin ``A14``) - corresponding to the green LED -
-can be performed as follows:
-
-.. code:: python
-
-    BIT14 = const(1 << 14)
-    stm.mem16[stm.GPIOA + stm.GPIO_ODR] ^= BIT14
-
 The Native code emitter
 -----------------------
 
-This causes the MicroPython compiler to emit ARM native opcodes rather than
-bytecode. It covers the bulk of the Python language so most functions will require
+This causes the MicroPython compiler to emit native CPU opcodes rather than
+bytecode. It covers the bulk of the MicroPython functionality, so most functions will require
 no adaptation (but see below). It is invoked by means of a function decorator:
 
 .. code:: python
@@ -233,7 +214,7 @@ There are certain limitations in the current implementation of the native code e
 * Generators are not supported.
 * If ``raise`` is used an argument must be supplied.
 
-The trade-off for the improved performance (roughly twices as fast as bytecode) is an
+The trade-off for the improved performance (roughly twice as fast as bytecode) is an
 increase in compiled code size.
 
 The Viper code emitter
@@ -276,7 +257,7 @@ Viper provides pointer types to assist the optimiser. These comprise
 * ``ptr32`` Points to a 32 bit machine word.
 
 The concept of a pointer may be unfamiliar to Python programmers. It has similarities
-to a Python ``memoryview`` object in that it provides direct access to data stored in memory.
+to a Python `memoryview` object in that it provides direct access to data stored in memory.
 Items are accessed using subscript notation, but slices are not supported: a pointer can return
 a single item only. Its purpose is to provide fast random access to data stored in contiguous
 memory locations - such as data stored in objects which support the buffer protocol, and
@@ -312,10 +293,12 @@ microseconds. The rules for casting are as follows:
 * The argument to a bool cast must be integral type (boolean or integer); when used as a return
   type the viper function will return True or False objects.
 * If the argument is a Python object and the cast is ``ptr``, ``ptr``, ``ptr16`` or ``ptr32``,
-  then the Python object must either have the buffer protocol with read-write capabilities
-  (in which case a pointer to the start of the buffer is returned) or it must be of integral
-  type (in which case the value of that integral object is returned).
- 
+  then the Python object must either have the buffer protocol (in which case a pointer to the
+  start of the buffer is returned) or it must be of integral type (in which case the value of
+  that integral object is returned).
+
+Writing to a pointer which points to a read-only object will lead to undefined behaviour.
+
 The following example illustrates the use of a ``ptr16`` cast to toggle pin X1 ``n`` times:
 
 .. code:: python
@@ -330,3 +313,34 @@ The following example illustrates the use of a ``ptr16`` cast to toggle pin X1 `
 A detailed technical description of the three code emitters may be found
 on Kickstarter here `Note 1 <https://www.kickstarter.com/projects/214379695/micro-python-python-for-microcontrollers/posts/664832>`_
 and here `Note 2 <https://www.kickstarter.com/projects/214379695/micro-python-python-for-microcontrollers/posts/665145>`_
+
+Accessing hardware directly
+---------------------------
+
+.. note::
+
+    Code examples in this section are given for the Pyboard. The techniques
+    described however may be applied to other MicroPython ports too.
+
+This comes into the category of more advanced programming and involves some knowledge
+of the target MCU. Consider the example of toggling an output pin on the Pyboard. The
+standard approach would be to write
+
+.. code:: python
+
+    mypin.value(mypin.value() ^ 1) # mypin was instantiated as an output pin
+
+This involves the overhead of two calls to the :class:`~machine.Pin` instance's :meth:`~machine.Pin.value()`
+method. This overhead can be eliminated by performing a read/write to the relevant bit
+of the chip's GPIO port output data register (odr). To facilitate this the ``stm``
+module provides a set of constants providing the addresses of the relevant registers.
+A fast toggle of pin ``P4`` (CPU pin ``A14``) - corresponding to the green LED -
+can be performed as follows:
+
+.. code:: python
+
+    import machine
+    import stm
+
+    BIT14 = const(1 << 14)
+    machine.mem16[stm.GPIOA + stm.GPIO_ODR] ^= BIT14

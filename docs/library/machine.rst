@@ -1,22 +1,23 @@
-:mod:`machine` --- functions related to the board
-=================================================
+:mod:`machine` --- functions related to the hardware
+====================================================
 
 .. module:: machine
-   :synopsis: functions related to the board
+   :synopsis: functions related to the hardware
 
-The ``machine`` module contains specific functions related to the board.
+The ``machine`` module contains specific functions related to the hardware
+on a particular board. Most functions in this module allow to achieve direct
+and unrestricted access to and control of hardware blocks on a system
+(like CPU, timers, buses, etc.). Used incorrectly, this can lead to
+malfunction, lockups, crashes of your board, and in extreme cases, hardware
+damage.
 
-Quick usage example
--------------------
+.. _machine_callbacks:
 
-    ::
-
-        import machine
-
-        help(machine) # display all members from the machine module
-        machine.freq() # get the CPU frequency
-        machine.unique_id() # return the 6-byte unique id of the board (the LoPy's WiFi MAC address)
-
+A note of callbacks used by functions and class methods of :mod:`machine` module:
+all these callbacks should be considered as executing in an interrupt context.
+This is true for both physical devices with IDs >= 0 and "virtual" devices
+with negative IDs like -1 (these "virtual" devices are still thin shims on
+top of real hardware and real hardware interrupts). See :ref:`isr_rules`.
 
 Reset related functions
 -----------------------
@@ -30,138 +31,72 @@ Reset related functions
 
    Get the reset cause. See :ref:`constants <machine_constants>` for the possible return values.
 
-
 Interrupt related functions
 ---------------------------
 
-.. only:: port_wipy
+.. function:: disable_irq()
 
-  .. function:: disable_irq()
+   Disable interrupt requests.
+   Returns the previous IRQ state which should be considered an opaque value.
+   This return value should be passed to the `enable_irq()` function to restore
+   interrupts to their original state, before `disable_irq()` was called.
 
-     Disable interrupt requests.
-     Returns the previous IRQ state: ``False``/``True`` for disabled/enabled IRQs
-     respectively.  This return value can be passed to enable_irq to restore
-     the IRQ to its original state.
+.. function:: enable_irq(state)
 
-  .. function:: enable_irq(state=True)
-
-     Enable interrupt requests.
-     If ``state`` is ``True`` (the default value) then IRQs are enabled.
-     If ``state`` is ``False`` then IRQs are disabled.  The most common use of
-     this function is to pass it the value returned by ``disable_irq`` to
-     exit a critical section.
-
-.. only:: port_2wipy or port_lopy or port_pycom_esp32
-
-  .. function:: disable_irq()
-
-     Disable interrupt requests.
-     Returns and integer representing the previous IRQ state.
-     This return value can be passed to enable_irq to restore the IRQ to its original state.
-
-  .. function:: enable_irq([state])
-
-     Enable interrupt requests.
-     The most common use of this function is to pass the value returned by ``disable_irq`` to
-     exit a critical section. Another options is to enable all interrupts which can be achieved
-     by calling the function with no parameters.
+   Re-enable interrupt requests.
+   The *state* parameter should be the value that was returned from the most
+   recent call to the `disable_irq()` function.
 
 Power related functions
 -----------------------
 
 .. function:: freq()
 
-    .. only:: not port_wipy
+    Returns CPU frequency in hertz.
 
-        Returns CPU frequency in hertz.
+.. function:: idle()
 
-    .. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
+   Gates the clock to the CPU, useful to reduce power consumption at any time during
+   short or long periods. Peripherals continue working and execution resumes as soon
+   as any interrupt is triggered (on many ports this includes system timer
+   interrupt occurring at regular intervals on the order of millisecond).
 
-        Returns a tuple of clock frequencies: ``(sysclk,)``
-        These correspond to:
+.. function:: sleep()
 
-        - sysclk: frequency of the CPU
+   .. note:: This function is deprecated, use `lightsleep()` instead with no arguments.
 
-.. only:: port_wipy
+.. function:: lightsleep([time_ms])
+              deepsleep([time_ms])
 
-    .. function:: idle()
+   Stops execution in an attempt to enter a low power state.
 
-       Gates the clock to the CPU, useful to reduce power consumption at any time during
-       short or long periods. Peripherals continue working and execution resumes as soon
-       as any interrupt is triggered (on many ports this includes system timer
-       interrupt occurring at regular intervals on the order of millisecond).
+   If *time_ms* is specified then this will be the maximum time in milliseconds that
+   the sleep will last for.  Otherwise the sleep can last indefinitely.
 
-    .. function:: sleep()
+   With or without a timout, execution may resume at any time if there are events
+   that require processing.  Such events, or wake sources, should be configured before
+   sleeping, like `Pin` change or `RTC` timeout.
 
-       Stops the CPU and disables all peripherals except for WLAN. Execution is resumed from
-       the point where the sleep was requested. For wake up to actually happen, wake sources
-       should be configured first.
+   The precise behaviour and power-saving capabilities of lightsleep and deepsleep is
+   highly dependent on the underlying hardware, but the general properties are:
 
-    .. function:: deepsleep()
+   * A lightsleep has full RAM and state retention.  Upon wake execution is resumed
+     from the point where the sleep was requested, with all subsystems operational.
 
-       Stops the CPU and all peripherals (including networking interfaces, if any). Execution
-       is resumed from the main script, just as with a reset. The reset cause can be checked
-       to know that we are coming from ``machine.DEEPSLEEP``. For wake up to actually happen,
-       wake sources should be configured first, like ``Pin`` change or ``RTC`` timeout.
+   * A deepsleep may not retain RAM or any other state of the system (for example
+     peripherals or network interfaces).  Upon wake execution is resumed from the main
+     script, similar to a hard or power-on reset. The `reset_cause()` function will
+     return `machine.DEEPSLEEP` and this can be used to distinguish a deepsleep wake
+     from other resets.
 
-.. only:: port_pycom_esp32
+.. function:: wake_reason()
 
-    .. function:: idle()
+   Get the wake reason. See :ref:`constants <machine_constants>` for the possible return values.
 
-       Gates the clock to the CPU, useful to reduce power consumption at any time during
-       short or long periods. Peripherals continue working and execution resumes as soon
-       as any interrupt is triggered (on many ports this includes system timer
-       interrupt occurring at regular intervals on the order of millisecond).
-
-    .. function:: deepsleep([time_ms])
-
-       Stops the CPU and all peripherals (including networking interfaces, if any). Execution
-       is resumed from the main script, just as with a reset. If a value in milliseconds is given
-       then the device will wake up after that period of time, otherwise it will remain in deep sleep
-       until the reset button is pressed.
-
-    .. function:: pin_deepsleep_wakeup(pins, mode, enable_pull)
-
-       Configure pins to wake up from deep sleep mode. The pins which have this capability are:
-       ``P2``, ``P3``, ``P4``, ``P6``, ``P8`` to ``P10`` and ``P13`` to ``P23``.
-
-       The arguments are:
-
-            - ``pins`` a list or tuple containing the GPIO to setup for deepsleep wakeup.
-            - ``mode`` selects the way the configure GPIOs can wake up the module. The possible
-              values are: ``machine.WAKEUP_ALL_LOW`` and ``machine.WAKEUP_ANY_HIGH``.
-            - ``enable_pull`` if set to ``True`` keeps the pull up or pull down resistors enabled
-              during deep sleep. If this variable is set to True, then ULP or capactive touch wakeup
-              cannot be used in combination with GPIO wakeup.
-
-    .. function:: wake_reason()
-
-        Get the wake reason. See :ref:`constants <machine_constants>` for the possible return values.
-        Returns a tuple of the form: ``(wake_reason, gpio_list)``.
-        When the wakeup reason is either GPIO or touch pad, then the second element of the tuple is a
-        list with GPIOs that generated the wakeup.
-
-.. only:: port_wipy
-
-    .. function:: wake_reason()
-
-        Get the wake reason. See :ref:`constants <machine_constants>` for the possible return values.
+   Availability: ESP32, WiPy.
 
 Miscellaneous functions
 -----------------------
-
-.. only:: port_wipy or port_lopy or port_2wipy or port_pycom_esp32
-
-    .. function:: main(filename)
-
-        Set the filename of the main script to run after boot.py is finished.  If
-        this function is not called then the default file main.py will be executed.
-
-        It only makes sense to call this function from within boot.py.
-
-    .. function:: rng()
-
-        Return a 24-bit software generated random number.
 
 .. function:: unique_id()
 
@@ -170,125 +105,67 @@ Miscellaneous functions
    varies by hardware (so use substring of a full value if you expect a short
    ID). In some MicroPython ports, ID corresponds to the network MAC address.
 
-   Hint: use :mod:`binascii`.hexlify() to convert the byte string to the much used 
-   hexadecimal form.
+.. function:: time_pulse_us(pin, pulse_level, timeout_us=1000000)
 
-.. only:: port_wipy
+   Time a pulse on the given *pin*, and return the duration of the pulse in
+   microseconds.  The *pulse_level* argument should be 0 to time a low pulse
+   or 1 to time a high pulse.
 
-    .. function:: time_pulse_us(pin, pulse_level, timeout_us=1000000)
+   If the current input value of the pin is different to *pulse_level*,
+   the function first (*) waits until the pin input becomes equal to *pulse_level*,
+   then (**) times the duration that the pin is equal to *pulse_level*.
+   If the pin is already equal to *pulse_level* then timing starts straight away.
 
-       Time a pulse on the given `pin`, and return the duration of the pulse in
-       microseconds.  The `pulse_level` argument should be 0 to time a low pulse
-       or 1 to time a high pulse.
+   The function will return -2 if there was timeout waiting for condition marked
+   (*) above, and -1 if there was timeout during the main measurement, marked (**)
+   above. The timeout is the same for both cases and given by *timeout_us* (which
+   is in microseconds).
 
-       The function first waits while the pin input is different to the `pulse_level`
-       parameter, then times the duration that the pin is equal to `pulse_level`.
-       If the pin is already equal to `pulse_level` then timing starts straight away.
+.. function:: rng()
 
-       The function will raise an OSError with ETIMEDOUT if either of the waits is
-       longer than the given timeout value (which is in microseconds).
+   Return a 24-bit software generated random number.
+
+   Availability: WiPy.
 
 .. _machine_constants:
 
-.. only:: port_wipy
+Constants
+---------
 
-  Constants
-  ---------
+.. data:: machine.IDLE
+          machine.SLEEP
+          machine.DEEPSLEEP
 
-  .. data:: machine.IDLE
-  .. data:: machine.SLEEP
-  .. data:: machine.DEEPSLEEP
+    IRQ wake values.
 
-      irq wake values
+.. data:: machine.PWRON_RESET
+          machine.HARD_RESET
+          machine.WDT_RESET
+          machine.DEEPSLEEP_RESET
+          machine.SOFT_RESET
 
-  .. data:: machine.PWRON_RESET
-  .. data:: machine.HARD_RESET
-  .. data:: machine.WDT_RESET
-  .. data:: machine.DEEPSLEEP_RESET
-  .. data:: machine.SOFT_RESET
+    Reset causes.
 
-      reset causes
+.. data:: machine.WLAN_WAKE
+          machine.PIN_WAKE
+          machine.RTC_WAKE
 
-  .. data:: machine.WLAN_WAKE
-  .. data:: machine.PIN_WAKE
-  .. data:: machine.RTC_WAKE
+    Wake-up reasons.
 
-      wake reasons
+Classes
+-------
 
-.. only:: port_lopy or port_2wipy or port_pycom_esp32
+.. toctree::
+   :maxdepth: 1
 
-  Constants
-  ---------
-
-  .. data:: machine.PWRON_RESET
-            machine.HARD_RESET
-            machine.WDT_RESET
-            machine.DEEPSLEEP_RESET
-            machine.SOFT_RESET
-            machine.BROWN_OUT_RESET
-
-      reset causes
-
-  .. data:: machine.PWRON_WAKE
-            machine.PIN_WAKE
-            machine.RTC_WAKE
-            machine.ULP_WAK
-
-      wake reasons
-
-  .. data:: machine.WAKEUP_ALL_LOW
-            machine.WAKEUP_ANY_HIGH
-
-      Pin wakeup modes
-
-.. only:: port_wipy
-
-  Classes
-  -------
-
-  .. toctree::
-     :maxdepth: 1
-
-     machine.ADC.rst
-     machine.I2C.rst
-     machine.Pin.rst
-     machine.RTC.rst
-     machine.SD.rst
-     machine.SPI.rst
-     machine.Timer.rst
-     machine.UART.rst
-     machine.WDT.rst
-
-
-.. only:: port_lopy or port_2wipy or port_pycom_esp32
-
-  Classes
-  -------
-
-  .. raw:: html
-
-    <modify_html name="TOC_1"/>
-
-  .. toctree::
-    :maxdepth: 1
-
-    machine.Pin.rst
-    machine.UART.rst
-    machine.SPI.rst
-    machine.Timer.rst
-    machine.I2C.rst
-    machine.PWM.rst
-    machine.ADC.rst
-    machine.DAC.rst
-    machine.SD.rst
-
-  .. raw:: html
-
-    <script>
-        toc = document.getElementsByName('TOC_1')[0].getElementsByTagName('div')[0].getElementsByTagName('ul')[0].getElementsByTagName('li');
-        for (i = 0; i < toc.length; i++) {
-            if (toc[i].innerText.search(/ADCChannel|PWMChannel/) !== -1) {
-                toc[i].remove();
-            }
-        }
-    </script>
+   machine.Pin.rst
+   machine.Signal.rst
+   machine.ADC.rst
+   machine.UART.rst
+   machine.SPI.rst
+   machine.I2C.rst
+   machine.RTC.rst
+   machine.Timer.rst
+   machine.WDT.rst
+   machine.SD.rst
+   machine.SDCard.rst
