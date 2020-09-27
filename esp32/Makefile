@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-IDF_HASH=a52ce9c
+IDF_HASH=0883e5e
 XTENSA_VERSION = "2020r3"
 
 TARGET ?= boot_app
@@ -146,8 +146,8 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lm \
        -lgcc \
        -lstdc++ \
-       -lnvs_flash -lesp_netif -llog \
-       -lspi_flash -lnvs_flash -ldriver -lesp32 -lexpat -lpthread  -lesp_adc_cal \
+       -lnvs_flash -lesp_netif -ltcpip_adapter -llog \
+       -lspi_flash -lnvs_flash -ldriver -lesp32 -lexpat -lpthread -lesp_adc_cal \
        -lfreertos -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
        -lesp_ringbuf -lefuse -lespcoredump -lapp_update \

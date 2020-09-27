@@ -105,8 +105,9 @@ static DRAM_ATTR EventGroupHandle_t eth_event_group;
 void eth_pre_init (void) {
     // init tcpip stack
     tcpip_adapter_init();
+    // TODO: commented out because this function does not exist in esp-idf 4.1
     // init tcpip eth evt handlers to default
-    esp_event_set_default_eth_handlers();
+    // esp_event_set_default_eth_handlers();
     // register eth app evt handler
     app_sys_register_evt_cb(APP_SYS_EVT_ETH, modeth_event_handler);
     //Create cmd Queue
@@ -123,18 +124,18 @@ void modeth_get_mac(uint8_t *mac)
     memcpy(mac, ethernet_mac, ETH_MAC_SIZE);
 }
 
-eth_speed_mode_t get_eth_link_speed(void)
+eth_speed_t get_eth_link_speed(void)
 {
     portDISABLE_INTERRUPTS();
     uint16_t speed = ksz8851_regrd(REG_PORT_STATUS);
     portENABLE_INTERRUPTS();
     if((speed & (PORT_STAT_SPEED_100MBIT)))
     {
-        return ETH_SPEED_MODE_100M;
+        return ETH_SPEED_100M;
     }
     else
     {
-        return ETH_SPEED_MODE_10M;
+        return ETH_SPEED_10M;
     }
 }
 
@@ -170,7 +171,7 @@ static esp_err_t modeth_event_handler(void *ctx, system_event_t *event)
 #if defined(FIPY) || defined(GPY)
         MSG("EH save DNS\n");
         // Save DNS info for restoring if wifi inf is usable again after LTE disconnect
-        tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &eth_sta_inf_dns_info);
+        tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_ETH, ESP_NETIF_DNS_MAIN, &eth_sta_inf_dns_info);
 #endif
         mod_network_register_nic(&eth_obj);
         xEventGroupSetBits(eth_event_group, ETHERNET_EVT_CONNECTED);
@@ -188,7 +189,7 @@ static esp_err_t modeth_event_handler(void *ctx, system_event_t *event)
 static void eth_set_default_inf(void)
 {
 #if defined(FIPY) || defined(GPY)
-    tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &eth_sta_inf_dns_info);
+    tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_ETH, ESP_NETIF_DNS_MAIN, &eth_sta_inf_dns_info);
     tcpip_adapter_up(TCPIP_ADAPTER_IF_ETH);
 #endif
 }
@@ -624,7 +625,7 @@ STATIC mp_obj_t eth_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
     if (args[0].u_obj == MP_OBJ_NULL) {
         // get
         tcpip_adapter_ip_info_t ip_info;
-        tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &dns_info);
+        tcpip_adapter_get_dns_info(TCPIP_ADAPTER_IF_ETH, ESP_NETIF_DNS_MAIN, &dns_info);
         if (ESP_OK == tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_ETH, &ip_info)) {
             mp_obj_t ifconfig[4] = {
                 netutils_format_ipv4_addr((uint8_t *)&ip_info.ip.addr, NETUTILS_BIG),
@@ -650,7 +651,7 @@ STATIC mp_obj_t eth_ifconfig (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
 
             tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_ETH);
             tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_ETH, &ip_info);
-            tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_ETH, TCPIP_ADAPTER_DNS_MAIN, &dns_info);
+            tcpip_adapter_set_dns_info(TCPIP_ADAPTER_IF_ETH, ESP_NETIF_DNS_MAIN, &dns_info);
 
         } else {
             // check for the correct string
