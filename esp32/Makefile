@@ -95,7 +95,7 @@ ifeq ($(SECURE), on)
 	# espsecure.py generate_flash_encryption_key flash_encryption_key.bin
 	# Writing it is done using:
 	# espefuse.py --port PORT burn_key flash_encryption flash_encryption_key.bin
-    	ENCRYPT_KEY ?= flash_encryption_key.bin
+	ENCRYPT_KEY ?= flash_encryption_key.bin
 else
 $(info Use make SECURE=on [optionally SECURE_KEY ?= secure_boot_signing_key.pem] to enable Secure Boot and Flash Encryption mechanisms.)
 endif # ifeq ($(SECURE), on)
@@ -150,7 +150,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lspi_flash -lnvs_flash -ldriver -lesp32 -lexpat -lpthread  -lesp_adc_cal \
        -lfreertos -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
-       -lesp_ringbuf -lcoap -lefuse -lespcoredump -lapp_update \
+       -lesp_ringbuf -lefuse -lespcoredump -lapp_update \
        -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig
 
 
@@ -162,6 +162,12 @@ ifeq ($(MOD_SIGFOX_ENABLED), 1)
         LIBS += sigfox/modsigfox_$(BOARD).a -lsigfox
         $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
     endif
+endif
+
+ifeq ($(MOD_COAP_ENABLED), 1)
+    $(info COAP Module Enabled)
+    LIBS += -lcoap
+    CFLAGS += -DMOD_COAP_ENABLED
 endif
 
 ifeq ($(MOD_MDNS_ENABLED), 1)

@@ -43,6 +43,7 @@
  DEFINE CONSTANTS
  ******************************************************************************/
 #define MOD_NETWORK_IPV4ADDR_BUF_SIZE             (4)
+#define TCPIP_HOSTNAME_MAX_SIZE                   (32)
 
 /******************************************************************************
  DEFINE TYPES

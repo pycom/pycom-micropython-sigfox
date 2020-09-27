@@ -60,7 +60,6 @@
 #include "mptask.h"
 #include "pycom_config.h"
 #include "pycom_general_util.h"
-#include "app_sys_evt.h"
 
 /******************************************************************************
  DEFINE TYPES
