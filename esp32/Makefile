@@ -153,6 +153,16 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lesp_ringbuf -lefuse -lespcoredump -lapp_update \
        -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig
 
+ifeq ($(MOD_COAP_ENABLED), 1)
+    $(info COAP Module Enabled)
+    LIBS += -lcoap
+    CFLAGS += -DMOD_COAP_ENABLED
+endif
+
+ifeq ($(DIFF_UPDATE_ENABLED), 1)
+    $(info Differential Update Enabled)
+    CFLAGS += -DDIFF_UPDATE_ENABLED -DBZ_NO_STDIO
+endif
 
 ifeq ($(MOD_SIGFOX_ENABLED), 1)
     $(info SIGFOX Module Enabled)
@@ -161,12 +171,6 @@ ifeq ($(MOD_SIGFOX_ENABLED), 1)
         LIBS += sigfox/modsigfox_$(BOARD).a -lsigfox
         $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
     endif
-endif
-
-ifeq ($(MOD_COAP_ENABLED), 1)
-    $(info COAP Module Enabled)
-    LIBS += -lcoap
-    CFLAGS += -DMOD_COAP_ENABLED
 endif
 
 ifeq ($(MOD_MDNS_ENABLED), 1)
