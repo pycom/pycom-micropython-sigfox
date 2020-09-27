@@ -156,7 +156,6 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
 
 ifeq ($(MOD_SIGFOX_ENABLED), 1)
     $(info SIGFOX Module Enabled)
-
     ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
         CFLAGS += -DMOD_SIGFOX_ENABLED
         LIBS += sigfox/modsigfox_$(BOARD).a -lsigfox
@@ -177,6 +176,7 @@ ifeq ($(MOD_MDNS_ENABLED), 1)
 endif
 
 ifeq ($(OPENTHREAD), on)
+    $(info OPENTHREAD enabled)
     LIBS += -lopenthread
     CFLAGS += -DLORA_OPENTHREAD_ENABLED
 endif
@@ -184,6 +184,7 @@ endif
 # Enable or Disable LTE_LOG_BUFF
 ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))
 ifeq ($(LTE_LOG_BUFF),1)
+    $(info LTE_LOG_BUFF enabled)
 	CFLAGS += -DLTE_DEBUG_BUFF
 endif #ifeq ($(LTE_LOG_BUFF),1)
 endif #ifeq ($(BOARD), $(filter $(BOARD), GPY FIPY))

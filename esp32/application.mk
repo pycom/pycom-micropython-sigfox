@@ -469,7 +469,7 @@ OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
 ifeq ($(PYGATE_ENABLED), 1)
-$(info Pygate Enabled)
+$(info PyGate Enabled)
 OBJ += $(addprefix $(BUILD)/, $(APP_SX1308_SRC_C:.c=.o) $(APP_PYGATE_SRC_C:.c=.o))
 CFLAGS += -DPYGATE_ENABLED
 SRC_QSTR += $(APP_SX1308_SRC_C) $(APP_PYGATE_SRC_C)
