@@ -105,6 +105,10 @@ class constants:
     __DEVICE_TYPE_LOPY_4 = 0x04
     __DEVICE_TYPE_UNKNOWN = 0x05
 
+    __FWTYPE_DEFAULT = 0x00
+    __FWTYPE_PYMESH = 0x01
+    __FWTYPE_PYGATE = 0x02
+
     # {"ssid":"%s", "mac_addr":"%s", "channel":"%s", "power":"%s"}
     __WIFI_NETWORK_FORMAT = ">6sBb"
 

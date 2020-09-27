@@ -17,7 +17,11 @@
 #define SIGFOX_VERSION_NUMBER                          "1.0.1"
 
 #if (VARIANT == PYBYTES)
-#define PYBYTES_VERSION_NUMBER                         "1.5.0"
+#define PYBYTES_VERSION_NUMBER                         "1.5.2"
+#endif
+
+#ifdef PYGATE_ENABLED
+#define PYGATE_VERSION_NUMBER                          "1.0.1"
 #endif
 
 #endif /* VERSION_H_ */

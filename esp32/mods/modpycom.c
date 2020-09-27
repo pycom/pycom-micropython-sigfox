@@ -202,6 +202,15 @@ STATIC mp_obj_t mod_pycom_ota_slot (void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_ota_slot_obj, mod_pycom_ota_slot);
 
+STATIC mp_obj_t mod_pycom_diff_update_enabled (void) {
+#ifdef DIFF_UPDATE_ENABLED
+    return mp_obj_new_bool(true);
+#else
+    return mp_obj_new_bool(false);
+#endif
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_diff_update_enabled_obj, mod_pycom_diff_update_enabled);
+
 STATIC mp_obj_t mod_pycom_pulses_get (mp_obj_t gpio, mp_obj_t timeout) {
     rmt_config_t rmt_rx;
     rmt_rx.channel = RMT_CHANNEL_0;
@@ -269,8 +278,10 @@ STATIC mp_obj_t mod_pycom_nvs_set (mp_obj_t _key, mp_obj_t _value) {
         nvs_commit(pycom_nvs_handle);
     } else if (ESP_ERR_NVS_NOT_ENOUGH_SPACE == esp_err || ESP_ERR_NVS_PAGE_FULL == esp_err || ESP_ERR_NVS_NO_FREE_PAGES == esp_err) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "No free space available"));
-    } else if (ESP_ERR_NVS_INVALID_NAME == esp_err || ESP_ERR_NVS_KEY_TOO_LONG == esp_err) {
+    } else if (ESP_ERR_NVS_INVALID_NAME == esp_err) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Key is invalid"));
+    } else if (ESP_ERR_NVS_KEY_TOO_LONG == esp_err) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Key is too long"));
     } else {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_Exception, "Error occurred while storing value, code: %d", esp_err));
     }
@@ -695,13 +706,17 @@ STATIC mp_obj_t mod_pycom_bootmgr (size_t n_args, const mp_obj_t *pos_args, mp_m
         {
             t->items[ARG_safeboot] = mp_obj_new_str("SafeBoot: True", strlen("SafeBoot: True"));
         }
-        if(boot_info.Status == 0x00)
+        if(boot_info.Status == IMG_STATUS_CHECK)
         {
             t->items[ARG_status] = mp_obj_new_str("Status: Check", strlen("Status: Check"));
         }
-        else
+        else if(boot_info.Status == IMG_STATUS_READY)
         {
             t->items[ARG_status] = mp_obj_new_str("Status: Ready", strlen("Status: Ready"));
+        }
+        else if(boot_info.Status == IMG_STATUS_PATCH)
+        {
+            t->items[ARG_status] = mp_obj_new_str("Status: Patch", strlen("Status: Patch"));
         }
 
         return MP_OBJ_FROM_PTR(t);
@@ -1008,6 +1023,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_ota_finish),                      (mp_obj_t)&mod_pycom_ota_finish_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_ota_verify),                      (mp_obj_t)&mod_pycom_ota_verify_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_ota_slot),                        (mp_obj_t)&mod_pycom_ota_slot_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_diff_update_enabled),             (mp_obj_t)&mod_pycom_diff_update_enabled_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_pulses_get),                      (mp_obj_t)&mod_pycom_pulses_get_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_set),                         (mp_obj_t)&mod_pycom_nvs_set_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_get),                         (mp_obj_t)&mod_pycom_nvs_get_obj },

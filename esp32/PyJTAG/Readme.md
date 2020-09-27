@@ -84,8 +84,8 @@ If `gdb` does not reach the `Thread 1 hit Temporary breakpoint ...` line, close 
 ## Versions
 There are two generations of PyJTAG boards:
 
-1) First generation with green PCB has three blocks of switches. (Make sure SAFE_BOOT_SW is off.)
-2) Second generation with black PCB and two blocks of switches.
+1) V1R1 with a green PCB has three blocks of switches. Make sure SAFE_BOOT_SW is off on this version
+2) V1R2 with a black PCB and two blocks of switches.
 
 Both generation boards can be equipped with pogo pins that connect to the bottom of the development board and allow LTE debugging. There can either be pins that connect to a GPy or pins that conenct to a FiPy.
 

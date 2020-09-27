@@ -24,10 +24,43 @@ OEM ?= 0
 # make 'release' the default build type
 BTYPE ?= release
 
+# MDNS is disabled by default
 MOD_MDNS_ENABLED ?= 0
 
-# make Non-Pybytes firmware default
+# set to 1 to enable PyEthernet board (ksz8851 chip)
+PYETH_ENABLED ?= 0
+
+# set to 1 to enable LoRaWAN gateway (requires Pygate board)
+PYGATE_ENABLED ?= 0
+
+# COAP is enabled by default
+MOD_COAP_ENABLED ?= 1
+
+# SIGFOX is enabled by default. It will only be built for supported boards.
+MOD_SIGFOX_ENABLED ?= 1
+
+# Pybytes disabled by default
+PYBYTES_ENABLED ?= 0
+
+# Flag to enable/disable Delta Update Feature. Disabled by default
+DIFF_UPDATE_ENABLED ?= 0
+
+# by default make a BASE firmware with features as specified with defaults above
+# valid choices for VARIANT are: BASE, PYBYTES, PYGATE
 VARIANT ?=BASE
+
+ifeq ($(VARIANT),PYBYTES)
+    PYBYTES_ENABLED=1
+endif
+
+ifeq ($(VARIANT),PYGATE)
+    ifneq ($(BOARD), $(filter $(BOARD), WIPY GPY LOPY4 ))
+        $(error PYGATE variant is not supported on $(BOARD))
+    endif
+    PYBYTES_ENABLED=1
+    PYETH_ENABLED=1
+    PYGATE_ENABLED=1
+endif
 
 ifeq ($(VARIANT),BASE)
 	BUILD_DIR ?=build
@@ -109,7 +142,6 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -Lbootloader \
        -Llib \
        -L$(BUILD) \
-       -lsigfox \
        -lc \
        -lm \
        -lgcc \
@@ -118,12 +150,18 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lspi_flash -lnvs_flash -ldriver -lesp32 -lexpat -lpthread  -lesp_adc_cal \
        -lfreertos -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
-       -lesp_ringbuf -lcoap -lmdns -lefuse -lespcoredump -lapp_update \
+       -lesp_ringbuf -lcoap -lefuse -lespcoredump -lapp_update \
        -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig
 
-ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
-    LIBS += sigfox/modsigfox_$(BOARD).a
-$(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
+
+ifeq ($(MOD_SIGFOX_ENABLED), 1)
+    $(info SIGFOX Module Enabled)
+
+    ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
+        CFLAGS += -DMOD_SIGFOX_ENABLED
+        LIBS += sigfox/modsigfox_$(BOARD).a -lsigfox
+        $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
+    endif
 endif
 
 ifeq ($(MOD_MDNS_ENABLED), 1)

@@ -29,6 +29,9 @@
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
 #include "esp_event.h"
+#include "ff.h"
+#include "lfs.h"
+#include "vfs_littlefs.h"
 #include "esp_wpa2.h"
 #include "esp_smartconfig.h"
 #include "esp_netif_sta_list.h"
@@ -57,6 +60,7 @@
 #include "mptask.h"
 #include "pycom_config.h"
 #include "pycom_general_util.h"
+#include "app_sys_evt.h"
 
 /******************************************************************************
  DEFINE TYPES
@@ -91,7 +95,6 @@ wlan_obj_t wlan_obj = {
     .disconnected = true,
     .irq_flags = 0,
     .irq_enabled = false,
-    .enable_servers = false,
     .pwrsave = false,
     .is_promiscuous = false,
     .sta_conn_timeout = false,
@@ -145,8 +148,6 @@ static bool wlan_smart_config_enabled = false;
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-STATIC void wlan_servers_start (void);
-STATIC void wlan_servers_stop (void);
 STATIC void wlan_validate_mode (uint mode);
 STATIC void wlan_set_mode (uint mode);
 STATIC void wlan_validate_bandwidth (wifi_bandwidth_t mode);
@@ -288,9 +289,6 @@ void wlan_setup (wlan_internal_setup_t *config) {
 
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
-    // stop the servers
-    wlan_servers_stop();
-
     esp_wifi_get_mac(WIFI_IF_STA, wlan_obj.mac);
 
     wlan_set_antenna(config->antenna);
@@ -366,7 +364,6 @@ void wlan_setup (wlan_internal_setup_t *config) {
         default:
             break;
     }
-    wlan_servers_start();
 }
 
 void wlan_get_mac (uint8_t *macAddress) {
@@ -533,21 +530,6 @@ STATIC void wlan_stop_smartConfig_timer()
         wlan_smartConfig_timeout = NULL;
     }
     xSemaphoreGive(smartConfigTimeout_mutex);
-}
-STATIC void wlan_servers_start (void) {
-    // start the servers if they were enabled before
-    if (!servers_are_enabled()) {
-        servers_start();
-        wlan_obj.enable_servers = true;
-    }
-}
-
-STATIC void wlan_servers_stop (void) {
-    // stop the servers if they are enabled
-    if (servers_are_enabled()) {
-        servers_stop();
-        wlan_obj.enable_servers = false;
-    }
 }
 
 // Must be called only when GIL is not locked
@@ -1297,8 +1279,6 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_init_obj, 1, wlan_init);
 
 mp_obj_t wlan_deinit(mp_obj_t self_in) {
 
-    wlan_servers_stop();
-
     if (wlan_obj.started)
     {
         // stop smart config if enabled
@@ -1308,6 +1288,7 @@ mp_obj_t wlan_deinit(mp_obj_t self_in) {
             vTaskDelay(100/portTICK_PERIOD_MS);
         }
 
+        mod_network_deregister_nic(&wlan_obj);
         esp_wifi_stop();
 
         /* wait for sta and Soft-AP to stop */

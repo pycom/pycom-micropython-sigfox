@@ -53,6 +53,10 @@
 #include "mptask.h"
 #include "modwlan.h"
 
+#include "esp32_mphal.h"
+//#define MSG(fmt, ...) printf("[%u] ftp: " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
+#define MSG(fmt, ...) (void)0
+
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
  ******************************************************************************/
@@ -868,21 +872,30 @@ static ftp_result_t ftp_wait_for_connection (int32_t l_sd, int32_t *n_sd, uint32
 
     if (ip_addr) {
         esp_netif_ip_info_t ip_info;
-        wifi_mode_t wifi_mode;
-        esp_wifi_get_mode(&wifi_mode);
-        if (wifi_mode != WIFI_MODE_APSTA) {
-            // easy way
-            esp_netif_t * esp_netif_interface = wifi_mode == WIFI_MODE_AP ? wlan_obj.esp_netif_AP : wlan_obj.esp_netif_STA;
 
-            esp_netif_get_ip_info(esp_netif_interface, &ip_info);
-        } else {
-            // see on which subnet is the client ip address
-            esp_netif_get_ip_info(wlan_obj.esp_netif_AP, &ip_info);
-            if ((ip_info.ip.addr & ip_info.netmask.addr) != (ip_info.netmask.addr & sClientAddress.sin_addr.s_addr)) {
-                esp_netif_get_ip_info(wlan_obj.esp_netif_STA, &ip_info);
-            }
+        bool adapter_found = false;
+#ifdef PYETH_ENABLED
+        if ( tcpip_adapter_is_netif_up(TCPIP_ADAPTER_IF_ETH) ) {
+            tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_ETH, &ip_info);
+            adapter_found = true;
         }
+#endif
+
+        if (!adapter_found && esp_netif_is_netif_up(wlan_obj.esp_netif_AP)){
+            esp_netif_get_ip_info(wlan_obj.esp_netif_AP, &ip_info);
+            adapter_found = true;
+        }
+
+        if (!adapter_found && esp_netif_is_netif_up(wlan_obj.esp_netif_STA)){
+            esp_netif_get_ip_info(wlan_obj.esp_netif_STA, &ip_info);
+            adapter_found = true;
+        }
+
+        MSG("fwfc ip=%08x nm=%08x gw=%08x cl=%08x\n", ip_info.ip.addr, ip_info.netmask.addr, ip_info.gw.addr, sClientAddress.sin_addr.s_addr);
+        MSG("fwfc ip=" IPSTR " nm=" IPSTR " gw=" IPSTR "\n", IP2STR(&ip_info.ip), IP2STR(&ip_info.netmask), IP2STR(&ip_info.gw) );
         *ip_addr = ip_info.ip.addr;
+
+
     }
 
     // add the new socket to the network administration
@@ -1233,6 +1246,7 @@ static void ftp_process_cmd (void) {
             break;
         default:
             // command not implemented
+            MSG("process_cmd not implemented\n");
             ftp_send_reply(502, NULL);
             break;
         }
@@ -1276,6 +1290,7 @@ static ftp_cmd_index_t ftp_pop_command (char **str) {
     char _cmd[FTP_CMD_SIZE_MAX];
     ftp_pop_param (str, _cmd, true);
     stoupper (_cmd);
+    //MSG("pop_command: \"%s\"\n", _cmd);
     for (ftp_cmd_index_t i = 0; i < E_FTP_NUM_FTP_CMDS; i++) {
         if (!strcmp (_cmd, ftp_cmd_table[i].cmd)) {
             // move one step further to skip the space
@@ -1283,6 +1298,7 @@ static ftp_cmd_index_t ftp_pop_command (char **str) {
             return i;
         }
     }
+    MSG("pop_command not supported: \"%s\"\n", _cmd);
     return E_FTP_CMD_NOT_SUPPORTED;
 }
 
