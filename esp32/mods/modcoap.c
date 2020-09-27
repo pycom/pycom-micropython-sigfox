@@ -13,8 +13,6 @@
 #include "py/runtime.h"
 
 #include "coap.h"
-#include "coap_list.h"
-
 #include "coap_hashkey.h"
 
 #include "modcoap.h"
