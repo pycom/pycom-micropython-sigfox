@@ -82,8 +82,7 @@ def main():
         shutil.copy(src + '/efuse/libefuse.a', dsttmpapp)
         shutil.copy(src + '/espcoredump/libespcoredump.a', dsttmpapp)
         shutil.copy(src + '/app_update/libapp_update.a', dsttmpapp)
-        shutil.copy(src + '/ethernet/libethernet.a', dsttmpapp)
-	# Added with esp-idf 4.x update
+        # Added with esp-idf 4.x update
         shutil.copy(src + '/esp_common/libesp_common.a', dsttmpapp)
         shutil.copy(src + '/esp_event/libesp_event.a', dsttmpapp)
         shutil.copy(src + '/esp_wifi/libesp_wifi.a', dsttmpapp)
