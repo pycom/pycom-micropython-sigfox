@@ -1,0 +1,52 @@
+# Packages 
+############
+
+# Logs and Databases
+######################
+*.log
+
+# VIM Swap Files
+######################
+*.swp
+
+# Build directories
+######################
+esp32/build/
+esp32/build-*/
+esp32/factory_fw/build/
+mpy-cross/build/*
+# This map file is generated here instead of the build folder...
+mpy-cross/*.map
+
+# Test failure outputs
+######################
+tests/*.exp
+tests/*.out
+
+# Python cache files
+######################
+__pycache__/
+*.pyc
+
+# Customized Makefile/project overrides
+######################
+GNUmakefile
+user.props
+.cproject
+.project
+.pydevproject
+.settings
+.launch
+.vscode
+
+# Key files (for Flash Encryption and Secure Boot)
+secure_boot_signing_key.pem
+signature_verification_key.bin
+secure-bootloader-key.bin
+flash_encryption_key.bin
+
+.DS_Store
+org.eclipse.cdt.ui.prefs
+org.eclipse.cdt.core.prefs
+language.settings.xml
+.idea

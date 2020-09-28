@@ -211,6 +211,18 @@ STATIC mp_obj_t mod_pycom_diff_update_enabled (void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_diff_update_enabled_obj, mod_pycom_diff_update_enabled);
 
+STATIC mp_obj_t mod_pycom_factory_img (mp_uint_t n_args, const mp_obj_t *args) {
+
+    if (n_args == 0) {
+        return mp_obj_new_bool(boot_info.ActiveImg == IMG_ACT_FACTORY);
+    } else {
+        boot_info.ActiveImg = IMG_ACT_FACTORY;
+        updater_write_boot_info(&boot_info, boot_info_offset);
+        return mp_const_none;
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_factory_img_obj, 0, 1, mod_pycom_factory_img);
+
 STATIC mp_obj_t mod_pycom_pulses_get (mp_obj_t gpio, mp_obj_t timeout) {
     rmt_config_t rmt_rx;
     rmt_rx.channel = RMT_CHANNEL_0;
@@ -754,12 +766,97 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_get_free_heap_obj, mod_pycom_get_free
 
 #if (VARIANT == PYBYTES)
 
-STATIC mp_obj_t mod_pycom_pybytes_device_token (void) {
-    uint8_t pybytes_device_token[39];
-    config_get_pybytes_device_token(pybytes_device_token);
-    return mp_obj_new_str((const char*)pybytes_device_token,strlen((const char*)pybytes_device_token));
+STATIC mp_obj_t mod_pycom_pybytes_device_token(mp_uint_t n_args, const mp_obj_t *args) {
+
+    if (n_args) {
+        uint8_t *token_ptr;
+        token_ptr = (uint8_t *)mp_obj_str_get_str(args[0]);
+
+        if (!config_set_pybytes_device_token(token_ptr)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to write Device Token"));
+        }
+
+        return mp_const_none;
+    } else {
+        uint8_t pybytes_device_token[39];
+
+        config_get_pybytes_device_token(pybytes_device_token);
+        return mp_obj_new_str((const char *)pybytes_device_token, strlen((const char *)pybytes_device_token));
+    }
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_pybytes_device_token_obj, mod_pycom_pybytes_device_token);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_pybytes_device_token_obj, 0, 1, mod_pycom_pybytes_device_token);
+
+STATIC mp_obj_t mod_pycom_pybytes_ota_status (mp_uint_t n_args, const mp_obj_t *args) {
+
+    if (n_args) {
+        uint8_t status;
+        status = mp_obj_get_int(args[0]);
+
+        if (!config_set_pybytes_ota_status(status)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to write OTA Status"));
+        }
+        return mp_const_none;
+    } else {
+        return mp_obj_new_int(config_get_pybytes_ota_status());
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_pybytes_ota_status_obj, 0, 1, mod_pycom_pybytes_ota_status);
+
+STATIC mp_obj_t mod_pycom_pybytes_fwtype (mp_uint_t n_args, const mp_obj_t *args) {
+
+    if (n_args) {
+        uint8_t fwtype;
+        fwtype = mp_obj_get_int(args[0]);
+
+        if (!config_set_pybytes_fwtype(fwtype)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to write fwtype"));
+        }
+        return mp_const_none;
+    } else {
+        return mp_obj_new_int(config_get_pybytes_fwtype());
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_pybytes_fwtype_obj, 0, 1, mod_pycom_pybytes_fwtype);
+
+STATIC mp_obj_t mod_pycom_pybytes_sysname (mp_uint_t n_args, const mp_obj_t *args) {
+
+    if (n_args) {
+        uint8_t *sysname_ptr;
+        sysname_ptr = (uint8_t *)mp_obj_str_get_str(args[0]);
+
+        if (!config_set_pybytes_sysname(sysname_ptr)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to write sysname"));
+        }
+
+        return mp_const_none;
+    } else {
+        uint8_t sysname[6];
+
+        config_get_pybytes_sysname(sysname);
+        return mp_obj_new_str((const char *)sysname, strlen((const char *)sysname));
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_pybytes_sysname_obj, 0, 1, mod_pycom_pybytes_sysname);
+
+STATIC mp_obj_t mod_pycom_sw_version (mp_uint_t n_args, const mp_obj_t *args) {
+
+    if (n_args) {
+        uint8_t *version;
+        version = (uint8_t *)mp_obj_str_get_str(args[0]);
+
+        if (!config_set_sw_version(version)) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Failed to write SW Version"));
+        }
+
+        return mp_const_none;
+    } else {
+        uint8_t sw_version[12];
+
+        config_get_sw_version(sw_version);
+        return mp_obj_new_str((const char *)sw_version, strlen((const char *)sw_version));
+    }
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_sw_version_obj, 0, 1, mod_pycom_sw_version);
 
 
 STATIC mp_obj_t mod_pycom_pybytes_mqttServiceAddress (void) {
@@ -1014,14 +1111,12 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_sigfox_info_obj, 0, mod_pycom_sigfox
 
 #endif // #if defined(FIPY) || defined(LOPY4) || defined(SIPY)
 
-#include "utils/data_struct/list.h"
-#include "ml/data_pipeline.h"
-#include "ml/model.h"
+#include "ml.h"
 
 STATIC mp_obj_t mod_pycom_ml_new_model (mp_obj_t model_definition) {
 
     const char *model_definition_str = mp_obj_str_get_str(model_definition);
-    
+
     bool ret = new_model(model_definition_str);
 
     return mp_obj_new_bool(ret);
@@ -1083,6 +1178,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_ota_verify),                      (mp_obj_t)&mod_pycom_ota_verify_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_ota_slot),                        (mp_obj_t)&mod_pycom_ota_slot_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_diff_update_enabled),             (mp_obj_t)&mod_pycom_diff_update_enabled_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_factory_img),                     (mp_obj_t)&mod_pycom_factory_img_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_pulses_get),                      (mp_obj_t)&mod_pycom_pulses_get_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_set),                         (mp_obj_t)&mod_pycom_nvs_set_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_get),                         (mp_obj_t)&mod_pycom_nvs_get_obj },
@@ -1108,6 +1204,10 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
 
 #if (VARIANT == PYBYTES)
         { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_device_token),            (mp_obj_t)&mod_pycom_pybytes_device_token_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_ota_status),              (mp_obj_t)&mod_pycom_pybytes_ota_status_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_fwtype),                  (mp_obj_t)&mod_pycom_pybytes_fwtype_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_sysname),                 (mp_obj_t)&mod_pycom_pybytes_sysname_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_sw_version),                      (mp_obj_t)&mod_pycom_sw_version_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_mqttServiceAddress),      (mp_obj_t)&mod_pycom_pybytes_mqttServiceAddress_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_userId),                  (mp_obj_t)&mod_pycom_pybytes_userId_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_pybytes_network_preferences),     (mp_obj_t)&mod_pycom_pybytes_network_preferences_obj },
@@ -1123,8 +1223,13 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         // class constants
         { MP_OBJ_NEW_QSTR(MP_QSTR_FACTORY),                         MP_OBJ_NEW_SMALL_INT(0) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_OTA_0),                           MP_OBJ_NEW_SMALL_INT(1) },
-        { MP_OBJ_NEW_QSTR(MP_QSTR_FAT),                           MP_OBJ_NEW_SMALL_INT(0) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_FAT),                             MP_OBJ_NEW_SMALL_INT(0) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_LittleFS),                        MP_OBJ_NEW_SMALL_INT(1) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_OTA_STATUS_SUCCESS),              MP_OBJ_NEW_SMALL_INT(OTA_STATUS_SUCCESS) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_OTA_STATUS_FAILURE),              MP_OBJ_NEW_SMALL_INT(OTA_STATUS_FAILURE) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_OTA_STATUS_PENDING),              MP_OBJ_NEW_SMALL_INT(OTA_STATUS_PENDING) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_FWTYPE_PYMESH),                   MP_OBJ_NEW_SMALL_INT(FW_TYPE_PYMESH) },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_FWTYPE_PYBYTES),                  MP_OBJ_NEW_SMALL_INT(FW_TYPE_PYBYTES) }
 
 };
 

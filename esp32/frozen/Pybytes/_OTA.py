@@ -64,7 +64,7 @@ class OTA():
         if fwtype == 'pymesh':
             request_template = "manifest.json?current_ver={}&sysname={}&token={}&ota_slot={}&wmac={}&fwtype={}&current_fwtype={}"
             req = request_template.format(current_version, sysname, token, hex(pycom.ota_slot()), wmac.upper(), fwtype, 'pymesh' if hasattr(os.uname(),'pymesh') else 'pybytes')
-        elif fwtype == 'pygate':
+        elif fwtype == 'pygate' or fwtype == 'factory':
             request_template = "manifest.json?current_ver={}&sysname={}&ota_slot={}&wmac={}&fwtype={}&current_fwtype={}"
             req = request_template.format(current_version, sysname, hex(pycom.ota_slot()), wmac.upper(), fwtype, 'pygate' if hasattr(os.uname(),'pygate') else 'pybytes')
         else:
@@ -79,7 +79,7 @@ class OTA():
         try:
             manifest = self.get_update_manifest(fwtype, token) if not customManifest else customManifest
         except Exception as e:
-            print('Error reading the manifest, aborting: {}'.format(e))
+            print('Error reading the manifest, aborting: {}, \nmanifest: {}'.format(e, manifest))
             return 0
 
         if manifest is None:
@@ -122,7 +122,29 @@ class OTA():
 
         # Flash firmware
         if "firmware" in manifest:
-            self.write_firmware(manifest['firmware'])
+            if fwtype=='factory':
+                # In case of factory FW update, we do the update from the App FW
+                self.write_firmware(manifest['firmware'])
+            else:
+                # Since the firmware update is going to be done in the factory image,
+                # we will set the required configurations here and move on
+                if fwtype == 'pymesh':
+                    pycom.pybytes_fwtype(pycom.FWTYPE_PYMESH)
+                else:
+                    pycom.pybytes_fwtype(pycom.FWTYPE_PYBYTES)
+
+                print('Setting SW version: ', self.get_current_version())
+                pycom.sw_version(self.get_current_version())
+
+                print('Setting sysname: ', os.uname().sysname)
+                pycom.pybytes_sysname(os.uname().sysname)
+
+                # Setting the OTA Status to Pending
+                print('Setting OTA Status: OTA_STATUS_PENDING')
+                pycom.pybytes_ota_status(pycom.OTA_STATUS_PENDING)
+
+                # Updating bootinfo to boot from the factory image on the next boot
+                pycom.factory_img(True)
 
         # Save version number
         # try:
@@ -324,6 +346,9 @@ class WiFiOTA(OTA):
                 config['network_preferences'] = netConf['networkPreferences']
                 if 'wifi' in netConf:
                     config['wifi'] = netConf['wifi']
+                    print('Wifi Credentials updated to SSID:{}, PWD:{}'.format(config['wifi']['wifi_ssid'], config['wifi']['wifi_pwd']))
+                    pycom.wifi_ssid_sta(config['wifi']['wifi_ssid'])
+                    pycom.wifi_pwd_sta(config['wifi']['wifi_pwd'])
                 elif 'wifi' in config:
                     del config['wifi']
 

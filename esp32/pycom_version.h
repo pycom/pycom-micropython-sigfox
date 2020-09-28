@@ -10,14 +10,14 @@
 #ifndef VERSION_H_
 #define VERSION_H_
 
-#define SW_VERSION_NUMBER                              "1.20.3.b0"
+#define SW_VERSION_NUMBER                              "1.20.3.b2"
 
 #define LORAWAN_VERSION_NUMBER                         "1.0.2"
 
 #define SIGFOX_VERSION_NUMBER                          "1.0.1"
 
 #if (VARIANT == PYBYTES)
-#define PYBYTES_VERSION_NUMBER                         "1.5.2"
+#define PYBYTES_VERSION_NUMBER                         "1.6.0"
 #endif
 
 #ifdef PYGATE_ENABLED

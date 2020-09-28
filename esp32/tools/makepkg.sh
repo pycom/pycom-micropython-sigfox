@@ -8,6 +8,8 @@ else
 fi
 BOARD=$(echo $1)
 
+FACTORY_BIN_DIR="$(pwd)/factory_fw/binary"
+
 if [ $4 ]; then
     SCRIPT_NAME_4MB="script_4MB_enc"
     SCRIPT_NAME_8MB="script_8MB_enc"
@@ -59,6 +61,7 @@ if [ $4 ]; then
 else
     BOOT_FILE='bootloader.bin'
     APP_FILE="${BOARD_NAME_L}.bin"
+    FACTORY_FILE="factory_fw.bin"
     FILE_NAME="$BOARD_NAME-$VERSION.tar.gz"
 fi
 
@@ -74,9 +77,10 @@ SCRIPT_FILE_8MB='script_8MB'
 fi
 
 cp ${BUILD_DIR}/lib/${PART_FILE_8MB} ${PKG_TMP_DIR}
+cp ${FACTORY_BIN_DIR}/${FACTORY_FILE} ${PKG_TMP_DIR}
 cat boards/$1/${SCRIPT_FILE_8MB} > ${PKG_TMP_DIR}/${SCRIPT_FILE_8MB} || { echo >&2 "Cannot create ${SCRIPT_FILE_8MB} file! Aborting."; exit 1; }
 
-tar -czf ${RELEASE_DIR}/${FILE_NAME} -C ${PKG_TMP_DIR} ${BOOT_FILE} ${PART_FILE_4MB} ${PART_FILE_8MB} ${APP_FILE} ${SCRIPT_FILE_8MB} || { echo >&2 "Cannot create ${RELEASE_DIR}/${FILE_NAME}! Aborting."; exit 1; }
+tar -czf ${RELEASE_DIR}/${FILE_NAME} -C ${PKG_TMP_DIR} ${BOOT_FILE} ${PART_FILE_4MB} ${PART_FILE_8MB} ${APP_FILE} ${SCRIPT_FILE_8MB} ${FACTORY_FILE} || { echo >&2 "Cannot create ${RELEASE_DIR}/${FILE_NAME}! Aborting."; exit 1; }
 echo "Release package ${FILE_NAME} created successfully."
 
 rm -rf ${PKG_TMP_DIR}/
