@@ -187,6 +187,9 @@ class ESPLoader(object):
             self._port.baudrate = baud
         except IOError:
             raise FatalError("Failed to set baud rate %d. The driver may not support this rate." % baud)
+        
+    def disconnect(self):
+        self._port.close()
 
     @staticmethod
     def detect_chip(port=DEFAULT_PORT, baud=ESP_ROM_BAUD, connect_mode='default_reset'):

@@ -13,8 +13,14 @@
 
 #include "ff.h"
 #include "diskio.h"
-#include "sflash_diskio.h"
+//#include "sflash_diskio.h"
 #include "pycom_config.h"
+#include "esp_flash_partitions.h"
+
+#include "esp_partition.h"
+#include "esp_log.h"
+
+#define TAG "pycom_config"
 
 #define CONFIG_DATA_FLASH_BLOCK         (SFLASH_START_BLOCK_4MB + SFLASH_BLOCK_COUNT_4MB)
 #define CONFIG_DATA_FLASH_ADDR          (SFLASH_START_ADDR_4MB + (SFLASH_BLOCK_COUNT_4MB * SFLASH_BLOCK_SIZE))
@@ -23,9 +29,22 @@ static bool config_write (void);
 
 static pycom_config_block_t pycom_config_block;
 
+const esp_partition_t *config_partition = NULL;
+
 void config_init0 (void) {
     // read the config struct from flash
-    spi_flash_read(CONFIG_DATA_FLASH_ADDR, (void *)&pycom_config_block, sizeof(pycom_config_block));
+    config_partition = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, 6, "config");
+
+    if (config_partition == NULL) {
+        ESP_LOGE(TAG, "config partition not found");
+        return;
+    }
+
+    esp_err_t err = esp_partition_read(config_partition, 0, (void *)&pycom_config_block, sizeof(pycom_config_block));
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "config partition read failed with err: %d", err);
+        return;
+    }
 }
 
 bool config_set_lpwan_mac (const uint8_t *mac) {
@@ -454,10 +473,10 @@ bool config_get_pybytes_autostart (void) {
 }
 
 static bool config_write (void) {
-    // erase the block first
-    if (ESP_OK == spi_flash_erase_sector(CONFIG_DATA_FLASH_BLOCK)) {
-        // then write it
-        return (spi_flash_write(CONFIG_DATA_FLASH_ADDR, (void *)&pycom_config_block, sizeof(pycom_config_block)) == ESP_OK);
+    esp_err_t err = esp_partition_write(config_partition, 0, (void *)&pycom_config_block, sizeof(pycom_config_block));
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "config partition read failed with err: %d", err);
+        return false;
     }
-    return false;
+    return true;
 }

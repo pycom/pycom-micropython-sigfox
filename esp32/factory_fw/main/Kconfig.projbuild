@@ -1,0 +1,15 @@
+menu "Pycom Factory FW Config"
+
+    config PYCOM_SW_SERVER
+        string "Software Server Address"
+        default "software.pycom.io"
+        help
+            Address of the Software Server to request OTA Updates
+
+    config PYCOM_SW_SERVER_PORT
+        string "Software Server Port"
+        default "443"
+        help
+            Port of the Software Server to request OTA Updates
+
+endmenu

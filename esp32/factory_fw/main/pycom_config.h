@@ -10,7 +10,7 @@
 #ifndef PYCOM_CONFIG_H_
 #define PYCOM_CONFIG_H_
 
-#include "py/mpconfig.h"
+//#include "py/mpconfig.h"
 #include <assert.h>
 
 /**
