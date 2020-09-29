@@ -253,7 +253,6 @@ void wlan_setup (wlan_internal_setup_t *config) {
     if(wlan_obj.started == false)
     {
         ESP_ERROR_CHECK(esp_netif_init());
-        ESP_ERROR_CHECK(esp_event_loop_create_default());
         // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to WIFI events
         ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wlan_event_handler, NULL));
         // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to IP events

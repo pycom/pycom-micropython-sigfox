@@ -134,8 +134,11 @@ void app_main(void) {
     // remove all the logs from the IDF
     esp_log_level_set("*", ESP_LOG_NONE);
 
+    // TODO: esp_event_loop_init is a legacy function and should be removed.
+    // TODO: Double check why app_sys_event_handler is needed to be registered. If not needed, then simply call esp_event_loop_create_default()
     // Register sys event callback
     ESP_ERROR_CHECK(esp_event_loop_init(app_sys_event_handler, NULL));
+    // ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     // setup the timer used as a reference in mphal
     machtimer_preinit();
