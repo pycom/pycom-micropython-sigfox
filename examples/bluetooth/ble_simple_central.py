@@ -1,4 +1,5 @@
-# This example finds and connects to a BLE temperature sensor (e.g. the one in ble_temperature.py).
+# This example finds and connects to a peripheral running the
+# UART service (e.g. ble_simple_peripheral.py).
 
 import bluetooth
 import random
@@ -35,24 +36,12 @@ _ADV_DIRECT_IND = const(0x01)
 _ADV_SCAN_IND = const(0x02)
 _ADV_NONCONN_IND = const(0x03)
 
-# org.bluetooth.service.environmental_sensing
-_ENV_SENSE_UUID = bluetooth.UUID(0x181A)
-# org.bluetooth.characteristic.temperature
-_TEMP_UUID = bluetooth.UUID(0x2A6E)
-_TEMP_CHAR = (
-    _TEMP_UUID,
-    bluetooth.FLAG_READ | bluetooth.FLAG_NOTIFY,
-)
-_ENV_SENSE_SERVICE = (
-    _ENV_SENSE_UUID,
-    (_TEMP_CHAR,),
-)
-
-# org.bluetooth.characteristic.gap.appearance.xml
-_ADV_APPEARANCE_GENERIC_THERMOMETER = const(768)
+_UART_SERVICE_UUID = bluetooth.UUID("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
+_UART_RX_CHAR_UUID = bluetooth.UUID("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
+_UART_TX_CHAR_UUID = bluetooth.UUID("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
 
 
-class BLETemperatureCentral:
+class BLESimpleCentral:
     def __init__(self, ble):
         self._ble = ble
         self._ble.active(True)
@@ -65,9 +54,6 @@ class BLETemperatureCentral:
         self._name = None
         self._addr_type = None
         self._addr = None
-
-        # Cached value (if we have one)
-        self._value = None
 
         # Callbacks for completion of various operations.
         # These reset back to None after being invoked.
@@ -82,12 +68,13 @@ class BLETemperatureCentral:
         self._conn_handle = None
         self._start_handle = None
         self._end_handle = None
-        self._value_handle = None
+        self._tx_handle = None
+        self._rx_handle = None
 
     def _irq(self, event, data):
         if event == _IRQ_SCAN_RESULT:
             addr_type, addr, adv_type, rssi, adv_data = data
-            if adv_type in (_ADV_IND, _ADV_DIRECT_IND) and _ENV_SENSE_UUID in decode_services(
+            if adv_type in (_ADV_IND, _ADV_DIRECT_IND) and _UART_SERVICE_UUID in decode_services(
                 adv_data
             ):
                 # Found a potential device, remember it and stop scanning.
@@ -125,7 +112,8 @@ class BLETemperatureCentral:
         elif event == _IRQ_GATTC_SERVICE_RESULT:
             # Connected device returned a service.
             conn_handle, start_handle, end_handle, uuid = data
-            if conn_handle == self._conn_handle and uuid == _ENV_SENSE_UUID:
+            print("service", data)
+            if conn_handle == self._conn_handle and uuid == _UART_SERVICE_UUID:
                 self._start_handle, self._end_handle = start_handle, end_handle
 
         elif event == _IRQ_GATTC_SERVICE_DONE:
@@ -135,47 +123,42 @@ class BLETemperatureCentral:
                     self._conn_handle, self._start_handle, self._end_handle
                 )
             else:
-                print("Failed to find environmental sensing service.")
+                print("Failed to find uart service.")
 
         elif event == _IRQ_GATTC_CHARACTERISTIC_RESULT:
             # Connected device returned a characteristic.
             conn_handle, def_handle, value_handle, properties, uuid = data
-            if conn_handle == self._conn_handle and uuid == _TEMP_UUID:
-                self._value_handle = value_handle
+            if conn_handle == self._conn_handle and uuid == _UART_RX_CHAR_UUID:
+                self._rx_handle = value_handle
+            if conn_handle == self._conn_handle and uuid == _UART_TX_CHAR_UUID:
+                self._tx_handle = value_handle
 
         elif event == _IRQ_GATTC_CHARACTERISTIC_DONE:
             # Characteristic query complete.
-            if self._value_handle:
+            if self._tx_handle is not None and self._rx_handle is not None:
                 # We've finished connecting and discovering device, fire the connect callback.
                 if self._conn_callback:
                     self._conn_callback()
             else:
-                print("Failed to find temperature characteristic.")
+                print("Failed to find uart rx characteristic.")
 
-        elif event == _IRQ_GATTC_READ_RESULT:
-            # A read completed successfully.
-            conn_handle, value_handle, char_data = data
-            if conn_handle == self._conn_handle and value_handle == self._value_handle:
-                self._update_value(char_data)
-                if self._read_callback:
-                    self._read_callback(self._value)
-                    self._read_callback = None
-
-        elif event == _IRQ_GATTC_READ_DONE:
-            # Read completed (no-op).
+        elif event == _IRQ_GATTC_WRITE_DONE:
             conn_handle, value_handle, status = data
+            print("TX complete")
 
         elif event == _IRQ_GATTC_NOTIFY:
-            # The ble_temperature.py demo periodically notifies its value.
             conn_handle, value_handle, notify_data = data
-            if conn_handle == self._conn_handle and value_handle == self._value_handle:
-                self._update_value(notify_data)
+            if conn_handle == self._conn_handle and value_handle == self._tx_handle:
                 if self._notify_callback:
-                    self._notify_callback(self._value)
+                    self._notify_callback(notify_data)
 
     # Returns true if we've successfully connected and discovered characteristics.
     def is_connected(self):
-        return self._conn_handle is not None and self._value_handle is not None
+        return (
+            self._conn_handle is not None
+            and self._tx_handle is not None
+            and self._rx_handle is not None
+        )
 
     # Find a device advertising the environmental sensor service.
     def scan(self, callback=None):
@@ -201,40 +184,31 @@ class BLETemperatureCentral:
         self._ble.gap_disconnect(self._conn_handle)
         self._reset()
 
-    # Issues an (asynchronous) read, will invoke callback with data.
-    def read(self, callback):
+    # Send data over the UART
+    def write(self, v, response=False):
         if not self.is_connected():
             return
-        self._read_callback = callback
-        self._ble.gattc_read(self._conn_handle, self._value_handle)
+        self._ble.gattc_write(self._conn_handle, self._rx_handle, v, 1 if response else 0)
 
-    # Sets a callback to be invoked when the device notifies us.
+    # Set handler for when data is received over the UART.
     def on_notify(self, callback):
         self._notify_callback = callback
-
-    def _update_value(self, data):
-        # Data is sint16 in degrees Celsius with a resolution of 0.01 degrees Celsius.
-        self._value = struct.unpack("<h", data)[0] / 100
-        return self._value
-
-    def value(self):
-        return self._value
 
 
 def demo():
     ble = bluetooth.BLE()
-    central = BLETemperatureCentral(ble)
+    central = BLESimpleCentral(ble)
 
     not_found = False
 
     def on_scan(addr_type, addr, name):
         if addr_type is not None:
-            print("Found sensor:", addr_type, addr, name)
+            print("Found peripheral:", addr_type, addr, name)
             central.connect()
         else:
             nonlocal not_found
             not_found = True
-            print("No sensor found.")
+            print("No peripheral found.")
 
     central.scan(callback=on_scan)
 
@@ -246,15 +220,23 @@ def demo():
 
     print("Connected")
 
-    # Explicitly issue reads, using "print" as the callback.
-    while central.is_connected():
-        central.read(callback=print)
-        time.sleep_ms(2000)
+    def on_rx(v):
+        print("RX", v)
 
-    # Alternative to the above, just show the most recently notified value.
-    # while central.is_connected():
-    #     print(central.value())
-    #     time.sleep_ms(2000)
+    central.on_notify(on_rx)
+
+    with_response = False
+
+    i = 0
+    while central.is_connected():
+        try:
+            v = str(i) + "_"
+            print("TX", v)
+            central.write(v, with_response)
+        except:
+            print("TX failed")
+        i += 1
+        time.sleep_ms(400 if with_response else 30)
 
     print("Disconnected")
 
