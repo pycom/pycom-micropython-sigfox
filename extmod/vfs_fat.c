@@ -47,13 +47,11 @@
 
 #define mp_obj_fat_vfs_t fs_user_mount_t
 
-STATIC FRESULT fat_format(fs_user_mount_t* vfs);
-
 STATIC mp_import_stat_t fat_vfs_import_stat(void *vfs_in, const char *path) {
     fs_user_mount_t *vfs = vfs_in;
     FILINFO fno;
     assert(vfs != NULL);
-    FRESULT res = f_stat(&vfs->fs.fatfs, path, &fno);
+    FRESULT res = f_stat(&vfs->fatfs, path, &fno);
     if (res == FR_OK) {
         if ((fno.fattrib & AM_DIR) != 0) {
             return MP_IMPORT_STAT_DIR;
@@ -70,27 +68,18 @@ STATIC mp_obj_t fat_vfs_make_new(const mp_obj_type_t *type, size_t n_args, size_
     // create new object
     fs_user_mount_t *vfs = m_new_obj(fs_user_mount_t);
     vfs->base.type = type;
-    vfs->blockdev.flags = FSUSER_FREE_OBJ;
-    vfs->fs.fatfs.drv = vfs;
+    vfs->fatfs.drv = vfs;
 
-    // load block protocol methods
-    mp_load_method(args[0], MP_QSTR_readblocks, vfs->blockdev.readblocks);
-    mp_load_method_maybe(args[0], MP_QSTR_writeblocks, vfs->blockdev.writeblocks);
-    mp_load_method_maybe(args[0], MP_QSTR_ioctl, vfs->blockdev.u.ioctl);
-    if (vfs->blockdev.u.ioctl[0] != MP_OBJ_NULL) {
-        // device supports new block protocol, so indicate it
-        vfs->blockdev.flags |= FSUSER_HAVE_IOCTL;
-    } else {
-        // no ioctl method, so assume the device uses the old block protocol
-        mp_load_method_maybe(args[0], MP_QSTR_sync, vfs->blockdev.u.old.sync);
-        mp_load_method(args[0], MP_QSTR_count, vfs->blockdev.u.old.count);
-    }
+    // Initialise underlying block device
+    vfs->blockdev.flags = MP_BLOCKDEV_FLAG_FREE_OBJ;
+    vfs->blockdev.block_size = FF_MIN_SS; // default, will be populated by call to MP_BLOCKDEV_IOCTL_BLOCK_SIZE
+    mp_vfs_blockdev_init(&vfs->blockdev, args[0]);
 
     // mount the block device so the VFS methods can be used
-    FRESULT res = f_mount(&vfs->fs.fatfs);
+    FRESULT res = f_mount(&vfs->fatfs);
     if (res == FR_NO_FILESYSTEM) {
         // don't error out if no filesystem, to let mkfs()/mount() create one if wanted
-        vfs->blockdev.flags |= FSUSER_NO_FILESYSTEM;
+        vfs->blockdev.flags |= MP_BLOCKDEV_FLAG_NO_FILESYSTEM;
     } else if (res != FR_OK) {
         mp_raise_OSError(fresult_to_errno_table[res]);
     }
@@ -102,7 +91,7 @@ STATIC mp_obj_t fat_vfs_make_new(const mp_obj_type_t *type, size_t n_args, size_
 STATIC mp_obj_t fat_vfs_del(mp_obj_t self_in) {
     mp_obj_fat_vfs_t *self = MP_OBJ_TO_PTR(self_in);
     // f_umount only needs to be called to release the sync object
-    f_umount(&self->fs.fatfs);
+    f_umount(&self->fatfs);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_del_obj, fat_vfs_del);
@@ -110,50 +99,22 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_del_obj, fat_vfs_del);
 
 STATIC mp_obj_t fat_vfs_mkfs(mp_obj_t bdev_in) {
     // create new object
-	fs_user_mount_t* vfs = MP_OBJ_TO_PTR(fat_vfs_make_new(&mp_fat_vfs_type, 1, 0, &bdev_in));
-	FRESULT res = fat_format(vfs);
+    fs_user_mount_t *vfs = MP_OBJ_TO_PTR(fat_vfs_make_new(&mp_fat_vfs_type, 1, 0, &bdev_in));
 
-	if (FR_OK != res)
-	{
-		mp_raise_OSError(fresult_to_errno_table[res]);
-	}
-	vfs->blockdev.flags &= ~FSUSER_NO_FILESYSTEM;
+    // make the filesystem
+    uint8_t working_buf[FF_MAX_SS];
+    FRESULT res = f_mkfs(&vfs->fatfs, FM_FAT | FM_SFD, 0, working_buf, sizeof(working_buf));
+    if (res == FR_MKFS_ABORTED) { // Probably doesn't support FAT16
+        res = f_mkfs(&vfs->fatfs, FM_FAT32, 0, working_buf, sizeof(working_buf));
+    }
+    if (res != FR_OK) {
+        mp_raise_OSError(fresult_to_errno_table[res]);
+    }
 
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_mkfs_fun_obj, fat_vfs_mkfs);
 STATIC MP_DEFINE_CONST_STATICMETHOD_OBJ(fat_vfs_mkfs_obj, MP_ROM_PTR(&fat_vfs_mkfs_fun_obj));
-
-STATIC FRESULT fat_format(fs_user_mount_t* vfs)
-{
-    uint32_t blockcount = 0;
-    uint8_t options = FM_FAT;
-    uint8_t working_buf[FF_MAX_SS];
-
-    if ((vfs->blockdev.flags & FSUSER_HAVE_IOCTL))
-    {
-        // device supports new block protocol, so indicate it
-        vfs->blockdev.u.ioctl[2] = MP_OBJ_NEW_SMALL_INT(MP_BLOCKDEV_IOCTL_BLOCK_COUNT);
-        vfs->blockdev.u.ioctl[3] = MP_OBJ_NEW_SMALL_INT(0); // unused
-        blockcount = mp_obj_get_int(mp_call_method_n_kw(2, 0, vfs->blockdev.u.ioctl));
-    }
-    else
-    {
-        // no ioctl method, so assume the device uses the old block protocol
-        blockcount = mp_obj_get_int(mp_call_method_n_kw(0, 0, vfs->blockdev.u.old.count));
-    }
-
-	if (blockcount < 32768)
-	{
-		options |= FM_SFD;
-	}
-	else
-	{
-		options = FM_FAT32;
-	}
-	// make the filesystem
-	return f_mkfs(&vfs->fs.fatfs, options, 0, working_buf, sizeof(working_buf));
-}
 
 typedef struct _mp_vfs_fat_ilistdir_it_t {
     mp_obj_base_t base;
@@ -181,7 +142,7 @@ STATIC mp_obj_t mp_vfs_fat_ilistdir_it_iternext(mp_obj_t self_in) {
         if (self->is_str) {
             t->items[0] = mp_obj_new_str(fn, strlen(fn));
         } else {
-            t->items[0] = mp_obj_new_bytes((const byte*)fn, strlen(fn));
+            t->items[0] = mp_obj_new_bytes((const byte *)fn, strlen(fn));
         }
         if (fno.fattrib & AM_DIR) {
             // dir
@@ -220,7 +181,7 @@ STATIC mp_obj_t fat_vfs_ilistdir_func(size_t n_args, const mp_obj_t *args) {
     iter->base.type = &mp_type_polymorph_iter;
     iter->iternext = mp_vfs_fat_ilistdir_it_iternext;
     iter->is_str = is_str_type;
-    FRESULT res = f_opendir(&self->fs.fatfs, &iter->dir, path);
+    FRESULT res = f_opendir(&self->fatfs, &iter->dir, path);
     if (res != FR_OK) {
         mp_raise_OSError(fresult_to_errno_table[res]);
     }
@@ -234,7 +195,7 @@ STATIC mp_obj_t fat_vfs_remove_internal(mp_obj_t vfs_in, mp_obj_t path_in, mp_in
     const char *path = mp_obj_str_get_str(path_in);
 
     FILINFO fno;
-    FRESULT res = f_stat(&self->fs.fatfs, path, &fno);
+    FRESULT res = f_stat(&self->fatfs, path, &fno);
 
     if (res != FR_OK) {
         mp_raise_OSError(fresult_to_errno_table[res]);
@@ -242,7 +203,7 @@ STATIC mp_obj_t fat_vfs_remove_internal(mp_obj_t vfs_in, mp_obj_t path_in, mp_in
 
     // check if path is a file or directory
     if ((fno.fattrib & AM_DIR) == attr) {
-        res = f_unlink(&self->fs.fatfs, path);
+        res = f_unlink(&self->fatfs, path);
 
         if (res != FR_OK) {
             mp_raise_OSError(fresult_to_errno_table[res]);
@@ -267,12 +228,12 @@ STATIC mp_obj_t fat_vfs_rename(mp_obj_t vfs_in, mp_obj_t path_in, mp_obj_t path_
     mp_obj_fat_vfs_t *self = MP_OBJ_TO_PTR(vfs_in);
     const char *old_path = mp_obj_str_get_str(path_in);
     const char *new_path = mp_obj_str_get_str(path_out);
-    FRESULT res = f_rename(&self->fs.fatfs, old_path, new_path);
+    FRESULT res = f_rename(&self->fatfs, old_path, new_path);
     if (res == FR_EXIST) {
         // if new_path exists then try removing it (but only if it's a file)
         fat_vfs_remove_internal(vfs_in, path_out, 0); // 0 == file attribute
         // try to rename again
-        res = f_rename(&self->fs.fatfs, old_path, new_path);
+        res = f_rename(&self->fatfs, old_path, new_path);
     }
     if (res == FR_OK) {
         return mp_const_none;
@@ -286,7 +247,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(fat_vfs_rename_obj, fat_vfs_rename);
 STATIC mp_obj_t fat_vfs_mkdir(mp_obj_t vfs_in, mp_obj_t path_o) {
     mp_obj_fat_vfs_t *self = MP_OBJ_TO_PTR(vfs_in);
     const char *path = mp_obj_str_get_str(path_o);
-    FRESULT res = f_mkdir(&self->fs.fatfs, path);
+    FRESULT res = f_mkdir(&self->fatfs, path);
     if (res == FR_OK) {
         return mp_const_none;
     } else {
@@ -301,7 +262,7 @@ STATIC mp_obj_t fat_vfs_chdir(mp_obj_t vfs_in, mp_obj_t path_in) {
     const char *path;
     path = mp_obj_str_get_str(path_in);
 
-    FRESULT res = f_chdir(&self->fs.fatfs, path);
+    FRESULT res = f_chdir(&self->fatfs, path);
 
     if (res != FR_OK) {
         mp_raise_OSError(fresult_to_errno_table[res]);
@@ -315,7 +276,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(fat_vfs_chdir_obj, fat_vfs_chdir);
 STATIC mp_obj_t fat_vfs_getcwd(mp_obj_t vfs_in) {
     mp_obj_fat_vfs_t *self = MP_OBJ_TO_PTR(vfs_in);
     char buf[MICROPY_ALLOC_PATH_MAX + 1];
-    FRESULT res = f_getcwd(&self->fs.fatfs, buf, sizeof(buf));
+    FRESULT res = f_getcwd(&self->fatfs, buf, sizeof(buf));
     if (res != FR_OK) {
         mp_raise_OSError(fresult_to_errno_table[res]);
     }
@@ -337,7 +298,7 @@ STATIC mp_obj_t fat_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_in) {
         fno.ftime = 0;
         fno.fattrib = AM_DIR;
     } else {
-        FRESULT res = f_stat(&self->fs.fatfs, path, &fno);
+        FRESULT res = f_stat(&self->fatfs, path, &fno);
         if (res != FR_OK) {
             mp_raise_OSError(fresult_to_errno_table[res]);
         }
@@ -357,7 +318,10 @@ STATIC mp_obj_t fat_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_in) {
         (fno.ftime >> 11) & 0x1f,
         (fno.ftime >> 5) & 0x3f,
         2 * (fno.ftime & 0x1f)
-    );
+        );
+    #if MICROPY_EPOCH_IS_1970
+    seconds += TIMEUTILS_SECONDS_1970_TO_2000;
+    #endif
     t->items[0] = MP_OBJ_NEW_SMALL_INT(mode); // st_mode
     t->items[1] = MP_OBJ_NEW_SMALL_INT(0); // st_ino
     t->items[2] = MP_OBJ_NEW_SMALL_INT(0); // st_dev
@@ -379,7 +343,7 @@ STATIC mp_obj_t fat_vfs_statvfs(mp_obj_t vfs_in, mp_obj_t path_in) {
     (void)path_in;
 
     DWORD nclst;
-    FATFS *fatfs = &self->fs.fatfs;
+    FATFS *fatfs = &self->fatfs;
     FRESULT res = f_getfree(fatfs, &nclst);
     if (FR_OK != res) {
         mp_raise_OSError(fresult_to_errno_table[res]);
@@ -402,30 +366,6 @@ STATIC mp_obj_t fat_vfs_statvfs(mp_obj_t vfs_in, mp_obj_t path_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(fat_vfs_statvfs_obj, fat_vfs_statvfs);
 
-// Get the free space in KByte
-STATIC mp_obj_t fat_vfs_getfree(mp_obj_t vfs_in) {
-
-    fs_user_mount_t *self = MP_OBJ_TO_PTR(vfs_in);
-
-    FATFS *fatfs = &self->fs.fatfs;
-    DWORD nclst;
-
-    FRESULT res = f_getfree(fatfs, &nclst);
-    if (FR_OK != res) {
-        mp_raise_OSError(fresult_to_errno_table[res]);
-    }
-
-    uint64_t free_space = ((uint64_t)fatfs->csize * nclst)
-    #if FF_MAX_SS != FF_MIN_SS
-        * fatfs->ssize;
-    #else
-        * FF_MIN_SS;
-    #endif
-
-    return MP_OBJ_NEW_SMALL_INT(free_space / 1024);
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_getfree_obj, fat_vfs_getfree);
-
 STATIC mp_obj_t vfs_fat_mount(mp_obj_t self_in, mp_obj_t readonly, mp_obj_t mkfs) {
     fs_user_mount_t *self = MP_OBJ_TO_PTR(self_in);
 
@@ -438,16 +378,15 @@ STATIC mp_obj_t vfs_fat_mount(mp_obj_t self_in, mp_obj_t readonly, mp_obj_t mkfs
     }
 
     // check if we need to make the filesystem
-    FRESULT res = (self->blockdev.flags & FSUSER_NO_FILESYSTEM) ? FR_NO_FILESYSTEM : FR_OK;
-    if (res == FR_NO_FILESYSTEM && mp_obj_is_true(mkfs))
-    {
-    	res = fat_format(self);
-    	if (FR_OK != res)
-    	{
-    		mp_raise_OSError(fresult_to_errno_table[res]);
-    	}
+    FRESULT res = (self->blockdev.flags & MP_BLOCKDEV_FLAG_NO_FILESYSTEM) ? FR_NO_FILESYSTEM : FR_OK;
+    if (res == FR_NO_FILESYSTEM && mp_obj_is_true(mkfs)) {
+        uint8_t working_buf[FF_MAX_SS];
+        res = f_mkfs(&self->fatfs, FM_FAT | FM_SFD, 0, working_buf, sizeof(working_buf));
     }
-    self->blockdev.flags &= ~FSUSER_NO_FILESYSTEM;
+    if (res != FR_OK) {
+        mp_raise_OSError(fresult_to_errno_table[res]);
+    }
+    self->blockdev.flags &= ~MP_BLOCKDEV_FLAG_NO_FILESYSTEM;
 
     return mp_const_none;
 }
@@ -459,21 +398,6 @@ STATIC mp_obj_t vfs_fat_umount(mp_obj_t self_in) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_umount_obj, vfs_fat_umount);
-
-STATIC mp_obj_t fat_vfs_fsformat(mp_obj_t vfs_in)
-{
-	fs_user_mount_t * vfs = MP_OBJ_TO_PTR(vfs_in);
-	FRESULT res = fat_format(vfs);
-	if (FR_OK != res)
-	{
-		mp_raise_OSError(fresult_to_errno_table[res]);
-	}
-
-    vfs->blockdev.flags &= ~FSUSER_NO_FILESYSTEM;
-
-	return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_fsformat_obj, fat_vfs_fsformat);
 
 STATIC const mp_rom_map_elem_t fat_vfs_locals_dict_table[] = {
     #if _FS_REENTRANT
@@ -490,10 +414,8 @@ STATIC const mp_rom_map_elem_t fat_vfs_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_rename), MP_ROM_PTR(&fat_vfs_rename_obj) },
     { MP_ROM_QSTR(MP_QSTR_stat), MP_ROM_PTR(&fat_vfs_stat_obj) },
     { MP_ROM_QSTR(MP_QSTR_statvfs), MP_ROM_PTR(&fat_vfs_statvfs_obj) },
-    { MP_ROM_QSTR(MP_QSTR_getfree), MP_ROM_PTR(&fat_vfs_getfree_obj) },
     { MP_ROM_QSTR(MP_QSTR_mount), MP_ROM_PTR(&vfs_fat_mount_obj) },
     { MP_ROM_QSTR(MP_QSTR_umount), MP_ROM_PTR(&fat_vfs_umount_obj) },
-	{ MP_ROM_QSTR(MP_QSTR_fsformat), MP_ROM_PTR(&fat_vfs_fsformat_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(fat_vfs_locals_dict, fat_vfs_locals_dict_table);
 
@@ -506,7 +428,7 @@ const mp_obj_type_t mp_fat_vfs_type = {
     .name = MP_QSTR_VfsFat,
     .make_new = fat_vfs_make_new,
     .protocol = &fat_vfs_proto,
-    .locals_dict = (mp_obj_dict_t*)&fat_vfs_locals_dict,
+    .locals_dict = (mp_obj_dict_t *)&fat_vfs_locals_dict,
 
 };
 

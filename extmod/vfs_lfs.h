@@ -23,21 +23,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef MICROPY_INCLUDED_EXTMOD_NIMBLE_NIMBLE_HCI_UART_H
-#define MICROPY_INCLUDED_EXTMOD_NIMBLE_NIMBLE_HCI_UART_H
+#ifndef MICROPY_INCLUDED_EXTMOD_VFS_LFS_H
+#define MICROPY_INCLUDED_EXTMOD_VFS_LFS_H
 
-#include "extmod/nimble/hal/hal_uart.h"
+#include "py/obj.h"
 
-// To be implemented by the port.
+extern const mp_obj_type_t mp_type_vfs_lfs1;
+extern const mp_obj_type_t mp_type_vfs_lfs1_fileio;
+extern const mp_obj_type_t mp_type_vfs_lfs1_textio;
 
-int nimble_hci_uart_configure(uint32_t port);
+extern const mp_obj_type_t mp_type_vfs_lfs2;
+extern const mp_obj_type_t mp_type_vfs_lfs2_fileio;
+extern const mp_obj_type_t mp_type_vfs_lfs2_textio;
 
-// This will default to MICROPY_HW_BLE_UART_BAUDRATE, but can be updated later.
-int nimble_hci_uart_set_baudrate(uint32_t baudrate);
-
-int nimble_hci_uart_activate(void);
-
-void nimble_hci_uart_rx(hal_uart_rx_cb_t rx_cb, void *rx_arg);
-void nimble_hci_uart_tx_strn(const char *str, uint len);
-
-#endif // MICROPY_INCLUDED_EXTMOD_NIMBLE_NIMBLE_HCI_UART_H
+#endif // MICROPY_INCLUDED_EXTMOD_VFS_LFS_H

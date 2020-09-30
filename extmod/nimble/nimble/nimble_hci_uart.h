@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * Copyright (c) 2014 Paul Sokolovsky
+ * Copyright (c) 2019 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -23,19 +23,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-#ifndef MICROPY_INCLUDED_EXTMOD_MODUBINASCII_H
-#define MICROPY_INCLUDED_EXTMOD_MODUBINASCII_H
+#ifndef MICROPY_INCLUDED_EXTMOD_NIMBLE_NIMBLE_NIMBLE_HCI_UART_H
+#define MICROPY_INCLUDED_EXTMOD_NIMBLE_NIMBLE_NIMBLE_HCI_UART_H
 
-extern mp_obj_t mod_binascii_hexlify(size_t n_args, const mp_obj_t *args);
-extern mp_obj_t mod_binascii_unhexlify(mp_obj_t data);
-extern mp_obj_t mod_binascii_a2b_base64(mp_obj_t data);
-extern mp_obj_t mod_binascii_b2a_base64(mp_obj_t data);
-extern mp_obj_t mod_binascii_crc32(size_t n_args, const mp_obj_t *args);
+// Extensions to extmod/modbluetooth_hci.h specific to NimBLE.
 
-MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(mod_binascii_hexlify_obj);
-MP_DECLARE_CONST_FUN_OBJ_1(mod_binascii_unhexlify_obj);
-MP_DECLARE_CONST_FUN_OBJ_1(mod_binascii_a2b_base64_obj);
-MP_DECLARE_CONST_FUN_OBJ_1(mod_binascii_b2a_base64_obj);
-MP_DECLARE_CONST_FUN_OBJ_VAR_BETWEEN(mod_binascii_crc32_obj);
+#include "extmod/nimble/hal/hal_uart.h"
 
-#endif // MICROPY_INCLUDED_EXTMOD_MODUBINASCII_H
+// Helpers called from ports.
+void mp_bluetooth_nimble_hci_uart_process(void);
+
+// Must be provided by the port.
+void mp_bluetooth_nimble_hci_uart_rx(hal_uart_rx_cb_t rx_cb, void *rx_arg);
+void mp_bluetooth_nimble_hci_uart_tx_strn(const char *str, uint len);
+
+#endif // MICROPY_INCLUDED_EXTMOD_NIMBLE_NIMBLE_NIMBLE_HCI_UART_H
