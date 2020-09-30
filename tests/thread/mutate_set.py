@@ -3,7 +3,6 @@
 # MIT license; Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
 
 import _thread
-import time
 
 # the shared set
 se = set([-1, -2, -3, -4])
@@ -22,6 +21,7 @@ def th(n, lo, hi):
         global n_finished
         n_finished += 1
 
+
 lock = _thread.allocate_lock()
 n_thread = 4
 n_finished = 0
@@ -32,7 +32,7 @@ for i in range(n_thread):
 
 # busy wait for threads to finish
 while n_finished < n_thread:
-    time.sleep(0.01)
+    pass
 
 # check set has correct contents
 print(sorted(se))

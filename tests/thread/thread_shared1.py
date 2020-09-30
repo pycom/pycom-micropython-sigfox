@@ -3,10 +3,11 @@
 # MIT license; Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
 
 import _thread
-import time
+
 
 def foo(i):
     pass
+
 
 def thread_entry(n, tup):
     for i in tup:
@@ -14,6 +15,7 @@ def thread_entry(n, tup):
     with lock:
         global n_finished
         n_finished += 1
+
 
 lock = _thread.allocate_lock()
 n_thread = 2
@@ -28,5 +30,5 @@ for i in range(n_thread):
 
 # busy wait for threads to finish
 while n_finished < n_thread:
-    time.sleep(0.01)
+    pass
 print(tup)

@@ -9,8 +9,10 @@ except ImportError:
     import time
 import _thread
 
+
 def last(l):
     return l[-1]
+
 
 def thread_entry(n):
     # allocate a bytearray and fill it
@@ -33,9 +35,9 @@ def thread_entry(n):
         global n_finished
         n_finished += 1
 
+
 lock = _thread.allocate_lock()
-# On FIPY with esp-idf 4.0 only 9 threads can be created maximum, beyond that the device crashes
-n_thread = 9
+n_thread = 10
 n_finished = 0
 
 # spawn threads

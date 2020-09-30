@@ -1,3 +1,3 @@
-ValueError('invalid argument(s) value',)
-ValueError('invalid argument(s) value',)
-ValueError('invalid argument(s) value',)
+ValueError('invalid key',)
+TypeError("can't convert 'NoneType' object to str implicitly",)
+ValueError('invalid cert',)
