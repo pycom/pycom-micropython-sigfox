@@ -1,6 +1,6 @@
 #!/bin/bash
 set -e
-set -x
+#set -x
 if [ -z $3 ]; then
   BUILD_DIR="$(pwd)/build/$1/release"
 else
