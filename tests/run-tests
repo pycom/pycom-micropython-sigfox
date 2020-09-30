@@ -395,6 +395,20 @@ def run_tests(pyb, tests, args, result_dir):
             skip_tests.add('extmod/uheapq1.py')             # uheapq not supported by WiPy
             skip_tests.add('extmod/urandom_basic.py')       # requires urandom
             skip_tests.add('extmod/urandom_extra.py')       # requires urandom
+        elif args.target.split('-')[0] == 'esp32':
+            skip_tests.add('extmod/uheapq1.py')             # requires uheapq
+            skip_tests.add('extmod/urandom_basic.py')       # requires urandom
+            skip_tests.add('extmod/urandom_extra.py')       # requires urandom
+            skip_tests.add('extmod/ticks_diff.py')          # ticks_diff() implemented as (start_in, end_in), the test expects (end_in, start_in) function prototype
+            skip_tests.add('extmod/ussl_basic.py')          # vendor specific implementation fully differes from micropython implementation under extmod/modussl_axtls.c and modussl_mbedtls.c
+            skip_tests.add('extmod/utimeq1.py')             # turn off as the test would need a full rewrite because seems incorrect
+            skip_tests.add('extmod/vfs_fat_more.py')        # not enough memory on device
+            skip_tests.add('thread/stress_aes.py')          # requires too much heap and stack
+            skip_tests.add('thread/thread_exc2.py')         # needs an updated run-test script
+            skip_tests.add('misc/recursive_iternext.py')    # requires at least 80KB of GC heap
+            skip_tests.add('esp32/onewire.py')
+            skip_tests.add('esp32/uart.py')                 # We now have uart1 and uart2
+            skip_tests.add('esp32/lorawan_otaa.py')
         elif args.target == 'esp8266':
             skip_tests.add('misc/rge_sm.py')                # too large
         elif args.target == 'minimal':
@@ -633,7 +647,7 @@ the last matching regex is used:
     EXTERNAL_TARGETS = ('pyboard', 'wipy', 'esp8266', 'esp32', 'minimal', 'nrf')
     if args.target in LOCAL_TARGETS or args.list_tests:
         pyb = None
-    elif args.target in EXTERNAL_TARGETS:
+    elif args.target in EXTERNAL_TARGETS or (args.target.split('-')[0] == 'esp32'):
         global pyboard
         sys.path.append(base_path('../tools'))
         import pyboard
@@ -656,6 +670,9 @@ the last matching regex is used:
             elif args.target == 'unix':
                 # run PC tests
                 test_dirs += ('float', 'import', 'io', 'stress', 'unicode', 'unix', 'cmdline',)
+            elif args.target.split('-')[0] == 'esp32':
+                # run on Pycom devices
+                test_dirs = ('basics', 'micropython', 'esp32', 'float', 'misc', 'extmod', 'thread')
             elif args.target == 'qemu-arm':
                 if not args.write_exp:
                     raise ValueError('--target=qemu-arm must be used with --write-exp')

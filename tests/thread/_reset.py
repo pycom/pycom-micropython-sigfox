@@ -1,0 +1,2 @@
+import machine
+machine.reset()

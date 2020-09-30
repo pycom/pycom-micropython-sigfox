@@ -37,7 +37,8 @@ def thread_entry(n):
 
 
 lock = _thread.allocate_lock()
-n_thread = 10
+# On FIPY with esp-idf 4.0 only 9 threads can be created maximum, beyond that the device crashes
+n_thread = 9
 n_finished = 0
 
 # spawn threads

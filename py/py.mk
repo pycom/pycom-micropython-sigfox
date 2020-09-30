@@ -185,7 +185,6 @@ PY_EXTMOD_O_BASENAME = \
 	extmod/machine_pulse.o \
 	extmod/machine_i2c.o \
 	extmod/machine_spi.o \
-	extmod/modbluetooth.o \
 	extmod/modussl_axtls.o \
 	extmod/modussl_mbedtls.o \
 	extmod/modurandom.o \
@@ -201,7 +200,6 @@ PY_EXTMOD_O_BASENAME = \
 	extmod/vfs_fat.o \
 	extmod/vfs_fat_diskio.o \
 	extmod/vfs_fat_file.o \
-	extmod/vfs_lfs.o \
 	extmod/utime_mphal.o \
 	extmod/uos_dupterm.o \
 	lib/embed/abort_.o \

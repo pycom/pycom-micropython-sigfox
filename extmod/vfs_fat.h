@@ -26,15 +26,16 @@
 #ifndef MICROPY_INCLUDED_EXTMOD_VFS_FAT_H
 #define MICROPY_INCLUDED_EXTMOD_VFS_FAT_H
 
+#include "py/lexer.h"
 #include "py/obj.h"
 #include "lib/oofatfs/ff.h"
 #include "extmod/vfs.h"
 
-typedef struct _fs_user_mount_t {
-    mp_obj_base_t base;
-    mp_vfs_blockdev_t blockdev;
-    FATFS fatfs;
-} fs_user_mount_t;
+// these are the values for fs_user_mount_t.flags
+#define FSUSER_NATIVE       (0x0001) // readblocks[2]/writeblocks[2] contain native func
+#define FSUSER_FREE_OBJ     (0x0002) // fs_user_mount_t obj should be freed on umount
+#define FSUSER_HAVE_IOCTL   (0x0004) // new protocol with ioctl
+#define FSUSER_NO_FILESYSTEM (0x0008) // the block device has no filesystem on it
 
 extern const byte fresult_to_errno_table[20];
 extern const mp_obj_type_t mp_fat_vfs_type;

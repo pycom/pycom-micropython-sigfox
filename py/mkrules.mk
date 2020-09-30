@@ -120,38 +120,84 @@ $(OBJ_DIRS):
 $(HEADER_BUILD):
 	$(MKDIR) -p $@
 
-ifneq ($(FROZEN_MANIFEST),)
-# to build frozen_content.c from a manifest
-$(BUILD)/frozen_content.c: FORCE $(BUILD)/genhdr/qstrdefs.generated.h
-	$(Q)$(MAKE_MANIFEST) -o $@ -v "MPY_DIR=$(TOP)" -v "MPY_LIB_DIR=$(MPY_LIB_DIR)" -v "PORT_DIR=$(shell pwd)" -v "BOARD_DIR=$(BOARD_DIR)" -b "$(BUILD)" $(if $(MPY_CROSS_FLAGS),-f"$(MPY_CROSS_FLAGS)",) $(FROZEN_MANIFEST)
-
 ifneq ($(FROZEN_DIR),)
-$(error FROZEN_DIR cannot be used in conjunction with FROZEN_MANIFEST)
-endif
-
-ifneq ($(FROZEN_MPY_DIR),)
-$(error FROZEN_MPY_DIR cannot be used in conjunction with FROZEN_MANIFEST)
-endif
-endif
-
-ifneq ($(FROZEN_DIR),)
-$(info Warning: FROZEN_DIR is deprecated in favour of FROZEN_MANIFEST)
 $(BUILD)/frozen.c: $(wildcard $(FROZEN_DIR)/*) $(HEADER_BUILD) $(FROZEN_EXTRA_DEPS)
 	$(ECHO) "GEN $@"
 	$(Q)$(MAKE_FROZEN) $(FROZEN_DIR) > $@
 endif
 
 ifneq ($(FROZEN_MPY_DIR),)
-$(info Warning: FROZEN_MPY_DIR is deprecated in favour of FROZEN_MANIFEST)
+OS_NAME := $(shell uname -s)
+
+ifeq ($(PYBYTES_ENABLED), 1)
+ifeq ($(OS_NAME), Linux)
 # make a list of all the .py files that need compiling and freezing
-FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR) -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)/==')
+FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR)/Pybytes/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Pybytes\///')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Common/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Common\///')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Custom/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Custom\///')
+else
+# make a list of all the .py files that need compiling and freezing
+FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR)/Pybytes/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/Pybytes\//==')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Common/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/Common\//==')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Custom/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/Custom\//==')
+endif
+
 FROZEN_MPY_MPY_FILES := $(addprefix $(BUILD)/frozen_mpy/,$(FROZEN_MPY_PY_FILES:.py=.mpy))
 
 # to build .mpy files from .py files
-$(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/%.py
+$(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/Pybytes/%.py
 	@$(ECHO) "MPY $<"
 	$(Q)$(MKDIR) -p $(dir $@)
-	$(Q)$(MPY_CROSS) -o $@ -s $(<:$(FROZEN_MPY_DIR)/%=%) $(MPY_CROSS_FLAGS) $<
+	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/Pybytes/%=%) $(MPY_CROSS_FLAGS) $^
+
+# to build .mpy files from .py files
+$(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/Common/%.py
+	@$(ECHO) "MPY $<"
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/Common/%=%) $(MPY_CROSS_FLAGS) $^
+	
+# to build .mpy files from .py files
+$(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/Custom/%.py
+	@$(ECHO) "MPY $<"
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/Custom/%=%) $(MPY_CROSS_FLAGS) $^
+	
+endif
+
+ifeq ($(PYBYTES_ENABLED), 0)
+ifeq ($(OS_NAME), Linux)
+# make a list of all the .py files that need compiling and freezing
+FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR)/Base/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Base\///')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Common/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Common\///')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Custom/ -type f -name '*.py' | $(SED) -e 's/$(FROZEN_MPY_DIR)\/Custom\///')
+else
+# make a list of all the .py files that need compiling and freezing
+FROZEN_MPY_PY_FILES := $(shell find -L $(FROZEN_MPY_DIR)/Base/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/Base\//==')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Common/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/Common\//==')
+FROZEN_MPY_PY_FILES += $(shell find -L $(FROZEN_MPY_DIR)/Custom/ -type f -name '*.py' | $(SED) -e 's=^$(FROZEN_MPY_DIR)\/Custom\//==')
+endif
+
+FROZEN_MPY_MPY_FILES := $(addprefix $(BUILD)/frozen_mpy/,$(FROZEN_MPY_PY_FILES:.py=.mpy))
+
+# to build .mpy files from .py files
+$(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/Base/%.py
+	@$(ECHO) "MPY $<"
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/Base/%=%) $(MPY_CROSS_FLAGS) $^
+
+# to build .mpy files from .py files
+$(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/Common/%.py
+	@$(ECHO) "MPY $<"
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/Common/%=%) $(MPY_CROSS_FLAGS) $^
+	
+# to build .mpy files from .py files
+$(BUILD)/frozen_mpy/%.mpy: $(FROZEN_MPY_DIR)/Custom/%.py
+	@$(ECHO) "MPY $<"
+	$(Q)$(MKDIR) -p $(dir $@)
+	$(Q)$(MPY_CROSS) -o $@ -s $(^:$(FROZEN_MPY_DIR)/Custom/%=%) $(MPY_CROSS_FLAGS) $^
+
+endif
 
 # to build frozen_mpy.c from all .mpy files
 $(BUILD)/frozen_mpy.c: $(FROZEN_MPY_MPY_FILES) $(BUILD)/genhdr/qstrdefs.generated.h

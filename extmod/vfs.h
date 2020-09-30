@@ -28,6 +28,8 @@
 
 #include "py/lexer.h"
 #include "py/obj.h"
+#include "lib/oofatfs/ff.h"
+#include "esp32/littlefs/vfs_littlefs.h"
 
 // return values of mp_vfs_lookup_path
 // ROOT is 0 so that the default current directory is the root directory
@@ -72,12 +74,26 @@ typedef struct _mp_vfs_blockdev_t {
     } u;
 } mp_vfs_blockdev_t;
 
+typedef struct _fs_user_mount_t {
+    mp_obj_base_t base;
+    mp_vfs_blockdev_t blockdev;
+    // File System on this blockdevice
+    union {
+        FATFS fatfs;
+        vfs_lfs_struct_t littlefs;
+    } fs;
+} fs_user_mount_t;
+
 typedef struct _mp_vfs_mount_t {
     const char *str; // mount point with leading /
     size_t len;
     mp_obj_t obj;
     struct _mp_vfs_mount_t *next;
 } mp_vfs_mount_t;
+
+extern FATFS *lookup_path_fatfs(const TCHAR *path, const TCHAR **path_out);
+extern vfs_lfs_struct_t *lookup_path_littlefs(const TCHAR *path, const TCHAR **path_out);
+extern mp_import_stat_t littleFS_vfs_import_stat(fs_user_mount_t *vfs, const char *path);
 
 void mp_vfs_blockdev_init(mp_vfs_blockdev_t *self, mp_obj_t bdev);
 int mp_vfs_blockdev_read(mp_vfs_blockdev_t *self, size_t block_num, size_t num_blocks, uint8_t *buf);
@@ -101,6 +117,8 @@ mp_obj_t mp_vfs_rename(mp_obj_t old_path_in, mp_obj_t new_path_in);
 mp_obj_t mp_vfs_rmdir(mp_obj_t path_in);
 mp_obj_t mp_vfs_stat(mp_obj_t path_in);
 mp_obj_t mp_vfs_statvfs(mp_obj_t path_in);
+mp_obj_t mp_vfs_getfree(mp_obj_t path_in);
+mp_obj_t mp_vfs_fsformat(mp_obj_t path_in);
 
 int mp_vfs_mount_and_chdir_protected(mp_obj_t bdev, mp_obj_t mount_point);
 
@@ -117,5 +135,7 @@ MP_DECLARE_CONST_FUN_OBJ_2(mp_vfs_rename_obj);
 MP_DECLARE_CONST_FUN_OBJ_1(mp_vfs_rmdir_obj);
 MP_DECLARE_CONST_FUN_OBJ_1(mp_vfs_stat_obj);
 MP_DECLARE_CONST_FUN_OBJ_1(mp_vfs_statvfs_obj);
+MP_DECLARE_CONST_FUN_OBJ_1(mp_vfs_getfree_obj);
+MP_DECLARE_CONST_FUN_OBJ_1(mp_vfs_fsformat_obj);
 
 #endif // MICROPY_INCLUDED_EXTMOD_VFS_H

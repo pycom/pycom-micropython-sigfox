@@ -11,18 +11,18 @@ key = b"0\x82\x019\x02\x01\x00\x02A\x00\xf9\xe0}\xbd\xd7\x9cI\x18\x06\xc3\xcb\xb
 
 # Invalid key
 try:
-    ssl.wrap_socket(io.BytesIO(), key=b"!")
+    ssl.wrap_socket(io.BytesIO(), keyfile=b"!")
 except ValueError as er:
     print(repr(er))
 
 # Valid key, no cert
 try:
-    ssl.wrap_socket(io.BytesIO(), key=key)
-except TypeError as er:
+    ssl.wrap_socket(io.BytesIO(), keyfile=key)
+except ValueError as er:
     print(repr(er))
 
 # Valid key, invalid cert
 try:
-    ssl.wrap_socket(io.BytesIO(), key=key, cert=b"!")
+    ssl.wrap_socket(io.BytesIO(), keyfile=key, certfile=b"!")
 except ValueError as er:
     print(repr(er))

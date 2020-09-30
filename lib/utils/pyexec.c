@@ -42,6 +42,8 @@
 #include "lib/mp-readline/readline.h"
 #include "lib/utils/pyexec.h"
 #include "genhdr/mpversion.h"
+#include "esp32/pycom_version.h"
+#include "esp32/pycom_config.h"
 
 pyexec_mode_kind_t pyexec_mode_kind = PYEXEC_MODE_FRIENDLY_REPL;
 int pyexec_system_exit = 0;
@@ -108,6 +110,7 @@ STATIC int parse_compile_execute(const void *source, mp_parse_input_kind_t input
         mp_call_function_0(module_fun);
         mp_hal_set_interrupt_char(-1); // disable interrupt
         mp_handle_pending(true); // handle any pending exceptions (and any callbacks)
+        mp_hal_set_reset_char(CHAR_CTRL_F); // enable reset char
         nlr_pop();
         ret = 1;
         if (exec_flags & EXEC_FLAG_PRINT_EOF) {
@@ -117,6 +120,7 @@ STATIC int parse_compile_execute(const void *source, mp_parse_input_kind_t input
         // uncaught exception
         mp_hal_set_interrupt_char(-1); // disable interrupt
         mp_handle_pending(false); // clear any pending exceptions (and run any callbacks)
+        mp_hal_set_reset_char(CHAR_CTRL_F); // enable reset char, might be wrong here
         // print EOF after normal output
         if (exec_flags & EXEC_FLAG_PRINT_EOF) {
             mp_hal_stdout_tx_strn("\x04", 1);
@@ -426,7 +430,12 @@ int pyexec_friendly_repl(void) {
     #endif
 
 friendly_repl_reset:
-    mp_hal_stdout_tx_str("MicroPython " MICROPY_GIT_TAG " on " MICROPY_BUILD_DATE "; " MICROPY_HW_BOARD_NAME " with " MICROPY_HW_MCU_NAME "\r\n");
+    mp_hal_stdout_tx_str("Pycom MicroPython " SW_VERSION_NUMBER " [" MICROPY_GIT_TAG "] on " MICROPY_BUILD_DATE "; " MICROPY_HW_BOARD_NAME " with " MICROPY_HW_MCU_NAME "\r\n");
+#if (VARIANT == PYBYTES)
+    if (config_get_pybytes_autostart()) {
+        mp_hal_stdout_tx_str("Pybytes Version: " PYBYTES_VERSION_NUMBER "\r\n");
+    }
+#endif
     #if MICROPY_PY_BUILTINS_HELP
     mp_hal_stdout_tx_str("Type \"help()\" for more information.\r\n");
     #endif
@@ -492,8 +501,18 @@ friendly_repl_reset:
         } else if (ret == CHAR_CTRL_D) {
             // exit for a soft reset
             mp_hal_stdout_tx_str("\r\n");
+#if (VARIANT == PYBYTES)
+            if (config_get_pybytes_autostart()) {
+                continue;
+            }
+            else {
+                vstr_clear(&line);
+                return PYEXEC_FORCED_EXIT;
+            }
+#else
             vstr_clear(&line);
             return PYEXEC_FORCED_EXIT;
+#endif
         } else if (ret == CHAR_CTRL_E) {
             // paste mode
             mp_hal_stdout_tx_str("\r\npaste mode; Ctrl-C to cancel, Ctrl-D to finish\r\n=== ");

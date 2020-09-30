@@ -377,6 +377,20 @@ typedef struct _mp_rom_obj_t { mp_const_obj_t o; } mp_rom_obj_t;
         }, \
     }
 
+// Pycom specific macro, needed by the generated pins.c, do not remove on update
+#define MP_DEFINE_RAM_DICT(dict_name, table_name) \
+    DRAM_ATTR mp_obj_dict_t dict_name = { \
+        .base = {&mp_type_dict}, \
+        .map = { \
+            .all_keys_are_qstrs = 1, \
+            .is_fixed = 1, \
+            .is_ordered = 1, \
+            .used = MP_ARRAY_SIZE(table_name), \
+            .alloc = MP_ARRAY_SIZE(table_name), \
+            .table = (mp_map_elem_t*)(mp_rom_map_elem_t*)table_name, \
+        }, \
+    }
+
 // These macros are used to declare and define constant staticmethond and classmethod objects
 // You can put "static" in front of the definitions to make them local
 
@@ -658,6 +672,7 @@ extern const mp_obj_type_t mp_type_NameError;
 extern const mp_obj_type_t mp_type_NotImplementedError;
 extern const mp_obj_type_t mp_type_OSError;
 extern const mp_obj_type_t mp_type_OverflowError;
+extern const mp_obj_type_t mp_type_TimeoutError;
 extern const mp_obj_type_t mp_type_RuntimeError;
 extern const mp_obj_type_t mp_type_StopAsyncIteration;
 extern const mp_obj_type_t mp_type_StopIteration;
