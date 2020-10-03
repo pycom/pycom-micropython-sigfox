@@ -110,14 +110,14 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_del_obj, fat_vfs_del);
 
 STATIC mp_obj_t fat_vfs_mkfs(mp_obj_t bdev_in) {
     // create new object
-	fs_user_mount_t* vfs = MP_OBJ_TO_PTR(fat_vfs_make_new(&mp_fat_vfs_type, 1, 0, &bdev_in));
-	FRESULT res = fat_format(vfs);
+    fs_user_mount_t* vfs = MP_OBJ_TO_PTR(fat_vfs_make_new(&mp_fat_vfs_type, 1, 0, &bdev_in));
+    FRESULT res = fat_format(vfs);
 
-	if (FR_OK != res)
-	{
-		mp_raise_OSError(fresult_to_errno_table[res]);
-	}
-	vfs->blockdev.flags &= ~FSUSER_NO_FILESYSTEM;
+    if (FR_OK != res)
+    {
+        mp_raise_OSError(fresult_to_errno_table[res]);
+    }
+    vfs->blockdev.flags &= ~FSUSER_NO_FILESYSTEM;
 
     return mp_const_none;
 }
@@ -143,16 +143,16 @@ STATIC FRESULT fat_format(fs_user_mount_t* vfs)
         blockcount = mp_obj_get_int(mp_call_method_n_kw(0, 0, vfs->blockdev.u.old.count));
     }
 
-	if (blockcount < 32768)
-	{
-		options |= FM_SFD;
-	}
-	else
-	{
-		options = FM_FAT32;
-	}
-	// make the filesystem
-	return f_mkfs(&vfs->fs.fatfs, options, 0, working_buf, sizeof(working_buf));
+    if (blockcount < 32768)
+    {
+        options |= FM_SFD;
+    }
+    else
+    {
+        options = FM_FAT32;
+    }
+    // make the filesystem
+    return f_mkfs(&vfs->fs.fatfs, options, 0, working_buf, sizeof(working_buf));
 }
 
 typedef struct _mp_vfs_fat_ilistdir_it_t {
@@ -181,7 +181,7 @@ STATIC mp_obj_t mp_vfs_fat_ilistdir_it_iternext(mp_obj_t self_in) {
         if (self->is_str) {
             t->items[0] = mp_obj_new_str(fn, strlen(fn));
         } else {
-            t->items[0] = mp_obj_new_bytes((const byte*)fn, strlen(fn));
+            t->items[0] = mp_obj_new_bytes((const byte *)fn, strlen(fn));
         }
         if (fno.fattrib & AM_DIR) {
             // dir
@@ -357,7 +357,10 @@ STATIC mp_obj_t fat_vfs_stat(mp_obj_t vfs_in, mp_obj_t path_in) {
         (fno.ftime >> 11) & 0x1f,
         (fno.ftime >> 5) & 0x3f,
         2 * (fno.ftime & 0x1f)
-    );
+        );
+    #if MICROPY_EPOCH_IS_1970
+    seconds += TIMEUTILS_SECONDS_1970_TO_2000;
+    #endif
     t->items[0] = MP_OBJ_NEW_SMALL_INT(mode); // st_mode
     t->items[1] = MP_OBJ_NEW_SMALL_INT(0); // st_ino
     t->items[2] = MP_OBJ_NEW_SMALL_INT(0); // st_dev
@@ -426,6 +429,7 @@ STATIC mp_obj_t fat_vfs_getfree(mp_obj_t vfs_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_getfree_obj, fat_vfs_getfree);
 
+
 STATIC mp_obj_t vfs_fat_mount(mp_obj_t self_in, mp_obj_t readonly, mp_obj_t mkfs) {
     fs_user_mount_t *self = MP_OBJ_TO_PTR(self_in);
 
@@ -441,11 +445,11 @@ STATIC mp_obj_t vfs_fat_mount(mp_obj_t self_in, mp_obj_t readonly, mp_obj_t mkfs
     FRESULT res = (self->blockdev.flags & FSUSER_NO_FILESYSTEM) ? FR_NO_FILESYSTEM : FR_OK;
     if (res == FR_NO_FILESYSTEM && mp_obj_is_true(mkfs))
     {
-    	res = fat_format(self);
-    	if (FR_OK != res)
-    	{
-    		mp_raise_OSError(fresult_to_errno_table[res]);
-    	}
+        res = fat_format(self);
+        if (FR_OK != res)
+        {
+            mp_raise_OSError(fresult_to_errno_table[res]);
+        }
     }
     self->blockdev.flags &= ~FSUSER_NO_FILESYSTEM;
 
@@ -462,16 +466,16 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_umount_obj, vfs_fat_umount);
 
 STATIC mp_obj_t fat_vfs_fsformat(mp_obj_t vfs_in)
 {
-	fs_user_mount_t * vfs = MP_OBJ_TO_PTR(vfs_in);
-	FRESULT res = fat_format(vfs);
-	if (FR_OK != res)
-	{
-		mp_raise_OSError(fresult_to_errno_table[res]);
-	}
+    fs_user_mount_t * vfs = MP_OBJ_TO_PTR(vfs_in);
+    FRESULT res = fat_format(vfs);
+    if (FR_OK != res)
+    {
+        mp_raise_OSError(fresult_to_errno_table[res]);
+    }
 
     vfs->blockdev.flags &= ~FSUSER_NO_FILESYSTEM;
 
-	return mp_const_none;
+    return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(fat_vfs_fsformat_obj, fat_vfs_fsformat);
 
@@ -493,7 +497,7 @@ STATIC const mp_rom_map_elem_t fat_vfs_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_getfree), MP_ROM_PTR(&fat_vfs_getfree_obj) },
     { MP_ROM_QSTR(MP_QSTR_mount), MP_ROM_PTR(&vfs_fat_mount_obj) },
     { MP_ROM_QSTR(MP_QSTR_umount), MP_ROM_PTR(&fat_vfs_umount_obj) },
-	{ MP_ROM_QSTR(MP_QSTR_fsformat), MP_ROM_PTR(&fat_vfs_fsformat_obj) },
+    { MP_ROM_QSTR(MP_QSTR_fsformat), MP_ROM_PTR(&fat_vfs_fsformat_obj) },
 };
 STATIC MP_DEFINE_CONST_DICT(fat_vfs_locals_dict, fat_vfs_locals_dict_table);
 
@@ -506,7 +510,7 @@ const mp_obj_type_t mp_fat_vfs_type = {
     .name = MP_QSTR_VfsFat,
     .make_new = fat_vfs_make_new,
     .protocol = &fat_vfs_proto,
-    .locals_dict = (mp_obj_dict_t*)&fat_vfs_locals_dict,
+    .locals_dict = (mp_obj_dict_t *)&fat_vfs_locals_dict,
 
 };
 

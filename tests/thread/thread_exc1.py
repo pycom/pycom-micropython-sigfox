@@ -8,6 +8,7 @@ import time
 def foo():
     raise ValueError
 
+
 def thread_entry():
     try:
         foo()
@@ -16,6 +17,7 @@ def thread_entry():
     with lock:
         global n_finished
         n_finished += 1
+
 
 lock = _thread.allocate_lock()
 n_thread = 4
@@ -28,4 +30,4 @@ for i in range(n_thread):
 # busy wait for threads to finish
 while n_finished < n_thread:
     time.sleep(0.01)
-print('done')
+print("done")

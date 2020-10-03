@@ -39,7 +39,6 @@
 #define __MICROPY_INCLUDED_ESP32_MPTHREADPORT_H__
 
 #include "py/mpconfig.h"
-#include "py/mpstate.h"
 #include "py/obj.h"
 #include "freertos/FreeRTOS.h"
 

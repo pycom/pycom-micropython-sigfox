@@ -6,9 +6,9 @@ import _thread
 import time
 
 lock = _thread.allocate_lock()
-# On FIPY with esp-idf 4.0 only 9 threads can be created maximum, beyond that the device crashes
-n_thread = 9
+n_thread = 10
 n_finished = 0
+
 
 def thread_entry(idx):
     global n_finished
@@ -16,9 +16,10 @@ def thread_entry(idx):
         with lock:
             if n_finished == idx:
                 break
-    print('my turn:', idx)
+    print("my turn:", idx)
     with lock:
         n_finished += 1
+
 
 # spawn threads
 for i in range(n_thread):

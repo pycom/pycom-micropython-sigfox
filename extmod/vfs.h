@@ -33,8 +33,8 @@
 
 // return values of mp_vfs_lookup_path
 // ROOT is 0 so that the default current directory is the root directory
-#define MP_VFS_NONE ((mp_vfs_mount_t*)1)
-#define MP_VFS_ROOT ((mp_vfs_mount_t*)0)
+#define MP_VFS_NONE ((mp_vfs_mount_t *)1)
+#define MP_VFS_ROOT ((mp_vfs_mount_t *)0)
 
 // MicroPython's port-standardized versions of stat constants
 #define MP_S_IFDIR (0x4000)
@@ -76,8 +76,8 @@ typedef struct _mp_vfs_blockdev_t {
 
 typedef struct _fs_user_mount_t {
     mp_obj_base_t base;
-	mp_vfs_blockdev_t blockdev;
-	// File System on this blockdevice
+    mp_vfs_blockdev_t blockdev;
+    // File System on this blockdevice
     union {
         FATFS fatfs;
         vfs_lfs_struct_t littlefs;
@@ -119,6 +119,8 @@ mp_obj_t mp_vfs_stat(mp_obj_t path_in);
 mp_obj_t mp_vfs_statvfs(mp_obj_t path_in);
 mp_obj_t mp_vfs_getfree(mp_obj_t path_in);
 mp_obj_t mp_vfs_fsformat(mp_obj_t path_in);
+
+int mp_vfs_mount_and_chdir_protected(mp_obj_t bdev, mp_obj_t mount_point);
 
 MP_DECLARE_CONST_FUN_OBJ_KW(mp_vfs_mount_obj);
 MP_DECLARE_CONST_FUN_OBJ_1(mp_vfs_umount_obj);

@@ -13,6 +13,7 @@
 #include "py/mpconfig.h"
 #include "py/obj.h"
 #include "py/mphal.h"
+#include "py/runtime.h"
 #include "readline.h"
 #include "telnet.h"
 #include "serverstask.h"

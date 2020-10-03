@@ -9,12 +9,14 @@ import time
 def foo(lst, i):
     lst[i] += 1
 
+
 def thread_entry(n, lst, idx):
     for i in range(n):
         foo(lst, idx)
     with lock:
         global n_finished
         n_finished += 1
+
 
 lock = _thread.allocate_lock()
 n_thread = 2
