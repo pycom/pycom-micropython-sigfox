@@ -515,17 +515,15 @@ BOOT_LDFLAGS = $(LDFLAGS) -T $(ESP_IDF_COMP_PATH)/bootloader/subproject/main/ld/
 
 # Add the application linker script(s)
 # These files are passed here as per final build command in esp-idf fetched from the console when esp-idf/examples/wifi/scan is linked
-# -u ld_include_panic_highint_hdl is needed so esp32/dport_panic_panic_highint_hdl.S is linked and xt_highint4 is used from there,
-# otherwise xt_highint4 is used from freertos/xtensa/xtensa_vector_defaults.S which has incorrect implementation and results DPORT core lockup
-# (check the comment in dport_panic_panic_highint_hdl.S next to ld_include_panic_highint_hdl)
 APP_LDFLAGS += $(LDFLAGS) -T $(BUILD)/esp32_out.ld \
-                          -u ld_include_panic_highint_hdl \
+                          -T esp32.extram.bss.ld \
                           -T esp32.project.ld \
                           -T esp32.peripherals.ld \
                           -T esp32.rom.ld \
                           -T esp32.rom.libgcc.ld \
                           -T esp32.rom.syscalls.ld \
                           -T esp32.rom.newlib-data.ld \
+                          -T esp32.rom.newlib-time.ld 
 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX

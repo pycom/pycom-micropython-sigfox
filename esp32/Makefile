@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-IDF_HASH=0883e5e
+IDF_HASH=82a7523
 XTENSA_VERSION = "2020r3"
 
 TARGET ?= boot_app
@@ -120,18 +120,30 @@ CFLAGS_XTENSA = -DESP_PLATFORM -Wall -Werror=all -Wno-error=unused-function \
                 -mlongcalls -Wall -ffunction-sections -fdata-sections -fno-common \
                 -Wno-sign-compare -Wno-old-style-declaration -fstrict-volatile-bitfields \
                 -Wno-error=deprecated-declarations -Wno-unused-parameter -DWITH_POSIX \
+                -freorder-blocks -Wno-implicit-fallthrough
 
 CFLAGS_XTENSA_OPT = -Os
 # Using -mfix-esp32-psram-cache-issue will make sure that the correct libraries, designed to workaround the PSRAM issue, are used from the Toolchain
-CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue
+CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue -mfix-esp32-psram-cache-strategy=memw
 
 CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 
-LDFLAGS = -nostdlib -Wl,-Map=$(@:.elf=.map) -Wl,--no-check-sections -u call_user_start_cpu0 \
-          -mfix-esp32-psram-cache-issue \
-
-LDFLAGS += -Wl,-static -Wl,--undefined=uxTopUsedPriority -Wl,--gc-sections
+# These flags are used as per the output when linking examples/wifi/scan
+# -u ld_include_panic_highint_hdl is needed so esp32/dport_panic_panic_highint_hdl.S is linked and xt_highint4 is used from there,
+# otherwise xt_highint4 is used from freertos/xtensa/xtensa_vector_defaults.S which has incorrect implementation and results DPORT core lockup
+# (check the comment in dport_panic_panic_highint_hdl.S next to ld_include_panic_highint_hdl)
+LDFLAGS = -nostdlib -u call_user_start_cpu0 -Wl,--gc-sections -Wl,-static -Wl,--start-group \
+          -u esp_app_desc -u __cxa_guard_dummy -u __cxx_fatal_exception \
+          -u ld_include_panic_highint_hdl \
+          -Wl,--undefined=uxTopUsedPriority \
+          -u newlib_include_locks_impl -u newlib_include_heap_impl -u newlib_include_syscalls_impl \
+          -Wl,--wrap=vPortCleanUpTCB \
+          -u pthread_include_pthread_impl -u pthread_include_pthread_cond_impl -u pthread_include_pthread_local_storage_impl \
+          -Wl,--end-group -Wl,-EL \
+          -fno-rtti \
+          $(CFLAGS_XTENSA_PSRAM) \
+          -Wl,-Map=$(@:.elf=.map)
 
 LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -L$(ESP_IDF_COMP_PATH)/esp32/ld \
