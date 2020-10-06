@@ -252,34 +252,28 @@ void wlan_setup (wlan_internal_setup_t *config) {
     /* Only initialize/create these if they have not been created/initialized before */
     if(wlan_obj.started == false)
     {
+        // TODO: should be called from a common location together with LTE and PyEth
         ESP_ERROR_CHECK(esp_netif_init());
         // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to WIFI events
         ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wlan_event_handler, NULL));
         // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to IP events
         ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wlan_event_handler, NULL));
     }
-    else {
-        /* init() is called without deinit(), remove the already created esp_netif objects */
-        if( wlan_obj.esp_netif_AP != NULL) {
-            esp_netif_destroy(wlan_obj.esp_netif_AP);
-            wlan_obj.esp_netif_AP = NULL;
-        }
 
-        if( wlan_obj.esp_netif_STA != NULL) {
-            esp_netif_destroy(wlan_obj.esp_netif_STA);
-            wlan_obj.esp_netif_STA = NULL;
-        }
-    }
-
-    if(config->mode == WIFI_MODE_AP) {
+    // Create the given esp_netif interface if it has not been already created
+    if(config->mode == WIFI_MODE_AP && wlan_obj.esp_netif_AP == NULL) {
         wlan_obj.esp_netif_AP = esp_netif_create_default_wifi_ap();
     }
-    else if(config->mode == WIFI_MODE_STA) {
+    else if(config->mode == WIFI_MODE_STA && wlan_obj.esp_netif_STA == NULL) {
         wlan_obj.esp_netif_STA = esp_netif_create_default_wifi_sta();
     }
     else {
-        wlan_obj.esp_netif_AP = esp_netif_create_default_wifi_ap();
-        wlan_obj.esp_netif_STA = esp_netif_create_default_wifi_sta();
+        if(wlan_obj.esp_netif_AP == NULL) {
+            wlan_obj.esp_netif_AP = esp_netif_create_default_wifi_ap();
+        }
+        if(wlan_obj.esp_netif_STA == NULL) {
+            wlan_obj.esp_netif_STA = esp_netif_create_default_wifi_sta();
+        }
     }
 
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
@@ -1084,8 +1078,7 @@ static void smart_config_callback(void* arg, esp_event_base_t event_base, int32_
         //save password/ssid/auth
         memcpy(wlan_obj.key, wifi_config.sta.password, 64);
         memcpy(wlan_obj.ssid, wifi_config.sta.ssid, (MODWLAN_SSID_LEN_MAX));
-        // In ESP-IDF 3.3.x authmode also can be saved here, but in ESP-IDF 4.0 auth mode is not known at this point
-        //wlan_obj.auth = wifi_config.sta.threshold.authmode;
+        wlan_obj.auth = wifi_config.sta.threshold.authmode;
 
         esp_wifi_disconnect();
         esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config);
