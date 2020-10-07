@@ -252,8 +252,6 @@ void wlan_setup (wlan_internal_setup_t *config) {
     /* Only initialize/create these if they have not been created/initialized before */
     if(wlan_obj.started == false)
     {
-        // TODO: should be called from a common location together with LTE and PyEth
-        ESP_ERROR_CHECK(esp_netif_init());
         // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to WIFI events
         ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wlan_event_handler, NULL));
         // Register the wlan_event_handler to the default event loop for all events with base event ID belonging to IP events
