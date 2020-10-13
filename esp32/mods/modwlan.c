@@ -205,7 +205,6 @@ void wlan_pre_init (void) {
     memcpy(wlan_obj.country.cc, (const char*)"NA", sizeof(wlan_obj.country.cc));
     wlan_obj.esp_netif_AP = NULL;
     wlan_obj.esp_netif_STA = NULL;
-    wlan_obj.started = false;
     // create Smart Config Task
     xTaskCreatePinnedToCore(TASK_SMART_CONFIG, "SmartConfig", SMART_CONF_TASK_STACK_SIZE / sizeof(StackType_t), NULL, SMART_CONF_TASK_PRIORITY, &SmartConfTaskHandle, 1);
 }
@@ -1286,14 +1285,21 @@ mp_obj_t wlan_deinit(mp_obj_t self_in) {
             vTaskDelay(1 / portTICK_PERIOD_MS);
         }
 
-        /* stop and free wifi resources */
-        esp_netif_destroy(wlan_obj.esp_netif_AP);
-        esp_netif_destroy(wlan_obj.esp_netif_STA);
-        esp_wifi_deinit();
+        // Destroy esp_netif interfaces
+        if(wlan_obj.esp_netif_AP != NULL) {
+            esp_netif_destroy(wlan_obj.esp_netif_AP);
+            wlan_obj.esp_netif_AP = NULL;
+        }
+        if(wlan_obj.esp_netif_STA != NULL) {
+            esp_netif_destroy(wlan_obj.esp_netif_STA);
+            wlan_obj.esp_netif_STA = NULL;
+        }
+        // Unregister event handler
         esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, wlan_event_handler);
         esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, wlan_event_handler);
-        esp_event_loop_delete_default();
-        esp_netif_deinit();
+
+        // Deinitialize Wifi
+        esp_wifi_deinit();
 
         mod_wlan_is_deinit = true;
         wlan_obj.started = false;

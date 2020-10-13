@@ -214,7 +214,7 @@ void TASK_Micropython (void *pvParameters) {
     mach_timer_alarm_preinit();
     pin_preinit();
 
-    //Init the esp_netif
+    //Init the esp_netif system
     ESP_ERROR_CHECK(esp_netif_init());
 
 soft_reset:
