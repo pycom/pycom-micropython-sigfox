@@ -1154,6 +1154,52 @@ STATIC mp_obj_t mod_pycom_ml_run_model (mp_obj_t data) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_ml_run_model_obj, mod_pycom_ml_run_model);
 
+// This function creates a 128 bit long UUID stored in a byte array in Little Endian order from an input String
+STATIC mp_obj_t create_128bit_le_uuid_from_string(mp_obj_t uuid_in) {
+
+    size_t length;
+    uint8_t new_uuid[16];
+    uint8_t i, j;
+
+    const char* uuid_char_in = mp_obj_str_get_data(uuid_in, &length);
+    // 1 character is stored on 1 byte because we received a String
+    // For 128 bit UUID maximum 32 characters long String can be accepted
+    if (length > 32) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Input string must not be longer than 32 characters!"));
+    }
+
+    // Pre-fill the whole array with 0 because the remaining/not given digits will be 0
+    char uuid_char[32] = {0};
+    memcpy(uuid_char, uuid_char_in, length);
+
+    for(i = 0, j = 0; i < 32; i = i+2) {
+
+        uint8_t lower_nibble = 0;
+        uint8_t upper_nibble = 0;
+
+        if(uuid_char[i] > 0) {
+            upper_nibble = hex_from_char(uuid_char[i]);
+        }
+
+        if(uuid_char[i+1] > 0) {
+            lower_nibble = hex_from_char(uuid_char[i+1]);
+        }
+
+        if(lower_nibble == 16 || upper_nibble == 16) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "UUID must only contain hexadecimal digits!"));
+        }
+
+        // Pack together the 4 bits digits into 1 byte
+        // Convert to Little Endian order because we expect that the digits of the input String follows the Natural Byte (Big Endian) order
+        new_uuid[15-j] = lower_nibble | (upper_nibble << 4);
+        j++;
+    }
+
+    mp_obj_t new_uuid_mp = mp_obj_new_bytearray(16, new_uuid);
+    return new_uuid_mp;
+
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(create_128bit_le_uuid_from_string_obj, create_128bit_le_uuid_from_string);
 
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
@@ -1184,6 +1230,8 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_mode_on_boot),               (mp_obj_t)&mod_pycom_wifi_mode_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_ml_new_model),                    (mp_obj_t)&mod_pycom_ml_new_model_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_ml_run_model),                    (mp_obj_t)&mod_pycom_ml_run_model_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_create_128bit_le_uuid_from_string), (mp_obj_t)&create_128bit_le_uuid_from_string_obj },
+
 
 #if defined(FIPY) || defined(LOPY4) || defined(SIPY)
         { MP_OBJ_NEW_QSTR(MP_QSTR_sigfox_info),                     (mp_obj_t)&mod_pycom_sigfox_info_obj },
