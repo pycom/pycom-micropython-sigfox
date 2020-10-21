@@ -59,6 +59,9 @@
 #include "extmod/machine_mem.h"
 #include "machpin.h"
 #include "machuart.h"
+#ifdef MOD_MODBUS_ENABLED
+#include "machmodbus.h"
+#endif
 #include "machtimer.h"
 #include "machine_i2c.h"
 #include "machspi.h"
@@ -642,6 +645,9 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_CAN),                     (mp_obj_t)&mach_can_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_RMT),                     (mp_obj_t)&mach_rmt_type },
     { MP_OBJ_NEW_QSTR(MP_QSTR_Touch),                   (mp_obj_t)&machine_touchpad_type },
+    #ifdef MOD_MODBUS_ENABLED
+    { MP_OBJ_NEW_QSTR(MP_QSTR_Modbus),                  (mp_obj_t)&mach_modbus_type },
+    #endif
 
 
     // constants

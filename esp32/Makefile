@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-IDF_HASH=82a7523
+IDF_HASH=038ed1b
 XTENSA_VERSION = "2020r3"
 
 TARGET ?= boot_app
@@ -38,6 +38,9 @@ MOD_COAP_ENABLED ?= 1
 
 # SIGFOX is enabled by default. It will only be built for supported boards.
 MOD_SIGFOX_ENABLED ?= 1
+
+# Modbus module. disabled by default
+MOD_MODBUS_ENABLED ?= 0
 
 # Pybytes disabled by default
 PYBYTES_ENABLED ?= 0
@@ -164,6 +167,12 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
        -lesp_ringbuf -lefuse -lespcoredump -lapp_update \
        -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig
+
+ifeq ($(MOD_MODBUS_ENABLED), 1)
+    $(info Modbus Module Enabled)
+    LIBS += -lfreemodbus
+    CFLAGS += -DMOD_MODBUS_ENABLED
+endif
 
 ifeq ($(MOD_COAP_ENABLED), 1)
     $(info COAP Module Enabled)

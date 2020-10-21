@@ -48,6 +48,20 @@ endif
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
+ifeq ($(MOD_MODBUS_ENABLED), 1)
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freemodbus/common/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freemodbus/common/
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freemodbus/modbus/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freemodbus/modbus/ascii
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freemodbus/modbus/rtu
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freemodbus/modbus/tcp
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freemodbus/port
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freemodbus/serial_master/modbus_controller
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freemodbus/serial_master/port
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freemodbus/serial_slave/modbus_controller
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freemodbus/serial_slave/port
+
+endif
 APP_INC += -I$(ESP_IDF_COMP_PATH)/freertos/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/json/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
@@ -220,6 +234,12 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	lwipsocket.c \
 	machtouch.c \
 	)
+
+ifeq ($(MOD_MODBUS_ENABLED), 1)
+APP_MODS_SRC_C += $(addprefix mods/,\
+	machmodbus.c \
+	)
+endif
 
 ifeq ($(MOD_MDNS_ENABLED), 1)
 APP_MODS_SRC_C += $(addprefix mods/,\

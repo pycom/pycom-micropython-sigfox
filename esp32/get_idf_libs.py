@@ -58,6 +58,7 @@ def main():
         shutil.copy(src + '/esp32/libesp32.a', dsttmpapp)
         shutil.copy(src + '/expat/libexpat.a', dsttmpapp)
         shutil.copy(src + '/freertos/libfreertos.a', dsttmpapp)
+        shutil.copy(src + '/freemodbus/libfreemodbus.a', dsttmpapp) 
         shutil.copy(src + '/heap/libheap.a', dsttmpapp)
         shutil.copy(src + '/jsmn/libjsmn.a', dsttmpapp)
         shutil.copy(src + '/json/libjson.a', dsttmpapp)
