@@ -265,7 +265,6 @@ static esp_ble_adv_params_t bt_adv_params = {
 
 static bool mod_bt_allow_resume_deinit;
 static uint16_t mod_bt_gatts_mtu_restore = 0;
-static bool mod_bt_is_conn_restore_available;
 
 static nvs_handle modbt_nvs_handle;
 static uint8_t tx_pwr_level_to_dbm[] = {-12, -9, -6, -3, 0, 3, 6, 9};
@@ -324,7 +323,6 @@ void modbt_init0(void) {
     esp_bt_controller_mem_release(ESP_BT_MODE_CLASSIC_BT);
 
     mod_bt_allow_resume_deinit = false;
-    mod_bt_is_conn_restore_available = false;
 }
 
 void modbt_deinit(bool allow_reconnect)
@@ -363,11 +361,14 @@ void modbt_deinit(bool allow_reconnect)
             xEventGroupWaitBits(bt_event_group, MOD_BT_GATTS_DISCONN_EVT | MOD_BT_GATTS_CLOSE_EVT, true, true, 1000/portTICK_PERIOD_MS);
         }
 
+        esp_ble_gattc_app_unregister(MOD_BT_CLIENT_APP_ID);
+        esp_ble_gatts_app_unregister(MOD_BT_SERVER_APP_ID);
+
         esp_bluedroid_disable();
         esp_bluedroid_deinit();
         esp_bt_controller_disable();
+        esp_bt_controller_deinit();
         bt_obj.init = false;
-        mod_bt_is_conn_restore_available = false;
         xEventGroupClearBits(bt_event_group, MOD_BT_GATTC_MTU_EVT | MOD_BT_GATTS_MTU_EVT | MOD_BT_GATTS_DISCONN_EVT | MOD_BT_GATTS_CLOSE_EVT);
     }
 }
@@ -393,34 +394,39 @@ void bt_resume(bool reconnect)
 
         esp_ble_gatt_set_local_mtu(mod_bt_gatts_mtu_restore);
 
-        bt_connection_obj_t *connection_obj = NULL;
-
-        if(MP_STATE_PORT(btc_conn_list).len > 0)
+        // If this list has 0 elements it means there were no active connections
+        if(MP_STATE_PORT(btc_conn_list).len > 0 && reconnect)
         {
-            /* Get the Last gattc connection obj before sleep */
-            connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[MP_STATE_PORT(btc_conn_list).len - 1]));
-        }
+            /* Enable Scan */
+            modbt_start_scan(MP_OBJ_NEW_SMALL_INT(-1));
+            mp_hal_delay_ms(50);
+            while(!bt_obj.scanning){
+                /* Wait for scanning to start */
+            }
 
-        if (reconnect)
-        {
-            /* Check if there was a gattc connection Active before sleep */
-            if (connection_obj != NULL) {
-                if (connection_obj->conn_id >= 0) {
-                    /* Enable Scan */
-                    modbt_start_scan(MP_OBJ_NEW_SMALL_INT(-1));
-                    mp_hal_delay_ms(50);
-                    while(!bt_obj.scanning){
-                        /* Wait for scanning to start */
-                    }
-                    /* re-connect to Last Connection */
-                    mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
-                    mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), modbt_connect(mp_obj_new_bytes((const byte *)connection_obj->srv_bda, 6)));
+            /* Re-connect to all previously existing connections */
+            // Need to save the old connections into a temporary list because during connect the original list is manipulated (items added)
+            mp_obj_list_t btc_conn_list_tmp;
+            mp_obj_list_init(&btc_conn_list_tmp, 0);
+            for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++) {
+                bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
+                mp_obj_list_append(&btc_conn_list_tmp, connection_obj);
+            }
 
-                    mod_bt_is_conn_restore_available = true;
+            // Connect to the old connections
+            for (mp_uint_t i = 0; i < btc_conn_list_tmp.len; i++) {
+                bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(btc_conn_list_tmp.items[i]));
+                // Initiates re-connection
+                bt_connection_obj_t *new_connection_obj = modbt_connect(mp_obj_new_bytes((const byte *)connection_obj->srv_bda, 6));
+                // If new connection object has been created then overwrite the original one so from the MicroPython code the same reference can be used
+                if(new_connection_obj != mp_const_none) {
+                    memcpy(connection_obj, new_connection_obj, sizeof(bt_connection_obj_t));
+                    // As modbt_connect appends the new connection to the original list, it needs to be removed because it is not needed
+                    mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), new_connection_obj);
                 }
             }
 
-            /* See if there was an averstisment active before Sleep */
+            /* See if there was an advertisement active before Sleep */
             if(bt_obj.advertising) {
                 esp_ble_gap_start_advertising(&bt_adv_params);
             }
@@ -554,8 +560,7 @@ static void set_pin(uint32_t new_pin)
 static void close_connection (int32_t conn_id) {
     for (mp_uint_t i = 0; i < MP_STATE_PORT(btc_conn_list).len; i++) {
         bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
-        /* Only reset Conn Id if it is a normal disconnect not module de-init to mark conn obj to be restored */
-        if (connection_obj->conn_id == conn_id && (!mod_bt_allow_resume_deinit)) {
+        if (connection_obj->conn_id == conn_id) {
             connection_obj->conn_id = -1;
             mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
         }
@@ -1408,7 +1413,13 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
     EventBits_t uxBits;
 
     if (bt_obj.busy) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "operation already in progress"));
+        // Only drop exception if not called from bt_resume() API, otherwise return with mp_const_none on error
+        if(mod_bt_allow_resume_deinit == false) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "operation already in progress"));
+        }
+        else {
+            return mp_const_none;
+        }
     }
 
     if (bt_obj.scanning) {
@@ -1427,13 +1438,20 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
     if (ESP_OK != esp_ble_gattc_open(bt_obj.gattc_if, bufinfo.buf, BLE_ADDR_TYPE_PUBLIC, true)) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
+
     MP_THREAD_GIL_EXIT();
     if (xQueueReceive(xScanQueue, &bt_event, timeout) == pdTRUE)
     {
         MP_THREAD_GIL_ENTER();
 
         if (bt_event.connection.conn_id < 0) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection refused"));
+            // Only drop exception if not called from bt_resume() API, otherwise return with mp_const_none on error
+            if(mod_bt_allow_resume_deinit == false) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "connection refused"));
+            }
+            else {
+                return mp_const_none;
+            }
         }
 
         // setup the object
@@ -1452,6 +1470,7 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
         }
         memcpy(conn->srv_bda, bt_event.connection.srv_bda, 6);
         mp_obj_list_append((void *)&MP_STATE_PORT(btc_conn_list), conn);
+
         return conn;
     }
     else
@@ -1459,7 +1478,14 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
         MP_THREAD_GIL_ENTER();
 
         (void)esp_ble_gap_disconnect(bufinfo.buf);
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
+
+        // Only drop exception if not called from bt_resume() API, otherwise return with mp_const_none on error
+        if(mod_bt_allow_resume_deinit == false) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
+        }
+        else {
+            return mp_const_none;
+        }
     }
     return mp_const_none;
 }
@@ -2272,8 +2298,9 @@ STATIC mp_obj_t bt_conn_disconnect(mp_obj_t self_in) {
     if (self->conn_id >= 0) {
         esp_ble_gattc_close(bt_obj.gattc_if, self->conn_id);
         esp_ble_gap_disconnect(self->srv_bda);
-        /* Only reset Conn Id if it is a normal disconnect not module de-init to mark conn obj to be restored */
-        if(!mod_bt_allow_resume_deinit)
+        /* Only reset Conn Id if it is needed that the connection should be established again after wakeup
+         * otherwise this connection will be completely removed in close_connection() call triggered by ESP_GATTC_DISCONNECT_EVT event */
+        if(mod_bt_allow_resume_deinit)
         {
             self->conn_id = -1;
         }
