@@ -26,11 +26,6 @@
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
 
-// includes for tcp modbus
-// #include "esp_wifi.h"
-// #include "esp_event.h"
-// #include "mdns.h"
-// #include "esp_netif.h"
 #include "netutils.h"
 #include "modwlan.h"
 
@@ -90,17 +85,8 @@
 #define MACH_UART_CHECK_INIT(self)                    \
     if(!(init)) {nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_OSError, "MODBUS not Initialized!"));}
 
-////TCP SLAVE
+////TCP PORT
 #define MB_TCP_PORT_NUMBER      (502)
-#define MB_MDNS_PORT            (502)
-
-#define MB_PAR_INFO_GET_TOUT                (10) // Timeout for get parameter info
-#define MB_CHAN_DATA_MAX_VAL                (10)
-#define MB_CHAN_DATA_OFFSET                 (1.1f)
-
-///TCP MASTER
-#define MB_TCP_PORT                     (CONFIG_FMB_TCP_PORT_DEFAULT)   // TCP port used by example
-
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -163,11 +149,8 @@ static portMUX_TYPE param_lock = portMUX_INITIALIZER_UNLOCKED;
 
 STATIC const mp_obj_t mach_modbus_def_pin[1][3] = { {&PIN_MODULE_P3, &PIN_MODULE_P4, &PIN_MODULE_P11} };
 
-char* slave_ip_address_table[5] = {
+char* slave_ip_address_table[2] = {
     NULL, // ip address [0]
-    NULL, // table must be NULL terminated
-    NULL, // table must be NULL terminated
-    NULL, // table must be NULL terminated
     NULL, // table must be NULL terminated
 };
 
@@ -467,35 +450,44 @@ STATIC mp_obj_t mach_modbus_init_helper(mach_modbus_obj_t *self, const mp_arg_va
         self->comm_info.ip_addr_type = MB_IPV4;
         self->comm_info.ip_mode = MB_MODE_TCP;
 
-        mp_obj_t ip_addr_input = args[11].u_obj;
-        if (ip_addr_input != mp_const_none) {
-            mp_obj_t *ips;
-            mp_uint_t n_pins = 4;
-            if (ip_addr_input == MP_OBJ_NULL) {
+        // uint8_t multiple_flag = args[11].u_int;
+
+        mp_obj_t ip_addr_input_m = args[11].u_obj;
+        if (ip_addr_input_m != mp_const_none) {
+            // mp_obj_t *ips;
+            // mp_uint_t n_pins = 4;
+            if (ip_addr_input_m == MP_OBJ_NULL) {
                 self->comm_info.ip_addr = NULL;
             }
             else {
-                char* input[4] = {NULL,NULL,NULL,NULL};
-                int len[4] = {0,0,0,0};
-                mp_obj_get_array(ip_addr_input, &n_pins, &ips);
-                for (int ipn = 0; ipn < n_pins; ipn++) { 
-                    input[ipn] = (char *)mp_obj_str_get_str(ips[ipn]);
-                    len[ipn] = strlen(input[ipn]);
-                    slave_ip_address_table[ipn] = calloc(len[ipn], sizeof(char));
-                    strcpy(slave_ip_address_table[ipn], input[ipn]);
-                }
-                // char* input = (char *)mp_obj_str_get_str(ip_addr_input);
-                // int len = strlen(input);
-                // for(uint8_t j = 0; j < 2-1; j++) { 
-                //     slave_ip_address_table[j] = calloc(len, sizeof(char));
-                // }
-                // Double check that last table entry is still NULL !!
-                // strcpy(slave_ip_address_table[0], input);
-                // printf("slave address ip = %s\n", slave_ip_address_table[0]);
+                // if (multiple_flag>0) {
+                //     char* input[4] = {NULL,NULL,NULL,NULL};
+                //     int len[4] = {0,0,0,0};
+                //     mp_obj_get_array(ip_addr_input_m, &n_pins, &ips);
+                //     for (int ipn = 0; ipn < n_pins; ipn++) { 
+                //         input[ipn] = (char *)mp_obj_str_get_str(ips[ipn]);
+                //         len[ipn] = strlen(input[ipn]);
+                //         slave_ip_address_table[ipn] = calloc(len[ipn], sizeof(char));
+                //         strcpy(slave_ip_address_table[ipn], input[ipn]);
+                //     }
 
-                self->comm_info.ip_addr = (void*)slave_ip_address_table;
+                //     self->comm_info.ip_addr = (void*)slave_ip_address_table;
+                // }
+                // else {
+                    char* input = (char *)mp_obj_str_get_str(ip_addr_input_m);
+                    int len = strlen(input);
+                    for(uint8_t j = 0; j < 2-1; j++) { 
+                        slave_ip_address_table[j] = calloc(len, sizeof(char));
+                    }
+                    // Double check that last table entry is still NULL !!
+                    strcpy(slave_ip_address_table[0], input);
+                    printf("slave address ip = %s\n", slave_ip_address_table[0]);
+
+                    self->comm_info.ip_addr = (void*)slave_ip_address_table;
+                // }
             }
-        }
+
+            }
 
         if (!wlan_obj.started) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_AttributeError, "Wifi hasn't started!"));
@@ -556,6 +548,7 @@ STATIC const mp_arg_t mach_modbus_init_args[] = {
     { MP_QSTR_inputRegs,      MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = 0} },
     { MP_QSTR_coils,          MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = 0} },
     { MP_QSTR_discreteInputs, MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = 0} },
+    // { MP_QSTR_multiple_slave, MP_ARG_KW_ONLY | MP_ARG_INT,  {.u_int = 0} },
     { MP_QSTR_slave_ip_addr,  MP_ARG_KW_ONLY | MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
 };
 STATIC mp_obj_t mach_modbus_make_new(const mp_obj_type_t *type, mp_uint_t n_args, mp_uint_t n_kw, const mp_obj_t *all_args) {
@@ -736,7 +729,7 @@ STATIC mp_obj_t modbus_writeCoil(mp_obj_t self_in, mp_obj_t reg, mp_obj_t value)
 
     uint8_t coilPort = index/8;
     uint8_t shift = index%8;
-    printf("coils[%d] = %X\n", coilPort, coils[coilPort]);
+    // printf("coils[%d] = %X\n", coilPort, coils[coilPort]);
 
     portENTER_CRITICAL(&param_lock);
     coils[coilPort] = (uint8_t)((coils[coilPort] & ~(1 << shift)) | 
@@ -787,7 +780,7 @@ STATIC mp_obj_t modbus_writeDiscreteInput(mp_obj_t self_in, mp_obj_t reg, mp_obj
 
     uint8_t dinputPort = index/8;
     uint8_t shift = index%8;
-    printf("discrete_inputs[%d] = %X\n", dinputPort, discrete_inputs[dinputPort]);
+    // printf("discrete_inputs[%d] = %X\n", dinputPort, discrete_inputs[dinputPort]);
     portENTER_CRITICAL(&param_lock);
     discrete_inputs[dinputPort] = (uint8_t)((discrete_inputs[dinputPort] & ~(1 << shift)) | 
                                   ((newValue << shift) & 0xFF));
@@ -811,6 +804,9 @@ STATIC mp_obj_t modbus_sendRequest(mp_uint_t n_args, const mp_obj_t *args) {
     esp_err_t error = ESP_OK;
 
     setparam.slave_addr = mp_obj_get_int(args[1]);
+    if (self->comm_info.mode == MB_MODE_TCP) {
+        setparam.slave_addr = 1;
+    }
     printf("slave = %d\n", setparam.slave_addr);
     setparam.command = mp_obj_get_int(args[2]);
     printf("command = %d\n", setparam.command);
@@ -834,9 +830,9 @@ STATIC mp_obj_t modbus_sendRequest(mp_uint_t n_args, const mp_obj_t *args) {
             coil_discrete[i] = 0;
         }
         error = mbc_master_send_request(&setparam, (void*)coil_discrete);
-        for (int i=0; i<portSize; i++) {
-            printf("coil_discrete[%d] = %X\n", i,coil_discrete[i]);
-        }
+        // for (int i=0; i<portSize; i++) {
+        //     printf("coil_discrete[%d] = %X\n", i,coil_discrete[i]);
+        // }
         if (error != ESP_OK) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid coil index  0x%X", error));
         } 
@@ -853,7 +849,7 @@ STATIC mp_obj_t modbus_sendRequest(mp_uint_t n_args, const mp_obj_t *args) {
                     for (pos=setparam.reg_start; pos<(8-(setparam.reg_start%8)+setparam.reg_start); pos++) {
                         value = (coil_discrete[port]>>(pos%8))&(0x01);
                         mp_obj_list_append(list, MP_OBJ_NEW_SMALL_INT(value));
-                        printf("coil_discrete%d[%d]= %d\n", port, (pos%8), value);
+                        // printf("coil_discrete%d[%d]= %d\n", port, (pos%8), value);
                     }
                     port+=1;
                 }
@@ -862,7 +858,7 @@ STATIC mp_obj_t modbus_sendRequest(mp_uint_t n_args, const mp_obj_t *args) {
                     for (pos=(portnum)*8; pos<(portnum+1)*8; pos++) {
                         value = (coil_discrete[portnum]>>(pos%8))&(0x01);
                         mp_obj_list_append(list, MP_OBJ_NEW_SMALL_INT(value));
-                        printf("coil_discrete%d[%d]= %d\n", portnum, (pos%8), value);
+                        // printf("coil_discrete%d[%d]= %d\n", portnum, (pos%8), value);
                     }
                     if (coil_discrete_length-pos>=0) {
                         port+=1;
@@ -873,7 +869,7 @@ STATIC mp_obj_t modbus_sendRequest(mp_uint_t n_args, const mp_obj_t *args) {
                     for (pos = pos; pos<coil_discrete_length; pos++) {
                         value = (coil_discrete[port]>>(pos%8))&(0x01);
                         mp_obj_list_append(list, MP_OBJ_NEW_SMALL_INT(value));
-                        printf("coil_discrete%d[%d]= %d\n", port, (pos%8), value);
+                        // printf("coil_discrete%d[%d]= %d\n", port, (pos%8), value);
                     }
                 }
             }
@@ -882,7 +878,7 @@ STATIC mp_obj_t modbus_sendRequest(mp_uint_t n_args, const mp_obj_t *args) {
                 for (pos=setparam.reg_start; pos<coil_discrete_length; pos++) {
                         value = (coil_discrete[port]>>(pos%8))&(0x01);
                         mp_obj_list_append(list, MP_OBJ_NEW_SMALL_INT(value));
-                        printf("coil_discrete%d[%d]= %d\n", port, (pos%8), value);
+                        // printf("coil_discrete%d[%d]= %d\n", port, (pos%8), value);
                     }
             }
             free(coil_discrete);
@@ -1004,15 +1000,15 @@ STATIC mp_obj_t modbus_sendRequest(mp_uint_t n_args, const mp_obj_t *args) {
         uint16_t *holding_input = NULL;
         holding_input_length = mp_obj_get_int(args[4]);
         setparam.reg_size = holding_input_length;;
-        printf("reg_size = %d\n", holding_input_length);
+        // printf("reg_size = %d\n", holding_input_length);
         holding_input = malloc(sizeof(uint16_t)*setparam.reg_size);
         for (int i=0; i<setparam.reg_size; i++) {
             holding_input[i] = 0;
         }
         error = mbc_master_send_request(&setparam, (void*)holding_input);
-        for (int i=0; i<setparam.reg_size; i++) {
-            printf("holding_input[%d] = %X\n", i,holding_input[i]);
-        }
+        // for (int i=0; i<setparam.reg_size; i++) {
+        //     printf("holding_input[%d] = %X\n", i,holding_input[i]);
+        // }
         if (error != ESP_OK) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "error: 0x%X", error));
         } 
