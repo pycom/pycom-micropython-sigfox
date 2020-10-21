@@ -12,7 +12,7 @@ node {
     stage('Checkout') {
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --recursive -b idf_v3.3.1 https://github.com/pycom/pycom-esp-idf.git esp-idf'
+        sh 'git clone --recursive -b modbus-tcp-idf_v4.1 git@github.com:pycom/pycom-esp-idf-private.git esp-idf'
         IDF_HASH=get_idf_hash()
         dir('esp-idf'){
             sh 'git checkout ' + IDF_HASH
@@ -90,7 +90,7 @@ def boardBuild(name, variant, open_thread) {
         make -C esp32 clean BOARD=''' + name.toUpperCase() + ' VARIANT=' + variant
         sh '''export PATH=$PATH:/opt/2020r2/xtensa-esp32-elf/bin/;
         export IDF_PATH=${WORKSPACE}/esp-idf;
-        make -C esp32 -j2 release BOARD=''' + name.toUpperCase() + ' VARIANT=' + variant + ' OPENTHREAD=' + open_thread
+        make -C esp32 -j2 release BOARD=''' + name.toUpperCase() + ' VARIANT=' + variant + ' OPENTHREAD=' + open_thread + ' MOD_MODBUS_ENABLED=1'
         sh 'mkdir -p ' + release_dir + variant + '/'
         sh 'cp esp32/build-' + variant + '/' + name + '-' + PYCOM_VERSION + '.tar.gz ' + release_dir + variant + '/'
         sh 'mv esp32/build-' + variant + '/' + name.toUpperCase() + '/release/application.elf ' + release_dir + variant + '/' + name + "-" + PYCOM_VERSION + '-application.elf'
