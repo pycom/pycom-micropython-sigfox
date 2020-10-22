@@ -214,6 +214,10 @@ char* lteppp_get_log_buff(void)
 lte_modem_conn_state_t lteppp_modem_state(void)
 {
     lte_modem_conn_state_t state;
+    if (!xLTESem){
+        // lte task hasn't been initialized yet, so we don't need to (and can't) protect this read
+        return lteppp_modem_conn_state;
+    }
     xSemaphoreTake(xLTESem, portMAX_DELAY);
     state = lteppp_modem_conn_state;
 	xSemaphoreGive(xLTESem);
@@ -382,6 +386,10 @@ bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_m
 
 lte_state_t lteppp_get_state(void) {
     lte_state_t state;
+    if (!xLTESem){
+        // lte task hasn't been initialized yet, so we don't need to (and can't) protect this read
+        return lteppp_lte_state;
+    }
     xSemaphoreTake(xLTESem, portMAX_DELAY);
     state = lteppp_lte_state;
     xSemaphoreGive(xLTESem);
