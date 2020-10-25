@@ -442,6 +442,7 @@ STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
     {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Wifi or BT not stopped before sleep"));
     }
+
     /* resume wlan */
     wlan_resume(reconnect);
     /* resume bt */

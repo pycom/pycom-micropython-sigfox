@@ -1436,7 +1436,13 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
 
     /* Initiate a background connection, esp_ble_gattc_open returns immediately */
     if (ESP_OK != esp_ble_gattc_open(bt_obj.gattc_if, bufinfo.buf, BLE_ADDR_TYPE_PUBLIC, true)) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        // Only drop exception if not called from bt_resume() API, otherwise return with mp_const_none on error
+        if(mod_bt_allow_resume_deinit == false) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+        }
+        else {
+            return mp_const_none;
+        }
     }
 
     MP_THREAD_GIL_EXIT();

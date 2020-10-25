@@ -988,7 +988,6 @@ smartConf_init:
 
 smartConf_start:
     wlan_smart_config_enabled = true;
-    mp_printf(&mp_plat_print, "\n-------SmartConfig Started-------\n");
     /*create Timer */
     wlan_smartConfig_timeout = xTimerCreate("smartConfig_Timer", 60000 / portTICK_PERIOD_MS, 0, 0, wlan_timer_callback);
     /*start Timer */
@@ -2489,7 +2488,7 @@ STATIC mp_obj_t wlan_country(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
     if(wlan_obj.country == NULL) {
         wlan_obj.country = (wifi_country_t*)malloc(sizeof(wifi_country_t));
     }
-    memcpy(&(wlan_obj.country), &country_config, sizeof(wlan_obj.country));
+    memcpy(wlan_obj.country, &country_config, sizeof(wifi_country_t));
 
     return mp_const_none;
 }
