@@ -389,6 +389,10 @@ void bt_resume(bool reconnect)
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Bluetooth enable failed"));
         }
 
+        esp_ble_gap_register_callback(gap_events_handler);
+        esp_ble_gattc_register_callback(gattc_events_handler);
+        esp_ble_gatts_register_callback(gatts_event_handler);
+
         esp_ble_gattc_app_register(MOD_BT_CLIENT_APP_ID);
         esp_ble_gatts_app_register(MOD_BT_SERVER_APP_ID);
 
