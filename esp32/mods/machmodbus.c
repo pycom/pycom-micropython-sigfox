@@ -174,7 +174,7 @@ void setup_reg_data(void) {
         reg_area.type = MB_PARAM_HOLDING; // Set type of register area
         reg_area.start_offset = MB_REG_HOLDING_START; // Offset of register area in Modbus protocol
         reg_area.address = (void*)holding_registers;
-        reg_area.size = holding_registers_length;
+        reg_area.size = holding_registers_length*2;
         mbc_slave_set_descriptor(reg_area); //mbcontroller_set_descriptor(reg_area);
     }
     else nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid holding registers length: %d", holding_registers_length));
@@ -187,7 +187,7 @@ void setup_reg_data(void) {
         reg_area.type = MB_PARAM_INPUT; // Set type of register area
         reg_area.start_offset = MB_REG_INPUT_START; // Offset of register area in Modbus protocol
         reg_area.address = (void*)input_registers;
-        reg_area.size = input_registers_length;
+        reg_area.size = input_registers_length*2;
         mbc_slave_set_descriptor(reg_area); //mbcontroller_set_descriptor(reg_area);
     }
     else nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid input registers length: %d", input_registers_length));
@@ -229,19 +229,34 @@ void setup_reg_data(void) {
 
 STATIC void mach_modbus_serial_slave_init (const mach_modbus_obj_t *self) {
     port_type = MB_PORT_SERIAL_SLAVE;
-    mbc_slave_init(port_type, &mbc_slave_handler); // Initialization of Modbus controller
-    mbc_slave_setup((void*)&(self->comm_info)); 
+    esp_err_t err = mbc_slave_init(port_type, &mbc_slave_handler); // Initialization of Modbus controller
+    if (err != ERR_OK) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "slave init error: %d", err));
+    }
+    err = mbc_slave_setup((void*)&(self->comm_info));
+    if (err != ERR_OK) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "slave setup error: %d", err));
+    }
 
     setup_reg_data();
 
+    // Starts of modbus controller and stack
+    err = mbc_slave_start();
+    if (err != ERR_OK) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "slave start error: %d", err));
+    }
+
     // Set UART pin numbers
-    uart_set_pin(MB_PORT_NUM, self->tx, self->rx, self->rts, UART_PIN_NO_CHANGE);
+    err = uart_set_pin(self->comm_info.port, self->tx, self->rx, self->rts, UART_PIN_NO_CHANGE);
+    if (err != ERR_OK) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "uart set pin error: %d", err));
+    }
 
     // Set UART driver mode to Half Duplex
-    uart_set_mode(MB_PORT_NUM, UART_MODE_RS485_HALF_DUPLEX);  
-
-    // Starts of modbus controller and stack
-    mbc_slave_start();
+    err = uart_set_mode(self->comm_info.port, UART_MODE_RS485_HALF_DUPLEX);
+    if (err != ERR_OK) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "uart set mode error: %d", err));
+    }
 }
 
 STATIC void mach_modbus_serial_master_init (const mach_modbus_obj_t *self) {
@@ -250,14 +265,29 @@ STATIC void mach_modbus_serial_master_init (const mach_modbus_obj_t *self) {
     //consists of mbc_master_init, mbc_master_setup, uart_set_pin, mbc_master_start, uart_set_mode, mbc_master_set_descriptor
     // master_init(); 
     port_type = MB_PORT_SERIAL_MASTER;
-    mbc_master_init(port_type, &master_handler);
-    mbc_master_setup((void*)&(self->comm_info));
+    esp_err_t err = mbc_master_init(port_type, &master_handler);
+    if (err != ERR_OK) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "master init error: %d", err));
+    }
+    err = mbc_master_setup((void*)&(self->comm_info));
+    if (err != ERR_OK) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "master setup error: %d", err));
+    }
     // Set UART pin numbers
-    uart_set_pin(MB_PORT_NUM, self->tx, self->rx, self->rts, UART_PIN_NO_CHANGE);
+    err = uart_set_pin(self->comm_info.port, self->tx, self->rx, self->rts, UART_PIN_NO_CHANGE);
+    if (err != ERR_OK) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "uart set pin error: %d", err));
+    }
 
-    mbc_master_start();
+    err = mbc_master_start();
+    if (err != ERR_OK) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "master start error: %d", err));
+    }
     // Set UART driver mode to Half Duplex
-    uart_set_mode(MB_PORT_NUM, UART_MODE_RS485_HALF_DUPLEX);
+    err = uart_set_mode(self->comm_info.port, UART_MODE_RS485_HALF_DUPLEX);
+    if (err != ERR_OK) {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "uart set mode error: %d", err));
+    }
     
     //put proper delay
     vTaskDelay(10);
@@ -386,7 +416,7 @@ STATIC mp_obj_t mach_modbus_init_helper(mach_modbus_obj_t *self, const mp_arg_va
 
         //port
         uint32_t port;
-        if (args[3].u_int != MB_PORT_NUM) {
+        if (args[3].u_int < 0 && args[3].u_int > 2) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid port number: %d", args[3].u_int));
         }
         else {
@@ -511,7 +541,7 @@ STATIC mp_obj_t mach_modbus_init_helper(mach_modbus_obj_t *self, const mp_arg_va
             mach_modbus_serial_slave_init((const mach_modbus_obj_t *)self);
         }
         else if (mode == MB_MODE_TCP) {
-            // printf("mach_modbus_serial_slave_init\n");
+            // printf("mach_modbus_tcp_slave_init\n");
             mach_modbus_tcp_slave_init((const mach_modbus_obj_t *)self);
         }
     }
@@ -521,7 +551,7 @@ STATIC mp_obj_t mach_modbus_init_helper(mach_modbus_obj_t *self, const mp_arg_va
             mach_modbus_serial_master_init((const mach_modbus_obj_t *)self);
         }
         else if (mode == MB_MODE_TCP) {
-            // printf("mach_modbus_serial_slave_init\n");
+            // printf("mach_modbus_tcp_master_init\n");
             mach_modbus_tcp_master_init((const mach_modbus_obj_t *)self);
         }
     }
@@ -999,17 +1029,18 @@ STATIC mp_obj_t modbus_sendRequest(mp_uint_t n_args, const mp_obj_t *args) {
         uint32_t holding_input_length = 0;
         uint16_t *holding_input = NULL;
         holding_input_length = mp_obj_get_int(args[4]);
-        setparam.reg_size = holding_input_length;;
         // printf("reg_size = %d\n", holding_input_length);
-        holding_input = malloc(sizeof(uint16_t)*setparam.reg_size);
-        for (int i=0; i<setparam.reg_size; i++) {
+        holding_input = malloc(sizeof(uint16_t)*holding_input_length);
+        for (int i=0; i<holding_input_length; i++) {
             holding_input[i] = 0;
         }
+        setparam.reg_size = holding_input_length;
         error = mbc_master_send_request(&setparam, (void*)holding_input);
         // for (int i=0; i<setparam.reg_size; i++) {
         //     printf("holding_input[%d] = %X\n", i,holding_input[i]);
         // }
         if (error != ESP_OK) {
+            free(holding_input);
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "error: 0x%X", error));
         } 
         else {
