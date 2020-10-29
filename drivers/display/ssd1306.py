@@ -46,7 +46,7 @@ class SSD1306(framebuf.FrameBuffer):
             SET_MUX_RATIO, self.height - 1,
             SET_COM_OUT_DIR | 0x08, # scan from COM[N] to COM0
             SET_DISP_OFFSET, 0x00,
-            SET_COM_PIN_CFG, 0x02 if self.height == 32 else 0x12,
+            SET_COM_PIN_CFG, 0x02 if self.width > 2 * self.height else 0x12,
             # timing and driving scheme
             SET_DISP_CLK_DIV, 0x80,
             SET_PRECHARGE, 0x22 if self.external_vcc else 0xf1,
@@ -104,13 +104,7 @@ class SSD1306_I2C(SSD1306):
         self.i2c.writeto(self.addr, self.temp)
 
     def write_data(self, buf):
-        self.temp[0] = self.addr << 1
-        self.temp[1] = 0x40 # Co=0, D/C#=1
-        self.i2c.start()
-        self.i2c.write(self.temp)
-        self.i2c.write(buf)
-        self.i2c.stop()
-
+        self.i2c.writeto(self.addr, b'\x40' + buf)  
 
 class SSD1306_SPI(SSD1306):
     def __init__(self, width, height, spi, dc, res, cs, external_vcc=False):
