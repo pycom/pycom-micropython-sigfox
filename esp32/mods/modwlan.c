@@ -174,6 +174,8 @@ STATIC void wlan_stop_smartConfig_timer();
 static void smart_config_callback(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 static void TASK_SMART_CONFIG (void *pvParameters);
 STATIC void wlan_callback_handler(void* arg);
+static void wlan_setup_do_basic_init(wlan_internal_setup_t *config);
+
 //*****************************************************************************
 //
 //! \brief The Function Handles WLAN Events
@@ -213,53 +215,44 @@ void wlan_resume (bool reconnect)
 {
     // Configure back WLAN as it was before if reconnect is TRUE
     if(reconnect) {
+        // In wlan_setup the wlan_obj.country is overwritten with the value coming from setup_config, need to save it out
+        wifi_country_t country;
+        wifi_country_t* country_ptr = NULL;
+        if(wlan_obj.country != NULL) {
+            memcpy(&country, wlan_obj.country, sizeof(wifi_country_t));
+            country_ptr = &country;
+        }
+
+        wlan_internal_setup_t setup_config = {
+                wlan_obj.mode,
+                (const char *)(wlan_obj.ssid_o),
+                (const char *)(wlan_obj.key),
+                (const char *)(wlan_obj.ssid),
+                (const char *)(wlan_obj.key),
+                wlan_obj.auth,
+                wlan_obj.channel,
+                wlan_obj.antenna,
+                false,
+                wlan_conn_recover_hidden,
+                wlan_obj.bandwidth,
+                country_ptr,
+                &(wlan_obj.max_tx_pwr)
+        };
         // If SmartConfig enabled then re-start it
         if(wlan_smart_config_enabled) {
-            // Do initial configuration as at this point the Wifi Driver is not initialized
-            wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-            ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-            ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
-            wlan_set_antenna(wlan_obj.antenna);
-            wlan_set_mode(wlan_obj.mode);
-            wlan_set_bandwidth(wlan_obj.bandwidth);
-            if(wlan_obj.country != NULL) {
-                esp_wifi_set_country(wlan_obj.country);
-            }
+            // Do the basic initialization needed by SmartConfig
+            wlan_setup_do_basic_init(&setup_config);
             xTaskNotifyGive(SmartConfTaskHandle);
         }
         // Otherwise set up WLAN with the same parameters as it was before
         else {
-            // In wlan_setup the wlan_obj.country is overwritten with the value coming from setup_config, need to save it out
-            wifi_country_t country;
-            wifi_country_t* country_ptr = NULL;
-            if(wlan_obj.country != NULL) {
-                memcpy(&country, wlan_obj.country, sizeof(wifi_country_t));
-                country_ptr = &country;
-            }
-
-            wlan_internal_setup_t setup_config = {
-                    wlan_obj.mode,
-                    (const char *)(wlan_obj.ssid_o),
-                    (const char *)(wlan_obj.key),
-                    (const char *)(wlan_obj.ssid),
-                    (const char *)(wlan_obj.key),
-                    wlan_obj.auth,
-                    wlan_obj.channel,
-                    wlan_obj.antenna,
-                    false,
-                    wlan_conn_recover_hidden,
-                    wlan_obj.bandwidth,
-                    country_ptr,
-                    &(wlan_obj.max_tx_pwr)
-            };
-
             // Initialize & reconnect to the previous connection
             wlan_setup(&setup_config);
         }
     }
 }
 
-void wlan_setup (wlan_internal_setup_t *config) {
+static void wlan_setup_do_basic_init(wlan_internal_setup_t *config) {
 
     /* Only initialize/create these if they have not been created/initialized before */
     if(wlan_obj.started == false)
@@ -296,6 +289,11 @@ void wlan_setup (wlan_internal_setup_t *config) {
     wlan_set_antenna(config->antenna);
     wlan_set_mode(config->mode);
     wlan_set_bandwidth(config->bandwidth);
+}
+
+void wlan_setup (wlan_internal_setup_t *config) {
+
+    wlan_setup_do_basic_init(config);
 
     if (config->country != NULL) {
         esp_err_t ret = esp_wifi_set_country(config->country);
@@ -1013,6 +1011,7 @@ smartConf_init:
 
 smartConf_start:
     wlan_smart_config_enabled = true;
+    //mp_printf(&mp_plat_print, "\n-------SmartConfig Started-------\n");
     /*create Timer */
     wlan_smartConfig_timeout = xTimerCreate("smartConfig_Timer", 60000 / portTICK_PERIOD_MS, 0, 0, wlan_timer_callback);
     /*start Timer */
@@ -1103,6 +1102,7 @@ static void smart_config_callback(void* arg, esp_event_base_t event_base, int32_
         esp_wifi_connect();
 
     } else if (event_base == SC_EVENT && event_id == SC_EVENT_SEND_ACK_DONE) {
+        //mp_printf(&mp_plat_print, "SC_EVENT_SEND_ACK_DONE event\n");
         if (event_data != NULL) {
             smartconfig_event_got_ssid_pswd_t *evt = (smartconfig_event_got_ssid_pswd_t *)event_data;
             uint8_t phone_ip[4] = { 0 };
