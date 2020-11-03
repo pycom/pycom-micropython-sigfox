@@ -428,6 +428,10 @@ void bt_resume(bool reconnect)
                     // As modbt_connect appends the new connection to the original list, it needs to be removed because it is not needed
                     mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), new_connection_obj);
                 }
+                else {
+                    // Remove the old connection from the original list because connection could not be established with it
+                    mp_obj_list_remove((void *)&MP_STATE_PORT(btc_conn_list), connection_obj);
+                }
             }
 
             /* See if there was an advertisement active before Sleep */
