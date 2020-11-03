@@ -435,7 +435,8 @@ STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
     }
 
     modbt_deinit(reconnect);
-    wlan_deinit(NULL);
+    // TRUE means wlan_deinit is called from machine_sleep
+    wlan_deinit(mp_const_true);
 
     if(ESP_OK != esp_light_sleep_start())
     {
