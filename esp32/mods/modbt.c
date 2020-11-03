@@ -345,6 +345,8 @@ void modbt_deinit(bool allow_reconnect)
             connection_obj = ((bt_connection_obj_t *)(MP_STATE_PORT(btc_conn_list).items[i]));
             //close connections
             modbt_conn_disconnect(connection_obj);
+            // Wait for the disconnect event before initiating disconnect action on the next connection
+            xEventGroupWaitBits(bt_event_group, ESP_GATTC_DISCONNECT_EVT, true, true, 1000/portTICK_PERIOD_MS);
         }
         while ((MP_STATE_PORT(btc_conn_list).len > 0) && (timeout < 20) && !mod_bt_allow_resume_deinit)
         {
@@ -790,6 +792,9 @@ static void gattc_events_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc
         }
         break;
     }
+    case ESP_GATTC_DIS_SRVC_CMPL_EVT:
+        // Do nothing for now, might be useful in the future
+        break;
     case ESP_GATTC_SEARCH_CMPL_EVT:
     case ESP_GATTC_CANCEL_OPEN_EVT:
         bt_obj.busy = false;
@@ -1475,7 +1480,8 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
         conn->gatt_if = bt_event.connection.gatt_if;
 
         MP_THREAD_GIL_EXIT();
-        uxBits = xEventGroupWaitBits(bt_event_group, MOD_BT_GATTC_MTU_EVT, true, true, 1000/portTICK_PERIOD_MS);
+        // Timeout time is increased compared to esp-idf 3.3 because as per the experience MOD_BT_GATTC_MTU_EVT arrives slower with esp-idf 4.1
+        uxBits = xEventGroupWaitBits(bt_event_group, MOD_BT_GATTC_MTU_EVT, true, true, 10000/portTICK_PERIOD_MS);
         MP_THREAD_GIL_ENTER();
 
         if(uxBits & MOD_BT_GATTC_MTU_EVT)
