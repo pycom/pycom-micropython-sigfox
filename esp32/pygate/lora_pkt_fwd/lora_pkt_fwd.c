@@ -230,7 +230,7 @@ static struct lgw_tx_gain_lut_s txlut; /* TX gain table */
 static uint32_t tx_freq_min[LGW_RF_CHAIN_NB]; /* lowest frequency supported by TX chain */
 static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by TX chain */
 
-int debug_level = INFO_;
+int debug_level = LORAPF_INFO_;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -1358,8 +1358,8 @@ void TASK_lora_gw(void *pvParameters) {
         }
 
         /* display a report */
-#if DEBUG_LEVEL >= INFO_
-        if ( debug_level >= INFO_){
+#if LORAPF_DEBUG_LEVEL >= LORAPF_INFO_
+        if ( debug_level >= LORAPF_INFO_){
         MSG_INFO("[main] report\n##### %s #####\n", stat_timestamp);
         mp_printf(&mp_plat_print, "### [UPSTREAM] ###\n");
         mp_printf(&mp_plat_print, "# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);
