@@ -73,7 +73,7 @@ typedef struct _wlan_obj_t {
     uint8_t                 channel;
     uint8_t                 antenna;
     int8_t                  max_tx_pwr;
-    wifi_country_t         country;
+    wifi_country_t*         country;
 
     // my own ssid, key and mac
     uint8_t                 ssid[(MODWLAN_SSID_LEN_MAX + 1)];
