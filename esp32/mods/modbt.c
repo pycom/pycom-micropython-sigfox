@@ -113,6 +113,7 @@ typedef struct {
     int32_t               conn_id;
     uint16_t              mtu;
     esp_gatt_if_t         gatt_if;
+    esp_ble_addr_type_t   addr_type;
 } bt_connection_obj_t;
 
 typedef struct {
@@ -284,7 +285,7 @@ STATIC void gattc_char_callback_handler(void *arg);
 STATIC void gatts_char_callback_handler(void *arg);
 static mp_obj_t modbt_start_scan(mp_obj_t timeout);
 static mp_obj_t modbt_conn_disconnect(mp_obj_t self_in);
-static mp_obj_t modbt_connect(mp_obj_t addr);
+static mp_obj_t modbt_connect(mp_obj_t addr, esp_ble_addr_type_t addr_type);
 
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
@@ -423,7 +424,7 @@ void bt_resume(bool reconnect)
             for (mp_uint_t i = 0; i < btc_conn_list_tmp.len; i++) {
                 bt_connection_obj_t *connection_obj = ((bt_connection_obj_t *)(btc_conn_list_tmp.items[i]));
                 // Initiates re-connection
-                bt_connection_obj_t *new_connection_obj = modbt_connect(mp_obj_new_bytes((const byte *)connection_obj->srv_bda, 6));
+                bt_connection_obj_t *new_connection_obj = modbt_connect(mp_obj_new_bytes((const byte *)connection_obj->srv_bda, 6), connection_obj->addr_type);
                 // If new connection object has been created then overwrite the original one so from the MicroPython code the same reference can be used
                 if(new_connection_obj != mp_const_none) {
                     memcpy(connection_obj, new_connection_obj, sizeof(bt_connection_obj_t));
@@ -479,19 +480,19 @@ static void create_hash(uint32_t pin, uint8_t *h_value)
 {
     bt_hash_obj_t pin_hash;
     mbedtls_sha1_context sha1_context;
-   
+
     mbedtls_sha1_init(&sha1_context);
     mbedtls_sha1_starts_ret(&sha1_context);
-   
+
     pin_hash.pin = pin;
     mbedtls_sha1_update_ret(&sha1_context, pin_hash.value, 4);
-    
+
     mbedtls_sha1_finish_ret(&sha1_context, h_value);
     mbedtls_sha1_free(&sha1_context);
 }
 
-static bool pin_changed(uint32_t new_pin) 
-{   
+static bool pin_changed(uint32_t new_pin)
+{
      bool ret = false;
      uint32_t h_size = MOD_BT_HASH_SIZE;
      uint8_t h_stored[MOD_BT_HASH_SIZE] = {0};
@@ -503,9 +504,9 @@ static bool pin_changed(uint32_t new_pin)
         mp_printf(&mp_plat_print, "Error opening secure BLE NVS namespace!\n");
      }
      nvs_get_blob(modbt_nvs_handle, key, h_stored, &h_size);
-     
+
      create_hash(new_pin, h_created);
-     
+
      if (memcmp(h_stored, h_created, MOD_BT_HASH_SIZE) != 0) {
          esp_err = nvs_set_blob(modbt_nvs_handle, key, h_created, h_size);
          if (esp_err == ESP_OK) {
@@ -513,7 +514,7 @@ static bool pin_changed(uint32_t new_pin)
             ret = true;
           }
      }
- 
+
      nvs_close(modbt_nvs_handle);
 
      return ret;
@@ -1420,7 +1421,7 @@ STATIC mp_obj_t bt_events(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(bt_events_obj, bt_events);
 
-static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
+static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout, esp_ble_addr_type_t addr_type){
 
     bt_event_result_t bt_event;
     EventBits_t uxBits;
@@ -1448,7 +1449,7 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
     bt_obj.busy = true;
 
     /* Initiate a background connection, esp_ble_gattc_open returns immediately */
-    if (ESP_OK != esp_ble_gattc_open(bt_obj.gattc_if, bufinfo.buf, BLE_ADDR_TYPE_PUBLIC, true)) {
+    if (ESP_OK != esp_ble_gattc_open(bt_obj.gattc_if, bufinfo.buf, addr_type, true)) {
         // Only drop exception if not called from bt_resume() API, otherwise return with mp_const_none on error
         if(mod_bt_allow_resume_deinit == false) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
@@ -1478,6 +1479,7 @@ static mp_obj_t bt_connect_helper(mp_obj_t addr, TickType_t timeout){
         conn->base.type = (mp_obj_t)&mod_bt_connection_type;
         conn->conn_id = bt_event.connection.conn_id;
         conn->gatt_if = bt_event.connection.gatt_if;
+        conn->addr_type = addr_type;
 
         MP_THREAD_GIL_EXIT();
         // Timeout time is increased compared to esp-idf 3.3 because as per the experience MOD_BT_GATTC_MTU_EVT arrives slower with esp-idf 4.1
@@ -1516,6 +1518,7 @@ STATIC mp_obj_t bt_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     STATIC const mp_arg_t allowed_args[] = {
             { MP_QSTR_addr,         MP_ARG_REQUIRED | MP_ARG_OBJ,   },
             { MP_QSTR_timeout,      MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj = MP_OBJ_NULL} },
+            { MP_QSTR_addr_type,    MP_ARG_KW_ONLY  | MP_ARG_OBJ,   {.u_obj = MP_OBJ_NULL}},
     };
 
     // parse arguments
@@ -1524,7 +1527,7 @@ STATIC mp_obj_t bt_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
 
     mp_obj_t addr = args[0].u_obj;
 
-    /* Timeout parameter is in miliseconds */
+    /* Timeout parameter is in milliseconds */
     TickType_t timeout;
     if(args[1].u_obj == MP_OBJ_NULL){
         timeout = portMAX_DELAY;
@@ -1540,13 +1543,30 @@ STATIC mp_obj_t bt_connect(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         }
     }
 
-    return bt_connect_helper(addr, timeout);
+    /* addr_type parameter */
+    uint32_t addr_type;
+    if(args[2].u_obj == MP_OBJ_NULL){
+        addr_type = BLE_ADDR_TYPE_PUBLIC;
+    }
+    else
+    {
+        if(MP_OBJ_IS_SMALL_INT(args[2].u_obj) == true) {
+            addr_type = mp_obj_get_int(args[2].u_obj);
+        }
+        else
+        {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "If addr_type is specified it must be a valid integer number"));
+        }
+    }
+
+
+    return bt_connect_helper(addr, timeout, addr_type);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(bt_connect_obj, 1, bt_connect);
 
-static mp_obj_t modbt_connect(mp_obj_t addr)
+static mp_obj_t modbt_connect(mp_obj_t addr, esp_ble_addr_type_t addr_type)
 {
-    return bt_connect_helper(addr, portMAX_DELAY);
+    return bt_connect_helper(addr, portMAX_DELAY, addr_type);
 }
 
 
@@ -1559,7 +1579,7 @@ STATIC mp_obj_t bt_set_advertisement_params (mp_uint_t n_args, const mp_obj_t *p
         { MP_QSTR_channel_map,              MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_adv_filter_policy,        MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
     };
- 
+
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
@@ -1712,14 +1732,14 @@ STATIC mp_obj_t bt_set_advertisement_raw(mp_obj_t self_in, mp_obj_t raw_data) {
             memcpy(data, (uint8_t *)bufinfo.buf, sizeof(data));
             data_len = sizeof(data);
         }
- 
+
         esp_ble_gap_config_adv_data_raw(data, data_len);
-     
+
         // wait for the advertisement data to be configured
         bt_gatts_event_result_t gatts_event;
         xQueueReceive(xGattsQueue, &gatts_event, portMAX_DELAY);
     }
- 
+
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(bt_set_advertisement_raw_obj, bt_set_advertisement_raw);
