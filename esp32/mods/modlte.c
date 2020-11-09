@@ -151,6 +151,10 @@ STATIC mp_obj_t lte_deinit(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
 STATIC mp_obj_t lte_disconnect(mp_obj_t self_in);
 static void lte_set_default_inf(void);
 static void lte_callback_handler(void* arg);
+
+//#define MSG(fmt, ...) printf("[%u] modlte: " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
+#define MSG(fmt, ...) (void)0
+
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -188,9 +192,12 @@ static void lte_callback_handler(void* arg)
     lte_obj_t *self = arg;
 
     if (self->handler && self->handler != mp_const_none) {
-
+        MSG("call callback(handler=%p, arg=%p)\n", self->handler_arg, self->handler);
         mp_call_function_1(self->handler, self->handler_arg);
+    }else{
+        MSG("no callback\n");
     }
+
 }
 
 static bool lte_push_at_command_ext_cont (char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len, bool continuation)
@@ -1064,15 +1071,15 @@ STATIC mp_obj_t lte_suspend(mp_obj_t self_in) {
     lte_check_init();
     if (lteppp_get_state() == E_LTE_PPP) {
         lteppp_suspend();
-        //printf("Pausing ppp...\n");
+        MSG("Pausing ppp...\n");
         lte_pause_ppp();
-        //printf("Pausing ppp done...\n");
+        MSG("Pausing ppp done...\n");
         lteppp_set_state(E_LTE_SUSPENDED);
         while (true) {
             mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-            //printf("Sending AT...\n");
+            MSG("Sending AT...\n");
             if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
-                //printf("OK\n");
+                MSG("OK\n");
                 break;
             }
         }
@@ -1177,11 +1184,13 @@ STATIC mp_obj_t lte_resume(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         }
 
         if (lte_push_at_command_ext("ATO", LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP, strlen("ATO") )) {
+            MSG("resume ATO OK\n");
             lteppp_connect();
             lteppp_resume();
             lteppp_set_state(E_LTE_PPP);
             vTaskDelay(1500);
         } else {
+            MSG("resume ATO failed -> reconnect\n");
             lteppp_disconnect();
             lteppp_set_state(E_LTE_ATTACHED);
             lte_check_attached(lte_legacyattach_flag);
@@ -1190,6 +1199,7 @@ STATIC mp_obj_t lte_resume(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     } else if (lteppp_get_state() == E_LTE_PPP) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "modem already connected"));
     } else {
+        MSG("resume do nothing\n");
         //Do Nothing
     }
     return mp_const_none;
