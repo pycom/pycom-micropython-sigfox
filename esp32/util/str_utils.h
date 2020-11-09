@@ -14,4 +14,6 @@
 
 void sprint_binary_u8(char* s, uint8_t v);
 
+void hexdump(const uint8_t* buf, size_t len);
+
 #endif
