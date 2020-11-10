@@ -105,7 +105,7 @@
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
-static lte_obj_t lte_obj = {.init = false, .trigger = LTE_TRIGGER_NONE, .events = 0, .handler = NULL, .handler_arg = NULL};
+static lte_obj_t lte_obj = {.init = false, .trigger = LTE_EVENT_NONE, .events = 0, .handler = NULL, .handler_arg = NULL};
 static lte_task_rsp_data_t modlte_rsp;
 uart_dev_t* uart_driver_0 = &UART0;
 uart_dev_t* uart_driver_lte = &UART2;
@@ -171,18 +171,22 @@ void modlte_start_modem(void)
 
 void modlte_urc_events(lte_events_t events)
 {
-    switch(events)
+    // set the events to report to the user, the clearing is done upon reading via lte_events()
+    if ( (events & LTE_EVENT_COVERAGE_LOST)
+        && (lte_obj.trigger & LTE_EVENT_COVERAGE_LOST) )
     {
-    case LTE_EVENT_COVERAGE_LOST:
-        if ((lte_obj.trigger & LTE_TRIGGER_SIG_LOST)) {
-            lte_obj.events |= (uint32_t)LTE_TRIGGER_SIG_LOST;
-        }
-        mp_irq_queue_interrupt(lte_callback_handler, &lte_obj);
-        break;
-    default:
-        break;
+        lte_obj.events |= (uint32_t)LTE_EVENT_COVERAGE_LOST;
     }
+    if ( (events & LTE_EVENT_BREAK)
+        && (lte_obj.trigger & LTE_EVENT_BREAK) )
+    {
+        lte_obj.events |= (uint32_t)LTE_EVENT_BREAK;
+    }
+
+    //MSG("urc(%u) l.trig=%u l.eve=%d\n", events, lte_obj.trigger, lte_obj.events);
+    mp_irq_queue_interrupt(lte_callback_handler, &lte_obj);
 }
+
 //*****************************************************************************
 // DEFINE STATIC FUNCTIONS
 //*****************************************************************************
@@ -192,10 +196,10 @@ static void lte_callback_handler(void* arg)
     lte_obj_t *self = arg;
 
     if (self->handler && self->handler != mp_const_none) {
-        MSG("call callback(handler=%p, arg=%p)\n", self->handler_arg, self->handler);
+        //MSG("call callback(handler=%p, arg=%p)\n", self->handler_arg, self->handler);
         mp_call_function_1(self->handler, self->handler_arg);
     }else{
-        MSG("no callback\n");
+        //MSG("no callback\n");
     }
 
 }
@@ -1598,7 +1602,8 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_IP),                   MP_OBJ_NEW_QSTR(MP_QSTR_IP) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_IPV4V6),               MP_OBJ_NEW_QSTR(MP_QSTR_IPV4V6) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_COVERAGE_LOSS),  MP_OBJ_NEW_SMALL_INT(LTE_TRIGGER_SIG_LOST) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_COVERAGE_LOSS),  MP_OBJ_NEW_SMALL_INT(LTE_EVENT_COVERAGE_LOST) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_BREAK),          MP_OBJ_NEW_SMALL_INT(LTE_EVENT_BREAK) },
     // PSM Power Saving Mode
     { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_2S),        MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_2S) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_30S),       MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_30S) },

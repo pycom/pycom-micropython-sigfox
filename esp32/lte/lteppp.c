@@ -29,6 +29,7 @@
 #include "esp32_mphal.h"
 #include "lwip/dns.h"
 #include "modlte.h"
+#include "str_utils.h"
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -569,11 +570,11 @@ modem_init:
                 if(!expect_continuation)
                     xQueueSend(xRxQueue, (void *)lte_task_rsp, (TickType_t)portMAX_DELAY);
             }
-            else if(state == E_LTE_PPP && lte_uart_break_evt)
-            {
-                lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS);
-                lteppp_suspend();
-            }
+            //else if(state == E_LTE_PPP && lte_uart_break_evt)
+            //{
+            //    lteppp_send_at_cmd("+++", LTE_PPP_BACK_OFF_TIME_MS);
+            //    lteppp_suspend();
+            //}
             else
             {
                 if (state == E_LTE_PPP) {
@@ -621,34 +622,37 @@ modem_init:
 
 static void TASK_UART_EVT (void *pvParameters) {
     uart_event_t event;
-    uint8_t buff[50] = {0};
+    //uint8_t buff[50] = {0};
     for(;;) {
         //Waiting for UART event.
         if(xQueueReceive(uart0_queue, (void * )&event, (portTickType)portMAX_DELAY)) {
 
-            switch(event.type)
-            {
+            switch(event.type) {
                 case UART_DATA:
-                    if (lte_uart_break_evt) {
+                //     if (lte_uart_break_evt) {
 
-                        uint32_t rx_len = uart_read_bytes(LTE_UART_ID, buff, LTE_UART_BUFFER_SIZE,
-                                                                         LTE_TRX_WAIT_MS(LTE_UART_BUFFER_SIZE) / portTICK_RATE_MS);
+                //         uint32_t rx_len = uart_read_bytes(LTE_UART_ID, buff, LTE_UART_BUFFER_SIZE,
+                //                                                          LTE_TRX_WAIT_MS(LTE_UART_BUFFER_SIZE) / portTICK_RATE_MS);
 
-                        if ((rx_len) && (strstr((const char *)buff, "OK") != NULL))
-                        {
-                            if(strstr((const char *)buff, "+CEREG: 4") != NULL)
-                            {
-                                modlte_urc_events(LTE_EVENT_COVERAGE_LOST);
-                            }
-
-                            lte_uart_break_evt = false;
-                        }
-                    }
+                //         MSG("uart_data evt + break (%u)\n", rx_len);
+                //         hexdump(buff, rx_len);
+                //         if ((rx_len) && (strstr((const char *)buff, "OK") != NULL)) {
+                //             MSG("OK\n");
+                //             if(strstr((const char *)buff, "+CEREG: 4") != NULL) {
+                //                 MSG("CEREG 4, trigger callback\n");
+                //                 modlte_urc_events(LTE_EVENT_COVERAGE_LOST);
+                //             }
+                //             lte_uart_break_evt = false;
+                //             MSG("break=false\n");
+                //         }
+                //     }
                     break;
                 case UART_BREAK:
+                    // MSG("LTE_UART: uart_break evt, ppp=%u (4=ppp)\n", lteppp_get_state());
                     if (E_LTE_PPP == lteppp_get_state()) {
                         lte_uart_break_evt = true;
                         MSG("uart_break evt and ppp, so break=true\n");
+                        modlte_urc_events(LTE_EVENT_BREAK);
                     } else {
                         // this should not happen, because the sequans modem only issues a break event when in ppp
                         MSG("uart_break evt, but no ppp, so do nothing\n");
