@@ -243,7 +243,7 @@ static void lte_pause_ppp(void) {
                     if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
                         mp_hal_delay_ms(LTE_PPP_BACK_OFF_TIME_MS);
                         if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-                            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+                            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Pause PPP failed"));
                         }
                     }
                 }
@@ -1174,13 +1174,13 @@ STATIC mp_obj_t lte_resume(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     if (lteppp_get_state() == E_LTE_PPP) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Modem is already connected"));
     }
     lte_check_attached(lte_legacyattach_flag);
 
     if (lteppp_get_state() == E_LTE_SUSPENDED || lteppp_get_state() == E_LTE_ATTACHED) {
         if (lteppp_get_state() == E_LTE_ATTACHED && lteppp_get_legacy() == E_LTE_LEGACY) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Operation failed (attached and legacy)"));
         }
 //        char at_cmd[LTE_AT_CMD_SIZE_MAX - 4];
         if (args[0].u_obj != mp_const_none) {
