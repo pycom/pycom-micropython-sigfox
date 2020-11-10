@@ -18,7 +18,7 @@ from traceback import print_exc
 import argparse
 import base64
 import binascii
-from io import BytesIO, StringIO
+import esptool
 import json
 import os
 import re
@@ -34,7 +34,7 @@ try:
 except:
     humanfriendly_available = False
 
-DEBUG = True
+DEBUG = False
 
 FLASH_MODE = 'dio'
 FLASH_FREQ = '80m'
@@ -43,7 +43,7 @@ DEFAULT_BAUD_RATE = 115200
 FAST_BAUD_RATE = 921600
 MAXPICREAD_BAUD_RATE = 230400
 
-LORA_REGIONS = ["EU868", "US915", "AS923", "AU915", "IN865"]
+LORA_REGIONS = ["EU868", "US915", "AS923", "AU915", "IN865", "CN470", "EU433"]
 
 PIC_BOARDS = ["04D8:F013", "04D8:F012", "04D8:EF98", "04D8:EF38", "04D8:ED14"]
 
@@ -1544,29 +1544,6 @@ def main():
                 except:
                     print("WIFI_ON_BOOT=[not set]")
 
-        elif args.command == 'pycom':
-            config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
-            nPy.print_cb(config_block)
-            if (args.fs_type is not None):
-                new_config_block = nPy.set_pycom_config(config_block, args.fs_type)
-                nPy.print_cb(new_config_block)
-                nPy.write(int(PARTITIONS.get('config')[0], 16), new_config_block)
-            else:
-                sys.stdout = old_stdout
-                try:
-                    if sys.version_info[0] < 3:
-                        fs_type = config_block[533]
-                    else:
-                        fs_type = config_block[533].to_bytes(1, byteorder='little')
-                    if fs_type == (b'\x00'):
-                        print("fs_type=FatFS")
-                    if fs_type == (b'\x01'):
-                        print("fs_type=LittleFS")
-                    if fs_type == (b'\xff'):
-                        print("fs_type=[not set]")
-                except:
-                    print("fs_type=[not set]")
-                        
         elif args.command == 'pybytes':
             config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
             if (hasattr(args, "token") and args.token is not None) \
