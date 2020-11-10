@@ -1296,7 +1296,7 @@ mp_obj_t wlan_deinit(mp_obj_t self_in) {
         if(wlan_smart_config_enabled) {
             // If the input parameter is not the object itself but a simple boolean, it is interpreted that
             // wlan_deinit is called from machine_sleep()
-            if(mp_obj_get_type(self_in) == &mp_type_bool) {
+            if(self_in != NULL && mp_obj_get_type(self_in) == &mp_type_bool) {
                 called_from_sleep = (bool)mp_obj_get_int(self_in);
                 if(called_from_sleep == true) {
                     // stop smart config with special event
