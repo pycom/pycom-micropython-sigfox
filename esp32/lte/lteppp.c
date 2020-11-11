@@ -523,7 +523,8 @@ modem_init:
         lteppp_send_at_cmd("ATE0", LTE_RX_TIMEOUT_MIN_MS);
         // disable PSM if enabled by default
         lteppp_send_at_cmd("AT+CPSMS=0", LTE_RX_TIMEOUT_MIN_MS);
-
+        // set registration URC to 1, ie for status changes
+        lteppp_send_at_cmd("AT+CEREG=1", LTE_RX_TIMEOUT_MIN_MS);
         // at least enable access to the SIM
         lteppp_send_at_cmd("AT+CFUN?", LTE_RX_TIMEOUT_MAX_MS);
         char *pos = strstr(lteppp_trx_buffer, "+CFUN: ");
