@@ -280,15 +280,15 @@ static bool lte_check_attached(bool legacy) {
                     mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
                     lte_push_at_command("AT+CEREG?", LTE_RX_TIMEOUT_MIN_MS);
                 }
-                if (((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,")))
+                if (((pos = strstr(modlte_rsp.data, "+CEREG: 1,1")) || (pos = strstr(modlte_rsp.data, "+CEREG: 1,5")))
                         && (strlen(pos) >= 31) && (pos[30] == '7' || pos[30] == '9')) {
                     attached = true;
                 }
             } else {
-                if ((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,"))) {
+                if ((pos = strstr(modlte_rsp.data, "+CEREG: 1,1")) || (pos = strstr(modlte_rsp.data, "+CEREG: 1,5"))) {
                     attached = true;
                 } else {
-                    if((pos = strstr(modlte_rsp.data, "+CEREG: 2,4")))
+                    if((pos = strstr(modlte_rsp.data, "+CEREG: 1,4")))
                     {
                         lte_ue_is_out_of_coverage = true;
                     }
