@@ -7,13 +7,14 @@ available at https://www.pycom.io/opensource/licensing
 '''
 
 from machine import UART
+import os
 
 
 class Terminal:
 
     def __init__(self, pybytes_protocol):
         self.__pybytes_protocol = pybytes_protocol
-        self.original_terminal = UART(0, 115200)
+        self.original_terminal = os.dupterm()
         self.message_from_pybytes = False
         self.message_to_send = ''
 
