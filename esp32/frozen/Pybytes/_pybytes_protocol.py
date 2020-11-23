@@ -32,6 +32,11 @@ except:
     from _pybytes_pymesh_config import PybytesPymeshConfig
 
 try:
+    from pybytes_machine_learning import MlFeatures
+except:
+    from _pybytes_machine_learning import MlFeatures
+
+try:
     from pybytes_config_reader import PybytesConfigReader
 except:
     from _pybytes_config_reader import PybytesConfigReader
@@ -281,10 +286,10 @@ class PybytesProtocol:
                     splittedBody = bodyString.split(',')
                     if (len(splittedBody) >= 2):
                         path = splittedBody[0]
-                        print_debug(2, path[len(path)-7:len(path)])
-                        if (path[len(path)-7:len(path)] != '.pymakr'):
+                        print_debug(2, path[len(path) - 7:len(path)])
+                        if (path[len(path) - 7:len(path)] != '.pymakr'):
                             self.send_fcota_ping('updating file...')
-                        newContent = bodyString[len(path)+1:len(body)]
+                        newContent = bodyString[len(path) + 1:len(body)]
                         if (self.__FCOTA.update_file_content(path, newContent) is True): # noqa
                             size = self.__FCOTA.get_file_size(path)
                             self.send_fcota_file(newContent, path, size)
@@ -319,7 +324,18 @@ class PybytesProtocol:
                 if (len(body) > 3):
                     value = body[2] << 8 | body[3]
 
-                if (command == constants.__COMMAND_PIN_MODE):
+                if (command == constants.__COMMAND_START_SAMPLE):
+                    parameters = ujson.loads(body[2: len(body)].decode("utf-8"))
+                    sampling = MlFeatures(self, parameters=parameters)
+                    sampling.start_sampling(pin=parameters["pin"])
+                    self.send_ota_response(result=2, topic='sample')
+                elif (command == constants.__COMMAND_DEPLOY_MODEL):
+                    parameters = ujson.loads(body[2: len(body)].decode("utf-8"))
+                    sampling = MlFeatures()
+                    sampling.deploy_model(modelId=parameters["modelId"])
+                    self.send_ota_response(result=2, topic='deploymlmodel')
+
+                elif (command == constants.__COMMAND_PIN_MODE):
                     pass
 
                 elif (command == constants.__COMMAND_DIGITAL_READ):
@@ -633,16 +649,11 @@ class PybytesProtocol:
     def get_application_details(self, body):
         application = self.__conf.get('application')
         if application is not None:
-            if 'id' in application and application['id']:
-                applicationID = application['id']
-            else:
-                applicationID = body['applicationId']
             if 'release' in application and 'codeFilename' in application['release']:
                 currentReleaseID = application['release']['codeFilename']
             else:
                 currentReleaseID = None
         else:
-            applicationID = body['applicationId']
             currentReleaseID = None
             self.__conf['application'] = {
                 "id": "",
@@ -652,6 +663,7 @@ class PybytesProtocol:
                       "version": 0
                 }
             }
+        applicationID = body['applicationId']
         return (applicationID, currentReleaseID)
 
     def get_update_manifest(self, applicationID, newReleaseID, currentReleaseID):
@@ -755,21 +767,46 @@ class PybytesProtocol:
         except Exception as e:
             print_debug(1, "error while updating network config pybytes_config.json! {}".format(e))
 
-    def update_firmware(self, body):
+    def update_firmware(self, body, applicationID, fw_type='pybytes'):
         if "firmware" not in body:
             print_debug(0, "no firmware to update")
             return
-        version = body['firmware']["version"]
-        print_debug(0, "updating firmware to {}".format(version))
-        customManifest = {
-            "firmware": {
-                "URL": "https://{}/downloads/appimg/firmware_{}_{}.bin".format(
-                    constants.__DEFAULT_SW_HOST,
-                    os.uname().sysname,
-                    version),
+
+        if "version" in body['firmware']:
+            version = body['firmware']["version"]
+            print_debug(0, "updating firmware to {}".format(version))
+
+            customManifest = {
+                "firmware": {
+                    "URL": "https://{}/findupgrade?redirect=true&strict=true&type={}&model={}&version={}&download=true".format(
+                        constants.__DEFAULT_SW_HOST,
+                        fw_type,
+                        os.uname().sysname,
+                        version),
+                }
             }
-        }
-        self.write_firmware(customManifest)
+            self.write_firmware(customManifest)
+        else:
+            fileUrl = '{}://{}/firmware?'.format(constants.__DEFAULT_PYCONFIG_PROTOCOL, constants.__DEFAULT_PYCONFIG_DOMAIN)
+            customFirmwares = body['firmware']["customFirmwares"]
+            firmwareFilename = ''
+            for firmware in customFirmwares:
+                print_debug(1, "firmware['firmwareType']={} and os.uname().sysname.lower()={}".format(firmware['firmwareType'], os.uname().sysname.lower()))
+                print_debug(1, "firmware={}".format(firmware))
+                if (firmware['firmwareType'] == os.uname().sysname.lower()):
+                    firmwareFilename = firmware['firmwareFilename']
+            targetFileLocation = '{}application_id={}&target_ver={}&target_path={}'.format(
+                fileUrl,
+                applicationID,
+                firmwareFilename,
+                '/{}.bin'.format(firmwareFilename)
+            )
+            customManifest = {
+                "firmware": {
+                    "URL": targetFileLocation,
+                }
+            }
+            self.write_firmware(customManifest)
 
     def deploy_new_release(self, body):
         try:
@@ -783,12 +820,15 @@ class PybytesProtocol:
         applicationID, currentReleaseID = self.get_application_details(body)
 
         letResp = self.get_update_manifest(applicationID, newReleaseID, currentReleaseID)
+
         if not letResp:
             return
 
+        fwtype = 'pygate' if hasattr(os.uname(), 'pygate') else 'pybytes'
+        fwtype = 'pymesh' if hasattr(os.uname(), 'pymesh') else fwtype
         self.update_files(letResp, applicationID, newReleaseID)
         self.delete_files(letResp)
         self.update_application_config(letResp, applicationID)
         self.update_network_config(letResp)
-        self.update_firmware(letResp)
+        self.update_firmware(letResp, applicationID, fw_type=fwtype)
         machine.reset()
