@@ -69,6 +69,7 @@ import time
 import struct
 import machine
 import ujson
+import pycom
 
 
 class PybytesProtocol:
@@ -778,13 +779,16 @@ class PybytesProtocol:
 
             customManifest = {
                 "firmware": {
-                    "URL": "https://{}/findupgrade?redirect=true&strict=true&type={}&model={}&version={}&download=true".format(
+                    "URL": "https://{}/manifest.json?sysname={}&wmac={}&ota_slot={}&fwtype={}&target_ver={}&download=true".format(
                         constants.__DEFAULT_SW_HOST,
-                        fw_type,
                         os.uname().sysname,
+                        hexlify(machine.unique_id()).decode('ascii'),
+                        hex(pycom.ota_slot()),
+                        fw_type,
                         version),
                 }
             }
+            print_debug(5, "Custom Manifest: {}".format(customManifest))
             self.write_firmware(customManifest)
         else:
             fileUrl = '{}://{}/firmware?'.format(constants.__DEFAULT_PYCONFIG_PROTOCOL, constants.__DEFAULT_PYCONFIG_DOMAIN)
