@@ -71,6 +71,9 @@ License: Revised BSD License, see LICENSE.TXT file include in the project
 #include "py/obj.h"
 #include "py/mpprint.h"
 #include "modmachine.h"
+#include "machpin.h"
+#include "pins.h"
+#include "sx1308-config.h"
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE MACROS ------------------------------------------------------- */
@@ -227,7 +230,7 @@ static struct lgw_tx_gain_lut_s txlut; /* TX gain table */
 static uint32_t tx_freq_min[LGW_RF_CHAIN_NB]; /* lowest frequency supported by TX chain */
 static uint32_t tx_freq_max[LGW_RF_CHAIN_NB]; /* highest frequency supported by TX chain */
 
-int debug_level = INFO_;
+int debug_level = LORAPF_INFO_;
 
 /* -------------------------------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS DECLARATION ---------------------------------------- */
@@ -903,6 +906,38 @@ void lora_gw_init(const char* global_conf) {
     MSG_INFO("lora_gw_init() done fh=%u high=%u\n", xPortGetFreeHeapSize(), uxTaskGetStackHighWaterMark(NULL));
 }
 
+void pygate_reset() {
+    MSG_INFO("pygate_reset\n");
+
+    // pull sx1257 and sx1308 reset high, the PIC FW should power cycle the ESP32 as a result
+    pin_obj_t* sx1308_rst = SX1308_RST_PIN;
+    pin_config(sx1308_rst, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
+    pin_obj_t* sx1257_rst = (&PIN_MODULE_P8);
+    pin_config(sx1257_rst, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
+
+    sx1308_rst->value = 1;
+    sx1257_rst->value = 1;
+
+    pin_set_value(sx1308_rst);
+    pin_set_value(sx1257_rst);
+
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+
+    // if this is still being executed, then it seems the ESP32 reset did not take place
+    // set the two reset lines low again and stop the lora gw task, to make sure we return to a defined state
+    MSG_ERROR("pygate_reset failed to reset\n");
+    sx1308_rst->value = 0;
+    sx1257_rst->value = 0;
+    pin_set_value(sx1308_rst);
+    pin_set_value(sx1257_rst);
+
+    if (xLoraGwTaskHndl){
+        vTaskDelete(xLoraGwTaskHndl);
+        xLoraGwTaskHndl = NULL;
+    }
+
+}
+
 int lora_gw_get_debug_level(){
     return debug_level;
 }
@@ -1323,8 +1358,8 @@ void TASK_lora_gw(void *pvParameters) {
         }
 
         /* display a report */
-#if DEBUG_LEVEL >= INFO_
-        if ( debug_level >= INFO_){
+#if LORAPF_DEBUG_LEVEL >= LORAPF_INFO_
+        if ( debug_level >= LORAPF_INFO_){
         MSG_INFO("[main] report\n##### %s #####\n", stat_timestamp);
         mp_printf(&mp_plat_print, "### [UPSTREAM] ###\n");
         mp_printf(&mp_plat_print, "# RF packets received by concentrator: %u\n", cp_nb_rx_rcv);

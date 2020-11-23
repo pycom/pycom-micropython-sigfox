@@ -287,6 +287,13 @@ STATIC mp_obj_t machine_pygate_deinit (void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_pygate_deinit_obj, machine_pygate_deinit);
 
+
+STATIC mp_obj_t machine_pygate_reset (void) {
+    pygate_reset();
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_pygate_reset_obj, machine_pygate_reset);
+
 STATIC mp_obj_t machine_pygate_debug_level (mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     STATIC const mp_arg_t allowed_args[] = {
         { MP_QSTR_level,  MP_ARG_INT, },
@@ -435,7 +442,8 @@ STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
     }
 
     modbt_deinit(reconnect);
-    wlan_deinit(NULL);
+    // TRUE means wlan_deinit is called from machine_sleep
+    wlan_deinit(mp_const_true);
 
     if(ESP_OK != esp_light_sleep_start())
     {
@@ -621,6 +629,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
 #ifdef PYGATE_ENABLED
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_init),             (mp_obj_t)&machine_pygate_init_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_deinit),           (mp_obj_t)&machine_pygate_deinit_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_reset),            (mp_obj_t)&machine_pygate_reset_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_debug_level),      (mp_obj_t)&machine_pygate_debug_level_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_cmd_decode),       (mp_obj_t)&machine_pygate_cmd_decode_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pygate_cmd_get),          (mp_obj_t)&machine_pygate_cmd_get_obj },
