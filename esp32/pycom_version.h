@@ -17,7 +17,7 @@
 #define SIGFOX_VERSION_NUMBER                          "1.0.1"
 
 #if (VARIANT == PYBYTES)
-#define PYBYTES_VERSION_NUMBER                         "1.6.0"
+#define PYBYTES_VERSION_NUMBER                         "1.6.1"
 #endif
 
 #ifdef PYGATE_ENABLED
