@@ -2735,6 +2735,7 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_WPA2_ENT),                    MP_OBJ_NEW_SMALL_INT(WIFI_AUTH_WPA2_ENTERPRISE) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_INT_ANT),                     MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_INTERNAL) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_EXT_ANT),                     MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_EXTERNAL) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_MAN_ANT),                     MP_OBJ_NEW_SMALL_INT(ANTENNA_TYPE_MANUAL) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_HT20),                        MP_OBJ_NEW_SMALL_INT(WIFI_BW_HT20) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_HT40),                        MP_OBJ_NEW_SMALL_INT(WIFI_BW_HT40) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_PHY_11_B),                    MP_OBJ_NEW_SMALL_INT(WLAN_PHY_11_B) },
