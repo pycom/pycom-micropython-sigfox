@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -73,7 +73,7 @@ typedef struct _wlan_obj_t {
     uint8_t                 channel;
     uint8_t                 antenna;
     int8_t                  max_tx_pwr;
-    wifi_country_t         country;
+    wifi_country_t*         country;
 
     // my own ssid, key and mac
     uint8_t                 ssid[(MODWLAN_SSID_LEN_MAX + 1)];
@@ -88,7 +88,6 @@ typedef struct _wlan_obj_t {
 
     uint8_t                 irq_flags;
     bool                    irq_enabled;
-    bool                    enable_servers;
     bool                    disconnected;
     bool                    sta_conn_timeout;
     bool                    soft_ap_stopped;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -62,7 +62,7 @@ void SOCKETFIFO_Flush (void) {
     SocketFifoElement_t element;
     while (SOCKETFIFO_Pop(&element)) {
         if (element.freedata) {
-            vPortFree(element.data);
+            free(element.data);
         }
     }
 }

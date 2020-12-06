@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -51,6 +51,10 @@
 #include "machrtc.h"
 
 #include "mptask.h"
+
+#include "esp32_mphal.h"
+//#define MSG(fmt, ...) printf("[%u] ftp: " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
+#define MSG(fmt, ...) (void)0
 
 /******************************************************************************
  DEFINE PRIVATE CONSTANTS
@@ -338,7 +342,7 @@ STATIC FRESULT f_readdir_helper(ftp_dir_t *dp, ftp_fileinfo_t *fno ) {
                 if(length_of_relative_path > 1) {
                     path_length++;
                 }
-                char* file_relative_path = m_malloc(path_length);
+                char* file_relative_path = malloc(path_length);
 
                 // Copy the current working directory (relative path)
                 memcpy(file_relative_path, path_relative, length_of_relative_path);
@@ -359,7 +363,7 @@ STATIC FRESULT f_readdir_helper(ftp_dir_t *dp, ftp_fileinfo_t *fno ) {
                     fno->u.fpinfo_lfs.timestamp.ftime = 0;
                 }
 
-                m_free(file_relative_path);
+                free(file_relative_path);
             }
 
         xSemaphoreGive(littlefs->mutex);
@@ -614,10 +618,10 @@ static void ftp_return_to_previous_path (char *pwd, char *dir);
  ******************************************************************************/
 void ftp_init (void) {
     // allocate memory for the data buffer, and the file system structs (from the RTOS heap)
-    ftp_data.dBuffer = heap_caps_malloc(FTP_BUFFER_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    ftp_path = heap_caps_malloc(FTP_MAX_PARAM_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    ftp_scratch_buffer = heap_caps_malloc(FTP_MAX_PARAM_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
-    ftp_cmd_buffer = heap_caps_malloc(FTP_MAX_PARAM_SIZE + FTP_CMD_SIZE_MAX, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    ftp_data.dBuffer = malloc(FTP_BUFFER_SIZE);
+    ftp_path = malloc(FTP_MAX_PARAM_SIZE);
+    ftp_scratch_buffer = malloc(FTP_MAX_PARAM_SIZE);
+    ftp_cmd_buffer = malloc(FTP_MAX_PARAM_SIZE + FTP_CMD_SIZE_MAX);
     SOCKETFIFO_Init (&ftp_socketfifo, (void *)ftp_fifoelements, FTP_SOCKETFIFO_ELEMENTS_MAX);
     ftp_data.c_sd  = -1;
     ftp_data.d_sd  = -1;
@@ -867,24 +871,27 @@ static ftp_result_t ftp_wait_for_connection (int32_t l_sd, int32_t *n_sd, uint32
 
     if (ip_addr) {
         tcpip_adapter_ip_info_t ip_info;
-        wifi_mode_t wifi_mode;
-        esp_wifi_get_mode(&wifi_mode);
-        if (wifi_mode != WIFI_MODE_APSTA) {
-            // easy way
-            tcpip_adapter_if_t if_type;
-            if (wifi_mode == WIFI_MODE_AP) {
-                if_type = TCPIP_ADAPTER_IF_AP;
-            } else {
-                if_type = TCPIP_ADAPTER_IF_STA;
-            }
-            tcpip_adapter_get_ip_info(if_type, &ip_info);
-        } else {
-            // see on which subnet is the client ip address
-            tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info);
-            if ((ip_info.ip.addr & ip_info.netmask.addr) != (ip_info.netmask.addr & sClientAddress.sin_addr.s_addr)) {
-                tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info);
-            }
+
+        bool adapter_found = false;
+#ifdef PYETH_ENABLED
+        if ( tcpip_adapter_is_netif_up(TCPIP_ADAPTER_IF_ETH) ) {
+            tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_ETH, &ip_info);
+            adapter_found = true;
         }
+#endif
+
+        if ( !adapter_found && tcpip_adapter_is_netif_up(TCPIP_ADAPTER_IF_AP) ){
+            tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info);
+            adapter_found = true;
+        }
+
+        if ( !adapter_found && tcpip_adapter_is_netif_up(TCPIP_ADAPTER_IF_STA) ){
+            tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ip_info);
+            adapter_found = true;
+        }
+
+        MSG("fwfc ip=%08x nm=%08x gw=%08x cl=%08x\n", ip_info.ip.addr, ip_info.netmask.addr, ip_info.gw.addr, sClientAddress.sin_addr.s_addr);
+        MSG("fwfc ip=" IPSTR " nm=" IPSTR " gw=" IPSTR "\n", IP2STR(&ip_info.ip), IP2STR(&ip_info.netmask), IP2STR(&ip_info.gw) );
         *ip_addr = ip_info.ip.addr;
     }
 
@@ -933,7 +940,7 @@ static void ftp_send_reply (uint32_t status, char *message) {
     strcat ((char *)ftp_cmd_buffer, "\r\n");
     fifoelement.sd = &ftp_data.c_sd;
     fifoelement.datasize = strlen((char *)ftp_cmd_buffer);
-    fifoelement.data = pvPortMalloc(fifoelement.datasize);
+    fifoelement.data = malloc(fifoelement.datasize);
     if (status == 221) {
         fifoelement.closesockets = E_FTP_CLOSE_CMD_AND_DATA;
     } else if (status == 426 || status == 451 || status == 550) {
@@ -945,7 +952,7 @@ static void ftp_send_reply (uint32_t status, char *message) {
     if (fifoelement.data) {
         memcpy (fifoelement.data, ftp_cmd_buffer, fifoelement.datasize);
         if (!SOCKETFIFO_Push (&fifoelement)) {
-            vPortFree(fifoelement.data);
+            free(fifoelement.data);
         }
     }
 }
@@ -979,13 +986,13 @@ static void ftp_send_from_fifo (void) {
                     ftp_close_filesystem_on_error();
                 }
                 if (fifoelement.freedata) {
-                    vPortFree(fifoelement.data);
+                    free(fifoelement.data);
                 }
             }
         } else { // socket closed, remove it from the queue
             SOCKETFIFO_Pop (&fifoelement);
             if (fifoelement.freedata) {
-                vPortFree(fifoelement.data);
+                free(fifoelement.data);
             }
         }
     } else if (ftp_data.state == E_FTP_STE_END_TRANSFER && (ftp_data.d_sd > 0)) {
@@ -1236,6 +1243,7 @@ static void ftp_process_cmd (void) {
             break;
         default:
             // command not implemented
+            MSG("process_cmd not implemented\n");
             ftp_send_reply(502, NULL);
             break;
         }
@@ -1279,6 +1287,7 @@ static ftp_cmd_index_t ftp_pop_command (char **str) {
     char _cmd[FTP_CMD_SIZE_MAX];
     ftp_pop_param (str, _cmd, true);
     stoupper (_cmd);
+    //MSG("pop_command: \"%s\"\n", _cmd);
     for (ftp_cmd_index_t i = 0; i < E_FTP_NUM_FTP_CMDS; i++) {
         if (!strcmp (_cmd, ftp_cmd_table[i].cmd)) {
             // move one step further to skip the space
@@ -1286,6 +1295,7 @@ static ftp_cmd_index_t ftp_pop_command (char **str) {
             return i;
         }
     }
+    MSG("pop_command not supported: \"%s\"\n", _cmd);
     return E_FTP_CMD_NOT_SUPPORTED;
 }
 

@@ -54,7 +54,7 @@ DRESULT sflash_disk_init (void) {
             sflash_start_address = SFLASH_START_ADDR_4MB;
             sflash_fs_sector_count = SFLASH_FS_SECTOR_COUNT_4MB;
         }
-        sflash_block_cache = (uint8_t *)heap_caps_malloc(SFLASH_BLOCK_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        sflash_block_cache = (uint8_t *)malloc(SFLASH_BLOCK_SIZE);
         sflash_prev_block_addr = UINT32_MAX;
         sflash_cache_is_dirty = false;
         sflash_init_done = true;

@@ -1,0 +1,26 @@
+This directory contains the sigfox support.
+
+There are three prebuilt libraries for SIPY, LOPY4, and FIPY.
+
+@Pycom In order to build these libraries execute the following steps using the private pyupython repository:
+
+git clone -b sigfox git@github.com:pycom/pyupython.git src
+cd src
+git checkout 9a5e7a9b
+cd ../..
+make BOARD=LOPY4 TARGET=sigfox
+make BOARD=FIPY TARGET=sigfox
+make BOARD=SIPY TARGET=sigfox
+./get_sigfox_libs.py
+
+Now you see the updated .a files with
+
+git status sigfox
+
+which can be PR-ed in parallel with any sigfox code changes.
+
+If you update the sigfox code, be sure to:
+
+a) PR your sigfox changes to pyupython
+b) PR the .a files to Firmware-Development and
+c) update the git hash further up in this README file, so it is clear from which commit the libraries were built

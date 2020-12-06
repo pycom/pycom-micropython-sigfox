@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -88,5 +88,15 @@ extern int updater_ota_next_slot_address();
  * @return true if reading was done successful.
  */
 extern bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset);
+
+#ifdef DIFF_UPDATE_ENABLED
+/**
+ * @brief  Patches the current image with the delta file and writes the final image to the free partition.
+ *         The implementation is based on the bsdiff's patching algorithm.
+ * 
+ * @return true if patching was successful.
+ */
+extern bool updater_patch(void);
+#endif
 
 #endif /* UPDATER_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -49,6 +49,7 @@ void mp_irq_add (mp_obj_t parent, mp_obj_t handler);
 void mp_irq_remove (mp_obj_t parent);
 mp_obj_tuple_t *mp_irq_find (mp_obj_t parent);
 void mp_irq_queue_interrupt(void (* handler)(void *), void *arg);
+void mp_irq_queue_interrupt_non_ISR(void (* handler)(void *), void *arg);
 void mp_irq_queue_interrupt_immediate_thread_delete(TaskHandle_t id);
 void mp_irq_kill(void);
 #endif /* MPIRQ_H_ */

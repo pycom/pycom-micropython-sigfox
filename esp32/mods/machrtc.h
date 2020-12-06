@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -16,5 +16,6 @@ void rtc_init0(void);
 void mach_rtc_synced (void);
 void mach_rtc_set_us_since_epoch(uint64_t nowus);
 uint64_t mach_rtc_get_us_since_epoch(void);
+bool mach_is_rtc_synced (void);
 
 #endif // MACHRTC_H_

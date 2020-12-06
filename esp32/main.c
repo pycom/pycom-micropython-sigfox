@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -51,20 +51,23 @@
 #include "mperror.h"
 #include "machtimer.h"
 #include "esp32chipinfo.h"
+#include "esp_event_loop.h"
+#include "app_sys_evt.h"
 
 
 TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
 TaskHandle_t SmartConfTaskHandle;
+TaskHandle_t ethernetTaskHandle;
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xLoRaTaskHndl;
-TaskHandle_t xLoRaTimerTaskHndl;
+DRAM_ATTR TaskHandle_t xLoRaTimerTaskHndl;
 #endif
 #if defined(SIPY) || defined (LOPY4) || defined (FIPY)
 TaskHandle_t xSigfoxTaskHndl;
 #endif
 #if defined(GPY) || defined (FIPY)
-TaskHandle_t xLTETaskHndl;
+TaskHandle_t xLTETaskHndl = NULL;
 TaskHandle_t xLTEUartEvtTaskHndl;
 TaskHandle_t xLTEUpgradeTaskHndl;
 #endif
@@ -99,7 +102,25 @@ void * micropy_lpwan_ncs_pin;
  DECLARE PRIVATE DATA
  ******************************************************************************/
 static StaticTask_t mpTaskTCB;
-
+static system_event_cb_t main_evt_cb_list[APP_SYS_EVT_NUM] = {NULL, NULL};
+/******************************************************************************
+ DECLARE PRIVATE FUNC
+ ******************************************************************************/
+static esp_err_t app_sys_event_handler(void *ctx, system_event_t *event);
+/******************************************************************************
+ DECLARE PUBLIC FUNC
+ ******************************************************************************/
+static esp_err_t app_sys_event_handler(void *ctx, system_event_t *event)
+{
+    for(uint8_t i = 0; i < APP_SYS_EVT_NUM; i++)
+    {
+        if(main_evt_cb_list[i] != NULL)
+        {
+            main_evt_cb_list[i](ctx, event);
+        }
+    }
+    return ESP_OK;
+}
 /******************************************************************************
  * FunctionName : app_main
  * Description  : entry of user application, init user function here
@@ -112,6 +133,9 @@ void app_main(void) {
 
     // remove all the logs from the IDF
     esp_log_level_set("*", ESP_LOG_NONE);
+
+    // Register sys event callback
+    ESP_ERROR_CHECK(esp_event_loop_init(app_sys_event_handler, NULL));
 
     // setup the timer used as a reference in mphal
     machtimer_preinit();
@@ -149,7 +173,7 @@ void app_main(void) {
         micropy_lpwan_dio_pin_num = 23;
         micropy_lpwan_dio_pin = &pin_GPIO23;
 
-        mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE_PSRAM, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        mpTaskStack = malloc(MICROPY_TASK_STACK_SIZE_PSRAM);
 
         // create the MicroPython task
         mpTaskHandle =
@@ -172,11 +196,19 @@ void app_main(void) {
         micropy_lpwan_dio_pin_num = 23;
         micropy_lpwan_dio_pin = &pin_GPIO23;
 
-        mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+        mpTaskStack = malloc(MICROPY_TASK_STACK_SIZE);
 
         // create the MicroPython task
         mpTaskHandle =
         (TaskHandle_t)xTaskCreateStaticPinnedToCore(TASK_Micropython, "MicroPy", (MICROPY_TASK_STACK_SIZE / sizeof(StackType_t)), NULL,
                                                     MICROPY_TASK_PRIORITY, mpTaskStack, &mpTaskTCB, 1);
+    }
+}
+
+void app_sys_register_evt_cb(main_app_sys_evt_t sys_evt, system_event_cb_t cb)
+{
+    if((cb != NULL) && (sys_evt < APP_SYS_EVT_NUM))
+    {
+        main_evt_cb_list[sys_evt] = cb;
     }
 }

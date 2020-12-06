@@ -3,6 +3,7 @@
 # MIT license; Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
 
 import _thread
+import time
 
 def thread_entry():
     tid = _thread.get_ident()
@@ -17,5 +18,5 @@ finished = False
 _thread.start_new_thread(thread_entry, ())
 
 while not finished:
-    pass
+    time.sleep(0.01)
 print('done')
