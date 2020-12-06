@@ -142,9 +142,11 @@ OBJCOPY_EMBED_ARGS = --input-target binary --output-target elf32-xtensa-le --bin
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h $(BUILD)/pins_qstr.h
 # include py core make definitions
+$(info "Entering ../py/py.mk")
 include ../py/py.mk
+$(info "Entering application.mk")
 include application.mk
-
+$(info "Entering ../py/mkrules.mk")
 include ../py/mkrules.mk
 
 # convenience variable for printing an 80 asterisk wide separator line
