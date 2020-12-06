@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -53,6 +53,7 @@
 #include "lora/mac/region/RegionEU868.h"
 #include "lora/mac/region/RegionCN470.h"
 #include "lora/mac/region/RegionIN865.h"
+#include "lora/mac/region/RegionEU433.h"
 
 // openThread includes
 #ifdef LORA_OPENTHREAD_ENABLED
@@ -262,7 +263,6 @@ static const char *modlora_nvs_data_key[E_LORA_NVS_NUM_KEYS] = { "JOINED", "UPLN
                                                                  "MACPARAMS", "CHANNELS", "SRVACK", "MACNXTTX",
                                                                  "MACBUFIDX", "MACRPTIDX", "MACBUF", "MACRPTBUF",
                                                                  "REGION", "CHANMASK", "CHANMASKREM" };
-DRAM_ATTR static modlora_timerCallback modlora_timer_cb;
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
@@ -394,10 +394,16 @@ bool modlora_is_module_sleep(void)
 
 IRAM_ATTR void modlora_set_timer_callback(modlora_timerCallback cb)
 {
-    modlora_timer_cb = cb;
     if(cb != NULL)
     {
-        xQueueSendFromISR(xCbQueue, &cb, NULL);
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+
+        xQueueSendFromISR(xCbQueue, &cb, &xHigherPriorityTaskWoken);
+
+        if( xHigherPriorityTaskWoken)
+        {
+            portYIELD_FROM_ISR();
+        }
     }
 }
 
@@ -1185,20 +1191,14 @@ static void TASK_LoRa (void *pvParameters) {
 
 static void TASK_LoRa_Timer (void *pvParameters) {
 
-    static uint32_t thread_notification;
-
     for(;;)
     {
-        thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        if (thread_notification) {
-
-            modlora_timerCallback cb;
-            while (pdTRUE == xQueueReceive(xCbQueue, &cb, 0))
+        modlora_timerCallback cb;
+        while (pdTRUE == xQueueReceive(xCbQueue, &cb, portMAX_DELAY))
+        {
+            if(cb != NULL)
             {
-                if(cb != NULL)
-                {
-                    cb();
-                }
+                cb();
             }
         }
     }
@@ -1362,12 +1362,17 @@ static void lora_validate_frequency (uint32_t frequency) {
                 goto freq_error;
             }
             break;
-        case LORAMAC_REGION_EU868:
+        case LORAMAC_REGION_EU433:
         #if defined(LOPY4)
-            if (frequency < 410000000 || frequency > 870000000) {
+            if (frequency < 433000000 || frequency > 435000000) { // LoRa 433 - 434
+                goto freq_error;
+            }
         #else
-            if (frequency < 863000000 || frequency > 870000000) {
+            goto freq_error;
         #endif
+            break;
+        case LORAMAC_REGION_EU868:
+            if (frequency < 863000000 || frequency > 870000000) {
                 goto freq_error;
             }
             break;
@@ -1438,6 +1443,7 @@ static bool lora_validate_data_rate (uint32_t data_rate) {
     case LORAMAC_REGION_AS923:
     case LORAMAC_REGION_EU868:
     case LORAMAC_REGION_AU915:
+    case LORAMAC_REGION_EU433:
     case LORAMAC_REGION_CN470:
     case LORAMAC_REGION_IN865:
         if (data_rate > DR_6) {
@@ -1490,10 +1496,15 @@ static void lora_validate_device_class (DeviceClass_t device_class) {
 static void lora_validate_region (LoRaMacRegion_t region) {
     if (region != LORAMAC_REGION_AS923 && region != LORAMAC_REGION_AU915
         && region != LORAMAC_REGION_EU868 && region != LORAMAC_REGION_US915
-        && region != LORAMAC_REGION_CN470 && region != LORAMAC_REGION_IN865) {
+        && region != LORAMAC_REGION_IN865
+#if defined(LOPY4)
+        && region != LORAMAC_REGION_EU433 && region != LORAMAC_REGION_CN470
+#endif
+        ) {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "invalid region %d", region));
     }
 }
+
 
 static void lora_set_config (lora_cmd_data_t *cmd_data) {
     lora_obj.stack_mode = cmd_data->info.init.stack_mode;
@@ -1711,6 +1722,9 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
         case LORAMAC_REGION_EU868:
             cmd_data.info.init.frequency = 868000000;
             break;
+        case LORAMAC_REGION_EU433:
+            cmd_data.info.init.frequency = 433175000;
+            break;
         case LORAMAC_REGION_CN470:
             cmd_data.info.init.frequency = 470000000;
         case LORAMAC_REGION_IN865:
@@ -1735,6 +1749,9 @@ static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
         case LORAMAC_REGION_CN470:
         case LORAMAC_REGION_EU868:
             cmd_data.info.init.tx_power = 14;
+            break;
+        case LORAMAC_REGION_EU433:
+            cmd_data.info.init.tx_power = 12;
             break;
         default:
             break;
@@ -1895,6 +1912,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
         break;
     case LORAMAC_REGION_CN470:
     case LORAMAC_REGION_EU868:
+    case LORAMAC_REGION_EU433:
     case LORAMAC_REGION_IN865:
         dr = DR_5;
         break;
@@ -1926,6 +1944,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
                 goto dr_error;
             }
             break;
+        case LORAMAC_REGION_EU433:
         case LORAMAC_REGION_CN470:
         case LORAMAC_REGION_EU868:
             if (dr > DR_5) {
@@ -2507,6 +2526,7 @@ STATIC const mp_map_elem_t lora_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_US915),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_US915) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_CN470),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_CN470) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_IN865),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_IN865) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EU433),               MP_OBJ_NEW_SMALL_INT(LORAMAC_REGION_EU433) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(lora_locals_dict, lora_locals_dict_table);
@@ -2552,6 +2572,7 @@ static int lora_socket_socket (mod_network_socket_obj_t *s, int *_errno) {
     switch (lora_obj.region) {
     case LORAMAC_REGION_AS923:
     case LORAMAC_REGION_EU868:
+    case LORAMAC_REGION_EU433:
     case LORAMAC_REGION_CN470:
         dr = DR_5;
         break;

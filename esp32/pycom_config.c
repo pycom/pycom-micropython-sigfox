@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -391,6 +391,18 @@ bool config_set_pybytes_lte_config(const pycom_pybytes_lte_config_t pycom_pybyte
 bool config_set_boot_fs_type (const uint8_t boot_fs_type) {
     pycom_config_block.pycom_config.boot_fs_type=boot_fs_type;
     return config_write();
+}
+
+bool config_set_pybytes_autostart (bool pybytes_autostart) {
+    if (pycom_config_block.pybytes_config.auto_start != (uint8_t)pybytes_autostart) {
+        pycom_config_block.pybytes_config.auto_start = (uint8_t)pybytes_autostart;
+        return config_write();
+    }
+    return true;
+}
+
+bool config_get_pybytes_autostart (void) {
+    return (bool)pycom_config_block.pybytes_config.auto_start;
 }
 
 static bool config_write (void) {

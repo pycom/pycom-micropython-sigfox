@@ -1,15 +1,29 @@
 '''
-Copyright (c) 2019, Pycom Limited.
+Copyright (c) 2020, Pycom Limited.
 This software is licensed under the GNU GPL version 3 or any
 later version, with permitted additional terms. For more information
 see the Pycom Licence v1.0 document supplied with this file, or
 available at https://www.pycom.io/opensource/licensing
 '''
 
+import os
+import sys
+import _thread
+import time
+import socket
+import struct
+import binascii
+import pycom
+from machine import WDT
+
 try:
     from mqtt import MQTTClient
 except:
     from _mqtt import MQTTClient
+try:
+    from pybytes_config_reader import PybytesConfigReader
+except:
+    from _pybytes_config_reader import PybytesConfigReader
 
 try:
     from pybytes_protocol import PybytesProtocol
@@ -25,32 +39,32 @@ try:
     from pybytes_debug import print_debug
 except:
     from _pybytes_debug import print_debug
-
-import os
-import _thread
-import time
-import socket
-import struct
-import binascii
-from machine import WDT
+try:
+    from coap import COAPClient
+except:
+    from _coap import COAPClient
 
 
 class PybytesConnection:
     def __init__(self, config, message_callback):
-        self.__conf = config
-        self.__host = config.get('server')
-        self.__ssl = config.get('ssl', False)
-        self.__ssl_params = config.get('ssl_params', {})
-        self.__user_name = config.get('username')
-        self.__device_id = config.get('device_id')
-        self.__mqtt_download_topic = "d" + self.__device_id
-        self.__mqtt_upload_topic = "u" + self.__device_id
+        if config is not None:
+            self.__conf = config
+            self.__conf_reader = PybytesConfigReader(config)
+            try:
+                self.__host = pycom.nvs_get('pybytes_server')
+            except:
+                self.__host = config.get('server')
+            self.__ssl = config.get('ssl', False)
+            self.__ssl_params = config.get('ssl_params', {})
+            self.__user_name = config.get('username')
+            self.__device_id = config.get('device_id')
+            self.__mqtt_download_topic = "d" + self.__device_id
+            self.__mqtt_upload_topic = "u" + self.__device_id
+            self.__pybytes_protocol = PybytesProtocol(
+                config, message_callback, pybytes_connection=self
+            )
         self.__connection = None
-#        self.__thread_stack_size = 8192
         self.__connection_status = constants.__CONNECTION_STATUS_DISCONNECTED
-        self.__pybytes_protocol = PybytesProtocol(
-            config, message_callback, pybytes_connection=self
-        )
         self.__lora_socket = None
         self.lora = None
         self.lora_lock = _thread.allocate_lock()
@@ -126,11 +140,14 @@ class PybytesConnection:
                     pwd = dict(known_nets)[net_to_use]
                     sec = [e.sec for e in available_nets if e.ssid == net_to_use][0] # noqa
                     print_debug(99, "Connecting with {} and {}".format(net_to_use, pwd))
-                    self.wlan.connect(net_to_use, (sec, pwd), timeout=10000)
+                    if sec == 0:
+                        self.wlan.connect(net_to_use, timeout=self.__conf.get('wifi', {}).get('timeout', 10000))
+                    else:
+                        self.wlan.connect(net_to_use, (sec, pwd), timeout=self.__conf.get('wifi', {}).get('timeout', 10000))
                     start_time = time.time()
                     while not self.wlan.isconnected():
                         if time.time() - start_time > timeout:
-                            raise TimeoutError('Timeout trying to connect via WiFi')
+                            raise TimeoutError('Timeout trying to connect via WiFi')  # noqa: F821
                         time.sleep(0.1)
                 except Exception as e:
                     if str(e) == "list index out of range" and attempt == 3:
@@ -140,50 +157,35 @@ class PybytesConnection:
                     elif attempt == 3:
                         print("Error connecting using WIFI: %s" % e)
                         return False
-
             self.__network_type = constants.__NETWORK_TYPE_WIFI
             print("WiFi connection established")
-            try:
-                self.__connection = MQTTClient(
-                    self.__device_id,
-                    self.__host,
-                    self.__mqtt_download_topic,
-                    self.__pybytes_protocol,
-                    user=self.__user_name,
-                    password=self.__device_id
-                )
-                self.__connection.connect()
-                self.__connection_status = constants.__CONNECTION_STATUS_CONNECTED_MQTT_WIFI # noqa
-                self.__pybytes_protocol.start_MQTT(
-                    self,
-                    constants.__NETWORK_TYPE_WIFI
-                )
-                return True
-            except Exception as ex:
-                if '{}'.format(ex) == '4':
-                    print('MQTT ERROR! Bad credentials when connecting to server: "{}"'.format(self.__host)) # noqa
-                else:
-                    print("MQTT ERROR! {}".format(ex))
-                return False
+            return True
         except Exception as ex:
             print("Exception connect_wifi: {}".format(ex))
             return False
 
     # Establish a connection through LTE before connecting to mqtt server
-    def connect_lte(self, reconnect=True, check_interval=0.5):
-        self.__initialise_watchdog()
+    def connect_lte(self, activation_info=False, start_mqtt=True):
+        if activation_info:
+            lte_cfg = activation_info
+        else:
+            lte_cfg = self.__conf.get('lte')
+            self.__initialise_watchdog()
 
-        lte_cfg = self.__conf.get('lte')
         if lte_cfg is not None:
-            if (os.uname()[0] not in ['FiPy', 'GPy']):
+            if (os.uname().sysname not in ['FiPy', 'GPy']):
                 print("You need a device with FiPy or GPy firmware to connect via LTE") # noqa
                 return False
             try:
                 from network import LTE
                 time.sleep(3)
-                print_debug(1, 'LTE init(carrier={}, cid={})'.format(lte_cfg.get('carrier'), lte_cfg.get('cid', 1))) # noqa
+                if lte_cfg.get('carrier', 'standard') == 'standard':
+                    carrier = None
+                else:
+                    carrier = lte_cfg.get('carrier')
+                print_debug(1, 'LTE init(carrier={}, cid={})'.format(carrier, lte_cfg.get('cid', 1))) # noqa
                 # instantiate the LTE object
-                self.lte = LTE(carrier=lte_cfg.get('carrier'), cid=lte_cfg.get('cid', 1))
+                self.lte = LTE(carrier=carrier, cid=lte_cfg.get('cid', 1))
                 try:
                     lte_type = lte_cfg.get('type') if len(lte_cfg.get('type')) > 0 else None
                 except:
@@ -215,41 +217,22 @@ class PybytesConnection:
                 print_debug(1, 'LTE is_connected()')
                 while not self.lte.isconnected():
                     time.sleep(0.25)
-                print("LTE connection established")
                 self.__network_type = constants.__NETWORK_TYPE_LTE
-                try:
-                    self.__connection = MQTTClient(
-                        self.__device_id,
-                        self.__host,
-                        self.__mqtt_download_topic,
-                        self.__pybytes_protocol,
-                        user=self.__user_name,
-                        password=self.__device_id
-                    )
-                    self.__connection.connect()
-                    self.__connection_status = constants.__CONNECTION_STATUS_CONNECTED_MQTT_LTE # noqa
-                    self.__pybytes_protocol.start_MQTT(
-                        self,
-                        constants.__NETWORK_TYPE_WIFI
-                    )
-                    print("Connected to MQTT {}".format(self.__host))
-                    return True
-                except Exception as ex:
-                    if '{}'.format(ex) == '4':
-                        print('MQTT ERROR! Bad credentials when connecting to server: "{}"'.format(self.__host)) # noqa
-                    else:
-                        print("MQTT ERROR! {}".format(ex))
-                    return False
+                print("LTE connection established")
+                if start_mqtt:
+                    print("connect_lte with start_mqtt is now removed please call communication_protocol or start_mqtt directly")
+                return True
             except Exception as ex:
                 print("Exception connect_lte: {}".format(ex))
-                return False
+                sys.print_exception(ex)
+            return False
         else:
             print("Error... missing configuration!")
             return False
 
     # LORA
     def connect_lora_abp(self, lora_timeout, nanogateway):
-        print_debug(1,'Attempting to connect via LoRa')
+        print_debug(1, 'Attempting to connect via LoRa')
         if (self.__connection_status != constants.__CONNECTION_STATUS_DISCONNECTED): # noqa
             print("Error connect_lora_abp: Connection already exists. Disconnect First") # noqa
             return False
@@ -259,15 +242,21 @@ class PybytesConnection:
             print("This device does not support LoRa connections: %s" % ex)
             return False
 
+        lora_class = self.__conf.get('lora', {}).get('class', 0)
         if self.__conf.get('lora', {}).get('region') is not None:
-            self.lora = LoRa(mode=LoRa.LORAWAN, region=self.__conf.get('lora', {}).get('region'))
+            self.lora = LoRa(mode=LoRa.LORAWAN, region=self.__conf.get('lora').get('region'), device_class=lora_class)
         else:
-            self.lora = LoRa(mode=LoRa.LORAWAN)
+            self.lora = LoRa(mode=LoRa.LORAWAN, device_class=lora_class)
         self.lora.nvram_restore()
 
-        dev_addr = self.__conf['lora']['abp']['dev_addr']
-        nwk_swkey = self.__conf['lora']['abp']['nwk_skey']
-        app_swkey = self.__conf['lora']['abp']['app_skey']
+        try:
+            dev_addr = self.__conf['lora']['abp']['dev_addr']
+            nwk_swkey = self.__conf['lora']['abp']['nwk_skey']
+            app_swkey = self.__conf['lora']['abp']['app_skey']
+        except Exception as ex:
+            print("Invalid LoRaWAN ABP configuration!")
+            print_debug(1, ex)
+            return False
         timeout_ms = self.__conf.get('lora_timeout', lora_timeout) * 1000
 
         dev_addr = struct.unpack(">l", binascii.unhexlify(dev_addr.replace(' ', '')))[0] # noqa
@@ -275,13 +264,12 @@ class PybytesConnection:
         app_swkey = binascii.unhexlify(app_swkey.replace(' ', ''))
 
         try:
-            if not self.lora.has_joined:
-                print("Trying to join LoRa.ABP for %d seconds..." % lora_timeout)
-                self.lora.join(
-                    activation=LoRa.ABP,
-                    auth=(dev_addr, nwk_swkey, app_swkey),
-                    timeout=timeout_ms
-                )
+            print("Trying to join LoRa.ABP for %d seconds..." % self.__conf.get('lora_timeout', lora_timeout))
+            self.lora.join(
+                activation=LoRa.ABP,
+                auth=(dev_addr, nwk_swkey, app_swkey),
+                timeout=timeout_ms
+            )
 
             # if you want, uncomment this code, but timeout must be 0
             # while not self.lora.has_joined():
@@ -296,15 +284,15 @@ class PybytesConnection:
         except Exception as e:
             message = str(e)
             if message == 'timed out':
-                print("LoRa connection timeout: %d seconds" % lora_timeout)
+                print("LoRa connection timeout: %d seconds" % self.__conf.get('lora_timeout', lora_timeout))
             else:
                 print_debug(3, 'Exception in LoRa connect: {}'.format(e))
             return False
 
-    def connect_lora_otta(self, lora_timeout, nanogateway):
-        print_debug(1,'Attempting to connect via LoRa')
+    def connect_lora_otaa(self, lora_timeout, nanogateway):
+        print_debug(1, 'Attempting to connect via LoRa')
         if (self.__connection_status != constants.__CONNECTION_STATUS_DISCONNECTED): # noqa
-            print("Error connect_lora_otta: Connection already exists. Disconnect First") # noqa
+            print("Error connect_lora_otaa: Connection already exists. Disconnect First") # noqa
             return False
         try:
             from network import LoRa
@@ -312,15 +300,22 @@ class PybytesConnection:
             print("This device does not support LoRa connections: %s" % ex)
             return False
 
-        dev_eui = self.__conf['lora']['otaa']['app_device_eui']
-        app_eui = self.__conf['lora']['otaa']['app_eui']
-        app_key = self.__conf['lora']['otaa']['app_key']
+        try:
+            dev_eui = self.__conf['lora']['otaa']['app_device_eui']
+            app_eui = self.__conf['lora']['otaa']['app_eui']
+            app_key = self.__conf['lora']['otaa']['app_key']
+        except Exception as ex:
+            print("Invalid LoRaWAN OTAA configuration!")
+            print_debug(1, ex)
+            return False
+
         timeout_ms = self.__conf.get('lora_timeout', lora_timeout) * 1000
 
+        lora_class = self.__conf.get('lora', {}).get('class', 0)
         if self.__conf.get('lora', {}).get('region') is not None:
-            self.lora = LoRa(mode=LoRa.LORAWAN, region=self.__conf.get('lora', {}).get('region'))
+            self.lora = LoRa(mode=LoRa.LORAWAN, region=self.__conf.get('lora', {}).get('region'), device_class=lora_class)
         else:
-            self.lora = LoRa(mode=LoRa.LORAWAN)
+            self.lora = LoRa(mode=LoRa.LORAWAN, device_class=lora_class)
         self.lora.nvram_restore()
 
         dev_eui = binascii.unhexlify(dev_eui.replace(' ', ''))
@@ -328,7 +323,7 @@ class PybytesConnection:
         app_key = binascii.unhexlify(app_key.replace(' ', ''))
         try:
             if not self.lora.has_joined():
-                print("Trying to join LoRa.OTAA for %d seconds..." % lora_timeout)
+                print("Trying to join LoRa.OTAA for %d seconds..." % self.__conf.get('lora_timeout', lora_timeout))
                 self.lora.join(
                     activation=LoRa.OTAA,
                     auth=(dev_eui, app_eui, app_key),
@@ -348,7 +343,7 @@ class PybytesConnection:
         except Exception as e:
             message = str(e)
             if message == 'timed out':
-                print("LoRa connection timeout: %d seconds" % lora_timeout)
+                print("LoRa connection timeout: %d seconds" % self.__conf.get('lora_timeout', lora_timeout))
             else:
                 print_debug(3, 'Exception in LoRa connect: {}'.format(e))
             return False
@@ -471,3 +466,61 @@ class PybytesConnection:
     # Added for convention with other connectivity classes
     def isconnected(self):
         return not (self.__connection_status == constants.__CONNECTION_STATUS_DISCONNECTED) # noqa
+
+    def communication_protocol(self, connection_type):
+        if self.__conf_reader.get_communication_type() == constants.__SIMPLE_COAP:
+
+            if connection_type == 'wifi':
+                target_connection_type = constants.__CONNECTION_STATUS_CONNECTED_COAP_WIFI
+            elif connection_type == 'lte':
+                target_connection_type = constants.__CONNECTION_STATUS_CONNECTED_COAP_LTE
+
+            return self.start_coap(target_connection_type)
+
+        else:
+
+            if connection_type == 'wifi':
+                target_connection_type = constants.__CONNECTION_STATUS_CONNECTED_MQTT_WIFI
+            elif connection_type == 'lte':
+                target_connection_type = constants.__CONNECTION_STATUS_CONNECTED_MQTT_LTE
+
+            return self.start_mqtt(target_connection_type)
+
+    def start_coap(self, connection_type):
+        print_debug(1, 'CoAP Protocol')
+        self.__connection = COAPClient(
+            self.__conf_reader.get_coap_host(),
+            self.__conf_reader.get_coap_port(),
+        )
+        self.__connection_status = connection_type
+        self.__pybytes_protocol.start_coap(
+            self,
+            self.__network_type
+        )
+        return True
+
+    def start_mqtt(self, connection_type):
+        print_debug(1, 'MQTT Protocol')
+        try:
+            self.__connection = MQTTClient(
+                self.__device_id,
+                self.__host,
+                self.__mqtt_download_topic,
+                self.__pybytes_protocol,
+                user=self.__user_name,
+                password=self.__device_id
+            )
+            self.__connection.connect()
+            self.__connection_status = connection_type
+            self.__pybytes_protocol.start_MQTT(
+                self,
+                self.__network_type
+            )
+            print("Connected to MQTT {}".format(self.__host))
+            return True
+        except Exception as ex:
+            if '{}'.format(ex) == '4':
+                print('MQTT ERROR! Bad credentials when connecting to server: "{}"'.format(self.__host))
+            else:
+                print("MQTT ERROR! {}".format(ex))
+            return False

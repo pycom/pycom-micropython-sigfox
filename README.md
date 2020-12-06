@@ -26,7 +26,7 @@ board (PyBoard), the officially supported reference electronic circuit board.
 The following components are actively maintained by Pycom:
 - py/ -- the core Python implementation, including compiler, runtime, and
   core library.
-- exp32/ -- a version of MicroPython that runs on the ESP32 based boards from Pycom.
+- esp32/ -- a version of MicroPython that runs on the ESP32 based boards from Pycom.
 - tests/ -- test framework and test scripts.
 
 Additional components:
@@ -74,7 +74,7 @@ Then when you need the toolchain you can type ``get_esp32`` on the command line 
 You also need the ESP IDF along side this repository in order to build the ESP32 port.
 To get it:
 
-    $ git clone --recursive -b idf_v3.2 https://github.com/pycom/pycom-esp-idf.git
+    $ git clone --recursive -b idf_v3.3.1 https://github.com/pycom/pycom-esp-idf.git
 
 After cloning, if you did not specify the --recursive option, make sure to checkout all the submodules:
 

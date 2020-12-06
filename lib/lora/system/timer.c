@@ -228,6 +228,7 @@ IRAM_ATTR void TimerIrqHandler( void )
 
         if( elapsedTimer->Callback != NULL )
         {
+            // Callback will be processed out of the Interrupt context in a Thread
             modlora_set_timer_callback(elapsedTimer->Callback);
         }
     }

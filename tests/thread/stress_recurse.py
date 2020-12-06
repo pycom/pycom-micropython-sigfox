@@ -3,6 +3,7 @@
 # MIT license; Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
 
 import _thread
+import time
 
 def foo():
     foo()
@@ -21,5 +22,5 @@ _thread.start_new_thread(thread_entry, ())
 
 # busy wait for thread to finish
 while not finished:
-    pass
+    time.sleep(0.01)
 print('done')

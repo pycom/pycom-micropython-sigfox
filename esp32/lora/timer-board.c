@@ -1,7 +1,7 @@
 /*
  * This file is derived from the MicroPython project, http://micropython.org/
  *
- * Copyright (c) 2019, Pycom Limited and its licensors.
+ * Copyright (c) 2020, Pycom Limited and its licensors.
  *
  * This software is licensed under the GNU GPL version 3 or any later version,
  * with permitted additional terms. For more information see the Pycom Licence
@@ -56,17 +56,11 @@ static TimerTime_t TimerTickCounterContext = 0;
  * Value trigging the IRQ
  */
 DRAM_ATTR volatile TimerTime_t TimeoutCntValue = 0;
-extern TaskHandle_t xLoRaTimerTaskHndl;
 
 static IRAM_ATTR void TimerCallback (void) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-
     TimerTickCounter++;
     if (TimeoutCntValue > 0 && TimerTickCounter == TimeoutCntValue) {
         TimerIrqHandler();
-        // Notify the thread so it will wake up when the ISR is complete
-        vTaskNotifyGiveFromISR(xLoRaTimerTaskHndl, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR();
     }
 }
 

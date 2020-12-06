@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -144,7 +144,7 @@ typedef void ( *modlora_timerCallback )( void );
 /******************************************************************************
  EXPORTED DATA
  ******************************************************************************/
-extern TaskHandle_t xLoRaTimerTaskHndl;
+extern DRAM_ATTR TaskHandle_t xLoRaTimerTaskHndl;
 /******************************************************************************
  DECLARE FUNCTIONS
  ******************************************************************************/

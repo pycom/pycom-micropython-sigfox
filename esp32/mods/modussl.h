@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -44,5 +44,10 @@ typedef struct _mp_obj_ssl_socket_t {
     mbedtls_pk_context pk_key;
     uint8_t read_timeout;
 } mp_obj_ssl_socket_t;
+
+typedef struct _mp_obj_ssl_session_t {
+    mp_obj_base_t base;
+    mbedtls_ssl_session saved_session;
+} mp_obj_ssl_session_t;
 
 #endif /* MODUSSL_H_ */

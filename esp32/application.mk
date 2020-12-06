@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, Pycom Limited.
+# Copyright (c) 2020, Pycom Limited.
 #
 # This software is licensed under the GNU GPL version 3 or any
 # later version, with permitted additional terms. For more information
@@ -19,6 +19,13 @@ APP_INC += -Ilte
 APP_INC += -Ican
 APP_INC += -Ibootloader
 APP_INC += -Ifatfs/src/drivers
+ifeq ($(PYGATE_ENABLED), 1)
+APP_INC += -Ipygate/concentrator
+APP_INC += -Ipygate/hal/include
+APP_INC += -Ipygate/lora_pkt_fwd
+APP_INC += -I$(ESP_IDF_COMP_PATH)/pthread/include/
+APP_INC += -I$(ESP_IDF_COMP_PATH)/sntp/include/
+endif
 APP_INC += -Ilittlefs
 APP_INC += -I$(BUILD)
 APP_INC += -I$(BUILD)/genhdr
@@ -35,6 +42,9 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_ringbuf/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_event/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_adc_cal/include
+ifeq ($(PYETH_ENABLED), 1)
+APP_INC += -I$(ESP_IDF_COMP_PATH)/ethernet/include
+endif
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
@@ -73,15 +83,26 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/hci/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/gki/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/api/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/bluedroid/btc/include
+
+ifeq ($(MOD_COAP_ENABLED), 1)
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/include/coap
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/libcoap/examples
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/coap/port/include/coap
+endif
+
+APP_INC += -I$(ESP_IDF_COMP_PATH)/mdns/include
 APP_INC += -I../lib/mp-readline
 APP_INC += -I../lib/netutils
 APP_INC += -I../lib/oofatfs
 APP_INC += -I../lib
 APP_INC += -I../drivers/sx127x
+ifeq ($(PYGATE_ENABLED), 1)
+APP_INC += -I../drivers/sx1308
+endif
+ifeq ($(PYETH_ENABLED), 1)
+APP_INC += -I../drivers/ksz8851
+endif
 APP_INC += -I../ports/stm32
 APP_INC += -I$(ESP_IDF_COMP_PATH)/openthread/src
 
@@ -159,9 +180,31 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machrmt.c \
 	lwipsocket.c \
 	machtouch.c \
+	modmdns.c \
+	)
+ifeq ($(MOD_COAP_ENABLED), 1)
+APP_INC += -Ibsdiff
+APP_MODS_SRC_C += $(addprefix mods/,\
 	modcoap.c \
-	esp_espnow.c \
-)
+	)
+endif
+
+ifeq ($(DIFF_UPDATE_ENABLED), 1)
+APP_INC += -Ibzlib/
+APP_MODS_SRC_C += $(addprefix bsdiff/,\
+	bspatch.c \
+	)
+APP_MODS_SRC_C += $(addprefix bzlib/,\
+	blocksort.c \
+	huffman.c \
+	crctable.c \
+	randtable.c \
+	compress.c \
+	decompress.c \
+	bzlib.c \
+	bzlib_ext.c \
+	)
+endif
 
 APP_MODS_LORA_SRC_C = $(addprefix mods/,\
 	modlora.c \
@@ -184,6 +227,8 @@ APP_UTIL_SRC_C = $(addprefix util/,\
 	mpsleep.c \
 	timeutils.c \
 	esp32chipinfo.c \
+	pycom_general_util.c \
+	str_utils.c \
 	)
 
 APP_FATFS_SRC_C = $(addprefix fatfs/src/,\
@@ -230,12 +275,40 @@ APP_LIB_LORA_SRC_C = $(addprefix lib/lora/,\
 	mac/region/RegionEU868.c \
 	mac/region/RegionUS915.c \
 	mac/region/RegionCN470.c \
+	mac/region/RegionEU433.c \
 	mac/region/RegionIN865.c \
 	system/delay.c \
 	system/gpio.c \
 	system/timer.c \
 	system/crypto/aes.c \
 	system/crypto/cmac.c \
+	)
+
+APP_SX1308_SRC_C = $(addprefix drivers/sx1308/,\
+	sx1308.c \
+	sx1308-spi.c \
+	)
+
+APP_PYGATE_SRC_C = $(addprefix pygate/,\
+	concentrator/loragw_reg_esp.c \
+	concentrator/loragw_hal_esp.c \
+	concentrator/cmd_manager.c \
+	hal/loragw_aux.c \
+	hal/loragw_mcu.c \
+	hal/loragw_com_esp.c \
+	hal/loragw_com.c \
+	hal/loragw_hal.c \
+	hal/loragw_radio.c \
+	hal/loragw_reg.c \
+	lora_pkt_fwd/base64.c \
+	lora_pkt_fwd/jitqueue.c \
+	lora_pkt_fwd/lora_pkt_fwd.c \
+	lora_pkt_fwd/parson.c \
+	lora_pkt_fwd/timersync.c \
+	)
+
+APP_ETHERNET_SRC_C = $(addprefix mods/,\
+	modeth.c \
 	)
 
 APP_SX1272_SRC_C = $(addprefix drivers/sx127x/,\
@@ -246,7 +319,11 @@ APP_SX1276_SRC_C = $(addprefix drivers/sx127x/,\
 	sx1276/sx1276.c \
 	)
 
-APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/,\
+APP_KSZ8851_SRC_C = $(addprefix drivers/ksz8851/,\
+	ksz8851.c \
+	)
+
+APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/src/,\
 	manufacturer_api.c \
 	radio.c \
 	ti_aes_128.c \
@@ -255,7 +332,7 @@ APP_SIGFOX_SRC_SIPY_C = $(addprefix sigfox/,\
 	modsigfox.c \
 	)
 
-APP_SIGFOX_SRC_FIPY_LOPY4_C = $(addprefix sigfox/,\
+APP_SIGFOX_SRC_FIPY_LOPY4_C = $(addprefix sigfox/src/,\
 	manufacturer_api.c \
 	radio_sx127x.c \
 	ti_aes_128.c \
@@ -268,7 +345,7 @@ APP_SIGFOX_MOD_SRC_C = $(addprefix mods/,\
 	modsigfox_api.c \
 	)
 
-APP_SIGFOX_TARGET_SRC_C = $(addprefix sigfox/targets/,\
+APP_SIGFOX_TARGET_SRC_C = $(addprefix sigfox/src/targets/,\
 	cc112x_spi.c \
 	hal_int.c \
 	hal_spi_rf_trxeb.c \
@@ -317,12 +394,16 @@ endif
 ifeq ($(BOARD), $(filter $(BOARD), LOPY4))
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1276_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
 endif
+
+ifeq ($(MOD_SIGFOX_ENABLED), 1)
 ifeq ($(BOARD), $(filter $(BOARD), SIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
 ifeq ($(BOARD), $(filter $(BOARD), LOPY4 FIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_SIGFOX_MOD_SRC_C:.c=.o))
 endif
+endif
+
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_LTE_SRC_C:.c=.o) $(APP_MODS_LTE_SRC_C:.c=.o))
 endif
@@ -338,6 +419,18 @@ OBJ += $(addprefix $(BUILD)/, $(APP_MAIN_SRC_C:.c=.o) $(APP_HAL_SRC_C:.c=.o) $(A
 OBJ += $(addprefix $(BUILD)/, $(APP_MODS_SRC_C:.c=.o) $(APP_STM_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FATFS_SRC_C:.c=.o) $(APP_LITTLEFS_SRC_C:.c=.o) $(APP_UTIL_SRC_C:.c=.o) $(APP_TELNET_SRC_C:.c=.o))
 OBJ += $(addprefix $(BUILD)/, $(APP_FTP_SRC_C:.c=.o) $(APP_CAN_SRC_C:.c=.o))
+ifeq ($(PYGATE_ENABLED), 1)
+$(info Pygate Enabled)
+OBJ += $(addprefix $(BUILD)/, $(APP_SX1308_SRC_C:.c=.o) $(APP_PYGATE_SRC_C:.c=.o))
+CFLAGS += -DPYGATE_ENABLED
+SRC_QSTR += $(APP_SX1308_SRC_C) $(APP_PYGATE_SRC_C)
+endif
+ifeq ($(PYETH_ENABLED), 1)
+$(info PyEthernet Enabled)
+OBJ += $(addprefix $(BUILD)/, $(APP_KSZ8851_SRC_C:.c=.o) $(APP_ETHERNET_SRC_C:.c=.o))
+CFLAGS += -DPYETH_ENABLED
+SRC_QSTR += $(APP_KSZ8851_SRC_C) $(APP_ETHERNET_SRC_C)
+endif
 OBJ += $(BUILD)/pins.o
 
 BOOT_OBJ = $(addprefix $(BUILD)/, $(BOOT_SRC_C:.c=.o))
@@ -348,7 +441,9 @@ ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
 SRC_QSTR += $(APP_MODS_LORA_SRC_C)
 endif
 ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
+ifeq ($(MOD_SIGFOX_ENABLED), 1)
 SRC_QSTR += $(APP_SIGFOX_MOD_SRC_C)
+endif
 endif
 ifeq ($(BOARD),$(filter $(BOARD), FIPY GPY))
 SRC_QSTR += $(APP_MODS_LTE_SRC_C)
@@ -364,30 +459,30 @@ endif # ifeq ($(OPENTHREAD), on)
 # SRC_QSTR
 SRC_QSTR_AUTO_DEPS +=
 
-BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld
+BOOT_LDFLAGS = $(LDFLAGS) -T esp32.bootloader.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.bootloader.rom.ld -T esp32.rom.spiram_incompatible_fns.ld -T esp32.extram.bss.ld
 
 # add the application linker script(s)
-APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.common.ld -T esp32.rom.ld -T esp32.peripherals.ld -T wifi_iram.ld
+APP_LDFLAGS += $(LDFLAGS) -T esp32_out.ld -T esp32.project.ld -T esp32.rom.ld -T esp32.peripherals.ld -T esp32.rom.libgcc.ld -T esp32.extram.bss.ld
 
 # add the application specific CFLAGS
 CFLAGS += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM -DFFCONF_H=\"lib/oofatfs/ffconf.h\" -DWITH_POSIX
 CFLAGS_SIGFOX += $(APP_INC) -DMICROPY_NLR_SETJMP=1 -DMBEDTLS_CONFIG_FILE='"mbedtls/esp_config.h"' -DHAVE_CONFIG_H -DESP_PLATFORM
-CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DREGION_CN470 -DREGION_IN865 -DBASE=0 -DPYBYTES=1 
-# Specify if this is base or Pybytes Firmware
-ifeq ($(VARIANT),BASE)
-CFLAGS += -DVARIANT=0
+CFLAGS += -DREGION_AS923 -DREGION_AU915 -DREGION_EU868 -DREGION_US915 -DREGION_CN470 -DREGION_EU433 -DREGION_IN865 -DBASE=0 -DPYBYTES=1 
+
+# Specify if this is Firmware build has Pybytes enabled
+ifeq ($(PYBYTES_ENABLED), 1)
+$(info Pybytes Enabled)
+CFLAGS += -DVARIANT=1
 else
-	ifeq ($(VARIANT),PYBYTES)
-	CFLAGS += -DVARIANT=1
-	else
-	$(error Invalid Variant specified)
-	endif
-endif  
+CFLAGS += -DVARIANT=0
+endif
+
 # Give the possibility to use LittleFs on /flash, otherwise FatFs is used
 FS ?= ""
 ifeq ($(FS), LFS)
     CFLAGS += -DFS_USE_LITTLEFS
 endif
+
 # add the application archive, this order is very important
 APP_LIBS = -Wl,--start-group $(LIBS) $(BUILD)/application.a -Wl,--end-group -Wl,-EL
 
@@ -425,30 +520,36 @@ ifeq ($(BOARD), LOPY)
 endif
 ifeq ($(BOARD), LOPY4)
     APP_BIN = $(BUILD)/lopy4.bin
-    $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    ifeq ($(MOD_SIGFOX_ENABLED), 1)
+        $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    endif
 endif
 ifeq ($(BOARD), SIPY)
     APP_BIN = $(BUILD)/sipy.bin
-    $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    ifeq ($(MOD_SIGFOX_ENABLED), 1)
+        $(BUILD)/sigfox/radio.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    endif
 endif
 ifeq ($(BOARD), GPY)
     APP_BIN = $(BUILD)/gpy.bin
 endif
 ifeq ($(BOARD), FIPY)
     APP_BIN = $(BUILD)/fipy.bin
-    $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    ifeq ($(MOD_SIGFOX_ENABLED), 1)
+        $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    endif
 endif
 
 PART_BIN_8MB = $(BUILD)/lib/partitions_8MB.bin
@@ -513,9 +614,12 @@ endif
 ifeq ($(TARGET), boot_app)
 all: $(BOOT_BIN) $(APP_BIN)
 endif
+ifeq ($(TARGET), sigfox)
+include sigfox.mk
+endif
 .PHONY: all CHECK_DEP
 
-$(info $(VARIANT) Variant) 
+$(info Variant: $(VARIANT))
 ifeq ($(SECURE), on)
 
 # add #define CONFIG_FLASH_ENCRYPTION_ENABLE 1 used for Flash Encryption
@@ -525,6 +629,14 @@ CFLAGS += -DCONFIG_FLASH_ENCRYPTION_ENABLED=1
 # add #define CONFIG_SECURE_BOOT_ENABLED 1 used for Secure Boot
 # it can also be added permanently in sdkconfig.h
 CFLAGS += -DCONFIG_SECURE_BOOT_ENABLED=1
+
+define resolvepath
+$(abspath $(foreach dir,$(1),$(if $(filter /%,$(dir)),$(dir),$(subst //,/,$(2)/$(dir)))))
+endef
+
+define dequote
+$(subst ",,$(1))
+endef
 
 # find the configured private key file
 ORIG_SECURE_KEY := $(call resolvepath,$(call dequote,$(SECURE_KEY)),$(PROJECT_PATH))
@@ -640,7 +752,7 @@ $(BUILD)/application.a: $(OBJ)
 	$(ECHO) "AR $@"
 	$(Q) rm -f $@
 	$(Q) $(AR) cru $@ $^
-$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld $(SECURE_BOOT_VERIFICATION_KEY)
+$(BUILD)/application.elf: $(BUILD)/application.a $(BUILD)/esp32_out.ld esp32.project.ld $(SECURE_BOOT_VERIFICATION_KEY)
 ifeq ($(SECURE), on)
 # unpack libbootloader_support.a, and archive again using the right key for verifying signatures
 	$(ECHO) "Inserting verification key $(SECURE_BOOT_VERIFICATION_KEY) in $@"
@@ -792,8 +904,8 @@ GEN_PINS_SRC = $(BUILD)/pins.c
 GEN_PINS_HDR = $(HEADER_BUILD)/pins.h
 GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 
-.NOTPARALLEL: CHECK_DEP $(OBJ)
-.NOTPARALLEL: CHECK_DEP $(BOOT_OBJ)
+# .NOTPARALLEL: CHECK_DEP $(OBJ)
+# .NOTPARALLEL: CHECK_DEP $(BOOT_OBJ)
 
 $(BOOT_OBJ) $(OBJ): | CHECK_DEP
 
@@ -806,8 +918,9 @@ $(OBJ): | $(GEN_PINS_HDR)
 
 # Check Dependencies (IDF version, Frozen code and IDF LIBS)
 CHECK_DEP:
-	$(Q) bash tools/idfVerCheck.sh $(IDF_PATH) "$(IDF_VERSION)"
+	$(Q) bash tools/idfVerCheck.sh $(IDF_PATH) "$(IDF_HASH)"
 	$(Q) bash tools/mpy-build-check.sh $(BOARD) $(BTYPE) $(VARIANT)
+	$(Q) $(PYTHON) check_secure_boot.py --SECURE $(SECURE)
 ifeq ($(COPY_IDF_LIB), 1)
 	$(ECHO) "COPY IDF LIBRARIES"
 	$(Q) $(PYTHON) get_idf_libs.py --idflibs $(IDF_PATH)/examples/wifi/scan/build

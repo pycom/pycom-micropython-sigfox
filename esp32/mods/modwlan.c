@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -58,6 +58,8 @@
 #include "mpirq.h"
 #include "mptask.h"
 #include "pycom_config.h"
+#include "pycom_general_util.h"
+#include "app_sys_evt.h"
 
 /******************************************************************************
  DEFINE TYPES
@@ -67,7 +69,6 @@
  DEFINE CONSTANTS
  ******************************************************************************/
 
-#define FILE_READ_SIZE                      256
 #define BSSID_MAX_SIZE                        6
 #define MAX_WLAN_KEY_SIZE                    65
 #define MAX_AP_CONNECTED_STA                4
@@ -93,17 +94,16 @@ wlan_obj_t wlan_obj = {
     .disconnected = true,
     .irq_flags = 0,
     .irq_enabled = false,
-    .enable_servers = false,
     .pwrsave = false,
     .is_promiscuous = false,
-    .sta_conn_timeout = false
+    .sta_conn_timeout = false,
+    .country = NULL
 };
 
 /* TODO: Maybe we can add possibility to create IRQs for wifi events */
 
 static EventGroupHandle_t wifi_event_group;
 
-static bool mod_wlan_is_deinit = false;
 static uint16_t mod_wlan_ap_number_of_connections = 0;
 
 /* Variables holding wlan conn params for wakeup recovery of connections */
@@ -135,6 +135,7 @@ SemaphoreHandle_t smartConfigTimeout_mutex;
 
 static const int ESPTOUCH_DONE_BIT = BIT1;
 static const int ESPTOUCH_STOP_BIT = BIT2;
+static const int ESPTOUCH_SLEEP_STOP_BIT = BIT3;
 static bool wlan_smart_config_enabled = false;
 
 /******************************************************************************
@@ -145,8 +146,6 @@ static bool wlan_smart_config_enabled = false;
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-STATIC void wlan_servers_start (void);
-STATIC void wlan_servers_stop (void);
 STATIC void wlan_validate_mode (uint mode);
 STATIC void wlan_set_mode (uint mode);
 STATIC void wlan_validate_bandwidth (wifi_bandwidth_t mode);
@@ -164,7 +163,6 @@ STATIC void wlan_set_antenna (uint8_t antenna);
 static esp_err_t wlan_event_handler(void *ctx, system_event_t *event);
 STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_auth_mode_t auth, const char* key, int32_t timeout, const wlan_wpa2_ent_obj_t * const wpa2_ent, const char *hostname, uint8_t channel);
 static void wlan_init_wlan_recover_params(void);
-static char *wlan_read_file (const char *file_path, vstr_t *vstr);
 static void wlan_timer_callback( TimerHandle_t xTimer );
 static void wlan_validate_country(const char * country);
 static void wlan_validate_country_policy(uint8_t policy);
@@ -186,7 +184,7 @@ STATIC void wlan_callback_handler(void* arg);
 void wlan_pre_init (void) {
     tcpip_adapter_init();
     wifi_event_group = xEventGroupCreate();
-    ESP_ERROR_CHECK(esp_event_loop_init(wlan_event_handler, NULL));
+    app_sys_register_evt_cb(APP_SYS_EVT_WIFI, wlan_event_handler);
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
     wlan_wpa2_ent.ca_certs_path = NULL;
     wlan_wpa2_ent.client_cert_path = NULL;
@@ -205,24 +203,36 @@ void wlan_pre_init (void) {
     wlan_obj.mutex = xSemaphoreCreateMutex();
     timeout_mutex = xSemaphoreCreateMutex();
     smartConfigTimeout_mutex = xSemaphoreCreateMutex();
-    memcpy(wlan_obj.country.cc, (const char*)"NA", sizeof(wlan_obj.country.cc));
     // create Smart Config Task
     xTaskCreatePinnedToCore(TASK_SMART_CONFIG, "SmartConfig", SMART_CONF_TASK_STACK_SIZE / sizeof(StackType_t), NULL, SMART_CONF_TASK_PRIORITY, &SmartConfTaskHandle, 1);
 }
 
 void wlan_resume (bool reconnect)
 {
-    if (!wlan_obj.started && mod_wlan_is_deinit) {
-
-        mod_wlan_is_deinit = false;
-
-        if(reconnect)
-        {
-            wifi_country_t* country = NULL;
-
-            if(strcmp((const char*)wlan_obj.country.cc, "NA"))
-            {
-                country = &(wlan_obj.country);
+    // Configure back WLAN as it was before if reconnect is TRUE
+    if(reconnect) {
+        // If SmartConfig enabled then re-start it
+        if(wlan_smart_config_enabled) {
+            // Do initial configuration as at this point the Wifi Driver is not initialized
+            wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+            ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+            ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+            wlan_set_antenna(wlan_obj.antenna);
+            wlan_set_mode(wlan_obj.mode);
+            wlan_set_bandwidth(wlan_obj.bandwidth);
+            if(wlan_obj.country != NULL) {
+                esp_wifi_set_country(wlan_obj.country);
+            }
+            xTaskNotifyGive(SmartConfTaskHandle);
+        }
+        // Otherwise set up WLAN with the same parameters as it was before
+        else {
+            // In wlan_setup the wlan_obj.country is overwritten with the value coming from setup_config, need to save it out
+            wifi_country_t country;
+            wifi_country_t* country_ptr = NULL;
+            if(wlan_obj.country != NULL) {
+                memcpy(&country, wlan_obj.country, sizeof(wifi_country_t));
+                country_ptr = &country;
             }
 
             wlan_internal_setup_t setup_config = {
@@ -237,11 +247,11 @@ void wlan_resume (bool reconnect)
                     false,
                     wlan_conn_recover_hidden,
                     wlan_obj.bandwidth,
-                    country,
+                    country_ptr,
                     &(wlan_obj.max_tx_pwr)
             };
 
-            // initialize the wlan subsystem
+            // Initialize & reconnect to the previous connection
             wlan_setup(&setup_config);
         }
     }
@@ -254,9 +264,6 @@ void wlan_setup (wlan_internal_setup_t *config) {
 
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
-    // stop the servers
-    wlan_servers_stop();
-
     esp_wifi_get_mac(WIFI_IF_STA, wlan_obj.mac);
 
     wlan_set_antenna(config->antenna);
@@ -264,12 +271,15 @@ void wlan_setup (wlan_internal_setup_t *config) {
     wlan_set_bandwidth(config->bandwidth);
 
     if (config->country != NULL) {
-
-        if(ESP_OK != esp_wifi_set_country(config->country))
+        esp_err_t ret = esp_wifi_set_country(config->country);
+        if(ESP_OK != ret)
         {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
         }
-        memcpy(&(wlan_obj.country), config->country, sizeof(wlan_obj.country));
+        if(wlan_obj.country == NULL) {
+            wlan_obj.country = (wifi_country_t*)malloc(sizeof(wifi_country_t));
+        }
+        memcpy(wlan_obj.country, config->country, sizeof(wifi_country_t));
     }
 
     if(config->max_tx_pr != NULL)
@@ -286,6 +296,7 @@ void wlan_setup (wlan_internal_setup_t *config) {
     {
         case WIFI_MODE_AP:
            MP_THREAD_GIL_EXIT();
+           // wlan_setup_ap must be called only when GIL is not locked
            wlan_setup_ap (config->ssid_ap, config->auth, config->key_ap, config->channel, config->add_mac, config->hidden);
            // Start Wifi
            esp_wifi_start();
@@ -294,15 +305,33 @@ void wlan_setup (wlan_internal_setup_t *config) {
         break;
         case WIFI_MODE_APSTA:
         case WIFI_MODE_STA:
+            MP_THREAD_GIL_EXIT();
             if(config->mode == WIFI_MODE_APSTA)
             {
+                // wlan_setup_ap must be called only when GIL is not locked
                 wlan_setup_ap (config->ssid_ap, config->auth, config->key_ap, config->channel, config->add_mac, config->hidden);
             }
-            MP_THREAD_GIL_EXIT();
             // Start Wifi
             esp_wifi_start();
             wlan_obj.started = true;
             if (config->ssid_sta != NULL) {
+                if (config->auth == WIFI_AUTH_WPA2_ENTERPRISE) {
+
+                    // Take back the GIL as the pycom_util_read_file() uses MicroPython APIs (allocates memory with GC)
+                    MP_THREAD_GIL_ENTER();
+
+                    if (wlan_wpa2_ent.ca_certs_path != NULL) {
+                        pycom_util_read_file(wlan_wpa2_ent.ca_certs_path, &wlan_obj.vstr_ca);
+                    }
+
+                    if (wlan_wpa2_ent.client_key_path != NULL && wlan_wpa2_ent.client_cert_path != NULL) {
+                        pycom_util_read_file(wlan_wpa2_ent.client_key_path, &wlan_obj.vstr_key);
+                        pycom_util_read_file(wlan_wpa2_ent.client_cert_path, &wlan_obj.vstr_cert);
+                    }
+
+                    MP_THREAD_GIL_EXIT();
+                }
+
                 // connect to the requested access point
                 wlan_do_connect (config->ssid_sta, NULL, config->auth, config->key_sta, 30000, &wlan_wpa2_ent, NULL, 0);
             }
@@ -312,7 +341,6 @@ void wlan_setup (wlan_internal_setup_t *config) {
         default:
             break;
     }
-    wlan_servers_start();
 }
 
 void wlan_get_mac (uint8_t *macAddress) {
@@ -488,22 +516,8 @@ STATIC void wlan_stop_smartConfig_timer()
     }
     xSemaphoreGive(smartConfigTimeout_mutex);
 }
-STATIC void wlan_servers_start (void) {
-    // start the servers if they were enabled before
-    if (!servers_are_enabled()) {
-        servers_start();
-        wlan_obj.enable_servers = true;
-    }
-}
 
-STATIC void wlan_servers_stop (void) {
-    // stop the servers if they are enabled
-    if (servers_are_enabled()) {
-        servers_stop();
-        wlan_obj.enable_servers = false;
-    }
-}
-
+// Must be called only when GIL is not locked
 STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uint32_t channel, bool add_mac, bool hidden) {
     uint32_t ssid_len = wlan_set_ssid_internal (ssid, strlen(ssid), add_mac);
     wlan_set_security_internal(auth, key);
@@ -523,7 +537,10 @@ STATIC void wlan_setup_ap (const char *ssid, uint32_t auth, const char *key, uin
     //get mac of AP
     esp_wifi_get_mac(WIFI_IF_AP, wlan_obj.mac_ap);
 
+    // Need to take back the GIL as mod_network_register_nic() uses MicroPython API and wlan_setup_ap() is called when GIL is not locked
+    MP_THREAD_GIL_ENTER();
     mod_network_register_nic(&wlan_obj);
+    MP_THREAD_GIL_EXIT();
 }
 
 STATIC void wlan_validate_mode (uint mode) {
@@ -743,10 +760,11 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
         goto os_error;
     }
 
+    // The certificate files are already read at this point because this function runs outside of GIL, and the file_read functions uses MicroPython APIs
     if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
         // CA Certificate is not mandatory
         if (wpa2_ent->ca_certs_path != NULL) {
-            if (wlan_read_file(wpa2_ent->ca_certs_path, &wlan_obj.vstr_ca)) {
+            if (wlan_obj.vstr_ca.buf != NULL) {
                 if (ESP_OK != esp_wifi_sta_wpa2_ent_set_ca_cert((unsigned char*)wlan_obj.vstr_ca.buf, (int)wlan_obj.vstr_ca.len)) {
                     goto os_error;
                 }
@@ -757,7 +775,7 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
 
         // client certificate is necessary only in EAP-TLS method, this is ensured by wlan_validate_certificates() function
         if (wpa2_ent->client_key_path != NULL && wpa2_ent->client_cert_path != NULL) {
-            if (wlan_read_file(wpa2_ent->client_key_path, &wlan_obj.vstr_key) && wlan_read_file(wpa2_ent->client_cert_path, &wlan_obj.vstr_cert)) {
+            if ((wlan_obj.vstr_cert.buf != NULL) && (wlan_obj.vstr_key.buf != NULL)) {
                 if (ESP_OK != esp_wifi_sta_wpa2_ent_set_cert_key((unsigned char*)wlan_obj.vstr_cert.buf, (int)wlan_obj.vstr_cert.len,
                                                                  (unsigned char*)wlan_obj.vstr_key.buf, (int)wlan_obj.vstr_key.len, NULL, 0)) {
                     goto os_error;
@@ -822,78 +840,6 @@ os_error:
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
 }
 
-STATIC char *wlan_read_file (const char *file_path, vstr_t *vstr) {
-    vstr_init(vstr, FILE_READ_SIZE);
-    char *filebuf = vstr->buf;
-    mp_uint_t actualsize;
-    mp_uint_t totalsize = 0;
-    static const TCHAR *path_relative;
-
-    if(isLittleFs(file_path))
-    {
-        vfs_lfs_struct_t* littlefs = lookup_path_littlefs(file_path, &path_relative);
-        if (littlefs == NULL) {
-            return NULL;
-        }
-
-        xSemaphoreTake(littlefs->mutex, portMAX_DELAY);
-
-        lfs_file_t fp;
-        int res = lfs_file_open(&littlefs->lfs, &fp, path_relative, LFS_O_RDONLY);
-        if(res < LFS_ERR_OK)
-        {
-            return NULL;
-        }
-
-        while (true) {
-            actualsize = lfs_file_read(&littlefs->lfs, &fp, filebuf, FILE_READ_SIZE);
-            if (actualsize < LFS_ERR_OK) {
-                return NULL;
-            }
-            totalsize += actualsize;
-            if (actualsize < FILE_READ_SIZE) {
-                break;
-            } else {
-                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
-            }
-        }
-        lfs_file_close(&littlefs->lfs, &fp);
-
-        xSemaphoreGive(littlefs->mutex);
-
-    }
-    else
-    {
-        FATFS *fs = lookup_path_fatfs(file_path, &path_relative);
-        if (fs == NULL) {
-            return NULL;
-        }
-        FIL fp;
-        FRESULT res = f_open(fs, &fp, path_relative, FA_READ);
-        if (res != FR_OK) {
-            return NULL;
-        }
-
-        while (true) {
-            FRESULT res = f_read(&fp, filebuf, FILE_READ_SIZE, (UINT *)&actualsize);
-            if (res != FR_OK) {
-                f_close(&fp);
-                return NULL;
-            }
-            totalsize += actualsize;
-            if (actualsize < FILE_READ_SIZE) {
-                break;
-            } else {
-                filebuf = vstr_extend(vstr, FILE_READ_SIZE);
-            }
-        }
-        f_close(&fp);
-    }
-
-    vstr->len = totalsize;
-    vstr_null_terminated_str(vstr);
-    return vstr->buf;
-}
 
 static void wlan_init_wlan_recover_params(void)
 {
@@ -1020,9 +966,8 @@ static void TASK_SMART_CONFIG (void *pvParameters) {
     static uint32_t thread_notification;
 
 smartConf_init:
-    wlan_smart_config_enabled = false;
     connected = false;
-    // Block task till notification is recieved
+    // Block task till notification is received
     thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     if (thread_notification) {
@@ -1037,22 +982,27 @@ smartConf_init:
         }
         CHECK_ESP_ERR(esp_smartconfig_set_type(SC_TYPE_ESPTOUCH), smartConf_init)
         CHECK_ESP_ERR(esp_smartconfig_start(smart_config_callback), smartConf_init)
-        wlan_smart_config_enabled = true;
         goto smartConf_start;
     }
     goto smartConf_init;
 
 smartConf_start:
-    //mp_printf(&mp_plat_print, "\n-------SmartConfig Started-------\n");
+    wlan_smart_config_enabled = true;
     /*create Timer */
     wlan_smartConfig_timeout = xTimerCreate("smartConfig_Timer", 60000 / portTICK_PERIOD_MS, 0, 0, wlan_timer_callback);
     /*start Timer */
     xTimerStart(wlan_smartConfig_timeout, 0);
     while (1) {
-        uxBits = xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT | ESPTOUCH_STOP_BIT, true, false, portMAX_DELAY);
+        uxBits = xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT | ESPTOUCH_STOP_BIT | ESPTOUCH_SLEEP_STOP_BIT, true, false, portMAX_DELAY);
         if(uxBits & ESPTOUCH_STOP_BIT) {
+            wlan_smart_config_enabled = false;
             esp_smartconfig_stop();
             //mp_printf(&mp_plat_print, "\nSmart Config Aborted or Timed-out\n");
+            goto smartConf_init;
+        }
+        if(uxBits & ESPTOUCH_SLEEP_STOP_BIT) {
+            esp_smartconfig_stop();
+            //mp_printf(&mp_plat_print, "\nSmart Config Aborted because sleep operation has been requested\n");
             goto smartConf_init;
         }
         if(uxBits & CONNECTED_BIT) {
@@ -1061,6 +1011,7 @@ smartConf_start:
         }
         if(uxBits & ESPTOUCH_DONE_BIT) {
             //mp_printf(&mp_plat_print, "smartconfig over\n");
+            wlan_smart_config_enabled = false;
             esp_smartconfig_stop();
             wlan_stop_smartConfig_timer();
             //set event flag
@@ -1312,17 +1263,30 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_init_obj, 1, wlan_init);
 
 mp_obj_t wlan_deinit(mp_obj_t self_in) {
 
-    wlan_servers_stop();
-
     if (wlan_obj.started)
     {
+        bool called_from_sleep = false;
+
         // stop smart config if enabled
-        if(wlan_smart_config_enabled)
-        {
-            xEventGroupSetBits(wifi_event_group, ESPTOUCH_STOP_BIT);
-            vTaskDelay(100/portTICK_PERIOD_MS);
+        if(wlan_smart_config_enabled) {
+            // If the input parameter is not the object itself but a simple boolean, it is interpreted that
+            // wlan_deinit is called from machine_sleep()
+            if(mp_obj_get_type(self_in) == &mp_type_bool) {
+                called_from_sleep = (bool)mp_obj_get_int(self_in);
+                if(called_from_sleep == true) {
+                    // stop smart config with special event
+                    xEventGroupSetBits(wifi_event_group, ESPTOUCH_SLEEP_STOP_BIT);
+                    vTaskDelay(100/portTICK_PERIOD_MS);
+                }
+            }
+            else {
+                // stop smart config with original STOP event
+                xEventGroupSetBits(wifi_event_group, ESPTOUCH_STOP_BIT);
+                vTaskDelay(100/portTICK_PERIOD_MS);
+            }
         }
 
+        mod_network_deregister_nic(&wlan_obj);
         esp_wifi_stop();
 
         /* wait for sta and Soft-AP to stop */
@@ -1333,7 +1297,11 @@ mp_obj_t wlan_deinit(mp_obj_t self_in) {
 
         /* stop and free wifi resource */
         esp_wifi_deinit();
-        mod_wlan_is_deinit = true;
+        // Only free up memory area of country information if this deinit is not called from machine.sleep()
+        if(called_from_sleep == false) {
+            free(wlan_obj.country);
+            wlan_obj.country = NULL;
+        }
         wlan_obj.started = false;
         mod_network_deregister_nic(&wlan_obj);
     }
@@ -1496,7 +1464,7 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
     esp_wifi_scan_get_ap_num(&ap_num); // get the number of scanned APs
 
     if (ap_num > 0) {
-        ap_record_buffer = pvPortMalloc(ap_num * sizeof(wifi_ap_record_t));
+        ap_record_buffer = malloc(ap_num * sizeof(wifi_ap_record_t));
         if (ap_record_buffer == NULL) {
             mp_raise_OSError(MP_ENOMEM);
         }
@@ -1516,7 +1484,7 @@ STATIC mp_obj_t wlan_scan(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
                 mp_obj_list_append(nets, mp_obj_new_attrtuple(wlan_scan_info_fields, 5, tuple));
             }
         }
-        vPortFree(ap_record_buffer);
+        free(ap_record_buffer);
     }
 
     return nets;
@@ -2023,6 +1991,40 @@ STATIC mp_obj_t wlan_ap_sta_list (mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_ap_sta_list_obj, wlan_ap_sta_list);
 
+STATIC mp_obj_t wlan_ap_tcpip_sta_list (mp_obj_t self_in) {
+    STATIC const qstr wlan_sta_ifo_fields[] = {
+        MP_QSTR_mac, MP_QSTR_IP
+    };
+    uint8_t index;
+    wifi_sta_list_t wifi_sta_list;
+    esp_wifi_ap_get_sta_list(&wifi_sta_list);
+    tcpip_adapter_sta_list_t sta_list;
+    wlan_obj_t * self = self_in;
+
+    mp_obj_t sta_out_list = mp_obj_new_list(0, NULL);
+    /* Check if AP mode is enabled */
+    if (self->mode == WIFI_MODE_AP || self->mode == WIFI_MODE_APSTA) {
+        tcpip_adapter_get_sta_list(&wifi_sta_list, &sta_list);
+
+        mp_obj_t tuple[2];
+        for(index = 0; index < MAX_AP_CONNECTED_STA && index < sta_list.num; index++)
+        {
+            tuple[0] = mp_obj_new_bytes((const byte *)sta_list.sta[index].mac, 6);
+            tuple[1] = netutils_format_ipv4_addr((uint8_t *)&sta_list.sta[index].ip.addr, NETUTILS_BIG);
+
+            /*insert tuple */
+            mp_obj_list_append(sta_out_list, mp_obj_new_attrtuple(wlan_sta_ifo_fields, 2, tuple));
+        }
+    }
+    else
+    {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+    }
+    
+    return sta_out_list;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(wlan_ap_tcpip_sta_list_obj, wlan_ap_tcpip_sta_list);
+
 STATIC mp_obj_t wlan_joined_ap_info (mp_obj_t self_in)
 {
     STATIC const qstr wlan_sta_ifo_fields[] = {
@@ -2483,7 +2485,10 @@ STATIC mp_obj_t wlan_country(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
 
-    memcpy(&(wlan_obj.country), &country_config, sizeof(wlan_obj.country));
+    if(wlan_obj.country == NULL) {
+        wlan_obj.country = (wifi_country_t*)malloc(sizeof(wifi_country_t));
+    }
+    memcpy(wlan_obj.country, &country_config, sizeof(wifi_country_t));
 
     return mp_const_none;
 }
@@ -2706,6 +2711,7 @@ STATIC const mp_map_elem_t wlan_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_antenna),             (mp_obj_t)&wlan_antenna_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_mac),                 (mp_obj_t)&wlan_mac_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_ap_sta_list),         (mp_obj_t)&wlan_ap_sta_list_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ap_tcpip_sta_list),   (mp_obj_t)&wlan_ap_tcpip_sta_list_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_max_tx_power),        (mp_obj_t)&wlan_max_tx_power_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_country),             (mp_obj_t)&wlan_country_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_joined_ap_info),      (mp_obj_t)&wlan_joined_ap_info_obj },

@@ -4,6 +4,7 @@
 
 import gc
 import _thread
+import time
 
 def thread_entry(n):
     # allocate a bytearray and fill it
@@ -31,4 +32,4 @@ for i in range(n_thread):
 
 # busy wait for threads to finish
 while n_finished < n_thread:
-    pass
+    time.sleep(0.01)

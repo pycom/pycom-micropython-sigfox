@@ -1,10 +1,24 @@
 '''
-Copyright (c) 2019, Pycom Limited.
+Copyright (c) 2020, Pycom Limited.
 This software is licensed under the GNU GPL version 3 or any
 later version, with permitted additional terms. For more information
 see the Pycom Licence v1.0 document supplied with this file, or
 available at https://www.pycom.io/opensource/licensing
 '''
+try:
+    from pybytes_debug import print_debug
+except:
+    from _pybytes_debug import print_debug
+
+try:
+    from pybytes_constants import constants
+except:
+    from _pybytes_constants import constants
+
+try:
+    import urequest
+except:
+    import _urequest as urequest
 
 import network
 import socket
@@ -17,11 +31,6 @@ import gc
 import pycom
 import os
 from binascii import hexlify
-
-try:
-    from pybytes_debug import print_debug
-except:
-    from _pybytes_debug import print_debug
 
 # Try to get version number
 # try:
@@ -40,25 +49,35 @@ class OTA():
     def get_data(self, req, dest_path=None, hash=False):
         raise NotImplementedError()
 
+    def update_device_network_config(self, fcota, config):
+        raise NotImplementedError()
+
     # OTA methods
 
     def get_current_version(self):
         return os.uname().release
 
-    def get_update_manifest(self):
+    def get_update_manifest(self, fwtype=None, token=None):
         current_version = self.get_current_version()
         sysname = os.uname().sysname
         wmac = hexlify(machine.unique_id()).decode('ascii')
-        request_template = "manifest.json?current_ver={}&sysname={}&wmac={}&ota_slot={}"
-        req = request_template.format(current_version, sysname, wmac, hex(pycom.ota_slot()))
+        if fwtype == 'pymesh':
+            request_template = "manifest.json?current_ver={}&sysname={}&token={}&ota_slot={}&wmac={}&fwtype={}&current_fwtype={}"
+            req = request_template.format(current_version, sysname, token, hex(pycom.ota_slot()), wmac.upper(), fwtype, 'pymesh' if hasattr(os.uname(),'pymesh') else 'pybytes')
+        elif fwtype == 'pygate':
+            request_template = "manifest.json?current_ver={}&sysname={}&ota_slot={}&wmac={}&fwtype={}&current_fwtype={}"
+            req = request_template.format(current_version, sysname, hex(pycom.ota_slot()), wmac.upper(), fwtype, 'pygate' if hasattr(os.uname(),'pygate') else 'pybytes')
+        else:
+            request_template = "manifest.json?current_ver={}&sysname={}&wmac={}&ota_slot={}"
+            req = request_template.format(current_version, sysname, wmac, hex(pycom.ota_slot()))
         manifest_data = self.get_data(req).decode()
         manifest = ujson.loads(manifest_data)
         gc.collect()
         return manifest
 
-    def update(self):
+    def update(self, customManifest=None, fwtype=None, token=None):
         try:
-            manifest = self.get_update_manifest()
+            manifest = self.get_update_manifest(fwtype, token) if not customManifest else customManifest
         except Exception as e:
             print('Error reading the manifest, aborting: {}'.format(e))
             return 0
@@ -68,36 +87,38 @@ class OTA():
             return 1
 
         # Download new files and verify hashes
-        for f in manifest['new'] + manifest['update']:
-            # Upto 5 retries
-            for _ in range(5):
-                try:
-                    self.get_file(f)
-                    break
-                except Exception as e:
-                    print(e)
-                    msg = "Error downloading `{}` retrying..."
-                    print(msg.format(f['URL']))
-                    return 0
-            else:
-                raise Exception("Failed to download `{}`".format(f['URL']))
+        if "new" in manifest and "update" in manifest:
+            for f in manifest['new'] + manifest['update']:
+                # Upto 5 retries
+                for _ in range(5):
+                    try:
+                        self.get_file(f)
+                        break
+                    except Exception as e:
+                        print(e)
+                        msg = "Error downloading `{}` retrying..."
+                        print(msg.format(f['URL']))
+                        return 0
+                else:
+                    raise Exception("Failed to download `{}`".format(f['URL']))
 
-        # Backup old files
-        # only once all files have been successfully downloaded
-        for f in manifest['update']:
-            self.backup_file(f)
+            # Backup old files
+            # only once all files have been successfully downloaded
+            for f in manifest['update']:
+                self.backup_file(f)
 
-        # Rename new files to proper name
-        for f in manifest['new'] + manifest['update']:
-            new_path = "{}.new".format(f['dst_path'])
-            dest_path = "{}".format(f['dst_path'])
+            # Rename new files to proper name
+            for f in manifest['new'] + manifest['update']:
+                new_path = "{}.new".format(f['dst_path'])
+                dest_path = "{}".format(f['dst_path'])
 
-            os.rename(new_path, dest_path)
+                os.rename(new_path, dest_path)
 
-        # `Delete` files no longer required
-        # This actually makes a backup of the files incase we need to roll back
-        for f in manifest['delete']:
-            self.delete_file(f)
+        if "delete" in manifest:
+            # `Delete` files no longer required
+            # This actually makes a backup of the files incase we need to roll back
+            for f in manifest['delete']:
+                self.delete_file(f)
 
         # Flash firmware
         if "firmware" in manifest:
@@ -116,7 +137,6 @@ class OTA():
 
     def get_file(self, f):
         new_path = "{}.new".format(f['dst_path'])
-
         # If a .new file exists from a previously failed update delete it
         try:
             os.remove(new_path)
@@ -162,9 +182,21 @@ class OTA():
         os.rename(dest_path, bak_path)
 
     def write_firmware(self, f):
-        hash = self.get_data(f['URL'].split("/", 3)[-1],
-                             hash=True,
-                             firmware=True)
+        # hash =
+        url = f['URL'].split("//")[1].split("/")[0]
+
+        if url.find(":") > -1:
+            self.ip = url.split(":")[0]
+            self.port = int(url.split(":")[1])
+        else:
+            self.ip = url
+            self.port = 443
+
+        self.get_data(
+            f['URL'].split("/", 3)[-1],
+            hash=True,
+            firmware=True
+        )
         # TODO: Add verification when released in future firmware
 
 
@@ -198,7 +230,6 @@ class WiFiOTA(OTA):
 
     def get_data(self, req, dest_path=None, hash=False, firmware=False):
         h = None
-
         useSSL = int(self.port) == 443
 
         # Connect to server
@@ -208,11 +239,9 @@ class WiFiOTA(OTA):
         if (int(self.port) == 443):
             print("Wrapping socket")
             s = ssl.wrap_socket(s)
-
         print("Sending request")
         # Request File
         s.sendall(self._http_get(req, "{}:{}".format(self.ip, self.port)))
-
         try:
             content = bytearray()
             fp = None
@@ -223,7 +252,7 @@ class WiFiOTA(OTA):
                 fp = open(dest_path, 'wb')
 
             if firmware:
-                print('start')
+                print_debug(4, "Starting OTA...")
                 pycom.ota_start()
 
             h = uhashlib.sha1()
@@ -258,6 +287,7 @@ class WiFiOTA(OTA):
             if fp is not None:
                 fp.close()
             if firmware:
+                print_debug(6, 'ota_finish')
                 pycom.ota_finish()
 
         except Exception as e:
@@ -277,3 +307,47 @@ class WiFiOTA(OTA):
                 return bytes(content)
         elif hash:
             return hash_val
+
+    def update_device_network_config(self, fcota, config):
+        targetURL = '{}://{}/device/networks/{}'.format(
+            constants.__DEFAULT_PYCONFIG_PROTOCOL, constants.__DEFAULT_PYCONFIG_DOMAIN, config['device_id']
+        )
+        print_debug(6, "request device update URL: {}".format(targetURL))
+        try:
+            pybytes_activation = urequest.get(targetURL, headers={'content-type': 'application/json'})
+            responseDetails = pybytes_activation.json()
+            pybytes_activation.close()
+            print_debug(6, "Response Details: {}".format(responseDetails))
+            self.update_network_config(responseDetails, fcota, config)
+            machine.reset()
+        except Exception as ex:
+            print_debug(1, "error while calling {}!: {}".format(targetURL, ex))
+
+    def update_network_config(self, letResp, fcota, config):
+        try:
+            if 'networkConfig' in letResp:
+                netConf = letResp['networkConfig']
+                config['network_preferences'] = netConf['networkPreferences']
+                if 'wifi' in netConf:
+                    config['wifi'] = netConf['wifi']
+                elif 'wifi' in config:
+                    del config['wifi']
+
+                if 'lte' in netConf:
+                    config['lte'] = netConf['lte']
+                elif 'lte' in config:
+                    del config['lte']
+
+                if 'lora' in netConf:
+                    config['lora'] = {
+                        'otaa': netConf['lora']['otaa'],
+                        'abp': netConf['lora']['abp']
+                    }
+                elif 'lora' in config:
+                    del config['lora']
+
+                json_string = ujson.dumps(config)
+                print_debug(1, "update_network_config : {}".format(json_string))
+                fcota.update_file_content('/flash/pybytes_config.json', json_string)
+        except Exception as e:
+            print_debug(1, "error while updating network config pybytes_config.json! {}".format(e))

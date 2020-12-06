@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Pycom Limited.
+ * Copyright (c) 2020, Pycom Limited.
  *
  * This software is licensed under the GNU GPL version 3 or any
  * later version, with permitted additional terms. For more information
@@ -45,7 +45,7 @@ STATIC mp_obj_t mod_uqueue_queue(mp_uint_t n_args, const mp_obj_t *pos_args, mp_
     mp_obj_queue_t *queue = m_new_obj_with_finaliser(mp_obj_queue_t);
 
     // allocate the queue storage and the queue buffer
-    queue->buffer = heap_caps_malloc(sizeof(StaticQueue_t), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    queue->buffer = malloc(sizeof(StaticQueue_t));
     if (NULL == queue->buffer) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_MemoryError, "no memory available to create the queue"));
     }

@@ -23,7 +23,7 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #include <math.h>
 
 #include "board.h"
-#include "LoRaMac.h"
+#include "lora/mac/LoRaMac.h"
 #include "esp_attr.h"
 
 #include "utilities.h"
@@ -1007,6 +1007,76 @@ LoRaMacStatus_t RegionEU433ChannelAdd( ChannelAddParams_t* channelAdd )
     return LORAMAC_STATUS_OK;
 }
 
+LoRaMacStatus_t RegionEU433ChannelManualAdd( ChannelAddParams_t* channelAdd )
+{
+    uint8_t band = 0;
+    bool drInvalid = false;
+    bool freqInvalid = false;
+    uint8_t id = channelAdd->ChannelId;
+
+    if( id >= EU433_MAX_NB_CHANNELS )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
+    }
+
+    // Validate the datarate range
+    if( RegionCommonValueInRange( channelAdd->NewChannel->DrRange.Fields.Min, EU433_TX_MIN_DATARATE, EU433_TX_MAX_DATARATE ) == false )
+    {
+        drInvalid = true;
+    }
+    if( RegionCommonValueInRange( channelAdd->NewChannel->DrRange.Fields.Max, EU433_TX_MIN_DATARATE, EU433_TX_MAX_DATARATE ) == false )
+    {
+        drInvalid = true;
+    }
+    if( channelAdd->NewChannel->DrRange.Fields.Min > channelAdd->NewChannel->DrRange.Fields.Max )
+    {
+        drInvalid = true;
+    }
+
+    // Default channels don't accept all values
+    if( id < EU433_NUMB_DEFAULT_CHANNELS )
+    {
+        // Validate the datarate range for min: must be DR_0
+        if( channelAdd->NewChannel->DrRange.Fields.Min > DR_0 )
+        {
+            drInvalid = true;
+        }
+        // Validate the datarate range for max: must be DR_5 <= Max <= TX_MAX_DATARATE
+        if( RegionCommonValueInRange( channelAdd->NewChannel->DrRange.Fields.Max, DR_5, EU433_TX_MAX_DATARATE ) == false )
+        {
+            drInvalid = true;
+        }
+    }
+
+    // Check frequency
+    if( freqInvalid == false )
+    {
+        if( VerifyTxFreq( channelAdd->NewChannel->Frequency ) == false )
+        {
+            freqInvalid = true;
+        }
+    }
+
+    // Check status
+    if( ( drInvalid == true ) && ( freqInvalid == true ) )
+    {
+        return LORAMAC_STATUS_FREQ_AND_DR_INVALID;
+    }
+    if( drInvalid == true )
+    {
+        return LORAMAC_STATUS_DATARATE_INVALID;
+    }
+    if( freqInvalid == true )
+    {
+        return LORAMAC_STATUS_FREQUENCY_INVALID;
+    }
+
+    memcpy( &(Channels[id]), channelAdd->NewChannel, sizeof( Channels[id] ) );
+    Channels[id].Band = band;
+    ChannelsMask[0] |= ( 1 << id );
+    return LORAMAC_STATUS_OK;
+}
+
 bool RegionEU433ChannelsRemove( ChannelRemoveParams_t* channelRemove  )
 {
     uint8_t id = channelRemove->ChannelId;
@@ -1043,4 +1113,13 @@ uint8_t RegionEU433ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t d
         datarate = DR_0;
     }
     return datarate;
+}
+
+bool RegionEU433ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t* alternateDr )
+{
+    uint8_t DRToCounter[6] = { 48, 32, 24, 16, 8, 1 };
+    if (joinDr < sizeof(DRToCounter)) {
+        alternateDr->NbTrials = DRToCounter[joinDr];
+    }
+    return true;
 }
