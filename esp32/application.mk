@@ -224,6 +224,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machrmt.c \
 	lwipsocket.c \
 	machtouch.c \
+	modespnow.c \
 	)
 
 ifeq ($(MOD_MDNS_ENABLED), 1)
