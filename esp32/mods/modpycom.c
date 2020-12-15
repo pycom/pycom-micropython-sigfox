@@ -1111,9 +1111,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_sigfox_info_obj, 0, mod_pycom_sigfox
 
 #endif // #if defined(FIPY) || defined(LOPY4) || defined(SIPY)
 
-#include "utils/data_struct/list.h"
-#include "ml/data_pipeline.h"
-#include "ml/model.h"
+#include "ml.h"
 
 STATIC mp_obj_t mod_pycom_ml_new_model (mp_obj_t model_definition) {
 
