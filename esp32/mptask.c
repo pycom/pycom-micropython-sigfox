@@ -43,6 +43,9 @@
 #include "serverstask.h"
 #include "modnetwork.h"
 #include "modwlan.h"
+#ifdef PYETH_ENABLED
+#include "modeth.h"
+#endif
 #include "modusocket.h"
 #include "antenna.h"
 #include "modled.h"
@@ -53,7 +56,9 @@
 #include "modlora.h"
 #endif
 #if defined (SIPY) || defined(LOPY4) || defined (FIPY)
+#if defined (MOD_SIGFOX_ENABLED)
 #include "sigfox/modsigfox.h"
+#endif
 #endif
 #if defined (GPY) || defined (FIPY)
 #include "modlte.h"
@@ -139,6 +144,27 @@ void TASK_Micropython (void *pvParameters) {
     uint32_t gc_pool_size;
     bool soft_reset = false;
     uint32_t stack_len;
+    bool safeboot = false;
+    boot_info_t boot_info;
+    uint32_t boot_info_offset;
+
+    if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
+        safeboot = boot_info.safeboot;
+    }
+
+#ifdef DIFF_UPDATE_ENABLED
+    if(boot_info.Status == IMG_STATUS_PATCH)
+    {
+        if(updater_patch()) {
+            machtimer_deinit();
+            machine_wdt_start(1);
+            for (;;) ;
+        }
+        else {
+            printf("Patching FAILED. We will continue with the current firmware.\n");
+        }
+    }
+#endif
 
     uint8_t chip_rev = esp32_get_chip_rev();
 
@@ -220,12 +246,7 @@ soft_reset:
     modbt_init0();
     machtimer_init0();
     modpycom_init0();
-    bool safeboot = false;
-    boot_info_t boot_info;
-    uint32_t boot_info_offset;
-    if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
-        safeboot = boot_info.safeboot;
-    }
+
     if (!soft_reset) {
         if (config_get_wdt_on_boot()) {
             uint32_t timeout_ms = config_get_wdt_on_boot_timeout();
@@ -239,11 +260,17 @@ soft_reset:
         // Config Wifi as per Pycom config
         mptask_config_wifi(false);
         // these ones are special because they need uPy running and they launch tasks
+#ifndef PYETH_ENABLED
+// PyEth and LoRa module are both connected via SPI 3,
+// so with PyEth enabled, we disable th LoRa module
 #if defined(LOPY) || defined (LOPY4) || defined (FIPY)
         modlora_init0();
 #endif
 #if defined(SIPY) || defined(LOPY4) || defined (FIPY)
+#if defined (MOD_SIGFOX_ENABLED)
         modsigfox_init0();
+#endif
+#endif
 #endif
     }
 
@@ -256,10 +283,12 @@ soft_reset:
 #endif
 
 #if defined(SIPY) || defined(LOPY4) || defined(FIPY)
+#if defined (MOD_SIGFOX_ENABLED)
     sigfox_update_id();
     sigfox_update_pac();
     sigfox_update_private_key();
     sigfox_update_public_key();
+#endif
 #endif
 
     // append the flash paths to the system path
@@ -273,9 +302,9 @@ soft_reset:
 
     if (!soft_reset) {
     #if defined(GPY) || defined (FIPY)
-        modlte_init0();
         if(config_get_lte_modem_enable_on_boot())
         {
+            modlte_init0();
             // Notify the LTE thread to start
             modlte_start_modem();
         }
@@ -383,6 +412,7 @@ bool isLittleFs(const TCHAR *path){
  ******************************************************************************/
 STATIC void mptask_preinit (void) {
     wlan_pre_init();
+    //eth_pre_init();
     //TODO: Re-check this: increased stack is needed by modified FTP implementation due to LittleFS vs FatFs
     xTaskCreatePinnedToCore(TASK_Servers, "Servers", 2*SERVERS_STACK_LEN, NULL, SERVERS_PRIORITY, &svTaskHandle, 1);
 }

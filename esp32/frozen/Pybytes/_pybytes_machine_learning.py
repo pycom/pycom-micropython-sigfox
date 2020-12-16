@@ -99,8 +99,11 @@ class MlFeatures():
         # compute the number of samples to be acquisition
         samples_num = math.ceil(self.__length * self.__frequency / 1000) + 1
 
-        pycom.heartbeat(False)
-        pycom.rgbled(0x7f7f00)
+        try:
+            pycom.heartbeat(False)
+            pycom.rgbled(0x7f7f00)
+        except:
+            pass
         time.sleep(0.5)
 
         self.__data = []
@@ -135,7 +138,10 @@ class MlFeatures():
 
     def _parse_data(self, pin):
         print("_parse_data, %d samples" % len(self.__data))
-        pycom.rgbled(0x8d05f5)
+        try:
+            pycom.rgbled(0x8d05f5)
+        except:
+            pass
         data = ['{"data": "ml"}']
         for (ts, acc) in self.__data:
             data.append('{' + '"data": [{},{},{}], "ms": {}'.format(acc[0], acc[1], acc[2], int(ts / 1000)) + '}')
@@ -143,7 +149,10 @@ class MlFeatures():
                 self._send_data(data, pin, acc, ts)
                 data = ['{"data": "ml"}']
         self._send_data(data, pin, acc, ts)
-        pycom.heartbeat(True)
+        try:
+            pycom.heartbeat(True)
+        except:
+            pass
 
     def deploy_model(self, modelId, silent=False):
         try:
