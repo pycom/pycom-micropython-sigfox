@@ -47,19 +47,8 @@ The ESP32 version
 -----------------
 
 The "esp32" port requires an xtensa gcc compiler, which can be downloaded from
-the Espressif website:
+the Espressif website: https://github.com/espressif/crosstool-NG/releases/tag/esp-2020r3
 
-- for 64-bit Linux::
-
-    https://dl.espressif.com/dl/xtensa-esp32-elf-linux64-1.22.0-80-g6c4433a-5.2.0.tar.gz
-
-- for 32-bit Linux::
-
-    https://dl.espressif.com/dl/xtensa-esp32-elf-linux32-1.22.0-80-g6c4433a-5.2.0.tar.gz
-
-- for Mac OS:
-
-    https://dl.espressif.com/dl/xtensa-esp32-elf-osx-1.22.0-80-g6c4433a-5.2.0.tar.gz
 
 To use it, you will need to update your ``PATH`` environment variable in ``~/.bash_profile`` file. To make ``xtensa-esp32-elf`` available for all terminal sessions, add the following line to your ``~/.bash_profile`` file::
 
@@ -74,7 +63,7 @@ Then when you need the toolchain you can type ``get_esp32`` on the command line 
 You also need the ESP IDF along side this repository in order to build the ESP32 port.
 To get it:
 
-    $ git clone --recursive -b idf_v3.3.1 https://github.com/pycom/pycom-esp-idf.git
+    $ git clone --recursive -b idf_v4.1_ml_ota https://github.com/pycom/pycom-esp-idf.git
 
 After cloning, if you did not specify the --recursive option, make sure to checkout all the submodules:
 
