@@ -29,6 +29,9 @@
 #include "esp_wifi.h"
 #include "esp_wifi_types.h"
 #include "esp_event_loop.h"
+#include "ff.h"
+#include "lfs.h"
+#include "vfs_littlefs.h"
 #include "esp_wpa2.h"
 #include "esp_smartconfig.h"
 
@@ -56,6 +59,7 @@
 #include "mptask.h"
 #include "pycom_config.h"
 #include "pycom_general_util.h"
+#include "app_sys_evt.h"
 
 /******************************************************************************
  DEFINE TYPES
@@ -90,17 +94,16 @@ wlan_obj_t wlan_obj = {
     .disconnected = true,
     .irq_flags = 0,
     .irq_enabled = false,
-    .enable_servers = false,
     .pwrsave = false,
     .is_promiscuous = false,
-    .sta_conn_timeout = false
+    .sta_conn_timeout = false,
+    .country = NULL
 };
 
 /* TODO: Maybe we can add possibility to create IRQs for wifi events */
 
 static EventGroupHandle_t wifi_event_group;
 
-static bool mod_wlan_is_deinit = false;
 static uint16_t mod_wlan_ap_number_of_connections = 0;
 
 /* Variables holding wlan conn params for wakeup recovery of connections */
@@ -132,6 +135,7 @@ SemaphoreHandle_t smartConfigTimeout_mutex;
 
 static const int ESPTOUCH_DONE_BIT = BIT1;
 static const int ESPTOUCH_STOP_BIT = BIT2;
+static const int ESPTOUCH_SLEEP_STOP_BIT = BIT3;
 static bool wlan_smart_config_enabled = false;
 
 /******************************************************************************
@@ -142,8 +146,6 @@ static bool wlan_smart_config_enabled = false;
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-STATIC void wlan_servers_start (void);
-STATIC void wlan_servers_stop (void);
 STATIC void wlan_validate_mode (uint mode);
 STATIC void wlan_set_mode (uint mode);
 STATIC void wlan_validate_bandwidth (wifi_bandwidth_t mode);
@@ -182,7 +184,7 @@ STATIC void wlan_callback_handler(void* arg);
 void wlan_pre_init (void) {
     tcpip_adapter_init();
     wifi_event_group = xEventGroupCreate();
-    ESP_ERROR_CHECK(esp_event_loop_init(wlan_event_handler, NULL));
+    app_sys_register_evt_cb(APP_SYS_EVT_WIFI, wlan_event_handler);
     wlan_obj.base.type = (mp_obj_t)&mod_network_nic_type_wlan;
     wlan_wpa2_ent.ca_certs_path = NULL;
     wlan_wpa2_ent.client_cert_path = NULL;
@@ -201,24 +203,36 @@ void wlan_pre_init (void) {
     wlan_obj.mutex = xSemaphoreCreateMutex();
     timeout_mutex = xSemaphoreCreateMutex();
     smartConfigTimeout_mutex = xSemaphoreCreateMutex();
-    memcpy(wlan_obj.country.cc, (const char*)"NA", sizeof(wlan_obj.country.cc));
     // create Smart Config Task
     xTaskCreatePinnedToCore(TASK_SMART_CONFIG, "SmartConfig", SMART_CONF_TASK_STACK_SIZE / sizeof(StackType_t), NULL, SMART_CONF_TASK_PRIORITY, &SmartConfTaskHandle, 1);
 }
 
 void wlan_resume (bool reconnect)
 {
-    if (!wlan_obj.started && mod_wlan_is_deinit) {
-
-        mod_wlan_is_deinit = false;
-
-        if(reconnect)
-        {
-            wifi_country_t* country = NULL;
-
-            if(strcmp((const char*)wlan_obj.country.cc, "NA"))
-            {
-                country = &(wlan_obj.country);
+    // Configure back WLAN as it was before if reconnect is TRUE
+    if(reconnect) {
+        // If SmartConfig enabled then re-start it
+        if(wlan_smart_config_enabled) {
+            // Do initial configuration as at this point the Wifi Driver is not initialized
+            wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+            ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+            ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+            wlan_set_antenna(wlan_obj.antenna);
+            wlan_set_mode(wlan_obj.mode);
+            wlan_set_bandwidth(wlan_obj.bandwidth);
+            if(wlan_obj.country != NULL) {
+                esp_wifi_set_country(wlan_obj.country);
+            }
+            xTaskNotifyGive(SmartConfTaskHandle);
+        }
+        // Otherwise set up WLAN with the same parameters as it was before
+        else {
+            // In wlan_setup the wlan_obj.country is overwritten with the value coming from setup_config, need to save it out
+            wifi_country_t country;
+            wifi_country_t* country_ptr = NULL;
+            if(wlan_obj.country != NULL) {
+                memcpy(&country, wlan_obj.country, sizeof(wifi_country_t));
+                country_ptr = &country;
             }
 
             wlan_internal_setup_t setup_config = {
@@ -233,11 +247,11 @@ void wlan_resume (bool reconnect)
                     false,
                     wlan_conn_recover_hidden,
                     wlan_obj.bandwidth,
-                    country,
+                    country_ptr,
                     &(wlan_obj.max_tx_pwr)
             };
 
-            // initialize the wlan subsystem
+            // Initialize & reconnect to the previous connection
             wlan_setup(&setup_config);
         }
     }
@@ -250,9 +264,6 @@ void wlan_setup (wlan_internal_setup_t *config) {
 
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
-    // stop the servers
-    wlan_servers_stop();
-
     esp_wifi_get_mac(WIFI_IF_STA, wlan_obj.mac);
 
     wlan_set_antenna(config->antenna);
@@ -260,12 +271,15 @@ void wlan_setup (wlan_internal_setup_t *config) {
     wlan_set_bandwidth(config->bandwidth);
 
     if (config->country != NULL) {
-
-        if(ESP_OK != esp_wifi_set_country(config->country))
+        esp_err_t ret = esp_wifi_set_country(config->country);
+        if(ESP_OK != ret)
         {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
         }
-        memcpy(&(wlan_obj.country), config->country, sizeof(wlan_obj.country));
+        if(wlan_obj.country == NULL) {
+            wlan_obj.country = (wifi_country_t*)malloc(sizeof(wifi_country_t));
+        }
+        memcpy(wlan_obj.country, config->country, sizeof(wifi_country_t));
     }
 
     if(config->max_tx_pr != NULL)
@@ -327,7 +341,6 @@ void wlan_setup (wlan_internal_setup_t *config) {
         default:
             break;
     }
-    wlan_servers_start();
 }
 
 void wlan_get_mac (uint8_t *macAddress) {
@@ -502,21 +515,6 @@ STATIC void wlan_stop_smartConfig_timer()
         wlan_smartConfig_timeout = NULL;
     }
     xSemaphoreGive(smartConfigTimeout_mutex);
-}
-STATIC void wlan_servers_start (void) {
-    // start the servers if they were enabled before
-    if (!servers_are_enabled()) {
-        servers_start();
-        wlan_obj.enable_servers = true;
-    }
-}
-
-STATIC void wlan_servers_stop (void) {
-    // stop the servers if they are enabled
-    if (servers_are_enabled()) {
-        servers_stop();
-        wlan_obj.enable_servers = false;
-    }
 }
 
 // Must be called only when GIL is not locked
@@ -968,9 +966,8 @@ static void TASK_SMART_CONFIG (void *pvParameters) {
     static uint32_t thread_notification;
 
 smartConf_init:
-    wlan_smart_config_enabled = false;
     connected = false;
-    // Block task till notification is recieved
+    // Block task till notification is received
     thread_notification = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
     if (thread_notification) {
@@ -985,22 +982,27 @@ smartConf_init:
         }
         CHECK_ESP_ERR(esp_smartconfig_set_type(SC_TYPE_ESPTOUCH), smartConf_init)
         CHECK_ESP_ERR(esp_smartconfig_start(smart_config_callback), smartConf_init)
-        wlan_smart_config_enabled = true;
         goto smartConf_start;
     }
     goto smartConf_init;
 
 smartConf_start:
-    //mp_printf(&mp_plat_print, "\n-------SmartConfig Started-------\n");
+    wlan_smart_config_enabled = true;
     /*create Timer */
     wlan_smartConfig_timeout = xTimerCreate("smartConfig_Timer", 60000 / portTICK_PERIOD_MS, 0, 0, wlan_timer_callback);
     /*start Timer */
     xTimerStart(wlan_smartConfig_timeout, 0);
     while (1) {
-        uxBits = xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT | ESPTOUCH_STOP_BIT, true, false, portMAX_DELAY);
+        uxBits = xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT | ESPTOUCH_STOP_BIT | ESPTOUCH_SLEEP_STOP_BIT, true, false, portMAX_DELAY);
         if(uxBits & ESPTOUCH_STOP_BIT) {
+            wlan_smart_config_enabled = false;
             esp_smartconfig_stop();
             //mp_printf(&mp_plat_print, "\nSmart Config Aborted or Timed-out\n");
+            goto smartConf_init;
+        }
+        if(uxBits & ESPTOUCH_SLEEP_STOP_BIT) {
+            esp_smartconfig_stop();
+            //mp_printf(&mp_plat_print, "\nSmart Config Aborted because sleep operation has been requested\n");
             goto smartConf_init;
         }
         if(uxBits & CONNECTED_BIT) {
@@ -1009,6 +1011,7 @@ smartConf_start:
         }
         if(uxBits & ESPTOUCH_DONE_BIT) {
             //mp_printf(&mp_plat_print, "smartconfig over\n");
+            wlan_smart_config_enabled = false;
             esp_smartconfig_stop();
             wlan_stop_smartConfig_timer();
             //set event flag
@@ -1260,17 +1263,30 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(wlan_init_obj, 1, wlan_init);
 
 mp_obj_t wlan_deinit(mp_obj_t self_in) {
 
-    wlan_servers_stop();
-
     if (wlan_obj.started)
     {
+        bool called_from_sleep = false;
+
         // stop smart config if enabled
-        if(wlan_smart_config_enabled)
-        {
-            xEventGroupSetBits(wifi_event_group, ESPTOUCH_STOP_BIT);
-            vTaskDelay(100/portTICK_PERIOD_MS);
+        if(wlan_smart_config_enabled) {
+            // If the input parameter is not the object itself but a simple boolean, it is interpreted that
+            // wlan_deinit is called from machine_sleep()
+            if(mp_obj_get_type(self_in) == &mp_type_bool) {
+                called_from_sleep = (bool)mp_obj_get_int(self_in);
+                if(called_from_sleep == true) {
+                    // stop smart config with special event
+                    xEventGroupSetBits(wifi_event_group, ESPTOUCH_SLEEP_STOP_BIT);
+                    vTaskDelay(100/portTICK_PERIOD_MS);
+                }
+            }
+            else {
+                // stop smart config with original STOP event
+                xEventGroupSetBits(wifi_event_group, ESPTOUCH_STOP_BIT);
+                vTaskDelay(100/portTICK_PERIOD_MS);
+            }
         }
 
+        mod_network_deregister_nic(&wlan_obj);
         esp_wifi_stop();
 
         /* wait for sta and Soft-AP to stop */
@@ -1281,7 +1297,11 @@ mp_obj_t wlan_deinit(mp_obj_t self_in) {
 
         /* stop and free wifi resource */
         esp_wifi_deinit();
-        mod_wlan_is_deinit = true;
+        // Only free up memory area of country information if this deinit is not called from machine.sleep()
+        if(called_from_sleep == false) {
+            free(wlan_obj.country);
+            wlan_obj.country = NULL;
+        }
         wlan_obj.started = false;
         mod_network_deregister_nic(&wlan_obj);
     }
@@ -2465,7 +2485,10 @@ STATIC mp_obj_t wlan_country(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
     }
 
-    memcpy(&(wlan_obj.country), &country_config, sizeof(wlan_obj.country));
+    if(wlan_obj.country == NULL) {
+        wlan_obj.country = (wifi_country_t*)malloc(sizeof(wifi_country_t));
+    }
+    memcpy(wlan_obj.country, &country_config, sizeof(wifi_country_t));
 
     return mp_const_none;
 }

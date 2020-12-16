@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-IDF_HASH=6ec081c
+IDF_HASH=3394ee5
 
 TARGET ?= boot_app
 
@@ -23,8 +23,40 @@ OEM ?= 0
 # make 'release' the default build type
 BTYPE ?= release
 
-# make Non-Pybytes firmware default
+# set to 1 to enable PyEthernet board (ksz8851 chip)
+PYETH_ENABLED ?= 0
+
+# set to 1 to enable LoRaWAN gateway (requires Pygate board)
+PYGATE_ENABLED ?= 0
+
+# COAP is enabled by default
+MOD_COAP_ENABLED ?= 1
+
+# SIGFOX is enabled by default. It will only be built for supported boards.
+MOD_SIGFOX_ENABLED ?= 1
+
+# Pybytes disabled by default
+PYBYTES_ENABLED ?= 0
+
+# Flag to enable/disable Delta Update Feature. Disabled by default
+DIFF_UPDATE_ENABLED ?= 0
+
+# by default make a BASE firmware with features as specified with defaults above
+# valid choices for VARIANT are: BASE, PYBYTES, PYGATE
 VARIANT ?=BASE
+
+ifeq ($(VARIANT),PYBYTES)
+    PYBYTES_ENABLED=1
+endif
+
+ifeq ($(VARIANT),PYGATE)
+    ifneq ($(BOARD), $(filter $(BOARD), WIPY GPY LOPY4 ))
+        $(error PYGATE variant is not supported on $(BOARD))
+    endif
+    PYBYTES_ENABLED=1
+    PYETH_ENABLED=1
+    PYGATE_ENABLED=1
+endif
 
 ifeq ($(VARIANT),BASE)
 	BUILD_DIR ?=build
@@ -91,6 +123,19 @@ CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue
 CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 
+# Configure floating point support
+ifeq ($(MICROPY_FLOAT_IMPL),double)
+CFLAGS += -DMICROPY_FLOAT_IMPL=MICROPY_FLOAT_IMPL_DOUBLE
+else
+ifeq ($(MICROPY_FLOAT_IMPL),none)
+CFLAGS += -DMICROPY_FLOAT_IMPL=MICROPY_FLOAT_IMPL_NONE
+else
+ifeq ($(MICROPY_FLOAT_IMPL),single)
+CFLAGS += -DMICROPY_FLOAT_IMPL=MICROPY_FLOAT_IMPL_FLOAT
+endif
+endif
+endif
+
 LDFLAGS = -nostdlib -Wl,-Map=$(@:.elf=.map) -Wl,--no-check-sections -u call_user_start_cpu0
 LDFLAGS += -Wl,-static -Wl,--undefined=uxTopUsedPriority -Wl,--gc-sections
 
@@ -98,15 +143,32 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        -L$(ESP_IDF_COMP_PATH)/esp32 -L$(ESP_IDF_COMP_PATH)/newlib/lib -Lbootloader \
        -Llib -lnvs_flash -ltcpip_adapter -L$(BUILD) -lhal -lcore -lwps -lcoexist -lstdc++ \
        -lnet80211 -lphy -lpp -lrtc -llog -lsmartconfig -lwpa -lwpa2 -lbtdm_app -lcxx -u __cxa_guard_dummy \
-       -lsigfox -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat -lpthread -lesp_adc_cal \
+       -lspi_flash -lnvs_flash -lgcc -lnghttp -ldriver -lesp32 -lexpat -lpthread -lesp_adc_cal \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libm-psram-workaround.a \
        $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -lbootloader_support -lmicro-ecc \
-       -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh -lesp_ringbuf -lcoap -lmdns -lefuse -lespcoredump -lapp_update
-ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
-    LIBS += sigfox/modsigfox_$(BOARD).a
-$(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
+       -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh -lesp_ringbuf -lmdns -lefuse -lespcoredump -lapp_update
+
+ifeq ($(MOD_COAP_ENABLED), 1)
+    $(info COAP Module Enabled)
+    LIBS += -lcoap
+    CFLAGS += -DMOD_COAP_ENABLED
+endif
+
+ifeq ($(DIFF_UPDATE_ENABLED), 1)
+    $(info Differential Update Enabled)
+    CFLAGS += -DDIFF_UPDATE_ENABLED -DBZ_NO_STDIO
+endif
+
+ifeq ($(MOD_SIGFOX_ENABLED), 1)
+    $(info SIGFOX Module Enabled)
+
+    ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
+        CFLAGS += -DMOD_SIGFOX_ENABLED
+        LIBS += sigfox/modsigfox_$(BOARD).a -lsigfox
+        $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
+    endif
 endif
 
 ifeq ($(OPENTHREAD), on)

@@ -51,7 +51,7 @@
 
 /// \moduleref machine
 /// \class UART - duplex serial communication bus
-
+extern void IRAM_ATTR mp_hal_trig_term_sig(void);
 /******************************************************************************
  DEFINE CONSTANTS
  *******-***********************************************************************/
@@ -61,7 +61,7 @@
 #define MACHUART_TX_WAIT_US(baud)               ((MACHUART_FRAME_TIME_US(baud)) + 1)
 #define MACHUART_TX_MAX_TIMEOUT_MS              (5)
 
-#define MACHUART_RX_BUFFER_LEN                  (512)
+#define MACHUART_RX_BUFFER_LEN                  (4096)
 #define MACHUART_TX_FIFO_LEN                    (UART_FIFO_LEN)
 
 // interrupt triggers
@@ -310,6 +310,11 @@ STATIC IRAM_ATTR void UARTRxCallback(int uart_id, int rx_byte) {
         } else if (mp_reset_char == rx_byte) {
             servers_reset_and_safe_boot();
         }
+    }
+    // Trigger SIGTERM signal if needed
+    if (mp_interrupt_char == rx_byte) {
+        // raise an exception when interrupts are finished
+        mp_hal_trig_term_sig();
     }
 }
 
