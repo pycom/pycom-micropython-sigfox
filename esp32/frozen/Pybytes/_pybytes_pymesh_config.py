@@ -84,7 +84,6 @@ class PybytesPymeshConfig():
 
             # send data to the port equal with signal_number
             self.__pymesh.send_mess_external(pyb_ip, signal_number, pkt_start + value)
-
             time.sleep(3) # shouldn't send too fast to BR
 
             # hardcode monitoring data to be sent on signal #2
