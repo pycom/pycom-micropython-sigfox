@@ -16,8 +16,19 @@
 
 #define LTE_MAX_RX_SIZE                1024
 
-#define LTE_TRIGGER_NONE                0x00000000
-#define LTE_TRIGGER_SIG_LOST            0x00000001
+// // trigger and event definitions used in Micropython API
+// #define LTE_EVENT_NONE                0x00000000
+// #define LTE_EVENT_COVERAGE_LOST       0x00000001
+// #define LTE_EVENT_BREAK               0x00000002
+
+
+typedef enum
+{
+    LTE_EVENT_NONE          = 0x00000000,
+    LTE_EVENT_COVERAGE_LOST = 0x00000001,
+    LTE_EVENT_BREAK         = 0x00000002,
+}lte_events_t;
+
 
 typedef struct _lte_obj_t {
     mp_obj_base_t           base;
@@ -26,17 +37,11 @@ typedef struct _lte_obj_t {
     uint8_t                 cid;
     bool                    init;
     bool                    carrier;
-    uint32_t                trigger;
-    int32_t                 events;
+    lte_events_t            trigger;
+    lte_events_t            events;
     mp_obj_t                handler;
     mp_obj_t                handler_arg;
 } lte_obj_t;
-
-typedef enum
-{
-    LTE_EVENT_COVERAGE_LOST = 0,
-    LTE_EVENT_MAX
-}lte_events_t;
 
 
 /******************************************************************************
