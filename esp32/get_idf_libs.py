@@ -99,7 +99,7 @@ def main():
         shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib/esp32/libcoexist.a', dsttmpapp)
         shutil.copy(os.environ['IDF_PATH'] + '/components/xtensa/esp32/libhal.a', dsttmpapp)
         shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib/esp32/libsmartconfig.a', dsttmpapp)
-        shutil.copy(src + '/tfmicro/libtfmicro.a', dsttmpapp)
+        # shutil.copy(src + '/tfmicro/libtfmicro.a', dsttmpapp)
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         traceback.print_exc()
