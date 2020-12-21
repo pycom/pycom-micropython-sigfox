@@ -410,7 +410,7 @@ STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
     }
 #endif
 
-#if defined(LOPY) || defined(LOPY4) || defined(FIPY)
+#ifdef MOD_LORA_ENABLED
     /* Send LoRa module to Sleep Mode */
     modlora_sleep_module();
     while(!modlora_is_module_sleep())

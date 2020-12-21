@@ -388,11 +388,28 @@ BOOT_SRC_C = $(addprefix bootloader/,\
 SFX_OBJ =
 
 OBJ = $(PY_O)
+ifeq ($(MOD_LORA_ENABLED), 1)
+
 ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1272_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
 endif
+
 ifeq ($(BOARD), $(filter $(BOARD), LOPY4))
 OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1276_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
+endif
+
+endif
+
+ifeq ($(MOD_SIGFOX_ENABLED), 1)
+
+ifeq ($(BOARD), $(filter $(BOARD), LOPY FIPY))
+OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1272_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
+endif
+
+ifeq ($(BOARD), $(filter $(BOARD), LOPY4))
+OBJ += $(addprefix $(BUILD)/, $(APP_LORA_SRC_C:.c=.o) $(APP_LIB_LORA_SRC_C:.c=.o) $(APP_SX1276_SRC_C:.c=.o) $(APP_MODS_LORA_SRC_C:.c=.o))
+endif
+
 endif
 
 ifeq ($(MOD_SIGFOX_ENABLED), 1)
