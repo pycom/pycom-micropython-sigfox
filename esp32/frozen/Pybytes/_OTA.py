@@ -137,7 +137,6 @@ class OTA():
 
     def get_file(self, f):
         new_path = "{}.new".format(f['dst_path'])
-
         # If a .new file exists from a previously failed update delete it
         try:
             os.remove(new_path)
@@ -184,6 +183,15 @@ class OTA():
 
     def write_firmware(self, f):
         # hash =
+        url = f['URL'].split("//")[1].split("/")[0]
+
+        if url.find(":") > -1:
+            self.ip = url.split(":")[0]
+            self.port = int(url.split(":")[1])
+        else:
+            self.ip = url
+            self.port = 443
+
         self.get_data(
             f['URL'].split("/", 3)[-1],
             hash=True,
@@ -222,7 +230,6 @@ class WiFiOTA(OTA):
 
     def get_data(self, req, dest_path=None, hash=False, firmware=False):
         h = None
-
         useSSL = int(self.port) == 443
 
         # Connect to server
@@ -232,11 +239,9 @@ class WiFiOTA(OTA):
         if (int(self.port) == 443):
             print("Wrapping socket")
             s = ssl.wrap_socket(s)
-
         print("Sending request")
         # Request File
         s.sendall(self._http_get(req, "{}:{}".format(self.ip, self.port)))
-
         try:
             content = bytearray()
             fp = None
@@ -247,6 +252,7 @@ class WiFiOTA(OTA):
                 fp = open(dest_path, 'wb')
 
             if firmware:
+                print_debug(4, "Starting OTA...")
                 pycom.ota_start()
 
             h = uhashlib.sha1()
