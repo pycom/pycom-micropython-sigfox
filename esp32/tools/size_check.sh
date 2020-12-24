@@ -5,10 +5,10 @@ set -e
 BOARD="$1"
 RELEASE_TYP="$2"
 VARIANT="$3"
+BUILD_DIR="build"
+
 if [ ${VARIANT} != "BASE" ] ; then
   BUILD_DIR="build-${VARIANT}"
-else
-  BUILD_DIR="build"
 fi
 
 IMG_MAX_SIZE_8MB=3076096
@@ -51,18 +51,20 @@ fi
 
 total_size=$((${size_app} + ${size_boot}))
 
-
-IMG_MAX_SIZE=${IMG_MAX_SIZE_4MB}
-
-if [ "${BOARD}" = "LOPY4" -o "${BOARD}" = "GPY" -o "${BOARD}" = "FIPY" ] ; then
-  IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
-elif [ "${BOARD}" = "WIPY" -a "${VARIANT}" = "PYGATE" ] ; then
-  # WiPy2.0 has a 4MB chip
-  # WiPy3.0 has a 8MB chip
-  # they are both supported by BOARD=WIPY
-  # on the Pygate we support only the WiPy3.0, so for this combination we allow the 8MB limit
-  IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
-fi
+if [ $4 -eq 1 ]; then
+	IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
+else
+	IMG_MAX_SIZE=${IMG_MAX_SIZE_4MB}
+	if [ "${BOARD}" = "LOPY4" -o "${BOARD}" = "GPY" -o "${BOARD}" = "FIPY" ] ; then
+	  IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
+	elif [ "${BOARD}" = "WIPY" -a "${VARIANT}" = "PYGATE" ] ; then
+	  # WiPy2.0 has a 4MB chip
+	  # WiPy3.0 has a 8MB chip
+	  # they are both supported by BOARD=WIPY
+	  # on the Pygate we support only the WiPy3.0, so for this combination we allow the 8MB limit
+	  IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
+	fi
+fi	
 
 if [ ${total_size} -gt ${IMG_MAX_SIZE} ] ; then
   echo "${total_size} bytes => Firmware image size is NOT ok. It exceeds the available space ${IMG_MAX_SIZE} by $[ $total_size - $IMG_MAX_SIZE ]!" >&2
