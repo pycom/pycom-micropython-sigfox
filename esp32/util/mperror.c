@@ -54,7 +54,7 @@
 #ifndef BOOTLOADER_BUILD
 STATIC const mp_obj_base_t pyb_heartbeat_obj = {&pyb_heartbeat_type};
 
-static rmt_item32_t rmt_grb_items[COLOR_BITS];
+static rmt_item32_t rmt_grb_items[COLOR_BITS + 1];
 
 led_info_t led_info = {
     .rmt_channel = RMT_CHANNEL_1,

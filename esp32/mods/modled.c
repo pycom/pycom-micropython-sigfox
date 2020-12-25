@@ -23,6 +23,7 @@
 #define LED_BIT_1_LOW_PERIOD  (3) // 300ns
 #define LED_BIT_0_HIGH_PERIOD (3) // 300ns
 #define LED_BIT_0_LOW_PERIOD  (9) // 900ns
+#define LED_RESET_PERIOD      (1500) // at least 150us
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
@@ -48,6 +49,10 @@ bool led_init(led_info_t *led_info)
     if (!led_init_rmt(led_info)) {
         return false;
     }
+    led_info->rmt_grb_buf[0].duration0 = LED_RESET_PERIOD / 2;
+    led_info->rmt_grb_buf[0].level0    = 0;
+    led_info->rmt_grb_buf[0].duration1 = LED_RESET_PERIOD / 2;
+    led_info->rmt_grb_buf[0].level1    = 0;
 
     return true;
 }
@@ -62,13 +67,12 @@ bool led_set_color(led_info_t *led_info, bool synchronize, bool wait_tx)
         (led_info->rmt_grb_buf == NULL)){
         return false;
     }
-
     if (synchronize) {
         rmt_wait_tx_done(led_info->rmt_channel, portMAX_DELAY);
     }
 
     led_encode_color(led_info);
-    if (rmt_write_items(led_info->rmt_channel, led_info->rmt_grb_buf, COLOR_BITS, wait_tx) != ESP_OK) {
+    if (rmt_write_items(led_info->rmt_channel, led_info->rmt_grb_buf, COLOR_BITS + 1, wait_tx) != ESP_OK) {
         return false;
     }
 
@@ -95,7 +99,7 @@ static void set_low_bit(rmt_item32_t *item){
 
 static void led_encode_color(led_info_t *led_info)
 {
-    uint32_t rmt_idx = 0;
+    uint32_t rmt_idx = 1;
     uint32_t grb_value = ((uint32_t)led_info->color.component.green << 16) |
                 ((uint32_t)led_info->color.component.red << 8) |
                 ((uint32_t)led_info->color.component.blue);
