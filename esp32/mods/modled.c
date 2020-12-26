@@ -23,7 +23,7 @@
 #define LED_BIT_1_LOW_PERIOD  (3) // 300ns
 #define LED_BIT_0_HIGH_PERIOD (3) // 300ns
 #define LED_BIT_0_LOW_PERIOD  (9) // 900ns
-#define LED_RESET_PERIOD      (1500) // at least 150us
+#define LED_RESET_PERIOD      (2800) // at least 280us
 
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
