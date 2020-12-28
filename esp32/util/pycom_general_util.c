@@ -25,6 +25,25 @@
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
+
+// Helper function to return decimal value of a hexadecimal character coded in ASCII
+uint8_t hex_from_char(const char c) {
+
+    if((uint8_t)c >= '0' && (uint8_t)c <= '9') {
+        return c - '0';
+    }
+    else if((uint8_t)c >= 'A' && (uint8_t)c <= 'F') {
+        return c - ('A' - 10);
+    }
+    else if((uint8_t)c >= 'a' && (uint8_t)c <= 'f') {
+        return c - ('a' - 10);
+    }
+    else {
+        // 16 is invalid, because in hexa allowed range is 0 - 15
+        return 16;
+    }
+}
+
 char *pycom_util_read_file (const char *file_path, vstr_t *vstr) {
     vstr_init(vstr, FILE_READ_SIZE);
     char *filebuf = vstr->buf;

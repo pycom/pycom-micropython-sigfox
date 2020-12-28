@@ -7,12 +7,10 @@
  * available at https://www.pycom.io/opensource/licensing
  */
 
-#ifndef ESP32_UTIL_PYCOM_GENERAL_UTIL_H_
-#define ESP32_UTIL_PYCOM_GENERAL_UTIL_H_
+#ifndef MODESPNOW_H_
+#define MODESPNOW_H_
 
-#include "py/obj.h"
 
-uint8_t hex_from_char(const char c);
-char *pycom_util_read_file(const char *file_path, vstr_t *vstr);
+extern const mp_obj_module_t mod_espnow;
 
-#endif /* ESP32_UTIL_PYCOM_GENERAL_UTIL_H_ */
+#endif  // MODESPNOW_H_

@@ -224,7 +224,6 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machrmt.c \
 	lwipsocket.c \
 	machtouch.c \
-	modespnow.c \
 	)
 
 ifeq ($(MOD_MDNS_ENABLED), 1)
@@ -236,6 +235,11 @@ ifeq ($(MOD_COAP_ENABLED), 1)
 APP_INC += -Ibsdiff
 APP_MODS_SRC_C += $(addprefix mods/,\
 	modcoap.c \
+	)
+endif
+ifeq ($(MOD_ESPNOW_ENABLED), 1)
+APP_MODS_SRC_C += $(addprefix mods/,\
+    modespnow.c \
 	)
 endif
 
