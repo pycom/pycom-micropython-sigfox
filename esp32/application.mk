@@ -237,6 +237,11 @@ APP_MODS_SRC_C += $(addprefix mods/,\
 	modcoap.c \
 	)
 endif
+ifeq ($(MOD_ESPNOW_ENABLED), 1)
+APP_MODS_SRC_C += $(addprefix mods/,\
+    modespnow.c \
+	)
+endif
 
 ifeq ($(DIFF_UPDATE_ENABLED), 1)
 APP_INC += -Ibzlib/

@@ -39,6 +39,8 @@
 #include "modmachine.h"
 #include "esp32chipinfo.h"
 #include "modwlan.h"
+#include "pycom_general_util.h"
+
 
 
 #include <string.h>
@@ -910,24 +912,6 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_smartConfig_obj, 0, 1, mod_
 #endif //(VARIANT == PYBYTES)
 
 #if defined(FIPY) || defined(LOPY4) || defined(SIPY)
-
-// Helper function to return decimal value of a hexadecimal character coded in ASCII
-STATIC uint8_t hex_from_char(const char c) {
-
-    if((uint8_t)c >= '0' && (uint8_t)c <= '9') {
-        return c - '0';
-    }
-    else if((uint8_t)c >= 'A' && (uint8_t)c <= 'F') {
-        return c - ('A' - 10);
-    }
-    else if((uint8_t)c >= 'a' && (uint8_t)c <= 'f') {
-        return c - ('a' - 10);
-    }
-    else {
-        // 16 is invalid, because in hexa allowed range is 0 - 15
-        return 16;
-    }
-}
 
 STATIC bool is_empty(uint8_t* value, uint8_t size) {
     bool ret_val = true;

@@ -58,6 +58,9 @@
 #ifdef PYETH_ENABLED
 #include "modeth.h"
 #endif
+#if defined(MOD_ESPNOW_ENABLED)
+#include "modespnow.h"
+#endif
 
 #include "lwip/sockets.h"
 
@@ -390,6 +393,9 @@ STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
 #endif
 #if defined(MOD_MDNS_ENABLED)
     { MP_OBJ_NEW_QSTR(MP_QSTR_MDNS),                (mp_obj_t)&mod_mdns },
+#endif
+#if defined(MOD_ESPNOW_ENABLED)
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ESPNOW),              (mp_obj_t)&mod_espnow },
 #endif
 };
 
