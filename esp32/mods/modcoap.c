@@ -43,7 +43,6 @@ typedef struct mod_coap_resource_obj_s {
     coap_resource_t* coap_resource;
     struct mod_coap_resource_obj_s* next;
     uint8_t* value;
-    unsigned char* uri;
     uint32_t max_age;
     uint16_t etag_value;
     uint16_t value_len;
@@ -208,9 +207,10 @@ STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype,
     resource->next = NULL;
 
     // uri parameter pointer will be destroyed, pass a pointer to a permanent location
-    resource->uri = m_malloc(strlen(uri));
-    memcpy(resource->uri, uri, strlen(uri));
-    resource->coap_resource = coap_resource_init((const unsigned char* )resource->uri, strlen(uri), 0);
+    unsigned char* uri_ptr = (unsigned char*)malloc(strlen(uri));
+    memcpy(uri_ptr, uri, strlen(uri));
+    // Pass COAP_RESOURCE_FLAGS_RELEASE_URI so Coap Library will free up the memory allocated to store the URI when the Resource is deleted
+    resource->coap_resource = coap_resource_init(uri_ptr, strlen(uri), COAP_RESOURCE_FLAGS_RELEASE_URI);
     if(resource->coap_resource != NULL) {
         // Add the resource to the Coap context
         coap_add_resource(context->context, resource->coap_resource);
@@ -238,7 +238,7 @@ STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype,
         return resource;
     }
     else {
-        m_free(resource->uri);
+        free(uri_ptr);
         m_del_obj(mod_coap_resource_obj_t, resource);
         // Resource cannot be created
         return NULL;
@@ -278,14 +278,12 @@ STATIC void remove_resource_by_key(coap_key_t key) {
                     previous->next = current->next;
                 }
 
-                // Free the URI
-                m_free(current->uri);
                 // Free the resource in coap's scope
                 coap_delete_resource(context->context, key);
                 // Free the element in MP scope
-                m_free(current->value);
+                free(current->value);
                 // Free the resource itself
-                m_free(current);
+                m_del_obj(mod_coap_resource_obj_t, current);
 
                 return;
             }
@@ -320,7 +318,7 @@ STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t ne
 
     // Invalidate current data first
     resource->value_len = 0;
-    m_free(resource->value);
+    free(resource->value);
 
     if (mp_obj_is_integer(new_value)) {
 
@@ -334,7 +332,7 @@ STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t ne
         }
 
         // Allocate memory for the new data
-        resource->value = m_malloc(resource->value_len);
+        resource->value = malloc(resource->value_len);
         memcpy(resource->value, &value, sizeof(value));
 
     } else {
@@ -344,7 +342,7 @@ STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t ne
         resource->value_len = value_bufinfo.len;
 
         // Allocate memory for the new data
-        resource->value = m_malloc(resource->value_len);
+        resource->value = malloc(resource->value_len);
         memcpy(resource->value, value_bufinfo.buf, resource->value_len);
     }
 }
@@ -748,16 +746,13 @@ STATIC coap_pdu_t * modcoap_new_request
 // Helper function to create a new option for a request message
 STATIC coap_list_t * modcoap_new_option_node(unsigned short key, unsigned int length, unsigned char *data) {
 
-    coap_list_t *node = m_malloc(sizeof(coap_list_t) + sizeof(coap_option) + length);
+    coap_list_t *node = malloc(sizeof(coap_list_t) + sizeof(coap_option) + length);
     if (node) {
         coap_option *option;
         option = (coap_option *)(node->data);
         COAP_OPTION_KEY(*option) = key;
         COAP_OPTION_LENGTH(*option) = length;
         memcpy(COAP_OPTION_DATA(*option), data, length);
-    } else {
-        m_free(node);
-        node = NULL;
     }
 
     return node;
@@ -937,7 +932,7 @@ STATIC mp_obj_t mod_coap_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
     // Only 1 context is supported currently
     if(initialized == false) {
 
-        MP_STATE_PORT(coap_ptr) = m_malloc(sizeof(mod_coap_obj_t));
+        MP_STATE_PORT(coap_ptr) = m_new_obj(mod_coap_obj_t);
         coap_obj_ptr = MP_STATE_PORT(coap_ptr);
         coap_obj_ptr->context = NULL;
         coap_obj_ptr->resources = NULL;
@@ -1235,19 +1230,21 @@ STATIC mp_obj_t mod_coap_send_request(mp_uint_t n_args, const mp_obj_t *pos_args
             //TODO: allocate the proper length
             size_t length = 300;
             unsigned char* path = malloc(length);
-            int segments = coap_split_path(coap_uri.path.s, coap_uri.path.length, path, &length);
+            // Need to use a different pointer because when the segments are composed the pointer itself is moved
+            unsigned char* path_segment = path;
+            int segments = coap_split_path(coap_uri.path.s, coap_uri.path.length, path_segment, &length);
 
             // Insert the segments as separate URI-Path options
             while (segments--) {
-                node = modcoap_new_option_node(COAP_OPTION_URI_PATH, COAP_OPT_LENGTH(path), COAP_OPT_VALUE(path));
+                node = modcoap_new_option_node(COAP_OPTION_URI_PATH, COAP_OPT_LENGTH(path_segment), COAP_OPT_VALUE(path_segment));
                 if(node != NULL) {
                     LL_APPEND(coap_obj_ptr->optlist, node);
                 }
-
-                path += COAP_OPT_SIZE(path);
+                // Move the path_segment pointer to the next segment
+                path_segment += COAP_OPT_SIZE(path_segment);
             }
 
-
+            // Free up the memory using the pointer pointing to the beginning of the memory area
             free(path);
 
             // Put Content Format option if given
@@ -1271,7 +1268,7 @@ STATIC mp_obj_t mod_coap_send_request(mp_uint_t n_args, const mp_obj_t *pos_args
         while(coap_obj_ptr->optlist != NULL) {
             next = coap_obj_ptr->optlist->next;
             coap_obj_ptr->optlist->next = NULL;
-            m_free(coap_obj_ptr->optlist);
+            free(coap_obj_ptr->optlist);
             coap_obj_ptr->optlist = next;
         }
 
