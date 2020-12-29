@@ -7,26 +7,26 @@
 #   see the Pycom Licence v1.0 document supplied with this file, or
 #   available at https://www.pycom.io/opensource/licensing
 
-from __future__ import print_function
 
+
+
+from __future__ import print_function
+from esptool import ESP32ROM
+from io import BytesIO, StringIO
+from pypic import Pypic
+from traceback import print_exc
 import argparse
 import base64
 import binascii
-from io import BytesIO, StringIO
+import esptool
 import json
 import os
 import re
+import serial.tools.list_ports
 import struct
 import sys
 import tarfile
 import time
-from traceback import print_exc
-
-import serial.tools.list_ports
-
-from esptool import ESP32ROM
-import esptool
-from pypic import Pypic
 
 try:
     import humanfriendly
@@ -43,7 +43,7 @@ DEFAULT_BAUD_RATE = 115200
 FAST_BAUD_RATE = 921600
 MAXPICREAD_BAUD_RATE = 230400
 
-LORA_REGIONS = ["EU868", "US915", "AS923", "AU915", "IN865"]
+LORA_REGIONS = ["EU868", "US915", "AS923", "AU915", "IN865", "CN470", "EU433"]
 
 PIC_BOARDS = ["04D8:F013", "04D8:F012", "04D8:EF98", "04D8:EF38", "04D8:ED14"]
 
@@ -537,7 +537,7 @@ class NPyProgrammer(object):
         if erase_fs:
             self.erase_fs(chip_id, ui_label=ui_label)
         if erase_nvs:
-            self.erase(int(PARTITIONS.get('nvs')[0], 16), int(PARTITIONS.get('nvs')[1], 16), ui_label=ui_label, updateList = True)
+            self.erase(int(PARTITIONS.get('nvs')[0], 16), int(PARTITIONS.get('nvs')[1], 16), ui_label=ui_label, updateList=True)
 
         for instruction in script:
             if instruction[0].split(':', 2)[0] == 'w' or instruction[0].split(':', 2)[0] == 'o':
@@ -747,10 +747,10 @@ class NPyProgrammer(object):
         if DEBUG:
             self.print_cb(config_block)
         if boot_fs_type is not None:
-            if str(boot_fs_type) == 'LittleFS' or boot_fs_type == 1 or str(boot_fs_type) == '1':
-                fs = b'\x01'
-            else:
+            if str(boot_fs_type) == 'FatFS' or boot_fs_type == 1 or str(boot_fs_type) == '1':
                 fs = b'\x00'
+            else:
+                fs = b'\x01'
 
         new_config_block = config_block[0:533] \
                            +fs \
@@ -758,7 +758,7 @@ class NPyProgrammer(object):
         if DEBUG:
             self.print_cb(config_block)
         if self.__resultUpdateList is not None:
-            self.__resultUpdateList.append('File system type set to <b>{}</b>'.format('LittleFS' if (boot_fs_type == 'LittleFS' or boot_fs_type == 1 or boot_fs_type == '1') else 'FatFS'))
+            self.__resultUpdateList.append('File system type set to <b>{}</b>'.format('FatFS' if (boot_fs_type == 'FatFS' or boot_fs_type == 1 or boot_fs_type == '1') else 'LittleFS'))
         return self.set_pybytes_config(new_config_block, force_update=True)
 
     def print_cb(self, config_block):
@@ -871,28 +871,28 @@ class NPyProgrammer(object):
     def set_sigfox_config(self, config_block, sid=None, pac=None, pubkey=None, privkey=None):
         config_block = config_block.ljust(int(PARTITIONS.get('config')[1], 16), b'\x00')
         if sid is not None:
-            if not len(sid)==8:
+            if not len(sid) == 8:
                 raise ValueError('ID must be 8 HEX characters')
             sigid = bytearray.fromhex(sid).ljust(4, b'\x00')
         else:
             sigid = config_block[8:12]
 
         if pac is not None:
-            if not len(pac)==16:
+            if not len(pac) == 16:
                 raise ValueError('PAC must be 16 HEX characters')
             spac = bytearray.fromhex(pac).ljust(8, b'\x00')
         else:
             spac = config_block[12:20]
 
         if privkey is not None:
-            if not len(privkey)==32:
+            if not len(privkey) == 32:
                 raise ValueError('private key must be 32 HEX characters')
             sprivkey = bytearray.fromhex(privkey).ljust(16, b'\x00')
         else:
             sprivkey = config_block[20:36]
 
         if pubkey is not None:
-            if not len(pubkey)==32:
+            if not len(pubkey) == 32:
                 raise ValueError('public key must be 32 HEX characters')
             spubkey = bytearray.fromhex(pubkey).ljust(16, b'\x00')
         else:
@@ -901,11 +901,10 @@ class NPyProgrammer(object):
         new_config_block = config_block[0:8] \
                            +sigid \
                            +spac \
-                           + sprivkey \
-                           + spubkey \
+                           +sprivkey \
+                           +spubkey \
                            +config_block[52:]
         return new_config_block
-
 
     def read_mac(self):
         # returns a tuple with (wifi_mac, bluetooth_mac)
@@ -921,7 +920,7 @@ class NPyProgrammer(object):
         if not self.__pypic:
             self.esp.hard_reset()
         time.sleep(.5)
-        del self.esp
+        self.esp.disconnect()
         if (self.__pypic):
             pic = Pypic(self.esp_port)
             if pic.isdetected():
@@ -1003,6 +1002,7 @@ def process_arguments():
 
     cmd_parser_pycom = subparsers.add_parser('pycom', help='Check / Set pycom parameters')
     cmd_parser_pycom.add_argument('--fs_type', default=None, help="Set the file system type ['FatFS' or 'LittleFS']")
+
     cmd_parser_sigfox = subparsers.add_parser('sigfox', help='Show/Update sigfox details')
     cmd_parser_sigfox.add_argument('--id', default=None, help='Update Sigfox id')
     cmd_parser_sigfox.add_argument('--pac', default=None, help='Update Sigfox pac')
@@ -1039,7 +1039,7 @@ def process_arguments():
     cmd_parser_wifi.add_argument('--ssid', default=None, help='Set Wifi SSID')
     cmd_parser_wifi.add_argument('--pwd', default=None, help='Set Wifi PWD')
     # This doesn't really work as we updated the field to a bitfield
-    #cmd_parser_wifi.add_argument('--wob', type=str2bool, nargs='?', const=True, help='Set Wifi on boot')
+    # cmd_parser_wifi.add_argument('--wob', type=str2bool, nargs='?', const=True, help='Set Wifi on boot')
 
     cmd_parser_pybytes = subparsers.add_parser('pybytes', help='Read/Write pybytes configuration')
     cmd_parser_pybytes.add_argument('--token', default=None, help='Set Device Token')
@@ -1544,29 +1544,6 @@ def main():
                 except:
                     print("WIFI_ON_BOOT=[not set]")
 
-        elif args.command == 'pycom':
-            config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
-            nPy.print_cb(config_block)
-            if (args.fs_type is not None):
-                new_config_block = nPy.set_pycom_config(config_block, args.fs_type)
-                nPy.print_cb(new_config_block)
-                nPy.write(int(PARTITIONS.get('config')[0], 16), new_config_block)
-            else:
-                sys.stdout = old_stdout
-                try:
-                    if sys.version_info[0] < 3:
-                        fs_type = config_block[533]
-                    else:
-                        fs_type = config_block[533].to_bytes(1, byteorder='little')
-                    if fs_type == (b'\x00'):
-                        print("fs_type=FatFS")
-                    if fs_type == (b'\x01'):
-                        print("fs_type=LittleFS")
-                    if fs_type == (b'\xff'):
-                        print("fs_type=[not set]")
-                except:
-                    print("fs_type=[not set]")
-                        
         elif args.command == 'pybytes':
             config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
             if (hasattr(args, "token") and args.token is not None) \
@@ -1612,6 +1589,29 @@ def main():
                     print("EXTRAPREFS=%s" % pybytes_eprefs)
                 except:
                     print("EXTRAPREFS=[not set]")
+                    
+        elif args.command == 'pycom':
+            config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
+            nPy.print_cb(config_block)
+            if (args.fs_type is not None):
+                new_config_block = nPy.set_pycom_config(config_block, args.fs_type)
+                nPy.print_cb(new_config_block)
+                nPy.write(int(PARTITIONS.get('config')[0], 16), new_config_block)
+            else:
+                sys.stdout = old_stdout
+                try:
+                    if sys.version_info[0] < 3:
+                        fs_type = config_block[533]
+                    else:
+                        fs_type = config_block[533].to_bytes(1, byteorder='little')
+                    if fs_type == (b'\x00'):
+                        print("fs_type=FatFS")
+                    if fs_type == (b'\x01'):
+                        print("fs_type=LittleFS")
+                    if fs_type == (b'\xff'):
+                        print("fs_type=[not set]")
+                except:
+                    print("fs_type=[not set]")                    
 
         elif args.command == 'erase_fs':
 

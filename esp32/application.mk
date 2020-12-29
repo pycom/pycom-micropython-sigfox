@@ -49,7 +49,7 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/freertos/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/json/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/json/cJSON
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip
 APP_INC += -I$(ESP_IDF_COMP_PATH)/lwip/include/lwip/port
@@ -142,6 +142,11 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include/soc
 # Needed to find pycom_bootloader.h from pycom-esp-idf
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader/subproject/main
 
+# Added for Tensor Flow Micro -ML framework
+APP_INC += -Iml
+APP_INC += -I$(ESP_IDF_COMP_PATH)/tfmicro
+APP_INC += -I$(ESP_IDF_COMP_PATH)/tfmicro/third_party/flatbuffers/include 
+APP_INC += -I$(ESP_IDF_COMP_PATH)/tfmicro/third_party/gemmlowp
 
 
 APP_MAIN_SRC_C = \
@@ -230,6 +235,11 @@ ifeq ($(MOD_COAP_ENABLED), 1)
 APP_INC += -Ibsdiff
 APP_MODS_SRC_C += $(addprefix mods/,\
 	modcoap.c \
+	)
+endif
+ifeq ($(MOD_ESPNOW_ENABLED), 1)
+APP_MODS_SRC_C += $(addprefix mods/,\
+    modespnow.c \
 	)
 endif
 
@@ -433,6 +443,10 @@ APP_FTP_SRC_C = $(addprefix ftp/,\
 APP_CAN_SRC_C = $(addprefix can/,\
 	CAN.c \
 	)
+
+# APP_ML_SRC_C = $(addprefix ml/,\
+# 	magic_wand_data.c \
+# 	)
 
 SFX_OBJ =
 

@@ -13,6 +13,7 @@
 ######################
 esp32/build/
 esp32/build-*/
+esp32/factory_fw/binary/
 mpy-cross/build/*
 # This map file is generated here instead of the build folder...
 mpy-cross/*.map

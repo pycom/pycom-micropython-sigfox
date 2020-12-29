@@ -3,7 +3,7 @@
 
 # Name,   Type, SubType, Offset,   Size
 nvs,      data, nvs,     0x9000,   0x7000
-factory,  app,  factory, 0x10000,  1980k, encrypted
+factory,  app,  factory, 0x10000,  1020k, encrypted
 otadata,  data, ota,     ,         4K,    encrypted
-ota_0,    app,  ota_0,   0x210000, 1980K, encrypted
+ota_0,    app,  ota_0,   0x110000, 3004k, encrypted
 config,   data, 6,       ,         4K

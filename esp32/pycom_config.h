@@ -25,6 +25,12 @@
 /******************************************************************************
  DEFINE CONSTANTS
  ******************************************************************************/
+#define OTA_STATUS_SUCCESS 0
+#define OTA_STATUS_FAILURE 1
+#define OTA_STATUS_PENDING 2
+
+#define FW_TYPE_PYBYTES 0
+#define FW_TYPE_PYMESH  1
 
 /******************************************************************************
  DEFINE TYPES
@@ -77,7 +83,10 @@ typedef struct {
     uint8_t extra_preferences[100];
     uint8_t force_update;
     uint8_t auto_start;
-    uint8_t reserved[11];
+    uint8_t ota_status;                         // Current status of OTA Update. Can be SUCCESS(0), FAILURE(1) or PENDING(2)
+    uint8_t sysname[6];                         // sysname parameter used to request a new firmware e.g. LoPy4
+    uint8_t fwtype;                             // Type of the requested firmware. Should be 1 if pymesh firmware is to be requested
+    uint8_t reserved[3];
 } pycom_pybytes_config_t;
 _Static_assert(sizeof(pycom_pybytes_config_t) == 348, "pycom_pybytes_config_t should have a size of 348 bytes");
 
@@ -108,7 +117,7 @@ typedef struct {
     uint8_t band;
     uint8_t reset;
 } pycom_pybytes_lte_config_t;
-// pycom_pybytes_lte_config_t is the last used member of pycom_config_block_t, so no _Static_assert(sizeof()) needed
+_Static_assert(sizeof(pycom_pybytes_lte_config_t) == 278, "pycom_pybytes_lte_config_t should have a size of 278 bytes");
 
 typedef struct {                                         // size
     pycom_lpwan_config_t lpwan_config;                   //   53
@@ -209,6 +218,8 @@ bool config_set_lora_region (uint8_t lora_region);
 
 uint8_t config_get_lora_region (void);
 
+bool config_set_pybytes_device_token (uint8_t *pybytes_device_token);
+
 void config_get_pybytes_device_token (uint8_t *pybytes_device_token);
 
 void config_get_pybytes_mqttServiceAddress (uint8_t *pybytes_mqttServiceAddress);
@@ -223,6 +234,23 @@ void config_get_pybytes_extra_preferences (uint8_t *pybytes_userId);
 bool config_set_pybytes_force_update (uint8_t force_update);
 
 bool config_get_pybytes_force_update (void);
+
+bool config_set_pybytes_ota_status (uint8_t ota_status);
+
+uint8_t config_get_pybytes_ota_status (void);
+
+bool config_set_pybytes_sysname(uint8_t *sysname);
+
+void config_get_pybytes_sysname(uint8_t *sysname);
+
+bool config_set_pybytes_fwtype(uint8_t fwtype);
+
+uint8_t config_get_pybytes_fwtype(void);
+
+bool config_set_sw_version (uint8_t *sw_version);
+
+void config_get_sw_version (uint8_t *sw_version);
+
 #endif
 
 uint8_t config_get_boot_fs_type (void);

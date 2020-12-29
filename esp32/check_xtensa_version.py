@@ -12,7 +12,7 @@ def main():
     (output, err) = process.communicate()
     exit_code = process.wait()
     if(exit_code == 0):
-        if version in output:
+        if version in str(output):
             print("Xtensa version OK!")
             exit(0)
         else:

@@ -335,6 +335,11 @@ void config_get_pybytes_mqttServiceAddress (uint8_t *pybytes_mqttServiceAddress)
     }
 }
 
+bool config_set_pybytes_device_token (uint8_t *pybytes_device_token) {
+    memcpy( pycom_config_block.pybytes_config.device_token, pybytes_device_token, sizeof(pycom_config_block.pybytes_config.device_token));
+    return config_write();
+}
+
 void config_get_pybytes_device_token (uint8_t *pybytes_device_token) {
     memcpy( pybytes_device_token, pycom_config_block.pybytes_config.device_token, sizeof(pycom_config_block.pybytes_config.device_token));
     if (pybytes_device_token[0]==0xff) {
@@ -355,6 +360,49 @@ void config_get_pybytes_extra_preferences (uint8_t *pybytes_extra_preferences) {
         pybytes_extra_preferences[0]=0x0;
     }
 }
+
+bool config_set_pybytes_ota_status(uint8_t ota_status) {
+    pycom_config_block.pybytes_config.ota_status = ota_status;
+    return config_write();
+}
+
+uint8_t config_get_pybytes_ota_status(void) {
+    return pycom_config_block.pybytes_config.ota_status;
+}
+
+bool config_set_pybytes_sysname(uint8_t *sysname) {
+    memcpy(pycom_config_block.pybytes_config.sysname, sysname, sizeof(pycom_config_block.pybytes_config.sysname));
+    return config_write();
+}
+
+void config_get_pybytes_sysname(uint8_t *sysname) {
+    memcpy(sysname, pycom_config_block.pybytes_config.sysname, sizeof(pycom_config_block.pybytes_config.sysname));
+    if (sysname[0] == 0xff) {
+        sysname[0] = 0x0;
+    }
+}
+
+bool config_set_pybytes_fwtype(uint8_t fwtype) {
+    pycom_config_block.pybytes_config.fwtype = fwtype;
+    return config_write();
+}
+
+uint8_t config_get_pybytes_fwtype(void) {
+    return pycom_config_block.pybytes_config.fwtype;
+}
+
+bool config_set_sw_version (uint8_t *sw_version) {
+    memcpy(pycom_config_block.pycom_config.sw_version, sw_version, sizeof(pycom_config_block.pycom_config.sw_version));
+    return config_write();
+}
+
+void config_get_sw_version(uint8_t *sw_version) {
+    memcpy(sw_version, pycom_config_block.pycom_config.sw_version, sizeof(pycom_config_block.pycom_config.sw_version));
+    if (sw_version[0] == 0xff) {
+        sw_version[0] = 0x0;
+    }
+}
+
 #endif
 
 uint8_t config_get_boot_partition (void) {
