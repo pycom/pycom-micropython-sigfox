@@ -144,6 +144,19 @@ CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue -mfix-esp32-psram-cache-stra
 CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 
+# Configure floating point support
+ifeq ($(MICROPY_FLOAT_IMPL),double)
+CFLAGS += -DMICROPY_FLOAT_IMPL=MICROPY_FLOAT_IMPL_DOUBLE
+else
+ifeq ($(MICROPY_FLOAT_IMPL),none)
+CFLAGS += -DMICROPY_FLOAT_IMPL=MICROPY_FLOAT_IMPL_NONE
+else
+ifeq ($(MICROPY_FLOAT_IMPL),single)
+CFLAGS += -DMICROPY_FLOAT_IMPL=MICROPY_FLOAT_IMPL_FLOAT
+endif
+endif
+endif
+
 # These flags are used as per the output when linking examples/wifi/scan
 # -u ld_include_panic_highint_hdl is needed so esp32/dport_panic_panic_highint_hdl.S is linked and xt_highint4 is used from there,
 # otherwise xt_highint4 is used from freertos/xtensa/xtensa_vector_defaults.S which has incorrect implementation and results DPORT core lockup
