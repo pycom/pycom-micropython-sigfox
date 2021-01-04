@@ -31,13 +31,13 @@ def main():
     dstbl = os.getcwd() + '/bootloader/lib'
     dsttmpapp = os.getcwd() + '/lib/tmp'
     dstapp = os.getcwd() + '/lib'
-    
+
     try:
         # copy the bootloader libraries
-        
+
         os.mkdir(dsttmpbl)
         os.mkdir(dsttmpapp)
-        
+
         shutil.copy(src + '/bootloader/log/liblog.a', dsttmpbl)
         shutil.copy(src + '/bootloader/soc/libsoc.a', dsttmpbl)
         shutil.copy(src + '/bootloader/main/libmain.a', dsttmpbl)
@@ -47,9 +47,9 @@ def main():
         shutil.copy(src + '/bootloader/bootloader_support/libbootloader_support.a', dsttmpbl)
         # bootloader.map is needed since we build all the bootlader libraries (including Pycom's one) in esp-idf, here we will just link them together
         shutil.copy(src + '/bootloader/bootloader.map', dsttmpbl)
-        
+
         # copy the application libraries
-        
+
         shutil.copy(src + '/bootloader_support/libbootloader_support.a', dsttmpapp)
         shutil.copy(src + '/bt/libbt.a', dsttmpapp)
         shutil.copy(src + '/cxx/libcxx.a', dsttmpapp)
@@ -100,23 +100,23 @@ def main():
         shutil.copy(os.environ['IDF_PATH'] + '/components/xtensa/esp32/libhal.a', dsttmpapp)
         shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib/esp32/libsmartconfig.a', dsttmpapp)
         # shutil.copy(src + '/tfmicro/libtfmicro.a', dsttmpapp)
-        shutil.copy(src + '/esp_wifi/lib/esp32/libespnow.a', dsttmpapp)
+        shutil.copy(os.environ['IDF_PATH'] + '/components/esp_wifi/lib/esp32/libespnow.a', dsttmpapp)
     except:
         print("Couldn't Copy IDF libs defaulting to Local Lib Folders!")
         traceback.print_exc()
         shutil.rmtree(dsttmpbl)
         shutil.rmtree(dsttmpapp)
-        return
-    
+        return False
+
     for item in os.listdir(dsttmpbl):
         shutil.copy(dsttmpbl+ '/' + item, dstbl + '/' + item)
-        
+
     for item in os.listdir(dsttmpapp):
         shutil.copy(dsttmpapp + '/' + item, dstapp + '/' + item)
-        
+
     # copy the project's linker script
     shutil.copy(src + '/esp32/esp32.project.ld', ".")
-    
+
     # copy the generated sdkconfig.h
     with open(src + '/include/sdkconfig.h', 'r') as input:
         content = input.read()
@@ -125,9 +125,13 @@ def main():
 
     shutil.rmtree(dsttmpbl)
     shutil.rmtree(dsttmpapp)
-    
+
     print("IDF Libs, linker script and sdkconfig.h copied successfully!")
-        
+    return True
+
 
 if __name__ == "__main__":
-    main()
+    if main():
+        exit(0)
+    else:
+        exit(1)

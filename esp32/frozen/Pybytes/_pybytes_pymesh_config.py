@@ -45,7 +45,10 @@ class PybytesPymeshConfig():
         except:
             from _pymesh import Pymesh
 
-        pycom.heartbeat(False)
+        try:
+            pycom.heartbeat(False)
+        except:
+            pass
 
         # read config file, or set default values
         self.__pymesh_config = PymeshConfig.read_config()
@@ -81,7 +84,7 @@ class PybytesPymeshConfig():
 
             # send data to the port equal with signal_number
             self.__pymesh.send_mess_external(pyb_ip, signal_number, pkt_start + value)
-            
+
             time.sleep(3) # shouldn't send too fast to BR
 
             # hardcode monitoring data to be sent on signal #2
@@ -93,11 +96,14 @@ class PybytesPymeshConfig():
         print_debug(99, 'Received: {} '.format(rcv_data))
 
         # user code to be inserted, to send packet to the designated Mesh-external interface
-        for _ in range(3):
-            pycom.rgbled(0x888888)
-            time.sleep(.2)
-            pycom.rgbled(0)
-            time.sleep(.1)
+        try:
+            for _ in range(3):
+                pycom.rgbled(0x888888)
+                time.sleep(.2)
+                pycom.rgbled(0)
+                time.sleep(.1)
+        except:
+            pass
         return
 
     def pymesh_new_br_message_cb(self, rcv_ip, rcv_port, rcv_data, dest_ip, dest_port):
@@ -106,11 +112,13 @@ class PybytesPymeshConfig():
         print_debug(99, 'Incoming %d bytes from %s (port %d), to external IPv6 %s (port %d)' % (len(rcv_data), rcv_ip, rcv_port, dest_ip, dest_port))
         print_debug(99, 'Received: {} '.format(rcv_data))
 
-        for _ in range(2):
-            pycom.rgbled(0x0)
-            time.sleep(.1)
-            pycom.rgbled(0x663300)
-
+        try:
+            for _ in range(2):
+                pycom.rgbled(0x0)
+                time.sleep(.1)
+                pycom.rgbled(0x663300)
+        except:
+            pass
         # try to find Pybytes Token if include in rcv_data
         token = ""
         if rcv_data.startswith(self.__pack_tocken_prefix):

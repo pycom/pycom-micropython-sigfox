@@ -52,13 +52,11 @@
 #include "esp_log.h"
 #include "mods/pybflash.h"
 
-#if defined (LOPY) || defined (LOPY4) || defined (FIPY)
+#ifdef MOD_LORA_ENABLED
 #include "modlora.h"
 #endif
-#if defined (SIPY) || defined(LOPY4) || defined (FIPY)
-#if defined (MOD_SIGFOX_ENABLED)
+#ifdef MOD_SIGFOX_ENABLED
 #include "sigfox/modsigfox.h"
-#endif
 #endif
 #if defined (GPY) || defined (FIPY)
 #include "modlte.h"
@@ -263,35 +261,27 @@ soft_reset:
         // Config Wifi as per Pycom config
         mptask_config_wifi(false);
         // these ones are special because they need uPy running and they launch tasks
-#ifndef PYETH_ENABLED
-// PyEth and LoRa module are both connected via SPI 3,
-// so with PyEth enabled, we disable th LoRa module
-#if defined(LOPY) || defined (LOPY4) || defined (FIPY)
+#ifdef MOD_LORA_ENABLED
         modlora_init0();
 #endif
-#if defined(SIPY) || defined(LOPY4) || defined (FIPY)
-#if defined (MOD_SIGFOX_ENABLED)
+#ifdef MOD_SIGFOX_ENABLED
         modsigfox_init0();
-#endif
-#endif
 #endif
     }
 
     // initialize the serial flash file system
     mptask_init_sflash_filesystem();
 
-#if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY)
+#if defined(MOD_LORA_ENABLED) || defined(MOD_SIGFOX_ENABLED)
     // must be done after initializing the file system
     mptask_update_lpwan_mac_address();
 #endif
 
-#if defined(SIPY) || defined(LOPY4) || defined(FIPY)
-#if defined (MOD_SIGFOX_ENABLED)
+#ifdef MOD_SIGFOX_ENABLED
     sigfox_update_id();
     sigfox_update_pac();
     sigfox_update_private_key();
     sigfox_update_public_key();
-#endif
 #endif
 
     // append the flash paths to the system path

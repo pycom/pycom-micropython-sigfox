@@ -107,7 +107,7 @@
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
-static lte_obj_t lte_obj = {.init = false, .trigger = LTE_TRIGGER_NONE, .events = 0, .handler = NULL, .handler_arg = NULL};
+static lte_obj_t lte_obj = {.init = false, .trigger = LTE_EVENT_NONE, .events = 0, .handler = NULL, .handler_arg = NULL};
 static lte_task_rsp_data_t modlte_rsp;
 uart_dev_t* uart_driver_0 = &UART0;
 uart_dev_t* uart_driver_lte = &UART2;
@@ -153,6 +153,10 @@ STATIC mp_obj_t lte_deinit(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
 STATIC mp_obj_t lte_disconnect(mp_obj_t self_in);
 static void lte_set_default_inf(void);
 static void lte_callback_handler(void* arg);
+
+//#define MSG(fmt, ...) printf("[%u] modlte: " fmt, mp_hal_ticks_ms(), ##__VA_ARGS__)
+#define MSG(fmt, ...) (void)0
+
 /******************************************************************************
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
@@ -169,18 +173,22 @@ void modlte_start_modem(void)
 
 void modlte_urc_events(lte_events_t events)
 {
-    switch(events)
+    // set the events to report to the user, the clearing is done upon reading via lte_events()
+    if ( (events & LTE_EVENT_COVERAGE_LOST)
+        && (lte_obj.trigger & LTE_EVENT_COVERAGE_LOST) )
     {
-    case LTE_EVENT_COVERAGE_LOST:
-        if ((lte_obj.trigger & LTE_TRIGGER_SIG_LOST)) {
-            lte_obj.events |= (uint32_t)LTE_TRIGGER_SIG_LOST;
-        }
-        mp_irq_queue_interrupt(lte_callback_handler, &lte_obj);
-        break;
-    default:
-        break;
+        lte_obj.events |= (uint32_t)LTE_EVENT_COVERAGE_LOST;
     }
+    if ( (events & LTE_EVENT_BREAK)
+        && (lte_obj.trigger & LTE_EVENT_BREAK) )
+    {
+        lte_obj.events |= (uint32_t)LTE_EVENT_BREAK;
+    }
+
+    //MSG("urc(%u) l.trig=%u l.eve=%d\n", events, lte_obj.trigger, lte_obj.events);
+    mp_irq_queue_interrupt(lte_callback_handler, &lte_obj);
 }
+
 //*****************************************************************************
 // DEFINE STATIC FUNCTIONS
 //*****************************************************************************
@@ -190,9 +198,12 @@ static void lte_callback_handler(void* arg)
     lte_obj_t *self = arg;
 
     if (self->handler && self->handler != mp_const_none) {
-
+        //MSG("call callback(handler=%p, arg=%p)\n", self->handler_arg, self->handler);
         mp_call_function_1(self->handler, self->handler_arg);
+    }else{
+        //MSG("no callback\n");
     }
+
 }
 
 static bool lte_push_at_command_ext_cont (char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len, bool continuation)
@@ -234,7 +245,7 @@ static void lte_pause_ppp(void) {
                     if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
                         mp_hal_delay_ms(LTE_PPP_BACK_OFF_TIME_MS);
                         if (!lte_push_at_command("AT", LTE_RX_TIMEOUT_MIN_MS)) {
-                            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
+                            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Pause PPP failed"));
                         }
                     }
                 }
@@ -271,15 +282,15 @@ static bool lte_check_attached(bool legacy) {
                     mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
                     lte_push_at_command("AT+CEREG?", LTE_RX_TIMEOUT_MIN_MS);
                 }
-                if (((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,")))
+                if (((pos = strstr(modlte_rsp.data, "+CEREG: 1,1")) || (pos = strstr(modlte_rsp.data, "+CEREG: 1,5")))
                         && (strlen(pos) >= 31) && (pos[30] == '7' || pos[30] == '9')) {
                     attached = true;
                 }
             } else {
-                if ((pos = strstr(modlte_rsp.data, "+CEREG: 2,1,")) || (pos = strstr(modlte_rsp.data, "+CEREG: 2,5,"))) {
+                if ((pos = strstr(modlte_rsp.data, "+CEREG: 1,1")) || (pos = strstr(modlte_rsp.data, "+CEREG: 1,5"))) {
                     attached = true;
                 } else {
-                    if((pos = strstr(modlte_rsp.data, "+CEREG: 2,4")))
+                    if((pos = strstr(modlte_rsp.data, "+CEREG: 1,4")))
                     {
                         lte_ue_is_out_of_coverage = true;
                     }
@@ -445,7 +456,7 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         //printf("All done since we were already initialised.\n");
         return mp_const_none;
     }
-    modem_state  = lteppp_modem_state();
+    modem_state  = lteppp_get_modem_conn_state();
     switch(modem_state)
     {
     case E_LTE_MODEM_DISCONNECTED:
@@ -454,15 +465,19 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
         MP_THREAD_GIL_EXIT();
         xSemaphoreTake(xLTE_modem_Conn_Sem, portMAX_DELAY);
         MP_THREAD_GIL_ENTER();
-        if (E_LTE_MODEM_DISCONNECTED == lteppp_modem_state()) {
+        lte_modem_conn_state_t modem_state = lteppp_get_modem_conn_state();
+        if (E_LTE_MODEM_DISCONNECTED == modem_state) {
             xSemaphoreGive(xLTE_modem_Conn_Sem);
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=disconnected)"));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't start connection to Modem (modem_state=disconnected)"));
+        } else if (E_LTE_MODEM_RECOVERY == modem_state){
+            xSemaphoreGive(xLTE_modem_Conn_Sem);
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't start connection to Modem (modem_state=recovery). Perform a modem firmware update."));
         }
         break;
     case E_LTE_MODEM_CONNECTING:
         // Block till modem is connected
         xSemaphoreTake(xLTE_modem_Conn_Sem, portMAX_DELAY);
-        if (E_LTE_MODEM_DISCONNECTED == lteppp_modem_state()) {
+        if (E_LTE_MODEM_DISCONNECTED == lteppp_get_modem_conn_state()) {
             xSemaphoreGive(xLTE_modem_Conn_Sem);
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=connecting)"));
         }
@@ -470,8 +485,11 @@ static mp_obj_t lte_init_helper(lte_obj_t *self, const mp_arg_val_t *args) {
     case E_LTE_MODEM_CONNECTED:
         //continue
         break;
+    case E_LTE_MODEM_RECOVERY:
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=recovery). Perform a modem firmware update."));
+        break;
     default:
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state=default)"));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Couldn't connect to Modem (modem_state - default)"));
         break;
     }
     lte_obj.cid = args[1].u_int;
@@ -869,6 +887,11 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     lte_check_attached(lte_legacyattach_flag);
 
     if (lteppp_get_state() < E_LTE_ATTACHING) {
+
+        if ( ! lte_check_sim_present() ) {
+                nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Sim card not present"));
+        }
+
         const char *carrier = "standard";
         if (!lte_push_at_command("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS)) {
             if (!lte_push_at_command("AT+SQNCTM?", LTE_RX_TIMEOUT_MAX_MS)) {
@@ -922,13 +945,13 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
             }
             else
             {
+                // argument 'band'
                 if (args[0].u_obj != mp_const_none) {
-                    // argument 'band'
                     lte_add_band(mp_obj_get_int(args[0].u_obj), is_hw_new_band_support, is_sw_new_band_support, version);
                 }
 
+                // argument 'bands'
                 if (args[6].u_obj != mp_const_none){
-                    // argument 'bands'
                     mp_obj_t *bands;
                     size_t n_bands=0;
                     mp_obj_get_array(args[6].u_obj, &n_bands, &bands);
@@ -942,12 +965,14 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         } else {
             lte_obj.carrier = true;
         }
+
+        // argument 'cid'
         if (args[3].u_obj != mp_const_none) {
             lte_obj.cid = args[3].u_int;
         }
 
+        // argument 'apn'
         if (args[1].u_obj != mp_const_none || args[4].u_obj != mp_const_none) {
-
             const char* strapn;
             const char* strtype;
 
@@ -973,11 +998,14 @@ STATIC mp_obj_t lte_attach(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
                 nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
             }
         }
+
+        // argument 'log'
         if (args[2].u_obj == mp_const_false) {
             lte_push_at_command("AT!=\"disablelog 1\"", LTE_RX_TIMEOUT_MAX_MS);
         } else {
             lte_push_at_command("AT!=\"disablelog 0\"", LTE_RX_TIMEOUT_MAX_MS);
         }
+
         lteppp_set_state(E_LTE_ATTACHING);
         if (!lte_push_at_command("AT+CFUN=1", LTE_RX_TIMEOUT_MAX_MS)) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_operation_failed));
@@ -1063,15 +1091,15 @@ STATIC mp_obj_t lte_suspend(mp_obj_t self_in) {
     lte_check_init();
     if (lteppp_get_state() == E_LTE_PPP) {
         lteppp_suspend();
-        //printf("Pausing ppp...\n");
+        MSG("Pausing ppp...\n");
         lte_pause_ppp();
-        //printf("Pausing ppp done...\n");
+        MSG("Pausing ppp done...\n");
         lteppp_set_state(E_LTE_SUSPENDED);
         while (true) {
             mp_hal_delay_ms(LTE_RX_TIMEOUT_MIN_MS);
-            //printf("Sending AT...\n");
+            MSG("Sending AT...\n");
             if (lte_push_at_command("AT", LTE_RX_TIMEOUT_MAX_MS)) {
-                //printf("OK\n");
+                MSG("OK\n");
                 break;
             }
         }
@@ -1162,13 +1190,13 @@ STATIC mp_obj_t lte_resume(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     if (lteppp_get_state() == E_LTE_PPP) {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Modem is already connected"));
     }
     lte_check_attached(lte_legacyattach_flag);
 
     if (lteppp_get_state() == E_LTE_SUSPENDED || lteppp_get_state() == E_LTE_ATTACHED) {
         if (lteppp_get_state() == E_LTE_ATTACHED && lteppp_get_legacy() == E_LTE_LEGACY) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "Operation failed (attached and legacy)"));
         }
 //        char at_cmd[LTE_AT_CMD_SIZE_MAX - 4];
         if (args[0].u_obj != mp_const_none) {
@@ -1176,11 +1204,13 @@ STATIC mp_obj_t lte_resume(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
         }
 
         if (lte_push_at_command_ext("ATO", LTE_RX_TIMEOUT_MAX_MS, LTE_CONNECT_RSP, strlen("ATO") )) {
+            MSG("resume ATO OK\n");
             lteppp_connect();
             lteppp_resume();
             lteppp_set_state(E_LTE_PPP);
             vTaskDelay(1500);
         } else {
+            MSG("resume ATO failed -> reconnect\n");
             lteppp_disconnect();
             lteppp_set_state(E_LTE_ATTACHED);
             lte_check_attached(lte_legacyattach_flag);
@@ -1189,6 +1219,7 @@ STATIC mp_obj_t lte_resume(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t 
     } else if (lteppp_get_state() == E_LTE_PPP) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "modem already connected"));
     } else {
+        MSG("resume do nothing\n");
         //Do Nothing
     }
     return mp_const_none;
@@ -1587,7 +1618,8 @@ STATIC const mp_map_elem_t lte_locals_dict_table[] = {
     // class constants
     { MP_OBJ_NEW_QSTR(MP_QSTR_IP),                   MP_OBJ_NEW_QSTR(MP_QSTR_IP) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_IPV4V6),               MP_OBJ_NEW_QSTR(MP_QSTR_IPV4V6) },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_COVERAGE_LOSS),  MP_OBJ_NEW_SMALL_INT(LTE_TRIGGER_SIG_LOST) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_COVERAGE_LOSS),  MP_OBJ_NEW_SMALL_INT(LTE_EVENT_COVERAGE_LOST) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_EVENT_BREAK),          MP_OBJ_NEW_SMALL_INT(LTE_EVENT_BREAK) },
     // PSM Power Saving Mode
     { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_2S),        MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_2S) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_PSM_PERIOD_30S),       MP_OBJ_NEW_SMALL_INT(PSM_PERIOD_30S) },
