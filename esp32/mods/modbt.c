@@ -61,7 +61,7 @@
  ******************************************************************************/
 #define BT_SCAN_QUEUE_SIZE_MAX                              (16)
 #define BT_GATTS_QUEUE_SIZE_MAX                             (2)
-#define BT_MTU_SIZE_MAX                                     (200)
+#define BT_MTU_SIZE_MAX                                     (ESP_GATT_MAX_MTU_SIZE)
 #define BT_CHAR_VALUE_SIZE_MAX                              (BT_MTU_SIZE_MAX - 3)
 
 #define MOD_BT_CLIENT_APP_ID                                (0)
