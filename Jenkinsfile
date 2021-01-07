@@ -122,7 +122,7 @@ def testBuild(short_name) {
             timeout(30) {
                 // As some tests are randomly failing... enforce script always returns 0 (OK)
                 sh '''export PATH=$PATH:/usr/local/bin;
-                ./run-tests --target=esp32 --device ''' + device_name + ' || exit 0'
+                ./run-tests --target=esp32 --device ''' + device_name
             }
         }
         sh 'python esp32/tools/pypic.py --port ' + device_name +' --enter'
