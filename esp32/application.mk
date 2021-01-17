@@ -181,6 +181,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	lwipsocket.c \
 	machtouch.c \
 	modmdns.c \
+	esp_espnow.c \
 	)
 ifeq ($(MOD_COAP_ENABLED), 1)
 APP_INC += -Ibsdiff
@@ -921,8 +922,8 @@ GEN_PINS_SRC = $(BUILD)/pins.c
 GEN_PINS_HDR = $(HEADER_BUILD)/pins.h
 GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 
-.NOTPARALLEL: CHECK_DEP $(OBJ)
-.NOTPARALLEL: CHECK_DEP $(BOOT_OBJ)
+# .NOTPARALLEL: CHECK_DEP $(OBJ)
+# .NOTPARALLEL: CHECK_DEP $(BOOT_OBJ)
 
 $(BOOT_OBJ) $(OBJ): | CHECK_DEP
 

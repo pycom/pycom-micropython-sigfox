@@ -58,6 +58,7 @@
 #ifdef MOD_SIGFOX_ENABLED
 #include "sigfox/modsigfox.h"
 #endif
+#endif
 #if defined (GPY) || defined (FIPY)
 #include "modlte.h"
 #endif
@@ -264,6 +265,8 @@ soft_reset:
 #ifdef MOD_SIGFOX_ENABLED
         modsigfox_init0();
 #endif
+#endif
+#endif
     }
 
     // initialize the serial flash file system
@@ -279,6 +282,7 @@ soft_reset:
     sigfox_update_pac();
     sigfox_update_private_key();
     sigfox_update_public_key();
+#endif
 #endif
 
     // append the flash paths to the system path
