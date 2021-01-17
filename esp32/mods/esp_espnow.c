@@ -101,8 +101,7 @@ STATIC void send_queue_handler(void *arg) {
     }
 }
 
-STATIC void IRAM_ATTR send_cb(const uint8_t *macaddr, esp_now_send_status_t status)
-{
+STATIC void IRAM_ATTR send_cb(const uint8_t *macaddr, esp_now_send_status_t status){
     if (send_cb_obj != mp_const_none) {
         mp_obj_tuple_t *msg = mp_obj_new_tuple(2, NULL);
         msg->items[0] = mp_obj_new_bytes(macaddr, ESP_NOW_ETH_ALEN);
@@ -119,8 +118,7 @@ STATIC void recv_queue_handler(void *arg) {
     }
 }
 
-STATIC void IRAM_ATTR recv_cb(const uint8_t *macaddr, const uint8_t *data, int len) 
-{
+STATIC void IRAM_ATTR recv_cb(const uint8_t *macaddr, const uint8_t *data, int len) {
     if (recv_cb_obj != mp_const_none) {
         mp_obj_tuple_t *msg = mp_obj_new_tuple(2, NULL);
         msg->items[0] = mp_obj_new_bytes(macaddr, ESP_NOW_ETH_ALEN);
@@ -129,8 +127,15 @@ STATIC void IRAM_ATTR recv_cb(const uint8_t *macaddr, const uint8_t *data, int l
     }
 } 
 
+// A static pointer to the espnow singleton
+STATIC mp_obj_espnow_t *espnow_singleton = NULL;
+
 STATIC mp_obj_t espnow_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
- 
+
+    if (espnow_singleton != NULL) {
+        return espnow_singleton;
+    } 
+
     mp_obj_espnow_t *self = m_new_obj(mp_obj_espnow_t);
     self->base.type = type;
     self->number = 0;
@@ -138,6 +143,8 @@ STATIC mp_obj_t espnow_make_new(const mp_obj_type_t *type, size_t n_args, size_t
     ESPNOW_EXCEPTIONS(esp_now_init());  
     ESPNOW_EXCEPTIONS(esp_now_register_recv_cb(recv_cb));
     ESPNOW_EXCEPTIONS(esp_now_register_send_cb(send_cb));
+
+    espnow_singleton = self;
 
     return MP_OBJ_FROM_PTR(self);
 }
