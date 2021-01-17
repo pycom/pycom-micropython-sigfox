@@ -560,77 +560,145 @@ STATIC void coap_resource_callback_put(coap_context_t * context,
 {
     xSemaphoreTake(coap_obj_ptr->semphr, portMAX_DELAY);
 
-    /* Due to limitation of libcoap, a previously not existed resource cannot be created with PUT
-     * As a result the If-Non-Match option does not work as execution will not reach this function
-     * if the object with the given URI does not exist
-     * https://sourceforge.net/p/libcoap/mailman/message/36177974
-     * https://github.com/obgm/libcoap/pull/225
-    */
+    mod_coap_resource_obj_t* resource_obj = NULL;
+    coap_opt_t* opt;
+    coap_opt_iterator_t opt_it;
+    const uint8_t* mediatype_opt_ptr = NULL;
+    uint8_t mediatype_opt_value = COAP_MEDIATYPE_TEXT_PLAIN;
+    size_t data_size;
+    unsigned char *data;
 
-    mod_coap_resource_obj_t* resource_obj = find_resource_by_uri(resource->uri_path);
-
-    // Check if the resource exists. (e.g.: has not been removed in the background before we got the semaphore in mod_coap_read())
-    if(resource_obj != NULL) {
-
-        bool precondition = false;
-        coap_opt_iterator_t opt_it;
-
-        // Check for If-Match option, currently only 1 If-Match option is supported
-        coap_opt_t *opt = coap_check_option(request, COAP_OPTION_IF_MATCH, &opt_it);
-
-        if(opt != NULL) {
-
-            unsigned short length = coap_opt_length(opt);
-            if(length != 0) { // 0 as length means the value is 0
-
-                // The value is an E-TAG
-                const uint8_t* value = coap_opt_value(opt);
-                unsigned int etag = coap_decode_var_bytes(value, length);
-
-                // If we maintain the E-TAG of the resource then check for equality
-                if((resource_obj->etag == true) && (etag == resource_obj->etag_value)) {
-                    precondition = true;
-                }
-            }
-            // If no value is specified for If-Match option then update the resource anyway
-            else
-            {
-                precondition = true;
-            }
+    // Get CONTENT-FORMAT option if specified
+    opt = coap_check_option(request, COAP_OPTION_CONTENT_FORMAT, &opt_it);
+    if(opt != NULL) {
+        unsigned short length = coap_opt_length(opt);
+        if(length != 0) { // 0 as length means the value is 0
+            mediatype_opt_ptr = coap_opt_value(opt);
+            mediatype_opt_value = coap_decode_var_bytes(mediatype_opt_ptr, length);
         }
-        // If no If-Match option given, update the value
         else {
-            precondition = true;
+            mediatype_opt_value = 0;
+        }
+    }
+    // If no CONTENT-FORMAT is specified set the media type to unknown
+    else {
+        mediatype_opt_value = -1;
+    }
+
+    // Get the Data
+    if(coap_get_data(request, &data_size, &data) == 0) {
+        // Indicate that an error occurred
+        data_size = -1;
+    }
+
+    resource_obj = find_resource_by_uri(resource->uri_path);
+
+    // Check if the resource exists, if not then create it
+    if(resource_obj == NULL) {
+        // Get the URI-PATH from the message because in this case the libcoap does not provide it via resource->uri_path
+        coap_opt_t *opt = coap_check_option(request, COAP_OPTION_URI_PATH, &opt_it);
+        unsigned short uri_path_opt_length = 0;
+        if(opt != NULL) {
+            uri_path_opt_length = coap_opt_length(opt);
         }
 
-        if(precondition == true) {
-            // Need to check if CONTENT-FORMAT option is specified and update the stored media type accordingly
-            coap_opt_t *opt = coap_check_option(request, COAP_OPTION_CONTENT_FORMAT, &opt_it);
+        if(uri_path_opt_length > 0) {
+            // The value is the URI-PATH
+            const uint8_t* uri_opt_ptr = coap_opt_value(opt);
+            // Transform it to a proper C String
+            char* uri = malloc(uri_path_opt_length + 1);
+            memcpy(uri, uri_opt_ptr, uri_path_opt_length);
+            uri[uri_path_opt_length] = '\0';
+
+            // Create new resource
+            mp_obj_t mp_data = mp_obj_new_int(0); // Default value is 0
+            if(data_size != -1) {
+                // If value is specified in the request, use that
+                mp_data = mp_obj_new_bytes(data, data_size);
+            }
+
+            /* Create new resource with the following parameters:
+             * - URI: the given URI from request
+             * - Mediatype: Mediatype from the request, if not defined it is TEXT_PLAIN
+             * - Max-Age: not specified
+             * - Etag: no
+             * - Default value: value from the request, if not specified it is 0
+             */
+
+            resource_obj = add_resource((const char *)uri, mediatype_opt_value, -1, mp_data, false);
+            if(resource_obj) {
+                // Resource has been created
+                // Allow all methods
+                coap_register_handler(resource_obj->coap_resource, COAP_REQUEST_GET, coap_resource_callback_get);
+                coap_register_handler(resource_obj->coap_resource, COAP_REQUEST_PUT, coap_resource_callback_put);
+                coap_register_handler(resource_obj->coap_resource, COAP_REQUEST_POST, coap_resource_callback_post);
+                coap_register_handler(resource_obj->coap_resource, COAP_REQUEST_DELETE, coap_resource_callback_delete);
+
+                // 2.01 Created
+                response->code = COAP_RESPONSE_CODE(201);
+                const char* message = coap_response_phrase(response->code);
+                coap_add_data(response, strlen(message), (unsigned char *)message);
+            }
+            else {
+                // Resource has not been created due to internal error
+                // 5.00 Internal Server error occurred
+                response->code = COAP_RESPONSE_CODE(500);
+                const char* error_message = coap_response_phrase(response->code);
+                coap_add_data(response, strlen(error_message), (unsigned char *)error_message);
+            }
+
+            // No longer needed as stored elsewhere
+            free(uri);
+        }
+        else {
+            /* TODO: in this case we might generate the URI-PATH for the new resource but theoretically that should be done only in POST,
+               and in POST libcoap does not support this. */
+
+            // No URI-PATH is provided or it is empty, resource cannot be created
+            // 4.00 Bad request
+            response->code = COAP_RESPONSE_CODE(400);
+            const char* error_message = coap_response_phrase(response->code);
+            coap_add_data(response, strlen(error_message), (unsigned char *)error_message);
+        }
+    }
+    // Resource already exists
+    else {
+        const uint8_t* etag_opt_ptr = NULL;
+        unsigned int etag_opt_value = 0;
+        bool precondition_check = true;
+
+        // Check for If-Non-Match option, currently only 1 If-Non-Match option is supported
+        coap_opt_t* opt = coap_check_option(request, COAP_OPTION_IF_NONE_MATCH, &opt_it);
+        // If there is If-Non_match option added to the request (its value is always empty) then do not overwrite the resource
+        if(opt != NULL){
+            precondition_check = false;
+        }
+
+        if(precondition_check == true) {
+            // Check for If-Match option, currently only 1 If-Match option is supported
+            opt = coap_check_option(request, COAP_OPTION_IF_MATCH, &opt_it);
 
             if(opt != NULL) {
-
                 unsigned short length = coap_opt_length(opt);
-
                 if(length != 0) { // 0 as length means the value is 0
-                    const uint8_t* value = coap_opt_value(opt);
-                    resource_obj->mediatype = coap_decode_var_bytes(value, length);
+                    // The value is an E-TAG
+                    etag_opt_ptr = coap_opt_value(opt);
+                    etag_opt_value = coap_decode_var_bytes(etag_opt_ptr, length);
                 }
-                else {
-                    resource_obj->mediatype = 0;
-                }
-            }
-            // If no CONTENT-FORMAT is specified set the media type to unknown
-            else {
-                resource_obj->mediatype = -1;
             }
 
-            // Update the data and set response code and add E-Tag option if needed
-            size_t size;
-            unsigned char *data;
-            int ret = coap_get_data(request, &size, &data);
-            if(ret == 1) {
-                mp_obj_t new_value = mp_obj_new_str((const char*)data, size);
+            // If we maintain the E-TAG of the resource then check for equality
+            if((resource_obj->etag == true) && (etag_opt_value != resource_obj->etag_value)) {
+                precondition_check = false;
+            }
+        }
+
+        if(precondition_check == true) {
+
+            if(data_size != -1) {
+                mp_obj_t new_value = mp_obj_new_bytes(data, data_size);
                 resource_update_value(resource_obj, new_value);
+                resource_obj->mediatype = mediatype_opt_value;
 
                 // Value is updated
                 response->code = COAP_RESPONSE_CODE(204);
@@ -642,6 +710,7 @@ STATIC void coap_resource_callback_put(coap_context_t * context,
                 }
             }
             else {
+                // There was a problem fetching the data from the message
                 // 5.00 Internal Server error occurred
                 response->code = COAP_RESPONSE_CODE(500);
                 const char* error_message = coap_response_phrase(response->code);
@@ -649,17 +718,12 @@ STATIC void coap_resource_callback_put(coap_context_t * context,
             }
         }
         else {
+            // If-None-Match or If-Match precondition is not fulfilled
             // 4.12 Precondition failed
             response->code = COAP_RESPONSE_CODE(412);
             const char* error_message = coap_response_phrase(response->code);
             coap_add_data(response, strlen(error_message), (unsigned char *)error_message);
         }
-    }
-    else {
-        // 2.02 Deleted: The entry was deleted by another thread in the background
-        response->code = COAP_RESPONSE_CODE(202);
-        const char* error_message = coap_response_phrase(response->code);
-        coap_add_data(response, strlen(error_message), (unsigned char *)error_message);
     }
 
     xSemaphoreGive(coap_obj_ptr->semphr);
@@ -679,12 +743,9 @@ STATIC void coap_resource_callback_post(coap_context_t * context,
     xSemaphoreTake(coap_obj_ptr->semphr, portMAX_DELAY);
 
     /* Post does not really make sense to use over PUT as the URI of the resource must be specified by the requester
-     * Due to limitation of libcoap, a previously not existed resource cannot be created with POST
-     * https://sourceforge.net/p/libcoap/mailman/message/36177974
-     * https://github.com/obgm/libcoap/pull/225
+     * Due to limitation of libcoap, a previously not existed resource cannot be created with POST.
+     * Currently the PUT handler will be called for creating a not existing resource
     */
-
-    //TODO: the mentioned PR is merged, we should support POST correctly
 
     mod_coap_resource_obj_t* resource_obj = find_resource_by_uri(resource->uri_path);
 
@@ -1209,6 +1270,10 @@ STATIC void mod_coap_init_helper(mp_obj_t address, bool service_discovery) {
             // Set socket option to join multicast group
             lwip_setsockopt(coap_obj_ptr->context->endpoint->sock.fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
         }
+
+        // Create a dummy resource to handle PUTs to unknown URIs
+        coap_resource_t* unknown_resource = coap_resource_unknown_init(coap_resource_callback_put);
+        coap_add_resource(coap_obj_ptr->context, unknown_resource);
     }
     else {
         // The module is only used as a Coap Client
