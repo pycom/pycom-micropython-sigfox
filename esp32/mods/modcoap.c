@@ -54,10 +54,10 @@ typedef struct mod_coap_resource_obj_s {
     coap_resource_t* coap_resource;
     struct mod_coap_resource_obj_s* next;
     uint8_t* value;
-    uint32_t max_age;
+    int32_t mediatype;
+    int32_t max_age;
     uint16_t etag_value;
     uint16_t value_len;
-    uint8_t mediatype;
     bool etag;
 }mod_coap_resource_obj_t;
 
@@ -87,7 +87,7 @@ typedef struct mod_coap_obj_s {
  ******************************************************************************/
 STATIC mod_coap_client_session_obj_t* new_client_session(mp_obj_t ip_addr, mp_obj_t port, mp_obj_t protocol);
 STATIC mod_coap_resource_obj_t* find_resource_by_uri(coap_str_const_t *uri_path);
-STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype, uint8_t max_age, mp_obj_t value, bool etag);
+STATIC mod_coap_resource_obj_t* add_resource(const char* uri, int32_t mediatype, int32_t max_age, mp_obj_t value, bool etag);
 STATIC void remove_resource_by_uri(coap_str_const_t *uri_path);
 STATIC void remove_resource(const char* uri);
 STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t new_value);
@@ -277,7 +277,7 @@ STATIC mod_coap_resource_obj_t* find_resource_by_uri(coap_str_const_t *uri_path)
 
 
 // Create a new resource in the scope of the only context
-STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype, uint8_t max_age, mp_obj_t value, bool etag) {
+STATIC mod_coap_resource_obj_t* add_resource(const char* uri, int32_t mediatype, int32_t max_age, mp_obj_t value, bool etag) {
 
     // Currently only 1 context is supported
     mod_coap_obj_t* context = coap_obj_ptr;
@@ -469,11 +469,11 @@ STATIC void coap_resource_callback_get(coap_context_t * context,
             if(opt != NULL) {
 
                 unsigned short length = coap_opt_length(opt);
-                unsigned int decoded = COAP_MEDIATYPE_TEXT_PLAIN;
+                int32_t decoded = COAP_MEDIATYPE_TEXT_PLAIN;
 
                 if(length != 0) { // 0 as length means the value is 0, which is MEDIATYPE TEXT PLAIN
                     const uint8_t* value = coap_opt_value(opt);
-                    decoded = coap_decode_var_bytes(value, length);
+                    decoded = (int32_t)coap_decode_var_bytes(value, length);
                 }
 
                 // If the accepted media type and stored one does not match respond with 4.06 Not Acceptable
@@ -560,7 +560,7 @@ STATIC void coap_resource_callback_put(coap_context_t * context,
     coap_opt_t* opt;
     coap_opt_iterator_t opt_it;
     const uint8_t* mediatype_opt_ptr = NULL;
-    uint8_t mediatype_opt_value = COAP_MEDIATYPE_TEXT_PLAIN;
+    int32_t mediatype_opt_value = COAP_MEDIATYPE_TEXT_PLAIN;
     size_t data_size;
     unsigned char *data;
 
@@ -570,7 +570,7 @@ STATIC void coap_resource_callback_put(coap_context_t * context,
         unsigned short length = coap_opt_length(opt);
         if(length != 0) { // 0 as length means the value is 0
             mediatype_opt_ptr = coap_opt_value(opt);
-            mediatype_opt_value = coap_decode_var_bytes(mediatype_opt_ptr, length);
+            mediatype_opt_value = (int32_t)coap_decode_var_bytes(mediatype_opt_ptr, length);
         }
         else {
             mediatype_opt_value = 0;
@@ -615,7 +615,7 @@ STATIC void coap_resource_callback_put(coap_context_t * context,
 
             /* Create new resource with the following parameters:
              * - URI: the given URI from request
-             * - Mediatype: Mediatype from the request, if not defined it is TEXT_PLAIN
+             * - Mediatype: Mediatype from the request
              * - Max-Age: not specified
              * - Etag: no
              * - Default value: value from the request, if not specified it is 0
@@ -1254,9 +1254,9 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_coap_resource_get_details_obj, mod_coap_res
 
 STATIC const mp_arg_t mod_coap_resource_set_details_args[] = {
         { MP_QSTR_self,                      MP_ARG_REQUIRED | MP_ARG_OBJ, },
-        { MP_QSTR_mediatype,                 MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_obj = MP_OBJ_NULL}},
-        { MP_QSTR_max_age,                   MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_obj = MP_OBJ_NULL}},
-        { MP_QSTR_etag,                      MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_obj = MP_OBJ_NULL}}
+        { MP_QSTR_mediatype,                 MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_obj = mp_const_none}},
+        { MP_QSTR_max_age,                   MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_obj = mp_const_none}},
+        { MP_QSTR_etag,                      MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_obj = mp_const_none}}
 };
 
 // Set the details of this resource
@@ -1267,22 +1267,25 @@ STATIC mp_obj_t mod_coap_resource_set_details(mp_uint_t n_args, const mp_obj_t *
 
     mod_coap_resource_obj_t* self = (mod_coap_resource_obj_t*)args[0].u_obj;
 
+    xSemaphoreTake(coap_obj_ptr->semphr, portMAX_DELAY);
+
     // Set mediatype if given
-    if(args[1].u_obj != MP_OBJ_NULL) {
+    if(args[1].u_obj != mp_const_none) {
         self->mediatype = args[1].u_int;
     }
 
     // Set max age if given
-    if(args[2].u_obj != MP_OBJ_NULL) {
+    if(args[2].u_obj != mp_const_none) {
         self->max_age = args[2].u_int;
     }
 
     // Set etag if given
-    if(args[3].u_obj != MP_OBJ_NULL) {
-        self->etag = args[3].u_int;
-        // Value 1 is the default value
-        self->etag = 1;
+    if(args[3].u_obj != mp_const_none) {
+        self->etag = args[3].u_bool;
+        self->etag_value = self->etag ? 1 : 0;
     }
+
+    xSemaphoreGive(coap_obj_ptr->semphr);
 
     return mp_const_none;
 }
