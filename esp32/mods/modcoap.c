@@ -54,7 +54,6 @@ typedef struct mod_coap_resource_obj_s {
     coap_resource_t* coap_resource;
     struct mod_coap_resource_obj_s* next;
     uint8_t* value;
-    unsigned char* uri;
     uint32_t max_age;
     uint16_t etag_value;
     uint16_t value_len;
@@ -77,7 +76,8 @@ typedef struct mod_coap_obj_s {
     mod_coap_resource_obj_t* resources;
     mod_coap_client_session_obj_t* client_sessions;
     SemaphoreHandle_t semphr;
-    mp_obj_t callback;
+    mp_obj_t callback_response;
+    mp_obj_t callback_new_resource;
 }mod_coap_obj_t;
 
 
@@ -91,6 +91,8 @@ STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype,
 STATIC void remove_resource_by_uri(coap_str_const_t *uri_path);
 STATIC void remove_resource(const char* uri);
 STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t new_value);
+STATIC void coap_response_new_resource_handler_micropython(void* arg);
+
 
 STATIC void coap_resource_callback_get(coap_context_t * context,
                                        struct coap_resource_t * resource,
@@ -303,9 +305,6 @@ STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype,
     // No next elem
     resource->next = NULL;
 
-    // uri parameter pointer will be destroyed, pass a pointer to a permanent location
-    resource->uri = malloc(strlen(uri));
-    memcpy(resource->uri, uri, strlen(uri));
     resource->coap_resource = coap_resource_init(&coap_str, 0);
     if(resource->coap_resource != NULL) {
         // Add the resource to the Coap context
@@ -334,7 +333,6 @@ STATIC mod_coap_resource_obj_t* add_resource(const char* uri, uint8_t mediatype,
         return resource;
     }
     else {
-        free(resource->uri);
         m_del_obj(mod_coap_resource_obj_t, resource);
         // Resource cannot be created
         return NULL;
@@ -374,8 +372,6 @@ STATIC void remove_resource_by_uri(coap_str_const_t *uri_path) {
                         previous->next = current->next;
                     }
 
-                    // Free the URI
-                    free(current->uri);
                     // Free the resource in coap's scope
                     coap_delete_resource(context->context, current->coap_resource);
                     // Free the element in MP scope
@@ -638,6 +634,11 @@ STATIC void coap_resource_callback_put(coap_context_t * context,
                 response->code = COAP_RESPONSE_CODE(201);
                 const char* message = coap_response_phrase(response->code);
                 coap_add_data(response, strlen(message), (unsigned char *)message);
+
+                // Call new resource callback if configured
+                if(coap_obj_ptr->callback_new_resource != NULL) {
+                    mp_irq_queue_interrupt_non_ISR(coap_response_new_resource_handler_micropython, (void *)resource_obj);
+                }
             }
             else {
                 // Resource has not been created due to internal error
@@ -849,8 +850,17 @@ STATIC void coap_response_handler_micropython(void* arg) {
     free(params);
 
     // Call the registered function, it must have 5 parameters:
-    mp_call_function_n_kw(coap_obj_ptr->callback, 5, 0, args);
+    mp_call_function_n_kw(coap_obj_ptr->callback_response, 5, 0, args);
 
+}
+
+// Callback function for new resources created by PUT
+STATIC void coap_response_new_resource_handler_micropython(void* arg)
+{
+    // The only arg is the newly created resource object
+    mp_obj_t args[1] = {(mod_coap_resource_obj_t*)arg};
+    // Call the registered function, it must have 1 parameter:
+    mp_call_function_n_kw(coap_obj_ptr->callback_new_resource, 1, 0, args);
 }
 
 
@@ -1221,11 +1231,72 @@ STATIC mp_obj_t mod_coap_resource_callback_enable(mp_obj_t self_in, mp_obj_t req
 STATIC MP_DEFINE_CONST_FUN_OBJ_3(mod_coap_resource_callback_enable_obj, mod_coap_resource_callback_enable);
 
 
+// Get the details of this resource
+STATIC mp_obj_t mod_coap_resource_get_details(mp_obj_t self_in) {
+
+    mod_coap_resource_obj_t* self = (mod_coap_resource_obj_t*)self_in;
+    mp_obj_t list = mp_obj_new_list(0, NULL);
+
+
+    xSemaphoreTake(coap_obj_ptr->semphr, portMAX_DELAY);
+
+        mp_obj_list_append(list, mp_obj_new_str((const char*)self->coap_resource->uri_path->s, self->coap_resource->uri_path->length));
+        mp_obj_list_append(list, MP_OBJ_NEW_SMALL_INT(self->mediatype));
+        mp_obj_list_append(list, MP_OBJ_NEW_SMALL_INT(self->max_age));
+        mp_obj_list_append(list, MP_OBJ_NEW_SMALL_INT(self->etag));
+        mp_obj_list_append(list, MP_OBJ_NEW_SMALL_INT(self->etag_value));
+
+    xSemaphoreGive(coap_obj_ptr->semphr);
+
+    return list;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_coap_resource_get_details_obj, mod_coap_resource_get_details);
+
+STATIC const mp_arg_t mod_coap_resource_set_details_args[] = {
+        { MP_QSTR_self,                      MP_ARG_REQUIRED | MP_ARG_OBJ, },
+        { MP_QSTR_mediatype,                 MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_obj = MP_OBJ_NULL}},
+        { MP_QSTR_max_age,                   MP_ARG_KW_ONLY  | MP_ARG_INT, {.u_obj = MP_OBJ_NULL}},
+        { MP_QSTR_etag,                      MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_obj = MP_OBJ_NULL}}
+};
+
+// Set the details of this resource
+STATIC mp_obj_t mod_coap_resource_set_details(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+
+    mp_arg_val_t args[MP_ARRAY_SIZE(mod_coap_resource_set_details_args)];
+    mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_coap_resource_set_details_args, args);
+
+    mod_coap_resource_obj_t* self = (mod_coap_resource_obj_t*)args[0].u_obj;
+
+    // Set mediatype if given
+    if(args[1].u_obj != MP_OBJ_NULL) {
+        self->mediatype = args[1].u_int;
+    }
+
+    // Set max age if given
+    if(args[2].u_obj != MP_OBJ_NULL) {
+        self->max_age = args[2].u_int;
+    }
+
+    // Set etag if given
+    if(args[3].u_obj != MP_OBJ_NULL) {
+        self->etag = args[3].u_int;
+        // Value 1 is the default value
+        self->etag = 1;
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_coap_resource_set_details_obj, 1, mod_coap_resource_set_details);
+
+
 STATIC const mp_map_elem_t coap_resource_locals_table[] = {
     // instance methods
         { MP_OBJ_NEW_QSTR(MP_QSTR_add_attribute),               (mp_obj_t)&mod_coap_resource_add_attribute_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_value),                       (mp_obj_t)&mod_coap_resource_value_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_callback),                    (mp_obj_t)&mod_coap_resource_callback_enable_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_get_details),                 (mp_obj_t)&mod_coap_resource_get_details_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_set_details),                 (mp_obj_t)&mod_coap_resource_set_details_obj }
+
 };
 STATIC MP_DEFINE_CONST_DICT(coap_resource_locals, coap_resource_locals_table);
 
@@ -1271,6 +1342,9 @@ STATIC void mod_coap_init_helper(mp_obj_t address, bool service_discovery) {
             lwip_setsockopt(coap_obj_ptr->context->endpoint->sock.fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq));
         }
 
+        // These will be registered on demand by the user
+        coap_obj_ptr->callback_response = NULL;
+        coap_obj_ptr->callback_new_resource = NULL;
         // Create a dummy resource to handle PUTs to unknown URIs
         coap_resource_t* unknown_resource = coap_resource_unknown_init(coap_resource_callback_put);
         coap_add_resource(coap_obj_ptr->context, unknown_resource);
@@ -1445,7 +1519,7 @@ STATIC mp_obj_t mod_coap_read(size_t n, const mp_obj_t * args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_coap_read_obj, 0, 1, mod_coap_read);
 
-// Register the user's callback handler
+// Register the user's callback handler to be called when response is received to a request
 STATIC mp_obj_t mod_coap_register_response_handler(mp_obj_t callback) {
 
     // The Coap module should have been already initialized
@@ -1453,7 +1527,7 @@ STATIC mp_obj_t mod_coap_register_response_handler(mp_obj_t callback) {
         // Take the context's semaphore to avoid concurrent access, this will guard the handler functions too
         xSemaphoreTake(coap_obj_ptr->semphr, portMAX_DELAY);
         // Register the user's callback handler
-        coap_obj_ptr->callback = callback;
+        coap_obj_ptr->callback_response = callback;
         coap_register_response_handler(coap_obj_ptr->context, coap_response_handler);
         xSemaphoreGive(coap_obj_ptr->semphr);
     }
@@ -1464,6 +1538,25 @@ STATIC mp_obj_t mod_coap_register_response_handler(mp_obj_t callback) {
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_coap_register_response_handler_obj, mod_coap_register_response_handler);
+
+// Register the user's callback handler to be called when new resource is created via PUT
+STATIC mp_obj_t mod_coap_register_new_resource_handler(mp_obj_t callback) {
+
+    // The Coap module should have been already initialized
+    if(initialized == true) {
+        // Take the context's semaphore to avoid concurrent access, this will guard the handler functions too
+        xSemaphoreTake(coap_obj_ptr->semphr, portMAX_DELAY);
+        // Register the user's callback handler
+        coap_obj_ptr->callback_new_resource = callback;
+        xSemaphoreGive(coap_obj_ptr->semphr);
+    }
+    else {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Coap module has not been initialized!"));
+    }
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_coap_register_new_resource_handler_obj, mod_coap_register_new_resource_handler);
 
 // Create a new client session
 STATIC mp_obj_t mod_coap_new_client_session(size_t n, const mp_obj_t * args) {
@@ -1577,6 +1670,7 @@ STATIC const mp_map_elem_t mod_coap_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_get_resource),                    (mp_obj_t)&mod_coap_get_resource_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_read),                            (mp_obj_t)&mod_coap_read_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_register_response_handler),       (mp_obj_t)&mod_coap_register_response_handler_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_register_new_resource_handler),   (mp_obj_t)&mod_coap_register_new_resource_handler_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_new_client_session),              (mp_obj_t)&mod_coap_new_client_session_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_remove_client_session),           (mp_obj_t)&mod_coap_remove_client_session_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_get_client_sessions),             (mp_obj_t)&mod_coap_get_client_sessions_obj },
