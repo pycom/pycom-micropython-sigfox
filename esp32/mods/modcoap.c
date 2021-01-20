@@ -1314,7 +1314,7 @@ STATIC const mp_obj_type_t mod_coap_resource_type = {
  ******************************************************************************/
 
 
-STATIC void mod_coap_init_helper(mp_obj_t address, bool service_discovery) {
+STATIC void mod_coap_init_helper(mp_obj_t address, bool service_discovery, bool dynamic_resources) {
 
 
     if(address != NULL) {
@@ -1348,9 +1348,11 @@ STATIC void mod_coap_init_helper(mp_obj_t address, bool service_discovery) {
         // These will be registered on demand by the user
         coap_obj_ptr->callback_response = NULL;
         coap_obj_ptr->callback_new_resource = NULL;
-        // Create a dummy resource to handle PUTs to unknown URIs
-        coap_resource_t* unknown_resource = coap_resource_unknown_init(coap_resource_callback_put);
-        coap_add_resource(coap_obj_ptr->context, unknown_resource);
+        if(dynamic_resources == true) {
+            // Create a dummy resource to handle PUTs to unknown URIs
+            coap_resource_t* unknown_resource = coap_resource_unknown_init(coap_resource_callback_put);
+            coap_add_resource(coap_obj_ptr->context, unknown_resource);
+        }
     }
     else {
         // The module is only used as a Coap Client
@@ -1362,6 +1364,7 @@ STATIC const mp_arg_t mod_coap_init_args[] = {
         { MP_QSTR_address,                  MP_ARG_OBJ                  , {.u_obj = NULL}},
         { MP_QSTR_port,                     MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_int = MODCOAP_DEFAULT_PORT}},
         { MP_QSTR_service_discovery,        MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_bool = false}},
+        { MP_QSTR_dynamic_resources,        MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_bool = false}},
 };
 
 // Initialize the module
@@ -1381,6 +1384,7 @@ STATIC mp_obj_t mod_coap_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
         mp_arg_val_t args[MP_ARRAY_SIZE(mod_coap_init_args)];
         mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_coap_init_args, args);
 
+        // The module is used in Coap Server and Client mode
         if(args[0].u_obj != NULL) {
 
             mp_obj_t list = mp_obj_new_list(0, NULL);
@@ -1390,11 +1394,14 @@ STATIC mp_obj_t mod_coap_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
             mp_obj_list_append(list, mp_obj_new_int(args[1].u_int));
             // Get whether service discovery is supported
             bool service_discovery = args[2].u_bool;
+            // Get whether dynamic resource creation is allowed via PUT
+            bool dynamic_resources = args[3].u_bool;
 
-            mod_coap_init_helper(list, service_discovery);
+            mod_coap_init_helper(list, service_discovery, dynamic_resources);
         }
+        // The module is used in Coap Client only mode
         else {
-            mod_coap_init_helper(NULL, false);
+            mod_coap_init_helper(NULL, false, false);
         }
 
         coap_obj_ptr->semphr = xSemaphoreCreateBinary();
