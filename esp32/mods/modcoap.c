@@ -816,7 +816,7 @@ STATIC mp_obj_t mod_coap_resource_callback_enable(mp_obj_t self_in, mp_obj_t req
     mod_coap_resource_obj_t* self = (mod_coap_resource_obj_t*)self_in;
 
     mp_int_t request_type = mp_obj_get_int(request_type_in);
-    bool enable = mp_obj_get_int(request_type_in) == 0 ? false : true;
+    bool enable = mp_obj_get_int(enable_in) == 0 ? false : true;
 
     if(request_type & MODCOAP_REQUEST_GET) {
         if(enable)    coap_register_handler(self->coap_resource, COAP_REQUEST_GET, coap_resource_callback_get);
