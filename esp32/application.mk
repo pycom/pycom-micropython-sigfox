@@ -182,6 +182,7 @@ APP_MODS_SRC_C = $(addprefix mods/,\
 	machtouch.c \
 	modmdns.c \
 	esp_espnow.c \
+	ring_buffer.c \
 	)
 ifeq ($(MOD_COAP_ENABLED), 1)
 APP_INC += -Ibsdiff
