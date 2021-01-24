@@ -84,7 +84,7 @@ typedef struct mod_coap_obj_s {
 /******************************************************************************
  DECLARE PRIVATE FUNCTIONS
  ******************************************************************************/
-STATIC mod_coap_client_session_obj_t* new_client_session(mp_obj_t ip_addr, mp_obj_t port, mp_obj_t protocol);
+STATIC mod_coap_client_session_obj_t* new_client_session(mp_obj_t ip_addr_in, mp_obj_t port_in, mp_obj_t key_in, mp_obj_t identity_in);
 STATIC mod_coap_resource_obj_t* find_resource_by_uri(coap_str_const_t *uri_path);
 STATIC mod_coap_resource_obj_t* add_resource(const char* uri, int32_t mediatype, int32_t max_age, mp_obj_t value, bool etag);
 STATIC void remove_resource_by_uri(coap_str_const_t *uri_path);
@@ -153,7 +153,7 @@ STATIC bool initialized = false;
  ******************************************************************************/
 
 // Create a new client session in the scope of the only context
-STATIC mod_coap_client_session_obj_t* new_client_session(mp_obj_t ip_addr_in, mp_obj_t port_in, mp_obj_t protocol_in) {
+STATIC mod_coap_client_session_obj_t* new_client_session(mp_obj_t ip_addr_in, mp_obj_t port_in, mp_obj_t key_in, mp_obj_t identity_in) {
 
     // Currently only 1 context is supported
     mod_coap_obj_t* context = coap_obj_ptr;
@@ -163,7 +163,7 @@ STATIC mod_coap_client_session_obj_t* new_client_session(mp_obj_t ip_addr_in, mp
     client_session->base.type = &mod_coap_client_session_type;
     client_session->ip_addr = ip_addr_in;
     client_session->port = port_in;
-    client_session->protocol = protocol_in;
+    client_session->protocol = key_in == mp_const_none ? mp_obj_new_int(COAP_PROTO_UDP) : mp_obj_new_int(COAP_PROTO_DTLS);
 
     mp_obj_t address = mp_obj_new_list(0, NULL);
 
@@ -174,15 +174,24 @@ STATIC mod_coap_client_session_obj_t* new_client_session(mp_obj_t ip_addr_in, mp
     // Prepare the destination address where to send the request
     coap_address_t dst_address;
     coap_address_init(&dst_address);
-    // TODO: accept IPv6 as well, figure out from IP address
     dst_address.addr.sin.sin_family = AF_INET;
     // The address will be in Big Endian order
     uint16_t port  = netutils_parse_inet_addr(address, (uint8_t*)&dst_address.addr.sin.sin_addr.s_addr, NETUTILS_BIG);
     // The port will be in Big Endian order
     dst_address.addr.sin.sin_port = htons(port);
 
-    // Create a new Client Session in the scope of esp-idf Coap module
-    client_session->session = coap_new_client_session(coap_obj_ptr->context, NULL, &dst_address, mp_obj_get_int(protocol_in));
+    // Create a new Client Session in the scope of esp-idf Coap module based on the protocol
+    mp_int_t protocol = mp_obj_get_int(client_session->protocol);
+    if(protocol == COAP_PROTO_UDP) {
+        client_session->session = coap_new_client_session(coap_obj_ptr->context, NULL, &dst_address, protocol);
+    }
+    else if(protocol == COAP_PROTO_DTLS) {
+        const char *identity = mp_obj_str_get_str(identity_in);
+        const uint8_t *key = (const uint8_t *)mp_obj_str_get_str(key_in);
+        unsigned key_len = strlen((const char*)key);
+        // PSK method is supported
+        client_session->session = coap_new_client_session_psk(coap_obj_ptr->context, NULL, &dst_address, protocol, identity, key, key_len);
+    }
 
     if(client_session->session != NULL) {
         // Add the Client Session to our context
@@ -904,7 +913,7 @@ STATIC coap_pdu_t * modcoap_new_request(coap_context_t *ctx,
                                         const char *data,
                                         size_t length)
 {
-    // TODO: get the type of the PDU as a parameter
+    // TODO: get the type of the PDU as a parameter, currently only Confirmable message is supported
     // TODO: calculate the proper size of the PDU
     coap_pdu_t *pdu = coap_pdu_init(COAP_MESSAGE_CON, method, coap_new_message_id(session), coap_session_max_pdu_size(session));
 
@@ -1023,7 +1032,6 @@ STATIC mp_obj_t mod_coap_client_session_send_request(mp_uint_t n_args, const mp_
         if(include_options == true) {
 
             // Put the URI-HOST as an option
-            // TODO: support IPv6
             coap_insert_optlist(&optlist, coap_new_optlist(COAP_OPTION_URI_HOST, 4, (const uint8_t*)(&self->session->remote_addr.addr.sin.sin_addr.s_addr)));
 
             // Put the URI-PORT as an option
@@ -1107,11 +1115,9 @@ STATIC mp_obj_t mod_coap_client_session_get_details(mp_obj_t self_in) {
 
         mod_coap_client_session_obj_t* self = (mod_coap_client_session_obj_t*)self_in;
 
-        //TODO: handle IPv6 case
         mp_obj_list_append(list, self->ip_addr);
         mp_obj_list_append(list, self->port);
-        // TODO: enable this when more protocols are supported
-        // mp_obj_list_append(list, self->protocol);
+        mp_obj_list_append(list, self->protocol);
 
         xSemaphoreGive(coap_obj_ptr->semphr);
 
@@ -1124,7 +1130,6 @@ STATIC mp_obj_t mod_coap_client_session_get_details(mp_obj_t self_in) {
         return mp_const_none;
     }
 }
-
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_coap_client_session_get_details_obj, mod_coap_client_session_get_details);
 
 STATIC const mp_map_elem_t coap_client_session_locals_table[] = {
@@ -1599,30 +1604,54 @@ STATIC mp_obj_t mod_coap_register_new_resource_handler(mp_obj_t callback) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_coap_register_new_resource_handler_obj, mod_coap_register_new_resource_handler);
 
+STATIC const mp_arg_t mod_coap_new_client_session_args[] = {
+        { MP_QSTR_address,                  MP_ARG_OBJ                  , {.u_obj = NULL}},
+        { MP_QSTR_port,                     MP_ARG_INT  | MP_ARG_KW_ONLY, {.u_obj = mp_const_none}},
+        { MP_QSTR_psk,                      MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = mp_const_none}},
+        { MP_QSTR_identity,                 MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = mp_const_none}},
+};
 // Create a new client session
-STATIC mp_obj_t mod_coap_new_client_session(size_t n, const mp_obj_t * args) {
+STATIC mp_obj_t mod_coap_new_client_session(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
 
     // The Coap module should have been already initialized
     if(initialized == true) {
 
-        mp_obj_t ip_addr = args[0];
-        mp_obj_t port = mp_obj_new_int(MODCOAP_DEFAULT_PORT);
-        // TODO: DTLS and other protocols are not supported yet
-        mp_obj_t protocol = mp_obj_new_int(COAP_PROTO_UDP);
+        mp_arg_val_t args[MP_ARRAY_SIZE(mod_coap_new_client_session_args)];
+        mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(args), mod_coap_new_client_session_args, args);
 
-        // If port is given, it is the "second" parameter
-        if(n > 1) {
-            port = args[1];
+        mp_obj_t ip_addr = args[0].u_obj;
+        mp_obj_t port = args[1].u_obj;
+        mp_obj_t psk = args[2].u_obj;
+        mp_obj_t identity = args[3].u_obj;
+
+        // If port not defined, select appropriate default port
+        if(port == mp_const_none) {
+            if(psk == mp_const_none) {
+                port =  mp_obj_new_int(COAP_DEFAULT_PORT);
+            }
+            else {
+                port =  mp_obj_new_int(COAPS_DEFAULT_PORT);
+            }
         }
-        // If protocol is given, it is the "third" parameter
-        if(n > 2) {
-            protocol = args[2];
+
+        // If security is used then port must be different than 5683
+        if(psk != mp_const_none && mp_obj_get_int(port) == COAP_DEFAULT_PORT) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "If Security is configured port must not be 5683!"));
         }
+        // If security is NOT used then port must be different than 5684
+        else if(psk == mp_const_none && mp_obj_get_int(port) == COAPS_DEFAULT_PORT) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "If Security is not configured port must not be 5684!"));
+        }
+
+        // Check if both PSK and Identity are configured
+        if((psk != mp_const_none && identity == mp_const_none) || (psk == mp_const_none && identity != mp_const_none)){
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "For Security both PSK and Identity must be configured!"));
+        }
+
 
         xSemaphoreTake(coap_obj_ptr->semphr, portMAX_DELAY);
 
-        // TODO: support more protocols
-        mod_coap_client_session_obj_t* session = new_client_session(ip_addr, port, protocol);
+        mod_coap_client_session_obj_t* session = new_client_session(ip_addr, port, psk, identity);
 
         xSemaphoreGive(coap_obj_ptr->semphr);
 
@@ -1639,10 +1668,10 @@ STATIC mp_obj_t mod_coap_new_client_session(size_t n, const mp_obj_t * args) {
     }
 }
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_coap_new_client_session_obj, 1, 2, mod_coap_new_client_session);
+STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_coap_new_client_session_obj, 1, mod_coap_new_client_session);
 
 // Remove a client session
-STATIC mp_obj_t mod_coap_remove_client_session(mp_obj_t ip_addr_in, mp_obj_t port_in) {
+STATIC mp_obj_t mod_coap_remove_client_session(mp_obj_t ip_addr_in, mp_obj_t port_in, mp_obj_t protocol_in) {
 
     // The Coap module should have been already initialized
     if(initialized == true) {
@@ -1651,8 +1680,7 @@ STATIC mp_obj_t mod_coap_remove_client_session(mp_obj_t ip_addr_in, mp_obj_t por
 
         const char* ip_addr = mp_obj_str_get_str(ip_addr_in);
         const uint16_t port = mp_obj_get_int(port_in);
-        // TODO: add support for other protocols
-        const uint8_t protocol = COAP_PROTO_UDP;
+        const uint8_t protocol = mp_obj_get_int(protocol_in);
 
         bool ret = remove_client_session(ip_addr, port, protocol);
 
@@ -1671,7 +1699,7 @@ STATIC mp_obj_t mod_coap_remove_client_session(mp_obj_t ip_addr_in, mp_obj_t por
     }
 }
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_coap_remove_client_session_obj, mod_coap_remove_client_session);
+STATIC MP_DEFINE_CONST_FUN_OBJ_3(mod_coap_remove_client_session_obj, mod_coap_remove_client_session);
 
 // Get all client sessions
 STATIC mp_obj_t mod_coap_get_client_sessions() {
@@ -1730,6 +1758,9 @@ STATIC const mp_map_elem_t mod_coap_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_MEDIATYPE_APP_EXI),               MP_OBJ_NEW_SMALL_INT(COAP_MEDIATYPE_APPLICATION_EXI) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MEDIATYPE_APP_JSON),              MP_OBJ_NEW_SMALL_INT(COAP_MEDIATYPE_APPLICATION_JSON) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_MEDIATYPE_APP_CBOR),              MP_OBJ_NEW_SMALL_INT(COAP_MEDIATYPE_APPLICATION_CBOR) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROTOCOL_UDP),                    MP_OBJ_NEW_SMALL_INT(COAP_PROTO_UDP) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_PROTOCOL_DTLS),                   MP_OBJ_NEW_SMALL_INT(COAP_PROTO_DTLS) },
+
 };
 
 STATIC MP_DEFINE_CONST_DICT(mod_coap_globals, mod_coap_globals_table);
