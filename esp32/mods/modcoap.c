@@ -28,12 +28,11 @@
  DEFINE CONSTANTS
  ******************************************************************************/
 
-#define MODCOAP_DEFAULT_PORT    (5683)
-#define MODCOAP_IP4_MULTICAST   ("224.0.1.187")
-#define MODCOAP_REQUEST_GET     (0x01)
-#define MODCOAP_REQUEST_PUT     (0x02)
-#define MODCOAP_REQUEST_POST    (0x04)
-#define MODCOAP_REQUEST_DELETE  (0x08)
+#define MODCOAP_IP4_MULTICAST        ("224.0.1.187")
+#define MODCOAP_REQUEST_GET          (0x01)
+#define MODCOAP_REQUEST_PUT          (0x02)
+#define MODCOAP_REQUEST_POST         (0x04)
+#define MODCOAP_REQUEST_DELETE       (0x08)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -1314,9 +1313,12 @@ STATIC const mp_obj_type_t mod_coap_resource_type = {
  ******************************************************************************/
 
 
-STATIC void mod_coap_init_helper(mp_obj_t address, bool service_discovery, bool dynamic_resources) {
+STATIC void mod_coap_init_helper(mp_obj_t address, bool service_discovery, bool dynamic_resources, mp_obj_t key_in, mp_obj_t hint_in) {
 
+    // Initialize Context without address, in Server mode address will be added
+    coap_obj_ptr->context = coap_new_context(NULL);
 
+    // Configure Server mode
     if(address != NULL) {
         coap_address_t server_address;
 
@@ -1328,8 +1330,17 @@ STATIC void mod_coap_init_helper(mp_obj_t address, bool service_discovery, bool 
         // Store the port in network byte order
         server_address.addr.sin.sin_port = htons(port);
 
-        // The module is used as a Coap Server and Client, this call creates a new socket and binds it to the address and port
-        coap_obj_ptr->context = coap_new_context(&server_address);
+        // Configure PSK if given
+        if(key_in != mp_const_none && hint_in != mp_const_none) {
+            const char *hint = mp_obj_str_get_str(hint_in);
+            const uint8_t *key = (const uint8_t *)mp_obj_str_get_str(key_in);
+            size_t key_len = strlen((const char*)key);
+            coap_context_set_psk(coap_obj_ptr->context, hint, key, key_len);
+            coap_new_endpoint(coap_obj_ptr->context, &server_address, COAP_PROTO_DTLS);
+        }
+        else {
+            coap_new_endpoint(coap_obj_ptr->context, &server_address, COAP_PROTO_UDP);
+        }
 
         // Listen on coap multicast ip address for service discovery if enabled
         if(service_discovery == true) {
@@ -1354,17 +1365,15 @@ STATIC void mod_coap_init_helper(mp_obj_t address, bool service_discovery, bool 
             coap_add_resource(coap_obj_ptr->context, unknown_resource);
         }
     }
-    else {
-        // The module is only used as a Coap Client
-        coap_obj_ptr->context = coap_new_context(NULL);
-    }
 }
 
 STATIC const mp_arg_t mod_coap_init_args[] = {
         { MP_QSTR_address,                  MP_ARG_OBJ                  , {.u_obj = NULL}},
-        { MP_QSTR_port,                     MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_int = MODCOAP_DEFAULT_PORT}},
+        { MP_QSTR_port,                     MP_ARG_INT  | MP_ARG_KW_ONLY, {.u_obj = mp_const_none}},
         { MP_QSTR_service_discovery,        MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_bool = false}},
         { MP_QSTR_dynamic_resources,        MP_ARG_BOOL | MP_ARG_KW_ONLY, {.u_bool = false}},
+        { MP_QSTR_psk,                      MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = mp_const_none}},
+        { MP_QSTR_hint,                     MP_ARG_OBJ  | MP_ARG_KW_ONLY, {.u_obj = mp_const_none}},
 };
 
 // Initialize the module
@@ -1387,21 +1396,43 @@ STATIC mp_obj_t mod_coap_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
         // The module is used in Coap Server and Client mode
         if(args[0].u_obj != NULL) {
 
-            mp_obj_t list = mp_obj_new_list(0, NULL);
-            // Get the address as a string
-            mp_obj_list_append(list, args[0].u_obj);
-            // Get the port as a number
-            mp_obj_list_append(list, mp_obj_new_int(args[1].u_int));
+            // Check security parameters
+            mp_obj_t psk = args[4].u_obj;
+            mp_obj_t hint = args[5].u_obj;
+
+            // If neither PSK nor Hint is defined that means no security is enabled, otherwise security is used
+            if((psk == mp_const_none && hint != mp_const_none) || (psk != mp_const_none && hint == mp_const_none)) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Both PSK and Hint must be defined"));
+            }
+
+            // Get the address
+            mp_obj_t address = args[0].u_obj;
+            // Get the port
+            mp_obj_t port = args[1].u_obj;
+            // If no value is specified for the port then use default port value depending on whether security is enabled
+            if(port == mp_const_none) {
+                if(psk != mp_const_none && hint != mp_const_none) {
+                    port = mp_obj_new_int(COAPS_DEFAULT_PORT);
+                }
+                else if((psk == mp_const_none && hint == mp_const_none)){
+                    port = mp_obj_new_int(COAP_DEFAULT_PORT);
+                }
+            }
             // Get whether service discovery is supported
             bool service_discovery = args[2].u_bool;
             // Get whether dynamic resource creation is allowed via PUT
             bool dynamic_resources = args[3].u_bool;
 
-            mod_coap_init_helper(list, service_discovery, dynamic_resources);
+            // Compose a list containing the address and the port
+            mp_obj_t list = mp_obj_new_list(0, NULL);
+            mp_obj_list_append(list, address);
+            mp_obj_list_append(list, port);
+
+            mod_coap_init_helper(list, service_discovery, dynamic_resources, psk, hint);
         }
         // The module is used in Coap Client only mode
         else {
-            mod_coap_init_helper(NULL, false, false);
+            mod_coap_init_helper(NULL, false, false, mp_const_none, mp_const_none);
         }
 
         coap_obj_ptr->semphr = xSemaphoreCreateBinary();
