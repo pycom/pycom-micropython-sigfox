@@ -367,7 +367,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_2(mod_espnow_peer_send_obj, mod_espnow_peer_send)
 
 STATIC mp_obj_t mod_espnow_init() {
 
-    if(initialized == false) {
+    if(wlan_obj.started == false) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "ESP-NOW module needs that WLAN is already initialized!"));
+    }
+    else if(initialized == false) {
 
         mod_esp_espnow_exceptions(esp_now_init());
         mod_esp_espnow_exceptions(esp_now_register_recv_cb(recv_cb));
