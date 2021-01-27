@@ -60,6 +60,7 @@
 #include "modespnow.h"
 #include "mpirq.h"
 #include "pycom_general_util.h"
+#include "modwlan.h"
 
 /******************************************************************************
  DEFINE CONSTANTS
@@ -243,6 +244,9 @@ STATIC void mod_esp_espnow_exceptions(esp_err_t e) {
       case ESP_ERR_ESPNOW_EXIST:
         mp_raise_msg(&mp_type_OSError, "ESP-Now Peer Exists");
         break;
+      case ESP_ERR_ESPNOW_IF:
+          mp_raise_msg(&mp_type_OSError, "ESP-Now Wifi Interface error");
+          break;
       default:
         nlr_raise(mp_obj_new_exception_msg_varg(
           &mp_type_RuntimeError, "ESP-Now Unknown Error 0x%04x", e
@@ -444,6 +448,15 @@ STATIC mp_obj_t mod_espnow_add_peer(size_t n_args, const mp_obj_t *args) {
         else {
             peer.encrypt = false;
         }
+
+        // Use the WIFI Station interface if configured otherwise use AP interface
+        if(wlan_obj.esp_netif_STA) {
+            peer.ifidx = ESP_IF_WIFI_STA;
+        }
+        else if(wlan_obj.esp_netif_AP) {
+            peer.ifidx = ESP_IF_WIFI_AP;
+        }
+
         mod_esp_espnow_exceptions(esp_now_add_peer(&peer));
 
         mod_espnow_peer_obj_t *peer_obj = m_new_obj(mod_espnow_peer_obj_t);
