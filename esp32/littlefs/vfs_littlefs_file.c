@@ -100,17 +100,19 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
         return 0;
 
     } else if (request == MP_STREAM_CLOSE) {
+        if (self->littlefs == NULL) {
+            return 0;
+        }
 
         xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
             int res = littlefs_close_common_helper(&self->littlefs->lfs, &self->fp, &self->cfg, &self->timestamp_update);
         xSemaphoreGive(self->littlefs->mutex);
+
+        self->littlefs = NULL; // indicate a closed file
         if (res < 0) {
             *errcode = littleFsErrorToErrno(res);
             return MP_STREAM_ERROR;
         }
-        // Free up the object so GC does not need to do that
-        m_del_obj(pyb_file_obj_t, self);
-
         return 0;
     } else {
         *errcode = MP_EINVAL;
