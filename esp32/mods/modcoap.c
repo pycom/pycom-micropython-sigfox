@@ -33,6 +33,8 @@
 #define MODCOAP_REQUEST_PUT          (0x02)
 #define MODCOAP_REQUEST_POST         (0x04)
 #define MODCOAP_REQUEST_DELETE       (0x08)
+#define MODCOAP_TASK_STACK_SIZE      (5 * 1024)
+#define MODCOAP_TASK_PRIORITY        (5)
 
 /******************************************************************************
  DEFINE PRIVATE TYPES
@@ -91,6 +93,8 @@ STATIC void remove_resource_by_uri(coap_str_const_t *uri_path);
 STATIC void remove_resource(const char* uri);
 STATIC void resource_update_value(mod_coap_resource_obj_t* resource, mp_obj_t new_value);
 STATIC void coap_response_new_resource_handler_micropython(void* arg);
+STATIC void TASK_MODCOAP (void *pvParameters);
+
 
 
 STATIC void coap_resource_callback_get(coap_context_t * context,
@@ -147,10 +151,21 @@ STATIC const mp_obj_type_t mod_coap_client_session_type;
 // Only 1 context is supported
 STATIC mod_coap_obj_t* coap_obj_ptr;
 STATIC bool initialized = false;
+STATIC TaskHandle_t ModCoapTaskHandle;
+
 
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/
+
+// This task handles the periodic and message reception functionality of the underlying esp-idf coap library
+STATIC void TASK_MODCOAP (void *pvParameters) {
+    while(1){
+        // This function returns when there is a new packet arrived or after 100ms
+        // Re-calling this function minimally after every 100ms is needed to perform periodic activities (e.g. retransmission of Confirmable packets)
+        coap_run_once(coap_obj_ptr->context, 100);
+    }
+}
 
 // Create a new client session in the scope of the only context
 STATIC mod_coap_client_session_obj_t* new_client_session(mp_obj_t ip_addr_in, mp_obj_t port_in, mp_obj_t key_in, mp_obj_t identity_in) {
@@ -1440,6 +1455,8 @@ STATIC mp_obj_t mod_coap_init(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map
             mod_coap_init_helper(NULL, false, false, mp_const_none, mp_const_none);
         }
 
+        xTaskCreatePinnedToCore(TASK_MODCOAP, "Coap", MODCOAP_TASK_STACK_SIZE / sizeof(StackType_t), NULL, MODCOAP_TASK_PRIORITY, &ModCoapTaskHandle, 1);
+
         coap_obj_ptr->semphr = xSemaphoreCreateBinary();
         xSemaphoreGive(coap_obj_ptr->semphr);
 
@@ -1531,39 +1548,6 @@ STATIC mp_obj_t mod_coap_get_resource(mp_obj_t uri_in) {
     return res == NULL ? mp_const_none : res;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_coap_get_resource_obj, mod_coap_get_resource);
-
-
-// Call coap_read
-STATIC mp_obj_t mod_coap_read(size_t n, const mp_obj_t * args) {
-
-    // Timeout parameter is in millisecond
-    // By default this is a blocking call
-    int64_t timeout_ms = 0;
-
-    // Get whether this call should be blocking or not
-    // If the parameter is not specified, this is a blocking call otherwise the call has timeout given in the parameter
-    if(n == 1) {
-        timeout_ms = mp_obj_get_int(args[0]);
-        if(timeout_ms < 0) {
-            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "If specified, timeout must be bigger or equal to 0!"));
-        }
-    }
-
-    // The Coap module should have been already initialized
-    if(initialized == true) {
-        // Release the GIL so other MP Tasks has the possibility to execute
-        // The response handler will be called from the Interrupt Thread, so it is safe to release the GIL here
-        MP_THREAD_GIL_EXIT();
-        coap_run_once(coap_obj_ptr->context, timeout_ms);
-        MP_THREAD_GIL_ENTER();
-    }
-    else {
-        nlr_raise(mp_obj_new_exception_msg(&mp_type_RuntimeError, "Coap module has not been initialized!"));
-    }
-
-    return mp_const_none;
-}
-STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_coap_read_obj, 0, 1, mod_coap_read);
 
 // Register the user's callback handler to be called when response is received to a request
 STATIC mp_obj_t mod_coap_register_response_handler(mp_obj_t callback) {
@@ -1737,7 +1721,6 @@ STATIC const mp_map_elem_t mod_coap_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_add_resource),                    (mp_obj_t)&mod_coap_add_resource_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_remove_resource),                 (mp_obj_t)&mod_coap_remove_resource_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_get_resource),                    (mp_obj_t)&mod_coap_get_resource_obj },
-    { MP_OBJ_NEW_QSTR(MP_QSTR_read),                            (mp_obj_t)&mod_coap_read_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_register_response_handler),       (mp_obj_t)&mod_coap_register_response_handler_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_register_new_resource_handler),   (mp_obj_t)&mod_coap_register_new_resource_handler_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_new_client_session),              (mp_obj_t)&mod_coap_new_client_session_obj },
