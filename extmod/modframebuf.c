@@ -38,7 +38,7 @@ typedef struct _mp_obj_framebuf_t {
     mp_obj_t buf_obj; // need to store this to prevent GC from reclaiming buf
     void *buf;
     uint16_t width, height, stride;
-    uint8_t format, rotate;
+    uint8_t format;
 } mp_obj_framebuf_t;
 
 typedef void (*setpixel_t)(const mp_obj_framebuf_t*, int, int, uint32_t);
@@ -237,35 +237,11 @@ STATIC mp_framebuf_p_t formats[] = {
 };
 
 static inline void setpixel(const mp_obj_framebuf_t *fb, int x, int y, uint32_t col) {
-    switch (fb->rotate) {
-        case 0:
-            formats[fb->format].setpixel(fb, x, y, col);
-            break;        
-        case 1:
-            formats[fb->format].setpixel(fb, fb->height - 1 - y, x, col);
-            break;        
-        case 2:
-            formats[fb->format].setpixel(fb, fb->width - x, fb->height - 1 - y, col);
-            break;        
-        case 3:
-            formats[fb->format].setpixel(fb, y, fb->width - 1 - x, col);
-            break;        
-    }
-
+    formats[fb->format].setpixel(fb, x, y, col);
 }
 
 static inline uint32_t getpixel(const mp_obj_framebuf_t *fb, int x, int y) {
-    switch (fb->rotate) {
-        case 0:
-            return formats[fb->format].getpixel(fb, x, y);        
-        case 1:
-            return formats[fb->format].getpixel(fb, fb->height - 1 - y, x);        
-        case 2:
-            return formats[fb->format].getpixel(fb, fb->width - x, fb->height - 1 - y);        
-        case 3:
-            return formats[fb->format].getpixel(fb, y, fb->width - 1 - x);        
-    }
-    return(0);
+    return formats[fb->format].getpixel(fb, x, y);
 }
 
 STATIC void fill_rect(const mp_obj_framebuf_t *fb, int x, int y, int w, int h, uint32_t col) {
@@ -275,35 +251,16 @@ STATIC void fill_rect(const mp_obj_framebuf_t *fb, int x, int y, int w, int h, u
     }
 
     // clip to the framebuffer
-
+    int xend = MIN(fb->width, x + w);
+    int yend = MIN(fb->height, y + h);
     x = MAX(x, 0);
     y = MAX(y, 0);
-    int xend;
-    int yend;
 
-    switch (fb->rotate) {
-        case 0:
-            xend = MIN(fb->width, x + w);
-            yend = MIN(fb->height, y + h);
-            formats[fb->format].fill_rect(fb, x, y, xend - x, yend - y, col);        
-        case 1:
-            xend = MIN(fb->height, x + w);
-            yend = MIN(fb->width, y + h);
-            formats[fb->format].fill_rect(fb, fb->width - (y + h), x, yend - y, xend - x, col); 
-        case 2:
-            xend = MIN(fb->width, x + w);
-            yend = MIN(fb->height, y + h);
-            formats[fb->format].fill_rect(fb, fb->width - (x + w), fb->height - (y + h), xend - x, yend - y, col);        
-        case 3:
-            xend = MIN(fb->height, x + w);
-            yend = MIN(fb->width, y + h);
-            formats[fb->format].fill_rect(fb, y, fb->height - (x + w), yend - y, xend - x, col);
-    }            
-
+    formats[fb->format].fill_rect(fb, x, y, xend - x, yend - y, col);
 }
 
 STATIC mp_obj_t framebuf_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *args) {
-    mp_arg_check_num(n_args, n_kw, 4, 6, false);
+    mp_arg_check_num(n_args, n_kw, 4, 5, false);
 
     mp_obj_framebuf_t *o = m_new_obj(mp_obj_framebuf_t);
     o->base.type = type;
@@ -313,33 +270,13 @@ STATIC mp_obj_t framebuf_make_new(const mp_obj_type_t *type, size_t n_args, size
     mp_get_buffer_raise(args[0], &bufinfo, MP_BUFFER_WRITE);
     o->buf = bufinfo.buf;
 
+    o->width = mp_obj_get_int(args[1]);
+    o->height = mp_obj_get_int(args[2]);
     o->format = mp_obj_get_int(args[3]);
-    if (n_args >= 6) {
-        o->rotate = mp_obj_get_int(args[5]);
-    } else {
-        o->rotate = 0;
-    }
-
-    switch (o->rotate) {
-        case 0:
-        case 2:
-            o->width = mp_obj_get_int(args[1]);
-            o->height = mp_obj_get_int(args[2]);
-            break;
-        case 1:
-        case 3:
-            o->width = mp_obj_get_int(args[2]);
-            o->height = mp_obj_get_int(args[1]);
-            break;
-        default:
-            mp_raise_ValueError(MP_ERROR_TEXT("invalid rotation"));
-    }
-
-
     if (n_args >= 5) {
         o->stride = mp_obj_get_int(args[4]);
     } else {
-        o->stride = mp_obj_get_int(args[1]);    //Get raw hardware width before any co-ordinate translation
+        o->stride = o->width;
     }
 
     switch (o->format) {
@@ -359,7 +296,7 @@ STATIC mp_obj_t framebuf_make_new(const mp_obj_type_t *type, size_t n_args, size
         case FRAMEBUF_GS8:
             break;
         default:
-            mp_raise_ValueError(MP_ERROR_TEXT("invalid format"));
+            mp_raise_ValueError("invalid format");
     }
 
     return MP_OBJ_FROM_PTR(o);
@@ -377,12 +314,7 @@ STATIC mp_int_t framebuf_get_buffer(mp_obj_t self_in, mp_buffer_info_t *bufinfo,
 STATIC mp_obj_t framebuf_fill(mp_obj_t self_in, mp_obj_t col_in) {
     mp_obj_framebuf_t *self = MP_OBJ_TO_PTR(self_in);
     mp_int_t col = mp_obj_get_int(col_in);
-    switch(self->rotate % 2){
-        case 0:
-            formats[self->format].fill_rect(self, 0, 0, self->width, self->height, col);
-        case 1:
-            formats[self->format].fill_rect(self, 0, 0, self->height, self->width, col);
-    }
+    formats[self->format].fill_rect(self, 0, 0, self->width, self->height, col);
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(framebuf_fill_obj, framebuf_fill);

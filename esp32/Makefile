@@ -32,8 +32,19 @@ PYGATE_ENABLED ?= 0
 # COAP is enabled by default
 MOD_COAP_ENABLED ?= 1
 
-# SIGFOX is enabled by default. It will only be built for supported boards.
+# LORA is enabled by default for supported boards
+ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
+MOD_LORA_ENABLED ?= 1
+else
+MOD_LORA_ENABLED ?= 0
+endif
+
+# SIGFOX is enabled by default for supported boards
+ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
 MOD_SIGFOX_ENABLED ?= 1
+else
+MOD_SIGFOX_ENABLED ?= 0
+endif
 
 # Pybytes disabled by default
 PYBYTES_ENABLED ?= 0
@@ -55,6 +66,7 @@ ifeq ($(VARIANT),PYGATE)
     endif
     PYBYTES_ENABLED=1
     PYETH_ENABLED=1
+    MOD_LORA_ENABLED=0 # ETH and LORA are mutually exclusive
     PYGATE_ENABLED=1
 endif
 
@@ -121,6 +133,7 @@ CFLAGS_XTENSA_OPT = -Os
 CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue
 
 CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
+CFLAGS += $(CFLAGS_MOD) $(CFLAGS_EXTRA)
 CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 
 # Configure floating point support
@@ -156,6 +169,11 @@ ifeq ($(MOD_COAP_ENABLED), 1)
     CFLAGS += -DMOD_COAP_ENABLED
 endif
 
+ifeq ($(MOD_LORA_ENABLED), 1)
+    $(info LORA Module Enabled)
+    CFLAGS += -DMOD_LORA_ENABLED
+endif
+
 ifeq ($(DIFF_UPDATE_ENABLED), 1)
     $(info Differential Update Enabled)
     CFLAGS += -DDIFF_UPDATE_ENABLED -DBZ_NO_STDIO
@@ -163,12 +181,9 @@ endif
 
 ifeq ($(MOD_SIGFOX_ENABLED), 1)
     $(info SIGFOX Module Enabled)
-
-    ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
-        CFLAGS += -DMOD_SIGFOX_ENABLED
-        LIBS += sigfox/modsigfox_$(BOARD).a -lsigfox
-        $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
-    endif
+    CFLAGS += -DMOD_SIGFOX_ENABLED
+    LIBS += sigfox/modsigfox_$(BOARD).a -lsigfox
+    $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
 endif
 
 ifeq ($(OPENTHREAD), on)

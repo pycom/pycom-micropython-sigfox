@@ -14,6 +14,7 @@
 #include "lwip/err.h"
 #include "lwip/netdb.h"
 #include "esp_err.h"
+#include "esp_now.h"
 
 #define MP_MBEDTLS_ERR_NET_SOCKET_FAILED                    MBEDTLS_ERR_NET_SOCKET_FAILED
 #define MP_MBEDTLS_ERR_NET_CONNECT_FAILED                   MBEDTLS_ERR_NET_CONNECT_FAILED
@@ -74,6 +75,15 @@
 #define MP_ESP_ERR_INVALID_CRC          ESP_ERR_INVALID_CRC   /*!< CRC or checksum was invalid */
 #define MP_ESP_ERR_INVALID_VERSION      ESP_ERR_INVALID_VERSION   /*!< Version was invalid */
 #define MP_ESP_ERR_INVALID_MAC          ESP_ERR_INVALID_MAC   /*!< MAC address was invalid */
+
+#define MP_ESP_ERR_ESPNOW_NOT_INIT      ESP_ERR_ESPNOW_NOT_INIT     /*!< ESPNOW is not initialized. */
+#define MP_ESP_ERR_ESPNOW_ARG           ESP_ERR_ESPNOW_ARG          /*!< Invalid argument */
+#define MP_ESP_ERR_ESPNOW_NO_MEM        ESP_ERR_ESPNOW_NO_MEM       /*!< Out of memory */
+#define MP_ESP_ERR_ESPNOW_FULL          ESP_ERR_ESPNOW_FULL         /*!< ESPNOW peer list is full */
+#define MP_ESP_ERR_ESPNOW_NOT_FOUND     ESP_ERR_ESPNOW_NOT_FOUND    /*!< ESPNOW peer is not found */
+#define MP_ESP_ERR_ESPNOW_INTERNAL      ESP_ERR_ESPNOW_INTERNAL     /*!< Internal error */
+#define MP_ESP_ERR_ESPNOW_EXIST         ESP_ERR_ESPNOW_EXIST        /*!< ESPNOW peer has existed */
+#define MP_ESP_ERR_ESPNOW_IF            ESP_ERR_ESPNOW_IF           /*!< Interface error */
 
 #define MP_EAI_NONAME      EAI_NONAME
 #define MP_EAI_SERVICE     EAI_SERVICE
