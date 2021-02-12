@@ -49,3 +49,7 @@ org.eclipse.cdt.ui.prefs
 org.eclipse.cdt.core.prefs
 language.settings.xml
 .idea
+extmod/modframebuf_new.c
+esp32/mods/esp_espnow_old.c
+esp32/mods/esp_espnow copy.c
+esp32/Makefile - Copy
