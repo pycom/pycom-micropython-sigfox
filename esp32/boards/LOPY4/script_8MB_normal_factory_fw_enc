@@ -7,7 +7,7 @@
     },
   "script" : [
       ["w", "secureboot", "bootloader-reflash-digest.bin_enc"],
-      ["w", "partitions",  "partitions_8MB.bin_enc"],
+      ["w", "partitions",  "partitions_8MB_normal_factory_fw.bin_enc"],
       ["w", "factory", "lopy4.bin_enc"]
     ]
 }

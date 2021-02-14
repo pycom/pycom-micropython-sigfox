@@ -10,12 +10,30 @@ BOARD=$(echo $1)
 
 FACTORY_BIN_DIR="$(pwd)/factory_fw/binary"
 
-if [ $4 ]; then
+
+    if [ $5 -eq 1 ]; then
+        PART_FILE_8MB='partitions_8MB_small_factory_fw.bin_enc'
+        SCRIPT_FILE_8MB='script_8MB_small_factory_fw_enc'
+    else
+        PART_FILE_8MB='partitions_8MB_normal_factory_fw.bin_enc'
+        SCRIPT_FILE_8MB='script_8MB_normal_factory_fw_enc'
+        
+    fi
+
+if [ $4 -eq 1 ]; then
     SCRIPT_NAME_4MB="script_4MB_enc"
-    SCRIPT_NAME_8MB="script_8MB_enc"
+    if [ $5 -eq 1 ]; then
+        SCRIPT_NAME_8MB="script_8MB_small_factory_fw_enc"
+    else
+        SCRIPT_NAME_8MB='script_8MB_normal_factory_fw_enc'
+    fi
 else
     SCRIPT_NAME_4MB="script_4MB"
-    SCRIPT_NAME_8MB="script_8MB"
+    if [ $5 -eq 1 ]; then
+        SCRIPT_NAME_8MB='script_8MB_small_factory_fw'
+    else
+        SCRIPT_NAME_8MB='script_8MB_normal_factory_fw'
+    fi
 fi
 if [ -z $1 ]; then echo >&2 "Invalid board name!"; exit 1; fi
 if ! [ $0 = "tools/makepkg.sh" ]; then echo >&2 "Need to run as tools/makepkg.sh!"; exit 1; fi
@@ -53,8 +71,8 @@ PART_FILE_4MB=''
 PART_FILE_8MB=''
 SCRIPT_FILE_4MB=''
 SCRIPT_FILE_8MB=''
- 
-if [ $4 ]; then
+
+if [ $4 -eq 1 ]; then
     BOOT_FILE='bootloader-reflash-digest.bin_enc'
     APP_FILE="${BOARD_NAME_L}.bin_enc"
     FILE_NAME="${BOARD_NAME}-${VERSION}_ENC.tar.gz"
@@ -68,12 +86,23 @@ fi
 cp ${BUILD_DIR}/bootloader/${BOOT_FILE} ${PKG_TMP_DIR}
 cp ${BUILD_DIR}/${APP_FILE} ${PKG_TMP_DIR}
 
-if [ $4 ]; then
-PART_FILE_8MB='partitions_8MB.bin_enc'
-SCRIPT_FILE_8MB='script_8MB_enc'
+if [ $4 -eq 1 ]; then
+    if [ $5 -eq 1 ]; then
+        PART_FILE_8MB='partitions_8MB_small_factory_fw.bin_enc'
+        SCRIPT_FILE_8MB='script_8MB_small_factory_fw_enc'
+    else
+        PART_FILE_8MB='partitions_8MB_normal_factory_fw.bin_enc'
+        SCRIPT_FILE_8MB='script_8MB_normal_factory_fw_enc'
+        
+    fi
 else
-PART_FILE_8MB='partitions_8MB.bin'
-SCRIPT_FILE_8MB='script_8MB'
+    if [ $5 -eq 1 ]; then
+        PART_FILE_8MB='partitions_8MB_small_factory_fw.bin'
+        SCRIPT_FILE_8MB='script_8MB_small_factory_fw'
+    else
+        PART_FILE_8MB='partitions_8MB_normal_factory_fw.bin'
+        SCRIPT_FILE_8MB='script_8MB_normal_factory_fw'
+    fi
 fi
 
 cp ${BUILD_DIR}/lib/${PART_FILE_8MB} ${PKG_TMP_DIR}

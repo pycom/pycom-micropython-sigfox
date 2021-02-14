@@ -6,9 +6,9 @@
     "otadata"   : ["0x10F000", "0x1000"]
     },
   "script" : [
-      ["w", "bootloader", "bootloader.bin"],
-      ["w", "partitions", "partitions_8MB.bin"],
+      ["w", "secureboot", "bootloader-reflash-digest.bin_enc"],
+      ["w", "partitions", "partitions_8MB_small_factory_fw.bin_enc"],
       ["w", "factory", "factory_fw.bin"],
-      ["w", "ota_0", "lopy.bin"]
+      ["w", "ota_0", "gpy.bin"]
     ]
 }

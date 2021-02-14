@@ -937,16 +937,16 @@ endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
 
 release: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "checking size of image"
-	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT)
+	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT) $(SMALL_FACTORY_FW_ENABLED)
 ifeq ($(SECURE), on)
-	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD) 1
+	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD) 1 $(SMALL_FACTORY_FW_ENABLED)
 else
-	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD)
+	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD) 0 $(SMALL_FACTORY_FW_ENABLED)
 endif
 
 flash: release
 	$(ECHO) "checking size of image"
-	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT)
+	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT) $(SMALL_FACTORY_FW_ENABLED)
 
 	$(ECHO) "Flashing project"
 ifeq ($(SECURE), on)

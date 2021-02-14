@@ -7,8 +7,8 @@
     },
   "script" : [
       ["w", "bootloader", "bootloader.bin"],
-      ["w", "partitions", "partitions_8MB.bin"],
+      ["w", "partitions", "partitions_8MB_small_factory_fw.bin"],
       ["w", "factory", "factory_fw.bin"],
-      ["w", "ota_0", "wipy.bin"]
+      ["w", "ota_0", "fipy.bin"]
     ]
 }
