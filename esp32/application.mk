@@ -685,8 +685,8 @@ ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash
 
 ESP_UPDATER_PY_WRITE_FLASH  = $(ESP_UPDATER_PY_SERIAL) flash
 ESP_UPDATER_PY_ERASE_FLASH  = $(ESP_UPDATER_PY_SERIAL) erase_all
-ESP_UPDATER_ALL_FLASH_ARGS = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION).tar.gz
-ESP_UPDATER_ALL_FLASH_ARGS_ENC = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION)_ENC.tar.gz --secureboot
+ESP_UPDATER_ALL_FLASH_ARGS = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION).tar.gz --sff_enable $(SMALL_FACTORY_FW_ENABLED)
+ESP_UPDATER_ALL_FLASH_ARGS_ENC = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION)_ENC.tar.gz --secureboot --sff_enable $(SMALL_FACTORY_FW_ENABLED)
 
 ESPSECUREPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espsecure.py
 ESPEFUSE = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espefuse.py --port $(ESPPORT)
