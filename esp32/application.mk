@@ -644,14 +644,21 @@ ifeq ($(BOARD), FIPY)
     endif
 endif
 
-PART_BIN_8MB = $(BUILD)/lib/partitions_8MB.bin
+ifeq ($(SMALL_FACTORY_FW_ENABLED), 1)
+    PART_BIN_8MB = $(BUILD)/lib/partitions_8MB_small_factory_fw.bin
+    PART_CSV_8MB = lib/partitions_8MB_small_factory_fw.csv
+else
+    PART_BIN_8MB = $(BUILD)/lib/partitions_8MB_normal_factory_fw.bin
+    PART_CSV_8MB = lib/partitions_8MB_normal_factory_fw.csv
+endif
+
 PART_BIN_4MB = $(BUILD)/lib/partitions_4MB.bin
+PART_CSV_4MB = lib/partitions_4MB.csv
+
 PART_BIN_ENCRYPT_4MB = $(PART_BIN_4MB)_enc
 PART_BIN_ENCRYPT_8MB = $(PART_BIN_8MB)_enc
 APP_BIN_ENCRYPT = $(APP_BIN)_enc
 APP_IMG  = $(BUILD)/appimg.bin
-PART_CSV_8MB = lib/partitions_8MB.csv
-PART_CSV_4MB = lib/partitions_4MB.csv
 APP_BIN_ENCRYPT_2_8MB = $(APP_BIN)_enc_0x210000
 APP_BIN_ENCRYPT_2_4MB = $(APP_BIN)_enc_0x1C0000
 

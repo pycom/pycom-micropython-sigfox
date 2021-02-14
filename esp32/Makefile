@@ -21,6 +21,11 @@ TARGET ?= boot_app
 
 OEM ?= 0
 
+# "Small factory FW" mode is enabled by default
+# When "Small factory FW" mode is enabled the "factory" partition contains a really small FW responsible for OTA update 
+# "Small factory FW" mode enables increased size of the "ota_0" partition which contains the actual real FW
+SMALL_FACTORY_FW_ENABLED ?= 1
+
 # make 'release' the default build type
 BTYPE ?= release
 
