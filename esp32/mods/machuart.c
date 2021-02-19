@@ -456,7 +456,7 @@ error:
 }
 
 STATIC const mp_arg_t mach_uart_init_args[] = {
-    { MP_QSTR_id,                              MP_ARG_INT,  {.u_int = MACH_UART_0} },
+    { MP_QSTR_id,                              MP_ARG_INT,  {.u_int = MACH_UART_1} },
     { MP_QSTR_baudrate,                        MP_ARG_INT,  {.u_int = 9600} },
     { MP_QSTR_bits,                            MP_ARG_INT,  {.u_int = 8} },
     { MP_QSTR_parity,                          MP_ARG_OBJ,  {.u_obj = mp_const_none} },
