@@ -12,6 +12,7 @@
 
 #include "py/obj.h"
 
+uint8_t hex_from_char(const char c);
 char *pycom_util_read_file(const char *file_path, vstr_t *vstr);
 
 #endif /* ESP32_UTIL_PYCOM_GENERAL_UTIL_H_ */

@@ -14,12 +14,17 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-IDF_HASH=18c527a
+IDF_HASH=60e3a89
 XTENSA_VERSION = "2020r3"
 
 TARGET ?= boot_app
 
 OEM ?= 0
+
+# "Small factory FW" mode is enabled by default
+# When "Small factory FW" mode is enabled the "factory" partition contains a really small FW responsible for OTA update 
+# "Small factory FW" mode enables increased size of the "ota_0" partition which contains the actual real FW
+SMALL_FACTORY_FW_ENABLED ?= 1
 
 # make 'release' the default build type
 BTYPE ?= release
@@ -36,8 +41,22 @@ PYGATE_ENABLED ?= 0
 # COAP is enabled by default
 MOD_COAP_ENABLED ?= 1
 
-# SIGFOX is enabled by default. It will only be built for supported boards.
+# LORA is enabled by default for supported boards
+ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
+MOD_LORA_ENABLED ?= 1
+else
+MOD_LORA_ENABLED ?= 0
+endif
+
+# SIGFOX is enabled by default for supported boards
+ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
 MOD_SIGFOX_ENABLED ?= 1
+else
+MOD_SIGFOX_ENABLED ?= 0
+endif
+
+# ESP-NOW is enabled by default
+MOD_ESPNOW_ENABLED ?= 1
 
 # Pybytes disabled by default
 PYBYTES_ENABLED ?= 0
@@ -59,6 +78,7 @@ ifeq ($(VARIANT),PYGATE)
     endif
     PYBYTES_ENABLED=1
     PYETH_ENABLED=1
+    MOD_LORA_ENABLED=0 # ETH and LORA are mutually exclusive
     PYGATE_ENABLED=1
 endif
 
@@ -127,6 +147,7 @@ CFLAGS_XTENSA_OPT = -Os
 CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue -mfix-esp32-psram-cache-strategy=memw
 
 CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
+CFLAGS += $(CFLAGS_MOD) $(CFLAGS_EXTRA)
 CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 
 # Configure floating point support
@@ -176,12 +197,18 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lfreertos -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
        -lesp_ringbuf -lefuse -lespcoredump -lapp_update \
-       -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig -ljson -ltfmicro
+       -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 \
+       -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig -ljson -ltfmicro
 
 ifeq ($(MOD_COAP_ENABLED), 1)
     $(info COAP Module Enabled)
     LIBS += -lcoap
     CFLAGS += -DMOD_COAP_ENABLED
+endif
+
+ifeq ($(MOD_LORA_ENABLED), 1)
+    $(info LORA Module Enabled)
+    CFLAGS += -DMOD_LORA_ENABLED
 endif
 
 ifeq ($(DIFF_UPDATE_ENABLED), 1)
@@ -191,11 +218,9 @@ endif
 
 ifeq ($(MOD_SIGFOX_ENABLED), 1)
     $(info SIGFOX Module Enabled)
-    ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
-        CFLAGS += -DMOD_SIGFOX_ENABLED
-        LIBS += sigfox/modsigfox_$(BOARD).a -lsigfox
-        $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
-    endif
+    CFLAGS += -DMOD_SIGFOX_ENABLED
+    LIBS += sigfox/modsigfox_$(BOARD).a -lsigfox
+    $(BUILD)/application.elf: sigfox/modsigfox_$(BOARD).a
 endif
 
 ifeq ($(MOD_MDNS_ENABLED), 1)
@@ -208,6 +233,12 @@ ifeq ($(OPENTHREAD), on)
     $(info OPENTHREAD enabled)
     LIBS += -lopenthread
     CFLAGS += -DLORA_OPENTHREAD_ENABLED
+endif
+
+ifeq ($(MOD_ESPNOW_ENABLED), 1)
+    $(info ESP-NOW Module Enabled)
+    LIBS += -lespnow
+    CFLAGS += -DMOD_ESPNOW_ENABLED
 endif
 
 # Enable or Disable LTE_LOG_BUFF

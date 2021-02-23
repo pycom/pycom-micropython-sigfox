@@ -146,7 +146,7 @@ class Args(object):
     pass
 
 
-def load_tar(fileobj, prog, secure=False):
+def load_tar(fileobj, prog, secure=False, sff_enable=True):
     script = None
     legacy = False
     try:
@@ -159,9 +159,15 @@ def load_tar(fileobj, prog, secure=False):
         if fsize == 0x800000:
             try:
                 if secure:
-                    script_file = json.loads(tar.extractfile("script_8MB_enc").read().decode('UTF-8'))
+                    if sff_enable:
+                        script_file = json.loads(tar.extractfile("script_8MB_small_factory_fw_enc").read().decode('UTF-8'))
+                    else:
+                        script_file = json.loads(tar.extractfile("script_8MB_normal_factory_fw_enc").read().decode('UTF-8'))
                 else:
-                    script_file = json.loads(tar.extractfile("script_8MB").read().decode('UTF-8'))
+                    if sff_enable:
+                        script_file = json.loads(tar.extractfile("script_8MB_small_factory_fw").read().decode('UTF-8'))
+                    else:
+                        script_file = json.loads(tar.extractfile("script_8MB_normal_factory_fw").read().decode('UTF-8'))
             except:
                 print_debug("Error Loading script_8MB ... defaulting to legacy script2!", True)
                 legacy = True
@@ -1019,6 +1025,7 @@ def process_arguments():
     cmd_parser_flash.add_argument('-p', '--partition', default=None, help=help_msg[:-2] + ')')
     # cmd_parser_flash.add_argument('-d', '--directory', default=None, help='directory to look for files when using -s / --script')
     # cmd_parser_flash.add_argument('-s', '--script', default=None, help='script file to execute')
+    cmd_parser_flash.add_argument('-sff', '--sff_enable', default=True, type=str2bool, nargs='?', const=True, help="Select whether Small Factory Firmware mode is supported")
     cmd_parser_copy = subparsers.add_parser('copy', help='Read/Write flash memory partition')
     help_msg = 'The partition to read/write ('
     for partition in PARTITIONS.keys():
@@ -1207,7 +1214,7 @@ def main():
             if args.tar is not None:
                 try:
                     tar_file = open(args.tar, "rb")
-                    script = load_tar(tar_file, nPy, args.secureboot)
+                    script = load_tar(tar_file, nPy, args.secureboot, args.sff_enable)
                     if not args.quiet:
                         # sys.stdout = old_stdout
                         sys.stderr.flush()
