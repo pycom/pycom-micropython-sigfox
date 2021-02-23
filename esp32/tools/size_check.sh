@@ -11,7 +11,11 @@ if [ ${VARIANT} != "BASE" ] ; then
   BUILD_DIR="build-${VARIANT}"
 fi
 
-IMG_MAX_SIZE_8MB=3076096
+if [ $4 -eq 1 ]; then
+    IMG_MAX_SIZE_8MB=3076096
+else
+    IMG_MAX_SIZE_8MB=2027520
+fi
 IMG_MAX_SIZE_4MB=1761280
 OS="$(uname)"
 

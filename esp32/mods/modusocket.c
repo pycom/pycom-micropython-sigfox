@@ -272,7 +272,7 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
     mod_network_socket_obj_t *self = self_in;
     int _errno;
 
-#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+#ifdef MOD_LORA_ENABLED
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
         if (MP_OBJ_IS_INT(addr_in)) {
               mp_uint_t port = mp_obj_get_int(addr_in);
@@ -301,7 +301,7 @@ STATIC mp_obj_t socket_bind(mp_obj_t self_in, mp_obj_t addr_in) {
         if (self->sock_base.nic_type->n_bind(self, ip, port, &_errno) != 0) {
             nlr_raise(mp_obj_new_exception_arg1(&mp_type_OSError, MP_OBJ_NEW_SMALL_INT(_errno)));
         }
-#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+#ifdef MOD_LORA_ENABLED
     }
 #endif
     return mp_const_none;
@@ -521,7 +521,7 @@ STATIC mp_obj_t socket_sendto(mp_obj_t self_in, mp_obj_t data_in, mp_obj_t addr_
     uint8_t ip[MOD_USOCKET_IPV6_CHARS_MAX];
     mp_uint_t port = 0;
 
-#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+#ifdef MOD_LORA_ENABLED
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
         mp_obj_t *addr_items;
         mp_obj_get_array_fixed_n(addr_in, 2, &addr_items);
@@ -579,7 +579,7 @@ STATIC mp_obj_t socket_recvfrom(mp_obj_t self_in, mp_obj_t len_in) {
         vstr.buf[vstr.len] = '\0';
         tuple[0] = mp_obj_new_str_from_vstr(&mp_type_bytes, &vstr);
     }
-#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+#ifdef MOD_LORA_ENABLED
     // check if lora NIC and IP is not set (so Lora Raw or LoraWAN, but no Lora Mesh)
     if (self->sock_base.nic_type == &mod_network_nic_type_lora) {
             if (ip[0] == 0) {

@@ -1,0 +1,14 @@
+{
+  "version" : "2.1",
+  "partitions" : {
+    "factory"   : ["0x10000", "0xFF000"],
+    "ota_0"     : ["0x110000", "0x2EF000"],
+    "otadata"   : ["0x10F000", "0x1000"]
+    },
+  "script" : [
+      ["w", "bootloader", "bootloader.bin"],
+      ["w", "partitions", "partitions_8MB_small_factory_fw.bin"],
+      ["w", "factory", "factory_fw.bin"],
+      ["w", "ota_0", "wipy.bin"]
+    ]
+}
