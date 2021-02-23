@@ -644,14 +644,21 @@ ifeq ($(BOARD), FIPY)
     endif
 endif
 
-PART_BIN_8MB = $(BUILD)/lib/partitions_8MB.bin
+ifeq ($(SMALL_FACTORY_FW_ENABLED), 1)
+    PART_BIN_8MB = $(BUILD)/lib/partitions_8MB_small_factory_fw.bin
+    PART_CSV_8MB = lib/partitions_8MB_small_factory_fw.csv
+else
+    PART_BIN_8MB = $(BUILD)/lib/partitions_8MB_normal_factory_fw.bin
+    PART_CSV_8MB = lib/partitions_8MB_normal_factory_fw.csv
+endif
+
 PART_BIN_4MB = $(BUILD)/lib/partitions_4MB.bin
+PART_CSV_4MB = lib/partitions_4MB.csv
+
 PART_BIN_ENCRYPT_4MB = $(PART_BIN_4MB)_enc
 PART_BIN_ENCRYPT_8MB = $(PART_BIN_8MB)_enc
 APP_BIN_ENCRYPT = $(APP_BIN)_enc
 APP_IMG  = $(BUILD)/appimg.bin
-PART_CSV_8MB = lib/partitions_8MB.csv
-PART_CSV_4MB = lib/partitions_4MB.csv
 APP_BIN_ENCRYPT_2_8MB = $(APP_BIN)_enc_0x210000
 APP_BIN_ENCRYPT_2_4MB = $(APP_BIN)_enc_0x1C0000
 
@@ -678,8 +685,8 @@ ESPTOOLPY_ERASE_FLASH  = $(ESPTOOLPY_SERIAL) erase_flash
 
 ESP_UPDATER_PY_WRITE_FLASH  = $(ESP_UPDATER_PY_SERIAL) flash
 ESP_UPDATER_PY_ERASE_FLASH  = $(ESP_UPDATER_PY_SERIAL) erase_all
-ESP_UPDATER_ALL_FLASH_ARGS = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION).tar.gz
-ESP_UPDATER_ALL_FLASH_ARGS_ENC = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION)_ENC.tar.gz --secureboot
+ESP_UPDATER_ALL_FLASH_ARGS = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION).tar.gz --sff_enable $(SMALL_FACTORY_FW_ENABLED)
+ESP_UPDATER_ALL_FLASH_ARGS_ENC = -t $(BUILD_DIR)/$(BOARD_L)-$(SW_VERSION)_ENC.tar.gz --secureboot --sff_enable $(SMALL_FACTORY_FW_ENABLED)
 
 ESPSECUREPY = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espsecure.py
 ESPEFUSE = $(PYTHON) $(IDF_PATH)/components/esptool_py/esptool/espefuse.py --port $(ESPPORT)
@@ -930,16 +937,16 @@ endif #ifeq ($(TARGET), $(filter $(TARGET), app boot_app))
 
 release: $(APP_BIN) $(BOOT_BIN)
 	$(ECHO) "checking size of image"
-	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT)
+	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT) $(SMALL_FACTORY_FW_ENABLED)
 ifeq ($(SECURE), on)
-	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD) 1
+	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD) 1 $(SMALL_FACTORY_FW_ENABLED)
 else
-	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD)
+	$(Q) tools/makepkg.sh $(BOARD) $(RELEASE_DIR) $(BUILD) 0 $(SMALL_FACTORY_FW_ENABLED)
 endif
 
 flash: release
 	$(ECHO) "checking size of image"
-	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT)
+	$(Q) bash tools/size_check.sh $(BOARD) $(BTYPE) $(VARIANT) $(SMALL_FACTORY_FW_ENABLED)
 
 	$(ECHO) "Flashing project"
 ifeq ($(SECURE), on)

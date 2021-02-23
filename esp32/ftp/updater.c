@@ -34,6 +34,16 @@
 static const char *TAG = "updater";
 #define UPDATER_IMG_PATH                                "/flash/sys/appimg.bin"
 
+#if(SMALL_FACTORY_FW_ENABLED == 1)
+#define IMG_SIZE_8MB                            (3004 * 1024)
+#define IMG_UPDATE1_OFFSET_8MB                  (1088 * 1024)  // taken from the partitions table
+#else
+#define IMG_SIZE_8MB                            (1980 * 1024)
+#define IMG_UPDATE1_OFFSET_8MB                  (2112 * 1024)  // taken from the partitions table
+#endif
+#define IMG_SIZE_4MB                            (2424 * 1024)
+#define IMG_UPDATE1_OFFSET_4MB                  (1088 * 1024)  // taken from the partitions table
+
 /* if flash is encrypted, it requires the flash_write operation to be done in 16 Bytes chunks */
 #define ENCRYP_FLASH_MIN_CHUNK                            16
 
