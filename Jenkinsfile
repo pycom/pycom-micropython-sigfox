@@ -88,7 +88,7 @@ def boardBuild(name, variant, open_thread) {
         sh '''export PATH=$PATH:/opt/2020r3/xtensa-esp32-elf/bin/;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         make -C esp32 clean BOARD=''' + name.toUpperCase() + ' VARIANT=' + variant
-        sh '''export PATH=$PATH:/opt/2020r2/xtensa-esp32-elf/bin/;
+        sh '''export PATH=$PATH:/opt/2020r3/xtensa-esp32-elf/bin/;
         export IDF_PATH=${WORKSPACE}/esp-idf;
         make -C esp32 -j2 release BOARD=''' + name.toUpperCase() + ' VARIANT=' + variant + ' OPENTHREAD=' + open_thread
         sh 'mkdir -p ' + release_dir + variant + '/'
