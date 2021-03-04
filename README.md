@@ -55,7 +55,7 @@ the Espressif website:
 
 - for 32-bit Linux::
 
-    https://dl.espressif.com/dl/xtensa-esp32s2-elf-gcc8_4_0-esp-2020r3-linux-i686.tar.gz
+    https://dl.espressif.com/dl/xtensa-esp32-elf-gcc8_4_0-esp-2020r3-linux-i686.tar.gz
 
 - for Mac OS:
 
@@ -75,7 +75,7 @@ Then when you need the toolchain you can type ``get_esp32`` on the command line 
 You also need the ESP IDF along side this repository in order to build the ESP32 port.
 To get it:
 
-    $ git clone --recursive -b idf_v4.1_ml_ota https://github.com/pycom/pycom-esp-idf.git
+    $ git clone --recursive -b idf_v4.1 https://github.com/pycom/pycom-esp-idf.git
 
 After cloning, if you did not specify the --recursive option, make sure to checkout all the submodules:
 
