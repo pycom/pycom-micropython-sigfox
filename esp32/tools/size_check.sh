@@ -16,7 +16,9 @@ if [ $4 -eq 1 ]; then
 else
     IMG_MAX_SIZE_8MB=2027520
 fi
-IMG_MAX_SIZE_4MB=1761280
+# 4MB boards are deprecated
+# IMG_MAX_SIZE_4MB=1761280
+
 OS="$(uname)"
 
 #Script Has to be called from esp32 Dir
@@ -56,18 +58,7 @@ fi
 total_size=$((${size_app} + ${size_boot}))
 
 
-IMG_MAX_SIZE=${IMG_MAX_SIZE_4MB}
-
-if [ "${BOARD}" = "LOPY4" -o "${BOARD}" = "GPY" -o "${BOARD}" = "FIPY" -o "${BOARD}" = "LOPY" ] ; then
-  # LOPY image is for L01 (not Lopy1), which has a 8MB chip
-  IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
-elif [ "${BOARD}" = "WIPY" -a "${VARIANT}" = "PYGATE" ] ; then
-  # WiPy2.0 has a 4MB chip
-  # WiPy3.0 has a 8MB chip
-  # they are both supported by BOARD=WIPY
-  # on the Pygate we support only the WiPy3.0, so for this combination we allow the 8MB limit
-  IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
-fi
+IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
 
 if [ ${total_size} -gt ${IMG_MAX_SIZE} ] ; then
   echo "${total_size} bytes => Firmware image size is NOT ok. It exceeds the available space ${IMG_MAX_SIZE} by $[ $total_size - $IMG_MAX_SIZE ]!" >&2
