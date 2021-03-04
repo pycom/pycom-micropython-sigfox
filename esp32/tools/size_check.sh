@@ -58,7 +58,8 @@ total_size=$((${size_app} + ${size_boot}))
 
 IMG_MAX_SIZE=${IMG_MAX_SIZE_4MB}
 
-if [ "${BOARD}" = "LOPY4" -o "${BOARD}" = "GPY" -o "${BOARD}" = "FIPY" ] ; then
+if [ "${BOARD}" = "LOPY4" -o "${BOARD}" = "GPY" -o "${BOARD}" = "FIPY" -o "${BOARD}" = "LOPY" ] ; then
+  # LOPY image is for L01 (not Lopy1), which has a 8MB chip
   IMG_MAX_SIZE=${IMG_MAX_SIZE_8MB}
 elif [ "${BOARD}" = "WIPY" -a "${VARIANT}" = "PYGATE" ] ; then
   # WiPy2.0 has a 4MB chip
