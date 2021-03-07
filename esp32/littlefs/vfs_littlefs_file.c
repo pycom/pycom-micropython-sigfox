@@ -33,6 +33,12 @@ STATIC mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int 
 
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
 
+    if (self->opened == false) {
+        // Return EINVAL just as FatFS if the file is not opened
+        *errcode = MP_EINVAL;
+        return MP_STREAM_ERROR;
+    }
+
     xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
         lfs_ssize_t sz_out = lfs_file_read(&self->littlefs->lfs ,&self->fp, buf, size);
     xSemaphoreGive(self->littlefs->mutex);
@@ -47,6 +53,12 @@ STATIC mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int 
 STATIC mp_uint_t file_obj_write(mp_obj_t self_in, const void *buf, mp_uint_t size, int *errcode) {
 
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
+
+    if (self->opened == false) {
+        // Return EINVAL just as FatFS if the file is not opened
+        *errcode = MP_EINVAL;
+        return MP_STREAM_ERROR;
+    }
 
     xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
         lfs_ssize_t sz_out = lfs_file_write(&self->littlefs->lfs, &self->fp, buf, size);
@@ -91,6 +103,12 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
 
     } else if (request == MP_STREAM_FLUSH) {
 
+        if (self->opened == false) {
+            // Return EINVAL just as FatFS if the file is not opened
+            *errcode = MP_EINVAL;
+            return MP_STREAM_ERROR;
+        }
+
         xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
             int res = lfs_file_sync(&self->littlefs->lfs, &self->fp);
         xSemaphoreGive(self->littlefs->mutex);
@@ -102,8 +120,9 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
         return 0;
 
     } else if (request == MP_STREAM_CLOSE) {
-        // This check is needed here because calling close() twice makes LFS crash in lfs_file_close()
+
         if (self->opened == false) {
+            // Return 0 just as FatFs if the file is not opened
             return 0;
         }
 
@@ -115,6 +134,7 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
             *errcode = littleFsErrorToErrno(res);
             return MP_STREAM_ERROR;
         }
+
         self->opened = false; // indicate a closed file
         return 0;
     } else {
