@@ -168,7 +168,7 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const mbedtl
 
         mbedtls_ssl_set_bio(&ssl_sock->ssl, &ssl_sock->context_fd, mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
 
-        // printf("Performing the SSL/TLS handshake...\n");
+        //printf("Performing the SSL/TLS handshake...\n");
         int count = 0;
         while ((ret = mbedtls_ssl_handshake(&ssl_sock->ssl)) != 0)
         {
@@ -182,13 +182,21 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const mbedtl
             }
         }
 
-        // printf("Verifying peer X.509 certificate...\n");
-        if ((ret = mbedtls_ssl_get_verify_result(&ssl_sock->ssl)) != 0) {
-            /* In real life, we probably want to close connection if ret != 0 */
-            // printf("Failed to verify peer certificate!\n");
+        //printf("Verifying peer X.509 certificate...\n");
+        ret = mbedtls_ssl_get_verify_result(&ssl_sock->ssl);
+        if (ret == 0) {
+            //printf("Certificate verified.\n");
+            return 0;
+        }
+        // If no verification is needed the mbedtls_ssl_get_verify_result() returns with MBEDTLS_X509_BADCERT_SKIP_VERIFY
+        else if((ssl_verify == MBEDTLS_SSL_VERIFY_NONE) && (ret == MBEDTLS_X509_BADCERT_SKIP_VERIFY)) {
+            //printf("Certification validation skipped.\n");
+            return 0;
+        }
+        else {
+            /* In real life, we probably want to close connection in this case */
+            //printf("Failed to verify peer certificate!\n");
             return -1;
-        } else {
-            // printf("Certificate verified.\n");
         }
     }
 

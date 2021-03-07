@@ -26,17 +26,36 @@
 
 #include "py/obj.h"
 #include "py/mpstate.h"
+#include <signal.h>
 
+typedef void (*_sig_func_cb_ptr)(int);
 #if MICROPY_KBD_EXCEPTION
 
 int mp_reset_char;
 int mp_interrupt_char = -1;
+_sig_func_cb_ptr DRAM_ATTR sign_term = NULL;
 
 void mp_hal_set_interrupt_char(int c) {
     if (c != -1) {
         mp_obj_exception_clear_traceback(MP_OBJ_FROM_PTR(&MP_STATE_VM(mp_kbd_exception)));
     }
     mp_interrupt_char = c;
+}
+
+void mp_hal_set_signal_exit_cb (_sig_func_cb_ptr fun)
+{
+    if(fun != NULL)
+    {
+        sign_term = fun;
+    }
+}
+
+void IRAM_ATTR mp_hal_trig_term_sig(void)
+{
+    if(sign_term != NULL)
+    {
+        sign_term(SIGTERM);
+    }
 }
 
 void mp_hal_set_reset_char(int c) {

@@ -1,6 +1,9 @@
 def buildVersion
 def boards_to_build = ["WiPy", "LoPy", "SiPy", "GPy", "FiPy", "LoPy4"]
 def variants_to_build = [ "PYBYTES" ]
+// FIXME: there must be a better way of adding PYGATE to Jenkins, but it evades me :(
+def pygate_boards_to_build = ["WiPy", "GPy", "LoPy4"]
+def pygate_variants_to_build = [ "PYGATE" ]
 def boards_to_test = ["00ec51"]
 def open_thread
 
@@ -9,9 +12,14 @@ node {
     stage('Checkout') {
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --depth=1 --recursive -b idf_v3.3.1 https://github.com/pycom/pycom-esp-idf.git esp-idf'
+        sh 'git clone --recursive -b idf_v3.3.1 https://github.com/pycom/pycom-esp-idf.git esp-idf'
+        IDF_HASH=get_idf_hash()
+        dir('esp-idf'){
+            sh 'git checkout ' + IDF_HASH
+            sh 'git submodule update --init --recursive'
+        }
     }
-    
+
     stage('git-tag') {
         PYCOM_VERSION=get_version()
         GIT_TAG = sh (script: 'git rev-parse --short HEAD', returnStdout: true).trim()
@@ -35,6 +43,19 @@ node {
             parallel parallelSteps
         }
     }
+
+    for (board in pygate_boards_to_build) {
+        stage(board) {
+            def parallelSteps = [:]
+            for (variant in pygate_variants_to_build) {
+                board_variant = board + "_" + variant
+                open_thread = 'off'
+                parallelSteps[board_variant] = boardBuild(board, variant, open_thread)
+            }
+            parallel parallelSteps
+        }
+    }
+
     stash includes: '**/*.tar.gz', name: 'binary'
     stash includes: 'tests/**', name: 'tests'
     stash includes: 'tools/**', name: 'tools'
@@ -112,6 +133,11 @@ def testBuild(short_name) {
 
 def get_version() {
     def matcher = readFile('esp32/pycom_version.h') =~ 'SW_VERSION_NUMBER (.+)'
+    matcher ? matcher[0][1].trim().replace('"','') : null
+}
+
+def get_idf_hash() {
+    def matcher = readFile('esp32/Makefile') =~ 'IDF_HASH=(.+)'
     matcher ? matcher[0][1].trim().replace('"','') : null
 }
 

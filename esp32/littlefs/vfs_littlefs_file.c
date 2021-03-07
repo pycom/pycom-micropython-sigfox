@@ -171,7 +171,7 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
         int res = littlefs_open_common_helper(&vfs->fs.littlefs.lfs, fname, &o->fp, mode, &o->cfg, &o->timestamp_update);
     xSemaphoreGive(vfs->fs.littlefs.mutex);
 
-    m_free((void*)fname);
+    free((void*)fname);
     if (res < LFS_ERR_OK) {
         m_del_obj(pyb_file_obj_t, o);
         mp_raise_OSError(littleFsErrorToErrno(res));

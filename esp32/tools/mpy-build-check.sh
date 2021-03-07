@@ -10,9 +10,9 @@ PY_PATH="./frozen"
 PY_DIRS="$(ls ${PY_PATH})"
 OS="$(uname)"
 if [ ${VARIANT} != "BASE" ] ; then
-    BUILD_DIR="build-${VARIANT}/${BOARD}/${RELEASE_TYP}"
+  BUILD_DIR="build-${VARIANT}/${BOARD}/${RELEASE_TYP}"
 else
-    BUILD_DIR="build/${BOARD}/${RELEASE_TYP}"
+  BUILD_DIR="build/${BOARD}/${RELEASE_TYP}"
 fi
 
 # Script has to be called from esp32 dir

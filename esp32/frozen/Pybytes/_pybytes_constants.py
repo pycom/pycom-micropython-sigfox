@@ -58,6 +58,8 @@ class constants:
     __CONNECTION_STATUS_CONNECTED_MQTT_LTE = 2
     __CONNECTION_STATUS_CONNECTED_LORA = 3
     __CONNECTION_STATUS_CONNECTED_SIGFOX = 4
+    __CONNECTION_STATUS_CONNECTED_COAP_WIFI = 5
+    __CONNECTION_STATUS_CONNECTED_COAP_LTE = 6
 
     __TYPE_PING = 0x00
     __TYPE_INFO = 0x01
@@ -67,10 +69,12 @@ class constants:
     __TYPE_OTA = 0x05
     __TYPE_FCOTA = 0x06
     __TYPE_PONG = 0x07
-    __TYPE_PYBYTES = 0x0E
-    __TYPE_RELEASE_INFO = 0x0B
     __TYPE_RELEASE_DEPLOY = 0x0A
+    __TYPE_RELEASE_INFO = 0x0B
     __TYPE_DEVICE_NETWORK_DEPLOY = 0x0C
+    __TYPE_PYMESH = 0x0D
+    __TYPE_PYBYTES = 0x0E
+    __TYPE_ML = 0x0F
     __PYBYTES_PROTOCOL = ">B%ds"
     __PYBYTES_PROTOCOL_PING = ">B"
     __PYBYTES_INTERNAL_PROTOCOL = ">BBH"
@@ -87,12 +91,15 @@ class constants:
     __COMMAND_ANALOG_WRITE = 4
     __COMMAND_CUSTOM_METHOD = 5
     __COMMAND_CUSTOM_LOCATION = 6
+    __COMMAND_START_SAMPLE = 7
+    __COMMAND_DEPLOY_MODEL = 8
 
     __FCOTA_COMMAND_HIERARCHY_ACQUISITION = 0x00
     __FCOTA_COMMAND_FILE_ACQUISITION = 0x01
     __FCOTA_COMMAND_FILE_UPDATE = 0x02
     __FCOTA_PING = 0x03
     __FCOTA_COMMAND_FILE_DELETE = 0x04
+    __FCOTA_COMMAND_FILE_UPDATE_NO_RESET = 0x05
 
     __DEVICE_TYPE_WIPY = 0x00
     __DEVICE_TYPE_LOPY = 0x01
@@ -100,6 +107,10 @@ class constants:
     __DEVICE_TYPE_SIPY = 0x03
     __DEVICE_TYPE_LOPY_4 = 0x04
     __DEVICE_TYPE_UNKNOWN = 0x05
+
+    __FWTYPE_DEFAULT = 0x00
+    __FWTYPE_PYMESH = 0x01
+    __FWTYPE_PYGATE = 0x02
 
     # {"ssid":"%s", "mac_addr":"%s", "channel":"%s", "power":"%s"}
     __WIFI_NETWORK_FORMAT = ">6sBb"
@@ -117,6 +128,8 @@ See all available zone options for RC at https://support.sigfox.com/docs/radio-c
     __WDT_TIMEOUT_MILLISECONDS = (2 * __KEEP_ALIVE_PING_INTERVAL + __ONE_MINUTE) * 1000 # noqa
 
     __WDT_MAX_TIMEOUT_MILLISECONDS = sys.maxsize
+
+    __SIMPLE_COAP = 'simple_coap'
 
     try:
         __DEFAULT_DOMAIN = pycom.nvs_get('pybytes_domain', 'pybytes.pycom.io')

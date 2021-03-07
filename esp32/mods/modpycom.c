@@ -156,22 +156,25 @@ STATIC mp_obj_t mod_pycom_heartbeat (mp_uint_t n_args, const mp_obj_t *args) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_heartbeat_obj, 0, 1, mod_pycom_heartbeat);
 
-STATIC mp_obj_t mod_pycom_rgb_led (mp_obj_t o_color) {
+STATIC mp_obj_t mod_pycom_rgb_led (mp_uint_t n_args, const mp_obj_t *args) {
 #ifndef RGB_LED_DISABLE
     if (mperror_is_heartbeat_enabled()) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }
-
-    uint32_t color = mp_obj_get_int(o_color);
-    led_info.color.value = color;
-    led_set_color(&led_info, true, false);
+    if(n_args > 0){
+        uint32_t color = mp_obj_get_int(args[0]);
+        led_info.color.value = color;
+        led_set_color(&led_info, true, false);
+    } else {
+        return mp_obj_new_int(led_info.color.value);
+    }
 #else
     nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "RGB Led Interface Disabled"));
 #endif
 
     return mp_const_none;
 }
-STATIC MP_DEFINE_CONST_FUN_OBJ_1(mod_pycom_rgb_led_obj, mod_pycom_rgb_led);
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_rgb_led_obj, 0,1,mod_pycom_rgb_led);
 
 STATIC mp_obj_t mod_pycom_ota_start (void) {
     if (!updater_start()) {
@@ -211,6 +214,15 @@ STATIC mp_obj_t mod_pycom_ota_slot (void) {
     return mp_obj_new_int(ota_slot);
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_ota_slot_obj, mod_pycom_ota_slot);
+
+STATIC mp_obj_t mod_pycom_diff_update_enabled (void) {
+#ifdef DIFF_UPDATE_ENABLED
+    return mp_obj_new_bool(true);
+#else
+    return mp_obj_new_bool(false);
+#endif
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_0(mod_pycom_diff_update_enabled_obj, mod_pycom_diff_update_enabled);
 
 STATIC mp_obj_t mod_pycom_pulses_get (mp_obj_t gpio, mp_obj_t timeout) {
     rmt_config_t rmt_rx;
@@ -279,8 +291,10 @@ STATIC mp_obj_t mod_pycom_nvs_set (mp_obj_t _key, mp_obj_t _value) {
         nvs_commit(pycom_nvs_handle);
     } else if (ESP_ERR_NVS_NOT_ENOUGH_SPACE == esp_err || ESP_ERR_NVS_PAGE_FULL == esp_err || ESP_ERR_NVS_NO_FREE_PAGES == esp_err) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "No free space available"));
-    } else if (ESP_ERR_NVS_INVALID_NAME == esp_err || ESP_ERR_NVS_KEY_TOO_LONG == esp_err) {
+    } else if (ESP_ERR_NVS_INVALID_NAME == esp_err) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Key is invalid"));
+    } else if (ESP_ERR_NVS_KEY_TOO_LONG == esp_err) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Key is too long"));
     } else {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_Exception, "Error occurred while storing value, code: %d", esp_err));
     }
@@ -302,16 +316,15 @@ STATIC mp_obj_t mod_pycom_nvs_get (mp_uint_t n_args, const mp_obj_t *args) {
     else {
         esp_err = nvs_get_str(pycom_nvs_handle, key, NULL, &value);
         if(esp_err == ESP_OK) {
-            char* value_string = (char*)m_malloc(value);
+            char* value_string = (char*)malloc(value);
 
             esp_err = nvs_get_str(pycom_nvs_handle, key, value_string, &value);
 
             if(esp_err == ESP_OK) {
                 //do not count the terminating \0
                 ret = mp_obj_new_str(value_string, value-1);
-                m_free(value_string);
             }
-            m_free(value_string);
+            free(value_string);
         }
     }
 
@@ -422,7 +435,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_sta (mp_uint_t n_args, const mp_obj_t *args)
         else{/*Nothing*/}
 
     } else {
-        uint8_t * ssid = (uint8_t *)m_malloc(33);
+        uint8_t * ssid = (uint8_t *)malloc(33);
         mp_obj_t ssid_obj;
         if(config_get_wifi_sta_ssid(ssid))
         {
@@ -432,7 +445,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_sta (mp_uint_t n_args, const mp_obj_t *args)
         {
             ssid_obj = mp_const_none;
         }
-        m_free(ssid);
+        free(ssid);
         return ssid_obj;
     }
     return mp_const_none;
@@ -451,7 +464,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_sta (mp_uint_t n_args, const mp_obj_t *args) 
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * pwd = (uint8_t *)m_malloc(65);
+        uint8_t * pwd = (uint8_t *)malloc(65);
         mp_obj_t pwd_obj;
         if(config_get_wifi_sta_pwd(pwd))
         {
@@ -461,7 +474,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_sta (mp_uint_t n_args, const mp_obj_t *args) 
         {
             pwd_obj = mp_const_none;
         }
-        m_free(pwd);
+        free(pwd);
         return pwd_obj;
     }
     return mp_const_none;
@@ -480,7 +493,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_ap (mp_uint_t n_args, const mp_obj_t *args) 
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * ssid = (uint8_t *)m_malloc(33);
+        uint8_t * ssid = (uint8_t *)malloc(33);
         mp_obj_t ssid_obj;
         if(config_get_wifi_ap_ssid(ssid))
         {
@@ -490,7 +503,7 @@ STATIC mp_obj_t mod_pycom_wifi_ssid_ap (mp_uint_t n_args, const mp_obj_t *args) 
         {
             ssid_obj = mp_const_none;
         }
-        m_free(ssid);
+        free(ssid);
         return ssid_obj;
     }
     return mp_const_none;
@@ -509,7 +522,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_ap (mp_uint_t n_args, const mp_obj_t *args) {
         }
         else{/*Nothing*/}
     } else {
-        uint8_t * pwd = (uint8_t *)m_malloc(65);
+        uint8_t * pwd = (uint8_t *)malloc(65);
         mp_obj_t pwd_obj;
         if(config_get_wifi_ap_pwd(pwd))
         {
@@ -519,7 +532,7 @@ STATIC mp_obj_t mod_pycom_wifi_pwd_ap (mp_uint_t n_args, const mp_obj_t *args) {
         {
             pwd_obj = mp_const_none;
         }
-        m_free(pwd);
+        free(pwd);
         return pwd_obj;
     }
     return mp_const_none;
@@ -703,13 +716,17 @@ STATIC mp_obj_t mod_pycom_bootmgr (size_t n_args, const mp_obj_t *pos_args, mp_m
         {
             t->items[ARG_safeboot] = mp_obj_new_str("SafeBoot: True", strlen("SafeBoot: True"));
         }
-        if(boot_info.Status == 0x00)
+        if(boot_info.Status == IMG_STATUS_CHECK)
         {
             t->items[ARG_status] = mp_obj_new_str("Status: Check", strlen("Status: Check"));
         }
-        else
+        else if(boot_info.Status == IMG_STATUS_READY)
         {
             t->items[ARG_status] = mp_obj_new_str("Status: Ready", strlen("Status: Ready"));
+        }
+        else if(boot_info.Status == IMG_STATUS_PATCH)
+        {
+            t->items[ARG_status] = mp_obj_new_str("Status: Patch", strlen("Status: Patch"));
         }
 
         return MP_OBJ_FROM_PTR(t);
@@ -996,6 +1013,53 @@ STATIC mp_obj_t mod_pycom_sigfox_info (size_t n_args, const mp_obj_t *pos_args, 
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mod_pycom_sigfox_info_obj, 0, mod_pycom_sigfox_info);
 
+// This function creates a 128 bit long UUID stored in a byte array in Little Endian order from an input String
+STATIC mp_obj_t create_128bit_le_uuid_from_string(mp_obj_t uuid_in) {
+
+    size_t length;
+    uint8_t new_uuid[16];
+    uint8_t i, j;
+
+    const char* uuid_char_in = mp_obj_str_get_data(uuid_in, &length);
+    // 1 character is stored on 1 byte because we received a String
+    // For 128 bit UUID maximum 32 characters long String can be accepted
+    if (length > 32) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "Input string must not be longer than 32 characters!"));
+    }
+
+    // Pre-fill the whole array with 0 because the remaining/not given digits will be 0
+    char uuid_char[32] = {0};
+    memcpy(uuid_char, uuid_char_in, length);
+
+    for(i = 0, j = 0; i < 32; i = i+2) {
+
+        uint8_t lower_nibble = 0;
+        uint8_t upper_nibble = 0;
+
+        if(uuid_char[i] > 0) {
+            upper_nibble = hex_from_char(uuid_char[i]);
+        }
+
+        if(uuid_char[i+1] > 0) {
+            lower_nibble = hex_from_char(uuid_char[i+1]);
+        }
+
+        if(lower_nibble == 16 || upper_nibble == 16) {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_ValueError, "UUID must only contain hexadecimal digits!"));
+        }
+
+        // Pack together the 4 bits digits into 1 byte
+        // Convert to Little Endian order because we expect that the digits of the input String follows the Natural Byte (Big Endian) order
+        new_uuid[15-j] = lower_nibble | (upper_nibble << 4);
+        j++;
+    }
+
+    mp_obj_t new_uuid_mp = mp_obj_new_bytearray(16, new_uuid);
+    return new_uuid_mp;
+
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(create_128bit_le_uuid_from_string_obj, create_128bit_le_uuid_from_string);
+
 STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR___name__),                        MP_OBJ_NEW_QSTR(MP_QSTR_pycom) },
         { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat),                       (mp_obj_t)&mod_pycom_heartbeat_obj },
@@ -1005,6 +1069,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_ota_finish),                      (mp_obj_t)&mod_pycom_ota_finish_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_ota_verify),                      (mp_obj_t)&mod_pycom_ota_verify_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_ota_slot),                        (mp_obj_t)&mod_pycom_ota_slot_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_diff_update_enabled),             (mp_obj_t)&mod_pycom_diff_update_enabled_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_pulses_get),                      (mp_obj_t)&mod_pycom_pulses_get_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_set),                         (mp_obj_t)&mod_pycom_nvs_set_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_nvs_get),                         (mp_obj_t)&mod_pycom_nvs_get_obj },
@@ -1021,6 +1086,8 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd_sta),                    (mp_obj_t)&mod_pycom_wifi_pwd_sta_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_pwd_ap),                     (mp_obj_t)&mod_pycom_wifi_pwd_ap_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_mode_on_boot),               (mp_obj_t)&mod_pycom_wifi_mode_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_create_128bit_le_uuid_from_string), (mp_obj_t)&create_128bit_le_uuid_from_string_obj },
+
 
 #if defined(FIPY) || defined(LOPY4) || defined(SIPY) || defined (TBEAMv1)
         { MP_OBJ_NEW_QSTR(MP_QSTR_sigfox_info),                     (mp_obj_t)&mod_pycom_sigfox_info_obj },

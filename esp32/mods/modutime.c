@@ -114,7 +114,7 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(time_gmtime_obj, 0, 1, time_gmtime);
 /// \function mktime()
 /// This is inverse function of localtime. It's argument is a full 8-tuple
 /// which expresses a time as per localtime. It returns an integer which is
-/// the number of seconds since Jan 1, 2000.
+/// the number of seconds since the Epoch (Jan 1, 1970).
 STATIC mp_obj_t time_mktime(mp_obj_t tuple) {
     mp_uint_t len;
     mp_obj_t *elem;
@@ -125,9 +125,9 @@ STATIC mp_obj_t time_mktime(mp_obj_t tuple) {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_TypeError, "mktime needs a tuple of length 8 or 9 (%d given)", len));
     }
 
-    return mp_obj_new_int_from_uint(timezone_offset + timeutils_mktime_since_epoch(mp_obj_get_int(elem[0]),
+    return mp_obj_new_int(timeutils_mktime_since_epoch(mp_obj_get_int(elem[0]),
             mp_obj_get_int(elem[1]), mp_obj_get_int(elem[2]), mp_obj_get_int(elem[3]),
-            mp_obj_get_int(elem[4]), mp_obj_get_int(elem[5])));
+            mp_obj_get_int(elem[4]), mp_obj_get_int(elem[5])) - timezone_offset);
 }
 MP_DEFINE_CONST_FUN_OBJ_1(time_mktime_obj, time_mktime);
 

@@ -101,7 +101,9 @@
 #define MICROPY_PY_UTIMEQ                           (1)
 #define MICROPY_CPYTHON_COMPAT                      (1)
 #define MICROPY_LONGINT_IMPL                        (MICROPY_LONGINT_IMPL_MPZ)
+#ifndef MICROPY_FLOAT_IMPL   // can be configured by make option
 #define MICROPY_FLOAT_IMPL                          (MICROPY_FLOAT_IMPL_FLOAT)
+#endif
 #define MICROPY_ERROR_REPORTING                     (MICROPY_ERROR_REPORTING_NORMAL)
 #define MICROPY_OPT_COMPUTED_GOTO                   (1)
 #define MICROPY_OPT_CACHE_MAP_LOOKUP_IN_BYTECODE    (0)
@@ -250,7 +252,6 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
     mp_obj_list_t btc_conn_list;                                \
     mp_obj_list_t bts_srv_list;                                 \
     mp_obj_list_t bts_attr_list;                                \
-    char* lfs_cwd;                                              \
     mp_obj_t coap_ptr;                                          \
 
 // we need to provide a declaration/definition of alloca()

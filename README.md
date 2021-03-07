@@ -141,7 +141,7 @@ You can change the board type by using the BOARD variable:
 
 We currently support the following BOARD types:
 
-	WIPY LOPY SIPY GPY FIPY LOPY4
+	WIPY LOPY SIPY GPY FIPY LOPY4 TBEAMv1
 
 	
 For OEM modules, please use the following BOARD type:

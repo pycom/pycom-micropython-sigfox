@@ -81,12 +81,16 @@ STATIC const qstr os_uname_info_fields[] = {
 #if defined(LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
     ,MP_QSTR_lorawan
 #endif
-#if defined(SIPY) || defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
+#ifdef MOD_SIGFOX_ENABLED
     ,MP_QSTR_sigfox
 #endif
 #if (VARIANT == PYBYTES)
     ,MP_QSTR_pybytes
 #endif
+#ifdef PYGATE_ENABLED
+    ,MP_QSTR_pygate
+#endif
+
 };
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_sysname_obj, MICROPY_PY_SYS_PLATFORM);
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_nodename_obj, MICROPY_PY_SYS_PLATFORM);
@@ -96,35 +100,31 @@ STATIC const MP_DEFINE_STR_OBJ(os_uname_info_machine_obj, MICROPY_HW_BOARD_NAME 
 #if defined(LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_lorawan_obj, LORAWAN_VERSION_NUMBER);
 #endif
-#if defined(SIPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
+#ifdef MOD_SIGFOX_ENABLED
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_sigfox_obj, SIGFOX_VERSION_NUMBER);
 #endif
 #if (VARIANT == PYBYTES)
 STATIC const MP_DEFINE_STR_OBJ(os_uname_info_pybytes_obj, PYBYTES_VERSION_NUMBER);
 #endif
+#ifdef PYGATE_ENABLED
+STATIC const MP_DEFINE_STR_OBJ(os_uname_info_pygate_obj, PYGATE_VERSION_NUMBER);
+#endif
+
 STATIC MP_DEFINE_ATTRTUPLE(
     os_uname_info_obj
     ,os_uname_info_fields
+    , 5
+#if defined(LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
+    +1
+#endif
+#ifdef MOD_SIGFOX_ENABLED
+    +1
+#endif
 #if (VARIANT == PYBYTES)
-#if defined(FIPY) || defined (LOPY4) || defined (TBEAMv1)
-    ,8
-#else
-#if defined(LOPY) || defined(SIPY)
-    ,7
-    #else
-    ,6
-    #endif
+    +1
 #endif
-#else
-#if defined(FIPY) || defined (LOPY4) || defined (TBEAMv1)
-    ,7
-#else
-#if defined(LOPY) || defined(SIPY)
-    ,6
-    #else
-    ,5
-    #endif
-#endif
+#ifdef PYGATE_ENABLED
+    +1
 #endif
     ,(mp_obj_t)&os_uname_info_sysname_obj
     ,(mp_obj_t)&os_uname_info_nodename_obj
@@ -134,11 +134,14 @@ STATIC MP_DEFINE_ATTRTUPLE(
 #if defined(LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
     ,(mp_obj_t)&os_uname_info_lorawan_obj
 #endif
-#if defined(SIPY) || defined (LOPY4) || defined(FIPY) || defined (TBEAMv1)
+#ifdef MOD_SIGFOX_ENABLED
     ,(mp_obj_t)&os_uname_info_sigfox_obj
 #endif
 #if (VARIANT == PYBYTES)
     ,(mp_obj_t)&os_uname_info_pybytes_obj
+#endif
+#ifdef PYGATE_ENABLED
+    ,(mp_obj_t)&os_uname_info_pygate_obj
 #endif
 );
 

@@ -324,7 +324,7 @@ STATIC mp_obj_t mod_crypt_generate_rsa_signature(mp_uint_t n_args, const mp_obj_
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_RuntimeError, "Message Digest operation failed, error code: %d", rc));
     }
 
-    unsigned char *signature = m_malloc(5000);
+    unsigned char *signature = malloc(5000);
     size_t signature_length;
 
     rc = mbedtls_pk_sign(&pk_context, MBEDTLS_MD_SHA256, digest, sizeof(digest), signature, &signature_length, mbedtls_ctr_drbg_random, &ctr_drbg);
@@ -335,7 +335,7 @@ STATIC mp_obj_t mod_crypt_generate_rsa_signature(mp_uint_t n_args, const mp_obj_
     mp_obj_t ret_signature = mp_obj_new_bytes((const byte*)signature, signature_length);
 
     mbedtls_pk_free(&pk_context);
-    m_free((char*)signature);
+    free((char*)signature);
 
     return ret_signature;
 }
@@ -382,7 +382,7 @@ STATIC mp_obj_t mod_crypt_rsa_encrypt(mp_uint_t n_args, const mp_obj_t *pos_args
         strlen(pers));
 
     size_t output_len = message.len + 256;
-    unsigned char *output = m_malloc(output_len);
+    unsigned char *output = malloc(output_len);
     size_t output_actual_length = 0;
 
     rc = mbedtls_pk_encrypt(&pk_context,
@@ -401,7 +401,7 @@ STATIC mp_obj_t mod_crypt_rsa_encrypt(mp_uint_t n_args, const mp_obj_t *pos_args
     mp_obj_t ret_output = mp_obj_new_bytes((const byte*)output, output_actual_length);
 
     mbedtls_pk_free(&pk_context);
-    m_free((char*)output);
+    free((char*)output);
 
     return ret_output;
 }
@@ -448,7 +448,7 @@ STATIC mp_obj_t mod_crypt_rsa_decrypt(mp_uint_t n_args, const mp_obj_t *pos_args
         strlen(pers));
 
     size_t output_len = message.len + 256;
-    unsigned char *output = m_malloc(output_len);
+    unsigned char *output = malloc(output_len);
     size_t output_actual_length = 0;
 
     rc = mbedtls_pk_decrypt(&pk_context,
@@ -467,7 +467,7 @@ STATIC mp_obj_t mod_crypt_rsa_decrypt(mp_uint_t n_args, const mp_obj_t *pos_args
     mp_obj_t ret_output = mp_obj_new_bytes((const byte*)output, output_actual_length);
 
     mbedtls_pk_free(&pk_context);
-    m_free((char*)output);
+    free((char*)output);
 
     return ret_output;
 }

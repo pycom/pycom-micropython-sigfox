@@ -57,20 +57,27 @@ class OTA():
     def get_current_version(self):
         return os.uname().release
 
-    def get_update_manifest(self):
+    def get_update_manifest(self, fwtype=None, token=None):
         current_version = self.get_current_version()
         sysname = os.uname().sysname
         wmac = hexlify(machine.unique_id()).decode('ascii')
-        request_template = "manifest.json?current_ver={}&sysname={}&wmac={}&ota_slot={}"
-        req = request_template.format(current_version, sysname, wmac, hex(pycom.ota_slot()))
+        if fwtype == 'pymesh':
+            request_template = "manifest.json?current_ver={}&sysname={}&token={}&ota_slot={}&wmac={}&fwtype={}&current_fwtype={}"
+            req = request_template.format(current_version, sysname, token, hex(pycom.ota_slot()), wmac.upper(), fwtype, 'pymesh' if hasattr(os.uname(),'pymesh') else 'pybytes')
+        elif fwtype == 'pygate':
+            request_template = "manifest.json?current_ver={}&sysname={}&ota_slot={}&wmac={}&fwtype={}&current_fwtype={}"
+            req = request_template.format(current_version, sysname, hex(pycom.ota_slot()), wmac.upper(), fwtype, 'pygate' if hasattr(os.uname(),'pygate') else 'pybytes')
+        else:
+            request_template = "manifest.json?current_ver={}&sysname={}&wmac={}&ota_slot={}"
+            req = request_template.format(current_version, sysname, wmac, hex(pycom.ota_slot()))
         manifest_data = self.get_data(req).decode()
         manifest = ujson.loads(manifest_data)
         gc.collect()
         return manifest
 
-    def update(self, customManifest=None):
+    def update(self, customManifest=None, fwtype=None, token=None):
         try:
-            manifest = self.get_update_manifest() if not customManifest else customManifest
+            manifest = self.get_update_manifest(fwtype, token) if not customManifest else customManifest
         except Exception as e:
             print('Error reading the manifest, aborting: {}'.format(e))
             return 0
@@ -130,7 +137,6 @@ class OTA():
 
     def get_file(self, f):
         new_path = "{}.new".format(f['dst_path'])
-
         # If a .new file exists from a previously failed update delete it
         try:
             os.remove(new_path)
@@ -177,6 +183,15 @@ class OTA():
 
     def write_firmware(self, f):
         # hash =
+        url = f['URL'].split("//")[1].split("/")[0]
+
+        if url.find(":") > -1:
+            self.ip = url.split(":")[0]
+            self.port = int(url.split(":")[1])
+        else:
+            self.ip = url
+            self.port = 443
+
         self.get_data(
             f['URL'].split("/", 3)[-1],
             hash=True,
@@ -215,7 +230,6 @@ class WiFiOTA(OTA):
 
     def get_data(self, req, dest_path=None, hash=False, firmware=False):
         h = None
-
         useSSL = int(self.port) == 443
 
         # Connect to server
@@ -225,11 +239,9 @@ class WiFiOTA(OTA):
         if (int(self.port) == 443):
             print("Wrapping socket")
             s = ssl.wrap_socket(s)
-
         print("Sending request")
         # Request File
         s.sendall(self._http_get(req, "{}:{}".format(self.ip, self.port)))
-
         try:
             content = bytearray()
             fp = None
@@ -240,7 +252,7 @@ class WiFiOTA(OTA):
                 fp = open(dest_path, 'wb')
 
             if firmware:
-                print('start')
+                print_debug(4, "Starting OTA...")
                 pycom.ota_start()
 
             h = uhashlib.sha1()

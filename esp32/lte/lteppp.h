@@ -19,6 +19,7 @@
 #define LTE_CMD_QUEUE_SIZE_MAX                                          (1)
 #define LTE_RSP_QUEUE_SIZE_MAX                                          (1)
 #define LTE_AT_CMD_SIZE_MAX                                             (128)
+#define LTE_AT_CMD_DATA_SIZE_MAX                                        (LTE_AT_CMD_SIZE_MAX - 4)
 #define LTE_AT_RSP_SIZE_MAX                                             (LTE_UART_BUFFER_SIZE)
 
 #define LTE_OK_RSP                                                      "OK"
@@ -60,8 +61,10 @@ typedef enum {
 typedef enum {
     E_LTE_MODEM_CONNECTED = 0,
     E_LTE_MODEM_CONNECTING,
-    E_LTE_MODEM_DISCONNECTED
+    E_LTE_MODEM_DISCONNECTED,
+    E_LTE_MODEM_RECOVERY
 } lte_modem_conn_state_t;
+
 #ifdef LTE_DEBUG_BUFF
 typedef struct {
     char* log;
@@ -69,11 +72,14 @@ typedef struct {
     bool truncated;
 } lte_log_t;
 #endif
+
 typedef struct {
     uint32_t timeout;
-    char data[LTE_AT_CMD_SIZE_MAX - 4];
+    char data[LTE_AT_CMD_DATA_SIZE_MAX];
     size_t dataLen;
+    bool expect_continuation;
 } lte_task_cmd_data_t;
+
 #pragma pack(1)
 typedef struct {
     char data[LTE_UART_BUFFER_SIZE];
@@ -114,7 +120,8 @@ extern void lteppp_send_at_command (lte_task_cmd_data_t *cmd, lte_task_rsp_data_
 
 extern bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool from_mp, void* data_rem);
 
-lte_modem_conn_state_t lteppp_modem_state(void);
+lte_modem_conn_state_t lteppp_get_modem_conn_state(void);
+void lteppp_set_modem_conn_state(lte_modem_conn_state_t state);
 
 extern void connect_lte_uart (void);
 
@@ -125,6 +132,7 @@ extern void lteppp_suspend(void);
 extern void lteppp_resume(void);
 
 extern void lteppp_set_default_inf(void);
+
 #ifdef LTE_DEBUG_BUFF
 extern char* lteppp_get_log_buff(void);
 #endif

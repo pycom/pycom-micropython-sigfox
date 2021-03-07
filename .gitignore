@@ -11,8 +11,8 @@
 
 # Build directories
 ######################
-esp32/build/*
-esp32/build-PYBYTES/*
+esp32/build/
+esp32/build-*/
 mpy-cross/build/*
 # This map file is generated here instead of the build folder...
 mpy-cross/*.map

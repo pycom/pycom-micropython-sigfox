@@ -286,8 +286,11 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU433_NEXT_CHANNEL( )                      else if(region == LORAMAC_REGION_EU433) { return RegionEU433NextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define EU433_CHANNEL_ADD( )                       else if(region == LORAMAC_REGION_EU433) { return RegionEU433ChannelAdd( channelAdd ); }
 #define EU433_CHANNEL_REMOVE( )                    else if(region == LORAMAC_REGION_EU433) { return RegionEU433ChannelsRemove( channelRemove ); }
+#define EU433_CHANNEL_MANUAL_ADD( )                EU433_CASE { return RegionEU433ChannelManualAdd( channelAdd ); }
+#define EU433_CHANNEL_MANUAL_REMOVE( )             EU433_CASE { return RegionEU433ChannelsRemove( channelRemove ); }
 #define EU433_SET_CONTINUOUS_WAVE( )               else if(region == LORAMAC_REGION_EU433) { RegionEU433SetContinuousWave( continuousWave );}
 #define EU433_APPLY_DR_OFFSET( )                   else if(region == LORAMAC_REGION_EU433) { return RegionEU433ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
+#define EU433_FORCE_JOIN_DATARATE( )               EU433_CASE { return RegionEU433ForceJoinDataRate( joinDr, alternateDr ); }
 #else
 #define EU433_IS_ACTIVE( )
 #define EU433_GET_PHY_PARAM( )
@@ -310,8 +313,11 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU433_NEXT_CHANNEL( )
 #define EU433_CHANNEL_ADD( )
 #define EU433_CHANNEL_REMOVE( )
+#define EU433_CHANNEL_MANUAL_ADD( )
+#define EU433_CHANNEL_MANUAL_REMOVE( )
 #define EU433_SET_CONTINUOUS_WAVE( )
 #define EU433_APPLY_DR_OFFSET( )
+#define EU433_FORCE_JOIN_DATARATE( )
 #endif
 
 #ifdef REGION_EU868
