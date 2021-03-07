@@ -66,3 +66,9 @@ bytearray(b'0123456789')
 /sd/t.txt, f.readline(10): 01234
 
 /sd/t.txt, f.readlines(): ['01234\n', '56789']
+/flash/t.txt, Exception after f.read: [Errno 22] EINVAL
+/flash/t.txt, Exception after f.write: [Errno 22] EINVAL
+/flash/t.txt, Exception after f.flush: [Errno 22] EINVAL
+/sd/t.txt, Exception after f.read: [Errno 22] EINVAL
+/sd/t.txt, Exception after f.write: [Errno 22] EINVAL
+/sd/t.txt, Exception after f.flush: [Errno 22] EINVAL
