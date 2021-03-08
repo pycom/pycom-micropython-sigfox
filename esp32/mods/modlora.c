@@ -1497,7 +1497,7 @@ static void lora_validate_region (LoRaMacRegion_t region) {
     if (region != LORAMAC_REGION_AS923 && region != LORAMAC_REGION_AU915
         && region != LORAMAC_REGION_EU868 && region != LORAMAC_REGION_US915
         && region != LORAMAC_REGION_IN865
-#if defined(LOPY4)
+#if defined(LOPY4) || defined (TBEAMv1)
         && region != LORAMAC_REGION_EU433 && region != LORAMAC_REGION_CN470
 #endif
         ) {
