@@ -73,7 +73,7 @@ STATIC const mp_obj_type_t ssl_socket_type = {
 
 static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const mbedtls_ssl_session *saved_session, const char *host_name,
                                      const char *ca_cert, const char *client_cert, const char *client_key,
-                                     uint32_t ssl_verify, uint32_t client_or_server) {
+                                     uint32_t ssl_verify, uint32_t client_or_server, uint32_t renegotiation) {
 
     int32_t ret;
     mbedtls_ssl_init(&ssl_sock->ssl);
@@ -123,6 +123,7 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const mbedtl
         return ret;
     }
 
+    mbedtls_ssl_conf_renegotiation(&ssl_sock->conf, renegotiation);
     mbedtls_ssl_conf_authmode(&ssl_sock->conf, ssl_verify);
     mbedtls_ssl_conf_rng(&ssl_sock->conf, mbedtls_ctr_drbg_random, &ssl_sock->ctr_drbg);
     mbedtls_ssl_conf_ca_chain(&ssl_sock->conf, &ssl_sock->cacert, NULL);
@@ -219,6 +220,7 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
         { MP_QSTR_server_hostname,              MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
         { MP_QSTR_saved_session,                MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
         { MP_QSTR_timeout,                      MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+        { MP_QSTR_allow_renegotiation,          MP_ARG_KW_ONLY  | MP_ARG_BOOL, {.u_bool = false} },
     };
 
     int32_t _error;
@@ -228,6 +230,7 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
     bool server_side = args[3].u_bool;
+    bool allow_renegotiation = args[10].u_bool;
     uint32_t verify_type = args[4].u_int;
     // chech if ca validation is required
     if (verify_type != MBEDTLS_SSL_VERIFY_NONE && args[6].u_obj == mp_const_none) {
@@ -303,7 +306,8 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
     MP_THREAD_GIL_EXIT();
 
     _error = mod_ssl_setup_socket(ssl_sock, saved_session, host_name, ca_cert, client_cert, client_key,
-                                  verify_type, server_side ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT);
+                                  verify_type, server_side ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT,
+                                  allow_renegotiation ? MBEDTLS_SSL_RENEGOTIATION_ENABLED : MBEDTLS_SSL_RENEGOTIATION_DISABLED);
 
     MP_THREAD_GIL_ENTER();
 
