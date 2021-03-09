@@ -537,11 +537,13 @@ ifeq ($(BOARD), LOPY)
 endif
 ifeq ($(BOARD), TBEAMv1)
     APP_BIN = $(BUILD)/tbeamv1.bin
-    $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
-    $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    ifeq ($(MOD_SIGFOX_ENABLED), 1)
+        $(BUILD)/sigfox/radio_sx127x.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/timer.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/transmission.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/sigfox/targets/%.o: CFLAGS = $(CFLAGS_SIGFOX)
+        $(BUILD)/lora/spi-board.o: CFLAGS = $(CFLAGS_SIGFOX)
+    endif
 endif
 ifeq ($(BOARD), LOPY4)
     APP_BIN = $(BUILD)/lopy4.bin
@@ -845,10 +847,10 @@ endif
 ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
 	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
 else
-ifeq ($(BOARD), $(filter $(BOARD), SIPY))
+ifeq ($(BOARD), $(filter $(BOARD), SIPY TBEAMv1))
 	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_8MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
 	$(ECHO) "Generating Encrypted Images for 4MB devices, you can use make flash and it would be handled automatically!"
-endif #($(BOARD), $(filter $(BOARD), SIPY))
+endif #($(BOARD), $(filter $(BOARD), SIPY TBEAMv1))
 	$(ECHO) "$(ESPTOOLPY_WRITE_FLASH) 0x0 $(BOOTLOADER_REFLASH_DIGEST_ENC) $(PART_OFFSET) $(PART_BIN_ENCRYPT_4MB) $(APP_OFFSET) $(APP_BIN_ENCRYPT)"
 endif #ifeq ($(BOARD), $(filter $(BOARD), FIPY GPY LOPY4))
 	$(ECHO) $(SEPARATOR)
