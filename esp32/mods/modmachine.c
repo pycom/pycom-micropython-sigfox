@@ -427,10 +427,16 @@ STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
     else
     {
         int64_t sleep_time = (int64_t)mp_obj_get_int_truncated(arg[0]) * 1000;
-        struct timeval tv;
-        gettimeofday(&tv, NULL);
-        mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
-        esp_sleep_enable_timer_wakeup(sleep_time);
+        if (sleep_time == 0) {
+          mach_expected_wakeup_time = 0;
+          esp_sleep_disable_wakeup_source(ESP_SLEEP_WAKEUP_TIMER);          
+        }
+        else {
+          struct timeval tv;
+          gettimeofday(&tv, NULL);
+          mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
+          esp_sleep_enable_timer_wakeup(sleep_time);
+        }
         if(n_args == 2)
         {
             reconnect = (bool)mp_obj_is_true(arg[1]);
