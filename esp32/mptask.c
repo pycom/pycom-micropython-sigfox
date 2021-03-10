@@ -51,6 +51,7 @@
 #include "modled.h"
 #include "esp_log.h"
 #include "mods/pybflash.h"
+#include "telnet/telnet.h"
 
 #ifdef MOD_LORA_ENABLED
 #include "modlora.h"
@@ -376,6 +377,7 @@ soft_reset_exit:
     ets_delay_us(5000);
 
     uart_deinit_all();
+    telnet_reset();
     // TODO: rmt_deinit_all();
     rmt_deinit_rgb();
 
