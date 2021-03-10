@@ -161,7 +161,7 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib -L$(ESP_IDF_COMP_PATH)/esp32/ld -L$(ESP_
        $(ESP_IDF_COMP_PATH)/newlib/lib/libc-psram-workaround.a \
        -lfreertos -ljson -ljsmn -llwip -lnewlib -lvfs -lopenssl -lmbedtls -lwpa_supplicant \
        -lxtensa-debug-module -lbt -lsdmmc -lsoc -lheap -lbootloader_support -lmicro-ecc \
-       -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh -lesp_ringbuf -lmdns -lefuse -lespcoredump -lapp_update
+       -u ld_include_panic_highint_hdl -lsmartconfig_ack -lmesh -lesp_ringbuf -lmdns -lefuse -lespcoredump -lapp_update -lespnow
 
 ifeq ($(MOD_COAP_ENABLED), 1)
     $(info COAP Module Enabled)
@@ -212,9 +212,11 @@ OBJCOPY_EMBED_ARGS = --input-target binary --output-target elf32-xtensa-le --bin
 # qstr definitions (must come before including py.mk)
 QSTR_DEFS = qstrdefsport.h $(BUILD)/pins_qstr.h
 # include py core make definitions
+$(info "Entering ../py/py.mk")
 include ../py/py.mk
+$(info "Entering application.mk")
 include application.mk
-
+$(info "Entering ../py/mkrules.mk")
 include ../py/mkrules.mk
 
 # convenience variable for printing an 80 asterisk wide separator line

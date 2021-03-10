@@ -41,6 +41,7 @@
 
 #include <stdint.h>
 #include "mp_pycom_err.h"
+#include "esp_now.h"
 
 // options to control how Micro Python is built
 #define MICROPY_OBJ_REPR                            (MICROPY_OBJ_REPR_A)
@@ -193,6 +194,7 @@ extern const struct _mp_obj_module_t mp_module_uhashlib;
 extern const struct _mp_obj_module_t module_ucrypto;
 extern const struct _mp_obj_module_t mp_module_ussl;
 extern const struct _mp_obj_module_t mp_module_uqueue;
+extern const struct _mp_obj_module_t mp_module_esp_espnow;
 
 #define MICROPY_PORT_BUILTIN_MODULES \
     { MP_OBJ_NEW_QSTR(MP_QSTR_umachine),        (mp_obj_t)&machine_module },      \
@@ -208,6 +210,8 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
     { MP_OBJ_NEW_QSTR(MP_QSTR_ussl),            (mp_obj_t)&mp_module_ussl },      \
     { MP_OBJ_NEW_QSTR(MP_QSTR_uerrno),          (mp_obj_t)&mp_module_uerrno },    \
     { MP_OBJ_NEW_QSTR(MP_QSTR_uqueue),          (mp_obj_t)&mp_module_uqueue },    \
+    { MP_OBJ_NEW_QSTR(MP_QSTR_espnow),          (mp_obj_t)&mp_module_esp_espnow },    \
+
 
 #define MICROPY_PORT_BUILTIN_MODULE_WEAK_LINKS \
     { MP_OBJ_NEW_QSTR(MP_QSTR_machine),         (mp_obj_t)&machine_module },      \
@@ -296,6 +300,14 @@ extern const struct _mp_obj_module_t mp_module_uqueue;
     X(EHOSTUNREACH)                                 \
     X(EALREADY)                                     \
     X(EINPROGRESS)                                  \
+    X(ESP_ERR_ESPNOW_NOT_INIT)                      \
+    X(ESP_ERR_ESPNOW_ARG)                           \
+    X(ESP_ERR_ESPNOW_NO_MEM)                        \
+    X(ESP_ERR_ESPNOW_FULL)                          \
+    X(ESP_ERR_ESPNOW_NOT_FOUND)                     \
+    X(ESP_ERR_ESPNOW_INTERNAL)                  \
+    X(ESP_ERR_ESPNOW_EXIST)                         \
+    X(ESP_ERR_ESPNOW_IF)                            \
     X(MBEDTLS_ERR_NET_SOCKET_FAILED)             \
     X(MBEDTLS_ERR_NET_CONNECT_FAILED)            \
     X(MBEDTLS_ERR_NET_BIND_FAILED)               \
