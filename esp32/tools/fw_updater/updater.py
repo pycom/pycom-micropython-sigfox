@@ -666,18 +666,8 @@ class NPyProgrammer(object):
 
         esptool.write_flash(self.esp, args, ui_label=ui_label, file_name=file_name, resultUpdateList=self.__resultUpdateList, progress_fs=progress_fs)
 
-    def set_wifi_config(self, config_block, wifi_ssid=None, wifi_pwd=None, wifi_on_boot=None):
+    def set_wifi_config(self, config_block, wifi_ssid=None, wifi_pwd=None):
         config_block = config_block.ljust(int(PARTITIONS.get('config')[1], 16), b'\x00')
-        if wifi_on_boot is not None:
-            if wifi_on_boot == True:
-                wob = b'\xbb'
-            else:
-                wob = b'\xba'
-        else:
-            if sys.version_info[0] < 3:
-                wob = config_block[53]
-            else:
-                wob = config_block[53].to_bytes(1, byteorder='little')
         if wifi_ssid is not None:
             ssid = wifi_ssid.encode().ljust(33, b'\x00')
         else:
@@ -688,8 +678,7 @@ class NPyProgrammer(object):
         else:
             pwd = config_block[87:152]
 
-        new_config_block = config_block[0:53] \
-                           +wob \
+        new_config_block = config_block[0:54] \
                            +ssid \
                            +pwd  \
                            +config_block[152:]
@@ -1038,8 +1027,6 @@ def process_arguments():
     cmd_parser_wifi = subparsers.add_parser('wifi', help='Get/Set default WIFI parameters')
     cmd_parser_wifi.add_argument('--ssid', default=None, help='Set Wifi SSID')
     cmd_parser_wifi.add_argument('--pwd', default=None, help='Set Wifi PWD')
-    # This doesn't really work as we updated the field to a bitfield
-    #cmd_parser_wifi.add_argument('--wob', type=str2bool, nargs='?', const=True, help='Set Wifi on boot')
 
     cmd_parser_pybytes = subparsers.add_parser('pybytes', help='Read/Write pybytes configuration')
     cmd_parser_pybytes.add_argument('--token', default=None, help='Set Device Token')
@@ -1515,8 +1502,8 @@ def main():
 
         elif args.command == 'wifi':
             config_block = nPy.read(int(PARTITIONS.get('config')[0], 16), int(PARTITIONS.get('config')[1], 16))
-            if (hasattr(args, "ssid") and args.ssid is not None) or (hasattr(args, "pwd") and args.pwd is not None) or (hasattr(args, "wob") and args.wob is not None):
-                new_config_block = nPy.set_wifi_config(config_block, args.ssid, args.pwd, args.wob)
+            if (hasattr(args, "ssid") and args.ssid is not None) or (hasattr(args, "pwd") and args.pwd is not None):
+                new_config_block = nPy.set_wifi_config(config_block, args.ssid, args.pwd)
                 nPy.write(int(PARTITIONS.get('config')[0], 16), new_config_block)
                 sys.stdout = old_stdout
             else:
