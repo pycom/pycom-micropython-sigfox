@@ -780,7 +780,17 @@ LoRaMacStatus_t RegionCN470ChannelAdd( ChannelAddParams_t* channelAdd )
 
 bool RegionCN470ChannelsRemove( ChannelRemoveParams_t* channelRemove  )
 {
-    return LORAMAC_STATUS_PARAMETER_INVALID;
+    uint8_t id = channelRemove->ChannelId;
+
+    if( id >= CN470_MAX_NB_CHANNELS )
+    {
+        return LORAMAC_STATUS_PARAMETER_INVALID;
+    }
+
+    // Remove the channel from the list of channels
+    Channels[id] = ( ChannelParams_t ){ 0, 0, { 0 }, 0 };
+
+    return RegionCommonChanDisable( ChannelsMask, id, CN470_MAX_NB_CHANNELS );
 }
 
 void RegionCN470SetContinuousWave( ContinuousWaveParams_t* continuousWave )

@@ -286,11 +286,11 @@ Maintainer: Miguel Luis ( Semtech ), Gregory Cristian ( Semtech ) and Daniel Jae
 #define EU433_NEXT_CHANNEL( )                      else if(region == LORAMAC_REGION_EU433) { return RegionEU433NextChannel( nextChanParams, channel, time, aggregatedTimeOff ); }
 #define EU433_CHANNEL_ADD( )                       else if(region == LORAMAC_REGION_EU433) { return RegionEU433ChannelAdd( channelAdd ); }
 #define EU433_CHANNEL_REMOVE( )                    else if(region == LORAMAC_REGION_EU433) { return RegionEU433ChannelsRemove( channelRemove ); }
-#define EU433_CHANNEL_MANUAL_ADD( )                EU433_CASE { return RegionEU433ChannelManualAdd( channelAdd ); }
-#define EU433_CHANNEL_MANUAL_REMOVE( )             EU433_CASE { return RegionEU433ChannelsRemove( channelRemove ); }
+#define EU433_CHANNEL_MANUAL_ADD( )                else if(region == LORAMAC_REGION_EU433) { return RegionEU433ChannelManualAdd( channelAdd ); }
+#define EU433_CHANNEL_MANUAL_REMOVE( )             else if(region == LORAMAC_REGION_EU433) { return RegionEU433ChannelsRemove( channelRemove ); }
 #define EU433_SET_CONTINUOUS_WAVE( )               else if(region == LORAMAC_REGION_EU433) { RegionEU433SetContinuousWave( continuousWave );}
 #define EU433_APPLY_DR_OFFSET( )                   else if(region == LORAMAC_REGION_EU433) { return RegionEU433ApplyDrOffset( downlinkDwellTime, dr, drOffset ); }
-#define EU433_FORCE_JOIN_DATARATE( )               EU433_CASE { return RegionEU433ForceJoinDataRate( joinDr, alternateDr ); }
+#define EU433_FORCE_JOIN_DATARATE( )               else if(region == LORAMAC_REGION_EU433) { return RegionEU433ForceJoinDataRate( joinDr, alternateDr ); }
 #else
 #define EU433_IS_ACTIVE( )
 #define EU433_GET_PHY_PARAM( )
@@ -1031,6 +1031,7 @@ LoRaMacStatus_t RegionChannelManualAdd( LoRaMacRegion_t region, ChannelAddParams
     }
     AS923_CHANNEL_MANUAL_ADD( )
     AU915_CHANNEL_MANUAL_ADD( )
+    EU433_CHANNEL_MANUAL_ADD( )
     EU868_CHANNEL_MANUAL_ADD( )
     US915_CHANNEL_MANUAL_ADD( )
     CN470_CHANNEL_MANUAL_ADD( )
@@ -1070,6 +1071,7 @@ bool RegionChannelsManualRemove( LoRaMacRegion_t region, ChannelRemoveParams_t* 
     }
     AS923_CHANNEL_MANUAL_REMOVE( )
     AU915_CHANNEL_MANUAL_REMOVE( )
+    EU433_CHANNEL_MANUAL_REMOVE( )
     EU868_CHANNEL_MANUAL_REMOVE( )
     US915_CHANNEL_MANUAL_REMOVE( )
     CN470_CHANNEL_MANUAL_REMOVE( )
@@ -1178,6 +1180,7 @@ bool RegionForceJoinDataRate( LoRaMacRegion_t region, int8_t joinDr, AlternateDr
     }
     AS923_FORCE_JOIN_DATARATE( )
     AU915_FORCE_JOIN_DATARATE( )
+    EU433_FORCE_JOIN_DATARATE( )
     EU868_FORCE_JOIN_DATARATE( )
     US915_FORCE_JOIN_DATARATE( )
     CN470_FORCE_JOIN_DATARATE( )

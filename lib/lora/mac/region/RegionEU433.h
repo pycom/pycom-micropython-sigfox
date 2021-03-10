@@ -470,7 +470,7 @@ void RegionEU433SetContinuousWave( ContinuousWaveParams_t* continuousWave );
  */
 uint8_t RegionEU433ApplyDrOffset( uint8_t downlinkDwellTime, int8_t dr, int8_t drOffset );
 
-bool RegionCN470ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t *alternateDr );
+bool RegionEU433ForceJoinDataRate( int8_t joinDr, AlternateDrParams_t *alternateDr );
 
 /*! \} defgroup REGIONEU433 */
 
