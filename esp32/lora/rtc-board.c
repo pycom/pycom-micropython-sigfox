@@ -168,7 +168,7 @@ IRAM_ATTR void RtcSetAlarm( uint32_t timeout )
     RtcStartAlarm( timeout );
 }
 
-void RtcStopAlarm( void )
+IRAM_ATTR void RtcStopAlarm( void )
 {
     RtcTimerContext.AlarmState = ALARM_STOPPED;
 }
