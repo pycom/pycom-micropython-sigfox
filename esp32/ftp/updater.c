@@ -76,7 +76,11 @@ static bool updater_is_delta_file(void);
 bool updater_read_boot_info (boot_info_t *boot_info, uint32_t *boot_info_offset) {
     esp_partition_info_t partition_info[PARTITIONS_COUNT_4MB];
 
+#if defined(BOARD_TBEAMv1)
+    uint8_t part_count = PARTITIONS_COUNT_4MB;
+#else
     uint8_t part_count = (esp32_get_chip_rev() > 0 ? PARTITIONS_COUNT_8MB : PARTITIONS_COUNT_4MB);
+#endif
     ESP_LOGV(TAG, "Reading boot info\n");
 
     if (ESP_OK != updater_spi_flash_read(CONFIG_PARTITION_TABLE_OFFSET, (void *)partition_info, (sizeof(esp_partition_info_t) * part_count), true)) {
@@ -105,7 +109,11 @@ bool updater_check_path (void *path) {
 
 bool updater_start (void) {
 
+#if defined(BOARD_TBEAMv1)
+    updater_data.size = IMG_SIZE_4MB;
+#else
     updater_data.size = (esp32_get_chip_rev() > 0 ? IMG_SIZE_8MB : IMG_SIZE_4MB);
+#endif
     // check which one should be the next active image
     updater_data.offset = updater_ota_next_slot_address();
 
@@ -582,7 +590,11 @@ bool updater_write_boot_info(boot_info_t *boot_info, uint32_t boot_info_offset) 
 
 int updater_ota_next_slot_address() {
 
+#if defined(BOARD_TBEAMv1)
+    int ota_offset = IMG_UPDATE1_OFFSET_4MB;
+#else
     int ota_offset = (esp32_get_chip_rev() > 0 ? IMG_UPDATE1_OFFSET_8MB : IMG_UPDATE1_OFFSET_4MB);
+#endif
 
     // check which one should be the next active image
     if (updater_read_boot_info (&boot_info, &boot_info_offset)) {
@@ -595,7 +607,11 @@ int updater_ota_next_slot_address() {
             }
             else
             {
+#if defined(BOARD_TBEAMv1)
+                ota_offset = IMG_UPDATE1_OFFSET_4MB;
+#else
                 ota_offset = (esp32_get_chip_rev() > 0 ? IMG_UPDATE1_OFFSET_8MB : IMG_UPDATE1_OFFSET_4MB);
+#endif
             }
         }
         else
@@ -603,7 +619,11 @@ int updater_ota_next_slot_address() {
             if(boot_info.ActiveImg == IMG_ACT_FACTORY)
 
             {
+#if defined(BOARD_TBEAMv1)
+                ota_offset = IMG_UPDATE1_OFFSET_4MB;
+#else
                 ota_offset = (esp32_get_chip_rev() > 0 ? IMG_UPDATE1_OFFSET_8MB : IMG_UPDATE1_OFFSET_4MB);
+#endif
             }
             else
             {

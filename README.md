@@ -93,7 +93,7 @@ Finally, before building, export the IDF_PATH variable
 
 This repository contains submodules! Clone using the --recursive option:
 
-    $ git clone --recursive https://github.com/pycom/pycom-micropython-sigfox.git
+    $ git clone --recursive https://github.com/nunomcruz/pycom-micropython-sigfox.git
     
 Alternatively checkout the modules manually:
 
@@ -141,7 +141,8 @@ You can change the board type by using the BOARD variable:
 
 We currently support the following BOARD types:
 
-	WIPY LOPY SIPY GPY FIPY LOPY4
+	WIPY LOPY SIPY GPY FIPY LOPY4 TBEAMv1
+
 	
 For OEM modules, please use the following BOARD type:
 
@@ -151,6 +152,14 @@ L01: LOPY
 L04: LOPY4
 G01: GPY
 ```
+
+Additionaly we also support a third party BOARD from TTGO, the T-Beam version 1, please use the following BOARD type:
+
+	TBEAMv1
+
+More info on this board can be found here: https://github.com/LilyGO/TTGO-T-Beam
+
+This should also work on other versions of the T-Beam, and other ESP32 boards with 4MB Flash and 4MB PSRAM.
 
 To specify a serial port other than /dev/ttyUSB0, use ESPPORT variable:
 
@@ -179,7 +188,7 @@ To create a release package that can be flashed with the Pycom firmware tool:
 To create a release package for all currently supported Pycom boards:
 
     $ cd esp32
-    $ for BOARD in WIPY LOPY SIPY GPY FIPY LOPY4; do make BOARD=$BOARD clean && make BOARD=$BOARD release; done
+    $ for BOARD in WIPY LOPY SIPY GPY FIPY LOPY4 TBEAMv1; do make BOARD=$BOARD clean && make BOARD=$BOARD release; done
 
 To specify a directory other than the default build/ directory:
 
@@ -190,7 +199,7 @@ To specify a directory other than the default build/ directory:
 To create a release package for all currently supported Pycom boards in a directory other than the default build/ directory:
 
     $ cd esp32
-    $ for BOARD in WIPY LOPY SIPY GPY FIPY LOPY4; do make BOARD=$BOARD clean && make BOARD=$BOARD RELEASE_DIR=~/pycom-packages release; done
+    $ for BOARD in WIPY LOPY SIPY GPY FIPY LOPY4 TBEAMv1; do make BOARD=$BOARD clean && make BOARD=$BOARD RELEASE_DIR=~/pycom-packages release; done
 
 To inclue a step for copying IDF libs from IDF_PATH specify the following variable in the make command
 
@@ -203,6 +212,8 @@ To Buiild the firmware with Pybytes libs use the following make variable
 To Disable RGB Led control use the following make variable
 
     RGB_LED=disable
+    
+The RGB_LED is only enabled by default on Pycom boards
 
 ## Steps for using Secure Boot and Flash Encryption
 

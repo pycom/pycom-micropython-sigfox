@@ -21,8 +21,8 @@ if ! [ $0 = "tools/mpy-build-check.sh" ]; then
   exit 1
 fi
 
-# Check board type
-if [ "${BOARD}" != "WIPY" -a "${BOARD}" != "SIPY" -a "${BOARD}" != "LOPY" -a "${BOARD}" != "LOPY4" -a "${BOARD}" != "GPY" -a "${BOARD}" != "FIPY" ] ; then
+#Check Board Type
+if [ "${BOARD}" != "WIPY" -a "${BOARD}" != "SIPY" -a "${BOARD}" != "LOPY" -a "${BOARD}" != "LOPY4" -a "${BOARD}" != "GPY" -a "${BOARD}" != "FIPY" -a "${BOARD}" != "TBEAMv1" ] ; then
   echo "Invalid Board name for MPY build!" >&2
   exit 1
 fi

@@ -1089,7 +1089,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_create_128bit_le_uuid_from_string), (mp_obj_t)&create_128bit_le_uuid_from_string_obj },
 
 
-#if defined(FIPY) || defined(LOPY4) || defined(SIPY)
+#if defined(FIPY) || defined(LOPY4) || defined(SIPY) || defined (TBEAMv1)
         { MP_OBJ_NEW_QSTR(MP_QSTR_sigfox_info),                     (mp_obj_t)&mod_pycom_sigfox_info_obj },
 #endif
 

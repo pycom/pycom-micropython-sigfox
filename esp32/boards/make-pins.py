@@ -139,7 +139,7 @@ class Pins:
                     raise ValueError("Invalid pin number {:s} in row {:s}".format(row[pin_col]), row)
                 pin = Pin(row[pinname_col], pin_num)
                 # FIXME: hack to force the SX1272 pins to be available
-                if row[pinname_col] == 'GPIO17' or row[pinname_col] == 'GPIO18' or row[pinname_col] == 'GPIO23':
+                if row[pinname_col] == 'GPIO17' or row[pinname_col] == 'GPIO18' or row[pinname_col] == 'GPIO26' or row[pinname_col] == 'GPIO23' or row[pinname_col] == 'GPIO14':
                     pin.board_pin = True
                 self.cpu_pins.append(NamedPin(row[pinname_col], pin))
 #                af_idx = 0
