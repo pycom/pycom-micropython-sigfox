@@ -10,15 +10,6 @@ BOARD=$(echo $1)
 
 FACTORY_BIN_DIR="$(pwd)/factory_fw/binary"
 
-
-if [ $5 -eq 1 ]; then
-    PART_FILE_8MB='partitions_8MB_small_factory_fw.bin_enc'
-    SCRIPT_FILE_8MB='script_8MB_small_factory_fw_enc'
-else
-    PART_FILE_8MB='partitions_8MB_normal_factory_fw.bin_enc'
-    SCRIPT_FILE_8MB='script_8MB_normal_factory_fw_enc'
-fi
-
 if [ $4 -eq 1 ]; then
     SCRIPT_NAME_4MB="script_4MB_enc"
     if [ $5 -eq 1 ]; then
@@ -66,10 +57,8 @@ VERSION=$(cat pycom_version.h |grep SW_VERSION_NUMBER | cut -d'"' -f2)
 PKG_TMP_DIR="${BUILD_DIR}/firmware_package"
 mkdir -p ${PKG_TMP_DIR}
 
-PART_FILE_4MB=''
 PART_FILE_8MB=''
-SCRIPT_FILE_4MB=''
-SCRIPT_FILE_8MB=''
+SCRIPT_FILE_8MB='script_8MB'
 
 if [ $4 -eq 1 ]; then
     BOOT_FILE='bootloader-reflash-digest.bin_enc'
@@ -93,18 +82,14 @@ cp ${BUILD_DIR}/${APP_FILE} ${PKG_TMP_DIR}
 if [ $4 -eq 1 ]; then
     if [ $5 -eq 1 ]; then
         PART_FILE_8MB='partitions_8MB_small_factory_fw.bin_enc'
-        SCRIPT_FILE_8MB='script_8MB_small_factory_fw_enc'
     else
         PART_FILE_8MB='partitions_8MB_normal_factory_fw.bin_enc'
-        SCRIPT_FILE_8MB='script_8MB_normal_factory_fw_enc'
     fi
 else
     if [ $5 -eq 1 ]; then
         PART_FILE_8MB='partitions_8MB_small_factory_fw.bin'
-        SCRIPT_FILE_8MB='script_8MB_small_factory_fw'
     else
         PART_FILE_8MB='partitions_8MB_normal_factory_fw.bin'
-        SCRIPT_FILE_8MB='script_8MB_normal_factory_fw'
     fi
 fi
 
@@ -112,9 +97,9 @@ cp ${BUILD_DIR}/lib/${PART_FILE_8MB} ${PKG_TMP_DIR}
 if [ $5 -eq 1 ]; then
     cp ${FACTORY_BIN_DIR}/${FACTORY_FILE} ${PKG_TMP_DIR}
 fi
-cat boards/$1/${SCRIPT_FILE_8MB} > ${PKG_TMP_DIR}/${SCRIPT_FILE_8MB} || { echo >&2 "Cannot create ${SCRIPT_FILE_8MB} file! Aborting."; exit 1; }
+cat boards/$1/${SCRIPT_NAME_8MB} > ${PKG_TMP_DIR}/${SCRIPT_FILE_8MB} || { echo >&2 "Cannot create ${SCRIPT_FILE_8MB} file! Aborting."; exit 1; }
 
-tar -czf ${RELEASE_DIR}/${FILE_NAME} -C ${PKG_TMP_DIR} ${BOOT_FILE} ${PART_FILE_4MB} ${PART_FILE_8MB} ${APP_FILE} ${SCRIPT_FILE_8MB} ${FACTORY_FILE} || { echo >&2 "Cannot create ${RELEASE_DIR}/${FILE_NAME}! Aborting."; exit 1; }
+tar -czf ${RELEASE_DIR}/${FILE_NAME} -C ${PKG_TMP_DIR} ${BOOT_FILE} ${PART_FILE_8MB} ${APP_FILE} ${SCRIPT_FILE_8MB} ${FACTORY_FILE} || { echo >&2 "Cannot create ${RELEASE_DIR}/${FILE_NAME}! Aborting."; exit 1; }
 echo "Release package ${FILE_NAME} created successfully."
 
 rm -rf ${PKG_TMP_DIR}/
