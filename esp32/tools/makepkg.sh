@@ -58,7 +58,7 @@ PKG_TMP_DIR="${BUILD_DIR}/firmware_package"
 mkdir -p ${PKG_TMP_DIR}
 
 PART_FILE_8MB=''
-SCRIPT_FILE_8MB='script_8MB'
+SCRIPT_FILE_8MB=''
 
 if [ $4 -eq 1 ]; then
     BOOT_FILE='bootloader-reflash-digest.bin_enc'
@@ -80,12 +80,14 @@ cp ${BUILD_DIR}/bootloader/${BOOT_FILE} ${PKG_TMP_DIR}
 cp ${BUILD_DIR}/${APP_FILE} ${PKG_TMP_DIR}
 
 if [ $4 -eq 1 ]; then
+    SCRIPT_FILE_8MB='script_8MB_enc'
     if [ $5 -eq 1 ]; then
         PART_FILE_8MB='partitions_8MB_small_factory_fw.bin_enc'
     else
         PART_FILE_8MB='partitions_8MB_normal_factory_fw.bin_enc'
     fi
 else
+    SCRIPT_FILE_8MB='script_8MB'
     if [ $5 -eq 1 ]; then
         PART_FILE_8MB='partitions_8MB_small_factory_fw.bin'
     else
