@@ -33,4 +33,4 @@ conn.disconnect()
 bt.deinit()
 
 # Indicate to the Server that we have finished
-prtf_send_command(PRTF_COMMAND_GO)
+prtf_send_command(PRTF_COMMAND_STOP)

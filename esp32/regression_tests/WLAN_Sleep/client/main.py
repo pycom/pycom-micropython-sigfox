@@ -10,7 +10,7 @@ WLAN_NETWORK_PWD  = "regression_test"
 wlan = WLAN(mode=WLAN.STA)
 
 # Wait for the Access Point to start
-prtf_wait_for_command(PRTF_COMMAND_GO)
+prtf_wait_for_command(PRTF_COMMAND_START)
 
 nets = wlan.scan()
 for net in nets:
@@ -26,12 +26,12 @@ print("WLAN connection status: {}".format(wlan.isconnected()))
 
 print("Going to sleep for 1 second...")
 machine.sleep(1000, True)
-# Wait 5 seconds so the WLAN connection can be established
+# Wait 5 seconds so the WLAN connection can be re-established
 time.sleep(5)
 print("WLAN connection status: {}".format(wlan.isconnected()))
 
-# Indicate to the Access Point that the Client has finished the test
-prtf_send_command(PRTF_COMMAND_GO)
+# Indicate to the Access Point that the test has been finished
+prtf_send_command(PRTF_COMMAND_STOP)
 
 # Deinitialize the WLAN module
 wlan.deinit()

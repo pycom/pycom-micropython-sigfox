@@ -1,9 +1,10 @@
-Client - Network found!
+Access Point - Access Point is ready.
 Server - Network found!
-Client - WLAN connection succeeded!
-Client - My IP address: 192.168.0.214
+Client - Network found!
 Server - WLAN connection succeeded!
-Server - My IP address: 192.168.0.236
-Client - Connecting to 192.168.0.236:6543
+Client - WLAN connection succeeded!
+Server - My IP address: 192.168.4.107
+Client - Connecting to 192.168.4.107:4567
 Server - Data received: I am the client and this is my data.
 Client - Data received: I am the server and this is my data.
+Access Point - Access Point exits.

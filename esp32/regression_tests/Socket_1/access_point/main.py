@@ -8,7 +8,7 @@ WLAN_NETWORK_PWD  = "regression_test"
 wlan = WLAN(mode=WLAN.AP, ssid = WLAN_NETWORK_SSID, auth = (WLAN.WPA2, WLAN_NETWORK_PWD))
 print("Access Point is ready.")
 
-# Tell the Client device(s) that AP is up and running
+# Tell the Client device(s) that the AP is up and running
 prtf_send_command(PRTF_COMMAND_START)
 
 # Wait for the test to be finished

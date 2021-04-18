@@ -1,21 +1,19 @@
 from machine import UART
+import time
 
-PRTF_COMMAND_STARTED      = 1
-PRTF_COMMAND_WAITING      = 2
-PRTF_COMMAND_GO           = 3
-PRTF_COMMAND_STOPPED      = 4
+PRTF_COMMAND_START     = 1
+PRTF_COMMAND_GO        = 2
+PRTF_COMMAND_STOP      = 3
 
 uart = UART(0, 115200)
 
 def prtf_command_to_bytes(command):
-    if(command == PRTF_COMMAND_STARTED):
-        return b"PRTC:STARTED\n"
-    if(command == PRTF_COMMAND_WAITING):
-        return b"PRTC:WAITING\n"
+    if(command == PRTF_COMMAND_START):
+        return b"PRTC:START\n"
     if(command == PRTF_COMMAND_GO):
         return b"PRTC:GO\n"
-    if(command == PRTF_COMMAND_STOPPED):
-        return b"PRTC:STOPPED\n"
+    if(command == PRTF_COMMAND_STOP):
+        return b"PRTC:STOP\n"
     return None
 
 def prtf_send_command(command):
@@ -31,6 +29,7 @@ def prtf_wait_for_command(command):
     data = uart.readline()
     while(data != command_wait):
         data = uart.readline()
+        time.sleep(0.1)
 
 
 

@@ -38,6 +38,6 @@ bluetooth.advertise(True)
 print("Advertisement has been started.")
 
 # Wait for the Client to finish before we exit
-prtf_wait_for_command(PRTF_COMMAND_GO)
+prtf_wait_for_command(PRTF_COMMAND_STOP)
 
 bluetooth.deinit()

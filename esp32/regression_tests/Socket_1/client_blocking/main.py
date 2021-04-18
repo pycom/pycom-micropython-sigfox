@@ -7,13 +7,16 @@ import machine
 
 
 # Configuration of this test
-WLAN_NETWORK_SSID = YOUR_SSID
-WLAN_NETWORK_PWD  = YOUR_PWD
-SERVER_ADDR_TO_CONNECT    = SERVER_IP_ADDRESS
-SERVER_PORT_TO_CONNECT    = SERVER_PORT
+WLAN_NETWORK_SSID = "PYCOM_REGR_TEST_AP"
+WLAN_NETWORK_PWD  = "regression_test"
+SERVER_ADDR       = "192.168.4.107"
+SERVER_PORT       = 4567
 
 # Connect to the Network
 wlan = WLAN(mode=WLAN.STA)
+
+# Wait for the Access Point to start
+prtf_wait_for_command(PRTF_COMMAND_START)
 
 nets = wlan.scan()
 for net in nets:
@@ -23,7 +26,6 @@ for net in nets:
         while not wlan.isconnected():
             machine.idle() # save power while waiting
         print('WLAN connection succeeded!')
-        print("My IP address: {}".format(wlan.ifconfig()[0]))
         break
 
 
@@ -34,8 +36,10 @@ s1.setblocking(True)
 # Wait signal from the Server side that it is ONLINE
 prtf_wait_for_command(PRTF_COMMAND_GO)
 
-print("Connecting to {}:{}".format(SERVER_ADDR_TO_CONNECT, SERVER_PORT_TO_CONNECT))
-s1.connect(socket.getaddrinfo(SERVER_ADDR_TO_CONNECT, SERVER_PORT_TO_CONNECT)[0][-1])
+# Connect to the Server
+print("Connecting to {}:{}".format(SERVER_ADDR, SERVER_PORT))
+s1.connect(socket.getaddrinfo(SERVER_ADDR, SERVER_PORT)[0][-1])
+# Exchange data
 s1.send("I am the client and this is my data.")
 data_received = s1.recv(100)
 print("Data received: {}".format(data_received.decode()))

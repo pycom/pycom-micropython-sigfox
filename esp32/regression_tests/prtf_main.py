@@ -45,18 +45,10 @@ class PRTF_Pyboard(pyboard.Pyboard):
         return data
 
 def handle_command(board):
-    if(board.device_messages == "PRTC:GO\n"):
-        for b in boards:
-            # Received GO command from a device, forward it to the other devices they might be waiting for it
-            if(b != board):
-                b.serial.write(b"PRTC:GO\n")
-    #TODO: handle the other commands
-    elif(board.device_messages == "PRTC:STARTED\n"):
-        pass
-    elif(board.device_messages == "PRTC:WAITING\n"):
-        pass
-    elif(board.device_messages == "PRTC:STOPPED\n"):
-        pass
+    # For now just broadcast the incoming command to eveyr other devices
+    for b in boards:
+        if(b != board):
+            b.serial.write(board.device_messages.encode())
 
 
 def pycom_stdout_write_bytes(board, b):
@@ -67,7 +59,7 @@ def pycom_stdout_write_bytes(board, b):
             handle_command(board)
         else:
             # Enable the next line to print the output on the terminal on the fly
-            # print(board.device_id + " - " + board.device_messages, end="")
+            print(board.device_id + " - " + board.device_messages, end="")
             output_file.write(board.device_id + " - " + board.device_messages)
         board.device_messages = ""
 

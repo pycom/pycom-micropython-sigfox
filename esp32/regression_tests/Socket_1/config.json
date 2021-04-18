@@ -9,6 +9,11 @@
             "id"      : "Client",
             "address" : "/dev/ttyACM1",
             "script"  : "client_blocking/main.py"
+        },
+        "device 3": {
+            "id"      : "Access Point",
+            "address" : "/dev/ttyACM2",
+            "script"  : "access_point/main.py"
         }
     }
 }
