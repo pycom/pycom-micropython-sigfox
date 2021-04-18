@@ -1,9 +1,14 @@
 {
     "devices" : {
         "device 1": {
-            "id"      : "Device",
+            "id"      : "Client",
             "address" : "/dev/ttyACM0",
-            "script"  : "device/main.py"
+            "script"  : "client/main.py"
+        },
+        "device 2": {
+            "id"      : "Access Point",
+            "address" : "/dev/ttyACM1",
+            "script"  : "access_point/main.py"
         }
     }
 }

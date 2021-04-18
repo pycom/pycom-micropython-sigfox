@@ -1,13 +1,16 @@
 from network import WLAN
-from network import Bluetooth
 import machine
 import time
 
 # Configuration of this test
-WLAN_NETWORK_SSID = YOUR_SSID
-WLAN_NETWORK_PWD  = YOUR_PWD
+WLAN_NETWORK_SSID = "PYCOM_REGR_TEST_AP"
+WLAN_NETWORK_PWD  = "regression_test"
 
+# Connect to the Network
 wlan = WLAN(mode=WLAN.STA)
+
+# Wait for the Access Point to start
+prtf_wait_for_command(PRTF_COMMAND_GO)
 
 nets = wlan.scan()
 for net in nets:
@@ -26,6 +29,9 @@ machine.sleep(1000, True)
 # Wait 5 seconds so the WLAN connection can be established
 time.sleep(5)
 print("WLAN connection status: {}".format(wlan.isconnected()))
+
+# Indicate to the Access Point that the Client has finished the test
+prtf_send_command(PRTF_COMMAND_GO)
 
 # Deinitialize the WLAN module
 wlan.deinit()

@@ -1,5 +1,6 @@
-Device - Network found!
-Device - WLAN connection succeeded!
-Device - WLAN connection status: True
-Device - Going to sleep for 1 second...
-Device - WLAN connection status: True
+Access Point - Access Point is ready.
+Client - Network found!
+Client - WLAN connection succeeded!
+Client - WLAN connection status: True
+Client - Going to sleep for 1 second...
+Client - WLAN connection status: True
