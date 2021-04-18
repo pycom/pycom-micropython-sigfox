@@ -66,7 +66,7 @@ def pycom_stdout_write_bytes(board, b):
         if(board.device_messages.startswith("PRTC:")):
             handle_command(board)
         else:
-            print(board.device_id + " - " + board.device_messages, end="")
+            #print(board.device_id + " - " + board.device_messages, end="")
             output_file.write(board.device_id + " - " + board.device_messages)
         board.device_messages = ""
 
