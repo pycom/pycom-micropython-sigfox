@@ -1,0 +1,12 @@
+{
+    "devices" : {
+        "device 1": {
+            "address" : "/dev/ttyACM0",
+            "script"  : "sender/main.py"
+        },
+        "device 2": {
+            "address" : "/dev/ttyACM1",
+            "script"  : "receiver/main.py"
+        }
+    }
+}
