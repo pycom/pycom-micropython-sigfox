@@ -102,7 +102,7 @@ def thread_function(dev, test_suite):
     boards.remove(board)
 
 # TODO: get the Test Suites to execute as input parameter
-test_suites = ("Socket_1", "BLE_General_1")
+test_suites = ("Socket_1", "BLE_General_1", "BLE_Sleep")
 
 for test_suite in test_suites:
     # Wait 1 second between Test Suites to not overlap accidentally
