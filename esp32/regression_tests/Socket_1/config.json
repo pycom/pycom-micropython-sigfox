@@ -1,10 +1,12 @@
 {
     "devices" : {
         "device 1": {
+            "id"      : "Server",
             "address" : "/dev/ttyACM0",
             "script"  : "server_blocking/main.py"
         },
         "device 2": {
+            "id"      : "Client",
             "address" : "/dev/ttyACM1",
             "script"  : "client_blocking/main.py"
         }

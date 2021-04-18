@@ -13,9 +13,9 @@ class PRTF_Pyboard(pyboard.Pyboard):
     device_id = ""
     device_messages = ""
 
-    def __init__(self, device, baudrate=115200, user='micro', password='python', wait=0):
-        self.device_id = device
-        pyboard.Pyboard.__init__(self, device, baudrate, user, password, wait)
+    def __init__(self, dev, baudrate=115200, user='micro', password='python', wait=0):
+        self.device_id = dev["id"]
+        pyboard.Pyboard.__init__(self, dev["address"], baudrate, user, password, wait)
 
     # This is from the Based class, need to override here because data_consumer() needs extra argument
     def read_until(self, min_num_bytes, ending, timeout=10, data_consumer=None):
@@ -85,9 +85,9 @@ def execbuffer(board, buf):
         pycom_stdout_write_bytes(board, ret_err)
         sys.exit(1)
 
-def thread_function(address, script):
+def thread_function(dev, test_suite):
     global boards
-    board = PRTF_Pyboard(address)
+    board = PRTF_Pyboard(dev)
     boards.append(board)
     board.enter_raw_repl()
     # Execute the Pycom Regression Test framework
@@ -95,10 +95,11 @@ def thread_function(address, script):
         prt_file = f.read()
         execbuffer(board, prt_file)
     # Execute the Test Script
-    with open(script, 'rb') as f:
+    with open(test_suite + "/" + dev["script"], 'rb') as f:
         pyfile = f.read()
         execbuffer(board, pyfile)
     board.exit_raw_repl()
+    boards.remove(board)
 
 # TODO: get the Test Suites to execute as input parameter
 test_suites = ("Socket_1", "BLE_General_1")
@@ -119,7 +120,7 @@ for test_suite in test_suites:
     threads = list()
     # Execute the tests on the devices
     for dev in cfg_data["devices"]:
-        t = threading.Thread(target=thread_function, args=(cfg_data["devices"][dev]["address"], test_suite + "/" + cfg_data["devices"][dev]["script"]))
+        t = threading.Thread(target=thread_function, args=(cfg_data["devices"][dev], test_suite))
         t.start()
         threads.append(t)
 

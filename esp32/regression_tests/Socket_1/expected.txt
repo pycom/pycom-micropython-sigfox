@@ -1,9 +1,9 @@
-/dev/ttyACM1 - Network found!
-/dev/ttyACM0 - Network found!
-/dev/ttyACM1 - WLAN connection succeeded!
-/dev/ttyACM1 - My IP address: 192.168.0.214
-/dev/ttyACM0 - WLAN connection succeeded!
-/dev/ttyACM0 - My IP address: 192.168.0.236
-/dev/ttyACM1 - Connecting to 192.168.0.236:6543
-/dev/ttyACM0 - Data received: I am the client and this is my data.
-/dev/ttyACM1 - Data received: I am the server and this is my data.
+Client - Network found!
+Server - Network found!
+Client - WLAN connection succeeded!
+Client - My IP address: 192.168.0.214
+Server - WLAN connection succeeded!
+Server - My IP address: 192.168.0.236
+Client - Connecting to 192.168.0.236:6543
+Server - Data received: I am the client and this is my data.
+Client - Data received: I am the server and this is my data.

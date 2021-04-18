@@ -50,3 +50,7 @@ org.eclipse.cdt.ui.prefs
 org.eclipse.cdt.core.prefs
 language.settings.xml
 .idea
+
+# Regression tests outputs
+######################
+esp32/regression_tests/*/output.txt
