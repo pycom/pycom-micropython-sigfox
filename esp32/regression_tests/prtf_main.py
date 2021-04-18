@@ -66,7 +66,8 @@ def pycom_stdout_write_bytes(board, b):
         if(board.device_messages.startswith("PRTC:")):
             handle_command(board)
         else:
-            #print(board.device_id + " - " + board.device_messages, end="")
+            # Enable the next line to print the output on the terminal on the fly
+            # print(board.device_id + " - " + board.device_messages, end="")
             output_file.write(board.device_id + " - " + board.device_messages)
         board.device_messages = ""
 
@@ -102,7 +103,7 @@ def thread_function(dev, test_suite):
     boards.remove(board)
 
 # TODO: get the Test Suites to execute as input parameter
-test_suites = ("Socket_1", "BLE_General_1", "BLE_Sleep")
+test_suites = ("Socket_1", "BLE_General_1", "BLE_Sleep", "WLAN_Sleep")
 
 for test_suite in test_suites:
     # Wait 1 second between Test Suites to not overlap accidentally
