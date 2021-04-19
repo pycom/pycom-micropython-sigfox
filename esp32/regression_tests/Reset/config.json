@@ -1,0 +1,9 @@
+{
+    "devices" : {
+        "device 1": {
+            "id"      : "Device",
+            "address" : "/dev/ttyACM0",
+            "script"  : "device/main.py"
+        }
+    }
+}
