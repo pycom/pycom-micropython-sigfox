@@ -1,9 +1,11 @@
 from machine import UART
 import time
 
-PRTF_COMMAND_START     = 1
-PRTF_COMMAND_GO        = 2
-PRTF_COMMAND_STOP      = 3
+PRTF_COMMAND_START                 = 1
+PRTF_COMMAND_GO                    = 2
+PRTF_COMMAND_STOP                  = 3
+PRTF_COMMAND_RESTART               = 4
+
 
 uart = UART(0, 115200)
 
@@ -14,6 +16,8 @@ def prtf_command_to_bytes(command):
         return b"PRTC:GO\n"
     if(command == PRTF_COMMAND_STOP):
         return b"PRTC:STOP\n"
+    if(command == PRTF_COMMAND_RESTART):
+        return b"PRTC:RESTART\n"
     return None
 
 def prtf_send_command(command):

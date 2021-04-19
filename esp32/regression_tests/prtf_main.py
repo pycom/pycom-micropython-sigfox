@@ -7,17 +7,22 @@ import threading
 
 boards = list()
 
+class PyboardRestartError(Exception):
+    pass
+
 # Base class is the Pyboard class created by MicroPython project
 # Pyboard class handles the instruction excution with the device
 class PRTF_Pyboard(pyboard.Pyboard):
     device_id = ""
     device_messages = ""
+    expect_restart = False
 
     def __init__(self, dev, baudrate=115200, user='micro', password='python', wait=0):
         self.device_id = dev["id"]
+        self.expect_restart = False
         pyboard.Pyboard.__init__(self, dev["address"], baudrate, user, password, wait)
 
-    # This is from the Based class, need to override here because data_consumer() needs extra argument
+    # This is from the Base class, need to override here because data_consumer() needs extra argument
     def read_until(self, min_num_bytes, ending, timeout=10, data_consumer=None):
         # if data_consumer is used then data is not accumulated and the ending must be 1 byte long
         assert data_consumer is None or len(ending) == 1
@@ -45,10 +50,15 @@ class PRTF_Pyboard(pyboard.Pyboard):
         return data
 
 def handle_command(board):
-    # For now just broadcast the incoming command to eveyr other devices
-    for b in boards:
-        if(b != board):
-            b.serial.write(board.device_messages.encode())
+    command = board.device_messages
+    if(command == "PRTC:RESTART\n"):
+        # The device will restart intentionally
+        board.expect_restart = True
+    else:
+        # For the other commands just broadcast it to every other devices
+        for b in boards:
+            if(b != board):
+                b.serial.write(command.encode())
 
 
 def pycom_stdout_write_bytes(board, b):
@@ -57,16 +67,28 @@ def pycom_stdout_write_bytes(board, b):
     if(board.device_messages.endswith("\n")):
         if(board.device_messages.startswith("PRTC:")):
             handle_command(board)
+            board.device_messages = ""
         else:
-            # Enable the next line to print the output on the terminal on the fly
-            print(board.device_id + " - " + board.device_messages, end="")
-            output_file.write(board.device_id + " - " + board.device_messages)
-        board.device_messages = ""
+            if(board.expect_restart):
+                # Detect the message printed out when the device restarts
+                if(board.device_messages.startswith("ets ") and board.device_messages.endswith("information.\r\n")):
+                    board.device_messages = ""
+                    # This means the device restarted, need to handle it in the corresponding Thread
+                    raise PyboardRestartError("Restarted!")
+            else:
+                # Enable the next line to print the output on the terminal on the fly
+                print(board.device_id + " - " + board.device_messages, end="")
+                output_file.write(board.device_id + " - " + board.device_messages)
+                board.device_messages = ""
 
 def execbuffer(board, buf):
     try:
         ret, ret_err = board.exec_raw(buf, timeout=None, data_consumer=pycom_stdout_write_bytes)
-    except board.PyboardError as er:
+    except PyboardRestartError as er:
+        board.expect_restart = False
+        # Indicate that execution has not finished yet, need to re-run the commands again
+        return True
+    except pyboard.PyboardError as er:
         print(er)
         board.close()
         sys.exit(1)
@@ -77,25 +99,31 @@ def execbuffer(board, buf):
         board.close()
         pycom_stdout_write_bytes(board, ret_err)
         sys.exit(1)
+    # Indicate that execution successfully finished, no need to re-run the commands again
+    return False
 
 def thread_function(dev, test_suite):
     global boards
     board = PRTF_Pyboard(dev)
     boards.append(board)
-    board.enter_raw_repl()
-    # Execute the Pycom Regression Test framework
-    with open("prtf_device.py", 'rb') as f:
-        prt_file = f.read()
-        execbuffer(board, prt_file)
-    # Execute the Test Script
-    with open(test_suite + "/" + dev["script"], 'rb') as f:
-        pyfile = f.read()
-        execbuffer(board, pyfile)
-    board.exit_raw_repl()
+    run = True
+
+    while(run):
+        board.enter_raw_repl()
+        # Execute the Pycom Regression Test framework
+        with open("prtf_device.py", 'rb') as f:
+            prt_file = f.read()
+            execbuffer(board, prt_file)
+        # Execute the Test Script
+        with open(test_suite + "/" + dev["script"], 'rb') as f:
+            pyfile = f.read()
+            run = execbuffer(board, pyfile)  
+        board.exit_raw_repl()
+ 
     boards.remove(board)
 
 # TODO: get the Test Suites to execute as input parameter
-test_suites = ("Socket_1", "BLE_General_1", "BLE_Sleep", "WLAN_Sleep")
+test_suites = ("Socket_1", "BLE_General_1", "BLE_Sleep", "WLAN_Sleep", "Deepsleep")
 
 for test_suite in test_suites:
     # Wait 1 second between Test Suites to not overlap accidentally
