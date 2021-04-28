@@ -180,20 +180,20 @@ void TASK_Micropython (void *pvParameters) {
         rtc_init0();
     }
 
-    // initialization that must not be repeted after a soft reset
+    // initialization that must not be repeated after a soft reset
     mptask_preinit();
 #if MICROPY_PY_THREAD
     mp_thread_preinit(mpTaskStack, stack_len, chip_rev);
     mp_irq_preinit();
 #endif
-    /* Creat Socket Operation task */
+    /* Create Socket Operation task */
     modusocket_pre_init();
 
     // initialise the stack pointer for the main thread (must be done after mp_thread_preinit)
     mp_stack_set_top((void *)sp);
 
     // the stack limit should be less than real stack size, so we have a chance
-    // to recover from hiting the limit (the limit is measured in bytes)
+    // to recover from hitting the limit (the limit is measured in bytes)
     mp_stack_set_limit(stack_len - 1024);
 
     if (esp32_get_chip_rev() > 0) {

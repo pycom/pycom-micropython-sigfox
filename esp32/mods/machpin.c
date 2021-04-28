@@ -123,15 +123,33 @@ void pin_init0(void) {
                continue;
             }
         #endif
-        
-        #if defined (FIPY)
-            if (self == &PIN_MODULE_P17 || self == &PIN_MODULE_P18 || self == &PIN_MODULE_P19 || self == &PIN_MODULE_P20) {
-               continue;
-            }
-        #elif defined (GPY)
-            if (self == &PIN_MODULE_P5 || self == &PIN_MODULE_P6 || self == &PIN_MODULE_P7) {
-               continue;
-            }
+        #if defined(LOPY4)
+            #if defined(MOD_LORA_ENABLED) || defined(MOD_SIGFOX_ENABLED)
+                // Pins used by LoRa and Sigfox
+                if (self == &PIN_MODULE_P5 || self == &PIN_MODULE_P6 || self == &PIN_MODULE_P7) {
+                   continue;
+                }
+            #endif
+        #elif defined(FIPY)
+            #if defined(MOD_LTE_ENABLED)
+                // Pins used by LTE
+                if (self == &PIN_MODULE_P17 || self == &PIN_MODULE_P18 || self == &PIN_MODULE_P19 || self == &PIN_MODULE_P20) {
+                   continue;
+                }
+            #endif
+            #if defined(MOD_LORA_ENABLED) || defined(MOD_SIGFOX_ENABLED)
+                // Pins used by LoRa and Sigfox
+                if (self == &PIN_MODULE_P5 || self == &PIN_MODULE_P6 || self == &PIN_MODULE_P7) {
+                   continue;
+                }
+            #endif
+        #elif defined(GPY)
+            #if defined(MOD_LTE_ENABLED)
+                // Pins used by LTE
+                if (self == &PIN_MODULE_P5 || self == &PIN_MODULE_P6 || self == &PIN_MODULE_P7) {
+                   continue;
+                }
+            #endif
         #endif
             /* exclude the antenna switch pin from initialization as it is already initialized */
             if((micropy_hw_antenna_diversity_pin_num == MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM) && (self == &PIN_MODULE_P12))
