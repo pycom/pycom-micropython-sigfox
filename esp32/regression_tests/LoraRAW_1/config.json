@@ -1,0 +1,14 @@
+{
+    "devices" : {
+        "device 1": {
+            "id"      : "Node 1",
+            "address" : "/dev/ttyACM0",
+            "script"  : "node_1/main.py"
+        },
+        "device 2": {
+            "id"      : "Node 2",
+            "address" : "/dev/ttyACM1",
+            "script"  : "node_2/main.py"
+        }
+    }
+}

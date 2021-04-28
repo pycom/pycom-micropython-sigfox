@@ -124,7 +124,7 @@ def thread_function(dev, test_suite):
     boards.remove(board)
 
 # TODO: get the Test Suites to execute as input parameter
-test_suites = ("Deepsleep", "Reset", "BLE_Sleep", "BLE_General_1", "Socket_1", "WLAN_Sleep")
+test_suites = ("Deepsleep", "Reset", "BLE_Sleep", "BLE_General_1", "Socket_1", "WLAN_Sleep", "LoraRAW_1")
 
 for test_suite in test_suites:
     # Wait 1 second between Test Suites to not overlap accidentally
