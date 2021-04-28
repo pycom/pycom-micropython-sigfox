@@ -22,6 +22,15 @@ class PRTF_Pyboard(pyboard.Pyboard):
         self.expect_restart = False
         pyboard.Pyboard.__init__(self, dev["address"], baudrate, user, password, wait)
 
+    def exec_reset(self):
+        self.exec_raw_no_follow("import machine")
+        try:
+            self.exec_raw_no_follow("machine.reset()")
+        except:
+            # Do nothing
+            pass
+        return None
+    
     # This is from the Base class, need to override here because data_consumer() needs extra argument
     def read_until(self, min_num_bytes, ending, timeout=10, data_consumer=None):
         # if data_consumer is used then data is not accumulated and the ending must be 1 byte long
@@ -104,7 +113,7 @@ def execbuffer(board, buf):
     return False
 
 def thread_function(dev, test_suite):
-    global boards
+    global boards, reset_between_tests
     board = PRTF_Pyboard(dev)
     boards.append(board)
     run = True
@@ -120,15 +129,23 @@ def thread_function(dev, test_suite):
             pyfile = f.read()
             run = execbuffer(board, pyfile)  
         board.exit_raw_repl()
+        time.sleep(1)
+
+    if(reset_between_tests == True):
+        board.enter_raw_repl()
+        board.exec_reset()
+        board.exit_raw_repl()
  
     boards.remove(board)
 
-# TODO: get the Test Suites to execute as input parameter
+# TODO: get whether reset is needed between the Test Suits as an input parameter
+reset_between_tests = True
+# TODO: get the Test Suites to execute as an input parameter
 test_suites = ("Deepsleep", "Reset", "BLE_Sleep", "BLE_General_1", "Socket_1", "WLAN_Sleep", "LoraRAW_1")
 
 for test_suite in test_suites:
-    # Wait 1 second between Test Suites to not overlap accidentally
-    time.sleep(1)
+    # Wait 3 second between Test Suites to not overlap accidentally and/or wait reset to finish
+    time.sleep(3)
     
     print("=== Executing Test Suite: {} ===".format(test_suite))
 
