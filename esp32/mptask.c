@@ -237,7 +237,7 @@ soft_reset:
     mp_irq_init0();
 #endif
     uart_init0();
-#ifndef RGB_LED_DISABLE
+#ifndef CONFIG_PYCOM_RGB_LED_DISABLE
     mperror_init0();
 #endif
     rng_init0();
@@ -311,7 +311,7 @@ soft_reset:
             goto soft_reset_exit;
         }
         if (!ret) {
-#ifndef RGB_LED_DISABLE
+#ifndef CONFIG_PYCOM_RGB_LED_DISABLE
             // flash the system led
             mperror_signal_error();
 #endif
@@ -344,7 +344,7 @@ soft_reset:
                 goto soft_reset_exit;
             }
             if (!ret) {
-#ifndef RGB_LED_DISABLE
+#ifndef CONFIG_PYCOM_RGB_LED_DISABLE
                 // flash the system led
                 mperror_signal_error();
 #endif

@@ -6,7 +6,7 @@
  * see the Pycom Licence v1.0 document supplied with this file, or
  * available at https://www.pycom.io/opensource/licensing
  */
-#ifndef RGB_LED_DISABLE
+#ifndef CONFIG_PYCOM_RGB_LED_DISABLE
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -249,4 +249,4 @@ void nlr_jump_fail(void *val) {
 }
 #endif
 
-#endif // RGB_LED_DISABLE
+#endif // CONFIG_PYCOM_RGB_LED_DISABLE

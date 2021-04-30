@@ -130,7 +130,7 @@ static void modpycom_bootmgr(uint8_t boot_partition, uint8_t fs_type, uint8_t sa
 
 
 STATIC mp_obj_t mod_pycom_heartbeat (mp_uint_t n_args, const mp_obj_t *args) {
-#ifndef RGB_LED_DISABLE
+#ifndef CONFIG_PYCOM_RGB_LED_DISABLE
     if (n_args) {
         mperror_enable_heartbeat (mp_obj_is_true(args[0]));
         if (!mp_obj_is_true(args[0])) {
@@ -149,7 +149,7 @@ STATIC mp_obj_t mod_pycom_heartbeat (mp_uint_t n_args, const mp_obj_t *args) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_heartbeat_obj, 0, 1, mod_pycom_heartbeat);
 
 STATIC mp_obj_t mod_pycom_rgb_led (mp_uint_t n_args, const mp_obj_t *args) {
-#ifndef RGB_LED_DISABLE
+#ifndef CONFIG_PYCOM_RGB_LED_DISABLE
     if (mperror_is_heartbeat_enabled()) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, mpexception_os_request_not_possible));
     }

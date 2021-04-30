@@ -138,7 +138,7 @@ void pin_init0(void) {
             {
                 continue;
             }
-#ifndef RGB_LED_DISABLE
+#ifndef CONFIG_PYCOM_RGB_LED_DISABLE
             /* exclude RGB led from initialization as it is already initialized by mperror */
             if (self == &PIN_MODULE_P2)
             {

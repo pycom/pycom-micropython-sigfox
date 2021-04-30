@@ -152,7 +152,7 @@ void app_main(void) {
         nvs_flash_erase();
         nvs_flash_init();
     }
-#ifndef RGB_LED_DISABLE
+#ifndef CONFIG_PYCOM_RGB_LED_DISABLE
     // initialise heartbeat on Core 0
     mperror_pre_init();
 #endif
