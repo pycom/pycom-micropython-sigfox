@@ -746,6 +746,7 @@ STATIC const mp_rom_map_elem_t mp_module_builtins_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_Exception), MP_ROM_PTR(&mp_type_Exception) },
     { MP_ROM_QSTR(MP_QSTR_GeneratorExit), MP_ROM_PTR(&mp_type_GeneratorExit) },
     { MP_ROM_QSTR(MP_QSTR_ImportError), MP_ROM_PTR(&mp_type_ImportError) },
+    { MP_ROM_QSTR(MP_QSTR_TimeoutError), MP_ROM_PTR(&mp_type_TimeoutError) },
     { MP_ROM_QSTR(MP_QSTR_IndentationError), MP_ROM_PTR(&mp_type_IndentationError) },
     { MP_ROM_QSTR(MP_QSTR_IndexError), MP_ROM_PTR(&mp_type_IndexError) },
     { MP_ROM_QSTR(MP_QSTR_KeyboardInterrupt), MP_ROM_PTR(&mp_type_KeyboardInterrupt) },
