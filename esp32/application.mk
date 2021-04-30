@@ -578,7 +578,7 @@ endif
 # add the application archive, this order is very important
 APP_LIBS = -Wl,--start-group $(LIBS) $(BUILD)/application.a -Wl,--end-group -Wl,-EL
 
-BOOT_LIBS = -Wl,--start-group $(B_LIBS) -Wl,--end-group -Wl,-EL
+BOOT_LIBS = -Wl,--start-group $(B_LIBS) -lgcc -Wl,--end-group -Wl,-EL
 
 # debug / optimization options
 ifeq ($(BTYPE), debug)
@@ -1007,6 +1007,7 @@ GEN_PINS_QSTR = $(BUILD)/pins_qstr.h
 .NOTPARALLEL: CHECK_DEP $(OBJ)
 .NOTPARALLEL: CHECK_DEP $(BUILD)/bootloader/bootloader.elf
 $(BUILD)/bootloader/bootloader.elf $(OBJ): | CHECK_DEP
+$(BUILD)/bootloader/bootloader.elf: $(B_LIBS)
 
 # Making OBJ use an order-only dependency on the generated pins.h file
 # has the side effect of making the pins.h file before we actually compile

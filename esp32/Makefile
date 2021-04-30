@@ -259,8 +259,7 @@ B_LIBS = bootloader/lib/libbootloader_support.a \
          bootloader/lib/libmain.a \
          bootloader/lib/libmicro-ecc.a \
          bootloader/lib/libsoc.a \
-         bootloader/lib/libspi_flash.a \
-         -lgcc \
+         bootloader/lib/libspi_flash.a
 
 # objcopy paramters, to transform a binary file into an object file
 OBJCOPY_EMBED_ARGS = --input-target binary --output-target elf32-xtensa-le --binary-architecture xtensa --rename-section .data=.rodata.embedded
