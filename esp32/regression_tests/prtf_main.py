@@ -7,9 +7,13 @@ sys.path.append(os.path.relpath("../../tools"))
 import pyboard
 import threading
 
+threads = list()
 boards = list()
 
 class PyboardRestartError(Exception):
+    pass
+
+class PyboardMicroPythonError(Exception):
     pass
 
 # Base class is the Pyboard class created by MicroPython project
@@ -25,12 +29,14 @@ class PRTF_Pyboard(pyboard.Pyboard):
         pyboard.Pyboard.__init__(self, dev["address"], baudrate, user, password, wait)
 
     def exec_reset(self):
+        self.enter_raw_repl()
         self.exec_raw_no_follow("import machine")
         try:
             self.exec_raw_no_follow("machine.reset()")
         except:
             # Do nothing
             pass
+        self.exit_raw_repl()
         return None
     
     # This is from the Base class, need to override here because data_consumer() needs extra argument
@@ -95,32 +101,34 @@ def pycom_stdout_write_bytes(board, b):
 def execbuffer(board, buf):
     try:
         # timeout is specified in 0.01 sec increments (10 ms), wait maximum 10 minutes = 60.000 ms
-        ret, ret_err = board.exec_raw(buf, timeout=10*60*100, data_consumer=pycom_stdout_write_bytes)
+        ret, ret_err = board.exec_raw(buf, timeout=1*60*100, data_consumer=pycom_stdout_write_bytes)
     except PyboardRestartError as er:
-        board.expect_restart = False
         # Indicate that execution has not finished yet, need to re-run the commands again
-        return True
+        raise er
     except pyboard.PyboardError as er:
         print(er)
-        board.close()
-        sys.exit(1)
+        # Error happened in Pyboard class
+        raise er
     except KeyboardInterrupt:
+        # TODO: handle it correctly, reset all devices and then exit
         sys.exit(1)
+    # This case happens e.g. on Ctrl+C sent to the device
     if ret_err:
-        board.exit_raw_repl()
-        board.close()
-        pycom_stdout_write_bytes(board, ret_err)
-        sys.exit(1)
-    # Indicate that execution successfully finished, no need to re-run the commands again
-    return False
+        # Raise special Exception which will be handled in the thread
+        raise PyboardMicroPythonError(ret_err.decode())
 
-def thread_function(dev, test_suite):
+def board_thread(dev, test_suite):
     global boards, reset_between_tests
+
     board = PRTF_Pyboard(dev)
     boards.append(board)
-    run = True
 
-    while(run):
+    if(reset_between_tests == True):
+        board.exec_reset()
+        time.sleep(5)
+
+    while True:
+        #TODO: handle when this fails
         board.enter_raw_repl()
         # Execute the Pycom Regression Test framework
         with open("prtf_device.py", 'rb') as f:
@@ -129,22 +137,39 @@ def thread_function(dev, test_suite):
         # Execute the Test Script
         with open(test_suite + "/" + dev["script"], 'rb') as f:
             pyfile = f.read()
-            run = execbuffer(board, pyfile)  
-        board.exit_raw_repl()
-        time.sleep(1)
+            try:
+                execbuffer(board, pyfile)
+                # Execution finished successfully, no need to re-run
+                break
+            except PyboardRestartError:
+                # Continue running, this exception was caused by an intentional reset
+                board.expect_restart = False
+            except PyboardMicroPythonError as e:
+                message_bytes = "MicroPython Exception happened: " + str(e)
+                pycom_stdout_write_bytes(board, message_bytes.encode())
+                # KeyboardInterrupt means the device was terminated intentionally, do not consider it as an error
+                if("KeyboardInterrupt:" not in str(e)):
+                    # Other exception means problem happened, signal the other threads to stop
+                    for other_board in boards:
+                        # Send Ctrl+C Ctrl+C to the other devices which will stop script execution and the handler thread will be terminated
+                        if(other_board != board):
+                            other_board.serial.write(b"\r\x03\x03")
+                # Reset current board to leave it in stable state
+                board.exec_reset()
+                # Execution finished
+                break
 
-    if(reset_between_tests == True):
-        board.enter_raw_repl()
-        board.exec_reset()
         board.exit_raw_repl()
+        # Wait 1 sec before starting over
+        time.sleep(1)
  
+    board.close()
     boards.remove(board)
 
 # TODO: get whether reset is needed between the Test Suits as an input parameter
-reset_between_tests = True
+reset_between_tests = False
 # TODO: get the Test Suites to execute as an input parameter
 test_suites = ("Deepsleep", "Reset", "BLE_Sleep", "BLE_General_1", "Socket_1", "WLAN_Sleep", "LoraRAW_1")
-
 for test_suite in test_suites:
     # Wait 3 second between Test Suites to not overlap accidentally and/or wait reset to finish
     time.sleep(3)
@@ -157,11 +182,10 @@ for test_suite in test_suites:
 
     # Open the output file
     output_file = open(test_suite + "/" + "output.txt", "w+")
-
-    threads = list()
+ 
     # Execute the tests on the devices
     for dev in cfg_data["devices"]:
-        t = threading.Thread(target=thread_function, args=(cfg_data["devices"][dev], test_suite))
+        t = threading.Thread(target=board_thread, args=(cfg_data["devices"][dev], test_suite))
         t.start()
         threads.append(t)
 
@@ -181,6 +205,9 @@ for test_suite in test_suites:
         result = "PASSED"
     
     print("=== Result of {}: {} ===".format(test_suite, result))
+
+    threads.clear()
+    boards.clear()
 
 
 
