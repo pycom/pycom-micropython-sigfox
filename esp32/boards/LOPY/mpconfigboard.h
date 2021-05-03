@@ -11,7 +11,6 @@
 
 #define MICROPY_HW_BOARD_NAME                                   "LoPy"
 #define MICROPY_PY_SYS_PLATFORM                                 "LoPy"
-#define MICROPY_HW_HB_PIN_NUM                                   (0)
 #define MICROPY_HW_SAFE_PIN_NUM                                 (21)
 
 #define DEFAULT_AP_SSID                                         "lopy-wlan"

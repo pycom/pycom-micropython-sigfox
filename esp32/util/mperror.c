@@ -47,7 +47,6 @@
 
 #define MPERROR_HEARTBEAT_PRIORITY                  (5)
 
-#define MPERROR_HEARTBEAT_LED_GPIO                  (0)
 /******************************************************************************
  DECLARE PRIVATE DATA
  ******************************************************************************/
@@ -57,7 +56,7 @@ static rmt_item32_t rmt_grb_items[COLOR_BITS];
 
 led_info_t led_info = {
     .rmt_channel = RMT_CHANNEL_1,
-    .gpio = MPERROR_HEARTBEAT_LED_GPIO,
+    .gpio = CONFIG_PYCOM_RGB_LED_PIN,
     .rmt_grb_buf = rmt_grb_items,
     .color = {
         .value = MPERROR_HEARTBEAT_COLOR,
@@ -86,7 +85,6 @@ void mperror_pre_init(void) {
 
 void mperror_init0 (void) {
     // configure the heartbeat led pin
-    pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
     led_init(&led_info);
     led_info.color.value = 0;
     led_set_color(&led_info, false, false);
@@ -191,7 +189,6 @@ void mperror_enable_heartbeat (bool enable) {
         mperror_heart_beat.off_time = 0;
         mperror_heart_beat.beating = false;
         led_info.color.value = MPERROR_HEARTBEAT_COLOR;
-        pin_config(&pin_GPIO0, -1, -1, GPIO_MODE_OUTPUT, MACHPIN_PULL_NONE, 0);
         led_init(&led_info);
         led_set_color(&led_info, false, false);
     } else if (!enable) {
