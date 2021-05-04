@@ -101,7 +101,7 @@ def pycom_stdout_write_bytes(board, b):
 def execbuffer(board, buf):
     try:
         # timeout is specified in 0.01 sec increments (10 ms), wait maximum 10 minutes = 60.000 ms
-        ret, ret_err = board.exec_raw(buf, timeout=1*60*100, data_consumer=pycom_stdout_write_bytes)
+        ret, ret_err = board.exec_raw(buf, timeout=10*60*100, data_consumer=pycom_stdout_write_bytes)
     except PyboardRestartError as er:
         # Indicate that execution has not finished yet, need to re-run the commands again
         raise er
