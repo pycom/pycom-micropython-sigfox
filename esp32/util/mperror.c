@@ -6,7 +6,6 @@
  * see the Pycom Licence v1.0 document supplied with this file, or
  * available at https://www.pycom.io/opensource/licensing
  */
-#ifndef CONFIG_PYCOM_RGB_LED_DISABLE
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -19,6 +18,8 @@
 
 #include "esp_heap_caps.h"
 #include "sdkconfig.h"
+#ifndef CONFIG_PYCOM_RGB_LED_DISABLE
+
 #include "esp_system.h"
 #include "esp_spi_flash.h"
 #include "nvs_flash.h"
@@ -179,7 +180,7 @@ void nlr_jump_fail(void *val) {
     __fatal_error(NULL);
 #endif
 }
-#endif
+#endif // BOOTLOADER_BUILD
 
 void mperror_enable_heartbeat (bool enable) {
     if (enable && !mperror_heart_beat.enabled) {
