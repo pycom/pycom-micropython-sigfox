@@ -570,8 +570,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_wdt_on_boot_timeout_obj, 0,
 
 STATIC mp_obj_t mod_pycom_heartbeat_on_boot (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
-        if (config_set_heartbeat_on_boot (mp_obj_is_true(args[0]))) {
-        } else {
+        if (!config_set_heartbeat_on_boot (mp_obj_is_true(args[0]))) {
             nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "heartbeat set failed"));
         }
     } else {
@@ -586,11 +585,8 @@ STATIC mp_obj_t mod_pycom_rgb_led_on_boot (mp_uint_t n_args, const mp_obj_t *arg
     if (n_args) {
       if (!mp_obj_is_int(args[0])) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "RGB Led color bad format"));
-        return mp_const_none;
       }
-      if (config_set_rgb_led_on_boot(mp_obj_get_int(args[0])))
-      {
-      } else {
+      if (!config_set_rgb_led_on_boot(mp_obj_get_int(args[0]))) {
         nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "RGB Led set failed"));
       }
     } else {
