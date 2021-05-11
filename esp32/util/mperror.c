@@ -130,7 +130,10 @@ bool mperror_heartbeat_signal (void) {
     } else if (mperror_heart_beat.enabled) {
         if (!mperror_heart_beat.beating) {
             if (mp_hal_ticks_ms_non_blocking() > mperror_heart_beat.off_time) {
-                led_info.color.value = MPERROR_HEARTBEAT_COLOR;
+                led_info.color.value = config_get_rgb_led_on_boot();
+                if (led_info.color.value==0) {
+                    led_info.color.value = MPERROR_HEARTBEAT_COLOR;
+                }
                 led_set_color(&led_info, true, false);
                 mperror_heart_beat.beating = true;
                 mperror_heart_beat.on_time = mp_hal_ticks_ms_non_blocking() + MPERROR_HEARTBEAT_ON_MS;
@@ -189,7 +192,10 @@ void mperror_enable_heartbeat (bool enable) {
         mperror_heart_beat.on_time = 0;
         mperror_heart_beat.off_time = 0;
         mperror_heart_beat.beating = false;
-        led_info.color.value = MPERROR_HEARTBEAT_COLOR;
+        led_info.color.value = config_get_rgb_led_on_boot();
+        if (led_info.color.value==0) {
+            led_info.color.value = MPERROR_HEARTBEAT_COLOR;
+        }
         led_init(&led_info);
         led_set_color(&led_info, false, false);
     } else if (!enable) {

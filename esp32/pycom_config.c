@@ -461,3 +461,27 @@ static bool config_write (void) {
     }
     return false;
 }
+
+bool config_set_rgb_led_on_boot (uint32_t new_color) {
+    uint32_t old_color =
+        (((pycom_config_block.rgbled_config.rgb_heartbeat_color[0]<<8) +
+        pycom_config_block.rgbled_config.rgb_heartbeat_color[1])<<8) +
+        pycom_config_block.rgbled_config.rgb_heartbeat_color[2];
+    if (old_color != new_color) {
+        pycom_config_block.rgbled_config.rgb_heartbeat_color[2] = new_color & 0xFF;
+        new_color >>= 8;
+        pycom_config_block.rgbled_config.rgb_heartbeat_color[1] = new_color & 0xFF;
+        new_color >>= 8;
+        pycom_config_block.rgbled_config.rgb_heartbeat_color[0] = new_color & 0xFF;
+        return config_write();
+    }
+    return true;
+}
+
+uint32_t config_get_rgb_led_on_boot (void) {
+    uint32_t old_color =
+        (((pycom_config_block.rgbled_config.rgb_heartbeat_color[0]<<8) +
+        pycom_config_block.rgbled_config.rgb_heartbeat_color[1])<<8) +
+        pycom_config_block.rgbled_config.rgb_heartbeat_color[2];
+    return old_color;
+}
