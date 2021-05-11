@@ -273,4 +273,8 @@ bool config_set_pybytes_autostart (bool pybytes_autostart);
 
 bool config_get_pybytes_autostart (void);
 
+bool config_set_rgb_led_on_boot (uint32_t new_color);
+
+uint32_t config_get_rgb_led_on_boot (void);
+
 #endif /* PYCOM_CONFIG_H_ */

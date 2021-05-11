@@ -578,6 +578,29 @@ STATIC mp_obj_t mod_pycom_heartbeat_on_boot (mp_uint_t n_args, const mp_obj_t *a
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_heartbeat_on_boot_obj, 0, 1, mod_pycom_heartbeat_on_boot);
 
+STATIC mp_obj_t mod_pycom_rgb_led_on_boot (mp_uint_t n_args, const mp_obj_t *args) {
+#ifndef CONFIG_PYCOM_RGB_LED_DISABLE
+    if (n_args) {
+      if (!mp_obj_is_int(args[0])) {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "RGB Led color bad format"));
+        return mp_const_none;
+      }
+      if (config_set_rgb_led_on_boot(mp_obj_get_int(args[0])))
+      {
+      } else {
+        nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "RGB Led set failed"));
+      }
+    } else {
+      return mp_obj_new_int(config_get_rgb_led_on_boot());
+    }
+#else
+    nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "RGB Led Interface Disabled"));
+#endif
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_rgb_led_on_boot_obj, 0, 1, mod_pycom_rgb_led_on_boot);
+
 STATIC mp_obj_t mod_pycom_lte_modem_on_boot (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
         config_set_lte_modem_enable_on_boot (mp_obj_is_true(args[0]));
@@ -1221,6 +1244,7 @@ STATIC const mp_map_elem_t pycom_module_globals_table[] = {
         { MP_OBJ_NEW_QSTR(MP_QSTR_wdt_on_boot),                     (mp_obj_t)&mod_pycom_wdt_on_boot_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_wdt_on_boot_timeout),             (mp_obj_t)&mod_pycom_wdt_on_boot_timeout_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_heartbeat_on_boot),               (mp_obj_t)&mod_pycom_heartbeat_on_boot_obj },
+        { MP_OBJ_NEW_QSTR(MP_QSTR_rgbled_on_boot),                  (mp_obj_t)&mod_pycom_rgb_led_on_boot_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_lte_modem_en_on_boot),            (mp_obj_t)&mod_pycom_lte_modem_on_boot_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_get_free_heap),                   (mp_obj_t)&mod_pycom_get_free_heap_obj },
         { MP_OBJ_NEW_QSTR(MP_QSTR_wifi_ssid_sta),                   (mp_obj_t)&mod_pycom_wifi_ssid_sta_obj },
