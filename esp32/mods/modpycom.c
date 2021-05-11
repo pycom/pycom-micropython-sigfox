@@ -570,7 +570,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(mod_pycom_wdt_on_boot_timeout_obj, 0,
 
 STATIC mp_obj_t mod_pycom_heartbeat_on_boot (mp_uint_t n_args, const mp_obj_t *args) {
     if (n_args) {
-        config_set_heartbeat_on_boot (mp_obj_is_true(args[0]));
+        if (config_set_heartbeat_on_boot (mp_obj_is_true(args[0]))) {
+        } else {
+            nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "heartbeat set failed"));
+        }
     } else {
         return mp_obj_new_bool(config_get_heartbeat_on_boot());
     }
