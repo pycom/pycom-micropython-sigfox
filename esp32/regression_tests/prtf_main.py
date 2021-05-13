@@ -167,7 +167,7 @@ def board_thread(dev, test_suite):
     boards.remove(board)
 
 # TODO: get whether reset is needed between the Test Suits as an input parameter
-reset_between_tests = False
+reset_between_tests = True
 # TODO: get the Test Suites to execute as an input parameter
 test_suites = ("Deepsleep", "Reset", "BLE_Sleep", "BLE_General_1", "Socket_1", "WLAN_Sleep", "LoraRAW_1")
 for test_suite in test_suites:
