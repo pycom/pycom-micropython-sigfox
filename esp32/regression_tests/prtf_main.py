@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import sys, os
+import sys, os, glob, serial
 import json
 import time
 sys.path.append(os.path.relpath("../../tools"))
@@ -15,6 +15,18 @@ class PyboardRestartError(Exception):
 
 class PyboardMicroPythonError(Exception):
     pass
+
+def serial_ports():
+    if sys.platform.startswith('win'):
+        ports = ['COM%s' % (i + 1) for i in range(256)]
+    elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
+        ports = glob.glob('/dev/ttyACM*')
+    elif sys.platform.startswith('darwin'):
+        ports = glob.glob('/dev/tty.usbmodemPy*')
+    else:
+        raise EnvironmentError('Unsupported platform')
+
+    return ports
 
 # Base class is the Pyboard class created by MicroPython project
 # Pyboard class handles the instruction excution with the device
@@ -166,10 +178,13 @@ def board_thread(dev, test_suite):
     board.close()
     boards.remove(board)
 
+# TODO: get whether the serial ports should be automatically assigned to the devices or the assignment should come from the configuration
+auto_select_port = True
 # TODO: get whether reset is needed between the Test Suits as an input parameter
 reset_between_tests = True
 # TODO: get the Test Suites to execute as an input parameter
 test_suites = ("Deepsleep", "Reset", "BLE_Sleep", "BLE_General_1", "Socket_1", "WLAN_Sleep", "LoraRAW_1")
+
 for test_suite in test_suites:
     # Wait 3 second between Test Suites to not overlap accidentally and/or wait reset to finish
     time.sleep(3)
@@ -182,9 +197,19 @@ for test_suite in test_suites:
 
     # Open the output file
     output_file = open(test_suite + "/" + "output.txt", "w+")
+
+    ports = serial_ports()
+
+    if auto_select_port == True:
+        if(len(ports) < len(cfg_data["devices"])):
+            print("{}: Not enough open ports, skipping the test.".format(test_suite))
+            continue
  
     # Execute the tests on the devices
     for dev in cfg_data["devices"]:
+        if auto_select_port == True:
+            cfg_data["devices"][dev]["address"] = ports[0]
+            ports.pop(0)
         t = threading.Thread(target=board_thread, args=(cfg_data["devices"][dev], test_suite))
         t.start()
         threads.append(t)
