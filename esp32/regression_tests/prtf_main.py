@@ -21,6 +21,8 @@ def serial_ports():
         ports = ['COM%s' % (i + 1) for i in range(256)]
     elif sys.platform.startswith('linux') or sys.platform.startswith('cygwin'):
         ports = glob.glob('/dev/ttyACM*')
+        # Give them back in ascendant order (ttyACM0, ttyACM1 etc..), by default they are in descending order
+        ports.reverse()
     elif sys.platform.startswith('darwin'):
         ports = glob.glob('/dev/tty.usbmodemPy*')
     else:
