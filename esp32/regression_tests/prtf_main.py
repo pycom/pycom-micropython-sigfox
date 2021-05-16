@@ -43,6 +43,7 @@ class PRTF_Pyboard(pyboard.Pyboard):
         pyboard.Pyboard.__init__(self, dev["address"], baudrate, user, password, wait)
 
     def exec_reset(self):
+        print("PRTF INFO: " + self.device_id + " - Resetting the device.")
         self.enter_raw_repl()
         self.exec_raw_no_follow("import machine")
         try:
@@ -216,6 +217,7 @@ if __name__ == '__main__':
                 if auto_select_port == True:
                     cfg_data["devices"][dev]["address"] = ports[0]
                     ports.pop(0)
+                    print("PRTF INFO: " + "{} - {}".format(cfg_data["devices"][dev]["id"], cfg_data["devices"][dev]["address"]))
                 t = threading.Thread(target=board_thread, args=(cfg_data["devices"][dev], test_suite))
                 t.start()
                 threads.append(t)
