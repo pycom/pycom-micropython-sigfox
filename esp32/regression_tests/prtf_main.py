@@ -100,7 +100,7 @@ def pycom_stdout_write_bytes(board, b):
         else:
             if(board.expect_restart):
                 # Detect the message printed out when the device restarts
-                if(board.device_messages.startswith("ets ") and board.device_messages.endswith("information.\r\n")):
+                if(board.device_messages.endswith("Type \"help()\" for more information.\r\n")):
                     board.device_messages = ""
                     # This means the device restarted, need to handle it in the corresponding Thread
                     raise PyboardRestartError("Restarted!")
