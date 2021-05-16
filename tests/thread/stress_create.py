@@ -11,9 +11,9 @@ def thread_entry(n):
     pass
 
 
-thread_num = 0
-# On FIPY with esp-idf 4.x only 9 threads can be created maximum, beyond that the device crashes
-while thread_num < 9:
+thread_num = 1
+# On FIPY with esp-idf 4.x without Pybytes 10 threads can be created maximum, beyond that the device crashes because it runs out of internal RAM
+while thread_num <= 10:
     try:
         _thread.start_new_thread(thread_entry, (thread_num,))
         thread_num += 1
