@@ -51,6 +51,8 @@ class PRTF_Pyboard(pyboard.Pyboard):
             # Do nothing
             pass
         self.exit_raw_repl()
+        # Give the device time to restart
+        time.sleep(3)
         return None
     
     # This is from the Base class, need to override here because data_consumer() needs extra argument
@@ -139,7 +141,6 @@ def board_thread(dev, test_suite):
 
     if(reset_between_tests == True):
         board.exec_reset()
-        time.sleep(5)
 
     while True:
         #TODO: handle when this fails
@@ -187,54 +188,62 @@ reset_between_tests = True
 # TODO: get the Test Suites to execute as an input parameter
 test_suites = ("Deepsleep", "Reset", "BLE_Sleep", "BLE_General_1", "Socket_1", "WLAN_Sleep", "LoraRAW_1")
 
-for test_suite in test_suites:
-    # Wait 3 second between Test Suites to not overlap accidentally and/or wait reset to finish
-    time.sleep(3)
-    
-    print("=== Executing Test Suite: {} ===".format(test_suite))
+if __name__ == '__main__':
 
-    # Parse the configuration file
-    with open(test_suite + "/config.json") as f:
-        cfg_data = json.load(f)
+    try:
+        for test_suite in test_suites:
+            # Wait 3 second between Test Suites to not overlap accidentally and/or wait reset to finish
+            time.sleep(3)
+            
+            print("=== Executing Test Suite: {} ===".format(test_suite))
 
-    # Open the output file
-    output_file = open(test_suite + "/" + "output.txt", "w+")
+            # Parse the configuration file
+            with open(test_suite + "/config.json") as f:
+                cfg_data = json.load(f)
 
-    ports = serial_ports()
+            # Open the output file
+            output_file = open(test_suite + "/" + "output.txt", "w+")
 
-    if auto_select_port == True:
-        if(len(ports) < len(cfg_data["devices"])):
-            print("{}: Not enough open ports, skipping the test.".format(test_suite))
-            continue
- 
-    # Execute the tests on the devices
-    for dev in cfg_data["devices"]:
-        if auto_select_port == True:
-            cfg_data["devices"][dev]["address"] = ports[0]
-            ports.pop(0)
-        t = threading.Thread(target=board_thread, args=(cfg_data["devices"][dev], test_suite))
-        t.start()
-        threads.append(t)
+            ports = serial_ports()
 
-    # Wait for all the threads executing the test on the devices to finish
-    for t in threads:
-        t.join()
+            if auto_select_port == True:
+                if(len(ports) < len(cfg_data["devices"])):
+                    print("{}: Not enough open ports, skipping the test.".format(test_suite))
+                    continue
+        
+            # Execute the tests on the devices
+            for dev in cfg_data["devices"]:
+                if auto_select_port == True:
+                    cfg_data["devices"][dev]["address"] = ports[0]
+                    ports.pop(0)
+                t = threading.Thread(target=board_thread, args=(cfg_data["devices"][dev], test_suite))
+                t.start()
+                threads.append(t)
 
-    with open(test_suite + "/" + "expected.txt", 'r') as f:
-        expected_data = f.read()
+            # Wait for all the threads executing the test on the devices to finish
+            for t in threads:
+                t.join()
 
-    output_file.seek(0)
-    output_data = output_file.read() 
-    output_file.close()
+            with open(test_suite + "/" + "expected.txt", 'r') as f:
+                expected_data = f.read()
 
-    result = "FAILED"
-    if expected_data == output_data:
-        result = "PASSED"
-    
-    print("=== Result of {}: {} ===".format(test_suite, result))
+            output_file.seek(0)
+            output_data = output_file.read() 
+            output_file.close()
 
-    threads.clear()
-    boards.clear()
+            result = "FAILED"
+            if expected_data == output_data:
+                result = "PASSED"
+            
+            print("=== Result of {}: {} ===".format(test_suite, result))
+
+            threads.clear()
+            boards.clear()
+
+    except KeyboardInterrupt:
+        for board in boards:
+            # Send Ctrl+C Ctrl+C to the devices which will stop script execution and the handler thread will be terminated
+            board.serial.write(b"\r\x03\x03")
 
 
 
