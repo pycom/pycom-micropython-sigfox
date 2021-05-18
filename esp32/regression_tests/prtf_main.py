@@ -10,7 +10,10 @@ import threading
 threads = list()
 boards = list()
 
-class PyboardRestartError(Exception):
+class PyboardExpectedRestart(Exception):
+    pass
+
+class PyboardUnexpectedRestart(Exception):
     pass
 
 class PyboardMicroPythonError(Exception):
@@ -108,19 +111,25 @@ def pycom_stdout_write_bytes(board, b):
                 if(board.device_messages.endswith("Type \"help()\" for more information.\r\n")):
                     board.device_messages = ""
                     # This means the device restarted, need to handle it in the corresponding Thread
-                    raise PyboardRestartError("Restarted!")
+                    raise PyboardExpectedRestart("Expected restart!")
             else:
                 # Enable the next line to print the output on the terminal on the fly
                 print(board.device_id + " - " + board.device_messages, end="")
                 output_file.write(board.device_id + " - " + board.device_messages)
+                # Restart happened unintentionally most probably due to a crash
+                if(board.device_messages.endswith("Type \"help()\" for more information.\r\n")):
+                    raise PyboardUnexpectedRestart("Unexpected restart!")
                 board.device_messages = ""
+
 
 def execbuffer(board, buf):
     try:
         # timeout is specified in 0.01 sec increments (10 ms), wait maximum 10 minutes = 60.000 ms
         ret, ret_err = board.exec_raw(buf, timeout=10*60*100, data_consumer=pycom_stdout_write_bytes)
-    except PyboardRestartError as er:
+    except PyboardExpectedRestart as er:
         # Indicate that execution has not finished yet, need to re-run the commands again
+        raise er
+    except PyboardUnexpectedRestart as er:
         raise er
     except pyboard.PyboardError as er:
         print(er)
@@ -157,9 +166,21 @@ def board_thread(dev, test_suite):
                 execbuffer(board, pyfile)
                 # Execution finished successfully, no need to re-run
                 break
-            except PyboardRestartError:
+            except PyboardExpectedRestart:
                 # Continue running, this exception was caused by an intentional reset
                 board.expect_restart = False
+            except PyboardUnexpectedRestart as e:
+                message_bytes = "Unexpected restart happened!"
+                pycom_stdout_write_bytes(board, message_bytes.encode())
+                # Other exception means problem happened, signal the other threads to stop
+                for other_board in boards:
+                    # Send Ctrl+C Ctrl+C to the other devices which will stop script execution and the handler thread will be terminated
+                    if(other_board != board):
+                        other_board.serial.write(b"\r\x03\x03")
+                # Reset current board to leave it in stable state
+                board.exec_reset()
+                # Execution finished
+                break
             except PyboardMicroPythonError as e:
                 message_bytes = "MicroPython Exception happened: " + str(e)
                 pycom_stdout_write_bytes(board, message_bytes.encode())
