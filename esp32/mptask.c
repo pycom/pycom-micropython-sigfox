@@ -380,7 +380,8 @@ soft_reset_exit:
 
     uart_deinit_all();
     // TODO: rmt_deinit_all();
-    rmt_deinit_rgb();
+    // Calling rmt_deinit_rgb() here after soft-reset causes crash (later) in the RMT's driver when RGB LED is enabled
+    // rmt_deinit_rgb();
 
     soft_reset = true;
     goto soft_reset;
