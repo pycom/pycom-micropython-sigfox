@@ -217,7 +217,7 @@ if __name__ == '__main__':
             # Wait 3 second between Test Suites to not overlap accidentally and/or wait reset to finish
             time.sleep(3)
             
-            print("=== Executing Test Suite: {} ===".format(test_suite))
+            print("PRTF INFO: executing Test Suite: {}".format(test_suite))
 
             # Parse the configuration file
             with open(test_suite + "/config.json") as f:
@@ -230,7 +230,7 @@ if __name__ == '__main__':
 
             if auto_select_port == True:
                 if(len(ports) < len(cfg_data["devices"])):
-                    print("{}: Not enough open ports, skipping the test.".format(test_suite))
+                    print("PRTF INFO: {} - not enough open ports, skipping the test.".format(test_suite))
                     continue
         
             # Execute the tests on the devices
@@ -258,7 +258,7 @@ if __name__ == '__main__':
             if expected_data == output_data:
                 result = "PASSED"
             
-            print("=== Result of {}: {} ===".format(test_suite, result))
+            print("PRTF INFO: result of {}: {}".format(test_suite, result))
 
             threads.clear()
             boards.clear()
