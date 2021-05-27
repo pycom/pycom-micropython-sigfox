@@ -48,7 +48,6 @@ typedef struct _mach_rtc_obj_t {
     bool   synced;
 } mach_rtc_obj_t;
 
-static RTC_DATA_ATTR uint64_t delta_from_epoch_til_boot;
 static RTC_DATA_ATTR uint32_t rtc_user_mem_len;
 static RTC_DATA_ATTR uint8_t rtc_user_mem_data[MEM_USER_MAXLEN];
 
@@ -61,10 +60,10 @@ void rtc_init0(void) {
 
 void mach_rtc_set_us_since_epoch(uint64_t nowus) {
     struct timeval tv;
-
     // store the packet timestamp
-    gettimeofday(&tv, NULL);
-    delta_from_epoch_til_boot = nowus - (uint64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec);
+    tv.tv_usec = nowus % 1000000ull;
+    tv.tv_sec = nowus / 1000000ull;
+    settimeofday(&tv, NULL);
 }
 
 void mach_rtc_synced (void) {
@@ -78,8 +77,9 @@ bool mach_is_rtc_synced (void) {
 uint64_t mach_rtc_get_us_since_epoch(void) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
-    return (uint64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + delta_from_epoch_til_boot;
-};
+    return (uint64_t)(tv.tv_sec * 1000000ull ) + (tv.tv_usec);
+    
+}
 
 STATIC uint64_t mach_rtc_datetime_us(const mp_obj_t datetime) {
     timeutils_struct_time_t tm;
@@ -132,8 +132,6 @@ STATIC void mach_rtc_datetime(const mp_obj_t datetime) {
     if (datetime != mp_const_none) {
         useconds = mach_rtc_datetime_us(datetime);
         mach_rtc_set_us_since_epoch(useconds);
-    } else {
-        mach_rtc_set_us_since_epoch(0);
     }
 }
 
@@ -197,14 +195,10 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_KW(mach_rtc_init_obj, 1, mach_rtc_init);
 STATIC mp_obj_t mach_rtc_now (mp_obj_t self_in) {
     timeutils_struct_time_t tm;
     uint64_t useconds;
+    
+    useconds = mach_rtc_get_us_since_epoch();
 
-    struct timeval now;
-    gettimeofday(&now, NULL);
-
-    // get the time from the RTC
-    useconds = (now.tv_sec * 1000000ull ) + (now.tv_usec);
     timeutils_seconds_since_epoch_to_struct_time((useconds) / 1000000ull, &tm);
-
     mp_obj_t tuple[8] = {
         mp_obj_new_int(tm.tm_year),
         mp_obj_new_int(tm.tm_mon),

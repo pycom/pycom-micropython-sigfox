@@ -1723,7 +1723,9 @@ static bool lora_tx_space (void) {
 /// \class LoRa - Semtech SX1272 radio driver
 static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
     lora_cmd_data_t cmd_data;
-
+#if defined(FIPY) || defined(LOPY4)
+    xSemaphoreGive(xLoRaSigfoxSem);
+#endif
     cmd_data.info.init.stack_mode = args[0].u_int;
     lora_validate_mode (cmd_data.info.init.stack_mode);
 
@@ -1988,6 +1990,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
             timeout -= LORA_JOIN_WAIT_MS;
         }
         if (timeout <= 0) {
+            TimerStop( &TxNextActReqTimer );
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
         }
     }
