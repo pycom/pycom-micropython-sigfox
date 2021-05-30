@@ -592,11 +592,12 @@ static esp_err_t modem_sleep(bool enable)
         /* Disable Modem Sleep */
         err = esp_bt_sleep_disable();
 
-        /* Wakeup the modem is it is sleeping */
-        if (esp_bt_controller_is_sleeping() && err == ESP_OK)
-        {
-            esp_bt_controller_wakeup_request();
-        }
+        // TODO: replace this after got answer for: https://github.com/espressif/esp-idf/issues/7087
+        /* Wakeup the modem if it is sleeping */
+//        if (esp_bt_controller_is_sleeping() && err == ESP_OK)
+//        {
+//            esp_bt_controller_wakeup_request();
+//        }
     }
     return err;
 }
@@ -1264,7 +1265,9 @@ STATIC mp_obj_t bt_modem_sleep(mp_uint_t n_args, const mp_obj_t *args) {
         else
         {
             /* return modem sleep status */
-            return mp_obj_new_bool(esp_bt_controller_is_sleeping());
+            // return mp_obj_new_bool(esp_bt_controller_is_sleeping());
+            // TODO: replace this after got answer for: https://github.com/espressif/esp-idf/issues/7087
+            return mp_obj_new_bool(0);
         }
     }
     else

@@ -46,7 +46,7 @@ ifeq ($(PYETH_ENABLED), 1)
 APP_INC += -I$(ESP_IDF_COMP_PATH)/ethernet/include
 endif
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/include
-APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/src/esp32/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/expat/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/freertos/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/json/cJSON
@@ -139,6 +139,12 @@ APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/hci/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/bta/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bt/host/bluedroid/api/include
 APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/esp32/include/soc
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_system/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/freertos/xtensa/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/esp_timer/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/soc/esp32/include
+APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/soc/esp32/include/soc
+APP_INC += -I$(ESP_IDF_COMP_PATH)/soc/soc/include
 # Needed to find pycom_bootloader.h from pycom-esp-idf
 APP_INC += -I$(ESP_IDF_COMP_PATH)/bootloader/subproject/main
 

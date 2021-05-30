@@ -1,0 +1,11 @@
+I2C(0, I2C.MASTER, baudrate=100000)
+I2C(0, I2C.MASTER, baudrate=100000)
+I2C(0, I2C.MASTER, baudrate=100000)
+I2C(0, I2C.MASTER, baudrate=20000)
+[]
+[]
+[]
+Traceback (most recent call last):
+  File "<stdin>", line 32, in <module>
+IndexError: list index out of range
+CRASH

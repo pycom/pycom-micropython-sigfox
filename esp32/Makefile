@@ -14,7 +14,7 @@ ifeq ($(wildcard boards/$(BOARD)/.),)
     $(error Invalid BOARD specified)
 endif
 
-IDF_HASH=264a403
+IDF_HASH=0705006
 XTENSA_VERSION = "2020r3"
 
 TARGET ?= boot_app
@@ -197,7 +197,8 @@ LIBS = -L$(ESP_IDF_COMP_PATH)/esp32/lib \
        -lbt -lsdmmc -lsoc -lheap -lbootloader_support \
        -lesp_ringbuf -lefuse -lespcoredump -lapp_update \
        -lesp_common -lesp_event -lesp_wifi -lphy -lbtdm_app -lrtc -lnet80211 \
-       -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig -ljson -ltfmicro
+       -lxtensa -lpp -lcore -lmesh -lhal -lcoexist -lesp_eth -lsmartconfig -ljson -ltfmicro \
+       -lesp_timer -lesp_system -lesp_ipc
 
 ifeq ($(MOD_COAP_ENABLED), 1)
     $(info COAP Module Enabled)
