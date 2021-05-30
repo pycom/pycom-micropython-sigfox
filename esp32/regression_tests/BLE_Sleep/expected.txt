@@ -1,13 +1,10 @@
 Client - Starting...
-Client - Coex register schm btdm cb faild
 Server - Starting...
-Server - Coex register schm btdm cb faild
 Server - Advertisement has been started.
 Server - Client connected
 Client - Connection status with My_BLE_Server: True
 Client - Going to sleep for 1 second...
 Server - Client disconnected
-Client - Coex register schm btdm cb faild
 Server - Client connected
 Client - Connection status with My_BLE_Server: True
 Server - Client disconnected

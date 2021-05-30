@@ -25,10 +25,6 @@ machine.sleep(1000, True)
 
 print("Connection status with {}: {}".format(BLE_SERVER_NAME, conn.isconnected()))
 
-# To avoid crash in esp-idf 4.1 BLE stack, 1 sec waiting time is needed.
-# Fix for the problem: https://github.com/espressif/esp-idf/commit/714d88e
-time.sleep(1)
-
 conn.disconnect()
 bt.deinit()
 

@@ -1,7 +1,5 @@
 Server - Starting...
-Server - Coex register schm btdm cb faild
 Client - Starting...
-Client - Coex register schm btdm cb faild
 Server - Advertisement has been started.
 Server - Client connected
 Client - Connected to My_BLE_Server
