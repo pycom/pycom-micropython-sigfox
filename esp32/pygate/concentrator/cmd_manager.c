@@ -324,7 +324,7 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 }
 
                 /* Switch off SX1308 correlators to reduce power consumption during transmit */
-                esp_lgw_reg_w(LGW_CLKHS_EN, 0);
+                //esp_lgw_reg_w(LGW_CLKHS_EN, 0);
 
                 /* Send packet */
                 SX1308.txongoing = 1;
@@ -359,16 +359,16 @@ int cmd_manager_DecodeCmd(uint8_t *BufFromHost) {
                 }
 
                 /* reset Sx1308 */
-                sx1308_dig_reset();
+                //sx1308_dig_reset();
 
                 /* Switch SX1308 correlators back on  */
-                esp_lgw_reg_w(LGW_CLKHS_EN, 1);
+                //esp_lgw_reg_w(LGW_CLKHS_EN, 1);
 
                 /* restart SX1308 */
-                x = esp_lgw_start();
-                if (x < 0) {
+                //x = esp_lgw_start();
+                //if (x < 0) {
                     //pc.printf("lgw_start() failed\n");
-                }
+                //}
 
                 /* Send command answer */
                 BufToHost[0] = 'f';
