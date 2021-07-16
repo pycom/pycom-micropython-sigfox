@@ -173,7 +173,7 @@ void app_main(void) {
         micropy_lpwan_dio_pin_num = 23;
         micropy_lpwan_dio_pin = &pin_GPIO23;
 
-        mpTaskStack = malloc(MICROPY_TASK_STACK_SIZE_PSRAM);
+        mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE_PSRAM, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
 
         // create the MicroPython task
         mpTaskHandle =
@@ -196,7 +196,7 @@ void app_main(void) {
         micropy_lpwan_dio_pin_num = 23;
         micropy_lpwan_dio_pin = &pin_GPIO23;
 
-        mpTaskStack = malloc(MICROPY_TASK_STACK_SIZE);
+        mpTaskStack = heap_caps_malloc(MICROPY_TASK_STACK_SIZE, MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
 
         // create the MicroPython task
         mpTaskHandle =
