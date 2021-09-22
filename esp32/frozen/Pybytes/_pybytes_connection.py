@@ -46,7 +46,7 @@ except:
 
 
 class PybytesConnection:
-    def __init__(self, config, message_callback):
+    def __init__(self, config, message_callback, user_callback=None):
         if config is not None:
             self.__conf = config
             self.__conf_reader = PybytesConfigReader(config)
@@ -61,7 +61,8 @@ class PybytesConnection:
             self.__mqtt_download_topic = "d" + self.__device_id
             self.__mqtt_upload_topic = "u" + self.__device_id
             self.__pybytes_protocol = PybytesProtocol(
-                config, message_callback, pybytes_connection=self
+                config, message_callback, pybytes_connection=self,
+                user_callback=user_callback
             )
         self.__connection = None
         self.__connection_status = constants.__CONNECTION_STATUS_DISCONNECTED

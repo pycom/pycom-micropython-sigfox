@@ -8,6 +8,8 @@ available at https://www.pycom.io/opensource/licensing
 
 import os
 import pycom  # pylint: disable=import-error
+import _thread
+import time
 
 from machine import RTC
 from time import timezone
@@ -22,7 +24,11 @@ except:
 def print_debug(level, msg):
     """Print log messages into console."""
     if DEBUG is not None and level <= DEBUG:
-        print(msg)
+        print("[{:15.3f}] [{:10d}] {}".format(
+            time.ticks_ms() / 1000,
+            _thread.get_ident(),
+            msg
+        ))
 
 
 def print_debug_local(level, msg):

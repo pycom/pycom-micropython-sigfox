@@ -50,6 +50,12 @@ try:
     from pybytes_debug import print_debug
 except:
     from _pybytes_debug import print_debug
+
+try:
+    from pybytes_pyconfig import Pyconfig
+except:
+    from _pybytes_pyconfig import Pyconfig
+
 try:
     import urequest
 except:
@@ -64,6 +70,7 @@ from binascii import hexlify
 from network import Coap
 
 import os
+import sys
 import _thread
 import time
 import struct
@@ -73,7 +80,7 @@ import pycom
 
 
 class PybytesProtocol:
-    def __init__(self, config, message_callback, pybytes_connection):
+    def __init__(self, config, message_callback, pybytes_connection, user_callback=None):
         self.__conf = config
         self.__conf_reader = PybytesConfigReader(config)
         self.__thread_stack_size = 8192
@@ -84,6 +91,7 @@ class PybytesProtocol:
         self.__pybytes_library = PybytesLibrary(
             pybytes_connection=pybytes_connection, pybytes_protocol=self)
         self.__user_message_callback = message_callback
+        self.__user_callback = user_callback
         self.__pins = {}
         self.__pin_modes = {}
         self.__custom_methods = {}
@@ -150,19 +158,28 @@ class PybytesProtocol:
 
     def __process_recv_message(self, message):
         print_debug(5, "This is PybytesProtocol.__process_recv_message()")
-
         if message.payload:
             network_type, message_type, body = self.__pybytes_library.unpack_message(message.payload)
+            print_debug(99,'Message: network_type={}, message_type={}, body={}'.format(network_type, message_type, body))
         else:
             # for lora messages
             network_type, message_type, body = self.__pybytes_library.unpack_message(message)
+            print_debug(99,'Message: network_type={}, message_type={}, body={}'.format(network_type, message_type, body))
 
         if self.__user_message_callback is not None:
+
             if (message_type == constants.__TYPE_PING):
                 self.send_ping_message()
 
             elif message_type == constants.__TYPE_PONG and self.__conf.get('connection_watchdog', True):
                 self.__pybytes_connection.__wifi_lte_watchdog.feed()
+                print_debug(5, 'message type is PONG, feed watchdog')
+
+            elif (message_type == constants.__TYPE_USER and self.__user_callback is not None):
+                try:
+                    self.__user_callback(body)
+                except Exception as ex:
+                    sys.print_exception(ex)
 
             elif (message_type == constants.__TYPE_INFO):
                 self.send_info_message()
@@ -313,6 +330,21 @@ class PybytesProtocol:
                         )
                     else:
                         self.send_fcota_ping('deletion failed!')
+
+                elif (command == constants.__FCOTA_COMMAND_GATEWAY_DEPLOY):
+                    self.deploy_gateway()
+
+                elif (command == constants.__FCOTA_COMMAND_TOGGLE_GATEWAY):
+                    bodyString = body[1:len(body)].decode()
+                    try:
+                        self.toggleGateway(
+                            True if bodyString == 'true' else False
+                        )
+                        machine.reset()
+                    except Exception as ex:
+                        print(
+                            'error toggleGateway({}):{}'.format(bodyString, ex)
+                        )
 
                 else:
                     print_debug(2, "Unknown FCOTA command received")
@@ -836,3 +868,41 @@ class PybytesProtocol:
         self.update_network_config(letResp)
         self.update_firmware(letResp, applicationID, fw_type=fwtype)
         machine.reset()
+
+    def deploy_gateway(self):
+        print_debug(0, 'deploying gateway...')
+        pyconfig_url = '{}://{}'.format(
+            constants.__DEFAULT_PYCONFIG_PROTOCOL,
+            constants.__DEFAULT_PYCONFIG_DOMAIN
+        )
+        device_id = self.__conf['device_id']
+        pyconfig = Pyconfig(pyconfig_url, device_id)
+        pygate_configurations = pyconfig.get_gateway_config()
+
+        print_debug(5, pygate_configurations)
+
+        json_pygate_string = ujson.dumps(pygate_configurations)
+        self.__FCOTA.update_file_content(
+            '/flash/pybytes_pygate_config.json',
+            json_pygate_string
+        )
+        self.toggleGateway(True)
+
+        if not hasattr(os.uname(), 'pygate'):
+            print_debug(0, 'OTA deploy Pygate Firmware')
+            ota = WiFiOTA(
+                self.__conf['wifi']['ssid'],
+                self.__conf['wifi']['password'],
+                self.__conf['ota_server']['domain'],
+                self.__conf['ota_server']['port']
+            )
+            ota.update(fwtype='pygate', token=device_id)
+        machine.reset()
+
+    def toggleGateway(self, value):
+        self.__conf['gateway'] = value
+        json_string = ujson.dumps(self.__conf)
+        self.__FCOTA.update_file_content(
+            '/flash/pybytes_config.json',
+            json_string
+        )
