@@ -1103,7 +1103,7 @@ static void TASK_LoRa (void *pvParameters) {
                     mibReq.Type = MIB_NETWORK_ACTIVATION;
                     mibReq.Param.NetworkActivation = ACTIVATION_TYPE_OTAA;
                     LoRaMacMibSetRequestConfirm( &mibReq );
-                    
+                   
                     TimerStart( &TxNextActReqTimer );
                     mlmeReq.Type = MLME_JOIN;
                     mlmeReq.Req.Join.DevEui = (uint8_t *)lora_obj.u.otaa.DevEui;
@@ -1692,7 +1692,9 @@ static bool lora_tx_space (void) {
 /// \class LoRa - Semtech SX1272 radio driver
 static mp_obj_t lora_init_helper(lora_obj_t *self, const mp_arg_val_t *args) {
     lora_cmd_data_t cmd_data;
-
+#if defined(FIPY) || defined(LOPY4)
+    xSemaphoreGive(xLoRaSigfoxSem);
+#endif
     cmd_data.info.init.stack_mode = args[0].u_int;
     lora_validate_mode (cmd_data.info.init.stack_mode);
 
@@ -1974,6 +1976,7 @@ STATIC mp_obj_t lora_join(mp_uint_t n_args, const mp_obj_t *pos_args, mp_map_t *
             timeout -= LORA_JOIN_WAIT_MS;
         }
         if (timeout <= 0) {
+            TimerStop( &TxNextActReqTimer );
             nlr_raise(mp_obj_new_exception_msg(&mp_type_TimeoutError, "timed out"));
         }
     }
@@ -1990,26 +1993,28 @@ STATIC mp_obj_t lora_join_multicast_group (mp_uint_t n_args, const mp_obj_t *pos
         { MP_QSTR_mcNwkKey,     MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
         { MP_QSTR_mcAppKey,     MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_obj = MP_OBJ_NULL} },
     };
-    
+
     // parse args
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(args), allowed_args, args);
-    
+
     mp_buffer_info_t bufinfo_0, bufinfo_1;
     mp_get_buffer_raise(args[1].u_obj, &bufinfo_0, MP_BUFFER_READ);
     mp_get_buffer_raise(args[2].u_obj, &bufinfo_1, MP_BUFFER_READ);
-    
-    MulticastParams_t *channelParam = m_new_obj(MulticastParams_t);
+
+    MulticastParams_t *channelParam = heap_caps_malloc(sizeof(MulticastParams_t), MALLOC_CAP_SPIRAM);
     channelParam->Next = NULL;
     channelParam->DownLinkCounter = 0;
     channelParam->Address = args[0].u_int;
     memcpy(channelParam->NwkSKey, bufinfo_0.buf, sizeof(channelParam->NwkSKey));
     memcpy(channelParam->AppSKey, bufinfo_1.buf, sizeof(channelParam->AppSKey));
-    
+
     if (LoRaMacMulticastChannelLink(channelParam) == LORAMAC_STATUS_OK) {
         return mp_const_true;
     }
-            
+
+    // adding to the list failed, so free the memory again
+    free(channelParam);
     return mp_const_false;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_KW(lora_join_multicast_group_obj, 0, lora_join_multicast_group);
@@ -2018,7 +2023,7 @@ STATIC mp_obj_t lora_leave_multicast_group (mp_obj_t self_in, mp_obj_t multicast
     uint32_t mcAddr = mp_obj_get_int(multicast_addr_obj);
     MulticastParams_t *channelParam = LoRaMacMulticastGetChannel(mcAddr);
     if (LoRaMacMulticastChannelUnlink(channelParam) == LORAMAC_STATUS_OK) {
-        m_del_obj(MulticastParams_t, channelParam);
+        free(channelParam);
         return mp_const_true;
     }
     return mp_const_false;

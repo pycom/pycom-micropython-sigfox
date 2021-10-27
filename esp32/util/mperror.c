@@ -131,16 +131,18 @@ bool mperror_heartbeat_signal (void) {
         mperror_heart_beat.do_disable = false;
     } else if (mperror_heart_beat.enabled) {
         if (!mperror_heart_beat.beating) {
-            if ((mperror_heart_beat.on_time = mp_hal_ticks_ms_non_blocking()) - mperror_heart_beat.off_time > MPERROR_HEARTBEAT_OFF_MS) {
+            if (mp_hal_ticks_ms_non_blocking() > mperror_heart_beat.off_time) {
                 led_info.color.value = MPERROR_HEARTBEAT_COLOR;
-                led_set_color(&led_info, false, false);
+                led_set_color(&led_info, true, false);
                 mperror_heart_beat.beating = true;
+                mperror_heart_beat.on_time = mp_hal_ticks_ms_non_blocking() + MPERROR_HEARTBEAT_ON_MS;
             }
         } else {
-            if ((mperror_heart_beat.off_time = mp_hal_ticks_ms_non_blocking()) - mperror_heart_beat.on_time > MPERROR_HEARTBEAT_ON_MS) {
+            if (mp_hal_ticks_ms_non_blocking() > mperror_heart_beat.on_time) {
                 led_info.color.value = 0;
-                led_set_color(&led_info, false, false);
+                led_set_color(&led_info, true, false);
                 mperror_heart_beat.beating = false;
+                mperror_heart_beat.off_time = mp_hal_ticks_ms_non_blocking() + MPERROR_HEARTBEAT_OFF_MS;
             }
         }
     }

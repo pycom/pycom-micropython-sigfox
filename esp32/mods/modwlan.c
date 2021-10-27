@@ -760,6 +760,28 @@ STATIC void wlan_do_connect (const char* ssid, const char* bssid, const wifi_aut
         goto os_error;
     }
 
+    /* Read certificates content (if they are available) for the WPA2 Enterprise authentication */
+    if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
+        const char *wpa_cert = NULL;
+        if (wlan_wpa2_ent.ca_certs_path != NULL) {
+            wpa_cert = pycom_util_read_file(wlan_wpa2_ent.ca_certs_path, &wlan_obj.vstr_ca);
+            if(wpa_cert == NULL) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "certificate file not found"));
+            }
+        }
+
+        if (wlan_wpa2_ent.client_key_path != NULL && wlan_wpa2_ent.client_cert_path != NULL) {
+            wpa_cert = pycom_util_read_file(wlan_wpa2_ent.client_key_path, &wlan_obj.vstr_key);
+            if(wpa_cert == NULL) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "device key certificate file not found"));
+            }
+            wpa_cert = pycom_util_read_file(wlan_wpa2_ent.client_cert_path, &wlan_obj.vstr_cert);
+            if(wpa_cert == NULL) {
+                nlr_raise(mp_obj_new_exception_msg(&mp_type_OSError, "device client certificate file not found"));
+            }
+        }
+    }
+
     // The certificate files are already read at this point because this function runs outside of GIL, and the file_read functions uses MicroPython APIs
     if (auth == WIFI_AUTH_WPA2_ENTERPRISE) {
         // CA Certificate is not mandatory

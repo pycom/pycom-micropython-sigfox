@@ -57,11 +57,20 @@ def get_version_info_from_docs_conf():
                 return git_tag, "<no hash>"
     return None
 
+def get_version_info_from_pycom_version():
+    with open(os.path.join(os.path.dirname(sys.argv[0]), "..", "esp32", "pycom_version.h")) as f:
+        for line in f:
+            if line.startswith("#define SW_VERSION_NUMBER"):
+                ver = line.strip().split('"')[1]
+                git_tag = "v" + ver
+                return git_tag, "<no hash>"
+    return None
+
 def make_version_header(filename):
     # Get version info using git, with fallback to docs/conf.py
     info = get_version_info_from_git()
     if info is None:
-        info = get_version_info_from_docs_conf()
+        info = get_version_info_from_pycom_version()
 
     git_tag, git_hash = info
 

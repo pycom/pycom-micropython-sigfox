@@ -31,6 +31,7 @@ class MsgHandler:
             receive_timeout=3000,
             reconnectMethod=None
     ):
+        print_debug(5, 'starting new MsgHandler')
         self._host = ""
         self._port = -1
         self._sock = None
@@ -152,7 +153,8 @@ class MsgHandler:
         try:
             self._sock.setblocking(False)
             msg_type = self._sock.recv(1)
-        except socket.error:
+        except socket.error as err:
+            print_debug(2, '_receive_packet() socket error: {}'.format(err))
             self.disconnect()
             self.reconnectMethod()
             return False
@@ -213,7 +215,7 @@ class MsgHandler:
                 else:
                     print_debug(2, 'Packet sent. (Length: %d)' % written)
         except socket.error as err:
-            print_debug(2, 'Socket send error {0}'.format(err))
+            print_debug(2, '_send_packet() socket error {0}'.format(err))
             return False
 
         return True if len(packet) == written else False

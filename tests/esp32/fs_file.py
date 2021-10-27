@@ -74,6 +74,32 @@ def file_seek_test(path):
     print("{0}, f.tell(): {1}".format(path, f.tell()))
     f.close()
 
+def file_double_close_test(path):
+    f = open(path)
+    # Nothing should be printed out
+    f.close()
+    f.close()
+    f.close()
+
+def file_operations_after_close_test(path):
+    f = open(path, "rw")
+    f.close()
+    try:
+        f.read()
+    except Exception as e:
+        print("{0}, Exception after f.read: {1}".format(path, e))
+    try:
+        f.write("aaa")
+    except Exception as e:
+        print("{0}, Exception after f.write: {1}".format(path, e))
+    try:
+        f.flush()
+    except Exception as e:
+        print("{0}, Exception after f.flush: {1}".format(path, e))
+    # No exception should be dropped
+    f.seek(12)
+    f.tell()
+
 
 sd = SD()
 sd_fat_fs = os.mkfat(sd)
@@ -156,6 +182,14 @@ file_readinto_test(sd_path)
 #Test file.readline, file.readlines
 file_readline_test(f_path)
 file_readline_test(sd_path)
+
+#Test multiple file.close
+file_double_close_test(f_path)
+file_double_close_test(sd_path)
+
+#Test other operations after file.close()
+file_operations_after_close_test(f_path)
+file_operations_after_close_test(sd_path)
 
 os.remove(f_path)
 os.remove(sd_path)

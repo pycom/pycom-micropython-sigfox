@@ -94,10 +94,13 @@ class PybytesLibrary:
 
         if hasattr(os.uname(), 'pymesh'):
             body.append(constants.__FWTYPE_PYMESH)
+            print_debug(4, "pymesh")
         elif hasattr(os.uname(), 'pygate'):
             body.append(constants.__FWTYPE_PYGATE)
+            print_debug(4, "pygate")
         else:
             body.append(constants.__FWTYPE_DEFAULT)
+            print_debug(4, "pybytes")
 
         return self.__pack_message(constants.__TYPE_INFO, body)
 

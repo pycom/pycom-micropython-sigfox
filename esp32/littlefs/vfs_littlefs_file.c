@@ -20,6 +20,7 @@ typedef struct _pyb_file_obj_t {
     vfs_lfs_struct_t* littlefs;
     struct lfs_file_config cfg;  // Attributes of the file, e.g.: timestamp
     bool timestamp_update;  // For requesting timestamp update when closing the file
+    bool opened; // Indicate whether the file is opened
 } pyb_file_obj_t;
 
 STATIC void file_obj_print(const mp_print_t *print, mp_obj_t self_in, mp_print_kind_t kind) {
@@ -30,6 +31,12 @@ STATIC void file_obj_print(const mp_print_t *print, mp_obj_t self_in, mp_print_k
 STATIC mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int *errcode) {
 
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
+
+    if (self->opened == false) {
+        // Return EINVAL just as FatFS if the file is not opened
+        *errcode = MP_EINVAL;
+        return MP_STREAM_ERROR;
+    }
 
     xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
         lfs_ssize_t sz_out = lfs_file_read(&self->littlefs->lfs ,&self->fp, buf, size);
@@ -45,6 +52,12 @@ STATIC mp_uint_t file_obj_read(mp_obj_t self_in, void *buf, mp_uint_t size, int 
 STATIC mp_uint_t file_obj_write(mp_obj_t self_in, const void *buf, mp_uint_t size, int *errcode) {
 
     pyb_file_obj_t *self = MP_OBJ_TO_PTR(self_in);
+
+    if (self->opened == false) {
+        // Return EINVAL just as FatFS if the file is not opened
+        *errcode = MP_EINVAL;
+        return MP_STREAM_ERROR;
+    }
 
     xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
         lfs_ssize_t sz_out = lfs_file_write(&self->littlefs->lfs, &self->fp, buf, size);
@@ -89,6 +102,12 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
 
     } else if (request == MP_STREAM_FLUSH) {
 
+        if (self->opened == false) {
+            // Return EINVAL just as FatFS if the file is not opened
+            *errcode = MP_EINVAL;
+            return MP_STREAM_ERROR;
+        }
+
         xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
             int res = lfs_file_sync(&self->littlefs->lfs, &self->fp);
         xSemaphoreGive(self->littlefs->mutex);
@@ -101,16 +120,21 @@ STATIC mp_uint_t file_obj_ioctl(mp_obj_t o_in, mp_uint_t request, uintptr_t arg,
 
     } else if (request == MP_STREAM_CLOSE) {
 
+        if (self->opened == false) {
+            // Return 0 just as FatFs if the file is not opened
+            return 0;
+        }
+
         xSemaphoreTake(self->littlefs->mutex, portMAX_DELAY);
             int res = littlefs_close_common_helper(&self->littlefs->lfs, &self->fp, &self->cfg, &self->timestamp_update);
         xSemaphoreGive(self->littlefs->mutex);
+
         if (res < 0) {
             *errcode = littleFsErrorToErrno(res);
             return MP_STREAM_ERROR;
         }
-        // Free up the object so GC does not need to do that
-        m_del_obj(pyb_file_obj_t, self);
 
+        self->opened = false; // indicate a closed file
         return 0;
     } else {
         *errcode = MP_EINVAL;
@@ -165,6 +189,7 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
     pyb_file_obj_t *o = m_new_obj_with_finaliser(pyb_file_obj_t);
     o->base.type = type;
     o->timestamp_update = false;
+    o->opened = false;
 
     xSemaphoreTake(vfs->fs.littlefs.mutex, portMAX_DELAY);
         const char *fname = concat_with_cwd(&vfs->fs.littlefs, mp_obj_str_get_str(args[0].u_obj));
@@ -178,6 +203,7 @@ STATIC mp_obj_t file_open(fs_user_mount_t *vfs, const mp_obj_type_t *type, mp_ar
     }
 
     o->littlefs = &vfs->fs.littlefs;
+    o->opened = true; // File is opened successfully
 
     return MP_OBJ_FROM_PTR(o);
 }

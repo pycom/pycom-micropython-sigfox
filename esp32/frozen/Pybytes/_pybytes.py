@@ -11,9 +11,10 @@ import json
 import time
 import pycom
 import sys
+import gc
 from network import WLAN
 from binascii import hexlify, a2b_base64
-from machine import Timer, deepsleep, pin_sleep_wakeup, unique_id
+from machine import Timer, deepsleep, pin_sleep_wakeup, unique_id, pygate_init, RTC, pygate_debug_level, reset
 
 try:
     from periodical_pin import PeriodicalPin
@@ -21,9 +22,9 @@ except:
     from _periodical_pin import PeriodicalPin
 
 try:
-    from pybytes_debug import print_debug
+    from pybytes_debug import print_debug, DEBUG
 except:
-    from _pybytes_debug import print_debug
+    from _pybytes_debug import print_debug, DEBUG
 
 try:
     from pybytes_config_reader import PybytesConfigReader
@@ -36,7 +37,7 @@ class Pybytes:
     WAKEUP_ALL_LOW = const(0)   # noqa: F821
     WAKEUP_ANY_HIGH = const(1)  # noqa: F821
 
-    def __init__(self, config, activation=False, autoconnect=False):
+    def __init__(self, config, activation=False, autoconnect=False, user_callback=None):
         self.__frozen = globals().get('__name__') == '_pybytes'
         self.__activation = activation
         self.__custom_message_callback = None
@@ -45,11 +46,15 @@ class Pybytes:
         self.__smart_config = False
         self.__conf = {}
         self.__pymesh = None
+        self.__user_callback = user_callback
 
         if not self.__activation:
             self.__conf = config
             self.__conf_reader = PybytesConfigReader(config)
             pycom.wifi_on_boot(False, True)
+            if pycom.lte_modem_en_on_boot():
+                pycom.lte_modem_en_on_boot(False)
+                reset()
 
             self.__check_dump_ca()
             self.__create_pybytes_connection(self.__conf)
@@ -66,7 +71,7 @@ class Pybytes:
         except:
             from _pybytes_connection import PybytesConnection
 
-        self.__pybytes_connection = PybytesConnection(conf, self.__recv_message)
+        self.__pybytes_connection = PybytesConnection(conf, self.__recv_message, user_callback=self.__user_callback)
 
     def __check_config(self):
         try:
@@ -155,9 +160,9 @@ class Pybytes:
         topic = 'br/{}'.format(token)
         self.__pybytes_connection.__pybytes_protocol.send_pybytes_custom_method_values(signal_number, [value], topic)
 
-    def send_signal(self, signal_number, value):
+    def send_signal(self, signal_number, value, nomesh=False):
         self.__check_init()
-        if self.__pymesh:
+        if self.__pymesh and not nomesh:
             self.__pymesh.unpack_pymesh_message(signal_number, value)
         else:
             self.__pybytes_connection.__pybytes_protocol.send_pybytes_custom_method_values(signal_number, [value])
@@ -280,11 +285,51 @@ class Pybytes:
                         from _pybytes_pymesh_config import PybytesPymeshConfig
                     self.__pymesh = PybytesPymeshConfig(self)
                     self.__pymesh.pymesh_init()
+                elif hasattr(os.uname(), 'pygate') and self.get_config('gateway'):
+                    # PYGATE FIRMWARE VERSION
+                    buf = None
+                    try:
+                        with open('/flash/pybytes_pygate_config.json','r') as fp:
+                            buf = fp.read()
+                    except Exception as e:
+                        print_debug(5, e)
+                        print('pybytes_pygate_config.json file is missing or has wrong format')
+                        return
+
+                    try:
+                        print('Syncing RTC via ntp...', end='')
+                        rtc = RTC()
+                        if not rtc.synced():
+                            rtc.ntp_sync(server="pool.ntp.org")
+                            to_s = 20
+                            while not rtc.synced() and to_s > 0:
+                                print('.', end='')
+                                time.sleep(1)
+                                to_s -= 1
+                            if not rtc.synced():
+                                print('RTC sync failed. Gateway will not work')
+                                return
+                            print(" RTC synced")
+
+                    except Exception as e:
+                        print_debug(5, e)
+                        print('RTC sync failed. Gateway will not work')
+                        return
+
+                    try:
+                        gc.collect()
+                        if not DEBUG:
+                            pygate_debug_level(0)
+                        pygate_init(buf)
+                    except Exception as e:
+                        print('Pygate failed to start', e)
+                        return
             else:
                 print('ERROR! Could not connect to Pybytes!')
 
         except Exception as ex:
             print("Unable to connect to Pybytes: {}".format(ex))
+            sys.print_exception(ex)
 
     def write_config(self, file='/flash/pybytes_config.json', silent=False):
         try:
@@ -427,6 +472,12 @@ class Pybytes:
             pin_sleep_wakeup(pins, mode, enable_pull)
         self.disconnect()
         deepsleep(ms)
+
+    def message_queue_len(self):
+        try:
+            return len(pybytes.__pybytes_connection.__connection.__mqtt._msgHandler._output_queue)
+        except:
+            return None
 
     def dump_ca(self, ca_file='/flash/cert/pycom-ca.pem'):
         try:

@@ -17,10 +17,20 @@ class FCOTA:
     def __init__(self):
         pass
 
+    def is_folder(self, name):
+        try:
+            os.listdir(name)
+            return True
+        except:
+            return False
+
+    def is_file(self, name):
+        return not self.is_folder(name)
+
     def update_file_content(self, path, newContent):
         print_debug(2, 'Updating file [{}]'.format(path))
 
-        if '.' in path:
+        if self.is_file(path):
             listfDir = path.split('/')
             currentPath = '/'
             for value in listfDir:
@@ -34,7 +44,7 @@ class FCOTA:
                 # check if dir exists
                 if value not in parentList:
                     # create dir
-                    if '.' in currentPath:
+                    if self.is_file(currentPath):
                         continue
                     os.mkdir(currentPath)
 
@@ -52,7 +62,7 @@ class FCOTA:
     def delete_file(self, path):
         print_debug(2, 'FCOTA deleting file [{}]'.format(path))
         try:
-            if ('.' in path):
+            if self.is_file(path):
                 os.remove(path)
             else:
                 targetedFiles = []
@@ -67,7 +77,7 @@ class FCOTA:
                     while maxDepth >= 0:
                         for elem in targetedFiles:
                             if elem.count('/') == maxDepth:
-                                if '.' in elem:
+                                if self.is_file(elem):
                                     os.remove(elem)
                                 else:
                                     os.rmdir(elem)
@@ -87,7 +97,7 @@ class FCOTA:
 
     def get_file_size(self, path):
         print_debug(2, 'FCOTA getting file infos [{}]'.format(path))
-        if '.' in path:
+        if self.is_file(path):
             fileInfo = os.stat(path)
             print_debug(2, 'printing fileInfo tupple: ' + str(fileInfo))
             return self.convert_bytes(fileInfo[6])
@@ -96,7 +106,7 @@ class FCOTA:
     def get_file_content(self, path):
         print_debug(2, 'FCOTA reading file [{}]'.format(path))
 
-        if '.' in path:
+        if self.is_file(path):
             f = open(path, 'r')
             content = f.read()
             f.close()
@@ -113,7 +123,7 @@ class FCOTA:
         hierarchy = os.listdir()
         folders = []
         for elem in hierarchy:
-            if '.' not in elem:
+            if self.is_folder(elem):
                 folders.append(elem)
 
         while len(folders) > 0:
@@ -130,7 +140,7 @@ class FCOTA:
                         path = folders[i] + '/' + subFolders[j]
                         hierarchy.append(path)
 
-                        if '.' not in path:
+                        if self.is_folder(path):
                             foldersToCheck.append(path)
 
                         j += 1

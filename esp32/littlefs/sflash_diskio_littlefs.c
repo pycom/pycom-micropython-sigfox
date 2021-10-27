@@ -45,7 +45,7 @@ struct lfs_config lfscfg =
     .prog_size = SFLASH_BLOCK_SIZE,
     .block_size = SFLASH_BLOCK_SIZE,
     .block_count = 0, // To be initialized according to the flash size of the chip
-    .block_cycles = 0, // No block-level wear-leveling
+    .block_cycles = 100, // Enable block-level wear-leveling
     /* Current implementation of littlefs_read/prog/erase/sync() functions only operates with
      * full blocks, always the starting address of the block is passed to the driver.
      * This helps on the Power-loss resilient behavior of LittleFS, with this approach the File System will not be corrupted by corruption of a single file/block

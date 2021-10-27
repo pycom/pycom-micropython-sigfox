@@ -456,7 +456,7 @@ error:
 }
 
 STATIC const mp_arg_t mach_uart_init_args[] = {
-    { MP_QSTR_id,                              MP_ARG_OBJ,  {.u_obj = MP_OBJ_NULL} },
+    { MP_QSTR_id,                              MP_ARG_INT,  {.u_int = MACH_UART_1} },
     { MP_QSTR_baudrate,                        MP_ARG_INT,  {.u_int = 9600} },
     { MP_QSTR_bits,                            MP_ARG_INT,  {.u_int = 8} },
     { MP_QSTR_parity,                          MP_ARG_OBJ,  {.u_obj = mp_const_none} },
@@ -473,7 +473,7 @@ STATIC mp_obj_t mach_uart_make_new(const mp_obj_type_t *type, mp_uint_t n_args, 
     mp_arg_parse_all(n_args, all_args, &kw_args, MP_ARRAY_SIZE(args), mach_uart_init_args, args);
 
     // work out the uart id
-    uint uart_id = mp_obj_get_int(args[0].u_obj);
+    uint uart_id = args[0].u_int;
 
 #if defined(GPY) || defined(FIPY)
     if (uart_id > MACH_UART_1) {
