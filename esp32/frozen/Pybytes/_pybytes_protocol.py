@@ -201,9 +201,10 @@ class PybytesProtocol:
                 self.deploy_new_release(body)
 
             elif (message_type == constants.__TYPE_DEVICE_NETWORK_DEPLOY):
+                # allows for WiFi or LTE, no need to specify ssid/password as we're already connected
                 ota = WiFiOTA(
-                    self.__conf['wifi']['ssid'],
-                    self.__conf['wifi']['password'],
+                    None,
+                    None,
                     self.__conf['ota_server']['domain'],
                     self.__conf['ota_server']['port']
                 )
