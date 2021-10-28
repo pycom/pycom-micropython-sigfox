@@ -14,7 +14,7 @@ import sys
 import gc
 from network import WLAN
 from binascii import hexlify, a2b_base64
-from machine import Timer, deepsleep, pin_sleep_wakeup, unique_id, pygate_init, RTC, pygate_debug_level, reset
+from machine import Timer, deepsleep, pin_sleep_wakeup, unique_id, reset, RTC
 
 try:
     from periodical_pin import PeriodicalPin
@@ -289,6 +289,7 @@ class Pybytes:
                     # PYGATE FIRMWARE VERSION
                     buf = None
                     try:
+                        from machine import pygate_init, pygate_debug_level
                         with open('/flash/pybytes_pygate_config.json','r') as fp:
                             buf = fp.read()
                     except Exception as e:
