@@ -306,12 +306,107 @@ STATIC mp_obj_t alarm_delete(mp_obj_t self_in) {
 }
 MP_DEFINE_CONST_FUN_OBJ_1(alarm_delete_obj, alarm_delete);
 
+STATIC mp_obj_t alarm_freeze(void) {
+    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
+    uint16_t previous_state = TIMERG0.hw_timer[0].config.enable;
+    TIMERG0.hw_timer[0].config.enable = 0; // disable the counter of alarm system
+    MICROPY_END_ATOMIC_SECTION(state);
+    return mp_obj_new_int_from_uint(previous_state);
+}
+MP_DEFINE_CONST_FUN_OBJ_0(alarm_freeze_fun_obj, alarm_freeze);
+STATIC MP_DEFINE_CONST_STATICMETHOD_OBJ(alarm_freeze_obj, &alarm_freeze_fun_obj);
+
+STATIC mp_obj_t alarm_remaining(void) {
+
+    // TODO: review comments
+    // Atomic section is placed here due to the following reasons:
+    // 1. If user calls "cancel" function it might be interrupted by the ISR when reordering the list because
+    //    in this case the alarm is an active alarm which means it is placed on the alarm_heap and its heap_index != -1.
+    // 2. When GC calls this function it is 100% percent sure that the heap_index is -1, because
+    //    GC will only collect this object if it is not referred from the alarm_heap, which means it is not active thus
+    //    its heap_index == -1.
+    uint64_t current_clocks;
+    uint64_t proxima_clocks;
+    uint64_t time_ms;
+
+    if (alarm_heap.count==0) {
+        return mp_obj_new_int(0);
+    }
+
+    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
+    TIMERG0.hw_timer[0].update = 1;
+    current_clocks = ((uint64_t) TIMERG0.hw_timer[0].cnt_high << 32)
+        | (TIMERG0.hw_timer[0].cnt_low);
+    proxima_clocks = alarm_heap.data[0]->when;
+    MICROPY_END_ATOMIC_SECTION(state);
+
+    time_ms = (proxima_clocks - current_clocks)*1000/CLK_FREQ;
+    if (time_ms >> 32) {
+        time_ms = 0xFFFFFFFF;
+    }
+
+    return mp_obj_new_int_from_uint((uint32_t)time_ms);
+}
+MP_DEFINE_CONST_FUN_OBJ_0(alarm_remaining_fun_obj, alarm_remaining);
+STATIC MP_DEFINE_CONST_STATICMETHOD_OBJ(alarm_remaining_obj, &alarm_remaining_fun_obj);
+
+#define ALARM_TIME_GUARD    (4)
+STATIC mp_obj_t alarm_resume(mp_obj_t obj_offset_ms) {
+    if (!mp_obj_is_integer(obj_offset_ms)) {
+       mp_raise_ValueError("please provide a positive number for time offset in ms");
+    }
+    int64_t offset = mp_obj_int_get_checked(obj_offset_ms);
+    if (offset<0) {
+       mp_raise_ValueError("please provide a positive number for time offset in ms");
+    }
+    offset = offset*CLK_FREQ/1000;
+    uint32_t state = MICROPY_BEGIN_ATOMIC_SECTION();
+    if (TIMERG0.hw_timer[0].config.enable==1) {
+        MICROPY_END_ATOMIC_SECTION(state);
+        mp_raise_ValueError("alarm already running, time correction not applied");
+    }
+    uint32_t i = 0;
+    TIMERG0.hw_timer[0].update = 1;
+    uint64_t expired_event_when = ALARM_TIME_GUARD +
+        (((uint64_t) TIMERG0.hw_timer[0].cnt_high << 32) | (TIMERG0.hw_timer[0].cnt_low));
+    for (; i<alarm_heap.count; i++) {
+        if ((alarm_heap.data[i]->when-offset)<0x0FFFFFFFFFFFFFFF) { //beaware this is a limitation on distant events
+            break;
+        }
+        alarm_heap.data[i]->when = expired_event_when;
+        if (i==0) {
+
+        }
+    }
+    for (; i<alarm_heap.count; i++) {
+        alarm_heap.data[i]->when -= offset;
+        if (alarm_heap.data[i]->when<ALARM_TIME_GUARD) {
+            alarm_heap.data[i]->when = ALARM_TIME_GUARD;
+        }
+    }
+    if (alarm_heap.count > 0) {
+        uint64_t when;
+        when = alarm_heap.data[0]->when;
+        TIMERG0.hw_timer[0].alarm_high = (uint32_t) (when >> 32);
+        TIMERG0.hw_timer[0].alarm_low = (uint32_t) when;
+        //TIMERG0.hw_timer[0].config.alarm_en = 1; // enable the alarm system
+    }
+    TIMERG0.hw_timer[0].config.enable = 1; //enable the counter of alarm system
+    MICROPY_END_ATOMIC_SECTION(state);
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(alarm_resume_fun_obj, alarm_resume);
+STATIC MP_DEFINE_CONST_STATICMETHOD_OBJ(alarm_resume_obj, &alarm_resume_fun_obj);
+
 
 STATIC const mp_map_elem_t mach_timer_alarm_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___name__),            MP_OBJ_NEW_QSTR(MP_QSTR_alarm) },
     { MP_OBJ_NEW_QSTR(MP_QSTR___del__),             (mp_obj_t) &alarm_delete_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_callback),            (mp_obj_t) &alarm_callback_obj },
     { MP_OBJ_NEW_QSTR(MP_QSTR_cancel),              (mp_obj_t) &alarm_delete_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_FreezeAll),           (mp_obj_t) &alarm_freeze_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_Remaining),           (mp_obj_t) &alarm_remaining_obj },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_ResumeAll),           (mp_obj_t) &alarm_resume_obj },
 };
 
 STATIC MP_DEFINE_CONST_DICT(mach_timer_alarm_dict, mach_timer_alarm_dict_table);
