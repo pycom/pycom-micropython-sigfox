@@ -400,6 +400,49 @@ STATIC mp_obj_t machine_idle(void) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(machine_idle_obj, machine_idle);
 
+/**
+ * @brief machine_configure_wakeup_gpios enable gpios to wake up the core from light sleep
+ * 
+ * param in: list of tuples of pin name and logic level
+ * machine.configure_wakeup_gpios([('P13',1), ('P14',0)])
+ * machine.configure_wakeup_gpios([('P13',machine.WAKEUP_HIGH), ('P14',machine.WAKEUP_LOW)])
+ */
+#define ESP_LIGHTSLEEP_WAKEUP_LOW       0
+#define ESP_LIGHTSLEEP_WAKEUP_HIGH      1
+STATIC mp_obj_t machine_configure_wakeup_gpios(mp_obj_t list_obj) {
+    if (!mp_obj_is_type(list_obj, &mp_type_list)) {
+        mp_raise_TypeError("list of tuples expected");
+    }
+    mp_obj_list_t* list = MP_OBJ_TO_PTR(list_obj);
+    for (uint32_t i=0; i<list->len; i++) {
+        if (!mp_obj_is_type(list->items[i], &mp_type_tuple)) {
+            mp_raise_TypeError("list of tuples expected");
+        }
+        mp_obj_tuple_t* tuple = MP_OBJ_TO_PTR(list->items[i]);
+        if (tuple->len!=2) {
+            mp_raise_TypeError("list of tuples expected");
+        }
+        volatile pin_obj_t* temp = pin_find(tuple->items[0]);
+        if (!mp_obj_is_int(tuple->items[1])) {
+            mp_raise_ValueError("wrong level");
+        }
+        uint32_t level = mp_obj_get_int(tuple->items[1]);
+        if ((level!=ESP_LIGHTSLEEP_WAKEUP_LOW) && (level!=ESP_LIGHTSLEEP_WAKEUP_HIGH)) {
+            mp_raise_ValueError("wrong level");
+        }
+    }
+
+    for (uint32_t i=0; i<list->len; i++) {
+        mp_obj_tuple_t* tuple = MP_OBJ_TO_PTR(list->items[i]);
+        pin_obj_t* gpio = pin_find(tuple->items[0]);
+        gpio_int_type_t level = mp_obj_get_int(tuple->items[1]);
+        gpio_wakeup_enable(gpio->pin_number, level+GPIO_INTR_LOW_LEVEL);
+    }
+    esp_sleep_enable_gpio_wakeup();
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_1(machine_configure_wakeup_gpios_obj, machine_configure_wakeup_gpios);
+
 STATIC mp_obj_t machine_sleep (uint n_args, const mp_obj_t *arg) {
 
     bool reconnect = false;
@@ -612,6 +655,7 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_main),                    (mp_obj_t)(&machine_main_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_rng),                     (mp_obj_t)(&machine_rng_get_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_idle),                    (mp_obj_t)(&machine_idle_obj) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_configure_wakeup_gpios),  (mp_obj_t)(&machine_configure_wakeup_gpios_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sleep),                   (mp_obj_t)(&machine_sleep_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_deepsleep),               (mp_obj_t)(&machine_deepsleep_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_remaining_sleep_time),    (mp_obj_t)(&machine_remaining_sleep_time_obj) },
@@ -668,6 +712,9 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_WAKEUP_ALL_LOW),      MP_OBJ_NEW_SMALL_INT(ESP_EXT1_WAKEUP_ALL_LOW) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_WAKEUP_ANY_HIGH),     MP_OBJ_NEW_SMALL_INT(ESP_EXT1_WAKEUP_ANY_HIGH) },
+
+    { MP_OBJ_NEW_QSTR(MP_QSTR_WAKEUP_LOW),          MP_OBJ_NEW_SMALL_INT(ESP_LIGHTSLEEP_WAKEUP_LOW) },
+    { MP_OBJ_NEW_QSTR(MP_QSTR_WAKEUP_HIGH),         MP_OBJ_NEW_SMALL_INT(ESP_LIGHTSLEEP_WAKEUP_HIGH) },
 
 #ifdef PYGATE_ENABLED
     { MP_OBJ_NEW_QSTR(MP_QSTR_PYGATE_START_EVT),    MP_OBJ_NEW_SMALL_INT(PYGATE_START_EVENT) },
