@@ -12,7 +12,7 @@ node {
     stage('Checkout') {
         checkout scm
         sh 'rm -rf esp-idf'
-        sh 'git clone --recursive -b modbus-tcp-idf_v4.1 git@github.com:pycom/pycom-esp-idf-private.git esp-idf'
+        sh 'git clone --recursive -b idf_v4.1_modbus git@github.com:pycom/pycom-esp-idf.git esp-idf'
         IDF_HASH=get_idf_hash()
         dir('esp-idf'){
             sh 'git checkout ' + IDF_HASH
