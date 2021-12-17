@@ -1,5 +1,5 @@
 def buildVersion
-def boards_to_build = ["WiPy", "LoPy", "GPy", "FiPy", "LoPy4"]
+def boards_to_build = ["WiPy", "GPy", "FiPy", "LoPy4"]
 def variants_to_build = [ "PYBYTES" ]
 // FIXME: there must be a better way of adding PYGATE to Jenkins, but it evades me :(
 def pygate_boards_to_build = ["WiPy", "GPy", "LoPy4"]
