@@ -526,6 +526,50 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
 }
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsleep);
 
+#ifdef MOD_LORA_ENABLED
+STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_param) {
+    int64_t sleep_time = (int64_t)mp_obj_get_int_truncated(duraton_ms) * 1000;
+    bool reconnect = (bool)mp_obj_is_true(reconnect_param);
+
+#if defined(FIPY) || defined(GPY) || defined(MOD_GM02S_ENABLED)
+    if (lteppp_get_modem_conn_state() < E_LTE_MODEM_DISCONNECTED) {
+        lteppp_deinit();
+    }
+#endif
+    /* adjust setting to allow wake up by lora int wire */
+    //gpio_wakeup_enable(SX1272.DIO.pin_obj->pin_number, IRQ_HIGH_LEVEL);
+    gpio_wakeup_enable(23, IRQ_HIGH_LEVEL);
+    esp_sleep_enable_gpio_wakeup();
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
+    esp_sleep_enable_timer_wakeup(sleep_time);
+
+    modbt_deinit(reconnect);
+    // TRUE means wlan_deinit is called from machine_sleep
+    wlan_deinit(mp_const_true);
+
+    if(ESP_OK != esp_light_sleep_start())
+    {
+        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Wifi or BT not stopped before sleep"));
+    }
+
+    /* resume wlan */
+    wlan_resume(reconnect);
+    /* resume bt */
+    bt_resume(reconnect);
+
+    /* restore setting for the lora int */
+    //gpio_set_intr_type(SX1272.DIO.pin_obj->pin_number, IRQ_RISING_EDGE);
+    gpio_set_intr_type(23, IRQ_RISING_EDGE);
+
+    return mp_const_none;
+}
+STATIC MP_DEFINE_CONST_FUN_OBJ_2(machine_sleep_overlora_obj, machine_sleep_overlora);
+#endif
+
+
 STATIC mp_obj_t machine_remaining_sleep_time (void) {
     return mp_obj_new_int_from_uint(mach_remaining_sleep_time);
 }
@@ -657,6 +701,9 @@ STATIC const mp_rom_map_elem_t machine_module_globals_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_idle),                    (mp_obj_t)(&machine_idle_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_configure_wakeup_gpios),  (mp_obj_t)(&machine_configure_wakeup_gpios_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_sleep),                   (mp_obj_t)(&machine_sleep_obj) },
+#ifdef MOD_LORA_ENABLED
+    { MP_OBJ_NEW_QSTR(MP_QSTR_sleep_overlora),          (mp_obj_t)(&machine_sleep_overlora_obj) },
+#endif
     { MP_OBJ_NEW_QSTR(MP_QSTR_deepsleep),               (mp_obj_t)(&machine_deepsleep_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_remaining_sleep_time),    (mp_obj_t)(&machine_remaining_sleep_time_obj) },
     { MP_OBJ_NEW_QSTR(MP_QSTR_pin_sleep_wakeup),        (mp_obj_t)(&machine_pin_sleep_wakeup_obj) },
