@@ -537,8 +537,7 @@ STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_
     }
 #endif
     /* adjust setting to allow wake up by lora int wire */
-    //gpio_wakeup_enable(SX1272.DIO.pin_obj->pin_number, IRQ_HIGH_LEVEL);
-    gpio_wakeup_enable(23, IRQ_HIGH_LEVEL);
+    gpio_wakeup_enable(SX1272.DIO.pin_obj->pin_number, IRQ_HIGH_LEVEL);
     esp_sleep_enable_gpio_wakeup();
 
     struct timeval tv;
@@ -561,14 +560,12 @@ STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_
     bt_resume(reconnect);
 
     /* restore setting for the lora int */
-    //gpio_set_intr_type(SX1272.DIO.pin_obj->pin_number, IRQ_RISING_EDGE);
-    gpio_set_intr_type(23, IRQ_RISING_EDGE);
+    gpio_set_intr_type(SX1272.DIO.pin_obj->pin_number, IRQ_RISING_EDGE);
 
     return mp_const_none;
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_2(machine_sleep_overlora_obj, machine_sleep_overlora);
 #endif
-
 
 STATIC mp_obj_t machine_remaining_sleep_time (void) {
     return mp_obj_new_int_from_uint(mach_remaining_sleep_time);
