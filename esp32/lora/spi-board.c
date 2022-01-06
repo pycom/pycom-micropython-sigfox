@@ -335,17 +335,21 @@ IRAM_ATTR void SpiOutBuf(Spi_t *obj, uint8_t* pData, uint8_t len) {
         // set transfer size in bits
         SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 8*bytes-1, SPI_USR_MOSI_DBITLEN_S);
         SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 8*bytes-1, SPI_USR_MISO_DBITLEN_S);
-        // write data
+        // write some data
+        WRITE_PERI_REG(SPI_W0_REG(spiNum)+0, *(uint32_t*)pData);
+        pData += 4;
+        WRITE_PERI_REG(SPI_W0_REG(spiNum)+4, *(uint32_t*)pData);
+        pData += 4;
+        // start to send data
+        SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
         if(1)
         {
             uint8_t index;
-            for (index = 0; index<bytes; index+=4) {
+            for (index = (4+4); index<bytes; index+=4) {
                 WRITE_PERI_REG(SPI_W0_REG(spiNum)+index, *(uint32_t*)pData);
                 pData += 4;
             }
         }
-        // start to send data
-        SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
         // do side operations
         len -= bytes;
         while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
