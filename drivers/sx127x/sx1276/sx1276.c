@@ -1296,13 +1296,35 @@ IRAM_ATTR void SX1276Write( uint16_t addr, uint8_t data )
     SX1276WriteBuffer( addr, &data, 1 );
 }
 
+uint8_t SpiIn8Out16(Spi_t *obj, uint16_t outData);
 IRAM_ATTR uint8_t SX1276Read( uint16_t addr )
+{
+    uint8_t data;
+
+    //NSS = 0;
+    GpioWrite( &SX1276.Spi.Nss, 0 );
+
+    data = SpiIn8Out16(&SX1276.Spi, addr&0x7F);
+
+    //NSS = 1;
+    GpioWrite( &SX1276.Spi.Nss, 1 );
+    //SpiIn8Out16(&SX1276.Spi, data);
+    //SpiIn8Out16(&SX1276.Spi, 0x89);
+
+    if (addr == 0x13) {
+        data = data | 0x80;
+    }
+
+    return data;
+}
+IRAM_ATTR uint8_t SX1276ReadOld( uint16_t addr )
 {
     uint8_t data;
     SX1276ReadBuffer( addr, &data, 1 );
     return data;
 }
 
+void SpiOutBuf(Spi_t *obj, uint8_t* pData, uint8_t len);
 IRAM_ATTR void SX1276WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
 {
     uint8_t i;
@@ -1311,28 +1333,24 @@ IRAM_ATTR void SX1276WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
     GpioWrite( &SX1276.Spi.Nss, 0 );
 
     SpiInOut( &SX1276.Spi, addr | 0x80 );
-    for( i = 0; i < size; i++ )
-    {
-        SpiInOut( &SX1276.Spi, buffer[i] );
-    }
+    // for( i = 0; i < size; i++ )
+    // {
+    //     SpiInOut( &SX1276.Spi, buffer[i] );
+    // }
+    SpiOutBuf(&SX1276.Spi, buffer, size);
 
     //NSS = 1;
     GpioWrite( &SX1276.Spi.Nss, 1 );
 }
 
+void SpiInBuf(Spi_t *obj, uint8_t* pData, uint8_t len);
 IRAM_ATTR void SX1276ReadBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
 {
-    uint8_t i;
-
     //NSS = 0;
     GpioWrite( &SX1276.Spi.Nss, 0 );
 
     SpiInOut( &SX1276.Spi, addr & 0x7F );
-
-    for( i = 0; i < size; i++ )
-    {
-        buffer[i] = SpiInOut( &SX1276.Spi, 0 );
-    }
+    SpiInBuf(&SX1276.Spi, buffer, size);
 
     //NSS = 1;
     GpioWrite( &SX1276.Spi.Nss, 1 );
