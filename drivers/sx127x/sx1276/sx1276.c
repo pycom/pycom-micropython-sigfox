@@ -1291,9 +1291,19 @@ IRAM_ATTR void SX1276SetModem( RadioModems_t modem )
     }
 }
 
+void SpiIn0Out16(Spi_t *obj, uint16_t outData);
 IRAM_ATTR void SX1276Write( uint16_t addr, uint8_t data )
 {
-    SX1276WriteBuffer( addr, &data, 1 );
+    //SX1276WriteBuffer( addr, &data, 1 );
+    uint16_t data16 = data;
+    data16 = (data16<<8) + (addr|0x80);
+    //NSS = 0;
+    GpioWrite( &SX1276.Spi.Nss, 0 );
+
+    SpiIn0Out16(&SX1276.Spi, data16);
+
+    //NSS = 1;
+    GpioWrite( &SX1276.Spi.Nss, 1 );
 }
 
 uint8_t SpiIn8Out16(Spi_t *obj, uint16_t outData);

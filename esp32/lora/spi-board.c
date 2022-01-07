@@ -220,6 +220,19 @@ IRAM_ATTR void SpiOut(uint32_t spiNum, uint32_t outData) {
 }
 #endif
 
+IRAM_ATTR void SpiIn0Out16(Spi_t *obj, uint16_t outData) {
+    uint32_t spiNum = (uint32_t)obj->Spi;
+    // set data send buffer length (2 bytes)
+    SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 15, SPI_USR_MOSI_DBITLEN_S);
+    SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 15, SPI_USR_MISO_DBITLEN_S);
+    // load the send buffer
+    WRITE_PERI_REG(SPI_W0_REG(spiNum), outData);
+    // start to send data
+    SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
+    // wait transfer complete
+    while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
+}
+
 IRAM_ATTR uint8_t SpiIn8Out16(Spi_t *obj, uint16_t outData) {
     uint32_t spiNum = (uint32_t)obj->Spi;
 
@@ -335,21 +348,17 @@ IRAM_ATTR void SpiOutBuf(Spi_t *obj, uint8_t* pData, uint8_t len) {
         // set transfer size in bits
         SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 8*bytes-1, SPI_USR_MOSI_DBITLEN_S);
         SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 8*bytes-1, SPI_USR_MISO_DBITLEN_S);
-        // write some data
-        WRITE_PERI_REG(SPI_W0_REG(spiNum)+0, *(uint32_t*)pData);
-        pData += 4;
-        WRITE_PERI_REG(SPI_W0_REG(spiNum)+4, *(uint32_t*)pData);
-        pData += 4;
-        // start to send data
-        SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
+        // write data
         if(1)
         {
             uint8_t index;
-            for (index = (4+4); index<bytes; index+=4) {
+            for (index = 0; index<bytes; index+=4) {
                 WRITE_PERI_REG(SPI_W0_REG(spiNum)+index, *(uint32_t*)pData);
                 pData += 4;
             }
         }
+        // start to send data
+        SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
         // do side operations
         len -= bytes;
         while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
