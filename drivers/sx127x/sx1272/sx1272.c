@@ -1126,18 +1126,41 @@ IRAM_ATTR void SX1272SetModem( RadioModems_t modem )
     }
 }
 
+void SpiIn0Out16(Spi_t *obj, uint16_t outData);
 IRAM_ATTR void SX1272Write( uint16_t addr, uint8_t data )
 {
-    SX1272WriteBuffer( addr, &data, 1 );
+    //SX1272WriteBuffer( addr, &data, 1 );
+    uint16_t data16 = data;
+    data16 = (data16<<8) + (addr|0x80);
+    //NSS = 0;
+    GpioWrite( &SX1272.Spi.Nss, 0 );
+
+    SpiIn0Out16(&SX1272.Spi, data16);
+
+    //NSS = 1;
+    GpioWrite( &SX1272.Spi.Nss, 1 );
 }
 
+uint8_t SpiIn8Out16(Spi_t *obj, uint16_t outData);
 IRAM_ATTR uint8_t SX1272Read( uint16_t addr )
 {
     uint8_t data;
-    SX1272ReadBuffer( addr, &data, 1 );
+    //NSS = 0;
+    GpioWrite( &SX1272.Spi.Nss, 0 );
+
+    data = SpiIn8Out16(&SX1272.Spi, addr&0x7F);
+
+    //NSS = 1;
+    GpioWrite( &SX1272.Spi.Nss, 1 );
+
+    if (addr == 0x13) {
+        data = data | 0x80;
+    }
+
     return data;
 }
 
+void SpiOutBuf(Spi_t *obj, uint8_t* pData, uint8_t len);
 IRAM_ATTR void SX1272WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
 {
     uint8_t i;
@@ -1146,15 +1169,13 @@ IRAM_ATTR void SX1272WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
     GpioWrite( &SX1272.Spi.Nss, 0 );
 
     SpiInOut( &SX1272.Spi, addr | 0x80 );
-    for( i = 0; i < size; i++ )
-    {
-        SpiInOut( &SX1272.Spi, buffer[i] );
-    }
+    SpiOutBuf(&SX1272.Spi, buffer, size);
 
     //NSS = 1;
     GpioWrite( &SX1272.Spi.Nss, 1 );
 }
 
+void SpiInBuf(Spi_t *obj, uint8_t* pData, uint8_t len);
 IRAM_ATTR void SX1272ReadBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
 {
     uint8_t i;
@@ -1163,11 +1184,7 @@ IRAM_ATTR void SX1272ReadBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
     GpioWrite( &SX1272.Spi.Nss, 0 );
 
     SpiInOut( &SX1272.Spi, addr & 0x7F );
-
-    for( i = 0; i < size; i++ )
-    {
-        buffer[i] = SpiInOut( &SX1272.Spi, 0 );
-    }
+    SpiInBuf(&SX1272.Spi, buffer, size);
 
     //NSS = 1;
     GpioWrite( &SX1272.Spi.Nss, 1 );
