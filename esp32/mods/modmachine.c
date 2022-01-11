@@ -527,9 +527,23 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsleep);
 
 #ifdef MOD_LORA_ENABLED
+#define MIN_SLEEP_TIME      100LL*1000 // us
+#define WAIT_SLEEP_TIME     5 // ms
+bool LoRaActionsWaiting (void);
 STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_param) {
     int64_t sleep_time = (int64_t)mp_obj_get_int_truncated(duraton_ms) * 1000;
     bool reconnect = (bool)mp_obj_is_true(reconnect_param);
+
+    while (modlora_lora_needs_processor_active()) {
+        mp_hal_delay_ms(WAIT_SLEEP_TIME);
+        sleep_time -= WAIT_SLEEP_TIME*1000;
+        if (sleep_time<MIN_SLEEP_TIME) {
+            return mp_const_none;
+        }
+    }
+    if (sleep_time<MIN_SLEEP_TIME) {
+        return mp_const_none;
+    }
 
 #if defined(FIPY) || defined(GPY) || defined(MOD_GM02S_ENABLED)
     if (lteppp_get_modem_conn_state() < E_LTE_MODEM_DISCONNECTED) {

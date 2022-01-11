@@ -1126,7 +1126,6 @@ IRAM_ATTR void SX1272SetModem( RadioModems_t modem )
     }
 }
 
-void SpiIn0Out16(Spi_t *obj, uint16_t outData);
 IRAM_ATTR void SX1272Write( uint16_t addr, uint8_t data )
 {
     //SX1272WriteBuffer( addr, &data, 1 );
@@ -1152,10 +1151,6 @@ IRAM_ATTR uint8_t SX1272Read( uint16_t addr )
 
     //NSS = 1;
     GpioWrite( &SX1272.Spi.Nss, 1 );
-
-    if (addr == 0x13) {
-        data = data | 0x80;
-    }
 
     return data;
 }

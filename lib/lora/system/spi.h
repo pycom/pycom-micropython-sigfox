@@ -86,6 +86,8 @@ uint8_t SpiInOut(uint32_t spiNum, uint32_t outData);
 #endif
 #if defined(SIPY) || defined (LOPY4) || defined(FIPY)
 void SpiOut(uint32_t spiNum, uint32_t outData );
+void SpiIn0Out16(Spi_t *obj, uint16_t outData);
+uint8_t SpiIn8Out16(Spi_t *obj, uint16_t outData);
 #endif
 
 #endif  // __SPI_LORA_H__

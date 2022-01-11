@@ -456,6 +456,22 @@ void lora_ot_send(const uint8_t *buf, uint16_t len) {
 }
 #endif  // #ifdef LORA_OPENTHREAD_ENABLED
 
+bool modlora_lora_needs_processor_active (void)
+{
+    // returns true 
+    if (!xQueueIsQueueEmptyFromISR(xCmdQueue)) {
+        return true;
+    }
+    if (
+        (lora_obj.state != E_LORA_STATE_RX)   && 
+        (lora_obj.state != E_LORA_STATE_TX)   &&
+        (lora_obj.state != E_LORA_STATE_IDLE) &&
+        (1)) {
+        return true;
+    }
+    return false;
+}
+
 /******************************************************************************
  DEFINE PRIVATE FUNCTIONS
  ******************************************************************************/

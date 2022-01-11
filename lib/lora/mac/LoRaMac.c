@@ -1459,7 +1459,6 @@ bool LoRaMacIsBusy( void )
     return true;
 }
 
-
 static void LoRaMacEnableRequests( LoRaMacRequestHandling_t requestState )
 {
     MacCtx.AllowRequests = requestState;

@@ -233,7 +233,7 @@ IRAM_ATTR void SpiIn0Out16(Spi_t *obj, uint16_t outData) {
     while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
 }
 
-IRAM_ATTR uint8_t SpiIn8Out16(Spi_t *obj, uint16_t outData) {
+IRAM_ATTR uint8_t SpiIn8Out16Bug(Spi_t *obj, uint16_t outData) {
     uint32_t spiNum = (uint32_t)obj->Spi;
     // set data send buffer length (2 bytes)
     SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 15, SPI_USR_MOSI_DBITLEN_S);
@@ -248,7 +248,7 @@ IRAM_ATTR uint8_t SpiIn8Out16(Spi_t *obj, uint16_t outData) {
     return (READ_PERI_REG(SPI_W0_REG(spiNum))>>8);
 }
 
-IRAM_ATTR uint8_t SpiIn8Out16Slow(Spi_t *obj, uint16_t outData) {
+IRAM_ATTR uint8_t SpiIn8Out16/*Slow*/(Spi_t *obj, uint16_t outData) {
     uint32_t spiNum = (uint32_t)obj->Spi;
     // set data send buffer length (1 byte)
     SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 7, SPI_USR_MOSI_DBITLEN_S);

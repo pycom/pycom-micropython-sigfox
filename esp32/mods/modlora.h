@@ -152,4 +152,6 @@ IRAM_ATTR extern void modlora_set_timer_callback(modlora_timerCallback cb, void 
 extern int lora_ot_recv(uint8_t *buf, int8_t *rssi);
 extern void lora_ot_send(const uint8_t *buf, uint16_t len);
 
+extern bool modlora_lora_needs_processor_active (void);
+
 #endif  // MODLORA_H_
