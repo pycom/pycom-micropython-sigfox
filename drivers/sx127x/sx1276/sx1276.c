@@ -1327,7 +1327,6 @@ IRAM_ATTR uint8_t SX1276ReadOld( uint16_t addr )
     return data;
 }
 
-void SpiOutBuf(Spi_t *obj, uint8_t* pData, uint8_t len);
 IRAM_ATTR void SX1276WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
 {
     uint8_t i;
@@ -1346,7 +1345,6 @@ IRAM_ATTR void SX1276WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
     GpioWrite( &SX1276.Spi.Nss, 1 );
 }
 
-void SpiInBuf(Spi_t *obj, uint8_t* pData, uint8_t len);
 IRAM_ATTR void SX1276ReadBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
 {
     //NSS = 0;
