@@ -87,7 +87,7 @@ void SpiInit( Spi_t *obj, PinNames mosi, PinNames miso, PinNames sclk, PinNames 
                            .bitOrder = SpiBitOrder_MSBFirst, .halfMode = SpiWorkMode_Full};
 #else
     // configure the SPI port
-    spi_attr_t spi_attr = {.mode = SpiMode_Master, .subMode = SpiSubMode_0, .speed = SpiSpeed_10MHz,
+    spi_attr_t spi_attr = {.mode = SpiMode_Master, .subMode = SpiSubMode_0, .speed = SpiSpeed_10MHz+1,
                            .bitOrder = SpiBitOrder_MSBFirst, .halfMode = SpiWorkMode_Full};
 #endif
     spi_init((uint32_t)obj->Spi, &spi_attr);
@@ -233,7 +233,7 @@ IRAM_ATTR void SpiIn0Out16(Spi_t *obj, uint16_t outData) {
     while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
 }
 
-IRAM_ATTR uint8_t SpiIn8Out16Bug(Spi_t *obj, uint16_t outData) {
+IRAM_ATTR uint8_t SpiIn8Out16(Spi_t *obj, uint16_t outData) {
     uint32_t spiNum = (uint32_t)obj->Spi;
     // set data send buffer length (2 bytes)
     SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 15, SPI_USR_MOSI_DBITLEN_S);
@@ -246,25 +246,6 @@ IRAM_ATTR uint8_t SpiIn8Out16Bug(Spi_t *obj, uint16_t outData) {
     while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
     // read data out
     return (READ_PERI_REG(SPI_W0_REG(spiNum))>>8);
-}
-
-IRAM_ATTR uint8_t SpiIn8Out16/*Slow*/(Spi_t *obj, uint16_t outData) {
-    uint32_t spiNum = (uint32_t)obj->Spi;
-    // set data send buffer length (1 byte)
-    SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 7, SPI_USR_MOSI_DBITLEN_S);
-    SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 7, SPI_USR_MISO_DBITLEN_S);
-    // load the send buffer
-    WRITE_PERI_REG(SPI_W0_REG(spiNum), outData);
-    // start to send data
-    SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
-    // wait transfer complete
-    while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
-    // start to send data
-    SET_PERI_REG_MASK(SPI_CMD_REG(spiNum), SPI_USR);
-    // wait transfer complete
-    while (READ_PERI_REG(SPI_CMD_REG(spiNum)) & SPI_USR);
-    // read data out
-    return READ_PERI_REG(SPI_W0_REG(spiNum));
 }
 
 IRAM_ATTR void SpiInBuf(Spi_t *obj, uint8_t* pData, uint8_t len) {
