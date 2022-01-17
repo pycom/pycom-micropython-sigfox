@@ -72,6 +72,19 @@ Maintainer: Miguel Luis and Gregory Cristian
 #define RADIO_NSS                                   micropy_lpwan_ncs_pin_index
 
 #define RADIO_DIO                                   micropy_lpwan_dio_pin_index
+
+#define LPWAN_NCS_PIN_NUMBER   (18)
+#define LPWAN_NCS_PIN          (&pin_GPIO18)
+#endif
+
+#if defined (WIPY)
+#define LPWAN_NCS_PIN_NUMBER   (18)
+#define LPWAN_NCS_PIN          (&pin_GPIO18)
+#endif
+
+#if defined (GPY)
+#define LPWAN_NCS_PIN_NUMBER   (18)
+#define LPWAN_NCS_PIN          (&pin_GPIO18)
 #endif
 
 void BoardInitPeriph( void );

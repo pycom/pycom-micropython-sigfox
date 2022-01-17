@@ -54,6 +54,8 @@
 #include "esp_event_loop.h"
 #include "app_sys_evt.h"
 
+#include "esp32/lora/board.h"
+
 
 TaskHandle_t mpTaskHandle;
 TaskHandle_t svTaskHandle;
@@ -167,8 +169,8 @@ void app_main(void) {
         micropy_hw_antenna_diversity_pin_num = MICROPY_SECOND_GEN_ANT_SELECT_PIN_NUM;
 
         micropy_lpwan_ncs_pin_index = 1;
-        micropy_lpwan_ncs_pin_num = 18;
-        micropy_lpwan_ncs_pin = &pin_GPIO18;
+        micropy_lpwan_ncs_pin_num = LPWAN_NCS_PIN_NUMBER;
+        micropy_lpwan_ncs_pin = LPWAN_NCS_PIN;
 
         micropy_lpwan_use_reset_pin = false;
 

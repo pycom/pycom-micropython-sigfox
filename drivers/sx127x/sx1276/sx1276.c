@@ -1296,12 +1296,12 @@ IRAM_ATTR void SX1276Write( uint16_t addr, uint8_t data )
     uint16_t data16 = data;
     data16 = (data16<<8) + (addr|0x80);
     //NSS = 0;
-    GpioWrite( &SX1276.Spi.Nss, 0 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
     SpiIn0Out16(&SX1276.Spi, data16);
 
     //NSS = 1;
-    GpioWrite( &SX1276.Spi.Nss, 1 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 }
 
 IRAM_ATTR uint8_t SX1276Read( uint16_t addr )
@@ -1309,19 +1309,13 @@ IRAM_ATTR uint8_t SX1276Read( uint16_t addr )
     uint8_t data;
 
     //NSS = 0;
-    GpioWrite( &SX1276.Spi.Nss, 0 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
     data = SpiIn8Out16(&SX1276.Spi, addr&0x7F);
 
     //NSS = 1;
-    GpioWrite( &SX1276.Spi.Nss, 1 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
-    return data;
-}
-IRAM_ATTR uint8_t SX1276ReadOld( uint16_t addr )
-{
-    uint8_t data;
-    SX1276ReadBuffer( addr, &data, 1 );
     return data;
 }
 
@@ -1330,7 +1324,7 @@ IRAM_ATTR void SX1276WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
     uint8_t i;
 
     //NSS = 0;
-    GpioWrite( &SX1276.Spi.Nss, 0 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
     SpiInOut( &SX1276.Spi, addr | 0x80 );
     // for( i = 0; i < size; i++ )
@@ -1340,19 +1334,19 @@ IRAM_ATTR void SX1276WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
     SpiOutBuf(&SX1276.Spi, buffer, size);
 
     //NSS = 1;
-    GpioWrite( &SX1276.Spi.Nss, 1 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 }
 
 IRAM_ATTR void SX1276ReadBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
 {
     //NSS = 0;
-    GpioWrite( &SX1276.Spi.Nss, 0 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
     SpiInOut( &SX1276.Spi, addr & 0x7F );
     SpiInBuf(&SX1276.Spi, buffer, size);
 
     //NSS = 1;
-    GpioWrite( &SX1276.Spi.Nss, 1 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 }
 
 IRAM_ATTR void SX1276WriteFifo( uint8_t *buffer, uint8_t size )

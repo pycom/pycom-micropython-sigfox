@@ -1131,24 +1131,24 @@ IRAM_ATTR void SX1272Write( uint16_t addr, uint8_t data )
     uint16_t data16 = data;
     data16 = (data16<<8) + (addr|0x80);
     //NSS = 0;
-    GpioWrite( &SX1272.Spi.Nss, 0 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
     SpiIn0Out16(&SX1272.Spi, data16);
 
     //NSS = 1;
-    GpioWrite( &SX1272.Spi.Nss, 1 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 }
 
 IRAM_ATTR uint8_t SX1272Read( uint16_t addr )
 {
     uint8_t data;
     //NSS = 0;
-    GpioWrite( &SX1272.Spi.Nss, 0 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
     data = SpiIn8Out16(&SX1272.Spi, addr&0x7F);
 
     //NSS = 1;
-    GpioWrite( &SX1272.Spi.Nss, 1 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
     return data;
 }
@@ -1158,13 +1158,13 @@ IRAM_ATTR void SX1272WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
     uint8_t i;
 
     //NSS = 0;
-    GpioWrite( &SX1272.Spi.Nss, 0 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
     SpiInOut( &SX1272.Spi, addr | 0x80 );
     SpiOutBuf(&SX1272.Spi, buffer, size);
 
     //NSS = 1;
-    GpioWrite( &SX1272.Spi.Nss, 1 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 }
 
 IRAM_ATTR void SX1272ReadBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
@@ -1172,13 +1172,13 @@ IRAM_ATTR void SX1272ReadBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
     uint8_t i;
 
     //NSS = 0;
-    GpioWrite( &SX1272.Spi.Nss, 0 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
     SpiInOut( &SX1272.Spi, addr & 0x7F );
     SpiInBuf(&SX1272.Spi, buffer, size);
 
     //NSS = 1;
-    GpioWrite( &SX1272.Spi.Nss, 1 );
+    GPIO_REG_WRITE(GPIO_OUT_W1TS_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 }
 
 IRAM_ATTR void SX1272WriteFifo( uint8_t *buffer, uint8_t size )
