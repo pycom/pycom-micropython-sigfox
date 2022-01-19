@@ -171,7 +171,7 @@ void SpiFrequency( Spi_t *obj, uint32_t hz ) {
 IRAM_ATTR uint16_t SpiInOut(Spi_t *obj, uint16_t outData) {
     uint32_t spiNum = (uint32_t)obj->Spi;
 
-#if defined(FIPY) || defined(LOPY4)
+#if defined(FIPY) || defined(LOPY4) || defined(LOPY)
     // set data send buffer length (1 byte)
     SET_PERI_REG_BITS(SPI_MOSI_DLEN_REG(spiNum), SPI_USR_MOSI_DBITLEN, 7, SPI_USR_MOSI_DBITLEN_S);
     SET_PERI_REG_BITS(SPI_MISO_DLEN_REG(spiNum), SPI_USR_MISO_DBITLEN, 7, SPI_USR_MISO_DBITLEN_S);
