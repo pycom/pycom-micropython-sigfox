@@ -109,10 +109,11 @@ static void RtcAlarmIrq( void );
 /*!
  * \brief Callback for the hw_timer when counter overflows
  */
+#define TIMEOUT_WINDOW      (1000*60)    //60sec
 static IRAM_ATTR void TimerTickCallback (void) {
-
     RTCTimerTickCounter++;
-    if (RTCTimeoutCntValue > 0 && RTCTimerTickCounter == RTCTimeoutCntValue) {
+    if ((RTCTimeoutCntValue > 0) && 
+        (TIMEOUT_WINDOW > (RTCTimerTickCounter-RTCTimeoutCntValue))) {
         RtcAlarmIrq();
     }
 }
