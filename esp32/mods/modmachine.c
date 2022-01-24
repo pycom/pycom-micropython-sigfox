@@ -527,29 +527,52 @@ STATIC mp_obj_t machine_deepsleep (uint n_args, const mp_obj_t *arg) {
 MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsleep);
 
 #ifdef MOD_LORA_ENABLED
-#define MIN_SLEEP_TIME      100LL*1000 // us
+#define MIN_SLEEP_TIME      150LL*1000 // us
 #define WAIT_SLEEP_TIME     5 // ms
 bool LoRaActionsWaiting (void);
 STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_param) {
     int64_t sleep_time = (int64_t)mp_obj_get_int_truncated(duraton_ms) * 1000;
     bool reconnect = (bool)mp_obj_is_true(reconnect_param);
 
-    while (modlora_lora_needs_processor_active()) {
-        mp_hal_delay_ms(WAIT_SLEEP_TIME);
-        sleep_time -= WAIT_SLEEP_TIME*1000;
-        if (sleep_time<MIN_SLEEP_TIME) {
-            return mp_const_none;
-        }
-    }
     if (sleep_time<MIN_SLEEP_TIME) {
         return mp_const_none;
     }
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
+    esp_sleep_enable_timer_wakeup(sleep_time);
 
 #if defined(FIPY) || defined(GPY) || defined(MOD_GM02S_ENABLED)
     if (lteppp_get_modem_conn_state() < E_LTE_MODEM_DISCONNECTED) {
         lteppp_deinit();
     }
 #endif
+
+    modbt_deinit(reconnect);
+    // TRUE means wlan_deinit is called from machine_sleep
+    wlan_deinit(mp_const_true);
+
+    while (modlora_lora_needs_processor_active()) {
+        mp_hal_delay_ms(WAIT_SLEEP_TIME);
+        sleep_time -= WAIT_SLEEP_TIME*1000;
+        if (sleep_time<MIN_SLEEP_TIME) {
+            // timer off
+            /* resume wlan */
+            wlan_resume(reconnect);
+            /* resume bt */
+            bt_resume(reconnect);
+            return mp_const_none;
+        }
+    }
+    if (sleep_time<MIN_SLEEP_TIME) {
+        // timer off
+        /* resume wlan */
+        wlan_resume(reconnect);
+        /* resume bt */
+        bt_resume(reconnect);
+        return mp_const_none;
+    }
+
     /* adjust setting to allow wake up by lora int wire */
 #if defined(FIPY) || defined(LOPY)
     gpio_wakeup_enable(SX1272.DIO.pin_obj->pin_number, IRQ_HIGH_LEVEL);
@@ -559,24 +582,10 @@ STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_
 #endif
     esp_sleep_enable_gpio_wakeup();
 
-    struct timeval tv;
-    gettimeofday(&tv, NULL);
-    mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
-    esp_sleep_enable_timer_wakeup(sleep_time);
-
-    modbt_deinit(reconnect);
-    // TRUE means wlan_deinit is called from machine_sleep
-    wlan_deinit(mp_const_true);
-
     if(ESP_OK != esp_light_sleep_start())
     {
         nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Wifi or BT not stopped before sleep"));
     }
-
-    /* resume wlan */
-    wlan_resume(reconnect);
-    /* resume bt */
-    bt_resume(reconnect);
 
     /* restore setting for the lora int */
 #if defined(FIPY) || defined(LOPY)
@@ -585,6 +594,11 @@ STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_
 #if defined(LOPY4)
     gpio_set_intr_type(SX1276.DIO.pin_obj->pin_number, IRQ_RISING_EDGE);
 #endif
+
+    /* resume wlan */
+    wlan_resume(reconnect);
+    /* resume bt */
+    bt_resume(reconnect);
 
     return mp_const_none;
 }
