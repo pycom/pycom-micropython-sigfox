@@ -174,6 +174,13 @@ void RtcProcess( void );
  */
 TimerTime_t RtcTempCompensation( TimerTime_t period, float temperature );
 
+/*!
+ * \brief Compensate for the time spent sleeping
+ *
+ * \param [IN] offset_ms is the time in ms spent in sleep mode
+ */
+void TimerTickAdjust(uint64_t offset_ms);
+
 #ifdef __cplusplus
 }
 #endif

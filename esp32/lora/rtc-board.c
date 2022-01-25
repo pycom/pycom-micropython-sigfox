@@ -118,6 +118,10 @@ static IRAM_ATTR void TimerTickCallback (void) {
     }
 }
 
+IRAM_ATTR void TimerTickAdjust(uint64_t offset_ms) {
+    RTCTimerTickCounter += offset_ms;
+}
+
 void RtcInit( void )
 {
     if( RtcInitialized == false )

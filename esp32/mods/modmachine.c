@@ -92,6 +92,8 @@
 #include "soc/rtc_cntl_reg.h"
 #include "soc/sens_reg.h"
 
+#include "rtc-board.h"
+
 #ifdef PYGATE_ENABLED
 #include "cmd_manager.h"
 #include "../pygate/concentrator/loragw_hal_esp.h"
@@ -582,9 +584,19 @@ STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_
 #endif
     esp_sleep_enable_gpio_wakeup();
 
-    if(ESP_OK != esp_light_sleep_start())
     {
-        nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Wifi or BT not stopped before sleep"));
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        uint64_t ts_start = (int64_t)(tv.tv_sec * 1000000ull) + tv.tv_usec;
+        uint64_t ts_stop;
+        
+        if(ESP_OK != esp_light_sleep_start())
+        {
+            nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Wifi or BT not stopped before sleep"));
+        }
+        gettimeofday(&tv, NULL);
+        ts_stop = (int64_t)(tv.tv_sec * 1000000ull) + tv.tv_usec;
+        TimerTickAdjust((ts_stop-ts_start)/1000);
     }
 
     /* restore setting for the lora int */
