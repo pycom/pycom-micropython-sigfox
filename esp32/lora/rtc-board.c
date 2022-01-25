@@ -112,13 +112,13 @@ static void RtcAlarmIrq( void );
 #define TIMEOUT_WINDOW      (1000*60)    //60sec
 static IRAM_ATTR void TimerTickCallback (void) {
     RTCTimerTickCounter++;
-    if ((RTCTimeoutCntValue > 0) && 
+    if ((RtcTimerContext.AlarmState == ALARM_RUNNING) && 
         (TIMEOUT_WINDOW > (RTCTimerTickCounter-RTCTimeoutCntValue))) {
         RtcAlarmIrq();
     }
 }
 
-IRAM_ATTR void TimerTickAdjust(uint64_t offset_ms) {
+IRAM_ATTR void TimerTickAdjust(uint32_t offset_ms) {
     RTCTimerTickCounter += offset_ms;
 }
 
@@ -251,4 +251,12 @@ static IRAM_ATTR void RtcAlarmIrq( void )
 
     // NOTE: The handler should take less then 1 ms otherwise the clock shifts
     TimerIrqHandler( );
+}
+
+IRAM_ATTR uint32_t RtcRemaingMs(void)
+{
+    if (RtcTimerContext.AlarmState == ALARM_STOPPED) {
+        return 0xFFFFFFFF;
+    }
+    return RTCTimeoutCntValue-RTCTimerTickCounter;
 }

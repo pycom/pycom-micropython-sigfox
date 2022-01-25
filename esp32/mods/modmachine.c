@@ -533,16 +533,20 @@ MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(machine_deepsleep_obj, 0, 1, machine_deepsle
 #define WAIT_SLEEP_TIME     5 // ms
 bool LoRaActionsWaiting (void);
 STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_param) {
-    int64_t sleep_time = (int64_t)mp_obj_get_int_truncated(duraton_ms) * 1000;
+    uint64_t sleep_time = (uint64_t)mp_obj_get_int_truncated(duraton_ms) * 1000;
     bool reconnect = (bool)mp_obj_is_true(reconnect_param);
+    uint64_t alarm_duration;
+    struct timeval tv;
+    uint64_t ts_start;
+    uint64_t ts_stop;
 
     if (sleep_time<MIN_SLEEP_TIME) {
         return mp_const_none;
     }
-    struct timeval tv;
+
     gettimeofday(&tv, NULL);
-    mach_expected_wakeup_time = (int64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec) + sleep_time;
-    esp_sleep_enable_timer_wakeup(sleep_time);
+    ts_start = (uint64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec);
+    mach_expected_wakeup_time = ts_start + sleep_time;
 
 #if defined(FIPY) || defined(GPY) || defined(MOD_GM02S_ENABLED)
     if (lteppp_get_modem_conn_state() < E_LTE_MODEM_DISCONNECTED) {
@@ -553,6 +557,10 @@ STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_
     modbt_deinit(reconnect);
     // TRUE means wlan_deinit is called from machine_sleep
     wlan_deinit(mp_const_true);
+
+    gettimeofday(&tv, NULL);
+    ts_stop = (uint64_t)((tv.tv_sec * 1000000ull) + tv.tv_usec);
+    sleep_time -= (ts_stop - ts_start);
 
     while (modlora_lora_needs_processor_active()) {
         mp_hal_delay_ms(WAIT_SLEEP_TIME);
@@ -566,6 +574,11 @@ STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_
             return mp_const_none;
         }
     }
+
+    alarm_duration = (uint64_t)RtcRemaingMs() * 1000;
+    if (sleep_time>alarm_duration){
+        sleep_time = alarm_duration;
+    }
     if (sleep_time<MIN_SLEEP_TIME) {
         // timer off
         /* resume wlan */
@@ -574,6 +587,8 @@ STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_
         bt_resume(reconnect);
         return mp_const_none;
     }
+
+    esp_sleep_enable_timer_wakeup(sleep_time);
 
     /* adjust setting to allow wake up by lora int wire */
 #if defined(FIPY) || defined(LOPY)
@@ -585,17 +600,16 @@ STATIC mp_obj_t machine_sleep_overlora (mp_obj_t duraton_ms, mp_obj_t reconnect_
     esp_sleep_enable_gpio_wakeup();
 
     {
-        struct timeval tv;
         gettimeofday(&tv, NULL);
-        uint64_t ts_start = (int64_t)(tv.tv_sec * 1000000ull) + tv.tv_usec;
-        uint64_t ts_stop;
+        ts_start = (uint64_t)(tv.tv_sec * 1000000ull) + tv.tv_usec;
         
         if(ESP_OK != esp_light_sleep_start())
         {
             nlr_raise(mp_obj_new_exception_msg_varg(&mp_type_ValueError, "Wifi or BT not stopped before sleep"));
         }
+
         gettimeofday(&tv, NULL);
-        ts_stop = (int64_t)(tv.tv_sec * 1000000ull) + tv.tv_usec;
+        ts_stop = (uint64_t)(tv.tv_sec * 1000000ull) + tv.tv_usec;
         TimerTickAdjust((ts_stop-ts_start)/1000);
     }
 

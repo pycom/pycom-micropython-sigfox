@@ -179,7 +179,14 @@ TimerTime_t RtcTempCompensation( TimerTime_t period, float temperature );
  *
  * \param [IN] offset_ms is the time in ms spent in sleep mode
  */
-void TimerTickAdjust(uint64_t offset_ms);
+void TimerTickAdjust(uint32_t offset_ms);
+
+/*!
+ * \brief Returns the time remaining until next alarm
+ *
+ * \param [OUT] the time in ms or 0xFFFFFFFF if no alarm
+ */
+uint32_t RtcRemaingMs(void);
 
 #ifdef __cplusplus
 }
