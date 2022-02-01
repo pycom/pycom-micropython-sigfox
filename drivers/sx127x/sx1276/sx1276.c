@@ -1321,16 +1321,10 @@ IRAM_ATTR uint8_t SX1276Read( uint16_t addr )
 
 IRAM_ATTR void SX1276WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
 {
-    uint8_t i;
-
     //NSS = 0;
     GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
     SpiInOut( &SX1276.Spi, addr | 0x80 );
-    // for( i = 0; i < size; i++ )
-    // {
-    //     SpiInOut( &SX1276.Spi, buffer[i] );
-    // }
     SpiOutBuf(&SX1276.Spi, buffer, size);
 
     //NSS = 1;

@@ -1155,8 +1155,6 @@ IRAM_ATTR uint8_t SX1272Read( uint16_t addr )
 
 IRAM_ATTR void SX1272WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
 {
-    uint8_t i;
-
     //NSS = 0;
     GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
@@ -1169,8 +1167,6 @@ IRAM_ATTR void SX1272WriteBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
 
 IRAM_ATTR void SX1272ReadBuffer( uint16_t addr, uint8_t *buffer, uint8_t size )
 {
-    uint8_t i;
-
     //NSS = 0;
     GPIO_REG_WRITE(GPIO_OUT_W1TC_REG, 1 << LPWAN_NCS_PIN_NUMBER);
 
