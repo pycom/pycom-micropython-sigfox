@@ -49,6 +49,8 @@ STATIC mp_obj_t ssl_session_free(mp_obj_t self_in) {
 }
 STATIC MP_DEFINE_CONST_FUN_OBJ_1(ssl_session_free_obj, ssl_session_free);
 
+STATIC const char *aws_protos[2];
+
 STATIC const mp_map_elem_t ssl_session_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR___del__),             (mp_obj_t)&ssl_session_free_obj },
 };
@@ -73,7 +75,7 @@ STATIC const mp_obj_type_t ssl_socket_type = {
 
 static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const mbedtls_ssl_session *saved_session, const char *host_name,
                                      const char *ca_cert, const char *client_cert, const char *client_key,
-                                     uint32_t ssl_verify, uint32_t client_or_server) {
+                                     uint32_t ssl_verify, uint32_t client_or_server, const char *aws_protocol) {
 
     int32_t ret;
     mbedtls_ssl_init(&ssl_sock->ssl);
@@ -123,6 +125,11 @@ static int32_t mod_ssl_setup_socket (mp_obj_ssl_socket_t *ssl_sock, const mbedtl
         return ret;
     }
 
+    if (aws_protocol != NULL) {
+        aws_protos[0] = aws_protocol;
+        aws_protos[1] = NULL;
+        mbedtls_ssl_conf_alpn_protocols(&ssl_sock->conf, aws_protos);
+    }
     mbedtls_ssl_conf_authmode(&ssl_sock->conf, ssl_verify);
     mbedtls_ssl_conf_rng(&ssl_sock->conf, mbedtls_ctr_drbg_random, &ssl_sock->ctr_drbg);
     mbedtls_ssl_conf_ca_chain(&ssl_sock->conf, &ssl_sock->cacert, NULL);
@@ -219,6 +226,7 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
         { MP_QSTR_server_hostname,              MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
         { MP_QSTR_saved_session,                MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
         { MP_QSTR_timeout,                      MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
+        { MP_QSTR_alpn_protocol,                MP_ARG_KW_ONLY  | MP_ARG_OBJ,  {.u_obj = mp_const_none} },
     };
 
     int32_t _error;
@@ -233,6 +241,9 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
     if (verify_type != MBEDTLS_SSL_VERIFY_NONE && args[6].u_obj == mp_const_none) {
         goto arg_error;
     }
+    const char *aws_protocol  = (args[10].u_obj == mp_const_none) ? NULL : mp_obj_str_get_str(args[10].u_obj);
+
+    printf("ALPN protocol: %s\n", aws_protocol);
 
     // retrieve the file paths (with an 6 byte offset in order to strip it from the '/flash' prefix)
     const char *keyfile_path  = (args[1].u_obj == mp_const_none) ? NULL : mp_obj_str_get_str(args[1].u_obj);
@@ -303,7 +314,7 @@ STATIC mp_obj_t mod_ssl_wrap_socket(mp_uint_t n_args, const mp_obj_t *pos_args, 
     MP_THREAD_GIL_EXIT();
 
     _error = mod_ssl_setup_socket(ssl_sock, saved_session, host_name, ca_cert, client_cert, client_key,
-                                  verify_type, server_side ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT);
+                                  verify_type, server_side ? MBEDTLS_SSL_IS_SERVER : MBEDTLS_SSL_IS_CLIENT, aws_protocol);
 
     MP_THREAD_GIL_ENTER();
 
