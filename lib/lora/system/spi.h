@@ -72,7 +72,7 @@ void SpiFrequency( Spi_t *obj, uint32_t hz );
  * \param [IN] outData Byte to be sent
  * \retval inData      Received byte.
  */
-#if defined(LOPY) || defined (LOPY4) || defined(FIPY)
+#if defined(LOPY) || defined (LOPY4) || defined(FIPY) || defined(TBEAMv1)
 uint16_t SpiInOut( Spi_t *obj, uint16_t outData );
 #elif defined(SIPY)
 uint8_t SpiInOut(uint32_t spiNum, uint32_t outData);
@@ -84,7 +84,7 @@ uint8_t SpiInOut(uint32_t spiNum, uint32_t outData);
  * \retval void
  */
 #endif
-#if defined(SIPY) || defined (LOPY4) || defined(FIPY)
+#if defined(SIPY) || defined (LOPY4) || defined(FIPY) || defined(TBEAMv1)
 void SpiOut(uint32_t spiNum, uint32_t outData );
 #endif
 

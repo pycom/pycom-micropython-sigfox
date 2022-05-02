@@ -312,7 +312,7 @@ STATIC mp_obj_t lora_nvram_erase (mp_obj_t self_in);
 /******************************************************************************
  DECLARE PUBLIC DATA
  ******************************************************************************/
-#if defined(FIPY) || defined(LOPY4)
+#if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
 SemaphoreHandle_t xLoRaSigfoxSem;
 #endif
 
@@ -324,7 +324,7 @@ void modlora_init0(void) {
     xRxQueue = xQueueCreate(LORA_DATA_QUEUE_SIZE_MAX, sizeof(lora_rx_data_t));
     xCbQueue = xQueueCreate(LORA_CB_QUEUE_SIZE_MAX, sizeof(modlora_timerCallback));
     LoRaEvents = xEventGroupCreate();
-#if defined(FIPY) || defined(LOPY4)
+#if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
     xLoRaSigfoxSem = xSemaphoreCreateMutex();
 #endif
 
@@ -559,7 +559,7 @@ static void McpsConfirm (McpsConfirm_t *McpsConfirm) {
         status |= LORA_STATUS_ERROR;
         xEventGroupSetBits(LoRaEvents, status);
     }
-#if defined(FIPY) || defined(LOPY4)
+#if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
     xSemaphoreGive(xLoRaSigfoxSem);
 #endif
 }
@@ -753,7 +753,7 @@ static void MlmeConfirm (MlmeConfirm_t *MlmeConfirm) {
                 break;
         }
     }
-#if defined(FIPY) || defined(LOPY4)
+#if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
     xSemaphoreGive(xLoRaSigfoxSem);
 #endif
 }
@@ -783,7 +783,7 @@ static void MlmeIndication( MlmeIndication_t *mlmeIndication )
     {
         case MLME_SCHEDULE_UPLINK:
         {// The MAC signals that we shall provide an uplink as soon as possible
-            printf("Trying to send uplink\n");
+            //printf("Trying to send uplink\n");
             OnTxNextActReqTimerEvent( );
             break;
         }
@@ -983,7 +983,7 @@ static void TASK_LoRa (void *pvParameters) {
 
                         // taking sigfox semaphore blocks ?!?!?
                         // maybe, in the end of TX sempahore has to be released sooner
-//                        #if defined(FIPY) || defined(LOPY4)
+//                        #if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
 //                            xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
 //                        #endif
                         Radio.Send(task_cmd_data.info.tx.data, task_cmd_data.info.tx.len);
@@ -1045,7 +1045,7 @@ static void TASK_LoRa (void *pvParameters) {
                                 mcpsReq.Req.Unconfirmed.Datarate = task_cmd_data.info.tx.dr;
                             }
                         }
-                    #if defined(FIPY) || defined(LOPY4)
+                    #if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
                         xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                     #endif
 
@@ -1060,7 +1060,7 @@ static void TASK_LoRa (void *pvParameters) {
                             lora_obj.state = E_LORA_STATE_IDLE;
                             status |= LORA_STATUS_ERROR;
                             xEventGroupSetBits(LoRaEvents, status);
-                        #if defined(FIPY) || defined(LOPY4)
+                        #if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
                             xSemaphoreGive(xLoRaSigfoxSem);
                         #endif
                         } else {
@@ -1072,7 +1072,7 @@ static void TASK_LoRa (void *pvParameters) {
                     Radio.Sleep();
                     lora_obj.state = E_LORA_STATE_SLEEP;
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
-                #if defined(FIPY) || defined(LOPY4)
+                #if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
                     xSemaphoreGive(xLoRaSigfoxSem);
                 #endif
                     break;
@@ -1081,7 +1081,7 @@ static void TASK_LoRa (void *pvParameters) {
                     Radio.Rx(LORA_RX_TIMEOUT);
                     lora_obj.state = E_LORA_STATE_RX;
                     xEventGroupSetBits(LoRaEvents, LORA_STATUS_COMPLETED);
-                #if defined(FIPY) || defined(LOPY4)
+                #if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
                     xSemaphoreGive(xLoRaSigfoxSem);
                 #endif
                     break;
@@ -1097,7 +1097,7 @@ static void TASK_LoRa (void *pvParameters) {
             TimerStop( &TxNextActReqTimer );
             if (!lora_obj.joined) {
                 if (lora_obj.activation == E_LORA_ACTIVATION_OTAA) {
-                #if defined(FIPY) || defined(LOPY4)
+                #if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
                     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
                 #endif
                     mibReq.Type = MIB_NETWORK_ACTIVATION;
@@ -1166,7 +1166,7 @@ static void TASK_LoRa (void *pvParameters) {
             //lora_obj.state = E_LORA_STATE_IDLE;
             lora_obj.state = E_LORA_STATE_RX;
             Radio.Rx(LORA_RX_TIMEOUT);
-        #if defined(FIPY) || defined(LOPY4)
+        #if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
             xSemaphoreGive(xLoRaSigfoxSem);
         #endif
             break;
@@ -1177,7 +1177,7 @@ static void TASK_LoRa (void *pvParameters) {
             //lora_obj.state = E_LORA_STATE_IDLE;
             lora_obj.state = E_LORA_STATE_RX;
             Radio.Rx(LORA_RX_TIMEOUT);
-        #if defined(FIPY) || defined(LOPY4)
+        #if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
             xSemaphoreGive(xLoRaSigfoxSem);
         #endif
             break;
@@ -1349,7 +1349,7 @@ static void lora_validate_frequency (uint32_t frequency) {
             }
             break;
         case LORAMAC_REGION_CN470:
-        #if defined(LOPY4)
+        #if defined(LOPY4) || defined (TBEAMv1)
             if (frequency < 470000000 || frequency > 510000000) {
                 goto freq_error;
             }
@@ -1363,7 +1363,7 @@ static void lora_validate_frequency (uint32_t frequency) {
             }
             break;
         case LORAMAC_REGION_EU433:
-        #if defined(LOPY4)
+        #if defined(LOPY4) || defined (TBEAMv1)
             if (frequency < 433000000 || frequency > 435000000) { // LoRa 433 - 434
                 goto freq_error;
             }
@@ -1497,7 +1497,7 @@ static void lora_validate_region (LoRaMacRegion_t region) {
     if (region != LORAMAC_REGION_AS923 && region != LORAMAC_REGION_AU915
         && region != LORAMAC_REGION_EU868 && region != LORAMAC_REGION_US915
         && region != LORAMAC_REGION_IN865
-#if defined(LOPY4)
+#if defined(LOPY4) || defined (TBEAMv1)
         && region != LORAMAC_REGION_EU433 && region != LORAMAC_REGION_CN470
 #endif
         ) {
@@ -1562,7 +1562,7 @@ static int32_t lora_send (const byte *buf, uint32_t len, uint32_t timeout_ms) {
     lora_cmd_data_t cmd_data;
 
 /*
-#if defined(FIPY) || defined(LOPY4)
+#if defined(FIPY) || defined(LOPY4) || defined (TBEAMv1)
     xSemaphoreTake(xLoRaSigfoxSem, portMAX_DELAY);
     lora_get_config (&cmd_data);
     cmd_data.cmd = E_LORA_CMD_INIT;

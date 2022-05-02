@@ -32,7 +32,7 @@ STATIC const mp_arg_t sigfox_init_args[] = {
     { MP_QSTR_id,                             MP_ARG_INT,   {.u_int  = 0} },
     { MP_QSTR_mode,                           MP_ARG_INT,   {.u_int  = E_SIGFOX_MODE_SIGFOX} },
     { MP_QSTR_rcz,                            MP_ARG_INT,   {.u_int  = E_SIGFOX_RCZ1} },
-#if !defined(FIPY) && !defined(LOPY4)
+#if !defined(FIPY) && !defined(LOPY4) && !defined (TBEAMv1)
     { MP_QSTR_frequency,     MP_ARG_KW_ONLY | MP_ARG_OBJ,   {.u_obj  = mp_const_none} },
 #endif
 };
@@ -107,7 +107,7 @@ STATIC const mp_map_elem_t sigfox_locals_dict_table[] = {
     { MP_OBJ_NEW_QSTR(MP_QSTR_reset),               (mp_obj_t)&sigfox_reset_obj },
 
     { MP_OBJ_NEW_QSTR(MP_QSTR_SIGFOX),              MP_OBJ_NEW_SMALL_INT(E_SIGFOX_MODE_SIGFOX) },
-#if !defined(FIPY) && !defined(LOPY4)
+#if !defined(FIPY) && !defined(LOPY4) && !defined (TBEAMv1)
     { MP_OBJ_NEW_QSTR(MP_QSTR_FSK),                 MP_OBJ_NEW_SMALL_INT(E_SIGFOX_MODE_FSK) },
 #endif
 

@@ -117,7 +117,7 @@ mp_obj_t mod_network_find_nic(const mod_network_socket_obj_t *s, const uint8_t *
                 return nic;
             }
 #endif
-        #if defined (SIPY) || defined (LOPY4) || defined (FIPY)
+        #if defined (SIPY) || defined (LOPY4) || defined (FIPY)  || defined (TBEAMv1)
         #if defined (MOD_SIGFOX_ENABLED)
             if (mp_obj_get_type(nic) == (mp_obj_type_t *)&mod_network_nic_type_sigfox && s->sock_base.u.u_param.domain == AF_SIGFOX) {
                 return nic;
@@ -374,7 +374,7 @@ STATIC const mp_map_elem_t mp_module_network_globals_table[] = {
 #ifdef MOD_LORA_ENABLED
     { MP_OBJ_NEW_QSTR(MP_QSTR_LoRa),                (mp_obj_t)&mod_network_nic_type_lora },
 #endif
-#if defined (SIPY) || defined (LOPY4) || defined (FIPY)
+#if defined (SIPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
 #if defined (MOD_SIGFOX_ENABLED)
     { MP_OBJ_NEW_QSTR(MP_QSTR_Sigfox),              (mp_obj_t)&mod_network_nic_type_sigfox },
 #endif
