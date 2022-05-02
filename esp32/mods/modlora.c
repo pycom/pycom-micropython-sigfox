@@ -783,7 +783,7 @@ static void MlmeIndication( MlmeIndication_t *mlmeIndication )
     {
         case MLME_SCHEDULE_UPLINK:
         {// The MAC signals that we shall provide an uplink as soon as possible
-            printf("Trying to send uplink\n");
+            //printf("Trying to send uplink\n");
             OnTxNextActReqTimerEvent( );
             break;
         }
