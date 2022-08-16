@@ -214,7 +214,7 @@ static const ftp_cmd_t ftp_cmd_table[] = { { "FEAT" }, { "SYST" }, { "CDUP" }, {
                                            { "NOOP" }, { "QUIT" } };
 
 static const ftp_month_t ftp_month[] = { { "Jan" }, { "Feb" }, { "Mar" }, { "Apr" },
-                                         { "May" }, { "Jun" }, { "Jul" }, { "Ago" },
+                                         { "May" }, { "Jun" }, { "Jul" }, { "Aug" },
                                          { "Sep" }, { "Oct" }, { "Nov" }, { "Dec" } };
 
 static SocketFifoElement_t ftp_fifoelements[FTP_SOCKETFIFO_ELEMENTS_MAX];
