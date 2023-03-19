@@ -1523,7 +1523,7 @@ STATIC mp_obj_t lte_debug_buff(void) {
 STATIC MP_DEFINE_CONST_FUN_OBJ_0(lte_debug_buff_obj, lte_debug_buff);
 #endif
 STATIC mp_obj_t lte_reconnect_uart (void) {
-    connect_lte_uart();
+    connect_lte_uart(true);
     lteppp_disconnect();
     lte_obj.init = false;
     return mp_const_none;

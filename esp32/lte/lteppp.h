@@ -123,7 +123,7 @@ extern bool lteppp_wait_at_rsp (const char *expected_rsp, uint32_t timeout, bool
 lte_modem_conn_state_t lteppp_get_modem_conn_state(void);
 void lteppp_set_modem_conn_state(lte_modem_conn_state_t state);
 
-extern void connect_lte_uart (void);
+extern void connect_lte_uart (bool reconnect);
 
 extern bool ltepp_is_ppp_conn_up(void);
 

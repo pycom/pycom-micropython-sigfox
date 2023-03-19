@@ -117,8 +117,9 @@ static void lteppp_print_states();
  DEFINE PUBLIC FUNCTIONS
  ******************************************************************************/
 
-void connect_lte_uart (void) {
-    MSG("\n");
+void connect_lte_uart (bool reconnect) {
+    MSG("connect_lte_uart\n");
+    uart_driver_delete(LTE_UART_ID);
 
     // initialize the UART interface
     uart_config_t config;
@@ -128,7 +129,8 @@ void connect_lte_uart (void) {
     config.stop_bits = UART_STOP_BITS_1;
     config.flow_ctrl = UART_HW_FLOWCTRL_CTS_RTS;
     config.rx_flow_ctrl_thresh = 64;
-    config.use_ref_tick = false;
+    // Use UART_SCLK_APB as originally use_ref_tick = false was used here
+    config.source_clk = UART_SCLK_APB;
     uart_param_config(LTE_UART_ID, &config);
 
     // configure the UART pins
@@ -152,6 +154,11 @@ void connect_lte_uart (void) {
     lteppp_uart_reg->conf1.rx_tout_thrhd = 20 & UART_RX_TOUT_THRHD_V;
 
     uart_set_rts(LTE_UART_ID, false);
+
+    if (reconnect) {
+        uart_set_hw_flow_ctrl(LTE_UART_ID, UART_HW_FLOWCTRL_CTS_RTS, 64);
+        vTaskDelay(5);
+    }
 
     xTaskCreatePinnedToCore(TASK_UART_EVT, "LTE_UART_EVT", 2048 / sizeof(StackType_t), NULL, 12, &xLTEUartEvtTaskHndl, 1);
 
@@ -481,7 +488,7 @@ static void TASK_LTE (void *pvParameters) {
     uint8_t at_trials = 0;
     static uint32_t thread_notification;
 
-    connect_lte_uart();
+    connect_lte_uart(false);
 
 modem_init:
     MSG("modem_init\n");
