@@ -223,7 +223,18 @@ static bool lte_push_at_command_ext_cont (char *cmd_str, uint32_t timeout, const
 }
 
 static bool lte_push_at_command_ext(char *cmd_str, uint32_t timeout, const char *expected_rsp, size_t len) {
-    return lte_push_at_command_ext_cont(cmd_str, timeout, expected_rsp, len, false);
+    if (len > LTE_AT_CMD_DATA_SIZE_MAX) {
+        uint32_t cmd_full = len / LTE_AT_CMD_DATA_SIZE_MAX;
+        uint32_t cmd_remain = len % LTE_AT_CMD_DATA_SIZE_MAX;
+        for (int i=0; i < cmd_full; i++) {
+            if (!lte_push_at_command_ext_cont(cmd_str+(i*LTE_AT_CMD_DATA_SIZE_MAX), timeout, expected_rsp, LTE_AT_CMD_DATA_SIZE_MAX, true)) {
+                return false;
+            }
+        }
+        return lte_push_at_command_ext_cont(cmd_str+(cmd_full*LTE_AT_CMD_DATA_SIZE_MAX), timeout, expected_rsp, cmd_remain, false);
+    } else {
+        return lte_push_at_command_ext_cont(cmd_str, timeout, expected_rsp, len, false);
+    }
 }
 
 static bool lte_push_at_command (char *cmd_str, uint32_t timeout) {
