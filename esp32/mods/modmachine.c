@@ -213,10 +213,10 @@ STATIC mp_obj_t machine_info(void) {
     mp_printf(&mp_plat_print, "---------------------------------------------\n");
     mp_printf(&mp_plat_print, "MPTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)mpTaskHandle));
     mp_printf(&mp_plat_print, "ServersTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)svTaskHandle));
-#if defined (LOPY) || defined (LOPY4) || defined (FIPY)
+#if defined (LOPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
     mp_printf(&mp_plat_print, "LoRaTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)xLoRaTaskHndl));
 #endif
-#if defined (SIPY) || defined (LOPY4) || defined (FIPY)
+#if defined (SIPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
     mp_printf(&mp_plat_print, "SigfoxTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark((TaskHandle_t)xSigfoxTaskHndl));
 #endif
     mp_printf(&mp_plat_print, "TimerTask stack water mark: %d\n", (unsigned int)uxTaskGetStackHighWaterMark(xTimerGetTimerDaemonTaskHandle()));

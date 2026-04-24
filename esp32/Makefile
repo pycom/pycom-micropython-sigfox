@@ -33,14 +33,14 @@ PYGATE_ENABLED ?= 0
 MOD_COAP_ENABLED ?= 1
 
 # LORA is enabled by default for supported boards
-ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), LOPY LOPY4 FIPY TBEAMv1))
 MOD_LORA_ENABLED ?= 1
 else
 MOD_LORA_ENABLED ?= 0
 endif
 
 # SIGFOX is enabled by default for supported boards
-ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY))
+ifeq ($(BOARD), $(filter $(BOARD), SIPY LOPY4 FIPY TBEAMv1))
 MOD_SIGFOX_ENABLED ?= 1
 else
 MOD_SIGFOX_ENABLED ?= 0
@@ -83,7 +83,11 @@ RELEASE_DIR ?= $(BUILD_DIR)
 COPY_IDF_LIB ?= 0
 
 LTE_LOG_BUFF ?= 0
-RGB_LED ?= enable
+ifeq ($(BOARD), $(filter $(BOARD), TBEAMv1))
+    RGB_LED ?= disable
+else
+    RGB_LED ?= enable
+endif
 
 # by default openthread over LoRa is enabled
 OPENTHREAD = off
@@ -132,7 +136,7 @@ CFLAGS_XTENSA = -DESP_PLATFORM -Wpointer-arith -Wall -Werror=all -Wno-error=unus
 CFLAGS_XTENSA_OPT = -Os
 CFLAGS_XTENSA_PSRAM = -mfix-esp32-psram-cache-issue
 
-CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
+CFLAGS = $(CFLAGS_XTENSA) $(CFLAGS_XTENSA_PSRAM) $(CFLAGS_XTENSA_OPT) -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD) -DBOARD_$(BOARD)
 CFLAGS += $(CFLAGS_MOD) $(CFLAGS_EXTRA)
 CFLAGS_SIGFOX = $(CFLAGS_XTENSA) -O2 -nostdlib -std=gnu99 -g3 -ggdb -fstrict-volatile-bitfields -Iboards/$(BOARD)
 

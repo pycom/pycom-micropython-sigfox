@@ -787,7 +787,7 @@ size_t mp_obj_dict_len(mp_obj_t self_in);
 mp_obj_t mp_obj_dict_get(mp_obj_t self_in, mp_obj_t index);
 mp_obj_t mp_obj_dict_store(mp_obj_t self_in, mp_obj_t key, mp_obj_t value);
 mp_obj_t mp_obj_dict_delete(mp_obj_t self_in, mp_obj_t key);
-#if defined(LOPY) || defined (WIPY) || defined(SIPY) || defined (LOPY4) || defined(GPY) || defined(FIPY)
+#if defined(LOPY) || defined (WIPY) || defined(SIPY) || defined (LOPY4) || defined(GPY) || defined(FIPY) || defined(TBEAMv1)
 IRAM_ATTR
 #endif
 static inline mp_map_t *mp_obj_dict_get_map(mp_obj_t dict) {

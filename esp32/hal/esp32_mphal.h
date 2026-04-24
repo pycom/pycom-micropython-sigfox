@@ -10,7 +10,7 @@
 #ifndef _INCLUDED_MPHAL_H_
 #define _INCLUDED_MPHAL_H_
 
-#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+#if defined (LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
 void HAL_set_tick_cb (void *cb);
 #endif
 void mp_hal_init(bool soft_reset);

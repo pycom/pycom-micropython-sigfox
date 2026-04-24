@@ -115,7 +115,7 @@ STATIC void mptask_init_sflash_filesystem (void);
 STATIC void mptask_init_sflash_filesystem_fatfs(void);
 STATIC void mptask_create_main_py (void);
 STATIC void mptask_init_sflash_filesystem_littlefs(void);
-#if defined (LOPY) || defined (SIPY) || defined (LOPY4) || defined (FIPY)
+#if defined (LOPY) || defined (SIPY) || defined (LOPY4) || defined (FIPY) || defined (TBEAMv1)
 STATIC void mptask_update_lpwan_mac_address (void);
 #endif
 
@@ -613,7 +613,7 @@ STATIC void mptask_init_sflash_filesystem_littlefs(void) {
 }
 
 
-#if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY)
+#if defined(LOPY) || defined(SIPY) || defined (LOPY4) || defined(FIPY) || defined (TBEAMv1)
 STATIC void mptask_update_lpwan_mac_address (void) {
     #define LPWAN_MAC_ADDR_PATH          "/sys/lpwan.mac"
 

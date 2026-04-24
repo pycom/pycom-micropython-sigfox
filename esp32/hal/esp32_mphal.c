@@ -41,7 +41,7 @@
 #include "driver/timer.h"
 
 typedef void (*HAL_tick_user_cb_t)(void);
-#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+#if defined (LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
 DRAM_ATTR static HAL_tick_user_cb_t HAL_tick_user_cb;
 
 #define TIMER1_ALARM_TIME_MS        1U
@@ -51,7 +51,7 @@ DRAM_ATTR static HAL_tick_user_cb_t HAL_tick_user_cb;
 #endif
 
 
-#if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+#if defined (LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
 IRAM_ATTR static void HAL_TimerCallback (void* arg) {
 
     if (HAL_tick_user_cb != NULL) {
@@ -72,7 +72,7 @@ void HAL_set_tick_cb (void *cb) {
 
 void mp_hal_init(bool soft_reset) {
     if (!soft_reset) {
-    #if defined (LOPY) || defined(LOPY4) || defined(FIPY)
+    #if defined (LOPY) || defined(LOPY4) || defined(FIPY) || defined (TBEAMv1)
         // setup the HAL timer for LoRa
         HAL_tick_user_cb = NULL;
 
