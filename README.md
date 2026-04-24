@@ -1,3 +1,8 @@
+# Outdated
+
+Please check following repo for an updated alternative: https://github.com/nunomcruz/micropython-lorawan
+
+
 The MicroPython project
 =======================
 <p align="center">
